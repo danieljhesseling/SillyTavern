@@ -365,6 +365,25 @@ export function updatePartyMemberFromPersona(avatarId, newState) {
     }
 }
 
+export function getPartyDescription() {
+    if (!partyMembers.length) {
+        return '';
+    }
+
+    return partyMembers
+        .map((member) => {
+            const parts = [];
+            parts.push(`Nombre: ${member.name}`);
+            parts.push(`Clase: ${member.class}`);
+            parts.push(`Nivel: ${member.level}`);
+            parts.push(`HP: ${member.hp}/${member.maxHp}`);
+            if (member.inventory) parts.push(`Inventario: ${member.inventory}`);
+            if (member.conditions) parts.push(`Condiciones: ${member.conditions}`);
+            return parts.join(' | ');
+        })
+        .join('\n');
+}
+
 export function initPartyPanel() {
     const panel = $('#rm_party_block');
     if (!panel.length) {

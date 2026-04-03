@@ -67,6 +67,7 @@ export let selected_world_info = [];
 export let current_world_map_url = '';
 export let current_world_location_maps = [];
 export let current_world_boards = [];
+export let current_world_info_name = '';
 
 export function getCurrentWorldMapUrl() {
     return current_world_map_url;
@@ -1025,8 +1026,24 @@ export function setWorldInfoSettings(settings, data) {
     $('#world_editor_select').trigger('change');
 
     eventSource.on(event_types.CHAT_CHANGED, async () => {
-        const hasWorldInfo = !!chat_metadata[METADATA_KEY] && world_names.includes(chat_metadata[METADATA_KEY]);
+        const chatWorld = chat_metadata[METADATA_KEY];
+        const hasWorldInfo = !!chatWorld && world_names.includes(chatWorld);
+
         $('.chat_lorebook_button').toggleClass('world_set', hasWorldInfo);
+
+        if (hasWorldInfo) {
+            if (current_world_info_name !== chatWorld) {
+                const data = await loadWorldInfo(chatWorld);
+                if (data && 'entries' in data) {
+                    await displayWorldEntries(chatWorld, data);
+                } else {
+                    await hideWorldEditor();
+                }
+            }
+        } else if (current_world_info_name !== '') {
+            await hideWorldEditor();
+        }
+
         // Pre-cache the world info data for the chat for quicker first prompt generation
         await getSortedEntries();
     });
@@ -2329,6 +2346,7 @@ async function displayWorldEntries(name, data, navigation = navigation_option.no
     worldEntriesList.show();
 
     if (!data || !('entries' in data)) {
+        current_world_info_name = '';
         current_world_map_url = '';
         current_world_location_maps = [];
         current_world_boards = [];
@@ -2346,6 +2364,7 @@ async function displayWorldEntries(name, data, navigation = navigation_option.no
         return;
     }
 
+    current_world_info_name = name || '';
     current_world_map_url = data.metadata?.worldMapUrl || data.metadata?.mapUrl || '';
     current_world_location_maps = Array.isArray(data.metadata?.locationMaps) ? data.metadata.locationMaps : [];
     current_world_boards = Array.isArray(data.metadata?.boards) ? data.metadata.boards : [];
@@ -6047,15 +6066,23 @@ export async function assignLorebookToChat({ shiftKey, altKey }) {
         worldSelect.append(option);
     }
 
-    worldSelect.on('change', function () {
+    worldSelect.on('change', async function () {
         const worldName = $(this).val();
 
         if (worldName) {
             chat_metadata[METADATA_KEY] = worldName;
             $('.chat_lorebook_button').addClass('world_set');
+
+            if (world_names.includes(worldName)) {
+                const data = await loadWorldInfo(worldName);
+                if (data && 'entries' in data) {
+                    await displayWorldEntries(worldName, data);
+                }
+            }
         } else {
             delete chat_metadata[METADATA_KEY];
             $('.chat_lorebook_button').removeClass('world_set');
+            await hideWorldEditor();
         }
 
         saveMetadata();

@@ -74,7 +74,7 @@ import {
     getGroupDepthPrompts,
 } from './scripts/group-chats.js';
 
-import { initPartyPanel } from './scripts/party.js';
+import { initPartyPanel, getPartyDescription } from './scripts/party.js';
 
 import {
     collapseNewlines,
@@ -3147,6 +3147,21 @@ function addPersonaDescriptionExtensionPrompt() {
         setExtensionPrompt('PERSONA_PLAYER_STATE', playerStateLines, extension_prompt_types.IN_PROMPT, 0, false, extension_prompt_roles.SYSTEM);
     } else {
         setExtensionPrompt('PERSONA_PLAYER_STATE', '', extension_prompt_types.IN_PROMPT, 0);
+    }
+
+    const partyDescription = getPartyDescription();
+
+    if (partyDescription) {
+        setExtensionPrompt(
+            'PARTY_MEMBERS',
+            `[SYSTEM: PARTY INFORMATION]\n${partyDescription}`,
+            extension_prompt_types.IN_PROMPT,
+            0,
+            false,
+            extension_prompt_roles.SYSTEM
+        );
+    } else {
+        setExtensionPrompt('PARTY_MEMBERS', '', extension_prompt_types.IN_PROMPT, 0);
     }
 
     if (!power_user.persona_description || power_user.persona_description_position === persona_description_positions.NONE) {
