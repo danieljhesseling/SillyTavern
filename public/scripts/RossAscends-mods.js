@@ -808,7 +808,14 @@ export function initRossMods() {
     $('#rightNavDrawerIcon').on('click', function () {
         if (!$('#rightNavDrawerIcon').hasClass('openIcon')) {
             accountStorage.setItem('NavOpened', 'true');
-        } else { accountStorage.setItem('NavOpened', 'false'); }
+            // when right nav opens, show character menu
+            if (window.select_rm_characters) {
+                window.selected_button = 'characters';
+                window.select_rm_characters();
+            }
+        } else {
+            accountStorage.setItem('NavOpened', 'false');
+        }
     });
 
     //save state of Left nav being open or closed

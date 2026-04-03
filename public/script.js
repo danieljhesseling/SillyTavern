@@ -74,6 +74,8 @@ import {
     getGroupDepthPrompts,
 } from './scripts/group-chats.js';
 
+import { initPartyPanel } from './scripts/party.js';
+
 import {
     collapseNewlines,
     loadPowerUserSettings,
@@ -754,6 +756,7 @@ async function firstLoadInit() {
     await getUserAvatars(true, user_avatar);
     await getCharacters();
     await getBackgrounds();
+    initPartyPanel();
     await initTokenizers();
     initBackgrounds();
     initAuthorsNote();
@@ -8523,6 +8526,7 @@ async function displayChats(searchQuery, currentChat, displayName, avatarImg, se
 export function selectRightMenuWithAnimation(selectedMenuId) {
     const displayModes = {
         'rm_group_chats_block': 'flex',
+        'rm_party_block': 'flex',
         'rm_api_block': 'grid',
         'rm_characters_block': 'flex',
     };
@@ -12006,8 +12010,25 @@ jQuery(async function () {
 
     $('#partyDrawerIcon').on('click', function (e) {
         e.stopPropagation();
-        selected_button = 'group_chats';
-        select_group_chats(null, false);
+
+        // Close Persona Management panel if open
+        const personaDrawer = $('#persona-management-button .drawer-content');
+        const personaIcon = $('#persona-management-button .drawer-icon');
+        if (personaDrawer.hasClass('openDrawer')) {
+            personaDrawer.removeClass('openDrawer').addClass('closedDrawer');
+            personaIcon.removeClass('openIcon').addClass('closedIcon');
+        }
+
+        // Open right-nav panel if closed
+        const rightNavDrawer = $('#right-nav-panel');
+        const rightNavIcon = $('#rightNavDrawerIcon');
+        if (rightNavDrawer.length && rightNavDrawer.hasClass('closedDrawer')) {
+            rightNavDrawer.removeClass('closedDrawer').addClass('openDrawer');
+            rightNavIcon.removeClass('closedIcon').addClass('openIcon');
+        }
+
+        selected_button = 'party';
+        selectRightMenuWithAnimation('rm_party_block');
     });
 
     $('#rm_button_back_from_group').on('click', function () {
