@@ -6,6 +6,7 @@ import { getThumbnailUrl } from '../script.js';
 /**
  * @typedef {Object} PartyMember
  * @property {number} id
+ * @property {string|null} personaId
  * @property {string} name
  * @property {string} avatar
  * @property {number} level
@@ -13,6 +14,12 @@ import { getThumbnailUrl } from '../script.js';
  * @property {number} hp
  * @property {number} maxHp
  * @property {number} xp
+ * @property {number} xpNext
+ * @property {number} gold
+ * @property {number} silver
+ * @property {number} copper
+ * @property {string} inventory
+ * @property {string} conditions
  */
 
 /** @type {PartyMember[]} */
@@ -105,15 +112,26 @@ export function addPartyMember(personaIdOrName) {
 
     const avatar = isPersonaId ? getThumbnailUrl('persona', personaIdOrName) : 'img/user-avatar.png';
 
+    /** @type {any} */
+    const descriptor = power_user.persona_descriptions || {};
+    /** @type {{hp_current?: number, hp_max?: number, xp_current?: number, xp_next?: number, level?: number, gold?: number, silver?: number, copper?: number, inventory?: string, conditions?: string}|null} */
+    const personaState = isPersonaId ? descriptor[personaIdOrName]?.player_state : null;
     const base = {
         id: Date.now(),
+        personaId: isPersonaId ? personaIdOrName : null,
         name,
         avatar,
-        level: 1,
+        level: personaState?.level ?? 1,
         class: 'Adventurer',
-        hp: 30,
-        maxHp: 30,
-        xp: 0,
+        hp: personaState?.hp_current ?? 30,
+        maxHp: personaState?.hp_max ?? 30,
+        xp: personaState?.xp_current ?? 0,
+        xpNext: personaState?.xp_next ?? 100,
+        gold: personaState?.gold ?? 0,
+        silver: personaState?.silver ?? 0,
+        copper: personaState?.copper ?? 0,
+        inventory: personaState?.inventory ?? '',
+        conditions: personaState?.conditions ?? '',
     };
 
     partyMembers.push(base);
@@ -128,6 +146,39 @@ export function removePartyMember(memberId) {
     partyMembers = partyMembers.filter((m) => m.id !== memberId);
     renderPartyMembers();
     savePartyState();
+}
+
+/**
+ * @param {string} avatarId
+ * @param {{hp_current?: number, hp_max?: number, xp_current?: number, xp_next?: number, level?: number, gold?: number, silver?: number, copper?: number, inventory?: string, conditions?: string}} newState
+ */
+export function updatePartyMemberFromPersona(avatarId, newState) {
+    let changed = false;
+    partyMembers = partyMembers.map((member) => {
+        if (member.personaId !== avatarId) {
+            return member;
+        }
+
+        changed = true;
+        return {
+            ...member,
+            level: newState.level ?? member.level,
+            hp: newState.hp_current ?? member.hp,
+            maxHp: newState.hp_max ?? member.maxHp,
+            xp: newState.xp_current ?? member.xp,
+            xpNext: newState.xp_next ?? member.xpNext,
+            gold: newState.gold ?? member.gold,
+            silver: newState.silver ?? member.silver,
+            copper: newState.copper ?? member.copper,
+            inventory: newState.inventory ?? member.inventory,
+            conditions: newState.conditions ?? member.conditions,
+        };
+    });
+
+    if (changed) {
+        renderPartyMembers();
+        savePartyState();
+    }
 }
 
 export function initPartyPanel() {
@@ -158,6 +209,10 @@ export function initPartyPanel() {
         }
 
         addPartyMember(selectedPersona);
+    });
+
+    $(document).on('personaStateUpdated', (_, avatarId, newState) => {
+        updatePartyMemberFromPersona(avatarId, newState);
     });
 
     $(document).on('click', '.party-remove-member', null, () => {

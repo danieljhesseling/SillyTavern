@@ -3128,6 +3128,27 @@ function addPersonaDescriptionExtensionPrompt() {
     const INJECT_TAG = 'PERSONA_DESCRIPTION';
     setExtensionPrompt(INJECT_TAG, '', extension_prompt_types.IN_PROMPT, 0);
 
+    const currentDescriptor = power_user.persona_descriptions?.[user_avatar] || {};
+    const playerState = currentDescriptor.player_state || null;
+
+    if (playerState) {
+        const playerStateLines = [
+            '[SYSTEM: PLAYER_STATE]',
+            `HP: ${playerState.hp_current ?? 0}/${playerState.hp_max ?? 0}`,
+            `EXP: ${playerState.xp_current ?? 0}/${playerState.xp_next ?? 0}`,
+            `Nivel: ${playerState.level ?? 1}`,
+            `Oro: ${playerState.gold ?? 0}`,
+            `Plata: ${playerState.silver ?? 0}`,
+            `Cobre: ${playerState.copper ?? 0}`,
+            `Inventario: ${playerState.inventory || ''}`,
+            `Estado: ${playerState.conditions || ''}`,
+        ].join('\n');
+
+        setExtensionPrompt('PERSONA_PLAYER_STATE', playerStateLines, extension_prompt_types.IN_PROMPT, 0, false, extension_prompt_roles.SYSTEM);
+    } else {
+        setExtensionPrompt('PERSONA_PLAYER_STATE', '', extension_prompt_types.IN_PROMPT, 0);
+    }
+
     if (!power_user.persona_description || power_user.persona_description_position === persona_description_positions.NONE) {
         return;
     }

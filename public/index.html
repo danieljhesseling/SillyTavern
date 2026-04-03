@@ -7718,6 +7718,62 @@
                                     placeholder="Example:&#10;[{{user}} is a 28-year-old Romanian cat girl.]"
                                     class="text_pole textarea_compact" value="" autocomplete="off" rows="8"></textarea>
 
+                                <div id="persona_state_fields" class="persona_state_fields marginTop10">
+                                    <h4 data-i18n="Player State" class="width100p">Player State</h4>
+
+                                    <div class="flex-container width100p flexWrap">
+                                        <label class="flex1 marginRight5">
+                                            <span data-i18n="HP">HP</span>
+                                            <input id="persona_state_hp_current" type="number" min="0" class="text_pole width100p" placeholder="Current HP">
+                                        </label>
+                                        <label class="flex1 marginRight5">
+                                            <span data-i18n="Max HP">Max HP</span>
+                                            <input id="persona_state_hp_max" type="number" min="1" class="text_pole width100p" placeholder="Max HP">
+                                        </label>
+                                        <label class="flex1 marginRight5">
+                                            <span data-i18n="XP">EXP</span>
+                                            <input id="persona_state_xp_current" type="number" min="0" class="text_pole width100p" placeholder="Current EXP">
+                                        </label>
+                                        <label class="flex1 marginRight5">
+                                            <span data-i18n="XP Next">XP Next</span>
+                                            <input id="persona_state_xp_next" type="number" min="1" class="text_pole width100p" placeholder="XP Next">
+                                        </label>
+                                        <label class="flex1">
+                                            <span data-i18n="Level">Level</span>
+                                            <input id="persona_state_level" type="number" min="1" class="text_pole width100p" placeholder="Level">
+                                        </label>
+                                    </div>
+
+                                    <div class="flex-container width100p flexWrap marginTop5">
+                                        <label class="flex1 marginRight5">
+                                            <span data-i18n="Gold">Gold</span>
+                                            <input id="persona_state_gold" type="number" min="0" class="text_pole width100p" placeholder="Gold">
+                                        </label>
+                                        <label class="flex1 marginRight5">
+                                            <span data-i18n="Silver">Silver</span>
+                                            <input id="persona_state_silver" type="number" min="0" class="text_pole width100p" placeholder="Silver">
+                                        </label>
+                                        <label class="flex1">
+                                            <span data-i18n="Copper">Copper</span>
+                                            <input id="persona_state_copper" type="number" min="0" class="text_pole width100p" placeholder="Copper">
+                                        </label>
+                                    </div>
+
+                                    <div class="flex-container width100p marginTop5">
+                                        <label class="flex1">
+                                            <span data-i18n="Inventory">Inventory</span>
+                                            <input id="persona_state_inventory" type="text" class="text_pole width100p" placeholder="Comma-separated inventory">
+                                        </label>
+                                    </div>
+
+                                    <div class="flex-container width100p marginTop5">
+                                        <label class="flex1">
+                                            <span data-i18n="Conditions">Conditions</span>
+                                            <input id="persona_state_conditions" type="text" class="text_pole width100p" placeholder="Status (Healthy, Injured)">
+                                        </label>
+                                    </div>
+                                </div>
+
                                 <div class="flex-container justifySpaceBetween">
                                     <h4 data-i18n="Position">Position</h4>
                                     <div class="extension_token_counter widthFitContent">

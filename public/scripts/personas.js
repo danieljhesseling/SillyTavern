@@ -475,6 +475,18 @@ export function initPersona(avatarId, personaName, personaDescription, personaTi
         role: DEFAULT_ROLE,
         lorebook: '',
         title: personaTitle || '',
+        player_state: {
+            hp_current: 0,
+            hp_max: 0,
+            xp_current: 0,
+            xp_next: 100,
+            level: 1,
+            gold: 0,
+            silver: 0,
+            copper: 0,
+            inventory: '',
+            conditions: '',
+        },
     };
 
     saveSettingsDebounced();
@@ -584,8 +596,45 @@ export function setPersonaDescription() {
     $('#persona_lore_button').toggleClass('world_set', !!power_user.persona_description_lorebook);
     countPersonaDescriptionTokens();
 
+    populatePersonaStateFields();
     updatePersonaUIStates();
     updatePersonaConnectionsAvatarList();
+}
+
+function populatePersonaStateFields() {
+    const descriptor = power_user.persona_descriptions[user_avatar] || {};
+    const state = descriptor.player_state || {};
+
+    $('#persona_state_hp_current').val(state.hp_current ?? '');
+    $('#persona_state_hp_max').val(state.hp_max ?? '');
+    $('#persona_state_xp_current').val(state.xp_current ?? '');
+    $('#persona_state_xp_next').val(state.xp_next ?? '');
+    $('#persona_state_level').val(state.level ?? '');
+    $('#persona_state_gold').val(state.gold ?? '');
+    $('#persona_state_silver').val(state.silver ?? '');
+    $('#persona_state_copper').val(state.copper ?? '');
+    $('#persona_state_inventory').val(state.inventory ?? '');
+    $('#persona_state_conditions').val(state.conditions ?? '');
+}
+
+function onPersonaStateFieldInput() {
+    const descriptor = getOrCreatePersonaDescriptor();
+    const state = descriptor.player_state;
+
+    state.hp_current = Number($('#persona_state_hp_current').val()) || 0;
+    state.hp_max = Number($('#persona_state_hp_max').val()) || 0;
+    state.xp_current = Number($('#persona_state_xp_current').val()) || 0;
+    state.xp_next = Number($('#persona_state_xp_next').val()) || 0;
+    state.level = Number($('#persona_state_level').val()) || 1;
+    state.gold = Number($('#persona_state_gold').val()) || 0;
+    state.silver = Number($('#persona_state_silver').val()) || 0;
+    state.copper = Number($('#persona_state_copper').val()) || 0;
+    state.inventory = String($('#persona_state_inventory').val() || '');
+    state.conditions = String($('#persona_state_conditions').val() || '');
+
+    saveSettingsDebounced();
+
+    $(document).trigger('personaStateUpdated', [user_avatar, { ...state }]);
 }
 
 /**
@@ -865,6 +914,18 @@ async function selectCurrentPersona({ toastPersonaNameChange = true } = {}) {
                 lorebook: '',
                 connections: [],
                 title: '',
+                player_state: {
+                    hp_current: 0,
+                    hp_max: 0,
+                    xp_current: 0,
+                    xp_next: 100,
+                    level: 1,
+                    gold: 0,
+                    silver: 0,
+                    copper: 0,
+                    inventory: '',
+                    conditions: '',
+                },
             };
         }
 
@@ -1012,6 +1073,15 @@ async function lockPersona(type = 'chat') {
             lorebook: '',
             connections: [],
             title: '',
+            player_state: {
+                hp_current: 0,
+                hp_max: 0,
+                xp_current: 0,
+                xp_next: 100,
+                gold: 0,
+                inventory: '',
+                conditions: '',
+            },
         };
     }
 
@@ -1241,8 +1311,34 @@ export function getOrCreatePersonaDescriptor() {
             lorebook: power_user.persona_description_lorebook,
             connections: [],
             title: '',
+            player_state: {
+                hp_current: 0,
+                hp_max: 0,
+                xp_current: 0,
+                xp_next: 100,
+                level: 1,
+                gold: 0,
+                silver: 0,
+                copper: 0,
+                inventory: '',
+                conditions: '',
+            },
         };
         power_user.persona_descriptions[user_avatar] = object;
+    }
+    if (!object.player_state) {
+        object.player_state = {
+            hp_current: 0,
+            hp_max: 0,
+            xp_current: 0,
+            xp_next: 100,
+            level: 1,
+            gold: 0,
+            silver: 0,
+            copper: 0,
+            inventory: '',
+            conditions: '',
+        };
     }
     return object;
 }
@@ -1966,6 +2062,9 @@ export async function initPersonas() {
     $('#persona_description_position').on('input', onPersonaDescriptionPositionInput);
     $('#persona_depth_value').on('input', onPersonaDescriptionDepthValueInput);
     $('#persona_depth_role').on('input', onPersonaDescriptionDepthRoleInput);
+
+    $('#persona_state_hp_current, #persona_state_hp_max, #persona_state_xp_current, #persona_state_xp_next, #persona_state_level, #persona_state_gold, #persona_state_silver, #persona_state_copper, #persona_state_inventory, #persona_state_conditions').on('input', onPersonaStateFieldInput);
+
     $('#persona_lore_button').on('click', onPersonaLoreButtonClick);
     addLongPressEvent('#persona_lore_button', function () {
         onPersonaLoreButtonClick({ shiftKey: true, altKey: false });
