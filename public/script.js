@@ -12004,6 +12004,12 @@ jQuery(async function () {
         select_group_chats(null, false);
     });
 
+    $('#partyDrawerIcon').on('click', function (e) {
+        e.stopPropagation();
+        selected_button = 'group_chats';
+        select_group_chats(null, false);
+    });
+
     $('#rm_button_back_from_group').on('click', function () {
         selected_button = 'characters';
         select_rm_characters();
