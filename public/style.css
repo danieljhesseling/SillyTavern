@@ -2784,6 +2784,149 @@ h3 {
     color: var(--SmartThemeTextColor, #999);
 }
 
+.world-map-row {
+    display: block;
+    width: 100%;
+    margin-top: 12px;
+}
+
+.world-map-zoom-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.75);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.world-map-zoom-container {
+    position: relative;
+    width: 90%;
+    height: 90%;
+    overflow: hidden;
+}
+
+.world-map-zoom-img {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    max-width: none;
+    max-height: none;
+    width: auto;
+    height: auto;
+    transform: translate(-50%, -50%) scale(1);
+    will-change: transform;
+}
+
+#world_map_zoom_close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 100;
+}
+
+.world-map-preview {
+    display: block;
+    width: 100%;
+    padding: 8px;
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-radius: 10px;
+    background: var(--SmartThemeBackgroundColor);
+}
+
+.world-map-section-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    margin-bottom: 6px;
+}
+
+.world-map-collection {
+    width: 100%;
+    min-height: 58px;
+    padding: 8px;
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-radius: 10px;
+    background: var(--SmartThemeBackgroundColor);
+}
+
+.world-map-items_grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+    gap: 8px;
+}
+
+.world-map-item-card {
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-radius: 8px;
+    padding: 6px;
+    text-align: center;
+    background: var(--SmartThemeBackgroundColor);
+}
+
+.world-map-item-name {
+    font-size: 0.7rem;
+    margin-bottom: 4px;
+    color: var(--SmartThemeTextColor);
+    word-break: break-word;
+}
+
+.world-map-thumbnail {
+    width: 100%;
+    height: 64px;
+    object-fit: cover;
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-radius: 4px;
+}
+
+.world-map-image {
+    width: 100%;
+    height: auto;
+    border-radius: 8px;
+    display: block;
+}
+
+.world_meta_file_input {
+    display: block !important;
+    margin-top: 6px;
+    width: calc(100% - 2px);
+}
+
+#world_map_preview_empty {
+    padding: 16px 0;
+    color: var(--SmartThemeTextColor, #ccc);
+}
+
+.party-member-modal {
+    display: flex;
+    flex-direction: column;
+    text-align: center;
+    gap: 16px;
+    max-width: 420px;
+}
+
+.party-member-modal-avatar-wrap {
+    display: flex;
+    justify-content: center;
+}
+
+.party-member-modal-avatar {
+    width: 140px;
+    height: 140px;
+    border-radius: 12px;
+    object-fit: cover;
+    border: 1px solid var(--SmartThemeBorderColor);
+}
+
+.party-member-modal-details p {
+    margin: 4px 0;
+    font-size: 0.95rem;
+}
+
+
 .stat-value {
     font-size: 0.85rem;
     font-weight: 600;
@@ -2927,6 +3070,32 @@ input[type="file"] {
 
 .selected-right-tab {
     filter: brightness(150%);
+}
+
+.right_menu_tab {
+    padding: 2px 8px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    white-space: nowrap;
+    color: var(--SmartThemeTextColor, #ccc);
+    background: var(--SmartThemeBackgroundColor);
+}
+
+.right_menu_tab:hover {
+    border-color: var(--SmartThemeBorderColor);
+    filter: brightness(135%);
+}
+
+.right_menu_tab.active {
+    border-color: var(--SmartThemeButtonBorderColor, #888);
+    background: var(--SmartThemeButtonBackgroundColor, #111);
+    color: var(--SmartThemeAccentColor, #fff);
+}
+
+.tab-panel-hidden {
+    display: none !important;
 }
 
 #rm_print_characters_pagination {

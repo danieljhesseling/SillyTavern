@@ -64,6 +64,20 @@ const WI_ENTRY_EDIT_TEMPLATE = $('#entry_edit_template .world_entry_edit');
 
 export let world_info = {};
 export let selected_world_info = [];
+export let current_world_map_url = '';
+export let current_world_location_maps = [];
+export let current_world_boards = [];
+
+export function getCurrentWorldMapUrl() {
+    return current_world_map_url;
+}
+export function getCurrentWorldLocationMaps() {
+    return current_world_location_maps;
+}
+export function getCurrentWorldBoards() {
+    return current_world_boards;
+}
+
 /** @type {string[]} */
 export let world_names;
 export let world_info_depth = 2;
@@ -2315,6 +2329,13 @@ async function displayWorldEntries(name, data, navigation = navigation_option.no
     worldEntriesList.show();
 
     if (!data || !('entries' in data)) {
+        current_world_map_url = '';
+        current_world_location_maps = [];
+        current_world_boards = [];
+        $(document).trigger('worldMapUpdated', ['']);
+        $(document).trigger('worldLocationMapsUpdated', [current_world_location_maps]);
+        $(document).trigger('worldBoardsUpdated', [current_world_boards]);
+
         $('#world_popup_new').off('click').on('click', nullWorldInfo);
         $('#world_popup_name_button').off('click').on('click', nullWorldInfo);
         $('#world_popup_export').off('click').on('click', nullWorldInfo);
@@ -2324,6 +2345,14 @@ async function displayWorldEntries(name, data, navigation = navigation_option.no
         $('#world_info_pagination').html('');
         return;
     }
+
+    current_world_map_url = data.metadata?.worldMapUrl || data.metadata?.mapUrl || '';
+    current_world_location_maps = Array.isArray(data.metadata?.locationMaps) ? data.metadata.locationMaps : [];
+    current_world_boards = Array.isArray(data.metadata?.boards) ? data.metadata.boards : [];
+
+    $(document).trigger('worldMapUpdated', [current_world_map_url]);
+    $(document).trigger('worldLocationMapsUpdated', [current_world_location_maps]);
+    $(document).trigger('worldBoardsUpdated', [current_world_boards]);
 
     // Regardless of whether success is displayed or not. Make sure the delete button is available.
     // Do not put this code behind.
@@ -2492,6 +2521,189 @@ async function displayWorldEntries(name, data, navigation = navigation_option.no
             updateEditor(navigation_option.previous);
         }
     });
+
+    $('#world_popup_meta').off('click').on('click', async () => {
+        await editWorldInfoMetadata(name, data);
+    });
+
+    async function editWorldInfoMetadata(name, data) {
+        if (!name || !data) {
+            return;
+        }
+
+        const currentDisplayName = data.metadata?.displayName || name;
+        const currentMapUrl = data.metadata?.worldMapUrl || data.metadata?.mapUrl || '';
+        const initialLocationMaps = Array.isArray(data.metadata?.locationMaps) ? data.metadata.locationMaps : [];
+        const initialBoards = Array.isArray(data.metadata?.boards) ? data.metadata.boards : [];
+
+        const content = document.createElement('div');
+        content.className = 'world-info-metadata-modal';
+        content.innerHTML = `
+            <p>${t`Edit world metadata for`} <strong>${name}</strong></p>
+
+            <h4>${t`World Map`}</h4>
+            <label class="text_label" for="world_meta_display_name">${t`Display Name`}:</label>
+            <input id="world_meta_display_name" class="text_pole" type="text" value="${escapeHtml(currentDisplayName)}" />
+
+            <label class="text_label" for="world_meta_map_url">${t`Map URL`}:</label>
+            <input id="world_meta_map_url" class="text_pole" type="text" value="${escapeHtml(currentMapUrl)}" />
+
+            <label class="text_label" for="world_meta_map_file">${t`Map from file`}:</label>
+            <input id="world_meta_map_file" class="text_pole world_meta_file_input" type="file" accept="image/*" />
+
+            <h4>${t`Location Maps`}</h4>
+            <div id="world_meta_location_maps" class="world_meta_collection"></div>
+            <button id="add_location_map" class="menu_button fa-solid fa-plus" style="margin: 5px 0;"> ${t`Add location map`}</button>
+
+            <h4>${t`Boards`}</h4>
+            <div id="world_meta_boards" class="world_meta_collection"></div>
+            <button id="add_board" class="menu_button fa-solid fa-plus" style="margin: 5px 0;"> ${t`Add board`}</button>
+        `;
+
+        const popup = new Popup(content, POPUP_TYPE.TEXT, '', {
+            wide: true,
+            okButton: t`Save`,
+            cancelButton: t`Cancel`,
+            onOpen: (popupInstance) => {
+                const mapFileInput = popupInstance.dlg.querySelector('#world_meta_map_file');
+                const mapUrlInput = popupInstance.dlg.querySelector('#world_meta_map_url');
+                const locationMapsContainer = popupInstance.dlg.querySelector('#world_meta_location_maps');
+                const boardsContainer = popupInstance.dlg.querySelector('#world_meta_boards');
+                const addLocationBtn = popupInstance.dlg.querySelector('#add_location_map');
+                const addBoardBtn = popupInstance.dlg.querySelector('#add_board');
+
+                if (!(mapFileInput instanceof HTMLInputElement) || !(mapUrlInput instanceof HTMLInputElement)) return;
+                if (!(locationMapsContainer instanceof HTMLElement) || !(boardsContainer instanceof HTMLElement)) return;
+
+                function createCollectionEntry(type, entry) {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'world_meta_collection_entry';
+                    wrapper.style = 'border:1px solid var(--SmartThemeBorderColor);padding:6px;margin-bottom:6px;border-radius:6px;';
+
+                    wrapper.innerHTML = `
+                        <label class="text_label">${escapeHtml(type)} ${t`Name`}:</label>
+                        <input type="text" class="text_pole world_meta_collection_name" value="${escapeHtml(entry.name || '')}" />
+                        <label class="text_label">${t`URL`}:</label>
+                        <input type="text" class="text_pole world_meta_collection_url" value="${escapeHtml(entry.url || '')}" />
+                        <label class="text_label">${t`File`}:</label>
+                        <input type="file" class="world_meta_collection_file world_meta_file_input" accept="image/*" />
+                        <button class="menu_button fa-solid fa-trash-can remove_collection_entry" style="margin-top:4px;"> ${t`Remove`}</button>
+                    `;
+
+                    const fileInput = wrapper.querySelector('.world_meta_collection_file');
+                    const urlInput = wrapper.querySelector('.world_meta_collection_url');
+                    const removeBtn = wrapper.querySelector('.remove_collection_entry');
+
+                    if (fileInput instanceof HTMLInputElement && urlInput instanceof HTMLInputElement) {
+                        fileInput.addEventListener('change', () => {
+                            const file = fileInput.files?.[0];
+                            if (!file) return;
+                            const reader = new FileReader();
+                            reader.onload = () => {
+                                if (typeof reader.result === 'string') {
+                                    urlInput.value = reader.result;
+                                }
+                            };
+                            reader.readAsDataURL(file);
+                        });
+                    }
+
+                    if (removeBtn instanceof HTMLElement) {
+                        removeBtn.addEventListener('click', () => {
+                            wrapper.remove();
+                        });
+                    }
+
+                    return wrapper;
+                }
+
+                function addLocationEntry(entry = { name: '', url: '' }) {
+                    locationMapsContainer.appendChild(createCollectionEntry(t`Location`, entry));
+                }
+
+                function addBoardEntry(entry = { name: '', url: '' }) {
+                    boardsContainer.appendChild(createCollectionEntry(t`Board`, entry));
+                }
+
+                addLocationBtn?.addEventListener('click', (evt) => {
+                    evt.preventDefault();
+                    addLocationEntry();
+                });
+
+                addBoardBtn?.addEventListener('click', (evt) => {
+                    evt.preventDefault();
+                    addBoardEntry();
+                });
+
+                initialLocationMaps.forEach(addLocationEntry);
+                initialBoards.forEach(addBoardEntry);
+
+                mapFileInput.addEventListener('change', () => {
+                    const file = mapFileInput.files?.[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        if (typeof reader.result === 'string') {
+                            mapUrlInput.value = reader.result;
+                        }
+                    };
+                    reader.readAsDataURL(file);
+                });
+            },
+        });
+
+        const result = await popup.show();
+        if (result !== POPUP_RESULT.AFFIRMATIVE) {
+            return;
+        }
+
+        const dialog = popup.dlg;
+        const displayNameElement = dialog.querySelector('#world_meta_display_name');
+        const mapUrlElement = dialog.querySelector('#world_meta_map_url');
+        const locationMapsContainer = dialog.querySelector('#world_meta_location_maps');
+        const boardsContainer = dialog.querySelector('#world_meta_boards');
+
+        const newDisplayName = displayNameElement instanceof HTMLInputElement ? displayNameElement.value.trim() : name;
+        const newMapUrl = mapUrlElement instanceof HTMLInputElement ? mapUrlElement.value.trim() : '';
+
+        const collectEntries = (container) => {
+            if (!(container instanceof HTMLElement)) return [];
+            return Array.from(container.querySelectorAll('.world_meta_collection_entry')).map((item) => {
+                const entryName = item.querySelector('.world_meta_collection_name');
+                const entryUrl = item.querySelector('.world_meta_collection_url');
+                return {
+                    name: entryName instanceof HTMLInputElement ? entryName.value.trim() : '',
+                    url: entryUrl instanceof HTMLInputElement ? entryUrl.value.trim() : '',
+                };
+            }).filter((entry) => entry.name || entry.url);
+        };
+
+        const newLocationMaps = collectEntries(locationMapsContainer);
+        const newBoards = collectEntries(boardsContainer);
+
+        data.metadata = data.metadata || {};
+        data.metadata.displayName = newDisplayName || name;
+        data.metadata.worldMapUrl = newMapUrl;
+        data.metadata.mapUrl = newMapUrl;
+        data.metadata.locationMaps = newLocationMaps;
+        data.metadata.boards = newBoards;
+
+        await saveWorldInfo(name, data, true);
+        await displayWorldEntries(name, data, navigation_option.none, true);
+
+        toastr.success(t`World metadata updated`);
+    }
+
+    function escapeHtml(str) {
+        return String(str).replace(/[&<>"']/g, (tag) => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;'
+        }[tag] || tag));
+    }
+
 
     $('#world_apply_current_sorting').off('click').on('click', async () => {
         const entryCount = Object.keys(data.entries).length;

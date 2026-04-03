@@ -6343,6 +6343,7 @@
                         <div class="flex-container alignitemscenter">
                             <div id="world_popup_new" class="menu_button fa-solid fa-plus" title="New Entry"
                                 data-i18n="[title]New Entry"></div>
+                            <div id="world_popup_meta" class="menu_button fa-solid fa-map" title="Edit World Metadata" data-i18n="[title]Edit World Metadata"></div>
                             <div id="OpenAllWIEntries" class="menu_button fa-solid fa-expand" title="Open all Entries"
                                 data-i18n="[title]Open all Entries"></div>
                             <div id="CloseAllWIEntries" class="menu_button fa-solid fa-compress"
@@ -7916,6 +7917,10 @@
                         <div id="rm_button_selected_ch">
                             <h2 class="interactable"></h2>
                         </div>
+                        <div class="right_menu_tab" id="rm_tab_party" data-tab="party" title="Party" data-i18n="[title]Party">Party</div>
+                        <div class="right_menu_tab" id="rm_tab_world_map" data-tab="world_map" title="World Map" data-i18n="[title]World Map">World Map</div>
+                        <div class="right_menu_tab" id="rm_tab_location" data-tab="location" title="Location Maps" data-i18n="[title]Location Maps">Location</div>
+                        <div class="right_menu_tab" id="rm_tab_board" data-tab="board" title="Boards" data-i18n="[title]Boards">Board</div>
                         <div id="result_info" class="flex-container" style="display: none;">
                             <div id="result_info_text"
                                 title="Token counts may be inaccurate and provided just for reference."
@@ -8488,6 +8493,20 @@
                             </div>
                         </div>
                         <div id="rm_party_list" class="overflowYAuto flexFlowColumn" party_empty_text="No party members." data-i18n="[party_empty_text]No party members."></div>
+                        <div id="world_map_row" class="world-map-row width100p marginTop10">
+                            <div id="world_map_preview" class="world-map-preview width100p">
+                                <img id="world_map_preview_img" class="world-map-image width100p" src="" alt="World Map" style="display: none; border-radius:8px; border:1px solid var(--SmartThemeBorderColor);" />
+                                <div id="world_map_preview_empty" class="textAlignCenter opacity50p">No world map selected</div>
+                            </div>
+                        </div>
+                        <div id="world_location_maps_row" class="world-map-row width100p marginTop10">
+                            <div class="world-map-section-title">Location Maps</div>
+                            <div id="world_location_maps_list" class="world-map-collection"></div>
+                        </div>
+                        <div id="world_boards_row" class="world-map-row width100p marginTop10">
+                            <div class="world-map-section-title">Boards</div>
+                            <div id="world_boards_list" class="world-map-collection"></div>
+                        </div>
                     </div>
                 </div>
             </nav>
