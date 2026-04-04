@@ -1040,8 +1040,38 @@ export function setWorldInfoSettings(settings, data) {
                     await hideWorldEditor();
                 }
             }
-        } else if (current_world_info_name !== '') {
-            await hideWorldEditor();
+        } else {
+            // No chat-bound world — try to load map data from global, character, or persona worlds
+            let mapWorldName = null;
+
+            // 1. Check globally selected worlds
+            if (selected_world_info?.length) {
+                mapWorldName = selected_world_info[0];
+            }
+
+            // 2. Check character's primary world
+            if (!mapWorldName && this_chid !== undefined && characters[/** @type {number} */ (this_chid)]) {
+                const charWorld = characters[/** @type {number} */ (this_chid)]?.data?.extensions?.world;
+                if (charWorld && world_names.includes(charWorld)) {
+                    mapWorldName = charWorld;
+                }
+            }
+
+            if (mapWorldName) {
+                /** @type {any} */
+                const data = await loadWorldInfo(mapWorldName);
+                if (data) {
+                    // Update map globals and fire events without changing the editor view
+                    current_world_map_url = data.metadata?.worldMapUrl || data.metadata?.mapUrl || '';
+                    current_world_location_maps = Array.isArray(data.metadata?.locationMaps) ? data.metadata.locationMaps : [];
+                    current_world_boards = Array.isArray(data.metadata?.boards) ? data.metadata.boards : [];
+                    $(document).trigger('worldMapUpdated', [current_world_map_url]);
+                    $(document).trigger('worldLocationMapsUpdated', [current_world_location_maps]);
+                    $(document).trigger('worldBoardsUpdated', [current_world_boards]);
+                }
+            } else if (current_world_info_name !== '') {
+                await hideWorldEditor();
+            }
         }
 
         // Pre-cache the world info data for the chat for quicker first prompt generation
@@ -2552,6 +2582,8 @@ async function displayWorldEntries(name, data, navigation = navigation_option.no
 
         const currentDisplayName = data.metadata?.displayName || name;
         const currentMapUrl = data.metadata?.worldMapUrl || data.metadata?.mapUrl || '';
+        const currentCoverImage = data.metadata?.coverImage || '';
+        const currentGenre = data.metadata?.genre || '';
         const initialLocationMaps = Array.isArray(data.metadata?.locationMaps) ? data.metadata.locationMaps : [];
         const initialBoards = Array.isArray(data.metadata?.boards) ? data.metadata.boards : [];
 
@@ -2560,9 +2592,24 @@ async function displayWorldEntries(name, data, navigation = navigation_option.no
         content.innerHTML = `
             <p>${t`Edit world metadata for`} <strong>${name}</strong></p>
 
-            <h4>${t`World Map`}</h4>
+            <h4>${t`Campaign Info`}</h4>
             <label class="text_label" for="world_meta_display_name">${t`Display Name`}:</label>
             <input id="world_meta_display_name" class="text_pole" type="text" value="${escapeHtml(currentDisplayName)}" />
+
+            <label class="text_label" for="world_meta_genre">${t`Genre / Tag`}:</label>
+            <input id="world_meta_genre" class="text_pole" type="text" value="${escapeHtml(currentGenre)}" placeholder="Fantasy, Dark Fantasy, Isekai..." />
+
+            <label class="text_label">${t`Cover Image`}:</label>
+            <div id="world_meta_cover_block" style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                <div id="world_meta_cover_preview" style="width:80px;height:80px;border:1px solid var(--SmartThemeBorderColor);border-radius:8px;overflow:hidden;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.2);cursor:pointer;" title="Click to choose cover image">
+                    ${currentCoverImage ? `<img src="${escapeHtml(currentCoverImage)}" style="width:100%;height:100%;object-fit:cover;" />` : '<i class="fa-solid fa-image" style="font-size:1.5rem;opacity:0.4;"></i>'}
+                </div>
+                <input id="world_meta_cover_file" type="file" accept="image/*" style="display:none" />
+                <input id="world_meta_cover_data" type="hidden" value="" />
+                ${currentCoverImage ? '<button id="world_meta_cover_remove" class="menu_button fa-solid fa-trash-can" style="padding:4px 8px;" title="Remove cover"></button>' : ''}
+            </div>
+
+            <h4>${t`World Map`}</h4>
 
             <label class="text_label" for="world_meta_map_url">${t`Map URL`}:</label>
             <input id="world_meta_map_url" class="text_pole" type="text" value="${escapeHtml(currentMapUrl)}" />
@@ -2594,10 +2641,52 @@ async function displayWorldEntries(name, data, navigation = navigation_option.no
                 if (!(mapFileInput instanceof HTMLInputElement) || !(mapUrlInput instanceof HTMLInputElement)) return;
                 if (!(locationMapsContainer instanceof HTMLElement) || !(boardsContainer instanceof HTMLElement)) return;
 
-                function createCollectionEntry(type, entry) {
+                function createCollectionEntry(type, entry, isLocation = false) {
                     const wrapper = document.createElement('div');
                     wrapper.className = 'world_meta_collection_entry';
                     wrapper.style = 'border:1px solid var(--SmartThemeBorderColor);padding:6px;margin-bottom:6px;border-radius:6px;';
+
+                    let extraFields = '';
+                    if (isLocation) {
+                        const boardOptions = initialBoards.map(b =>
+                            `<option value="${escapeHtml(b.name)}" ${(entry.boardName || '') === b.name ? 'selected' : ''}>${escapeHtml(b.name || 'Unnamed')}</option>`
+                        ).join('');
+                        extraFields = `
+                            <div style="display:flex;gap:6px;margin-top:4px;flex-wrap:wrap;">
+                                <div style="flex:1;min-width:80px;">
+                                    <label class="text_label" style="font-size:0.8rem;">${t`X Coordinate`}:</label>
+                                    <input type="number" class="text_pole world_meta_loc_x" value="${entry.x ?? 0}" />
+                                </div>
+                                <div style="flex:1;min-width:80px;">
+                                    <label class="text_label" style="font-size:0.8rem;">${t`Y Coordinate`}:</label>
+                                    <input type="number" class="text_pole world_meta_loc_y" value="${entry.y ?? 0}" />
+                                </div>
+                                <div style="flex:1;min-width:80px;">
+                                    <label class="text_label" style="font-size:0.8rem;">${t`Grid Width`}:</label>
+                                    <input type="number" class="text_pole world_meta_loc_gw" value="${entry.gridWidth ?? 50}" min="1" max="200" />
+                                </div>
+                                <div style="flex:1;min-width:80px;">
+                                    <label class="text_label" style="font-size:0.8rem;">${t`Grid Height`}:</label>
+                                    <input type="number" class="text_pole world_meta_loc_gh" value="${entry.gridHeight ?? 50}" min="1" max="200" />
+                                </div>
+                            </div>
+                            <label class="text_label" style="font-size:0.8rem;margin-top:4px;">${t`Description`}:</label>
+                            <input type="text" class="text_pole world_meta_loc_desc" value="${escapeHtml(entry.description || '')}" placeholder="Location description" />
+                            <div style="display:flex;gap:6px;margin-top:4px;">
+                                <div style="flex:1;">
+                                    <label class="text_label" style="font-size:0.8rem;">${t`Region`}:</label>
+                                    <input type="text" class="text_pole world_meta_loc_region" value="${escapeHtml(entry.region || '')}" placeholder="Region name" />
+                                </div>
+                                <div style="flex:1;">
+                                    <label class="text_label" style="font-size:0.8rem;">${t`Board`}:</label>
+                                    <select class="text_pole world_meta_loc_board">
+                                        <option value="">${t`None`}</option>
+                                        ${boardOptions}
+                                    </select>
+                                </div>
+                            </div>
+                        `;
+                    }
 
                     wrapper.innerHTML = `
                         <label class="text_label">${escapeHtml(type)} ${t`Name`}:</label>
@@ -2606,6 +2695,7 @@ async function displayWorldEntries(name, data, navigation = navigation_option.no
                         <input type="text" class="text_pole world_meta_collection_url" value="${escapeHtml(entry.url || '')}" />
                         <label class="text_label">${t`File`}:</label>
                         <input type="file" class="world_meta_collection_file world_meta_file_input" accept="image/*" />
+                        ${extraFields}
                         <button class="menu_button fa-solid fa-trash-can remove_collection_entry" style="margin-top:4px;"> ${t`Remove`}</button>
                     `;
 
@@ -2637,11 +2727,11 @@ async function displayWorldEntries(name, data, navigation = navigation_option.no
                 }
 
                 function addLocationEntry(entry = { name: '', url: '' }) {
-                    locationMapsContainer.appendChild(createCollectionEntry(t`Location`, entry));
+                    locationMapsContainer.appendChild(createCollectionEntry(t`Location`, entry, true));
                 }
 
                 function addBoardEntry(entry = { name: '', url: '' }) {
-                    boardsContainer.appendChild(createCollectionEntry(t`Board`, entry));
+                    boardsContainer.appendChild(createCollectionEntry(t`Board`, entry, false));
                 }
 
                 addLocationBtn?.addEventListener('click', (evt) => {
@@ -2668,6 +2758,58 @@ async function displayWorldEntries(name, data, navigation = navigation_option.no
                     };
                     reader.readAsDataURL(file);
                 });
+
+                // Cover image handlers
+                const coverPreview = popupInstance.dlg.querySelector('#world_meta_cover_preview');
+                const coverFileInput = popupInstance.dlg.querySelector('#world_meta_cover_file');
+                const coverDataInput = popupInstance.dlg.querySelector('#world_meta_cover_data');
+
+                if (coverDataInput instanceof HTMLInputElement && currentCoverImage) {
+                    coverDataInput.value = currentCoverImage;
+                }
+
+                if (coverPreview instanceof HTMLElement && coverFileInput instanceof HTMLInputElement) {
+                    coverPreview.addEventListener('click', () => coverFileInput.click());
+                    coverFileInput.addEventListener('change', () => {
+                        const file = coverFileInput.files?.[0];
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                            if (typeof reader.result === 'string' && coverDataInput instanceof HTMLInputElement) {
+                                coverDataInput.value = reader.result;
+                                coverPreview.innerHTML = `<img src="${reader.result}" style="width:100%;height:100%;object-fit:cover;" />`;
+                                // Add remove button if not present
+                                const block = popupInstance.dlg.querySelector('#world_meta_cover_block');
+                                if (block && !block.querySelector('#world_meta_cover_remove')) {
+                                    const removeBtn = document.createElement('button');
+                                    removeBtn.id = 'world_meta_cover_remove';
+                                    removeBtn.className = 'menu_button fa-solid fa-trash-can';
+                                    removeBtn.style.cssText = 'padding:4px 8px;';
+                                    removeBtn.title = 'Remove cover';
+                                    removeBtn.addEventListener('click', (e) => {
+                                        e.preventDefault();
+                                        coverDataInput.value = '';
+                                        coverPreview.innerHTML = '<i class="fa-solid fa-image" style="font-size:1.5rem;opacity:0.4;"></i>';
+                                        removeBtn.remove();
+                                    });
+                                    block.appendChild(removeBtn);
+                                }
+                            }
+                        };
+                        reader.readAsDataURL(file);
+                    });
+                }
+
+                // Existing remove button
+                const coverRemoveBtn = popupInstance.dlg.querySelector('#world_meta_cover_remove');
+                if (coverRemoveBtn instanceof HTMLElement && coverDataInput instanceof HTMLInputElement && coverPreview instanceof HTMLElement) {
+                    coverRemoveBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        coverDataInput.value = '';
+                        coverPreview.innerHTML = '<i class="fa-solid fa-image" style="font-size:1.5rem;opacity:0.4;"></i>';
+                        coverRemoveBtn.remove();
+                    });
+                }
             },
         });
 
@@ -2685,20 +2827,42 @@ async function displayWorldEntries(name, data, navigation = navigation_option.no
         const newDisplayName = displayNameElement instanceof HTMLInputElement ? displayNameElement.value.trim() : name;
         const newMapUrl = mapUrlElement instanceof HTMLInputElement ? mapUrlElement.value.trim() : '';
 
-        const collectEntries = (container) => {
+        const coverDataElement = dialog.querySelector('#world_meta_cover_data');
+        const genreElement = dialog.querySelector('#world_meta_genre');
+        const newCoverImage = coverDataElement instanceof HTMLInputElement ? coverDataElement.value.trim() : '';
+        const newGenre = genreElement instanceof HTMLInputElement ? genreElement.value.trim() : '';
+
+        const collectEntries = (container, isLocation = false) => {
             if (!(container instanceof HTMLElement)) return [];
             return Array.from(container.querySelectorAll('.world_meta_collection_entry')).map((item) => {
                 const entryName = item.querySelector('.world_meta_collection_name');
                 const entryUrl = item.querySelector('.world_meta_collection_url');
-                return {
+                const result = {
                     name: entryName instanceof HTMLInputElement ? entryName.value.trim() : '',
                     url: entryUrl instanceof HTMLInputElement ? entryUrl.value.trim() : '',
                 };
+                if (isLocation) {
+                    const xEl = item.querySelector('.world_meta_loc_x');
+                    const yEl = item.querySelector('.world_meta_loc_y');
+                    const gwEl = item.querySelector('.world_meta_loc_gw');
+                    const ghEl = item.querySelector('.world_meta_loc_gh');
+                    const descEl = item.querySelector('.world_meta_loc_desc');
+                    const regionEl = item.querySelector('.world_meta_loc_region');
+                    const boardEl = item.querySelector('.world_meta_loc_board');
+                    result.x = xEl instanceof HTMLInputElement ? parseFloat(xEl.value) || 0 : 0;
+                    result.y = yEl instanceof HTMLInputElement ? parseFloat(yEl.value) || 0 : 0;
+                    result.gridWidth = gwEl instanceof HTMLInputElement ? parseInt(gwEl.value, 10) || 50 : 50;
+                    result.gridHeight = ghEl instanceof HTMLInputElement ? parseInt(ghEl.value, 10) || 50 : 50;
+                    result.description = descEl instanceof HTMLInputElement ? descEl.value.trim() : '';
+                    result.region = regionEl instanceof HTMLInputElement ? regionEl.value.trim() : '';
+                    result.boardName = boardEl instanceof HTMLSelectElement ? boardEl.value : '';
+                }
+                return result;
             }).filter((entry) => entry.name || entry.url);
         };
 
-        const newLocationMaps = collectEntries(locationMapsContainer);
-        const newBoards = collectEntries(boardsContainer);
+        const newLocationMaps = collectEntries(locationMapsContainer, true);
+        const newBoards = collectEntries(boardsContainer, false);
 
         data.metadata = data.metadata || {};
         data.metadata.displayName = newDisplayName || name;
@@ -2706,6 +2870,8 @@ async function displayWorldEntries(name, data, navigation = navigation_option.no
         data.metadata.mapUrl = newMapUrl;
         data.metadata.locationMaps = newLocationMaps;
         data.metadata.boards = newBoards;
+        data.metadata.coverImage = newCoverImage;
+        data.metadata.genre = newGenre;
 
         await saveWorldInfo(name, data, true);
         await displayWorldEntries(name, data, navigation_option.none, true);

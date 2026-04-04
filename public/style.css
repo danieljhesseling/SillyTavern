@@ -15,6 +15,9 @@
 @import url(css/secrets.css);
 @import url(css/backgrounds.css);
 @import url(css/chat-backups.css);
+@import url(css/dnd-character.css);
+@import url(css/world-map.css);
+@import url(css/world-content-browser.css);
 
 :root {
     interpolate-size: allow-keywords;
@@ -3955,7 +3958,7 @@ grammarly-extension {
 }
 
 .wider_dialogue_popup {
-    min-width: 750px;
+    min-width: 900px;
     max-width: 90%;
 }
 

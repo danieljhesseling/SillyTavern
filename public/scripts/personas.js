@@ -486,6 +486,14 @@ export function initPersona(avatarId, personaName, personaDescription, personaTi
             copper: 0,
             inventory: '',
             conditions: '',
+            strength: 10,
+            dexterity: 10,
+            constitution: 10,
+            intelligence: 10,
+            wisdom: 10,
+            charisma: 10,
+            armorClass: 10,
+            speed: 30,
         },
     };
 
@@ -615,6 +623,14 @@ function populatePersonaStateFields() {
     $('#persona_state_copper').val(state.copper ?? '');
     $('#persona_state_inventory').val(state.inventory ?? '');
     $('#persona_state_conditions').val(state.conditions ?? '');
+    $('#persona_state_strength').val(state.strength ?? 10);
+    $('#persona_state_dexterity').val(state.dexterity ?? 10);
+    $('#persona_state_constitution').val(state.constitution ?? 10);
+    $('#persona_state_intelligence').val(state.intelligence ?? 10);
+    $('#persona_state_wisdom').val(state.wisdom ?? 10);
+    $('#persona_state_charisma').val(state.charisma ?? 10);
+    $('#persona_state_armorClass').val(state.armorClass ?? 10);
+    $('#persona_state_speed').val(state.speed ?? 30);
 }
 
 function onPersonaStateFieldInput() {
@@ -631,6 +647,14 @@ function onPersonaStateFieldInput() {
     state.copper = Number($('#persona_state_copper').val()) || 0;
     state.inventory = String($('#persona_state_inventory').val() || '');
     state.conditions = String($('#persona_state_conditions').val() || '');
+    state.strength = Number($('#persona_state_strength').val()) || 10;
+    state.dexterity = Number($('#persona_state_dexterity').val()) || 10;
+    state.constitution = Number($('#persona_state_constitution').val()) || 10;
+    state.intelligence = Number($('#persona_state_intelligence').val()) || 10;
+    state.wisdom = Number($('#persona_state_wisdom').val()) || 10;
+    state.charisma = Number($('#persona_state_charisma').val()) || 10;
+    state.armorClass = Number($('#persona_state_armorClass').val()) || 10;
+    state.speed = Number($('#persona_state_speed').val()) || 30;
 
     saveSettingsDebounced();
 
@@ -925,6 +949,14 @@ async function selectCurrentPersona({ toastPersonaNameChange = true } = {}) {
                     copper: 0,
                     inventory: '',
                     conditions: '',
+                    strength: 10,
+                    dexterity: 10,
+                    constitution: 10,
+                    intelligence: 10,
+                    wisdom: 10,
+                    charisma: 10,
+                    armorClass: 10,
+                    speed: 30,
                 },
             };
         }
@@ -1078,9 +1110,20 @@ async function lockPersona(type = 'chat') {
                 hp_max: 0,
                 xp_current: 0,
                 xp_next: 100,
+                level: 1,
                 gold: 0,
+                silver: 0,
+                copper: 0,
                 inventory: '',
                 conditions: '',
+                strength: 10,
+                dexterity: 10,
+                constitution: 10,
+                intelligence: 10,
+                wisdom: 10,
+                charisma: 10,
+                armorClass: 10,
+                speed: 30,
             },
         };
     }
@@ -1322,6 +1365,14 @@ export function getOrCreatePersonaDescriptor() {
                 copper: 0,
                 inventory: '',
                 conditions: '',
+                strength: 10,
+                dexterity: 10,
+                constitution: 10,
+                intelligence: 10,
+                wisdom: 10,
+                charisma: 10,
+                armorClass: 10,
+                speed: 30,
             },
         };
         power_user.persona_descriptions[user_avatar] = object;
@@ -1338,8 +1389,25 @@ export function getOrCreatePersonaDescriptor() {
             copper: 0,
             inventory: '',
             conditions: '',
+            strength: 10,
+            dexterity: 10,
+            constitution: 10,
+            intelligence: 10,
+            wisdom: 10,
+            charisma: 10,
+            armorClass: 10,
+            speed: 30,
         };
     }
+    // Ensure D&D fields exist on older states
+    object.player_state.strength = object.player_state.strength ?? 10;
+    object.player_state.dexterity = object.player_state.dexterity ?? 10;
+    object.player_state.constitution = object.player_state.constitution ?? 10;
+    object.player_state.intelligence = object.player_state.intelligence ?? 10;
+    object.player_state.wisdom = object.player_state.wisdom ?? 10;
+    object.player_state.charisma = object.player_state.charisma ?? 10;
+    object.player_state.armorClass = object.player_state.armorClass ?? 10;
+    object.player_state.speed = object.player_state.speed ?? 30;
     return object;
 }
 
@@ -2063,7 +2131,7 @@ export async function initPersonas() {
     $('#persona_depth_value').on('input', onPersonaDescriptionDepthValueInput);
     $('#persona_depth_role').on('input', onPersonaDescriptionDepthRoleInput);
 
-    $('#persona_state_hp_current, #persona_state_hp_max, #persona_state_xp_current, #persona_state_xp_next, #persona_state_level, #persona_state_gold, #persona_state_silver, #persona_state_copper, #persona_state_inventory, #persona_state_conditions').on('input', onPersonaStateFieldInput);
+    $('#persona_state_hp_current, #persona_state_hp_max, #persona_state_xp_current, #persona_state_xp_next, #persona_state_level, #persona_state_gold, #persona_state_silver, #persona_state_copper, #persona_state_inventory, #persona_state_conditions, #persona_state_strength, #persona_state_dexterity, #persona_state_constitution, #persona_state_intelligence, #persona_state_wisdom, #persona_state_charisma, #persona_state_armorClass, #persona_state_speed').on('input', onPersonaStateFieldInput);
 
     $('#persona_lore_button').on('click', onPersonaLoreButtonClick);
     addLongPressEvent('#persona_lore_button', function () {

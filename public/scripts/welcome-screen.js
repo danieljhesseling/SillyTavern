@@ -36,6 +36,7 @@ import { getMessageTimeStamp } from './RossAscends-mods.js';
 import { renderTemplateAsync } from './templates.js';
 import { accountStorage } from './util/AccountStorage.js';
 import { flashHighlight, isElementInViewport, sortMoments, timestampToMoment } from './utils.js';
+import { renderCampaignCards } from './campaigns.js';
 
 const assistantAvatarKey = 'assistant';
 const pinnedChatsKey = 'pinnedChats';
@@ -401,6 +402,11 @@ async function sendWelcomePanel(chats, expand = false) {
             });
         });
         chatElement.append(fragment.firstChild);
+        // Render campaign cards in welcome panel
+        const campaignsGrid = chatElement.querySelector('#welcomeCampaignsGrid');
+        if (campaignsGrid) {
+            renderCampaignCards(campaignsGrid);
+        }
         if (expand) {
             chatElement.querySelectorAll('button.showMoreChats').forEach((button) => {
                 if (button instanceof HTMLButtonElement) {

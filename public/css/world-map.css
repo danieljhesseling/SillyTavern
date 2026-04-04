@@ -1,0 +1,611 @@
+/* ============================================================
+   World Map & Location Grid System
+   ============================================================ */
+
+/* ---- Zoomable Container ---- */
+.wm-container {
+    position: relative;
+    width: 100%;
+    height: 420px;
+    overflow: hidden;
+    border-radius: 8px;
+    border: 1px solid var(--SmartThemeBorderColor);
+    background: #0a0e14;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.wm-content {
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform-origin: 0 0;
+    will-change: transform;
+    cursor: grab;
+}
+
+.wm-content.grabbing {
+    cursor: grabbing;
+}
+
+.wm-content img {
+    display: block;
+    pointer-events: none;
+    max-width: none;
+    max-height: none;
+}
+
+/* ---- Coordinate Axes ---- */
+.wm-axes-x,
+.wm-axes-y {
+    position: absolute;
+    z-index: 5;
+    pointer-events: none;
+}
+
+.wm-axes-x {
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 20px;
+    display: flex;
+    overflow: hidden;
+}
+
+.wm-axes-y {
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 28px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.wm-axis-label {
+    font-size: 0.6rem;
+    color: rgba(255, 255, 255, 0.55);
+    font-family: monospace;
+    white-space: nowrap;
+    position: absolute;
+    text-shadow: 0 0 3px rgba(0, 0, 0, 0.9);
+}
+
+/* ---- Location Markers on World Map ---- */
+.wm-marker {
+    position: absolute;
+    z-index: 10;
+    cursor: pointer;
+    transform: translate(-50%, -100%);
+    transition: filter 0.15s;
+}
+
+.wm-marker:hover {
+    filter: brightness(1.4);
+    z-index: 11;
+}
+
+.wm-marker.selected {
+    z-index: 12;
+    filter: brightness(1.6) drop-shadow(0 0 6px #2dd4bf);
+}
+
+.wm-marker-pin {
+    width: 20px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #2dd4bf;
+    font-size: 1.3rem;
+    filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.8));
+}
+
+.wm-marker-label {
+    position: absolute;
+    top: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #fff;
+    text-shadow: 0 0 4px rgba(0, 0, 0, 0.95), 0 0 8px rgba(0, 0, 0, 0.6);
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+/* ---- Location Info Card (below world map) ---- */
+.wm-info-card {
+    margin-top: 10px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--SmartThemeBorderColor);
+    background: var(--SmartThemeBlurTintColor);
+}
+
+.wm-info-card-image {
+    width: 100%;
+    height: 160px;
+    object-fit: cover;
+    display: block;
+    position: relative;
+}
+
+.wm-info-card-image-wrapper {
+    position: relative;
+}
+
+.wm-info-card-badge {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(10, 14, 20, 0.8);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 0.72rem;
+    color: #fff;
+    backdrop-filter: blur(4px);
+}
+
+.wm-info-card-badge i {
+    color: #2dd4bf;
+}
+
+.wm-info-card-coords {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: rgba(10, 14, 20, 0.8);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(4px);
+    font-family: monospace;
+}
+
+.wm-info-card-body {
+    padding: 12px;
+}
+
+.wm-info-card-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--SmartThemeEmColor);
+    margin-bottom: 2px;
+}
+
+.wm-info-card-subtitle {
+    font-size: 0.78rem;
+    color: var(--SmartThemeTextColor);
+    opacity: 0.7;
+    margin-bottom: 8px;
+}
+
+.wm-info-card-region {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.72rem;
+    color: #eab308;
+}
+
+.wm-info-card-region::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    background: #eab308;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+/* ---- Change Location Button ---- */
+.wm-change-location-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+    padding: 8px 14px;
+    background: var(--SmartThemeBlurTintColor);
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-radius: 8px;
+    color: var(--SmartThemeTextColor);
+    font-size: 0.82rem;
+    cursor: pointer;
+    width: 100%;
+    transition: background 0.15s;
+}
+
+.wm-change-location-btn:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.wm-change-location-btn i {
+    color: #2dd4bf;
+}
+
+/* ---- Sub-tabs (Location Name ↔ World toggle at top) ---- */
+.wm-view-tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 8px;
+    border-bottom: 1px solid var(--SmartThemeBorderColor);
+}
+
+.wm-view-tab {
+    flex: 1;
+    text-align: center;
+    padding: 6px 8px;
+    font-size: 0.78rem;
+    cursor: pointer;
+    color: var(--SmartThemeTextColor);
+    opacity: 0.6;
+    transition: opacity 0.15s, border-color 0.15s;
+    border-bottom: 2px solid transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+}
+
+.wm-view-tab:hover {
+    opacity: 0.85;
+}
+
+.wm-view-tab.active {
+    opacity: 1;
+    border-bottom-color: #2dd4bf;
+    color: #2dd4bf;
+}
+
+.wm-view-panel {
+    display: none;
+}
+
+.wm-view-panel.active {
+    display: block;
+}
+
+/* ---- Grid Overlay ---- */
+.wm-grid-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 3;
+}
+
+.wm-grid-overlay.hidden {
+    display: none;
+}
+
+/* ---- Character Tokens on Grid ---- */
+.wm-token {
+    position: absolute;
+    z-index: 15;
+    cursor: grab;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transform: translate(-50%, -50%);
+    transition: box-shadow 0.15s;
+    pointer-events: auto;
+}
+
+.wm-token.dragging {
+    cursor: grabbing;
+    z-index: 20;
+    opacity: 0.85;
+}
+
+.wm-token-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 2px solid #2dd4bf;
+    object-fit: cover;
+    background: #0a0e14;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
+}
+
+.wm-token-unknown {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 2px solid #f59e0b;
+    background: #1a1a2e;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #f59e0b;
+    font-size: 0.75rem;
+    font-weight: 700;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
+}
+
+.wm-token-name {
+    font-size: 0.55rem;
+    font-weight: 600;
+    color: #fff;
+    text-shadow: 0 0 3px rgba(0, 0, 0, 0.95);
+    margin-top: 1px;
+    white-space: nowrap;
+    max-width: 60px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ---- Token Tooltip ---- */
+.wm-token-tooltip {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(10, 14, 20, 0.95);
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-radius: 6px;
+    padding: 8px 10px;
+    min-width: 120px;
+    z-index: 25;
+    backdrop-filter: blur(6px);
+    pointer-events: none;
+}
+
+.wm-token:hover .wm-token-tooltip {
+    display: block;
+}
+
+.wm-token-tooltip-name {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #2dd4bf;
+    margin-bottom: 2px;
+}
+
+.wm-token-tooltip-meta {
+    font-size: 0.68rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.wm-token-tooltip-hp {
+    margin-top: 4px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.wm-token-tooltip-hp-fill {
+    height: 100%;
+    background: #22c55e;
+    border-radius: 2px;
+}
+
+/* ---- Zoom Controls ---- */
+.wm-zoom-controls {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    display: flex;
+    gap: 4px;
+    z-index: 20;
+}
+
+.wm-zoom-btn {
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    background: rgba(10, 14, 20, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: rgba(255, 255, 255, 0.8);
+    cursor: pointer;
+    font-size: 0.82rem;
+    backdrop-filter: blur(4px);
+    transition: background 0.15s;
+}
+
+.wm-zoom-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.wm-zoom-btn.active {
+    background: rgba(45, 212, 191, 0.25);
+    border-color: #2dd4bf;
+    color: #2dd4bf;
+}
+
+/* ---- Characters Accordion ---- */
+.wm-characters-panel {
+    margin-top: 10px;
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.wm-characters-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    cursor: pointer;
+    background: var(--SmartThemeBlurTintColor);
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--SmartThemeTextColor);
+    transition: background 0.15s;
+}
+
+.wm-characters-toggle:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.wm-characters-toggle i.chevron {
+    transition: transform 0.2s;
+}
+
+.wm-characters-toggle.open i.chevron {
+    transform: rotate(180deg);
+}
+
+.wm-characters-body {
+    display: none;
+    padding: 10px 12px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.wm-characters-body.open {
+    display: block;
+}
+
+.wm-char-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.wm-char-row:last-child {
+    border-bottom: none;
+}
+
+.wm-char-avatar {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid var(--SmartThemeBorderColor);
+}
+
+.wm-char-name {
+    flex: 1;
+    font-size: 0.78rem;
+    color: var(--SmartThemeTextColor);
+    font-weight: 600;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.wm-char-coords {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.wm-char-coord-input {
+    width: 42px;
+    padding: 2px 4px;
+    font-size: 0.7rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-radius: 4px;
+    color: var(--SmartThemeTextColor);
+    text-align: center;
+    appearance: textfield;
+    -moz-appearance: textfield;
+}
+
+.wm-char-coord-input::-webkit-outer-spin-button,
+.wm-char-coord-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.wm-char-coord-label {
+    font-size: 0.6rem;
+    color: rgba(255, 255, 255, 0.4);
+    font-family: monospace;
+}
+
+/* ---- Location Header ---- */
+.wm-location-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.wm-location-header-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 6px;
+    object-fit: cover;
+    border: 1px solid var(--SmartThemeBorderColor);
+}
+
+.wm-location-header-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.wm-location-header-name {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--SmartThemeEmColor);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.wm-location-header-desc {
+    font-size: 0.7rem;
+    color: var(--SmartThemeTextColor);
+    opacity: 0.65;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ---- Compass ---- */
+.wm-compass {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    z-index: 20;
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.6);
+    text-shadow: 0 0 3px rgba(0, 0, 0, 0.8);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1;
+    pointer-events: none;
+}
+
+.wm-compass-n {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #fff;
+}
+
+/* ---- Empty State ---- */
+.wm-empty-state {
+    text-align: center;
+    padding: 30px 10px;
+    color: var(--SmartThemeTextColor);
+    opacity: 0.5;
+    font-size: 0.82rem;
+}
+
+/* ---- Tokens overlay container (sits inside wm-content) ---- */
+.wm-tokens-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 8;
+    pointer-events: none;
+}

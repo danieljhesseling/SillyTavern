@@ -75,6 +75,8 @@ import {
 } from './scripts/group-chats.js';
 
 import { initPartyPanel, getPartyDescription } from './scripts/party.js';
+import './scripts/world-content-browser.js';
+import './scripts/campaigns.js';
 
 import {
     collapseNewlines,
@@ -10569,10 +10571,31 @@ export async function doNewChat({ deleteCurrentChat = false } = {}) {
     } else {
         //RossAscends: added character name to new chat filenames and replaced Date.now() with humanizedDateTime;
         chat_metadata = {};
+
+        // World picker for campaigns: ask user which world to bind
+        let worldChoice = null;
+        try {
+            const { showWorldPickerForNewChat } = await import('./scripts/campaigns.js');
+            worldChoice = await showWorldPickerForNewChat();
+        } catch (err) {
+            console.warn('Campaign world picker failed:', err);
+        }
+
         characters[this_chid].chat = `${name2} - ${humanizedDateTime()}`;
         $('#selected_chat_pole').val(characters[this_chid].chat);
         await getChat();
         await createOrEditCharacter(new CustomEvent('newChat'));
+
+        // Restore and save world binding after getChat (which resets chat_metadata for new chats)
+        if (worldChoice) {
+            try {
+                const { bindWorldToChat } = await import('./scripts/campaigns.js');
+                await bindWorldToChat(worldChoice);
+            } catch (err) {
+                console.warn('Campaign world binding failed:', err);
+            }
+        }
+
         if (deleteCurrentChat) await delChat(chat_file_for_del + '.jsonl');
     }
 }

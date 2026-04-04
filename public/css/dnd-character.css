@@ -1,0 +1,1219 @@
+/* ==========================================================================
+   D&D Character Modal – Fable & Friends style
+   ========================================================================== */
+
+/* ---- Modal Container ---- */
+.dnd-modal {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 900px;
+    min-height: 520px;
+    gap: 0;
+    font-size: 0.95rem;
+    color: var(--SmartThemeTextColor, #ccc);
+}
+
+/* ---- Tab Bar ---- */
+.dnd-tabs {
+    display: flex;
+    border-bottom: 2px solid var(--SmartThemeBorderColor, #444);
+    gap: 0;
+    margin-bottom: 0;
+    flex-shrink: 0;
+}
+
+.dnd-tab {
+    padding: 10px 20px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    color: var(--SmartThemeTextColor, #aaa);
+    border-bottom: 3px solid transparent;
+    transition: color 0.2s, border-color 0.2s;
+    user-select: none;
+    white-space: nowrap;
+}
+
+.dnd-tab:hover {
+    color: var(--SmartThemeEmColor, #fff);
+}
+
+.dnd-tab.active {
+    color: #2dd4bf;
+    border-bottom-color: #2dd4bf;
+}
+
+/* ---- Tab Panels ---- */
+.dnd-tab-panel {
+    display: none;
+    padding: 16px 0;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.dnd-tab-panel.active {
+    display: block;
+}
+
+/* ============================================================
+   CHARACTER SHEET TAB
+   ============================================================ */
+
+.dnd-sheet {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* Header: avatar + name block */
+.dnd-sheet-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.dnd-sheet-avatar {
+    width: 100px;
+    height: 100px;
+    border-radius: 12px;
+    object-fit: cover;
+    border: 2px solid var(--SmartThemeBorderColor, #555);
+    flex-shrink: 0;
+}
+
+.dnd-sheet-identity {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.dnd-sheet-name {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--SmartThemeEmColor, #fff);
+}
+
+.dnd-sheet-class-level {
+    font-size: 0.9rem;
+    color: var(--SmartThemeTextColor, #aaa);
+}
+
+/* Ability Scores Grid */
+.dnd-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+}
+
+.dnd-stat-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px 8px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.dnd-stat-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: capitalize;
+    color: var(--SmartThemeEmColor, #fff);
+    margin-bottom: 4px;
+}
+
+.dnd-stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--SmartThemeEmColor, #fff);
+    width: 60px;
+    text-align: center;
+    background: transparent;
+    border: none;
+    color: inherit;
+    appearance: textfield;
+    -moz-appearance: textfield;
+}
+
+.dnd-stat-value::-webkit-inner-spin-button,
+.dnd-stat-value::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.dnd-stat-modifier {
+    font-size: 0.75rem;
+    color: var(--SmartThemeTextColor, #999);
+}
+
+/* Derived Stats Row */
+.dnd-derived-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+}
+
+.dnd-derived-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px 8px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.dnd-derived-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--SmartThemeEmColor, #fff);
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.dnd-derived-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.dnd-derived-input {
+    font-size: 1.5rem;
+    font-weight: 700;
+    width: 60px;
+    text-align: center;
+    background: transparent;
+    border: none;
+    color: var(--SmartThemeEmColor, #fff);
+    appearance: textfield;
+    -moz-appearance: textfield;
+}
+
+.dnd-derived-input::-webkit-inner-spin-button,
+.dnd-derived-input::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.dnd-ac-bonus {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #2dd4bf;
+    background: rgba(45, 212, 191, 0.15);
+    padding: 1px 5px;
+    border-radius: 4px;
+}
+
+.dnd-ac-display {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.dnd-ac-base {
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.dnd-ac-arrow {
+    color: var(--SmartThemeTextColor, #999);
+    font-size: 0.8rem;
+}
+
+.dnd-ac-effective {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #2dd4bf;
+}
+
+/* ============================================================
+   INVENTORY TAB
+   ============================================================ */
+
+.dnd-inventory {
+    display: flex;
+    gap: 20px;
+}
+
+.dnd-inventory-left {
+    flex: 1;
+    min-width: 0;
+}
+
+.dnd-inventory-right {
+    width: 280px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+@media (max-width: 700px) {
+    .dnd-inventory {
+        flex-direction: column;
+    }
+    .dnd-inventory-right {
+        width: 100%;
+    }
+}
+
+/* Section headers */
+.dnd-section-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 12px;
+    color: var(--SmartThemeEmColor, #fff);
+}
+
+/* Equipment Slots Grid */
+.dnd-equipment-grid {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.dnd-equipment-row {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+}
+
+.dnd-equipment-slot {
+    width: 80px;
+    height: 80px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    position: relative;
+    overflow: hidden;
+}
+
+.dnd-equipment-slot:hover {
+    border-color: #2dd4bf;
+    background: rgba(45, 212, 191, 0.08);
+}
+
+.dnd-equipment-slot.occupied {
+    border-color: var(--SmartThemeBorderColor, #555);
+}
+
+.dnd-equipment-slot-label {
+    font-size: 0.65rem;
+    color: var(--SmartThemeTextColor, #888);
+    text-transform: capitalize;
+    position: absolute;
+    bottom: 4px;
+    pointer-events: none;
+}
+
+.dnd-equipment-slot-img {
+    width: 52px;
+    height: 52px;
+    object-fit: contain;
+    border-radius: 4px;
+}
+
+.dnd-equipment-slot-icon {
+    font-size: 1.2rem;
+    color: var(--SmartThemeTextColor, #555);
+}
+
+/* Currency */
+.dnd-currency {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+}
+
+.dnd-currency-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    flex: 1;
+}
+
+.dnd-currency-value {
+    width: 60px;
+    text-align: center;
+    font-size: 1rem;
+    font-weight: 700;
+    padding: 6px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.2);
+    color: var(--SmartThemeEmColor, #fff);
+    appearance: textfield;
+    -moz-appearance: textfield;
+}
+
+.dnd-currency-value::-webkit-inner-spin-button,
+.dnd-currency-value::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.dnd-currency-label {
+    font-size: 0.7rem;
+    color: var(--SmartThemeTextColor, #aaa);
+}
+
+/* Stats summary in inventory right panel */
+.dnd-inv-stats {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+}
+
+.dnd-inv-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 8px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.dnd-inv-stat-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--SmartThemeEmColor, #fff);
+}
+
+.dnd-inv-stat-value {
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+/* Carrying Capacity */
+.dnd-carrying {
+    text-align: center;
+}
+
+.dnd-carrying-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    margin-bottom: 6px;
+    color: var(--SmartThemeEmColor, #fff);
+}
+
+.dnd-carrying-bar-bg {
+    width: 100%;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 4px;
+}
+
+.dnd-carrying-bar-fill {
+    height: 100%;
+    background: #2dd4bf;
+    border-radius: 4px;
+    transition: width 0.3s;
+}
+
+.dnd-carrying-bar-fill.overweight {
+    background: #ef4444;
+}
+
+.dnd-carrying-text {
+    font-size: 0.75rem;
+    color: var(--SmartThemeTextColor, #aaa);
+}
+
+/* Item sub-tabs */
+.dnd-item-tabs {
+    display: flex;
+    gap: 0;
+    margin: 16px 0 10px;
+    border-bottom: 1px solid var(--SmartThemeBorderColor, #333);
+}
+
+.dnd-item-tab {
+    padding: 6px 14px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--SmartThemeTextColor, #aaa);
+    border-bottom: 2px solid transparent;
+    transition: color 0.2s, border-color 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.dnd-item-tab:hover {
+    color: var(--SmartThemeEmColor, #fff);
+}
+
+.dnd-item-tab.active {
+    color: #2dd4bf;
+    border-bottom-color: #2dd4bf;
+}
+
+.dnd-item-tab i {
+    font-size: 0.75rem;
+}
+
+/* Item search */
+.dnd-item-search-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+    align-items: center;
+}
+
+.dnd-item-search {
+    flex: 1;
+    padding: 6px 10px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.2);
+    color: var(--SmartThemeEmColor, #fff);
+    font-size: 0.85rem;
+}
+
+.dnd-item-search::placeholder {
+    color: var(--SmartThemeTextColor, #666);
+}
+
+.dnd-add-item-btn {
+    padding: 6px 12px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 6px;
+    background: rgba(45, 212, 191, 0.1);
+    color: #2dd4bf;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: background 0.2s;
+}
+
+.dnd-add-item-btn:hover {
+    background: rgba(45, 212, 191, 0.2);
+}
+
+/* Item list */
+.dnd-item-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 260px;
+    overflow-y: auto;
+}
+
+.dnd-item-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.15);
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+}
+
+.dnd-item-card:hover {
+    border-color: #2dd4bf;
+    background: rgba(45, 212, 191, 0.05);
+}
+
+.dnd-item-card.equipped {
+    border-color: #2dd4bf;
+    background: rgba(45, 212, 191, 0.1);
+}
+
+.dnd-item-img {
+    width: 36px;
+    height: 36px;
+    border-radius: 4px;
+    object-fit: contain;
+    background: rgba(0, 0, 0, 0.3);
+    flex-shrink: 0;
+}
+
+.dnd-item-img-placeholder {
+    width: 36px;
+    height: 36px;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--SmartThemeTextColor, #555);
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.dnd-item-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.dnd-item-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--SmartThemeEmColor, #fff);
+}
+
+.dnd-item-meta {
+    font-size: 0.7rem;
+    color: var(--SmartThemeTextColor, #999);
+}
+
+.dnd-item-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.dnd-item-action-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    background: transparent;
+    color: var(--SmartThemeTextColor, #aaa);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    transition: color 0.2s, border-color 0.2s;
+}
+
+.dnd-item-action-btn:hover {
+    color: #2dd4bf;
+    border-color: #2dd4bf;
+}
+
+.dnd-item-action-btn.delete:hover {
+    color: #ef4444;
+    border-color: #ef4444;
+}
+
+/* ============================================================
+   ADD ITEM FORM
+   ============================================================ */
+
+.dnd-add-item-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 10px 0;
+}
+
+.dnd-form-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.dnd-form-row label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--SmartThemeEmColor, #fff);
+    min-width: 70px;
+}
+
+.dnd-form-row input,
+.dnd-form-row select,
+.dnd-form-row textarea {
+    flex: 1;
+    padding: 6px 8px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.2);
+    color: var(--SmartThemeEmColor, #fff);
+    font-size: 0.85rem;
+}
+
+.dnd-form-row textarea {
+    min-height: 50px;
+    resize: vertical;
+}
+
+.dnd-effect-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.dnd-effect-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.dnd-effect-row select,
+.dnd-effect-row input {
+    padding: 4px 6px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.2);
+    color: var(--SmartThemeEmColor, #fff);
+    font-size: 0.8rem;
+}
+
+.dnd-effect-row select {
+    flex: 1;
+}
+
+.dnd-effect-row input[type="number"] {
+    width: 60px;
+}
+
+.dnd-add-effect-btn,
+.dnd-remove-effect-btn {
+    cursor: pointer;
+    color: var(--SmartThemeTextColor, #aaa);
+    font-size: 0.8rem;
+    background: none;
+    border: none;
+    padding: 4px;
+}
+
+.dnd-add-effect-btn:hover {
+    color: #2dd4bf;
+}
+
+.dnd-remove-effect-btn:hover {
+    color: #ef4444;
+}
+
+/* ============================================================
+   PROGRESSION TAB
+   ============================================================ */
+
+.dnd-progression {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    padding: 10px;
+}
+
+.dnd-level-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.dnd-level-number {
+    font-size: 3rem;
+    font-weight: 800;
+    color: var(--SmartThemeEmColor, #fff);
+    line-height: 1;
+}
+
+.dnd-level-label {
+    font-size: 0.8rem;
+    color: var(--SmartThemeTextColor, #aaa);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.dnd-class-edit {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.dnd-class-input {
+    font-size: 1rem;
+    padding: 6px 12px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.2);
+    color: var(--SmartThemeEmColor, #fff);
+    text-align: center;
+    width: 180px;
+}
+
+.dnd-xp-section {
+    width: 100%;
+    max-width: 400px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.dnd-xp-bar-bg {
+    width: 100%;
+    height: 20px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.1);
+    overflow: hidden;
+    position: relative;
+}
+
+.dnd-xp-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #2dd4bf, #14b8a6);
+    border-radius: 10px;
+    transition: width 0.4s;
+}
+
+.dnd-xp-bar-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.dnd-xp-inputs {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.dnd-xp-field {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.dnd-xp-field label {
+    font-size: 0.7rem;
+    color: var(--SmartThemeTextColor, #aaa);
+}
+
+.dnd-xp-field input {
+    width: 80px;
+    text-align: center;
+    padding: 4px 6px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.2);
+    color: var(--SmartThemeEmColor, #fff);
+    font-size: 0.9rem;
+    appearance: textfield;
+    -moz-appearance: textfield;
+}
+
+.dnd-xp-field input::-webkit-inner-spin-button,
+.dnd-xp-field input::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.dnd-hp-section {
+    width: 100%;
+    max-width: 400px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.dnd-hp-bar-bg {
+    width: 100%;
+    height: 20px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.1);
+    overflow: hidden;
+    position: relative;
+}
+
+.dnd-hp-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #ef4444, #dc2626);
+    border-radius: 10px;
+    transition: width 0.4s;
+}
+
+.dnd-hp-bar-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.dnd-level-up-btn {
+    padding: 8px 24px;
+    border: 2px solid #2dd4bf;
+    border-radius: 8px;
+    background: rgba(45, 212, 191, 0.15);
+    color: #2dd4bf;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.dnd-level-up-btn:hover {
+    background: rgba(45, 212, 191, 0.3);
+}
+
+.dnd-level-up-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* ============================================================
+   RELATIONSHIPS TAB
+   ============================================================ */
+
+.dnd-relationships {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.dnd-relationships-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.dnd-rel-btn {
+    padding: 6px 12px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 6px;
+    background: rgba(45, 212, 191, 0.1);
+    color: #2dd4bf;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: background 0.2s;
+}
+
+.dnd-rel-btn:hover {
+    background: rgba(45, 212, 191, 0.2);
+}
+
+.dnd-relationship-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.dnd-relationship-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.15);
+}
+
+.dnd-rel-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid var(--SmartThemeBorderColor, #555);
+    flex-shrink: 0;
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.dnd-rel-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.dnd-rel-name {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--SmartThemeEmColor, #fff);
+}
+
+.dnd-rel-desc {
+    font-size: 0.75rem;
+    color: var(--SmartThemeTextColor, #999);
+    margin-top: 2px;
+}
+
+.dnd-rel-type-badge {
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: capitalize;
+    flex-shrink: 0;
+}
+
+.dnd-rel-type-badge.ally { background: rgba(45, 212, 191, 0.2); color: #2dd4bf; }
+.dnd-rel-type-badge.friend { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+.dnd-rel-type-badge.rival { background: rgba(251, 191, 36, 0.2); color: #fbbf24; }
+.dnd-rel-type-badge.enemy { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+.dnd-rel-type-badge.neutral { background: rgba(156, 163, 175, 0.2); color: #9ca3af; }
+.dnd-rel-type-badge.romantic { background: rgba(236, 72, 153, 0.2); color: #ec4899; }
+.dnd-rel-type-badge.family { background: rgba(168, 85, 247, 0.2); color: #a855f7; }
+
+.dnd-rel-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.dnd-rel-action-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    background: transparent;
+    color: var(--SmartThemeTextColor, #aaa);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+}
+
+.dnd-rel-action-btn:hover {
+    color: #2dd4bf;
+    border-color: #2dd4bf;
+}
+
+.dnd-rel-action-btn.delete:hover {
+    color: #ef4444;
+    border-color: #ef4444;
+}
+
+.dnd-empty-state {
+    text-align: center;
+    padding: 30px 10px;
+    color: var(--SmartThemeTextColor, #666);
+    font-size: 0.85rem;
+}
+
+/* ============================================================
+   MEMORIES TAB
+   ============================================================ */
+
+.dnd-memories {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.dnd-memories-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.dnd-mem-btn {
+    padding: 6px 12px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 6px;
+    background: rgba(45, 212, 191, 0.1);
+    color: #2dd4bf;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: background 0.2s;
+}
+
+.dnd-mem-btn:hover {
+    background: rgba(45, 212, 191, 0.2);
+}
+
+.dnd-memory-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.dnd-memory-card {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 12px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.15);
+}
+
+.dnd-memory-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.dnd-memory-date {
+    font-size: 0.7rem;
+    color: var(--SmartThemeTextColor, #888);
+}
+
+.dnd-memory-tags {
+    display: flex;
+    gap: 4px;
+}
+
+.dnd-memory-tag {
+    padding: 1px 6px;
+    border-radius: 8px;
+    font-size: 0.65rem;
+    background: rgba(45, 212, 191, 0.15);
+    color: #2dd4bf;
+}
+
+.dnd-memory-wi-badge {
+    padding: 2px 8px;
+    border-radius: 8px;
+    font-size: 0.65rem;
+    background: rgba(168, 85, 247, 0.2);
+    color: #a855f7;
+    cursor: pointer;
+}
+
+.dnd-memory-wi-badge:hover {
+    background: rgba(168, 85, 247, 0.35);
+}
+
+.dnd-memory-text {
+    font-size: 0.85rem;
+    color: var(--SmartThemeTextColor, #ccc);
+    line-height: 1.4;
+}
+
+.dnd-memory-actions {
+    display: flex;
+    gap: 6px;
+}
+
+/* ============================================================
+   UTILITY
+   ============================================================ */
+
+.dnd-conditions-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-top: 8px;
+}
+
+.dnd-conditions-input {
+    flex: 1;
+    padding: 6px 8px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.2);
+    color: var(--SmartThemeEmColor, #fff);
+    font-size: 0.85rem;
+}
+
+.dnd-conditions-input::placeholder {
+    color: var(--SmartThemeTextColor, #666);
+}
+
+/* ---- Alignment & Personality ---- */
+.dnd-field-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-top: 8px;
+}
+
+.dnd-field-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--SmartThemeEmColor, #fff);
+    white-space: nowrap;
+    min-width: 80px;
+}
+
+.dnd-alignment-select {
+    flex: 1;
+    padding: 5px 8px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.25);
+    color: var(--SmartThemeEmColor, #fff);
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.dnd-alignment-select option {
+    background: var(--SmartThemeBodyColor, #1a1a2e);
+    color: var(--SmartThemeTextColor, #ccc);
+}
+
+.dnd-personality-input {
+    flex: 1;
+    padding: 6px 8px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.2);
+    color: var(--SmartThemeEmColor, #fff);
+    font-size: 0.85rem;
+    resize: vertical;
+    min-height: 2.2em;
+    font-family: inherit;
+}
+
+.dnd-personality-input::placeholder {
+    color: var(--SmartThemeTextColor, #666);
+}
+
+/* ---- Conditions Chips ---- */
+.dnd-conditions-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 4px;
+    margin-bottom: 8px;
+}
+
+.dnd-condition-chip {
+    padding: 4px 10px;
+    border-radius: 16px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    background: rgba(0, 0, 0, 0.15);
+    color: var(--SmartThemeTextColor, #999);
+    transition: all 0.2s ease;
+}
+
+.dnd-condition-chip:hover {
+    border-color: #2dd4bf;
+    color: var(--SmartThemeEmColor, #fff);
+}
+
+.dnd-condition-chip.active {
+    background: rgba(45, 212, 191, 0.2);
+    border-color: #2dd4bf;
+    color: #2dd4bf;
+    box-shadow: 0 0 6px rgba(45, 212, 191, 0.25);
+}
