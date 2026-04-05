@@ -430,7 +430,18 @@ export function renderWorldMapView(target, worldMapUrl, locationMaps, callbacks 
  * @property {string} [className]
  * @property {number} [hp]
  * @property {number} [maxHp]
+ * @property {boolean} [isEnemy]
  */
+
+/**
+ * @typedef {Object} HighlightCell
+ * @property {number} gridX
+ * @property {number} gridY
+ * @property {'move'|'attack'} [kind]
+ */
+
+/** @type {Map<string, {scale: number, offsetX: number, offsetY: number, gridVisible: boolean}>} */
+const locationViewStateMemory = new Map();
 
 /**
  * Render an interactive location or board view with grid and character tokens.
@@ -443,6 +454,14 @@ export function renderWorldMapView(target, worldMapUrl, locationMaps, callbacks 
  * @param {number} [options.gridHeight=50]
  * @param {TokenData[]} options.tokens
  * @param {(tokenId: number, gridX: number, gridY: number) => void} [options.onTokenMove]
+ * @param {(tokenId: number) => void} [options.onTokenClick]
+ * @param {HighlightCell[]} [options.highlightedCells]
+ * @param {number[]} [options.highlightedTokenIds]
+ * @param {number|null} [options.selectedTokenId]
+ * @param {string} [options.overlayLegend]
+ * @param {number[]} [options.draggableTokenIds] - Only these token IDs can be dragged. If absent, all tokens are draggable.
+ * @param {(tokenId: number, tentativeGX: number, tentativeGY: number) => HighlightCell[]} [options.onTokenDragging] - Called during drag mousemove for live highlight update.
+ * @param {string} [options.viewStateKey] - Optional explicit key to persist zoom/pan/grid state across re-renders.
  */
 export function renderLocationView(target, options) {
     const {
@@ -453,6 +472,14 @@ export function renderLocationView(target, options) {
         gridHeight = 50,
         tokens = [],
         onTokenMove,
+        onTokenClick,
+        highlightedCells = [],
+        highlightedTokenIds = [],
+        selectedTokenId = null,
+        overlayLegend = '',
+        draggableTokenIds = null,
+        onTokenDragging = null,
+        viewStateKey = '',
     } = options;
 
     target.empty();
@@ -479,6 +506,17 @@ export function renderLocationView(target, options) {
     let gridVisible = true;
     let imgW = 0;
     let imgH = 0;
+    const derivedViewStateKey = String(viewStateKey || `${name}::${imageUrl}::${gridWidth}x${gridHeight}`);
+
+    function persistViewState() {
+        if (!derivedViewStateKey) return;
+        locationViewStateMemory.set(derivedViewStateKey, {
+            scale: state.scale,
+            offsetX: state.offsetX,
+            offsetY: state.offsetY,
+            gridVisible,
+        });
+    }
 
     // Grid overlay (drawn via CSS background-image)
     const gridOverlay = $('<div class="wm-grid-overlay"></div>');
@@ -487,6 +525,10 @@ export function renderLocationView(target, options) {
     // Tokens layer
     const tokensLayer = $('<div class="wm-tokens-layer"></div>');
     content.append(tokensLayer);
+
+    // Tactical overlays
+    const highlightsLayer = $('<div class="wm-highlight-layer"></div>');
+    content.append(highlightsLayer);
 
     function updateGrid() {
         if (!imgW || !imgH) return;
@@ -502,6 +544,23 @@ export function renderLocationView(target, options) {
         });
     }
 
+    function renderHighlights() {
+        highlightsLayer.empty();
+        if (!imgW || !imgH || !Array.isArray(highlightedCells) || highlightedCells.length === 0) return;
+
+        const cellW = imgW / gridWidth;
+        const cellH = imgH / gridHeight;
+        highlightsLayer.css({ width: imgW + 'px', height: imgH + 'px' });
+
+        for (const cell of highlightedCells) {
+            if (!cell) continue;
+            const kind = cell.kind === 'attack' ? 'attack' : 'move';
+            highlightsLayer.append(`
+                <div class="wm-highlight-cell wm-highlight-${kind}" style="left:${cell.gridX * cellW}px;top:${cell.gridY * cellH}px;width:${cellW}px;height:${cellH}px;"></div>
+            `);
+        }
+    }
+
     function placeTokens() {
         tokensLayer.empty();
         if (!imgW || !imgH) return;
@@ -515,16 +574,25 @@ export function renderLocationView(target, options) {
             const py = (token.gridY + 0.5) * cellH;
             const hpPct = (token.maxHp && token.maxHp > 0) ? Math.min(100, ((token.hp || 0) / token.maxHp) * 100) : 100;
 
+            const enemyClass = token.isEnemy ? ' wm-token-enemy' : '';
+            const metaText = token.isEnemy
+                ? `AC ${token.level || 10}`
+                : `Lvl ${token.level || 1} ${token.className || 'Adventurer'}`;
+            const selectedClass = selectedTokenId === token.id ? ' wm-token-selected' : '';
+            const inRangeClass = Array.isArray(highlightedTokenIds) && highlightedTokenIds.includes(token.id) ? ' wm-token-in-range' : '';
+
             const el = $(`
-                <div class="wm-token" data-token-id="${token.id}" style="left:${px}px;top:${py}px;">
+                <div class="wm-token${enemyClass}${selectedClass}${inRangeClass}" data-token-id="${token.id}" style="left:${px}px;top:${py}px;">
                     <div class="wm-token-tooltip">
                         <div class="wm-token-tooltip-name">${token.name}</div>
-                        <div class="wm-token-tooltip-meta">Lvl ${token.level || 1} ${token.className || 'Adventurer'}</div>
+                        <div class="wm-token-tooltip-meta">${metaText}</div>
                         <div class="wm-token-tooltip-hp"><div class="wm-token-tooltip-hp-fill" style="width:${hpPct}%"></div></div>
                     </div>
                     ${token.avatar
                         ? `<img class="wm-token-avatar" src="${token.avatar}" alt="${token.name}" />`
-                        : `<div class="wm-token-unknown">???</div>`}
+                        : token.isEnemy
+                            ? `<div class="wm-token-unknown" style="background:#7f1d1d;">☠</div>`
+                            : `<div class="wm-token-unknown">???</div>`}
                     <span class="wm-token-name">${token.name}</span>
                 </div>
             `);
@@ -543,10 +611,24 @@ export function renderLocationView(target, options) {
      * @param {number} cellH
      */
     function setupTokenDrag(el, token, cellW, cellH) {
+        const isDraggable = !Array.isArray(draggableTokenIds)
+            || draggableTokenIds.length === 0
+            || draggableTokenIds.includes(token.id);
+
+        if (!isDraggable) {
+            // Non-draggable tokens: only respond to clicks (selection, tooltip)
+            el.on('click', function (e) {
+                e.stopPropagation();
+                if (onTokenClick) onTokenClick(token.id);
+            });
+            return;
+        }
+
         el.on('mousedown', function (e) {
             e.stopPropagation();
             e.preventDefault();
             el.addClass('dragging');
+            el.data('wmMoved', false);
 
             const startMX = e.pageX;
             const startMY = e.pageY;
@@ -558,7 +640,28 @@ export function renderLocationView(target, options) {
             $(document).on(`mousemove.${dragNs}`, function (me) {
                 const dx = (me.pageX - startMX) / state.scale;
                 const dy = (me.pageY - startMY) / state.scale;
+                if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
+                    el.data('wmMoved', true);
+                }
                 el.css({ left: (startPX + dx) + 'px', top: (startPY + dy) + 'px' });
+
+                // Live highlight update during drag
+                if (onTokenDragging && imgW && imgH) {
+                    const tentGX = Math.max(0, Math.min(gridWidth - 1, Math.floor((startPX + dx) / cellW)));
+                    const tentGY = Math.max(0, Math.min(gridHeight - 1, Math.floor((startPY + dy) / cellH)));
+                    const newCells = onTokenDragging(token.id, tentGX, tentGY);
+                    highlightsLayer.empty();
+                    if (newCells && newCells.length > 0) {
+                        highlightsLayer.css({ width: imgW + 'px', height: imgH + 'px' });
+                        for (const cell of newCells) {
+                            if (!cell) continue;
+                            const kind = cell.kind === 'attack' ? 'attack' : 'move';
+                            highlightsLayer.append(
+                                `<div class="wm-highlight-cell wm-highlight-${kind}" style="left:${cell.gridX * cellW}px;top:${cell.gridY * cellH}px;width:${cellW}px;height:${cellH}px;"></div>`
+                            );
+                        }
+                    }
+                }
             });
 
             $(document).on(`mouseup.${dragNs}`, function (ue) {
@@ -590,7 +693,15 @@ export function renderLocationView(target, options) {
                     if (axis === 'x') $(this).val(newGX);
                     if (axis === 'y') $(this).val(newGY);
                 });
+
+                window.setTimeout(() => el.removeData('wmMoved'), 0);
             });
+        });
+
+        el.on('click', function (e) {
+            e.stopPropagation();
+            if (el.data('wmMoved')) return;
+            if (onTokenClick) onTokenClick(token.id);
         });
     }
 
@@ -630,10 +741,16 @@ export function renderLocationView(target, options) {
 
     // Override transform to update axes
     const nsId = 'wmLoc_' + Date.now();
+    const tacticalHud = $('<div class="wm-tactical-hud"></div>');
+    if (overlayLegend) {
+        tacticalHud.text(overlayLegend);
+        container.append(tacticalHud);
+    }
 
     function fullUpdate() {
         content.css('transform', `translate(${state.offsetX}px, ${state.offsetY}px) scale(${state.scale})`);
         renderGridAxes();
+        persistViewState();
     }
 
     container.off('wheel').on('wheel', function (e) {
@@ -685,17 +802,27 @@ export function renderLocationView(target, options) {
         imgW = /** @type {HTMLImageElement} */ (this).naturalWidth;
         imgH = /** @type {HTMLImageElement} */ (this).naturalHeight;
 
-        // Fit
-        const cw = container.width() || 300;
-        const ch = container.height() || 420;
-        const fitScale = Math.min(cw / imgW, ch / imgH, 1);
-        state.scale = fitScale;
-        state.offsetX = (cw - imgW * fitScale) / 2;
-        state.offsetY = (ch - imgH * fitScale) / 2;
+        const saved = locationViewStateMemory.get(derivedViewStateKey);
+        if (saved) {
+            state.scale = Math.max(0.5, Math.min(6, Number(saved.scale) || 1));
+            state.offsetX = Number(saved.offsetX) || 0;
+            state.offsetY = Number(saved.offsetY) || 0;
+            gridVisible = Boolean(saved.gridVisible);
+        } else {
+            // Fit only on first render for this view key
+            const cw = container.width() || 300;
+            const ch = container.height() || 420;
+            const fitScale = Math.min(cw / imgW, ch / imgH, 1);
+            state.scale = fitScale;
+            state.offsetX = (cw - imgW * fitScale) / 2;
+            state.offsetY = (ch - imgH * fitScale) / 2;
+        }
 
         updateGrid();
+        renderHighlights();
         placeTokens();
         fullUpdate();
+        gridOverlay.toggleClass('hidden', !gridVisible);
     });
 
     // Zoom controls
@@ -712,6 +839,7 @@ export function renderLocationView(target, options) {
         gridVisible = !gridVisible;
         $(this).toggleClass('active', gridVisible);
         gridOverlay.toggleClass('hidden', !gridVisible);
+        persistViewState();
     });
     container.append(zoomControls);
 

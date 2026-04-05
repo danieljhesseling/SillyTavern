@@ -238,6 +238,41 @@ declare global {
     };
 
     type SwipeEvent = JQuery.TriggeredEvent<any, any, HTMLElement, HTMLElement>;
+
+    interface ToastrOptions {
+        timeOut?: number;
+        extendedTimeOut?: number;
+        closeButton?: boolean;
+        progressBar?: boolean;
+        positionClass?: string;
+        preventDuplicates?: boolean;
+        onclick?: (() => void) | null;
+        showDuration?: number;
+        hideDuration?: number;
+        showEasing?: string;
+        hideEasing?: string;
+        showMethod?: string;
+        hideMethod?: string;
+        escapeHtml?: boolean;
+        tapToDismiss?: boolean;
+        newestOnTop?: boolean;
+        [key: string]: any;
+    }
+
+    interface ToastrFunctions {
+        success(message: string, title?: string, options?: ToastrOptions): JQuery;
+        info(message: string, title?: string, options?: ToastrOptions): JQuery;
+        warning(message: string, title?: string, options?: ToastrOptions): JQuery;
+        error(message: string, title?: string, options?: ToastrOptions): JQuery;
+        subscribe(callback: (args: any) => void): void;
+        getContainer(options?: ToastrOptions, create?: boolean): JQuery;
+        clear(toast?: JQuery, map?: { force?: boolean }): void;
+        remove(toast?: JQuery): void;
+        options: ToastrOptions;
+        [key: string]: any;
+    }
+
+    var toastr: ToastrFunctions;
 }
 
 //Overrides for public/scripts/chats.js

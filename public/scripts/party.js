@@ -1,8 +1,9 @@
 import { t } from './i18n.js';
 import { power_user } from './power-user.js';
 import { POPUP_TYPE, POPUP_RESULT, Popup } from './popup.js';
+import { sendSystemMessage, system_message_types } from './system-messages.js';
 import { getThumbnailUrl, chat, chat_metadata, saveMetadata, eventSource, event_types, setUserName } from '../script.js';
-import { getCurrentWorldMapUrl, getCurrentWorldLocationMaps, getCurrentWorldBoards, loadWorldInfo, saveWorldInfo, METADATA_KEY } from './world-info.js';
+import { getCurrentWorldMapUrl, getCurrentWorldLocationMaps, getCurrentWorldBoards, getCurrentWorldEnemies, loadWorldInfo, saveWorldInfo, METADATA_KEY } from './world-info.js';
 import { renderWorldMapView, renderLocationView } from './world-map-renderer.js';
 import { SlashCommandParser } from './slash-commands/SlashCommandParser.js';
 import { SlashCommand } from './slash-commands/SlashCommand.js';
@@ -16,6 +17,7 @@ import {
     applyEquipmentEffects, addItemToInventory, removeItemFromInventory,
     equipItem, unequipItem, getEquippedItem, getItemsByType,
     analyzeRelationshipsFromChat, migratePartyMember, createItem,
+    generateEnemyInstanceId,
 } from './dnd-system.js';
 
 /**
@@ -58,6 +60,22 @@ import {
 
 /** @type {PartyMember[]} */
 let partyMembers = [];
+
+const LOCATION_MAPS_MANUAL_HIDDEN_KEY = 'sillytavern_locationMapsManualHidden';
+
+/** @type {boolean} */
+let locationMapsManuallyHidden = false;
+
+/** @type {{ tokenId: number|null, boardName: string, locationName: string }} */
+let combatBoardSelection = { tokenId: null, boardName: '', locationName: '' };
+
+/** @type {HTMLElement|null} */
+let combatDiceOverlayElement = null;
+
+/** @type {Array<{title: string, subtitle: string, dc: string, total: string, formula: string, classification: 'critical-success'|'success'|'failure'|'critical-failure', detail: string, glyph: string}>} */
+let combatDiceQueue = [];
+
+let combatDiceAnimating = false;
 
 function savePartyState() {
     try {
@@ -153,6 +171,7 @@ function loadPartyForChat() {
         partyMembers = [];
     }
     loadCurrentLocation();
+    loadCombatState();
     renderPartyMembers();
 }
 
@@ -209,7 +228,7 @@ async function showCharacterPicker(charEntries) {
 
     const content = $(`<div class="party-picker-container">${headerHtml}${gridHtml}</div>`);
 
-    const popup = new Popup(content, POPUP_TYPE.CONFIRM, null, {
+    const popup = new Popup(content, POPUP_TYPE.CONFIRM, undefined, {
         wider: true,
         okButton: t`Add to Party`,
         cancelButton: t`Cancel`,
@@ -238,7 +257,7 @@ async function syncPartyMemberToWorldInfo(member) {
     if (member.wiUid == null || !member.worldName) return;
 
     try {
-        const data = await loadWorldInfo(member.worldName);
+        const data = /** @type {any} */ (await loadWorldInfo(member.worldName));
         if (!data?.entries) return;
 
         const entry = data.entries[member.wiUid];
@@ -436,7 +455,10 @@ function loadCurrentLocation() {
     currentBoardName = (chat_metadata && chat_metadata['currentBoard']) || '';
 }
 
-/** Helper: resolve boards for a location, including legacy boardName fallback */
+/**
+ * Helper: resolve boards for a location, including legacy boardName fallback.
+ * @param {any} loc
+ */
 function getLocationBoards(loc) {
     if (!loc) return [];
     if (Array.isArray(loc.boards) && loc.boards.length) {
@@ -451,6 +473,994 @@ function getLocationBoards(loc) {
         }
     }
     return [];
+}
+
+// ============================================================
+//  COMBAT ENCOUNTER STATE
+// ============================================================
+
+/** @type {import('./dnd-system.js').CombatEncounter & { turnState: null | { actorId: string, isEnemy: boolean, movementSpentFeet: number, actionUsed: boolean } }} */
+let combatEncounter = { active: false, enemies: [], turnOrder: [], currentTurnIndex: 0, turnState: null };
+
+function createEmptyCombatEncounter() {
+    return { active: false, enemies: [], turnOrder: [], currentTurnIndex: 0, turnState: null };
+}
+
+/**
+ * @param {any} encounter
+ */
+function normalizeCombatEncounter(encounter) {
+    if (!encounter || typeof encounter !== 'object') return createEmptyCombatEncounter();
+    return {
+        active: Boolean(encounter.active),
+        enemies: Array.isArray(encounter.enemies) ? encounter.enemies : [],
+        turnOrder: Array.isArray(encounter.turnOrder) ? encounter.turnOrder : [],
+        currentTurnIndex: Number.isInteger(encounter.currentTurnIndex) ? encounter.currentTurnIndex : 0,
+        turnState: encounter.turnState && typeof encounter.turnState === 'object'
+            ? {
+                actorId: String(encounter.turnState.actorId || ''),
+                isEnemy: Boolean(encounter.turnState.isEnemy),
+                movementSpentFeet: Number(encounter.turnState.movementSpentFeet) || 0,
+                actionUsed: Boolean(encounter.turnState.actionUsed),
+            }
+            : null,
+    };
+}
+
+function saveCombatState() {
+    if (chat_metadata) {
+        chat_metadata['combatEncounter'] = JSON.parse(JSON.stringify(combatEncounter));
+        saveMetadata();
+    }
+}
+
+function loadCombatState() {
+    const saved = chat_metadata?.['combatEncounter'];
+    if (saved && saved.active) {
+        combatEncounter = normalizeCombatEncounter(saved);
+    } else {
+        combatEncounter = createEmptyCombatEncounter();
+    }
+}
+
+function loadLocationMapsVisibility() {
+    try {
+        locationMapsManuallyHidden = window.localStorage.getItem(LOCATION_MAPS_MANUAL_HIDDEN_KEY) === 'true';
+    } catch {
+        locationMapsManuallyHidden = false;
+    }
+}
+
+/**
+ * @param {boolean} hidden
+ */
+function setLocationMapsVisibility(hidden) {
+    locationMapsManuallyHidden = Boolean(hidden);
+    try {
+        window.localStorage.setItem(LOCATION_MAPS_MANUAL_HIDDEN_KEY, String(locationMapsManuallyHidden));
+    } catch (e) {
+        console.warn('Unable to store location maps panel visibility', e);
+    }
+}
+
+function getCurrentTurnState() {
+    const entry = getCurrentTurnEntry();
+    if (!entry) {
+        combatEncounter.turnState = null;
+        return null;
+    }
+
+    const current = combatEncounter.turnState;
+    if (current && current.actorId === entry.id && current.isEnemy === entry.isEnemy) {
+        return current;
+    }
+
+    combatEncounter.turnState = {
+        actorId: entry.id,
+        isEnemy: entry.isEnemy,
+        movementSpentFeet: 0,
+        actionUsed: false,
+    };
+    saveCombatState();
+    return combatEncounter.turnState;
+}
+
+/**
+ * @param {import('./dnd-system.js').TurnEntry|null} entry
+ */
+function resetCombatTurnState(entry) {
+    combatEncounter.turnState = entry
+        ? { actorId: entry.id, isEnemy: entry.isEnemy, movementSpentFeet: 0, actionUsed: false }
+        : null;
+    saveCombatState();
+}
+
+/**
+ * @param {string} instanceId
+ */
+function getEnemyByInstanceId(instanceId) {
+    return combatEncounter.enemies.find(enemy => enemy.instanceId === instanceId) || null;
+}
+
+function getAliveEnemies() {
+    return combatEncounter.enemies.filter(enemy => (enemy.currentHp || 0) > 0);
+}
+
+/**
+ * @param {import('./dnd-system.js').TurnEntry|null} entry
+ */
+function getPartyMemberByTurnEntry(entry) {
+    if (!entry || entry.isEnemy) return null;
+    return partyMembers.find(member => String(member.id) === String(entry.id)) || null;
+}
+
+function getCurrentActingMember() {
+    return getPartyMemberByTurnEntry(getCurrentTurnEntry());
+}
+
+/**
+ * @param {number} ax
+ * @param {number} ay
+ * @param {number} bx
+ * @param {number} by
+ */
+function getDistanceInCells(ax, ay, bx, by) {
+    const safeAx = Number(ax);
+    const safeAy = Number(ay);
+    const safeBx = Number(bx);
+    const safeBy = Number(by);
+    const fromX = Number.isFinite(safeAx) ? safeAx : 0;
+    const fromY = Number.isFinite(safeAy) ? safeAy : 0;
+    const toX = Number.isFinite(safeBx) ? safeBx : 0;
+    const toY = Number.isFinite(safeBy) ? safeBy : 0;
+    return Math.max(Math.abs(fromX - toX), Math.abs(fromY - toY));
+}
+
+/**
+ * @param {number} ax
+ * @param {number} ay
+ * @param {number} bx
+ * @param {number} by
+ */
+function getDistanceInFeet(ax, ay, bx, by) {
+    return getDistanceInCells(ax, ay, bx, by) * 5;
+}
+
+/**
+ * @param {PartyMember|null} member
+ */
+function getRemainingMovementFeet(member) {
+    if (!member) return 0;
+    const turnState = getCurrentTurnState();
+    const speed = Number(member?.speed) || 30;
+    if (!turnState || turnState.actorId !== String(member.id)) return speed;
+    return Math.max(0, speed - (Number(turnState.movementSpentFeet) || 0));
+}
+
+/**
+ * @param {PartyMember|null} member
+ */
+function getAttackRangeFeet(member) {
+    const equippedWeaponId = member?.equippedItems?.weapon;
+    const equippedWeapon = equippedWeaponId ? (member.items || []).find(/** @param {import('./dnd-system.js').DndItem} item */ (item) => item.id === equippedWeaponId) : null;
+    const weaponName = String(equippedWeapon?.name || '').toLowerCase();
+    const className = String(member?.class || '').toLowerCase();
+
+    if (/(bow|crossbow|sling|wand|staff|rifle|gun)/.test(weaponName)) return 60;
+    if (/(ranger|wizard|sorcerer|warlock|cleric|druid|artificer)/.test(className)) return 60;
+    return 5;
+}
+
+/**
+ * @param {PartyMember|null} member
+ * @param {number} rangeFeet
+ */
+function getPlayerAttackModifier(member, rangeFeet) {
+    const strMod = getAbilityModifier(member?.strength || 10);
+    const dexMod = getAbilityModifier(member?.dexterity || 10);
+    return rangeFeet > 5 ? dexMod : Math.max(strMod, dexMod);
+}
+
+/**
+ * @param {PartyMember|null} member
+ * @param {number} rangeFeet
+ */
+function getPlayerDamageFormula(member, rangeFeet) {
+    const level = Number(member?.level) || 1;
+    if (rangeFeet > 5) return level >= 5 ? '1d10' : '1d8';
+    if (level >= 9) return '2d8';
+    if (level >= 5) return '1d10';
+    return '1d8';
+}
+
+/**
+ * @param {number} originX
+ * @param {number} originY
+ * @param {number} remainingFeet
+ * @param {number} gridWidth
+ * @param {number} gridHeight
+ */
+function buildReachableCells(originX, originY, remainingFeet, gridWidth, gridHeight) {
+    const radius = Math.max(0, Math.floor(remainingFeet / 5));
+    /** @type {{gridX:number,gridY:number,kind:'move'}[]} */
+    const cells = [];
+    for (let y = Math.max(0, originY - radius); y <= Math.min(gridHeight - 1, originY + radius); y++) {
+        for (let x = Math.max(0, originX - radius); x <= Math.min(gridWidth - 1, originX + radius); x++) {
+            if (getDistanceInCells(originX, originY, x, y) <= radius) {
+                cells.push({ gridX: x, gridY: y, kind: 'move' });
+            }
+        }
+    }
+    return cells;
+}
+
+/**
+ * @param {PartyMember|null} member
+ */
+function getAttackableEnemiesForMember(member) {
+    if (!member) return [];
+    const origin = member.mapPosition || { gridX: 0, gridY: 0, locationName: '' };
+    const originX = Number.isFinite(Number(origin.gridX)) ? Number(origin.gridX) : 0;
+    const originY = Number.isFinite(Number(origin.gridY)) ? Number(origin.gridY) : 0;
+    const rangeFeet = getAttackRangeFeet(member);
+    return getAliveEnemies().filter(enemy => {
+        const enemyX = Number.isFinite(Number(enemy.gridX)) ? Number(enemy.gridX) : 0;
+        const enemyY = Number.isFinite(Number(enemy.gridY)) ? Number(enemy.gridY) : 0;
+        return getDistanceInFeet(originX, originY, enemyX, enemyY) <= rangeFeet;
+    });
+}
+
+/**
+ * @param {number} gridWidth
+ * @param {number} gridHeight
+ */
+function getCombatBoardHighlightState(gridWidth, gridHeight) {
+    const entry = getCurrentTurnEntry();
+    const member = getCurrentActingMember();
+    if (!combatEncounter.active || !entry || entry.isEnemy || !member) {
+        return { selectedTokenId: null, highlightedTokenIds: [], highlightedCells: [], overlayLegend: '' };
+    }
+
+    const isSelected = combatBoardSelection.tokenId === member.id && combatBoardSelection.boardName === currentBoardName && combatBoardSelection.locationName === currentLocationName;
+    if (!isSelected) {
+        return { selectedTokenId: null, highlightedTokenIds: [], highlightedCells: [], overlayLegend: '' };
+    }
+
+    const remainingFeet = getRemainingMovementFeet(member);
+    const pos = member.mapPosition || { gridX: 0, gridY: 0, locationName: '' };
+    const attackable = getAttackableEnemiesForMember(member);
+    /** @type {{gridX:number,gridY:number,kind:'attack'}[]} */
+    const attackCells = attackable.map(enemy => ({ gridX: enemy.gridX || 0, gridY: enemy.gridY || 0, kind: 'attack' }));
+    const movementCells = buildReachableCells(pos.gridX || 0, pos.gridY || 0, remainingFeet, gridWidth, gridHeight);
+    const overlayLegend = `${member.name} · Movimiento restante ${remainingFeet} ft · Rango ${getAttackRangeFeet(member)} ft${attackable.length ? ` · Objetivos: ${attackable.map(enemy => enemy.name).join(', ')}` : ' · Sin objetivos en rango'}`;
+
+    return {
+        selectedTokenId: member.id,
+        highlightedTokenIds: attackable.map(enemy => -(combatEncounter.enemies.findIndex(candidate => candidate.instanceId === enemy.instanceId) + 1)).filter(id => id !== 0),
+        highlightedCells: [...movementCells, ...attackCells],
+        overlayLegend,
+    };
+}
+
+/**
+ * Returns the IDs of party members that the player directly controls (personaId !== null).
+ * Falls back to all party member IDs if none are persona-linked.
+ * @returns {number[]}
+ */
+function getControlledMemberIds() {
+    const linked = partyMembers.filter(m => m.personaId !== null).map(m => m.id);
+    return linked.length > 0 ? linked : partyMembers.map(m => m.id);
+}
+
+/**
+ * Computes live highlight cells (movement range + attackable enemies) from a tentative drag position.
+ * Used by world-map-renderer onTokenDragging callback during drag.
+ * @param {number} tokenId
+ * @param {number} tentGX
+ * @param {number} tentGY
+ * @param {number} gridW
+ * @param {number} gridH
+ * @returns {import('./world-map-renderer.js').HighlightCell[]}
+ */
+function buildDragHighlightCells(tokenId, tentGX, tentGY, gridW, gridH) {
+    if (!combatEncounter.active) return [];
+    const member = partyMembers.find(m => m.id === tokenId);
+    if (!member) return [];
+    const originX = member.mapPosition?.gridX || 0;
+    const originY = member.mapPosition?.gridY || 0;
+    const distanceFeet = getDistanceInFeet(originX, originY, tentGX, tentGY);
+    const remainingFromHere = Math.max(0, getRemainingMovementFeet(member) - distanceFeet);
+    const moveCells = buildReachableCells(tentGX, tentGY, remainingFromHere, gridW, gridH);
+    const rangeFeet = getAttackRangeFeet(member);
+    /** @type {{gridX:number,gridY:number,kind:'attack'}[]} */
+    const attackCells = getAliveEnemies()
+        .filter(e => getDistanceInFeet(tentGX, tentGY, e.gridX || 0, e.gridY || 0) <= rangeFeet)
+        .map(e => ({ gridX: e.gridX || 0, gridY: e.gridY || 0, kind: /** @type {'attack'} */ ('attack') }));
+    return [...moveCells, ...attackCells];
+}
+
+/**
+ * Send a compact combat narration line to chat.
+ * @param {string} text
+ */
+function postCombatNarration(text) {
+    if (typeof text !== 'string' || !text.trim()) return;
+    sendSystemMessage(system_message_types.GENERIC, text.trim(), {
+        isSmallSys: true,
+        isNarrator: true,
+    });
+}
+
+/**
+ * Roll dice by formula with breakdown support.
+ * @param {string} formula
+ * @param {number} [fallbackSides=20]
+ * @returns {{formula: string, rolls: number[], modifier: number, total: number, natural: number|null}}
+ */
+function rollDiceDetailed(formula, fallbackSides = 20) {
+    const normalized = String(formula || '').trim() || `1d${fallbackSides}`;
+    const match = normalized.match(/^(\d+)d(\d+)([+-]\d+)?$/i);
+    if (!match) {
+        const total = Math.floor(Math.random() * fallbackSides) + 1;
+        return { formula: normalized, rolls: [total], modifier: 0, total, natural: total };
+    }
+
+    const count = Math.max(1, parseInt(match[1], 10) || 1);
+    const sides = Math.max(2, parseInt(match[2], 10) || fallbackSides);
+    const modifier = parseInt(match[3] || '0', 10) || 0;
+    const rolls = [];
+    for (let index = 0; index < count; index++) {
+        rolls.push(Math.floor(Math.random() * sides) + 1);
+    }
+
+    return {
+        formula: normalized,
+        rolls,
+        modifier,
+        total: rolls.reduce((sum, value) => sum + value, 0) + modifier,
+        natural: count === 1 && sides === 20 ? rolls[0] : null,
+    };
+}
+
+/**
+ * @param {string} formula
+ * @param {number} [fallbackSides=20]
+ */
+function rollDice(formula, fallbackSides = 20) {
+    return rollDiceDetailed(formula, fallbackSides).total;
+}
+
+/**
+ * @param {string} name
+ * @param {number} dexterity
+ * @param {'ally'|'enemy'} actorType
+ * @returns {number}
+ */
+function rollInitiativeWithPopover(name, dexterity, actorType) {
+    const dexMod = getAbilityModifier(dexterity || 10);
+    const formula = `1d20${dexMod >= 0 ? '+' : ''}${dexMod}`;
+    const roll = rollDiceDetailed(formula, 20);
+    const total = roll.total;
+    const d20 = roll.natural ?? roll.rolls[0] ?? total;
+
+    showCombatDiceRoll({
+        title: `${name} iniciativa`,
+        subtitle: actorType === 'enemy' ? 'Iniciativa de enemigo' : 'Iniciativa de aliado',
+        formula: roll.formula,
+        detail: `d20(${d20}) ${dexMod >= 0 ? '+' : ''}${dexMod} = ${total}`,
+        total,
+        glyph: 'init',
+    });
+
+    return total;
+}
+
+/**
+ * @param {number|null} natural
+ * @param {number} total
+ * @param {number|null} dc
+ * @returns {'critical-success'|'success'|'failure'|'critical-failure'}
+ */
+function getRollClassification(natural, total, dc) {
+    if (natural === 20) return 'critical-success';
+    if (natural === 1) return 'critical-failure';
+    if (dc == null) return 'success';
+    return total >= dc ? 'success' : 'failure';
+}
+
+/**
+ * @param {'critical-success'|'success'|'failure'|'critical-failure'} classification
+ */
+function getRollClassificationLabel(classification) {
+    if (classification === 'critical-success') return 'Victoria critica';
+    if (classification === 'critical-failure') return 'Fracaso critico';
+    if (classification === 'failure') return 'Fracaso';
+    return 'Victoria';
+}
+
+function ensureCombatDiceOverlay() {
+    if (combatDiceOverlayElement) return combatDiceOverlayElement;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'wm-dice-overlay';
+    overlay.innerHTML = `
+        <div class="wm-dice-backdrop"></div>
+        <div class="wm-dice-card">
+            <div class="wm-dice-header">
+                <div>
+                    <div class="wm-dice-title"></div>
+                    <div class="wm-dice-subtitle"></div>
+                </div>
+                <div class="wm-dice-result-badge"></div>
+            </div>
+            <div class="wm-dice-body">
+                <div class="wm-dice-glyph"></div>
+                <div class="wm-dice-metrics">
+                    <div class="wm-dice-metric">
+                        <div class="wm-dice-metric-label">Dificultad</div>
+                        <div class="wm-dice-metric-value" data-field="dc"></div>
+                    </div>
+                    <div class="wm-dice-metric">
+                        <div class="wm-dice-metric-label">Resultado</div>
+                        <div class="wm-dice-metric-value" data-field="total"></div>
+                    </div>
+                    <div class="wm-dice-metric">
+                        <div class="wm-dice-metric-label">Formula</div>
+                        <div class="wm-dice-metric-value" data-field="formula"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="wm-dice-result">
+                <div class="wm-dice-detail"></div>
+            </div>
+            <div class="wm-dice-actions">
+                <button class="menu_button wm-dice-next" type="button">Next</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+    combatDiceOverlayElement = overlay;
+    return overlay;
+}
+
+function flushCombatDiceQueue() {
+    if (combatDiceAnimating || combatDiceQueue.length === 0) return;
+    const overlay = ensureCombatDiceOverlay();
+    const next = combatDiceQueue.shift();
+    if (!next) return;
+
+    combatDiceAnimating = true;
+
+    const titleEl = /** @type {HTMLElement|null} */ (overlay.querySelector('.wm-dice-title'));
+    const subtitleEl = /** @type {HTMLElement|null} */ (overlay.querySelector('.wm-dice-subtitle'));
+    const dcEl = /** @type {HTMLElement|null} */ (overlay.querySelector('[data-field="dc"]'));
+    const totalEl = /** @type {HTMLElement|null} */ (overlay.querySelector('[data-field="total"]'));
+    const formulaEl = /** @type {HTMLElement|null} */ (overlay.querySelector('[data-field="formula"]'));
+    const glyphEl = /** @type {HTMLElement|null} */ (overlay.querySelector('.wm-dice-glyph'));
+    const detailEl = /** @type {HTMLElement|null} */ (overlay.querySelector('.wm-dice-detail'));
+    const badge = /** @type {HTMLElement|null} */ (overlay.querySelector('.wm-dice-result-badge'));
+    const nextBtn = /** @type {HTMLButtonElement|null} */ (overlay.querySelector('.wm-dice-next'));
+    if (!titleEl || !subtitleEl || !dcEl || !totalEl || !formulaEl || !glyphEl || !detailEl || !badge || !nextBtn) return;
+
+    titleEl.textContent = next.title;
+    subtitleEl.textContent = next.subtitle;
+    formulaEl.textContent = next.formula;
+    glyphEl.textContent = next.glyph;
+    detailEl.textContent = next.detail;
+
+    badge.textContent = getRollClassificationLabel(next.classification);
+    badge.className = `wm-dice-result-badge ${next.classification}`;
+
+    const finalBtnText = combatDiceQueue.length > 0 ? 'Next' : 'Close';
+    nextBtn.disabled = true;
+    nextBtn.textContent = 'Rolling...';
+    dcEl.classList.add('rolling');
+    totalEl.classList.add('rolling');
+
+    const dcNumeric = /^-?\d+$/.test(next.dc) ? Number(next.dc) : null;
+    const totalNumeric = /^-?\d+$/.test(next.total) ? Number(next.total) : 0;
+    const startedAt = Date.now();
+    const durationMs = 820;
+    const timer = window.setInterval(() => {
+        const elapsed = Date.now() - startedAt;
+        if (dcNumeric == null) {
+            dcEl.textContent = '--';
+        } else {
+            const spread = Math.max(6, Math.abs(dcNumeric) + 6);
+            const randomValue = Math.max(0, dcNumeric + Math.floor((Math.random() * spread) - spread / 2));
+            dcEl.textContent = String(randomValue);
+        }
+
+        const totalSpread = Math.max(8, Math.abs(totalNumeric) + 8);
+        const randomTotal = Math.max(0, totalNumeric + Math.floor((Math.random() * totalSpread) - totalSpread / 2));
+        totalEl.textContent = String(randomTotal);
+
+        if (elapsed >= durationMs) {
+            window.clearInterval(timer);
+            dcEl.textContent = next.dc;
+            totalEl.textContent = next.total;
+            dcEl.classList.remove('rolling');
+            totalEl.classList.remove('rolling');
+            nextBtn.disabled = false;
+            nextBtn.textContent = finalBtnText;
+        }
+    }, 42);
+
+    nextBtn.onclick = () => {
+        if (!combatDiceAnimating) return;
+        window.clearInterval(timer);
+        dcEl.classList.remove('rolling');
+        totalEl.classList.remove('rolling');
+        nextBtn.disabled = false;
+        overlay.classList.remove('active');
+        window.setTimeout(() => {
+            combatDiceAnimating = false;
+            flushCombatDiceQueue();
+        }, 120);
+    };
+
+    overlay.classList.add('active');
+}
+
+/**
+ * @param {'victory'|'defeat'|'manual'|'ended'} reason
+ * @returns {string}
+ */
+function buildCombatSummary(reason) {
+    const enemyTotal = combatEncounter.enemies.length;
+    const enemyAlive = combatEncounter.enemies.filter(enemy => (enemy.currentHp || 0) > 0).length;
+    const enemyDefeated = Math.max(0, enemyTotal - enemyAlive);
+
+    const partyTotal = partyMembers.length;
+    const partyAlive = partyMembers.filter(member => (member.hp || 0) > 0).length;
+
+    let outcome = 'Resultado: combate finalizado.';
+    if (reason === 'victory') outcome = 'Resultado: victoria del grupo.';
+    if (reason === 'defeat') outcome = 'Resultado: derrota del grupo.';
+    if (reason === 'manual') outcome = 'Resultado: combate terminado manualmente.';
+
+    const partyHp = partyMembers.length
+        ? partyMembers.map(member => `${member.name} ${member.hp || 0}/${member.maxHp || 0}`).join(' | ')
+        : 'Sin miembros de grupo.';
+    const enemyHp = combatEncounter.enemies.length
+        ? combatEncounter.enemies.map(enemy => `${enemy.name} ${enemy.currentHp || 0}/${enemy.maxHp || 0}`).join(' | ')
+        : 'Sin enemigos registrados.';
+
+    return [
+        '📋 [COMBAT] Resumen final',
+        outcome,
+        `Enemigos derrotados: ${enemyDefeated}/${enemyTotal}`,
+        `Aliados en pie: ${partyAlive}/${partyTotal}`,
+        `HP aliados: ${partyHp}`,
+        `HP enemigos: ${enemyHp}`,
+    ].join('\n');
+}
+
+/**
+ * @param {{title: string, subtitle: string, dc: string, total: string, formula: string, classification: 'critical-success'|'success'|'failure'|'critical-failure', detail: string, glyph: string}} payload
+ */
+function queueCombatDiceRoll(payload) {
+    combatDiceQueue.push(payload);
+    flushCombatDiceQueue();
+}
+
+/**
+ * @param {{ title: string, subtitle: string, formula: string, detail: string, total: number, dc?: number|null, natural?: number|null, glyph?: string }} param0
+ */
+function showCombatDiceRoll({ title, subtitle, formula, detail, total, dc = null, natural = null, glyph = 'd20' }) {
+    const classification = getRollClassification(natural, total, dc);
+    queueCombatDiceRoll({
+        title,
+        subtitle,
+        dc: dc == null ? '--' : String(dc),
+        total: String(total),
+        formula,
+        classification,
+        detail,
+        glyph,
+    });
+    return classification;
+}
+
+/**
+ * @param {number} cr
+ * @returns {string}
+ */
+function getEnemyDamageFormula(cr) {
+    if (cr <= 0.5) return '1d6';
+    if (cr <= 2) return '1d8';
+    if (cr <= 5) return '2d6';
+    if (cr <= 10) return '2d8';
+    return '3d8';
+}
+
+/**
+ * @returns {import('./dnd-system.js').TurnEntry|null}
+ */
+function getCurrentTurnEntry() {
+    if (!combatEncounter.active || combatEncounter.turnOrder.length === 0) return null;
+    return combatEncounter.turnOrder[combatEncounter.currentTurnIndex] || null;
+}
+
+/**
+ * @returns {PartyMember[]}
+ */
+function getLivingPartyMembers() {
+    return partyMembers.filter(member => (member.hp || 0) > 0);
+}
+
+/**
+ * @param {import('./dnd-system.js').TurnEntry|null} entry
+ */
+function announceTurnInChat(entry) {
+    if (!entry) return;
+    const actorType = entry.isEnemy ? 'Enemigo' : 'Jugador';
+    const actorIcon = entry.isEnemy ? '⚔️' : '🛡️';
+    postCombatNarration(`${actorIcon} [COMBAT] Turno de ${entry.name} (${actorType})`);
+
+    if (!entry.isEnemy) {
+        const member = getPartyMemberByTurnEntry(entry);
+        if (!member) return;
+        const rangeFeet = getAttackRangeFeet(member);
+        const remainingFeet = getRemainingMovementFeet(member);
+        const targets = getAttackableEnemiesForMember(member);
+        const targetSummary = targets.length
+            ? targets.map(enemy => enemy.name).join(', ')
+            : 'ningun enemigo en rango';
+        postCombatNarration(`💬 [COMBAT] ${member.name}, elige accion. Usa /combat-attack <objetivo>, /combat-move <x> <y> y /combat-end. Movimiento restante: ${remainingFeet} ft. Rango actual: ${rangeFeet} ft. Objetivos en rango: ${targetSummary}.`);
+        $('#send_textarea').attr('placeholder', `/combat-attack ${targets[0]?.name || '<objetivo>'} | /combat-move 12 8 | /combat-end`);
+    }
+}
+
+/**
+ * Resolve enemy action: attack roll, damage and possible status effects.
+ * @param {import('./dnd-system.js').TurnEntry} turnEntry
+ * @returns {string}
+ */
+function resolveEnemyTurnAction(turnEntry) {
+    const enemy = combatEncounter.enemies.find(e => e.instanceId === turnEntry.id && e.currentHp > 0);
+    if (!enemy) {
+        return '[COMBAT] El enemigo no puede actuar (derrotado o no encontrado).';
+    }
+
+    const livingParty = getLivingPartyMembers();
+    if (!livingParty.length) {
+        return `[COMBAT] ${enemy.name} ruge sobre un campo sin oponentes conscientes.`;
+    }
+
+    const enemyX = Number.isFinite(Number(enemy.gridX)) ? Number(enemy.gridX) : 0;
+    const enemyY = Number.isFinite(Number(enemy.gridY)) ? Number(enemy.gridY) : 0;
+
+    const nearestTargetInfo = livingParty
+        .map(member => {
+            const memberX = Number.isFinite(Number(member.mapPosition?.gridX)) ? Number(member.mapPosition?.gridX) : 0;
+            const memberY = Number.isFinite(Number(member.mapPosition?.gridY)) ? Number(member.mapPosition?.gridY) : 0;
+            return {
+                member,
+                memberX,
+                memberY,
+                distanceFeet: getDistanceInFeet(enemyX, enemyY, memberX, memberY),
+            };
+        })
+        .sort((a, b) => a.distanceFeet - b.distanceFeet)[0] || null;
+
+    if (!nearestTargetInfo) {
+        return `[COMBAT] ${enemy.name} no encuentra un objetivo valido.`;
+    }
+
+    const target = nearestTargetInfo.member;
+    const targetX = nearestTargetInfo.memberX;
+    const targetY = nearestTargetInfo.memberY;
+    const meleeRangeFeet = 5;
+    const initialDistanceFeet = nearestTargetInfo.distanceFeet;
+    const lines = [];
+    let movedThisTurn = false;
+
+    if (initialDistanceFeet > meleeRangeFeet) {
+        const enemySpeed = Number(enemy.speed);
+        const movementBudgetFeet = Math.max(5, Number.isFinite(enemySpeed) ? enemySpeed : 30);
+        const maxSteps = Math.max(1, Math.floor(movementBudgetFeet / 5));
+
+        let nx = enemyX;
+        let ny = enemyY;
+        for (let step = 0; step < maxSteps; step++) {
+            if (getDistanceInFeet(nx, ny, targetX, targetY) <= meleeRangeFeet) break;
+            nx += Math.sign(targetX - nx);
+            ny += Math.sign(targetY - ny);
+        }
+
+        enemy.gridX = nx;
+        enemy.gridY = ny;
+        movedThisTurn = nx !== enemyX || ny !== enemyY;
+    }
+
+    const finalEnemyX = Number.isFinite(Number(enemy.gridX)) ? Number(enemy.gridX) : 0;
+    const finalEnemyY = Number.isFinite(Number(enemy.gridY)) ? Number(enemy.gridY) : 0;
+    const distanceAfterMoveFeet = getDistanceInFeet(finalEnemyX, finalEnemyY, targetX, targetY);
+
+    if (movedThisTurn) {
+        lines.push(`🚶 ${enemy.name} avanza a (${finalEnemyX + 1}, ${finalEnemyY + 1}). Distancia: ${initialDistanceFeet} ft -> ${distanceAfterMoveFeet} ft.`);
+    }
+
+    if (distanceAfterMoveFeet > meleeRangeFeet) {
+        lines.push(`⛔ ${enemy.name} no alcanza a ${target.name} y no puede atacar este turno.`);
+        if (movedThisTurn) saveCombatState();
+        return lines.join('\n');
+    }
+
+    const attackRoll = rollDiceDetailed('1d20', 20);
+    const d20 = attackRoll.total;
+    const attackMod = Math.max(
+        getAbilityModifier(enemy.strength || 10),
+        getAbilityModifier(enemy.dexterity || 10),
+    );
+    const attackTotal = d20 + attackMod;
+    const targetAc = Number(target.armorClass) || 10;
+    const isCrit = d20 === 20;
+    const isHit = isCrit || attackTotal >= targetAc;
+
+    showCombatDiceRoll({
+        title: `${enemy.name} ataca`,
+        subtitle: `Objetivo: ${target.name}`,
+        formula: `1d20${attackMod >= 0 ? '+' : ''}${attackMod}`,
+        detail: `d20(${d20}) ${attackMod >= 0 ? '+' : ''}${attackMod} = ${attackTotal}`,
+        total: attackTotal,
+        dc: targetAc,
+        natural: attackRoll.natural,
+        glyph: 'd20',
+    });
+
+    lines.push(`👹 ${enemy.name} ataca a ${target.name}.`);
+    lines.push(`🎲 Tirada de ataque: d20(${d20}) ${attackMod >= 0 ? '+' : ''}${attackMod} = ${attackTotal} vs AC ${targetAc}`);
+
+    if (!isHit) {
+        lines.push('❌ Resultado: fallo.');
+        if (movedThisTurn) saveCombatState();
+        return lines.join('\n');
+    }
+
+    const dmgFormula = getEnemyDamageFormula(enemy.cr || 0);
+    const baseDamageRoll = rollDiceDetailed(dmgFormula, 8);
+    const baseDamage = baseDamageRoll.total;
+    const strMod = Math.max(0, getAbilityModifier(enemy.strength || 10));
+    const critBonusRoll = isCrit ? rollDiceDetailed(dmgFormula, 8) : null;
+    const critBonus = critBonusRoll ? critBonusRoll.total : 0;
+    const totalDamage = Math.max(1, baseDamage + critBonus + strMod);
+
+    showCombatDiceRoll({
+        title: `${enemy.name} tira dano`,
+        subtitle: `Contra ${target.name}`,
+        formula: `${dmgFormula}${isCrit ? ` + ${dmgFormula}` : ''}`,
+        detail: isCrit
+            ? `${baseDamageRoll.rolls.join(', ')} + crit(${critBonusRoll?.rolls.join(', ') || ''}) + mod(${strMod})`
+            : `${baseDamageRoll.rolls.join(', ')} + mod(${strMod})`,
+        total: totalDamage,
+        glyph: 'dmg',
+    });
+
+    target.hp = Math.max(0, (target.hp || 0) - totalDamage);
+    target.activeConditions = Array.isArray(target.activeConditions) ? target.activeConditions : [];
+
+    lines.push(`✅ Resultado: impacto${isCrit ? ' critico' : ''}.`);
+    lines.push(`💥 Tirada de daño: ${dmgFormula}(${baseDamage})${isCrit ? ` + crit(${critBonus})` : ''} + mod(${strMod}) = ${totalDamage}`);
+    lines.push(`❤️ Estado de ${target.name}: ${target.hp}/${target.maxHp}`);
+
+    if (target.hp === 0) {
+        if (!target.activeConditions.includes('Unconscious')) {
+            target.activeConditions.push('Unconscious');
+        }
+        lines.push(`🩸 ${target.name} cae a 0 HP y gana estado: Unconscious.`);
+    } else if (isCrit && Math.random() < 0.35) {
+        const pool = ['Bleeding', 'Poisoned', 'Prone', 'Frightened'];
+        const candidates = pool.filter(status => !target.activeConditions.includes(status));
+        if (candidates.length) {
+            const status = candidates[Math.floor(Math.random() * candidates.length)];
+            target.activeConditions.push(status);
+            lines.push(`🧪 Efecto adicional: ${target.name} queda ${status}.`);
+        }
+    }
+
+    savePartyState();
+    saveCombatState();
+    return lines.join('\n');
+}
+
+/**
+ * @param {import('./dnd-system.js').TurnEntry|null} entry
+ * @returns {boolean}
+ */
+function canTurnEntryAct(entry) {
+    if (!entry) return false;
+    if (entry.isEnemy) {
+        const enemy = getEnemyByInstanceId(entry.id);
+        return Boolean(enemy && enemy.currentHp > 0);
+    }
+    const member = getPartyMemberByTurnEntry(entry);
+    return Boolean(member && member.hp > 0);
+}
+
+function advanceTurnIndex() {
+    if (!combatEncounter.active || combatEncounter.turnOrder.length === 0) return null;
+    const totalTurns = combatEncounter.turnOrder.length;
+    for (let step = 0; step < totalTurns; step++) {
+        combatEncounter.currentTurnIndex = (combatEncounter.currentTurnIndex + 1) % totalTurns;
+        const candidate = combatEncounter.turnOrder[combatEncounter.currentTurnIndex] || null;
+        if (canTurnEntryAct(candidate)) {
+            resetCombatTurnState(candidate);
+            return candidate;
+        }
+    }
+    return null;
+}
+
+/**
+ * @param {boolean} [includeCurrent=true]
+ */
+function runCombatTurnLoop(includeCurrent = true) {
+    if (!combatEncounter.active || combatEncounter.turnOrder.length === 0) return null;
+
+    let entry = includeCurrent ? getCurrentTurnEntry() : advanceTurnIndex();
+    if (!entry || !canTurnEntryAct(entry)) {
+        entry = advanceTurnIndex();
+    }
+
+    let safety = 0;
+    while (entry && combatEncounter.active && entry.isEnemy && safety < combatEncounter.turnOrder.length + 1) {
+        announceTurnInChat(entry);
+        const actionLog = resolveEnemyTurnAction(entry);
+        postCombatNarration(actionLog);
+
+        if (!getLivingPartyMembers().length) {
+            postCombatNarration('💀 [COMBAT] Todos los miembros del grupo han caido. Fin del combate.');
+            endCombat('defeat');
+            return null;
+        }
+
+        entry = advanceTurnIndex();
+        safety += 1;
+    }
+
+    if (entry && combatEncounter.active) {
+        announceTurnInChat(entry);
+    }
+
+    return entry;
+}
+
+/**
+ * Start a combat encounter on the current board.
+ * @param {import('./dnd-system.js').EnemyTemplate} template - Enemy template
+ * @param {number} count - Number of enemies to spawn
+ * @param {number} [gridWidth=50] - Board grid width for random placement
+ * @param {number} [gridHeight=50] - Board grid height for random placement
+ * @returns {string} Initiative order summary string
+ */
+function startCombat(template, count, gridWidth = 50, gridHeight = 50) {
+    /** @type {import('./dnd-system.js').EnemyInstance[]} */
+    const newEnemies = [];
+    for (let i = 0; i < count; i++) {
+        newEnemies.push({
+            instanceId: generateEnemyInstanceId(),
+            templateId: template.id,
+            name: count > 1 ? `${template.name} ${i + 1}` : template.name,
+            avatar: template.avatar,
+            currentHp: template.maxHp,
+            maxHp: template.maxHp,
+            armorClass: template.armorClass,
+            strength: template.strength,
+            dexterity: template.dexterity,
+            constitution: template.constitution,
+            intelligence: template.intelligence,
+            wisdom: template.wisdom,
+            charisma: template.charisma,
+            speed: template.speed,
+            cr: template.cr,
+            gridX: Math.floor(Math.random() * Math.min(gridWidth, 10)),
+            gridY: Math.floor(Math.random() * Math.min(gridHeight, 10)),
+        });
+    }
+
+    // Build initiative entries for party members
+    /** @type {import('./dnd-system.js').TurnEntry[]} */
+    const turnEntries = [];
+    for (const m of partyMembers) {
+        const init = rollInitiativeWithPopover(m.name, m.dexterity || 10, 'ally');
+        turnEntries.push({ id: String(m.id), name: m.name, initiative: init, isEnemy: false });
+    }
+
+    // Build initiative entries for enemies
+    for (const e of newEnemies) {
+        const init = rollInitiativeWithPopover(e.name, e.dexterity || 10, 'enemy');
+        turnEntries.push({ id: e.instanceId, name: e.name, initiative: init, isEnemy: true });
+    }
+
+    // Sort descending by initiative (ties: non-enemies first)
+    turnEntries.sort((a, b) => b.initiative - a.initiative || (a.isEnemy ? 1 : 0) - (b.isEnemy ? 1 : 0));
+
+    combatEncounter = {
+        active: true,
+        enemies: [...combatEncounter.enemies, ...newEnemies],
+        turnOrder: turnEntries,
+        currentTurnIndex: 0,
+        turnState: null,
+    };
+
+    saveCombatState();
+
+    // Build summary
+    const summary = turnEntries.map((t, i) => `${i + 1}. ${t.name} (${t.initiative})${t.isEnemy ? ' ⚔️' : ''}`).join('\n');
+
+    postCombatNarration(`⚔️ [COMBAT] ¡Encuentro iniciado!\n\nOrden de iniciativa:\n${summary}`);
+    const firstTurn = getCurrentTurnEntry();
+    resetCombatTurnState(firstTurn);
+    runCombatTurnLoop(true);
+
+    return summary;
+}
+
+/**
+ * End the current combat encounter.
+ */
+function endCombat(reason = 'ended') {
+    postCombatNarration('🏁 [COMBAT] El combate termina.');
+    postCombatNarration(buildCombatSummary(/** @type {'victory'|'defeat'|'manual'|'ended'} */ (reason)));
+    combatEncounter = createEmptyCombatEncounter();
+    combatBoardSelection = { tokenId: null, boardName: '', locationName: '' };
+    saveCombatState();
+}
+
+/**
+ * Advance to the next turn in combat.
+ * @returns {import('./dnd-system.js').TurnEntry|null} The new current turn entry
+ */
+function nextTurn() {
+    const entry = advanceTurnIndex();
+    saveCombatState();
+    return entry;
+}
+
+/**
+ * Build token data from combat encounter enemies.
+ * @returns {import('./world-map-renderer.js').TokenData[]}
+ */
+function buildEnemyTokens() {
+    if (!combatEncounter.active) return [];
+    /** @type {import('./world-map-renderer.js').TokenData[]} */
+    const result = [];
+    combatEncounter.enemies.forEach((e, idx) => {
+        result.push({
+            id: -(idx + 1),
+            name: e.name,
+            avatar: e.avatar,
+            gridX: e.gridX || 0,
+            gridY: e.gridY || 0,
+            hp: e.currentHp,
+            maxHp: e.maxHp,
+            isEnemy: true,
+        });
+    });
+    return result;
+}
+
+/**
+ * Handle enemy token move on the board.
+ * @param {number} tokenId - Negative token ID
+ * @param {number} gridX
+ * @param {number} gridY
+ */
+function handleEnemyTokenMove(tokenId, gridX, gridY) {
+    const idx = (-tokenId) - 1;
+    if (idx >= 0 && idx < combatEncounter.enemies.length) {
+        combatEncounter.enemies[idx].gridX = gridX;
+        combatEncounter.enemies[idx].gridY = gridY;
+        saveCombatState();
+    }
+}
+
+/** Export combat state for external access (e.g., script.js AI injection) */
+export function getCombatEncounter() {
+    return combatEncounter;
 }
 
 /**
@@ -496,6 +1506,195 @@ function handleTokenMove(tokenId, gridX, gridY, locationName) {
     savePartyState();
 }
 
+/**
+ * @param {number} tokenId
+ */
+function handleCombatTokenClick(tokenId) {
+    const entry = getCurrentTurnEntry();
+    const member = getCurrentActingMember();
+    if (!combatEncounter.active || !entry || entry.isEnemy || !member) return;
+
+    if (tokenId !== member.id) return;
+
+    const alreadySelected = combatBoardSelection.tokenId === tokenId
+        && combatBoardSelection.boardName === currentBoardName
+        && combatBoardSelection.locationName === currentLocationName;
+
+    combatBoardSelection = alreadySelected
+        ? { tokenId: null, boardName: '', locationName: '' }
+        : { tokenId, boardName: currentBoardName, locationName: currentLocationName };
+
+    renderLocationMapsPreview();
+}
+
+/**
+ * @param {string} name
+ */
+function resolveCombatTargetByName(name) {
+    const normalized = String(name || '').trim().toLowerCase();
+    if (!normalized) return null;
+    return getAliveEnemies().find(enemy => enemy.name.toLowerCase() === normalized) || null;
+}
+
+/**
+ * @param {string} rawValue
+ */
+function handlePlayerCombatMove(rawValue) {
+    const entry = getCurrentTurnEntry();
+    const member = getCurrentActingMember();
+    if (!combatEncounter.active || !entry || entry.isEnemy || !member) {
+        toastr.warning('No hay un turno de jugador activo.');
+        return '';
+    }
+
+    const match = String(rawValue || '').trim().match(/^(\d+)\s*[ ,]\s*(\d+)$/);
+    if (!match) {
+        toastr.warning('Usa /combat-move X Y o /combat-move X,Y');
+        return '';
+    }
+
+    const targetX = Math.max(0, parseInt(match[1], 10) - 1);
+    const targetY = Math.max(0, parseInt(match[2], 10) - 1);
+    const position = member.mapPosition || { locationName: currentLocationName, gridX: 0, gridY: 0 };
+    const distanceFeet = getDistanceInFeet(position.gridX || 0, position.gridY || 0, targetX, targetY);
+    const turnState = getCurrentTurnState();
+    if (!turnState) return '';
+    const remainingFeet = getRemainingMovementFeet(member);
+
+    if (distanceFeet > remainingFeet) {
+        toastr.warning(`Movimiento insuficiente. Necesitas ${distanceFeet} ft y te quedan ${remainingFeet} ft.`);
+        return '';
+    }
+
+    member.mapPosition = {
+        locationName: currentLocationName,
+        gridX: targetX,
+        gridY: targetY,
+    };
+    turnState.movementSpentFeet += distanceFeet;
+    savePartyState();
+    saveCombatState();
+
+    postCombatNarration(`🚶 [COMBAT] ${member.name} se mueve a (${targetX + 1}, ${targetY + 1}) y gasta ${distanceFeet} ft. Restante: ${getRemainingMovementFeet(member)} ft.`);
+    renderLocationMapsPreview();
+    return `${member.name} -> ${targetX + 1},${targetY + 1}`;
+}
+
+/**
+ * @param {string} rawTargetName
+ */
+function handlePlayerCombatAttack(rawTargetName) {
+    const entry = getCurrentTurnEntry();
+    const member = getCurrentActingMember();
+    const turnState = getCurrentTurnState();
+    if (!combatEncounter.active || !entry || entry.isEnemy || !member || !turnState) {
+        toastr.warning('No hay un turno de jugador activo.');
+        return '';
+    }
+
+    if (turnState.actionUsed) {
+        toastr.warning('Tu accion de este turno ya fue usada.');
+        return '';
+    }
+
+    const target = resolveCombatTargetByName(rawTargetName);
+    if (!target) {
+        toastr.warning(`Objetivo no encontrado: ${rawTargetName}`);
+        return '';
+    }
+
+    const origin = member.mapPosition || { gridX: 0, gridY: 0, locationName: currentLocationName };
+    const rangeFeet = getAttackRangeFeet(member);
+    const distanceFeet = getDistanceInFeet(origin.gridX || 0, origin.gridY || 0, target.gridX || 0, target.gridY || 0);
+    if (distanceFeet > rangeFeet) {
+        toastr.warning(`${target.name} esta fuera de rango. Distancia ${distanceFeet} ft, rango ${rangeFeet} ft.`);
+        return '';
+    }
+
+    const attackMod = getPlayerAttackModifier(member, rangeFeet);
+    const attackRoll = rollDiceDetailed('1d20', 20);
+    const attackTotal = attackRoll.total + attackMod;
+    const targetAc = Number(target.armorClass) || 10;
+    const isCrit = attackRoll.natural === 20;
+    const isHit = isCrit || attackTotal >= targetAc;
+
+    showCombatDiceRoll({
+        title: `${member.name} ataca`,
+        subtitle: `Objetivo: ${target.name}`,
+        formula: `1d20${attackMod >= 0 ? '+' : ''}${attackMod}`,
+        detail: `d20(${attackRoll.total}) ${attackMod >= 0 ? '+' : ''}${attackMod} = ${attackTotal}`,
+        total: attackTotal,
+        dc: targetAc,
+        natural: attackRoll.natural,
+        glyph: 'd20',
+    });
+
+    const lines = [];
+    lines.push(`🗡️ ${member.name} ataca a ${target.name}.`);
+    lines.push(`🎲 Tirada de ataque: d20(${attackRoll.total}) ${attackMod >= 0 ? '+' : ''}${attackMod} = ${attackTotal} vs AC ${targetAc}`);
+
+    turnState.actionUsed = true;
+
+    if (!isHit) {
+        lines.push('❌ Resultado: fallo.');
+        saveCombatState();
+        postCombatNarration(lines.join('\n'));
+        renderLocationMapsPreview();
+        return `${member.name} fallo contra ${target.name}`;
+    }
+
+    const damageFormula = getPlayerDamageFormula(member, rangeFeet);
+    const damageRoll = rollDiceDetailed(damageFormula, 8);
+    const critRoll = isCrit ? rollDiceDetailed(damageFormula, 8) : null;
+    const damageMod = Math.max(0, getPlayerAttackModifier(member, rangeFeet));
+    const totalDamage = Math.max(1, damageRoll.total + (critRoll?.total || 0) + damageMod);
+
+    showCombatDiceRoll({
+        title: `${member.name} tira dano`,
+        subtitle: `Contra ${target.name}`,
+        formula: `${damageFormula}${isCrit ? ` + ${damageFormula}` : ''}`,
+        detail: isCrit
+            ? `${damageRoll.rolls.join(', ')} + crit(${critRoll?.rolls.join(', ') || ''}) + mod(${damageMod})`
+            : `${damageRoll.rolls.join(', ')} + mod(${damageMod})`,
+        total: totalDamage,
+        glyph: 'dmg',
+    });
+
+    target.currentHp = Math.max(0, (target.currentHp || 0) - totalDamage);
+    lines.push(`✅ Resultado: impacto${isCrit ? ' critico' : ''}.`);
+    lines.push(`💥 Tirada de dano: ${damageFormula}(${damageRoll.total})${isCrit ? ` + crit(${critRoll?.total || 0})` : ''} + mod(${damageMod}) = ${totalDamage}`);
+    lines.push(`❤️ Estado de ${target.name}: ${target.currentHp}/${target.maxHp}`);
+
+    if (target.currentHp === 0) {
+        lines.push(`☠️ ${target.name} cae derrotado.`);
+    }
+
+    saveCombatState();
+    postCombatNarration(lines.join('\n'));
+
+    if (getAliveEnemies().length === 0) {
+        postCombatNarration('🏆 [COMBAT] Todos los enemigos han sido derrotados.');
+        endCombat('victory');
+        renderLocationMapsPreview();
+        return `${member.name} derrota a ${target.name}`;
+    }
+
+    renderLocationMapsPreview();
+    return `${member.name} golpea a ${target.name}`;
+}
+
+function endPlayerCombatTurn() {
+    const entry = getCurrentTurnEntry();
+    if (!entry || entry.isEnemy) {
+        toastr.warning('No hay un turno de jugador que cerrar.');
+        return '';
+    }
+
+    const nextEntry = runCombatTurnLoop(false);
+    renderLocationMapsPreview();
+    return nextEntry ? nextEntry.name : '';
+}
+
 function renderWorldMapPreview() {
     const container = $('#world_map_preview');
     if (!container.length) return;
@@ -517,13 +1716,143 @@ function renderWorldMapPreview() {
     });
 }
 
+/**
+ * Build the combat encounter UI section (banner, turn order, enemy cards, buttons).
+ * @param {Object} board - The current board object
+ * @returns {JQuery}
+ */
+/**
+ * @param {{ name: string }} board
+ */
+function buildCombatSection(board) {
+    const section = $('<div class="wm-combat-section"></div>');
+    const currentEntry = getCurrentTurnEntry();
+    const currentMember = getCurrentActingMember();
+    const turnState = getCurrentTurnState();
+
+    // Banner
+    section.append(`<div class="wm-combat-banner"><i class="fa-solid fa-swords"></i> ${t`Combat Active`} — ${escapeHtml(board.name)}</div>`);
+
+    // Turn order
+    if (combatEncounter.turnOrder.length > 0) {
+        let turnHtml = '<div class="wm-combat-turn-order"><div class="wm-combat-turn-title">' + t`Initiative Order` + '</div><ol>';
+        combatEncounter.turnOrder.forEach((entry, idx) => {
+            const isCurrent = idx === combatEncounter.currentTurnIndex;
+            const enemyTag = entry.isEnemy ? ' <span class="wm-combat-enemy-tag">⚔️</span>' : '';
+            turnHtml += `<li class="${isCurrent ? 'wm-combat-turn-current' : ''}">${escapeHtml(entry.name)}${enemyTag} <span class="wm-combat-init">(${entry.initiative})</span></li>`;
+        });
+        turnHtml += '</ol></div>';
+        section.append(turnHtml);
+    }
+
+    // Enemy cards
+    if (combatEncounter.enemies.length > 0) {
+        const enemyGrid = $('<div class="wm-combat-enemy-grid"></div>');
+        for (const enemy of combatEncounter.enemies) {
+            const hpPct = enemy.maxHp > 0 ? Math.min(100, (enemy.currentHp / enemy.maxHp) * 100) : 0;
+            const isDead = enemy.currentHp <= 0;
+            const avatarHtml = enemy.avatar
+                ? `<img src="${escapeHtml(enemy.avatar)}" alt="" />`
+                : '<i class="fa-solid fa-skull fa-2x"></i>';
+            enemyGrid.append(`
+                <div class="wm-combat-enemy-card${isDead ? ' wm-combat-enemy-dead' : ''}">
+                    <div class="wm-combat-enemy-avatar">${avatarHtml}</div>
+                    <div class="wm-combat-enemy-info">
+                        <div class="wm-combat-enemy-name">${escapeHtml(enemy.name)}</div>
+                        <div class="wm-combat-enemy-stats">
+                            <span>HP: ${enemy.currentHp}/${enemy.maxHp}</span>
+                            <span>AC: ${enemy.armorClass}</span>
+                            <span>CR: ${enemy.cr}</span>
+                        </div>
+                        <div class="wm-combat-enemy-hp-bar">
+                            <div class="wm-combat-enemy-hp-fill" style="width:${hpPct}%"></div>
+                        </div>
+                    </div>
+                </div>
+            `);
+        }
+        section.append('<div class="wm-combat-enemies-title">' + t`Enemies` + '</div>');
+        section.append(enemyGrid);
+    }
+
+    if (currentEntry && !currentEntry.isEnemy && currentMember && turnState) {
+        const remainingFeet = getRemainingMovementFeet(currentMember);
+        const rangeFeet = getAttackRangeFeet(currentMember);
+        const targets = getAttackableEnemiesForMember(currentMember);
+        const memberX = Number.isFinite(Number(currentMember.mapPosition?.gridX)) ? Number(currentMember.mapPosition?.gridX) : 0;
+        const memberY = Number.isFinite(Number(currentMember.mapPosition?.gridY)) ? Number(currentMember.mapPosition?.gridY) : 0;
+        const nearestEnemyInfo = getAliveEnemies()
+            .map(enemy => ({
+                name: enemy.name,
+                distanceFeet: getDistanceInFeet(memberX, memberY, Number(enemy.gridX) || 0, Number(enemy.gridY) || 0),
+            }))
+            .sort((a, b) => a.distanceFeet - b.distanceFeet)[0] || null;
+        const targetChips = targets.length
+            ? targets.map(enemy => `<span class="wm-combat-chip attack">${escapeHtml(enemy.name)} · ${getDistanceInFeet(memberX, memberY, Number(enemy.gridX) || 0, Number(enemy.gridY) || 0)} ft</span>`).join('')
+            : `<span class="wm-combat-chip attack">${t`No enemies in range`}${nearestEnemyInfo ? ` · ${t`Nearest`}: ${escapeHtml(nearestEnemyInfo.name)} (${nearestEnemyInfo.distanceFeet} ft)` : ''}</span>`;
+
+        section.append(`
+            <div class="wm-combat-turn-panel">
+                <strong>${escapeHtml(currentMember.name)}</strong> · ${t`Your turn`}<br>
+                <div class="wm-combat-turn-help">${t`Action used`}: ${turnState.actionUsed ? t`yes` : t`no`} · ${t`Movement left`}: ${remainingFeet} ft · ${t`Attack range`}: ${rangeFeet} ft.</div>
+                <div class="wm-combat-chip-row">
+                    <span class="wm-combat-chip move">${t`Click your token to display movement range on the board`}</span>
+                    ${targetChips}
+                </div>
+                <div class="wm-combat-button-note">${t`Chat commands`}: /combat-attack &lt;target&gt;, /combat-move &lt;x&gt; &lt;y&gt;, /combat-end</div>
+            </div>
+        `);
+    }
+
+    // Action buttons
+    const btnRow = $('<div class="wm-combat-buttons"></div>');
+    const endTurnBtn = $(`<button class="menu_button"><i class="fa-solid fa-forward-step"></i> ${t`End Turn`}</button>`);
+    endTurnBtn.on('click', () => {
+        const nextEntry = endPlayerCombatTurn();
+        if (nextEntry) {
+            toastr.info(`🎯 ${t`Turn`}: ${nextEntry}`);
+        }
+    });
+    btnRow.append(endTurnBtn);
+    section.append(btnRow);
+
+    return section;
+}
+
 function renderLocationMapsPreview() {
     const container = $('#world_location_maps_list');
     if (!container.length) return;
 
+    container.empty();
+
+    const shell = $('<div class="wm-location-shell"></div>');
+    const toolbar = $(`
+        <div class="wm-location-toolbar">
+            <div class="wm-location-toolbar-title"><i class="fa-solid fa-map-location-dot"></i> ${t`Location Maps`}</div>
+            <div class="wm-location-toolbar-actions">
+                <button class="menu_button" data-location-toggle>${locationMapsManuallyHidden ? t`Open` : t`Hide`}</button>
+            </div>
+        </div>
+    `);
+    shell.append(toolbar);
+    container.append(shell);
+
+    toolbar.find('[data-location-toggle]').on('click', () => {
+        setLocationMapsVisibility(!locationMapsManuallyHidden);
+        renderLocationMapsPreview();
+    });
+
+    if (locationMapsManuallyHidden) {
+        shell.append(`<div class="wm-location-collapsed">${t`The location panel stays hidden until you open it manually.`}</div>`);
+        return;
+    }
+
+    const contentRoot = $('<div class="wm-location-content"></div>');
+    shell.append(contentRoot);
+
     const locationMaps = getCurrentWorldLocationMaps();
     if (!locationMaps || locationMaps.length === 0) {
-        container.html(`<div class="wm-empty-state">${t`No location maps available.`}</div>`);
+        contentRoot.html(`<div class="wm-empty-state">${t`No location maps available.`}</div>`);
         return;
     }
 
@@ -534,7 +1863,6 @@ function renderLocationMapsPreview() {
 
     // No location selected yet — show a chooser
     if (!loc) {
-        container.empty();
         let cards = '';
         for (const l of locationMaps) {
             const imgHtml = l.url
@@ -547,13 +1875,13 @@ function renderLocationMapsPreview() {
                 ${l.region ? `<div class="wm-loc-choose-region">${escapeHtml(l.region)}</div>` : ''}
             </div>`;
         }
-        container.html(`
+        contentRoot.html(`
             <div class="wm-loc-chooser">
                 <div class="wm-loc-chooser-title"><i class="fa-solid fa-compass"></i> ${t`Where are you?`}</div>
                 <div class="wm-loc-choose-grid">${cards}</div>
             </div>
         `);
-        container.find('.wm-loc-choose-card').on('click', function () {
+        contentRoot.find('.wm-loc-choose-card').on('click', function () {
             currentLocationName = String($(this).data('loc'));
             currentBoardName = '';
             saveCurrentLocation();
@@ -564,7 +1892,6 @@ function renderLocationMapsPreview() {
     }
 
     // Build view tabs (Location Name ↔ World)
-    container.empty();
     const viewTabs = $(`
         <div class="wm-view-tabs">
             <div class="wm-view-tab active" data-view="location"><i class="fa-solid fa-location-dot"></i> ${loc.name}</div>
@@ -578,8 +1905,8 @@ function renderLocationMapsPreview() {
         const view = $(this).data('view');
         viewTabs.find('.wm-view-tab').removeClass('active');
         $(this).addClass('active');
-        container.find('.wm-view-panel').removeClass('active');
-        container.find(`.wm-view-panel[data-view="${view}"]`).addClass('active');
+        contentRoot.find('.wm-view-panel').removeClass('active');
+        contentRoot.find(`.wm-view-panel[data-view="${view}"]`).addClass('active');
 
         if (view === 'world') {
             const mapUrl = getCurrentWorldMapUrl();
@@ -607,7 +1934,7 @@ function renderLocationMapsPreview() {
         renderLocationMapsPreview();
     });
 
-    container.append(leaveLocBtn, viewTabs, locationPanel, worldPanel);
+    contentRoot.append(leaveLocBtn, viewTabs, locationPanel, worldPanel);
 
     // Assign all party members without a location to the current location
     for (const m of partyMembers) {
@@ -621,7 +1948,7 @@ function renderLocationMapsPreview() {
 
     // ---- Board drill-down: if a board is selected, show it instead of the location ----
     const locBoards = getLocationBoards(loc);
-    const selectedBoard = locBoards.find(b => b.name === currentBoardName) || null;
+    const selectedBoard = locBoards.find(/** @param {{ name: string }} b */ (b) => b.name === currentBoardName) || null;
 
 
     if (selectedBoard) {
@@ -629,22 +1956,85 @@ function renderLocationMapsPreview() {
         const backBtn = $(`<button class="menu_button wm-leave-loc-btn"><i class="fa-solid fa-arrow-left"></i> ${t`Back to`} ${escapeHtml(loc.name)}</button>`);
         backBtn.on('click', () => {
             currentBoardName = '';
+            combatBoardSelection = { tokenId: null, boardName: '', locationName: '' };
             saveCurrentBoard();
             renderLocationMapsPreview();
         });
         const boardPanel = $('<div data-map-root></div>');
-        container.append(backBtn, boardPanel);
+        contentRoot.append(backBtn, boardPanel);
 
         const boardTokens = /** @type {import('./world-map-renderer.js').TokenData[]} */ (buildTokens(currentLocationName));
+        // Merge enemy tokens if combat is active on this board
+        const enemyTokens = combatEncounter.active ? buildEnemyTokens() : [];
+        const allBoardTokens = [...boardTokens, ...enemyTokens];
+        const tacticalState = getCombatBoardHighlightState(loc.gridWidth || 50, loc.gridHeight || 50);
+
+        // Determine which tokens can be dragged
+        let boardDraggableIds;
+        if (combatEncounter.active) {
+            const entry = getCurrentTurnEntry();
+            boardDraggableIds = (entry && !entry.isEnemy) ? [Number(entry.id)] : [];
+        } else {
+            boardDraggableIds = getControlledMemberIds();
+        }
+        const boardGridW = loc.gridWidth || 50;
+        const boardGridH = loc.gridHeight || 50;
+
         renderLocationView(boardPanel, {
             name: selectedBoard.name,
             imageUrl: selectedBoard.url,
             description: '',
-            gridWidth: loc.gridWidth || 50,
-            gridHeight: loc.gridHeight || 50,
-            tokens: boardTokens,
-            onTokenMove: (tokenId, gx, gy) => handleTokenMove(tokenId, gx, gy, currentLocationName),
+            gridWidth: boardGridW,
+            gridHeight: boardGridH,
+            viewStateKey: `board::${currentLocationName}::${selectedBoard.name}`,
+            tokens: allBoardTokens,
+            onTokenClick: (tokenId) => handleCombatTokenClick(tokenId),
+            selectedTokenId: tacticalState.selectedTokenId,
+            highlightedTokenIds: tacticalState.highlightedTokenIds,
+            highlightedCells: tacticalState.highlightedCells,
+            overlayLegend: tacticalState.overlayLegend,
+            draggableTokenIds: boardDraggableIds,
+            onTokenDragging: (tokenId, tentGX, tentGY) =>
+                buildDragHighlightCells(tokenId, tentGX, tentGY, boardGridW, boardGridH),
+            onTokenMove: (tokenId, gx, gy) => {
+                if (tokenId < 0) {
+                    handleEnemyTokenMove(tokenId, gx, gy);
+                    return;
+                }
+                if (combatEncounter.active) {
+                    const entry = getCurrentTurnEntry();
+                    if (entry && !entry.isEnemy && String(entry.id) === String(tokenId)) {
+                        const member = partyMembers.find(m => m.id === tokenId);
+                        if (member) {
+                            const originX = member.mapPosition?.gridX || 0;
+                            const originY = member.mapPosition?.gridY || 0;
+                            const distanceFeet = getDistanceInFeet(originX, originY, gx, gy);
+                            const remainingFeet = getRemainingMovementFeet(member);
+                            if (distanceFeet > remainingFeet) {
+                                toastr.warning(`Movimiento insuficiente. Necesitas ${distanceFeet} ft pero te quedan ${remainingFeet} ft.`);
+                                renderLocationMapsPreview();
+                                return;
+                            }
+                            const turnState = getCurrentTurnState();
+                            if (turnState) turnState.movementSpentFeet += distanceFeet;
+                            member.mapPosition = member.mapPosition || { locationName: '', gridX: 0, gridY: 0 };
+                            member.mapPosition.gridX = gx;
+                            member.mapPosition.gridY = gy;
+                            saveCombatState();
+                            renderLocationMapsPreview();
+                            return;
+                        }
+                    }
+                }
+                handleTokenMove(tokenId, gx, gy, currentLocationName);
+            },
         });
+
+        // ---- Combat UI section ----
+        if (combatEncounter.active) {
+            const combatSection = buildCombatSection(selectedBoard);
+            contentRoot.append(combatSection);
+        }
         return;
     }
 
@@ -655,7 +2045,9 @@ function renderLocationMapsPreview() {
         description: loc.description || '',
         gridWidth: loc.gridWidth || 50,
         gridHeight: loc.gridHeight || 50,
+        viewStateKey: `location::${loc.name}`,
         tokens,
+        draggableTokenIds: getControlledMemberIds(),
         onTokenMove: (tokenId, gx, gy) => handleTokenMove(tokenId, gx, gy, currentLocationName),
     });
 
@@ -680,10 +2072,11 @@ function renderLocationMapsPreview() {
         `);
         boardsSection.find('.wm-loc-choose-card').on('click', function () {
             currentBoardName = String($(this).data('board'));
+            combatBoardSelection = { tokenId: null, boardName: '', locationName: '' };
             saveCurrentBoard();
             renderLocationMapsPreview();
         });
-        container.append(boardsSection);
+        contentRoot.append(boardsSection);
     }
 }
 
@@ -793,7 +2186,7 @@ function buildCharacterSheetTab(member) {
 
     // Avatar file selected -> convert to data URL
     header.find('.dnd-avatar-input').on('change', function () {
-        const file = this.files?.[0];
+        const file = /** @type {HTMLInputElement} */ (this).files?.[0];
         if (!file) return;
         if (!file.type.startsWith('image/')) return;
         const reader = new FileReader();
@@ -1096,7 +2489,6 @@ function showEquipSelector(panel, member, slot) {
     });
 
     if (eligibleItems.length === 0) {
-        // @ts-ignore
         toastr.info(t`No items available for this slot.`);
         return;
     }
@@ -1524,7 +2916,6 @@ function buildRelationshipsTab(member) {
         const suggestions = analyzeRelationshipsFromChat(/** @type {any} */ (messages), member.name, otherNames);
 
         if (suggestions.length === 0) {
-            // @ts-ignore
             toastr.info(t`No relationship patterns found in chat.`);
             return;
         }
@@ -1543,11 +2934,9 @@ function buildRelationshipsTab(member) {
         }
 
         if (added > 0) {
-            // @ts-ignore
             toastr.success(`Found ${added} new relationship(s) from chat.`);
             renderRelationships();
         } else {
-            // @ts-ignore
             toastr.info(t`No new relationships found.`);
         }
     });
@@ -1883,17 +3272,17 @@ export function initPartyPanel() {
         return;
     }
 
+    loadLocationMapsVisibility();
+
     $('#party_add_button').off('click').on('click', async () => {
         const worldName = chat_metadata ? chat_metadata[METADATA_KEY] : null;
         if (!worldName) {
-            // @ts-ignore
             toastr.warning(t`No world info bound to this chat. Start a campaign first.`);
             return;
         }
 
-        const data = await loadWorldInfo(worldName);
+        const data = /** @type {any} */ (await loadWorldInfo(worldName));
         if (!data?.entries) {
-            // @ts-ignore
             toastr.warning(t`Could not load world info entries.`);
             return;
         }
@@ -1914,7 +3303,6 @@ export function initPartyPanel() {
         }
 
         if (charEntries.length === 0) {
-            // @ts-ignore
             toastr.info(t`No available characters to add. All characters from this world are already in the party.`);
             return;
         }
@@ -1983,7 +3371,7 @@ export function initPartyPanel() {
     });
 
     /**
-     * @param {'party'|'world_map'|'location'} tab
+     * @param {'party'|'world_map'|'location'|'board'} tab
      */
     function setPartyTab(tab) {
         const worldMapRow = $('#world_map_row');
@@ -2058,11 +3446,11 @@ export function initPartyPanel() {
         const globalBoards = getCurrentWorldBoards();
         console.log('[party] boardEnumProvider', { currentLocationName, loc: loc?.name, locBoardsLength: locBoards.length, locBoards, globalBoardsLength: globalBoards.length });
         if (locBoards.length > 0) {
-            return locBoards.map(b => new SlashCommandEnumValue(b.name));
+            return locBoards.map((/** @type {any} */ b) => new SlashCommandEnumValue(b.name));
         }
         if (globalBoards.length > 0) {
             console.log('[party] boardEnumProvider fallback to global boards', { globalBoards });
-            return globalBoards.map(b => new SlashCommandEnumValue(b.name));
+            return globalBoards.map((/** @type {any} */ b) => new SlashCommandEnumValue(b.name));
         }
         return [];
     }
@@ -2126,7 +3514,7 @@ export function initPartyPanel() {
                 }
             }
             console.log('[party] /enter lookup', { loc, boards, usedFallback });
-            const match = boards.find(b => b.name.toLowerCase() === name.toLowerCase());
+            const match = boards.find((/** @type {any} */ b) => b.name.toLowerCase() === name.toLowerCase());
             console.log('[party] /enter match', { match });
             if (!match) {
                 toastr.warning(`Board "${name}" not found at ${currentLocationName}.`);
@@ -2171,13 +3559,168 @@ export function initPartyPanel() {
     }));
 
     // ================================================================
+    //  Slash command: /fight
+    // ================================================================
+
+    /** Helper: enum provider listing enemies at the current board */
+    function enemyEnumProvider() {
+        const loc = getCurrentWorldLocationMaps().find(l => l.name === currentLocationName);
+        const boards = getLocationBoards(loc);
+        const board = boards.find((/** @type {any} */ b) => b.name === currentBoardName);
+        if (!board || !board.isCombat || !Array.isArray(board.encounterRules) || !board.encounterRules.length) return [];
+        const globalEnemies = getCurrentWorldEnemies();
+        return board.encounterRules.map((/** @type {any} */ r) => {
+            const template = globalEnemies.find(e => e.id === r.enemyId);
+            if (!template) return null;
+            return new SlashCommandEnumValue(template.name, `${r.minCount}-${r.maxCount} | HP:${template.hp} AC:${template.armorClass} CR:${template.cr}`);
+        }).filter(Boolean);
+    }
+
+    function currentTurnTargetEnumProvider() {
+        const member = getCurrentActingMember();
+        if (!member) return [];
+        return getAttackableEnemiesForMember(member).map(enemy => new SlashCommandEnumValue(
+            enemy.name,
+            `${getDistanceInFeet(member.mapPosition?.gridX || 0, member.mapPosition?.gridY || 0, enemy.gridX || 0, enemy.gridY || 0)} ft | HP:${enemy.currentHp}/${enemy.maxHp} AC:${enemy.armorClass}`,
+        ));
+    }
+
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'fight',
+        helpString: '<div>Start a combat encounter. Usage: <code>/fight Goblin 3</code></div>',
+        unnamedArgumentList: [
+            SlashCommandArgument.fromProps({
+                description: 'Enemy name and optional count (e.g. "Goblin 3")',
+                typeList: [ARGUMENT_TYPE.STRING],
+                isRequired: true,
+                enumProvider: enemyEnumProvider,
+            }),
+        ],
+        callback: (_args, value) => {
+            const raw = String(value).trim();
+            // Parse "EnemyName N" or just "EnemyName"
+            const countMatch = raw.match(/^(.+?)\s+(\d+)$/);
+            const enemyName = countMatch ? countMatch[1].trim() : raw;
+            const countOverride = countMatch ? parseInt(countMatch[2], 10) : 0;
+
+            if (!currentLocationName) {
+                toastr.warning(t`Choose a location first (/go).`);
+                return '';
+            }
+            if (!currentBoardName) {
+                toastr.warning(t`Enter a board first (/enter).`);
+                return '';
+            }
+
+            const loc = getCurrentWorldLocationMaps().find(l => l.name === currentLocationName);
+            const boards = getLocationBoards(loc);
+            const board = boards.find((/** @type {any} */ b) => b.name === currentBoardName);
+
+            if (!board || !board.isCombat) {
+                toastr.warning(t`This board is not a combat board.`);
+                return '';
+            }
+
+            const globalEnemies = getCurrentWorldEnemies();
+            const rule = (board.encounterRules || []).find((/** @type {any} */ r) => {
+                const tmpl = globalEnemies.find(e => e.id === r.enemyId);
+                return tmpl && tmpl.name.toLowerCase() === enemyName.toLowerCase();
+            });
+            if (!rule) {
+                toastr.warning(`Enemy "${enemyName}" not found in encounter rules for this board.`);
+                return '';
+            }
+
+            const template = globalEnemies.find(e => e.id === rule.enemyId);
+            if (!template) {
+                toastr.warning(`Enemy template not found in world enemy pool.`);
+                return '';
+            }
+
+            const gw = loc?.gridWidth || 50;
+            const gh = loc?.gridHeight || 50;
+            const count = countOverride > 0
+                ? countOverride
+                : Math.floor(Math.random() * (rule.maxCount - rule.minCount + 1)) + rule.minCount;
+            const summary = startCombat(template, count, gw, gh);
+
+            toastr.success(`⚔️ ${t`Combat started!`}\n${summary}`, '', { timeOut: 8000 });
+
+            // Re-render board to show enemy tokens + combat UI
+            setPartyTab('location');
+            return summary;
+        },
+    }));
+
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'combat-attack',
+        helpString: '<div>Attack an enemy during your current turn. Usage: <code>/combat-attack Goblin 1</code></div>',
+        unnamedArgumentList: [
+            SlashCommandArgument.fromProps({
+                description: 'Enemy name in range',
+                typeList: [ARGUMENT_TYPE.STRING],
+                isRequired: true,
+                enumProvider: currentTurnTargetEnumProvider,
+            }),
+        ],
+        callback: (_args, value) => handlePlayerCombatAttack(String(value || '')),
+    }));
+
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'combat-move',
+        helpString: '<div>Move your current combatant on the board. Usage: <code>/combat-move 12 8</code></div>',
+        unnamedArgumentList: [
+            SlashCommandArgument.fromProps({
+                description: 'Target coordinates X Y',
+                typeList: [ARGUMENT_TYPE.STRING],
+                isRequired: true,
+            }),
+        ],
+        callback: (_args, value) => handlePlayerCombatMove(String(value || '')),
+    }));
+
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'combat-end',
+        helpString: '<div>End the current player turn and advance combat.</div>',
+        callback: () => endPlayerCombatTurn(),
+    }));
+
+    // ================================================================
     //  Auto-detect location / board names in user messages
     // ================================================================
 
-    eventSource.on(event_types.USER_MESSAGE_RENDERED, (messageId) => {
+    eventSource.on(event_types.USER_MESSAGE_RENDERED, (/** @type {number} */ messageId) => {
         const message = chat[messageId];
         if (!message || !message.mes) return;
         const text = message.mes.toLowerCase();
+
+        // ── Natural-language combat commands (only while combat is active) ──
+        if (combatEncounter.active) {
+            const currentEntry = getCurrentTurnEntry();
+            if (currentEntry && !currentEntry.isEnemy) {
+                // Attack: "ataco a X", "ataco al X", "attack X", "i attack X"
+                const attackMatch = text.match(/(?:ataco\s+(?:a\s+(?:la?\s+)?)?|attack\s+(?:the\s+)?|i\s+attack\s+(?:the\s+)?)(.+)/i);
+                if (attackMatch) {
+                    const targetName = attackMatch[1].trim().replace(/[.!?]$/, '');
+                    handlePlayerCombatAttack(targetName);
+                    return;
+                }
+
+                // Move: "me muevo a X Y", "me desplazo a X,Y", "move to X Y", "i move to X,Y"
+                const moveMatch = text.match(/(?:me\s+(?:muevo|desplazo)(?:\s+(?:a|hacia))?\s+|(?:i\s+)?move\s+(?:to\s+)?)(\d+)[,\s]+(\d+)/i);
+                if (moveMatch) {
+                    handlePlayerCombatMove(`${moveMatch[1]} ${moveMatch[2]}`);
+                    return;
+                }
+
+                // End turn: "paso turno", "termino turno", "fin de turno", "paso mi turno", "end turn", "pass turn", "skip turn"
+                const endTurnMatch = text.match(/\b(?:paso\s+(?:mi\s+)?turno|termino\s+(?:mi\s+)?turno|fin\s+(?:de\s+)?turno|end\s+turn|pass\s+turn|skip\s+turn)\b/i);
+                if (endTurnMatch) {
+                    endPlayerCombatTurn();
+                    return;
+                }
+            }
+        }
 
         const locs = getCurrentWorldLocationMaps();
         if (!locs || locs.length === 0) return;

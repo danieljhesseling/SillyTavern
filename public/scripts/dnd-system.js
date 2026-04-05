@@ -48,6 +48,61 @@
  */
 
 /**
+ * @typedef {Object} EnemyTemplate
+ * @property {string} id
+ * @property {string} name
+ * @property {string} avatar - Image URL or empty string
+ * @property {number} hp
+ * @property {number} maxHp
+ * @property {number} armorClass
+ * @property {number} strength
+ * @property {number} dexterity
+ * @property {number} constitution
+ * @property {number} intelligence
+ * @property {number} wisdom
+ * @property {number} charisma
+ * @property {number} speed
+ * @property {number} cr - Challenge rating
+ */
+
+/**
+ * @typedef {Object} EnemyInstance
+ * @property {string} instanceId - Unique per-encounter instance id
+ * @property {string} templateId - References EnemyTemplate.id
+ * @property {string} name - Display name (may include index, e.g. "Goblin 2")
+ * @property {string} avatar
+ * @property {number} currentHp
+ * @property {number} maxHp
+ * @property {number} armorClass
+ * @property {number} strength
+ * @property {number} dexterity
+ * @property {number} constitution
+ * @property {number} intelligence
+ * @property {number} wisdom
+ * @property {number} charisma
+ * @property {number} speed
+ * @property {number} cr
+ * @property {number} gridX
+ * @property {number} gridY
+ */
+
+/**
+ * @typedef {Object} TurnEntry
+ * @property {string} id - PartyMember id or EnemyInstance instanceId
+ * @property {string} name
+ * @property {number} initiative
+ * @property {boolean} isEnemy
+ */
+
+/**
+ * @typedef {Object} CombatEncounter
+ * @property {boolean} active
+ * @property {EnemyInstance[]} enemies
+ * @property {TurnEntry[]} turnOrder
+ * @property {number} currentTurnIndex
+ */
+
+/**
  * @typedef {Object} DndCharacterData
  * @property {number} strength
  * @property {number} dexterity
@@ -125,6 +180,58 @@ export function generateItemId() {
  */
 export function generateMemoryId() {
     return `mem_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+}
+
+/**
+ * Generate a unique enemy template ID
+ * @returns {string}
+ */
+export function generateEnemyId() {
+    return `enemy_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+}
+
+/**
+ * Generate a unique enemy instance ID for a combat encounter
+ * @returns {string}
+ */
+export function generateEnemyInstanceId() {
+    return `einst_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+}
+
+/**
+ * Returns a default EnemyTemplate object
+ * @returns {EnemyTemplate}
+ */
+export function getDefaultEnemyTemplate() {
+    return {
+        id: generateEnemyId(),
+        name: '',
+        avatar: '',
+        hp: 10,
+        maxHp: 10,
+        armorClass: 10,
+        strength: 10,
+        dexterity: 10,
+        constitution: 10,
+        intelligence: 10,
+        wisdom: 10,
+        charisma: 10,
+        speed: 30,
+        cr: 0.25,
+    };
+}
+
+/**
+ * Roll initiative for a combatant (1d20 + DEX modifier, D&D 5e)
+ * @param {number} dexterity - Ability score
+ * @returns {number} Initiative total
+ */
+export function rollInitiative(dexterity) {
+    const mod = getAbilityModifier(dexterity);
+    // @ts-ignore — droll is globally available via lib.js
+    const roll = window.droll?.roll('1d20');
+    const d20 = roll ? roll.total : Math.floor(Math.random() * 20) + 1;
+    return d20 + mod;
 }
 
 /**

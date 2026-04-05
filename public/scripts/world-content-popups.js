@@ -168,7 +168,7 @@ function getDefaults(cat) {
         case 'Factions': return { image: '', source: '', description: '', color: '#333333', members: '' };
         case 'Monsters': return {
             image: '', source: '', cr: '', monsterType: '', size: '',
-            hpRange: '', ac: 0, xp: 0, languages: '',
+            hpRange: '', maxHp: 0, ac: 0, xp: 0, languages: '',
             description: '', appearance: '',
             dmgVulnerabilities: '', dmgResistances: '', dmgImmunities: '', condImmunities: '',
             darkvision: '', passivePerception: 0,
@@ -294,6 +294,7 @@ function buildMonsterForm(d) {
                 ${row('CR', inp('cr', d.cr, '1/4, 1, 5...'))}
                 ${row('Type', inp('monsterType', d.monsterType, 'Beast, Undead, Giant...'))}
                 ${row('Size', sel('size', d.size, SIZES))}
+                ${row('Max HP', num('maxHp', d.maxHp, '10'))}
                 ${row('HP Range', inp('hpRange', d.hpRange, '126 (13d12 + 39)'))}
                 ${row('XP', num('xp', d.xp, '2900'))}
                 ${row('Languages', inp('languages', d.languages, 'Undercommon, fragments...'))}

@@ -75,7 +75,7 @@ import {
     getGroupDepthPrompts,
 } from './scripts/group-chats.js';
 
-import { initPartyPanel, getPartyDescription, getActivePartyLeader } from './scripts/party.js';
+import { initPartyPanel, getPartyDescription, getActivePartyLeader, getCombatEncounter } from './scripts/party.js';
 import { initActiveInstructions, injectCustomInstructions } from './scripts/active-instructions.js';
 import './scripts/world-content-browser.js';
 import './scripts/campaigns.js';
@@ -3205,6 +3205,27 @@ function addPersonaDescriptionExtensionPrompt() {
         setExtensionPrompt('LOCATION_CONTEXT', lines.join('\n'), extension_prompt_types.IN_PROMPT, 0, false, extension_prompt_roles.SYSTEM);
     } else {
         setExtensionPrompt('LOCATION_CONTEXT', '', extension_prompt_types.IN_PROMPT, 0);
+    }
+
+    // Inject combat encounter context
+    const encounter = getCombatEncounter();
+    if (encounter && encounter.active && encounter.enemies.length > 0) {
+        const combatLines = ['[SYSTEM: COMBAT]'];
+        combatLines.push(`Combate activo en: ${currentBoardName || 'Unknown'}`);
+        combatLines.push('Enemigos:');
+        for (const e of encounter.enemies) {
+            combatLines.push(`- ${e.name}: HP ${e.currentHp}/${e.maxHp}, AC ${e.armorClass}, CR ${e.cr}`);
+        }
+        if (encounter.turnOrder.length > 0) {
+            combatLines.push('Orden de iniciativa:');
+            encounter.turnOrder.forEach((t, i) => {
+                const marker = i === encounter.currentTurnIndex ? ' ← turno actual' : '';
+                combatLines.push(`${i + 1}. ${t.name} (${t.initiative})${t.isEnemy ? ' [enemigo]' : ''}${marker}`);
+            });
+        }
+        setExtensionPrompt('COMBAT_CONTEXT', combatLines.join('\n'), extension_prompt_types.IN_PROMPT, 0, false, extension_prompt_roles.SYSTEM);
+    } else {
+        setExtensionPrompt('COMBAT_CONTEXT', '', extension_prompt_types.IN_PROMPT, 0);
     }
 
     // Inject user-defined custom instructions from chat_metadata
@@ -12228,11 +12249,15 @@ jQuery(async function () {
         // This autocloses open drawers that are not pinned if a click happens inside the app which does not target them.
         const targetParentHasOpenDrawer = clickTarget.parents('.openDrawer').length;
         if (!clickTarget.hasClass('drawer-icon') && !clickTarget.hasClass('openDrawer')) {
-            const $openDrawers = $('.openDrawer').not('.pinnedOpen');
+            const $openDrawers = $('.openDrawer').not('.pinnedOpen').not('#right-nav-panel');
             if ($openDrawers.length && targetParentHasOpenDrawer === 0) {
-                // Toggle icon and drawer classes
-                $('.openIcon').not('.drawerPinnedOpen').toggleClass('closedIcon openIcon');
-                $openDrawers.toggleClass('closedDrawer openDrawer');
+                // Toggle only icons that belong to drawers being auto-closed.
+                for (const drawerEl of $openDrawers) {
+                    const $drawer = $(drawerEl);
+                    const $icon = $drawer.siblings('.drawer-toggle').find('.drawer-icon.openIcon').not('.drawerPinnedOpen');
+                    $icon.toggleClass('closedIcon openIcon');
+                    $drawer.toggleClass('closedDrawer openDrawer');
+                }
             }
         }
     });

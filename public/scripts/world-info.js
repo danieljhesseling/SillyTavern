@@ -67,6 +67,7 @@ export let selected_world_info = [];
 export let current_world_map_url = '';
 export let current_world_location_maps = [];
 export let current_world_boards = [];
+export let current_world_enemies = [];
 export let current_world_info_name = '';
 
 export function getCurrentWorldMapUrl() {
@@ -77,6 +78,63 @@ export function getCurrentWorldLocationMaps() {
 }
 export function getCurrentWorldBoards() {
     return current_world_boards;
+}
+export function getCurrentWorldEnemies() {
+    return current_world_enemies;
+}
+
+/**
+ * Converts world-info entries in group "Monsters" to combat enemy templates.
+ * @param {any} data
+ * @returns {Array<any>}
+ */
+function extractWorldMonsterTemplates(data) {
+    if (!data?.entries || typeof data.entries !== 'object') return [];
+
+    const toNumber = (value, fallback) => {
+        const n = Number(value);
+        return Number.isFinite(n) ? n : fallback;
+    };
+
+    const getName = (entry, uid) => {
+        if (entry.comment && String(entry.comment).trim()) return String(entry.comment).trim();
+        if (Array.isArray(entry.key) && entry.key.length) return String(entry.key[0]).trim();
+        if (entry.key && String(entry.key).trim()) return String(entry.key).trim();
+        return `Monster ${uid}`;
+    };
+
+    const isMonster = (entry) => {
+        const group = String(entry?.group || '').trim().toLowerCase();
+        if (!group) return false;
+        return group === 'monster' || group === 'monsters' || group.includes('monster');
+    };
+
+    const monsters = [];
+    for (const uid of Object.keys(data.entries)) {
+        const entry = data.entries[uid];
+        if (!entry || !isMonster(entry)) continue;
+
+        const d = entry.dndData || {};
+        const hp = toNumber(d.maxHp ?? d.hp, 10);
+        monsters.push({
+            id: String(uid),
+            name: getName(entry, uid),
+            avatar: String(d.image || d.avatar || ''),
+            hp,
+            maxHp: hp,
+            armorClass: toNumber(d.ac ?? d.armorClass, 10),
+            strength: toNumber(d.str ?? d.strength, 10),
+            dexterity: toNumber(d.dex ?? d.dexterity, 10),
+            constitution: toNumber(d.con ?? d.constitution, 10),
+            intelligence: toNumber(d.int ?? d.intelligence, 10),
+            wisdom: toNumber(d.wis ?? d.wisdom, 10),
+            charisma: toNumber(d.cha ?? d.charisma, 10),
+            speed: toNumber(d.speed, 30),
+            cr: toNumber(d.cr, 0.25),
+        });
+    }
+
+    return monsters;
 }
 
 /**
@@ -91,6 +149,7 @@ export async function refreshWorldMapGlobals(worldName) {
     current_world_map_url = data.metadata?.worldMapUrl || data.metadata?.mapUrl || '';
     current_world_location_maps = Array.isArray(data.metadata?.locationMaps) ? data.metadata.locationMaps : [];
     current_world_boards = Array.isArray(data.metadata?.boards) ? data.metadata.boards : [];
+    current_world_enemies = extractWorldMonsterTemplates(data);
     $(document).trigger('worldMapUpdated', [current_world_map_url]);
     $(document).trigger('worldLocationMapsUpdated', [current_world_location_maps]);
     $(document).trigger('worldBoardsUpdated', [current_world_boards]);
@@ -1082,6 +1141,7 @@ export function setWorldInfoSettings(settings, data) {
                     current_world_map_url = data.metadata?.worldMapUrl || data.metadata?.mapUrl || '';
                     current_world_location_maps = Array.isArray(data.metadata?.locationMaps) ? data.metadata.locationMaps : [];
                     current_world_boards = Array.isArray(data.metadata?.boards) ? data.metadata.boards : [];
+                    current_world_enemies = extractWorldMonsterTemplates(data);
                     $(document).trigger('worldMapUpdated', [current_world_map_url]);
                     $(document).trigger('worldLocationMapsUpdated', [current_world_location_maps]);
                     $(document).trigger('worldBoardsUpdated', [current_world_boards]);
@@ -2397,6 +2457,7 @@ async function displayWorldEntries(name, data, navigation = navigation_option.no
         current_world_map_url = '';
         current_world_location_maps = [];
         current_world_boards = [];
+        current_world_enemies = [];
         $(document).trigger('worldMapUpdated', ['']);
         $(document).trigger('worldLocationMapsUpdated', [current_world_location_maps]);
         $(document).trigger('worldBoardsUpdated', [current_world_boards]);
@@ -2415,6 +2476,7 @@ async function displayWorldEntries(name, data, navigation = navigation_option.no
     current_world_map_url = data.metadata?.worldMapUrl || data.metadata?.mapUrl || '';
     current_world_location_maps = Array.isArray(data.metadata?.locationMaps) ? data.metadata.locationMaps : [];
     current_world_boards = Array.isArray(data.metadata?.boards) ? data.metadata.boards : [];
+    current_world_enemies = extractWorldMonsterTemplates(data);
 
     $(document).trigger('worldMapUpdated', [current_world_map_url]);
     $(document).trigger('worldLocationMapsUpdated', [current_world_location_maps]);
@@ -2608,6 +2670,9 @@ async function displayWorldEntries(name, data, navigation = navigation_option.no
         // ---- Mutable copies for locations (edited via sub-popups) ----
         let locationMaps = JSON.parse(JSON.stringify(initialLocationMaps));
 
+        // Monsters come from world entries (group: Monsters), not from metadata.
+        const worldMonsters = extractWorldMonsterTemplates(data);
+
         // ---- Migrate old boardName → per-location boards array ----
         const boardsLookup = initialBoards;
         locationMaps.forEach(loc => {
@@ -2694,6 +2759,7 @@ async function displayWorldEntries(name, data, navigation = navigation_option.no
                 <button id="wm_add_location" class="wm-add-btn"><i class="fa-solid fa-plus"></i> ${t`Add Location`}</button>
                 </div>
             </div>
+
         `;
 
         // ---- Render location cards ----
@@ -2881,7 +2947,7 @@ async function displayWorldEntries(name, data, navigation = navigation_option.no
                     // Add Board button
                     inst.dlg.querySelector('#wm_le_add_board')?.addEventListener('click', async (e) => {
                         e.preventDefault();
-                        const newBoard = await openBoardEditor({ name: '', url: '' });
+                        const newBoard = await openBoardEditor({ name: '', url: '', isCombat: false, encounterRules: [] });
                         if (newBoard) {
                             locBoards.push(newBoard);
                             refreshBoardCards(inst.dlg);
@@ -2912,6 +2978,50 @@ async function displayWorldEntries(name, data, navigation = navigation_option.no
 
         // ---- Sub-popup: Board Editor ----
         async function openBoardEditor(board) {
+            const isCombatInitial = !!board.isCombat;
+
+            // Build a map of existing encounter rules for quick lookup
+            const rulesMap = /** @type {Record<string, {minCount:number, maxCount:number}>} */ ({});
+            for (const r of (board.encounterRules || [])) {
+                rulesMap[r.enemyId] = { minCount: r.minCount ?? 1, maxCount: r.maxCount ?? 3 };
+            }
+
+            function buildEncounterRulesHtml() {
+                if (!worldMonsters.length) {
+                    return `<div style="opacity:0.5;font-style:italic;padding:8px 0;">${t`No Monsters found in this world. Add entries in the Monsters tab first.`}</div>`;
+                }
+                let html = '';
+                worldMonsters.forEach(enemy => {
+                    const rule = rulesMap[enemy.id];
+                    const enabled = !!rule;
+                    const minVal = rule ? rule.minCount : 1;
+                    const maxVal = rule ? rule.maxCount : 3;
+                    const imgHtml = enemy.avatar
+                        ? `<img src="${escapeHtml(enemy.avatar)}" alt="" />`
+                        : '<i class="fa-solid fa-skull fa-2x" style="opacity:0.3;"></i>';
+                    html += `
+                    <div class="wm-card wm-enemy-rule" data-enemy-id="${escapeHtml(enemy.id)}" style="cursor:default;">
+                        <div class="wm-card-img" style="height:70px;">${imgHtml}</div>
+                        <div class="wm-card-body">
+                            <div class="wm-card-name">${escapeHtml(enemy.name || t`Unnamed`)}</div>
+                            <div class="wm-card-meta">HP: ${enemy.hp ?? '?'} | AC: ${enemy.armorClass ?? '?'} | CR: ${enemy.cr ?? '?'}</div>
+                        </div>
+                        <div class="wm-card-rule-footer">
+                            <label style="display:flex;align-items:center;gap:4px;font-size:0.8em;cursor:pointer;">
+                                <input type="checkbox" class="wm-rule-toggle" data-enemy-id="${escapeHtml(enemy.id)}" ${enabled ? 'checked' : ''} />
+                                ${t`Include`}
+                            </label>
+                            <div class="wm-rule-range" style="display:${enabled ? 'flex' : 'none'};gap:4px;align-items:center;font-size:0.8em;margin-top:4px;">
+                                <input type="number" class="text_pole wm-rule-min" data-enemy-id="${escapeHtml(enemy.id)}" value="${minVal}" min="1" max="99" style="width:45px;padding:2px 4px;" />
+                                <span>–</span>
+                                <input type="number" class="text_pole wm-rule-max" data-enemy-id="${escapeHtml(enemy.id)}" value="${maxVal}" min="1" max="99" style="width:45px;padding:2px 4px;" />
+                            </div>
+                        </div>
+                    </div>`;
+                });
+                return html;
+            }
+
             const el = document.createElement('div');
             el.innerHTML = `
                 <div class="wm-field">
@@ -2928,6 +3038,20 @@ async function displayWorldEntries(name, data, navigation = navigation_option.no
                         <button id="wm_be_upload_btn" class="menu_button fa-solid fa-upload"> ${t`Upload Image`}</button>
                         <span id="wm_be_upload_name" class="wm-upload-filename">${board.url ? board.url : t`No file selected`}</span>
                         <input type="file" class="text_pole" id="wm_be_file" accept="image/*" style="display:none" />
+                    </div>
+                </div>
+                <div class="wm-field" style="margin-top:8px;">
+                    <label class="wm-label checkbox_label" style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                        <input type="checkbox" id="wm_be_combat" ${isCombatInitial ? 'checked' : ''} />
+                        <i class="fa-solid fa-swords" style="color:#ef4444;"></i> ${t`Is Combat Board?`}
+                    </label>
+                </div>
+                <div id="wm_be_enemies_section" style="display:${isCombatInitial ? 'block' : 'none'};">
+                    <div class="wm-field">
+                        <label class="wm-label"><i class="fa-solid fa-skull-crossbones"></i> ${t`Encounter Rules`}</label>
+                        <div class="wm-card-grid wm-enemy-grid" id="wm_be_enemies_grid" style="grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));">
+                            ${buildEncounterRulesHtml()}
+                        </div>
                     </div>
                 </div>
             `;
@@ -2958,6 +3082,28 @@ async function displayWorldEntries(name, data, navigation = navigation_option.no
                             reader.readAsDataURL(file);
                         });
                     }
+
+                    // Toggle combat section visibility
+                    const combatCheckbox = inst.dlg.querySelector('#wm_be_combat');
+                    const enemiesSection = inst.dlg.querySelector('#wm_be_enemies_section');
+                    if (combatCheckbox instanceof HTMLInputElement && enemiesSection instanceof HTMLElement) {
+                        combatCheckbox.addEventListener('change', () => {
+                            enemiesSection.style.display = combatCheckbox.checked ? 'block' : 'none';
+                        });
+                    }
+
+                    // Toggle min/max range visibility when individual checkboxes change
+                    inst.dlg.querySelectorAll('.wm-rule-toggle').forEach(cb => {
+                        if (!(cb instanceof HTMLInputElement)) return;
+                        cb.addEventListener('change', () => {
+                            const enemyId = cb.getAttribute('data-enemy-id');
+                            const card = inst.dlg.querySelector(`.wm-enemy-rule[data-enemy-id="${enemyId}"]`);
+                            const rangeDiv = card?.querySelector('.wm-rule-range');
+                            if (rangeDiv instanceof HTMLElement) {
+                                rangeDiv.style.display = cb.checked ? 'flex' : 'none';
+                            }
+                        });
+                    });
                 },
             });
 
@@ -2967,9 +3113,25 @@ async function displayWorldEntries(name, data, navigation = navigation_option.no
             const dlg = subPopup.dlg;
             const nameEl = dlg.querySelector('#wm_be_name');
             const urlEl = dlg.querySelector('#wm_be_url');
+            const combatEl = dlg.querySelector('#wm_be_combat');
+
+            // Collect enabled encounter rules from the dialog
+            const encounterRules = [];
+            dlg.querySelectorAll('.wm-rule-toggle').forEach(cb => {
+                if (!(cb instanceof HTMLInputElement) || !cb.checked) return;
+                const enemyId = cb.getAttribute('data-enemy-id') || '';
+                const minInput = dlg.querySelector(`.wm-rule-min[data-enemy-id="${enemyId}"]`);
+                const maxInput = dlg.querySelector(`.wm-rule-max[data-enemy-id="${enemyId}"]`);
+                const minCount = minInput instanceof HTMLInputElement ? (parseInt(minInput.value, 10) || 1) : 1;
+                const maxCount = maxInput instanceof HTMLInputElement ? (parseInt(maxInput.value, 10) || 1) : minCount;
+                encounterRules.push({ enemyId, minCount, maxCount: Math.max(minCount, maxCount) });
+            });
+
             return {
                 name: nameEl instanceof HTMLInputElement ? nameEl.value.trim() : '',
                 url: urlEl instanceof HTMLInputElement ? urlEl.value.trim() : '',
+                isCombat: combatEl instanceof HTMLInputElement ? combatEl.checked : false,
+                encounterRules,
             };
         }
 
