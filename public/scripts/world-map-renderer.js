@@ -217,6 +217,7 @@ export function renderAxes(container, state, imgSize, coordRange) {
  * @property {number} [gridWidth]
  * @property {number} [gridHeight]
  * @property {string} [boardName]
+ * @property {Array<{name: string, url: string}>} [boards]
  */
 
 /**

@@ -74,7 +74,8 @@ import {
     getGroupDepthPrompts,
 } from './scripts/group-chats.js';
 
-import { initPartyPanel, getPartyDescription } from './scripts/party.js';
+import { initPartyPanel, getPartyDescription, getActivePartyLeader } from './scripts/party.js';
+import { initActiveInstructions, injectCustomInstructions } from './scripts/active-instructions.js';
 import './scripts/world-content-browser.js';
 import './scripts/campaigns.js';
 
@@ -759,6 +760,7 @@ async function firstLoadInit() {
     await getCharacters();
     await getBackgrounds();
     initPartyPanel();
+    initActiveInstructions();
     await initTokenizers();
     initBackgrounds();
     initAuthorsNote();
@@ -3130,25 +3132,44 @@ function addPersonaDescriptionExtensionPrompt() {
     const INJECT_TAG = 'PERSONA_DESCRIPTION';
     setExtensionPrompt(INJECT_TAG, '', extension_prompt_types.IN_PROMPT, 0);
 
-    const currentDescriptor = power_user.persona_descriptions?.[user_avatar] || {};
-    const playerState = currentDescriptor.player_state || null;
+    // When a party is active, use party leader data instead of the global persona
+    const partyLeader = getActivePartyLeader();
 
-    if (playerState) {
+    if (partyLeader) {
         const playerStateLines = [
             '[SYSTEM: PLAYER_STATE]',
-            `HP: ${playerState.hp_current ?? 0}/${playerState.hp_max ?? 0}`,
-            `EXP: ${playerState.xp_current ?? 0}/${playerState.xp_next ?? 0}`,
-            `Nivel: ${playerState.level ?? 1}`,
-            `Oro: ${playerState.gold ?? 0}`,
-            `Plata: ${playerState.silver ?? 0}`,
-            `Cobre: ${playerState.copper ?? 0}`,
-            `Inventario: ${playerState.inventory || ''}`,
-            `Estado: ${playerState.conditions || ''}`,
+            `HP: ${partyLeader.hp ?? 0}/${partyLeader.maxHp ?? 0}`,
+            `EXP: ${partyLeader.xp ?? 0}/${partyLeader.xpNext ?? 0}`,
+            `Nivel: ${partyLeader.level ?? 1}`,
+            `Oro: ${partyLeader.gold ?? 0}`,
+            `Plata: ${partyLeader.silver ?? 0}`,
+            `Cobre: ${partyLeader.copper ?? 0}`,
+            `Inventario: ${partyLeader.inventory || ''}`,
+            `Estado: ${partyLeader.conditions || ''}`,
         ].join('\n');
 
         setExtensionPrompt('PERSONA_PLAYER_STATE', playerStateLines, extension_prompt_types.IN_PROMPT, 0, false, extension_prompt_roles.SYSTEM);
     } else {
-        setExtensionPrompt('PERSONA_PLAYER_STATE', '', extension_prompt_types.IN_PROMPT, 0);
+        const currentDescriptor = power_user.persona_descriptions?.[user_avatar] || {};
+        const playerState = currentDescriptor.player_state || null;
+
+        if (playerState) {
+            const playerStateLines = [
+                '[SYSTEM: PLAYER_STATE]',
+                `HP: ${playerState.hp_current ?? 0}/${playerState.hp_max ?? 0}`,
+                `EXP: ${playerState.xp_current ?? 0}/${playerState.xp_next ?? 0}`,
+                `Nivel: ${playerState.level ?? 1}`,
+                `Oro: ${playerState.gold ?? 0}`,
+                `Plata: ${playerState.silver ?? 0}`,
+                `Cobre: ${playerState.copper ?? 0}`,
+                `Inventario: ${playerState.inventory || ''}`,
+                `Estado: ${playerState.conditions || ''}`,
+            ].join('\n');
+
+            setExtensionPrompt('PERSONA_PLAYER_STATE', playerStateLines, extension_prompt_types.IN_PROMPT, 0, false, extension_prompt_roles.SYSTEM);
+        } else {
+            setExtensionPrompt('PERSONA_PLAYER_STATE', '', extension_prompt_types.IN_PROMPT, 0);
+        }
     }
 
     const partyDescription = getPartyDescription();
@@ -3166,7 +3187,15 @@ function addPersonaDescriptionExtensionPrompt() {
         setExtensionPrompt('PARTY_MEMBERS', '', extension_prompt_types.IN_PROMPT, 0);
     }
 
-    if (!power_user.persona_description || power_user.persona_description_position === persona_description_positions.NONE) {
+    // Inject user-defined custom instructions from chat_metadata
+    injectCustomInstructions();
+
+    // Determine effective persona description: party leader personality overrides global persona
+    const effectivePersonaDescription = partyLeader
+        ? (partyLeader.personality || '').trim()
+        : (power_user.persona_description || '').trim();
+
+    if (!effectivePersonaDescription || power_user.persona_description_position === persona_description_positions.NONE) {
         return;
     }
 
@@ -3175,14 +3204,14 @@ function addPersonaDescriptionExtensionPrompt() {
     if (promptPositions.includes(power_user.persona_description_position) && shouldWIAddPrompt) {
         const originalAN = extension_prompts[NOTE_MODULE_NAME].value;
         const ANWithDesc = power_user.persona_description_position === persona_description_positions.TOP_AN
-            ? `${power_user.persona_description}\n${originalAN}`
-            : `${originalAN}\n${power_user.persona_description}`;
+            ? `${effectivePersonaDescription}\n${originalAN}`
+            : `${originalAN}\n${effectivePersonaDescription}`;
 
         setExtensionPrompt(NOTE_MODULE_NAME, ANWithDesc, chat_metadata[metadata_keys.position], chat_metadata[metadata_keys.depth], extension_settings.note.allowWIScan, chat_metadata[metadata_keys.role]);
     }
 
     if (power_user.persona_description_position === persona_description_positions.AT_DEPTH) {
-        setExtensionPrompt(INJECT_TAG, power_user.persona_description, extension_prompt_types.IN_CHAT, power_user.persona_description_depth, true, power_user.persona_description_role);
+        setExtensionPrompt(INJECT_TAG, effectivePersonaDescription, extension_prompt_types.IN_CHAT, power_user.persona_description_depth, true, power_user.persona_description_role);
     }
 }
 
@@ -3371,7 +3400,14 @@ export function getCharacterCardFieldsLazy({ chid = undefined } = {}) {
 
     /** @type {Record<string, () => string|string[]>} */
     const resolvers = {
-        persona: () => baseChatReplace(power_user.persona_description?.trim()),
+        persona: () => {
+            // When party is active, use party leader's personality instead of global persona
+            const partyLeader = getActivePartyLeader();
+            if (partyLeader) {
+                return baseChatReplace((partyLeader.personality || '').trim());
+            }
+            return baseChatReplace(power_user.persona_description?.trim());
+        },
         system: () => {
             if (!character) return '';
             const systemPrompt = chat_metadata.system_prompt || character.data?.system_prompt || '';
@@ -5841,9 +5877,20 @@ export async function sendMessageAsUser(messageText, messageBias, insertAt = nul
         message.extra.token_count = await getTokenCountAsync(message.mes, 0);
     }
 
-    // Lock user avatar to a persona.
-    if (avatar in power_user.personas) {
-        message.force_avatar = getThumbnailUrl('persona', avatar);
+    const partyLeader = Array.isArray(chat_metadata?.party) && chat_metadata.party.length > 0
+        ? chat_metadata.party[0]
+        : null;
+    const sendName = partyLeader?.name || name;
+    const sendAvatar = partyLeader?.avatar || avatar;
+    console.log('sendMessageAsUser active speaker', { sendName, sendAvatar, partyLeader });
+
+    message.name = sendName;
+
+    // Force party leader avatar if party is active, otherwise lock user avatar to a persona.
+    if (partyLeader?.avatar) {
+        message.force_avatar = partyLeader.avatar;
+    } else if (sendAvatar in power_user.personas) {
+        message.force_avatar = getThumbnailUrl('persona', sendAvatar);
     }
 
     if (messageBias) {
@@ -10586,11 +10633,21 @@ export async function doNewChat({ deleteCurrentChat = false } = {}) {
         await getChat();
         await createOrEditCharacter(new CustomEvent('newChat'));
 
-        // Restore and save world binding after getChat (which resets chat_metadata for new chats)
+        // Restore and save world + party binding after getChat (which resets chat_metadata for new chats)
         if (worldChoice) {
             try {
-                const { bindWorldToChat } = await import('./scripts/campaigns.js');
-                await bindWorldToChat(worldChoice);
+                const { bindWorldToChat, bindPartyToChat } = await import('./scripts/campaigns.js');
+                const { refreshWorldMapGlobals } = await import('./scripts/world-info.js');
+                await bindWorldToChat(worldChoice.worldName);
+                await bindPartyToChat(worldChoice.party);
+                await refreshWorldMapGlobals(worldChoice.worldName);
+                if (worldChoice.partyEntries?.length) {
+                    const { setPartyFromWorldEntries } = await import('./scripts/party.js');
+                    console.log('Calling setPartyFromWorldEntries with partyEntries', worldChoice.partyEntries);
+                    setPartyFromWorldEntries(worldChoice.partyEntries);
+                } else {
+                    console.log('No partyEntries available from worldChoice', worldChoice);
+                }
             } catch (err) {
                 console.warn('Campaign world binding failed:', err);
             }

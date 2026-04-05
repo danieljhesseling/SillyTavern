@@ -79,6 +79,23 @@ export function getCurrentWorldBoards() {
     return current_world_boards;
 }
 
+/**
+ * Loads world metadata globals and fires update events without touching the WI editor UI.
+ * Call this after programmatically binding a world to a chat.
+ * @param {string} worldName
+ */
+export async function refreshWorldMapGlobals(worldName) {
+    if (!worldName) return;
+    const data = await loadWorldInfo(worldName);
+    if (!data) return;
+    current_world_map_url = data.metadata?.worldMapUrl || data.metadata?.mapUrl || '';
+    current_world_location_maps = Array.isArray(data.metadata?.locationMaps) ? data.metadata.locationMaps : [];
+    current_world_boards = Array.isArray(data.metadata?.boards) ? data.metadata.boards : [];
+    $(document).trigger('worldMapUpdated', [current_world_map_url]);
+    $(document).trigger('worldLocationMapsUpdated', [current_world_location_maps]);
+    $(document).trigger('worldBoardsUpdated', [current_world_boards]);
+}
+
 /** @type {string[]} */
 export let world_names;
 export let world_info_depth = 2;
@@ -2584,232 +2601,477 @@ async function displayWorldEntries(name, data, navigation = navigation_option.no
         const currentMapUrl = data.metadata?.worldMapUrl || data.metadata?.mapUrl || '';
         const currentCoverImage = data.metadata?.coverImage || '';
         const currentGenre = data.metadata?.genre || '';
+        const currentDescription = data.metadata?.description || '';
         const initialLocationMaps = Array.isArray(data.metadata?.locationMaps) ? data.metadata.locationMaps : [];
         const initialBoards = Array.isArray(data.metadata?.boards) ? data.metadata.boards : [];
 
+        // ---- Mutable copies for locations (edited via sub-popups) ----
+        let locationMaps = JSON.parse(JSON.stringify(initialLocationMaps));
+
+        // ---- Migrate old boardName → per-location boards array ----
+        const boardsLookup = initialBoards;
+        locationMaps.forEach(loc => {
+            if (!Array.isArray(loc.boards)) {
+                loc.boards = [];
+                if (loc.boardName && boardsLookup.length) {
+                    const oldBoard = boardsLookup.find(b => b.name === loc.boardName);
+                    if (oldBoard) loc.boards.push({ name: oldBoard.name, url: oldBoard.url || '' });
+                }
+                delete loc.boardName;
+            }
+        });
+
         const content = document.createElement('div');
-        content.className = 'world-info-metadata-modal';
+        content.className = 'wm-modal';
+
+        // Build cover header
+        const coverStyle = currentCoverImage
+            ? `background-image: url('${currentCoverImage.replace(/'/g, "\\'")}'); background-size: cover; background-position: center;`
+            : '';
+
         content.innerHTML = `
-            <p>${t`Edit world metadata for`} <strong>${name}</strong></p>
-
-            <h4>${t`Campaign Info`}</h4>
-            <label class="text_label" for="world_meta_display_name">${t`Display Name`}:</label>
-            <input id="world_meta_display_name" class="text_pole" type="text" value="${escapeHtml(currentDisplayName)}" />
-
-            <label class="text_label" for="world_meta_genre">${t`Genre / Tag`}:</label>
-            <input id="world_meta_genre" class="text_pole" type="text" value="${escapeHtml(currentGenre)}" placeholder="Fantasy, Dark Fantasy, Isekai..." />
-
-            <label class="text_label">${t`Cover Image`}:</label>
-            <div id="world_meta_cover_block" style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-                <div id="world_meta_cover_preview" style="width:80px;height:80px;border:1px solid var(--SmartThemeBorderColor);border-radius:8px;overflow:hidden;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.2);cursor:pointer;" title="Click to choose cover image">
-                    ${currentCoverImage ? `<img src="${escapeHtml(currentCoverImage)}" style="width:100%;height:100%;object-fit:cover;" />` : '<i class="fa-solid fa-image" style="font-size:1.5rem;opacity:0.4;"></i>'}
+            <!-- Cover Header -->
+            <div class="wm-cover" style="${coverStyle}" title="${t`Click to change cover image`}">
+                <div class="wm-cover-overlay">
+                    <i class="fa-solid fa-camera wm-cover-icon"></i>
+                    <div class="wm-cover-title">${escapeHtml(currentDisplayName)}</div>
+                    ${currentGenre ? `<span class="wm-cover-genre">${escapeHtml(currentGenre)}</span>` : ''}
                 </div>
-                <input id="world_meta_cover_file" type="file" accept="image/*" style="display:none" />
-                <input id="world_meta_cover_data" type="hidden" value="" />
-                ${currentCoverImage ? '<button id="world_meta_cover_remove" class="menu_button fa-solid fa-trash-can" style="padding:4px 8px;" title="Remove cover"></button>' : ''}
+                <input id="wm_cover_file" type="file" accept="image/*" style="display:none" />
+                <input id="wm_cover_data" type="hidden" value="" />
             </div>
 
-            <h4>${t`World Map`}</h4>
+            <!-- Campaign Info Section -->
+            <div class="wm-section wm-accordion" data-expanded="true">
+                <div class="wm-section-title wm-accordion-toggle"><i class="fa-solid fa-scroll"></i> ${t`Campaign Info`} <i class="fa-solid fa-chevron-up wm-accordion-icon"></i></div>
+                <div class="wm-section-body">
+                <div class="wm-row">
+                    <div class="wm-field wm-field-half">
+                        <label class="wm-label">${t`Display Name`}</label>
+                        <input id="wm_display_name" class="text_pole" type="text" value="${escapeHtml(currentDisplayName)}" />
+                    </div>
+                    <div class="wm-field wm-field-half">
+                        <label class="wm-label">${t`Genre / Tag`}</label>
+                        <input id="wm_genre" class="text_pole" type="text" value="${escapeHtml(currentGenre)}" placeholder="Fantasy, Dark Fantasy, Isekai..." />
+                    </div>
+                </div>
+                <div class="wm-field">
+                    <label class="wm-label">${t`World Description`}</label>
+                    <textarea id="wm_description" class="text_pole wm-textarea" rows="4" placeholder="${t`Describe the world, its lore, setting, and tone...`}">${escapeHtml(currentDescription)}</textarea>
+                </div>
+                </div>
+            </div>
 
-            <label class="text_label" for="world_meta_map_url">${t`Map URL`}:</label>
-            <input id="world_meta_map_url" class="text_pole" type="text" value="${escapeHtml(currentMapUrl)}" />
+            <!-- World Map Section -->
+            <div class="wm-section wm-accordion" data-expanded="false">
+                <div class="wm-section-title wm-accordion-toggle"><i class="fa-solid fa-map"></i> ${t`World Map`} <i class="fa-solid fa-chevron-down wm-accordion-icon"></i></div>
+                <div class="wm-section-body" style="display:none;">
+                <div class="wm-map-row">
+                    <div class="wm-map-preview" id="wm_map_preview">
+                        ${currentMapUrl
+                            ? `<img src="${escapeHtml(currentMapUrl)}" />`
+                            : `<i class="fa-solid fa-map fa-2x" style="opacity:0.3;"></i>`}
+                    </div>
+                    <div class="wm-field" style="flex:1;">
+                        <label class="wm-label">${t`Map URL`}</label>
+                        <input id="wm_map_url" class="text_pole" type="text" value="${escapeHtml(currentMapUrl)}" />
+                        <label class="wm-label" style="margin-top:6px;">${t`Upload Map`}</label>
+                        <div class="wm-upload-row">
+                            <button id="wm_map_upload_btn" class="menu_button fa-solid fa-upload"> ${t`Upload Image`}</button>
+                            <span id="wm_map_upload_name" class="wm-upload-filename">${currentMapUrl ? t`Current map chosen` : t`No file selected`}</span>
+                            <input id="wm_map_file" type="file" accept="image/*" style="display:none" />
+                        </div>
+                    </div>
+                </div>
+                </div>
+            </div>
 
-            <label class="text_label" for="world_meta_map_file">${t`Map from file`}:</label>
-            <input id="world_meta_map_file" class="text_pole world_meta_file_input" type="file" accept="image/*" />
-
-            <h4>${t`Location Maps`}</h4>
-            <div id="world_meta_location_maps" class="world_meta_collection"></div>
-            <button id="add_location_map" class="menu_button fa-solid fa-plus" style="margin: 5px 0;"> ${t`Add location map`}</button>
-
-            <h4>${t`Boards`}</h4>
-            <div id="world_meta_boards" class="world_meta_collection"></div>
-            <button id="add_board" class="menu_button fa-solid fa-plus" style="margin: 5px 0;"> ${t`Add board`}</button>
+            <!-- Locations Section -->
+            <div class="wm-section wm-accordion" data-expanded="false">
+                <div class="wm-section-title wm-accordion-toggle"><i class="fa-solid fa-location-dot"></i> ${t`Locations`} <span class="wm-badge" id="wm_loc_count">${locationMaps.length}</span> <i class="fa-solid fa-chevron-down wm-accordion-icon"></i></div>
+                <div class="wm-section-body" style="display:none;">
+                <div class="wm-card-grid" id="wm_locations_grid"></div>
+                <button id="wm_add_location" class="wm-add-btn"><i class="fa-solid fa-plus"></i> ${t`Add Location`}</button>
+                </div>
+            </div>
         `;
 
-        const popup = new Popup(content, POPUP_TYPE.TEXT, '', {
-            wide: true,
-            okButton: t`Save`,
-            cancelButton: t`Cancel`,
-            onOpen: (popupInstance) => {
-                const mapFileInput = popupInstance.dlg.querySelector('#world_meta_map_file');
-                const mapUrlInput = popupInstance.dlg.querySelector('#world_meta_map_url');
-                const locationMapsContainer = popupInstance.dlg.querySelector('#world_meta_location_maps');
-                const boardsContainer = popupInstance.dlg.querySelector('#world_meta_boards');
-                const addLocationBtn = popupInstance.dlg.querySelector('#add_location_map');
-                const addBoardBtn = popupInstance.dlg.querySelector('#add_board');
-
-                if (!(mapFileInput instanceof HTMLInputElement) || !(mapUrlInput instanceof HTMLInputElement)) return;
-                if (!(locationMapsContainer instanceof HTMLElement) || !(boardsContainer instanceof HTMLElement)) return;
-
-                function createCollectionEntry(type, entry, isLocation = false) {
-                    const wrapper = document.createElement('div');
-                    wrapper.className = 'world_meta_collection_entry';
-                    wrapper.style = 'border:1px solid var(--SmartThemeBorderColor);padding:6px;margin-bottom:6px;border-radius:6px;';
-
-                    let extraFields = '';
-                    if (isLocation) {
-                        const boardOptions = initialBoards.map(b =>
-                            `<option value="${escapeHtml(b.name)}" ${(entry.boardName || '') === b.name ? 'selected' : ''}>${escapeHtml(b.name || 'Unnamed')}</option>`
-                        ).join('');
-                        extraFields = `
-                            <div style="display:flex;gap:6px;margin-top:4px;flex-wrap:wrap;">
-                                <div style="flex:1;min-width:80px;">
-                                    <label class="text_label" style="font-size:0.8rem;">${t`X Coordinate`}:</label>
-                                    <input type="number" class="text_pole world_meta_loc_x" value="${entry.x ?? 0}" />
-                                </div>
-                                <div style="flex:1;min-width:80px;">
-                                    <label class="text_label" style="font-size:0.8rem;">${t`Y Coordinate`}:</label>
-                                    <input type="number" class="text_pole world_meta_loc_y" value="${entry.y ?? 0}" />
-                                </div>
-                                <div style="flex:1;min-width:80px;">
-                                    <label class="text_label" style="font-size:0.8rem;">${t`Grid Width`}:</label>
-                                    <input type="number" class="text_pole world_meta_loc_gw" value="${entry.gridWidth ?? 50}" min="1" max="200" />
-                                </div>
-                                <div style="flex:1;min-width:80px;">
-                                    <label class="text_label" style="font-size:0.8rem;">${t`Grid Height`}:</label>
-                                    <input type="number" class="text_pole world_meta_loc_gh" value="${entry.gridHeight ?? 50}" min="1" max="200" />
-                                </div>
-                            </div>
-                            <label class="text_label" style="font-size:0.8rem;margin-top:4px;">${t`Description`}:</label>
-                            <input type="text" class="text_pole world_meta_loc_desc" value="${escapeHtml(entry.description || '')}" placeholder="Location description" />
-                            <div style="display:flex;gap:6px;margin-top:4px;">
-                                <div style="flex:1;">
-                                    <label class="text_label" style="font-size:0.8rem;">${t`Region`}:</label>
-                                    <input type="text" class="text_pole world_meta_loc_region" value="${escapeHtml(entry.region || '')}" placeholder="Region name" />
-                                </div>
-                                <div style="flex:1;">
-                                    <label class="text_label" style="font-size:0.8rem;">${t`Board`}:</label>
-                                    <select class="text_pole world_meta_loc_board">
-                                        <option value="">${t`None`}</option>
-                                        ${boardOptions}
-                                    </select>
-                                </div>
-                            </div>
-                        `;
+        // ---- Render location cards ----
+        function renderLocationCards() {
+            const grid = content.querySelector('#wm_locations_grid');
+            const countEl = content.querySelector('#wm_loc_count');
+            if (!grid) return;
+            grid.innerHTML = '';
+            if (countEl) countEl.textContent = String(locationMaps.length);
+            locationMaps.forEach((loc, idx) => {
+                const card = document.createElement('div');
+                card.className = 'wm-card';
+                const imgHtml = loc.url
+                    ? `<img src="${escapeHtml(loc.url)}" alt="" />`
+                    : '<i class="fa-solid fa-location-dot fa-2x" style="opacity:0.3;"></i>';
+                const boardCount = (loc.boards || []).length;
+                card.innerHTML = `
+                    <div class="wm-card-img">${imgHtml}</div>
+                    <div class="wm-card-body">
+                        <div class="wm-card-name">${escapeHtml(loc.name || t`Unnamed Location`)}</div>
+                        ${loc.region ? `<div class="wm-card-sub"><i class="fa-solid fa-map-pin"></i> ${escapeHtml(loc.region)}</div>` : ''}
+                        ${boardCount ? `<div class="wm-card-sub"><i class="fa-solid fa-chess-board"></i> ${boardCount} board${boardCount !== 1 ? 's' : ''}</div>` : ''}
+                        ${loc.description ? `<div class="wm-card-desc">${escapeHtml(loc.description).substring(0, 80)}${loc.description.length > 80 ? '…' : ''}</div>` : ''}
+                    </div>
+                    <button class="wm-card-delete" data-idx="${idx}" title="${t`Remove`}"><i class="fa-solid fa-trash-can"></i></button>
+                `;
+                card.addEventListener('click', async (e) => {
+                    if (/** @type {HTMLElement} */(e.target).closest('.wm-card-delete')) return;
+                    const updated = await openLocationEditor(loc);
+                    if (updated) {
+                        locationMaps[idx] = updated;
+                        renderLocationCards();
                     }
+                });
+                card.querySelector('.wm-card-delete')?.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    locationMaps.splice(idx, 1);
+                    renderLocationCards();
+                });
+                grid.appendChild(card);
+            });
+        }
 
-                    wrapper.innerHTML = `
-                        <label class="text_label">${escapeHtml(type)} ${t`Name`}:</label>
-                        <input type="text" class="text_pole world_meta_collection_name" value="${escapeHtml(entry.name || '')}" />
-                        <label class="text_label">${t`URL`}:</label>
-                        <input type="text" class="text_pole world_meta_collection_url" value="${escapeHtml(entry.url || '')}" />
-                        <label class="text_label">${t`File`}:</label>
-                        <input type="file" class="world_meta_collection_file world_meta_file_input" accept="image/*" />
-                        ${extraFields}
-                        <button class="menu_button fa-solid fa-trash-can remove_collection_entry" style="margin-top:4px;"> ${t`Remove`}</button>
-                    `;
+        renderLocationCards();
 
-                    const fileInput = wrapper.querySelector('.world_meta_collection_file');
-                    const urlInput = wrapper.querySelector('.world_meta_collection_url');
-                    const removeBtn = wrapper.querySelector('.remove_collection_entry');
+        // ---- Sub-popup: Location Editor ----
+        async function openLocationEditor(loc) {
+            // Mutable copy of this location's boards
+            let locBoards = JSON.parse(JSON.stringify(loc.boards || []));
 
+            const el = document.createElement('div');
+            el.className = 'wm-loc-editor';
+
+            function buildBoardsHtml() {
+                let cards = '';
+                locBoards.forEach((b, i) => {
+                    const bImg = b.url
+                        ? `<img src="${escapeHtml(b.url)}" alt="" />`
+                        : '<i class="fa-solid fa-chess-board fa-2x" style="opacity:0.3;"></i>';
+                    cards += `
+                    <div class="wm-card wm-board-mini" data-board-idx="${i}">
+                        <div class="wm-card-img" style="height:70px;">${bImg}</div>
+                        <div class="wm-card-body">
+                            <div class="wm-card-name">${escapeHtml(b.name || t`Unnamed Board`)}</div>
+                        </div>
+                        <button class="wm-card-delete wm-board-delete" data-board-idx="${i}" title="${t`Remove`}"><i class="fa-solid fa-trash-can"></i></button>
+                    </div>`;
+                });
+                return cards;
+            }
+
+            el.innerHTML = `
+                <div class="wm-row">
+                    <div class="wm-field wm-field-half">
+                        <label class="wm-label">${t`Location Name`}</label>
+                        <input type="text" class="text_pole" id="wm_le_name" value="${escapeHtml(loc.name || '')}" />
+                    </div>
+                    <div class="wm-field wm-field-half">
+                        <label class="wm-label">${t`Region`}</label>
+                        <input type="text" class="text_pole" id="wm_le_region" value="${escapeHtml(loc.region || '')}" placeholder="${t`Region name`}" />
+                    </div>
+                </div>
+                <div class="wm-field">
+                    <label class="wm-label">${t`Image URL`}</label>
+                    <input type="text" class="text_pole" id="wm_le_url" value="${escapeHtml(loc.url || '')}" />
+                </div>
+                <div class="wm-field">
+                    <label class="wm-label">${t`Upload Image`}</label>
+                    <div class="wm-upload-row">
+                        <button id="wm_le_upload_btn" class="menu_button fa-solid fa-upload"> ${t`Upload Image`}</button>
+                        <span id="wm_le_upload_name" class="wm-upload-filename">${loc.url ? loc.url : t`No file selected`}</span>
+                        <input type="file" class="text_pole" id="wm_le_file" accept="image/*" style="display:none" />
+                    </div>
+                </div>
+                <div class="wm-field">
+                    <label class="wm-label">${t`Description`}</label>
+                    <textarea class="text_pole wm-textarea" id="wm_le_desc" rows="4" placeholder="${t`Describe this location...`}">${escapeHtml(loc.description || '')}</textarea>
+                </div>
+                <div class="wm-row">
+                    <div class="wm-field wm-field-quarter">
+                        <label class="wm-label">${t`X`}</label>
+                        <input type="number" class="text_pole" id="wm_le_x" value="${loc.x ?? 0}" />
+                    </div>
+                    <div class="wm-field wm-field-quarter">
+                        <label class="wm-label">${t`Y`}</label>
+                        <input type="number" class="text_pole" id="wm_le_y" value="${loc.y ?? 0}" />
+                    </div>
+                    <div class="wm-field wm-field-quarter">
+                        <label class="wm-label">${t`Grid W`}</label>
+                        <input type="number" class="text_pole" id="wm_le_gw" value="${loc.gridWidth ?? 50}" min="1" max="200" />
+                    </div>
+                    <div class="wm-field wm-field-quarter">
+                        <label class="wm-label">${t`Grid H`}</label>
+                        <input type="number" class="text_pole" id="wm_le_gh" value="${loc.gridHeight ?? 50}" min="1" max="200" />
+                    </div>
+                </div>
+                <div class="wm-field">
+                    <label class="wm-label"><i class="fa-solid fa-chess-board"></i> ${t`Boards`} <span class="wm-badge" id="wm_le_board_count">${locBoards.length}</span></label>
+                    <div class="wm-card-grid wm-board-grid" id="wm_le_boards_grid" style="grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));">
+                        ${buildBoardsHtml()}
+                    </div>
+                    <button id="wm_le_add_board" class="wm-add-btn" style="margin-top:6px;"><i class="fa-solid fa-plus"></i> ${t`Add Board`}</button>
+                </div>
+            `;
+
+            function refreshBoardCards(container) {
+                const grid = container.querySelector('#wm_le_boards_grid');
+                const countEl = container.querySelector('#wm_le_board_count');
+                if (!grid) return;
+                grid.innerHTML = buildBoardsHtml();
+                if (countEl) countEl.textContent = String(locBoards.length);
+                // Bind click events on new cards
+                grid.querySelectorAll('.wm-board-mini').forEach(card => {
+                    const idx = parseInt(card.getAttribute('data-board-idx') || '0', 10);
+                    card.addEventListener('click', async (e) => {
+                        if (/** @type {HTMLElement} */(e.target).closest('.wm-board-delete')) return;
+                        const updated = await openBoardEditor(locBoards[idx]);
+                        if (updated) {
+                            locBoards[idx] = updated;
+                            refreshBoardCards(container);
+                        }
+                    });
+                });
+                grid.querySelectorAll('.wm-board-delete').forEach(btn => {
+                    const idx = parseInt(btn.getAttribute('data-board-idx') || '0', 10);
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        locBoards.splice(idx, 1);
+                        refreshBoardCards(container);
+                    });
+                });
+            }
+
+            const subPopup = new Popup(el, POPUP_TYPE.CONFIRM, '', {
+                wide: true,
+                okButton: t`Save Location`,
+                cancelButton: t`Cancel`,
+                onOpen: (inst) => {
+                    const fileInput = inst.dlg.querySelector('#wm_le_file');
+                    const urlInput = inst.dlg.querySelector('#wm_le_url');
+                    const uploadBtn = inst.dlg.querySelector('#wm_le_upload_btn');
+                    const uploadName = inst.dlg.querySelector('#wm_le_upload_name');
+                    if (uploadBtn instanceof HTMLElement && fileInput instanceof HTMLInputElement) {
+                        uploadBtn.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            fileInput.click();
+                        });
+                    }
                     if (fileInput instanceof HTMLInputElement && urlInput instanceof HTMLInputElement) {
                         fileInput.addEventListener('change', () => {
                             const file = fileInput.files?.[0];
                             if (!file) return;
+                            if (uploadName instanceof HTMLElement) {
+                                uploadName.textContent = file.name;
+                            }
                             const reader = new FileReader();
-                            reader.onload = () => {
-                                if (typeof reader.result === 'string') {
-                                    urlInput.value = reader.result;
-                                }
-                            };
+                            reader.onload = () => { if (typeof reader.result === 'string') urlInput.value = reader.result; };
                             reader.readAsDataURL(file);
                         });
                     }
 
-                    if (removeBtn instanceof HTMLElement) {
-                        removeBtn.addEventListener('click', () => {
-                            wrapper.remove();
+                    // Board cards interaction
+                    refreshBoardCards(inst.dlg);
+
+                    // Add Board button
+                    inst.dlg.querySelector('#wm_le_add_board')?.addEventListener('click', async (e) => {
+                        e.preventDefault();
+                        const newBoard = await openBoardEditor({ name: '', url: '' });
+                        if (newBoard) {
+                            locBoards.push(newBoard);
+                            refreshBoardCards(inst.dlg);
+                        }
+                    });
+                },
+            });
+
+            const res = await subPopup.show();
+            if (res !== POPUP_RESULT.AFFIRMATIVE) return null;
+
+            const dlg = subPopup.dlg;
+            const val = (id) => { const e = dlg.querySelector(id); return e instanceof HTMLInputElement || e instanceof HTMLTextAreaElement ? e.value.trim() : ''; };
+            const numVal = (id, def) => { const v = parseFloat(val(id)); return isNaN(v) ? def : v; };
+
+            return {
+                name: val('#wm_le_name'),
+                url: val('#wm_le_url'),
+                description: val('#wm_le_desc'),
+                region: val('#wm_le_region'),
+                x: numVal('#wm_le_x', 0),
+                y: numVal('#wm_le_y', 0),
+                gridWidth: numVal('#wm_le_gw', 50),
+                gridHeight: numVal('#wm_le_gh', 50),
+                boards: locBoards,
+            };
+        }
+
+        // ---- Sub-popup: Board Editor ----
+        async function openBoardEditor(board) {
+            const el = document.createElement('div');
+            el.innerHTML = `
+                <div class="wm-field">
+                    <label class="wm-label">${t`Board Name`}</label>
+                    <input type="text" class="text_pole" id="wm_be_name" value="${escapeHtml(board.name || '')}" />
+                </div>
+                <div class="wm-field">
+                    <label class="wm-label">${t`Image URL`}</label>
+                    <input type="text" class="text_pole" id="wm_be_url" value="${escapeHtml(board.url || '')}" />
+                </div>
+                <div class="wm-field">
+                    <label class="wm-label">${t`Upload Image`}</label>
+                    <div class="wm-upload-row">
+                        <button id="wm_be_upload_btn" class="menu_button fa-solid fa-upload"> ${t`Upload Image`}</button>
+                        <span id="wm_be_upload_name" class="wm-upload-filename">${board.url ? board.url : t`No file selected`}</span>
+                        <input type="file" class="text_pole" id="wm_be_file" accept="image/*" style="display:none" />
+                    </div>
+                </div>
+            `;
+
+            const subPopup = new Popup(el, POPUP_TYPE.CONFIRM, '', {
+                okButton: t`Save Board`,
+                cancelButton: t`Cancel`,
+                onOpen: (inst) => {
+                    const fileInput = inst.dlg.querySelector('#wm_be_file');
+                    const urlInput = inst.dlg.querySelector('#wm_be_url');
+                    const uploadBtn = inst.dlg.querySelector('#wm_be_upload_btn');
+                    const uploadName = inst.dlg.querySelector('#wm_be_upload_name');
+                    if (uploadBtn instanceof HTMLElement && fileInput instanceof HTMLInputElement) {
+                        uploadBtn.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            fileInput.click();
                         });
                     }
+                    if (fileInput instanceof HTMLInputElement && urlInput instanceof HTMLInputElement) {
+                        fileInput.addEventListener('change', () => {
+                            const file = fileInput.files?.[0];
+                            if (!file) return;
+                            if (uploadName instanceof HTMLElement) {
+                                uploadName.textContent = file.name;
+                            }
+                            const reader = new FileReader();
+                            reader.onload = () => { if (typeof reader.result === 'string') urlInput.value = reader.result; };
+                            reader.readAsDataURL(file);
+                        });
+                    }
+                },
+            });
 
-                    return wrapper;
-                }
+            const res = await subPopup.show();
+            if (res !== POPUP_RESULT.AFFIRMATIVE) return null;
 
-                function addLocationEntry(entry = { name: '', url: '' }) {
-                    locationMapsContainer.appendChild(createCollectionEntry(t`Location`, entry, true));
-                }
+            const dlg = subPopup.dlg;
+            const nameEl = dlg.querySelector('#wm_be_name');
+            const urlEl = dlg.querySelector('#wm_be_url');
+            return {
+                name: nameEl instanceof HTMLInputElement ? nameEl.value.trim() : '',
+                url: urlEl instanceof HTMLInputElement ? urlEl.value.trim() : '',
+            };
+        }
 
-                function addBoardEntry(entry = { name: '', url: '' }) {
-                    boardsContainer.appendChild(createCollectionEntry(t`Board`, entry, false));
-                }
-
-                addLocationBtn?.addEventListener('click', (evt) => {
-                    evt.preventDefault();
-                    addLocationEntry();
-                });
-
-                addBoardBtn?.addEventListener('click', (evt) => {
-                    evt.preventDefault();
-                    addBoardEntry();
-                });
-
-                initialLocationMaps.forEach(addLocationEntry);
-                initialBoards.forEach(addBoardEntry);
-
-                mapFileInput.addEventListener('change', () => {
-                    const file = mapFileInput.files?.[0];
-                    if (!file) return;
-                    const reader = new FileReader();
-                    reader.onload = () => {
-                        if (typeof reader.result === 'string') {
-                            mapUrlInput.value = reader.result;
-                        }
-                    };
-                    reader.readAsDataURL(file);
-                });
-
-                // Cover image handlers
-                const coverPreview = popupInstance.dlg.querySelector('#world_meta_cover_preview');
-                const coverFileInput = popupInstance.dlg.querySelector('#world_meta_cover_file');
-                const coverDataInput = popupInstance.dlg.querySelector('#world_meta_cover_data');
+        const popup = new Popup(content, POPUP_TYPE.TEXT, '', {
+            wide: true,
+            wider: true,
+            allowVerticalScrolling: true,
+            okButton: t`Save`,
+            cancelButton: t`Cancel`,
+            onOpen: (popupInstance) => {
+                // ---- Cover image click-to-change ----
+                const cover = popupInstance.dlg.querySelector('.wm-cover');
+                const coverFileInput = popupInstance.dlg.querySelector('#wm_cover_file');
+                const coverDataInput = popupInstance.dlg.querySelector('#wm_cover_data');
 
                 if (coverDataInput instanceof HTMLInputElement && currentCoverImage) {
                     coverDataInput.value = currentCoverImage;
                 }
 
-                if (coverPreview instanceof HTMLElement && coverFileInput instanceof HTMLInputElement) {
-                    coverPreview.addEventListener('click', () => coverFileInput.click());
+                if (cover instanceof HTMLElement && coverFileInput instanceof HTMLInputElement && coverDataInput instanceof HTMLInputElement) {
+                    cover.addEventListener('click', (e) => {
+                        if (/** @type {HTMLElement} */(e.target).closest('input')) return;
+                        coverFileInput.click();
+                    });
                     coverFileInput.addEventListener('change', () => {
                         const file = coverFileInput.files?.[0];
                         if (!file) return;
                         const reader = new FileReader();
                         reader.onload = () => {
-                            if (typeof reader.result === 'string' && coverDataInput instanceof HTMLInputElement) {
+                            if (typeof reader.result === 'string') {
                                 coverDataInput.value = reader.result;
-                                coverPreview.innerHTML = `<img src="${reader.result}" style="width:100%;height:100%;object-fit:cover;" />`;
-                                // Add remove button if not present
-                                const block = popupInstance.dlg.querySelector('#world_meta_cover_block');
-                                if (block && !block.querySelector('#world_meta_cover_remove')) {
-                                    const removeBtn = document.createElement('button');
-                                    removeBtn.id = 'world_meta_cover_remove';
-                                    removeBtn.className = 'menu_button fa-solid fa-trash-can';
-                                    removeBtn.style.cssText = 'padding:4px 8px;';
-                                    removeBtn.title = 'Remove cover';
-                                    removeBtn.addEventListener('click', (e) => {
-                                        e.preventDefault();
-                                        coverDataInput.value = '';
-                                        coverPreview.innerHTML = '<i class="fa-solid fa-image" style="font-size:1.5rem;opacity:0.4;"></i>';
-                                        removeBtn.remove();
-                                    });
-                                    block.appendChild(removeBtn);
-                                }
+                                cover.style.backgroundImage = `url('${reader.result.replace(/'/g, "\\'")}')`;
+                                cover.style.backgroundSize = 'cover';
+                                cover.style.backgroundPosition = 'center';
                             }
                         };
                         reader.readAsDataURL(file);
                     });
                 }
 
-                // Existing remove button
-                const coverRemoveBtn = popupInstance.dlg.querySelector('#world_meta_cover_remove');
-                if (coverRemoveBtn instanceof HTMLElement && coverDataInput instanceof HTMLInputElement && coverPreview instanceof HTMLElement) {
-                    coverRemoveBtn.addEventListener('click', (e) => {
+                // ---- Map upload ----
+                const mapFileInput = popupInstance.dlg.querySelector('#wm_map_file');
+                const mapUrlInput = popupInstance.dlg.querySelector('#wm_map_url');
+                const mapPreview = popupInstance.dlg.querySelector('#wm_map_preview');
+                const mapUploadBtn = popupInstance.dlg.querySelector('#wm_map_upload_btn');
+                const mapUploadName = popupInstance.dlg.querySelector('#wm_map_upload_name');
+
+                if (mapUploadBtn instanceof HTMLElement && mapFileInput instanceof HTMLInputElement) {
+                    mapUploadBtn.addEventListener('click', (e) => {
                         e.preventDefault();
-                        coverDataInput.value = '';
-                        coverPreview.innerHTML = '<i class="fa-solid fa-image" style="font-size:1.5rem;opacity:0.4;"></i>';
-                        coverRemoveBtn.remove();
+                        mapFileInput.click();
                     });
                 }
+
+                if (mapFileInput instanceof HTMLInputElement && mapUrlInput instanceof HTMLInputElement) {
+                    mapFileInput.addEventListener('change', () => {
+                        const file = mapFileInput.files?.[0];
+                        if (!file) return;
+                        if (mapUploadName instanceof HTMLElement) {
+                            mapUploadName.textContent = file.name;
+                        }
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                            if (typeof reader.result === 'string') {
+                                mapUrlInput.value = reader.result;
+                                if (mapPreview) mapPreview.innerHTML = `<img src="${reader.result}" />`;
+                            }
+                        };
+                        reader.readAsDataURL(file);
+                    });
+                }
+
+                if (mapUploadName instanceof HTMLElement && currentMapUrl) {
+                    mapUploadName.textContent = t`Current map chosen`;
+                }
+
+                // ---- Add location button ----
+                popupInstance.dlg.querySelector('#wm_add_location')?.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    const newLoc = await openLocationEditor({ name: '', url: '', description: '', region: '', x: 0, y: 0, gridWidth: 50, gridHeight: 50, boards: [] });
+                    if (newLoc) {
+                        locationMaps.push(newLoc);
+                        renderLocationCards();
+                    }
+                });
+
+                // ---- Accordion toggle ----
+                popupInstance.dlg.querySelectorAll('.wm-accordion-toggle').forEach(toggle => {
+                    toggle.addEventListener('click', () => {
+                        const section = toggle.closest('.wm-accordion');
+                        if (!section) return;
+                        const body = section.querySelector('.wm-section-body');
+                        const icon = toggle.querySelector('.wm-accordion-icon');
+                        const expanded = section.dataset.expanded === 'true';
+                        section.dataset.expanded = String(!expanded);
+                        if (body instanceof HTMLElement) body.style.display = expanded ? 'none' : '';
+                        if (icon) {
+                            icon.classList.toggle('fa-chevron-up', !expanded);
+                            icon.classList.toggle('fa-chevron-down', expanded);
+                        }
+                    });
+                });
             },
         });
 
@@ -2819,59 +3081,30 @@ async function displayWorldEntries(name, data, navigation = navigation_option.no
         }
 
         const dialog = popup.dlg;
-        const displayNameElement = dialog.querySelector('#world_meta_display_name');
-        const mapUrlElement = dialog.querySelector('#world_meta_map_url');
-        const locationMapsContainer = dialog.querySelector('#world_meta_location_maps');
-        const boardsContainer = dialog.querySelector('#world_meta_boards');
+        const val = (id) => { const e = dialog.querySelector(id); return e instanceof HTMLInputElement || e instanceof HTMLTextAreaElement ? e.value.trim() : ''; };
 
-        const newDisplayName = displayNameElement instanceof HTMLInputElement ? displayNameElement.value.trim() : name;
-        const newMapUrl = mapUrlElement instanceof HTMLInputElement ? mapUrlElement.value.trim() : '';
-
-        const coverDataElement = dialog.querySelector('#world_meta_cover_data');
-        const genreElement = dialog.querySelector('#world_meta_genre');
-        const newCoverImage = coverDataElement instanceof HTMLInputElement ? coverDataElement.value.trim() : '';
-        const newGenre = genreElement instanceof HTMLInputElement ? genreElement.value.trim() : '';
-
-        const collectEntries = (container, isLocation = false) => {
-            if (!(container instanceof HTMLElement)) return [];
-            return Array.from(container.querySelectorAll('.world_meta_collection_entry')).map((item) => {
-                const entryName = item.querySelector('.world_meta_collection_name');
-                const entryUrl = item.querySelector('.world_meta_collection_url');
-                const result = {
-                    name: entryName instanceof HTMLInputElement ? entryName.value.trim() : '',
-                    url: entryUrl instanceof HTMLInputElement ? entryUrl.value.trim() : '',
-                };
-                if (isLocation) {
-                    const xEl = item.querySelector('.world_meta_loc_x');
-                    const yEl = item.querySelector('.world_meta_loc_y');
-                    const gwEl = item.querySelector('.world_meta_loc_gw');
-                    const ghEl = item.querySelector('.world_meta_loc_gh');
-                    const descEl = item.querySelector('.world_meta_loc_desc');
-                    const regionEl = item.querySelector('.world_meta_loc_region');
-                    const boardEl = item.querySelector('.world_meta_loc_board');
-                    result.x = xEl instanceof HTMLInputElement ? parseFloat(xEl.value) || 0 : 0;
-                    result.y = yEl instanceof HTMLInputElement ? parseFloat(yEl.value) || 0 : 0;
-                    result.gridWidth = gwEl instanceof HTMLInputElement ? parseInt(gwEl.value, 10) || 50 : 50;
-                    result.gridHeight = ghEl instanceof HTMLInputElement ? parseInt(ghEl.value, 10) || 50 : 50;
-                    result.description = descEl instanceof HTMLInputElement ? descEl.value.trim() : '';
-                    result.region = regionEl instanceof HTMLInputElement ? regionEl.value.trim() : '';
-                    result.boardName = boardEl instanceof HTMLSelectElement ? boardEl.value : '';
-                }
-                return result;
-            }).filter((entry) => entry.name || entry.url);
-        };
-
-        const newLocationMaps = collectEntries(locationMapsContainer, true);
-        const newBoards = collectEntries(boardsContainer, false);
+        const newDisplayName = val('#wm_display_name') || name;
+        const newMapUrl = val('#wm_map_url');
+        const newCoverImage = val('#wm_cover_data');
+        const newGenre = val('#wm_genre');
+        const newDescription = val('#wm_description');
 
         data.metadata = data.metadata || {};
-        data.metadata.displayName = newDisplayName || name;
+        data.metadata.displayName = newDisplayName;
         data.metadata.worldMapUrl = newMapUrl;
         data.metadata.mapUrl = newMapUrl;
-        data.metadata.locationMaps = newLocationMaps;
-        data.metadata.boards = newBoards;
+        data.metadata.locationMaps = locationMaps;
+        // Derive top-level boards from all locations for backward compat
+        const allBoards = [];
+        for (const loc of locationMaps) {
+            for (const b of (loc.boards || [])) {
+                if (!allBoards.some(x => x.name === b.name)) allBoards.push(b);
+            }
+        }
+        data.metadata.boards = allBoards;
         data.metadata.coverImage = newCoverImage;
         data.metadata.genre = newGenre;
+        data.metadata.description = newDescription;
 
         await saveWorldInfo(name, data, true);
         await displayWorldEntries(name, data, navigation_option.none, true);

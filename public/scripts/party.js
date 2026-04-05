@@ -1,10 +1,13 @@
 import { t } from './i18n.js';
-import { askForPersonaSelection } from './personas.js';
 import { power_user } from './power-user.js';
-import { POPUP_TYPE, Popup } from './popup.js';
-import { getThumbnailUrl, chat } from '../script.js';
-import { getCurrentWorldMapUrl, getCurrentWorldLocationMaps, getCurrentWorldBoards } from './world-info.js';
+import { POPUP_TYPE, POPUP_RESULT, Popup } from './popup.js';
+import { getThumbnailUrl, chat, chat_metadata, saveMetadata, eventSource, event_types, setUserName } from '../script.js';
+import { getCurrentWorldMapUrl, getCurrentWorldLocationMaps, getCurrentWorldBoards, loadWorldInfo, saveWorldInfo, METADATA_KEY } from './world-info.js';
 import { renderWorldMapView, renderLocationView } from './world-map-renderer.js';
+import { SlashCommandParser } from './slash-commands/SlashCommandParser.js';
+import { SlashCommand } from './slash-commands/SlashCommand.js';
+import { ARGUMENT_TYPE, SlashCommandArgument } from './slash-commands/SlashCommandArgument.js';
+import { SlashCommandEnumValue } from './slash-commands/SlashCommandEnumValue.js';
 import {
     EQUIPMENT_SLOTS, SLOT_INFO, RELATIONSHIP_TYPES, ITEM_TYPES, MODIFIABLE_STATS,
     ALIGNMENTS, CONDITIONS,
@@ -19,8 +22,11 @@ import {
  * @typedef {Object} PartyMember
  * @property {number} id
  * @property {string|null} personaId
+ * @property {number|null} [wiUid]
+ * @property {string|null} [worldName]
  * @property {string} name
  * @property {string} avatar
+ * @property {string} [group]
  * @property {number} level
  * @property {string} class
  * @property {number} hp
@@ -58,6 +64,276 @@ function savePartyState() {
         window.localStorage.setItem('sillytavern_partyMembers', JSON.stringify(partyMembers));
     } catch (e) {
         console.warn('Unable to save party state', e);
+    }
+    // Also persist to chat metadata for per-session party
+    savePartyToMetadata();
+}
+
+/**
+ * Saves current partyMembers to chat_metadata.party and persists to disk.
+ */
+async function savePartyToMetadata() {
+    if (!chat_metadata || typeof chat_metadata !== 'object') {
+        console.log('savePartyToMetadata skipped: chat_metadata invalid', { chat_metadata });
+        return;
+    }
+    if (partyMembers.length > 0 && chat_metadata.persona) {
+        console.log('Clearing locked chat persona because active party exists', { persona: chat_metadata.persona });
+        delete chat_metadata.persona;
+    }
+    chat_metadata['party'] = JSON.parse(JSON.stringify(partyMembers));
+    console.log('savePartyToMetadata saving party to chat_metadata', { partyMembers, chat_metadata });
+    try {
+        await saveMetadata();
+    } catch (e) {
+        console.warn('Unable to save party to chat metadata', e);
+    }
+}
+
+/**
+ * Computes a display name for a party entry from world info.
+ * Uses comment first, then dndData.name, then first key, then group.
+ * @param {{comment?: string, dndData?: any, key?: string[], group?: string}} entry
+ * @returns {string}
+ */
+function getPartyEntryDisplayName(entry) {
+    const comment = String(entry.comment || '').trim();
+    const dataName = String(entry.dndData?.name || '').trim();
+    const keys = Array.isArray(entry.key) ? entry.key.filter(Boolean) : [];
+    if (comment && comment !== 'Untitled') return comment;
+    if (dataName) return dataName;
+    if (keys.length) return keys[0];
+    return String(entry.group || 'Unknown Character');
+}
+
+/**
+ * Returns a fallback name for party members that are missing real titles.
+ * @param {Partial<PartyMember>} member
+ * @returns {string}
+ */
+function getPartyMemberFallbackName(member) {
+    const parts = [];
+    if (member.group) parts.push(member.group);
+    if (member.class) parts.push(member.class);
+    if (member.level) parts.push(`Lv ${member.level}`);
+    if (member.alignment) parts.push(member.alignment);
+    return parts.filter(Boolean).join(' ') || 'Party Member';
+}
+
+/**
+ * Loads party from chat_metadata.party (per-session) and renders.
+ */
+function loadPartyForChat() {
+    console.log('loadPartyForChat called', { chat_metadata });
+    if (chat_metadata?.party && Array.isArray(chat_metadata.party) && chat_metadata.party.length > 0) {
+        partyMembers = chat_metadata.party
+            .filter((member) => member && member.id && member.name)
+            .map((member) => migratePartyMember(member));
+        partyMembers = partyMembers.map((member) => {
+            if (member.name === 'Untitled') {
+                const fallbackName = getPartyMemberFallbackName(member);
+                console.log('Replacing Untitled party member name with fallback', { member, fallbackName });
+                return { ...member, name: fallbackName };
+            }
+            return member;
+        });
+        console.log('Loaded party from chat_metadata', { partyMembers });
+        // Clear any locked persona when party is active
+        if (partyMembers.length > 0 && chat_metadata?.persona) {
+            console.log('Clearing locked chat persona due to active party', { persona: chat_metadata.persona });
+            delete chat_metadata.persona;
+        }
+        // Restore party leader as active speaker
+        if (partyMembers.length > 0) {
+            console.log('Restoring active chat speaker to party leader', partyMembers[0].name);
+            setUserName(partyMembers[0].name, { toastPersonaNameChange: false });
+        }
+    } else {
+        console.log('No party found in chat_metadata');
+        partyMembers = [];
+    }
+    loadCurrentLocation();
+    renderPartyMembers();
+}
+
+/**
+ * Simple HTML escape for safe use in templates.
+ * @param {string} str
+ * @returns {string}
+ */
+function escapeHtml(str) {
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+/**
+ * Shows a popup to pick a single WI character entry.
+ * @param {Array<any>} charEntries - WI entries with group "Characters"
+ * @returns {Promise<any|null>} Selected entry or null
+ */
+async function showCharacterPicker(charEntries) {
+    let selectedEntry = null;
+
+    let gridHtml = '<div class="party-picker-grid">';
+    for (const entry of charEntries) {
+        const uid = String(entry.uid);
+        const name = getPartyEntryDisplayName(entry);
+        const image = entry.dndData?.image || '';
+        const race = entry.dndData?.race || '';
+        const charClass = entry.dndData?.charClass || '';
+        const level = entry.dndData?.level ? `Lv ${entry.dndData.level}` : '';
+        const subtitle = [race, charClass, level].filter(Boolean).join(' · ');
+
+        const imgHtml = image
+            ? `<img src="${escapeHtml(image)}" alt="" />`
+            : '<i class="fa-solid fa-user fa-2x"></i>';
+
+        gridHtml += `
+        <div class="party-card" data-uid="${escapeHtml(uid)}">
+            <div class="party-card-img">${imgHtml}</div>
+            <div class="party-card-info">
+                <div class="party-card-name">${escapeHtml(name)}</div>
+                ${subtitle ? `<div class="party-card-subtitle">${escapeHtml(subtitle)}</div>` : ''}
+            </div>
+            <div class="party-card-check"><i class="fa-solid fa-check"></i></div>
+        </div>`;
+    }
+    gridHtml += '</div>';
+
+    const headerHtml = `<h3 style="margin:0 0 6px"><i class="fa-solid fa-user-plus"></i> ${t`Add Character to Party`}</h3>
+        <p style="margin:0 0 10px;font-size:0.85rem;color:var(--SmartThemeQuoteColor,#999)">${t`Select a character from the world to add to your party.`}</p>`;
+
+    const content = $(`<div class="party-picker-container">${headerHtml}${gridHtml}</div>`);
+
+    const popup = new Popup(content, POPUP_TYPE.CONFIRM, null, {
+        wider: true,
+        okButton: t`Add to Party`,
+        cancelButton: t`Cancel`,
+        allowVerticalScrolling: true,
+        onOpen: () => {
+            content.on('click', '.party-card', function () {
+                content.find('.party-card').removeClass('selected');
+                $(this).addClass('selected');
+                selectedEntry = charEntries.find(e => String(e.uid) === String($(this).data('uid'))) || null;
+            });
+        },
+    });
+
+    const result = await popup.show();
+    if (result === POPUP_RESULT.AFFIRMATIVE && selectedEntry) {
+        return selectedEntry;
+    }
+    return null;
+}
+
+/**
+ * Syncs a party member's data back to the corresponding World Info entry.
+ * @param {PartyMember} member
+ */
+async function syncPartyMemberToWorldInfo(member) {
+    if (member.wiUid == null || !member.worldName) return;
+
+    try {
+        const data = await loadWorldInfo(member.worldName);
+        if (!data?.entries) return;
+
+        const entry = data.entries[member.wiUid];
+        if (!entry) {
+            console.warn('syncPartyMemberToWorldInfo: entry not found', { wiUid: member.wiUid, worldName: member.worldName });
+            return;
+        }
+
+        // Update entry fields from party member
+        entry.comment = member.name;
+        if (!entry.dndData) entry.dndData = {};
+        entry.dndData.image = member.avatar;
+        entry.dndData.level = member.level;
+        entry.dndData.charClass = member.class;
+        entry.dndData.maxHp = member.maxHp;
+        entry.dndData.alignment = member.alignment;
+        entry.dndData.personality = member.personality;
+        entry.dndData.str = member.strength;
+        entry.dndData.dex = member.dexterity;
+        entry.dndData.con = member.constitution;
+        entry.dndData.int = member.intelligence;
+        entry.dndData.wis = member.wisdom;
+        entry.dndData.cha = member.charisma;
+        entry.dndData.ac = member.armorClass;
+        entry.dndData.speed = member.speed;
+        entry.dndData.name = member.name;
+
+        await saveWorldInfo(member.worldName, data, true);
+        console.log('syncPartyMemberToWorldInfo synced', { member: member.name, wiUid: member.wiUid });
+    } catch (e) {
+        console.warn('syncPartyMemberToWorldInfo failed', e);
+    }
+}
+
+/**
+ * Sets party members from world info character entries (used by campaign party picker).
+ * Creates proper PartyMember objects from world info dndData.
+ * @param {Array<{comment: string, dndData: any, key: string[], group?: string, uid?: number}>} entries
+ * @param {string|null} [worldName]
+ */
+export function setPartyFromWorldEntries(entries, worldName = null) {
+    console.log('setPartyFromWorldEntries called', { entriesCount: entries?.length, entries, worldName });
+    // Auto-detect world name from chat metadata if not provided
+    const resolvedWorldName = worldName || (chat_metadata ? chat_metadata[METADATA_KEY] : null) || null;
+    partyMembers = [];
+    const defaults = getDefaultDndData();
+    for (const entry of entries) {
+        const d = entry.dndData || {};
+        const memberName = getPartyEntryDisplayName(entry);
+        /** @type {PartyMember} */
+        const member = {
+            id: Date.now() + Math.floor(Math.random() * 10000),
+            personaId: null,
+            wiUid: entry.uid != null ? Number(entry.uid) : null,
+            worldName: resolvedWorldName,
+            name: memberName,
+            group: entry.group || '',
+            avatar: d.image || 'img/user-default.png',
+            level: Number(d.level) || 1,
+            class: d.charClass || 'Adventurer',
+            hp: Number(d.maxHp) || 30,
+            maxHp: Number(d.maxHp) || 30,
+            xp: 0,
+            xpNext: 100,
+            gold: 0,
+            silver: 0,
+            copper: 0,
+            inventory: '',
+            conditions: '',
+            alignment: d.alignment || '',
+            personality: d.personality || '',
+            activeConditions: /** @type {string[]} */ ([]),
+            strength: Number(d.str) || defaults.strength,
+            dexterity: Number(d.dex) || defaults.dexterity,
+            constitution: Number(d.con) || defaults.constitution,
+            intelligence: Number(d.int) || defaults.intelligence,
+            wisdom: Number(d.wis) || defaults.wisdom,
+            charisma: Number(d.cha) || defaults.charisma,
+            armorClass: Number(d.ac) || defaults.armorClass,
+            speed: Number(d.speed) || defaults.speed,
+            items: [],
+            equippedItems: { ...defaults.equippedItems },
+            relationships: [],
+            memories: [],
+            mapPosition: { locationName: '', gridX: 0, gridY: 0 },
+        };
+        partyMembers.push(member);
+    }
+    renderPartyMembers();
+    savePartyState();
+    console.log('setPartyFromWorldEntries built partyMembers', { partyMembers });
+    // Set party leader as active chat speaker
+    if (partyMembers.length > 0) {
+        console.log('Setting active chat speaker to party leader', partyMembers[0].name);
+        setUserName(partyMembers[0].name, { toastPersonaNameChange: false });
     }
 }
 
@@ -136,17 +412,45 @@ function renderPartyMembers() {
 //  WORLD MAP, LOCATION, AND BOARD VIEWS
 // ============================================================
 
-/** Currently selected location name (persisted in localStorage) */
+/** Currently selected location name — per-chat, stored in chat_metadata */
 let currentLocationName = '';
-
-try {
-    currentLocationName = window.localStorage.getItem('sillytavern_currentLocation') || '';
-} catch (_) { /* ignore */ }
+/** Currently selected board name — per-chat, stored in chat_metadata */
+let currentBoardName = '';
 
 function saveCurrentLocation() {
-    try {
-        window.localStorage.setItem('sillytavern_currentLocation', currentLocationName);
-    } catch (_) { /* ignore */ }
+    if (chat_metadata) {
+        chat_metadata['currentLocation'] = currentLocationName;
+        saveMetadata();
+    }
+}
+
+function saveCurrentBoard() {
+    if (chat_metadata) {
+        chat_metadata['currentBoard'] = currentBoardName;
+        saveMetadata();
+    }
+}
+
+function loadCurrentLocation() {
+    currentLocationName = (chat_metadata && chat_metadata['currentLocation']) || '';
+    currentBoardName = (chat_metadata && chat_metadata['currentBoard']) || '';
+}
+
+/** Helper: resolve boards for a location, including legacy boardName fallback */
+function getLocationBoards(loc) {
+    if (!loc) return [];
+    if (Array.isArray(loc.boards) && loc.boards.length) {
+        return loc.boards;
+    }
+    if (loc.boardName) {
+        const globalBoards = getCurrentWorldBoards();
+        const found = globalBoards.filter(b => b.name === loc.boardName);
+        if (found.length) {
+            console.log('[party] getLocationBoards fallback to loc.boardName', { locName: loc.name, boardName: loc.boardName, found });
+            return found;
+        }
+    }
+    return [];
 }
 
 /**
@@ -223,12 +527,40 @@ function renderLocationMapsPreview() {
         return;
     }
 
-    // Find the current location, or use the first one
+    // Find the current location
     let loc = locationMaps.find(l => l.name === currentLocationName);
+    const resolvedBoards = getLocationBoards(loc);
+    console.log('[party] renderLocationMapsPreview', { currentLocationName, currentBoardName, locName: loc?.name, locBoardsLength: resolvedBoards.length, resolvedBoards });
+
+    // No location selected yet — show a chooser
     if (!loc) {
-        loc = locationMaps[0];
-        currentLocationName = loc.name;
-        saveCurrentLocation();
+        container.empty();
+        let cards = '';
+        for (const l of locationMaps) {
+            const imgHtml = l.url
+                ? `<img src="${escapeHtml(l.url)}" alt="" />`
+                : '<i class="fa-solid fa-location-dot fa-2x"></i>';
+            cards += `
+            <div class="wm-loc-choose-card" data-loc="${escapeHtml(l.name)}">
+                <div class="wm-loc-choose-img">${imgHtml}</div>
+                <div class="wm-loc-choose-name">${escapeHtml(l.name)}</div>
+                ${l.region ? `<div class="wm-loc-choose-region">${escapeHtml(l.region)}</div>` : ''}
+            </div>`;
+        }
+        container.html(`
+            <div class="wm-loc-chooser">
+                <div class="wm-loc-chooser-title"><i class="fa-solid fa-compass"></i> ${t`Where are you?`}</div>
+                <div class="wm-loc-choose-grid">${cards}</div>
+            </div>
+        `);
+        container.find('.wm-loc-choose-card').on('click', function () {
+            currentLocationName = String($(this).data('loc'));
+            currentBoardName = '';
+            saveCurrentLocation();
+            saveCurrentBoard();
+            renderLocationMapsPreview();
+        });
+        return;
     }
 
     // Build view tabs (Location Name ↔ World)
@@ -266,7 +598,16 @@ function renderLocationMapsPreview() {
         }
     });
 
-    container.append(viewTabs, locationPanel, worldPanel);
+    const leaveLocBtn = $(`<button class="menu_button wm-leave-loc-btn"><i class="fa-solid fa-arrow-left"></i> ${t`Leave location`}</button>`);
+    leaveLocBtn.on('click', () => {
+        currentLocationName = '';
+        currentBoardName = '';
+        saveCurrentLocation();
+        saveCurrentBoard();
+        renderLocationMapsPreview();
+    });
+
+    container.append(leaveLocBtn, viewTabs, locationPanel, worldPanel);
 
     // Assign all party members without a location to the current location
     for (const m of partyMembers) {
@@ -278,6 +619,36 @@ function renderLocationMapsPreview() {
 
     const tokens = /** @type {import('./world-map-renderer.js').TokenData[]} */ (buildTokens(currentLocationName));
 
+    // ---- Board drill-down: if a board is selected, show it instead of the location ----
+    const locBoards = getLocationBoards(loc);
+    const selectedBoard = locBoards.find(b => b.name === currentBoardName) || null;
+
+
+    if (selectedBoard) {
+        // Board selected — render board map with a "Back to location" button
+        const backBtn = $(`<button class="menu_button wm-leave-loc-btn"><i class="fa-solid fa-arrow-left"></i> ${t`Back to`} ${escapeHtml(loc.name)}</button>`);
+        backBtn.on('click', () => {
+            currentBoardName = '';
+            saveCurrentBoard();
+            renderLocationMapsPreview();
+        });
+        const boardPanel = $('<div data-map-root></div>');
+        container.append(backBtn, boardPanel);
+
+        const boardTokens = /** @type {import('./world-map-renderer.js').TokenData[]} */ (buildTokens(currentLocationName));
+        renderLocationView(boardPanel, {
+            name: selectedBoard.name,
+            imageUrl: selectedBoard.url,
+            description: '',
+            gridWidth: loc.gridWidth || 50,
+            gridHeight: loc.gridHeight || 50,
+            tokens: boardTokens,
+            onTokenMove: (tokenId, gx, gy) => handleTokenMove(tokenId, gx, gy, currentLocationName),
+        });
+        return;
+    }
+
+    // ---- Location view (no board selected) ----
     renderLocationView(locationPanel, {
         name: loc.name,
         imageUrl: loc.url,
@@ -287,51 +658,33 @@ function renderLocationMapsPreview() {
         tokens,
         onTokenMove: (tokenId, gx, gy) => handleTokenMove(tokenId, gx, gy, currentLocationName),
     });
-}
 
-function renderBoardsPreview() {
-    const container = $('#world_boards_list');
-    if (!container.length) return;
-
-    const boards = getCurrentWorldBoards();
-    const locationMaps = getCurrentWorldLocationMaps();
-
-    if (!boards || boards.length === 0) {
-        container.html(`<div class="wm-empty-state">${t`No boards available.`}</div>`);
-        return;
-    }
-
-    // Auto-select board based on current location's boardName
-    const currentLoc = locationMaps.find(l => l.name === currentLocationName);
-    let board = null;
-    if (currentLoc && currentLoc.boardName) {
-        board = boards.find(b => b.name === currentLoc.boardName);
-    }
-    if (!board) {
-        board = boards[0];
-    }
-
-    container.empty();
-
-    // Assign party members without location to current location
-    for (const m of partyMembers) {
-        if (!m.mapPosition || !m.mapPosition.locationName) {
-            m.mapPosition = m.mapPosition || { locationName: '', gridX: 0, gridY: 0 };
-            m.mapPosition.locationName = currentLocationName;
+    // ---- Board cards below the location map ----
+    if (locBoards.length > 0) {
+        let boardCards = '';
+        for (const b of locBoards) {
+            const imgHtml = b.url
+                ? `<img src="${escapeHtml(b.url)}" alt="" />`
+                : '<i class="fa-solid fa-chess-board fa-2x"></i>';
+            boardCards += `
+            <div class="wm-loc-choose-card" data-board="${escapeHtml(b.name)}">
+                <div class="wm-loc-choose-img">${imgHtml}</div>
+                <div class="wm-loc-choose-name">${escapeHtml(b.name)}</div>
+            </div>`;
         }
+        const boardsSection = $(`
+            <div class="wm-boards-section">
+                <div class="wm-boards-section-title"><i class="fa-solid fa-chess-board"></i> ${t`Boards`}</div>
+                <div class="wm-loc-choose-grid">${boardCards}</div>
+            </div>
+        `);
+        boardsSection.find('.wm-loc-choose-card').on('click', function () {
+            currentBoardName = String($(this).data('board'));
+            saveCurrentBoard();
+            renderLocationMapsPreview();
+        });
+        container.append(boardsSection);
     }
-
-    const tokens = /** @type {import('./world-map-renderer.js').TokenData[]} */ (buildTokens(currentLocationName));
-
-    renderLocationView(container, {
-        name: board.name,
-        imageUrl: board.url,
-        description: '',
-        gridWidth: currentLoc?.gridWidth || 50,
-        gridHeight: currentLoc?.gridHeight || 50,
-        tokens,
-        onTokenMove: (tokenId, gx, gy) => handleTokenMove(tokenId, gx, gy, currentLocationName),
-    });
 }
 
 /**
@@ -388,6 +741,12 @@ async function openPartyMemberModal(member) {
         partyMembers[idx] = member;
         renderPartyMembers();
         savePartyState();
+        // Sync changes back to World Info entry
+        syncPartyMemberToWorldInfo(member);
+        // If this is the party leader, update the active chat speaker name
+        if (idx === 0) {
+            setUserName(member.name, { toastPersonaNameChange: false });
+        }
     }
 }
 
@@ -403,16 +762,52 @@ function buildCharacterSheetTab(member) {
     const panel = $('<div class="dnd-tab-panel" data-panel="character_sheet"></div>');
     const sheet = $('<div class="dnd-sheet"></div>');
 
-    // Header
-    sheet.append(`
+    // Header (editable name + clickable avatar)
+    const header = $(`
         <div class="dnd-sheet-header">
-            <img class="dnd-sheet-avatar" src="${member.avatar}" alt="${member.name}" />
+            <div class="dnd-avatar-wrapper" title="Click to change avatar">
+                <img class="dnd-sheet-avatar" src="${member.avatar}" alt="${member.name}" />
+                <div class="dnd-avatar-overlay"><i class="fa-solid fa-camera"></i></div>
+                <input type="file" class="dnd-avatar-input" accept="image/*" style="display:none" />
+            </div>
             <div class="dnd-sheet-identity">
-                <div class="dnd-sheet-name">${member.name}</div>
+                <input type="text" class="dnd-sheet-name-input" value="${member.name}" placeholder="Character name" />
                 <div class="dnd-sheet-class-level">Level ${member.level} ${member.class}</div>
             </div>
         </div>
     `);
+
+    // Name editing
+    header.find('.dnd-sheet-name-input').on('change', function () {
+        const newName = String($(this).val()).trim();
+        if (newName) {
+            member.name = newName;
+        }
+    });
+
+    // Avatar click -> open file picker
+    header.find('.dnd-avatar-wrapper').on('click', function (e) {
+        if ($(e.target).hasClass('dnd-avatar-input')) return;
+        header.find('.dnd-avatar-input')[0].click();
+    });
+
+    // Avatar file selected -> convert to data URL
+    header.find('.dnd-avatar-input').on('change', function () {
+        const file = this.files?.[0];
+        if (!file) return;
+        if (!file.type.startsWith('image/')) return;
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            const dataUrl = e.target?.result;
+            if (typeof dataUrl === 'string') {
+                member.avatar = dataUrl;
+                header.find('.dnd-sheet-avatar').attr('src', dataUrl);
+            }
+        };
+        reader.readAsDataURL(file);
+    });
+
+    sheet.append(header);
 
     // Alignment
     const alignmentRow = $('<div class="dnd-alignment-row"></div>');
@@ -1451,6 +1846,14 @@ export function updatePartyMemberFromPersona(avatarId, newState) {
     }
 }
 
+/**
+ * Returns the current party leader (first member), or null if no party is active.
+ * @returns {PartyMember|null}
+ */
+export function getActivePartyLeader() {
+    return partyMembers.length > 0 ? partyMembers[0] : null;
+}
+
 export function getPartyDescription() {
     if (!partyMembers.length) {
         return '';
@@ -1481,27 +1884,90 @@ export function initPartyPanel() {
     }
 
     $('#party_add_button').off('click').on('click', async () => {
-        /** @type {{[key: string]: string}} */
-        const userPersonas = power_user?.personas || {};
-        const personas = Object.keys(userPersonas);
-        if (!personas.length) {
+        const worldName = chat_metadata ? chat_metadata[METADATA_KEY] : null;
+        if (!worldName) {
             // @ts-ignore
-            toastr.warning(t`No personas found. Create a persona first.`);
+            toastr.warning(t`No world info bound to this chat. Start a campaign first.`);
             return;
         }
 
-        const selectedPersona = await askForPersonaSelection(
-            t`Select Persona`,
-            t`Please select a persona to add to the party.`,
-            personas,
-            { highlightPersonas: false }
-        );
-
-        if (!selectedPersona) {
+        const data = await loadWorldInfo(worldName);
+        if (!data?.entries) {
+            // @ts-ignore
+            toastr.warning(t`Could not load world info entries.`);
             return;
         }
 
-        addPartyMember(selectedPersona);
+        // Filter to "Characters" group, exclude members already in party
+        const existingNames = new Set(partyMembers.map(m => m.name.toLowerCase()));
+        const existingUids = new Set(partyMembers.filter(m => m.wiUid != null).map(m => m.wiUid));
+        const charEntries = [];
+        for (const uid of Object.keys(data.entries)) {
+            const entry = data.entries[uid];
+            const group = (entry.group || '').trim().toLowerCase();
+            if (!group.includes('character')) continue;
+            // Exclude already-in-party by uid or name
+            if (existingUids.has(Number(entry.uid))) continue;
+            const entryName = getPartyEntryDisplayName(entry).toLowerCase();
+            if (existingNames.has(entryName)) continue;
+            charEntries.push(entry);
+        }
+
+        if (charEntries.length === 0) {
+            // @ts-ignore
+            toastr.info(t`No available characters to add. All characters from this world are already in the party.`);
+            return;
+        }
+
+        // Build a picker popup
+        const selected = await showCharacterPicker(charEntries);
+        if (!selected) return;
+
+        // Create party member from the WI entry
+        const d = selected.dndData || {};
+        const defaults = getDefaultDndData();
+        const memberName = getPartyEntryDisplayName(selected);
+        /** @type {PartyMember} */
+        const newMember = {
+            id: Date.now() + Math.floor(Math.random() * 10000),
+            personaId: null,
+            wiUid: selected.uid != null ? Number(selected.uid) : null,
+            worldName: worldName,
+            name: memberName,
+            group: selected.group || '',
+            avatar: d.image || 'img/user-default.png',
+            level: Number(d.level) || 1,
+            class: d.charClass || 'Adventurer',
+            hp: Number(d.maxHp) || 30,
+            maxHp: Number(d.maxHp) || 30,
+            xp: 0,
+            xpNext: 100,
+            gold: 0,
+            silver: 0,
+            copper: 0,
+            inventory: '',
+            conditions: '',
+            alignment: d.alignment || '',
+            personality: d.personality || '',
+            activeConditions: /** @type {string[]} */ ([]),
+            strength: Number(d.str) || defaults.strength,
+            dexterity: Number(d.dex) || defaults.dexterity,
+            constitution: Number(d.con) || defaults.constitution,
+            intelligence: Number(d.int) || defaults.intelligence,
+            wisdom: Number(d.wis) || defaults.wisdom,
+            charisma: Number(d.cha) || defaults.charisma,
+            armorClass: Number(d.ac) || defaults.armorClass,
+            speed: Number(d.speed) || defaults.speed,
+            items: [],
+            equippedItems: { ...defaults.equippedItems },
+            relationships: [],
+            memories: [],
+            mapPosition: { locationName: '', gridX: 0, gridY: 0 },
+        };
+
+        partyMembers.push(newMember);
+        renderPartyMembers();
+        savePartyState();
     });
 
     $(document).on('personaStateUpdated', (_, avatarId, newState) => {
@@ -1516,42 +1982,37 @@ export function initPartyPanel() {
         renderLocationMapsPreview();
     });
 
-    $(document).on('worldBoardsUpdated', () => {
-        renderBoardsPreview();
-    });
-
     /**
-     * @param {'party'|'world_map'|'location'|'board'} tab
+     * @param {'party'|'world_map'|'location'} tab
      */
     function setPartyTab(tab) {
         const worldMapRow = $('#world_map_row');
         const locationRow = $('#world_location_maps_row');
-        const boardsRow = $('#world_boards_row');
         const partyList = $('#rm_party_list');
         const partyFixedTop = $('#partyListFixedTop');
 
+        // Remap legacy 'board' tab to 'location'
+        const normalizedTab = /** @type {'party'|'world_map'|'location'} */ (tab === 'board' ? 'location' : tab);
+
         $('.right_menu_tab').removeClass('active');
-        $(`#rm_tab_${tab}`).addClass('active');
+        $(`#rm_tab_${normalizedTab}`).addClass('active');
 
         // show party pane and hidden others per tab
-        partyList.toggleClass('tab-panel-hidden', tab !== 'party');
-        partyFixedTop.toggleClass('tab-panel-hidden', tab !== 'party');
-        worldMapRow.toggleClass('tab-panel-hidden', tab !== 'world_map');
-        locationRow.toggleClass('tab-panel-hidden', tab !== 'location');
-        boardsRow.toggleClass('tab-panel-hidden', tab !== 'board');
+        partyList.toggleClass('tab-panel-hidden', normalizedTab !== 'party');
+        partyFixedTop.toggleClass('tab-panel-hidden', normalizedTab !== 'party');
+        worldMapRow.toggleClass('tab-panel-hidden', normalizedTab !== 'world_map');
+        locationRow.toggleClass('tab-panel-hidden', normalizedTab !== 'location');
 
-        if (tab === 'party') {
+        if (normalizedTab === 'party') {
             renderPartyMembers();
-        } else if (tab === 'world_map') {
+        } else if (normalizedTab === 'world_map') {
             renderWorldMapPreview();
-        } else if (tab === 'location') {
+        } else if (normalizedTab === 'location') {
             renderLocationMapsPreview();
-        } else if (tab === 'board') {
-            renderBoardsPreview();
         }
 
         try {
-            window.localStorage.setItem('rm_PinAndTabs_selectedTab', tab);
+            window.localStorage.setItem('rm_PinAndTabs_selectedTab', normalizedTab);
         } catch (e) {
             console.warn('Unable to store selected tab', e);
         }
@@ -1560,7 +2021,6 @@ export function initPartyPanel() {
     $('#rm_tab_party').on('click', () => setPartyTab('party'));
     $('#rm_tab_world_map').on('click', () => setPartyTab('world_map'));
     $('#rm_tab_location').on('click', () => setPartyTab('location'));
-    $('#rm_tab_board').on('click', () => setPartyTab('board'));
 
     $(document).on('click', '.party-remove-member', null, () => {
         // handled by individual buttons
@@ -1570,11 +2030,186 @@ export function initPartyPanel() {
     renderPartyMembers();
     renderWorldMapPreview();
     renderLocationMapsPreview();
-    renderBoardsPreview();
 
-    /** @type {'party'|'world_map'|'location'|'board'|'world_content'} */
-    const initiallySelected = /** @type {'party'|'world_map'|'location'|'board'|'world_content'} */ (window.localStorage.getItem('rm_PinAndTabs_selectedTab') || 'party');
+    // Restore per-session party when chat changes
+    eventSource.on(event_types.CHAT_CHANGED, () => {
+        loadPartyForChat();
+    });
+
+    /** @type {'party'|'world_map'|'location'} */
+    const initiallySelected = /** @type {'party'|'world_map'|'location'} */ (window.localStorage.getItem('rm_PinAndTabs_selectedTab') || 'party');
     if (typeof setPartyTab === 'function') {
         setPartyTab(initiallySelected);
     }
+
+    // ================================================================
+    //  Slash commands: /go, /enter, /leave
+    // ================================================================
+
+    /** Helper: enum provider listing current world's location names */
+    function locationEnumProvider() {
+        return getCurrentWorldLocationMaps().map(l => new SlashCommandEnumValue(l.name, l.region || ''));
+    }
+
+    /** Helper: enum provider listing boards at the current location */
+    function boardEnumProvider() {
+        const loc = getCurrentWorldLocationMaps().find(l => l.name === currentLocationName);
+        const locBoards = getLocationBoards(loc);
+        const globalBoards = getCurrentWorldBoards();
+        console.log('[party] boardEnumProvider', { currentLocationName, loc: loc?.name, locBoardsLength: locBoards.length, locBoards, globalBoardsLength: globalBoards.length });
+        if (locBoards.length > 0) {
+            return locBoards.map(b => new SlashCommandEnumValue(b.name));
+        }
+        if (globalBoards.length > 0) {
+            console.log('[party] boardEnumProvider fallback to global boards', { globalBoards });
+            return globalBoards.map(b => new SlashCommandEnumValue(b.name));
+        }
+        return [];
+    }
+
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'go',
+        helpString: '<div>Navigate to a location. Usage: <code>/go Oakhaven</code></div>',
+        unnamedArgumentList: [
+            SlashCommandArgument.fromProps({
+                description: 'Location name',
+                typeList: [ARGUMENT_TYPE.STRING],
+                isRequired: true,
+                enumProvider: locationEnumProvider,
+            }),
+        ],
+        callback: (_args, value) => {
+            const name = String(value).trim();
+            const locs = getCurrentWorldLocationMaps();
+            const match = locs.find(l => l.name.toLowerCase() === name.toLowerCase());
+            if (!match) {
+                toastr.warning(`Location "${name}" not found.`);
+                return '';
+            }
+            currentLocationName = match.name;
+            currentBoardName = '';
+            saveCurrentLocation();
+            saveCurrentBoard();
+            setPartyTab('location');
+            toastr.info(`📍 ${t`Traveled to`} ${match.name}`);
+            return match.name;
+        },
+    }));
+
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'enter',
+        helpString: '<div>Enter a board at your current location. Usage: <code>/enter Tavern</code></div>',
+        unnamedArgumentList: [
+            SlashCommandArgument.fromProps({
+                description: 'Board name',
+                typeList: [ARGUMENT_TYPE.STRING],
+                isRequired: true,
+                enumProvider: boardEnumProvider,
+            }),
+        ],
+        callback: (_args, value) => {
+            const name = String(value).trim();
+            console.log('[party] /enter called', { currentLocationName, name });
+            if (!currentLocationName) {
+                toastr.warning(`Choose a location first (/go).`);
+                return '';
+            }
+            const loc = getCurrentWorldLocationMaps().find(l => l.name === currentLocationName);
+            let boards = getLocationBoards(loc);
+            let usedFallback = false;
+            if (boards.length === 0) {
+                const globalBoards = getCurrentWorldBoards();
+                if (globalBoards.length > 0) {
+                    console.log('[party] /enter fallback to global boards', { currentLocationName, globalBoards });
+                    boards = globalBoards;
+                    usedFallback = true;
+                }
+            }
+            console.log('[party] /enter lookup', { loc, boards, usedFallback });
+            const match = boards.find(b => b.name.toLowerCase() === name.toLowerCase());
+            console.log('[party] /enter match', { match });
+            if (!match) {
+                toastr.warning(`Board "${name}" not found at ${currentLocationName}.`);
+                return '';
+            }
+            currentBoardName = match.name;
+            saveCurrentBoard();
+            setPartyTab('location');
+            toastr.info(`🎲 ${t`Entered`} ${match.name}`);
+            if (usedFallback) {
+                console.log('[party] /enter used legacy global boards fallback for', { currentLocationName, board: match.name });
+            }
+            return match.name;
+        },
+    }));
+
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'leave',
+        helpString: '<div>Leave the current board or location. Cascading: board first, then location.</div>',
+        callback: () => {
+            if (currentBoardName) {
+                const leftBoard = currentBoardName;
+                currentBoardName = '';
+                saveCurrentBoard();
+                setPartyTab('location');
+                toastr.info(`← ${t`Left`} ${leftBoard}`);
+                return leftBoard;
+            }
+            if (currentLocationName) {
+                const leftLoc = currentLocationName;
+                currentLocationName = '';
+                currentBoardName = '';
+                saveCurrentLocation();
+                saveCurrentBoard();
+                setPartyTab('location');
+                toastr.info(`← ${t`Left`} ${leftLoc}`);
+                return leftLoc;
+            }
+            toastr.info(t`Nowhere to leave.`);
+            return '';
+        },
+    }));
+
+    // ================================================================
+    //  Auto-detect location / board names in user messages
+    // ================================================================
+
+    eventSource.on(event_types.USER_MESSAGE_RENDERED, (messageId) => {
+        const message = chat[messageId];
+        if (!message || !message.mes) return;
+        const text = message.mes.toLowerCase();
+
+        const locs = getCurrentWorldLocationMaps();
+        if (!locs || locs.length === 0) return;
+
+        // Check boards at current location first (more specific)
+        if (currentLocationName) {
+            const loc = locs.find(l => l.name === currentLocationName);
+            const boards = (loc && Array.isArray(loc.boards)) ? loc.boards : [];
+            for (const b of boards) {
+                if (b.name && text.includes(b.name.toLowerCase())) {
+                    currentBoardName = b.name;
+                    saveCurrentBoard();
+                    setPartyTab('location');
+                    toastr.info(`🎲 ${t`Entered`} ${b.name}`);
+                    return;
+                }
+            }
+        }
+
+        // Check location names
+        for (const l of locs) {
+            if (l.name && text.includes(l.name.toLowerCase())) {
+                if (l.name !== currentLocationName) {
+                    currentLocationName = l.name;
+                    currentBoardName = '';
+                    saveCurrentLocation();
+                    saveCurrentBoard();
+                    setPartyTab('location');
+                    toastr.info(`📍 ${t`Traveled to`} ${l.name}`);
+                }
+                return;
+            }
+        }
+    });
 }

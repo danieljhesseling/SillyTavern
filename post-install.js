@@ -20,19 +20,16 @@ const color = chalk;
 function convertConfig() {
     if (fs.existsSync('./config.conf')) {
         if (fs.existsSync('./config.yaml')) {
-            console.log(color.yellow('Both config.conf and config.yaml exist. Please delete config.conf manually.'));
             return;
         }
 
         try {
-            console.log(color.blue('Converting config.conf to config.yaml. Your old config.conf will be renamed to config.conf.bak'));
             fs.renameSync('./config.conf', './config.conf.cjs'); // Force loading as CommonJS
             const require = createRequire(import.meta.url);
             const config = require(path.join(process.cwd(), './config.conf.cjs'));
             fs.copyFileSync('./config.conf.cjs', './config.conf.bak');
             fs.rmSync('./config.conf.cjs');
             fs.writeFileSync('./config.yaml', yaml.stringify(config));
-            console.log(color.green('Conversion successful. Please check your config.yaml and fix it if necessary.'));
         } catch (error) {
             console.error(color.red('FATAL: Config conversion failed. Please check your config.conf file and try again.'), error);
             return;
@@ -74,18 +71,12 @@ function createDefaultFiles() {
                         defaultItem.defaultPath,
                         defaultItem.productionPath,
                     );
-                    console.log(
-                        color.green(`Created default file: ${defaultItem.productionPath}`),
-                    );
                 }
             } else if (defaultItem.type === 'directory') {
                 fs.cpSync(defaultItem.defaultPath, defaultItem.productionPath, {
                     force: false, // Don't overwrite existing files!
                     recursive: true,
                 });
-                console.log(
-                    color.green(`Synchronized missing files: ${defaultItem.productionPath}`),
-                );
             } else {
                 throw new Error(
                     'FATAL: Unexpected default file format in `post-install.js#createDefaultFiles()`.',

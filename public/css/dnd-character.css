@@ -74,6 +74,35 @@
     gap: 16px;
 }
 
+.dnd-avatar-wrapper {
+    position: relative;
+    cursor: pointer;
+    flex-shrink: 0;
+    width: 100px;
+    height: 100px;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.dnd-avatar-wrapper:hover .dnd-avatar-overlay {
+    opacity: 1;
+}
+
+.dnd-avatar-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.5);
+    color: #fff;
+    font-size: 1.4rem;
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
+    border-radius: 12px;
+}
+
 .dnd-sheet-avatar {
     width: 100px;
     height: 100px;
@@ -87,6 +116,24 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
+}
+
+.dnd-sheet-name-input {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--SmartThemeEmColor, #fff);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 2px 6px;
+    outline: none;
+    width: 100%;
+}
+
+.dnd-sheet-name-input:hover,
+.dnd-sheet-name-input:focus {
+    border-color: var(--SmartThemeBorderColor, #555);
+    background: var(--SmartThemeBlurTintColor, rgba(0, 0, 0, 0.2));
 }
 
 .dnd-sheet-name {

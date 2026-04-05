@@ -5,7 +5,7 @@
  */
 
 import { t } from './i18n.js';
-import { POPUP_TYPE, Popup } from './popup.js';
+import { POPUP_TYPE, POPUP_RESULT, Popup } from './popup.js';
 import {
     selected_world_info, loadWorldInfo, saveWorldInfo,
     createWorldInfoEntry, current_world_info_name,
@@ -325,23 +325,201 @@ export async function openWorldContentPopup(worldName, initialCategory) {
         return;
     }
 
-    const html = '<div id="wcb_popup_container" class="width100p" style="min-height:400px"></div>';
+    /** @type {any} */
+    const data = await loadWorldInfo(worldName);
+    if (!data?.entries) {
+        // @ts-ignore
+        toastr.warning(t`Could not load world info entries.`);
+        return;
+    }
 
-    const popup = new Popup(html, POPUP_TYPE.CONFIRM, null, {
-        large: true,
+    const meta = data.metadata || {};
+    const displayName = meta.displayName || worldName;
+    const coverImage = meta.coverImage || '';
+    const genre = meta.genre || '';
+    const worldDescription = meta.description || '';
+    const locationMaps = Array.isArray(meta.locationMaps) ? meta.locationMaps : [];
+    // Collect boards from locations (per-location model), fallback to top-level meta.boards
+    const locBoards = [];
+    for (const loc of locationMaps) {
+        for (const b of (loc.boards || [])) {
+            if (!locBoards.some(x => x.name === b.name)) locBoards.push(b);
+        }
+    }
+    const boards = locBoards.length ? locBoards : (Array.isArray(meta.boards) ? meta.boards : []);
+    const worldMapUrl = meta.worldMapUrl || meta.mapUrl || '';
+
+    // Group entries by category
+    /** @type {Map<string, Array<{entry: any, title: string, image: string, desc: string}>>} */
+    const categorized = new Map();
+    for (const uid of Object.keys(data.entries)) {
+        const entry = data.entries[uid];
+        const cat = categorizeEntry(entry);
+        if (!cat || cat === 'Uncategorized') continue;
+        if (!categorized.has(cat)) categorized.set(cat, []);
+        const title = entry.comment || (Array.isArray(entry.key) ? entry.key.join(', ') : entry.key || `Entry ${entry.uid}`);
+        const image = entry.dndData?.image || '';
+        categorized.get(cat).push({ entry, title, image, desc: '' });
+    }
+
+    const activeCats = CONTENT_CATEGORIES.filter(c => c !== 'Uncategorized' && categorized.has(c) && categorized.get(c).length > 0);
+
+    // ---- Build campaign-style HTML ----
+    const coverStyle = coverImage
+        ? `background-image: url('${coverImage.replace(/'/g, "\\'")}'); background-size: cover; background-position: center;`
+        : '';
+
+    const headerHtml = `
+    <div class="wp-header" style="${coverStyle}">
+        <div class="wp-header-overlay">
+            <div class="wp-header-title">${escapeHtml(displayName)}</div>
+            ${genre ? `<span class="wp-header-genre">${escapeHtml(genre)}</span>` : ''}
+        </div>
+    </div>`;
+
+    // ---- Build Lore panel content ----
+    let loreSections = '';
+
+    if (worldDescription) {
+        loreSections += `
+        <div class="wp-lore-section">
+            <div class="wp-lore-section-title"><i class="fa-solid fa-scroll"></i> ${t`Description`}</div>
+            <div class="wp-lore-desc">${escapeHtml(worldDescription)}</div>
+        </div>`;
+    }
+
+    if (worldMapUrl) {
+        loreSections += `
+        <div class="wp-lore-section">
+            <div class="wp-lore-section-title"><i class="fa-solid fa-map"></i> ${t`World Map`}</div>
+            <div class="wp-lore-map"><img src="${escapeHtml(worldMapUrl)}" alt="World Map" /></div>
+        </div>`;
+    }
+
+    if (locationMaps.length > 0) {
+        let locCards = '';
+        for (const loc of locationMaps) {
+            const imgHtml = loc.url
+                ? `<img src="${escapeHtml(loc.url)}" alt="" />`
+                : '<i class="fa-solid fa-location-dot fa-2x"></i>';
+            locCards += `
+            <div class="wp-entry-card">
+                <div class="wp-entry-img">${imgHtml}</div>
+                <div class="wp-entry-name">${escapeHtml(loc.name || 'Unnamed')}</div>
+                ${loc.description ? `<div class="wp-entry-desc">${escapeHtml(loc.description)}</div>` : ''}
+            </div>`;
+        }
+        loreSections += `
+        <div class="wp-lore-section">
+            <div class="wp-lore-section-title"><i class="fa-solid fa-location-dot"></i> ${t`Locations`}</div>
+            <div class="wp-entry-grid">${locCards}</div>
+        </div>`;
+    }
+
+    if (boards.length > 0) {
+        let boardCards = '';
+        for (const board of boards) {
+            const imgHtml = board.url
+                ? `<img src="${escapeHtml(board.url)}" alt="" />`
+                : '<i class="fa-solid fa-chess-board fa-2x"></i>';
+            boardCards += `
+            <div class="wp-entry-card">
+                <div class="wp-entry-img">${imgHtml}</div>
+                <div class="wp-entry-name">${escapeHtml(board.name || 'Unnamed')}</div>
+            </div>`;
+        }
+        loreSections += `
+        <div class="wp-lore-section">
+            <div class="wp-lore-section-title"><i class="fa-solid fa-chess-board"></i> ${t`Boards`}</div>
+            <div class="wp-entry-grid">${boardCards}</div>
+        </div>`;
+    }
+
+    if (!loreSections) {
+        loreSections = `<div class="wp-lore-empty"><i class="fa-solid fa-book-open fa-3x"></i><p>${t`No lore content available yet.`}</p></div>`;
+    }
+
+    const lorePanelHtml = `<div class="wp-panel active" data-panel="Lore">${loreSections}</div>`;
+
+    // ---- Build tabs: Lore first, then categories ----
+    const isLoreStart = !initialCategory || !activeCats.includes(initialCategory);
+    const startTab = isLoreStart ? 'Lore' : initialCategory;
+
+    let tabsHtml = '<div class="wp-tabs">';
+    tabsHtml += `<div class="wp-tab ${startTab === 'Lore' ? 'active' : ''}" data-tab="Lore">
+        <i class="fa-solid fa-book-open"></i>
+        <span class="wp-tab-label">${t`Lore`}</span>
+    </div>`;
+    for (const cat of activeCats) {
+        const icon = CATEGORY_ICONS[cat] || 'fa-folder';
+        const count = categorized.get(cat)?.length || 0;
+        tabsHtml += `<div class="wp-tab ${cat === startTab ? 'active' : ''}" data-tab="${escapeHtml(cat)}">
+            <i class="fa-solid ${icon}"></i>
+            <span class="wp-tab-label">${cat}</span>
+            <span class="wp-tab-count">${count}</span>
+        </div>`;
+    }
+    tabsHtml += '</div>';
+
+    // ---- Build category panels ----
+    let panelsHtml = startTab === 'Lore' ? lorePanelHtml : lorePanelHtml.replace('class="wp-panel active"', 'class="wp-panel"');
+    for (const cat of activeCats) {
+        const items = categorized.get(cat) || [];
+        let gridHtml = '';
+        for (const item of items) {
+            const imgHtml = item.image
+                ? `<img src="${escapeHtml(item.image)}" alt="" />`
+                : `<i class="fa-solid ${CATEGORY_ICONS[cat] || 'fa-folder'} fa-2x"></i>`;
+            gridHtml += `
+            <div class="wp-entry-card" data-uid="${item.entry.uid}" style="cursor:pointer;">
+                <div class="wp-entry-img">${imgHtml}</div>
+                <div class="wp-entry-name">${escapeHtml(item.title)}</div>
+            </div>`;
+        }
+        panelsHtml += `<div class="wp-panel ${cat === startTab ? 'active' : ''}" data-panel="${escapeHtml(cat)}">
+            <div class="wp-entry-grid">${gridHtml}</div>
+        </div>`;
+    }
+
+    const fullHtml = `<div class="wp-container">${headerHtml}${tabsHtml}<div class="wp-panels">${panelsHtml}</div></div>`;
+    const content = $(fullHtml);
+
+    const popup = new Popup(content, POPUP_TYPE.CONFIRM, null, {
+        wider: true,
         allowVerticalScrolling: true,
-        okButton: 'Close',
+        okButton: t`Close`,
         cancelButton: null,
-        onOpen: async () => {
-            const container = $('#wcb_popup_container');
-            if (container.length) {
-                await renderWorldContentBrowser(container, [worldName]);
-                // Auto-select category if specified
-                if (initialCategory) {
-                    const catBtn = container.find(`.wcb-category-btn[data-category="${initialCategory}"]`);
-                    if (catBtn.length) catBtn.trigger('click');
+        onOpen: () => {
+            // Tab switching
+            content.on('click', '.wp-tab', function () {
+                const cat = $(this).data('tab');
+                content.find('.wp-tab').removeClass('active');
+                $(this).addClass('active');
+                content.find('.wp-panel').removeClass('active');
+                content.find(`.wp-panel[data-panel="${cat}"]`).addClass('active');
+            });
+
+            // Entry click → edit
+            content.on('click', '.wp-entry-card', async function () {
+                const uid = String($(this).data('uid'));
+                const entry = data.entries[uid];
+                if (!entry) return;
+
+                const category = categorizeEntry(entry);
+                const existingData = entry.dndData || {};
+                const existingTitle = entry.comment || (Array.isArray(entry.key) ? entry.key.join(', ') : '');
+
+                const result = await showCategoryPopup(category, existingData, existingTitle);
+                if (result) {
+                    entry.comment = result.title;
+                    entry.key = result.keys;
+                    entry.content = result.content;
+                    entry.dndData = result.dndData;
+                    await saveWorldInfo(worldName, data);
+                    // @ts-ignore
+                    toastr.success(t`Entry "${result.title}" updated.`);
                 }
-            }
+            });
         },
     });
 
@@ -354,14 +532,14 @@ export async function openWorldContentPopup(worldName, initialCategory) {
 
 // Wire the "Browse Content" button in the Lorebook toolbar
 $(document).on('click', '#world_content_browse_btn', async function () {
-    const worldName = String($('#world_editor_select').val() || '').trim();
+    const worldName = current_world_info_name || '';
     await openWorldContentPopup(worldName);
 });
 
 // Wire category quick-access icons in the Lorebook toolbar
 // Opens the category-specific creation form directly
 $(document).on('click', '.wi-cat-icon', async function () {
-    const worldName = String($('#world_editor_select').val() || '').trim();
+    const worldName = current_world_info_name || '';
     const category = String($(this).data('category') || '');
     if (!category) return;
 

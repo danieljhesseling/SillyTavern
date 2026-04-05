@@ -158,13 +158,25 @@ function categorizeEntry(entry) {
  */
 async function showWorldPreviewPopup(worldName, worldMeta) {
     const data = await loadWorldInfo(worldName);
-    const meta = worldMeta || data?.metadata || {};
+    const fullMeta = data?.metadata || {};
+    const meta = { ...fullMeta, ...(worldMeta || {}) };
     const displayName = meta.displayName || worldName;
     const coverImage = meta.coverImage || '';
     const genre = meta.genre || '';
+    const worldDescription = meta.description || '';
+    const locationMaps = Array.isArray(meta.locationMaps) ? meta.locationMaps : [];
+    // Collect boards from locations (per-location model), fallback to top-level meta.boards
+    const locBoards = [];
+    for (const loc of locationMaps) {
+        for (const b of (loc.boards || [])) {
+            if (!locBoards.some(x => x.name === b.name)) locBoards.push(b);
+        }
+    }
+    const boards = locBoards.length ? locBoards : (Array.isArray(meta.boards) ? meta.boards : []);
+    const worldMapUrl = meta.worldMapUrl || meta.mapUrl || '';
 
     // Group entries by category
-    /** @type {Map<string, Array<{title: string, image: string}>>} */
+    /** @type {Map<string, Array<{title: string, image: string, desc: string}>>} */
     const categorized = new Map();
     if (data?.entries) {
         for (const uid of Object.keys(data.entries)) {
@@ -174,14 +186,14 @@ async function showWorldPreviewPopup(worldName, worldMeta) {
             if (!categorized.has(cat)) categorized.set(cat, []);
             const title = entry.comment || (Array.isArray(entry.key) ? entry.key.join(', ') : entry.key || `Entry ${entry.uid}`);
             const image = entry.dndData?.image || '';
-            categorized.get(cat).push({ title, image });
+            categorized.get(cat).push({ title, image, desc: '' });
         }
     }
 
     // Only keep categories with entries
     const activeCats = PREVIEW_CATEGORIES.filter(c => categorized.has(c) && categorized.get(c).length > 0);
 
-    // Build header
+    // Build header (title + genre only, no description)
     const coverStyle = coverImage
         ? `background-image: url('${coverImage.replace(/'/g, "\\'")}'); background-size: cover; background-position: center;`
         : '';
@@ -193,13 +205,85 @@ async function showWorldPreviewPopup(worldName, worldMeta) {
         </div>
     </div>`;
 
-    // Build tabs
+    // ---- Build Lore panel content ----
+    let loreSections = '';
+
+    // Description
+    if (worldDescription) {
+        loreSections += `
+        <div class="wp-lore-section">
+            <div class="wp-lore-section-title"><i class="fa-solid fa-scroll"></i> Description</div>
+            <div class="wp-lore-desc">${escapeHtml(worldDescription)}</div>
+        </div>`;
+    }
+
+    // World Map
+    if (worldMapUrl) {
+        loreSections += `
+        <div class="wp-lore-section">
+            <div class="wp-lore-section-title"><i class="fa-solid fa-map"></i> World Map</div>
+            <div class="wp-lore-map"><img src="${escapeHtml(worldMapUrl)}" alt="World Map" /></div>
+        </div>`;
+    }
+
+    // Locations from metadata
+    if (locationMaps.length > 0) {
+        let locCards = '';
+        for (const loc of locationMaps) {
+            const imgHtml = loc.url
+                ? `<img src="${escapeHtml(loc.url)}" alt="" />`
+                : '<i class="fa-solid fa-location-dot fa-2x"></i>';
+            locCards += `
+            <div class="wp-entry-card">
+                <div class="wp-entry-img">${imgHtml}</div>
+                <div class="wp-entry-name">${escapeHtml(loc.name || 'Unnamed')}</div>
+                ${loc.description ? `<div class="wp-entry-desc">${escapeHtml(loc.description)}</div>` : ''}
+            </div>`;
+        }
+        loreSections += `
+        <div class="wp-lore-section">
+            <div class="wp-lore-section-title"><i class="fa-solid fa-location-dot"></i> Locations</div>
+            <div class="wp-entry-grid">${locCards}</div>
+        </div>`;
+    }
+
+    // Boards from metadata
+    if (boards.length > 0) {
+        let boardCards = '';
+        for (const board of boards) {
+            const imgHtml = board.url
+                ? `<img src="${escapeHtml(board.url)}" alt="" />`
+                : '<i class="fa-solid fa-chess-board fa-2x"></i>';
+            boardCards += `
+            <div class="wp-entry-card">
+                <div class="wp-entry-img">${imgHtml}</div>
+                <div class="wp-entry-name">${escapeHtml(board.name || 'Unnamed')}</div>
+            </div>`;
+        }
+        loreSections += `
+        <div class="wp-lore-section">
+            <div class="wp-lore-section-title"><i class="fa-solid fa-chess-board"></i> Boards</div>
+            <div class="wp-entry-grid">${boardCards}</div>
+        </div>`;
+    }
+
+    // Empty lore state
+    if (!loreSections) {
+        loreSections = `<div class="wp-lore-empty"><i class="fa-solid fa-book-open fa-3x"></i><p>No lore content available yet.</p></div>`;
+    }
+
+    const lorePanelHtml = `<div class="wp-panel active" data-panel="Lore">${loreSections}</div>`;
+
+    // ---- Build tabs: Lore first, then categories ----
     let tabsHtml = '<div class="wp-tabs">';
-    for (let i = 0; i < activeCats.length; i++) {
-        const cat = activeCats[i];
+    tabsHtml += `<div class="wp-tab active" data-tab="Lore">
+        <i class="fa-solid fa-book-open"></i>
+        <span class="wp-tab-label">Lore</span>
+    </div>`;
+    for (const cat of activeCats) {
         const icon = PREVIEW_CATEGORY_ICONS[cat] || 'fa-folder';
         const count = categorized.get(cat)?.length || 0;
-        tabsHtml += `<div class="wp-tab ${i === 0 ? 'active' : ''}" data-tab="${escapeHtml(cat)}">
+        tabsHtml += `<div class="wp-tab" data-tab="${escapeHtml(cat)}">
             <i class="fa-solid ${icon}"></i>
             <span class="wp-tab-label">${cat}</span>
             <span class="wp-tab-count">${count}</span>
@@ -207,10 +291,9 @@ async function showWorldPreviewPopup(worldName, worldMeta) {
     }
     tabsHtml += '</div>';
 
-    // Build panels
-    let panelsHtml = '';
-    for (let i = 0; i < activeCats.length; i++) {
-        const cat = activeCats[i];
+    // ---- Build category panels (all inactive) ----
+    let panelsHtml = lorePanelHtml;
+    for (const cat of activeCats) {
         const entries = categorized.get(cat) || [];
         let gridHtml = '';
         for (const e of entries) {
@@ -223,15 +306,9 @@ async function showWorldPreviewPopup(worldName, worldMeta) {
                 <div class="wp-entry-name">${escapeHtml(e.title)}</div>
             </div>`;
         }
-        panelsHtml += `<div class="wp-panel ${i === 0 ? 'active' : ''}" data-panel="${escapeHtml(cat)}">
+        panelsHtml += `<div class="wp-panel" data-panel="${escapeHtml(cat)}">
             <div class="wp-entry-grid">${gridHtml}</div>
         </div>`;
-    }
-
-    // Empty state
-    if (activeCats.length === 0) {
-        panelsHtml = `<div class="wp-empty"><i class="fa-solid fa-book-open fa-3x"></i><p>This world has no categorized entries yet.</p></div>`;
-        tabsHtml = '';
     }
 
     const fullHtml = `<div class="wp-container">${headerHtml}${tabsHtml}<div class="wp-panels">${panelsHtml}</div></div>`;
@@ -259,9 +336,107 @@ async function showWorldPreviewPopup(worldName, worldMeta) {
 }
 
 /**
+ * Shows a party picker popup for a given world.
+ * Lets the user multi-select characters that belong to this world.
+ * @param {string} worldName
+ * @returns {Promise<{names: string[], entries: Array}>} Selected character names and entries
+ */
+async function showPartyPicker(worldName) {
+    const data = await loadWorldInfo(worldName);
+    if (!data?.entries) return { names: [], entries: [] };
+
+    // Gather all Character entries
+    const charEntries = [];
+    for (const uid of Object.keys(data.entries)) {
+        const entry = data.entries[uid];
+        if (categorizeEntry(entry) === 'Characters') {
+            charEntries.push(entry);
+        }
+    }
+    if (charEntries.length === 0) return { names: [], entries: [] };
+
+    // Build character card grid
+    const selectedNames = new Set();
+    const selectedUids = [];
+    let gridHtml = '<div class="party-picker-grid">';
+    for (const entry of charEntries) {
+        const uid = String(entry.uid);
+        const name = entry.comment || (Array.isArray(entry.key) ? entry.key.join(', ') : entry.key || 'Unknown');
+        const image = entry.dndData?.image || '';
+        const race = entry.dndData?.race || '';
+        const charClass = entry.dndData?.charClass || '';
+        const level = entry.dndData?.level ? `Lv ${entry.dndData.level}` : '';
+        const subtitle = [race, charClass, level].filter(Boolean).join(' · ');
+
+        const imgHtml = image
+            ? `<img src="${escapeHtml(image)}" alt="" />`
+            : '<i class="fa-solid fa-user fa-2x"></i>';
+
+        gridHtml += `
+        <div class="party-card" data-uid="${escapeHtml(uid)}" data-name="${escapeHtml(name)}">
+            <div class="party-card-order"></div>
+            <div class="party-card-img">${imgHtml}</div>
+            <div class="party-card-info">
+                <div class="party-card-name">${escapeHtml(name)}</div>
+                ${subtitle ? `<div class="party-card-subtitle">${escapeHtml(subtitle)}</div>` : ''}
+            </div>
+            <div class="party-card-check"><i class="fa-solid fa-check"></i></div>
+        </div>`;
+    }
+    gridHtml += '</div>';
+
+    const headerHtml = `<h3 style="margin:0 0 6px"><i class="fa-solid fa-users"></i> Choose Your Party</h3>
+        <p style="margin:0 0 10px;font-size:0.85rem;color:var(--SmartThemeQuoteColor,#999)">Select the characters that will join this campaign. You can pick multiple.</p>`;
+
+    const content = $(`<div class="party-picker-container">${headerHtml}${gridHtml}</div>`);
+
+    const popup = new Popup(content, POPUP_TYPE.CONFIRM, null, {
+        wider: true,
+        okButton: 'Confirm Party',
+        cancelButton: 'Skip',
+        allowVerticalScrolling: true,
+        onOpen: () => {
+            content.on('click', '.party-card', function () {
+                const $card = $(this);
+                const uid = String($card.data('uid'));
+                const charName = $card.data('name');
+                $card.toggleClass('selected');
+                if ($card.hasClass('selected')) {
+                    selectedNames.add(String(charName));
+                    selectedUids.push(uid);
+                } else {
+                    selectedNames.delete(String(charName));
+                    const index = selectedUids.indexOf(uid);
+                    if (index >= 0) selectedUids.splice(index, 1);
+                }
+                content.find('.party-card').each(function () {
+                    const $item = $(this);
+                    const orderIndex = selectedUids.indexOf(String($item.data('uid')));
+                    if (orderIndex >= 0) {
+                        $item.find('.party-card-order').text(orderIndex === 0 ? 'P1' : `P${orderIndex + 1}`).show();
+                    } else {
+                        $item.find('.party-card-order').hide();
+                    }
+                });
+            });
+        },
+    });
+
+    const result = await popup.show();
+    const selectedEntries = selectedUids
+        .map(uid => charEntries.find(e => String(e.uid) === uid))
+        .filter(Boolean);
+    console.log('showPartyPicker result', { result, selectedUids, selectedNames: [...selectedNames], selectedEntries });
+    if (result === POPUP_RESULT.AFFIRMATIVE && selectedUids.length > 0) {
+        return { names: [...selectedNames], entries: selectedEntries };
+    }
+    return { names: [], entries: [] };
+}
+
+/**
  * Shows a world picker popup for new-chat flow.
- * Returns the chosen world name, or null if cancelled / no world.
- * @returns {Promise<string|null>}
+ * Returns the chosen world + party, or null if cancelled / no world.
+ * @returns {Promise<{worldName: string, party: string[], partyEntries: Array}|null>}
  */
 export async function showWorldPickerForNewChat() {
     if (!world_names || world_names.length === 0) return null;
@@ -282,15 +457,19 @@ export async function showWorldPickerForNewChat() {
         });
     }
 
-    // Loop: picker → preview → back to picker or confirm
+    // Loop: picker → preview → party picker → return
     while (true) {
         const pickedWorld = await showPickerGrid(worldData);
         if (!pickedWorld) return null; // cancelled / "No World"
 
         const wMeta = worldData.find(w => w.name === pickedWorld);
         const confirmed = await showWorldPreviewPopup(pickedWorld, wMeta);
-        if (confirmed) return pickedWorld;
-        // else user clicked "Back" → loop again to show picker
+        if (!confirmed) continue; // user clicked "Back" → loop again
+
+        // Party picker step
+        const { names: partyNames, entries: partyEntries } = await showPartyPicker(pickedWorld);
+        console.log('showWorldPickerForNewChat party selection', { pickedWorld, partyNames, partyEntries });
+        return { worldName: pickedWorld, party: partyNames, partyEntries };
     }
 }
 
@@ -350,7 +529,22 @@ async function showPickerGrid(worldData) {
  */
 export async function bindWorldToChat(worldName) {
     if (!worldName) return;
+    console.log('bindWorldToChat', { worldName });
     chat_metadata[METADATA_KEY] = worldName;
+    await saveMetadata();
+}
+
+/**
+ * Binds a party (array of character names) to the current chat via metadata.
+ * @param {string[]} party
+ */
+export async function bindPartyToChat(party) {
+    if (!Array.isArray(party) || party.length === 0) {
+        console.log('bindPartyToChat called with empty party', { party });
+        return;
+    }
+    console.log('bindPartyToChat', { party });
+    chat_metadata['party'] = party;
     await saveMetadata();
 }
 
