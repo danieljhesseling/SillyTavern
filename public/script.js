@@ -49,6 +49,7 @@ import {
     initWorldInfo,
     charUpdatePrimaryWorld,
     charSetAuxWorlds,
+    getCurrentWorldLocationMaps,
 } from './scripts/world-info.js';
 
 import {
@@ -3185,6 +3186,25 @@ function addPersonaDescriptionExtensionPrompt() {
         );
     } else {
         setExtensionPrompt('PARTY_MEMBERS', '', extension_prompt_types.IN_PROMPT, 0);
+    }
+
+    // Inject current location & board context
+    const currentLocName = chat_metadata?.['currentLocation'] || '';
+    const currentBoardName = chat_metadata?.['currentBoard'] || '';
+    if (currentLocName) {
+        const locationMaps = getCurrentWorldLocationMaps();
+        const loc = locationMaps.find(l => l.name === currentLocName);
+        const lines = ['[SYSTEM: LOCATION]'];
+        lines.push(`Ubicación actual: ${currentLocName}`);
+        if (loc?.description) {
+            lines.push(`Descripción: ${loc.description}`);
+        }
+        if (currentBoardName) {
+            lines.push(`Zona/Tablero actual: ${currentBoardName}`);
+        }
+        setExtensionPrompt('LOCATION_CONTEXT', lines.join('\n'), extension_prompt_types.IN_PROMPT, 0, false, extension_prompt_roles.SYSTEM);
+    } else {
+        setExtensionPrompt('LOCATION_CONTEXT', '', extension_prompt_types.IN_PROMPT, 0);
     }
 
     // Inject user-defined custom instructions from chat_metadata
