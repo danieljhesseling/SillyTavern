@@ -7,6 +7,30 @@
 
 import { t } from './i18n.js';
 import { POPUP_TYPE, POPUP_RESULT, Popup } from './popup.js';
+import {
+    EQUIPMENT_SLOTS,
+    SLOT_INFO,
+    ITEM_RECHARGE_OPTIONS,
+    ITEM_CAPACITY_UNITS,
+    ITEM_FOCUS_TYPES,
+    ITEM_ARMOR_DEX_MODE_OPTIONS,
+    ITEM_ARMOR_FLAG_DEFINITIONS,
+    ITEM_ARMOR_RESISTANCE_OPTIONS,
+    ITEM_WEAPON_DAMAGE_TYPE_OPTIONS,
+    ITEM_MAGIC_BONUS_OPTIONS,
+    ITEM_WEAPON_FLAG_DEFINITIONS,
+    getItemCategoryOptions,
+    getItemSubcategoryOptions,
+    getSuggestedSlotForItem,
+    getItemSubcategoryMeta,
+    getArmorDexRuleLabel,
+    getEnabledArmorFlagLabels,
+    getEnabledWeaponFlagLabels,
+    isArmorLikeItem,
+    isRangedWeaponSubcategory,
+    isMeleeWeaponSubcategory,
+    getMagicSubtypeFlags,
+} from './dnd-system.js';
 
 // ============================================================
 //  CONSTANTS
@@ -78,6 +102,48 @@ function sel(field, value, options) {
         return `<option value="${esc(val)}" ${String(val) === String(value) ? 'selected' : ''}>${escT(label || val)}</option>`;
     });
     return `<select class="wcp-input wcp-field" data-field="${field}">${opts.join('')}</select>`;
+}
+
+function check(field, value, label) {
+    return `<label class="checkbox_label"><input type="checkbox" class="wcp-field" data-field="${field}" ${value ? 'checked' : ''} /><span>${label}</span></label>`;
+}
+
+function itemConditional(content, { categories = [], subcategories = [] } = {}) {
+    const categoryAttr = categories.length ? ` data-item-categories="${esc(categories.join(','))}"` : '';
+    const subcategoryAttr = subcategories.length ? ` data-item-subcategories="${esc(subcategories.join(','))}"` : '';
+    return `<div class="wcp-item-conditional"${categoryAttr}${subcategoryAttr}>${content}</div>`;
+}
+
+function buildWeaponFlagToggles(d) {
+    return `<div class="wcp-flag-grid">${ITEM_WEAPON_FLAG_DEFINITIONS.map(flag =>
+        itemConditional(
+            `<label class="checkbox_label wcp-flag-chip"><input type="checkbox" class="wcp-field" data-field="${flag.key}" ${d?.[flag.key] ? 'checked' : ''} /><span>${escT(flag.label)}</span></label>`,
+            { subcategories: flag.subcategories },
+        )
+    ).join('')}</div>`;
+}
+
+function buildArmorFlagToggles(d) {
+    return `<div class="wcp-flag-grid">${ITEM_ARMOR_FLAG_DEFINITIONS.map(flag =>
+        itemConditional(
+            `<label class="checkbox_label wcp-flag-chip"><input type="checkbox" class="wcp-field" data-field="${flag.key}" ${d?.[flag.key] ? 'checked' : ''} /><span>${escT(flag.label)}</span></label>`,
+            { subcategories: flag.subcategories },
+        )
+    ).join('')}</div>`;
+}
+
+function buildArmorResistanceChoices(d) {
+    const active = Array.isArray(d?.resistanceTypes) ? d.resistanceTypes : [];
+    return `<div class="wcp-flag-grid">${ITEM_ARMOR_RESISTANCE_OPTIONS.map(value => `
+        <label class="checkbox_label wcp-flag-chip">
+            <input type="checkbox" class="wcp-item-resistance" data-value="${esc(value)}" ${active.includes(value) ? 'checked' : ''} />
+            <span>${escT(value)}</span>
+        </label>
+    `).join('')}</div>`;
+}
+
+function buildArmorDexRuleNote(subcategory, armorDexMode) {
+    return `<div class="wcp-empty-note wcp-armor-dex-note">${escT(getArmorDexRuleLabel(subcategory || 'generic', armorDexMode || 'full'))}</div>`;
 }
 
 function colorInp(field, value) {
@@ -176,8 +242,14 @@ function getDefaults(cat) {
             actions: [],
         };
         case 'Items': return {
-            image: '', source: '', rarity: '', itemType: '', weight: '', slot: '',
-            description: '', appearance: '', baseDamage: '', damageType: '', properties: '',
+            image: '', source: '', rarity: '', category: 'gear', subcategory: 'generic', legacyType: '', weight: 0, slot: '',
+            description: '', appearance: '', damageDice: '', baseDamage: '', damageType: '', properties: '',
+            range: 0, longRange: 0, meleeRange: 5, versatileDamage: '', baseArmorClass: 0, armorClass: 0, armorDexMode: 'full', dexCap: 0, strengthRequirement: 0,
+            stealthDisadvantage: false, donTime: '', doffTime: '', consumable: false,
+            uses: 0, maxUses: 0, recharge: '', attunement: false, cursed: false,
+            magical: false, adamantine: false, mithral: false, resistanceEnabled: false, resistanceTypes: [], finesse: false, heavy: false, light: false, reach: false, thrown: false, twoHanded: false, versatile: false, ammunition: false, loading: false,
+            focusType: '', toolType: '', capacity: 0, capacityUnit: '', vehicleCrew: 0, vehicleDamageThreshold: 0,
+            costGp: 0, magicalBonus: 0, notes: '',
         };
         case 'Spells': return {
             image: '', school: '', spellLevel: 0, description: '', higherLevels: '',
@@ -333,22 +405,74 @@ function buildMonsterForm(d) {
 }
 
 function buildItemForm(d) {
+    const categoryOptions = getItemCategoryOptions();
+    const subcategoryOptions = getItemSubcategoryOptions(d.category || 'gear');
+    const slotOptions = [['', 'None (unequippable)'], ...Object.entries(SLOT_INFO).map(([key, info]) => [key, info.label])];
     return `<div class="wcp-popup">
         ${imgBlock(d.image)}
         ${row('Source / Tag', inp('source', d.source, 'Pollution, Homebrew, DMG...'))}
-        ${twoCol(
-        section('Details', 'fa-scroll', 'cyan', `
-                ${row('Rarity', sel('rarity', d.rarity, RARITIES))}
-                ${row('Type', inp('itemType', d.itemType, 'Weapon (Martial Melee)...'))}
-                ${row('Weight', inp('weight', d.weight, '7.00 lb.'))}
-                ${row('Slot', inp('slot', d.slot, 'Hand, Body, Head...'))}
-            `),
-        section('Weapon Properties', 'fa-gavel', 'red', `
-                ${row('Base Damage', inp('baseDamage', d.baseDamage, '1d12 Slashing'))}
-                ${row('Damage Type', sel('damageType', d.damageType, ['', ...DAMAGE_TYPES]))}
-                ${row('Properties', inp('properties', d.properties, 'Heavy, Two-Handed...'))}
-            `)
-    )}
+        ${section('Identity', 'fa-scroll', 'cyan', `
+                ${row('Category', `<select class="wcp-input wcp-field wcp-item-category" data-field="category">${categoryOptions.map(([value, label]) => `<option value="${esc(value)}" ${String(value) === String(d.category || 'gear') ? 'selected' : ''}>${escT(label)}</option>`).join('')}</select>`)}
+                ${row('Subcategory', `<select class="wcp-input wcp-field wcp-item-subcategory" data-field="subcategory">${subcategoryOptions.map(([value, label]) => `<option value="${esc(value)}" ${String(value) === String(d.subcategory || 'generic') ? 'selected' : ''}>${escT(label)}</option>`).join('')}</select>`)}
+                ${itemConditional(row('Rarity', sel('rarity', d.rarity, RARITIES)), { categories: ['magic'] })}
+                ${row('Weight', num('weight', d.weight, '0'))}
+                ${row('Slot', `<select class="wcp-input wcp-field wcp-item-slot" data-field="slot">${slotOptions.map(([value, label]) => `<option value="${esc(value)}" ${String(value) === String(d.slot || '') ? 'selected' : ''}>${escT(label)}</option>`).join('')}</select>`)}
+                ${itemConditional(row('Cost (gp)', num('costGp', d.costGp, '0')), { categories: ['gear', 'magic', 'mount_vehicle_trade'] })}
+            `)}
+        ${itemConditional(section('Combat', 'fa-gavel', 'red', `
+                ${row('Damage Dice', inp('damageDice', d.damageDice || d.baseDamage, '1d8'))}
+                ${row('Damage Type', sel('damageType', d.damageType, ITEM_WEAPON_DAMAGE_TYPE_OPTIONS))}
+                ${row('Magical Bonus', `<select class="wcp-input wcp-field" data-field="magicalBonus">${ITEM_MAGIC_BONUS_OPTIONS.map(([value, label]) => `<option value="${esc(value)}" ${String(d.magicalBonus ?? 0) === String(value) ? 'selected' : ''}>${escT(label)}</option>`).join('')}</select>`)}
+                ${itemConditional(row('Melee Range', num('meleeRange', d.meleeRange, '5')), { subcategories: ['generic', 'simple_melee', 'martial_melee'] })}
+                ${itemConditional(row('Normal Range (ft)', num('range', d.range, '30')), { subcategories: ['simple_ranged', 'martial_ranged'] })}
+                ${itemConditional(row('Long Range (ft)', num('longRange', d.longRange, '120')), { subcategories: ['simple_ranged', 'martial_ranged'] })}
+                ${itemConditional(row('Versatile Damage', inp('versatileDamage', d.versatileDamage, '1d10')), { subcategories: ['simple_melee', 'martial_melee'] })}
+            `), { categories: ['weapon'] })}
+        ${itemConditional(section('Defense Stats', 'fa-shield-halved', 'green', `
+                ${row('Base CA', num('baseArmorClass', d.baseArmorClass ?? d.armorClass, '12'))}
+                ${row('Magical Bonus', `<select class="wcp-input wcp-field" data-field="magicalBonus">${ITEM_MAGIC_BONUS_OPTIONS.map(([value, label]) => `<option value="${esc(value)}" ${String(d.magicalBonus ?? 0) === String(value) ? 'selected' : ''}>${escT(label)}</option>`).join('')}</select>`)}
+                ${itemConditional(row('Min Str', num('strengthRequirement', d.strengthRequirement, '13')), { subcategories: ['generic', 'heavy_armor', 'magic_weapon_armor'] })}
+                ${itemConditional(row('Dexterity Mode', sel('armorDexMode', d.armorDexMode || 'full', ITEM_ARMOR_DEX_MODE_OPTIONS)), { subcategories: ['generic'] })}
+                ${buildArmorDexRuleNote(d.subcategory || 'generic', d.armorDexMode || 'full')}
+                ${row('Don Time', inp('donTime', d.donTime, '1 minute'))}
+                ${row('Doff Time', inp('doffTime', d.doffTime, '1 minute'))}
+            `), { categories: ['armor'] })}
+        ${section('Flags', 'fa-wand-magic-sparkles', 'purple', `
+                ${itemConditional(buildWeaponFlagToggles(d), { categories: ['weapon'] })}
+                ${itemConditional(buildArmorFlagToggles(d), { categories: ['armor'] })}
+                ${itemConditional(`<div class="wcp-item-resistance-conditional">${row('Resistances', buildArmorResistanceChoices(d))}</div>`, { categories: ['armor'] })}
+                ${itemConditional(row('Consumable', check('consumable', d.consumable, 'Single-use or expendable item')), { categories: ['gear', 'magic'] })}
+                ${itemConditional(row('Attunement', check('attunement', d.attunement, 'Requires attunement')), { categories: ['magic'], subcategories: ['generic', 'magic_weapon_armor', 'ring_wand_staff', 'wondrous'] })}
+                ${itemConditional(row('Magical', check('magical', d.magical, 'Counts as magical even with +0 bonus')), { categories: ['weapon', 'magic'] })}
+                ${itemConditional(row('Cursed', check('cursed', d.cursed, 'This item carries a curse')), { categories: ['weapon', 'magic'] })}
+            `)}
+        ${itemConditional(twoCol(
+        section('Utility & Capacity', 'fa-toolbox', 'yellow', `
+                ${itemConditional(row('Focus Type', sel('focusType', d.focusType, ITEM_FOCUS_TYPES)), { subcategories: ['magic_focus'] })}
+                ${itemConditional(row('Tool Type', inp('toolType', d.toolType, 'Thieves\' tools, alchemist supplies...')), { subcategories: ['exploration_tool', 'artisan_tool'] })}
+                ${itemConditional(row('Capacity', num('capacity', d.capacity, '30')), { subcategories: ['container', 'mount', 'vehicle'] })}
+                ${itemConditional(row('Capacity Unit', sel('capacityUnit', d.capacityUnit, ITEM_CAPACITY_UNITS)), { subcategories: ['container', 'mount', 'vehicle'] })}
+                ${itemConditional(row('Storage Weight (lb)', num('storageWeightLimit', d.storageWeightLimit, '50')), { categories: ['magic'] })}
+                ${itemConditional(row('Storage Volume (ft³)', num('storageVolumeLimit', d.storageVolumeLimit, '10')), { categories: ['magic'] })}
+                ${itemConditional(row('Bright Light (ft)', num('brightLightRadius', d.brightLightRadius, '20')), { categories: ['magic'] })}
+                ${itemConditional(row('Dim Light (ft)', num('dimLightRadius', d.dimLightRadius, '40')), { categories: ['magic'] })}
+        `),
+        section('Magic & Charges', 'fa-star', 'blue', `
+                ${itemConditional(row('Current Uses', num('uses', d.uses, '0')), { subcategories: ['generic', 'magic_weapon_armor', 'ring_wand_staff', 'wondrous'] })}
+                ${itemConditional(row('Max Uses', num('maxUses', d.maxUses, '0')), { subcategories: ['generic', 'magic_weapon_armor', 'ring_wand_staff', 'wondrous'] })}
+                ${itemConditional(row('Recharge', sel('recharge', d.recharge, ITEM_RECHARGE_OPTIONS)), { subcategories: ['generic', 'magic_weapon_armor', 'ring_wand_staff', 'wondrous'] })}
+                ${itemConditional(row('Linked Spell', inp('linkedSpell', d.linkedSpell || '', 'Cure Wounds, Fireball...')), { subcategories: ['scroll'] })}
+                ${itemConditional(row('Spell Level', num('spellLevel', d.spellLevel, '1')), { subcategories: ['scroll'] })}
+                ${itemConditional(row('Save DC', num('saveDC', d.saveDC, '13')), { subcategories: ['generic', 'ring_wand_staff', 'wondrous'] })}
+                ${itemConditional(row('Spell Attack', num('spellAttackBonus', d.spellAttackBonus, '5')), { subcategories: ['generic', 'ring_wand_staff', 'wondrous'] })}
+                ${row('Notes', area('notes', d.notes, 'Rules notes, curse text, special effects...', 3))}
+        `)
+    ), { categories: ['gear', 'magic', 'mount_vehicle_trade'] })}
+        ${itemConditional(section('Transport & Trade', 'fa-horse', 'orange', `
+                ${itemConditional(row('Crew Required', num('vehicleCrew', d.vehicleCrew, '1')), { subcategories: ['vehicle'] })}
+                ${itemConditional(row('Damage Threshold', num('vehicleDamageThreshold', d.vehicleDamageThreshold, '10')), { subcategories: ['vehicle'] })}
+                ${row('Notes', area('notes', d.notes, 'Cargo rules, mount stats, market notes...', 3))}
+            `), { categories: ['mount_vehicle_trade'] })}
         ${section('Description', 'fa-align-left', 'cyan', area('description', d.description, 'Describe the item, its lore, magical properties...', 4))}
         ${section('Appearance', 'fa-eye', 'purple', area('appearance', d.appearance, 'Physical appearance of the item...', 3))}
     </div>`;
@@ -389,6 +513,91 @@ function buildBoardForm(d) {
         row('Grid Height', num('gridHeight', d.gridHeight, '50'))
     )}
     </div>`;
+}
+
+function refreshWorldItemFormState(root = document) {
+    const categoryEl = /** @type {HTMLSelectElement|null} */ (root.querySelector('.wcp-item-category'));
+    const subcategoryEl = /** @type {HTMLSelectElement|null} */ (root.querySelector('.wcp-item-subcategory'));
+    const slotEl = /** @type {HTMLSelectElement|null} */ (root.querySelector('.wcp-item-slot'));
+    if (!categoryEl || !subcategoryEl) return;
+
+    const category = categoryEl.value || 'gear';
+    const options = getItemSubcategoryOptions(category);
+    const currentValue = subcategoryEl.value;
+    subcategoryEl.innerHTML = options.map(([value, label]) => `<option value="${esc(value)}">${escT(label)}</option>`).join('');
+    subcategoryEl.value = options.some(([value]) => value === currentValue) ? currentValue : (options[0]?.[0] || 'generic');
+    const subcategory = subcategoryEl.value || 'generic';
+    const meta = getItemSubcategoryMeta(subcategory);
+    const armorDexModeEl = /** @type {HTMLSelectElement|null} */ (root.querySelector('.wcp-field[data-field="armorDexMode"]'));
+    const resistanceEnabledEl = /** @type {HTMLInputElement|null} */ (root.querySelector('.wcp-field[data-field="resistanceEnabled"]'));
+
+    root.querySelectorAll('.wcp-item-conditional').forEach(node => {
+        const categories = String(node.getAttribute('data-item-categories') || '').split(',').map(value => value.trim()).filter(Boolean);
+        const subcategories = String(node.getAttribute('data-item-subcategories') || '').split(',').map(value => value.trim()).filter(Boolean);
+        const categoryMatch = !categories.length || categories.includes(category);
+        const subcategoryMatch = !subcategories.length || subcategories.includes(subcategory);
+        /** @type {HTMLElement} */ (node).style.display = categoryMatch && subcategoryMatch ? '' : 'none';
+    });
+
+    if (slotEl) {
+        const suggestedSlot = getSuggestedSlotForItem(category, subcategory);
+        if (!slotEl.value) {
+            slotEl.value = suggestedSlot || '';
+        }
+        if (meta.suggestedSlot && !Object.values(EQUIPMENT_SLOTS).includes(slotEl.value)) {
+            slotEl.value = meta.suggestedSlot;
+        }
+    }
+
+    const meleeRangeEl = /** @type {HTMLInputElement|null} */ (root.querySelector('.wcp-field[data-field="meleeRange"]'));
+    if (meleeRangeEl) {
+        if (isMeleeWeaponSubcategory(subcategory)) {
+            meleeRangeEl.disabled = subcategory !== 'generic';
+            if (subcategory !== 'generic') meleeRangeEl.value = '5';
+        } else {
+            meleeRangeEl.disabled = false;
+        }
+    }
+
+    if (category === 'armor' && armorDexModeEl) {
+        armorDexModeEl.value = subcategory === 'generic' ? (armorDexModeEl.value || 'full') : (subcategory === 'medium_armor' ? 'max_2' : (subcategory === 'heavy_armor' || subcategory === 'shield' ? 'none' : 'full'));
+    }
+
+    const armorDexNoteEl = /** @type {HTMLElement|null} */ (root.querySelector('.wcp-armor-dex-note'));
+    if (armorDexNoteEl) {
+        armorDexNoteEl.textContent = getArmorDexRuleLabel(subcategory, armorDexModeEl?.value || 'full');
+    }
+
+    // Magic_weapon_armor: force Combat and Defense Stats sections to show
+    if (category === 'magic' && subcategory === 'magic_weapon_armor') {
+        root.querySelectorAll('.wcp-item-conditional').forEach(node => {
+            const catAttr = (node.getAttribute('data-item-categories') || '').split(',').map(s => s.trim());
+            const subAttr = (node.getAttribute('data-item-subcategories') || '').split(',').map(s => s.trim()).filter(Boolean);
+            if ((catAttr.includes('weapon') || catAttr.includes('armor')) && subAttr.length === 0) {
+                /** @type {HTMLElement} */ (node).style.display = '';
+            }
+        });
+    }
+
+    // Auto-consumable magic subtypes: check and lock the consumable checkbox
+    if (category === 'magic') {
+        const flags = getMagicSubtypeFlags(subcategory);
+        const consumableEl = /** @type {HTMLInputElement|null} */ (root.querySelector('.wcp-field[data-field="consumable"]'));
+        if (consumableEl) {
+            if (flags.autoConsumable) {
+                consumableEl.checked = true;
+                consumableEl.disabled = true;
+            } else {
+                consumableEl.disabled = false;
+            }
+        }
+    }
+
+    const resistanceWrap = /** @type {HTMLElement|null} */ (root.querySelector('.wcp-item-resistance-conditional'));
+    if (resistanceWrap) {
+        const showResistanceChoices = category === 'armor' && Boolean(resistanceEnabledEl?.checked);
+        resistanceWrap.style.display = showResistanceChoices ? '' : 'none';
+    }
 }
 
 function buildUncategorizedForm(d) {
@@ -460,6 +669,18 @@ function readFormData(category) {
         });
     }
 
+    if (category === 'Items') {
+        data.resistanceTypes = [];
+        document.querySelectorAll('.wcp-item-resistance:checked').forEach(el => {
+            const value = /** @type {HTMLInputElement} */ (el).dataset?.value;
+            if (value) data.resistanceTypes.push(value);
+        });
+
+        if (!data.resistanceEnabled) {
+            data.resistanceTypes = [];
+        }
+    }
+
     return data;
 }
 
@@ -527,11 +748,45 @@ function generateContent(category, title, d) {
             break;
         }
         case 'Items': {
-            let header = title;
-            if (d.rarity || d.itemType) header += ` — ${[d.rarity, d.itemType].filter(Boolean).join(' • ')}`;
+            const categoryLabel = getItemCategoryOptions().find(([value]) => value === d.category)?.[1] || 'Item';
+            const subcategoryLabel = getItemSubcategoryOptions(d.category || 'gear').find(([value]) => value === d.subcategory)?.[1] || 'Generic';
+            let header = `${title} — ${categoryLabel}`;
+            if (subcategoryLabel) header += ` • ${subcategoryLabel}`;
+            if (d.rarity) header += ` • ${d.rarity}`;
             parts.push(header + '.');
-            if (d.baseDamage) parts.push(`Damage: ${d.baseDamage}${d.damageType ? ` ${d.damageType}` : ''}.`);
+            if (d.damageDice || d.baseDamage) {
+                const rangeText = isRangedWeaponSubcategory(d.subcategory || '')
+                    ? ` Range ${d.range || 0}/${d.longRange || 0} ft.`
+                    : isMeleeWeaponSubcategory(d.subcategory || '')
+                        ? ` Reach ${Number(d.meleeRange || 5) + (d.reach ? 5 : 0)} ft.`
+                        : '';
+                parts.push(`Damage: ${d.damageDice || d.baseDamage}${d.damageType ? ` ${d.damageType}` : ''}.${rangeText}`);
+            }
+            const enabledFlags = getEnabledWeaponFlagLabels(d);
+            if (enabledFlags.length) parts.push(`Flags: ${enabledFlags.join(', ')}.`);
+            if (isArmorLikeItem(d.category || 'gear', d.subcategory || 'generic')) {
+                const armorFlags = getEnabledArmorFlagLabels(d).filter(label => label !== 'Resistances (Resistencias)');
+                parts.push(`Defense: Base CA ${d.baseArmorClass || d.armorClass || 0}${d.magicalBonus ? `, Magical Bonus +${d.magicalBonus}` : ''}. ${getArmorDexRuleLabel(d.subcategory || 'generic', d.armorDexMode || 'full')}.`);
+                if (d.strengthRequirement) parts.push(`Minimum Strength: ${d.strengthRequirement}.`);
+                if (armorFlags.length) parts.push(`Armor Flags: ${armorFlags.join(', ')}.`);
+                if (d.resistanceTypes?.length) parts.push(`Resistances: ${d.resistanceTypes.join(', ')}.`);
+            }
+            if (d.focusType) parts.push(`Focus Type: ${d.focusType}.`);
+            if (d.toolType) parts.push(`Tool Type: ${d.toolType}.`);
+            if (d.capacity) parts.push(`Capacity: ${d.capacity}${d.capacityUnit ? ` ${d.capacityUnit}` : ''}.`);
+            if (d.vehicleCrew) parts.push(`Crew Required: ${d.vehicleCrew}.`);
+            if (d.vehicleDamageThreshold) parts.push(`Damage Threshold: ${d.vehicleDamageThreshold}.`);
+            if (d.attunement) parts.push('Requires attunement.');
+            if (d.cursed) parts.push('This item is cursed.');
+            if (d.linkedSpell) parts.push(`Linked Spell: ${d.linkedSpell}${d.spellLevel != null ? ` (Level ${d.spellLevel})` : ''}.`);
+            if (d.saveDC) parts.push(`Spell Save DC: ${d.saveDC}.`);
+            if (d.spellAttackBonus) parts.push(`Spell Attack Bonus: +${d.spellAttackBonus}.`);
+            if (d.brightLightRadius) parts.push(`Light: Bright ${d.brightLightRadius} ft, Dim ${d.dimLightRadius || 0} ft.`);
+            if (d.storageWeightLimit) parts.push(`Storage: up to ${d.storageWeightLimit} lb${d.storageVolumeLimit ? `, ${d.storageVolumeLimit} ft³` : ''}.`);
+            if (d.maxUses) parts.push(`Uses: ${d.uses || 0}/${d.maxUses}${d.recharge ? `, recharges ${d.recharge}` : ''}.`);
+            if (d.costGp) parts.push(`Market Value: ${d.costGp} gp.`);
             if (d.description) parts.push(d.description);
+            if (d.notes) parts.push(`Mechanical Notes: ${d.notes}`);
             break;
         }
         case 'Spells': {
@@ -613,6 +868,9 @@ export async function showCategoryPopup(category, existingDndData, existingTitle
             if (imgData && existingImage) {
                 /** @type {HTMLInputElement} */ (imgData).value = existingImage;
             }
+            if (category === 'Items') {
+                refreshWorldItemFormState(document);
+            }
         },
         onClosing: (popup) => {
             if (popup.result === POPUP_RESULT.AFFIRMATIVE) {
@@ -663,6 +921,9 @@ export function initWcpHandlers() {
     });
     $(document).on('click', '.wcp-remove-row', function () {
         $(this).closest('.wcp-dynamic-row').remove();
+    });
+    $(document).on('change', '.wcp-item-category, .wcp-item-subcategory, .wcp-field[data-field="armorDexMode"], .wcp-field[data-field="resistanceEnabled"]', function () {
+        refreshWorldItemFormState(document);
     });
 
     // Image file picker: click preview box → trigger file input

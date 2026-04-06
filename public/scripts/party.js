@@ -15,8 +15,16 @@ import {
     generateItemId, generateMemoryId, getAbilityModifier, formatModifier,
     calculateCarryingCapacity, calculateTotalWeight, getDefaultDndData,
     applyEquipmentEffects, addItemToInventory, removeItemFromInventory,
+    consumeItemInInventory,
     equipItem, unequipItem, getEquippedItem, getItemsByType,
     analyzeRelationshipsFromChat, migratePartyMember, createItem,
+    ITEM_RECHARGE_OPTIONS, ITEM_CAPACITY_UNITS, ITEM_FOCUS_TYPES, ITEM_ARMOR_DEX_MODE_OPTIONS,
+    ITEM_ARMOR_FLAG_DEFINITIONS, ITEM_ARMOR_RESISTANCE_OPTIONS,
+    ITEM_GEAR_FLAG_DEFINITIONS, ITEM_LINKED_ABILITY_OPTIONS,
+    ITEM_WEAPON_DAMAGE_TYPE_OPTIONS, ITEM_MAGIC_BONUS_OPTIONS, ITEM_WEAPON_FLAG_DEFINITIONS, ITEM_RARITY_OPTIONS,
+    getItemCategoryOptions, getItemSubcategoryOptions, getSuggestedSlotForItem,
+    buildItemMetaSummary, normalizeItem, getArmorDexRuleLabel, isArmorLikeItem, isRangedWeaponSubcategory, isMeleeWeaponSubcategory,
+    getMagicSubtypeFlags,
     generateEnemyInstanceId,
 } from './dnd-system.js';
 
@@ -2520,6 +2528,289 @@ function showEquipSelector(panel, member, slot) {
 }
 
 /**
+ * @param {any} value
+ * @returns {string}
+ */
+function escItemText(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
+/**
+ * @param {import('./dnd-system.js').DndItem | null | undefined} item
+ * @param {keyof import('./dnd-system.js').DndItem} key
+ * @returns {boolean}
+ */
+function getItemBooleanFlag(item, key) {
+    return Boolean(item?.[key]);
+}
+
+/**
+ * @param {import('./dnd-system.js').DndItem} item
+ * @returns {string}
+ */
+function buildPartyArmorDexRuleNote(item) {
+    return `<div class="dnd-item-form-note dnd-armor-dex-note">${escItemText(getArmorDexRuleLabel(item.subcategory || 'generic', item.armorDexMode || 'full'))}</div>`;
+}
+
+/**
+ * @param {import('./dnd-system.js').DndItem} item
+ * @returns {string}
+ */
+function buildPartyArmorResistanceChoices(item) {
+    const resistanceTypes = Array.isArray(item.resistanceTypes) ? item.resistanceTypes : [];
+    return `<div class="dnd-item-flag-grid">${ITEM_ARMOR_RESISTANCE_OPTIONS.map(value => `
+        <label class="checkbox_label dnd-item-flag-toggle">
+            <input type="checkbox" class="item-resistance" data-value="${escItemText(value)}" ${resistanceTypes.includes(value) ? 'checked' : ''} />
+            <span>${escItemText(value)}</span>
+        </label>
+    `).join('')}</div>`;
+}
+
+/**
+ * @param {string} title
+ * @param {string} body
+ * @returns {string}
+ */
+function buildPartyItemSection(title, body) {
+    return `<div class="dnd-item-form-section"><div class="dnd-item-form-section-title">${title}</div>${body}</div>`;
+}
+
+/**
+ * @param {string} content
+ * @param {{ categories?: string[], subcategories?: string[] }} [options]
+ * @returns {string}
+ */
+function buildPartyConditional(content, options = {}) {
+    const { categories = /** @type {string[]} */ ([]), subcategories = /** @type {string[]} */ ([]) } = options;
+    const categoryAttr = categories.length ? ` data-item-categories="${escItemText(categories.join(','))}"` : '';
+    const subcategoryAttr = subcategories.length ? ` data-item-subcategories="${escItemText(subcategories.join(','))}"` : '';
+    return `<div class="dnd-item-conditional"${categoryAttr}${subcategoryAttr}>${content}</div>`;
+}
+
+/**
+ * @param {string} label
+ * @param {string} fieldHtml
+ * @returns {string}
+ */
+function buildPartyField(label, fieldHtml) {
+    return `<div class="dnd-form-row"><label>${label}</label>${fieldHtml}</div>`;
+}
+
+/**
+ * @param {import('./dnd-system.js').DndItem} item
+ * @returns {string}
+ */
+function buildPartyItemSections(item) {
+    return [
+        buildPartyConditional(buildPartyItemSection('Combat', [
+            buildPartyField('Damage Dice', `<input type="text" class="item-damage-dice" value="${escItemText(item.damageDice || item.baseDamage)}" placeholder="1d8" />`),
+            buildPartyField('Damage Type', `<select class="item-damage-type">${ITEM_WEAPON_DAMAGE_TYPE_OPTIONS.map(([value, label]) => `<option value="${escItemText(value)}" ${value === (item.damageType || '') ? 'selected' : ''}>${escItemText(label)}</option>`).join('')}</select>`),
+            buildPartyField('Magical Bonus', `<select class="item-magical-bonus">${ITEM_MAGIC_BONUS_OPTIONS.map(([value, label]) => `<option value="${escItemText(value)}" ${String(item.magicalBonus ?? 0) === String(value) ? 'selected' : ''}>${escItemText(label)}</option>`).join('')}</select>`),
+            buildPartyConditional(buildPartyField('Melee Range', `<input type="number" class="item-melee-range" value="${item.meleeRange ?? 5}" min="5" step="5" />`), { subcategories: ['generic', 'simple_melee', 'martial_melee'] }),
+            buildPartyConditional(buildPartyField('Normal Range', `<input type="number" class="item-range" value="${item.range ?? ''}" min="0" step="1" />`), { subcategories: ['simple_ranged', 'martial_ranged'] }),
+            buildPartyConditional(buildPartyField('Long Range', `<input type="number" class="item-long-range" value="${item.longRange ?? ''}" min="0" step="1" />`), { subcategories: ['simple_ranged', 'martial_ranged'] }),
+            buildPartyConditional(buildPartyField('Versatile Damage', `<input type="text" class="item-versatile-damage" value="${escItemText(item.versatileDamage)}" placeholder="1d10" />`), { subcategories: ['simple_melee', 'martial_melee'] }),
+        ].join('')), { categories: ['weapon'] }),
+        buildPartyConditional(buildPartyItemSection('Defense Stats', [
+            buildPartyField('Base CA', `<input type="number" class="item-base-armor-class" value="${item.baseArmorClass ?? item.armorClass ?? ''}" min="0" step="1" />`),
+            buildPartyField('Magical Bonus', `<select class="item-magical-bonus">${ITEM_MAGIC_BONUS_OPTIONS.map(([value, label]) => `<option value="${escItemText(value)}" ${String(item.magicalBonus ?? 0) === String(value) ? 'selected' : ''}>${escItemText(label)}</option>`).join('')}</select>`),
+            buildPartyConditional(buildPartyField('Min Str', `<input type="number" class="item-strength-req" value="${item.strengthRequirement ?? ''}" min="0" max="20" step="1" />`), { subcategories: ['generic', 'heavy_armor'] }),
+            buildPartyConditional(buildPartyField('Dexterity Mode', `<select class="item-armor-dex-mode">${ITEM_ARMOR_DEX_MODE_OPTIONS.map(([value, label]) => `<option value="${escItemText(value)}" ${value === (item.armorDexMode || 'full') ? 'selected' : ''}>${escItemText(label)}</option>`).join('')}</select>`), { subcategories: ['generic'] }),
+            buildPartyArmorDexRuleNote(item),
+            buildPartyField('Don Time', `<input type="text" class="item-don-time" value="${escItemText(item.donTime)}" placeholder="1 minute" />`),
+            buildPartyField('Doff Time', `<input type="text" class="item-doff-time" value="${escItemText(item.doffTime)}" placeholder="1 minute" />`),
+        ].join('')), { categories: ['armor'] }),
+        buildPartyConditional(buildPartyItemSection('Flags', `
+            <div class="dnd-item-flag-grid">
+                ${ITEM_WEAPON_FLAG_DEFINITIONS.map(flag => buildPartyConditional(
+                    `<label class="checkbox_label dnd-item-flag-toggle"><input type="checkbox" class="item-flag" data-flag="${flag.key}" ${getItemBooleanFlag(item, /** @type {keyof import('./dnd-system.js').DndItem} */ (flag.key)) ? 'checked' : ''} /><span>${escItemText(flag.label)}</span></label>`,
+                    { subcategories: flag.subcategories },
+                )).join('')}
+                ${ITEM_ARMOR_FLAG_DEFINITIONS.map(flag => buildPartyConditional(
+                    `<label class="checkbox_label dnd-item-flag-toggle"><input type="checkbox" class="item-flag" data-flag="${flag.key}" ${getItemBooleanFlag(item, /** @type {keyof import('./dnd-system.js').DndItem} */ (flag.key)) ? 'checked' : ''} /><span>${escItemText(flag.label)}</span></label>`,
+                    { categories: ['armor'], subcategories: flag.subcategories },
+                )).join('')}
+                ${ITEM_GEAR_FLAG_DEFINITIONS.map(flag => buildPartyConditional(
+                    `<label class="checkbox_label dnd-item-flag-toggle"><input type="checkbox" class="item-flag" data-flag="${flag.key}" ${getItemBooleanFlag(item, /** @type {keyof import('./dnd-system.js').DndItem} */ (flag.key)) ? 'checked' : ''} /><span>${escItemText(flag.label)}</span></label>`,
+                    { categories: ['gear'], subcategories: flag.subcategories },
+                )).join('')}
+            </div>
+            <div class="dnd-item-resistance-conditional">
+                ${buildPartyField('Resistances', buildPartyArmorResistanceChoices(item))}
+            </div>
+        `), { categories: ['weapon', 'armor', 'gear'] }),
+        buildPartyConditional(buildPartyItemSection('Utility', [
+            buildPartyConditional(buildPartyField('Consumable', `<label class="checkbox_label"><input type="checkbox" class="item-consumable" ${item.consumable ? 'checked' : ''} /><span>Single-use or expendable</span></label>`), { categories: ['gear', 'magic'] }),
+            buildPartyConditional(buildPartyField('Current Uses', `<input type="number" class="item-uses" value="${item.uses ?? ''}" min="0" step="1" />`), { subcategories: ['basic_consumable'] }),
+            buildPartyConditional(buildPartyField('Max Uses', `<input type="number" class="item-max-uses" value="${item.maxUses ?? ''}" min="0" step="1" />`), { subcategories: ['basic_consumable'] }),
+            buildPartyConditional(buildPartyField('Focus Type', `<select class="item-focus-type">${ITEM_FOCUS_TYPES.map(value => `<option value="${escItemText(value)}" ${value === (item.focusType || '') ? 'selected' : ''}>${escItemText(value || 'None')}</option>`).join('')}</select>`), { subcategories: ['magic_focus'] }),
+            buildPartyConditional(buildPartyField('Tool Type', `<input type="text" class="item-tool-type" value="${escItemText(item.toolType)}" placeholder="Thieves' tools" />`), { subcategories: ['exploration_tool', 'artisan_tool'] }),
+            buildPartyConditional(buildPartyField('Linked Ability', `<select class="item-linked-ability">${ITEM_LINKED_ABILITY_OPTIONS.map(([value, label]) => `<option value="${escItemText(value)}" ${String(item.linkedAbility || '') === value ? 'selected' : ''}>${escItemText(label)}</option>`).join('')}</select>`), { subcategories: ['artisan_tool'] }),
+            buildPartyConditional(buildPartyField('Stack Size (items/slot)', `<input type="number" class="item-stack-size" value="${item.stackSize ?? ''}" min="1" step="1" />`), { subcategories: ['basic_consumable'] }),
+            buildPartyConditional(buildPartyField('Stored In Container', `<input type="text" class="item-container-id" value="${escItemText(item.containerItemId || '')}" placeholder="Container item id (optional)" />`), { categories: ['gear', 'magic', 'mount_vehicle_trade'] }),
+            buildPartyConditional(buildPartyField('Capacity', `<input type="number" class="item-capacity" value="${item.capacity ?? ''}" min="0" step="1" />`), { subcategories: ['container', 'mount', 'vehicle'] }),
+            buildPartyConditional(buildPartyField('Capacity Unit', `<select class="item-capacity-unit">${ITEM_CAPACITY_UNITS.map(value => `<option value="${escItemText(value)}" ${value === (item.capacityUnit || '') ? 'selected' : ''}>${escItemText(value || 'None')}</option>`).join('')}</select>`), { subcategories: ['container', 'mount', 'vehicle'] }),
+            buildPartyConditional(buildPartyField('Capacity Weight (lb)', `<input type="number" class="item-capacity-weight" value="${item.capacityWeight ?? ''}" min="0" step="1" />`), { subcategories: ['container'] }),
+            buildPartyConditional(buildPartyField('Capacity Volume (ft³)', `<input type="number" class="item-capacity-volume" value="${item.capacityVolume ?? ''}" min="0" step="0.1" />`), { subcategories: ['container'] }),
+            buildPartyConditional(buildPartyField('Emits Light', `<label class="checkbox_label"><input type="checkbox" class="item-emits-light" ${item.emitsLight ? 'checked' : ''} /><span>This tool emits light</span></label>`), { subcategories: ['exploration_tool'] }),
+            buildPartyConditional(`<div class="dnd-item-light-fields">
+                ${buildPartyField('Bright Light (ft)', `<input type="number" class="item-light-bright" value="${item.lightBright ?? ''}" min="0" step="5" />`)}
+                ${buildPartyField('Dim Light (ft)', `<input type="number" class="item-light-dim" value="${item.lightDim ?? ''}" min="0" step="5" />`)}
+            </div>`, { subcategories: ['exploration_tool'] }),
+            buildPartyConditional(buildPartyField('Storage Weight (lb)', `<input type="number" class="item-storage-weight" value="${item.storageWeightLimit ?? ''}" min="0" step="1" />`), { categories: ['magic'] }),
+            buildPartyConditional(buildPartyField('Storage Volume (ft³)', `<input type="number" class="item-storage-volume" value="${item.storageVolumeLimit ?? ''}" min="0" step="1" />`), { categories: ['magic'] }),
+            buildPartyConditional(buildPartyField('Bright Light (ft)', `<input type="number" class="item-bright-light" value="${item.brightLightRadius ?? ''}" min="0" step="5" />`), { categories: ['magic'] }),
+            buildPartyConditional(buildPartyField('Dim Light (ft)', `<input type="number" class="item-dim-light" value="${item.dimLightRadius ?? ''}" min="0" step="5" />`), { categories: ['magic'] }),
+            buildPartyConditional(buildPartyField('Cost (gp)', `<input type="number" class="item-cost-gp" value="${item.costGp ?? ''}" min="0" step="1" />`), { categories: ['gear', 'magic', 'mount_vehicle_trade'] }),
+        ].join('')), { categories: ['gear', 'magic', 'mount_vehicle_trade'] }),
+        buildPartyConditional(buildPartyItemSection('Magic & Charges', [
+            buildPartyField('Attunement', `<label class="checkbox_label"><input type="checkbox" class="item-attunement" ${item.attunement ? 'checked' : ''} /><span>Required</span></label>`),
+            buildPartyField('Current Uses', `<input type="number" class="item-uses" value="${item.uses ?? ''}" min="0" step="1" />`),
+            buildPartyField('Max Uses', `<input type="number" class="item-max-uses" value="${item.maxUses ?? ''}" min="0" step="1" />`),
+            buildPartyField('Recharge', `<select class="item-recharge">${ITEM_RECHARGE_OPTIONS.map(value => `<option value="${escItemText(value)}" ${value === (item.recharge || '') ? 'selected' : ''}>${escItemText(value || 'None')}</option>`).join('')}</select>`),
+            buildPartyField('Save DC', `<input type="number" class="item-save-dc" value="${item.saveDC ?? ''}" min="0" max="30" step="1" />`),
+            buildPartyField('Spell Attack', `<input type="number" class="item-spell-attack" value="${item.spellAttackBonus ?? ''}" min="0" max="20" step="1" />`),
+        ].join('')), { categories: ['gear'], subcategories: ['magic_focus'] }),
+        buildPartyConditional(buildPartyItemSection('Magic', [
+            buildPartyField('Rarity', `<select class="item-rarity">${ITEM_RARITY_OPTIONS.map(value => `<option value="${escItemText(value)}" ${value === (item.rarity || '') ? 'selected' : ''}>${escItemText(value || 'None')}</option>`).join('')}</select>`),
+            buildPartyConditional(buildPartyField('Attunement', `<label class="checkbox_label"><input type="checkbox" class="item-attunement" ${item.attunement ? 'checked' : ''} /><span>Required</span></label>`), { subcategories: ['generic', 'magic_weapon_armor', 'ring_wand_staff', 'wondrous'] }),
+            buildPartyField('Magical', `<label class="checkbox_label"><input type="checkbox" class="item-magical" ${item.magical ? 'checked' : ''} /><span>Counts as magical</span></label>`),
+            buildPartyField('Cursed', `<label class="checkbox_label"><input type="checkbox" class="item-cursed" ${item.cursed ? 'checked' : ''} /><span>Yes</span></label>`),
+            buildPartyConditional(buildPartyField('Current Uses', `<input type="number" class="item-uses" value="${item.uses ?? ''}" min="0" step="1" />`), { subcategories: ['generic', 'magic_weapon_armor', 'ring_wand_staff', 'wondrous'] }),
+            buildPartyConditional(buildPartyField('Max Uses', `<input type="number" class="item-max-uses" value="${item.maxUses ?? ''}" min="0" step="1" />`), { subcategories: ['generic', 'magic_weapon_armor', 'ring_wand_staff', 'wondrous'] }),
+            buildPartyConditional(buildPartyField('Recharge', `<select class="item-recharge">${ITEM_RECHARGE_OPTIONS.map(value => `<option value="${escItemText(value)}" ${value === (item.recharge || '') ? 'selected' : ''}>${escItemText(value || 'None')}</option>`).join('')}</select>`), { subcategories: ['generic', 'magic_weapon_armor', 'ring_wand_staff', 'wondrous'] }),
+            buildPartyConditional(buildPartyField('Linked Spell', `<input type="text" class="item-linked-spell" value="${escItemText(item.linkedSpell || '')}" placeholder="Cure Wounds, Fireball..." />`), { subcategories: ['scroll'] }),
+            buildPartyConditional(buildPartyField('Spell Level', `<input type="number" class="item-spell-level" value="${item.spellLevel ?? ''}" min="0" max="9" step="1" />`), { subcategories: ['scroll'] }),
+            buildPartyConditional(buildPartyField('Save DC', `<input type="number" class="item-save-dc" value="${item.saveDC ?? ''}" min="0" max="30" step="1" />`), { subcategories: ['generic', 'ring_wand_staff', 'wondrous'] }),
+            buildPartyConditional(buildPartyField('Spell Attack', `<input type="number" class="item-spell-attack" value="${item.spellAttackBonus ?? ''}" min="0" max="20" step="1" />`), { subcategories: ['generic', 'ring_wand_staff', 'wondrous'] }),
+        ].join('')), { categories: ['magic'] }),
+        buildPartyConditional(buildPartyItemSection('Transport & Trade', [
+            buildPartyConditional(buildPartyField('Crew Required', `<input type="number" class="item-vehicle-crew" value="${item.vehicleCrew ?? ''}" min="0" step="1" />`), { subcategories: ['vehicle'] }),
+            buildPartyConditional(buildPartyField('Damage Threshold', `<input type="number" class="item-vehicle-threshold" value="${item.vehicleDamageThreshold ?? ''}" min="0" step="1" />`), { subcategories: ['vehicle'] }),
+        ].join('')), { categories: ['mount_vehicle_trade'] }),
+    ].join('');
+}
+
+/**
+ * @param {JQuery} form
+ */
+function refreshPartyItemFormState(form) {
+    const categoryEl = form.find('.item-category');
+    const subcategoryEl = form.find('.item-subcategory');
+    const slotEl = form.find('.item-slot');
+    if (!categoryEl.length || !subcategoryEl.length) return;
+
+    const category = String(categoryEl.val() || 'gear');
+    const currentSubcategory = String(subcategoryEl.val() || 'generic');
+    const subcategoryOptions = getItemSubcategoryOptions(category);
+    subcategoryEl.html(subcategoryOptions.map(([value, label]) => `<option value="${escItemText(value)}">${escItemText(label)}</option>`).join(''));
+    subcategoryEl.val(subcategoryOptions.some(([value]) => value === currentSubcategory) ? currentSubcategory : (subcategoryOptions[0]?.[0] || 'generic'));
+
+    const subcategory = String(subcategoryEl.val() || 'generic');
+    const armorDexModeEl = form.find('.item-armor-dex-mode');
+    const resistanceEnabled = Boolean(form.find('.item-flag[data-flag="resistanceEnabled"]').prop('checked'));
+    const isEmitsLight = Boolean(form.find('.item-emits-light').prop('checked'));
+    form.find('.dnd-item-conditional').each(function () {
+        /** @type {HTMLElement} */
+        const element = /** @type {HTMLElement} */ (this);
+        const categories = String(element.getAttribute('data-item-categories') || '').split(',').map(value => value.trim()).filter(Boolean);
+        const subcategories = String(element.getAttribute('data-item-subcategories') || '').split(',').map(value => value.trim()).filter(Boolean);
+        const categoryMatch = !categories.length || categories.includes(category);
+        const subcategoryMatch = !subcategories.length || subcategories.includes(subcategory);
+        $(element).toggle(categoryMatch && subcategoryMatch);
+    });
+
+    const suggestedSlot = getSuggestedSlotForItem(category, subcategory);
+    if (subcategory === 'basic_consumable') {
+        slotEl.val('');
+    } else if (subcategory === 'container') {
+        slotEl.val('container');
+    } else if (suggestedSlot != null) {
+        slotEl.val(suggestedSlot || '');
+    }
+
+    const consumableEl = form.find('.item-consumable');
+    if (subcategory === 'basic_consumable') {
+        consumableEl.prop('checked', true);
+        consumableEl.prop('disabled', true);
+    } else {
+        consumableEl.prop('disabled', false);
+    }
+
+    const stackableEl = form.find('.item-flag[data-flag="stackable"]');
+    const stackSizeWrap = form.find('.item-stack-size').closest('.dnd-form-row');
+    if (stackSizeWrap.length) {
+        const shouldShowStack = subcategory === 'basic_consumable';
+        stackSizeWrap.toggle(shouldShowStack && Boolean(stackableEl.prop('checked')));
+    }
+
+    const lightFieldsWrap = form.find('.dnd-item-light-fields');
+    if (lightFieldsWrap.length) {
+        lightFieldsWrap.toggle(subcategory === 'exploration_tool' && isEmitsLight);
+    }
+
+    const meleeRangeEl = form.find('.item-melee-range');
+    if (meleeRangeEl.length) {
+        if (isMeleeWeaponSubcategory(subcategory)) {
+            meleeRangeEl.prop('disabled', subcategory !== 'generic');
+            if (subcategory !== 'generic') {
+                meleeRangeEl.val('5');
+            }
+        } else {
+            meleeRangeEl.prop('disabled', false);
+        }
+    }
+
+    if (category === 'armor' && armorDexModeEl.length) {
+        if (subcategory === 'generic') {
+            armorDexModeEl.prop('disabled', false);
+            if (!armorDexModeEl.val()) armorDexModeEl.val('full');
+        } else {
+            const implicitMode = subcategory === 'medium_armor' ? 'max_2' : (subcategory === 'heavy_armor' || subcategory === 'shield' ? 'none' : 'full');
+            armorDexModeEl.val(implicitMode);
+            armorDexModeEl.prop('disabled', true);
+        }
+    }
+
+    const armorDexNoteEl = form.find('.dnd-armor-dex-note');
+    if (armorDexNoteEl.length) {
+        armorDexNoteEl.text(getArmorDexRuleLabel(subcategory, String(armorDexModeEl.val() || 'full')));
+    }
+
+    const resistanceWrap = form.find('.dnd-item-resistance-conditional');
+    if (resistanceWrap.length) {
+        resistanceWrap.toggle(category === 'armor' && resistanceEnabled);
+    }
+
+    // magic_weapon_armor: force Combat and Defense Stats section wrappers to show
+    if (category === 'magic' && subcategory === 'magic_weapon_armor') {
+        form.find('.dnd-item-conditional').each(function () {
+            const el = /** @type {HTMLElement} */ (this);
+            const catAttr = (el.getAttribute('data-item-categories') || '').split(',').map(s => s.trim());
+            const subAttr = (el.getAttribute('data-item-subcategories') || '').split(',').map(s => s.trim()).filter(Boolean);
+            if ((catAttr.includes('weapon') || catAttr.includes('armor')) && subAttr.length === 0) {
+                $(el).show();
+            }
+        });
+    }
+
+    // Auto-consumable for potion_oil and scroll: check and lock the consumable checkbox
+    if (category === 'magic') {
+        const magicFlags = getMagicSubtypeFlags(subcategory);
+        if (magicFlags.autoConsumable) {
+            consumableEl.prop('checked', true);
+            consumableEl.prop('disabled', true);
+        } else {
+            consumableEl.prop('disabled', false);
+        }
+    }
+}
+
+/**
  * Build the item list section with sub-tabs, search, and add button
  * @param {JQuery} panel
  * @param {PartyMember} member
@@ -2556,7 +2847,7 @@ function buildItemListSection(panel, member) {
     /** Render items with filter and search */
     function renderItems(filter = 'all', search = '') {
         listContainer.empty();
-        let items = filter === 'all' ? [...(member.items || [])] : getItemsByType(member, /** @type {'weapon'|'armor'|'gear'} */ (filter));
+        let items = filter === 'all' ? [...(member.items || [])].map(normalizeItem) : getItemsByType(member, /** @type {'weapon'|'armor'|'gear'} */ (filter));
         if (search) {
             const q = search.toLowerCase();
             items = items.filter(i => i.name.toLowerCase().includes(q));
@@ -2569,18 +2860,22 @@ function buildItemListSection(panel, member) {
 
         for (const item of items) {
             const isEquipped = Object.values(member.equippedItems || {}).includes(item.id);
-            const effectsText = (item.effects || []).map(e => `${e.stat} ${e.modifier >= 0 ? '+' : ''}${e.modifier}`).join(', ');
+            const isEquippableSlot = Boolean(item.slot && Object.values(EQUIPMENT_SLOTS).includes(item.slot));
+            const canUseConsumable = item.consumable && ((item.uses ?? 1) > 0);
+            const effectsText = (item.effects || []).map(/** @param {import('./dnd-system.js').DndItemEffect} e */ e => `${e.stat} ${e.modifier >= 0 ? '+' : ''}${e.modifier}`).join(', ');
+            const metaText = buildItemMetaSummary(item).join(' · ');
             const card = $(`
                 <div class="dnd-item-card ${isEquipped ? 'equipped' : ''}" data-item-id="${item.id}">
                     ${item.image ? `<img class="dnd-item-img" src="${item.image}" />` : `<div class="dnd-item-img-placeholder"><i class="fa-solid fa-box"></i></div>`}
                     <div class="dnd-item-info">
                         <div class="dnd-item-name">${item.name}${isEquipped ? ' <span style="color:#2dd4bf;font-size:0.7rem;">(equipped)</span>' : ''}</div>
-                        <div class="dnd-item-meta">${item.type}${item.slot ? ' · ' + item.slot : ''} · ${item.weight} lbs${effectsText ? ' · ' + effectsText : ''}</div>
+                        <div class="dnd-item-meta">${metaText}${effectsText ? ' · ' + effectsText : ''}</div>
                     </div>
                     <div class="dnd-item-actions">
                         ${isEquipped
                             ? '<button class="dnd-item-action-btn unequip-btn" title="Unequip"><i class="fa-solid fa-arrow-down"></i></button>'
-                            : (item.slot ? '<button class="dnd-item-action-btn equip-btn" title="Equip"><i class="fa-solid fa-arrow-up"></i></button>' : '')}
+                            : (isEquippableSlot ? '<button class="dnd-item-action-btn equip-btn" title="Equip"><i class="fa-solid fa-arrow-up"></i></button>' : '')}
+                        ${canUseConsumable ? '<button class="dnd-item-action-btn use-btn" title="Use"><i class="fa-solid fa-vial"></i></button>' : ''}
                         <button class="dnd-item-action-btn delete" title="Delete"><i class="fa-solid fa-trash-can"></i></button>
                     </div>
                 </div>
@@ -2602,6 +2897,24 @@ function buildItemListSection(panel, member) {
             card.find('.delete').on('click', function (e) {
                 e.stopPropagation();
                 removeItemFromInventory(member, item.id);
+                renderItems(filter, search);
+                rebuildInventoryPanel(panel, member);
+            });
+
+            card.find('.use-btn').on('click', function (e) {
+                e.stopPropagation();
+                const useResult = consumeItemInInventory(member, item.id);
+                if (!useResult.consumed) {
+                    toastr.info(t`This item cannot be consumed.`);
+                    return;
+                }
+
+                if (useResult.removed) {
+                    toastr.success(t`Item consumed and removed.`);
+                } else {
+                    toastr.success(t`Item consumed. Remaining uses updated.`);
+                }
+
                 renderItems(filter, search);
                 rebuildInventoryPanel(panel, member);
             });
@@ -2641,26 +2954,34 @@ function buildItemListSection(panel, member) {
  * @param {PartyMember} member
  */
 async function openAddItemForm(panel, member) {
+    const defaultItem = normalizeItem({});
+    const categoryOptions = getItemCategoryOptions();
+    const slotOptions = [['', 'None (unequippable)'], ['container', 'Container'], ...Object.entries(SLOT_INFO).map(([key, info]) => [key, info.label])];
+    const subcategoryOptions = getItemSubcategoryOptions(defaultItem.category || 'gear');
     const form = $(`
         <div class="dnd-add-item-form" style="min-width:380px;">
             <div class="dnd-form-row"><label>Name</label><input type="text" class="item-name" value="" /></div>
             <div class="dnd-form-row">
-                <label>Type</label>
-                <select class="item-type">
-                    <option value="weapon">Weapon</option>
-                    <option value="armor">Armor</option>
-                    <option value="gear" selected>Gear</option>
+                <label>Category</label>
+                <select class="item-category">
+                    ${categoryOptions.map(([value, label]) => `<option value="${escItemText(value)}" ${value === defaultItem.category ? 'selected' : ''}>${escItemText(label)}</option>`).join('')}
+                </select>
+            </div>
+            <div class="dnd-form-row">
+                <label>Subcategory</label>
+                <select class="item-subcategory">
+                    ${subcategoryOptions.map(([value, label]) => `<option value="${escItemText(value)}" ${value === defaultItem.subcategory ? 'selected' : ''}>${escItemText(label)}</option>`).join('')}
                 </select>
             </div>
             <div class="dnd-form-row">
                 <label>Slot</label>
                 <select class="item-slot">
-                    <option value="">None (unequippable)</option>
-                    ${Object.entries(SLOT_INFO).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('')}
+                    ${slotOptions.map(([value, label]) => `<option value="${escItemText(value)}" ${value === (defaultItem.slot || '') ? 'selected' : ''}>${escItemText(label)}</option>`).join('')}
                 </select>
             </div>
             <div class="dnd-form-row"><label>Image URL</label><input type="text" class="item-image" placeholder="Optional image URL" /></div>
             <div class="dnd-form-row"><label>Weight</label><input type="number" class="item-weight" value="0" min="0" step="0.1" /></div>
+            ${buildPartyItemSections(defaultItem)}
             <div class="dnd-form-row"><label>Description</label><textarea class="item-desc" placeholder="Item description..."></textarea></div>
             <div style="margin-top:8px;">
                 <label style="font-size:0.8rem;font-weight:600;color:var(--SmartThemeEmColor);">Effects</label>
@@ -2685,6 +3006,11 @@ async function openAddItemForm(panel, member) {
         form.find('.dnd-effect-rows').append(row);
     });
 
+    refreshPartyItemFormState(form);
+    form.find('.item-category, .item-subcategory, .item-armor-dex-mode, .item-flag[data-flag="resistanceEnabled"], .item-emits-light, .item-flag[data-flag="stackable"]').on('change', function () {
+        refreshPartyItemFormState(form);
+    });
+
     const popup = new Popup(form, POPUP_TYPE.CONFIRM, '', {
         okButton: t`Add Item`,
         cancelButton: t`Cancel`,
@@ -2702,13 +3028,90 @@ async function openAddItemForm(panel, member) {
         });
     });
 
+    const resistanceTypes = form.find('.item-resistance:checked').map(function () {
+        return String($(this).data('value') || '');
+    }).get().filter(Boolean);
+
+    const selectedSubcategory = String(form.find('.item-subcategory').val() || 'generic');
+    if (selectedSubcategory === 'container') {
+        const capacityWeight = parseInt(String(form.find('.item-capacity-weight').val() || ''), 10) || 0;
+        const capacityVolume = parseFloat(String(form.find('.item-capacity-volume').val() || '')) || 0;
+        if (capacityWeight <= 0 || capacityVolume <= 0) {
+            toastr.error(t`Container items require Capacity Weight and Capacity Volume greater than 0.`);
+            return;
+        }
+    }
+
     const newItem = createItem({
         name: form.find('.item-name').val()?.toString().trim() || 'New Item',
-        type: /** @type {'weapon'|'armor'|'gear'} */ (form.find('.item-type').val()),
+        category: /** @type {'weapon'|'armor'|'gear'|'magic'|'mount_vehicle_trade'} */ (String(form.find('.item-category').val() || 'gear')),
+        subcategory: String(form.find('.item-subcategory').val() || 'generic'),
         slot: String(form.find('.item-slot').val() || '') || null,
         image: form.find('.item-image').val()?.toString().trim() || '',
         weight: parseFloat(String(form.find('.item-weight').val())) || 0,
         description: form.find('.item-desc').val()?.toString().trim() || '',
+        rarity: form.find('.item-rarity').val()?.toString().trim() || '',
+        damageDice: form.find('.item-damage-dice').val()?.toString().trim() || '',
+        baseDamage: form.find('.item-damage-dice').val()?.toString().trim() || '',
+        damageType: form.find('.item-damage-type').val()?.toString().trim() || '',
+        properties: form.find('.item-properties').val()?.toString().trim() || '',
+        meleeRange: parseInt(String(form.find('.item-melee-range').val() || ''), 10) || 5,
+        range: parseInt(String(form.find('.item-range').val() || ''), 10) || null,
+        longRange: parseInt(String(form.find('.item-long-range').val() || ''), 10) || null,
+        versatileDamage: form.find('.item-versatile-damage').val()?.toString().trim() || '',
+        baseArmorClass: parseInt(String(form.find('.item-base-armor-class').val() || ''), 10) || null,
+        armorClass: parseInt(String(form.find('.item-base-armor-class').val() || ''), 10) || null,
+        armorDexMode: /** @type {'full'|'max_2'|'none'} */ (String(form.find('.item-armor-dex-mode').val() || 'full')),
+        strengthRequirement: parseInt(String(form.find('.item-strength-req').val() || ''), 10) || null,
+        donTime: form.find('.item-don-time').val()?.toString().trim() || '',
+        doffTime: form.find('.item-doff-time').val()?.toString().trim() || '',
+        consumable: Boolean(form.find('.item-consumable').prop('checked')),
+        focusType: form.find('.item-focus-type').val()?.toString().trim() || '',
+        toolType: form.find('.item-tool-type').val()?.toString().trim() || '',
+        linkedAbility: form.find('.item-linked-ability').val()?.toString().trim() || '',
+        capacity: parseInt(String(form.find('.item-capacity').val() || ''), 10) || null,
+        capacityUnit: form.find('.item-capacity-unit').val()?.toString().trim() || '',
+        capacityWeight: parseInt(String(form.find('.item-capacity-weight').val() || ''), 10) || null,
+        capacityVolume: parseFloat(String(form.find('.item-capacity-volume').val() || '')) || null,
+        stackSize: parseInt(String(form.find('.item-stack-size').val() || ''), 10) || null,
+        emitsLight: Boolean(form.find('.item-emits-light').prop('checked')),
+        lightBright: parseInt(String(form.find('.item-light-bright').val() || ''), 10) || null,
+        lightDim: parseInt(String(form.find('.item-light-dim').val() || ''), 10) || null,
+        containerItemId: form.find('.item-container-id').val()?.toString().trim() || '',
+        costGp: parseInt(String(form.find('.item-cost-gp').val() || ''), 10) || null,
+        attunement: Boolean(form.find('.item-attunement').prop('checked')),
+        magical: Boolean(form.find('.item-magical').prop('checked')),
+        cursed: Boolean(form.find('.item-cursed').prop('checked')),
+        magicalBonus: parseInt(String(form.find('.item-magical-bonus').val() || ''), 10) || null,
+        uses: parseInt(String(form.find('.item-uses').val() || ''), 10) || null,
+        maxUses: parseInt(String(form.find('.item-max-uses').val() || ''), 10) || null,
+        recharge: form.find('.item-recharge').val()?.toString().trim() || '',
+        vehicleCrew: parseInt(String(form.find('.item-vehicle-crew').val() || ''), 10) || null,
+        vehicleDamageThreshold: parseInt(String(form.find('.item-vehicle-threshold').val() || ''), 10) || null,
+        stealthDisadvantage: Boolean(form.find('.item-flag[data-flag="stealthDisadvantage"]').prop('checked')),
+        adamantine: Boolean(form.find('.item-flag[data-flag="adamantine"]').prop('checked')),
+        mithral: Boolean(form.find('.item-flag[data-flag="mithral"]').prop('checked')),
+        resistanceEnabled: Boolean(form.find('.item-flag[data-flag="resistanceEnabled"]').prop('checked')),
+        resistanceTypes,
+        finesse: Boolean(form.find('.item-flag[data-flag="finesse"]').prop('checked')),
+        heavy: Boolean(form.find('.item-flag[data-flag="heavy"]').prop('checked')),
+        light: Boolean(form.find('.item-flag[data-flag="light"]').prop('checked')),
+        reach: Boolean(form.find('.item-flag[data-flag="reach"]').prop('checked')),
+        thrown: Boolean(form.find('.item-flag[data-flag="thrown"]').prop('checked')),
+        twoHanded: Boolean(form.find('.item-flag[data-flag="twoHanded"]').prop('checked')),
+        versatile: Boolean(form.find('.item-flag[data-flag="versatile"]').prop('checked')),
+        ammunition: Boolean(form.find('.item-flag[data-flag="ammunition"]').prop('checked')),
+        loading: Boolean(form.find('.item-flag[data-flag="loading"]').prop('checked')),
+        stackable: Boolean(form.find('.item-flag[data-flag="stackable"]').prop('checked')),
+        toolProficiency: Boolean(form.find('.item-flag[data-flag="toolProficiency"]').prop('checked')),
+        linkedSpell: form.find('.item-linked-spell').val()?.toString().trim() || '',
+        spellLevel: parseInt(String(form.find('.item-spell-level').val() || ''), 10) || null,
+        saveDC: parseInt(String(form.find('.item-save-dc').val() || ''), 10) || null,
+        spellAttackBonus: parseInt(String(form.find('.item-spell-attack').val() || ''), 10) || null,
+        storageWeightLimit: parseInt(String(form.find('.item-storage-weight').val() || ''), 10) || null,
+        storageVolumeLimit: parseInt(String(form.find('.item-storage-volume').val() || ''), 10) || null,
+        brightLightRadius: parseInt(String(form.find('.item-bright-light').val() || ''), 10) || null,
+        dimLightRadius: parseInt(String(form.find('.item-dim-light').val() || ''), 10) || null,
         effects,
     });
 

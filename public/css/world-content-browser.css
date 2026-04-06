@@ -152,6 +152,33 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
+
+.wcp-flag-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 8px;
+}
+
+.wcp-flag-chip {
+    display: flex;
+    align-items: center;
+    min-height: 34px;
+    padding: 6px 10px;
+    border: 1px solid var(--SmartThemeBorderColor, #3a3a3a);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.wcp-empty-note {
+    font-size: 0.82rem;
+    color: var(--SmartThemeQuoteColor, #9ca3af);
+}
+
+.wcp-item-resistance-conditional {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
 }
 
 .wcb-entry-card {

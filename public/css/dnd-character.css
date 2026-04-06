@@ -669,6 +669,58 @@
     padding: 10px 0;
 }
 
+.dnd-item-form-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px;
+    border: 1px solid var(--SmartThemeBorderColor, #333);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.dnd-item-form-section-title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--SmartThemeQuoteColor, #2dd4bf);
+}
+
+.dnd-item-conditional {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.dnd-item-flag-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 8px;
+}
+
+.dnd-item-flag-toggle {
+    display: flex;
+    align-items: center;
+    min-height: 34px;
+    padding: 6px 10px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.dnd-item-form-note {
+    font-size: 0.82rem;
+    color: var(--SmartThemeQuoteColor, #9ca3af);
+    padding: 2px 0 0;
+}
+
+.dnd-item-resistance-conditional {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
 .dnd-form-row {
     display: flex;
     gap: 10px;
