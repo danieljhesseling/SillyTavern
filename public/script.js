@@ -77,6 +77,8 @@ import {
 
 import { initPartyPanel, getPartyDescription, getActivePartyLeader, getCombatEncounter } from './scripts/party.js';
 import { initActiveInstructions, injectCustomInstructions } from './scripts/active-instructions.js';
+import { initDynamicContextManager, injectAllDynamicContext } from './scripts/dynamic-context-manager.js';
+import { initChatEnhancements } from './scripts/chat-enhancements.js';
 import './scripts/world-content-browser.js';
 import './scripts/campaigns.js';
 
@@ -762,6 +764,8 @@ async function firstLoadInit() {
     await getBackgrounds();
     initPartyPanel();
     initActiveInstructions();
+    initDynamicContextManager();
+    initChatEnhancements();
     await initTokenizers();
     initBackgrounds();
     initAuthorsNote();
@@ -3230,6 +3234,9 @@ function addPersonaDescriptionExtensionPrompt() {
 
     // Inject user-defined custom instructions from chat_metadata
     injectCustomInstructions();
+
+    // Inject dynamic context (filtered instructions, relationships, quests)
+    injectAllDynamicContext();
 
     // Determine effective persona description: party leader personality overrides global persona
     const effectivePersonaDescription = partyLeader

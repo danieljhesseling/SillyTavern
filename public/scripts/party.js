@@ -3,7 +3,7 @@ import { power_user } from './power-user.js';
 import { POPUP_TYPE, POPUP_RESULT, Popup } from './popup.js';
 import { sendSystemMessage, system_message_types } from './system-messages.js';
 import { getThumbnailUrl, chat, chat_metadata, saveMetadata, eventSource, event_types, setUserName } from '../script.js';
-import { getCurrentWorldMapUrl, getCurrentWorldLocationMaps, getCurrentWorldBoards, getCurrentWorldEnemies, loadWorldInfo, saveWorldInfo, METADATA_KEY } from './world-info.js';
+import { getCurrentWorldMapUrl, getCurrentWorldLocationMaps, getCurrentWorldBoards, getCurrentWorldEnemies, getCurrentWorldNPCs, loadWorldInfo, saveWorldInfo, METADATA_KEY } from './world-info.js';
 import { renderWorldMapView, renderLocationView } from './world-map-renderer.js';
 import { SlashCommandParser } from './slash-commands/SlashCommandParser.js';
 import { SlashCommand } from './slash-commands/SlashCommand.js';
@@ -1453,7 +1453,33 @@ function buildEnemyTokens() {
 }
 
 /**
- * Handle enemy token move on the board.
+ * Build token data from board NPC placements.
+ * @param {{npcPlacements: Array<any>}} board
+ * @returns {import('./world-map-renderer.js').TokenData[]}
+ */
+function buildBoardNPCTokens(board) {
+    if (!board?.npcPlacements || !Array.isArray(board.npcPlacements)) return [];
+    const worldNPCs = getCurrentWorldNPCs();
+    /** @type {import('./world-map-renderer.js').TokenData[]} */
+    const result = [];
+    board.npcPlacements.forEach((placement, /** @type {any} */ idx) => {
+        const npc = worldNPCs.find(/** @type {any} */ (n) => n.id === placement.npcId);
+        if (!npc) return;
+        result.push({
+            id: -(1000 + idx),
+            name: npc.name,
+            avatar: npc.avatar,
+            gridX: placement.gridX || 0,
+            gridY: placement.gridY || 0,
+            hp: npc.hp,
+            maxHp: npc.maxHp,
+            isNPC: true,
+        });
+    });
+    return result;
+}
+
+/**
  * @param {number} tokenId - Negative token ID
  * @param {number} gridX
  * @param {number} gridY
@@ -1470,6 +1496,77 @@ function handleEnemyTokenMove(tokenId, gridX, gridY) {
 /** Export combat state for external access (e.g., script.js AI injection) */
 export function getCombatEncounter() {
     return combatEncounter;
+}
+
+/**
+ * Read-only snapshot of current party state for external modules.
+ * @returns {PartyMember[]}
+ */
+export function getPartyMembersSnapshot() {
+    try {
+        return JSON.parse(JSON.stringify(partyMembers || []));
+    } catch {
+        return [];
+    }
+}
+
+/**
+ * Get a snapshot of all characters/NPCs/enemies present on the current board/location.
+ * Used by the Dynamic Context Manager to inject board awareness into AI context.
+ * @returns {{ locationName: string, boardName: string, partyTokens: Array<{name: string}>, npcTokens: Array<{name: string}>, enemyTokens: Array<{name: string}> }}
+ */
+export function getBoardContextSnapshot() {
+    /** @type {{name: string}[]} */
+    const partyTokens = [];
+    /** @type {{name: string}[]} */
+    const npcTokens = [];
+    /** @type {{name: string}[]} */
+    const enemyTokens = [];
+    const snapshot = {
+        locationName: currentLocationName || '',
+        boardName: currentBoardName || '',
+        partyTokens,
+        npcTokens,
+        enemyTokens,
+    };
+
+    if (!currentLocationName) return snapshot;
+
+    // Party members at current location
+    for (const m of partyMembers) {
+        const pos = m.mapPosition || { locationName: '', gridX: 0, gridY: 0 };
+        if (pos.locationName === currentLocationName) {
+            snapshot.partyTokens.push({ name: m.name });
+        }
+    }
+
+    // Board NPCs (if a board is selected)
+    if (currentBoardName) {
+        const locationMaps = getCurrentWorldLocationMaps();
+        const loc = locationMaps.find(l => l.name === currentLocationName);
+        if (loc) {
+            const locBoards = getLocationBoards(loc);
+            const board = locBoards.find(/** @param {{ name: string }} b */ (b) => b.name === currentBoardName);
+            if (board?.npcPlacements && Array.isArray(board.npcPlacements)) {
+                const worldNPCs = getCurrentWorldNPCs();
+                for (const placement of board.npcPlacements) {
+                    const npc = worldNPCs.find(n => n.id === placement.npcId);
+                    if (npc) {
+                        snapshot.npcTokens.push({ name: npc.name });
+                    }
+                }
+            }
+        }
+    }
+
+    // Combat enemies (if active)
+    if (combatEncounter.active && combatEncounter.enemies.length > 0) {
+        for (const e of combatEncounter.enemies) {
+            snapshot.enemyTokens.push({ name: e.name });
+        }
+    }
+
+    return snapshot;
 }
 
 /**
@@ -1975,7 +2072,8 @@ function renderLocationMapsPreview() {
         const boardTokens = /** @type {import('./world-map-renderer.js').TokenData[]} */ (buildTokens(currentLocationName));
         // Merge enemy tokens if combat is active on this board
         const enemyTokens = combatEncounter.active ? buildEnemyTokens() : [];
-        const allBoardTokens = [...boardTokens, ...enemyTokens];
+        const npcTokens = buildBoardNPCTokens(selectedBoard);
+        const allBoardTokens = [...boardTokens, ...enemyTokens, ...npcTokens];
         const tacticalState = getCombatBoardHighlightState(loc.gridWidth || 50, loc.gridHeight || 50);
 
         // Determine which tokens can be dragged
@@ -2272,7 +2370,6 @@ function buildCharacterSheetTab(member) {
     const eqEffects = applyEquipmentEffects(member);
     const derivedRow = $('<div class="dnd-derived-row"></div>');
 
-    // AC
     const acBox = $('<div class="dnd-derived-box"></div>');
     const acLabel = $('<div class="dnd-derived-label">Armor Class</div>');
     if (eqEffects.acBonus !== 0) {
@@ -2284,7 +2381,7 @@ function buildCharacterSheetTab(member) {
             <div class="dnd-ac-display">
                 <span class="dnd-ac-base">${eqEffects.baseAC}</span>
                 <span class="dnd-ac-arrow">→</span>
-                <span class="dnd-ac-effective">${eqEffects.effectiveAC}</span>
+                <span class="dnd-ac-total">${eqEffects.baseAC + eqEffects.acBonus}</span>
             </div>
         `);
     } else {

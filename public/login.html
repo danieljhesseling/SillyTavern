@@ -57,7 +57,7 @@
                             </div>
                             <div id="passwordEntryBlock" style="display:none;"
                                 class="flex-container flexFlowColumn alignItemsCenter">
-                                <input id="userPassword" class="text_pole" type="password" placeholder="Password" autocomplete="current-password">
+                                <input id="userPassword" class="text_pole" type="password" form="login_form" placeholder="Password" autocomplete="current-password">
                                 <a id="recoverPassword" href="#" onclick="return false;">Forgot password?</a>
                                 <div class="flex-container">
                                     <div id="loginButton" class="menu_button">Login</div>
@@ -68,7 +68,7 @@
                                     Recovery code has been posted to the server console.
                                 </div>
                                 <input id="recoveryCode" class="text_pole" type="text" placeholder="Recovery code">
-                                <input id="newPassword" class="text_pole" type="password" placeholder="New password" autocomplete="new-password">
+                                <input id="newPassword" class="text_pole" type="password" form="login_form" placeholder="New password" autocomplete="new-password">
                                 <div class="flex-container flexGap10">
                                     <div id="sendRecovery" class="menu_button">Send</div>
                                     <div id="cancelRecovery" class="menu_button">Cancel</div>
@@ -82,6 +82,10 @@
             </div>
         </div>
     </div>
+
+    <form id="login_form" onsubmit="return false;" style="display:none;">
+        <button type="submit" aria-hidden="true" tabindex="-1">Submit</button>
+    </form>
 
     <script src="lib/jquery-3.5.1.min.js"></script>
     <script src="scripts/login.js" type="module"></script>

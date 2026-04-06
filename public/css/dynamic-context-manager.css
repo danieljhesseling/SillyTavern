@@ -1,0 +1,355 @@
+/* ═══════════════════════════════════════════════════════
+   Dynamic Context Manager – CSS
+   ═══════════════════════════════════════════════════════ */
+
+.dcm-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+.dcm-container h3 {
+    margin: 0 0 4px;
+    font-size: 1.15em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* ─── Campaign state section ─────────────────────────── */
+
+.dcm-campaign-section {
+    background: var(--SmartThemeBlurTintColor, rgba(0,0,0,.15));
+    border-radius: 8px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.dcm-row {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+
+.dcm-field {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 150px;
+    gap: 2px;
+}
+
+.dcm-field label,
+.dcm-editor-field label {
+    font-size: 0.8em;
+    opacity: 0.8;
+    font-weight: 600;
+}
+
+.dcm-field-narrow {
+    flex: 0 0 110px !important;
+}
+
+/* ─── Quest section ──────────────────────────────────── */
+
+.dcm-quest-section {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.dcm-quest-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.dcm-quest-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--SmartThemeQuoteColor, rgba(255,193,7,.15));
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 0.85em;
+}
+
+.dcm-quest-remove {
+    padding: 0 3px !important;
+    min-width: auto !important;
+    font-size: 0.75em;
+}
+
+/* ─── Budget bar ─────────────────────────────────────── */
+
+.dcm-budget-bar {
+    position: relative;
+    height: 22px;
+    background: rgba(255,255,255,.08);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.dcm-budget-fill {
+    height: 100%;
+    transition: width 0.3s ease, background 0.3s ease;
+    border-radius: 4px;
+}
+
+.dcm-budget-label {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.78em;
+    font-weight: 600;
+    text-shadow: 0 1px 2px rgba(0,0,0,.5);
+    color: #fff;
+}
+
+/* ─── Section ────────────────────────────────────────── */
+
+.dcm-section {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.dcm-section-title {
+    font-size: 0.9em;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    opacity: 0.9;
+}
+
+/* ─── Instruction cards ──────────────────────────────── */
+
+.dcm-instr-card {
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 6px;
+    margin-bottom: 6px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+}
+
+.dcm-instr-card.dcm-active {
+    border-color: rgba(39,174,96,.4);
+}
+
+.dcm-instr-card.dcm-inactive {
+    border-color: rgba(231,76,60,.25);
+    opacity: 0.7;
+}
+
+.dcm-instr-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    background: rgba(255,255,255,.03);
+    flex-wrap: wrap;
+}
+
+.dcm-toggle-wrap {
+    flex-shrink: 0;
+}
+
+.dcm-category-badge {
+    font-size: 0.7em;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 1px 6px;
+    border-radius: 3px;
+    color: #fff;
+    letter-spacing: 0.5px;
+    flex-shrink: 0;
+}
+
+.dcm-instr-label {
+    font-weight: 600;
+    font-size: 0.9em;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dcm-priority-badge {
+    font-size: 0.7em;
+    font-weight: 700;
+    background: rgba(255,255,255,.1);
+    padding: 1px 5px;
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+
+.dcm-token-badge {
+    font-size: 0.7em;
+    opacity: 0.6;
+    flex-shrink: 0;
+}
+
+.dcm-active-indicator {
+    font-size: 0.85em;
+    flex-shrink: 0;
+}
+
+.dcm-active-indicator.dcm-on {
+    color: #27ae60;
+}
+
+.dcm-active-indicator.dcm-off {
+    color: #e74c3c;
+}
+
+.dcm-instr-actions {
+    display: flex;
+    gap: 3px;
+    flex-shrink: 0;
+}
+
+.dcm-instr-actions .menu_button {
+    padding: 2px 6px !important;
+    min-width: auto !important;
+}
+
+.dcm-instr-body {
+    padding: 4px 8px 6px;
+}
+
+.dcm-instr-preview {
+    font-size: 0.8em;
+    opacity: 0.7;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.dcm-instr-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    margin-top: 4px;
+}
+
+/* ─── Tags ───────────────────────────────────────────── */
+
+.dcm-tag {
+    font-size: 0.68em;
+    font-weight: 600;
+    padding: 1px 5px;
+    border-radius: 3px;
+    display: inline-block;
+}
+
+.dcm-tag-char {
+    background: rgba(233,30,99,.2);
+    color: #e91e63;
+}
+
+.dcm-tag-kw {
+    background: rgba(41,128,185,.2);
+    color: #3498db;
+}
+
+.dcm-tag-state {
+    background: rgba(142,68,173,.2);
+    color: #9b59b6;
+}
+
+/* ─── Add button ─────────────────────────────────────── */
+
+.dcm-add-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 6px;
+    margin-top: 4px;
+}
+
+/* ─── Editor ─────────────────────────────────────────── */
+
+.dcm-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 650px;
+}
+
+.dcm-editor-row {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+
+.dcm-editor-field {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.dcm-editor-textarea {
+    min-height: 120px;
+    resize: vertical;
+    font-family: monospace;
+    font-size: 0.88em;
+}
+
+.dcm-token-counter {
+    font-size: 0.75em;
+    opacity: 0.6;
+    text-align: right;
+}
+
+.dcm-state-checkboxes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.dcm-state-cb {
+    font-size: 0.85em;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    cursor: pointer;
+}
+
+/* ─── Relationships preview ──────────────────────────── */
+
+.dcm-rel-preview {
+    font-size: 0.82em;
+    white-space: pre-wrap;
+    opacity: 0.8;
+    background: rgba(255,255,255,.03);
+    padding: 6px 8px;
+    border-radius: 4px;
+    max-height: 120px;
+    overflow-y: auto;
+}
+
+/* ─── Empty state ────────────────────────────────────── */
+
+.dcm-empty {
+    font-size: 0.82em;
+    opacity: 0.5;
+    padding: 6px;
+    text-align: center;
+    font-style: italic;
+}
+
+/* ─── Flex helpers ───────────────────────────────────── */
+
+.dcm-editor .flex1 {
+    flex: 1 1 0;
+}

@@ -1282,3 +1282,102 @@
 .wm-rule-range input {
     text-align: center;
 }
+
+/* ---- NPC cards in board editor ---- */
+.wm-npc-rule {
+    cursor: grab !important;
+    border-color: rgba(45, 212, 191, 0.3) !important;
+    transition: border-color 0.15s, box-shadow 0.15s, opacity 0.15s;
+}
+
+.wm-npc-rule:hover {
+    border-color: #2dd4bf !important;
+}
+
+.wm-npc-rule[draggable="true"]:active {
+    cursor: grabbing !important;
+    opacity: 0.6;
+}
+
+.wm-npc-in-party {
+    opacity: 0.7;
+}
+
+.wm-npc-party-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 0.6rem;
+    color: #2dd4bf;
+    background: rgba(45, 212, 191, 0.15);
+    border: 1px solid rgba(45, 212, 191, 0.3);
+    border-radius: 4px;
+    padding: 1px 5px;
+    margin-left: 4px;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+.wm-npc-meta {
+    font-size: 0.65rem;
+    color: #9ca3af;
+    margin-top: 2px;
+}
+
+.wm-npc-coords {
+    flex-wrap: nowrap;
+}
+
+.wm-npc-coords input {
+    text-align: center;
+}
+
+.wm-npc-coords span {
+    font-weight: 600;
+    opacity: 0.7;
+}
+
+/* ---- Board Preview ---- */
+.wm-board-preview {
+    border: 1px solid var(--SmartThemeBorderColor, #333);
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--SmartThemeEmColor, #1a1a2e);
+    min-height: 80px;
+}
+
+.wm-board-preview-empty {
+    padding: 30px 16px;
+    text-align: center;
+    opacity: 0.4;
+    font-style: italic;
+}
+
+.wm-board-preview-wrapper {
+    position: relative;
+}
+
+#wm_be_preview_drop_overlay {
+    cursor: crosshair;
+    z-index: 1;
+    transition: background 0.15s, box-shadow 0.15s;
+}
+
+#wm_be_preview_drop_overlay.wm-board-preview-dragover {
+    background: rgba(45, 212, 191, 0.15);
+    box-shadow: inset 0 0 20px rgba(45, 212, 191, 0.3);
+}
+
+#wm_be_preview_canvas {
+    z-index: 0;
+    pointer-events: none;
+}
+
+/* ---- NPC cards in combat view ---- */
+.wm-combat-npc-card {
+    border-color: rgba(45, 212, 191, 0.3) !important;
+}
+
+.wm-combat-npc-name {
+    color: #2dd4bf !important;
+}

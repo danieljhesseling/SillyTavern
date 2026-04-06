@@ -68,6 +68,7 @@ export let current_world_map_url = '';
 export let current_world_location_maps = [];
 export let current_world_boards = [];
 export let current_world_enemies = [];
+export let current_world_npcs = [];
 export let current_world_info_name = '';
 
 export function getCurrentWorldMapUrl() {
@@ -81,6 +82,9 @@ export function getCurrentWorldBoards() {
 }
 export function getCurrentWorldEnemies() {
     return current_world_enemies;
+}
+export function getCurrentWorldNPCs() {
+    return current_world_npcs;
 }
 
 /**
@@ -138,6 +142,63 @@ function extractWorldMonsterTemplates(data) {
 }
 
 /**
+ * Extracts NPC templates from world info data.
+ * NPCs are entries that have dndData but do NOT belong to a monster/monsters group.
+ * @param {object} data - World info data object
+ * @returns {Array<{id:string, name:string, avatar:string, hp:number, maxHp:number, armorClass:number, strength:number, dexterity:number, constitution:number, intelligence:number, wisdom:number, charisma:number, speed:number, cr:number}>}
+ */
+function extractWorldNPCTemplates(data) {
+    if (!data?.entries || typeof data.entries !== 'object') return [];
+
+    const toNumber = (value, fallback) => {
+        const n = Number(value);
+        return Number.isFinite(n) ? n : fallback;
+    };
+
+    const getName = (entry, uid) => {
+        if (entry.comment && String(entry.comment).trim()) return String(entry.comment).trim();
+        if (Array.isArray(entry.key) && entry.key.length) return String(entry.key[0]).trim();
+        if (entry.key && String(entry.key).trim()) return String(entry.key).trim();
+        return `NPC ${uid}`;
+    };
+
+    const isMonster = (entry) => {
+        const group = String(entry?.group || '').trim().toLowerCase();
+        return group === 'monster' || group === 'monsters' || group.includes('monster');
+    };
+
+    const npcs = [];
+    for (const uid of Object.keys(data.entries)) {
+        const entry = data.entries[uid];
+        if (!entry) continue;
+        // Must have dndData and NOT be a monster
+        const d = entry.dndData;
+        if (!d || typeof d !== 'object') continue;
+        if (isMonster(entry)) continue;
+
+        const hp = toNumber(d.maxHp ?? d.hp, 10);
+        npcs.push({
+            id: String(uid),
+            name: getName(entry, uid),
+            avatar: String(d.image || d.avatar || ''),
+            hp,
+            maxHp: hp,
+            armorClass: toNumber(d.ac ?? d.armorClass, 10),
+            strength: toNumber(d.str ?? d.strength, 10),
+            dexterity: toNumber(d.dex ?? d.dexterity, 10),
+            constitution: toNumber(d.con ?? d.constitution, 10),
+            intelligence: toNumber(d.int ?? d.intelligence, 10),
+            wisdom: toNumber(d.wis ?? d.wisdom, 10),
+            charisma: toNumber(d.cha ?? d.charisma, 10),
+            speed: toNumber(d.speed, 30),
+            cr: toNumber(d.cr, 0),
+        });
+    }
+
+    return npcs;
+}
+
+/**
  * Loads world metadata globals and fires update events without touching the WI editor UI.
  * Call this after programmatically binding a world to a chat.
  * @param {string} worldName
@@ -150,6 +211,7 @@ export async function refreshWorldMapGlobals(worldName) {
     current_world_location_maps = Array.isArray(data.metadata?.locationMaps) ? data.metadata.locationMaps : [];
     current_world_boards = Array.isArray(data.metadata?.boards) ? data.metadata.boards : [];
     current_world_enemies = extractWorldMonsterTemplates(data);
+    current_world_npcs = extractWorldNPCTemplates(data);
     $(document).trigger('worldMapUpdated', [current_world_map_url]);
     $(document).trigger('worldLocationMapsUpdated', [current_world_location_maps]);
     $(document).trigger('worldBoardsUpdated', [current_world_boards]);
@@ -1142,6 +1204,7 @@ export function setWorldInfoSettings(settings, data) {
                     current_world_location_maps = Array.isArray(data.metadata?.locationMaps) ? data.metadata.locationMaps : [];
                     current_world_boards = Array.isArray(data.metadata?.boards) ? data.metadata.boards : [];
                     current_world_enemies = extractWorldMonsterTemplates(data);
+                    current_world_npcs = extractWorldNPCTemplates(data);
                     $(document).trigger('worldMapUpdated', [current_world_map_url]);
                     $(document).trigger('worldLocationMapsUpdated', [current_world_location_maps]);
                     $(document).trigger('worldBoardsUpdated', [current_world_boards]);
@@ -2458,6 +2521,7 @@ async function displayWorldEntries(name, data, navigation = navigation_option.no
         current_world_location_maps = [];
         current_world_boards = [];
         current_world_enemies = [];
+        current_world_npcs = [];
         $(document).trigger('worldMapUpdated', ['']);
         $(document).trigger('worldLocationMapsUpdated', [current_world_location_maps]);
         $(document).trigger('worldBoardsUpdated', [current_world_boards]);
@@ -2477,6 +2541,7 @@ async function displayWorldEntries(name, data, navigation = navigation_option.no
     current_world_location_maps = Array.isArray(data.metadata?.locationMaps) ? data.metadata.locationMaps : [];
     current_world_boards = Array.isArray(data.metadata?.boards) ? data.metadata.boards : [];
     current_world_enemies = extractWorldMonsterTemplates(data);
+    current_world_npcs = extractWorldNPCTemplates(data);
 
     $(document).trigger('worldMapUpdated', [current_world_map_url]);
     $(document).trigger('worldLocationMapsUpdated', [current_world_location_maps]);
@@ -2672,6 +2737,9 @@ async function displayWorldEntries(name, data, navigation = navigation_option.no
 
         // Monsters come from world entries (group: Monsters), not from metadata.
         const worldMonsters = extractWorldMonsterTemplates(data);
+
+        // NPCs come from entries with dndData but NOT in monster group.
+        const worldNPCs = extractWorldNPCTemplates(data);
 
         // ---- Migrate old boardName → per-location boards array ----
         const boardsLookup = initialBoards;
@@ -2947,7 +3015,7 @@ async function displayWorldEntries(name, data, navigation = navigation_option.no
                     // Add Board button
                     inst.dlg.querySelector('#wm_le_add_board')?.addEventListener('click', async (e) => {
                         e.preventDefault();
-                        const newBoard = await openBoardEditor({ name: '', url: '', isCombat: false, encounterRules: [] });
+                        const newBoard = await openBoardEditor({ name: '', url: '', gridWidth: 50, gridHeight: 50, isCombat: false, encounterRules: [], npcPlacements: [] });
                         if (newBoard) {
                             locBoards.push(newBoard);
                             refreshBoardCards(inst.dlg);
@@ -2980,11 +3048,27 @@ async function displayWorldEntries(name, data, navigation = navigation_option.no
         async function openBoardEditor(board) {
             const isCombatInitial = !!board.isCombat;
 
+            // Dynamically import party functions to avoid circular dependency
+            const { getPartyMembersSnapshot } = await import('./party.js');
+
             // Build a map of existing encounter rules for quick lookup
             const rulesMap = /** @type {Record<string, {minCount:number, maxCount:number}>} */ ({});
             for (const r of (board.encounterRules || [])) {
                 rulesMap[r.enemyId] = { minCount: r.minCount ?? 1, maxCount: r.maxCount ?? 3 };
             }
+
+            // Build a map of existing NPC placements for quick lookup
+            const npcMap = /** @type {Record<string, {gridX:number, gridY:number}>} */ ({});
+            for (const p of (board.npcPlacements || [])) {
+                npcMap[p.npcId] = { gridX: p.gridX ?? 0, gridY: p.gridY ?? 0 };
+            }
+
+            // Check which NPCs are currently in the party
+            const partyWiUids = new Set(
+                getPartyMembersSnapshot()
+                    .filter(m => m.wiUid != null)
+                    .map(m => String(m.wiUid)),
+            );
 
             function buildEncounterRulesHtml() {
                 if (!worldMonsters.length) {
@@ -3022,6 +3106,47 @@ async function displayWorldEntries(name, data, navigation = navigation_option.no
                 return html;
             }
 
+            function buildNPCPlacementsHtml() {
+                if (!worldNPCs.length) {
+                    return `<div style="opacity:0.5;font-style:italic;padding:8px 0;">${t`No NPCs found in this world. Add entries with D&D data (non-monster group) to the lorebook.`}</div>`;
+                }
+                let html = '';
+                worldNPCs.forEach(npc => {
+                    const placement = npcMap[npc.id];
+                    const enabled = !!placement;
+                    const gx = placement ? placement.gridX : 0;
+                    const gy = placement ? placement.gridY : 0;
+                    const inParty = partyWiUids.has(npc.id);
+                    const imgHtml = npc.avatar
+                        ? `<img src="${escapeHtml(npc.avatar)}" alt="" />`
+                        : '<i class="fa-solid fa-user fa-2x" style="opacity:0.3;"></i>';
+                    const partyBadge = inParty
+                        ? `<span class="wm-npc-party-badge"><i class="fa-solid fa-shield-halved"></i> ${t`In Party`}</span>`
+                        : '';
+                    html += `
+                    <div class="wm-card wm-npc-rule${inParty ? ' wm-npc-in-party' : ''}" data-npc-id="${escapeHtml(npc.id)}" style="cursor:default;">
+                        <div class="wm-card-img" style="height:70px;">${imgHtml}</div>
+                        <div class="wm-card-body">
+                            <div class="wm-card-name">${escapeHtml(npc.name || t`Unnamed`)} ${partyBadge}</div>
+                            <div class="wm-card-meta wm-npc-meta">HP: ${npc.hp ?? '?'} | AC: ${npc.armorClass ?? '?'} | CR: ${npc.cr ?? '?'}</div>
+                        </div>
+                        <div class="wm-card-rule-footer">
+                            <label style="display:flex;align-items:center;gap:4px;font-size:0.8em;cursor:pointer;">
+                                <input type="checkbox" class="wm-npc-toggle" data-npc-id="${escapeHtml(npc.id)}" ${enabled ? 'checked' : ''} />
+                                ${t`Include`}
+                            </label>
+                            <div class="wm-npc-coords" style="display:${enabled ? 'flex' : 'none'};gap:4px;align-items:center;font-size:0.8em;margin-top:4px;">
+                                <span>X:</span>
+                                <input type="number" class="text_pole wm-npc-x" data-npc-id="${escapeHtml(npc.id)}" value="${gx}" min="0" max="999" style="width:50px;padding:2px 4px;" />
+                                <span>Y:</span>
+                                <input type="number" class="text_pole wm-npc-y" data-npc-id="${escapeHtml(npc.id)}" value="${gy}" min="0" max="999" style="width:50px;padding:2px 4px;" />
+                            </div>
+                        </div>
+                    </div>`;
+                });
+                return html;
+            }
+
             const el = document.createElement('div');
             el.innerHTML = `
                 <div class="wm-field">
@@ -3040,6 +3165,16 @@ async function displayWorldEntries(name, data, navigation = navigation_option.no
                         <input type="file" class="text_pole" id="wm_be_file" accept="image/*" style="display:none" />
                     </div>
                 </div>
+                <div class="wm-row" style="display:flex;gap:8px;margin-top:4px;">
+                    <div class="wm-field" style="flex:1;">
+                        <label class="wm-label">${t`Grid Width`}</label>
+                        <input type="number" class="text_pole" id="wm_be_gw" value="${board.gridWidth ?? 50}" min="1" max="200" />
+                    </div>
+                    <div class="wm-field" style="flex:1;">
+                        <label class="wm-label">${t`Grid Height`}</label>
+                        <input type="number" class="text_pole" id="wm_be_gh" value="${board.gridHeight ?? 50}" min="1" max="200" />
+                    </div>
+                </div>
                 <div class="wm-field" style="margin-top:8px;">
                     <label class="wm-label checkbox_label" style="display:flex;align-items:center;gap:8px;cursor:pointer;">
                         <input type="checkbox" id="wm_be_combat" ${isCombatInitial ? 'checked' : ''} />
@@ -3054,11 +3189,23 @@ async function displayWorldEntries(name, data, navigation = navigation_option.no
                         </div>
                     </div>
                 </div>
+                <div id="wm_be_npc_section" style="margin-top:12px;">
+                    <div class="wm-field">
+                        <label class="wm-label"><i class="fa-solid fa-users" style="color:#2dd4bf;"></i> ${t`NPCs`} <span class="wm-badge">${worldNPCs.length}</span></label>
+                        <small style="display:block;opacity:0.6;margin-bottom:6px;">${t`Set X/Y coordinates manually to place NPCs on the board.`}</small>
+                        <div class="wm-card-grid wm-npc-grid" id="wm_be_npc_grid" style="grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));">
+                            ${buildNPCPlacementsHtml()}
+                        </div>
+                    </div>
+                </div>
             `;
+
+
 
             const subPopup = new Popup(el, POPUP_TYPE.CONFIRM, '', {
                 okButton: t`Save Board`,
                 cancelButton: t`Cancel`,
+                wide: true,
                 onOpen: (inst) => {
                     const fileInput = inst.dlg.querySelector('#wm_be_file');
                     const urlInput = inst.dlg.querySelector('#wm_be_url');
@@ -3078,7 +3225,11 @@ async function displayWorldEntries(name, data, navigation = navigation_option.no
                                 uploadName.textContent = file.name;
                             }
                             const reader = new FileReader();
-                            reader.onload = () => { if (typeof reader.result === 'string') urlInput.value = reader.result; };
+                            reader.onload = () => {
+                                if (typeof reader.result === 'string') {
+                                    urlInput.value = reader.result;
+                                }
+                            };
                             reader.readAsDataURL(file);
                         });
                     }
@@ -3101,6 +3252,19 @@ async function displayWorldEntries(name, data, navigation = navigation_option.no
                             const rangeDiv = card?.querySelector('.wm-rule-range');
                             if (rangeDiv instanceof HTMLElement) {
                                 rangeDiv.style.display = cb.checked ? 'flex' : 'none';
+                            }
+                        });
+                    });
+
+                    // NPC toggle: show/hide coordinate inputs
+                    inst.dlg.querySelectorAll('.wm-npc-toggle').forEach(cb => {
+                        if (!(cb instanceof HTMLInputElement)) return;
+                        cb.addEventListener('change', () => {
+                            const npcId = cb.getAttribute('data-npc-id');
+                            const card = inst.dlg.querySelector(`.wm-npc-rule[data-npc-id="${npcId}"]`);
+                            const coordsDiv = card?.querySelector('.wm-npc-coords');
+                            if (coordsDiv instanceof HTMLElement) {
+                                coordsDiv.style.display = cb.checked ? 'flex' : 'none';
                             }
                         });
                     });
@@ -3127,11 +3291,29 @@ async function displayWorldEntries(name, data, navigation = navigation_option.no
                 encounterRules.push({ enemyId, minCount, maxCount: Math.max(minCount, maxCount) });
             });
 
+            // Collect enabled NPC placements from the dialog
+            const npcPlacements = [];
+            dlg.querySelectorAll('.wm-npc-toggle').forEach(cb => {
+                if (!(cb instanceof HTMLInputElement) || !cb.checked) return;
+                const npcId = cb.getAttribute('data-npc-id') || '';
+                const xInput = dlg.querySelector(`.wm-npc-x[data-npc-id="${npcId}"]`);
+                const yInput = dlg.querySelector(`.wm-npc-y[data-npc-id="${npcId}"]`);
+                const gridX = xInput instanceof HTMLInputElement ? (parseInt(xInput.value, 10) || 0) : 0;
+                const gridY = yInput instanceof HTMLInputElement ? (parseInt(yInput.value, 10) || 0) : 0;
+                npcPlacements.push({ npcId, gridX, gridY });
+            });
+
+            const gwEl = dlg.querySelector('#wm_be_gw');
+            const ghEl = dlg.querySelector('#wm_be_gh');
+
             return {
                 name: nameEl instanceof HTMLInputElement ? nameEl.value.trim() : '',
                 url: urlEl instanceof HTMLInputElement ? urlEl.value.trim() : '',
+                gridWidth: gwEl instanceof HTMLInputElement ? (parseInt(gwEl.value, 10) || 50) : 50,
+                gridHeight: ghEl instanceof HTMLInputElement ? (parseInt(ghEl.value, 10) || 50) : 50,
                 isCombat: combatEl instanceof HTMLInputElement ? combatEl.checked : false,
                 encounterRules,
+                npcPlacements,
             };
         }
 

@@ -431,6 +431,7 @@ export function renderWorldMapView(target, worldMapUrl, locationMaps, callbacks 
  * @property {number} [hp]
  * @property {number} [maxHp]
  * @property {boolean} [isEnemy]
+ * @property {boolean} [isNPC]
  */
 
 /**

@@ -46,6 +46,8 @@
     <link rel="stylesheet" type="text/css" href="css/macros.css">
     <link rel="stylesheet" type="text/css" href="css/user.css">
     <link rel="stylesheet" type="text/css" href="css/campaigns.css">
+    <link rel="stylesheet" type="text/css" href="css/dynamic-context-manager.css">
+    <link rel="stylesheet" type="text/css" href="css/chat-enhancements.css">
     <link rel="icon" type="image/x-icon" href="favicon.ico">
     <!-- Scripts are loaded at the end of the body to improve page load speed -->
 </head>
@@ -4063,6 +4065,7 @@
                         </div>
                         <form id="openai_form" data-source="openai" action="javascript:void(null);" method="post"
                             enctype="multipart/form-data">
+                            <button type="submit" style="display:none" aria-hidden="true" tabindex="-1">Submit</button>
                             <h4><span data-i18n="OpenAI API key">OpenAI API key</span></h4>
                             <div>
                                 <a id="openai_api_usage" href="https://platform.openai.com/account/usage"
@@ -5255,7 +5258,7 @@
                             <h4><span data-i18n="Azure API Key">Azure API Key</span></h4>
                             <div class="flex-container">
                                 <input id="api_key_azure_openai" data-setting="api_key_azure_openai"
-                                    class="text_pole flex1" type="password" autocomplete="off">
+                                    class="text_pole flex1" type="password" form="openai_form" autocomplete="off">
                                 <div title="Manage API keys" data-i18n="[title]Manage API keys"
                                     class="menu_button fa-solid fa-key fa-fw manage-api-keys"
                                     data-key="api_key_azure_openai"></div>
@@ -10687,6 +10690,10 @@
             <a id="option_toggle_instructions">
                 <i class="fa-lg fa-solid fa-list-check"></i>
                 <span>Active Instructions</span>
+            </a>
+            <a id="option_dynamic_context">
+                <i class="fa-lg fa-solid fa-dragon"></i>
+                <span>Dynamic Context</span>
             </a>
             <a id="option_toggle_CFG">
                 <i class="fa-lg fa-solid fa-scale-balanced"></i>

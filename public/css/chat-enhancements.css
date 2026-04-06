@@ -1,0 +1,149 @@
+/* ===== Chat Enhancements: Lorebook Highlights + Inline Speech Avatars ===== */
+
+/* --- Lorebook Entity Highlight --- */
+.lorebook-entity {
+    text-decoration: underline dotted;
+    text-decoration-color: rgba(218, 165, 32, 0.7);
+    text-underline-offset: 3px;
+    text-decoration-thickness: 1.5px;
+    cursor: help;
+    transition: text-decoration-color 0.2s ease, background-color 0.2s ease;
+    border-radius: 2px;
+}
+
+.lorebook-entity:hover {
+    text-decoration-color: rgba(218, 165, 32, 1);
+    background-color: rgba(218, 165, 32, 0.12);
+}
+
+/* --- Lorebook Tooltip --- */
+.lorebook-tooltip {
+    position: fixed;
+    z-index: 100000;
+    max-width: 360px;
+    min-width: 200px;
+    padding: 14px 16px;
+    background: rgba(20, 20, 28, 0.95);
+    border: 1px solid rgba(218, 165, 32, 0.35);
+    border-radius: 10px;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55), 0 0 12px rgba(218, 165, 32, 0.1);
+    color: #e0e0e0;
+    font-size: 0.88rem;
+    line-height: 1.45;
+    pointer-events: auto;
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity 0.18s ease, transform 0.18s ease;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+.lorebook-tooltip.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.lorebook-tooltip-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.lorebook-tooltip-avatar {
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(218, 165, 32, 0.5);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.lorebook-tooltip-title-block {
+    flex: 1;
+    min-width: 0;
+}
+
+.lorebook-tooltip-title {
+    font-weight: 700;
+    font-size: 1rem;
+    color: rgba(218, 165, 32, 1);
+    margin: 0 0 2px 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.lorebook-tooltip-group {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #b0b0b0;
+    background: rgba(255, 255, 255, 0.08);
+    padding: 1px 7px;
+    border-radius: 4px;
+    margin-top: 2px;
+}
+
+.lorebook-tooltip-keywords {
+    font-size: 0.78rem;
+    color: #909090;
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.lorebook-tooltip-keywords span {
+    color: #b0b0b0;
+}
+
+.lorebook-tooltip-content {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    font-size: 0.83rem;
+    color: #c8c8c8;
+    max-height: 5.8em;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    line-clamp: 4;
+    -webkit-box-orient: vertical;
+}
+
+.lorebook-tooltip-empty {
+    font-style: italic;
+    color: #707070;
+}
+
+/* --- Inline Character Speech Avatar --- */
+.inline-char-avatar {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    object-fit: cover;
+    vertical-align: middle;
+    margin-right: 3px;
+    margin-left: 1px;
+    border: 1.5px solid rgba(218, 165, 32, 0.45);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    cursor: default;
+}
+
+.inline-char-avatar:hover {
+    transform: scale(1.25);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+    z-index: 1;
+    position: relative;
+}
+
+/* Ensure tooltips don't get cut off by message overflow */
+.mes_text {
+    overflow: visible !important;
+}
