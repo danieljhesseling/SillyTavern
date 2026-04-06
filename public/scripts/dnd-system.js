@@ -92,8 +92,10 @@
  * @typedef {Object} DndRelationship
  * @property {string} characterName
  * @property {string} characterAvatar
- * @property {'ally'|'rival'|'friend'|'enemy'|'neutral'|'romantic'|'family'} type
- * @property {string} description
+ * @property {'normal'|'amoroso'|'familiar'} category
+ * @property {number} score
+ * @property {'ally'|'rival'|'friend'|'enemy'|'neutral'|'romantic'|'family'} [type]
+ * @property {string} [description]
  * @property {string} lastInteraction
  */
 
@@ -208,7 +210,9 @@ export const SLOT_INFO = {
     [EQUIPMENT_SLOTS.FEET]: { label: 'Feet', icon: 'fa-shoe-prints' },
 };
 
-export const RELATIONSHIP_TYPES = ['ally', 'rival', 'friend', 'enemy', 'neutral', 'romantic', 'family'];
+export const RELATIONSHIP_CATEGORIES = ['normal', 'amoroso', 'familiar'];
+export const RELATIONSHIP_SCORE_MIN = -100;
+export const RELATIONSHIP_SCORE_MAX = 100;
 
 export const ITEM_TYPES = ['weapon', 'armor', 'gear'];
 
@@ -699,6 +703,16 @@ function normalizeStringArray(value) {
     if (Array.isArray(value)) return value.map(entry => String(entry || '').trim()).filter(Boolean);
     if (typeof value === 'string') return value.split(',').map(entry => entry.trim()).filter(Boolean);
     return [];
+}
+
+/**
+ * @param {any} value
+ * @returns {number}
+ */
+export function clampRelationshipScore(value) {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return 0;
+    return Math.max(RELATIONSHIP_SCORE_MIN, Math.min(RELATIONSHIP_SCORE_MAX, Math.round(numeric)));
 }
 
 /**
@@ -1220,8 +1234,10 @@ export function analyzeRelationshipsFromChat(messages, memberName, otherNames) {
         results.push({
             characterName: name,
             characterAvatar: '',
+            category: 'normal',
+            score: 0,
             type: 'neutral',
-            description: `${data.mentions} interaction(s) found in chat.`,
+            description: '',
             lastInteraction: data.contexts[data.contexts.length - 1] || '',
         });
     }
@@ -1240,6 +1256,38 @@ export function analyzeRelationshipsFromChat(messages, memberName, otherNames) {
  */
 export function migratePartyMember(member) {
     const defaults = getDefaultDndData();
+    const legacyRelationshipTypes = ['ally', 'rival', 'friend', 'enemy', 'neutral', 'romantic', 'family'];
+    const relationships = Array.isArray(member.relationships)
+        ? member.relationships.map(/** @param {any} rel */ (rel) => {
+            const source = rel && typeof rel === 'object' ? rel : {};
+            const explicitCategory = String(source.category || '').trim();
+            const legacyType = String(source.type || '').trim();
+            const normalizedLegacyType = legacyRelationshipTypes.includes(legacyType)
+                ? /** @type {'ally'|'rival'|'friend'|'enemy'|'neutral'|'romantic'|'family'} */ (legacyType)
+                : undefined;
+
+            /** @type {'normal'|'amoroso'|'familiar'} */
+            let category = 'normal';
+            if (RELATIONSHIP_CATEGORIES.includes(explicitCategory)) {
+                category = /** @type {'normal'|'amoroso'|'familiar'} */ (explicitCategory);
+            } else if (legacyType === 'romantic') {
+                category = 'amoroso';
+            } else if (legacyType === 'family') {
+                category = 'familiar';
+            }
+
+            return {
+                characterName: String(source.characterName || ''),
+                characterAvatar: String(source.characterAvatar || ''),
+                category,
+                score: clampRelationshipScore(source.score ?? 0),
+                lastInteraction: String(source.lastInteraction || ''),
+                type: normalizedLegacyType,
+                description: source.description != null ? String(source.description) : undefined,
+            };
+        })
+        : [];
+
     return {
         ...member,
         strength: member.strength ?? defaults.strength,
@@ -1252,7 +1300,7 @@ export function migratePartyMember(member) {
         speed: member.speed ?? defaults.speed,
         items: Array.isArray(member.items) ? member.items.map(normalizeItem) : [],
         equippedItems: member.equippedItems ?? { ...defaults.equippedItems },
-        relationships: Array.isArray(member.relationships) ? member.relationships : [],
+        relationships,
         memories: Array.isArray(member.memories) ? member.memories : [],
         mapPosition: member.mapPosition ?? { locationName: '', gridX: 0, gridY: 0 },
         alignment: member.alignment ?? '',

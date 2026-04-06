@@ -1050,13 +1050,29 @@
     color: var(--SmartThemeEmColor, #fff);
 }
 
-.dnd-rel-desc {
-    font-size: 0.75rem;
-    color: var(--SmartThemeTextColor, #999);
-    margin-top: 2px;
+.dnd-rel-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 3px;
 }
 
-.dnd-rel-type-badge {
+.dnd-rel-summary {
+    font-size: 0.75rem;
+    color: var(--SmartThemeTextColor, #999);
+    text-transform: capitalize;
+}
+
+.dnd-rel-score {
+    padding: 2px 7px;
+    border-radius: 10px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    background: rgba(45, 212, 191, 0.16);
+    color: #2dd4bf;
+}
+
+.dnd-rel-category-badge {
     padding: 3px 8px;
     border-radius: 12px;
     font-size: 0.7rem;
@@ -1065,13 +1081,9 @@
     flex-shrink: 0;
 }
 
-.dnd-rel-type-badge.ally { background: rgba(45, 212, 191, 0.2); color: #2dd4bf; }
-.dnd-rel-type-badge.friend { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
-.dnd-rel-type-badge.rival { background: rgba(251, 191, 36, 0.2); color: #fbbf24; }
-.dnd-rel-type-badge.enemy { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
-.dnd-rel-type-badge.neutral { background: rgba(156, 163, 175, 0.2); color: #9ca3af; }
-.dnd-rel-type-badge.romantic { background: rgba(236, 72, 153, 0.2); color: #ec4899; }
-.dnd-rel-type-badge.family { background: rgba(168, 85, 247, 0.2); color: #a855f7; }
+.dnd-rel-category-badge.normal { background: rgba(148, 163, 184, 0.22); color: #cbd5e1; }
+.dnd-rel-category-badge.amoroso { background: rgba(236, 72, 153, 0.2); color: #ec4899; }
+.dnd-rel-category-badge.familiar { background: rgba(168, 85, 247, 0.2); color: #a855f7; }
 
 .dnd-rel-actions {
     display: flex;

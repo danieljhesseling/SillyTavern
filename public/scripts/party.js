@@ -10,7 +10,7 @@ import { SlashCommand } from './slash-commands/SlashCommand.js';
 import { ARGUMENT_TYPE, SlashCommandArgument } from './slash-commands/SlashCommandArgument.js';
 import { SlashCommandEnumValue } from './slash-commands/SlashCommandEnumValue.js';
 import {
-    EQUIPMENT_SLOTS, SLOT_INFO, RELATIONSHIP_TYPES, ITEM_TYPES, MODIFIABLE_STATS,
+    EQUIPMENT_SLOTS, SLOT_INFO, RELATIONSHIP_CATEGORIES, RELATIONSHIP_SCORE_MIN, RELATIONSHIP_SCORE_MAX, ITEM_TYPES, MODIFIABLE_STATS,
     ALIGNMENTS, CONDITIONS,
     generateItemId, generateMemoryId, getAbilityModifier, formatModifier,
     calculateCarryingCapacity, calculateTotalWeight, getDefaultDndData,
@@ -25,6 +25,7 @@ import {
     getItemCategoryOptions, getItemSubcategoryOptions, getSuggestedSlotForItem,
     buildItemMetaSummary, normalizeItem, getArmorDexRuleLabel, isArmorLikeItem, isRangedWeaponSubcategory, isMeleeWeaponSubcategory,
     getMagicSubtypeFlags,
+    clampRelationshipScore,
     generateEnemyInstanceId,
 } from './dnd-system.js';
 
@@ -3255,6 +3256,88 @@ function buildProgressionTab(member) {
 // ============================================================
 
 /**
+ * @param {any} rel
+ * @returns {'normal'|'amoroso'|'familiar'}
+ */
+function getRelationshipCategory(rel) {
+    const explicitCategory = String(rel?.category || '').trim();
+    if (RELATIONSHIP_CATEGORIES.includes(explicitCategory)) {
+        return /** @type {'normal'|'amoroso'|'familiar'} */ (explicitCategory);
+    }
+
+    const legacyType = String(rel?.type || '').trim();
+    if (legacyType === 'romantic') return 'amoroso';
+    if (legacyType === 'family') return 'familiar';
+    return 'normal';
+}
+
+/**
+ * @param {'normal'|'amoroso'|'familiar'} category
+ * @returns {string}
+ */
+function getRelationshipCategoryLabel(category) {
+    if (category === 'amoroso') return 'amoroso';
+    if (category === 'familiar') return 'familiar';
+    return 'normal';
+}
+
+/**
+ * @param {number} score
+ * @returns {string}
+ */
+function getNormalRelationshipBand(score) {
+    if (score >= 100) return 'mejor amigo';
+    if (score >= 50) return 'amistad';
+    if (score <= -100) return 'archienemigo';
+    if (score <= -50) return 'enemigo';
+    return 'indiferente';
+}
+
+/**
+ * @param {{ category?: string, score?: number, type?: string }} rel
+ * @returns {string}
+ */
+function getRelationshipSummary(rel) {
+    const category = getRelationshipCategory(rel);
+    const score = clampRelationshipScore(rel?.score ?? 0);
+    if (category === 'normal') return getNormalRelationshipBand(score);
+    if (category === 'amoroso') return 'amoroso';
+    return 'familiar';
+}
+
+/**
+ * Returns selectable character names from the specific lorebook tied to this member.
+ * Prefers member.worldName; falls back to active chat world.
+ * @param {PartyMember} member
+ * @returns {Promise<string[]>}
+ */
+async function getRelationshipTargetNamesFromLorebook(member) {
+    const worldName = String(member.worldName || chat_metadata?.[METADATA_KEY] || '').trim();
+    if (!worldName) return [];
+
+    try {
+        const data = /** @type {any} */ (await loadWorldInfo(worldName));
+        if (!data?.entries) return [];
+
+        const names = [];
+        for (const uid of Object.keys(data.entries)) {
+            const entry = data.entries[uid];
+            const group = String(entry?.group || '').trim().toLowerCase();
+            if (!group.includes('character')) continue;
+
+            const name = getPartyEntryDisplayName(entry).trim();
+            if (!name) continue;
+            names.push(name);
+        }
+
+        return [...new Set(names)];
+    } catch (error) {
+        console.warn('Could not load lorebook characters for relationship picker', { worldName, error });
+        return [];
+    }
+}
+
+/**
  * @param {PartyMember} member
  * @returns {JQuery}
  */
@@ -3282,14 +3365,21 @@ function buildRelationshipsTab(member) {
 
         for (let i = 0; i < member.relationships.length; i++) {
             const rel = member.relationships[i];
+            const category = getRelationshipCategory(rel);
+            const score = clampRelationshipScore(rel?.score ?? 0);
+            const scoreText = `${score >= 0 ? '+' : ''}${score}`;
+            const summaryText = getRelationshipSummary(rel);
             const card = $(`
                 <div class="dnd-relationship-card">
                     <div class="dnd-rel-avatar" style="display:flex;align-items:center;justify-content:center;"><i class="fa-solid fa-user" style="font-size:1.2rem;"></i></div>
                     <div class="dnd-rel-info">
                         <div class="dnd-rel-name">${rel.characterName}</div>
-                        <div class="dnd-rel-desc">${rel.description || 'No description'}</div>
+                        <div class="dnd-rel-meta">
+                            <span class="dnd-rel-summary">${summaryText}</span>
+                            <span class="dnd-rel-score">${scoreText}</span>
+                        </div>
                     </div>
-                    <span class="dnd-rel-type-badge ${rel.type}">${rel.type}</span>
+                    <span class="dnd-rel-category-badge ${category}">${getRelationshipCategoryLabel(category)}</span>
                     <div class="dnd-rel-actions">
                         <button class="dnd-rel-action-btn edit-rel" title="Edit"><i class="fa-solid fa-pen"></i></button>
                         <button class="dnd-rel-action-btn delete" title="Delete"><i class="fa-solid fa-trash-can"></i></button>
@@ -3361,18 +3451,50 @@ function buildRelationshipsTab(member) {
  */
 async function openRelationshipEditor(member, index, onSave) {
     const isNew = index < 0;
-    const rel = isNew ? { characterName: '', characterAvatar: '', type: 'neutral', description: '', lastInteraction: '' } : member.relationships[index];
+    const rel = isNew
+        ? { characterName: '', characterAvatar: '', category: 'normal', score: 0, lastInteraction: '', type: '', description: '' }
+        : member.relationships[index];
+
+    const currentTargetName = String(rel?.characterName || '').trim();
+    const existingTargets = new Set(
+        (member.relationships || [])
+            .map((entry, entryIndex) => entryIndex === index ? '' : String(entry?.characterName || '').trim().toLowerCase())
+            .filter(Boolean),
+    );
+    const lorebookCharacterNames = await getRelationshipTargetNamesFromLorebook(member);
+    const validTargetNames = [...new Set(
+        lorebookCharacterNames
+            .filter(Boolean)
+            .filter(name => name.toLowerCase() !== String(member.name || '').trim().toLowerCase())
+            .filter(name => !existingTargets.has(name.toLowerCase()) || name.toLowerCase() === currentTargetName.toLowerCase()),
+    )];
+
+    if (isNew && validTargetNames.length === 0) {
+        toastr.info(t`No available characters to relate.`);
+        return;
+    }
+
+    const initialCategory = getRelationshipCategory(rel);
+    const initialScore = clampRelationshipScore(rel?.score ?? 0);
 
     const form = $(`
         <div class="dnd-add-item-form" style="min-width:350px;">
-            <div class="dnd-form-row"><label>Name</label><input type="text" class="rel-name" value="${rel.characterName}" /></div>
             <div class="dnd-form-row">
-                <label>Type</label>
-                <select class="rel-type">
-                    ${RELATIONSHIP_TYPES.map(t => `<option value="${t}" ${rel.type === t ? 'selected' : ''}>${t}</option>`).join('')}
+                <label>Name</label>
+                <select class="rel-name">
+                    ${validTargetNames.map(name => `<option value="${name}" ${name === currentTargetName ? 'selected' : ''}>${name}</option>`).join('')}
                 </select>
             </div>
-            <div class="dnd-form-row"><label>Description</label><textarea class="rel-desc">${rel.description || ''}</textarea></div>
+            <div class="dnd-form-row">
+                <label>Category</label>
+                <select class="rel-category">
+                    ${RELATIONSHIP_CATEGORIES.map(category => `<option value="${category}" ${category === initialCategory ? 'selected' : ''}>${category}</option>`).join('')}
+                </select>
+            </div>
+            <div class="dnd-form-row">
+                <label>Score (${RELATIONSHIP_SCORE_MIN} to ${RELATIONSHIP_SCORE_MAX})</label>
+                <input type="number" class="rel-score" min="${RELATIONSHIP_SCORE_MIN}" max="${RELATIONSHIP_SCORE_MAX}" value="${initialScore}" />
+            </div>
         </div>
     `);
 
@@ -3384,11 +3506,35 @@ async function openRelationshipEditor(member, index, onSave) {
     const result = await popup.show();
     if (result !== 1) return;
 
+    const selectedName = String(form.find('.rel-name').val() || '').trim();
+    const selectedCategory = /** @type {'normal'|'amoroso'|'familiar'} */ (String(form.find('.rel-category').val() || 'normal'));
+    const selectedScore = clampRelationshipScore(form.find('.rel-score').val());
+
+    if (!selectedName) {
+        toastr.error(t`Please select a character.`);
+        return;
+    }
+
+    const duplicateExists = (member.relationships || []).some((entry, entryIndex) => {
+        if (entryIndex === index) return false;
+        return String(entry?.characterName || '').trim().toLowerCase() === selectedName.toLowerCase();
+    });
+    if (duplicateExists) {
+        toastr.error(t`Relationship already exists with this character.`);
+        return;
+    }
+
+    if (selectedCategory === 'amoroso' && selectedScore < 50) {
+        toastr.error(t`Amoroso relationship requires score 50 or higher.`);
+        return;
+    }
+
     const updated = {
-        characterName: form.find('.rel-name').val()?.toString().trim() || 'Unknown',
+        characterName: selectedName,
         characterAvatar: rel.characterAvatar || '',
-        type: /** @type {import('./dnd-system.js').DndRelationship['type']} */ (form.find('.rel-type').val()) || 'neutral',
-        description: form.find('.rel-desc').val()?.toString().trim() || '',
+        category: selectedCategory,
+        score: selectedScore,
+        description: rel.description || undefined,
         lastInteraction: rel.lastInteraction || '',
     };
 
