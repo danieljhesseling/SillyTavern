@@ -233,8 +233,9 @@ async function showEntryDetail(entry, worldName, worldDataMap, browserContainer)
     const category = categorizeEntry(entry);
     const existingData = entry.dndData || {};
     const existingTitle = entry.comment || (Array.isArray(entry.key) ? entry.key.join(', ') : '');
+    const catalog = buildCatalogFromWorldDataMap(worldDataMap);
 
-    const result = await showCategoryPopup(category, existingData, existingTitle);
+    const result = await showCategoryPopup(category, existingData, existingTitle, undefined, catalog);
 
     if (result) {
         entry.comment = result.title;
@@ -244,6 +245,9 @@ async function showEntryDetail(entry, worldName, worldDataMap, browserContainer)
 
         const data = worldDataMap.get(worldName);
         if (data) {
+            if (result.dndData && categorizeEntry(entry) === 'Characters') {
+                registerCharacterPosition(data, result.title, result.dndData);
+            }
             await saveWorldInfo(worldName, data);
             // @ts-ignore
             toastr.success(t`Entry "${result.title}" updated.`);
@@ -265,7 +269,8 @@ async function addNewWorldEntry(worlds, worldDataMap, browserContainer) {
     const activeBtn = document.querySelector('.wcb-category-btn.active');
     const category = activeBtn?.getAttribute('data-category') || 'Uncategorized';
 
-    const result = await showCategoryPopup(category, null, '', worlds);
+    const catalog = buildCatalogFromWorldDataMap(worldDataMap);
+    const result = await showCategoryPopup(category, null, '', worlds, catalog);
 
     if (result) {
         const worldName = result.world;
@@ -299,6 +304,96 @@ async function addNewWorldEntry(worlds, worldDataMap, browserContainer) {
         // Re-render the browser
         renderWorldContentBrowser(browserContainer);
     }
+}
+
+/**
+ * Update world metadata to register a character's board position.
+ * Writes/updates an entry in metadata.locationMaps[i].boards[j].characters[].
+ * @param {any} data          - World info data object (mutated in place)
+ * @param {string} charName   - Character name/title
+ * @param {any} dndData       - Character's dndData (contains location, board, boardX, boardY)
+ */
+function registerCharacterPosition(data, charName, dndData) {
+    const locName = dndData?.location;
+    const boardName = dndData?.board;
+    if (!locName || !boardName) return; // nothing to register if no board is set
+
+    if (!data.metadata) data.metadata = {};
+    if (!Array.isArray(data.metadata.locationMaps)) data.metadata.locationMaps = [];
+
+    let locMap = data.metadata.locationMaps.find(l => l.name === locName);
+    if (!locMap) {
+        locMap = { name: locName, boards: [] };
+        data.metadata.locationMaps.push(locMap);
+    }
+    if (!Array.isArray(locMap.boards)) locMap.boards = [];
+
+    let board = locMap.boards.find(b => b.name === boardName);
+    if (!board) {
+        board = { name: boardName };
+        locMap.boards.push(board);
+    }
+    if (!Array.isArray(board.characters)) board.characters = [];
+
+    // Remove any existing entry for this character (by name), then re-add with new position
+    board.characters = board.characters.filter(c => c.name !== charName);
+    board.characters.push({
+        name: charName,
+        gridX: Number(dndData.boardX) || 0,
+        gridY: Number(dndData.boardY) || 0,
+    });
+}
+
+/**
+ * Build a catalog of { races, classes, factions, locationMaps } from a worldDataMap.
+ * locationMaps is the merged array of { name, boards: [{name, gridWidth, gridHeight}] } objects
+ * sourced from metadata.locationMaps across all loaded worlds.
+ * @param {Map<string, any>} worldDataMap
+ * @returns {{ races: string[], classes: string[], factions: string[], locationMaps: Array<{name:string, boards:Array<{name:string,gridWidth:number,gridHeight:number}>}> }}
+ */
+function buildCatalogFromWorldDataMap(worldDataMap) {
+    const racesSet = new Set(), classesSet = new Set(), factionsSet = new Set();
+    /** @type {Map<string, {name:string, boards:Array<{name:string,gridWidth:number,gridHeight:number}>}>} */
+    const locationMapsMap = new Map();
+
+    for (const [, data] of worldDataMap.entries()) {
+        for (const entry of Object.values(data?.entries || {})) {
+            const cat = categorizeEntry(entry);
+            const name = entry.comment || (Array.isArray(entry.key) ? entry.key[0] : String(entry.key || ''));
+            if (!name) continue;
+            if (cat === 'Races') racesSet.add(name);
+            else if (cat === 'Classes') classesSet.add(name);
+            else if (cat === 'Factions') factionsSet.add(name);
+        }
+        // Merge location maps from metadata
+        const mapsInWorld = Array.isArray(data?.metadata?.locationMaps) ? data.metadata.locationMaps : [];
+        for (const loc of mapsInWorld) {
+            if (!loc?.name) continue;
+            const existing = locationMapsMap.get(loc.name);
+            const boards = (Array.isArray(loc.boards) ? loc.boards : []).map(b => ({
+                name: String(b.name || ''),
+                gridWidth: Number(b.gridWidth) || 50,
+                gridHeight: Number(b.gridHeight) || 50,
+            })).filter(b => b.name);
+            if (!existing) {
+                locationMapsMap.set(loc.name, { name: loc.name, boards });
+            } else {
+                // Merge boards that aren't already listed
+                for (const board of boards) {
+                    if (!existing.boards.some(eb => eb.name === board.name)) {
+                        existing.boards.push(board);
+                    }
+                }
+            }
+        }
+    }
+
+    return {
+        races: [...racesSet].sort(),
+        classes: [...classesSet].sort(),
+        factions: [...factionsSet].sort(),
+        locationMaps: [...locationMapsMap.values()].sort((a, b) => a.name.localeCompare(b.name)),
+    };
 }
 
 /**
@@ -363,6 +458,8 @@ export async function openWorldContentPopup(worldName, initialCategory) {
     }
 
     const activeCats = CONTENT_CATEGORIES.filter(c => c !== 'Uncategorized' && categorized.has(c) && categorized.get(c).length > 0);
+    // Build catalog for character form selects.
+    const catalog = buildCatalogFromWorldDataMap(new Map([[worldName, data]]));
 
     // ---- Build campaign-style HTML ----
     const coverStyle = coverImage
@@ -509,12 +606,15 @@ export async function openWorldContentPopup(worldName, initialCategory) {
                 const existingData = entry.dndData || {};
                 const existingTitle = entry.comment || (Array.isArray(entry.key) ? entry.key.join(', ') : '');
 
-                const result = await showCategoryPopup(category, existingData, existingTitle);
+                const result = await showCategoryPopup(category, existingData, existingTitle, undefined, catalog);
                 if (result) {
                     entry.comment = result.title;
                     entry.key = result.keys;
                     entry.content = result.content;
                     entry.dndData = result.dndData;
+                    if (result.dndData && category === 'Characters') {
+                        registerCharacterPosition(data, result.title, result.dndData);
+                    }
                     await saveWorldInfo(worldName, data);
                     // @ts-ignore
                     toastr.success(t`Entry "${result.title}" updated.`);
@@ -549,7 +649,10 @@ $(document).on('click', '.wi-cat-icon', async function () {
         return;
     }
 
-    const result = await showCategoryPopup(category, null, '', [worldName]);
+    const rawData = await loadWorldInfo(worldName);
+    const catalogMap = rawData ? new Map([[worldName, rawData]]) : new Map();
+    const catalog = buildCatalogFromWorldDataMap(catalogMap);
+    const result = await showCategoryPopup(category, null, '', [worldName], catalog);
 
     if (result) {
         if (!result.title) {
@@ -558,7 +661,7 @@ $(document).on('click', '.wi-cat-icon', async function () {
             return;
         }
 
-        let data = await loadWorldInfo(worldName);
+        let data = rawData || await loadWorldInfo(worldName);
         if (!data) return;
 
         const newEntry = /** @type {any} */ (createWorldInfoEntry(worldName, data));
@@ -569,6 +672,10 @@ $(document).on('click', '.wi-cat-icon', async function () {
         newEntry.content = result.content;
         newEntry.group = category;
         newEntry.dndData = result.dndData;
+
+        if (result.dndData && category === 'Characters') {
+            registerCharacterPosition(data, result.title, result.dndData);
+        }
 
         await saveWorldInfo(worldName, data);
         // @ts-ignore

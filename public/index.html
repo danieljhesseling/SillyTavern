@@ -9351,6 +9351,103 @@
                     </div>
                 </div>
                 <div class="flex-container wide100p flexGap10">
+                    <div class="flex2 flex-container flexFlowColumn flexNoGap">
+                        <small data-i18n="D&D Type">D&D Type</small>
+                        <div class="range-block-range">
+                            <select class="text_pole margin0" name="dndEntityType">
+                                <option value="none" data-i18n="None">None</option>
+                                <option value="character" data-i18n="Character">Character</option>
+                                <option value="npc" data-i18n="NPC">NPC</option>
+                                <option value="monster" data-i18n="Monster">Monster</option>
+                                <option value="race" data-i18n="Race">Race</option>
+                                <option value="class" data-i18n="Class">Class</option>
+                                <option value="faction" data-i18n="Faction">Faction</option>
+                                <option value="location" data-i18n="Location">Location</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="flex3 flex-container flexFlowColumn flexNoGap">
+                        <small data-i18n="D&D Name">D&D Name</small>
+                        <div class="range-block-range">
+                            <input type="text" class="text_pole margin0" name="dndName" placeholder="Display name" data-i18n="[placeholder]Display name">
+                        </div>
+                    </div>
+                    <div class="flex2 flex-container flexFlowColumn flexNoGap">
+                        <small data-i18n="Race">Race</small>
+                        <div class="range-block-range">
+                            <select class="text_pole margin0" name="dndRace"></select>
+                        </div>
+                    </div>
+                    <div class="flex2 flex-container flexFlowColumn flexNoGap">
+                        <small data-i18n="Class">Class</small>
+                        <div class="range-block-range">
+                            <select class="text_pole margin0" name="dndClass"></select>
+                        </div>
+                    </div>
+                    <div class="flex3 flex-container flexFlowColumn flexNoGap">
+                        <small data-i18n="Factions">Factions</small>
+                        <div class="range-block-range">
+                            <select class="text_pole margin0" name="dndFactions" multiple></select>
+                        </div>
+                    </div>
+                    <div class="flex2 flex-container flexFlowColumn flexNoGap">
+                        <small data-i18n="Location">Location</small>
+                        <div class="range-block-range">
+                            <select class="text_pole margin0" name="dndLocation"></select>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex-container wide100p flexGap10">
+                    <div class="flex1 flex-container flexFlowColumn flexNoGap">
+                        <small data-i18n="Level">Level</small>
+                        <div class="range-block-range"><input type="number" class="text_pole margin0" name="dndLevel" min="0" max="99"></div>
+                    </div>
+                    <div class="flex1 flex-container flexFlowColumn flexNoGap">
+                        <small>STR</small>
+                        <div class="range-block-range"><input type="number" class="text_pole margin0" name="dndStr" min="0" max="50"></div>
+                    </div>
+                    <div class="flex1 flex-container flexFlowColumn flexNoGap">
+                        <small>DEX</small>
+                        <div class="range-block-range"><input type="number" class="text_pole margin0" name="dndDex" min="0" max="50"></div>
+                    </div>
+                    <div class="flex1 flex-container flexFlowColumn flexNoGap">
+                        <small>CON</small>
+                        <div class="range-block-range"><input type="number" class="text_pole margin0" name="dndCon" min="0" max="50"></div>
+                    </div>
+                    <div class="flex1 flex-container flexFlowColumn flexNoGap">
+                        <small>INT</small>
+                        <div class="range-block-range"><input type="number" class="text_pole margin0" name="dndInt" min="0" max="50"></div>
+                    </div>
+                    <div class="flex1 flex-container flexFlowColumn flexNoGap">
+                        <small>WIS</small>
+                        <div class="range-block-range"><input type="number" class="text_pole margin0" name="dndWis" min="0" max="50"></div>
+                    </div>
+                    <div class="flex1 flex-container flexFlowColumn flexNoGap">
+                        <small>CHA</small>
+                        <div class="range-block-range"><input type="number" class="text_pole margin0" name="dndCha" min="0" max="50"></div>
+                    </div>
+                    <div class="flex1 flex-container flexFlowColumn flexNoGap">
+                        <small>AC</small>
+                        <div class="range-block-range"><input type="number" class="text_pole margin0" name="dndAc" min="0" max="99"></div>
+                    </div>
+                    <div class="flex1 flex-container flexFlowColumn flexNoGap">
+                        <small>Speed</small>
+                        <div class="range-block-range"><input type="number" class="text_pole margin0" name="dndSpeed" min="0" max="999"></div>
+                    </div>
+                    <div class="flex1 flex-container flexFlowColumn flexNoGap">
+                        <small>HP</small>
+                        <div class="range-block-range"><input type="number" class="text_pole margin0" name="dndHp" min="0" max="9999"></div>
+                    </div>
+                    <div class="flex1 flex-container flexFlowColumn flexNoGap">
+                        <small>Max HP</small>
+                        <div class="range-block-range"><input type="number" class="text_pole margin0" name="dndMaxHp" min="0" max="9999"></div>
+                    </div>
+                    <div class="flex1 flex-container flexFlowColumn flexNoGap">
+                        <small>CR</small>
+                        <div class="range-block-range"><input type="number" class="text_pole margin0" name="dndCr" min="0" max="99" step="0.25"></div>
+                    </div>
+                </div>
+                <div class="flex-container wide100p flexGap10">
                     <div class="flex4 flex-container flexFlowColumn flexNoGap">
                         <div class="flex-container justifySpaceBetween">
                             <small for="characterFilter" data-i18n="Filter to Characters or Tags">

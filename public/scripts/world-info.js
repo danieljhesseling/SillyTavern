@@ -88,6 +88,112 @@ export function getCurrentWorldNPCs() {
 }
 
 /**
+ * @param {string} value
+ * @returns {'none'|'character'|'npc'|'monster'|'race'|'class'|'faction'|'location'}
+ */
+function normalizeDndEntityType(value) {
+    const v = String(value || '').trim().toLowerCase();
+    switch (v) {
+        case 'character':
+        case 'characters':
+            return 'character';
+        case 'npc':
+        case 'npcs':
+            return 'npc';
+        case 'monster':
+        case 'monsters':
+            return 'monster';
+        case 'race':
+        case 'races':
+            return 'race';
+        case 'class':
+        case 'classes':
+            return 'class';
+        case 'faction':
+        case 'factions':
+            return 'faction';
+        case 'location':
+        case 'locations':
+            return 'location';
+        default:
+            return 'none';
+    }
+}
+
+/**
+ * @param {any} entry
+ * @returns {'none'|'character'|'npc'|'monster'|'race'|'class'|'faction'|'location'}
+ */
+function getEntryDndEntityType(entry) {
+    const explicit = normalizeDndEntityType(entry?.dndData?.entityType);
+    if (explicit !== 'none') {
+        return explicit;
+    }
+
+    const group = String(entry?.group || '').trim().toLowerCase();
+    if (!group) return 'none';
+    if (group === 'monster' || group === 'monsters' || group.includes('monster')) return 'monster';
+    if (group.includes('character')) return 'character';
+    if (group.includes('class')) return 'class';
+    if (group.includes('race')) return 'race';
+    if (group.includes('faction')) return 'faction';
+    if (group.includes('location')) return 'location';
+    return 'none';
+}
+
+/**
+ * @param {any} entry
+ * @param {string|number} uid
+ * @returns {string}
+ */
+function getDndEntryDisplayName(entry, uid) {
+    if (entry?.comment && String(entry.comment).trim()) return String(entry.comment).trim();
+    if (entry?.dndData?.name && String(entry.dndData.name).trim()) return String(entry.dndData.name).trim();
+    if (Array.isArray(entry?.key) && entry.key.length) return String(entry.key[0]).trim();
+    if (entry?.key && String(entry.key).trim()) return String(entry.key).trim();
+    return `Entry ${uid}`;
+}
+
+/**
+ * @param {any} data
+ * @param {'race'|'class'|'faction'|'location'} type
+ * @param {number|string|null} [excludeUid]
+ * @returns {string[]}
+ */
+function getDndCatalogOptions(data, type, excludeUid = null) {
+    const values = new Set();
+    const entries = data?.entries || {};
+
+    for (const [uid, entry] of Object.entries(entries)) {
+        if (!entry || (excludeUid != null && String(uid) === String(excludeUid))) continue;
+        if (getEntryDndEntityType(entry) !== type) continue;
+        values.add(getDndEntryDisplayName(entry, uid));
+    }
+
+    if (type === 'location') {
+        const maps = Array.isArray(data?.metadata?.locationMaps) ? data.metadata.locationMaps : [];
+        for (const loc of maps) {
+            if (loc?.name) values.add(String(loc.name).trim());
+        }
+    }
+
+    return Array.from(values).filter(Boolean).sort((a, b) => a.localeCompare(b));
+}
+
+/**
+ * @param {string} str
+ * @returns {string}
+ */
+function escapeHtmlText(str) {
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+/**
  * Converts world-info entries in group "Monsters" to combat enemy templates.
  * @param {any} data
  * @returns {Array<any>}
@@ -108,6 +214,8 @@ function extractWorldMonsterTemplates(data) {
     };
 
     const isMonster = (entry) => {
+        const type = getEntryDndEntityType(entry);
+        if (type === 'monster') return true;
         const group = String(entry?.group || '').trim().toLowerCase();
         if (!group) return false;
         return group === 'monster' || group === 'monsters' || group.includes('monster');
@@ -162,10 +270,7 @@ function extractWorldNPCTemplates(data) {
         return `NPC ${uid}`;
     };
 
-    const isMonster = (entry) => {
-        const group = String(entry?.group || '').trim().toLowerCase();
-        return group === 'monster' || group === 'monsters' || group.includes('monster');
-    };
+    const isMonster = (entry) => getEntryDndEntityType(entry) === 'monster';
 
     const npcs = [];
     for (const uid of Object.keys(data.entries)) {
@@ -175,6 +280,8 @@ function extractWorldNPCTemplates(data) {
         const d = entry.dndData;
         if (!d || typeof d !== 'object') continue;
         if (isMonster(entry)) continue;
+        const type = getEntryDndEntityType(entry);
+        if (type !== 'none' && type !== 'character' && type !== 'npc') continue;
 
         const hp = toNumber(d.maxHp ?? d.hp, 10);
         npcs.push({
@@ -4754,6 +4861,213 @@ export async function getWorldEntry(name, data, entry) {
             !noSave && await saveWorldInfo(name, data);
         });
         ignoreBudgetInput.prop('checked', entry.ignoreBudget ?? false).trigger('input', { noSave: true });
+
+        // DnD data helper
+        const setDndData = async (uid, updater, { noSave = false } = {}) => {
+            const target = data.entries[uid];
+            if (!target.dndData || typeof target.dndData !== 'object' || Array.isArray(target.dndData)) {
+                target.dndData = {};
+            }
+            updater(target.dndData);
+            setWIOriginalDataValue(data, uid, 'dndData', structuredClone(target.dndData));
+            !noSave && await saveWorldInfo(name, data);
+        };
+
+        const dnd = (entry.dndData && typeof entry.dndData === 'object') ? entry.dndData : {};
+        const dndUid = entry.uid;
+
+        const applySingleSelectOptions = (selectElem, options, currentValue) => {
+            const values = Array.from(new Set([...(options || []), String(currentValue || '').trim()].filter(Boolean)));
+            selectElem.empty();
+            selectElem.append(`<option value="">—</option>`);
+            for (const option of values.sort((a, b) => a.localeCompare(b))) {
+                selectElem.append(`<option value="${escapeHtmlText(option)}">${escapeHtmlText(option)}</option>`);
+            }
+            selectElem.val(String(currentValue || ''));
+        };
+
+        const applyMultiSelectOptions = (selectElem, options, currentValues) => {
+            const selectedValues = Array.isArray(currentValues) ? currentValues.map(x => String(x).trim()).filter(Boolean) : [];
+            const values = Array.from(new Set([...(options || []), ...selectedValues].filter(Boolean))).sort((a, b) => a.localeCompare(b));
+            selectElem.empty();
+            for (const option of values) {
+                selectElem.append(`<option value="${escapeHtmlText(option)}">${escapeHtmlText(option)}</option>`);
+            }
+            selectElem.val(selectedValues).trigger('change');
+        };
+
+        // DnD entity type
+        const dndTypeSelect = editTemplate.find('select[name="dndEntityType"]');
+        dndTypeSelect.data('uid', dndUid);
+        dndTypeSelect.on('change', async function (_, { noSave = false } = {}) {
+            const uid = $(this).data('uid');
+            const value = normalizeDndEntityType(String($(this).val() || 'none'));
+            await setDndData(uid, (obj) => {
+                if (value === 'none') delete obj.entityType;
+                else obj.entityType = value;
+            }, { noSave });
+        });
+        dndTypeSelect.val(getEntryDndEntityType(entry)).trigger('change', { noSave: true });
+
+        // DnD selectors from lorebook catalog
+        const races = getDndCatalogOptions(data, 'race', dndUid);
+        const classes = getDndCatalogOptions(data, 'class', dndUid);
+        const factions = getDndCatalogOptions(data, 'faction', dndUid);
+        const locations = getDndCatalogOptions(data, 'location', dndUid);
+
+        const raceSelect = editTemplate.find('select[name="dndRace"]');
+        applySingleSelectOptions(raceSelect, races, dnd.race || '');
+        raceSelect.data('uid', dndUid).on('change', async function (_, { noSave = false } = {}) {
+            const uid = $(this).data('uid');
+            const value = String($(this).val() || '').trim();
+            await setDndData(uid, (obj) => {
+                if (!value) delete obj.race;
+                else obj.race = value;
+            }, { noSave });
+        });
+
+        const classSelect = editTemplate.find('select[name="dndClass"]');
+        applySingleSelectOptions(classSelect, classes, dnd.charClass || '');
+        classSelect.data('uid', dndUid).on('change', async function (_, { noSave = false } = {}) {
+            const uid = $(this).data('uid');
+            const value = String($(this).val() || '').trim();
+            await setDndData(uid, (obj) => {
+                if (!value) {
+                    delete obj.charClass;
+                    return;
+                }
+
+                obj.charClass = value;
+
+                // Apply class preset stats from the matching class entry, if present.
+                const classEntry = Object.entries(data.entries || {})
+                    .map(([presetUid, presetEntry]) => ({ presetUid, presetEntry }))
+                    .find(({ presetUid, presetEntry }) => String(presetUid) !== String(uid)
+                        && getEntryDndEntityType(presetEntry) === 'class'
+                        && getDndEntryDisplayName(presetEntry, presetUid) === value)?.presetEntry;
+
+                if (!classEntry?.dndData) {
+                    return;
+                }
+
+                const preset = classEntry.dndData;
+                const mappings = [
+                    ['str', preset.str ?? preset.strength],
+                    ['dex', preset.dex ?? preset.dexterity],
+                    ['con', preset.con ?? preset.constitution],
+                    ['int', preset.int ?? preset.intelligence],
+                    ['wis', preset.wis ?? preset.wisdom],
+                    ['cha', preset.cha ?? preset.charisma],
+                    ['ac', preset.ac ?? preset.armorClass],
+                    ['speed', preset.speed],
+                    ['hp', preset.hp ?? preset.maxHp],
+                    ['maxHp', preset.maxHp ?? preset.hp],
+                    ['cr', preset.cr],
+                ];
+
+                for (const [key, rawValue] of mappings) {
+                    const num = Number(rawValue);
+                    if (Number.isFinite(num)) {
+                        obj[key] = num;
+                    }
+                }
+            }, { noSave });
+
+            const nextData = data.entries[uid]?.dndData || {};
+            editTemplate.find('input[name="dndStr"]').val(nextData.str ?? '');
+            editTemplate.find('input[name="dndDex"]').val(nextData.dex ?? '');
+            editTemplate.find('input[name="dndCon"]').val(nextData.con ?? '');
+            editTemplate.find('input[name="dndInt"]').val(nextData.int ?? '');
+            editTemplate.find('input[name="dndWis"]').val(nextData.wis ?? '');
+            editTemplate.find('input[name="dndCha"]').val(nextData.cha ?? '');
+            editTemplate.find('input[name="dndAc"]').val(nextData.ac ?? '');
+            editTemplate.find('input[name="dndSpeed"]').val(nextData.speed ?? '');
+            editTemplate.find('input[name="dndHp"]').val(nextData.hp ?? '');
+            editTemplate.find('input[name="dndMaxHp"]').val(nextData.maxHp ?? '');
+            editTemplate.find('input[name="dndCr"]').val(nextData.cr ?? '');
+        });
+
+        const factionSelect = editTemplate.find('select[name="dndFactions"]');
+        const existingFactions = Array.isArray(dnd.factions)
+            ? dnd.factions
+            : splitCsv(String(dnd.factions || dnd.faction || ''));
+        applyMultiSelectOptions(factionSelect, factions, existingFactions);
+        if (!isMobile()) {
+            factionSelect.select2({
+                placeholder: t`No factions`,
+                width: '100%',
+                closeOnSelect: false,
+                allowClear: true,
+            });
+        }
+        factionSelect.data('uid', dndUid).on('change', async function (_, { noSave = false } = {}) {
+            const uid = $(this).data('uid');
+            const values = ($(this).val() || []).map(x => String(x).trim()).filter(Boolean);
+            await setDndData(uid, (obj) => {
+                if (!values.length) delete obj.factions;
+                else obj.factions = values;
+            }, { noSave });
+        });
+
+        const locationSelect = editTemplate.find('select[name="dndLocation"]');
+        const currentLocation = dnd.locationName || dnd.location || '';
+        applySingleSelectOptions(locationSelect, locations, currentLocation);
+        locationSelect.data('uid', dndUid).on('change', async function (_, { noSave = false } = {}) {
+            const uid = $(this).data('uid');
+            const value = String($(this).val() || '').trim();
+            await setDndData(uid, (obj) => {
+                if (!value) {
+                    delete obj.locationName;
+                    delete obj.location;
+                } else {
+                    obj.locationName = value;
+                }
+            }, { noSave });
+        });
+
+        const bindDndTextField = (selector, key) => {
+            const input = editTemplate.find(selector);
+            input.data('uid', dndUid);
+            input.on('input', async function (_, { noSave = false } = {}) {
+                const uid = $(this).data('uid');
+                const value = String($(this).val() || '').trim();
+                await setDndData(uid, (obj) => {
+                    if (!value) delete obj[key];
+                    else obj[key] = value;
+                }, { noSave });
+            });
+            input.val(dnd[key] ?? '').trigger('input', { noSave: true });
+        };
+
+        const bindDndNumberField = (selector, key) => {
+            const input = editTemplate.find(selector);
+            input.data('uid', dndUid);
+            input.on('input', async function (_, { noSave = false } = {}) {
+                const uid = $(this).data('uid');
+                const raw = String($(this).val() || '').trim();
+                const num = Number(raw);
+                await setDndData(uid, (obj) => {
+                    if (raw === '' || !Number.isFinite(num)) delete obj[key];
+                    else obj[key] = num;
+                }, { noSave });
+            });
+            const hasValue = dnd[key] !== undefined && dnd[key] !== null && String(dnd[key]).trim() !== '';
+            input.val(hasValue ? dnd[key] : '').trigger('input', { noSave: true });
+        };
+
+        bindDndTextField('input[name="dndName"]', 'name');
+        bindDndNumberField('input[name="dndLevel"]', 'level');
+        bindDndNumberField('input[name="dndStr"]', 'str');
+        bindDndNumberField('input[name="dndDex"]', 'dex');
+        bindDndNumberField('input[name="dndCon"]', 'con');
+        bindDndNumberField('input[name="dndInt"]', 'int');
+        bindDndNumberField('input[name="dndWis"]', 'wis');
+        bindDndNumberField('input[name="dndCha"]', 'cha');
+        bindDndNumberField('input[name="dndAc"]', 'ac');
+        bindDndNumberField('input[name="dndSpeed"]', 'speed');
+        bindDndNumberField('input[name="dndHp"]', 'hp');
+        bindDndNumberField('input[name="dndMaxHp"]', 'maxHp');
+        bindDndNumberField('input[name="dndCr"]', 'cr');
 
         countTokensDebounced(counter, contentInput.val());
 

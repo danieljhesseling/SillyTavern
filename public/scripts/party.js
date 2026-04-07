@@ -40,6 +40,8 @@ import {
  * @property {string} [group]
  * @property {number} level
  * @property {string} class
+ * @property {string} race
+ * @property {string[]} factions
  * @property {number} hp
  * @property {number} maxHp
  * @property {number} xp
@@ -60,6 +62,8 @@ import {
  * @property {number} charisma
  * @property {number} armorClass
  * @property {number} speed
+ * @property {string} [classPresetSource]
+ * @property {boolean} [classPresetDirty]
  * @property {import('./dnd-system.js').DndItem[]} items
  * @property {Object<string, string|null>} equippedItems
  * @property {import('./dnd-system.js').DndRelationship[]} relationships
@@ -199,6 +203,224 @@ function escapeHtml(str) {
 }
 
 /**
+ * @param {any} entry
+ * @returns {string}
+ */
+function getDndEntryName(entry) {
+    const comment = String(entry?.comment || '').trim();
+    const dndName = String(entry?.dndData?.name || '').trim();
+    if (comment && comment !== 'Untitled') return comment;
+    if (dndName) return dndName;
+    if (Array.isArray(entry?.key) && entry.key.length) return String(entry.key[0]).trim();
+    if (entry?.key && String(entry.key).trim()) return String(entry.key).trim();
+    return 'Unnamed';
+}
+
+/**
+ * @param {string} value
+ * @returns {'none'|'character'|'npc'|'monster'|'race'|'class'|'faction'|'location'}
+ */
+function normalizeDndEntityType(value) {
+    const v = String(value || '').trim().toLowerCase();
+    switch (v) {
+        case 'character':
+        case 'characters':
+            return 'character';
+        case 'npc':
+        case 'npcs':
+            return 'npc';
+        case 'monster':
+        case 'monsters':
+            return 'monster';
+        case 'race':
+        case 'races':
+            return 'race';
+        case 'class':
+        case 'classes':
+            return 'class';
+        case 'faction':
+        case 'factions':
+            return 'faction';
+        case 'location':
+        case 'locations':
+            return 'location';
+        default:
+            return 'none';
+    }
+}
+
+/**
+ * @param {any} entry
+ * @returns {'none'|'character'|'npc'|'monster'|'race'|'class'|'faction'|'location'}
+ */
+function getDndEntryType(entry) {
+    const explicit = normalizeDndEntityType(entry?.dndData?.entityType);
+    if (explicit !== 'none') return explicit;
+
+    const group = String(entry?.group || '').trim().toLowerCase();
+    if (!group) return 'none';
+    if (group.includes('monster')) return 'monster';
+    if (group.includes('character')) return 'character';
+    if (group.includes('class')) return 'class';
+    if (group.includes('race')) return 'race';
+    if (group.includes('faction')) return 'faction';
+    if (group.includes('location')) return 'location';
+    return 'none';
+}
+
+/**
+ * @param {PartyMember} member
+ * @returns {string|null}
+ */
+function getMemberWorldName(member) {
+    return member.worldName || (chat_metadata ? chat_metadata[METADATA_KEY] : null) || null;
+}
+
+/**
+ * @param {any} value
+ * @returns {string[]}
+ */
+function parseFactionValues(value) {
+    if (Array.isArray(value)) {
+        return value.map(x => String(x).trim()).filter(Boolean);
+    }
+    return String(value || '').split(/,\s*/).map(x => x.trim()).filter(Boolean);
+}
+
+/**
+ * @param {any} entry
+ * @returns {Partial<PartyMember>}
+ */
+function extractClassPreset(entry) {
+    const d = entry?.dndData || {};
+    const toNumber = (value) => {
+        const n = Number(value);
+        return Number.isFinite(n) ? n : undefined;
+    };
+
+    return {
+        strength: toNumber(d.str ?? d.strength),
+        dexterity: toNumber(d.dex ?? d.dexterity),
+        constitution: toNumber(d.con ?? d.constitution),
+        intelligence: toNumber(d.int ?? d.intelligence),
+        wisdom: toNumber(d.wis ?? d.wisdom),
+        charisma: toNumber(d.cha ?? d.charisma),
+        armorClass: toNumber(d.ac ?? d.armorClass),
+        speed: toNumber(d.speed),
+        hp: toNumber(d.hp ?? d.maxHp),
+        maxHp: toNumber(d.maxHp ?? d.hp),
+    };
+}
+
+/**
+ * @typedef {Object} DndCatalog
+ * @property {string[]} races
+ * @property {string[]} classes
+ * @property {string[]} factions
+ * @property {string[]} locations
+ * @property {Map<string, Partial<PartyMember>>} classPresets
+ */
+
+/**
+ * @param {string|null} worldName
+ * @returns {Promise<DndCatalog>}
+ */
+async function loadDndCatalog(worldName) {
+    /** @type {DndCatalog} */
+    const catalog = {
+        races: [],
+        classes: [],
+        factions: [],
+        locations: [],
+        classPresets: new Map(),
+    };
+
+    if (!worldName) return catalog;
+    const data = await loadWorldInfo(worldName);
+    if (!data?.entries) return catalog;
+
+    const races = new Set();
+    const classes = new Set();
+    const factions = new Set();
+    const locations = new Set();
+
+    for (const entry of Object.values(data.entries)) {
+        const type = getDndEntryType(entry);
+        const name = getDndEntryName(entry);
+
+        if (type === 'race' && name) races.add(name);
+        if (type === 'class' && name) {
+            classes.add(name);
+            catalog.classPresets.set(name, extractClassPreset(entry));
+        }
+        if (type === 'faction' && name) factions.add(name);
+        if (type === 'location' && name) locations.add(name);
+
+        const d = entry?.dndData || {};
+        if (d.race) races.add(String(d.race).trim());
+        if (d.charClass) classes.add(String(d.charClass).trim());
+        parseFactionValues(d.factions || d.faction).forEach(x => factions.add(x));
+        if (d.locationName || d.location) {
+            locations.add(String(d.locationName || d.location).trim());
+        }
+    }
+
+    const locationMaps = Array.isArray(data.metadata?.locationMaps) ? data.metadata.locationMaps : [];
+    for (const loc of locationMaps) {
+        if (loc?.name) locations.add(String(loc.name).trim());
+    }
+
+    catalog.races = Array.from(races).filter(Boolean).sort((a, b) => a.localeCompare(b));
+    catalog.classes = Array.from(classes).filter(Boolean).sort((a, b) => a.localeCompare(b));
+    catalog.factions = Array.from(factions).filter(Boolean).sort((a, b) => a.localeCompare(b));
+    catalog.locations = Array.from(locations).filter(Boolean).sort((a, b) => a.localeCompare(b));
+    return catalog;
+}
+
+/**
+ * @param {PartyMember} member
+ * @param {Partial<PartyMember>} preset
+ */
+function applyClassPresetToMember(member, preset) {
+    const assignIfNumber = (key, value) => {
+        if (typeof value === 'number' && Number.isFinite(value)) {
+            /** @type {any} */ (member)[key] = value;
+        }
+    };
+
+    assignIfNumber('strength', preset.strength);
+    assignIfNumber('dexterity', preset.dexterity);
+    assignIfNumber('constitution', preset.constitution);
+    assignIfNumber('intelligence', preset.intelligence);
+    assignIfNumber('wisdom', preset.wisdom);
+    assignIfNumber('charisma', preset.charisma);
+    assignIfNumber('armorClass', preset.armorClass);
+    assignIfNumber('speed', preset.speed);
+    assignIfNumber('maxHp', preset.maxHp);
+    assignIfNumber('hp', preset.hp);
+    if (member.hp > member.maxHp) {
+        member.hp = member.maxHp;
+    }
+    member.classPresetSource = member.class;
+    member.classPresetDirty = false;
+}
+
+function memberHasLikelyEditedStats(member) {
+    if (member.classPresetDirty) return true;
+    const defaults = getDefaultDndData();
+    const deviatesFromDefaults =
+        member.strength !== defaults.strength
+        || member.dexterity !== defaults.dexterity
+        || member.constitution !== defaults.constitution
+        || member.intelligence !== defaults.intelligence
+        || member.wisdom !== defaults.wisdom
+        || member.charisma !== defaults.charisma
+        || member.armorClass !== defaults.armorClass
+        || member.speed !== defaults.speed;
+    return deviatesFromDefaults;
+}
+
+/**
  * Shows a popup to pick a single WI character entry.
  * @param {Array<any>} charEntries - WI entries with group "Characters"
  * @returns {Promise<any|null>} Selected entry or null
@@ -281,6 +503,9 @@ async function syncPartyMemberToWorldInfo(member) {
         entry.dndData.image = member.avatar;
         entry.dndData.level = member.level;
         entry.dndData.charClass = member.class;
+        entry.dndData.race = member.race || '';
+        entry.dndData.factions = Array.isArray(member.factions) ? member.factions : [];
+        entry.dndData.locationName = member.mapPosition?.locationName || '';
         entry.dndData.maxHp = member.maxHp;
         entry.dndData.alignment = member.alignment;
         entry.dndData.personality = member.personality;
@@ -327,6 +552,8 @@ export function setPartyFromWorldEntries(entries, worldName = null) {
             avatar: d.image || 'img/user-default.png',
             level: Number(d.level) || 1,
             class: d.charClass || 'Adventurer',
+            race: d.race || '',
+            factions: parseFactionValues(d.factions || d.faction),
             hp: Number(d.maxHp) || 30,
             maxHp: Number(d.maxHp) || 30,
             xp: 0,
@@ -351,7 +578,7 @@ export function setPartyFromWorldEntries(entries, worldName = null) {
             equippedItems: { ...defaults.equippedItems },
             relationships: [],
             memories: [],
-            mapPosition: { locationName: '', gridX: 0, gridY: 0 },
+            mapPosition: { locationName: String(d.locationName || d.location || ''), gridX: 0, gridY: 0 },
         };
         partyMembers.push(member);
     }
@@ -2196,6 +2423,7 @@ async function openPartyMemberModal(member) {
     Object.assign(member, m);
 
     const popupContent = $(`<div class="dnd-modal"></div>`);
+    const dndCatalog = await loadDndCatalog(getMemberWorldName(member));
 
     // ---- Tab bar ----
     const tabs = ['Character Sheet', 'Inventory', 'Progression', 'Relationships', 'Memories'];
@@ -2207,9 +2435,9 @@ async function openPartyMemberModal(member) {
     popupContent.append(tabBar);
 
     // ---- Tab panels ----
-    popupContent.append(buildCharacterSheetTab(member));
+    popupContent.append(buildCharacterSheetTab(member, dndCatalog));
     popupContent.append(buildInventoryTab(member));
-    popupContent.append(buildProgressionTab(member));
+    popupContent.append(buildProgressionTab(member, dndCatalog));
     popupContent.append(buildRelationshipsTab(member));
     popupContent.append(buildMemoriesTab(member));
 
@@ -2256,9 +2484,10 @@ async function openPartyMemberModal(member) {
 
 /**
  * @param {PartyMember} member
+ * @param {DndCatalog} dndCatalog
  * @returns {JQuery}
  */
-function buildCharacterSheetTab(member) {
+function buildCharacterSheetTab(member, dndCatalog) {
     const panel = $('<div class="dnd-tab-panel" data-panel="character_sheet"></div>');
     const sheet = $('<div class="dnd-sheet"></div>');
 
@@ -2272,7 +2501,7 @@ function buildCharacterSheetTab(member) {
             </div>
             <div class="dnd-sheet-identity">
                 <input type="text" class="dnd-sheet-name-input" value="${member.name}" placeholder="Character name" />
-                <div class="dnd-sheet-class-level">Level ${member.level} ${member.class}</div>
+                <div class="dnd-sheet-class-level">${[member.race, `Level ${member.level} ${member.class}`].filter(Boolean).join(' · ')}</div>
             </div>
         </div>
     `);
@@ -2308,6 +2537,64 @@ function buildCharacterSheetTab(member) {
     });
 
     sheet.append(header);
+
+    const renderIdentitySubtitle = () => {
+        header.find('.dnd-sheet-class-level').text([member.race, `Level ${member.level} ${member.class}`].filter(Boolean).join(' · '));
+    };
+
+    // Race / Factions / Location
+    const identityRow = $(`
+        <div class="dnd-field-row" style="gap:8px;align-items:flex-start;">
+            <div style="flex:1;min-width:160px;">
+                <label class="dnd-field-label">Race:</label>
+                <select class="dnd-race-select text_pole"></select>
+            </div>
+            <div style="flex:1;min-width:180px;">
+                <label class="dnd-field-label">Factions:</label>
+                <select class="dnd-faction-select text_pole" multiple></select>
+            </div>
+            <div style="flex:1;min-width:180px;">
+                <label class="dnd-field-label">Location:</label>
+                <select class="dnd-location-select text_pole"></select>
+            </div>
+        </div>
+    `);
+
+    const raceOptions = Array.from(new Set([...(dndCatalog.races || []), String(member.race || '').trim()].filter(Boolean))).sort((a, b) => a.localeCompare(b));
+    const raceSelect = identityRow.find('.dnd-race-select');
+    raceSelect.append('<option value="">—</option>');
+    for (const race of raceOptions) {
+        raceSelect.append(`<option value="${escapeHtml(race)}">${escapeHtml(race)}</option>`);
+    }
+    raceSelect.val(member.race || '');
+    raceSelect.on('change', function () {
+        member.race = String($(this).val() || '').trim();
+        renderIdentitySubtitle();
+    });
+
+    const factionOptions = Array.from(new Set([...(dndCatalog.factions || []), ...(member.factions || [])].filter(Boolean))).sort((a, b) => a.localeCompare(b));
+    const factionSelect = identityRow.find('.dnd-faction-select');
+    for (const faction of factionOptions) {
+        factionSelect.append(`<option value="${escapeHtml(faction)}">${escapeHtml(faction)}</option>`);
+    }
+    factionSelect.val(Array.isArray(member.factions) ? member.factions : []);
+    factionSelect.on('change', function () {
+        member.factions = ($(this).val() || []).map(x => String(x));
+    });
+
+    const locationOptions = Array.from(new Set([...(dndCatalog.locations || []), String(member.mapPosition?.locationName || '').trim()].filter(Boolean))).sort((a, b) => a.localeCompare(b));
+    const locationSelect = identityRow.find('.dnd-location-select');
+    locationSelect.append('<option value="">—</option>');
+    for (const location of locationOptions) {
+        locationSelect.append(`<option value="${escapeHtml(location)}">${escapeHtml(location)}</option>`);
+    }
+    locationSelect.val(member.mapPosition?.locationName || '');
+    locationSelect.on('change', function () {
+        member.mapPosition = member.mapPosition || { locationName: '', gridX: 0, gridY: 0 };
+        member.mapPosition.locationName = String($(this).val() || '').trim();
+    });
+
+    sheet.append(identityRow);
 
     // Alignment
     const alignmentRow = $('<div class="dnd-alignment-row"></div>');
@@ -2359,6 +2646,7 @@ function buildCharacterSheetTab(member) {
         box.find('input').on('change', function () {
             const val = parseInt(String($(this).val()), 10) || 10;
             /** @type {any} */ (member)[ability] = val;
+            member.classPresetDirty = true;
             $(this).siblings('.dnd-stat-modifier').text(formatModifier(getAbilityModifier(val)));
         });
 
@@ -2398,6 +2686,7 @@ function buildCharacterSheetTab(member) {
     `);
     hpBox.find('input').on('change', function () {
         member.maxHp = parseInt(String($(this).val()), 10) || 1;
+        member.classPresetDirty = true;
     });
     derivedRow.append(hpBox);
 
@@ -2410,6 +2699,7 @@ function buildCharacterSheetTab(member) {
     `);
     speedBox.find('input').on('change', function () {
         member.speed = parseInt(String($(this).val()), 10) || 30;
+        member.classPresetDirty = true;
     });
     derivedRow.append(speedBox);
 
@@ -3223,9 +3513,10 @@ async function openAddItemForm(panel, member) {
 
 /**
  * @param {PartyMember} member
+ * @param {DndCatalog} dndCatalog
  * @returns {JQuery}
  */
-function buildProgressionTab(member) {
+function buildProgressionTab(member, dndCatalog) {
     const panel = $('<div class="dnd-tab-panel" data-panel="progression"></div>');
     const prog = $('<div class="dnd-progression"></div>');
 
@@ -3238,14 +3529,44 @@ function buildProgressionTab(member) {
     `);
 
     // Class
+    const classOptions = Array.from(new Set([...(dndCatalog.classes || []), String(member.class || '').trim()].filter(Boolean))).sort((a, b) => a.localeCompare(b));
     const classEdit = $(`
         <div class="dnd-class-edit">
             <label style="font-size:0.8rem;color:var(--SmartThemeTextColor);">Class:</label>
-            <input type="text" class="dnd-class-input" value="${member.class}" />
+            <select class="dnd-class-input text_pole"></select>
         </div>
     `);
-    classEdit.find('input').on('change', function () {
-        member.class = String($(this).val()) || 'Adventurer';
+    const classSelect = classEdit.find('select');
+    classSelect.append('<option value="">Adventurer</option>');
+    for (const className of classOptions) {
+        classSelect.append(`<option value="${escapeHtml(className)}">${escapeHtml(className)}</option>`);
+    }
+    classSelect.val(member.class || '');
+    classSelect.on('change', async function () {
+        const selectedClass = String($(this).val() || '').trim() || 'Adventurer';
+        if (selectedClass === member.class) return;
+
+        const nextPreset = dndCatalog.classPresets.get(selectedClass);
+        if (nextPreset) {
+            if (memberHasLikelyEditedStats(member)) {
+                const overwritePopup = new Popup(
+                    `${t`This character has manually edited stats.`}<br>${t`Apply the class preset and overwrite current stats?`}`,
+                    POPUP_TYPE.CONFIRM,
+                    '',
+                    { okButton: t`Apply Preset`, cancelButton: t`Keep Current Stats` },
+                );
+                const result = await overwritePopup.show();
+                if (result !== POPUP_RESULT.AFFIRMATIVE) {
+                    classSelect.val(member.class || '');
+                    return;
+                }
+            }
+
+            member.class = selectedClass;
+            applyClassPresetToMember(member, nextPreset);
+        } else {
+            member.class = selectedClass;
+        }
     });
     prog.append(classEdit);
 
@@ -3273,6 +3594,7 @@ function buildProgressionTab(member) {
 
     prog.find('.hp-current-input').on('change', function () {
         member.hp = parseInt(String($(this).val()), 10) || 0;
+        member.classPresetDirty = true;
         const pct = member.maxHp > 0 ? Math.min(100, (member.hp / member.maxHp) * 100) : 0;
         prog.find('.dnd-hp-bar-fill').css('width', pct + '%');
         prog.find('.dnd-hp-bar-text').text(`${member.hp} / ${member.maxHp}`);
@@ -3280,6 +3602,7 @@ function buildProgressionTab(member) {
 
     prog.find('.hp-max-input').on('change', function () {
         member.maxHp = parseInt(String($(this).val()), 10) || 1;
+        member.classPresetDirty = true;
         const pct = member.maxHp > 0 ? Math.min(100, (member.hp / member.maxHp) * 100) : 0;
         prog.find('.dnd-hp-bar-fill').css('width', pct + '%');
         prog.find('.dnd-hp-bar-text').text(`${member.hp} / ${member.maxHp}`);
@@ -3334,7 +3657,7 @@ function buildProgressionTab(member) {
         // Refresh the whole tab
         const parent = panel.parent();
         const wasActive = panel.hasClass('active');
-        const newPanel = buildProgressionTab(member);
+        const newPanel = buildProgressionTab(member, dndCatalog);
         panel.replaceWith(newPanel);
         if (wasActive) newPanel.addClass('active');
     });
@@ -3799,6 +4122,8 @@ export function addPartyMember(personaIdOrName) {
         avatar,
         level: personaState?.level ?? 1,
         class: 'Adventurer',
+        race: '',
+        factions: [],
         hp: personaState?.hp_current ?? 30,
         maxHp: personaState?.hp_max ?? 30,
         xp: personaState?.xp_current ?? 0,
@@ -3940,7 +4265,9 @@ export function initPartyPanel() {
         for (const uid of Object.keys(data.entries)) {
             const entry = data.entries[uid];
             const group = (entry.group || '').trim().toLowerCase();
-            if (!group.includes('character')) continue;
+            const entityType = getDndEntryType(entry);
+            const isCharacterEntry = entityType === 'character' || entityType === 'npc' || group.includes('character');
+            if (!isCharacterEntry) continue;
             // Exclude already-in-party by uid or name
             if (existingUids.has(Number(entry.uid))) continue;
             const entryName = getPartyEntryDisplayName(entry).toLowerCase();
@@ -3972,6 +4299,8 @@ export function initPartyPanel() {
             avatar: d.image || 'img/user-default.png',
             level: Number(d.level) || 1,
             class: d.charClass || 'Adventurer',
+            race: d.race || '',
+            factions: parseFactionValues(d.factions || d.faction),
             hp: Number(d.maxHp) || 30,
             maxHp: Number(d.maxHp) || 30,
             xp: 0,
@@ -3996,7 +4325,7 @@ export function initPartyPanel() {
             equippedItems: { ...defaults.equippedItems },
             relationships: [],
             memories: [],
-            mapPosition: { locationName: '', gridX: 0, gridY: 0 },
+            mapPosition: { locationName: String(d.locationName || d.location || ''), gridX: 0, gridY: 0 },
         };
 
         partyMembers.push(newMember);

@@ -218,7 +218,7 @@ function getDefaults(cat) {
     switch (cat) {
         case 'Characters': return {
             image: '', race: '', charClass: '', level: 1, alignment: '', pronouns: '',
-            aliases: '', values: '', faction: '', location: '',
+            aliases: '', values: '', faction: '', location: '', board: '', boardX: 0, boardY: 0,
             str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10,
             ac: 10, maxHp: 30, speed: 30,
             skills: [], appearance: '', personality: '', backstory: '', memorandum: '',
@@ -229,6 +229,8 @@ function getDefaults(cat) {
         case 'Classes': return {
             image: '', source: '', hitDie: '', spellcasting: '', spellcastingAbility: '',
             spellPreparation: '', castingType: '', subclassLevel: '', description: '',
+            str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10,
+            ac: 10, hp: 30, maxHp: 30, speed: 30,
             features: [],
         };
         case 'Factions': return { image: '', source: '', description: '', color: '#333333', members: '' };
@@ -265,20 +267,74 @@ function getDefaults(cat) {
 //  FORM BUILDERS (per category)
 // ============================================================
 
-function buildCharacterForm(d) {
+/**
+ * Build a [[value, label], ...] options array for a catalog-backed select.
+ * Includes a blank "—" slot first, then sorted catalog entries,
+ * then the current value if it isn't already in the list.
+ * @param {string[]} arr   - Sorted catalog entries
+ * @param {string}  [cur]  - Currently stored value
+ * @returns {[string, string][]}
+ */
+function buildCatalogSelOptions(arr, cur) {
+    /** @type {[string, string][]} */
+    const opts = [['', '—']];
+    const seen = new Set();
+    for (const item of (arr || [])) {
+        if (item) { opts.push([item, item]); seen.add(item); }
+    }
+    if (cur && !seen.has(cur)) opts.push([cur, cur]);
+    return opts;
+}
+
+/**
+ * @param {any} d
+ * @param {{ races: string[], classes: string[], factions: string[], locationMaps: Array<{name:string, boards:Array<{name:string,gridWidth:number,gridHeight:number}>}> }} [catalog]
+ */
+function buildCharacterForm(d, catalog) {
+    const cat = catalog || { races: [], classes: [], factions: [], locationMaps: [] };
+    const locationNames = (cat.locationMaps || []).map(l => l.name);
+
+    // Boards for the currently stored location
+    const currentLocMap = (cat.locationMaps || []).find(l => l.name === d.location);
+    const currentBoards = currentLocMap?.boards || [];
+
+    // Encode all location→boards data as a JSON data attribute on the location select
+    const locationMapsJson = esc(JSON.stringify(
+        (cat.locationMaps || []).map(l => ({ name: l.name, boards: l.boards }))
+    ));
+
+    // Board select options
+    const boardOpts = buildCatalogSelOptions(currentBoards.map(b => b.name), d.board);
+
+    // Grid dims hint for the currently stored board
+    const currentBoardMeta = currentBoards.find(b => b.name === d.board);
+    const gw = currentBoardMeta?.gridWidth || 50;
+    const gh = currentBoardMeta?.gridHeight || 50;
+
     return `<div class="wcp-popup">
         ${imgBlock(d.image)}
         ${twoCol(
         section('Details', 'fa-scroll', 'cyan', `
-                ${row('Race', inp('race', d.race, 'Human, Elf, Dwarf...'))}
-                ${row('Class', inp('charClass', d.charClass, 'Fighter, Wizard...'))}
+                ${row('Race', sel('race', d.race, buildCatalogSelOptions(cat.races, d.race)))}
+                ${row('Class', sel('charClass', d.charClass, buildCatalogSelOptions(cat.classes, d.charClass)))}
                 ${row('Level', num('level', d.level, '1'))}
                 ${row('Alignment', sel('alignment', d.alignment, ALIGNMENTS_OPT))}
                 ${row('Pronouns', inp('pronouns', d.pronouns, 'He/Him, She/Her...'))}
                 ${row('Aliases', inp('aliases', d.aliases, 'Other names...'))}
                 ${row('Values', inp('values', d.values, 'Honor, Freedom...'))}
-                ${row('Faction', inp('faction', d.faction, 'The Skeliri Clan...'))}
-                ${row('Location', inp('location', d.location, 'Ashknot Post...'))}
+                ${row('Faction', sel('faction', d.faction, buildCatalogSelOptions(cat.factions, d.faction)))}
+                ${row('Location', `<select class="wcp-input wcp-field wcp-location-select" data-field="location" data-locationmaps="${locationMapsJson}">${buildCatalogSelOptions(locationNames, d.location).map(([v, l]) => `<option value="${esc(v)}" ${v === (d.location || '') ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>`)}
+                <div class="wcp-board-row" ${currentBoards.length ? '' : 'style="display:none"'}>
+                    ${row('Board', sel('board', d.board, boardOpts))}
+                </div>
+                <div class="wcp-position-row" ${d.board ? '' : 'style="display:none"'}>
+                    <div class="wcp-row"><label class="wcp-label">Position</label><div class="wcp-field-wrap wcp-position-wrap">
+                        <input type="number" class="wcp-input wcp-field" data-field="boardX" value="${d.boardX ?? 0}" min="0" max="${gw - 1}" style="width:70px" />
+                        <span class="wcp-pos-sep">&times;</span>
+                        <input type="number" class="wcp-input wcp-field" data-field="boardY" value="${d.boardY ?? 0}" min="0" max="${gh - 1}" style="width:70px" />
+                        <span class="wcp-pos-hint wcp-pos-dims" style="font-size:0.75em;color:#888;"> (0–${gw - 1} × 0–${gh - 1})</span>
+                    </div></div>
+                </div>
             `),
         section('Stats', 'fa-chart-bar', 'yellow', `
                 <div class="wcp-stats-grid">
@@ -334,6 +390,19 @@ function buildClassForm(d) {
             ${row('Spell Preparation', inp('spellPreparation', d.spellPreparation, 'Known, Prepared...'))}
             ${row('Casting Type', inp('castingType', d.castingType, 'Full, Half, Third...'))}
             ${row('Subclass at Level', num('subclassLevel', d.subclassLevel, '3'))}
+        `)}
+        ${section('Preset Stats', 'fa-chart-simple', 'red', `
+            <div class="wcp-stats-grid">
+                ${ABILITY_NAMES.map(a => statBox(ABILITY_LABELS[a], a, d[a] ?? 10)).join('')}
+            </div>
+            ${twoCol(
+                row('Armor Class', num('ac', d.ac, '10')),
+                row('Speed', num('speed', d.speed, '30')),
+            )}
+            ${twoCol(
+                row('Base HP', num('hp', d.hp, '30')),
+                row('Max HP', num('maxHp', d.maxHp, '30')),
+            )}
         `)}
         ${section('Class Features', 'fa-star', 'purple', `
             <div class="wcp-dynamic-list" data-type="feature">
@@ -705,7 +774,13 @@ function generateContent(category, title, d) {
             parts.push(header + '.');
             if (d.pronouns) parts.push(`Pronouns: ${d.pronouns}.`);
             if (d.faction) parts.push(`Faction: ${d.faction}.`);
-            if (d.location) parts.push(`Location: ${d.location}.`);
+            if (d.location) {
+                let locLine = `Location: ${d.location}.`;
+                if (d.board) {
+                    locLine = `Location: ${d.location} — Board: ${d.board} at (${d.boardX ?? 0}, ${d.boardY ?? 0}).`;
+                }
+                parts.push(locLine);
+            }
             const stats = ABILITY_NAMES.map(a => `${a.toUpperCase()}: ${d[a] || 10}`).join(', ');
             parts.push(`Stats: ${stats}. AC: ${d.ac || 10}, HP: ${d.maxHp || 30}, Speed: ${d.speed || 30}.`);
             if (d.appearance) parts.push(`Appearance: ${d.appearance}`);
@@ -725,6 +800,18 @@ function generateContent(category, title, d) {
         case 'Classes': {
             parts.push(`${title} is a class${d.hitDie ? ` (Hit Die: ${d.hitDie})` : ''}.`);
             if (d.description) parts.push(d.description);
+            const presetStats = [
+                `STR ${d.str || 10}`,
+                `DEX ${d.dex || 10}`,
+                `CON ${d.con || 10}`,
+                `INT ${d.int || 10}`,
+                `WIS ${d.wis || 10}`,
+                `CHA ${d.cha || 10}`,
+                `AC ${d.ac || 10}`,
+                `HP ${d.hp || 0}/${d.maxHp || 0}`,
+                `Speed ${d.speed || 30}`,
+            ];
+            parts.push(`Preset Stats: ${presetStats.join(', ')}.`);
             if (d.features?.length) {
                 parts.push('Class Features: ' + d.features.map(f => `Level ${f.level}: ${f.name}`).join('; ') + '.');
             }
@@ -818,13 +905,13 @@ function generateContent(category, title, d) {
  * @param {string[]} [worldOptions] - If provided, show world selector (for new entries)
  * @returns {Promise<{title: string, dndData: any, content: string, keys: string[], world: string}|null>}
  */
-export async function showCategoryPopup(category, existingDndData, existingTitle, worldOptions) {
+export async function showCategoryPopup(category, existingDndData, existingTitle, worldOptions, catalog) {
     const defaults = getDefaults(category);
     const d = { ...defaults, ...(existingDndData || {}) };
 
     let formHtml;
     switch (category) {
-        case 'Characters': formHtml = buildCharacterForm(d); break;
+        case 'Characters': formHtml = buildCharacterForm(d, catalog); break;
         case 'Locations': formHtml = buildLocationForm(d); break;
         case 'Races': formHtml = buildRaceForm(d); break;
         case 'Classes': formHtml = buildClassForm(d); break;
@@ -924,6 +1011,56 @@ export function initWcpHandlers() {
     });
     $(document).on('change', '.wcp-item-category, .wcp-item-subcategory, .wcp-field[data-field="armorDexMode"], .wcp-field[data-field="resistanceEnabled"]', function () {
         refreshWorldItemFormState(document);
+    });
+
+    // Location → board cascade
+    $(document).on('change', '.wcp-location-select', function () {
+        const locationName = String($(this).val() || '');
+        let locationMaps = [];
+        try { locationMaps = JSON.parse($(this).attr('data-locationmaps') || '[]') || []; } catch (_) { /* ignore */ }
+
+        const locData = locationMaps.find(l => l.name === locationName);
+        const boards = locData?.boards || [];
+        const boardRow = $(this).closest('.wcp-section-body').find('.wcp-board-row');
+        const posRow = $(this).closest('.wcp-section-body').find('.wcp-position-row');
+        const boardSelect = boardRow.find('select[data-field="board"]');
+
+        if (boards.length > 0) {
+            // Repopulate board select
+            boardSelect.empty();
+            boardSelect.append('<option value="">—</option>');
+            for (const b of boards) {
+                boardSelect.append(`<option value="${b.name}">${b.name}</option>`);
+            }
+            boardRow.show();
+        } else {
+            boardSelect.empty().append('<option value="">—</option>');
+            boardRow.hide();
+        }
+        posRow.hide();
+        boardSelect.val('');
+    });
+
+    // Board → position cascade
+    $(document).on('change', 'select[data-field="board"]', function () {
+        const boardName = String($(this).val() || '');
+        const posRow = $(this).closest('.wcp-section-body').find('.wcp-position-row');
+        if (!boardName) { posRow.hide(); return; }
+
+        // Try to find grid dims from the location select's data
+        const locationSelect = $(this).closest('.wcp-section-body').find('.wcp-location-select');
+        const locationName = String(locationSelect.val() || '');
+        let locationMaps = [];
+        try { locationMaps = JSON.parse(locationSelect.attr('data-locationmaps') || '[]') || []; } catch (_) { /* ignore */ }
+        const locData = locationMaps.find(l => l.name === locationName);
+        const boardMeta = (locData?.boards || []).find(b => b.name === boardName);
+        const gw = boardMeta?.gridWidth || 50;
+        const gh = boardMeta?.gridHeight || 50;
+
+        posRow.find('input[data-field="boardX"]').attr({ min: 0, max: gw - 1 }).val(0);
+        posRow.find('input[data-field="boardY"]').attr({ min: 0, max: gh - 1 }).val(0);
+        posRow.find('.wcp-pos-dims').text(` (0–${gw - 1} × 0–${gh - 1})`);
+        posRow.show();
     });
 
     // Image file picker: click preview box → trigger file input
