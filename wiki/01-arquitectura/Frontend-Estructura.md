@@ -1,0 +1,177 @@
+---
+title: Frontend Estructura & Ecosistema de Cliente
+tags: [frontend, javascript, jquery, dom, css, ui, components, dnd]
+created: 2026-09-20
+author: DanielJHesseling / Antigravity AI
+---
+
+# Frontend Estructura & Ecosistema de Cliente
+
+Este documento describe la arquitectura de la interfaz de usuario de SillyTavern situada en `public/`, su estructura DOM en `index.html`, los patrones de interacción en JavaScript vanilla y jQuery, las hojas de estilo y la integración de las interfaces del motor RPG / D&D.
+
+---
+
+## 1. Topología del Directorio Frontend (`public/`)
+
+```
+public/
+├── index.html               # Documento DOM monolítico principal (~10,884 líneas)
+├── script.js                # Orquestador central de la aplicación (~12,000 líneas)
+├── style.css                # Estilos base del sistema e interfaz de usuario
+├── login.html               # Formulario de inicio de sesión para modo multi-usuario
+│
+├── css/                     # Capas de estilos modulares
+│   ├── campaigns.css        # Tarjetas de campaña y panel de selección en bienvenida (1,301 líneas)
+│   ├── dnd-character.css    # Ficha de personaje D&D, inventario, ranuras y estados (1,330 líneas)
+│   ├── world-map.css        # Contenedor zoomable de mapas, niebla y tokens (1,383 líneas)
+│   ├── dynamic-context-manager.css # Modal y reglas de contexto dinámico (355 líneas)
+│   ├── chat-enhancements.css# Tooltips de entidades y avatares inline en chat (149 líneas)
+│   ├── st-tailwind.css      # Utilidades pre-generadas de estilo Tailwind
+│   └── ...
+│
+├── lib/                     # Bibliotecas de terceros cargadas sin empaquetador
+│   ├── jquery-3.5.1.min.js  # Motor de selección y manipulación del DOM
+│   ├── jquery-ui.min.js     # Soporte de arrastre (drag-and-drop) y redimensionado
+│   ├── toastr.min.js        # Notificaciones emergentes
+│   ├── select2.min.js       # Menús desplegables con búsqueda integrada
+│   └── eventemitter.js      # Bus de eventos desacoplado
+│
+└── scripts/                 # Módulos ES funcionales (más de 80 archivos)
+    ├── party.js             # Gestor de grupo RPG, ficha D&D e inventario (4,734 líneas)
+    ├── dnd-system.js        # Lógica matemática D&D 5e, slots, dados y modificadores (1,327 líneas)
+    ├── dynamic-context-manager.js # Gestor de contexto dinámico y tokens (1,919 líneas)
+    ├── campaigns.js         # Vista de campañas por mundos y sesiones de chat (656 líneas)
+    ├── world-map-renderer.js# Motor de renderizado de mapas con zoom y cuadrícula (927 líneas)
+    ├── world-content-popups.js # Formularios emergentes de entidades D&D (1,109 líneas)
+    ├── chat-enhancements.js # Resaltado de lorebook y avatares de diálogo en chat (663 líneas)
+    ├── active-instructions.js # Inyector de instrucciones personalizadas en el prompt (286 líneas)
+    ├── slash-commands.js    # Parser y ejecutor de comandos de barra `/`
+    ├── world-info.js        # Editor y evaluador de Lorebooks
+    ├── popup.js             # Sistema unificado de diálogos modales (Popup)
+    └── ...
+```
+
+---
+
+## 2. Anatomía del DOM Monolítico (`index.html`)
+
+A diferencia de las SPAs contemporáneas que montan componentes bajo demanda, `public/index.html` contiene el esqueleto completo de todos los paneles, cajones (drawers), modales y plantillas ocultas embebidos en el marcado estático:
+
+```mermaid
+graph TD
+    Body[body.no-blur]
+    Body --> TopBar[#top-bar: Barra superior de accesos rápidos]
+    Body --> TopSettings[#top-settings-holder: Cajones retráctiles]
+    
+    subgraph Cajones_Drawers [Cajones de Configuración]
+        TopSettings --> LeftNav[#left-nav-panel: Parámetros de Samplers & Presets]
+        TopSettings --> RightNav[#right-nav-panel: Ajustes de interfaz y extensiones]
+        TopSettings --> CharPanel[#character-management-panel: Listado y edición de personajes]
+    end
+    
+    Body --> ChatHolder[#chat: Contenedor principal de mensajes]
+    ChatHolder --> MessageTemplate[Plantillas de mensaje: .mes / .mes_text]
+    
+    Body --> FormHolder[#form_sheld: Área de entrada de texto del usuario]
+    FormHolder --> SendArea[#send_textarea & Botones de envío / impersonar / regenerar]
+    
+    Body --> ModalsHolder[Modales y Diálogos Superpuestos]
+    subgraph RPG_Modals [Nuevas Interfaces del Motor RPG]
+        ModalsHolder --> PartyDrawer[#party_drawer: Barra de estado del grupo en vivo]
+        ModalsHolder --> DndCharSheet[#dnd_character_modal: Ficha D&D interactiva]
+        ModalsHolder --> WorldMapModal[#world_map_modal: Visor de mapas y tableros]
+        ModalsHolder --> DynCtxModal[#dynamic_context_modal: Panel de contexto dinámico]
+        ModalsHolder --> DiceRollOverlay[#combat_dice_overlay: Animación de dados de combate]
+    end
+```
+
+### Plantillas Ocultas (`display: none`)
+Muchos componentes reutilizables existen como elementos ocultos en `index.html` que jQuery clona mediante `.clone()` cuando se requiere una nueva instancia (ej. `#entry_edit_template` para entradas de lorebook, o filas de inventario).
+
+---
+
+## 3. Arquitectura del Orquestador (`script.js`)
+
+`script.js` es el punto neurálgico del cliente. Exporta las variables de estado reactivo global consumidas por todos los módulos auxiliares:
+
+- `chat`: Array de objetos que contiene el historial de mensajes de la conversación abierta.
+- `chat_metadata`: Objeto de metadatos persistido en la primera línea del archivo JSONL.
+- `characters`: Catálogo en memoria de todas las tarjetas de personaje cargadas.
+- `this_chid`: Identificador del personaje actualmente seleccionado.
+- `selected_group`: Identificador del grupo si el chat es multifuncional.
+- `eventSource`: Instancia de `EventEmitter` para la señalización asíncrona de eventos.
+
+### Inicialización de los Módulos del Fork RPG
+Al final de la rutina `firstLoadInit()` en `script.js`, se inicializan los subsistemas de juego creados en este fork:
+
+```javascript
+// public/script.js (Línea ~765)
+initPartyPanel();              // Monta la UI del grupo y restaura estado desde chat_metadata
+initActiveInstructions();      // Registra observadores de instrucciones de usuario
+initDynamicContextManager();   // Arranca la máquina de estados de campaña
+initChatEnhancements();        // Conecta el observador de mutación para lorebook y avatares
+```
+
+---
+
+## 4. Pipeline de Inyección del Estado de Personaje y Grupo
+
+Cuando se prepara una petición para enviar a la IA en `script.js` (función `addPersonaDescriptionExtensionPrompt`), el sistema evalúa si existe un grupo RPG activo:
+
+```javascript
+// public/script.js (Línea ~3137)
+const partyLeader = getActivePartyLeader();
+
+if (partyLeader) {
+    // Si hay un líder de grupo, sus estadísticas D&D reemplazan la persona global
+    const playerStateLines = [
+        '[SYSTEM: PLAYER_STATE]',
+        `HP: ${partyLeader.hp ?? 0}/${partyLeader.maxHp ?? 0}`,
+        `EXP: ${partyLeader.xp ?? 0}/${partyLeader.xpNext ?? 0}`,
+        `Nivel: ${partyLeader.level ?? 1}`,
+        `Oro: ${partyLeader.gold ?? 0}`,
+        `Plata: ${partyLeader.silver ?? 0}`,
+        `Cobre: ${partyLeader.copper ?? 0}`,
+        `Inventario: ${partyLeader.inventory || ''}`,
+        `Estado: ${partyLeader.conditions || ''}`,
+    ].join('\n');
+
+    setExtensionPrompt('PERSONA_PLAYER_STATE', playerStateLines, extension_prompt_types.IN_PROMPT, 0, false, extension_prompt_roles.SYSTEM);
+}
+
+// Inyección del resumen del resto de miembros del grupo
+const partyDescription = getPartyDescription();
+if (partyDescription) {
+    setExtensionPrompt('PARTY_MEMBERS', `[SYSTEM: PARTY INFORMATION]\n${partyDescription}`, extension_prompt_types.IN_PROMPT, 0, false, extension_prompt_roles.SYSTEM);
+}
+
+// Inyección de ubicación geográfica y tablero táctico
+const currentLocName = chat_metadata?.['currentLocation'] || '';
+const currentBoardName = chat_metadata?.['currentBoard'] || '';
+if (currentLocName || currentBoardName) {
+    // Inyecta contexto de tablero y posición de tokens
+}
+```
+
+---
+
+## 5. Renderizado de Mensajes y Sanitización
+
+El ciclo de presentación de mensajes de chat opera bajo las siguientes etapas:
+
+1. **Recepción del Texto Crudo**: Llega vía streaming SSE o como bloque final.
+2. **Transformación Markdown**: **Showdown.js** procesa negritas, cursivas, tablas y bloques de código con extensiones personalizadas (`showdown-exclusion.js`, etc.).
+3. **Desinfección (Sanitización)**: **DOMPurify** limpia el HTML resultante para filtrar etiquetas potencialmente maliciosas (`<script>`, `<iframe>`, etc.).
+4. **Inserción en el DOM**: Se inyecta en el elemento `.mes_text` correspondiente.
+5. **Post-Procesamiento (`chat-enhancements.js`)**:
+   - Escanea el texto en busca de palabras clave activas de Lorebooks y las envuelve en etiquetas `<span class="wi-highlight">` con tooltips informativos.
+   - Detecta diálogos entre comillas e inserta pequeños avatares flotantes indicando quién pronuncia cada frase.
+
+---
+
+## 6. Enlaces Relacionados
+- [[Arquitectura-General]]: Visión sistémica global.
+- [[Ciclo-De-Vida-Prompt]]: Flujo detallado desde la pulsación de tecla hasta la respuesta del LLM.
+- [[Sistema-Party]]: Estructura interna de `party.js` y gestión del grupo.
+- [[Campanas-Mapas-Tableros]]: Mecánicas del renderizador de mapas en `world-map-renderer.js`.
+- [[PROBLEMAS_TECNICOS]]: Análisis de rendimiento DOM y vulnerabilidades de interpolación.
