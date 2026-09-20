@@ -1,3 +1,11 @@
+import { getActiveRuleset } from './game-engine/rules/ruleset.js';
+
+/**
+ * The rule pack in force. Bound once at load: changing packs takes a reload, which is a
+ * fair price for keeping these as plain exports that fifty call sites already import.
+ */
+const RULES = getActiveRuleset();
+
 /**
  * D&D Character System Module
  * Central module for D&D mechanics: stats, items, equipment, relationships, memories.
@@ -188,175 +196,42 @@
  * @property {MapPosition} mapPosition - Character's position on the world map grid
  */
 
-/** Equipment slot constants */
-export const EQUIPMENT_SLOTS = {
-    HEAD: 'head',
-    BODY: 'body',
-    HANDS: 'hands',
-    WEAPON: 'weapon',
-    SHIELD: 'shield',
-    RING: 'ring',
-    FEET: 'feet',
-};
+export const EQUIPMENT_SLOTS = RULES.slots;
 
-/** Slot display info */
-export const SLOT_INFO = {
-    [EQUIPMENT_SLOTS.HEAD]: { label: 'Head', icon: 'fa-hat-wizard' },
-    [EQUIPMENT_SLOTS.BODY]: { label: 'Body', icon: 'fa-shirt' },
-    [EQUIPMENT_SLOTS.HANDS]: { label: 'Hands', icon: 'fa-hand' },
-    [EQUIPMENT_SLOTS.WEAPON]: { label: 'Weapon', icon: 'fa-sword' },
-    [EQUIPMENT_SLOTS.SHIELD]: { label: 'Shield', icon: 'fa-shield-halved' },
-    [EQUIPMENT_SLOTS.RING]: { label: 'Ring', icon: 'fa-ring' },
-    [EQUIPMENT_SLOTS.FEET]: { label: 'Feet', icon: 'fa-shoe-prints' },
-};
+export const SLOT_INFO = RULES.slotInfo;
 
-export const RELATIONSHIP_CATEGORIES = ['normal', 'amoroso', 'familiar'];
-export const RELATIONSHIP_SCORE_MIN = -100;
-export const RELATIONSHIP_SCORE_MAX = 100;
+export const RELATIONSHIP_CATEGORIES = RULES.relationships.categories;
+export const RELATIONSHIP_SCORE_MIN = RULES.relationships.scoreMin;
+export const RELATIONSHIP_SCORE_MAX = RULES.relationships.scoreMax;
 
-export const ITEM_TYPES = ['weapon', 'armor', 'gear'];
+export const ITEM_TYPES = RULES.items.types;
 
-export const ITEM_CATEGORIES = ['weapon', 'armor', 'gear', 'magic', 'mount_vehicle_trade'];
+export const ITEM_CATEGORIES = RULES.items.categories;
 
-export const ITEM_CATEGORY_OPTIONS = [
-    ['weapon', 'Weapons'],
-    ['armor', 'Armor & Shields'],
-    ['gear', 'Adventuring Gear'],
-    ['magic', 'Magic Items'],
-    ['mount_vehicle_trade', 'Mounts, Vehicles & Trade'],
-];
+export const ITEM_CATEGORY_OPTIONS = RULES.items.categoryOptions;
 
-export const ITEM_SUBCATEGORY_OPTIONS = {
-    weapon: [
-        ['generic', 'Generic Weapon'],
-        ['simple_melee', 'Simple (Melee)'],
-        ['simple_ranged', 'Simple (Ranged)'],
-        ['martial_melee', 'Martial (Melee)'],
-        ['martial_ranged', 'Martial (Ranged)'],
-    ],
-    armor: [
-        ['generic', 'Generic Armor'],
-        ['light_armor', 'Light Armor'],
-        ['medium_armor', 'Medium Armor'],
-        ['heavy_armor', 'Heavy Armor'],
-        ['shield', 'Shield'],
-    ],
-    gear: [
-        ['generic', 'Generic Gear'],
-        ['basic_consumable', 'Basic Consumable'],
-        ['exploration_tool', 'Exploration Tool'],
-        ['magic_focus', 'Magical Focus'],
-        ['artisan_tool', 'Artisan Tool'],
-        ['container', 'Container'],
-    ],
-    magic: [
-        ['generic', 'Generic Magic Item'],
-        ['potion_oil', 'Potions & Oils'],
-        ['scroll', 'Scrolls'],
-        ['magic_weapon_armor', 'Magic Weapon / Armor'],
-        ['ring_wand_staff', 'Rings, Wands & Staves'],
-        ['wondrous', 'Wondrous Item'],
-    ],
-    mount_vehicle_trade: [
-        ['generic', 'Generic Entry'],
-        ['mount', 'Mount'],
-        ['vehicle', 'Vehicle'],
-        ['trade_good', 'Trade Good'],
-    ],
-};
+export const ITEM_SUBCATEGORY_OPTIONS = RULES.items.subcategoryOptions;
 
-export const ITEM_SUBCATEGORY_META = {
-    generic: { label: 'Generic', primaryType: 'gear', suggestedSlot: null },
-    simple_melee: { label: 'Simple (Melee)', primaryType: 'weapon', suggestedSlot: EQUIPMENT_SLOTS.WEAPON, weapon: true, damage: true, range: false, properties: true },
-    simple_ranged: { label: 'Simple (Ranged)', primaryType: 'weapon', suggestedSlot: EQUIPMENT_SLOTS.WEAPON, weapon: true, damage: true, range: true, properties: true },
-    martial_melee: { label: 'Martial (Melee)', primaryType: 'weapon', suggestedSlot: EQUIPMENT_SLOTS.WEAPON, weapon: true, damage: true, range: false, properties: true },
-    martial_ranged: { label: 'Martial (Ranged)', primaryType: 'weapon', suggestedSlot: EQUIPMENT_SLOTS.WEAPON, weapon: true, damage: true, range: true, properties: true },
-    light_armor: { label: 'Light Armor', primaryType: 'armor', suggestedSlot: EQUIPMENT_SLOTS.BODY, armor: true, armorDexMode: 'full', stealth: false },
-    medium_armor: { label: 'Medium Armor', primaryType: 'armor', suggestedSlot: EQUIPMENT_SLOTS.BODY, armor: true, armorDexMode: 'max_2', stealth: true },
-    heavy_armor: { label: 'Heavy Armor', primaryType: 'armor', suggestedSlot: EQUIPMENT_SLOTS.BODY, armor: true, armorDexMode: 'none', stealth: true, strengthRequirement: true },
-    shield: { label: 'Shield', primaryType: 'armor', suggestedSlot: EQUIPMENT_SLOTS.SHIELD, armor: true, armorDexMode: 'none', shield: true },
-    basic_consumable: { label: 'Basic Consumable', primaryType: 'gear', suggestedSlot: null, gear: true, consumable: true, cost: true, autoConsumable: true, hideCharges: true, showStack: true },
-    exploration_tool: { label: 'Exploration Tool', primaryType: 'gear', suggestedSlot: EQUIPMENT_SLOTS.HANDS, gear: true, tool: true, cost: true },
-    magic_focus: { label: 'Magical Focus', primaryType: 'gear', suggestedSlot: EQUIPMENT_SLOTS.HANDS, gear: true, focus: true, cost: true, showCharges: true, showSpellcasting: true },
-    artisan_tool: { label: 'Artisan Tool', primaryType: 'gear', suggestedSlot: EQUIPMENT_SLOTS.HANDS, gear: true, tool: true, cost: true },
-    container: { label: 'Container', primaryType: 'gear', suggestedSlot: 'container', gear: true, capacity: true, cost: true },
-    potion_oil: { label: 'Potions & Oils', primaryType: 'gear', suggestedSlot: null, magic: true, rarity: true, consumable: true, uses: false, attunement: false, cost: true, autoConsumable: true, hideAttunement: true, hideCharges: true, showLinkedSpell: false, showSpellcasting: false, showWeaponMath: false, showArmorMath: false },
-    scroll: { label: 'Scrolls', primaryType: 'gear', suggestedSlot: null, magic: true, rarity: true, consumable: true, uses: false, attunement: false, cost: true, autoConsumable: true, hideAttunement: true, hideCharges: true, showLinkedSpell: true, showSpellcasting: false, showWeaponMath: false, showArmorMath: false },
-    magic_weapon_armor: { label: 'Magic Weapon / Armor', primaryType: 'gear', suggestedSlot: EQUIPMENT_SLOTS.WEAPON, magic: true, rarity: true, damage: true, armor: true, magicalBonus: true, attunement: true, autoConsumable: false, hideAttunement: false, hideCharges: false, showLinkedSpell: false, showSpellcasting: false, showWeaponMath: true, showArmorMath: true },
-    ring_wand_staff: { label: 'Rings, Wands & Staves', primaryType: 'gear', suggestedSlot: EQUIPMENT_SLOTS.RING, magic: true, rarity: true, uses: true, magicalBonus: true, attunement: true, autoConsumable: false, hideAttunement: false, hideCharges: false, showLinkedSpell: false, showSpellcasting: true, showWeaponMath: false, showArmorMath: false },
-    wondrous: { label: 'Wondrous Item', primaryType: 'gear', suggestedSlot: null, magic: true, rarity: true, uses: true, attunement: true, cost: true, autoConsumable: false, hideAttunement: false, hideCharges: false, showLinkedSpell: false, showSpellcasting: true, showWeaponMath: false, showArmorMath: false },
-    mount: { label: 'Mount', primaryType: 'gear', suggestedSlot: null, transport: true, capacity: true, cost: true },
-    vehicle: { label: 'Vehicle', primaryType: 'gear', suggestedSlot: null, transport: true, capacity: true, vehicle: true, cost: true },
-    trade_good: { label: 'Trade Good', primaryType: 'gear', suggestedSlot: null, trade: true, cost: true },
-};
+export const ITEM_SUBCATEGORY_META = RULES.items.subcategoryMeta;
 
-export const ITEM_RARITY_OPTIONS = ['', 'Common', 'Uncommon', 'Rare', 'Very Rare', 'Legendary', 'Artifact'];
-export const ITEM_RECHARGE_OPTIONS = ['', 'At Dawn', 'At Dusk', 'Short Rest', 'Long Rest', 'Manual'];
-export const ITEM_CAPACITY_UNITS = ['', 'lb', 'cu ft', 'slots', 'creatures', 'charges'];
-export const ITEM_FOCUS_TYPES = ['', 'Arcane', 'Divine', 'Druidic'];
-export const ITEM_ARMOR_DEX_MODE_OPTIONS = [
-    ['full', 'Full'],
-    ['max_2', 'Max +2'],
-    ['none', 'None'],
-];
-export const ITEM_WEAPON_DAMAGE_TYPE_OPTIONS = [
-    ['', 'None'],
-    ['Slashing', 'Cortante'],
-    ['Piercing', 'Perforante'],
-    ['Bludgeoning', 'Contundente'],
-];
+export const ITEM_RARITY_OPTIONS = RULES.items.rarity;
+export const ITEM_RECHARGE_OPTIONS = RULES.items.recharge;
+export const ITEM_CAPACITY_UNITS = RULES.items.capacityUnits;
+export const ITEM_FOCUS_TYPES = RULES.items.focusTypes;
+export const ITEM_ARMOR_DEX_MODE_OPTIONS = RULES.items.armorDexModes;
+export const ITEM_WEAPON_DAMAGE_TYPE_OPTIONS = RULES.items.damageTypes;
 
-export const ITEM_ARMOR_RESISTANCE_OPTIONS = [
-    'Acid', 'Bludgeoning', 'Cold', 'Fire', 'Force', 'Lightning',
-    'Necrotic', 'Piercing', 'Poison', 'Psychic', 'Radiant', 'Slashing', 'Thunder',
-    'Magical Bludgeoning', 'Magical Piercing', 'Magical Slashing',
-];
+export const ITEM_ARMOR_RESISTANCE_OPTIONS = RULES.items.armorResistances;
 
-export const ITEM_MAGIC_BONUS_OPTIONS = [0, 1, 2, 3].map(value => [String(value), value > 0 ? `+${value}` : `${value}`]);
+export const ITEM_MAGIC_BONUS_OPTIONS = RULES.items.magicBonuses;
 
-/** @type {{ key: keyof DndItem, label: string, subcategories: string[] }[]} */
-export const ITEM_WEAPON_FLAG_DEFINITIONS = [
-    { key: 'finesse', label: 'Finesse (Sutil)', subcategories: ['simple_melee', 'martial_melee'] },
-    { key: 'heavy', label: 'Heavy (Pesada)', subcategories: ['simple_melee', 'martial_melee'] },
-    { key: 'light', label: 'Light (Ligera)', subcategories: ['simple_melee', 'martial_melee'] },
-    { key: 'reach', label: 'Reach (Alcance)', subcategories: ['martial_melee'] },
-    { key: 'thrown', label: 'Thrown (Lanzable)', subcategories: ['generic', 'simple_melee', 'simple_ranged', 'martial_melee', 'martial_ranged'] },
-    { key: 'twoHanded', label: 'Two-Handed (Dos Manos)', subcategories: ['simple_melee', 'martial_melee'] },
-    { key: 'versatile', label: 'Versatile (Versátil)', subcategories: ['simple_melee', 'martial_melee'] },
-    { key: 'ammunition', label: 'Ammunition (Munición)', subcategories: ['simple_ranged', 'martial_ranged'] },
-    { key: 'loading', label: 'Loading (Carga)', subcategories: ['simple_ranged', 'martial_ranged'] },
-    { key: 'magical', label: 'Magical (Mágico)', subcategories: ['generic', 'simple_melee', 'simple_ranged', 'martial_melee', 'martial_ranged', 'magic_weapon_armor'] },
-    { key: 'cursed', label: 'Cursed (Maldito)', subcategories: ['generic', 'simple_melee', 'simple_ranged', 'martial_melee', 'martial_ranged', 'magic_weapon_armor'] },
-];
+export const ITEM_WEAPON_FLAG_DEFINITIONS = RULES.items.weaponFlags;
 
-/** @type {{ key: keyof DndItem, label: string, subcategories: string[] }[]} */
-export const ITEM_ARMOR_FLAG_DEFINITIONS = [
-    { key: 'stealthDisadvantage', label: 'Stealth Disadvantage (Desventaja)', subcategories: ['generic', 'light_armor', 'medium_armor', 'heavy_armor'] },
-    { key: 'magical', label: 'Magical (Mágico)', subcategories: ['generic', 'light_armor', 'medium_armor', 'heavy_armor', 'shield'] },
-    { key: 'cursed', label: 'Cursed (Maldito)', subcategories: ['generic', 'light_armor', 'medium_armor', 'heavy_armor', 'shield'] },
-    { key: 'attunement', label: 'Attunement Required (Sintonización)', subcategories: ['generic', 'heavy_armor', 'shield'] },
-    { key: 'adamantine', label: 'Adamantine (Adamantina)', subcategories: ['generic', 'light_armor', 'medium_armor', 'heavy_armor', 'shield'] },
-    { key: 'mithral', label: 'Mithral (Mitral)', subcategories: ['generic', 'light_armor', 'medium_armor', 'heavy_armor', 'shield'] },
-    { key: 'resistanceEnabled', label: 'Resistances (Resistencias)', subcategories: ['generic', 'light_armor', 'medium_armor', 'heavy_armor', 'shield'] },
-];
+export const ITEM_ARMOR_FLAG_DEFINITIONS = RULES.items.armorFlags;
 
-/** @type {{ key: keyof DndItem, label: string, subcategories: string[] }[]} */
-export const ITEM_GEAR_FLAG_DEFINITIONS = [
-    { key: 'stackable', label: 'Stackable', subcategories: ['basic_consumable', 'exploration_tool', 'magic_focus', 'artisan_tool', 'container'] },
-    { key: 'toolProficiency', label: 'Tool Proficiency Required', subcategories: ['exploration_tool', 'artisan_tool'] },
-    { key: 'attunement', label: 'Attunement Required (Sintonizacion)', subcategories: ['magic_focus'] },
-];
+export const ITEM_GEAR_FLAG_DEFINITIONS = RULES.items.gearFlags;
 
-export const ITEM_LINKED_ABILITY_OPTIONS = [
-    ['', 'None'],
-    ['strength', 'Strength'],
-    ['dexterity', 'Dexterity'],
-    ['constitution', 'Constitution'],
-    ['intelligence', 'Intelligence'],
-    ['wisdom', 'Wisdom'],
-    ['charisma', 'Charisma'],
-    ['sleight_of_hand', 'Dexterity (Sleight of Hand)'],
-];
+export const ITEM_LINKED_ABILITY_OPTIONS = RULES.items.linkedAbilities;
 
 const ITEM_DEFAULTS = {
     id: '',
@@ -436,26 +311,11 @@ const ITEM_DEFAULTS = {
     containerItemId: '',
 };
 
-/** D&D 5e Alignments */
-export const ALIGNMENTS = [
-    'Lawful Good', 'Neutral Good', 'Chaotic Good',
-    'Lawful Neutral', 'True Neutral', 'Chaotic Neutral',
-    'Lawful Evil', 'Neutral Evil', 'Chaotic Evil',
-];
+export const ALIGNMENTS = RULES.character.alignments;
 
-/** D&D 5e Standard Conditions */
-export const CONDITIONS = [
-    'Blinded', 'Charmed', 'Deafened', 'Frightened', 'Grappled',
-    'Incapacitated', 'Invisible', 'Paralyzed', 'Petrified',
-    'Poisoned', 'Prone', 'Restrained', 'Stunned', 'Unconscious',
-    'Exhaustion',
-];
+export const CONDITIONS = RULES.character.conditions;
 
-/** Stats that can be modified by equipment */
-export const MODIFIABLE_STATS = [
-    'armorClass', 'strength', 'dexterity', 'constitution',
-    'intelligence', 'wisdom', 'charisma', 'speed', 'maxHp',
-];
+export const MODIFIABLE_STATS = RULES.character.modifiableStats;
 
 /**
  * Normalizes the many spellings of a D&D entity type (singular/plural, any case)

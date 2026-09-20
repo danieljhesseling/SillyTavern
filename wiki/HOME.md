@@ -43,6 +43,8 @@ mindmap
       [[PROBLEMAS_TECNICOS]]
       [[PROPUESTAS_MEJORA]]
       [[ROADMAP]]
+      [[POR_HACER]]
+      [[PROPUESTA_JUEGO_DND_GLOOMHAVEN_PERSONA]]
     Guías & Referencia
       [[Mapa-Codigo-Archivos]]
       [[Guia-Desarrollo-Flujo]]
@@ -82,7 +84,9 @@ El núcleo de juego de rol agregado en la rama `my-silly` con más de 24,000 lí
 Diagnóstico crítico y catálogo exhaustivo de propuestas de mejora:
 - [[PROBLEMAS_TECNICOS]]: **Auditoría profunda** con 15 hallazgos críticos de seguridad (XSS, CSP), desincronización de estado, cuellos de botella de memoria y ausencia de tests.
 - [[PROPUESTAS_MEJORA]]: **Catálogo de 200 propuestas técnicas estructuradas** en 10 áreas estratégicas (arquitectura, seguridad, D&D, VTT, agentes, UI/UX, bases de datos y DevOps).
-- [[ROADMAP]]: **Plan priorizado** que filtra el catálogo por coste real de fork y lo agrupa en 7 baterías de trabajo ejecutables, más 8 propuestas propias y una lista de lo que conviene descartar.
+- [[PROPUESTA_JUEGO_DND_GLOOMHAVEN_PERSONA]]: **Propuesta de Motor Híbrido RPG** (Persona + Gloomhaven + D&D 5e): combate táctico algorítmico 0 tokens, social links con perks de combate, calendario y lienzo blanco de world building.
+- [[ROADMAP]]: **El plan de trabajo único.** Reconcilia la auditoría, el catálogo y el diseño de juego en 6 fases ordenadas por lo que desbloquean, más las transversales de economía de tokens. Cada fase termina en algo jugable.
+- [[POR_HACER]]: **Lista viva de pendientes**, ordenada por lo que desbloquea. Marca con 🖥️ las tareas que convierten motor construido en juego jugable.
 
 ### 5. 🛠️ Guías de Desarrollo & Referencia Rápida
 Herramientas para desarrolladores y agentes de IA:
@@ -102,8 +106,10 @@ Si eres un agente de IA interactuando con este repositorio, sigue estas directri
 | Intervenir en los mapas, cuadrícula o tokens | [[Campanas-Mapas-Tableros]] | `public/scripts/world-map-renderer.js` |
 | Añadir nuevos comandos de barra `/` | [[SlashCommands-Macros]] | `public/scripts/slash-commands.js` |
 | Solucionar una vulnerabilidad o condición de carrera | [[PROBLEMAS_TECNICOS]] | `src/server-main.js` & `party.js` |
-| Decidir en qué trabajar a continuación | [[ROADMAP]] | Baterías 0 a 6 |
-| Integrar cambios de upstream sin romper el fork | [[ROADMAP]] (Batería 0) | `.prettierignore` & `public/index.html` |
+| Decidir en qué trabajar a continuación | [[ROADMAP]] | Fases A a F |
+| Reducir el gasto en tokens | [[ROADMAP]] §1 y Transversales | `dynamic-context-manager.js` |
+| Añadir tipos de arma, daño o condiciones | [[ROADMAP]] Fase C | `game-engine/rules/default-ruleset.js` (son datos, no código) |
+| Integrar cambios de upstream sin romper el fork | [[Guia-Desarrollo-Flujo]] §2 | `.vscode/settings.json` & `public/index.html` |
 | Entender cómo se inyectan los datos al LLM | [[Ciclo-De-Vida-Prompt]] | `public/script.js` (~línea 3137) |
 | Localizar un archivo en el proyecto | [[Mapa-Codigo-Archivos]] | Índice del repositorio |
 

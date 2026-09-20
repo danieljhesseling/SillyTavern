@@ -1,0 +1,164 @@
+/* ============================================================
+   COMBAT LOG  (wiki/ROADMAP.md, Fase B4)
+
+   The frames are pixel art, so every scaling step here is nearest-neighbour and the
+   border-image slices land on the amber trim measured from the source art
+   (25px on the panel, 20px on the header bar).
+   ============================================================ */
+
+.combat-log-panel {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    font-size: 0.78rem;
+    color: #d8d2c4;
+    image-rendering: pixelated;
+}
+
+.cl-header {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 12px 18px;
+    color: #ffd98a;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    border-image: url('../img/game-engine/log-header.png') 21 20 fill round;
+    border-width: 21px 20px;
+    border-style: solid;
+    image-rendering: pixelated;
+}
+
+.cl-header .fa-scroll { color: #f0be5a; }
+.cl-title { flex: 1; }
+
+.cl-round-badge {
+    padding: 1px 8px;
+    font-size: 0.68rem;
+    color: #0e0e14;
+    background: #f0be5a;
+    border-radius: 2px;
+    font-weight: 700;
+}
+
+.cl-collapse {
+    background: none;
+    border: none;
+    color: #c9bfa6;
+    cursor: pointer;
+    padding: 2px 4px;
+}
+
+.cl-collapse:hover { color: #ffd98a; }
+
+.cl-body {
+    flex: 1;
+    min-height: 120px;
+    max-height: 340px;
+    overflow-y: auto;
+    padding: 16px 20px;
+    margin-top: -6px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    border-image: url('../img/game-engine/log-panel.png') 21 25 fill round;
+    border-width: 21px 25px;
+    border-style: solid;
+    image-rendering: pixelated;
+}
+
+.combat-log-panel.collapsed .cl-body { display: none; }
+
+.cl-empty {
+    opacity: 0.45;
+    font-style: italic;
+    text-align: center;
+    padding: 12px 0;
+}
+
+.cl-row {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    padding: 2px 0;
+    line-height: 1.45;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.cl-icon {
+    flex-shrink: 0;
+    width: 13px;
+    text-align: center;
+    opacity: 0.85;
+    font-size: 0.72rem;
+}
+
+.cl-text { flex: 1; }
+
+.cl-actor {
+    font-weight: 700;
+    color: #e8dcc0;
+    margin-right: 4px;
+}
+
+/* The breakdown is the whole point: the player can audit any result the engine claims. */
+.cl-roll {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    flex-shrink: 0;
+    font-family: 'Courier New', monospace;
+    font-size: 0.68rem;
+}
+
+.cl-formula { opacity: 0.55; }
+.cl-dice { opacity: 0.8; }
+
+.cl-total {
+    font-weight: 700;
+    color: #ffe9b8;
+    padding: 0 4px;
+    background: rgba(240, 190, 90, 0.14);
+    border-radius: 2px;
+}
+
+.cl-dc { opacity: 0.5; }
+
+.cl-nat {
+    padding: 0 4px;
+    border-radius: 2px;
+    font-weight: 700;
+    font-size: 0.62rem;
+}
+
+.cl-nat-20 { background: #2f7d32; color: #eaffea; }
+.cl-nat-1 { background: #8e2020; color: #ffeaea; }
+
+/* Colour by outcome, so a fight can be read by scanning rather than reading. */
+.cl-round {
+    color: #f0be5a;
+    font-weight: 700;
+    border-top: 1px solid rgba(240, 190, 90, 0.28);
+    margin-top: 5px;
+    padding-top: 5px;
+}
+
+.cl-move .cl-icon { color: #7fb5d8; }
+.cl-attack .cl-icon { color: #d8a24a; }
+.cl-hit .cl-icon { color: #e07a4a; }
+.cl-miss { opacity: 0.6; }
+.cl-crit .cl-icon { color: #ffd54a; }
+.cl-crit { background: rgba(255, 213, 74, 0.07); }
+.cl-damage .cl-icon { color: #d25050; }
+.cl-heal .cl-icon { color: #5fbf7a; }
+.cl-down { color: #ff9a9a; }
+.cl-down .cl-icon { color: #d23c3c; }
+.cl-loot .cl-icon { color: #ffd54a; }
+.cl-system { opacity: 0.55; font-style: italic; }
+
+.cl-body::-webkit-scrollbar { width: 7px; }
+.cl-body::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.25); }
+.cl-body::-webkit-scrollbar-thumb {
+    background: rgba(240, 190, 90, 0.35);
+    border-radius: 3px;
+}

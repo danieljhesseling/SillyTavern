@@ -3,6 +3,9 @@
  * Provides zoomable world map with location markers and location/board grid views with character tokens.
  */
 
+import { parseCellKey } from './game-engine/board/terrain.js';
+import { getCellVisibility } from './game-engine/board/fog-of-war.js';
+
 // ============================================================
 //  ZOOMABLE CONTAINER ENGINE
 // ============================================================
@@ -451,6 +454,7 @@ export function renderWorldMapView(target, worldMapUrl, locationMaps, callbacks 
  * @property {number} [maxHp]
  * @property {boolean} [isEnemy]
  * @property {boolean} [isNPC]
+ * @property {number} [sightFeet] - Vision radius for fog of war; defaults when absent.
  */
 
 /**
@@ -482,6 +486,12 @@ const locationViewStateMemory = new Map();
  * @param {number[]} [options.draggableTokenIds] - Only these token IDs can be dragged. If absent, all tokens are draggable.
  * @param {(tokenId: number, tentativeGX: number, tentativeGY: number) => HighlightCell[]} [options.onTokenDragging] - Called during drag mousemove for live highlight update.
  * @param {string} [options.viewStateKey] - Optional explicit key to persist zoom/pan/grid state across re-renders.
+ * @param {import('./game-engine/board/terrain.js').BoardTerrain|null} [options.terrain] - Walls, cover, difficult ground and doors.
+ * @param {import('./game-engine/board/fog-of-war.js').BoardFog|null} [options.fog] - Explored memory.
+ * @param {Set<string>|null} [options.visibleCells] - Cell keys currently in sight.
+ * @param {boolean} [options.fogEnabled] - Whether to draw fog at all.
+ * @param {string|null} [options.paintMode] - Terrain type being painted, or null when not editing.
+ * @param {(gridX: number, gridY: number, type: string) => void} [options.onPaintCell]
  */
 export function renderLocationView(target, options) {
     const {
@@ -500,6 +510,12 @@ export function renderLocationView(target, options) {
         draggableTokenIds = null,
         onTokenDragging = null,
         viewStateKey = '',
+        terrain = null,
+        fog = null,
+        visibleCells = null,
+        fogEnabled = false,
+        paintMode = null,
+        onPaintCell = null,
     } = options;
 
     target.empty();
@@ -538,6 +554,10 @@ export function renderLocationView(target, options) {
         });
     }
 
+    // Terrain sits under everything: it is the board itself, not an overlay on it.
+    const terrainLayer = $('<div class="wm-terrain-layer"></div>');
+    content.append(terrainLayer);
+
     // Grid overlay (drawn via CSS background-image)
     const gridOverlay = $('<div class="wm-grid-overlay"></div>');
     content.append(gridOverlay);
@@ -549,6 +569,70 @@ export function renderLocationView(target, options) {
     // Tactical overlays
     const highlightsLayer = $('<div class="wm-highlight-layer"></div>');
     content.append(highlightsLayer);
+
+    // Fog goes on top of everything: it hides the board, the terrain and the creatures.
+    const fogLayer = $('<div class="wm-fog-layer"></div>');
+    content.append(fogLayer);
+
+    /**
+     * Paints the terrain cells that are not plain floor.
+     *
+     * Only the exceptions are drawn, which matches how terrain is stored and keeps a 50x50
+     * board from spawning 2500 nodes for a room with four walls in it.
+     */
+    function renderTerrain() {
+        terrainLayer.empty();
+        if (!imgW || !imgH || !terrain?.cells) return;
+
+        const cellW = imgW / gridWidth;
+        const cellH = imgH / gridHeight;
+        terrainLayer.css({ width: imgW + 'px', height: imgH + 'px' });
+
+        for (const [key, cell] of Object.entries(terrain.cells)) {
+            const parsed = parseCellKey(key);
+            if (!parsed || !cell) continue;
+
+            const type = cell.type === 'door' && cell.open ? 'door-open' : cell.type;
+            const el = $('<div class="wm-terrain-cell"></div>')
+                .addClass(`wm-terrain-${type}`)
+                .css({
+                    left: parsed.x * cellW + 'px',
+                    top: parsed.y * cellH + 'px',
+                    width: cellW + 'px',
+                    height: cellH + 'px',
+                });
+            terrainLayer.append(el);
+        }
+    }
+
+    /**
+     * Draws the fog. Unknown cells are opaque, explored-but-unseen ones are dimmed, and
+     * anything currently in sight is left clear.
+     */
+    function renderFog() {
+        fogLayer.empty();
+        if (!imgW || !imgH || !fogEnabled) return;
+
+        const cellW = imgW / gridWidth;
+        const cellH = imgH / gridHeight;
+        fogLayer.css({ width: imgW + 'px', height: imgH + 'px' });
+
+        for (let y = 0; y < gridHeight; y++) {
+            for (let x = 0; x < gridWidth; x++) {
+                const visibility = getCellVisibility(fog, visibleCells, x, y);
+                if (visibility === 'visible') continue;
+
+                fogLayer.append($('<div class="wm-fog-cell"></div>')
+                    .addClass(`wm-fog-${visibility}`)
+                    .css({
+                        left: x * cellW + 'px',
+                        top: y * cellH + 'px',
+                        width: cellW + 'px',
+                        height: cellH + 'px',
+                    }));
+            }
+        }
+    }
 
     function updateGrid() {
         if (!imgW || !imgH) return;
@@ -859,11 +943,55 @@ export function renderLocationView(target, options) {
         }
 
         updateGrid();
+        renderTerrain();
         renderHighlights();
         placeTokens();
+        renderFog();
         fullUpdate();
         gridOverlay.toggleClass('hidden', !gridVisible);
     });
+
+    // Terrain painting. Click, or drag with the button held, to paint a run of cells.
+    if (paintMode && typeof onPaintCell === 'function') {
+        container.addClass('wm-painting');
+        let painting = false;
+        /** @type {string} */
+        let lastPainted = '';
+
+        /** @param {number} clientX @param {number} clientY */
+        const paintAt = (clientX, clientY) => {
+            if (!imgW || !imgH) return;
+            const rect = content[0].getBoundingClientRect();
+            const cellW = (imgW * state.scale) / gridWidth;
+            const cellH = (imgH * state.scale) / gridHeight;
+            const gx = Math.floor((clientX - rect.left) / cellW);
+            const gy = Math.floor((clientY - rect.top) / cellH);
+            if (gx < 0 || gy < 0 || gx >= gridWidth || gy >= gridHeight) return;
+
+            const key = `${gx},${gy}`;
+            if (key === lastPainted) return; // do not repaint the cell under a slow drag
+            lastPainted = key;
+            onPaintCell(gx, gy, paintMode);
+        };
+
+        content.on('mousedown.wmpaint', function (e) {
+            if (e.button !== 0) return;
+            e.preventDefault();
+            e.stopPropagation();
+            painting = true;
+            lastPainted = '';
+            paintAt(e.clientX, e.clientY);
+        });
+
+        $(document).on('mousemove.wmpaint', function (e) {
+            if (painting) paintAt(e.clientX, e.clientY);
+        });
+
+        $(document).on('mouseup.wmpaint', function () {
+            painting = false;
+            lastPainted = '';
+        });
+    }
 
     // Zoom controls
     const zoomControls = $(`

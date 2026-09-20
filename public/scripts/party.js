@@ -22,11 +22,16 @@ import {
 import { escapeHtml } from './utils.js';
 import {
     rollDiceDetailed, getRollClassification, getRollClassificationLabel,
-    getDistanceInFeet, buildReachableCells, getAttackRangeFeet,
+    getDistanceInFeet, getAttackRangeFeet,
     getPlayerDamageFormula, getEnemyDamageFormula, getPlayerAttackModifier,
     createEmptyCombatEncounter, normalizeCombatEncounter,
 } from './party/combat-rules.js';
 import { escItemText, buildPartyItemSections } from './party/item-forms.js';
+import {
+    createEmptyTerrain, normalizeTerrain, setCell as setTerrainCell, getTerrainOptions,
+} from './game-engine/board/terrain.js';
+import { getReachableCells } from './game-engine/board/pathfinding.js';
+import { createEmptyFog, normalizeFog, updateFog } from './game-engine/board/fog-of-war.js';
 
 /** @typedef {import('./party/types.js').PartyMember} PartyMember */
 /** @type {PartyMember[]} */
@@ -750,7 +755,9 @@ function getCombatBoardHighlightState(gridWidth, gridHeight) {
     const attackable = getAttackableEnemiesForMember(member);
     /** @type {{gridX:number,gridY:number,kind:'attack'}[]} */
     const attackCells = attackable.map(enemy => ({ gridX: enemy.gridX || 0, gridY: enemy.gridY || 0, kind: 'attack' }));
-    const movementCells = buildReachableCells(pos.gridX || 0, pos.gridY || 0, remainingFeet, gridWidth, gridHeight);
+    const movementCells = getReachableCells(
+        getActiveBoardTerrain(), pos.gridX || 0, pos.gridY || 0, remainingFeet, gridWidth, gridHeight,
+    );
     const overlayLegend = `${member.name} · Movimiento restante ${remainingFeet} ft · Rango ${getAttackRangeFeet(member)} ft${attackable.length ? ` · Objetivos: ${attackable.map(enemy => enemy.name).join(', ')}` : ' · Sin objetivos en rango'}`;
 
     return {
@@ -781,6 +788,115 @@ function getControlledMemberIds() {
  * @param {number} gridH
  * @returns {import('./world-map-renderer.js').HighlightCell[]}
  */
+/**
+ * Which terrain brush is selected, or null when not editing.
+ * @type {string|null}
+ */
+let activeTerrainBrush = null;
+
+/**
+ * Writes terrain and fog back into the world info file that owns the board.
+ *
+ * The board object handed around is a reference into the loaded world data, so the edit is
+ * already visible; this is what makes it survive a reload.
+ *
+ * @param {any} board
+ */
+async function persistBoardTerrain(board) {
+    if (!currentLocationName || !board) return;
+    try {
+        const worldName = chat_metadata?.[METADATA_KEY];
+        if (!worldName) return;
+        const data = await loadWorldInfo(worldName);
+        if (!data?.metadata) return;
+
+        const boards = Array.isArray(data.metadata.boards) ? data.metadata.boards : [];
+        const stored = boards.find((/** @type {any} */ b) => b.name === board.name);
+        if (!stored) return;
+
+        stored.terrain = board.terrain;
+        stored.fog = board.fog;
+        stored.fogEnabled = board.fogEnabled;
+        await saveWorldInfo(worldName, data);
+    } catch (e) {
+        console.warn('[party] could not persist board terrain', e);
+    }
+}
+
+/**
+ * The brush palette shown under a board while terrain editing is on.
+ * @param {any} board
+ * @param {() => void} onChange
+ * @returns {JQuery}
+ */
+function buildTerrainPalette(board, onChange) {
+    const palette = $('<div class="wm-terrain-palette"></div>');
+
+    const chips = {
+        floor: '#3a3a46',
+        wall: '#2b2b33',
+        difficult: '#b47828',
+        cover_half: '#5aa0dc',
+        cover_three_quarters: '#3a80bc',
+        door: '#6b4a24',
+    };
+
+    for (const [value, label] of getTerrainOptions()) {
+        const swatch = $('<div class="wm-terrain-swatch"></div>')
+            .toggleClass('active', activeTerrainBrush === value);
+        swatch.append($('<span class="swatch-chip"></span>').css('background', chips[value] || '#555'));
+        swatch.append($('<span></span>').text(label));
+        swatch.on('click', () => {
+            activeTerrainBrush = activeTerrainBrush === value ? null : value;
+            onChange();
+        });
+        palette.append(swatch);
+    }
+
+    const fogToggle = $('<div class="wm-terrain-swatch"></div>')
+        .toggleClass('active', Boolean(board?.fogEnabled));
+    fogToggle.append('<i class="fa-solid fa-cloud"></i>');
+    fogToggle.append($('<span></span>').text('Niebla'));
+    fogToggle.on('click', () => {
+        board.fogEnabled = !board.fogEnabled;
+        if (!board.fogEnabled) board.fog = createEmptyFog();
+        persistBoardTerrain(board);
+        onChange();
+    });
+    palette.append(fogToggle);
+
+    const done = $('<div class="wm-terrain-swatch"></div>');
+    done.append('<i class="fa-solid fa-xmark"></i>');
+    done.append($('<span></span>').text('Salir'));
+    done.on('click', () => {
+        activeTerrainBrush = null;
+        terrainEditing = false;
+        onChange();
+    });
+    palette.append(done);
+
+    return palette;
+}
+
+/** Whether the terrain editor is open on the current board. */
+let terrainEditing = false;
+
+/**
+ * Terrain of the board the party is standing on.
+ *
+ * Boards created before terrain existed simply have none, and an empty terrain behaves as
+ * open floor — so movement highlighting is unchanged for them, and becomes wall-aware the
+ * moment a board gains terrain.
+ *
+ * @returns {import('./game-engine/board/terrain.js').BoardTerrain}
+ */
+function getActiveBoardTerrain() {
+    if (!currentLocationName || !currentBoardName) return createEmptyTerrain();
+    const location = getCurrentWorldLocationMaps().find(l => l.name === currentLocationName);
+    const board = getLocationBoards(location).find((/** @type {any} */ b) => b.name === currentBoardName);
+    return normalizeTerrain(board?.terrain);
+}
+
 function buildDragHighlightCells(tokenId, tentGX, tentGY, gridW, gridH) {
     if (!combatEncounter.active) return [];
     const member = partyMembers.find(m => m.id === tokenId);
@@ -789,7 +905,7 @@ function buildDragHighlightCells(tokenId, tentGX, tentGY, gridW, gridH) {
     const originY = member.mapPosition?.gridY || 0;
     const distanceFeet = getDistanceInFeet(originX, originY, tentGX, tentGY);
     const remainingFromHere = Math.max(0, getRemainingMovementFeet(member) - distanceFeet);
-    const moveCells = buildReachableCells(tentGX, tentGY, remainingFromHere, gridW, gridH);
+    const moveCells = getReachableCells(getActiveBoardTerrain(), tentGX, tentGY, remainingFromHere, gridW, gridH);
     const rangeFeet = getAttackRangeFeet(member);
     /** @type {{gridX:number,gridY:number,kind:'attack'}[]} */
     const attackCells = getAliveEnemies()
@@ -2023,6 +2139,22 @@ function renderLocationMapsPreview() {
         const boardGridW = loc.gridWidth || 50;
         const boardGridH = loc.gridHeight || 50;
 
+        // Terrain, fog and the paint palette (wiki/ROADMAP.md, Fase A6).
+        const boardTerrain = normalizeTerrain(selectedBoard.terrain);
+        const fogOn = Boolean(selectedBoard.fogEnabled);
+        const boardFog = normalizeFog(selectedBoard.fog);
+        const partySight = allBoardTokens
+            .filter(t => !t.isEnemy)
+            .map(t => ({ gridX: t.gridX, gridY: t.gridY, sightFeet: t.sightFeet }));
+        const fogState = fogOn
+            ? updateFog(boardFog, boardTerrain, partySight, boardGridW, boardGridH)
+            : { fog: boardFog, visible: new Set() };
+
+        if (fogOn && JSON.stringify(fogState.fog) !== JSON.stringify(boardFog)) {
+            selectedBoard.fog = fogState.fog;
+            persistBoardTerrain(selectedBoard);
+        }
+
         renderLocationView(boardPanel, {
             name: selectedBoard.name,
             imageUrl: selectedBoard.url,
@@ -2030,6 +2162,16 @@ function renderLocationMapsPreview() {
             gridWidth: boardGridW,
             gridHeight: boardGridH,
             viewStateKey: `board::${currentLocationName}::${selectedBoard.name}`,
+            terrain: boardTerrain,
+            fog: fogState.fog,
+            visibleCells: fogState.visible,
+            fogEnabled: fogOn,
+            paintMode: activeTerrainBrush,
+            onPaintCell: (gx, gy, type) => {
+                selectedBoard.terrain = setTerrainCell(normalizeTerrain(selectedBoard.terrain), gx, gy, type);
+                persistBoardTerrain(selectedBoard);
+                renderLocationMapsPreview();
+            },
             tokens: allBoardTokens,
             onTokenClick: (tokenId) => handleCombatTokenClick(tokenId),
             selectedTokenId: tacticalState.selectedTokenId,
@@ -2072,6 +2214,21 @@ function renderLocationMapsPreview() {
                 handleTokenMove(tokenId, gx, gy, currentLocationName);
             },
         });
+
+        // ---- Terrain editor (wiki/ROADMAP.md, Fase A6) ----
+        if (terrainEditing) {
+            boardPanel.append(buildTerrainPalette(selectedBoard, () => renderLocationMapsPreview()));
+        } else {
+            const editButton = $('<button class="wm-terrain-edit-btn menu_button" title="Pintar muros, cobertura y puertas"></button>');
+            editButton.append('<i class="fa-solid fa-draw-polygon"></i>');
+            editButton.append($('<span></span>').text(' Terreno'));
+            editButton.on('click', () => {
+                terrainEditing = true;
+                activeTerrainBrush = 'wall';
+                renderLocationMapsPreview();
+            });
+            boardPanel.append(editButton);
+        }
 
         // ---- Combat UI section ----
         if (combatEncounter.active) {
