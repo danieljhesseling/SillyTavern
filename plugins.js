@@ -33,9 +33,10 @@ if (command === 'install') {
 }
 
 async function updatePlugins() {
-    const directories = fs.readdirSync(pluginsPath)
-        .filter(file => !file.startsWith('.'))
-        .filter(file => fs.statSync(path.join(pluginsPath, file)).isDirectory());
+    const directories = fs.readdirSync(pluginsPath, { withFileTypes: true })
+        .filter(dirent => dirent.isDirectory() || dirent.isSymbolicLink())
+        .filter(dirent => !dirent.name.startsWith('.'))
+        .map(dirent => dirent.name);
 
 
     for (const directory of directories) {
