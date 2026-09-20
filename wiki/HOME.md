@@ -42,6 +42,7 @@ mindmap
     Auditoría & Roadmap
       [[PROBLEMAS_TECNICOS]]
       [[PROPUESTAS_MEJORA]]
+      [[ROADMAP]]
     Guías & Referencia
       [[Mapa-Codigo-Archivos]]
       [[Guia-Desarrollo-Flujo]]
@@ -81,6 +82,7 @@ El núcleo de juego de rol agregado en la rama `my-silly` con más de 24,000 lí
 Diagnóstico crítico y catálogo exhaustivo de propuestas de mejora:
 - [[PROBLEMAS_TECNICOS]]: **Auditoría profunda** con 15 hallazgos críticos de seguridad (XSS, CSP), desincronización de estado, cuellos de botella de memoria y ausencia de tests.
 - [[PROPUESTAS_MEJORA]]: **Catálogo de 200 propuestas técnicas estructuradas** en 10 áreas estratégicas (arquitectura, seguridad, D&D, VTT, agentes, UI/UX, bases de datos y DevOps).
+- [[ROADMAP]]: **Plan priorizado** que filtra el catálogo por coste real de fork y lo agrupa en 7 baterías de trabajo ejecutables, más 8 propuestas propias y una lista de lo que conviene descartar.
 
 ### 5. 🛠️ Guías de Desarrollo & Referencia Rápida
 Herramientas para desarrolladores y agentes de IA:
@@ -100,6 +102,8 @@ Si eres un agente de IA interactuando con este repositorio, sigue estas directri
 | Intervenir en los mapas, cuadrícula o tokens | [[Campanas-Mapas-Tableros]] | `public/scripts/world-map-renderer.js` |
 | Añadir nuevos comandos de barra `/` | [[SlashCommands-Macros]] | `public/scripts/slash-commands.js` |
 | Solucionar una vulnerabilidad o condición de carrera | [[PROBLEMAS_TECNICOS]] | `src/server-main.js` & `party.js` |
+| Decidir en qué trabajar a continuación | [[ROADMAP]] | Baterías 0 a 6 |
+| Integrar cambios de upstream sin romper el fork | [[ROADMAP]] (Batería 0) | `.prettierignore` & `public/index.html` |
 | Entender cómo se inyectan los datos al LLM | [[Ciclo-De-Vida-Prompt]] | `public/script.js` (~línea 3137) |
 | Localizar un archivo en el proyecto | [[Mapa-Codigo-Archivos]] | Índice del repositorio |
 

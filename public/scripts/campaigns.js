@@ -559,7 +559,7 @@ export function initCampaigns() {
         if (avatar) {
             const charIdx = characters.findIndex(c => c.avatar === avatar);
             if (charIdx >= 0) {
-                await selectCharacterById(String(charIdx));
+                await selectCharacterById(charIdx);
             }
         }
         const fileName = String(chatFile).replace('.jsonl', '');
@@ -635,7 +635,7 @@ async function showSessionsPopup(worldName) {
         if (!chatFile) return;
         if (avatar) {
             const charIdx = characters.findIndex(c => c.avatar === avatar);
-            if (charIdx >= 0) await selectCharacterById(String(charIdx));
+            if (charIdx >= 0) await selectCharacterById(charIdx);
         }
         await openCharacterChat(String(chatFile).replace('.jsonl', ''));
     });

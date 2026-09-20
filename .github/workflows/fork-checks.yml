@@ -1,0 +1,46 @@
+# Checks owned by the `my-silly` fork.
+#
+# Upstream's pr-checks.yml only runs on pull_request, so pushing straight to the
+# working branch never triggered anything. This workflow also runs on push, and
+# adds the two gates upstream has no reason to care about:
+#   1. the RPG engine's unit tests
+#   2. a type check scoped to fork-owned files
+#
+# See wiki/ROADMAP.md, Bateria 1.
+name: Fork Checks
+
+on:
+  push:
+    branches: [my-silly]
+  pull_request:
+    branches: [my-silly]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Tests and fork type check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@cdca7365b2dadb8aad0a33bc7601856ffabcc48e # v4.3.0
+        with:
+          node-version: 24
+
+      - name: Install root dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Install test dependencies
+        run: npm ci --ignore-scripts --prefix tests
+
+      - name: Run unit tests
+        run: npm run test:unit --prefix tests
+
+      - name: Type-check fork-owned files
+        run: node tools/check-fork-types.mjs

@@ -43,11 +43,43 @@ npm run start:electron
 
 ## 2. Flujo de Trabajo con Git (Fork `danieljhesseling/SillyTavern`)
 
-El proyecto opera sobre la rama personalizada `my-silly`:
-- **Rama Activa**: `my-silly` (alberga todas las características de Party, D&D, Mapas y Dynamic Context).
-- **Ramas Upstream**: `origin/staging` o `origin/release` del repositorio oficial de SillyTavern.
-- **Recomendación para Merges / Rebase**:
-  Al sincronizar con el upstream oficial de SillyTavern, prestar especial atención a los archivos centrales modificados (`public/script.js`, `public/index.html`, `public/scripts/world-info.js`, `public/scripts/personas.js`), resolviendo posibles conflictos de marcado DOM de forma manual para no sobreescribir los modales D&D.
+### Topología de remotes
+
+| Remote | Apunta a | Uso |
+| :--- | :--- | :--- |
+| `origin` | `danieljhesseling/SillyTavern` | **Tu fork.** Aquí se hace push. |
+| `upstream` | `SillyTavern/SillyTavern` | **Oficial.** Solo lectura: el push está desactivado con `git remote set-url --push upstream DISABLED`. |
+
+> [!WARNING]
+> `origin/release` **no** es la rama oficial de SillyTavern: es tu copia del fork, y se queda congelada en el momento en que ramificaste. Para ver el estado real de upstream hay que consultar `upstream/release`.
+
+```bash
+git fetch upstream
+git merge upstream/release
+```
+
+### La regla que abarata los merges
+
+> [!IMPORTANT]
+> **Código nuevo va en archivo nuevo.**
+>
+> Los archivos creados por el fork (`party.js`, `dnd-system.js`, `world-map-renderer.js`, `dynamic-context-manager.js`, `campaigns.js`, y las hojas CSS del motor RPG) **no los toca upstream jamás**: colisión cero, para siempre. Cada línea escrita dentro de un archivo de upstream, en cambio, se paga en todos los merges futuros.
+>
+> Cuando haga falta un punto de enganche en un archivo de upstream, que sea **lo más pequeño posible**: un `import`, una llamada, un contenedor vacío que rellene el código del fork.
+
+### No reformatear archivos de upstream
+
+El formateador HTML integrado de VSCode reescribe cosméticamente líneas que upstream edita de verdad, y cada reescritura se convierte en un conflicto. `.vscode/settings.json` desactiva `editor.formatOnSave` y `html.format.enable` precisamente por esto.
+
+**Evidencia** (merge del 2026-09-20, 194 commits de upstream): de los 39 bloques en conflicto de `public/index.html`, **38 eran ruido del formateador** y solo 1 un cambio real. Sin ese ruido, el merge habría sido prácticamente automático.
+
+### Archivos de upstream modificados por el fork
+
+Estos son los puntos de contacto que conviene mantener al mínimo y revisar en cada merge:
+
+`public/index.html` · `public/script.js` · `public/style.css` · `public/scripts/world-info.js` · `public/scripts/personas.js` · `public/scripts/welcome-screen.js` · `public/scripts/RossAscends-mods.js` · `public/global.d.ts`
+
+Ver [[ROADMAP]] (Batería 0) para el detalle del procedimiento y las métricas.
 
 ---
 

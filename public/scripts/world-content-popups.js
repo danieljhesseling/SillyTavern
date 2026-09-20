@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * World Content Popups
  * Category-specific rich popup forms for creating/viewing/editing world info entries.
@@ -904,6 +903,7 @@ function generateContent(category, title, d) {
  * @param {any} [existingDndData]
  * @param {string} [existingTitle]
  * @param {string[]} [worldOptions] - If provided, show world selector (for new entries)
+ * @param {{ races: string[], classes: string[], factions: string[], locationMaps: Array<{name:string, boards:Array<{name:string,gridWidth:number,gridHeight:number}>}> }} [catalog]
  * @returns {Promise<{title: string, dndData: any, content: string, keys: string[], world: string}|null>}
  */
 export async function showCategoryPopup(category, existingDndData, existingTitle, worldOptions, catalog) {
@@ -1076,8 +1076,9 @@ export function initWcpHandlers() {
         const block = $(this).closest('.wcp-img-block');
         const reader = new FileReader();
         reader.onload = function (e) {
+            // FileReader.result is string | ArrayBuffer; readAsDataURL always yields a string.
             const base64 = e.target?.result;
-            if (!base64) return;
+            if (typeof base64 !== 'string' || !base64) return;
             // Store base64 in hidden input
             block.find('.wcp-img-data').val(base64);
             // Show preview

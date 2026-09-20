@@ -1,4 +1,12 @@
 {
     "js/ts.tsdk.promptToUseWorkspaceVersion": true,
-    "js/ts.tsdk.path": "./node_modules/typescript/lib"
+    "js/ts.tsdk.path": "./node_modules/typescript/lib",
+    // --- Fork: disciplina de merge (ver wiki/ROADMAP.md, Bateria 0) ----------
+    // Este repositorio es un fork. Reformatear archivos de upstream (index.html,
+    // script.js, style.css...) colisiona con sus ediciones reales y genera
+    // conflictos en cada merge.
+    // Medido el 2026-09-20: de los 39 bloques en conflicto de public/index.html,
+    // 38 eran puro ruido del formateador HTML integrado de VSCode.
+    "editor.formatOnSave": false,
+    "html.format.enable": false
 }

@@ -2548,7 +2548,11 @@ function buildCharacterSheetTab(member, dndCatalog) {
     }
     factionSelect.val(Array.isArray(member.factions) ? member.factions : []);
     factionSelect.on('change', function () {
-        member.factions = ($(this).val() || []).map(x => String(x));
+        // .val() returns an array for a multiple select, but a bare string otherwise;
+        // calling .map() on that string would throw.
+        const selected = $(this).val();
+        const values = Array.isArray(selected) ? selected : (selected === null || selected === undefined || selected === '' ? [] : [selected]);
+        member.factions = values.map(x => String(x));
     });
 
     const locationOptions = Array.from(new Set([...(dndCatalog.locations || []), String(member.mapPosition?.locationName || '').trim()].filter(Boolean))).sort((a, b) => a.localeCompare(b));

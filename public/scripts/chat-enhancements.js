@@ -6,7 +6,6 @@
  * 2. Show small circular character avatars inline when characters speak (quoted dialogue)
  */
 
-// @ts-nocheck
 
 import { characters, getThumbnailUrl } from '../script.js';
 import { eventSource, event_types } from './events.js';
@@ -44,7 +43,7 @@ let keywordRegex = null;
 /** @type {HTMLDivElement|null} Singleton tooltip element */
 let tooltipEl = null;
 
-/** @type {number|null} Tooltip hide timeout ID */
+/** @type {ReturnType<typeof setTimeout>|null} Tooltip hide timeout ID */
 let tooltipHideTimer = null;
 
 /** @type {boolean} Whether the keyword cache is currently being built */
@@ -157,7 +156,7 @@ function highlightLorebookEntities(mesTextEl) {
     });
 
     while (walker.nextNode()) {
-        textNodes.push(walker.currentNode);
+        textNodes.push(/** @type {Text} */ (walker.currentNode));
     }
 
     // Process each text node
@@ -247,17 +246,19 @@ function initTooltip() {
 
     // Delegate mouseenter/mouseleave on .lorebook-entity elements
     document.addEventListener('mouseover', (e) => {
-        const entity = e.target.closest?.('.lorebook-entity');
+        const target = /** @type {Element} */ (e.target);
+        const entity = /** @type {HTMLElement|null} */ (target.closest?.('.lorebook-entity'));
         if (!entity) return;
         clearTooltipHideTimer();
         showTooltip(entity);
     });
 
     document.addEventListener('mouseout', (e) => {
-        const entity = e.target.closest?.('.lorebook-entity');
+        const target = /** @type {Element} */ (e.target);
+        const entity = target.closest?.('.lorebook-entity');
         if (!entity) return;
         // Check if we moved to the tooltip or another entity
-        const related = e.relatedTarget;
+        const related = /** @type {Element|null} */ (e.relatedTarget);
         if (related && (related.closest?.('.lorebook-tooltip') || related.closest?.('.lorebook-entity'))) {
             return;
         }
@@ -522,10 +523,10 @@ function extractSpeakerBeforeQuote(qEl) {
 function processMessage(messageId) {
     if (!enabled) return;
 
-    const mesEl = document.querySelector(`.mes[mesid="${messageId}"]`);
+    const mesEl = /** @type {HTMLElement|null} */ (document.querySelector(`.mes[mesid="${messageId}"]`));
     if (!mesEl) return;
 
-    const mesTextEl = mesEl.querySelector('.mes_text');
+    const mesTextEl = /** @type {HTMLElement|null} */ (mesEl.querySelector('.mes_text'));
     if (!mesTextEl) return;
 
     // Remove existing enhancements before re-processing (for swipes/edits)
