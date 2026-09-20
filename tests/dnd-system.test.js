@@ -1,6 +1,7 @@
 import { describe, test, expect } from '@jest/globals';
 import {
     EQUIPMENT_SLOTS,
+    normalizeDndEntityType,
     getAbilityModifier,
     formatModifier,
     calculateCarryingCapacity,
@@ -29,6 +30,42 @@ function characterWith(items = []) {
     }
     return data;
 }
+
+describe('normalizeDndEntityType', () => {
+    const spellings = [
+        ['character', 'characters'],
+        ['npc', 'npcs'],
+        ['monster', 'monsters'],
+        ['race', 'races'],
+        ['class', 'classes'],
+        ['faction', 'factions'],
+        ['location', 'locations'],
+    ];
+
+    for (const [singular, plural] of spellings) {
+        test(`maps ${singular} and ${plural} to ${singular}`, () => {
+            expect(normalizeDndEntityType(singular)).toBe(singular);
+            expect(normalizeDndEntityType(plural)).toBe(singular);
+        });
+    }
+
+    test('does not accept a naive plural that the switch never lists', () => {
+        expect(normalizeDndEntityType('classs')).toBe('none');
+    });
+
+    test('ignores case and surrounding whitespace', () => {
+        expect(normalizeDndEntityType('  MONSTERS  ')).toBe('monster');
+        expect(normalizeDndEntityType('NpC')).toBe('npc');
+    });
+
+    test('collapses anything unrecognised to none', () => {
+        expect(normalizeDndEntityType('dragonborn')).toBe('none');
+        expect(normalizeDndEntityType('')).toBe('none');
+        expect(normalizeDndEntityType(null)).toBe('none');
+        expect(normalizeDndEntityType(undefined)).toBe('none');
+        expect(normalizeDndEntityType(42)).toBe('none');
+    });
+});
 
 describe('getAbilityModifier', () => {
     // Written as a loop rather than test.each: tests/.eslintrc.cjs applies the Playwright

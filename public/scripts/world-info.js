@@ -23,6 +23,9 @@ import { renderTemplateAsync } from './templates.js';
 import { t } from './i18n.js';
 import { accountStorage } from './util/AccountStorage.js';
 import { getOrCreatePersonaDescriptor, setPersonaDescription, user_avatar } from './personas.js';
+// Fork: canonical D&D helpers live in dnd-system.js. Kept on its own line so upstream's
+// import list above stays untouched.
+import { normalizeDndEntityType } from './dnd-system.js';
 
 export const world_info_insertion_strategy = {
     evenly: 0,
@@ -85,39 +88,6 @@ export function getCurrentWorldEnemies() {
 }
 export function getCurrentWorldNPCs() {
     return current_world_npcs;
-}
-
-/**
- * @param {string} value
- * @returns {'none'|'character'|'npc'|'monster'|'race'|'class'|'faction'|'location'}
- */
-function normalizeDndEntityType(value) {
-    const v = String(value || '').trim().toLowerCase();
-    switch (v) {
-        case 'character':
-        case 'characters':
-            return 'character';
-        case 'npc':
-        case 'npcs':
-            return 'npc';
-        case 'monster':
-        case 'monsters':
-            return 'monster';
-        case 'race':
-        case 'races':
-            return 'race';
-        case 'class':
-        case 'classes':
-            return 'class';
-        case 'faction':
-        case 'factions':
-            return 'faction';
-        case 'location':
-        case 'locations':
-            return 'location';
-        default:
-            return 'none';
-    }
 }
 
 /**

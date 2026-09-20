@@ -21,6 +21,10 @@ import { spawnSync } from 'node:child_process';
  */
 const FORK_FILES = [
     'public/scripts/party.js',
+    'public/scripts/party/combat-rules.js',
+    'public/scripts/party/types.js',
+    'public/scripts/party/item-forms.js',
+    'public/scripts/party/html.js',
     'public/scripts/dnd-system.js',
     'public/scripts/world-map-renderer.js',
     'public/scripts/dynamic-context-manager.js',

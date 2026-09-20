@@ -457,6 +457,41 @@ export const MODIFIABLE_STATS = [
     'intelligence', 'wisdom', 'charisma', 'speed', 'maxHp',
 ];
 
+/**
+ * Normalizes the many spellings of a D&D entity type (singular/plural, any case)
+ * into the canonical singular form. Unknown values collapse to 'none'.
+ * @param {any} value
+ * @returns {'character'|'npc'|'monster'|'race'|'class'|'faction'|'location'|'none'}
+ */
+export function normalizeDndEntityType(value) {
+    const v = String(value || '').trim().toLowerCase();
+    switch (v) {
+        case 'character':
+        case 'characters':
+            return 'character';
+        case 'npc':
+        case 'npcs':
+            return 'npc';
+        case 'monster':
+        case 'monsters':
+            return 'monster';
+        case 'race':
+        case 'races':
+            return 'race';
+        case 'class':
+        case 'classes':
+            return 'class';
+        case 'faction':
+        case 'factions':
+            return 'faction';
+        case 'location':
+        case 'locations':
+            return 'location';
+        default:
+            return 'none';
+    }
+}
+
 export function getItemCategoryOptions() {
     return [...ITEM_CATEGORY_OPTIONS];
 }

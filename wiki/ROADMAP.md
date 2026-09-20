@@ -103,16 +103,60 @@ El único conflicto que exigió criterio fue el input de la clave de Azure: upst
 
 ---
 
-## 🔋 Batería 2 — Descomponer `party.js`
+## 🟡 Batería 2 — Descomponer `party.js` `EN CURSO — 2026-09-20`
 
-> **Razón de ser**: 4.733 líneas mezclando estado, reglas D&D, DOM, comandos y red. Solo abordable **después** de la Batería 1.
+> **Razón de ser**: 4.707 líneas mezclando estado, reglas D&D, DOM, comandos y red.
 
-- **PROP-001** — Dividir en `party/state.js`, `party/ui.js`, `party/combat.js`, `party/commands.js`.
-- **PROP-007** — Centralizar utilidades D&D duplicadas (`normalizeDndEntityType`, `getDndEntryType`) en `dnd-system.js`.
-- **PROP-016** — Separar el modelo de datos de la sesión del árbol DOM.
+| ID | Acción | Resultado |
+| :--- | :--- | :--- |
+| **PROP-007** | Centralizar utilidades D&D duplicadas. | ✅ `normalizeDndEntityType` → `dnd-system.js` |
+| **PROP-001** | Dividir el monolito en submódulos. | 🟡 2 de N rebanadas extraídas |
+| **PROP-016** | Separar el modelo de sesión del árbol DOM. | ⏸️ Aplazada (ver abajo) |
+
+### Mapa de dependencias de `party.js`
+
+Antes de mover nada se clasificaron las **115 funciones** del archivo por lo que realmente tocan. Eso, y no una categorización a ojo, es lo que decidió qué extraer:
+
+| Tipo | Funciones | Líneas |
+| :--- | ---: | ---: |
+| **Puras** (sin DOM, sin estado de módulo) | 50 | 889 |
+| Con estado, sin DOM | 42 | 1.110 |
+| Con DOM | 23 | 2.595 |
+
+### Rebanadas extraídas
+
+| Módulo | Contenido | Tests |
+| :--- | :--- | ---: |
+| `party/combat-rules.js` | Dados, geometría de tablero (distancia Chebyshev, celdas alcanzables), fórmulas de daño y forma del encuentro. 13 funciones. | 47 |
+| `party/item-forms.js` | Constructores de HTML del editor de objetos. 8 funciones. | 21 |
+| `party/types.js` | El `typedef` `PartyMember`, para que los submódulos compartan contrato sin importarse entre sí. | — |
+| `party/html.js` | Escapado HTML sin dependencias. | — |
+
+**Criterio de selección**: solo se movieron funciones con **cero dependencias locales**, verificado con análisis estático de identificadores. Las que arrastraban estado (`getRemainingMovementFeet`, `canTurnEntryAct`, `resolveCombatTargetByName`, `getAttackableEnemiesForMember`, `getRelationshipTargetNamesFromLorebook`) se quedaron a propósito.
+
+```
+party.js   4.707 -> 4.279 lineas  (-428, -9%)
+ESLint     29 errores -> 15        (el podado quito imports muertos preexistentes)
+```
 
 > [!WARNING]
-> Extrae por **la costura que los tests de la Batería 1 ya cubren**, no por categorías que suenen ordenadas. Si un bloque de código no tiene test, no lo muevas todavía.
+> **Aplazada PROP-016**: separar el modelo de sesión del árbol `.mes` significa cirugía mayor en `public/script.js`, que es de upstream. Con 194 commits recién integrados, eso es exactamente el coste que la Batería 0 existe para evitar. Además, conceptualmente pertenece a **N-01** (el estado del mundo no es la narración), que es donde debe abordarse con un diseño propio y no como efecto colateral de un refactor.
+
+> [!NOTE]
+> **Sobre `party/html.js`**: duplica a propósito el `escapeHtml` de `utils.js`. El primer intento fue importarlo, pero la cadena de módulos de `utils.js` alcanza código que exige `window` (`lib.js` → `svg-inject`), lo que dejaba el submódulo imposible de cargar en un test de Node. Un módulo hoja sin dependencias es el precio de mantener las rebanadas testeables; un test ancla que ambas implementaciones se comporten igual, que es lo que de verdad impide que diverjan.
+
+### Hallazgos de paso
+
+- **`escItemText` era una undécima copia de `escapeHtml`**, no detectada en SEC-03 porque tiene otro nombre. No escapaba comillas simples. Solo se usaba en atributos con comilla doble, así que no era explotable, pero ya delega en la implementación única.
+- **Código muerto**: `rollDice` y `nextTurn` están definidas y no se llaman desde ningún punto del proyecto. `rollDice` se conservó como API del módulo nuevo (documentada y con test); `nextTurn` sigue en `party.js`.
+- La auditoría afirmaba que `getDndEntryType` también estaba duplicada entre `party.js` y `world-info.js`. **No lo está**: solo existe en `party.js`. La única duplicada real era `normalizeDndEntityType`, byte a byte idéntica.
+
+### Siguiente rebanada
+
+El clúster de relaciones (`getRelationshipCategory`, `getRelationshipSummary`, `getNormalRelationshipBand`, `getRelationshipCategoryLabel`) ya está verificado como extraíble: solo depende de `dnd-system.js`. Son ~52 líneas.
+
+> [!TIP]
+> **La regla que hizo esto seguro**: extraer solo por costuras sin dependencias locales, y escribir los tests en la misma pasada. Si un bloque no se puede testear aislado, no se mueve todavía.
 
 ---
 
@@ -220,13 +264,14 @@ graph TD
     B0[Batería 0: Higiene del Fork<br/>COMPLETADA] --> B1[Batería 1: Red de Seguridad<br/>COMPLETADA]
     B1 --> N02[N-02: Snapshot del prompt<br/>SIGUIENTE]
     N02 --> B3[Batería 3: Que mande el motor<br/>EL DIFERENCIADOR]
-    B1 --> B2[Batería 2: Descomponer party.js]
+    B1 --> B2[Batería 2: Descomponer party.js<br/>EN CURSO]
     B3 --> B4[Batería 4: Contexto observable]
     B2 --> B5[Batería 5: Mesa táctica]
     B4 --> B6[Batería 6: Persistencia robusta]
 
     style B0 fill:#14532d,stroke:#22c55e,color:#fff
     style B1 fill:#14532d,stroke:#22c55e,color:#fff
+    style B2 fill:#3f3f12,stroke:#eab308,color:#fff
     style N02 fill:#4a2545,stroke:#a855f7,color:#fff
     style B3 fill:#4a3410,stroke:#f59e0b,color:#fff
 ```
@@ -254,8 +299,8 @@ Correcciones de [[PROBLEMAS_TECNICOS]] ya aplicadas (2026-09-20, pendientes de c
 ### Comandos de verificación
 
 ```bash
-npm run test:unit --prefix tests     # 458 tests, 20 suites
-node tools/check-fork-types.mjs      # 0 errores en los 9 archivos del fork
+npm run test:unit --prefix tests     # 536 tests, 22 suites
+node tools/check-fork-types.mjs      # 0 errores en los 13 archivos del fork
 ```
 
 ---
