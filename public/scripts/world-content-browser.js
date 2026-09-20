@@ -12,6 +12,7 @@ import {
 } from './world-info.js';
 import { chat_metadata } from '../script.js';
 import { showCategoryPopup, initWcpHandlers } from './world-content-popups.js';
+import { escapeHtml } from './utils.js';
 
 // Initialize popup event handlers once
 initWcpHandlers();
@@ -394,17 +395,6 @@ function buildCatalogFromWorldDataMap(worldDataMap) {
         factions: [...factionsSet].sort(),
         locationMaps: [...locationMapsMap.values()].sort((a, b) => a.name.localeCompare(b.name)),
     };
-}
-
-/**
- * Simple HTML escape.
- * @param {string} str
- * @returns {string}
- */
-function escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
 }
 
 /**

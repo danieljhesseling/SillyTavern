@@ -7,6 +7,7 @@ import {
     saveMetadata,
 } from '../script.js';
 import { Popup, POPUP_TYPE, POPUP_RESULT } from './popup.js';
+import { escapeHtml } from './utils.js';
 
 /**
  * @typedef {Object} CustomInstruction
@@ -18,14 +19,6 @@ import { Popup, POPUP_TYPE, POPUP_RESULT } from './popup.js';
 
 const POSITION_LABELS = { [-1]: 'None', 0: 'In Prompt', 1: 'In Chat', 2: 'Before Prompt' };
 const ROLE_LABELS = { 0: 'System', 1: 'User', 2: 'Assistant' };
-
-function escapeHtml(str) {
-    return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
-}
 
 /**
  * Get custom instructions array from chat_metadata, ensuring it exists.

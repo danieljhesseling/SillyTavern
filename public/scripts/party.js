@@ -28,6 +28,7 @@ import {
     clampRelationshipScore,
     generateEnemyInstanceId,
 } from './dnd-system.js';
+import { escapeHtml } from './utils.js';
 
 /**
  * @typedef {Object} PartyMember
@@ -91,12 +92,10 @@ let combatDiceQueue = [];
 let combatDiceAnimating = false;
 
 function savePartyState() {
-    try {
-        window.localStorage.setItem('sillytavern_partyMembers', JSON.stringify(partyMembers));
-    } catch (e) {
-        console.warn('Unable to save party state', e);
-    }
-    // Also persist to chat metadata for per-session party
+    // chat_metadata.party is the single source of truth. The party used to be
+    // mirrored into localStorage as well, which is global to the browser: two
+    // chats open in different tabs overwrote each other, and on startup the
+    // party of whichever campaign was touched last leaked into the new one.
     savePartyToMetadata();
 }
 
@@ -186,20 +185,6 @@ function loadPartyForChat() {
     loadCurrentLocation();
     loadCombatState();
     renderPartyMembers();
-}
-
-/**
- * Simple HTML escape for safe use in templates.
- * @param {string} str
- * @returns {string}
- */
-function escapeHtml(str) {
-    return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
 }
 
 /**
@@ -589,22 +574,6 @@ export function setPartyFromWorldEntries(entries, worldName = null) {
     if (partyMembers.length > 0) {
         console.log('Setting active chat speaker to party leader', partyMembers[0].name);
         setUserName(partyMembers[0].name, { toastPersonaNameChange: false });
-    }
-}
-
-function loadPartyState() {
-    try {
-        const raw = window.localStorage.getItem('sillytavern_partyMembers');
-        if (!raw) return;
-
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) {
-            partyMembers = parsed
-                .filter((member) => member && member.id && member.name)
-                .map((member) => migratePartyMember(member));
-        }
-    } catch (e) {
-        console.warn('Unable to load party state', e);
     }
 }
 
@@ -4389,8 +4358,9 @@ export function initPartyPanel() {
         // handled by individual buttons
     });
 
-    loadPartyState();
-    renderPartyMembers();
+    // Read the party from the chat that is already open; CHAT_CHANGED keeps it
+    // in sync from here on. loadPartyForChat() renders on its own.
+    loadPartyForChat();
     renderWorldMapPreview();
     renderLocationMapsPreview();
 

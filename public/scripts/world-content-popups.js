@@ -7,6 +7,7 @@
 
 import { t } from './i18n.js';
 import { POPUP_TYPE, POPUP_RESULT, Popup } from './popup.js';
+import { escapeHtml } from './utils.js';
 import {
     EQUIPMENT_SLOTS,
     SLOT_INFO,
@@ -70,14 +71,14 @@ const ABILITY_LABELS = { str: 'Strength', dex: 'Dexterity', con: 'Constitution',
 //  HTML HELPERS
 // ============================================================
 
+// Both delegate to the canonical escape in utils.js so every module shares one
+// implementation. Kept as local aliases to avoid churning ~38 call sites.
 function esc(s) {
-    if (s == null) return '';
-    return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return s == null ? '' : escapeHtml(s);
 }
 
 function escT(s) {
-    if (s == null) return '';
-    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return s == null ? '' : escapeHtml(s);
 }
 
 function row(label, inputHtml) {

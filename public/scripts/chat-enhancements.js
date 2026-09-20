@@ -11,6 +11,7 @@
 import { characters, getThumbnailUrl } from '../script.js';
 import { eventSource, event_types } from './events.js';
 import { getSortedEntries } from './world-info.js';
+import { escapeHtml } from './utils.js';
 
 // ============================================================================
 // CONSTANTS
@@ -95,7 +96,15 @@ async function buildKeywordCache() {
             const sortedKeywords = Array.from(newMap.keys())
                 .sort((a, b) => b.length - a.length)
                 .map(kw => escapeRegex(kw));
-            keywordRegex = new RegExp(`\\b(${sortedKeywords.join('|')})\\b`, 'gi');
+            const alternation = sortedKeywords.join('|');
+            // `\b` only knows ASCII word characters, so a keyword that starts or ends with an
+            // accented letter (Ávila, café, Ñu) never matched. Unicode-aware lookarounds fix it.
+            try {
+                keywordRegex = new RegExp(`(?<![\\p{L}\\p{N}_])(${alternation})(?![\\p{L}\\p{N}_])`, 'giu');
+            } catch (err) {
+                console.warn(`${LOG_PREFIX} Unicode keyword boundaries unavailable, falling back to \\b`, err);
+                keywordRegex = new RegExp(`\\b(${alternation})\\b`, 'gi');
+            }
         } else {
             keywordRegex = null;
         }
@@ -389,17 +398,6 @@ function hideTooltip() {
             tooltipEl.style.display = 'none';
         }
     }, 200);
-}
-
-/**
- * Escape HTML special characters.
- * @param {string} str
- * @returns {string}
- */
-function escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
 }
 
 // ============================================================================

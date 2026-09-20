@@ -1,6 +1,7 @@
 import { world_names, loadWorldInfo, METADATA_KEY } from './world-info.js';
 import { characters, getRequestHeaders, openCharacterChat, chat_metadata, saveMetadata, selectCharacterById } from '../script.js';
 import { Popup, POPUP_TYPE, POPUP_RESULT } from './popup.js';
+import { escapeHtml } from './utils.js';
 
 /**
  * Fetches recent chats with metadata from the cross-character API.
@@ -17,11 +18,6 @@ async function fetchRecentChatsWithMetadata(max = 50) {
     if (!response.ok) return [];
     const data = await response.json();
     return Array.isArray(data) ? data : [];
-}
-
-function escapeHtml(str) {
-    if (!str) return '';
-    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 /**

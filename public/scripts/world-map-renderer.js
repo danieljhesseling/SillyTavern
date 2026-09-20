@@ -276,11 +276,13 @@ export function renderWorldMapView(target, worldMapUrl, locationMaps, callbacks 
             const py = fracY * imgSize.h;
 
             const marker = $(`
-                <div class="wm-marker ${selectedLocation === loc ? 'selected' : ''}" style="left:${px}px;top:${py}px;pointer-events:auto;">
-                    <div class="wm-marker-label">${loc.name}</div>
+                <div class="wm-marker ${selectedLocation === loc ? 'selected' : ''}" style="pointer-events:auto;">
+                    <div class="wm-marker-label"></div>
                     <div class="wm-marker-pin"><i class="fa-solid fa-location-dot"></i></div>
                 </div>
             `);
+            marker.css({ left: px + 'px', top: py + 'px' });
+            marker.find('.wm-marker-label').text(loc.name ?? '');
 
             marker.on('click', function (e) {
                 e.stopPropagation();
@@ -306,19 +308,36 @@ export function renderWorldMapView(target, worldMapUrl, locationMaps, callbacks 
         const loc = selectedLocation;
         const card = $(`
             <div class="wm-info-card">
-                ${loc.url ? `
-                    <div class="wm-info-card-image-wrapper">
-                        <img class="wm-info-card-image" src="${loc.url}" alt="${loc.name}" />
-                        <div class="wm-info-card-badge"><i class="fa-solid fa-location-dot"></i> ${loc.name}</div>
-                        <div class="wm-info-card-coords">${loc.x ?? 0},  ${loc.y ?? 0}</div>
-                    </div>
-                ` : ''}
+                <div class="wm-info-card-image-wrapper">
+                    <img class="wm-info-card-image" alt="" />
+                    <div class="wm-info-card-badge"><i class="fa-solid fa-location-dot"></i> <span class="wm-info-card-badge-name"></span></div>
+                    <div class="wm-info-card-coords"></div>
+                </div>
                 <div class="wm-info-card-body">
-                    <div class="wm-info-card-title">${loc.name}${loc.description ? ' in ' + (loc.description) : ''}</div>
-                    ${loc.region ? `<div class="wm-info-card-region">${loc.region}</div>` : ''}
+                    <div class="wm-info-card-title"></div>
+                    <div class="wm-info-card-region"></div>
                 </div>
             </div>
         `);
+
+        const imageWrapper = card.find('.wm-info-card-image-wrapper');
+        if (loc.url) {
+            imageWrapper.find('.wm-info-card-image').attr('src', loc.url).attr('alt', loc.name ?? '');
+            imageWrapper.find('.wm-info-card-badge-name').text(loc.name ?? '');
+            imageWrapper.find('.wm-info-card-coords').text(`${loc.x ?? 0},  ${loc.y ?? 0}`);
+        } else {
+            imageWrapper.remove();
+        }
+
+        card.find('.wm-info-card-title').text(`${loc.name ?? ''}${loc.description ? ' in ' + loc.description : ''}`);
+
+        const regionEl = card.find('.wm-info-card-region');
+        if (loc.region) {
+            regionEl.text(loc.region);
+        } else {
+            regionEl.remove();
+        }
+
         infoCardContainer.append(card);
     }
 
@@ -583,20 +602,37 @@ export function renderLocationView(target, options) {
             const inRangeClass = Array.isArray(highlightedTokenIds) && highlightedTokenIds.includes(token.id) ? ' wm-token-in-range' : '';
 
             const el = $(`
-                <div class="wm-token${enemyClass}${selectedClass}${inRangeClass}" data-token-id="${token.id}" style="left:${px}px;top:${py}px;">
+                <div class="wm-token${enemyClass}${selectedClass}${inRangeClass}">
                     <div class="wm-token-tooltip">
-                        <div class="wm-token-tooltip-name">${token.name}</div>
-                        <div class="wm-token-tooltip-meta">${metaText}</div>
-                        <div class="wm-token-tooltip-hp"><div class="wm-token-tooltip-hp-fill" style="width:${hpPct}%"></div></div>
+                        <div class="wm-token-tooltip-name"></div>
+                        <div class="wm-token-tooltip-meta"></div>
+                        <div class="wm-token-tooltip-hp"><div class="wm-token-tooltip-hp-fill"></div></div>
                     </div>
-                    ${token.avatar
-                        ? `<img class="wm-token-avatar" src="${token.avatar}" alt="${token.name}" />`
-                        : token.isEnemy
-                            ? `<div class="wm-token-unknown" style="background:#7f1d1d;">☠</div>`
-                            : `<div class="wm-token-unknown">???</div>`}
-                    <span class="wm-token-name">${token.name}</span>
+                    <span class="wm-token-name"></span>
                 </div>
             `);
+            el.attr('data-token-id', token.id);
+            el.css({ left: px + 'px', top: py + 'px' });
+            el.find('.wm-token-tooltip-name').text(token.name ?? '');
+            el.find('.wm-token-tooltip-meta').text(metaText);
+            el.find('.wm-token-tooltip-hp-fill').css('width', hpPct + '%');
+
+            const tokenNameEl = el.find('.wm-token-name').text(token.name ?? '');
+            if (token.avatar) {
+                $('<img>')
+                    .addClass('wm-token-avatar')
+                    .attr('src', token.avatar)
+                    .attr('alt', token.name ?? '')
+                    .insertBefore(tokenNameEl);
+            } else if (token.isEnemy) {
+                $('<div>')
+                    .addClass('wm-token-unknown')
+                    .css('background', '#7f1d1d')
+                    .text('☠')
+                    .insertBefore(tokenNameEl);
+            } else {
+                $('<div>').addClass('wm-token-unknown').text('???').insertBefore(tokenNameEl);
+            }
 
             // Drag token
             setupTokenDrag(el, token, cellW, cellH);
@@ -689,11 +725,14 @@ export function renderLocationView(target, options) {
                 if (onTokenMove) onTokenMove(token.id, newGX, newGY);
 
                 // Update character accordion inputs
-                container.closest('.wm-view-panel, [data-map-root]').find(`.wm-char-coord-input[data-token-id="${token.id}"]`).each(function () {
-                    const axis = $(this).data('axis');
-                    if (axis === 'x') $(this).val(newGX);
-                    if (axis === 'y') $(this).val(newGY);
-                });
+                container.closest('.wm-view-panel, [data-map-root]')
+                    .find('.wm-char-coord-input')
+                    .filter(function () { return $(this).attr('data-token-id') === String(token.id); })
+                    .each(function () {
+                        const axis = $(this).data('axis');
+                        if (axis === 'x') $(this).val(newGX);
+                        if (axis === 'y') $(this).val(newGY);
+                    });
 
                 window.setTimeout(() => el.removeData('wmMoved'), 0);
             });
@@ -896,18 +935,42 @@ function renderCharactersAccordion(target, tokens, onCoordChange) {
         for (const token of tokens) {
             const row = $(`
                 <div class="wm-char-row">
-                    ${token.avatar
-                        ? `<img class="wm-char-avatar" src="${token.avatar}" alt="${token.name}" />`
-                        : `<div class="wm-char-avatar" style="display:flex;align-items:center;justify-content:center;background:#1a1a2e;color:#f59e0b;font-size:0.6rem;font-weight:700;">???</div>`}
-                    <span class="wm-char-name">${token.name}</span>
+                    <span class="wm-char-name"></span>
                     <div class="wm-char-coords">
                         <span class="wm-char-coord-label">X</span>
-                        <input type="number" class="wm-char-coord-input" data-token-id="${token.id}" data-axis="x" value="${token.gridX}" min="0" />
+                        <input type="number" class="wm-char-coord-input" data-axis="x" min="0" />
                         <span class="wm-char-coord-label">Y</span>
-                        <input type="number" class="wm-char-coord-input" data-token-id="${token.id}" data-axis="y" value="${token.gridY}" min="0" />
+                        <input type="number" class="wm-char-coord-input" data-axis="y" min="0" />
                     </div>
                 </div>
             `);
+
+            const charNameEl = row.find('.wm-char-name').text(token.name ?? '');
+            if (token.avatar) {
+                $('<img>')
+                    .addClass('wm-char-avatar')
+                    .attr('src', token.avatar)
+                    .attr('alt', token.name ?? '')
+                    .insertBefore(charNameEl);
+            } else {
+                $('<div>')
+                    .addClass('wm-char-avatar')
+                    .css({
+                        display: 'flex',
+                        'align-items': 'center',
+                        'justify-content': 'center',
+                        background: '#1a1a2e',
+                        color: '#f59e0b',
+                        'font-size': '0.6rem',
+                        'font-weight': '700',
+                    })
+                    .text('???')
+                    .insertBefore(charNameEl);
+            }
+
+            row.find('.wm-char-coord-input').attr('data-token-id', token.id);
+            row.find('.wm-char-coord-input[data-axis="x"]').val(token.gridX);
+            row.find('.wm-char-coord-input[data-axis="y"]').val(token.gridY);
 
             row.find('.wm-char-coord-input').on('change', function () {
                 const axis = $(this).data('axis');

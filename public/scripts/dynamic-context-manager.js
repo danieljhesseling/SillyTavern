@@ -35,6 +35,7 @@ import { ARGUMENT_TYPE, SlashCommandArgument } from './slash-commands/SlashComma
 import { SlashCommandEnumValue } from './slash-commands/SlashCommandEnumValue.js';
 import { getPartyMembersSnapshot, getBoardContextSnapshot } from './party.js';
 import { ToolManager } from './tool-calling.js';
+import { escapeHtml } from './utils.js';
 
 // ─── Constants ──────────────────────────────────────────────────────────
 
@@ -1485,14 +1486,6 @@ async function campaignCommandHandler(_args, value) {
 }
 
 // ─── UI ─────────────────────────────────────────────────────────────────
-
-function escapeHtml(/** @type {any} */ str) {
-    return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
-}
 
 const CATEGORY_COLORS = {
     combat: '#e74c3c',
