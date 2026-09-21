@@ -345,3 +345,38 @@ describe('describeCover', () => {
         }
     });
 });
+
+describe('dice you can make repeatable', () => {
+    // The whole point of a seed: the same fight twice, so the only difference is the
+    // change you made.
+    test('a seeded source makes the rolls repeat', async () => {
+        const { setRandomSource, rollDiceDetailed, isSeeded } = await import('../public/scripts/party/combat-rules.js');
+        const { createSeededRandom } = await import('../public/scripts/game-engine/combat/seeded-random.js');
+
+        setRandomSource(createSeededRandom('molino'));
+        const first = [rollDiceDetailed('1d20'), rollDiceDetailed('2d6+1')];
+        expect(isSeeded()).toBe(true);
+
+        setRandomSource(createSeededRandom('molino'));
+        const second = [rollDiceDetailed('1d20'), rollDiceDetailed('2d6+1')];
+
+        expect(second).toEqual(first);
+        setRandomSource(null);
+        expect(isSeeded()).toBe(false);
+    });
+
+    // Capturing Math.random at load time broke every test that stubs it, because the
+    // module went on holding the original function.
+    test('and going back to chance picks up a stubbed Math.random', async () => {
+        const { setRandomSource, rollDiceDetailed } = await import('../public/scripts/party/combat-rules.js');
+        setRandomSource(null);
+
+        const original = Math.random;
+        try {
+            Math.random = () => 0.5;
+            expect(rollDiceDetailed('1d6').rolls).toEqual([4]);
+        } finally {
+            Math.random = original;
+        }
+    });
+});

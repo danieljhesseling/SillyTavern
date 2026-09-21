@@ -1,0 +1,73 @@
+{
+  "tiers": [
+    {
+      "id": "rules",
+      "order": 10
+    },
+    {
+      "id": "world",
+      "order": 20
+    },
+    {
+      "id": "npc",
+      "order": 30
+    },
+    {
+      "id": "quest",
+      "order": 40
+    },
+    {
+      "id": "location",
+      "order": 50
+    },
+    {
+      "id": "party",
+      "order": 60
+    },
+    {
+      "id": "combat",
+      "order": 70
+    },
+    {
+      "id": "custom",
+      "order": 80
+    }
+  ],
+  "blocks": [
+    {
+      "key": "GAME_010_rules_ctx_meta",
+      "tier": "rules",
+      "what": "Instruccion maestra del sistema"
+    },
+    {
+      "key": "GAME_010_rules_dyn_ejemplo_reglas",
+      "tier": "rules",
+      "what": "Instruccion dinamica de reglas"
+    },
+    {
+      "key": "GAME_030_npc_ctx_relationships",
+      "tier": "npc",
+      "what": "Vinculos con los companeros"
+    },
+    {
+      "key": "GAME_040_quest_ctx_quests",
+      "tier": "quest",
+      "what": "Misiones en curso"
+    },
+    {
+      "key": "GAME_070_combat_ctx_board",
+      "tier": "combat",
+      "what": "Tablero y posiciones"
+    },
+    {
+      "key": "GAME_070_combat_dyn_ejemplo_combate",
+      "tier": "combat",
+      "what": "Instruccion dinamica de combate"
+    },
+    {
+      "key": "GAME_080_custom_instr_ejemplo_custom",
+      "tier": "custom",
+      "what": "Instruccion activa del jugador"
+    }
+  ]
+}

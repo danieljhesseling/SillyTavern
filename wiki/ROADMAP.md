@@ -34,15 +34,17 @@ La lógica de las Fases A a E está escrita y probada. Lo que un jugador puede t
 > [!NOTE]
 > **Cómo leerla.** ✅ hecho y comprobado · 🟡 parcial · ⬜ sin empezar. *Conectada* quiere decir que un jugador puede provocarla: un módulo que solo ejecutan los tests cuenta como ⬜, por bien probado que esté.
 >
-> Esto ya no se estima, se mide: `node tools/check-engine-wiring.mjs` responde hoy **48 de 48 módulos conectados**, y desde el 2026-09-21 **sin salvedades**: de `campaign-map.js` ya se usan las dos mitades, el mapa de campaña y las salas.
+> Esto ya no se estima, se mide: `node tools/check-engine-wiring.mjs` responde hoy **50 de 50 módulos conectados**, y desde el 2026-09-21 **sin salvedades**: de `campaign-map.js` ya se usan las dos mitades, el mapa de campaña y las salas.
 
 **Lo que sigue, en este orden:**
 
-1. **Sacar el pegamento de `party.js`**: la lógica vive fuera, en módulos probados, pero cada enganche nuevo se acumula en un archivo que ya pasa de las 6.000 líneas.
-2. **Registro de contradicciones**: comparar, tras cada turno, lo que el modelo contó con lo que el motor sabe.
-3. **Snapshot del prompt en CI** y **repetición determinista de turno**, que es lo que haría medible un cambio de prompt.
+**El bloque A está vacío desde el 2026-09-21**: todo lo que se podía hacer sin preguntar, está hecho. Lo que venga ahora sale de las propuestas o de una decisión.
 
-Lo que queda del bloque A ya no son mecánicas de juego: es infraestructura para que lo construido aguante.
+Lo que más pide el juego, por orden:
+
+1. **Contenido**: los paquetes de reglas y los libros ya entran; lo que falta es tener algo que meter.
+2. **Las decisiones abiertas** del bloque D de [[POR_HACER]]: `npm audit`, reconciliar los tokens con el proveedor, si el registro de combate debe sobrevivir a una recarga.
+3. **Lo que diga el registro de contradicciones** cuando lleve unas sesiones: es la primera vez que hay datos sobre dónde fallan los prompts en vez de intuiciones.
 
 **Las dos direcciones grandes están hechas**: el Modo Videojuego (Fase H) y la ingesta de libros (Fase G), las dos el 2026-09-21.
 
@@ -145,7 +147,7 @@ Las Fases A y B **no ahorran tokens**. Lo que entregan es jugabilidad: IA que re
 | **Motor de juego (A–E)** | 18 archivos y 4.666 líneas en `game-engine/` (tablero, combate, campaña, reglas, interfaz) · lógica completa de las Fases A a E con tests · lo que está conectado, en *Dónde Estamos* |
 | **Asistente de campaña** | Botón *Nueva campaña* · 4 plantillas · tarjetas *Iniciar* para mundos sin partida · verificado de extremo a extremo (sección propia más abajo) |
 
-**Estado verificable** (medido el 2026-09-21): 1.512 tests en 62 suites · 0 errores de tipos en 62 archivos del fork · **0 errores de ESLint** · **los 48 módulos del motor, conectados al juego, sin salvedades** · 181 comprobaciones en navegador real.
+**Estado verificable** (medido el 2026-09-21): 1.550 tests en 64 suites · 0 errores de tipos en 64 archivos del fork · **0 errores de ESLint** · **los 50 módulos del motor, conectados al juego, sin salvedades** · 181 comprobaciones en navegador real.
 
 > [!NOTE]
 > Este trabajo no era un desvío. Sin el merge no tendrías los 194 commits de upstream; sin los tests no podrías tocar el motor de combate sin miedo; sin el gate de tipos cada refactor sería a ciegas. Las fases que vienen se apoyan en eso.
@@ -537,7 +539,7 @@ La primera versión pasó todos sus tests y **no funcionó**. Lo encontró quien
 >
 > Lo que sí lo detecta es recorrer el flujo en un navegador real. Se hizo con Playwright y Edge contra un servidor con datos aislados, sembrado con una copia del mundo huérfano real. Comprobó, en instalación limpia: crear → chat vinculado al mundo → grupo en las casillas (2,8) y (3,8) → tablero visible con muros y dos fichas → volver a la bienvenida → la tarjeta figura como campaña en curso. Y sobre el mundo huérfano: tarjeta con *Iniciar* → selector de grupo → arranque → pasa a ser campaña normal.
 >
-> **Desde el 2026-09-21 eso está en el repositorio**: `tools/e2e-campaign.mjs` levanta su propio servidor con un `--dataRoot` temporal, recorre el juego y limpia al terminar. No toca tus datos y tu servidor de siempre puede seguir abierto. Son 181 comprobaciones: crear la campaña, las posiciones de inicio, el tablero, abrir una puerta, un combate con su registro, que el epílogo **no** sea un mensaje de sistema, y la campaña listada al cerrar.
+> **Desde el 2026-09-21 eso está en el repositorio**: `tools/e2e-campaign.mjs` levanta su propio servidor con un `--dataRoot` temporal, recorre el juego y limpia al terminar. No toca tus datos y tu servidor de siempre puede seguir abierto. Son 202 comprobaciones: crear la campaña, las posiciones de inicio, el tablero, abrir una puerta, un combate con su registro, que el epílogo **no** sea un mensaje de sistema, y la campaña listada al cerrar.
 >
 > ```bash
 > node tools/e2e-campaign.mjs            # headless
@@ -735,10 +737,11 @@ Lo medido: la **lógica** de las Fases A a E (18 archivos y 4.666 líneas en `ga
 ## 🔬 Verificación
 
 ```bash
-npm run test:unit --prefix tests     # 1.512 tests, 62 suites
-node tools/check-fork-types.mjs      # 0 errores en los 62 archivos del fork
-node tools/check-engine-wiring.mjs   # los 48 modulos del motor, conectados al juego
-node tools/e2e-campaign.mjs          # 181 comprobaciones en un navegador real
+npm run test:unit --prefix tests     # 1.550 tests, 64 suites
+node tools/check-fork-types.mjs      # 0 errores en los 64 archivos del fork
+node tools/check-engine-wiring.mjs   # los 50 modulos del motor, conectados al juego
+node tools/e2e-campaign.mjs          # 202 comprobaciones en un navegador real
+node tools/check-prompt-shape.mjs    # falla si la forma del prompt cambia sin decirlo
 ESLINT_USE_FLAT_CONFIG=false npx eslint --ext .js,.mjs public/scripts/game-engine public/scripts/party public/scripts/party.js public/scripts/campaigns.js public/scripts/world-map-renderer.js tools   # 0 errores
 git fetch upstream && git merge upstream/release
 ```

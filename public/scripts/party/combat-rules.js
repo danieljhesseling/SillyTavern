@@ -43,11 +43,46 @@ export function rollDice(formula, fallbackSides = 20) {
  * @param {number} [fallbackSides=20]
  * @returns {{formula: string, rolls: number[], modifier: number, total: number, natural: number|null}}
  */
+/**
+ * The source of randomness every roll in the game goes through.
+ *
+ * `Math.random` by default. A seeded one can be put in its place, and then a fight rolls
+ * the same way twice — which is what makes it possible to say whether a change to a
+ * prompt or a rule improved anything, instead of noticing that the fight went
+ * differently and shrugging.
+ *
+ * Null means chance, and `Math.random` is then looked up **at each roll** rather than
+ * captured here: capturing it broke every test that stubs `Math.random`, because the
+ * module went on holding the original function.
+ *
+ * @type {(() => number)|null}
+ */
+let randomSource = null;
+
+/**
+ * Replace the die. Pass nothing to go back to chance.
+ *
+ * @param {(() => number)|null} random
+ */
+export function setRandomSource(random) {
+    randomSource = typeof random === 'function' ? random : null;
+}
+
+/** Whether rolls are currently repeatable. */
+export function isSeeded() {
+    return randomSource !== null;
+}
+
+/** One number in [0, 1), from whichever die is in force. */
+function nextRandom() {
+    return randomSource ? randomSource() : Math.random();
+}
+
 export function rollDiceDetailed(formula, fallbackSides = 20) {
     const normalized = String(formula || '').trim() || `1d${fallbackSides}`;
     const match = normalized.match(/^(\d+)d(\d+)([+-]\d+)?$/i);
     if (!match) {
-        const total = Math.floor(Math.random() * fallbackSides) + 1;
+        const total = Math.floor(nextRandom() * fallbackSides) + 1;
         return { formula: normalized, rolls: [total], modifier: 0, total, natural: total };
     }
 
@@ -56,7 +91,7 @@ export function rollDiceDetailed(formula, fallbackSides = 20) {
     const modifier = parseInt(match[3] || '0', 10) || 0;
     const rolls = [];
     for (let index = 0; index < count; index++) {
-        rolls.push(Math.floor(Math.random() * sides) + 1);
+        rolls.push(Math.floor(nextRandom() * sides) + 1);
     }
 
     return {

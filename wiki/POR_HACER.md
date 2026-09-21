@@ -36,13 +36,9 @@ Ordenado por lo que desbloquea. Cada una tiene el camino decidido: si aparece un
 >
 > Lo que queda en este bloque es **profundidad de juego**, no tubería: salas y puertas para que una mazmorra de libro no sea un único combate gigante, descansos para que los recursos signifiquen algo, y el resto.
 
-| ID | Tarea | Qué entrega | Fase |
-| :--- | :--- | :--- | :--- |
-| **A1** | **Sacar el pegamento de `party.js`** | 5.700 líneas: la lógica vive fuera, en módulos probados, pero cada enganche nuevo se acumula aquí | — |
-| **A2** | **Registro de contradicciones** narración contra estado | Tras cada turno, comparar lo que el modelo contó con lo que el motor sabe. Da datos sobre dónde fallan los prompts en vez de intuiciones | T7 · N-06 |
-| **A3** | **Snapshot del prompt compilado en CI** | Que un cambio que altere el prompt en silencio haga fallar la build. Ahora es posible: `/prompt` ya sabe descomponerlo | T5 · N-02 |
-| **A4** | **Repetición determinista de turno** | Reejecutar con el mismo contexto y semilla, para saber si un cambio de prompt mejoró algo en vez de suponerlo | T6 · N-05 |
-| **A5** | **Ampliar el recorrido de navegador** a las salas y las puertas | Lo cubre ya: los pasos 23 y 24 importan un libro, abren una puerta y pelean con lo que había detrás. El calendario, los vínculos, las perks y los escenarios ya lo están | — |
+**El bloque A está vacío por primera vez.** Todo lo que se podía hacer sin preguntar, está hecho: las mecánicas, la ingesta de libros, el Modo Videojuego y la infraestructura que los sostiene.
+
+Lo que venga ahora sale del bloque **P** (propuestas) o de una decisión tuya del bloque **D**.
 
 ---
 
@@ -167,6 +163,8 @@ No es trabajo pendiente, es información: cosas que están así **a propósito**
 20. `/objetivos editar`: cambia lo que hay, añade uno, o pulsa **Proponer con IA** si tienes proveedor. Guarda y `/objetivos` lo lee.
 21. `/enemigos`: cambia quién puede salir en este tablero y cuántos. `/fight` lo nota.
 22. Gana un combate y mira el inventario: el botín está como objetos, no como texto.
+23. `/semilla molino`, juega un combate, y repite: sale igual. `/semilla` sola vuelve al azar.
+24. `/contradicciones`: lo que la narración ha dicho y el motor no confirma.
 
 Y sin tocar nada, el recorrido completo en un navegador de verdad:
 
@@ -180,6 +178,22 @@ Lo que **no** se puede probar todavía: calendario, vínculos y escenarios (#6, 
 ---
 
 ## ✅ Hecho, para no rehacerlo
+
+### La última batería: infraestructura — 2026-09-21
+
+Cinco, y con ellas **el bloque A queda vacío**.
+
+**El pegamento, fuera de `party.js`.** El reloj, los vínculos, los descansos y el mapa de campaña se van a `party/campaign-state.js`, con sus dependencias **pasadas, no buscadas**: el módulo dice arriba qué necesita y nada dentro alcanza una variable global. Salen 188 líneas y, con ellas, doce imports que ya no hacían falta. Ese es el corte que separa un archivo que crece de uno que se puede leer.
+
+**El registro de contradicciones** (`ui/contradiction-log.js`, 21 tests). Tras cada turno compara lo que el modelo contó con lo que el motor sabe: a quién da por muerto y sigue en pie, qué puntos de vida dice que quedan, un combate que no ha empezado, una hora que el calendario no confirma. **No corrige nada, a propósito**: una narración que contradice el estado es un problema de prompt, y lo que arregla un problema de prompt es un prompt mejor, no reescribir en silencio lo que escribió el modelo. `/contradicciones` las agrupa por tipo, porque una es un accidente y veinte iguales son una línea que falta en el prompt.
+
+**Los dados, repetibles** (`combat/seeded-random.js`, 15 tests). `/semilla molino` y la partida rueda igual dos veces; `/semilla` sola vuelve al azar. Sin esto, cada pregunta sobre si un cambio mejoró algo chocaba con la misma pared: el combate fue distinto, así que quién sabe. La semilla se guarda con la partida, no con la sesión.
+
+**El snapshot del prompt** (`tools/check-prompt-shape.mjs`). Falla si la forma del prompt cambia sin que nadie lo diga. Comprueba **la forma** —qué bloques hay, en qué orden, de qué nivel— y nunca el texto, que debe cambiar en cada turno. Mover un bloque hacia delante invalida la caché de todo lo que venga detrás, y eso ya no puede pasar en silencio.
+
+**Y el recorrido ya cubría las salas**: los pasos 23 y 24 importan un libro, abren una puerta y pelean con lo que había detrás.
+
+**Un fallo mío que cazaron los tests**: al hacer los dados sustituibles capturé `Math.random` al cargar el módulo, así que sustituirlo después dejaba de tener efecto — y eso rompía cinco tests que lo hacen. Ahora se consulta en cada tirada.
 
 ### Seis del bloque A, de una vez — 2026-09-21
 

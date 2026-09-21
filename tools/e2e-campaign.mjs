@@ -350,7 +350,9 @@ try {
     await page.locator('.cw-ai-go').click();
 
     await page.waitForSelector('.cw-ai-map', { timeout: 20000 });
-    const mapRows = (await page.locator('.cw-ai-map').innerText()).trim().split('\n');
+    // El mapa es editable desde que se puede corregir en la previsualizacion, asi que
+    // su contenido esta en el valor del campo, no en el texto del nodo.
+    const mapRows = (await page.locator('.cw-ai-map').inputValue()).trim().split('\n');
     const widths = new Set(mapRows.map(r => r.length));
 
     check('the generated board is shown before anything is created', mapRows.length >= 5, `${mapRows.length} rows`);
@@ -1969,6 +1971,71 @@ try {
     check('quitar un tipo de dano que algo usa se avisa, con quien lo usa',
         impact.broken === 1 && /Espada/.test(impact.message), impact.message);
     check('y se resume lo que costaria', /ficha/.test(impact.summary), impact.summary);
+
+
+    step('28. Semilla, contradicciones y el pegamento fuera de party.js');
+    // Los dados, repetibles: sin esto no se puede decir si un cambio mejoro algo.
+    const seeded = await page.evaluate(async () => {
+        const ctx = window.SillyTavern.getContext();
+        const rules = await import('/scripts/party/combat-rules.js');
+
+        await ctx.executeSlashCommandsWithOptions('/semilla molino');
+        const first = [rules.rollDiceDetailed('1d20').total, rules.rollDiceDetailed('2d6+1').total];
+
+        await ctx.executeSlashCommandsWithOptions('/semilla molino');
+        const second = [rules.rollDiceDetailed('1d20').total, rules.rollDiceDetailed('2d6+1').total];
+
+        const saved = ctx.chatMetadata.diceSeed;
+        await ctx.executeSlashCommandsWithOptions('/semilla');
+        return { first, second, saved, cleared: ctx.chatMetadata.diceSeed ?? null, seeded: rules.isSeeded() };
+    });
+    check('con la misma semilla, las mismas tiradas',
+        JSON.stringify(seeded.first) === JSON.stringify(seeded.second), JSON.stringify(seeded));
+    check('la semilla se guarda con la partida, y se puede quitar',
+        seeded.saved === 'molino' && seeded.cleared === null && seeded.seeded === false,
+        JSON.stringify(seeded));
+
+    // Las contradicciones: se anotan, no se corrigen.
+    const contradictions = await page.evaluate(async () => {
+        const m = await import('/scripts/game-engine/ui/contradiction-log.js');
+        const ctx = window.SillyTavern.getContext();
+        const party = (ctx.chatMetadata.party || []).map(p => ({ name: p.name, hp: p.hp, maxHp: p.maxHp }));
+        const alive = party.find(p => p.hp > 0);
+
+        const found = m.findContradictions(
+            `${alive?.name} cae sin sentido. Por la noche todo calla.`,
+            { party, slotLabel: 'Mañana', combatActive: false },
+        );
+        const log = m.appendContradictions(null, found, { day: 1 });
+        return { kinds: found.map(f => f.kind), summary: m.summariseContradictions(log) };
+    });
+    check('una narracion que mata a quien sigue en pie se anota',
+        contradictions.kinds.includes('muerte'), JSON.stringify(contradictions.kinds));
+    check('y tambien la hora que no cuadra con el calendario',
+        contradictions.kinds.includes('momento del día'), JSON.stringify(contradictions.kinds));
+    check('el registro las agrupa por tipo',
+        contradictions.summary.total === contradictions.kinds.length, JSON.stringify(contradictions.summary));
+
+    // Y el estado de campana, ya fuera de party.js, sigue siendo el mismo estado.
+    const extracted = await page.evaluate(async () => {
+        const mod = await import('/scripts/party/campaign-state.js');
+        const ctx = window.SillyTavern.getContext();
+        const state = mod.createCampaignState({
+            metadata: () => ctx.chatMetadata,
+            saveMetadata: () => {},
+            party: () => ctx.chatMetadata.party || [],
+            saveParty: () => {},
+            renderParty: () => {},
+            renderCampaign: () => {},
+            narrate: () => {},
+            isFighting: () => false,
+            worldName: () => ctx.chatMetadata.world_info,
+            loadWorld: async () => null,
+        });
+        return { day: state.getCalendar().day, slot: state.getSlotLabel(), keys: Object.keys(state).length };
+    });
+    check('el modulo extraido lee el mismo calendario que la partida',
+        extracted.day >= 1 && extracted.slot.length > 0, JSON.stringify(extracted));
 
     console.log('\n--- console errors ---');
     console.log(problems.size ? [...problems].join('\n') : '(none)');

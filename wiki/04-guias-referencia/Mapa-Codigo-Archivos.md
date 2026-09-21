@@ -42,7 +42,7 @@ Este documento sirve como inventario exhaustivo del repositorio, clasificando lo
 > [!NOTE]
 > **Cifras medidas el 2026-09-21.** El motor de juego vive desde entonces en dos carpetas nuevas, `game-engine/` y `party/`, que esta página no recogía. El criterio que las ordena está en [[Guia-Desarrollo-Flujo]] §2: código nuevo va en archivo nuevo, para que un merge con upstream no lo toque nunca.
 
-### 2.1. El motor de juego — `public/scripts/game-engine/` (48 archivos, 12.196 líneas)
+### 2.1. El motor de juego — `public/scripts/game-engine/` (50 archivos, 12.516 líneas)
 
 Módulos puros: sin DOM, sin estado global, sin lecturas del chat. Por eso se prueban en Node y por eso el coste de merge es cero. Los marcados ⬜ están escritos y probados pero **el juego todavía no los carga**; compruébalo con `node tools/check-engine-wiring.mjs`.
 
@@ -78,6 +78,8 @@ Módulos puros: sin DOM, sin estado global, sin lecturas del chat. Por eso se pr
 | `combat/spawn.js` | 95 | Dónde aparecen los enemigos: donde los dibujó el libro, nunca en un muro | ✅ |
 | `rules/rest.js` | 216 | Descanso corto y largo, con dados de golpe | ✅ |
 | `combat/loot-items.js` | 84 | Qué es cada cosa que sueltan los enemigos, para que se pueda usar | ✅ |
+| `combat/seeded-random.js` | 97 | Dados que se pueden repetir: una partida dos veces igual | ✅ |
+| `ui/contradiction-log.js` | 223 | Lo que la narración dijo y el motor no confirma | ✅ |
 | `campaign/encounter-editor.js` | 117 | Qué enemigos puede sacar un tablero, como filas | ✅ |
 | `ui/encounter-editor.js` | 119 | El panel de `/enemigos` | ✅ |
 | `rules/rule-impact.js` | 157 | Qué referencias rompería un cambio de reglas | ✅ |
@@ -97,12 +99,13 @@ Módulos puros: sin DOM, sin estado global, sin lecturas del chat. Por eso se pr
 | `campaign/campaign-view.js` | 110 | El calendario y los vínculos como algo que dibujar | ✅ |
 | `combat/scenario-board.js` | 102 | Juzga los objetivos contra el tablero y decide el combate | ✅ |
 
-### 2.2. El subsistema de grupo — `public/scripts/party/` (5 archivos, 544 líneas)
+### 2.2. El subsistema de grupo — `public/scripts/party/` (6 archivos, 868 líneas)
 
 Extraído de `party.js` por las costuras que los tests ya cubrían.
 
 | Archivo | Líneas | Función |
 | :--- | ---: | :--- |
+| `campaign-state.js` | 295 | Reloj, vínculos, descansos y mapa, con sus dependencias inyectadas |
 | `combat-rules.js` | 218 | Dados, distancias, fórmulas de daño y cobertura |
 | `item-forms.js` | 183 | Formularios de objetos |
 | `positions.js` | 65 | De dónde sale la casilla de cada miembro |
@@ -155,9 +158,10 @@ Cada uno cuesta en cada merge. La lista no debería crecer.
 
 | Archivo | Para qué |
 | :--- | :--- |
-| `check-fork-types.mjs` | Gate de tipos sobre los 62 archivos propios. Falla si aparece un error |
+| `check-fork-types.mjs` | Gate de tipos sobre los 64 archivos propios. Falla si aparece un error |
+| `check-prompt-shape.mjs` | Falla si la forma del prompt cambia sin que nadie lo diga |
 | `check-engine-wiring.mjs` | Lista los módulos del motor que el juego no carga. Informa, no falla |
-| `e2e-campaign.mjs` | Recorre el juego en un navegador real, con servidor y datos propios. 181 comprobaciones |
+| `e2e-campaign.mjs` | Recorre el juego en un navegador real, con servidor y datos propios. 202 comprobaciones |
 
 ---
 

@@ -21,14 +21,16 @@ import {
     clampRelationshipScore, generateEnemyInstanceId, normalizeDndEntityType,
 } from './dnd-system.js';
 import { escapeHtml } from './utils.js';
+import { createSeededRandom, seedFrom } from './game-engine/combat/seeded-random.js';
 import {
     rollDice, rollDiceDetailed, getRollClassification, getRollClassificationLabel,
     getDistanceInFeet, getAttackRangeFeet, describeCover,
     getPlayerDamageFormula, getEnemyDamageFormula, getPlayerAttackModifier,
-    createEmptyCombatEncounter, normalizeCombatEncounter,
+    createEmptyCombatEncounter, normalizeCombatEncounter, setRandomSource,
 } from './party/combat-rules.js';
 import { escItemText, buildPartyItemSections } from './party/item-forms.js';
 import { resolveEntryMapPosition } from './party/positions.js';
+import { createCampaignState } from './party/campaign-state.js';
 import {
     normalizeTerrain, setCell as setTerrainCell, getTerrainOptions, getCoverBonus, setDoorOpen,
 } from './game-engine/board/terrain.js';
@@ -49,16 +51,16 @@ import {
     deriveRooms, openDoor, enemiesInRoom, awakePlacements, normalizeRooms,
 } from './game-engine/campaign/campaign-map.js';
 import {
-    planEndure, planFollowUp, planBatonPass, planUltimate, buildPersonalWeapon,
+    planEndure, planFollowUp, planBatonPass, planUltimate,
 } from './game-engine/combat/bond-perks.js';
 import {
     buildBoardState, judgeScenario, hasScenario,
 } from './game-engine/combat/scenario-board.js';
 import {
-    normalizeCalendar, advanceSlot, advanceToNextDay, formatCalendar,
+    formatCalendar,
 } from './game-engine/campaign/calendar.js';
 import {
-    normalizeBondState, recordBondEvent, resetDailyPerks, getBondProgress, spendPerk, BOND_EVENTS,
+    recordBondEvent, getBondProgress, spendPerk, BOND_EVENTS,
 } from './game-engine/campaign/bonds.js';
 import { renderCampaignPanel } from './game-engine/ui/campaign-panel.js';
 import {
@@ -68,17 +70,16 @@ import {
 import { buildGameMessage, CHANNEL } from './game-engine/ui/chat-channel.js';
 import { guardRolls, guardImpossibleRolls, describeCorrections } from './game-engine/combat/roll-guard.js';
 import {
+    findContradictions, appendContradictions, summariseContradictions,
+} from './game-engine/ui/contradiction-log.js';
+import {
     planRulesetChange, readRememberedRuleset, rememberRuleset, setActiveRuleset,
 } from './game-engine/rules/ruleset.js';
-import {
-    planShortRest, planLongRest, describeRest, getHitDice,
-} from './game-engine/rules/rest.js';
 import {
     isShellOpen, toggleGameShell, refreshGameShell, closeGameShell,
 } from './game-engine/ui/shell/game-shell.js';
 import { buildDialogueView } from './game-engine/ui/shell/dialogue-scene.js';
 import { buildExplorationView } from './game-engine/ui/shell/exploration-scene.js';
-import { completeLocation, normalizeCampaignMap } from './game-engine/campaign/campaign-map.js';
 
 /** @typedef {import('./party/types.js').PartyMember} PartyMember */
 /** @type {PartyMember[]} */
@@ -2004,95 +2005,45 @@ function awardEncounterLoot(defeated) {
 //  Campaign clock and bonds (wiki/ROADMAP.md, Fase D)
 // ================================================================
 
-/** Where the day and the bonds live: with the chat, like the party and the board. */
-const CALENDAR_KEY = 'calendar';
-const BONDS_KEY = 'bonds';
+/**
+ * El estado de campana -reloj, vinculos, descansos y mapa- vive en su propio modulo.
+ *
+ * Aqui solo queda decirle donde estan las cosas de la aplicacion. Ese es el corte: el
+ * modulo dice que necesita, y nada de lo que hay dentro busca variables globales.
+ */
+const campaign = createCampaignState({
+    metadata: () => chat_metadata,
+    saveMetadata: () => saveMetadata(),
+    party: () => partyMembers,
+    saveParty: () => savePartyState(),
+    renderParty: () => renderPartyMembers(),
+    renderCampaign: () => renderCampaignTab(),
+    narrate: (text) => postCombatNarration(text),
+    isFighting: () => Boolean(combatEncounter.active),
+    worldName: () => String(chat_metadata?.[METADATA_KEY] || ''),
+    loadWorld: (name) => loadWorldInfo(name),
+});
 
 /** @returns {any} */
-function getCampaignCalendar() {
-    return normalizeCalendar(chat_metadata?.[CALENDAR_KEY]);
-}
-
+const getCampaignCalendar = () => campaign.getCalendar();
 /** @returns {any} */
-function getCampaignBonds() {
-    return normalizeBondState(chat_metadata?.[BONDS_KEY]);
-}
+const getCampaignBonds = () => campaign.getBonds();
+/** @param {any} calendar @param {any} bonds */
+const saveCampaignState = (calendar, bonds) => campaign.save(calendar, bonds);
+const advanceCampaignSlot = () => campaign.advanceSlot();
+const advanceCampaignDay = () => campaign.advanceDay();
+/** @param {string} characterId @param {string} eventType */
+const recordCampaignBondEvent = (characterId, eventType) => campaign.recordBond(characterId, eventType);
+const getCurrentSlotLabel = () => campaign.getSlotLabel();
+/** @param {'corto'|'largo'} kind @returns {Promise<string>} */
+const takeRest = (kind) => campaign.rest(kind);
+const getCampaignMap = () => campaign.getMap();
+/** @param {string} locationName */
+const markLocationComplete = (locationName) => campaign.markLocationComplete(locationName);
 
-/**
- * @param {any} calendar
- * @param {any} bonds
- */
-function saveCampaignState(calendar, bonds) {
-    if (calendar) chat_metadata[CALENDAR_KEY] = calendar;
-    if (bonds) chat_metadata[BONDS_KEY] = bonds;
-    saveMetadata();
-}
-
-/**
- * Moves the campaign clock on by one slot, and a whole day when the night rolls over.
- *
- * Once-a-day perks come back with the new day. Doing it here rather than in the panel
- * means it happens however the day turns over, including from a long rest later on.
- */
-function advanceCampaignSlot() {
-    const { calendar, dayAdvanced } = advanceSlot(getCampaignCalendar());
-    const bonds = dayAdvanced ? resetDailyPerks(getCampaignBonds()) : null;
-
-    saveCampaignState(calendar, bonds);
-    postCombatNarration(dayAdvanced
-        ? `🌅 [CAMPAÑA] Amanece el día ${calendar.day}.`
-        : `🕐 [CAMPAÑA] ${formatCalendar(calendar)}.`);
-    renderCampaignTab();
-}
-
-/** Skips whatever is left of today. */
-function advanceCampaignDay() {
-    const calendar = advanceToNextDay(getCampaignCalendar());
-    saveCampaignState(calendar, resetDailyPerks(getCampaignBonds()));
-    postCombatNarration(`🌅 [CAMPAÑA] Amanece el día ${calendar.day}.`);
-    renderCampaignTab();
-}
-
-/**
- * Records something that happened between the player and a companion.
- *
- * A rank-up is announced rather than applied quietly, because it is the moment the model
- * is supposed to write a scene about — from a fact the engine already decided.
- *
- * @param {string} characterId
- * @param {string} eventType
- */
-function recordCampaignBondEvent(characterId, eventType) {
-    const member = partyMembers.find(m => String(m.id) === String(characterId));
-    if (!member) return;
-
-    const result = recordBondEvent(getCampaignBonds(), String(characterId), eventType);
-    saveCampaignState(null, result.state);
-
-    const label = BOND_EVENTS[eventType]?.label ?? eventType;
-    postCombatNarration(`💞 [CAMPAÑA] ${member.name}: ${label}.`);
-
-    if (result.rankedUp) {
-        postCombatNarration(`✨ [CAMPAÑA] Tu vínculo con ${member.name} sube al rango ${result.rankAfter}.`);
-        for (const perk of result.unlockedPerks) {
-            postCombatNarration(`🎖️ [CAMPAÑA] Desbloqueado: ${perk.label} — ${perk.description}`);
-
-            // El rango 10 no es solo un aviso: deja un arma en la ficha, una vez, y se
-            // queda ahi despues del combate. Un bonus invisible no seria una recompensa.
-            if (perk.id === 'ultimate') {
-                const spec = buildPersonalWeapon(member);
-                member.items = member.items ?? [];
-                if (!member.items.some((/** @type {any} */ i) => i?.name === spec.name)) {
-                    addItemToInventory(/** @type {any} */ (member), createItem(/** @type {any} */ (spec)));
-                    savePartyState();
-                    postCombatNarration(`⚔️ [CAMPAÑA] ${member.name} recibe su arma personal: ${spec.name}.`);
-                }
-            }
-        }
-    }
-
-    renderCampaignTab();
-}
+/** Lo que se guarda con el chat y no vive en `party/campaign-state.js`. */
+const CONTRADICTIONS_KEY = 'contradictions';
+const SEED_KEY = 'diceSeed';
 
 /**
  * El golpe definitivo del vinculo de rango 10.
@@ -2148,85 +2099,45 @@ function resolveUltimateStrike(rawTargetName) {
 }
 
 /**
- * Los dados de golpe que declara cada clase del mundo, por nombre.
+ * Compara lo que el modelo acaba de contar con lo que el motor sabe.
  *
- * Las clases son entradas del Lorebook como cualquier otra, y ya llevan su `hitDie`
- * escrito. Leerlo de ahi es lo que evita una segunda tabla que se quedaria vieja.
+ * No cambia nada, a proposito. Una narracion que contradice el estado es un problema de
+ * prompt, y lo que arregla un problema de prompt es un prompt mejor, no reescribir en
+ * silencio lo que escribio el modelo. Lo que esto da son datos sobre donde fallan los
+ * prompts, en vez de la sensacion de que a veces fallan.
  *
- * @returns {Promise<Record<string, string>>}
+ * @param {number} messageId
  */
-async function getHitDiceByClass() {
-    /** @type {Record<string, string>} */
-    const byClass = {};
-    try {
-        const worldName = String(chat_metadata?.[METADATA_KEY] || '');
-        if (!worldName) return byClass;
-        const data = await loadWorldInfo(worldName);
-        for (const entry of Object.values(data?.entries ?? {})) {
-            const dnd = /** @type {any} */ (entry)?.dndData;
-            if (!dnd?.hitDie) continue;
-            byClass[String(/** @type {any} */ (entry).comment || dnd.name || '').toLowerCase()] = String(dnd.hitDie);
-        }
-    } catch (error) {
-        console.warn('[party] could not read hit dice from the world', error);
-    }
-    return byClass;
-}
+function recordContradictions(messageId) {
+    const message = chat[messageId];
+    if (!message || message.is_user || !message.mes) return;
 
-/**
- * Descansar: el unico gasto de tiempo que devuelve algo.
- *
- * El corto cuesta un bloque del calendario; el largo salta al dia siguiente y reinicia
- * las perks diarias, que es lo mismo que hacia amanecer. Sin esto los puntos de vida no
- * eran un recurso: un combate o te mataba o no te costaba nada que no se fuera solo.
- *
- * @param {'corto'|'largo'} kind
- * @returns {Promise<string>}
- */
-async function takeRest(kind) {
-    if (combatEncounter.active) {
-        toastr.warning('No se puede descansar en mitad de un combate.');
-        return '';
-    }
-    if (partyMembers.length === 0) {
-        toastr.warning('No hay grupo que descanse.');
-        return '';
+    const found = findContradictions(String(message.mes), {
+        party: partyMembers.map(m => ({ name: m.name, hp: Number(m.hp) || 0, maxHp: Number(m.maxHp) || 0 })),
+        enemies: combatEncounter.enemies.map(e => ({
+            name: e.name, currentHp: Number(e.currentHp) || 0, maxHp: Number(e.maxHp) || 0,
+        })),
+        day: getCampaignCalendar().day,
+        slotLabel: getCurrentSlotLabel(),
+        locationName: currentLocationName,
+        combatActive: Boolean(combatEncounter.active),
+    });
+
+    if (found.length === 0) return;
+
+    if (chat_metadata) {
+        chat_metadata[CONTRADICTIONS_KEY] = appendContradictions(
+            chat_metadata[CONTRADICTIONS_KEY], found, { day: getCampaignCalendar().day },
+        );
+        saveMetadata();
     }
 
-    const hitDieByClass = await getHitDiceByClass();
-
-    const plan = kind === 'corto'
-        ? planShortRest({
-            party: partyMembers,
-            hitDieByClass,
-            // El dado que le toca a cada uno, no siempre un d8: un guerrero tira d10.
-            // La misma funcion de tirada que todo lo demas, para que el registro lo
-            // explique igual.
-            rollDie: (faces) => rollDice(`1d${faces}`, faces),
-        })
-        : planLongRest({ party: partyMembers, hitDieByClass });
-
-    for (const entry of plan.entries) {
-        const member = partyMembers.find(m => String(m.id) === entry.id);
-        if (!member) continue;
-        member.hp = entry.hpAfter;
-        const dice = getHitDice(member, hitDieByClass);
-        member.hitDiceSpent = Math.max(0, Math.min(dice.total, dice.spent + entry.diceSpent - entry.diceRegained));
+    // En el registro del jugador, no en el prompt: el modelo no necesita leer que se
+    // equivoco, necesita un prompt que no le deje equivocarse.
+    for (const item of found) {
+        console.warn('[party] contradiccion', item);
+        pushCombatLogEntry(lineToEntry(`Contradiccion: ${item.message}`));
     }
-
-    savePartyState();
-
-    if (kind === 'corto') {
-        advanceCampaignSlot();
-    } else {
-        advanceCampaignDay();
-    }
-
-    const lines = describeRest(kind, plan);
-    postCombatNarration(`[DESCANSO] ${lines.join('\n')}`);
-    renderPartyMembers();
-    toastr.success(lines.slice(1).join('\n') || 'Nadie necesitaba descansar.', `Descanso ${kind}`, { timeOut: 9000 });
-    return lines.join(' ');
 }
 
 /**
@@ -3356,50 +3267,6 @@ async function openCompendium() {
         toastr.error(String(error?.message || error), 'No se pudieron editar las reglas');
         return '';
     }
-}
-
-/**
- * El mapa de campana de esta partida: que sitios estan abiertos, cuales cerrados y por
- * que. Se guarda con el chat, como el resto del estado de campana.
- *
- * @returns {import('./game-engine/campaign/campaign-map.js').CampaignMap}
- */
-function getCampaignMap() {
-    return normalizeCampaignMap(chat_metadata?.campaignMap);
-}
-
-/**
- * @param {import('./game-engine/campaign/campaign-map.js').CampaignMap} map
- */
-function saveCampaignMap(map) {
-    if (!chat_metadata) return;
-    chat_metadata.campaignMap = map;
-    saveMetadata();
-}
-
-/**
- * Da una localizacion por superada en el mapa de campana.
- *
- * Es lo que abre las siguientes: un sitio que exige haber pasado por otro no se fia de
- * que el jugador se acuerde, comprueba el mapa. Se llama al ganar el escenario de un
- * tablero, porque ganar es lo unico que deberia abrir puertas.
- *
- * @param {string} locationName
- */
-function markLocationComplete(locationName) {
-    const name = String(locationName || '').trim();
-    if (!name) return;
-    const before = getCampaignMap();
-    const entry = before.locations.find(l => l.id === name);
-    if (entry && entry.status === 'complete') return;
-
-    // Un sitio del que el mapa nunca supo nada se anade al darlo por superado: asi una
-    // campana sin mapa declarado tambien acumula por donde ha pasado.
-    const withPlace = entry
-        ? before
-        : { version: before.version, locations: [...before.locations, { id: name, name, status: /** @type {'available'} */ ('available'), requiresQuests: [], requiresLocations: [] }] };
-
-    saveCampaignMap(completeLocation(withPlace, name));
 }
 
 /**
@@ -5682,6 +5549,11 @@ export function initPartyPanel() {
         // Cerrar la partida ya no apaga el Modo Juego: sin campana abierta, la escena
         // de titulo ensena la bienvenida con las campanas, que es donde hay que estar.
         if (isShellOpen()) refreshGameShell();
+
+        // La semilla es de la partida, no de la sesion: abrir una campana con semilla
+        // fijada tiene que volver a fijarla, o el "mismo" combate saldria distinto.
+        const seed = chat_metadata?.[SEED_KEY];
+        setRandomSource(seed ? createSeededRandom(String(seed)) : null);
         // The campaign may play by its own rules; see applyCampaignRuleset.
         applyCampaignRuleset(String(chat_metadata?.[METADATA_KEY] || ''))
             .catch(error => console.error('[party] campaign ruleset failed', error));
@@ -6083,6 +5955,60 @@ export function initPartyPanel() {
     }));
 
     SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'semilla',
+        helpString: '<div>Fija la semilla de los dados para que una partida se repita igual. '
+            + '<code>/semilla molino</code> la fija, <code>/semilla</code> sola vuelve al azar. '
+            + 'Sirve para saber si un cambio mejoro algo, en vez de suponerlo.</div>',
+        unnamedArgumentList: [
+            SlashCommandArgument.fromProps({
+                description: 'La semilla, o nada para volver al azar',
+                typeList: [ARGUMENT_TYPE.STRING],
+                isRequired: false,
+            }),
+        ],
+        callback: (_args, value) => {
+            const raw = String(value ?? '').trim();
+
+            if (!raw) {
+                setRandomSource(null);
+                if (chat_metadata) {
+                    delete chat_metadata[SEED_KEY];
+                    saveMetadata();
+                }
+                toastr.info('Los dados vuelven a ser aleatorios.', 'Semilla');
+                return '';
+            }
+
+            setRandomSource(createSeededRandom(raw));
+            if (chat_metadata) {
+                chat_metadata[SEED_KEY] = raw;
+                saveMetadata();
+            }
+            toastr.success(`Semilla "${raw}" (${seedFrom(raw)}). Las tiradas se repetiran igual.`, 'Semilla');
+            return raw;
+        },
+    }));
+
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'contradicciones',
+        helpString: '<div>Lo que la narracion ha dicho y el motor no confirma, agrupado por tipo. '
+            + 'No corrige nada: dice donde falla el prompt.</div>',
+        callback: () => {
+            const summary = summariseContradictions(chat_metadata?.[CONTRADICTIONS_KEY]);
+            if (summary.total === 0) {
+                toastr.success('La narracion no ha contradicho al motor ni una vez.', 'Contradicciones');
+                return '0';
+            }
+
+            const lines = summary.byKind
+                .map(k => `${k.count} de ${k.kind} — ultima: ${k.last}`)
+                .join(String.fromCharCode(10));
+            toastr.info(lines, `${summary.total} contradiccion(es)`, { timeOut: 20000 });
+            return String(summary.total);
+        },
+    }));
+
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
         name: 'enemigos',
         helpString: '<div>Abre los enemigos que este tablero puede sacar, y cuantos. '
             + 'Lo que <code>/fight</code> encuentra sale de aqui.</div>',
@@ -6352,6 +6278,12 @@ export function initPartyPanel() {
         } catch (error) {
             // A guard that breaks the chat is worse than a wrong die.
             console.error('[party] roll guard failed', error);
+        }
+
+        try {
+            recordContradictions(messageId);
+        } catch (error) {
+            console.error('[party] contradiction log failed', error);
         }
     });
 
