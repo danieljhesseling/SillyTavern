@@ -294,13 +294,19 @@ Cada paso deja el juego en un estado jugable y se puede parar ahí.
 
 ---
 
-### H3 · El director automático
+### H3 ✅ HECHO · 2026-09-21
 
-Hasta aquí las escenas se cambian a mano. Ahora el director escucha al **motor**: empieza un combate y la pantalla salta al tablero; termina y vuelve al diálogo para el epílogo; entras en un tablero y cambia; sales al mapa y cambia.
+**Lo que quedó construido**
+- `detectSceneEvent(antes, ahora)` — los cuatro sucesos que mueven la pantalla, **nombrados uno a uno**: empieza un combate, termina, se abre un tablero, se sale de él. No se deducen de «la escena automática cambió», porque un combate que termina con el tablero abierto deja al selector en el tablero y aun así hay que volver al diálogo: lo que viene es el epílogo, y el epílogo es narración.
+- `directScene(antes, ahora, elegida)` — un suceso manda sobre tu elección **y se queda puesto**. Si no, el epílogo duraría un parpadeo: el tablero abierto tiraría de la pantalla de vuelta a la mesa en el redibujado siguiente. Tu tecla vuelve a mandar en cuanto la pulsas, hasta que pase algo nuevo.
+- El Shell recuerda la situación anterior y la explicación en curso, y refresca también cuando llega un mensaje: el retrato es de quien acaba de hablar.
+- Y **enseña la escena más parecida que exista**: el director dice dónde está la partida, pero qué pantallas hay es problema del Shell. Salir de un tablero manda al mapa, y hasta que H4 lo construya lo que se ve es la conversación — no una pantalla cuyo único contenido sea la noticia de que aún no existe.
 
-Los atajos `1` `2` `3` siguen mandando sobre la decisión automática, porque a veces quieres mirar el mapa en mitad de una pelea.
+**Escucha al motor, no al Dynamic Context**, que es la corrección 0.1 puesta en código y fijada con un test: con `combatActive: false`, ninguna otra cosa mueve la pantalla a combate.
 
-**Cómo se comprueba**: en el recorrido de navegador, que `/fight` cambie la escena y que terminar el combate la devuelva.
+**Lo que encontró el navegador**: el epílogo llega como mensaje, el mensaje provoca un redibujado, y ese redibujado reescribía *«termina el combate»* por *«elegida a mano»*. La explicación ahora solo cambia cuando pasa algo o cuando la pantalla se mueve.
+
+**Cómo quedó verificado**: 37 tests en el director (13 nuevos) y 12 comprobaciones en el recorrido (paso 20) que recorren el ciclo entero — de charla, `/fight` y la pantalla salta sola; tecla `1` y manda tu elección; `/combat-stop` y vuelve sola con el epílogo, que no es un mensaje de sistema.
 
 ---
 

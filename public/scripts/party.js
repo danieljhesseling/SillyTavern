@@ -5730,6 +5730,16 @@ export function initPartyPanel() {
         }
     });
 
+    // El retrato de la escena de dialogo es quien acaba de hablar, asi que tiene que
+    // enterarse de que alguien ha hablado. El tablero se redibuja por su cuenta; un
+    // mensaje nuevo no lo redibuja, y sin esto el epilogo de un combate dejaria en
+    // pantalla la cara del turno anterior.
+    for (const rendered of [event_types.CHARACTER_MESSAGE_RENDERED, event_types.USER_MESSAGE_RENDERED]) {
+        eventSource.on(rendered, () => {
+            if (isShellOpen()) refreshGameShell();
+        });
+    }
+
     // ================================================================
     //  Auto-detect location / board names in user messages
     // ================================================================

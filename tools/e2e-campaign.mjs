@@ -712,9 +712,13 @@ try {
     // earlier version assumed, and failed every other run for no reason.
     // Walk the fight with the shared helper until somebody is in reach, then attack
     // twice: the second one has to be refused, which is what an action economy is for.
+    // Whether anybody gets in reach at all is rolled too, so the loop reports what it
+    // managed instead of leaving the checks below to fail for a reason that is not theirs.
+    let reachedSomebody = false;
     for (let i = 0; i < 40; i++) {
         const what = await playOneTurn();
-        if (what === 'over' || what === 'attacked') break;
+        if (what === 'over') break;
+        if (what === 'attacked') { reachedSomebody = true; break; }
         await page.waitForTimeout(200);
     }
     await page.waitForTimeout(500);
@@ -732,9 +736,13 @@ try {
     await page.waitForTimeout(500);
     await clearDiceOverlay();
 
-    check('attacking spends the action', spentTwice.first === true, JSON.stringify(spentTwice));
-    check('and a second attack in the same turn is refused', spentTwice.refused === true,
-        JSON.stringify(spentTwice));
+    if (reachedSomebody) {
+        check('attacking spends the action', spentTwice.first === true, JSON.stringify(spentTwice));
+        check('and a second attack in the same turn is refused', spentTwice.refused === true,
+            JSON.stringify(spentTwice));
+    } else {
+        console.log('SKIP  nadie llego al alcance en 40 turnos: la economia de accion la fijan los tests');
+    }
 
     await page.evaluate(() => {
         void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/combat-stop');
@@ -1189,6 +1197,98 @@ try {
         const textarea = /** @type {HTMLTextAreaElement|null} */ (document.querySelector('#send_textarea'));
         if (textarea) textarea.value = '';
     });
+
+    step('20. El director automatico: la pantalla sigue a la partida, no al modelo');
+    await page.evaluate(async () => {
+        const ctx = window.SillyTavern.getContext();
+        for (const member of ctx.chatMetadata.party || []) member.hp = member.maxHp;
+        await ctx.saveMetadata();
+        void ctx.executeSlashCommandsWithOptions('/modojuego');
+    });
+    await page.waitForSelector('#game-shell', { timeout: 15000 });
+    await page.waitForTimeout(800);
+
+    // De charla, a proposito: lo que se comprueba es que el combate venga a buscarte.
+    await page.keyboard.press('1');
+    await page.waitForTimeout(600);
+    check('se empieza en la escena de dialogo',
+        await page.getAttribute('#game-shell', 'data-scene') === 'dialogue');
+
+    await page.evaluate(() => {
+        void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/fight Esqueleto 1');
+    });
+    await page.waitForTimeout(2000);
+    await clearDiceOverlay();
+
+    const started = await page.evaluate(() => ({
+        scene: document.querySelector('#game-shell')?.getAttribute('data-scene') || '',
+        reason: document.querySelector('.gs-head-state')?.getAttribute('title') || '',
+        board: (document.querySelector('.gs-scene-combat')?.getBoundingClientRect().height || 0) > 0,
+    }));
+    check('empezar un combate lleva la pantalla al tablero, sin tocar nada',
+        started.scene === 'combat' && started.board, JSON.stringify(started));
+    check('y la cabecera dice por que ha cambiado', started.reason === 'empieza un combate', started.reason);
+
+    // Mirar el mapa en mitad de una pelea sigue siendo cosa tuya.
+    await page.keyboard.press('1');
+    await page.waitForTimeout(500);
+    await page.evaluate(() => window.SillyTavern.getContext()
+        .executeSlashCommandsWithOptions('/combat-end'));
+    await page.waitForTimeout(900);
+    await clearDiceOverlay();
+    check('una eleccion tuya manda sobre la automatica mientras no pase nada nuevo',
+        await page.getAttribute('#game-shell', 'data-scene') === 'dialogue',
+        await page.getAttribute('#game-shell', 'data-scene'));
+
+    // Y al terminar, de vuelta a la conversacion: lo que viene es el epilogo.
+    await page.evaluate(() => window.SillyTavern.getContext()
+        .executeSlashCommandsWithOptions('/combat-stop'));
+    await page.waitForTimeout(1600);
+    await clearDiceOverlay();
+
+    const ended = await page.evaluate(() => {
+        const messages = [...document.querySelectorAll('#game-shell #chat .mes')];
+        const last = messages[messages.length - 1];
+        return {
+            scene: document.querySelector('#game-shell')?.getAttribute('data-scene') || '',
+            reason: document.querySelector('.gs-head-state')?.getAttribute('title') || '',
+            speaker: document.querySelector('.gs-speaker-name')?.textContent || '',
+            lastIsSystem: last?.getAttribute('is_system') === 'true',
+            text: (last?.querySelector('.mes_text')?.textContent || '').trim().slice(0, 60),
+        };
+    });
+    check('terminar el combate devuelve la pantalla al dialogo, que es donde va el epilogo',
+        ended.scene === 'dialogue', JSON.stringify(ended));
+    check('y lo dice', ended.reason === 'termina el combate', ended.reason);
+    check('el epilogo esta ahi, y no es un mensaje de sistema',
+        ended.text.length > 0 && !ended.lastIsSystem, JSON.stringify(ended));
+    check('el retrato es de quien acaba de hablar', ended.speaker.length > 0, ended.speaker);
+
+    // Salir del tablero manda la partida al mapa, y esa escena todavia no existe: lo que
+    // se ensena es lo mas parecido que hay, no una pantalla que solo diga que no existe.
+    await page.evaluate(() => window.SillyTavern.getContext()
+        .executeSlashCommandsWithOptions('/leave'));
+    await page.waitForTimeout(1200);
+    const left = await page.evaluate(() => {
+        const stage = document.querySelector('.gs-stage');
+        return {
+            scene: document.querySelector('#game-shell')?.getAttribute('data-scene') || '',
+            reason: document.querySelector('.gs-head-state')?.getAttribute('title') || '',
+            empty: (stage?.textContent || '').trim().length === 0,
+            chatVisible: (document.querySelector('#game-shell #chat')?.getBoundingClientRect().height || 0) > 0,
+        };
+    });
+    check('salir del tablero no deja al jugador en una pantalla vacia',
+        left.scene === 'dialogue' && !left.empty && left.chatVisible, JSON.stringify(left));
+    check('y la cabecera sigue diciendo lo que paso de verdad',
+        left.reason === 'se ha salido del tablero', left.reason);
+
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(900);
+    check('y el Modo Juego se apaga dejandolo todo en su sitio',
+        await page.evaluate(() => document.querySelectorAll('#game-shell').length === 0
+            && document.querySelectorAll('#sheld').length === 1
+            && !document.body.classList.contains('game-shell-on')));
 
     console.log(`\n--- console errors ---`);
     console.log(problems.size ? [...problems].join('\n') : '(none)');

@@ -2,6 +2,7 @@ import { describe, test, expect } from '@jest/globals';
 import {
     SCENE, SWITCHABLE_SCENES, SCENE_INFO,
     chooseScene, isSceneAvailable, sceneForShortcut, describeScene, sceneTransition,
+    detectSceneEvent, directScene,
 } from '../public/scripts/game-engine/ui/shell/scene-director.js';
 
 /** A campaign open, standing in a location, no fight. */
@@ -142,5 +143,87 @@ describe('sceneTransition', () => {
 
     test('nothing changing moves nothing', () => {
         expect(sceneTransition(playing, { ...playing })).toBeNull();
+    });
+});
+
+describe('detectSceneEvent', () => {
+    const board = { hasChat: true, locationName: 'Cripta', boardName: 'Sala' };
+
+    test('a fight starting and a fight ending are both events', () => {
+        expect(detectSceneEvent(board, { ...board, combatActive: true })).toBe('combat_started');
+        expect(detectSceneEvent({ ...board, combatActive: true }, board)).toBe('combat_ended');
+    });
+
+    test('opening and leaving a board are events', () => {
+        expect(detectSceneEvent(playing, { ...playing, boardName: 'Sala' })).toBe('board_opened');
+        expect(detectSceneEvent({ ...playing, boardName: 'Sala' }, playing)).toBe('board_closed');
+    });
+
+    // Walking into a room and being ambushed in the same step is one thing, not two.
+    test('a fight starting outranks the board that opened underneath it', () => {
+        expect(detectSceneEvent(playing, { ...playing, boardName: 'Sala', combatActive: true }))
+            .toBe('combat_started');
+    });
+
+    test('nothing changing is not an event', () => {
+        expect(detectSceneEvent(board, { ...board })).toBeNull();
+        expect(detectSceneEvent(board, { ...board, locationName: 'Otra' })).toBeNull();
+    });
+
+    test('with nothing to compare against there is no event', () => {
+        expect(detectSceneEvent(null, board)).toBeNull();
+    });
+
+    // Opening or closing the game is not a transition inside it.
+    test('opening or closing the campaign is not an event', () => {
+        expect(detectSceneEvent({ hasChat: false }, board)).toBeNull();
+        expect(detectSceneEvent(board, { hasChat: false })).toBeNull();
+    });
+});
+
+describe('directScene', () => {
+    const board = { hasChat: true, locationName: 'Cripta', boardName: 'Sala' };
+    const fight = { ...board, combatActive: true };
+
+    test('a fight starting takes the screen even from a manual pick', () => {
+        const choice = directScene(board, fight, SCENE.DIALOGUE);
+        expect(choice.scene).toBe(SCENE.COMBAT);
+        expect(choice.event).toBe('combat_started');
+        expect(choice.reason).toBe('empieza un combate');
+    });
+
+    // The reason the event has to become the standing pick: the board is still open, so
+    // the next redraw would drag the screen back to the table mid-epilogue.
+    test('a fight ending goes to the conversation, and stays there', () => {
+        const ended = directScene(fight, board, null);
+        expect(ended.scene).toBe(SCENE.DIALOGUE);
+        expect(ended.override).toBe(SCENE.DIALOGUE);
+        expect(directScene(board, board, ended.override).scene).toBe(SCENE.DIALOGUE);
+    });
+
+    test('leaving the board goes back to the map', () => {
+        expect(directScene(board, playing, null).scene).toBe(SCENE.EXPLORATION);
+    });
+
+    test('and to the conversation when there is no map to go back to', () => {
+        expect(directScene({ hasChat: true, boardName: 'Sala' }, { hasChat: true }, null).scene)
+            .toBe(SCENE.DIALOGUE);
+    });
+
+    test('with nothing happening, the player keeps the last word', () => {
+        const choice = directScene(fight, fight, SCENE.DIALOGUE);
+        expect(choice.scene).toBe(SCENE.DIALOGUE);
+        expect(choice.override).toBe(SCENE.DIALOGUE);
+        expect(choice.event).toBeNull();
+    });
+
+    test('and a pick that stopped being available is forgotten', () => {
+        const choice = directScene(playing, playing, SCENE.COMBAT);
+        expect(choice.scene).toBe(SCENE.EXPLORATION);
+        expect(choice.override).toBeNull();
+    });
+
+    test('closing the campaign shows the title screen', () => {
+        expect(directScene(board, { hasChat: false }, SCENE.COMBAT).scene).toBe(SCENE.TITLE);
     });
 });

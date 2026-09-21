@@ -19,7 +19,7 @@
 
 import {
     SCENE, SWITCHABLE_SCENES, SCENE_INFO,
-    chooseScene, isSceneAvailable, describeScene, sceneForShortcut,
+    directScene, isSceneAvailable, describeScene, sceneForShortcut,
 } from './scene-director.js';
 
 /**
@@ -90,6 +90,18 @@ let adoptions = [];
 let options = null;
 /** @type {SceneName|null} */
 let manualScene = null;
+/**
+ * The situation at the last decision. The director compares against it to tell a fight
+ * starting from a fight that was already going.
+ * @type {GameSituation|null}
+ */
+let lastSituation = null;
+/**
+ * Why the screen is where it is. Kept between redraws: the epilogue of a fight arrives
+ * as a message, the message triggers a redraw, and that redraw would otherwise rewrite
+ * "termina el combate" into "elegida a mano" — which is not what happened.
+ */
+let sceneReason = '';
 /** @type {((event: KeyboardEvent) => void)|null} */
 let keyHandler = null;
 
@@ -367,35 +379,44 @@ export function refreshGameShell() {
     if (!isShellOpen() || !root || !options) return;
 
     const situation = options.getSituation();
-    const choice = chooseScene(situation, manualScene);
-    if (!choice.manualHeld) manualScene = null;
+    // The director decides from what *changed*, not only from what is. What it decides
+    // becomes the standing pick, so the screen does not snap back on the next redraw.
+    const choice = directScene(lastSituation, situation, manualScene);
+    manualScene = choice.override;
+    lastSituation = situation;
 
-    root.dataset.scene = choice.scene;
+    // The director says where the *game* is; which screens exist is the shell's problem.
+    // Leaving a board sends the game to the map, and until H4 builds that scene the
+    // closest thing this can show is the conversation. Better than a screen whose only
+    // content is the news that it does not exist yet.
+    const scene = BUILT_SCENES.has(choice.scene) ? choice.scene : SCENE.DIALOGUE;
+
+    // The explanation changes when something happens or when the screen moves, and not
+    // on every redraw in between.
+    if (choice.event || scene !== root.dataset.scene) sceneReason = choice.reason;
+
+    root.dataset.scene = scene;
     root.dataset.source = choice.source;
 
     const bar = options.getCombatBar();
     const dialogue = options.getDialogue();
     const head = /** @type {HTMLElement} */ (root.querySelector('.gs-head-state'));
-    head.textContent = choice.scene === SCENE.DIALOGUE
+    head.textContent = scene === SCENE.DIALOGUE
         ? dialogue.moment
         : bar.active ? `Ronda ${bar.round}` : (situation.boardName || 'Sin tablero');
-    head.title = choice.reason;
+    head.title = sceneReason;
 
     renderDialogue(/** @type {HTMLElement} */ (root.querySelector('.gs-scene-dialogue')), dialogue);
 
-    renderSwitcher(/** @type {HTMLElement} */ (root.querySelector('.gs-scenes')), situation, choice.scene);
+    renderSwitcher(/** @type {HTMLElement} */ (root.querySelector('.gs-scenes')), situation, scene);
     const actions = /** @type {HTMLElement} */ (root.querySelector('.gs-actions'));
-    if (choice.scene === SCENE.COMBAT) {
+    if (scene === SCENE.COMBAT) {
         renderActionBar(actions, bar);
     } else {
         // In a conversation the chat below is the way in; a row of combat buttons under
         // it would only be a row of disabled buttons.
         actions.textContent = '';
     }
-
-    const pending = /** @type {HTMLElement} */ (root.querySelector('.gs-pending'));
-    pending.textContent = BUILT_SCENES.has(choice.scene) ? ''
-        : `La escena de ${SCENE_INFO[choice.scene].label.toLowerCase()} llega en el paso siguiente del Modo Juego.`;
 }
 
 /**
@@ -455,6 +476,8 @@ export function openGameShell(shellOptions) {
 
     options = shellOptions;
     manualScene = null;
+    lastSituation = null;
+    sceneReason = '';
 
     root = el('div', 'gs-root');
     root.id = 'game-shell';
@@ -480,7 +503,6 @@ export function openGameShell(shellOptions) {
     dialogue.appendChild(el('div', 'gs-party-strip'));
     stage.appendChild(combat);
     stage.appendChild(dialogue);
-    stage.appendChild(el('div', 'gs-pending'));
 
     root.appendChild(head);
     root.appendChild(stage);
@@ -518,6 +540,8 @@ export function closeGameShell() {
     // Back under the top bar, where its own stylesheet puts it.
     scrollChatDown();
     manualScene = null;
+    lastSituation = null;
+    sceneReason = '';
     document.body.classList.remove('game-shell-on');
 
     const redraw = options?.renderStage;

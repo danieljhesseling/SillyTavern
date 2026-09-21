@@ -42,7 +42,7 @@ Este documento sirve como inventario exhaustivo del repositorio, clasificando lo
 > [!NOTE]
 > **Cifras medidas el 2026-09-21.** El motor de juego vive desde entonces en dos carpetas nuevas, `game-engine/` y `party/`, que esta página no recogía. El criterio que las ordena está en [[Guia-Desarrollo-Flujo]] §2: código nuevo va en archivo nuevo, para que un merge con upstream no lo toque nunca.
 
-### 2.1. El motor de juego — `public/scripts/game-engine/` (35 archivos, 8.863 líneas)
+### 2.1. El motor de juego — `public/scripts/game-engine/` (35 archivos, 8.986 líneas)
 
 Módulos puros: sin DOM, sin estado global, sin lecturas del chat. Por eso se prueban en Node y por eso el coste de merge es cero. Los marcados ⬜ están escritos y probados pero **el juego todavía no los carga**; compruébalo con `node tools/check-engine-wiring.mjs`.
 
@@ -75,8 +75,8 @@ Módulos puros: sin DOM, sin estado global, sin lecturas del chat. Por eso se pr
 | `campaign/campaign-pack-schema.js` | 481 | El contrato del paquete de campaña, generado desde el motor | ✅ |
 | `combat/initiative-tracker.js` | 242 | Quién actúa, quién sigue y qué le pasa | ✅ |
 | `combat/loot.js` | 183 | Botín y experiencia por CR, repartidos entre los que siguen en pie | ✅ |
-| `ui/shell/game-shell.js` | 543 | La capa a pantalla completa: mueve el tablero y el chat, y los devuelve | ✅ |
-| `ui/shell/scene-director.js` | 182 | Qué pantalla toca, leyendo al motor y nunca al modelo | ✅ |
+| `ui/shell/game-shell.js` | 566 | La capa a pantalla completa: mueve el tablero y el chat, y los devuelve | ✅ |
+| `ui/shell/scene-director.js` | 282 | Qué pantalla toca, y qué la cambia: lee el motor, nunca al modelo | ✅ |
 | `ui/shell/dialogue-scene.js` | 155 | Quién habla, cómo está el grupo y en qué momento va la partida | ✅ |
 | `ui/campaign-panel.js` | 149 | La pestaña Campaña: el calendario y los vínculos | ✅ |
 | `combat/bond-perks.js` | 114 | Las perks que cambian un combate: aguantar, rematar, dar el relevo | ✅ |
@@ -144,7 +144,7 @@ Cada uno cuesta en cada merge. La lista no debería crecer.
 | :--- | :--- |
 | `check-fork-types.mjs` | Gate de tipos sobre los 49 archivos propios. Falla si aparece un error |
 | `check-engine-wiring.mjs` | Lista los módulos del motor que el juego no carga. Informa, no falla |
-| `e2e-campaign.mjs` | Recorre el juego en un navegador real, con servidor y datos propios. 124 comprobaciones |
+| `e2e-campaign.mjs` | Recorre el juego en un navegador real, con servidor y datos propios. 135 comprobaciones |
 
 ---
 

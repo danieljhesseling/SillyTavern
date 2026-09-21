@@ -180,3 +180,103 @@ export function sceneTransition(before, after) {
     const to = chooseScene(after).scene;
     return from === to ? null : to;
 }
+
+/**
+ * The events that move the screen on their own.
+ *
+ * These are not "the automatic scene changed": a fight ending with the board still open
+ * leaves `chooseScene` on the board, and yet the screen has to go back to the
+ * conversation, because what comes next is the epilogue and the epilogue is narration.
+ * So the transitions are named, one by one, instead of derived.
+ *
+ * @typedef {'combat_started'|'combat_ended'|'board_opened'|'board_closed'} SceneEvent
+ */
+
+/** What each event means, for the tooltip and for the tests. */
+const EVENT_REASONS = {
+    combat_started: 'empieza un combate',
+    combat_ended: 'termina el combate',
+    board_opened: 'se ha abierto un tablero',
+    board_closed: 'se ha salido del tablero',
+};
+
+/**
+ * What happened between two situations, if anything worth changing the screen for.
+ *
+ * Only one event per step, in order of importance: a fight starting outranks the board
+ * that opened underneath it.
+ *
+ * @param {GameSituation|null} before
+ * @param {GameSituation} after
+ * @returns {SceneEvent|null}
+ */
+export function detectSceneEvent(before, after) {
+    // Nothing to compare against, or no game open: the situation decides by itself.
+    if (!before || !after?.hasChat || !before.hasChat) return null;
+
+    if (!before.combatActive && after.combatActive) return 'combat_started';
+    if (before.combatActive && !after.combatActive) return 'combat_ended';
+
+    const had = Boolean(before.boardName);
+    const has = Boolean(after.boardName);
+    if (!had && has) return 'board_opened';
+    if (had && !has) return 'board_closed';
+
+    return null;
+}
+
+/**
+ * Where an event sends the screen, given what is available.
+ *
+ * @param {SceneEvent} event
+ * @param {GameSituation} situation
+ * @returns {SceneName}
+ */
+function sceneForEvent(event, situation) {
+    switch (event) {
+        case 'combat_started':
+        case 'board_opened':
+            return SCENE.COMBAT;
+        case 'combat_ended':
+            // The epilogue is narration, and narration belongs in the conversation.
+            return SCENE.DIALOGUE;
+        case 'board_closed':
+            return isSceneAvailable(SCENE.EXPLORATION, situation) ? SCENE.EXPLORATION : SCENE.DIALOGUE;
+        default:
+            return SCENE.DIALOGUE;
+    }
+}
+
+/**
+ * The director proper: decide the scene from what changed, not only from what is.
+ *
+ * An event beats a manual pick, and then **becomes** the standing pick: otherwise the
+ * screen would snap back on the very next redraw — a fight that ends sends you to the
+ * epilogue, and the open board would pull you straight back to the table.
+ *
+ * The player still has the last word: pressing a key sets the dial again, and it holds
+ * until the next thing happens in the game.
+ *
+ * @param {GameSituation|null} previous The situation at the last decision.
+ * @param {GameSituation} situation
+ * @param {SceneName|null} [manual] The scene the player picked, if any.
+ * @returns {SceneChoice & {override: SceneName|null, event: SceneEvent|null}}
+ */
+export function directScene(previous, situation, manual = null) {
+    const event = detectSceneEvent(previous, situation);
+
+    if (event) {
+        const scene = sceneForEvent(event, situation);
+        return {
+            scene,
+            reason: EVENT_REASONS[event],
+            source: 'engine',
+            manualHeld: false,
+            override: scene,
+            event,
+        };
+    }
+
+    const choice = chooseScene(situation, manual);
+    return { ...choice, override: choice.manualHeld ? manual : null, event: null };
+}

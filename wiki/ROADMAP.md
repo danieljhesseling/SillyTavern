@@ -29,7 +29,7 @@ La lógica de las Fases A a E está escrita y probada. Lo que un jugador puede t
 | **F · Lienzo blanco (IA)** | ✅ | ✅ dentro del asistente | ✅ con previsualización |
 | **T · Medir el gasto** | ✅ | ✅ `/prompt` | ✅ desglose por bloque |
 | **G · Ingesta de libros** | 🟡 el contrato, hecho | 🟡 `/esquema-campana` | 🟡 · el GEM lo llevas tú, fuera del código |
-| **H · Modo videojuego** | 🟡 director y diálogo, hechos y probados | 🟡 `/modojuego` · teclas `1` y `3` | 🟡 dos de las tres pantallas |
+| **H · Modo videojuego** | ✅ | ✅ `/modojuego`, y la pantalla cambia sola | 🟡 dos de las tres pantallas |
 
 > [!NOTE]
 > **Cómo leerla.** ✅ hecho y comprobado · 🟡 parcial · ⬜ sin empezar. *Conectada* quiere decir que un jugador puede provocarla: un módulo que solo ejecutan los tests cuenta como ⬜, por bien probado que esté.
@@ -38,12 +38,11 @@ La lógica de las Fases A a E está escrita y probada. Lo que un jugador puede t
 
 **Lo que sigue, en este orden:**
 
-1. **El director automático** (H3): que empezar un combate cambie la pantalla y terminarlo la devuelva al diálogo para el epílogo. Las dos escenas que necesita ya existen.
-2. **La escena de exploración** (H4), que trae consigo `campaign-map.js`, el último módulo del motor que nadie carga.
-3. **La pantalla de título y el menú de pausa** (H5): lo último, porque una fachada sobre escenas a medias no sirve de nada.
-4. **Retomar la ingesta** (Fase G): el validador, el compilador y la importación.
+1. **La escena de exploración** (H4), que trae consigo `campaign-map.js`, el último módulo del motor que nadie carga. Es también la tercera pantalla que el director ya sabe pedir.
+2. **La pantalla de título y el menú de pausa** (H5): lo último, porque una fachada sobre escenas a medias no sirve de nada.
+3. **Retomar la ingesta** (Fase G): el validador, el compilador y la importación.
 
-La pantalla de combate (H1) y la de diálogo (H2) están hechas desde el 2026-09-21.
+El Modo Juego ya se juega: tablero (H1), diálogo (H2) y el director que los alterna solo (H3), desde el 2026-09-21.
 
 **Mientras tanto, el Gem no está bloqueado**: `/esquema-campana` ya entrega el contrato exacto, así que se puede probar con un libro real en paralelo — y lo que se aprenda ahí puede cambiar el contrato, que hoy es barato de cambiar.
 
@@ -142,7 +141,7 @@ Las Fases A y B **no ahorran tokens**. Lo que entregan es jugabilidad: IA que re
 | **Motor de juego (A–E)** | 18 archivos y 4.666 líneas en `game-engine/` (tablero, combate, campaña, reglas, interfaz) · lógica completa de las Fases A a E con tests · lo que está conectado, en *Dónde Estamos* |
 | **Asistente de campaña** | Botón *Nueva campaña* · 4 plantillas · tarjetas *Iniciar* para mundos sin partida · verificado de extremo a extremo (sección propia más abajo) |
 
-**Estado verificable** (medido el 2026-09-21): 1.273 tests en 49 suites · 0 errores de tipos en 49 archivos del fork · **0 errores de ESLint** · 34 de 35 módulos del motor conectados al juego · 124 comprobaciones en navegador real, estables en dos pasadas.
+**Estado verificable** (medido el 2026-09-21): 1.286 tests en 49 suites · 0 errores de tipos en 49 archivos del fork · **0 errores de ESLint** · 34 de 35 módulos del motor conectados al juego · 135 comprobaciones en navegador real, estables en dos pasadas.
 
 > [!NOTE]
 > Este trabajo no era un desvío. Sin el merge no tendrías los 194 commits de upstream; sin los tests no podrías tocar el motor de combate sin miedo; sin el gate de tipos cada refactor sería a ciegas. Las fases que vienen se apoyan en eso.
@@ -532,7 +531,7 @@ La primera versión pasó todos sus tests y **no funcionó**. Lo encontró quien
 >
 > Lo que sí lo detecta es recorrer el flujo en un navegador real. Se hizo con Playwright y Edge contra un servidor con datos aislados, sembrado con una copia del mundo huérfano real. Comprobó, en instalación limpia: crear → chat vinculado al mundo → grupo en las casillas (2,8) y (3,8) → tablero visible con muros y dos fichas → volver a la bienvenida → la tarjeta figura como campaña en curso. Y sobre el mundo huérfano: tarjeta con *Iniciar* → selector de grupo → arranque → pasa a ser campaña normal.
 >
-> **Desde el 2026-09-21 eso está en el repositorio**: `tools/e2e-campaign.mjs` levanta su propio servidor con un `--dataRoot` temporal, recorre el juego y limpia al terminar. No toca tus datos y tu servidor de siempre puede seguir abierto. Son 124 comprobaciones: crear la campaña, las posiciones de inicio, el tablero, abrir una puerta, un combate con su registro, que el epílogo **no** sea un mensaje de sistema, y la campaña listada al cerrar.
+> **Desde el 2026-09-21 eso está en el repositorio**: `tools/e2e-campaign.mjs` levanta su propio servidor con un `--dataRoot` temporal, recorre el juego y limpia al terminar. No toca tus datos y tu servidor de siempre puede seguir abierto. Son 135 comprobaciones: crear la campaña, las posiciones de inicio, el tablero, abrir una puerta, un combate con su registro, que el epílogo **no** sea un mensaje de sistema, y la campaña listada al cerrar.
 >
 > ```bash
 > node tools/e2e-campaign.mjs            # headless
@@ -625,7 +624,7 @@ Esto reordena el final del plan. La Fase F genera un mundo de una sola localizac
 
 ---
 
-## 🅷 Fase H — El Modo Videojuego `NUEVA — 2026-09-21`
+## 🅷 Fase H — El Modo Videojuego `H1–H3 HECHAS — 2026-09-21`
 
 > **De qué va**: tres pantallas completas —combate, diálogo y exploración— que se alternan según lo que esté pasando, con el ruido técnico de SillyTavern detrás de una pantalla de título y un menú de pausa. El plan está en [[PROPUESTA_FRONTEND_MODO_JUEGO]].
 
@@ -633,7 +632,7 @@ Esto reordena el final del plan. La Fase F genera un mundo de una sola localizac
 | :--- | :--- | :--- |
 | **H1** ✅ | **El armazón y la pantalla de combate** | **Hecho el 2026-09-21.** `/modojuego` pone el tablero a pantalla completa con el rastreador, el registro y la barra de acciones. El panel se **mueve** al escenario y vuelve a su sitio al apagarlo. `scene-director.js`, puro, con 24 tests |
 | **H2** ✅ | **La escena de diálogo** | **Hecho el 2026-09-21.** Retrato, rango de vínculo, el chat **movido** debajo y la franja del grupo. `dialogue-scene.js`, puro, con 17 tests |
-| **H3** | **El director automático** | Escuchando al motor |
+| **H3** ✅ | **El director automático** | **Hecho el 2026-09-21.** Empieza un combate y la pantalla salta; termina y vuelve al diálogo para el epílogo. Escucha al motor: cuatro sucesos nombrados, no deducidos |
 | **H4** | **La escena de exploración** | Y con ella, el tablero de campaña (`campaign-map.js`) |
 | **H5** | **Pantalla de título y pausa** | Lo último: una fachada bonita sobre escenas a medias no sirve de nada |
 
@@ -730,10 +729,10 @@ Lo medido: la **lógica** de las Fases A a E (18 archivos y 4.666 líneas en `ga
 ## 🔬 Verificación
 
 ```bash
-npm run test:unit --prefix tests     # 1.273 tests, 49 suites
+npm run test:unit --prefix tests     # 1.286 tests, 49 suites
 node tools/check-fork-types.mjs      # 0 errores en los 49 archivos del fork
 node tools/check-engine-wiring.mjs   # 34 de 35 módulos del motor conectados al juego
-node tools/e2e-campaign.mjs          # 124 comprobaciones en un navegador real
+node tools/e2e-campaign.mjs          # 135 comprobaciones en un navegador real
 ESLINT_USE_FLAT_CONFIG=false npx eslint public/scripts/game-engine public/scripts/party public/scripts/party.js public/scripts/campaigns.js public/scripts/world-map-renderer.js tools   # 0 errores
 git fetch upstream && git merge upstream/release
 ```

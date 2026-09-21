@@ -105,16 +105,6 @@ body.game-shell-on {
     padding: 10px 14px;
 }
 
-.gs-pending:not(:empty) {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    opacity: 0.6;
-    font-style: italic;
-    text-align: center;
-}
-
 /* Una seccion por escena, las dos montadas al abrir. Conmutar ensena una y esconde la
    otra: no mueve nada, porque cada movimiento del chat es una ocasion de perder su
    desplazamiento o el foco. */
