@@ -24,10 +24,13 @@ import { buildCampaignView, getRecordableEvents } from '../campaign/campaign-vie
  * @param {Array<any>} input.party
  * @param {() => void} input.onAdvanceSlot
  * @param {() => void} input.onAdvanceDay
+ * @param {() => void} [input.onShortRest]
+ * @param {() => void} [input.onLongRest]
  * @param {(characterId: string, eventType: string) => void} input.onRecordEvent
  */
 export function renderCampaignPanel(container, {
     calendar, bonds, party, onAdvanceSlot, onAdvanceDay, onRecordEvent,
+    onShortRest = null, onLongRest = null,
 }) {
     const view = buildCampaignView({ calendar, bonds, party });
     container.empty();
@@ -61,6 +64,25 @@ export function renderCampaignPanel(container, {
             .attr('title', 'Salta al día siguiente')
             .on('click', () => onAdvanceDay()),
     );
+    if (onShortRest) {
+        clockActions.append(
+            $('<button class="menu_button"></button>')
+                .append('<i class="fa-solid fa-campground"></i>')
+                .append($('<span></span>').text(' Descanso corto'))
+                .attr('title', 'Gasta dados de golpe para curarse, y un bloque del día')
+                .on('click', () => onShortRest()),
+        );
+    }
+    if (onLongRest) {
+        clockActions.append(
+            $('<button class="menu_button"></button>')
+                .append('<i class="fa-solid fa-moon"></i>')
+                .append($('<span></span>').text(' Descanso largo'))
+                .attr('title', 'Cura del todo, devuelve la mitad de los dados de golpe y amanece')
+                .on('click', () => onLongRest()),
+        );
+    }
+
     clock.append(clockActions);
 
     container.append(clock);

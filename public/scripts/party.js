@@ -2,7 +2,7 @@ import { t } from './i18n.js';
 import { power_user } from './power-user.js';
 import { POPUP_TYPE, POPUP_RESULT, Popup } from './popup.js';
 import { sendSystemMessage, system_message_types } from './system-messages.js';
-import { getThumbnailUrl, chat, chat_metadata, saveMetadata, eventSource, event_types, setUserName, addOneMessage, saveChatConditional, substituteParams, system_avatar } from '../script.js';
+import { getThumbnailUrl, chat, chat_metadata, saveMetadata, eventSource, event_types, setUserName, addOneMessage, saveChatConditional, substituteParams, system_avatar, generateRaw, online_status } from '../script.js';
 import { getMessageTimeStamp } from './RossAscends-mods.js';
 import { getCurrentWorldMapUrl, getCurrentWorldLocationMaps, getCurrentWorldBoards, getCurrentWorldEnemies, getCurrentWorldNPCs, loadWorldInfo, saveWorldInfo, METADATA_KEY } from './world-info.js';
 import { renderWorldMapView, renderLocationView } from './world-map-renderer.js';
@@ -33,6 +33,7 @@ import {
     normalizeTerrain, setCell as setTerrainCell, getTerrainOptions, getCoverBonus, setDoorOpen,
 } from './game-engine/board/terrain.js';
 import { getReachableCells } from './game-engine/board/pathfinding.js';
+import { getCoverAlongLine } from './game-engine/board/line-of-sight.js';
 import { createEmptyFog, normalizeFog, updateFog } from './game-engine/board/fog-of-war.js';
 import { planEnemyTurn } from './game-engine/combat/enemy-ai.js';
 import {
@@ -42,11 +43,14 @@ import {
     createTurnState, advanceTurn, getRemainingMovement, spendMovement, hasAction, useAction,
 } from './game-engine/combat/turn-machine.js';
 import { rollEncounterLoot } from './game-engine/combat/loot.js';
+import { describeLootItem } from './game-engine/combat/loot-items.js';
 import { planSpawnCells } from './game-engine/combat/spawn.js';
 import {
     deriveRooms, openDoor, enemiesInRoom, awakePlacements, normalizeRooms,
 } from './game-engine/campaign/campaign-map.js';
-import { planEndure, planFollowUp, planBatonPass } from './game-engine/combat/bond-perks.js';
+import {
+    planEndure, planFollowUp, planBatonPass, planUltimate, buildPersonalWeapon,
+} from './game-engine/combat/bond-perks.js';
 import {
     buildBoardState, judgeScenario, hasScenario,
 } from './game-engine/combat/scenario-board.js';
@@ -66,6 +70,9 @@ import { guardRolls, guardImpossibleRolls, describeCorrections } from './game-en
 import {
     planRulesetChange, readRememberedRuleset, rememberRuleset, setActiveRuleset,
 } from './game-engine/rules/ruleset.js';
+import {
+    planShortRest, planLongRest, describeRest, getHitDice,
+} from './game-engine/rules/rest.js';
 import {
     isShellOpen, toggleGameShell, refreshGameShell, closeGameShell,
 } from './game-engine/ui/shell/game-shell.js';
@@ -1183,14 +1190,24 @@ function applyRollGuard(messageId) {
  * @param {{armorClass?: number|null, gridX?: number, gridY?: number, mapPosition?: {gridX?: number, gridY?: number}|null}} target
  * @returns {{ac: number, cover: number}}
  */
-function getTargetArmorClass(target) {
+function getTargetArmorClass(target, attacker = null) {
     const base = Number(target?.armorClass) || 10;
     const x = Number(target?.gridX ?? target?.mapPosition?.gridX);
     const y = Number(target?.gridY ?? target?.mapPosition?.gridY);
 
     if (!Number.isFinite(x) || !Number.isFinite(y)) return { ac: base, cover: 0 };
 
-    const cover = Number(getCoverBonus(getActiveBoardTerrain(), x, y)) || 0;
+    const terrain = getActiveBoardTerrain();
+    const ax = Number(attacker?.gridX ?? attacker?.mapPosition?.gridX);
+    const ay = Number(attacker?.gridY ?? attacker?.mapPosition?.gridY);
+
+    // Con atacante conocido, la cobertura es la mejor de la linea de tiro: un pilar
+    // protege a quien esta detras, no solo a quien esta dentro. Sin atacante se cae a la
+    // regla vieja, la de la casilla del objetivo, que es lo que habia hasta ahora.
+    const cover = (Number.isFinite(ax) && Number.isFinite(ay))
+        ? getCoverAlongLine(terrain, ax, ay, x, y, getCoverBonus)
+        : (Number(getCoverBonus(terrain, x, y)) || 0);
+
     return { ac: base + cover, cover };
 }
 
@@ -1596,7 +1613,7 @@ function resolveEnemyTurnAction(turnEntry) {
         getAbilityModifier(enemy.dexterity || 10),
     );
     const attackTotal = d20 + attackMod;
-    const { ac: targetAc, cover: targetCover } = getTargetArmorClass(target);
+    const { ac: targetAc, cover: targetCover } = getTargetArmorClass(target, enemy);
     const isCrit = d20 === 20;
     const isHit = isCrit || attackTotal >= targetAc;
 
@@ -1804,7 +1821,7 @@ function wakeRoomEnemies(board, room) {
 
     if (woken.length === 0) return 0;
 
-    const names = woken.map(e => e.name).join(', ');
+    const names = woken.map(e => `${e.name} (${e.gridX + 1}, ${e.gridY + 1})`).join(', ');
 
     if (!combatEncounter.active) {
         // Nadie peleaba: la sala abre su propio combate.
@@ -1956,15 +1973,17 @@ function awardEncounterLoot(defeated) {
         member.xp = (Number(member.xp) || 0) + loot.xpEach;
     }
 
-    // Items go to the party as text on the first survivor's sheet, which is where the
-    // inventory already lives. Turning them into real DndItem objects needs the item
-    // forms, and that is a bigger change than this one earns.
+    // Objetos de verdad, no texto. Una pocion que no se puede beber y una espada que no
+    // se puede equipar son ambientacion con pasos de mas: lo que cae entra en el
+    // inventario como `DndItem`, con su tipo, su peso y su ranura.
     if (loot.items.length > 0) {
+        // Un miembro del grupo *es* su ficha: lleva `items` directamente.
         const holder = survivors[0];
-        const found = loot.items.map(i => i.name).join(', ');
-        holder.inventory = [String(holder.inventory || '').trim(), found]
-            .filter(Boolean)
-            .join(', ');
+        holder.items = holder.items ?? [];
+        for (const dropped of loot.items) {
+            const item = createItem(/** @type {any} */ (describeLootItem(dropped.name, dropped.rarity)));
+            addItemToInventory(/** @type {any} */ (holder), item);
+        }
     }
 
     for (const line of loot.lines) postCombatNarration(line);
@@ -2057,10 +2076,274 @@ function recordCampaignBondEvent(characterId, eventType) {
         postCombatNarration(`✨ [CAMPAÑA] Tu vínculo con ${member.name} sube al rango ${result.rankAfter}.`);
         for (const perk of result.unlockedPerks) {
             postCombatNarration(`🎖️ [CAMPAÑA] Desbloqueado: ${perk.label} — ${perk.description}`);
+
+            // El rango 10 no es solo un aviso: deja un arma en la ficha, una vez, y se
+            // queda ahi despues del combate. Un bonus invisible no seria una recompensa.
+            if (perk.id === 'ultimate') {
+                const spec = buildPersonalWeapon(member);
+                member.items = member.items ?? [];
+                if (!member.items.some((/** @type {any} */ i) => i?.name === spec.name)) {
+                    addItemToInventory(/** @type {any} */ (member), createItem(/** @type {any} */ (spec)));
+                    savePartyState();
+                    postCombatNarration(`⚔️ [CAMPAÑA] ${member.name} recibe su arma personal: ${spec.name}.`);
+                }
+            }
         }
     }
 
     renderCampaignTab();
+}
+
+/**
+ * El golpe definitivo del vinculo de rango 10.
+ *
+ * Impacta sin tirar, lo que es mucho que conceder: por eso cuesta un dia entero y diez
+ * rangos de un vinculo que solo suben los hechos registrados. El dano lo decide el modulo
+ * puro; aqui solo se aplica, se gasta y se cuenta.
+ *
+ * @param {string} rawTargetName
+ * @returns {string}
+ */
+function resolveUltimateStrike(rawTargetName) {
+    const entry = getCurrentTurnEntry();
+    const member = getCurrentActingMember();
+    if (!combatEncounter.active || !entry || entry.isEnemy || !member) {
+        toastr.warning('No hay un turno de jugador activo.');
+        return '';
+    }
+
+    const target = getAttackableEnemiesForMember(member)
+        .find(enemy => enemy.name.toLowerCase() === String(rawTargetName).trim().toLowerCase());
+    if (!target) {
+        toastr.warning(`"${rawTargetName}" no esta a tu alcance.`);
+        return '';
+    }
+
+    const plan = planUltimate({
+        bonds: getCampaignBonds(),
+        party: partyMembers,
+        actorId: String(member.id),
+        targetId: String(target.instanceId),
+    });
+
+    if (!plan) {
+        toastr.info('El golpe definitivo pide un vinculo de rango 10 y no haberlo usado hoy.');
+        return '';
+    }
+
+    target.currentHp = Math.max(0, (Number(target.currentHp) || 0) - plan.damage);
+    saveCampaignState(null, spendPerk(getCampaignBonds(), plan.actorId, 'ultimate'));
+    saveCombatState();
+
+    pushCombatLogEntry(lineToEntry(`${plan.reason} ${plan.damage} de dano a ${target.name}.`));
+    postCombatNarration(`✨ [COMBAT] ${plan.actorName} usa su golpe definitivo contra ${target.name}: ${plan.damage} de dano.`);
+
+    if (target.currentHp <= 0) {
+        postCombatNarration(`☠️ [COMBAT] ${target.name} cae.`);
+        checkScenarioOutcome();
+    }
+
+    renderLocationMapsPreview();
+    return `${plan.damage}`;
+}
+
+/**
+ * Los dados de golpe que declara cada clase del mundo, por nombre.
+ *
+ * Las clases son entradas del Lorebook como cualquier otra, y ya llevan su `hitDie`
+ * escrito. Leerlo de ahi es lo que evita una segunda tabla que se quedaria vieja.
+ *
+ * @returns {Promise<Record<string, string>>}
+ */
+async function getHitDiceByClass() {
+    /** @type {Record<string, string>} */
+    const byClass = {};
+    try {
+        const worldName = String(chat_metadata?.[METADATA_KEY] || '');
+        if (!worldName) return byClass;
+        const data = await loadWorldInfo(worldName);
+        for (const entry of Object.values(data?.entries ?? {})) {
+            const dnd = /** @type {any} */ (entry)?.dndData;
+            if (!dnd?.hitDie) continue;
+            byClass[String(/** @type {any} */ (entry).comment || dnd.name || '').toLowerCase()] = String(dnd.hitDie);
+        }
+    } catch (error) {
+        console.warn('[party] could not read hit dice from the world', error);
+    }
+    return byClass;
+}
+
+/**
+ * Descansar: el unico gasto de tiempo que devuelve algo.
+ *
+ * El corto cuesta un bloque del calendario; el largo salta al dia siguiente y reinicia
+ * las perks diarias, que es lo mismo que hacia amanecer. Sin esto los puntos de vida no
+ * eran un recurso: un combate o te mataba o no te costaba nada que no se fuera solo.
+ *
+ * @param {'corto'|'largo'} kind
+ * @returns {Promise<string>}
+ */
+async function takeRest(kind) {
+    if (combatEncounter.active) {
+        toastr.warning('No se puede descansar en mitad de un combate.');
+        return '';
+    }
+    if (partyMembers.length === 0) {
+        toastr.warning('No hay grupo que descanse.');
+        return '';
+    }
+
+    const hitDieByClass = await getHitDiceByClass();
+
+    const plan = kind === 'corto'
+        ? planShortRest({
+            party: partyMembers,
+            hitDieByClass,
+            // El dado que le toca a cada uno, no siempre un d8: un guerrero tira d10.
+            // La misma funcion de tirada que todo lo demas, para que el registro lo
+            // explique igual.
+            rollDie: (faces) => rollDice(`1d${faces}`, faces),
+        })
+        : planLongRest({ party: partyMembers, hitDieByClass });
+
+    for (const entry of plan.entries) {
+        const member = partyMembers.find(m => String(m.id) === entry.id);
+        if (!member) continue;
+        member.hp = entry.hpAfter;
+        const dice = getHitDice(member, hitDieByClass);
+        member.hitDiceSpent = Math.max(0, Math.min(dice.total, dice.spent + entry.diceSpent - entry.diceRegained));
+    }
+
+    savePartyState();
+
+    if (kind === 'corto') {
+        advanceCampaignSlot();
+    } else {
+        advanceCampaignDay();
+    }
+
+    const lines = describeRest(kind, plan);
+    postCombatNarration(`[DESCANSO] ${lines.join('\n')}`);
+    renderPartyMembers();
+    toastr.success(lines.slice(1).join('\n') || 'Nadie necesitaba descansar.', `Descanso ${kind}`, { timeOut: 9000 });
+    return lines.join(' ');
+}
+
+/**
+ * Abre las reglas de encuentro del tablero en el que esta el grupo.
+ *
+ * Las escribe el asistente y las escribe el importador; cambiarlas obligaba a abrir World
+ * Info y editar una lista de uids a mano, que es justo lo que este proyecto promete que
+ * no hace falta.
+ *
+ * @returns {Promise<string>}
+ */
+async function editBoardEncounters() {
+    const worldName = String(chat_metadata?.[METADATA_KEY] || '');
+    if (!worldName || !currentBoardName) {
+        toastr.warning('Entra en un tablero primero (/enter).');
+        return '';
+    }
+
+    const data = await loadWorldInfo(worldName);
+    const location = (data?.metadata?.locationMaps ?? []).find((/** @type {any} */ l) => l.name === currentLocationName);
+    const board = getLocationBoards(location).find((/** @type {any} */ b) => b.name === currentBoardName);
+    if (!board) {
+        toastr.error(`No se encontro el tablero "${currentBoardName}".`);
+        return '';
+    }
+
+    /** @type {Record<string, string>} */
+    const namesById = {};
+    /** @type {Record<string, string>} */
+    const idsByName = {};
+    for (const enemy of getCurrentWorldEnemies()) {
+        namesById[String(enemy.id)] = String(enemy.name);
+        idsByName[String(enemy.name)] = String(enemy.id);
+    }
+
+    const { openEncounterEditor } = await import('./game-engine/ui/encounter-editor.js');
+    const saved = await openEncounterEditor({
+        boardName: board.name,
+        rules: board.encounterRules ?? [],
+        namesById,
+        idsByName,
+        available: Object.values(namesById),
+        Popup,
+        POPUP_TYPE,
+    });
+
+    if (!saved) return '';
+
+    board.encounterRules = saved;
+    await saveWorldInfo(worldName, data, true);
+    renderLocationMapsPreview();
+    toastr.success(`${saved.length} enemigo(s) declarados en "${board.name}".`, 'Enemigos del tablero');
+    return `${saved.length} reglas`;
+}
+
+/**
+ * Abre los objetivos del tablero en el que esta el grupo.
+ *
+ * El motor juzga por ids y el editor habla de nombres, asi que las dos tablas de
+ * traduccion se arman aqui, donde viven las entradas. Es la misma traduccion que hace el
+ * importador de paquetes, a proposito: un objetivo escrito a mano, importado de un libro
+ * o propuesto por el modelo tiene que ser el mismo objeto cuando el motor lo lee.
+ *
+ * @returns {Promise<string>}
+ */
+async function editBoardObjectives() {
+    const worldName = String(chat_metadata?.[METADATA_KEY] || '');
+    if (!worldName || !currentBoardName) {
+        toastr.warning('Entra en un tablero primero (/enter).');
+        return '';
+    }
+
+    const data = await loadWorldInfo(worldName);
+    const location = (data?.metadata?.locationMaps ?? []).find((/** @type {any} */ l) => l.name === currentLocationName);
+    const board = getLocationBoards(location).find((/** @type {any} */ b) => b.name === currentBoardName);
+    if (!board) {
+        toastr.error(`No se encontro el tablero "${currentBoardName}".`);
+        return '';
+    }
+
+    /** @type {Record<string, string>} */
+    const namesById = {};
+    /** @type {Record<string, string>} */
+    const idsByName = {};
+    for (const entry of Object.values(data?.entries ?? {})) {
+        const name = String(/** @type {any} */ (entry).comment || '').trim();
+        if (!name) continue;
+        namesById[String(/** @type {any} */ (entry).uid)] = name;
+        idsByName[name] = String(/** @type {any} */ (entry).uid);
+    }
+
+    const enemies = [...new Set((board.enemyPlacements ?? []).map((/** @type {any} */ p) => String(p.name)))];
+    const allies = partyMembers.map(m => m.name);
+
+    const { openObjectiveEditor } = await import('./game-engine/ui/objective-editor.js');
+    const saved = await openObjectiveEditor({
+        boardName: board.name,
+        objectives: board.objectives ?? [],
+        namesById,
+        idsByName,
+        enemies: enemies.length > 0 ? enemies : Object.values(namesById),
+        allies,
+        width: Number(location?.gridWidth) || 0,
+        height: Number(location?.gridHeight) || 0,
+        // Sin proveedor no se ofrece el boton: pedirselo a nadie no es una opcion.
+        generate: online_status !== 'no_connection' ? (params) => generateRaw(params) : null,
+        Popup,
+        POPUP_TYPE,
+    });
+
+    if (!saved) return '';
+
+    board.objectives = saved;
+    await saveWorldInfo(worldName, data, true);
+    renderLocationMapsPreview();
+    toastr.success(`${saved.length} objetivo(s) guardados en "${board.name}".`, 'Objetivos');
+    return `${saved.length} objetivos`;
 }
 
 /** Draws the campaign tab, if it is the one on screen. */
@@ -2074,6 +2357,8 @@ function renderCampaignTab() {
         party: partyMembers,
         onAdvanceSlot: advanceCampaignSlot,
         onAdvanceDay: advanceCampaignDay,
+        onShortRest: () => { void takeRest('corto'); },
+        onLongRest: () => { void takeRest('largo'); },
         onRecordEvent: recordCampaignBondEvent,
     });
 }
@@ -2099,7 +2384,7 @@ function resolveFollowUpAttack(actorId, target) {
     const attackMod = getPlayerAttackModifier(ally, rangeFeet);
     const attackRoll = rollDiceDetailed('1d20', 20);
     const attackTotal = attackRoll.total + attackMod;
-    const { ac: targetAc, cover } = getTargetArmorClass(target);
+    const { ac: targetAc, cover } = getTargetArmorClass(target, ally);
     const isCrit = attackRoll.natural === 20;
     const isHit = isCrit || attackTotal >= targetAc;
 
@@ -2566,7 +2851,7 @@ function handlePlayerCombatAttack(rawTargetName) {
     const attackMod = getPlayerAttackModifier(member, rangeFeet);
     const attackRoll = rollDiceDetailed('1d20', 20);
     const attackTotal = attackRoll.total + attackMod;
-    const { ac: targetAc, cover: targetCover } = getTargetArmorClass(target);
+    const { ac: targetAc, cover: targetCover } = getTargetArmorClass(target, member);
     const isCrit = attackRoll.natural === 20;
     const isHit = isCrit || attackTotal >= targetAc;
 
@@ -3034,6 +3319,31 @@ async function openCompendium() {
             POPUP_TYPE,
         });
         if (!edited) return '';
+
+        // Quitar un valor que algo ya usa deja una referencia muerta, y hasta ahora se
+        // guardaba sin protestar: la espada seguia apuntando a un tipo de dano que ya no
+        // existia y solo se notaba tres sesiones despues. No se impide el cambio -es tu
+        // campana- pero se decide con la factura delante.
+        const { findBrokenReferences, describeImpact } = await import('./game-engine/rules/rule-impact.js');
+        const broken = findBrokenReferences({
+            before: data.metadata?.rulesetPack ?? null,
+            after: edited,
+            items: partyMembers.flatMap(m => (Array.isArray(m.items) ? m.items : [])),
+            characters: partyMembers,
+        });
+
+        if (broken.length > 0) {
+            // El texto del dialogo es HTML, asi que las lineas van con <br>.
+            const detail = broken.map(b => `• ${escapeHtml(b.message)}`).join('<br>');
+            const go = await Popup.show.confirm(
+                'Este cambio rompe referencias',
+                `${escapeHtml(describeImpact(broken))}<br><br>${detail}<br><br>¿Guardar de todas formas?`,
+            );
+            if (!go) {
+                toastr.info('No se ha guardado nada.');
+                return '';
+            }
+        }
 
         data.metadata = data.metadata ?? {};
         data.metadata.rulesetPack = edited;
@@ -5772,6 +6082,53 @@ export function initPartyPanel() {
         },
     }));
 
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'enemigos',
+        helpString: '<div>Abre los enemigos que este tablero puede sacar, y cuantos. '
+            + 'Lo que <code>/fight</code> encuentra sale de aqui.</div>',
+        callback: () => editBoardEncounters(),
+    }));
+
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'definitivo',
+        helpString: '<div>El golpe definitivo del vinculo de rango 10: impacta sin tirar y hace el maximo del arma '
+            + 'mas el nivel. Una vez al dia. Usage: <code>/definitivo Goblin 1</code></div>',
+        unnamedArgumentList: [
+            SlashCommandArgument.fromProps({
+                description: 'Enemigo al alcance',
+                typeList: [ARGUMENT_TYPE.STRING],
+                isRequired: true,
+                enumProvider: currentTurnTargetEnumProvider,
+            }),
+        ],
+        callback: (_args, value) => resolveUltimateStrike(String(value || '')),
+    }));
+
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'descanso',
+        helpString: '<div>Descansa. <code>/descanso corto</code> gasta dados de golpe y un bloque del dia; '
+            + '<code>/descanso largo</code> cura del todo, devuelve la mitad de los dados y amanece.</div>',
+        unnamedArgumentList: [
+            SlashCommandArgument.fromProps({
+                description: 'corto o largo',
+                typeList: [ARGUMENT_TYPE.STRING],
+                isRequired: false,
+                enumProvider: () => [
+                    new SlashCommandEnumValue('corto', 'Gasta dados de golpe y un bloque del dia'),
+                    new SlashCommandEnumValue('largo', 'Cura del todo, devuelve dados y amanece'),
+                ],
+            }),
+        ],
+        callback: (_args, value) => {
+            const kind = String(value ?? '').trim().toLowerCase();
+            if (kind !== 'corto' && kind !== 'largo') {
+                toastr.info('Di que descanso quieres: /descanso corto o /descanso largo.');
+                return '';
+            }
+            return takeRest(kind);
+        },
+    }));
+
     // El Modo Juego se enciende y se apaga con el mismo comando, a proposito: es una capa
     // de presentacion, y la garantia de que se pueda quitar vale tanto como la capa.
     SlashCommandParser.addCommandObject(SlashCommand.fromProps({
@@ -5783,11 +6140,22 @@ export function initPartyPanel() {
 
     SlashCommandParser.addCommandObject(SlashCommand.fromProps({
         name: 'objetivos',
-        helpString: '<div>Muestra los objetivos del escenario en curso, si este tablero tiene alguno.</div>',
-        callback: () => {
+        helpString: '<div>Muestra los objetivos del escenario en curso. '
+            + '<code>/objetivos editar</code> los abre para cambiarlos, o para que la IA los proponga.</div>',
+        unnamedArgumentList: [
+            SlashCommandArgument.fromProps({
+                description: 'editar para abrirlos',
+                typeList: [ARGUMENT_TYPE.STRING],
+                isRequired: false,
+            }),
+        ],
+        callback: (_args, value) => {
+            if (String(value ?? '').trim().toLowerCase() === 'editar') {
+                return editBoardObjectives();
+            }
             const verdict = judgeCurrentScenario();
             if (!verdict) {
-                toastr.info('Este tablero no tiene objetivos: gana quien limpie el tablero.');
+                toastr.info('Este tablero no tiene objetivos: gana quien limpie el tablero. Pruebalo con /objetivos editar.');
                 return '';
             }
             toastr.info(verdict.summary, 'Objetivos', { timeOut: 10000 });

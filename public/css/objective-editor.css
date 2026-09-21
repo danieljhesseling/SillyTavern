@@ -1,0 +1,136 @@
+/*
+ * El editor de objetivos: lo que hace que un tablero sea *sobre* algo.
+ *
+ * Ver wiki/ROADMAP.md, Fase E y Fase F.
+ */
+
+.oe-root {
+    min-width: min(620px, 80vw);
+}
+
+.oe-head {
+    margin-bottom: 12px;
+}
+
+.oe-title {
+    font-size: 1.15em;
+    font-weight: bold;
+}
+
+.oe-sub {
+    font-size: 0.85em;
+    opacity: 0.7;
+    margin-top: 2px;
+}
+
+.oe-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.oe-empty {
+    opacity: 0.6;
+    font-style: italic;
+    padding: 10px 0;
+}
+
+.oe-row {
+    padding: 10px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.oe-row-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.oe-type {
+    flex: 0 0 auto;
+    min-width: 150px;
+}
+
+.oe-label {
+    flex: 1;
+    min-width: 160px;
+}
+
+.oe-optional {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.85em;
+    opacity: 0.8;
+    white-space: nowrap;
+}
+
+.oe-field {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+}
+
+.oe-field-name {
+    font-size: 0.8em;
+    opacity: 0.65;
+    min-width: 60px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.oe-cell {
+    width: 5em;
+}
+
+.oe-sep {
+    opacity: 0.5;
+}
+
+.oe-help {
+    font-size: 0.8em;
+    opacity: 0.6;
+    flex: 1 1 100%;
+}
+
+.oe-hint {
+    font-size: 0.82em;
+    opacity: 0.55;
+    margin-top: 6px;
+}
+
+.oe-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+}
+
+.oe-idea {
+    flex: 1;
+    min-width: 200px;
+}
+
+/* Lo que impide guardar se ve donde se va a pulsar, no en un aviso que se va solo. */
+.oe-problems {
+    margin-top: 10px;
+}
+
+.oe-problem {
+    padding: 6px 8px;
+    border-radius: 6px;
+    background: rgba(208, 138, 134, 0.18);
+    margin-bottom: 4px;
+    font-size: 0.88em;
+}
+
+.oe-working {
+    opacity: 0.7;
+    font-style: italic;
+}

@@ -112,3 +112,80 @@ export function planBatonPass({ bonds, party, actorId, remainingFeet }) {
         .filter(member => (Number(member?.hp) || 0) > 0)
         .map(member => ({ id: String(member.id), name: String(member.name ?? '') }));
 }
+
+/**
+ * Rank 10: the bond that changes what a companion *is*.
+ *
+ * The other three perks are situational and free — a second attack on a critical, a
+ * handover of movement, a body between you and the floor. This one had a label and no
+ * mechanics for months, because "unlocks their ultimate ability and their personal
+ * weapon" is a sentence, not a rule.
+ *
+ * So it is two things, both of which the engine can already carry:
+ *
+ * - **A personal weapon**, once, when the rank is reached: a real item on their sheet,
+ *   named after them, that they can equip like any other. Not a bonus applied invisibly.
+ * - **An ultimate blow**, once a day: it hits without rolling and deals the weapon's
+ *   maximum plus the character's level.
+ *
+ * Automatic hits are a large thing to hand out, which is why it costs a whole day and
+ * ten ranks of a bond that can only be raised by recorded events. It is the reward at the
+ * end of the longest track in the game.
+ *
+ * @param {Object} input
+ * @param {any} input.bonds
+ * @param {any[]} input.party
+ * @param {string} input.actorId Who wants to use it.
+ * @param {string} input.targetId
+ * @returns {{actorId: string, actorName: string, perkId: string, damage: number, reason: string}|null}
+ */
+export function planUltimate({ bonds, party, actorId, targetId }) {
+    const actor = (Array.isArray(party) ? party : [])
+        .find(member => String(member?.id ?? '') === String(actorId));
+
+    if (!actor) return null;
+    if ((Number(actor.hp) || 0) <= 0) return null;          // nobody swings from the floor
+    if (!targetId) return null;
+    if (!isPerkAvailable(bonds, String(actorId), 'ultimate')) return null;
+
+    // The weapon's best possible roll, plus a level's worth of experience behind it.
+    const weapon = (Array.isArray(actor.items) ? actor.items : [])
+        .find((/** @type {any} */ item) => item?.id === actor.equippedItems?.weapon);
+    const dice = String(weapon?.damageDice ?? '1d6').match(/^(\d+)d(\d+)/i);
+    const count = dice ? Number(dice[1]) : 1;
+    const faces = dice ? Number(dice[2]) : 6;
+    const level = Math.max(1, Number(actor.level) || 1);
+
+    return {
+        actorId: String(actorId),
+        actorName: String(actor.name ?? ''),
+        perkId: 'ultimate',
+        damage: count * faces + level,
+        reason: `${actor.name} descarga su golpe definitivo: impacta sin tirar.`,
+    };
+}
+
+/**
+ * The personal weapon a rank-10 bond grants, as a spec for `createItem`.
+ *
+ * Named after its owner on purpose: it is the proof that this particular bond went all
+ * the way, and it stays on the sheet after the fight.
+ *
+ * @param {any} member
+ * @returns {{name: string, type: string, category: string, subcategory: string, weight: number, damageDice: string, damageType: string, slot: string, rarity: string, description: string}}
+ */
+export function buildPersonalWeapon(member) {
+    const name = String(member?.name ?? 'Compañero').trim() || 'Compañero';
+    return {
+        name: `Arma personal de ${name}`,
+        type: 'weapon',
+        category: 'weapon',
+        subcategory: 'martial_melee',
+        weight: 1.5,
+        damageDice: '1d10',
+        damageType: 'slashing',
+        slot: 'weapon',
+        rarity: 'Very Rare',
+        description: `Forjada por el vínculo con ${name}. Solo aparece cuando ese vínculo llega al final.`,
+    };
+}

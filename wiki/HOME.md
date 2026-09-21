@@ -47,6 +47,7 @@ mindmap
       [[PROPUESTA_JUEGO_DND_GLOOMHAVEN_PERSONA]]
       [[ROADMAP_INGESTA_CAMPANAS_LIBROS]]
       [[PROPUESTA_FRONTEND_MODO_JUEGO]]
+      [[PLAN_JUEGO_TIPO_FRIENDS_AND_FABLES]]
     Guías & Referencia
       [[Mapa-Codigo-Archivos]]
       [[Guia-Desarrollo-Flujo]]
@@ -89,6 +90,7 @@ Diagnóstico crítico y catálogo exhaustivo de propuestas de mejora:
 - [[PROPUESTA_JUEGO_DND_GLOOMHAVEN_PERSONA]]: **Propuesta de Motor Híbrido RPG** (Persona + Gloomhaven + D&D 5e): combate táctico algorítmico 0 tokens, social links con perks de combate, calendario y lienzo blanco de world building. Incluye el estado de cada pilar y las correcciones que la realidad impuso.
 - [[ROADMAP_INGESTA_CAMPANAS_LIBROS]]: **De un libro a una campaña jugable.** El contrato de datos entre un GEM de Gemini y el motor, con el validador y el importador que faltan.
 - [[PROPUESTA_FRONTEND_MODO_JUEGO]]: **Frontend Dedicado "Modo Videojuego"**: Cómo eliminar el ruido de SillyTavern mediante una Pantalla de Título (Nueva/Cargar/Opciones) y un HUD de juego inmersivo (Dock de Party, Diálogo RPG, Tablero), sin tocar `index.html`.
+- [[PLAN_JUEGO_TIPO_FRIENDS_AND_FABLES]]: **Hacia la Experiencia "Friends & Fables" (Sin Marketplace)**: Análisis comparativo y hoja de ruta para completar las 6 piezas que faltan (DM autónomo con tiradas CD y opciones rápidas, descansos D&D, magia/spell slots y subida de nivel).
 - [[ROADMAP]]: **El plan de trabajo único.** Reconcilia la auditoría, el catálogo y el diseño de juego en 6 fases ordenadas por lo que desbloquean, más las transversales de economía de tokens. Cada fase termina en algo jugable. Empieza con *Dónde Estamos*: qué está hecho, qué está conectado al juego y qué falta.
 - [[POR_HACER]]: **Lista viva de pendientes**, ordenada por lo que desbloquea. Marca con 🖥️ las tareas que convierten motor construido en juego jugable. Incluye una prueba manual de dos minutos.
 

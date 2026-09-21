@@ -292,3 +292,105 @@ textarea.cw-input { resize: vertical; font-family: inherit; }
 .cw-import-verdict.ok {
     background: rgba(143, 184, 144, 0.18);
 }
+
+/* ---------------------------------------------------------------- generaciones y mapa */
+
+/* Cada intento se guarda: el modelo tiene buenas ideas y luego las estropea, y perder la
+   buena por probar una vez mas convertia generar en una apuesta. */
+.cw-ai-history {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin: 8px 0;
+}
+
+.cw-ai-history-title {
+    font-size: 0.8em;
+    opacity: 0.6;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.cw-ai-attempt.current {
+    border-color: var(--SmartThemeQuoteColor, #6a8caf);
+}
+
+textarea.cw-ai-map {
+    font-family: monospace;
+    font-size: 0.95em;
+    line-height: 1.15;
+    white-space: pre;
+    width: 100%;
+}
+
+.cw-ai-map-note {
+    font-size: 0.82em;
+    opacity: 0.7;
+    margin-top: 4px;
+}
+
+/* ---------------------------------------------------------------- editor de enemigos */
+
+.ee-root {
+    min-width: min(560px, 80vw);
+}
+
+.ee-title {
+    font-size: 1.15em;
+    font-weight: bold;
+}
+
+.ee-sub {
+    font-size: 0.85em;
+    opacity: 0.7;
+    margin: 2px 0 12px;
+}
+
+.ee-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+    flex-wrap: wrap;
+}
+
+.ee-enemy {
+    flex: 1;
+    min-width: 160px;
+}
+
+.ee-count {
+    width: 5em;
+}
+
+.ee-label {
+    font-size: 0.85em;
+    opacity: 0.65;
+}
+
+.ee-empty {
+    opacity: 0.6;
+    font-style: italic;
+    padding: 8px 0;
+}
+
+.ee-summary {
+    margin-top: 10px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.06);
+    font-size: 0.9em;
+}
+
+.ee-actions {
+    margin-top: 10px;
+}
+
+.ee-problem {
+    margin-top: 6px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    background: rgba(208, 138, 134, 0.18);
+    font-size: 0.88em;
+}

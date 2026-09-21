@@ -25,7 +25,7 @@ La lógica de las Fases A a E está escrita y probada. Lo que un jugador puede t
 | **B · Combate** | ✅ | ✅ **todo, incluida la máquina de turnos** | ✅ registro, rastreador de iniciativa, marcadores de estado |
 | **C · Contenido como datos** | ✅ | ✅ cada campaña carga su propio paquete | ✅ **editor visual** (`/rules`) |
 | **D · Calendario y vínculos** | ✅ | ✅ pestaña **Campaña** y perks en el combate | ✅ día, rangos y perks · ⬜ descansos |
-| **E · Escenarios y tablero de campaña** | ✅ | 🟡 los objetivos deciden el combate · ⬜ salas y puertas | 🟡 objetivos en el tablero |
+| **E · Escenarios y tablero de campaña** | ✅ | ✅ los objetivos deciden el combate · las puertas revelan y despiertan | 🟡 objetivos en el tablero |
 | **F · Lienzo blanco (IA)** | ✅ | ✅ dentro del asistente | ✅ con previsualización |
 | **T · Medir el gasto** | ✅ | ✅ `/prompt` | ✅ desglose por bloque |
 | **G · Ingesta de libros** | ✅ | ✅ contrato, validador, compilador e importación | ✅ cuarta tarjeta del asistente · el GEM lo llevas tú, fuera del código |
@@ -34,13 +34,15 @@ La lógica de las Fases A a E está escrita y probada. Lo que un jugador puede t
 > [!NOTE]
 > **Cómo leerla.** ✅ hecho y comprobado · 🟡 parcial · ⬜ sin empezar. *Conectada* quiere decir que un jugador puede provocarla: un módulo que solo ejecutan los tests cuenta como ⬜, por bien probado que esté.
 >
-> Esto ya no se estima, se mide: `node tools/check-engine-wiring.mjs` responde hoy **40 de 40 módulos conectados**. Con una salvedad que la orden no puede ver: de `campaign-map.js` se usa la mitad del mapa de campaña, y la de salas y puertas sigue esperando su tarea.
+> Esto ya no se estima, se mide: `node tools/check-engine-wiring.mjs` responde hoy **48 de 48 módulos conectados**, y desde el 2026-09-21 **sin salvedades**: de `campaign-map.js` ya se usan las dos mitades, el mapa de campaña y las salas.
 
 **Lo que sigue, en este orden:**
 
-1. **Salas, puertas y enemigos dormidos**: la mitad de `campaign-map.js` que sigue sin usarse. Ahora que un libro entra entero, es lo que separa una mazmorra de un único combate gigante.
-2. **Descanso corto y largo**: el otro lado del calendario. Sin descansos, los recursos no significan nada.
-3. **Prefijo estable del prompt** y el resto del bloque A.
+1. **Sacar el pegamento de `party.js`**: la lógica vive fuera, en módulos probados, pero cada enganche nuevo se acumula en un archivo que ya pasa de las 6.000 líneas.
+2. **Registro de contradicciones**: comparar, tras cada turno, lo que el modelo contó con lo que el motor sabe.
+3. **Snapshot del prompt en CI** y **repetición determinista de turno**, que es lo que haría medible un cambio de prompt.
+
+Lo que queda del bloque A ya no son mecánicas de juego: es infraestructura para que lo construido aguante.
 
 **Las dos direcciones grandes están hechas**: el Modo Videojuego (Fase H) y la ingesta de libros (Fase G), las dos el 2026-09-21.
 
@@ -119,7 +121,7 @@ Estructuralmente solo puede venir de tres sitios, y **ninguno se ha medido todav
 | # | Palanca | Dónde |
 | :-- | :--- | :--- |
 | **1** | **Medir primero.** Vista previa del prompt compilado y contador reconciliado con el proveedor. No se puede optimizar lo que no se ve. | T3, T4 |
-| **2** | **Contexto cacheado**: estático delante, volátil detrás, para los proveedores con caché de prompt. | T1 |
+| **2** | ✅ **Contexto cacheado**: estático delante, volátil detrás. `cost/prompt-order.js` ordena cada bloque por cada cuánto cambia; `/prompt` mide cuánto del turno anterior se reutiliza. | T1 |
 | **3** | **Resumen periódico del historial**, para que el contexto no crezca sin límite. | T8 |
 | **4** | **Modelo por tarea**: lo mecánico a un modelo pequeño o local. | T2 |
 
@@ -143,7 +145,7 @@ Las Fases A y B **no ahorran tokens**. Lo que entregan es jugabilidad: IA que re
 | **Motor de juego (A–E)** | 18 archivos y 4.666 líneas en `game-engine/` (tablero, combate, campaña, reglas, interfaz) · lógica completa de las Fases A a E con tests · lo que está conectado, en *Dónde Estamos* |
 | **Asistente de campaña** | Botón *Nueva campaña* · 4 plantillas · tarjetas *Iniciar* para mundos sin partida · verificado de extremo a extremo (sección propia más abajo) |
 
-**Estado verificable** (medido el 2026-09-21): 1.366 tests en 53 suites · 0 errores de tipos en 54 archivos del fork · **0 errores de ESLint** · **los 40 módulos del motor, conectados al juego** · 172 comprobaciones en navegador real, estables en dos pasadas.
+**Estado verificable** (medido el 2026-09-21): 1.512 tests en 62 suites · 0 errores de tipos en 62 archivos del fork · **0 errores de ESLint** · **los 48 módulos del motor, conectados al juego, sin salvedades** · 181 comprobaciones en navegador real.
 
 > [!NOTE]
 > Este trabajo no era un desvío. Sin el merge no tendrías los 194 commits de upstream; sin los tests no podrías tocar el motor de combate sin miedo; sin el gate de tipos cada refactor sería a ciegas. Las fases que vienen se apoyan en eso.
@@ -202,7 +204,7 @@ Verificado contra el código, porque el documento de diseño parte de supuestos 
 
 **A6 está completo** (capas de terreno y niebla, paleta de pintura, y desde el 2026-09-21 las **puertas se abren con un clic** y la **cobertura cuenta en el ataque**).
 
-Sobre la cobertura conviene ser exacto: cuenta la de la **casilla del objetivo**, que es la regla que `getCoverBonus` documenta. D&D 5e la calcula sobre la línea entre atacante y objetivo, lo que exige trazarla; el sitio donde hacerlo ya está aislado en una función (`getTargetArmorClass`), así que afinarlo después no mueve ninguna llamada. El registro lo dice en voz alta — *«incluye +2 por cobertura media»* — porque una tirada que cambia sin explicar por qué es indistinguible de un error.
+Sobre la cobertura, desde el 2026-09-21 se calcula **sobre la línea entre atacante y objetivo**, como en D&D 5e: la mejor de las casillas por las que pasa el disparo, más la del objetivo. Antes contaba solo la casilla del objetivo, con una consecuencia rara —un pilar te protegía únicamente si estabas *dentro* de él— y de qué lado viene el disparo es la idea entera de la cobertura. La versión vieja exige trazarla; el sitio donde hacerlo ya está aislado en una función (`getTargetArmorClass`), así que afinarlo después no mueve ninguna llamada. El registro lo dice en voz alta — *«incluye +2 por cobertura media»* — porque una tirada que cambia sin explicar por qué es indistinguible de un error.
 
 ---
 
@@ -385,9 +387,9 @@ Tres decisiones que conviene recordar:
 | :--- | :--- | :--- |
 | **D1** | Calendario y bloques de tiempo. | ✅ `campaign/calendar.js` |
 | **D2** | Rangos de vínculo 1–10 por eventos registrados. | ✅ `campaign/bonds.js` |
-| **D3** | Perks mecánicas (rangos 3, 5, 8, 10). | ✅ Las de rango 3, 5 y 8 cambian el combate · `combat/bond-perks.js` · 21 tests · ⬜ la de rango 10 es contenido, no una regla |
+| **D3** | Perks mecánicas (rangos 3, 5, 8, 10). | ✅ Las cuatro cambian el combate · `combat/bond-perks.js` · 28 tests · la de rango 10 deja un arma en la ficha y `/definitivo`, una vez al día |
 | **D4** | Eventos de confidente: el motor decide, el LLM escribe. | ✅ `recordBondEvent` devuelve `rankedUp` y las perks desbloqueadas |
-| **D5** | Descanso corto y largo. | ⬜ Pendiente |
+| **D5** | Descanso corto y largo. | ✅ `rules/rest.js` · 20 tests · `/descanso corto` y `/descanso largo`, y botones en la pestaña Campaña |
 | **D6** | 🖥️ Interfaz del calendario y de los vínculos. | ✅ Pestaña **Campaña** · `ui/campaign-panel.js` + `campaign/campaign-view.js` · 19 tests |
 
 > [!WARNING]
@@ -455,6 +457,8 @@ Están como **tabla de datos**, no como `switch`, para que la Fase C pueda lleva
 Una sala es un conjunto de celdas más las puertas que llevan a ella. `openDoor` devuelve las tres cosas que siempre se mueven juntas — terreno nuevo, salas nuevas y los enemigos que despiertan — porque separarlas invita a olvidarse de una.
 
 > [!IMPORTANT]
+> **Hecho el 2026-09-21.** Las salas se **deducen del propio mapa** —un libro las dibuja, no las describe— así que el contrato del paquete no crece ni una línea y un tablero viejo gana salas en cuanto la función pasa por encima. Abrir una puerta revela la sala y despierta a quien dormía dentro, en su casilla.
+>
 > **Un enemigo en una sala sin abrir no toma turnos.** Eso es lo que impide que una mazmorra sea un único combate enorme, y es la diferencia entre explorar y limpiar un mapa.
 
 ### El tablero de campaña
@@ -533,7 +537,7 @@ La primera versión pasó todos sus tests y **no funcionó**. Lo encontró quien
 >
 > Lo que sí lo detecta es recorrer el flujo en un navegador real. Se hizo con Playwright y Edge contra un servidor con datos aislados, sembrado con una copia del mundo huérfano real. Comprobó, en instalación limpia: crear → chat vinculado al mundo → grupo en las casillas (2,8) y (3,8) → tablero visible con muros y dos fichas → volver a la bienvenida → la tarjeta figura como campaña en curso. Y sobre el mundo huérfano: tarjeta con *Iniciar* → selector de grupo → arranque → pasa a ser campaña normal.
 >
-> **Desde el 2026-09-21 eso está en el repositorio**: `tools/e2e-campaign.mjs` levanta su propio servidor con un `--dataRoot` temporal, recorre el juego y limpia al terminar. No toca tus datos y tu servidor de siempre puede seguir abierto. Son 172 comprobaciones: crear la campaña, las posiciones de inicio, el tablero, abrir una puerta, un combate con su registro, que el epílogo **no** sea un mensaje de sistema, y la campaña listada al cerrar.
+> **Desde el 2026-09-21 eso está en el repositorio**: `tools/e2e-campaign.mjs` levanta su propio servidor con un `--dataRoot` temporal, recorre el juego y limpia al terminar. No toca tus datos y tu servidor de siempre puede seguir abierto. Son 181 comprobaciones: crear la campaña, las posiciones de inicio, el tablero, abrir una puerta, un combate con su registro, que el epílogo **no** sea un mensaje de sistema, y la campaña listada al cerrar.
 >
 > ```bash
 > node tools/e2e-campaign.mjs            # headless
@@ -731,10 +735,10 @@ Lo medido: la **lógica** de las Fases A a E (18 archivos y 4.666 líneas en `ga
 ## 🔬 Verificación
 
 ```bash
-npm run test:unit --prefix tests     # 1.366 tests, 53 suites
-node tools/check-fork-types.mjs      # 0 errores en los 54 archivos del fork
-node tools/check-engine-wiring.mjs   # los 40 modulos del motor, conectados al juego
-node tools/e2e-campaign.mjs          # 172 comprobaciones en un navegador real
+npm run test:unit --prefix tests     # 1.512 tests, 62 suites
+node tools/check-fork-types.mjs      # 0 errores en los 62 archivos del fork
+node tools/check-engine-wiring.mjs   # los 48 modulos del motor, conectados al juego
+node tools/e2e-campaign.mjs          # 181 comprobaciones en un navegador real
 ESLINT_USE_FLAT_CONFIG=false npx eslint --ext .js,.mjs public/scripts/game-engine public/scripts/party public/scripts/party.js public/scripts/campaigns.js public/scripts/world-map-renderer.js tools   # 0 errores
 git fetch upstream && git merge upstream/release
 ```

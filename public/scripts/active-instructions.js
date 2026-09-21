@@ -6,6 +6,7 @@ import {
     chat_metadata,
     saveMetadata,
 } from '../script.js';
+import { promptKey } from './game-engine/cost/prompt-order.js';
 import { Popup, POPUP_TYPE, POPUP_RESULT } from './popup.js';
 import { escapeHtml } from './utils.js';
 
@@ -41,7 +42,7 @@ export function injectCustomInstructions() {
     const activeKeys = new Set();
 
     for (const instr of instructions) {
-        const key = `CUSTOM_INSTR_${instr.id}`;
+        const key = promptKey('custom', instr.id, 'instr');
         if (instr.enabled && instr.text.trim()) {
             setExtensionPrompt(
                 key,
@@ -155,7 +156,7 @@ async function openActiveInstructionsPopup() {
         const id = $(this).closest('.ai-custom-card').data('id');
         const idx = instructions.findIndex(i => i.id === id);
         if (idx >= 0) {
-            const key = `CUSTOM_INSTR_${instructions[idx].id}`;
+            const key = promptKey('custom', instructions[idx].id, 'instr');
             instructions.splice(idx, 1);
             setExtensionPrompt(key, '', extension_prompt_types.IN_PROMPT, 0);
             $(this).closest('.ai-custom-card').remove();

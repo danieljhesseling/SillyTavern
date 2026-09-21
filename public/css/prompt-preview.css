@@ -114,3 +114,17 @@
     border-top: 1px solid rgba(255, 255, 255, 0.08);
     padding-top: 6px;
 }
+
+/* Cuanto del prompt anterior se puede reutilizar. Es el numero que dice si el orden de
+   los bloques esta sirviendo de algo. */
+.pp-prefix {
+    margin-top: 8px;
+    padding: 7px 9px;
+    border-radius: 6px;
+    background: rgba(208, 138, 134, 0.15);
+    font-size: 0.9em;
+}
+
+.pp-prefix.good {
+    background: rgba(143, 184, 144, 0.18);
+}

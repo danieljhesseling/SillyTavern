@@ -230,3 +230,26 @@ describe('importing, end to end', () => {
         expect(fake.createEntry).not.toHaveBeenCalled();
     });
 });
+
+describe('the rooms a board draws for itself', () => {
+    test('every imported board carries the rooms its map implies', () => {
+        const boards = buildImportPlan(example()).metadata.locationMaps[0].boards;
+        expect(boards.every(b => b.rooms.length >= 2)).toBe(true);
+    });
+
+    // The point of the whole thing: what is behind a closed door is not known yet.
+    test('the party starts in a revealed room and the rest are shut', () => {
+        const [, sotano] = buildImportPlan(example()).metadata.locationMaps[0].boards;
+        expect(sotano.rooms.filter(r => r.revealed)).toHaveLength(1);
+        expect(sotano.rooms.filter(r => !r.revealed)).toHaveLength(1);
+        expect(sotano.rooms.find(r => r.revealed).cells).toContain('2,7');
+    });
+
+    test('and the guardian of the example sleeps behind the door', async () => {
+        const { awakePlacements, enemiesInRoom } = await import('../public/scripts/game-engine/campaign/campaign-map.js');
+        const [, sotano] = buildImportPlan(example()).metadata.locationMaps[0].boards;
+        expect(awakePlacements(sotano.rooms, sotano.enemyPlacements)).toEqual([]);
+        const shut = sotano.rooms.find(r => !r.revealed);
+        expect(enemiesInRoom(shut, sotano.enemyPlacements).map(p => p.name)).toEqual(['Guardián del grano']);
+    });
+});

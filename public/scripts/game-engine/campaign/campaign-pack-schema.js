@@ -438,19 +438,22 @@ export function buildExamplePack() {
                 id: 'molino_sotano',
                 name: 'El sótano',
                 locationName: 'El Molino de los Cuervos',
+                // La puerta no es decoracion: separa dos salas, y lo que hay detras no
+                // se sabe hasta abrirla. Asi es como el motor marca el ritmo de una
+                // mazmorra, y por eso el ejemplo lo ensena.
                 map: [
                     '############',
-                    '#..........#',
-                    '#.####.###.#',
-                    '#.#......#.#',
-                    '#.#.####.#.#',
-                    '#...#..#...#',
-                    '#####..#####',
-                    '#..........#',
+                    '#....#.....#',
+                    '#....#.....#',
+                    '#....D.....#',
+                    '#....#.....#',
+                    '#....#.....#',
+                    '#....#.....#',
+                    '#....#.....#',
                     '############',
                 ],
-                partyStart: [{ x: 5, y: 7 }, { x: 6, y: 7 }],
-                enemies: [{ name: 'Guardián del grano', x: 5, y: 3 }],
+                partyStart: [{ x: 2, y: 7 }, { x: 3, y: 7 }],
+                enemies: [{ name: 'Guardián del grano', x: 8, y: 3 }],
             },
         ],
         quests: [

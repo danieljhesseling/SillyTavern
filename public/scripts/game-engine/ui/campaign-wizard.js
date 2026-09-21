@@ -21,6 +21,7 @@ import {
     buildEncounterRules,
 } from '../campaign/starter-templates.js';
 import { uniqueWorldName } from '../campaign/campaign-worlds.js';
+import { normalizeMap, findPartyStart } from '../world-builder/world-schema.js';
 
 /**
  * @typedef {Object} WizardResult
@@ -147,8 +148,40 @@ export async function askWizard({ Popup, POPUP_TYPE, existingWorldNames = [], ge
         const status = $('<div class="cw-ai-status"></div>').hide();
         const preview = $('<div class="cw-ai-preview"></div>').hide();
 
+        // Cada intento se guarda. Generar otra vez ya no borraba el anterior sin mas:
+        // el modelo tiene buenas ideas y luego las estropea, y perder la buena por
+        // probar una vez mas convertia generar en una apuesta.
+        /** @type {Array<{idea: string, template: any}>} */
+        const attempts = [];
+        const history = $('<div class="cw-ai-history"></div>').hide();
+
         aiPanel.append($('<div class="cw-hint"></div>').text('¿Qué mundo quieres? Sé todo lo concreto que puedas.'));
-        aiPanel.append(ideaInput, goButton, status, preview);
+        aiPanel.append(ideaInput, goButton, status, history, preview);
+
+        /** Los intentos anteriores, como botones para volver a cualquiera. */
+        const drawHistory = () => {
+            history.empty();
+            if (attempts.length < 2) {
+                history.hide();
+                return;
+            }
+
+            history.append($('<span class="cw-ai-history-title"></span>').text('Generaciones:'));
+            attempts.forEach((attempt, index) => {
+                const button = $('<button class="menu_button cw-ai-attempt" type="button"></button>')
+                    .text(`${index + 1}. ${attempt.template.name}`)
+                    .attr('title', attempt.idea || 'Sin idea escrita')
+                    .toggleClass('current', attempt.template === generatedTemplate)
+                    .on('click', () => {
+                        generatedTemplate = attempt.template;
+                        templateId = 'generated';
+                        showPreview({ template: attempt.template, errors: [], warnings: [] });
+                        drawHistory();
+                    });
+                history.append(button);
+            });
+            history.show();
+        };
 
         /** Draws what came back, so nothing is injected before you have seen it. */
         const showPreview = (/** @type {any} */ result) => {
@@ -162,7 +195,27 @@ export async function askWizard({ Popup, POPUP_TYPE, existingWorldNames = [], ge
                 const t = result.template;
                 preview.append($('<div class="cw-ai-name"></div>').text(t.name));
                 preview.append($('<div class="cw-ai-desc"></div>').text(t.description));
-                preview.append($('<pre class="cw-ai-map"></pre>').text(t.map.join('\n')));
+                // El mapa, editable aqui mismo: el modelo acierta con la sala y falla
+                // con una pared, y abrir el editor de terreno despues de crear la
+                // campana para mover un muro era el camino largo.
+                const mapBox = $('<textarea class="text_pole cw-ai-map" spellcheck="false"></textarea>')
+                    .attr('rows', String(Math.min(20, t.map.length + 1)))
+                    .val(t.map.join('\n'));
+
+                const mapNote = $('<div class="cw-ai-map-note"></div>').hide();
+
+                mapBox.on('input', () => {
+                    const rows = String(mapBox.val() || '').split('\n').filter(row => row.length > 0);
+                    const { map, warnings } = normalizeMap(rows);
+                    t.map = map;
+                    // La casilla de inicio puede haber dejado de ser suelo.
+                    t.partyStart = findPartyStart(map, t.partyStart.length || 2);
+                    mapNote.text(warnings.length > 0
+                        ? warnings.join(' ')
+                        : `${map[0]?.length ?? 0} x ${map.length}, revisado.`).show();
+                });
+
+                preview.append(mapBox, mapNote);
 
                 const enemies = t.enemies.length
                     ? t.enemies.map(e => `${e.name} (${e.hp} PG, CA ${e.armorClass})`).join(' · ')
@@ -194,6 +247,10 @@ export async function askWizard({ Popup, POPUP_TYPE, existingWorldNames = [], ge
 
                 const result = await generateWorld(String(ideaInput.val() || ''), partySize);
                 generatedTemplate = result.template;
+                if (result.template) {
+                    attempts.push({ idea: String(ideaInput.val() || ''), template: result.template });
+                    drawHistory();
+                }
 
                 if (result.template) {
                     templateId = 'generated';

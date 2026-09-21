@@ -31,7 +31,7 @@ Este documento se escribió antes de comprobar el contrato de datos contra el mo
 | *Lógica de misiones: solo conectar el panel* | Conectada. Un escenario **decide** el combate: se gana *aguantando rondas* con enemigos en pie, se pierde si cae quien había que proteger |
 | *Motor de combate y Persona al 100%* | Cierto, y ahora además **conectados**: las perks de vínculo cambian el combate, y 29 de los 30 módulos del motor los carga el juego |
 
-El único módulo del motor que sigue sin cargarse es `campaign-map.js` — salas, puertas y enemigos dormidos. Y eso importa aquí más que en ninguna otra parte: **una mazmorra de libro sin salas es un único combate gigante**.
+**Desde el 2026-09-21 no falta ninguno**, `campaign-map.js` incluido — salas, puertas y enemigos dormidos. Y eso importa aquí más que en ninguna otra parte:
 
 ---
 
@@ -281,7 +281,7 @@ Una cuarta tarjeta junto a *Mazmorra clásica* y *Generar con IA*: **Importar ca
 
 ### Lo que hay que hacer antes o a la vez: las salas
 
-`campaign-map.js` es el último módulo del motor sin conectar, y para esto no es opcional: **una mazmorra de libro sin salas es un único combate gigante**. Abrir una puerta debe revelar la sala y despertar lo que haya dentro. Está como **A2** en [[POR_HACER]].
+**Hecho el 2026-09-21.** Las salas se **deducen del propio mapa**, así que el contrato del paquete no crece ni una línea: abres una puerta, se revela la sala que guardaba y despierta lo que dormía dentro, en la casilla donde lo dibujó el libro. Sin esto, una mazmorra de libro habría sido un único combate gigante.
 
 ---
 

@@ -154,3 +154,61 @@ describe('robustness', () => {
         expect(planBatonPass({ bonds: undefined, party: PARTY, actorId: '1', remainingFeet: 15 })).toEqual([]);
     });
 });
+
+describe('the rank-10 bond, which was a label for months', () => {
+    const maxed = { bonds: { 1: { points: 200 } } };
+    const hero = (over = {}) => ({
+        id: 1, name: 'Lyra', hp: 20, level: 4,
+        items: [{ id: 'w1', damageDice: '2d6' }],
+        equippedItems: { weapon: 'w1' },
+        ...over,
+    });
+
+    test('the ultimate hits without rolling, for the weapon maximum plus the level', async () => {
+        const { planUltimate } = await import('../public/scripts/game-engine/combat/bond-perks.js');
+        const plan = planUltimate({ bonds: maxed, party: [hero()], actorId: '1', targetId: 'e1' });
+        expect(plan).toMatchObject({ actorId: '1', perkId: 'ultimate', damage: 16 });
+        expect(plan?.reason).toMatch(/sin tirar/);
+    });
+
+    test('with no weapon equipped it still lands, on the smallest die', async () => {
+        const { planUltimate } = await import('../public/scripts/game-engine/combat/bond-perks.js');
+        expect(planUltimate({ bonds: maxed, party: [hero({ equippedItems: {} })], actorId: '1', targetId: 'e1' })?.damage)
+            .toBe(10);
+    });
+
+    // It costs a whole day and the longest track in the game; it is not a free button.
+    test('below rank 10 there is nothing to use', async () => {
+        const { planUltimate } = await import('../public/scripts/game-engine/combat/bond-perks.js');
+        expect(planUltimate({ bonds: { bonds: { 1: { points: 80 } } }, party: [hero()], actorId: '1', targetId: 'e1' }))
+            .toBeNull();
+    });
+
+    test('and once spent today, not again', async () => {
+        const { planUltimate } = await import('../public/scripts/game-engine/combat/bond-perks.js');
+        const spent = { bonds: { 1: { points: 200, usedOncePerDay: ['ultimate'] } } };
+        expect(planUltimate({ bonds: spent, party: [hero()], actorId: '1', targetId: 'e1' })).toBeNull();
+    });
+
+    test('nobody swings from the floor, and nobody swings at nobody', async () => {
+        const { planUltimate } = await import('../public/scripts/game-engine/combat/bond-perks.js');
+        expect(planUltimate({ bonds: maxed, party: [hero({ hp: 0 })], actorId: '1', targetId: 'e1' })).toBeNull();
+        expect(planUltimate({ bonds: maxed, party: [hero()], actorId: '1', targetId: '' })).toBeNull();
+        expect(planUltimate({ bonds: maxed, party: [], actorId: '1', targetId: 'e1' })).toBeNull();
+    });
+
+    test('the personal weapon is a real item, named after whose bond it is', async () => {
+        const { buildPersonalWeapon } = await import('../public/scripts/game-engine/combat/bond-perks.js');
+        const { createItem } = await import('../public/scripts/dnd-system.js');
+        const item = createItem(buildPersonalWeapon({ name: 'Brand' }));
+        expect(item.name).toBe('Arma personal de Brand');
+        expect(item.slot).toBe('weapon');
+        expect(item.damageDice).toBe('1d10');
+        expect(item.rarity).toBe('Very Rare');
+    });
+
+    test('and somebody with no name still gets one', async () => {
+        const { buildPersonalWeapon } = await import('../public/scripts/game-engine/combat/bond-perks.js');
+        expect(buildPersonalWeapon({}).name).toBe('Arma personal de Compañero');
+    });
+});

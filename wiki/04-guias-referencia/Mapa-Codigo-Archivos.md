@@ -42,7 +42,7 @@ Este documento sirve como inventario exhaustivo del repositorio, clasificando lo
 > [!NOTE]
 > **Cifras medidas el 2026-09-21.** El motor de juego vive desde entonces en dos carpetas nuevas, `game-engine/` y `party/`, que esta página no recogía. El criterio que las ordena está en [[Guia-Desarrollo-Flujo]] §2: código nuevo va en archivo nuevo, para que un merge con upstream no lo toque nunca.
 
-### 2.1. El motor de juego — `public/scripts/game-engine/` (40 archivos, 10.389 líneas)
+### 2.1. El motor de juego — `public/scripts/game-engine/` (48 archivos, 12.196 líneas)
 
 Módulos puros: sin DOM, sin estado global, sin lecturas del chat. Por eso se prueban en Node y por eso el coste de merge es cero. Los marcados ⬜ están escritos y probados pero **el juego todavía no los carga**; compruébalo con `node tools/check-engine-wiring.mjs`.
 
@@ -57,7 +57,7 @@ Módulos puros: sin DOM, sin estado global, sin lecturas del chat. Por eso se pr
 | `combat/roll-guard.js` | 163 | Corrige tiradas inventadas por el modelo | ✅ |
 | `campaign/scenarios.js` | 307 | Siete tipos de objetivo de escenario | ⬜ |
 | `campaign/bonds.js` | 298 | Vínculos 1–10 por eventos registrados, y sus perks | ⬜ |
-| `campaign/campaign-map.js` | 275 | Salas, puertas y desbloqueo de localizaciones | 🟡 el mapa sí, las salas aún no |
+| `campaign/campaign-map.js` | 403 | Salas deducidas del mapa, puertas que revelan, y localizaciones que se desbloquean | ✅ |
 | `campaign/starter-templates.js` | 253 | Las 4 plantillas del asistente, como datos | ✅ |
 | `campaign/calendar.js` | 195 | Días y bloques de tiempo estilo Persona | ⬜ |
 | `campaign/campaign-worlds.js` | 77 | Qué es una campaña, dónde empieza, nombres libres | ✅ |
@@ -76,6 +76,14 @@ Módulos puros: sin DOM, sin estado global, sin lecturas del chat. Por eso se pr
 | `campaign/campaign-pack.js` | 403 | Si un paquete se sostiene: errores, avisos y lo que se reparó | ✅ |
 | `campaign/campaign-importer.js` | 419 | Del paquete a mundo, entradas, tableros y misiones; los ids, al final | ✅ |
 | `combat/spawn.js` | 95 | Dónde aparecen los enemigos: donde los dibujó el libro, nunca en un muro | ✅ |
+| `rules/rest.js` | 216 | Descanso corto y largo, con dados de golpe | ✅ |
+| `combat/loot-items.js` | 84 | Qué es cada cosa que sueltan los enemigos, para que se pueda usar | ✅ |
+| `campaign/encounter-editor.js` | 117 | Qué enemigos puede sacar un tablero, como filas | ✅ |
+| `ui/encounter-editor.js` | 119 | El panel de `/enemigos` | ✅ |
+| `rules/rule-impact.js` | 157 | Qué referencias rompería un cambio de reglas | ✅ |
+| `cost/prompt-order.js` | 184 | El orden de los bloques del prompt: de lo que nunca cambia a lo que cambia siempre | ✅ |
+| `campaign/objective-editor.js` | 351 | Objetivos como filas editables, y pedírselos a un modelo | ✅ |
+| `ui/objective-editor.js` | 203 | El panel de `/objetivos editar` | ✅ |
 | `combat/initiative-tracker.js` | 242 | Quién actúa, quién sigue y qué le pasa | ✅ |
 | `combat/loot.js` | 183 | Botín y experiencia por CR, repartidos entre los que siguen en pie | ✅ |
 | `ui/shell/game-shell.js` | 732 | La capa a pantalla completa: mueve el tablero y el chat, y los devuelve | ✅ |
@@ -147,9 +155,9 @@ Cada uno cuesta en cada merge. La lista no debería crecer.
 
 | Archivo | Para qué |
 | :--- | :--- |
-| `check-fork-types.mjs` | Gate de tipos sobre los 54 archivos propios. Falla si aparece un error |
+| `check-fork-types.mjs` | Gate de tipos sobre los 62 archivos propios. Falla si aparece un error |
 | `check-engine-wiring.mjs` | Lista los módulos del motor que el juego no carga. Informa, no falla |
-| `e2e-campaign.mjs` | Recorre el juego en un navegador real, con servidor y datos propios. 172 comprobaciones |
+| `e2e-campaign.mjs` | Recorre el juego en un navegador real, con servidor y datos propios. 181 comprobaciones |
 
 ---
 

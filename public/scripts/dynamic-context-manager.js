@@ -25,6 +25,7 @@ import {
     extension_prompts,
     substituteParams,
 } from '../script.js';
+import { promptKey, tierForCategory, isPromptKey } from './game-engine/cost/prompt-order.js';
 import { selected_group, groups } from './group-chats.js';
 import { getTokenCountAsync } from './tokenizers.js';
 import { eventSource, event_types } from './events.js';
@@ -39,7 +40,11 @@ import { escapeHtml } from './utils.js';
 
 // ─── Constants ──────────────────────────────────────────────────────────
 
-const DYNAMIC_KEY_PREFIX = 'DYN_CTX_';
+// Las claves deciden el orden: SillyTavern une los bloques por `Object.keys().sort()`,
+// asi que una clave con el id de la instruccion los colocaba al azar y la ficha del grupo
+// podia quedar antes que las reglas. `promptKey` ordena por cada cuanto cambia cada cosa,
+// que es lo unico que decide si el proveedor puede reutilizar el principio del prompt.
+// Ver game-engine/cost/prompt-order.js.
 
 export const CAMPAIGN_STATES = ['idle', 'combat', 'exploration', 'social', 'rest', 'stealth', 'travel', 'shopping'];
 
@@ -282,7 +287,7 @@ export function injectDynamicInstructions() {
     const sorted = [...instructions].sort((a, b) => (a.priority || DEFAULT_PRIORITY) - (b.priority || DEFAULT_PRIORITY));
 
     for (const instr of sorted) {
-        const key = `${DYNAMIC_KEY_PREFIX}${instr.id}`;
+        const key = promptKey(tierForCategory(instr.category), instr.id);
 
         if (instr.enabled && instr.text?.trim() && evaluateInstruction(instr, activeChars, campaign)) {
             // Estimate tokens (use cache if available, otherwise rough estimate)
@@ -318,7 +323,7 @@ export function injectDynamicInstructions() {
 
     // Clean orphan keys
     for (const key of Object.keys(extension_prompts)) {
-        if (key.startsWith(DYNAMIC_KEY_PREFIX) && !activeKeySet.has(key)) {
+        if (isPromptKey(key, 'dyn') && !activeKeySet.has(key)) {
             setExtensionPrompt(key, '', extension_prompt_types.IN_PROMPT, 0);
         }
     }
@@ -374,8 +379,11 @@ export function deleteDynamicInstruction(id) {
     const ctx = getDynamicContext();
     const idx = ctx.instructions.findIndex(i => i.id === id);
     if (idx >= 0) {
+        // La categoria decide la clave, asi que hay que leerla antes de quitar la
+        // instruccion: despues del splice, ese indice es ya la siguiente.
+        const category = ctx.instructions[idx]?.category;
         ctx.instructions.splice(idx, 1);
-        setExtensionPrompt(`${DYNAMIC_KEY_PREFIX}${id}`, '', extension_prompt_types.IN_PROMPT, 0);
+        setExtensionPrompt(promptKey(tierForCategory(category), id), '', extension_prompt_types.IN_PROMPT, 0);
     }
 }
 
@@ -585,13 +593,13 @@ function setupAutoDetection() {
  * These allow the AI to directly modify campaign state, quests, location, and flags.
  */
 const TAG_PATTERNS = {
-    state:          /\[(?:STATE|ESTADO)\s*:\s*([^\]]+)\]/gi,
-    location:       /\[(?:LOCATION|UBICACI[OÓ]N)\s*:\s*([^\]]+)\]/gi,
-    questAdd:       /\[(?:QUEST_ADD|MISI[OÓ]N_NUEVA|NEW_QUEST)\s*:\s*([^\]]+)\]/gi,
-    questComplete:  /\[(?:QUEST_COMPLETE|MISI[OÓ]N_COMPLETA|QUEST_DONE)\s*:\s*([^\]]+)\]/gi,
-    questRemove:    /\[(?:QUEST_REMOVE|MISI[OÓ]N_ELIMINAR)\s*:\s*([^\]]+)\]/gi,
-    flag:           /\[(?:FLAG|BANDERA)\s*:\s*([^\]=]+)=([^\]]*)\]/gi,
-    flagRemove:     /\[(?:FLAG_REMOVE|BANDERA_ELIMINAR)\s*:\s*([^\]]+)\]/gi,
+    state: /\[(?:STATE|ESTADO)\s*:\s*([^\]]+)\]/gi,
+    location: /\[(?:LOCATION|UBICACI[OÓ]N)\s*:\s*([^\]]+)\]/gi,
+    questAdd: /\[(?:QUEST_ADD|MISI[OÓ]N_NUEVA|NEW_QUEST)\s*:\s*([^\]]+)\]/gi,
+    questComplete: /\[(?:QUEST_COMPLETE|MISI[OÓ]N_COMPLETA|QUEST_DONE)\s*:\s*([^\]]+)\]/gi,
+    questRemove: /\[(?:QUEST_REMOVE|MISI[OÓ]N_ELIMINAR)\s*:\s*([^\]]+)\]/gi,
+    flag: /\[(?:FLAG|BANDERA)\s*:\s*([^\]=]+)=([^\]]*)\]/gi,
+    flagRemove: /\[(?:FLAG_REMOVE|BANDERA_ELIMINAR)\s*:\s*([^\]]+)\]/gi,
     addInstruction: /\[(?:INSTRUCTION|INSTRUCCIÓN)\s*:\s*([^\]|]+)\|([^\]|]+)(?:\|([^\]]+))?\]/gi,
     removeInstruction: /\[(?:REMOVE_INSTRUCTION|ELIMINAR_INSTRUCCIÓN)\s*:\s*([^\]]+)\]/gi,
 };
@@ -789,7 +797,7 @@ IMPORTANT: Place tags at the END of your message, after the narrative text. Do N
 function injectMetaInstruction() {
     if (metaInstructionEnabled) {
         setExtensionPrompt(
-            'DYN_META_INSTRUCTION',
+            promptKey('rules', 'meta', 'ctx'),
             META_INSTRUCTION_TEXT,
             extension_prompt_types.IN_PROMPT,
             2, // depth 2 — closer to the end of context
@@ -798,7 +806,7 @@ function injectMetaInstruction() {
         );
         console.log('[DCM] 📋 Meta-instruction injected (AI knows about update tags)');
     } else {
-        setExtensionPrompt('DYN_META_INSTRUCTION', '', extension_prompt_types.IN_PROMPT, 0);
+        setExtensionPrompt(promptKey('rules', 'meta', 'ctx'), '', extension_prompt_types.IN_PROMPT, 0);
     }
 }
 
@@ -1173,7 +1181,7 @@ export function injectRelationshipContext() {
     const ctx = buildRelationshipContext();
     if (ctx) {
         setExtensionPrompt(
-            'DYN_RELATIONSHIPS',
+            promptKey('npc', 'relationships', 'ctx'),
             `[SYSTEM: ACTIVE RELATIONSHIPS]\n${ctx}`,
             extension_prompt_types.IN_PROMPT,
             0,
@@ -1182,7 +1190,7 @@ export function injectRelationshipContext() {
         );
         console.log(`[DCM] 💕 Relationships injected (${ctx.split('\n').length} entries):\n${ctx}`);
     } else {
-        setExtensionPrompt('DYN_RELATIONSHIPS', '', extension_prompt_types.IN_PROMPT, 0);
+        setExtensionPrompt(promptKey('npc', 'relationships', 'ctx'), '', extension_prompt_types.IN_PROMPT, 0);
         console.log('[DCM] 💕 No relevant relationships for current character(s)');
     }
 }
@@ -1197,7 +1205,7 @@ export function injectQuestContext() {
     if (campaign.activeQuests?.length > 0) {
         const lines = campaign.activeQuests.map((q, i) => `${i + 1}. ${q}`);
         setExtensionPrompt(
-            'DYN_QUESTS',
+            promptKey('quest', 'quests', 'ctx'),
             `[SYSTEM: ACTIVE QUESTS]\n${lines.join('\n')}`,
             extension_prompt_types.IN_PROMPT,
             0,
@@ -1206,7 +1214,7 @@ export function injectQuestContext() {
         );
         console.log(`[DCM] 🗺️ Quests injected: ${campaign.activeQuests.join(', ')}`);
     } else {
-        setExtensionPrompt('DYN_QUESTS', '', extension_prompt_types.IN_PROMPT, 0);
+        setExtensionPrompt(promptKey('quest', 'quests', 'ctx'), '', extension_prompt_types.IN_PROMPT, 0);
         console.log('[DCM] 🗺️ No active quests');
     }
 }
@@ -1258,7 +1266,7 @@ export function injectBoardContext() {
     const ctx = buildBoardContext();
     if (ctx) {
         setExtensionPrompt(
-            'DYN_BOARD',
+            promptKey('combat', 'board', 'ctx'),
             `[SYSTEM: CHARACTERS PRESENT AT CURRENT LOCATION]\n${ctx}`,
             extension_prompt_types.IN_PROMPT,
             0,
@@ -1267,7 +1275,7 @@ export function injectBoardContext() {
         );
         console.log(`[DCM] 🏰 Board context injected: ${ctx.split('\n').length} lines`);
     } else {
-        setExtensionPrompt('DYN_BOARD', '', extension_prompt_types.IN_PROMPT, 0);
+        setExtensionPrompt(promptKey('combat', 'board', 'ctx'), '', extension_prompt_types.IN_PROMPT, 0);
         console.log('[DCM] 🏰 No board context (no location or empty board)');
     }
 }
@@ -1280,8 +1288,8 @@ export function injectBoardContext() {
 export function injectAllDynamicContext() {
     const campaign = getCampaignState();
     const activeChars = getActiveCharacterNames();
-    console.log(`[DCM] ════════════════════════════════════════════════════════`);
-    console.log(`[DCM] 🐉 DYNAMIC CONTEXT INJECTION`);
+    console.log('[DCM] ════════════════════════════════════════════════════════');
+    console.log('[DCM] 🐉 DYNAMIC CONTEXT INJECTION');
     console.log(`[DCM]   State: ${campaign.currentState} | Location: ${campaign.activeLocation || '(none)'}`);
     console.log(`[DCM]   Active characters: ${activeChars.length ? activeChars.join(', ') : '(none)'}`);
     console.log(`[DCM]   Quests: ${campaign.activeQuests?.length || 0} | Flags: ${Object.keys(campaign.customFlags || {}).length}`);
@@ -1292,7 +1300,7 @@ export function injectAllDynamicContext() {
     injectBoardContext();
     injectMetaInstruction();
 
-    console.log(`[DCM] ════════════════════════════════════════════════════════`);
+    console.log('[DCM] ════════════════════════════════════════════════════════');
 }
 
 // ─── Slash commands ─────────────────────────────────────────────────────
@@ -1451,7 +1459,7 @@ async function campaignCommandHandler(_args, value) {
             const result = await getActiveDynamicInstructions();
             const relCtx = buildRelationshipContext();
             const lines = [
-                `=== Campaign Dynamic Context ===`,
+                '=== Campaign Dynamic Context ===',
                 `State: ${campaign.currentState}`,
                 `Location: ${campaign.activeLocation || '(none)'}`,
                 `Quests: ${campaign.activeQuests.length ? campaign.activeQuests.join(', ') : '(none)'}`,
@@ -1462,7 +1470,7 @@ async function campaignCommandHandler(_args, value) {
                 `Active relationships: ${relCtx ? relCtx.split('\n').length + ' entries' : 'none'}`,
                 `Auto-detect: ${autoDetectEnabled ? 'ON' : 'OFF'}`,
                 `Meta-instruction: ${metaInstructionEnabled ? 'ON' : 'OFF'}`,
-                `AI tools: 8 registered via ToolManager`,
+                'AI tools: 8 registered via ToolManager',
             ];
             return lines.join('\n');
         }

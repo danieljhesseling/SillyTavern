@@ -164,3 +164,38 @@ export function getVisibleCells(terrain, originX, originY, radiusCells, gridWidt
 export function sightRadiusInCells(feet) {
     return Math.max(0, Math.floor((Number(feet) || 0) / 5));
 }
+
+/**
+ * The cover a target gets against a shot from a particular place.
+ *
+ * Until now cover was read from the target's own cell and nothing else, which is a
+ * declared simplification with a strange consequence: a pillar sheltered you only if you
+ * stood *inside* it, never if you stood behind it. Which side the shot comes from is the
+ * whole idea of cover.
+ *
+ * So: the best cover among the cells the shot passes through, plus the target's own
+ * cell — which is what the old rule looked at, and is still cover. `getRayCells` returns
+ * only what lies strictly between, so the target's square is added on purpose; the
+ * shooter's own square is never in it, which is right, because leaning out of your own
+ * doorway does not protect the person you are shooting at.
+ *
+ * A wall between the two is not cover, it is a refusal: `hasLineOfSight` says so before
+ * this is ever asked.
+ *
+ * @param {import('./terrain.js').BoardTerrain} terrain
+ * @param {number} x0 @param {number} y0 The attacker.
+ * @param {number} x1 @param {number} y1 The target.
+ * @param {(terrain: any, x: number, y: number) => number} coverOf How much a cell gives.
+ * @returns {number}
+ */
+export function getCoverAlongLine(terrain, x0, y0, x1, y1, coverOf) {
+    const cells = [...getRayCells(x0, y0, x1, y1), { x: Math.trunc(x1), y: Math.trunc(y1) }];
+
+    let best = 0;
+    for (const cell of cells) {
+        if (cell.x === Math.trunc(x0) && cell.y === Math.trunc(y0)) continue;
+        best = Math.max(best, Number(coverOf(terrain, cell.x, cell.y)) || 0);
+    }
+
+    return best;
+}

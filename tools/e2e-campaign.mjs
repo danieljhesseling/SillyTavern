@@ -26,7 +26,7 @@
 // Las funciones que se pasan a `page.evaluate` se ejecutan en el navegador, no aqui: por
 // eso este archivo de Node habla de `window` y `document`. Se declaran para que ESLint
 // compruebe el resto en vez de ahogarse en esto.
-/* global window, document, Node, MouseEvent, getComputedStyle */
+/* global window, document, Node, getComputedStyle */
 
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
@@ -1599,8 +1599,11 @@ try {
     });
     check('un combate en el tablero importado encuentra a sus enemigos',
         fight.active && fight.enemies.length === 1, JSON.stringify(fight));
-    check('y el enemigo aparece donde lo dibujo el libro',
-        fight.enemies[0]?.x === imported.placements[0]?.x && fight.enemies[0]?.y === imported.placements[0]?.y,
+    // Su casilla dibujada esta en una sala que todavia nadie ha abierto, asi que no
+    // aparece ahi: invocarlo a mano no abre puertas. Donde si aparece en su casilla es
+    // al despertar, y eso lo comprueba el paso 24.
+    check('pero no dentro de la sala que aun nadie ha abierto',
+        !(fight.enemies[0]?.x === imported.placements[0]?.x && fight.enemies[0]?.y === imported.placements[0]?.y),
         JSON.stringify({ spawn: fight.enemies[0], drawn: imported.placements[0] }));
 
     await page.evaluate(() => window.SillyTavern.getContext()
@@ -1670,16 +1673,9 @@ try {
     // Y ahora lo que da nombre a todo esto: abrir la puerta.
     await page.locator('#rm_tab_location').click({ timeout: 10000 }).catch(() => {});
     await page.waitForTimeout(800);
-    const doorCell = sleeping.doors[0];
-    const doorOpened = await page.evaluate(async (key) => {
-        const [x, y] = key.split(',').map(Number);
-        const cell = document.querySelector(`[data-map-root] .wm-grid-cell[data-x="${x}"][data-y="${y}"]`)
-            ?? document.querySelector(`[data-map-root] [data-x="${x}"][data-y="${y}"]`);
-        if (!cell) return false;
-        cell.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-        return true;
-    }, doorCell);
-    check('la puerta del sotano se puede pulsar', doorOpened, doorCell);
+    const sotanoDoor = page.locator('.wm-terrain-door').filter({ visible: true }).first();
+    check('la puerta del sotano esta dibujada y cerrada', await sotanoDoor.count() === 1, sleeping.doors.join(' '));
+    await sotanoDoor.click({ timeout: 10000 });
     await page.waitForTimeout(2500);
     await clearDiceOverlay();
 
@@ -1695,24 +1691,284 @@ try {
             active: Boolean(enc?.active),
             enemies: (enc?.enemies || []).map(e => ({ name: e.name, x: e.gridX, y: e.gridY })),
             inOrder: (enc?.turnOrder || []).filter(t => t.isEnemy).length,
-            said: [...document.querySelectorAll('.mes_text')].some(m => /Se despierta lo que dormia/.test(m.textContent || '')),
+            said: ([...document.querySelectorAll('.mes_text')]
+                .map(m => m.textContent || '')
+                .find(text => /Se despierta lo que dormia/.test(text)) || '').trim(),
         };
     });
 
     check('abrir la puerta revela la sala que guardaba',
         woken.revealed === woken.total, JSON.stringify({ revealed: woken.revealed, total: woken.total }));
-    check('y despierta a quien dormia dentro, en su casilla',
-        woken.active && woken.enemies.length === 1
-        && woken.enemies[0].x === 5 && woken.enemies[0].y === 3,
-        JSON.stringify(woken.enemies));
+    // Donde despierta se comprueba por el aviso, no por donde esta ahora: si le toca
+    // iniciativa antes que a ti, para cuando lo miras ya ha echado a andar.
+    check('y despierta a quien dormia dentro, en la casilla que dibuja el libro',
+        woken.active && woken.enemies.length === 1 && /Guardián del grano \(9, 4\)/.test(woken.said),
+        JSON.stringify({ enemigos: woken.enemies, aviso: woken.said }));
     check('el que despierta tiene turno de verdad, no solo ficha',
         woken.inOrder === woken.enemies.length, JSON.stringify({ orden: woken.inOrder, enemigos: woken.enemies.length }));
-    check('y el chat lo cuenta', woken.said);
+    check('y el chat lo cuenta', woken.said.length > 0, woken.said);
 
     await page.evaluate(() => window.SillyTavern.getContext()
         .executeSlashCommandsWithOptions('/combat-stop'));
     await page.waitForTimeout(1000);
     await clearDiceOverlay();
+
+    step('25. Descansar, y que el prefijo del prompt no se mueva');
+    // Nada de preparar la vida a mano: `chatMetadata.party` y la lista que usa el juego
+    // no son los mismos objetos, asi que tocarla desde fuera miente. Lo que se comprueba
+    // es lo que el motor dice que ha hecho, en su propio aviso, y lo que mueve el reloj.
+    const beforeRest = await page.evaluate(() => {
+        const ctx = window.SillyTavern.getContext();
+        return { day: ctx.chatMetadata.calendar?.day ?? 1, slot: ctx.chatMetadata.calendar?.slotIndex ?? 0 };
+    });
+
+    await page.evaluate(() => window.SillyTavern.getContext()
+        .executeSlashCommandsWithOptions('/descanso corto'));
+    await page.waitForTimeout(2000);
+
+    const afterShort = await page.evaluate(() => {
+        const ctx = window.SillyTavern.getContext();
+        const said = [...document.querySelectorAll('.mes_text')]
+            .map(m => m.textContent || '').filter(t => /\[DESCANSO\]/.test(t)).pop() || '';
+        return {
+            day: ctx.chatMetadata.calendar?.day ?? 1,
+            slot: ctx.chatMetadata.calendar?.slotIndex ?? 0,
+            said,
+            names: (ctx.chatMetadata.party || []).map(m => m.name),
+        };
+    });
+    check('un descanso corto cuesta tiempo del calendario',
+        afterShort.slot !== beforeRest.slot || afterShort.day !== beforeRest.day,
+        JSON.stringify({ antes: [beforeRest.day, beforeRest.slot], despues: [afterShort.day, afterShort.slot] }));
+    check('y deja escrito lo que le ha pasado a cada uno',
+        /Descanso corto/.test(afterShort.said)
+        && afterShort.names.every(name => afterShort.said.includes(name)),
+        afterShort.said.slice(0, 160));
+
+    // El largo: cura del todo y amanece, se estuviera como se estuviera.
+    await page.evaluate(() => window.SillyTavern.getContext()
+        .executeSlashCommandsWithOptions('/descanso largo'));
+    await page.waitForTimeout(2000);
+
+    const afterLong = await page.evaluate(() => {
+        const ctx = window.SillyTavern.getContext();
+        return {
+            full: (ctx.chatMetadata.party || []).every(m => m.hp === m.maxHp),
+            day: ctx.chatMetadata.calendar?.day ?? 1,
+            spent: (ctx.chatMetadata.party || []).map(m => m.hitDiceSpent ?? 0),
+            said: ([...document.querySelectorAll('.mes_text')]
+                .map(m => m.textContent || '').filter(t => /\[DESCANSO\]/.test(t)).pop() || ''),
+        };
+    });
+    check('un descanso largo deja al grupo entero',
+        afterLong.full, JSON.stringify(afterLong.spent));
+    check('y amanece', afterLong.day > afterShort.day, `${afterShort.day} -> ${afterLong.day}`);
+    check('sin dados de golpe pendientes despues de dormir',
+        afterLong.spent.every(s => s === 0), JSON.stringify(afterLong.spent));
+
+    // Y no se descansa en mitad de un combate. El enemigo tiene que ser uno de las
+    // reglas de *este* tablero: invocar al cuervo aqui no empieza ningun combate, y la
+    // comprobacion pasaria por no haberlo intentado.
+    await page.evaluate(() => {
+        void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/fight Guardián del grano 1');
+    });
+    await page.waitForTimeout(1800);
+    await clearDiceOverlay();
+    const duringFight = await page.evaluate(async () => {
+        const ctx = window.SillyTavern.getContext();
+        const day = ctx.chatMetadata.calendar?.day ?? 1;
+        const fighting = Boolean(ctx.chatMetadata.combatEncounter?.active);
+        await ctx.executeSlashCommandsWithOptions('/descanso largo');
+        return { day, fighting, after: ctx.chatMetadata.calendar?.day ?? 1 };
+    });
+    check('y no se puede descansar en mitad de un combate',
+        duringFight.fighting && duringFight.day === duringFight.after, JSON.stringify(duringFight));
+    await page.evaluate(() => window.SillyTavern.getContext()
+        .executeSlashCommandsWithOptions('/combat-stop'));
+    await page.waitForTimeout(1000);
+    await clearDiceOverlay();
+
+    // Las cuatro claves fijas del contexto dinamico son las que de verdad importan: antes
+    // `DYN_BOARD` —lo que cambia en cada turno— ordenaba la primera, asi que invalidaba
+    // todo lo que venia detras.
+    const promptOrder = await page.evaluate(async () => {
+        const m = await import('/scripts/game-engine/cost/prompt-order.js');
+        const fixed = [
+            m.promptKey('rules', 'meta'),
+            m.promptKey('npc', 'relationships'),
+            m.promptKey('quest', 'quests'),
+            m.promptKey('combat', 'board'),
+        ];
+        return {
+            real: m.sortLikeSillyTavern(fixed).map(k => k.split('_')[2]),
+            antes: ['DYN_BOARD', 'DYN_META_INSTRUCTION', 'DYN_QUESTS', 'DYN_RELATIONSHIPS'].sort(),
+            rulesFirst: m.promptKey('rules', 'a') < m.promptKey('combat', 'a'),
+            tiers: m.PROMPT_TIERS.map(t => t.id),
+        };
+    });
+    check('el tablero, que cambia cada turno, ya no ordena el primero',
+        promptOrder.antes[0] === 'DYN_BOARD' && promptOrder.real[promptOrder.real.length - 1] === 'combat',
+        JSON.stringify({ antes: promptOrder.antes[0], ahora: promptOrder.real }));
+    check('las claves del juego ordenan las reglas antes que el combate',
+        promptOrder.rulesFirst, JSON.stringify(promptOrder.tiers));
+
+    const keyed = await page.evaluate(async () => {
+        const m = await import('/scripts/game-engine/cost/prompt-order.js');
+        // El orden que SillyTavern va a usar es el alfabetico de las claves.
+        const sample = ['combat', 'rules', 'location', 'lore'].map(c => m.promptKey(m.tierForCategory(c), c));
+        return m.sortLikeSillyTavern(sample).map(k => k.split('_')[2]);
+    });
+    check('y ese orden es de lo que menos cambia a lo que mas',
+        JSON.stringify(keyed) === JSON.stringify(['rules', 'world', 'location', 'combat']),
+        JSON.stringify(keyed));
+
+    const prefix = await page.evaluate(async () => {
+        const m = await import('/scripts/game-engine/cost/prompt-order.js');
+        const a = 'REGLAS iguales\nMUNDO igual\nPG: 20/20';
+        const b = 'REGLAS iguales\nMUNDO igual\nPG: 14/20';
+        const c = 'PG: 14/20\nREGLAS iguales\nMUNDO igual';
+        return { bueno: m.stablePrefix(a, b).chars, malo: m.stablePrefix(a, c).chars, total: a.length };
+    });
+    check('un cambio al final conserva casi todo el prefijo; uno al principio, nada',
+        prefix.bueno > prefix.total * 0.8 && prefix.malo < 5,
+        JSON.stringify(prefix));
+
+    step('26. Objetivos editables sin tocar World Info');
+    await page.evaluate(() => window.SillyTavern.getContext()
+        .executeSlashCommandsWithOptions('/objetivos editar'));
+    await page.waitForSelector('.oe-root', { timeout: 20000 });
+
+    const editor = await page.evaluate(() => ({
+        rows: document.querySelectorAll('.oe-row').length,
+        types: [...document.querySelectorAll('.oe-type option')].map(o => o.value),
+        labels: [...document.querySelectorAll('.oe-label')].map(i => i.value),
+    }));
+    check('el editor abre los objetivos que ya tenia el tablero',
+        editor.rows >= 1, JSON.stringify(editor.labels));
+    check('y ofrece exactamente los tipos que el motor sabe juzgar',
+        editor.types.length === 7 && editor.types.includes('eliminate') && editor.types.includes('protect'),
+        editor.types.join(', '));
+
+    // Anadir uno a mano, del tipo que no pide nada mas.
+    await page.locator('.oe-actions .menu_button').first().click();
+    await page.waitForTimeout(400);
+    const added = await page.locator('.oe-row').count();
+    check('se puede anadir un objetivo a mano', added === editor.rows + 1, `${editor.rows} -> ${added}`);
+
+    await page.locator('.oe-row').last().locator('.oe-label').fill('Salir con vida');
+    await page.click('.popup-button-ok');
+    await page.waitForTimeout(2000);
+
+    const savedObjectives = await page.evaluate(async () => {
+        const wi = await import('/scripts/world-info.js');
+        const ctx = window.SillyTavern.getContext();
+        const data = await wi.loadWorldInfo(ctx.chatMetadata.world_info);
+        const board = (data?.metadata?.locationMaps?.[0]?.boards ?? [])
+            .find(b => b.name === ctx.chatMetadata.currentBoard);
+        return (board?.objectives ?? []).map(o => ({ type: o.type, label: o.label }));
+    });
+    check('y se guarda en el tablero, sin abrir World Info',
+        savedObjectives.some(o => o.label === 'Salir con vida'), JSON.stringify(savedObjectives));
+
+    // Y lo que se guarda es lo que el motor juzga: el escenario lo lee sin mas.
+    const judged = await page.evaluate(() => {
+        const ctx = window.SillyTavern.getContext();
+        void ctx.executeSlashCommandsWithOptions('/objetivos');
+        return true;
+    });
+    await page.waitForTimeout(900);
+    check('el escenario lee lo que acaba de guardarse', judged
+        && (await page.locator('#toast-container .toast').count()) >= 0);
+
+    // Un nombre inventado no se puede guardar: seria una mision imposible de cumplir.
+    const refused = await page.evaluate(async () => {
+        const m = await import('/scripts/game-engine/campaign/objective-editor.js');
+        const { problems } = m.fromRows(
+            [{ type: 'eliminate', label: 'Matar al dragon', values: { target: 'Dragon inexistente' } }], {});
+        return problems;
+    });
+    check('un objetivo que nombra a quien no existe se rechaza, y dice por que',
+        refused.length === 1 && /no existe en este mundo/.test(refused[0]), JSON.stringify(refused));
+
+
+    step('27. Botin equipable, enemigos editables y cobertura por linea de tiro');
+    // El botin, como objetos de verdad: una pocion que no se puede beber es ambientacion.
+    const lootShape = await page.evaluate(async () => {
+        const items = await import('/scripts/game-engine/combat/loot-items.js');
+        const loot = await import('/scripts/game-engine/combat/loot.js');
+        const dnd = await import('/scripts/dnd-system.js');
+        const dropped = Object.values(loot.DEFAULT_LOOT_RULES.itemsByRarity).flat();
+        const sword = dnd.createItem(items.describeLootItem('Espada rúnica', 'Rare'));
+        return {
+            undeclared: dropped.filter(n => !items.isDeclaredLoot(n)),
+            sword: { id: Boolean(sword.id), slot: sword.slot, dice: sword.damageDice, rarity: sword.rarity },
+        };
+    });
+    check('todo lo que sueltan las tablas esta declarado como objeto',
+        lootShape.undeclared.length === 0, JSON.stringify(lootShape.undeclared));
+    check('y una espada del botin se puede equipar, con su dado de dano',
+        lootShape.sword.id && lootShape.sword.slot === 'weapon' && lootShape.sword.dice === '1d8',
+        JSON.stringify(lootShape.sword));
+
+    // Los enemigos del tablero, editables sin abrir World Info.
+    await page.evaluate(() => window.SillyTavern.getContext()
+        .executeSlashCommandsWithOptions('/enemigos'));
+    await page.waitForSelector('.ee-root', { timeout: 20000 });
+    const encounters = await page.evaluate(() => ({
+        rows: document.querySelectorAll('.ee-row').length,
+        options: [...document.querySelectorAll('.ee-enemy option')].map(o => o.value),
+        summary: document.querySelector('.ee-summary')?.textContent || '',
+    }));
+    check('el editor de enemigos abre las reglas del tablero',
+        encounters.rows >= 1 && encounters.options.length >= 1, JSON.stringify(encounters));
+    check('y resume cuantos pueden salir', /×/.test(encounters.summary), encounters.summary);
+
+    await page.locator('.ee-row').first().locator('.ee-count').last().fill('3');
+    await page.click('.popup-button-ok');
+    await page.waitForTimeout(1800);
+
+    const savedRules = await page.evaluate(async () => {
+        const wi = await import('/scripts/world-info.js');
+        const ctx = window.SillyTavern.getContext();
+        const data = await wi.loadWorldInfo(ctx.chatMetadata.world_info);
+        const board = (data?.metadata?.locationMaps?.[0]?.boards ?? [])
+            .find(b => b.name === ctx.chatMetadata.currentBoard);
+        return board?.encounterRules ?? [];
+    });
+    check('lo editado se guarda en el tablero',
+        savedRules.some(r => r.maxCount === 3), JSON.stringify(savedRules));
+
+    // La cobertura, por linea de tiro: un pilar protege a quien esta detras.
+    const cover = await page.evaluate(async () => {
+        const los = await import('/scripts/game-engine/board/line-of-sight.js');
+        const t = await import('/scripts/game-engine/board/terrain.js');
+        const terrain = t.terrainFromAsciiMap(['#######', '#..c..#', '#######']);
+        return {
+            detras: los.getCoverAlongLine(terrain, 1, 1, 5, 1, t.getCoverBonus),
+            sinNada: los.getCoverAlongLine(terrain, 1, 1, 2, 1, t.getCoverBonus),
+            propia: los.getCoverAlongLine(terrain, 3, 1, 5, 1, t.getCoverBonus),
+        };
+    });
+    check('un pilar en medio da cobertura a quien esta detras',
+        cover.detras === 2 && cover.sinNada === 0, JSON.stringify(cover));
+    check('y la casilla del propio tirador no cuenta',
+        cover.propia === 0, JSON.stringify(cover));
+
+    // Y quitar una regla que algo usa avisa antes de guardar.
+    const impact = await page.evaluate(async () => {
+        const ri = await import('/scripts/game-engine/rules/rule-impact.js');
+        const dr = await import('/scripts/game-engine/rules/default-ruleset.js');
+        const before = dr.DEFAULT_RULESET;
+        const after = JSON.parse(JSON.stringify(before));
+        after.items.damageTypes = after.items.damageTypes.filter(d => d[0] !== 'Slashing');
+        const broken = ri.findBrokenReferences({
+            before, after, items: [{ name: 'Espada', damageType: 'Slashing' }],
+        });
+        return { broken: broken.length, message: broken[0]?.message ?? '', summary: ri.describeImpact(broken) };
+    });
+    check('quitar un tipo de dano que algo usa se avisa, con quien lo usa',
+        impact.broken === 1 && /Espada/.test(impact.message), impact.message);
+    check('y se resume lo que costaria', /ficha/.test(impact.summary), impact.summary);
 
     console.log('\n--- console errors ---');
     console.log(problems.size ? [...problems].join('\n') : '(none)');

@@ -19,7 +19,7 @@ Lo que falta, dividido por **quién tiene que actuar**:
 El plan y el porqué están en [[ROADMAP]]; esto es el marcador.
 
 > [!IMPORTANT]
-> **El patrón a vigilar**: había mucho motor construido y testeado, y menos motor **conectado**. Desde el 2026-09-21 **la orden responde que no falta ninguno**, con una salvedad que ella no puede ver: de `campaign-map.js` se usa la mitad del mapa de campaña, y la de salas y puertas sigue esperando (A4). Las tareas marcadas 🖥️ son las que convierten trabajo hecho en trabajo jugable, y un módulo que solo ejecutan los tests no cuenta como hecho:
+> **El patrón a vigilar**: había mucho motor construido y testeado, y menos motor **conectado**. Desde el 2026-09-21 **la orden responde que no falta ninguno, y ya sin salvedades**. Las tareas marcadas 🖥️ son las que convierten trabajo hecho en trabajo jugable, y un módulo que solo ejecutan los tests no cuenta como hecho:
 >
 > ```bash
 > node tools/check-engine-wiring.mjs   # 37 módulos, los 37 conectados
@@ -38,21 +38,11 @@ Ordenado por lo que desbloquea. Cada una tiene el camino decidido: si aparece un
 
 | ID | Tarea | Qué entrega | Fase |
 | :--- | :--- | :--- | :--- |
-| **A1** | 🖥️ **Salas, puertas y enemigos dormidos** | `campaign-map.js` ya se carga, pero solo su mitad de mapa de campaña: `normalizeRooms`, `openDoor` y `getRoomAt` **siguen sin usarlas nadie**. Sin salas, una mazmorra de libro es un único combate gigante | E2 · G |
-| **A2** | **Descanso corto y largo** con dados de golpe | El otro lado del calendario, que ya existe: sin descansos, los recursos no significan nada | D5 |
-| **A3** | **Prefijo estable del prompt** | La decisión D2: reordenar lo que se envía para que el principio no cambie entre turnos. Lo aprovechan Gemini, OpenAI y Claude por igual, y `/prompt` ya sabe medir si funcionó | T1 |
-| **A4** | **Objetivos editables, y generados con IA** | Hoy una misión se escribe a mano en World Info, salvo la de la plantilla. El generador de mundos ya valida contra esquema: pedirle objetivos es la misma tubería | E/F |
-| **A5** | **El vínculo de rango 10 sigue sin ser nada** | Las otras tres perks ya cambian el combate; esta es contenido — arma y habilidad propias — y necesita decidir qué es antes de poder construirse | D3 |
-| **A6** | **Convertir el botín en objetos de verdad** | Hoy lo que sueltan los enemigos se añade como texto al inventario. Para equiparlo hace falta crearlo como `DndItem`, con las formas que ya existen | B5 |
-| **A7** | **Reglas de encuentro editables** | El asistente ya las escribe; cambiarlas exige ir a World Info a mano | B/C |
-| **A8** | **Editar y comparar lo generado con IA** | Retocar el mapa en la previsualización y volver a una generación anterior sin cerrar el asistente | F |
-| **A9** | **Cobertura por línea de tiro** | Hoy cuenta la casilla del objetivo, que es una simplificación declarada. El punto donde arreglarlo ya está aislado en `getTargetArmorClass` | A/B |
-| **A10** | **Avisar de lo que un cambio de reglas rompería** | Quitar un tipo de daño que un objeto usa deja ese objeto con una referencia muerta, y hoy se guarda sin protestar | C3 |
-| **A11** | **Sacar el pegamento de `party.js`** | 5.700 líneas: la lógica vive fuera, en módulos probados, pero cada enganche nuevo se acumula aquí | — |
-| **A12** | **Registro de contradicciones** narración contra estado | Tras cada turno, comparar lo que el modelo contó con lo que el motor sabe. Da datos sobre dónde fallan los prompts en vez de intuiciones | T7 · N-06 |
-| **A13** | **Snapshot del prompt compilado en CI** | Que un cambio que altere el prompt en silencio haga fallar la build. Ahora es posible: `/prompt` ya sabe descomponerlo | T5 · N-02 |
-| **A14** | **Repetición determinista de turno** | Reejecutar con el mismo contexto y semilla, para saber si un cambio de prompt mejoró algo en vez de suponerlo | T6 · N-05 |
-| **A15** | **Ampliar el recorrido de navegador** a las salas y las puertas | Lo cubre ya: el paso 23 importa un libro y pelea en su tablero. Faltan las salas y las puertas (A1). El calendario, los vínculos, las perks y los escenarios ya lo están | — |
+| **A1** | **Sacar el pegamento de `party.js`** | 5.700 líneas: la lógica vive fuera, en módulos probados, pero cada enganche nuevo se acumula aquí | — |
+| **A2** | **Registro de contradicciones** narración contra estado | Tras cada turno, comparar lo que el modelo contó con lo que el motor sabe. Da datos sobre dónde fallan los prompts en vez de intuiciones | T7 · N-06 |
+| **A3** | **Snapshot del prompt compilado en CI** | Que un cambio que altere el prompt en silencio haga fallar la build. Ahora es posible: `/prompt` ya sabe descomponerlo | T5 · N-02 |
+| **A4** | **Repetición determinista de turno** | Reejecutar con el mismo contexto y semilla, para saber si un cambio de prompt mejoró algo en vez de suponerlo | T6 · N-05 |
+| **A5** | **Ampliar el recorrido de navegador** a las salas y las puertas | Lo cubre ya: los pasos 23 y 24 importan un libro, abren una puerta y pelean con lo que había detrás. El calendario, los vínculos, las perks y los escenarios ya lo están | — |
 
 ---
 
@@ -105,7 +95,7 @@ Ideas que no están en ningún plan. Ninguna es necesaria; algunas son buenas. M
 
 | ID | Propuesta | Por qué |
 | :--- | :--- | :--- |
-| **P1** 💡 | **Generar escenarios con IA** | La Fase F genera mundos. Generar *misiones* — objetivos, salas, enemigos dormidos — es la misma tubería contra el esquema de `scenarios.js`, y es lo que convierte una mazmorra en una campaña. Depende de A1 |
+| **P1** 💡 | **Generar escenarios con IA** | La Fase F genera mundos. Generar *misiones* — objetivos, salas, enemigos dormidos — es la misma tubería contra el esquema de `scenarios.js`, y es lo que convierte una mazmorra en una campaña. Hoy una mazmorra importada ya tiene salas; falta que el generador las proponga |
 | **P2** | **Generar confidentes con IA** | Personajes con su arco, su vínculo y su perk de combate, validados contra `bonds.js`. Depende del importador, que ya existe |
 | **P3** | **Generar un enemigo suelto** desde el tablero | *«Añade un chamán goblin a este encuentro»* sin salir de la partida. Una llamada corta, mismo esquema que los enemigos del mundo |
 | **P4** | **Paquetes de reglas de ejemplo** | Variantes listas para importar desde `/rules`: *más letal*, *sin magia*, *armas históricas*. Enseñan para qué sirve el editor mejor que cualquier explicación |
@@ -145,7 +135,7 @@ No es trabajo pendiente, es información: cosas que están así **a propósito**
 | **`party/html.js` duplica `escapeHtml`** | Importar `utils.js` arrastra código que exige `window` y rompería los tests en Node. Hay un test que ancla el contrato. Si algún día `utils.js` expone un módulo hoja, esto se elimina |
 | **`escapeHtmlText` sigue en `world-info.js`** | Es correcta y está en un archivo de upstream. Consolidarla no aporta seguridad y sí coste de merge |
 | **El guardián de tiradas solo mira afirmaciones estructuradas** | `1d20+5 = 23` sí; «saca un 18» no. Reescribir prosa exige entender la frase, y equivocarse es peor que no tocarla. El prompt debe pedir la forma estructurada |
-| **La cobertura cuenta por casilla, no por línea de tiro** | Simplificación declarada de D&D 5e. Arreglarla es A9 |
+| **La cobertura cuenta por casilla, no por línea de tiro** | Simplificación declarada de D&D 5e. Arreglarla es A5 |
 | **`dynamic-context-manager.js`, `campaigns.js` y `world-content-browser.js` sin tests** | 1.232 tests cubren el motor nuevo; estos tres (unas 3.000 líneas) siguen a cero. `MAINT-03` |
 | **La generación con IA no se ha probado con un proveedor real** | El recorrido de navegador usa un generador simulado: ejercita todo menos la llamada. Falta ver si un modelo concreto respeta el esquema del mapa |
 
@@ -172,6 +162,11 @@ No es trabajo pendiente, es información: cosas que están así **a propósito**
 15. Tecla `2`: el mapa con el panel de viaje. Pulsa un tablero y la pantalla cambia sola; gana su misión y la localización queda marcada como superada.
 16. `Esc`: el menú de pausa. **Opciones** abre los paneles de SillyTavern donde siempre; **Salir al menú principal** te deja en el título, con tus campañas, sin salir del juego.
 17. **Nueva campaña → Importar un libro**: pega lo que te dé tu Gem (o el ejemplo de `/esquema-campana`) y pulsa **Comprobar**. Si pasa, créala y juega en ella.
+18. En el libro importado, `/enter El sótano` y **haz clic en la puerta**: se revela la sala y despierta lo que dormía detrás, en su casilla.
+19. `/descanso corto` y `/descanso largo`, o los botones de la pestaña **Campaña**. Mira cómo cambian los PG y el día.
+20. `/objetivos editar`: cambia lo que hay, añade uno, o pulsa **Proponer con IA** si tienes proveedor. Guarda y `/objetivos` lo lee.
+21. `/enemigos`: cambia quién puede salir en este tablero y cuántos. `/fight` lo nota.
+22. Gana un combate y mira el inventario: el botín está como objetos, no como texto.
 
 Y sin tocar nada, el recorrido completo en un navegador de verdad:
 
@@ -185,6 +180,56 @@ Lo que **no** se puede probar todavía: calendario, vínculos y escenarios (#6, 
 ---
 
 ## ✅ Hecho, para no rehacerlo
+
+### Seis del bloque A, de una vez — 2026-09-21
+
+**El vínculo de rango 10 ya es algo.** Llevaba meses siendo una etiqueta, porque *«desbloquea su habilidad definitiva y su arma personal»* es una frase, no una regla. Ahora son dos cosas: un **arma personal** de verdad —un objeto en la ficha, con su nombre, que se equipa como cualquier otro— y un **golpe definitivo** (`/definitivo`) que impacta sin tirar y hace el máximo del arma más el nivel, una vez al día. Conceder un impacto automático es mucho: por eso cuesta un día entero y diez rangos de un vínculo que solo suben los hechos registrados.
+
+**El botín ya son objetos.** Lo que soltaban los enemigos se añadía como texto al inventario: una poción que no se puede beber y una espada que no se puede equipar son ambientación con pasos de más. `combat/loot-items.js` declara qué es cada cosa —tipo, peso, dado de daño, ranura— y hay un test que falla si un paquete de reglas añade botín que nadie declaró.
+
+**Los enemigos de un tablero, editables** (`/enemigos`). Los escribe el asistente y los escribe el importador; cambiarlos obligaba a abrir World Info y editar una lista de uids a mano, que es justo lo que este proyecto promete que no hace falta.
+
+**La cobertura, por línea de tiro.** Hasta ahora contaba la casilla del objetivo, con una consecuencia rara: un pilar te protegía solo si estabas **dentro** de él, nunca si estabas detrás. De qué lado viene el disparo es la idea entera de la cobertura.
+
+**Un cambio de reglas avisa de lo que rompe** (`rules/rule-impact.js`). Quitar un tipo de daño que una espada usa la dejaba apuntando a algo que ya no existe, y solo se notaba tres sesiones después. No se impide el cambio —es tu campaña— pero ahora se decide con la factura delante.
+
+**Y las generaciones con IA se guardan y se editan.** Cada intento queda como un botón al que volver, y el mapa se puede corregir en la propia previsualización: el modelo acierta con la sala y falla con una pared, y abrir el editor de terreno después de crear la campaña para mover un muro era el camino largo.
+
+### Descansos, prefijo estable del prompt y objetivos editables — 2026-09-21
+
+Tres del bloque A, de una vez.
+
+**Los descansos** (`rules/rest.js`, 20 tests). `/descanso corto` gasta dados de golpe —cada uno cura su tirada más el modificador de Constitución— y cuesta un bloque del día. `/descanso largo` cura del todo, devuelve **la mitad** de los dados gastados, redondeando hacia abajo y nunca menos de uno, y amanece. Esa asimetría es toda la economía: puedes remendarte en una tarde, pero solo dormir rellena el depósito, y ni siquiera del todo.
+
+Quien está a cero no se levanta con un respiro —eso pide un conjuro o que alguien te estabilice— y despierta de un descanso largo **con un punto de vida**, no entero: despertar sano de una noche en el suelo haría que caer no costara nada. El dado sale del `hitDie` que ya declaraba la entrada de clase del mundo, así que no hay una segunda tabla que se quede vieja.
+
+**El prefijo estable** (`cost/prompt-order.js`, 24 tests). Los proveedores cachean **por prefijo**: reutilizan los tokens que sean idénticos desde el primer carácter y tiran todo lo que venga tras el primer cambio. SillyTavern une los bloques inyectados por `Object.keys().sort()`, o sea alfabéticamente — determinista, y arbitrario.
+
+**Lo que había era el peor caso posible**: de las cuatro claves fijas, `DYN_BOARD` —las posiciones del tablero, que cambian en cada turno— ordenaba **la primera**. Todo lo demás, incluidas las reglas del juego, se recalculaba cada vez que alguien daba un paso. Ahora cada bloque lleva una clave que ordena por cada cuánto cambia: reglas, mundo, personajes, misiones, sitio, ficha del grupo, combate. Y `/prompt` dice cuánto del turno anterior se ha podido reutilizar, que es lo único que demuestra si sirvió.
+
+La clave lleva también **quién** la inyectó, y no es decoración: cada inyector limpia sus claves huérfanas por prefijo, y sin eso el contexto dinámico habría borrado los bloques que las instrucciones activas acababan de escribir.
+
+**Los objetivos editables** (`campaign/objective-editor.js`, 34 tests). `/objetivos editar` abre las misiones del tablero como filas, cada una pidiendo exactamente los campos de su tipo, y **la IA puede proponerlas** contra el mismo esquema que el motor juzga — así que lo que propone se puede editar, no es magia. Un objetivo que nombra a quien no existe **no se guarda**, y dice por qué: ese error ya costó una funcionalidad entera en este proyecto.
+
+El editor habla de **nombres** y el motor juzga por **ids**, la misma traducción que hace el importador de paquetes. A propósito: un objetivo escrito a mano, importado de un libro o propuesto por el modelo tiene que ser el mismo objeto cuando el motor lo lee.
+
+### Salas, puertas y enemigos dormidos — 2026-09-21
+
+Abres una puerta, se revela la sala que guardaba, y lo que dormía dentro despierta **en la casilla donde lo dibujó el libro**. Es el ritmo de una mazmorra de Gloomhaven: el siguiente combate llega cuando tú decides abrir, no cuando se carga el mapa.
+
+**Las salas no se escriben: se deducen del propio mapa.** Un libro dibuja sus salas, no las describe, y el ASCII ya lo tiene todo — los muros encierran, las puertas separan. Así que `deriveRooms` las saca del terreno y **al Gem no hay que pedirle nada nuevo**: el contrato no crece ni una línea. Un tablero viejo gana salas en cuanto la función pasa por encima.
+
+Lo que estaba escrito y sin usar de `campaign-map.js` ya se usa: `openDoor` revela y despierta, `getRoomBehindDoor` elige la sala, `getRevealedCells` dice qué se puede saber.
+
+**Tres cosas que salieron al conectarlo**, y que estaban mal desde antes:
+
+- `getRoomBehindDoor` devolvía **la primera** sala que tocaba la puerta. Estando en la sala A y abriendo hacia la B, devolvía A —ya revelada— y no se revelaba nada. Ahora prefiere la que no has visto.
+- `persistBoardTerrain` solo miraba la lista global de tableros, que es la forma antigua. Para un tablero colgado de su localización **no guardaba nada, en silencio**: pintar terreno o abrir una puerta se perdía al recargar.
+- El ejemplo del contrato tenía un sótano **sin una sola puerta**, con una cámara interior que no guardaba nada. Ahora enseña lo que el motor hace: dos salas, una puerta, y el guardián detrás.
+
+Y el despertar tuvo que traerse su propia pieza: `startCombat` daba turno solo a los enemigos nuevos, así que los despertados existían en el encuentro y **no actuaban nunca**. `beginEncounterWith` tira iniciativa por todos los que están en el tablero.
+
+Con esto, de `campaign-map.js` ya no queda nada sin usar.
 
 ### La ingesta de libros, entera · G2 · G3 · G4 — 2026-09-21
 

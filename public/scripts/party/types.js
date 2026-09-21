@@ -29,6 +29,8 @@
  * @property {number} copper
  * @property {string} inventory
  * @property {string} conditions
+ * @property {number} [hitDiceSpent] - Dados de golpe gastados. Un descanso corto los gasta y uno largo devuelve la mitad.
+ * @property {string} [hitDie] - Dado de golpe propio, si no vale el de su clase.
  * @property {string} alignment
  * @property {string} personality
  * @property {string[]} activeConditions

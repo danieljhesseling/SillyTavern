@@ -265,3 +265,57 @@ describe('sightRadiusInCells', () => {
         expect(sightRadiusInCells('nonsense')).toBe(0);
     });
 });
+
+describe('cover along the line of fire', () => {
+    // Until this existed, a pillar sheltered you only if you stood *inside* it. Which
+    // side the shot comes from is the whole idea of cover.
+    test('a pillar between the two gives cover', async () => {
+        const { getCoverAlongLine } = await import('../public/scripts/game-engine/board/line-of-sight.js');
+        const { terrainFromAsciiMap, getCoverBonus } = await import('../public/scripts/game-engine/board/terrain.js');
+        const terrain = terrainFromAsciiMap(['#######', '#..c..#', '#######']);
+        expect(getCoverAlongLine(terrain, 1, 1, 5, 1, getCoverBonus)).toBe(2);
+    });
+
+    test('and nothing in the way gives none', async () => {
+        const { getCoverAlongLine } = await import('../public/scripts/game-engine/board/line-of-sight.js');
+        const { terrainFromAsciiMap, getCoverBonus } = await import('../public/scripts/game-engine/board/terrain.js');
+        const terrain = terrainFromAsciiMap(['#######', '#..c..#', '#######']);
+        expect(getCoverAlongLine(terrain, 1, 1, 2, 1, getCoverBonus)).toBe(0);
+    });
+
+    test('the same pillar from the other side shelters the other one', async () => {
+        const { getCoverAlongLine } = await import('../public/scripts/game-engine/board/line-of-sight.js');
+        const { terrainFromAsciiMap, getCoverBonus } = await import('../public/scripts/game-engine/board/terrain.js');
+        const terrain = terrainFromAsciiMap(['#######', '#..c..#', '#######']);
+        expect(getCoverAlongLine(terrain, 5, 1, 1, 1, getCoverBonus)).toBe(2);
+    });
+
+    test('standing in the cover still counts, as it always did', async () => {
+        const { getCoverAlongLine } = await import('../public/scripts/game-engine/board/line-of-sight.js');
+        const { terrainFromAsciiMap, getCoverBonus } = await import('../public/scripts/game-engine/board/terrain.js');
+        const terrain = terrainFromAsciiMap(['#######', '#....c#', '#######']);
+        expect(getCoverAlongLine(terrain, 1, 1, 5, 1, getCoverBonus)).toBe(2);
+    });
+
+    // Leaning out of your own doorway does not protect the person you are shooting at.
+    test('the attacker own square never counts', async () => {
+        const { getCoverAlongLine } = await import('../public/scripts/game-engine/board/line-of-sight.js');
+        const { terrainFromAsciiMap, getCoverBonus } = await import('../public/scripts/game-engine/board/terrain.js');
+        const terrain = terrainFromAsciiMap(['#######', '#c....#', '#######']);
+        expect(getCoverAlongLine(terrain, 1, 1, 5, 1, getCoverBonus)).toBe(0);
+    });
+
+    test('the best cover on the way is the one that counts', async () => {
+        const { getCoverAlongLine } = await import('../public/scripts/game-engine/board/line-of-sight.js');
+        const { terrainFromAsciiMap, getCoverBonus } = await import('../public/scripts/game-engine/board/terrain.js');
+        const terrain = terrainFromAsciiMap(['#########', '#.cC....#', '#########']);
+        expect(getCoverAlongLine(terrain, 1, 1, 7, 1, getCoverBonus)).toBe(5);
+    });
+
+    test('shooting at your own square is not cover for anybody', async () => {
+        const { getCoverAlongLine } = await import('../public/scripts/game-engine/board/line-of-sight.js');
+        const { terrainFromAsciiMap, getCoverBonus } = await import('../public/scripts/game-engine/board/terrain.js');
+        const terrain = terrainFromAsciiMap(['#####', '#.c.#', '#####']);
+        expect(getCoverAlongLine(terrain, 2, 1, 2, 1, getCoverBonus)).toBe(0);
+    });
+});
