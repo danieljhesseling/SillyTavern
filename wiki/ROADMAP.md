@@ -2,6 +2,7 @@
 title: Roadmap — De SillyTavern a un Juego de Rol Táctico Asequible
 tags: [roadmap, planificacion, juego, dnd, gloomhaven, persona, tokens, editor, fork]
 created: 2026-09-20
+updated: 2026-09-21
 author: DanielJHesseling / Claude Opus 5
 ---
 
@@ -10,6 +11,38 @@ author: DanielJHesseling / Claude Opus 5
 Plan único de trabajo. Reconcilia tres fuentes: la auditoría de [[PROBLEMAS_TECNICOS]], el catálogo de [[PROPUESTAS_MEJORA]], y el diseño de juego de [[PROPUESTA_JUEGO_DND_GLOOMHAVEN_PERSONA]]. Sustituye a la versión anterior de este documento, que solo cubría higiene de ingeniería.
 
 **El objetivo, en una frase**: un juego de rol táctico donde la IA escribe la historia y las relaciones, y **todo lo demás es lógica determinista**, editable por ti, que no cuesta nada ejecutar.
+
+---
+
+## 📍 Dónde Estamos — 2026-09-21
+
+La lógica de las Fases A a E está escrita y probada. Lo que un jugador puede tocar es menos, y esta tabla separa las tres cosas porque confundirlas fue el error más repetido de este proyecto (ver el *Registro de Correcciones* al final).
+
+| Fase | Lógica y tests | Conectada al juego real | Interfaz |
+| :--- | :---: | :--- | :--- |
+| **Asistente de campaña** | ✅ | ✅ | ✅ verificado en navegador real |
+| **A · Terreno, visión, niebla, rutas** | ✅ | ✅ alcance, muros, niebla y **cobertura en el ataque** | ✅ paleta de pintura · ✅ **puertas con clic** |
+| **B · Combate** | ✅ | 🟡 IA táctica, guardián de tiradas y epílogo sí · ⬜ la máquina de turnos no | ✅ **registro en el tablero real** · ⬜ rastreador de iniciativa |
+| **C · Contenido como datos** | ✅ | 🟡 el juego lee el paquete por defecto; ninguna campaña carga el suyo | ⬜ editor |
+| **D · Calendario y vínculos** | ✅ | ⬜ | ⬜ |
+| **E · Escenarios y tablero de campaña** | ✅ | ⬜ | ⬜ |
+| **F · Lienzo blanco (IA)** | ⬜ | ⬜ | ⬜ |
+
+> [!NOTE]
+> **Cómo leerla.** ✅ hecho y comprobado · 🟡 parcial · ⬜ sin empezar. *Conectada* quiere decir que un jugador puede provocarla: un módulo que solo ejecutan los tests cuenta como ⬜, por bien probado que esté.
+>
+> Esto ya no se estima, se mide: `node tools/check-engine-wiring.mjs` responde hoy **14 de 19 módulos conectados**, con 5 sin cargar (1.383 líneas: `turn-machine`, `bonds`, `calendar`, `scenarios`, `campaign-map`). Eran 6 y 1.541 antes de conectar el guardián de tiradas.
+
+**Lo que sigue, en este orden:**
+
+1. **Fase F dentro del asistente**: el botón *Generar con IA* en el paso 1, con la misma estructura y la misma validación que las plantillas.
+2. **Medir el gasto real** (T3 + T4). Sigue sin medirse, y una suposición razonable ya resultó estar equivocada una vez.
+3. **El editor de reglas (C3) y cargar el paquete por campaña**, que es tu requisito de añadir armas sin tocar código.
+
+El detalle, con todo lo demás, está en [[POR_HACER]].
+
+> [!TIP]
+> **Sesión del 2026-09-21 (tarde).** Se cerró el defecto del epílogo y todo lo que podía hacerse sin decisiones de diseño: cobertura en el ataque, guardián de tiradas conectado, puertas con clic, registro de combate en el tablero real, `/combat-stop`, reglas de encuentro en las campañas nuevas, código muerto y ESLint a cero, más tres herramientas nuevas en `tools/`. Todo verificado en un navegador real. El detalle está en [[POR_HACER]], *Hecho*.
 
 ---
 
@@ -37,6 +70,9 @@ graph LR
 
 Esta regla es la que hace el juego barato, la que lo hace depurable, y la que permite que sea editable. Todo el resto del documento se deriva de ella.
 
+> [!NOTE]
+> **Un matiz verificado en el código (2026-09-21).** El principio se cumple sin excepciones para el combate y los vínculos. Para el estado **narrativo** hay una puerta que ya estaba abierta: el Dynamic Context registra 8 herramientas `dnd_*` con las que el modelo puede cambiar la fase de la campaña, el lugar, las misiones, las banderas y las instrucciones (`dnd_update_state`, `dnd_set_location`, `dnd_manage_quest`, `dnd_set_flag`, `dnd_add_instruction`, `dnd_update_instruction`, `dnd_remove_instruction`, más `dnd_get_campaign_status` para leer). Ninguna toca HP, inventario ni la posición de las fichas. Conviene decidir si el estado narrativo se queda como excepción declarada; lo que no conviene es afirmar que no existe.
+
 ---
 
 ## 💸 1. De Dónde Sale el Gasto
@@ -57,7 +93,7 @@ coste ≈ (tokens de contexto) × (llamadas por sesión) × (precio de entrada)
 > 2. Los mensajes de sistema se crean con `is_system: true` (`system-messages.js`).
 > 3. `script.js` filtra el prompt con `chat.filter(x => !x.is_system || ...)`.
 >
-> **El combate turno a turno siempre ha costado cero tokens**: esos mensajes nunca llegan al modelo. No había nada que ahorrar ahí, y el epílogo *añade* una llamada en lugar de quitar veinte.
+> **El combate turno a turno siempre ha costado cero tokens**: esos mensajes nunca llegan al modelo. No había nada que ahorrar ahí, y el epílogo, como mucho, *añade* una llamada en lugar de quitar veinte (hoy ni siquiera llega al modelo: ver el defecto de la Fase B).
 
 ### Dónde está el gasto, entonces
 
@@ -89,19 +125,21 @@ Las Fases A y B **no ahorran tokens**. Lo que entregan es jugabilidad: IA que re
 | :--- | :--- |
 | **B0 · Higiene del fork** | Remote `upstream` con push desactivado · 194 commits integrados (merge `76125af27`) · formateo automático desactivado sobre archivos de upstream · regla *"código nuevo va en archivo nuevo"* escrita en [[Guia-Desarrollo-Flujo]] |
 | **B1 · Red de seguridad** | 47 tests para las reglas D&D · gate de tipos acotado al fork (`tools/check-fork-types.mjs`) · `@ts-nocheck` eliminados · CI propio en `push` |
-| **B2 · Descomposición** | `party.js` 4.707 → 4.279 líneas · `party/combat-rules.js`, `item-forms.js`, `types.js`, `html.js` · 68 tests nuevos |
-| **Seguridad** | XSS del renderizador de mapas (4 puntos) · XSS vivo en `world-content-browser.js` · 11 copias de `escapeHtml` unificadas · límites de palabra Unicode · doble persistencia del grupo |
+| **B2 · Descomposición** | `party.js` 4.707 → 4.279 líneas (**4.549 hoy**: integrar el combate real lo hizo crecer de nuevo) · `party/combat-rules.js`, `item-forms.js`, `types.js`, `html.js` (y después `positions.js`) · 68 tests nuevos |
+| **Seguridad** | XSS del renderizador de mapas (4 puntos, y uno más en la cabecera del tablero, hallado al hacer el asistente) · XSS vivo en `world-content-browser.js` · 11 copias de `escapeHtml` unificadas · límites de palabra Unicode · doble persistencia del grupo |
+| **Motor de juego (A–E)** | 18 archivos y 4.666 líneas en `game-engine/` (tablero, combate, campaña, reglas, interfaz) · lógica completa de las Fases A a E con tests · lo que está conectado, en *Dónde Estamos* |
+| **Asistente de campaña** | Botón *Nueva campaña* · 4 plantillas · tarjetas *Iniciar* para mundos sin partida · verificado de extremo a extremo (sección propia más abajo) |
 
-**Estado verificable**: 872 tests en 33 suites · 0 errores de tipos en 28 archivos del fork.
+**Estado verificable** (medido el 2026-09-21, tarde): 983 tests en 38 suites · 0 errores de tipos en 33 archivos del fork · **0 errores de ESLint** · 14 de 19 módulos del motor conectados al juego.
 
 > [!NOTE]
 > Este trabajo no era un desvío. Sin el merge no tendrías los 194 commits de upstream; sin los tests no podrías tocar el motor de combate sin miedo; sin el gate de tipos cada refactor sería a ciegas. Las fases que vienen se apoyan en eso.
 
 ---
 
-## 🔍 3. El Punto de Partida Real
+## 🔍 3. El Punto de Partida Real *(foto del 2026-09-20, antes de la Fase A)*
 
-Verificado contra el código, porque el documento de diseño parte de supuestos incorrectos:
+Verificado contra el código, porque el documento de diseño parte de supuestos incorrectos. **Es el punto de partida, no el estado actual: todo lo marcado ❌ ya existe** (Fases A a C).
 
 | Capacidad | Estado real |
 | :--- | :--- |
@@ -149,24 +187,35 @@ Verificado contra el código, porque el documento de diseño parte de supuestos 
 
 `getReachableCells` sustituye al `buildReachableCells` anterior en los dos puntos de `party.js` que resaltan movimiento. Los tableros sin terreno se comportan igual que antes — un terreno vacío es suelo abierto — y pasan a respetar muros y terreno difícil en cuanto un tablero tenga terreno definido.
 
-**Lo que falta para que sea jugable (A6)**: que el renderizador dibuje terreno y niebla, y una forma de pintar los muros. Ese editor encaja de forma natural con la Fase C.
+**A6 está completo** (capas de terreno y niebla, paleta de pintura, y desde el 2026-09-21 las **puertas se abren con un clic** y la **cobertura cuenta en el ataque**).
+
+Sobre la cobertura conviene ser exacto: cuenta la de la **casilla del objetivo**, que es la regla que `getCoverBonus` documenta. D&D 5e la calcula sobre la línea entre atacante y objetivo, lo que exige trazarla; el sitio donde hacerlo ya está aislado en una función (`getTargetArmorClass`), así que afinarlo después no mueve ninguna llamada. El registro lo dice en voz alta — *«incluye +2 por cobertura media»* — porque una tirada que cambia sin explicar por qué es indistinguible de un error.
 
 ---
 
 ## 🟡 Fase B — El Combate Determinista `INTEGRADO — 2026-09-21`
 
-> **Qué entrega**: un combate que respeta el terreno, cuenta rondas y no se inventa tiradas. **No ahorra tokens** — ver la corrección de la sección 1: el combate ya era gratis.
+> **Qué entrega**: un combate que respeta el terreno y cuenta rondas (y, cuando se conecte el guardián, no se inventa tiradas). **No ahorra tokens** — ver la corrección de la sección 1: el combate ya era gratis.
 
 | ID | Tarea | Resultado |
 | :--- | :--- | :--- |
-| **B1** | Máquina de turnos: iniciativa, rondas, estado de turno. | ✅ `combat/turn-machine.js` · 40 tests |
-| **B3** | Economía de acciones: movimiento, acción, adicional, reacción. | ✅ En la misma máquina |
-| **B2** | Perfiles tácticos de enemigo. | ✅ `combat/enemy-ai.js` · 33 tests |
-| **B7** | Interceptar tiradas alucinadas (`PROP-135`). | ✅ `combat/roll-guard.js` · 26 tests |
-| **B4** | Combat log gráfico que sustituye la narración por turno. | ✅ `ui/combat-log.js` · 19 tests · marco pixel art |
-| **B6** | Resumen único al terminar el combate. | ✅ Enganchado a `endCombat` |
+| **B1** | Máquina de turnos: iniciativa, rondas, estado de turno. | ✅ `combat/turn-machine.js` · 40 tests · ⬜ **sin conectar**: el combate real cuenta turnos y rondas con su propio código en `party.js` |
+| **B3** | Economía de acciones: movimiento, acción, adicional, reacción. | ✅ En la misma máquina · ⬜ **sin conectar** por la misma razón |
+| **B2** | Perfiles tácticos de enemigo. | ✅ `combat/enemy-ai.js` · 33 tests · **conectado** (`planEnemyTurn`) |
+| **B7** | Interceptar tiradas alucinadas (`PROP-135`). | ✅ `combat/roll-guard.js` · 33 tests · **conectado** a cada mensaje del modelo |
+| **B4** | Combat log gráfico que sustituye la narración por turno. | ✅ `ui/combat-log.js` · 25 tests · marco pixel art · **montado en el tablero real** |
+| **B6** | Resumen único al terminar el combate. | ✅ **Llega al modelo** como mensaje de narrador — ver ⬇️ |
 | **B5** | Botín algorítmico por CR. | ⬜ Pendiente |
 | **B8** | Rastreador de iniciativa, marcadores de estado, escalado por tamaño. | ⬜ Pendiente (interfaz) |
+
+> [!IMPORTANT]
+> **B6: el defecto que este documento dio por hecho, y cómo se cerró.** Hasta el 2026-09-21 `endCombat` publicaba el resumen con `postCombatNarration`, es decir como mensaje de sistema. `script.js` filtra esos mensajes del prompt (`chat.filter(x => !x.is_system ...)`), el mismo mecanismo de §1 que hace gratis el combate. El jugador veía el resumen y **el modelo nunca lo recibía**. Nada fallaba, ningún test protestaba, y el comentario sobre ese código afirmaba lo contrario. Estaba *enganchado*, no *funcionando*.
+>
+> El arreglo no fue cambiar una bandera sino quitar la ocasión de volver a equivocarse. `game-engine/ui/chat-channel.js` obliga a quien publica a **nombrar el público** — `CHANNEL.PLAYER` o `CHANNEL.MODEL` — y deriva `is_system` de ahí. Sus tests comprueban lo que de verdad importa, *¿lo lee el modelo?*, en lugar de la bandera que lo implementa. En `party.js` conviven ahora dos funciones con nombres que no se confunden: `postCombatNarration` (solo el jugador, gratis) y `postForModel` (también el modelo).
+>
+> **No dispara ninguna llamada.** El mensaje se queda en el chat y entra en el prompt de tu siguiente turno, así que un combate terminado sigue costando cero por sí mismo.
+>
+> Verificado en un navegador real (`tools/e2e-campaign.mjs`): tras `/combat-stop`, el último mensaje del motor tiene `is_system=false`. La comprobación va por el resultado, no por la intención.
 
 ### Lo que se arregló al portar la IA
 
@@ -175,7 +224,7 @@ La versión dentro de `party.js` tenía dos defectos que solo se ven al escribir
 1. **Se movía en línea recta con `Math.sign` y atravesaba muros.** Ahora usa el A* de la Fase A.
 2. **El alcance de ataque estaba fijo a 5 pies**, daba igual qué empuñara la criatura.
 
-Además, el modelo de encuentro **no contaba rondas**, solo un índice dentro del orden de iniciativa. Sin contador de rondas no hay forma de resolver *"sobrevive 6 rondas"* ni de hacer expirar la duración de un conjuro. La máquina nueva lo cuenta, y los encuentros guardados antes de que existiera se reanudan en la ronda 1 en vez de fallar.
+Además, el modelo de encuentro **no contaba rondas**, solo un índice dentro del orden de iniciativa. Sin contador de rondas no hay forma de resolver *"sobrevive 6 rondas"* ni de hacer expirar la duración de un conjuro. Ahora las cuenta el propio `party.js` (la máquina de turnos `turn-machine.js` también lo hace, pero no está conectada), y los encuentros guardados antes de que existiera el contador se reanudan en la ronda 1 en vez de fallar.
 
 ### Los cuatro perfiles tácticos
 
@@ -200,6 +249,18 @@ Solo corrige **afirmaciones estructuradas**: notación de dados seguida de un to
 
 Incluye `isClaimPossible`, que detecta el caso que más importa: totales que los dados **no pueden producir** (un `1d20+5` no puede dar 30).
 
+**Conectado desde el 2026-09-21**, sobre cada mensaje que llega del modelo. Con un matiz que decide cómo se juega:
+
+| Modo | Qué hace | Cuándo |
+| :--- | :--- | :--- |
+| `imposibles` *(por defecto)* | Corrige solo los totales que los dados **no pueden dar** | Siempre: es aritmética, no opinión |
+| `estricto` | El motor tira por **todas** las tiradas del modelo | Si quieres que el motor sea la única autoridad sobre los dados |
+| `off` | No toca nada | — |
+
+Se cambia con `/rollguard`. El modo viaja en el metadato del chat, así que es por campaña.
+
+**Por qué `imposibles` es el defecto**: `guardRolls` re-tira cada afirmación, de modo que un `1d20+5 = 18` perfectamente legítimo se sustituye igualmente por otro número. Es la lectura fuerte de *«el motor decide»*, y es defendible, pero aplicada a todo el chat sorprende. Corregir un total imposible, en cambio, no admite discusión. Cada corrección se anuncia en el registro.
+
 ### La interfaz (A6 + B4)
 
 El renderizador gana dos capas nuevas: **terreno** bajo los tokens (es el tablero, no un adorno encima) y **niebla** sobre todo lo demás. Ambas dibujan solo lo necesario — el terreno pinta únicamente las celdas que no son suelo, igual que se almacenan.
@@ -209,7 +270,7 @@ El **editor de terreno** se abre con el botón *Terreno* bajo el tablero: eliges
 El **registro de combate** tiene marco de pixel art generado con PixelLab (`public/img/game-engine/`), recortado en dos piezas y aplicado como `border-image` con los cortes medidos sobre el filete ámbar del arte original. Cada línea muestra el desglose de la tirada — `1d20+5 · 17 · vs 15` — porque un jugador que puede auditar cualquier resultado es lo que hace aceptable un resolutor que nadie supervisa.
 
 > [!IMPORTANT]
-> **Cada línea de ese registro era antes una frase que pagabas.** El motor ya sabe el movimiento, el fallo y los seis puntos de daño; el log los imprime gratis y al modelo le queda el único trabajo que hace bien: el epílogo.
+> **Cada línea de ese registro es determinista y gratis** — y lo era ya antes: esas frases eran mensajes de sistema que el modelo nunca leyó (§1). Lo que aporta el registro es legibilidad y poder auditar cada tirada, no ahorro. Al modelo le queda el único trabajo que hace bien: el epílogo, cuando llegue a leerlo (ver el defecto de B6).
 
 ### Integrado el 2026-09-21
 
@@ -218,11 +279,24 @@ El **registro de combate** tiene marco de pixel art generado con PixelLab (`publ
 | Movimiento enemigo | Línea recta con `Math.sign`, atravesando muros | `planEnemyTurn` con A* y perfiles tácticos |
 | Alcance de ataque | Fijo a 5 pies | El del enemigo (`attackRangeFeet`) |
 | Rondas | No se contaban | Contadas al dar la vuelta al orden, y anunciadas |
-| Fin de combate | Solo un resumen de estado | Más un resumen condensado para la narración |
+| Fin de combate | Solo un resumen de estado | Más un resumen condensado para la narración (**publicado, pero aún no llega al modelo**) |
 
 Los encuentros guardados sin contador de rondas se reanudan en la ronda 1 en vez de fallar.
 
-**Pendiente**: montar el registro gráfico en el tablero real (hoy solo vive en `/sandbox`), el botín (B5) y el rastreador de iniciativa (B8).
+**Pendiente**: conectar —o retirar— la máquina de turnos (B1/B3), que es una decisión y no una tarea; el botín (B5) y el rastreador de iniciativa (B8).
+
+### Cerrado el 2026-09-21
+
+| Qué | Cómo |
+| :--- | :--- |
+| El epílogo llega al modelo (B6) | Mensaje de narrador vía `chat-channel.js` |
+| El registro está en el tablero real (B4) | Se alimenta de las líneas de combate y del desglose de cada tirada; se vacía al empezar un combate |
+| El guardián está conectado (B7) | Sobre cada mensaje del modelo, con `/rollguard` |
+| Se puede abandonar un combate | `/combat-stop`. Antes solo se salía ganando o muriendo, así que el epílogo era inalcanzable sin cadáveres. El resumen distingue abandono de derrota, porque anunciar como derrotado a un grupo intacto pone al modelo a escribir la escena equivocada |
+| Las campañas nuevas permiten combatir | Las plantillas escribían `encounterRules: []` y `/fight` respondía *«enemigo no encontrado»* en toda campaña recién creada. El id de un monstruo es el de su entrada de world-info, que no existe cuando se construye el tablero: ahora las reglas se escriben después, ya con los ids |
+
+> [!NOTE]
+> **Las dos últimas las encontró el recorrido en navegador, no los tests.** `/combat-stop` no existía y las reglas de encuentro estaban vacías; ninguna de las dos cosas rompía ningún test, porque ningún test intentaba jugar una partida. Es el mismo patrón que el asistente de campaña, y la razón de que `tools/e2e-campaign.mjs` esté ahora en el repositorio.
 
 ---
 
@@ -239,6 +313,9 @@ Ningún documento previo recogió esto. Las 25 tablas de `dnd-system.js` (`ITEM_
 | **C4** | Migración versionada de esquemas. | ✅ `migrateRuleset` + `RULESET_SCHEMA_VERSION` |
 | **C5** | Exportación diferencial de paquetes. | 🟡 `toPortablePack` listo; falta la interfaz |
 | **C3** | **Editor visual** de armas, daños, propiedades y condiciones. | ⬜ Pendiente — es tu requisito |
+
+> [!WARNING]
+> **«Los datos existen» no es «el juego los usa por campaña».** `dnd-system.js` lee el paquete activo (`getActiveRuleset`) y ese es siempre el de por defecto: `setActiveRuleset` existe y **ninguna parte del juego lo llama** al abrir un chat. Cargar el paquete de cada campaña (POR_HACER #4) y el editor (C3) son los dos pasos que hacen realidad *«puedo añadir armas sin tocar código»*.
 
 ### Cómo funciona un paquete
 
@@ -277,10 +354,11 @@ Tres decisiones que conviene recordar:
 | :--- | :--- | :--- |
 | **D1** | Calendario y bloques de tiempo. | ✅ `campaign/calendar.js` |
 | **D2** | Rangos de vínculo 1–10 por eventos registrados. | ✅ `campaign/bonds.js` |
-| **D3** | Perks mecánicas (rangos 3, 5, 8, 10). | ✅ En el mismo módulo |
+| **D3** | Perks mecánicas (rangos 3, 5, 8, 10). | 🟡 Definidas y desbloqueadas por rango · ⬜ **ninguna se aplica en el combate** todavía |
 | **D4** | Eventos de confidente: el motor decide, el LLM escribe. | ✅ `recordBondEvent` devuelve `rankedUp` y las perks desbloqueadas |
 | **D5** | Descanso corto y largo. | ⬜ Pendiente |
 | **D6** | 🖥️ Interfaz del calendario y de los vínculos. | ⬜ Pendiente |
+
 > [!WARNING]
 > **Corrección a la propuesta Persona.** Planteaba subir los rangos con `analyzeRelationshipsFromChat`, un analizador heurístico sobre la salida del LLM. Eso es exactamente el acoplamiento que el propio documento condena para el combate: el modelo decidiendo, de forma indirecta y no reproducible, cuándo desbloqueas una mecánica.
 >
@@ -294,7 +372,7 @@ Diez rangos con **umbrales crecientes** (0, 6, 14, 24, 36, 50, 66, 84, 104, 126)
 
 `suggestBondEvent` es la costura donde la heurística sí puede vivir: propone (*"la conversación reforzó el vínculo, ¿confirmas +1?"*) y el jugador decide.
 
-**Entregable pendiente**: falta la interfaz del calendario y del panel de vínculos (D6), y los descansos (D5).
+**Entregable pendiente**: falta la interfaz del calendario y del panel de vínculos (D6), y los descansos (D5). Y algo que la lógica sola no da: las perks son datos que **ningún código de `party.js` aplica**. Hoy `bonds.js` y `calendar.js` solo los ejecutan los tests.
 
 ---
 
@@ -327,11 +405,79 @@ Una sala es un conjunto de celdas más las puertas que llevan a ella. `openDoor`
 
 Las localizaciones se desbloquean por **requisitos que el motor comprueba**, no por confianza: misiones completadas, otras localizaciones superadas, o un rango de vínculo mínimo. `explainLock` devuelve el porqué, para un aviso que explica en vez de limitarse a negarse.
 
-**Entregable pendiente**: la interfaz (E5). La lógica ya resuelve una mazmorra de tres salas con objetivo.
+**Entregable pendiente**: la interfaz (E5). La lógica ya resuelve una mazmorra de tres salas con objetivo. Como en la Fase D, `scenarios.js` y `campaign-map.js` **no están conectados al juego real**: solo los ejecutan los tests.
 
 ---
 
-## 🅵 Fase F — El Lienzo Blanco
+## 🟢 El Asistente de Campaña — El Camino de Entrada `HECHO Y VERIFICADO — 2026-09-21`
+
+> **Por qué apareció**: al probar el juego surgió una pregunta que ningún documento respondía — *«¿qué pulso para empezar una partida?»*. Empezar exigía siete pasos repartidos en cuatro paneles, y ninguno anunciaba cuál venía después. Crear un mundo desde cero es lo primero que hace cualquier jugador, y era lo más difícil de hacer.
+
+Decisión de orden: **primero el asistente manual, después la IA** (Fase F). El camino de entrada no puede depender de que un proveedor responda ni de tener una clave.
+
+### Qué hace
+
+En la pantalla de bienvenida, el botón **Nueva campaña** abre un diálogo de tres pasos:
+
+| Paso | Pregunta | Qué decide |
+| :-- | :--- | :--- |
+| 1 | ¿Qué tipo de sitio? | Una de 4 plantillas: mazmorra, bosque, taberna o vacío |
+| 2 | ¿Cómo se llama el mundo? | Nombre (siempre se propone uno libre), género y una frase de descripción |
+| 3 | ¿Quién va? | Un nombre por línea; se crean como personajes del mundo |
+
+Al confirmar, el juego crea el mundo, abre un chat **vinculado** a él, coloca al grupo en las casillas de inicio de la plantilla y te deja en el primer tablero con el panel abierto. Los mundos jugables que **no tienen ninguna partida** aparecen en la lista de campañas como tarjeta con **Iniciar**.
+
+### Cómo está hecho
+
+| Pieza | Papel |
+| :--- | :--- |
+| `campaign/starter-templates.js` | Las 4 plantillas **como datos**, con el mapa dibujado en ASCII (`terrainFromAsciiMap`) |
+| `campaign/campaign-worlds.js` | Qué cuenta como campaña (`isCampaignWorld`), dónde se empieza (`getStartingPoint`) y nombres libres (`uniqueWorldName`) |
+| `ui/campaign-wizard.js` | El diálogo y `createCampaign`, que recibe crear/cargar/guardar **inyectados**: por eso se prueba sin navegador |
+| `campaigns.js` | El pegamento con el juego: `openCampaignChat`, `startCampaignWizard`, `startUnstartedWorld` |
+| `party/positions.js` | `resolveEntryMapPosition`: de dónde sale la casilla de cada miembro |
+| `party.js` → `enterStartingBoard` | Fija ubicación y tablero, y abre el panel del grupo |
+
+Tres decisiones que conviene recordar:
+
+**Crear el mundo primero y negarse a pisar uno existente.** `createCampaign` lanza un error si el mundo ya existe, en vez de sobrescribirlo. Con el nombre saneado como nombre de archivo, dos nombres distintos podían caer en el mismo fichero.
+
+**Abrir el chat por el camino de siempre.** Se reutiliza `doNewChat` con la misma elección pendiente (`pendingWorldChoice`) que ya usaba el selector de mundos, y el éxito se comprueba mirando el **resultado** — `chat_metadata.world_info` igual al mundo — y no la ausencia de errores. Es ese metadato lo que alimenta la lista de campañas.
+
+**Una sola definición de «campaña».** La lista de campañas y World Info discrepaban: un mundo podía existir en uno y no aparecer en el otro. Ahora un mundo con localizaciones y sin ninguna partida se ve como tarjeta *sin empezar*.
+
+### Lo que falló la primera vez, y por qué
+
+La primera versión pasó todos sus tests y **no funcionó**. Lo encontró quien la probó, con capturas:
+
+| Síntoma | Causa real | Arreglo |
+| :--- | :--- | :--- |
+| Un aviso verde de «creada» y la campaña no aparecía | El asistente creaba el mundo pero **no el chat**, y los chats son lo único que alimenta la lista | `openCampaignChat` abre el chat vinculado y verifica el vínculo |
+| Personajes sobre casillas de muro | Las posiciones de la plantilla se escribían pero **nadie las leía**; el grupo caía en (0,0) | `resolveEntryMapPosition` y `enterStartingBoard` |
+| «Ya existe un mundo llamado …» en el segundo intento, y el mundo no aparecía en ningún sitio | El primer intento dejó un mundo huérfano, invisible en Campaigns, y el nombre propuesto seguía siendo el de la plantilla | `uniqueWorldName` + tarjetas *Iniciar* |
+| Riesgo de pisar un mundo ajeno | Colisión de nombre tras sanear | Se niega a sobrescribir |
+
+> [!WARNING]
+> **Por qué los tests no lo vieron.** Los de la primera versión comprobaban que *la plantilla contenía* las casillas de inicio, no que *el juego las leyera*. Verificaban los datos, no el camino. Es el mismo patrón que el epílogo de combate: algo *enganchado* y dado por hecho sin comprobar el efecto.
+>
+> Lo que sí lo detecta es recorrer el flujo en un navegador real. Se hizo con Playwright y Edge contra un servidor con datos aislados, sembrado con una copia del mundo huérfano real. Comprobó, en instalación limpia: crear → chat vinculado al mundo → grupo en las casillas (2,8) y (3,8) → tablero visible con muros y dos fichas → volver a la bienvenida → la tarjeta figura como campaña en curso. Y sobre el mundo huérfano: tarjeta con *Iniciar* → selector de grupo → arranque → pasa a ser campaña normal.
+>
+> **Desde el 2026-09-21 eso está en el repositorio**: `tools/e2e-campaign.mjs` levanta su propio servidor con un `--dataRoot` temporal, recorre el juego y limpia al terminar. No toca tus datos y tu servidor de siempre puede seguir abierto. Son 17 comprobaciones: crear la campaña, las posiciones de inicio, el tablero, abrir una puerta, un combate con su registro, que el epílogo **no** sea un mensaje de sistema, y la campaña listada al cerrar.
+>
+> ```bash
+> node tools/e2e-campaign.mjs            # headless
+> node tools/e2e-campaign.mjs --headed   # para verlo
+> ```
+>
+> En su primera ejecución encontró dos defectos que ningún test veía: no había forma de abandonar un combate, y ninguna campaña nueva podía iniciar uno.
+
+**Corregido el 2026-09-21**: las plantillas escribían el tablero con `encounterRules: []`, así que `/fight` contestaba *«enemigo no encontrado»* en **toda** campaña recién creada — enemigos definidos y ninguna forma de pelear con ellos. La causa es de orden: el id de un monstruo es el `uid` de su entrada de world-info, que aún no existe cuando `buildWorldMetadata` construye el tablero. Ahora `buildEncounterRules` las escribe después, ya con los ids a la vista.
+
+**Pendiente**: el botón *Generar con IA* (Fase F), que las plantillas sean datos que se puedan añadir sin tocar código (`N-12`; hoy son constantes de JavaScript), y poder editar las reglas de encuentro sin pasar por World Info.
+
+---
+
+## 🅵 Fase F — El Lienzo Blanco `SIGUIENTE FASE`
 
 > **Por qué al final, aunque sea lo más vistoso**: generar contenido es fácil de enseñar y difícil de integrar bien. Y no arregla nada si el combate todavía no es divertido. Además **depende de C1**: sin esquema no hay nada contra lo que validar.
 
@@ -341,6 +487,11 @@ Las localizaciones se desbloquean por **requisitos que el motor comprueba**, no 
 | **F2** | **Generación validada** contra los esquemas de la Fase C. Lo que no valide, se rechaza o se corrige, no se inyecta. | |
 | **F3** | **Revisión humana antes de inyectar**: pantalla de previsualización con edición. | La IA propone, tú apruebas |
 | **F4** | Inyección en el mundo: localizaciones al mapa, lore al lorebook, monstruos al bestiario, confidentes a la lista. | Propuesta |
+
+> [!IMPORTANT]
+> **El punto de entrada ya existe.** El paso 1 del asistente de campaña es donde va el botón *Generar con IA*. Lo que la IA devuelva debe tener **la misma forma que una plantilla** (`starter-templates.js`) y pasar por los mismos normalizadores; si falla o no hay clave, el asistente sigue funcionando con las plantillas. La IA es un atajo, nunca un requisito.
+>
+> **Coste**: una llamada por mundo generado. Con el tope de ~5 € cabe de sobra, y como es una tarea mecánica (rellenar un esquema) es candidata al modelo barato (T2).
 
 > [!WARNING]
 > **Corrección a la propuesta**: atarlo a Gemini es un error. SillyTavern es agnóstico de proveedor y tú tienes ~20 conectores funcionando — es una de tus mayores ventajas. Las salidas estructuradas existen en Anthropic, OpenAI y en modelos locales vía gramáticas. Escribe contra una interfaz, elige el proveedor en los ajustes.
@@ -355,14 +506,14 @@ No son una fase: se aplican durante todas.
 
 | ID | Tarea | Palanca |
 | :--- | :--- | :--- |
-| **T1** | **Caché de prompt**: estructurar el prompt con el bloque estable delante y lo volátil detrás, para maximizar la reutilización en los proveedores que la soportan. | #2 — `PROP-128` |
-| **T2** | **Enrutado por tarea**: modelo pequeño o local para clasificar, extraer y validar; modelo caro solo para prosa. | #3 — `PROP-133` |
+| **T1** | **Caché de prompt**: estructurar el prompt con el bloque estable delante y lo volátil detrás, para maximizar la reutilización en los proveedores que la soportan. **Antes de construir nada**: upstream ya trae `claude.cachingAtDepth` en `config.yaml` (desactivado por defecto, `-1`) para Claude y OpenRouter-Claude; probarlo y medir. | #2 — `PROP-128` |
+| **T2** | **Enrutado por tarea**: modelo pequeño o local para clasificar, extraer y validar; modelo caro solo para prosa. | #3 — propia; emparentada con `PROP-129` y `PROP-133` |
 | **T3** | **Vista previa del prompt compilado** con color por origen. No puedes optimizar lo que no ves. | `PROP-104` |
 | **T4** | **Reconciliar el contador de tokens con el del proveedor** y mostrar la deriva y el gasto acumulado por sesión. | `N-03` |
 | **T5** | **Snapshot del prompt compilado en CI**: un cambio que altere el prompt en silencio hace fallar la build. | `N-02` |
 | **T6** | **Repetición determinista de turno** (mismo contexto, misma semilla) para poder comparar cambios de prompt. | `N-05` |
 | **T7** | **Registro de contradicciones**: contrastar la narración contra el estado canónico y registrar desajustes. | `N-06` |
-| **T8** | **Resumen periódico del historial** cada N turnos, para que el contexto no crezca sin límite. | `PROP-134` |
+| **T8** | **Resumen periódico del historial** cada N turnos, para que el contexto no crezca sin límite. **Antes de construir nada**: upstream trae la extensión *Summarize* (`extensions/memory`, con resumen automático cada N mensajes); evaluarla primero. | `PROP-134` |
 
 > [!TIP]
 > **T1 y T8 son las que evitan que el coste crezca con la duración de la campaña.** Sin ellas, la partida 200 cuesta muchísimo más que la partida 1 aunque hagas lo mismo, porque el historial arrastra.
@@ -373,10 +524,11 @@ No son una fase: se aplican durante todas.
 
 ```mermaid
 graph TD
-    A["Fase A: Cimiento determinista<br/>obstáculos · LOS · niebla · A*"] --> B["Fase B: Combate sin tokens<br/>⬅ AQUÍ SE AHORRA EL DINERO"]
-    B --> C["Fase C: Contenido como datos<br/>⬅ AQUÍ APARECE EL EDITOR"]
+    A["Fase A: Cimiento determinista<br/>obstáculos · LOS · niebla · A*"] --> B["Fase B: Combate determinista<br/>⬅ AQUÍ GANAS JUGABILIDAD"]
+    B --> C["Fase C: Contenido como datos<br/>⬅ AQUÍ APARECERÁ EL EDITOR"]
     C --> D["Fase D: Bucle Persona<br/>calendario · vínculos · perks"]
     C --> F["Fase F: Lienzo blanco<br/>(depende del esquema de C)"]
+    W["Asistente de campaña<br/>✅ hecho y verificado"] --> F
     B --> E["Fase E: Misiones Gloomhaven"]
     D --> E
 
@@ -386,10 +538,11 @@ graph TD
     style A fill:#1e3a5f,stroke:#3b82f6,color:#fff
     style B fill:#4a3410,stroke:#f59e0b,color:#fff
     style C fill:#14532d,stroke:#22c55e,color:#fff
+    style W fill:#14532d,stroke:#22c55e,color:#fff
     style T fill:#4a2545,stroke:#a855f7,color:#fff
 ```
 
-**Si solo pudieras hacer dos fases**: A y B. Es lo que convierte el proyecto en un juego y lo que mata la factura.
+**Si solo pudieras hacer dos fases**: A y B. Es lo que convierte el proyecto en un juego. **No es lo que baja la factura** — el combate ya era gratis (§1); eso lo hacen las Transversales, y antes hay que medirla.
 
 **Si tuvieras que elegir una tercera**: C, porque sin ella no eres autónomo — cada arma nueva te obliga a programar.
 
@@ -397,15 +550,15 @@ graph TD
 
 ## ⏱️ Sobre los Plazos
 
-La propuesta de diseño estimaba **1–2 meses para los tres pilares**. Es irreal, y conviene decirlo para que no planifiques contra un número falso.
+La propuesta de diseño estimaba **1–2 meses para los tres pilares**, y una versión anterior de este apartado respondía que era irreal. **La mitad de esa corrección era errónea**, y se corrige aquí con lo ocurrido.
 
-Referencia concreta: tu motor RPG actual son **26.005 líneas** en 38 archivos, construidas a lo largo de 15 commits. Cada una de estas fases es comparable en tamaño a una fracción significativa de eso:
+Lo medido: la **lógica** de las Fases A a E (18 archivos y 4.666 líneas en `game-engine/`, con sus tests) se escribió entre el 20 y el 21 de septiembre. Lo que no fue rápido fue todo lo demás:
 
-- La Fase A sola es un modelo de datos nuevo, dos algoritmos de geometría y su cobertura de tests.
-- La Fase C toca las 25 tablas, su validación, su migración y una interfaz de edición completa.
-- La Fase D necesita persistencia nueva con migraciones, más el enganche con el combate.
+- **Conectarla al juego.** Seis de esos módulos (1.541 líneas) siguen sin que el juego real los use.
+- **Comprobar que funciona de verdad.** El asistente de campaña necesitó dos rondas de fallos reportados por quien lo probó, con todos los tests en verde.
+- **Lo que ningún test ve**: un flujo que termina en un aviso, posiciones que nadie lee, un mensaje que el modelo nunca recibe.
 
-**No des una fecha: da un orden.** Cada fase está definida para terminar en algo jugable, así que el progreso se mide en funcionalidad entregada y no en calendario.
+**Regla práctica**: presupuesta la lógica como barata, y la integración y la verificación como el trabajo. Y **no des una fecha: da un orden.** Cada fase está definida para terminar en algo jugable, así que el progreso se mide en funcionalidad *conectada*, no en módulos escritos.
 
 ---
 
@@ -418,6 +571,7 @@ Referencia concreta: tu motor RPG actual son **26.005 líneas** en 38 archivos, 
 | **`PROP-161` Migración a SQLite** | Reescribe la persistencia de upstream entera. Mata el fork. |
 | **`PROP-004` Vite · `PROP-002` Eliminar jQuery** | Afectan a todo upstream. Coste de merge permanente. |
 | **`PROP-123` Multi-agente para PNJs** | Multiplica llamadas: va justo contra el objetivo de coste. |
+| **`PROP-121` en su forma original** (que el modelo modifique HP, inventario y posición) | Contradice la sección 0: el motor decide y el modelo narra. Lo que sí existe son las 8 herramientas `dnd_*` para el estado **narrativo**; ninguna toca HP, inventario ni la posición de las fichas. |
 | **`PROP-016` Desacoplar el modelo de sesión del DOM** | Cirugía mayor en `script.js` (upstream). Pertenece conceptualmente a la sección 0 y debe abordarse con diseño propio, no como refactor. |
 | **Marketplace · deploy cloud · pruebas de carga** | Dimensionados para un servicio con equipo. Eres una persona. |
 
@@ -426,12 +580,39 @@ Referencia concreta: tu motor RPG actual son **26.005 líneas** en 38 archivos, 
 ## 🔬 Verificación
 
 ```bash
-npm run test:unit --prefix tests     # 872 tests, 33 suites
-node tools/check-fork-types.mjs      # 0 errores en los 28 archivos del fork
+npm run test:unit --prefix tests     # 983 tests, 38 suites
+node tools/check-fork-types.mjs      # 0 errores en los 33 archivos del fork
+node tools/check-engine-wiring.mjs   # 14 de 19 módulos del motor conectados al juego
+node tools/e2e-campaign.mjs          # 17 comprobaciones en un navegador real
+ESLINT_USE_FLAT_CONFIG=false npx eslint public/scripts/game-engine public/scripts/party public/scripts/party.js public/scripts/campaigns.js public/scripts/world-map-renderer.js   # 0 errores
 git fetch upstream && git merge upstream/release
 ```
 
 Cada fase nueva añade sus tests a la primera orden y sus módulos a la lista de la segunda.
+
+> [!IMPORTANT]
+> **Las tres primeras órdenes no comprueban lo mismo, y esa es la cuestión.** Los tests dicen que un módulo hace lo que promete. El detector de cableado dice si el juego llega a cargarlo. El recorrido en navegador dice si un jugador puede provocarlo. Todo lo que se dio por hecho equivocadamente en este proyecto cayó entre la primera y las otras dos.
+
+---
+
+## 🧾 Registro de Correcciones
+
+Afirmaciones de este proyecto que resultaron falsas, con lo que se hizo. Están aquí a propósito: un plan que solo muestra sus aciertos no enseña dónde se equivoca.
+
+| Fecha | Se afirmó | Realidad | Estado |
+| :--- | :--- | :--- | :--- |
+| 2026-09-21 | Un combate de 4 rondas cuesta ~20 llamadas al modelo; resolverlo en el motor es el mayor ahorro | Los mensajes de sistema se filtran del prompt: el combate **siempre** fue gratis | Corregido en §1 |
+| 2026-09-21 | El asistente de campaña crea la campaña y te deja en el tablero | Creaba el mundo, no el chat; las posiciones no se leían; los tests solo miraban la plantilla | ✅ Arreglado y verificado |
+| 2026-09-21 | B6 *«enganchado a `endCombat`»* | Se publicaba como mensaje de sistema: el modelo no lo recibía | ✅ Arreglado (`chat-channel.js`) y verificado |
+| 2026-09-21 | *«Cada línea del registro era antes una frase que pagabas»* | Nunca se pagó: contradecía §1 | Corregido en Fase B |
+| 2026-09-21 | B1, B3, B4 y B7 figuraban como integradas | El registro solo vivía en `/sandbox` y el guardián no lo llamaba nadie | ✅ B4 y B7 conectados · B1/B3 siguen sin conectar, y ahora lo dice |
+| 2026-09-21 | Los plazos de la propuesta eran *«irreales»* | La lógica se escribió en dos días; lo lento es conectar y verificar | Corregido en *Sobre los Plazos* |
+| 2026-09-21 | §0: *«el LLM nunca escribe el estado»* | Cierto para HP, posiciones y vínculos; no para el estado narrativo (8 herramientas `dnd_*`) | Matizado en §0 |
+| 2026-09-21 | La cobertura estaba implementada (Fase A) | `getCoverBonus` existía y ningún ataque la consultaba: las casillas eran decorativas | ✅ Aplicada en los dos puntos de ataque |
+| 2026-09-21 | Una campaña del asistente se podía jugar entera | `/fight` no encontraba enemigos: el tablero se creaba con `encounterRules` vacías | ✅ Arreglado; lo encontró el recorrido en navegador |
+
+> [!NOTE]
+> **El patrón, dicho una vez.** Todas estas comparten forma: algo construido y probado, dado por conectado sin comprobar el efecto. Por eso las dos herramientas nuevas (`check-engine-wiring.mjs` y `e2e-campaign.mjs`) no son accesorios del plan, sino la respuesta a lo que este registro demuestra que pasa.
 
 ---
 
@@ -441,6 +622,6 @@ Cada fase nueva añade sus tests a la primera orden y sus módulos a la lista de
 - [[POR_HACER]]: Lista viva de pendientes derivada de este plan.
 - [[PROPUESTA_JUEGO_DND_GLOOMHAVEN_PERSONA]]: Diseño de juego del que salen las Fases B, D, E y F.
 - [[PROBLEMAS_TECNICOS]]: Auditoría de la que salen las correcciones ya aplicadas.
-- [[PROPUESTAS_MEJORA]]: Catálogo de 200 del que se seleccionan las `PROP-xxx` citadas.
+- [[PROPUESTAS_MEJORA]]: Catálogo de 200 del que se seleccionan las `PROP-xxx` citadas; incluye el estado de cada una y el anexo con las propuestas propias (`N-01` a `N-12`).
 - [[Guia-Desarrollo-Flujo]]: La disciplina de fork que hace todo esto sostenible.
 - [[Mapa-Codigo-Archivos]]: Qué es de upstream y qué es tuyo.

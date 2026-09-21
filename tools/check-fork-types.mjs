@@ -29,6 +29,7 @@ const FORK_FILES = [
     'public/scripts/game-engine/combat/enemy-ai.js',
     'public/scripts/game-engine/combat/roll-guard.js',
     'public/scripts/game-engine/ui/combat-log.js',
+    'public/scripts/game-engine/ui/chat-channel.js',
     'public/scripts/game-engine/ui/sandbox.js',
     'public/scripts/game-engine/ui/campaign-wizard.js',
     'public/scripts/game-engine/campaign/starter-templates.js',

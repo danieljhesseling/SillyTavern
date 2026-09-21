@@ -428,7 +428,7 @@ export function renderWorldMapView(target, worldMapUrl, locationMaps, callbacks 
     container.append('<div class="wm-compass"><span class="wm-compass-n">N</span><i class="fa-solid fa-location-arrow" style="transform:rotate(-45deg);"></i></div>');
 
     // Change Location button
-    const changeBtn = $(`<div class="wm-change-location-btn"><i class="fa-solid fa-route"></i> Change Location</div>`);
+    const changeBtn = $('<div class="wm-change-location-btn"><i class="fa-solid fa-route"></i> Change Location</div>');
     changeBtn.on('click', () => {
         if (callbacks.onLocationNavigate && selectedLocation) {
             callbacks.onLocationNavigate(selectedLocation);
@@ -498,6 +498,7 @@ const locationViewStateMemory = new Map();
  * @param {boolean} [options.fogEnabled] - Whether to draw fog at all.
  * @param {string|null} [options.paintMode] - Terrain type being painted, or null when not editing.
  * @param {(gridX: number, gridY: number, type: string) => void} [options.onPaintCell]
+ * @param {(gridX: number, gridY: number, open: boolean) => void} [options.onDoorToggle] - Click a door to open or close it. Ignored while painting.
  */
 export function renderLocationView(target, options) {
     const {
@@ -522,6 +523,7 @@ export function renderLocationView(target, options) {
         fogEnabled = false,
         paintMode = null,
         onPaintCell = null,
+        onDoorToggle = null,
     } = options;
 
     target.empty();
@@ -621,6 +623,26 @@ export function renderLocationView(target, options) {
                     width: cellW + 'px',
                     height: cellH + 'px',
                 });
+
+            // A door is the one piece of terrain that answers to the player. The layer
+            // ignores pointer events so it never eats a drag; the door opts back in.
+            // While painting, a click means "paint here", so the door stays inert.
+            if (cell.type === 'door' && typeof onDoorToggle === 'function' && !paintMode) {
+                const open = Boolean(cell.open);
+                el.addClass('wm-terrain-door-actionable')
+                    .attr('title', open ? 'Cerrar la puerta' : 'Abrir la puerta')
+                    .on('mousedown', function (e) {
+                        // Stops the board's own pan handler from starting a drag.
+                        e.preventDefault();
+                        e.stopPropagation();
+                    })
+                    .on('click', function (e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onDoorToggle(parsed.x, parsed.y, !open);
+                    });
+            }
+
             terrainLayer.append(el);
         }
     }
@@ -798,7 +820,7 @@ export function renderLocationView(target, options) {
                             if (!cell) continue;
                             const kind = cell.kind === 'attack' ? 'attack' : 'move';
                             highlightsLayer.append(
-                                `<div class="wm-highlight-cell wm-highlight-${kind}" style="left:${cell.gridX * cellW}px;top:${cell.gridY * cellH}px;width:${cellW}px;height:${cellH}px;"></div>`
+                                `<div class="wm-highlight-cell wm-highlight-${kind}" style="left:${cell.gridX * cellW}px;top:${cell.gridY * cellH}px;width:${cellW}px;height:${cellH}px;"></div>`,
                             );
                         }
                     }

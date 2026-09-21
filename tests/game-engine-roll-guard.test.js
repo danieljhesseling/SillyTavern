@@ -4,6 +4,7 @@ import {
     getFormulaBounds,
     isClaimPossible,
     guardRolls,
+    guardImpossibleRolls,
     describeCorrections,
 } from '../public/scripts/game-engine/combat/roll-guard.js';
 
@@ -170,5 +171,52 @@ describe('describeCorrections', () => {
     test('says nothing when nothing was wrong', () => {
         expect(describeCorrections([])).toBeNull();
         expect(describeCorrections(null)).toBeNull();
+    });
+});
+
+// The mode the game actually runs in over every incoming message. It only touches
+// arithmetic that is provably wrong, so a correction is never a judgement call.
+describe('guardImpossibleRolls', () => {
+    const engine = () => 12;
+
+    test('corrects a total the dice could not produce', () => {
+        const result = guardImpossibleRolls('Ataque: 1d20+5 = 30', engine);
+        expect(result.text).toBe('Ataque: 1d20+5 = 12');
+        expect(result.corrections).toEqual([{ formula: '1d20+5', claimed: 30, actual: 12 }]);
+    });
+
+    test('leaves a possible total alone, even when the engine would have rolled another', () => {
+        const result = guardImpossibleRolls('Ataque: 1d20+5 = 18', engine);
+        expect(result.text).toBe('Ataque: 1d20+5 = 18');
+        expect(result.corrections).toEqual([]);
+    });
+
+    // A guard that quietly consumed dice would change the game it is meant to referee.
+    test('does not roll at all for claims it accepts', () => {
+        let rolls = 0;
+        guardImpossibleRolls('1d20+5 = 18 y 2d6 = 7', () => { rolls++; return 12; });
+        expect(rolls).toBe(0);
+    });
+
+    test('corrects a total below the minimum as well as above the maximum', () => {
+        expect(guardImpossibleRolls('2d6+2 = 1', engine).corrections).toHaveLength(1);
+        expect(guardImpossibleRolls('2d6+2 = 99', engine).corrections).toHaveLength(1);
+    });
+
+    test('touches only the impossible claim when a message holds both', () => {
+        const result = guardImpossibleRolls('1d20+5 = 18 y luego 1d20+5 = 40', engine);
+        expect(result.text).toBe('1d20+5 = 18 y luego 1d20+5 = 12');
+        expect(result.corrections).toHaveLength(1);
+    });
+
+    test('prose with no structured claim is returned untouched', () => {
+        const prose = 'Lyra tira bien y el golpe entra limpio.';
+        expect(guardImpossibleRolls(prose, engine).text).toBe(prose);
+    });
+
+    test('junk input does not throw', () => {
+        for (const value of [null, undefined, 42]) {
+            expect(() => guardImpossibleRolls(value, engine)).not.toThrow();
+        }
     });
 });

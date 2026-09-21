@@ -5,6 +5,7 @@ import {
     append,
     buildEpiloguePrompt,
     MAX_ENTRIES,
+    lineToEntry,
 } from '../public/scripts/game-engine/ui/combat-log.js';
 
 describe('entry', () => {
@@ -133,5 +134,68 @@ describe('buildEpiloguePrompt', () => {
     test('always forbids the model from inventing results', () => {
         const prompt = buildEpiloguePrompt([], { rounds: 1, victory: true, survivors: [], defeated: [] });
         expect(prompt).toContain('No inventes');
+    });
+});
+
+// The board's combat lines were written as text with an icon in front long before this
+// log existed. These fix the reading of that icon, so mounting the log on the real board
+// did not depend on rewriting every call site.
+describe('lineToEntry', () => {
+    test('reads the icon as the kind and drops the chat-only tag', () => {
+        expect(lineToEntry('⏳ [COMBAT] Ronda 3')).toEqual({ kind: 'round', text: 'Ronda 3' });
+        expect(lineToEntry('❌ Resultado: fallo.')).toEqual({ kind: 'miss', text: 'Resultado: fallo.' });
+    });
+
+    test('a roll line is skipped, because the log already shows it with its breakdown', () => {
+        expect(lineToEntry('🎲 Tirada de ataque: d20(7) +3 = 10')).toBeNull();
+    });
+
+    test('blank lines produce nothing', () => {
+        expect(lineToEntry('')).toBeNull();
+        expect(lineToEntry('   ')).toBeNull();
+        expect(lineToEntry(null)).toBeNull();
+        expect(lineToEntry(undefined)).toBeNull();
+    });
+
+    test('an unknown line is kept as information rather than thrown away', () => {
+        expect(lineToEntry('Algo ocurre')).toEqual({ kind: 'info', text: 'Algo ocurre' });
+    });
+
+    test('a line that is only an icon keeps its text instead of going blank', () => {
+        expect(lineToEntry('💀').text).toBeTruthy();
+    });
+
+    test('every kind it can return is one the renderer knows how to draw', () => {
+        const lines = ['⏳ a', '🚶 a', '⚔️ a', '👹 a', '❌ a', '✅ a', '💥 a', '☠️ a', '🏆 a', '🚪 a', 'a'];
+        const known = ['round', 'move', 'attack', 'hit', 'miss', 'crit', 'damage', 'heal', 'down', 'loot', 'info', 'system'];
+        for (const line of lines) {
+            expect(known).toContain(lineToEntry(line).kind);
+        }
+    });
+});
+
+// Abandoning a fight is neither winning nor losing it. The first epilogue that actually
+// reached a model announced a party still standing as having been defeated.
+describe('buildEpiloguePrompt: leaving a fight', () => {
+    const base = { rounds: 1, survivors: ['Lyra', 'Brand'], defeated: [] };
+
+    test('says the party walked away, not that it lost', () => {
+        const text = buildEpiloguePrompt([], { ...base, victory: false, abandoned: true });
+        expect(text).toContain('abandona el combate');
+        expect(text).not.toContain('derrotado');
+    });
+
+    test('a real defeat still reads as a defeat', () => {
+        const text = buildEpiloguePrompt([], { ...base, victory: false, abandoned: false });
+        expect(text).toContain('derrotado');
+    });
+
+    test('a victory is never overridden by the abandoned flag being absent', () => {
+        expect(buildEpiloguePrompt([], { ...base, victory: true })).toContain('ganado');
+    });
+
+    test('still reports who is standing, so the model has the facts either way', () => {
+        expect(buildEpiloguePrompt([], { ...base, victory: false, abandoned: true }))
+            .toContain('En pie: Lyra, Brand.');
     });
 });

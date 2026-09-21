@@ -2,6 +2,7 @@
 title: Mapa Completo del Código & Estructura de Archivos
 tags: [codigo, estructura, mapa, directorios, backend, frontend, fork, dnd]
 created: 2026-09-20
+updated: 2026-09-21
 author: DanielJHesseling / Antigravity AI
 ---
 
@@ -22,6 +23,9 @@ Este documento sirve como inventario exhaustivo del repositorio, clasificando lo
 | `src/png/` | Extractor e inyector de metadatos en chunks tEXt/iTXt de imágenes PNG. | SillyTavern Core |
 | `public/` | Código fuente del cliente web servido al navegador (HTML, CSS, JS, libs). | SillyTavern Core + Fork |
 | `public/scripts/` | Módulos ES de lógica de frontend (más de 80 archivos). | SillyTavern Core + Fork |
+| `public/scripts/game-engine/` | **Motor de juego del fork**: tablero, combate, campaña, reglas e interfaz. Módulos puros, probados en Node. | Fork |
+| `public/scripts/party/` | Piezas extraídas de `party.js` por las costuras que los tests cubren. | Fork |
+| `tools/` | Comprobaciones propias: tipos, cableado del motor y recorrido del juego en navegador. | Fork |
 | `public/css/` | Hojas de estilo CSS del cliente. | SillyTavern Core + Fork |
 | `public/lib/` | Bibliotecas de terceros (jQuery, jQuery UI, Select2, Toastr, etc.). | SillyTavern Core |
 | `data/` | Directorio de almacenamiento de datos persistentes por usuario. | Generado en runtime |
@@ -35,29 +39,92 @@ Este documento sirve como inventario exhaustivo del repositorio, clasificando lo
 
 ## 2. Inventario de Archivos Clave del Motor RPG (Fork `my-silly`)
 
-Los siguientes archivos fueron creados o modificados sustancialmente por DanielJHesseling para incorporar las mecánicas de juego de rol:
+> [!NOTE]
+> **Cifras medidas el 2026-09-21.** El motor de juego vive desde entonces en dos carpetas nuevas, `game-engine/` y `party/`, que esta página no recogía. El criterio que las ordena está en [[Guia-Desarrollo-Flujo]] §2: código nuevo va en archivo nuevo, para que un merge con upstream no lo toque nunca.
 
-| Archivo | Líneas / Tamaño | Función Principal |
-| :--- | :--- | :--- |
-| `public/scripts/party.js` | 4,734 líneas (209 KB) | Gestor de grupo RPG, ficha D&D, líder de chat, HP en tiempo real, leveling y dados. |
-| `public/scripts/dynamic-context-manager.js` | 1,919 líneas (83 KB) | Máquina de estados de campaña, presupuesto de tokens y filtrado de instrucciones. |
-| `public/scripts/dnd-system.js` | 1,327 líneas (53 KB) | Fórmulas D&D 5e, slots de equipo, armas, armaduras, afinidades y memorias. |
-| `public/scripts/world-content-popups.js` | 1,109 líneas (62 KB) | Formularios modales enriquecidos para monstruos, hechizos, ítems y facciones. |
-| `public/scripts/world-map-renderer.js` | 927 líneas (37 KB) | Motor zoomable de mapas continentales, planos de localización y tableros tácticos. |
-| `public/scripts/world-content-browser.js` | 684 líneas (28 KB) | Navegador visual de cuadrícula para entidades del Lorebook por categorías. |
-| `public/scripts/chat-enhancements.js` | 663 líneas (23 KB) | Subrayado de términos de Lorebook con tooltips y avatares de diálogo en línea. |
-| `public/scripts/campaigns.js` | 656 líneas (27 KB) | Tarjetas de campaña en pantalla de bienvenida, agrupadas por mundo. |
-| `public/scripts/active-instructions.js` | 286 líneas (11 KB) | Administrador de instrucciones de usuario inyectadas en el prompt. |
-| `public/scripts/world-info.js` | Modificado (+1,300 lín.) | Exportación de mapas, tableros, monstruos y esquema `dndData`. |
-| `public/scripts/personas.js` | Modificado (+167 lín.) | Incorporación de estadísticas D&D en los descriptores de persona del usuario. |
-| `public/script.js` | Modificado (+219 lín.) | Arranque de subsistemas RPG e inyección de fichas y tableros en el prompt. |
-| `public/index.html` | Modificado (+6,230 lín.) | Inclusión de marcado de modales D&D, cajón de grupo y superposiciones. |
-| `public/css/world-map.css` | 1,383 líneas | Estilos de zoom, cuadrícula, tokens y niebla de guerra. |
-| `public/css/dnd-character.css`| 1,330 líneas | Estilos de ficha de personaje, inventario, ranuras y estados. |
-| `public/css/campaigns.css` | 1,301 líneas | Estilos de tarjetas de campaña y vista de bienvenida. |
-| `public/css/world-content-browser.css` | 794 líneas | Estilos de cuadrícula de entidades de mundo y modales Fable-like. |
-| `public/css/dynamic-context-manager.css`| 355 líneas | Estilos del modal de reglas y barra de presupuesto de tokens. |
-| `public/css/chat-enhancements.css` | 149 líneas | Estilos de hipervínculos resaltados y avatares en línea. |
+### 2.1. El motor de juego — `public/scripts/game-engine/` (19 archivos, 4.884 líneas)
+
+Módulos puros: sin DOM, sin estado global, sin lecturas del chat. Por eso se prueban en Node y por eso el coste de merge es cero. Los marcados ⬜ están escritos y probados pero **el juego todavía no los carga**; compruébalo con `node tools/check-engine-wiring.mjs`.
+
+| Archivo | Líneas | Función | En el juego |
+| :--- | ---: | :--- | :---: |
+| `board/terrain.js` | 343 | Muros, cobertura, terreno difícil y puertas. Almacenamiento disperso | ✅ |
+| `board/pathfinding.js` | 262 | A*, celdas alcanzables y coste de ruta | ✅ |
+| `board/fog-of-war.js` | 189 | Niebla de 3 estados; solo se persiste lo explorado | ✅ |
+| `board/line-of-sight.js` | 166 | Visión simétrica con Bresenham canonizado | ✅ |
+| `combat/enemy-ai.js` | 447 | Cuatro perfiles tácticos. Devuelve un plan, no lo ejecuta | ✅ |
+| `combat/turn-machine.js` | 308 | Iniciativa, rondas y economía de acciones | ⬜ |
+| `combat/roll-guard.js` | 163 | Corrige tiradas inventadas por el modelo | ✅ |
+| `campaign/scenarios.js` | 307 | Siete tipos de objetivo de escenario | ⬜ |
+| `campaign/bonds.js` | 298 | Vínculos 1–10 por eventos registrados, y sus perks | ⬜ |
+| `campaign/campaign-map.js` | 275 | Salas, puertas y desbloqueo de localizaciones | ⬜ |
+| `campaign/starter-templates.js` | 253 | Las 4 plantillas del asistente, como datos | ✅ |
+| `campaign/calendar.js` | 195 | Días y bloques de tiempo estilo Persona | ⬜ |
+| `campaign/campaign-worlds.js` | 77 | Qué es una campaña, dónde empieza, nombres libres | ✅ |
+| `rules/ruleset.js` | 307 | Validación, fusión, migración y exportación de paquetes | ✅ |
+| `rules/default-ruleset.js` | 251 | Las 25 tablas D&D, fuera del código | ✅ |
+| `ui/sandbox.js` | 353 | Banco de pruebas de combate (`/sandbox`) | ✅ |
+| `ui/combat-log.js` | 293 | Registro de combate y prompt del epílogo | ✅ |
+| `ui/campaign-wizard.js` | 245 | El asistente de 3 pasos y `createCampaign` | ✅ |
+| `ui/chat-channel.js` | 86 | Decide si un mensaje lo lee solo el jugador o también el modelo | ✅ |
+
+### 2.2. El subsistema de grupo — `public/scripts/party/` (5 archivos, 544 líneas)
+
+Extraído de `party.js` por las costuras que los tests ya cubrían.
+
+| Archivo | Líneas | Función |
+| :--- | ---: | :--- |
+| `combat-rules.js` | 218 | Dados, distancias, fórmulas de daño y cobertura |
+| `item-forms.js` | 183 | Formularios de objetos |
+| `positions.js` | 65 | De dónde sale la casilla de cada miembro |
+| `types.js` | 52 | Tipos compartidos |
+| `html.js` | 26 | Escape HTML sin dependencias (copia intencional, con test) |
+
+### 2.3. Archivos del fork que siguen siendo grandes
+
+| Archivo | Líneas | Función Principal |
+| :--- | ---: | :--- |
+| `public/scripts/party.js` | 4.810 | Grupo, ficha D&D, combate real, comandos y tablero. **Sigue creciendo**: la integración del motor se hizo dentro |
+| `public/scripts/dynamic-context-manager.js` | 1.911 | Estados de campaña, presupuesto de tokens y las 8 herramientas `dnd_*` |
+| `public/scripts/dnd-system.js` | 1.225 | Fórmulas D&D 5e. Lee sus tablas del paquete de reglas |
+| `public/scripts/world-map-renderer.js` | 1.188 | Mapas, tableros, capas de terreno y niebla, puertas |
+| `public/scripts/world-content-popups.js` | 1.110 | Formularios de monstruos, hechizos, ítems y facciones |
+| `public/scripts/campaigns.js` | 905 | Tarjetas de campaña y arranque de partida |
+| `public/scripts/world-content-browser.js` | 674 | Navegador de entidades del Lorebook |
+| `public/scripts/chat-enhancements.js` | 661 | Términos resaltados y avatares en línea |
+| `public/scripts/active-instructions.js` | 278 | Instrucciones inyectadas en el prompt |
+
+### 2.4. Archivos de upstream que el fork modifica
+
+Cada uno cuesta en cada merge. La lista no debería crecer.
+
+| Archivo | Cambio |
+| :--- | :--- |
+| `public/scripts/world-info.js` | Mapas, tableros, monstruos y el esquema `dndData` |
+| `public/script.js` | Arranque de los subsistemas RPG e inyección en el prompt |
+| `public/index.html` | Marcado de modales, cajón de grupo y superposiciones |
+| `public/scripts/personas.js` | Estadísticas D&D en los descriptores de persona |
+
+### 2.5. Hojas de estilo
+
+| Archivo | Líneas | Función |
+| :--- | ---: | :--- |
+| `public/css/world-map.css` | 1.520 | Zoom, cuadrícula, tokens, terreno, niebla y puertas |
+| `public/css/dnd-character.css` | 1.330 | Ficha, inventario, ranuras y estados |
+| `public/css/campaigns.css` | 1.304 | Tarjetas de campaña y bienvenida |
+| `public/css/world-content-browser.css` | 794 | Cuadrícula de entidades y modales |
+| `public/css/dynamic-context-manager.css` | 355 | Modal de reglas y barra de presupuesto |
+| `public/css/combat-log.css` | 232 | Registro de combate con marco de pixel art y `/sandbox` |
+| `public/css/chat-enhancements.css` | 149 | Términos resaltados y avatares en línea |
+| `public/css/campaign-wizard.css` | 131 | Asistente de campaña y tarjetas sin empezar |
+
+### 2.6. Herramientas — `tools/`
+
+| Archivo | Para qué |
+| :--- | :--- |
+| `check-fork-types.mjs` | Gate de tipos sobre los 33 archivos propios. Falla si aparece un error |
+| `check-engine-wiring.mjs` | Lista los módulos del motor que el juego no carga. Informa, no falla |
+| `e2e-campaign.mjs` | Recorre el juego en un navegador real, con servidor y datos propios |
 
 ---
 

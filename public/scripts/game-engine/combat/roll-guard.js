@@ -116,6 +116,41 @@ export function isClaimPossible(formula, claimed) {
  * @returns {GuardResult}
  */
 export function guardRolls(text, roll) {
+    return replaceClaims(text, roll, () => true);
+}
+
+/**
+ * Replaces only the totals the dice could not have produced.
+ *
+ * The difference from guardRolls is a question of authority, not of strictness, and it
+ * decides how the game feels. guardRolls re-rolls every claim, so the engine owns all
+ * dice and the model's number is only ever a suggestion. This one corrects arithmetic
+ * that is provably wrong — a 1d20+5 cannot total 30 — and lets a possible roll stand,
+ * which keeps the model's narration intact at the cost of trusting it.
+ *
+ * It is the safer default when the guard runs over every message in the chat, because a
+ * correction here is never a matter of opinion.
+ *
+ * @param {string} text
+ * @param {(formula: string) => number} roll
+ * @returns {GuardResult}
+ */
+export function guardImpossibleRolls(text, roll) {
+    return replaceClaims(text, roll, claim => !isClaimPossible(claim.formula, claim.claimed));
+}
+
+/**
+ * Shared walk over the claims in a piece of text.
+ *
+ * `roll` is only called for claims the predicate accepts, so a guard that corrects
+ * nothing consumes no dice — which matters when the roller is the game's own.
+ *
+ * @param {string} text
+ * @param {(formula: string) => number} roll
+ * @param {(claim: {formula: string, claimed: number}) => boolean} shouldCorrect
+ * @returns {GuardResult}
+ */
+function replaceClaims(text, roll, shouldCorrect) {
     const source = String(text ?? '');
     const claims = findRollClaims(source);
     if (claims.length === 0) return { text: source, corrections: [] };
@@ -129,8 +164,8 @@ export function guardRolls(text, roll) {
         // Overlapping matches can happen when both patterns hit the same span.
         if (claim.index < cursor) continue;
 
-        const actual = Number(roll(claim.formula));
         output += source.slice(cursor, claim.index);
+        const actual = shouldCorrect(claim) ? Number(roll(claim.formula)) : NaN;
 
         if (Number.isFinite(actual) && actual !== claim.claimed) {
             // Replace only the number, keeping whatever separator the model wrote.

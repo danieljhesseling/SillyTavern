@@ -18,6 +18,7 @@
 
 import {
     STARTER_TEMPLATES, getTemplate, buildWorldMetadata, buildWorldEntries,
+    buildEncounterRules,
 } from '../campaign/starter-templates.js';
 import { uniqueWorldName } from '../campaign/campaign-worlds.js';
 
@@ -186,6 +187,8 @@ export async function createCampaign({
 
     /** @type {any[]} */
     const partyEntries = [];
+    /** @type {Record<string, string>} */
+    const monsterIds = {};
 
     for (const spec of buildWorldEntries(template, answers.party)) {
         const entry = createEntry(answers.worldName, data);
@@ -197,7 +200,13 @@ export async function createCampaign({
         entry.dndData = spec.dndData;
 
         if (spec.group === 'Characters') partyEntries.push(entry);
+        if (spec.group === 'Monsters') monsterIds[spec.title] = String(entry.uid);
     }
+
+    // Only now are the monster ids known, so the board's encounter rules are written
+    // here rather than in buildWorldMetadata. Without this, /fight finds no enemies.
+    const board = data.metadata?.locationMaps?.[0]?.boards?.[0];
+    if (board) board.encounterRules = buildEncounterRules(template, monsterIds);
 
     await saveWorld(answers.worldName, data);
 

@@ -2,6 +2,7 @@
 title: Catálogo de 200 Propuestas de Mejora para SillyTavern & Motor RPG
 tags: [propuestas, mejoras, roadmap, arquitectura, seguridad, dnd, rendimiento, ui-ux, ia]
 created: 2026-09-20
+updated: 2026-09-21
 author: DanielJHesseling / Antigravity AI
 ---
 
@@ -10,6 +11,73 @@ author: DanielJHesseling / Antigravity AI
 Este documento recopila **200 propuestas técnicas, de arquitectura, de jugabilidad y de optimización** diseñadas para transformar SillyTavern en una plataforma de última generación para juegos de rol impulsados por inteligencia artificial.
 
 Las propuestas están organizadas en 10 áreas estratégicas de 20 propuestas cada una.
+
+---
+
+## 📍 Estado de Implementación — 2026-09-21 *(actualizado por la tarde)*
+
+Este catálogo es una **lista de opciones, no un plan**: 200 propuestas, de las que el proyecto ha tomado una fracción. El plan real está en [[ROADMAP]] y lo pendiente en [[POR_HACER]]; aquí solo se anota qué ha pasado con cada propuesta que tiene alguna noticia, y cada una lleva su marca en el catálogo de más abajo.
+
+|    Marca    | Significado                                                                        |
+| :---------: | :--------------------------------------------------------------------------------- |
+|      ✅      | **Hecha**: un jugador puede usarla                                                 |
+|     🟡      | **Parcial**: hay código, pero falta conectarlo, o cubre solo parte de lo propuesto |
+|     🔵      | **Planificada**: está en el ROADMAP con un ID de tarea, sin código todavía         |
+|      ⛔      | **Descartada o aplazada** a propósito, con su motivo                               |
+| *(ninguna)* | Sin decisión. No es un fallo: un catálogo no se ejecuta entero                     |
+
+**Recuento**: ✅ 9 · 🟡 16 · 🔵 8 · ⛔ 8 · sin marca 159 de 200.
+
+> [!NOTE]
+> **Dos cosas que este catálogo no decía.** Algunas propuestas ya tienen una pieza hecha en upstream tras el merge: `PROP-170` la cubre `write-file-atomic`, y para `PROP-128` y `PROP-134` upstream trae `claude.cachingAtDepth` y la extensión *Summarize*. Y `PROP-121`, que figuraba entre las prioritarias, se descartó **en su forma original** a propósito: que el modelo escriba HP o posiciones contradice el principio del [[ROADMAP]].
+
+### Las que tienen noticia
+
+| ID | Marca | Qué pasó |
+| :--- | :---: | :--- |
+| **PROP-001** | 🟡 | Descomposición parcial: `party/` tiene 5 módulos (544 líneas) y el motor vive aparte en `game-engine/` (19 módulos, 4.884 líneas). Se partió por lo que los tests cubrían, no por `state/ui/combat/commands`. `party.js` bajó a 4.549 líneas y volvió a **4.810** al integrar el motor dentro (POR_HACER #16). |
+| **PROP-002** | ⛔ | Descartada: toca todo upstream y el coste de merge sería permanente. |
+| **PROP-003** | 🟡 | Vía JSDoc, no `.ts`: un gate de `tsc` sobre 32 archivos del fork (`tools/check-fork-types.mjs`), sin ningún `@ts-nocheck`. |
+| **PROP-004** | ⛔ | Descartada: afecta a la carga de todo upstream. |
+| **PROP-007** | ✅ | `normalizeDndEntityType` vive en `dnd-system.js`. |
+| **PROP-010** | 🟡 | La lógica nueva (terreno, visión, niebla, rutas) nace en `game-engine/board/`, fuera del renderizador. Lo anterior sigue dentro. |
+| **PROP-015** | 🟡 | `game-engine/` es ese paquete para el código nuevo, con interfaces de datos. `party.js` sigue acoplado al chat. |
+| **PROP-016** | ⛔ | Aplazada: cirugía mayor en `script.js` (upstream); necesita diseño propio, no un refactor. |
+| **PROP-018** | 🟡 | Hay normalizadores por módulo (terreno, niebla, reglas, plantillas), no un esquema global de `chat_metadata` (ver N-07). |
+| **PROP-022** | ✅ | Corregido en 4 puntos del renderizador, más uno en la cabecera del tablero hallado después. |
+| **PROP-023** | ✅ | Unificada en `utils.js`. Queda una copia intencional en `party/html.js` con un test que ancla el contrato (POR_HACER #17). |
+| **PROP-043** | 🟡 | El renderizador desenlaza (`.off`) antes de reenlazar y limpia el `document` por espacio de nombres; no hay un `destroy()` formal. Las puertas enlazan su propio clic por celda, que el redibujado descarta con la capa. |
+| **PROP-062** | 🔵 | D5 del ROADMAP. |
+| **PROP-067** | 🔵 | B5 del ROADMAP: botín por CR con tablas leídas del paquete de reglas. |
+| **PROP-081** | 🟡 | La máquina de turnos existe (`turn-machine.js`) pero no está conectada (POR_HACER #7); el panel visual sigue siendo B8. |
+| **PROP-084** | ✅ | Línea de visión, tipos de cobertura y **el bono aplicado a la CA del objetivo**, anunciado en el registro. Cuenta la cobertura de la casilla del objetivo; hacerlo por línea de tiro queda pendiente (POR_HACER #14). |
+| **PROP-086** | 🟡 | Las fichas se sueltan por casilla y el terreno se pinta por casilla; no hay imán suave. |
+| **PROP-088** | 🔵 | B8 del ROADMAP. |
+| **PROP-089** | 🟡 | Capas de terreno y niebla con modo pintura; no hay un control general de capas. |
+| **PROP-091** | 🟡 | La niebla se alimenta con la visión de las fichas del grupo (60 pies por defecto, recortada por muros). El motor admite un radio por ficha (`sightFeet`) pero nada lo asigna todavía, y no hay antorchas ni visión en la oscuridad. |
+| **PROP-099** | 🔵 | B8 del ROADMAP. |
+| **PROP-104** | 🔵 | T3 del ROADMAP. |
+| **PROP-114** | 🟡 | Existe `dnd_manage_quest` en el Dynamic Context y `QuestState` en el motor (E4); falta la interfaz (E5). |
+| **PROP-121** | 🟡 | Existen 8 herramientas `dnd_*` para el estado **narrativo** (fase, lugar, misiones, banderas, instrucciones). Las de HP, inventario y posiciones **no se harán**: contradicen el principio del ROADMAP §0. |
+| **PROP-123** | ⛔ | Descartada: multiplica las llamadas y va contra el objetivo de coste. |
+| **PROP-124** | 🔵 | F1 del ROADMAP (interfaz agnóstica de proveedor para salidas estructuradas). |
+| **PROP-128** | 🔵 | T1 del ROADMAP. Upstream ya trae `claude.cachingAtDepth` (desactivado por defecto): probar antes de construir. |
+| **PROP-134** | 🔵 | T8 del ROADMAP. Upstream trae la extensión *Summarize*: evaluar antes de construir. |
+| **PROP-135** | ✅ | `roll-guard.js` (33 tests) **conectado** a cada mensaje del modelo. Por defecto corrige solo totales imposibles; `/rollguard estricto` entrega todos los dados al motor. |
+| **PROP-161** | ⛔ | Descartada: reescribe la persistencia de upstream y mata el fork. |
+| **PROP-165** | 🟡 | `migrateRuleset` y versión de esquema en los módulos nuevos; no un migrador general. |
+| **PROP-170** | 🟡 | Mitigada por upstream: `trySaveChat` escribe con `write-file-atomic` (síncrono). No hay un cerrojo por conversación. |
+| **PROP-173** | 🟡 | El registro de combate guarda el desglose de cada tirada durante la sesión, pero no se persiste (POR_HACER #22). |
+| **PROP-181** | ✅ | 983 tests en 38 suites: reglas D&D y todo el motor nuevo. |
+| **PROP-182** | ✅ | `tools/e2e-campaign.mjs`: levanta su propio servidor con datos temporales y recorre el juego (17 comprobaciones). Encontró dos defectos que los tests no veían. |
+| **PROP-184** | ✅ | `.github/workflows/fork-checks.yml`: tests y tipos en cada push y PR a `my-silly`. |
+| **PROP-187** | ⛔ | Descartada: dimensionada para un servicio con equipo. |
+| **PROP-193** | ⛔ | Descartada: dimensionada para un servicio con equipo. |
+| **PROP-190** | 🟡 | El guardián de tiradas y el epílogo registran sus fallos en consola en vez de romper el chat; no hay telemetría estructurada. |
+| **PROP-194** | ✅ | `tools/check-fork-types.mjs` corre en CI, sobre 33 archivos. |
+| **PROP-198** | ⛔ | Descartada: dimensionada para un servicio con equipo. |
+
+Las propuestas propias `N-01` a `N-12` están al final, en el anexo.
 
 ---
 
@@ -30,24 +98,24 @@ Las propuestas están organizadas en 10 áreas estratégicas de 20 propuestas ca
 
 ## Área 1: Arquitectura, Refactorización & Modularización (PROP-001 a PROP-020)
 
-- **PROP-001: Descomposición Modular de `party.js`**: Dividir el monolito de 4,734 líneas en submódulos especializados (`party-state.js`, `party-ui.js`, `party-combat.js`, `party-dice.js`) bajo `public/scripts/party/`.
-- **PROP-002: Eliminación Gradual de jQuery en Favor de Vanilla DOM Moderno**: Reemplazar selectores y mutaciones `$()` por `document.querySelector`, `classList` y `dataset` nativos, eliminando 80 KB de biblioteca y mejorando los tiempos de ejecución.
-- **PROP-003: Migración Gradual a TypeScript (`.ts`)**: Introducir tipado estricto en el motor RPG para erradicar errores de tipo en tiempo de ejecución en inventario, miembros del grupo y estados de campaña.
-- **PROP-004: Adopción de un Bundler Moderno (Vite)**: Sustituir la carga dispersa de scripts en el navegador por un empaquetador como Vite o Rollup con tree-shaking, minificación y hot module replacement (HMR).
+- 🟡 **PROP-001: Descomposición Modular de `party.js`**: Dividir el monolito de 4,734 líneas en submódulos especializados (`party-state.js`, `party-ui.js`, `party-combat.js`, `party-dice.js`) bajo `public/scripts/party/`.
+- ⛔ **PROP-002: Eliminación Gradual de jQuery en Favor de Vanilla DOM Moderno**: Reemplazar selectores y mutaciones `$()` por `document.querySelector`, `classList` y `dataset` nativos, eliminando 80 KB de biblioteca y mejorando los tiempos de ejecución.
+- 🟡 **PROP-003: Migración Gradual a TypeScript (`.ts`)**: Introducir tipado estricto en el motor RPG para erradicar errores de tipo en tiempo de ejecución en inventario, miembros del grupo y estados de campaña.
+- ⛔ **PROP-004: Adopción de un Bundler Moderno (Vite)**: Sustituir la carga dispersa de scripts en el navegador por un empaquetador como Vite o Rollup con tree-shaking, minificación y hot module replacement (HMR).
 - **PROP-005: Desacoplamiento de Plantillas HTML (`index.html`)**: Extraer los 50 modales embebidos en `index.html` a plantillas HTML/WebComponents independientes cargadas bajo demanda.
 - **PROP-006: Creación de un Store de Estado Reactivo Centralizado**: Implementar un almacén de estado predecible (patrón Zustand / NanoStores) para gestionar `chat`, `partyMembers`, `chat_metadata` y configuración sin depender de variables globales en `window`.
-- **PROP-007: Centralización de Utilidades en `dnd-system.js`**: Eliminar duplicaciones de funciones como `normalizeDndEntityType` entre `party.js` y `world-info.js`, unificándolas en un módulo canónico.
+- ✅ **PROP-007: Centralización de Utilidades en `dnd-system.js`**: Eliminar duplicaciones de funciones como `normalizeDndEntityType` entre `party.js` y `world-info.js`, unificándolas en un módulo canónico.
 - **PROP-008: Abstracción de Capa de Transporte de Red**: Crear un cliente HTTP tipado (`api-client.ts`) que gestione automáticamente cabeceras CSRF, reintentos exponenciales y serialización JSON.
 - **PROP-009: Estandarización del Manejo de Errores en Endpoints**: Reemplazar bloques `catch (e) {}` silenciosos por un middleware global de errores en Express que emita respuestas normalizadas `{ error: string, code: number }`.
-- **PROP-010: Separación de Lógica de Negocio y Presentación en `world-map-renderer.js`**: Aislar el cálculo de coordenadas, transformaciones y niebla de guerra de la manipulación visual del DOM.
+- 🟡 **PROP-010: Separación de Lógica de Negocio y Presentación en `world-map-renderer.js`**: Aislar el cálculo de coordenadas, transformaciones y niebla de guerra de la manipulación visual del DOM.
 - **PROP-011: Refactorización de `script.js` en Controladores de Dominio**: Descomponer el archivo principal de 12,000 líneas en controladores específicos (`ChatController`, `CharacterController`, `PromptPipelineController`).
 - **PROP-012: Inyección de Dependencias en Servicios del Backend**: Configurar un contenedor de inversión de control (IoC) ligero para instanciar repositorios de usuarios, personajes y chats.
 - **PROP-013: Normalización de Nombres de Eventos**: Unificar constantes de eventos en un único enum `EVENTS` para evitar discrepancias entre cadenas mágicas en `eventSource`.
 - **PROP-014: Creación de un Bus de Eventos Tipado**: Extender `EventEmitter` con firmas genéricas para validar las cargas útiles emitidas en eventos como `PARTY_MEMBER_UPDATED`.
-- **PROP-015: Aislamiento del Subsistema D&D como Módulo Núcleo Autónomo**: Diseñar el motor RPG como un paquete interno con interfaces limpias para facilitar su mantenimiento sin alterar el chat base.
-- **PROP-016: Desacoplamiento de la Persistencia en Memoria del Chat**: Separar el modelo de datos de la sesión del árbol de elementos visuales `.mes` del DOM.
+- 🟡 **PROP-015: Aislamiento del Subsistema D&D como Módulo Núcleo Autónomo**: Diseñar el motor RPG como un paquete interno con interfaces limpias para facilitar su mantenimiento sin alterar el chat base.
+- ⛔ **PROP-016: Desacoplamiento de la Persistencia en Memoria del Chat**: Separar el modelo de datos de la sesión del árbol de elementos visuales `.mes` del DOM.
 - **PROP-017: Introducción de Web Workers para Tareas Pesadas**: Delegar la tokenización de grandes volúmenes de texto y el cálculo de matrices de distancias en tableros a un Web Worker en segundo plano.
-- **PROP-018: Esquema de Validación JSON Schema / Zod para `chat_metadata`**: Validar automáticamente la integridad estructural de metadatos al cargarlos desde disco para evitar corrupciones silenciosas.
+- 🟡 **PROP-018: Esquema de Validación JSON Schema / Zod para `chat_metadata`**: Validar automáticamente la integridad estructural de metadatos al cargarlos desde disco para evitar corrupciones silenciosas.
 - **PROP-019: Pipeline Unificado de Filtros de Texto**: Encapsular el formateo Markdown, sanitización DOMPurify y resaltado de Lorebook en una tubería secuencial (`TextPipeline`).
 - **PROP-020: Modularización de Hojas de Estilo CSS**: Reorganizar `style.css` y hojas D&D mediante variables CSS (design tokens) e imports lógicos.
 
@@ -56,8 +124,8 @@ Las propuestas están organizadas en 10 áreas estratégicas de 20 propuestas ca
 ## Área 2: Seguridad, Criptografía & Aislamiento (PROP-021 a PROP-040)
 
 - **PROP-021: Configuración de Content Security Policy (CSP) Estricta**: Habilitar CSP en Helmet con nonces aleatorios por sesión, bloqueando scripts en línea no autorizados.
-- **PROP-022: Sanitización Sistemática contra XSS en `world-map-renderer.js`**: Usar constructores seguros del DOM (`.text()`) en lugar de interpolación cruda en etiquetas de tokens.
-- **PROP-023: Unificación de Función `escapeHtml` Segura**: Crear una utilidad universal basada en el escape estricto de las 5 entidades HTML y validación de atributos.
+- ✅ **PROP-022: Sanitización Sistemática contra XSS en `world-map-renderer.js`**: Usar constructores seguros del DOM (`.text()`) en lugar de interpolación cruda en etiquetas de tokens.
+- ✅ **PROP-023: Unificación de Función `escapeHtml` Segura**: Crear una utilidad universal basada en el escape estricto de las 5 entidades HTML y validación de atributos.
 - **PROP-024: Cifrado en Reposo de Claves de API (`secrets.json`)**: Implementar cifrado simétrico **AES-256-GCM** para almacenar claves de proveedores de IA.
 - **PROP-025: Actualización de jQuery a v3.7.1**: Parchear las vulnerabilidades CVE-2020-11022 y CVE-2020-11023 actualizando la biblioteca.
 - **PROP-026: Sandboxing Seguro para la Ejecución de Macros**: Aislar la ejecución de macros complejas mediante un entorno de evaluación restringido sin acceso a `window` ni `document`.
@@ -82,7 +150,7 @@ Las propuestas están organizadas en 10 áreas estratégicas de 20 propuestas ca
 
 - **PROP-041: Virtualización del Historial de Chat (DOM Virtualization)**: Renderizar únicamente los mensajes visibles en el viewport más un pequeño buffer, reduciendo el consumo de RAM en chats de más de 500 mensajes.
 - **PROP-042: Sustitución de Regex Masiva por Algoritmo Aho-Corasick**: Reemplazar la expresión regular combinada en `chat-enhancements.js` por un autómata de búsqueda de palabras clave en tiempo $O(N)$.
-- **PROP-043: Implementación de Método `destroy()` en `createZoomableContainer`**: Desacoplar todos los listeners jQuery y liberar instancias al cerrar o cambiar de mapa.
+- 🟡 **PROP-043: Implementación de Método `destroy()` en `createZoomableContainer`**: Desacoplar todos los listeners jQuery y liberar instancias al cerrar o cambiar de mapa.
 - **PROP-044: Procesamiento Asíncrono de Imágenes con Sharp en Worker Threads**: Reemplazar Jimp por Sharp/Libvips para redimensionar y comprimir imágenes hasta 5x más rápido sin bloquear el event loop.
 - **PROP-045: Paginación Perezosa (Lazy Loading) de Tarjetas de Campaña**: Cargar los metadatos de las campañas de bienvenida en bloques de 10 en lugar de leer 100 chats simultáneos.
 - **PROP-046: Caché LRU en Memoria para Fichas de Personajes**: Almacenar las tarjetas de personaje más utilizadas en una caché LRU para evitar lecturas continuas a disco.
@@ -106,12 +174,12 @@ Las propuestas están organizadas en 10 áreas estratégicas de 20 propuestas ca
 ## Área 4: Motor de Juego D&D 5e & Fichas (PROP-061 a PROP-080)
 
 - **PROP-061: Gestor de Espacios de Conjuro (Spell Slots)**: Añadir casillas interactivas para rastrear espacios de conjuro gastados y disponibles de nivel 1 a 9.
-- **PROP-062: Sistema de Descanso Corto y Descanso Largo**: Implementar botones para gastar Dados de Golpe (`Hit Dice`) en descansos cortos o recuperar todos los recursos en descansos largos.
+- 🔵 **PROP-062: Sistema de Descanso Corto y Descanso Largo**: Implementar botones para gastar Dados de Golpe (`Hit Dice`) en descansos cortos o recuperar todos los recursos en descansos largos.
 - **PROP-063: Cálculo Automatizado de Tiradas de Salvación y Habilidades**: Mostrar bonificadores desglosados (Atributo + Competencia) para las 18 habilidades de D&D 5e.
 - **PROP-064: Soporte para Clases Híbridas y Multiclase**: Permitir que un miembro del grupo posea múltiples clases (ej. Guerrero 3 / Mago 2) con cálculo unificado de niveles.
 - **PROP-065: Registro de Acciones y Rasgos de Clase**: Añadir una pestaña de Habilidades Especiales (ej. *Acción Súbita*, *Furia Bárbara*, *Ataque Furtivo*) con contadores de uso.
 - **PROP-066: Generador Aleatorio de PNJs y Monstruos**: Botón para crear instantáneamente estadísticas de un guardia, bandido o mercader según el nivel del grupo.
-- **PROP-067: Tablas de Botín Aleatorio (Loot Tables)**: Sistema de recompensas basado en la Guía del Dungeon Master para generar cofres y tesoros por Desafío (CR).
+- 🔵 **PROP-067: Tablas de Botín Aleatorio (Loot Tables)**: Sistema de recompensas basado en la Guía del Dungeon Master para generar cofres y tesoros por Desafío (CR).
 - **PROP-068: Importación / Exportación de Fichas en Formato D&D Beyond / Foundry VTT**: Conversores de esquemas JSON para reutilizar personajes de otras plataformas de rol.
 - **PROP-069: Rastreador de Munición y Componentes Materiales**: Descontar automáticamente flechas, virotes y componentes valiosos con coste en oro al declarar ataques o conjuros.
 - **PROP-070: Modos de Armadura para Clases sin Armadura (Monje / Bárbaro)**: Calcular la Defensa sin Armadura sumando Sabiduría o Constitución a la AC base.
@@ -130,17 +198,17 @@ Las propuestas están organizadas en 10 áreas estratégicas de 20 propuestas ca
 
 ## Área 5: Combate Táctico, Tableros & Niebla (VTT) (PROP-081 a PROP-100)
 
-- **PROP-081: Rastreador de Turnos e Iniciativa (Turn Tracker)**: Panel flotante que ordena a todos los tokens del tablero por su tirada de iniciativa y destaca al combatiente en turno.
+- 🟡 **PROP-081: Rastreador de Turnos e Iniciativa (Turn Tracker)**: Panel flotante que ordena a todos los tokens del tablero por su tirada de iniciativa y destaca al combatiente en turno.
 - **PROP-082: Plantillas de Áreas de Efecto (AoE Templates)**: Herramientas para dibujar círculos de 20 pies (Bolas de Fuego), conos de 15 pies y líneas de relámpago sobre la cuadrícula.
 - **PROP-083: Medidor de Distancia y Movimiento Restante**: Regla interactiva que mide pies recorridos al arrastrar un token y avisa si supera la velocidad del personaje.
-- **PROP-084: Motor de Línea de Visión (Line of Sight - LoS)**: Bloqueo de visión y cálculo de coberturas (+2 AC por cobertura media, +5 por cobertura tres cuartos) tras muros.
+- 🟡 **PROP-084: Motor de Línea de Visión (Line of Sight - LoS)**: Bloqueo de visión y cálculo de coberturas (+2 AC por cobertura media, +5 por cobertura tres cuartos) tras muros.
 - **PROP-085: Cuadrículas Hexagonales (Hex Grid)**: Soporte alternativo a la cuadrícula cuadrada para mapas de exploración en mundo abierto (hexcrawl).
-- **PROP-086: Ajuste a la Cuadrícula Automático (Grid Snapping)**: Centrado magnético suave de los tokens al soltarlos en una celda.
+- 🟡 **PROP-086: Ajuste a la Cuadrícula Automático (Grid Snapping)**: Centrado magnético suave de los tokens al soltarlos en una celda.
 - **PROP-087: Rotación y Orientación de Tokens**: Indicador de dirección hacia donde mira el personaje o monstruo.
-- **PROP-088: Marcadores de Estado sobre Tokens**: Iconos flotantes en miniatura sobre la ficha táctica (ej. icono de fuego para quemado, calavera para caído).
-- **PROP-089: Soporte para Múltiples Capas (Capas de Mapa, Tokens y Niebla)**: Control de capas para que el usuario pueda dibujar o colocar elementos sin mover el mapa de fondo.
+- 🔵 **PROP-088: Marcadores de Estado sobre Tokens**: Iconos flotantes en miniatura sobre la ficha táctica (ej. icono de fuego para quemado, calavera para caído).
+- 🟡 **PROP-089: Soporte para Múltiples Capas (Capas de Mapa, Tokens y Niebla)**: Control de capas para que el usuario pueda dibujar o colocar elementos sin mover el mapa de fondo.
 - **PROP-090: Exportación de Tableros como Imágenes o PDFs**: Botón para guardar el estado táctico actual del encuentro con su cuadrícula y posiciones.
-- **PROP-091: Niebla de Guerra Dinámica por Antorchas y Visión en la Oscuridad**: Radio de visión personal para cada token que revela el mapa automáticamente según su rango (ej. 60 pies).
+- 🟡 **PROP-091: Niebla de Guerra Dinámica por Antorchas y Visión en la Oscuridad**: Radio de visión personal para cada token que revela el mapa automáticamente según su rango (ej. 60 pies).
 - **PROP-092: Indicadores de Elevación y Vuelo**: Campo numérico sobre el token para representar altitud o profundidad (ej. `+15 ft`).
 - **PROP-093: Animaciones de Ataque y Proyectiles**: Efectos visuales ligeros en canvas para representar flechas volando o impactos de hechizos entre casillas.
 - **PROP-094: Sonidos de Pasos y Ambiente Táctico**: Reproducción de efectos de sonido acordes al terreno del tablero (piedra, bosque, agua) al mover tokens.
@@ -148,7 +216,7 @@ Las propuestas están organizadas en 10 áreas estratégicas de 20 propuestas ca
 - **PROP-096: Soporte para Mapas Animados (WebM / MP4)**: Reproducción de mapas con cascadas, lava o lluvia en bucle como fondo de tablero.
 - **PROP-097: Selección Múltiple de Tokens y Movimiento en Grupo**: Capacidad de seleccionar varios aliados con una caja de selección y desplazarlos a la vez.
 - **PROP-098: Registro de Coordenadas Históricas (Migas de Pan)**: Rastro semitransparente que muestra el camino recorrido por los personajes en la sesión.
-- **PROP-099: Escalado de Tokens por Tamaño D&D**: Ajuste del tamaño del token según la categoría: Pequeño/Medio (1x1), Grande (2x2), Enorme (3x3), Gargantuesco (4x4).
+- 🔵 **PROP-099: Escalado de Tokens por Tamaño D&D**: Ajuste del tamaño del token según la categoría: Pequeño/Medio (1x1), Grande (2x2), Enorme (3x3), Gargantuesco (4x4).
 - **PROP-100: Modo Cine / Pantalla Completa para Tableros**: Botón para ocultar barras de menú y disfrutar del mapa táctico a pantalla completa.
 
 ---
@@ -158,7 +226,7 @@ Las propuestas están organizadas en 10 áreas estratégicas de 20 propuestas ca
 - **PROP-101: Compresión Jerárquica de Instrucciones**: Resumir automáticamente instrucciones de baja prioridad mediante llamadas secundarias de IA antes de inyectarlas.
 - **PROP-102: Disparadores Temporales para Instrucciones**: Reglas dinámicas que se activen solo durante un número determinado de turnos (ej. efecto de un hechizo durante 10 turnos).
 - **PROP-103: Perfiles de Campaña Predefinidos**: Plantillas con presupuestos y reglas afinadas para Fantasía Épica, Terror Gótico, Cyberpunk o Investigación Urbana.
-- **PROP-104: Vista Previa del Prompt Compilado**: Modal de depuración que muestra el texto exacto que se enviará al LLM con código de colores según el origen de cada bloque.
+- 🔵 **PROP-104: Vista Previa del Prompt Compilado**: Modal de depuración que muestra el texto exacto que se enviará al LLM con código de colores según el origen de cada bloque.
 - **PROP-105: Transiciones Automáticas de Estado de Campaña**: Detectar patrones en la salida del modelo (ej. aparición de la palabra "¡Iniciativa!") para cambiar de `exploration` a `combat`.
 - **PROP-106: Instrucciones Negativas y Restricciones Estrictas**: Reglas que prohíban explícitamente ciertos comportamientos del modelo según la escena (ej. "No resuelvas la acción del jugador por él").
 - **PROP-107: Soporte para Variables Numéricas en Condiciones**: Reglas que se activen solo si se cumple una condición matemática (ej. `HP < 20%` activa instrucciones de desesperación o agonía).
@@ -168,7 +236,7 @@ Las propuestas están organizadas en 10 áreas estratégicas de 20 propuestas ca
 - **PROP-111: Detección Automática de Coherencia Espacial**: Alertar al usuario si el LLM menciona que un enemigo está cerca cuando el tablero indica que está a 100 pies.
 - **PROP-112: Inyección de Pocas Muestras (Few-Shot Examples) Dinámicas**: Inyectar ejemplos de interacción dialéctica adecuados al tono actual (combate táctico vs diplomacia cortesana).
 - **PROP-113: Modulación de Estilo Narrativo según el Estado**: Cambiar la instrucción de estilo a oraciones cortas y urgentes en combate, y prosa rica y sensorial en descanso.
-- **PROP-114: Rastreo de Objetivos de Misión (Quest Tracking)**: Sistema de estados para misiones (No iniciada, En progreso, Completada, Fallida) con inyección automática de metas activas.
+- 🟡 **PROP-114: Rastreo de Objetivos de Misión (Quest Tracking)**: Sistema de estados para misiones (No iniciada, En progreso, Completada, Fallida) con inyección automática de metas activas.
 - **PROP-115: Control de Ruido en Lorebooks por Presupuesto de Tokens**: Forzar que las entradas de World Info también respeten el presupuesto general configurado.
 - **PROP-116: Calibración de Tokens Dinámica según el Modelo Seleccionado**: Ajustar el presupuesto automáticamente si se cambia de un modelo de 4k tokens a uno de 128k.
 - **PROP-117: Bloqueo de Instrucciones Recurrentes para Evitar Repetición**: No inyectar la misma regla de ambientación durante más de tres turnos seguidos para no volver monótono al modelo.
@@ -180,21 +248,21 @@ Las propuestas están organizadas en 10 áreas estratégicas de 20 propuestas ca
 
 ## Área 7: Modelos de Lenguaje, Function Calling & Agentes (PROP-121 a PROP-140)
 
-- **PROP-121: Integración Nativa de Function Calling / Tool Calling**: Permitir que el LLM ejecute herramientas formales para modificar HP, inventario o mover tokens mediante esquemas JSON estructurados en lugar de interpretar texto.
+- 🟡 **PROP-121: Integración Nativa de Function Calling / Tool Calling**: Permitir que el LLM ejecute herramientas formales para modificar HP, inventario o mover tokens mediante esquemas JSON estructurados en lugar de interpretar texto.
 - **PROP-122: Visión Multimodal Aplicada a Tableros Tácticos**: Enviar una captura del tablero al modelo de visión (GPT-4o / Claude 3.5) para que describa la escena con comprensión visual del entorno.
-- **PROP-123: Orquestación Multi-Agente para PNJs**: Arquitectura donde un agente principal narra el entorno mientras agentes secundarios especializados encarnan a compañeros y enemigos.
-- **PROP-124: Soporte para Salidas Estructuradas (JSON Schema Enforcement)**: Forzar gramáticas BNF o salidas JSON garantizadas en modelos locales (vLLM / llama.cpp / KoboldCpp).
+- ⛔ **PROP-123: Orquestación Multi-Agente para PNJs**: Arquitectura donde un agente principal narra el entorno mientras agentes secundarios especializados encarnan a compañeros y enemigos.
+- 🔵 **PROP-124: Soporte para Salidas Estructuradas (JSON Schema Enforcement)**: Forzar gramáticas BNF o salidas JSON garantizadas en modelos locales (vLLM / llama.cpp / KoboldCpp).
 - **PROP-125: Modo Dungeon Master Autónomo (Zero-Player Mode)**: Opción para que la IA actúe como director de juego completo, realizando tiradas y gestionando la aventura sin intervención humana.
 - **PROP-126: Conector Específico para Modelos de Razonamiento (o1, DeepSeek-R1)**: Gestión de etiquetas `<think>` y tokens de pensamiento sin romper el formateo de la interfaz.
 - **PROP-127: Prefill Dinámico para Controlar el Inicio de Respuesta**: Forzar los primeros caracteres del asistente (ej. `*Tiro 1d20 para iniciativa:*`) en modelos Anthropic y Kobold.
-- **PROP-128: Caché de Prompts en Proveedores Soportados (Prompt Caching)**: Estructurar los prompts para maximizar el uso de caché en Anthropic y OpenAI, reduciendo costes hasta un 75%.
+- 🔵 **PROP-128: Caché de Prompts en Proveedores Soportados (Prompt Caching)**: Estructurar los prompts para maximizar el uso de caché en Anthropic y OpenAI, reduciendo costes hasta un 75%.
 - **PROP-129: Reintentos Inteligentes con Backoff Exponencial y Fallback de Proveedor**: Si la API de OpenAI falla con un error 500/503, cambiar automáticamente a OpenRouter o Claude sin perder la partida.
 - **PROP-130: Integración con Motores de Búsqueda para Lore del Mundo**: Permitir que el modelo consulte wikis de D&D o Wikipedia mediante SerpAPI o DuckDuckGo antes de responder dudas sobre monstruos oficiales.
 - **PROP-131: Agente Especializado en Cartografía**: Sub-agente que genere automáticamente nuevos planos o descripciones de cuadrícula cuando los jugadores viajen a zonas inexploradas.
 - **PROP-132: Calibración de Samplers Específica para Escenas de Combate**: Reducir la temperatura automáticamente a 0.3 en combate para cálculos matemáticos precisos y elevarla a 0.9 en escenas sociales.
 - **PROP-133: Soporte para Modelos Locales en Segundo Plano con Ollama**: Integración directa con el daemon de Ollama detectando modelos instalados sin requerir URL manual.
-- **PROP-134: Resumen Periódico Automático del Historial (Context Window Memory)**: Generar condensaciones narrativas cada 20 turnos para mantener coherencia en campañas de cientos de horas.
-- **PROP-135: Detección y Mitigación de Alucinaciones Matemáticas**: Interceptar los resultados de tiradas generados por la IA y sustituirlos por el valor del motor determinista de dados si discrepan.
+- 🔵 **PROP-134: Resumen Periódico Automático del Historial (Context Window Memory)**: Generar condensaciones narrativas cada 20 turnos para mantener coherencia en campañas de cientos de horas.
+- 🟡 **PROP-135: Detección y Mitigación de Alucinaciones Matemáticas**: Interceptar los resultados de tiradas generados por la IA y sustituirlos por el valor del motor determinista de dados si discrepan.
 - **PROP-136: Generación de Retratos de Personaje en Vivo mediante ComfyUI / SD**: Botón para generar ilustraciones de la escena o de nuevos PNJs encontrados al vuelo.
 - **PROP-137: Evaluación de Sesgo y Coherencia de Personalidad**: Módulo que califique si la respuesta de un PNJ se alinea con sus puntuaciones de alineamiento y relación.
 - **PROP-138: Decodificación Especulativa en Inferencia Local**: Soporte para modelos borradores ligeros que aceleren la velocidad de generación de tokens en servidores locales.
@@ -230,19 +298,19 @@ Las propuestas están organizadas en 10 áreas estratégicas de 20 propuestas ca
 
 ## Área 9: Persistencia, Sincronización & Base de Datos (PROP-161 a PROP-180)
 
-- **PROP-161: Migración Opcional a Base de Datos Embebida SQLite**: Sustituir la gestión manual de archivos JSON planos por una base de datos relacional ligera con transacciones ACID para evitar corrupciones.
+- ⛔ **PROP-161: Migración Opcional a Base de Datos Embebida SQLite**: Sustituir la gestión manual de archivos JSON planos por una base de datos relacional ligera con transacciones ACID para evitar corrupciones.
 - **PROP-162: Control de Versiones con Git Embebido para Campañas**: Guardar checkpoints de la campaña como commits automáticos en segundo plano, permitiendo retroceder en el tiempo.
 - **PROP-163: Sincronización en la Nube con Cifrado Punto a Punto (E2EE)**: Copias de seguridad automáticas hacia servicios de almacenamiento personal (Google Drive, Dropbox, WebDAV).
 - **PROP-164: Sincronización Multi-Dispositivo Local (P2P / LAN)**: Compartir la partida entre un PC principal y una tablet mediante WebSockets en la red local.
-- **PROP-165: Sistema de Migración Automática de Esquemas con Versionado**: Scripts deterministas que actualicen estructuras antiguas de datos a nuevas versiones sin romper fichas existentes.
+- 🟡 **PROP-165: Sistema de Migración Automática de Esquemas con Versionado**: Scripts deterministas que actualicen estructuras antiguas de datos a nuevas versiones sin romper fichas existentes.
 - **PROP-166: Exportación de Campaña en Paquete Autónomo (`.tavernworld`)**: Archivo comprimido ZIP que contenga el mundo, mapas, personajes, historial de chat y estado del grupo.
 - **PROP-167: Papelera de Reciclaje con Recuperación Temporal**: Retener personajes y chats eliminados durante 30 días antes de su purga definitiva del disco.
 - **PROP-168: Detección y Reparación de Archivos JSONL Dañados**: Utilidad integrada en el arranque que repare automáticamente líneas truncadas o caracteres nulos.
 - **PROP-169: Almacenamiento en Caché de Assets Multimedia con Hash Criptográfico**: Guardar mapas e imágenes con nombres basados en su contenido SHA-256 para evitar duplicaciones.
-- **PROP-170: Bloqueo Transaccional por Conversación**: Evitar que dos peticiones asíncronas escriban simultáneamente en el mismo archivo mediante cerrojos en memoria.
+- 🟡 **PROP-170: Bloqueo Transaccional por Conversación**: Evitar que dos peticiones asíncronas escriban simultáneamente en el mismo archivo mediante cerrojos en memoria.
 - **PROP-171: Sincronización Bidireccional con Bóvedas de Obsidian**: Exportar e importar automáticamente notas de campaña, PNJs y lore hacia una carpeta compatible con Obsidian.
 - **PROP-172: Purga Inteligente de Respuestas Alternativas (Swipes) Antiguas**: Comprimir o descartar swipes de mensajes antiguos para reducir el peso de los archivos JSONL.
-- **PROP-173: Persistencia de Historiales de Tiradas de Dados**: Registro histórico de todas las tiradas de dados efectuadas en la campaña con marcas de tiempo.
+- 🟡 **PROP-173: Persistencia de Historiales de Tiradas de Dados**: Registro histórico de todas las tiradas de dados efectuadas en la campaña con marcas de tiempo.
 - **PROP-174: Copias de Seguridad Incrementales Cada N Minutos**: Guardar instantáneas delta en segundo plano para minimizar pérdidas en caso de apagón.
 - **PROP-175: Optimización de Almacenamiento en Tarjetas PNG**: Emplear compresión Oxipng / Pngquant para reducir el tamaño de las tarjetas de personaje sin degradar calidad.
 - **PROP-176: Monitor de Salud del Sistema de Archivos**: Alerta en la interfaz si el disco duro tiene menos del 5% de espacio disponible.
@@ -255,26 +323,48 @@ Las propuestas están organizadas en 10 áreas estratégicas de 20 propuestas ca
 
 ## Área 10: Ecosistema de Extensiones, DevOps & Testing (PROP-181 a PROP-200)
 
-- **PROP-181: Suite Completa de Tests Unitarios con Jest para Reglas D&D**: Cobertura al 100% de cálculos de modificadores, AC, capacidades de carga y consumibles.
-- **PROP-182: Tests End-to-End (E2E) con Playwright**: Pruebas automáticas de navegación: abrir grupo, equipar un arma, mover un token en el mapa y enviar un mensaje.
+- ✅ **PROP-181: Suite Completa de Tests Unitarios con Jest para Reglas D&D**: Cobertura al 100% de cálculos de modificadores, AC, capacidades de carga y consumibles.
+- 🟡 **PROP-182: Tests End-to-End (E2E) con Playwright**: Pruebas automáticas de navegación: abrir grupo, equipar un arma, mover un token en el mapa y enviar un mensaje.
 - **PROP-183: SDK Formal para Desarrolladores de Extensiones**: Publicar `@sillytavern/sdk` con tipos TypeScript y métodos oficiales para evitar parches al código del núcleo.
-- **PROP-184: Pipeline de Integración Continua (CI) en GitHub Actions**: Ejecutar linter, formateador Prettier y tests unitarios en cada Pull Request.
+- ✅ **PROP-184: Pipeline de Integración Continua (CI) en GitHub Actions**: Ejecutar linter, formateador Prettier y tests unitarios en cada Pull Request.
 - **PROP-185: Contenedor Docker Multi-Etapa (Multi-Stage Build)**: Imagen Docker ligera y segura de menos de 150 MB basada en Alpine Linux.
 - **PROP-186: Entorno de Desarrollo Aislado con DevContainers**: Configuración `.devcontainer/` para arrancar en VS Code con todas las herramientas preinstaladas.
-- **PROP-187: Marketplace Comunitario de Módulos y Campañas**: Repositorio centralizado dentro de la UI para instalar campañas, monstruos y mapas en un clic.
+- ⛔ **PROP-187: Marketplace Comunitario de Módulos y Campañas**: Repositorio centralizado dentro de la UI para instalar campañas, monstruos y mapas en un clic.
 - **PROP-188: Hooks de Pre-commit con Husky**: Bloquear commits que no superen las reglas de ESLint o que contengan claves de API en el código fuente.
 - **PROP-189: Generador Automático de Documentación de API con TypeDoc**: Compilar automáticamente la documentación técnica de todos los módulos en cada versión.
-- **PROP-190: Telemetría de Errores Local y Anónima**: Registro estructurado de caídas y excepciones en `error.log` para facilitar el soporte técnico.
+- 🟡 **PROP-190: Telemetría de Errores Local y Anónima**: Registro estructurado de caídas y excepciones en `error.log` para facilitar el soporte técnico.
 - **PROP-191: Servidor Mock de LLM para Desarrollo sin Consumo de API**: Servidor simulado local que responda con tokens sintéticos para programar sin gastar saldo.
 - **PROP-192: Soporte para Hot Reload en Módulos de Frontend**: Recargar módulos JS modificados sin refrescar la página completa del navegador.
-- **PROP-193: Despliegue con un Solo Clic en Servicios Cloud (Render, Railway)**: Botones "Deploy to Cloud" con variables de entorno preconfiguradas.
-- **PROP-194: Verificación de Tipos Automática en CI (`tsc --noEmit`)**: Comprobar la coherencia estática del código en cada integración.
+- ⛔ **PROP-193: Despliegue con un Solo Clic en Servicios Cloud (Render, Railway)**: Botones "Deploy to Cloud" con variables de entorno preconfiguradas.
+- ✅ **PROP-194: Verificación de Tipos Automática en CI (`tsc --noEmit`)**: Comprobar la coherencia estática del código en cada integración.
 - **PROP-195: Herramienta de Benchmarking de Tokens**: Script de pruebas que mida la velocidad de procesamiento de promts y renderizado de texto.
 - **PROP-196: Guía Oficial de Contribución para el Motor RPG**: Documentar las convenciones de nombres y estándares para creadores de contenido de rol.
 - **PROP-197: Plantilla de Creación de Nuevas Extensiones**: Generador CLI (`npm run create-extension`) con boilerplate listo para programar.
-- **PROP-198: Pruebas de Carga para Modo Multi-Usuario**: Scripts de estrés con K6 que simulen 50 usuarios simultáneos en el servidor Express.
+- ⛔ **PROP-198: Pruebas de Carga para Modo Multi-Usuario**: Scripts de estrés con K6 que simulen 50 usuarios simultáneos en el servidor Express.
 - **PROP-199: Compatibilidad Garantizada con Node.js 22 LTS y 24**: Pruebas continuas en las versiones más modernas de Node.js.
 - **PROP-200: Canal de Actualizaciones Automáticas dentro de la Aplicación**: Notificación de nuevas versiones del fork con registro de cambios (changelog) visual y botón de actualización asistida.
+
+---
+
+## Anexo: Propuestas Propias (N-01 a N-13)
+
+Propuestas que **no están** en las 200. Las ocho primeras salieron de leer el código antes de planificar; el resto, de lo que salió mal al construir. Llevan `N-xx` para no confundirlas con las `PROP-xxx`. Las marcas son las de arriba; **—** significa sin decisión.
+
+| ID | Propuesta | Marca | Estado |
+| :--- | :--- | :---: | :--- |
+| **N-01** | **El estado del mundo no es la narración.** Un almacén canónico (HP, posición, inventario, banderas de misión) del que la narración se *renderiza*, sin que el modelo sea nunca la autoridad. `PROP-135` es un caso particular. | 🟡 | Es el principio de [[ROADMAP]] §0 y rige el combate y los vínculos. El estado narrativo lo sigue pudiendo escribir el modelo con las herramientas `dnd_*`. |
+| **N-02** | **Tests de fichero dorado del prompt compilado.** Congelar el prompt como snapshot en CI, para que un cambio en Dynamic Context que lo altere en silencio haga fallar la build. | 🔵 | T5. Necesita antes T3, la vista previa del prompt. |
+| **N-03** | **Reconciliar el contador de tokens con el del proveedor.** Comparar la estimación con el uso real que devuelve la API y mostrar la deriva. | 🔵 | T4. |
+| **N-04** | **Turnos transaccionales.** Si un turno se corta a mitad, ¿se aplicó el daño o no? Los cambios de estado se confirman solo con el turno completo. | — | Sin planificar. El motor determinista aplica cada acción al instante; importaría si el modelo llegara a escribir estado. |
+| **N-05** | **Repetición determinista de turno.** Reejecutar un turno con el mismo contexto y semilla para ver si un cambio de prompt mejoró algo. | 🔵 | T6. |
+| **N-06** | **Registro de contradicciones.** Generaliza `PROP-111`: tras cada turno, comparar la narración con el estado (HP, ubicación, quién está presente) y registrar los desajustes. | 🔵 | T7. |
+| **N-07** | **Sanear en la entrada, no en la salida.** Normalizar y validar los datos de world-info al cargarlos o importarlos, para que el resto del código pueda confiar en ellos. | 🟡 | Aplicado en el motor nuevo: cada módulo normaliza lo que lee. No en el world-info existente. |
+| **N-08** | **Presupuesto de merge como métrica.** Un script que falle si un commit toca un archivo de upstream sin justificarlo. | — | Sin hacer: la disciplina sigue siendo una regla escrita, no una comprobación. |
+| **N-09** | **Recorrido en navegador real con servidor aislado.** Un guion (Playwright + Edge) que levante su propio servidor con datos temporales y recorra los flujos: crear campaña, abrir una puerta, pelear, cerrar el chat. | ✅ | `tools/e2e-campaign.mjs`, 17 comprobaciones. En su primera ejecución encontró dos defectos que ningún test veía: no se podía abandonar un combate, y ninguna campaña nueva podía iniciar uno. |
+| **N-10** | **Detector de módulos sin conectar.** Un script que liste los módulos de `game-engine/` que nada importa fuera de los tests. Convierte «hecho y probado» en «hecho, probado y usado» mediante una comprobación en lugar de una impresión. | ✅ | `tools/check-engine-wiring.mjs`. Informa, no falla: un módulo puede estar esperando su interfaz. Hoy dice 14 de 19 conectados. |
+| **N-11** | **Canal explícito jugador / modelo.** Un único punto para publicar mensajes del juego que obligue a elegir si son *solo para el jugador* (mensaje de sistema, filtrado del prompt) o *también para el modelo* (mensaje de narrador), con tests que fijen el `is_system` de cada uno. | ✅ | `game-engine/ui/chat-channel.js`. Sus tests preguntan si el modelo lo lee, no qué bandera lleva. En `party.js` conviven `postCombatNarration` y `postForModel`, con nombres que no se confunden. |
+| **N-12** | **Plantillas de campaña como datos.** Cargar las plantillas del asistente desde datos (un JSON o un lorebook) y no desde constantes de JavaScript, con el mismo criterio que el paquete de reglas (C1): validadas, migrables y exportables. | — | Es tu requisito de «añadir sin tocar código» aplicado al inicio de partida. Hoy añadir una plantilla exige editar `starter-templates.js` (POR_HACER #21). |
+| **N-13** | **Un comando para salir de cualquier estado.** `/combat-stop` apareció porque no había forma de abandonar un combate salvo ganarlo o morir. La pregunta general — *¿cómo se sale de esto?* — conviene hacérsela a cada estado nuevo que el juego pueda tener. | 🟡 | Hecho para el combate. Sin revisar para el resto. |
 
 ---
 
@@ -282,3 +372,6 @@ Las propuestas están organizadas en 10 áreas estratégicas de 20 propuestas ca
 - [[HOME]]: Portal principal de la Wiki.
 - [[PROBLEMAS_TECNICOS]]: Diagnóstico detallado que motiva muchas de estas propuestas.
 - [[Guia-Desarrollo-Flujo]]: Pautas para implementar estas mejoras en el flujo de trabajo.
+- [[ROADMAP]]: El plan que selecciona y ordena las propuestas que se van a hacer.
+- [[POR_HACER]]: Lo que falta, ordenado por lo que desbloquea.
+- [[PROPUESTA_JUEGO_DND_GLOOMHAVEN_PERSONA]]: Diseño de juego del que salen las propuestas de combate, vínculos y lienzo blanco.

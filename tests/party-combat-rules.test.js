@@ -1,5 +1,6 @@
 import { afterEach, describe, test, expect, jest } from '@jest/globals';
 import {
+    describeCover,
     rollDice,
     rollDiceDetailed,
     getRollClassification,
@@ -308,5 +309,27 @@ describe('combat encounter shape', () => {
         expect(result.turnState).toEqual({
             actorId: '7', isEnemy: true, movementSpentFeet: 15, actionUsed: false,
         });
+    });
+});
+
+// Cover used to be decorative: the terrain knew a cell granted +2 AC and the attack
+// never asked. These lock the note that tells the player why a roll missed.
+describe('describeCover', () => {
+    test('says nothing when the target has no cover', () => {
+        expect(describeCover(0)).toBe('');
+    });
+
+    test('names half cover and its bonus', () => {
+        expect(describeCover(2)).toBe(' (incluye +2 por cobertura media)');
+    });
+
+    test('names three-quarters cover and its bonus', () => {
+        expect(describeCover(5)).toBe(' (incluye +5 por cobertura 3/4)');
+    });
+
+    test('a negative or junk bonus is treated as no cover, never as a penalty', () => {
+        for (const value of [-2, null, undefined, NaN, 'dos']) {
+            expect(describeCover(value)).toBe('');
+        }
     });
 });

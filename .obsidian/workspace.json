@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "wiki/POR_HACER.md",
+                "file": "wiki/PROPUESTAS_MEJORA.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "POR_HACER"
+              "title": "PROPUESTAS_MEJORA"
             }
           }
         ]
@@ -99,7 +99,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "wiki/POR_HACER.md",
+                "file": "wiki/PROPUESTAS_MEJORA.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -118,7 +118,7 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "wiki/POR_HACER.md",
+                "file": "wiki/PROPUESTAS_MEJORA.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
@@ -161,7 +161,7 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "wiki/POR_HACER.md",
+                "file": "wiki/PROPUESTAS_MEJORA.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
@@ -190,17 +190,21 @@
   },
   "active": "e4a815deb0fecab8",
   "lastOpenFiles": [
+    "HOME.md",
+    "node_modules/eslint-plugin-jest/README.md",
+    "wiki/PROBLEMAS_TECNICOS.md",
+    "CONTRIBUTING.md",
+    "wiki/POR_HACER.md",
+    "tests/node_modules/playwright/index.js",
+    "tests/node_modules/playwright/test.js",
+    "tests/node_modules/@playwright/test/index.js",
+    "tools/e2e-campaign.mjs",
+    "tools/check-engine-wiring.mjs",
+    "tests/game-engine-chat-channel.test.js",
+    "public/scripts/game-engine/ui/chat-channel.js",
     "data/default-user/backups/settings_default-user_20260921-081638.json",
     "data/default-user/backups/chat_default_assistant_20260921-081415.jsonl",
     "data/default-user/backups/chat_default_assistant_20260921-081405.jsonl",
-    "data/default-user/backups/chat_default_assistant_20260921-081355.jsonl",
-    "data/default-user/backups/chat_default_assistant_20260921-080656.jsonl",
-    "data/_cache/characters/efe20e179bc78bfcec62ca607566776703d5b7badac673c8e74a6ebeef8674e3",
-    "data/default-user/chats/default_Assistant/Assistant - 2026-09-21@08h06m46s454ms.jsonl",
-    "data/default-user/backups/chat_default_assistant_20260921-080646.jsonl",
-    "tests/game-engine-campaign-worlds.test.js",
-    "public/scripts/game-engine/campaign/campaign-worlds.js",
-    "public/scripts/party.js.tmp.56780.c4561e127329",
     "node_modules/cheerio-select/README.md",
     "node_modules/append-field/README.md",
     "node_modules/compressible/README.md",
@@ -230,11 +234,7 @@
     "data/default-user/thumbnails/bg/landscape beach day.png",
     "public/css/!USER-CSS-README.md",
     "wiki/ROADMAP.md",
-    "wiki/POR_HACER.md",
     "wiki/PROPUESTA_JUEGO_DND_GLOOMHAVEN_PERSONA.md",
-    "wiki/HOME.md",
-    "node_modules/end-of-stream/README.md",
-    "node_modules/cacheable-request/README.md",
-    "node_modules/cacheable-lookup/README.md"
+    "wiki/HOME.md"
   ]
 }

@@ -222,3 +222,11 @@
     .sandbox-layout { flex-direction: column; }
     .sandbox-side { flex: 1 1 auto; max-width: none; width: 100%; }
 }
+
+/* The same panel mounted under the real board, not only inside /sandbox. The board
+   above it can be tall, so the log keeps its own scroll and a little breathing room. */
+#world_location_maps_list .combat-log-panel {
+    margin: 10px 0 4px;
+    width: 100%;
+    box-sizing: border-box;
+}

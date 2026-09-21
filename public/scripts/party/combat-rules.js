@@ -13,6 +13,22 @@ import { getAbilityModifier } from '../dnd-system.js';
 /** @typedef {import('./types.js').PartyMember} PartyMember */
 
 /**
+ * How a cover bonus reads in the combat log, or nothing when there is none.
+ *
+ * Cover that changes a roll without saying so looks like a bug to a player counting on
+ * their fingers, and this engine's whole claim is that any result can be audited.
+ *
+ * @param {number} coverBonus
+ * @returns {string}
+ */
+export function describeCover(coverBonus) {
+    const bonus = Number(coverBonus) || 0;
+    if (bonus <= 0) return '';
+    const label = bonus >= 5 ? 'cobertura 3/4' : 'cobertura media';
+    return ` (incluye +${bonus} por ${label})`;
+}
+
+/**
  * @param {string} formula
  * @param {number} [fallbackSides=20]
  */

@@ -2,7 +2,8 @@ import { t } from './i18n.js';
 import { power_user } from './power-user.js';
 import { POPUP_TYPE, POPUP_RESULT, Popup } from './popup.js';
 import { sendSystemMessage, system_message_types } from './system-messages.js';
-import { getThumbnailUrl, chat, chat_metadata, saveMetadata, eventSource, event_types, setUserName } from '../script.js';
+import { getThumbnailUrl, chat, chat_metadata, saveMetadata, eventSource, event_types, setUserName, addOneMessage, saveChatConditional, substituteParams, system_avatar } from '../script.js';
+import { getMessageTimeStamp } from './RossAscends-mods.js';
 import { getCurrentWorldMapUrl, getCurrentWorldLocationMaps, getCurrentWorldBoards, getCurrentWorldEnemies, getCurrentWorldNPCs, loadWorldInfo, saveWorldInfo, METADATA_KEY } from './world-info.js';
 import { renderWorldMapView, renderLocationView } from './world-map-renderer.js';
 import { SlashCommandParser } from './slash-commands/SlashCommandParser.js';
@@ -21,20 +22,25 @@ import {
 } from './dnd-system.js';
 import { escapeHtml } from './utils.js';
 import {
-    rollDiceDetailed, getRollClassification, getRollClassificationLabel,
-    getDistanceInFeet, getAttackRangeFeet,
+    rollDice, rollDiceDetailed, getRollClassification, getRollClassificationLabel,
+    getDistanceInFeet, getAttackRangeFeet, describeCover,
     getPlayerDamageFormula, getEnemyDamageFormula, getPlayerAttackModifier,
     createEmptyCombatEncounter, normalizeCombatEncounter,
 } from './party/combat-rules.js';
 import { escItemText, buildPartyItemSections } from './party/item-forms.js';
 import { resolveEntryMapPosition } from './party/positions.js';
 import {
-    normalizeTerrain, setCell as setTerrainCell, getTerrainOptions,
+    normalizeTerrain, setCell as setTerrainCell, getTerrainOptions, getCoverBonus, setDoorOpen,
 } from './game-engine/board/terrain.js';
 import { getReachableCells } from './game-engine/board/pathfinding.js';
 import { createEmptyFog, normalizeFog, updateFog } from './game-engine/board/fog-of-war.js';
 import { planEnemyTurn } from './game-engine/combat/enemy-ai.js';
-import { buildEpiloguePrompt } from './game-engine/ui/combat-log.js';
+import {
+    buildEpiloguePrompt, createCombatLogPanel, renderCombatLog, setRound,
+    rollEntry, lineToEntry, append as appendLogEntry,
+} from './game-engine/ui/combat-log.js';
+import { buildGameMessage, CHANNEL } from './game-engine/ui/chat-channel.js';
+import { guardRolls, guardImpossibleRolls, describeCorrections } from './game-engine/combat/roll-guard.js';
 
 /** @typedef {import('./party/types.js').PartyMember} PartyMember */
 /** @type {PartyMember[]} */
@@ -76,7 +82,7 @@ async function savePartyToMetadata() {
         console.log('Clearing locked chat persona because active party exists', { persona: chat_metadata.persona });
         delete chat_metadata.persona;
     }
-    chat_metadata['party'] = JSON.parse(JSON.stringify(partyMembers));
+    chat_metadata.party = JSON.parse(JSON.stringify(partyMembers));
     console.log('savePartyToMetadata saving party to chat_metadata', { partyMembers, chat_metadata });
     try {
         await saveMetadata();
@@ -517,7 +523,7 @@ function renderPartyMembers() {
 
     if (partyMembers.length === 0) {
         list.append(
-            `<div class="flex-container alignitemscenter justifyCenter padding10"><small data-i18n="No party members.">No party members.</small></div>`
+            '<div class="flex-container alignitemscenter justifyCenter padding10"><small data-i18n="No party members.">No party members.</small></div>',
         );
         return;
     }
@@ -546,7 +552,7 @@ function renderPartyMembers() {
                         </div>
                     </div>
                 </div>
-            </div>`
+            </div>`,
         );
 
         card.find('.party-card-remove').on('click', (event) => {
@@ -983,15 +989,154 @@ function buildDragHighlightCells(tokenId, tentGX, tentGY, gridW, gridH) {
 }
 
 /**
- * Send a compact combat narration line to chat.
+ * The combat log shown beside the board.
+ *
+ * Session state on purpose: the log is a read-out of a fight in progress, and the fight
+ * itself already lives in the encounter. Writing 300 entries into the world info on every
+ * swing would grow the saved campaign for something nobody reads twice. A reload starts
+ * a fresh log, and the chat still holds every line.
+ *
+ * @type {import('./game-engine/ui/combat-log.js').LogEntry[]}
+ */
+let combatLogEntries = [];
+
+/** The mounted panel, when the board is on screen. Null when it is not. */
+let combatLogPanel = null;
+
+/**
+ * Adds an entry to the log and repaints it if it is visible.
+ * @param {import('./game-engine/ui/combat-log.js').LogEntry|null} item
+ */
+function pushCombatLogEntry(item) {
+    if (!item) return;
+    combatLogEntries = appendLogEntry(combatLogEntries, item);
+    if (combatLogPanel) renderCombatLog(combatLogPanel, combatLogEntries);
+}
+
+/**
+ * Mirrors a narration line into the log, one entry per line.
+ * @param {string} text
+ */
+function pushCombatLogLines(text) {
+    for (const line of String(text ?? '').split('\n')) {
+        pushCombatLogEntry(lineToEntry(line));
+    }
+}
+
+/** Where the guard's mode lives, so it travels with the campaign. */
+const ROLL_GUARD_KEY = 'rollGuardMode';
+
+/**
+ * How strictly the engine polices dice the model writes.
+ *
+ * `impossible` is the default because its corrections are never debatable: a 1d20+5
+ * cannot total 30, whoever wrote it. `strict` hands every die to the engine, which is
+ * the stronger reading of "the model narrates, the engine decides", at the price of
+ * overriding totals that were fine.
+ *
+ * @returns {'off'|'impossible'|'strict'}
+ */
+function getRollGuardMode() {
+    const mode = chat_metadata?.[ROLL_GUARD_KEY];
+    return (mode === 'off' || mode === 'strict') ? mode : 'impossible';
+}
+
+/**
+ * Corrects fabricated dice totals in a message the model just produced.
+ *
+ * @param {number} messageId
+ */
+function applyRollGuard(messageId) {
+    const mode = getRollGuardMode();
+    if (mode === 'off') return;
+
+    const message = chat[messageId];
+    if (!message || message.is_user || message.is_system || !message.mes) return;
+    // Lines this engine wrote are already the engine's own rolls.
+    if (message.extra?.model === 'game-engine') return;
+
+    const guard = mode === 'strict' ? guardRolls : guardImpossibleRolls;
+    const result = guard(message.mes, (/** @type {string} */ formula) => rollDice(formula, 20));
+    if (result.corrections.length === 0) return;
+
+    message.mes = result.text;
+    postCombatNarration(describeCorrections(result.corrections) || '');
+}
+
+/**
+ * Armour class of a target, including the cover its cell grants.
+ *
+ * Cover is a property of where you stand, so the bonus comes from the target's own cell —
+ * the same rule `getCoverBonus` documents. It is a simplification of D&D 5e, where cover
+ * depends on the line between attacker and target; doing it properly needs the attacker's
+ * position and a traced line, and that can be added later without moving this call site.
+ *
+ * A board with no terrain yields zero, so every existing board plays exactly as before.
+ *
+ * @param {{armorClass?: number|null, gridX?: number, gridY?: number, mapPosition?: {gridX?: number, gridY?: number}|null}} target
+ * @returns {{ac: number, cover: number}}
+ */
+function getTargetArmorClass(target) {
+    const base = Number(target?.armorClass) || 10;
+    const x = Number(target?.gridX ?? target?.mapPosition?.gridX);
+    const y = Number(target?.gridY ?? target?.mapPosition?.gridY);
+
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return { ac: base, cover: 0 };
+
+    const cover = Number(getCoverBonus(getActiveBoardTerrain(), x, y)) || 0;
+    return { ac: base + cover, cover };
+}
+
+/**
+ * Send a compact combat narration line to chat, for the player only.
+ *
+ * System messages are stripped from the prompt, so every line posted here is free. That
+ * is deliberate for the blow-by-blow: the engine already decided it, and paying the model
+ * to re-read it would buy nothing. Anything the model has to know goes through
+ * postForModel instead.
+ *
  * @param {string} text
  */
 function postCombatNarration(text) {
     if (typeof text !== 'string' || !text.trim()) return;
+    pushCombatLogLines(text);
     sendSystemMessage(system_message_types.GENERIC, text.trim(), {
         isSmallSys: true,
         isNarrator: true,
     });
+}
+
+/**
+ * Post a line the model must actually read.
+ *
+ * The counterpart of postCombatNarration, and the reason chat-channel.js exists: the
+ * combat epilogue used to go out as a system message, which meant the player saw it and
+ * the model never did. No error, no failing test, just a prompt that was silently missing
+ * the only summary of the fight.
+ *
+ * This does not start a generation. The message sits in the chat and enters the prompt on
+ * the player's next turn, so a finished combat still costs nothing by itself.
+ *
+ * @param {string} text
+ * @returns {Promise<void>}
+ */
+async function postForModel(text) {
+    if (typeof text !== 'string' || !text.trim()) return;
+
+    const message = buildGameMessage({
+        text: substituteParams(text.trim()),
+        channel: CHANNEL.MODEL,
+        name: chat_metadata?.narrator_name || 'Narrador',
+        avatar: system_avatar,
+        timestamp: getMessageTimeStamp(),
+        compact: true,
+    });
+
+    chat.push(message);
+    await eventSource.emit(event_types.MESSAGE_RECEIVED, chat.length - 1, 'game-engine');
+    addOneMessage(message);
+    await eventSource.emit(event_types.CHARACTER_MESSAGE_RENDERED, chat.length - 1, 'game-engine');
+    await saveChatConditional();
 }
 
 /**
@@ -1191,6 +1336,16 @@ function queueCombatDiceRoll(payload) {
  */
 function showCombatDiceRoll({ title, subtitle, formula, detail, total, dc = null, natural = null, glyph = 'd20' }) {
     const classification = getRollClassification(natural, total, dc);
+
+    // The log gets the breakdown, not the prose: seeing "1d20+5 · 17 · vs 15" is what
+    // lets a player audit a resolver nobody is supervising.
+    pushCombatLogEntry(rollEntry(
+        String(title || ''),
+        { formula: String(formula || ''), rolls: [], total: Number(total) || 0, natural },
+        dc == null ? null : Number(dc),
+        String(subtitle || ''),
+    ));
+
     queueCombatDiceRoll({
         title,
         subtitle,
@@ -1334,7 +1489,7 @@ function resolveEnemyTurnAction(turnEntry) {
         getAbilityModifier(enemy.dexterity || 10),
     );
     const attackTotal = d20 + attackMod;
-    const targetAc = Number(target.armorClass) || 10;
+    const { ac: targetAc, cover: targetCover } = getTargetArmorClass(target);
     const isCrit = d20 === 20;
     const isHit = isCrit || attackTotal >= targetAc;
 
@@ -1350,7 +1505,7 @@ function resolveEnemyTurnAction(turnEntry) {
     });
 
     lines.push(`👹 ${enemy.name} ataca a ${target.name}.`);
-    lines.push(`🎲 Tirada de ataque: d20(${d20}) ${attackMod >= 0 ? '+' : ''}${attackMod} = ${attackTotal} vs AC ${targetAc}`);
+    lines.push(`🎲 Tirada de ataque: d20(${d20}) ${attackMod >= 0 ? '+' : ''}${attackMod} = ${attackTotal} vs AC ${targetAc}${describeCover(targetCover)}`);
 
     if (!isHit) {
         lines.push('❌ Resultado: fallo.');
@@ -1484,6 +1639,10 @@ function runCombatTurnLoop(includeCurrent = true) {
  * @returns {string} Initiative order summary string
  */
 function startCombat(template, count, gridWidth = 50, gridHeight = 50) {
+    // A new fight starts with an empty log: the last one's blow-by-blow is already in
+    // the chat, and leaving it here would read as if it were still happening.
+    combatLogEntries = [];
+
     /** @type {import('./dnd-system.js').EnemyInstance[]} */
     const newEnemies = [];
     for (let i = 0; i < count; i++) {
@@ -1558,27 +1717,21 @@ function endCombat(reason = 'ended') {
     // of the prompt (script.js: chat.filter(x => !x.is_system)). So the model never saw
     // the fight at all. This is the one line that tells it what happened — condensed on
     // purpose, because it is also the only part of a combat that costs anything.
+    //
+    // It goes out through postForModel, not postCombatNarration: sending it as a system
+    // message, as this did until 2026-09-21, meant the model never received it either.
     const epilogue = buildEpiloguePrompt([], {
         rounds: Number(combatEncounter.round) || 1,
         victory: reason === 'victory',
+        abandoned: reason === 'manual',
         survivors: partyMembers.filter(m => (m.hp || 0) > 0).map(m => m.name),
         defeated: combatEncounter.enemies.filter(e => (e.currentHp || 0) <= 0).map(e => e.name),
     });
-    postCombatNarration(`📜 [COMBAT] Resumen para la narración:\n${epilogue}`);
+    postForModel(epilogue).catch(error => console.error('[party] could not post the combat epilogue', error));
 
     combatEncounter = createEmptyCombatEncounter();
     combatBoardSelection = { tokenId: null, boardName: '', locationName: '' };
     saveCombatState();
-}
-
-/**
- * Advance to the next turn in combat.
- * @returns {import('./dnd-system.js').TurnEntry|null} The new current turn entry
- */
-function nextTurn() {
-    const entry = advanceTurnIndex();
-    saveCombatState();
-    return entry;
 }
 
 /**
@@ -1872,7 +2025,7 @@ function handlePlayerCombatAttack(rawTargetName) {
     const attackMod = getPlayerAttackModifier(member, rangeFeet);
     const attackRoll = rollDiceDetailed('1d20', 20);
     const attackTotal = attackRoll.total + attackMod;
-    const targetAc = Number(target.armorClass) || 10;
+    const { ac: targetAc, cover: targetCover } = getTargetArmorClass(target);
     const isCrit = attackRoll.natural === 20;
     const isHit = isCrit || attackTotal >= targetAc;
 
@@ -1889,7 +2042,7 @@ function handlePlayerCombatAttack(rawTargetName) {
 
     const lines = [];
     lines.push(`🗡️ ${member.name} ataca a ${target.name}.`);
-    lines.push(`🎲 Tirada de ataque: d20(${attackRoll.total}) ${attackMod >= 0 ? '+' : ''}${attackMod} = ${attackTotal} vs AC ${targetAc}`);
+    lines.push(`🎲 Tirada de ataque: d20(${attackRoll.total}) ${attackMod >= 0 ? '+' : ''}${attackMod} = ${attackTotal} vs AC ${targetAc}${describeCover(targetCover)}`);
 
     turnState.actionUsed = true;
 
@@ -2082,6 +2235,9 @@ function renderLocationMapsPreview() {
     if (!container.length) return;
 
     container.empty();
+    // The panel about to be discarded with the rest of the view. Re-mounted below if the
+    // board is what gets drawn; anything else leaves the log without a place to render.
+    combatLogPanel = null;
 
     const shell = $('<div class="wm-location-shell"></div>');
     const toolbar = $(`
@@ -2272,6 +2428,14 @@ function renderLocationMapsPreview() {
                 persistBoardTerrain(selectedBoard);
                 renderLocationMapsPreview();
             },
+            // Opening a door changes what can be walked through and what can be seen, so
+            // the board is redrawn: fog is recomputed from the new terrain on the way.
+            onDoorToggle: (gx, gy, open) => {
+                selectedBoard.terrain = setDoorOpen(normalizeTerrain(selectedBoard.terrain), gx, gy, open);
+                persistBoardTerrain(selectedBoard);
+                postCombatNarration(`🚪 [BOARD] La puerta de (${gx + 1}, ${gy + 1}) queda ${open ? 'abierta' : 'cerrada'}.`);
+                renderLocationMapsPreview();
+            },
             tokens: allBoardTokens,
             onTokenClick: (tokenId) => handleCombatTokenClick(tokenId),
             selectedTokenId: tacticalState.selectedTokenId,
@@ -2328,6 +2492,17 @@ function renderLocationMapsPreview() {
                 renderLocationMapsPreview();
             });
             boardPanel.append(editButton);
+        }
+
+        // ---- Combat log (wiki/ROADMAP.md, Fase B4) ----
+        // Beside the real board now, not only inside /sandbox. It appears once there is
+        // something to show, so a quiet board is not covered by an empty panel.
+        if (combatEncounter.active || combatLogEntries.length > 0) {
+            const logPanel = createCombatLogPanel({ title: 'Registro de combate' });
+            contentRoot.append(logPanel);
+            combatLogPanel = logPanel;
+            renderCombatLog(logPanel, combatLogEntries);
+            setRound(logPanel, combatEncounter.active ? (Number(combatEncounter.round) || 1) : 0);
         }
 
         // ---- Combat UI section ----
@@ -2388,7 +2563,7 @@ async function openPartyMemberModal(member) {
     const m = migratePartyMember(member);
     Object.assign(member, m);
 
-    const popupContent = $(`<div class="dnd-modal"></div>`);
+    const popupContent = $('<div class="dnd-modal"></div>');
     const dndCatalog = await loadDndCatalog(getMemberWorldName(member));
 
     // ---- Tab bar ----
@@ -2848,7 +3023,7 @@ function showEquipSelector(panel, member, slot) {
     const eligibleItems = (member.items || []).filter(item => {
         if (item.slot !== slot) return false;
         // Check not already equipped
-        for (const [s, eqId] of Object.entries(member.equippedItems || {})) {
+        for (const eqId of Object.values(member.equippedItems || {})) {
             if (eqId === item.id) return false;
         }
         return true;
@@ -2861,7 +3036,7 @@ function showEquipSelector(panel, member, slot) {
 
     const html = eligibleItems.map(item => `
         <div class="dnd-item-card" data-item-id="${item.id}" style="cursor:pointer;">
-            ${item.image ? `<img class="dnd-item-img" src="${item.image}" />` : `<div class="dnd-item-img-placeholder"><i class="fa-solid fa-box"></i></div>`}
+            ${item.image ? `<img class="dnd-item-img" src="${item.image}" />` : '<div class="dnd-item-img-placeholder"><i class="fa-solid fa-box"></i></div>'}
             <div class="dnd-item-info">
                 <div class="dnd-item-name">${item.name}</div>
                 <div class="dnd-item-meta">${item.type} · ${item.weight} lbs</div>
@@ -3056,15 +3231,15 @@ function buildItemListSection(panel, member) {
             const metaText = buildItemMetaSummary(item).join(' · ');
             const card = $(`
                 <div class="dnd-item-card ${isEquipped ? 'equipped' : ''}" data-item-id="${item.id}">
-                    ${item.image ? `<img class="dnd-item-img" src="${item.image}" />` : `<div class="dnd-item-img-placeholder"><i class="fa-solid fa-box"></i></div>`}
+                    ${item.image ? `<img class="dnd-item-img" src="${item.image}" />` : '<div class="dnd-item-img-placeholder"><i class="fa-solid fa-box"></i></div>'}
                     <div class="dnd-item-info">
                         <div class="dnd-item-name">${item.name}${isEquipped ? ' <span style="color:#2dd4bf;font-size:0.7rem;">(equipped)</span>' : ''}</div>
                         <div class="dnd-item-meta">${metaText}${effectsText ? ' · ' + effectsText : ''}</div>
                     </div>
                     <div class="dnd-item-actions">
                         ${isEquipped
-                            ? '<button class="dnd-item-action-btn unequip-btn" title="Unequip"><i class="fa-solid fa-arrow-down"></i></button>'
-                            : (isEquippableSlot ? '<button class="dnd-item-action-btn equip-btn" title="Equip"><i class="fa-solid fa-arrow-up"></i></button>' : '')}
+        ? '<button class="dnd-item-action-btn unequip-btn" title="Unequip"><i class="fa-solid fa-arrow-down"></i></button>'
+        : (isEquippableSlot ? '<button class="dnd-item-action-btn equip-btn" title="Equip"><i class="fa-solid fa-arrow-up"></i></button>' : '')}
                         ${canUseConsumable ? '<button class="dnd-item-action-btn use-btn" title="Use"><i class="fa-solid fa-vial"></i></button>' : ''}
                         <button class="dnd-item-action-btn delete" title="Delete"><i class="fa-solid fa-trash-can"></i></button>
                     </div>
@@ -3457,7 +3632,6 @@ function buildProgressionTab(member, dndCatalog) {
         member.xpNext = Math.round(member.xpNext * 1.5);
 
         // Refresh the whole tab
-        const parent = panel.parent();
         const wasActive = panel.hasClass('active');
         const newPanel = buildProgressionTab(member, dndCatalog);
         panel.replaceWith(newPanel);
@@ -3639,7 +3813,7 @@ function buildRelationshipsTab(member) {
         let added = 0;
         for (const sug of suggestions) {
             const exists = (member.relationships || []).some(r =>
-                r.characterName.toLowerCase() === sug.characterName.toLowerCase()
+                r.characterName.toLowerCase() === sug.characterName.toLowerCase(),
             );
             if (!exists) {
                 member.relationships = member.relationships || [];
@@ -4280,7 +4454,7 @@ export function initPartyPanel() {
             const name = String(value).trim();
             console.log('[party] /enter called', { currentLocationName, name });
             if (!currentLocationName) {
-                toastr.warning(`Choose a location first (/go).`);
+                toastr.warning('Choose a location first (/go).');
                 return '';
             }
             const loc = getCurrentWorldLocationMaps().find(l => l.name === currentLocationName);
@@ -4424,7 +4598,7 @@ export function initPartyPanel() {
 
             const template = globalEnemies.find(e => e.id === rule.enemyId);
             if (!template) {
-                toastr.warning(`Enemy template not found in world enemy pool.`);
+                toastr.warning('Enemy template not found in world enemy pool.');
                 return '';
             }
 
@@ -4472,9 +4646,96 @@ export function initPartyPanel() {
 
     SlashCommandParser.addCommandObject(SlashCommand.fromProps({
         name: 'combat-end',
-        helpString: '<div>End the current player turn and advance combat.</div>',
+        helpString: '<div>End the current player turn and advance combat. '
+            + 'To leave the fight entirely, use <code>/combat-stop</code>.</div>',
         callback: () => endPlayerCombatTurn(),
     }));
+
+    // Until this existed, a fight could only be left by winning it or dying: there was no
+    // way out of an encounter started by mistake, and no way to reach the epilogue except
+    // through a body count.
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'combat-stop',
+        helpString: '<div>Abandona el combate en curso sin resolverlo. '
+            + 'Publica el resumen final igual que una victoria o una derrota.</div>',
+        callback: () => {
+            if (!combatEncounter.active) {
+                toastr.info('No hay ningun combate en curso.');
+                return '';
+            }
+            endCombat('manual');
+            renderLocationMapsPreview();
+            return 'combate abandonado';
+        },
+    }));
+
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'rollguard',
+        helpString: '<div>Controla la correccion de tiradas inventadas por el modelo. '
+            + '<code>/rollguard</code> muestra el modo actual. '
+            + '<code>/rollguard imposibles</code> corrige solo totales que los dados no pueden dar (por defecto). '
+            + '<code>/rollguard estricto</code> hace que el motor tire por todas. '
+            + '<code>/rollguard off</code> lo desactiva.</div>',
+        unnamedArgumentList: [
+            SlashCommandArgument.fromProps({
+                description: 'off | imposibles | estricto',
+                typeList: [ARGUMENT_TYPE.STRING],
+                isRequired: false,
+                enumList: [
+                    new SlashCommandEnumValue('off', 'No tocar nada'),
+                    new SlashCommandEnumValue('imposibles', 'Corregir solo lo imposible'),
+                    new SlashCommandEnumValue('estricto', 'El motor tira por todas'),
+                ],
+            }),
+        ],
+        callback: (_args, value) => {
+            const labels = {
+                off: 'desactivado',
+                impossible: 'solo corrige totales imposibles',
+                strict: 'el motor tira por todas las tiradas',
+            };
+            const raw = String(value ?? '').trim().toLowerCase();
+
+            if (!raw) {
+                const mode = getRollGuardMode();
+                toastr.info(`Guardian de tiradas: ${labels[mode]}.`);
+                return mode;
+            }
+
+            /** @type {Record<string, 'off'|'impossible'|'strict'>} */
+            const aliases = {
+                off: 'off', no: 'off', desactivado: 'off',
+                imposibles: 'impossible', impossible: 'impossible', posibles: 'impossible',
+                estricto: 'strict', strict: 'strict',
+            };
+            const mode = aliases[raw];
+            if (!mode) {
+                toastr.warning('Usa: off, imposibles o estricto.');
+                return getRollGuardMode();
+            }
+
+            chat_metadata[ROLL_GUARD_KEY] = mode;
+            saveMetadata();
+            toastr.success(`Guardian de tiradas: ${labels[mode]}.`);
+            return mode;
+        },
+    }));
+
+    // ================================================================
+    //  Dice claims the model made up
+    // ================================================================
+
+    // Runs before the message is rendered, so the player only ever sees the corrected
+    // text. Corrections are announced rather than applied quietly: a number that changes
+    // with no explanation is indistinguishable from a bug.
+    eventSource.on(event_types.MESSAGE_RECEIVED, (/** @type {number} */ messageId) => {
+        try {
+            applyRollGuard(messageId);
+        } catch (error) {
+            // A guard that breaks the chat is worse than a wrong die.
+            console.error('[party] roll guard failed', error);
+        }
+    });
 
     // ================================================================
     //  Auto-detect location / board names in user messages

@@ -113,7 +113,7 @@ export async function renderCampaignCards(container) {
     let html = buildNewCampaignCta(true);
     for (const world of worlds) {
         const coverStyle = world.coverImage
-            ? `background-image: url('${world.coverImage.replace(/'/g, "\\'")}'); background-size: cover; background-position: center;`
+            ? `background-image: url('${world.coverImage.replace(/'/g, '\\\'')}'); background-size: cover; background-position: center;`
             : '';
         const genreBadge = world.genre
             ? `<span class="campaign-genre">${escapeHtml(world.genre)}</span>`
@@ -248,7 +248,7 @@ async function showWorldPreviewPopup(worldName, worldMeta) {
 
     // Build header (title + genre only, no description)
     const coverStyle = coverImage
-        ? `background-image: url('${coverImage.replace(/'/g, "\\'")}'); background-size: cover; background-position: center;`
+        ? `background-image: url('${coverImage.replace(/'/g, '\\\'')}'); background-size: cover; background-position: center;`
         : '';
     const headerHtml = `
     <div class="wp-header" style="${coverStyle}">
@@ -322,7 +322,7 @@ async function showWorldPreviewPopup(worldName, worldMeta) {
 
     // Empty lore state
     if (!loreSections) {
-        loreSections = `<div class="wp-lore-empty"><i class="fa-solid fa-book-open fa-3x"></i><p>No lore content available yet.</p></div>`;
+        loreSections = '<div class="wp-lore-empty"><i class="fa-solid fa-book-open fa-3x"></i><p>No lore content available yet.</p></div>';
     }
 
     const lorePanelHtml = `<div class="wp-panel active" data-panel="Lore">${loreSections}</div>`;
@@ -545,7 +545,7 @@ async function showPickerGrid(worldData) {
     let gridHtml = '<div class="world-picker-grid">';
     for (const w of worldData) {
         const coverStyle = w.coverImage
-            ? `background-image: url('${w.coverImage.replace(/'/g, "\\'")}'); background-size: cover; background-position: center;`
+            ? `background-image: url('${w.coverImage.replace(/'/g, '\\\'')}'); background-size: cover; background-position: center;`
             : '';
         const genreBadge = w.genre ? `<span class="campaign-genre">${escapeHtml(w.genre)}</span>` : '';
         gridHtml += `
@@ -604,7 +604,7 @@ export async function bindPartyToChat(party) {
         return;
     }
     console.log('bindPartyToChat', { party });
-    chat_metadata['party'] = party;
+    chat_metadata.party = party;
     await saveMetadata();
 }
 

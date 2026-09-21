@@ -86,6 +86,59 @@ export function rollEntry(actor, roll, dc, label) {
 }
 
 /**
+ * The kind each combat line announces itself as, by its leading icon.
+ *
+ * The game has written its combat lines as text with an icon in front since before this
+ * log existed. Rather than rewrite every call site to build entries by hand, the icon is
+ * read as what it already is: a label. Data, so a rule pack can extend it later.
+ *
+ * @type {Array<[string, LogKind]>}
+ */
+const LINE_KINDS = [
+    ['⏳', 'round'],
+    ['🚶', 'move'],
+    ['⚔️', 'attack'],
+    ['👹', 'attack'],
+    ['🗡️', 'attack'],
+    ['❌', 'miss'],
+    ['✅', 'hit'],
+    ['💥', 'damage'],
+    ['❤️', 'info'],
+    ['☠️', 'down'],
+    ['💀', 'down'],
+    ['🏆', 'system'],
+    ['🏁', 'system'],
+    ['📜', 'system'],
+    ['🚪', 'info'],
+    ['💬', 'info'],
+];
+
+/** Lines already shown as a roll entry, so the log never says the same thing twice. */
+const SKIPPED_LINE_PREFIX = '🎲';
+
+/**
+ * Turns one line of combat narration into a log entry.
+ *
+ * @param {string} line
+ * @returns {LogEntry|null} Null when the line is empty or already logged as a roll.
+ */
+export function lineToEntry(line) {
+    const text = String(line ?? '').trim();
+    if (!text) return null;
+    if (text.startsWith(SKIPPED_LINE_PREFIX)) return null;
+
+    for (const [icon, kind] of LINE_KINDS) {
+        if (text.startsWith(icon)) {
+            // The tag the chat needs is noise in a panel already titled "Registro de combate".
+            const stripped = text.slice(icon.length).replace('[COMBAT]', '').trim();
+            return entry(kind, stripped || text);
+        }
+    }
+
+    return entry('info', text.replace('[COMBAT]', '').trim());
+}
+
+/**
  * Appends an entry, trimming the oldest once the log is full.
  * @param {LogEntry[]} entries
  * @param {LogEntry} next
@@ -216,14 +269,21 @@ export function setRound(panel, round) {
  * size. Blow-by-blow detail stays in the log, where it costs nothing.
  *
  * @param {LogEntry[]} entries
- * @param {{ rounds: number, victory: boolean, survivors: string[], defeated: string[], killingBlow?: {actor: string, target: string} }} outcome
+ * @param {{ rounds: number, victory: boolean, abandoned?: boolean, survivors: string[], defeated: string[], killingBlow?: {actor: string, target: string} }} outcome
  * @returns {string}
  */
 export function buildEpiloguePrompt(entries, outcome) {
-    const { rounds, victory, survivors = [], defeated = [], killingBlow } = outcome;
+    const { rounds, victory, abandoned = false, survivors = [], defeated = [], killingBlow } = outcome;
+
+    // Walking away is neither a win nor a defeat, and calling it one puts the model to
+    // work writing the wrong scene: the first real epilogue announced a party that was
+    // standing and unhurt as having been defeated.
+    const headline = abandoned
+        ? 'El grupo abandona el combate sin resolverlo.'
+        : victory ? 'El grupo ha ganado el combate.' : 'El grupo ha sido derrotado.';
 
     const lines = [
-        victory ? 'El grupo ha ganado el combate.' : 'El grupo ha sido derrotado.',
+        headline,
         `Duración: ${rounds} ronda${rounds === 1 ? '' : 's'}.`,
     ];
 

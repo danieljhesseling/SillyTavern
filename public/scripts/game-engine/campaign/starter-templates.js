@@ -245,6 +245,34 @@ export function buildWorldEntries(template, partyNames) {
 }
 
 /**
+ * Encounter rules for the starting board, given the id each monster entry ended up with.
+ *
+ * Separate from buildWorldMetadata because those ids do not exist yet when the metadata
+ * is built: a monster's id is the uid of its world-info entry, assigned on creation. The
+ * board was therefore written with an empty rule list, and /fight answered "enemy not
+ * found in encounter rules" on every campaign the wizard produced — a board with enemies
+ * defined and no way to fight them.
+ *
+ * @param {StarterTemplate} template
+ * @param {Record<string, string>} idsByName  Monster name to world-info entry id.
+ * @returns {Array<{enemyId: string, minCount: number, maxCount: number}>}
+ */
+export function buildEncounterRules(template, idsByName) {
+    /** @type {Array<{enemyId: string, minCount: number, maxCount: number}>} */
+    const rules = [];
+
+    for (const enemy of template.enemies) {
+        const enemyId = idsByName?.[enemy.name];
+        if (!enemyId) continue;
+        // A small, fixed spread: enough that two runs differ, few enough that a starter
+        // board stays winnable by two level-one characters.
+        rules.push({ enemyId: String(enemyId), minCount: 1, maxCount: 2 });
+    }
+
+    return rules;
+}
+
+/**
  * Options for a template picker.
  * @returns {Array<{id: string, name: string, description: string}>}
  */

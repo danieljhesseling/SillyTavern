@@ -2,6 +2,7 @@
 title: SillyTavern RPG Engine - Wiki Central & Hub de Conocimiento
 tags: [home, wiki, moc, silleytavern, rpg, dnd, obsidian, ai-agent, index]
 created: 2026-09-20
+updated: 2026-09-21
 author: DanielJHesseling / Antigravity AI
 ---
 
@@ -82,15 +83,15 @@ El núcleo de juego de rol agregado en la rama `my-silly` con más de 24,000 lí
 
 ### 4. 🔍 Auditoría Técnica, Calidad & Futuro
 Diagnóstico crítico y catálogo exhaustivo de propuestas de mejora:
-- [[PROBLEMAS_TECNICOS]]: **Auditoría profunda** con 15 hallazgos críticos de seguridad (XSS, CSP), desincronización de estado, cuellos de botella de memoria y ausencia de tests.
-- [[PROPUESTAS_MEJORA]]: **Catálogo de 200 propuestas técnicas estructuradas** en 10 áreas estratégicas (arquitectura, seguridad, D&D, VTT, agentes, UI/UX, bases de datos y DevOps).
-- [[PROPUESTA_JUEGO_DND_GLOOMHAVEN_PERSONA]]: **Propuesta de Motor Híbrido RPG** (Persona + Gloomhaven + D&D 5e): combate táctico algorítmico 0 tokens, social links con perks de combate, calendario y lienzo blanco de world building.
-- [[ROADMAP]]: **El plan de trabajo único.** Reconcilia la auditoría, el catálogo y el diseño de juego en 6 fases ordenadas por lo que desbloquean, más las transversales de economía de tokens. Cada fase termina en algo jugable.
-- [[POR_HACER]]: **Lista viva de pendientes**, ordenada por lo que desbloquea. Marca con 🖥️ las tareas que convierten motor construido en juego jugable.
+- [[PROBLEMAS_TECNICOS]]: **Auditoría profunda** con 15 hallazgos críticos de seguridad (XSS, CSP), desincronización de estado, cuellos de botella de memoria y ausencia de tests. Con el estado de cada hallazgo comprobado contra el código: 6 corregidos, 4 parciales y 5 abiertos.
+- [[PROPUESTAS_MEJORA]]: **Catálogo de 200 propuestas técnicas estructuradas** en 10 áreas estratégicas (arquitectura, seguridad, D&D, VTT, agentes, UI/UX, bases de datos y DevOps). Cada propuesta con novedad lleva su marca de estado, y el anexo recoge 12 propuestas propias.
+- [[PROPUESTA_JUEGO_DND_GLOOMHAVEN_PERSONA]]: **Propuesta de Motor Híbrido RPG** (Persona + Gloomhaven + D&D 5e): combate táctico algorítmico 0 tokens, social links con perks de combate, calendario y lienzo blanco de world building. Incluye el estado de cada pilar y las correcciones que la realidad impuso.
+- [[ROADMAP]]: **El plan de trabajo único.** Reconcilia la auditoría, el catálogo y el diseño de juego en 6 fases ordenadas por lo que desbloquean, más las transversales de economía de tokens. Cada fase termina en algo jugable. Empieza con *Dónde Estamos*: qué está hecho, qué está conectado al juego y qué falta.
+- [[POR_HACER]]: **Lista viva de pendientes**, ordenada por lo que desbloquea. Marca con 🖥️ las tareas que convierten motor construido en juego jugable. Incluye una prueba manual de dos minutos.
 
 ### 5. 🛠️ Guías de Desarrollo & Referencia Rápida
 Herramientas para desarrolladores y agentes de IA:
-- [[Mapa-Codigo-Archivos]]: Inventario detallado archivo por archivo que distingue entre el código base y los componentes del fork.
+- [[Mapa-Codigo-Archivos]]: Inventario archivo por archivo que distingue el código base de los componentes del fork, con `game-engine/`, `party/` y `tools/`, y qué está conectado al juego.
 - [[Guia-Desarrollo-Flujo]]: Manual para arrancar, depurar, extender clases, crear nuevos comandos y aplicar buenas prácticas.
 
 ---
@@ -109,9 +110,13 @@ Si eres un agente de IA interactuando con este repositorio, sigue estas directri
 | Decidir en qué trabajar a continuación | [[ROADMAP]] | Fases A a F |
 | Reducir el gasto en tokens | [[ROADMAP]] §1 y Transversales | `dynamic-context-manager.js` |
 | Añadir tipos de arma, daño o condiciones | [[ROADMAP]] Fase C | `game-engine/rules/default-ruleset.js` (son datos, no código) |
+| Cambiar cómo se empieza una campaña o añadir una plantilla | [[ROADMAP]] *El Asistente de Campaña* | `game-engine/ui/campaign-wizard.js`, `campaigns.js`, `game-engine/campaign/starter-templates.js` |
+| Probar el tablero o el combate sin montar una campaña | [[POR_HACER]] *Probarlo a mano* | `/sandbox` → `game-engine/ui/sandbox.js` |
 | Integrar cambios de upstream sin romper el fork | [[Guia-Desarrollo-Flujo]] §2 | `.vscode/settings.json` & `public/index.html` |
 | Entender cómo se inyectan los datos al LLM | [[Ciclo-De-Vida-Prompt]] | `public/script.js` (~línea 3137) |
 | Localizar un archivo en el proyecto | [[Mapa-Codigo-Archivos]] | Índice del repositorio |
+| Saber si algo está conectado al juego o solo probado | [[POR_HACER]] | `node tools/check-engine-wiring.mjs` |
+| Comprobar que el juego sigue jugándose de principio a fin | [[POR_HACER]] *Probarlo a mano* | `node tools/e2e-campaign.mjs` |
 
 ---
 

@@ -2,6 +2,7 @@
 title: Auditoría de Problemas Técnicos, Vulnerabilidades & Deuda Técnica
 tags: [auditoria, seguridad, rendimiento, deuda-tecnica, xss, csp, memoria, concurrencia]
 created: 2026-09-20
+updated: 2026-09-21
 author: DanielJHesseling / Antigravity AI
 ---
 
@@ -30,6 +31,50 @@ Este documento presenta una **auditoría técnica profunda e independiente** del
 | **MAINT-01**| Mantenimiento| **MEDIA** | Uso generalizado de `// @ts-nocheck` y ausencia de tipado estricto. | `world-content-popups.js`, `chat-enhancements.js` |
 | **MAINT-02**| Mantenimiento| **BAJA** | Duplicación de código utilitario idéntico entre módulos independientes. | `party.js` y `world-info.js` |
 | **MAINT-03**| QA / Tests | **ALTA** | Cobertura de pruebas automatizadas nula para el motor RPG (0% tests). | `tests/` |
+
+---
+
+## 1b. Estado de Cada Hallazgo — 2026-09-21
+
+La auditoría es del 2026-09-20 y **se conserva tal como se escribió**. Esta tabla dice qué pasó después, comprobado contra el código actual y no de memoria. El trabajo que la cierra está en [[ROADMAP]] y lo que sigue abierto, en [[POR_HACER]].
+
+| ID | Estado | Qué hay ahora |
+| :--- | :---: | :--- |
+| **SEC-01** | 🔴 Abierta | `contentSecurityPolicy: false` sigue en `src/server-main.js:105` (la auditoría decía la línea 95). Vive en código de upstream; activarla rompería scripts en línea y extensiones. |
+| **SEC-02** | ✅ Corregida | El renderizador construye el DOM con `.text()` y `.attr()`. Se arreglaron los 4 puntos y, después, uno más en la cabecera del tablero que la auditoría no vio. |
+| **SEC-03** | ✅ Corregida | Una sola implementación en `utils.js`; `world-content-popups.js` y los demás delegan. Quedan dos copias a propósito: `party/html.js`, con un test que ancla el contrato, y `escapeHtmlText` en `world-info.js` (upstream, correcta). |
+| **SEC-04** | 🔴 Abierta | `secrets.json` sigue sin cifrar. Lo que sí hace upstream: la exportación ZIP de datos del usuario excluye ese archivo mientras `allowKeysExposure` sea `false` (`src/users.js`). |
+| **SEC-05** | 🔴 Abierta | Sigue `public/lib/jquery-3.5.1.min.js`. |
+| **CONC-01** | ✅ Corregida | `party.js` guarda el grupo solo en `chat_metadata.party`. Los usos de `localStorage` que quedan son preferencias de interfaz (pestaña elegida, mapas ocultos), no datos de la partida. |
+| **CONC-02** | ✅ Resuelta por upstream | `trySaveChat` escribe con `tryWriteFileSync`, que usa `write-file-atomic` (síncrono): un guardado no puede intercalarse con otro dentro del proceso. La premisa de la auditoría (`fs.promises.writeFile` sin protección) ya no describe el código. |
+| **PERF-01** | 🔴 Abierta | `index.html` tiene 10.839 líneas. Es de upstream. |
+| **PERF-02** | 🟡 Parcial | `party.js` bajó a 4.549 líneas y volvió a subir a **4.810** al integrar el motor. Hay 5 módulos en `party/` (544 líneas) y 19 en `game-engine/` (4.884). El objetivo de «módulos de menos de 800 líneas» sigue lejos para `party.js`. |
+| **PERF-03** | 🟡 Parcial | Corregido el fallo con caracteres no ASCII: ahora usa límites de palabra Unicode (con `\b` como reserva). La expresión combinada sigue ahí; el riesgo de rendimiento con miles de claves no se ha abordado. |
+| **PERF-04** | 🔴 Abierta | Sin virtualización del DOM del chat ni del tablero. |
+| **MEM-01** | 🟡 Mitigada | El renderizador desenlaza (`.off`) antes de reenlazar y limpia el `document` por espacio de nombres al quitar el contenedor. No hay un `destroy()` formal. |
+| **MAINT-01** | ✅ Corregida | Ningún archivo del fork lleva `@ts-nocheck`; un gate de tipos cubre 32 archivos (`tools/check-fork-types.mjs`) y corre en CI. |
+| **MAINT-02** | ✅ Corregida | `normalizeDndEntityType` está en `dnd-system.js`. `getDndEntryType` queda solo en `party.js`. |
+| **MAINT-03** | 🟡 Parcial | 983 tests en 38 suites, con CI propio, más un recorrido en navegador (`tools/e2e-campaign.mjs`). `dynamic-context-manager.js`, `campaigns.js` y `world-content-browser.js` siguen sin tests. |
+
+**Recuento**: ✅ 6 · 🟡 4 · 🔴 5 de 15.
+
+> [!NOTE]
+> **Las cinco abiertas son de upstream** (CSP, secretos, jQuery, `index.html`) **o cuestan un rediseño** (virtualización). Se han dejado a propósito por el coste de merge. En uso local y de un solo usuario el riesgo es menor; si algún día expones el servidor (`npm run start:global`), CSP y secretos pasan a ser lo primero.
+
+### Hallazgos posteriores a la auditoría
+
+Cosas que la auditoría no podía ver porque no existían todavía, o que se encontraron al construir:
+
+| Hallazgo | Estado |
+| :--- | :---: |
+| El resumen de fin de combate se publicaba como mensaje de sistema y no llegaba al modelo | ✅ Corregido (`game-engine/ui/chat-channel.js`), verificado en navegador |
+| Módulos del motor que solo ejecutan los tests | 🟡 De 6 a **5** (1.383 líneas): el guardián de tiradas ya está conectado. Medible con `node tools/check-engine-wiring.mjs` |
+| `npm audit`: 47 vulnerabilidades en el árbol de dependencias, una crítica (POR_HACER #15) | 🔴 Abierto |
+| `/fight` no encontraba enemigos en ninguna campaña creada por el asistente: el tablero se escribía con `encounterRules` vacías | ✅ Corregido; lo encontró el recorrido en navegador, no los tests |
+| No había forma de abandonar un combate salvo ganarlo o morir | ✅ Corregido (`/combat-stop`) |
+| El Dynamic Context registra 8 herramientas `dnd_*` con las que el modelo escribe estado narrativo (fase, lugar, misiones, banderas, instrucciones) | 🟡 Por decidir |
+| El asistente de campaña creaba mundos sin chat, invisibles para la lista de campañas, y podía pisar uno existente | ✅ Corregido |
+| XSS en la cabecera de ubicación del renderizador de mapas | ✅ Corregido |
 
 ---
 
@@ -269,5 +314,6 @@ graph TD
 
 ## 4. Enlaces Relacionados
 - [[Arquitectura-General]]: Visión arquitectónica general.
-- [[PROPUESTAS_MEJORA]]: Catálogo de 200 soluciones y mejoras propuestas.
+- [[PROPUESTAS_MEJORA]]: Catálogo de 200 soluciones y mejoras propuestas, con el estado de cada una.
+- [[ROADMAP]]: El plan que cierra estos hallazgos, y [[POR_HACER]] lo que sigue abierto.
 - [[Guia-Desarrollo-Flujo]]: Guía para desarrolladores sobre buenas prácticas.

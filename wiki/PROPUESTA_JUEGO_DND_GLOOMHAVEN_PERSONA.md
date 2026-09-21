@@ -2,6 +2,7 @@
 title: Propuesta de Diseño — Motor de Juego Híbrido D&D (Persona + Gloomhaven)
 tags: [propuesta, arquitectura, rpg, dnd, persona, gloomhaven, ai-zero-tokens, world-building]
 created: 2026-09-20
+updated: 2026-09-21
 author: DanielJHesseling / Antigravity AI
 ---
 
@@ -12,6 +13,33 @@ author: DanielJHesseling / Antigravity AI
 
 ---
 
+## 📍 Estado de Implementación (2026-09-21)
+
+Esta propuesta se escribió el 2026-09-20, antes de escribir código. Lo que sigue es lo que ocurrió con cada pilar; el plan vigente es el [[ROADMAP]] y lo pendiente está en [[POR_HACER]]. **El texto de más abajo se conserva tal como se escribió**, con notas de corrección donde la realidad lo desmintió.
+
+| Pilar | Qué propone | Estado |
+| :--- | :--- | :--- |
+| **1 · Lienzo Blanco** | Mundos generados por IA con salidas estructuradas | 🟡 La mitad manual está hecha y verificada: el **asistente de campaña** (4 plantillas, sin IA). Falta el botón *Generar con IA* (Fase F), y no será con Gemini sino agnóstico de proveedor |
+| **2 · Combate sin tokens** | A*, IA de enemigos, economía de acciones, dados, botín, registro gráfico | 🟡 Terreno, visión, niebla, A* y la IA táctica están hechos **y conectados**. Sin conectar: la máquina de turnos y el guardián de tiradas. Sin hacer: el botín. El registro gráfico solo vive en `/sandbox` |
+| **3 · Persona + Gloomhaven** | Calendario, vínculos 1–10 con perks, escenarios, tablero de campaña | 🟡 Toda la **lógica** está hecha y probada (62 tests), pero **ningún módulo está conectado** al juego ni tiene interfaz |
+
+**Lo que la propuesta acertó**: elegir JavaScript sobre Unity o Python; que el combate no necesita al modelo; y el orden combate → Persona → Lienzo Blanco.
+
+**Lo que corrigió la realidad**:
+
+| La propuesta decía | Lo que pasó |
+| :--- | :--- |
+| El combate cuesta tokens y el motor los ahorra | El combate turno a turno **nunca costó nada**: los mensajes de sistema no llegan al modelo. Lo que se gana es jugabilidad ([[ROADMAP]] §1) |
+| «Menos de 300 tokens en todo el combate» | Confundía el tamaño del prompt con el coste de la llamada; ver la nota en *El Puente Narrativo* |
+| La niebla de guerra ya existía | No existía; se construyó en la Fase A |
+| A* es lo primero | Sobre una cuadrícula sin obstáculos es una línea recta: primero hicieron falta los obstáculos |
+| Los rangos suben con `analyzeRelationshipsFromChat` | Suben por **acciones registradas**; el analizador solo puede sugerir |
+| Generar con Gemini | Interfaz agnóstica de proveedor |
+| 1–2 meses | La lógica llevó dos días; lo lento fue conectarla y comprobarla ([[ROADMAP]], *Sobre los Plazos*) |
+| No contemplaba un paquete de reglas | Hizo falta: sin él no hay «añadir armas sin tocar código» (Fase C) |
+
+---
+
 ## 🧭 1. Diagnóstico de tu Estado Actual: ¿Dónde estás parado?
 
 Antes de elegir tecnologías o escribir código, es crucial valorar lo que ya has construido en `my-silly`:
@@ -19,7 +47,7 @@ Antes de elegir tecnologías o escribir código, es crucial valorar lo que ya ha
 1. **Patrimonio de Código Sólido**: Cuentas con más de 24.000 líneas propias repartidas en 38 archivos nuevos (`dnd-system.js`, `party.js`, `combat-rules.js`, `campaigns.js`, `world-map-renderer.js`, `dynamic-context-manager.js`).
 2. **Cero Colisiones con Upstream**: La regla de oro aplicada en la Batería 0 (*"código nuevo va en archivo nuevo"*) te ha permitido integrar 194 commits de SillyTavern sin perder una sola funcionalidad.
 3. **Infraestructura de Tests & Tipos**: La Batería 1 ya dejó 47 tests unitarios para las reglas D&D y 0 errores de tipos en tus archivos clave.
-4. **VTT Funcional**: `world-map-renderer.js` ya cuenta con zoom/panning acelerado por hardware, cuadrícula de combate, drag & drop de tokens, distancias Chebyshev y niebla de guerra.
+4. **VTT Funcional**: `world-map-renderer.js` ya cuenta con zoom/panning acelerado por hardware, cuadrícula de combate, drag & drop de tokens, distancias Chebyshev y niebla de guerra. *(Corrección 2026-09-21: la niebla de guerra **no existía** al escribir esto; se construyó después, en la Fase A del [[ROADMAP]].)*
 
 > [!IMPORTANT]
 > **Tu mayor ventaja competitiva**: No estás empezando desde cero. Ya tienes resuelta la parte más difícil y tediosa de cualquier RPG narrativo: la integración con modelos de lenguaje, el sistema de fichas, el inventario, los mapas y la interfaz de usuario.
@@ -84,7 +112,7 @@ El jugador o máster no tiene que rellenar decenas de formularios a mano. Median
 1. **Entrada Libre del Usuario**:
    > *"Quiero un mundo de fantasía oscura victoriana donde la magia proviene de consumir polvo de cometas caídos. Crea la ciudad principal 'Nocturna', tres facciones rivales, y 3 monstruos típicos de las alcantarillas."*
 
-2. **Generación con Gemini usando Structured Outputs (JSON Schema)**:
+2. **Generación con Gemini usando Structured Outputs (JSON Schema)** *(corrección: agnóstico de proveedor; ver [[ROADMAP]], Fase F)*:
    En lugar de generar texto libre que luego es imposible de parsear, se envía una llamada a Gemini utilizando esquemas estructurados estrictos:
    ```typescript
    interface GeneratedWorldPackage {
@@ -166,6 +194,9 @@ Durante los turnos de combate, la pantalla muestra un **Combat Log** gráfico en
 > 
 **Gasto de tokens en todo el combate: menos de 300 tokens en total.**
 
+> [!WARNING]
+> **Corrección (2026-09-21).** Ese «menos de 300 tokens» confunde el tamaño del *prompt del epílogo* con el coste de la *llamada*. Una generación reenvía todo el contexto (prompt de sistema, lorebook, fichas, historial), así que el epílogo cuesta **lo que cuesta una respuesta normal**, no 300 tokens. Y el combate turno a turno ya era gratis antes de este diseño: los mensajes de sistema no llegan al modelo ([[ROADMAP]] §1). Además, hoy el resumen del final **ni siquiera llega al modelo**: es el defecto de B6, todavía abierto.
+
 ---
 
 ## 🎭 Pilar 3: El Núcleo Persona (Vínculos, Calendario & Gloomhaven Misiones)
@@ -193,6 +224,7 @@ graph LR
 
 #### ¿Cómo interactúa esto con el combate y el LLM?
 1. **Subir de Rango**: Al interactuar con el personaje en el chat (conversación guiada por el LLM), el analizador de afinidad (`analyzeRelationshipsFromChat`) detecta el progreso. Al alcanzar el umbral de puntos, se activa el evento de "Rank Up".
+   > *Corrección: no se implementó así. Los rangos suben por **acciones registradas** (misión completada, regalo, evento de confidente); el analizador de chat solo puede **sugerir**. Ver [[ROADMAP]], Fase D.*
 2. **Beneficios Mecánicos Reales en el Combate**:
    - **Rango 3 - Follow-up Attack**: Si el líder asesta un golpe crítico, el compañero tiene un 50% de probabilidad de realizar un ataque gratuito inmediato.
    - **Rango 5 - Baton Pass**: Tras derrotar a un enemigo, el personaje puede pasar su movimiento restante a otro compañero.
@@ -234,24 +266,44 @@ public/scripts/
 └── dnd-system.js                   <-- Fórmulas, AC, inventario y relaciones
 ```
 
+> [!NOTE]
+> **Estructura real (2026-09-21).** Se siguió la idea, no los nombres:
+>
+> ```text
+> public/scripts/
+> ├── game-engine/
+> │   ├── board/        # terrain · line-of-sight · fog-of-war · pathfinding
+> │   ├── combat/       # turn-machine · enemy-ai · roll-guard      (loot-tables.js: pendiente)
+> │   ├── campaign/     # calendar · bonds · scenarios · campaign-map
+> │   │                 # starter-templates · campaign-worlds       (asistente de campaña)
+> │   ├── rules/        # default-ruleset · ruleset                 (el paquete de reglas)
+> │   └── ui/           # combat-log · sandbox · campaign-wizard
+> ├── party/            # combat-rules · item-forms · types · html · positions
+> ├── party.js          # integración con el chat y el tablero (4.549 líneas)
+> ├── world-map-renderer.js   # capas de terreno y niebla, paleta de pintura
+> └── dnd-system.js     # lee el paquete de reglas activo
+> ```
+>
+> Diferencias: `world-builder/` (Gemini) **no existe**; `persona/` se llama `campaign/` y agrupa también los escenarios; `grid-pathfinding.js` es `board/pathfinding.js`; y hay un módulo que la propuesta no contemplaba, `rules/`, sin el cual el editor que pediste no es posible.
+
 ---
 
 ## 🚀 5. Hoja de Ruta Sugerida (Fases de Desarrollo)
 
 ### Fase 1: Motor Táctico Autónomo (El Combate Sin Tokens)
-- [ ] Implementar `grid-pathfinding.js` (A* sobre las celdas de `world-map-renderer.js`).
-- [ ] Implementar `enemy-ai.js` (cálculo de foco más cercano y movimiento automático de tokens enemigos en el tablero).
-- [ ] Integrar resolución automática de ataques y barra de vida visual sobre cada token.
-- [ ] Conectar la tabla de botín algorítmica al vaciarse el tablero de enemigos.
+- [x] Implementar `grid-pathfinding.js` (A* sobre las celdas de `world-map-renderer.js`). *Hecho como `board/pathfinding.js`, con terreno; lo usan la IA y el resaltado de movimiento.*
+- [x] Implementar `enemy-ai.js` (cálculo de foco más cercano y movimiento automático de tokens enemigos en el tablero). *Hecho como `combat/enemy-ai.js`, con 4 perfiles tácticos, y conectado al combate real.*
+- [ ] Integrar resolución automática de ataques y barra de vida visual sobre cada token. *🟡 La resolución de ataques existía en `party.js`; la barra de vida solo aparece en el tooltip del token.*
+- [ ] Conectar la tabla de botín algorítmica al vaciarse el tablero de enemigos. *Pendiente (B5).*
 
 ### Fase 2: Sistema Persona (Calendario & Confidentes)
-- [ ] Crear el widget de HUD de Calendario (Día X / Fase del Día: Mañana, Tarde, Noche).
-- [ ] Diseñar el sistema de Rangos de Confidente (1 al 10) en la ficha de relaciones.
-- [ ] Implementar las primeras 3 perks mecánicas en combate (Ataque conjunto, Baton Pass, Salvar de agonía).
+- [ ] Crear el widget de HUD de Calendario (Día X / Fase del Día: Mañana, Tarde, Noche). *🟡 La lógica está en `campaign/calendar.js`; falta la interfaz (D6).*
+- [ ] Diseñar el sistema de Rangos de Confidente (1 al 10) en la ficha de relaciones. *🟡 La lógica está en `campaign/bonds.js`; falta la ficha y la interfaz (D6).*
+- [ ] Implementar las primeras 3 perks mecánicas en combate (Ataque conjunto, Baton Pass, Salvar de agonía). *🟡 Definidas y desbloqueadas por rango; ninguna se aplica en el combate (POR_HACER #12).*
 
 ### Fase 3: Lienzo Blanco (World Building Asistido)
-- [ ] Modal visual "Creador de Mundos / Misiones" con botón "Generar con IA".
-- [ ] Integración con la API de Gemini usando esquemas estructurados para autocompletar personajes, mapas, monstruos e ítems en un solo clic.
+- [x] Modal visual "Creador de Mundos / Misiones" con botón "Generar con IA". *🟡 Hecho el modal: el **asistente de campaña**, manual y con plantillas. El botón "Generar con IA" es la Fase F.*
+- [ ] Integración con la API de Gemini usando esquemas estructurados para autocompletar personajes, mapas, monstruos e ítems en un solo clic. *Pendiente (Fase F), y agnóstico de proveedor en lugar de atado a Gemini.*
 
 ---
 
@@ -259,4 +311,5 @@ public/scripts/
 
 Tienes en tus manos una oportunidad extraordinaria: **transformar SillyTavern de una interfaz de chat a un juego de rol táctico híbrido de primer nivel**, sin pagar la enorme factura de reescribir todo en Unity y sin arruinarte en tokens de IA durante las batallas.
 
-¿Te gustaría que empecemos desglosando la **Fase 1 (el algoritmo de movimiento e IA de enemigos en el tablero)** o prefieres arrancar por el **Lienzo Blanco (generador de contenido con Gemini)**?
+> [!NOTE]
+> **Actualización (2026-09-21).** La pregunta ya se respondió: se empezó por la Fase 1 (hecha y conectada, salvo el epílogo y la máquina de turnos), la Fase 2 tiene la lógica y le falta todo lo que se ve, y del Lienzo Blanco existe la mitad manual, el asistente de campaña. Lo siguiente, en [[POR_HACER]].
