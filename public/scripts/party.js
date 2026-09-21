@@ -36,6 +36,24 @@ import { getReachableCells } from './game-engine/board/pathfinding.js';
 import { createEmptyFog, normalizeFog, updateFog } from './game-engine/board/fog-of-war.js';
 import { planEnemyTurn } from './game-engine/combat/enemy-ai.js';
 import {
+    buildTracker, describeTurn, statusMarkers, sizeToCells, toggleCondition,
+} from './game-engine/combat/initiative-tracker.js';
+import {
+    createTurnState, advanceTurn, getRemainingMovement, spendMovement, hasAction, useAction,
+} from './game-engine/combat/turn-machine.js';
+import { rollEncounterLoot } from './game-engine/combat/loot.js';
+import { planEndure, planFollowUp, planBatonPass } from './game-engine/combat/bond-perks.js';
+import {
+    buildBoardState, judgeScenario, hasScenario,
+} from './game-engine/combat/scenario-board.js';
+import {
+    normalizeCalendar, advanceSlot, advanceToNextDay, formatCalendar,
+} from './game-engine/campaign/calendar.js';
+import {
+    normalizeBondState, recordBondEvent, resetDailyPerks, getBondProgress, spendPerk, BOND_EVENTS,
+} from './game-engine/campaign/bonds.js';
+import { renderCampaignPanel } from './game-engine/ui/campaign-panel.js';
+import {
     buildEpiloguePrompt, createCombatLogPanel, renderCombatLog, setRound,
     rollEntry, lineToEntry, append as appendLogEntry,
 } from './game-engine/ui/combat-log.js';
@@ -625,8 +643,16 @@ function getLocationBoards(loc) {
 //  COMBAT ENCOUNTER STATE
 // ============================================================
 
-/** @type {import('./dnd-system.js').CombatEncounter & { turnState: null | { actorId: string, isEnemy: boolean, movementSpentFeet: number, actionUsed: boolean } }} */
-let combatEncounter = { active: false, enemies: [], turnOrder: [], currentTurnIndex: 0, turnState: null };
+/**
+ * The fight in progress.
+ *
+ * Typed as the turn machine's own Encounter now that the machine is what runs it: there
+ * is one definition of a turn, and this is it. The enemy list stays widened to the game's
+ * EnemyInstance, which carries the sheet the machine does not care about.
+ *
+ * @type {import('./game-engine/combat/turn-machine.js').Encounter & { enemies: import('./dnd-system.js').EnemyInstance[], collectedTreasures?: string[] }}
+ */
+let combatEncounter = { active: false, enemies: [], turnOrder: [], currentTurnIndex: 0, round: 0, turnState: null };
 
 function saveCombatState() {
     if (chat_metadata) {
@@ -676,12 +702,7 @@ function getCurrentTurnState() {
         return current;
     }
 
-    combatEncounter.turnState = {
-        actorId: entry.id,
-        isEnemy: entry.isEnemy,
-        movementSpentFeet: 0,
-        actionUsed: false,
-    };
+    combatEncounter.turnState = createTurnState(entry);
     saveCombatState();
     return combatEncounter.turnState;
 }
@@ -690,9 +711,7 @@ function getCurrentTurnState() {
  * @param {import('./dnd-system.js').TurnEntry|null} entry
  */
 function resetCombatTurnState(entry) {
-    combatEncounter.turnState = entry
-        ? { actorId: entry.id, isEnemy: entry.isEnemy, movementSpentFeet: 0, actionUsed: false }
-        : null;
+    combatEncounter.turnState = createTurnState(entry);
     saveCombatState();
 }
 
@@ -726,8 +745,9 @@ function getRemainingMovementFeet(member) {
     if (!member) return 0;
     const turnState = getCurrentTurnState();
     const speed = Number(member?.speed) || 30;
+    // Somebody who is not the current actor has their whole move ahead of them.
     if (!turnState || turnState.actorId !== String(member.id)) return speed;
-    return Math.max(0, speed - (Number(turnState.movementSpentFeet) || 0));
+    return getRemainingMovement(combatEncounter, speed);
 }
 
 /**
@@ -909,7 +929,7 @@ function getActiveBoardTerrain() {
 /**
  * Switches the right-hand panel tab. Defined inside initPartyPanel, so it is handed out
  * here once that has run.
- * @type {((tab: 'party'|'world_map'|'location') => void)|null}
+ * @type {((tab: 'party'|'world_map'|'location'|'campaign') => void)|null}
  */
 let partyTabSetter = null;
 
@@ -1591,7 +1611,24 @@ function resolveEnemyTurnAction(turnEntry) {
         glyph: 'dmg',
     });
 
-    target.hp = Math.max(0, (target.hp || 0) - totalDamage);
+    // Rank 8: a companion steps in rather than watch them drop. Once a day, and only
+    // when the blow would really have finished them.
+    const rescue = planEndure({
+        bonds: getCampaignBonds(),
+        party: partyMembers,
+        targetId: String(target.id),
+        currentHp: Number(target.hp) || 0,
+        damage: totalDamage,
+    });
+
+    if (rescue) {
+        saveCampaignState(null, spendPerk(getCampaignBonds(), rescue.saviourId, rescue.perkId));
+        target.hp = 1;
+        lines.push(`🛡️ ${rescue.saviourName} se interpone: ${target.name} aguanta con 1 HP.`);
+    } else {
+        target.hp = Math.max(0, (target.hp || 0) - totalDamage);
+    }
+
     target.activeConditions = Array.isArray(target.activeConditions) ? target.activeConditions : [];
 
     lines.push(`✅ Resultado: impacto${isCrit ? ' critico' : ''}.`);
@@ -1634,25 +1671,25 @@ function canTurnEntryAct(entry) {
 
 function advanceTurnIndex() {
     if (!combatEncounter.active || combatEncounter.turnOrder.length === 0) return null;
-    const totalTurns = combatEncounter.turnOrder.length;
-    for (let step = 0; step < totalTurns; step++) {
-        const nextIndex = (combatEncounter.currentTurnIndex + 1) % totalTurns;
 
-        // Rounds are counted when the order wraps. Without this there was nothing for
-        // "survive six rounds" to count and no clock for an effect to expire against.
-        if (nextIndex <= combatEncounter.currentTurnIndex) {
-            combatEncounter.round = (Number(combatEncounter.round) || 1) + 1;
-            postCombatNarration(`⏳ [COMBAT] Ronda ${combatEncounter.round}`);
-        }
+    // The machine owns the walk: it skips the fallen, wraps the order and counts the
+    // round. This used to be a second implementation of the same thing, right here.
+    const roundBefore = Number(combatEncounter.round) || 1;
+    const advanced = advanceTurn(combatEncounter, entry => canTurnEntryAct(entry));
 
-        combatEncounter.currentTurnIndex = nextIndex;
-        const candidate = combatEncounter.turnOrder[combatEncounter.currentTurnIndex] || null;
-        if (canTurnEntryAct(candidate)) {
-            resetCombatTurnState(candidate);
-            return candidate;
-        }
+    if (advanced === combatEncounter) return null;   // nobody left who can act
+
+    Object.assign(combatEncounter, advanced);
+    saveCombatState();
+
+    // Announced here rather than inside the machine, which stays pure and silent.
+    if (combatEncounter.round > roundBefore) {
+        postCombatNarration(`⏳ [COMBAT] Ronda ${combatEncounter.round}`);
+        // A scenario won by the clock has no other moment to notice.
+        if (checkScenarioOutcome()) return null;
     }
-    return null;
+
+    return getCurrentTurnEntry();
 }
 
 /**
@@ -1766,11 +1803,314 @@ function startCombat(template, count, gridWidth = 50, gridHeight = 50) {
 }
 
 /**
+ * Hands out what the encounter was worth.
+ *
+ * Only on a victory: walking away or being wiped out leaves the bodies where they are.
+ * Everything is rolled by the engine and announced line by line, like every other combat
+ * result, so a player can see where their gold came from.
+ *
+ * @param {Array<any>} defeated
+ * @returns {{gold: number, xp: number, items: Array<any>}|null}
+ */
+function awardEncounterLoot(defeated) {
+    const survivors = partyMembers.filter(m => (m.hp || 0) > 0);
+    if (survivors.length === 0 || defeated.length === 0) return null;
+
+    const loot = rollEncounterLoot(defeated, survivors.length, {
+        roll: (/** @type {string} */ formula) => rollDice(formula, 6),
+    });
+
+    for (const member of survivors) {
+        member.gold = (Number(member.gold) || 0) + loot.goldEach;
+        member.xp = (Number(member.xp) || 0) + loot.xpEach;
+    }
+
+    // Items go to the party as text on the first survivor's sheet, which is where the
+    // inventory already lives. Turning them into real DndItem objects needs the item
+    // forms, and that is a bigger change than this one earns.
+    if (loot.items.length > 0) {
+        const holder = survivors[0];
+        const found = loot.items.map(i => i.name).join(', ');
+        holder.inventory = [String(holder.inventory || '').trim(), found]
+            .filter(Boolean)
+            .join(', ');
+    }
+
+    for (const line of loot.lines) postCombatNarration(line);
+
+    // Levelling is not automatic: the sheet already has a button for it, and deciding
+    // when to level is a player's business, not the engine's.
+    for (const member of survivors) {
+        if (member.xpNext > 0 && member.xp >= member.xpNext) {
+            postCombatNarration(`⭐ [COMBAT] ${member.name} tiene experiencia para subir de nivel.`);
+        }
+    }
+
+    savePartyState();
+    return { gold: loot.gold, xp: loot.xp, items: loot.items };
+}
+
+// ================================================================
+//  Campaign clock and bonds (wiki/ROADMAP.md, Fase D)
+// ================================================================
+
+/** Where the day and the bonds live: with the chat, like the party and the board. */
+const CALENDAR_KEY = 'calendar';
+const BONDS_KEY = 'bonds';
+
+/** @returns {any} */
+function getCampaignCalendar() {
+    return normalizeCalendar(chat_metadata?.[CALENDAR_KEY]);
+}
+
+/** @returns {any} */
+function getCampaignBonds() {
+    return normalizeBondState(chat_metadata?.[BONDS_KEY]);
+}
+
+/**
+ * @param {any} calendar
+ * @param {any} bonds
+ */
+function saveCampaignState(calendar, bonds) {
+    if (calendar) chat_metadata[CALENDAR_KEY] = calendar;
+    if (bonds) chat_metadata[BONDS_KEY] = bonds;
+    saveMetadata();
+}
+
+/**
+ * Moves the campaign clock on by one slot, and a whole day when the night rolls over.
+ *
+ * Once-a-day perks come back with the new day. Doing it here rather than in the panel
+ * means it happens however the day turns over, including from a long rest later on.
+ */
+function advanceCampaignSlot() {
+    const { calendar, dayAdvanced } = advanceSlot(getCampaignCalendar());
+    const bonds = dayAdvanced ? resetDailyPerks(getCampaignBonds()) : null;
+
+    saveCampaignState(calendar, bonds);
+    postCombatNarration(dayAdvanced
+        ? `🌅 [CAMPAÑA] Amanece el día ${calendar.day}.`
+        : `🕐 [CAMPAÑA] ${formatCalendar(calendar)}.`);
+    renderCampaignTab();
+}
+
+/** Skips whatever is left of today. */
+function advanceCampaignDay() {
+    const calendar = advanceToNextDay(getCampaignCalendar());
+    saveCampaignState(calendar, resetDailyPerks(getCampaignBonds()));
+    postCombatNarration(`🌅 [CAMPAÑA] Amanece el día ${calendar.day}.`);
+    renderCampaignTab();
+}
+
+/**
+ * Records something that happened between the player and a companion.
+ *
+ * A rank-up is announced rather than applied quietly, because it is the moment the model
+ * is supposed to write a scene about — from a fact the engine already decided.
+ *
+ * @param {string} characterId
+ * @param {string} eventType
+ */
+function recordCampaignBondEvent(characterId, eventType) {
+    const member = partyMembers.find(m => String(m.id) === String(characterId));
+    if (!member) return;
+
+    const result = recordBondEvent(getCampaignBonds(), String(characterId), eventType);
+    saveCampaignState(null, result.state);
+
+    const label = BOND_EVENTS[eventType]?.label ?? eventType;
+    postCombatNarration(`💞 [CAMPAÑA] ${member.name}: ${label}.`);
+
+    if (result.rankedUp) {
+        postCombatNarration(`✨ [CAMPAÑA] Tu vínculo con ${member.name} sube al rango ${result.rankAfter}.`);
+        for (const perk of result.unlockedPerks) {
+            postCombatNarration(`🎖️ [CAMPAÑA] Desbloqueado: ${perk.label} — ${perk.description}`);
+        }
+    }
+
+    renderCampaignTab();
+}
+
+/** Draws the campaign tab, if it is the one on screen. */
+function renderCampaignTab() {
+    const container = $('#campaign_panel_row');
+    if (container.length === 0) return;
+
+    renderCampaignPanel(container, {
+        calendar: getCampaignCalendar(),
+        bonds: getCampaignBonds(),
+        party: partyMembers,
+        onAdvanceSlot: advanceCampaignSlot,
+        onAdvanceDay: advanceCampaignDay,
+        onRecordEvent: recordCampaignBondEvent,
+    });
+}
+
+/**
+ * Resolves the free attack the rank-3 bond perk grants.
+ *
+ * A real attack: it rolls to hit against the same armour class, it can miss, and it goes
+ * through the log like any other. A free hit that always lands is not a perk, it is a
+ * cheat, and the engine's whole claim is that any result can be audited.
+ *
+ * It costs the companion nothing — no action, no movement — because the perk is the
+ * reward for the bond, not a second turn.
+ *
+ * @param {string} actorId
+ * @param {import('./dnd-system.js').EnemyInstance} target
+ */
+function resolveFollowUpAttack(actorId, target) {
+    const ally = partyMembers.find(m => String(m.id) === String(actorId));
+    if (!ally || (target.currentHp || 0) <= 0) return;
+
+    const rangeFeet = getAttackRangeFeet(ally);
+    const attackMod = getPlayerAttackModifier(ally, rangeFeet);
+    const attackRoll = rollDiceDetailed('1d20', 20);
+    const attackTotal = attackRoll.total + attackMod;
+    const { ac: targetAc, cover } = getTargetArmorClass(target);
+    const isCrit = attackRoll.natural === 20;
+    const isHit = isCrit || attackTotal >= targetAc;
+
+    showCombatDiceRoll({
+        title: `${ally.name}: ataque de seguimiento`,
+        subtitle: `Objetivo: ${target.name}`,
+        formula: `1d20${attackMod >= 0 ? '+' : ''}${attackMod}`,
+        detail: `d20(${attackRoll.total}) ${attackMod >= 0 ? '+' : ''}${attackMod} = ${attackTotal}`,
+        total: attackTotal,
+        dc: targetAc,
+        natural: attackRoll.natural,
+        glyph: 'd20',
+    });
+
+    const lines = [];
+    lines.push(`🤝 ${ally.name} ataca de seguimiento a ${target.name}.`);
+    lines.push(`🎲 Tirada de ataque: d20(${attackRoll.total}) ${attackMod >= 0 ? '+' : ''}${attackMod} = ${attackTotal} vs AC ${targetAc}${describeCover(cover)}`);
+
+    if (!isHit) {
+        lines.push('❌ Resultado: fallo.');
+        saveCombatState();
+        postCombatNarration(lines.join('\n'));
+        return;
+    }
+
+    const damageFormula = getPlayerDamageFormula(ally, rangeFeet);
+    const damageRoll = rollDiceDetailed(damageFormula, 8);
+    const critRoll = isCrit ? rollDiceDetailed(damageFormula, 8) : null;
+    const damageMod = Math.max(0, getPlayerAttackModifier(ally, rangeFeet));
+    const totalDamage = Math.max(1, damageRoll.total + (critRoll?.total || 0) + damageMod);
+
+    target.currentHp = Math.max(0, (target.currentHp || 0) - totalDamage);
+    lines.push(`✅ Resultado: impacto${isCrit ? ' critico' : ''}.`);
+    lines.push(`💥 Tirada de dano: ${damageFormula}(${damageRoll.total}) + mod(${damageMod}) = ${totalDamage}`);
+    lines.push(`❤️ Estado de ${target.name}: ${target.currentHp}/${target.maxHp}`);
+
+    if (target.currentHp === 0) lines.push(`☠️ ${target.name} cae derrotado.`);
+
+    saveCombatState();
+    postCombatNarration(lines.join('\n'));
+
+    if (getAliveEnemies().length === 0) {
+        postCombatNarration('🏆 [COMBAT] Todos los enemigos han sido derrotados.');
+        endCombat('victory');
+    }
+}
+
+/**
+ * Offers the rank-5 relay after a kill.
+ *
+ * An offer rather than an event: passing your leftover movement is a decision, and the
+ * engine deciding it for you would take away the only interesting part.
+ *
+ * @param {PartyMember} actor
+ */
+function offerBatonPass(actor) {
+    const remainingFeet = getRemainingMovementFeet(actor);
+    const candidates = planBatonPass({
+        bonds: getCampaignBonds(),
+        party: partyMembers,
+        actorId: String(actor.id),
+        remainingFeet,
+    });
+
+    if (candidates.length === 0) return;
+
+    const names = candidates.map(c => c.name).join(', ');
+    postCombatNarration(
+        `🔄 [COMBAT] ${actor.name} puede ceder ${remainingFeet} ft de movimiento. `
+        + `Usa /relevo <nombre> (${names}).`,
+    );
+}
+
+/**
+ * Judges the scenario the current board carries, if it carries one.
+ *
+ * Most boards do not, and one without objectives has to behave exactly as it always did:
+ * clear the enemies and you win. A scenario replaces that rule rather than adding to it —
+ * "survive six rounds" is a victory with every enemy still standing.
+ *
+ * @returns {ReturnType<typeof judgeScenario>|null}
+ */
+function judgeCurrentScenario() {
+    if (!combatEncounter.active) return null;
+
+    const location = getCurrentWorldLocationMaps().find(l => l.name === currentLocationName);
+    const board = getLocationBoards(location).find((/** @type {any} */ b) => b.name === currentBoardName);
+    if (!board || !hasScenario(board)) return null;
+
+    return judgeScenario(board.objectives, buildBoardState({
+        round: combatEncounter.round,
+        enemies: combatEncounter.enemies,
+        party: partyMembers,
+        collectedTreasures: combatEncounter.collectedTreasures,
+    }));
+}
+
+/**
+ * Ends the fight when the scenario says it is over.
+ *
+ * Called after anything that could change the answer — an attack, a move, a turn passing —
+ * because "survive six rounds" is won by the clock and nothing else would notice.
+ *
+ * @returns {boolean} Whether the fight ended here.
+ */
+function checkScenarioOutcome() {
+    const verdict = judgeCurrentScenario();
+    if (!verdict || !verdict.outcome) return false;
+
+    postCombatNarration(`🎯 [COMBAT] ${verdict.summary}`);
+    postCombatNarration(verdict.outcome === 'victory'
+        ? '🏁 [COMBAT] Objetivos cumplidos.'
+        : '🏁 [COMBAT] La misión ha fracasado.');
+
+    endCombat(verdict.outcome === 'victory' ? 'victory' : 'defeat');
+    renderLocationMapsPreview();
+    return true;
+}
+
+/**
  * End the current combat encounter.
  */
 function endCombat(reason = 'ended') {
     postCombatNarration('🏁 [COMBAT] El combate termina.');
     postCombatNarration(buildCombatSummary(/** @type {'victory'|'defeat'|'manual'|'ended'} */ (reason)));
+
+    // Winning has to be worth something, or the tactical engine underneath is doing
+    // careful work for nothing.
+    if (reason === 'victory') {
+        awardEncounterLoot(combatEncounter.enemies.filter(e => (e.currentHp || 0) <= 0));
+
+        // Surviving a fight together is a recorded fact, which is the whole point of the
+        // bond design: the engine decides it happened, the model writes about it later.
+        const survivors = partyMembers.filter(m => (m.hp || 0) > 0);
+        if (survivors.length > 1) {
+            let bonds = getCampaignBonds();
+            for (const member of survivors) {
+                bonds = recordBondEvent(bonds, String(member.id), 'combat_together').state;
+            }
+            saveCampaignState(null, bonds);
+        }
+    }
 
     // The blow-by-blow above is posted as system messages, which SillyTavern filters out
     // of the prompt (script.js: chat.filter(x => !x.is_system)). So the model never saw
@@ -1811,6 +2151,8 @@ function buildEnemyTokens() {
             hp: e.currentHp,
             maxHp: e.maxHp,
             isEnemy: true,
+            statuses: statusMarkers(e.activeConditions),
+            sizeCells: sizeToCells(e.size),
         });
     });
     return result;
@@ -1954,6 +2296,10 @@ function buildTokens(locationFilter) {
             className: m.class,
             hp: m.hp,
             maxHp: m.maxHp,
+            // Drawn over the token, so what is wrong with a character is visible on the
+            // board and not only on the sheet.
+            statuses: statusMarkers(m.activeConditions ?? m.conditions),
+            sizeCells: sizeToCells(m.size),
         });
     }
     return result;
@@ -2041,7 +2387,7 @@ function handlePlayerCombatMove(rawValue) {
         gridX: targetX,
         gridY: targetY,
     };
-    turnState.movementSpentFeet += distanceFeet;
+    Object.assign(combatEncounter, spendMovement(combatEncounter, distanceFeet, Number(member.speed) || 30));
     savePartyState();
     saveCombatState();
 
@@ -2062,7 +2408,7 @@ function handlePlayerCombatAttack(rawTargetName) {
         return '';
     }
 
-    if (turnState.actionUsed) {
+    if (!hasAction(combatEncounter, 'action')) {
         toastr.warning('Tu accion de este turno ya fue usada.');
         return '';
     }
@@ -2103,7 +2449,7 @@ function handlePlayerCombatAttack(rawTargetName) {
     lines.push(`🗡️ ${member.name} ataca a ${target.name}.`);
     lines.push(`🎲 Tirada de ataque: d20(${attackRoll.total}) ${attackMod >= 0 ? '+' : ''}${attackMod} = ${attackTotal} vs AC ${targetAc}${describeCover(targetCover)}`);
 
-    turnState.actionUsed = true;
+    Object.assign(combatEncounter, useAction(combatEncounter, 'action'));
 
     if (!isHit) {
         lines.push('❌ Resultado: fallo.');
@@ -2139,15 +2485,48 @@ function handlePlayerCombatAttack(rawTargetName) {
         lines.push(`☠️ ${target.name} cae derrotado.`);
     }
 
+    // Rank 3: a critical opens the door for a companion who can already reach the target.
+    // A free attack from across the room would make position meaningless, and position is
+    // the whole game underneath.
+    if (isCrit && target.currentHp > 0) {
+        const followUp = planFollowUp({
+            bonds: getCampaignBonds(),
+            party: partyMembers,
+            attackerId: String(member.id),
+            canReach: (/** @type {any} */ ally) => {
+                const from = ally.mapPosition || { gridX: 0, gridY: 0 };
+                return getDistanceInFeet(from.gridX || 0, from.gridY || 0, target.gridX || 0, target.gridY || 0)
+                    <= getAttackRangeFeet(ally);
+            },
+        });
+
+        if (followUp) {
+            lines.push(`🤝 ${followUp.actorName} aprovecha el hueco y ataca también.`);
+            saveCombatState();
+            postCombatNarration(lines.join('\n'));
+            // Resolved as a real attack, so it rolls, it can miss and it is logged like
+            // any other: a free hit that always lands is not a perk, it is a cheat.
+            resolveFollowUpAttack(followUp.actorId, target);
+            renderLocationMapsPreview();
+            return `${member.name} golpea a ${target.name}`;
+        }
+    }
+
     saveCombatState();
     postCombatNarration(lines.join('\n'));
 
-    if (getAliveEnemies().length === 0) {
+    // A scenario decides the fight when the board carries one: clearing the enemies is
+    // just one way to finish, and not always the way that was asked for.
+    if (checkScenarioOutcome()) return `${member.name} derrota a ${target.name}`;
+
+    if (getAliveEnemies().length === 0 && !judgeCurrentScenario()) {
         postCombatNarration('🏆 [COMBAT] Todos los enemigos han sido derrotados.');
         endCombat('victory');
         renderLocationMapsPreview();
         return `${member.name} derrota a ${target.name}`;
     }
+
+    if (target.currentHp === 0) offerBatonPass(member);
 
     renderLocationMapsPreview();
     return `${member.name} golpea a ${target.name}`;
@@ -2203,17 +2582,92 @@ function buildCombatSection(board) {
     // Banner
     section.append(`<div class="wm-combat-banner"><i class="fa-solid fa-swords"></i> ${t`Combat Active`} — ${escapeHtml(board.name)}</div>`);
 
-    // Turn order
-    if (combatEncounter.turnOrder.length > 0) {
-        let turnHtml = '<div class="wm-combat-turn-order"><div class="wm-combat-turn-title">' + t`Initiative Order` + '</div><ol>';
-        combatEncounter.turnOrder.forEach((entry, idx) => {
-            const isCurrent = idx === combatEncounter.currentTurnIndex;
-            const enemyTag = entry.isEnemy ? ' <span class="wm-combat-enemy-tag">⚔️</span>' : '';
-            turnHtml += `<li class="${isCurrent ? 'wm-combat-turn-current' : ''}">${escapeHtml(entry.name)}${enemyTag} <span class="wm-combat-init">(${entry.initiative})</span></li>`;
-        });
-        turnHtml += '</ol></div>';
-        section.append(turnHtml);
+    // ---- Scenario objectives (wiki/ROADMAP.md, Fase E) ----
+    // Above the initiative order, because what the fight is *for* outranks whose turn it
+    // is. Only drawn when the board actually carries a scenario.
+    const scenario = judgeCurrentScenario();
+    if (scenario && scenario.rows.length > 0) {
+        const panel = $('<div class="wm-objectives"></div>');
+        panel.append($('<div class="wm-objectives-title"></div>').text('Objetivos'));
+
+        for (const row of scenario.rows) {
+            const line = $('<div class="wm-objective"></div>').addClass(`status-${row.status}`);
+            line.append($('<i class="wm-objective-icon fa-solid"></i>').addClass(
+                row.status === 'complete' ? 'fa-circle-check'
+                    : row.status === 'failed' ? 'fa-circle-xmark' : 'fa-circle',
+            ));
+            line.append($('<span class="wm-objective-label"></span>').text(row.label));
+            if (row.optional) {
+                line.append($('<span class="wm-objective-optional"></span>').text('opcional'));
+            }
+            panel.append(line);
+        }
+
+        section.append(panel);
     }
+
+    // ---- Initiative tracker (wiki/ROADMAP.md, B8) ----
+    // Replaces the numbered list of names that used to live here. The list said who was
+    // in the fight and nothing else, so knowing whether the wounded one acts before the
+    // ghoul meant counting rows by hand every round.
+    const tracker = buildTracker({
+        turnOrder: combatEncounter.turnOrder,
+        currentTurnIndex: combatEncounter.currentTurnIndex,
+        round: combatEncounter.round,
+        party: partyMembers,
+        enemies: combatEncounter.enemies,
+    });
+
+    if (tracker.entries.length > 0) {
+        const panel = $('<div class="wm-init"></div>');
+
+        const head = $('<div class="wm-init-head"></div>');
+        head.append($('<span class="wm-init-round"></span>').text(`Ronda ${tracker.round}`));
+        head.append($('<span class="wm-init-turn"></span>').text(describeTurn(tracker)));
+        panel.append(head);
+
+        const list = $('<div class="wm-init-list"></div>');
+        for (const entry of tracker.entries) {
+            const row = $('<div class="wm-init-row"></div>')
+                .toggleClass('current', entry.isCurrent)
+                .toggleClass('next', entry.isNext)
+                .toggleClass('enemy', entry.isEnemy)
+                .toggleClass('defeated', entry.defeated)
+                .toggleClass('bloodied', entry.bloodied);
+
+            row.append($('<span class="wm-init-score"></span>').text(String(entry.initiative)));
+
+            const body = $('<div class="wm-init-body"></div>');
+            const nameLine = $('<div class="wm-init-name-line"></div>');
+            nameLine.append($('<span class="wm-init-name"></span>').text(entry.name));
+
+            // Conditions as icons rather than as a sentence: a row you can read at a
+            // glance is the whole point of a tracker.
+            for (const status of entry.statuses) {
+                nameLine.append(
+                    $('<i class="wm-init-status fa-solid"></i>')
+                        .addClass(status.icon)
+                        .attr('title', status.label),
+                );
+            }
+            body.append(nameLine);
+
+            if (entry.maxHp > 0) {
+                body.append($('<div class="wm-init-hp"></div>').append(
+                    $('<div class="wm-init-hp-fill"></div>').css('width', `${entry.hpPct}%`),
+                ));
+                body.append($('<span class="wm-init-hp-text"></span>')
+                    .text(`${entry.hp}/${entry.maxHp}`));
+            }
+
+            row.append(body);
+            list.append(row);
+        }
+
+        panel.append(list);
+        section.append(panel);
+    }
+
 
     // Enemy cards
     if (combatEncounter.enemies.length > 0) {
@@ -2264,7 +2718,7 @@ function buildCombatSection(board) {
         section.append(`
             <div class="wm-combat-turn-panel">
                 <strong>${escapeHtml(currentMember.name)}</strong> · ${t`Your turn`}<br>
-                <div class="wm-combat-turn-help">${t`Action used`}: ${turnState.actionUsed ? t`yes` : t`no`} · ${t`Movement left`}: ${remainingFeet} ft · ${t`Attack range`}: ${rangeFeet} ft.</div>
+                <div class="wm-combat-turn-help">${t`Action used`}: ${turnState.actionUsed ? t`yes` : t`no`} · ${t`Bonus`}: ${turnState.bonusActionUsed ? t`yes` : t`no`} · ${t`Reaction`}: ${turnState.reactionUsed ? t`yes` : t`no`} · ${t`Movement left`}: ${remainingFeet} ft · ${t`Attack range`}: ${rangeFeet} ft.</div>
                 <div class="wm-combat-chip-row">
                     <span class="wm-combat-chip move">${t`Click your token to display movement range on the board`}</span>
                     ${targetChips}
@@ -2523,8 +2977,8 @@ function renderLocationMapsPreview() {
                                 renderLocationMapsPreview();
                                 return;
                             }
-                            const turnState = getCurrentTurnState();
-                            if (turnState) turnState.movementSpentFeet += distanceFeet;
+                            getCurrentTurnState();
+                            Object.assign(combatEncounter, spendMovement(combatEncounter, distanceFeet, Number(member.speed) || 30));
                             member.mapPosition = member.mapPosition || { locationName: '', gridX: 0, gridY: 0 };
                             member.mapPosition.gridX = gx;
                             member.mapPosition.gridY = gy;
@@ -4276,6 +4730,17 @@ export function initPartyPanel() {
     // Hoisted, so this works although setPartyTab is declared further down.
     partyTabSetter = setPartyTab;
 
+    // The campaign tab is created from here, not from index.html: that file is
+    // upstream's, and every line the fork adds to it is paid for at every merge.
+    if ($('#rm_tab_campaign').length === 0) {
+        $('<div class="right_menu_tab" id="rm_tab_campaign" data-tab="campaign" title="Calendario y vínculos">Campaña</div>')
+            .insertAfter('#rm_tab_location');
+    }
+    if ($('#campaign_panel_row').length === 0) {
+        $('<div id="campaign_panel_row" class="world-map-row width100p marginTop10 tab-panel-hidden"></div>')
+            .insertAfter('#world_location_maps_row');
+    }
+
     const panel = $('#rm_party_block');
     if (!panel.length) {
         return;
@@ -4384,16 +4849,17 @@ export function initPartyPanel() {
     });
 
     /**
-     * @param {'party'|'world_map'|'location'|'board'} tab
+     * @param {'party'|'world_map'|'location'|'campaign'|'board'} tab
      */
     function setPartyTab(tab) {
         const worldMapRow = $('#world_map_row');
         const locationRow = $('#world_location_maps_row');
+        const campaignRow = $('#campaign_panel_row');
         const partyList = $('#rm_party_list');
         const partyFixedTop = $('#partyListFixedTop');
 
         // Remap legacy 'board' tab to 'location'
-        const normalizedTab = /** @type {'party'|'world_map'|'location'} */ (tab === 'board' ? 'location' : tab);
+        const normalizedTab = /** @type {'party'|'world_map'|'location'|'campaign'} */ (tab === 'board' ? 'location' : tab);
 
         $('.right_menu_tab').removeClass('active');
         $(`#rm_tab_${normalizedTab}`).addClass('active');
@@ -4403,6 +4869,7 @@ export function initPartyPanel() {
         partyFixedTop.toggleClass('tab-panel-hidden', normalizedTab !== 'party');
         worldMapRow.toggleClass('tab-panel-hidden', normalizedTab !== 'world_map');
         locationRow.toggleClass('tab-panel-hidden', normalizedTab !== 'location');
+        campaignRow.toggleClass('tab-panel-hidden', normalizedTab !== 'campaign');
 
         if (normalizedTab === 'party') {
             renderPartyMembers();
@@ -4410,6 +4877,8 @@ export function initPartyPanel() {
             renderWorldMapPreview();
         } else if (normalizedTab === 'location') {
             renderLocationMapsPreview();
+        } else if (normalizedTab === 'campaign') {
+            renderCampaignTab();
         }
 
         try {
@@ -4419,6 +4888,7 @@ export function initPartyPanel() {
         }
     }
 
+    $('#rm_tab_campaign').on('click', () => setPartyTab('campaign'));
     $('#rm_tab_party').on('click', () => setPartyTab('party'));
     $('#rm_tab_world_map').on('click', () => setPartyTab('world_map'));
     $('#rm_tab_location').on('click', () => setPartyTab('location'));
@@ -4441,8 +4911,8 @@ export function initPartyPanel() {
             .catch(error => console.error('[party] campaign ruleset failed', error));
     });
 
-    /** @type {'party'|'world_map'|'location'} */
-    const initiallySelected = /** @type {'party'|'world_map'|'location'} */ (window.localStorage.getItem('rm_PinAndTabs_selectedTab') || 'party');
+    /** @type {'party'|'world_map'|'location'|'campaign'} */
+    const initiallySelected = /** @type {'party'|'world_map'|'location'|'campaign'} */ (window.localStorage.getItem('rm_PinAndTabs_selectedTab') || 'party');
     if (typeof setPartyTab === 'function') {
         setPartyTab(initiallySelected);
     }
@@ -4799,6 +5269,208 @@ export function initPartyPanel() {
 
             await openPromptPreview({ Popup, POPUP_TYPE });
             return String(getSession().promptTokens);
+        },
+    }));
+
+    // Conditions could only be set by opening a character sheet, or by the combat putting
+    // them there itself. Marking someone poisoned mid-scene is a table gesture, so it
+    // belongs in the chat next to /fight.
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'time',
+        helpString: '<div>Muestra el día y el momento actual. <code>/time next</code> pasa al siguiente bloque '
+            + 'y <code>/time sleep</code> al día siguiente.</div>',
+        unnamedArgumentList: [
+            SlashCommandArgument.fromProps({
+                description: 'next | sleep',
+                typeList: [ARGUMENT_TYPE.STRING],
+                isRequired: false,
+                enumList: [
+                    new SlashCommandEnumValue('next', 'Siguiente bloque del día'),
+                    new SlashCommandEnumValue('sleep', 'Dormir hasta mañana'),
+                ],
+            }),
+        ],
+        callback: (_args, value) => {
+            const what = String(value ?? '').trim().toLowerCase();
+
+            if (what === 'next') advanceCampaignSlot();
+            else if (what === 'sleep') advanceCampaignDay();
+            else toastr.info(formatCalendar(getCampaignCalendar()));
+
+            return formatCalendar(getCampaignCalendar());
+        },
+    }));
+
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'bond',
+        helpString: '<div>Registra algo que ha pasado con un compañero: '
+            + '<code>/bond Lyra confidant_scene</code>. Sin evento, muestra el rango actual. '
+            + 'Los vínculos suben por hechos registrados, no por lo que diga la narración.</div>',
+        unnamedArgumentList: [
+            SlashCommandArgument.fromProps({
+                description: 'Nombre del compañero, y el evento',
+                typeList: [ARGUMENT_TYPE.STRING],
+                isRequired: true,
+            }),
+        ],
+        callback: (_args, value) => {
+            const raw = String(value ?? '').trim();
+            if (!raw) {
+                toastr.warning('Usa: /bond <nombre> <evento>');
+                return '';
+            }
+
+            const parts = raw.split(/\s+/);
+            const known = parts.length > 1 && Object.prototype.hasOwnProperty.call(BOND_EVENTS, parts[parts.length - 1]);
+            const targetName = known ? parts.slice(0, -1).join(' ') : raw;
+            const eventType = known ? parts[parts.length - 1] : '';
+
+            const member = partyMembers.find(m => m.name.toLowerCase() === targetName.toLowerCase());
+            if (!member) {
+                toastr.warning(`No encuentro a "${targetName}" en el grupo.`);
+                return '';
+            }
+
+            if (!eventType) {
+                const { rank, points, nextAt } = getBondProgress(getCampaignBonds(), String(member.id));
+                const text = nextAt
+                    ? `${member.name}: rango ${rank} (${points}/${nextAt}).`
+                    : `${member.name}: rango máximo (${points} puntos).`;
+                toastr.info(text);
+                return String(rank);
+            }
+
+            recordCampaignBondEvent(String(member.id), eventType);
+            return String(getBondProgress(getCampaignBonds(), String(member.id)).rank);
+        },
+    }));
+
+    // The rank-5 perk, spent deliberately. Giving away your leftover movement is a
+    // decision, so it is a command rather than something the engine does for you.
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'objetivos',
+        helpString: '<div>Muestra los objetivos del escenario en curso, si este tablero tiene alguno.</div>',
+        callback: () => {
+            const verdict = judgeCurrentScenario();
+            if (!verdict) {
+                toastr.info('Este tablero no tiene objetivos: gana quien limpie el tablero.');
+                return '';
+            }
+            toastr.info(verdict.summary, 'Objetivos', { timeOut: 10000 });
+            return verdict.summary;
+        },
+    }));
+
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'relevo',
+        helpString: '<div>Cede el movimiento que te queda a un compañero, si tienes el vínculo de rango 5. '
+            + '<code>/relevo Brand</code></div>',
+        unnamedArgumentList: [
+            SlashCommandArgument.fromProps({
+                description: 'Nombre del compañero',
+                typeList: [ARGUMENT_TYPE.STRING],
+                isRequired: true,
+            }),
+        ],
+        callback: (_args, value) => {
+            const actor = getCurrentActingMember();
+            if (!actor) {
+                toastr.warning('No hay un turno de jugador activo.');
+                return '';
+            }
+
+            const remainingFeet = getRemainingMovementFeet(actor);
+            const candidates = planBatonPass({
+                bonds: getCampaignBonds(),
+                party: partyMembers,
+                actorId: String(actor.id),
+                remainingFeet,
+            });
+
+            if (candidates.length === 0) {
+                toastr.warning('No puedes ceder movimiento ahora mismo.');
+                return '';
+            }
+
+            const wanted = String(value ?? '').trim().toLowerCase();
+            const chosen = candidates.find(c => c.name.toLowerCase() === wanted);
+            if (!chosen) {
+                toastr.warning(`Puedes cederlo a: ${candidates.map(c => c.name).join(', ')}.`);
+                return '';
+            }
+
+            // Spent for the day, and the turn moves to whoever received it: that is what
+            // makes the relay a tactical choice and not free movement for everyone.
+            saveCampaignState(null, spendPerk(getCampaignBonds(), String(actor.id), 'baton_pass'));
+
+            const index = combatEncounter.turnOrder.findIndex(e => !e.isEnemy && String(e.id) === chosen.id);
+            if (index >= 0) {
+                combatEncounter.currentTurnIndex = index;
+                resetCombatTurnState(combatEncounter.turnOrder[index]);
+            }
+
+            postCombatNarration(`🔄 [COMBAT] ${actor.name} cede el relevo a ${chosen.name}.`);
+            renderLocationMapsPreview();
+            return chosen.name;
+        },
+    }));
+
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'condition',
+        helpString: '<div>Pone o quita una condición. <code>/condition Lyra Poisoned</code> la alterna, '
+            + '<code>/condition Lyra</code> muestra las que tiene, y <code>/condition Lyra clear</code> las quita todas.</div>',
+        unnamedArgumentList: [
+            SlashCommandArgument.fromProps({
+                description: 'Nombre del personaje o enemigo, y la condición',
+                typeList: [ARGUMENT_TYPE.STRING],
+                isRequired: true,
+            }),
+        ],
+        callback: (_args, value) => {
+            const raw = String(value ?? '').trim();
+            if (!raw) {
+                toastr.warning('Usa: /condition <nombre> <condición>');
+                return '';
+            }
+
+            // The name can hold spaces, so the condition is taken as the last word and
+            // the rest is the name — the same shape /fight already uses for its count.
+            const parts = raw.split(/\s+/);
+            const targetName = parts.length > 1 ? parts.slice(0, -1).join(' ') : raw;
+            const conditionName = parts.length > 1 ? parts[parts.length - 1] : '';
+
+            const member = partyMembers.find(m => m.name.toLowerCase() === targetName.toLowerCase());
+            const enemy = combatEncounter.enemies.find(e => e.name.toLowerCase() === targetName.toLowerCase());
+            const target = member || enemy;
+
+            if (!target) {
+                toastr.warning(`No encuentro a "${targetName}".`);
+                return '';
+            }
+
+            const current = Array.isArray(target.activeConditions) ? target.activeConditions : [];
+
+            if (!conditionName) {
+                const list = current.length ? current.join(', ') : 'ninguna';
+                toastr.info(`${target.name}: ${list}.`);
+                return list;
+            }
+
+            if (conditionName.toLowerCase() === 'clear') {
+                target.activeConditions = [];
+                postCombatNarration(`🧪 [BOARD] ${target.name} se libra de todas sus condiciones.`);
+            } else {
+                const { conditions, added } = toggleCondition(current, conditionName);
+                target.activeConditions = conditions;
+                postCombatNarration(added
+                    ? `🧪 [BOARD] ${target.name} queda ${conditionName}.`
+                    : `🧪 [BOARD] ${target.name} se libra de ${conditionName}.`);
+            }
+
+            if (member) savePartyState();
+            if (enemy) saveCombatState();
+            renderLocationMapsPreview();
+            return (target.activeConditions || []).join(', ');
         },
     }));
 

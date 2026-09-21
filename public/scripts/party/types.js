@@ -32,6 +32,7 @@
  * @property {string} alignment
  * @property {string} personality
  * @property {string[]} activeConditions
+ * @property {string} [size] - D&D creature size. Decides how many cells the token covers; Medium when absent.
  * @property {number} strength
  * @property {number} dexterity
  * @property {number} constitution

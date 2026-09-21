@@ -461,6 +461,8 @@ export function renderWorldMapView(target, worldMapUrl, locationMaps, callbacks 
  * @property {boolean} [isEnemy]
  * @property {boolean} [isNPC]
  * @property {number} [sightFeet] - Vision radius for fog of war; defaults when absent.
+ * @property {Array<{key: string, icon: string, label: string}>} [statuses] - Condition markers to draw over the token.
+ * @property {number} [sizeCells] - How many cells the creature covers. 1 unless it is Large or bigger.
  */
 
 /**
@@ -727,8 +729,14 @@ export function renderLocationView(target, options) {
             const selectedClass = selectedTokenId === token.id ? ' wm-token-selected' : '';
             const inRangeClass = Array.isArray(highlightedTokenIds) && highlightedTokenIds.includes(token.id) ? ' wm-token-in-range' : '';
 
+            // A creature bigger than Medium covers more than one cell, and a token drawn
+            // the size of a goblin when it is an ogre misleads about reach and about what
+            // fits through a door — all of which the engine already computes correctly.
+            const sizeCells = Math.max(1, Number(token.sizeCells) || 1);
+            const sizeClass = sizeCells > 1 ? ` wm-token-size-${Math.min(4, sizeCells)}` : '';
+
             const el = $(`
-                <div class="wm-token${enemyClass}${selectedClass}${inRangeClass}">
+                <div class="wm-token${enemyClass}${selectedClass}${inRangeClass}${sizeClass}">
                     <div class="wm-token-tooltip">
                         <div class="wm-token-tooltip-name"></div>
                         <div class="wm-token-tooltip-meta"></div>
@@ -758,6 +766,21 @@ export function renderLocationView(target, options) {
                     .insertBefore(tokenNameEl);
             } else {
                 $('<div>').addClass('wm-token-unknown').text('???').insertBefore(tokenNameEl);
+            }
+
+            // Conditions as small marks on the token itself. The tracker lists them too,
+            // but a player looking at the board should not have to look away to find out
+            // that the character they are about to move is restrained.
+            if (Array.isArray(token.statuses) && token.statuses.length > 0) {
+                const strip = $('<div class="wm-token-statuses"></div>');
+                for (const status of token.statuses.slice(0, 4)) {
+                    strip.append(
+                        $('<i class="wm-token-status fa-solid"></i>')
+                            .addClass(String(status?.icon || 'fa-circle-exclamation'))
+                            .attr('title', String(status?.label || '')),
+                    );
+                }
+                el.append(strip);
             }
 
             // Drag token

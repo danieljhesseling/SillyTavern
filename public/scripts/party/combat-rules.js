@@ -9,6 +9,7 @@
  */
 
 import { getAbilityModifier } from '../dnd-system.js';
+import { createEncounter, normalizeEncounter } from '../game-engine/combat/turn-machine.js';
 
 /** @typedef {import('./types.js').PartyMember} PartyMember */
 
@@ -188,30 +189,20 @@ export function getPlayerAttackModifier(member, rangeFeet) {
 }
 
 export function createEmptyCombatEncounter() {
-    return { active: false, enemies: [], turnOrder: [], currentTurnIndex: 0, round: 0, turnState: null };
+    return createEncounter();
 }
 
 /**
+ * Repairs an encounter read from disk.
+ *
+ * Delegates to the turn machine rather than keeping a second, thinner copy of the same
+ * shape here. There used to be two: this one, which knew about movement and one action,
+ * and `combat/turn-machine.js`, which also knew about bonus actions and reactions and
+ * which nothing called. Encounters saved by the older code load unchanged; they simply
+ * gain the two flags they were missing.
+ *
  * @param {any} encounter
  */
 export function normalizeCombatEncounter(encounter) {
-    if (!encounter || typeof encounter !== 'object') return createEmptyCombatEncounter();
-    return {
-        active: Boolean(encounter.active),
-        enemies: Array.isArray(encounter.enemies) ? encounter.enemies : [],
-        turnOrder: Array.isArray(encounter.turnOrder) ? encounter.turnOrder : [],
-        currentTurnIndex: Number.isInteger(encounter.currentTurnIndex) ? encounter.currentTurnIndex : 0,
-        // Encounters saved before rounds existed resume at one rather than refusing to load.
-        round: Number.isInteger(encounter.round) && encounter.round > 0
-            ? encounter.round
-            : (encounter.active ? 1 : 0),
-        turnState: encounter.turnState && typeof encounter.turnState === 'object'
-            ? {
-                actorId: String(encounter.turnState.actorId || ''),
-                isEnemy: Boolean(encounter.turnState.isEnemy),
-                movementSpentFeet: Number(encounter.turnState.movementSpentFeet) || 0,
-                actionUsed: Boolean(encounter.turnState.actionUsed),
-            }
-            : null,
-    };
+    return normalizeEncounter(encounter);
 }

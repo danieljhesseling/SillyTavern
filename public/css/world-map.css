@@ -1518,3 +1518,200 @@
 .wm-terrain-door-actionable:hover {
     box-shadow: inset 0 0 0 2px rgba(240, 190, 90, 0.85), 0 0 8px rgba(240, 190, 90, 0.5);
 }
+
+/* ---- Initiative tracker (wiki/ROADMAP.md, B8) ---------------------------- */
+
+.wm-init {
+    margin: 8px 0;
+    padding: 8px;
+    border: 1px solid rgba(201, 162, 39, 0.3);
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.25);
+}
+
+.wm-init-head {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.wm-init-round {
+    font-weight: bold;
+    color: #c9a227;
+}
+
+.wm-init-turn {
+    font-size: 0.82em;
+    opacity: 0.8;
+}
+
+.wm-init-list {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.wm-init-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 6px;
+    border-radius: 4px;
+    border-left: 3px solid transparent;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+/* Whose turn it is has to be readable across the room, not hunted for. */
+.wm-init-row.current {
+    border-left-color: #c9a227;
+    background: rgba(201, 162, 39, 0.16);
+}
+
+.wm-init-row.next {
+    border-left-color: rgba(201, 162, 39, 0.45);
+}
+
+.wm-init-row.enemy .wm-init-name {
+    color: #e08b7a;
+}
+
+.wm-init-row.defeated {
+    opacity: 0.4;
+}
+
+.wm-init-row.defeated .wm-init-name {
+    text-decoration: line-through;
+}
+
+.wm-init-score {
+    flex: 0 0 26px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.85em;
+    opacity: 0.7;
+}
+
+.wm-init-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.wm-init-name-line {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.wm-init-name {
+    font-size: 0.9em;
+}
+
+.wm-init-status {
+    font-size: 0.75em;
+    color: #d8b24a;
+}
+
+.wm-init-hp {
+    height: 4px;
+    margin-top: 3px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.1);
+    overflow: hidden;
+}
+
+.wm-init-hp-fill {
+    height: 100%;
+    background: #6ba368;
+}
+
+/* Below half is where tactics change, so it is worth a colour of its own. */
+.wm-init-row.bloodied .wm-init-hp-fill {
+    background: #c9772f;
+}
+
+.wm-init-hp-text {
+    font-size: 0.72em;
+    opacity: 0.65;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ---- Status markers and size on the board tokens ------------------------- */
+
+.wm-token-statuses {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    display: flex;
+    gap: 2px;
+    pointer-events: none;
+}
+
+.wm-token-status {
+    font-size: 9px;
+    padding: 2px;
+    border-radius: 50%;
+    color: #1a1a1a;
+    background: #d8b24a;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5);
+}
+
+/* A Large creature covers 2x2 cells, Huge 3x3, Gargantuan 4x4. */
+.wm-token-size-2 { transform: translate(-50%, -50%) scale(1.8); }
+.wm-token-size-3 { transform: translate(-50%, -50%) scale(2.6); }
+.wm-token-size-4 { transform: translate(-50%, -50%) scale(3.4); }
+
+/* ---- Scenario objectives (wiki/ROADMAP.md, Fase E) ----------------------- */
+
+.wm-objectives {
+    margin: 8px 0;
+    padding: 8px 10px;
+    border: 1px solid rgba(120, 190, 140, 0.3);
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.25);
+}
+
+.wm-objectives-title {
+    font-weight: bold;
+    font-size: 0.85em;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #7fc07f;
+    margin-bottom: 5px;
+}
+
+.wm-objective {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 0.88em;
+    padding: 2px 0;
+}
+
+.wm-objective-icon {
+    font-size: 0.8em;
+    opacity: 0.6;
+}
+
+.wm-objective.status-complete .wm-objective-icon {
+    color: #7fc07f;
+    opacity: 1;
+}
+
+.wm-objective.status-complete .wm-objective-label {
+    text-decoration: line-through;
+    opacity: 0.75;
+}
+
+.wm-objective.status-failed .wm-objective-icon {
+    color: #d86a5a;
+    opacity: 1;
+}
+
+/* Optional objectives pay, they do not block: that is what makes them optional
+   rather than a requirement in disguise. */
+.wm-objective-optional {
+    font-size: 0.8em;
+    opacity: 0.55;
+    font-style: italic;
+}

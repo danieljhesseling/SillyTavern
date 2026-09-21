@@ -162,6 +162,51 @@ try {
         await page.waitForTimeout(800);
     };
 
+    /**
+     * Plays one combat turn for whoever is up: close the distance, then attack.
+     *
+     * Written as a helper because three checks need it and each one that reimplemented it
+     * got the same thing wrong — a single /combat-move only works if the target square is
+     * already within this turn's movement, and where the enemy lands is rolled.
+     *
+     * @returns {Promise<'attacked'|'moved'|'passed'|'over'>}
+     */
+    const playOneTurn = () => page.evaluate(async () => {
+        const ctx = window.SillyTavern.getContext();
+        const enc = ctx.chatMetadata.combatEncounter;
+        if (!enc?.active) return 'over';
+
+        const entry = enc.turnOrder?.[enc.currentTurnIndex];
+        if (!entry || entry.isEnemy) {
+            await ctx.executeSlashCommandsWithOptions('/combat-end');
+            return 'passed';
+        }
+
+        const member = (ctx.chatMetadata.party || []).find(m => String(m.id) === String(entry.id));
+        const enemy = (enc.enemies || []).find(e => (e.currentHp || 0) > 0);
+        if (!member || !enemy) {
+            await ctx.executeSlashCommandsWithOptions('/combat-end');
+            return 'passed';
+        }
+
+        const mx = member.mapPosition?.gridX ?? 0;
+        const my = member.mapPosition?.gridY ?? 0;
+        const dx = enemy.gridX - mx;
+        const dy = enemy.gridY - my;
+
+        if (Math.max(Math.abs(dx), Math.abs(dy)) <= 1) {
+            await ctx.executeSlashCommandsWithOptions(`/combat-attack ${enemy.name}`);
+            return 'attacked';
+        }
+
+        // One step at a time towards it: a whole-way move is refused when the distance is
+        // more than this turn's speed, and then nothing happens at all.
+        const stepX = mx + Math.sign(dx);
+        const stepY = my + Math.sign(dy);
+        await ctx.executeSlashCommandsWithOptions(`/combat-move ${stepX + 1} ${stepY + 1}`);
+        return 'moved';
+    });
+
     /** Clicks through the dice overlay until it stops covering the page. */
     const clearDiceOverlay = async () => {
         for (let i = 0; i < 40; i++) {
@@ -364,7 +409,13 @@ try {
 
     await aiCard.locator('.campaign-start').click();
     await page.waitForSelector('.party-picker-container', { timeout: 20000 });
+    // The picker binds its click handler a moment after the markup lands.
     await page.waitForTimeout(1500);
+    const pickable = await page.locator('.party-card').count();
+    for (let i = 0; i < Math.min(2, pickable); i++) {
+        await page.locator('.party-card').nth(i).click();
+    }
+    check('the party picker offers the generated world characters', pickable >= 1, `${pickable} cards`);
     await page.click('.popup-button-ok');
     await page.waitForTimeout(2500);
 
@@ -471,6 +522,343 @@ try {
 
     await page.click('.popup-button-ok');
     await page.waitForTimeout(500);
+
+    step('11. The initiative tracker: who acts, who is next, and what ails them');
+    // The board panel has to be open for anything drawn in it to exist.
+    if (await page.locator('#world_location_maps_list').count() === 0
+        || !(await page.locator('#world_location_maps_list').isVisible().catch(() => false))) {
+        await page.locator('#partyDrawerIcon').click({ timeout: 10000 }).catch(() => {});
+        await page.waitForTimeout(1200);
+    }
+    await page.evaluate(() => {
+        void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/fight Ghoul 1');
+    });
+    await page.waitForTimeout(2000);
+    await clearDiceOverlay();
+
+    // Conditions through the command a player would use, not by poking at the metadata:
+    // the first attempt did the latter and never reached the party held in memory.
+    const firstFighter = await page.evaluate(() => {
+        const ctx = window.SillyTavern.getContext();
+        return ctx.chatMetadata.party?.[0]?.name ?? '';
+    });
+    for (const condition of ['Poisoned', 'Prone']) {
+        await page.evaluate(([name, cond]) => {
+            void window.SillyTavern.getContext()
+                .executeSlashCommandsWithOptions(`/condition ${name} ${cond}`);
+        }, [firstFighter, condition]);
+        await page.waitForTimeout(600);
+    }
+
+    const trackerRows = await page.locator('.wm-init-row').count();
+    check('the tracker lists every combatant', trackerRows >= 3, `${trackerRows} rows`);
+    check('exactly one is marked as acting',
+        await page.locator('.wm-init-row.current').count() === 1);
+    check('and one as going next, never the same one',
+        await page.locator('.wm-init-row.next').count() === 1
+        && await page.locator('.wm-init-row.current.next').count() === 0);
+    check('the round is stated instead of counted by hand',
+        /Ronda \d/.test(await page.locator('.wm-init-round').innerText()),
+        (await page.locator('.wm-init-head').innerText()).replace(/\s+/g, ' '));
+    check('each combatant shows its health', await page.locator('.wm-init-hp-fill').count() >= 3);
+    check('conditions are drawn as markers, in the tracker and on the board',
+        await page.locator('.wm-init-status').count() >= 2
+        && await page.locator('.wm-token-status').count() >= 2,
+        `${await page.locator('.wm-init-status').count()} en el rastreador, `
+        + `${await page.locator('.wm-token-status').count()} sobre las fichas`);
+
+    await page.evaluate(() => {
+        void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/combat-stop');
+    });
+    await page.waitForTimeout(1500);
+    await clearDiceOverlay();
+
+    step('12. Winning is worth something');
+    const purseBefore = await page.evaluate(() => {
+        const party = window.SillyTavern.getContext().chatMetadata.party || [];
+        return { gold: party.reduce((s, m) => s + (m.gold || 0), 0), xp: party.reduce((s, m) => s + (m.xp || 0), 0) };
+    });
+
+    await page.evaluate(() => {
+        void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/fight Ghoul 1');
+    });
+    await page.waitForTimeout(1500);
+    await clearDiceOverlay();
+
+    // Killed through the engine, not by editing state: the reward has to come from the
+    // same path a real victory takes.
+    for (let i = 0; i < 60; i++) {
+        const what = await playOneTurn();
+        if (what === 'over') break;
+        await page.waitForTimeout(what === 'attacked' ? 650 : 200);
+        if (what === 'attacked') await clearDiceOverlay();
+        // Ending the turn after acting keeps the order moving.
+        if (what !== 'passed') {
+            await page.evaluate(() => window.SillyTavern.getContext()
+                .executeSlashCommandsWithOptions('/combat-end'));
+        }
+    }
+    await clearDiceOverlay();
+
+    const purseAfter = await page.evaluate(() => {
+        const party = window.SillyTavern.getContext().chatMetadata.party || [];
+        return { gold: party.reduce((s, m) => s + (m.gold || 0), 0), xp: party.reduce((s, m) => s + (m.xp || 0), 0) };
+    });
+
+    const lootLine = await page.locator('#world_location_maps_list .cl-row', { hasText: 'Botín' }).count()
+        + await page.locator('.mes_text', { hasText: 'Botín' }).count();
+
+    // Whether the party wins is rolled, so what is checked is the rule: a victory pays,
+    // and anything else does not. Asserting a win outright failed about one run in three.
+    const won = await page.evaluate(() =>
+        [...document.querySelectorAll('.mes_text')]
+            .some(m => /ha ganado el combate|Objetivos cumplidos/.test(m.textContent || '')));
+
+    check('the fight ended', await page.locator('.wm-combat-section').count() === 0);
+
+    if (won) {
+        check('winning makes the party richer', purseAfter.gold > purseBefore.gold,
+            `${purseBefore.gold} -> ${purseAfter.gold}`);
+        check('and earns experience', purseAfter.xp > purseBefore.xp,
+            `${purseBefore.xp} -> ${purseAfter.xp}`);
+        check('and the reward is announced, not applied in silence', lootLine >= 1,
+            `${lootLine} líneas de botín`);
+    } else {
+        check('losing pays nothing', purseAfter.gold === purseBefore.gold,
+            `perdieron: ${purseBefore.gold} -> ${purseAfter.gold}`);
+        check('and nothing is announced either', lootLine === 0, `${lootLine} líneas de botín`);
+    }
+
+    step('13. The campaign panel: the day and the bonds, reachable at last');
+    await page.locator('#rm_tab_campaign').click({ timeout: 10000 });
+    await page.waitForSelector('.cp-clock', { timeout: 15000 });
+
+    check('the campaign tab exists and opens', await page.locator('.cp-clock').count() === 1);
+    check('it states the day and marks the part of it',
+        /Día \d+/.test(await page.locator('.cp-day').innerText())
+        && await page.locator('.cp-slot.current').count() === 1,
+        (await page.locator('.cp-clock').innerText()).replace(/\s+/g, ' ').slice(0, 60));
+
+    const bondCards = await page.locator('.cp-bond').count();
+    check('every party member has a bond card', bondCards === 2, `${bondCards} cards`);
+    check('each one lists the perks it will unlock, earned or not',
+        await page.locator('.cp-bond').first().locator('.cp-perk').count() === 4);
+
+    // Time moves, and the slot marker moves with it.
+    const slotBefore = await page.locator('.cp-slot.current').innerText();
+    await page.locator('.cp-clock-actions .menu_button').first().click();
+    await page.waitForTimeout(900);
+    const slotAfter = await page.locator('.cp-slot.current').innerText();
+    check('passing the time moves the day on', slotBefore !== slotAfter, `${slotBefore} -> ${slotAfter}`);
+
+    // A recorded event is the only way a bond moves: the narration never decides it.
+    const rankBefore = await page.locator('.cp-bond').first().locator('.cp-bond-points').innerText();
+    await page.locator('.cp-bond').first().locator('.cp-event').selectOption('saved_their_life');
+    await page.locator('.cp-bond').first().locator('.cp-bond-actions .menu_button').click();
+    await page.waitForTimeout(900);
+    const rankAfter = await page.locator('.cp-bond').first().locator('.cp-bond-points').innerText();
+    check('recording an event moves that bond', rankBefore !== rankAfter, `${rankBefore} -> ${rankAfter}`);
+
+    // Sleeping rolls the day over, which is also what brings back the daily perks.
+    const dayBefore = await page.locator('.cp-day').innerText();
+    await page.locator('.cp-clock-actions .menu_button').last().click();
+    await page.waitForTimeout(900);
+    check('sleeping starts a new day', (await page.locator('.cp-day').innerText()) !== dayBefore,
+        `${dayBefore} -> ${await page.locator('.cp-day').innerText()}`);
+
+    // And it survives a reload, because it lives with the chat.
+    const stored = await page.evaluate(() => {
+        const meta = window.SillyTavern.getContext().chatMetadata || {};
+        return { day: meta.calendar?.day ?? null, bonds: Object.keys(meta.bonds?.bonds ?? {}).length };
+    });
+    check('the day and the bonds are saved with the campaign',
+        stored.day > 1 && stored.bonds >= 1, JSON.stringify(stored));
+
+    step('14. The turn machine, now the one running the fight');
+    await page.locator('#rm_tab_location').click({ timeout: 10000 }).catch(() => {});
+    await page.waitForTimeout(800);
+    // The previous step may have left the party on the floor, and a fight cannot start
+    // with nobody standing. Healing through the sheet is the player's own path.
+    await page.evaluate(() => {
+        const ctx = window.SillyTavern.getContext();
+        for (const member of ctx.chatMetadata.party || []) {
+            if ((member.hp || 0) <= 0) member.hp = member.maxHp || 10;
+            member.activeConditions = (member.activeConditions || []).filter(c => c !== 'Unconscious');
+        }
+    });
+    await page.evaluate(() => {
+        void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/fight Ghoul 1');
+    });
+    await page.waitForTimeout(1800);
+    await clearDiceOverlay();
+
+    const turnShape = await page.evaluate(() => {
+        const encounter = window.SillyTavern.getContext().chatMetadata.combatEncounter
+            ?? window.SillyTavern.getContext().chatMetadata.combat ?? null;
+        return encounter?.turnState ?? null;
+    });
+    check('a turn now tracks the action, the bonus action and the reaction',
+        turnShape !== null
+        && 'actionUsed' in turnShape && 'bonusActionUsed' in turnShape && 'reactionUsed' in turnShape,
+        JSON.stringify(turnShape));
+
+    check('the round counter is still running', /Ronda \d/.test(
+        await page.locator('.wm-init-round').innerText().catch(() => '')));
+
+    // Spending the action twice in one turn has to be refused, which is the whole reason
+    // to have an action economy at all.
+    // Getting into reach is itself rolled — who goes first, where the enemy lands — so
+    // the check closes the distance the way a player would instead of assuming it. An
+    // earlier version assumed, and failed every other run for no reason.
+    // Walk the fight with the shared helper until somebody is in reach, then attack
+    // twice: the second one has to be refused, which is what an action economy is for.
+    for (let i = 0; i < 40; i++) {
+        const what = await playOneTurn();
+        if (what === 'over' || what === 'attacked') break;
+        await page.waitForTimeout(200);
+    }
+    await page.waitForTimeout(500);
+    await clearDiceOverlay();
+
+    const spentTwice = await page.evaluate(async () => {
+        const ctx = window.SillyTavern.getContext();
+        const first = ctx.chatMetadata.combatEncounter?.turnState?.actionUsed ?? null;
+        const enemy = (ctx.chatMetadata.combatEncounter?.enemies || []).find(e => (e.currentHp || 0) > 0);
+        if (enemy) await ctx.executeSlashCommandsWithOptions(`/combat-attack ${enemy.name}`);
+        const refused = [...document.querySelectorAll('#toast-container .toast')]
+            .some(t => /ya fue usada/.test(t.innerText));
+        return { first, refused };
+    });
+    await page.waitForTimeout(500);
+    await clearDiceOverlay();
+
+    check('attacking spends the action', spentTwice.first === true, JSON.stringify(spentTwice));
+    check('and a second attack in the same turn is refused', spentTwice.refused === true,
+        JSON.stringify(spentTwice));
+
+    await page.evaluate(() => {
+        void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/combat-stop');
+    });
+    await page.waitForTimeout(1200);
+    await clearDiceOverlay();
+    check('the fight still ends cleanly', await page.locator('.wm-combat-section').count() === 0);
+
+    step('15. A bond that changes how a fight goes');
+    // Raised through the real command, so the rank comes from recorded events like any
+    // other: the point of the design is that nothing else may move a bond.
+    const raised = await page.evaluate(async () => {
+        const ctx = window.SillyTavern.getContext();
+        const names = (ctx.chatMetadata.party || []).map(m => m.name);
+        for (let i = 0; i < 25; i++) {
+            await ctx.executeSlashCommandsWithOptions(`/bond ${names[1]} saved_their_life`);
+        }
+        const bonds = ctx.chatMetadata.bonds?.bonds ?? {};
+        const entry = Object.values(bonds).find(b => b.points >= 84);
+        return { names, points: entry?.points ?? 0 };
+    });
+    check('a bond reaches rank 8 through recorded events alone',
+        raised.points >= 84, JSON.stringify(raised));
+
+    await page.locator('#rm_tab_campaign').click({ timeout: 10000 });
+    await page.waitForTimeout(700);
+    const unlocked = await page.locator('.cp-bond').last().locator('.cp-perk.unlocked').count();
+    check('the panel shows the perks it has earned', unlocked >= 3, `${unlocked} unlocked`);
+
+    // Whether a killing blow actually lands inside one test run is a matter of dice, so
+    // what is checked here is the decision the engine makes from the bonds this campaign
+    // really has saved. That the rescue then applies is covered by the unit tests; this
+    // is the seam between the two that nothing else exercises.
+    const decisions = await page.evaluate(async () => {
+        const { planEndure, planFollowUp, planBatonPass } =
+            await import('/scripts/game-engine/combat/bond-perks.js');
+        const ctx = window.SillyTavern.getContext();
+        const bonds = ctx.chatMetadata.bonds;
+        const party = (ctx.chatMetadata.party || []).map(m => ({ id: m.id, name: m.name, hp: m.hp || 10 }));
+        const leader = party[0];
+        const helper = party[1];
+
+        return {
+            lethal: planEndure({
+                bonds, party, targetId: String(leader.id), currentHp: 5, damage: 99,
+            }),
+            survivable: planEndure({
+                bonds, party, targetId: String(leader.id), currentHp: 5, damage: 1,
+            }),
+            followUp: planFollowUp({
+                bonds, party, attackerId: String(leader.id), canReach: () => true, random: () => 0,
+            }),
+            relay: planBatonPass({
+                bonds, party, actorId: String(helper.id), remainingFeet: 15,
+            }),
+        };
+    });
+
+    check('with the bonds this campaign earned, a companion would take a killing blow',
+        decisions.lethal !== null, JSON.stringify(decisions.lethal));
+    check('and would not step in for a scratch', decisions.survivable === null);
+    check('the rank-3 follow-up is available too', decisions.followUp !== null);
+    check('and the rank-5 relay offers somebody', (decisions.relay || []).length >= 1,
+        JSON.stringify(decisions.relay));
+
+    await page.evaluate(() => {
+        void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/combat-stop');
+    });
+    await page.waitForTimeout(1000);
+    await clearDiceOverlay();
+
+    step('16. A fight with a purpose: the scenario decides it');
+    // Back to the *template* campaign specifically: the generated one has no mission,
+    // because the AI is not asked for objectives yet.
+    await closeChat();
+    await page.locator('.campaign-card[data-world="Mazmorra clásica"] .campaign-continue')
+        .first().click({ timeout: 15000 });
+    await page.waitForTimeout(2500);
+    await page.locator('#rm_tab_location').click({ timeout: 10000 }).catch(() => {});
+    await page.waitForTimeout(900);
+
+    const board = await page.evaluate(async () => {
+        const wi = await import('/scripts/world-info.js');
+        const ctx = window.SillyTavern.getContext();
+        const data = await wi.loadWorldInfo(ctx.chatMetadata.world_info);
+        const first = data?.metadata?.locationMaps?.[0]?.boards?.[0];
+        return { world: ctx.chatMetadata.world_info, objectives: (first?.objectives || []).map(o => o.label) };
+    });
+    check('the starter dungeon carries a mission, not just a brawl',
+        board.objectives.length >= 1, JSON.stringify(board));
+
+    await page.evaluate(() => {
+        void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/fight Esqueleto 1');
+    });
+    await page.waitForTimeout(1800);
+    await clearDiceOverlay();
+
+    const shown = await page.locator('.wm-objective').count();
+    check('the objectives are shown where the fight is', shown >= 1, `${shown} objetivos`);
+    check('and above the initiative order, because what the fight is for outranks whose turn it is',
+        await page.evaluate(() => {
+            const objectives = document.querySelector('.wm-objectives');
+            const tracker = document.querySelector('.wm-init');
+            if (!objectives || !tracker) return false;
+            return (objectives.compareDocumentPosition(tracker) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+        }));
+
+    // Win it, and the victory has to come from the objective being met.
+    for (let i = 0; i < 60; i++) {
+        const what = await playOneTurn();
+        if (what === 'over') break;
+        await page.waitForTimeout(what === 'attacked' ? 650 : 200);
+        if (what === 'attacked') await clearDiceOverlay();
+        if (what !== 'passed') {
+            await page.evaluate(() => window.SillyTavern.getContext()
+                .executeSlashCommandsWithOptions('/combat-end'));
+        }
+    }
+    await clearDiceOverlay();
+
+    check('the mission ends the fight', await page.locator('.wm-combat-section').count() === 0);
+    const said = await page.evaluate(() =>
+        [...document.querySelectorAll('.mes_text')].some(m => /Objetivos cumplidos/.test(m.textContent || '')));
+    check('and says so as a mission accomplished, not just as a body count', said);
 
     console.log(`\n--- console errors ---`);
     console.log(problems.size ? [...problems].join('\n') : '(none)');

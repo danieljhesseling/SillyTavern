@@ -162,6 +162,8 @@ const RULES = getActiveRuleset();
  * @property {number} [attackRangeFeet] - Reach in feet. Defaults to melee when absent.
  * @property {number} [range] - Legacy spelling of attackRangeFeet.
  * @property {'aggressive'|'skirmisher'|'guardian'|'coward'} [profile] - Tactical behaviour; aggressive when absent.
+ * @property {string} [size] - D&D creature size. Decides how many cells the token covers; Medium when absent.
+ * @property {string[]} [activeConditions] - Conditions currently on it, drawn as markers.
  * @property {number} gridX
  * @property {number} gridY
  */

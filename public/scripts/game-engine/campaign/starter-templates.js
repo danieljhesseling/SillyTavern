@@ -27,6 +27,7 @@ import { terrainFromAsciiMap } from '../board/terrain.js';
  * @property {string} boardName
  * @property {Array<{name: string, hp: number, armorClass: number, cr: number, profile: string, attackRangeFeet?: number}>} enemies
  * @property {Array<{x: number, y: number}>} partyStart
+ * @property {Array<any>} [objectives]  Scenario objectives, if the board is a mission.
  */
 
 /** @type {StarterTemplate[]} */
@@ -55,6 +56,12 @@ export const STARTER_TEMPLATES = [
             { name: 'Arquero esquelético', hp: 9, armorClass: 12, cr: 0.25, profile: 'skirmisher', attackRangeFeet: 60 },
         ],
         partyStart: [{ x: 2, y: 8 }, { x: 3, y: 8 }, { x: 2, y: 7 }, { x: 3, y: 7 }],
+        // A mission rather than a brawl: the one template that shows what the scenario
+        // rules are for, without anybody having to author objectives by hand first.
+        objectives: [
+            { id: 'clear', type: 'eliminate_all', label: 'Limpiar la sala de entrada' },
+            { id: 'hold', type: 'survive_rounds', label: 'Aguantar 3 rondas', rounds: 3, optional: true },
+        ],
     },
     {
         id: 'forest',
@@ -172,6 +179,7 @@ export function buildWorldMetadata(template, overrides = {}) {
                         gridWidth,
                         gridHeight,
                         isCombat: template.enemies.length > 0,
+                        objectives: template.objectives ?? [],
                         terrain: terrainFromAsciiMap(template.map),
                         fogEnabled: false,
                         npcPlacements: [],

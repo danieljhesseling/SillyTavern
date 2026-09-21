@@ -206,3 +206,37 @@ export function describeTurn(tracker) {
         : '';
     return `Ronda ${tracker.round} · turno de ${tracker.activeName}${next}`;
 }
+
+/**
+ * Adds or removes a condition, returning a new list.
+ *
+ * Toggling rather than separate add and remove because that is how a condition is used
+ * at the table: it goes on, and later it comes off, and nobody wants two commands for it.
+ * Matching ignores case, so the list never ends up holding both "Poisoned" and "poisoned".
+ *
+ * @param {string[]} conditions
+ * @param {string} name
+ * @returns {{conditions: string[], added: boolean}}
+ */
+export function toggleCondition(conditions, name) {
+    const list = (Array.isArray(conditions) ? conditions : [])
+        .map(c => String(c ?? '').trim())
+        .filter(Boolean);
+    const wanted = String(name ?? '').trim();
+
+    if (!wanted) return { conditions: list, added: false };
+
+    const index = list.findIndex(c => c.toLowerCase() === wanted.toLowerCase());
+    if (index >= 0) {
+        return { conditions: list.filter((_, i) => i !== index), added: false };
+    }
+
+    // Stored with the canonical spelling when there is one, so the sheet, the tracker and
+    // the rule pack all agree on how it is written.
+    const known = Object.keys(STATUS_ICONS).find(k => k === wanted.toLowerCase());
+    const canonical = known
+        ? wanted.charAt(0).toUpperCase() + wanted.slice(1).toLowerCase()
+        : wanted;
+
+    return { conditions: [...list, canonical], added: true };
+}

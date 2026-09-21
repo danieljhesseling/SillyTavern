@@ -306,9 +306,21 @@ describe('combat encounter shape', () => {
             active: true,
             turnState: { actorId: 7, isEnemy: 1, movementSpentFeet: '15', actionUsed: false },
         });
-        expect(result.turnState).toEqual({
+        expect(result.turnState).toMatchObject({
             actorId: '7', isEnemy: true, movementSpentFeet: 15, actionUsed: false,
         });
+    });
+
+    // Encounters saved before the turn machine was connected knew about movement and one
+    // action. They load unchanged and gain the two flags they were missing, rather than
+    // being refused or leaving the new fields undefined.
+    test('an older turnState gains the bonus action and the reaction', () => {
+        const result = normalizeCombatEncounter({
+            active: true,
+            turnState: { actorId: '7', isEnemy: false, movementSpentFeet: 15, actionUsed: true },
+        });
+        expect(result.turnState.bonusActionUsed).toBe(false);
+        expect(result.turnState.reactionUsed).toBe(false);
     });
 });
 

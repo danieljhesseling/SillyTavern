@@ -22,28 +22,30 @@ La lógica de las Fases A a E está escrita y probada. Lo que un jugador puede t
 | :--- | :---: | :--- | :--- |
 | **Asistente de campaña** | ✅ | ✅ | ✅ verificado en navegador real |
 | **A · Terreno, visión, niebla, rutas** | ✅ | ✅ alcance, muros, niebla y **cobertura en el ataque** | ✅ paleta de pintura · ✅ **puertas con clic** |
-| **B · Combate** | ✅ | 🟡 IA táctica, guardián de tiradas y epílogo sí · ⬜ la máquina de turnos no | ✅ **registro en el tablero real** · ⬜ rastreador de iniciativa |
+| **B · Combate** | ✅ | ✅ **todo, incluida la máquina de turnos** | ✅ registro, rastreador de iniciativa, marcadores de estado |
 | **C · Contenido como datos** | ✅ | ✅ cada campaña carga su propio paquete | ✅ **editor visual** (`/rules`) |
-| **D · Calendario y vínculos** | ✅ | ⬜ | ⬜ |
-| **E · Escenarios y tablero de campaña** | ✅ | ⬜ | ⬜ |
+| **D · Calendario y vínculos** | ✅ | ✅ pestaña **Campaña** y perks en el combate | ✅ día, rangos y perks · ⬜ descansos |
+| **E · Escenarios y tablero de campaña** | ✅ | 🟡 los objetivos deciden el combate · ⬜ salas y puertas | 🟡 objetivos en el tablero |
 | **F · Lienzo blanco (IA)** | ✅ | ✅ dentro del asistente | ✅ con previsualización |
 | **T · Medir el gasto** | ✅ | ✅ `/prompt` | ✅ desglose por bloque |
 
 > [!NOTE]
 > **Cómo leerla.** ✅ hecho y comprobado · 🟡 parcial · ⬜ sin empezar. *Conectada* quiere decir que un jugador puede provocarla: un módulo que solo ejecutan los tests cuenta como ⬜, por bien probado que esté.
 >
-> Esto ya no se estima, se mide: `node tools/check-engine-wiring.mjs` responde hoy **19 de 24 módulos conectados**, con 5 sin cargar (1.383 líneas: `turn-machine`, `bonds`, `calendar`, `scenarios`, `campaign-map`). Todo lo que queda sin conectar son las Fases D y E, que esperan su interfaz.
+> Esto ya no se estima, se mide: `node tools/check-engine-wiring.mjs` responde hoy **26 de 28 módulos conectados**. Los dos que faltan son `scenarios.js` y `campaign-map.js` (582 líneas), la Fase E, que espera su interfaz.
 
 **Lo que sigue, en este orden:**
 
-1. **Usar el medidor.** `/prompt` ya dice qué ocupa cada turno; falta jugar unos cuantos y ver qué bloque domina. Es lo único que puede cambiar el orden de lo demás.
-2. **La palanca que eso señale**, que probablemente sea la caché de prompt (T1): upstream ya trae `claude.cachingAtDepth`, así que se prueba antes de construir nada.
-3. **Las Fases D y E, que son interfaz**: calendario, vínculos, escenarios. Es la lógica mejor probada del proyecto y la única que nadie puede tocar todavía.
+1. **Los descansos** (A1): el otro lado del calendario, sin el cual los recursos no significan nada.
+2. **Las salas y las puertas** (A2): el último módulo del motor que nadie carga.
+3. **El prefijo estable del prompt** (A3): la palanca de coste que funciona con Gemini, con OpenAI y con Claude por igual.
+
+Desde el 2026-09-21 lo pendiente está dividido en [[POR_HACER]] por **quién decide**: lo que se puede hacer sin preguntar, lo que necesita una decisión tuya, y las propuestas.
 
 El detalle, con todo lo demás, está en [[POR_HACER]].
 
 > [!TIP]
-> **Sesión del 2026-09-21.** Dos bloques. Primero, el defecto del epílogo y todo lo que podía hacerse sin decisiones: cobertura en el ataque, guardián de tiradas conectado, puertas con clic, registro de combate en el tablero real, `/combat-stop`, reglas de encuentro en las campañas nuevas, ESLint a cero y tres herramientas en `tools/`. Después, el bloque de prioridad alta entero: **Fase F** (generar el mundo con IA desde el asistente), **editor visual de reglas** (`/rules`), **paquete de reglas por campaña** y **medición del gasto** (`/prompt`). Todo verificado en un navegador real. El detalle está en [[POR_HACER]], *Hecho*.
+> **Sesión del 2026-09-21.** Tres bloques. Primero, el defecto del epílogo y todo lo que podía hacerse sin decisiones: cobertura en el ataque, guardián de tiradas conectado, puertas con clic, registro de combate en el tablero real, `/combat-stop`, reglas de encuentro en las campañas nuevas, ESLint a cero y tres herramientas en `tools/`. Después, el bloque de prioridad alta entero: **Fase F** (generar el mundo con IA desde el asistente), **editor visual de reglas** (`/rules`), **paquete de reglas por campaña** y **medición del gasto** (`/prompt`). Y por último, **A1 y A2**: rastreador de iniciativa con marcadores de estado y escalado por tamaño (con `/condition` para ponerlos a mano), y **botín por CR** — ganar da oro, experiencia y objetos. Con eso la **Fase B queda completa** salvo la decisión sobre la máquina de turnos. Todo verificado en un navegador real. El detalle está en [[POR_HACER]], *Hecho*.
 
 ---
 
@@ -131,7 +133,7 @@ Las Fases A y B **no ahorran tokens**. Lo que entregan es jugabilidad: IA que re
 | **Motor de juego (A–E)** | 18 archivos y 4.666 líneas en `game-engine/` (tablero, combate, campaña, reglas, interfaz) · lógica completa de las Fases A a E con tests · lo que está conectado, en *Dónde Estamos* |
 | **Asistente de campaña** | Botón *Nueva campaña* · 4 plantillas · tarjetas *Iniciar* para mundos sin partida · verificado de extremo a extremo (sección propia más abajo) |
 
-**Estado verificable** (medido el 2026-09-21, tras el bloque de prioridad alta): 1.085 tests en 41 suites · 0 errores de tipos en 38 archivos del fork · **0 errores de ESLint** · 19 de 24 módulos del motor conectados al juego · 44 comprobaciones en navegador real.
+**Estado verificable** (medido el 2026-09-21): 1.201 tests en 46 suites · 0 errores de tipos en 44 archivos del fork · **0 errores de ESLint** · 29 de 30 módulos del motor conectados al juego · 79 comprobaciones en navegador real, estables en tres pasadas.
 
 > [!NOTE]
 > Este trabajo no era un desvío. Sin el merge no tendrías los 194 commits de upstream; sin los tests no podrías tocar el motor de combate sin miedo; sin el gate de tipos cada refactor sería a ciegas. Las fases que vienen se apoyan en eso.
@@ -194,20 +196,20 @@ Sobre la cobertura conviene ser exacto: cuenta la de la **casilla del objetivo**
 
 ---
 
-## 🟡 Fase B — El Combate Determinista `INTEGRADO — 2026-09-21`
+## 🟢 Fase B — El Combate Determinista `COMPLETA — 2026-09-21`
 
 > **Qué entrega**: un combate que respeta el terreno y cuenta rondas (y, cuando se conecte el guardián, no se inventa tiradas). **No ahorra tokens** — ver la corrección de la sección 1: el combate ya era gratis.
 
 | ID | Tarea | Resultado |
 | :--- | :--- | :--- |
-| **B1** | Máquina de turnos: iniciativa, rondas, estado de turno. | ✅ `combat/turn-machine.js` · 40 tests · ⬜ **sin conectar**: el combate real cuenta turnos y rondas con su propio código en `party.js` |
-| **B3** | Economía de acciones: movimiento, acción, adicional, reacción. | ✅ En la misma máquina · ⬜ **sin conectar** por la misma razón |
+| **B1** | Máquina de turnos: iniciativa, rondas, estado de turno. | ✅ `combat/turn-machine.js` · 40 tests · **conectada**: es la que corre el combate real |
+| **B3** | Economía de acciones: movimiento, acción, adicional, reacción. | ✅ En la misma máquina, y **en uso**: atacar gasta la acción del turno |
 | **B2** | Perfiles tácticos de enemigo. | ✅ `combat/enemy-ai.js` · 33 tests · **conectado** (`planEnemyTurn`) |
 | **B7** | Interceptar tiradas alucinadas (`PROP-135`). | ✅ `combat/roll-guard.js` · 33 tests · **conectado** a cada mensaje del modelo |
 | **B4** | Combat log gráfico que sustituye la narración por turno. | ✅ `ui/combat-log.js` · 25 tests · marco pixel art · **montado en el tablero real** |
 | **B6** | Resumen único al terminar el combate. | ✅ **Llega al modelo** como mensaje de narrador — ver ⬇️ |
-| **B5** | Botín algorítmico por CR. | ⬜ Pendiente |
-| **B8** | Rastreador de iniciativa, marcadores de estado, escalado por tamaño. | ⬜ Pendiente (interfaz) |
+| **B5** | Botín algorítmico por CR. | ✅ `combat/loot.js` · 23 tests · oro, PX y objetos repartidos entre los supervivientes |
+| **B8** | Rastreador de iniciativa, marcadores de estado, escalado por tamaño. | ✅ `combat/initiative-tracker.js` · 34 tests · más `/condition` |
 
 > [!IMPORTANT]
 > **B6: el defecto que este documento dio por hecho, y cómo se cerró.** Hasta el 2026-09-21 `endCombat` publicaba el resumen con `postCombatNarration`, es decir como mensaje de sistema. `script.js` filtra esos mensajes del prompt (`chat.filter(x => !x.is_system ...)`), el mismo mecanismo de §1 que hace gratis el combate. El jugador veía el resumen y **el modelo nunca lo recibía**. Nada fallaba, ningún test protestaba, y el comentario sobre ese código afirmaba lo contrario. Estaba *enganchado*, no *funcionando*.
@@ -284,7 +286,9 @@ El **registro de combate** tiene marco de pixel art generado con PixelLab (`publ
 
 Los encuentros guardados sin contador de rondas se reanudan en la ronda 1 en vez de fallar.
 
-**Pendiente**: conectar —o retirar— la máquina de turnos (B1/B3), que es una decisión y no una tarea; el botín (B5) y el rastreador de iniciativa (B8).
+**La Fase B está completa.** La máquina de turnos se conectó el 2026-09-21, tras decidirlo: el combate real la usa y hay **una sola definición de turno** en el proyecto, con acción, acción adicional y reacción. Había dos, y el juego usaba la más pobre.
+
+Lo que queda encima son perks y contenido, no mecánica: las perks de vínculo (A1) y convertir el botín en objetos equipables (A5).
 
 ### Cerrado el 2026-09-21
 
@@ -363,7 +367,7 @@ Tres decisiones que conviene recordar:
 
 ---
 
-## 🟡 Fase D — El Bucle Persona `LÓGICA COMPLETA — 2026-09-20`
+## 🟢 Fase D — El Bucle Persona `CONECTADA — 2026-09-21`
 
 > **Por qué después del combate**: las perks de vínculo son mecánicas *de combate*. Sin motor táctico no hay dónde engancharlas.
 
@@ -371,10 +375,10 @@ Tres decisiones que conviene recordar:
 | :--- | :--- | :--- |
 | **D1** | Calendario y bloques de tiempo. | ✅ `campaign/calendar.js` |
 | **D2** | Rangos de vínculo 1–10 por eventos registrados. | ✅ `campaign/bonds.js` |
-| **D3** | Perks mecánicas (rangos 3, 5, 8, 10). | 🟡 Definidas y desbloqueadas por rango · ⬜ **ninguna se aplica en el combate** todavía |
+| **D3** | Perks mecánicas (rangos 3, 5, 8, 10). | ✅ Las de rango 3, 5 y 8 cambian el combate · `combat/bond-perks.js` · 21 tests · ⬜ la de rango 10 es contenido, no una regla |
 | **D4** | Eventos de confidente: el motor decide, el LLM escribe. | ✅ `recordBondEvent` devuelve `rankedUp` y las perks desbloqueadas |
 | **D5** | Descanso corto y largo. | ⬜ Pendiente |
-| **D6** | 🖥️ Interfaz del calendario y de los vínculos. | ⬜ Pendiente |
+| **D6** | 🖥️ Interfaz del calendario y de los vínculos. | ✅ Pestaña **Campaña** · `ui/campaign-panel.js` + `campaign/campaign-view.js` · 19 tests |
 
 > [!WARNING]
 > **Corrección a la propuesta Persona.** Planteaba subir los rangos con `analyzeRelationshipsFromChat`, un analizador heurístico sobre la salida del LLM. Eso es exactamente el acoplamiento que el propio documento condena para el combate: el modelo decidiendo, de forma indirecta y no reproducible, cuándo desbloqueas una mecánica.
@@ -389,11 +393,36 @@ Diez rangos con **umbrales crecientes** (0, 6, 14, 24, 36, 50, 66, 84, 104, 126)
 
 `suggestBondEvent` es la costura donde la heurística sí puede vivir: propone (*"la conversación reforzó el vínculo, ¿confirmas +1?"*) y el jugador decide.
 
-**Entregable pendiente**: falta la interfaz del calendario y del panel de vínculos (D6), y los descansos (D5). Y algo que la lógica sola no da: las perks son datos que **ningún código de `party.js` aplica**. Hoy `bonds.js` y `calendar.js` solo los ejecutan los tests.
+### La interfaz (D6)
+
+Una pestaña **Campaña** junto a Party y Location. Arriba, el día y en qué parte del día estás, con *Pasar el rato* y *Dormir*; debajo, una ficha por compañero con su rango, lo que le falta para el siguiente, y **las cuatro perks: las que tiene y las que no**. Ver qué da el rango 8 es la razón para seguir pasando tardes con alguien.
+
+Los eventos se registran desde ahí, o con `/bond` y `/time`. Y uno lo registra el motor por su cuenta: **un combate ganado juntos**, que es la decisión de diseño entera — la narración no decide cuándo sube un vínculo.
+
+> [!NOTE]
+> **La pestaña se crea desde `party.js`, no desde `index.html`.** Ese archivo es de upstream y cada línea que el fork le añade se paga en cada merge; dos llamadas a `insertAfter` cuestan lo mismo y no cuestan nada después.
+
+### Las perks, ya en el combate (D3)
+
+El argumento del propio documento de diseño era que los vínculos tenían que ser mecánicos: *«un vínculo que no cambia cómo va un combate es solo un número en pantalla»*. Hasta el 2026-09-21 eran exactamente eso.
+
+| Perk | Rango | Qué hace |
+| :--- | :---: | :--- |
+| **Ataque de seguimiento** | 3 | Un crítico da a un compañero que ya alcance al objetivo un 50% de atacar gratis. Se resuelve como un ataque de verdad: tira, puede fallar, sale en el registro |
+| **Relevo** | 5 | Al derrotar a un enemigo puedes ceder el movimiento que te quede, con `/relevo`. Una oferta, no un automatismo |
+| **Aguantar** | 8 | Un compañero se interpone y te deja a 1 HP. Una vez al día, solo ante un golpe realmente letal, y nunca para salvarse a sí mismo |
+| **Vínculo máximo** | 10 | Sigue siendo contenido — arma y habilidad propias — no una regla |
+
+> [!IMPORTANT]
+> **Decidir y aplicar están separados.** `combat/bond-perks.js` solo responde *«¿salta, y sobre quién?»*; aplicar el daño, gastar la perk y escribir la línea del registro es de `party.js`. Es la misma división que hace testeable a la IA de enemigos, y por la misma razón: son efectos que nadie supervisa mientras juegas.
+>
+> Las restricciones importan tanto como el efecto. *Aguantar* solo salta ante un golpe que de verdad tumbaría — una perk que salta con cada rasguño hace el combate imposible de perder en vez de tenso — y el *ataque de seguimiento* exige que el compañero ya pudiera alcanzar al objetivo, porque un golpe gratis desde el otro extremo de la sala vaciaría de sentido la posición, que es el juego entero.
+
+**Entregable pendiente**: los descansos (D5) y decidir qué es el vínculo de rango 10.
 
 ---
 
-## 🟡 Fase E — Misiones Estilo Gloomhaven `LÓGICA COMPLETA — 2026-09-20`
+## 🟡 Fase E — Misiones Estilo Gloomhaven `OBJETIVOS CONECTADOS — 2026-09-21`
 
 | ID | Tarea | Resultado |
 | :--- | :--- | :--- |
@@ -401,7 +430,7 @@ Diez rangos con **umbrales crecientes** (0, 6, 14, 24, 36, 50, 66, 84, 104, 126)
 | **E2** | Salas y puertas sobre el modelo de terreno. | ✅ `campaign/campaign-map.js` |
 | **E3** | Tablero de campaña con requisitos. | ✅ En el mismo módulo |
 | **E4** | Seguimiento de misiones. | ✅ `QuestState` con sello de día |
-| **E5** | 🖥️ Interfaz de escenarios y tablero de campaña. | ⬜ Pendiente |
+| **E5** | 🖥️ Interfaz de escenarios y tablero de campaña. | ✅ Objetivos en el panel del combate · `combat/scenario-board.js` · 18 tests · ⬜ el tablero de campaña |
 
 ### Los siete tipos de objetivo
 
@@ -422,7 +451,22 @@ Una sala es un conjunto de celdas más las puertas que llevan a ella. `openDoor`
 
 Las localizaciones se desbloquean por **requisitos que el motor comprueba**, no por confianza: misiones completadas, otras localizaciones superadas, o un rango de vínculo mínimo. `explainLock` devuelve el porqué, para un aviso que explica en vez de limitarse a negarse.
 
-**Entregable pendiente**: la interfaz (E5). La lógica ya resuelve una mazmorra de tres salas con objetivo. Como en la Fase D, `scenarios.js` y `campaign-map.js` **no están conectados al juego real**: solo los ejecutan los tests.
+### Los objetivos, ya en el combate (E1 · E5)
+
+Hasta el 2026-09-21 **todos los combates de este juego eran «mata a todo el mundo»**, que es justo el escenario para el que un motor táctico menos falta hace. Siete tipos de objetivo llevaban meses sabiendo juzgarse y nadie se lo preguntaba.
+
+Ahora un tablero puede llevar una misión, y si la lleva es ella la que decide el combate:
+
+- **Ganar sin matar a nadie**: *aguantar 3 rondas* se cumple con todos los enemigos en pie.
+- **Perder sin morir**: *proteger a X* se falla si X cae, aunque el grupo siga entero.
+- **Los opcionales pagan, no bloquean**, que es lo que los hace opcionales y no requisitos escondidos.
+
+Los objetivos se dibujan **encima del rastreador de iniciativa**, porque para qué es el combate manda sobre a quién le toca. Y la mazmorra inicial trae una misión, para que una campaña nueva enseñe qué es un escenario sin que nadie escriba uno a mano.
+
+> [!NOTE]
+> **Un tablero sin objetivos se comporta exactamente como siempre**: limpias y ganas. Un escenario sustituye esa regla, no se añade a ella.
+
+**Entregable pendiente**: las salas y las puertas (`campaign-map.js`, E2), que es **el último módulo del motor que nadie carga**. Abrir una puerta debería revelar la sala y despertar a lo que haya dentro — lo que impide que una mazmorra sea un único combate enorme. Y el tablero de campaña con sus requisitos (E3).
 
 ---
 
@@ -479,7 +523,7 @@ La primera versión pasó todos sus tests y **no funcionó**. Lo encontró quien
 >
 > Lo que sí lo detecta es recorrer el flujo en un navegador real. Se hizo con Playwright y Edge contra un servidor con datos aislados, sembrado con una copia del mundo huérfano real. Comprobó, en instalación limpia: crear → chat vinculado al mundo → grupo en las casillas (2,8) y (3,8) → tablero visible con muros y dos fichas → volver a la bienvenida → la tarjeta figura como campaña en curso. Y sobre el mundo huérfano: tarjeta con *Iniciar* → selector de grupo → arranque → pasa a ser campaña normal.
 >
-> **Desde el 2026-09-21 eso está en el repositorio**: `tools/e2e-campaign.mjs` levanta su propio servidor con un `--dataRoot` temporal, recorre el juego y limpia al terminar. No toca tus datos y tu servidor de siempre puede seguir abierto. Son 44 comprobaciones: crear la campaña, las posiciones de inicio, el tablero, abrir una puerta, un combate con su registro, que el epílogo **no** sea un mensaje de sistema, y la campaña listada al cerrar.
+> **Desde el 2026-09-21 eso está en el repositorio**: `tools/e2e-campaign.mjs` levanta su propio servidor con un `--dataRoot` temporal, recorre el juego y limpia al terminar. No toca tus datos y tu servidor de siempre puede seguir abierto. Son 55 comprobaciones: crear la campaña, las posiciones de inicio, el tablero, abrir una puerta, un combate con su registro, que el epílogo **no** sea un mensaje de sistema, y la campaña listada al cerrar.
 >
 > ```bash
 > node tools/e2e-campaign.mjs            # headless
@@ -627,10 +671,10 @@ Lo medido: la **lógica** de las Fases A a E (18 archivos y 4.666 líneas en `ga
 ## 🔬 Verificación
 
 ```bash
-npm run test:unit --prefix tests     # 1.085 tests, 41 suites
-node tools/check-fork-types.mjs      # 0 errores en los 38 archivos del fork
-node tools/check-engine-wiring.mjs   # 19 de 24 módulos del motor conectados al juego
-node tools/e2e-campaign.mjs          # 44 comprobaciones en un navegador real
+npm run test:unit --prefix tests     # 1.201 tests, 46 suites
+node tools/check-fork-types.mjs      # 0 errores en los 44 archivos del fork
+node tools/check-engine-wiring.mjs   # 29 de 30 módulos del motor conectados al juego
+node tools/e2e-campaign.mjs          # 79 comprobaciones en un navegador real
 ESLINT_USE_FLAT_CONFIG=false npx eslint public/scripts/game-engine public/scripts/party public/scripts/party.js public/scripts/campaigns.js public/scripts/world-map-renderer.js tools   # 0 errores
 git fetch upstream && git merge upstream/release
 ```

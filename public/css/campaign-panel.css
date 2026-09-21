@@ -1,0 +1,174 @@
+/* The campaign panel: the day, the bonds, and what they unlock.
+   See wiki/ROADMAP.md, Fase D (D6). */
+
+#campaign_panel_row {
+    padding: 6px;
+}
+
+.cp-clock {
+    padding: 10px;
+    margin-bottom: 10px;
+    border: 1px solid rgba(201, 162, 39, 0.3);
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.25);
+}
+
+.cp-day {
+    font-size: 1.1em;
+    font-weight: bold;
+    color: #c9a227;
+}
+
+.cp-slots {
+    display: flex;
+    gap: 6px;
+    margin: 6px 0;
+}
+
+.cp-slot {
+    padding: 3px 9px;
+    border-radius: 12px;
+    font-size: 0.82em;
+    background: rgba(255, 255, 255, 0.06);
+    opacity: 0.6;
+}
+
+/* Which part of the day it is has to be obvious: it decides what you can do with it. */
+.cp-slot.current {
+    background: rgba(201, 162, 39, 0.25);
+    opacity: 1;
+    font-weight: bold;
+}
+
+.cp-clock-actions {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.cp-empty,
+.cp-note {
+    font-size: 0.82em;
+    opacity: 0.7;
+    margin-top: 8px;
+}
+
+.cp-bonds {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.cp-bond {
+    padding: 9px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.cp-bond-head {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.cp-bond-avatar {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.cp-bond-name {
+    font-weight: bold;
+    flex: 1;
+}
+
+.cp-bond-rank {
+    font-size: 0.8em;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: rgba(201, 162, 39, 0.2);
+    color: #c9a227;
+}
+
+.cp-bond-rank.maxed {
+    background: rgba(201, 162, 39, 0.45);
+    color: #1a1a1a;
+    font-weight: bold;
+}
+
+/* The thresholds grow, so the later ranks are earned rather than accumulated.
+   The bar is what makes that visible. */
+.cp-bond-bar {
+    height: 6px;
+    margin: 7px 0 3px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.1);
+    overflow: hidden;
+}
+
+.cp-bond-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #c9a227, #e0c060);
+}
+
+.cp-bond-points {
+    font-size: 0.75em;
+    opacity: 0.65;
+}
+
+.cp-perks {
+    margin: 8px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.cp-perk {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 0.8em;
+    opacity: 0.4;
+}
+
+.cp-perk.unlocked {
+    opacity: 1;
+}
+
+.cp-perk.spent {
+    opacity: 0.6;
+}
+
+.cp-perk-rank {
+    flex: 0 0 18px;
+    text-align: center;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.08);
+    font-variant-numeric: tabular-nums;
+}
+
+.cp-perk.unlocked .cp-perk-rank {
+    background: rgba(201, 162, 39, 0.3);
+    color: #e0c060;
+}
+
+.cp-perk-note {
+    font-size: 0.85em;
+    opacity: 0.7;
+    font-style: italic;
+}
+
+.cp-bond-actions {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.cp-event {
+    flex: 1;
+    min-width: 0;
+    font-size: 0.82em;
+    padding: 3px;
+}

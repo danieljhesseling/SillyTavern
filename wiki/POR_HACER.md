@@ -22,7 +22,7 @@ El plan y el porqué están en [[ROADMAP]]; esto es el marcador.
 > **El patrón a vigilar**: hay mucho motor construido y testeado, y menos motor **conectado**. Las tareas marcadas 🖥️ son las que convierten trabajo hecho en trabajo jugable, y un módulo que solo ejecutan los tests no cuenta como hecho. Hay una orden que lo comprueba en vez de suponerlo:
 >
 > ```bash
-> node tools/check-engine-wiring.mjs   # 24 módulos, 19 conectados, 5 sin cargar (1.383 líneas)
+> node tools/check-engine-wiring.mjs   # 30 módulos, 29 conectados, 1 sin cargar (275 líneas)
 > ```
 
 ---
@@ -33,21 +33,21 @@ Ordenado por lo que desbloquea. Cada una tiene el camino decidido: si aparece un
 
 | ID | Tarea | Qué entrega | Fase |
 | :--- | :--- | :--- | :--- |
-| **A1** | 🖥️ **Rastreador de iniciativa y marcadores de estado** | Un combate que se lee sin contar de memoria: quién va, en qué ronda, y qué le pasa a cada ficha. El registro y las tiradas ya están | B8 |
-| **A2** | **Botín algorítmico por CR** | Cierra el bucle del combate: hoy ganar no da nada. Las tablas salen del paquete de reglas, así que se editan desde `/rules` | B5 |
-| **A3** | 🖥️ **Interfaz de calendario y vínculos** | Lo que hace que esto sea un juego Persona y no solo táctico. La lógica es la mejor probada del proyecto (62 tests) y nadie puede tocarla | D6 |
-| **A4** | 🖥️ **Interfaz de escenarios y tablero de campaña** | Misiones con objetivos y localizaciones que se desbloquean. Misma situación: lógica lista, sin puerta de entrada | E5 |
-| **A5** | **Aplicar las perks de vínculo en el combate** | `bonds.js` decide cuándo se desbloquean; nada en `party.js` las aplica, así que son decorativas | D3 |
-| **A6** | **Descanso corto y largo** con dados de golpe | El otro lado del calendario: sin descansos, los recursos no significan nada | D5 |
+| **A1** | **Descanso corto y largo** con dados de golpe | El otro lado del calendario, que ya existe: sin descansos, los recursos no significan nada. Y es donde encaja el dado de golpe, que la ficha ya tiene | D5 |
+| **A2** | 🖥️ **Salas, puertas y enemigos dormidos** | `campaign-map.js` es **el último módulo del motor que nadie carga**. Abrir una puerta debería revelar la sala y despertar a lo que haya dentro: es lo que impide que una mazmorra sea un solo combate enorme | E2 |
+| **A3** | **Prefijo estable del prompt** | La decisión D2: reordenar lo que se envía para que el principio no cambie entre turnos. Lo aprovechan Gemini, OpenAI y Claude por igual, y `/prompt` ya sabe medir si funcionó | T1 |
+| **A4** | **Objetivos editables, y generados con IA** | Hoy una misión se escribe a mano en World Info, salvo la de la plantilla. El generador de mundos ya valida contra esquema: pedirle objetivos es la misma tubería | E/F |
+| **A5** | **El vínculo de rango 10 sigue sin ser nada** | Las otras tres perks ya cambian el combate; esta es contenido — arma y habilidad propias — y necesita decidir qué es antes de poder construirse | D3 |
+| **A6** | **Convertir el botín en objetos de verdad** | Hoy lo que sueltan los enemigos se añade como texto al inventario. Para equiparlo hace falta crearlo como `DndItem`, con las formas que ya existen | B5 |
 | **A7** | **Reglas de encuentro editables** | El asistente ya las escribe; cambiarlas exige ir a World Info a mano | B/C |
 | **A8** | **Editar y comparar lo generado con IA** | Retocar el mapa en la previsualización y volver a una generación anterior sin cerrar el asistente | F |
 | **A9** | **Cobertura por línea de tiro** | Hoy cuenta la casilla del objetivo, que es una simplificación declarada. El punto donde arreglarlo ya está aislado en `getTargetArmorClass` | A/B |
 | **A10** | **Avisar de lo que un cambio de reglas rompería** | Quitar un tipo de daño que un objeto usa deja ese objeto con una referencia muerta, y hoy se guarda sin protestar | C3 |
-| **A11** | **Sacar el pegamento de `party.js`** | 4.954 líneas: la lógica vive fuera, en módulos probados, pero cada enganche nuevo se acumula aquí | — |
+| **A11** | **Sacar el pegamento de `party.js`** | 5.700 líneas: la lógica vive fuera, en módulos probados, pero cada enganche nuevo se acumula aquí | — |
 | **A12** | **Registro de contradicciones** narración contra estado | Tras cada turno, comparar lo que el modelo contó con lo que el motor sabe. Da datos sobre dónde fallan los prompts en vez de intuiciones | T7 · N-06 |
 | **A13** | **Snapshot del prompt compilado en CI** | Que un cambio que altere el prompt en silencio haga fallar la build. Ahora es posible: `/prompt` ya sabe descomponerlo | T5 · N-02 |
 | **A14** | **Repetición determinista de turno** | Reejecutar con el mismo contexto y semilla, para saber si un cambio de prompt mejoró algo en vez de suponerlo | T6 · N-05 |
-| **A15** | **Ampliar el recorrido de navegador** a vínculos y escenarios | Hoy no los cubre porque no están conectados. En cuanto A3 y A4 estén, debe crecer con ellos | — |
+| **A15** | **Ampliar el recorrido de navegador** a las salas y las puertas | Lo cubrirá cuando A2 esté. El calendario, los vínculos, las perks y los escenarios ya lo están | — |
 
 ---
 
@@ -55,58 +55,40 @@ Ordenado por lo que desbloquea. Cada una tiene el camino decidido: si aparece un
 
 Cada una es una bifurcación real: las dos salidas son defendibles y la elección cuesta después. Llevan mi recomendación, pero la decisión no es mía.
 
-### D1 · La máquina de turnos: conectarla o retirarla
-
-Hay **dos implementaciones de los turnos**. El combate real cuenta rondas con su propio código en `party.js`; `combat/turn-machine.js` (308 líneas, 40 tests) hace lo mismo mejor y no la usa nadie.
-
-| Opción | A favor | En contra |
-| :--- | :--- | :--- |
-| **Conectarla** | Economía de acciones de verdad: acción, adicional, reacción, movimiento. Es lo que hace falta para las perks (A5) y para los conjuros | Cirugía en el corazón del combate, que hoy funciona |
-| **Retirarla** | 308 líneas y 40 tests menos que mantener | Se tira trabajo probado, y la economía de acciones habría que rehacerla |
-
-**Recomiendo conectarla**, y hacerlo *antes* que A5: las perks de vínculo son reacciones y ataques adicionales, así que sin economía de acciones habría que inventarse dónde colgarlas y luego rehacerlo.
-
-### D2 · Caché de prompt: probar la de upstream o construir la nuestra
-
-Upstream trae `claude.cachingAtDepth` (desactivado por defecto), que solo sirve para Claude y OpenRouter-Claude. Lo nuestro sería reordenar el prompt para que lo estable vaya delante, lo cual vale para cualquier proveedor con caché.
-
-**Recomiendo probar primero la de upstream** si usas Claude: es configuración, no código. Pero **necesito saber qué proveedor usas**, porque la respuesta cambia según eso.
-
-### D3 · Resumen del historial: la extensión de upstream o una propia
-
-*Summarize* (`extensions/memory`) ya viene con SillyTavern y resume cada N mensajes. Lo nuestro podría resumir sabiendo qué es estado del juego y qué es narración, y no tocar lo primero.
-
-**Recomiendo evaluar la de upstream antes de escribir nada**: si sirve, es gratis, y esto solo importa cuando una campaña se alargue.
-
-### D4 · Los tres agujeros de seguridad de upstream
-
-CSP desactivada, claves de API en texto plano y jQuery 3.5.1 con CVEs. Los tres viven en código de upstream, así que arreglarlos cuesta en cada merge, para siempre.
-
-**Recomiendo dejarlos** mientras juegues en local. Si algún día abres el servidor a la red (`npm run start:global`), pasan a ser lo primero. **Dímelo si eso va a pasar.**
-
-### D5 · `npm audit`: 47 vulnerabilidades, una crítica
+### D1 · `npm audit`: 47 vulnerabilidades, una crítica
 
 Están en el árbol de dependencias tras el merge. Actualizarlas puede romper cosas de upstream que no controlamos.
 
 **Recomiendo mirar solo la crítica** y dejar el resto hasta el próximo merge con upstream, que probablemente las arrastre.
 
-### D6 · Reconciliar los tokens con el proveedor
+### D2 · Reconciliar los tokens con el proveedor
 
 `/prompt` mide lo que la aplicación envía, no lo que factura la API, porque SillyTavern no devuelve el `usage` a la página. Conseguirlo exige interceptar las respuestas (y con streaming llegan troceadas), que es meter mano en terreno de upstream.
 
 **Recomiendo no hacerlo.** Para decidir qué recortar basta con comparar turnos entre sí, y eso ya funciona.
 
-### D7 · ¿El registro de combate debe sobrevivir a una recarga?
+### D3 · ¿El registro de combate debe sobrevivir a una recarga?
 
 Hoy es estado de sesión: al recargar empieza vacío, aunque las líneas siguen en el chat. Persistirlo significa guardar hasta 300 entradas por combate en el mundo.
 
 **Recomiendo dejarlo como está** salvo que al jugar lo eches en falta. Es el tipo de cosa que solo tú puedes saber.
 
-### D8 · Las plantillas del asistente siguen siendo código
+### D4 · Las plantillas del asistente siguen siendo código
 
 Añadir una a mano exige editar `starter-templates.js`. Convertirlas en datos (`N-12`) era tu requisito de *«sin tocar código»* aplicado al inicio de partida — pero ahora la generación con IA cubre el caso práctico.
 
 **Recomiendo aplazarlo** hasta que quieras una plantilla fija concreta que la IA no te dé.
+
+---
+
+## ✅ Decisiones tomadas — 2026-09-21
+
+| ID | Qué se decidió | Consecuencia |
+| :--- | :--- | :--- |
+| **D1** | **Conectar la máquina de turnos** | Hecho. El combate real la usa: una sola definición de turno, con acción, acción adicional y reacción. Desbloquea las perks de vínculo (A3) |
+| **D2** | Proveedor principal: **Gemini** | La caché de upstream (`claude.cachingAtDepth`) no sirve aquí, pero **la parte que importa sí es agnóstica**: los tres grandes cachean por *prefijo* — OpenAI automáticamente, Gemini de forma implícita en los 2.5, Claude con marcas. Lo que hay que hacer es que **el principio del prompt no cambie entre turnos**, y eso vale para todos |
+| **D3** | **Evaluar *Summarize* de upstream** antes de escribir nada propio | Sin empezar. Solo importa cuando una campaña se alargue |
+| **D4** | **Solo juego local** | Los tres agujeros de upstream (CSP, secretos en texto plano, jQuery 3.5.1) se quedan como están, a propósito. Si algún día abres el servidor a la red, pasan a ser lo primero |
 
 ---
 
@@ -144,7 +126,7 @@ Ideas que no están en ningún plan. Ninguna es necesaria; algunas son buenas. M
 
 | ID | Propuesta | Por qué |
 | :--- | :--- | :--- |
-| **P12** | **Commits por bloque de trabajo** | Hoy hay ~40 archivos tocados sin un solo commit. Dos veces he tenido que recuperar un archivo con `git checkout --`, y solo pude porque estaba en git. No cuesta nada y el día que haga falta, vale mucho |
+| **P12** | **Commits por bloque de trabajo** | Ya lo estás haciendo. Merece quedarse escrito por qué importa: dos veces ha habido que recuperar un archivo con `git checkout --`, y solo se pudo porque estaba en git |
 | **P13** | **Un `CHANGELOG.md` del fork** | Qué cambió y por qué, en la lengua del juego y no en la del código. La wiki cuenta el plan; esto contaría la historia |
 
 ---
@@ -159,7 +141,7 @@ No es trabajo pendiente, es información: cosas que están así **a propósito**
 | **`escapeHtmlText` sigue en `world-info.js`** | Es correcta y está en un archivo de upstream. Consolidarla no aporta seguridad y sí coste de merge |
 | **El guardián de tiradas solo mira afirmaciones estructuradas** | `1d20+5 = 23` sí; «saca un 18» no. Reescribir prosa exige entender la frase, y equivocarse es peor que no tocarla. El prompt debe pedir la forma estructurada |
 | **La cobertura cuenta por casilla, no por línea de tiro** | Simplificación declarada de D&D 5e. Arreglarla es A9 |
-| **`dynamic-context-manager.js`, `campaigns.js` y `world-content-browser.js` sin tests** | 1.085 tests cubren el motor nuevo; estos tres (unas 3.000 líneas) siguen a cero. `MAINT-03` |
+| **`dynamic-context-manager.js`, `campaigns.js` y `world-content-browser.js` sin tests** | 1.201 tests cubren el motor nuevo; estos tres (unas 3.000 líneas) siguen a cero. `MAINT-03` |
 | **La generación con IA no se ha probado con un proveedor real** | El recorrido de navegador usa un generador simulado: ejercita todo menos la llamada. Falta ver si un modelo concreto respeta el esquema del mapa |
 
 ---
@@ -193,6 +175,73 @@ Lo que **no** se puede probar todavía: calendario, vínculos y escenarios (#6, 
 
 ## ✅ Hecho, para no rehacerlo
 
+### Los escenarios, conectados — 2026-09-21
+
+`campaign/scenarios.js` sabía juzgar siete tipos de objetivo desde la Fase E, y nadie se lo preguntaba nunca: **todos los combates de este juego eran «mata a todo el mundo»**, que es justo el escenario para el que un motor táctico menos falta hace.
+
+| Qué | Cómo quedó |
+| :--- | :--- |
+| **Un tablero puede llevar una misión** | Si define objetivos, son ellos los que deciden el combate. Un tablero sin objetivos se comporta exactamente como siempre: limpias y ganas |
+| **Se ven donde está la pelea** | Encima del rastreador de iniciativa, porque *para qué* es el combate manda sobre *a quién le toca*. Tachados al cumplirse, en rojo al fallarse, y los opcionales marcados como tales |
+| **Ganar sin matar a nadie** | *Aguantar 3 rondas* se gana con todos los enemigos en pie. Antes no había forma de expresar eso |
+| **Perder sin morir** | *Proteger a X* se falla si X cae, aunque el grupo siga entero |
+| **La mazmorra inicial trae misión** | Limpiar la sala, y aguantar 3 rondas como objetivo **opcional**. Así una campaña nueva enseña para qué sirve un escenario sin que nadie tenga que escribir uno a mano |
+| **`/objetivos`** | Los muestra en cualquier momento |
+
+`combat/scenario-board.js` traduce el combate en curso al estado que el evaluador espera y devuelve el veredicto; 18 tests. Decidir y aplicar siguen separados, como en la IA de enemigos y en las perks.
+
+> [!NOTE]
+> **Dos pruebas más que dependían de los dados.** El paso del botín daba por hecho que el grupo ganaría, y perdía una vez de cada tres: ahora comprueba la **regla** — una victoria paga, cualquier otra cosa no — en lugar de un desenlace concreto. Y el de la máquina de turnos intentaba empezar un combate con el grupo en el suelo tras el anterior. Tres pasadas seguidas, 79 comprobaciones, mismo resultado.
+
+### Las perks de vínculo, en el combate — 2026-09-21
+
+El argumento del propio documento de diseño para el bucle Persona era que los vínculos tenían que ser mecánicos: *«un vínculo que no cambia cómo va un combate es solo un número en pantalla»*. Hasta ahora eran exactamente eso — ganados, listados y sin efecto.
+
+| Perk | Rango | Qué hace ahora |
+| :--- | :---: | :--- |
+| **Ataque de seguimiento** | 3 | Cuando asestas un crítico, un compañero **que ya pueda alcanzar al objetivo** tiene un 50% de atacar gratis. Se resuelve como un ataque de verdad: tira, puede fallar y sale en el registro. Un golpe gratis que siempre acierta no es una perk, es una trampa |
+| **Relevo** | 5 | Al derrotar a un enemigo, puedes ceder el movimiento que te quede con `/relevo <nombre>`. Es una oferta, no un automatismo: regalar tu movimiento es una decisión, y que el motor la tomara por ti quitaría la única parte interesante |
+| **Aguantar** | 8 | Si un golpe fuese a dejarte a 0, un compañero se interpone y te deja a 1 HP. **Una vez al día**, solo cuando el golpe de verdad te habría tumbado, y nunca para salvarse a sí mismo: una perk que salta con cada rasguño haría el combate imposible de perder en vez de tenso |
+| **Vínculo máximo** | 10 | Sigue siendo contenido — arma y habilidad propias — no una regla. Se muestra en el panel como lo que es |
+
+Lo que decide cada una vive en `combat/bond-perks.js`, puro y con 21 tests; aplicarlas es cosa de `party.js`. Esa separación es lo que permite probar de forma exhaustiva un efecto que nadie supervisa.
+
+> [!NOTE]
+> **Tres pruebas que no probaban nada.** El recorrido de navegador daba por hecho que el personaje ya estaría junto al enemigo, y un `/combat-move` a la casilla de al lado se rechaza si la distancia supera el movimiento del turno. Fallaba una vez de cada dos sin que cambiara el código. Ahora hay un único ayudante que juega un turno como lo jugaría una persona — acercarse un paso, y atacar cuando llega — y lo usan las tres comprobaciones. Tres pasadas seguidas, 74 comprobaciones, mismo resultado.
+>
+> Y la de *Aguantar* comprueba la **decisión** con los vínculos que la partida tiene guardados, no que el golpe letal caiga: que caiga dentro de una ejecución es cuestión de dados, y una prueba que depende de los dados es una prueba que se aprende a ignorar.
+
+### El calendario, los vínculos y la máquina de turnos — 2026-09-21
+
+| Qué | Cómo quedó |
+| :--- | :--- |
+| 🖥️ **Panel de campaña** (D6) | Pestaña nueva, **Campaña**, junto a Party y Location. Muestra el día, en qué parte del día estás, y una ficha por compañero con su rango, su progreso al siguiente y **las cuatro perks: las que tiene y las que le faltan**. Ver qué da el rango 8 es la razón para seguir pasando tardes con alguien |
+| **El tiempo corre** | *Pasar el rato* avanza un bloque; *Dormir* salta al día siguiente y devuelve las perks de una vez al día. También con `/time next` y `/time sleep` |
+| **Los vínculos suben por hechos** | Desde el panel se registra un regalo, una escena de confidente o tiempo libre compartido. Un combate ganado juntos lo registra **el motor solo**, que es la decisión de diseño entera: la narración no decide cuándo sube un vínculo. También con `/bond Lyra confidant_scene` |
+| **Subir de rango se anuncia** | Con las perks que desbloquea, porque ese es el momento en que el modelo debería escribir una escena — sobre un hecho que el motor ya decidió |
+| **Sin tocar `index.html`** | La pestaña y su panel se crean desde `party.js`. Ese archivo es de upstream y cada línea que el fork le añade se paga en cada merge |
+| **Máquina de turnos conectada** (D1, B1/B3) | El combate real la usa: **una sola definición de turno**, con acción, acción adicional y reacción. Antes había dos implementaciones y el juego usaba la suya, más pobre. Los encuentros guardados cargan igual y ganan los dos campos que les faltaban |
+| **La acción se gasta de verdad** | Atacar consume la acción del turno, y un segundo ataque en el mismo turno se rechaza. Es lo que hace falta para que las perks de vínculo (A1) tengan dónde colgarse |
+
+> [!NOTE]
+> **Una prueba inestable es peor que ninguna.** El paso del botín pasó una vez y falló a la siguiente sin que cambiara el código: dependía de a quién le tocara la iniciativa y de dónde cayera el enemigo, las dos cosas tiradas al azar. Ahora el recorrido cierra la distancia y espera su turno como haría un jugador, y se ha ejecutado tres veces seguidas con el mismo resultado.
+
+### A1 y A2, cerrados el 2026-09-21
+
+| Qué | Cómo quedó |
+| :--- | :--- |
+| **Rastreador de iniciativa** (B8) | Sustituye a la lista numerada de nombres que había. Ahora cada fila dice **quién actúa**, **quién va después** —saltando a los caídos y dando la vuelta al final de la ronda—, la vida de cada uno con barra, y quién está por debajo de la mitad. La ronda se lee arriba en vez de contarse de memoria |
+| **Marcadores de estado** (PROP-088) | Las condiciones se dibujan como iconos en el rastreador **y sobre la ficha en el tablero**, para no tener que apartar la vista del mapa para saber que a quien vas a mover está apresado. Cada condición del paquete de reglas tiene su icono; una que no esté en la tabla se dibuja igual, con su nombre |
+| **`/condition`** | Poner y quitar condiciones desde el chat: `/condition Lyra Poisoned` alterna, `/condition Lyra` lista, `/condition Lyra clear` limpia. Antes solo se podían tocar abriendo la ficha, o las ponía el propio combate al caer alguien a 0 |
+| **Escalado por tamaño** (PROP-099) | Una criatura Grande ocupa 2×2 casillas, Enorme 3×3, Gargantuesca 4×4. Un ogro dibujado del tamaño de un goblin engaña sobre el alcance y sobre lo que cabe por una puerta, y el motor ya calculaba bien las dos cosas |
+| **Botín por CR** (B5) | Ganar da **oro, experiencia y a veces un objeto**, repartido entre los que siguen en pie. Las cantidades salen de una tabla de datos, así que un paquete de reglas puede hacer una campaña más pobre o más rápida de subir de nivel sin tocar código |
+| **Subir de nivel se avisa, no se hace solo** | Cuando alguien acumula experiencia suficiente se dice en el registro. Decidir cuándo subir es cosa del jugador; el botón ya estaba en la ficha |
+
+> [!NOTE]
+> **Lo que el recorrido de navegador volvió a cazar.** La primera versión del paso de prueba ponía las condiciones escribiendo en `chat_metadata.party`, y no aparecía ningún marcador: ese metadato es una copia, no el grupo que el juego tiene en memoria. El fallo estaba en la prueba, pero señaló un hueco real — no había **ninguna** forma de poner una condición a mano — y de ahí salió `/condition`.
+>
+> El botín se comprueba ganando un combate de verdad, atacando hasta que el enemigo cae, no editando el estado: el reparto tiene que venir por el mismo camino que una victoria real.
+
 ### El bloque de prioridad alta, cerrado el 2026-09-21
 
 | Qué | Cómo quedó |
@@ -221,7 +270,7 @@ Lo que **no** se puede probar todavía: calendario, vínculos y escenarios (#6, 
 | **El registro de combate está en el tablero real** | Ya no solo en `/sandbox`. Se alimenta de las líneas de combate y del desglose de cada tirada |
 | **Se puede abandonar un combate** | `/combat-stop`. Antes solo se salía ganando o muriendo, y el epílogo era inalcanzable sin cadáveres. El resumen distingue abandono de derrota |
 | **El asistente crea campañas con combate** | Las plantillas escribían `encounterRules: []`, así que `/fight` contestaba *«enemigo no encontrado»* en toda campaña recién creada. Las reglas se escriben ahora al conocer el id de cada monstruo |
-| **El recorrido en navegador está en el repositorio** | `tools/e2e-campaign.mjs` levanta su propio servidor con datos temporales, recorre el juego y limpia. 44 comprobaciones |
+| **El recorrido en navegador está en el repositorio** | `tools/e2e-campaign.mjs` levanta su propio servidor con datos temporales, recorre el juego y limpia. 79 comprobaciones |
 | **Hay un detector de módulos sin conectar** | `tools/check-engine-wiring.mjs`. Convierte «hecho y probado» en algo que se comprueba |
 | **Código muerto y ESLint** | `nextTurn` eliminada (nadie la llamaba); `rollDice` dejó de estar muerta al usarla el guardián. Los 22 errores de ESLint preexistentes están a **cero** |
 | **`Mapa-Codigo-Archivos` al día** | Ya recoge `game-engine/`, `party/` y `tools/`, con qué está conectado y qué no |
@@ -240,13 +289,13 @@ Lo que **no** se puede probar todavía: calendario, vínculos y escenarios (#6, 
 | Contenido como datos | 25 tablas fuera del código, validación, migración, exportación diferencial · 36 tests · el juego lee el paquete por defecto (#4 pendiente) |
 | Bucle de campaña | Calendario, vínculos 1-10, perks, objetivos de escenario, salas y puertas, tablero de campaña · 62 tests · **sin conectar** (#9, #10, #12) |
 
-**Verificación** (medida el 2026-09-21, tras el bloque de prioridad alta):
+**Verificación** (medida el 2026-09-21, tras el bloque de prioridad alta, A1–A2 y la máquina de turnos):
 
 ```bash
-npm run test:unit --prefix tests     # 1.085 tests, 41 suites
-node tools/check-fork-types.mjs      # 0 errores en 38 archivos del fork
-node tools/check-engine-wiring.mjs   # 19 de 24 módulos conectados
-node tools/e2e-campaign.mjs          # 44 comprobaciones en un navegador real
+npm run test:unit --prefix tests     # 1.201 tests, 46 suites
+node tools/check-fork-types.mjs      # 0 errores en 44 archivos del fork
+node tools/check-engine-wiring.mjs   # 29 de 30 módulos conectados
+node tools/e2e-campaign.mjs          # 79 comprobaciones en un navegador real
 ESLINT_USE_FLAT_CONFIG=false npx eslint public/scripts/game-engine public/scripts/party public/scripts/party.js public/scripts/campaigns.js public/scripts/world-map-renderer.js tools
 ```
 
