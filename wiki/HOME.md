@@ -109,7 +109,9 @@ Si eres un agente de IA interactuando con este repositorio, sigue estas directri
 | Solucionar una vulnerabilidad o condición de carrera | [[PROBLEMAS_TECNICOS]] | `src/server-main.js` & `party.js` |
 | Decidir en qué trabajar a continuación | [[ROADMAP]] | Fases A a F |
 | Reducir el gasto en tokens | [[ROADMAP]] §1 y Transversales | `dynamic-context-manager.js` |
-| Añadir tipos de arma, daño o condiciones | [[ROADMAP]] Fase C | `game-engine/rules/default-ruleset.js` (son datos, no código) |
+| Añadir tipos de arma, daño o condiciones | [[ROADMAP]] Fase C | **`/rules`** en el chat: editor visual. El origen está en `game-engine/rules/default-ruleset.js` |
+| Saber qué se envía al modelo y qué cuesta | [[ROADMAP]] §1 y T3 | **`/prompt`** en el chat |
+| Crear un mundo con IA | [[ROADMAP]] Fase F | *Nueva campaña* → *Generar con IA* · `game-engine/world-builder/world-schema.js` |
 | Cambiar cómo se empieza una campaña o añadir una plantilla | [[ROADMAP]] *El Asistente de Campaña* | `game-engine/ui/campaign-wizard.js`, `campaigns.js`, `game-engine/campaign/starter-templates.js` |
 | Probar el tablero o el combate sin montar una campaña | [[POR_HACER]] *Probarlo a mano* | `/sandbox` → `game-engine/ui/sandbox.js` |
 | Integrar cambios de upstream sin romper el fork | [[Guia-Desarrollo-Flujo]] §2 | `.vscode/settings.json` & `public/index.html` |

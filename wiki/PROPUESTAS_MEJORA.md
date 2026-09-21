@@ -14,7 +14,7 @@ Las propuestas están organizadas en 10 áreas estratégicas de 20 propuestas ca
 
 ---
 
-## 📍 Estado de Implementación — 2026-09-21 *(actualizado por la tarde)*
+## 📍 Estado de Implementación — 2026-09-21 *(tras el bloque de prioridad alta)*
 
 Este catálogo es una **lista de opciones, no un plan**: 200 propuestas, de las que el proyecto ha tomado una fracción. El plan real está en [[ROADMAP]] y lo pendiente en [[POR_HACER]]; aquí solo se anota qué ha pasado con cada propuesta que tiene alguna noticia, y cada una lleva su marca en el catálogo de más abajo.
 
@@ -26,7 +26,7 @@ Este catálogo es una **lista de opciones, no un plan**: 200 propuestas, de las 
 |      ⛔      | **Descartada o aplazada** a propósito, con su motivo                               |
 | *(ninguna)* | Sin decisión. No es un fallo: un catálogo no se ejecuta entero                     |
 
-**Recuento**: ✅ 9 · 🟡 16 · 🔵 8 · ⛔ 8 · sin marca 159 de 200.
+**Recuento**: ✅ 11 · 🟡 20 · 🔵 6 · ⛔ 8 · sin marca 155 de 200.
 
 > [!NOTE]
 > **Dos cosas que este catálogo no decía.** Algunas propuestas ya tienen una pieza hecha en upstream tras el merge: `PROP-170` la cubre `write-file-atomic`, y para `PROP-128` y `PROP-134` upstream trae `claude.cachingAtDepth` y la extensión *Summarize*. Y `PROP-121`, que figuraba entre las prioritarias, se descartó **en su forma original** a propósito: que el modelo escriba HP o posiciones contradice el principio del [[ROADMAP]].
@@ -35,7 +35,7 @@ Este catálogo es una **lista de opciones, no un plan**: 200 propuestas, de las 
 
 | ID | Marca | Qué pasó |
 | :--- | :---: | :--- |
-| **PROP-001** | 🟡 | Descomposición parcial: `party/` tiene 5 módulos (544 líneas) y el motor vive aparte en `game-engine/` (19 módulos, 4.884 líneas). Se partió por lo que los tests cubrían, no por `state/ui/combat/commands`. `party.js` bajó a 4.549 líneas y volvió a **4.810** al integrar el motor dentro (POR_HACER #16). |
+| **PROP-001** | 🟡 | Descomposición parcial: `party/` tiene 5 módulos (544 líneas) y el motor vive aparte en `game-engine/` (19 módulos, 4.884 líneas). Se partió por lo que los tests cubrían, no por `state/ui/combat/commands`. `party.js` bajó a 4.549 líneas y volvió a **4.954** al acumular los enganches (POR_HACER A11). |
 | **PROP-002** | ⛔ | Descartada: toca todo upstream y el coste de merge sería permanente. |
 | **PROP-003** | 🟡 | Vía JSDoc, no `.ts`: un gate de `tsc` sobre 32 archivos del fork (`tools/check-fork-types.mjs`), sin ningún `@ts-nocheck`. |
 | **PROP-004** | ⛔ | Descartada: afecta a la carga de todo upstream. |
@@ -45,39 +45,43 @@ Este catálogo es una **lista de opciones, no un plan**: 200 propuestas, de las 
 | **PROP-016** | ⛔ | Aplazada: cirugía mayor en `script.js` (upstream); necesita diseño propio, no un refactor. |
 | **PROP-018** | 🟡 | Hay normalizadores por módulo (terreno, niebla, reglas, plantillas), no un esquema global de `chat_metadata` (ver N-07). |
 | **PROP-022** | ✅ | Corregido en 4 puntos del renderizador, más uno en la cabecera del tablero hallado después. |
-| **PROP-023** | ✅ | Unificada en `utils.js`. Queda una copia intencional en `party/html.js` con un test que ancla el contrato (POR_HACER #17). |
+| **PROP-023** | ✅ | Unificada en `utils.js`. Queda una copia intencional en `party/html.js` con un test que ancla el contrato (POR_HACER, deuda conocida). |
 | **PROP-043** | 🟡 | El renderizador desenlaza (`.off`) antes de reenlazar y limpia el `document` por espacio de nombres; no hay un `destroy()` formal. Las puertas enlazan su propio clic por celda, que el redibujado descarta con la capa. |
 | **PROP-062** | 🔵 | D5 del ROADMAP. |
 | **PROP-067** | 🔵 | B5 del ROADMAP: botín por CR con tablas leídas del paquete de reglas. |
-| **PROP-081** | 🟡 | La máquina de turnos existe (`turn-machine.js`) pero no está conectada (POR_HACER #7); el panel visual sigue siendo B8. |
-| **PROP-084** | ✅ | Línea de visión, tipos de cobertura y **el bono aplicado a la CA del objetivo**, anunciado en el registro. Cuenta la cobertura de la casilla del objetivo; hacerlo por línea de tiro queda pendiente (POR_HACER #14). |
+| **PROP-081** | 🟡 | La máquina de turnos existe (`turn-machine.js`) pero no está conectada (POR_HACER D1); el panel visual es A1. |
+| **PROP-084** | ✅ | Línea de visión, tipos de cobertura y **el bono aplicado a la CA del objetivo**, anunciado en el registro. Cuenta la cobertura de la casilla del objetivo; hacerlo por línea de tiro queda pendiente (POR_HACER D5). |
 | **PROP-086** | 🟡 | Las fichas se sueltan por casilla y el terreno se pinta por casilla; no hay imán suave. |
 | **PROP-088** | 🔵 | B8 del ROADMAP. |
 | **PROP-089** | 🟡 | Capas de terreno y niebla con modo pintura; no hay un control general de capas. |
 | **PROP-091** | 🟡 | La niebla se alimenta con la visión de las fichas del grupo (60 pies por defecto, recortada por muros). El motor admite un radio por ficha (`sightFeet`) pero nada lo asigna todavía, y no hay antorchas ni visión en la oscuridad. |
 | **PROP-099** | 🔵 | B8 del ROADMAP. |
-| **PROP-104** | 🔵 | T3 del ROADMAP. |
+| **PROP-104** | ✅ | `/prompt`: el turno desglosado en bloques con nombre, ordenados por tamaño, con el principio de cada uno y el reparto entre contexto fijo y conversación. |
 | **PROP-114** | 🟡 | Existe `dnd_manage_quest` en el Dynamic Context y `QuestState` en el motor (E4); falta la interfaz (E5). |
+| **PROP-116** | 🟡 | `/prompt` muestra lo que ocupa cada turno, que es el dato necesario para calibrar; el presupuesto sigue fijándose a mano. |
 | **PROP-121** | 🟡 | Existen 8 herramientas `dnd_*` para el estado **narrativo** (fase, lugar, misiones, banderas, instrucciones). Las de HP, inventario y posiciones **no se harán**: contradicen el principio del ROADMAP §0. |
 | **PROP-123** | ⛔ | Descartada: multiplica las llamadas y va contra el objetivo de coste. |
-| **PROP-124** | 🔵 | F1 del ROADMAP (interfaz agnóstica de proveedor para salidas estructuradas). |
+| **PROP-124** | ✅ | El generador de mundos usa `generateRaw` con `jsonSchema`, que ya soporta OpenAI, Claude, y los locales vía `guided_json` / gramáticas. Agnóstico de proveedor por construcción. |
+| **PROP-119** | 🟡 | La generación validada contra esquema existe para mundos (Fase F); para reglas de Dynamic Context, no. |
 | **PROP-128** | 🔵 | T1 del ROADMAP. Upstream ya trae `claude.cachingAtDepth` (desactivado por defecto): probar antes de construir. |
 | **PROP-134** | 🔵 | T8 del ROADMAP. Upstream trae la extensión *Summarize*: evaluar antes de construir. |
 | **PROP-135** | ✅ | `roll-guard.js` (33 tests) **conectado** a cada mensaje del modelo. Por defecto corrige solo totales imposibles; `/rollguard estricto` entrega todos los dados al motor. |
+| **PROP-159** | 🟡 | La exportación diferencial de paquetes de reglas es el mismo patrón, aplicado a las reglas y no a la crónica. |
 | **PROP-161** | ⛔ | Descartada: reescribe la persistencia de upstream y mata el fork. |
-| **PROP-165** | 🟡 | `migrateRuleset` y versión de esquema en los módulos nuevos; no un migrador general. |
+| **PROP-165** | 🟡 | `migrateRuleset` y versión de esquema en los módulos nuevos, y un paquete que ya no valida cae al de por defecto en vez de dejar el juego a medias. No hay un migrador general. |
 | **PROP-170** | 🟡 | Mitigada por upstream: `trySaveChat` escribe con `write-file-atomic` (síncrono). No hay un cerrojo por conversación. |
-| **PROP-173** | 🟡 | El registro de combate guarda el desglose de cada tirada durante la sesión, pero no se persiste (POR_HACER #22). |
-| **PROP-181** | ✅ | 983 tests en 38 suites: reglas D&D y todo el motor nuevo. |
-| **PROP-182** | ✅ | `tools/e2e-campaign.mjs`: levanta su propio servidor con datos temporales y recorre el juego (17 comprobaciones). Encontró dos defectos que los tests no veían. |
+| **PROP-173** | 🟡 | El registro de combate guarda el desglose de cada tirada durante la sesión, pero no se persiste (POR_HACER A9). |
+| **PROP-166** | 🟡 | Las reglas de la campaña viven dentro del mundo, así que ya viajan con él. Falta empaquetar mapas, chat y grupo. |
+| **PROP-181** | ✅ | 1.085 tests en 41 suites: reglas D&D y todo el motor nuevo. |
+| **PROP-182** | ✅ | `tools/e2e-campaign.mjs`: levanta su propio servidor con datos temporales y recorre el juego (44 comprobaciones). Ha encontrado cuatro defectos que los tests no veían. |
 | **PROP-184** | ✅ | `.github/workflows/fork-checks.yml`: tests y tipos en cada push y PR a `my-silly`. |
 | **PROP-187** | ⛔ | Descartada: dimensionada para un servicio con equipo. |
 | **PROP-193** | ⛔ | Descartada: dimensionada para un servicio con equipo. |
 | **PROP-190** | 🟡 | El guardián de tiradas y el epílogo registran sus fallos en consola en vez de romper el chat; no hay telemetría estructurada. |
-| **PROP-194** | ✅ | `tools/check-fork-types.mjs` corre en CI, sobre 33 archivos. |
+| **PROP-194** | ✅ | `tools/check-fork-types.mjs` corre en CI, sobre 38 archivos. |
 | **PROP-198** | ⛔ | Descartada: dimensionada para un servicio con equipo. |
 
-Las propuestas propias `N-01` a `N-12` están al final, en el anexo.
+Las propuestas propias `N-01` a `N-14` están al final, en el anexo.
 
 ---
 
@@ -226,7 +230,7 @@ Las propuestas propias `N-01` a `N-12` están al final, en el anexo.
 - **PROP-101: Compresión Jerárquica de Instrucciones**: Resumir automáticamente instrucciones de baja prioridad mediante llamadas secundarias de IA antes de inyectarlas.
 - **PROP-102: Disparadores Temporales para Instrucciones**: Reglas dinámicas que se activen solo durante un número determinado de turnos (ej. efecto de un hechizo durante 10 turnos).
 - **PROP-103: Perfiles de Campaña Predefinidos**: Plantillas con presupuestos y reglas afinadas para Fantasía Épica, Terror Gótico, Cyberpunk o Investigación Urbana.
-- 🔵 **PROP-104: Vista Previa del Prompt Compilado**: Modal de depuración que muestra el texto exacto que se enviará al LLM con código de colores según el origen de cada bloque.
+- ✅ **PROP-104: Vista Previa del Prompt Compilado**: Modal de depuración que muestra el texto exacto que se enviará al LLM con código de colores según el origen de cada bloque.
 - **PROP-105: Transiciones Automáticas de Estado de Campaña**: Detectar patrones en la salida del modelo (ej. aparición de la palabra "¡Iniciativa!") para cambiar de `exploration` a `combat`.
 - **PROP-106: Instrucciones Negativas y Restricciones Estrictas**: Reglas que prohíban explícitamente ciertos comportamientos del modelo según la escena (ej. "No resuelvas la acción del jugador por él").
 - **PROP-107: Soporte para Variables Numéricas en Condiciones**: Reglas que se activen solo si se cumple una condición matemática (ej. `HP < 20%` activa instrucciones de desesperación o agonía).
@@ -238,10 +242,10 @@ Las propuestas propias `N-01` a `N-12` están al final, en el anexo.
 - **PROP-113: Modulación de Estilo Narrativo según el Estado**: Cambiar la instrucción de estilo a oraciones cortas y urgentes en combate, y prosa rica y sensorial en descanso.
 - 🟡 **PROP-114: Rastreo de Objetivos de Misión (Quest Tracking)**: Sistema de estados para misiones (No iniciada, En progreso, Completada, Fallida) con inyección automática de metas activas.
 - **PROP-115: Control de Ruido en Lorebooks por Presupuesto de Tokens**: Forzar que las entradas de World Info también respeten el presupuesto general configurado.
-- **PROP-116: Calibración de Tokens Dinámica según el Modelo Seleccionado**: Ajustar el presupuesto automáticamente si se cambia de un modelo de 4k tokens a uno de 128k.
+- 🟡 **PROP-116: Calibración de Tokens Dinámica según el Modelo Seleccionado**: Ajustar el presupuesto automáticamente si se cambia de un modelo de 4k tokens a uno de 128k.
 - **PROP-117: Bloqueo de Instrucciones Recurrentes para Evitar Repetición**: No inyectar la misma regla de ambientación durante más de tres turnos seguidos para no volver monótono al modelo.
 - **PROP-118: Registro de Instrucciones Disparadas en Metadatos del Mensaje**: Guardar en el objeto `extra` del mensaje qué reglas se activaron exactamente en cada turno para análisis forense.
-- **PROP-119: Generador Asistido de Reglas con IA**: Botón para que la IA redacte instrucciones óptimas basadas en una idea o situación descripta por el usuario.
+- 🟡 **PROP-119: Generador Asistido de Reglas con IA**: Botón para que la IA redacte instrucciones óptimas basadas en una idea o situación descripta por el usuario.
 - **PROP-120: Modo de Depuración de Tokens en Tiempo Real**: Advertencias visuales cuando una instrucción consuma más del 30% del presupuesto total por sí sola.
 
 ---
@@ -251,7 +255,7 @@ Las propuestas propias `N-01` a `N-12` están al final, en el anexo.
 - 🟡 **PROP-121: Integración Nativa de Function Calling / Tool Calling**: Permitir que el LLM ejecute herramientas formales para modificar HP, inventario o mover tokens mediante esquemas JSON estructurados en lugar de interpretar texto.
 - **PROP-122: Visión Multimodal Aplicada a Tableros Tácticos**: Enviar una captura del tablero al modelo de visión (GPT-4o / Claude 3.5) para que describa la escena con comprensión visual del entorno.
 - ⛔ **PROP-123: Orquestación Multi-Agente para PNJs**: Arquitectura donde un agente principal narra el entorno mientras agentes secundarios especializados encarnan a compañeros y enemigos.
-- 🔵 **PROP-124: Soporte para Salidas Estructuradas (JSON Schema Enforcement)**: Forzar gramáticas BNF o salidas JSON garantizadas en modelos locales (vLLM / llama.cpp / KoboldCpp).
+- ✅ **PROP-124: Soporte para Salidas Estructuradas (JSON Schema Enforcement)**: Forzar gramáticas BNF o salidas JSON garantizadas en modelos locales (vLLM / llama.cpp / KoboldCpp).
 - **PROP-125: Modo Dungeon Master Autónomo (Zero-Player Mode)**: Opción para que la IA actúe como director de juego completo, realizando tiradas y gestionando la aventura sin intervención humana.
 - **PROP-126: Conector Específico para Modelos de Razonamiento (o1, DeepSeek-R1)**: Gestión de etiquetas `<think>` y tokens de pensamiento sin romper el formateo de la interfaz.
 - **PROP-127: Prefill Dinámico para Controlar el Inicio de Respuesta**: Forzar los primeros caracteres del asistente (ej. `*Tiro 1d20 para iniciativa:*`) en modelos Anthropic y Kobold.
@@ -291,7 +295,7 @@ Las propuestas propias `N-01` a `N-12` están al final, en el anexo.
 - **PROP-156: Selector de Idioma Dinámico para Contenido D&D**: Permitir traducir términos estándar (Saving Throw -> Tirada de Salvación) mediante diccionarios en `locales/`.
 - **PROP-157: Modo de Alto Contraste para Accesibilidad Visual**: Tema accesible optimizado para personas con baja visión o daltonismo en barras de vida.
 - **PROP-158: Animación de Subida de Nivel Triunfal**: Efecto de partículas doradas en pantalla al alcanzar la experiencia requerida para subir de nivel.
-- **PROP-159: Exportación de la Sesión en Formato Libro / Crónica**: Generar un archivo Markdown o PDF bellamente maquetado que narre la aventura como si fuera un libro de fantasía.
+- 🟡 **PROP-159: Exportación de la Sesión en Formato Libro / Crónica**: Generar un archivo Markdown o PDF bellamente maquetado que narre la aventura como si fuera un libro de fantasía.
 - **PROP-160: Ayuda Contextual con Guías Interactivas (Tours)**: Pequeños tutoriales guiados que expliquen el uso del cajón de grupo y el Dynamic Context a nuevos usuarios.
 
 ---
@@ -303,7 +307,7 @@ Las propuestas propias `N-01` a `N-12` están al final, en el anexo.
 - **PROP-163: Sincronización en la Nube con Cifrado Punto a Punto (E2EE)**: Copias de seguridad automáticas hacia servicios de almacenamiento personal (Google Drive, Dropbox, WebDAV).
 - **PROP-164: Sincronización Multi-Dispositivo Local (P2P / LAN)**: Compartir la partida entre un PC principal y una tablet mediante WebSockets en la red local.
 - 🟡 **PROP-165: Sistema de Migración Automática de Esquemas con Versionado**: Scripts deterministas que actualicen estructuras antiguas de datos a nuevas versiones sin romper fichas existentes.
-- **PROP-166: Exportación de Campaña en Paquete Autónomo (`.tavernworld`)**: Archivo comprimido ZIP que contenga el mundo, mapas, personajes, historial de chat y estado del grupo.
+- 🟡 **PROP-166: Exportación de Campaña en Paquete Autónomo (`.tavernworld`)**: Archivo comprimido ZIP que contenga el mundo, mapas, personajes, historial de chat y estado del grupo.
 - **PROP-167: Papelera de Reciclaje con Recuperación Temporal**: Retener personajes y chats eliminados durante 30 días antes de su purga definitiva del disco.
 - **PROP-168: Detección y Reparación de Archivos JSONL Dañados**: Utilidad integrada en el arranque que repare automáticamente líneas truncadas o caracteres nulos.
 - **PROP-169: Almacenamiento en Caché de Assets Multimedia con Hash Criptográfico**: Guardar mapas e imágenes con nombres basados en su contenido SHA-256 para evitar duplicaciones.
@@ -346,7 +350,7 @@ Las propuestas propias `N-01` a `N-12` están al final, en el anexo.
 
 ---
 
-## Anexo: Propuestas Propias (N-01 a N-13)
+## Anexo: Propuestas Propias (N-01 a N-14)
 
 Propuestas que **no están** en las 200. Las ocho primeras salieron de leer el código antes de planificar; el resto, de lo que salió mal al construir. Llevan `N-xx` para no confundirlas con las `PROP-xxx`. Las marcas son las de arriba; **—** significa sin decisión.
 
@@ -354,16 +358,17 @@ Propuestas que **no están** en las 200. Las ocho primeras salieron de leer el c
 | :--- | :--- | :---: | :--- |
 | **N-01** | **El estado del mundo no es la narración.** Un almacén canónico (HP, posición, inventario, banderas de misión) del que la narración se *renderiza*, sin que el modelo sea nunca la autoridad. `PROP-135` es un caso particular. | 🟡 | Es el principio de [[ROADMAP]] §0 y rige el combate y los vínculos. El estado narrativo lo sigue pudiendo escribir el modelo con las herramientas `dnd_*`. |
 | **N-02** | **Tests de fichero dorado del prompt compilado.** Congelar el prompt como snapshot en CI, para que un cambio en Dynamic Context que lo altere en silencio haga fallar la build. | 🔵 | T5. Necesita antes T3, la vista previa del prompt. |
-| **N-03** | **Reconciliar el contador de tokens con el del proveedor.** Comparar la estimación con el uso real que devuelve la API y mostrar la deriva. | 🔵 | T4. |
+| **N-03** | **Reconciliar el contador de tokens con el del proveedor.** Comparar la estimación con el uso real que devuelve la API y mostrar la deriva. | 🟡 | El contador propio existe (`/prompt`) y se etiqueta como estimación. La comparación con la API sigue pendiente: SillyTavern no devuelve el `usage` a la página. |
 | **N-04** | **Turnos transaccionales.** Si un turno se corta a mitad, ¿se aplicó el daño o no? Los cambios de estado se confirman solo con el turno completo. | — | Sin planificar. El motor determinista aplica cada acción al instante; importaría si el modelo llegara a escribir estado. |
 | **N-05** | **Repetición determinista de turno.** Reejecutar un turno con el mismo contexto y semilla para ver si un cambio de prompt mejoró algo. | 🔵 | T6. |
 | **N-06** | **Registro de contradicciones.** Generaliza `PROP-111`: tras cada turno, comparar la narración con el estado (HP, ubicación, quién está presente) y registrar los desajustes. | 🔵 | T7. |
 | **N-07** | **Sanear en la entrada, no en la salida.** Normalizar y validar los datos de world-info al cargarlos o importarlos, para que el resto del código pueda confiar en ellos. | 🟡 | Aplicado en el motor nuevo: cada módulo normaliza lo que lee. No en el world-info existente. |
 | **N-08** | **Presupuesto de merge como métrica.** Un script que falle si un commit toca un archivo de upstream sin justificarlo. | — | Sin hacer: la disciplina sigue siendo una regla escrita, no una comprobación. |
-| **N-09** | **Recorrido en navegador real con servidor aislado.** Un guion (Playwright + Edge) que levante su propio servidor con datos temporales y recorra los flujos: crear campaña, abrir una puerta, pelear, cerrar el chat. | ✅ | `tools/e2e-campaign.mjs`, 17 comprobaciones. En su primera ejecución encontró dos defectos que ningún test veía: no se podía abandonar un combate, y ninguna campaña nueva podía iniciar uno. |
-| **N-10** | **Detector de módulos sin conectar.** Un script que liste los módulos de `game-engine/` que nada importa fuera de los tests. Convierte «hecho y probado» en «hecho, probado y usado» mediante una comprobación en lugar de una impresión. | ✅ | `tools/check-engine-wiring.mjs`. Informa, no falla: un módulo puede estar esperando su interfaz. Hoy dice 14 de 19 conectados. |
+| **N-09** | **Recorrido en navegador real con servidor aislado.** Un guion (Playwright + Edge) que levante su propio servidor con datos temporales y recorra los flujos: crear campaña, abrir una puerta, pelear, cerrar el chat. | ✅ | `tools/e2e-campaign.mjs`, 44 comprobaciones. En su primera ejecución encontró dos defectos que ningún test veía: no se podía abandonar un combate, y ninguna campaña nueva podía iniciar uno. |
+| **N-10** | **Detector de módulos sin conectar.** Un script que liste los módulos de `game-engine/` que nada importa fuera de los tests. Convierte «hecho y probado» en «hecho, probado y usado» mediante una comprobación en lugar de una impresión. | ✅ | `tools/check-engine-wiring.mjs`. Informa, no falla: un módulo puede estar esperando su interfaz. Hoy dice 19 de 24 conectados. |
 | **N-11** | **Canal explícito jugador / modelo.** Un único punto para publicar mensajes del juego que obligue a elegir si son *solo para el jugador* (mensaje de sistema, filtrado del prompt) o *también para el modelo* (mensaje de narrador), con tests que fijen el `is_system` de cada uno. | ✅ | `game-engine/ui/chat-channel.js`. Sus tests preguntan si el modelo lo lee, no qué bandera lleva. En `party.js` conviven `postCombatNarration` y `postForModel`, con nombres que no se confunden. |
-| **N-12** | **Plantillas de campaña como datos.** Cargar las plantillas del asistente desde datos (un JSON o un lorebook) y no desde constantes de JavaScript, con el mismo criterio que el paquete de reglas (C1): validadas, migrables y exportables. | — | Es tu requisito de «añadir sin tocar código» aplicado al inicio de partida. Hoy añadir una plantilla exige editar `starter-templates.js` (POR_HACER #21). |
+| **N-12** | **Plantillas de campaña como datos.** Cargar las plantillas del asistente desde datos (un JSON o un lorebook) y no desde constantes de JavaScript, con el mismo criterio que el paquete de reglas (C1): validadas, migrables y exportables. | — | Es tu requisito de «añadir sin tocar código» aplicado al inicio de partida. Hoy añadir una plantilla exige editar `starter-templates.js` (POR_HACER D7). |
+| **N-14** | **Que abrir y guardar no cambie nada.** Para cualquier editor que se añada, un test que recorra todas sus secciones, las lea y las vuelva a escribir sin tocarlas, y exija que el resultado sea idéntico. Lo que un editor no muestra es exactamente lo que borra sin querer. | ✅ | Hecho para el de reglas, donde cazó dos pérdidas de datos antes de que llegaran a una partida. |
 | **N-13** | **Un comando para salir de cualquier estado.** `/combat-stop` apareció porque no había forma de abandonar un combate salvo ganarlo o morir. La pregunta general — *¿cómo se sale de esto?* — conviene hacérsela a cada estado nuevo que el juego pueda tener. | 🟡 | Hecho para el combate. Sin revisar para el resto. |
 
 ---

@@ -41,6 +41,9 @@ import {
 } from './game-engine/ui/combat-log.js';
 import { buildGameMessage, CHANNEL } from './game-engine/ui/chat-channel.js';
 import { guardRolls, guardImpossibleRolls, describeCorrections } from './game-engine/combat/roll-guard.js';
+import {
+    planRulesetChange, readRememberedRuleset, rememberRuleset, setActiveRuleset,
+} from './game-engine/rules/ruleset.js';
 
 /** @typedef {import('./party/types.js').PartyMember} PartyMember */
 /** @type {PartyMember[]} */
@@ -1021,6 +1024,62 @@ function pushCombatLogLines(text) {
     for (const line of String(text ?? '').split('\n')) {
         pushCombatLogEntry(lineToEntry(line));
     }
+}
+
+/**
+ * Installs the rule pack the open campaign asks for.
+ *
+ * `dnd-system.js` binds its tables the moment it loads, so a pack that arrives later
+ * cannot take effect until the page reloads. Rather than pretend otherwise, the pack is
+ * remembered now — `ruleset.js` reads it back on the next load, before dnd-system runs —
+ * and the player is told once, with the button that does it. Saying nothing would leave
+ * someone editing weapons that the game is quietly ignoring.
+ *
+ * @param {string} worldName
+ */
+async function applyCampaignRuleset(worldName) {
+    if (!worldName) return;
+
+    let worldPack = null;
+    try {
+        const data = await loadWorldInfo(worldName);
+        worldPack = data?.metadata?.rulesetPack ?? null;
+    } catch (error) {
+        console.error('[party] could not read the campaign rule pack', error);
+        return;
+    }
+
+    const plan = planRulesetChange(worldPack, readRememberedRuleset());
+    if (plan.action === 'none') return;
+
+    if (plan.action === 'reject') {
+        console.warn('[party] invalid campaign rule pack', plan.errors);
+        toastr.error(plan.reason, 'Reglas de campaña', { timeOut: 12000 });
+        return;
+    }
+
+    if (!rememberRuleset(plan.action === 'install' ? worldPack : null)) {
+        toastr.warning(
+            'No se pudieron guardar las reglas de esta campaña: el navegador bloquea el almacenamiento local.',
+            'Reglas de campaña',
+        );
+        return;
+    }
+
+    // Applied now so anything reading the ruleset directly is already correct; the reload
+    // is for the tables dnd-system froze at load.
+    setActiveRuleset(plan.action === 'install' ? worldPack : null);
+
+    const toast = toastr.info(
+        `${plan.reason} Recarga la página para aplicarlas.`,
+        'Reglas de campaña',
+        { timeOut: 0, extendedTimeOut: 0, closeButton: true, tapToDismiss: false },
+    );
+    $(toast).find('.toast-message').append(
+        $('<button class="menu_button" style="margin-top:6px;"></button>')
+            .text('Recargar ahora')
+            .on('click', () => window.location.reload()),
+    );
 }
 
 /** Where the guard's mode lives, so it travels with the campaign. */
@@ -4377,6 +4436,9 @@ export function initPartyPanel() {
     // Restore per-session party when chat changes
     eventSource.on(event_types.CHAT_CHANGED, () => {
         loadPartyForChat();
+        // The campaign may play by its own rules; see applyCampaignRuleset.
+        applyCampaignRuleset(String(chat_metadata?.[METADATA_KEY] || ''))
+            .catch(error => console.error('[party] campaign ruleset failed', error));
     });
 
     /** @type {'party'|'world_map'|'location'} */
@@ -4669,6 +4731,77 @@ export function initPartyPanel() {
         },
     }));
 
+    // Opens the rules editor for the open campaign and saves what comes back into the
+    // world, which is where a campaign's rules belong: exporting the world takes them
+    // along, and two campaigns can disagree about what a weapon is.
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'rules',
+        helpString: '<div>Abre el editor de reglas de la campaña: tipos de daño, propiedades de armas y armaduras, condiciones, rarezas. '
+            + 'Lo que guardes se aplica al recargar.</div>',
+        callback: async () => {
+            const worldName = String(chat_metadata?.[METADATA_KEY] || '');
+            if (!worldName) {
+                toastr.warning('Abre una campaña primero.');
+                return '';
+            }
+
+            try {
+                const data = await loadWorldInfo(worldName);
+                if (!data) {
+                    toastr.error(`No se pudo cargar el mundo "${worldName}".`);
+                    return '';
+                }
+
+                const { openRulesEditor } = await import('./game-engine/ui/rules-editor.js');
+                const edited = await openRulesEditor({
+                    pack: data.metadata?.rulesetPack ?? null,
+                    title: `Reglas de "${worldName}"`,
+                    Popup,
+                    POPUP_TYPE,
+                });
+                if (!edited) return '';
+
+                data.metadata = data.metadata ?? {};
+                data.metadata.rulesetPack = edited;
+                await saveWorldInfo(worldName, data, true);
+
+                await applyCampaignRuleset(worldName);
+                return 'reglas guardadas';
+            } catch (error) {
+                console.error('[party] rules editor failed', error);
+                toastr.error(String(error?.message || error), 'No se pudieron editar las reglas');
+                return '';
+            }
+        },
+    }));
+
+    // The prompt preview (wiki/ROADMAP.md, T3). Recording is a listener rather than a
+    // rebuild for display: what it shows is the request the app actually sent.
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'prompt',
+        helpString: '<div>Muestra qué se envía al modelo en cada turno, desglosado por bloque, '
+            + 'y lo que lleva gastado la sesión. <code>/prompt reset</code> pone el contador a cero.</div>',
+        unnamedArgumentList: [
+            SlashCommandArgument.fromProps({
+                description: 'reset para reiniciar el contador de la sesión',
+                typeList: [ARGUMENT_TYPE.STRING],
+                isRequired: false,
+            }),
+        ],
+        callback: async (_args, value) => {
+            const { openPromptPreview, resetSession, getSession } = await import('./game-engine/ui/prompt-preview.js');
+
+            if (String(value ?? '').trim().toLowerCase() === 'reset') {
+                resetSession();
+                toastr.success('Contador de la sesión reiniciado.');
+                return '0';
+            }
+
+            await openPromptPreview({ Popup, POPUP_TYPE });
+            return String(getSession().promptTokens);
+        },
+    }));
+
     SlashCommandParser.addCommandObject(SlashCommand.fromProps({
         name: 'rollguard',
         helpString: '<div>Controla la correccion de tiradas inventadas por el modelo. '
@@ -4720,6 +4853,17 @@ export function initPartyPanel() {
             return mode;
         },
     }));
+
+    // ================================================================
+    //  What every turn costs
+    // ================================================================
+
+    // Loaded lazily so the meter never delays startup for a panel most turns never open.
+    eventSource.on(event_types.GENERATE_AFTER_DATA, (/** @type {any} */ data, /** @type {boolean} */ dryRun) => {
+        import('./game-engine/ui/prompt-preview.js')
+            .then(({ recordPrompt }) => recordPrompt(data, dryRun))
+            .catch(error => console.error('[party] prompt meter failed', error));
+    });
 
     // ================================================================
     //  Dice claims the model made up

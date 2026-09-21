@@ -10,6 +10,11 @@ import {
     resetActiveRuleset,
     getEditableSections,
     toPortablePack,
+    planRulesetChange,
+    rememberRuleset,
+    readRememberedRuleset,
+    restoreRememberedRuleset,
+    RULESET_STORAGE_KEY,
 } from '../public/scripts/game-engine/rules/ruleset.js';
 
 /** A minimal pack that only changes one thing. */
@@ -276,5 +281,130 @@ describe('adding content without touching code', () => {
             },
         }));
         expect(getActiveRuleset().items.weaponFlags.some(f => f.key === 'cursed')).toBe(true);
+    });
+});
+// Loading a campaign's own rules was impossible until the pack could be installed before
+// dnd-system.js froze its tables. These cover the decision and the memory that makes it
+// survive the reload; the reload itself is the app's job.
+describe('planRulesetChange', () => {
+    const pack = { id: 'mi', name: 'Mi campaña', version: 1, items: { damageTypes: [['void', 'Vacío']] } };
+
+    test('a campaign whose pack is already installed changes nothing', () => {
+        expect(planRulesetChange(pack, pack).action).toBe('none');
+    });
+
+    test('two campaigns on the default rules never prompt', () => {
+        expect(planRulesetChange(null, null).action).toBe('none');
+        expect(planRulesetChange(undefined, null).action).toBe('none');
+    });
+
+    test('a campaign with its own pack asks to install it', () => {
+        expect(planRulesetChange(pack, null).action).toBe('install');
+    });
+
+    test('moving to a campaign without a pack clears the previous one', () => {
+        expect(planRulesetChange(null, pack).action).toBe('clear');
+    });
+
+    // Half a rule pack would blank parts of every character sheet in silence.
+    test('a broken pack is refused and the default stays in force', () => {
+        const result = planRulesetChange({ version: 'no soy un número', items: { damageTypes: 'tampoco' } }, null);
+        expect(result.action).toBe('reject');
+        expect(result.reason).toMatch(/por defecto/);
+    });
+
+    test('every outcome explains itself, because it is shown to the player', () => {
+        for (const [world, remembered] of [[pack, null], [null, pack], [pack, pack], [{ version: 'x' }, null]]) {
+            expect(planRulesetChange(world, remembered).reason.length).toBeGreaterThan(10);
+        }
+    });
+});
+
+describe('remembering a pack across a reload', () => {
+    /** A stand-in for localStorage, including the one that refuses to cooperate. */
+    const withStorage = (storage, run) => {
+        const original = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+        Object.defineProperty(globalThis, 'localStorage', { value: storage, configurable: true });
+        try {
+            return run();
+        } finally {
+            if (original) Object.defineProperty(globalThis, 'localStorage', original);
+            else delete globalThis.localStorage;
+        }
+    };
+
+    const fakeStorage = () => {
+        const map = new Map();
+        return {
+            getItem: key => (map.has(key) ? map.get(key) : null),
+            setItem: (key, value) => map.set(key, String(value)),
+            removeItem: key => map.delete(key),
+        };
+    };
+
+    test('what is stored is what comes back', () => {
+        const pack = { id: 'mi', name: 'Mi', version: 1 };
+        withStorage(fakeStorage(), () => {
+            expect(rememberRuleset(pack)).toBe(true);
+            expect(readRememberedRuleset()).toEqual(pack);
+        });
+    });
+
+    test('clearing it returns the game to the built-in rules', () => {
+        withStorage(fakeStorage(), () => {
+            rememberRuleset({ id: 'mi', name: 'Mi', version: 1 });
+            rememberRuleset(null);
+            expect(readRememberedRuleset()).toBeNull();
+        });
+    });
+
+    // A private window, or blocked site data. The game still has to run.
+    test('storage that throws is survived rather than reported as success', () => {
+        const hostile = {
+            getItem: () => { throw new Error('denied'); },
+            setItem: () => { throw new Error('denied'); },
+            removeItem: () => { throw new Error('denied'); },
+        };
+        withStorage(hostile, () => {
+            expect(rememberRuleset({ id: 'x', name: 'x', version: 1 })).toBe(false);
+            expect(readRememberedRuleset()).toBeNull();
+        });
+    });
+
+    test('no storage at all is not an error', () => {
+        withStorage(undefined, () => {
+            expect(rememberRuleset({ id: 'x', name: 'x', version: 1 })).toBe(false);
+            expect(readRememberedRuleset()).toBeNull();
+        });
+    });
+
+    test('corrupted stored data does not take the game down with it', () => {
+        const storage = fakeStorage();
+        storage.setItem(RULESET_STORAGE_KEY, '{no es json');
+        withStorage(storage, () => {
+            expect(readRememberedRuleset()).toBeNull();
+            expect(restoreRememberedRuleset().restored).toBe(false);
+        });
+    });
+
+    test('a stored pack that no longer validates falls back to the default', () => {
+        const storage = fakeStorage();
+        storage.setItem(RULESET_STORAGE_KEY, JSON.stringify({ version: 'x', items: { damageTypes: 'no' } }));
+        withStorage(storage, () => {
+            expect(restoreRememberedRuleset().restored).toBe(false);
+            expect(getActiveRuleset().id).toBe('dnd5e');
+        });
+    });
+
+    test('a valid stored pack is installed on restore', () => {
+        const storage = fakeStorage();
+        storage.setItem(RULESET_STORAGE_KEY, JSON.stringify({
+            id: 'mi', name: 'Mi campaña', version: 1, items: { damageTypes: [['void', 'Vacío']] },
+        }));
+        withStorage(storage, () => {
+            expect(restoreRememberedRuleset().restored).toBe(true);
+            expect(getActiveRuleset().items.damageTypes).toEqual([['void', 'Vacío']]);
+        });
+        resetActiveRuleset();
     });
 });

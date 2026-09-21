@@ -23,26 +23,27 @@ La lógica de las Fases A a E está escrita y probada. Lo que un jugador puede t
 | **Asistente de campaña** | ✅ | ✅ | ✅ verificado en navegador real |
 | **A · Terreno, visión, niebla, rutas** | ✅ | ✅ alcance, muros, niebla y **cobertura en el ataque** | ✅ paleta de pintura · ✅ **puertas con clic** |
 | **B · Combate** | ✅ | 🟡 IA táctica, guardián de tiradas y epílogo sí · ⬜ la máquina de turnos no | ✅ **registro en el tablero real** · ⬜ rastreador de iniciativa |
-| **C · Contenido como datos** | ✅ | 🟡 el juego lee el paquete por defecto; ninguna campaña carga el suyo | ⬜ editor |
+| **C · Contenido como datos** | ✅ | ✅ cada campaña carga su propio paquete | ✅ **editor visual** (`/rules`) |
 | **D · Calendario y vínculos** | ✅ | ⬜ | ⬜ |
 | **E · Escenarios y tablero de campaña** | ✅ | ⬜ | ⬜ |
-| **F · Lienzo blanco (IA)** | ⬜ | ⬜ | ⬜ |
+| **F · Lienzo blanco (IA)** | ✅ | ✅ dentro del asistente | ✅ con previsualización |
+| **T · Medir el gasto** | ✅ | ✅ `/prompt` | ✅ desglose por bloque |
 
 > [!NOTE]
 > **Cómo leerla.** ✅ hecho y comprobado · 🟡 parcial · ⬜ sin empezar. *Conectada* quiere decir que un jugador puede provocarla: un módulo que solo ejecutan los tests cuenta como ⬜, por bien probado que esté.
 >
-> Esto ya no se estima, se mide: `node tools/check-engine-wiring.mjs` responde hoy **14 de 19 módulos conectados**, con 5 sin cargar (1.383 líneas: `turn-machine`, `bonds`, `calendar`, `scenarios`, `campaign-map`). Eran 6 y 1.541 antes de conectar el guardián de tiradas.
+> Esto ya no se estima, se mide: `node tools/check-engine-wiring.mjs` responde hoy **19 de 24 módulos conectados**, con 5 sin cargar (1.383 líneas: `turn-machine`, `bonds`, `calendar`, `scenarios`, `campaign-map`). Todo lo que queda sin conectar son las Fases D y E, que esperan su interfaz.
 
 **Lo que sigue, en este orden:**
 
-1. **Fase F dentro del asistente**: el botón *Generar con IA* en el paso 1, con la misma estructura y la misma validación que las plantillas.
-2. **Medir el gasto real** (T3 + T4). Sigue sin medirse, y una suposición razonable ya resultó estar equivocada una vez.
-3. **El editor de reglas (C3) y cargar el paquete por campaña**, que es tu requisito de añadir armas sin tocar código.
+1. **Usar el medidor.** `/prompt` ya dice qué ocupa cada turno; falta jugar unos cuantos y ver qué bloque domina. Es lo único que puede cambiar el orden de lo demás.
+2. **La palanca que eso señale**, que probablemente sea la caché de prompt (T1): upstream ya trae `claude.cachingAtDepth`, así que se prueba antes de construir nada.
+3. **Las Fases D y E, que son interfaz**: calendario, vínculos, escenarios. Es la lógica mejor probada del proyecto y la única que nadie puede tocar todavía.
 
 El detalle, con todo lo demás, está en [[POR_HACER]].
 
 > [!TIP]
-> **Sesión del 2026-09-21 (tarde).** Se cerró el defecto del epílogo y todo lo que podía hacerse sin decisiones de diseño: cobertura en el ataque, guardián de tiradas conectado, puertas con clic, registro de combate en el tablero real, `/combat-stop`, reglas de encuentro en las campañas nuevas, código muerto y ESLint a cero, más tres herramientas nuevas en `tools/`. Todo verificado en un navegador real. El detalle está en [[POR_HACER]], *Hecho*.
+> **Sesión del 2026-09-21.** Dos bloques. Primero, el defecto del epílogo y todo lo que podía hacerse sin decisiones: cobertura en el ataque, guardián de tiradas conectado, puertas con clic, registro de combate en el tablero real, `/combat-stop`, reglas de encuentro en las campañas nuevas, ESLint a cero y tres herramientas en `tools/`. Después, el bloque de prioridad alta entero: **Fase F** (generar el mundo con IA desde el asistente), **editor visual de reglas** (`/rules`), **paquete de reglas por campaña** y **medición del gasto** (`/prompt`). Todo verificado en un navegador real. El detalle está en [[POR_HACER]], *Hecho*.
 
 ---
 
@@ -130,7 +131,7 @@ Las Fases A y B **no ahorran tokens**. Lo que entregan es jugabilidad: IA que re
 | **Motor de juego (A–E)** | 18 archivos y 4.666 líneas en `game-engine/` (tablero, combate, campaña, reglas, interfaz) · lógica completa de las Fases A a E con tests · lo que está conectado, en *Dónde Estamos* |
 | **Asistente de campaña** | Botón *Nueva campaña* · 4 plantillas · tarjetas *Iniciar* para mundos sin partida · verificado de extremo a extremo (sección propia más abajo) |
 
-**Estado verificable** (medido el 2026-09-21, tarde): 983 tests en 38 suites · 0 errores de tipos en 33 archivos del fork · **0 errores de ESLint** · 14 de 19 módulos del motor conectados al juego.
+**Estado verificable** (medido el 2026-09-21, tras el bloque de prioridad alta): 1.085 tests en 41 suites · 0 errores de tipos en 38 archivos del fork · **0 errores de ESLint** · 19 de 24 módulos del motor conectados al juego · 44 comprobaciones en navegador real.
 
 > [!NOTE]
 > Este trabajo no era un desvío. Sin el merge no tendrías los 194 commits de upstream; sin los tests no podrías tocar el motor de combate sin miedo; sin el gate de tipos cada refactor sería a ciegas. Las fases que vienen se apoyan en eso.
@@ -300,7 +301,7 @@ Los encuentros guardados sin contador de rondas se reanudan en la ronda 1 en vez
 
 ---
 
-## 🟡 Fase C — Contenido Como Datos (El Editor) `DATOS Y VALIDACIÓN LISTOS — 2026-09-20`
+## 🟢 Fase C — Contenido Como Datos (El Editor) `COMPLETA — 2026-09-21`
 
 > **Por qué importa**: es tu requisito explícito — *"que yo pueda añadir tipos de ataques, armas, armaduras"*. Hoy es **imposible sin editar JavaScript**.
 
@@ -311,11 +312,27 @@ Ningún documento previo recogió esto. Las 25 tablas de `dnd-system.js` (`ITEM_
 | **C1** | Extraer las 25 tablas a un paquete de reglas en datos. | ✅ `rules/default-ruleset.js` — 165 líneas fuera del código |
 | **C2** | Esquema de validación del paquete. | ✅ `validateRuleset` · 36 tests |
 | **C4** | Migración versionada de esquemas. | ✅ `migrateRuleset` + `RULESET_SCHEMA_VERSION` |
-| **C5** | Exportación diferencial de paquetes. | 🟡 `toPortablePack` listo; falta la interfaz |
-| **C3** | **Editor visual** de armas, daños, propiedades y condiciones. | ⬜ Pendiente — es tu requisito |
+| **C5** | Exportación diferencial de paquetes. | ✅ Importar y exportar desde el propio editor |
+| **C3** | **Editor visual** de armas, daños, propiedades y condiciones. | ✅ `/rules` · `ui/rules-editor.js` + `rules/editor-model.js` · 26 tests |
 
-> [!WARNING]
-> **«Los datos existen» no es «el juego los usa por campaña».** `dnd-system.js` lee el paquete activo (`getActiveRuleset`) y ese es siempre el de por defecto: `setActiveRuleset` existe y **ninguna parte del juego lo llama** al abrir un chat. Cargar el paquete de cada campaña (POR_HACER #4) y el editor (C3) son los dos pasos que hacen realidad *«puedo añadir armas sin tocar código»*.
+> [!IMPORTANT]
+> **Cómo se resolvió lo de «cambiar de paquete exige recargar».** `dnd-system.js` fija sus tablas en el momento de cargarse (`const RULES = getActiveRuleset()`), así que un paquete instalado después no tenía efecto, y eso hacía imposible *«cada campaña con sus reglas»*. No se podía esquivar reordenando imports: el grafo de módulos lo decide el navegador.
+>
+> La salida fue instalarlo **antes**. `ruleset.js` lee el paquete recordado en su propio cuerpo de módulo, y como `dnd-system.js` lo importa, se evalúa primero. El paquete de la campaña se guarda al abrirla, se recuerda, y en la siguiente carga ya está puesto. La recarga sigue siendo necesaria una vez, y se te ofrece con un botón en lugar de dejarte adivinando.
+>
+> Un paquete que ya no valida — porque el esquema avanzó o porque alguien lo editó a mano — cae al de por defecto **entero**: media lista de condiciones vaciaría en silencio todas las fichas.
+
+### El editor (C3)
+
+`/rules` abre las 25 secciones del paquete de la campaña. Cada una se dibuja como la misma tabla, porque `rules/editor-model.js` las aplana a filas de hasta tres campos; las que tienen estructura propia (las ranuras de equipo, las subcategorías) se editan como JSON, que es más honesto que una tabla que pierde su forma al volver.
+
+Tres decisiones que conviene recordar:
+
+**Abrir y guardar sin tocar nada no cambia el paquete.** Suena obvio y no lo fue: la primera versión **borraba** los campos de un flag que ninguna columna muestra — a qué tipos de objeto se aplica una propiedad — y **perdía** la opción vacía con la que empiezan varias listas. Ambas cosas se llevaban por delante un paquete correcto. Hay un test que recorre las 25 secciones comprobando exactamente eso.
+
+**Lo que cambia se ve.** Un punto junto a cada sección que difiere de las reglas de por defecto, comparando valores en vez de recordar ediciones: un cambio hecho y deshecho deja de contar, que es lo que una persona entiende por «cambiado».
+
+**Las reglas viven en el mundo**, no en los ajustes. Así viajan al exportar la campaña, y dos campañas pueden no estar de acuerdo sobre qué es un arma.
 
 ### Cómo funciona un paquete
 
@@ -462,7 +479,7 @@ La primera versión pasó todos sus tests y **no funcionó**. Lo encontró quien
 >
 > Lo que sí lo detecta es recorrer el flujo en un navegador real. Se hizo con Playwright y Edge contra un servidor con datos aislados, sembrado con una copia del mundo huérfano real. Comprobó, en instalación limpia: crear → chat vinculado al mundo → grupo en las casillas (2,8) y (3,8) → tablero visible con muros y dos fichas → volver a la bienvenida → la tarjeta figura como campaña en curso. Y sobre el mundo huérfano: tarjeta con *Iniciar* → selector de grupo → arranque → pasa a ser campaña normal.
 >
-> **Desde el 2026-09-21 eso está en el repositorio**: `tools/e2e-campaign.mjs` levanta su propio servidor con un `--dataRoot` temporal, recorre el juego y limpia al terminar. No toca tus datos y tu servidor de siempre puede seguir abierto. Son 17 comprobaciones: crear la campaña, las posiciones de inicio, el tablero, abrir una puerta, un combate con su registro, que el epílogo **no** sea un mensaje de sistema, y la campaña listada al cerrar.
+> **Desde el 2026-09-21 eso está en el repositorio**: `tools/e2e-campaign.mjs` levanta su propio servidor con un `--dataRoot` temporal, recorre el juego y limpia al terminar. No toca tus datos y tu servidor de siempre puede seguir abierto. Son 44 comprobaciones: crear la campaña, las posiciones de inicio, el tablero, abrir una puerta, un combate con su registro, que el epílogo **no** sea un mensaje de sistema, y la campaña listada al cerrar.
 >
 > ```bash
 > node tools/e2e-campaign.mjs            # headless
@@ -477,21 +494,51 @@ La primera versión pasó todos sus tests y **no funcionó**. Lo encontró quien
 
 ---
 
-## 🅵 Fase F — El Lienzo Blanco `SIGUIENTE FASE`
+## 🟢 Fase F — El Lienzo Blanco `HECHA Y VERIFICADA — 2026-09-21`
 
 > **Por qué al final, aunque sea lo más vistoso**: generar contenido es fácil de enseñar y difícil de integrar bien. Y no arregla nada si el combate todavía no es divertido. Además **depende de C1**: sin esquema no hay nada contra lo que validar.
 
 | ID | Tarea | Notas |
 | :--- | :--- | :--- |
-| **F1** | **Interfaz agnóstica de proveedor** para salidas estructuradas. | Ver aviso ⬇️ |
-| **F2** | **Generación validada** contra los esquemas de la Fase C. Lo que no valide, se rechaza o se corrige, no se inyecta. | |
-| **F3** | **Revisión humana antes de inyectar**: pantalla de previsualización con edición. | La IA propone, tú apruebas |
-| **F4** | Inyección en el mundo: localizaciones al mapa, lore al lorebook, monstruos al bestiario, confidentes a la lista. | Propuesta |
+| **F1** | **Interfaz agnóstica de proveedor** para salidas estructuradas. | ✅ `generateRaw` + `jsonSchema`, inyectado. Funciona con el conector que tengas |
+| **F2** | **Generación validada**. Lo que no valide, se rechaza o se corrige, no se inyecta. | ✅ `world-builder/world-schema.js` · 34 tests |
+| **F3** | **Revisión humana antes de inyectar**. | ✅ Previsualización del mapa y los enemigos, con los arreglos listados. 🟡 de solo lectura (POR_HACER A8) |
+| **F4** | Inyección en el mundo. | ✅ Por los mismos constructores que una plantilla |
+
+
+### Cómo funciona
+
+El paso 1 del asistente ofrece una tarjeta más: **Generar con IA**. Escribes en qué mundo quieres jugar — *«una cripta inundada bajo una iglesia en ruinas, con cultistas»* — y una sola llamada devuelve el mundo entero: nombre, género, descripción, el lugar, el tablero con su mapa, y dos o tres enemigos con sus estadísticas y su perfil táctico.
+
+Lo que vuelve **es una plantilla**, idéntica en forma a las cuatro escritas a mano, y sigue exactamente el mismo camino: `buildWorldMetadata`, `buildWorldEntries`, `buildEncounterRules`, el chat vinculado, las casillas de inicio. Esa es la decisión que sostiene la fase entera: si un mundo generado llegara al tablero por una ruta propia, habría dos maneras de existir una campaña y acabarían discrepando.
+
+El mapa se pide **en ASCII** — `#` muro, `.` suelo, `D` puerta, `~` terreno difícil, `c` y `C` cobertura — porque ya existía `terrainFromAsciiMap` y porque es un formato que un modelo escribe bien y una persona puede leer de un vistazo antes de aceptarlo.
+
+### Lo que hace cuando el modelo se equivoca
+
+Un modelo entiende la idea de una mazmorra y es descuidado con la cuadrícula. Cada defecto tiene una respuesta decidida de antemano:
+
+| Lo que devuelve | Qué se hace |
+| :--- | :--- |
+| Filas de distinto largo | Se igualan, y se te dice |
+| Un símbolo que no existe | Pasa a ser suelo, contado y avisado |
+| El borde abierto por donde salirse del tablero | Se sella en muro |
+| Un mapa gigante o minúsculo | Se recorta a lo que cabe en pantalla |
+| Un perfil táctico inventado | Se sustituye por uno real, nombrando cuál |
+| Estadísticas absurdas (99.999 PG) | Se acotan a un rango jugable |
+| Dos enemigos con el mismo nombre | Se separan: el Lorebook indexa por nombre y el segundo habría borrado al primero |
+| Prosa en vez de JSON, o el proveedor caído | Error con su motivo; las plantillas siguen ahí |
+| Un mapa sin una sola casilla libre | **Se rechaza**: no hay dónde poner al grupo |
 
 > [!IMPORTANT]
-> **El punto de entrada ya existe.** El paso 1 del asistente de campaña es donde va el botón *Generar con IA*. Lo que la IA devuelva debe tener **la misma forma que una plantilla** (`starter-templates.js`) y pasar por los mismos normalizadores; si falla o no hay clave, el asistente sigue funcionando con las plantillas. La IA es un atajo, nunca un requisito.
->
-> **Coste**: una llamada por mundo generado. Con el tope de ~5 € cabe de sobra, y como es una tarea mecánica (rellenar un esquema) es candidata al modelo barato (T2).
+> **Reparar, no rechazar** — salvo cuando no hay nada que reparar. Tirar un buen trazado por un carácter suelto convertiría la generación en una lotería. Pero **todo arreglo se enumera junto a la previsualización**: un mundo que se corrige en silencio es un mundo en el que no puedes confiar.
+
+> [!NOTE]
+> **Nada se crea antes de que lo veas.** El mapa, los enemigos y dónde empezarás aparecen en el diálogo; el mundo se escribe al pulsar *Crear campaña*. Y si no hay ningún proveedor conectado, la tarjeta ni siquiera aparece: un botón que solo puede fallar es peor que ningún botón.
+
+**Coste**: una llamada por mundo. Con el tope de ~5 € cabe de sobra, y como es una tarea mecánica es la primera candidata al modelo barato (T2).
+
+**Pendiente**: poder editar el mapa en la previsualización y comparar dos generaciones sin cerrar el asistente (POR_HACER A8), y probarlo contra un proveedor real (deuda conocida) — la verificación actual usa un generador simulado, que ejercita todo menos la llamada.
 
 > [!WARNING]
 > **Corrección a la propuesta**: atarlo a Gemini es un error. SillyTavern es agnóstico de proveedor y tú tienes ~20 conectores funcionando — es una de tus mayores ventajas. Las salidas estructuradas existen en Anthropic, OpenAI y en modelos locales vía gramáticas. Escribe contra una interfaz, elige el proveedor en los ajustes.
@@ -580,11 +627,11 @@ Lo medido: la **lógica** de las Fases A a E (18 archivos y 4.666 líneas en `ga
 ## 🔬 Verificación
 
 ```bash
-npm run test:unit --prefix tests     # 983 tests, 38 suites
-node tools/check-fork-types.mjs      # 0 errores en los 33 archivos del fork
-node tools/check-engine-wiring.mjs   # 14 de 19 módulos del motor conectados al juego
-node tools/e2e-campaign.mjs          # 17 comprobaciones en un navegador real
-ESLINT_USE_FLAT_CONFIG=false npx eslint public/scripts/game-engine public/scripts/party public/scripts/party.js public/scripts/campaigns.js public/scripts/world-map-renderer.js   # 0 errores
+npm run test:unit --prefix tests     # 1.085 tests, 41 suites
+node tools/check-fork-types.mjs      # 0 errores en los 38 archivos del fork
+node tools/check-engine-wiring.mjs   # 19 de 24 módulos del motor conectados al juego
+node tools/e2e-campaign.mjs          # 44 comprobaciones en un navegador real
+ESLINT_USE_FLAT_CONFIG=false npx eslint public/scripts/game-engine public/scripts/party public/scripts/party.js public/scripts/campaigns.js public/scripts/world-map-renderer.js tools   # 0 errores
 git fetch upstream && git merge upstream/release
 ```
 
@@ -610,6 +657,8 @@ Afirmaciones de este proyecto que resultaron falsas, con lo que se hizo. Están 
 | 2026-09-21 | §0: *«el LLM nunca escribe el estado»* | Cierto para HP, posiciones y vínculos; no para el estado narrativo (8 herramientas `dnd_*`) | Matizado en §0 |
 | 2026-09-21 | La cobertura estaba implementada (Fase A) | `getCoverBonus` existía y ningún ataque la consultaba: las casillas eran decorativas | ✅ Aplicada en los dos puntos de ataque |
 | 2026-09-21 | Una campaña del asistente se podía jugar entera | `/fight` no encontraba enemigos: el tablero se creaba con `encounterRules` vacías | ✅ Arreglado; lo encontró el recorrido en navegador |
+| 2026-09-21 | El editor de reglas guardaba lo que se editaba | Borraba los campos de un flag que ninguna columna muestra, y perdía la opción vacía de varias listas: abrirlo y guardar sin tocar nada estropeaba el paquete | ✅ Arreglado; lo cazaron los tests antes del navegador |
+| 2026-09-21 | El editor de reglas se podía cerrar | El paquete recibía su `id` y su `nombre` **después** de la comprobación que los exige, así que validar siempre fallaba y el diálogo quedaba atrapado. Con 26 tests en verde | ✅ Arreglado; lo cazó el recorrido en navegador |
 
 > [!NOTE]
 > **El patrón, dicho una vez.** Todas estas comparten forma: algo construido y probado, dado por conectado sin comprobar el efecto. Por eso las dos herramientas nuevas (`check-engine-wiring.mjs` y `e2e-campaign.mjs`) no son accesorios del plan, sino la respuesta a lo que este registro demuestra que pasa.
@@ -622,6 +671,6 @@ Afirmaciones de este proyecto que resultaron falsas, con lo que se hizo. Están 
 - [[POR_HACER]]: Lista viva de pendientes derivada de este plan.
 - [[PROPUESTA_JUEGO_DND_GLOOMHAVEN_PERSONA]]: Diseño de juego del que salen las Fases B, D, E y F.
 - [[PROBLEMAS_TECNICOS]]: Auditoría de la que salen las correcciones ya aplicadas.
-- [[PROPUESTAS_MEJORA]]: Catálogo de 200 del que se seleccionan las `PROP-xxx` citadas; incluye el estado de cada una y el anexo con las propuestas propias (`N-01` a `N-12`).
+- [[PROPUESTAS_MEJORA]]: Catálogo de 200 del que se seleccionan las `PROP-xxx` citadas; incluye el estado de cada una y el anexo con las propuestas propias (`N-01` a `N-14`).
 - [[Guia-Desarrollo-Flujo]]: La disciplina de fork que hace todo esto sostenible.
 - [[Mapa-Codigo-Archivos]]: Qué es de upstream y qué es tuyo.

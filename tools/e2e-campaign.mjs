@@ -153,6 +153,15 @@ try {
     check('the board is on screen with its walls', walls > 20, `${walls} wall cells`);
     check('both characters are on it', tokens === 2, `${tokens} tokens`);
 
+    /** Back to the welcome screen the way a player gets there: close the chat. */
+    const closeChat = async () => {
+        await page.locator('#options_button').click({ timeout: 10000 });
+        // This id appears more than once in the DOM; only one copy is on screen.
+        await page.locator('#option_close_chat').filter({ visible: true }).first().click({ timeout: 10000 });
+        await page.waitForSelector('#cw-new-campaign', { timeout: 30000 });
+        await page.waitForTimeout(800);
+    };
+
     /** Clicks through the dice overlay until it stops covering the page. */
     const clearDiceOverlay = async () => {
         for (let i = 0; i < 40; i++) {
@@ -225,13 +234,243 @@ try {
     await page.waitForTimeout(800);
 
     step('6. A closed campaign is listed and can be continued');
-    await page.locator('#options_button').click({ timeout: 10000 });
-    // This id appears more than once in the DOM; only one copy is on screen.
-    await page.locator('#option_close_chat').filter({ visible: true }).first().click({ timeout: 10000 });
-    await page.waitForSelector('#cw-new-campaign', { timeout: 30000 });
-    await page.waitForTimeout(800);
+    await closeChat();
     check('the campaign is listed with Continue',
         await page.locator('.campaign-card .campaign-continue').count() >= 1);
+
+    step('7. The blank canvas: generate a world, review it, and play it');
+    // Driven with a stand-in provider, so this costs nothing and stays deterministic.
+    // Everything after the provider is the real thing: the schema, the repair pass, the
+    // preview, the wizard, and the same world builders a hand-written template uses.
+    // The answer below is deliberately sloppy — ragged rows, a stray symbol, an invented
+    // tactical profile, a duplicate name — because that is what models actually return.
+    await page.evaluate(async () => {
+        const [{ askWizard }, { generateWorld }, { Popup, POPUP_TYPE }] = await Promise.all([
+            import('/scripts/game-engine/ui/campaign-wizard.js'),
+            import('/scripts/game-engine/world-builder/world-schema.js'),
+            import('/scripts/popup.js'),
+        ]);
+
+        const sloppy = JSON.stringify({
+            name: 'Cripta de Sal',
+            genre: 'Terror gótico',
+            description: 'Una cripta inundada bajo una iglesia en ruinas.',
+            locationName: 'Cripta de Sal',
+            boardName: 'Nave anegada',
+            map: [
+                '############',
+                '#..........#',
+                '#..##..~..',
+                '#...cX.....#',
+                '#..........#',
+                '############',
+            ],
+            enemies: [
+                { name: 'Ghoul', hp: 22, armorClass: 12, cr: 1, profile: 'devorador' },
+                { name: 'Ghoul', hp: 22, armorClass: 12, cr: 1, profile: 'aggressive' },
+            ],
+        });
+
+        window.__wizard = { done: false, answers: null };
+        askWizard({
+            Popup,
+            POPUP_TYPE,
+            existingWorldNames: [],
+            generateWorld: (idea, partySize) => generateWorld({
+                idea,
+                partySize,
+                generate: async () => sloppy,
+            }),
+        }).then(answers => { window.__wizard = { done: true, answers }; });
+    });
+
+    await page.waitForSelector('.cw-template-ai', { timeout: 15000 });
+    check('the wizard offers to generate the world with AI', true);
+
+    await page.locator('.cw-template-ai').click();
+    await page.fill('.cw-ai textarea.cw-input', 'una cripta inundada con cultistas');
+    await page.locator('.cw-ai-go').click();
+
+    await page.waitForSelector('.cw-ai-map', { timeout: 20000 });
+    const mapRows = (await page.locator('.cw-ai-map').innerText()).trim().split('\n');
+    const widths = new Set(mapRows.map(r => r.length));
+
+    check('the generated board is shown before anything is created', mapRows.length >= 5, `${mapRows.length} rows`);
+    check('its ragged rows were squared off', widths.size === 1, `widths: ${[...widths].join(',')}`);
+    check('its open edge was sealed into wall',
+        mapRows.every(r => r.startsWith('#') && r.endsWith('#'))
+        && /^#+$/.test(mapRows[0]) && /^#+$/.test(mapRows[mapRows.length - 1]));
+    check('the repairs are reported rather than done silently',
+        await page.locator('.cw-ai-warn').count() >= 2,
+        `${await page.locator('.cw-ai-warn').count()} warnings`);
+    check('the world name was carried into step 2',
+        (await page.inputValue('.cw-root input.cw-input >> nth=0')).includes('Cripta de Sal'));
+
+    // Accept it, then build the world through the very same createCampaign the wizard
+    // uses. Driving askWizard directly means this test owns the glue that campaigns.js
+    // normally owns, so the world is then started from its card like any other: that is
+    // the real path, and the part worth proving.
+    await page.click('.popup-button-ok');
+    const built = await page.evaluate(async () => {
+        const [{ createCampaign }, wi] = await Promise.all([
+            import('/scripts/game-engine/ui/campaign-wizard.js'),
+            import('/scripts/world-info.js'),
+        ]);
+
+        for (let i = 0; i < 100 && !window.__wizard.done; i++) {
+            await new Promise(r => setTimeout(r, 100));
+        }
+        if (!window.__wizard.answers) return { error: 'the wizard returned nothing' };
+
+        try {
+            const created = await createCampaign({
+                answers: window.__wizard.answers,
+                createWorld: name => wi.createNewWorldInfo(name, { interactive: false }),
+                loadWorld: wi.loadWorldInfo,
+                saveWorld: (name, data) => wi.saveWorldInfo(name, data, true),
+                createEntry: wi.createWorldInfoEntry,
+            });
+
+            const data = await wi.loadWorldInfo(created.worldName);
+            const board = data.metadata.locationMaps[0].boards[0];
+            return {
+                worldName: created.worldName,
+                locationName: created.locationName,
+                boardName: created.boardName,
+                party: created.party,
+                walls: Object.values(board.terrain.cells).filter(c => c.type === 'wall').length,
+                encounterRules: (board.encounterRules || []).length,
+                monsters: Object.values(data.entries).filter(e => e.group === 'Monsters').length,
+            };
+        } catch (error) {
+            return { error: String(error?.message || error) };
+        }
+    });
+
+    check('the generated world is built through the same createCampaign as a template',
+        !built.error, built.error || '');
+    check('it kept the name, location and board the model described',
+        built.worldName === 'Cripta de Sal' && built.boardName === 'Nave anegada',
+        `${built.worldName} / ${built.locationName} / ${built.boardName}`);
+    check('its repaired map became real terrain', built.walls > 20, `${built.walls} wall cells`);
+    check('its enemies are in the Lorebook and reachable by /fight',
+        built.monsters === 2 && built.encounterRules === 2,
+        `${built.monsters} monsters, ${built.encounterRules} encounter rules`);
+
+    step('8. The generated world is started from its card, like any other');
+    await closeChat();
+    const aiCard = page.locator('.campaign-card-unstarted[data-world="Cripta de Sal"]');
+    check('it is listed as a campaign that was never played', await aiCard.count() === 1);
+
+    await aiCard.locator('.campaign-start').click();
+    await page.waitForSelector('.party-picker-container', { timeout: 20000 });
+    await page.waitForTimeout(1500);
+    await page.click('.popup-button-ok');
+    await page.waitForTimeout(2500);
+
+    const aiState = await readState();
+    const aiWalls = await page.locator('.wm-terrain-wall').filter({ visible: true }).count();
+    check('you end up on the board the model generated',
+        aiState.world === 'Cripta de Sal' && aiState.board === 'Nave anegada',
+        `${aiState.world} · ${aiState.location} / ${aiState.board}`);
+    check('drawn with the walls it generated', aiWalls > 20, `${aiWalls} wall cells`);
+
+    step('9. The rules editor: add a damage type without touching any code');
+    await page.evaluate(() => {
+        void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/rules');
+    });
+    await page.waitForSelector('.rx-root', { timeout: 20000 });
+
+    const sectionCount = await page.locator('.rx-nav-item').count();
+    check('every editable section is offered', sectionCount >= 20, `${sectionCount} sections`);
+    check('the first one is what you came for: damage types',
+        (await page.locator('.rx-nav-item').first().innerText()).includes('Tipos de daño'));
+
+    const before = await page.locator('.rx-table .rx-row').count();
+    await page.locator('.rx-add').click();
+    const rows = page.locator('.rx-table .rx-row');
+    await rows.last().locator('.rx-input').first().fill('void');
+    await rows.last().locator('.rx-input').nth(1).fill('Vacío');
+    check('a row can be added to the table', await rows.count() === before + 1);
+
+    await page.locator('.rx-actions .menu_button').first().click();
+    await page.waitForTimeout(400);
+    check('applying the section reports success rather than failing quietly',
+        await page.locator('.rx-ok').count() === 1,
+        await page.locator('.rx-status').innerText());
+    check('the section is marked as changed from the built-in rules',
+        await page.locator('.rx-nav-item.modified').count() >= 1);
+
+    await page.click('.popup-button-ok');
+    await page.waitForTimeout(2500);
+
+    // Saved into the world, which is where a campaign's rules belong: exporting the
+    // world takes them along, and two campaigns can disagree about what a weapon is.
+    const saved = await page.evaluate(async () => {
+        const wi = await import('/scripts/world-info.js');
+        const ctx = window.SillyTavern.getContext();
+        const data = await wi.loadWorldInfo(ctx.chatMetadata.world_info);
+        const pack = data?.metadata?.rulesetPack ?? null;
+        const stored = window.localStorage.getItem('sillytavern_activeRulesetPack');
+        return {
+            damageTypes: pack?.items?.damageTypes ?? null,
+            remembered: stored ? JSON.parse(stored)?.items?.damageTypes ?? null : null,
+        };
+    });
+
+    check('the new damage type is stored in the campaign world',
+        JSON.stringify(saved.damageTypes || []).includes('void'),
+        JSON.stringify(saved.damageTypes));
+    // dnd-system binds its tables at load, so the pack has to be waiting before the next
+    // one. That is what makes "the campaign's own rules" possible at all.
+    check('and remembered so the next page load starts with it',
+        JSON.stringify(saved.remembered || []).includes('void'));
+
+    const reloadToast = await page.locator('#toast-container .toast', { hasText: 'Recarga' }).count();
+    check('you are told a reload is needed rather than left wondering', reloadToast >= 1);
+
+    step('10. The prompt preview: see what a turn actually sends');
+    // No provider is connected here, so the turn is fed in directly. What is exercised is
+    // everything after the request is built: the split into named blocks, the ordering,
+    // the fixed-versus-conversation ratio and the session total.
+    await page.evaluate(async () => {
+        const { recordPrompt, resetSession } = await import('/scripts/game-engine/ui/prompt-preview.js');
+        resetSession();
+        recordPrompt({
+            messages: [
+                { role: 'system', content: 'Eres el narrador de una campaña. '.repeat(60) },
+                { role: 'system', content: '[DYN_COMBAT: Tono urgente] Frases cortas.' },
+                { role: 'system', content: 'Lyra HP: 12/12 AC: 15 Inventario: espada corta' },
+                { role: 'user', content: 'Ataco al ghoul' },
+            ],
+        }, false);
+    });
+
+    await page.evaluate(() => {
+        void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/prompt');
+    });
+    await page.waitForSelector('.pp-root', { timeout: 20000 });
+
+    const blockCount = await page.locator('.pp-block').count();
+    const labels = await page.locator('.pp-block-label').allInnerTexts();
+    check('the turn is broken into named blocks', blockCount >= 3, labels.join(' · '));
+    check('the blocks it names are the ones the fork injects',
+        labels.includes('Contexto dinámico') && labels.includes('Ficha del grupo'), labels.join(' · '));
+
+    const sizes = await page.locator('.pp-block-tokens').allInnerTexts();
+    const numbers = sizes.map(s => parseInt(s, 10));
+    check('and they are sorted biggest first, which is the question being asked',
+        numbers.every((n, i) => i === 0 || numbers[i - 1] >= n), numbers.join(' > '));
+
+    const splitText = await page.locator('.pp-split').innerText();
+    check('it states how much is context resent every turn', /Contexto fijo/.test(splitText), splitText.trim());
+    check('the session total is shown', (await page.locator('.pp-session').innerText()).includes('turno'));
+    // The figures are the app's own, not the provider's. Saying so is the point.
+    check('and it says plainly that these are its own numbers, not a bill',
+        /no la factura/.test(await page.locator('.pp-warning').innerText()));
+
+    await page.click('.popup-button-ok');
+    await page.waitForTimeout(500);
 
     console.log(`\n--- console errors ---`);
     console.log(problems.size ? [...problems].join('\n') : '(none)');

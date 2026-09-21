@@ -3,11 +3,12 @@ import {
 } from './world-info.js';
 import {
     characters, getRequestHeaders, openCharacterChat, chat_metadata, saveMetadata, selectCharacterById,
-    doNewChat, this_chid,
+    doNewChat, this_chid, generateRaw, online_status,
 } from '../script.js';
 import { Popup, POPUP_TYPE, POPUP_RESULT } from './popup.js';
 import { buildNewCampaignCta, askWizard, createCampaign } from './game-engine/ui/campaign-wizard.js';
 import { isCampaignWorld, getStartingPoint } from './game-engine/campaign/campaign-worlds.js';
+import { generateWorld } from './game-engine/world-builder/world-schema.js';
 import { escapeHtml } from './utils.js';
 
 /**
@@ -723,6 +724,16 @@ async function startCampaignWizard() {
             Popup,
             POPUP_TYPE,
             existingWorldNames: Array.isArray(world_names) ? world_names : [],
+            // generateRaw goes through whichever provider is configured, so the blank
+            // canvas is not tied to one vendor. Offered only when something is connected:
+            // a button that can only fail is worse than no button.
+            generateWorld: online_status !== 'no_connection'
+                ? (idea, partySize) => generateWorld({
+                    idea,
+                    partySize,
+                    generate: params => generateRaw(params),
+                })
+                : null,
         });
         if (!answers) return;
 

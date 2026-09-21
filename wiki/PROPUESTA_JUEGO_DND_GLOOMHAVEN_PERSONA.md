@@ -299,7 +299,7 @@ public/scripts/
 ### Fase 2: Sistema Persona (Calendario & Confidentes)
 - [ ] Crear el widget de HUD de Calendario (Día X / Fase del Día: Mañana, Tarde, Noche). *🟡 La lógica está en `campaign/calendar.js`; falta la interfaz (D6).*
 - [ ] Diseñar el sistema de Rangos de Confidente (1 al 10) en la ficha de relaciones. *🟡 La lógica está en `campaign/bonds.js`; falta la ficha y la interfaz (D6).*
-- [ ] Implementar las primeras 3 perks mecánicas en combate (Ataque conjunto, Baton Pass, Salvar de agonía). *🟡 Definidas y desbloqueadas por rango; ninguna se aplica en el combate (POR_HACER #12).*
+- [ ] Implementar las primeras 3 perks mecánicas en combate (Ataque conjunto, Baton Pass, Salvar de agonía). *🟡 Definidas y desbloqueadas por rango; ninguna se aplica en el combate (POR_HACER A5).*
 
 ### Fase 3: Lienzo Blanco (World Building Asistido)
 - [x] Modal visual "Creador de Mundos / Misiones" con botón "Generar con IA". *🟡 Hecho el modal: el **asistente de campaña**, manual y con plantillas. El botón "Generar con IA" es la Fase F.*

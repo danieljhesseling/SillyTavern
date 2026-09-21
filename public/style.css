@@ -23,6 +23,8 @@
 @import url(css/world-content-browser.css);
 @import url(css/combat-log.css);
 @import url(css/campaign-wizard.css);
+@import url(css/rules-editor.css);
+@import url(css/prompt-preview.css);
 
 :root {
     interpolate-size: allow-keywords;

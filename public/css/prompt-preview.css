@@ -1,0 +1,116 @@
+/* The prompt preview: what a turn sends, block by block.
+   See wiki/ROADMAP.md, T3. */
+
+.pp-root {
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.pp-title {
+    font-size: 1.12em;
+    font-weight: bold;
+}
+
+.pp-sub,
+.pp-empty {
+    font-size: 0.85em;
+    opacity: 0.75;
+}
+
+.pp-blocks {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+}
+
+.pp-block-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 0.88em;
+}
+
+.pp-block-tokens {
+    opacity: 0.7;
+    white-space: nowrap;
+}
+
+/* The bar is the whole point: a list of numbers hides which block is the big one. */
+.pp-bar {
+    height: 7px;
+    margin-top: 3px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.08);
+    overflow: hidden;
+}
+
+.pp-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #c9a227, #8d6f14);
+}
+
+.pp-peek {
+    margin-top: 3px;
+    font-size: 0.8em;
+    opacity: 0.8;
+}
+
+.pp-peek pre {
+    max-height: 160px;
+    overflow: auto;
+    padding: 6px;
+    margin: 4px 0 0;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 11px;
+}
+
+.pp-split {
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    font-size: 0.9em;
+}
+
+.pp-note {
+    font-size: 0.85em;
+    color: #d8b24a;
+}
+
+.pp-session {
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    font-size: 0.9em;
+}
+
+.pp-session-title {
+    font-weight: bold;
+    margin-bottom: 3px;
+}
+
+.pp-price {
+    margin-top: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.pp-price-input {
+    width: 110px;
+}
+
+.pp-spend {
+    opacity: 0.85;
+}
+
+/* Said plainly rather than in a tooltip: these are the app's own numbers, not a bill. */
+.pp-warning {
+    font-size: 0.78em;
+    opacity: 0.65;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    padding-top: 6px;
+}

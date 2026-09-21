@@ -42,7 +42,7 @@ Este documento sirve como inventario exhaustivo del repositorio, clasificando lo
 > [!NOTE]
 > **Cifras medidas el 2026-09-21.** El motor de juego vive desde entonces en dos carpetas nuevas, `game-engine/` y `party/`, que esta página no recogía. El criterio que las ordena está en [[Guia-Desarrollo-Flujo]] §2: código nuevo va en archivo nuevo, para que un merge con upstream no lo toque nunca.
 
-### 2.1. El motor de juego — `public/scripts/game-engine/` (19 archivos, 4.884 líneas)
+### 2.1. El motor de juego — `public/scripts/game-engine/` (24 archivos, 6.251 líneas)
 
 Módulos puros: sin DOM, sin estado global, sin lecturas del chat. Por eso se prueban en Node y por eso el coste de merge es cero. Los marcados ⬜ están escritos y probados pero **el juego todavía no los carga**; compruébalo con `node tools/check-engine-wiring.mjs`.
 
@@ -67,6 +67,11 @@ Módulos puros: sin DOM, sin estado global, sin lecturas del chat. Por eso se pr
 | `ui/combat-log.js` | 293 | Registro de combate y prompt del epílogo | ✅ |
 | `ui/campaign-wizard.js` | 245 | El asistente de 3 pasos y `createCampaign` | ✅ |
 | `ui/chat-channel.js` | 86 | Decide si un mensaje lo lee solo el jugador o también el modelo | ✅ |
+| `world-builder/world-schema.js` | 334 | Genera un mundo con IA: esquema, prompt y reparación de lo que vuelva | ✅ |
+| `rules/editor-model.js` | 318 | Traduce el paquete de reglas a filas editables, y de vuelta | ✅ |
+| `ui/rules-editor.js` | 297 | El editor visual de reglas (`/rules`), con importar y exportar | ✅ |
+| `cost/prompt-meter.js` | 239 | Desglosa lo que se envía cada turno y acumula el gasto | ✅ |
+| `ui/prompt-preview.js` | 179 | El panel de `/prompt` | ✅ |
 
 ### 2.2. El subsistema de grupo — `public/scripts/party/` (5 archivos, 544 líneas)
 
@@ -84,7 +89,7 @@ Extraído de `party.js` por las costuras que los tests ya cubrían.
 
 | Archivo | Líneas | Función Principal |
 | :--- | ---: | :--- |
-| `public/scripts/party.js` | 4.810 | Grupo, ficha D&D, combate real, comandos y tablero. **Sigue creciendo**: la integración del motor se hizo dentro |
+| `public/scripts/party.js` | 4.954 | Grupo, ficha D&D, combate real, comandos y tablero. **Sigue creciendo**: cada enganche nuevo se añade aquí, aunque la lógica viva fuera |
 | `public/scripts/dynamic-context-manager.js` | 1.911 | Estados de campaña, presupuesto de tokens y las 8 herramientas `dnd_*` |
 | `public/scripts/dnd-system.js` | 1.225 | Fórmulas D&D 5e. Lee sus tablas del paquete de reglas |
 | `public/scripts/world-map-renderer.js` | 1.188 | Mapas, tableros, capas de terreno y niebla, puertas |
@@ -116,15 +121,17 @@ Cada uno cuesta en cada merge. La lista no debería crecer.
 | `public/css/dynamic-context-manager.css` | 355 | Modal de reglas y barra de presupuesto |
 | `public/css/combat-log.css` | 232 | Registro de combate con marco de pixel art y `/sandbox` |
 | `public/css/chat-enhancements.css` | 149 | Términos resaltados y avatares en línea |
-| `public/css/campaign-wizard.css` | 131 | Asistente de campaña y tarjetas sin empezar |
+| `public/css/campaign-wizard.css` | 212 | Asistente de campaña, tarjetas sin empezar y panel de generación con IA |
+| `public/css/rules-editor.css` | 165 | El editor de reglas |
+| `public/css/prompt-preview.css` | 116 | El desglose de coste por turno |
 
 ### 2.6. Herramientas — `tools/`
 
 | Archivo | Para qué |
 | :--- | :--- |
-| `check-fork-types.mjs` | Gate de tipos sobre los 33 archivos propios. Falla si aparece un error |
+| `check-fork-types.mjs` | Gate de tipos sobre los 38 archivos propios. Falla si aparece un error |
 | `check-engine-wiring.mjs` | Lista los módulos del motor que el juego no carga. Informa, no falla |
-| `e2e-campaign.mjs` | Recorre el juego en un navegador real, con servidor y datos propios |
+| `e2e-campaign.mjs` | Recorre el juego en un navegador real, con servidor y datos propios. 44 comprobaciones |
 
 ---
 

@@ -48,13 +48,13 @@ La auditoría es del 2026-09-20 y **se conserva tal como se escribió**. Esta ta
 | **CONC-01** | ✅ Corregida | `party.js` guarda el grupo solo en `chat_metadata.party`. Los usos de `localStorage` que quedan son preferencias de interfaz (pestaña elegida, mapas ocultos), no datos de la partida. |
 | **CONC-02** | ✅ Resuelta por upstream | `trySaveChat` escribe con `tryWriteFileSync`, que usa `write-file-atomic` (síncrono): un guardado no puede intercalarse con otro dentro del proceso. La premisa de la auditoría (`fs.promises.writeFile` sin protección) ya no describe el código. |
 | **PERF-01** | 🔴 Abierta | `index.html` tiene 10.839 líneas. Es de upstream. |
-| **PERF-02** | 🟡 Parcial | `party.js` bajó a 4.549 líneas y volvió a subir a **4.810** al integrar el motor. Hay 5 módulos en `party/` (544 líneas) y 19 en `game-engine/` (4.884). El objetivo de «módulos de menos de 800 líneas» sigue lejos para `party.js`. |
+| **PERF-02** | 🟡 Parcial | `party.js` bajó a 4.549 líneas y volvió a subir a **4.954** al acumular los enganches. Hay 5 módulos en `party/` (544 líneas) y 24 en `game-engine/` (6.251). El objetivo de «módulos de menos de 800 líneas» sigue lejos para `party.js`. |
 | **PERF-03** | 🟡 Parcial | Corregido el fallo con caracteres no ASCII: ahora usa límites de palabra Unicode (con `\b` como reserva). La expresión combinada sigue ahí; el riesgo de rendimiento con miles de claves no se ha abordado. |
 | **PERF-04** | 🔴 Abierta | Sin virtualización del DOM del chat ni del tablero. |
 | **MEM-01** | 🟡 Mitigada | El renderizador desenlaza (`.off`) antes de reenlazar y limpia el `document` por espacio de nombres al quitar el contenedor. No hay un `destroy()` formal. |
 | **MAINT-01** | ✅ Corregida | Ningún archivo del fork lleva `@ts-nocheck`; un gate de tipos cubre 32 archivos (`tools/check-fork-types.mjs`) y corre en CI. |
 | **MAINT-02** | ✅ Corregida | `normalizeDndEntityType` está en `dnd-system.js`. `getDndEntryType` queda solo en `party.js`. |
-| **MAINT-03** | 🟡 Parcial | 983 tests en 38 suites, con CI propio, más un recorrido en navegador (`tools/e2e-campaign.mjs`). `dynamic-context-manager.js`, `campaigns.js` y `world-content-browser.js` siguen sin tests. |
+| **MAINT-03** | 🟡 Parcial | 1.085 tests en 41 suites, con CI propio, más un recorrido en navegador de 44 comprobaciones (`tools/e2e-campaign.mjs`). `dynamic-context-manager.js`, `campaigns.js` y `world-content-browser.js` siguen sin tests. |
 
 **Recuento**: ✅ 6 · 🟡 4 · 🔴 5 de 15.
 
@@ -69,7 +69,7 @@ Cosas que la auditoría no podía ver porque no existían todavía, o que se enc
 | :--- | :---: |
 | El resumen de fin de combate se publicaba como mensaje de sistema y no llegaba al modelo | ✅ Corregido (`game-engine/ui/chat-channel.js`), verificado en navegador |
 | Módulos del motor que solo ejecutan los tests | 🟡 De 6 a **5** (1.383 líneas): el guardián de tiradas ya está conectado. Medible con `node tools/check-engine-wiring.mjs` |
-| `npm audit`: 47 vulnerabilidades en el árbol de dependencias, una crítica (POR_HACER #15) | 🔴 Abierto |
+| `npm audit`: 47 vulnerabilidades en el árbol de dependencias, una crítica (POR_HACER, deuda conocida) | 🔴 Abierto |
 | `/fight` no encontraba enemigos en ninguna campaña creada por el asistente: el tablero se escribía con `encounterRules` vacías | ✅ Corregido; lo encontró el recorrido en navegador, no los tests |
 | No había forma de abandonar un combate salvo ganarlo o morir | ✅ Corregido (`/combat-stop`) |
 | El Dynamic Context registra 8 herramientas `dnd_*` con las que el modelo escribe estado narrativo (fase, lugar, misiones, banderas, instrucciones) | 🟡 Por decidir |

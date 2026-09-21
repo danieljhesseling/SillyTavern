@@ -305,3 +305,111 @@ export function toPortablePack(pack) {
 
     return out;
 }
+
+/**
+ * Where the pack in force is remembered between page loads.
+ *
+ * It has to be storage the browser hands back synchronously, and it has to be read while
+ * this module is evaluating. `dnd-system.js` binds its exports the moment it loads —
+ * `const RULES = getActiveRuleset()` — and it imports this module, so this file runs
+ * first and it is the only place a pack can be installed early enough to matter. Reading
+ * it any later means a reload, which is what made "load the campaign's rules" impossible
+ * before this existed.
+ */
+export const RULESET_STORAGE_KEY = 'sillytavern_activeRulesetPack';
+
+/**
+ * Remembers a pack so the next load starts with it.
+ *
+ * Silent on failure by design: storage can be unavailable in a private window or with
+ * site data blocked, and a game that refuses to run because it could not cache its rules
+ * would be trading a working default for nothing.
+ *
+ * @param {any} pack  Null or undefined clears it back to the built-in rules.
+ * @returns {boolean} Whether it was stored.
+ */
+export function rememberRuleset(pack) {
+    try {
+        const storage = globalThis.localStorage;
+        if (!storage) return false;
+        if (!pack) {
+            storage.removeItem(RULESET_STORAGE_KEY);
+            return true;
+        }
+        storage.setItem(RULESET_STORAGE_KEY, JSON.stringify(pack));
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * Reads back what rememberRuleset stored, or null.
+ * @returns {any}
+ */
+export function readRememberedRuleset() {
+    try {
+        const raw = globalThis.localStorage?.getItem(RULESET_STORAGE_KEY);
+        return raw ? JSON.parse(raw) : null;
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Installs the remembered pack, if there is one and it is still valid.
+ *
+ * Runs on import, below. A pack that no longer validates — because the schema moved on,
+ * or because it was edited by hand into something broken — falls back to the built-in
+ * rules rather than leaving the game with half a ruleset.
+ *
+ * @returns {{restored: boolean, errors: string[], warnings: string[]}}
+ */
+export function restoreRememberedRuleset() {
+    const pack = readRememberedRuleset();
+    if (!pack) return { restored: false, errors: [], warnings: [] };
+
+    const result = setActiveRuleset(pack);
+    if (result.usedDefault) {
+        return { restored: false, errors: result.errors, warnings: result.warnings };
+    }
+    return { restored: true, errors: result.errors, warnings: result.warnings };
+}
+
+/**
+ * Decides what opening a campaign should do about its rule pack.
+ *
+ * Kept apart from the doing because the interesting part is the decision, and a reload
+ * prompt is the rudest thing this game can show: it has to appear when the rules really
+ * changed and never otherwise. Comparing the packs rather than the world names means
+ * switching between two campaigns that share a ruleset is silent, as it should be.
+ *
+ * @param {any} worldPack        The pack stored in the world, or null for the default rules.
+ * @param {any} rememberedPack   What is currently installed, from readRememberedRuleset.
+ * @returns {{action: 'none'|'install'|'clear'|'reject', reason: string, errors: string[]}}
+ */
+export function planRulesetChange(worldPack, rememberedPack) {
+    const same = JSON.stringify(worldPack ?? null) === JSON.stringify(rememberedPack ?? null);
+    if (same) return { action: 'none', reason: 'Las reglas ya son las de esta campaña.', errors: [] };
+
+    if (!worldPack) {
+        return { action: 'clear', reason: 'Esta campaña usa las reglas por defecto.', errors: [] };
+    }
+
+    const { errors, usedDefault } = resolveRuleset(worldPack);
+    if (usedDefault) {
+        // Half a rule pack is worse than none: an empty condition list would quietly
+        // blank every character sheet. The default stays in force and the player is told.
+        return {
+            action: 'reject',
+            reason: 'El paquete de reglas de esta campaña no es válido. Se siguen usando las reglas por defecto.',
+            errors,
+        };
+    }
+
+    return { action: 'install', reason: 'Esta campaña trae sus propias reglas.', errors: [] };
+}
+
+// Applied at import time, which is the whole point: see RULESET_STORAGE_KEY. In Node
+// there is no localStorage, so tests always start from the built-in rules.
+restoreRememberedRuleset();

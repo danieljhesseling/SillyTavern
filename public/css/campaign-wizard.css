@@ -129,3 +129,84 @@ textarea.cw-input { resize: vertical; font-family: inherit; }
 }
 
 .campaign-card-unstarted .campaign-sessions { opacity: 0.7; font-style: italic; }
+
+/* ---- The blank canvas: generate the world with AI ------------------------- */
+
+.cw-template-ai {
+    border-style: dashed;
+}
+
+.cw-template-ai .cw-template-name i {
+    color: #c9a227;
+}
+
+.cw-ai {
+    margin-top: 10px;
+    padding: 10px;
+    border: 1px solid rgba(201, 162, 39, 0.35);
+    border-radius: 6px;
+    background: rgba(201, 162, 39, 0.06);
+}
+
+.cw-ai .cw-input {
+    margin: 6px 0;
+}
+
+.cw-ai-go {
+    width: 100%;
+}
+
+.cw-ai-status {
+    margin-top: 8px;
+    font-size: 0.85em;
+    opacity: 0.85;
+}
+
+.cw-ai-preview {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.cw-ai-name {
+    font-weight: bold;
+    font-size: 1.05em;
+}
+
+.cw-ai-desc,
+.cw-ai-enemies,
+.cw-ai-where {
+    font-size: 0.85em;
+    opacity: 0.85;
+    margin-top: 3px;
+}
+
+/* The board as the model drew it. Monospaced and tight, so the shape of the rooms
+   reads at a glance: this is the one part of a generated world worth checking. */
+.cw-ai-map {
+    margin: 8px 0;
+    padding: 8px;
+    overflow-x: auto;
+    font-family: 'Consolas', 'Menlo', monospace;
+    font-size: 12px;
+    line-height: 1.05;
+    letter-spacing: 1px;
+    white-space: pre;
+    color: #9fb8d0;
+    background: rgba(0, 0, 0, 0.35);
+    border-radius: 4px;
+}
+
+.cw-ai-warn,
+.cw-ai-error {
+    margin-top: 4px;
+    font-size: 0.82em;
+}
+
+.cw-ai-warn {
+    color: #d8b24a;
+}
+
+.cw-ai-error {
+    color: #d86a5a;
+}

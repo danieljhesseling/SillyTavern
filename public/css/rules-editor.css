@@ -1,0 +1,165 @@
+/* The rules editor: change what the game is made of without editing JavaScript.
+   Two columns — the sections on the left, the one you are editing on the right — so a
+   pack with 25 sections stays navigable. See wiki/ROADMAP.md, Fase C. */
+
+.rx-root {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 60vh;
+    text-align: left;
+}
+
+.rx-title {
+    font-size: 1.15em;
+    font-weight: bold;
+}
+
+.rx-sub {
+    font-size: 0.85em;
+    opacity: 0.75;
+}
+
+.rx-body {
+    display: flex;
+    gap: 12px;
+    flex: 1;
+    min-height: 0;
+}
+
+.rx-nav {
+    flex: 0 0 210px;
+    max-height: 55vh;
+    overflow-y: auto;
+    border-right: 1px solid rgba(255, 255, 255, 0.12);
+    padding-right: 6px;
+}
+
+.rx-nav-item {
+    padding: 6px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.88em;
+}
+
+.rx-nav-item:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.rx-nav-item.active {
+    background: rgba(201, 162, 39, 0.18);
+}
+
+/* A dot on the sections that differ from the built-in rules, so "what did I change?"
+   is answered by looking rather than by remembering. */
+.rx-nav-item.modified::after {
+    content: ' ●';
+    color: #c9a227;
+    font-size: 0.8em;
+}
+
+.rx-panel {
+    flex: 1;
+    min-width: 0;
+    max-height: 55vh;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.rx-section-title {
+    font-weight: bold;
+    margin-bottom: 6px;
+}
+
+.rx-hint {
+    font-size: 0.85em;
+    opacity: 0.75;
+    margin-bottom: 6px;
+}
+
+.rx-table {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.rx-row {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.rx-row-head {
+    font-size: 0.78em;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    opacity: 0.6;
+}
+
+.rx-cell {
+    flex: 1;
+    min-width: 0;
+}
+
+.rx-cell-actions {
+    flex: 0 0 38px;
+}
+
+.rx-input {
+    width: 100%;
+    padding: 3px 6px;
+    font-size: 0.9em;
+}
+
+.rx-del {
+    padding: 3px 7px;
+}
+
+.rx-add {
+    margin-top: 8px;
+}
+
+.rx-actions,
+.rx-tools {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+}
+
+.rx-json {
+    width: 100%;
+    font-family: 'Consolas', 'Menlo', monospace;
+    font-size: 12px;
+}
+
+.rx-footer {
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    padding-top: 8px;
+}
+
+.rx-status {
+    margin-top: 6px;
+    font-size: 0.85em;
+}
+
+.rx-error {
+    color: #d86a5a;
+}
+
+.rx-ok {
+    color: #7fc07f;
+}
+
+@media (max-width: 700px) {
+    .rx-body {
+        flex-direction: column;
+    }
+
+    .rx-nav {
+        flex: 0 0 auto;
+        max-height: 140px;
+        border-right: none;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    }
+}

@@ -34,10 +34,15 @@ import { uniqueWorldName } from '../campaign/campaign-worlds.js';
 /**
  * Collects the answers. Resolves with the choices, or null if cancelled.
  *
- * @param {{ Popup: any, POPUP_TYPE: any, existingWorldNames: string[] }} deps
- * @returns {Promise<{templateId: string, worldName: string, genre: string, description: string, party: string[]}|null>}
+ * @param {Object} deps
+ * @param {any} deps.Popup
+ * @param {any} deps.POPUP_TYPE
+ * @param {string[]} [deps.existingWorldNames]
+ * @param {((idea: string, partySize: number) => Promise<{template: any, warnings: string[], errors: string[]}>)|null} [deps.generateWorld]
+ *        Injected so this module never imports a provider. Absent means no AI card.
+ * @returns {Promise<{templateId: string, worldName: string, genre: string, description: string, party: string[], generatedTemplate: any}|null>}
  */
-export async function askWizard({ Popup, POPUP_TYPE, existingWorldNames = [] }) {
+export async function askWizard({ Popup, POPUP_TYPE, existingWorldNames = [], generateWorld = null }) {
     const root = $('<div class="cw-root"></div>');
 
     root.append(`
@@ -99,6 +104,120 @@ export async function askWizard({ Popup, POPUP_TYPE, existingWorldNames = [] }) 
         .val('Lyra\nBrand');
     step3.append(partyInput);
 
+    // ---- 1b. the blank canvas ----------------------------------------------
+    // The AI is offered as one more way to fill step 1, never as the way in: if it is not
+    // configured, fails, or returns nonsense, the four hand-written templates are still
+    // right there. What it returns becomes an ordinary template and goes through exactly
+    // the same builders, so a generated world cannot reach the board by a private path.
+    /** @type {import('../campaign/starter-templates.js').StarterTemplate|null} */
+    let generatedTemplate = null;
+
+    const aiPanel = $('<div class="cw-ai"></div>').hide();
+
+    if (typeof generateWorld === 'function') {
+        const aiCard = $('<div class="cw-template-card cw-template-ai"></div>');
+        aiCard.append($('<div class="cw-template-name"></div>')
+            .html('<i class="fa-solid fa-wand-magic-sparkles"></i> ')
+            .append(document.createTextNode('Generar con IA')));
+        aiCard.append($('<div class="cw-template-desc"></div>')
+            .text('Describe el mundo que quieres y lo construye. Una llamada al modelo.'));
+
+        aiCard.on('click', () => {
+            grid.find('.cw-template-card').removeClass('selected');
+            aiCard.addClass('selected');
+            aiPanel.show();
+            ideaInput.trigger('focus');
+            // Nothing is generated yet, so the first template stays the fallback until
+            // a generation succeeds and the player accepts it.
+            templateId = generatedTemplate ? 'generated' : STARTER_TEMPLATES[0].id;
+        });
+
+        grid.append(aiCard);
+
+        const ideaInput = $('<textarea class="text_pole cw-input" rows="2" maxlength="600"></textarea>')
+            .attr('placeholder', 'Una cripta inundada bajo una iglesia en ruinas, con cultistas…');
+
+        const goButton = $('<button class="menu_button cw-ai-go" type="button"></button>')
+            .append('<i class="fa-solid fa-wand-magic-sparkles"></i>')
+            .append($('<span></span>').text(' Generar'));
+
+        const status = $('<div class="cw-ai-status"></div>').hide();
+        const preview = $('<div class="cw-ai-preview"></div>').hide();
+
+        aiPanel.append($('<div class="cw-hint"></div>').text('¿Qué mundo quieres? Sé todo lo concreto que puedas.'));
+        aiPanel.append(ideaInput, goButton, status, preview);
+
+        /** Draws what came back, so nothing is injected before you have seen it. */
+        const showPreview = (/** @type {any} */ result) => {
+            preview.empty();
+
+            for (const message of result.errors) {
+                preview.append($('<div class="cw-ai-error"></div>').text(message));
+            }
+
+            if (result.template) {
+                const t = result.template;
+                preview.append($('<div class="cw-ai-name"></div>').text(t.name));
+                preview.append($('<div class="cw-ai-desc"></div>').text(t.description));
+                preview.append($('<pre class="cw-ai-map"></pre>').text(t.map.join('\n')));
+
+                const enemies = t.enemies.length
+                    ? t.enemies.map(e => `${e.name} (${e.hp} PG, CA ${e.armorClass})`).join(' · ')
+                    : 'Sin enemigos.';
+                preview.append($('<div class="cw-ai-enemies"></div>').text(enemies));
+
+                preview.append($('<div class="cw-ai-where"></div>')
+                    .text(`Empezarás en "${t.boardName}", en "${t.locationName}".`));
+            }
+
+            for (const message of result.warnings) {
+                preview.append($('<div class="cw-ai-warn"></div>').text(message));
+            }
+
+            preview.show();
+        };
+
+        let generating = false;
+        goButton.on('click', async () => {
+            if (generating) return;
+            generating = true;
+            goButton.prop('disabled', true);
+            preview.hide();
+            status.text('Generando el mundo…').show();
+
+            try {
+                const partySize = String(partyInput.val() || '')
+                    .split('\n').map(n => n.trim()).filter(Boolean).length || 2;
+
+                const result = await generateWorld(String(ideaInput.val() || ''), partySize);
+                generatedTemplate = result.template;
+
+                if (result.template) {
+                    templateId = 'generated';
+                    status.text('Listo. Revísalo antes de crear la campaña.').show();
+                    // The generated world fills in step 2, as picking a template does.
+                    if (!nameTouched) nameInput.val(uniqueWorldName(result.template.name, existingWorldNames));
+                    if (!String(genreInput.val() || '').trim()) genreInput.val(result.template.genre);
+                    if (!String(descInput.val() || '').trim()) descInput.val(result.template.description);
+                } else {
+                    templateId = STARTER_TEMPLATES[0].id;
+                    status.text('No salió. Prueba otra vez, cambia la idea, o elige una plantilla.').show();
+                }
+
+                showPreview(result);
+            } catch (error) {
+                generatedTemplate = null;
+                templateId = STARTER_TEMPLATES[0].id;
+                status.text(`No se pudo generar: ${error?.message || error}`).show();
+            } finally {
+                generating = false;
+                goButton.prop('disabled', false);
+            }
+        });
+    }
+
+    step1.append(aiPanel);
+
     root.append(step1, step2, step3);
 
     const popup = new Popup(root, POPUP_TYPE.CONFIRM, '', {
@@ -138,6 +257,7 @@ export async function askWizard({ Popup, POPUP_TYPE, existingWorldNames = [] }) 
         genre: String(genreInput.val() || '').trim(),
         description: String(descInput.val() || '').trim(),
         party: party.length > 0 ? party : ['Aventurero'],
+        generatedTemplate,
     };
 }
 
@@ -156,7 +276,7 @@ export async function askWizard({ Popup, POPUP_TYPE, existingWorldNames = [] }) 
  * tested, in one place.
  *
  * @param {Object} input
- * @param {{templateId: string, worldName: string, genre: string, description: string, party: string[]}} input.answers
+ * @param {{templateId: string, worldName: string, genre: string, description: string, party: string[], generatedTemplate?: any}} input.answers
  * @param {(name: string) => Promise<any>} input.createWorld  Resolves false when the name is refused.
  * @param {(name: string) => Promise<any>} input.loadWorld
  * @param {(name: string, data: any) => Promise<any>} input.saveWorld
@@ -166,7 +286,11 @@ export async function askWizard({ Popup, POPUP_TYPE, existingWorldNames = [] }) 
 export async function createCampaign({
     answers, createWorld, loadWorld, saveWorld, createEntry,
 }) {
-    const template = getTemplate(answers.templateId) ?? STARTER_TEMPLATES[0];
+    // A generated world is a template like any other from here on. That is the whole
+    // design: one path into the game, whoever wrote the world.
+    const template = (answers.templateId === 'generated' && answers.generatedTemplate)
+        ? answers.generatedTemplate
+        : getTemplate(answers.templateId) ?? STARTER_TEMPLATES[0];
 
     // createNewWorldInfo refuses a name that collides once sanitised ("Mi: mundo" against
     // "Mi mundo"). Carrying on anyway would load the world that already exists and
