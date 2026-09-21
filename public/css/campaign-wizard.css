@@ -1,0 +1,131 @@
+/* ============================================================
+   CAMPAIGN WIZARD
+
+   The entry point into the game. Three questions, asked in the order somebody actually
+   thinks of them, and everything else filled in from a template.
+   ============================================================ */
+
+.cw-root {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 0;
+    text-align: left;
+}
+
+.cw-head { border-bottom: 1px solid rgba(240, 190, 90, 0.25); padding-bottom: 10px; }
+
+.cw-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #ffd98a;
+}
+
+.cw-title i { margin-right: 7px; }
+
+.cw-sub {
+    font-size: 0.76rem;
+    opacity: 0.6;
+    margin-top: 3px;
+}
+
+.cw-step { display: flex; flex-direction: column; gap: 7px; }
+
+.cw-step-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    font-size: 0.86rem;
+}
+
+.cw-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #f0be5a;
+    color: #14141a;
+    font-size: 0.7rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.cw-hint { font-size: 0.72rem; opacity: 0.55; }
+
+.cw-template-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 8px;
+}
+
+.cw-template-card {
+    padding: 10px 12px;
+    border-radius: 5px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(40, 40, 52, 0.6);
+    cursor: pointer;
+    transition: border-color 0.12s, background 0.12s;
+}
+
+.cw-template-card:hover { background: rgba(58, 58, 74, 0.75); }
+
+.cw-template-card.selected {
+    border-color: #f0be5a;
+    background: rgba(90, 70, 30, 0.5);
+}
+
+.cw-template-name { font-weight: 600; font-size: 0.84rem; color: #e8dcc0; }
+
+.cw-template-desc {
+    font-size: 0.72rem;
+    opacity: 0.6;
+    margin-top: 3px;
+    line-height: 1.35;
+}
+
+.cw-label {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    font-size: 0.74rem;
+    opacity: 0.75;
+}
+
+.cw-input { width: 100%; }
+textarea.cw-input { resize: vertical; font-family: inherit; }
+
+.cw-warning {
+    font-size: 0.76rem;
+    color: #ffb4b4;
+    background: rgba(142, 32, 32, 0.25);
+    border-left: 3px solid #d23c3c;
+    padding: 6px 9px;
+    border-radius: 3px;
+}
+
+/* The button that replaces the old "No campaigns yet" placeholder. */
+.cw-cta { margin-top: 12px; }
+
+.cw-cta-inline {
+    /* The campaigns container is a grid, so left alone this is just one more cell beside
+       the first card. Spanning the row puts it above them, where a primary action belongs. */
+    grid-column: 1 / -1;
+    justify-self: start;
+    margin-bottom: 4px;
+}
+
+.campaigns-empty .cw-cta i,
+.cw-cta-inline i { margin-right: 5px; }
+
+/* A world that exists but has never been played. Same card as a running campaign, marked
+   as not started yet: dashed outline instead of a solid one, and a single Start action. */
+.campaign-card-unstarted {
+    outline: 1px dashed rgba(240, 190, 90, 0.5);
+    outline-offset: -1px;
+    cursor: pointer;
+}
+
+.campaign-card-unstarted .campaign-sessions { opacity: 0.7; font-style: italic; }

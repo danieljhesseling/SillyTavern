@@ -172,7 +172,7 @@ export function getPlayerAttackModifier(member, rangeFeet) {
 }
 
 export function createEmptyCombatEncounter() {
-    return { active: false, enemies: [], turnOrder: [], currentTurnIndex: 0, turnState: null };
+    return { active: false, enemies: [], turnOrder: [], currentTurnIndex: 0, round: 0, turnState: null };
 }
 
 /**
@@ -185,6 +185,10 @@ export function normalizeCombatEncounter(encounter) {
         enemies: Array.isArray(encounter.enemies) ? encounter.enemies : [],
         turnOrder: Array.isArray(encounter.turnOrder) ? encounter.turnOrder : [],
         currentTurnIndex: Number.isInteger(encounter.currentTurnIndex) ? encounter.currentTurnIndex : 0,
+        // Encounters saved before rounds existed resume at one rather than refusing to load.
+        round: Number.isInteger(encounter.round) && encounter.round > 0
+            ? encounter.round
+            : (encounter.active ? 1 : 0),
         turnState: encounter.turnState && typeof encounter.turnState === 'object'
             ? {
                 actorId: String(encounter.turnState.actorId || ''),

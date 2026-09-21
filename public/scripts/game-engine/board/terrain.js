@@ -297,6 +297,44 @@ export function getCoverBonus(terrain, x, y) {
 }
 
 /**
+ * Characters accepted by terrainFromAsciiMap, so a layout can be read in the source.
+ * Anything not listed is plain floor.
+ */
+export const ASCII_TERRAIN = {
+    '#': { type: 'wall' },
+    'D': { type: 'door', open: false },
+    'o': { type: 'door', open: true },
+    '~': { type: 'difficult' },
+    'c': { type: 'cover_half' },
+    'C': { type: 'cover_three_quarters' },
+};
+
+/**
+ * Builds terrain from an ASCII map.
+ *
+ * A layout you can see in the source is a layout you can check against the screen, which
+ * is why the starter templates and the sandbox are both written this way.
+ *
+ * @param {string[]} rows
+ * @returns {BoardTerrain}
+ */
+export function terrainFromAsciiMap(rows) {
+    let terrain = createEmptyTerrain();
+    if (!Array.isArray(rows)) return terrain;
+
+    rows.forEach((row, y) => {
+        [...String(row ?? '')].forEach((char, x) => {
+            const cell = ASCII_TERRAIN[char];
+            if (cell) {
+                terrain = setCell(terrain, x, y, cell.type, { open: cell.open });
+            }
+        });
+    });
+
+    return terrain;
+}
+
+/**
  * Lists the terrain types available to an editor, as [value, label] pairs.
  * @returns {Array<[string, string]>}
  */

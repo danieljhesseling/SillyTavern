@@ -39,7 +39,7 @@ Esta regla es la que hace el juego barato, la que lo hace depurable, y la que pe
 
 ---
 
-## 💸 1. De Dónde Salen los 200 € al Mes
+## 💸 1. De Dónde Sale el Gasto
 
 Antes de planificar hay que entender el gasto, porque determina el orden de las fases.
 
@@ -49,20 +49,37 @@ El coste de una partida **no** lo domina lo que el modelo escribe, sino lo que l
 coste ≈ (tokens de contexto) × (llamadas por sesión) × (precio de entrada)
 ```
 
-De ahí salen tres palancas, en orden de impacto:
-
-| # | Palanca | Efecto | Dónde se implementa |
-| :-- | :--- | :--- | :--- |
-| **1** | **Menos llamadas.** Un combate de 4 rondas × 5 combatientes narrado turno a turno son ~20 llamadas. Resuelto por el motor con un epílogo: **1 llamada**. | El mayor ahorro individual, con diferencia | Fase B |
-| **2** | **Contexto cacheado.** Los proveedores que soportan caché de prompt cobran una fracción por el bloque estable reutilizado. Exige ordenar el prompt: estático delante, volátil detrás. | Reduce mucho el coste del bloque fijo | Transversal T1 |
-| **3** | **Modelo por tarea.** Clasificar, extraer o validar no necesita tu modelo caro. Un modelo pequeño — o uno local — hace el trabajo mecánico a coste marginal cero. | Ahorro proporcional al reparto de tareas | Transversal T2 |
-
 > [!WARNING]
-> **No cito precios por token**: cambian y dependen del proveedor, y tienes ~20 conectores configurados. Consulta las tarifas vigentes del que uses. Lo que sí es estructural, y no cambia, es que **las tres palancas se multiplican entre sí**: menos llamadas × contexto más barato × modelo más barato.
+> **Corrección importante (2026-09-21).** Una versión anterior de este documento afirmaba que un combate de 4 rondas costaba ~20 llamadas al modelo y que resolverlo en el motor sería el mayor ahorro del proyecto. **Es falso en este código.**
+>
+> Verificado en tres pasos:
+> 1. `postCombatNarration` llama a `sendSystemMessage`, no al modelo.
+> 2. Los mensajes de sistema se crean con `is_system: true` (`system-messages.js`).
+> 3. `script.js` filtra el prompt con `chat.filter(x => !x.is_system || ...)`.
+>
+> **El combate turno a turno siempre ha costado cero tokens**: esos mensajes nunca llegan al modelo. No había nada que ahorrar ahí, y el epílogo *añade* una llamada en lugar de quitar veinte.
+
+### Dónde está el gasto, entonces
+
+Estructuralmente solo puede venir de tres sitios, y **ninguno se ha medido todavía**:
+
+- El contexto base de cada turno: prompt de sistema, lorebook, fichas del grupo, instrucciones del Dynamic Context
+- El historial real de chat (mensajes de usuario y del modelo), que sí crece
+- Cuántos turnos se juegan
+
+| # | Palanca | Dónde |
+| :-- | :--- | :--- |
+| **1** | **Medir primero.** Vista previa del prompt compilado y contador reconciliado con el proveedor. No se puede optimizar lo que no se ve. | T3, T4 |
+| **2** | **Contexto cacheado**: estático delante, volátil detrás, para los proveedores con caché de prompt. | T1 |
+| **3** | **Resumen periódico del historial**, para que el contexto no crezca sin límite. | T8 |
+| **4** | **Modelo por tarea**: lo mecánico a un modelo pequeño o local. | T2 |
+
+> [!IMPORTANT]
+> **Medir va primero, y no es un trámite.** La lección de esta corrección es que una suposición razonable sobre dónde se va el dinero puede estar completamente equivocada, y que un plan construido encima hereda el error. Las tarifas por token además cambian y dependen del proveedor: consulta las vigentes del que uses.
 
 ### La consecuencia sobre el orden del plan
 
-La Fase B (combate sin tokens) es la que más ahorra, pero **no se puede construir sin la Fase A**. Por eso A va primero aunque no ahorre nada por sí sola.
+Las Fases A y B **no ahorran tokens**. Lo que entregan es jugabilidad: IA que respeta muros, rondas contadas, economía de acciones, un guardián contra tiradas inventadas y un registro legible. Son valiosas, pero conviene llamarlas por su nombre.
 
 ---
 
@@ -75,7 +92,7 @@ La Fase B (combate sin tokens) es la que más ahorra, pero **no se puede constru
 | **B2 · Descomposición** | `party.js` 4.707 → 4.279 líneas · `party/combat-rules.js`, `item-forms.js`, `types.js`, `html.js` · 68 tests nuevos |
 | **Seguridad** | XSS del renderizador de mapas (4 puntos) · XSS vivo en `world-content-browser.js` · 11 copias de `escapeHtml` unificadas · límites de palabra Unicode · doble persistencia del grupo |
 
-**Estado verificable**: 856 tests en 32 suites · 0 errores de tipos en 27 archivos del fork.
+**Estado verificable**: 872 tests en 33 suites · 0 errores de tipos en 28 archivos del fork.
 
 > [!NOTE]
 > Este trabajo no era un desvío. Sin el merge no tendrías los 194 commits de upstream; sin los tests no podrías tocar el motor de combate sin miedo; sin el gate de tipos cada refactor sería a ciegas. Las fases que vienen se apoyan en eso.
@@ -105,7 +122,7 @@ Verificado contra el código, porque el documento de diseño parte de supuestos 
 
 ## 🟡 Fase A — El Cimiento Determinista `MOTOR COMPLETO — 2026-09-20`
 
-> **Por qué primero**: nada del combate táctico existe sin esto. No ahorra tokens por sí sola; desbloquea la fase que sí lo hace.
+> **Por qué primero**: nada del combate táctico existe sin esto.
 
 | ID | Tarea | Resultado |
 | :--- | :--- | :--- |
@@ -136,9 +153,9 @@ Verificado contra el código, porque el documento de diseño parte de supuestos 
 
 ---
 
-## 🟡 Fase B — El Combate Sin Tokens `NÚCLEO LÓGICO COMPLETO — 2026-09-20`
+## 🟡 Fase B — El Combate Determinista `INTEGRADO — 2026-09-21`
 
-> **Por qué ahora**: es la palanca #1 de coste. Aquí es donde dejas de pagar por cada golpe de espada.
+> **Qué entrega**: un combate que respeta el terreno, cuenta rondas y no se inventa tiradas. **No ahorra tokens** — ver la corrección de la sección 1: el combate ya era gratis.
 
 | ID | Tarea | Resultado |
 | :--- | :--- | :--- |
@@ -147,7 +164,7 @@ Verificado contra el código, porque el documento de diseño parte de supuestos 
 | **B2** | Perfiles tácticos de enemigo. | ✅ `combat/enemy-ai.js` · 33 tests |
 | **B7** | Interceptar tiradas alucinadas (`PROP-135`). | ✅ `combat/roll-guard.js` · 26 tests |
 | **B4** | Combat log gráfico que sustituye la narración por turno. | ✅ `ui/combat-log.js` · 19 tests · marco pixel art |
-| **B6** | Puente narrativo único al terminar el combate. | 🟡 `buildEpiloguePrompt` listo; falta engancharlo al fin de combate |
+| **B6** | Resumen único al terminar el combate. | ✅ Enganchado a `endCombat` |
 | **B5** | Botín algorítmico por CR. | ⬜ Pendiente |
 | **B8** | Rastreador de iniciativa, marcadores de estado, escalado por tamaño. | ⬜ Pendiente (interfaz) |
 
@@ -194,7 +211,18 @@ El **registro de combate** tiene marco de pixel art generado con PixelLab (`publ
 > [!IMPORTANT]
 > **Cada línea de ese registro era antes una frase que pagabas.** El motor ya sabe el movimiento, el fallo y los seis puntos de daño; el log los imprime gratis y al modelo le queda el único trabajo que hace bien: el epílogo.
 
-**Entregable pendiente**: falta enganchar `buildEpiloguePrompt` al final del combate (B6) y el botín (B5).
+### Integrado el 2026-09-21
+
+| Qué | Antes | Ahora |
+| :--- | :--- | :--- |
+| Movimiento enemigo | Línea recta con `Math.sign`, atravesando muros | `planEnemyTurn` con A* y perfiles tácticos |
+| Alcance de ataque | Fijo a 5 pies | El del enemigo (`attackRangeFeet`) |
+| Rondas | No se contaban | Contadas al dar la vuelta al orden, y anunciadas |
+| Fin de combate | Solo un resumen de estado | Más un resumen condensado para la narración |
+
+Los encuentros guardados sin contador de rondas se reanudan en la ronda 1 en vez de fallar.
+
+**Pendiente**: montar el registro gráfico en el tablero real (hoy solo vive en `/sandbox`), el botín (B5) y el rastreador de iniciativa (B8).
 
 ---
 
@@ -398,8 +426,8 @@ Referencia concreta: tu motor RPG actual son **26.005 líneas** en 38 archivos, 
 ## 🔬 Verificación
 
 ```bash
-npm run test:unit --prefix tests     # 856 tests, 32 suites
-node tools/check-fork-types.mjs      # 0 errores en los 27 archivos del fork
+npm run test:unit --prefix tests     # 872 tests, 33 suites
+node tools/check-fork-types.mjs      # 0 errores en los 28 archivos del fork
 git fetch upstream && git merge upstream/release
 ```
 

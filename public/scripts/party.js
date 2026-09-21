@@ -27,11 +27,14 @@ import {
     createEmptyCombatEncounter, normalizeCombatEncounter,
 } from './party/combat-rules.js';
 import { escItemText, buildPartyItemSections } from './party/item-forms.js';
+import { resolveEntryMapPosition } from './party/positions.js';
 import {
-    createEmptyTerrain, normalizeTerrain, setCell as setTerrainCell, getTerrainOptions,
+    normalizeTerrain, setCell as setTerrainCell, getTerrainOptions,
 } from './game-engine/board/terrain.js';
 import { getReachableCells } from './game-engine/board/pathfinding.js';
 import { createEmptyFog, normalizeFog, updateFog } from './game-engine/board/fog-of-war.js';
+import { planEnemyTurn } from './game-engine/combat/enemy-ai.js';
+import { buildEpiloguePrompt } from './game-engine/ui/combat-log.js';
 
 /** @typedef {import('./party/types.js').PartyMember} PartyMember */
 /** @type {PartyMember[]} */
@@ -492,7 +495,7 @@ export function setPartyFromWorldEntries(entries, worldName = null) {
             equippedItems: { ...defaults.equippedItems },
             relationships: [],
             memories: [],
-            mapPosition: { locationName: String(d.locationName || d.location || ''), gridX: 0, gridY: 0 },
+            mapPosition: resolveEntryMapPosition(d),
         };
         partyMembers.push(member);
     }
@@ -891,10 +894,75 @@ let terrainEditing = false;
  * @returns {import('./game-engine/board/terrain.js').BoardTerrain}
  */
 function getActiveBoardTerrain() {
-    if (!currentLocationName || !currentBoardName) return createEmptyTerrain();
-    const location = getCurrentWorldLocationMaps().find(l => l.name === currentLocationName);
-    const board = getLocationBoards(location).find((/** @type {any} */ b) => b.name === currentBoardName);
-    return normalizeTerrain(board?.terrain);
+    return getActiveBoardContext().terrain;
+}
+
+/**
+ * Switches the right-hand panel tab. Defined inside initPartyPanel, so it is handed out
+ * here once that has run.
+ * @type {((tab: 'party'|'world_map'|'location') => void)|null}
+ */
+let partyTabSetter = null;
+
+/**
+ * Puts the party on a board without going through /go and /enter.
+ *
+ * The campaign wizard uses this so a new campaign opens on its first board instead of
+ * ending with a toast that tells you which two commands to type. It does exactly what
+ * those commands do, minus the toasts, and refuses a location or board that does not
+ * exist rather than leaving the panel pointing at nothing.
+ *
+ * @param {string} locationName
+ * @param {string} boardName
+ * @returns {boolean} whether both the location and the board were found
+ */
+export function enterStartingBoard(locationName, boardName) {
+    const location = getCurrentWorldLocationMaps().find(l => l.name === locationName);
+    if (!location) return false;
+
+    const board = getLocationBoards(location).find((/** @type {any} */ b) => b.name === boardName);
+    if (!board) return false;
+
+    currentLocationName = location.name;
+    currentBoardName = board.name;
+    saveCurrentLocation();
+    saveCurrentBoard();
+    partyTabSetter?.('location');
+
+    // The board lives in the party view of the right-hand panel, which starts closed and
+    // showing the character editor instead. Entering a board you cannot see reads as
+    // nothing having happened — which is exactly what the first version of the campaign
+    // wizard looked like.
+    //
+    // The party icon in the top bar does this properly: it closes the persona drawer, opens
+    // the panel and selects the party view, keeping selected_button in step. It never
+    // toggles, so pressing it when the view is already showing is harmless. Opening the
+    // panel by hand (#rightNavDrawerIcon) shows the wrong view.
+    $('#partyDrawerIcon').trigger('click');
+    return true;
+}
+
+/**
+ * Terrain and dimensions of the board the party is standing on.
+ *
+ * The tactical planner needs all three together, and resolving them separately invited
+ * passing a grid size from one board with the terrain of another.
+ *
+ * @returns {{terrain: import('./game-engine/board/terrain.js').BoardTerrain, gridWidth: number, gridHeight: number}}
+ */
+function getActiveBoardContext() {
+    const location = currentLocationName
+        ? getCurrentWorldLocationMaps().find(l => l.name === currentLocationName)
+        : null;
+    const board = (currentLocationName && currentBoardName)
+        ? getLocationBoards(location).find((/** @type {any} */ b) => b.name === currentBoardName)
+        : null;
+
+    return {
+        terrain: normalizeTerrain(board?.terrain),
+        gridWidth: Number(location?.gridWidth) || 50,
+        gridHeight: Number(location?.gridHeight) || 50,
+    };
 }
 
 function buildDragHighlightCells(tokenId, tentGX, tentGY, gridW, gridH) {
@@ -1193,61 +1261,70 @@ function resolveEnemyTurnAction(turnEntry) {
     const enemyX = Number.isFinite(Number(enemy.gridX)) ? Number(enemy.gridX) : 0;
     const enemyY = Number.isFinite(Number(enemy.gridY)) ? Number(enemy.gridY) : 0;
 
-    const nearestTargetInfo = livingParty
-        .map(member => {
-            const memberX = Number.isFinite(Number(member.mapPosition?.gridX)) ? Number(member.mapPosition?.gridX) : 0;
-            const memberY = Number.isFinite(Number(member.mapPosition?.gridY)) ? Number(member.mapPosition?.gridY) : 0;
+    // The tactical planner replaces the old straight-line walk, which stepped with
+    // Math.sign and went through walls, and which assumed every creature had five feet of
+    // reach whatever it was holding.
+    const { terrain, gridWidth, gridHeight } = getActiveBoardContext();
+
+    /** @param {any} member */
+    const memberCell = (member) => ({
+        x: Number.isFinite(Number(member.mapPosition?.gridX)) ? Number(member.mapPosition.gridX) : 0,
+        y: Number.isFinite(Number(member.mapPosition?.gridY)) ? Number(member.mapPosition.gridY) : 0,
+    });
+
+    const plan = planEnemyTurn({
+        actor: {
+            id: String(enemy.instanceId),
+            gridX: enemyX,
+            gridY: enemyY,
+            currentHp: Number(enemy.currentHp) || 0,
+            maxHp: Number(enemy.maxHp) || 0,
+            speedFeet: Number(enemy.speed) || 30,
+            attackRangeFeet: Number(enemy.attackRangeFeet ?? enemy.range) || 5,
+            profile: enemy.profile,
+        },
+        targets: livingParty.map(member => {
+            const cell = memberCell(member);
             return {
-                member,
-                memberX,
-                memberY,
-                distanceFeet: getDistanceInFeet(enemyX, enemyY, memberX, memberY),
+                id: String(member.id),
+                gridX: cell.x,
+                gridY: cell.y,
+                currentHp: Number(member.hp) || 0,
+                maxHp: Number(member.maxHp) || 0,
             };
-        })
-        .sort((a, b) => a.distanceFeet - b.distanceFeet)[0] || null;
+        }),
+        allies: getAliveEnemies()
+            .filter(other => other.instanceId !== enemy.instanceId)
+            .map(other => ({
+                id: String(other.instanceId),
+                gridX: Number(other.gridX) || 0,
+                gridY: Number(other.gridY) || 0,
+                currentHp: Number(other.currentHp) || 0,
+                maxHp: Number(other.maxHp) || 0,
+            })),
+        terrain,
+        gridWidth,
+        gridHeight,
+    });
 
-    if (!nearestTargetInfo) {
-        return `[COMBAT] ${enemy.name} no encuentra un objetivo valido.`;
-    }
-
-    const target = nearestTargetInfo.member;
-    const targetX = nearestTargetInfo.memberX;
-    const targetY = nearestTargetInfo.memberY;
-    const meleeRangeFeet = 5;
-    const initialDistanceFeet = nearestTargetInfo.distanceFeet;
     const lines = [];
-    let movedThisTurn = false;
-
-    if (initialDistanceFeet > meleeRangeFeet) {
-        const enemySpeed = Number(enemy.speed);
-        const movementBudgetFeet = Math.max(5, Number.isFinite(enemySpeed) ? enemySpeed : 30);
-        const maxSteps = Math.max(1, Math.floor(movementBudgetFeet / 5));
-
-        let nx = enemyX;
-        let ny = enemyY;
-        for (let step = 0; step < maxSteps; step++) {
-            if (getDistanceInFeet(nx, ny, targetX, targetY) <= meleeRangeFeet) break;
-            nx += Math.sign(targetX - nx);
-            ny += Math.sign(targetY - ny);
-        }
-
-        enemy.gridX = nx;
-        enemy.gridY = ny;
-        movedThisTurn = nx !== enemyX || ny !== enemyY;
-    }
-
-    const finalEnemyX = Number.isFinite(Number(enemy.gridX)) ? Number(enemy.gridX) : 0;
-    const finalEnemyY = Number.isFinite(Number(enemy.gridY)) ? Number(enemy.gridY) : 0;
-    const distanceAfterMoveFeet = getDistanceInFeet(finalEnemyX, finalEnemyY, targetX, targetY);
+    const movedThisTurn = plan.movementCostFeet > 0;
 
     if (movedThisTurn) {
-        lines.push(`🚶 ${enemy.name} avanza a (${finalEnemyX + 1}, ${finalEnemyY + 1}). Distancia: ${initialDistanceFeet} ft -> ${distanceAfterMoveFeet} ft.`);
+        enemy.gridX = plan.destination.x;
+        enemy.gridY = plan.destination.y;
+        lines.push(`🚶 ${enemy.name} avanza a (${plan.destination.x + 1}, ${plan.destination.y + 1}). ${plan.rationale} (${plan.movementCostFeet} ft)`);
     }
 
-    if (distanceAfterMoveFeet > meleeRangeFeet) {
-        lines.push(`⛔ ${enemy.name} no alcanza a ${target.name} y no puede atacar este turno.`);
+    if (plan.action !== 'attack' || !plan.targetId) {
+        lines.push(`⛔ ${enemy.name}: ${plan.rationale}`);
         if (movedThisTurn) saveCombatState();
         return lines.join('\n');
+    }
+
+    const target = livingParty.find(member => String(member.id) === plan.targetId);
+    if (!target) {
+        return `[COMBAT] ${enemy.name} no encuentra un objetivo valido.`;
     }
 
     const attackRoll = rollDiceDetailed('1d20', 20);
@@ -1345,7 +1422,16 @@ function advanceTurnIndex() {
     if (!combatEncounter.active || combatEncounter.turnOrder.length === 0) return null;
     const totalTurns = combatEncounter.turnOrder.length;
     for (let step = 0; step < totalTurns; step++) {
-        combatEncounter.currentTurnIndex = (combatEncounter.currentTurnIndex + 1) % totalTurns;
+        const nextIndex = (combatEncounter.currentTurnIndex + 1) % totalTurns;
+
+        // Rounds are counted when the order wraps. Without this there was nothing for
+        // "survive six rounds" to count and no clock for an effect to expire against.
+        if (nextIndex <= combatEncounter.currentTurnIndex) {
+            combatEncounter.round = (Number(combatEncounter.round) || 1) + 1;
+            postCombatNarration(`⏳ [COMBAT] Ronda ${combatEncounter.round}`);
+        }
+
+        combatEncounter.currentTurnIndex = nextIndex;
         const candidate = combatEncounter.turnOrder[combatEncounter.currentTurnIndex] || null;
         if (canTurnEntryAct(candidate)) {
             resetCombatTurnState(candidate);
@@ -1444,6 +1530,7 @@ function startCombat(template, count, gridWidth = 50, gridHeight = 50) {
         enemies: [...combatEncounter.enemies, ...newEnemies],
         turnOrder: turnEntries,
         currentTurnIndex: 0,
+        round: 1,
         turnState: null,
     };
 
@@ -1466,6 +1553,19 @@ function startCombat(template, count, gridWidth = 50, gridHeight = 50) {
 function endCombat(reason = 'ended') {
     postCombatNarration('🏁 [COMBAT] El combate termina.');
     postCombatNarration(buildCombatSummary(/** @type {'victory'|'defeat'|'manual'|'ended'} */ (reason)));
+
+    // The blow-by-blow above is posted as system messages, which SillyTavern filters out
+    // of the prompt (script.js: chat.filter(x => !x.is_system)). So the model never saw
+    // the fight at all. This is the one line that tells it what happened — condensed on
+    // purpose, because it is also the only part of a combat that costs anything.
+    const epilogue = buildEpiloguePrompt([], {
+        rounds: Number(combatEncounter.round) || 1,
+        victory: reason === 'victory',
+        survivors: partyMembers.filter(m => (m.hp || 0) > 0).map(m => m.name),
+        defeated: combatEncounter.enemies.filter(e => (e.currentHp || 0) <= 0).map(e => e.name),
+    });
+    postCombatNarration(`📜 [COMBAT] Resumen para la narración:\n${epilogue}`);
+
     combatEncounter = createEmptyCombatEncounter();
     combatBoardSelection = { tokenId: null, boardName: '', locationName: '' };
     saveCombatState();
@@ -3940,6 +4040,9 @@ export function getPartyDescription() {
 }
 
 export function initPartyPanel() {
+    // Hoisted, so this works although setPartyTab is declared further down.
+    partyTabSetter = setPartyTab;
+
     const panel = $('#rm_party_block');
     if (!panel.length) {
         return;
@@ -4027,7 +4130,7 @@ export function initPartyPanel() {
             equippedItems: { ...defaults.equippedItems },
             relationships: [],
             memories: [],
-            mapPosition: { locationName: String(d.locationName || d.location || ''), gridX: 0, gridY: 0 },
+            mapPosition: resolveEntryMapPosition(d),
         };
 
         partyMembers.push(newMember);
@@ -4206,6 +4309,16 @@ export function initPartyPanel() {
                 console.log('[party] /enter used legacy global boards fallback for', { currentLocationName, board: match.name });
             }
             return match.name;
+        },
+    }));
+
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'sandbox',
+        helpString: '<div>Abre un tablero de pruebas con terreno, niebla, tokens y registro de combate. No guarda nada.</div>',
+        callback: async () => {
+            const { openSandbox } = await import('./game-engine/ui/sandbox.js');
+            await openSandbox({ Popup, POPUP_TYPE });
+            return '';
         },
     }));
 

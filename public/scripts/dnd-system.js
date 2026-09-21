@@ -159,6 +159,9 @@ const RULES = getActiveRuleset();
  * @property {number} charisma
  * @property {number} speed
  * @property {number} cr
+ * @property {number} [attackRangeFeet] - Reach in feet. Defaults to melee when absent.
+ * @property {number} [range] - Legacy spelling of attackRangeFeet.
+ * @property {'aggressive'|'skirmisher'|'guardian'|'coward'} [profile] - Tactical behaviour; aggressive when absent.
  * @property {number} gridX
  * @property {number} gridY
  */
@@ -177,6 +180,7 @@ const RULES = getActiveRuleset();
  * @property {EnemyInstance[]} enemies
  * @property {TurnEntry[]} turnOrder
  * @property {number} currentTurnIndex
+ * @property {number} [round] - 1-based. Counted when the turn order wraps; absent in encounters saved before rounds existed.
  */
 
 /**

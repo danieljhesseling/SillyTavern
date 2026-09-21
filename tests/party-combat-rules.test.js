@@ -255,7 +255,7 @@ describe('getPlayerAttackModifier', () => {
 describe('combat encounter shape', () => {
     test('createEmptyCombatEncounter is inert', () => {
         expect(createEmptyCombatEncounter()).toEqual({
-            active: false, enemies: [], turnOrder: [], currentTurnIndex: 0, turnState: null,
+            active: false, enemies: [], turnOrder: [], currentTurnIndex: 0, round: 0, turnState: null,
         });
     });
 
@@ -284,6 +284,20 @@ describe('combat encounter shape', () => {
         expect(result.turnOrder).toEqual([]);
         expect(result.currentTurnIndex).toBe(0);
         expect(result.turnState).toBeNull();
+    });
+
+    // Encounters predate the round counter, so loading one must not refuse or reset it.
+    test('an encounter saved before rounds existed resumes at round one', () => {
+        const legacy = { active: true, enemies: [], turnOrder: [], currentTurnIndex: 0, turnState: null };
+        expect(normalizeCombatEncounter(legacy).round).toBe(1);
+    });
+
+    test('an inactive encounter has no round', () => {
+        expect(normalizeCombatEncounter({ active: false }).round).toBe(0);
+    });
+
+    test('an existing round survives normalisation', () => {
+        expect(normalizeCombatEncounter({ active: true, round: 7 }).round).toBe(7);
     });
 
     test('normalizeCombatEncounter keeps a well-formed turnState', () => {

@@ -52,9 +52,15 @@ export function createZoomableContainer(options = {}) {
 
     const container = $('<div class="wm-container"></div>').css('height', containerHeight + 'px');
     const content = $('<div class="wm-content"></div>');
-    const img = $('<img />').attr('src', imageUrl).attr('alt', 'map');
 
-    content.append(img);
+    // An empty src renders as a broken-image icon, so a board without art gets no img at
+    // all and the caller sizes the canvas itself.
+    const img = $('<img />').attr('alt', 'map');
+    if (imageUrl) {
+        img.attr('src', imageUrl);
+        content.append(img);
+    }
+
     container.append(content);
 
     let imgNatW = 0;
@@ -520,21 +526,35 @@ export function renderLocationView(target, options) {
 
     target.empty();
 
-    if (!imageUrl) {
-        target.html('<div class="wm-empty-state">No location map available</div>');
-        return;
-    }
+    // A board with no art is still a board: the grid, terrain, tokens and fog only need
+    // dimensions, not a picture. Refusing to render without one made every gridded map
+    // depend on somebody having uploaded an image first.
+    const hasImage = Boolean(imageUrl);
 
-    // Location header
-    target.append(`
+    // Location header. Built as nodes rather than interpolated, like the rest of this file:
+    // name and description come from world info, which is user- and AI-authored.
+    const header = $(`
         <div class="wm-location-header">
-            <img class="wm-location-header-icon" src="${imageUrl}" alt="${name}" />
             <div class="wm-location-header-info">
-                <div class="wm-location-header-name">${name}</div>
-                ${description ? `<div class="wm-location-header-desc">${description}</div>` : ''}
+                <div class="wm-location-header-name"></div>
+                <div class="wm-location-header-desc"></div>
             </div>
         </div>
     `);
+    header.find('.wm-location-header-name').text(name);
+    const descEl = header.find('.wm-location-header-desc');
+    if (description) {
+        descEl.text(description);
+    } else {
+        descEl.remove();
+    }
+    if (hasImage) {
+        $('<img class="wm-location-header-icon">')
+            .attr('src', imageUrl)
+            .attr('alt', name)
+            .prependTo(header);
+    }
+    target.append(header);
 
     const zoomable = createZoomableContainer({ imageUrl, containerHeight: 420 });
     const { container, content, state } = zoomable;
@@ -865,10 +885,13 @@ export function renderLocationView(target, options) {
 
     // Override transform to update axes
     const nsId = 'wmLoc_' + Date.now();
+    // Sits above the board rather than floating over a corner of it: as an overlay it
+    // covered the coordinate axes, and it is information about the selected token, not
+    // about any particular part of the map.
     const tacticalHud = $('<div class="wm-tactical-hud"></div>');
     if (overlayLegend) {
         tacticalHud.text(overlayLegend);
-        container.append(tacticalHud);
+        container.before(tacticalHud);
     }
 
     function fullUpdate() {
@@ -921,10 +944,23 @@ export function renderLocationView(target, options) {
         fullUpdate();
     });
 
-    // Image load → place grid + tokens
-    content.find('img').first().on('load', function () {
-        imgW = /** @type {HTMLImageElement} */ (this).naturalWidth;
-        imgH = /** @type {HTMLImageElement} */ (this).naturalHeight;
+    /**
+     * Lays the board out once its size is known.
+     *
+     * With a background image that is the image's natural size; without one it is derived
+     * from the grid, so an art-less board still lands on a sane canvas.
+     *
+     * @param {number} width
+     * @param {number} height
+     */
+    function setupLayout(width, height) {
+        imgW = width;
+        imgH = height;
+
+        // Without an image there is nothing giving the canvas a size, so it is set here.
+        if (!hasImage) {
+            content.css({ width: imgW + 'px', height: imgH + 'px' });
+        }
 
         const saved = locationViewStateMemory.get(derivedViewStateKey);
         if (saved) {
@@ -949,7 +985,20 @@ export function renderLocationView(target, options) {
         renderFog();
         fullUpdate();
         gridOverlay.toggleClass('hidden', !gridVisible);
-    });
+    }
+
+    if (hasImage) {
+        content.find('img').first().on('load', function () {
+            setupLayout(
+                /** @type {HTMLImageElement} */ (this).naturalWidth,
+                /** @type {HTMLImageElement} */ (this).naturalHeight,
+            );
+        });
+    } else {
+        // No image to wait for, so size the canvas from the grid and lay out immediately.
+        const CELL_PX = 44;
+        setupLayout(gridWidth * CELL_PX, gridHeight * CELL_PX);
+    }
 
     // Terrain painting. Click, or drag with the button held, to paint a run of cells.
     if (paintMode && typeof onPaintCell === 'function') {

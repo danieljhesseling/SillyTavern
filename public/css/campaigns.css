@@ -132,6 +132,7 @@
 }
 
 .campaign-continue,
+.campaign-start,
 .campaign-view-all {
     flex: 1;
     font-size: 0.75rem;
@@ -145,14 +146,16 @@
     cursor: pointer;
 }
 
-.campaign-continue {
+.campaign-continue,
+.campaign-start {
     background: #2dd4bf;
     color: #111;
     border: none;
     font-weight: 600;
 }
 
-.campaign-continue:hover {
+.campaign-continue:hover,
+.campaign-start:hover {
     background: #26b8a5;
 }
 

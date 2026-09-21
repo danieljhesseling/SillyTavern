@@ -22,6 +22,7 @@
 @import url(css/world-map.css);
 @import url(css/world-content-browser.css);
 @import url(css/combat-log.css);
+@import url(css/campaign-wizard.css);
 
 :root {
     interpolate-size: allow-keywords;

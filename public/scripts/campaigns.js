@@ -1,6 +1,13 @@
-import { world_names, loadWorldInfo, METADATA_KEY } from './world-info.js';
-import { characters, getRequestHeaders, openCharacterChat, chat_metadata, saveMetadata, selectCharacterById } from '../script.js';
+import {
+    world_names, loadWorldInfo, saveWorldInfo, createNewWorldInfo, createWorldInfoEntry, METADATA_KEY,
+} from './world-info.js';
+import {
+    characters, getRequestHeaders, openCharacterChat, chat_metadata, saveMetadata, selectCharacterById,
+    doNewChat, this_chid,
+} from '../script.js';
 import { Popup, POPUP_TYPE, POPUP_RESULT } from './popup.js';
+import { buildNewCampaignCta, askWizard, createCampaign } from './game-engine/ui/campaign-wizard.js';
+import { isCampaignWorld, getStartingPoint } from './game-engine/campaign/campaign-worlds.js';
 import { escapeHtml } from './utils.js';
 
 /**
@@ -42,6 +49,7 @@ export async function renderCampaignCards(container) {
     }
 
     // Build world data for worlds that have chats
+    /** @type {Array<{name: string, displayName: string, coverImage: string, genre: string, chats: any[], unstarted?: boolean}>} */
     const worlds = [];
     for (const [worldName, chats] of chatsByWorld) {
         let meta = {};
@@ -58,6 +66,35 @@ export async function renderCampaignCards(container) {
         });
     }
 
+    // Worlds built to be played that no chat points at yet. World Info lists every world and
+    // this list only knew about the ones with a chat, so a world could exist in one place and
+    // be invisible in the other, with no way to start it. They sort last, having no activity.
+    const startedNames = new Set(worlds.map(w => w.name));
+    const unstarted = await Promise.all(
+        (Array.isArray(world_names) ? world_names : [])
+            .filter(name => !startedNames.has(name))
+            .map(async (name) => {
+                try {
+                    const data = await loadWorldInfo(name);
+                    const meta = data?.metadata ?? {};
+                    return isCampaignWorld(meta) ? { name, meta } : null;
+                } catch {
+                    return null; // deleted or unreadable: nothing to offer
+                }
+            }),
+    );
+    for (const item of unstarted) {
+        if (!item) continue;
+        worlds.push({
+            name: item.name,
+            displayName: item.meta.displayName || item.name,
+            coverImage: item.meta.coverImage || '',
+            genre: item.meta.genre || '',
+            chats: [],
+            unstarted: true,
+        });
+    }
+
     // Sort by most-recent chat activity
     worlds.sort((a, b) => {
         const aTime = a.chats[0]?.last_mes || 0;
@@ -66,15 +103,14 @@ export async function renderCampaignCards(container) {
     });
 
     if (worlds.length === 0) {
-        container.innerHTML = `
-        <div class="campaigns-empty">
-            <i class="fa-solid fa-compass fa-3x"></i>
-            <p>No campaigns yet. Start a new chat and pick a world to create your first campaign.</p>
-        </div>`;
+        // The old empty state was an instruction disguised as a placeholder: it told you to
+        // "start a new chat and pick a world", which silently did nothing when no world
+        // existed yet. Now it offers the thing it was describing.
+        container.innerHTML = buildNewCampaignCta(false);
         return;
     }
 
-    let html = '';
+    let html = buildNewCampaignCta(true);
     for (const world of worlds) {
         const coverStyle = world.coverImage
             ? `background-image: url('${world.coverImage.replace(/'/g, "\\'")}'); background-size: cover; background-position: center;`
@@ -82,6 +118,27 @@ export async function renderCampaignCards(container) {
         const genreBadge = world.genre
             ? `<span class="campaign-genre">${escapeHtml(world.genre)}</span>`
             : '';
+
+        if (world.unstarted) {
+            html += `
+        <div class="campaign-card campaign-card-unstarted" data-world="${escapeHtml(world.name)}">
+            <div class="campaign-cover" style="${coverStyle}">
+                ${!world.coverImage ? '<i class="fa-solid fa-map fa-3x campaign-cover-placeholder"></i>' : ''}
+                ${genreBadge}
+            </div>
+            <div class="campaign-info">
+                <div class="campaign-title">${escapeHtml(world.displayName)}</div>
+                <div class="campaign-meta"><span class="campaign-sessions">Sin sesiones todavía</span></div>
+            </div>
+            <div class="campaign-actions">
+                <button class="campaign-start menu_button" data-world="${escapeHtml(world.name)}">
+                    <i class="fa-solid fa-play"></i> Iniciar
+                </button>
+            </div>
+        </div>`;
+            continue;
+        }
+
         const chatCount = world.chats.length;
         const chatLabel = chatCount === 1 ? '1 session' : `${chatCount} sessions`;
         const lastChat = world.chats[0];
@@ -435,6 +492,13 @@ async function showPartyPicker(worldName) {
  * @returns {Promise<{worldName: string, party: string[], partyEntries: Array}|null>}
  */
 export async function showWorldPickerForNewChat() {
+    // A choice made ahead of time (the campaign wizard) answers instead of the picker.
+    if (pendingWorldChoice) {
+        const choice = pendingWorldChoice;
+        pendingWorldChoice = null;
+        return choice;
+    }
+
     if (!world_names || world_names.length === 0) return null;
 
     // Load metadata for all worlds
@@ -545,9 +609,191 @@ export async function bindPartyToChat(party) {
 }
 
 /**
+ * A world choice made ahead of time, handed to showWorldPickerForNewChat so the normal
+ * new-chat path (doNewChat) can run with the answers already in hand instead of asking.
+ *
+ * Reusing that path is the point. It creates the chat file, and only then binds the world
+ * and builds the party, because getChat() resets the chat metadata. Doing those steps by
+ * hand against whatever chat happened to be open is what left the first version of the
+ * wizard with a Lorebook and no campaign.
+ *
+ * @type {{worldName: string, party: string[], partyEntries: any[]}|null}
+ */
+let pendingWorldChoice = null;
+
+/** Guards against a second click starting a second wizard while the first is working. */
+let wizardRunning = false;
+
+/**
+ * The character a campaign chat belongs to: the welcome-screen assistant, which is the
+ * narrator these campaigns are already played with, else whatever is selected, else the
+ * first character there is.
+ *
+ * @returns {Promise<number>} A character index, or -1 when there are no characters at all.
+ */
+async function pickCampaignCharacterId() {
+    // Dynamic: welcome-screen.js imports this file, so a static import would be circular.
+    const { getPermanentAssistantAvatar, openPermanentAssistantChat } = await import('./welcome-screen.js');
+    const findAssistant = () => characters.findIndex(c => c.avatar === getPermanentAssistantAvatar());
+
+    let assistantId = findAssistant();
+    if (assistantId === -1) {
+        // A truly empty install has no characters at all, and that is exactly who this
+        // wizard is for. The welcome screen already knows how to create the assistant when
+        // it is missing, so a new user is not stopped here.
+        await openPermanentAssistantChat();
+        assistantId = findAssistant();
+    }
+    if (assistantId !== -1) return assistantId;
+    if (this_chid !== undefined && characters[Number(this_chid)]) return Number(this_chid);
+    return characters.length > 0 ? 0 : -1;
+}
+
+/**
+ * Opens a chat for a world that already exists and puts the player on its first board.
+ *
+ * Shared by everything that starts a campaign — the wizard for a world it just built, and
+ * the Start button on a world that was never played — so the two cannot drift apart. It
+ * runs the same doNewChat path the world picker has always used (see pendingWorldChoice for
+ * why that matters), and treats the chat metadata, not the absence of an error, as the
+ * test for having worked: that metadata is what the campaign list is built from.
+ *
+ * @param {Object} input
+ * @param {string} input.worldName
+ * @param {string[]} input.party
+ * @param {any[]} input.partyEntries
+ * @param {string} input.locationName  Empty when the world has no location yet.
+ * @param {string} input.boardName     Empty when the location has no board yet.
+ * @param {string} input.verb          'creada' or 'iniciada', for the toast title.
+ * @returns {Promise<boolean>} Whether the campaign is now open and bound to the world.
+ */
+async function openCampaignChat({ worldName, party, partyEntries, locationName, boardName, verb }) {
+    const characterId = await pickCampaignCharacterId();
+    if (characterId === -1) {
+        toastr.warning(
+            'El mundo está listo, pero no hay ningún personaje con el que abrir el chat. '
+            + 'Crea o importa uno y usa "Start new chat" para elegir este mundo.',
+            `Mundo "${worldName}"`,
+        );
+        return false;
+    }
+
+    pendingWorldChoice = { worldName, party, partyEntries };
+
+    try {
+        await selectCharacterById(characterId);
+        await doNewChat({ deleteCurrentChat: false });
+    } finally {
+        // Cleared whether or not doNewChat asked for it, so a stale choice can never
+        // answer some later, unrelated "Start new chat".
+        pendingWorldChoice = null;
+    }
+
+    if (chat_metadata?.[METADATA_KEY] !== worldName) {
+        console.warn('[campaigns] the new chat did not end up bound to the world', { chat_metadata });
+        toastr.warning(
+            'El mundo está listo, pero el chat no quedó vinculado a él. '
+            + 'Usa "Start new chat" y elígelo en el selector.',
+            `Mundo "${worldName}"`,
+        );
+        return false;
+    }
+
+    let message = 'Este mundo aún no tiene ningún tablero: añádelo desde World Info.';
+    if (locationName && boardName) {
+        const { enterStartingBoard } = await import('./party.js');
+        message = enterStartingBoard(locationName, boardName)
+            ? `Estás en "${boardName}", en "${locationName}".`
+            : 'Usa /go y /enter para llegar al primer tablero.';
+    }
+
+    toastr.success(message, `Campaña "${worldName}" ${verb}`);
+    return true;
+}
+
+/**
+ * Runs the campaign wizard end to end and leaves the player standing on the first board.
+ */
+async function startCampaignWizard() {
+    if (wizardRunning) return;
+    wizardRunning = true;
+
+    try {
+        const answers = await askWizard({
+            Popup,
+            POPUP_TYPE,
+            existingWorldNames: Array.isArray(world_names) ? world_names : [],
+        });
+        if (!answers) return;
+
+        /** @type {import('./game-engine/ui/campaign-wizard.js').WizardResult} */
+        let created;
+        try {
+            created = await createCampaign({
+                answers,
+                createWorld: (name) => createNewWorldInfo(name, { interactive: false }),
+                loadWorld: loadWorldInfo,
+                saveWorld: (name, data) => saveWorldInfo(name, data, true),
+                createEntry: createWorldInfoEntry,
+            });
+        } catch (error) {
+            console.error('[campaigns] wizard failed creating the world', error);
+            toastr.error(String(error?.message || error), 'No se pudo crear la campaña');
+            return;
+        }
+
+        await openCampaignChat({ ...created, verb: 'creada' });
+    } catch (error) {
+        console.error('[campaigns] wizard failed', error);
+        toastr.error(String(error?.message || error), 'No se pudo abrir la campaña');
+    } finally {
+        wizardRunning = false;
+    }
+}
+
+/**
+ * Starts a campaign in a world that exists but has never been played: no chat points at it,
+ * so it was visible in World Info and nowhere in the campaign list.
+ *
+ * The party comes from the same picker the "Start new chat" flow uses. Its Skip button
+ * means "no party", as it always has, rather than "abort".
+ *
+ * @param {string} worldName
+ */
+async function startUnstartedWorld(worldName) {
+    if (wizardRunning) return;
+    wizardRunning = true;
+
+    try {
+        const data = await loadWorldInfo(worldName);
+        if (!data) {
+            toastr.error(`No se pudo cargar el mundo "${worldName}".`, 'No se pudo iniciar la campaña');
+            return;
+        }
+
+        const { locationName, boardName } = getStartingPoint(data.metadata);
+        const { names, entries } = await showPartyPicker(worldName);
+
+        await openCampaignChat({
+            worldName, party: names, partyEntries: entries, locationName, boardName, verb: 'iniciada',
+        });
+    } catch (error) {
+        console.error('[campaigns] could not start the world', error);
+        toastr.error(String(error?.message || error), 'No se pudo iniciar la campaña');
+    } finally {
+        wizardRunning = false;
+    }
+}
+
+/**
  * Initializes campaign delegated event handlers.
  */
 export function initCampaigns() {
+    $(document).on('click', '#cw-new-campaign', async function (e) {
+        e.stopPropagation();
+        await startCampaignWizard();
+    });
+
     // Continue most recent chat for a world (welcome panel)
     $(document).on('click', '.campaign-continue', async function (e) {
         e.stopPropagation();
@@ -566,8 +812,16 @@ export function initCampaigns() {
         await openCharacterChat(fileName);
     });
 
+    // A world that was never played: the whole card starts it. It has no sessions to list.
+    $(document).on('click', '.campaign-card-unstarted', async function (e) {
+        e.stopPropagation();
+        const worldName = $(this).data('world');
+        if (worldName) await startUnstartedWorld(String(worldName));
+    });
+
     // View all sessions / card click → open sessions popup
     $(document).on('click', '.campaign-view-all, .campaign-card', async function (e) {
+        if ($(this).hasClass('campaign-card-unstarted')) return;
         if ($(e.target).closest('.campaign-continue').length) return;
         if ($(e.target).closest('.campaign-view-all').length && !$(this).hasClass('campaign-view-all')) return;
         e.stopPropagation();
