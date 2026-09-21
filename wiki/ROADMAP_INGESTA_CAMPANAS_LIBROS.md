@@ -245,7 +245,7 @@ Incluye las diez reglas que un JSON Schema no puede expresar —las cruzadas ent
 
 **Ya puedes montar el Gem con esto.**
 
-### G2 · El validador del paquete (`campaign-pack.js`)
+### G2 ✅ HECHO · El validador del paquete (`campaign-pack.js`)
 
 Puro, y duro. Comprueba lo que el documento original proponía y algunas cosas más que la experiencia de este proyecto añade:
 
@@ -257,7 +257,9 @@ Puro, y duro. Comprueba lo que el documento original proponía y algunas cosas m
 
 Repara lo reparable y **lo enumera**; rechaza lo que no. Igual que el generador de mundos, y por la misma razón.
 
-### G3 · El compilador (`campaign-importer.js`)
+**Hecho el 2026-09-21, con 34 tests.** Tres clases de hallazgo en vez de una lista: **errores** que impiden importar, **avisos** que no —un tablero al que ninguna misión te lleva se juega igual— y **reparaciones**, lo que ya se arregló al leerlo, listado y nunca en silencio. Y cuando un nombre está en la lista equivocada lo dice con esas palabras: *«"Mira" no está en el bestiario: está en `confidants`»*. El ejemplo que el propio contrato publica valida limpio, y hay un test que lo fija: si la muestra que el Gem imita no pasara, todo lo de abajo estaría discutiendo consigo mismo.
+
+### G3 ✅ HECHO · El compilador (`campaign-importer.js`)
 
 Toma el paquete validado y lo convierte en campaña jugable reutilizando lo que ya existe: `buildWorldMetadata`, `buildWorldEntries`, `buildEncounterRules`, `QuestState`, y las fichas del grupo con sus vínculos.
 
@@ -265,7 +267,15 @@ Toma el paquete validado y lo convierte en campaña jugable reutilizando lo que 
 
 Y aquí es donde se resuelven los nombres a ids, después de crear las entradas.
 
-### G4 · Importar desde el asistente
+**Hecho el 2026-09-21, con 24 tests.** Partido en dos a propósito: `buildImportPlan` es puro —paquete dentro, metadatos del mundo y entradas fuera, con los huecos marcados en vez de rellenos— e `importPack` escribe, con sus dependencias inyectadas, y llama a `resolveNames` cuando los ids ya existen. Un nombre que no se resuelve **se informa**: un objetivo que apunta a nadie es una misión que no se puede cumplir y que nunca lo explica.
+
+### G4 ✅ HECHO · Importar desde el asistente
+
+Pegas el JSON que te ha dado el Gem en la cuarta tarjeta, pulsas **Comprobar**, y el informe del validador sale **antes de que se cree nada**: qué trae el paquete, qué está mal y qué se ha reparado. El nombre del mundo lo propone el propio paquete.
+
+Un añadido que el bloque destapó: los enemigos aparecían en una casilla **al azar** de la esquina 10×10, muros incluidos. Con un libro eso importa, porque un libro dibuja a sus monstruos donde quiere. `combat/spawn.js` usa las casillas del tablero cuando las hay y nunca coloca a nadie dentro de un muro.
+
+El plan original decía así:
 
 Una cuarta tarjeta junto a *Mazmorra clásica* y *Generar con IA*: **Importar campaña**. Arrastras los cinco archivos, ves qué trae —título, misiones, tableros, confidentes, y los avisos de reparación— y decides. Igual que la previsualización de la generación con IA, que ya funciona así.
 

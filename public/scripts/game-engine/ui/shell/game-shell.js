@@ -56,6 +56,12 @@ import {
  * @property {() => GameSituation} getSituation
  * @property {() => CombatBar} getCombatBar
  * @property {() => import('./dialogue-scene.js').DialogueView} getDialogue
+ * @property {() => import('./exploration-scene.js').ExplorationView} getExploration
+ * @property {(boardName: string) => void} onEnterBoard
+ * @property {(locationName: string) => void} onTravel
+ * @property {() => void} onOptions Open SillyTavern's own settings, where they are.
+ * @property {() => void} onCompendium The rules editor.
+ * @property {() => void} onMainMenu Leave the campaign, without leaving the game.
  * @property {() => void} renderStage Redraw the panel that lives on the stage.
  * @property {(name: string) => void} onAttack
  * @property {() => void} onEndTurn
@@ -79,7 +85,7 @@ const CHAT_SELECTOR = '#sheld';
  * The scenes that exist. The switcher announces the rest instead of faking them.
  * @type {Set<SceneName>}
  */
-const BUILT_SCENES = new Set([SCENE.COMBAT, SCENE.DIALOGUE]);
+const BUILT_SCENES = new Set([SCENE.COMBAT, SCENE.DIALOGUE, SCENE.EXPLORATION, SCENE.TITLE]);
 
 /** @type {HTMLElement|null} */
 let root = null;
@@ -90,6 +96,8 @@ let adoptions = [];
 let options = null;
 /** @type {SceneName|null} */
 let manualScene = null;
+/** Whether the pause menu is up. While it is, SillyTavern's own bar comes back. */
+let paused = false;
 /**
  * The situation at the last decision. The director compares against it to tell a fight
  * starting from a fight that was already going.
@@ -334,9 +342,18 @@ function renderDialogue(scene, view) {
         speaker.appendChild(el('div', 'gs-speaker-empty', 'Nadie ha dicho nada todavia.'));
     }
 
-    const strip = /** @type {HTMLElement} */ (scene.querySelector('.gs-party-strip'));
+    renderChips(/** @type {HTMLElement} */ (scene.querySelector('.gs-party-strip')), view.party);
+}
+
+/**
+ * The party as a row of chips, under whichever scene asked for it.
+ *
+ * @param {HTMLElement} strip
+ * @param {import('./party-strip.js').PartyChip[]} chips
+ */
+function renderChips(strip, chips) {
     strip.textContent = '';
-    for (const chip of view.party) {
+    for (const chip of chips) {
         const card = el('div', 'gs-chip');
         card.classList.toggle('fallen', chip.fallen);
         card.classList.toggle('bloodied', chip.bloodied);
@@ -372,6 +389,127 @@ function renderDialogue(scene, view) {
 }
 
 /**
+ * The pause menu.
+ *
+ * Pausing brings SillyTavern's own top bar back, and that is the whole trick behind
+ * "options open the panels as they are": the bar and its drawers already sit above this
+ * layer, so nothing has to be moved or rebuilt. The game steps aside; the application is
+ * there, exactly as it was.
+ *
+ * @param {boolean} next
+ */
+function setPaused(next) {
+    if (!root || !options) return;
+    paused = next;
+    document.body.classList.toggle('game-shell-paused', paused);
+
+    const existing = root.querySelector('.gs-pause');
+    if (!paused) {
+        existing?.remove();
+        return;
+    }
+    if (existing) return;
+
+    const overlay = el('div', 'gs-pause');
+    const card = el('div', 'gs-pause-card');
+    card.appendChild(el('div', 'gs-pause-title', 'Pausa'));
+
+    /**
+     * @param {string} label
+     * @param {string} icon
+     * @param {() => void} action
+     * @param {string} [hint]
+     */
+    const item = (label, icon, action, hint) => {
+        const button = makeButton('gs-pause-btn');
+        button.appendChild(el('i', `fa-solid ${icon}`));
+        button.appendChild(el('span', 'gs-pause-label', label));
+        if (hint) button.appendChild(el('kbd', 'gs-pause-key', hint));
+        button.addEventListener('click', action);
+        card.appendChild(button);
+    };
+
+    item('Continuar', 'fa-play', () => setPaused(false), 'Esc');
+    item('Opciones', 'fa-sliders', () => options?.onOptions());
+    item('Compendio y reglas', 'fa-book', () => options?.onCompendium());
+    item('Salir al menu principal', 'fa-door-open', () => {
+        setPaused(false);
+        options?.onMainMenu();
+    });
+    item('Salir del Modo Juego', 'fa-xmark', () => closeGameShell());
+
+    card.appendChild(el('div', 'gs-pause-note',
+        'Mientras el juego esta en pausa, la barra de SillyTavern vuelve arriba: sus paneles se abren donde siempre.'));
+
+    overlay.appendChild(card);
+    // Clicking outside the card is the other way everyone expects to resume.
+    overlay.addEventListener('click', (event) => {
+        if (event.target === overlay) setPaused(false);
+    });
+    root.appendChild(overlay);
+}
+
+/**
+ * Draw the travel panel beside the map: where you are, what boards this place holds, and
+ * everywhere else, with the shut ones explaining themselves.
+ *
+ * A locked place is not hidden. Hiding it would make the campaign look smaller than it
+ * is and give the player nothing to aim at; showing it with its reason turns a refusal
+ * into a goal.
+ *
+ * @param {HTMLElement} panel
+ * @param {import('./exploration-scene.js').ExplorationView} view
+ */
+function renderExploration(panel, view) {
+    panel.textContent = '';
+
+    const here = el('div', 'gs-here');
+    here.appendChild(el('div', 'gs-here-name', view.here || 'En ninguna parte todavia'));
+    if (view.description) here.appendChild(el('div', 'gs-here-desc', view.description));
+    panel.appendChild(here);
+
+    if (view.boards.length > 0) {
+        panel.appendChild(el('div', 'gs-places-title', 'Tableros de aqui'));
+        const list = el('div', 'gs-board-list');
+        for (const board of view.boards) {
+            const row = makeButton('gs-board');
+            row.classList.toggle('current', board.current);
+            row.appendChild(el('i', 'fa-solid fa-chess-board'));
+            row.appendChild(el('span', 'gs-board-name', board.name));
+            row.addEventListener('click', () => options?.onEnterBoard(board.name));
+            list.appendChild(row);
+        }
+        panel.appendChild(list);
+    }
+
+    panel.appendChild(el('div', 'gs-places-title', 'El mapa de campana'));
+    const places = el('div', 'gs-place-list');
+    for (const place of view.places) {
+        const row = makeButton('gs-place');
+        row.classList.add(`status-${place.status}`);
+        row.classList.toggle('current', place.current);
+
+        const icon = place.status === 'complete' ? 'fa-circle-check'
+            : place.status === 'locked' ? 'fa-lock' : 'fa-location-dot';
+        row.appendChild(el('i', `gs-place-icon fa-solid ${icon}`));
+
+        const body = el('div', 'gs-place-body');
+        body.appendChild(el('div', 'gs-place-name', place.name));
+        const note = place.reasons.length > 0
+            ? place.reasons.join(' ')
+            : place.boards === 1 ? '1 tablero' : `${place.boards} tableros`;
+        body.appendChild(el('div', 'gs-place-note', note));
+        row.appendChild(body);
+
+        row.disabled = place.status === 'locked' || place.current;
+        row.title = place.reasons.join(' ') || (place.current ? 'Ya estas aqui' : `Viajar a ${place.name}`);
+        row.addEventListener('click', () => options?.onTravel(place.name));
+        places.appendChild(row);
+    }
+    panel.appendChild(places);
+}
+
+/**
  * Redraw the shell's own chrome from the engine. The stage redraws itself: the panel on
  * it is the real one, so whatever the game renders there is already current.
  */
@@ -390,6 +528,8 @@ export function refreshGameShell() {
     // closest thing this can show is the conversation. Better than a screen whose only
     // content is the news that it does not exist yet.
     const scene = BUILT_SCENES.has(choice.scene) ? choice.scene : SCENE.DIALOGUE;
+    // Sin partida abierta no hay nada que pausar ni a donde volver.
+    if (scene === SCENE.TITLE && paused) setPaused(false);
 
     // The explanation changes when something happens or when the screen moves, and not
     // on every redraw in between.
@@ -401,17 +541,28 @@ export function refreshGameShell() {
     const bar = options.getCombatBar();
     const dialogue = options.getDialogue();
     const head = /** @type {HTMLElement} */ (root.querySelector('.gs-head-state'));
-    head.textContent = scene === SCENE.DIALOGUE
-        ? dialogue.moment
-        : bar.active ? `Ronda ${bar.round}` : (situation.boardName || 'Sin tablero');
+    head.textContent = scene === SCENE.TITLE ? 'Menu principal'
+        : scene === SCENE.COMBAT
+            ? (bar.active ? `Ronda ${bar.round}` : (situation.boardName || 'Sin tablero'))
+            : dialogue.moment;
     head.title = sceneReason;
 
     renderDialogue(/** @type {HTMLElement} */ (root.querySelector('.gs-scene-dialogue')), dialogue);
+
+    if (scene === SCENE.EXPLORATION) {
+        renderExploration(/** @type {HTMLElement} */ (root.querySelector('.gs-places')), options.getExploration());
+    }
 
     renderSwitcher(/** @type {HTMLElement} */ (root.querySelector('.gs-scenes')), situation, scene);
     const actions = /** @type {HTMLElement} */ (root.querySelector('.gs-actions'));
     if (scene === SCENE.COMBAT) {
         renderActionBar(actions, bar);
+    } else if (scene === SCENE.EXPLORATION) {
+        // De viaje, lo que hace falta abajo es saber como llega el grupo.
+        actions.textContent = '';
+        const strip = el('div', 'gs-party-strip');
+        actions.appendChild(strip);
+        renderChips(strip, options.getExploration().party);
     } else {
         // In a conversation the chat below is the way in; a row of combat buttons under
         // it would only be a row of disabled buttons.
@@ -452,9 +603,12 @@ function handleKey(event) {
 
     if (event.key === 'Escape') {
         event.preventDefault();
-        closeGameShell();
+        setPaused(!paused);
         return;
     }
+
+    // Con el menu de pausa delante, las teclas de escena son suyas, no de la partida.
+    if (paused) return;
 
     const scene = sceneForShortcut(event.key);
     if (scene) {
@@ -496,12 +650,22 @@ export function openGameShell(shellOptions) {
     // One section per scene, both built at open. Switching scene shows one and hides the
     // other; it does not move anything, because every move of the chat is a chance to
     // lose its scroll or its focus.
-    const combat = el('section', 'gs-scene gs-scene-combat');
+    // El tablero y el mapa son el mismo panel: lo que cambia es si hay un tablero
+    // abierto, y de eso ya se encarga el propio panel. Asi que la escena de combate y la
+    // de exploracion comparten seccion, y lo que cambia es lo que las rodea.
+    const map = el('section', 'gs-scene gs-scene-map');
+    map.appendChild(el('div', 'gs-map-slot'));
+    map.appendChild(el('aside', 'gs-places'));
+
     const dialogue = el('section', 'gs-scene gs-scene-dialogue');
+    // La pantalla de titulo no se construye: ya existe. La bienvenida con las tarjetas de
+    // campana se dibuja dentro de `#chat`, que viaja con `#sheld`, asi que basta con
+    // ensenar la misma seccion con otro rotulo y sin el ruido de una conversacion.
+    dialogue.appendChild(el('div', 'gs-title', 'SillyTavern RPG'));
     dialogue.appendChild(el('div', 'gs-speaker'));
     dialogue.appendChild(el('div', 'gs-chat-slot'));
     dialogue.appendChild(el('div', 'gs-party-strip'));
-    stage.appendChild(combat);
+    stage.appendChild(map);
     stage.appendChild(dialogue);
 
     root.appendChild(head);
@@ -510,7 +674,7 @@ export function openGameShell(shellOptions) {
     document.body.appendChild(root);
     document.body.classList.add('game-shell-on');
 
-    adopt(BOARD_SELECTOR, combat);
+    adopt(BOARD_SELECTOR, /** @type {HTMLElement} */ (map.querySelector('.gs-map-slot')));
     adopt(CHAT_SELECTOR, /** @type {HTMLElement} */ (dialogue.querySelector('.gs-chat-slot')));
     options.renderStage();
     scrollChatDown();
@@ -528,6 +692,7 @@ export function openGameShell(shellOptions) {
 export function closeGameShell() {
     if (!isShellOpen()) return;
 
+    setPaused(false);
     releaseAll();
 
     if (keyHandler) {

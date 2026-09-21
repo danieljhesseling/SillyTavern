@@ -753,6 +753,23 @@ async function startCampaignWizard() {
             return;
         }
 
+        // Un libro importado trae mas de lo que cabe en el aviso de siempre, y puede
+        // traer nombres que no se resolvieron: eso hay que decirlo, no esconderlo.
+        if (created.imported) {
+            const c = created.imported.counts;
+            toastr.success(
+                `${c.boards} tableros, ${c.quests} misiones, ${c.entries} entradas.`,
+                'Libro importado', { timeOut: 8000 },
+            );
+            if (created.imported.unresolved.length > 0) {
+                toastr.warning(
+                    created.imported.unresolved.slice(0, 5).join('; '),
+                    `${created.imported.unresolved.length} nombres sin resolver`,
+                    { timeOut: 15000 },
+                );
+            }
+        }
+
         await openCampaignChat({ ...created, verb: 'creada' });
     } catch (error) {
         console.error('[campaigns] wizard failed', error);

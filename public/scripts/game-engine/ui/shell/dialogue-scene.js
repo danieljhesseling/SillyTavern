@@ -12,8 +12,7 @@
  * See wiki/PROPUESTA_FRONTEND_MODO_JUEGO.md, H2 · wiki/ROADMAP.md, Fase H.
  */
 
-import { buildCampaignView } from '../../campaign/campaign-view.js';
-import { statusMarkers } from '../../combat/initiative-tracker.js';
+import { buildPartyStrip } from './party-strip.js';
 
 /**
  * @typedef {Object} SpeakerView
@@ -25,28 +24,11 @@ import { statusMarkers } from '../../combat/initiative-tracker.js';
  */
 
 /**
- * @typedef {Object} PartyChip
- * @property {string} id
- * @property {string} name
- * @property {string} avatar
- * @property {number} hp
- * @property {number} maxHp
- * @property {number} hpPct
- * @property {boolean} fallen
- * @property {boolean} bloodied
- * @property {number} rank
- * @property {{icon: string, label: string}[]} statuses
- */
-
-/**
  * @typedef {Object} DialogueView
  * @property {string} moment "Día 3 · Tarde", straight from the calendar.
  * @property {SpeakerView|null} speaker
- * @property {PartyChip[]} party
+ * @property {import('./party-strip.js').PartyChip[]} party
  */
-
-/** Below this share of their hit points, someone is in trouble and the strip says so. */
-const BLOODIED_AT = 0.5;
 
 /**
  * Whether a chat message can be the one speaking.
@@ -123,32 +105,10 @@ function findSpeaker(messages, known) {
  * @returns {DialogueView}
  */
 export function buildDialogueView({ messages = [], party = [], bonds = null, calendar = null } = {}) {
-    const members = Array.isArray(party) ? party.filter(Boolean) : [];
-    const campaign = buildCampaignView({ calendar, bonds, party: members });
-    const rankById = new Map(campaign.characters.map(c => [c.id, c.rank]));
-
-    /** @type {PartyChip[]} */
-    const chips = members.map(member => {
-        const id = String(member?.id ?? '');
-        const maxHp = Number(member?.maxHp) || 0;
-        const hp = Math.max(0, Number(member?.hp) || 0);
-        const pct = maxHp > 0 ? Math.min(100, Math.round((hp / maxHp) * 100)) : 0;
-        return {
-            id,
-            name: String(member?.name || ''),
-            avatar: String(member?.avatar || ''),
-            hp,
-            maxHp,
-            hpPct: pct,
-            fallen: maxHp > 0 && hp <= 0,
-            bloodied: maxHp > 0 && hp > 0 && hp / maxHp < BLOODIED_AT,
-            rank: rankById.get(id) ?? 0,
-            statuses: statusMarkers(member?.activeConditions ?? member?.conditions),
-        };
-    });
+    const { chips, moment } = buildPartyStrip({ party, bonds, calendar });
 
     return {
-        moment: `Día ${campaign.day} · ${campaign.slotLabel}`,
+        moment,
         speaker: findSpeaker(messages, chips.map(c => ({ id: c.id, name: c.name, avatar: c.avatar, rank: c.rank }))),
         party: chips,
     };

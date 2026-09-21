@@ -19,10 +19,10 @@ Lo que falta, dividido por **quién tiene que actuar**:
 El plan y el porqué están en [[ROADMAP]]; esto es el marcador.
 
 > [!IMPORTANT]
-> **El patrón a vigilar**: hay mucho motor construido y testeado, y menos motor **conectado**. Las tareas marcadas 🖥️ son las que convierten trabajo hecho en trabajo jugable, y un módulo que solo ejecutan los tests no cuenta como hecho. Hay una orden que lo comprueba en vez de suponerlo:
+> **El patrón a vigilar**: había mucho motor construido y testeado, y menos motor **conectado**. Desde el 2026-09-21 **la orden responde que no falta ninguno**, con una salvedad que ella no puede ver: de `campaign-map.js` se usa la mitad del mapa de campaña, y la de salas y puertas sigue esperando (A4). Las tareas marcadas 🖥️ son las que convierten trabajo hecho en trabajo jugable, y un módulo que solo ejecutan los tests no cuenta como hecho:
 >
 > ```bash
-> node tools/check-engine-wiring.mjs   # 30 módulos, 29 conectados, 1 sin cargar (275 líneas)
+> node tools/check-engine-wiring.mjs   # 37 módulos, los 37 conectados
 > ```
 
 ---
@@ -32,34 +32,27 @@ El plan y el porqué están en [[ROADMAP]]; esto es el marcador.
 Ordenado por lo que desbloquea. Cada una tiene el camino decidido: si aparece una bifurcación de verdad, sube al bloque D en vez de resolverse por mi cuenta.
 
 > [!IMPORTANT]
-> **Dos direcciones nuevas, y este es el orden.**
+> **Las dos direcciones grandes están hechas.** El **Modo Videojuego** ([[PROPUESTA_FRONTEND_MODO_JUEGO]], H1–H5) y la **ingesta de libros** ([[ROADMAP_INGESTA_CAMPANAS_LIBROS]], G1–G4), las dos el 2026-09-21. Se puede pegar lo que da tu Gem, comprobarlo, y jugarlo a pantalla completa.
 >
-> **El Modo Videojuego** ([[PROPUESTA_FRONTEND_MODO_JUEGO]]) va primero: tres pantallas completas que se alternan solas según lo que pase en la partida. Es, en su mayor parte, **recolocar lo que ya funciona** — el motor conectado ya produce lo que cada pantalla necesita.
->
-> **La ingesta de libros** ([[ROADMAP_INGESTA_CAMPANAS_LIBROS]]) queda en pausa tras el contrato, A3–A5. No está bloqueada: `/esquema-campana` ya entrega lo necesario para montar el Gem y **probarlo con un libro real en paralelo**, y lo que salga de ahí puede cambiar el contrato mientras cambiarlo sigue siendo barato. El GEM que extrae el libro **lo llevas tú, fuera del código**, con tu suscripción de Gemini.
+> Lo que queda en este bloque es **profundidad de juego**, no tubería: salas y puertas para que una mazmorra de libro no sea un único combate gigante, descansos para que los recursos signifiquen algo, y el resto.
 
 | ID | Tarea | Qué entrega | Fase |
 | :--- | :--- | :--- | :--- |
-| **A1** | 🖥️ **La escena de exploración** | Y con ella el tablero de campaña, que hoy nadie carga. Es donde encaja A9 | H4 |
-| **A2** | 🖥️ **Pantalla de título y menú de pausa** | Lo último: una fachada bonita sobre escenas a medias no sirve de nada. «Opciones» abre los paneles de SillyTavern tal cual | H5 |
-| **A3** | **Validador del paquete de campaña** *(Fase G, en pausa)* | Integridad cruzada: que los tableros que citan las misiones existan, que los enemigos colocados estén en el bestiario, que los mapas dejen sitio donde empieza el grupo. El contrato ya publica las diez reglas; falta comprobarlas. **Donde falla un paquete generado no es en un campo suelto** | G2 |
-| **A4** | **Compilador de ingesta** *(Fase G)* | Del paquete a mundo, misiones, tableros y confidentes. Aquí se resuelven los nombres a ids, **después** de crear las entradas — el mismo patrón que arregló las reglas de encuentro | G3 |
-| **A5** | **Importar campaña desde el asistente** *(Fase G)* | Cuarta tarjeta, con previsualización de lo que trae el paquete y de lo que se ha reparado | G4 |
-| **A6** | 🖥️ **Salas, puertas y enemigos dormidos** | `campaign-map.js` es **el último módulo del motor que nadie carga**. Su sitio natural es la escena de exploración (A1), y sin salas una mazmorra de libro es un único combate gigante | E2 · G · H4 |
-| **A7** | **Descanso corto y largo** con dados de golpe | El otro lado del calendario, que ya existe: sin descansos, los recursos no significan nada | D5 |
-| **A8** | **Prefijo estable del prompt** | La decisión D2: reordenar lo que se envía para que el principio no cambie entre turnos. Lo aprovechan Gemini, OpenAI y Claude por igual, y `/prompt` ya sabe medir si funcionó | T1 |
-| **A9** | **Objetivos editables, y generados con IA** | Hoy una misión se escribe a mano en World Info, salvo la de la plantilla. El generador de mundos ya valida contra esquema: pedirle objetivos es la misma tubería | E/F |
-| **A10** | **El vínculo de rango 10 sigue sin ser nada** | Las otras tres perks ya cambian el combate; esta es contenido — arma y habilidad propias — y necesita decidir qué es antes de poder construirse | D3 |
-| **A11** | **Convertir el botín en objetos de verdad** | Hoy lo que sueltan los enemigos se añade como texto al inventario. Para equiparlo hace falta crearlo como `DndItem`, con las formas que ya existen | B5 |
-| **A12** | **Reglas de encuentro editables** | El asistente ya las escribe; cambiarlas exige ir a World Info a mano | B/C |
-| **A13** | **Editar y comparar lo generado con IA** | Retocar el mapa en la previsualización y volver a una generación anterior sin cerrar el asistente | F |
-| **A14** | **Cobertura por línea de tiro** | Hoy cuenta la casilla del objetivo, que es una simplificación declarada. El punto donde arreglarlo ya está aislado en `getTargetArmorClass` | A/B |
-| **A15** | **Avisar de lo que un cambio de reglas rompería** | Quitar un tipo de daño que un objeto usa deja ese objeto con una referencia muerta, y hoy se guarda sin protestar | C3 |
-| **A16** | **Sacar el pegamento de `party.js`** | 5.700 líneas: la lógica vive fuera, en módulos probados, pero cada enganche nuevo se acumula aquí | — |
-| **A17** | **Registro de contradicciones** narración contra estado | Tras cada turno, comparar lo que el modelo contó con lo que el motor sabe. Da datos sobre dónde fallan los prompts en vez de intuiciones | T7 · N-06 |
-| **A18** | **Snapshot del prompt compilado en CI** | Que un cambio que altere el prompt en silencio haga fallar la build. Ahora es posible: `/prompt` ya sabe descomponerlo | T5 · N-02 |
-| **A19** | **Repetición determinista de turno** | Reejecutar con el mismo contexto y semilla, para saber si un cambio de prompt mejoró algo en vez de suponerlo | T6 · N-05 |
-| **A20** | **Ampliar el recorrido de navegador** a las salas y las puertas | Lo cubrirá cuando A4 esté, y hará falta ampliarlo otra vez con las escenas de A1–A2. El calendario, los vínculos, las perks y los escenarios ya lo están | — |
+| **A1** | 🖥️ **Salas, puertas y enemigos dormidos** | `campaign-map.js` ya se carga, pero solo su mitad de mapa de campaña: `normalizeRooms`, `openDoor` y `getRoomAt` **siguen sin usarlas nadie**. Sin salas, una mazmorra de libro es un único combate gigante | E2 · G |
+| **A2** | **Descanso corto y largo** con dados de golpe | El otro lado del calendario, que ya existe: sin descansos, los recursos no significan nada | D5 |
+| **A3** | **Prefijo estable del prompt** | La decisión D2: reordenar lo que se envía para que el principio no cambie entre turnos. Lo aprovechan Gemini, OpenAI y Claude por igual, y `/prompt` ya sabe medir si funcionó | T1 |
+| **A4** | **Objetivos editables, y generados con IA** | Hoy una misión se escribe a mano en World Info, salvo la de la plantilla. El generador de mundos ya valida contra esquema: pedirle objetivos es la misma tubería | E/F |
+| **A5** | **El vínculo de rango 10 sigue sin ser nada** | Las otras tres perks ya cambian el combate; esta es contenido — arma y habilidad propias — y necesita decidir qué es antes de poder construirse | D3 |
+| **A6** | **Convertir el botín en objetos de verdad** | Hoy lo que sueltan los enemigos se añade como texto al inventario. Para equiparlo hace falta crearlo como `DndItem`, con las formas que ya existen | B5 |
+| **A7** | **Reglas de encuentro editables** | El asistente ya las escribe; cambiarlas exige ir a World Info a mano | B/C |
+| **A8** | **Editar y comparar lo generado con IA** | Retocar el mapa en la previsualización y volver a una generación anterior sin cerrar el asistente | F |
+| **A9** | **Cobertura por línea de tiro** | Hoy cuenta la casilla del objetivo, que es una simplificación declarada. El punto donde arreglarlo ya está aislado en `getTargetArmorClass` | A/B |
+| **A10** | **Avisar de lo que un cambio de reglas rompería** | Quitar un tipo de daño que un objeto usa deja ese objeto con una referencia muerta, y hoy se guarda sin protestar | C3 |
+| **A11** | **Sacar el pegamento de `party.js`** | 5.700 líneas: la lógica vive fuera, en módulos probados, pero cada enganche nuevo se acumula aquí | — |
+| **A12** | **Registro de contradicciones** narración contra estado | Tras cada turno, comparar lo que el modelo contó con lo que el motor sabe. Da datos sobre dónde fallan los prompts en vez de intuiciones | T7 · N-06 |
+| **A13** | **Snapshot del prompt compilado en CI** | Que un cambio que altere el prompt en silencio haga fallar la build. Ahora es posible: `/prompt` ya sabe descomponerlo | T5 · N-02 |
+| **A14** | **Repetición determinista de turno** | Reejecutar con el mismo contexto y semilla, para saber si un cambio de prompt mejoró algo en vez de suponerlo | T6 · N-05 |
+| **A15** | **Ampliar el recorrido de navegador** a las salas y las puertas | Lo cubre ya: el paso 23 importa un libro y pelea en su tablero. Faltan las salas y las puertas (A1). El calendario, los vínculos, las perks y los escenarios ya lo están | — |
 
 ---
 
@@ -112,8 +105,8 @@ Ideas que no están en ningún plan. Ninguna es necesaria; algunas son buenas. M
 
 | ID | Propuesta | Por qué |
 | :--- | :--- | :--- |
-| **P1** 💡 | **Generar escenarios con IA** | La Fase F genera mundos. Generar *misiones* — objetivos, salas, enemigos dormidos — es la misma tubería contra el esquema de `scenarios.js`, y es lo que convierte una mazmorra en una campaña. Depende de A6 |
-| **P2** | **Generar confidentes con IA** | Personajes con su arco, su vínculo y su perk de combate, validados contra `bonds.js`. Depende del compilador de ingesta (A4) |
+| **P1** 💡 | **Generar escenarios con IA** | La Fase F genera mundos. Generar *misiones* — objetivos, salas, enemigos dormidos — es la misma tubería contra el esquema de `scenarios.js`, y es lo que convierte una mazmorra en una campaña. Depende de A1 |
+| **P2** | **Generar confidentes con IA** | Personajes con su arco, su vínculo y su perk de combate, validados contra `bonds.js`. Depende del importador, que ya existe |
 | **P3** | **Generar un enemigo suelto** desde el tablero | *«Añade un chamán goblin a este encuentro»* sin salir de la partida. Una llamada corta, mismo esquema que los enemigos del mundo |
 | **P4** | **Paquetes de reglas de ejemplo** | Variantes listas para importar desde `/rules`: *más letal*, *sin magia*, *armas históricas*. Enseñan para qué sirve el editor mejor que cualquier explicación |
 
@@ -152,7 +145,7 @@ No es trabajo pendiente, es información: cosas que están así **a propósito**
 | **`party/html.js` duplica `escapeHtml`** | Importar `utils.js` arrastra código que exige `window` y rompería los tests en Node. Hay un test que ancla el contrato. Si algún día `utils.js` expone un módulo hoja, esto se elimina |
 | **`escapeHtmlText` sigue en `world-info.js`** | Es correcta y está en un archivo de upstream. Consolidarla no aporta seguridad y sí coste de merge |
 | **El guardián de tiradas solo mira afirmaciones estructuradas** | `1d20+5 = 23` sí; «saca un 18» no. Reescribir prosa exige entender la frase, y equivocarse es peor que no tocarla. El prompt debe pedir la forma estructurada |
-| **La cobertura cuenta por casilla, no por línea de tiro** | Simplificación declarada de D&D 5e. Arreglarla es A14 |
+| **La cobertura cuenta por casilla, no por línea de tiro** | Simplificación declarada de D&D 5e. Arreglarla es A9 |
 | **`dynamic-context-manager.js`, `campaigns.js` y `world-content-browser.js` sin tests** | 1.232 tests cubren el motor nuevo; estos tres (unas 3.000 líneas) siguen a cero. `MAINT-03` |
 | **La generación con IA no se ha probado con un proveedor real** | El recorrido de navegador usa un generador simulado: ejercita todo menos la llamada. Falta ver si un modelo concreto respeta el esquema del mapa |
 
@@ -176,6 +169,9 @@ No es trabajo pendiente, es información: cosas que están así **a propósito**
 12. Con un combate en marcha, `/modojuego`: el tablero a pantalla completa. **Atacar** lista a quien tengas al alcance.
 13. Dentro del Modo Juego, tecla `1`: la escena de diálogo, con el chat movido debajo del retrato. Escribe algo y envíalo. `3` vuelve al tablero; `Esc` sale de la caja de texto y otro `Esc` apaga el Modo Juego.
 14. Desde la escena de diálogo, `/fight <enemigo> 1`: **la pantalla salta sola al tablero**. `/combat-stop` y vuelve sola a la conversación, con el epílogo. Pasa el ratón por la cabecera y te dice por qué cambió.
+15. Tecla `2`: el mapa con el panel de viaje. Pulsa un tablero y la pantalla cambia sola; gana su misión y la localización queda marcada como superada.
+16. `Esc`: el menú de pausa. **Opciones** abre los paneles de SillyTavern donde siempre; **Salir al menú principal** te deja en el título, con tus campañas, sin salir del juego.
+17. **Nueva campaña → Importar un libro**: pega lo que te dé tu Gem (o el ejemplo de `/esquema-campana`) y pulsa **Comprobar**. Si pasa, créala y juega en ella.
 
 Y sin tocar nada, el recorrido completo en un navegador de verdad:
 
@@ -189,6 +185,56 @@ Lo que **no** se puede probar todavía: calendario, vínculos y escenarios (#6, 
 ---
 
 ## ✅ Hecho, para no rehacerlo
+
+### La ingesta de libros, entera · G2 · G3 · G4 — 2026-09-21
+
+Se pega el JSON que te da tu Gem en la cuarta tarjeta del asistente, se comprueba, y sale una campaña jugable. El recorrido lo hace de punta a punta en el paso 23.
+
+**El validador** (`campaign/campaign-pack.js`, 34 tests) comprueba **lo que un JSON Schema no puede ver**, que es donde falla de verdad un paquete generado: una misión que apunta a un tablero que no existe, un enemigo colocado que no está en el bestiario, dos compañeros con el mismo nombre —el Lorebook indexa por nombre y el segundo borraría al primero—, un mapa cuyas filas no miden lo mismo, un grupo que empieza dentro de una pared.
+
+Tres clases de hallazgo, porque piden tres reacciones distintas: **errores** que impiden importar, **avisos** que no —un tablero al que ninguna misión te lleva se puede jugar igual— y **reparaciones**, lo que ya se arregló al leerlo. Las reparaciones se listan, nunca se hacen en silencio: un paquete reescrito a escondidas es un paquete cuyo autor no aprende nada.
+
+Y cuando un nombre está en la lista equivocada, lo dice: *«"Mira" no está en el bestiario: está en `confidants`»*.
+
+**El compilador** (`campaign/campaign-importer.js`, 24 tests) convierte el paquete en mundo, entradas, tableros y misiones. Todo él está construido alrededor de un orden: **los nombres se resuelven a ids después de crear las entradas**, nunca antes. Ese orden no es un detalle — es exactamente el error que ya costó una funcionalidad entera, cuando el asistente escribía las reglas de encuentro con ids que todavía no existían y `/fight` no encontraba enemigos en ninguna campaña nueva. Aquí el módulo nace con esa forma, y un nombre que no se resuelve **se informa** en vez de dejar un hueco.
+
+**La cuarta tarjeta** del asistente enseña el informe antes de crear nada: qué trae el paquete, qué está mal y qué se ha reparado.
+
+**Y un añadido que el bloque destapó**: los enemigos aparecían en una casilla **al azar** de la esquina 10×10, muros incluidos. Con un libro eso importa — un libro dibuja a sus monstruos donde quiere, y ese dibujo es la mitad del encuentro. `combat/spawn.js` (10 tests) usa las casillas del tablero cuando las hay, busca sitio libre cuando no, y **nunca coloca a nadie dentro de un muro**.
+
+Con esto, `check-engine-wiring.mjs` dice **40 de 40 módulos conectados**.
+
+### H5 · Pantalla de título y menú de pausa — 2026-09-21. **La Fase H queda cerrada**
+
+`Esc` pausa el juego en vez de apagarlo, y salir de la partida ya no es salir del juego.
+
+**La pantalla de título no se construyó: ya existía.** La bienvenida con las tarjetas de campaña se dibuja dentro de `#chat`, y `#chat` viaja dentro de `#sheld`, que el Shell ya movía desde H2. Así que el título es la misma sección del diálogo con otro rótulo y sin el ruido de una conversación: sin retrato, sin franja de grupo, sin conmutador y sin caja de escribir. Desde ahí se continúa una campaña y vuelves a la partida **sin salir del Modo Juego**.
+
+**«Opciones abre los paneles de SillyTavern tal cual»** resultó ser gratis: su barra está en la capa 3005 y sus cajones en la 4005, por encima de esta capa (3000). En pausa basta con dejar de esconderla, y todo se abre donde siempre. El botón pulsa el mismo icono de siempre.
+
+El menú tiene **Continuar**, **Opciones**, **Compendio y reglas** (el editor de `/rules`, ahora extraído para que el comando y la pausa abran exactamente lo mismo), **Salir al menú principal** y **Salir del Modo Juego**.
+
+**Lo que encontró el navegador**: los controles de zoom del mapa (capa 25) y la capa de los dados (99999) se comían el clic del menú de pausa; el clic se quedaba reintentando para siempre. El menú está ahora por encima de todo lo prestado, y por debajo de la barra de SillyTavern a propósito — si no, sus paneles no se podrían pulsar en pausa.
+
+**Esta es la primera parte sin módulo puro nuevo**: es presentación, y lo que la sostiene es el recorrido de navegador, no los tests.
+
+**Y una orden de verificación que no verificaba**: `eslint … tools` decía *0 errores* sin mirar nada — ESLint solo lee `.js` de un directorio, y en `tools/` todo es `.mjs`. Con `--ext .js,.mjs` aparecieron 146 errores reales en el recorrido (`window` y `document` dentro de `page.evaluate`, que son del navegador, no de Node). Declarados arriba del archivo, la orden ya da cero **de verdad**.
+
+### H4 · La escena de exploración, y el mapa de campaña cargado — 2026-09-21
+
+Tecla `2`: el mapa a pantalla completa con un panel de viaje al lado — dónde estás, qué tableros hay aquí, y todos los sitios del mundo con su estado.
+
+**El tablero y el mapa son el mismo panel.** Lo que cambia entre la escena de combate y la de exploración no es el panel, es lo que lo rodea: el propio panel ya sabe dibujar el tablero cuando hay uno abierto y el mapa cuando no. Dos secciones habrían sido dos cosas que mantener en sintonía.
+
+**Un sitio cerrado se ve y dice qué le falta.** Esconderlo haría la campaña más pequeña de lo que es y no dejaría nada a lo que apuntar; enseñarlo con su motivo convierte una negativa en un objetivo. Eso es `explainLock`, que llevaba escrito y probado desde la Fase E sin que nadie lo llamara.
+
+**Y el mapa se mueve.** Cumplir la misión de un tablero marca la localización como superada, que es lo que abre las siguientes. Ganar es lo único que abre puertas.
+
+**Los sitios salen del mundo, no del mapa guardado**: una campaña que nunca declaró un mapa de campaña tiene todas sus localizaciones abiertas, que es como están todas las de hoy. Y un sitio guardado que el mundo no tiene se descarta — ofrecer un sitio al que no se puede ir es peor que no ofrecerlo.
+
+**Con esto, `check-engine-wiring.mjs` dice por primera vez que el juego carga los 37 módulos del motor.** Con una salvedad honesta: de `campaign-map.js` se usa la mitad del mapa de campaña; la de salas y puertas (`normalizeRooms`, `openDoor`, `getRoomAt`) sigue esperando a su tarea, que es **A5**.
+
+Por el camino, `/go` y `/enter` se quedaron sin lógica propia: viajar y entrar en un tablero son ahora `travelTo` y `enterBoard`, que usan tanto los comandos como el Modo Juego. Dos formas de ir al mismo sitio son dos sitios donde se puede olvidar guardar el estado.
 
 ### H3 · El director automático — 2026-09-21
 

@@ -310,25 +310,49 @@ Cada paso deja el juego en un estado jugable y se puede parar ahí.
 
 ---
 
-### H4 · La escena de exploración
+### H4 ✅ HECHO · 2026-09-21
 
-El mapa a pantalla completa, con los puntos de interés y el viaje. Es la que menos depende de lo demás y la que más se beneficia de que las otras dos ya estén decididas.
+**Lo que quedó construido**
+- `game-engine/ui/shell/exploration-scene.js` — puro, 12 tests. Dónde está el grupo, qué tableros hay aquí y todos los sitios del mundo con su estado y, si están cerrados, **qué les falta**.
+- `game-engine/ui/shell/party-strip.js` — la franja del grupo, extraída: la quieren dos escenas, así que no vive en la que la necesitó primero.
+- El panel de viaje al lado del mapa, con los tableros de la localización y las localizaciones del mundo.
+- En `party.js`: el mapa de campaña guardado con el chat, y `markLocationComplete`, que se llama al **ganar** el escenario de un tablero.
 
-Aquí entra también el tablero de campaña (`campaign-map.js`), que es **el último módulo del motor sin conectar** y cuyo sitio natural es justo esta pantalla.
+**El tablero y el mapa son el mismo panel.** Lo que cambia entre la escena de combate y la de exploración no es el panel —que ya sabe dibujar el tablero cuando hay uno abierto y el mapa cuando no— sino lo que lo rodea. Dos secciones habrían sido dos cosas que mantener en sintonía.
+
+**`campaign-map.js`, cargado por fin.** Llevaba 275 líneas escritas y probadas sin que nadie lo llamara. `explainLock` es la razón de que valga la pena: un sitio cerrado se ve y dice qué le falta, en vez de esconderse. Esconderlo haría la campaña más pequeña de lo que es y no dejaría nada a lo que apuntar.
+
+**Y el mapa se mueve**: cumplir la misión de un tablero marca la localización como superada, que es lo que abre las siguientes. Ganar es lo único que abre puertas.
+
+**Una trampa que el navegador dejó ver a tiempo**: el cajón del grupo esconde la pestaña que no toca con `tab-panel-hidden`, y el panel del tablero es una de ellas. Dentro del Shell ese panel *es* la escena, así que cambiar de pestaña por detrás lo habría hecho desaparecer.
+
+**Con esto los 37 módulos del motor están conectados**, por primera vez. Con una salvedad honesta: de `campaign-map.js` se usa la mitad del mapa de campaña; la de salas y puertas sigue esperando a su tarea.
+
+**Cómo quedó verificado**: 12 tests puros y 14 comprobaciones en el recorrido (paso 21), estables en dos pasadas.
 
 ---
 
-### H5 · Pantalla de título y menú de pausa
+### H5 ✅ HECHO · 2026-09-21
 
-Lo último, cuando ya se sabe qué pinta tiene todo.
+**La pantalla de título no se construyó: ya existía.** La bienvenida con las tarjetas de campaña se dibuja dentro de `#chat`, y `#chat` viaja dentro de `#sheld`, que el Shell mueve desde H2. El título es la misma sección del diálogo con otro rótulo y sin el ruido de una conversación: sin retrato, sin franja de grupo, sin conmutador y sin caja de escribir. Desde ahí se continúa una campaña y vuelves a la partida **sin salir del Modo Juego**.
 
-- **Título**: nueva partida (el asistente que ya existe), cargar (las tarjetas de campaña que ya existen), opciones y compendio (`/rules`).
-- **Pausa** con `Esc`.
-- **Opciones** abre los paneles de SillyTavern **tal cual**, sin reubicarlos.
+**El menú de pausa**, con `Esc`: Continuar, Opciones, Compendio y reglas, Salir al menú principal, Salir del Modo Juego. `Esc` ya no apaga el juego — apagarlo es una opción del menú, no un accidente.
 
-Va al final porque es la parte más visible y la que menos aporta jugando: una pantalla de título bonita sobre tres escenas a medias es una fachada.
+**«Opciones abre los paneles de SillyTavern tal cual» resultó ser gratis.** Su barra está en la capa 3005 y sus cajones en la 4005, por encima de esta capa (3000): en pausa basta con dejar de esconderla y todo se abre donde siempre. El botón pulsa el mismo icono de siempre.
+
+El compendio es el editor de `/rules`, extraído a `openCompendium()` para que el comando y la pausa abran exactamente lo mismo.
+
+**Lo que encontró el navegador**: los controles de zoom del mapa (capa 25) y la de los dados (99999) se comían el clic del menú; el clic se quedaba reintentando indefinidamente. El menú está ahora por encima de todo lo prestado y **por debajo de la barra de SillyTavern a propósito**, porque si no, sus paneles no se podrían pulsar estando en pausa.
+
+**Esta es la primera parte sin módulo puro nuevo.** Es presentación, y lo que la sostiene es el recorrido de navegador: 10 comprobaciones (paso 22) que abren el compendio, abren las opciones, salen al título, comprueban que las campañas que hay son las de siempre, continúan una y vuelven a apagarlo todo sin dejar rastro.
 
 ---
+
+## ✅ La Fase H, cerrada · 2026-09-21
+
+Las cinco partes están hechas y verificadas. El Modo Videojuego se enciende con `/modojuego` y se apaga desde su menú de pausa, y **mientras está apagado la aplicación es exactamente la de antes** — que era la condición con la que empezó todo esto.
+
+Nada de lo que hay dentro es una copia: el tablero, el chat y la pantalla de bienvenida son los de SillyTavern, movidos y devueltos. Por eso la capa puede desaparecer sin llevarse nada por delante.
 
 ## 🧪 Cómo se sostiene esto
 

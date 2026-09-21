@@ -88,13 +88,19 @@ export function getRoomAt(rooms, x, y) {
 
 /**
  * The room a door leads into.
+ *
+ * A door between two rooms belongs to both, and the one that matters is the one you have
+ * not seen: taking the first match would mean that standing in room A and opening the
+ * door to room B revealed nothing, because A was already revealed and came first.
+ *
  * @param {Room[]} rooms
  * @param {number} x @param {number} y
  * @returns {Room|null}
  */
 export function getRoomBehindDoor(rooms, x, y) {
     const key = cellKey(x, y);
-    return normalizeRooms(rooms).find(r => r.doors.includes(key)) ?? null;
+    const touching = normalizeRooms(rooms).filter(r => r.doors.includes(key));
+    return touching.find(r => !r.revealed) ?? touching[0] ?? null;
 }
 
 /**
@@ -271,4 +277,127 @@ export function explainLock(map, locationId, context) {
     }
 
     return reasons;
+}
+
+/**
+ * Work out the rooms of a board from its own terrain.
+ *
+ * A book does not describe its rooms in words — it draws them. The ASCII map already has
+ * everything needed: walls enclose, doors separate. So the rooms are **derived** rather
+ * than authored, which means the pack contract asks the Gem for nothing extra and an
+ * older board gains rooms the moment this runs over it.
+ *
+ * A region is a group of floor cells joined orthogonally, bounded by walls and by doors.
+ * Doors are boundaries, not floor: otherwise two rooms joined by a doorway would be one
+ * room and the door would guard nothing.
+ *
+ * @param {import('../board/terrain.js').BoardTerrain} terrain
+ * @param {number} gridWidth
+ * @param {number} gridHeight
+ * @param {{revealFrom?: Array<{x: number, y: number}>}} [options] Cells whose room starts
+ *   revealed — where the party is standing when the board opens.
+ * @returns {Room[]}
+ */
+export function deriveRooms(terrain, gridWidth, gridHeight, options = {}) {
+    const width = Math.max(0, Number(gridWidth) || 0);
+    const height = Math.max(0, Number(gridHeight) || 0);
+    const typeAt = (/** @type {number} */ x, /** @type {number} */ y) =>
+        String(terrain?.cells?.[cellKey(x, y)]?.type ?? 'floor');
+
+    const isFloor = (/** @type {number} */ x, /** @type {number} */ y) => {
+        if (x < 0 || y < 0 || x >= width || y >= height) return false;
+        const type = typeAt(x, y);
+        return type !== 'wall' && type !== 'door';
+    };
+
+    /** @type {Set<string>} */
+    const seen = new Set();
+    /** @type {Room[]} */
+    const rooms = [];
+
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const key = cellKey(x, y);
+            if (seen.has(key) || !isFloor(x, y)) continue;
+
+            /** @type {string[]} */
+            const cells = [];
+            /** @type {Set<string>} */
+            const doors = new Set();
+            const queue = [{ x, y }];
+            seen.add(key);
+
+            while (queue.length > 0) {
+                const cell = queue.pop();
+                if (!cell) break;
+                cells.push(cellKey(cell.x, cell.y));
+
+                for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+                    const nx = cell.x + dx;
+                    const ny = cell.y + dy;
+                    if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
+
+                    if (typeAt(nx, ny) === 'door') {
+                        doors.add(cellKey(nx, ny));
+                        continue;
+                    }
+                    const next = cellKey(nx, ny);
+                    if (seen.has(next) || !isFloor(nx, ny)) continue;
+                    seen.add(next);
+                    queue.push({ x: nx, y: ny });
+                }
+            }
+
+            rooms.push({
+                id: `room_${rooms.length + 1}`,
+                name: '',
+                cells,
+                doors: [...doors],
+                enemyIds: [],
+                revealed: false,
+            });
+        }
+    }
+
+    // Where the party starts is not a surprise.
+    const start = (options.revealFrom ?? []).map(cell => cellKey(Number(cell?.x) || 0, Number(cell?.y) || 0));
+    return rooms.map(room => (room.cells.some(cell => start.includes(cell)) ? { ...room, revealed: true } : room));
+}
+
+/**
+ * Which of a board's placed creatures are standing inside a room.
+ *
+ * The board says where each creature was drawn and the room says which cells it covers;
+ * putting the two together is what makes "the enemies of that room wake up" a fact rather
+ * than a guess. Keeping the answer here, rather than a list copied onto the room, means
+ * there is one place that knows where anybody stands.
+ *
+ * @param {Room|null} room
+ * @param {Array<{name: string, x: number, y: number}>} placements
+ * @returns {Array<{name: string, x: number, y: number}>}
+ */
+export function enemiesInRoom(room, placements) {
+    if (!room) return [];
+    const cells = new Set(room.cells ?? []);
+    return (Array.isArray(placements) ? placements : [])
+        .filter(p => p && cells.has(cellKey(Number(p.x) || 0, Number(p.y) || 0)));
+}
+
+/**
+ * The placements the party can see: those in a revealed room.
+ *
+ * A board with no rooms at all hides nothing — that is every board made before rooms
+ * existed, and they should keep working exactly as they did.
+ *
+ * @param {Room[]} rooms
+ * @param {Array<{name: string, x: number, y: number}>} placements
+ * @returns {Array<{name: string, x: number, y: number}>}
+ */
+export function awakePlacements(rooms, placements) {
+    const list = normalizeRooms(rooms);
+    if (list.length === 0) return Array.isArray(placements) ? placements : [];
+
+    const visible = new Set(list.filter(r => r.revealed).flatMap(r => r.cells));
+    return (Array.isArray(placements) ? placements : [])
+        .filter(p => p && visible.has(cellKey(Number(p.x) || 0, Number(p.y) || 0)));
 }

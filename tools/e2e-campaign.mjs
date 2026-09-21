@@ -23,6 +23,11 @@
  * See wiki/POR_HACER.md and the N-09 proposal in wiki/PROPUESTAS_MEJORA.md.
  */
 
+// Las funciones que se pasan a `page.evaluate` se ejecutan en el navegador, no aqui: por
+// eso este archivo de Node habla de `window` y `document`. Se declaran para que ESLint
+// compruebe el resto en vez de ahogarse en esto.
+/* global window, document, Node, MouseEvent, getComputedStyle */
+
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { mkdtempSync, rmSync } from 'node:fs';
@@ -129,7 +134,7 @@ try {
     const proposed = await page.inputValue('.cw-root input.cw-input >> nth=0');
     check('it proposes a free name instead of demanding one', Boolean(proposed), `proposed "${proposed}"`);
 
-    await page.fill('.cw-root textarea.cw-input >> nth=1', 'Lyra\nBrand');
+    await page.fill('.cw-root textarea.cw-party-input', 'Lyra\nBrand');
     await page.click('.popup-button-ok');
 
     const toast = page.locator('#toast-container .toast', { hasText: 'creada' });
@@ -208,6 +213,14 @@ try {
     });
 
     /** Clicks through the dice overlay until it stops covering the page. */
+    // Desde H5, Esc pausa en vez de apagar: salir es cosa del menu de pausa.
+    const leaveGameMode = async () => {
+        await page.keyboard.press('Escape');
+        await page.waitForSelector('.gs-pause', { timeout: 5000 });
+        await page.locator('.gs-pause-btn', { hasText: 'Salir del Modo Juego' }).click();
+        await page.waitForTimeout(1100);
+    };
+
     const clearDiceOverlay = async () => {
         for (let i = 0; i < 40; i++) {
             const next = page.locator('.wm-dice-overlay.active .wm-dice-next');
@@ -977,12 +990,9 @@ try {
         .map(b => ({ scene: b.dataset.scene, active: b.classList.contains('active'), disabled: b.disabled })));
     check('el conmutador marca la escena de combate como la activa',
         scenes.find(s => s.scene === 'combat')?.active === true, JSON.stringify(scenes));
-    // La de dialogo existe desde H2; la de exploracion todavia no, y sale anunciada y
-    // desactivada en vez de fingida. Cuando H4 la construya, esta linea cambia.
-    check('la escena de dialogo esta disponible',
-        scenes.find(s => s.scene === 'dialogue')?.disabled === false, JSON.stringify(scenes));
-    check('y la que aun no existe sale anunciada, no fingida',
-        scenes.find(s => s.scene === 'exploration')?.disabled === true, JSON.stringify(scenes));
+    // Desde H4 existen las tres, asi que ninguna sale desactivada estando disponible.
+    check('las tres escenas estan disponibles, ninguna fingida',
+        scenes.length === 3 && scenes.every(s => s.disabled === false), JSON.stringify(scenes));
 
     // The action bar either offers an attack or says why it cannot: which of the two it
     // is depends on the dice and on where the enemy AI walked, so the rule is what gets
@@ -1024,8 +1034,19 @@ try {
         console.log(`SKIP  ningun turno de jugador con enemigos al alcance en 12 rondas (${attack.why})`);
     }
 
-    // Esc, because that is how anyone leaves a full-screen game.
+    // Esc pausa, como en cualquier juego; salir es una opcion del menu, no un accidente.
     await page.keyboard.press('Escape');
+    await page.waitForSelector('.gs-pause', { timeout: 5000 });
+    const pause = await page.evaluate(() => ({
+        card: document.querySelectorAll('.gs-pause-btn').length,
+        shell: document.querySelectorAll('#game-shell').length,
+        topBar: (document.querySelector('#top-bar')?.getBoundingClientRect().height || 0) > 0,
+    }));
+    check('Esc pausa el juego en vez de apagarlo', pause.shell === 1 && pause.card >= 4, JSON.stringify(pause));
+    check('y en pausa vuelve la barra de SillyTavern, por encima de la capa',
+        pause.topBar, JSON.stringify(pause));
+
+    await page.locator('.gs-pause-btn', { hasText: 'Salir del Modo Juego' }).click();
     await page.waitForTimeout(1200);
 
     const restored = await page.evaluate((expected) => {
@@ -1043,7 +1064,7 @@ try {
         };
     }, home);
 
-    check('Esc apaga el Modo Juego', restored.shell === 0 && !restored.bodyClass, JSON.stringify(restored));
+    check('salir del menu de pausa apaga el Modo Juego', restored.shell === 0 && !restored.bodyClass, JSON.stringify(restored));
     check('y devuelve la barra superior', await page.locator('#top-bar').isVisible().catch(() => false));
     check('el tablero vuelve exactamente a donde estaba',
         restored.sameParent && restored.samePlace && restored.copies === 1, JSON.stringify(restored));
@@ -1159,7 +1180,7 @@ try {
     await page.waitForTimeout(700);
     const backToBoard = await page.evaluate(() => {
         const shell = document.querySelector('#game-shell');
-        const board = document.querySelector('.gs-scene-combat');
+        const board = document.querySelector('.gs-scene-map');
         const dialogue = document.querySelector('.gs-scene-dialogue');
         const visible = (node) => Boolean(node && node.getBoundingClientRect().height > 0);
         return { scene: shell?.getAttribute('data-scene') || '', board: visible(board), dialogue: visible(dialogue) };
@@ -1168,8 +1189,7 @@ try {
         backToBoard.scene === 'combat' && backToBoard.board && !backToBoard.dialogue,
         JSON.stringify(backToBoard));
 
-    await page.keyboard.press('Escape');
-    await page.waitForTimeout(1200);
+    await leaveGameMode();
 
     const chatBack = await page.evaluate((expected) => {
         const sheld = document.querySelector('#sheld');
@@ -1223,7 +1243,7 @@ try {
     const started = await page.evaluate(() => ({
         scene: document.querySelector('#game-shell')?.getAttribute('data-scene') || '',
         reason: document.querySelector('.gs-head-state')?.getAttribute('title') || '',
-        board: (document.querySelector('.gs-scene-combat')?.getBoundingClientRect().height || 0) > 0,
+        board: (document.querySelector('.gs-scene-map')?.getBoundingClientRect().height || 0) > 0,
     }));
     check('empezar un combate lleva la pantalla al tablero, sin tocar nada',
         started.scene === 'combat' && started.board, JSON.stringify(started));
@@ -1264,8 +1284,7 @@ try {
         ended.text.length > 0 && !ended.lastIsSystem, JSON.stringify(ended));
     check('el retrato es de quien acaba de hablar', ended.speaker.length > 0, ended.speaker);
 
-    // Salir del tablero manda la partida al mapa, y esa escena todavia no existe: lo que
-    // se ensena es lo mas parecido que hay, no una pantalla que solo diga que no existe.
+    // Salir del tablero manda la partida al mapa, que desde H4 es una escena de verdad.
     await page.evaluate(() => window.SillyTavern.getContext()
         .executeSlashCommandsWithOptions('/leave'));
     await page.waitForTimeout(1200);
@@ -1275,22 +1294,427 @@ try {
             scene: document.querySelector('#game-shell')?.getAttribute('data-scene') || '',
             reason: document.querySelector('.gs-head-state')?.getAttribute('title') || '',
             empty: (stage?.textContent || '').trim().length === 0,
-            chatVisible: (document.querySelector('#game-shell #chat')?.getBoundingClientRect().height || 0) > 0,
+            places: (document.querySelector('.gs-places')?.getBoundingClientRect().height || 0) > 0,
         };
     });
-    check('salir del tablero no deja al jugador en una pantalla vacia',
-        left.scene === 'dialogue' && !left.empty && left.chatVisible, JSON.stringify(left));
+    check('salir del tablero lleva al mapa, con su panel de viaje',
+        left.scene === 'exploration' && !left.empty && left.places, JSON.stringify(left));
     check('y la cabecera sigue diciendo lo que paso de verdad',
         left.reason === 'se ha salido del tablero', left.reason);
 
-    await page.keyboard.press('Escape');
-    await page.waitForTimeout(900);
+    await leaveGameMode();
     check('y el Modo Juego se apaga dejandolo todo en su sitio',
         await page.evaluate(() => document.querySelectorAll('#game-shell').length === 0
             && document.querySelectorAll('#sheld').length === 1
             && !document.body.classList.contains('game-shell-on')));
 
-    console.log(`\n--- console errors ---`);
+    step('21. La escena de exploracion: el mapa de campana, por fin cargado');
+    // Desde otra pestana del cajon, que es de donde se entra de verdad: el cajon esconde
+    // la pestana que no toca, y el panel del tablero es una de ellas.
+    await page.locator('#rm_tab_party').click({ timeout: 10000 }).catch(() => {});
+    await page.waitForTimeout(500);
+    check('el cajon tenia el panel del tablero escondido antes de empezar',
+        await page.evaluate(() => document.querySelector('#world_location_maps_row')
+            ?.classList.contains('tab-panel-hidden') === true));
+
+    await page.evaluate(() => {
+        void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/modojuego');
+    });
+    await page.waitForSelector('#game-shell', { timeout: 15000 });
+    await page.waitForTimeout(800);
+
+    // Sin tablero abierto, el director lleva solo a la exploracion.
+    check('sin tablero abierto, la pantalla es la del mapa',
+        await page.getAttribute('#game-shell', 'data-scene') === 'exploration',
+        await page.getAttribute('#game-shell', 'data-scene'));
+
+    const explore = await page.evaluate(() => ({
+        here: document.querySelector('.gs-here-name')?.textContent || '',
+        places: [...document.querySelectorAll('.gs-place')].map(p => ({
+            name: p.querySelector('.gs-place-name')?.textContent || '',
+            note: p.querySelector('.gs-place-note')?.textContent || '',
+            locked: p.classList.contains('status-locked'),
+            complete: p.classList.contains('status-complete'),
+            current: p.classList.contains('current'),
+        })),
+        boards: [...document.querySelectorAll('.gs-board-name')].map(b => b.textContent),
+        chips: document.querySelectorAll('.gs-actions .gs-chip').length,
+        mapVisible: (document.querySelector('#game-shell [data-map-root]')?.getBoundingClientRect().height || 0) > 0,
+    }));
+    check('dice donde esta el grupo', explore.here.length > 0, explore.here);
+    check('lista los sitios del mundo', explore.places.length >= 1, JSON.stringify(explore.places));
+    check('marca el sitio en el que estas', explore.places.some(p => p.current), JSON.stringify(explore.places));
+    check('y los tableros de aqui', explore.boards.length >= 1, JSON.stringify(explore.boards));
+    check('con el grupo abajo', explore.chips >= 2, `${explore.chips} fichas`);
+    check('y el mapa ocupando la pantalla', explore.mapVisible);
+
+    // Ganar el escenario da la localizacion por superada: eso es lo que abre las demas.
+    const completed = await page.evaluate(() => {
+        const map = window.SillyTavern.getContext().chatMetadata.campaignMap;
+        return (map?.locations || []).filter(l => l.status === 'complete').map(l => l.id);
+    });
+    check('ganar la mision dejo la localizacion marcada como superada en el mapa',
+        completed.length >= 1, JSON.stringify(completed));
+    check('y se ve en la lista', explore.places.some(p => p.complete), JSON.stringify(explore.places));
+
+    // Un sitio cerrado se ve y explica por que, en vez de esconderse.
+    await page.evaluate(async () => {
+        const ctx = window.SillyTavern.getContext();
+        const locations = ctx.chatMetadata.campaignMap?.locations || [];
+        ctx.chatMetadata.campaignMap = {
+            version: 1,
+            locations: [...locations, {
+                id: 'Santuario sellado', name: 'Santuario sellado', status: 'locked',
+                requiresQuests: ['el_sello'], requiresLocations: [],
+            }],
+        };
+        await ctx.saveMetadata();
+    });
+    // El mundo tiene que ofrecer el sitio para que el mapa lo muestre: si no existe, se
+    // descarta a proposito.
+    const hidden = await page.evaluate(async () => {
+        const m = await import('/scripts/game-engine/ui/shell/exploration-scene.js');
+        const ctx = window.SillyTavern.getContext();
+        const view = m.buildExplorationView({
+            locationMaps: [{ name: 'Santuario sellado' }],
+            campaignMap: ctx.chatMetadata.campaignMap,
+        });
+        const withoutWorld = m.buildExplorationView({
+            locationMaps: [], campaignMap: ctx.chatMetadata.campaignMap,
+        });
+        return { place: view.places[0], dropped: withoutWorld.places.length };
+    });
+    check('un sitio cerrado dice que le falta, no solo que no',
+        hidden.place?.status === 'locked' && /misión/.test(hidden.place?.reasons?.[0] || ''),
+        JSON.stringify(hidden.place));
+    check('y un sitio que el mundo no tiene no se ofrece', hidden.dropped === 0, String(hidden.dropped));
+
+    // Entrar en un tablero desde el panel de viaje cambia de escena sola.
+    await page.locator('.gs-board').first().click();
+    await page.waitForTimeout(1400);
+    check('entrar en un tablero desde el mapa lleva la pantalla al tablero',
+        await page.getAttribute('#game-shell', 'data-scene') === 'combat',
+        await page.getAttribute('#game-shell', 'data-scene'));
+
+    await leaveGameMode();
+    check('y al apagar no queda nada del Shell',
+        await page.evaluate(() => document.querySelectorAll('#game-shell').length === 0
+            && document.querySelectorAll('#world_location_maps_row').length === 1
+            && document.querySelectorAll('#sheld').length === 1));
+
+    step('22. Titulo y pausa: salir de la partida sin salir del juego');
+    await page.evaluate(() => {
+        void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/modojuego');
+    });
+    await page.waitForSelector('#game-shell', { timeout: 15000 });
+    await page.waitForTimeout(800);
+
+    // El compendio es el mismo editor de reglas de `/rules`, abierto desde la pausa.
+    await page.keyboard.press('Escape');
+    await page.waitForSelector('.gs-pause', { timeout: 5000 });
+    await page.locator('.gs-pause-btn', { hasText: 'Compendio' }).click();
+    await page.waitForSelector('.rx-root', { timeout: 20000 });
+    check('el compendio de la pausa abre el editor de reglas de siempre',
+        await page.locator('.rx-root').count() === 1);
+    await page.locator('.popup-button-cancel').last().click();
+    await page.waitForTimeout(700);
+
+    // Opciones pulsa el icono de SillyTavern: el panel se abre donde siempre.
+    await page.locator('.gs-pause-btn', { hasText: 'Opciones' }).click();
+    await page.waitForTimeout(900);
+    const options = await page.evaluate(() => {
+        const panel = document.querySelector('#left-nav-panel');
+        const box = panel?.getBoundingClientRect();
+        return {
+            open: Boolean(panel?.classList.contains('openDrawer')) && Boolean(box && box.height > 0),
+            above: Number(getComputedStyle(document.querySelector('#top-settings-holder')).zIndex) > 3000,
+        };
+    });
+    check('Opciones abre los paneles de SillyTavern tal cual, sin reubicarlos',
+        options.open && options.above, JSON.stringify(options));
+    await page.locator('#ai-config-button').click().catch(() => {});
+    await page.waitForTimeout(500);
+
+    // Salir al menu principal cierra la partida, no el juego.
+    await page.locator('.gs-pause-btn', { hasText: 'Salir al menu principal' }).click();
+    await page.waitForTimeout(3000);
+
+    const title = await page.evaluate(() => ({
+        shell: document.querySelectorAll('#game-shell').length,
+        scene: document.querySelector('#game-shell')?.getAttribute('data-scene') || '',
+        head: document.querySelector('.gs-head-state')?.textContent || '',
+        banner: (document.querySelector('.gs-title')?.getBoundingClientRect().height || 0) > 0,
+        cards: document.querySelectorAll('#game-shell .campaign-card, #game-shell .campaign-card-unstarted').length,
+        newCampaign: Boolean(document.querySelector('#game-shell #cw-new-campaign')),
+        form: (document.querySelector('#game-shell #form_sheld')?.getBoundingClientRect().height || 0) > 0,
+        switcher: (document.querySelector('.gs-scenes')?.getBoundingClientRect().height || 0) > 0,
+    }));
+    check('salir al menu principal deja el Modo Juego encendido', title.shell === 1, JSON.stringify(title));
+    check('en la pantalla de titulo', title.scene === 'title' && title.banner && title.head === 'Menu principal',
+        JSON.stringify(title));
+    check('con las campanas que ya existian, no una lista nueva',
+        title.cards >= 1 && title.newCampaign, JSON.stringify(title));
+    check('y sin caja de escribir ni conmutador, que ahi no pintan nada',
+        !title.form && !title.switcher, JSON.stringify(title));
+
+    // Y desde el titulo se vuelve a jugar, con el Shell puesto.
+    await page.locator('#game-shell .campaign-card .campaign-continue').first().click();
+    await page.waitForTimeout(3500);
+    const resumed = await page.evaluate(() => ({
+        shell: document.querySelectorAll('#game-shell').length,
+        scene: document.querySelector('#game-shell')?.getAttribute('data-scene') || '',
+        sheld: document.querySelectorAll('#sheld').length,
+    }));
+    check('continuar una campana desde el titulo vuelve a la partida, sin salir del juego',
+        resumed.shell === 1 && resumed.scene !== 'title' && resumed.sheld === 1, JSON.stringify(resumed));
+
+    await leaveGameMode();
+    check('y al apagar, todo vuelve a su sitio otra vez',
+        await page.evaluate(() => document.querySelectorAll('#game-shell').length === 0
+            && document.querySelectorAll('#sheld').length === 1
+            && document.querySelectorAll('#world_location_maps_row').length === 1
+            && !document.body.classList.contains('game-shell-on')
+            && !document.body.classList.contains('game-shell-paused')));
+
+    step('23. Importar un libro: del paquete del Gem a un tablero jugable');
+    await closeChat();
+    await page.click('#cw-new-campaign');
+    await page.waitForSelector('.cw-root');
+    await page.locator('.cw-template-import').click();
+    await page.waitForTimeout(400);
+
+    check('el asistente ofrece importar un libro', await page.locator('.cw-import').isVisible());
+
+    // Primero uno roto, porque es lo que de verdad llega: el informe tiene que decir que
+    // pasa antes de que se cree nada.
+    const broken = JSON.stringify({
+        version: 1,
+        world: { name: 'Roto' },
+        bestiary: [{ name: 'Cuervo', hp: 7, armorClass: 12, cr: 0.125 }],
+        boards: [{
+            id: 'sala', name: 'Sala',
+            map: ['#####', '#...#', '#....', '#####'],
+            partyStart: [{ x: 0, y: 0 }],
+            enemies: [{ name: 'Lobo', x: 2, y: 1 }],
+        }],
+        quests: [{ id: 'q', name: 'Q', boardId: 'otro', objectives: [{ type: 'eliminate', label: 'X', target: 'Nadie' }] }],
+    });
+    await page.locator('.cw-import-text').fill(broken);
+    await page.locator('.cw-import-check').click();
+    await page.waitForSelector('.cw-import-verdict', { timeout: 10000 });
+
+    const bad = await page.evaluate(() => ({
+        verdict: document.querySelector('.cw-import-verdict')?.textContent || '',
+        ok: document.querySelector('.cw-import-verdict')?.classList.contains('ok'),
+        errors: [...document.querySelectorAll('.cw-import-bad li')].map(li => li.textContent || ''),
+    }));
+    check('un paquete roto se rechaza antes de crear nada', bad.ok === false && /no se puede importar/.test(bad.verdict), bad.verdict);
+    check('y dice exactamente que le pasa, no "JSON invalido"',
+        bad.errors.length >= 4
+        && bad.errors.some(e => /borde exterior/.test(e))
+        && bad.errors.some(e => /sobre un muro/.test(e))
+        && bad.errors.some(e => /no esta en el bestiario/.test(e))
+        && bad.errors.some(e => /no existe entre los tableros/.test(e)),
+        JSON.stringify(bad.errors));
+
+    // Y ahora el ejemplo que el propio contrato publica.
+    const examplePack = await page.evaluate(async () => {
+        const m = await import('/scripts/game-engine/campaign/campaign-pack-schema.js');
+        return JSON.stringify(m.buildExamplePack());
+    });
+    await page.locator('.cw-import-text').fill(examplePack);
+    await page.locator('.cw-import-check').click();
+    await page.waitForTimeout(800);
+
+    const okReport = await page.evaluate(() => ({
+        ok: document.querySelector('.cw-import-verdict')?.classList.contains('ok'),
+        counts: document.querySelector('.cw-import-counts')?.textContent || '',
+        name: document.querySelector('.cw-root input.cw-input')?.value || '',
+    }));
+    check('el ejemplo del contrato pasa la comprobacion', okReport.ok === true, okReport.counts);
+    check('y el informe cuenta lo que trae', /2 tableros, 2 enemigos, 1 companeros, 2 misiones, 4 objetivos/.test(okReport.counts), okReport.counts);
+    check('el nombre del mundo lo propone el paquete', /Molino/.test(okReport.name), okReport.name);
+
+    await page.locator('.cw-root textarea.cw-party-input').fill('Lyra\nBrand');
+    await page.click('.popup-button-ok');
+    await page.waitForTimeout(6000);
+
+    const imported = await page.evaluate(async () => {
+        const wi = await import('/scripts/world-info.js');
+        const ctx = window.SillyTavern.getContext();
+        const worldName = ctx.chatMetadata.world_info;
+        const data = await wi.loadWorldInfo(worldName);
+        const meta = data?.metadata ?? {};
+        const boards = meta.locationMaps?.[0]?.boards ?? [];
+        const byComment = {};
+        for (const entry of Object.values(data?.entries ?? {})) byComment[entry.comment] = String(entry.uid);
+        return {
+            worldName,
+            location: meta.locationMaps?.[0]?.name,
+            boards: boards.map(b => b.name),
+            groups: [...new Set(Object.values(data?.entries ?? {}).map(e => e.group))].sort(),
+            rules: boards[0]?.encounterRules ?? [],
+            crowUid: byComment['Cuervo grande'],
+            guardUid: byComment['Guardián del grano'],
+            miraUid: byComment['Mira la Molinera'],
+            objectives: (boards[1]?.objectives ?? []).map(o => ({ type: o.type, targetIds: o.targetIds, allyId: o.allyId, rounds: o.rounds })),
+            party: (ctx.chatMetadata.party || []).map(m => `${m.name}@${m.mapPosition?.gridX},${m.mapPosition?.gridY}`),
+            placements: boards[0]?.enemyPlacements ?? [],
+        };
+    });
+
+    check('el libro es ahora una campana abierta', /Molino/.test(imported.worldName || ''), imported.worldName);
+    check('con sus dos tableros en su localizacion',
+        imported.boards.length === 2 && imported.location === 'El Molino de los Cuervos', JSON.stringify(imported));
+    check('y con entradas de las cuatro clases que trae un libro',
+        JSON.stringify(imported.groups) === JSON.stringify(['Characters', 'Factions', 'Lore', 'Monsters']),
+        JSON.stringify(imported.groups));
+
+    // Lo que costo una funcionalidad entera la vez anterior: reglas escritas antes de
+    // que existieran los ids.
+    check('las reglas de encuentro apuntan al monstruo que se acaba de crear',
+        imported.rules.length === 1 && imported.rules[0].enemyId === imported.crowUid,
+        JSON.stringify({ rules: imported.rules, crow: imported.crowUid }));
+    check('y los objetivos tambien, cada uno al suyo',
+        imported.objectives[0]?.targetIds?.[0] === imported.guardUid
+        && imported.objectives[1]?.allyId === imported.miraUid
+        && imported.objectives[2]?.rounds === 6,
+        JSON.stringify(imported.objectives));
+    check('el grupo esta en las casillas que dibuja el libro',
+        JSON.stringify(imported.party) === JSON.stringify(['Lyra@2,7', 'Brand@3,7']), JSON.stringify(imported.party));
+
+    // Y se juega: la prueba de que la importacion sirve es que /fight encuentre enemigos.
+    await page.evaluate(() => {
+        void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/fight Cuervo grande 1');
+    });
+    await page.waitForTimeout(2200);
+    await clearDiceOverlay();
+
+    const fight = await page.evaluate(() => {
+        const enc = window.SillyTavern.getContext().chatMetadata.combatEncounter;
+        return {
+            active: Boolean(enc?.active),
+            enemies: (enc?.enemies || []).map(e => ({ name: e.name, x: e.gridX, y: e.gridY })),
+        };
+    });
+    check('un combate en el tablero importado encuentra a sus enemigos',
+        fight.active && fight.enemies.length === 1, JSON.stringify(fight));
+    check('y el enemigo aparece donde lo dibujo el libro',
+        fight.enemies[0]?.x === imported.placements[0]?.x && fight.enemies[0]?.y === imported.placements[0]?.y,
+        JSON.stringify({ spawn: fight.enemies[0], drawn: imported.placements[0] }));
+
+    await page.evaluate(() => window.SillyTavern.getContext()
+        .executeSlashCommandsWithOptions('/combat-stop'));
+    await page.waitForTimeout(900);
+    await clearDiceOverlay();
+
+    step('24. Salas y puertas: lo que duerme detras no aparece hasta que abres');
+    // Seguimos en el libro importado del paso anterior. El sotano tiene su guardian
+    // detras de una puerta, que es justo para lo que sirven las salas.
+    const rooms = await page.evaluate(async () => {
+        const wi = await import('/scripts/world-info.js');
+        const ctx = window.SillyTavern.getContext();
+        const data = await wi.loadWorldInfo(ctx.chatMetadata.world_info);
+        const boards = data?.metadata?.locationMaps?.[0]?.boards ?? [];
+        return boards.map(b => ({
+            name: b.name,
+            rooms: (b.rooms || []).map(r => ({ cells: r.cells.length, doors: r.doors.length, revealed: r.revealed })),
+            placements: b.enemyPlacements || [],
+        }));
+    });
+    check('el libro importado trajo sus salas, sacadas del propio mapa',
+        rooms.every(b => b.rooms.length >= 2), JSON.stringify(rooms.map(b => b.rooms.length)));
+    check('la sala donde empieza el grupo esta visible, y la otra no',
+        rooms[0].rooms.filter(r => r.revealed).length === 1
+        && rooms[0].rooms.some(r => !r.revealed), JSON.stringify(rooms[0].rooms));
+
+    // El guardian del sotano duerme tras la puerta: entrar no deberia sacarlo.
+    await page.evaluate(() => window.SillyTavern.getContext()
+        .executeSlashCommandsWithOptions('/enter El sótano'));
+    await page.waitForTimeout(1600);
+
+    const sleeping = await page.evaluate(async () => {
+        const m = await import('/scripts/game-engine/campaign/campaign-map.js');
+        const wi = await import('/scripts/world-info.js');
+        const ctx = window.SillyTavern.getContext();
+        const data = await wi.loadWorldInfo(ctx.chatMetadata.world_info);
+        const board = (data?.metadata?.locationMaps?.[0]?.boards ?? []).find(b => b.name === 'El sótano');
+        return {
+            board: ctx.chatMetadata.currentBoard,
+            placements: board.enemyPlacements.length,
+            awake: m.awakePlacements(board.rooms, board.enemyPlacements).length,
+            doors: [...new Set((board.rooms || []).flatMap(r => r.doors))],
+        };
+    });
+    check('en el sotano hay alguien colocado que todavia no esta despierto',
+        sleeping.placements === 1 && sleeping.awake === 0, JSON.stringify(sleeping));
+
+    await page.evaluate(() => {
+        void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/fight Guardián del grano 1');
+    });
+    await page.waitForTimeout(1500);
+    await clearDiceOverlay();
+    const summoned = await page.evaluate(() => {
+        const enc = window.SillyTavern.getContext().chatMetadata.combatEncounter;
+        return (enc?.enemies || []).map(e => ({ x: e.gridX, y: e.gridY }));
+    });
+    check('invocarlo a mano no lo saca de la sala cerrada',
+        summoned.length === 1 && !(summoned[0].x === 5 && summoned[0].y === 3),
+        JSON.stringify(summoned));
+
+    await page.evaluate(() => window.SillyTavern.getContext()
+        .executeSlashCommandsWithOptions('/combat-stop'));
+    await page.waitForTimeout(1000);
+    await clearDiceOverlay();
+
+    // Y ahora lo que da nombre a todo esto: abrir la puerta.
+    await page.locator('#rm_tab_location').click({ timeout: 10000 }).catch(() => {});
+    await page.waitForTimeout(800);
+    const doorCell = sleeping.doors[0];
+    const doorOpened = await page.evaluate(async (key) => {
+        const [x, y] = key.split(',').map(Number);
+        const cell = document.querySelector(`[data-map-root] .wm-grid-cell[data-x="${x}"][data-y="${y}"]`)
+            ?? document.querySelector(`[data-map-root] [data-x="${x}"][data-y="${y}"]`);
+        if (!cell) return false;
+        cell.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        return true;
+    }, doorCell);
+    check('la puerta del sotano se puede pulsar', doorOpened, doorCell);
+    await page.waitForTimeout(2500);
+    await clearDiceOverlay();
+
+    const woken = await page.evaluate(async () => {
+        const wi = await import('/scripts/world-info.js');
+        const ctx = window.SillyTavern.getContext();
+        const data = await wi.loadWorldInfo(ctx.chatMetadata.world_info);
+        const board = (data?.metadata?.locationMaps?.[0]?.boards ?? []).find(b => b.name === 'El sótano');
+        const enc = ctx.chatMetadata.combatEncounter;
+        return {
+            revealed: (board?.rooms || []).filter(r => r.revealed).length,
+            total: (board?.rooms || []).length,
+            active: Boolean(enc?.active),
+            enemies: (enc?.enemies || []).map(e => ({ name: e.name, x: e.gridX, y: e.gridY })),
+            inOrder: (enc?.turnOrder || []).filter(t => t.isEnemy).length,
+            said: [...document.querySelectorAll('.mes_text')].some(m => /Se despierta lo que dormia/.test(m.textContent || '')),
+        };
+    });
+
+    check('abrir la puerta revela la sala que guardaba',
+        woken.revealed === woken.total, JSON.stringify({ revealed: woken.revealed, total: woken.total }));
+    check('y despierta a quien dormia dentro, en su casilla',
+        woken.active && woken.enemies.length === 1
+        && woken.enemies[0].x === 5 && woken.enemies[0].y === 3,
+        JSON.stringify(woken.enemies));
+    check('el que despierta tiene turno de verdad, no solo ficha',
+        woken.inOrder === woken.enemies.length, JSON.stringify({ orden: woken.inOrder, enemigos: woken.enemies.length }));
+    check('y el chat lo cuenta', woken.said);
+
+    await page.evaluate(() => window.SillyTavern.getContext()
+        .executeSlashCommandsWithOptions('/combat-stop'));
+    await page.waitForTimeout(1000);
+    await clearDiceOverlay();
+
+    console.log('\n--- console errors ---');
     console.log(problems.size ? [...problems].join('\n') : '(none)');
 } catch (error) {
     failures++;

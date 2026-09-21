@@ -29,6 +29,7 @@ import { uniqueWorldName } from '../campaign/campaign-worlds.js';
  * @property {any[]} partyEntries      The saved Characters entries, which is what builds the party.
  * @property {string} locationName
  * @property {string} boardName
+ * @property {{counts: any, unresolved: string[]}} [imported] Only when a book was imported.
  */
 
 /**
@@ -40,7 +41,7 @@ import { uniqueWorldName } from '../campaign/campaign-worlds.js';
  * @param {string[]} [deps.existingWorldNames]
  * @param {((idea: string, partySize: number) => Promise<{template: any, warnings: string[], errors: string[]}>)|null} [deps.generateWorld]
  *        Injected so this module never imports a provider. Absent means no AI card.
- * @returns {Promise<{templateId: string, worldName: string, genre: string, description: string, party: string[], generatedTemplate: any}|null>}
+ * @returns {Promise<{templateId: string, worldName: string, genre: string, description: string, party: string[], generatedTemplate: any, importedPack: any}|null>}
  */
 export async function askWizard({ Popup, POPUP_TYPE, existingWorldNames = [], generateWorld = null }) {
     const root = $('<div class="cw-root"></div>');
@@ -87,7 +88,7 @@ export async function askWizard({ Popup, POPUP_TYPE, existingWorldNames = [], ge
     nameInput.on('input', () => { nameTouched = true; });
 
     const genreInput = $('<input type="text" class="text_pole cw-input" maxlength="40" placeholder="Fantasía, terror, cyberpunk…">');
-    const descInput = $('<textarea class="text_pole cw-input" rows="2" maxlength="300" placeholder="Una frase sobre el mundo (opcional)"></textarea>');
+    const descInput = $('<textarea class="text_pole cw-input cw-desc-input" rows="2" maxlength="300" placeholder="Una frase sobre el mundo (opcional)"></textarea>');
 
     step2.append($('<label class="cw-label"></label>').text('Nombre').append(nameInput));
     step2.append($('<label class="cw-label"></label>').text('Género').append(genreInput));
@@ -100,7 +101,9 @@ export async function askWizard({ Popup, POPUP_TYPE, existingWorldNames = [], ge
     const step3 = $('<div class="cw-step"></div>');
     step3.append('<div class="cw-step-title"><span class="cw-num">3</span> ¿Quién va?</div>');
     step3.append('<div class="cw-hint">Un nombre por línea. Se crean como personajes del mundo y podrás editarlos luego.</div>');
-    const partyInput = $('<textarea class="text_pole cw-input" rows="4" placeholder="Lyra\nBrand"></textarea>')
+    // Con clase propia: contar las cajas por su posicion se rompio en cuanto aparecio
+    // una cuarta tarjeta con la suya.
+    const partyInput = $('<textarea class="text_pole cw-input cw-party-input" rows="4" placeholder="Lyra\nBrand"></textarea>')
         .val('Lyra\nBrand');
     step3.append(partyInput);
 
@@ -216,7 +219,131 @@ export async function askWizard({ Popup, POPUP_TYPE, existingWorldNames = [], ge
         });
     }
 
-    step1.append(aiPanel);
+
+    // ---- 1c. an imported book ----------------------------------------------
+    // The fourth way in, and the one the whole ingestion pipeline exists for: paste what
+    // your Gem produced from a campaign book. Nothing is created until it has been
+    // checked, and what the check finds is shown before the button does anything, because
+    // where a generated pack fails is never in a field you can see by reading it.
+    /** @type {any} */
+    let importedPack = null;
+
+    const importPanel = $('<div class="cw-import"></div>').hide();
+
+    const importCard = $('<div class="cw-template-card cw-template-import"></div>');
+    importCard.append($('<div class="cw-template-name"></div>')
+        .html('<i class="fa-solid fa-file-import"></i> ')
+        .append(document.createTextNode('Importar un libro')));
+    importCard.append($('<div class="cw-template-desc"></div>')
+        .text('Pega el paquete JSON que te ha dado tu Gem. Se comprueba antes de crear nada.'));
+
+    importCard.on('click', () => {
+        grid.find('.cw-template-card').removeClass('selected');
+        importCard.addClass('selected');
+        aiPanel.hide();
+        importPanel.show();
+        packInput.trigger('focus');
+        templateId = importedPack ? 'imported' : STARTER_TEMPLATES[0].id;
+    });
+    grid.append(importCard);
+
+    const packInput = $('<textarea class="text_pole cw-input cw-import-text" rows="6" '
+        + 'placeholder="{ &quot;version&quot;: 1, &quot;world&quot;: { … } }"></textarea>');
+    const checkButton = $('<button class="menu_button cw-import-check" type="button"></button>')
+        .html('<i class="fa-solid fa-circle-check"></i> Comprobar el paquete');
+    const importReport = $('<div class="cw-import-report"></div>').hide();
+
+    importPanel.append($('<div class="cw-hint"></div>').text(
+        'Usa /esquema-campana para obtener el contrato que hay que pegarle al Gem. Aqui va su respuesta.'));
+    importPanel.append(packInput, checkButton, importReport);
+
+    /**
+     * Draw what the check found: what the pack brings, what is wrong with it, and what
+     * was put right on the way in.
+     *
+     * @param {import('../campaign/campaign-pack.js').PackReport|null} report
+     * @param {string} [parseError]
+     */
+    function showReport(report, parseError) {
+        importReport.empty().show();
+
+        if (parseError) {
+            importReport.append($('<div class="cw-import-bad"></div>')
+                .text(`Eso no es JSON valido: ${parseError}`));
+            return;
+        }
+        if (!report) return;
+
+        const c = report.counts;
+        importReport.append($('<div class="cw-import-counts"></div>').text(
+            `${c.world || 'Sin nombre'} - ${c.boards} tableros, ${c.enemies} enemigos, `
+            + `${c.confidants} companeros, ${c.quests} misiones, ${c.objectives} objetivos.`));
+
+        /**
+         * @param {string} cls
+         * @param {string} title
+         * @param {import('../campaign/campaign-pack.js').Issue[]} issues
+         */
+        const listOf = (cls, title, issues) => {
+            if (issues.length === 0) return;
+            const block = $(`<div class="cw-import-list ${cls}"></div>`);
+            block.append($('<div class="cw-import-list-title"></div>').text(`${title} (${issues.length})`));
+            const list = $('<ul></ul>');
+            // Enough to act on, not so many that the useful first one scrolls away.
+            for (const issue of issues.slice(0, 12)) {
+                list.append($('<li></li>')
+                    .append($('<code></code>').text(issue.path))
+                    .append(document.createTextNode(` ${issue.message}`)));
+            }
+            if (issues.length > 12) {
+                list.append($('<li></li>').text(`… y ${issues.length - 12} mas.`));
+            }
+            block.append(list);
+            importReport.append(block);
+        };
+
+        listOf('cw-import-bad', 'Hay que arreglarlo antes de importar', report.errors);
+        listOf('cw-import-warn', 'Avisos', report.warnings);
+        listOf('cw-import-fixed', 'Reparado al leerlo', report.repairs);
+
+        importReport.append($('<div class="cw-import-verdict"></div>')
+            .toggleClass('ok', report.ok)
+            .text(report.ok
+                ? 'El paquete se puede importar.'
+                : 'El paquete no se puede importar todavia.'));
+    }
+
+    checkButton.on('click', async () => {
+        const raw = String(packInput.val() || '').trim();
+        importedPack = null;
+        templateId = STARTER_TEMPLATES[0].id;
+
+        if (!raw) {
+            showReport(null, 'esta vacio');
+            return;
+        }
+
+        let parsed = null;
+        try {
+            parsed = JSON.parse(raw);
+        } catch (error) {
+            showReport(null, String(error?.message || error));
+            return;
+        }
+
+        const { validatePack } = await import('../campaign/campaign-pack.js');
+        const report = validatePack(parsed);
+        showReport(report);
+
+        if (report.ok) {
+            importedPack = parsed;
+            templateId = 'imported';
+            // The world name follows the pack, the way it follows a template.
+            if (!nameTouched) nameInput.val(uniqueWorldName(report.counts.world, existingWorldNames));
+        }
+    });
+
+    step1.append(aiPanel, importPanel);
 
     root.append(step1, step2, step3);
 
@@ -258,6 +385,7 @@ export async function askWizard({ Popup, POPUP_TYPE, existingWorldNames = [], ge
         description: String(descInput.val() || '').trim(),
         party: party.length > 0 ? party : ['Aventurero'],
         generatedTemplate,
+        importedPack,
     };
 }
 
@@ -276,7 +404,7 @@ export async function askWizard({ Popup, POPUP_TYPE, existingWorldNames = [], ge
  * tested, in one place.
  *
  * @param {Object} input
- * @param {{templateId: string, worldName: string, genre: string, description: string, party: string[], generatedTemplate?: any}} input.answers
+ * @param {{templateId: string, worldName: string, genre: string, description: string, party: string[], generatedTemplate?: any, importedPack?: any}} input.answers
  * @param {(name: string) => Promise<any>} input.createWorld  Resolves false when the name is refused.
  * @param {(name: string) => Promise<any>} input.loadWorld
  * @param {(name: string, data: any) => Promise<any>} input.saveWorld
@@ -286,6 +414,27 @@ export async function askWizard({ Popup, POPUP_TYPE, existingWorldNames = [], ge
 export async function createCampaign({
     answers, createWorld, loadWorld, saveWorld, createEntry,
 }) {
+    // An imported book is the one thing that is not a template: it brings several boards,
+    // several locations, its own people and its own missions, and it resolves its names
+    // to ids after the entries exist. It has its own builder for exactly that reason.
+    if (answers.templateId === 'imported' && answers.importedPack) {
+        const { importPack } = await import('../campaign/campaign-importer.js');
+        const imported = await importPack({
+            pack: answers.importedPack,
+            worldName: answers.worldName,
+            party: answers.party,
+            createWorld, loadWorld, saveWorld, createEntry,
+        });
+        return {
+            worldName: imported.worldName,
+            party: imported.party,
+            partyEntries: imported.partyEntries,
+            locationName: imported.locationName,
+            boardName: imported.boardName,
+            imported: { counts: imported.counts, unresolved: imported.unresolved },
+        };
+    }
+
     // A generated world is a template like any other from here on. That is the whole
     // design: one path into the game, whoever wrote the world.
     const template = (answers.templateId === 'generated' && answers.generatedTemplate)

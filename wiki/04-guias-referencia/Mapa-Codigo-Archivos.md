@@ -42,7 +42,7 @@ Este documento sirve como inventario exhaustivo del repositorio, clasificando lo
 > [!NOTE]
 > **Cifras medidas el 2026-09-21.** El motor de juego vive desde entonces en dos carpetas nuevas, `game-engine/` y `party/`, que esta página no recogía. El criterio que las ordena está en [[Guia-Desarrollo-Flujo]] §2: código nuevo va en archivo nuevo, para que un merge con upstream no lo toque nunca.
 
-### 2.1. El motor de juego — `public/scripts/game-engine/` (35 archivos, 8.986 líneas)
+### 2.1. El motor de juego — `public/scripts/game-engine/` (40 archivos, 10.389 líneas)
 
 Módulos puros: sin DOM, sin estado global, sin lecturas del chat. Por eso se prueban en Node y por eso el coste de merge es cero. Los marcados ⬜ están escritos y probados pero **el juego todavía no los carga**; compruébalo con `node tools/check-engine-wiring.mjs`.
 
@@ -57,7 +57,7 @@ Módulos puros: sin DOM, sin estado global, sin lecturas del chat. Por eso se pr
 | `combat/roll-guard.js` | 163 | Corrige tiradas inventadas por el modelo | ✅ |
 | `campaign/scenarios.js` | 307 | Siete tipos de objetivo de escenario | ⬜ |
 | `campaign/bonds.js` | 298 | Vínculos 1–10 por eventos registrados, y sus perks | ⬜ |
-| `campaign/campaign-map.js` | 275 | Salas, puertas y desbloqueo de localizaciones | ⬜ |
+| `campaign/campaign-map.js` | 275 | Salas, puertas y desbloqueo de localizaciones | 🟡 el mapa sí, las salas aún no |
 | `campaign/starter-templates.js` | 253 | Las 4 plantillas del asistente, como datos | ✅ |
 | `campaign/calendar.js` | 195 | Días y bloques de tiempo estilo Persona | ⬜ |
 | `campaign/campaign-worlds.js` | 77 | Qué es una campaña, dónde empieza, nombres libres | ✅ |
@@ -73,11 +73,16 @@ Módulos puros: sin DOM, sin estado global, sin lecturas del chat. Por eso se pr
 | `cost/prompt-meter.js` | 239 | Desglosa lo que se envía cada turno y acumula el gasto | ✅ |
 | `ui/prompt-preview.js` | 179 | El panel de `/prompt` | ✅ |
 | `campaign/campaign-pack-schema.js` | 481 | El contrato del paquete de campaña, generado desde el motor | ✅ |
+| `campaign/campaign-pack.js` | 403 | Si un paquete se sostiene: errores, avisos y lo que se reparó | ✅ |
+| `campaign/campaign-importer.js` | 419 | Del paquete a mundo, entradas, tableros y misiones; los ids, al final | ✅ |
+| `combat/spawn.js` | 95 | Dónde aparecen los enemigos: donde los dibujó el libro, nunca en un muro | ✅ |
 | `combat/initiative-tracker.js` | 242 | Quién actúa, quién sigue y qué le pasa | ✅ |
 | `combat/loot.js` | 183 | Botín y experiencia por CR, repartidos entre los que siguen en pie | ✅ |
-| `ui/shell/game-shell.js` | 566 | La capa a pantalla completa: mueve el tablero y el chat, y los devuelve | ✅ |
+| `ui/shell/game-shell.js` | 732 | La capa a pantalla completa: mueve el tablero y el chat, y los devuelve | ✅ |
 | `ui/shell/scene-director.js` | 282 | Qué pantalla toca, y qué la cambia: lee el motor, nunca al modelo | ✅ |
-| `ui/shell/dialogue-scene.js` | 155 | Quién habla, cómo está el grupo y en qué momento va la partida | ✅ |
+| `ui/shell/dialogue-scene.js` | 115 | Quién habla en la escena de diálogo | ✅ |
+| `ui/shell/exploration-scene.js` | 145 | Dónde estás, qué hay abierto y qué le falta a lo cerrado | ✅ |
+| `ui/shell/party-strip.js` | 66 | La franja del grupo: vida, estados y rango, para dos escenas | ✅ |
 | `ui/campaign-panel.js` | 149 | La pestaña Campaña: el calendario y los vínculos | ✅ |
 | `combat/bond-perks.js` | 114 | Las perks que cambian un combate: aguantar, rematar, dar el relevo | ✅ |
 | `ui/campaign-schema-panel.js` | 111 | Las ocho vistas de `/esquema-campana` | ✅ |
@@ -133,7 +138,7 @@ Cada uno cuesta en cada merge. La lista no debería crecer.
 | `public/css/combat-log.css` | 232 | Registro de combate con marco de pixel art y `/sandbox` |
 | `public/css/chat-enhancements.css` | 149 | Términos resaltados y avatares en línea |
 | `public/css/campaign-wizard.css` | 212 | Asistente de campaña, tarjetas sin empezar y panel de generación con IA |
-| `public/css/game-shell.css` | 467 | El Modo Juego: la capa a pantalla completa y la retícula tablero/registro |
+| `public/css/game-shell.css` | 579 | El Modo Juego: la capa a pantalla completa y la retícula tablero/registro |
 | `public/css/rules-editor.css` | 237 | El editor de reglas |
 | `public/css/campaign-panel.css` | 174 | La pestaña Campaña: calendario, vínculos y perks |
 | `public/css/prompt-preview.css` | 116 | El desglose de coste por turno |
@@ -142,9 +147,9 @@ Cada uno cuesta en cada merge. La lista no debería crecer.
 
 | Archivo | Para qué |
 | :--- | :--- |
-| `check-fork-types.mjs` | Gate de tipos sobre los 49 archivos propios. Falla si aparece un error |
+| `check-fork-types.mjs` | Gate de tipos sobre los 54 archivos propios. Falla si aparece un error |
 | `check-engine-wiring.mjs` | Lista los módulos del motor que el juego no carga. Informa, no falla |
-| `e2e-campaign.mjs` | Recorre el juego en un navegador real, con servidor y datos propios. 135 comprobaciones |
+| `e2e-campaign.mjs` | Recorre el juego en un navegador real, con servidor y datos propios. 172 comprobaciones |
 
 ---
 

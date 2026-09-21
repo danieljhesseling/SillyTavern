@@ -117,7 +117,8 @@ Si eres un agente de IA interactuando con este repositorio, sigue estas directri
 | Crear un mundo con IA | [[ROADMAP]] Fase F | *Nueva campaña* → *Generar con IA* · `game-engine/world-builder/world-schema.js` |
 | Cambiar cómo se empieza una campaña o añadir una plantilla | [[ROADMAP]] *El Asistente de Campaña* | `game-engine/ui/campaign-wizard.js`, `campaigns.js`, `game-engine/campaign/starter-templates.js` |
 | Probar el tablero o el combate sin montar una campaña | [[POR_HACER]] *Probarlo a mano* | `/sandbox` → `game-engine/ui/sandbox.js` |
-| Jugar a pantalla completa, con la pantalla cambiando sola | [[PROPUESTA_FRONTEND_MODO_JUEGO]] H1–H3 | **`/modojuego`** en el chat → `game-engine/ui/shell/` |
+| Jugar en Modo Videojuego, a pantalla completa | [[PROPUESTA_FRONTEND_MODO_JUEGO]] (Fase H, completa) |
+| Meter un libro de campaña y jugarlo | [[ROADMAP_INGESTA_CAMPANAS_LIBROS]] (Fase G, completa) | **`/esquema-campana`** para el contrato → *Nueva campaña* → *Importar un libro* | **`/modojuego`** en el chat → `game-engine/ui/shell/` |
 | Integrar cambios de upstream sin romper el fork | [[Guia-Desarrollo-Flujo]] §2 | `.vscode/settings.json` & `public/index.html` |
 | Entender cómo se inyectan los datos al LLM | [[Ciclo-De-Vida-Prompt]] | `public/script.js` (~línea 3137) |
 | Localizar un archivo en el proyecto | [[Mapa-Codigo-Archivos]] | Índice del repositorio |

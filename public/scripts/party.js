@@ -42,6 +42,10 @@ import {
     createTurnState, advanceTurn, getRemainingMovement, spendMovement, hasAction, useAction,
 } from './game-engine/combat/turn-machine.js';
 import { rollEncounterLoot } from './game-engine/combat/loot.js';
+import { planSpawnCells } from './game-engine/combat/spawn.js';
+import {
+    deriveRooms, openDoor, enemiesInRoom, awakePlacements, normalizeRooms,
+} from './game-engine/campaign/campaign-map.js';
 import { planEndure, planFollowUp, planBatonPass } from './game-engine/combat/bond-perks.js';
 import {
     buildBoardState, judgeScenario, hasScenario,
@@ -66,6 +70,8 @@ import {
     isShellOpen, toggleGameShell, refreshGameShell, closeGameShell,
 } from './game-engine/ui/shell/game-shell.js';
 import { buildDialogueView } from './game-engine/ui/shell/dialogue-scene.js';
+import { buildExplorationView } from './game-engine/ui/shell/exploration-scene.js';
+import { completeLocation, normalizeCampaignMap } from './game-engine/campaign/campaign-map.js';
 
 /** @typedef {import('./party/types.js').PartyMember} PartyMember */
 /** @type {PartyMember[]} */
@@ -854,13 +860,22 @@ async function persistBoardTerrain(board) {
         const data = await loadWorldInfo(worldName);
         if (!data?.metadata) return;
 
-        const boards = Array.isArray(data.metadata.boards) ? data.metadata.boards : [];
-        const stored = boards.find((/** @type {any} */ b) => b.name === board.name);
+        // Los tableros viven colgados de su localizacion; la lista global es la forma
+        // antigua, y solo la usan los mundos de antes. Mirar solo ahi hacia que pintar
+        // terreno en un tablero de localizacion no guardara nada, en silencio.
+        const globalBoards = Array.isArray(data.metadata.boards) ? data.metadata.boards : [];
+        const locationBoards = (Array.isArray(data.metadata.locationMaps) ? data.metadata.locationMaps : [])
+            .flatMap((/** @type {any} */ l) => (Array.isArray(l?.boards) ? l.boards : []));
+        const stored = [...locationBoards, ...globalBoards]
+            .find((/** @type {any} */ b) => b?.name === board.name);
         if (!stored) return;
 
         stored.terrain = board.terrain;
         stored.fog = board.fog;
         stored.fogEnabled = board.fogEnabled;
+        // Que salas se han revelado es parte del estado del tablero: sin esto, una
+        // mazmorra se volveria a cerrar sola al recargar.
+        if (board.rooms) stored.rooms = board.rooms;
         await saveWorldInfo(worldName, data);
     } catch (e) {
         console.warn('[party] could not persist board terrain', e);
@@ -989,7 +1004,7 @@ export function enterStartingBoard(locationName, boardName) {
  * The tactical planner needs all three together, and resolving them separately invited
  * passing a grid size from one board with the terrain of another.
  *
- * @returns {{terrain: import('./game-engine/board/terrain.js').BoardTerrain, gridWidth: number, gridHeight: number}}
+ * @returns {{terrain: import('./game-engine/board/terrain.js').BoardTerrain, gridWidth: number, gridHeight: number, board: any}}
  */
 function getActiveBoardContext() {
     const location = currentLocationName
@@ -1003,6 +1018,7 @@ function getActiveBoardContext() {
         terrain: normalizeTerrain(board?.terrain),
         gridWidth: Number(location?.gridWidth) || 50,
         gridHeight: Number(location?.gridHeight) || 50,
+        board: board ?? null,
     };
 }
 
@@ -1739,6 +1755,76 @@ function runCombatTurnLoop(includeCurrent = true) {
 }
 
 /**
+ * Despierta a lo que duerme en una sala recien revelada.
+ *
+ * Es el ritmo de una mazmorra de Gloomhaven: el siguiente combate llega cuando **tu**
+ * abres la puerta, no cuando se carga el mapa. Los que despiertan aparecen donde el libro
+ * los dibujo, y actuan al final de la ronda en curso — entrar en mitad del turno de otro
+ * seria robarle el suyo.
+ *
+ * @param {any} board El tablero abierto.
+ * @param {any} room La sala que se acaba de revelar.
+ * @returns {number} Cuantos han despertado.
+ */
+function wakeRoomEnemies(board, room) {
+    const placements = enemiesInRoom(room, board?.enemyPlacements ?? []);
+    if (placements.length === 0) return 0;
+
+    const templates = getCurrentWorldEnemies();
+    /** @type {import('./dnd-system.js').EnemyInstance[]} */
+    const woken = [];
+
+    for (const placement of placements) {
+        const template = templates.find(e => String(e.name).toLowerCase() === String(placement.name).toLowerCase());
+        if (!template) {
+            console.warn('[party] sleeping enemy with no template', placement);
+            continue;
+        }
+        const already = combatEncounter.enemies.filter(e => e.name.startsWith(template.name)).length;
+        woken.push({
+            instanceId: generateEnemyInstanceId(),
+            templateId: template.id,
+            name: already > 0 ? `${template.name} ${already + 1}` : template.name,
+            avatar: template.avatar,
+            currentHp: template.maxHp,
+            maxHp: template.maxHp,
+            armorClass: template.armorClass,
+            strength: template.strength,
+            dexterity: template.dexterity,
+            constitution: template.constitution,
+            intelligence: template.intelligence,
+            wisdom: template.wisdom,
+            charisma: template.charisma,
+            speed: template.speed,
+            cr: template.cr,
+            gridX: placement.x,
+            gridY: placement.y,
+        });
+    }
+
+    if (woken.length === 0) return 0;
+
+    const names = woken.map(e => e.name).join(', ');
+
+    if (!combatEncounter.active) {
+        // Nadie peleaba: la sala abre su propio combate.
+        postCombatNarration(`[COMBAT] Se despierta lo que dormia en la sala: ${names}.`);
+        beginEncounterWith(woken);
+        return woken.length;
+    } else {
+        combatEncounter.enemies = [...combatEncounter.enemies, ...woken];
+        for (const enemy of woken) {
+            const initiative = rollInitiativeWithPopover(enemy.name, enemy.dexterity || 10, 'enemy');
+            combatEncounter.turnOrder.push({ id: enemy.instanceId, name: enemy.name, initiative, isEnemy: true });
+        }
+        saveCombatState();
+    }
+
+    postCombatNarration(`⚠️ [COMBAT] Se despierta lo que dormia en la sala: ${names}.`);
+    return woken.length;
+}
+
+/**
  * Start a combat encounter on the current board.
  * @param {import('./dnd-system.js').EnemyTemplate} template - Enemy template
  * @param {number} count - Number of enemies to spawn
@@ -1750,6 +1836,26 @@ function startCombat(template, count, gridWidth = 50, gridHeight = 50) {
     // A new fight starts with an empty log: the last one's blow-by-blow is already in
     // the chat, and leaving it here would read as if it were still happening.
     combatLogEntries = [];
+
+    // Donde los pone el tablero, si los pone. Un libro dibuja a sus monstruos donde
+    // quiere — tras la cobertura, al otro lado de la sala — y ese dibujo es la mitad de
+    // lo que hace que el encuentro sea el que es. Antes caian en una casilla al azar de
+    // la esquina, muros incluidos.
+    const spawnBoard = getActiveBoardContext();
+    const spawnCells = planSpawnCells({
+        name: template.name,
+        count,
+        // Solo los que estan en una sala ya revelada: lo que duerme tras una puerta
+        // cerrada no aparece porque alguien escriba su nombre.
+        placements: awakePlacements(spawnBoard.board?.rooms, spawnBoard.board?.enemyPlacements ?? []),
+        terrain: spawnBoard.terrain,
+        gridWidth: spawnBoard.gridWidth || gridWidth,
+        gridHeight: spawnBoard.gridHeight || gridHeight,
+        taken: partyMembers.map(m => ({
+            x: Number(m.mapPosition?.gridX) || 0,
+            y: Number(m.mapPosition?.gridY) || 0,
+        })),
+    });
 
     /** @type {import('./dnd-system.js').EnemyInstance[]} */
     const newEnemies = [];
@@ -1770,12 +1876,25 @@ function startCombat(template, count, gridWidth = 50, gridHeight = 50) {
             charisma: template.charisma,
             speed: template.speed,
             cr: template.cr,
-            gridX: Math.floor(Math.random() * Math.min(gridWidth, 10)),
-            gridY: Math.floor(Math.random() * Math.min(gridHeight, 10)),
+            gridX: spawnCells[i]?.x ?? 0,
+            gridY: spawnCells[i]?.y ?? 0,
         });
     }
 
-    // Build initiative entries for party members
+    return beginEncounterWith(newEnemies);
+}
+
+/**
+ * Arranca el encuentro con los enemigos dados: tira iniciativas, ordena y empieza.
+ *
+ * Extraido de `startCombat` porque una sala que se abre tambien empieza un combate, y
+ * fingir una plantilla vacia para reutilizar aquella dejaba a los recien despertados sin
+ * turno: existian en el encuentro y no actuaban nunca.
+ *
+ * @param {import('./dnd-system.js').EnemyInstance[]} newEnemies
+ * @returns {string} El orden de iniciativa, ya escrito.
+ */
+function beginEncounterWith(newEnemies) {
     /** @type {import('./dnd-system.js').TurnEntry[]} */
     const turnEntries = [];
     for (const m of partyMembers) {
@@ -1783,8 +1902,8 @@ function startCombat(template, count, gridWidth = 50, gridHeight = 50) {
         turnEntries.push({ id: String(m.id), name: m.name, initiative: init, isEnemy: false });
     }
 
-    // Build initiative entries for enemies
-    for (const e of newEnemies) {
+    const enemies = [...combatEncounter.enemies, ...newEnemies];
+    for (const e of enemies) {
         const init = rollInitiativeWithPopover(e.name, e.dexterity || 10, 'enemy');
         turnEntries.push({ id: e.instanceId, name: e.name, initiative: init, isEnemy: true });
     }
@@ -1794,7 +1913,7 @@ function startCombat(template, count, gridWidth = 50, gridHeight = 50) {
 
     combatEncounter = {
         active: true,
-        enemies: [...combatEncounter.enemies, ...newEnemies],
+        enemies,
         turnOrder: turnEntries,
         currentTurnIndex: 0,
         round: 1,
@@ -2094,6 +2213,11 @@ function checkScenarioOutcome() {
     postCombatNarration(verdict.outcome === 'victory'
         ? '🏁 [COMBAT] Objetivos cumplidos.'
         : '🏁 [COMBAT] La misión ha fracasado.');
+
+    // Cumplir la mision de un tablero es lo que da la localizacion por superada, y eso
+    // es lo que abre las siguientes en el mapa de campana. Ganar deberia ser lo unico
+    // que abre puertas.
+    if (verdict.outcome === 'victory') markLocationComplete(currentLocationName);
 
     endCombat(verdict.outcome === 'victory' ? 'victory' : 'defeat');
     renderLocationMapsPreview();
@@ -2828,6 +2952,164 @@ function buildShellDialogue() {
 }
 
 /**
+ * Viajar a una localizacion. Devuelve el nombre real al que se ha llegado, o '' si no
+ * existe.
+ *
+ * Extraido de `/go` para que el Modo Juego viaje por el mismo camino que el comando: dos
+ * formas de ir al mismo sitio son dos sitios donde se puede olvidar guardar el estado.
+ *
+ * @param {string} name
+ * @returns {string}
+ */
+function travelTo(name) {
+    const wanted = String(name || '').trim();
+    const match = getCurrentWorldLocationMaps().find(l => l.name.toLowerCase() === wanted.toLowerCase());
+    if (!match) return '';
+
+    currentLocationName = match.name;
+    currentBoardName = '';
+    saveCurrentLocation();
+    saveCurrentBoard();
+    return match.name;
+}
+
+/**
+ * Entrar en un tablero de la localizacion actual. Devuelve el nombre real, o ''.
+ *
+ * Extraido de `/enter`, con su respaldo para los mundos antiguos que guardaban los
+ * tableros sueltos en vez de colgados de la localizacion.
+ *
+ * @param {string} name
+ * @returns {string}
+ */
+function enterBoard(name) {
+    const wanted = String(name || '').trim();
+    if (!currentLocationName) return '';
+
+    const loc = getCurrentWorldLocationMaps().find(l => l.name === currentLocationName);
+    let boards = getLocationBoards(loc);
+    if (boards.length === 0) {
+        const globalBoards = getCurrentWorldBoards();
+        if (globalBoards.length > 0) {
+            console.log('[party] enterBoard fallback to global boards', { currentLocationName, globalBoards });
+            boards = globalBoards;
+        }
+    }
+
+    const match = boards.find((/** @type {any} */ b) => b.name.toLowerCase() === wanted.toLowerCase());
+    if (!match) return '';
+
+    currentBoardName = match.name;
+    saveCurrentBoard();
+    return match.name;
+}
+
+/**
+ * El compendio: el editor de reglas de la campana abierta.
+ *
+ * Extraido de `/rules` porque el menu de pausa abre lo mismo. Una segunda copia seria un
+ * segundo sitio donde olvidarse de volver a aplicar el paquete despues de guardarlo.
+ *
+ * @returns {Promise<string>}
+ */
+async function openCompendium() {
+    const worldName = String(chat_metadata?.[METADATA_KEY] || '');
+    if (!worldName) {
+        toastr.warning('Abre una campana primero.');
+        return '';
+    }
+
+    try {
+        const data = await loadWorldInfo(worldName);
+        if (!data) {
+            toastr.error(`No se pudo cargar el mundo "${worldName}".`);
+            return '';
+        }
+
+        const { openRulesEditor } = await import('./game-engine/ui/rules-editor.js');
+        const edited = await openRulesEditor({
+            pack: data.metadata?.rulesetPack ?? null,
+            title: `Reglas de "${worldName}"`,
+            Popup,
+            POPUP_TYPE,
+        });
+        if (!edited) return '';
+
+        data.metadata = data.metadata ?? {};
+        data.metadata.rulesetPack = edited;
+        await saveWorldInfo(worldName, data, true);
+
+        await applyCampaignRuleset(worldName);
+        return 'reglas guardadas';
+    } catch (error) {
+        console.error('[party] rules editor failed', error);
+        toastr.error(String(error?.message || error), 'No se pudieron editar las reglas');
+        return '';
+    }
+}
+
+/**
+ * El mapa de campana de esta partida: que sitios estan abiertos, cuales cerrados y por
+ * que. Se guarda con el chat, como el resto del estado de campana.
+ *
+ * @returns {import('./game-engine/campaign/campaign-map.js').CampaignMap}
+ */
+function getCampaignMap() {
+    return normalizeCampaignMap(chat_metadata?.campaignMap);
+}
+
+/**
+ * @param {import('./game-engine/campaign/campaign-map.js').CampaignMap} map
+ */
+function saveCampaignMap(map) {
+    if (!chat_metadata) return;
+    chat_metadata.campaignMap = map;
+    saveMetadata();
+}
+
+/**
+ * Da una localizacion por superada en el mapa de campana.
+ *
+ * Es lo que abre las siguientes: un sitio que exige haber pasado por otro no se fia de
+ * que el jugador se acuerde, comprueba el mapa. Se llama al ganar el escenario de un
+ * tablero, porque ganar es lo unico que deberia abrir puertas.
+ *
+ * @param {string} locationName
+ */
+function markLocationComplete(locationName) {
+    const name = String(locationName || '').trim();
+    if (!name) return;
+    const before = getCampaignMap();
+    const entry = before.locations.find(l => l.id === name);
+    if (entry && entry.status === 'complete') return;
+
+    // Un sitio del que el mapa nunca supo nada se anade al darlo por superado: asi una
+    // campana sin mapa declarado tambien acumula por donde ha pasado.
+    const withPlace = entry
+        ? before
+        : { version: before.version, locations: [...before.locations, { id: name, name, status: /** @type {'available'} */ ('available'), requiresQuests: [], requiresLocations: [] }] };
+
+    saveCampaignMap(completeLocation(withPlace, name));
+}
+
+/**
+ * Lo que dibuja la escena de exploracion.
+ *
+ * @returns {import('./game-engine/ui/shell/exploration-scene.js').ExplorationView}
+ */
+function buildShellExploration() {
+    return buildExplorationView({
+        locationMaps: getCurrentWorldLocationMaps(),
+        campaignMap: getCampaignMap(),
+        currentLocation: currentLocationName,
+        currentBoard: currentBoardName,
+        party: partyMembers,
+        bonds: getCampaignBonds(),
+        calendar: getCampaignCalendar(),
+    });
+}
+
+/**
  * @returns {import('./game-engine/ui/shell/game-shell.js').ShellOptions}
  */
 function buildShellOptions() {
@@ -2839,6 +3121,16 @@ function buildShellOptions() {
         getSituation: buildShellSituation,
         getCombatBar: buildShellCombatBar,
         getDialogue: buildShellDialogue,
+        getExploration: buildShellExploration,
+        onEnterBoard: (name) => { enterBoard(name); renderLocationMapsPreview(); },
+        onTravel: (name) => { travelTo(name); renderLocationMapsPreview(); },
+        // Los paneles de SillyTavern se abren donde estan: en pausa su barra vuelve
+        // arriba, por encima de esta capa, y el boton pulsa el mismo icono de siempre.
+        onOptions: () => { $('#ai-config-button .drawer-toggle').trigger('click'); },
+        onCompendium: () => { void openCompendium(); },
+        // Salir al menu principal es cerrar la partida, no cerrar el juego: el Shell se
+        // queda, y lo que se ve es la pantalla de bienvenida con las campanas.
+        onMainMenu: () => { $('#option_close_chat').trigger('click'); },
         renderStage: () => renderLocationMapsPreview(),
         onAttack: (name) => handlePlayerCombatAttack(name),
         onEndTurn: () => endPlayerCombatTurn(),
@@ -2871,11 +3163,6 @@ function toggleGameMode() {
     if (isShellOpen()) {
         closeGameShell();
         return 'modo juego apagado';
-    }
-
-    if (!chat_metadata || !chat_metadata[METADATA_KEY]) {
-        toastr.warning('Abre una campana antes de entrar en el Modo Juego.');
-        return '';
     }
 
     // Las opciones primero: guardan si el panel estaba plegado, y desplegarlo antes
@@ -3094,9 +3381,35 @@ function drawLocationMapsPreview() {
             // Opening a door changes what can be walked through and what can be seen, so
             // the board is redrawn: fog is recomputed from the new terrain on the way.
             onDoorToggle: (gx, gy, open) => {
-                selectedBoard.terrain = setDoorOpen(normalizeTerrain(selectedBoard.terrain), gx, gy, open);
+                if (!open) {
+                    selectedBoard.terrain = setDoorOpen(normalizeTerrain(selectedBoard.terrain), gx, gy, false);
+                    persistBoardTerrain(selectedBoard);
+                    postCombatNarration(`[BOARD] La puerta de (${gx + 1}, ${gy + 1}) queda cerrada.`);
+                    renderLocationMapsPreview();
+                    return;
+                }
+
+                // Abrir una puerta no es solo cambiar una casilla: revela la sala que
+                // guardaba y despierta lo que dormia dentro. Ese es el ritmo de una
+                // mazmorra — el siguiente combate llega cuando tu decides abrir.
+                const rooms = normalizeRooms(selectedBoard.rooms).length > 0
+                    ? selectedBoard.rooms
+                    : deriveRooms(normalizeTerrain(selectedBoard.terrain), boardGridW, boardGridH, {
+                        revealFrom: partyMembers.map(m => ({
+                            x: Number(m.mapPosition?.gridX) || 0,
+                            y: Number(m.mapPosition?.gridY) || 0,
+                        })),
+                    });
+
+                const result = openDoor(normalizeTerrain(selectedBoard.terrain), rooms, gx, gy);
+                selectedBoard.terrain = result.terrain;
+                selectedBoard.rooms = result.rooms;
                 persistBoardTerrain(selectedBoard);
-                postCombatNarration(`🚪 [BOARD] La puerta de (${gx + 1}, ${gy + 1}) queda ${open ? 'abierta' : 'cerrada'}.`);
+                postCombatNarration(`[BOARD] La puerta de (${gx + 1}, ${gy + 1}) queda abierta.`);
+
+                if (result.revealedRoom) {
+                    wakeRoomEnemies(selectedBoard, result.revealedRoom);
+                }
                 renderLocationMapsPreview();
             },
             tokens: allBoardTokens,
@@ -5056,9 +5369,9 @@ export function initPartyPanel() {
     // Restore per-session party when chat changes
     eventSource.on(event_types.CHAT_CHANGED, () => {
         loadPartyForChat();
-        // Cerrar la partida con el Modo Juego encendido dejaria una pantalla completa
-        // sobre una aplicacion sin tablero que mostrar.
-        if (isShellOpen() && !chat_metadata?.[METADATA_KEY]) closeGameShell();
+        // Cerrar la partida ya no apaga el Modo Juego: sin campana abierta, la escena
+        // de titulo ensena la bienvenida con las campanas, que es donde hay que estar.
+        if (isShellOpen()) refreshGameShell();
         // The campaign may play by its own rules; see applyCampaignRuleset.
         applyCampaignRuleset(String(chat_metadata?.[METADATA_KEY] || ''))
             .catch(error => console.error('[party] campaign ruleset failed', error));
@@ -5107,20 +5420,14 @@ export function initPartyPanel() {
             }),
         ],
         callback: (_args, value) => {
-            const name = String(value).trim();
-            const locs = getCurrentWorldLocationMaps();
-            const match = locs.find(l => l.name.toLowerCase() === name.toLowerCase());
-            if (!match) {
-                toastr.warning(`Location "${name}" not found.`);
+            const arrived = travelTo(String(value));
+            if (!arrived) {
+                toastr.warning(`Location "${String(value).trim()}" not found.`);
                 return '';
             }
-            currentLocationName = match.name;
-            currentBoardName = '';
-            saveCurrentLocation();
-            saveCurrentBoard();
             setPartyTab('location');
-            toastr.info(`📍 ${t`Traveled to`} ${match.name}`);
-            return match.name;
+            toastr.info(`📍 ${t`Traveled to`} ${arrived}`);
+            return arrived;
         },
     }));
 
@@ -5142,32 +5449,16 @@ export function initPartyPanel() {
                 toastr.warning('Choose a location first (/go).');
                 return '';
             }
-            const loc = getCurrentWorldLocationMaps().find(l => l.name === currentLocationName);
-            let boards = getLocationBoards(loc);
-            let usedFallback = false;
-            if (boards.length === 0) {
-                const globalBoards = getCurrentWorldBoards();
-                if (globalBoards.length > 0) {
-                    console.log('[party] /enter fallback to global boards', { currentLocationName, globalBoards });
-                    boards = globalBoards;
-                    usedFallback = true;
-                }
-            }
-            console.log('[party] /enter lookup', { loc, boards, usedFallback });
-            const match = boards.find((/** @type {any} */ b) => b.name.toLowerCase() === name.toLowerCase());
-            console.log('[party] /enter match', { match });
-            if (!match) {
+
+            const entered = enterBoard(name);
+            if (!entered) {
                 toastr.warning(`Board "${name}" not found at ${currentLocationName}.`);
                 return '';
             }
-            currentBoardName = match.name;
-            saveCurrentBoard();
+
             setPartyTab('location');
-            toastr.info(`🎲 ${t`Entered`} ${match.name}`);
-            if (usedFallback) {
-                console.log('[party] /enter used legacy global boards fallback for', { currentLocationName, board: match.name });
-            }
-            return match.name;
+            toastr.info(`🎲 ${t`Entered`} ${entered}`);
+            return entered;
         },
     }));
 
@@ -5361,41 +5652,7 @@ export function initPartyPanel() {
         name: 'rules',
         helpString: '<div>Abre el editor de reglas de la campaña: tipos de daño, propiedades de armas y armaduras, condiciones, rarezas. '
             + 'Lo que guardes se aplica al recargar.</div>',
-        callback: async () => {
-            const worldName = String(chat_metadata?.[METADATA_KEY] || '');
-            if (!worldName) {
-                toastr.warning('Abre una campaña primero.');
-                return '';
-            }
-
-            try {
-                const data = await loadWorldInfo(worldName);
-                if (!data) {
-                    toastr.error(`No se pudo cargar el mundo "${worldName}".`);
-                    return '';
-                }
-
-                const { openRulesEditor } = await import('./game-engine/ui/rules-editor.js');
-                const edited = await openRulesEditor({
-                    pack: data.metadata?.rulesetPack ?? null,
-                    title: `Reglas de "${worldName}"`,
-                    Popup,
-                    POPUP_TYPE,
-                });
-                if (!edited) return '';
-
-                data.metadata = data.metadata ?? {};
-                data.metadata.rulesetPack = edited;
-                await saveWorldInfo(worldName, data, true);
-
-                await applyCampaignRuleset(worldName);
-                return 'reglas guardadas';
-            } catch (error) {
-                console.error('[party] rules editor failed', error);
-                toastr.error(String(error?.message || error), 'No se pudieron editar las reglas');
-                return '';
-            }
-        },
+        callback: () => openCompendium(),
     }));
 
     // The prompt preview (wiki/ROADMAP.md, T3). Recording is a listener rather than a
