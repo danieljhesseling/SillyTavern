@@ -1,0 +1,467 @@
+/*
+ * El Modo Juego: la capa a pantalla completa.
+ *
+ * Todo lo de aqui cuelga de .gs-root o de body.game-shell-on, para que apagar el Shell
+ * devuelva la aplicacion exactamente a como estaba. Ninguna regla toca a un elemento de
+ * SillyTavern sin ese prefijo.
+ *
+ * Ver wiki/PROPUESTA_FRONTEND_MODO_JUEGO.md, H1.
+ */
+
+/* La barra superior de SillyTavern estorba a pantalla completa, y solo mientras el Shell
+   esta encendido. */
+body.game-shell-on #top-bar,
+body.game-shell-on #top-settings-holder {
+    display: none !important;
+}
+
+body.game-shell-on {
+    overflow: hidden;
+}
+
+.gs-root {
+    position: fixed;
+    inset: 0;
+    z-index: 3000;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    background: var(--greyCAIbg, #1b1b1f);
+    color: var(--SmartThemeBodyColor, #ddd);
+    font-size: 0.95em;
+}
+
+/* ---------------------------------------------------------------- cabecera */
+
+.gs-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 12px;
+    background: rgba(0, 0, 0, 0.35);
+    border-bottom: 1px solid var(--SmartThemeBorderColor, #444);
+}
+
+.gs-head-state {
+    font-weight: bold;
+    letter-spacing: 0.04em;
+    min-width: 8em;
+}
+
+.gs-scenes {
+    display: flex;
+    gap: 6px;
+    flex: 1;
+    justify-content: center;
+}
+
+.gs-scene-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 6px;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+}
+
+.gs-scene-btn.active {
+    background: var(--SmartThemeQuoteColor, #6a8caf);
+    color: #fff;
+}
+
+.gs-scene-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.gs-scene-key {
+    font-size: 0.75em;
+    opacity: 0.6;
+    border: 1px solid currentColor;
+    border-radius: 3px;
+    padding: 0 4px;
+}
+
+.gs-close {
+    background: transparent;
+    border: none;
+    color: inherit;
+    font-size: 1.3em;
+    cursor: pointer;
+    opacity: 0.7;
+}
+
+.gs-close:hover {
+    opacity: 1;
+}
+
+/* ---------------------------------------------------------------- escenario */
+
+.gs-stage {
+    position: relative;
+    overflow: auto;
+    padding: 10px 14px;
+}
+
+.gs-pending:not(:empty) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    opacity: 0.6;
+    font-style: italic;
+    text-align: center;
+}
+
+/* Una seccion por escena, las dos montadas al abrir. Conmutar ensena una y esconde la
+   otra: no mueve nada, porque cada movimiento del chat es una ocasion de perder su
+   desplazamiento o el foco. */
+.gs-scene {
+    display: none;
+    height: 100%;
+    min-height: 0;
+}
+
+.gs-root[data-scene="combat"] .gs-scene-combat {
+    display: block;
+}
+
+.gs-root[data-scene="dialogue"] .gs-scene-dialogue {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    gap: 10px;
+}
+
+/* Los paneles prestados, tal cual venian. */
+.gs-scene .gs-adopted {
+    margin: 0;
+    height: 100%;
+}
+
+/* Dentro del Shell la cabecera "Location Maps / Ocultar" sobra: el panel ya no comparte
+   sitio con nada. */
+.gs-adopted .wm-location-toolbar {
+    display: none;
+}
+
+/* Tablero a la izquierda, registro y ficha de combate a la derecha. El orden del DOM no
+   cambia: solo se coloca. */
+.gs-adopted .wm-location-content {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 24%);
+    grid-template-rows: auto 1fr;
+    gap: 10px 14px;
+    align-items: start;
+    height: 100%;
+}
+
+.gs-adopted .wm-location-content > .wm-leave-loc-btn {
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: start;
+}
+
+.gs-adopted .wm-location-content > [data-map-root] {
+    grid-column: 1;
+    grid-row: 2;
+    min-height: 0;
+}
+
+.gs-adopted .wm-location-content > .wm-terrain-edit-btn,
+.gs-adopted .wm-location-content > .wm-terrain-palette {
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: end;
+}
+
+.gs-adopted .wm-location-content > .combat-log-panel {
+    grid-column: 2;
+    grid-row: 2;
+    max-height: 45%;
+    margin: 0;
+}
+
+.gs-adopted .wm-location-content > .wm-combat-section {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    align-self: end;
+    overflow: auto;
+    max-height: 55%;
+}
+
+/* En vertical no hay dos columnas que valgan. */
+@media (max-width: 900px) {
+    .gs-adopted .wm-location-content {
+        display: block;
+    }
+}
+
+/* ---------------------------------------------------------------- barra de acciones */
+
+.gs-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 8px 14px;
+    background: rgba(0, 0, 0, 0.35);
+    border-top: 1px solid var(--SmartThemeBorderColor, #444);
+    position: relative;
+}
+
+.gs-actions-idle {
+    opacity: 0.6;
+    font-style: italic;
+}
+
+.gs-actions-status {
+    display: flex;
+    flex-direction: column;
+    min-width: 14em;
+}
+
+.gs-turn-label {
+    font-weight: bold;
+}
+
+.gs-move-label {
+    font-size: 0.85em;
+    opacity: 0.75;
+}
+
+.gs-actions-buttons {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.gs-btn {
+    padding: 6px 14px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.06);
+    color: inherit;
+    cursor: pointer;
+}
+
+.gs-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.14);
+}
+
+.gs-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.gs-btn-attack:not(:disabled) {
+    border-color: #a5534f;
+}
+
+.gs-btn-quiet {
+    margin-left: auto;
+    opacity: 0.7;
+}
+
+/* La lista de objetivos sale por encima de la barra, no la empuja. */
+.gs-targets {
+    position: absolute;
+    bottom: 100%;
+    left: 14px;
+    min-width: 260px;
+    margin-bottom: 6px;
+    padding: 6px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 8px;
+    background: var(--greyCAIbg, #23232a);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+    z-index: 1;
+}
+
+.gs-targets-title {
+    font-size: 0.8em;
+    opacity: 0.6;
+    padding: 2px 6px 6px;
+}
+
+.gs-target {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+    padding: 6px 8px;
+    border: none;
+    border-radius: 5px;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    text-align: left;
+}
+
+.gs-target:hover {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.gs-target-detail {
+    opacity: 0.65;
+    font-size: 0.85em;
+    white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------- escena de dialogo */
+
+/* El chat prestado. `#sheld` vive en posicion absoluta bajo la barra superior y con un
+   ancho propio; dentro de la escena tiene que ser una caja mas. Dos ids ganan en
+   especificidad a la regla original sin tocarla, y fuera del Shell no se aplica nada. */
+#game-shell #sheld {
+    position: static;
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    height: 100%;
+    max-height: none;
+    min-height: 0;
+    margin: 0;
+    z-index: auto;
+}
+
+/* El asa de arrastre no pinta nada en una caja que no se puede mover. */
+#game-shell #sheldheader {
+    display: none;
+}
+
+.gs-chat-slot {
+    min-height: 0;
+    display: flex;
+}
+
+.gs-chat-slot > .gs-adopted {
+    flex: 1;
+    min-width: 0;
+}
+
+.gs-speaker {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-height: 88px;
+}
+
+.gs-portrait {
+    width: 84px;
+    height: 84px;
+    border-radius: 10px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    flex: 0 0 auto;
+}
+
+.gs-portrait img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.gs-speaker-name {
+    font-size: 1.3em;
+    font-weight: bold;
+}
+
+.gs-speaker-rank {
+    font-size: 0.85em;
+    opacity: 0.7;
+}
+
+.gs-speaker-empty {
+    opacity: 0.5;
+    font-style: italic;
+}
+
+/* ---------------------------------------------------------------- franja del grupo */
+
+.gs-party-strip {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.gs-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    min-width: 170px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.gs-chip.bloodied {
+    border-color: #a5773f;
+}
+
+.gs-chip.fallen {
+    opacity: 0.45;
+    border-color: #7a3b3b;
+}
+
+.gs-chip-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 6px;
+    object-fit: cover;
+    flex: 0 0 auto;
+}
+
+.gs-chip-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.gs-chip-line {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.gs-chip-name {
+    font-weight: bold;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.gs-chip-status {
+    font-size: 0.8em;
+    opacity: 0.85;
+}
+
+.gs-chip-hp {
+    height: 5px;
+    border-radius: 3px;
+    background: rgba(0, 0, 0, 0.4);
+    overflow: hidden;
+    margin: 3px 0 2px;
+}
+
+.gs-chip-hp-fill {
+    height: 100%;
+    background: #6f9e5d;
+}
+
+.gs-chip.bloodied .gs-chip-hp-fill {
+    background: #c08a3e;
+}
+
+.gs-chip.fallen .gs-chip-hp-fill {
+    background: #8c4040;
+}
+
+.gs-chip-hp-text {
+    font-size: 0.78em;
+    opacity: 0.7;
+}

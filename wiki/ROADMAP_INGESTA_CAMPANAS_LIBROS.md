@@ -12,6 +12,29 @@ author: DanielJHesseling / Antigravity AI
 
 ---
 
+## ⚠️ 0. Estado y correcciones — 2026-09-21
+
+Este documento se escribió antes de comprobar el contrato de datos contra el motor. La visión se sostiene entera; **los cinco JSON de ejemplo, no**. Tal y como están, el paquete que produjera el Gem no se podría importar, y lo descubrirías después de procesar un libro completo.
+
+### El alcance, acotado
+
+> [!IMPORTANT]
+> **El GEM (sección 4) queda fuera de este plan.** Lo harás con tu suscripción de Gemini, no con llamadas a la API, así que el código no lo diseña, no lo llama y no lo paga. Lo único que el programa debe hacer por él es **entregarte el esquema exacto** para que lo pegues en sus instrucciones, y **validar sin piedad** lo que devuelva.
+>
+> Esa división cambia la prioridad: cuando el productor de datos vive fuera del repositorio, el contrato deja de ser un detalle de implementación y pasa a ser **la pieza principal**. Es lo único que une las dos mitades.
+
+### Lo que ya no es cierto de la sección 1
+
+| Decía | Realidad, comprobada en el código |
+| :--- | :--- |
+| *Falta la interfaz visual de misiones (E5)* | **Hecha** el 2026-09-21. Los objetivos se evalúan durante el combate y se dibujan sobre el rastreador de iniciativa |
+| *Lógica de misiones: solo conectar el panel* | Conectada. Un escenario **decide** el combate: se gana *aguantando rondas* con enemigos en pie, se pierde si cae quien había que proteger |
+| *Motor de combate y Persona al 100%* | Cierto, y ahora además **conectados**: las perks de vínculo cambian el combate, y 29 de los 30 módulos del motor los carga el juego |
+
+El único módulo del motor que sigue sin cargarse es `campaign-map.js` — salas, puertas y enemigos dormidos. Y eso importa aquí más que en ninguna otra parte: **una mazmorra de libro sin salas es un único combate gigante**.
+
+---
+
 ## 🧭 1. Diagnóstico Honesto: ¿Cómo de lejos estás hoy?
 
 **Respuesta directa**: Estás **mucho más cerca de lo que imaginas: a un ~75% - 80% de completar la visión.**
@@ -82,28 +105,28 @@ flowchart TD
 
 ## 📦 3. El Contrato de Datos: Los 5 Archivos del Paquete
 
-Para que el GEM y SillyTavern se entiendan sin fisuras, el GEM generará un paquete de 5 archivos JSON normalizados:
+> [!WARNING]
+> **Los ejemplos de esta sección están corregidos** contra el motor real (2026-09-21). La versión anterior usaba cinco campos que el juego no lee, y un paquete escrito así se importaría vacío o a medias. Lo que sigue es lo que el código entiende hoy.
 
-### 1. `world_lore.json` (Fondo y Ambientación)
-Contiene la mitología, las facciones políticas, rumores y secretos del libro:
-```json
-{
-  "name": "La Maldición de Strahd",
-  "genre": "Gothic Horror / Fantasía Oscura",
-  "synopsis": "Las brumas de Ravenloft han atrapado al grupo en el valle de Barovia...",
-  "factions": [
-    { "id": "vistani", "name": "Los Vistani", "reputation": 0, "goals": "Servir a Strahd o comerciar" },
-    { "id": "martikov", "name": "La Orden de la Pluma", "reputation": 10, "goals": "Resistencia secreta de cuervos" }
-  ],
-  "loreEntries": [
-    { "key": "Barovia", "content": "Valle sombrío rodeado de brumas mortales...", "type": "location" },
-    { "key": "Strahd von Zarovich", "content": "Señor vampiro del Castillo Ravenloft...", "type": "npc" }
-  ]
-}
-```
+### La decisión que lo ordena todo: el Gem escribe **nombres**, el ingestor resuelve **ids**
 
-### 2. `quests.json` (Misiones estilo Gloomhaven)
-Utiliza directamente los 7 tipos de objetivo que ya reconoce tu `campaign/scenarios.js`:
+Un libro no conoce —no puede conocer— los identificadores que el motor asignará: el id de un monstruo es el `uid` de su entrada de World Info, y esa entrada no existe hasta el momento de importar. Pedirle al Gem `targetIds` sería pedirle que invente ids que luego no coincidirán con nada.
+
+Así que el contrato usa **nombres legibles** y el ingestor los traduce al crear las entradas. Es exactamente el mismo problema que ya apareció con las reglas de encuentro del asistente: el tablero se escribía con la lista vacía porque los ids aún no existían, y `/fight` no encontraba enemigos en ninguna campaña nueva. La solución fue escribirlas **después**, y aquí vale igual.
+
+| El Gem escribe | El ingestor produce | Por qué |
+| :--- | :--- | :--- |
+| `"target": "Líder del Culto"` | `targetIds: ["<uid>"]` | El uid se crea al importar |
+| `"required": true` | `optional: false` | El motor razona en objetivos opcionales, no en requeridos |
+| `spawnPoints.party` | `partyStart` | El nombre que usan las plantillas |
+| `"enemies": [{name, x, y}]` | `encounterRules` + posiciones | Igual que `buildEncounterRules` |
+
+### 1. `world_lore.json` — sin cambios
+
+El ejemplo original es correcto: nombre, género, sinopsis, facciones y entradas de lore. Va directo al Lorebook.
+
+### 2. `quests.json` — corregido
+
 ```json
 [
   {
@@ -113,25 +136,40 @@ Utiliza directamente los 7 tipos de objetivo que ya reconoce tu `campaign/scenar
     "description": "Explora el sótano de la mansión encantada y destruye el culto.",
     "boardId": "board_death_house_dungeon",
     "objectives": [
-      { "type": "eliminate", "target": "Líder del Culto", "required": true },
-      { "type": "loot", "target": "Relicario de Obsidiana", "required": false }
+      { "type": "eliminate",  "label": "Acabar con el líder del culto", "target": "Líder del Culto" },
+      { "type": "survive_rounds", "label": "Aguantar el ritual", "rounds": 5 },
+      { "type": "loot", "label": "Recuperar el relicario", "treasures": ["Relicario de Obsidiana"], "optional": true }
     ],
-    "rewards": { "xp": 300, "gold": 50, "items": ["capa_de_proteccion"] },
     "unlockedLocations": ["pueblo_de_barovia"]
   }
 ]
 ```
 
-### 3. `boards_and_maps.json` (Localizaciones y Tableros Tácticos)
-Aprovecha tu formato ASCII que ya compila `terrainFromAsciiMap` (`#` muro, `.` suelo, `D` puerta, `~` terreno difícil, `c`/`C` cobertura):
+**Los siete tipos y lo que pide cada uno** — el motor ignora en silencio cualquier otro, así que el Gem solo puede usar estos:
+
+| Tipo | Campo que necesita | Se cumple cuando |
+| :--- | :--- | :--- |
+| `eliminate` | `target` (nombre) | Ese enemigo cae |
+| `eliminate_all` | — | No queda ninguno en pie |
+| `survive_rounds` | `rounds` | Se alcanza esa ronda |
+| `reach_cell` | `cell: {x, y}` | Alguien del grupo pisa la casilla |
+| `escort` | `ally` (nombre) + `cell` | Ese aliado llega vivo |
+| `protect` | `ally` (nombre) | Sigue en pie al terminar |
+| `loot` | `treasures` (nombres) | Se han recogido todos |
+
+`optional: true` marca los que pagan pero no bloquean. **No uses `required`**: el motor no lo lee.
+
+> [!NOTE]
+> **Las recompensas (`rewards`) no están en el motor.** Hoy el botín se calcula por el CR de lo que caiga (`combat/loot.js`), no lo fija la misión. Un paquete puede traerlas, pero se ignorarán hasta que exista soporte — y conviene decidir si lo queremos, porque una recompensa fija y una tabla por CR son dos economías distintas peleándose.
+
+### 3. `boards_and_maps.json` — corregido
+
 ```json
 [
   {
     "id": "board_death_house_dungeon",
     "name": "Cripta del Culto",
     "locationId": "loc_death_house",
-    "width": 14,
-    "height": 10,
     "map": [
       "##############",
       "#....#.......#",
@@ -141,132 +179,118 @@ Aprovecha tu formato ASCII que ya compila `terrainFromAsciiMap` (`#` muro, `.` s
       "#....~...#...#",
       "#.######.###.#",
       "#c...#.....c.#",
-      "#..S.#..E..#.#",
+      "#....#.....#.#",
       "##############"
     ],
-    "spawnPoints": { "party": [{ "x": 3, "y": 8 }], "enemies": [{ "name": "Ghoul", "x": 8, "y": 8 }] }
+    "partyStart": [{ "x": 3, "y": 8 }, { "x": 2, "y": 8 }],
+    "enemies": [{ "name": "Ghoul de Barovia", "x": 8, "y": 8 }]
   }
 ]
 ```
 
-### 4. `bestiary.json` (Enemigos y Perfiles Tácticos)
-Utiliza los perfiles de IA que ya ejecuta tu `enemy-ai.js`:
-```json
-[
-  {
-    "name": "Ghoul de Barovia",
-    "cr": 1,
-    "hp": 22,
-    "armorClass": 12,
-    "profile": "aggressive",
-    "attackRangeFeet": 5,
-    "actions": [{ "name": "Garras Paralizantes", "damage": "2d4+2", "dc": 10 }]
-  },
-  {
-    "name": "Murciélago Gigante",
-    "cr": 0.25,
-    "hp": 13,
-    "armorClass": 13,
-    "profile": "skirmisher",
-    "attackRangeFeet": 5
-  }
-]
-```
+Cambios: `partyStart` en lugar de `spawnPoints.party`, y **nada de `S` ni `E` dentro del mapa** — el motor solo entiende `#` muro, `.` suelo, `D` puerta cerrada, `o` puerta abierta, `~` terreno difícil, `c` cobertura media, `C` cobertura de tres cuartos. Cualquier otro carácter se convierte en suelo, con aviso. `width` y `height` sobran: salen del propio mapa.
 
-### 5. `confidants.json` (Compañeros y Social Links Persona)
-Inyecta confidentes para tu pestaña de Campaña (`bonds.js`):
+### 4. `bestiary.json` — sin cambios en lo esencial
+
+Correcto: `name`, `cr`, `hp`, `armorClass`, `profile` (solo `aggressive`, `skirmisher`, `guardian`, `coward`) y `attackRangeFeet`.
+
+**`actions` no se lee todavía.** El daño de un enemigo se deriva hoy de su CR. Un paquete puede traerlas para el futuro, pero no cambiarán nada aún, y es mejor saberlo que descubrirlo cuando el ghoul pegue distinto de lo que dice su ficha.
+
+### 5. `confidants.json` — corregido
+
 ```json
 [
   {
     "name": "Ireena Kolyana",
-    "arcana": "Sacerdotisa",
-    "initialBond": 0,
     "description": "Joven noble perseguida por el señor del valle.",
-    "startingPerk": "Apoyo Moral",
-    "rank10Perk": "Destino Inquebrantable"
-  },
-  {
-    "name": "Ismark el Menor",
-    "arcana": "Carro",
-    "initialBond": 1,
-    "description": "Espadachín y hermano protector de Ireena."
+    "initialBondPoints": 0,
+    "arcana": "Sacerdotisa"
   }
 ]
 ```
 
----
+**Las perks no se definen por personaje.** `bonds.js` las tiene fijas por rango — 3 ataque de seguimiento, 5 relevo, 8 aguantar, 10 contenido — iguales para todos. `startingPerk` y `rank10Perk` no existen; `arcana` se guarda como sabor y no hace nada mecánicamente. Cambiar eso significaría perks por confidente, que es una decisión de diseño, no un campo más.
 
-## 🧠 4. El GEM de Gemini: Cómo Diseñarlo
+### Y un sexto archivo que la sección 4 menciona y la 3 no
 
-Dado que un libro de campaña suele tener entre 100 y 300 páginas (o unas 50.000 a 150.000 palabras), **Gemini 1.5 Pro o 2.0 Pro es el modelo idóneo del mercado para esto**, gracias a su ventana de contexto de **2 millones de tokens** y su fidelidad a esquemas JSON.
-
-### Estrategia de Extracción del Gem (3 Fases de Inferencia):
-No le pidas al Gem que escriba los 5 archivos en una sola llamada (chocarías contra el límite de tokens de salida, que suele ser de 8.192 tokens por respuesta). Se estructura en **3 pasos secuenciales**:
-
-1. **Paso 1: El Esqueleto del Mundo**:
-   * *Entrada*: El PDF completo del libro.
-   * *Prompt*: *"Analiza este libro. Extrae la sinopsis, las facciones principales, la lista de todas las localizaciones clave y los personajes que pueden ser compañeros. Devuelve `world_lore.json` y `confidants.json`."*
-2. **Paso 2: Bestiario y Objetos**:
-   * *Prompt*: *"Basándote en las criaturas e ítems descritos en el texto, genera `bestiary.json` y `items.json` usando exclusivamente las categorías y perfiles tácticos admitidos por el motor (`aggressive`, `skirmisher`, `guardian`, `coward`)."*
-3. **Paso 3: Campaña, Misiones y Mazmorras ASCII**:
-   * *Prompt*: *"Extrae los arcos de aventura como una cadena de escenarios Gloomhaven. Para cada mazmorra o encuentro principal, diseña un tablero táctico en ASCII con casillas transitables y muros sellados. Devuelve `quests.json` y `boards_and_maps.json`."*
-
-> [!TIP]
-> Puedes crear este Gem en la web de **Google AI Studio** o en el creador de Gems de Gemini Advanced, guardando los esquemas JSON de tu proyecto en las instrucciones del sistema del Gem.
+`items.json` aparece en el paso 2 del Gem pero no entre los cinco. O son seis, o los objetos viven dentro del bestiario y del lore. **Recomiendo cinco**, con los objetos como entradas de lore: el motor todavía no sabe crear un `DndItem` desde un paquete, así que un sexto archivo sería un archivo que nadie lee.
 
 ---
 
-## 🛠️ 5. El Roadmap de Implementación en tu Proyecto
-
-Para hacer esto realidad sin romper la arquitectura de tu fork, este es el plan de trabajo estructurado en 4 baterías concisas:
-
-### 🟡 Batería I — Especificación y Validador del Paquete (`campaign-pack.js`)
-* **Qué hacer**: Crear `public/scripts/game-engine/campaign/campaign-pack.js`.
-* **Misión**: Una función pura `validateCampaignPack(pack)` que verifique:
-  * Que los `boardId` mencionados en las misiones existan en la lista de tableros.
-  * Que los nombres de enemigos en los spawns existan en el bestiario.
-  * Que los mapas ASCII sean rectangulares, tengan muros exteriores y al menos un punto de inicio para el grupo.
-* **Coste**: 0 cambios en upstream. ~25 tests unitarios.
-
-### 🟡 Batería II — El Compilador de Ingesta (`campaign-importer.js`)
-* **Qué hacer**: Crear `public/scripts/game-engine/campaign/campaign-importer.js`.
-* **Misión**: Tomar el paquete JSON validado y:
-  1. Crear la entrada de Campaña con su `world_info` mediante `buildWorldMetadata` y `buildWorldEntries`.
-  2. Registrar las reglas de encuentro (`buildEncounterRules`) para cada tablero.
-  3. Registrar el estado inicial de misiones en `QuestState`.
-  4. Crear las fichas de compañeros en `chat_metadata.party` con sus vínculos iniciales a rango 0.
-* **Coste**: 0 cambios en upstream. Reutiliza las funciones que ya escribiste en `campaign-worlds.js` y `starter-templates.js`.
-
-### 🟡 Batería III — Interfaz de Usuario: "Importar Campaña"
-* **Qué hacer**: Extender el diálogo de bienvenida (`ui/campaign-wizard.js`).
-* **Misión**: 
-  * Añadir una cuarta tarjeta en el Asistente de Campaña: **"Importar Campaña (JSON / ZIP)"**.
-  * Permitir arrastrar los 5 archivos generados por el Gem o seleccionarlos desde el explorador de archivos.
-  * Botón de vista previa donde ves el título del libro, número de misiones y tableros antes de confirmar.
-  * Al pulsar "Comenzar Aventura", te sitúa en la primera localización del libro con el grupo listo.
-
-### 🟡 Batería IV — El HUD de Misiones (Completar Fase E5)
-* **Qué hacer**: Conectar `campaign/scenarios.js` a la interfaz de juego.
-* **Misión**:
-  * Un botón o pestaña desplegable **"Misiones"** (junto a Party y Campaña).
-  * Muestra el objetivo activo actual (ej. *"Derrota al Líder del Culto en la Cripta (0/1)"*).
-  * Cuando el motor táctico resuelve la última muerte o el grupo llega a la casilla objetivo, el motor marca la misión como completada, entrega el oro/XP y desbloquea el siguiente escenario en el mapa.
-
----
-
-## ⏱️ Estimación de Esfuerzo
-
-| Módulo | Estado actual en tu código | Trabajo restante |
-| :--- | :--- | :--- |
-| **Motor de Combate & Tableros** | ✅ 100% Hecho y testeado | Ninguno |
-| **Sistema Persona & Vínculos** | ✅ 100% Hecho y testeado | Ninguno |
-| **Lógica de Misiones Gloomhaven** | ✅ 100% Hecho (`scenarios.js`) | Solo conectar el panel visual (E5) |
-| **Validador & Compilador de Ingesta** | 🟡 60% Hecho (`world-schema.js`) | Ampliar el esquema para múltiples tableros y misiones |
-| **Interfaz de Importación** | 🟡 50% Hecho (`campaign-wizard.js`) | Añadir el lector de archivos JSON |
-| **GEM de Extracción en Gemini** | ⚪ 0% (Fuera del código) | Redactar el System Prompt del Gem con los schemas |
+## 🧠 4. El GEM de Gemini `FUERA DEL CÓDIGO — LO LLEVAS TÚ`
 
 > [!IMPORTANT]
-> **Conclusión**: No necesitas meses de desarrollo. Con solo implementar el **Validador/Compilador de Campaña** y el **Prompt del Gem**, podrás meter cualquier libro de rol o novela fantástica en tu SillyTavern y empezar a jugar de inmediato.
+> **Esto no se desarrolla aquí.** Lo harás con tu suscripción de Gemini, en la web, no con llamadas a la API. El programa no diseña el Gem, no lo invoca y no paga por él.
+>
+> Lo que el programa sí te debe, y es lo único que necesita de este lado:
+>
+> 1. **El esquema exacto, listo para pegar** en las instrucciones del Gem — generado desde el código, no copiado a mano, porque una copia a mano se desincroniza en cuanto el motor cambie y el fallo aparecerá dos libros más tarde.
+> 2. **Un validador que no perdone**, que al importar diga qué falta, qué sobra y qué se ha reparado. Cuando el productor vive fuera del repositorio, la frontera tiene que ser dura.
+> 3. **Un paquete de ejemplo** que puedas enseñarle al Gem como muestra de salida correcta.
+
+La estrategia de tres pasos que describe el texto original —esqueleto, bestiario, campaña y mazmorras— es sensata por el límite de tokens de salida, y se mantiene como nota tuya. El resto de esta sección es tuyo y el código no opina.
+
+---
+## 🛠️ 5. El Roadmap de Implementación `REDEFINIDO — 2026-09-21`
+
+Cuatro tareas, en este orden. El orden importa: cada una produce lo que la siguiente necesita, y la primera es la que desbloquea que puedas empezar a trabajar con tu Gem **mientras** se construye el resto.
+
+### G1 · El esquema, exportable `HECHO — 2026-09-21`
+
+**`/esquema-campana`** abre el contrato con ocho vistas: las instrucciones completas, el esquema a secas, un ejemplo de salida correcta y una por cada sección — porque un libro no cabe en una respuesta y el Gem tendrá que producirlo por partes.
+
+Los siete tipos de objetivo salen de `scenarios.js`, los cuatro perfiles de `enemy-ai.js` y los caracteres del mapa de `terrain.js`. **Se genera, no se escribe**: si el motor cambia, cambia lo que pegas.
+
+Incluye las diez reglas que un JSON Schema no puede expresar —las cruzadas entre secciones, que es donde un paquete generado falla de verdad— y un ejemplo que no es el caso fácil: dos tableros, una referencia cruzada, un objetivo opcional y uno de proteger.
+
+**Ya puedes montar el Gem con esto.**
+
+### G2 · El validador del paquete (`campaign-pack.js`)
+
+Puro, y duro. Comprueba lo que el documento original proponía y algunas cosas más que la experiencia de este proyecto añade:
+
+- Que cada `boardId` de una misión exista entre los tableros, y que cada nombre de enemigo exista en el bestiario — **la integridad cruzada es donde un paquete generado falla**, no en el formato de un campo suelto.
+- Que cada mapa sea rectangular, tenga el borde sellado y deje sitio transitable donde empieza el grupo. *(Ese fue un fallo real: dos personajes dentro de un muro.)*
+- Que los tipos de objetivo sean de los siete, y que cada uno traiga su campo.
+- Que los perfiles tácticos sean de los cuatro.
+- Que los nombres no se repitan: el Lorebook indexa por nombre y el segundo borraría al primero. *(También fue un fallo real.)*
+
+Repara lo reparable y **lo enumera**; rechaza lo que no. Igual que el generador de mundos, y por la misma razón.
+
+### G3 · El compilador (`campaign-importer.js`)
+
+Toma el paquete validado y lo convierte en campaña jugable reutilizando lo que ya existe: `buildWorldMetadata`, `buildWorldEntries`, `buildEncounterRules`, `QuestState`, y las fichas del grupo con sus vínculos.
+
+**Lo que hace distinto a un mundo de plantilla**: varios tableros, varias localizaciones y una cadena de misiones. Ahí es donde el esquema actual se queda corto — hoy produce una localización y un tablero.
+
+Y aquí es donde se resuelven los nombres a ids, después de crear las entradas.
+
+### G4 · Importar desde el asistente
+
+Una cuarta tarjeta junto a *Mazmorra clásica* y *Generar con IA*: **Importar campaña**. Arrastras los cinco archivos, ves qué trae —título, misiones, tableros, confidentes, y los avisos de reparación— y decides. Igual que la previsualización de la generación con IA, que ya funciona así.
+
+### Lo que hay que hacer antes o a la vez: las salas
+
+`campaign-map.js` es el último módulo del motor sin conectar, y para esto no es opcional: **una mazmorra de libro sin salas es un único combate gigante**. Abrir una puerta debe revelar la sala y despertar lo que haya dentro. Está como **A2** en [[POR_HACER]].
+
+---
+
+## ⏱️ Dónde estás de verdad
+
+| Pieza | Estado |
+| :--- | :--- |
+| Motor de combate y tableros | ✅ Hecho, probado y **conectado** |
+| Persona: calendario, vínculos y perks | ✅ Hecho y conectado; las perks cambian el combate |
+| Misiones Gloomhaven | ✅ Los siete objetivos deciden el combate y se ven en pantalla |
+| Salas, puertas y enemigos dormidos | ⬜ **El último módulo sin conectar** |
+| Esquema de un paquete multicapítulo | ✅ `campaign-pack-schema.js`, generado desde el motor · 31 tests |
+| Validador de integridad cruzada | ⬜ |
+| Compilador de ingesta | ⬜ |
+| Interfaz de importación | 🟡 El asistente existe; falta la cuarta tarjeta |
+| El Gem | ⚪ Tuyo, fuera del código |
+
+> [!NOTE]
+> **Sobre el «75-80%»**: la mitad del motor que se da por hecha es real y está medida — `node tools/check-engine-wiring.mjs` dice 29 de 30 módulos cargados por el juego. Lo que no mediría bien ese porcentaje es el esfuerzo restante: lo que queda no es el trozo difícil de programar, es el trozo **difícil de acordar**. El contrato entre tu Gem y el motor es donde este plan se gana o se pierde, y por eso la primera tarea es escribirlo de forma que no se pueda copiar mal.
 
 ---
 

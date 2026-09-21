@@ -44,9 +44,9 @@ mindmap
       [[PROBLEMAS_TECNICOS]]
       [[PROPUESTAS_MEJORA]]
       [[ROADMAP]]
-      [[POR_HACER]]
       [[PROPUESTA_JUEGO_DND_GLOOMHAVEN_PERSONA]]
       [[ROADMAP_INGESTA_CAMPANAS_LIBROS]]
+      [[PROPUESTA_FRONTEND_MODO_JUEGO]]
     Guías & Referencia
       [[Mapa-Codigo-Archivos]]
       [[Guia-Desarrollo-Flujo]]
@@ -87,7 +87,8 @@ Diagnóstico crítico y catálogo exhaustivo de propuestas de mejora:
 - [[PROBLEMAS_TECNICOS]]: **Auditoría profunda** con 15 hallazgos críticos de seguridad (XSS, CSP), desincronización de estado, cuellos de botella de memoria y ausencia de tests. Con el estado de cada hallazgo comprobado contra el código: 6 corregidos, 4 parciales y 5 abiertos.
 - [[PROPUESTAS_MEJORA]]: **Catálogo de 200 propuestas técnicas estructuradas** en 10 áreas estratégicas (arquitectura, seguridad, D&D, VTT, agentes, UI/UX, bases de datos y DevOps). Cada propuesta con novedad lleva su marca de estado, y el anexo recoge 12 propuestas propias.
 - [[PROPUESTA_JUEGO_DND_GLOOMHAVEN_PERSONA]]: **Propuesta de Motor Híbrido RPG** (Persona + Gloomhaven + D&D 5e): combate táctico algorítmico 0 tokens, social links con perks de combate, calendario y lienzo blanco de world building. Incluye el estado de cada pilar y las correcciones que la realidad impuso.
-- [[ROADMAP_INGESTA_CAMPANAS_LIBROS]]: **Pipeline de Ingesta de Libros y Módulos**: Cómo transformar un libro/PDF en una campaña viva mediante un GEM de Gemini (world lore, misiones Gloomhaven, tableros ASCII, monstruos y confidentes) e importarlo al motor.
+- [[ROADMAP_INGESTA_CAMPANAS_LIBROS]]: **De un libro a una campaña jugable.** El contrato de datos entre un GEM de Gemini y el motor, con el validador y el importador que faltan.
+- [[PROPUESTA_FRONTEND_MODO_JUEGO]]: **Frontend Dedicado "Modo Videojuego"**: Cómo eliminar el ruido de SillyTavern mediante una Pantalla de Título (Nueva/Cargar/Opciones) y un HUD de juego inmersivo (Dock de Party, Diálogo RPG, Tablero), sin tocar `index.html`.
 - [[ROADMAP]]: **El plan de trabajo único.** Reconcilia la auditoría, el catálogo y el diseño de juego en 6 fases ordenadas por lo que desbloquean, más las transversales de economía de tokens. Cada fase termina en algo jugable. Empieza con *Dónde Estamos*: qué está hecho, qué está conectado al juego y qué falta.
 - [[POR_HACER]]: **Lista viva de pendientes**, ordenada por lo que desbloquea. Marca con 🖥️ las tareas que convierten motor construido en juego jugable. Incluye una prueba manual de dos minutos.
 
@@ -116,6 +117,7 @@ Si eres un agente de IA interactuando con este repositorio, sigue estas directri
 | Crear un mundo con IA | [[ROADMAP]] Fase F | *Nueva campaña* → *Generar con IA* · `game-engine/world-builder/world-schema.js` |
 | Cambiar cómo se empieza una campaña o añadir una plantilla | [[ROADMAP]] *El Asistente de Campaña* | `game-engine/ui/campaign-wizard.js`, `campaigns.js`, `game-engine/campaign/starter-templates.js` |
 | Probar el tablero o el combate sin montar una campaña | [[POR_HACER]] *Probarlo a mano* | `/sandbox` → `game-engine/ui/sandbox.js` |
+| Jugar a pantalla completa: tablero y diálogo | [[PROPUESTA_FRONTEND_MODO_JUEGO]] H1–H2 | **`/modojuego`** en el chat → `game-engine/ui/shell/` |
 | Integrar cambios de upstream sin romper el fork | [[Guia-Desarrollo-Flujo]] §2 | `.vscode/settings.json` & `public/index.html` |
 | Entender cómo se inyectan los datos al LLM | [[Ciclo-De-Vida-Prompt]] | `public/script.js` (~línea 3137) |
 | Localizar un archivo en el proyecto | [[Mapa-Codigo-Archivos]] | Índice del repositorio |

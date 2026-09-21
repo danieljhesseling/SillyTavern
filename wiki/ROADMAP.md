@@ -28,17 +28,26 @@ La lógica de las Fases A a E está escrita y probada. Lo que un jugador puede t
 | **E · Escenarios y tablero de campaña** | ✅ | 🟡 los objetivos deciden el combate · ⬜ salas y puertas | 🟡 objetivos en el tablero |
 | **F · Lienzo blanco (IA)** | ✅ | ✅ dentro del asistente | ✅ con previsualización |
 | **T · Medir el gasto** | ✅ | ✅ `/prompt` | ✅ desglose por bloque |
+| **G · Ingesta de libros** | 🟡 el contrato, hecho | 🟡 `/esquema-campana` | 🟡 · el GEM lo llevas tú, fuera del código |
+| **H · Modo videojuego** | 🟡 director y diálogo, hechos y probados | 🟡 `/modojuego` · teclas `1` y `3` | 🟡 dos de las tres pantallas |
 
 > [!NOTE]
 > **Cómo leerla.** ✅ hecho y comprobado · 🟡 parcial · ⬜ sin empezar. *Conectada* quiere decir que un jugador puede provocarla: un módulo que solo ejecutan los tests cuenta como ⬜, por bien probado que esté.
 >
-> Esto ya no se estima, se mide: `node tools/check-engine-wiring.mjs` responde hoy **26 de 28 módulos conectados**. Los dos que faltan son `scenarios.js` y `campaign-map.js` (582 líneas), la Fase E, que espera su interfaz.
+> Esto ya no se estima, se mide: `node tools/check-engine-wiring.mjs` responde hoy **34 de 35 módulos conectados**. El único que falta es `campaign-map.js` (275 líneas), que espera la escena de exploración (H4).
 
 **Lo que sigue, en este orden:**
 
-1. **Los descansos** (A1): el otro lado del calendario, sin el cual los recursos no significan nada.
-2. **Las salas y las puertas** (A2): el último módulo del motor que nadie carga.
-3. **El prefijo estable del prompt** (A3): la palanca de coste que funciona con Gemini, con OpenAI y con Claude por igual.
+1. **El director automático** (H3): que empezar un combate cambie la pantalla y terminarlo la devuelva al diálogo para el epílogo. Las dos escenas que necesita ya existen.
+2. **La escena de exploración** (H4), que trae consigo `campaign-map.js`, el último módulo del motor que nadie carga.
+3. **La pantalla de título y el menú de pausa** (H5): lo último, porque una fachada sobre escenas a medias no sirve de nada.
+4. **Retomar la ingesta** (Fase G): el validador, el compilador y la importación.
+
+La pantalla de combate (H1) y la de diálogo (H2) están hechas desde el 2026-09-21.
+
+**Mientras tanto, el Gem no está bloqueado**: `/esquema-campana` ya entrega el contrato exacto, así que se puede probar con un libro real en paralelo — y lo que se aprenda ahí puede cambiar el contrato, que hoy es barato de cambiar.
+
+La dirección cambió el 2026-09-21 con [[ROADMAP_INGESTA_CAMPANAS_LIBROS]]: la meta deja de ser *«generar un mundo»* y pasa a ser *«meter un libro y jugarlo»*.
 
 Desde el 2026-09-21 lo pendiente está dividido en [[POR_HACER]] por **quién decide**: lo que se puede hacer sin preguntar, lo que necesita una decisión tuya, y las propuestas.
 
@@ -133,7 +142,7 @@ Las Fases A y B **no ahorran tokens**. Lo que entregan es jugabilidad: IA que re
 | **Motor de juego (A–E)** | 18 archivos y 4.666 líneas en `game-engine/` (tablero, combate, campaña, reglas, interfaz) · lógica completa de las Fases A a E con tests · lo que está conectado, en *Dónde Estamos* |
 | **Asistente de campaña** | Botón *Nueva campaña* · 4 plantillas · tarjetas *Iniciar* para mundos sin partida · verificado de extremo a extremo (sección propia más abajo) |
 
-**Estado verificable** (medido el 2026-09-21): 1.201 tests en 46 suites · 0 errores de tipos en 44 archivos del fork · **0 errores de ESLint** · 29 de 30 módulos del motor conectados al juego · 79 comprobaciones en navegador real, estables en tres pasadas.
+**Estado verificable** (medido el 2026-09-21): 1.273 tests en 49 suites · 0 errores de tipos en 49 archivos del fork · **0 errores de ESLint** · 34 de 35 módulos del motor conectados al juego · 124 comprobaciones en navegador real, estables en dos pasadas.
 
 > [!NOTE]
 > Este trabajo no era un desvío. Sin el merge no tendrías los 194 commits de upstream; sin los tests no podrías tocar el motor de combate sin miedo; sin el gate de tipos cada refactor sería a ciegas. Las fases que vienen se apoyan en eso.
@@ -523,7 +532,7 @@ La primera versión pasó todos sus tests y **no funcionó**. Lo encontró quien
 >
 > Lo que sí lo detecta es recorrer el flujo en un navegador real. Se hizo con Playwright y Edge contra un servidor con datos aislados, sembrado con una copia del mundo huérfano real. Comprobó, en instalación limpia: crear → chat vinculado al mundo → grupo en las casillas (2,8) y (3,8) → tablero visible con muros y dos fichas → volver a la bienvenida → la tarjeta figura como campaña en curso. Y sobre el mundo huérfano: tarjeta con *Iniciar* → selector de grupo → arranque → pasa a ser campaña normal.
 >
-> **Desde el 2026-09-21 eso está en el repositorio**: `tools/e2e-campaign.mjs` levanta su propio servidor con un `--dataRoot` temporal, recorre el juego y limpia al terminar. No toca tus datos y tu servidor de siempre puede seguir abierto. Son 55 comprobaciones: crear la campaña, las posiciones de inicio, el tablero, abrir una puerta, un combate con su registro, que el epílogo **no** sea un mensaje de sistema, y la campaña listada al cerrar.
+> **Desde el 2026-09-21 eso está en el repositorio**: `tools/e2e-campaign.mjs` levanta su propio servidor con un `--dataRoot` temporal, recorre el juego y limpia al terminar. No toca tus datos y tu servidor de siempre puede seguir abierto. Son 124 comprobaciones: crear la campaña, las posiciones de inicio, el tablero, abrir una puerta, un combate con su registro, que el epílogo **no** sea un mensaje de sistema, y la campaña listada al cerrar.
 >
 > ```bash
 > node tools/e2e-campaign.mjs            # headless
@@ -588,6 +597,56 @@ Un modelo entiende la idea de una mazmorra y es descuidado con la cuadrícula. C
 > **Corrección a la propuesta**: atarlo a Gemini es un error. SillyTavern es agnóstico de proveedor y tú tienes ~20 conectores funcionando — es una de tus mayores ventajas. Las salidas estructuradas existen en Anthropic, OpenAI y en modelos locales vía gramáticas. Escribe contra una interfaz, elige el proveedor en los ajustes.
 >
 > Y como el lienzo blanco es una tarea **mecánica** (rellenar un esquema), es la primera candidata al modelo barato de la palanca #3.
+
+---
+
+## 🅶 Fase G — Ingesta de Campañas y Libros `NUEVA — 2026-09-21`
+
+> **De qué va**: coger un libro de campaña o una novela, pasarlo por un **GEM de Gemini que tú manejas fuera del programa**, y que lo que devuelva se importe como una campaña jugable. El detalle está en [[ROADMAP_INGESTA_CAMPANAS_LIBROS]].
+
+Esto reordena el final del plan. La Fase F genera un mundo de una sola localización desde una frase; la Fase G importa **una campaña entera** — varios tableros, una cadena de misiones, un bestiario y unos confidentes — desde un paquete que produce otra cosa.
+
+| ID | Tarea | Notas |
+| :--- | :--- | :--- |
+| **G1** | **El esquema, exportable.** | ✅ `/esquema-campana` · `campaign/campaign-pack-schema.js` · 31 tests · con ejemplo de salida y las diez reglas que un esquema no puede expresar |
+| **G2** | **Validador del paquete**, con integridad cruzada: que los tableros que citan las misiones existan, que los enemigos de los spawns estén en el bestiario, que los mapas dejen sitio donde empieza el grupo | Puro, testeable. Donde falla un paquete generado no es en un campo suelto, es aquí |
+| **G3** | **Compilador de ingesta**: del paquete a mundo, misiones, tableros y confidentes, reutilizando los constructores que ya existen | Aquí se resuelven los **nombres a ids**, después de crear las entradas |
+| **G4** | **Importar desde el asistente**: cuarta tarjeta, previsualización y adelante | Igual que la previsualización de la generación con IA |
+
+> [!IMPORTANT]
+> **El GEM queda fuera del código.** Lo llevas tú con tu suscripción, no con llamadas a la API, así que el programa no lo diseña, no lo invoca y no lo paga. Lo que sí le debe es el esquema exacto y un validador que no perdone.
+>
+> Esa división es justo lo que hace del **contrato de datos la pieza principal** de esta fase. Cuando quien produce los datos vive fuera del repositorio, el contrato deja de ser un detalle interno: es la frontera, y una frontera mal escrita se descubre después de procesar un libro entero.
+
+> [!WARNING]
+> **El documento de ingesta traía cinco campos que el motor no lee** — `required` en vez de `optional`, `targetIds` que ningún libro puede conocer, `spawnPoints`, recompensas por misión y perks por confidente. Están corregidos allí. Es el mismo tipo de error que ya se pagó dos veces en este proyecto: datos escritos contra un motor imaginado en vez de contra el que hay.
+
+**Depende de**: las salas y las puertas (`campaign-map.js`, E2). Una mazmorra de libro sin salas es un único combate gigante, así que esa deja de ser una tarea suelta y pasa a ser un requisito de esta fase.
+
+---
+
+## 🅷 Fase H — El Modo Videojuego `NUEVA — 2026-09-21`
+
+> **De qué va**: tres pantallas completas —combate, diálogo y exploración— que se alternan según lo que esté pasando, con el ruido técnico de SillyTavern detrás de una pantalla de título y un menú de pausa. El plan está en [[PROPUESTA_FRONTEND_MODO_JUEGO]].
+
+| ID | Tarea | Notas |
+| :--- | :--- | :--- |
+| **H1** ✅ | **El armazón y la pantalla de combate** | **Hecho el 2026-09-21.** `/modojuego` pone el tablero a pantalla completa con el rastreador, el registro y la barra de acciones. El panel se **mueve** al escenario y vuelve a su sitio al apagarlo. `scene-director.js`, puro, con 24 tests |
+| **H2** ✅ | **La escena de diálogo** | **Hecho el 2026-09-21.** Retrato, rango de vínculo, el chat **movido** debajo y la franja del grupo. `dialogue-scene.js`, puro, con 17 tests |
+| **H3** | **El director automático** | Escuchando al motor |
+| **H4** | **La escena de exploración** | Y con ella, el tablero de campaña (`campaign-map.js`) |
+| **H5** | **Pantalla de título y pausa** | Lo último: una fachada bonita sobre escenas a medias no sirve de nada |
+
+> [!IMPORTANT]
+> **Esta fase es, en su mayor parte, recolocar lo que ya funciona.** Casi 8.000 líneas de motor están conectadas y producen exactamente lo que cada pantalla necesita. Las escenas llaman a los renderizadores existentes; si alguna dibujase una versión propia, habría dos interfaces que mantener y se desincronizarían.
+
+> [!WARNING]
+> **Dos correcciones que el plan original necesitaba**, y que están resueltas antes de empezar:
+>
+> 1. **El director escucha al motor, no al Dynamic Context.** Ese estado lo decide el modelo —por heurística sobre su prosa, o llamando a `dnd_update_state`—, así que una frase de ambiente habría saltado a la pantalla de combate sin combate. La pantalla es estado del juego, no narración: es la sección §0 otra vez.
+> 2. **El chat se mueve, no se replica.** `#sheld` lleva dentro el chat y el formulario, con su streaming, sus swipes y sus macros. Reimplementarlo sería rehacer media aplicación; reubicarlo son dos líneas. Eso es lo que hace viable esta fase.
+
+**Y se puede apagar.** Es la primera capa del proyecto que es presentación pura, donde los tests llegan menos lejos. Con `/modojuego` apagado, la aplicación es exactamente la de hoy — de modo que si un merge con upstream rompe una pantalla, el juego sigue.
 
 ---
 
@@ -671,10 +730,10 @@ Lo medido: la **lógica** de las Fases A a E (18 archivos y 4.666 líneas en `ga
 ## 🔬 Verificación
 
 ```bash
-npm run test:unit --prefix tests     # 1.201 tests, 46 suites
-node tools/check-fork-types.mjs      # 0 errores en los 44 archivos del fork
-node tools/check-engine-wiring.mjs   # 29 de 30 módulos del motor conectados al juego
-node tools/e2e-campaign.mjs          # 79 comprobaciones en un navegador real
+npm run test:unit --prefix tests     # 1.273 tests, 49 suites
+node tools/check-fork-types.mjs      # 0 errores en los 49 archivos del fork
+node tools/check-engine-wiring.mjs   # 34 de 35 módulos del motor conectados al juego
+node tools/e2e-campaign.mjs          # 124 comprobaciones en un navegador real
 ESLINT_USE_FLAT_CONFIG=false npx eslint public/scripts/game-engine public/scripts/party public/scripts/party.js public/scripts/campaigns.js public/scripts/world-map-renderer.js tools   # 0 errores
 git fetch upstream && git merge upstream/release
 ```
@@ -713,6 +772,8 @@ Afirmaciones de este proyecto que resultaron falsas, con lo que se hizo. Están 
 
 - [[HOME]]: Portal principal de la Wiki.
 - [[POR_HACER]]: Lista viva de pendientes derivada de este plan.
+- [[ROADMAP_INGESTA_CAMPANAS_LIBROS]]: La Fase G en detalle — el contrato de datos entre tu GEM y el motor.
+- [[PROPUESTA_FRONTEND_MODO_JUEGO]]: La Fase H en detalle — las tres pantallas y por qué el director escucha al motor.
 - [[PROPUESTA_JUEGO_DND_GLOOMHAVEN_PERSONA]]: Diseño de juego del que salen las Fases B, D, E y F.
 - [[PROBLEMAS_TECNICOS]]: Auditoría de la que salen las correcciones ya aplicadas.
 - [[PROPUESTAS_MEJORA]]: Catálogo de 200 del que se seleccionan las `PROP-xxx` citadas; incluye el estado de cada una y el anexo con las propuestas propias (`N-01` a `N-14`).

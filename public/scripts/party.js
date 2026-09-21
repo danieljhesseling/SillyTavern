@@ -62,6 +62,10 @@ import { guardRolls, guardImpossibleRolls, describeCorrections } from './game-en
 import {
     planRulesetChange, readRememberedRuleset, rememberRuleset, setActiveRuleset,
 } from './game-engine/rules/ruleset.js';
+import {
+    isShellOpen, toggleGameShell, refreshGameShell, closeGameShell,
+} from './game-engine/ui/shell/game-shell.js';
+import { buildDialogueView } from './game-engine/ui/shell/dialogue-scene.js';
 
 /** @typedef {import('./party/types.js').PartyMember} PartyMember */
 /** @type {PartyMember[]} */
@@ -681,7 +685,15 @@ function loadLocationMapsVisibility() {
 /**
  * @param {boolean} hidden
  */
-function setLocationMapsVisibility(hidden) {
+/**
+ * Plegar o desplegar el panel de localizacion.
+ *
+ * El nombre dice "hidden" y no "visible" a proposito: se llamaba setLocationMapsVisibility
+ * y recibia "hidden", asi que pasarle true lo ocultaba. El Modo Juego nacio plegado por eso.
+ *
+ * @param {boolean} hidden
+ */
+function setLocationMapsHidden(hidden) {
     locationMapsManuallyHidden = Boolean(hidden);
     try {
         window.localStorage.setItem(LOCATION_MAPS_MANUAL_HIDDEN_KEY, String(locationMapsManuallyHidden));
@@ -2743,7 +2755,145 @@ function buildCombatSection(board) {
     return section;
 }
 
+// ---------------------------------------------------------------------------
+// El Modo Juego (wiki/ROADMAP.md, Fase H · PROPUESTA_FRONTEND_MODO_JUEGO.md, H1)
+//
+// Pegamento y nada mas: el Shell no sabe nada de D&D y este bloque no sabe nada de
+// pantallas. Lo que el director necesita son hechos que el motor ya tiene.
+// ---------------------------------------------------------------------------
+
+/**
+ * Lo que el motor sabe de la partida, para el director de escena.
+ *
+ * Ni una sola de estas respuestas viene del modelo: son el mundo cargado, el tablero
+ * abierto y el encuentro en curso.
+ *
+ * @returns {import('./game-engine/ui/shell/scene-director.js').GameSituation}
+ */
+function buildShellSituation() {
+    return {
+        hasChat: Boolean(chat_metadata && chat_metadata[METADATA_KEY]),
+        combatActive: Boolean(combatEncounter.active),
+        boardName: currentBoardName || '',
+        locationName: currentLocationName || '',
+        hasWorldMap: Boolean(getCurrentWorldMapUrl()),
+    };
+}
+
+/**
+ * Lo que la barra de acciones necesita del turno en curso.
+ *
+ * @returns {import('./game-engine/ui/shell/game-shell.js').CombatBar}
+ */
+function buildShellCombatBar() {
+    if (!combatEncounter.active) {
+        return { active: false, round: 0, turnLabel: '', movement: '', isPlayerTurn: false, hasAction: false, targets: [] };
+    }
+
+    const entry = getCurrentTurnEntry();
+    const member = getCurrentActingMember();
+    const isPlayerTurn = Boolean(entry && !entry.isEnemy && member);
+    const speed = Number(member?.speed) || 30;
+    const remaining = member ? getRemainingMovementFeet(member) : 0;
+
+    const targets = (isPlayerTurn ? getAttackableEnemiesForMember(member) : []).map(enemy => ({
+        name: enemy.name,
+        detail: `${getDistanceInFeet(member?.mapPosition?.gridX || 0, member?.mapPosition?.gridY || 0, enemy.gridX || 0, enemy.gridY || 0)} pies · PG ${enemy.currentHp}/${enemy.maxHp} · CA ${enemy.armorClass}`,
+    }));
+
+    return {
+        active: true,
+        round: Number(combatEncounter.round) || 1,
+        turnLabel: entry ? `Turno de ${entry.name}` : 'Combate en curso',
+        movement: isPlayerTurn ? `Movimiento: ${remaining}/${speed} pies` : '',
+        isPlayerTurn,
+        hasAction: isPlayerTurn && hasAction(combatEncounter, 'action'),
+        targets,
+    };
+}
+
+/**
+ * Lo que la escena de dialogo dibuja: quien habla, como esta el grupo y en que momento
+ * del calendario va la partida.
+ *
+ * @returns {import('./game-engine/ui/shell/dialogue-scene.js').DialogueView}
+ */
+function buildShellDialogue() {
+    return buildDialogueView({
+        messages: chat,
+        party: partyMembers,
+        bonds: getCampaignBonds(),
+        calendar: getCampaignCalendar(),
+    });
+}
+
+/**
+ * @returns {import('./game-engine/ui/shell/game-shell.js').ShellOptions}
+ */
+function buildShellOptions() {
+    // El panel podia estar plegado antes de encender el Shell, y apagarlo tiene que
+    // dejarlo como estaba: el Shell lo despliega porque es su escenario, no porque el
+    // jugador lo pidiera.
+    const wasHidden = locationMapsManuallyHidden;
+    return {
+        getSituation: buildShellSituation,
+        getCombatBar: buildShellCombatBar,
+        getDialogue: buildShellDialogue,
+        renderStage: () => renderLocationMapsPreview(),
+        onAttack: (name) => handlePlayerCombatAttack(name),
+        onEndTurn: () => endPlayerCombatTurn(),
+        onFlee: () => {
+            if (!combatEncounter.active) return;
+            endCombat('manual');
+            renderLocationMapsPreview();
+        },
+        onClose: () => setLocationMapsHidden(wasHidden),
+        onObjectives: () => {
+            const verdict = judgeCurrentScenario();
+            toastr.info(
+                verdict ? verdict.summary : 'Este tablero no tiene objetivos: gana quien limpie el tablero.',
+                'Objetivos', { timeOut: 10000 },
+            );
+        },
+    };
+}
+
+/**
+ * Enciende o apaga el Modo Juego.
+ *
+ * Al encenderlo se abre el panel de localizacion aunque estuviera plegado: el Shell no
+ * tiene otra cosa que poner en el escenario, y una pantalla completa vacia no se
+ * entiende.
+ *
+ * @returns {string}
+ */
+function toggleGameMode() {
+    if (isShellOpen()) {
+        closeGameShell();
+        return 'modo juego apagado';
+    }
+
+    if (!chat_metadata || !chat_metadata[METADATA_KEY]) {
+        toastr.warning('Abre una campana antes de entrar en el Modo Juego.');
+        return '';
+    }
+
+    // Las opciones primero: guardan si el panel estaba plegado, y desplegarlo antes
+    // haria que el Shell lo "restaurara" siempre desplegado al apagarse.
+    const shellOptions = buildShellOptions();
+    setLocationMapsHidden(false);
+    toggleGameShell(shellOptions);
+    return 'modo juego encendido';
+}
+
 function renderLocationMapsPreview() {
+    drawLocationMapsPreview();
+    // El Shell dibuja su cabecera y su barra a partir del mismo estado que acaba de
+    // pintar el tablero, asi que se refresca aqui y no en cada sitio que redibuja.
+    if (isShellOpen()) refreshGameShell();
+}
+
+function drawLocationMapsPreview() {
     const container = $('#world_location_maps_list');
     if (!container.length) return;
 
@@ -2765,7 +2915,7 @@ function renderLocationMapsPreview() {
     container.append(shell);
 
     toolbar.find('[data-location-toggle]').on('click', () => {
-        setLocationMapsVisibility(!locationMapsManuallyHidden);
+        setLocationMapsHidden(!locationMapsManuallyHidden);
         renderLocationMapsPreview();
     });
 
@@ -4906,6 +5056,9 @@ export function initPartyPanel() {
     // Restore per-session party when chat changes
     eventSource.on(event_types.CHAT_CHANGED, () => {
         loadPartyForChat();
+        // Cerrar la partida con el Modo Juego encendido dejaria una pantalla completa
+        // sobre una aplicacion sin tablero que mostrar.
+        if (isShellOpen() && !chat_metadata?.[METADATA_KEY]) closeGameShell();
         // The campaign may play by its own rules; see applyCampaignRuleset.
         applyCampaignRuleset(String(chat_metadata?.[METADATA_KEY] || ''))
             .catch(error => console.error('[party] campaign ruleset failed', error));
@@ -5347,6 +5500,30 @@ export function initPartyPanel() {
 
     // The rank-5 perk, spent deliberately. Giving away your leftover movement is a
     // decision, so it is a command rather than something the engine does for you.
+    // The contract for the Gem that processes a book. The Gem itself lives outside this
+    // program — in a Gemini subscription — so the one thing the code owes it is an exact,
+    // generated schema: a copy kept by hand goes stale and the failure shows up a whole
+    // book later. See wiki/ROADMAP_INGESTA_CAMPANAS_LIBROS.md.
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'esquema-campana',
+        helpString: '<div>Entrega el contrato del paquete de campaña para pegarlo en tu Gem: '
+            + 'el esquema JSON, las reglas que el esquema no puede comprobar y un ejemplo de salida correcta.</div>',
+        callback: async () => {
+            const { openCampaignSchema } = await import('./game-engine/ui/campaign-schema-panel.js');
+            await openCampaignSchema({ Popup, POPUP_TYPE });
+            return 'esquema mostrado';
+        },
+    }));
+
+    // El Modo Juego se enciende y se apaga con el mismo comando, a proposito: es una capa
+    // de presentacion, y la garantia de que se pueda quitar vale tanto como la capa.
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'modojuego',
+        helpString: '<div>Enciende o apaga el Modo Juego: el tablero a pantalla completa, '
+            + 'con el rastreador, el registro y la barra de acciones. Se sale con <code>Esc</code>.</div>',
+        callback: () => toggleGameMode(),
+    }));
+
     SlashCommandParser.addCommandObject(SlashCommand.fromProps({
         name: 'objetivos',
         helpString: '<div>Muestra los objetivos del escenario en curso, si este tablero tiene alguno.</div>',

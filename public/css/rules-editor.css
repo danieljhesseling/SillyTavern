@@ -163,3 +163,75 @@
         border-bottom: 1px solid rgba(255, 255, 255, 0.12);
     }
 }
+
+/* ---- The campaign pack contract (wiki/ROADMAP_INGESTA_CAMPANAS_LIBROS.md) ---- */
+
+.cs-root {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    text-align: left;
+}
+
+.cs-title {
+    font-size: 1.12em;
+    font-weight: bold;
+}
+
+.cs-sub,
+.cs-note {
+    font-size: 0.83em;
+    opacity: 0.75;
+}
+
+.cs-tabs {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.cs-tab {
+    padding: 3px 9px;
+    border-radius: 12px;
+    font-size: 0.8em;
+    cursor: pointer;
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.cs-tab:hover {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.cs-tab.active {
+    background: rgba(201, 162, 39, 0.25);
+    font-weight: bold;
+}
+
+/* Monospaced and selectable: copying is the whole operation here. */
+.cs-text {
+    width: 100%;
+    font-family: 'Consolas', 'Menlo', monospace;
+    font-size: 11px;
+    line-height: 1.35;
+    white-space: pre;
+    overflow-x: auto;
+}
+
+.cs-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.cs-rules {
+    font-size: 0.83em;
+    opacity: 0.85;
+}
+
+.cs-rules ul {
+    margin: 6px 0 0;
+    padding-left: 18px;
+}
+
+.cs-rules li {
+    margin-bottom: 3px;
+}

@@ -860,6 +860,336 @@ try {
         [...document.querySelectorAll('.mes_text')].some(m => /Objetivos cumplidos/.test(m.textContent || '')));
     check('and says so as a mission accomplished, not just as a body count', said);
 
+    step('17. The contract you paste into your Gem');
+    // The rules-editor step leaves a toast open on purpose (it holds the reload button),
+    // and it sits over the dialog this step clicks in.
+    await page.evaluate(() => {
+        document.querySelectorAll('#toast-container .toast').forEach(t => t.remove());
+    });
+    await page.evaluate(() => {
+        void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/esquema-campana');
+    });
+    await page.waitForSelector('.cs-root', { timeout: 20000 });
+
+    const tabs = await page.locator('.cs-tab').allInnerTexts();
+    check('the contract opens with a view per thing you might copy', tabs.length >= 5, tabs.join(' · '));
+    check('including the example of a correct pack', tabs.some(t => /Ejemplo/.test(t)));
+    check('and one per section, because a book does not fit in one answer',
+        tabs.filter(t => /Sección/.test(t)).length === 5);
+
+    const instructions = await page.locator('.cs-text').inputValue();
+    check('the instructions carry the schema and the version',
+        instructions.includes('eliminate_all') && /Versión \d/.test(instructions),
+        `${instructions.length} caracteres`);
+
+    // The point of generating it: what you paste always matches what validates.
+    const matches = await page.evaluate(async () => {
+        const m = await import('/scripts/game-engine/campaign/campaign-pack-schema.js');
+        const { OBJECTIVE_TYPES } = await import('/scripts/game-engine/campaign/scenarios.js');
+        const schema = m.buildCampaignPackSchema();
+        const types = schema.properties.quests.items.properties.objectives.items.properties.type.enum;
+        return {
+            same: JSON.stringify([...types].sort()) === JSON.stringify(Object.keys(OBJECTIVE_TYPES).sort()),
+            asksForNames: Boolean(schema.properties.quests.items.properties.objectives.items.properties.target),
+            asksForIds: Boolean(schema.properties.quests.items.properties.objectives.items.properties.targetIds),
+        };
+    });
+    check('the objective types come from the engine, not from a copy',
+        matches.same, JSON.stringify(matches));
+    check('and it asks the author for names, never for ids a book cannot know',
+        matches.asksForNames && !matches.asksForIds, JSON.stringify(matches));
+
+    await page.locator('.cs-tab', { hasText: 'Ejemplo' }).click();
+    await page.waitForTimeout(400);
+    const example = await page.locator('.cs-text').inputValue();
+    check('the example is valid JSON, as a sample of correct output must be',
+        (() => { try { JSON.parse(example); return true; } catch { return false; } })());
+
+    check('the rules a schema cannot express are stated too',
+        await page.locator('.cs-rules li').count() >= 8,
+        `${await page.locator('.cs-rules li').count()} reglas`);
+
+    await page.click('.popup-button-ok');
+    await page.waitForTimeout(500);
+
+    step('18. El Modo Juego: el tablero a pantalla completa, y apagarlo no deja rastro');
+    // Where the board panel lives logBefore the Shell touches it. Putting it back exactly
+    // here is the whole promise of a layer that can be switched off.
+    const home = await page.evaluate(() => {
+        const panel = document.querySelector('#world_location_maps_row');
+        return {
+            parent: panel?.parentElement?.id || '',
+            previous: panel?.previousElementSibling?.id || '',
+            copies: document.querySelectorAll('#world_location_maps_row').length,
+        };
+    });
+
+    // A fight to look at, with the party on its feet: an attack button that is disabled
+    // because everyone is unconscious would prove nothing about the bar.
+    await page.evaluate(async () => {
+        const ctx = window.SillyTavern.getContext();
+        for (const member of ctx.chatMetadata.party || []) member.hp = member.maxHp;
+        await ctx.saveMetadata();
+        void ctx.executeSlashCommandsWithOptions('/fight Esqueleto 2');
+    });
+    await page.waitForTimeout(1800);
+    await clearDiceOverlay();
+
+    await page.evaluate(() => {
+        void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/modojuego');
+    });
+    await page.waitForSelector('#game-shell', { timeout: 15000 });
+    await page.waitForTimeout(900);
+
+    check('el Modo Juego se enciende con un comando', await page.locator('#game-shell').count() === 1);
+    check('y la barra superior de SillyTavern se aparta mientras dura',
+        await page.locator('#top-bar').isVisible().catch(() => false) === false);
+
+    // The point of moving instead of copying: there is still exactly one board.
+    const moved = await page.evaluate(() => ({
+        copies: document.querySelectorAll('#world_location_maps_row').length,
+        onStage: Boolean(document.querySelector('.gs-stage #world_location_maps_row')),
+        inDrawer: Boolean(document.querySelector('#rm_party_block #world_location_maps_row')),
+    }));
+    check('el tablero se mueve al escenario, no se duplica',
+        moved.copies === 1 && moved.onStage && !moved.inDrawer, JSON.stringify(moved));
+
+    const shellWalls = await page.locator('#game-shell .wm-terrain-wall').count();
+    const shellTokens = await page.locator('#game-shell .wm-token').count();
+    check('el tablero se ve dentro del Shell, con sus muros', shellWalls > 20, `${shellWalls} muros`);
+    check('y con los combatientes encima', shellTokens >= 3, `${shellTokens} fichas`);
+
+    const shellTracker = await page.locator('#game-shell .wm-init-row').count();
+    check('el rastreador de iniciativa lista a todo el mundo', shellTracker >= 3, `${shellTracker} filas`);
+    check('la cabecera dice por que ronda va',
+        /Ronda \d+/.test(await page.locator('.gs-head-state').innerText()),
+        await page.locator('.gs-head-state').innerText());
+
+    const scenes = await page.evaluate(() => [...document.querySelectorAll('.gs-scene-btn')]
+        .map(b => ({ scene: b.dataset.scene, active: b.classList.contains('active'), disabled: b.disabled })));
+    check('el conmutador marca la escena de combate como la activa',
+        scenes.find(s => s.scene === 'combat')?.active === true, JSON.stringify(scenes));
+    // La de dialogo existe desde H2; la de exploracion todavia no, y sale anunciada y
+    // desactivada en vez de fingida. Cuando H4 la construya, esta linea cambia.
+    check('la escena de dialogo esta disponible',
+        scenes.find(s => s.scene === 'dialogue')?.disabled === false, JSON.stringify(scenes));
+    check('y la que aun no existe sale anunciada, no fingida',
+        scenes.find(s => s.scene === 'exploration')?.disabled === true, JSON.stringify(scenes));
+
+    // The action bar either offers an attack or says why it cannot: which of the two it
+    // is depends on the dice and on where the enemy AI walked, so the rule is what gets
+    // checked, not the outcome.
+    const readAttack = () => page.evaluate(() => {
+        const button = document.querySelector('.gs-btn-attack');
+        return { present: Boolean(button), enabled: Boolean(button && !button.disabled), why: button?.title || '' };
+    });
+
+    let attack = await readAttack();
+    for (let i = 0; i < 12 && !attack.enabled; i++) {
+        const state = await page.evaluate(() => window.SillyTavern.getContext().chatMetadata.combatEncounter?.active);
+        if (!state) break;
+        await page.evaluate(() => window.SillyTavern.getContext()
+            .executeSlashCommandsWithOptions('/combat-end'));
+        await page.waitForTimeout(700);
+        await clearDiceOverlay();
+        attack = await readAttack();
+    }
+
+    check('la barra de acciones dice de quien es el turno',
+        (await page.locator('.gs-turn-label').innerText()).length > 0);
+    check('atacar esta disponible, o explica por que no',
+        attack.present && (attack.enabled || attack.why.length > 0), JSON.stringify(attack));
+
+    if (attack.enabled) {
+        const logBefore = await page.locator('#game-shell .cl-row').count();
+        await page.locator('.gs-btn-attack').click();
+        await page.waitForSelector('.gs-targets .gs-target', { timeout: 5000 });
+        const targets = await page.locator('.gs-target').count();
+        check('elegir objetivo es una lista de quien esta a tu alcance, no un nombre que teclear',
+            targets >= 1, `${targets} objetivos`);
+        await page.locator('.gs-target').first().click();
+        await page.waitForTimeout(1200);
+        await clearDiceOverlay();
+        const logAfter = await page.locator('#game-shell .cl-row').count();
+        check('y el ataque se resuelve y queda escrito en el registro', logAfter > logBefore, `${logBefore} -> ${logAfter}`);
+    } else {
+        console.log(`SKIP  ningun turno de jugador con enemigos al alcance en 12 rondas (${attack.why})`);
+    }
+
+    // Esc, because that is how anyone leaves a full-screen game.
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(1200);
+
+    const restored = await page.evaluate((expected) => {
+        const panel = document.querySelector('#world_location_maps_row');
+        return {
+            shell: document.querySelectorAll('#game-shell').length,
+            bodyClass: document.body.classList.contains('game-shell-on'),
+            copies: document.querySelectorAll('#world_location_maps_row').length,
+            parent: panel?.parentElement?.id || '',
+            previous: panel?.previousElementSibling?.id || '',
+            sameParent: panel?.parentElement?.id === expected.parent,
+            samePlace: (panel?.previousElementSibling?.id || '') === expected.previous,
+            tokens: document.querySelectorAll('#world_location_maps_list .wm-token').length,
+            leftovers: document.querySelectorAll('.gs-root, .gs-stage, .gs-adopted').length,
+        };
+    }, home);
+
+    check('Esc apaga el Modo Juego', restored.shell === 0 && !restored.bodyClass, JSON.stringify(restored));
+    check('y devuelve la barra superior', await page.locator('#top-bar').isVisible().catch(() => false));
+    check('el tablero vuelve exactamente a donde estaba',
+        restored.sameParent && restored.samePlace && restored.copies === 1, JSON.stringify(restored));
+    check('sin dejar nada del Shell por el camino', restored.leftovers === 0, JSON.stringify(restored));
+    check('y se sigue dibujando en su sitio de siempre', restored.tokens >= 2, `${restored.tokens} fichas`);
+
+    // Leave the fight closed so the run ends the way it found things.
+    await page.evaluate(() => window.SillyTavern.getContext()
+        .executeSlashCommandsWithOptions('/combat-stop').catch(() => {}));
+    await page.waitForTimeout(600);
+
+    step('19. La escena de dialogo: el chat se mueve, no se replica');
+    // Where the chat lives before the Shell borrows it. This is the check the whole step
+    // exists for: `#sheld` carries the messages, the form, the streaming and the swipes.
+    const chatHome = await page.evaluate(() => {
+        const sheld = document.querySelector('#sheld');
+        return {
+            parent: sheld?.parentElement?.tagName || '',
+            previous: sheld?.previousElementSibling?.id || '',
+            copies: document.querySelectorAll('#sheld').length,
+            messages: document.querySelectorAll('#chat .mes').length,
+        };
+    });
+    check('antes de empezar hay un chat con mensajes', chatHome.messages > 0, JSON.stringify(chatHome));
+
+    await page.evaluate(() => {
+        void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/modojuego');
+    });
+    await page.waitForSelector('#game-shell', { timeout: 15000 });
+    await page.waitForTimeout(800);
+
+    // La tecla, como la usaria cualquiera.
+    await page.keyboard.press('1');
+    await page.waitForTimeout(800);
+
+    const scene = await page.evaluate(() => {
+        const sheld = document.querySelector('#sheld');
+        const shell = document.querySelector('#game-shell');
+        return {
+            scene: shell?.getAttribute('data-scene') || '',
+            copies: document.querySelectorAll('#sheld').length,
+            inSlot: Boolean(document.querySelector('.gs-chat-slot > #sheld')),
+            messages: document.querySelectorAll('#game-shell #chat .mes').length,
+            form: Boolean(document.querySelector('#game-shell #form_sheld')),
+            textarea: Boolean(document.querySelector('#game-shell #send_textarea')),
+            insideShell: Boolean(shell && sheld && shell.contains(sheld)),
+        };
+    });
+    check('la tecla 1 lleva a la escena de dialogo', scene.scene === 'dialogue', JSON.stringify(scene));
+    check('el chat se mueve dentro de la escena, y sigue habiendo uno solo',
+        scene.copies === 1 && scene.inSlot && scene.insideShell, JSON.stringify(scene));
+    check('con sus mensajes, no con una copia vacia', scene.messages > 0, `${scene.messages} mensajes`);
+    check('y con el formulario de escribir, que viaja dentro de `#sheld`',
+        scene.form && scene.textarea, JSON.stringify(scene));
+
+    check('el retrato dice quien habla',
+        (await page.locator('.gs-speaker-name').innerText()).trim().length > 0,
+        await page.locator('.gs-speaker-name').innerText().catch(() => '(sin retrato)'));
+    const chips = await page.locator('.gs-chip').count();
+    check('la franja de abajo lista al grupo', chips >= 2, `${chips} fichas de grupo`);
+    check('con la vida de cada uno', await page.locator('.gs-chip-hp-fill').count() === chips);
+    check('y la cabecera dice el dia y el momento',
+        /^Día \d+ · /.test(await page.locator('.gs-head-state').innerText()),
+        await page.locator('.gs-head-state').innerText());
+
+    // Escribir desde dentro: el formulario es el de siempre, y el chat que hay en la
+    // escena es el vivo, no una foto.
+    await page.locator('#game-shell #send_textarea').fill('Hola desde la escena');
+    const typed = await page.locator('#game-shell #send_textarea').inputValue();
+    check('se puede escribir en la caja desde dentro de la escena',
+        typed === 'Hola desde la escena', typed);
+
+    const sendVisible = await page.evaluate(() => {
+        const button = document.querySelector('#game-shell #send_but');
+        if (!button) return null;
+        const box = button.getBoundingClientRect();
+        return { w: Math.round(box.width), h: Math.round(box.height) };
+    });
+    check('y el boton de enviar se ve dentro de la escena',
+        Boolean(sendVisible && sendVisible.w > 0 && sendVisible.h > 0), JSON.stringify(sendVisible));
+
+    // Enviar de verdad llamaria al proveedor, que en este recorrido no existe. `/send`
+    // mete el mensaje por el mismo camino sin pedir respuesta, que es lo que hace falta
+    // para saber si el chat montado en la escena es el que recibe.
+    await page.locator('#game-shell #send_textarea').fill('');
+    const grew = await page.evaluate(async () => {
+        const before = document.querySelectorAll('#game-shell #chat .mes').length;
+        await window.SillyTavern.getContext()
+            .executeSlashCommandsWithOptions('/send Hola desde la escena');
+        await new Promise(r => setTimeout(r, 900));
+        const after = document.querySelectorAll('#game-shell #chat .mes').length;
+        const last = [...document.querySelectorAll('#game-shell #chat .mes .mes_text')].pop();
+        return { before, after, text: (last?.textContent || '').trim().slice(0, 40) };
+    });
+    check('un mensaje nuevo aparece en el chat de la escena',
+        grew.after === grew.before + 1 && /Hola desde la escena/.test(grew.text), JSON.stringify(grew));
+
+    // Escribir en el chat deja el foco dentro, y entonces las teclas son del mensaje, no
+    // del juego. Escape sale de la caja: sin eso, pinchar en el chat seria una puerta de
+    // ida, y solo el raton te sacaria del Modo Juego.
+    await page.locator('#game-shell #send_textarea').click();
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(500);
+    const afterBlur = await page.evaluate(() => ({
+        shell: document.querySelectorAll('#game-shell').length,
+        focused: document.activeElement?.id || '',
+    }));
+    check('Escape con el foco en la caja sale de la caja, no del juego',
+        afterBlur.shell === 1 && afterBlur.focused !== 'send_textarea', JSON.stringify(afterBlur));
+
+    // Volver al tablero y comprobar que el conmutador ensena una escena y esconde la otra.
+    await page.keyboard.press('3');
+    await page.waitForTimeout(700);
+    const backToBoard = await page.evaluate(() => {
+        const shell = document.querySelector('#game-shell');
+        const board = document.querySelector('.gs-scene-combat');
+        const dialogue = document.querySelector('.gs-scene-dialogue');
+        const visible = (node) => Boolean(node && node.getBoundingClientRect().height > 0);
+        return { scene: shell?.getAttribute('data-scene') || '', board: visible(board), dialogue: visible(dialogue) };
+    });
+    check('la tecla 3 vuelve al tablero y esconde el dialogo',
+        backToBoard.scene === 'combat' && backToBoard.board && !backToBoard.dialogue,
+        JSON.stringify(backToBoard));
+
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(1200);
+
+    const chatBack = await page.evaluate((expected) => {
+        const sheld = document.querySelector('#sheld');
+        const textarea = /** @type {HTMLTextAreaElement|null} */ (document.querySelector('#send_textarea'));
+        if (textarea) textarea.value = 'sigue viva';
+        return {
+            copies: document.querySelectorAll('#sheld').length,
+            sameParent: sheld?.parentElement?.tagName === expected.parent,
+            samePlace: (sheld?.previousElementSibling?.id || '') === expected.previous,
+            insideShell: Boolean(document.querySelector('#game-shell')),
+            messages: document.querySelectorAll('#chat .mes').length,
+            typed: textarea?.value || '',
+            styled: sheld ? getComputedStyle(sheld).position : '',
+        };
+    }, chatHome);
+    check('al apagar, el chat vuelve exactamente a donde estaba',
+        chatBack.copies === 1 && chatBack.sameParent && chatBack.samePlace && !chatBack.insideShell,
+        JSON.stringify(chatBack));
+    check('con sus mensajes intactos, incluido el recien enviado',
+        chatBack.messages === chatHome.messages + 1, `${chatHome.messages} -> ${chatBack.messages}`);
+    check('la caja de escribir sigue aceptando texto', chatBack.typed === 'sigue viva', chatBack.typed);
+    check('y `#sheld` recupera su posicion propia, sin restos del Shell',
+        chatBack.styled === 'absolute', chatBack.styled);
+    await page.evaluate(() => {
+        const textarea = /** @type {HTMLTextAreaElement|null} */ (document.querySelector('#send_textarea'));
+        if (textarea) textarea.value = '';
+    });
+
     console.log(`\n--- console errors ---`);
     console.log(problems.size ? [...problems].join('\n') : '(none)');
 } catch (error) {
@@ -874,7 +1204,7 @@ try {
         server.kill('SIGKILL');
     }
     if (!KEEP) {
-        // Windows holds the directory for a moment after the server dies.
+        // Windows holds the directory for a moment logAfter the server dies.
         await new Promise(resolve => setTimeout(resolve, 1000));
         rmSync(dataRoot, { recursive: true, force: true, maxRetries: 5 });
     } else {

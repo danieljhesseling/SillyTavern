@@ -26,6 +26,7 @@
 @import url(css/rules-editor.css);
 @import url(css/prompt-preview.css);
 @import url(css/campaign-panel.css);
+@import url(css/game-shell.css);
 
 :root {
     interpolate-size: allow-keywords;

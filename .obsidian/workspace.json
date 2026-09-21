@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "wiki/PROPUESTAS_MEJORA.md",
+                "file": "wiki/HOME.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "PROPUESTAS_MEJORA"
+              "title": "HOME"
             }
           }
         ]
@@ -99,7 +99,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "wiki/PROPUESTAS_MEJORA.md",
+                "file": "wiki/HOME.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -118,7 +118,7 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "wiki/PROPUESTAS_MEJORA.md",
+                "file": "wiki/HOME.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
@@ -161,7 +161,7 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "wiki/PROPUESTAS_MEJORA.md",
+                "file": "wiki/HOME.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
@@ -190,18 +190,23 @@
   },
   "active": "e4a815deb0fecab8",
   "lastOpenFiles": [
-    "public/scripts/game-engine/combat/initiative-tracker.js",
-    "wiki/PROPUESTAS_MEJORA.md.tmp-edit",
-    "data/default-user/backups/chat_default_assistant_20260921-105058.jsonl",
-    "data/_cache/characters/c77546e5a386476b56aab09e10cf18eede81d61b9e142b5e2b45dfa9a75ed429",
-    "data/default-user/backups/chat_default_assistant_20260921-105048.jsonl",
-    "data/default-user/backups/chat_default_assistant_20260921-105041.jsonl",
-    "data/_cache/characters/c813afd45a2059304638450ad23b9d94806416e94c9c93cf8dfa658e31975c6e",
-    "data/default-user/backups/chat_default_assistant_20260921-105031.jsonl",
-    "tests/game-engine-prompt-meter.test.js",
-    "public/css/prompt-preview.css",
-    "public/scripts/game-engine/ui/prompt-preview.js",
     "HOME.md",
+    "wiki/PROPUESTAS_MEJORA.md",
+    "public/css/game-shell.css",
+    "public/scripts/game-engine/ui/shell/game-shell.js",
+    "tests/game-engine-scene-director.test.js",
+    "data/_webpack/5e85f519a9bd804a/cache/default-production/index.pack.gz",
+    "data/_webpack/5e85f519a9bd804a/cache/default-production/0.pack.gz",
+    "data/_webpack/5e85f519a9bd804a/cache/default-production/0.pack.gz_",
+    "data/_webpack/5e85f519a9bd804a/cache/default-production/index.pack.gz_",
+    "data/_webpack/5e85f519a9bd804a/cache/default-production",
+    "data/_webpack/5e85f519a9bd804a/cache",
+    "data/_webpack/5e85f519a9bd804a/output/lib.js.LICENSE.txt",
+    "wiki/PROPUESTA_FRONTEND_MODO_JUEGO.md",
+    "public/img/workers_ai.svg",
+    "public/img/minimax.svg",
+    "public/img/logo.svg",
+    "wiki/ROADMAP_INGESTA_CAMPANAS_LIBROS.md",
     "node_modules/eslint-plugin-jest/README.md",
     "wiki/PROBLEMAS_TECNICOS.md",
     "CONTRIBUTING.md",
@@ -230,11 +235,6 @@
     "data/default-user/thumbnails/bg/landscape mountain lake.jpg",
     "data/default-user/thumbnails/bg/landscape autumn great tree.jpg",
     "data/default-user/thumbnails/bg/landscape beach night.jpg",
-    "data/default-user/thumbnails/bg/japan university.jpg",
-    "data/default-user/thumbnails/bg/japan path cherry blossom.jpg",
-    "data/default-user/thumbnails/bg/landscape beach day.png",
-    "public/css/!USER-CSS-README.md",
-    "wiki/ROADMAP.md",
-    "wiki/PROPUESTA_JUEGO_DND_GLOOMHAVEN_PERSONA.md"
+    "public/css/!USER-CSS-README.md"
   ]
 }
