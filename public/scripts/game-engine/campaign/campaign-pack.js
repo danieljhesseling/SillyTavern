@@ -25,6 +25,8 @@ import { CAMPAIGN_PACK_VERSION, OBJECTIVE_FIELDS, LOCATION_TYPES } from './campa
 import { OBJECTIVE_TYPES } from './scenarios.js';
 import { ASCII_TERRAIN } from '../board/terrain.js';
 import { getProfileOptions, DEFAULT_PROFILE } from '../combat/enemy-ai.js';
+import { terrainFromAsciiMap } from '../board/terrain.js';
+import { findUnreachable, describeReachability } from '../board/reachability.js';
 
 /**
  * @typedef {Object} Issue
@@ -338,8 +340,48 @@ export function validatePack(raw) {
     /** @type {Map<string, {width: number, height: number, map: string[]}>} */
     const boardSizes = new Map();
 
+    /**
+     * Lo que ningun esquema puede ver: si se puede **llegar**. Un mapa con una sala
+     * amurallada valida perfectamente, y no se nota hasta estar dentro buscando la puerta
+     * que no existe. Las puertas cerradas no cortan la inundacion: se abren.
+     *
+     * @param {any} board
+     * @param {string} path
+     */
+    const checkReachable = (board, path) => {
+        const rows = Array.isArray(board.map) ? board.map.map((/** @type {any} */ r) => String(r)) : [];
+        const height = rows.length;
+        const width = height > 0 ? rows[0].length : 0;
+        if (width === 0 || height === 0 || board.partyStart.length === 0) return;
+
+        const report = findUnreachable({
+            terrain: terrainFromAsciiMap(rows),
+            gridWidth: width,
+            gridHeight: height,
+            starts: board.partyStart.map((/** @type {any} */ c) => ({ x: Number(c?.x) || 0, y: Number(c?.y) || 0 })),
+            enemies: board.enemies.map((/** @type {any} */ e) => ({
+                name: text(e?.name), x: Number(e?.x) || 0, y: Number(e?.y) || 0,
+            })),
+        });
+
+        for (const enemy of report.enemies) {
+            errors.push({
+                path: `${path}.enemies`,
+                message: `A "${enemy.name}" en (${enemy.x + 1}, ${enemy.y + 1}) no se puede llegar desde donde empieza el grupo.`,
+            });
+        }
+
+        if (report.orphanCells > 0) {
+            warnings.push({
+                path: `${path}.map`,
+                message: `${report.orphanCells} casilla(s) quedan incomunicadas. ${describeReachability(report)}`,
+            });
+        }
+    };
+
     pack.boards.forEach((/** @type {any} */ board, /** @type {number} */ index) => {
         const path = `boards[${index}]`;
+        const errorsBefore = errors.length;
         if (boardIds.has(board.id)) {
             errors.push({ path: `${path}.id`, message: `El id "${board.id}" esta repetido.` });
         }
@@ -383,6 +425,11 @@ export function validatePack(raw) {
                 errors.push({ path: `${path}.enemies[${i}]`, message: `(${enemy.x},${enemy.y}) cae sobre un muro.` });
             }
         });
+
+        // Solo si el tablero se sostiene: inundar un mapa con las filas desiguales, o con
+        // el grupo empezando dentro de un muro, dice cosas ciertas sobre un fallo que ya
+        // se ha contado. Una causa, un mensaje.
+        if (errors.length === errorsBefore) checkReachable(board, path);
     });
 
     const usedBoards = new Set();

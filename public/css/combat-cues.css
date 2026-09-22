@@ -441,3 +441,10 @@
 .ab-add {
     margin-top: 4px;
 }
+
+/* La cuenta de salvaciones, en la cara de quien está en el suelo (PROP2-059). */
+.gs-chip-dying {
+    font-size: 0.72em;
+    color: #ff6b5a;
+    opacity: 0.9;
+}

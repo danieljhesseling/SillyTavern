@@ -487,6 +487,9 @@ const locationViewStateMemory = new Map();
  * @param {TokenData[]} options.tokens
  * @param {(tokenId: number, gridX: number, gridY: number) => void} [options.onTokenMove]
  * @param {(tokenId: number) => void} [options.onTokenClick]
+ * @param {(gridX: number, gridY: number) => {cells: Array<{gridX: number, gridY: number}>, feet: number, ok: boolean}|null} [options.onCellHover] -
+ *   Al pasar por encima de una casilla encendida: devuelve la ruta y lo que cuesta, para
+ *   dibujarla antes de pulsar. Sin esto, mover es una apuesta.
  * @param {(gridX: number, gridY: number, kind: string) => void} [options.onCellClick] -
  *   Pulsar una casilla **encendida**. Solo las encendidas responden, a proposito: una
  *   casilla apagada es una a la que no puedes ir, y un clic ahi no deberia hacer nada.
@@ -516,6 +519,7 @@ export function renderLocationView(target, options) {
         onTokenMove,
         onTokenClick,
         onCellClick,
+        onCellHover = null,
         highlightedCells = [],
         highlightedTokenIds = [],
         selectedTokenId = null,
@@ -720,10 +724,54 @@ export function renderLocationView(target, options) {
                     event.stopPropagation();
                     onCellClick(cell.gridX, cell.gridY, kind);
                 });
+
+                // Ensenar la ruta y lo que cuesta **antes** de pulsar. Mover sin esto es
+                // contar casillas a ojo y descubrir el precio cuando ya lo has pagado.
+                if (typeof onCellHover === 'function' && kind === 'move') {
+                    node.on('mouseenter', () => drawTrajectory(cell.gridX, cell.gridY, cellW, cellH));
+                    node.on('mouseleave', () => clearTrajectory());
+                }
             }
 
             highlightsLayer.append(node);
         }
+    }
+
+    /** Borra la ruta dibujada, si hay alguna. */
+    function clearTrajectory() {
+        highlightsLayer.find('.wm-path-step, .wm-path-cost').remove();
+    }
+
+    /**
+     * Dibuja la ruta hasta una casilla y lo que cuesta llegar.
+     *
+     * Quien decide la ruta es el motor — el mismo A* que usa la IA —; aqui solo se pinta
+     * lo que devuelva. Una ruta dibujada a ojo diria una cosa y el movimiento haria otra.
+     *
+     * @param {number} gridX
+     * @param {number} gridY
+     * @param {number} cellW
+     * @param {number} cellH
+     */
+    function drawTrajectory(gridX, gridY, cellW, cellH) {
+        clearTrajectory();
+
+        const plan = onCellHover(gridX, gridY);
+        if (!plan || !Array.isArray(plan.cells) || plan.cells.length === 0) return;
+
+        for (const step of plan.cells) {
+            highlightsLayer.append(
+                `<div class="wm-path-step${plan.ok ? '' : ' wm-path-far'}" style="`
+                + `left:${(step.gridX + 0.5) * cellW}px;top:${(step.gridY + 0.5) * cellH}px;"></div>`,
+            );
+        }
+
+        const last = plan.cells[plan.cells.length - 1];
+        const cost = $('<div class="wm-path-cost"></div>')
+            .text(`${plan.feet} ft`)
+            .toggleClass('wm-path-far', !plan.ok)
+            .css({ left: `${(last.gridX + 0.5) * cellW}px`, top: `${last.gridY * cellH}px` });
+        highlightsLayer.append(cost);
     }
 
     function placeTokens() {

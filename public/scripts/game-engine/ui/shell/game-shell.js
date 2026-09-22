@@ -531,6 +531,7 @@ function renderChips(strip, chips) {
         bar.appendChild(fill);
         body.appendChild(bar);
         body.appendChild(el('span', 'gs-chip-hp-text', `${chip.hp}/${chip.maxHp}`));
+        if (chip.dying) body.appendChild(el('div', 'gs-chip-dying', chip.dying));
 
         card.appendChild(body);
         strip.appendChild(card);

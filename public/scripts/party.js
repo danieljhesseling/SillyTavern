@@ -35,7 +35,7 @@ import {
     normalizeTerrain, setCell as setTerrainCell, getTerrainOptions, getCoverBonus, setDoorOpen,
     parseCellKey,
 } from './game-engine/board/terrain.js';
-import { getReachableCells } from './game-engine/board/pathfinding.js';
+import { getReachableCells, findPath, getPathCost } from './game-engine/board/pathfinding.js';
 import { getCoverAlongLine } from './game-engine/board/line-of-sight.js';
 import { createEmptyFog, normalizeFog, updateFog } from './game-engine/board/fog-of-war.js';
 import { planEnemyTurn } from './game-engine/combat/enemy-ai.js';
@@ -90,6 +90,16 @@ import {
     addConditionTimer, expireConditions, clearTimersFor,
 } from './game-engine/combat/condition-timers.js';
 import {
+    isDying, rollDeathSave, takeHitWhileDown, clearDeathSaves,
+} from './game-engine/rules/death-saves.js';
+import {
+    findOpportunityAttacks, describeOpportunity,
+} from './game-engine/combat/opportunity.js';
+import {
+    createCheckpoint, normalizeCheckpoints, addCheckpoint, findCheckpoint, describeCheckpoint,
+    CHECKPOINT_KEY,
+} from './game-engine/campaign/checkpoint.js';
+import {
     isShellOpen, toggleGameShell, refreshGameShell, closeGameShell,
 } from './game-engine/ui/shell/game-shell.js';
 import { buildDialogueView } from './game-engine/ui/shell/dialogue-scene.js';
@@ -111,6 +121,15 @@ let locationMapsManuallyHidden = false;
 
 /** @type {{ tokenId: number|null, boardName: string, locationName: string }} */
 let combatBoardSelection = { tokenId: null, boardName: '', locationName: '' };
+
+/**
+ * Quien ha gastado ya su reaccion en esta ronda.
+ *
+ * Un ataque de oportunidad cuesta la reaccion, y la reaccion es una por ronda: sin esto,
+ * un solo enemigo cobraria peaje a todo el grupo cada vez que alguien se mueve.
+ * @type {Set<string>}
+ */
+let usedReactions = new Set();
 
 /** @type {HTMLElement|null} */
 let combatDiceOverlayElement = null;
@@ -1548,6 +1567,129 @@ function announceTurnInChat(entry) {
  * @param {import('./dnd-system.js').TurnEntry} turnEntry
  * @returns {string}
  */
+/**
+ * Resuelve un golpe de un enemigo contra alguien del grupo.
+ *
+ * Extraido del turno enemigo porque un **ataque de oportunidad** es exactamente esto y no
+ * otra cosa: el mismo d20, la misma cobertura, el mismo critico y las mismas salvaciones
+ * de muerte. Dos copias de esta aritmetica serian dos sitios donde discrepar.
+ *
+ * @param {any} enemy
+ * @param {any} target
+ * @returns {string} Lo ocurrido, ya escrito.
+ */
+function resolveEnemyAttackOn(enemy, target) {
+    /** @type {string[]} */
+    const lines = [];
+
+    const attackRoll = rollDiceDetailed('1d20', 20);
+    const d20 = attackRoll.total;
+    const attackMod = Math.max(
+        getAbilityModifier(enemy.strength || 10),
+        getAbilityModifier(enemy.dexterity || 10),
+    );
+    const attackTotal = d20 + attackMod;
+    const { ac: targetAc, cover: targetCover } = getTargetArmorClass(target, enemy);
+    const isCrit = d20 === 20;
+    const isHit = isCrit || attackTotal >= targetAc;
+
+    showCombatDiceRoll({
+        title: `${enemy.name} ataca`,
+        subtitle: `Objetivo: ${target.name}`,
+        formula: `1d20${attackMod >= 0 ? '+' : ''}${attackMod}`,
+        detail: `d20(${d20}) ${attackMod >= 0 ? '+' : ''}${attackMod} = ${attackTotal}`,
+        total: attackTotal,
+        dc: targetAc,
+        natural: attackRoll.natural,
+        glyph: 'd20',
+    });
+
+    lines.push(`👹 ${enemy.name} ataca a ${target.name}.`);
+    lines.push(`🎲 Tirada de ataque: d20(${d20}) ${attackMod >= 0 ? '+' : ''}${attackMod} = ${attackTotal} vs AC ${targetAc}${describeCover(targetCover)}`);
+
+    if (!isHit) {
+        lines.push('❌ Resultado: fallo.');
+        return lines.join('\n');
+    }
+
+    const dmgFormula = getEnemyDamageFormula(enemy.cr || 0);
+    const baseDamageRoll = rollDiceDetailed(dmgFormula, 8);
+    const baseDamage = baseDamageRoll.total;
+    const strMod = Math.max(0, getAbilityModifier(enemy.strength || 10));
+    const critBonusRoll = isCrit ? rollDiceDetailed(dmgFormula, 8) : null;
+    const critBonus = critBonusRoll ? critBonusRoll.total : 0;
+    const totalDamage = Math.max(1, baseDamage + critBonus + strMod);
+
+    showCombatDiceRoll({
+        title: `${enemy.name} tira dano`,
+        subtitle: `Contra ${target.name}`,
+        formula: `${dmgFormula}${isCrit ? ` + ${dmgFormula}` : ''}`,
+        detail: isCrit
+            ? `${baseDamageRoll.rolls.join(', ')} + crit(${critBonusRoll?.rolls.join(', ') || ''}) + mod(${strMod})`
+            : `${baseDamageRoll.rolls.join(', ')} + mod(${strMod})`,
+        total: totalDamage,
+        glyph: 'dmg',
+    });
+
+    // Rank 8: a companion steps in rather than watch them drop. Once a day, and only
+    // when the blow would really have finished them.
+    const rescue = planEndure({
+        bonds: getCampaignBonds(),
+        party: partyMembers,
+        targetId: String(target.id),
+        currentHp: Number(target.hp) || 0,
+        damage: totalDamage,
+    });
+
+    // Antes de escribir el dano: hace falta saber si ya estaba en el suelo, porque un
+    // golpe sobre un cuerpo caido cuenta distinto que el golpe que lo tira.
+    const wasDown = (Number(target.hp) || 0) <= 0;
+
+    if (rescue) {
+        saveCampaignState(null, spendPerk(getCampaignBonds(), rescue.saviourId, rescue.perkId));
+        target.hp = 1;
+        lines.push(`🛡️ ${rescue.saviourName} se interpone: ${target.name} aguanta con 1 HP.`);
+    } else {
+        target.hp = Math.max(0, (target.hp || 0) - totalDamage);
+    }
+
+    target.activeConditions = Array.isArray(target.activeConditions) ? target.activeConditions : [];
+
+    lines.push(`✅ Resultado: impacto${isCrit ? ' critico' : ''}.`);
+    lines.push(`💥 Tirada de daño: ${dmgFormula}(${baseDamage})${isCrit ? ` + crit(${critBonus})` : ''} + mod(${strMod}) = ${totalDamage}`);
+    lines.push(`❤️ Estado de ${target.name}: ${target.hp}/${target.maxHp}`);
+
+    if (target.hp === 0) {
+        if (!target.activeConditions.includes('Unconscious')) {
+            target.activeConditions.push('Unconscious');
+        }
+
+        // Golpear a alguien que ya estaba en el suelo es un fallo automatico de salvacion
+        // — dos si es critico —; caer por primera vez solo empieza la cuenta.
+        if (wasDown) {
+            const hit = takeHitWhileDown(target, isCrit);
+            target.deathSaves = hit.saves;
+            lines.push(hit.line);
+        } else {
+            target.deathSaves = clearDeathSaves();
+            lines.push(`🩸 ${target.name} cae a 0 PG y empieza a jugarsela: `
+                + 'tres exitos para estabilizarse, tres fallos y se acabo.');
+        }
+    } else if (isCrit && Math.random() < 0.35) {
+        const pool = ['Bleeding', 'Poisoned', 'Prone', 'Frightened'];
+        const candidates = pool.filter(status => !target.activeConditions.includes(status));
+        if (candidates.length) {
+            const status = candidates[Math.floor(Math.random() * candidates.length)];
+            target.activeConditions.push(status);
+            lines.push(`🧪 Efecto adicional: ${target.name} queda ${status}.`);
+        }
+    }
+
+    savePartyState();
+    saveCombatState();
+    return lines.join('\n');
+}
+
 function resolveEnemyTurnAction(turnEntry) {
     const enemy = combatEncounter.enemies.find(e => e.instanceId === turnEntry.id && e.currentHp > 0);
     if (!enemy) {
@@ -1628,97 +1770,8 @@ function resolveEnemyTurnAction(turnEntry) {
         return `[COMBAT] ${enemy.name} no encuentra un objetivo valido.`;
     }
 
-    const attackRoll = rollDiceDetailed('1d20', 20);
-    const d20 = attackRoll.total;
-    const attackMod = Math.max(
-        getAbilityModifier(enemy.strength || 10),
-        getAbilityModifier(enemy.dexterity || 10),
-    );
-    const attackTotal = d20 + attackMod;
-    const { ac: targetAc, cover: targetCover } = getTargetArmorClass(target, enemy);
-    const isCrit = d20 === 20;
-    const isHit = isCrit || attackTotal >= targetAc;
-
-    showCombatDiceRoll({
-        title: `${enemy.name} ataca`,
-        subtitle: `Objetivo: ${target.name}`,
-        formula: `1d20${attackMod >= 0 ? '+' : ''}${attackMod}`,
-        detail: `d20(${d20}) ${attackMod >= 0 ? '+' : ''}${attackMod} = ${attackTotal}`,
-        total: attackTotal,
-        dc: targetAc,
-        natural: attackRoll.natural,
-        glyph: 'd20',
-    });
-
-    lines.push(`👹 ${enemy.name} ataca a ${target.name}.`);
-    lines.push(`🎲 Tirada de ataque: d20(${d20}) ${attackMod >= 0 ? '+' : ''}${attackMod} = ${attackTotal} vs AC ${targetAc}${describeCover(targetCover)}`);
-
-    if (!isHit) {
-        lines.push('❌ Resultado: fallo.');
-        if (movedThisTurn) saveCombatState();
-        return lines.join('\n');
-    }
-
-    const dmgFormula = getEnemyDamageFormula(enemy.cr || 0);
-    const baseDamageRoll = rollDiceDetailed(dmgFormula, 8);
-    const baseDamage = baseDamageRoll.total;
-    const strMod = Math.max(0, getAbilityModifier(enemy.strength || 10));
-    const critBonusRoll = isCrit ? rollDiceDetailed(dmgFormula, 8) : null;
-    const critBonus = critBonusRoll ? critBonusRoll.total : 0;
-    const totalDamage = Math.max(1, baseDamage + critBonus + strMod);
-
-    showCombatDiceRoll({
-        title: `${enemy.name} tira dano`,
-        subtitle: `Contra ${target.name}`,
-        formula: `${dmgFormula}${isCrit ? ` + ${dmgFormula}` : ''}`,
-        detail: isCrit
-            ? `${baseDamageRoll.rolls.join(', ')} + crit(${critBonusRoll?.rolls.join(', ') || ''}) + mod(${strMod})`
-            : `${baseDamageRoll.rolls.join(', ')} + mod(${strMod})`,
-        total: totalDamage,
-        glyph: 'dmg',
-    });
-
-    // Rank 8: a companion steps in rather than watch them drop. Once a day, and only
-    // when the blow would really have finished them.
-    const rescue = planEndure({
-        bonds: getCampaignBonds(),
-        party: partyMembers,
-        targetId: String(target.id),
-        currentHp: Number(target.hp) || 0,
-        damage: totalDamage,
-    });
-
-    if (rescue) {
-        saveCampaignState(null, spendPerk(getCampaignBonds(), rescue.saviourId, rescue.perkId));
-        target.hp = 1;
-        lines.push(`🛡️ ${rescue.saviourName} se interpone: ${target.name} aguanta con 1 HP.`);
-    } else {
-        target.hp = Math.max(0, (target.hp || 0) - totalDamage);
-    }
-
-    target.activeConditions = Array.isArray(target.activeConditions) ? target.activeConditions : [];
-
-    lines.push(`✅ Resultado: impacto${isCrit ? ' critico' : ''}.`);
-    lines.push(`💥 Tirada de daño: ${dmgFormula}(${baseDamage})${isCrit ? ` + crit(${critBonus})` : ''} + mod(${strMod}) = ${totalDamage}`);
-    lines.push(`❤️ Estado de ${target.name}: ${target.hp}/${target.maxHp}`);
-
-    if (target.hp === 0) {
-        if (!target.activeConditions.includes('Unconscious')) {
-            target.activeConditions.push('Unconscious');
-        }
-        lines.push(`🩸 ${target.name} cae a 0 HP y gana estado: Unconscious.`);
-    } else if (isCrit && Math.random() < 0.35) {
-        const pool = ['Bleeding', 'Poisoned', 'Prone', 'Frightened'];
-        const candidates = pool.filter(status => !target.activeConditions.includes(status));
-        if (candidates.length) {
-            const status = candidates[Math.floor(Math.random() * candidates.length)];
-            target.activeConditions.push(status);
-            lines.push(`🧪 Efecto adicional: ${target.name} queda ${status}.`);
-        }
-    }
-
-    savePartyState();
-    saveCombatState();
+    lines.push(resolveEnemyAttackOn(enemy, target));
+    if (movedThisTurn) saveCombatState();
     return lines.join('\n');
 }
 
@@ -1734,6 +1787,87 @@ function canTurnEntryAct(entry) {
     }
     const member = getPartyMemberByTurnEntry(entry);
     return Boolean(member && member.hp > 0);
+}
+
+/**
+ * Cobra los ataques de oportunidad que provoque un movimiento.
+ *
+ * Sin esto, alejarse de un enemigo es gratis — y si alejarse es gratis, la posicion no
+ * significa nada y media mecanica del tablero sobra. El golpe lo resuelve el mismo codigo
+ * que cualquier otro ataque enemigo: un ataque de oportunidad no es un ataque distinto.
+ *
+ * @param {any} member Quien se mueve.
+ * @param {{x: number, y: number}} from
+ * @param {{x: number, y: number}} to
+ */
+function chargeOpportunityAttacks(member, from, to) {
+    if (!combatEncounter.active) return;
+
+    const attacks = findOpportunityAttacks({
+        mover: member,
+        from,
+        to,
+        threats: getAliveEnemies(),
+        reachOf: (/** @type {any} */ enemy) => Number(enemy?.attackRangeFeet) || 5,
+        isAlive: (/** @type {any} */ enemy) => (Number(enemy?.currentHp) || 0) > 0,
+        // Cada enemigo tiene una reaccion por ronda, y aqui se apunta cual la ha gastado.
+        canReact: (/** @type {any} */ enemy) => !usedReactions.has(String(enemy.instanceId)),
+    });
+
+    if (attacks.length === 0) return;
+
+    postCombatNarration(`⚠️ [COMBAT] ${describeOpportunity(attacks, member)}`);
+    for (const attack of attacks) {
+        usedReactions.add(String(attack.threat.instanceId));
+        const line = resolveEnemyAttackOn(attack.threat, member);
+        if (line) postCombatNarration(line);
+        // Si el golpe lo tira, el resto de oportunidades siguen: en 5e tambien.
+    }
+    savePartyState();
+    saveCombatState();
+}
+
+/**
+ * El turno de quien esta en el suelo: una salvacion de muerte.
+ *
+ * No actua — no puede — pero su turno no es un hueco en blanco: es el momento mas tenso
+ * de una mesa de D&D, y hasta ahora no existia. Se tira sola al llegarle el turno, porque
+ * no hay nada que decidir.
+ *
+ * @param {any} member
+ * @returns {boolean} Si ha pasado algo que merezca redibujar.
+ */
+function resolveDeathSave(member) {
+    if (!isDying(member)) return false;
+
+    const result = rollDeathSave({
+        member,
+        roll: () => rollDiceDetailed('1d20', 20),
+    });
+
+    member.deathSaves = result.saves;
+    if (result.hp != null) member.hp = result.hp;
+
+    if (result.outcome === 'up') {
+        member.activeConditions = (Array.isArray(member.activeConditions) ? member.activeConditions : [])
+            .filter((/** @type {string} */ c) => c !== 'Unconscious');
+    }
+
+    showCombatDiceRoll({
+        title: `${member.name}: salvacion de muerte`,
+        subtitle: result.outcome === 'dead' ? 'Tercer fallo' : '',
+        formula: '1d20',
+        detail: result.line,
+        total: result.natural,
+        dc: 10,
+        natural: result.natural,
+        glyph: 'd20',
+    });
+
+    postCombatNarration(`☠️ [COMBAT] ${result.line}`);
+    savePartyState();
+    saveCombatState();
+    return true;
 }
 
 function advanceTurnIndex() {
@@ -1755,6 +1889,14 @@ function advanceTurnIndex() {
         // Lo que una habilidad puso con duracion se va aqui, que es el unico sitio donde
         // el combate cuenta rondas.
         for (const line of expireTimedConditions()) postCombatNarration(line);
+
+        // Y aqui tiran los que estan en el suelo. En 5e se tira "al empezar tu turno",
+        // pero la maquina de turnos salta a quien no puede actuar, asi que el turno de un
+        // caido no llega nunca: una vez por ronda es lo mismo y no pide reescribirla.
+        for (const member of partyMembers) resolveDeathSave(member);
+
+        // Ronda nueva, reacciones nuevas.
+        usedReactions = new Set();
         // A scenario won by the clock has no other moment to notice.
         if (checkScenarioOutcome()) return null;
     }
@@ -1997,6 +2139,13 @@ function startCombat(template, count, gridWidth = 50, gridHeight = 50) {
  * @returns {string} El orden de iniciativa, ya escrito.
  */
 function beginEncounterWith(newEnemies) {
+    // Antes de una pelea que puede torcer la campana, una red. Solo con los duros: un
+    // punto antes de cada rata seria un cajon de sastre y tapa a los que guardas tu.
+    const boss = newEnemies.find(e => (Number(e.cr) || 0) >= 2 || (Number(e.maxHp) || 0) >= 40);
+    if (boss && !combatEncounter.active) {
+        saveCheckpoint(`Antes de ${boss.name}`, true);
+    }
+
     /** @type {import('./dnd-system.js').TurnEntry[]} */
     const turnEntries = [];
     for (const m of partyMembers) {
@@ -3023,6 +3172,41 @@ function closeTargetCard() {
 }
 
 /**
+ * La ruta hasta una casilla y lo que cuesta llegar, para ensenarla antes de pulsar.
+ *
+ * La calcula el mismo A* que usa la IA enemiga: una linea dibujada a ojo diria una cosa y
+ * el movimiento haria otra, que es peor que no dibujar nada.
+ *
+ * @param {number} gridX
+ * @param {number} gridY
+ * @returns {{cells: Array<{gridX: number, gridY: number}>, feet: number, ok: boolean}|null}
+ */
+function previewMovement(gridX, gridY) {
+    const member = getCurrentActingMember();
+    if (!combatEncounter.active || !member) return null;
+
+    const origin = member.mapPosition || { gridX: 0, gridY: 0 };
+    const { terrain, gridWidth: w, gridHeight: h } = getActiveBoardContext();
+    const path = findPath(terrain, origin.gridX || 0, origin.gridY || 0, gridX, gridY, w, h, {
+        // Las casillas ocupadas no se atraviesan, igual que al mover de verdad.
+        occupied: new Set([
+            ...getAliveEnemies().map(e => `${e.gridX || 0},${e.gridY || 0}`),
+            ...partyMembers
+                .filter(m => String(m.id) !== String(member.id))
+                .map(m => `${m.mapPosition?.gridX || 0},${m.mapPosition?.gridY || 0}`),
+        ]),
+    });
+    if (!path || path.length === 0) return null;
+
+    const feet = getPathCost(terrain, path) * 5;
+    return {
+        cells: path.slice(1).map(cell => ({ gridX: cell.x, gridY: cell.y })),
+        feet,
+        ok: feet <= getRemainingMovementFeet(member),
+    };
+}
+
+/**
  * Pulsar una casilla encendida.
  *
  * Solo las encendidas llegan aqui: el renderizador no deja pulsar las demas. Mover es
@@ -3117,6 +3301,7 @@ function handlePlayerCombatMove(rawValue) {
         return '';
     }
 
+    const leftFrom = { x: position.gridX || 0, y: position.gridY || 0 };
     member.mapPosition = {
         locationName: currentLocationName,
         gridX: targetX,
@@ -3125,6 +3310,10 @@ function handlePlayerCombatMove(rawValue) {
     Object.assign(combatEncounter, spendMovement(combatEncounter, distanceFeet, Number(member.speed) || 30));
     savePartyState();
     saveCombatState();
+
+    // Salir del alcance de quien te tenia pegado cuesta un golpe gratis. Se cobra despues
+    // de moverse, como en la mesa: primero te vas, luego te alcanzan.
+    chargeOpportunityAttacks(member, leftFrom, { x: targetX, y: targetY });
 
     postCombatNarration(`🚶 [COMBAT] ${member.name} se mueve a (${targetX + 1}, ${targetY + 1}) y gasta ${distanceFeet} ft. Restante: ${getRemainingMovementFeet(member)} ft.`);
     renderLocationMapsPreview();
@@ -3815,6 +4004,15 @@ function useAbility(member, ability, target) {
         const before = Number(subject.hp) || 0;
         subject.hp = Math.min(Number(subject.maxHp) || before, before + plan.healing);
         lines.push(`❤️ Estado de ${subject.name}: ${subject.hp}/${subject.maxHp}`);
+
+        // Curar a quien estaba en el suelo lo levanta y borra la cuenta: es para lo que
+        // sirve una curacion en mitad de un combate.
+        if (before <= 0 && subject.hp > 0) {
+            subject.deathSaves = clearDeathSaves();
+            subject.activeConditions = (Array.isArray(subject.activeConditions) ? subject.activeConditions : [])
+                .filter((/** @type {string} */ c) => c !== 'Unconscious');
+            lines.push(`🙌 ${subject.name} vuelve en si.`);
+        }
     }
 
     if (plan.condition) {
@@ -3829,6 +4027,89 @@ function useAbility(member, ability, target) {
     renderLocationMapsPreview();
 
     return `${member.name} usa ${ability.name}`;
+}
+
+/**
+ * Todo lo que el juego da por cierto, listo para guardarlo o devolverlo a su sitio.
+ *
+ * No incluye la conversacion: el chat es de SillyTavern y tiene su propio historial.
+ * Volver a un punto deja el chat como esta y el mundo como estaba.
+ *
+ * @returns {any}
+ */
+function captureGameState() {
+    return {
+        party: partyMembers,
+        combatEncounter,
+        calendar: getCampaignCalendar(),
+        bonds: getCampaignBonds(),
+        campaignMap: getCampaignMap(),
+        currentLocation: currentLocationName,
+        currentBoard: currentBoardName,
+    };
+}
+
+/**
+ * Guarda un punto de retorno.
+ *
+ * @param {string} label
+ * @param {boolean} [automatic]
+ * @returns {string}
+ */
+function saveCheckpoint(label, automatic = false) {
+    if (!chat_metadata || typeof chat_metadata !== 'object') return '';
+
+    const checkpoint = createCheckpoint({ label, state: captureGameState(), automatic });
+    chat_metadata[CHECKPOINT_KEY] = addCheckpoint(chat_metadata[CHECKPOINT_KEY], checkpoint);
+    saveMetadata();
+
+    postCombatNarration(`💾 [PARTIDA] Punto de retorno: ${describeCheckpoint(checkpoint)}.`);
+    return checkpoint.id;
+}
+
+/**
+ * Devuelve la partida a un punto guardado.
+ *
+ * @param {string} id
+ * @returns {boolean}
+ */
+function restoreCheckpoint(id) {
+    const checkpoint = findCheckpoint(chat_metadata?.[CHECKPOINT_KEY], id);
+    if (!checkpoint) {
+        toastr.warning('Ese punto de retorno ya no esta.');
+        return false;
+    }
+
+    const state = checkpoint.state ?? {};
+
+    // El grupo se reemplaza en el sitio: `partyMembers` es el array que todo el resto del
+    // archivo tiene cogido, asi que cambiarlo por otro dejaria media interfaz mirando al
+    // anterior.
+    partyMembers.length = 0;
+    for (const member of (Array.isArray(state.party) ? state.party : [])) {
+        partyMembers.push(structuredClone(member));
+    }
+
+    combatEncounter = normalizeCombatEncounter(structuredClone(state.combatEncounter ?? null));
+    currentLocationName = String(state.currentLocation ?? '');
+    currentBoardName = String(state.currentBoard ?? '');
+    combatBoardSelection = { tokenId: null, boardName: '', locationName: '' };
+    usedReactions = new Set();
+
+    saveCampaignState(structuredClone(state.calendar ?? null), structuredClone(state.bonds ?? null));
+    if (state.campaignMap) campaign.saveMap(structuredClone(state.campaignMap));
+
+    savePartyState();
+    saveCombatState();
+    saveCurrentLocation();
+    saveCurrentBoard();
+
+    renderPartyMembers();
+    renderCampaignTab();
+    renderLocationMapsPreview();
+
+    postCombatNarration(`⏪ [PARTIDA] Vuelta a: ${describeCheckpoint(checkpoint)}.`);
+    return true;
 }
 
 /** Los umbrales de nivel del paquete de reglas activo. */
@@ -4681,6 +4962,8 @@ function drawLocationMapsPreview() {
             onTokenClick: (tokenId) => handleCombatTokenClick(tokenId),
             // Clic en una casilla encendida: mover. Solo las encendidas responden.
             onCellClick: (gx, gy, kind) => handleBoardCellClick(gx, gy, kind),
+            // Y al pasar por encima, la ruta y el precio: mover deja de ser una apuesta.
+            onCellHover: (gx, gy) => previewMovement(gx, gy),
             selectedTokenId: tacticalState.selectedTokenId,
             highlightedTokenIds: tacticalState.highlightedTokenIds,
             highlightedCells: tacticalState.highlightedCells,
@@ -4713,6 +4996,8 @@ function drawLocationMapsPreview() {
                             member.mapPosition.gridX = gx;
                             member.mapPosition.gridY = gy;
                             saveCombatState();
+                            // Arrastrar la ficha es moverse igual que escribirlo.
+                            chargeOpportunityAttacks(member, { x: originX, y: originY }, { x: gx, y: gy });
                             renderLocationMapsPreview();
                             return;
                         }
@@ -7052,6 +7337,53 @@ export function initPartyPanel() {
 
     // El camino de vuelta del importador: sin esto se puede meter el libro de otro y no
     // mandar el tuyo, que es media historia de "sin marketplace".
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'punto',
+        helpString: '<div>Puntos de retorno. <code>/punto</code> los lista, '
+            + '<code>/punto guardar Antes del jefe</code> guarda uno y '
+            + '<code>/punto volver 1</code> devuelve la partida al numero que diga la lista. '
+            + 'No toca la conversacion: solo el estado del juego.</div>',
+        unnamedArgumentList: [
+            SlashCommandArgument.fromProps({
+                description: 'guardar <nombre> | volver <numero>',
+                typeList: [ARGUMENT_TYPE.STRING],
+                isRequired: false,
+            }),
+        ],
+        callback: (_args, value) => {
+            const raw = String(value ?? '').trim();
+            const list = normalizeCheckpoints(chat_metadata?.[CHECKPOINT_KEY]);
+
+            if (!raw) {
+                if (list.length === 0) return 'No hay ningun punto de retorno todavia.';
+                const lines = list.map((cp, i) => `${i + 1}. ${describeCheckpoint(cp)}`);
+                toastr.info(lines.join('\n'), 'Puntos de retorno', { timeOut: 15000 });
+                return lines.join(' | ');
+            }
+
+            const [verb, ...rest] = raw.split(/\s+/);
+            const argument = rest.join(' ').trim();
+
+            if (/^guardar$/i.test(verb)) {
+                saveCheckpoint(argument || 'Guardado a mano');
+                return 'punto guardado';
+            }
+
+            if (/^volver$/i.test(verb)) {
+                const index = parseInt(argument, 10) - 1;
+                const target = list[index];
+                if (!target) {
+                    toastr.warning(`No hay un punto numero ${argument}. Escribe /punto para verlos.`);
+                    return '';
+                }
+                return restoreCheckpoint(target.id) ? `vuelta a ${target.label}` : '';
+            }
+
+            toastr.warning('Usa /punto, /punto guardar <nombre> o /punto volver <numero>.');
+            return '';
+        },
+    }));
+
     SlashCommandParser.addCommandObject(SlashCommand.fromProps({
         name: 'habilidades',
         helpString: '<div>Escribe conjuros, tecnicas y recursos de clase, y reparte quien se sabe cada uno. '

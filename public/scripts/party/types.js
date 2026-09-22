@@ -26,6 +26,8 @@
  * @property {number} xpNext
  * @property {string[]} [abilities] Los ids del catalogo que este personaje se sabe.
  * @property {Record<string, number>} [abilityUses] Cuantas veces ha usado cada una desde el ultimo descanso.
+ * @property {{successes: number, failures: number, stable: boolean, dead: boolean}} [deathSaves]
+ *   Como va la cuenta mientras esta a 0 PG.
  * @property {number} gold
  * @property {number} silver
  * @property {number} copper

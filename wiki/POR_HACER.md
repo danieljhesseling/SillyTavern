@@ -98,6 +98,22 @@ El **ejemplo que publica el contrato** trae ya una aldea sin tableros — *Vado 
 
 > Un detalle que salió al montarlo: la vista de una localidad medía lo que su tablero más grande. Una sin tableros no tiene de dónde sacar ese tamaño, así que toma el de una campaña nueva — y las que sí tienen siguen creciendo con el suyo, exactamente como antes.
 
+### A5 · Las cinco del catálogo V2 ✅
+
+De [[PROPUESTAS_MEJORA_V2]], las que más dan por lo que cuestan. Hechas el **2026-09-22**.
+
+**PROP2-039 · ¿Se puede llegar?** (`board/reachability.js`, 13 tests) Una inundación desde donde empieza el grupo, al validar un libro: una sala amurallada con su cofre y sus dos goblins **validaba perfectamente** — mapa rectangular, borde de muro, enemigos sobre suelo — y no se notaba hasta estar dentro buscando la puerta que no existe. Las puertas cerradas no cortan la inundación (se abren); los muros sí. Un enemigo inalcanzable es **error**; una sala vacía incomunicada, aviso. Y si el tablero ya tenía otro fallo, no se sermonea dos veces: una causa, un mensaje.
+
+**PROP2-053 · Ataques de oportunidad** (`combat/opportunity.js`, 12 tests) Salir del alcance de quien te tenía pegado cuesta un golpe gratis. Sin esto **alejarse era gratis**, y si alejarse es gratis la cobertura, los cuellos de botella y el guardián que se interpone no significan nada. Una reacción por ronda cada uno, así que un solo enemigo no cobra peaje a todo el grupo. Lo resuelve **el mismo código** que cualquier otro ataque enemigo — hubo que extraerlo del turno enemigo para eso, porque dos copias de esa aritmética discreparon seguro.
+
+**PROP2-059 · Salvaciones de muerte** (`rules/death-saves.js`, 20 tests) Caer a 0 PG era quedarse *Unconscious* y ahí se acababa: ni se moría uno, ni se recuperaba. Ahora son los tres éxitos contra los tres fallos de 5e, con el 20 natural que levanta con 1 PG, el 1 que cuenta doble, y el golpe sobre un cuerpo caído como fallo automático. La cuenta se ve **en la cara de la tira del grupo**, que es donde se mira quién está cayendo. Curar a quien está en el suelo lo levanta y borra la cuenta.
+
+> Se tira **una vez por ronda** y no al empezar su turno: la máquina de turnos salta a quien no puede actuar, así que el turno de un caído no llega nunca. Es lo mismo y no pide reescribirla.
+
+**PROP2-005 · La ruta antes de pulsar** Al pasar por encima de una casilla encendida se dibuja el camino y **lo que cuesta llegar**, en verde si te llega el movimiento y en rojo si no. La calcula el mismo A* que usa la IA enemiga: una línea dibujada a ojo diría una cosa y el movimiento haría otra, que es peor que no dibujar nada.
+
+**PROP2-163 · Puntos de retorno** (`campaign/checkpoint.js`, 11 tests) `/punto guardar <nombre>`, `/punto` para verlos y `/punto volver <número>`. Y uno **automático antes de cada jefe** (CR 2+ o 40+ PG), que es lo que convierte un combate duro en algo que se intenta en vez de algo que se evita. Guarda el estado del juego — grupo, combate, calendario, vínculos, mapa — y **no la conversación**: el chat es de SillyTavern y tiene su propio historial. El automático nunca desplaza al que guardaste tú.
+
 ---
 
 ## 🟠 D — Necesita una decisión

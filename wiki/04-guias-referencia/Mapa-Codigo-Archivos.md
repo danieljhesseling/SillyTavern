@@ -50,6 +50,7 @@ Módulos puros: sin DOM, sin estado global, sin lecturas del chat. Por eso se pr
 | :--- | ---: | :--- | :---: |
 | `board/terrain.js` | 343 | Muros, cobertura, terreno difícil y puertas. Almacenamiento disperso | ✅ |
 | `board/pathfinding.js` | 262 | A*, celdas alcanzables y coste de ruta | ✅ |
+| `board/reachability.js` | 160 | ¿Se puede llegar? La inundación que caza una sala amurallada (PROP2-039) | ✅ |
 | `board/fog-of-war.js` | 189 | Niebla de 3 estados; solo se persiste lo explorado | ✅ |
 | `board/line-of-sight.js` | 166 | Visión simétrica con Bresenham canonizado | ✅ |
 | `combat/enemy-ai.js` | 447 | Cuatro perfiles tácticos. Devuelve un plan, no lo ejecuta | ✅ |
@@ -64,6 +65,7 @@ Módulos puros: sin DOM, sin estado global, sin lecturas del chat. Por eso se pr
 | `rules/ruleset.js` | 307 | Validación, fusión, migración y exportación de paquetes | ✅ |
 | `rules/level-up.js` | 300 | Qué da subir de nivel, con la tabla en el paquete de reglas (A1) | ✅ |
 | `rules/abilities.js` | 354 | Conjuros, técnicas y recursos de clase, como datos editables (D5) | ✅ |
+| `rules/death-saves.js` | 174 | Los tres éxitos contra los tres fallos, a 0 PG (PROP2-059) | ✅ |
 | `rules/default-ruleset.js` | 251 | Las 25 tablas D&D, fuera del código | ✅ |
 | `ui/sandbox.js` | 353 | Banco de pruebas de combate (`/sandbox`) | ✅ |
 | `ui/combat-log.js` | 293 | Registro de combate y prompt del epílogo | ✅ |
@@ -77,6 +79,7 @@ Módulos puros: sin DOM, sin estado global, sin lecturas del chat. Por eso se pr
 | `campaign/campaign-pack-schema.js` | 481 | El contrato del paquete de campaña, generado desde el motor | ✅ |
 | `campaign/campaign-pack.js` | 403 | Si un paquete se sostiene: errores, avisos y lo que se reparó | ✅ |
 | `campaign/campaign-export.js` | 278 | El camino de vuelta: empaquetar tu campaña para mandarla (A2) | ✅ |
+| `campaign/checkpoint.js` | 141 | Puntos de retorno, y uno automático antes de cada jefe (PROP2-163) | ✅ |
 | `campaign/campaign-importer.js` | 419 | Del paquete a mundo, entradas, tableros y misiones; los ids, al final | ✅ |
 | `combat/spawn.js` | 95 | Dónde aparecen los enemigos: donde los dibujó el libro, nunca en un muro | ✅ |
 | `rules/rest.js` | 216 | Descanso corto y largo, con dados de golpe | ✅ |
@@ -84,6 +87,7 @@ Módulos puros: sin DOM, sin estado global, sin lecturas del chat. Por eso se pr
 | `combat/seeded-random.js` | 97 | Dados que se pueden repetir: una partida dos veces igual | ✅ |
 | `combat/target-card.js` | 94 | Qué dice la tarjeta de un enemigo y qué botones ofrece | ✅ |
 | `combat/condition-timers.js` | 119 | Las condiciones con duración, que se van solas al pasar la ronda (D5) | ✅ |
+| `combat/opportunity.js` | 110 | Escaparse cuesta un golpe: por eso importa la posición (PROP2-053) | ✅ |
 | `ui/contradiction-log.js` | 223 | Lo que la narración dijo y el motor no confirma | ✅ |
 | `campaign/encounter-editor.js` | 117 | Qué enemigos puede sacar un tablero, como filas | ✅ |
 | `ui/encounter-editor.js` | 119 | El panel de `/enemigos` | ✅ |

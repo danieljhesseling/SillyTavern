@@ -1746,3 +1746,39 @@
     font-size: 0.85em;
     opacity: 0.75;
 }
+
+/* ---- Previsualización de trayectoria (PROP2-005) ----
+ * La ruta y lo que cuesta, al pasar por encima de una casilla encendida. Mover sin esto
+ * es contar casillas a ojo y descubrir el precio cuando ya lo has pagado.
+ */
+
+.wm-path-step {
+    position: absolute;
+    width: 7px;
+    height: 7px;
+    margin: -3.5px 0 0 -3.5px;
+    border-radius: 50%;
+    background: #7ee081;
+    box-shadow: 0 0 4px rgba(0, 0, 0, 0.6);
+    pointer-events: none;
+}
+
+.wm-path-step.wm-path-far {
+    background: #ff6b5a;
+}
+
+.wm-path-cost {
+    position: absolute;
+    transform: translate(-50%, -120%);
+    padding: 1px 6px;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.75);
+    color: #7ee081;
+    font-size: 11px;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+.wm-path-cost.wm-path-far {
+    color: #ff6b5a;
+}

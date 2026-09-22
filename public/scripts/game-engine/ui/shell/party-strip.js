@@ -13,6 +13,7 @@
 import { buildCampaignView } from '../../campaign/campaign-view.js';
 import { statusMarkers } from '../../combat/initiative-tracker.js';
 import { levelForXp } from '../../rules/level-up.js';
+import { describeDeathSaves } from '../../rules/death-saves.js';
 
 /**
  * @typedef {Object} PartyChip
@@ -26,6 +27,7 @@ import { levelForXp } from '../../rules/level-up.js';
  * @property {boolean} bloodied
  * @property {number} rank
  * @property {boolean} canLevel Si tiene experiencia de sobra para subir de nivel.
+ * @property {string} dying Como va su cuenta de salvaciones de muerte, si esta a 0 PG.
  * @property {{icon: string, label: string}[]} statuses
  */
 
@@ -64,6 +66,9 @@ export function buildPartyStrip({ party = [], bonds = null, calendar = null, xpT
             // Una estrella en la cara es el aviso mas corto posible de que hay algo que
             // hacer con ese personaje: antes solo lo decia una linea del registro.
             canLevel: levelForXp(member?.xp, xpTable) > (Math.max(1, Math.floor(Number(member?.level) || 1))),
+            // Quien esta en el suelo no es "0/20 PG" y ya: son tres exitos contra tres
+            // fallos, y eso es lo que hay que poder mirar sin abrir nada.
+            dying: describeDeathSaves(member),
             statuses: statusMarkers(member?.activeConditions ?? member?.conditions),
         };
     });

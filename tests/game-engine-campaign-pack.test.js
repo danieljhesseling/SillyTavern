@@ -294,3 +294,54 @@ describe('el perfil tactico, que el motor cambia en silencio si no lo conoce', (
         expect(validatePack(pack).warnings.some(w => w.path.includes('profile'))).toBe(false);
     });
 });
+
+describe('lo que ningun esquema puede ver: si se puede llegar', () => {
+    /** Una sala amurallada con su goblin dentro: valida, y no se puede jugar. */
+    const amurallado = (enemyAt) => ({
+        version: 1,
+        world: { name: 'Mundo', synopsis: 'x' },
+        bestiary: [{ name: 'Goblin', hp: 7, armorClass: 12, cr: 0.25, profile: 'aggressive' }],
+        boards: [{
+            id: 'b', name: 'B',
+            map: [
+                '#########',
+                '#...#...#',
+                '#...#...#',
+                '#...#...#',
+                '#########',
+            ],
+            partyStart: [{ x: 1, y: 1 }],
+            enemies: [{ name: 'Goblin', ...enemyAt }],
+        }],
+        quests: [],
+    });
+
+    test('un enemigo al que no se puede llegar es un error, no un aviso', () => {
+        const report = validatePack(amurallado({ x: 7, y: 2 }));
+        expect(report.ok).toBe(false);
+        expect(report.errors.some(e => /no se puede llegar/.test(e.message))).toBe(true);
+    });
+
+    test('y la sala incomunicada se avisa aunque no haya nadie dentro', () => {
+        const pack = amurallado({ x: 2, y: 2 });
+        const report = validatePack(pack);
+        expect(report.errors).toEqual([]);
+        expect(report.warnings.some(w => /incomunicadas/.test(w.message))).toBe(true);
+    });
+
+    test('una puerta basta para que todo cuadre', () => {
+        const pack = amurallado({ x: 7, y: 2 });
+        pack.boards[0].map[2] = '#...D...#';
+        const report = validatePack(pack);
+        expect(report.errors).toEqual([]);
+        expect(report.warnings.filter(w => /incomunicadas/.test(w.message))).toEqual([]);
+    });
+
+    test('un tablero ya roto no recibe un segundo sermon', () => {
+        const pack = amurallado({ x: 7, y: 2 });
+        pack.boards[0].partyStart = [{ x: 0, y: 0 }];   // dentro de un muro
+        const report = validatePack(pack);
+        expect(report.errors.some(e => /muro/.test(e.message))).toBe(true);
+        expect(report.errors.some(e => /no se puede llegar/.test(e.message))).toBe(false);
+    });
+});

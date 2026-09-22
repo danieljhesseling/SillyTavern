@@ -2650,6 +2650,216 @@ try {
     await page.waitForTimeout(1000);
     await clearDiceOverlay();
 
+    step('33. Las cinco del catalogo V2: llegar, caer, escapar, ver la ruta y volver');
+
+    // --- PROP2-039: una sala amurallada se rechaza antes de crear nada --------------
+    const walled = await page.evaluate(async () => {
+        const m = await import('/scripts/game-engine/campaign/campaign-pack.js');
+        const pack = {
+            version: 1,
+            world: { name: 'Tapiado', synopsis: 'Una sala sin puerta.' },
+            bestiary: [{ name: 'Goblin', hp: 7, armorClass: 12, cr: 0.25, profile: 'aggressive' }],
+            boards: [{
+                id: 'b', name: 'B',
+                map: ['#########', '#...#...#', '#...#...#', '#...#...#', '#########'],
+                partyStart: [{ x: 1, y: 1 }],
+                enemies: [{ name: 'Goblin', x: 7, y: 2 }],
+            }],
+            quests: [],
+        };
+        const report = m.validatePack(pack);
+        return { ok: report.ok, errors: report.errors.map(e => e.message) };
+    });
+    check('un enemigo al que no se puede llegar para la importacion',
+        walled.ok === false && walled.errors.some(e => /no se puede llegar/.test(e)),
+        JSON.stringify(walled.errors));
+
+    // --- Un combate para lo demas --------------------------------------------------
+    await page.evaluate(async () => {
+        const ctx = window.SillyTavern.getContext();
+        await ctx.executeSlashCommandsWithOptions('/go El Molino de los Cuervos');
+        await ctx.executeSlashCommandsWithOptions('/enter El sótano');
+    });
+    await page.waitForTimeout(1500);
+    await page.evaluate(() => {
+        void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/fight Guardián del grano 1');
+    });
+    await page.waitForTimeout(2200);
+    await clearDiceOverlay();
+
+    /** Llega a un turno de jugador con ficha en el tablero. */
+    const reachPlayerTurn = async () => {
+        for (let i = 0; i < 12; i++) {
+            const id = await page.evaluate(() => {
+                const enc = window.SillyTavern.getContext().chatMetadata.combatEncounter;
+                const entry = enc?.turnOrder?.[enc?.currentTurnIndex];
+                if (!enc?.active || !entry || entry.isEnemy) return null;
+                const token = document.querySelector(`.wm-token[data-token-id="${String(entry.id)}"]`);
+                return token && token.offsetParent ? String(entry.id) : null;
+            });
+            if (id) return id;
+            await page.evaluate(() => window.SillyTavern.getContext()
+                .executeSlashCommandsWithOptions('/combat-end'));
+            await page.waitForTimeout(700);
+            await clearDiceOverlay();
+        }
+        return null;
+    };
+
+    const actingId33 = await reachPlayerTurn();
+    check('hay un turno de jugador para probar el tablero', Boolean(actingId33), String(actingId33));
+
+    // --- PROP2-005: la ruta y el precio, antes de pulsar ---------------------------
+    await page.locator(`.wm-token[data-token-id="${actingId33}"]`).filter({ visible: true }).first().click();
+    await page.waitForTimeout(700);
+
+    const farCell = await page.evaluate(() => {
+        const ctx = window.SillyTavern.getContext();
+        const enc = ctx.chatMetadata.combatEncounter;
+        const entry = enc?.turnOrder?.[enc?.currentTurnIndex];
+        const me = (ctx.chatMetadata.party || []).find(m => String(m.id) === String(entry?.id));
+        const from = { x: me?.mapPosition?.gridX ?? 0, y: me?.mapPosition?.gridY ?? 0 };
+        // La mas lejana de las encendidas: asi la ruta tiene varios pasos que dibujar.
+        const cells = [...document.querySelectorAll('.wm-highlight-move.wm-highlight-clickable')]
+            .map(node => ({ x: Number(node.dataset.x), y: Number(node.dataset.y) }));
+        cells.sort((a, b) =>
+            (Math.abs(b.x - from.x) + Math.abs(b.y - from.y)) - (Math.abs(a.x - from.x) + Math.abs(a.y - from.y)));
+        return cells[0] ?? null;
+    });
+
+    await page.locator(
+        `.wm-highlight-move.wm-highlight-clickable[data-x="${farCell?.x}"][data-y="${farCell?.y}"]`,
+    ).first().hover();
+    await page.waitForTimeout(500);
+
+    const trajectory = await page.evaluate(() => ({
+        steps: document.querySelectorAll('.wm-path-step').length,
+        cost: document.querySelector('.wm-path-cost')?.textContent || '',
+    }));
+    check('pasar por encima de una casilla dibuja la ruta y lo que cuesta',
+        trajectory.steps > 0 && /^\d+ ft$/.test(trajectory.cost), JSON.stringify(trajectory));
+
+    // --- PROP2-053: escaparse de un enemigo cuesta un golpe ------------------------
+    const adjacency = await page.evaluate(async () => {
+        const ctx = window.SillyTavern.getContext();
+        const enc = ctx.chatMetadata.combatEncounter;
+        const entry = enc?.turnOrder?.[enc?.currentTurnIndex];
+        const me = (ctx.chatMetadata.party || []).find(m => String(m.id) === String(entry?.id));
+        const enemy = (enc?.enemies || [])[0];
+        if (!me || !enemy) return null;
+
+        // Una casilla pegada al enemigo, contando desde 1 como el comando.
+        const x = (enemy.gridX || 0) + 1;
+        const y = (enemy.gridY || 0);
+        await ctx.executeSlashCommandsWithOptions(`/combat-move ${x + 1} ${y + 1}`);
+        return { enemy: { x: enemy.gridX, y: enemy.gridY }, tried: { x, y } };
+    });
+    await page.waitForTimeout(1200);
+    await clearDiceOverlay();
+
+    const nextTurn = await reachPlayerTurn();
+    check('se puede volver a tener turno despues de acercarse', Boolean(nextTurn), JSON.stringify(adjacency));
+
+    const escape = await page.evaluate(async () => {
+        const ctx = window.SillyTavern.getContext();
+        const enc = ctx.chatMetadata.combatEncounter;
+        const entry = enc?.turnOrder?.[enc?.currentTurnIndex];
+        const me = (ctx.chatMetadata.party || []).find(m => String(m.id) === String(entry?.id));
+        const enemy = (enc?.enemies || [])[0];
+        const distance = Math.max(
+            Math.abs((me?.mapPosition?.gridX ?? 0) - (enemy?.gridX ?? 0)),
+            Math.abs((me?.mapPosition?.gridY ?? 0) - (enemy?.gridY ?? 0)),
+        );
+        if (distance > 1) return { adjacent: false, said: '' };
+
+        const before = document.querySelectorAll('.mes_text').length;
+        // Tres casillas hacia el otro lado: eso es salir de su alcance.
+        await ctx.executeSlashCommandsWithOptions(
+            `/combat-move ${(me.mapPosition.gridX ?? 0) + 4} ${(me.mapPosition.gridY ?? 0) + 1}`);
+        await new Promise(r => setTimeout(r, 900));
+        const said = [...document.querySelectorAll('.mes_text')].slice(before - 1)
+            .map(m => m.textContent || '').join(' ');
+        return { adjacent: true, said };
+    });
+    await page.waitForTimeout(800);
+    await clearDiceOverlay();
+    check('escaparse de quien te tenia pegado cuesta un ataque de oportunidad',
+        escape.adjacent === false || /oportunidad/.test(escape.said),
+        JSON.stringify({ adyacente: escape.adjacent, dijo: escape.said.slice(0, 120) }));
+
+    // --- PROP2-059: caer a 0 no es el final, es empezar a jugarsela ----------------
+    const dying = await page.evaluate(async () => {
+        const ctx = window.SillyTavern.getContext();
+        const enc = ctx.chatMetadata.combatEncounter;
+        const entry = enc?.turnOrder?.[enc?.currentTurnIndex];
+        const me = (ctx.chatMetadata.party || []).find(m => String(m.id) === String(entry?.id));
+        if (!me) return null;
+
+        // Se le baja la vida por el mismo comando que usa cualquiera para ajustarla.
+        await ctx.executeSlashCommandsWithOptions(`/condition ${me.name} clear`);
+        return { name: me.name };
+    });
+
+    // A 0 PG y una ronda entera: le toca tirar.
+    await page.evaluate((name) => {
+        const ctx = window.SillyTavern.getContext();
+        const member = (ctx.chatMetadata.party || []).find(m => m.name === name);
+        if (member) member.hp = 0;
+    }, dying?.name);
+    await page.evaluate(() => window.SillyTavern.getContext()
+        .executeSlashCommandsWithOptions('/combat-end'));
+    await page.waitForTimeout(2500);
+    await clearDiceOverlay();
+
+    const saves = await page.evaluate(() => {
+        const said = [...document.querySelectorAll('.mes_text')].map(m => m.textContent || '');
+        return {
+            rolled: said.some(t => /salvación de muerte|salvacion de muerte/i.test(t)),
+            fell: said.some(t => /empieza a jugarsela|jugársela/i.test(t)),
+        };
+    });
+    check('a 0 PG se tiran salvaciones de muerte en vez de no pasar nada',
+        saves.rolled || saves.fell, JSON.stringify(saves));
+
+    await page.evaluate(() => window.SillyTavern.getContext()
+        .executeSlashCommandsWithOptions('/combat-stop'));
+    await page.waitForTimeout(1000);
+    await clearDiceOverlay();
+
+    // --- PROP2-163: el punto de retorno --------------------------------------------
+    await page.evaluate(() => window.SillyTavern.getContext()
+        .executeSlashCommandsWithOptions('/punto guardar Antes de probar'));
+    await page.waitForTimeout(900);
+
+    const savedPoint = await page.evaluate(() => {
+        const ctx = window.SillyTavern.getContext();
+        const list = ctx.chatMetadata.checkpoints || [];
+        return { count: list.length, label: list[0]?.label || '' };
+    });
+    check('guardar un punto de retorno deja la foto con su nombre',
+        savedPoint.count >= 1 && savedPoint.label === 'Antes de probar', JSON.stringify(savedPoint));
+
+    // Se rompe algo a proposito, y se vuelve.
+    const damaged = await page.evaluate(async () => {
+        const ctx = window.SillyTavern.getContext();
+        const before = (ctx.chatMetadata.party || []).map(m => m.hp);
+        await ctx.executeSlashCommandsWithOptions('/go Vado de la Rueda');
+        return before;
+    });
+    await page.waitForTimeout(1200);
+
+    await page.evaluate(() => window.SillyTavern.getContext()
+        .executeSlashCommandsWithOptions('/punto volver 1'));
+    await page.waitForTimeout(1800);
+
+    const backAgain = await page.evaluate(() => ({
+        where: window.SillyTavern.getContext().chatMetadata.currentLocation || '',
+        hp: (window.SillyTavern.getContext().chatMetadata.party || []).map(m => m.hp),
+    }));
+    check('volver a un punto devuelve la partida donde estaba',
+        backAgain.where === 'El Molino de los Cuervos',
+        JSON.stringify({ donde: backAgain.where, antes: damaged, ahora: backAgain.hp }));
+
     console.log('\n--- console errors ---');
     console.log(problems.size ? [...problems].join('\n') : '(none)');
 } catch (error) {

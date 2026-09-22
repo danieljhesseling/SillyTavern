@@ -2,6 +2,7 @@
 title: Catálogo V2 de 200 Propuestas de Mejora — Hacia el CRPG Definitivo
 tags: [propuestas, mejoras-v2, roadmap, dnd, gloomhaven, persona, game-shell, ia, tactico]
 created: 2026-09-22
+updated: 2026-09-22
 author: DanielJHesseling / Antigravity AI
 ---
 
@@ -12,6 +13,37 @@ author: DanielJHesseling / Antigravity AI
 > El catálogo original (`PROP-001` a `PROP-200`) se redactó cuando el proyecto era un compendio de módulos dispersos alrededor de `party.js`. Hoy el motor ya cuenta con combate determinista a 0 tokens (`game-engine/combat/`), salas con niebla y puertas dinámicas (`campaign-map.js`), vínculos sociales Persona (`bonds.js`), 7 tipos de objetivos Gloomhaven (`scenarios.js`), y un pipeline formal de ingesta y generación de mundos profundos.
 >
 > Este catálogo **V2** recoge **200 nuevas propuestas técnicas y de diseño**, articuladas en **10 áreas estratégicas de 20 propuestas cada una**, enfocadas en consolidar la experiencia visual sin comandos, la riqueza del mundo y la inmersión tipo videojuego comercial (estilo *Baldur's Gate*, *Divinity* y *Friends & Fables*).
+
+---
+
+## 📍 Lectura del 2026-09-22
+
+Un catálogo de **ideas**, no una lista de tareas: lo que se hace y en qué orden vive en **[[POR_HACER]]**. Aquí no se lleva la cuenta de nada, porque una cuenta metida en un catálogo de 200 entradas se pudre en dos días.
+
+**Se escribió hoy y ya hay una quincena hechas**, que dice más del ritmo del proyecto que del documento:
+
+| Ya está | Dónde |
+| :--- | :--- |
+| `PROP2-007` registro de combate · `PROP2-009` pantalla de título · `PROP2-017` iniciativa visual · `PROP2-018` fin de turno | Fases B y H |
+| `PROP2-022` **localidades con cero tableros** | A4 |
+| `PROP2-049` cobertura por trazado · `PROP2-124` descanso corto con dados · `PROP2-128` subida de nivel | Fase A y A1 |
+| `PROP2-061` catálogo universal de conjuros | D5, la capa ligera |
+| `PROP2-141` segmentación para caché · `PROP2-142` poda del combate resuelto | El prefijo estable |
+| `PROP2-183` aislamiento del fork · `PROP2-186` gate de tipos | La disciplina de la casa |
+| `PROP2-039` accesibilidad topológica · `PROP2-053` ataques de oportunidad · `PROP2-059` salvaciones de muerte · `PROP2-005` previsualización de trayectoria · `PROP2-163` puntos de retorno | **Hechas el 2026-09-22** |
+
+**Y dos que están descartadas a propósito**, no pendientes:
+
+- `PROP2-062`, `PROP2-066`, `PROP2-080` — ranuras de conjuro, *upcasting*, libro de conjuros: es la magia pesada, y **D5 decidió la ligera**. Se añadirían encima si alguna vez hacen falta.
+- `PROP2-121`, `PROP2-122`, `PROP2-123` (la mitad de tiradas) — el DM que pide tiradas: es **D6, decidido que no**. Cuesta tokens en todos los turnos y el motor ya tira, audita y corrige.
+
+**Tres cosas que el catálogo da por hechas y no lo están:**
+
+1. `PROP2-184`/`PROP2-185` hablan de **60 FPS y capas de lienzo**. El tablero es **DOM, no canvas**: no es optimizar un bucle de dibujado, es reescribir el renderizador.
+2. `PROP2-170` (nube) choca con tu *«solo local»*, que es una decisión tomada (D4).
+3. `PROP2-200` (congelar la API del motor) con un único consumidor es ponerse una camisa de fuerza.
+
+> La **matriz de prioridades del final** nació desfasada: pone en *alta* cosas ya hechas y magia que se descartó. Se conserva como foto de lo que parecía importante el 22 de septiembre.
 
 ---
 
@@ -36,7 +68,7 @@ author: DanielJHesseling / Antigravity AI
 * **PROP2-002 · Dock Flotante de Party con Estado Vital**: Barra fija inferior o lateral que muestra los avatares de los miembros del grupo con barras fluidas de HP, mana/slots y pequeños iconos de estados alterados con tooltip al pasar el cursor.
 * **PROP2-003 · Action Chips Contextuales Generados**: Botones de acción rápida bajo el diálogo sugeridos por el DM (ej. `[Examinar estatua]`, `[Negociar precio]`, `[Desenvainar arma]`), ejecutables con un solo clic sin tener que teclear.
 * **PROP2-004 · Menú Radial Contextual sobre Tokens y Entidades**: Al hacer clic izquierdo o derecho sobre un personaje, puerta o enemigo en el tablero, desplegar un menú circular con opciones inmediatas (`Atacar`, `Hablar`, `Inspeccionar`, `Empujar`).
-* **PROP2-005 · Previsualización de Trayectoria A* y Coste de Movimiento**: Al pasar el ratón sobre una celda del tablero con un token seleccionado, dibujar una línea segmentada que indique la ruta óptima y los pies de movimiento requeridos antes de confirmar.
+* ✅ **PROP2-005 · Previsualización de Trayectoria A* y Coste de Movimiento** *(hecho el 2026-09-22)*: Al pasar el ratón sobre una celda del tablero con un token seleccionado, dibujar una línea segmentada que indique la ruta óptima y los pies de movimiento requeridos antes de confirmar.
 * **PROP2-006 · Cursor Dinámico con Estado del Puntero**: Punteros visuales temáticos (espada para ataque disponible, bota para movimiento, engranaje para interactuable, candado para puerta cerrada).
 * **PROP2-007 · Registro de Combate (Combat Log) Retráctil**: Panel semitransparente que detalla las tiradas mecánicas (d20 + bono vs CA = Impacto, dados de daño) accesible con un clic o tecla rápida, sin mezclar números con la prosa literaria del chat.
 * **PROP2-008 · Retrato Parlante Animado (Bust Shot)**: En la escena de diálogo, mostrar la ilustración del personaje activo a medio cuerpo a la izquierda/derecha con animación sutil de respiración y cambio de expresión según la emoción detectada.
@@ -58,7 +90,7 @@ author: DanielJHesseling / Antigravity AI
 ## Área 2: Generador de Mundos Profundo & Ingesta Estructurada (`PROP2-021` a `PROP2-040`)
 
 * **PROP2-021 · Validador de Esquema en Tiempo de Importación**: Ejecutar automáticamente la validación del esquema `DEEP_WORLD_SCHEMA` v2 antes de guardar nada en `world_info`, avisando de cualquier campo faltante o ID errónea.
-* **PROP2-022 · Soporte para Localidades con Cero Tableros**: Adaptar el gestor de campañas para permitir asentamientos sin mapa táctico (`boardIds: []`), gestionando estancias puramente narrativas, comerciales y de descanso.
+* ✅ **PROP2-022 · Soporte para Localidades con Cero Tableros** *(hecho el 2026-09-22, A4)*: Adaptar el gestor de campañas para permitir asentamientos sin mapa táctico (`boardIds: []`), gestionando estancias puramente narrativas, comerciales y de descanso.
 * **PROP2-023 · Pipeline de Generación en Cuatro Fases con Caché de IDs**: Un asistente guiado para procesar novelas o libros extensos en 4 pasos (Mundo $\rightarrow$ Geografía $\rightarrow$ Personajes/Bestiario $\rightarrow$ Tableros/Misiones) reteniendo los identificadores.
 * **PROP2-024 · Visualizador de Grafos de Rutas del Mapa Mundi**: Renderizar el grafo de localidades y caminos usando Canvas o SVG interactivo para que el jugador haga clic en un destino y viaje automáticamente.
 * **PROP2-025 · Editor Visual de Tableros ASCII en el Navegador**: Una herramienta visual tipo "Pintor de Mapas" donde se seleccionan símbolos (`#`, `.`, `D`, `c`, `C`, `~`) y se dibuja sobre la cuadrícula con el ratón, exportando directamente a JSON.
@@ -75,7 +107,7 @@ author: DanielJHesseling / Antigravity AI
 * **PROP2-036 · Soporte para Mazmorras Multiescala (Superficie y Subsuelo)**: Jerarquía de tableros anidados que permite enlazar una celda de escalera (`v`) de un tablero con la celda de inicio (`^`) de un segundo tablero.
 * **PROP2-037 · Constructor de Facciones con Generador de Lema y Filosofía**: Creación automática de contradicciones dramáticas (ej. meta pública benevolente vs doctrina secreta autoritaria) para dotar de profundidad política al mundo.
 * **PROP2-038 · Generador de Rumores de Taberna Dinámicos**: Inyección de entradas breves de Lorebook que el posadero o los parroquianos pueden soltar de forma natural según las misiones pendientes del mapa.
-* **PROP2-039 · Verificador de Accesibilidad Topológica en Tableros**: Algoritmo de inundación (Flood Fill) que comprueba antes de jugar que todas las salas y cofres son alcanzables desde el punto de entrada sin quedar bloqueados por muros cerrados.
+* ✅ **PROP2-039 · Verificador de Accesibilidad Topológica en Tableros** *(hecho el 2026-09-22)*: Algoritmo de inundación (Flood Fill) que comprueba antes de jugar que todas las salas y cofres son alcanzables desde el punto de entrada sin quedar bloqueados por muros cerrados.
 * **PROP2-040 · Migrador de Campañas de Versión 1 a Versión 2**: Script de conversión hacia atrás para transformar mundos planos antiguos (`world-schema.js` v1) al formato jerárquico multicapa (`DEEP_WORLD_SCHEMA` v2).
 
 ---
@@ -94,20 +126,20 @@ author: DanielJHesseling / Antigravity AI
 * **PROP2-050 · Cofres Tácticos e Interactuables en Batalla**: Celdas de cofre que pueden ser saqueadas consumiendo una acción en pleno combate (con tirada de ganzúa si están selladas).
 * **PROP2-051 · Palancas y Mecanismos de Apertura a Distancia**: Interruptores que el grupo o los enemigos pueden activar para cerrar rejas, drenar agua de un foso o abrir pasadizos secretos.
 * **PROP2-052 · Barricadas y Elementos Destructibles**: Objetos con puntos de vida y CA propios en el tablero que bloquean el paso y pueden ser derribados a golpes o con magia.
-* **PROP2-053 · Ataques de Oportunidad Automáticos**: Si una criatura abandona una celda adyacente a un enemigo cuerpo a cuerpo sin usar la acción de Retirada (Disengage), el motor ejecuta un ataque de reacción inmediato.
+* ✅ **PROP2-053 · Ataques de Oportunidad Automáticos** *(hecho el 2026-09-22)*: Si una criatura abandona una celda adyacente a un enemigo cuerpo a cuerpo sin usar la acción de Retirada (Disengage), el motor ejecuta un ataque de reacción inmediato.
 * **PROP2-054 · Acción Preparada (Ready Action)**: Permitir a un combatiente reservar su acción bajo un disparador condicional (ej. "Disparar al primer enemigo que cruce la puerta").
 * **PROP2-055 · Mecánicas de Empujón (Shove) y Derribo (Prone)**: Opción de gastar un ataque para realizar una tirada opuesta de Atletismo y empujar a un rival 5 pies hacia atrás (ideal contra fosos o fuego) o derribarlo.
 * **PROP2-056 · Maniobra de Agarre (Grapple)**: Reducir la velocidad del rival a 0 mediante una tirada enfrentada, impidiéndole moverse hasta que gaste una acción en liberarse.
 * **PROP2-057 · Sistema de Fuentes de Luz y Visión en la Oscuridad (Darkvision)**: Celdas oscuras que imponen desventaja a tiradas de ataque a personajes sin visión nocturna o que no porten una antorcha.
 * **PROP2-058 · Selección y Despliegue de Aliados Invadidos/Convocados**: Soporte para mascotas del explorador, familiares mágicos o aliados invocados que actúan en su propio turno de iniciativa.
-* **PROP2-059 · Muerte y Estabilización (Death Saving Throws)**: Cuando un personaje del grupo cae a 0 HP, inicia el bucle de salvaciones de muerte D&D (3 éxitos = estabilizado, 3 fallos = muerte) antes de que la partida termine.
+* ✅ **PROP2-059 · Muerte y Estabilización (Death Saving Throws)** *(hecho el 2026-09-22)*: Cuando un personaje del grupo cae a 0 HP, inicia el bucle de salvaciones de muerte D&D (3 éxitos = estabilizado, 3 fallos = muerte) antes de que la partida termine.
 * **PROP2-060 · Reparto y Animación de Experiencia y Botín Post-Combate**: Pantalla resumen de fin de encuentro con recuento de bajas, oro obtenido, reparto equitativo de XP y reparto de objetos a los inventarios.
 
 ---
 
 ## Área 4: Sistema de Magias, Habilidades & Spell Slots (`PROP2-061` a `PROP2-080`)
 
-* **PROP2-061 · Catálogo Universal de Conjuros y Técnicas**: Implementar un repositorio centralizado de magias y habilidades en `game-engine/rules/` con acceso por identificador único.
+* ✅ **PROP2-061 · Catálogo Universal de Conjuros y Técnicas** *(hecho el 2026-09-22, D5)*: Implementar un repositorio centralizado de magias y habilidades en `game-engine/rules/` con acceso por identificador único.
 * **PROP2-062 · Gestor Visual de Ranuras de Conjuro (Spell Slots)**: Visualizador de casillas o perlas de nivel 1 a 9 en la ficha de cada lanzador de conjuros, con consumo automático al lanzar y recarga en descanso largo.
 * **PROP2-063 · Plantillas de Área de Efecto en Cuadrícula (AoE Templates)**: Herramienta gráfica que resalta las celdas afectadas al seleccionar un cono de 15 pies, esfera de 20 pies, línea de 30 pies o cubo en el tablero táctico.
 * **PROP2-064 · Mecánica de Concentración D&D**: Si un personaje mantiene un conjuro activo que requiere concentración y recibe daño, el motor dispara automáticamente una salvación de Constitución (CD 10 o mitad del daño).
@@ -234,7 +266,7 @@ author: DanielJHesseling / Antigravity AI
 
 * **PROP2-161 · Sistema de Guardado Atómico en Múltiples Ranuras (Slots)**: Permitir tener múltiples ranuras de guardado manual por campaña más una ranura de autoguardado rápido (`QuickSave` y `AutoSave`).
 * **PROP2-162 · Guardado Automático al Cambiar de Localidad o Concluir Batalla**: Disparar la persistencia de estado inmediatamente tras transiciones espaciales o victoria táctica.
-* **PROP2-163 · Instantáneas de Seguridad (Snapshots) Anti-Decisiones Catastróficas**: Crear un punto de retorno automático antes de batallas contra jefes o diálogos críticos de historia.
+* ✅ **PROP2-163 · Instantáneas de Seguridad (Snapshots)** *(hecho el 2026-09-22)*: Crear un punto de retorno automático antes de batallas contra jefes o diálogos críticos de historia.
 * **PROP2-164 · Formato Estándar de Exportación de Partida (.sav.json)**: Archivo descargable que reúne el estado exacto de la party, el calendario, las relaciones, las misiones y la niebla de guerra revelada.
 * **PROP2-165 · Asistente de Resolución de Conflictos al Importar**: Si un paquete contiene una facción o personaje que ya existe en la base de datos local, ofrecer renombrar, sobrescribir o combinar.
 * **PROP2-166 · Migrador Semántico de Versiones de Partida Guardada**: Garantizar que actualizaciones del motor de juego no corrompan partidas guardadas creadas con esquemas anteriores.
