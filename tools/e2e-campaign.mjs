@@ -2928,16 +2928,12 @@ try {
     const builder = await page.evaluate(() => ({
         tabs: [...document.querySelectorAll('.ce-tab')].map(b => (b.textContent || '').trim()),
         summary: document.querySelector('.ce-summary')?.textContent || '',
-        soon: document.querySelector('.ce-soon')?.textContent || '',
         genre: document.querySelectorAll('.ce-field').length,
     }));
     check('el editor abre por la ficha del mundo',
-        builder.tabs.length === 2 && /Mundo/.test(builder.tabs[0]) && builder.genre >= 3,
-        JSON.stringify(builder.tabs));
+        /Mundo/.test(builder.tabs[0]) && builder.genre >= 3, JSON.stringify(builder.tabs));
     check('y dice cuanto mundo hay, sin entrar',
         /localidad\(es\).*tablero\(s\)/.test(builder.summary), builder.summary);
-    check('lo que todavia no esta se dice, en vez de fingir una pestana vacia',
-        /Personajes, bestiario/.test(builder.soon), builder.soon);
 
     // La sinopsis se cambia y tiene que sobrevivir al guardado.
     await page.locator('.ce-area').first().fill('Un valle que nadie pidio.');
@@ -3051,6 +3047,13 @@ try {
 
     step('36. El editor de campana: gente, bichos, objetos y misiones');
 
+    // El aviso de "guardado" se queda encima de la barra de pestanas unos segundos y se
+    // come el clic. Es cosa del recorrido, no del panel: quien juega espera o lo aparta.
+    const clearToasts = () => page.evaluate(() => {
+        document.querySelectorAll('#toast-container .toast').forEach(t => t.remove());
+    });
+
+    await clearToasts();
     await page.evaluate(() => {
         void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/campana');
     });
@@ -3064,6 +3067,7 @@ try {
         allTabs.tabs.length === 7 && allTabs.soon === 0, JSON.stringify(allTabs.tabs));
 
     // --- Alguien del mundo -----------------------------------------------------------
+    await clearToasts();
     await page.locator('.ce-tab').filter({ hasText: 'Personajes' }).click();
     await page.waitForTimeout(400);
 
@@ -3097,6 +3101,7 @@ try {
         JSON.stringify(abilityLabels.slice(0, 6)));
 
     // --- Un bicho --------------------------------------------------------------------
+    await clearToasts();
     await page.locator('.ce-tab').filter({ hasText: 'Bestiario' }).click();
     await page.waitForTimeout(400);
     await page.locator('.ce-add-beast').click();
@@ -3113,6 +3118,7 @@ try {
     await beast.locator('.ce-profile select').selectOption({ index: 1 });
 
     // --- Un objeto -------------------------------------------------------------------
+    await clearToasts();
     await page.locator('.ce-tab').filter({ hasText: 'Objetos' }).click();
     await page.waitForTimeout(400);
     await page.locator('.ce-add-item').click();
@@ -3127,6 +3133,7 @@ try {
     await thing.locator('.ce-grid').nth(1).locator('input').first().fill('1d6');
 
     // --- Una mision ------------------------------------------------------------------
+    await clearToasts();
     await page.locator('.ce-tab').filter({ hasText: 'Misiones' }).click();
     await page.waitForTimeout(400);
     await page.locator('.ce-add-quest').click();
@@ -3217,6 +3224,7 @@ try {
         void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/campana');
     });
     await page.waitForSelector('.ce-root', { timeout: 20000 });
+    await clearToasts();
     await page.locator('.ce-tab').filter({ hasText: 'Personajes' }).click();
     await page.waitForTimeout(400);
 
