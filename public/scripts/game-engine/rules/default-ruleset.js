@@ -213,6 +213,24 @@ const MODIFIABLE_STATS = [
 export const RULESET_SCHEMA_VERSION = 1;
 
 /** @type {import('./ruleset.js').Ruleset} */
+/**
+ * Cuanta experiencia pide cada nivel, como pares [nivel, XP].
+ *
+ * Pares y no objeto porque es la forma que el editor de reglas ya sabe dibujar: una
+ * campana que quiera subir mas rapido, o parar en el nivel 10, se edita desde `/rules`
+ * sin tocar una linea de codigo.
+ */
+const XP_THRESHOLDS = [
+    ['2', '300'], ['3', '900'], ['4', '2700'], ['5', '6500'],
+    ['6', '14000'], ['7', '23000'], ['8', '34000'], ['9', '48000'],
+    ['10', '64000'], ['11', '85000'], ['12', '100000'], ['13', '120000'],
+    ['14', '140000'], ['15', '165000'], ['16', '195000'], ['17', '225000'],
+    ['18', '265000'], ['19', '305000'], ['20', '355000'],
+];
+
+/** Los niveles que traen mejora de caracteristica. */
+const ABILITY_LEVELS = ['4', '8', '12', '16', '19'];
+
 export const DEFAULT_RULESET = {
     version: RULESET_SCHEMA_VERSION,
     id: 'dnd5e',
@@ -247,5 +265,9 @@ export const DEFAULT_RULESET = {
         alignments: ALIGNMENTS,
         conditions: CONDITIONS,
         modifiableStats: MODIFIABLE_STATS,
+    },
+    progression: {
+        xpThresholds: XP_THRESHOLDS,
+        abilityLevels: ABILITY_LEVELS,
     },
 };

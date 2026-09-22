@@ -102,10 +102,13 @@ function findSpeaker(messages, known) {
  * @param {any[]} [input.party]
  * @param {any} [input.bonds]
  * @param {any} [input.calendar]
+ * @param {any} [input.xpTable] Los umbrales de nivel del paquete de reglas activo.
  * @returns {DialogueView}
  */
-export function buildDialogueView({ messages = [], party = [], bonds = null, calendar = null } = {}) {
-    const { chips, moment } = buildPartyStrip({ party, bonds, calendar });
+export function buildDialogueView({
+    messages = [], party = [], bonds = null, calendar = null, xpTable = null,
+} = {}) {
+    const { chips, moment } = buildPartyStrip({ party, bonds, calendar, xpTable });
 
     return {
         moment,

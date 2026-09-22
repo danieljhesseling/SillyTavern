@@ -24,6 +24,7 @@
 import { CAMPAIGN_PACK_VERSION, OBJECTIVE_FIELDS } from './campaign-pack-schema.js';
 import { OBJECTIVE_TYPES } from './scenarios.js';
 import { ASCII_TERRAIN } from '../board/terrain.js';
+import { getProfileOptions, DEFAULT_PROFILE } from '../combat/enemy-ai.js';
 
 /**
  * @typedef {Object} Issue
@@ -266,6 +267,21 @@ export function validatePack(raw) {
             seen.set(name.toLowerCase(), group);
         });
     }
+
+    // El perfil táctico decide cómo se mueve un enemigo, y el motor cambia en silencio
+    // cualquiera que no conozca por el de por defecto. Un libro que pide un "sniper" y
+    // recibe un "aggressive" no se entera — salvo que se le diga aquí.
+    const profiles = new Set(getProfileOptions().map(([value]) => String(value)));
+    pack.bestiary.forEach((/** @type {any} */ enemy, /** @type {number} */ index) => {
+        const profile = text(enemy.profile);
+        if (profile && !profiles.has(profile)) {
+            warnings.push({
+                path: `bestiary[${index}].profile`,
+                message: `"${profile}" no es un perfil táctico del motor; se jugará como "${DEFAULT_PROFILE}". `
+                    + `Los que hay: ${[...profiles].join(', ')}.`,
+            });
+        }
+    });
 
     const bestiary = new Set(pack.bestiary.map((/** @type {any} */ e) => text(e.name).toLowerCase()).filter(Boolean));
     const allies = new Set(pack.confidants.map((/** @type {any} */ c) => text(c.name).toLowerCase()).filter(Boolean));

@@ -62,6 +62,7 @@ Módulos puros: sin DOM, sin estado global, sin lecturas del chat. Por eso se pr
 | `campaign/calendar.js` | 195 | Días y bloques de tiempo estilo Persona | ⬜ |
 | `campaign/campaign-worlds.js` | 77 | Qué es una campaña, dónde empieza, nombres libres | ✅ |
 | `rules/ruleset.js` | 307 | Validación, fusión, migración y exportación de paquetes | ✅ |
+| `rules/level-up.js` | 300 | Qué da subir de nivel, con la tabla en el paquete de reglas (A1) | ✅ |
 | `rules/default-ruleset.js` | 251 | Las 25 tablas D&D, fuera del código | ✅ |
 | `ui/sandbox.js` | 353 | Banco de pruebas de combate (`/sandbox`) | ✅ |
 | `ui/combat-log.js` | 293 | Registro de combate y prompt del epílogo | ✅ |
@@ -74,6 +75,7 @@ Módulos puros: sin DOM, sin estado global, sin lecturas del chat. Por eso se pr
 | `ui/prompt-preview.js` | 179 | El panel de `/prompt` | ✅ |
 | `campaign/campaign-pack-schema.js` | 481 | El contrato del paquete de campaña, generado desde el motor | ✅ |
 | `campaign/campaign-pack.js` | 403 | Si un paquete se sostiene: errores, avisos y lo que se reparó | ✅ |
+| `campaign/campaign-export.js` | 278 | El camino de vuelta: empaquetar tu campaña para mandarla (A2) | ✅ |
 | `campaign/campaign-importer.js` | 419 | Del paquete a mundo, entradas, tableros y misiones; los ids, al final | ✅ |
 | `combat/spawn.js` | 95 | Dónde aparecen los enemigos: donde los dibujó el libro, nunca en un muro | ✅ |
 | `rules/rest.js` | 216 | Descanso corto y largo, con dados de golpe | ✅ |
@@ -87,6 +89,7 @@ Módulos puros: sin DOM, sin estado global, sin lecturas del chat. Por eso se pr
 | `cost/prompt-order.js` | 184 | El orden de los bloques del prompt: de lo que nunca cambia a lo que cambia siempre | ✅ |
 | `campaign/objective-editor.js` | 351 | Objetivos como filas editables, y pedírselos a un modelo | ✅ |
 | `ui/objective-editor.js` | 203 | El panel de `/objetivos editar` | ✅ |
+| `ui/audio-settings.js` | 102 | El panel de `/sonido`: una pista por escena (A3) | ✅ |
 | `combat/initiative-tracker.js` | 242 | Quién actúa, quién sigue y qué le pasa | ✅ |
 | `combat/loot.js` | 183 | Botín y experiencia por CR, repartidos entre los que siguen en pie | ✅ |
 | `ui/shell/game-shell.js` | 732 | La capa a pantalla completa: mueve el tablero y el chat, y los devuelve | ✅ |
@@ -97,6 +100,7 @@ Módulos puros: sin DOM, sin estado global, sin lecturas del chat. Por eso se pr
 | `ui/shell/clock-widget.js` | 104 | El día, el momento y las cuatro formas de gastar tiempo (K3) | ✅ |
 | `ui/shell/action-chips.js` | 143 | Qué se puede hacer sin escribirlo, sacado del estado (K4a) | ✅ |
 | `ui/shell/companion-card.js` | 163 | La ficha de un compañero: vínculo, pasar tiempo y regalos (K4b) | ✅ |
+| `ui/shell/scene-audio.js` | 180 | Qué suena en cada escena, con tus propias pistas (A3) | ✅ |
 | `ui/campaign-panel.js` | 149 | La pestaña Campaña: el calendario y los vínculos | ✅ |
 | `combat/bond-perks.js` | 114 | Las perks que cambian un combate: aguantar, rematar, dar el relevo | ✅ |
 | `ui/campaign-schema-panel.js` | 111 | Las ocho vistas de `/esquema-campana` | ✅ |

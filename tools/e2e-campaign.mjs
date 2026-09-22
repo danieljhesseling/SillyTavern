@@ -30,7 +30,7 @@
 
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -94,7 +94,12 @@ try {
     console.log(`Server up on ${BASE}`);
 
     browser = await chromium.launch({ channel: 'msedge', headless: !HEADED });
-    const context = await browser.newContext({ viewport: { width: 1400, height: 950 } });
+    // `acceptDownloads` para el paso 31: exportar una campana descarga un archivo, y
+    // sin esto Playwright lo cancela en silencio.
+    const context = await browser.newContext({
+        viewport: { width: 1400, height: 950 },
+        acceptDownloads: true,
+    });
     const page = await context.newPage();
 
     const problems = new Set();
@@ -2347,6 +2352,150 @@ try {
         .executeSlashCommandsWithOptions('/combat-stop'));
     await page.waitForTimeout(1000);
     await clearDiceOverlay();
+    await leaveGameMode();
+
+    step('31. Subir de nivel, exportar la campana y el sonido por escena');
+
+    // --- A1: la experiencia se convierte en algo -----------------------------------
+    await page.locator('#rm_tab_party').click({ timeout: 10000 });
+    await page.waitForTimeout(800);
+    await page.locator('.party-card').first().click();
+    await page.waitForSelector('.dnd-modal', { timeout: 10000 });
+    await page.locator('.dnd-tab[data-tab="progression"]').click();
+    await page.waitForTimeout(400);
+
+    const readFirst = () => page.evaluate(() => {
+        const m = (window.SillyTavern.getContext().chatMetadata.party || [])[0] || {};
+        return { name: m.name, level: m.level, maxHp: m.maxHp, hp: m.hp, strength: m.strength, xp: m.xp };
+    });
+    const heroBefore = await readFirst();
+
+    check('el boton de subir de nivel empieza apagado, sin experiencia',
+        await page.locator('.dnd-level-up-btn').isDisabled(), JSON.stringify(heroBefore));
+
+    // La experiencia se escribe en la ficha, que es el control que ya existia.
+    await page.locator('.xp-current-input').fill('2700');
+    await page.locator('.xp-current-input').dispatchEvent('change');
+    await page.waitForTimeout(400);
+    check('con experiencia de sobra, el boton se enciende solo',
+        !await page.locator('.dnd-level-up-btn').isDisabled());
+
+    await page.locator('.dnd-level-up-btn').click();
+    await page.waitForSelector('.lu-card', { timeout: 8000 });
+
+    const card31 = await page.evaluate(() => ({
+        title: document.querySelector('.lu-title')?.textContent || '',
+        gains: document.querySelector('.lu-gains')?.textContent || '',
+        remaining: document.querySelector('.lu-remaining')?.textContent || '',
+        abilities: document.querySelectorAll('.lu-ability').length,
+        confirmOff: document.querySelector('.lu-confirm')?.disabled,
+    }));
+    check('la tarjeta dice a que nivel se sube y que da, antes de pulsar',
+        /nivel 1 .* 4/.test(card31.title) && /PG/.test(card31.gains), JSON.stringify(card31));
+    check('con 2700 de experiencia se saltan tres niveles de una vez',
+        /\+\d+ PG/.test(card31.gains) && card31.abilities === 6, JSON.stringify(card31.gains));
+    check('y no deja confirmar hasta repartir los puntos de caracteristica',
+        card31.confirmOff === true && /Quedan 2 de 2/.test(card31.remaining), JSON.stringify(card31.remaining));
+
+    // Dos clics en el "+" de Fuerza: el reparto es la unica eleccion de verdad que hay.
+    const plus = page.locator('.lu-ability').first().locator('.lu-step').last();
+    await plus.click();
+    await plus.click();
+    await page.waitForTimeout(300);
+    check('repartidos los dos puntos, ya se puede confirmar',
+        !await page.locator('.lu-confirm').isDisabled(),
+        await page.locator('.lu-remaining').innerText());
+
+    await page.locator('.lu-confirm').click();
+    await page.waitForTimeout(1000);
+
+    const heroAfter = await readFirst();
+    check('subir de nivel sube el nivel de verdad',
+        heroAfter.level === 4, `${heroBefore.level} -> ${heroAfter.level}`);
+    check('y da puntos de golpe, que era justo lo que no hacia',
+        heroAfter.maxHp > heroBefore.maxHp && heroAfter.hp > heroBefore.hp,
+        JSON.stringify({ antes: heroBefore.maxHp, ahora: heroAfter.maxHp }));
+    check('y la mejora de caracteristica que repartiste',
+        heroAfter.strength === (heroBefore.strength || 10) + 2,
+        `${heroBefore.strength} -> ${heroAfter.strength}`);
+
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(600);
+
+    // --- A2: la campana se puede mandar a alguien ----------------------------------
+    const [exported] = await Promise.all([
+        page.waitForEvent('download', { timeout: 20000 }),
+        page.evaluate(() => {
+            void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/exportar-campana');
+        }),
+    ]);
+    const exportedPath = await exported.path();
+    const pack31 = JSON.parse(readFileSync(exportedPath, 'utf8'));
+
+    check('exportar deja un archivo con el nombre de la campana',
+        /\.campaign\.json$/.test(exported.suggestedFilename()), exported.suggestedFilename());
+    check('y dentro va el mundo entero: tableros, bestiario y misiones',
+        pack31.boards.length >= 1 && pack31.bestiary.length >= 1 && pack31.quests.length >= 1,
+        JSON.stringify({
+            tableros: pack31.boards.length, enemigos: pack31.bestiary.length,
+            misiones: pack31.quests.length, companeros: pack31.confidants.length,
+        }));
+    check('el mapa viaja como texto, con sus muros',
+        Array.isArray(pack31.boards[0].map) && pack31.boards[0].map.some(row => row.includes('#')),
+        JSON.stringify(pack31.boards[0].map?.[0] ?? null));
+    check('y los objetivos vuelven a ser nombres, no identificadores de esta partida',
+        pack31.quests.every(q => q.objectives.every(o => !JSON.stringify(o).includes('targetIds'))),
+        JSON.stringify(pack31.quests[0]?.objectives?.[0] ?? null));
+
+    // Lo exportado lo acepta el validador de la entrada: esa es la prueba de la ida y vuelta.
+    const verdict31 = await page.evaluate(async (pack) => {
+        const m = await import('/scripts/game-engine/campaign/campaign-pack.js');
+        const report = m.validatePack(m.normalizePack(pack).pack);
+        return { ok: report.ok, errors: report.errors.map(e => e.message) };
+    }, pack31);
+    check('lo que sale por exportar entra por importar, sin una queja',
+        verdict31.ok, JSON.stringify(verdict31.errors.slice(0, 3)));
+
+    // --- A3: el sonido por escena --------------------------------------------------
+    const SILENCE = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+    await page.evaluate(() => {
+        void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/sonido');
+    });
+    await page.waitForSelector('.as-root', { timeout: 15000 });
+
+    const scenes31 = await page.evaluate(() => [...document.querySelectorAll('.as-scene-name')]
+        .map(n => n.textContent || ''));
+    check('los ajustes de sonido ofrecen una pista por escena',
+        scenes31.length === 4 && scenes31.some(s => /Combate/.test(s)), JSON.stringify(scenes31));
+
+    await page.locator('.as-scene').filter({ hasText: 'Conversación' }).locator('.as-track').fill(SILENCE);
+    await page.locator('.popup-button-ok').last().click();
+    await page.waitForTimeout(800);
+
+    await page.evaluate(() => {
+        void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/modojuego');
+    });
+    await page.waitForSelector('#game-shell', { timeout: 15000 });
+    await page.locator('.gs-scene-btn', { hasText: 'Dialogo' }).click();
+    await page.waitForTimeout(900);
+
+    const sounding = await page.evaluate(async () => {
+        const m = await import('/scripts/game-engine/ui/shell/scene-audio.js');
+        return { scene: document.querySelector('#game-shell')?.getAttribute('data-scene'), track: m.currentTrack() };
+    });
+    check('la escena de dialogo pone la pista que le pusiste',
+        sounding.scene === 'dialogue' && sounding.track === SILENCE,
+        JSON.stringify({ escena: sounding.scene, suena: sounding.track.slice(0, 24) }));
+
+    await page.locator('.gs-scene-btn', { hasText: 'Combate' }).click();
+    await page.waitForTimeout(900);
+    const silent = await page.evaluate(async () => {
+        const m = await import('/scripts/game-engine/ui/shell/scene-audio.js');
+        return m.currentTrack();
+    });
+    check('y una escena sin pista calla, en vez de heredar la de al lado',
+        silent === '', JSON.stringify(silent));
+
     await leaveGameMode();
 
     console.log('\n--- console errors ---');

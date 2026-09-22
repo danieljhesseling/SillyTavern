@@ -129,11 +129,28 @@ Si el tablero tiene enemigos dibujados y nadie pelea, aparece **Iniciar combate*
 
 Las fichas de acción de *hablar* **no envían nada**: dejan la frase empezada en el chat para que la termines tú.
 
+### Subir de nivel
+
+Cuando alguien tiene experiencia de sobra, **le sale una estrella en la cara** de la tira del grupo. Pulsa su cara → *Subir de nivel*, o ábrele la ficha desde el cajon del grupo.
+
+La tarjeta te dice **antes de pulsar** a qué nivel sube y qué da: puntos de golpe (del dado de su clase más Constitución) y dados de golpe. Si el salto cruza un nivel con **mejora de característica** — el 4, el 8, el 12… — hay dos puntos que repartir, y no te deja confirmar hasta que cuadren. Ninguna característica pasa de 20.
+
+Si te sobra experiencia para varios niveles, sube **todos de una vez**: pulsar cinco veces el mismo botón no es jugar.
+
+> **Lo que cuesta cada nivel se edita en `/rules`**, en *Experiencia por nivel*. Una campaña más rápida, o que pare en el nivel 10, no necesita tocar código.
+
 ---
 
 ## 5. Los comandos, por para qué sirven
 
 Todo esto se puede seguir escribiendo, y el recorrido de pruebas entra por aquí. Si un botón y su comando hacen cosas distintas, eso es un fallo.
+
+**La partida**
+
+| Comando | Qué hace |
+| :--- | :--- |
+| `/exportar-campana` | Empaqueta tu campaña en un archivo que otro puede importar. También en el menú de pausa |
+| `/sonido` | Qué suena en cada escena. Las pistas las pones tú |
 
 **Moverse por el mundo**
 
@@ -204,7 +221,8 @@ De `/contradicciones` conviene entender qué es y qué no. **No corrige nada.** 
 Para que nadie lo descubra a mitad de una sesión:
 
 - **La magia no está implementada.** Una clase puede decir que lanza conjuros, pero no hay lista de hechizos, ni espacios, ni forma de lanzarlos. Los conjuros son narración.
-- **Subir de nivel sube el número y poco más.** El botón de la ficha gasta la experiencia y sube el nivel; **no sube los puntos de vida ni concede nada**. Lo que cambie de verdad, lo cambias tú a mano en la ficha.
+- **Subir de nivel no da subclases ni dotes.** Sí da puntos de golpe, dados de golpe y mejora de característica cada cuatro niveles; el arquetipo de nivel 3 y las dotes, no.
+- **El sonido no trae ni una pista.** Las pones tú en `/sonido`: aquí no hay música con licencia de nadie.
 - **Las reglas de encuentro no colocan a nadie por su cuenta** salvo en los tableros importados, que traen sus posiciones dibujadas. En los demás, `/fight` los pone en una casilla libre.
 - **La generación con IA no escribe misiones al crear el mundo.** Se piden aparte, con `/objetivos editar` → *Proponer con IA*.
 

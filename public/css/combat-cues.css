@@ -208,3 +208,156 @@
 .gs-chip-clickable:hover {
     filter: brightness(1.25);
 }
+
+/* ---- Subir de nivel (A1) ----
+ * Lo que da está escrito antes de pulsar, y el reparto de puntos no deja confirmar hasta
+ * que cuadra: un botón que se puede pulsar mal es un botón que alguien pulsará mal.
+ */
+
+/* Vive dentro de un popup, que es un <dialog> nativo: la capa propia que tenia antes
+   quedaba debajo de la ficha del personaje, porque un <dialog> pinta por encima de
+   cualquier z-index. */
+.lu-card {
+    min-width: min(300px, 80vw);
+    color: var(--SmartThemeBodyColor, #ddd);
+    text-align: left;
+}
+
+.lu-title {
+    font-size: 1.15em;
+    font-weight: bold;
+    color: #ffd166;
+}
+
+.lu-gains {
+    margin-top: 2px;
+    font-size: 0.9em;
+    opacity: 0.85;
+}
+
+.lu-subtitle {
+    margin-top: 14px;
+    font-size: 0.82em;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    opacity: 0.6;
+}
+
+.lu-remaining {
+    font-size: 0.85em;
+    opacity: 0.8;
+    margin: 2px 0 8px;
+}
+
+.lu-remaining.over {
+    color: #ff6b5a;
+    opacity: 1;
+}
+
+.lu-abilities {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 4px;
+}
+
+.lu-ability {
+    display: grid;
+    grid-template-columns: 1fr auto auto auto;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 6px;
+    border-radius: 6px;
+}
+
+.lu-ability.changed {
+    background: rgba(255, 209, 102, 0.12);
+}
+
+.lu-ability-name {
+    font-size: 0.88em;
+}
+
+.lu-ability-value {
+    font-size: 0.85em;
+    opacity: 0.8;
+    min-width: 5.5em;
+    text-align: right;
+}
+
+.lu-step {
+    min-width: 2em;
+    padding: 2px 8px;
+}
+
+.lu-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 14px;
+}
+
+.lu-btn {
+    font-size: 0.85em;
+}
+
+/* La estrella de la tira del grupo: hay algo que hacer con esa cara. */
+.gs-chip-level {
+    color: #ffd166;
+    font-size: 0.8em;
+}
+
+/* ---- Ajustes de sonido (A3) ---- */
+
+.as-intro {
+    font-size: 0.85em;
+    opacity: 0.75;
+    margin-bottom: 10px;
+}
+
+.as-enabled {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 10px;
+    font-size: 0.9em;
+}
+
+.as-scenes {
+    display: grid;
+    gap: 6px;
+}
+
+.as-scene {
+    display: grid;
+    grid-template-columns: minmax(7em, 10em) 1fr auto;
+    align-items: center;
+    gap: 8px;
+}
+
+.as-scene-name {
+    font-size: 0.85em;
+    opacity: 0.85;
+}
+
+.as-volume-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 12px;
+    font-size: 0.85em;
+}
+
+.as-volume {
+    flex: 1;
+}
+
+.as-volume-value {
+    min-width: 3em;
+    text-align: right;
+    opacity: 0.8;
+}
+
+.as-stop {
+    margin-top: 10px;
+    font-size: 0.8em;
+}

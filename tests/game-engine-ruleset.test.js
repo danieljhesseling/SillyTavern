@@ -215,9 +215,13 @@ describe('the active pack', () => {
 describe('getEditableSections', () => {
     test('lists every section an editor can offer, with its shape', () => {
         const sections = getEditableSections();
-        expect(sections.length).toBe(25);
+        expect(sections.length).toBe(27);
         expect(sections).toContainEqual({ path: 'items.damageTypes', kind: 'pairs' });
         expect(sections).toContainEqual({ path: 'character.conditions', kind: 'string[]' });
+        // La progresión también se edita sin tocar código: es el requisito de siempre
+        // aplicado a subir de nivel.
+        expect(sections).toContainEqual({ path: 'progression.xpThresholds', kind: 'pairs' });
+        expect(sections).toContainEqual({ path: 'progression.abilityLevels', kind: 'string[]' });
     });
 });
 

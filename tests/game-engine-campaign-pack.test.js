@@ -263,3 +263,34 @@ describe('what normalising puts right, out loud', () => {
         expect(pack.quests).toEqual([]);
     });
 });
+
+describe('el perfil tactico, que el motor cambia en silencio si no lo conoce', () => {
+    test('un perfil inventado se avisa, con los que si existen', () => {
+        const pack = normalizePack({
+            version: 1,
+            world: { name: 'Mundo' },
+            bestiary: [{ name: 'Francotirador', hp: 10, armorClass: 12, profile: 'sniper' }],
+            boards: [{ id: 'b', name: 'B', map: ['####', '#..#', '####'], partyStart: [{ x: 1, y: 1 }], enemies: [] }],
+            quests: [],
+        }).pack;
+
+        const report = validatePack(pack);
+        const warning = report.warnings.find(w => w.path === 'bestiary[0].profile');
+        expect(warning).toBeDefined();
+        expect(warning.message).toMatch(/aggressive/);
+        // Avisa, no bloquea: el paquete se juega igual, solo que sabiendo que se juega.
+        expect(report.ok).toBe(true);
+    });
+
+    test('y uno de verdad no se avisa', () => {
+        const pack = normalizePack({
+            version: 1,
+            world: { name: 'Mundo' },
+            bestiary: [{ name: 'Lobo', hp: 10, armorClass: 12, profile: 'skirmisher' }],
+            boards: [{ id: 'b', name: 'B', map: ['####', '#..#', '####'], partyStart: [{ x: 1, y: 1 }], enemies: [] }],
+            quests: [],
+        }).pack;
+
+        expect(validatePack(pack).warnings.some(w => w.path.includes('profile'))).toBe(false);
+    });
+});

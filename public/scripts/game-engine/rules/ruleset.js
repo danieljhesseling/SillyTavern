@@ -30,6 +30,7 @@ export { RULESET_SCHEMA_VERSION };
  * @property {{categories: string[], scoreMin: number, scoreMax: number}} relationships
  * @property {Object} items
  * @property {{alignments: string[], conditions: string[], modifiableStats: string[]}} character
+ * @property {{xpThresholds: string[][], abilityLevels: string[]}} [progression] Lo que cuesta cada nivel.
  */
 
 /**
@@ -64,6 +65,8 @@ const SECTION_SHAPE = {
     'character.alignments': 'string[]',
     'character.conditions': 'string[]',
     'character.modifiableStats': 'string[]',
+    'progression.xpThresholds': 'pairs',
+    'progression.abilityLevels': 'string[]',
 };
 
 /**

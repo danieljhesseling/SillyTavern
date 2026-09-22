@@ -21,6 +21,7 @@ import {
     SCENE, SWITCHABLE_SCENES, SCENE_INFO,
     directScene, isSceneAvailable, describeScene, sceneForShortcut,
 } from './scene-director.js';
+import { playForScene, stopSceneAudio } from './scene-audio.js';
 
 /**
  * @typedef {import('./scene-director.js').SceneName} SceneName
@@ -61,6 +62,8 @@ import {
  * @property {(locationName: string) => void} onTravel
  * @property {() => void} onOptions Open SillyTavern's own settings, where they are.
  * @property {() => void} onCompendium The rules editor.
+ * @property {() => void} [onExport] Empaquetar la campana para compartirla.
+ * @property {() => void} [onAudio] Los ajustes de sonido.
  * @property {() => void} onMainMenu Leave the campaign, without leaving the game.
  * @property {() => void} renderStage Redraw the panel that lives on the stage.
  * @property {(name: string) => void} onAttack
@@ -443,6 +446,11 @@ function renderChips(strip, chips) {
         const body = el('div', 'gs-chip-body');
         const line = el('div', 'gs-chip-line');
         line.appendChild(el('span', 'gs-chip-name', chip.name));
+        if (chip.canLevel) {
+            const star = el('i', 'gs-chip-level fa-solid fa-star');
+            star.title = 'Puede subir de nivel';
+            line.appendChild(star);
+        }
         for (const status of chip.statuses) {
             const icon = el('i', `gs-chip-status fa-solid ${status.icon}`);
             icon.title = status.label;
@@ -506,6 +514,18 @@ function setPaused(next) {
     item('Continuar', 'fa-play', () => setPaused(false), 'Esc');
     item('Opciones', 'fa-sliders', () => options?.onOptions());
     item('Compendio y reglas', 'fa-book', () => options?.onCompendium());
+    if (options.onExport) {
+        item('Exportar campana', 'fa-file-export', () => {
+            setPaused(false);
+            options?.onExport?.();
+        });
+    }
+    if (options.onAudio) {
+        item('Sonido', 'fa-music', () => {
+            setPaused(false);
+            options?.onAudio?.();
+        });
+    }
     item('Salir al menu principal', 'fa-door-open', () => {
         setPaused(false);
         options?.onMainMenu();
@@ -611,6 +631,10 @@ export function refreshGameShell() {
 
     root.dataset.scene = scene;
     root.dataset.source = choice.source;
+
+    // La escena manda tambien en lo que suena. Pedir la misma pista dos veces no hace
+    // nada, que es justo lo que hace falta aqui: esto se redibuja en cada turno.
+    playForScene(scene);
 
     const bar = options.getCombatBar();
     const dialogue = options.getDialogue();
@@ -772,6 +796,7 @@ export function closeGameShell() {
     if (!isShellOpen()) return;
 
     setPaused(false);
+    stopSceneAudio();
     releaseAll();
 
     if (keyHandler) {

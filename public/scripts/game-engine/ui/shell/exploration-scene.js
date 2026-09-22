@@ -95,14 +95,15 @@ function mergeMap(locationMaps, campaignMap) {
  * @param {any[]} [input.party]
  * @param {any} [input.bonds]
  * @param {any} [input.calendar]
+ * @param {any} [input.xpTable] Los umbrales de nivel del paquete de reglas activo.
  * @param {(questId: string) => boolean} [input.isQuestComplete]
  * @returns {ExplorationView}
  */
 export function buildExplorationView({
     locationMaps = [], campaignMap = null, currentLocation = '', currentBoard = '',
-    party = [], bonds = null, calendar = null, isQuestComplete = () => false,
+    party = [], bonds = null, calendar = null, xpTable = null, isQuestComplete = () => false,
 } = {}) {
-    const { chips, moment } = buildPartyStrip({ party, bonds, calendar });
+    const { chips, moment } = buildPartyStrip({ party, bonds, calendar, xpTable });
 
     // A requirement names a companion; the bonds are kept by id. Either spelling works.
     const byName = new Map(chips.map(c => [c.name.toLowerCase(), c.id]));

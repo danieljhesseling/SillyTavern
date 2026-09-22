@@ -23,6 +23,7 @@
  */
 
 import { terrainFromAsciiMap } from '../board/terrain.js';
+import { DEFAULT_PROFILE } from '../combat/enemy-ai.js';
 import { deriveRooms } from './campaign-map.js';
 import { OBJECTIVE_FIELDS } from './campaign-pack-schema.js';
 import { normalizePack } from './campaign-pack.js';
@@ -115,7 +116,10 @@ export function buildPackEntries(pack) {
                 armorClass: Number(enemy.armorClass) || 10,
                 cr: Number(enemy.cr) || 0,
                 speed: Number(enemy.speed) || 30,
-                profile: text(enemy.profile) || 'brute',
+                // `brute` no es un perfil del motor — lo era en el diseño, nunca en el
+                // código — y enemy-ai lo tomaba por desconocido y lo jugaba como
+                // `aggressive` sin decir nada. Ahora se escribe el que de verdad se juega.
+                profile: text(enemy.profile) || DEFAULT_PROFILE,
                 attackRangeFeet: Number(enemy.attackRangeFeet) || 5,
             },
         });

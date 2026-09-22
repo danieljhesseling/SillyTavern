@@ -12,6 +12,7 @@
 
 import { buildCampaignView } from '../../campaign/campaign-view.js';
 import { statusMarkers } from '../../combat/initiative-tracker.js';
+import { levelForXp } from '../../rules/level-up.js';
 
 /**
  * @typedef {Object} PartyChip
@@ -24,6 +25,7 @@ import { statusMarkers } from '../../combat/initiative-tracker.js';
  * @property {boolean} fallen
  * @property {boolean} bloodied
  * @property {number} rank
+ * @property {boolean} canLevel Si tiene experiencia de sobra para subir de nivel.
  * @property {{icon: string, label: string}[]} statuses
  */
 
@@ -35,9 +37,10 @@ const BLOODIED_AT = 0.5;
  * @param {any[]} [input.party]
  * @param {any} [input.bonds]
  * @param {any} [input.calendar]
+ * @param {any} [input.xpTable] Los umbrales del paquete de reglas activo.
  * @returns {{chips: PartyChip[], moment: string}}
  */
-export function buildPartyStrip({ party = [], bonds = null, calendar = null } = {}) {
+export function buildPartyStrip({ party = [], bonds = null, calendar = null, xpTable = null } = {}) {
     const members = Array.isArray(party) ? party.filter(Boolean) : [];
     // The day and the bond ranks come from the same view model the campaign tab uses:
     // two panels reading the same thing cannot disagree about what rank somebody is.
@@ -58,6 +61,9 @@ export function buildPartyStrip({ party = [], bonds = null, calendar = null } = 
             fallen: maxHp > 0 && hp <= 0,
             bloodied: maxHp > 0 && hp > 0 && hp / maxHp < BLOODIED_AT,
             rank: rankById.get(id) ?? 0,
+            // Una estrella en la cara es el aviso mas corto posible de que hay algo que
+            // hacer con ese personaje: antes solo lo decia una linea del registro.
+            canLevel: levelForXp(member?.xp, xpTable) > (Math.max(1, Math.floor(Number(member?.level) || 1))),
             statuses: statusMarkers(member?.activeConditions ?? member?.conditions),
         };
     });

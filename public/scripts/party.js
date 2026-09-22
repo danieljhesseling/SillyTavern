@@ -20,7 +20,7 @@ import {
     normalizeItem, getArmorDexRuleLabel, isMeleeWeaponSubcategory, getMagicSubtypeFlags,
     clampRelationshipScore, generateEnemyInstanceId, normalizeDndEntityType,
 } from './dnd-system.js';
-import { escapeHtml } from './utils.js';
+import { escapeHtml, download } from './utils.js';
 import { createSeededRandom, seedFrom } from './game-engine/combat/seeded-random.js';
 import {
     rollDice, rollDiceDetailed, getRollClassification, getRollClassificationLabel,
@@ -76,7 +76,12 @@ import {
 } from './game-engine/ui/contradiction-log.js';
 import {
     planRulesetChange, readRememberedRuleset, rememberRuleset, setActiveRuleset,
+    getActiveRuleset,
 } from './game-engine/rules/ruleset.js';
+import {
+    planLevelUp, buildLevelUpPatch, describeLevelUp, validateAbilityPicks, ABILITIES,
+    levelForXp,
+} from './game-engine/rules/level-up.js';
 import {
     isShellOpen, toggleGameShell, refreshGameShell, closeGameShell,
 } from './game-engine/ui/shell/game-shell.js';
@@ -85,6 +90,8 @@ import { buildExplorationView } from './game-engine/ui/shell/exploration-scene.j
 import { buildClockView, availableHitDice } from './game-engine/ui/shell/clock-widget.js';
 import { buildActionChips } from './game-engine/ui/shell/action-chips.js';
 import { buildCompanionCard, judgeGift } from './game-engine/ui/shell/companion-card.js';
+import { buildPackFromWorld, describeExport } from './game-engine/campaign/campaign-export.js';
+import { normalizePack, validatePack } from './game-engine/campaign/campaign-pack.js';
 
 /** @typedef {import('./party/types.js').PartyMember} PartyMember */
 /** @type {PartyMember[]} */
@@ -3499,7 +3506,202 @@ function buildShellDialogue() {
         party: partyMembers,
         bonds: getCampaignBonds(),
         calendar: getCampaignCalendar(),
+        xpTable: getXpTable(),
     });
+}
+
+/**
+ * Abre los ajustes de sonido, cargando el panel solo cuando hace falta.
+ *
+ * @returns {Promise<string>}
+ */
+async function openAudioSettings() {
+    const { openAudioSettings: open } = await import('./game-engine/ui/audio-settings.js');
+    return await open({ Popup, POPUP_TYPE });
+}
+
+/**
+ * Empaqueta la campana abierta y la descarga.
+ *
+ * Sale por el mismo formato que entra: el paquete se normaliza y se valida con el mismo
+ * validador que juzga los libros de fuera, asi que lo que se descarga aqui se puede
+ * importar alli. Si el validador encuentra algo, se dice **antes** de que el archivo
+ * acabe en manos de otro.
+ *
+ * @returns {Promise<string>}
+ */
+async function exportCampaignPack() {
+    const worldName = String(chat_metadata?.[METADATA_KEY] || '');
+    if (!worldName) {
+        toastr.warning('No hay ninguna campana abierta que exportar.');
+        return '';
+    }
+
+    const data = await loadWorldInfo(worldName);
+    if (!data) {
+        toastr.warning(`No se pudo leer el mundo "${worldName}".`);
+        return '';
+    }
+
+    const built = buildPackFromWorld({
+        worldName,
+        metadata: data.metadata ?? {},
+        entries: data.entries ?? {},
+        synopsis: String(data.metadata?.synopsis ?? ''),
+    });
+
+    const { pack, repairs } = normalizePack(built);
+    const report = validatePack(pack);
+
+    const fileName = `${worldName.toLowerCase().replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '') || 'campana'}.campaign.json`;
+    download(JSON.stringify(pack, null, 2), fileName, 'application/json');
+
+    const summary = describeExport(pack);
+    if (report.ok) {
+        toastr.success(summary, 'Campana exportada', { timeOut: 8000 });
+    } else {
+        // Se descarga igual — son tus datos — pero nadie deberia enterarse de que el
+        // archivo no vale al intentar importarlo en casa de otro.
+        toastr.warning(
+            `${summary}. El validador encuentra ${report.errors.length} problema(s): `
+            + report.errors.slice(0, 3).map(e => e.message).join(' · '),
+            'Exportada, pero con avisos', { timeOut: 15000 },
+        );
+    }
+    if (repairs.length > 0) console.info('[party] exportando:', repairs);
+
+    postCombatNarration(`📦 [CAMPANA] Exportada: ${summary}.`);
+    return fileName;
+}
+
+/** Los umbrales de nivel del paquete de reglas activo. */
+const getXpTable = () => getActiveRuleset()?.progression?.xpThresholds;
+
+/** Los niveles que dan mejora de caracteristica, del mismo paquete. */
+const getAbilityLevels = () => getActiveRuleset()?.progression?.abilityLevels;
+
+/** @param {any} member */
+function canLevelUp(member) {
+    return levelForXp(member?.xp, getXpTable()) > Math.max(1, Math.floor(Number(member?.level) || 1));
+}
+
+/** Como se llaman las seis en la ficha. */
+const ABILITY_LABELS = {
+    strength: 'Fuerza',
+    dexterity: 'Destreza',
+    constitution: 'Constitucion',
+    intelligence: 'Inteligencia',
+    wisdom: 'Sabiduria',
+    charisma: 'Carisma',
+};
+
+/**
+ * Subir de nivel, con lo que da escrito antes de pulsar.
+ *
+ * Sube todos los niveles que la experiencia de de una vez, y para cuando hay que repartir
+ * puntos de caracteristica se para a preguntar: es la unica eleccion de verdad que trae
+ * subir de nivel, y decidirla por ti la convertiria en un numero mas.
+ *
+ * @param {any} member
+ */
+async function openLevelUpCard(member) {
+    if (!member) return;
+
+    // El dado de golpe sale de la clase, que vive en el Lorebook: por eso esto espera.
+    const hitDieByClass = await campaign.getHitDiceByClass();
+    const plan = planLevelUp({
+        member,
+        table: getXpTable(),
+        abilityLevels: getAbilityLevels(),
+        hitDieByClass,
+    });
+
+    if (!plan.canLevel) {
+        toastr.info(plan.reason, member.name);
+        return;
+    }
+
+    const root = $('<div class="lu-card"></div>');
+    root.append($('<div class="lu-title"></div>').text(`${member.name}: nivel ${plan.from} → ${plan.to}`));
+    root.append($('<div class="lu-gains"></div>').text(
+        `+${plan.hpGained} PG · +${plan.hitDiceGained} dado(s) de golpe`));
+
+    /** @type {Record<string, number>} */
+    const picks = {};
+    const remaining = $('<div class="lu-remaining"></div>');
+
+    if (plan.pointsToSpend > 0) {
+        root.append($('<div class="lu-subtitle"></div>').text('Mejora de caracteristica'));
+        root.append(remaining);
+
+        const grid = $('<div class="lu-abilities"></div>');
+        for (const ability of ABILITIES) {
+            const row = $('<div class="lu-ability"></div>');
+            row.append($('<span class="lu-ability-name"></span>').text(ABILITY_LABELS[ability]));
+
+            const value = $('<span class="lu-ability-value"></span>');
+            const minus = $('<button class="menu_button lu-step" type="button">−</button>');
+            const plus = $('<button class="menu_button lu-step" type="button">+</button>');
+
+            const paint = () => {
+                const added = picks[ability] || 0;
+                const base = Number(member[ability]) || 10;
+                value.text(added > 0 ? `${base} → ${base + added}` : String(base));
+                row.toggleClass('changed', added > 0);
+            };
+
+            minus.on('click', () => {
+                picks[ability] = Math.max(0, (picks[ability] || 0) - 1);
+                if (picks[ability] === 0) delete picks[ability];
+                paint();
+                refresh();
+            });
+            plus.on('click', () => {
+                picks[ability] = (picks[ability] || 0) + 1;
+                paint();
+                refresh();
+            });
+
+            row.append(minus, value, plus);
+            grid.append(row);
+            paint();
+        }
+        root.append(grid);
+    }
+
+    const actions = $('<div class="lu-actions"></div>');
+    const confirm = $('<button class="menu_button lu-btn lu-confirm" type="button"></button>').text('Subir de nivel');
+
+    function refresh() {
+        const verdict = validateAbilityPicks(picks, plan, member);
+        confirm.prop('disabled', !verdict.ok);
+        confirm.attr('title', verdict.ok ? 'Escribe el nivel en la ficha' : verdict.error);
+        const spent = Object.values(picks).reduce((total, value) => total + value, 0);
+        remaining.text(`Quedan ${Math.max(0, plan.pointsToSpend - spent)} de ${plan.pointsToSpend} punto(s)`);
+        remaining.toggleClass('over', spent > plan.pointsToSpend);
+    }
+
+    actions.append(confirm);
+    root.append(actions);
+    refresh();
+
+    // Un popup y no una capa propia: esto se abre desde dentro de la ficha del personaje,
+    // que es un `<dialog>` nativo, y un `<dialog>` pinta por encima de cualquier z-index.
+    // La tarjeta quedaba detras de la ficha y no se podia pulsar — lo cazó el recorrido.
+    const popup = new Popup(root, POPUP_TYPE.TEXT, null, { okButton: 'Ahora no' });
+
+    confirm.on('click', () => {
+        if (!validateAbilityPicks(picks, plan, member).ok) return;
+        Object.assign(member, buildLevelUpPatch(member, plan, picks));
+        savePartyState();
+        renderPartyMembers();
+        postCombatNarration(`⭐ [NIVEL] ${describeLevelUp(member, plan)}`);
+        void popup.complete(POPUP_RESULT.AFFIRMATIVE);
+        renderLocationMapsPreview();
+        if (isShellOpen()) refreshGameShell();
+    });
+
+    await popup.show();
 }
 
 /**
@@ -3562,6 +3764,7 @@ function openCompanionCard(memberId) {
         bonds: getCampaignBonds(),
         calendar: getCampaignCalendar(),
         fighting: combatEncounter.active,
+        canLevel: canLevelUp(member),
         giverItems,
     });
 
@@ -3592,6 +3795,12 @@ function openCompanionCard(memberId) {
         button.attr('title', action.why);
         button.prop('disabled', !action.enabled);
         button.on('click', () => {
+            if (action.id === 'level') {
+                closeCompanionCard();
+                void openLevelUpCard(member);
+                return;
+            }
+
             if (action.id === 'downtime') {
                 closeCompanionCard();
                 recordCampaignBondEvent(String(member.id), 'shared_downtime');
@@ -3882,6 +4091,7 @@ function buildShellExploration() {
         party: partyMembers,
         bonds: getCampaignBonds(),
         calendar: getCampaignCalendar(),
+        xpTable: getXpTable(),
     });
 }
 
@@ -3920,6 +4130,8 @@ function buildShellOptions() {
         // arriba, por encima de esta capa, y el boton pulsa el mismo icono de siempre.
         onOptions: () => { $('#ai-config-button .drawer-toggle').trigger('click'); },
         onCompendium: () => { void openCompendium(); },
+        onExport: () => { void exportCampaignPack(); },
+        onAudio: () => { void openAudioSettings(); },
         // Salir al menu principal es cerrar la partida, no cerrar el juego: el Shell se
         // queda, y lo que se ve es la pantalla de bienvenida con las campanas.
         onMainMenu: () => { $('#option_close_chat').trigger('click'); },
@@ -5371,24 +5583,16 @@ function buildProgressionTab(member, dndCatalog) {
         updateLevelUpButton();
     });
 
-    // Level Up button
-    const levelUpBtn = $(`<button class="dnd-level-up-btn" ${member.xp < member.xpNext ? 'disabled' : ''}><i class="fa-solid fa-arrow-up"></i> Level Up</button>`);
+    // Subir de nivel: el mismo camino que el boton de la ficha de companero, porque dos
+    // formas de subir de nivel son dos sitios donde olvidarse de dar los PG.
+    const levelUpBtn = $(`<button class="dnd-level-up-btn" ${canLevelUp(member) ? '' : 'disabled'}><i class="fa-solid fa-arrow-up"></i> Subir de nivel</button>`);
     levelUpBtn.on('click', function () {
-        if (member.xp < member.xpNext) return;
-        member.xp -= member.xpNext;
-        member.level++;
-        member.xpNext = Math.round(member.xpNext * 1.5);
-
-        // Refresh the whole tab
-        const wasActive = panel.hasClass('active');
-        const newPanel = buildProgressionTab(member, dndCatalog);
-        panel.replaceWith(newPanel);
-        if (wasActive) newPanel.addClass('active');
+        void openLevelUpCard(member);
     });
     prog.append(levelUpBtn);
 
     function updateLevelUpButton() {
-        levelUpBtn.prop('disabled', member.xp < member.xpNext);
+        levelUpBtn.prop('disabled', !canLevelUp(member));
     }
 
     panel.append(prog);
@@ -6547,6 +6751,22 @@ export function initPartyPanel() {
             await openCampaignSchema({ Popup, POPUP_TYPE });
             return 'esquema mostrado';
         },
+    }));
+
+    // El camino de vuelta del importador: sin esto se puede meter el libro de otro y no
+    // mandar el tuyo, que es media historia de "sin marketplace".
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'sonido',
+        helpString: '<div>Ajusta que suena en cada escena del Modo Juego. Las pistas las pones tu: '
+            + 'una direccion de tu servidor o una URL.</div>',
+        callback: async () => await openAudioSettings(),
+    }));
+
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'exportar-campana',
+        helpString: '<div>Empaqueta la campaña abierta en un archivo que se puede importar '
+            + 'en otra instalación: mundo, tableros, bestiario, compañeros y misiones.</div>',
+        callback: async () => await exportCampaignPack(),
     }));
 
     SlashCommandParser.addCommandObject(SlashCommand.fromProps({

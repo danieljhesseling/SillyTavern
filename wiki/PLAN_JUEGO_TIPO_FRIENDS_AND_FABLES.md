@@ -2,6 +2,7 @@
 title: Análisis & Plan — Hacia la Experiencia "Friends & Fables" (Sin Marketplace)
 tags: [friends-and-fables, analisis, rpg, dnd5e, ai-dm, combate-tactico, level-up, conjuros]
 created: 2026-09-21
+updated: 2026-09-22
 author: DanielJHesseling / Antigravity AI
 ---
 
@@ -11,6 +12,13 @@ author: DanielJHesseling / Antigravity AI
 > **Referente**: **Friends & Fables** (`fables.gg` / *Craft*) es la plataforma líder de rol con IA: un Dungeon Master virtual (*Franz*) que narra la campaña, plantea dilemas, exige tiradas de habilidad, gestiona combates tácticos en cuadrícula bajo reglas D&D 5e y guía la progresión de la party.
 > 
 > **Tu Condición Expresa**: **CERO MARKETPLACE**. Nada de tiendas de compras dentro de la app, microtransacciones, dependencias de nube cerrada ni economía de activos. Todo debe ser **un juego personal, autosuficiente, offline-first y gratuito**.
+
+---
+
+> [!NOTE]
+> **Qué es esto y qué no.** Un documento de **diseño**: qué le falta a este proyecto para jugarse como *Friends & Fables*, y cómo sería cada pieza. No es un marcador — el estado vivo, con lo que queda y en qué orden, está en **[[POR_HACER]]**.
+>
+> Desde que se escribió (2026-09-21), **dos de las seis piezas están hechas**: los descansos (Pieza 3) y la ingesta de campañas (Pieza 6, salvo exportar). Y media tercera: las *opciones rápidas* de la Pieza 1 existen, y salen del motor.
 
 ---
 
@@ -26,10 +34,12 @@ Has avanzado mucho más de lo que parece. La mayoría de proyectos que intentan 
 | **Vínculos y Acompañantes** | Seguimiento de relaciones | Sistema Persona: Rangos 1-10 con perks reales en combate (*Follow-up, Relevo, Aguantar*) | 🌟 **Superior** |
 | **Economía de Tiempo** | Días y descansos | Calendario con franjas horarias (Mañana, Tarde, Noche) enlazado a la partida | ✅ **100% Hecho** |
 | **Reglas D&D 5e Modificables** | Reglas cerradas | Editor visual de 25 tablas de reglas (`/rules`), condiciones y armas personalizadas | 🌟 **Superior** |
-| **DM Autónomo Proactivo** | Pide tiradas, da opciones rápidas | Conversación abierta por chat (falta protocolo de control del DM) | 🟡 **Parcial** |
+| **Campañas de libro** | Catálogo de la plataforma | Importador de paquetes con validador que **repara y explica** lo que le pasa a un libro mal hecho | 🌟 **Superior** |
+| **Narración auditada** | — | Registro de contradicciones: avisa cuando la narración da por muerto a quien sigue en pie, o cambia la hora del día | 🌟 **Superior** |
+| **DM Autónomo Proactivo** | Pide tiradas, da opciones rápidas | Las opciones rápidas ya existen y **salen del motor**, así que no pueden ofrecerte algo que no está ahí. Falta que el DM **pida tiradas** | 🟡 **Parcial** |
 | **Magia y Recursos de Clase** | Espacios de conjuro, habilidades | Ataque estándar con armas (falta el libro de hechizos y puntos de clase) | 🟡 **Parcial** |
 | **Subida de Nivel (Level Up)** | Árbol de progresión D&D 5e | XP y nivel numérico en ficha (falta selector de rasgos por nivel) | 🟡 **Parcial** |
-| **Descansos D&D** | Short & Long Rest automáticos | `calendar.js` tiene el tiempo, falta aplicar recuperación de PG y Dados de Golpe | 🟡 **Parcial** |
+| **Descansos D&D** | Short & Long Rest automáticos | `rules/rest.js`: dados de golpe por clase, corto y largo, y cuatro botones en el reloj de la cabecera | ✅ **100% Hecho** |
 
 ---
 
@@ -110,7 +120,7 @@ Actualmente tu motor táctico resuelve ataques de armas físicas (`1d8+3`, dista
 
 ### Pieza 3: Sistema de Descansos D&D 5e (Short & Long Rest)
 
-Pendiente desde la Fase D (`D5`), es el corazón de la gestión de recursos de aventura:
+✅ **Hecha el 2026-09-21.** Es el corazón de la gestión de recursos de aventura, y así quedó:
 
 1. **Descanso Corto (1 hora en el calendario)**:
    * El grupo se toma un respiro en una zona segura.
@@ -122,6 +132,11 @@ Pendiente desde la Fase D (`D5`), es el corazón de la gestión de recursos de a
    * Recupera la mitad de los Dados de Golpe máximos.
    * Restablece todos los espacios de conjuro y furias.
    * Puede desencadenar **encuentros nocturnos aleatorios** si acampan en territorio hostil sin montar guardias.
+
+> [!NOTE]
+> **Lo que sí hace hoy**: el dado de golpe sale de la clase (leído del Lorebook, no de una tabla aparte que se quede vieja), cada tirada se ve con su desglose, el corto gasta un bloque del día y el largo amanece. Peleando no se descansa, y el botón lo dice.
+>
+> **Lo que no**: no hay espacios de conjuro ni furias que restablecer — no hay magia (Pieza 2). Y los **encuentros nocturnos** no existen: acampar en territorio hostil es igual de seguro que hacerlo en una posada.
 
 ---
 
@@ -155,8 +170,9 @@ Cuando un monstruo es derrotado o se completa una misión, el motor ya entrega X
    * Sonido al rodar dados (`d20`).
    * Impacto de espada / flecha / estallido mágico.
    * Fanfarria corta al ganar un encuentro.
-3. **Dados 3D en Pantalla**:
-   * SillyTavern ya soporta la librería de dados 3D (`Dice-Box` / W福). Asegurar que las tiradas del motor hagan rodar los dados visualmente en pantalla si el usuario lo tiene activado.
+3. **Dados en Pantalla**:
+   * Ya los tienes: el overlay del motor enseña cada tirada con su desglose y se pasa con un clic. No son 3D, y es lo de menos — lo que importa de un dado en pantalla es poder auditarlo.
+   * *(Corrección: la primera versión de este documento decía que SillyTavern trae la librería `Dice-Box`. No la trae; no hay ni rastro de ella en el repositorio.)*
 
 ---
 
@@ -164,21 +180,26 @@ Cuando un monstruo es derrotado o se completa una misión, el motor ya entrega X
 
 En vez de una tienda comercial en línea, tu juego dispondrá de un **Gestor de Campañas Local**:
 * **Librería Personal**: Una carpeta `data/default-user/campaigns/` donde guardas tus mundos.
-* **Importar Módulos con 1 Clic**: El pipeline que diseñamos en `ROADMAP_INGESTA_CAMPANAS_LIBROS.md`: arrastras los 5 JSONs generados por tu GEM de Gemini o un archivo ZIP `.tavernworld` y la aventura queda lista en tu pantalla de inicio.
-* **Exportar tu Aventura**: Un botón para empaquetar tu mundo, PNJs, misiones y mapas para compartirlo con amigos o hacer copias de seguridad, sin pasar por ninguna plataforma corporativa.
+* **Importar Módulos con 1 Clic**: ✅ **Hecho** (Fase G). Pegas el paquete que da tu GEM y el validador lo comprueba **antes de crear nada**: dice si un mapa no cierra, si un enemigo está sobre un muro o si una misión apunta a un tablero que no existe. `/esquema-campana` da el contrato para el GEM.
+* **Exportar tu Aventura**: ⚪ **Lo único que falta de esta pieza**, y con ello la mitad de la historia de *«sin marketplace»*: sin botón de empaquetar, compartir con un amigo no existe. Anotado como **P9** en [[POR_HACER]].
 
 ---
 
 ## 🚀 3. Hoja de Ruta Ejecutable: El Camino hacia "Friends & Fables"
 
-Organizado en 4 baterías lógicas para construir de forma iterativa:
-
 | Batería | Nombre | Contenido |
 | :---: | :--- | :--- |
-| **Batería F1** | **El DM Autónomo (Skill Checks y Opciones)** | Parser de tiradas de habilidad en el chat (`[CHECK: Habilidad CD]`), tirada automática determinista en pantalla y botones de acción rápida `[1]` `[2]` `[3]`. |
-| **Batería F2** | **Descansos y Recursos (Short/Long Rest)** | Modales de descanso corto (gasto de Dados de Golpe) y descanso largo (recuperación total + salto de día en calendario). |
-| **Batería F3** | **Grimorio y Habilidades Tácticas** | Gestión de espacios de conjuro (Spell Slots) y botones de hechizos/habilidades en la barra de combate táctico. |
-| **Batería F4** | **Motor de Subida de Nivel (Level Up)** | Detección de umbrales de XP, aumento de PG y selector de rasgos/dotes al subir de nivel. |
+| **F1** | **El DM Autónomo (Skill Checks)** | Parser de tiradas de habilidad en el chat (`[CHECK: Habilidad CD]`) y tirada determinista en pantalla. Los botones de acción rápida ya existen. |
+| **F2** | **Descansos y Recursos** | ✅ Hecha. |
+| **F3** | **Grimorio y Habilidades Tácticas** | Espacios de conjuro y botones de hechizos y habilidades en la barra táctica. La más grande de las cuatro, con diferencia. |
+| **F4** | **Motor de Subida de Nivel** | Umbrales de XP, aumento de PG y selector de rasgos al subir de nivel. |
+
+> [!IMPORTANT]
+> **En qué orden, y quién lo decide**, está en [[POR_HACER]] — aquí solo está el diseño de cada pieza. El reparto de hoy: **F4 y el botón de exportar** no necesitan que decidas nada; **F1 y F3 sí**, y por razones distintas.
+>
+> F1 es **la única pieza de las seis que cuesta dinero**: explicarle el protocolo al modelo ocupa sitio en el prompt, en todos los turnos. Si se hace, el bloque va en el prefijo estable o se carga la caché.
+>
+> F3 no cuesta tokens — la magia la resuelve el motor, como el resto del combate — pero es **tres o cuatro baterías disfrazadas de una**: ranuras, conjuros preparados, áreas de efecto (una línea de 30 pies es geometría nueva en el tablero), concentración, y la interfaz de todo eso.
 
 ---
 
@@ -187,5 +208,10 @@ Organizado en 4 baterías lógicas para construir de forma iterativa:
 Tu proyecto ya tiene el **núcleo técnico más difícil**: el tablero A*, la niebla de guerra, el combate determinista a 0 tokens, el sistema de vínculos Persona y las 3 pantallas completas del Game Shell.
 
 Lo que separa tu versión actual de *Friends & Fables* no es una reescritura, sino **darle voz de Dungeon Master al LLM (tiradas de habilidad y opciones rápidas)** y **completar los recursos de clase D&D (magia, descansos y subida de nivel)**.
+
+> [!NOTE]
+> **Matiz del 2026-09-22.** La primera mitad de esa frase se ha quedado corta y la segunda ha crecido. Las opciones rápidas ya están, y tu motor es **más estricto** que el de F&F: las tiradas se auditan, las que el modelo se inventa se corrigen solas y las reglas las editas tú. Darle voz de DM añade una cosa concreta — que **pida** tiradas — y cuesta tokens en cada turno.
+>
+> El hueco que de verdad duele es **la magia**: un D&D sin conjuros deja fuera media tabla de clases, y eso ninguna narración lo tapa. Pero es la pieza cara, así que el plan honesto es victorias baratas primero (nivel, exportar, sonido) y la magia como proyecto con hoja de ruta propia.
 
 Todo 100% privado, local y sin pagar a ninguna plataforma externa.

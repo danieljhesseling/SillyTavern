@@ -38,7 +38,9 @@ describe('the entries a pack implies', () => {
 
     test('a monster with nothing but a name still gets playable numbers', () => {
         const [enemy] = buildPackEntries(normalizePack({ bestiary: [{ name: 'Sombra' }] }).pack);
-        expect(enemy.dndData).toMatchObject({ hp: 1, armorClass: 10, speed: 30, profile: 'brute' });
+        // `aggressive` y no `brute`: el segundo no es un perfil del motor, y enemy-ai lo
+        // tomaba por desconocido y lo jugaba como agresivo sin decir nada.
+        expect(enemy.dndData).toMatchObject({ hp: 1, armorClass: 10, speed: 30, profile: 'aggressive' });
     });
 
     test('anything without a name is skipped rather than written blank', () => {

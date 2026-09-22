@@ -94,6 +94,7 @@ export function judgeGift({ member, item }) {
  * @param {any} [input.bonds]
  * @param {any} [input.calendar]
  * @param {boolean} [input.fighting]
+ * @param {boolean} [input.canLevel] Si tiene experiencia para subir de nivel.
  * @param {Array<any>} [input.giverItems] Lo que el grupo puede regalar.
  * @returns {{
  *   id: string, name: string, avatar: string, rank: number, rankLabel: string,
@@ -101,7 +102,9 @@ export function judgeGift({ member, item }) {
  *   perks: Array<any>, actions: CardAction[], gifts: Array<{name: string, verdict: GiftVerdict}>,
  * }}
  */
-export function buildCompanionCard({ member, bonds = null, calendar = null, fighting = false, giverItems = [] }) {
+export function buildCompanionCard({
+    member, bonds = null, calendar = null, fighting = false, canLevel = false, giverItems = [],
+}) {
     const id = String(member?.id ?? '');
     const view = buildCampaignView({ calendar, bonds, party: [member].filter(Boolean) });
     const character = view.characters.find(c => c.id === id) || {
@@ -112,7 +115,21 @@ export function buildCompanionCard({ member, bonds = null, calendar = null, figh
     const gifts = items.map(item => ({ name: String(item?.name || ''), verdict: judgeGift({ member, item }) }));
 
     /** @type {CardAction[]} */
-    const actions = [
+    const actions = [];
+
+    // Subir de nivel va primero cuando toca: es lo unico de esta ficha que cambia los
+    // numeros con los que se pelea, y esperar no lo mejora.
+    if (canLevel) {
+        actions.push({
+            id: 'level',
+            label: 'Subir de nivel',
+            icon: 'fa-arrow-up',
+            enabled: true,
+            why: 'Tiene experiencia de sobra',
+        });
+    }
+
+    actions.push(
         {
             id: 'downtime',
             label: 'Pasar tiempo',
@@ -132,7 +149,7 @@ export function buildCompanionCard({ member, bonds = null, calendar = null, figh
                 ? 'No mientras peleas.'
                 : (items.length === 0 ? 'No llevas nada que dar.' : 'Le das algo de lo que llevas'),
         },
-    ];
+    );
 
     // Y lo que ya existia: anotar lo que ha pasado entre vosotros.
     for (const event of getRecordableEvents()) {

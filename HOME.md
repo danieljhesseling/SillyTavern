@@ -54,6 +54,7 @@ Toda la documentación técnica, arquitectónica y de jugabilidad está organiza
 - **[[PROPUESTA_FRONTEND_MODO_JUEGO]]**: [wiki/PROPUESTA_FRONTEND_MODO_JUEGO.md](file:///c:/Users/danie/SillyTavern/wiki/PROPUESTA_FRONTEND_MODO_JUEGO.md) - *Game Shell: 3 pantallas cinemáticas a pantalla completa (Diálogo, Mapa, Combate).*
 - **[[PLAN_JUEGO_TIPO_FRIENDS_AND_FABLES]]**: [wiki/PLAN_JUEGO_TIPO_FRIENDS_AND_FABLES.md](file:///c:/Users/danie/SillyTavern/wiki/PLAN_JUEGO_TIPO_FRIENDS_AND_FABLES.md) - *Hacia la experiencia Friends & Fables (DM autónomo, descansos, magia y level-up, sin marketplace).*
 - **[[ROADMAP_JUEGO_SIN_COMANDOS]]**: [wiki/ROADMAP_JUEGO_SIN_COMANDOS.md](file:///c:/Users/danie/SillyTavern/wiki/ROADMAP_JUEGO_SIN_COMANDOS.md) - *Juego 100% por clics de ratón: mover y atacar en el tablero, descansos interactivos y action chips.*
+- **[[DISENO_GENERADOR_MUNDOS_PROFUNDO]]**: [wiki/DISENO_GENERADOR_MUNDOS_PROFUNDO.md](file:///c:/Users/danie/SillyTavern/wiki/DISENO_GENERADOR_MUNDOS_PROFUNDO.md) - *Generador de mundos profundo: 7 categorías maestras (Personajes, Enemigos, Mapa Mundi, Localidades, Tableros, Facciones, Magias) y esquema JSON unificado.*
 
 ### 🔍 Auditoría & Propuestas de Mejora
 - **[[PROBLEMAS_TECNICOS]]**: [wiki/PROBLEMAS_TECNICOS.md](file:///c:/Users/danie/SillyTavern/wiki/PROBLEMAS_TECNICOS.md) - *Auditoría técnica exhaustiva (vulnerabilidades XSS, CSP, desincronización de estado, fugas de memoria y deuda técnica).*

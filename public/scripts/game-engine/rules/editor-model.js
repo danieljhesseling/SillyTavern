@@ -48,11 +48,14 @@ export const SECTION_LABELS = {
     'relationships.scoreMax': 'Afinidad máxima',
     'slots': 'Ranuras de equipo',
     'slotInfo': 'Detalle de las ranuras',
+    'progression.xpThresholds': 'Experiencia por nivel (nivel → XP)',
+    'progression.abilityLevels': 'Niveles con mejora de característica',
 };
 
 /** The order the editor offers them in: what you came to change, first. */
 const SECTION_ORDER = [
     'items.damageTypes',
+    'progression.xpThresholds',
     'items.weaponFlags',
     'items.armorFlags',
     'items.gearFlags',

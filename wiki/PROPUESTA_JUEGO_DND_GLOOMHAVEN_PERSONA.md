@@ -2,7 +2,7 @@
 title: Propuesta de Diseño — Motor de Juego Híbrido D&D (Persona + Gloomhaven)
 tags: [propuesta, arquitectura, rpg, dnd, persona, gloomhaven, ai-zero-tokens, world-building]
 created: 2026-09-20
-updated: 2026-09-21
+updated: 2026-09-22
 author: DanielJHesseling / Antigravity AI
 ---
 
@@ -13,15 +13,17 @@ author: DanielJHesseling / Antigravity AI
 
 ---
 
-## 📍 Estado de Implementación (2026-09-21)
+## 📍 Qué es este documento (2026-09-22)
 
-Esta propuesta se escribió el 2026-09-20, antes de escribir código. Lo que sigue es lo que ocurrió con cada pilar; el plan vigente es el [[ROADMAP]] y lo pendiente está en [[POR_HACER]]. **El texto de más abajo se conserva tal como se escribió**, con notas de corrección donde la realidad lo desmintió.
+Esta propuesta se escribió el **2026-09-20, antes de escribir una sola línea de código**. Se construyó casi entera: los tres pilares están en pie y jugables.
 
-| Pilar | Qué propone | Estado |
-| :--- | :--- | :--- |
-| **1 · Lienzo Blanco** | Mundos generados por IA con salidas estructuradas | 🟡 La mitad manual está hecha y verificada: el **asistente de campaña** (4 plantillas, sin IA). Falta el botón *Generar con IA* (Fase F), y no será con Gemini sino agnóstico de proveedor |
-| **2 · Combate sin tokens** | A*, IA de enemigos, economía de acciones, dados, botín, registro gráfico | 🟡 Terreno, visión, niebla, A* y la IA táctica están hechos **y conectados**. Sin conectar: la máquina de turnos y el guardián de tiradas. Sin hacer: el botín. El registro gráfico solo vive en `/sandbox` |
-| **3 · Persona + Gloomhaven** | Calendario, vínculos 1–10 con perks, escenarios, tablero de campaña | 🟡 Toda la **lógica** está hecha y probada (62 tests), pero **ningún módulo está conectado** al juego ni tiene interfaz |
+Se conserva por dos razones, y ninguna es llevar la cuenta de nada:
+
+1. **El diseño sigue siendo el del motor de hoy** — la separación entre narración y estado, los perfiles tácticos de enemigo, los rangos de vínculo con perks reales.
+2. **La tabla de más abajo**, con lo que la realidad desmintió. Es la parte cara: son los errores que ya se pagaron.
+
+> [!IMPORTANT]
+> **Esto no es un marcador.** Lo que falta y en qué orden está en **[[POR_HACER]]**; el plan, en [[ROADMAP]]. El texto original se conserva tal cual, con notas de corrección donde hizo falta.
 
 **Lo que la propuesta acertó**: elegir JavaScript sobre Unity o Python; que el combate no necesita al modelo; y el orden combate → Persona → Lienzo Blanco.
 
@@ -267,43 +269,19 @@ public/scripts/
 ```
 
 > [!NOTE]
-> **Estructura real (2026-09-21).** Se siguió la idea, no los nombres:
+> **Se siguió la idea, no los nombres.** El árbol de archivos de verdad, siempre al día, está en [[Mapa-Codigo-Archivos]] — copiarlo aquí solo serviría para tener dos versiones y que una fuera mentira.
 >
-> ```text
-> public/scripts/
-> ├── game-engine/
-> │   ├── board/        # terrain · line-of-sight · fog-of-war · pathfinding
-> │   ├── combat/       # turn-machine · enemy-ai · roll-guard      (loot-tables.js: pendiente)
-> │   ├── campaign/     # calendar · bonds · scenarios · campaign-map
-> │   │                 # starter-templates · campaign-worlds       (asistente de campaña)
-> │   ├── rules/        # default-ruleset · ruleset                 (el paquete de reglas)
-> │   └── ui/           # combat-log · sandbox · campaign-wizard
-> ├── party/            # combat-rules · item-forms · types · html · positions
-> ├── party.js          # integración con el chat y el tablero (4.549 líneas)
-> ├── world-map-renderer.js   # capas de terreno y niebla, paleta de pintura
-> └── dnd-system.js     # lee el paquete de reglas activo
-> ```
->
-> Diferencias: `world-builder/` (Gemini) **no existe**; `persona/` se llama `campaign/` y agrupa también los escenarios; `grid-pathfinding.js` es `board/pathfinding.js`; y hay un módulo que la propuesta no contemplaba, `rules/`, sin el cual el editor que pediste no es posible.
+> Las diferencias que importan: `world-builder/` no habla con Gemini sino con **el proveedor que tengas puesto**; `persona/` se llama `campaign/` y agrupa también los escenarios y el mapa de campaña; `grid-pathfinding.js` es `board/pathfinding.js`; y hay una carpeta que la propuesta no contemplaba, **`rules/`**, sin la cual el editor de reglas que pediste no es posible.
 
 ---
 
-## 🚀 5. Hoja de Ruta Sugerida (Fases de Desarrollo)
+## 🚀 5. Las tres fases que propuso
 
-### Fase 1: Motor Táctico Autónomo (El Combate Sin Tokens)
-- [x] Implementar `grid-pathfinding.js` (A* sobre las celdas de `world-map-renderer.js`). *Hecho como `board/pathfinding.js`, con terreno; lo usan la IA y el resaltado de movimiento.*
-- [x] Implementar `enemy-ai.js` (cálculo de foco más cercano y movimiento automático de tokens enemigos en el tablero). *Hecho como `combat/enemy-ai.js`, con 4 perfiles tácticos, y conectado al combate real.*
-- [ ] Integrar resolución automática de ataques y barra de vida visual sobre cada token. *🟡 La resolución de ataques existía en `party.js`; la barra de vida solo aparece en el tooltip del token.*
-- [ ] Conectar la tabla de botín algorítmica al vaciarse el tablero de enemigos. *Pendiente (B5).*
+**Fase 1 · Motor táctico autónomo** — A* sobre el tablero, IA de enemigos, resolución de ataques, botín al vaciarse el tablero.
+**Fase 2 · Sistema Persona** — reloj de calendario, rangos de confidente, perks mecánicas en combate.
+**Fase 3 · Lienzo Blanco** — modal de creación de mundos y generación con IA por esquemas.
 
-### Fase 2: Sistema Persona (Calendario & Confidentes)
-- [ ] Crear el widget de HUD de Calendario (Día X / Fase del Día: Mañana, Tarde, Noche). *🟡 La lógica está en `campaign/calendar.js`; falta la interfaz (D6).*
-- [ ] Diseñar el sistema de Rangos de Confidente (1 al 10) en la ficha de relaciones. *🟡 La lógica está en `campaign/bonds.js`; falta la ficha y la interfaz (D6).*
-- [ ] Implementar las primeras 3 perks mecánicas en combate (Ataque conjunto, Baton Pass, Salvar de agonía). *🟡 Definidas y desbloqueadas por rango; ninguna se aplica en el combate (POR_HACER A5).*
-
-### Fase 3: Lienzo Blanco (World Building Asistido)
-- [x] Modal visual "Creador de Mundos / Misiones" con botón "Generar con IA". *🟡 Hecho el modal: el **asistente de campaña**, manual y con plantillas. El botón "Generar con IA" es la Fase F.*
-- [ ] Integración con la API de Gemini usando esquemas estructurados para autocompletar personajes, mapas, monstruos e ítems en un solo clic. *Pendiente (Fase F), y agnóstico de proveedor en lugar de atado a Gemini.*
+Las tres se hicieron, en ese orden, y el orden resultó ser el bueno: el combate era lo que sostenía a los otros dos. Lo que quedó fuera — la magia, las actividades de día que no sean descansar, los confidentes que no están en tu grupo — vive en [[POR_HACER]].
 
 ---
 
@@ -312,4 +290,4 @@ public/scripts/
 Tienes en tus manos una oportunidad extraordinaria: **transformar SillyTavern de una interfaz de chat a un juego de rol táctico híbrido de primer nivel**, sin pagar la enorme factura de reescribir todo en Unity y sin arruinarte en tokens de IA durante las batallas.
 
 > [!NOTE]
-> **Actualización (2026-09-21).** La pregunta ya se respondió: se empezó por la Fase 1 (hecha y conectada, salvo el epílogo y la máquina de turnos), la Fase 2 tiene la lógica y le falta todo lo que se ve, y del Lienzo Blanco existe la mitad manual, el asistente de campaña. Lo siguiente, en [[POR_HACER]].
+> **Y así fue.** Se hizo, y sin reescribir nada en Unity: hoy se juega a pantalla completa, con el tablero, los vínculos, el calendario y las campañas de libro. Lo que viene ahora está en [[POR_HACER]].

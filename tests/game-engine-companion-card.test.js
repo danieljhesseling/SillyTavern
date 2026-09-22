@@ -92,3 +92,16 @@ describe('la ficha del companero', () => {
         expect(events[0].why).toMatch(/al vínculo/);
     });
 });
+
+describe('subir de nivel desde su ficha', () => {
+    test('cuando toca, va primero: es lo unico que cambia los numeros de la pelea', () => {
+        const card = buildCompanionCard({ member: lyra(), canLevel: true });
+        expect(card.actions[0].id).toBe('level');
+        expect(card.actions[0].label).toBe('Subir de nivel');
+    });
+
+    test('y cuando no toca, no aparece', () => {
+        const card = buildCompanionCard({ member: lyra() });
+        expect(card.actions.map(a => a.id)).not.toContain('level');
+    });
+});
