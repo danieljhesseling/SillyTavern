@@ -207,6 +207,26 @@ Dos detalles que no son adorno: la papelera **no crece ni lleva texto** y solo s
 
 ---
 
+### A10 · Un narrador propio para cada campaña ✅ **Hecho el 2026-09-22**
+
+Todas las campañas las narraba **el mismo ayudante de la pantalla de bienvenida**: una ficha creada sola, sin nombre propio ni tono. Daba igual si jugabas terror en una cripta o comedia en una taberna — el que hablaba era el mismo, y ni siquiera sabía que era un narrador.
+
+Ahora el asistente tiene un **paso 4, *¿Quién lo cuenta?***, con nombre, tono, quién es, primera frase y **cara** (un archivo de tu disco; sin ninguna vale la de siempre). Está plegado hasta que dices que sí: la mayoría de campañas no necesitan uno propio, y cinco campos abiertos convierten *«tres pasos y estarás jugando»* en un formulario.
+
+**Por qué esto no es un campo de sabor.** La descripción y la personalidad de una ficha de personaje **entran en el prompt de todos los turnos**. Es el único sitio de la campaña donde decides *cómo se cuenta*. Por eso la ficha que se construye dice antes que nada **qué oficio tiene**:
+
+> Eres quien narra esta partida: describes lo que el grupo ve, oye y encuentra… No interpretas a ningún miembro del grupo: esos los lleva quien juega. Las tiradas, el daño, las distancias y el botín los decide el juego y tú los cuentas; nunca los inventas ni los corriges.
+
+Sin esa parte, una ficha que solo dice *«seco e irónico»* produce **alguien seco e irónico**, no alguien que dirija una partida: contesta en primera persona, espera su turno y se inventa los dados. Lo que escribes tú cambia el *cómo*; el *qué* lo sigue decidiendo el motor, y eso queda escrito donde el modelo lo lee.
+
+**El mundo se acuerda, no la sesión.** El narrador se guarda en `metadata.narratorAvatar`, así que una campaña retomada meses después se abre con la misma voz con la que se escribió. Y se crea **antes** de abrir el chat: al revés, la primera sesión saldría narrada por el ayudante y tu voz empezaría en la segunda.
+
+Es una ficha de personaje **normal**: se edita, se exporta y se borra como cualquier otra. Lo único que pone el juego es que sepa que narra.
+
+**Lo que no hace todavía**: cambiarle el narrador a una campaña ya creada hay que hacerlo editando la ficha a mano; el editor de `/campana` aún no tiene esa pestaña.
+
+---
+
 ## 🟠 D — Necesita una decisión
 
 Cada una es una bifurcación real: las dos salidas son defendibles y la elección cuesta después. Llevan mi recomendación, pero la decisión no es mía.

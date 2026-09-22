@@ -394,3 +394,32 @@ textarea.cw-ai-map {
     background: rgba(208, 138, 134, 0.18);
     font-size: 0.88em;
 }
+
+/* ---------------------------------------------------------------- el narrador */
+
+/* Plegado hasta que lo pides: la mayoria de campanas no necesitan uno propio, y cinco
+   campos abiertos delante convierten "tres pasos y estaras jugando" en un formulario. */
+.cw-narrator-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-size: 0.82rem;
+    padding: 2px 0;
+}
+
+.cw-narrator {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 8px;
+    padding: 10px 12px;
+    border-left: 2px solid var(--SmartThemeQuoteColor, #6a8caf);
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 0 6px 6px 0;
+}
+
+.cw-narrator-image {
+    font-size: 0.74rem;
+    padding: 4px 0;
+}

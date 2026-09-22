@@ -5,12 +5,14 @@ import {
 import {
     characters, getRequestHeaders, openCharacterChat, chat_metadata, saveMetadata, selectCharacterById,
     doNewChat, this_chid, generateRaw, online_status, deleteCharacterChatByName, closeCurrentChat,
+    getCharacters,
 } from '../script.js';
 import { Popup, POPUP_TYPE, POPUP_RESULT } from './popup.js';
 import { buildNewCampaignCta, askWizard, createCampaign } from './game-engine/ui/campaign-wizard.js';
 import { openCampaignBuilder } from './party.js';
 import { isCampaignWorld, getStartingPoint } from './game-engine/campaign/campaign-worlds.js';
 import { planCampaignDeletion, describeDeletion } from './game-engine/campaign/campaign-delete.js';
+import { buildNarratorCard, describeNarrator } from './game-engine/campaign/narrator.js';
 import { generateWorld } from './game-engine/world-builder/world-schema.js';
 import { escapeHtml } from './utils.js';
 
@@ -635,13 +637,62 @@ let pendingWorldChoice = null;
 let wizardRunning = false;
 
 /**
- * The character a campaign chat belongs to: the welcome-screen assistant, which is the
- * narrator these campaigns are already played with, else whatever is selected, else the
- * first character there is.
+ * Crea la ficha de personaje del narrador de una campaña.
  *
+ * Es una ficha normal de SillyTavern, no una cosa aparte: se edita, se exporta y se borra
+ * como cualquier otra, y su descripcion y su personalidad entran en el prompt por la
+ * puerta de siempre. Lo unico que pone el juego es **que sepa que narra**, que es lo que
+ * separa a un narrador de un personaje con voz grave.
+ *
+ * @param {any} answers Lo que el asistente recogio en el paso 4.
+ * @param {{worldName: string, genre: string, synopsis: string}} world
+ * @returns {Promise<{avatar: string, card: any}|null>} El avatar creado, o null si no pudo.
+ */
+async function createNarratorCharacter(answers, world) {
+    const card = buildNarratorCard(answers, world);
+
+    const form = new FormData();
+    for (const [field, value] of Object.entries(card)) form.append(field, String(value));
+
+    // La cara es opcional: sin ella el servidor pone la de por defecto, que es justo lo
+    // que queremos en vez de fallar por una imagen.
+    if (answers?.image instanceof File && answers.image.size > 0) {
+        form.append('avatar', answers.image, answers.image.name || 'narrador.png');
+    }
+
+    try {
+        const response = await fetch('/api/characters/create', {
+            method: 'POST',
+            headers: getRequestHeaders({ omitContentType: true }),
+            body: form,
+            cache: 'no-cache',
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const avatar = String(await response.text()).trim();
+        await getCharacters();
+        return avatar ? { avatar, card } : null;
+    } catch (error) {
+        console.error('[campaigns] could not create the narrator', error);
+        return null;
+    }
+}
+
+/**
+ * The character a campaign chat belongs to: the campaign's own narrator when it has one,
+ * else the welcome-screen assistant, else whatever is selected, else the first character.
+ *
+ * @param {string} [narratorAvatar] El narrador que el mundo dice tener.
  * @returns {Promise<number>} A character index, or -1 when there are no characters at all.
  */
-async function pickCampaignCharacterId() {
+async function pickCampaignCharacterId(narratorAvatar = '') {
+    // Su propio narrador manda: es lo que el jugador escribio para esta campana.
+    if (narratorAvatar) {
+        const own = characters.findIndex((/** @type {any} */ c) => c?.avatar === narratorAvatar);
+        if (own !== -1) return own;
+        console.warn('[campaigns] the narrator this world names no longer exists', narratorAvatar);
+    }
+
     // Dynamic: welcome-screen.js imports this file, so a static import would be circular.
     const { getPermanentAssistantAvatar, openPermanentAssistantChat } = await import('./welcome-screen.js');
     const findAssistant = () => characters.findIndex(c => c.avatar === getPermanentAssistantAvatar());
@@ -675,10 +726,21 @@ async function pickCampaignCharacterId() {
  * @param {string} input.locationName  Empty when the world has no location yet.
  * @param {string} input.boardName     Empty when the location has no board yet.
  * @param {string} input.verb          'creada' or 'iniciada', for the toast title.
+ * @param {string} [input.narratorAvatar] El narrador de esta campaña, si tiene uno propio.
  * @returns {Promise<boolean>} Whether the campaign is now open and bound to the world.
  */
-async function openCampaignChat({ worldName, party, partyEntries, locationName, boardName, verb }) {
-    const characterId = await pickCampaignCharacterId();
+async function openCampaignChat({ worldName, party, partyEntries, locationName, boardName, verb, narratorAvatar = '' }) {
+    // Quien narra sale del propio mundo: asi una campana retomada meses despues se abre
+    // con la misma voz con la que se escribio, y no con el ayudante de turno.
+    let narrator = narratorAvatar;
+    if (!narrator) {
+        try {
+            const data = await loadWorldInfo(worldName);
+            narrator = String(data?.metadata?.narratorAvatar || '');
+        } catch { /* el mundo manda, pero si no se lee se sigue con el ayudante */ }
+    }
+
+    const characterId = await pickCampaignCharacterId(narrator);
     if (characterId === -1) {
         toastr.warning(
             'El mundo está listo, pero no hay ningún personaje con el que abrir el chat. '
@@ -779,7 +841,40 @@ async function startCampaignWizard() {
             }
         }
 
-        await openCampaignChat({ ...created, verb: 'creada' });
+        // El narrador, si lo pediste. Se crea **antes** de abrir el chat, porque el chat se
+        // abre con el: hacerlo despues dejaria la primera sesion narrada por el ayudante y
+        // la voz que escribiste empezando en la segunda.
+        let narratorAvatar = '';
+        if (answers.narrator) {
+            const made = await createNarratorCharacter(answers.narrator, {
+                worldName: created.worldName,
+                genre: answers.genre,
+                synopsis: answers.description,
+            });
+
+            if (made) {
+                narratorAvatar = made.avatar;
+                // Queda escrito en el mundo: asi una campana retomada mucho despues se
+                // abre con la misma voz, y no con el ayudante de turno.
+                try {
+                    const data = await loadWorldInfo(created.worldName);
+                    if (data) {
+                        data.metadata = Object.assign(data.metadata ?? {}, { narratorAvatar });
+                        await saveWorldInfo(created.worldName, data, true);
+                    }
+                } catch (error) {
+                    console.error('[campaigns] narrator created but not remembered', error);
+                }
+                toastr.success(describeNarrator(made.card), 'Narrador creado');
+            } else {
+                toastr.warning(
+                    'No se pudo crear el narrador; la campaña se abre con el de siempre.',
+                    'Narrador',
+                );
+            }
+        }
+
+        await openCampaignChat({ ...created, verb: 'creada', narratorAvatar });
 
         // "Crear y escribir el mundo": la partida ya esta abierta detras, asi que cerrar
         // el editor deja a quien lo abrio jugando, no en una pantalla muerta.

@@ -227,6 +227,7 @@ Esto es media razón de ser del proyecto: **nada de lo de abajo pide abrir un ar
 | :--- | :--- |
 | **Escribir mi mundo entero**: sitios, gente, bichos, objetos, misiones | `/campana` — o **Editar la campaña** en el menú de pausa |
 | **Borrar una campaña entera** | La papelera de su tarjeta, en *Cargar partida*. Se va el mundo **y** sus sesiones, y te dice cuánto pierdes antes de hacerlo |
+| **Elegir quién narra, y con qué tono** | Paso 4 del asistente al crear la campaña. Lo que escribas ahí llega al modelo en cada turno |
 | Añadir un tipo de daño, una condición, una rareza | `/rules` → editas la sección → **Aplicar** → **Guardar reglas** |
 | Que este tablero sea *sobre* algo | `/objetivos editar` — y **Proponer con IA** si quieres que te las escriba |
 | Cambiar qué enemigos salen aquí, y cuántos | `/enemigos` |

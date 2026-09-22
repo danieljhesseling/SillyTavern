@@ -21,6 +21,7 @@ import {
     buildEncounterRules,
 } from '../campaign/starter-templates.js';
 import { uniqueWorldName } from '../campaign/campaign-worlds.js';
+import { validateNarrator } from '../campaign/narrator.js';
 import { normalizeMap, findPartyStart } from '../world-builder/world-schema.js';
 
 /**
@@ -42,7 +43,7 @@ import { normalizeMap, findPartyStart } from '../world-builder/world-schema.js';
  * @param {string[]} [deps.existingWorldNames]
  * @param {((idea: string, partySize: number) => Promise<{template: any, warnings: string[], errors: string[]}>)|null} [deps.generateWorld]
  *        Injected so this module never imports a provider. Absent means no AI card.
- * @returns {Promise<{templateId: string, worldName: string, genre: string, description: string, party: string[], generatedTemplate: any, importedPack: any, writeWorld: boolean}|null>}
+ * @returns {Promise<{templateId: string, worldName: string, genre: string, description: string, party: string[], generatedTemplate: any, importedPack: any, writeWorld: boolean, narrator: any}|null>}
  */
 export async function askWizard({ Popup, POPUP_TYPE, existingWorldNames = [], generateWorld = null }) {
     /** El resultado del segundo botón. Los propios empiezan en 2; 0 y 1 ya están cogidos. */
@@ -111,6 +112,51 @@ export async function askWizard({ Popup, POPUP_TYPE, existingWorldNames = [], ge
     const partyInput = $('<textarea class="text_pole cw-input cw-party-input" rows="4" placeholder="Lyra\nBrand"></textarea>')
         .val('Lyra\nBrand');
     step3.append(partyInput);
+
+    // ---- 4. quien lo cuenta ------------------------------------------------
+    // Hasta aqui todas las campanas las narraba el mismo ayudante de la bienvenida: una
+    // ficha vacia, sin nombre propio ni tono, daba igual si jugabas terror o comedia.
+    const step4 = $('<div class="cw-step"></div>');
+    step4.append('<div class="cw-step-title"><span class="cw-num">4</span> ¿Quién lo cuenta?</div>');
+    step4.append('<div class="cw-hint">Lo que escribas aquí <b>llega al modelo en cada turno</b>: '
+        + 'es donde se decide el tono de la campaña. Los números los sigue decidiendo el juego.</div>');
+
+    const narratorToggle = $('<label class="cw-narrator-toggle"></label>');
+    const narratorOn = $('<input type="checkbox" class="cw-narrator-on" />');
+    narratorToggle.append(narratorOn).append($('<span></span>').text(' Crear un narrador para esta campaña'));
+    step4.append(narratorToggle);
+
+    const narratorBox = $('<div class="cw-narrator"></div>').hide();
+
+    const narratorName = $('<input type="text" class="text_pole cw-input cw-narrator-name" maxlength="60" placeholder="El Cronista, La Voz del Molino…">');
+    const narratorTone = $('<textarea class="text_pole cw-input cw-narrator-tone" rows="2" maxlength="400" placeholder="Seco, irónico, nunca adorna una muerte"></textarea>');
+    const narratorAbout = $('<textarea class="text_pole cw-input cw-narrator-about" rows="2" maxlength="600" placeholder="Qué sabe, de dónde viene, qué calla (opcional)"></textarea>');
+    const narratorGreeting = $('<textarea class="text_pole cw-input cw-narrator-greeting" rows="2" maxlength="400" placeholder="Con qué frase abre la campaña (opcional)"></textarea>');
+
+    narratorBox.append($('<label class="cw-label"></label>').text('Nombre').append(narratorName));
+    narratorBox.append($('<label class="cw-label"></label>').text('Tono').append(narratorTone));
+    narratorBox.append($('<label class="cw-label"></label>').text('Quién es').append(narratorAbout));
+    narratorBox.append($('<label class="cw-label"></label>').text('Primera frase').append(narratorGreeting));
+
+    // La cara: un archivo de tu disco. Sin subidor propio — es el mismo formulario que
+    // usa SillyTavern para cualquier ficha, y si no pones ninguna vale la de siempre.
+    const narratorImage = $('<input type="file" class="cw-narrator-image" accept="image/*" />');
+    const imageLabel = $('<label class="cw-label"></label>')
+        .text('Cara (opcional)').append(narratorImage);
+    narratorBox.append(imageLabel);
+
+    const narratorWarning = $('<div class="cw-warning cw-narrator-warning"></div>').hide();
+    narratorBox.append(narratorWarning);
+
+    narratorOn.on('change', () => {
+        narratorBox.toggle(narratorOn.prop('checked'));
+        // El nombre del mundo es una primera sugerencia razonable y se deja cambiar.
+        if (narratorOn.prop('checked') && !String(narratorName.val() || '').trim()) {
+            narratorName.val('Narrador');
+        }
+    });
+
+    step4.append(narratorBox);
 
     // ---- 1b. the blank canvas ----------------------------------------------
     // The AI is offered as one more way to fill step 1, never as the way in: if it is not
@@ -407,7 +453,7 @@ export async function askWizard({ Popup, POPUP_TYPE, existingWorldNames = [], ge
 
     step1.append(aiPanel, importPanel);
 
-    root.append(step1, step2, step3);
+    root.append(step1, step2, step3, step4);
 
     // Dos salidas, las dos sin escribir un comando: una cae jugando y la otra cae jugando
     // **y** con el editor del mundo delante. Antes la segunda existia y habia que saberse
@@ -440,6 +486,15 @@ export async function askWizard({ Popup, POPUP_TYPE, existingWorldNames = [], ge
                 ).show();
                 return false;
             }
+
+            // El narrador solo se comprueba si lo has pedido: no tenerlo es una respuesta.
+            if (narratorOn.prop('checked')) {
+                const problems = validateNarrator({ name: String(narratorName.val() || '') });
+                if (problems.length > 0) {
+                    narratorWarning.text(problems.join(' ')).show();
+                    return false;
+                }
+            }
             return true;
         },
     });
@@ -461,6 +516,15 @@ export async function askWizard({ Popup, POPUP_TYPE, existingWorldNames = [], ge
         generatedTemplate,
         importedPack,
         writeWorld: result === WRITE_WORLD,
+        narrator: narratorOn.prop('checked')
+            ? {
+                name: String(narratorName.val() || '').trim(),
+                personality: String(narratorTone.val() || '').trim(),
+                description: String(narratorAbout.val() || '').trim(),
+                greeting: String(narratorGreeting.val() || '').trim(),
+                image: /** @type {any} */ (narratorImage[0])?.files?.[0] ?? null,
+            }
+            : null,
     };
 }
 

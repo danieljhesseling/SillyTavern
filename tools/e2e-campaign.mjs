@@ -3463,6 +3463,94 @@ try {
     check('cerrar el editor deja la campana hecha y en marcha',
         afterClose.editor === 0 && afterClose.world === 'El Vado Escrito', JSON.stringify(afterClose));
 
+    step('39. Un narrador propio para la campana');
+
+    // Desde la bienvenida de siempre, que es de donde sale el asistente.
+    await clearToasts();
+    if (await page.locator('#cw-new-campaign').count() === 0) {
+        await closeChat();
+    }
+    await page.click('#cw-new-campaign');
+    await page.waitForSelector('.cw-root', { timeout: 20000 });
+
+    const step4 = await page.evaluate(() => ({
+        title: [...document.querySelectorAll('.cw-step-title')].map(t => (t.textContent || '').trim()),
+        boxHidden: (document.querySelector('.cw-narrator')?.getBoundingClientRect().height || 0) === 0,
+    }));
+    check('el asistente pregunta quien lo cuenta',
+        step4.title.some(t => /Quién lo cuenta/.test(t)), JSON.stringify(step4.title));
+    check('y no lo pide: los campos estan plegados hasta que dices que si',
+        step4.boxHidden === true, `plegado: ${step4.boxHidden}`);
+
+    await page.locator('.cw-narrator-on').check();
+    await page.waitForTimeout(400);
+    const opened = await page.evaluate(() =>
+        (document.querySelector('.cw-narrator')?.getBoundingClientRect().height || 0) > 0);
+    check('al pedirlo se abren sus campos', opened === true, `abierto: ${opened}`);
+
+    await page.fill('.cw-root input.cw-input >> nth=0', 'La Cripta Narrada');
+    await page.fill('.cw-narrator-name', 'El Cronista');
+    await page.fill('.cw-narrator-tone', 'Seco, ironico, nunca adorna una muerte.');
+    await page.fill('.cw-narrator-about', 'Estuvo en el asedio y no lo cuenta.');
+    await page.fill('.cw-narrator-greeting', 'La cripta sigue ahi. Decidme que haceis.');
+
+    // Un narrador sin nombre no se puede crear: es lo que encabeza cada mensaje.
+    await page.fill('.cw-narrator-name', '');
+    await page.locator('.popup-button-ok').last().click();
+    await page.waitForTimeout(800);
+    const refused39 = await page.evaluate(() => ({
+        open: document.querySelectorAll('.cw-root').length,
+        warning: document.querySelector('.cw-narrator-warning')?.textContent || '',
+    }));
+    check('un narrador sin nombre no pasa, y dice por que',
+        refused39.open === 1 && /nombre/.test(refused39.warning), JSON.stringify(refused39));
+
+    await page.fill('.cw-narrator-name', 'El Cronista');
+    await page.locator('.popup-button-ok').last().click();
+    await page.waitForTimeout(6000);
+
+    const narrator = await page.evaluate(async () => {
+        const wi = await import('/scripts/world-info.js');
+        const ctx = window.SillyTavern.getContext();
+        const data = await wi.loadWorldInfo('La Cripta Narrada');
+        const avatar = String(data?.metadata?.narratorAvatar || '');
+        const card = (ctx.characters || []).find(c => c.avatar === avatar) || null;
+        return {
+            avatar,
+            name: card?.name || '',
+            description: card?.description || '',
+            personality: card?.personality || '',
+            firstMes: card?.first_mes || '',
+            openWorld: ctx.chatMetadata?.world_info || '',
+            speaking: ctx.name2 || '',
+        };
+    });
+
+    check('el narrador queda creado como ficha de personaje, con su nombre',
+        narrator.name === 'El Cronista' && narrator.avatar.length > 0,
+        JSON.stringify({ nombre: narrator.name, avatar: narrator.avatar }));
+    check('su ficha sabe que narra, no solo como es',
+        /narra/i.test(narrator.description) && /No interpretas/.test(narrator.description),
+        narrator.description.slice(0, 120));
+    check('y que los numeros los decide el juego, que es la frontera de todo esto',
+        /decide el juego/.test(narrator.description), narrator.description.slice(-140));
+    check('el tono que escribiste va donde el modelo lo lee',
+        /ironico/.test(narrator.personality), narrator.personality);
+    check('y abre la campana con tu frase',
+        /La cripta sigue ahi/.test(narrator.firstMes), narrator.firstMes);
+    check('la campana queda abierta y es quien la narra',
+        narrator.openWorld === 'La Cripta Narrada' && narrator.speaking === 'El Cronista',
+        JSON.stringify({ mundo: narrator.openWorld, narra: narrator.speaking }));
+
+    // Y al volver a ella meses despues, la misma voz: el mundo se acuerda de quien narra.
+    const remembered = await page.evaluate(async () => {
+        const wi = await import('/scripts/world-info.js');
+        const data = await wi.loadWorldInfo('La Cripta Narrada');
+        return String(data?.metadata?.narratorAvatar || '');
+    });
+    check('el mundo se acuerda de quien lo narra, no la sesion',
+        remembered === narrator.avatar, `${remembered}`);
+
     step('38. Borrar una campana desde Cargar partida');
 
     // Se llega como llega un jugador, sin dar por hecho donde quedo la pantalla: el juego

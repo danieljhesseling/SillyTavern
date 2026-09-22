@@ -81,6 +81,7 @@ Módulos puros: sin DOM, sin estado global, sin lecturas del chat. Por eso se pr
 | `campaign/campaign-export.js` | 349 | El camino de vuelta: empaquetar tu campaña para mandarla (A2) | ✅ |
 | `campaign/checkpoint.js` | 141 | Puntos de retorno, y uno automático antes de cada jefe (PROP2-163) | ✅ |
 | `campaign/campaign-importer.js` | 508 | Del paquete a mundo, entradas, tableros y misiones; los ids, al final | ✅ |
+| `campaign/narrator.js` | 158 | Quién narra la campaña y con qué voz: la ficha que sí llega al prompt (A10) | ✅ |
 | `campaign/campaign-delete.js` | 114 | Qué se va al borrar una campaña, y qué se dice antes de tocar nada (A9) | ✅ |
 | `campaign/campaign-editor.js` | 750 | Escribir una campaña a mano: lee el mundo, lo valida y dice qué fichas tocar (M1–M6) | ✅ |
 | `ui/campaign-editor.js` | 852 | El panel de `/campana`: siete pestañas, una por categoría | ✅ |
