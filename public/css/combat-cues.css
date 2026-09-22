@@ -448,3 +448,251 @@
     color: #ff6b5a;
     opacity: 0.9;
 }
+
+/* ---- El editor de campaña (M1 y M2) ----
+ * Una pestaña por categoría, como las reparte el paquete de un libro.
+ */
+
+.ce-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.ce-summary {
+    font-size: 0.85em;
+    opacity: 0.75;
+}
+
+.ce-tabs {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--SmartThemeBorderColor, #444);
+}
+
+.ce-tab.active {
+    background: var(--SmartThemeQuoteColor, #6a8caf);
+    color: #fff;
+}
+
+.ce-soon {
+    font-size: 0.72em;
+    opacity: 0.45;
+    margin-left: auto;
+}
+
+.ce-body {
+    padding-top: 10px;
+}
+
+.ce-intro {
+    font-size: 0.85em;
+    opacity: 0.75;
+    margin-bottom: 10px;
+}
+
+.ce-field {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-bottom: 8px;
+}
+
+.ce-label {
+    font-size: 0.72em;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    opacity: 0.6;
+}
+
+.ce-area {
+    min-height: 62px;
+    resize: vertical;
+}
+
+.ce-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0 10px;
+}
+
+.ce-location {
+    margin-bottom: 14px;
+    padding: 10px 12px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 8px;
+    background: var(--black30a, rgba(0, 0, 0, 0.3));
+}
+
+.ce-location-head,
+.ce-board-head {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.ce-location-name {
+    flex: 1;
+    font-weight: bold;
+}
+
+.ce-type {
+    max-width: 11em;
+}
+
+.ce-boards {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--SmartThemeBorderColor, #444);
+}
+
+.ce-board {
+    margin: 6px 0;
+    padding: 8px 10px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.ce-board-name {
+    flex: 1;
+}
+
+.ce-board-note {
+    font-size: 0.74em;
+    opacity: 0.55;
+    margin-top: 6px;
+}
+
+.ce-enemies {
+    margin-top: 6px;
+}
+
+.ce-enemy {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    margin: 4px 0;
+}
+
+.ce-enemy-name {
+    flex: 1;
+}
+
+.ce-enemy-cell {
+    max-width: 6em;
+}
+
+.ce-remove {
+    padding: 2px 8px;
+}
+
+.ce-add-board,
+.ce-add-enemy,
+.ce-add-location {
+    margin-top: 6px;
+    font-size: 0.82em;
+}
+
+.ce-error {
+    margin-top: 6px;
+    padding: 6px 8px;
+    border-left: 3px solid #ff6b5a;
+    background: rgba(255, 107, 90, 0.1);
+    font-size: 0.82em;
+}
+
+/* Una ficha plegada: veinte personajes no caben abiertos. */
+.ce-card {
+    margin-bottom: 8px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 8px;
+    background: var(--black30a, rgba(0, 0, 0, 0.3));
+}
+
+.ce-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    cursor: pointer;
+    list-style: none;
+}
+
+.ce-card-head::-webkit-details-marker {
+    display: none;
+}
+
+.ce-card-head::before {
+    content: '\f054';
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    font-size: 0.7em;
+    opacity: 0.5;
+    transition: transform 0.15s ease;
+}
+
+.ce-card[open] > .ce-card-head::before {
+    transform: rotate(90deg);
+}
+
+.ce-card-title {
+    font-weight: bold;
+}
+
+.ce-card-sub {
+    font-size: 0.78em;
+    opacity: 0.6;
+}
+
+.ce-card-head .ce-remove {
+    margin-left: auto;
+}
+
+.ce-card-body {
+    padding: 0 12px 10px;
+    border-top: 1px dashed var(--SmartThemeBorderColor, #444);
+    padding-top: 10px;
+}
+
+.ce-people-group {
+    margin-bottom: 14px;
+}
+
+.ce-people-group > .ce-label {
+    display: block;
+    margin-bottom: 6px;
+}
+
+.ce-empty {
+    font-size: 0.82em;
+    opacity: 0.5;
+    padding: 6px 2px 10px;
+}
+
+/* Las seis caracteristicas caben en una fila estrecha: son numeros de dos cifras. */
+.ce-stats {
+    grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
+}
+
+.ce-give {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--SmartThemeBorderColor, #444);
+}
+
+.ce-give select {
+    max-width: 14em;
+}
+
+.ce-recruit {
+    margin-top: 10px;
+}

@@ -50,6 +50,7 @@ mindmap
       [[PLAN_JUEGO_TIPO_FRIENDS_AND_FABLES]]
       [[ROADMAP_JUEGO_SIN_COMANDOS]]
       [[DISENO_GENERADOR_MUNDOS_PROFUNDO]]
+      [[PLAN_CREAR_CAMPANA]]
       [[PROPUESTAS_MEJORA_V2]]
     Guías & Referencia
       [[Mapa-Codigo-Archivos]]
@@ -97,6 +98,7 @@ Diagnóstico crítico y catálogo exhaustivo de propuestas de mejora:
 - [[PLAN_JUEGO_TIPO_FRIENDS_AND_FABLES]]: **Hacia la Experiencia "Friends & Fables" (Sin Marketplace)**: Análisis comparativo y hoja de ruta para completar las 6 piezas que faltan (DM autónomo con tiradas CD y opciones rápidas, descansos D&D, magia/spell slots y subida de nivel).
 - [[ROADMAP_JUEGO_SIN_COMANDOS]]: **Juego 100% por Clics (Zero Comandos)**: Matriz de migración de comandos de barra a interacción puramente visual con ratón (mover y atacar en el tablero, interactuar con puertas, descansos en el reloj, action chips).
 - [[DISENO_GENERADOR_MUNDOS_PROFUNDO]]: **Diseño del Generador de Mundos Profundo**: Especificación de las 7 categorías maestras (Personajes, Enemigos, Mapa Mundi, Localidades con 0..N tableros, Tableros tácticos con salas/puertas, Facciones y Magias/Habilidades) con su esquema JSON unificado para IA.
+- [[PLAN_CREAR_CAMPANA]]: **Crear una campaña a mano** ✅ *hecho*: `/campana`, un editor con una pestaña por categoría (mundo, localizaciones con sus tableros, personajes, bestiario, facciones, objetos y misiones) que escribe en el mismo sitio que el importador de libros. Las seis fases, con reclutar, catálogo de objetos enganchado al botín y misiones propias.
 - [[ROADMAP]]: **El plan de trabajo único.** Reconcilia la auditoría, el catálogo y el diseño de juego en 6 fases ordenadas por lo que desbloquean, más las transversales de economía de tokens. Cada fase termina en algo jugable. Empieza con *Dónde Estamos*: qué está hecho, qué está conectado al juego y qué falta.
 - [[POR_HACER]]: **Lista viva de pendientes**, ordenada por lo que desbloquea. Marca con 🖥️ las tareas que convierten motor construido en juego jugable. Incluye una prueba manual de dos minutos.
 

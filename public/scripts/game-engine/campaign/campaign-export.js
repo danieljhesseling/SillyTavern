@@ -218,6 +218,13 @@ export function buildPackFromWorld({ worldName, metadata, entries, synopsis = ''
     /** @type {any[]} */
     const locations = [];
 
+    // Los objetivos que lleva cada tablero, para repartirlos entre las misiones que lo
+    // nombren. Antes esto no hacia falta porque cada tablero *era* su mision.
+    /** @type {Map<string, any[]>} */
+    const objectivesByBoard = new Map();
+    /** @type {Map<string, string>} */
+    const boardIdByName = new Map();
+
     for (const location of Array.isArray(metadata?.locationMaps) ? metadata.locationMaps : []) {
         // Todas, tengan tableros o no: un pueblo tranquilo es parte de la campaña, y si
         // solo se exportaran los sitios con tablero desaparecería al mandarla.
@@ -246,16 +253,45 @@ export function buildPackFromWorld({ worldName, metadata, entries, synopsis = ''
 
             const objectives = (Array.isArray(board?.objectives) ? board.objectives : [])
                 .map((/** @type {any} */ o) => objectiveToPack(o, names));
-            if (objectives.length > 0) {
-                quests.push({
-                    id: `q_${id}`,
-                    name: text(board?.name),
-                    description: text(board?.description),
-                    boardId: id,
-                    objectives,
-                });
+            objectivesByBoard.set(id, objectives);
+            if (!boardIdByName.has(text(board?.name).toLowerCase())) {
+                boardIdByName.set(text(board?.name).toLowerCase(), id);
             }
         }
+    }
+
+    // Las misiones que el mundo tenga escritas de verdad. Hasta que se pudieron escribir,
+    // el exportador tenia que inventarse una por tablero: era lo unico que habia.
+    const claimed = new Set();
+    for (const quest of Array.isArray(metadata?.quests) ? metadata.quests : []) {
+        const name = text(quest?.name);
+        const boardId = boardIdByName.get(text(quest?.boardName).toLowerCase()) ?? '';
+        if (!name || !boardId) continue;
+
+        claimed.add(boardId);
+        const declared = {
+            id: text(quest?.id) || `q_${boardId}`,
+            name,
+            description: text(quest?.description),
+            boardId,
+            objectives: objectivesByBoard.get(boardId) ?? [],
+        };
+        if (Number(quest?.act) > 0) declared.act = Math.floor(Number(quest.act));
+        quests.push(declared);
+    }
+
+    // Y los tableros con objetivos que ninguna mision reclama: sus objetivos existen y
+    // dejarlos fuera seria exportar un tablero que no se puede ganar.
+    for (const [id, objectives] of objectivesByBoard) {
+        if (claimed.has(id) || objectives.length === 0) continue;
+        const board = boards.find(b => b.id === id);
+        quests.push({
+            id: `q_${id}`,
+            name: text(board?.name) || id,
+            description: '',
+            boardId: id,
+            objectives,
+        });
     }
 
     return {
@@ -268,6 +304,19 @@ export function buildPackFromWorld({ worldName, metadata, entries, synopsis = ''
         },
         confidants,
         bestiary,
+        items: (Array.isArray(metadata?.itemCatalogue) ? metadata.itemCatalogue : [])
+            .filter((/** @type {any} */ item) => text(item?.name))
+            .map((/** @type {any} */ item) => {
+                const packed = { name: text(item.name) };
+                if (text(item.type)) packed.type = text(item.type);
+                if (text(item.rarity)) packed.rarity = text(item.rarity);
+                if (Number(item.weight) > 0) packed.weight = Number(item.weight);
+                if (text(item.damageDice)) packed.damageDice = text(item.damageDice);
+                if (text(item.damageType)) packed.damageType = text(item.damageType);
+                if (text(item.slot)) packed.slot = text(item.slot);
+                if (text(item.description)) packed.description = text(item.description);
+                return packed;
+            }),
         locations,
         boards,
         quests,
@@ -281,12 +330,20 @@ export function buildPackFromWorld({ worldName, metadata, entries, synopsis = ''
  * @returns {string}
  */
 export function describeExport(pack) {
-    return [
+    const parts = [
         `"${pack?.world?.name ?? ''}"`,
         `${pack?.locations?.length ?? 0} localidad(es)`,
         `${pack?.boards?.length ?? 0} tablero(s)`,
         `${pack?.bestiary?.length ?? 0} enemigo(s)`,
-        `${pack?.confidants?.length ?? 0} compañero(s)`,
-        `${pack?.quests?.length ?? 0} misión(es)`,
-    ].join(' · ');
+    ];
+
+    // Los objetos solo se nombran si los hay: un "0 objeto(s)" en cada campaña sería
+    // hablar de una categoría que esa campaña no usa.
+    const things = pack?.items?.length ?? 0;
+    if (things > 0) parts.push(`${things} objeto(s)`);
+
+    parts.push(`${pack?.confidants?.length ?? 0} compañero(s)`);
+    parts.push(`${pack?.quests?.length ?? 0} misión(es)`);
+
+    return parts.join(' · ');
 }

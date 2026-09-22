@@ -73,6 +73,8 @@ const FORK_FILES = [
     'public/scripts/game-engine/ui/abilities-panel.js',
     'public/scripts/game-engine/campaign/campaign-export.js',
     'public/scripts/game-engine/campaign/checkpoint.js',
+    'public/scripts/game-engine/campaign/campaign-editor.js',
+    'public/scripts/game-engine/ui/campaign-editor.js',
     'public/scripts/game-engine/combat/opportunity.js',
     'public/scripts/game-engine/ui/shell/scene-audio.js',
     'public/scripts/game-engine/ui/audio-settings.js',

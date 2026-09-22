@@ -685,14 +685,107 @@ body.game-shell-on {
     opacity: 0.85;
 }
 
+/* Tres filas: el rotulo, el menu y la lista. Con dos, el tercer hijo se montaba encima
+   del segundo y la cabecera de la bienvenida se comia el boton de volver. */
 .gs-root[data-scene="title"] .gs-scene-dialogue {
     display: grid;
-    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr);
     gap: 10px;
 }
 
 .gs-root[data-scene="title"] .gs-title {
     display: block;
+}
+
+/* ---- El menu principal (la pantalla de arranque) ----
+ * Tres cosas y una puerta de salida. Solo existe en el titulo: en cuanto hay partida,
+ * estorba.
+ */
+
+.gs-menu {
+    display: none;
+}
+
+.gs-root[data-scene="title"] .gs-menu {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 18px 0 6px;
+}
+
+.gs-menu-btn {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: min(360px, 84vw);
+    padding: 12px 18px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--SmartThemeBodyColor, #ddd);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.gs-menu-btn:hover {
+    background: rgba(255, 255, 255, 0.13);
+    border-color: var(--SmartThemeQuoteColor, #6a8caf);
+}
+
+.gs-menu-btn > i {
+    font-size: 1.1em;
+    opacity: 0.8;
+    width: 1.3em;
+    text-align: center;
+}
+
+.gs-menu-body {
+    display: flex;
+    flex-direction: column;
+}
+
+.gs-menu-label {
+    font-size: 1.02em;
+}
+
+.gs-menu-hint {
+    font-size: 0.78em;
+    opacity: 0.6;
+}
+
+.gs-menu-leave,
+.gs-menu-back {
+    margin-top: 4px;
+    padding: 4px 10px;
+    border: none;
+    background: transparent;
+    color: var(--SmartThemeBodyColor, #ddd);
+    font: inherit;
+    font-size: 0.8em;
+    opacity: 0.55;
+    cursor: pointer;
+}
+
+.gs-menu-leave:hover,
+.gs-menu-back:hover {
+    opacity: 1;
+    text-decoration: underline;
+}
+
+.gs-menu-back {
+    align-self: flex-start;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    opacity: 0.8;
+}
+
+/* Mientras el menu esta a la vista, la lista de partidas no: se llega a ella pulsando
+   "Cargar partida", que es un paso, no un adorno. */
+.gs-root[data-scene="title"] .gs-menu[data-view="menu"] ~ .gs-chat-slot {
+    display: none;
 }
 
 /* Sin partida abierta no hay nadie hablando, ni grupo, ni nada a donde conmutar, ni caja

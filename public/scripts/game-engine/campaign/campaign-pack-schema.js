@@ -282,6 +282,26 @@ function buildSectionSchemas() {
         },
     };
 
+    const items = {
+        type: 'array',
+        description: 'El catálogo de objetos del mundo: lo que existe antes de que nadie lo lleve '
+            + 'encima. La rareza decide en qué peldaño del botín cae.',
+        items: {
+            type: 'object',
+            required: ['name'],
+            properties: {
+                name: { type: 'string', description: 'Único en el paquete.' },
+                type: { type: 'string', enum: ['weapon', 'armor', 'gear'] },
+                rarity: { type: 'string', enum: ITEM_RARITIES, description: 'Decide con qué facilidad cae.' },
+                weight: { type: 'number', description: 'En kilos. 0 si no pesa nada.' },
+                damageDice: { type: 'string', description: 'Solo las armas. Por ejemplo 1d8.' },
+                damageType: { type: 'string', description: 'Solo las armas: cortante, perforante…' },
+                slot: { type: 'string', description: 'Dónde se equipa, si se equipa.' },
+                description: { type: 'string' },
+            },
+        },
+    };
+
     const confidants = {
         type: 'array',
         description: 'Compañeros con los que el grupo puede estrechar vínculos.',
@@ -297,11 +317,19 @@ function buildSectionSchemas() {
         },
     };
 
-    return { world, locations, boards, bestiary, quests, confidants };
+    return { world, locations, boards, bestiary, quests, confidants, items };
 }
 
 /** The order the sections are best generated in, and what each one needs first. */
-export const SECTION_ORDER = ['world', 'locations', 'confidants', 'bestiary', 'boards', 'quests'];
+export const SECTION_ORDER = ['world', 'locations', 'confidants', 'bestiary', 'items', 'boards', 'quests'];
+
+/**
+ * Las rarezas que las tablas de botín conocen.
+ *
+ * Escribir aquí "Legendaria" no la inventa: una rareza que las tablas no tienen no cae
+ * nunca, así que el contrato solo ofrece las que de verdad tienen un peldaño.
+ */
+export const ITEM_RARITIES = ['Common', 'Uncommon', 'Rare', 'Very Rare'];
 
 /**
  * The schema of one section.
@@ -438,6 +466,18 @@ export function buildExamplePack() {
         },
         confidants: [
             { name: 'Mira la Molinera', description: 'Heredó el molino y la costumbre de no bajar al sótano.', arcana: 'La Ermitaña', initialBondPoints: 0 },
+        ],
+        items: [
+            {
+                name: 'Hoz del molino',
+                type: 'weapon',
+                rarity: 'Uncommon',
+                weight: 1.5,
+                damageDice: '1d6',
+                damageType: 'cortante',
+                slot: 'weapon',
+                description: 'Sigue oliendo a grano mojado.',
+            },
         ],
         locations: [
             {

@@ -40,7 +40,7 @@ import { findUnreachable, describeReachability } from '../board/reachability.js'
  * @property {Issue[]} errors
  * @property {Issue[]} warnings
  * @property {Issue[]} repairs What normalising already put right.
- * @property {{world: string, locations: number, boards: number, enemies: number, confidants: number, quests: number, objectives: number}} counts
+ * @property {{world: string, locations: number, boards: number, enemies: number, confidants: number, items: number, quests: number, objectives: number}} counts
  */
 
 /** Map characters that are not walkable floor. Everything else in the legend is. */
@@ -165,6 +165,7 @@ export function normalizePack(raw) {
             world: { ...world, name: text(world.name), factions: list(world.factions), loreEntries: list(world.loreEntries) },
             confidants: list(source.confidants),
             bestiary: list(source.bestiary),
+            items: list(source.items),
             locations,
             boards,
             quests,
@@ -275,7 +276,9 @@ export function validatePack(raw) {
     // The Lorebook indexes entries by name: a second "Cuervo grande" would overwrite the
     // first, and the pack would import with one monster missing and no complaint.
     const seen = new Map();
-    for (const [group, items] of [['bestiary', pack.bestiary], ['confidants', pack.confidants]]) {
+    for (const [group, items] of [
+        ['bestiary', pack.bestiary], ['confidants', pack.confidants], ['items', pack.items],
+    ]) {
         const names = new Set();
         items.forEach((/** @type {any} */ item, /** @type {number} */ index) => {
             const name = text(item.name);
@@ -527,6 +530,7 @@ export function validatePack(raw) {
             boards: pack.boards.length,
             enemies: pack.bestiary.length,
             confidants: pack.confidants.length,
+            items: pack.items.length,
             quests: pack.quests.length,
             objectives: objectiveCount,
         },

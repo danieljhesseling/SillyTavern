@@ -61,10 +61,46 @@ const FALLBACK = { type: 'gear', category: 'gear', subcategory: 'generic', weigh
  * @param {string} [rarity]
  * @returns {LootItemSpec & {rarity: string}}
  */
-export function describeLootItem(name, rarity = '') {
+export function describeLootItem(name, rarity = '', catalogue = []) {
     const clean = String(name ?? '').trim();
-    const declared = CATALOGUE[clean] ?? FALLBACK;
+    const declared = worldSpec(clean, catalogue) ?? CATALOGUE[clean] ?? FALLBACK;
     return { name: clean || 'Objeto', rarity: String(rarity ?? ''), ...declared };
+}
+
+/**
+ * Lo que un objeto escrito por el autor de la campana es, con la forma que pide el
+ * inventario.
+ *
+ * El catalogo del mundo gana a esta tabla: si alguien llama a su espada igual que una de
+ * aqui, la suya es la que vale. Es su mundo.
+ *
+ * @param {string} name
+ * @param {any[]} catalogue Los objetos del mundo, tal y como los guarda el editor.
+ * @returns {Partial<LootItemSpec>|null}
+ */
+function worldSpec(name, catalogue) {
+    const wanted = String(name ?? '').trim().toLowerCase();
+    if (!wanted) return null;
+
+    const found = (Array.isArray(catalogue) ? catalogue : [])
+        .find(item => String(item?.name ?? '').trim().toLowerCase() === wanted);
+    if (!found) return null;
+
+    const type = ['weapon', 'armor', 'gear'].includes(String(found.type)) ? String(found.type) : 'gear';
+    const category = type === 'weapon' ? 'weapon' : (type === 'armor' ? 'armor' : 'gear');
+
+    /** @type {any} */
+    const spec = {
+        type,
+        category,
+        subcategory: String(found.subcategory ?? '').trim() || 'generic',
+        weight: Number(found.weight) || 0,
+    };
+    if (String(found.damageDice ?? '').trim()) spec.damageDice = String(found.damageDice).trim();
+    if (String(found.damageType ?? '').trim()) spec.damageType = String(found.damageType).trim();
+    if (String(found.slot ?? '').trim()) spec.slot = String(found.slot).trim().toLowerCase();
+    if (String(found.description ?? '').trim()) spec.description = String(found.description).trim();
+    return spec;
 }
 
 /**

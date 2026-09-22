@@ -114,6 +114,55 @@ De [[PROPUESTAS_MEJORA_V2]], las que más dan por lo que cuestan. Hechas el **20
 
 **PROP2-163 · Puntos de retorno** (`campaign/checkpoint.js`, 11 tests) `/punto guardar <nombre>`, `/punto` para verlos y `/punto volver <número>`. Y uno **automático antes de cada jefe** (CR 2+ o 40+ PG), que es lo que convierte un combate duro en algo que se intenta en vez de algo que se evita. Guarda el estado del juego — grupo, combate, calendario, vínculos, mapa — y **no la conversación**: el chat es de SillyTavern y tiene su propio historial. El automático nunca desplaza al que guardaste tú.
 
+### A6 · El juego se abre por su pantalla de título ✅
+
+Hecho el **2026-09-22**. `npm start` ya no te deja en la bandeja de chats de SillyTavern: abre el Modo Juego en su **menú principal**, con tres cosas y una puerta.
+
+```
+        ⚔  SillyTavern RPG
+
+        ▸  Partida nueva        Una plantilla, un mundo generado o un libro
+        ▸  Cargar partida       3 campañas guardadas
+        ▸  Opciones             Los ajustes de SillyTavern, donde siempre
+
+        · Salir al SillyTavern de siempre ·
+```
+
+- **La lista de partidas espera detrás**, no delante: empezar en la rejilla era empezar en medio.
+- **Opciones** no es una pantalla nueva: pulsa el icono de SillyTavern y sus paneles se abren donde siempre. Cero mantenimiento.
+- **No decide la pantalla**: eso es del director. Sin campaña abierta cae en el título; con una a medias te deja donde lo dejaste, que es lo que uno espera de un juego al que vuelve.
+- **Se apaga desde la pausa** (*No abrir el juego al arrancar*), y apagado la aplicación arranca **exactamente** como la de siempre. Un juego que no te deja no jugarlo estorba.
+
+> **Nada de esto toca la pantalla de bienvenida de upstream.** Se pone encima; debajo sigue SillyTavern entero. Es la misma regla que ha hecho barato todo lo demás.
+
+**Dos fallos que cazó el recorrido**, y los dos eran de verdad: con el menú delante, el botón de *Nueva campaña* y la lista de campañas quedaban **ocultos** — el recorrido entraba por ahí y se quedó seco. Y la rejilla del título tenía dos filas para tres hijos, así que la cabecera de la bienvenida se comía el botón de *Volver*: no era un problema del test, no se podía pulsar.
+
+### A7 · Crear una campaña a mano ✅ **Hecho el 2026-09-22 — las seis fases**
+
+`/campana`, o **Editar la campaña** en el menú de pausa. Siete pestañas, una por categoría, y lo que escriben es **exactamente** lo que escribe el importador de libros: un destino, dos puertas.
+
+| Pestaña | Qué escribe |
+| :--- | :--- |
+| **Mundo** | Nombre visible, género, sinopsis |
+| **Localidades** | Sitios con su tipo y su región; tableros con su tamaño, dónde empieza el grupo y qué enemigos hay puestos. **Cero tableros es válido** y lo dice |
+| **Personajes** | Dos listas — *en tu grupo* y *en el mundo* — con clase, nivel, raza, las seis características, PG, CA, dónde está, pasado, personalidad, arcano, cara y las palabras que lo despiertan en el chat |
+| **Bestiario** | PG, CA, desafío, velocidad, alcance y **perfil táctico** de los cuatro que el motor juega. Avisa antes de borrar un bicho que algún tablero coloca |
+| **Facciones** | Metas y reputación inicial — diciendo que la reputación **todavía no hace nada** |
+| **Objetos** | El catálogo del mundo, y **de ahí sale el botín**: la rareza decide el peldaño |
+| **Misiones** | Nombre, acto y el tablero donde se juega |
+
+El agujero que cierra, dicho en corto: `dndData` — lo que convierte una ficha del Lorebook en un monstruo con CA o en un confidente con arcana — **se leía en veinte sitios y no se escribía en ninguno**.
+
+**Las tres cosas que lo hacen de verdad y no una pantalla bonita:**
+
+- **Reclutar** mueve a alguien del mundo al grupo, ahí mismo, y le da casilla donde plantarse. Era el puente que no existía.
+- **Guardar no rehace el grupo.** Rehacerlo habría devuelto a todos la vida llena, cero de oro y la mochila vacía; lo que se copia encima es solo lo que la ficha dice.
+- **El botín sale del catálogo**: un objeto escrito aquí cae de verdad, y cae como el arma que se escribió — con sus dados y su ranura — en vez de como un trasto genérico.
+
+`items[]` viaja ya en el contrato del paquete, en el exportador y en el importador, con su prueba de ida y vuelta; y las misiones se guardan como misiones, así que el exportador ha dejado de inventarse una por tablero.
+
+**Lo que queda dicho en claro y no hecho**: la reputación no cambia precios (P17), encadenar misiones no se puede escribir todavía, la casilla concreta de un PNJ no se elige, y un objeto solo se le puede dar a alguien del grupo.
+
 ---
 
 ## 🟠 D — Necesita una decisión
@@ -126,13 +175,13 @@ Están en el árbol de dependencias tras el merge. Actualizarlas puede romper co
 
 **Recomiendo mirar solo la crítica** y dejar el resto hasta el próximo merge con upstream, que probablemente las arrastre.
 
-### D2 · Reconciliar los tokens con el proveedor
+### D2 · Reconciliar los tokens con el proveedor ❌ **Decidido: no, el 2026-09-22**
 
 `/prompt` mide lo que la aplicación envía, no lo que factura la API, porque SillyTavern no devuelve el `usage` a la página. Conseguirlo exige interceptar las respuestas (y con streaming llegan troceadas), que es meter mano en terreno de upstream.
 
 **Recomiendo no hacerlo.** Para decidir qué recortar basta con comparar turnos entre sí, y eso ya funciona.
 
-### D3 · ¿El registro de combate debe sobrevivir a una recarga?
+### D3 · ¿El registro de combate debe sobrevivir a una recarga? ❌ **Decidido: dejarlo como está, el 2026-09-22**
 
 Hoy es estado de sesión: al recargar empieza vacío, aunque las líneas siguen en el chat. Persistirlo significa guardar hasta 300 entradas por combate en el mundo.
 

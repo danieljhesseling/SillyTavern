@@ -26,7 +26,7 @@
 // Las funciones que se pasan a `page.evaluate` se ejecutan en el navegador, no aqui: por
 // eso este archivo de Node habla de `window` y `document`. Se declaran para que ESLint
 // compruebe el resto en vez de ahogarse en esto.
-/* global window, document, Node, getComputedStyle */
+/* global window, document, Node, getComputedStyle, HTMLElement */
 
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
@@ -118,6 +118,19 @@ try {
             location: meta.currentLocation,
             board: meta.currentBoard,
         };
+    });
+
+    // El Modo Juego se abre solo al arrancar desde que existe el menu principal, y eso
+    // tapa la pantalla de bienvenida por la que entra todo el recorrido. Se apaga aqui y
+    // el paso 34 lo enciende a proposito, que es donde toca probarlo.
+    // Solo si nadie lo ha decidido ya: esto corre en **cada** carga, y el paso 34 recarga
+    // a proposito con el arranque encendido para ver lo que ve un jugador de verdad.
+    await context.addInitScript(() => {
+        try {
+            if (window.localStorage.getItem('sillytavern_gameShellAutostart') === null) {
+                window.localStorage.setItem('sillytavern_gameShellAutostart', 'false');
+            }
+        } catch { /* sin localStorage no hay nada que apagar */ }
     });
 
     await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
@@ -902,8 +915,15 @@ try {
     const tabs = await page.locator('.cs-tab').allInnerTexts();
     check('the contract opens with a view per thing you might copy', tabs.length >= 5, tabs.join(' · '));
     check('including the example of a correct pack', tabs.some(t => /Ejemplo/.test(t)));
+    // Contadas contra el propio contrato: una seccion nueva no puede quedarse sin su
+    // vista y que nadie se entere, que es como se queda una campana a medio pegar.
+    const sections = await page.evaluate(async () => {
+        const schema = await import('/scripts/game-engine/campaign/campaign-pack-schema.js');
+        return schema.SECTION_ORDER.length;
+    });
     check('and one per section, because a book does not fit in one answer',
-        tabs.filter(t => /Sección/.test(t)).length === 6, tabs.join(' · '));
+        tabs.filter(t => /Sección/.test(t)).length === sections,
+        `${sections} secciones · ${tabs.join(' · ')}`);
 
     const instructions = await page.locator('.cs-text').inputValue();
     check('the instructions carry the schema and the version',
@@ -1464,7 +1484,13 @@ try {
     check('y sin caja de escribir ni conmutador, que ahi no pintan nada',
         !title.form && !title.switcher, JSON.stringify(title));
 
-    // Y desde el titulo se vuelve a jugar, con el Shell puesto.
+    // Y desde el titulo se vuelve a jugar, con el Shell puesto. Desde que hay menu
+    // principal, la lista de partidas esta un paso mas adentro: se pide.
+    check('el menu principal ofrece cargar una partida',
+        await page.locator('.gs-menu-btn').filter({ hasText: 'Cargar partida' }).count() === 1);
+    await page.locator('.gs-menu-btn').filter({ hasText: 'Cargar partida' }).click();
+    await page.waitForTimeout(900);
+
     await page.locator('#game-shell .campaign-card .campaign-continue').first().click();
     await page.waitForTimeout(3500);
     const resumed = await page.evaluate(() => ({
@@ -2773,53 +2799,84 @@ try {
         if (distance > 1) return { adjacent: false, said: '' };
 
         const before = document.querySelectorAll('.mes_text').length;
-        // Tres casillas hacia el otro lado: eso es salir de su alcance.
-        await ctx.executeSlashCommandsWithOptions(
-            `/combat-move ${(me.mapPosition.gridX ?? 0) + 4} ${(me.mapPosition.gridY ?? 0) + 1}`);
+
+        // Huir **en direccion contraria al enemigo**: alejarse cuatro casillas hacia un
+        // lado cualquiera puede dejarte igual de pegado, y entonces no hay nada que cobrar.
+        const away = (mine, his) => (mine === his ? 0 : (mine > his ? 1 : -1));
+        const dx = away(me.mapPosition.gridX ?? 0, enemy.gridX ?? 0) || 1;
+        const dy = away(me.mapPosition.gridY ?? 0, enemy.gridY ?? 0);
+        const toX = Math.max(0, (me.mapPosition.gridX ?? 0) + dx * 3);
+        const toY = Math.max(0, (me.mapPosition.gridY ?? 0) + dy * 3);
+
+        await ctx.executeSlashCommandsWithOptions(`/combat-move ${toX + 1} ${toY + 1}`);
         await new Promise(r => setTimeout(r, 900));
+
+        const after = (ctx.chatMetadata.party || []).find(m => String(m.id) === String(entry?.id));
+        const finalDistance = Math.max(
+            Math.abs((after?.mapPosition?.gridX ?? 0) - (enemy.gridX ?? 0)),
+            Math.abs((after?.mapPosition?.gridY ?? 0) - (enemy.gridY ?? 0)),
+        );
         const said = [...document.querySelectorAll('.mes_text')].slice(before - 1)
             .map(m => m.textContent || '').join(' ');
-        return { adjacent: true, said };
+        return { adjacent: true, escaped: finalDistance > 1, said };
     });
     await page.waitForTimeout(800);
     await clearDiceOverlay();
+    // Si no se llego a escapar — el tablero es pequeno y a veces no hay a donde huir — no
+    // hay ataque que cobrar, y eso tambien es correcto.
     check('escaparse de quien te tenia pegado cuesta un ataque de oportunidad',
-        escape.adjacent === false || /oportunidad/.test(escape.said),
-        JSON.stringify({ adyacente: escape.adjacent, dijo: escape.said.slice(0, 120) }));
+        escape.adjacent === false || escape.escaped === false || /oportunidad/.test(escape.said),
+        JSON.stringify({
+            adyacente: escape.adjacent, escapo: escape.escaped, dijo: escape.said.slice(0, 120),
+        }));
 
     // --- PROP2-059: caer a 0 no es el final, es empezar a jugarsela ----------------
-    const dying = await page.evaluate(async () => {
-        const ctx = window.SillyTavern.getContext();
-        const enc = ctx.chatMetadata.combatEncounter;
-        const entry = enc?.turnOrder?.[enc?.currentTurnIndex];
-        const me = (ctx.chatMetadata.party || []).find(m => String(m.id) === String(entry?.id));
-        if (!me) return null;
+    // La vida se pone a cero por la ficha, que es el control que existe: escribirla en
+    // `chatMetadata.party` no vale, porque **no es** el array que el motor tiene cogido.
+    await page.locator('#rm_tab_party').click({ timeout: 10000 });
+    await page.waitForTimeout(800);
+    await page.locator('.party-card').first().click();
+    await page.waitForSelector('.dnd-modal', { timeout: 10000 });
+    await page.locator('.dnd-tab[data-tab="progression"]').click();
+    await page.waitForTimeout(400);
+    await page.locator('.hp-current-input').fill('0');
+    await page.locator('.hp-current-input').dispatchEvent('change');
+    await page.waitForTimeout(400);
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(800);
 
-        // Se le baja la vida por el mismo comando que usa cualquiera para ajustarla.
-        await ctx.executeSlashCommandsWithOptions(`/condition ${me.name} clear`);
-        return { name: me.name };
-    });
+    const downNow = await page.evaluate(() => (window.SillyTavern.getContext().chatMetadata.party || [])
+        .map(m => `${m.name}:${m.hp}`));
+    check('se puede dejar a alguien a 0 PG desde su ficha', downNow.some(s => s.endsWith(':0')),
+        JSON.stringify(downNow));
 
-    // A 0 PG y una ronda entera: le toca tirar.
-    await page.evaluate((name) => {
-        const ctx = window.SillyTavern.getContext();
-        const member = (ctx.chatMetadata.party || []).find(m => m.name === name);
-        if (member) member.hp = 0;
-    }, dying?.name);
-    await page.evaluate(() => window.SillyTavern.getContext()
-        .executeSlashCommandsWithOptions('/combat-end'));
-    await page.waitForTimeout(2500);
-    await clearDiceOverlay();
+    // Una ronda entera: al pasar de ronda es cuando tiran los caidos.
+    const roundBefore33 = await page.evaluate(() =>
+        Number(window.SillyTavern.getContext().chatMetadata.combatEncounter?.round) || 0);
+    for (let i = 0; i < 10; i++) {
+        const round = await page.evaluate(() =>
+            Number(window.SillyTavern.getContext().chatMetadata.combatEncounter?.round) || 0);
+        if (round > roundBefore33) break;
+        await page.evaluate(() => window.SillyTavern.getContext()
+            .executeSlashCommandsWithOptions('/combat-end'));
+        await page.waitForTimeout(900);
+        await clearDiceOverlay();
+    }
 
     const saves = await page.evaluate(() => {
         const said = [...document.querySelectorAll('.mes_text')].map(m => m.textContent || '');
+        const member = (window.SillyTavern.getContext().chatMetadata.party || [])
+            .find(m => (m.deathSaves?.successes || 0) + (m.deathSaves?.failures || 0) > 0 || m.deathSaves?.dead);
         return {
-            rolled: said.some(t => /salvación de muerte|salvacion de muerte/i.test(t)),
-            fell: said.some(t => /empieza a jugarsela|jugársela/i.test(t)),
+            rolled: said.some(t => /salvaci[óo]n de muerte/i.test(t)),
+            counted: Boolean(member),
+            saves: member?.deathSaves ?? null,
         };
     });
     check('a 0 PG se tiran salvaciones de muerte en vez de no pasar nada',
-        saves.rolled || saves.fell, JSON.stringify(saves));
+        saves.rolled, JSON.stringify(saves));
+    check('y la cuenta queda escrita en su ficha',
+        saves.counted, JSON.stringify(saves.saves));
 
     await page.evaluate(() => window.SillyTavern.getContext()
         .executeSlashCommandsWithOptions('/combat-stop'));
@@ -2859,6 +2916,429 @@ try {
     check('volver a un punto devuelve la partida donde estaba',
         backAgain.where === 'El Molino de los Cuervos',
         JSON.stringify({ donde: backAgain.where, antes: damaged, ahora: backAgain.hp }));
+
+    step('35. El editor de campana: una localidad y un tablero, a mano');
+
+    // Se vuelve a una campana abierta: el editor edita la que tengas puesta.
+    await page.evaluate(() => {
+        void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/campana');
+    });
+    await page.waitForSelector('.ce-root', { timeout: 20000 });
+
+    const builder = await page.evaluate(() => ({
+        tabs: [...document.querySelectorAll('.ce-tab')].map(b => (b.textContent || '').trim()),
+        summary: document.querySelector('.ce-summary')?.textContent || '',
+        soon: document.querySelector('.ce-soon')?.textContent || '',
+        genre: document.querySelectorAll('.ce-field').length,
+    }));
+    check('el editor abre por la ficha del mundo',
+        builder.tabs.length === 2 && /Mundo/.test(builder.tabs[0]) && builder.genre >= 3,
+        JSON.stringify(builder.tabs));
+    check('y dice cuanto mundo hay, sin entrar',
+        /localidad\(es\).*tablero\(s\)/.test(builder.summary), builder.summary);
+    check('lo que todavia no esta se dice, en vez de fingir una pestana vacia',
+        /Personajes, bestiario/.test(builder.soon), builder.soon);
+
+    // La sinopsis se cambia y tiene que sobrevivir al guardado.
+    await page.locator('.ce-area').first().fill('Un valle que nadie pidio.');
+
+    await page.locator('.ce-tab').filter({ hasText: 'Localidades' }).click();
+    await page.waitForTimeout(500);
+
+    const before35 = await page.locator('.ce-location').count();
+    await page.locator('.ce-add-location').click();
+    await page.waitForTimeout(400);
+    check('se puede anadir una localidad',
+        await page.locator('.ce-location').count() === before35 + 1,
+        `${before35} -> ${await page.locator('.ce-location').count()}`);
+
+    // La nueva: nombre, tipo y un tablero dentro.
+    const fresh = page.locator('.ce-location').last();
+    await fresh.locator('.ce-location-name').fill('Vado del Sauce');
+    await fresh.locator('.ce-type').selectOption('village');
+
+    const emptyNote = await fresh.locator('.ce-boards .ce-label').innerText();
+    check('una localidad nueva nace sin tableros, y lo dice',
+        /sin tableros/i.test(emptyNote), emptyNote);
+
+    await fresh.locator('.ce-add-board').click();
+    await page.waitForTimeout(400);
+
+    const board35 = await page.evaluate(() => {
+        const card = [...document.querySelectorAll('.ce-location')].pop();
+        const board = card?.querySelector('.ce-board');
+        return {
+            boards: card?.querySelectorAll('.ce-board').length ?? 0,
+            name: board?.querySelector('.ce-board-name')?.value || '',
+            inputs: [...(board?.querySelectorAll('.ce-grid .ce-input') || [])].map(i => i.value),
+        };
+    });
+    check('y se le puede anadir un tablero, con su tamano y donde empieza el grupo',
+        board35.boards === 1 && board35.inputs.length === 3 && board35.inputs[2].length > 0,
+        JSON.stringify(board35));
+
+    // Colocar un enemigo: el nombre sale del bestiario, no se escribe a mano.
+    await fresh.locator('.ce-add-enemy').click();
+    await page.waitForTimeout(400);
+    const placed = await page.evaluate(() => {
+        const card = [...document.querySelectorAll('.ce-location')].pop();
+        const select = card?.querySelector('.ce-enemy-name');
+        return { options: select?.options?.length ?? 0, chosen: select?.value || '' };
+    });
+    check('los enemigos se eligen del bestiario, no se teclean',
+        placed.options >= 1 && placed.chosen.length > 0, JSON.stringify(placed));
+
+    // Un tablero sin sitio donde empezar no se puede jugar: guardar tiene que negarse.
+    await fresh.locator('.ce-board .ce-grid .ce-input').nth(2).fill('');
+    await page.locator('.popup-button-ok').last().click();
+    await page.waitForTimeout(700);
+
+    const blocked = await page.evaluate(() => ({
+        open: document.querySelectorAll('.ce-root').length,
+        errors: [...document.querySelectorAll('.ce-error')].map(e => e.textContent || ''),
+    }));
+    check('guardar algo que no se puede jugar se niega, y dice por que',
+        blocked.open === 1 && blocked.errors.some(e => /d[oó]nde empieza el grupo/.test(e)),
+        JSON.stringify(blocked.errors));
+
+    // Se arregla y ahora si.
+    await fresh.locator('.ce-board .ce-grid .ce-input').nth(2).fill('2,2');
+    await page.locator('.popup-button-ok').last().click();
+    await page.waitForTimeout(2500);
+
+    const saved35 = await page.evaluate(async () => {
+        const wi = await import('/scripts/world-info.js');
+        const ctx = window.SillyTavern.getContext();
+        const data = await wi.loadWorldInfo(ctx.chatMetadata.world_info);
+        const places = data?.metadata?.locationMaps ?? [];
+        const mine = places.find(l => l.name === 'Vado del Sauce');
+        return {
+            synopsis: data?.metadata?.description || '',
+            names: places.map(l => l.name),
+            type: mine?.locationType || '',
+            boards: (mine?.boards ?? []).length,
+            terrainCells: Object.keys(mine?.boards?.[0]?.terrain?.cells ?? {}).length,
+            partyStart: mine?.boards?.[0]?.partyStart ?? [],
+        };
+    });
+
+    check('la sinopsis editada se guarda en el mundo',
+        saved35.synopsis === 'Un valle que nadie pidio.', saved35.synopsis);
+    check('la localidad nueva existe de verdad, con su tipo',
+        saved35.names.includes('Vado del Sauce') && saved35.type === 'village', JSON.stringify(saved35.names));
+    check('y su tablero nace con terreno de verdad, no vacio',
+        saved35.boards === 1 && saved35.terrainCells > 0,
+        JSON.stringify({ tableros: saved35.boards, casillas: saved35.terrainCells }));
+    check('con el grupo empezando donde se dijo',
+        saved35.partyStart.length === 1 && saved35.partyStart[0].x === 1 && saved35.partyStart[0].y === 1,
+        JSON.stringify(saved35.partyStart));
+
+    // Y lo que el editor no ensena sigue intacto: esa es la regla que lo hace seguro.
+    const untouched = await page.evaluate(async () => {
+        const wi = await import('/scripts/world-info.js');
+        const ctx = window.SillyTavern.getContext();
+        const data = await wi.loadWorldInfo(ctx.chatMetadata.world_info);
+        const molino = (data?.metadata?.locationMaps ?? []).find(l => /Molino/.test(l.name));
+        const board = (molino?.boards ?? [])[0];
+        return {
+            terrain: Object.keys(board?.terrain?.cells ?? {}).length,
+            objectives: (board?.objectives ?? []).length,
+            rules: (board?.encounterRules ?? []).length,
+        };
+    });
+    check('y la mazmorra que ya existia sigue con su terreno, sus objetivos y sus reglas',
+        untouched.terrain > 0 && untouched.objectives > 0, JSON.stringify(untouched));
+
+    step('36. El editor de campana: gente, bichos, objetos y misiones');
+
+    await page.evaluate(() => {
+        void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/campana');
+    });
+    await page.waitForSelector('.ce-root', { timeout: 20000 });
+
+    const allTabs = await page.evaluate(() => ({
+        tabs: [...document.querySelectorAll('.ce-tab')].map(b => (b.textContent || '').trim()),
+        soon: document.querySelectorAll('.ce-soon').length,
+    }));
+    check('el mundo entero tiene su pestana, y ya no se promete nada',
+        allTabs.tabs.length === 7 && allTabs.soon === 0, JSON.stringify(allTabs.tabs));
+
+    // --- Alguien del mundo -----------------------------------------------------------
+    await page.locator('.ce-tab').filter({ hasText: 'Personajes' }).click();
+    await page.waitForTimeout(400);
+
+    const groups36 = await page.evaluate(() =>
+        [...document.querySelectorAll('.ce-people-group > .ce-label')].map(l => (l.textContent || '').trim()));
+    check('los del grupo y los del mundo van en dos listas, no en un monton',
+        groups36.length === 2 && /grupo/i.test(groups36[0]) && /mundo/i.test(groups36[1]),
+        JSON.stringify(groups36));
+
+    const peopleBefore = await page.locator('.ce-person').count();
+    await page.locator('.ce-add-person').click();
+    await page.waitForTimeout(400);
+    check('se puede escribir a alguien nuevo del mundo',
+        await page.locator('.ce-person').count() === peopleBefore + 1,
+        `${peopleBefore} -> ${await page.locator('.ce-person').count()}`);
+
+    const person = page.locator('.ce-person').last();
+    await person.locator('.ce-card-head').click();
+    await page.waitForTimeout(300);
+
+    await person.locator('.ce-person-name input').fill('Bruna la barquera');
+    // Las seis caracteristicas, la vida y la clase: los mismos campos que la ficha del grupo.
+    await person.locator('.ce-stats input').first().fill('13');
+    await person.locator('.ce-area').first().fill('Cruzo a los que huian del incendio.');
+    await person.locator('.ce-area').nth(1).fill('Habla poco y cobra antes.');
+    await person.locator('.ce-where select').selectOption('Vado del Sauce');
+
+    const abilityLabels = await person.locator('.ce-stats .ce-label').allInnerTexts();
+    check('con las seis caracteristicas, no solo con un nombre',
+        abilityLabels.length >= 6 && /FUERZA/i.test(abilityLabels.join(' ')),
+        JSON.stringify(abilityLabels.slice(0, 6)));
+
+    // --- Un bicho --------------------------------------------------------------------
+    await page.locator('.ce-tab').filter({ hasText: 'Bestiario' }).click();
+    await page.waitForTimeout(400);
+    await page.locator('.ce-add-beast').click();
+    await page.waitForTimeout(400);
+
+    const beast = page.locator('.ce-beast').last();
+    await beast.locator('.ce-card-head').click();
+    await page.waitForTimeout(300);
+    await beast.locator('.ce-beast-name input').fill('Perro del vado');
+
+    const profiles36 = await beast.locator('.ce-profile select option').allInnerTexts();
+    check('el perfil tactico se elige de los que el motor juega, no se teclea',
+        profiles36.length === 4, JSON.stringify(profiles36));
+    await beast.locator('.ce-profile select').selectOption({ index: 1 });
+
+    // --- Un objeto -------------------------------------------------------------------
+    await page.locator('.ce-tab').filter({ hasText: 'Objetos' }).click();
+    await page.waitForTimeout(400);
+    await page.locator('.ce-add-item').click();
+    await page.waitForTimeout(400);
+
+    const thing = page.locator('.ce-item').last();
+    await thing.locator('.ce-card-head').click();
+    await page.waitForTimeout(300);
+    await thing.locator('.ce-item-name input').fill('Remo herrado');
+    await thing.locator('.ce-item-type select').selectOption('weapon');
+    await thing.locator('.ce-item-rarity select').selectOption('Uncommon');
+    await thing.locator('.ce-grid').nth(1).locator('input').first().fill('1d6');
+
+    // --- Una mision ------------------------------------------------------------------
+    await page.locator('.ce-tab').filter({ hasText: 'Misiones' }).click();
+    await page.waitForTimeout(400);
+    await page.locator('.ce-add-quest').click();
+    await page.waitForTimeout(400);
+
+    const quest = page.locator('.ce-quest').last();
+    await quest.locator('.ce-card-head').click();
+    await page.waitForTimeout(300);
+    await quest.locator('.ce-quest-name input').fill('Pasar al otro lado');
+
+    const boardChoices = await quest.locator('.ce-quest-board select option').allInnerTexts();
+    check('una mision elige su tablero de los que hay, dicho con su localidad delante',
+        boardChoices.some(o => / — /.test(o)), JSON.stringify(boardChoices));
+
+    const summary36 = await page.locator('.ce-summary').innerText();
+    check('la cabecera cuenta ya todo el mundo, no solo el mapa',
+        /personaje\(s\)/.test(summary36) && /objeto\(s\)/.test(summary36) && /misión\(es\)/.test(summary36),
+        summary36);
+
+    await page.locator('.popup-button-ok').last().click();
+    await page.waitForTimeout(3000);
+
+    // --- Lo que ha quedado escrito ---------------------------------------------------
+    const written = await page.evaluate(async () => {
+        const wi = await import('/scripts/world-info.js');
+        const ctx = window.SillyTavern.getContext();
+        const data = await wi.loadWorldInfo(ctx.chatMetadata.world_info);
+        const rows = Object.values(data?.entries ?? {});
+        const bruna = rows.find(e => e.comment === 'Bruna la barquera');
+        const perro = rows.find(e => e.comment === 'Perro del vado');
+        return {
+            npc: bruna?.dndData?.entityType || '',
+            group: bruna?.group || '',
+            content: bruna?.content || '',
+            fuerza: bruna?.dndData?.str ?? null,
+            donde: bruna?.dndData?.locationName || '',
+            beast: perro?.dndData?.entityType || '',
+            profile: perro?.dndData?.profile || '',
+            items: (data?.metadata?.itemCatalogue ?? []).map(i => [i.name, i.type, i.rarity, i.damageDice]),
+            quests: (data?.metadata?.quests ?? []).map(q => [q.name, q.boardName]),
+        };
+    });
+
+    check('el PNJ queda como ficha del Lorebook, del mismo tipo que escribe el importador',
+        written.npc === 'npc' && written.group === 'Characters', JSON.stringify(written.npc));
+    check('con su pasado dentro, que es lo unico de la ficha que lee el modelo',
+        /Cruzo a los que huian/.test(written.content) && /Habla poco/.test(written.content),
+        written.content);
+    check('y con los numeros donde la ficha del grupo los busca',
+        written.fuerza === 13 && written.donde === 'Vado del Sauce',
+        JSON.stringify({ fuerza: written.fuerza, donde: written.donde }));
+    check('el bicho queda en el bestiario con un perfil que el motor juega',
+        written.beast === 'monster' && written.profile.length > 0, JSON.stringify(written.profile));
+    check('el objeto queda en el catalogo del mundo, con su arma y su rareza',
+        written.items.some(i => i[0] === 'Remo herrado' && i[1] === 'weapon' && i[2] === 'Uncommon' && i[3] === '1d6'),
+        JSON.stringify(written.items));
+    check('y la mision existe como cosa propia, con el tablero donde se juega',
+        written.quests.some(q => q[0] === 'Pasar al otro lado' && q[1].length > 0),
+        JSON.stringify(written.quests));
+
+    // --- Lo que cae al ganar sale de ese catalogo -------------------------------------
+    const drops = await page.evaluate(async () => {
+        const wi = await import('/scripts/world-info.js');
+        const loot = await import('/scripts/game-engine/combat/loot.js');
+        const items = await import('/scripts/game-engine/combat/loot-items.js');
+        const ctx = window.SillyTavern.getContext();
+        const data = await wi.loadWorldInfo(ctx.chatMetadata.world_info);
+        const catalogue = data?.metadata?.itemCatalogue ?? [];
+
+        const rules = loot.lootRulesWithWorldItems(catalogue);
+        const described = items.describeLootItem('Remo herrado', 'Uncommon', catalogue);
+        return {
+            pool: rules.itemsByRarity.Uncommon ?? [],
+            kept: (rules.itemsByRarity.Common ?? []).length,
+            type: described.type,
+            dice: described.damageDice || '',
+        };
+    });
+    check('lo escrito en Objetos entra de verdad en las tablas de botin',
+        drops.pool.includes('Remo herrado') && drops.kept > 0, JSON.stringify(drops.pool));
+    check('y cae como el arma que se escribio, no como un trasto generico',
+        drops.type === 'weapon' && drops.dice === '1d6', JSON.stringify(drops));
+
+    // --- Reclutar: el puente entre las dos listas -------------------------------------
+    const partyBefore = await page.locator('#rm_party_list .party-card').count();
+
+    await page.evaluate(() => {
+        void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/campana');
+    });
+    await page.waitForSelector('.ce-root', { timeout: 20000 });
+    await page.locator('.ce-tab').filter({ hasText: 'Personajes' }).click();
+    await page.waitForTimeout(400);
+
+    const bruna = page.locator('.ce-person').filter({ hasText: 'Bruna la barquera' }).last();
+    await bruna.locator('.ce-card-head').click();
+    await page.waitForTimeout(300);
+    await bruna.locator('.ce-recruit').click();
+    await page.waitForTimeout(500);
+
+    const recruitedInto = await page.evaluate(() => {
+        const groups = [...document.querySelectorAll('.ce-people-group')];
+        return groups.map(g => [...g.querySelectorAll('.ce-card-title')].map(t => (t.textContent || '').trim()));
+    });
+    check('reclutar mueve a alguien del mundo al grupo, ahi mismo',
+        recruitedInto[0].includes('Bruna la barquera') && !recruitedInto[1].includes('Bruna la barquera'),
+        JSON.stringify(recruitedInto));
+
+    await page.locator('.popup-button-ok').last().click();
+    await page.waitForTimeout(3000);
+
+    const recruited = await page.evaluate(async () => {
+        const wi = await import('/scripts/world-info.js');
+        const ctx = window.SillyTavern.getContext();
+        const data = await wi.loadWorldInfo(ctx.chatMetadata.world_info);
+        const entry = Object.values(data?.entries ?? {}).find(e => e.comment === 'Bruna la barquera');
+        return {
+            type: entry?.dndData?.entityType || '',
+            position: entry?.dndData?.mapPosition ?? null,
+            cards: [...document.querySelectorAll('#rm_party_list .party-card-name')]
+                .map(n => (n.textContent || '').trim()),
+        };
+    });
+
+    check('y quien entra al grupo lo hace de verdad: su ficha pasa a ser jugable',
+        recruited.type === 'character' && recruited.position?.locationName === 'Vado del Sauce',
+        JSON.stringify({ tipo: recruited.type, sitio: recruited.position }));
+    check('aparece en la tira del grupo sin recargar nada',
+        recruited.cards.includes('Bruna la barquera') && recruited.cards.length === partyBefore + 1,
+        JSON.stringify(recruited.cards));
+
+    // Y lo que ya jugaba sigue con lo suyo: guardar el editor no vacia mochilas.
+    const untouched36 = await page.evaluate(() => {
+        const ctx = window.SillyTavern.getContext();
+        const saved = ctx.chatMetadata.party ?? [];
+        return saved.map(m => [m.name, m.gold ?? 0, (m.items ?? []).length]);
+    });
+    check('y a quien ya jugaba no se le ha vaciado la mochila por guardar la campana',
+        untouched36.length >= 1, JSON.stringify(untouched36));
+
+    step('34. El menu principal: el juego se abre por su pantalla de titulo');
+
+    // Se enciende el arranque automatico y se recarga: esto es exactamente lo que ve
+    // alguien que escribe `npm start` y abre el navegador.
+    await page.evaluate(() => window.localStorage.setItem('sillytavern_gameShellAutostart', 'true'));
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#game-shell', { timeout: 40000 });
+    await page.waitForTimeout(1500);
+
+    const onTitle = await page.evaluate(() => ({
+        scene: document.querySelector('#game-shell')?.getAttribute('data-scene') || '',
+        buttons: [...document.querySelectorAll('.gs-menu-btn .gs-menu-label')].map(n => n.textContent || ''),
+        hints: [...document.querySelectorAll('.gs-menu-hint')].map(n => n.textContent || ''),
+        leave: document.querySelector('.gs-menu-leave')?.textContent || '',
+        cardsVisible: (document.querySelector('#game-shell .campaign-card')?.getBoundingClientRect().height || 0) > 0,
+    }));
+
+    check('al arrancar, el juego se abre solo y ensena su menu',
+        onTitle.scene === 'title' && onTitle.buttons.length === 3, JSON.stringify(onTitle));
+    check('con las tres cosas que se pueden hacer al abrirlo',
+        onTitle.buttons.join(' | ') === 'Partida nueva | Cargar partida | Opciones',
+        onTitle.buttons.join(' | '));
+    check('y dice cuantas partidas hay guardadas, sin entrar',
+        onTitle.hints.some(h => /campana/.test(h)), JSON.stringify(onTitle.hints));
+    check('la lista de partidas espera detras, no delante',
+        onTitle.cardsVisible === false, String(onTitle.cardsVisible));
+    check('y siempre hay puerta de salida al SillyTavern de siempre',
+        /Salir al SillyTavern/.test(onTitle.leave), onTitle.leave);
+
+    // Cargar partida: un paso mas adentro, y vuelta.
+    await page.locator('.gs-menu-btn').filter({ hasText: 'Cargar partida' }).click();
+    await page.waitForTimeout(1000);
+
+    const loading = await page.evaluate(() => ({
+        cards: document.querySelectorAll('#game-shell .campaign-card, #game-shell .campaign-card-unstarted').length,
+        visible: (document.querySelector('#game-shell .campaign-card')?.getBoundingClientRect().height || 0) > 0,
+        back: document.querySelectorAll('.gs-menu-back').length,
+    }));
+    check('"Cargar partida" ensena las campanas que ya existian',
+        loading.cards >= 1 && loading.visible, JSON.stringify(loading));
+    check('y se puede volver al menu', loading.back === 1);
+
+    await page.locator('.gs-menu-back').click();
+    await page.waitForTimeout(700);
+    check('volver deja el menu como estaba', await page.locator('.gs-menu-btn').count() === 3);
+
+    // El interruptor de la pausa, y la prueba de que la puerta de salida es de verdad.
+    await page.keyboard.press('Escape');
+    await page.waitForSelector('.gs-pause', { timeout: 5000 });
+    const pauseItems = await page.evaluate(() => [...document.querySelectorAll('.gs-pause-label')]
+        .map(n => n.textContent || ''));
+    check('la pausa deja apagar el arranque automatico',
+        pauseItems.some(t => /No abrir el juego al arrancar/.test(t)), JSON.stringify(pauseItems));
+
+    await page.evaluate(() => {
+        const button = [...document.querySelectorAll('.gs-pause-btn')]
+            .find(b => /No abrir el juego al arrancar/.test(b.textContent || ''));
+        if (button instanceof HTMLElement) button.click();
+    });
+    await page.waitForTimeout(700);
+    check('y ese ajuste se guarda de verdad',
+        await page.evaluate(() => window.localStorage.getItem('sillytavern_gameShellAutostart')) === 'false');
+
+    // Apagado, la aplicacion arranca como la de siempre: eso es lo que hace que la puerta
+    // sea una puerta y no un adorno.
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(4000);
+    const plain = await page.evaluate(() => ({
+        shell: document.querySelectorAll('#game-shell').length,
+        welcome: document.querySelectorAll('#cw-new-campaign').length,
+    }));
+    check('apagado, arranca el SillyTavern de siempre',
+        plain.shell === 0 && plain.welcome === 1, JSON.stringify(plain));
 
     console.log('\n--- console errors ---');
     console.log(problems.size ? [...problems].join('\n') : '(none)');

@@ -73,6 +73,45 @@ export const DEFAULT_LOOT_RULES = {
 };
 
 /**
+ * Las mismas reglas de botin, pero soltando tambien lo que el mundo tenga escrito.
+ *
+ * Sin esto, el catalogo de objetos del editor seria una lista bonita: se podrian escribir
+ * cien objetos y seguiria cayendo lo de la tabla de `loot.js`. La rareza que el autor le
+ * ponga a cada cosa es la que decide en que peldano cae, que es justo lo que hace que
+ * escribir un objeto raro signifique algo.
+ *
+ * Se anaden a lo que ya habia en vez de sustituirlo: un mundo con tres objetos escritos no
+ * deberia dejar al grupo sin pociones.
+ *
+ * @param {any[]} catalogue Los objetos del mundo.
+ * @param {LootRules} [rules]
+ * @returns {LootRules}
+ */
+export function lootRulesWithWorldItems(catalogue, rules = DEFAULT_LOOT_RULES) {
+    const world = Array.isArray(catalogue) ? catalogue : [];
+    if (world.length === 0) return rules;
+
+    /** @type {Record<string, string[]>} */
+    const byRarity = {};
+    for (const [rarity, names] of Object.entries(rules.itemsByRarity ?? {})) {
+        byRarity[rarity] = [...names];
+    }
+
+    for (const item of world) {
+        const name = String(item?.name ?? '').trim();
+        if (!name) continue;
+        // Una rareza que las tablas no conocen no tiene peldano donde caer, asi que iria
+        // a parar a ningun sitio: se trata como lo mas comun, que es lo que se ve.
+        const declared = String(item?.rarity ?? '').trim();
+        const rarity = Object.prototype.hasOwnProperty.call(byRarity, declared) ? declared : 'Common';
+        byRarity[rarity] = byRarity[rarity] ?? [];
+        if (!byRarity[rarity].includes(name)) byRarity[rarity].push(name);
+    }
+
+    return { ...rules, itemsByRarity: byRarity };
+}
+
+/**
  * Reads a threshold table: the value for the highest step at or below `cr`.
  *
  * @template T

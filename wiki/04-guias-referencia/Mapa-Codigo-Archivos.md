@@ -76,14 +76,16 @@ Módulos puros: sin DOM, sin estado global, sin lecturas del chat. Por eso se pr
 | `ui/rules-editor.js` | 297 | El editor visual de reglas (`/rules`), con importar y exportar | ✅ |
 | `cost/prompt-meter.js` | 239 | Desglosa lo que se envía cada turno y acumula el gasto | ✅ |
 | `ui/prompt-preview.js` | 179 | El panel de `/prompt` | ✅ |
-| `campaign/campaign-pack-schema.js` | 481 | El contrato del paquete de campaña, generado desde el motor | ✅ |
-| `campaign/campaign-pack.js` | 403 | Si un paquete se sostiene: errores, avisos y lo que se reparó | ✅ |
-| `campaign/campaign-export.js` | 278 | El camino de vuelta: empaquetar tu campaña para mandarla (A2) | ✅ |
+| `campaign/campaign-pack-schema.js` | 568 | El contrato del paquete de campaña, generado desde el motor | ✅ |
+| `campaign/campaign-pack.js` | 538 | Si un paquete se sostiene: errores, avisos y lo que se reparó | ✅ |
+| `campaign/campaign-export.js` | 349 | El camino de vuelta: empaquetar tu campaña para mandarla (A2) | ✅ |
 | `campaign/checkpoint.js` | 141 | Puntos de retorno, y uno automático antes de cada jefe (PROP2-163) | ✅ |
-| `campaign/campaign-importer.js` | 419 | Del paquete a mundo, entradas, tableros y misiones; los ids, al final | ✅ |
+| `campaign/campaign-importer.js` | 508 | Del paquete a mundo, entradas, tableros y misiones; los ids, al final | ✅ |
+| `campaign/campaign-editor.js` | 750 | Escribir una campaña a mano: lee el mundo, lo valida y dice qué fichas tocar (M1–M6) | ✅ |
+| `ui/campaign-editor.js` | 852 | El panel de `/campana`: siete pestañas, una por categoría | ✅ |
 | `combat/spawn.js` | 95 | Dónde aparecen los enemigos: donde los dibujó el libro, nunca en un muro | ✅ |
 | `rules/rest.js` | 216 | Descanso corto y largo, con dados de golpe | ✅ |
-| `combat/loot-items.js` | 84 | Qué es cada cosa que sueltan los enemigos, para que se pueda usar | ✅ |
+| `combat/loot-items.js` | 120 | Qué es cada cosa que sueltan los enemigos, para que se pueda usar | ✅ |
 | `combat/seeded-random.js` | 97 | Dados que se pueden repetir: una partida dos veces igual | ✅ |
 | `combat/target-card.js` | 94 | Qué dice la tarjeta de un enemigo y qué botones ofrece | ✅ |
 | `combat/condition-timers.js` | 119 | Las condiciones con duración, que se van solas al pasar la ronda (D5) | ✅ |

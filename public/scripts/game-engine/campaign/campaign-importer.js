@@ -73,6 +73,24 @@ function locationNameOf(locations, board) {
 }
 
 /**
+ * El nombre del tablero donde se juega una mision.
+ *
+ * El paquete apunta al tablero por `id`, pero el mundo guardado no tiene ids: los
+ * tableros viven dentro de su localidad y se llaman por su nombre. Traducirlo aqui es lo
+ * que hace que una mision importada siga sabiendo donde se juega.
+ *
+ * @param {any} pack
+ * @param {string} boardId
+ * @returns {string}
+ */
+function boardNameOf(pack, boardId) {
+    if (!boardId) return '';
+    const board = (Array.isArray(pack?.boards) ? pack.boards : [])
+        .find(b => text(b?.id) === boardId);
+    return text(board?.name);
+}
+
+/**
  * The Lorebook entries a pack implies: its companions, its monsters, its lore and its
  * factions.
  *
@@ -335,6 +353,31 @@ export function buildImportPlan(raw, options = {}) {
             locationMaps: [...locations.values()],
             boards: [],
             packVersion: pack.version,
+            // El catalogo del mundo: los objetos que existen antes de que nadie los lleve
+            // encima. De aqui sale el botin, asi que entra con el mundo y no en fichas.
+            itemCatalogue: (Array.isArray(pack.items) ? pack.items : [])
+                .filter(item => text(item?.name))
+                .map(item => ({
+                    name: text(item.name),
+                    type: ['weapon', 'armor', 'gear'].includes(text(item.type)) ? text(item.type) : 'gear',
+                    rarity: text(item.rarity) || 'Common',
+                    weight: Number(item.weight) || 0,
+                    damageDice: text(item.damageDice),
+                    damageType: text(item.damageType),
+                    slot: text(item.slot),
+                    description: text(item.description),
+                })),
+            // Las misiones, como cosa propia y no como el nombre de un tablero. El motor
+            // ya las sabe encadenar; hasta ahora nadie podia escribirlas.
+            quests: pack.quests
+                .filter((/** @type {any} */ quest) => text(quest?.name))
+                .map((/** @type {any} */ quest) => ({
+                    id: text(quest.id),
+                    name: text(quest.name),
+                    description: text(quest.description),
+                    act: Math.max(1, Math.floor(Number(quest.act) || 1)),
+                    boardName: boardNameOf(pack, text(quest.boardId)),
+                })),
         },
         entries,
         enemiesByBoard,

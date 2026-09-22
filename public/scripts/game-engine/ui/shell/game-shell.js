@@ -63,6 +63,7 @@ import { playForScene, stopSceneAudio } from './scene-audio.js';
  * @property {() => void} onOptions Open SillyTavern's own settings, where they are.
  * @property {() => void} onCompendium The rules editor.
  * @property {() => void} [onExport] Empaquetar la campana para compartirla.
+ * @property {() => void} [onEditCampaign] El editor del mundo y sus localidades.
  * @property {() => void} [onAudio] Los ajustes de sonido.
  * @property {() => void} onMainMenu Leave the campaign, without leaving the game.
  * @property {() => void} renderStage Redraw the panel that lives on the stage.
@@ -75,6 +76,10 @@ import { playForScene, stopSceneAudio } from './scene-audio.js';
  * @property {() => import('./action-chips.js').ActionChip[]} [getChips] Lo que se puede hacer sin escribirlo.
  * @property {(chip: import('./action-chips.js').ActionChip) => void} [onChip]
  * @property {(memberId: string) => void} [onCompanion] Abrir la ficha de un companero.
+ * @property {() => void} [onNewCampaign] Empezar una partida desde el menu principal.
+ * @property {() => number} [countCampaigns] Cuantas partidas hay para cargar.
+ * @property {() => boolean} [getAutostart] Si el juego se abre solo al arrancar.
+ * @property {(value: boolean) => void} [setAutostart]
  * @property {() => Array<{id: string, label: string, detail: string, enabled: boolean, needsAlly: boolean, allies: Array<{id: string, name: string}>}>} [getAbilities]
  *   Las habilidades sobre uno mismo o sobre un aliado, ya juzgadas.
  * @property {(abilityId: string, allyId?: string) => void} [onAbility]
@@ -123,6 +128,14 @@ let lastSituation = null;
 let sceneReason = '';
 /** @type {((event: KeyboardEvent) => void)|null} */
 let keyHandler = null;
+/**
+ * Que ensena la pantalla de titulo: el menu, o la lista de partidas guardadas.
+ *
+ * Empezar en la lista — como hacia antes — es empezar en medio: lo primero que ve alguien
+ * que abre el juego deberia ser que puede empezar una, seguir una o cambiar las opciones.
+ * @type {'menu'|'load'}
+ */
+let titleView = 'menu';
 
 /** @returns {boolean} */
 export function isShellOpen() {
@@ -230,6 +243,66 @@ function renderSwitcher(bar, situation, current) {
         button.addEventListener('click', () => setScene(scene));
         bar.appendChild(button);
     }
+}
+
+/**
+ * El menu principal: lo primero que se ve al abrir el juego.
+ *
+ * Tres cosas y una puerta de salida. La puerta importa tanto como las tres: debajo de esta
+ * capa sigue estando SillyTavern entero, y esconderlo seria mentir sobre lo que es esto.
+ *
+ * @param {HTMLElement} menu
+ */
+function renderTitleMenu(menu) {
+    menu.textContent = '';
+    menu.dataset.view = titleView;
+
+    if (titleView === 'load') {
+        const back = makeButton('gs-menu-back');
+        back.appendChild(el('i', 'fa-solid fa-arrow-left'));
+        back.appendChild(el('span', '', ' Volver al menu'));
+        back.addEventListener('click', () => {
+            titleView = 'menu';
+            refreshGameShell();
+        });
+        menu.appendChild(back);
+        return;
+    }
+
+    /**
+     * @param {string} label
+     * @param {string} icon
+     * @param {string} hint
+     * @param {() => void} action
+     */
+    const item = (label, icon, hint, action) => {
+        const button = makeButton('gs-menu-btn');
+        button.appendChild(el('i', `fa-solid ${icon}`));
+        const body = el('span', 'gs-menu-body');
+        body.appendChild(el('span', 'gs-menu-label', label));
+        if (hint) body.appendChild(el('span', 'gs-menu-hint', hint));
+        button.appendChild(body);
+        button.addEventListener('click', action);
+        menu.appendChild(button);
+    };
+
+    const saved = options?.countCampaigns?.() ?? 0;
+
+    item('Partida nueva', 'fa-wand-sparkles', 'Una plantilla, un mundo generado o un libro',
+        () => options?.onNewCampaign?.());
+    item('Cargar partida', 'fa-folder-open',
+        saved === 1 ? '1 campana guardada' : `${saved} campanas guardadas`,
+        () => {
+            titleView = 'load';
+            refreshGameShell();
+        });
+    item('Opciones', 'fa-sliders', 'Los ajustes de SillyTavern, donde siempre',
+        () => options?.onOptions());
+
+    const leave = makeButton('gs-menu-leave');
+    leave.textContent = 'Salir al SillyTavern de siempre';
+    leave.addEventListener('click', () => closeGameShell());
+    menu.appendChild(leave);
 }
 
 /**
@@ -582,6 +655,12 @@ function setPaused(next) {
     item('Continuar', 'fa-play', () => setPaused(false), 'Esc');
     item('Opciones', 'fa-sliders', () => options?.onOptions());
     item('Compendio y reglas', 'fa-book', () => options?.onCompendium());
+    if (options.onEditCampaign) {
+        item('Editar la campana', 'fa-map-location-dot', () => {
+            setPaused(false);
+            options?.onEditCampaign?.();
+        });
+    }
     if (options.onExport) {
         item('Exportar campana', 'fa-file-export', () => {
             setPaused(false);
@@ -593,6 +672,17 @@ function setPaused(next) {
             setPaused(false);
             options?.onAudio?.();
         });
+    }
+    if (options.getAutostart && options.setAutostart) {
+        // La puerta de salida de verdad: apagado, la aplicacion arranca como la de
+        // siempre. Un juego que no te deja no jugarlo es un juego que estorba.
+        const on = options.getAutostart();
+        item(on ? 'No abrir el juego al arrancar' : 'Abrir el juego al arrancar',
+            on ? 'fa-toggle-on' : 'fa-toggle-off', () => {
+                options?.setAutostart?.(!on);
+                setPaused(false);
+                setPaused(true);
+            });
     }
     item('Salir al menu principal', 'fa-door-open', () => {
         setPaused(false);
@@ -715,6 +805,13 @@ export function refreshGameShell() {
 
     renderDialogue(/** @type {HTMLElement} */ (root.querySelector('.gs-scene-dialogue')), dialogue);
 
+    // El menu principal solo existe en el titulo; en cuanto hay partida, estorba.
+    if (scene === SCENE.TITLE) {
+        renderTitleMenu(/** @type {HTMLElement} */ (root.querySelector('.gs-menu')));
+    } else {
+        titleView = 'menu';
+    }
+
     if (scene === SCENE.EXPLORATION) {
         renderExploration(/** @type {HTMLElement} */ (root.querySelector('.gs-places')), options.getExploration());
     }
@@ -801,6 +898,7 @@ export function openGameShell(shellOptions) {
     manualScene = null;
     lastSituation = null;
     sceneReason = '';
+    titleView = 'menu';
 
     root = el('div', 'gs-root');
     root.id = 'game-shell';
@@ -832,6 +930,7 @@ export function openGameShell(shellOptions) {
     // campana se dibuja dentro de `#chat`, que viaja con `#sheld`, asi que basta con
     // ensenar la misma seccion con otro rotulo y sin el ruido de una conversacion.
     dialogue.appendChild(el('div', 'gs-title', 'SillyTavern RPG'));
+    dialogue.appendChild(el('div', 'gs-menu'));
     dialogue.appendChild(el('div', 'gs-speaker'));
     dialogue.appendChild(el('div', 'gs-chat-slot'));
     dialogue.appendChild(el('div', 'gs-chips'));

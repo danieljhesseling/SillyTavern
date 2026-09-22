@@ -95,6 +95,14 @@ Y cuando quieras verlo a pantalla completa: **`/modojuego`**.
 
 ## 4. El Modo Juego
 
+### Al abrirlo
+
+`npm start`, abres el navegador y sale el **menú principal**: *Partida nueva*, *Cargar partida* y *Opciones*. Si tenías una campaña a medias, no ves el menú: entras directamente donde lo dejaste.
+
+*Opciones* abre los ajustes de SillyTavern de siempre, donde siempre. Y abajo hay una línea pequeña, **Salir al SillyTavern de siempre**, que apaga el juego y te deja la aplicación tal cual.
+
+> Si prefieres que **no** se abra solo: `Esc` → *No abrir el juego al arrancar*. Se queda apagado hasta que lo enciendas, y siempre puedes volver con `/modojuego`.
+
 Una capa a pantalla completa con tres pantallas que se alternan **solas** según lo que pase en la partida:
 
 | Tecla | Pantalla | Cuándo aparece sola |
@@ -208,11 +216,32 @@ Esto es media razón de ser del proyecto: **nada de lo de abajo pide abrir un ar
 
 | Quiero… | Cómo |
 | :--- | :--- |
+| **Escribir mi mundo entero**: sitios, gente, bichos, objetos, misiones | `/campana` — o **Editar la campaña** en el menú de pausa |
 | Añadir un tipo de daño, una condición, una rareza | `/rules` → editas la sección → **Aplicar** → **Guardar reglas** |
 | Que este tablero sea *sobre* algo | `/objetivos editar` — y **Proponer con IA** si quieres que te las escriba |
 | Cambiar qué enemigos salen aquí, y cuántos | `/enemigos` |
 | Pintar muros, cobertura, puertas | Botón **Terreno**, bajo el tablero |
 | Probar un combate sin tocar tu campaña | `/sandbox` |
+
+### `/campana`: el mundo repartido por categorías
+
+Siete pestañas, y cada una escribe en el mismo sitio donde escribe un libro importado — así que una campaña hecha a mano se puede exportar y mandar igual que cualquier otra.
+
+| Pestaña | Para qué |
+| :--- | :--- |
+| **Mundo** | Nombre, género y sinopsis. La sinopsis viaja con la campaña |
+| **Localidades** | Sitios nuevos, con su tipo y su región; dentro, sus tableros con el tamaño, dónde empieza el grupo y qué enemigos hay puestos |
+| **Personajes** | Dos listas: los de tu grupo y los del mundo. Clase, nivel, raza, las seis características, PG, CA, dónde está, pasado, personalidad, arcano, cara y los alias por los que el chat lo menciona |
+| **Bestiario** | PG, CA, desafío, alcance y **perfil táctico**. Si borras un bicho que un tablero coloca, te lo dice antes |
+| **Facciones** | Metas y reputación — que de momento **no cambia nada**, y el panel lo dice |
+| **Objetos** | El catálogo de tu mundo. Lo que escribas aquí **cae de verdad** al ganar un combate, con la rareza decidiendo la facilidad |
+| **Misiones** | Nombre, acto y en qué tablero se juega. Sus objetivos siguen en `/objetivos editar` |
+
+Tres cosas que conviene saber:
+
+- **Una localidad puede no tener ningún tablero.** Una aldea donde solo se habla y se comercia es tan válida como una cripta, y el panel lo dice en vez de dejarte pensando que falta algo.
+- **Reclutar** está en la ficha de cualquiera del mundo: lo mete en tu grupo con la ficha que le hayas escrito, y aparece en la tira del grupo sin recargar nada.
+- **Guardar no le vacía la mochila a nadie.** Lo que se escribe encima es la ficha —nombre, clase, características, cara—; la vida, el oro, la experiencia y lo que lleva encima son de la partida y se quedan como estaban.
 
 Dos cosas que conviene saber de `/rules`:
 
@@ -243,6 +272,7 @@ Para que nadie lo descubra a mitad de una sesión:
 - **El sonido no trae ni una pista.** Las pones tú en `/sonido`: aquí no hay música con licencia de nadie.
 - **Las reglas de encuentro no colocan a nadie por su cuenta** salvo en los tableros importados, que traen sus posiciones dibujadas. En los demás, `/fight` los pone en una casilla libre.
 - **La generación con IA no escribe misiones al crear el mundo.** Se piden aparte, con `/objetivos editar` → *Proponer con IA*.
+- **En `/campana` no se elige la casilla concreta de un personaje del mundo**, solo en qué localidad está; quien entra al grupo empieza donde empieza el grupo. Y un objeto solo se le puede dar a alguien de tu grupo: un PNJ todavía no tiene mochila que mirar.
 
 ---
 

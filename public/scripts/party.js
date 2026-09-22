@@ -4,7 +4,7 @@ import { POPUP_TYPE, POPUP_RESULT, Popup } from './popup.js';
 import { sendSystemMessage, system_message_types } from './system-messages.js';
 import { getThumbnailUrl, chat, chat_metadata, saveMetadata, eventSource, event_types, setUserName, addOneMessage, saveChatConditional, substituteParams, system_avatar, generateRaw, online_status } from '../script.js';
 import { getMessageTimeStamp } from './RossAscends-mods.js';
-import { getCurrentWorldMapUrl, getCurrentWorldLocationMaps, getCurrentWorldBoards, getCurrentWorldEnemies, getCurrentWorldNPCs, loadWorldInfo, saveWorldInfo, METADATA_KEY } from './world-info.js';
+import { getCurrentWorldMapUrl, getCurrentWorldLocationMaps, getCurrentWorldBoards, getCurrentWorldEnemies, getCurrentWorldNPCs, loadWorldInfo, saveWorldInfo, createWorldInfoEntry, METADATA_KEY } from './world-info.js';
 import { renderWorldMapView, renderLocationView } from './world-map-renderer.js';
 import { SlashCommandParser } from './slash-commands/SlashCommandParser.js';
 import { SlashCommand } from './slash-commands/SlashCommand.js';
@@ -45,7 +45,7 @@ import {
 import {
     createTurnState, advanceTurn, getRemainingMovement, spendMovement, hasAction, useAction,
 } from './game-engine/combat/turn-machine.js';
-import { rollEncounterLoot } from './game-engine/combat/loot.js';
+import { rollEncounterLoot, lootRulesWithWorldItems } from './game-engine/combat/loot.js';
 import { describeLootItem } from './game-engine/combat/loot-items.js';
 import { planSpawnCells } from './game-engine/combat/spawn.js';
 import { buildTargetCard, describeTargetCard } from './game-engine/combat/target-card.js';
@@ -115,6 +115,15 @@ import { normalizePack, validatePack } from './game-engine/campaign/campaign-pac
 let partyMembers = [];
 
 const LOCATION_MAPS_MANUAL_HIDDEN_KEY = 'sillytavern_locationMapsManualHidden';
+
+/**
+ * Si el Modo Juego se abre solo al arrancar.
+ *
+ * Encendido por defecto: este fork es un juego, y un juego se abre por su pantalla de
+ * titulo, no por la bandeja de entrada de un chat. Pero se apaga con un clic desde la
+ * pausa, y apagado la aplicacion arranca exactamente como la de siempre.
+ */
+const GAME_SHELL_AUTOSTART_KEY = 'sillytavern_gameShellAutostart';
 
 /** @type {boolean} */
 let locationMapsManuallyHidden = false;
@@ -1140,6 +1149,7 @@ async function applyCampaignRuleset(worldName) {
     try {
         const data = await loadWorldInfo(worldName);
         worldPack = data?.metadata?.rulesetPack ?? null;
+        worldItemCatalogue = Array.isArray(data?.metadata?.itemCatalogue) ? data.metadata.itemCatalogue : [];
     } catch (error) {
         console.error('[party] could not read the campaign rule pack', error);
         return;
@@ -1177,6 +1187,17 @@ async function applyCampaignRuleset(worldName) {
             .on('click', () => window.location.reload()),
     );
 }
+
+/**
+ * Los objetos que la campana abierta tiene escritos.
+ *
+ * Se guarda aqui porque el botin se reparte en mitad de un combate y leer el mundo del
+ * disco en ese momento seria esperar por algo que ya se sabe. Se rellena al abrir la
+ * campana y al guardarla desde el editor, que son las dos unicas veces que cambia.
+ *
+ * @type {any[]}
+ */
+let worldItemCatalogue = [];
 
 /** Where the guard's mode lives, so it travels with the campaign. */
 const ROLL_GUARD_KEY = 'rollGuardMode';
@@ -2198,8 +2219,11 @@ function awardEncounterLoot(defeated) {
     const survivors = partyMembers.filter(m => (m.hp || 0) > 0);
     if (survivors.length === 0 || defeated.length === 0) return null;
 
+    // Lo que el autor de la campana haya escrito cae tambien, con la rareza que le puso.
+    // Sin esto, escribir objetos seria llenar una lista que el juego no mira.
     const loot = rollEncounterLoot(defeated, survivors.length, {
         roll: (/** @type {string} */ formula) => rollDice(formula, 6),
+        rules: lootRulesWithWorldItems(worldItemCatalogue),
     });
 
     for (const member of survivors) {
@@ -2215,7 +2239,8 @@ function awardEncounterLoot(defeated) {
         const holder = survivors[0];
         holder.items = holder.items ?? [];
         for (const dropped of loot.items) {
-            const item = createItem(/** @type {any} */ (describeLootItem(dropped.name, dropped.rarity)));
+            const item = createItem(/** @type {any} */ (
+                describeLootItem(dropped.name, dropped.rarity, worldItemCatalogue)));
             addItemToInventory(/** @type {any} */ (holder), item);
         }
     }
@@ -3741,6 +3766,242 @@ function buildShellDialogue() {
 }
 
 /**
+ * Abre el editor de campana y guarda lo que salga.
+ *
+ * Escribe donde escribe el importador de libros — `metadata.locationMaps` — para que una
+ * campana hecha a mano y una importada sean **la misma cosa**. Lo que este panel no ensena
+ * (el terreno, las salas, los objetivos) se queda intacto: tiene sus propios editores.
+ *
+ * @returns {Promise<string>}
+ */
+async function openCampaignBuilder() {
+    const worldName = String(chat_metadata?.[METADATA_KEY] || '');
+    if (!worldName) {
+        toastr.warning('Abre una campana antes de editarla.');
+        return '';
+    }
+
+    try {
+        const data = await loadWorldInfo(worldName);
+        if (!data) {
+            toastr.warning(`No se pudo leer el mundo "${worldName}".`);
+            return '';
+        }
+
+        const { openCampaignEditor } = await import('./game-engine/ui/campaign-editor.js');
+        const { applyEditorModel, describeModel, planEntryChanges } = await import('./game-engine/campaign/campaign-editor.js');
+
+        const edited = await openCampaignEditor({
+            metadata: data.metadata ?? {},
+            entries: data.entries ?? {},
+            Popup,
+            POPUP_TYPE,
+        });
+        if (!edited) return '';
+
+        data.metadata = applyEditorModel(data.metadata ?? {}, edited);
+        worldItemCatalogue = Array.isArray(data.metadata.itemCatalogue) ? data.metadata.itemCatalogue : [];
+
+        // Las fichas del Lorebook: lo que se escribe aqui es exactamente lo que escribe el
+        // importador de libros, que es la regla que evita tener dos medias campanas.
+        const plan = planEntryChanges(data.entries ?? {}, edited);
+        data.entries = data.entries ?? {};
+
+        for (const spec of plan.update) {
+            const entry = data.entries[spec.uid];
+            if (!entry) continue;
+            writeEntrySpec(entry, spec);
+        }
+        for (const spec of plan.create) {
+            const entry = /** @type {any} */ (createWorldInfoEntry(worldName, data));
+            if (!entry) continue;
+            writeEntrySpec(entry, spec);
+        }
+        for (const uid of plan.remove) delete data.entries[uid];
+
+        await saveWorldInfo(worldName, data, true);
+
+        // El grupo se pone al dia sin rehacerse: quien ya jugaba conserva su vida, su oro
+        // y su mochila, que no son cosa de este editor.
+        syncPartyWithEntries(data.entries, worldName);
+        deliverGifts(edited.gifts, worldItemCatalogue);
+
+        // La localidad abierta puede haberse quedado sin existir: mejor volver al selector
+        // que dejar la pantalla apuntando a un sitio borrado.
+        const places = (data.metadata.locationMaps ?? []).map((/** @type {any} */ l) => String(l.name));
+        if (currentLocationName && !places.includes(currentLocationName)) {
+            currentLocationName = '';
+            currentBoardName = '';
+            saveCurrentLocation();
+            saveCurrentBoard();
+        }
+
+        renderLocationMapsPreview();
+        toastr.success(describeModel(edited), `"${worldName}" guardado`);
+        return describeModel(edited);
+    } catch (error) {
+        console.error('[party] campaign editor failed', error);
+        toastr.error(String(error?.message || error), 'No se pudo guardar la campana');
+        return '';
+    }
+}
+
+/**
+ * Un miembro del grupo recien salido de su ficha del Lorebook.
+ *
+ * Empieza entero y con los bolsillos vacios, porque entrar al grupo no es continuar una
+ * partida: la vida, el oro y la mochila son de quien ya jugaba.
+ *
+ * @param {any} entry
+ * @param {string|null} worldName
+ * @returns {PartyMember}
+ */
+function memberFromEntry(entry, worldName) {
+    const d = entry?.dndData || {};
+    const defaults = getDefaultDndData();
+
+    return {
+        id: Date.now() + Math.floor(Math.random() * 10000),
+        personaId: null,
+        wiUid: entry?.uid != null ? Number(entry.uid) : null,
+        worldName: worldName,
+        name: getPartyEntryDisplayName(entry),
+        group: entry?.group || '',
+        avatar: d.image || 'img/user-default.png',
+        level: Number(d.level) || 1,
+        class: d.charClass || 'Adventurer',
+        race: d.race || '',
+        factions: parseFactionValues(d.factions || d.faction),
+        hp: Number(d.maxHp) || 30,
+        maxHp: Number(d.maxHp) || 30,
+        xp: 0,
+        xpNext: 100,
+        gold: 0,
+        silver: 0,
+        copper: 0,
+        inventory: '',
+        conditions: '',
+        alignment: d.alignment || '',
+        personality: d.personality || '',
+        activeConditions: /** @type {string[]} */ ([]),
+        strength: Number(d.str) || defaults.strength,
+        dexterity: Number(d.dex) || defaults.dexterity,
+        constitution: Number(d.con) || defaults.constitution,
+        intelligence: Number(d.int) || defaults.intelligence,
+        wisdom: Number(d.wis) || defaults.wisdom,
+        charisma: Number(d.cha) || defaults.charisma,
+        armorClass: Number(d.ac) || defaults.armorClass,
+        speed: Number(d.speed) || defaults.speed,
+        items: [],
+        equippedItems: { ...defaults.equippedItems },
+        relationships: [],
+        memories: [],
+        mapPosition: resolveEntryMapPosition(d),
+    };
+}
+
+/**
+ * Vuelca una ficha planeada sobre una entrada del Lorebook.
+ *
+ * @param {any} entry
+ * @param {{title: string, keys: string[], content: string, group: string, dndData: any}} spec
+ */
+function writeEntrySpec(entry, spec) {
+    entry.comment = spec.title;
+    entry.key = spec.keys;
+    entry.content = spec.content;
+    entry.group = spec.group;
+    entry.dndData = spec.dndData;
+}
+
+/**
+ * Pone el grupo al dia con lo que dicen las fichas, sin rehacerlo.
+ *
+ * `setPartyFromWorldEntries` construye el grupo de cero, y eso aqui seria un desastre:
+ * devolveria a todos los puntos de vida llenos, con cero de oro y la mochila vacia. Lo
+ * que cambia en el editor es la ficha — nombre, clase, caracteristicas, cara — y eso es
+ * lo unico que se copia encima.
+ *
+ * @param {any} entries Las fichas ya guardadas.
+ * @param {string} worldName
+ */
+function syncPartyWithEntries(entries, worldName) {
+    const rows = Object.entries(entries ?? {})
+        .filter(([, entry]) => getDndEntryType(entry) === 'character');
+    const playable = new Set(rows.map(([uid]) => Number(uid)));
+
+    // Quien ha dejado de ser del grupo sale de la tira, pero no se borra del mundo.
+    const left = partyMembers.filter(member => member.wiUid != null && !playable.has(Number(member.wiUid)));
+    if (left.length > 0) {
+        partyMembers = partyMembers.filter(member => !left.includes(member));
+    }
+
+    for (const [uid, entry] of rows) {
+        const d = /** @type {any} */ (entry)?.dndData || {};
+        const existing = partyMembers.find(member => Number(member.wiUid) === Number(uid));
+
+        if (!existing) {
+            partyMembers.push(memberFromEntry(entry, worldName));
+            continue;
+        }
+
+        existing.name = getPartyEntryDisplayName(entry);
+        existing.level = Number(d.level) || existing.level;
+        existing.class = d.charClass || existing.class;
+        existing.race = d.race ?? existing.race;
+        existing.avatar = d.image || existing.avatar;
+        existing.personality = d.personality ?? existing.personality;
+        existing.strength = Number(d.str) || existing.strength;
+        existing.dexterity = Number(d.dex) || existing.dexterity;
+        existing.constitution = Number(d.con) || existing.constitution;
+        existing.intelligence = Number(d.int) || existing.intelligence;
+        existing.wisdom = Number(d.wis) || existing.wisdom;
+        existing.charisma = Number(d.cha) || existing.charisma;
+        existing.armorClass = Number(d.ac) || existing.armorClass;
+        existing.speed = Number(d.speed) || existing.speed;
+
+        // Subir el maximo cura esa diferencia; bajarlo no mata a nadie.
+        const maxHp = Number(d.maxHp) || existing.maxHp;
+        if (maxHp !== existing.maxHp) {
+            existing.hp = Math.max(0, Math.min(maxHp, existing.hp + Math.max(0, maxHp - existing.maxHp)));
+            existing.maxHp = maxHp;
+        }
+        existing.mapPosition = resolveEntryMapPosition(d);
+    }
+
+    renderPartyMembers();
+    savePartyState();
+
+    if (left.length > 0) {
+        toastr.info(`${left.map(m => m.name).join(', ')} ya no ${left.length === 1 ? 'juega' : 'juegan'} en el grupo.`);
+    }
+}
+
+/**
+ * Reparte lo que el editor dijo de regalar.
+ *
+ * @param {Array<{item: string, to: string}>|undefined} gifts
+ * @param {any[]} catalogue
+ */
+function deliverGifts(gifts, catalogue) {
+    for (const gift of Array.isArray(gifts) ? gifts : []) {
+        const holder = partyMembers.find(member => member.name === gift.to);
+        const declared = catalogue.find(item => String(item?.name ?? '') === gift.item);
+        if (!holder) {
+            toastr.warning(`"${gift.to}" ya no esta en el grupo: "${gift.item}" no se ha repartido.`);
+            continue;
+        }
+
+        const item = createItem(/** @type {any} */ (
+            describeLootItem(gift.item, String(declared?.rarity ?? ''), catalogue)));
+        addItemToInventory(/** @type {any} */ (holder), item);
+        toastr.success(`${holder.name} lleva ahora "${gift.item}".`);
+    }
+
+    if (Array.isArray(gifts) && gifts.length > 0) savePartyState();
+}
+
+/**
  * Abre el panel de habilidades y guarda lo que salga.
  *
  * El catalogo viaja dentro del paquete de reglas del mundo, como las armas y las
@@ -4668,6 +4929,23 @@ function buildShellOptions() {
         // arriba, por encima de esta capa, y el boton pulsa el mismo icono de siempre.
         onOptions: () => { $('#ai-config-button .drawer-toggle').trigger('click'); },
         onCompendium: () => { void openCompendium(); },
+        onEditCampaign: () => { void openCampaignBuilder(); },
+        // El asistente de campana vive en la pantalla de bienvenida, que viaja dentro del
+        // chat adoptado: pulsar su boton es pulsar el que ya existe.
+        onNewCampaign: () => {
+            const button = document.querySelector('#cw-new-campaign');
+            if (button instanceof HTMLElement) button.click();
+            else toastr.info('Abre "Nueva campana" desde la lista de partidas.');
+        },
+        countCampaigns: () => document.querySelectorAll(
+            '#game-shell .campaign-card, #game-shell .campaign-card-unstarted').length,
+        getAutostart: () => shouldAutostartGameShell(),
+        setAutostart: (value) => {
+            setGameShellAutostart(value);
+            toastr.info(value
+                ? 'El juego se abrira solo la proxima vez.'
+                : 'La proxima vez arranca el SillyTavern de siempre. Vuelve con /modojuego.');
+        },
         onExport: () => { void exportCampaignPack(); },
         onAudio: () => { void openAudioSettings(); },
         // Salir al menu principal es cerrar la partida, no cerrar el juego: el Shell se
@@ -4724,6 +5002,39 @@ function buildShellOptions() {
             );
         },
     };
+}
+
+/** @returns {boolean} */
+function shouldAutostartGameShell() {
+    try {
+        return window.localStorage.getItem(GAME_SHELL_AUTOSTART_KEY) !== 'false';
+    } catch {
+        return true;
+    }
+}
+
+/** @param {boolean} value */
+function setGameShellAutostart(value) {
+    try {
+        window.localStorage.setItem(GAME_SHELL_AUTOSTART_KEY, String(Boolean(value)));
+    } catch (error) {
+        console.warn('[party] no se pudo guardar el arranque del Modo Juego', error);
+    }
+}
+
+/**
+ * Abre el Modo Juego al arrancar, si toca.
+ *
+ * No decide **que** pantalla: eso es del director. Sin campana abierta cae en el titulo,
+ * y con una campana a medias te deja donde lo dejaste — que es lo que uno espera de un
+ * juego al que vuelve.
+ */
+function autostartGameShell() {
+    if (!shouldAutostartGameShell() || isShellOpen()) return;
+
+    const shellOptions = buildShellOptions();
+    setLocationMapsHidden(false);
+    toggleGameShell(shellOptions);
 }
 
 /**
@@ -6808,51 +7119,7 @@ export function initPartyPanel() {
         const selected = await showCharacterPicker(charEntries);
         if (!selected) return;
 
-        // Create party member from the WI entry
-        const d = selected.dndData || {};
-        const defaults = getDefaultDndData();
-        const memberName = getPartyEntryDisplayName(selected);
-        /** @type {PartyMember} */
-        const newMember = {
-            id: Date.now() + Math.floor(Math.random() * 10000),
-            personaId: null,
-            wiUid: selected.uid != null ? Number(selected.uid) : null,
-            worldName: worldName,
-            name: memberName,
-            group: selected.group || '',
-            avatar: d.image || 'img/user-default.png',
-            level: Number(d.level) || 1,
-            class: d.charClass || 'Adventurer',
-            race: d.race || '',
-            factions: parseFactionValues(d.factions || d.faction),
-            hp: Number(d.maxHp) || 30,
-            maxHp: Number(d.maxHp) || 30,
-            xp: 0,
-            xpNext: 100,
-            gold: 0,
-            silver: 0,
-            copper: 0,
-            inventory: '',
-            conditions: '',
-            alignment: d.alignment || '',
-            personality: d.personality || '',
-            activeConditions: /** @type {string[]} */ ([]),
-            strength: Number(d.str) || defaults.strength,
-            dexterity: Number(d.dex) || defaults.dexterity,
-            constitution: Number(d.con) || defaults.constitution,
-            intelligence: Number(d.int) || defaults.intelligence,
-            wisdom: Number(d.wis) || defaults.wisdom,
-            charisma: Number(d.cha) || defaults.charisma,
-            armorClass: Number(d.ac) || defaults.armorClass,
-            speed: Number(d.speed) || defaults.speed,
-            items: [],
-            equippedItems: { ...defaults.equippedItems },
-            relationships: [],
-            memories: [],
-            mapPosition: resolveEntryMapPosition(d),
-        };
-
-        partyMembers.push(newMember);
+        partyMembers.push(memberFromEntry(selected, worldName));
         renderPartyMembers();
         savePartyState();
     });
@@ -6925,6 +7192,15 @@ export function initPartyPanel() {
     renderLocationMapsPreview();
 
     // Restore per-session party when chat changes
+    // El juego se abre por su pantalla de titulo. Se espera a que la aplicacion termine de
+    // cargar — antes de APP_READY el chat todavia se esta montando, y adoptarlo a medias
+    // deja la pantalla en blanco.
+    eventSource.on(event_types.APP_READY, () => {
+        // Un respiro para que la pantalla de bienvenida acabe de dibujar sus campanas: es
+        // lo que el menu cuenta en "Cargar partida".
+        setTimeout(() => autostartGameShell(), 400);
+    });
+
     eventSource.on(event_types.CHAT_CHANGED, () => {
         loadPartyForChat();
         // Cerrar la partida ya no apaga el Modo Juego: sin campana abierta, la escena
@@ -7382,6 +7658,13 @@ export function initPartyPanel() {
             toastr.warning('Usa /punto, /punto guardar <nombre> o /punto volver <numero>.');
             return '';
         },
+    }));
+
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'campana',
+        helpString: '<div>El editor de la campana abierta: el mundo y sus localidades, con sus tableros. '
+            + 'Escribe donde escribe el importador de libros.</div>',
+        callback: async () => await openCampaignBuilder(),
     }));
 
     SlashCommandParser.addCommandObject(SlashCommand.fromProps({

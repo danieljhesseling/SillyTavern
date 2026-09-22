@@ -301,7 +301,7 @@ extensions:
   autoUpdate: true
   models:
     # Enables automatic model download from HuggingFace
-    autoDownload: true
+    autoDownload: false
     # Additional models for extensions. Expects model IDs from HuggingFace model hub in ONNX format
     classification: Cohee/distilbert-base-uncased-go-emotions-onnx
     captioning: Xenova/vit-gpt2-image-captioning
