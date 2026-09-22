@@ -29,6 +29,7 @@
  * @property {string} personality El tono, con las palabras del jugador.
  * @property {string} description Qué sabe y cómo cuenta. Opcional.
  * @property {string} greeting    Con qué frase abre la campaña. Opcional.
+ * @property {string} verbosity   Cuánto se extiende. Una de `VERBOSITY`.
  */
 
 /**
@@ -45,6 +46,55 @@
 
 /** El nombre de quien narra cuando no se le pone ninguno. */
 export const DEFAULT_NARRATOR_NAME = 'Narrador';
+
+/**
+ * Cuánto se extiende al contar y —lo que de verdad importa— **qué recorta**.
+ *
+ * Decirle «sé breve» a un modelo no funciona: escribe lo mismo con frases más cortas. Lo
+ * que sí funciona es un presupuesto de frases y una lista de lo que **no** tiene que
+ * contar, porque casi toda la palabrería de una respuesta larga es de tres clases:
+ * repetir lo que el jugador acaba de hacer, volver a describir un sitio que no ha
+ * cambiado, y cerrar con tres preguntas donde basta una.
+ */
+export const VERBOSITY = {
+    terse: {
+        label: 'Seco',
+        describe: 'Una o dos frases. Solo lo que ha cambiado.',
+        rules: [
+            'Respondes en **una o dos frases**.',
+            'Cuentas solo lo que ha cambiado desde el turno anterior.',
+            'No describes el ambiente si sigue igual, ni repites lo que el jugador acaba de hacer.',
+            'No cierras preguntando: cuando toca decidir, se nota solo.',
+        ],
+    },
+    brief: {
+        label: 'Al grano',
+        describe: 'Dos a cuatro frases: qué ha cambiado y qué se puede hacer.',
+        rules: [
+            'Respondes en **dos a cuatro frases**, salvo que acabe de pasar algo grande.',
+            'Cuentas lo que ha cambiado y lo que el grupo puede hacer ahora.',
+            'No repites lo que el jugador ya sabe ni vuelves a describir un sitio que no ha cambiado.',
+            'Una sola pregunta al final, y solo si hace falta.',
+        ],
+    },
+    full: {
+        label: 'Con ambiente',
+        describe: 'Hasta seis frases, con olor y ruido cuando aportan.',
+        rules: [
+            'Respondes en **cuatro a seis frases**.',
+            'Puedes describir el ambiente, pero solo lo que sea nuevo o haya cambiado.',
+            'Una sola pregunta al final.',
+        ],
+    },
+    novel: {
+        label: 'Sin freno',
+        describe: 'Lo que le pida el cuerpo. Escribe largo.',
+        rules: [],
+    },
+};
+
+/** Lo que se usa cuando la campaña no dice nada. */
+export const DEFAULT_VERBOSITY = 'brief';
 
 /**
  * El oficio, dicho en la propia ficha.
@@ -89,8 +139,12 @@ export function buildNarratorCard(answers, world = {}) {
         text(world.synopsis),
     ].filter(Boolean).join(' ');
 
+    // El largo va **con el oficio**, no al final: es una regla de como se narra, y lo
+    // que se cuelga al final de una descripcion larga es lo primero que se diluye.
+    const pace = VERBOSITY[text(answers?.verbosity)] ?? VERBOSITY[DEFAULT_VERBOSITY];
     const description = [
         ...CRAFT,
+        ...(pace.rules.length > 0 ? [pace.rules.join(' ')] : []),
         setting,
         text(answers?.description),
     ].filter(Boolean).join('\n\n');

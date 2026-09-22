@@ -12,7 +12,9 @@ import { buildNewCampaignCta, askWizard, createCampaign } from './game-engine/ui
 import { openCampaignBuilder } from './party.js';
 import { isCampaignWorld, getStartingPoint } from './game-engine/campaign/campaign-worlds.js';
 import { planCampaignDeletion, describeDeletion } from './game-engine/campaign/campaign-delete.js';
-import { buildNarratorCard, describeNarrator } from './game-engine/campaign/narrator.js';
+import {
+    buildNarratorCard, describeNarrator, VERBOSITY, DEFAULT_VERBOSITY,
+} from './game-engine/campaign/narrator.js';
 import { generateWorld } from './game-engine/world-builder/world-schema.js';
 import { escapeHtml } from './utils.js';
 
@@ -994,6 +996,126 @@ export function initCampaigns() {
             await showSessionsPopup(String(worldName));
         }
     });
+}
+
+/**
+ * Cambia cómo narra la campaña abierta, sin volver a crearla.
+ *
+ * El narrador se elegía al crear y ahí se quedaba: para que dejara de soltar cinco
+ * párrafos había que editar su ficha a mano. Esto reescribe **su descripción** — que es lo
+ * que de verdad llega al prompt en cada turno — conservando el nombre, la cara y lo que el
+ * jugador escribiera de él.
+ *
+ * @returns {Promise<string>}
+ */
+export async function changeNarratorPace() {
+    const worldName = String(chat_metadata?.[METADATA_KEY] || '');
+    if (!worldName) {
+        toastr.warning('Abre una campaña antes de cambiarle el narrador.');
+        return '';
+    }
+
+    const data = await loadWorldInfo(worldName);
+    const avatar = String(data?.metadata?.narratorAvatar || '');
+    const index = characters.findIndex((/** @type {any} */ c) => String(c?.avatar || '') === avatar);
+    const narrator = index >= 0 ? characters[index] : null;
+
+    if (!narrator) {
+        toastr.warning(
+            'Esta campaña no tiene narrador propio: lo cuenta el ayudante de siempre. '
+            + 'Créale uno al empezar una campaña nueva.',
+            'Sin narrador',
+        );
+        return '';
+    }
+
+    const root = $('<div class="nv-root"></div>');
+    root.append($('<div class="nv-intro"></div>').text(
+        `Cómo cuenta ${narrator.name}. Esto se escribe en su ficha y llega al modelo en cada turno.`,
+    ));
+
+    const current = String(data?.metadata?.narratorVerbosity || DEFAULT_VERBOSITY);
+    let chosen = current;
+
+    for (const [id, pace] of Object.entries(VERBOSITY)) {
+        const option = $('<label class="nv-option"></label>');
+        const radio = $('<input type="radio" name="nv-pace" />')
+            .attr('value', id)
+            .prop('checked', id === current);
+        radio.on('change', () => { chosen = id; });
+
+        option.append(radio);
+        option.append($('<span class="nv-label"></span>').text(pace.label));
+        option.append($('<span class="nv-what"></span>').text(pace.describe));
+        root.append(option);
+    }
+
+    const confirmed = await Popup.show.confirm(
+        escapeHtml(`Cómo narra ${narrator.name}`),
+        root.prop('outerHTML'),
+        { okButton: 'Guardar', cancelButton: 'Cancelar' },
+    );
+    // El popup dibuja una copia del HTML, asi que lo elegido se lee de ella y no del
+    // objeto que se quedo fuera del arbol.
+    const picked = String($('input[name="nv-pace"]:checked').val() || chosen || current);
+    if (!confirmed) return '';
+
+    // Se reescribe la descripcion completa: el ritmo va dentro del oficio, no pegado al
+    // final, y ahi no se puede parchear una linea sin rehacer el bloque.
+    const card = buildNarratorCard({
+        name: narrator.name,
+        personality: narrator.personality,
+        description: String(data?.metadata?.narratorAbout || ''),
+        greeting: narrator.first_mes,
+        verbosity: picked,
+    }, {
+        worldName,
+        genre: String(data?.metadata?.genre || ''),
+        synopsis: String(data?.metadata?.description || ''),
+    });
+
+    // `/edit` **reconstruye la ficha entera** con lo que se le manda: lo que no viaje en
+    // este formulario se borra. Asi que se reenvia todo lo que ya tenia y solo se pisa lo
+    // que cambia — si no, cambiar el ritmo le quitaria de paso las etiquetas y el
+    // `talkativeness`, y nadie lo notaria hasta mucho despues.
+    const form = new FormData();
+    form.append('avatar_url', avatar);
+    form.append('ch_name', narrator.name);
+    form.append('description', card.description);
+    form.append('personality', card.personality);
+    form.append('scenario', card.scenario);
+    form.append('first_mes', card.first_mes);
+    form.append('mes_example', String(narrator.mes_example ?? ''));
+    form.append('creator_notes', String(narrator.creatorcomment ?? narrator.data?.creator_notes ?? ''));
+    form.append('tags', (Array.isArray(narrator.tags) ? narrator.tags : []).join(','));
+    form.append('talkativeness', String(narrator.talkativeness ?? 0.5));
+    form.append('fav', String(Boolean(narrator.fav)));
+    form.append('chat', String(narrator.chat ?? ''));
+    form.append('create_date', String(narrator.create_date ?? ''));
+
+    try {
+        const response = await fetch('/api/characters/edit', {
+            method: 'POST',
+            headers: getRequestHeaders({ omitContentType: true }),
+            body: form,
+            cache: 'no-cache',
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        await getCharacters();
+    } catch (error) {
+        console.error('[campaigns] could not change how the narrator tells it', error);
+        toastr.error('No se pudo guardar el cambio en la ficha del narrador.');
+        return '';
+    }
+
+    if (data) {
+        data.metadata = Object.assign(data.metadata ?? {}, { narratorVerbosity: picked });
+        await saveWorldInfo(worldName, data, true);
+    }
+
+    const said = `${narrator.name}: ${VERBOSITY[picked].label} — ${VERBOSITY[picked].describe}`;
+    toastr.success(said, 'Cambiado');
+    return said;
 }
 
 /**

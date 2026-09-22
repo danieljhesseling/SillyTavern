@@ -1,6 +1,7 @@
 import { describe, test, expect } from '@jest/globals';
 import {
     buildNarratorCard, validateNarrator, describeNarrator, DEFAULT_NARRATOR_NAME,
+    VERBOSITY, DEFAULT_VERBOSITY,
 } from '../public/scripts/game-engine/campaign/narrator.js';
 
 const world = { worldName: 'El Molino de los Cuervos', genre: 'Fantasía oscura', synopsis: 'Un molino con algo debajo.' };
@@ -107,5 +108,51 @@ describe('contado en una línea', () => {
 
     test('y solo el nombre cuando no hay tono', () => {
         expect(describeNarrator(buildNarratorCard({ name: 'Voz' }, world))).toBe('Voz');
+    });
+});
+
+describe('cuánto se extiende al contar', () => {
+    // «Sé breve» no funciona: el modelo escribe lo mismo con frases mas cortas. Lo que
+    // funciona es un presupuesto de frases y una lista de lo que NO hay que contar.
+    test('lo de por defecto pone un presupuesto de frases', () => {
+        const card = buildNarratorCard({ name: 'Voz' }, world);
+        expect(card.description).toMatch(/dos a cuatro frases/i);
+    });
+
+    test('y dice qué recortar, que es lo que de verdad acorta', () => {
+        const card = buildNarratorCard({ name: 'Voz' }, world);
+        expect(card.description).toMatch(/No repites lo que el jugador ya sabe/);
+        expect(card.description).toMatch(/Una sola pregunta/);
+    });
+
+    test('seco aprieta más que al grano, y al grano más que con ambiente', () => {
+        const said = (verbosity) => buildNarratorCard({ name: 'Voz', verbosity }, world).description;
+        expect(said('terse')).toMatch(/una o dos frases/i);
+        expect(said('full')).toMatch(/cuatro a seis frases/i);
+    });
+
+    test('sin freno no impone nada', () => {
+        const card = buildNarratorCard({ name: 'Voz', verbosity: 'novel' }, world);
+        expect(card.description).not.toMatch(/frases\*\*/);
+    });
+
+    test('un ritmo inventado cae en el de por defecto', () => {
+        expect(buildNarratorCard({ name: 'Voz', verbosity: 'susurrando' }, world).description)
+            .toMatch(/dos a cuatro frases/i);
+    });
+
+    // Va con el oficio y no al final: lo que se cuelga al final de una descripcion larga
+    // es lo primero que se diluye.
+    test('el ritmo va antes de lo que el jugador escribio', () => {
+        const card = buildNarratorCard({ name: 'Voz', description: 'Estuvo en el asedio.' }, world);
+        expect(card.description.indexOf('frases')).toBeLessThan(card.description.indexOf('asedio'));
+    });
+
+    test('cada ritmo se puede enseñar en un desplegable', () => {
+        for (const pace of Object.values(VERBOSITY)) {
+            expect(pace.label.length).toBeGreaterThan(0);
+            expect(pace.describe.length).toBeGreaterThan(10);
+        }
+        expect(VERBOSITY[DEFAULT_VERBOSITY]).toBeTruthy();
     });
 });

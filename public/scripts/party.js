@@ -1945,6 +1945,28 @@ function resolveDeathSave(member) {
 }
 
 /**
+ * Tu ficha, la de mirar.
+ *
+ * @param {any} member
+ * @returns {Promise<void>}
+ */
+async function openOwnSheet(member) {
+    const rules = getActiveRuleset();
+    const { openCharacterPanel } = await import('./game-engine/ui/character-panel.js');
+
+    await openCharacterPanel({
+        member,
+        slotInfo: rules?.slotInfo ?? {},
+        abilities: getAbilityCatalogue(),
+        xpTable: rules?.progression?.xpThresholds ?? null,
+        bondRank: Number(getCampaignBonds()?.[String(member.id)]?.rank) || 0,
+        onEdit: () => { void openPartyMemberModal(member); },
+        Popup,
+        POPUP_TYPE,
+    });
+}
+
+/**
  * Lo que queda de alguien que ha fallado su tercera salvacion.
  *
  * Las dos salidas son de la campana, no mias: se eligieron al crearla. Y la herida se
@@ -3792,6 +3814,13 @@ function handlePlayerCombatMove(rawValue) {
     chargeOpportunityAttacks(member, leftFrom, { x: targetX, y: targetY });
 
     postCombatNarration(`🚶 [COMBAT] ${member.name} se mueve a (${targetX + 1}, ${targetY + 1}) y gasta ${distanceFeet} ft. Restante: ${getRemainingMovementFeet(member)} ft.`);
+
+    // Hay objetivos que se ganan **andando** — «alcanza la salida», «llega al altar»— y
+    // esto no se miraba al moverse: solo al atacar y al empezar ronda. Con el bicho ya
+    // muerto no empezaba ninguna ronda nueva, asi que se podia estar encima de la salida,
+    // con los dos objetivos en verde, y seguir en combate para siempre.
+    if (checkScenarioOutcome()) return `${member.name} -> ${targetX + 1},${targetY + 1}`;
+
     renderLocationMapsPreview();
     return `${member.name} -> ${targetX + 1},${targetY + 1}`;
 }
@@ -5196,12 +5225,13 @@ function openCompanionCard(memberId) {
     const member = partyMembers.find(m => String(m.id) === String(memberId));
     if (!member) return;
 
-    // El tuyo no es un companero: es tu ficha. Pulsarlo abre la hoja entera —
-    // caracteristicas, inventario, progresion— que es lo que uno busca al pulsarse a si
-    // mismo. La tarjeta de vinculo es para los demas, que es de quien tienes vinculo.
+    // El tuyo no es un companero: es tu ficha. Y la ficha que se abre es **la de mirar**,
+    // no la de editar — el editor tiene desplegables, facciones con casillas y las seis
+    // caracteristicas como campos que se escriben, que es lo ultimo que quieres delante
+    // en mitad de una partida. Se llega a el desde un boton de la propia ficha.
     const yours = partyMembers[0];
     if (yours && String(yours.id) === String(member.id)) {
-        void openPartyMemberModal(member);
+        void openOwnSheet(member);
         return;
     }
 
@@ -5964,24 +5994,12 @@ function drawLocationMapsPreview() {
                     if (entry && !entry.isEnemy && String(entry.id) === String(tokenId)) {
                         const member = partyMembers.find(m => m.id === tokenId);
                         if (member) {
-                            const originX = member.mapPosition?.gridX || 0;
-                            const originY = member.mapPosition?.gridY || 0;
-                            const distanceFeet = getDistanceInFeet(originX, originY, gx, gy);
-                            const remainingFeet = getRemainingMovementFeet(member);
-                            if (distanceFeet > remainingFeet) {
-                                toastr.warning(`Movimiento insuficiente. Necesitas ${distanceFeet} ft pero te quedan ${remainingFeet} ft.`);
-                                renderLocationMapsPreview();
-                                return;
-                            }
-                            getCurrentTurnState();
-                            Object.assign(combatEncounter, spendMovement(combatEncounter, distanceFeet, Number(member.speed) || 30));
-                            member.mapPosition = member.mapPosition || { locationName: '', gridX: 0, gridY: 0 };
-                            member.mapPosition.gridX = gx;
-                            member.mapPosition.gridY = gy;
-                            saveCombatState();
-                            // Arrastrar la ficha es moverse igual que escribirlo.
-                            chargeOpportunityAttacks(member, { x: originX, y: originY }, { x: gx, y: gy });
-                            renderLocationMapsPreview();
+                            // Arrastrar la ficha **es** moverse igual que escribirlo, y
+                            // hasta ahora eso era un comentario y no un hecho: esta rama
+                            // tenia su propia copia del movimiento, que no guardaba la
+                            // ficha, no narraba el paso y no miraba si con ese paso se
+                            // ganaba el escenario. Una sola puerta y se acabo la deriva.
+                            handlePlayerCombatMove(`${gx + 1},${gy + 1}`);
                             return;
                         }
                     }
@@ -8003,6 +8021,16 @@ export function initPartyPanel() {
             setPartyTab('location');
             toastr.info(`🎲 ${t`Entered`} ${entered}`);
             return entered;
+        },
+    }));
+
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'narrador',
+        helpString: '<div>Cambia <b>cuánto se extiende</b> quien narra esta campaña: de una o dos '
+            + 'frases a sin freno. Se escribe en su ficha, que es lo que llega al modelo cada turno.</div>',
+        callback: async () => {
+            const { changeNarratorPace } = await import('./campaigns.js');
+            return await changeNarratorPace();
         },
     }));
 

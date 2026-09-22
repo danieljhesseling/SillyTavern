@@ -450,3 +450,37 @@ textarea.cw-ai-map {
     margin-top: 2px;
     flex: 0 0 auto;
 }
+
+/* ---------------------------------------------------------------- cuánto narra */
+
+.nv-intro {
+    font-size: 0.8rem;
+    opacity: 0.7;
+    margin-bottom: 8px;
+    text-align: left;
+}
+
+.nv-option {
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr);
+    align-items: baseline;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    text-align: left;
+}
+
+.nv-option:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.nv-label {
+    font-weight: bold;
+    min-width: 7em;
+}
+
+.nv-what {
+    font-size: 0.8rem;
+    opacity: 0.6;
+}

@@ -769,3 +769,224 @@
 .cp-need-what {
     opacity: 0.8;
 }
+
+/* ================================================================
+   La ficha de mirar (wiki/ROADMAP_MAESTRO.md, Nivel 1)
+
+   Todo de solo lectura: ni un campo, ni un desplegable. Lo que se edita se edita en el
+   editor, que se abre desde el botón de abajo.
+   ================================================================ */
+
+.ch-root {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    text-align: left;
+}
+
+.ch-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.ch-avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 8px;
+    object-fit: cover;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+}
+
+.ch-who {
+    min-width: 0;
+}
+
+.ch-name {
+    font-size: 1.15rem;
+    font-weight: bold;
+}
+
+.ch-title {
+    font-size: 0.82rem;
+    opacity: 0.65;
+}
+
+.ch-bond {
+    font-size: 0.76rem;
+    opacity: 0.55;
+    margin-top: 2px;
+}
+
+/* ---------------------------------------------------------------- la vida */
+
+/* Primero y grande: es lo que se viene a mirar. */
+.ch-health {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.ch-health-num {
+    font-size: 1.05rem;
+    font-weight: bold;
+    font-variant-numeric: tabular-nums;
+    min-width: 5em;
+}
+
+.ch-health-bar {
+    flex: 1;
+    height: 10px;
+    border-radius: 5px;
+    background: rgba(255, 255, 255, 0.08);
+    overflow: hidden;
+}
+
+.ch-health-fill {
+    height: 100%;
+    background: #6fbf73;
+    transition: width 0.2s ease;
+}
+
+.ch-health.hurt .ch-health-fill { background: #e0a53f; }
+.ch-health.down .ch-health-fill { background: #b44; }
+
+.ch-dying {
+    font-size: 0.82rem;
+    color: #ff9a9a;
+}
+
+/* ---------------------------------------------------------------- lo que le pasa */
+
+/* Antes que las estadísticas: si cojeas, eso pesa más que tu carisma. */
+.ch-wrong {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+.ch-tag {
+    font-size: 0.74rem;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(200, 110, 60, 0.18);
+    border: 1px solid rgba(200, 110, 60, 0.4);
+}
+
+/* ---------------------------------------------------------------- los números */
+
+.ch-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(76px, 1fr));
+    gap: 6px;
+}
+
+.ch-box {
+    text-align: center;
+    padding: 6px 4px;
+    border-radius: 8px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    background: var(--black30a, rgba(0, 0, 0, 0.3));
+}
+
+.ch-box-label {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    opacity: 0.55;
+}
+
+.ch-box-value {
+    font-size: 1.1rem;
+    font-weight: bold;
+    font-variant-numeric: tabular-nums;
+}
+
+.ch-box-hint {
+    font-size: 0.74rem;
+    opacity: 0.6;
+}
+
+.ch-defence {
+    grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
+}
+
+/* ---------------------------------------------------------------- listas */
+
+.ch-title-row {
+    margin-top: 4px;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    opacity: 0.55;
+}
+
+.ch-gear,
+.ch-abilities,
+.ch-bag {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.ch-slot,
+.ch-ability,
+.ch-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.03);
+    font-size: 0.82rem;
+}
+
+/* Un hueco es información: se ve, pero no compite con lo que sí llevas. */
+.ch-slot.empty {
+    opacity: 0.4;
+}
+
+.ch-slot-label {
+    min-width: 6em;
+    opacity: 0.65;
+}
+
+.ch-slot-item,
+.ch-ability-name,
+.ch-item-name {
+    font-weight: bold;
+}
+
+.ch-ability-left,
+.ch-item-weight {
+    margin-left: auto;
+    font-size: 0.9em;
+    opacity: 0.6;
+    font-variant-numeric: tabular-nums;
+}
+
+.ch-ability.spent {
+    opacity: 0.45;
+}
+
+.ch-empty {
+    font-size: 0.8rem;
+    opacity: 0.5;
+    padding: 4px 8px;
+}
+
+.ch-progress {
+    font-size: 0.82rem;
+    opacity: 0.75;
+    padding-top: 4px;
+    border-top: 1px solid var(--SmartThemeBorderColor, #444);
+}
+
+.ch-note {
+    font-size: 0.76rem;
+    opacity: 0.5;
+}
+
+.ch-edit {
+    align-self: flex-start;
+}
