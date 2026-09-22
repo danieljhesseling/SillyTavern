@@ -1836,13 +1836,16 @@ try {
         JSON.stringify(prefix));
 
     step('26. Objetivos editables sin tocar World Info');
-    await page.evaluate(() => window.SillyTavern.getContext()
-        .executeSlashCommandsWithOptions('/objetivos editar'));
+    // Sin `await` sobre el comando: abre un popup, y su promesa no resuelve hasta que
+    // alguien lo cierra. Esperarla aqui dejaba el recorrido colgado para siempre.
+    await page.evaluate(() => {
+        void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/objetivos editar');
+    });
     await page.waitForSelector('.oe-root', { timeout: 20000 });
 
     const editor = await page.evaluate(() => ({
         rows: document.querySelectorAll('.oe-row').length,
-        types: [...document.querySelectorAll('.oe-type option')].map(o => o.value),
+        types: [...(document.querySelector('.oe-type')?.options || [])].map(o => o.value),
         labels: [...document.querySelectorAll('.oe-label')].map(i => i.value),
     }));
     check('el editor abre los objetivos que ya tenia el tablero',
@@ -1913,8 +1916,9 @@ try {
         JSON.stringify(lootShape.sword));
 
     // Los enemigos del tablero, editables sin abrir World Info.
-    await page.evaluate(() => window.SillyTavern.getContext()
-        .executeSlashCommandsWithOptions('/enemigos'));
+    await page.evaluate(() => {
+        void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/enemigos');
+    });
     await page.waitForSelector('.ee-root', { timeout: 20000 });
     const encounters = await page.evaluate(() => ({
         rows: document.querySelectorAll('.ee-row').length,
@@ -2036,6 +2040,314 @@ try {
     });
     check('el modulo extraido lee el mismo calendario que la partida',
         extracted.day >= 1 && extracted.slot.length > 0, JSON.stringify(extracted));
+
+
+    step('29. La prueba del raton: mover y atacar sin teclear');
+    // Un combate en el tablero importado, y a partir de aqui solo clics.
+    await page.evaluate(async () => {
+        const ctx = window.SillyTavern.getContext();
+        for (const member of ctx.chatMetadata.party || []) member.hp = member.maxHp;
+        await ctx.saveMetadata();
+        void ctx.executeSlashCommandsWithOptions('/fight Guardián del grano 1');
+    });
+    await page.waitForTimeout(2200);
+    await clearDiceOverlay();
+
+    // Llegar a un turno de jugador **con ficha en el tablero**: pulsar la ficha de otro
+    // no hace nada, y con razon.
+    let actingId = null;
+    for (let i = 0; i < 12; i++) {
+        actingId = await page.evaluate(() => {
+            const enc = window.SillyTavern.getContext().chatMetadata.combatEncounter;
+            const entry = enc?.turnOrder?.[enc?.currentTurnIndex];
+            if (!enc?.active || !entry || entry.isEnemy) return null;
+            const id = String(entry.id);
+            const token = document.querySelector(`.wm-token[data-token-id="${id}"]`);
+            return token && token.offsetParent ? id : null;
+        });
+        if (actingId) break;
+        await page.evaluate(() => window.SillyTavern.getContext()
+            .executeSlashCommandsWithOptions('/combat-end'));
+        await page.waitForTimeout(700);
+        await clearDiceOverlay();
+    }
+
+    check('hay un turno de jugador con su ficha en el tablero',
+        Boolean(actingId), String(actingId));
+
+    // Clic en tu propia ficha: enciende las casillas. No gasta nada.
+    const myToken = page.locator(`.wm-token[data-token-id="${actingId}"]`)
+        .filter({ visible: true }).first();
+    await myToken.click({ timeout: 10000 });
+    await page.waitForTimeout(700);
+
+    const lit = await page.evaluate(() => ({
+        cells: document.querySelectorAll('.wm-highlight-clickable').length,
+        move: document.querySelectorAll('.wm-highlight-move.wm-highlight-clickable').length,
+    }));
+    check('pulsar tu ficha enciende casillas, y son pulsables',
+        lit.cells > 0 && lit.move > 0, JSON.stringify(lit));
+
+    // Clic en una casilla encendida: mueve. Se elige la que mas acerca al enemigo, y sin
+    // nadie encima: una ficha dibujada sobre la casilla se lleva el clic antes que ella,
+    // y acercarse es lo que hace que el ataque de despues no dependa de los dados.
+    const movedTo = await page.evaluate(() => {
+        const ctx = window.SillyTavern.getContext();
+        const enc = ctx.chatMetadata.combatEncounter;
+        const enemy = (enc?.enemies || []).find(e => (e.currentHp || 0) > 0);
+        const taken = new Set([
+            ...(ctx.chatMetadata.party || []).map(m => `${m.mapPosition?.gridX},${m.mapPosition?.gridY}`),
+            ...(enc?.enemies || []).map(e => `${e.gridX},${e.gridY}`),
+        ]);
+        const free = [...document.querySelectorAll('.wm-highlight-move.wm-highlight-clickable')]
+            .map(node => ({ x: Number(node.dataset.x), y: Number(node.dataset.y) }))
+            .filter(cell => !taken.has(`${cell.x},${cell.y}`));
+        if (free.length === 0) return null;
+        if (!enemy) return free[0];
+
+        const away = cell => Math.max(
+            Math.abs(cell.x - (enemy.gridX || 0)), Math.abs(cell.y - (enemy.gridY || 0)));
+        return free.sort((a, b) => away(a) - away(b))[0];
+    });
+    check('alguna casilla encendida esta libre de fichas', Boolean(movedTo), JSON.stringify(movedTo));
+    await page.locator(
+        `.wm-highlight-move.wm-highlight-clickable[data-x="${movedTo?.x}"][data-y="${movedTo?.y}"]`,
+    ).first().click();
+    await page.waitForTimeout(1200);
+    await clearDiceOverlay();
+
+    const afterMove = await page.evaluate(() => {
+        const ctx = window.SillyTavern.getContext();
+        const enc = ctx.chatMetadata.combatEncounter;
+        const entry = enc?.turnOrder?.[enc?.currentTurnIndex];
+        const me = (ctx.chatMetadata.party || []).find(m => String(m.id) === String(entry?.id));
+        return me ? { x: me.mapPosition?.gridX, y: me.mapPosition?.gridY } : null;
+    });
+    check('pulsar una casilla encendida mueve de verdad, sin teclear',
+        Boolean(movedTo && afterMove && afterMove.x === movedTo.x && afterMove.y === movedTo.y),
+        JSON.stringify({ pulsada: movedTo, ahora: afterMove }));
+
+    // Clic en el enemigo: abre su tarjeta. Y **no gasta el turno**, que es la regla.
+    const enemyToken = page.locator('.wm-token-enemy').filter({ visible: true }).first();
+    const actionBefore = await page.evaluate(() =>
+        Boolean(window.SillyTavern.getContext().chatMetadata.combatEncounter?.turnState?.actionUsed));
+
+    await enemyToken.click({ timeout: 10000 });
+    await page.waitForSelector('.tc-card', { timeout: 8000 });
+
+    const card = await page.evaluate(() => ({
+        name: document.querySelector('.tc-name')?.textContent || '',
+        stats: document.querySelector('.tc-stats')?.textContent || '',
+        buttons: [...document.querySelectorAll('.tc-btn')].map(b => ({ text: b.textContent, off: b.disabled })),
+        spent: Boolean(window.SillyTavern.getContext().chatMetadata.combatEncounter?.turnState?.actionUsed),
+    }));
+    check('pulsar un enemigo abre su tarjeta, con sus numeros',
+        card.name.length > 0 && /PG .* CA .* ft/.test(card.stats), JSON.stringify(card.stats));
+    check('un clic no gasta la accion del turno: esa es la regla',
+        card.spent === actionBefore, JSON.stringify({ antes: actionBefore, despues: card.spent }));
+    check('y la tarjeta ofrece atacar, el definitivo y cerrar',
+        card.buttons.length === 3 && card.buttons[0].text === 'Atacar',
+        JSON.stringify(card.buttons));
+
+    // El boton si gasta: aqui es donde se ataca. Que el enemigo este a tiro depende de
+    // donde haya andado, asi que si no lo esta, lo que se comprueba es que lo diga.
+    const attackButton = page.locator('.tc-btn', { hasText: 'Atacar' });
+    if (await attackButton.isDisabled()) {
+        check('si el enemigo no esta a tiro, el boton lo dice en vez de no responder',
+            /Fuera de alcance/.test(String(await attackButton.getAttribute('title'))),
+            String(await attackButton.getAttribute('title')));
+        await page.locator('.tc-btn', { hasText: 'Cerrar' }).click();
+    } else {
+        const logBefore = await page.locator('#world_location_maps_list .cl-row').count();
+        await attackButton.click();
+        await page.waitForTimeout(1400);
+        await clearDiceOverlay();
+
+        const afterAttack = await page.evaluate(() => ({
+            card: document.querySelectorAll('.tc-card').length,
+            spent: Boolean(window.SillyTavern.getContext().chatMetadata.combatEncounter?.turnState?.actionUsed),
+        }));
+        const logAfter = await page.locator('#world_location_maps_list .cl-row').count();
+
+        check('el boton Atacar si resuelve el golpe, y queda en el registro',
+            logAfter > logBefore, `${logBefore} -> ${logAfter}`);
+        check('gasta la accion del turno y cierra la tarjeta',
+            afterAttack.spent === true && afterAttack.card === 0, JSON.stringify(afterAttack));
+    }
+
+    await page.evaluate(() => window.SillyTavern.getContext()
+        .executeSlashCommandsWithOptions('/combat-stop'));
+    await page.waitForTimeout(1000);
+    await clearDiceOverlay();
+
+    step('30. El reloj, las fichas de accion y la tarjeta de companero');
+    // Todo lo de aqui es a base de clics: ni un comando escrito.
+    await page.evaluate(() => {
+        void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/modojuego');
+    });
+    await page.waitForSelector('#game-shell', { timeout: 15000 });
+    await page.waitForTimeout(1200);
+
+    const clock = await page.evaluate(() => ({
+        label: document.querySelector('.gs-clock-label')?.textContent || '',
+        buttons: [...document.querySelectorAll('.gs-clock-btn')].map(b => ({
+            text: b.textContent || '', off: b.disabled, why: b.title,
+        })),
+    }));
+    check('el reloj dice el dia y el momento, dentro de la partida',
+        /^Día \d+ · .+/.test(clock.label), clock.label);
+    check('y trae las cuatro formas de pasar el tiempo, que vivian en un cajon',
+        clock.buttons.length === 4
+        && clock.buttons.some(b => /Pasar el rato/.test(b.text))
+        && clock.buttons.some(b => /Descanso largo/.test(b.text)),
+        JSON.stringify(clock.buttons.map(b => b.text)));
+
+    await page.locator('.gs-clock-btn', { hasText: 'Pasar el rato' }).click();
+    await page.waitForTimeout(1200);
+    const afterSlot = await page.evaluate(() => document.querySelector('.gs-clock-label')?.textContent || '');
+    check('pulsar Pasar el rato mueve el reloj de verdad',
+        afterSlot !== clock.label && /^Día \d+ · .+/.test(afterSlot), `${clock.label} -> ${afterSlot}`);
+
+    // La tira del grupo vive en el dialogo, que es donde se habla con ellos.
+    await page.locator('.gs-scene-btn', { hasText: 'Dialogo' }).click();
+    await page.waitForTimeout(900);
+
+    const bondBefore = await page.evaluate(() => JSON.stringify(
+        window.SillyTavern.getContext().chatMetadata.bonds ?? {}));
+
+    await page.locator('#game-shell .gs-chip').first().click();
+    await page.waitForSelector('.cc-card', { timeout: 8000 });
+    const card30 = await page.evaluate(() => ({
+        name: document.querySelector('.cc-name')?.textContent || '',
+        rank: document.querySelector('.cc-rank')?.textContent || '',
+        actions: [...document.querySelectorAll('.cc-btn')].map(b => b.textContent || ''),
+    }));
+    check('pulsar una cara del grupo abre su ficha, con su rango',
+        card30.name.length > 0 && /Rango/.test(card30.rank), JSON.stringify(card30));
+    check('y ofrece pasar tiempo y regalar, no solo anotar lo que paso',
+        card30.actions.some(a => /Pasar tiempo/.test(a)) && card30.actions.some(a => /Regalar/.test(a)),
+        JSON.stringify(card30.actions));
+
+    await page.locator('.cc-btn', { hasText: 'Pasar tiempo' }).click();
+    await page.waitForTimeout(1400);
+    const afterDowntime = await page.evaluate(() => ({
+        bonds: JSON.stringify(window.SillyTavern.getContext().chatMetadata.bonds ?? {}),
+        clock: document.querySelector('.gs-clock-label')?.textContent || '',
+        card: document.querySelectorAll('.cc-card').length,
+    }));
+    check('pasar tiempo con alguien sube su vinculo y gasta un bloque del dia',
+        afterDowntime.bonds !== bondBefore && afterDowntime.clock !== afterSlot && afterDowntime.card === 0,
+        JSON.stringify({ reloj: afterSlot + ' -> ' + afterDowntime.clock }));
+
+    // Las fichas de accion: lo que se puede hacer sin escribirlo.
+    const chips30 = await page.evaluate(() => [...document.querySelectorAll('.gs-chip-action')]
+        .map(b => b.textContent || ''));
+    check('hay fichas de accion, y salen del estado del tablero',
+        chips30.length > 0
+        && chips30.some(c => /Salir del tablero/.test(c))
+        && chips30.some(c => /Hablar con/.test(c)),
+        JSON.stringify(chips30));
+
+    const talk = page.locator('.gs-chip-action').filter({ hasText: 'Hablar con' }).first();
+    if (await talk.count() > 0) {
+        await talk.click();
+        await page.waitForTimeout(500);
+    }
+    const draft = await page.evaluate(() =>
+        document.querySelector('#send_textarea')?.value || '');
+    check('la ficha de hablar deja la frase empezada, no la envia',
+        /^Hablo con .+ sobre $/.test(draft), draft);
+    await page.evaluate(() => {
+        const box = document.querySelector('#send_textarea');
+        if (box) box.value = '';
+    });
+
+    // Empezar el combate desde el tablero: los enemigos siguen dibujados en la sala que
+    // el paso 24 dejo abierta, y nadie pelea.
+    await page.locator('.gs-scene-btn', { hasText: 'Combate' }).click();
+    await page.waitForTimeout(1000);
+
+    const startRow = await page.evaluate(() => ({
+        rows: document.querySelectorAll('.sc-row').length,
+        what: document.querySelector('.sc-what')?.textContent || '',
+    }));
+    check('con enemigos a la vista y nadie peleando, el tablero ofrece empezar',
+        startRow.rows === 1 && /Guardián del grano/.test(startRow.what), JSON.stringify(startRow));
+
+    await page.locator('.sc-btn').first().click();
+    await page.waitForTimeout(1600);
+    const banner = await page.evaluate(() => {
+        const node = document.querySelector('.ib-banner');
+        return {
+            banner: document.querySelectorAll('.ib-banner').length,
+            title: document.querySelector('.ib-title')?.textContent || '',
+            clickable: node ? getComputedStyle(node).pointerEvents : '',
+            fighting: Boolean(window.SillyTavern.getContext().chatMetadata.combatEncounter?.active),
+        };
+    });
+    check('el boton empieza el combate con lo que el libro dibujo, y lo anuncia',
+        banner.banner === 1 && banner.title === '¡INICIATIVA!' && banner.fighting,
+        JSON.stringify(banner));
+    check('y el cartel no roba clics: avisa, no decide',
+        banner.clickable === 'none', banner.clickable);
+    await clearDiceOverlay();
+
+    const busy = await page.evaluate(() => ({
+        clock: [...document.querySelectorAll('.gs-clock-btn')].map(b => b.disabled),
+        why: document.querySelector('.gs-clock-btn')?.title || '',
+        chips: document.querySelectorAll('.gs-chip-action').length,
+    }));
+    check('peleando no se descansa, y el boton dice por que en vez de desaparecer',
+        busy.clock.length === 4 && busy.clock.every(Boolean) && busy.why === 'No mientras peleas.',
+        JSON.stringify(busy));
+    check('y las fichas de accion se retiran: la barra de combate ya manda',
+        busy.chips === 0, String(busy.chips));
+
+    // Y el turno se termina con su boton, que es el paso 6 de la prueba del raton.
+    await page.locator('.gs-scene-btn', { hasText: 'Combate' }).click();
+    await page.waitForTimeout(800);
+    const turnBefore = await page.evaluate(() => {
+        const enc = window.SillyTavern.getContext().chatMetadata.combatEncounter;
+        return String(enc?.turnOrder?.[enc?.currentTurnIndex]?.id ?? '');
+    });
+    const endTurn = page.locator('#game-shell .gs-btn').filter({ hasText: 'Fin de turno' }).first();
+    check('la barra de combate ofrece terminar el turno', await endTurn.count() === 1);
+
+    // Solo se puede pasar el turno propio, asi que primero hay que llegar a uno.
+    for (let i = 0; i < 10 && await endTurn.isDisabled(); i++) {
+        await page.evaluate(() => window.SillyTavern.getContext()
+            .executeSlashCommandsWithOptions('/combat-end'));
+        await page.waitForTimeout(800);
+        await clearDiceOverlay();
+    }
+    check('y dice por que no se puede cuando no es tu turno',
+        await endTurn.getAttribute('title') !== null,
+        String(await endTurn.getAttribute('title')));
+
+    if (await endTurn.count() === 1 && !await endTurn.isDisabled()) {
+        await endTurn.click();
+        await page.waitForTimeout(1600);
+        await clearDiceOverlay();
+        const turnAfter = await page.evaluate(() => {
+            const enc = window.SillyTavern.getContext().chatMetadata.combatEncounter;
+            return String(enc?.turnOrder?.[enc?.currentTurnIndex]?.id ?? '');
+        });
+        check('y pulsarlo pasa el turno de verdad, sin teclear',
+            turnAfter !== turnBefore, turnBefore + ' -> ' + turnAfter);
+    }
+
+    const startedByButton = await page.evaluate(() => ({
+        enemies: (window.SillyTavern.getContext().chatMetadata.combatEncounter?.enemies || []).length,
+        row: document.querySelectorAll('.sc-row').length,
+    }));
+    check('y mientras se pelea ya no ofrece empezar otro',
+        startedByButton.enemies > 0 && startedByButton.row === 0, JSON.stringify(startedByButton));
+
+    await page.evaluate(() => window.SillyTavern.getContext()
+        .executeSlashCommandsWithOptions('/combat-stop'));
+    await page.waitForTimeout(1000);
+    await clearDiceOverlay();
+    await leaveGameMode();
 
     console.log('\n--- console errors ---');
     console.log(problems.size ? [...problems].join('\n') : '(none)');

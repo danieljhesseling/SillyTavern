@@ -28,6 +28,8 @@
 @import url(css/campaign-panel.css);
 @import url(css/game-shell.css);
 @import url(css/objective-editor.css);
+@import url(css/target-card.css);
+@import url(css/combat-cues.css);
 
 :root {
     interpolate-size: allow-keywords;

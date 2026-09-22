@@ -782,6 +782,8 @@ Afirmaciones de este proyecto que resultaron falsas, con lo que se hizo. Están 
 - [[POR_HACER]]: Lista viva de pendientes derivada de este plan.
 - [[ROADMAP_INGESTA_CAMPANAS_LIBROS]]: La Fase G en detalle — el contrato de datos entre tu GEM y el motor.
 - [[PROPUESTA_FRONTEND_MODO_JUEGO]]: La Fase H en detalle — las tres pantallas y por qué el director escucha al motor.
+- [[PLAN_JUEGO_TIPO_FRIENDS_AND_FABLES]]: Hacia la experiencia Friends & Fables (DM autónomo, magia, descansos y level-up, sin marketplace).
+- [[ROADMAP_JUEGO_SIN_COMANDOS]]: Juego 100% por clics — erradicar los comandos de barra y pasar a point-and-click táctico.
 - [[PROPUESTA_JUEGO_DND_GLOOMHAVEN_PERSONA]]: Diseño de juego del que salen las Fases B, D, E y F.
 - [[PROBLEMAS_TECNICOS]]: Auditoría de la que salen las correcciones ya aplicadas.
 - [[PROPUESTAS_MEJORA]]: Catálogo de 200 del que se seleccionan las `PROP-xxx` citadas; incluye el estado de cada una y el anexo con las propuestas propias (`N-01` a `N-14`).

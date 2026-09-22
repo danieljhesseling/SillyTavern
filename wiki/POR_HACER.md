@@ -22,7 +22,7 @@ El plan y el porqué están en [[ROADMAP]]; esto es el marcador.
 > **El patrón a vigilar**: había mucho motor construido y testeado, y menos motor **conectado**. Desde el 2026-09-21 **la orden responde que no falta ninguno, y ya sin salvedades**. Las tareas marcadas 🖥️ son las que convierten trabajo hecho en trabajo jugable, y un módulo que solo ejecutan los tests no cuenta como hecho:
 >
 > ```bash
-> node tools/check-engine-wiring.mjs   # 37 módulos, los 37 conectados
+> node tools/check-engine-wiring.mjs   # 54 módulos, los 54 conectados
 > ```
 
 ---
@@ -37,6 +37,10 @@ Ordenado por lo que desbloquea. Cada una tiene el camino decidido: si aparece un
 > Lo que queda en este bloque es **profundidad de juego**, no tubería: salas y puertas para que una mazmorra de libro no sea un único combate gigante, descansos para que los recursos signifiquen algo, y el resto.
 
 **El bloque A está vacío por primera vez.** Todo lo que se podía hacer sin preguntar, está hecho: las mecánicas, la ingesta de libros, el Modo Videojuego y la infraestructura que los sostiene.
+
+El **[[ROADMAP_JUEGO_SIN_COMANDOS]]** (K0–K4b) también está completo desde el 2026-09-21: tablero por clics, tarjeta de objetivo, cartel de iniciativa, botón de iniciar combate, relevo por botón, reloj en la cabecera, fichas de acción y ficha de compañero. Los comandos siguen ahí: son la API probada por el recorrido.
+
+El siguiente salto cualitativo hacia la paridad con Friends & Fables está planificado en **[[PLAN_JUEGO_TIPO_FRIENDS_AND_FABLES]]** (Baterías F1 a F4: DM autónomo con tiradas CD, descansos D&D, magia táctica/espacios de conjuro y subida de nivel).
 
 Lo que venga ahora sale del bloque **P** (propuestas) o de una decisión tuya del bloque **D**.
 
@@ -138,6 +142,8 @@ No es trabajo pendiente, es información: cosas que están así **a propósito**
 ---
 
 ## 🧪 Probarlo a mano (cinco minutos)
+
+*Esta lista es para comprobar que todo sigue en pie. Para **jugar**, la guía es [[EMPEZAR_UNA_CAMPANA]].*
 
 1. `npm start` y abre <http://localhost:8000>. Si el servidor llevaba abierto desde antes de los últimos cambios, reinícialo y recarga con `Ctrl+F5`.
 2. En la bienvenida, **Nueva campaña**. Tienes dos caminos:

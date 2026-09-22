@@ -67,6 +67,11 @@ import {
  * @property {() => void} onEndTurn
  * @property {() => void} onFlee
  * @property {() => void} onObjectives
+ * @property {() => import('./clock-widget.js').ClockView} [getClock] El dia y lo que deja hacer.
+ * @property {(action: 'slot'|'day'|'short'|'long') => void} [onClock] Pasar el tiempo o descansar.
+ * @property {() => import('./action-chips.js').ActionChip[]} [getChips] Lo que se puede hacer sin escribirlo.
+ * @property {(chip: import('./action-chips.js').ActionChip) => void} [onChip]
+ * @property {(memberId: string) => void} [onCompanion] Abrir la ficha de un companero.
  * @property {() => void} [onClose] Anything the game wants undone when the shell closes.
  * @property {(message: string) => void} [notify]
  */
@@ -222,6 +227,67 @@ function renderSwitcher(bar, situation, current) {
 }
 
 /**
+ * Draw the row of things that can be done without typing them.
+ *
+ * Cada ficha sale del estado, asi que ninguna ofrece algo que luego no pase. La que abre
+ * una puerta gasta — puede despertar una sala —, y por eso es un boton; la de hablar solo
+ * deja el texto empezado en el chat, porque lo que se diga lo decide quien juega.
+ *
+ * @param {HTMLElement} row
+ */
+function renderActionChips(row) {
+    if (!options?.getChips) {
+        row.textContent = '';
+        return;
+    }
+
+    const chips = options.getChips();
+    row.textContent = '';
+    row.classList.toggle('gs-chips-empty', chips.length === 0);
+
+    for (const chip of chips) {
+        const button = makeButton(`gs-chip-action gs-chip-${chip.source}`);
+        button.title = chip.command
+            ? `Ejecuta ${chip.command}`
+            : (chip.draft ? 'Deja la frase empezada en el chat' : chip.label);
+        button.appendChild(el('i', `fa-solid ${chip.icon}`));
+        button.appendChild(el('span', 'gs-chip-action-label', chip.label));
+        button.addEventListener('click', () => options?.onChip?.(chip));
+        row.appendChild(button);
+    }
+}
+
+/**
+ * Draw the clock: the day, the part of the day, and the four things that spend time.
+ *
+ * Descansar vivia en la pestana de Campana del cajon del grupo, o sea fuera de la
+ * partida. Un boton apagado se queda a la vista con el motivo en el `title`: esconderlo
+ * haria creer que descansar no existe, cuando lo que pasa es que ahora no toca.
+ *
+ * @param {HTMLElement} clock
+ */
+function renderClock(clock) {
+    if (!options?.getClock) {
+        clock.textContent = '';
+        return;
+    }
+
+    const view = options.getClock();
+    clock.textContent = '';
+    clock.appendChild(el('span', 'gs-clock-label', view.label));
+
+    for (const action of view.actions) {
+        const button = makeButton('gs-clock-btn');
+        button.title = action.why;
+        button.disabled = !action.enabled;
+        button.appendChild(el('i', `fa-solid ${action.icon}`));
+        button.appendChild(el('span', 'gs-clock-btn-label', action.label));
+        button.addEventListener('click', () => options?.onClock?.(action.id));
+        clock.appendChild(button);
+    }
+}
+
+/**
  * Draw the action bar under the board.
  *
  * The buttons are the commands that already exist, with the typing taken out: attacking
@@ -262,6 +328,7 @@ function renderActionBar(footer, bar) {
     endTurn.appendChild(el('i', 'fa-solid fa-forward'));
     endTurn.appendChild(el('span', '', ' Fin de turno'));
     endTurn.disabled = !bar.isPlayerTurn;
+    endTurn.title = bar.isPlayerTurn ? 'Pasar el turno' : 'No es tu turno';
     endTurn.addEventListener('click', () => options?.onEndTurn());
     buttons.appendChild(endTurn);
 
@@ -354,7 +421,14 @@ function renderDialogue(scene, view) {
 function renderChips(strip, chips) {
     strip.textContent = '';
     for (const chip of chips) {
-        const card = el('div', 'gs-chip');
+        // Una cara en la tira es la forma mas corta de llegar a un companero, y hasta
+        // ahora no llevaba a ninguna parte: los botones de vinculo estaban en un cajon.
+        const card = options?.onCompanion ? makeButton('gs-chip') : el('div', 'gs-chip');
+        if (options?.onCompanion) {
+            card.title = `Abrir la ficha de ${chip.name}`;
+            card.classList.add('gs-chip-clickable');
+            card.addEventListener('click', () => options?.onCompanion?.(chip.id));
+        }
         card.classList.toggle('fallen', chip.fallen);
         card.classList.toggle('bloodied', chip.bloodied);
 
@@ -553,6 +627,9 @@ export function refreshGameShell() {
         renderExploration(/** @type {HTMLElement} */ (root.querySelector('.gs-places')), options.getExploration());
     }
 
+    renderClock(/** @type {HTMLElement} */ (root.querySelector('.gs-clock')));
+    renderActionChips(/** @type {HTMLElement} */ (root.querySelector('.gs-chips')));
+
     renderSwitcher(/** @type {HTMLElement} */ (root.querySelector('.gs-scenes')), situation, scene);
     const actions = /** @type {HTMLElement} */ (root.querySelector('.gs-actions'));
     if (scene === SCENE.COMBAT) {
@@ -638,6 +715,7 @@ export function openGameShell(shellOptions) {
 
     const head = el('header', 'gs-head');
     head.appendChild(el('div', 'gs-head-state'));
+    head.appendChild(el('div', 'gs-clock'));
     head.appendChild(el('nav', 'gs-scenes'));
     const close = makeButton('gs-close');
     close.title = 'Salir del Modo Juego (Esc)';
@@ -664,6 +742,7 @@ export function openGameShell(shellOptions) {
     dialogue.appendChild(el('div', 'gs-title', 'SillyTavern RPG'));
     dialogue.appendChild(el('div', 'gs-speaker'));
     dialogue.appendChild(el('div', 'gs-chat-slot'));
+    dialogue.appendChild(el('div', 'gs-chips'));
     dialogue.appendChild(el('div', 'gs-party-strip'));
     stage.appendChild(map);
     stage.appendChild(dialogue);

@@ -167,7 +167,8 @@ Para explorar en profundidad cada área del proyecto, consulta los documentos es
 | **Frontend & Pipeline** | [[Frontend-Estructura]] • [[Ciclo-De-Vida-Prompt]] • [[Conectores-IA]] |
 | **Subsistemas Base** | [[WorldInfo-Lorebooks]] • [[SlashCommands-Macros]] • [[Extensiones-Plugins]] |
 | **Motor RPG & D&D** | [[Sistema-Party]] • [[DND-Mecanicas-Items]] • [[Dynamic-Context-Manager]] • [[Campanas-Mapas-Tableros]] • [[World-Content-Popups]] • [[Relaciones-Memorias]] • [[Chat-Enhancements]] |
-| **Auditoría & Futuro** | [[PROBLEMAS_TECNICOS]] • [[PROPUESTAS_MEJORA]] |
+| **Planes & Hojas de Ruta** | [[ROADMAP]] • [[PROPUESTA_FRONTEND_MODO_JUEGO]] • [[ROADMAP_INGESTA_CAMPANAS_LIBROS]] • [[PLAN_JUEGO_TIPO_FRIENDS_AND_FABLES]] • [[ROADMAP_JUEGO_SIN_COMANDOS]] |
+| **Auditoría & Futuro** | [[PROBLEMAS_TECNICOS]] • [[PROPUESTAS_MEJORA]] • [[POR_HACER]] |
 | **Guías de Desarrollo** | [[Mapa-Codigo-Archivos]] • [[Guia-Desarrollo-Flujo]] |
 
 > [!TIP]

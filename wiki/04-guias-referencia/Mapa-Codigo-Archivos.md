@@ -79,6 +79,7 @@ Módulos puros: sin DOM, sin estado global, sin lecturas del chat. Por eso se pr
 | `rules/rest.js` | 216 | Descanso corto y largo, con dados de golpe | ✅ |
 | `combat/loot-items.js` | 84 | Qué es cada cosa que sueltan los enemigos, para que se pueda usar | ✅ |
 | `combat/seeded-random.js` | 97 | Dados que se pueden repetir: una partida dos veces igual | ✅ |
+| `combat/target-card.js` | 94 | Qué dice la tarjeta de un enemigo y qué botones ofrece | ✅ |
 | `ui/contradiction-log.js` | 223 | Lo que la narración dijo y el motor no confirma | ✅ |
 | `campaign/encounter-editor.js` | 117 | Qué enemigos puede sacar un tablero, como filas | ✅ |
 | `ui/encounter-editor.js` | 119 | El panel de `/enemigos` | ✅ |
@@ -93,6 +94,9 @@ Módulos puros: sin DOM, sin estado global, sin lecturas del chat. Por eso se pr
 | `ui/shell/dialogue-scene.js` | 115 | Quién habla en la escena de diálogo | ✅ |
 | `ui/shell/exploration-scene.js` | 145 | Dónde estás, qué hay abierto y qué le falta a lo cerrado | ✅ |
 | `ui/shell/party-strip.js` | 66 | La franja del grupo: vida, estados y rango, para dos escenas | ✅ |
+| `ui/shell/clock-widget.js` | 104 | El día, el momento y las cuatro formas de gastar tiempo (K3) | ✅ |
+| `ui/shell/action-chips.js` | 143 | Qué se puede hacer sin escribirlo, sacado del estado (K4a) | ✅ |
+| `ui/shell/companion-card.js` | 163 | La ficha de un compañero: vínculo, pasar tiempo y regalos (K4b) | ✅ |
 | `ui/campaign-panel.js` | 149 | La pestaña Campaña: el calendario y los vínculos | ✅ |
 | `combat/bond-perks.js` | 114 | Las perks que cambian un combate: aguantar, rematar, dar el relevo | ✅ |
 | `ui/campaign-schema-panel.js` | 111 | Las ocho vistas de `/esquema-campana` | ✅ |

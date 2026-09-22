@@ -33,6 +33,7 @@ import { resolveEntryMapPosition } from './party/positions.js';
 import { createCampaignState } from './party/campaign-state.js';
 import {
     normalizeTerrain, setCell as setTerrainCell, getTerrainOptions, getCoverBonus, setDoorOpen,
+    parseCellKey,
 } from './game-engine/board/terrain.js';
 import { getReachableCells } from './game-engine/board/pathfinding.js';
 import { getCoverAlongLine } from './game-engine/board/line-of-sight.js';
@@ -47,6 +48,7 @@ import {
 import { rollEncounterLoot } from './game-engine/combat/loot.js';
 import { describeLootItem } from './game-engine/combat/loot-items.js';
 import { planSpawnCells } from './game-engine/combat/spawn.js';
+import { buildTargetCard, describeTargetCard } from './game-engine/combat/target-card.js';
 import {
     deriveRooms, openDoor, enemiesInRoom, awakePlacements, normalizeRooms,
 } from './game-engine/campaign/campaign-map.js';
@@ -80,6 +82,9 @@ import {
 } from './game-engine/ui/shell/game-shell.js';
 import { buildDialogueView } from './game-engine/ui/shell/dialogue-scene.js';
 import { buildExplorationView } from './game-engine/ui/shell/exploration-scene.js';
+import { buildClockView, availableHitDice } from './game-engine/ui/shell/clock-widget.js';
+import { buildActionChips } from './game-engine/ui/shell/action-chips.js';
+import { buildCompanionCard, judgeGift } from './game-engine/ui/shell/companion-card.js';
 
 /** @typedef {import('./party/types.js').PartyMember} PartyMember */
 /** @type {PartyMember[]} */
@@ -815,7 +820,9 @@ function getCombatBoardHighlightState(gridWidth, gridHeight) {
     const attackCells = attackable.map(enemy => ({ gridX: enemy.gridX || 0, gridY: enemy.gridY || 0, kind: 'attack' }));
     const movementCells = getReachableCells(
         getActiveBoardTerrain(), pos.gridX || 0, pos.gridY || 0, remainingFeet, gridWidth, gridHeight,
-    );
+    // La casilla en la que ya estas no es un sitio al que moverte: pulsarla gastaria
+    // cero pies, y encendida solo servia para que tu propia ficha se comiera el clic.
+    ).filter(cell => cell.gridX !== (pos.gridX || 0) || cell.gridY !== (pos.gridY || 0));
     const overlayLegend = `${member.name} · Movimiento restante ${remainingFeet} ft · Rango ${getAttackRangeFeet(member)} ft${attackable.length ? ` · Objetivos: ${attackable.map(enemy => enemy.name).join(', ')}` : ' · Sin objetivos en rango'}`;
 
     return {
@@ -1773,33 +1780,76 @@ function runCombatTurnLoop(includeCurrent = true) {
 }
 
 /**
- * Despierta a lo que duerme en una sala recien revelada.
+ * Abre o cierra una puerta del tablero.
+ *
+ * Abrir no es solo cambiar una casilla: revela la sala que guardaba y despierta lo que
+ * dormia dentro. Ese es el ritmo de una mazmorra — el siguiente combate llega cuando tu
+ * decides abrir.
+ *
+ * Vive aqui y no dentro del renderer porque la ficha de accion abre la misma puerta: dos
+ * copias de esto serian dos sitios donde olvidarse de despertar la sala.
+ *
+ * @param {any} board
+ * @param {number} gx
+ * @param {number} gy
+ * @param {boolean} open
+ * @param {number} gridW
+ * @param {number} gridH
+ */
+function toggleBoardDoor(board, gx, gy, open, gridW, gridH) {
+    if (!open) {
+        board.terrain = setDoorOpen(normalizeTerrain(board.terrain), gx, gy, false);
+        persistBoardTerrain(board);
+        postCombatNarration(`[BOARD] La puerta de (${gx + 1}, ${gy + 1}) queda cerrada.`);
+        renderLocationMapsPreview();
+        return;
+    }
+
+    const rooms = normalizeRooms(board.rooms).length > 0
+        ? board.rooms
+        : deriveRooms(normalizeTerrain(board.terrain), gridW, gridH, {
+            revealFrom: partyMembers.map(m => ({
+                x: Number(m.mapPosition?.gridX) || 0,
+                y: Number(m.mapPosition?.gridY) || 0,
+            })),
+        });
+
+    const result = openDoor(normalizeTerrain(board.terrain), rooms, gx, gy);
+    board.terrain = result.terrain;
+    board.rooms = result.rooms;
+    persistBoardTerrain(board);
+    postCombatNarration(`[BOARD] La puerta de (${gx + 1}, ${gy + 1}) queda abierta.`);
+
+    if (result.revealedRoom) {
+        wakeRoomEnemies(board, result.revealedRoom);
+    }
+    renderLocationMapsPreview();
+}
+
+/**
+ * Convierte lo que el libro dibujo en el tablero en enemigos de verdad.
  *
  * Es el ritmo de una mazmorra de Gloomhaven: el siguiente combate llega cuando **tu**
- * abres la puerta, no cuando se carga el mapa. Los que despiertan aparecen donde el libro
- * los dibujo, y actuan al final de la ronda en curso — entrar en mitad del turno de otro
- * seria robarle el suyo.
+ * abres la puerta, no cuando se carga el mapa. Aparecen donde el libro los dibujo, con
+ * los numeros de su plantilla; una colocacion sin plantilla se salta y se avisa.
  *
- * @param {any} board El tablero abierto.
- * @param {any} room La sala que se acaba de revelar.
- * @returns {number} Cuantos han despertado.
+ * @param {Array<{name: string, x: number, y: number}>} placements
+ * @returns {import('./dnd-system.js').EnemyInstance[]}
  */
-function wakeRoomEnemies(board, room) {
-    const placements = enemiesInRoom(room, board?.enemyPlacements ?? []);
-    if (placements.length === 0) return 0;
-
+function instancesFromPlacements(placements) {
     const templates = getCurrentWorldEnemies();
     /** @type {import('./dnd-system.js').EnemyInstance[]} */
-    const woken = [];
+    const instances = [];
 
     for (const placement of placements) {
         const template = templates.find(e => String(e.name).toLowerCase() === String(placement.name).toLowerCase());
         if (!template) {
-            console.warn('[party] sleeping enemy with no template', placement);
+            console.warn('[party] placement with no template', placement);
             continue;
         }
-        const already = combatEncounter.enemies.filter(e => e.name.startsWith(template.name)).length;
-        woken.push({
+        const already = combatEncounter.enemies.filter(e => e.name.startsWith(template.name)).length
+            + instances.filter(e => e.name.startsWith(template.name)).length;
+        instances.push({
             instanceId: generateEnemyInstanceId(),
             templateId: template.id,
             name: already > 0 ? `${template.name} ${already + 1}` : template.name,
@@ -1820,6 +1870,21 @@ function wakeRoomEnemies(board, room) {
         });
     }
 
+    return instances;
+}
+
+/**
+ * Despierta a lo que duerme en una sala recien revelada.
+ *
+ * @param {any} board El tablero abierto.
+ * @param {any} room La sala que se acaba de revelar.
+ * @returns {number} Cuantos han despertado.
+ */
+function wakeRoomEnemies(board, room) {
+    const placements = enemiesInRoom(room, board?.enemyPlacements ?? []);
+    if (placements.length === 0) return 0;
+
+    const woken = instancesFromPlacements(placements);
     if (woken.length === 0) return 0;
 
     const names = woken.map(e => `${e.name} (${e.gridX + 1}, ${e.gridY + 1})`).join(', ');
@@ -1828,6 +1893,7 @@ function wakeRoomEnemies(board, room) {
         // Nadie peleaba: la sala abre su propio combate.
         postCombatNarration(`[COMBAT] Se despierta lo que dormia en la sala: ${names}.`);
         beginEncounterWith(woken);
+        showInitiativeBanner(woken.map(e => e.name));
         return woken.length;
     } else {
         combatEncounter.enemies = [...combatEncounter.enemies, ...woken];
@@ -1839,6 +1905,7 @@ function wakeRoomEnemies(board, room) {
     }
 
     postCombatNarration(`⚠️ [COMBAT] Se despierta lo que dormia en la sala: ${names}.`);
+    showInitiativeBanner(woken.map(e => e.name));
     return woken.length;
 }
 
@@ -2030,13 +2097,31 @@ const getCampaignCalendar = () => campaign.getCalendar();
 const getCampaignBonds = () => campaign.getBonds();
 /** @param {any} calendar @param {any} bonds */
 const saveCampaignState = (calendar, bonds) => campaign.save(calendar, bonds);
-const advanceCampaignSlot = () => campaign.advanceSlot();
-const advanceCampaignDay = () => campaign.advanceDay();
+// El reloj del Modo Juego lee lo mismo que la pestana de Campana, asi que pasar el
+// tiempo tiene que redibujarlo: sin esto el dia cambiaba y la cabecera no se enteraba.
+const advanceCampaignSlot = () => {
+    const result = campaign.advanceSlot();
+    if (isShellOpen()) refreshGameShell();
+    return result;
+};
+const advanceCampaignDay = () => {
+    const result = campaign.advanceDay();
+    if (isShellOpen()) refreshGameShell();
+    return result;
+};
 /** @param {string} characterId @param {string} eventType */
-const recordCampaignBondEvent = (characterId, eventType) => campaign.recordBond(characterId, eventType);
+const recordCampaignBondEvent = (characterId, eventType) => {
+    const result = campaign.recordBond(characterId, eventType);
+    if (isShellOpen()) refreshGameShell();
+    return result;
+};
 const getCurrentSlotLabel = () => campaign.getSlotLabel();
 /** @param {'corto'|'largo'} kind @returns {Promise<string>} */
-const takeRest = (kind) => campaign.rest(kind);
+const takeRest = async (kind) => {
+    const result = await campaign.rest(kind);
+    if (isShellOpen()) refreshGameShell();
+    return result;
+};
 const getCampaignMap = () => campaign.getMap();
 /** @param {string} locationName */
 const markLocationComplete = (locationName) => campaign.markLocationComplete(locationName);
@@ -2364,9 +2449,169 @@ function offerBatonPass(actor) {
 
     const names = candidates.map(c => c.name).join(', ');
     postCombatNarration(
-        `🔄 [COMBAT] ${actor.name} puede ceder ${remainingFeet} ft de movimiento. `
-        + `Usa /relevo <nombre> (${names}).`,
+        `🔄 [COMBAT] ${actor.name} puede ceder ${remainingFeet} ft de movimiento a: ${names}.`,
     );
+
+    // Y con un boton, porque decirle a alguien que escriba un comando en mitad de un
+    // combate es pedirle que deje el raton.
+    showBatonPassOffer(actor, candidates, remainingFeet);
+}
+
+/**
+ * Cede el movimiento que queda al companero que se nombre.
+ *
+ * Lo mismo que hace /relevo, porque es lo que usa /relevo: el boton y el comando
+ * no pueden divergir si solo hay un sitio donde esta escrito.
+ *
+ * @param {string} wantedName
+ * @returns {string} el nombre de quien recibe el relevo, o '' si no se pudo
+ */
+function handleBatonPass(wantedName) {
+    const actor = getCurrentActingMember();
+    if (!actor) {
+        toastr.warning('No hay un turno de jugador activo.');
+        return '';
+    }
+
+    const remainingFeet = getRemainingMovementFeet(actor);
+    const candidates = planBatonPass({
+        bonds: getCampaignBonds(),
+        party: partyMembers,
+        actorId: String(actor.id),
+        remainingFeet,
+    });
+
+    if (candidates.length === 0) {
+        toastr.warning('No puedes ceder movimiento ahora mismo.');
+        return '';
+    }
+
+    const wanted = String(wantedName ?? '').trim().toLowerCase();
+    const chosen = candidates.find(c => c.name.toLowerCase() === wanted);
+    if (!chosen) {
+        toastr.warning(`Puedes cederlo a: ${candidates.map(c => c.name).join(', ')}.`);
+        return '';
+    }
+
+    // Spent for the day, and the turn moves to whoever received it: that is what
+    // makes the relay a tactical choice and not free movement for everyone.
+    saveCampaignState(null, spendPerk(getCampaignBonds(), String(actor.id), 'baton_pass'));
+
+    const index = combatEncounter.turnOrder.findIndex(e => !e.isEnemy && String(e.id) === chosen.id);
+    if (index >= 0) {
+        combatEncounter.currentTurnIndex = index;
+        resetCombatTurnState(combatEncounter.turnOrder[index]);
+    }
+
+    postCombatNarration(`🔄 [COMBAT] ${actor.name} cede el relevo a ${chosen.name}.`);
+    renderLocationMapsPreview();
+    return chosen.name;
+}
+
+/**
+ * El relevo, como botones sobre los companeros a los que puedes cedersele.
+ *
+ * Aparece solo, al derrotar a alguien, y se va solo si no lo usas: es una oportunidad,
+ * no una decision pendiente que bloquee el turno.
+ *
+ * @param {any} actor
+ * @param {Array<{id: string, name: string}>} candidates
+ * @param {number} remainingFeet
+ */
+function showBatonPassOffer(actor, candidates, remainingFeet) {
+    $('.bp-offer').remove();
+
+    const root = $('<div class="bp-offer"></div>');
+    root.append($('<div class="bp-title"></div>').text(
+        `${actor.name} puede ceder ${remainingFeet} ft`));
+
+    for (const candidate of candidates) {
+        const button = $('<button class="menu_button bp-btn" type="button"></button>');
+        button.append('<i class="fa-solid fa-rotate"></i>');
+        button.append($('<span></span>').text(` ${candidate.name}`));
+        button.on('click', () => {
+            root.remove();
+            handleBatonPass(candidate.name);
+        });
+        root.append(button);
+    }
+
+    const skip = $('<button class="menu_button bp-btn bp-skip" type="button"></button>').text('No');
+    skip.on('click', () => root.remove());
+    root.append(skip);
+
+    $('body').append(root);
+    // Una oferta que no se toma se retira sola: el combate sigue.
+    setTimeout(() => root.remove(), 20000);
+}
+
+/**
+ * El aviso de que esto ya es un combate.
+ *
+ * Abrir una puerta y que de pronto tengas turnos es el momento que mas facil se pasa por
+ * alto: el registro lo decia en una linea entre otras diez. Un cartel no decide nada y no
+ * se puede pulsar — por eso no roba clics —, solo hace imposible no enterarse.
+ *
+ * @param {string[]} names Los que acaban de entrar.
+ */
+function showInitiativeBanner(names) {
+    $('.ib-banner').remove();
+
+    const root = $('<div class="ib-banner"></div>');
+    root.append($('<div class="ib-title"></div>').text('¡INICIATIVA!'));
+    if (names.length > 0) {
+        root.append($('<div class="ib-names"></div>').text(names.join(', ')));
+    }
+    $('body').append(root);
+
+    // Se va sola: es un aviso, no algo que haya que cerrar.
+    setTimeout(() => root.addClass('ib-out'), 2200);
+    setTimeout(() => root.remove(), 3000);
+}
+
+/**
+ * El boton de empezar el combate que el tablero ya tiene dibujado.
+ *
+ * Un libro de mazmorras coloca a sus monstruos en el mapa; hasta ahora, para pelear con
+ * ellos habia que escribir `/fight` con su nombre y su cuenta, y el tablero ya sabia
+ * ambas cosas. Solo cuenta lo que esta en una sala revelada: lo que duerme tras una
+ * puerta cerrada sigue durmiendo.
+ *
+ * @param {any} board
+ * @param {Array<{name: string, x: number, y: number}>} awake
+ * @returns {JQuery<HTMLElement>}
+ */
+function buildStartCombatButton(board, awake) {
+    const counts = new Map();
+    for (const placement of awake) {
+        const name = String(placement.name);
+        counts.set(name, (counts.get(name) || 0) + 1);
+    }
+    const summary = [...counts.entries()]
+        .map(([name, count]) => (count > 1 ? `${name} x${count}` : name))
+        .join(', ');
+
+    const row = $('<div class="sc-row"></div>');
+    row.append($('<div class="sc-what"></div>').text(`En el tablero: ${summary}`));
+
+    const button = $('<button class="menu_button sc-btn" type="button"></button>');
+    button.append('<i class="fa-solid fa-swords"></i>');
+    button.append($('<span></span>').text(' Iniciar combate'));
+    button.on('click', () => {
+        if (combatEncounter.active) return;
+        const enemies = instancesFromPlacements(awake);
+        if (enemies.length === 0) {
+            toastr.warning('Ninguno de los enemigos del tablero existe en el mundo.');
+            return;
+        }
+        combatLogEntries = [];
+        postCombatNarration(`[COMBAT] Empieza el combate del tablero: ${summary}.`);
+        beginEncounterWith(enemies);
+        showInitiativeBanner(enemies.map(e => e.name));
+        renderLocationMapsPreview();
+    });
+    row.append(button);
+    return row;
 }
 
 /**
@@ -2655,12 +2900,122 @@ function handleTokenMove(tokenId, gridX, gridY, locationName) {
 }
 
 /**
+ * La tarjeta de objetivo: lo que sale al pulsar un enemigo.
+ *
+ * La regla de toda la capa de clics: **un clic nunca gasta nada, un boton si**. Atacar
+ * es irreversible y consume la accion del turno, asi que pulsar al enemigo solo abre
+ * esto. Y cuando algo no se puede hacer, la tarjeta dice por que en vez de no responder.
+ *
+ * @param {any} member Quien actua.
+ * @param {any} enemy
+ */
+function openTargetCard(member, enemy) {
+    closeTargetCard();
+
+    const origin = member.mapPosition || { gridX: 0, gridY: 0 };
+    const distanceFeet = getDistanceInFeet(
+        origin.gridX || 0, origin.gridY || 0, enemy.gridX || 0, enemy.gridY || 0,
+    );
+    const { cover } = getTargetArmorClass(enemy, member);
+
+    const card = buildTargetCard({
+        actor: member,
+        target: enemy,
+        distanceFeet,
+        rangeFeet: getAttackRangeFeet(member),
+        cover,
+        hasAction: hasAction(combatEncounter, 'action'),
+        canUltimate: Boolean(planUltimate({
+            bonds: getCampaignBonds(),
+            party: partyMembers,
+            actorId: String(member.id),
+            targetId: String(enemy.instanceId),
+        })),
+    });
+
+    const root = $('<div class="tc-card"></div>');
+    root.append($('<div class="tc-name"></div>').text(card.name));
+    root.append($('<div class="tc-stats"></div>').text(describeTargetCard(card)));
+
+    const bar = $('<div class="tc-hp"></div>');
+    const pct = card.maxHp > 0 ? Math.round((card.hp / card.maxHp) * 100) : 0;
+    bar.append($('<div class="tc-hp-fill"></div>').css('width', `${pct}%`));
+    root.append(bar);
+
+    const actions = $('<div class="tc-actions"></div>');
+    for (const action of card.actions) {
+        const button = $('<button class="menu_button tc-btn" type="button"></button>').text(action.label);
+        button.prop('disabled', !action.enabled);
+        if (!action.enabled) button.attr('title', action.reason);
+        button.on('click', () => {
+            closeTargetCard();
+            if (action.id === 'attack') handlePlayerCombatAttack(enemy.name);
+            else resolveUltimateStrike(enemy.name);
+        });
+        actions.append(button);
+    }
+
+    const close = $('<button class="menu_button tc-btn tc-close" type="button"></button>').text('Cerrar');
+    close.on('click', () => closeTargetCard());
+    actions.append(close);
+    root.append(actions);
+
+    // Lo que impide actuar se dice, no se deja adivinar.
+    const blocked = card.actions.filter(a => !a.enabled).map(a => a.reason);
+    if (blocked.length === card.actions.length) {
+        root.append($('<div class="tc-why"></div>').text(blocked[0]));
+    }
+
+    $('body').append($('<div class="tc-overlay"></div>').on('click', () => closeTargetCard()).append(root));
+}
+
+/** Cierra la tarjeta, si hay alguna. */
+function closeTargetCard() {
+    $('.tc-overlay').remove();
+}
+
+/**
+ * Pulsar una casilla encendida.
+ *
+ * Solo las encendidas llegan aqui: el renderizador no deja pulsar las demas. Mover es
+ * reversible dentro del turno, asi que un clic basta; atacar no, y por eso una casilla
+ * de ataque abre la tarjeta en vez de resolver el golpe.
+ *
+ * @param {number} gridX
+ * @param {number} gridY
+ * @param {string} kind
+ */
+function handleBoardCellClick(gridX, gridY, kind) {
+    const member = getCurrentActingMember();
+    if (!member) return;
+
+    if (kind === 'attack') {
+        const enemy = getAliveEnemies().find(e => (e.gridX || 0) === gridX && (e.gridY || 0) === gridY);
+        if (enemy) openTargetCard(member, enemy);
+        return;
+    }
+
+    // `/combat-move` habla en las coordenadas que el tablero dibuja en sus ejes, que
+    // empiezan en 1; el renderizador cuenta desde 0. Sin el +1 el clic movia a la
+    // casilla de arriba a la izquierda de la pulsada, y el recorrido lo cazo.
+    handlePlayerCombatMove(`${gridX + 1} ${gridY + 1}`);
+}
+
+/**
  * @param {number} tokenId
  */
 function handleCombatTokenClick(tokenId) {
     const entry = getCurrentTurnEntry();
     const member = getCurrentActingMember();
     if (!combatEncounter.active || !entry || entry.isEnemy || !member) return;
+
+    // Las fichas de enemigo llevan id negativo. Pulsar una abre su tarjeta: **un clic
+    // nunca gasta nada**, y atacar es el boton de la tarjeta.
+    if (tokenId < 0) {
+        const enemy = combatEncounter.enemies[-tokenId - 1];
+        if (enemy && (enemy.currentHp || 0) > 0) openTargetCard(member, enemy);
+        return;
+    }
 
     if (tokenId !== member.id) return;
 
@@ -3148,6 +3503,250 @@ function buildShellDialogue() {
 }
 
 /**
+ * Lo que el lider lleva encima y puede dar.
+ *
+ * Lo equipado no se regala: quitarle a alguien la espada que esta empunando en mitad de
+ * una conversacion es una forma rara de hacer amigos.
+ *
+ * @param {any} giver
+ * @returns {any[]}
+ */
+function giveableItems(giver) {
+    const equipped = new Set(Object.values(giver?.equippedItems || {}).filter(Boolean));
+    return (Array.isArray(giver?.items) ? giver.items : []).filter(item => item && !equipped.has(item.id));
+}
+
+/**
+ * Regala un objeto: lo cambia de manos y anota lo que le ha parecido.
+ *
+ * @param {any} giver
+ * @param {any} member
+ * @param {any} item
+ */
+function giveGift(giver, member, item) {
+    const verdict = judgeGift({ member, item });
+
+    giver.items = (Array.isArray(giver.items) ? giver.items : []).filter(i => i.id !== item.id);
+    member.items = [...(Array.isArray(member.items) ? member.items : []), item];
+    savePartyState();
+    renderPartyMembers();
+
+    postCombatNarration(`🎁 [VINCULO] ${verdict.line}`);
+    if (verdict.event) recordCampaignBondEvent(String(member.id), verdict.event);
+    if (isShellOpen()) refreshGameShell();
+}
+
+/** Cierra la ficha de companero, si hay alguna. */
+function closeCompanionCard() {
+    $('.cc-overlay').remove();
+}
+
+/**
+ * La ficha de un companero, al pulsar su cara en la tira del grupo.
+ *
+ * Abrirla no gasta nada — mirar es gratis —; lo que gasta son sus botones: pasar tiempo
+ * se lleva un bloque del dia y regalar se lleva el objeto.
+ *
+ * @param {string} memberId
+ */
+function openCompanionCard(memberId) {
+    closeCompanionCard();
+
+    const member = partyMembers.find(m => String(m.id) === String(memberId));
+    if (!member) return;
+
+    const giver = getActivePartyLeader();
+    const giverItems = giver && String(giver.id) !== String(member.id) ? giveableItems(giver) : [];
+    const card = buildCompanionCard({
+        member,
+        bonds: getCampaignBonds(),
+        calendar: getCampaignCalendar(),
+        fighting: combatEncounter.active,
+        giverItems,
+    });
+
+    const root = $('<div class="cc-card"></div>');
+    // Un clic dentro de la tarjeta no la cierra: cerrarla es el fondo o su boton.
+    root.on('click', (event) => event.stopPropagation());
+
+    const head = $('<div class="cc-head"></div>');
+    if (card.avatar) head.append($('<img class="cc-avatar">').attr('src', card.avatar).attr('alt', ''));
+    const who = $('<div></div>');
+    who.append($('<div class="cc-name"></div>').text(card.name));
+    who.append($('<div class="cc-rank"></div>').text(card.rankLabel));
+    head.append(who);
+    root.append(head);
+
+    const bar = $('<div class="cc-bar"></div>');
+    bar.append($('<div class="cc-fill"></div>').css('width', `${Math.round(card.progress * 100)}%`));
+    root.append(bar);
+    root.append($('<div class="cc-points"></div>').text(
+        card.maxed ? `${card.points} puntos` : `${card.points} / ${card.nextAt} para el rango ${card.rank + 1}`,
+    ));
+
+    const actions = $('<div class="cc-actions"></div>');
+    for (const action of card.actions) {
+        const button = $('<button class="menu_button cc-btn" type="button"></button>');
+        button.append(`<i class="fa-solid ${action.icon}"></i>`);
+        button.append($('<span></span>').text(` ${action.label}`));
+        button.attr('title', action.why);
+        button.prop('disabled', !action.enabled);
+        button.on('click', () => {
+            if (action.id === 'downtime') {
+                closeCompanionCard();
+                recordCampaignBondEvent(String(member.id), 'shared_downtime');
+                advanceCampaignSlot();
+                return;
+            }
+            if (action.id === 'gift') {
+                renderGiftList();
+                return;
+            }
+            closeCompanionCard();
+            recordCampaignBondEvent(String(member.id), action.id.slice('event:'.length));
+        });
+        actions.append(button);
+    }
+    root.append(actions);
+
+    const gifts = $('<div class="cc-gifts"></div>');
+    root.append(gifts);
+
+    function renderGiftList() {
+        if (gifts.children().length > 0) {
+            gifts.empty();
+            return;
+        }
+        gifts.append($('<div class="cc-gifts-title"></div>').text('Lo que llevas encima'));
+        for (let index = 0; index < card.gifts.length; index++) {
+            const gift = card.gifts[index];
+            const item = giverItems[index];
+            const button = $('<button class="menu_button cc-gift" type="button"></button>').text(gift.name);
+            // Lo que va a pasar se dice antes de pulsar, no despues.
+            button.attr('title', gift.verdict.points === 0
+                ? 'No le dice nada en especial'
+                : `${gift.verdict.points > 0 ? '+' : ''}${gift.verdict.points} al vínculo`);
+            button.on('click', () => {
+                closeCompanionCard();
+                giveGift(giver, member, item);
+            });
+            gifts.append(button);
+        }
+    }
+
+    const close = $('<button class="menu_button cc-btn cc-close" type="button"></button>').text('Cerrar');
+    close.on('click', () => closeCompanionCard());
+    root.append(close);
+
+    $('body').append($('<div class="cc-overlay"></div>').on('click', () => closeCompanionCard()).append(root));
+}
+
+/**
+ * Las puertas cerradas del tablero abierto, con lo lejos que le quedan al grupo.
+ *
+ * @returns {Array<{x: number, y: number, distance: number}>}
+ */
+function closedDoorsNearParty() {
+    if (!currentBoardName) return [];
+    const context = getActiveBoardContext();
+    const cells = context.terrain?.cells || {};
+
+    /** @type {Array<{x: number, y: number, distance: number}>} */
+    const doors = [];
+    for (const [key, cell] of Object.entries(cells)) {
+        if (!cell || cell.type !== 'door' || cell.open) continue;
+        const parsed = parseCellKey(key);
+        if (!parsed) continue;
+
+        const distances = partyMembers.map(m => getDistanceInFeet(
+            Number(m.mapPosition?.gridX) || 0, Number(m.mapPosition?.gridY) || 0,
+            parsed.x, parsed.y));
+        doors.push({
+            x: parsed.x,
+            y: parsed.y,
+            distance: distances.length > 0 ? Math.min(...distances) : Number.MAX_SAFE_INTEGER,
+        });
+    }
+    return doors;
+}
+
+/**
+ * A quien nombra lo ultimo que se ha narrado.
+ *
+ * No crea a nadie: solo sirve para poner delante al companero del que se estaba hablando.
+ *
+ * @returns {string[]}
+ */
+function namesInLastNarration() {
+    const last = [...(chat || [])].reverse().find(m => m && !m.is_user && !m.is_system);
+    const text = String(last?.mes || '').toLowerCase();
+    if (!text) return [];
+    return partyMembers.map(m => m.name).filter(name => text.includes(String(name).toLowerCase()));
+}
+
+/**
+ * Lo que se puede hacer sin escribirlo, para la fila de fichas del Modo Juego.
+ *
+ * @returns {import('./game-engine/ui/shell/action-chips.js').ActionChip[]}
+ */
+function buildShellChips() {
+    const location = currentLocationName
+        ? getCurrentWorldLocationMaps().find(l => l.name === currentLocationName)
+        : null;
+
+    return buildActionChips({
+        fighting: combatEncounter.active,
+        hasBoard: Boolean(currentBoardName),
+        doors: closedDoorsNearParty(),
+        companions: partyMembers.map(m => ({ name: m.name })),
+        mentioned: namesInLastNarration(),
+        places: getCurrentWorldLocationMaps()
+            .filter(l => l.name !== currentLocationName)
+            .map(l => ({ name: l.name })),
+        boards: getLocationBoards(location).map((/** @type {any} */ b) => ({ name: b.name })),
+        hurt: partyMembers.some(m => (Number(m.hp) || 0) < (Number(m.maxHp) || 0)),
+        // Cuantos dados quedan sale del nivel y de los ya gastados; las caras las
+        // lee el descanso, que puede esperar al Lorebook porque es asincrono.
+        hitDice: availableHitDice(partyMembers),
+    });
+}
+
+/**
+ * Lo que hace pulsar una ficha.
+ *
+ * Una que abre una puerta gasta — puede despertar una sala — y por eso es un boton. La
+ * de hablar solo deja la frase empezada en el chat: lo que se diga lo escribe quien juega,
+ * y enviarlo por el es ponerle palabras en la boca.
+ *
+ * @param {import('./game-engine/ui/shell/action-chips.js').ActionChip} chip
+ */
+function runShellChip(chip) {
+    if (chip.cell) {
+        const context = getActiveBoardContext();
+        if (!context.board) return;
+        toggleBoardDoor(context.board, chip.cell.x, chip.cell.y, true, context.gridWidth, context.gridHeight);
+        return;
+    }
+
+    if (chip.command) {
+        // Importado aqui y no arriba a proposito: `slash-commands.js` carga `script.js`,
+        // que carga este archivo. Traerlo al cargar cambiaria ese orden, y lo que la
+        // ficha necesita es ejecutar lo mismo que si se escribiera, no antes.
+        void import('./slash-commands.js').then(m => m.executeSlashCommandsWithOptions(chip.command));
+        return;
+    }
+
+    if (chip.draft) {
+        const input = /** @type {HTMLTextAreaElement|null} */ (document.querySelector('#send_textarea'));
+        if (!input) return;
+        input.value = chip.draft;
+        input.focus();
+        input.setSelectionRange(input.value.length, input.value.length);
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+}
+
+/**
  * Viajar a una localizacion. Devuelve el nombre real al que se ha llegado, o '' si no
  * existe.
  *
@@ -3299,6 +3898,22 @@ function buildShellOptions() {
         getCombatBar: buildShellCombatBar,
         getDialogue: buildShellDialogue,
         getExploration: buildShellExploration,
+        // El reloj: el mismo calendario y los mismos descansos que la pestana de
+        // Campana, pero dentro de la partida. Ver ROADMAP_JUEGO_SIN_COMANDOS.md, K3.
+        getClock: () => buildClockView({
+            day: Number(getCampaignCalendar()?.day) || 1,
+            slotLabel: getCurrentSlotLabel(),
+            fighting: combatEncounter.active,
+            party: partyMembers,
+        }),
+        getChips: buildShellChips,
+        onChip: runShellChip,
+        onCompanion: (memberId) => openCompanionCard(memberId),
+        onClock: (action) => {
+            if (action === 'slot') advanceCampaignSlot();
+            else if (action === 'day') advanceCampaignDay();
+            else void takeRest(action === 'short' ? 'corto' : 'largo');
+        },
         onEnterBoard: (name) => { enterBoard(name); renderLocationMapsPreview(); },
         onTravel: (name) => { travelTo(name); renderLocationMapsPreview(); },
         // Los paneles de SillyTavern se abren donde estan: en pausa su barra vuelve
@@ -3557,40 +4172,12 @@ function drawLocationMapsPreview() {
             },
             // Opening a door changes what can be walked through and what can be seen, so
             // the board is redrawn: fog is recomputed from the new terrain on the way.
-            onDoorToggle: (gx, gy, open) => {
-                if (!open) {
-                    selectedBoard.terrain = setDoorOpen(normalizeTerrain(selectedBoard.terrain), gx, gy, false);
-                    persistBoardTerrain(selectedBoard);
-                    postCombatNarration(`[BOARD] La puerta de (${gx + 1}, ${gy + 1}) queda cerrada.`);
-                    renderLocationMapsPreview();
-                    return;
-                }
-
-                // Abrir una puerta no es solo cambiar una casilla: revela la sala que
-                // guardaba y despierta lo que dormia dentro. Ese es el ritmo de una
-                // mazmorra — el siguiente combate llega cuando tu decides abrir.
-                const rooms = normalizeRooms(selectedBoard.rooms).length > 0
-                    ? selectedBoard.rooms
-                    : deriveRooms(normalizeTerrain(selectedBoard.terrain), boardGridW, boardGridH, {
-                        revealFrom: partyMembers.map(m => ({
-                            x: Number(m.mapPosition?.gridX) || 0,
-                            y: Number(m.mapPosition?.gridY) || 0,
-                        })),
-                    });
-
-                const result = openDoor(normalizeTerrain(selectedBoard.terrain), rooms, gx, gy);
-                selectedBoard.terrain = result.terrain;
-                selectedBoard.rooms = result.rooms;
-                persistBoardTerrain(selectedBoard);
-                postCombatNarration(`[BOARD] La puerta de (${gx + 1}, ${gy + 1}) queda abierta.`);
-
-                if (result.revealedRoom) {
-                    wakeRoomEnemies(selectedBoard, result.revealedRoom);
-                }
-                renderLocationMapsPreview();
-            },
+            onDoorToggle: (gx, gy, open) =>
+                toggleBoardDoor(selectedBoard, gx, gy, open, boardGridW, boardGridH),
             tokens: allBoardTokens,
             onTokenClick: (tokenId) => handleCombatTokenClick(tokenId),
+            // Clic en una casilla encendida: mover. Solo las encendidas responden.
+            onCellClick: (gx, gy, kind) => handleBoardCellClick(gx, gy, kind),
             selectedTokenId: tacticalState.selectedTokenId,
             highlightedTokenIds: tacticalState.highlightedTokenIds,
             highlightedCells: tacticalState.highlightedCells,
@@ -3645,6 +4232,14 @@ function drawLocationMapsPreview() {
                 renderLocationMapsPreview();
             });
             boardPanel.append(editButton);
+        }
+
+        // ---- Iniciar combate (wiki/ROADMAP_JUEGO_SIN_COMANDOS.md, K2) ----
+        // Si el tablero tiene enemigos dibujados a la vista y nadie pelea, el combate
+        // empieza con un boton. El comando /fight sigue estando para el resto de casos.
+        if (!combatEncounter.active) {
+            const awake = awakePlacements(selectedBoard.rooms, selectedBoard.enemyPlacements ?? []);
+            if (awake.length > 0) contentRoot.append(buildStartCombatButton(selectedBoard, awake));
         }
 
         // ---- Combat log (wiki/ROADMAP.md, Fase B4) ----
@@ -6100,47 +6695,7 @@ export function initPartyPanel() {
                 isRequired: true,
             }),
         ],
-        callback: (_args, value) => {
-            const actor = getCurrentActingMember();
-            if (!actor) {
-                toastr.warning('No hay un turno de jugador activo.');
-                return '';
-            }
-
-            const remainingFeet = getRemainingMovementFeet(actor);
-            const candidates = planBatonPass({
-                bonds: getCampaignBonds(),
-                party: partyMembers,
-                actorId: String(actor.id),
-                remainingFeet,
-            });
-
-            if (candidates.length === 0) {
-                toastr.warning('No puedes ceder movimiento ahora mismo.');
-                return '';
-            }
-
-            const wanted = String(value ?? '').trim().toLowerCase();
-            const chosen = candidates.find(c => c.name.toLowerCase() === wanted);
-            if (!chosen) {
-                toastr.warning(`Puedes cederlo a: ${candidates.map(c => c.name).join(', ')}.`);
-                return '';
-            }
-
-            // Spent for the day, and the turn moves to whoever received it: that is what
-            // makes the relay a tactical choice and not free movement for everyone.
-            saveCampaignState(null, spendPerk(getCampaignBonds(), String(actor.id), 'baton_pass'));
-
-            const index = combatEncounter.turnOrder.findIndex(e => !e.isEnemy && String(e.id) === chosen.id);
-            if (index >= 0) {
-                combatEncounter.currentTurnIndex = index;
-                resetCombatTurnState(combatEncounter.turnOrder[index]);
-            }
-
-            postCombatNarration(`🔄 [COMBAT] ${actor.name} cede el relevo a ${chosen.name}.`);
-            renderLocationMapsPreview();
-            return chosen.name;
-        },
+        callback: (_args, value) => handleBatonPass(String(value ?? '')),
     }));
 
     SlashCommandParser.addCommandObject(SlashCommand.fromProps({

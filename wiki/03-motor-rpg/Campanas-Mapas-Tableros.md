@@ -103,4 +103,6 @@ Con esta información, el modelo de lenguaje describe los ataques considerando r
 - [[Sistema-Party]]: Miembros del grupo representados como tokens en el tablero.
 - [[WorldInfo-Lorebooks]]: Definición de mapas y tableros en el esquema `dndData`.
 - [[Dynamic-Context-Manager]]: Activación de estado `combat` al desplegar el tablero.
+- [[PROPUESTA_FRONTEND_MODO_JUEGO]]: Escenarios a pantalla completa de combate y exploración (Game Shell).
+- [[ROADMAP_JUEGO_SIN_COMANDOS]]: Movimiento táctico A* y selección de objetivos point-and-click.
 - [[PROBLEMAS_TECNICOS]]: Análisis de seguridad por interpolación de nombres de tokens en `world-map-renderer.js`.

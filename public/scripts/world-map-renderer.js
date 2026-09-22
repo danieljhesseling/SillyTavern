@@ -487,6 +487,9 @@ const locationViewStateMemory = new Map();
  * @param {TokenData[]} options.tokens
  * @param {(tokenId: number, gridX: number, gridY: number) => void} [options.onTokenMove]
  * @param {(tokenId: number) => void} [options.onTokenClick]
+ * @param {(gridX: number, gridY: number, kind: string) => void} [options.onCellClick] -
+ *   Pulsar una casilla **encendida**. Solo las encendidas responden, a proposito: una
+ *   casilla apagada es una a la que no puedes ir, y un clic ahi no deberia hacer nada.
  * @param {HighlightCell[]} [options.highlightedCells]
  * @param {number[]} [options.highlightedTokenIds]
  * @param {number|null} [options.selectedTokenId]
@@ -512,6 +515,7 @@ export function renderLocationView(target, options) {
         tokens = [],
         onTokenMove,
         onTokenClick,
+        onCellClick,
         highlightedCells = [],
         highlightedTokenIds = [],
         selectedTokenId = null,
@@ -703,9 +707,22 @@ export function renderLocationView(target, options) {
         for (const cell of highlightedCells) {
             if (!cell) continue;
             const kind = cell.kind === 'attack' ? 'attack' : 'move';
-            highlightsLayer.append(`
-                <div class="wm-highlight-cell wm-highlight-${kind}" style="left:${cell.gridX * cellW}px;top:${cell.gridY * cellH}px;width:${cellW}px;height:${cellH}px;"></div>
-            `);
+
+            const node = $(`<div class="wm-highlight-cell wm-highlight-${kind}" style="left:${cell.gridX * cellW}px;top:${cell.gridY * cellH}px;width:${cellW}px;height:${cellH}px;"></div>`);
+
+            // La capa entera tiene `pointer-events: none` para no comerse los clics del
+            // tablero; solo las casillas que de verdad se pueden pulsar los recuperan.
+            if (typeof onCellClick === 'function') {
+                node.addClass('wm-highlight-clickable');
+                node.attr('data-x', String(cell.gridX));
+                node.attr('data-y', String(cell.gridY));
+                node.on('click', (event) => {
+                    event.stopPropagation();
+                    onCellClick(cell.gridX, cell.gridY, kind);
+                });
+            }
+
+            highlightsLayer.append(node);
         }
     }
 
@@ -853,6 +870,15 @@ export function renderLocationView(target, options) {
             $(document).on(`mouseup.${dragNs}`, function (ue) {
                 $(document).off(`.${dragNs}`);
                 el.removeClass('dragging');
+
+                // Soltar sin haber movido no es un movimiento, es un clic. Avisar de un
+                // movimiento aqui redibujaba el tablero entero, y ese redibujado se
+                // llevaba por delante la propia ficha: el `click` que venia detras no
+                // llegaba a dispararse nunca, asi que pulsar tu ficha no encendia nada.
+                if (!el.data('wmMoved')) {
+                    el.css({ left: startPX + 'px', top: startPY + 'px' });
+                    return;
+                }
 
                 const dx = (ue.pageX - startMX) / state.scale;
                 const dy = (ue.pageY - startMY) / state.scale;

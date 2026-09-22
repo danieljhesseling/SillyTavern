@@ -1,0 +1,78 @@
+/*
+ * La tarjeta de objetivo: lo que sale al pulsar un enemigo en el tablero.
+ *
+ * La regla de la capa de clics: un clic nunca gasta nada, un boton si. Por eso esto
+ * existe — es donde vive el gasto, y donde se puede negar con un motivo.
+ *
+ * Ver wiki/ROADMAP_JUEGO_SIN_COMANDOS.md, K0 y K1.
+ */
+
+.tc-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100001;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.35);
+}
+
+.tc-card {
+    min-width: 260px;
+    max-width: 90vw;
+    padding: 14px 16px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 10px;
+    background: var(--greyCAIbg, #1f1f25);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.55);
+    color: var(--SmartThemeBodyColor, #ddd);
+}
+
+.tc-name {
+    font-size: 1.1em;
+    font-weight: bold;
+}
+
+.tc-stats {
+    font-size: 0.87em;
+    opacity: 0.75;
+    margin-top: 2px;
+}
+
+.tc-hp {
+    height: 6px;
+    margin: 8px 0 12px;
+    border-radius: 3px;
+    background: rgba(0, 0, 0, 0.45);
+    overflow: hidden;
+}
+
+.tc-hp-fill {
+    height: 100%;
+    background: #a5534f;
+}
+
+.tc-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.tc-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.tc-close {
+    margin-left: auto;
+    opacity: 0.7;
+}
+
+/* Cuando no se puede hacer nada, se dice: quedarse callado es lo que hacia antes. */
+.tc-why {
+    margin-top: 10px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    background: rgba(208, 138, 134, 0.18);
+    font-size: 0.85em;
+}

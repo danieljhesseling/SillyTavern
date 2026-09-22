@@ -120,5 +120,6 @@ El gestor dispone de una ventana de configuración (`#dynamic_context_modal` est
 ## 5. Enlaces Relacionados
 - [[Ciclo-De-Vida-Prompt]]: Momento exacto de inyección en el prompt final.
 - [[Campanas-Mapas-Tableros]]: Cambio automático a estado `combat` al colocar tokens en un tablero.
+- [[PROPUESTA_FRONTEND_MODO_JUEGO]]: El Director de Escena y la distinción entre estado del motor y estado narrativo.
 - [[SlashCommands-Macros]]: Control del estado mediante `/dynctx state`.
 - [[PROBLEMAS_TECNICOS]]: Recomendaciones de optimización del conteo asíncrono de tokens.

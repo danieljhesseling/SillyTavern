@@ -46,13 +46,22 @@ Toda la documentación técnica, arquitectónica y de jugabilidad está organiza
 - **[[Relaciones-Memorias]]**: [03-motor-rpg/Relaciones-Memorias.md](file:///c:/Users/danie/SillyTavern/wiki/03-motor-rpg/Relaciones-Memorias.md)
 - **[[Chat-Enhancements]]**: [03-motor-rpg/Chat-Enhancements.md](file:///c:/Users/danie/SillyTavern/wiki/03-motor-rpg/Chat-Enhancements.md)
 
+### 🎯 Planes, Hojas de Ruta & Diseño de Juego
+- **[[ROADMAP]]**: [wiki/ROADMAP.md](file:///c:/Users/danie/SillyTavern/wiki/ROADMAP.md) - *El plan de trabajo único en fases ejecutables con pruebas en navegador y CI.*
+- **[[POR_HACER]]**: [wiki/POR_HACER.md](file:///c:/Users/danie/SillyTavern/wiki/POR_HACER.md) - *Lista viva de estado real, tareas conectadas y decisiones.*
+- **[[PROPUESTA_JUEGO_DND_GLOOMHAVEN_PERSONA]]**: [wiki/PROPUESTA_JUEGO_DND_GLOOMHAVEN_PERSONA.md](file:///c:/Users/danie/SillyTavern/wiki/PROPUESTA_JUEGO_DND_GLOOMHAVEN_PERSONA.md) - *Diseño del motor híbrido D&D 5e + Gloomhaven + Persona.*
+- **[[ROADMAP_INGESTA_CAMPANAS_LIBROS]]**: [wiki/ROADMAP_INGESTA_CAMPANAS_LIBROS.md](file:///c:/Users/danie/SillyTavern/wiki/ROADMAP_INGESTA_CAMPANAS_LIBROS.md) - *Pipeline de ingesta de libros/PDFs a campañas jugables mediante Gemini.*
+- **[[PROPUESTA_FRONTEND_MODO_JUEGO]]**: [wiki/PROPUESTA_FRONTEND_MODO_JUEGO.md](file:///c:/Users/danie/SillyTavern/wiki/PROPUESTA_FRONTEND_MODO_JUEGO.md) - *Game Shell: 3 pantallas cinemáticas a pantalla completa (Diálogo, Mapa, Combate).*
+- **[[PLAN_JUEGO_TIPO_FRIENDS_AND_FABLES]]**: [wiki/PLAN_JUEGO_TIPO_FRIENDS_AND_FABLES.md](file:///c:/Users/danie/SillyTavern/wiki/PLAN_JUEGO_TIPO_FRIENDS_AND_FABLES.md) - *Hacia la experiencia Friends & Fables (DM autónomo, descansos, magia y level-up, sin marketplace).*
+- **[[ROADMAP_JUEGO_SIN_COMANDOS]]**: [wiki/ROADMAP_JUEGO_SIN_COMANDOS.md](file:///c:/Users/danie/SillyTavern/wiki/ROADMAP_JUEGO_SIN_COMANDOS.md) - *Juego 100% por clics de ratón: mover y atacar en el tablero, descansos interactivos y action chips.*
+
 ### 🔍 Auditoría & Propuestas de Mejora
 - **[[PROBLEMAS_TECNICOS]]**: [wiki/PROBLEMAS_TECNICOS.md](file:///c:/Users/danie/SillyTavern/wiki/PROBLEMAS_TECNICOS.md) - *Auditoría técnica exhaustiva (vulnerabilidades XSS, CSP, desincronización de estado, fugas de memoria y deuda técnica).*
-- **[[PROPUESTAS_MEJORA]]**: [wiki/PROPUESTAS_MEJORA.md](file:///c:/Users/danie/SillyTavern/wiki/PROPUESTAS_MEJORA.md) - *Catálogo de **200 propuestas técnicas estructuradas** en 10 áreas estratégicas.*
+- **[[PROPUESTAS_MEJORA]]**: [wiki/PROPUESTAS_MEJORA.md](file:///c:/Users/danie/SillyTavern/wiki/PROPUESTAS_MEJORA.md) - *Catálogo de 200 propuestas técnicas estructuradas en 10 áreas estratégicas.*
 
 ### 🛠️ Guías de Referencia
-- **[[Mapa-Codigo-Archivos]]**: [04-guias-referencia/Mapa-Codigo-Archivos.md](file:///c:/Users/danie/SillyTavern/wiki/04-guias-referencia/Mapa-Codigo-Archivos.md)
-- **[[Guia-Desarrollo-Flujo]]**: [04-guias-referencia/Guia-Desarrollo-Flujo.md](file:///c:/Users/danie/SillyTavern/wiki/04-guias-referencia/Guia-Desarrollo-Flujo.md)
+- **[[Mapa-Codigo-Archivos]]**: [wiki/04-guias-referencia/Mapa-Codigo-Archivos.md](file:///c:/Users/danie/SillyTavern/wiki/04-guias-referencia/Mapa-Codigo-Archivos.md)
+- **[[Guia-Desarrollo-Flujo]]**: [wiki/04-guias-referencia/Guia-Desarrollo-Flujo.md](file:///c:/Users/danie/SillyTavern/wiki/04-guias-referencia/Guia-Desarrollo-Flujo.md)
 
 ---
 
