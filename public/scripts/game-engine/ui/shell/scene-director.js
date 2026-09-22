@@ -31,6 +31,8 @@ import { holdDuringCombat } from '../../combat/combat-hold.js';
  * @property {string} [boardName] The tactical board currently open, if any.
  * @property {string} [locationName] The location currently open, if any.
  * @property {boolean} [hasWorldMap] Whether the world has a map to explore.
+ * @property {number} [placeCount] Cuantas localidades tiene el mundo: con una sola, no hay
+ *           a donde viajar y explorar no es una escena, es un cartel.
  */
 
 /**
@@ -93,7 +95,9 @@ export function isSceneAvailable(scene, situation) {
             // sin decidirlo: dejaba el encuentro vivo sobre un tablero que ya no estabas
             // mirando. Abandonar sigue teniendo su boton.
             if (state.combatActive) return false;
-            return Boolean(state.locationName) || Boolean(state.hasWorldMap);
+            // Y explorar pide **a donde ir**. Estar en un sitio no es explorar: con una
+            // sola localidad y sin mapa, esa pestaña abria un mapa de un punto.
+            return Boolean(state.hasWorldMap) || Number(state.placeCount) > 1;
         case SCENE.DIALOGUE:
             // The chat is always there to talk to.
             return true;
@@ -155,6 +159,25 @@ export function sceneForShortcut(key) {
 }
 
 /**
+ * Como se llama una escena **ahora mismo**.
+ *
+ * Una pestaña fija que pone «Combate» cuando no hay ningún combate promete algo que no
+ * existe, y pulsarla parece invocarlo. Sin pelea eso no es el combate: es el tablero, que
+ * es donde miras la sala, abres puertas y te colocas antes de que empiece nada.
+ *
+ * @param {SceneName} scene
+ * @param {GameSituation} situation
+ * @returns {string}
+ */
+export function labelFor(scene, situation) {
+    const info = SCENE_INFO[scene];
+    if (!info) return '';
+
+    if (scene === SCENE.COMBAT && !(situation || {}).combatActive) return 'Tablero';
+    return info.label;
+}
+
+/**
  * One line for the switcher tooltip: what the scene is and whether it has anything to show.
  *
  * @param {SceneName} scene
@@ -165,14 +188,14 @@ export function describeScene(scene, situation) {
     const info = SCENE_INFO[scene];
     if (!info) return '';
     const key = info.shortcut ? ` [${info.shortcut}]` : '';
-    if (isSceneAvailable(scene, situation)) return `${info.label}${key}`;
+    if (isSceneAvailable(scene, situation)) return `${labelFor(scene, situation)}${key}`;
 
     // Por que esta apagada importa: "nada que mostrar" y "espera a que acabe la pelea"
     // piden cosas distintas de quien lo lee.
     const held = scene === SCENE.EXPLORATION
         ? holdDuringCombat({ active: Boolean((situation || {}).combatActive) }, 'exploration')
         : '';
-    return `${info.label}${key} — ${held || 'nada que mostrar todavia'}`;
+    return `${labelFor(scene, situation)}${key} — ${held || 'nada que mostrar todavia'}`;
 }
 
 /**

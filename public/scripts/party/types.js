@@ -32,6 +32,8 @@
  * @property {any[]} [injuries] Lo que arrastra de combates anteriores.
  * @property {Record<string, number>} [baseStats] Sus numeros antes de la primera herida.
  * @property {number} [unpaidWeeks] Semanas que lleva sin cobrar.
+ * @property {any} [needs] Horas sin comer, beber, dormir y a la intemperie.
+ * @property {any} [needs] Horas sin comer, beber, dormir y a la intemperie.
  *   Como va la cuenta mientras esta a 0 PG.
  * @property {number} gold
  * @property {number} silver

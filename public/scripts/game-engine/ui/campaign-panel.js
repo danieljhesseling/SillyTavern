@@ -29,10 +29,11 @@ import { buildCampaignView, getRecordableEvents } from '../campaign/campaign-vie
  * @param {(characterId: string, eventType: string) => void} input.onRecordEvent
  * @param {any} [input.bill] La cuenta de la semana, si hay grupo al que pasarsela.
  * @param {number} [input.daysToBill] Cuantos dias faltan para que venza.
+ * @param {Array<{name: string, said: string}>} [input.needs] Quien pasa hambre, sed o frio.
  */
 export function renderCampaignPanel(container, {
     calendar, bonds, party, onAdvanceSlot, onAdvanceDay, onRecordEvent,
-    onShortRest = null, onLongRest = null, bill = null, daysToBill = 0,
+    onShortRest = null, onLongRest = null, bill = null, daysToBill = 0, needs = [],
 }) {
     const view = buildCampaignView({ calendar, bonds, party });
     container.empty();
@@ -94,6 +95,14 @@ export function renderCampaignPanel(container, {
     // impuesto, y una que ves venir es una decision. Es media razon de que quieras
     // aceptar el encargo de manana.
     if (bill) container.append(renderBill(bill, daysToBill));
+
+    // Y como esta cada uno. Debajo de la cuenta porque es la misma pregunta con otra
+    // moneda: la cuenta dice si llegas a fin de semana, esto si llegan ellos.
+    for (const entry of (Array.isArray(needs) ? needs : [])) {
+        container.append($('<div class="cp-need"></div>')
+            .append($('<span class="cp-need-who"></span>').text(entry.name))
+            .append($('<span class="cp-need-what"></span>').text(entry.said)));
+    }
 
     if (view.characters.length === 0) {
         container.append($('<div class="cp-empty"></div>').text(

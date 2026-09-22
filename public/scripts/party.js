@@ -33,12 +33,13 @@ import { resolveEntryMapPosition } from './party/positions.js';
 import { createCampaignState } from './party/campaign-state.js';
 import {
     normalizeTerrain, setCell as setTerrainCell, getTerrainOptions, getCoverBonus, setDoorOpen,
-    parseCellKey, terrainFromAsciiMap,
+    parseCellKey, terrainFromAsciiMap, cellKey,
 } from './game-engine/board/terrain.js';
 import { getReachableCells, findPath, getPathCost } from './game-engine/board/pathfinding.js';
 import { getCoverAlongLine } from './game-engine/board/line-of-sight.js';
 import { createEmptyFog, normalizeFog, updateFog } from './game-engine/board/fog-of-war.js';
 import { planEnemyTurn } from './game-engine/combat/enemy-ai.js';
+import { planWalk, canWalk } from './game-engine/board/walk.js';
 import {
     buildTracker, describeTurn, statusMarkers, sizeToCells, toggleCondition,
 } from './game-engine/combat/initiative-tracker.js';
@@ -47,7 +48,12 @@ import {
 } from './game-engine/combat/turn-machine.js';
 import { rollEncounterLoot, lootRulesWithWorldItems } from './game-engine/combat/loot.js';
 import { holdDuringCombat } from './game-engine/combat/combat-hold.js';
-import { applyInjury, healInjuries, describeInjuries, readInjuries } from './game-engine/rules/injuries.js';
+import {
+    applyInjury, healInjuries, describeInjuries, readInjuries, setInjury,
+} from './game-engine/rules/injuries.js';
+import {
+    tickNeeds, exhaustionInjury, describeNeeds, LETHAL_EXHAUSTION,
+} from './game-engine/rules/needs.js';
 import { resolveFall, describeSurvival, canCheckpoint } from './game-engine/rules/mortality.js';
 import { weeklyBill, settleWeek, describeBill } from './game-engine/rules/upkeep.js';
 import {
@@ -916,7 +922,15 @@ function underYourHand(ids) {
 
 function getControlledMemberIds() {
     const linked = partyMembers.filter(m => m.personaId !== null).map(m => m.id);
-    return underYourHand(linked.length > 0 ? linked : partyMembers.map(m => m.id));
+    const yours = underYourHand(linked.length > 0 ? linked : partyMembers.map(m => m.id));
+
+    // Y quien no puede andar tampoco se deja arrastrar: es mejor que la ficha no se
+    // levante a que se levante, se suelte y entonces le digan que no. Sigue pudiendo
+    // accionar lo que tenga al lado, que es lo que significa estar atado.
+    return yours.filter((id) => {
+        const member = partyMembers.find(m => Number(m.id) === Number(id));
+        return member ? canWalk(member).allowed : false;
+    });
 }
 
 /**
@@ -2571,7 +2585,11 @@ function onTimePassed(days, calendar) {
         savePartyState();
     }
 
-    // 2. Cobrar, cuando toca. El dia de vencimiento vive en la partida, no en la sesion.
+    // 2. Comer, beber, dormir y aguantar el clima. Hasta ahora la comida se pagaba y no
+    // pasaba nada si no comias: un aviso y a seguir.
+    passNeeds(days);
+
+    // 3. Cobrar, cuando toca. El dia de vencimiento vive en la partida, no en la sesion.
     const today = Math.max(1, Math.floor(Number(calendar?.day) || 1));
     const week = Math.max(1, Number(currentUpkeepRules().weekLength) || 7);
 
@@ -2589,6 +2607,57 @@ function onTimePassed(days, calendar) {
     }
     chat_metadata[BILL_DUE_KEY] = due;
     saveMetadata();
+}
+
+/** Donde se apunta el clima del sitio donde estais. */
+const CLIMATE_KEY = 'climate';
+
+/**
+ * Lo que unas horas mas le hacen al grupo: hambre, sed, sueno y frio.
+ *
+ * El agotamiento se aplica **como una herida**, por el mismo sitio que una pierna rota:
+ * asi hay un solo mecanismo que empeora a alguien y un solo dueno de `baseStats`.
+ *
+ * @param {number} days
+ */
+function passNeeds(days) {
+    const hours = Math.max(0, Math.floor(Number(days) || 0)) * 24;
+    if (hours <= 0) return;
+
+    const climate = String(chat_metadata?.[CLIMATE_KEY] || 'mild');
+    // Dentro de un tablero se esta a la intemperie; en la localidad, bajo techo. Es una
+    // aproximacion honesta y se puede afinar cuando las localidades digan si cobijan.
+    const sheltered = !currentBoardName;
+
+    /** @type {string[]} */
+    const said = [];
+
+    for (const member of partyMembers) {
+        if (member.dead) continue;
+
+        const tick = tickNeeds(member, { hours, climate, sheltered });
+        member.needs = tick.needs;
+        said.push(...tick.lines);
+
+        if (tick.damage > 0) member.hp = Math.max(0, (Number(member.hp) || 0) - tick.damage);
+
+        const patch = setInjury(member, tick.exhaustion > 0 ? exhaustionInjury(tick.exhaustion) : null, 'exhaustion');
+        member.injuries = patch.injuries;
+        member.baseStats = patch.baseStats;
+        Object.assign(member, patch.stats);
+
+        // Quien llega al final cae a cero: de ahi en adelante deciden las reglas de la
+        // campana, igual que si lo hubiera tumbado una espada. Una sola puerta a la muerte.
+        if (tick.collapsed || tick.exhaustion >= LETHAL_EXHAUSTION) {
+            member.hp = 0;
+            applyFall(member);
+        }
+    }
+
+    if (said.length > 0) {
+        postCombatNarration(`🥖 [CAMPAÑA] ${said.join(' ')}`);
+        savePartyState();
+    }
 }
 
 /**
@@ -2898,6 +2967,10 @@ function renderCampaignTab() {
         // Sin nadie en el grupo no hay cuenta que pasar, y un panel de ceros estorba.
         bill: partyMembers.length > 0 ? weeklyBill(partyMembers, { rules: currentUpkeepRules() }) : null,
         daysToBill: Number.isFinite(due) ? Math.max(0, due - today) : 0,
+        // Como esta cada uno: solo aparece quien tiene algo que contar.
+        needs: partyMembers
+            .map(member => ({ name: member.name, said: describeNeeds(member) }))
+            .filter(entry => entry.said),
         onAdvanceSlot: advanceCampaignSlot,
         onAdvanceDay: advanceCampaignDay,
         onShortRest: () => { void takeRest('corto'); },
@@ -3439,6 +3512,30 @@ function buildTokens(locationFilter) {
 function handleTokenMove(tokenId, gridX, gridY, locationName) {
     const member = partyMembers.find(m => m.id === tokenId);
     if (!member) return;
+
+    // Dentro de un tablero, andar tiene reglas: hace falta camino, hay un alcance y quien
+    // esta atado no se mueve. Fuera —en el mapa de la localidad, que es un plano y no una
+    // rejilla de combate— colocarse sigue siendo libre.
+    if (currentBoardName) {
+        const { terrain, gridWidth, gridHeight } = getActiveBoardContext();
+        const plan = planWalk({
+            member,
+            to: { x: gridX, y: gridY },
+            terrain,
+            gridWidth,
+            gridHeight,
+            occupied: partyMembers
+                .filter(m => Number(m.id) !== Number(member.id))
+                .map(m => ({ x: Number(m.mapPosition?.gridX) || 0, y: Number(m.mapPosition?.gridY) || 0 })),
+        });
+
+        if (!plan.allowed) {
+            toastr.warning(plan.reason, 'Ahi no se llega');
+            renderLocationMapsPreview();
+            return;
+        }
+    }
+
     member.mapPosition = member.mapPosition || { locationName: '', gridX: 0, gridY: 0 };
     member.mapPosition.gridX = gridX;
     member.mapPosition.gridY = gridY;
@@ -4068,6 +4165,9 @@ function buildShellSituation() {
         boardName: currentBoardName || '',
         locationName: currentLocationName || '',
         hasWorldMap: Boolean(getCurrentWorldMapUrl()),
+        // Cuantos sitios hay. Con uno solo no hay a donde viajar, y explorar no es una
+        // escena: es una pestana que abre un mapa de un punto.
+        placeCount: getCurrentWorldLocationMaps().length,
     };
 }
 
@@ -5096,6 +5196,15 @@ function openCompanionCard(memberId) {
     const member = partyMembers.find(m => String(m.id) === String(memberId));
     if (!member) return;
 
+    // El tuyo no es un companero: es tu ficha. Pulsarlo abre la hoja entera —
+    // caracteristicas, inventario, progresion— que es lo que uno busca al pulsarse a si
+    // mismo. La tarjeta de vinculo es para los demas, que es de quien tienes vinculo.
+    const yours = partyMembers[0];
+    if (yours && String(yours.id) === String(member.id)) {
+        void openPartyMemberModal(member);
+        return;
+    }
+
     const giver = getActivePartyLeader();
     const giverItems = giver && String(giver.id) !== String(member.id) ? giveableItems(giver) : [];
     const card = buildCompanionCard({
@@ -5914,10 +6023,14 @@ function drawLocationMapsPreview() {
 
 
         // ---- Iniciar combate (wiki/ROADMAP_JUEGO_SIN_COMANDOS.md, K2) ----
-        // Si el tablero tiene enemigos dibujados a la vista y nadie pelea, el combate
-        // empieza con un boton. El comando /fight sigue estando para el resto de casos.
+        // Solo con lo que el grupo **ve de verdad**. `awakePlacements` esconde a los de
+        // una sala sin revelar, pero un tablero sin salas no esconde nada — y entonces el
+        // boton anunciaba al Carcelero de Hierro antes de que nadie lo hubiera visto. Un
+        // boton que te chiva lo que hay detras de la puerta es lo contrario de un juego.
         if (!combatEncounter.active) {
-            const awake = awakePlacements(selectedBoard.rooms, selectedBoard.enemyPlacements ?? []);
+            const awake = awakePlacements(selectedBoard.rooms, selectedBoard.enemyPlacements ?? [])
+                .filter((/** @type {any} */ p) => !fogOn
+                    || fogState.visible.has(cellKey(Number(p.x) || 0, Number(p.y) || 0)));
             if (awake.length > 0) contentRoot.append(buildStartCombatButton(selectedBoard, awake));
         }
 
@@ -7783,6 +7896,13 @@ export function initPartyPanel() {
 
     eventSource.on(event_types.CHAT_CHANGED, () => {
         loadPartyForChat();
+        // Y volver a dibujar donde estabas. `loadPartyForChat` restaura la localidad y el
+        // tablero en memoria, pero nadie repintaba el panel: al cargar una partida veias
+        // el selector de "¿donde estas?" y habia que volver a entrar a mano en el sitio
+        // donde ya estabas. Si el mundo aun no ha terminado de cargar, el evento
+        // `worldLocationMapsUpdated` vuelve a pasar por aqui.
+        renderWorldMapPreview();
+        renderLocationMapsPreview();
         // Cerrar la partida ya no apaga el Modo Juego: sin campana abierta, la escena
         // de titulo ensena la bienvenida con las campanas, que es donde hay que estar.
         if (isShellOpen()) refreshGameShell();

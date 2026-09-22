@@ -19,7 +19,7 @@
 
 import {
     SCENE, SWITCHABLE_SCENES, SCENE_INFO,
-    directScene, isSceneAvailable, describeScene, sceneForShortcut,
+    directScene, isSceneAvailable, describeScene, sceneForShortcut, labelFor,
 } from './scene-director.js';
 import { playForScene, stopSceneAudio } from './scene-audio.js';
 
@@ -232,13 +232,13 @@ function renderSwitcher(bar, situation, current) {
         button.dataset.scene = scene;
         button.title = describeScene(scene, situation);
         button.appendChild(el('i', `fa-solid ${info.icon}`));
-        button.appendChild(el('span', 'gs-scene-label', info.label));
+        button.appendChild(el('span', 'gs-scene-label', labelFor(scene, situation)));
         button.appendChild(el('kbd', 'gs-scene-key', info.shortcut));
         if (scene === current) button.classList.add('active');
         const built = BUILT_SCENES.has(scene);
         if (!built || !isSceneAvailable(scene, situation)) {
             button.disabled = true;
-            if (!built) button.title = `${info.label} — la construye el paso siguiente del Modo Juego`;
+            if (!built) button.title = `${labelFor(scene, situation)} — la construye el paso siguiente del Modo Juego`;
         }
         button.addEventListener('click', () => setScene(scene));
         bar.appendChild(button);

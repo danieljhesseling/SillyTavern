@@ -209,6 +209,31 @@ export function applyInjury(member, injury) {
 }
 
 /**
+ * Pone una herida que solo puede haber una, sustituyendo la que hubiera.
+ *
+ * El agotamiento es una de ellas: no se acumulan tres agotamientos, se tiene **uno** de
+ * nivel tres. Pasa por aqui y no por su propio sitio a proposito — asi hay **un solo**
+ * mecanismo que empeora a alguien, y `baseStats` sigue teniendo un unico dueno. Dos
+ * sistemas escribiendo `speed` a la vez es como se pierde el numero de partida.
+ *
+ * @param {any} member
+ * @param {ActiveInjury|null} injury Null lo quita.
+ * @param {string} id
+ * @returns {{injuries: ActiveInjury[], baseStats: Record<string, number>, stats: Record<string, number>}}
+ */
+export function setInjury(member, injury, id) {
+    const base = baseStatsOf(member);
+    const others = readInjuries(member).filter(existing => existing.id !== id);
+    const injuries = injury ? [...others, ...readInjuries({ injuries: [injury] })] : others;
+
+    return {
+        injuries,
+        baseStats: base,
+        stats: applyModifiers(base, totalModifiers(injuries)),
+    };
+}
+
+/**
  * El parche de que pase el tiempo.
  *
  * Las permanentes no cuentan días: se quedan. Lo que cura desaparece y devuelve lo suyo,

@@ -13,7 +13,7 @@
  * Ver wiki/ROADMAP_JUEGO_SIN_COMANDOS.md, K4b.
  */
 
-import { buildCampaignView, getRecordableEvents } from '../../campaign/campaign-view.js';
+import { buildCampaignView } from '../../campaign/campaign-view.js';
 import { BOND_EVENTS } from '../../campaign/bonds.js';
 
 /**
@@ -151,17 +151,14 @@ export function buildCompanionCard({
         },
     );
 
-    // Y lo que ya existia: anotar lo que ha pasado entre vosotros.
-    for (const event of getRecordableEvents()) {
-        actions.push({
-            id: `event:${event.type}`,
-            label: event.label,
-            icon: event.points >= 0 ? 'fa-heart' : 'fa-heart-crack',
-            enabled: true,
-            why: `${event.points >= 0 ? '+' : ''}${event.points} al vínculo`,
-            points: event.points,
-        });
-    }
+    // Aqui vivian ocho botones para anotar a mano lo que habia pasado entre vosotros:
+    // «le salvaste la vida», «traicion», «regalo acertado». Eran **modo dios**, y ademas
+    // contradecian la regla que el propio panel de campana tiene escrita: los vinculos
+    // suben por hechos que el motor ha visto, no por lo que tu declares.
+    //
+    // Lo que queda son las tres acciones que **cuestan algo de verdad**: subir de nivel
+    // gasta la experiencia, pasar tiempo gasta un bloque del dia y regalar gasta un
+    // objeto. Un boton que solo suma puntos no es una accion, es una chuleta.
 
     return {
         id,

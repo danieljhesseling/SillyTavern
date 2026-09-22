@@ -79,8 +79,11 @@ describe('isSceneAvailable', () => {
         expect(isSceneAvailable(SCENE.COMBAT, playing)).toBe(false);
     });
 
-    test('exploration needs a location or a map', () => {
-        expect(isSceneAvailable(SCENE.EXPLORATION, { locationName: 'Cripta' })).toBe(true);
+    // Estar en un sitio no es explorar: con una sola localidad y sin mapa, esa pestana
+    // abria un mapa de un punto. Explorar pide **a donde ir**.
+    test('exploration needs somewhere to go, not just somewhere to be', () => {
+        expect(isSceneAvailable(SCENE.EXPLORATION, { locationName: 'Cripta' })).toBe(false);
+        expect(isSceneAvailable(SCENE.EXPLORATION, { locationName: 'Cripta', placeCount: 3 })).toBe(true);
         expect(isSceneAvailable(SCENE.EXPLORATION, { hasWorldMap: true })).toBe(true);
         expect(isSceneAvailable(SCENE.EXPLORATION, { hasChat: true })).toBe(false);
     });

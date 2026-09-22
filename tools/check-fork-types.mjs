@@ -38,6 +38,8 @@ const FORK_FILES = [
     'public/scripts/game-engine/rules/injuries.js',
     'public/scripts/game-engine/rules/mortality.js',
     'public/scripts/game-engine/rules/upkeep.js',
+    'public/scripts/game-engine/rules/needs.js',
+    'public/scripts/game-engine/rules/companions.js',
     'public/scripts/game-engine/world-builder/dungeon-generator.js',
     'public/scripts/game-engine/campaign/contracts.js',
     'public/scripts/game-engine/campaign/guild.js',

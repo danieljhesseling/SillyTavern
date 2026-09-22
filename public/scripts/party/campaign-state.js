@@ -21,6 +21,7 @@ import {
 import { completeLocation, normalizeCampaignMap } from '../game-engine/campaign/campaign-map.js';
 import { planShortRest, planLongRest, describeRest, getHitDice } from '../game-engine/rules/rest.js';
 import { restoreAbilityUses } from '../game-engine/rules/abilities.js';
+import { relieve } from '../game-engine/rules/needs.js';
 import { buildPersonalWeapon } from '../game-engine/combat/bond-perks.js';
 import { addItemToInventory, createItem } from '../dnd-system.js';
 import { rollDice } from './combat-rules.js';
@@ -243,6 +244,13 @@ export function createCampaignState(deps) {
         // significa: uno corto devuelve lo de descanso corto, uno largo lo devuelve todo.
         for (const member of party) {
             member.abilityUses = restoreAbilityUses(member, kind, deps.abilities?.() ?? []);
+
+            // Un descanso es tambien comer, beber y dormir. Uno corto da de beber y poco
+            // mas; uno largo es la noche entera, y por eso es lo unico que quita el sueno.
+            member.needs = relieve(member, 'drank');
+            if (kind === 'largo') {
+                member.needs = relieve({ ...member, needs: relieve(member, 'ate') }, 'slept');
+            }
         }
 
         deps.saveParty();

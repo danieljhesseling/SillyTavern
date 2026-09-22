@@ -3,7 +3,7 @@ import {
     holdDuringCombat, HELD_ACTIONS,
 } from '../public/scripts/game-engine/combat/combat-hold.js';
 import {
-    isSceneAvailable, describeScene, SCENE,
+    isSceneAvailable, describeScene, labelFor, SCENE,
 } from '../public/scripts/game-engine/ui/shell/scene-director.js';
 
 describe('lo que un combate retiene', () => {
@@ -67,5 +67,22 @@ describe('la barra de escenas, mientras se pelea', () => {
         const fighting = { ...board, combatActive: true };
         expect(isSceneAvailable(SCENE.COMBAT, fighting)).toBe(true);
         expect(isSceneAvailable(SCENE.DIALOGUE, fighting)).toBe(true);
+    });
+});
+
+describe('cómo se llama cada escena, ahora mismo', () => {
+    // Una pestana fija que pone «Combate» sin combate promete algo que no existe, y
+    // pulsarla parece invocarlo.
+    test('sin pelea, esa pantalla es el tablero', () => {
+        expect(labelFor(SCENE.COMBAT, { boardName: 'El sótano' })).toBe('Tablero');
+    });
+
+    test('y con pelea, el combate', () => {
+        expect(labelFor(SCENE.COMBAT, { boardName: 'El sótano', combatActive: true })).toBe('Combate');
+    });
+
+    test('las demás se llaman siempre igual', () => {
+        expect(labelFor(SCENE.DIALOGUE, {})).toBe('Dialogo');
+        expect(labelFor(SCENE.EXPLORATION, {})).toBe('Exploracion');
     });
 });

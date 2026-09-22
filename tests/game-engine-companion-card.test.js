@@ -48,12 +48,11 @@ describe('la ficha del companero', () => {
         expect(card.rankLabel).toMatch(/Rango/);
     });
 
-    test('ofrece pasar tiempo y regalar, ademas de lo de siempre', () => {
+    test('ofrece pasar tiempo y regalar', () => {
         const card = buildCompanionCard({ member: lyra(), giverItems: [{ name: 'Manzana' }] });
         const ids = card.actions.map(a => a.id);
         expect(ids[0]).toBe('downtime');
         expect(ids[1]).toBe('gift');
-        expect(ids.some(id => id.startsWith('event:'))).toBe(true);
     });
 
     test('pasar tiempo dice lo que cuesta', () => {
@@ -84,12 +83,19 @@ describe('la ficha del companero', () => {
         expect(card.gifts.map(g => g.verdict.points)).toEqual([4, 0]);
     });
 
-    test('anotar lo que ha pasado sigue estando, con sus puntos', () => {
-        const card = buildCompanionCard({ member: lyra() });
-        const events = card.actions.filter(a => a.id.startsWith('event:'));
-        expect(events.length).toBeGreaterThan(0);
-        expect(events.every(e => typeof e.points === 'number')).toBe(true);
-        expect(events[0].why).toMatch(/al vínculo/);
+    // Aqui habia ocho botones para regalarse puntos de vinculo —«le salvaste la vida»,
+    // «traicion»— y eran modo dios: contradecian la regla que el propio juego tiene
+    // escrita, que los vinculos suben por hechos que el motor ha visto.
+    test('y ningun boton que regale puntos de vinculo por decreto', () => {
+        const card = buildCompanionCard({ member: lyra(), giverItems: [{ name: 'Manzana' }] });
+        expect(card.actions.some(a => a.id.startsWith('event:'))).toBe(false);
+    });
+
+    test('lo que queda cuesta algo de verdad: experiencia, un dia o un objeto', () => {
+        const card = buildCompanionCard({
+            member: lyra(), canLevel: true, giverItems: [{ name: 'Manzana' }],
+        });
+        expect(card.actions.map(a => a.id).sort()).toEqual(['downtime', 'gift', 'level']);
     });
 });
 

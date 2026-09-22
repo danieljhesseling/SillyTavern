@@ -748,3 +748,24 @@
     font-size: 0.92em;
     opacity: 0.8;
 }
+
+/* Como esta cada uno. Debajo de la cuenta porque es la misma pregunta con otra moneda:
+   una dice si llegas a fin de semana, la otra si llegan ellos. */
+.cp-need {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 4px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: rgba(160, 90, 40, 0.14);
+    font-size: 0.8em;
+}
+
+.cp-need-who {
+    font-weight: bold;
+}
+
+.cp-need-what {
+    opacity: 0.8;
+}
