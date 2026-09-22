@@ -70,6 +70,8 @@ El informe sale **antes de crear nada** y dice tres cosas por separado:
 
 Si pasa, créala y ya estás dentro.
 
+> **Un libro no es solo mazmorras.** Una localidad puede tener **cero tableros**: una aldea donde solo se habla, se pasa el rato y se sube un vínculo es tan válida como una cripta. Se declara en la sección `locations` del paquete — el ejemplo del contrato trae una, *Vado de la Rueda*, precisamente para enseñarlo.
+
 ---
 
 ## 3. Tu primera sesión, en diez minutos

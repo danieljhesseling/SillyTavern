@@ -34,7 +34,7 @@ describe('the example the contract publishes', () => {
 
     test('and is counted correctly', () => {
         expect(validatePack(buildExamplePack()).counts)
-            .toEqual({ world: 'El Molino de los Cuervos', boards: 2, enemies: 2, confidants: 1, quests: 2, objectives: 4 });
+            .toEqual({ world: 'El Molino de los Cuervos', locations: 2, boards: 2, enemies: 2, confidants: 1, quests: 2, objectives: 4 });
     });
 });
 

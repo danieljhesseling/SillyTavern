@@ -4512,6 +4512,12 @@ function drawLocationMapsPreview() {
             renderLocationMapsPreview();
         });
         contentRoot.append(boardsSection);
+    } else {
+        // Un sitio sin tablero es un sitio legitimo — una aldea donde solo se habla — y
+        // desde A4 se puede escribir en un libro. Decirlo evita que parezca roto.
+        contentRoot.append($('<div class="wm-boards-empty"></div>').text(
+            'Aqui no hay ningun tablero: es un sitio para hablar y pasar el rato, no para pelear.',
+        ));
     }
 }
 

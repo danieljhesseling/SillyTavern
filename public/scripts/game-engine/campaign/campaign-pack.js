@@ -21,7 +21,7 @@
  * Pure. See wiki/ROADMAP_INGESTA_CAMPANAS_LIBROS.md (G2) · wiki/POR_HACER.md.
  */
 
-import { CAMPAIGN_PACK_VERSION, OBJECTIVE_FIELDS } from './campaign-pack-schema.js';
+import { CAMPAIGN_PACK_VERSION, OBJECTIVE_FIELDS, LOCATION_TYPES } from './campaign-pack-schema.js';
 import { OBJECTIVE_TYPES } from './scenarios.js';
 import { ASCII_TERRAIN } from '../board/terrain.js';
 import { getProfileOptions, DEFAULT_PROFILE } from '../combat/enemy-ai.js';
@@ -38,7 +38,7 @@ import { getProfileOptions, DEFAULT_PROFILE } from '../combat/enemy-ai.js';
  * @property {Issue[]} errors
  * @property {Issue[]} warnings
  * @property {Issue[]} repairs What normalising already put right.
- * @property {{world: string, boards: number, enemies: number, confidants: number, quests: number, objectives: number}} counts
+ * @property {{world: string, locations: number, boards: number, enemies: number, confidants: number, quests: number, objectives: number}} counts
  */
 
 /** Map characters that are not walkable floor. Everything else in the legend is. */
@@ -110,6 +110,27 @@ export function normalizePack(raw) {
         };
     });
 
+    // Las localidades declaradas a mano. Son opcionales: lo que no venga aquí se sigue
+    // deduciendo de los tableros, como siempre — un paquete de ayer tiene que entrar hoy.
+    const locations = list(source.locations).map((location, index) => {
+        const name = text(location.name);
+        const type = text(location.type);
+        if (type && !LOCATION_TYPES.includes(type)) {
+            repairs.push({
+                path: `locations[${index}].type`,
+                message: `"${type}" no es un tipo de localidad; se ha dejado sin tipo.`,
+            });
+        }
+        return {
+            ...location,
+            name,
+            type: LOCATION_TYPES.includes(type) ? type : '',
+            description: text(location.description),
+            region: text(location.region),
+            factionName: text(location.factionName),
+        };
+    });
+
     const quests = list(source.quests).map((quest, index) => {
         const name = text(quest.name);
         let id = text(quest.id);
@@ -142,6 +163,7 @@ export function normalizePack(raw) {
             world: { ...world, name: text(world.name), factions: list(world.factions), loreEntries: list(world.loreEntries) },
             confidants: list(source.confidants),
             bestiary: list(source.bestiary),
+            locations,
             boards,
             quests,
         },
@@ -283,6 +305,33 @@ export function validatePack(raw) {
         }
     });
 
+    // Las localidades declaradas: un nombre repetido es una que borra a la otra, porque
+    // el mundo las indexa por nombre igual que el Lorebook indexa sus fichas.
+    /** @type {Set<string>} */
+    const declaredPlaces = new Set();
+    const factionNames = new Set(pack.world.factions
+        .map((/** @type {any} */ f) => text(f?.name).toLowerCase()).filter(Boolean));
+    pack.locations.forEach((/** @type {any} */ location, /** @type {number} */ index) => {
+        const name = text(location.name);
+        if (!name) {
+            errors.push({ path: `locations[${index}]`, message: 'Sin nombre: el mundo indexa las localidades por nombre.' });
+            return;
+        }
+        if (declaredPlaces.has(name.toLowerCase())) {
+            errors.push({ path: `locations[${index}]`, message: `"${name}" esta repetida: la segunda borraria a la primera.` });
+            return;
+        }
+        declaredPlaces.add(name.toLowerCase());
+
+        const faction = text(location.factionName);
+        if (faction && !factionNames.has(faction.toLowerCase())) {
+            warnings.push({
+                path: `locations[${index}].factionName`,
+                message: `"${faction}" no esta entre las facciones del paquete.`,
+            });
+        }
+    });
+
     const bestiary = new Set(pack.bestiary.map((/** @type {any} */ e) => text(e.name).toLowerCase()).filter(Boolean));
     const allies = new Set(pack.confidants.map((/** @type {any} */ c) => text(c.name).toLowerCase()).filter(Boolean));
     const boardIds = new Set();
@@ -295,6 +344,16 @@ export function validatePack(raw) {
             errors.push({ path: `${path}.id`, message: `El id "${board.id}" esta repetido.` });
         }
         boardIds.add(board.id);
+
+        // Un tablero que dice pertenecer a un sitio que el paquete no declara sigue
+        // entrando — la localidad se deduce —, pero casi siempre es una errata.
+        const place = text(board.locationName);
+        if (declaredPlaces.size > 0 && place && !declaredPlaces.has(place.toLowerCase())) {
+            warnings.push({
+                path: `${path}.locationName`,
+                message: `"${place}" no esta en \`locations\`; se creara a partir de este tablero.`,
+            });
+        }
 
         const size = checkMap(board.map, `${path}.map`, errors);
         boardSizes.set(board.id, { ...size, map: board.map });
@@ -402,6 +461,14 @@ export function validatePack(raw) {
         }
     }
 
+    // Cuantos sitios tendra el mundo: los declarados, mas los que solo existen porque
+    // algun tablero los nombra.
+    const allPlaces = new Set(declaredPlaces);
+    for (const board of pack.boards) {
+        const place = text(board.locationName);
+        if (place) allPlaces.add(place.toLowerCase());
+    }
+
     return {
         ok: errors.length === 0,
         errors,
@@ -409,6 +476,7 @@ export function validatePack(raw) {
         repairs,
         counts: {
             world: pack.world.name,
+            locations: allPlaces.size,
             boards: pack.boards.length,
             enemies: pack.bestiary.length,
             confidants: pack.confidants.length,

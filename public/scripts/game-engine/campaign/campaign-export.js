@@ -215,8 +215,19 @@ export function buildPackFromWorld({ worldName, metadata, entries, synopsis = ''
     const boards = [];
     /** @type {any[]} */
     const quests = [];
+    /** @type {any[]} */
+    const locations = [];
 
     for (const location of Array.isArray(metadata?.locationMaps) ? metadata.locationMaps : []) {
+        // Todas, tengan tableros o no: un pueblo tranquilo es parte de la campaña, y si
+        // solo se exportaran los sitios con tablero desaparecería al mandarla.
+        const place = { name: text(location?.name) };
+        if (text(location?.locationType)) place.type = text(location.locationType);
+        if (text(location?.description)) place.description = text(location.description);
+        if (text(location?.region)) place.region = text(location.region);
+        if (text(location?.controllingFaction)) place.factionName = text(location.controllingFaction);
+        if (place.name) locations.push(place);
+
         for (const board of Array.isArray(location?.boards) ? location.boards : []) {
             const width = Number(board?.gridWidth) || 0;
             const height = Number(board?.gridHeight) || 0;
@@ -257,6 +268,7 @@ export function buildPackFromWorld({ worldName, metadata, entries, synopsis = ''
         },
         confidants,
         bestiary,
+        locations,
         boards,
         quests,
     };
@@ -271,6 +283,7 @@ export function buildPackFromWorld({ worldName, metadata, entries, synopsis = ''
 export function describeExport(pack) {
     return [
         `"${pack?.world?.name ?? ''}"`,
+        `${pack?.locations?.length ?? 0} localidad(es)`,
         `${pack?.boards?.length ?? 0} tablero(s)`,
         `${pack?.bestiary?.length ?? 0} enemigo(s)`,
         `${pack?.confidants?.length ?? 0} compañero(s)`,

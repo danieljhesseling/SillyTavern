@@ -78,7 +78,7 @@ Es la pieza que menos código lleva y la que más cambia cómo se siente. Si alg
 
 **Las pistas las pones tú.** No trae ni un archivo — aquí no hay música con licencia de nadie — y una escena sin pista **calla** en vez de heredar la de al lado. Al apagar el Modo Juego se calla también: la música es del juego, no de la aplicación.
 
-### A4 · Un pueblo tranquilo tiene que poder existir 🖥️
+### A4 · Un pueblo tranquilo tiene que poder existir 🖥️ ✅
 
 Sale de leer [[DISENO_GENERADOR_MUNDOS_PROFUNDO]], y es su idea más valiosa: **una localidad puede tener 0, 1 o N tableros**. Hoy puede tener 1 o N. **Cero, no.**
 
@@ -91,6 +91,12 @@ El camino está decidido:
 - El exportador las escribe de vuelta, y el validador avisa de la localidad que nadie visita y del tablero que apunta a una localidad que no existe.
 
 Lo que **no** entra: tiendas, posadas y templos. Eso es **P15**, y necesita mecanicas nuevas; esto es solo poder decir que el sitio existe.
+
+**Hecho el 2026-09-22.** `locations[]` es una sección más del contrato — con `type`, `region` y la facción que manda — y sale en el esquema que `/esquema-campana` le entrega a tu Gem, con dos reglas nuevas escritas. El importador crea las declaradas **antes** de mirar los tableros, y sigue deduciendo las que solo aparezcan nombradas por uno: **un paquete de ayer entra hoy igual**. El exportador se las lleva de vuelta, el validador avisa del tablero que apunta a un sitio no declarado y de la facción que no existe, y el informe del asistente cuenta ahora las localidades.
+
+El **ejemplo que publica el contrato** trae ya una aldea sin tableros — *Vado de la Rueda* — a propósito: es la forma más corta de enseñarle a un autor que puede hacerlo. Y el panel de localización, en vez de quedarse en blanco, dice *«aquí no hay ningún tablero: es un sitio para hablar y pasar el rato, no para pelear»*.
+
+> Un detalle que salió al montarlo: la vista de una localidad medía lo que su tablero más grande. Una sin tableros no tiene de dónde sacar ese tamaño, así que toma el de una campaña nueva — y las que sí tienen siguen creciendo con el suyo, exactamente como antes.
 
 ---
 
@@ -128,10 +134,10 @@ Añadir una a mano exige editar `starter-templates.js`. Convertirlas en datos (`
 
 No cuesta tokens — la resolvería el motor, como el resto del combate — pero **es la pieza más cara de todo lo que queda**, y por eso es una decisión y no una tarea:
 
-| Salida | Qué es | Qué cuesta |
-| :--- | :--- | :--- |
-| **Magia completa 5e** | Ranuras de nivel 1–9, conjuros preparados, áreas de efecto, concentración, componentes | Tres o cuatro baterías. Las áreas (*línea de 30 pies*, *esfera de 20*) son geometría nueva en el tablero, y la concentración es una máquina de estados propia |
-| **Recursos de clase, ligero** 💡 | Una reserva de usos por personaje («ranuras» sin nivel) y una lista de **efectos** editables desde `/rules`: daño a distancia, curación, condición, empujón | Una batería. Cubre *Furia*, *Tomar Aliento*, *Imposición de Manos* y un *Rayo de Fuego* con las mismas piezas |
+| Salida                           | Qué es                                                                                                                                                      | Qué cuesta                                                                                                                                                    |
+| :------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Magia completa 5e**            | Ranuras de nivel 1–9, conjuros preparados, áreas de efecto, concentración, componentes                                                                      | Tres o cuatro baterías. Las áreas (*línea de 30 pies*, *esfera de 20*) son geometría nueva en el tablero, y la concentración es una máquina de estados propia |
+| **Recursos de clase, ligero** 💡 | Una reserva de usos por personaje («ranuras» sin nivel) y una lista de **efectos** editables desde `/rules`: daño a distancia, curación, condición, empujón | Una batería. Cubre *Furia*, *Tomar Aliento*, *Imposición de Manos* y un *Rayo de Fuego* con las mismas piezas                                                 |
 
 **Recomiendo la ligera**, y por la misma razón que funcionó el paquete de reglas: un conjuro pasa a ser **datos que editas tú** en vez de una tabla cerrada que hay que escribir clase a clase. Si más adelante quieres las ranuras de 5e de verdad, se añaden encima; al revés no.
 

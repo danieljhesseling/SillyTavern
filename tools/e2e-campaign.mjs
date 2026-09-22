@@ -903,7 +903,7 @@ try {
     check('the contract opens with a view per thing you might copy', tabs.length >= 5, tabs.join(' · '));
     check('including the example of a correct pack', tabs.some(t => /Ejemplo/.test(t)));
     check('and one per section, because a book does not fit in one answer',
-        tabs.filter(t => /Sección/.test(t)).length === 5);
+        tabs.filter(t => /Sección/.test(t)).length === 6, tabs.join(' · '));
 
     const instructions = await page.locator('.cs-text').inputValue();
     check('the instructions carry the schema and the version',
@@ -1539,7 +1539,9 @@ try {
         name: document.querySelector('.cw-root input.cw-input')?.value || '',
     }));
     check('el ejemplo del contrato pasa la comprobacion', okReport.ok === true, okReport.counts);
-    check('y el informe cuenta lo que trae', /2 tableros, 2 enemigos, 1 companeros, 2 misiones, 4 objetivos/.test(okReport.counts), okReport.counts);
+    check('y el informe cuenta lo que trae',
+        /2 localidades, 2 tableros, 2 enemigos, 1 companeros, 2 misiones, 4 objetivos/.test(okReport.counts),
+        okReport.counts);
     check('el nombre del mundo lo propone el paquete', /Molino/.test(okReport.name), okReport.name);
 
     await page.locator('.cw-root textarea.cw-party-input').fill('Lyra\nBrand');
@@ -1573,6 +1575,21 @@ try {
     check('el libro es ahora una campana abierta', /Molino/.test(imported.worldName || ''), imported.worldName);
     check('con sus dos tableros en su localizacion',
         imported.boards.length === 2 && imported.location === 'El Molino de los Cuervos', JSON.stringify(imported));
+    const village = await page.evaluate(async () => {
+        const wi = await import('/scripts/world-info.js');
+        const ctx = window.SillyTavern.getContext();
+        const data = await wi.loadWorldInfo(ctx.chatMetadata.world_info);
+        const places = data?.metadata?.locationMaps ?? [];
+        const quiet = places.find(l => l.name === 'Vado de la Rueda');
+        return {
+            names: places.map(l => l.name),
+            boards: quiet ? (quiet.boards ?? []).length : null,
+            type: quiet?.locationType ?? '',
+        };
+    });
+    check('una localidad sin tablero tambien llega: un pueblo tranquilo existe',
+        village.boards === 0 && village.type === 'village', JSON.stringify(village));
+
     check('y con entradas de las cuatro clases que trae un libro',
         JSON.stringify(imported.groups) === JSON.stringify(['Characters', 'Factions', 'Lore', 'Monsters']),
         JSON.stringify(imported.groups));
@@ -2440,6 +2457,9 @@ try {
             tableros: pack31.boards.length, enemigos: pack31.bestiary.length,
             misiones: pack31.quests.length, companeros: pack31.confidants.length,
         }));
+    check('y la aldea sin tablero va dentro, que es la mitad de compartir una campana',
+        (pack31.locations || []).some(l => l.name === 'Vado de la Rueda'),
+        JSON.stringify((pack31.locations || []).map(l => l.name)));
     check('el mapa viaja como texto, con sus muros',
         Array.isArray(pack31.boards[0].map) && pack31.boards[0].map.some(row => row.includes('#')),
         JSON.stringify(pack31.boards[0].map?.[0] ?? null));
@@ -2497,6 +2517,22 @@ try {
         silent === '', JSON.stringify(silent));
 
     await leaveGameMode();
+
+    // Viajar a un sitio sin tablero: el panel tiene que decir que ahi no se pelea, en vez
+    // de quedarse en blanco como si estuviera roto.
+    await page.evaluate(() => window.SillyTavern.getContext()
+        .executeSlashCommandsWithOptions('/go Vado de la Rueda'));
+    await page.waitForTimeout(1400);
+
+    const quiet = await page.evaluate(() => ({
+        where: window.SillyTavern.getContext().chatMetadata.currentLocation || '',
+        empty: (document.querySelector('.wm-boards-empty')?.textContent || '').trim(),
+        boards: document.querySelectorAll('#world_location_maps_list .wm-boards-section').length,
+    }));
+    check('se puede viajar a un pueblo que no tiene tablero',
+        quiet.where === 'Vado de la Rueda', JSON.stringify(quiet.where));
+    check('y el panel lo dice en vez de quedarse en blanco',
+        quiet.boards === 0 && /no hay ningun tablero/i.test(quiet.empty), JSON.stringify(quiet.empty));
 
     console.log('\n--- console errors ---');
     console.log(problems.size ? [...problems].join('\n') : '(none)');

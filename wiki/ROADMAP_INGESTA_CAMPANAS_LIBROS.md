@@ -108,6 +108,9 @@ flowchart TD
 > [!WARNING]
 > **Los ejemplos de esta sección están corregidos** contra el motor real (2026-09-21). La versión anterior usaba cinco campos que el juego no lee, y un paquete escrito así se importaría vacío o a medias. Lo que sigue es lo que el código entiende hoy.
 
+> [!NOTE]
+> **Una sección más desde el 2026-09-22: `locations`.** Una localidad puede tener **0 tableros** — una aldea donde solo se habla y se comercia — y antes eso no se podía escribir: las localidades se deducían de los tableros, así que un sitio sin ninguno no llegaba a existir. Es opcional y compatible hacia atrás: lo que no se declare se sigue deduciendo. Ver **A4** en [[POR_HACER]].
+
 ### La decisión que lo ordena todo: el Gem escribe **nombres**, el ingestor resuelve **ids**
 
 Un libro no conoce —no puede conocer— los identificadores que el motor asignará: el id de un monstruo es el `uid` de su entrada de World Info, y esa entrada no existe hasta el momento de importar. Pedirle al Gem `targetIds` sería pedirle que invente ids que luego no coincidirán con nada.

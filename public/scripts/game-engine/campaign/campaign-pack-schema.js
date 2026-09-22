@@ -67,6 +67,14 @@ export const OBJECTIVE_FIELDS = {
     }],
 };
 
+/**
+ * Qué clase de sitio es una localidad.
+ *
+ * Solo es sabor — el motor no cambia ninguna regla por el tipo — pero decirle a un libro
+ * cuáles hay evita que cada paquete invente el suyo.
+ */
+export const LOCATION_TYPES = ['city', 'village', 'outpost', 'ruins', 'dungeon', 'camp', 'sanctuary', 'wilderness'];
+
 /** Board limits, the same ones the world generator already enforces. */
 export const BOARD_LIMITS = { minWidth: 8, maxWidth: 40, minHeight: 6, maxHeight: 30 };
 
@@ -135,7 +143,7 @@ function buildObjectiveSchema() {
     };
 }
 
-/** The five sections, each one a schema of its own. */
+/** Las seis secciones, cada una con su esquema. */
 function buildSectionSchemas() {
     const legend = getMapLegend();
     const legendText = Object.entries(legend).map(([c, name]) => `'${c}' ${name}`).join(', ');
@@ -219,6 +227,24 @@ function buildSectionSchemas() {
         },
     };
 
+    const locations = {
+        type: 'array',
+        description: 'Los sitios del mundo. Una localidad puede tener 0 tableros (una aldea donde '
+            + 'solo se habla y se comercia), 1 o varios. Opcional: las que no se declaren se '
+            + 'deducen de los tableros que las nombren.',
+        items: {
+            type: 'object',
+            required: ['name'],
+            properties: {
+                name: { type: 'string', description: 'Único en el paquete. Es el nombre al que apuntan los tableros.' },
+                type: { type: 'string', enum: LOCATION_TYPES },
+                description: { type: 'string' },
+                region: { type: 'string', description: 'La comarca o zona a la que pertenece.' },
+                factionName: { type: 'string', description: 'La facción que la controla, si alguna.' },
+            },
+        },
+    };
+
     const bestiary = {
         type: 'array',
         items: {
@@ -271,11 +297,11 @@ function buildSectionSchemas() {
         },
     };
 
-    return { world, boards, bestiary, quests, confidants };
+    return { world, locations, boards, bestiary, quests, confidants };
 }
 
 /** The order the sections are best generated in, and what each one needs first. */
-export const SECTION_ORDER = ['world', 'confidants', 'bestiary', 'boards', 'quests'];
+export const SECTION_ORDER = ['world', 'locations', 'confidants', 'bestiary', 'boards', 'quests'];
 
 /**
  * The schema of one section.
@@ -338,6 +364,8 @@ export function getPackRules() {
         'Las coordenadas cuentan desde 0, y la primera fila del mapa es y=0.',
         'Usa `optional: true` para los objetivos que pagan pero no bloquean. No existe `required`.',
         'Escribe **nombres**, nunca identificadores internos: el importador los resuelve al crear las entradas.',
+        'Una localidad puede tener **0 tableros**: una aldea donde solo se habla y se comercia es tan valida como una cripta. Declarala en `locations` aunque no tenga ninguno.',
+        'El `locationName` de un tablero deberia coincidir con el nombre de una localidad de `locations`. Si no esta declarada, se crea a partir del tablero.',
     ];
 }
 
@@ -410,6 +438,22 @@ export function buildExamplePack() {
         },
         confidants: [
             { name: 'Mira la Molinera', description: 'Heredó el molino y la costumbre de no bajar al sótano.', arcana: 'La Ermitaña', initialBondPoints: 0 },
+        ],
+        locations: [
+            {
+                name: 'El Molino de los Cuervos',
+                type: 'ruins',
+                description: 'El molino y lo que guarda debajo.',
+                factionName: 'La Orden de la Pluma',
+            },
+            {
+                // Sin tableros a propósito: una localidad puede no tener ninguno, y este
+                // ejemplo está para enseñarlo. Aquí se habla y se pasa el rato; no se pelea.
+                name: 'Vado de la Rueda',
+                type: 'village',
+                description: 'Cuatro casas y un puente de tablones. Aquí nadie ha visto nada.',
+                region: 'La ribera',
+            },
         ],
         bestiary: [
             { name: 'Cuervo grande', hp: 7, armorClass: 12, cr: 0.125, profile: 'skirmisher', attackRangeFeet: 5 },

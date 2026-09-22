@@ -51,9 +51,18 @@ describe('the entries a pack implies', () => {
 describe('the world a pack draws', () => {
     test('boards of the same place land in one location', () => {
         const plan = buildImportPlan(example());
-        expect(plan.metadata.locationMaps).toHaveLength(1);
-        expect(plan.metadata.locationMaps[0].boards.map(b => b.name))
-            .toEqual(['Planta baja del molino', 'El sótano']);
+        const molino = plan.metadata.locationMaps.find(l => l.name === 'El Molino de los Cuervos');
+        expect(molino.boards.map(b => b.name)).toEqual(['Planta baja del molino', 'El sótano']);
+    });
+
+    test('and a declared place with no boards is a place all the same', () => {
+        // El ejemplo del contrato trae una aldea sin tableros a propósito: antes de A4 un
+        // sitio así no podía existir, porque las localidades se deducían de los tableros.
+        const plan = buildImportPlan(example());
+        const village = plan.metadata.locationMaps.find(l => l.name === 'Vado de la Rueda');
+        expect(village).toBeDefined();
+        expect(village.boards).toEqual([]);
+        expect(village.gridWidth).toBe(50);
     });
 
     test('and the location is big enough for its biggest board', () => {
@@ -66,7 +75,8 @@ describe('the world a pack draws', () => {
         const pack = example();
         pack.boards[1].locationName = 'El bosque';
         const plan = buildImportPlan(pack);
-        expect(plan.metadata.locationMaps.map(l => l.name)).toEqual(['El Molino de los Cuervos', 'El bosque']);
+        expect(plan.metadata.locationMaps.map(l => l.name))
+            .toEqual(['El Molino de los Cuervos', 'Vado de la Rueda', 'El bosque']);
     });
 
     test('the map becomes terrain, not a pile of characters', () => {
@@ -98,7 +108,7 @@ describe('the world a pack draws', () => {
     test('nothing in an empty pack, and no crash', () => {
         const plan = buildImportPlan({});
         expect(plan.metadata.locationMaps).toEqual([]);
-        expect(plan.counts).toEqual({ boards: 0, entries: 0, quests: 0, placements: 0 });
+        expect(plan.counts).toEqual({ locations: 0, boards: 0, entries: 0, quests: 0, placements: 0 });
     });
 });
 

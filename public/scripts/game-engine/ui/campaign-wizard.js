@@ -333,8 +333,9 @@ export async function askWizard({ Popup, POPUP_TYPE, existingWorldNames = [], ge
 
         const c = report.counts;
         importReport.append($('<div class="cw-import-counts"></div>').text(
-            `${c.world || 'Sin nombre'} - ${c.boards} tableros, ${c.enemies} enemigos, `
-            + `${c.confidants} companeros, ${c.quests} misiones, ${c.objectives} objetivos.`));
+            `${c.world || 'Sin nombre'} - ${c.locations} localidades, ${c.boards} tableros, `
+            + `${c.enemies} enemigos, ${c.confidants} companeros, ${c.quests} misiones, `
+            + `${c.objectives} objetivos.`));
 
         /**
          * @param {string} cls

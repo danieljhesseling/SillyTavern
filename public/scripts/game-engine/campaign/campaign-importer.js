@@ -24,6 +24,9 @@
 
 import { terrainFromAsciiMap } from '../board/terrain.js';
 import { DEFAULT_PROFILE } from '../combat/enemy-ai.js';
+
+/** Lo que mide la vista de una localizacion, igual que en una campana nueva. */
+const DEFAULT_LOCATION_GRID = 50;
 import { deriveRooms } from './campaign-map.js';
 import { OBJECTIVE_FIELDS } from './campaign-pack-schema.js';
 import { normalizePack } from './campaign-pack.js';
@@ -44,7 +47,7 @@ import { normalizePack } from './campaign-pack.js';
  * @property {EntrySpec[]} entries
  * @property {Record<string, string[]>} enemiesByBoard Board id to the enemy names on it,
  *   in the order they were placed.
- * @property {{boards: number, entries: number, quests: number, placements: number}} counts
+ * @property {{locations: number, boards: number, entries: number, quests: number, placements: number}} counts
  */
 
 /**
@@ -212,6 +215,29 @@ export function buildImportPlan(raw, options = {}) {
     const locations = new Map();
     let placements = 0;
 
+    // Primero las que el paquete declara, y en su orden. Antes las localidades se
+    // deducian **solo** de los tableros, asi que un sitio sin tablero no llegaba a
+    // existir: una aldea donde solo se habla y se comercia era inexpresable. Las que solo
+    // aparezcan nombradas por un tablero se siguen deduciendo, justo debajo.
+    for (const place of pack.locations) {
+        const name = text(place.name);
+        if (!name || locations.has(name)) continue;
+        locations.set(name, {
+            name,
+            description: text(place.description) || text(pack.world.synopsis),
+            url: '',
+            // A cero: si la localidad acaba teniendo tableros, la vista crece con el mas
+            // grande, como siempre. Las que se queden sin ninguno toman el tamano de una
+            // campana nueva, mas abajo.
+            gridWidth: 0,
+            gridHeight: 0,
+            region: text(place.region),
+            locationType: text(place.type),
+            controllingFaction: text(place.factionName),
+            boards: [],
+        });
+    }
+
     for (const board of pack.boards) {
         const locationName = text(board.locationName) || text(pack.world.name);
         const height = board.map.length;
@@ -267,6 +293,13 @@ export function buildImportPlan(raw, options = {}) {
         });
     }
 
+    // Un sitio sin tableros no tiene de donde sacar su tamano: se le da el de una
+    // campana nueva, que es lo que espera la vista de localizacion.
+    for (const location of locations.values()) {
+        if (!location.gridWidth) location.gridWidth = DEFAULT_LOCATION_GRID;
+        if (!location.gridHeight) location.gridHeight = DEFAULT_LOCATION_GRID;
+    }
+
     // The party stands on the first board's starting cells, the same way a template
     // campaign does. Without this an imported world opens with nobody on it. They go
     // first, in the order they were named.
@@ -306,6 +339,7 @@ export function buildImportPlan(raw, options = {}) {
         entries,
         enemiesByBoard,
         counts: {
+            locations: locations.size,
             boards: pack.boards.length,
             entries: entries.length,
             quests: pack.quests.length,

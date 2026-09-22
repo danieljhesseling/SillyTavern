@@ -148,6 +148,50 @@ describe('la ida y la vuelta', () => {
 describe('contado en una línea', () => {
     test('dice lo que lleva', () => {
         expect(describeExport(buildPackFromWorld(world())))
-            .toBe('"Valle del Molino" · 1 tablero(s) · 1 enemigo(s) · 1 compañero(s) · 1 misión(es)');
+            .toBe('"Valle del Molino" · 1 localidad(es) · 1 tablero(s) · 1 enemigo(s) · 1 compañero(s) · 1 misión(es)');
+    });
+});
+
+describe('los sitios sin tablero tambien viajan', () => {
+    const withVillage = () => {
+        const w = world();
+        w.metadata.locationMaps.push({
+            name: 'Aldea del Vado',
+            description: 'Un puñado de casas junto al río.',
+            locationType: 'village',
+            region: 'El Vado',
+            controllingFaction: 'Los Cuervos',
+            boards: [],
+        });
+        return w;
+    };
+
+    test('una aldea sin tablero sale en el paquete', () => {
+        const pack = buildPackFromWorld(withVillage());
+        expect(pack.locations.map(l => l.name)).toEqual(['El molino', 'Aldea del Vado']);
+        expect(pack.locations[1]).toMatchObject({
+            type: 'village', region: 'El Vado', factionName: 'Los Cuervos',
+        });
+    });
+
+    test('y al reimportarla sigue estando, con cero tableros', () => {
+        const { pack } = normalizePack(buildPackFromWorld(withVillage()));
+        const plan = buildImportPlan(pack, { party: [] });
+        const village = plan.metadata.locationMaps.find(l => l.name === 'Aldea del Vado');
+
+        expect(village).toBeDefined();
+        expect(village.boards).toEqual([]);
+        expect(village.locationType).toBe('village');
+        expect(plan.counts.locations).toBe(2);
+    });
+
+    test('el validador no se queja de un sitio al que no se va a pelear', () => {
+        const report = validatePack(normalizePack(buildPackFromWorld(withVillage())).pack);
+        expect(report.errors).toEqual([]);
+        expect(report.ok).toBe(true);
+    });
+
+    test('y lo cuenta en la linea de resumen', () => {
+        expect(describeExport(buildPackFromWorld(withVillage()))).toMatch('2 localidad(es)');
     });
 });
