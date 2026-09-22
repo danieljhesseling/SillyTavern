@@ -18,6 +18,8 @@
  * See wiki/ROADMAP.md, Fase B (B1, B3).
  */
 
+import { normalizeTimers } from './condition-timers.js';
+
 /**
  * @typedef {Object} TurnEntry
  * @property {string} id
@@ -44,6 +46,8 @@
  * @property {number} currentTurnIndex
  * @property {number} round
  * @property {TurnState|null} turnState
+ * @property {import('./condition-timers.js').ConditionTimer[]} [conditionTimers]
+ *   Las condiciones que una habilidad puso con fecha de caducidad.
  */
 
 /** The three things a combatant may spend besides movement. */
@@ -87,6 +91,9 @@ export function normalizeEncounter(raw) {
         currentTurnIndex: turnOrder.length > 0 ? Math.min(Math.max(0, index), turnOrder.length - 1) : 0,
         round: Number.isInteger(raw.round) && raw.round > 0 ? raw.round : (active ? 1 : 0),
         turnState: normalizeTurnState(raw.turnState),
+        // Lo que una habilidad puso con fecha de caducidad. Sin esto, el encuentro se
+        // normaliza y el apunte desaparece: la condicion se quedaria para siempre.
+        conditionTimers: normalizeTimers(raw.conditionTimers),
     };
 }
 

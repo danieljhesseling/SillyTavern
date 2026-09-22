@@ -31,6 +31,7 @@ export { RULESET_SCHEMA_VERSION };
  * @property {Object} items
  * @property {{alignments: string[], conditions: string[], modifiableStats: string[]}} character
  * @property {{xpThresholds: string[][], abilityLevels: string[]}} [progression] Lo que cuesta cada nivel.
+ * @property {any[]} [abilities] Conjuros, tecnicas y recursos de clase.
  */
 
 /**
@@ -67,6 +68,9 @@ const SECTION_SHAPE = {
     'character.modifiableStats': 'string[]',
     'progression.xpThresholds': 'pairs',
     'progression.abilityLevels': 'string[]',
+    // Una habilidad tiene demasiados campos para una tabla de dos columnas: en `/rules` se
+    // edita como JSON, y en `/habilidades` tiene su propio panel con un campo por cosa.
+    'abilities': 'list',
 };
 
 /**
@@ -97,6 +101,8 @@ function matchesKind(value, kind) {
                 && value.every(v => Array.isArray(v) && v.length >= 2 && typeof v[0] === 'string');
         case 'flags':
             return Array.isArray(value) && value.every(v => v && typeof v === 'object' && typeof v.key === 'string');
+        case 'list':
+            return Array.isArray(value) && value.every(v => v && typeof v === 'object' && !Array.isArray(v));
         default:
             return false;
     }

@@ -58,7 +58,8 @@ Toda la documentación técnica, arquitectónica y de jugabilidad está organiza
 
 ### 🔍 Auditoría & Propuestas de Mejora
 - **[[PROBLEMAS_TECNICOS]]**: [wiki/PROBLEMAS_TECNICOS.md](file:///c:/Users/danie/SillyTavern/wiki/PROBLEMAS_TECNICOS.md) - *Auditoría técnica exhaustiva (vulnerabilidades XSS, CSP, desincronización de estado, fugas de memoria y deuda técnica).*
-- **[[PROPUESTAS_MEJORA]]**: [wiki/PROPUESTAS_MEJORA.md](file:///c:/Users/danie/SillyTavern/wiki/PROPUESTAS_MEJORA.md) - *Catálogo de 200 propuestas técnicas estructuradas en 10 áreas estratégicas.*
+- **[[PROPUESTAS_MEJORA]]**: [wiki/PROPUESTAS_MEJORA.md](file:///c:/Users/danie/SillyTavern/wiki/PROPUESTAS_MEJORA.md) - *Catálogo V1 de 200 propuestas técnicas estructuradas en 10 áreas estratégicas.*
+- **[[PROPUESTAS_MEJORA_V2]]**: [wiki/PROPUESTAS_MEJORA_V2.md](file:///c:/Users/danie/SillyTavern/wiki/PROPUESTAS_MEJORA_V2.md) - *Catálogo V2 de 200 propuestas modernas: Game Shell, Zero Comandos, táctica avanzada, magia D&D, bucle social Persona y economía reactiva.*
 
 ### 🛠️ Guías de Referencia
 - **[[Mapa-Codigo-Archivos]]**: [wiki/04-guias-referencia/Mapa-Codigo-Archivos.md](file:///c:/Users/danie/SillyTavern/wiki/04-guias-referencia/Mapa-Codigo-Archivos.md)

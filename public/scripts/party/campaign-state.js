@@ -20,6 +20,7 @@ import {
 } from '../game-engine/campaign/bonds.js';
 import { completeLocation, normalizeCampaignMap } from '../game-engine/campaign/campaign-map.js';
 import { planShortRest, planLongRest, describeRest, getHitDice } from '../game-engine/rules/rest.js';
+import { restoreAbilityUses } from '../game-engine/rules/abilities.js';
 import { buildPersonalWeapon } from '../game-engine/combat/bond-perks.js';
 import { addItemToInventory, createItem } from '../dnd-system.js';
 import { rollDice } from './combat-rules.js';
@@ -32,6 +33,7 @@ export const CAMPAIGN_MAP_KEY = 'campaignMap';
 /**
  * @typedef {Object} CampaignStateDeps
  * @property {() => any} metadata The chat's metadata object.
+ * @property {() => any[]} [abilities] El catalogo de habilidades del paquete de reglas activo.
  * @property {() => void} saveMetadata
  * @property {() => any[]} party
  * @property {() => void} saveParty
@@ -213,6 +215,12 @@ export function createCampaignState(deps) {
             member.hp = entry.hpAfter;
             const dice = getHitDice(member, hitDieByClass);
             member.hitDiceSpent = Math.max(0, Math.min(dice.total, dice.spent + entry.diceSpent - entry.diceRegained));
+        }
+
+        // Y los usos de las habilidades, que es la otra mitad de lo que un descanso
+        // significa: uno corto devuelve lo de descanso corto, uno largo lo devuelve todo.
+        for (const member of party) {
+            member.abilityUses = restoreAbilityUses(member, kind, deps.abilities?.() ?? []);
         }
 
         deps.saveParty();

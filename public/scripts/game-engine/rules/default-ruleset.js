@@ -214,6 +214,58 @@ export const RULESET_SCHEMA_VERSION = 1;
 
 /** @type {import('./ruleset.js').Ruleset} */
 /**
+ * Las habilidades que trae el juego de serie.
+ *
+ * Cinco, a proposito: una de cada forma que el motor sabe resolver, para que se vea como
+ * se escriben las demas. Anadir un conjuro es anadir una fila aqui o desde `/habilidades`,
+ * nunca tocar codigo — la misma regla que las armas y las condiciones.
+ */
+const ABILITIES = [
+    {
+        id: 'rayo_de_fuego',
+        name: 'Rayo de fuego',
+        description: 'Un dardo de fuego que no se acaba nunca. El truco de quien sabe algo de magia.',
+        cost: 'action', resource: 'at_will',
+        rangeFeet: 120, target: 'enemy', resolution: 'attack',
+        damage: '1d10', damageType: 'Fire',
+    },
+    {
+        id: 'curar_heridas',
+        name: 'Curar heridas',
+        description: 'Cierra lo que se pueda cerrar, con las manos encima.',
+        cost: 'action', resource: 'long_rest', usesPerRest: 2,
+        rangeFeet: 5, target: 'ally', resolution: 'auto',
+        healing: '1d8+3',
+    },
+    {
+        id: 'tomar_aliento',
+        name: 'Tomar aliento',
+        description: 'Un segundo de respiro en mitad de la pelea.',
+        cost: 'bonus', resource: 'short_rest', usesPerRest: 1,
+        target: 'self', resolution: 'auto',
+        healing: '1d10+2',
+    },
+    {
+        id: 'furia',
+        name: 'Furia',
+        description: 'Dejar de pensar, que a veces es lo que hace falta.',
+        cost: 'bonus', resource: 'long_rest', usesPerRest: 2,
+        target: 'self', resolution: 'auto',
+        condition: 'Frightened', conditionRounds: 3,
+    },
+    {
+        id: 'golpe_de_escudo',
+        name: 'Golpe de escudo',
+        description: 'El escudo tambien pega, y tira al suelo.',
+        cost: 'action', resource: 'short_rest', usesPerRest: 1,
+        rangeFeet: 5, target: 'enemy', resolution: 'save',
+        saveAbility: 'strength', saveDc: 13,
+        damage: '1d4', damageType: 'Bludgeoning',
+        condition: 'Prone', conditionRounds: 1,
+    },
+];
+
+/**
  * Cuanta experiencia pide cada nivel, como pares [nivel, XP].
  *
  * Pares y no objeto porque es la forma que el editor de reglas ya sabe dibujar: una
@@ -270,4 +322,5 @@ export const DEFAULT_RULESET = {
         xpThresholds: XP_THRESHOLDS,
         abilityLevels: ABILITY_LEVELS,
     },
+    abilities: ABILITIES,
 };

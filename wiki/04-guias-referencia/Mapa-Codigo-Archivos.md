@@ -63,6 +63,7 @@ Módulos puros: sin DOM, sin estado global, sin lecturas del chat. Por eso se pr
 | `campaign/campaign-worlds.js` | 77 | Qué es una campaña, dónde empieza, nombres libres | ✅ |
 | `rules/ruleset.js` | 307 | Validación, fusión, migración y exportación de paquetes | ✅ |
 | `rules/level-up.js` | 300 | Qué da subir de nivel, con la tabla en el paquete de reglas (A1) | ✅ |
+| `rules/abilities.js` | 354 | Conjuros, técnicas y recursos de clase, como datos editables (D5) | ✅ |
 | `rules/default-ruleset.js` | 251 | Las 25 tablas D&D, fuera del código | ✅ |
 | `ui/sandbox.js` | 353 | Banco de pruebas de combate (`/sandbox`) | ✅ |
 | `ui/combat-log.js` | 293 | Registro de combate y prompt del epílogo | ✅ |
@@ -82,6 +83,7 @@ Módulos puros: sin DOM, sin estado global, sin lecturas del chat. Por eso se pr
 | `combat/loot-items.js` | 84 | Qué es cada cosa que sueltan los enemigos, para que se pueda usar | ✅ |
 | `combat/seeded-random.js` | 97 | Dados que se pueden repetir: una partida dos veces igual | ✅ |
 | `combat/target-card.js` | 94 | Qué dice la tarjeta de un enemigo y qué botones ofrece | ✅ |
+| `combat/condition-timers.js` | 119 | Las condiciones con duración, que se van solas al pasar la ronda (D5) | ✅ |
 | `ui/contradiction-log.js` | 223 | Lo que la narración dijo y el motor no confirma | ✅ |
 | `campaign/encounter-editor.js` | 117 | Qué enemigos puede sacar un tablero, como filas | ✅ |
 | `ui/encounter-editor.js` | 119 | El panel de `/enemigos` | ✅ |
@@ -90,6 +92,7 @@ Módulos puros: sin DOM, sin estado global, sin lecturas del chat. Por eso se pr
 | `campaign/objective-editor.js` | 351 | Objetivos como filas editables, y pedírselos a un modelo | ✅ |
 | `ui/objective-editor.js` | 203 | El panel de `/objetivos editar` | ✅ |
 | `ui/audio-settings.js` | 102 | El panel de `/sonido`: una pista por escena (A3) | ✅ |
+| `ui/abilities-panel.js` | 225 | El panel de `/habilidades`: escribir un conjuro y repartirlo (D5) | ✅ |
 | `combat/initiative-tracker.js` | 242 | Quién actúa, quién sigue y qué le pasa | ✅ |
 | `combat/loot.js` | 183 | Botín y experiencia por CR, repartidos entre los que siguen en pie | ✅ |
 | `ui/shell/game-shell.js` | 732 | La capa a pantalla completa: mueve el tablero y el chat, y los devuelve | ✅ |

@@ -75,6 +75,9 @@ import { playForScene, stopSceneAudio } from './scene-audio.js';
  * @property {() => import('./action-chips.js').ActionChip[]} [getChips] Lo que se puede hacer sin escribirlo.
  * @property {(chip: import('./action-chips.js').ActionChip) => void} [onChip]
  * @property {(memberId: string) => void} [onCompanion] Abrir la ficha de un companero.
+ * @property {() => Array<{id: string, label: string, detail: string, enabled: boolean, needsAlly: boolean, allies: Array<{id: string, name: string}>}>} [getAbilities]
+ *   Las habilidades sobre uno mismo o sobre un aliado, ya juzgadas.
+ * @property {(abilityId: string, allyId?: string) => void} [onAbility]
  * @property {() => void} [onClose] Anything the game wants undone when the shell closes.
  * @property {(message: string) => void} [notify]
  */
@@ -230,6 +233,57 @@ function renderSwitcher(bar, situation, current) {
 }
 
 /**
+ * La lista de habilidades propias, con el mismo gesto que la de objetivos.
+ *
+ * Una que necesita aliado pregunta a quien: elegir persona es elegir, y decidirlo por ti
+ * convertiria una curacion en un boton tonto.
+ *
+ * @param {HTMLElement} footer
+ * @param {Array<any>} abilities
+ */
+function toggleAbilities(footer, abilities) {
+    const open = footer.querySelector('.gs-abilities');
+    if (open) {
+        open.remove();
+        return;
+    }
+
+    const list = el('div', 'gs-targets gs-abilities');
+    list.appendChild(el('div', 'gs-targets-title', 'Lo que sabes hacer'));
+
+    for (const ability of abilities) {
+        const row = makeButton('gs-target');
+        row.appendChild(el('span', 'gs-target-name', ability.label));
+        row.appendChild(el('span', 'gs-target-detail', ability.detail));
+        row.disabled = !ability.enabled;
+        row.title = ability.detail;
+        row.addEventListener('click', () => {
+            if (!ability.needsAlly) {
+                list.remove();
+                options?.onAbility?.(ability.id);
+                return;
+            }
+
+            // Sobre un aliado: la misma lista, un paso mas adentro.
+            list.textContent = '';
+            list.appendChild(el('div', 'gs-targets-title', `${ability.label} \u2014 \u00bfsobre quien?`));
+            for (const ally of ability.allies) {
+                const pick = makeButton('gs-target');
+                pick.appendChild(el('span', 'gs-target-name', ally.name));
+                pick.addEventListener('click', () => {
+                    list.remove();
+                    options?.onAbility?.(ability.id, ally.id);
+                });
+                list.appendChild(pick);
+            }
+        });
+        list.appendChild(row);
+    }
+
+    footer.appendChild(list);
+}
+
+/**
  * Draw the row of things that can be done without typing them.
  *
  * Cada ficha sale del estado, asi que ninguna ofrece algo que luego no pase. La que abre
@@ -334,6 +388,19 @@ function renderActionBar(footer, bar) {
     endTurn.title = bar.isPlayerTurn ? 'Pasar el turno' : 'No es tu turno';
     endTurn.addEventListener('click', () => options?.onEndTurn());
     buttons.appendChild(endTurn);
+
+    // Las que van sobre un enemigo viven en su tarjeta, que es donde se elige a quien.
+    // Aqui solo las de uno mismo y las de aliado, que no tienen tablero que pulsar.
+    const own = options?.getAbilities?.() ?? [];
+    if (own.length > 0) {
+        const abilities = makeButton('gs-btn gs-btn-abilities');
+        abilities.appendChild(el('i', 'fa-solid fa-wand-sparkles'));
+        abilities.appendChild(el('span', '', ' Habilidades'));
+        abilities.disabled = !bar.isPlayerTurn;
+        abilities.title = bar.isPlayerTurn ? 'Lo que sabes hacer' : 'No es tu turno';
+        abilities.addEventListener('click', () => toggleAbilities(footer, own));
+        buttons.appendChild(abilities);
+    }
 
     const objectives = makeButton('gs-btn');
     objectives.appendChild(el('i', 'fa-solid fa-list-check'));

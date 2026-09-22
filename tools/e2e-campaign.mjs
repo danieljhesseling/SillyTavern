@@ -2534,6 +2534,122 @@ try {
     check('y el panel lo dice en vez de quedarse en blanco',
         quiet.boards === 0 && /no hay ningun tablero/i.test(quiet.empty), JSON.stringify(quiet.empty));
 
+    step('32. Magia: el catalogo, el boton y el uso que se gasta');
+
+    // El catalogo viene en el paquete de reglas, asi que se edita sin tocar codigo.
+    await page.evaluate(() => {
+        void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/habilidades');
+    });
+    await page.waitForSelector('.ab-root', { timeout: 20000 });
+
+    const panel32 = await page.evaluate(() => ({
+        cards: document.querySelectorAll('.ab-card').length,
+        names: [...document.querySelectorAll('.ab-name')].map(i => i.value),
+        summary: document.querySelector('.ab-summary')?.textContent || '',
+        who: document.querySelectorAll('.ab-card .ab-who-one').length,
+    }));
+    check('el catalogo trae habilidades de serie, escritas como datos',
+        panel32.cards >= 5 && panel32.names.includes('Rayo de fuego'), JSON.stringify(panel32.names));
+    check('cada una se resume en una linea que dice lo que cuesta y que hace',
+        /Acción · a voluntad · 120 ft · 1d10 de daño/.test(panel32.summary), panel32.summary);
+    check('y se puede repartir quien se la sabe, que es lo que ninguna tabla resolvia',
+        panel32.who >= 2, `${panel32.who} casillas`);
+
+    // Que se la sepa alguien: se marca a todo el grupo en el rayo y en el escudo.
+    await page.evaluate(() => {
+        const cards = [...document.querySelectorAll('.ab-card')];
+        for (const card of cards) {
+            const name = card.querySelector('.ab-name')?.value || '';
+            if (!/Rayo de fuego|Golpe de escudo/.test(name)) continue;
+            for (const box of card.querySelectorAll('.ab-who-one input')) {
+                if (!box.checked) box.click();
+            }
+        }
+    });
+    await page.locator('.popup-button-ok').last().click();
+    await page.waitForTimeout(2500);
+
+    const learned = await page.evaluate(() => (window.SillyTavern.getContext().chatMetadata.party || [])
+        .map(m => ({ name: m.name, abilities: m.abilities || [] })));
+    check('guardar deja escrito en la ficha lo que cada uno se sabe',
+        learned.every(m => m.abilities.includes('rayo_de_fuego')), JSON.stringify(learned));
+
+    // Y ahora, a usarla: un combate, la tarjeta del enemigo y su boton. Primero hay que
+    // volver a un sitio con tablero: el paso 31 acaba en la aldea, que no tiene ninguno.
+    await page.evaluate(async () => {
+        const ctx = window.SillyTavern.getContext();
+        await ctx.executeSlashCommandsWithOptions('/go El Molino de los Cuervos');
+        await ctx.executeSlashCommandsWithOptions('/enter El sótano');
+    });
+    await page.waitForTimeout(1600);
+
+    await page.evaluate(() => {
+        void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/fight Guardián del grano 1');
+    });
+    await page.waitForTimeout(2200);
+    await clearDiceOverlay();
+
+    let actingId32 = null;
+    for (let i = 0; i < 12; i++) {
+        actingId32 = await page.evaluate(() => {
+            const enc = window.SillyTavern.getContext().chatMetadata.combatEncounter;
+            const entry = enc?.turnOrder?.[enc?.currentTurnIndex];
+            if (!enc?.active || !entry || entry.isEnemy) return null;
+            const token = document.querySelector(`.wm-token[data-token-id="${String(entry.id)}"]`);
+            return token && token.offsetParent ? String(entry.id) : null;
+        });
+        if (actingId32) break;
+        await page.evaluate(() => window.SillyTavern.getContext()
+            .executeSlashCommandsWithOptions('/combat-end'));
+        await page.waitForTimeout(700);
+        await clearDiceOverlay();
+    }
+    check('hay un turno de jugador para lanzarla', Boolean(actingId32), String(actingId32));
+
+    await page.locator(`.wm-token[data-token-id="${actingId32}"]`).filter({ visible: true }).first().click();
+    await page.waitForTimeout(600);
+    await page.locator('.wm-token-enemy').filter({ visible: true }).first().click();
+    await page.waitForSelector('.tc-card', { timeout: 8000 });
+
+    const cardButtons = await page.evaluate(() => [...document.querySelectorAll('.tc-btn')]
+        .map(b => ({ text: (b.textContent || '').trim(), off: b.disabled, why: b.title })));
+    check('la tarjeta del enemigo ofrece las habilidades, no solo atacar',
+        cardButtons.some(b => /Rayo de fuego/.test(b.text)), JSON.stringify(cardButtons.map(b => b.text)));
+
+    const rayo = cardButtons.find(b => /Rayo de fuego/.test(b.text));
+    check('y un conjuro de 120 ft no esta "fuera de alcance" porque la espada llegue a 5',
+        rayo && rayo.off === false, JSON.stringify(rayo));
+
+    const hpBefore32 = await page.evaluate(() => {
+        const enc = window.SillyTavern.getContext().chatMetadata.combatEncounter;
+        return (enc?.enemies || [])[0]?.currentHp ?? null;
+    });
+
+    await page.locator('.tc-btn').filter({ hasText: 'Rayo de fuego' }).first().click();
+    await page.waitForTimeout(1600);
+    await clearDiceOverlay();
+
+    const after32 = await page.evaluate(() => {
+        const ctx = window.SillyTavern.getContext();
+        const enc = ctx.chatMetadata.combatEncounter;
+        const said = [...document.querySelectorAll('.mes_text')].map(m => m.textContent || '');
+        return {
+            hp: (enc?.enemies || [])[0]?.currentHp ?? null,
+            spent: Boolean(enc?.turnState?.actionUsed),
+            narrated: said.some(t => /usa Rayo de fuego/.test(t)),
+        };
+    });
+    check('lanzarla gasta la accion del turno', after32.spent === true, JSON.stringify(after32.spent));
+    check('y queda contada en el chat, con su tirada',
+        after32.narrated, JSON.stringify(after32.narrated));
+    check('el enemigo pierde vida, o el conjuro falla y se dice',
+        after32.hp !== null && after32.hp <= hpBefore32, `${hpBefore32} -> ${after32.hp}`);
+
+    await page.evaluate(() => window.SillyTavern.getContext()
+        .executeSlashCommandsWithOptions('/combat-stop'));
+    await page.waitForTimeout(1000);
+    await clearDiceOverlay();
+
     console.log('\n--- console errors ---');
     console.log(problems.size ? [...problems].join('\n') : '(none)');
 } catch (error) {

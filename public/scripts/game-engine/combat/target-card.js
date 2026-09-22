@@ -41,11 +41,14 @@
  * @param {number} input.rangeFeet
  * @param {number} [input.cover]
  * @param {boolean} [input.hasAction] Whether the action of the turn is still unspent.
- * @param {boolean} [input.canUltimate] Whether the rank-10 blow is available.
+ * @param {boolean} [input.canUltimate]
+ * @param {Array<{id: string, label: string, enabled: boolean, reason: string}>} [input.abilities]
+ *   Las habilidades que este actor puede lanzarle, ya juzgadas por `rules/abilities.js`. Whether the rank-10 blow is available.
  * @returns {TargetCard}
  */
 export function buildTargetCard({
     actor, target, distanceFeet, rangeFeet, cover = 0, hasAction = true, canUltimate = false,
+    abilities = [],
 }) {
     const alive = (Number(target?.currentHp) || 0) > 0;
     const inRange = Number(distanceFeet) <= Number(rangeFeet);
@@ -78,6 +81,15 @@ export function buildTargetCard({
             action('attack', 'Atacar', true, ''),
             action('ultimate', 'Golpe definitivo', canUltimate,
                 'Pide un vínculo de rango 10 y no haberlo usado hoy'),
+            // Las habilidades traen su propio veredicto: su alcance y su coste no tienen
+            // por que ser los del arma, asi que juzgarlas aqui otra vez daría una razón
+            // equivocada — un conjuro de 120 ft no está "fuera de alcance" a 30.
+            ...(Array.isArray(abilities) ? abilities : []).map(ability => ({
+                id: `ability:${ability.id}`,
+                label: ability.label,
+                enabled: !alive ? false : Boolean(ability.enabled),
+                reason: !alive ? 'Ya está fuera de combate' : String(ability.reason ?? ''),
+            })),
         ],
     };
 }

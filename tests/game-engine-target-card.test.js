@@ -69,3 +69,35 @@ describe('the buttons, which are what actually spends', () => {
         }
     });
 });
+
+describe('las habilidades, en la misma tarjeta', () => {
+    test('salen detras de atacar, con su propio veredicto', () => {
+        const withAbility = card({
+            distanceFeet: 30,
+            abilities: [{ id: 'rayo', label: 'Rayo de fuego', enabled: true, reason: '' }],
+        });
+        const ability = withAbility.actions.find(a => a.id === 'ability:rayo');
+        expect(ability).toBeDefined();
+        // Atacar esta fuera de alcance a 30 ft con un arma de 5, y el rayo no: cada uno
+        // trae su razon, porque el alcance del conjuro no es el del arma.
+        expect(withAbility.actions[0].enabled).toBe(false);
+        expect(ability.enabled).toBe(true);
+    });
+
+    test('y una que no se puede dice por que', () => {
+        const withAbility = card({
+            abilities: [{ id: 'escudo', label: 'Golpe de escudo', enabled: false, reason: 'Sin usos: vuelve con un descanso corto.' }],
+        });
+        const ability = withAbility.actions.find(a => a.id === 'ability:escudo');
+        expect(ability.enabled).toBe(false);
+        expect(ability.reason).toMatch(/descanso corto/);
+    });
+
+    test('sobre alguien que ya cayo, ninguna', () => {
+        const dead = buildTargetCard({
+            actor: { name: 'Lyra' }, target: { ...crow, currentHp: 0 }, distanceFeet: 5, rangeFeet: 5,
+            abilities: [{ id: 'rayo', label: 'Rayo de fuego', enabled: true, reason: '' }],
+        });
+        expect(dead.actions.every(a => !a.enabled)).toBe(true);
+    });
+});

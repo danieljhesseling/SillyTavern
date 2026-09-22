@@ -131,6 +131,21 @@ Si el tablero tiene enemigos dibujados y nadie pelea, aparece **Iniciar combate*
 
 Las fichas de acción de *hablar* **no envían nada**: dejan la frase empezada en el chat para que la termines tú.
 
+### Lanzar algo
+
+Las habilidades de tu campaña se escriben en **`/habilidades`**: un panel con un campo por cosa — qué cuesta, cuántas veces, a quién alcanza y qué hace — y, al lado, **quién se sabe cada una**. Vienen cinco de serie para que se vea cómo se escriben las demás.
+
+| Dónde | Qué sale |
+| :--- | :--- |
+| Tarjeta del enemigo | Las que van sobre él, con su propio alcance: un conjuro de 120 ft no está *«fuera de alcance»* porque tu espada llegue a 5 |
+| Barra de combate → *Habilidades* | Las de uno mismo y las de aliado. Si necesita aliado, te pregunta a quién |
+
+Entre paréntesis, al lado del nombre, van **los usos que te quedan**. Cuando se acaban, el botón se apaga y dice con qué descanso vuelven: el corto devuelve lo de descanso corto, el largo lo devuelve todo.
+
+Lo que aplica una condición — *derribado*, *aturdido* — la pone **con sus rondas**, y se va sola cuando toca. Lo que pongas tú a mano con `/condition` se queda hasta que lo quites.
+
+> **El catálogo viaja con las reglas de la campaña**, así que se exporta con ella y le llega a quien le pases el paquete.
+
 ### Subir de nivel
 
 Cuando alguien tiene experiencia de sobra, **le sale una estrella en la cara** de la tira del grupo. Pulsa su cara → *Subir de nivel*, o ábrele la ficha desde el cajon del grupo.
@@ -153,6 +168,7 @@ Todo esto se puede seguir escribiendo, y el recorrido de pruebas entra por aquí
 | :--- | :--- |
 | `/exportar-campana` | Empaqueta tu campaña en un archivo que otro puede importar. También en el menú de pausa |
 | `/sonido` | Qué suena en cada escena. Las pistas las pones tú |
+| `/habilidades` | Escribe conjuros y técnicas, y reparte quién se sabe cada uno |
 
 **Moverse por el mundo**
 
@@ -222,7 +238,7 @@ De `/contradicciones` conviene entender qué es y qué no. **No corrige nada.** 
 
 Para que nadie lo descubra a mitad de una sesión:
 
-- **La magia no está implementada.** Una clase puede decir que lanza conjuros, pero no hay lista de hechizos, ni espacios, ni forma de lanzarlos. Los conjuros son narración.
+- **La magia es la capa ligera, no las ranuras de 5e.** Hay conjuros, técnicas y recursos de clase, con sus usos y sus tiradas; no hay ranuras de nivel 1 a 9, conjuros preparados, concentración ni áreas de efecto. **Los enemigos todavía no lanzan nada.**
 - **Subir de nivel no da subclases ni dotes.** Sí da puntos de golpe, dados de golpe y mejora de característica cada cuatro niveles; el arquetipo de nivel 3 y las dotes, no.
 - **El sonido no trae ni una pista.** Las pones tú en `/sonido`: aquí no hay música con licencia de nadie.
 - **Las reglas de encuentro no colocan a nadie por su cuenta** salvo en los tableros importados, que traen sus posiciones dibujadas. En los demás, `/fight` los pone en una casilla libre.

@@ -83,6 +83,13 @@ import {
     levelForXp,
 } from './game-engine/rules/level-up.js';
 import {
+    normalizeAbilities, knownAbilities, usesLeft, canUseAbility, planAbilityUse,
+    spendAbilityUse, describeAbility,
+} from './game-engine/rules/abilities.js';
+import {
+    addConditionTimer, expireConditions, clearTimersFor,
+} from './game-engine/combat/condition-timers.js';
+import {
     isShellOpen, toggleGameShell, refreshGameShell, closeGameShell,
 } from './game-engine/ui/shell/game-shell.js';
 import { buildDialogueView } from './game-engine/ui/shell/dialogue-scene.js';
@@ -1745,6 +1752,9 @@ function advanceTurnIndex() {
     // Announced here rather than inside the machine, which stays pure and silent.
     if (combatEncounter.round > roundBefore) {
         postCombatNarration(`⏳ [COMBAT] Ronda ${combatEncounter.round}`);
+        // Lo que una habilidad puso con duracion se va aqui, que es el unico sitio donde
+        // el combate cuenta rondas.
+        for (const line of expireTimedConditions()) postCombatNarration(line);
         // A scenario won by the clock has no other moment to notice.
         if (checkScenarioOutcome()) return null;
     }
@@ -2096,6 +2106,8 @@ const campaign = createCampaignState({
     isFighting: () => Boolean(combatEncounter.active),
     worldName: () => String(chat_metadata?.[METADATA_KEY] || ''),
     loadWorld: (name) => loadWorldInfo(name),
+    // Para devolver los usos de habilidad al descansar: el catalogo vive en las reglas.
+    abilities: () => getAbilityCatalogue(),
 });
 
 /** @returns {any} */
@@ -2925,12 +2937,35 @@ function openTargetCard(member, enemy) {
     );
     const { cover } = getTargetArmorClass(enemy, member);
 
+    // Las que este personaje se sabe y van sobre un enemigo, cada una con su veredicto:
+    // un conjuro de 120 ft no esta "fuera de alcance" porque la espada llegue a 5.
+    const usable = knownAbilities(member, getAbilityCatalogue())
+        .filter(ability => ability.target === 'enemy')
+        .map(ability => {
+            const verdict = canUseAbility({
+                member,
+                ability,
+                distanceFeet,
+                hasAction: hasAction(combatEncounter, 'action'),
+                hasBonus: hasAction(combatEncounter, 'bonus'),
+                targetAlive: (Number(enemy.currentHp) || 0) > 0,
+            });
+            const left = usesLeft(member, ability);
+            return {
+                id: ability.id,
+                label: Number.isFinite(left) ? `${ability.name} (${left})` : ability.name,
+                enabled: verdict.ok,
+                reason: verdict.ok ? describeAbility(ability) : verdict.reason,
+            };
+        });
+
     const card = buildTargetCard({
         actor: member,
         target: enemy,
         distanceFeet,
         rangeFeet: getAttackRangeFeet(member),
         cover,
+        abilities: usable,
         hasAction: hasAction(combatEncounter, 'action'),
         canUltimate: Boolean(planUltimate({
             bonds: getCampaignBonds(),
@@ -2956,8 +2991,14 @@ function openTargetCard(member, enemy) {
         if (!action.enabled) button.attr('title', action.reason);
         button.on('click', () => {
             closeTargetCard();
-            if (action.id === 'attack') handlePlayerCombatAttack(enemy.name);
-            else resolveUltimateStrike(enemy.name);
+            if (action.id === 'attack') {
+                handlePlayerCombatAttack(enemy.name);
+            } else if (action.id.startsWith('ability:')) {
+                const ability = getAbilityCatalogue().find(a => a.id === action.id.slice('ability:'.length));
+                if (ability) useAbility(member, ability, enemy);
+            } else {
+                resolveUltimateStrike(enemy.name);
+            }
         });
         actions.append(button);
     }
@@ -3511,6 +3552,68 @@ function buildShellDialogue() {
 }
 
 /**
+ * Abre el panel de habilidades y guarda lo que salga.
+ *
+ * El catalogo viaja dentro del paquete de reglas del mundo, como las armas y las
+ * condiciones; lo que cada personaje se sabe vive en su ficha.
+ *
+ * @returns {Promise<string>}
+ */
+async function openAbilitiesEditor() {
+    const worldName = String(chat_metadata?.[METADATA_KEY] || '');
+    if (!worldName) {
+        toastr.warning('Abre una campana antes de escribir sus habilidades.');
+        return '';
+    }
+
+    try {
+        const data = await loadWorldInfo(worldName);
+        if (!data) {
+            toastr.warning(`No se pudo leer el mundo "${worldName}".`);
+            return '';
+        }
+
+        const { openAbilitiesPanel } = await import('./game-engine/ui/abilities-panel.js');
+        const edited = await openAbilitiesPanel({
+            abilities: getAbilityCatalogue(),
+            party: partyMembers,
+            conditions: getActiveRuleset()?.character?.conditions ?? [],
+            Popup,
+            POPUP_TYPE,
+        });
+        if (!edited) return '';
+
+        // El paquete del mundo manda: si no tiene uno propio, se parte del activo para no
+        // perder el resto de secciones al guardar solo las habilidades.
+        const pack = structuredClone(data.metadata?.rulesetPack ?? getActiveRuleset());
+        pack.abilities = edited.abilities;
+        data.metadata = data.metadata ?? {};
+        data.metadata.rulesetPack = pack;
+        await saveWorldInfo(worldName, data, true);
+        await applyCampaignRuleset(worldName);
+
+        // Y lo que cada uno se sabe, en su ficha. Una habilidad borrada deja de saberse
+        // sola, porque el panel ya la quito de las listas.
+        const live = new Set(edited.abilities.map((/** @type {any} */ a) => a.id));
+        for (const member of partyMembers) {
+            const mine = edited.known[String(member.id)] ?? [];
+            member.abilities = mine.filter((/** @type {string} */ id) => live.has(id));
+        }
+        savePartyState();
+        renderPartyMembers();
+        renderLocationMapsPreview();
+
+        const total = edited.abilities.length;
+        toastr.success(`${total} habilidad(es) guardadas con las reglas de "${worldName}".`);
+        return `${total} habilidades`;
+    } catch (error) {
+        console.error('[party] abilities editor failed', error);
+        toastr.error(String(error?.message || error), 'No se pudieron guardar las habilidades');
+        return '';
+    }
+}
+
+/**
  * Abre los ajustes de sonido, cargando el panel solo cuando hace falta.
  *
  * @returns {Promise<string>}
@@ -3572,6 +3675,160 @@ async function exportCampaignPack() {
 
     postCombatNarration(`📦 [CAMPANA] Exportada: ${summary}.`);
     return fileName;
+}
+
+/** El catalogo de habilidades del paquete de reglas activo. */
+const getAbilityCatalogue = () => normalizeAbilities(getActiveRuleset()?.abilities);
+
+/**
+ * El modificador de una caracteristica, que es la misma cuenta de siempre.
+ *
+ * @param {any} creature
+ * @param {string} ability
+ */
+function abilityModifier(creature, ability) {
+    return Math.floor(((Number(creature?.[ability]) || 10) - 10) / 2);
+}
+
+/**
+ * Pone una condicion, con fecha de caducidad si la habilidad la trae.
+ *
+ * Lo puesto a mano con `/condition` no lleva apunte y se quita a mano; lo que pone una
+ * habilidad se va solo al pasar las rondas que dijo. Un "una ronda" que dura para siempre
+ * seria un numero decorativo.
+ *
+ * @param {any} creature
+ * @param {string} who El id con el que el encuentro lo conoce.
+ * @param {string} condition
+ * @param {number} rounds
+ */
+function applyTimedCondition(creature, who, condition, rounds) {
+    creature.activeConditions = Array.isArray(creature.activeConditions) ? creature.activeConditions : [];
+    if (!creature.activeConditions.includes(condition)) creature.activeConditions.push(condition);
+
+    combatEncounter.conditionTimers = addConditionTimer(combatEncounter.conditionTimers, {
+        who, condition, round: Number(combatEncounter.round) || 1, rounds,
+    });
+}
+
+/**
+ * Quita lo que ya ha caducado al empezar una ronda.
+ *
+ * @returns {string[]} Lo que se ha ido, ya escrito.
+ */
+function expireTimedConditions() {
+    const { timers, expired } = expireConditions(combatEncounter.conditionTimers, Number(combatEncounter.round) || 1);
+    combatEncounter.conditionTimers = timers;
+    if (expired.length === 0) return [];
+
+    const lines = [];
+    for (const gone of expired) {
+        const enemy = combatEncounter.enemies.find(e => String(e.instanceId) === gone.who);
+        const member = partyMembers.find(m => String(m.id) === gone.who);
+        const creature = enemy || member;
+        if (!creature) continue;
+
+        creature.activeConditions = (Array.isArray(creature.activeConditions) ? creature.activeConditions : [])
+            .filter((/** @type {string} */ c) => c !== gone.condition);
+        lines.push(`✨ [COMBAT] A ${creature.name} se le pasa: ${gone.condition}.`);
+    }
+    return lines;
+}
+
+/**
+ * Usa una habilidad sobre alguien, o sobre uno mismo.
+ *
+ * Resuelve y aplica: la decision de si se puede y de que pasa esta en `rules/abilities.js`,
+ * y aqui solo se escribe en las fichas y se cuenta.
+ *
+ * @param {any} member Quien la usa.
+ * @param {any} ability
+ * @param {any} target El enemigo o el companero, o null para uno mismo.
+ * @returns {string}
+ */
+function useAbility(member, ability, target) {
+    const turnState = getCurrentTurnState();
+    if (!combatEncounter.active || !turnState) {
+        toastr.warning('No hay un turno de jugador activo.');
+        return '';
+    }
+
+    const isSelf = ability.target === 'self';
+    const subject = isSelf ? member : target;
+    if (!subject) {
+        toastr.warning('Esa habilidad necesita un objetivo.');
+        return '';
+    }
+
+    const origin = member.mapPosition || { gridX: 0, gridY: 0 };
+    const at = subject.mapPosition || { gridX: subject.gridX ?? 0, gridY: subject.gridY ?? 0 };
+    const distanceFeet = isSelf ? 0 : getDistanceInFeet(
+        origin.gridX || 0, origin.gridY || 0,
+        at.gridX ?? at.x ?? 0, at.gridY ?? at.y ?? 0,
+    );
+
+    const alive = ability.target === 'enemy'
+        ? (Number(subject.currentHp) || 0) > 0
+        : (Number(subject.hp) || 0) > 0 || isSelf;
+
+    const verdict = canUseAbility({
+        member,
+        ability,
+        distanceFeet,
+        hasAction: hasAction(combatEncounter, 'action'),
+        hasBonus: hasAction(combatEncounter, 'bonus'),
+        targetAlive: alive,
+    });
+    if (!verdict.ok) {
+        toastr.warning(verdict.reason);
+        return '';
+    }
+
+    const plan = planAbilityUse({
+        actor: member,
+        target: subject,
+        ability,
+        roll: (/** @type {string} */ formula) => rollDiceDetailed(formula, 8),
+        attackModifier: getPlayerAttackModifier(member, ability.rangeFeet),
+        targetAc: ability.target === 'enemy' ? getTargetArmorClass(subject, member).ac : 10,
+        saveModifier: abilityModifier(subject, ability.saveAbility),
+    });
+
+    // El coste se paga aunque falle: lanzar y errar tambien gasta el turno.
+    if (ability.cost !== 'free') {
+        Object.assign(combatEncounter, useAction(combatEncounter, ability.cost === 'bonus' ? 'bonus' : 'action'));
+    }
+    member.abilityUses = spendAbilityUse(member, ability);
+
+    const lines = [...plan.lines];
+
+    if (plan.damage > 0 && ability.target === 'enemy') {
+        subject.currentHp = Math.max(0, (Number(subject.currentHp) || 0) - plan.damage);
+        lines.push(`❤️ Estado de ${subject.name}: ${subject.currentHp}/${subject.maxHp}`);
+        if (subject.currentHp === 0) {
+            lines.push(`☠️ ${subject.name} cae derrotado.`);
+            combatEncounter.conditionTimers = clearTimersFor(combatEncounter.conditionTimers, String(subject.instanceId));
+        }
+    }
+
+    if (plan.healing > 0 && ability.target !== 'enemy') {
+        const before = Number(subject.hp) || 0;
+        subject.hp = Math.min(Number(subject.maxHp) || before, before + plan.healing);
+        lines.push(`❤️ Estado de ${subject.name}: ${subject.hp}/${subject.maxHp}`);
+    }
+
+    if (plan.condition) {
+        const who = ability.target === 'enemy' ? String(subject.instanceId) : String(subject.id);
+        applyTimedCondition(subject, who, plan.condition, plan.conditionRounds);
+    }
+
+    saveCombatState();
+    savePartyState();
+    postCombatNarration(lines.join('\n'));
+    renderPartyMembers();
+    renderLocationMapsPreview();
+
+    return `${member.name} usa ${ability.name}`;
 }
 
 /** Los umbrales de nivel del paquete de reglas activo. */
@@ -4144,6 +4401,40 @@ function buildShellOptions() {
             renderLocationMapsPreview();
         },
         onClose: () => setLocationMapsHidden(wasHidden),
+        getAbilities: () => {
+            const member = getCurrentActingMember();
+            if (!member || !combatEncounter.active) return [];
+            return knownAbilities(member, getAbilityCatalogue())
+                .filter(ability => ability.target !== 'enemy')
+                .map(ability => {
+                    const verdict = canUseAbility({
+                        member,
+                        ability,
+                        hasAction: hasAction(combatEncounter, 'action'),
+                        hasBonus: hasAction(combatEncounter, 'bonus'),
+                    });
+                    const left = usesLeft(member, ability);
+                    return {
+                        id: ability.id,
+                        label: Number.isFinite(left) ? `${ability.name} (${left})` : ability.name,
+                        detail: verdict.ok ? describeAbility(ability) : verdict.reason,
+                        enabled: verdict.ok,
+                        needsAlly: ability.target === 'ally',
+                        allies: ability.target === 'ally'
+                            ? partyMembers
+                                .filter(m => (Number(m.hp) || 0) > 0)
+                                .map(m => ({ id: String(m.id), name: `${m.name} (${m.hp}/${m.maxHp})` }))
+                            : [],
+                    };
+                });
+        },
+        onAbility: (abilityId, allyId) => {
+            const member = getCurrentActingMember();
+            const ability = getAbilityCatalogue().find(a => a.id === abilityId);
+            if (!member || !ability) return;
+            const ally = allyId ? partyMembers.find(m => String(m.id) === String(allyId)) : null;
+            useAbility(member, ability, ability.target === 'ally' ? ally : null);
+        },
         onObjectives: () => {
             const verdict = judgeCurrentScenario();
             toastr.info(
@@ -6761,6 +7052,13 @@ export function initPartyPanel() {
 
     // El camino de vuelta del importador: sin esto se puede meter el libro de otro y no
     // mandar el tuyo, que es media historia de "sin marketplace".
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'habilidades',
+        helpString: '<div>Escribe conjuros, tecnicas y recursos de clase, y reparte quien se sabe cada uno. '
+            + 'Se guardan con las reglas de la campa\u00f1a.</div>',
+        callback: async () => await openAbilitiesEditor(),
+    }));
+
     SlashCommandParser.addCommandObject(SlashCommand.fromProps({
         name: 'sonido',
         helpString: '<div>Ajusta que suena en cada escena del Modo Juego. Las pistas las pones tu: '

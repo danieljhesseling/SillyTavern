@@ -24,6 +24,8 @@
  * @property {number} maxHp
  * @property {number} xp
  * @property {number} xpNext
+ * @property {string[]} [abilities] Los ids del catalogo que este personaje se sabe.
+ * @property {Record<string, number>} [abilityUses] Cuantas veces ha usado cada una desde el ultimo descanso.
  * @property {number} gold
  * @property {number} silver
  * @property {number} copper

@@ -50,6 +50,7 @@ export const SECTION_LABELS = {
     'slotInfo': 'Detalle de las ranuras',
     'progression.xpThresholds': 'Experiencia por nivel (nivel → XP)',
     'progression.abilityLevels': 'Niveles con mejora de característica',
+    'abilities': 'Habilidades y conjuros (mejor desde /habilidades)',
 };
 
 /** The order the editor offers them in: what you came to change, first. */
@@ -185,6 +186,17 @@ export function toRows(value, kind) {
         case 'number':
             return { columns: ['Número'], editable: true, raw: '', rows: [{ a: String(value ?? 0), b: '', c: '' }] };
 
+        // Una lista de fichas — hoy, las habilidades — tiene demasiados campos para una
+        // tabla de tres columnas. Aqui se edita como JSON y en su propio panel con un
+        // campo por cosa; lo que no se hace es aplanarla y perder la mitad al volver.
+        case 'list':
+            return {
+                columns: [],
+                editable: false,
+                raw: JSON.stringify(Array.isArray(value) ? value : [], null, 2),
+                rows: [],
+            };
+
         // Nested maps have no honest table form, so they are edited as JSON rather than
         // flattened into something that loses their shape on the way back.
         default:
@@ -284,6 +296,17 @@ export function fromRows(rows, kind, raw = '') {
             if (!Number.isFinite(n)) return { value: 0, errors: ['Tiene que ser un número.'] };
             return { value: n, errors: [] };
         }
+
+        case 'list':
+            try {
+                const parsed = JSON.parse(raw || '[]');
+                if (!Array.isArray(parsed) || parsed.some(item => !item || typeof item !== 'object' || Array.isArray(item))) {
+                    return { value: [], errors: ['Tiene que ser una lista de fichas JSON.'] };
+                }
+                return { value: parsed, errors: [] };
+            } catch (error) {
+                return { value: [], errors: [`JSON no válido: ${error?.message || error}`] };
+            }
 
         default:
             try {

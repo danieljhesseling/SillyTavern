@@ -50,6 +50,7 @@ mindmap
       [[PLAN_JUEGO_TIPO_FRIENDS_AND_FABLES]]
       [[ROADMAP_JUEGO_SIN_COMANDOS]]
       [[DISENO_GENERADOR_MUNDOS_PROFUNDO]]
+      [[PROPUESTAS_MEJORA_V2]]
     Guías & Referencia
       [[Mapa-Codigo-Archivos]]
       [[Guia-Desarrollo-Flujo]]
@@ -89,6 +90,7 @@ El núcleo de juego de rol agregado en la rama `my-silly` con más de 24,000 lí
 Diagnóstico crítico y catálogo exhaustivo de propuestas de mejora:
 - [[PROBLEMAS_TECNICOS]]: **Auditoría profunda** con 15 hallazgos críticos de seguridad (XSS, CSP), desincronización de estado, cuellos de botella de memoria y ausencia de tests. Con el estado de cada hallazgo comprobado contra el código: 6 corregidos, 4 parciales y 5 abiertos.
 - [[PROPUESTAS_MEJORA]]: **Catálogo de 200 propuestas técnicas estructuradas** en 10 áreas estratégicas (arquitectura, seguridad, D&D, VTT, agentes, UI/UX, bases de datos y DevOps). Cada propuesta con novedad lleva su marca de estado, y el anexo recoge 12 propuestas propias.
+- [[PROPUESTAS_MEJORA_V2]]: **Catálogo V2 de 200 Nuevas Propuestas de Mejora**: Nueva batería de 200 propuestas adaptadas a la madurez actual del motor (Game Shell, Zero Comandos, táctica avanzada, magia y spell slots, bucle social Persona y economía reactiva).
 - [[PROPUESTA_JUEGO_DND_GLOOMHAVEN_PERSONA]]: **Propuesta de Motor Híbrido RPG** (Persona + Gloomhaven + D&D 5e): combate táctico algorítmico 0 tokens, social links con perks de combate, calendario y lienzo blanco de world building. Incluye el estado de cada pilar y las correcciones que la realidad impuso.
 - [[ROADMAP_INGESTA_CAMPANAS_LIBROS]]: **De un libro a una campaña jugable.** El contrato de datos entre un GEM de Gemini y el motor, con el validador y el importador que faltan.
 - [[PROPUESTA_FRONTEND_MODO_JUEGO]]: **Frontend Dedicado "Modo Videojuego"**: Cómo eliminar el ruido de SillyTavern mediante una Pantalla de Título (Nueva/Cargar/Opciones) y un HUD de juego inmersivo (Dock de Party, Diálogo RPG, Tablero), sin tocar `index.html`.

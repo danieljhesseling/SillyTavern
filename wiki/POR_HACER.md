@@ -10,11 +10,11 @@ author: DanielJHesseling / Claude Opus 5
 
 Lo que falta, dividido por **quién tiene que actuar**:
 
-| Bloque | Qué es | Quién decide |
-| :--- | :--- | :--- |
-| **[A](#-a--se-puede-hacer-sin-preguntar)** | Trabajo con el camino claro: qué hay que construir ya está decidido | Nadie. Se hace |
-| **[D](#-d--necesita-una-decisión)** | Cruces de camino: hay dos salidas razonables y elegir mal cuesta | **Tú** |
-| **[P](#-p--propuestas)** | Ideas que no están en ningún plan todavía | **Tú**, si alguna te convence |
+| Bloque                                     | Qué es                                                              | Quién decide                  |
+| :----------------------------------------- | :------------------------------------------------------------------ | :---------------------------- |
+| **[A](#-a--se-puede-hacer-sin-preguntar)** | Trabajo con el camino claro: qué hay que construir ya está decidido | Nadie. Se hace                |
+| **[D](#-d--necesita-una-decisión)**        | Cruces de camino: hay dos salidas razonables y elegir mal cuesta    | **Tú**                        |
+| **[P](#-p--propuestas)**                   | Ideas que no están en ningún plan todavía                           | **Tú**, si alguna te convence |
 
 El plan y el porqué están en [[ROADMAP]]; esto es el marcador.
 
@@ -128,7 +128,7 @@ Añadir una a mano exige editar `starter-templates.js`. Convertirlas en datos (`
 
 **Recomiendo aplazarlo** hasta que quieras una plantilla fija concreta que la IA no te dé.
 
-### D5 · La magia: ¿cuánta, y cuándo?
+### D5 · La magia: ¿cuánta, y cuándo? ✅ **Decidido: la ligera, el 2026-09-22**
 
 **No hay magia.** Ninguna: ni trucos, ni espacios de conjuro, ni recursos de clase. El combate resuelve armas. Un D&D sin conjuros deja fuera a la mitad de las clases — el mago, el clérigo, el brujo y el druida no son jugables como tales — y eso ninguna narración lo tapa: puedes *contar* que lanzas una bola de fuego, pero el motor no la tira, no la resuelve y no la cuenta.
 
@@ -143,15 +143,25 @@ No cuesta tokens — la resolvería el motor, como el resto del combate — pero
 
 [[DISENO_GENERADOR_MUNDOS_PROFUNDO]] ya trae **la forma de los datos** para esto, y es buena: un catálogo único (`spellsAndAbilities`) que referencian por id tanto los personajes como los enemigos, con coste de acción, alcance, área, recurso que gasta, tirada o salvación, daño o curación, y condiciones que aplica. Un catálogo compartido es justo lo que hace que la misma pieza sirva para la *Furia* de un bárbaro y para el aliento de un dragon. Lo caro no es el catálogo: son las **áreas de efecto** (una línea de 30 pies es geometría nueva en el tablero) y la **concentración**.
 
-Lo que sí hace falta decidir antes de tocar nada: **si la magia entra ahora o después de A1–A3**. Entra por delante de todo lo demás en cuanto la toques, porque es grande.
+**Hecho el 2026-09-22, y la ligera.** `rules/abilities.js` (26 tests): una habilidad son cuatro preguntas — qué cuesta, cuántas veces, a quién alcanza y qué hace — y con eso salen la *Furia*, el *Tomar aliento* y el *Rayo de fuego* con las mismas piezas.
 
-### D6 · ¿Que el DM pida tiradas? Es lo único que cuesta dinero
+- **El catálogo vive en el paquete de reglas**, así que un conjuro nuevo es una fila. Hay un panel propio, **`/habilidades`**, con un campo por cosa en vez del JSON del editor de reglas, y ahí mismo se reparte **quién se sabe cada una**.
+- **Tres formas de resolverse**: sale siempre, tirada de ataque contra la CA (con crítico que dobla dados) o tirada de salvación contra una CD (superarla parte el daño por la mitad y evita la condición).
+- **Los usos se gastan y los descansos los devuelven**: el corto devuelve lo de descanso corto, el largo lo devuelve todo. Va enganchado donde ya se descansa.
+- **Las de enemigo salen en su tarjeta** — cada una con su alcance, así que un conjuro de 120 ft no está *«fuera de alcance»* porque la espada llegue a 5 — y **las de uno mismo o de aliado, en un botón nuevo de la barra de combate**, que pregunta a quién cuando hace falta.
+- **Las condiciones con duración se van solas** (`combat/condition-timers.js`, 10 tests). Un *«derribado una ronda»* que dejara al goblin en el suelo para siempre habría sido un número decorativo; lo puesto a mano con `/condition` sigue quitándose a mano.
+
+> **Lo que no entra, y se dice**: no hay ranuras de nivel 1 a 9, ni conjuros preparados, ni concentración, ni áreas de efecto — una línea de 30 pies es geometría nueva en el tablero, y eso es otra batería. **Los enemigos todavía no las usan**: el catálogo es compartido y su IA no sabe lanzarlas. Si algún día hacen falta las ranuras de verdad, se añaden encima de esto; al revés no.
+
+### D6 · ¿Que el DM pida tiradas? ❌ **Decidido: no, el 2026-09-22**
 
 La Pieza 1 de [[PLAN_JUEGO_TIPO_FRIENDS_AND_FABLES]]: que el narrador escriba `[CHECK: Percepción | CD 13 | Actor: Lyra]`, el motor tire el d20 con su modificador y el resultado decida lo que pasa. Es lo que hace que un DM de IA se sienta un DM y no un narrador.
 
 La costura ya existe y es la buena: `roll-guard.js` intercepta las tiradas que el modelo se inventa y las sustituye por las del motor. Esto es el mismo mecanismo al revés — el modelo **pide**, el motor **tira**. Y si el modelo no escribe el bloque, no se rompe nada: se sigue jugando como hoy.
 
 **Por qué lo decides tú**: de las seis piezas es **la única que cuesta tokens en cada turno**, porque hay que explicarle el protocolo al modelo. Con tu tope de 5 € eso no es un detalle. Si se hace, el bloque va en el prefijo estable (el tier `rules`) o se carga la caché en cada mensaje, y habría que **medir si el modelo obedece**: un protocolo que falla la mitad de las veces es peor que no tenerlo.
+
+**Decidido que no, por ahora.** Cuesta en todos los turnos y depende de que el modelo obedezca; el motor ya tira, ya audita y ya corrige lo que el narrador se invente. Si algún día apetece, la costura (`roll-guard.js`) sigue ahí.
 
 ---
 

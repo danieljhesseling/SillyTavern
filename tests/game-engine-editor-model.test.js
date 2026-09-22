@@ -176,3 +176,19 @@ describe('isSectionModified', () => {
         expect(isSectionModified(pack, 'character.conditions')).toBe(false);
     });
 });
+
+describe('una lista de fichas, como las habilidades', () => {
+    test('se edita como JSON, y vuelve entera', () => {
+        const value = [{ id: 'rayo', name: 'Rayo', damage: '1d10' }];
+        const { rows, raw, editable } = toRows(value, 'list');
+        expect(editable).toBe(false);
+        expect(rows).toEqual([]);
+        expect(fromRows([], 'list', raw)).toEqual({ value, errors: [] });
+    });
+
+    test('lo que no es una lista de fichas se rechaza en vez de guardarse a medias', () => {
+        expect(fromRows([], 'list', '{"a":1}').errors).toHaveLength(1);
+        expect(fromRows([], 'list', '[1,2]').errors).toHaveLength(1);
+        expect(fromRows([], 'list', 'no soy json').errors[0]).toMatch(/JSON no válido/);
+    });
+});
