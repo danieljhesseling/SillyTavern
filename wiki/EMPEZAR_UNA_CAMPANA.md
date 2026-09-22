@@ -139,6 +139,15 @@ Si el tablero tiene enemigos dibujados y nadie pelea, aparece **Iniciar combate*
 
 Las fichas de acción de *hablar* **no envían nada**: dejan la frase empezada en el chat para que la termines tú.
 
+**Lo que un combate retiene mientras dura.** No desaparece: se queda a la vista, apagado y diciendo por qué.
+
+| Retenido | Por qué |
+| :--- | :--- |
+| Viajar, salir del tablero, el mapa del mundo, la pestaña *Exploración* — y también `/go`, `/enter` y `/leave` | Irse sin decidirlo dejaba el encuentro vivo sobre un tablero que ya no estabas mirando |
+| El botón **Terreno** | Mover un muro a mitad de un turno cambia quién ve a quién, por dónde se pasa y cuánto cuesta llegar |
+
+**Abandonar** nunca se retiene: salir de una pelea es una decisión tuya y tiene su propio botón. El **diálogo** y el **tablero** siguen abiertos, porque se narra y se mira mientras se pelea.
+
 ### Lanzar algo
 
 Las habilidades de tu campaña se escriben en **`/habilidades`**: un panel con un campo por cosa — qué cuesta, cuántas veces, a quién alcanza y qué hace — y, al lado, **quién se sabe cada una**. Vienen cinco de serie para que se vea cómo se escriben las demás.
@@ -217,6 +226,7 @@ Esto es media razón de ser del proyecto: **nada de lo de abajo pide abrir un ar
 | Quiero… | Cómo |
 | :--- | :--- |
 | **Escribir mi mundo entero**: sitios, gente, bichos, objetos, misiones | `/campana` — o **Editar la campaña** en el menú de pausa |
+| **Borrar una campaña entera** | La papelera de su tarjeta, en *Cargar partida*. Se va el mundo **y** sus sesiones, y te dice cuánto pierdes antes de hacerlo |
 | Añadir un tipo de daño, una condición, una rareza | `/rules` → editas la sección → **Aplicar** → **Guardar reglas** |
 | Que este tablero sea *sobre* algo | `/objetivos editar` — y **Proponer con IA** si quieres que te las escriba |
 | Cambiar qué enemigos salen aquí, y cuántos | `/enemigos` |

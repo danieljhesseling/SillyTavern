@@ -1302,3 +1302,23 @@
     line-height: 1.45;
     font-size: 0.85rem;
 }
+
+/* Borrar no compite con Continuar: no crece, no lleva texto y solo se tiñe de rojo
+   cuando ya tienes el puntero encima. Es la unica accion de esta tarjeta sin vuelta
+   atras, y las que no la tienen no deberian ser las mas faciles de pulsar sin querer. */
+.campaign-delete {
+    flex: 0 0 auto;
+    font-size: 0.75rem;
+    padding: 4px 8px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    opacity: 0.55;
+}
+
+.campaign-delete:hover {
+    opacity: 1;
+    background: rgba(220, 70, 70, 0.18);
+    color: #ff8a8a;
+}

@@ -32,6 +32,8 @@ const FORK_FILES = [
     'public/scripts/game-engine/combat/loot.js',
     'public/scripts/game-engine/combat/spawn.js',
     'public/scripts/game-engine/combat/loot-items.js',
+    'public/scripts/game-engine/combat/combat-hold.js',
+    'public/scripts/game-engine/campaign/campaign-delete.js',
     'public/scripts/game-engine/combat/seeded-random.js',
     'public/scripts/game-engine/combat/target-card.js',
     'public/scripts/game-engine/campaign/campaign-pack.js',

@@ -165,6 +165,48 @@ El agujero que cierra, dicho en corto: `dndData` — lo que convierte una ficha 
 
 ---
 
+### A8 · Un combate que no se puede abandonar por accidente ✅ **Hecho el 2026-09-22**
+
+Cuatro fallos vistos en una captura de una pelea de verdad, y tres eran el mismo agujero: **el combate no cerraba ninguna puerta**.
+
+| Lo que pasaba | Por qué importaba |
+| :--- | :--- |
+| El registro de combate y la ficha (objetivos, iniciativa, enemigos) se **dibujaban uno encima del otro** | Estaban puestos en la **misma celda** de la rejilla: el registro en la fila 2 y la ficha ocupando las filas 1–2, con un 45% + 55% que no cabía en cuanto la ficha crecía |
+| Se podía abrir la pestaña **World** desde dentro de un tablero | Dentro de un tablero se dibujaba *además* toda la barra de la localidad, con dos `data-map-root` en la misma celda. Ahora, dentro de un tablero, eso no se ofrece |
+| Se podía pulsar **Exploración** en la barra de escenas con la pelea en marcha | Un clic y te ibas del combate sin abandonarlo: el encuentro seguía vivo sobre un tablero que ya no mirabas |
+| Se podía **repintar el terreno** en mitad de un turno | Mover un muro cambia quién ve a quién, por dónde se pasa y cuánto cuesta llegar — y eso no lo había decidido nadie |
+
+**Dónde está la regla**: `game-engine/combat/combat-hold.js`, puro y con 9 pruebas. Devuelve **el motivo**, no un `true/false`, porque quien pregunta casi siempre necesita escribirlo en un `title` — y un booleano obliga a redactar el mensaje otra vez en cada puerta, que es justo como cuatro sitios acaban diciendo cuatro cosas distintas.
+
+**Y por la otra puerta, la de escribir.** Arreglar solo los botones habría dejado el agujero abierto: `/go`, `/enter` y `/leave` tampoco miraban si había combate. Están guardados con la misma regla, y el recorrido lo comprueba *escribiéndolos*, no solo pulsando.
+
+Tres cosas que no cambian, a propósito:
+
+- **Abandonar** nunca se retiene: salir de un combate es una decisión y tiene su propio botón. Retenerlo dejaría una partida encerrada por un combate mal empezado.
+- **Diálogo y tablero siguen abiertos**: se narra y se mira mientras se pelea.
+- Lo retenido **se queda a la vista, apagado y diciendo por qué**. Esconderlo haría pensar que ya no existe.
+
+---
+
+### A9 · Borrar una campaña desde *Cargar partida* ✅ **Hecho el 2026-09-22**
+
+Se podían crear campañas y no había forma de deshacerse de una: la lista solo crecía. Ahora cada tarjeta lleva su papelera, en la pantalla de título y en la de bienvenida — son las mismas tarjetas.
+
+**Las dos mitades o ninguna.** Una campaña no es un archivo: es un **mundo** (su Lorebook entero) más **todas sus sesiones**, que son chats repartidos por los directorios de los personajes. Borrar solo una mitad deja basura con forma de campaña — el mundo sin sesiones reaparece en la lista como *sin empezar*, y las sesiones sin mundo abren una partida que ya no sabe dónde ocurre.
+
+**Lo que se dice antes**, que aquí es la característica y no el adorno, porque es lo único del juego sin vuelta atrás:
+
+- Cuántas sesiones jugadas se pierden, y que se va el mundo entero con sus localidades, tableros, gente, bestiario y objetos.
+- Que **no se puede deshacer**.
+- Si fuera la campaña abierta, que **se cerrará antes** de borrarla — si no, quedaría una partida cargada apuntando a un mundo que ya no existe, con su grupo y su tablero colgando de la nada. Hoy no se llega a la lista con una partida abierta (salir al menú principal la cierra), así que es un seguro y no una pantalla que vayas a ver; el día que se llegue, ya está puesto.
+- Y si alguna sesión **no se va a poder borrar** (su personaje ya no existe, así que no hay por dónde), que se quedará en el disco. Un borrado parcial en silencio sería lo peor de los dos mundos.
+
+La regla y las palabras están en `campaign/campaign-delete.js`, puro y con 15 pruebas; `campaigns.js` solo ejecuta el plan y cuenta **lo que de verdad pasó**, no lo que pretendía.
+
+Dos detalles que no son adorno: la papelera **no crece ni lleva texto** y solo se tiñe de rojo al pasar por encima — la única acción sin vuelta atrás de la tarjeta no debería ser la más fácil de pulsar sin querer. Y el clic se para en ella: la tarjeta entera abre la partida, así que sin eso borrar habría abierto lo que ibas a borrar.
+
+---
+
 ## 🟠 D — Necesita una decisión
 
 Cada una es una bifurcación real: las dos salidas son defendibles y la elección cuesta después. Llevan mi recomendación, pero la decisión no es mía.

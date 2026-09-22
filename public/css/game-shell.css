@@ -240,10 +240,15 @@ body.game-shell-on {
 
 /* Tablero a la izquierda, registro y ficha de combate a la derecha. El orden del DOM no
    cambia: solo se coloca. */
+/* Tres filas y no dos: la de arriba es la barra de botones, y las dos de abajo reparten
+   la columna derecha entre el registro y la ficha de combate. Con dos filas ambos caian
+   en la misma celda —el registro en la fila 2, la ficha ocupando las dos— y se dibujaban
+   uno encima del otro en cuanto la ficha crecia: objetivos, iniciativa y enemigos no
+   caben en el 55% que se le suponia. */
 .gs-adopted .wm-location-content {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(260px, 24%);
-    grid-template-rows: auto 1fr;
+    grid-template-rows: auto minmax(0, 2fr) minmax(0, 3fr);
     gap: 10px 14px;
     align-items: start;
     height: 100%;
@@ -255,9 +260,10 @@ body.game-shell-on {
     justify-self: start;
 }
 
+/* El tablero ocupa la columna izquierda entera, por debajo de su barra de botones. */
 .gs-adopted .wm-location-content > [data-map-root] {
     grid-column: 1;
-    grid-row: 2;
+    grid-row: 2 / span 2;
     min-height: 0;
 }
 
@@ -271,16 +277,17 @@ body.game-shell-on {
 .gs-adopted .wm-location-content > .combat-log-panel {
     grid-column: 2;
     grid-row: 2;
-    max-height: 45%;
+    min-height: 0;
+    overflow: auto;
     margin: 0;
 }
 
 .gs-adopted .wm-location-content > .wm-combat-section {
     grid-column: 2;
-    grid-row: 1 / span 2;
-    align-self: end;
+    grid-row: 3;
+    align-self: stretch;
+    min-height: 0;
     overflow: auto;
-    max-height: 55%;
 }
 
 /* En vertical no hay dos columnas que valgan. */

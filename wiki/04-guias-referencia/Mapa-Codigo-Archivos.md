@@ -81,11 +81,13 @@ Módulos puros: sin DOM, sin estado global, sin lecturas del chat. Por eso se pr
 | `campaign/campaign-export.js` | 349 | El camino de vuelta: empaquetar tu campaña para mandarla (A2) | ✅ |
 | `campaign/checkpoint.js` | 141 | Puntos de retorno, y uno automático antes de cada jefe (PROP2-163) | ✅ |
 | `campaign/campaign-importer.js` | 508 | Del paquete a mundo, entradas, tableros y misiones; los ids, al final | ✅ |
+| `campaign/campaign-delete.js` | 114 | Qué se va al borrar una campaña, y qué se dice antes de tocar nada (A9) | ✅ |
 | `campaign/campaign-editor.js` | 750 | Escribir una campaña a mano: lee el mundo, lo valida y dice qué fichas tocar (M1–M6) | ✅ |
 | `ui/campaign-editor.js` | 852 | El panel de `/campana`: siete pestañas, una por categoría | ✅ |
 | `combat/spawn.js` | 95 | Dónde aparecen los enemigos: donde los dibujó el libro, nunca en un muro | ✅ |
 | `rules/rest.js` | 216 | Descanso corto y largo, con dados de golpe | ✅ |
 | `combat/loot-items.js` | 120 | Qué es cada cosa que sueltan los enemigos, para que se pueda usar | ✅ |
+| `combat/combat-hold.js` | 53 | Las puertas que un combate cierra mientras dura, y por qué (A8) | ✅ |
 | `combat/seeded-random.js` | 97 | Dados que se pueden repetir: una partida dos veces igual | ✅ |
 | `combat/target-card.js` | 94 | Qué dice la tarjeta de un enemigo y qué botones ofrece | ✅ |
 | `combat/condition-timers.js` | 119 | Las condiciones con duración, que se van solas al pasar la ronda (D5) | ✅ |

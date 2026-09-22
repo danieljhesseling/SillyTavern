@@ -46,6 +46,7 @@ import {
     createTurnState, advanceTurn, getRemainingMovement, spendMovement, hasAction, useAction,
 } from './game-engine/combat/turn-machine.js';
 import { rollEncounterLoot, lootRulesWithWorldItems } from './game-engine/combat/loot.js';
+import { holdDuringCombat } from './game-engine/combat/combat-hold.js';
 import { describeLootItem } from './game-engine/combat/loot-items.js';
 import { planSpawnCells } from './game-engine/combat/spawn.js';
 import { buildTargetCard, describeTargetCard } from './game-engine/combat/target-card.js';
@@ -4765,6 +4766,14 @@ function runShellChip(chip) {
  * @returns {string}
  */
 function travelTo(name) {
+    // La misma regla que apaga la pestana de Exploracion, aqui abajo: si solo se
+    // cerraran los botones, `/go` seguiria sacandote de la pelea.
+    const held = holdDuringCombat(combatEncounter, 'travel');
+    if (held) {
+        toastr.warning(held, 'Combate en marcha');
+        return '';
+    }
+
     const wanted = String(name || '').trim();
     const match = getCurrentWorldLocationMaps().find(l => l.name.toLowerCase() === wanted.toLowerCase());
     if (!match) return '';
@@ -4786,6 +4795,12 @@ function travelTo(name) {
  * @returns {string}
  */
 function enterBoard(name) {
+    const held = holdDuringCombat(combatEncounter, 'board');
+    if (held) {
+        toastr.warning(held, 'Combate en marcha');
+        return '';
+    }
+
     const wanted = String(name || '').trim();
     if (!currentLocationName) return '';
 
@@ -5185,7 +5200,13 @@ function drawLocationMapsPreview() {
         renderLocationMapsPreview();
     });
 
-    contentRoot.append(leaveLocBtn, viewTabs, locationPanel, worldPanel);
+    // Que tablero hay abierto se decide antes de dibujar: estando dentro de uno, salir de
+    // la localidad y saltar al mapa del mundo no son cosas que ofrecer — y con un combate
+    // en marcha, la pestana World era la puerta por la que se huia sin decidirlo.
+    const locBoards = getLocationBoards(loc);
+    const selectedBoard = locBoards.find(/** @param {{ name: string }} b */ (b) => b.name === currentBoardName) || null;
+
+    if (!selectedBoard) contentRoot.append(leaveLocBtn, viewTabs, locationPanel, worldPanel);
 
     // Assign all party members without a location to the current location
     for (const m of partyMembers) {
@@ -5198,14 +5219,17 @@ function drawLocationMapsPreview() {
     const tokens = /** @type {import('./world-map-renderer.js').TokenData[]} */ (buildTokens(currentLocationName));
 
     // ---- Board drill-down: if a board is selected, show it instead of the location ----
-    const locBoards = getLocationBoards(loc);
-    const selectedBoard = locBoards.find(/** @param {{ name: string }} b */ (b) => b.name === currentBoardName) || null;
-
-
     if (selectedBoard) {
         // Board selected — render board map with a "Back to location" button
         const backBtn = $(`<button class="menu_button wm-leave-loc-btn"><i class="fa-solid fa-arrow-left"></i> ${t`Back to`} ${escapeHtml(loc.name)}</button>`);
+
+        // Se queda a la vista, apagado y diciendo por que: esconderlo haria pensar que
+        // salir del tablero ya no existe, cuando lo que pasa es que hay que acabar antes.
+        const heldBack = holdDuringCombat(combatEncounter, 'board');
+        backBtn.attr('title', heldBack || `${t`Back to`} ${loc.name}`);
+        backBtn.prop('disabled', Boolean(heldBack));
         backBtn.on('click', () => {
+            if (holdDuringCombat(combatEncounter, 'board')) return;
             currentBoardName = '';
             combatBoardSelection = { tokenId: null, boardName: '', locationName: '' };
             saveCurrentBoard();
@@ -5319,7 +5343,23 @@ function drawLocationMapsPreview() {
         });
 
         // ---- Terrain editor (wiki/ROADMAP.md, Fase A6) ----
-        if (terrainEditing) {
+        // Con una pelea encima no se ofrece: mover un muro a mitad de un turno cambia
+        // quien ve a quien, por donde se pasa y cuanto cuesta llegar, y nada de eso lo
+        // habia decidido nadie. El pincel vuelve entero al acabar.
+        const heldBrush = holdDuringCombat(combatEncounter, 'terrain');
+        if (heldBrush) {
+            // Si alguien dejo el pincel abierto y empezo el combate, se cierra solo.
+            terrainEditing = false;
+            activeTerrainBrush = null;
+        }
+
+        if (heldBrush) {
+            const lockedBtn = $('<button class="wm-terrain-edit-btn menu_button" disabled></button>');
+            lockedBtn.attr('title', heldBrush);
+            lockedBtn.append('<i class="fa-solid fa-draw-polygon"></i>');
+            lockedBtn.append($('<span></span>').text(' Terreno'));
+            boardPanel.append(lockedBtn);
+        } else if (terrainEditing) {
             boardPanel.append(buildTerrainPalette(selectedBoard, () => renderLocationMapsPreview()));
         } else {
             const editButton = $('<button class="wm-terrain-edit-btn menu_button" title="Pintar muros, cobertura y puertas"></button>');
@@ -5332,6 +5372,7 @@ function drawLocationMapsPreview() {
             });
             boardPanel.append(editButton);
         }
+
 
         // ---- Iniciar combate (wiki/ROADMAP_JUEGO_SIN_COMANDOS.md, K2) ----
         // Si el tablero tiene enemigos dibujados a la vista y nadie pelea, el combate
@@ -7261,7 +7302,10 @@ export function initPartyPanel() {
         callback: (_args, value) => {
             const arrived = travelTo(String(value));
             if (!arrived) {
-                toastr.warning(`Location "${String(value).trim()}" not found.`);
+                // Si el combate lo retuvo, ya lo ha dicho: dos avisos y uno falso seria peor.
+                if (!holdDuringCombat(combatEncounter, 'travel')) {
+                    toastr.warning(`Location "${String(value).trim()}" not found.`);
+                }
                 return '';
             }
             setPartyTab('location');
@@ -7291,7 +7335,9 @@ export function initPartyPanel() {
 
             const entered = enterBoard(name);
             if (!entered) {
-                toastr.warning(`Board "${name}" not found at ${currentLocationName}.`);
+                if (!holdDuringCombat(combatEncounter, 'board')) {
+                    toastr.warning(`Board "${name}" not found at ${currentLocationName}.`);
+                }
                 return '';
             }
 
@@ -7315,6 +7361,12 @@ export function initPartyPanel() {
         name: 'leave',
         helpString: '<div>Leave the current board or location. Cascading: board first, then location.</div>',
         callback: () => {
+            const held = holdDuringCombat(combatEncounter, 'board');
+            if (held) {
+                toastr.warning(held, 'Combate en marcha');
+                return '';
+            }
+
             if (currentBoardName) {
                 const leftBoard = currentBoardName;
                 currentBoardName = '';

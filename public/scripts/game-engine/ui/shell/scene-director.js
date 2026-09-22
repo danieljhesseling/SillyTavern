@@ -15,6 +15,8 @@
  * See wiki/PROPUESTA_FRONTEND_MODO_JUEGO.md, secciones 0.1 y 2 · wiki/ROADMAP.md, Fase H (H1).
  */
 
+import { holdDuringCombat } from '../../combat/combat-hold.js';
+
 /**
  * @typedef {'title'|'dialogue'|'exploration'|'combat'} SceneName
  */
@@ -87,6 +89,10 @@ export function isSceneAvailable(scene, situation) {
             // look the room over before walking into it.
             return Boolean(state.combatActive) || Boolean(state.boardName);
         case SCENE.EXPLORATION:
+            // Con una pelea en marcha el mapa es la puerta por la que se sale del combate
+            // sin decidirlo: dejaba el encuentro vivo sobre un tablero que ya no estabas
+            // mirando. Abandonar sigue teniendo su boton.
+            if (state.combatActive) return false;
             return Boolean(state.locationName) || Boolean(state.hasWorldMap);
         case SCENE.DIALOGUE:
             // The chat is always there to talk to.
@@ -159,9 +165,14 @@ export function describeScene(scene, situation) {
     const info = SCENE_INFO[scene];
     if (!info) return '';
     const key = info.shortcut ? ` [${info.shortcut}]` : '';
-    return isSceneAvailable(scene, situation)
-        ? `${info.label}${key}`
-        : `${info.label}${key} — nada que mostrar todavia`;
+    if (isSceneAvailable(scene, situation)) return `${info.label}${key}`;
+
+    // Por que esta apagada importa: "nada que mostrar" y "espera a que acabe la pelea"
+    // piden cosas distintas de quien lo lee.
+    const held = scene === SCENE.EXPLORATION
+        ? holdDuringCombat({ active: Boolean((situation || {}).combatActive) }, 'exploration')
+        : '';
+    return `${info.label}${key} — ${held || 'nada que mostrar todavia'}`;
 }
 
 /**

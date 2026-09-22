@@ -1,14 +1,16 @@
 import {
-    world_names, loadWorldInfo, saveWorldInfo, createNewWorldInfo, createWorldInfoEntry, METADATA_KEY,
+    world_names, loadWorldInfo, saveWorldInfo, createNewWorldInfo, createWorldInfoEntry,
+    deleteWorldInfo, METADATA_KEY,
 } from './world-info.js';
 import {
     characters, getRequestHeaders, openCharacterChat, chat_metadata, saveMetadata, selectCharacterById,
-    doNewChat, this_chid, generateRaw, online_status,
+    doNewChat, this_chid, generateRaw, online_status, deleteCharacterChatByName, closeCurrentChat,
 } from '../script.js';
 import { Popup, POPUP_TYPE, POPUP_RESULT } from './popup.js';
 import { buildNewCampaignCta, askWizard, createCampaign } from './game-engine/ui/campaign-wizard.js';
 import { openCampaignBuilder } from './party.js';
 import { isCampaignWorld, getStartingPoint } from './game-engine/campaign/campaign-worlds.js';
+import { planCampaignDeletion, describeDeletion } from './game-engine/campaign/campaign-delete.js';
 import { generateWorld } from './game-engine/world-builder/world-schema.js';
 import { escapeHtml } from './utils.js';
 
@@ -136,6 +138,9 @@ export async function renderCampaignCards(container) {
                 <button class="campaign-start menu_button" data-world="${escapeHtml(world.name)}">
                     <i class="fa-solid fa-play"></i> Iniciar
                 </button>
+                <button class="campaign-delete menu_button" title="Borrar esta campaña" data-world="${escapeHtml(world.name)}">
+                    <i class="fa-solid fa-trash"></i>
+                </button>
             </div>
         </div>`;
             continue;
@@ -167,6 +172,9 @@ export async function renderCampaignCards(container) {
                 </button>
                 <button class="campaign-view-all menu_button" data-world="${escapeHtml(world.name)}">
                     <i class="fa-solid fa-list"></i> Sessions
+                </button>
+                <button class="campaign-delete menu_button" title="Borrar esta campaña" data-world="${escapeHtml(world.name)}">
+                    <i class="fa-solid fa-trash"></i>
                 </button>
             </div>
         </div>`;
@@ -845,8 +853,18 @@ export function initCampaigns() {
         await openCharacterChat(fileName);
     });
 
+    // Borrar va antes que abrir: la papelera vive dentro de una tarjeta que, pulsada,
+    // arranca la partida. Sin esto, borrar abriria lo que ibas a borrar.
+    $(document).on('click', '.campaign-delete', async function (e) {
+        e.stopPropagation();
+        e.preventDefault();
+        const worldName = String($(this).data('world') || '');
+        if (worldName) await deleteCampaign(worldName);
+    });
+
     // A world that was never played: the whole card starts it. It has no sessions to list.
     $(document).on('click', '.campaign-card-unstarted', async function (e) {
+        if ($(e.target).closest('.campaign-delete').length) return;
         e.stopPropagation();
         const worldName = $(this).data('world');
         if (worldName) await startUnstartedWorld(String(worldName));
@@ -856,6 +874,7 @@ export function initCampaigns() {
     $(document).on('click', '.campaign-view-all, .campaign-card', async function (e) {
         if ($(this).hasClass('campaign-card-unstarted')) return;
         if ($(e.target).closest('.campaign-continue').length) return;
+        if ($(e.target).closest('.campaign-delete').length) return;
         if ($(e.target).closest('.campaign-view-all').length && !$(this).hasClass('campaign-view-all')) return;
         e.stopPropagation();
         const worldName = $(this).data('world') || $(this).closest('.campaign-card').data('world');
@@ -863,6 +882,79 @@ export function initCampaigns() {
             await showSessionsPopup(String(worldName));
         }
     });
+}
+
+/**
+ * Borra una campaña entera: su mundo y todas sus sesiones.
+ *
+ * Las dos mitades o ninguna. Borrar solo el mundo deja sesiones que abren una partida que
+ * ya no sabe donde ocurre; borrar solo las sesiones devuelve el mundo a la lista como si
+ * estuviera «sin empezar». Lo que se pierde se dice **antes**, porque es lo unico del
+ * juego que no tiene vuelta atras.
+ *
+ * @param {string} worldName
+ * @returns {Promise<void>}
+ */
+async function deleteCampaign(worldName) {
+    const allChats = await fetchRecentChatsWithMetadata(200);
+    const chats = allChats.filter(c => c.chat_metadata?.world_info === worldName);
+
+    let meta = {};
+    try {
+        const data = await loadWorldInfo(worldName);
+        meta = data?.metadata ?? {};
+    } catch { /* el mundo ya no se puede leer: se borra igual lo que quede */ }
+
+    const plan = planCampaignDeletion(
+        { name: worldName, displayName: meta.displayName || worldName, chats },
+        {
+            openWorldName: String(chat_metadata?.[METADATA_KEY] || ''),
+            knownAvatars: characters.map((/** @type {any} */ c) => String(c?.avatar || '')),
+        },
+    );
+
+    // El titulo se interpola como HTML y el nombre del mundo lo escribe el jugador.
+    const confirmed = await Popup.show.confirm(
+        escapeHtml(plan.title),
+        plan.lines.map(line => escapeHtml(line).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')).join('<br>'),
+        { okButton: 'Borrar', cancelButton: 'Cancelar' },
+    );
+    if (!confirmed) return;
+
+    // Cerrar antes de borrar: si no, quedaria una partida cargada apuntando a un mundo
+    // que ya no existe, con su grupo y su tablero colgando de la nada.
+    if (plan.closesOpenCampaign) await closeCurrentChat();
+
+    let removed = 0;
+    let failed = plan.orphans.length;
+    for (const session of plan.chats) {
+        const index = characters.findIndex((/** @type {any} */ c) => String(c?.avatar || '') === session.avatar);
+        if (index < 0) {
+            failed++;
+            continue;
+        }
+        try {
+            await deleteCharacterChatByName(String(index), session.file);
+            removed++;
+        } catch (error) {
+            console.error('[campaigns] could not delete session', session.file, error);
+            failed++;
+        }
+    }
+
+    let worldGone = false;
+    try {
+        worldGone = await deleteWorldInfo(worldName);
+    } catch (error) {
+        console.error('[campaigns] could not delete world', worldName, error);
+    }
+
+    const said = describeDeletion({ world: worldGone, chats: removed, failed });
+    if (worldGone && failed === 0) toastr.success(said, `"${plan.displayName}" borrada`);
+    else toastr.warning(said, `"${plan.displayName}"`);
+
+    const grid = document.querySelector('#welcomeCampaignsGrid');
+    if (grid instanceof HTMLElement) await renderCampaignCards(grid);
 }
 
 /**

@@ -176,6 +176,14 @@ try {
     check('the board is on screen with its walls', walls > 20, `${walls} wall cells`);
     check('both characters are on it', tokens === 2, `${tokens} tokens`);
 
+    /**
+     * Aparta los avisos: se quedan encima de las barras de botones unos segundos y se
+     * comen el clic. Es cosa del recorrido, no del juego — quien juega espera o los cierra.
+     */
+    const clearToasts = () => page.evaluate(() => {
+        document.querySelectorAll('#toast-container .toast').forEach(t => t.remove());
+    });
+
     /** Back to the welcome screen the way a player gets there: close the chat. */
     const closeChat = async () => {
         await page.locator('#options_button').click({ timeout: 10000 });
@@ -600,11 +608,60 @@ try {
         `${await page.locator('.wm-init-status').count()} en el rastreador, `
         + `${await page.locator('.wm-token-status').count()} sobre las fichas`);
 
+    // --- Lo que un combate en marcha no deja hacer -----------------------------------
+    // Todo esto se podia antes: abrir el mapa del mundo, repintar el suelo bajo los pies
+    // de quien peleaba y largarse del tablero sin abandonar la pelea.
+    const shut = await page.evaluate(() => {
+        const terrain = document.querySelector('.wm-terrain-edit-btn');
+        const back = document.querySelector('.wm-location-content > .wm-leave-loc-btn');
+        return {
+            worldTabs: document.querySelectorAll('.wm-view-tabs').length,
+            palette: document.querySelectorAll('.wm-terrain-palette').length,
+            terrainOff: terrain ? terrain.disabled : null,
+            terrainWhy: terrain ? (terrain.getAttribute('title') || '') : '',
+            backOff: back ? back.disabled : null,
+            backWhy: back ? (back.getAttribute('title') || '') : '',
+        };
+    });
+
+    check('dentro de un tablero no se ofrece el mapa del mundo: no es donde se esta',
+        shut.worldTabs === 0, JSON.stringify(shut.worldTabs));
+    check('el pincel de terreno se apaga mientras se pelea, y dice por que',
+        shut.terrainOff === true && shut.palette === 0 && /no se repinta/.test(shut.terrainWhy),
+        JSON.stringify({ apagado: shut.terrainOff, porque: shut.terrainWhy }));
+    check('y salir del tablero tambien: se queda a la vista, apagado y explicado',
+        shut.backOff === true && /Abandonar/.test(shut.backWhy),
+        JSON.stringify({ apagado: shut.backOff, porque: shut.backWhy }));
+
+    // Y por la otra puerta, la de escribir, que es la que se olvida al arreglar botones.
+    const before11 = await readState();
+    await page.evaluate(() => {
+        void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/leave');
+    });
+    await page.waitForTimeout(700);
+    await page.evaluate(() => {
+        void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/go Ninguna Parte');
+    });
+    await page.waitForTimeout(700);
+    const after11 = await readState();
+    check('ni escribiendo /leave o /go se sale de una pelea sin abandonarla',
+        after11.board === before11.board && after11.location === before11.location,
+        JSON.stringify({ antes: `${before11.location}/${before11.board}`, despues: `${after11.location}/${after11.board}` }));
+
     await page.evaluate(() => {
         void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/combat-stop');
     });
     await page.waitForTimeout(1500);
     await clearDiceOverlay();
+
+    // Y al acabar vuelve entero: retener no es quitar.
+    const reopened = await page.evaluate(() => {
+        const terrain = document.querySelector('.wm-terrain-edit-btn');
+        const back = document.querySelector('.wm-location-content > .wm-leave-loc-btn');
+        return { terrainOff: terrain ? terrain.disabled : null, backOff: back ? back.disabled : null };
+    });
+    check('y al terminar el combate vuelven los dos, que estaban retenidos, no quitados',
+        reopened.terrainOff === false && reopened.backOff === false, JSON.stringify(reopened));
 
     step('12. Winning is worth something');
     const purseBefore = await page.evaluate(() => {
@@ -1017,9 +1074,18 @@ try {
         .map(b => ({ scene: b.dataset.scene, active: b.classList.contains('active'), disabled: b.disabled })));
     check('el conmutador marca la escena de combate como la activa',
         scenes.find(s => s.scene === 'combat')?.active === true, JSON.stringify(scenes));
-    // Desde H4 existen las tres, asi que ninguna sale desactivada estando disponible.
-    check('las tres escenas estan disponibles, ninguna fingida',
-        scenes.length === 3 && scenes.every(s => s.disabled === false), JSON.stringify(scenes));
+    // Desde H4 existen las tres y ninguna es un cartel: la que este apagada lo esta por
+    // una razon del juego. Aqui hay combate, asi que explorar espera (A8) y las otras dos
+    // siguen abiertas — se narra y se mira mientras se pelea.
+    const fake = await page.evaluate(() => [...document.querySelectorAll('.gs-scene-btn')]
+        .filter(b => /la construye/.test(b.getAttribute('title') || '')).length);
+    check('las tres escenas existen y ninguna es fingida',
+        scenes.length === 3 && fake === 0, JSON.stringify(scenes));
+    check('con una pelea encima, explorar espera y las otras dos no',
+        scenes.find(s => s.scene === 'exploration')?.disabled === true
+        && scenes.find(s => s.scene === 'dialogue')?.disabled === false
+        && scenes.find(s => s.scene === 'combat')?.disabled === false,
+        JSON.stringify(scenes));
 
     // The action bar either offers an attack or says why it cannot: which of the two it
     // is depends on the dice and on where the enemy AI walked, so the rule is what gets
@@ -1275,6 +1341,19 @@ try {
     check('empezar un combate lleva la pantalla al tablero, sin tocar nada',
         started.scene === 'combat' && started.board, JSON.stringify(started));
     check('y la cabecera dice por que ha cambiado', started.reason === 'empieza un combate', started.reason);
+
+    // Explorar era la puerta grande: un clic y te ibas del combate sin abandonarlo,
+    // dejando el encuentro vivo sobre un tablero que ya no mirabas.
+    const scenes20 = await page.evaluate(() => Object.fromEntries(
+        [...document.querySelectorAll('.gs-scene-btn')].map(b => [
+            b.dataset.scene, { off: b.disabled, why: b.getAttribute('title') || '' },
+        ])));
+    check('explorar se apaga mientras se pelea, y dice que hay un combate',
+        scenes20.exploration?.off === true && /combate/i.test(scenes20.exploration?.why ?? ''),
+        JSON.stringify(scenes20.exploration));
+    check('pero el tablero y el dialogo siguen: se mira y se narra mientras se pelea',
+        scenes20.combat?.off === false && scenes20.dialogue?.off === false,
+        JSON.stringify({ combate: scenes20.combat?.off, dialogo: scenes20.dialogue?.off }));
 
     // Mirar el mapa en mitad de una pelea sigue siendo cosa tuya.
     await page.keyboard.press('1');
@@ -3047,12 +3126,6 @@ try {
 
     step('36. El editor de campana: gente, bichos, objetos y misiones');
 
-    // El aviso de "guardado" se queda encima de la barra de pestanas unos segundos y se
-    // come el clic. Es cosa del recorrido, no del panel: quien juega espera o lo aparta.
-    const clearToasts = () => page.evaluate(() => {
-        document.querySelectorAll('#toast-container .toast').forEach(t => t.remove());
-    });
-
     await clearToasts();
     await page.evaluate(() => {
         void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/campana');
@@ -3389,6 +3462,94 @@ try {
     }));
     check('cerrar el editor deja la campana hecha y en marcha',
         afterClose.editor === 0 && afterClose.world === 'El Vado Escrito', JSON.stringify(afterClose));
+
+    step('38. Borrar una campana desde Cargar partida');
+
+    // Se llega como llega un jugador, sin dar por hecho donde quedo la pantalla: el juego
+    // puesto, la pausa, y salir al menu principal — que cierra la partida, no el juego.
+    await clearToasts();
+    if (await page.locator('#game-shell').count() === 0) {
+        await page.evaluate(() => {
+            void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/modojuego');
+        });
+        await page.waitForSelector('#game-shell', { timeout: 15000 });
+        await page.waitForTimeout(800);
+    }
+
+    if (await page.getAttribute('#game-shell', 'data-scene') !== 'title') {
+        await page.keyboard.press('Escape');
+        await page.waitForSelector('.gs-pause', { timeout: 5000 });
+        await page.locator('.gs-pause-btn', { hasText: 'Salir al menu principal' }).click();
+        await page.waitForTimeout(3000);
+    }
+
+    await page.locator('.gs-menu-btn').filter({ hasText: 'Cargar partida' }).click();
+    await page.waitForTimeout(1200);
+
+    const before38 = await page.evaluate(() => ({
+        cards: [...document.querySelectorAll('#game-shell .campaign-card, #game-shell .campaign-card-unstarted')]
+            .map(c => c.dataset.world).filter(Boolean),
+        bins: document.querySelectorAll('#game-shell .campaign-delete').length,
+    }));
+    check('cada campana de la lista trae su papelera, empezada o no',
+        before38.bins === before38.cards.length && before38.cards.length >= 2,
+        JSON.stringify(before38));
+
+    const doomed = before38.cards[before38.cards.length - 1];
+
+    await page.locator(`.campaign-delete[data-world="${doomed}"]`).first().click();
+    await page.waitForTimeout(1000);
+
+    const asked = await page.evaluate(() => {
+        const dialog = [...document.querySelectorAll('dialog.popup[open]')].pop();
+        return (dialog?.textContent || '').replace(/\s+/g, ' ');
+    });
+    check('antes de borrar dice que no hay vuelta atras',
+        /no se puede deshacer/.test(asked), asked.slice(0, 160));
+    check('y nombra la campana que se va, por el nombre que tu le ves',
+        asked.includes('Borrar'), asked.slice(0, 120));
+
+    // Primero que no: cancelar no puede borrar nada. Es la mitad del valor de preguntar.
+    await page.locator('dialog.popup[open] .popup-button-cancel').last().click();
+    await page.waitForTimeout(1500);
+    const afterCancel = await page.evaluate((name) =>
+        document.querySelectorAll(`.campaign-card[data-world="${name}"], .campaign-card-unstarted[data-world="${name}"]`).length,
+    doomed);
+    check('cancelar deja la campana donde estaba', afterCancel === 1, `${afterCancel} tarjetas`);
+
+    // Y ahora que si.
+    await clearToasts();
+    await page.locator(`.campaign-delete[data-world="${doomed}"]`).first().click();
+    await page.waitForTimeout(1000);
+    await page.locator('dialog.popup[open] .popup-button-ok').last().click();
+    await page.waitForTimeout(4000);
+
+    const gone = await page.evaluate(async (name) => {
+        const wi = await import('/scripts/world-info.js');
+        const ctx = window.SillyTavern.getContext();
+        const chats = await fetch('/api/chats/recent', {
+            method: 'POST',
+            headers: ctx.getRequestHeaders(),
+            body: JSON.stringify({ max: 200, metadata: true }),
+            cache: 'no-cache',
+        }).then(r => (r.ok ? r.json() : []));
+        return {
+            card: document.querySelectorAll(`.campaign-card[data-world="${name}"], .campaign-card-unstarted[data-world="${name}"]`).length,
+            world: (wi.world_names || []).includes(name),
+            sessions: (Array.isArray(chats) ? chats : [])
+                .filter(c => c.chat_metadata?.world_info === name).length,
+            left: document.querySelectorAll('#game-shell .campaign-card, #game-shell .campaign-card-unstarted').length,
+        };
+    }, doomed);
+
+    check('la campana desaparece de la lista', gone.card === 0, `${gone.card} tarjetas`);
+    check('y su mundo desaparece del disco, no solo de la pantalla',
+        gone.world === false, `${doomed} sigue en world_names: ${gone.world}`);
+    check('sus sesiones tambien: las dos mitades o ninguna',
+        gone.sessions === 0, `${gone.sessions} sesiones sueltas`);
+    check('y las demas campanas siguen ahi: se borra una, no la estanteria',
+        gone.left === before38.cards.length - 1,
+        `${before38.cards.length} -> ${gone.left}`);
 
     console.log('\n--- console errors ---');
     console.log(problems.size ? [...problems].join('\n') : '(none)');
