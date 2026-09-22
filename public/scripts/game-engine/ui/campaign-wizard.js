@@ -22,6 +22,7 @@ import {
 } from '../campaign/starter-templates.js';
 import { uniqueWorldName } from '../campaign/campaign-worlds.js';
 import { validateNarrator } from '../campaign/narrator.js';
+import { MORTALITY, SAVES, DEFAULT_SURVIVAL } from '../rules/mortality.js';
 import { normalizeMap, findPartyStart } from '../world-builder/world-schema.js';
 
 /**
@@ -43,7 +44,7 @@ import { normalizeMap, findPartyStart } from '../world-builder/world-schema.js';
  * @param {string[]} [deps.existingWorldNames]
  * @param {((idea: string, partySize: number) => Promise<{template: any, warnings: string[], errors: string[]}>)|null} [deps.generateWorld]
  *        Injected so this module never imports a provider. Absent means no AI card.
- * @returns {Promise<{templateId: string, worldName: string, genre: string, description: string, party: string[], generatedTemplate: any, importedPack: any, writeWorld: boolean, narrator: any}|null>}
+ * @returns {Promise<{templateId: string, worldName: string, genre: string, description: string, party: string[], generatedTemplate: any, importedPack: any, writeWorld: boolean, narrator: any, survival: any}|null>}
  */
 export async function askWizard({ Popup, POPUP_TYPE, existingWorldNames = [], generateWorld = null }) {
     /** El resultado del segundo botón. Los propios empiezan en 2; 0 y 1 ya están cogidos. */
@@ -157,6 +158,36 @@ export async function askWizard({ Popup, POPUP_TYPE, existingWorldNames = [], ge
     });
 
     step4.append(narratorBox);
+
+    // ---- 5. el filo ---------------------------------------------------------
+    // Las dos van juntas porque una sin la otra no significa nada: con el guardado libre,
+    // la muerte permanente es opcional de facto — vuelves al punto y Bruna conserva la
+    // pierna. Se eligen aqui y no en un menu de dificultad porque son el **tono** de esta
+    // campana, y el tono se decide al empezarla.
+    const step5 = $('<div class="cw-step"></div>');
+    step5.append('<div class="cw-step-title"><span class="cw-num">5</span> ¿Cuánto duele perder?</div>');
+    step5.append('<div class="cw-hint">Se puede cambiar luego en <code>/rules</code>, y viaja con la '
+        + 'campaña si la exportas.</div>');
+
+    const edge = $('<div class="cw-edge"></div>');
+
+    const hardDeath = $('<input type="checkbox" class="cw-death-all" />');
+    edge.append($('<label class="cw-edge-line"></label>')
+        .append(hardDeath)
+        .append($('<span></span>').html(
+            ' <b>Puede morir cualquiera</b>, también los tuyos. '
+            + 'Apagado, solo muere quien te sigue por dinero: los tuyos quedan marcados '
+            + '— pierden un brazo, cojean, no vuelven a ver bien de un ojo.')));
+
+    const shelterSaves = $('<input type="checkbox" class="cw-saves-shelter" />');
+    edge.append($('<label class="cw-edge-line"></label>')
+        .append(shelterSaves)
+        .append($('<span></span>').html(
+            ' <b>Solo se guarda en el refugio</b>, entre encargos. '
+            + 'Apagado, guardas cuando quieras — y entonces lo de arriba pesa menos, '
+            + 'porque siempre puedes volver atrás.')));
+
+    step5.append(edge);
 
     // ---- 1b. the blank canvas ----------------------------------------------
     // The AI is offered as one more way to fill step 1, never as the way in: if it is not
@@ -453,7 +484,7 @@ export async function askWizard({ Popup, POPUP_TYPE, existingWorldNames = [], ge
 
     step1.append(aiPanel, importPanel);
 
-    root.append(step1, step2, step3, step4);
+    root.append(step1, step2, step3, step4, step5);
 
     // Dos salidas, las dos sin escribir un comando: una cae jugando y la otra cae jugando
     // **y** con el editor del mundo delante. Antes la segunda existia y habia que saberse
@@ -516,6 +547,10 @@ export async function askWizard({ Popup, POPUP_TYPE, existingWorldNames = [], ge
         generatedTemplate,
         importedPack,
         writeWorld: result === WRITE_WORLD,
+        survival: {
+            mortality: hardDeath.prop('checked') ? MORTALITY.EVERYONE : DEFAULT_SURVIVAL.mortality,
+            saves: shelterSaves.prop('checked') ? SAVES.SHELTER : DEFAULT_SURVIVAL.saves,
+        },
         narrator: narratorOn.prop('checked')
             ? {
                 name: String(narratorName.val() || '').trim(),

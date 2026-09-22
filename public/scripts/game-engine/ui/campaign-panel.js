@@ -27,10 +27,12 @@ import { buildCampaignView, getRecordableEvents } from '../campaign/campaign-vie
  * @param {() => void} [input.onShortRest]
  * @param {() => void} [input.onLongRest]
  * @param {(characterId: string, eventType: string) => void} input.onRecordEvent
+ * @param {any} [input.bill] La cuenta de la semana, si hay grupo al que pasarsela.
+ * @param {number} [input.daysToBill] Cuantos dias faltan para que venza.
  */
 export function renderCampaignPanel(container, {
     calendar, bonds, party, onAdvanceSlot, onAdvanceDay, onRecordEvent,
-    onShortRest = null, onLongRest = null,
+    onShortRest = null, onLongRest = null, bill = null, daysToBill = 0,
 }) {
     const view = buildCampaignView({ calendar, bonds, party });
     container.empty();
@@ -86,6 +88,12 @@ export function renderCampaignPanel(container, {
     clock.append(clockActions);
 
     container.append(clock);
+
+    // ---- La cuenta -------------------------------------------------------
+    // Antes de que venza, no el dia del cobro: una factura que te sorprende es un
+    // impuesto, y una que ves venir es una decision. Es media razon de que quieras
+    // aceptar el encargo de manana.
+    if (bill) container.append(renderBill(bill, daysToBill));
 
     if (view.characters.length === 0) {
         container.append($('<div class="cp-empty"></div>').text(
@@ -169,3 +177,47 @@ export function renderCampaignPanel(container, {
         + 'el combate superado y la misión completada los cuenta el motor.',
     ));
 }
+
+/**
+ * La cuenta de la semana, con lo que debes y lo que tienes.
+ *
+ * Las curas van aparte del total a proposito: pagar la cena no es opcional y curar a
+ * Bruna si. Juntarlas esconderia la unica decision que hay aqui.
+ *
+ * @param {any} bill
+ * @param {number} daysLeft
+ * @returns {JQuery}
+ */
+function renderBill(bill, daysLeft) {
+    const panel = $('<div class="cp-bill"></div>').toggleClass('short', !bill.covered);
+
+    const head = $('<div class="cp-bill-head"></div>');
+    head.append($('<span class="cp-bill-when"></span>').text(
+        daysLeft > 0 ? `Vence en ${daysLeft} dia(s)` : 'Vence hoy'));
+    head.append($('<span class="cp-bill-sum"></span>').text(`${bill.total} / ${bill.purse}`));
+    panel.append(head);
+
+    const parts = $('<div class="cp-bill-parts"></div>');
+    for (const [label, amount] of [
+        ['Comida', bill.food], ['Posada', bill.lodging], ['Tasas', bill.tax], ['Sueldos', bill.wages],
+    ]) {
+        if (amount <= 0) continue;
+        parts.append($('<span class="cp-bill-part"></span>').text(`${label} ${amount}`));
+    }
+    panel.append(parts);
+
+    if (!bill.covered) {
+        panel.append($('<div class="cp-bill-short"></div>').text(`Faltan ${bill.missing} de oro.`));
+    }
+
+    for (const wound of bill.wounded) {
+        panel.append($('<div class="cp-bill-wound"></div>').text(
+            wound.gold > 0
+                ? `${wound.name}: curarse cuesta ${wound.gold} y ${wound.days} dia(s).`
+                : `${wound.name}: lo suyo no se cura con dinero.`,
+        ));
+    }
+
+    return panel;
+}
+

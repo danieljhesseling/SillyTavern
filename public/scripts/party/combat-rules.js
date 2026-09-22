@@ -73,8 +73,16 @@ export function isSeeded() {
     return randomSource !== null;
 }
 
-/** One number in [0, 1), from whichever die is in force. */
-function nextRandom() {
+/**
+ * One number in [0, 1), from whichever die is in force.
+ *
+ * Exported because anything that rolls has to roll **this** die: una tirada que se saltara
+ * la semilla —la tabla de heridas, por ejemplo— haria que dos partidas con la misma
+ * semilla dejaran de salir iguales, que es justo lo unico que la semilla promete.
+ *
+ * @returns {number}
+ */
+export function nextRandom() {
     return randomSource ? randomSource() : Math.random();
 }
 

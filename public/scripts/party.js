@@ -26,14 +26,14 @@ import {
     rollDice, rollDiceDetailed, getRollClassification, getRollClassificationLabel,
     getDistanceInFeet, getAttackRangeFeet, describeCover,
     getPlayerDamageFormula, getEnemyDamageFormula, getPlayerAttackModifier,
-    createEmptyCombatEncounter, normalizeCombatEncounter, setRandomSource,
+    createEmptyCombatEncounter, normalizeCombatEncounter, setRandomSource, nextRandom,
 } from './party/combat-rules.js';
 import { escItemText, buildPartyItemSections } from './party/item-forms.js';
 import { resolveEntryMapPosition } from './party/positions.js';
 import { createCampaignState } from './party/campaign-state.js';
 import {
     normalizeTerrain, setCell as setTerrainCell, getTerrainOptions, getCoverBonus, setDoorOpen,
-    parseCellKey,
+    parseCellKey, terrainFromAsciiMap,
 } from './game-engine/board/terrain.js';
 import { getReachableCells, findPath, getPathCost } from './game-engine/board/pathfinding.js';
 import { getCoverAlongLine } from './game-engine/board/line-of-sight.js';
@@ -47,6 +47,20 @@ import {
 } from './game-engine/combat/turn-machine.js';
 import { rollEncounterLoot, lootRulesWithWorldItems } from './game-engine/combat/loot.js';
 import { holdDuringCombat } from './game-engine/combat/combat-hold.js';
+import { applyInjury, healInjuries, describeInjuries, readInjuries } from './game-engine/rules/injuries.js';
+import { resolveFall, describeSurvival, canCheckpoint } from './game-engine/rules/mortality.js';
+import { weeklyBill, settleWeek, describeBill } from './game-engine/rules/upkeep.js';
+import {
+    generateBoardOfContracts, expireContracts, describeContract,
+} from './game-engine/campaign/contracts.js';
+import {
+    readGuild, upkeepWithBuildings, boardSize, settleLoyalty, completeContract,
+    upgradeCost, describeGuild,
+} from './game-engine/campaign/guild.js';
+import { generateBoard } from './game-engine/world-builder/dungeon-generator.js';
+import {
+    formParty, canControl, describeMode, readMode, MODES, readReasons,
+} from './game-engine/rules/companions.js';
 import { describeLootItem } from './game-engine/combat/loot-items.js';
 import { planSpawnCells } from './game-engine/combat/spawn.js';
 import { buildTargetCard, describeTargetCard } from './game-engine/combat/target-card.js';
@@ -881,9 +895,28 @@ function getCombatBoardHighlightState(gridWidth, gridHeight) {
  * Falls back to all party member IDs if none are persona-linked.
  * @returns {number[]}
  */
+/**
+ * En solo llevas al tuyo; los demas deciden por su cuenta.
+ *
+ * Se filtra aqui, en el unico sitio que decide que fichas se pueden arrastrar, para que
+ * el modo no haya que recordarlo en cada pantalla.
+ *
+ * @param {number[]} ids
+ * @returns {number[]}
+ */
+function underYourHand(ids) {
+    const rules = getActiveRuleset()?.companions ?? null;
+    if (readMode(rules) === MODES.GROUP) return ids;
+
+    return ids.filter((id) => {
+        const member = partyMembers.find(m => Number(m.id) === Number(id));
+        return member ? canControl(member, partyMembers, rules).allowed : false;
+    });
+}
+
 function getControlledMemberIds() {
     const linked = partyMembers.filter(m => m.personaId !== null).map(m => m.id);
-    return linked.length > 0 ? linked : partyMembers.map(m => m.id);
+    return underYourHand(linked.length > 0 ? linked : partyMembers.map(m => m.id));
 }
 
 /**
@@ -1875,6 +1908,11 @@ function resolveDeathSave(member) {
             .filter((/** @type {string} */ c) => c !== 'Unconscious');
     }
 
+    // El tercer fallo dejaba a alguien tirado para siempre y ahi se acababa: ni moria ni
+    // se levantaba. Ahora pasa lo que diga la campana — muere quien vino por la paga, y
+    // quien vino por ti se levanta roto.
+    if (result.outcome === 'dead') applyFall(member);
+
     showCombatDiceRoll({
         title: `${member.name}: salvacion de muerte`,
         subtitle: result.outcome === 'dead' ? 'Tercer fallo' : '',
@@ -1890,6 +1928,46 @@ function resolveDeathSave(member) {
     savePartyState();
     saveCombatState();
     return true;
+}
+
+/**
+ * Lo que queda de alguien que ha fallado su tercera salvacion.
+ *
+ * Las dos salidas son de la campana, no mias: se eligieron al crearla. Y la herida se
+ * escribe **encima de la ficha**, no al lado, porque `speed` y la CA se leen en veinte
+ * sitios y ninguno deberia tener que preguntar si el que corre esta cojo.
+ *
+ * @param {any} member
+ */
+function applyFall(member) {
+    const fall = resolveFall(member, {
+        roll: () => nextRandom(),
+        rules: getActiveRuleset()?.survival ?? null,
+        // Caer con el golpe todavia encima deja peor recuerdo que desangrarse despacio.
+        severity: (Number(member.hp) || 0) < 0 ? 1 : 0,
+    });
+
+    if (fall.outcome === 'dies') {
+        member.dead = true;
+        postCombatNarration(`⚰️ [COMBAT] ${fall.reason}`);
+        toastr.error(fall.reason, 'Se acabo', { timeOut: 15000 });
+        return;
+    }
+
+    const patch = applyInjury(member, fall.injury);
+    member.injuries = patch.injuries;
+    member.baseStats = patch.baseStats;
+    Object.assign(member, patch.stats);
+
+    // Se levanta, pero no entero: sigue a 1 PG y con lo suyo encima.
+    member.hp = 1;
+    member.deathSaves = clearDeathSaves();
+    member.activeConditions = (Array.isArray(member.activeConditions) ? member.activeConditions : [])
+        .filter((/** @type {string} */ c) => c !== 'Unconscious');
+
+    postCombatNarration(`🩸 [COMBAT] ${fall.reason}`);
+    postCombatNarration(`🩹 [COMBAT] ${describeInjuries(member).join(' · ')}`);
+    toastr.warning(describeInjuries(member).join('\n'), fall.reason, { timeOut: 15000 });
 }
 
 function advanceTurnIndex() {
@@ -1929,6 +2007,87 @@ function advanceTurnIndex() {
 /**
  * @param {boolean} [includeCurrent=true]
  */
+/**
+ * Si a este le toca moverse solo.
+ *
+ * @param {any} entry
+ * @returns {boolean}
+ */
+function actsOnItsOwn(entry) {
+    if (!entry || entry.isEnemy) return false;
+    const member = partyMembers.find(m => Number(m.id) === Number(entry.id));
+    if (!member) return false;
+    return !canControl(member, partyMembers, getActiveRuleset()?.companions ?? null).allowed;
+}
+
+/**
+ * El turno de un companero que se lleva solo.
+ *
+ * Usa **la misma maquina que juega a los enemigos** —`planEnemyTurn` no sabe de bandos, le
+ * das objetivos y aliados— y despues aplica lo que decide **por los mismos caminos que
+ * usarias tu**: mover cuesta pies, atacar gasta la accion y tira contra la misma CA. Es lo
+ * que impide que un companero automatico haga lo que tu no puedes.
+ *
+ * @param {any} entry
+ * @returns {string}
+ */
+function resolveAllyTurnAction(entry) {
+    const member = partyMembers.find(m => Number(m.id) === Number(entry.id));
+    if (!member) return '';
+
+    const living = combatEncounter.enemies.filter((/** @type {any} */ e) => (Number(e.currentHp) || 0) > 0);
+    if (living.length === 0) return `[COMBAT] ${member.name} baja el arma: no queda nadie.`;
+
+    const { terrain, gridWidth, gridHeight } = getActiveBoardContext();
+    const cellOf = (/** @type {any} */ m) => ({
+        gridX: Number(m.mapPosition?.gridX) || 0,
+        gridY: Number(m.mapPosition?.gridY) || 0,
+    });
+
+    const plan = planEnemyTurn({
+        actor: {
+            id: String(member.id),
+            ...cellOf(member),
+            currentHp: Number(member.hp) || 0,
+            maxHp: Number(member.maxHp) || 1,
+            speedFeet: Number(member.speed) || 30,
+            attackRangeFeet: 5,
+            // Como pelea cuando decide el: sale de sus razones, no de su clase.
+            profile: /** @type {any} */ (readReasons(member).profile),
+        },
+        targets: living.map((/** @type {any} */ e) => ({
+            id: String(e.instanceId),
+            gridX: Number(e.gridX) || 0,
+            gridY: Number(e.gridY) || 0,
+            currentHp: Number(e.currentHp) || 0,
+            maxHp: Number(e.maxHp) || 1,
+        })),
+        allies: partyMembers
+            .filter(m => Number(m.id) !== Number(member.id) && (Number(m.hp) || 0) > 0)
+            .map(m => ({ id: String(m.id), ...cellOf(m) })),
+        terrain,
+        gridWidth,
+        gridHeight,
+    });
+
+    /** @type {string[]} */
+    const lines = [`[COMBAT] ${member.name} decide por su cuenta: ${plan.rationale}`];
+
+    const here = cellOf(member);
+    if (plan.destination && (plan.destination.x !== here.gridX || plan.destination.y !== here.gridY)) {
+        // Se mueve por la puerta de siempre: cuenta los pies y paga los ataques de
+        // oportunidad igual que si lo arrastraras tu.
+        handlePlayerCombatMove(`${plan.destination.x + 1},${plan.destination.y + 1}`);
+    }
+
+    if (plan.action === 'attack' && plan.targetId != null) {
+        const target = living.find((/** @type {any} */ e) => String(e.instanceId) === String(plan.targetId));
+        if (target) handlePlayerCombatAttack(String(target.name));
+    }
+
+    return lines.join('\n');
+}
+
 function runCombatTurnLoop(includeCurrent = true) {
     if (!combatEncounter.active || combatEncounter.turnOrder.length === 0) return null;
 
@@ -1938,9 +2097,11 @@ function runCombatTurnLoop(includeCurrent = true) {
     }
 
     let safety = 0;
-    while (entry && combatEncounter.active && entry.isEnemy && safety < combatEncounter.turnOrder.length + 1) {
+    while (entry && combatEncounter.active
+        && (entry.isEnemy || actsOnItsOwn(entry))
+        && safety < combatEncounter.turnOrder.length + 1) {
         announceTurnInChat(entry);
-        const actionLog = resolveEnemyTurnAction(entry);
+        const actionLog = entry.isEnemy ? resolveEnemyTurnAction(entry) : resolveAllyTurnAction(entry);
         postCombatNarration(actionLog);
 
         if (!getLivingPartyMembers().length) {
@@ -2257,7 +2418,37 @@ function awardEncounterLoot(defeated) {
     }
 
     savePartyState();
+    deliverTakenContract();
     return { gold: loot.gold, xp: loot.xp, items: loot.items };
+}
+
+/**
+ * Entrega el encargo aceptado, si el combate que acaba de ganarse era el suyo.
+ *
+ * Aqui se cierra el bucle entero: el tablon te mando, el generador te construyo el sitio,
+ * lo jugaste, y ahora te pagan y subes de reputacion — que es lo que abre el siguiente
+ * rango del tablon. Sin esto, aceptar un encargo era apuntar una frase.
+ */
+function deliverTakenContract() {
+    const taken = chat_metadata?.[TAKEN_KEY];
+    if (!taken || !currentBoardName) return;
+    if (!String(currentBoardName).includes('(encargo)')) return;
+
+    const guild = getGuild();
+    const done = completeContract(guild, taken);
+
+    // El pago va al grupo, al mismo bolsillo del que sale la cena.
+    const holder = partyMembers.find(m => (m.hp || 0) > 0) ?? partyMembers[0];
+    if (holder) holder.gold = (Number(holder.gold) || 0) + done.gold;
+
+    guild.renown = done.renown;
+    chat_metadata[GUILD_KEY] = guild;
+    delete chat_metadata[TAKEN_KEY];
+    saveMetadata();
+    savePartyState();
+
+    postCombatNarration(`🏆 [GREMIO] ${done.line}`);
+    toastr.success(done.line, 'Encargo entregado', { timeOut: 12000 });
 }
 
 // ================================================================
@@ -2283,7 +2474,163 @@ const campaign = createCampaignState({
     loadWorld: (name) => loadWorldInfo(name),
     // Para devolver los usos de habilidad al descansar: el catalogo vive en las reglas.
     abilities: () => getAbilityCatalogue(),
+    // Lo que el tiempo le hace al grupo: curar heridas y pasar la cuenta.
+    timePasses: (days, calendar) => onTimePassed(days, calendar),
 });
+
+/** Donde se apunta el dia en que vence la proxima cuenta. */
+const BILL_DUE_KEY = 'upkeepDueDay';
+
+/** El gremio y su tablon viven en la partida, no en la sesion. */
+const GUILD_KEY = 'guild';
+const BOARD_KEY = 'contractBoard';
+const TAKEN_KEY = 'contractTaken';
+
+/** @returns {any} */
+function getGuild() {
+    return readGuild(chat_metadata?.[GUILD_KEY]);
+}
+
+/**
+ * Los precios de la semana, con los edificios del gremio descontados.
+ *
+ * Un solo sitio donde se juntan las dos capas: la campana pone los precios y el gremio los
+ * abarata. Preguntarlo en dos sitios distintos seria acabar cobrando dos cosas distintas.
+ *
+ * @returns {any}
+ */
+function currentUpkeepRules() {
+    return upkeepWithBuildings(getActiveRuleset()?.upkeep ?? null, getGuild());
+}
+
+/**
+ * El tablon, llenandolo si hace falta.
+ *
+ * Los encargos vencen solos y el hueco se rellena: un tablon que se vacia deja de tirar
+ * de ti, y uno que no vence deja de apretar.
+ *
+ * @returns {any[]}
+ */
+function refreshContractBoard() {
+    if (!chat_metadata) return [];
+
+    const guild = getGuild();
+    const today = Math.max(1, Math.floor(Number(getCampaignCalendar()?.day) || 1));
+    const { kept, expired } = expireContracts(chat_metadata[BOARD_KEY] ?? [], today);
+
+    for (const gone of expired) {
+        postCombatNarration(`📄 [GREMIO] Se paso el plazo: ${gone.title}.`);
+    }
+
+    const wanted = boardSize(guild);
+    if (kept.length < wanted) {
+        const fresh = generateBoardOfContracts({
+            random: nextRandom,
+            count: wanted - kept.length,
+            renown: guild.renown,
+            theme: guild.theme,
+            day: today,
+            places: getCurrentWorldLocationMaps().map((/** @type {any} */ l) => String(l?.name || '')).filter(Boolean),
+            bestiary: getCurrentWorldEnemies().map((/** @type {any} */ e) => String(e?.name || '')).filter(Boolean),
+        });
+        kept.push(...fresh);
+    }
+
+    chat_metadata[BOARD_KEY] = kept;
+    saveMetadata();
+    return kept;
+}
+
+/**
+ * Curar y cobrar: lo que pasa por el hecho de que pase el tiempo.
+ *
+ * Es la mitad que le faltaba al reloj. Hasta ahora el dia solo avanzaba si tu lo movias y
+ * no costaba nada, asi que ganar por los pelos y ganar de sobra eran lo mismo al dia
+ * siguiente. Ahora cada dia cura un poco y cada semana hay que pagar.
+ *
+ * @param {number} days
+ * @param {any} calendar
+ */
+function onTimePassed(days, calendar) {
+    if (!chat_metadata) return;
+
+    // 1. Curar. Lo permanente se queda; lo demas cuenta los dias.
+    /** @type {string[]} */
+    const mended = [];
+    for (const member of partyMembers) {
+        if (readInjuries(member).length === 0) continue;
+
+        const patch = healInjuries(member, days);
+        member.injuries = patch.injuries;
+        member.baseStats = patch.baseStats;
+        Object.assign(member, patch.stats);
+        for (const injury of patch.healed) mended.push(`${member.name}: ${injury.label.toLowerCase()}, curado.`);
+    }
+    if (mended.length > 0) {
+        postCombatNarration(`🩹 [CAMPAÑA] ${mended.join(' ')}`);
+        savePartyState();
+    }
+
+    // 2. Cobrar, cuando toca. El dia de vencimiento vive en la partida, no en la sesion.
+    const today = Math.max(1, Math.floor(Number(calendar?.day) || 1));
+    const week = Math.max(1, Number(currentUpkeepRules().weekLength) || 7);
+
+    let due = Number(chat_metadata[BILL_DUE_KEY]);
+    if (!Number.isFinite(due) || due <= 0) {
+        // La primera semana empieza a contar hoy, no se debe desde el minuto uno.
+        chat_metadata[BILL_DUE_KEY] = today + week;
+        saveMetadata();
+        return;
+    }
+
+    while (today >= due) {
+        chargeWeek();
+        due += week;
+    }
+    chat_metadata[BILL_DUE_KEY] = due;
+    saveMetadata();
+}
+
+/**
+ * La cuenta de una semana, pasada de verdad.
+ *
+ * Se cobra de lo que hay entre todos y se dice entero. Cuando no llega no se mata de
+ * hambre a nadie de golpe: quien vino por dinero deja de cobrar y la lealtad baja, que es
+ * lo que se nota en la partida siguiente.
+ */
+function chargeWeek() {
+    const bill = weeklyBill(partyMembers, { rules: currentUpkeepRules() });
+    const week = settleWeek(partyMembers, bill);
+
+    // Se cobra por cabeza, empezando por quien mas lleva: el oro es del grupo.
+    let owed = Math.min(bill.total, bill.purse);
+    for (const member of [...partyMembers].sort((a, b) => (Number(b.gold) || 0) - (Number(a.gold) || 0))) {
+        if (owed <= 0) break;
+        const has = Math.max(0, Number(member.gold) || 0);
+        const taken = Math.min(has, owed);
+        member.gold = has - taken;
+        owed -= taken;
+    }
+
+    for (const name of week.unpaid) {
+        const member = partyMembers.find(m => m.name === name);
+        if (member) member.unpaidWeeks = (Number(member.unpaidWeeks) || 0) + 1;
+    }
+
+    // Y la lealtad, que es lo que convierte no pagar en una consecuencia y no en un
+    // numero rojo. Quien llega al fondo se va: es la decision que tomaste con la cuenta
+    // delante, no un castigo por jugar mal.
+    const loyalty = settleLoyalty(partyMembers, week.unpaid);
+    if (loyalty.leaving.length > 0) {
+        partyMembers = partyMembers.filter(m => !loyalty.leaving.includes(String(m.name)));
+        renderPartyMembers();
+    }
+    for (const line of loyalty.lines) postCombatNarration(`🤝 [GREMIO] ${line}`);
+
+    savePartyState();
+    postCombatNarration(`💰 [CAMPAÑA] ${week.lines.join(' ')}`);
+    if (!week.paid) toastr.warning(week.lines.join('\n'), 'La cuenta no sale', { timeOut: 15000 });
+}
 
 /** @returns {any} */
 const getCampaignCalendar = () => campaign.getCalendar();
@@ -2541,10 +2888,16 @@ function renderCampaignTab() {
     const container = $('#campaign_panel_row');
     if (container.length === 0) return;
 
+    const today = Math.max(1, Math.floor(Number(getCampaignCalendar()?.day) || 1));
+    const due = Number(chat_metadata?.[BILL_DUE_KEY]);
+
     renderCampaignPanel(container, {
         calendar: getCampaignCalendar(),
         bonds: getCampaignBonds(),
         party: partyMembers,
+        // Sin nadie en el grupo no hay cuenta que pasar, y un panel de ceros estorba.
+        bill: partyMembers.length > 0 ? weeklyBill(partyMembers, { rules: currentUpkeepRules() }) : null,
+        daysToBill: Number.isFinite(due) ? Math.max(0, due - today) : 0,
         onAdvanceSlot: advanceCampaignSlot,
         onAdvanceDay: advanceCampaignDay,
         onShortRest: () => { void takeRest('corto'); },
@@ -4003,6 +4356,179 @@ function deliverGifts(gifts, catalogue) {
 }
 
 /**
+ * Abre el gremio: el tablon, la casa y quien esta.
+ *
+ * @returns {Promise<string>}
+ */
+async function openGuild() {
+    const worldName = String(chat_metadata?.[METADATA_KEY] || '');
+    if (!worldName) {
+        toastr.warning('Abre una campana antes de mirar el tablon.');
+        return '';
+    }
+
+    const guild = getGuild();
+    const board = refreshContractBoard();
+    const today = Math.max(1, Math.floor(Number(getCampaignCalendar()?.day) || 1));
+    const purse = partyMembers.reduce((sum, m) => sum + Math.max(0, Number(m.gold) || 0), 0);
+
+
+    const { openGuildPanel } = await import('./game-engine/ui/guild-panel.js');
+    const choice = await openGuildPanel({
+        guild, board, day: today, purse, roster: partyMembers, Popup, POPUP_TYPE,
+    });
+    if (!choice) return describeGuild(guild);
+
+    if (choice.built) return raiseBuilding(choice.built, purse);
+    if (choice.accepted) return await acceptContract(choice.accepted);
+    return '';
+}
+
+/**
+ * Sube un edificio, si el oro llega.
+ *
+ * Se cobra del mismo bolsillo que la cena: es lo que hace que construir sea una decision
+ * y no una casilla que marcar cuando toca.
+ *
+ * @param {string} key
+ * @param {number} purse
+ * @returns {string}
+ */
+function raiseBuilding(key, purse) {
+    const guild = getGuild();
+    const next = upgradeCost(guild, key);
+    if (next.maxed || purse < next.cost) {
+        toastr.warning('No llega el oro para eso.');
+        return '';
+    }
+
+    let owed = next.cost;
+    for (const member of [...partyMembers].sort((a, b) => (Number(b.gold) || 0) - (Number(a.gold) || 0))) {
+        if (owed <= 0) break;
+        const has = Math.max(0, Number(member.gold) || 0);
+        const taken = Math.min(has, owed);
+        member.gold = has - taken;
+        owed -= taken;
+    }
+
+    guild.buildings[key] = next.nextLevel;
+    chat_metadata[GUILD_KEY] = guild;
+    saveMetadata();
+    savePartyState();
+
+    const line = `${key} sube al nivel ${next.nextLevel} por ${next.cost} de oro.`;
+    postCombatNarration(`🏛️ [GREMIO] ${line}`);
+    toastr.success(line, 'La casa crece');
+    return line;
+}
+
+/**
+ * Acepta un encargo y le construye el sitio donde se juega.
+ *
+ * Aqui se juntan las dos mitades del plan: el tablon dice **que** hay que hacer y el
+ * generador construye **donde**. Sin esto, aceptar un encargo seria apuntar una frase.
+ *
+ * @param {string} id
+ * @returns {Promise<string>}
+ */
+async function acceptContract(id) {
+    const board = chat_metadata?.[BOARD_KEY] ?? [];
+    const contract = board.find((/** @type {any} */ c) => String(c?.id) === String(id));
+    if (!contract) return '';
+
+    const worldName = String(chat_metadata?.[METADATA_KEY] || '');
+    const data = await loadWorldInfo(worldName);
+    if (!data) return '';
+
+    const bestiary = getCurrentWorldEnemies()
+        .map((/** @type {any} */ e) => String(e?.name || '')).filter(Boolean);
+
+    const generated = generateBoard({
+        random: nextRandom,
+        size: contract.difficulty >= 5 ? 'large' : (contract.difficulty >= 1 ? 'medium' : 'small'),
+        bestiary,
+        partySize: Math.max(1, partyMembers.length),
+    });
+
+    // El sitio entra como una localidad de verdad, editable en `/campana` y exportable con
+    // la campana. Lo generado que no se guarda como contenido de primera clase es texto
+    // suelto: no hay mapa que aprender ni sitio al que volver.
+    const places = Array.isArray(data.metadata?.locationMaps) ? data.metadata.locationMaps : [];
+    const placeName = contract.locationName || contract.title;
+    let place = places.find((/** @type {any} */ l) => String(l?.name) === placeName);
+    if (!place) {
+        place = { name: placeName, description: '', url: '', gridWidth: 50, gridHeight: 50, boards: [] };
+        places.push(place);
+    }
+    place.boards = Array.isArray(place.boards) ? place.boards : [];
+
+    const boardName = `${contract.title} (encargo)`;
+    const built = {
+        name: boardName,
+        description: `Encargo de rango ${contract.rank} para ${contract.patron}.`,
+        url: '',
+        gridWidth: generated.gridWidth,
+        gridHeight: generated.gridHeight,
+        terrain: terrainFromAsciiMap(generated.map),
+        partyStart: generated.partyStart,
+        enemyPlacements: generated.enemies,
+        objectives: [],
+    };
+    place.boards = [...place.boards.filter((/** @type {any} */ b) => b?.name !== boardName), built];
+
+    data.metadata = Object.assign(data.metadata ?? {}, { locationMaps: places });
+    await saveWorldInfo(worldName, data, true);
+
+    chat_metadata[TAKEN_KEY] = contract;
+    chat_metadata[BOARD_KEY] = board.filter((/** @type {any} */ c) => String(c?.id) !== String(id));
+    saveMetadata();
+
+    const line = `Aceptado: ${describeContract(contract, Number(getCampaignCalendar()?.day) || 1)}`;
+    postCombatNarration(`📄 [GREMIO] ${line}`);
+    postCombatNarration(`🗺️ [GREMIO] El sitio ya existe: ${placeName} — ${boardName}.`);
+
+    // Y quien va. Cada uno con su motivo, tambien los que se quedan: un "no" que no se
+    // entiende no es una decision, es un error. Es la diferencia entre un compañero y una
+    // ficha que a veces falta.
+    const formed = formParty(partyMembers, contract, { max: Math.max(1, partyMembers.length) });
+    for (const said of formed.lines) postCombatNarration(`🫱 [GREMIO] ${said}`);
+    if (formed.going.length === 0) {
+        toastr.warning('Nadie quiere ir a este. Mira sus motivos en el registro.', 'Sin grupo');
+    }
+    toastr.success(`${placeName} — ${boardName}`, 'Encargo aceptado');
+    renderLocationMapsPreview();
+    return line;
+}
+
+/**
+ * La cuenta de la semana, dicha antes de que venza.
+ *
+ * Es la mitad del valor de todo esto: una factura que te sorprende es un impuesto, y una
+ * que ves venir es una decision. Por eso se puede preguntar cuando quieras y no aparece
+ * solo el dia del cobro.
+ *
+ * @returns {string}
+ */
+function showWeeklyBill() {
+    const rules = getActiveRuleset();
+    const bill = weeklyBill(partyMembers, { rules: rules?.upkeep ?? null });
+
+    const today = Math.max(1, Math.floor(Number(getCampaignCalendar()?.day) || 1));
+    const due = Number(chat_metadata?.[BILL_DUE_KEY]);
+    const daysLeft = Number.isFinite(due) ? Math.max(0, due - today) : 0;
+
+    const lines = describeBill(bill, daysLeft);
+    lines.push(describeSurvival(rules?.survival ?? null));
+    lines.push(describeMode(rules?.companions ?? null));
+
+    postCombatNarration(`📒 [CAMPAÑA] ${lines.join('\n')}`);
+    if (bill.covered) toastr.info(lines.join('\n'), 'La cuenta', { timeOut: 12000 });
+    else toastr.warning(lines.join('\n'), 'La cuenta no sale', { timeOut: 15000 });
+
+    return lines.join('\n');
+}
+
+/**
  * Abre el panel de habilidades y guarda lo que salga.
  *
  * El catalogo viaja dentro del paquete de reglas del mundo, como las armas y las
@@ -4320,6 +4846,19 @@ function captureGameState() {
  */
 function saveCheckpoint(label, automatic = false) {
     if (!chat_metadata || typeof chat_metadata !== 'object') return '';
+
+    // La casilla de la campana. Con el guardado libre esto no dice nada; con el guardado
+    // en el refugio es lo unico que le da peso a una herida permanente, porque si no
+    // vuelves atras y Bruna conserva la pierna.
+    const allowed = canCheckpoint(
+        { inShelter: !currentBoardName, inCombat: Boolean(combatEncounter.active) },
+        getActiveRuleset()?.survival ?? null,
+    );
+    if (!allowed.allowed) {
+        // Un punto automatico no discute: si esta campana no guarda aqui, no guarda.
+        if (!automatic) toastr.warning(allowed.reason, 'Aqui no se guarda');
+        return '';
+    }
 
     const checkpoint = createCheckpoint({ label, state: captureGameState(), automatic });
     chat_metadata[CHECKPOINT_KEY] = addCheckpoint(chat_metadata[CHECKPOINT_KEY], checkpoint);
@@ -7345,6 +7884,21 @@ export function initPartyPanel() {
             toastr.info(`🎲 ${t`Entered`} ${entered}`);
             return entered;
         },
+    }));
+
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'gremio',
+        helpString: '<div>El tablon de encargos, la casa y quien esta contratado. '
+            + 'Aceptar un encargo <b>construye el sitio</b> donde se juega.</div>',
+        callback: async () => await openGuild(),
+    }));
+
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'cuenta',
+        helpString: '<div>Lo que debes esta semana y cuanto tienes: comida, posada, tasas, '
+            + 'sueldos y lo que costaria curar a los heridos. Se pregunta cuando quieras, '
+            + 'porque una factura que ves venir es una decision y una que te sorprende es un impuesto.</div>',
+        callback: () => showWeeklyBill(),
     }));
 
     SlashCommandParser.addCommandObject(SlashCommand.fromProps({

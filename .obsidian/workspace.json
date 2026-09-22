@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "wiki/GEM_CREAR_CAMPANA.md",
+                "file": "wiki/HOME.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "GEM_CREAR_CAMPANA"
+              "title": "HOME"
             }
           }
         ]
@@ -99,7 +99,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "wiki/GEM_CREAR_CAMPANA.md",
+                "file": "wiki/HOME.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -118,7 +118,7 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "wiki/GEM_CREAR_CAMPANA.md",
+                "file": "wiki/HOME.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
@@ -161,7 +161,7 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "wiki/GEM_CREAR_CAMPANA.md",
+                "file": "wiki/HOME.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
@@ -190,21 +190,26 @@
   },
   "active": "e4a815deb0fecab8",
   "lastOpenFiles": [
-    "wiki/POR_HACER.md",
+    "wiki/PLAN_CREAR_CAMPANA.md",
+    "wiki/PROPUESTA_FRONTEND_MODO_JUEGO.md",
+    "wiki/ROADMAP_MAESTRO.md",
+    "wiki/ROADMAP.md",
     "wiki/GEM_CREAR_CAMPANA.md",
-    "tools/gem-instructions.mjs",
-    "data/default-user/backups/chat_default_assistant_20260922-101216.jsonl",
-    "data/_cache/characters/763a5d45fed205e49e6e1e18f594f397b19d6bba00a447f612276c55e9b99fd4",
-    "data/default-user/chats/default_Assistant/Assistant - 2026-09-22@10h12m06s674ms.jsonl",
-    "data/default-user/backups/chat_default_assistant_20260922-101206.jsonl",
-    "data/default-user/worlds/Mazmorra clásica (4).json",
-    "data/default-user/backups/chat_default_assistant_20260922-100313.jsonl",
-    "data/_cache/characters/8cdd2f3aa8294d64b3d7641c4fc5da8acdba5dcf72eb030a527395d62c1205a0",
-    "data/default-user/backups/chat_default_assistant_20260922-100303.jsonl",
-    "data/default-user/chats/default_Assistant/Assistant - 2026-09-22@10h03m03s345ms.jsonl",
+    "tests/game-engine-upkeep.test.js",
+    "public/scripts/game-engine/rules/upkeep.js",
+    "public/scripts/game-engine/rules/upkeep.js.tmp.56780.6df06a50deea",
+    "tests/game-engine-mortality.test.js",
+    "tests/game-engine-mortality.test.js.tmp.56780.400da736d6a6",
+    "public/scripts/game-engine/rules/mortality.js",
+    "tests/game-engine-injuries.test.js",
+    "public/scripts/game-engine/rules/injuries.js",
+    "data/default-user/backups/chat_narrador_20260922-113949.jsonl",
+    "data/default-user/backups/chat_narrador_20260922-113935.jsonl",
+    "data/default-user/thumbnails/avatar/Narrador.png",
+    "data/default-user/characters/Narrador.png",
+    "wiki/POR_HACER.md",
     "node_modules/@jimp/core/node_modules/token-types/README.md",
     "node_modules/@jimp/core/node_modules/file-type/readme.md",
-    "wiki/PLAN_CREAR_CAMPANA.md",
     "node_modules/protobufjs/cli/README.md",
     "node_modules/protobufjs/cli/node_modules/requizzle/README.md",
     "node_modules/protobufjs/cli/node_modules/fast-levenshtein/README.md",
@@ -227,14 +232,9 @@
     "node_modules/form-data/README.md",
     "node_modules/jimp/node_modules/@jimp/types/CHANGELOG.md",
     "node_modules/baseline-browser-mapping/README.md",
-    "node_modules/@tokenizer/inflate/node_modules/debug/README.md",
-    "node_modules/axios/node_modules/debug/README.md",
-    "node_modules/hasown/CHANGELOG.md",
     "node_modules/jimp/node_modules/@jimp/types/node_modules/@jimp/bmp/test/images/windows95.png",
     "node_modules/jimp/node_modules/@jimp/types/node_modules/@jimp/bmp/test/images/windows95.bmp",
     "node_modules/jimp/node_modules/@jimp/types/node_modules/@jimp/gif/test/images/flower.gif",
-    "node_modules/jimp/node_modules/@jimp/types/node_modules/@jimp/gif/test/images/animated.gif",
-    "node_modules/jimp/fonts/open-sans/open-sans-32-white/open-sans-32-white.png",
-    "node_modules/jimp/fonts/open-sans/open-sans-8-white/open-sans-8-white.png"
+    "node_modules/jimp/node_modules/@jimp/types/node_modules/@jimp/gif/test/images/animated.gif"
   ]
 }

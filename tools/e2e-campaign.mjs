@@ -3551,6 +3551,146 @@ try {
     check('el mundo se acuerda de quien lo narra, no la sesion',
         remembered === narrator.avatar, `${remembered}`);
 
+    step('40. El desgaste: heridas que quedan y una cuenta que vence');
+
+    await clearToasts();
+    if (await page.locator('#cw-new-campaign').count() === 0) {
+        await closeChat();
+    }
+
+    // Una campana con el filo puesto: mueren todos y se guarda solo en el refugio.
+    await page.click('#cw-new-campaign');
+    await page.waitForSelector('.cw-root', { timeout: 20000 });
+
+    const edge40 = await page.evaluate(() => ({
+        title: [...document.querySelectorAll('.cw-step-title')].map(t => (t.textContent || '').trim()),
+        boxes: document.querySelectorAll('.cw-edge-line input').length,
+    }));
+    check('el asistente pregunta cuanto duele perder',
+        edge40.title.some(t => /duele perder/.test(t)) && edge40.boxes === 2,
+        JSON.stringify(edge40));
+
+    await page.fill('.cw-root input.cw-input >> nth=0', 'La Marca del Hambre');
+    await page.fill('.cw-root textarea.cw-party-input', 'Bruna\nBrand');
+    await page.locator('.cw-saves-shelter').check();
+    await page.locator('.popup-button-ok').last().click();
+    await page.waitForTimeout(6000);
+    await clearToasts();
+
+    const edgeStored40 = await page.evaluate(async () => {
+        const wi = await import('/scripts/world-info.js');
+        const data = await wi.loadWorldInfo('La Marca del Hambre');
+        return data?.metadata?.rulesetPack?.survival ?? null;
+    });
+    check('lo elegido queda en el paquete de reglas de la campana, no en un ajuste global',
+        edgeStored40?.saves === 'shelter', JSON.stringify(edgeStored40));
+
+    // --- Una herida que se queda -----------------------------------------------------
+    const hurt40 = await page.evaluate(async () => {
+        const injuries = await import('/scripts/game-engine/rules/injuries.js');
+        const mortality = await import('/scripts/game-engine/rules/mortality.js');
+        const ctx = window.SillyTavern.getContext();
+        const member = { name: 'Bruna', motive: 'bond', speed: 30, hp: 0 };
+
+        const fall = mortality.resolveFall(member, { roll: () => 0.55 });
+        const patch = injuries.applyInjury(member, fall.injury);
+
+        // Cada herida toca lo suyo: una pierna rota baja la velocidad y una conmocion
+        // la sabiduria. Lo que se comprueba es que **lo que declara** cambie de verdad.
+        const touched = Object.entries(fall.injury?.modifiers || {}).map(([stat, amount]) => ({
+            stat,
+            amount,
+            before: patch.baseStats[stat],
+            after: patch.stats[stat],
+        }));
+        return {
+            outcome: fall.outcome,
+            label: fall.injury?.label || '',
+            touched,
+            party: (ctx.chatMetadata.party || []).length,
+        };
+    });
+    check('quien te sigue por un vinculo no muere: queda marcado',
+        hurt40.outcome === 'maimed' && hurt40.label.length > 0, JSON.stringify(hurt40.label));
+    check('y baja de verdad lo que dice que baja, en los campos que el motor ya lee',
+        hurt40.touched.length > 0 && hurt40.touched.every(t => t.after < t.before),
+        hurt40.touched.map(t => `${t.stat} ${t.before}->${t.after}`).join(', '));
+
+    const hired40 = await page.evaluate(async () => {
+        const mortality = await import('/scripts/game-engine/rules/mortality.js');
+        return mortality.resolveFall({ name: 'Brand', motive: 'coin' }, { roll: () => 0.55 });
+    });
+    check('quien te sigue por dinero si muere, y se dice por que',
+        hired40.outcome === 'dies' && /paga/.test(hired40.reason), hired40.reason);
+
+    // --- La cuenta -------------------------------------------------------------------
+    const bill40 = await page.evaluate(async () => {
+        const upkeep = await import('/scripts/game-engine/rules/upkeep.js');
+        const party = [
+            { name: 'Bruna', motive: 'bond', gold: 30 },
+            { name: 'Brand', motive: 'coin', gold: 0 },
+        ];
+        const result = upkeep.weeklyBill(party);
+        return { total: result.total, wages: result.wages, covered: result.covered, missing: result.missing };
+    });
+    check('la cuenta cobra comida a todos y sueldo solo a quien vino por dinero',
+        bill40.wages > 0 && bill40.total > bill40.wages, JSON.stringify(bill40));
+    check('y dice cuanto falta cuando no llega',
+        bill40.covered === false && bill40.missing > 0, JSON.stringify(bill40));
+
+    await page.evaluate(() => {
+        void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/cuenta');
+    });
+    await page.waitForTimeout(1200);
+    const asked40 = await page.evaluate(() => {
+        const log = [...document.querySelectorAll('#chat .mes_text')].map(n => n.textContent || '');
+        return log.filter(text => /\[CAMPAÑA\]/.test(text) && /debes/.test(text)).pop() || '';
+    });
+    check('se puede preguntar por ella antes de que venza, y contesta con numeros',
+        /debes \d+, tienes \d+/.test(asked40), asked40.replace(/\s+/g, ' ').slice(0, 120));
+
+    // El panel de campana la dibuja: es donde vive el reloj, y la cuenta es lo que el
+    // reloj significa.
+    await page.locator('#rm_tab_campaign').click({ timeout: 10000 }).catch(() => {});
+    await page.waitForTimeout(1200);
+    const panel40 = await page.evaluate(() => {
+        const bill = document.querySelector('.cp-bill');
+        return {
+            drawn: Boolean(bill),
+            text: (bill?.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 90),
+            underClock: Boolean(document.querySelector('.cp-clock + .cp-bill')),
+        };
+    });
+    check('y el panel de campana la dibuja, debajo del reloj',
+        panel40.drawn && panel40.underClock, JSON.stringify(panel40));
+
+    // --- El tablero mientras se habla ------------------------------------------------
+    await page.evaluate(() => {
+        void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/modojuego');
+    });
+    await page.waitForSelector('#game-shell', { timeout: 15000 });
+    await page.waitForTimeout(900);
+    await page.keyboard.press('1');
+    await page.waitForTimeout(700);
+
+    const beside40 = await page.evaluate(() => {
+        const root = document.querySelector('#game-shell');
+        const map = document.querySelector('#game-shell .gs-scene-map');
+        const chat = document.querySelector('#game-shell .gs-chat-slot');
+        const mapBox = map?.getBoundingClientRect();
+        const chatBox = chat?.getBoundingClientRect();
+        return {
+            scene: root?.getAttribute('data-scene') || '',
+            mapWidth: Math.round(mapBox?.width || 0),
+            chatWidth: Math.round(chatBox?.width || 0),
+            hasBoard: Boolean(map?.querySelector('[data-map-root]')),
+        };
+    });
+    check('en la escena de dialogo, el tablero se ve al lado del chat',
+        beside40.scene === 'dialogue' && (!beside40.hasBoard || beside40.mapWidth > 100),
+        JSON.stringify(beside40));
+    check('y el chat no se queda sin sitio', beside40.chatWidth > 200, `${beside40.chatWidth}px`);
+
     step('38. Borrar una campana desde Cargar partida');
 
     // Se llega como llega un jugador, sin dar por hecho donde quedo la pantalla: el juego

@@ -87,6 +87,14 @@ Módulos puros: sin DOM, sin estado global, sin lecturas del chat. Por eso se pr
 | `ui/campaign-editor.js` | 852 | El panel de `/campana`: siete pestañas, una por categoría | ✅ |
 | `combat/spawn.js` | 95 | Dónde aparecen los enemigos: donde los dibujó el libro, nunca en un muro | ✅ |
 | `rules/rest.js` | 216 | Descanso corto y largo, con dados de golpe | ✅ |
+| `rules/injuries.js` | 286 | Lo que un combate deja encima: heridas que curan y cicatrices que no (N2) | ✅ |
+| `rules/mortality.js` | 152 | Quién muere y quién queda marcado, y cuándo se puede guardar (N2) | ✅ |
+| `rules/upkeep.js` | 247 | La cuenta de la semana: comer, cobrar, dormir bajo techo (N2) | ✅ |
+| `world-builder/dungeon-generator.js` | 253 | Un sitio donde pelear, con una semilla y cero tokens (N3) | ✅ |
+| `campaign/contracts.js` | 250 | El tablón de encargos: rangos, plazos y la temática como pesos (N4) | ✅ |
+| `campaign/guild.js` | 246 | Plantilla, lealtad, edificios y reputación (N4) | ✅ |
+| `rules/companions.js` | 247 | Por qué van contigo, por qué no, y quién se lleva solo (N5) | ✅ |
+| `ui/guild-panel.js` | 157 | El panel de `/gremio`: tablón, casa y compañía | ✅ |
 | `combat/loot-items.js` | 120 | Qué es cada cosa que sueltan los enemigos, para que se pueda usar | ✅ |
 | `combat/combat-hold.js` | 53 | Las puertas que un combate cierra mientras dura, y por qué (A8) | ✅ |
 | `combat/seeded-random.js` | 97 | Dados que se pueden repetir: una partida dos veces igual | ✅ |

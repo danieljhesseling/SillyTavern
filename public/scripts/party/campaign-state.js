@@ -33,7 +33,10 @@ export const CAMPAIGN_MAP_KEY = 'campaignMap';
 /**
  * @typedef {Object} CampaignStateDeps
  * @property {() => any} metadata The chat's metadata object.
- * @property {() => any[]} [abilities] El catalogo de habilidades del paquete de reglas activo.
+ * @property {() => any[]} [abilities]
+ * @property {(days: number, calendar: any) => void} [timePasses] Curar y cobrar: lo que
+ *           el tiempo le hace al grupo. Aqui y no en el panel, porque el dia pasa de
+ *           muchas maneras y la cuenta no puede depender de por donde pasaste. El catalogo de habilidades del paquete de reglas activo.
  * @property {() => void} saveMetadata
  * @property {() => any[]} party
  * @property {() => void} saveParty
@@ -93,15 +96,34 @@ export function createCampaignState(deps) {
         deps.narrate(dayAdvanced
             ? `🌅 [CAMPAÑA] Amanece el día ${calendar.day}.`
             : `🕐 [CAMPAÑA] ${formatCalendar(calendar)}.`);
+        if (dayAdvanced) passTime(1);
         deps.renderCampaign();
     }
 
     /** Skips whatever is left of today. */
     function advanceDay() {
-        const calendar = advanceToNextDay(getCalendar());
+        const before = getCalendar();
+        const calendar = advanceToNextDay(before);
         save(calendar, resetDailyPerks(getBonds()));
         deps.narrate(`🌅 [CAMPAÑA] Amanece el día ${calendar.day}.`);
+        passTime(Math.max(1, (Number(calendar.day) || 1) - (Number(before.day) || 1)));
         deps.renderCampaign();
+    }
+
+    /**
+     * Lo que el tiempo le hace a un grupo: curar y cobrar.
+     *
+     * Aqui, y no en el panel, porque el dia pasa de muchas maneras — un descanso largo,
+     * saltarse la tarde, dormir— y **la cuenta no puede depender de por donde pasaste**.
+     * Era exactamente el fallo que tenia el reloj antes de esto: el tiempo solo corria si
+     * tu lo movias, y no costaba nada.
+     *
+     * @param {number} days
+     */
+    function passTime(days) {
+        const passed = Math.max(0, Math.floor(Number(days) || 0));
+        if (passed <= 0 || typeof deps.timePasses !== 'function') return;
+        deps.timePasses(passed, getCalendar());
     }
 
     /**

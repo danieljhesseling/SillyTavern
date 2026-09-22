@@ -7,6 +7,9 @@ author: DanielJHesseling / Antigravity AI
 ---
 
 # 🛡️ Objetivo: La Experiencia "Friends & Fables"
+
+> [!NOTE]
+> **Estado (22-09-2026)**: Análisis comparativo, ya minado: lo que seguía vivo está en [[POR_HACER]]. El plan vivo es [[ROADMAP_MAESTRO]].
 ## *Convertir SillyTavern en un TTRPG Completo con Director de Juego IA (100% Local, Privado y Sin Marketplace)*
 
 > **Referente**: **Friends & Fables** (`fables.gg` / *Craft*) es la plataforma líder de rol con IA: un Dungeon Master virtual (*Franz*) que narra la campaña, plantea dilemas, exige tiradas de habilidad, gestiona combates tácticos en cuadrícula bajo reglas D&D 5e y guía la progresión de la party.

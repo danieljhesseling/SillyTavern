@@ -7,6 +7,9 @@ author: DanielJHesseling / Antigravity AI
 ---
 
 # ⚔️ Propuesta de Diseño & Arquitectura: Motor Híbrido RPG
+
+> [!NOTE]
+> **Estado (22-09-2026)**: La **visión original**. No es un plan y nunca lo fue: explica *por qué* el juego es así. El plan vivo es [[ROADMAP_MAESTRO]].
 ## *D&D 5e + Gloomhaven (Táctica) + Persona (Vínculos & Tiempo) en SillyTavern*
 
 > **Objetivo**: Convertir tu fork de SillyTavern (`my-silly`) en un videojuego de rol completo, con un **Lienzo Blanco de World Building** asistido por IA, un **Motor de Combate Táctico 100% Determinista (0 Tokens)** estilo Gloomhaven, y un **Bucle Social y de Calendario** estilo Persona.

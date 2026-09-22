@@ -8,6 +8,9 @@ author: DanielJHesseling / Claude Opus 5
 
 # 🏗️ Crear una campaña a mano
 
+> [!NOTE]
+> **Estado (22-09-2026)**: **Las seis fases están hechas.** Se queda como el diseño del editor. El plan vivo es [[ROADMAP_MAESTRO]].
+
 > **Lo que pides**: poder hacer a mano lo que hoy solo sale bien si lo trae un libro — mundo, localizaciones (con tableros o sin ellos), personajes con su clase, su sitio, su pasado, su personalidad y su cara, y objetos. Repartido por categorías, como lo reparte el JSON del importador.
 
 > **Estado (22-09-2026)**: **las seis fases están hechas**. `/campana` abre con siete pestañas — Mundo · Localidades · Personajes · Bestiario · Facciones · Objetos · Misiones — y escribe exactamente lo que escribe el importador de libros. Lo que sigue abajo es el diseño, que se deja tal cual porque explica **por qué** cada cosa está donde está.

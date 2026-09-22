@@ -6,6 +6,9 @@ author: DanielJHesseling / Antigravity AI
 ---
 
 # 📚 Roadmap: Ingesta de Libros y Módulos a Mundos Jugables
+
+> [!NOTE]
+> **Estado (22-09-2026)**: **G1 a G4 están hechas**: contrato, validador, importador y asistente. Sigue vivo como **el contrato del paquete**, que es el destino al que escriben las tres puertas. El plan vivo es [[ROADMAP_MAESTRO]].
 ## *De un PDF / Novela a una Campaña D&D + Persona + Gloomhaven en SillyTavern*
 
 > **Tu Visión**: Tomas un libro de campaña de D&D (ej. *La Maldición de Strahd*, *Las Minas Perdidas de Phandelver*) o una novela fantástica (*El Señor de los Anillos*, *Nacidos de la Bruma*), lo procesas con un **GEM de Gemini entrenado**, este produce una serie de archivos estructurados (Historia principal, Misiones, Objetos, Bestiario, Mapas), los importas en tu programa y al instante tienes un mundo vivo por el que moverte libremente y jugar tu partida de rol.

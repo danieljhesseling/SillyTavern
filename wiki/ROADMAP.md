@@ -8,6 +8,9 @@ author: DanielJHesseling / Claude Opus 5
 
 # 🎯 Roadmap — De SillyTavern a un Juego de Rol Táctico Asequible
 
+> [!NOTE]
+> **Estado (22-09-2026)**: Las fases **A a H están todas cerradas**. Esto ya no es un plan: es el acta de lo que se construyó, y sigue valiendo por el *porqué* — sobre todo **El Principio que Ordena Todo** y **De Dónde Sale el Gasto**. El plan vivo es [[ROADMAP_MAESTRO]].
+
 Plan único de trabajo. Reconcilia tres fuentes: la auditoría de [[PROBLEMAS_TECNICOS]], el catálogo de [[PROPUESTAS_MEJORA]], y el diseño de juego de [[PROPUESTA_JUEGO_DND_GLOOMHAVEN_PERSONA]]. Sustituye a la versión anterior de este documento, que solo cubría higiene de ingeniería.
 
 **El objetivo, en una frase**: un juego de rol táctico donde la IA escribe la historia y las relaciones, y **todo lo demás es lógica determinista**, editable por ti, que no cuesta nada ejecutar.

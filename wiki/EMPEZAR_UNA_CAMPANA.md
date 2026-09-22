@@ -228,6 +228,8 @@ Esto es media razón de ser del proyecto: **nada de lo de abajo pide abrir un ar
 | **Escribir mi mundo entero**: sitios, gente, bichos, objetos, misiones | `/campana` — o **Editar la campaña** en el menú de pausa |
 | **Borrar una campaña entera** | La papelera de su tarjeta, en *Cargar partida*. Se va el mundo **y** sus sesiones, y te dice cuánto pierdes antes de hacerlo |
 | **Elegir quién narra, y con qué tono** | Paso 4 del asistente al crear la campaña. Lo que escribas ahí llega al modelo en cada turno |
+| **Decidir cuánto duele perder** | Paso 5 del asistente: quién puede morir y cuándo se guarda. Después, en `/rules` |
+| **Ver lo que debes esta semana** | `/cuenta`, o la pestaña **Campaña** |
 | Añadir un tipo de daño, una condición, una rareza | `/rules` → editas la sección → **Aplicar** → **Guardar reglas** |
 | Que este tablero sea *sobre* algo | `/objetivos editar` — y **Proponer con IA** si quieres que te las escriba |
 | Cambiar qué enemigos salen aquí, y cuántos | `/enemigos` |
@@ -279,6 +281,26 @@ Dos cosas que conviene saber de `/rules`:
 | «El modelo se inventa tiradas» | `/rollguard` — está puesto por defecto y solo corrige lo imposible |
 
 De `/contradicciones` conviene entender qué es y qué no. **No corrige nada.** Una narración que contradice el estado es un problema de *prompt*, y eso lo arregla un prompt mejor, no reescribir por detrás lo que escribió el modelo. Lo que te da son datos: una contradicción es un accidente, veinte del mismo tipo son una línea que le falta a tu prompt.
+
+---
+
+## 7b. El desgaste: por qué querrías jugar mañana
+
+Tener a esta gente viva cuesta dinero, y el reloj corre solo.
+
+| Cada | Qué pasa |
+| :--- | :--- |
+| **Día** | Todos comen. Y las heridas curan un poco — las que curan |
+| **Semana** | Sueldos, posada y tasas. **Todo del mismo bolsillo**: reparar la cota compite con la cena y con pagarle a Brand |
+| **Al caer a 0** | Si fallas la tercera salvación, ya no te quedas tirado para siempre: pasa lo que diga tu campaña |
+
+**Quién muere, quién queda marcado.** Se elige al crear la campaña, en el paso 5, y sale del motivo por el que alguien te sigue: quien viene **por la paga** muere y hay que contratar a otro; quien viene **por un vínculo** se levanta a 1 PG con algo encima — un tobillo torcido, una pierna rota, un ojo perdido. Las cuatro peores **no curan nunca**.
+
+Y no son etiquetas: una pierna rota es **−10 pies de movimiento**, y el tablero lo nota en cada paso.
+
+> **Ojo con los puntos de retorno.** Si eliges *«solo se guarda en el refugio»*, `/punto` deja de funcionar dentro de una misión — y es lo que le da peso a todo lo anterior. Con guardado libre siempre puedes volver atrás, y entonces una cicatriz es una anécdota.
+
+`/cuenta` te dice lo que debes **antes** de que venza. Una factura que te sorprende es un impuesto; una que ves venir es una decisión.
 
 ---
 

@@ -8,6 +8,9 @@ author: DanielJHesseling / Claude Opus 5
 
 # 📋 Por Hacer
 
+> [!NOTE]
+> **Esto es el marcador, no el plan.** Lo que se hace *después* está en **[[ROADMAP_MAESTRO]]**, partido en niveles. Aquí van las tareas sueltas: **A** hecho, **D** decidido, **P** propuesto.
+
 Lo que falta, dividido por **quién tiene que actuar**:
 
 | Bloque                                     | Qué es                                                              | Quién decide                  |
@@ -224,6 +227,58 @@ Sin esa parte, una ficha que solo dice *«seco e irónico»* produce **alguien s
 Es una ficha de personaje **normal**: se edita, se exporta y se borra como cualquier otra. Lo único que pone el juego es que sepa que narra.
 
 **Lo que no hace todavía**: cambiarle el narrador a una campaña ya creada hay que hacerlo editando la ficha a mano; el editor de `/campana` aún no tiene esa pestaña.
+
+---
+
+### A11 · El desgaste: heridas, muerte y la cuenta 🟡 **En marcha — 2026-09-22**
+
+El [[ROADMAP_MAESTRO]], Nivel 2. Lo que hace que quieras jugar mañana.
+
+**Hecho y verificado en pruebas:**
+
+| Pieza | Dónde |
+| :--- | :--- |
+| **Once heridas**, de magulladura a pierna perdida; las cuatro peores **no curan** | `rules/injuries.js`, 21 pruebas |
+| **Quién muere**: el que viene por dinero muere, el del vínculo queda marcado | `rules/mortality.js`, 18 pruebas |
+| **La cuenta**: comida al día, sueldos, posada y tasas a la semana | `rules/upkeep.js`, 20 pruebas |
+| **Las dos casillas** en el paso 5 del asistente, guardadas en el paquete de reglas | `campaign-wizard.js` + `/rules` |
+| **El reloj cobra y cura solo** al pasar el tiempo | `campaign-state.js` → `onTimePassed` |
+| **`/cuenta`** y el panel de la pestaña Campaña | `party.js` + `campaign-panel.js` |
+| **El tablero al lado del chat** en la escena de diálogo (Nivel 1) | `game-shell.css` |
+
+**Lo que resultó más barato de lo que parecía**: una pierna rota no hizo falta construirla. `spendMovement()` ya lee `member.speed` en cada paso, así que la herida **se escribe encima de la estadística** y todo el juego la nota sin tocar ni un sitio donde se lea. El original se guarda en `baseStats` para poder volver al curar.
+
+**Tres cosas que aparecieron por el camino, y que no eran de esta tarea:**
+
+- `toPortablePack()` tenía **la lista de secciones escrita a mano, dos veces**. Una sección nueva que se olvidara en la segunda se edita bien, se guarda bien y **desaparece al exportar la campaña**. Ahora es una constante. Pero ojo: `progression` y `abilities` **siguen sin estar en ninguna de las dos**, así que hoy una tabla de XP propia no sobrevive a exportar la campaña. Sin arreglar, a propósito: va más allá de esto.
+- `nextRandom()` era privado, así que la tabla de heridas se habría saltado la semilla — y dos partidas con la misma semilla habrían dejado de salir iguales, que es lo único que la semilla promete. Exportado.
+- Guardar en el refugio **ya frena a `/punto`**. Sin eso, las heridas permanentes serían decorativas: vuelves atrás y Bruna conserva la pierna.
+
+**Falta**: el tablón de encargos, la plantilla (contratar), y del Nivel 1 el extractor y el selector de grupo.
+
+---
+
+### A12 · Gremio, generador y modos — Niveles 3, 4 y 5 ✅ **Hecho el 2026-09-22**
+
+| Pieza | Dónde | Pruebas |
+| :--- | :--- | :---: |
+| **El generador**: salas, pasillos, puertas y cobertura con semilla, cero tokens | `world-builder/dungeon-generator.js` | 17 |
+| **El tablón**: cinco rangos, siete clases de encargo, plazos que vencen | `campaign/contracts.js` | 25 |
+| **El gremio**: plantilla, lealtad, edificios y reputación | `campaign/guild.js` | 24 |
+| **Los compañeros**: por qué van, por qué no, y quién se lleva solo | `rules/companions.js` | 23 |
+| **El panel** de `/gremio` | `ui/guild-panel.js` | — |
+
+**El bucle, cerrado**: `/gremio` → aceptas → el generador construye el sitio → se forma el grupo con sus motivos → juegas → te pagan y sube la reputación → se abre el siguiente rango → pasa la semana → hay que pagar.
+
+**Tres decisiones que defiendo:**
+
+- **La temática del gremio es un peso, no otro generador.** Un gremio de ladrones ve más robos y **cero escoltas** porque su tabla pesa distinto. Un `0` no es «poco probable»: es que ese gremio no recibe eso.
+- **El tablón siempre asoma un rango por encima del tuyo.** Es lo que hace que la reputación se sienta como una puerta y no como un número.
+- **Un compañero autónomo usa tus mismos caminos.** `planEnemyTurn` no sabe de bandos, así que decide con la misma máquina que los enemigos; pero *aplica* lo decidido con `handlePlayerCombatMove` y `handlePlayerCombatAttack` — cuesta pies, gasta la acción y tira contra la misma CA. **No puede hacer lo que tú no puedes.**
+
+**Un fallo que cazó una prueba**: la lógica de puertas del generador estaba **invertida** — convertía en suelo justo el caso que debía ser puerta, así que las criptas salían como naves diáfanas. Lo pilló la prueba de *«tiene salas de verdad, no una nave diáfana»*.
+
+**Falta**: el panel del gremio no tiene estilos, y **nada de esto se ha visto en un navegador todavía**.
 
 ---
 

@@ -215,9 +215,13 @@ describe('the active pack', () => {
 describe('getEditableSections', () => {
     test('lists every section an editor can offer, with its shape', () => {
         const sections = getEditableSections();
-        expect(sections.length).toBe(28);
+        expect(sections.length).toBe(36);
         expect(sections).toContainEqual({ path: 'items.damageTypes', kind: 'pairs' });
         expect(sections).toContainEqual({ path: 'character.conditions', kind: 'string[]' });
+        // Las dos casillas de la campana y la cuenta se editan igual que todo lo demas:
+        // quien juega puede abaratar la posada sin tocar una linea de codigo.
+        expect(sections).toContainEqual({ path: 'survival', kind: 'object' });
+        expect(sections).toContainEqual({ path: 'upkeep.wagePerWeek', kind: 'number' });
         // La progresión también se edita sin tocar código: es el requisito de siempre
         // aplicado a subir de nivel.
         expect(sections).toContainEqual({ path: 'progression.xpThresholds', kind: 'pairs' });

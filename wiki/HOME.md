@@ -10,6 +10,19 @@ author: DanielJHesseling / Antigravity AI
 
 Bienvenido a la **Wiki Oficial de SillyTavern & Motor RPG** (`my-silly` fork de DanielJHesseling). Este espacio ha sido estructurado como una base de conocimiento viva para **Obsidian**, diseñada para que tanto desarrolladores humanos como agentes de inteligencia artificial puedan comprender, navegar, depurar y expandir el proyecto de manera ágil y estructurada.
 
+> [!IMPORTANT]
+> **Por dónde se empieza**, según a qué vengas:
+>
+> | Vengo a… | Abre |
+> | :--- | :--- |
+> | **Saber qué se hace después** | **[[ROADMAP_MAESTRO]]** — el único plan vivo. Todo lo demás cuelga de ahí |
+> | **Jugar** | [[EMPEZAR_UNA_CAMPANA]] |
+> | **Coger una tarea** | [[POR_HACER]] |
+> | **Entender por qué el juego es así** | [[ROADMAP]] (el acta de las fases A–H) y [[PROPUESTA_JUEGO_DND_GLOOMHAVEN_PERSONA]] (la visión original) |
+> | **Encontrar un archivo** | [[Mapa-Codigo-Archivos]] |
+>
+> Los planes cerrados llevan un aviso en su primera línea. **Ninguno es un plan ya**: son historia, y valen por el porqué.
+
 > [!TIP]
 > **Modo Obsidian**: Esta wiki aprovecha los enlaces bidireccionales `[[...]]`. Abre la **Vista de Grafo (Graph View)** de Obsidian para explorar visualmente la red de dependencias entre el backend, el frontend y los subsistemas de rol.
 
@@ -40,19 +53,25 @@ mindmap
       [[World-Content-Popups]]
       [[Relaciones-Memorias]]
       [[Chat-Enhancements]]
-    Auditoría & Roadmap
-      [[PROBLEMAS_TECNICOS]]
+    El plan vivo
+      [[ROADMAP_MAESTRO]]
+      [[POR_HACER]]
+      [[DISENO_GENERADOR_MUNDOS_PROFUNDO]]
+      [[ROADMAP_INGESTA_CAMPANAS_LIBROS]]
+      [[GEM_CREAR_CAMPANA]]
+    Jugar
+      [[EMPEZAR_UNA_CAMPANA]]
+    Cajones de ideas
+      [[PROPUESTAS_MEJORA_V2]]
       [[PROPUESTAS_MEJORA]]
+      [[PROBLEMAS_TECNICOS]]
+    Historia: planes cerrados
       [[ROADMAP]]
       [[PROPUESTA_JUEGO_DND_GLOOMHAVEN_PERSONA]]
-      [[ROADMAP_INGESTA_CAMPANAS_LIBROS]]
       [[PROPUESTA_FRONTEND_MODO_JUEGO]]
-      [[PLAN_JUEGO_TIPO_FRIENDS_AND_FABLES]]
       [[ROADMAP_JUEGO_SIN_COMANDOS]]
-      [[DISENO_GENERADOR_MUNDOS_PROFUNDO]]
       [[PLAN_CREAR_CAMPANA]]
-      [[GEM_CREAR_CAMPANA]]
-      [[PROPUESTAS_MEJORA_V2]]
+      [[PLAN_JUEGO_TIPO_FRIENDS_AND_FABLES]]
     Guías & Referencia
       [[Mapa-Codigo-Archivos]]
       [[Guia-Desarrollo-Flujo]]
@@ -90,18 +109,19 @@ El núcleo de juego de rol agregado en la rama `my-silly` con más de 24,000 lí
 
 ### 4. 🔍 Auditoría Técnica, Calidad & Futuro
 Diagnóstico crítico y catálogo exhaustivo de propuestas de mejora:
+- **[[ROADMAP_MAESTRO]]** 🗺️ **El mapa de todos los mapas, y el único plan vivo.** Empieza por la pregunta que ordena todo —**¿por qué querrías jugar mañana?**— y parte lo que queda en seis niveles, cada uno jugable por sí solo: el tablero que sigue a la conversación, **el desgaste** (comer, cobrar, heridas que no sanan, muerte permanente), el mundo que crece solo, el gremio como capa opcional, los modos de juego y el bucle cerrado. Dice en claro **qué veo posible y qué no**.
 - [[PROBLEMAS_TECNICOS]]: **Auditoría profunda** con 15 hallazgos críticos de seguridad (XSS, CSP), desincronización de estado, cuellos de botella de memoria y ausencia de tests. Con el estado de cada hallazgo comprobado contra el código: 6 corregidos, 4 parciales y 5 abiertos.
 - [[PROPUESTAS_MEJORA]]: **Catálogo de 200 propuestas técnicas estructuradas** en 10 áreas estratégicas (arquitectura, seguridad, D&D, VTT, agentes, UI/UX, bases de datos y DevOps). Cada propuesta con novedad lleva su marca de estado, y el anexo recoge 12 propuestas propias.
 - [[PROPUESTAS_MEJORA_V2]]: **Catálogo V2 de 200 Nuevas Propuestas de Mejora**: Nueva batería de 200 propuestas adaptadas a la madurez actual del motor (Game Shell, Zero Comandos, táctica avanzada, magia y spell slots, bucle social Persona y economía reactiva).
-- [[PROPUESTA_JUEGO_DND_GLOOMHAVEN_PERSONA]]: **Propuesta de Motor Híbrido RPG** (Persona + Gloomhaven + D&D 5e): combate táctico algorítmico 0 tokens, social links con perks de combate, calendario y lienzo blanco de world building. Incluye el estado de cada pilar y las correcciones que la realidad impuso.
-- [[ROADMAP_INGESTA_CAMPANAS_LIBROS]]: **De un libro a una campaña jugable.** El contrato de datos entre un GEM de Gemini y el motor, con el validador y el importador que faltan.
-- [[PROPUESTA_FRONTEND_MODO_JUEGO]]: **Frontend Dedicado "Modo Videojuego"**: Cómo eliminar el ruido de SillyTavern mediante una Pantalla de Título (Nueva/Cargar/Opciones) y un HUD de juego inmersivo (Dock de Party, Diálogo RPG, Tablero), sin tocar `index.html`.
-- [[PLAN_JUEGO_TIPO_FRIENDS_AND_FABLES]]: **Hacia la Experiencia "Friends & Fables" (Sin Marketplace)**: Análisis comparativo y hoja de ruta para completar las 6 piezas que faltan (DM autónomo con tiradas CD y opciones rápidas, descansos D&D, magia/spell slots y subida de nivel).
+- [[PROPUESTA_JUEGO_DND_GLOOMHAVEN_PERSONA]]: `la visión original` **Propuesta de Motor Híbrido RPG** (Persona + Gloomhaven + D&D 5e): combate táctico algorítmico 0 tokens, social links con perks de combate, calendario y lienzo blanco de world building. Incluye el estado de cada pilar y las correcciones que la realidad impuso.
+- [[ROADMAP_INGESTA_CAMPANAS_LIBROS]]: `G1–G4 hechas` — vive como **el contrato del paquete**. **De un libro a una campaña jugable.** El contrato de datos entre un GEM de Gemini y el motor. El validador y el importador **ya están**; lo que se pega en el Gem lo genera [[GEM_CREAR_CAMPANA]].
+- [[PROPUESTA_FRONTEND_MODO_JUEGO]]: `cerrado` **Frontend Dedicado "Modo Videojuego"**: Cómo eliminar el ruido de SillyTavern mediante una Pantalla de Título (Nueva/Cargar/Opciones) y un HUD de juego inmersivo (Dock de Party, Diálogo RPG, Tablero), sin tocar `index.html`.
+- [[PLAN_JUEGO_TIPO_FRIENDS_AND_FABLES]]: `minado` **Hacia la Experiencia "Friends & Fables" (Sin Marketplace)**: Análisis comparativo y hoja de ruta para completar las 6 piezas que faltan (DM autónomo con tiradas CD y opciones rápidas, descansos D&D, magia/spell slots y subida de nivel).
 - [[ROADMAP_JUEGO_SIN_COMANDOS]]: **Juego 100% por Clics (Zero Comandos)**: Matriz de migración de comandos de barra a interacción puramente visual con ratón (mover y atacar en el tablero, interactuar con puertas, descansos en el reloj, action chips).
 - [[DISENO_GENERADOR_MUNDOS_PROFUNDO]]: **Diseño del Generador de Mundos Profundo**: Especificación de las 7 categorías maestras (Personajes, Enemigos, Mapa Mundi, Localidades con 0..N tableros, Tableros tácticos con salas/puertas, Facciones y Magias/Habilidades) con su esquema JSON unificado para IA.
 - [[PLAN_CREAR_CAMPANA]]: **Crear una campaña a mano** ✅ *hecho*: `/campana`, un editor con una pestaña por categoría (mundo, localizaciones con sus tableros, personajes, bestiario, facciones, objetos y misiones) que escribe en el mismo sitio que el importador de libros. Las seis fases, con reclutar, catálogo de objetos enganchado al botín y misiones propias.
 - [[GEM_CREAR_CAMPANA]]: **Las instrucciones del Gem que escribe campañas**, generadas desde el motor: quién es, cómo trabaja sección a sección, el contrato completo, las reglas que un esquema no puede expresar y una muestra correcta. Es el *seeding* de una campaña: pegar, pedir, ensamblar, importar.
-- [[ROADMAP]]: **El plan de trabajo único.** Reconcilia la auditoría, el catálogo y el diseño de juego en 6 fases ordenadas por lo que desbloquean, más las transversales de economía de tokens. Cada fase termina en algo jugable. Empieza con *Dónde Estamos*: qué está hecho, qué está conectado al juego y qué falta.
+- [[ROADMAP]]: `fases A–H cerradas` **El acta de lo construido.** Reconcilia la auditoría, el catálogo y el diseño de juego en 6 fases ordenadas por lo que desbloquean, más las transversales de economía de tokens. Cada fase termina en algo jugable. Empieza con *Dónde Estamos*: qué está hecho, qué está conectado al juego y qué falta.
 - [[POR_HACER]]: **Lista viva de pendientes**, ordenada por lo que desbloquea. Marca con 🖥️ las tareas que convierten motor construido en juego jugable. Incluye una prueba manual de dos minutos.
 
 ### 5. 🛠️ Guías de Desarrollo & Referencia Rápida

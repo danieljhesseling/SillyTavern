@@ -841,6 +841,23 @@ async function startCampaignWizard() {
             }
         }
 
+        // El filo de la campana: se eligio en el paso 5 y vive en su paquete de reglas,
+        // que es donde ya viven las armas y las condiciones. Asi se cambia luego en
+        // `/rules` y viaja con la campana al exportarla.
+        if (answers.survival) {
+            try {
+                const data = await loadWorldInfo(created.worldName);
+                if (data) {
+                    const pack = data.metadata?.rulesetPack ?? { id: 'campaign', name: created.worldName };
+                    pack.survival = answers.survival;
+                    data.metadata = Object.assign(data.metadata ?? {}, { rulesetPack: pack });
+                    await saveWorldInfo(created.worldName, data, true);
+                }
+            } catch (error) {
+                console.error('[campaigns] could not store the survival rules', error);
+            }
+        }
+
         // El narrador, si lo pediste. Se crea **antes** de abrir el chat, porque el chat se
         // abre con el: hacerlo despues dejaria la primera sesion narrada por el ayudante y
         // la voz que escribiste empezando en la segunda.

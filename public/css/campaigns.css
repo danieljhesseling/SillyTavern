@@ -1322,3 +1322,208 @@
     background: rgba(220, 70, 70, 0.18);
     color: #ff8a8a;
 }
+
+/* ================================================================
+   El gremio (wiki/ROADMAP_MAESTRO.md, Nivel 4)
+
+   Las tres cosas a la vez y no en pestañas: lo que tienes, lo que te ofrecen y lo que
+   podrías construir. Separarlas convertiría una decisión en tres consultas.
+   ================================================================ */
+
+.gd-root {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    text-align: left;
+}
+
+.gd-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--SmartThemeBorderColor, #444);
+}
+
+.gd-name {
+    font-weight: bold;
+}
+
+/* El oro, a la vista siempre: es el numero contra el que se lee todo lo demas. */
+.gd-purse {
+    font-variant-numeric: tabular-nums;
+    color: #e8c46a;
+    font-weight: bold;
+    white-space: nowrap;
+}
+
+.gd-title {
+    margin-top: 14px;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    opacity: 0.6;
+}
+
+.gd-hint {
+    font-size: 0.74rem;
+    opacity: 0.55;
+    margin-bottom: 6px;
+}
+
+.gd-empty {
+    font-size: 0.8rem;
+    opacity: 0.5;
+    padding: 8px 2px;
+}
+
+/* ---------------------------------------------------------------- el tablón */
+
+.gd-board {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.gd-contract {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    gap: 2px 10px;
+    align-items: center;
+    padding: 8px 10px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 8px;
+    background: var(--black30a, rgba(0, 0, 0, 0.3));
+}
+
+/* Lo que aprieta se tiñe; lo vencido se apaga. Un plazo que no se ve no aprieta. */
+.gd-contract.urgent {
+    border-color: rgba(228, 170, 70, 0.55);
+    background: rgba(120, 80, 20, 0.16);
+}
+
+.gd-contract.expired {
+    opacity: 0.45;
+}
+
+.gd-contract-head {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    min-width: 0;
+}
+
+/* El rango, como un sello: es lo primero que se mira en un tablón. */
+.gd-rank {
+    flex: 0 0 auto;
+    width: 1.7em;
+    height: 1.7em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 5px;
+    border: 1px solid currentColor;
+    font-weight: bold;
+    font-size: 0.8em;
+    opacity: 0.85;
+}
+
+.gd-contract-title {
+    font-weight: bold;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.gd-contract-meta {
+    grid-column: 1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px 10px;
+    font-size: 0.75rem;
+    opacity: 0.65;
+}
+
+.gd-take {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------- la casa */
+
+.gd-buildings {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 8px;
+}
+
+.gd-building {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px 10px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.gd-building-name {
+    font-weight: bold;
+    font-size: 0.86rem;
+}
+
+.gd-building-what {
+    font-size: 0.74rem;
+    opacity: 0.6;
+    flex: 1;
+}
+
+/* Lo que no puedes pagar se queda a la vista, apagado: saber cuanto falta es media
+   decision, y esconderlo solo esconde el objetivo. */
+.gd-build:disabled {
+    opacity: 0.4;
+}
+
+/* ---------------------------------------------------------------- la compañía */
+
+.gd-roster {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.gd-member {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.03);
+    font-size: 0.82rem;
+}
+
+.gd-member-name {
+    font-weight: bold;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.gd-member-why {
+    opacity: 0.6;
+    font-size: 0.92em;
+    white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+    .gd-contract {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .gd-take {
+        grid-column: 1;
+        grid-row: auto;
+    }
+}

@@ -696,3 +696,55 @@
 .ce-recruit {
     margin-top: 10px;
 }
+
+/* ---------------------------------------------------------------- la cuenta */
+
+/* Debajo del reloj, porque es lo que el reloj significa: cada semana que pasa, esto
+   vence. Se pone roja solo cuando no llega, que es la unica vez que hay algo que
+   decidir — el resto del tiempo es un dato, no una alarma. */
+.cp-bill {
+    margin: 10px 0;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    background: var(--black30a, rgba(0, 0, 0, 0.3));
+    font-size: 0.82em;
+}
+
+.cp-bill.short {
+    border-color: rgba(220, 70, 70, 0.55);
+    background: rgba(120, 30, 30, 0.18);
+}
+
+.cp-bill-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+    font-weight: bold;
+}
+
+.cp-bill-sum {
+    font-variant-numeric: tabular-nums;
+}
+
+.cp-bill-parts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+    margin-top: 4px;
+    font-size: 0.9em;
+    opacity: 0.7;
+}
+
+.cp-bill-short {
+    margin-top: 5px;
+    color: #ff9a9a;
+    font-weight: bold;
+}
+
+.cp-bill-wound {
+    margin-top: 4px;
+    font-size: 0.92em;
+    opacity: 0.8;
+}

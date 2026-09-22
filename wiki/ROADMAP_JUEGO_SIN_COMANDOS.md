@@ -6,6 +6,9 @@ author: DanielJHesseling / Antigravity AI
 ---
 
 # 🖱️ Roadmap: Juego 100% por Clics (Zero Comandos)
+
+> [!NOTE]
+> **Estado (22-09-2026)**: **Cerrado** salvo lo que quedó anotado en [[POR_HACER]]. El plan vivo es [[ROADMAP_MAESTRO]].
 ## *Transformando la Consola de Comandos en una Experiencia Táctil y Visual de Videojuego*
 
 > **Tu Visión**: *"Dejar de lado los comandos para jugar; que la gran mayoría funcione mediante clics en la interfaz"*.

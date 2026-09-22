@@ -210,6 +210,71 @@ body.game-shell-on {
     gap: 12px;
 }
 
+/* ------------------------------------------------ el tablero, mientras se habla
+
+   La escena de dialogo ocupaba la pantalla entera y dejaba media vacia: se narraba que
+   se abria una puerta y el tablero estaba en otra pestana, sin enterarse. Aqui el chat y
+   el tablero se ven a la vez, asi que lo que se cuenta pasa **delante**.
+
+   No se mueve ni se duplica nada: el panel ya esta adoptado en su seccion y lo unico que
+   cambia es que deja de esconderse. Mover el chat de sitio es la forma mas rapida de
+   perderle el desplazamiento y el foco, y eso ya estaba aprendido. */
+.gs-root[data-scene="dialogue"] .gs-stage {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 38%);
+    gap: 12px;
+    align-items: stretch;
+}
+
+.gs-root[data-scene="dialogue"] .gs-scene-map {
+    display: block;
+    min-height: 0;
+    overflow: hidden;
+    border-left: 1px solid var(--SmartThemeBorderColor, #444);
+    padding-left: 12px;
+}
+
+.gs-root[data-scene="dialogue"] .gs-scene-dialogue {
+    min-height: 0;
+}
+
+/* Sin sitio abierto no hay nada que ensenar, y media pantalla en blanco es peor que una
+   pantalla entera de chat: la columna desaparece y el chat recupera el ancho. */
+.gs-root[data-scene="dialogue"] .gs-stage:not(:has([data-map-root])) {
+    display: block;
+}
+
+.gs-root[data-scene="dialogue"] .gs-scene-map:not(:has([data-map-root])) {
+    display: none;
+}
+
+/* De acompanante: el tablero se mira, no se juega desde aqui. Los botones de la barra
+   —terreno, empezar combate, salir— son de la escena de combate, donde hay sitio y donde
+   estas mirando lo que pulsas. */
+.gs-root[data-scene="dialogue"] .gs-scene-map .wm-terrain-edit-btn,
+.gs-root[data-scene="dialogue"] .gs-scene-map .wm-terrain-palette,
+.gs-root[data-scene="dialogue"] .gs-scene-map .wm-leave-loc-btn,
+.gs-root[data-scene="dialogue"] .gs-scene-map .wm-combat-section,
+.gs-root[data-scene="dialogue"] .gs-scene-map .gs-places {
+    display: none;
+}
+
+/* El registro si se queda: es el que cuenta lo que acaba de pasar, y aqui se lee. */
+.gs-root[data-scene="dialogue"] .gs-scene-map .combat-log-panel {
+    max-height: 40%;
+}
+
+/* En vertical no caben dos columnas, y el chat manda. */
+@media (max-width: 900px) {
+    .gs-root[data-scene="dialogue"] .gs-stage {
+        display: block;
+    }
+
+    .gs-root[data-scene="dialogue"] .gs-scene-map {
+        display: none;
+    }
+}
+
 .gs-map-slot {
     min-width: 0;
     min-height: 0;

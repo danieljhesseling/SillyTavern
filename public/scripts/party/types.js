@@ -27,6 +27,11 @@
  * @property {string[]} [abilities] Los ids del catalogo que este personaje se sabe.
  * @property {Record<string, number>} [abilityUses] Cuantas veces ha usado cada una desde el ultimo descanso.
  * @property {{successes: number, failures: number, stable: boolean, dead: boolean}} [deathSaves]
+ * @property {boolean} [dead] Se acabo: la campana lo permitia y fallo la tercera.
+ * @property {'coin'|'bond'} [motive] Por que te sigue. Sin decir nada, por vinculo.
+ * @property {any[]} [injuries] Lo que arrastra de combates anteriores.
+ * @property {Record<string, number>} [baseStats] Sus numeros antes de la primera herida.
+ * @property {number} [unpaidWeeks] Semanas que lleva sin cobrar.
  *   Como va la cuenta mientras esta a 0 PG.
  * @property {number} gold
  * @property {number} silver

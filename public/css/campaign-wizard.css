@@ -423,3 +423,30 @@ textarea.cw-ai-map {
     font-size: 0.74rem;
     padding: 4px 0;
 }
+
+/* ---------------------------------------------------------------- el filo */
+
+/* Dos frases largas y no dos palabras: lo que hace la casilla importa mas que su nombre,
+   y una campana se empieza una vez. Mejor leerlo entero ahora que descubrirlo al perder
+   a alguien. */
+.cw-edge {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 6px;
+}
+
+.cw-edge-line {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 0.78rem;
+    line-height: 1.35;
+    opacity: 0.9;
+}
+
+.cw-edge-line input {
+    margin-top: 2px;
+    flex: 0 0 auto;
+}

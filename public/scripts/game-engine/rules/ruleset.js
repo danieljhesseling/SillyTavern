@@ -31,6 +31,9 @@ export { RULESET_SCHEMA_VERSION };
  * @property {Object} items
  * @property {{alignments: string[], conditions: string[], modifiableStats: string[]}} character
  * @property {{xpThresholds: string[][], abilityLevels: string[]}} [progression] Lo que cuesta cada nivel.
+ * @property {{mortality: string, saves: string}} [survival] Quien puede morir, y cuando se guarda.
+ * @property {Record<string, number>} [upkeep] Lo que cuesta tener viva a esta gente.
+ * @property {{mode: string}} [companions] Quien lleva a quien: solo o en grupo.
  * @property {any[]} [abilities] Conjuros, tecnicas y recursos de clase.
  */
 
@@ -68,10 +71,35 @@ const SECTION_SHAPE = {
     'character.modifiableStats': 'string[]',
     'progression.xpThresholds': 'pairs',
     'progression.abilityLevels': 'string[]',
+    // Las dos casillas de la campana. Van juntas en un bloque porque una sin la otra no
+    // significa nada: con el guardado libre, la muerte permanente es opcional de facto.
+    'survival': 'object',
+    // La cuenta, campo a campo: son numeros y el editor sabe pintar numeros, asi que se
+    // tocan sin escribir JSON.
+    'upkeep.foodPerDay': 'number',
+    'upkeep.lodgingPerWeek': 'number',
+    'upkeep.taxPerWeek': 'number',
+    'upkeep.wagePerWeek': 'number',
+    'upkeep.healingPerDay': 'number',
+    'upkeep.weekLength': 'number',
+    // Quien lleva a quien. En solo, los demas deciden por su cuenta.
+    'companions': 'object',
     // Una habilidad tiene demasiados campos para una tabla de dos columnas: en `/rules` se
     // edita como JSON, y en `/habilidades` tiene su propio panel con un campo por cosa.
     'abilities': 'list',
 };
+
+/**
+ * Las secciones que se mezclan y que viajan al exportar.
+ *
+ * Estaba escrita dos veces —en la mezcla y en `toPortablePack`— y las dos copias hay que
+ * acordarse de tocarlas a la vez. Una sección nueva que se olvide en la segunda se edita
+ * bien, se guarda bien y **desaparece al exportar la campaña**, que es el peor sitio
+ * posible para enterarse.
+ */
+const MERGED_SECTIONS = [
+    'slots', 'slotInfo', 'relationships', 'items', 'character', 'survival', 'upkeep', 'companions',
+];
 
 /**
  * @param {any} source
@@ -185,7 +213,7 @@ export function mergeRuleset(base, overrides) {
         if (overrides[key] !== undefined) merged[key] = overrides[key];
     }
 
-    for (const section of ['slots', 'slotInfo', 'relationships', 'items', 'character']) {
+    for (const section of MERGED_SECTIONS) {
         if (overrides[section] === undefined) continue;
         const incoming = overrides[section];
         merged[section] = (incoming && typeof incoming === 'object' && !Array.isArray(incoming))
@@ -297,7 +325,7 @@ export function toPortablePack(pack) {
     /** @type {any} */
     const out = { version: pack.version, id: pack.id, name: pack.name };
 
-    for (const section of ['slots', 'slotInfo', 'relationships', 'items', 'character']) {
+    for (const section of MERGED_SECTIONS) {
         const source = pack[section];
         const base = DEFAULT_RULESET[section];
         if (!source || typeof source !== 'object') continue;

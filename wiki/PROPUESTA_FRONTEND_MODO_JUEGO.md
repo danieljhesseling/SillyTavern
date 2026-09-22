@@ -9,6 +9,9 @@ author: DanielJHesseling / Antigravity AI · revisado y hecho ejecutable por Cla
 ---
 
 # 🎮 Plan Principal: Frontend Dedicado "Modo Videojuego" (Game Shell)
+
+> [!NOTE]
+> **Estado (22-09-2026)**: La **Fase H está cerrada**: el Modo Juego, las tres escenas, el director y la pantalla de título están construidos. Se queda como el porqué del diseño. El plan vivo es [[ROADMAP_MAESTRO]].
 ## *Pantallas Cinemáticas Contextuales: Combate, Exploración y Diálogo a Pantalla Completa*
 
 > **Estado**: plan ejecutable. La idea y las maquetas son del documento original; la sección 0 recoge las tres correcciones que hacían falta para poder construirlo, y la 6 es la hoja de ruta reescrita.

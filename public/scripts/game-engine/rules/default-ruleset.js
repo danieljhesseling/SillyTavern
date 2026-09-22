@@ -11,6 +11,37 @@
  * See wiki/ROADMAP.md, Fase C (C1).
  */
 
+/**
+ * Las dos casillas de la campana, en lo mas suave: nadie de los tuyos muere y se guarda
+ * cuando quieras. El filo se enciende a proposito, al crear la campana.
+ *
+ * Escritas aqui como valores planos y no importadas de `mortality.js`, porque este fichero
+ * es la referencia de como tiene que ser un paquete y no puede pedir codigo. Una prueba
+ * comprueba que las dos copias dicen lo mismo.
+ */
+const SURVIVAL = {
+    mortality: 'mercenaries',
+    saves: 'free',
+};
+
+/**
+ * Quien lleva a quien. `group` es lo de siempre: los mueves a todos.
+ *
+ * Escrito aqui como valor plano por lo mismo que `SURVIVAL`: este fichero es la referencia
+ * de como tiene que ser un paquete y no puede pedir codigo. Una prueba caza la deriva.
+ */
+const COMPANIONS = { mode: 'group' };
+
+/** Lo que cuesta una semana. Pensado para que una tranquila casi se pague sola. */
+const UPKEEP = {
+    foodPerDay: 2,
+    lodgingPerWeek: 7,
+    taxPerWeek: 3,
+    wagePerWeek: 20,
+    healingPerDay: 5,
+    weekLength: 7,
+};
+
 /** Equipment slot constants */
 const EQUIPMENT_SLOTS = {
     HEAD: 'head',
@@ -322,5 +353,8 @@ export const DEFAULT_RULESET = {
         xpThresholds: XP_THRESHOLDS,
         abilityLevels: ABILITY_LEVELS,
     },
+    survival: SURVIVAL,
+    upkeep: UPKEEP,
+    companions: COMPANIONS,
     abilities: ABILITIES,
 };
