@@ -1528,15 +1528,29 @@ try {
     await page.waitForTimeout(1200);
     const left = await page.evaluate(() => {
         const stage = document.querySelector('.gs-stage');
+        const meta = window.SillyTavern.getContext().chatMetadata ?? {};
+        const explore = [...document.querySelectorAll('.gs-scene-btn')]
+            .find(b => /explor/i.test(b.textContent || ''));
         return {
             scene: document.querySelector('#game-shell')?.getAttribute('data-scene') || '',
             reason: document.querySelector('.gs-head-state')?.getAttribute('title') || '',
             empty: (stage?.textContent || '').trim().length === 0,
             places: (document.querySelector('.gs-places')?.getBoundingClientRect().height || 0) > 0,
+            // Lo que ve el director, para que un fallo aqui diga por que y no solo que.
+            location: String(meta.currentLocation ?? ''),
+            board: String(meta.currentBoard ?? ''),
+            exploreOff: explore ? explore.disabled : null,
+            exploreWhy: explore ? (explore.title || '') : '',
         };
     });
-    check('salir del tablero lleva al mapa, con su panel de viaje',
-        left.scene === 'exploration' && !left.empty && left.places, JSON.stringify(left));
+    // Explorar pide **a donde ir**: con una sola localidad y sin mapa de mundo, esa
+    // pestana abria un mapa de un punto, asi que salir del tablero deja la pantalla
+    // en la conversacion. Lo que no puede pasar es que se quede en blanco ni que la
+    // pestana apagada no diga por que.
+    check('salir del tablero sin sitio a donde ir deja la conversacion, y dice por que',
+        left.scene === 'dialogue' && !left.empty
+        && left.exploreOff === true && /nada que mostrar/.test(left.exploreWhy),
+        JSON.stringify(left));
     check('y la cabecera sigue diciendo lo que paso de verdad',
         left.reason === 'se ha salido del tablero', left.reason);
 
@@ -2484,7 +2498,32 @@ try {
     const bondBefore = await page.evaluate(() => JSON.stringify(
         window.SillyTavern.getContext().chatMetadata.bonds ?? {}));
 
+    // Tu cara no abre una tarjeta de companero: abre **tu** ficha, y la de mirar, no la
+    // de editar. El editor tiene desplegables, facciones con casillas y las seis
+    // caracteristicas como campos que se escriben, que es lo ultimo que quieres delante
+    // en mitad de una partida.
     await page.locator('#game-shell .gs-chip').first().click();
+    await page.waitForSelector('.ch-root', { timeout: 8000 });
+    const own30 = await page.evaluate(() => ({
+        boxes: [...document.querySelectorAll('.ch-box-label')].map(l => (l.textContent || '').trim()),
+        editable: document.querySelectorAll('.ch-root input, .ch-root select, .ch-root textarea').length,
+        edit: [...document.querySelectorAll('.ch-root button')]
+            .some(b => /editar/i.test(b.textContent || '')),
+    }));
+    check('pulsar tu propia cara abre tu ficha, con lo que importa jugando',
+        own30.boxes.length >= 4, JSON.stringify(own30.boxes.slice(0, 8)));
+    check('y es de mirar: ni un campo que se pueda cambiar sin querer',
+        own30.editable === 0, `${own30.editable} campos editables`);
+    check('el editor sigue estando, pero detras de un boton',
+        own30.edit === true, String(own30.edit));
+
+    // Se cierra por su boton: Escape dentro del Modo Juego es la pausa, no el cuadro.
+    await page.locator('.popup-button-ok').last().click();
+    await page.waitForSelector('.ch-root', { state: 'detached', timeout: 10000 });
+    await page.waitForTimeout(500);
+
+    // Y la de otro si abre su tarjeta: ahi es donde se pasa el tiempo y se regala.
+    await page.locator('#game-shell .gs-chip').nth(1).click();
     await page.waitForSelector('.cc-card', { timeout: 8000 });
     const card30 = await page.evaluate(() => ({
         name: document.querySelector('.cc-name')?.textContent || '',
@@ -2533,7 +2572,7 @@ try {
 
     // Empezar el combate desde el tablero: los enemigos siguen dibujados en la sala que
     // el paso 24 dejo abierta, y nadie pelea.
-    await page.locator('.gs-scene-btn', { hasText: 'Combate' }).click();
+    await page.locator('.gs-scene-btn[data-scene="combat"]').click();
     await page.waitForTimeout(1000);
 
     const startRow = await page.evaluate(() => ({
@@ -2573,7 +2612,7 @@ try {
         busy.chips === 0, String(busy.chips));
 
     // Y el turno se termina con su boton, que es el paso 6 de la prueba del raton.
-    await page.locator('.gs-scene-btn', { hasText: 'Combate' }).click();
+    await page.locator('.gs-scene-btn[data-scene="combat"]').click();
     await page.waitForTimeout(800);
     const turnBefore = await page.evaluate(() => {
         const enc = window.SillyTavern.getContext().chatMetadata.combatEncounter;
@@ -2754,7 +2793,7 @@ try {
         sounding.scene === 'dialogue' && sounding.track === SILENCE,
         JSON.stringify({ escena: sounding.scene, suena: sounding.track.slice(0, 24) }));
 
-    await page.locator('.gs-scene-btn', { hasText: 'Combate' }).click();
+    await page.locator('.gs-scene-btn[data-scene="combat"]').click();
     await page.waitForTimeout(900);
     const silent = await page.evaluate(async () => {
         const m = await import('/scripts/game-engine/ui/shell/scene-audio.js');
@@ -3652,7 +3691,12 @@ try {
 
     await page.fill('.cw-narrator-name', 'El Cronista');
     await page.locator('.popup-button-ok').last().click();
-    await page.waitForTimeout(6000);
+
+    // Y aqui tambien: todo lo que crea una campana pasa por el cuadro. Las
+    // comprobaciones de este paso leen el estado, asi que sin contestarlo el cuadro
+    // se quedaba abierto y tapaba el menu que abre el paso siguiente.
+    await answerHeroCreator('Sera', { className: 'Exploradora' });
+    await page.waitForTimeout(3000);
 
     const narrator = await page.evaluate(async () => {
         const wi = await import('/scripts/world-info.js');
