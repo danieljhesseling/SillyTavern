@@ -223,6 +223,14 @@ Esto es media razón de ser del proyecto: **nada de lo de abajo pide abrir un ar
 | Pintar muros, cobertura, puertas | Botón **Terreno**, bajo el tablero |
 | Probar un combate sin tocar tu campaña | `/sandbox` |
 
+### Dónde se abre
+
+Tres sitios, y ninguno pide teclear nada:
+
+- **Al crear la campaña**: el asistente termina con dos botones — **Crear y jugar** y **Crear y escribir el mundo**. El segundo te deja en la partida *con el editor delante*; cerrarlo te deja jugando.
+- **Menú de pausa** → *Editar la campaña*, en cualquier momento.
+- `/campana` en el chat, si prefieres escribirlo.
+
 ### `/campana`: el mundo repartido por categorías
 
 Siete pestañas, y cada una escribe en el mismo sitio donde escribe un libro importado — así que una campaña hecha a mano se puede exportar y mandar igual que cualquier otra.

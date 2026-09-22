@@ -139,7 +139,7 @@ Hecho el **2026-09-22**. `npm start` ya no te deja en la bandeja de chats de Sil
 
 ### A7 · Crear una campaña a mano ✅ **Hecho el 2026-09-22 — las seis fases**
 
-`/campana`, o **Editar la campaña** en el menú de pausa. Siete pestañas, una por categoría, y lo que escriben es **exactamente** lo que escribe el importador de libros: un destino, dos puertas.
+Se abre desde el propio asistente al crear —el paso final ofrece **Crear y jugar** o **Crear y escribir el mundo**—, desde el menú de pausa (*Editar la campaña*) o con `/campana`. Que hubiera que saberse el comando era justo lo contrario de [[ROADMAP_JUEGO_SIN_COMANDOS]]. Siete pestañas, una por categoría, y lo que escriben es **exactamente** lo que escribe el importador de libros: un destino, dos puertas.
 
 | Pestaña | Qué escribe |
 | :--- | :--- |

@@ -7,6 +7,7 @@ import {
 } from '../script.js';
 import { Popup, POPUP_TYPE, POPUP_RESULT } from './popup.js';
 import { buildNewCampaignCta, askWizard, createCampaign } from './game-engine/ui/campaign-wizard.js';
+import { openCampaignBuilder } from './party.js';
 import { isCampaignWorld, getStartingPoint } from './game-engine/campaign/campaign-worlds.js';
 import { generateWorld } from './game-engine/world-builder/world-schema.js';
 import { escapeHtml } from './utils.js';
@@ -771,6 +772,10 @@ async function startCampaignWizard() {
         }
 
         await openCampaignChat({ ...created, verb: 'creada' });
+
+        // "Crear y escribir el mundo": la partida ya esta abierta detras, asi que cerrar
+        // el editor deja a quien lo abrio jugando, no en una pantalla muerta.
+        if (answers.writeWorld) await openCampaignBuilder();
     } catch (error) {
         console.error('[campaigns] wizard failed', error);
         toastr.error(String(error?.message || error), 'No se pudo abrir la campaña');

@@ -3774,7 +3774,7 @@ function buildShellDialogue() {
  *
  * @returns {Promise<string>}
  */
-async function openCampaignBuilder() {
+export async function openCampaignBuilder() {
     const worldName = String(chat_metadata?.[METADATA_KEY] || '');
     if (!worldName) {
         toastr.warning('Abre una campana antes de editarla.');

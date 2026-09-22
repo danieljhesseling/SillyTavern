@@ -3348,6 +3348,48 @@ try {
     check('apagado, arranca el SillyTavern de siempre',
         plain.shell === 0 && plain.welcome === 1, JSON.stringify(plain));
 
+    step('37. Crear una campana y caer escribiendo el mundo, sin teclear un comando');
+
+    await page.click('#cw-new-campaign');
+    await page.waitForSelector('.cw-root', { timeout: 20000 });
+
+    const buttons37 = await page.evaluate(() => {
+        const dialog = document.querySelector('dialog.popup:not([style*="display: none"]) .popup-controls')
+            ?? document.querySelector('.popup-controls');
+        return [...(dialog?.querySelectorAll('.menu_button') ?? [])]
+            .map(b => (b.textContent || '').trim()).filter(Boolean);
+    });
+    check('el asistente ofrece las dos salidas, y ninguna pide un comando',
+        buttons37.some(b => /Crear y jugar/.test(b)) && buttons37.some(b => /escribir el mundo/.test(b)),
+        JSON.stringify(buttons37));
+
+    await page.fill('.cw-root input.cw-input >> nth=0', 'El Vado Escrito');
+    await page.fill('.cw-root textarea.cw-party-input', 'Sela');
+    await page.locator('.popup-button-custom').filter({ hasText: 'escribir el mundo' }).click();
+
+    // El editor tarda lo que tarde en crearse el mundo y abrirse la partida detras.
+    await page.waitForSelector('.ce-root', { timeout: 60000 });
+    const landed = await page.evaluate(() => ({
+        tabs: [...document.querySelectorAll('.ce-tab')].map(b => (b.textContent || '').trim()),
+        world: window.SillyTavern.getContext().chatMetadata?.world_info || '',
+        board: document.querySelectorAll('.wm-terrain-wall').length,
+    }));
+    check('crear y escribir abre el editor de la campana recien hecha',
+        landed.tabs.length === 7 && landed.world === 'El Vado Escrito',
+        JSON.stringify({ mundo: landed.world, pestanas: landed.tabs.length }));
+    check('y la partida esta detras, asi que cerrarlo te deja jugando',
+        landed.board > 20, `${landed.board} casillas de muro dibujadas`);
+
+    // Cerrar sin guardar no deshace la campana: ya existe, y eso es lo que se espera.
+    await page.locator('.popup-button-cancel').last().click();
+    await page.waitForTimeout(1200);
+    const afterClose = await page.evaluate(() => ({
+        editor: document.querySelectorAll('.ce-root').length,
+        world: window.SillyTavern.getContext().chatMetadata?.world_info || '',
+    }));
+    check('cerrar el editor deja la campana hecha y en marcha',
+        afterClose.editor === 0 && afterClose.world === 'El Vado Escrito', JSON.stringify(afterClose));
+
     console.log('\n--- console errors ---');
     console.log(problems.size ? [...problems].join('\n') : '(none)');
 } catch (error) {

@@ -42,9 +42,12 @@ import { normalizeMap, findPartyStart } from '../world-builder/world-schema.js';
  * @param {string[]} [deps.existingWorldNames]
  * @param {((idea: string, partySize: number) => Promise<{template: any, warnings: string[], errors: string[]}>)|null} [deps.generateWorld]
  *        Injected so this module never imports a provider. Absent means no AI card.
- * @returns {Promise<{templateId: string, worldName: string, genre: string, description: string, party: string[], generatedTemplate: any, importedPack: any}|null>}
+ * @returns {Promise<{templateId: string, worldName: string, genre: string, description: string, party: string[], generatedTemplate: any, importedPack: any, writeWorld: boolean}|null>}
  */
 export async function askWizard({ Popup, POPUP_TYPE, existingWorldNames = [], generateWorld = null }) {
+    /** El resultado del segundo botón. Los propios empiezan en 2; 0 y 1 ya están cogidos. */
+    const WRITE_WORLD = 2;
+
     const root = $('<div class="cw-root"></div>');
 
     root.append(`
@@ -101,7 +104,8 @@ export async function askWizard({ Popup, POPUP_TYPE, existingWorldNames = [], ge
     // ---- 3. the party ------------------------------------------------------
     const step3 = $('<div class="cw-step"></div>');
     step3.append('<div class="cw-step-title"><span class="cw-num">3</span> ¿Quién va?</div>');
-    step3.append('<div class="cw-hint">Un nombre por línea. Se crean como personajes del mundo y podrás editarlos luego.</div>');
+    step3.append('<div class="cw-hint">Un nombre por línea. Se crean como personajes del mundo, y '
+        + 'con <b>Crear y escribir el mundo</b> los editas ahí mismo.</div>');
     // Con clase propia: contar las cajas por su posicion se rompio en cuanto aparecio
     // una cuarta tarjeta con la suya.
     const partyInput = $('<textarea class="text_pole cw-input cw-party-input" rows="4" placeholder="Lyra\nBrand"></textarea>')
@@ -405,13 +409,25 @@ export async function askWizard({ Popup, POPUP_TYPE, existingWorldNames = [], ge
 
     root.append(step1, step2, step3);
 
+    // Dos salidas, las dos sin escribir un comando: una cae jugando y la otra cae jugando
+    // **y** con el editor del mundo delante. Antes la segunda existia y habia que saberse
+    // `/campana` para llegar a ella, que es justo lo contrario de lo que persigue el
+    // juego por clics.
     const popup = new Popup(root, POPUP_TYPE.CONFIRM, '', {
-        okButton: 'Crear campaña',
+        okButton: 'Crear y jugar',
         cancelButton: 'Cancelar',
+        customButtons: [{
+            text: 'Crear y escribir el mundo',
+            result: WRITE_WORLD,
+            icon: 'fa-pen-ruler',
+            tooltip: 'Crea la campaña y abre el editor: localidades, personajes, bestiario, objetos y misiones',
+        }],
         wide: true,
         allowVerticalScrolling: true,
         onClosing: (/** @type {any} */ p) => {
-            if (p.result !== 1) return true; // cancelled: nothing to check
+            // Las dos salidas crean un mundo, asi que las dos pasan por el mismo control:
+            // solo cancelar se va sin mirar nada.
+            if (p.result !== 1 && p.result !== WRITE_WORLD) return true;
 
             const chosen = String(nameInput.val() || '').trim();
             if (!chosen) {
@@ -429,7 +445,7 @@ export async function askWizard({ Popup, POPUP_TYPE, existingWorldNames = [], ge
     });
 
     const result = await popup.show();
-    if (result !== 1) return null;
+    if (result !== 1 && result !== WRITE_WORLD) return null;
 
     const party = String(partyInput.val() || '')
         .split('\n')
@@ -444,6 +460,7 @@ export async function askWizard({ Popup, POPUP_TYPE, existingWorldNames = [], ge
         party: party.length > 0 ? party : ['Aventurero'],
         generatedTemplate,
         importedPack,
+        writeWorld: result === WRITE_WORLD,
     };
 }
 
