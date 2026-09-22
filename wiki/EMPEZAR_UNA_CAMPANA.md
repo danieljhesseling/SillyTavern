@@ -40,9 +40,13 @@ En la pantalla de bienvenida, **Nueva campaña**. Hay tres caminos y ninguno es 
 
 ### a) Una plantilla — *para jugar ya*
 
-*Mazmorra clásica*, *Bosque*, *Taberna* o *Lienzo en blanco*. Escribes un nombre, pones quién va (un nombre por línea) y creas. Acabas **en el tablero, con el grupo colocado**, sin más pasos.
+*Mazmorra clásica*, *Bosque*, *Taberna* o *Lienzo en blanco*. Escribes un nombre y creas. Lo siguiente que ves es **quién eres**: nombre, género, raza, clase y una línea sobre ti. Solo el nombre hace falta; lo demás se puede decidir jugando.
 
 Es el camino corto y el que conviene la primera vez: te deja algo jugable en treinta segundos y todo lo demás se puede cambiar después.
+
+> **La varita.** En *Quién eres* no hace falta que escribas la ficha: escribe **qué quieres** —*«algo triste sobre lo pobre que es»*— y pulsa la varita. Cuesta una llamada al modelo y devuelve dos o cuatro frases, porque eso acaba en el Lorebook y se inyecta cada vez que alguien te nombra. La cara se busca en tu disco, no se teclea una ruta.
+
+**Empiezas solo.** El grupo ya no llega hecho: crece jugando. Para meter a alguien ahora mismo, `/campana` → *Personajes* → **Añadir alguien del mundo** → **Reclutar**. Entra con la ficha que le escribas y en una casilla libre.
 
 ### b) Generar con IA — *para una idea concreta*
 

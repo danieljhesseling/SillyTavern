@@ -379,6 +379,42 @@ describe('lo que hay que escribir en el Lorebook', () => {
         expect(molinero.dndData.mapPosition).toEqual({ locationName: 'El molino', gridX: 1, gridY: 1 });
     });
 
+    // El tablero es tactico: una criatura por casilla. Reclutar no pregunta donde te
+    // pones —y no deberia—, asi que lo elige el codigo, y antes elegia siempre la primera.
+    test('y dos reclutados no se apilan en la misma casilla', () => {
+        const source = world();
+        source.locationMaps[0].boards[0].partyStart = [{ x: 1, y: 1 }, { x: 2, y: 1 }, { x: 3, y: 1 }];
+
+        const entries = fichas();
+        const model = buildEditorModel(source, entries);
+        model.characters[1].kind = 'character';
+        model.characters[1].locationName = 'El molino';
+        model.characters.push({
+            ...model.characters[1], uid: '8b', raw: {}, name: 'La barquera',
+        });
+
+        const plan = planEntryChanges(entries, model);
+        const cells = plan.update
+            .filter(u => u.dndData.entityType === 'character')
+            .map(u => `${u.dndData.mapPosition.gridX},${u.dndData.mapPosition.gridY}`);
+
+        expect(new Set(cells).size).toBe(cells.length);
+    });
+
+    test('y tampoco encima de quien ya estaba de pie ahi', () => {
+        const source = world();
+        source.locationMaps[0].boards[0].partyStart = [{ x: 3, y: 4 }, { x: 2, y: 1 }];
+
+        const entries = fichas();
+        const model = buildEditorModel(source, entries);
+        // Mirena ya juega y esta en (3,4), que es la primera casilla de inicio.
+        model.characters[1].kind = 'character';
+        model.characters[1].locationName = 'El molino';
+
+        const molinero = planEntryChanges(entries, model).update.find(u => u.uid === '8');
+        expect(molinero.dndData.mapPosition).toEqual({ locationName: 'El molino', gridX: 2, gridY: 1 });
+    });
+
     test('lo nuevo nace sin uid y con lo que el chat lee', () => {
         const entries = fichas();
         const model = buildEditorModel(world(), entries);
@@ -529,5 +565,36 @@ describe('un mundo escrito entero a mano sobrevive a la ida y la vuelta', () => 
         const { model } = built();
         model.quests[0].boardName = 'El desván';
         expect(validateModel(model).join(' ')).toMatch(/El desván/);
+    });
+});
+
+describe('guardar no puede desmontar la campana', () => {
+    // El editor no tiene interruptor para esto, asi que no puede decidirlo: las plantillas
+    // sacan a los bichos por reglas de encuentro y no por fichas puestas en casillas, y
+    // deducir `isCombat` de las colocaciones apagaba el tablero entero al guardar.
+    test('un tablero de pelea sin nadie colocado sigue siendo de pelea', () => {
+        const source = world();
+        source.locationMaps[0].boards[0].isCombat = true;
+        source.locationMaps[0].boards[0].enemyPlacements = [];
+
+        const model = buildEditorModel(source, fichas());
+        const after = applyEditorModel(source, model).locationMaps[0].boards[0];
+
+        expect(after.isCombat).toBe(true);
+    });
+
+    test('y lo que el editor no edita se queda como estaba', () => {
+        const source = world();
+        const board = source.locationMaps[0].boards[0];
+        board.isCombat = true;
+        board.encounterRules = [{ monsterUid: '9', count: 2 }];
+        board.objectives = [{ id: 'clear', type: 'eliminate_all', label: 'Limpiar' }];
+
+        const model = buildEditorModel(source, fichas());
+        const after = applyEditorModel(source, model).locationMaps[0].boards[0];
+
+        expect(after.encounterRules).toEqual([{ monsterUid: '9', count: 2 }]);
+        expect(after.objectives).toEqual([{ id: 'clear', type: 'eliminate_all', label: 'Limpiar' }]);
+        expect(after.terrain).toEqual(board.terrain);
     });
 });

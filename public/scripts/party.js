@@ -355,7 +355,7 @@ function extractClassPreset(entry) {
  * @param {string|null} worldName
  * @returns {Promise<DndCatalog>}
  */
-async function loadDndCatalog(worldName) {
+export async function loadDndCatalog(worldName) {
     /** @type {DndCatalog} */
     const catalog = {
         races: [],
@@ -613,6 +613,10 @@ export function setPartyFromWorldEntries(entries, worldName = null) {
         partyMembers.push(member);
     }
     renderPartyMembers();
+    // Y el tablero, que es donde se les ve. Antes solo se repintaba la tira: quien se
+    // hacia un personaje al entrar, o reclutaba a alguien desde el editor, no aparecia
+    // sobre el mapa hasta recargar la pagina.
+    renderLocationMapsPreview();
     savePartyState();
     console.log('setPartyFromWorldEntries built partyMembers', { partyMembers });
     // Set party leader as active chat speaker

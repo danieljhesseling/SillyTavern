@@ -181,6 +181,14 @@ export function buildWorldMetadata(template, overrides = {}) {
                         isCombat: template.enemies.length > 0,
                         objectives: template.objectives ?? [],
                         terrain: terrainFromAsciiMap(template.map),
+                        // Donde se planta quien juega. La plantilla siempre lo ha sabido y
+                        // el tablero no lo guardaba: solo lo usaba, al vuelo, para colocar
+                        // los nombres que pedia el asistente. Ahora el personaje se hace al
+                        // entrar y quien recluta llega despues, asi que el tablero tiene
+                        // que decirlo — si no, todos caen en (1,1), que en la mitad de las
+                        // plantillas es un muro.
+                        partyStart: (Array.isArray(template.partyStart) ? template.partyStart : [])
+                            .map(c => ({ x: Number(c.x) || 0, y: Number(c.y) || 0 })),
                         fogEnabled: false,
                         npcPlacements: [],
                         encounterRules: [],

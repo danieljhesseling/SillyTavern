@@ -9,14 +9,15 @@ import {
 } from '../script.js';
 import { Popup, POPUP_TYPE, POPUP_RESULT } from './popup.js';
 import { buildNewCampaignCta, askWizard, createCampaign } from './game-engine/ui/campaign-wizard.js';
-import { openCampaignBuilder } from './party.js';
+import { openCampaignBuilder, loadDndCatalog, setPartyFromWorldEntries } from './party.js';
 import { isCampaignWorld, getStartingPoint } from './game-engine/campaign/campaign-worlds.js';
+import { buildHeroEntry, describeHero } from './game-engine/campaign/hero.js';
 import { planCampaignDeletion, describeDeletion } from './game-engine/campaign/campaign-delete.js';
 import {
     buildNarratorCard, describeNarrator, VERBOSITY, DEFAULT_VERBOSITY,
 } from './game-engine/campaign/narrator.js';
 import { generateWorld } from './game-engine/world-builder/world-schema.js';
-import { escapeHtml } from './utils.js';
+import { escapeHtml, saveBase64AsFile } from './utils.js';
 
 /**
  * Fetches recent chats with metadata from the cross-character API.
@@ -895,6 +896,10 @@ async function startCampaignWizard() {
 
         await openCampaignChat({ ...created, verb: 'creada', narratorAvatar });
 
+        // Y ahora sí, quién eres. Después de abrir la partida: el personaje entra en un
+        // mundo que ya existe, que es el orden en que se piensa.
+        await createStartingHero(created.worldName);
+
         // "Crear y escribir el mundo": la partida ya esta abierta detras, asi que cerrar
         // el editor deja a quien lo abrio jugando, no en una pantalla muerta.
         if (answers.writeWorld) await openCampaignBuilder();
@@ -932,6 +937,11 @@ async function startUnstartedWorld(worldName) {
         await openCampaignChat({
             worldName, party: names, partyEntries: entries, locationName, boardName, verb: 'iniciada',
         });
+
+        // Un mundo que nadie ha jugado puede no tener a nadie dentro —los que genera la IA
+        // no traen grupo— y entonces el selector no tenia nada que enseñar y no aparecia:
+        // entrabas sin personaje. Empezar una partida es empezar con alguien.
+        await createStartingHero(worldName);
     } catch (error) {
         console.error('[campaigns] could not start the world', error);
         toastr.error(String(error?.message || error), 'No se pudo iniciar la campaña');
@@ -996,6 +1006,106 @@ export function initCampaigns() {
             await showSessionsPopup(String(worldName));
         }
     });
+}
+
+/**
+ * Guarda la cara elegida donde el juego pueda pintarla.
+ *
+ * El campo era una ruta escrita a mano, que es pedirle a alguien que sepa donde vive el
+ * servidor. Ahora se elige del disco y se sube: lo que se guarda en la ficha es la ruta
+ * que devuelve el servidor, no el archivo, asi que el Lorebook no engorda.
+ *
+ * @param {File} file
+ * @param {string} worldName
+ * @returns {Promise<string>}
+ */
+async function uploadHeroFace(file, worldName) {
+    const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result ?? ''));
+        reader.onerror = () => reject(new Error('No se pudo leer la imagen.'));
+        reader.readAsDataURL(file);
+    });
+
+    // El servidor solo acepta una lista corta de formatos, asi que la extension sale del
+    // tipo del archivo y el nombre solo decide cuando el tipo no dice nada. Un archivo sin
+    // punto en el nombre mandaba el nombre entero como formato, y volvia un 400.
+    const fromType = String(file.type || '').split('/')[1] || '';
+    const fromName = String(file.name || '').includes('.')
+        ? String(file.name).split('.').pop()
+        : '';
+    const extension = (fromType || fromName || 'png').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const name = `hero_${Date.now()}`;
+    return await saveBase64AsFile(String(base64).split(',')[1] ?? '', worldName || 'campaigns', name, extension);
+}
+
+/**
+ * Te hace un personaje al entrar, si la campaña todavía no tiene a nadie.
+ *
+ * Antes esto era una caja de texto en el asistente con un nombre por línea, y de cada
+ * línea salía una ficha genérica. Hacerse un personaje es lo primero que uno espera de un
+ * juego de rol: ahora tiene su propia pantalla y llega cuando tiene sentido, al empezar a
+ * jugar y no al rellenar el formulario del mundo.
+ *
+ * Lo que escribe es **la misma ficha de Lorebook** que escribía el asistente, así que todo
+ * lo que cuelga de ella —el grupo, las heridas, el hambre, la cuenta— sigue valiendo igual.
+ *
+ * @param {string} worldName
+ * @returns {Promise<boolean>} Si se creó alguien.
+ */
+async function createStartingHero(worldName) {
+    const data = await loadWorldInfo(worldName);
+    if (!data) return false;
+
+    // Solo si no hay nadie: una campaña retomada ya tiene su gente.
+    const existing = Object.values(data.entries ?? {})
+        .filter((/** @type {any} */ e) => String(e?.dndData?.entityType) === 'character');
+    if (existing.length > 0) return false;
+
+    const catalogue = await loadDndCatalog(worldName).catch(() => null);
+    const { openHeroCreator } = await import('./game-engine/ui/hero-creator.js');
+
+    const answers = await openHeroCreator({
+        worldName,
+        races: catalogue?.races ?? [],
+        classes: catalogue?.classes ?? [],
+        genre: String(data.metadata?.genre || ''),
+        // Sin proveedor conectado no hay varita, y el boton lo dice en vez de fallar.
+        generate: online_status !== 'no_connection' ? (params) => generateRaw(params) : null,
+        uploadFace: (file) => uploadHeroFace(file, worldName),
+        Popup,
+        POPUP_TYPE,
+    });
+    if (!answers) return false;
+
+    // Donde empieza: la primera casilla del primer tablero, que es donde el asistente
+    // ponia al grupo. Sin tablero, una casilla que no es un muro.
+    const place = (data.metadata?.locationMaps ?? [])[0];
+    const board = (place?.boards ?? [])[0];
+    const cell = board?.partyStart?.[0] ?? { x: 1, y: 1 };
+
+    const spec = buildHeroEntry(answers, {
+        locationName: String(place?.name || ''),
+        cell,
+        preset: catalogue?.classPresets?.get?.(answers.className) ?? null,
+    });
+
+    const entry = /** @type {any} */ (createWorldInfoEntry(worldName, data));
+    if (!entry) return false;
+
+    entry.comment = spec.title;
+    entry.key = spec.keys;
+    entry.content = spec.content;
+    entry.group = spec.group;
+    entry.dndData = spec.dndData;
+
+    await saveWorldInfo(worldName, data, true);
+
+    // Y a la tira del grupo, sin recargar.
+    setPartyFromWorldEntries([entry], worldName);
+
+    toastr.success(describeHero(answers), 'Tu personaje');
+    return true;
 }
 
 /**

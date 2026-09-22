@@ -484,3 +484,99 @@ textarea.cw-ai-map {
     font-size: 0.8rem;
     opacity: 0.6;
 }
+
+/* ---------------------------------------------------------------- quién eres */
+
+/* Su propia pantalla, al entrar: hacerse un personaje es lo primero que uno espera de un
+   juego de rol, y era una caja de texto entre el género del mundo y el narrador. */
+.hc-root {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    text-align: left;
+}
+
+.hc-title {
+    font-size: 1.1rem;
+    font-weight: bold;
+}
+
+.hc-intro {
+    font-size: 0.8rem;
+    opacity: 0.65;
+}
+
+.hc-field {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    font-size: 0.76rem;
+    opacity: 0.85;
+}
+
+.hc-label {
+    opacity: 0.7;
+}
+
+.hc-input {
+    width: 100%;
+    opacity: 1;
+}
+
+.hc-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 8px;
+}
+
+/* La etiqueta y la varita en la misma linea: el boton pertenece al campo, no al formulario. */
+.hc-label-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.hc-wand {
+    font-size: 0.72rem;
+    padding: 2px 8px;
+    margin: 0;
+    line-height: 1.6;
+    white-space: nowrap;
+}
+
+.hc-wand:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* El archivo y lo que se ve de el, uno al lado del otro: elegir una cara y no verla
+   es elegirla a ciegas. */
+.hc-face-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.hc-face-file {
+    flex: 1;
+    font-size: 0.74rem;
+    min-width: 0;
+}
+
+.hc-face-preview {
+    width: 42px;
+    height: 42px;
+    object-fit: cover;
+    border-radius: 6px;
+    border: 1px solid var(--SmartThemeBorderColor);
+    flex-shrink: 0;
+}
+
+.hc-warning {
+    font-size: 0.78rem;
+    color: #ffb4b4;
+    background: rgba(142, 32, 32, 0.25);
+    border-radius: 6px;
+    padding: 6px 8px;
+}

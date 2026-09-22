@@ -108,3 +108,31 @@ describe('uniqueWorldName', () => {
         expect(uniqueWorldName('Mundo', null)).toBe('Mundo');
     });
 });
+
+describe('donde se planta quien juega', () => {
+    // La plantilla siempre lo supo y el tablero no lo guardaba: solo se usaba al vuelo
+    // para colocar los nombres que pedia el asistente. Sin ello el personaje que se hace
+    // al entrar caia en (1,1) y el editor se negaba a guardar la campana entera.
+    test('cada plantilla deja sus casillas de inicio escritas en el tablero', () => {
+        for (const id of ['dungeon', 'forest', 'tavern', 'blank']) {
+            const template = getTemplate(id);
+            if (!template) continue;
+
+            const board = buildWorldMetadata(template).locationMaps[0].boards[0];
+            expect(board.partyStart.length).toBe(template.partyStart.length);
+            expect(board.partyStart[0]).toEqual({ x: template.partyStart[0].x, y: template.partyStart[0].y });
+        }
+    });
+
+    test('y ninguna empieza sobre un muro', () => {
+        for (const id of ['dungeon', 'forest', 'tavern', 'blank']) {
+            const template = getTemplate(id);
+            if (!template) continue;
+
+            const board = buildWorldMetadata(template).locationMaps[0].boards[0];
+            for (const cell of board.partyStart) {
+                expect(board.terrain.cells[`${cell.x},${cell.y}`]?.type).not.toBe('wall');
+            }
+        }
+    });
+});

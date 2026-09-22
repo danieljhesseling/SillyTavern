@@ -21,7 +21,7 @@ import {
     buildEncounterRules,
 } from '../campaign/starter-templates.js';
 import { uniqueWorldName } from '../campaign/campaign-worlds.js';
-import { validateNarrator } from '../campaign/narrator.js';
+import { validateNarrator, VERBOSITY, DEFAULT_VERBOSITY } from '../campaign/narrator.js';
 import { MORTALITY, SAVES, DEFAULT_SURVIVAL } from '../rules/mortality.js';
 import { normalizeMap, findPartyStart } from '../world-builder/world-schema.js';
 
@@ -46,6 +46,9 @@ import { normalizeMap, findPartyStart } from '../world-builder/world-schema.js';
  *        Injected so this module never imports a provider. Absent means no AI card.
  * @returns {Promise<{templateId: string, worldName: string, genre: string, description: string, party: string[], generatedTemplate: any, importedPack: any, writeWorld: boolean, narrator: any, survival: any}|null>}
  */
+/** Sitio que se reserva en los tableros para el grupo, aunque empieces solo. */
+const PARTY_ROOM = 4;
+
 export async function askWizard({ Popup, POPUP_TYPE, existingWorldNames = [], generateWorld = null }) {
     /** El resultado del segundo botón. Los propios empiezan en 2; 0 y 1 ya están cogidos. */
     const WRITE_WORLD = 2;
@@ -75,6 +78,12 @@ export async function askWizard({ Popup, POPUP_TYPE, existingWorldNames = [], ge
             templateId = template.id;
             grid.find('.cw-template-card').removeClass('selected');
             card.addClass('selected');
+            // Y se recogen los dos paneles. Solo la tarjeta de importar los escondia, asi
+            // que generabas un mundo con IA, cambiabas a «Mazmorra clasica» y el panel de
+            // la IA se quedaba abierto debajo, con su mundo y su boton, como si siguiera
+            // siendo lo elegido.
+            aiPanel.hide();
+            importPanel.hide();
             // The world name field follows the template until the user types their own.
             if (!nameTouched) nameInput.val(uniqueWorldName(template.name, existingWorldNames));
         });
@@ -103,22 +112,12 @@ export async function askWizard({ Popup, POPUP_TYPE, existingWorldNames = [], ge
     const nameWarning = $('<div class="cw-warning"></div>').hide();
     step2.append(nameWarning);
 
-    // ---- 3. the party ------------------------------------------------------
-    const step3 = $('<div class="cw-step"></div>');
-    step3.append('<div class="cw-step-title"><span class="cw-num">3</span> ¿Quién va?</div>');
-    step3.append('<div class="cw-hint">Un nombre por línea. Se crean como personajes del mundo, y '
-        + 'con <b>Crear y escribir el mundo</b> los editas ahí mismo.</div>');
-    // Con clase propia: contar las cajas por su posicion se rompio en cuanto aparecio
-    // una cuarta tarjeta con la suya.
-    const partyInput = $('<textarea class="text_pole cw-input cw-party-input" rows="4" placeholder="Lyra\nBrand"></textarea>')
-        .val('Lyra\nBrand');
-    step3.append(partyInput);
 
     // ---- 4. quien lo cuenta ------------------------------------------------
     // Hasta aqui todas las campanas las narraba el mismo ayudante de la bienvenida: una
     // ficha vacia, sin nombre propio ni tono, daba igual si jugabas terror o comedia.
     const step4 = $('<div class="cw-step"></div>');
-    step4.append('<div class="cw-step-title"><span class="cw-num">4</span> ¿Quién lo cuenta?</div>');
+    step4.append('<div class="cw-step-title"><span class="cw-num">3</span> ¿Quién lo cuenta?</div>');
     step4.append('<div class="cw-hint">Lo que escribas aquí <b>llega al modelo en cada turno</b>: '
         + 'es donde se decide el tono de la campaña. Los números los sigue decidiendo el juego.</div>');
 
@@ -138,6 +137,17 @@ export async function askWizard({ Popup, POPUP_TYPE, existingWorldNames = [], ge
     narratorBox.append($('<label class="cw-label"></label>').text('Tono').append(narratorTone));
     narratorBox.append($('<label class="cw-label"></label>').text('Quién es').append(narratorAbout));
     narratorBox.append($('<label class="cw-label"></label>').text('Primera frase').append(narratorGreeting));
+
+    // Cuanto se extiende. Es el campo que mas cambia como se siente jugar y no estaba en
+    // ningun sitio: por defecto se narraba sin freno, con cinco parrafos por «donde estoy».
+    const narratorPace = $('<select class="text_pole cw-input cw-narrator-pace"></select>');
+    for (const [id, pace] of Object.entries(VERBOSITY)) {
+        narratorPace.append($('<option></option>')
+            .attr('value', id)
+            .text(`${pace.label} — ${pace.describe}`));
+    }
+    narratorPace.val(DEFAULT_VERBOSITY);
+    narratorBox.append($('<label class="cw-label"></label>').text('Cuánto cuenta').append(narratorPace));
 
     // La cara: un archivo de tu disco. Sin subidor propio — es el mismo formulario que
     // usa SillyTavern para cualquier ficha, y si no pones ninguna vale la de siempre.
@@ -165,7 +175,7 @@ export async function askWizard({ Popup, POPUP_TYPE, existingWorldNames = [], ge
     // pierna. Se eligen aqui y no en un menu de dificultad porque son el **tono** de esta
     // campana, y el tono se decide al empezarla.
     const step5 = $('<div class="cw-step"></div>');
-    step5.append('<div class="cw-step-title"><span class="cw-num">5</span> ¿Cuánto duele perder?</div>');
+    step5.append('<div class="cw-step-title"><span class="cw-num">4</span> ¿Cuánto duele perder?</div>');
     step5.append('<div class="cw-hint">Se puede cambiar luego en <code>/rules</code>, y viaja con la '
         + 'campaña si la exportas.</div>');
 
@@ -215,6 +225,13 @@ export async function askWizard({ Popup, POPUP_TYPE, existingWorldNames = [], ge
             // Nothing is generated yet, so the first template stays the fallback until
             // a generation succeeds and the player accepts it.
             templateId = generatedTemplate ? 'generated' : STARTER_TEMPLATES[0].id;
+
+            // Y el nombre vuelve con el. Asomarse a otra plantilla dejaba escrito el suyo,
+            // asi que quien generaba "Cripta de Sal", miraba "Mazmorra clasica" y volvia,
+            // creaba su cripta llamada Mazmorra clasica.
+            if (generatedTemplate && !nameTouched) {
+                nameInput.val(uniqueWorldName(generatedTemplate.name, existingWorldNames));
+            }
         });
 
         grid.append(aiCard);
@@ -323,10 +340,11 @@ export async function askWizard({ Popup, POPUP_TYPE, existingWorldNames = [], ge
             status.text('Generando el mundo…').show();
 
             try {
-                const partySize = String(partyInput.val() || '')
-                    .split('\n').map(n => n.trim()).filter(Boolean).length || 2;
-
-                const result = await generateWorld(String(ideaInput.val() || ''), partySize);
+                // Cuantas casillas de inicio dibujar. Ya no hay lista de nombres —el
+                // personaje se hace al entrar— asi que se reserva sitio para cuatro:
+                // entras solo, pero el gremio y los vinculos traen gente, y un
+                // tablero con una sola casilla no la admitiria luego.
+                const result = await generateWorld(String(ideaInput.val() || ''), PARTY_ROOM);
                 generatedTemplate = result.template;
                 if (result.template) {
                     attempts.push({ idea: String(ideaInput.val() || ''), template: result.template });
@@ -484,7 +502,7 @@ export async function askWizard({ Popup, POPUP_TYPE, existingWorldNames = [], ge
 
     step1.append(aiPanel, importPanel);
 
-    root.append(step1, step2, step3, step4, step5);
+    root.append(step1, step2, step4, step5);
 
     // Dos salidas, las dos sin escribir un comando: una cae jugando y la otra cae jugando
     // **y** con el editor del mundo delante. Antes la segunda existia y habia que saberse
@@ -533,17 +551,13 @@ export async function askWizard({ Popup, POPUP_TYPE, existingWorldNames = [], ge
     const result = await popup.show();
     if (result !== 1 && result !== WRITE_WORLD) return null;
 
-    const party = String(partyInput.val() || '')
-        .split('\n')
-        .map(n => n.trim())
-        .filter(Boolean);
-
     return {
         templateId,
         worldName: String(nameInput.val() || '').trim(),
         genre: String(genreInput.val() || '').trim(),
         description: String(descInput.val() || '').trim(),
-        party: party.length > 0 ? party : ['Aventurero'],
+        // Vacio a proposito: el personaje se hace al entrar, con su propia pantalla.
+        party: [],
         generatedTemplate,
         importedPack,
         writeWorld: result === WRITE_WORLD,
@@ -557,6 +571,7 @@ export async function askWizard({ Popup, POPUP_TYPE, existingWorldNames = [], ge
                 personality: String(narratorTone.val() || '').trim(),
                 description: String(narratorAbout.val() || '').trim(),
                 greeting: String(narratorGreeting.val() || '').trim(),
+                verbosity: String(narratorPace.val() || DEFAULT_VERBOSITY),
                 image: /** @type {any} */ (narratorImage[0])?.files?.[0] ?? null,
             }
             : null,

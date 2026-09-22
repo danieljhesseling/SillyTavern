@@ -499,7 +499,12 @@ export function applyEditorModel(metadata, model) {
                 enemyPlacements: board.enemyPlacements
                     .filter(e => text(e.name))
                     .map(e => ({ name: text(e.name), x: e.x, y: e.y })),
-                isCombat: board.enemyPlacements.length > 0,
+                // Un tablero de pelea sigue siendolo aunque no tenga a nadie colocado a
+                // mano: las plantillas sacan a los bichos por reglas de encuentro, no por
+                // fichas puestas en casillas. Deducirlo solo de las colocaciones apagaba
+                // `isCombat` al guardar y con el se iban los objetivos y el /fight, que es
+                // media campana, por haber entrado al editor a cambiar un nombre.
+                isCombat: board.enemyPlacements.length > 0 || Boolean(base.isCombat),
             };
         });
 
@@ -584,6 +589,44 @@ export function planEntryChanges(entries, model) {
     const update = [];
 
     /**
+     * Las casillas que ya ocupa alguien del grupo.
+     *
+     * El tablero es tactico: una criatura por casilla de metro y medio. Quien recluta a
+     * alguien no elige donde se pone —no hay campo para eso, y no deberia haberlo— asi que
+     * lo ponia el codigo, y lo ponia siempre en la primera casilla de inicio. Reclutar a
+     * dos era apilarlos encima de ti.
+     *
+     * @type {Set<string>}
+     */
+    const taken = new Set();
+    for (const character of model.characters ?? []) {
+        if (character.kind !== 'character') continue;
+        const old = character.raw?.mapPosition;
+        if (old && Number.isFinite(Number(old.gridX)) && Number.isFinite(Number(old.gridY))) {
+            taken.add(`${text(old.locationName)}|${Number(old.gridX)},${Number(old.gridY)}`);
+        }
+    }
+
+    /**
+     * La primera casilla de inicio libre de ese sitio, o la de siempre si no queda ninguna.
+     *
+     * @param {string} where
+     * @returns {{x: number, y: number}}
+     */
+    const freeStart = (where) => {
+        const board = (model.locations ?? [])
+            .find((/** @type {any} */ l) => text(l.name).toLowerCase() === where.toLowerCase())
+            ?.boards?.[0];
+        const starts = Array.isArray(board?.partyStart) && board.partyStart.length > 0
+            ? board.partyStart
+            : [{ x: 1, y: 1 }];
+
+        const free = starts.find((/** @type {any} */ cell) =>
+            !taken.has(`${where}|${Number(cell.x)},${Number(cell.y)}`));
+        return free ?? starts[0];
+    };
+
+    /**
      * @param {any} item
      * @param {string} group
      * @param {string} content
@@ -629,19 +672,17 @@ export function planEntryChanges(entries, model) {
         };
 
         if (inParty) {
-            // Quien juega necesita una casilla. Si acaba de entrar al grupo se le pone
-            // donde empieza el grupo en su sitio; si ya jugaba, se le deja donde estaba.
+            // Quien juega necesita una casilla. Si acaba de entrar al grupo se le pone en
+            // la primera de inicio que este libre; si ya jugaba, se le deja donde estaba.
             const old = (previous.mapPosition && typeof previous.mapPosition === 'object')
                 ? previous.mapPosition : {};
-            const board = (model.locations ?? [])
-                .find((/** @type {any} */ l) => text(l.name).toLowerCase() === where.toLowerCase())
-                ?.boards?.[0];
-            const start = board?.partyStart?.[0] ?? { x: 1, y: 1 };
+            const start = freeStart(where);
             dndData.mapPosition = {
                 locationName: where,
                 gridX: number(old.gridX, start.x),
                 gridY: number(old.gridY, start.y),
             };
+            taken.add(`${where}|${dndData.mapPosition.gridX},${dndData.mapPosition.gridY}`);
         }
 
         push(character, 'Characters', characterContent(character), keys, dndData);

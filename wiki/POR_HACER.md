@@ -478,6 +478,30 @@ Lo que **no** se puede probar todavía: calendario, vínculos y escenarios (#6, 
 
 ## ✅ Hecho, para no rehacerlo
 
+### Quién eres: el personaje, hecho al entrar — 2026-09-22
+
+**Fuera el paso de los nombres.** El asistente pedía una lista, un nombre por línea, entre el género del mundo y el narrador, y de cada línea salía una ficha con clase *Adventurer*, diez en todo y treinta puntos de vida. Un nombre no es un personaje: era el paso que menos se parecía a empezar una partida de rol. Ahora hay una pantalla propia —**¿Quién eres?**— que llega **al abrir la partida**, no al rellenar el formulario del mundo, porque el personaje entra en un mundo que ya existe.
+
+Solo el nombre es obligatorio. Raza y clase son `datalist`, no desplegables, porque son **datos del mundo**: escribir una que no esté en la lista tiene que poder hacerse. Y los números salen de la clase cuando el mundo la describe, que es lo que hace que elegir *Pícara* signifique algo en vez de ser una palabra en la cabecera.
+
+**La varita.** Lo que escribes no es un borrador que pulir, es un **encargo**: *«algo triste sobre lo pobre que es»* no hay que mejorarlo, hay que cumplirlo, así que viaja como instrucción y no como texto. Se le ata corto en largo —dos a cuatro frases— porque eso acaba en el Lorebook y se inyecta **cada vez que alguien te nombra**: un párrafo de novela aquí se paga en todos los turnos de la partida. Sin proveedor conectado el botón se apaga y lo dice, en vez de fallar al pulsarlo.
+
+**La cara, del disco.** Era un campo de texto donde había que teclear una ruta, que es pedirle a alguien que sepa dónde vive el servidor. Ahora es un buscador de archivos y **se sube al elegirla**, no al guardar: si falla, te enteras mientras todavía puedes cambiarla. Lo que guarda la ficha es la ruta que devuelve el servidor, así que el Lorebook no engorda con la imagen dentro.
+
+**El panel de la IA se recoge.** Generabas un mundo, cambiabas a *Mazmorra clásica* y el panel seguía abierto debajo, enseñando un mundo que ya no se iba a crear. Solo la tarjeta de importar escondía los dos paneles; ahora lo hace cualquiera.
+
+**Y un fallo de juego que salió de camino:** reclutar a alguien desde el editor lo plantaba siempre en la primera casilla de inicio, encima de quien ya estuviera ahí. El tablero es táctico —una criatura por casilla de metro y medio— y quien recluta no elige dónde se pone, ni debería: lo elige el código, y ahora elige la primera **libre**.
+
+**Y de paso, la deuda que estaba anotada:** `progression` y `abilities` estaban en la lista de lo editable y no en la de lo que viaja, así que una tabla de XP propia se editaba, se guardaba y **desaparecía al exportar la campaña**. Al meterlas salió lo de al lado: `abilities` es una lista, y el diff de siempre la habría exportado como `{0: …, 1: …}` para volver mezclada encima del array en vez de sustituirlo. Una lista viaja entera o no viaja.
+
+**Y dos que salieron de tirar del hilo.** El tablero de una plantilla nunca guardaba `partyStart`: la plantilla lo sabía y solo se usaba al vuelo para colocar los nombres que pedía el asistente. Con eso, quien se hacía un personaje al entrar caía en (1,1) —en media plantilla, un muro— y, peor, **el editor se negaba a guardar cualquier campaña de plantilla**: `validateModel` pide que un tablero diga dónde empieza el grupo, y ninguno lo decía. Nadie lo había visto porque el recorrido editaba la campaña *importada*, que sí lo trae.
+
+Y una tercera, de la misma familia y peor: el editor deducía `isCombat` de los enemigos **colocados a mano**, y las plantillas no colocan ninguno —sacan a los bichos por reglas de encuentro—. Así que entrar en `/campana` a cambiar un nombre y guardar apagaba el tablero de pelea, y con él los objetivos y el `/fight`. El editor no tiene interruptor para eso, así que no puede decidirlo.
+
+La segunda: `setPartyFromWorldEntries` repintaba la tira del grupo y no el tablero, así que quien acababa de hacerse un personaje —o de reclutar a alguien— no aparecía sobre el mapa hasta recargar la página.
+
+**Lo que esto cambia en cómo se juega:** empiezas **solo**. El grupo ya no llega hecho; crece reclutando (`/campana` → *Personajes* → *Reclutar*) y, cuando estén, por los compañeros y el gremio. El recorrido e2e lo hace por ese camino, que es el que tiene quien juega.
+
 ### La última batería: infraestructura — 2026-09-21
 
 Cinco, y con ellas **el bloque A queda vacío**.

@@ -418,3 +418,29 @@ describe('remembering a pack across a reload', () => {
         resetActiveRuleset();
     });
 });
+
+describe('lo que sobrevive a exportar la campana', () => {
+    // Estaban en la lista de lo editable y no en la de lo que viaja: se editaban, se
+    // guardaban y desaparecian al exportar, que es el peor sitio para enterarse.
+    test('una tabla de XP propia llega al otro lado', () => {
+        const mine = mergeRuleset(DEFAULT_RULESET, {
+            progression: { xpThresholds: { 1: 0, 2: 100, 3: 250 } },
+        });
+
+        const portable = toPortablePack(mine);
+        expect(portable.progression?.xpThresholds).toEqual({ 1: 0, 2: 100, 3: 250 });
+        expect(mergeRuleset(DEFAULT_RULESET, portable).progression.xpThresholds)
+            .toEqual({ 1: 0, 2: 100, 3: 250 });
+    });
+
+    test('y las habilidades viajan como lista, no como objeto con indices', () => {
+        const mine = mergeRuleset(DEFAULT_RULESET, {
+            abilities: [{ id: 'empujon', name: 'Empujón', resource: 'short_rest' }],
+        });
+
+        const portable = toPortablePack(mine);
+        expect(Array.isArray(portable.abilities)).toBe(true);
+        expect(Array.isArray(mergeRuleset(DEFAULT_RULESET, portable).abilities)).toBe(true);
+        expect(mergeRuleset(DEFAULT_RULESET, portable).abilities[0].id).toBe('empujon');
+    });
+});

@@ -99,6 +99,9 @@ const SECTION_SHAPE = {
  */
 const MERGED_SECTIONS = [
     'slots', 'slotInfo', 'relationships', 'items', 'character', 'survival', 'upkeep', 'companions',
+    // Y las dos que justo hacian lo que dice el parrafo de arriba: una tabla de XP propia
+    // se editaba, se guardaba y desaparecia al exportar la campana.
+    'progression', 'abilities',
 ];
 
 /**
@@ -329,6 +332,14 @@ export function toPortablePack(pack) {
         const source = pack[section];
         const base = DEFAULT_RULESET[section];
         if (!source || typeof source !== 'object') continue;
+
+        // Una lista viaja entera o no viaja. `Object.entries` de un array devuelve
+        // indices, asi que el diff de siempre habria exportado `{0: ..., 1: ...}` y al
+        // volver a cargarlo se habria mezclado encima del array en vez de sustituirlo.
+        if (Array.isArray(source)) {
+            if (JSON.stringify(source) !== JSON.stringify(base)) out[section] = source;
+            continue;
+        }
 
         /** @type {any} */
         const diff = {};

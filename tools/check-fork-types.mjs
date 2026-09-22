@@ -35,6 +35,8 @@ const FORK_FILES = [
     'public/scripts/game-engine/combat/combat-hold.js',
     'public/scripts/game-engine/campaign/campaign-delete.js',
     'public/scripts/game-engine/campaign/narrator.js',
+    'public/scripts/game-engine/campaign/hero.js',
+    'public/scripts/game-engine/ui/hero-creator.js',
     'public/scripts/game-engine/rules/injuries.js',
     'public/scripts/game-engine/rules/mortality.js',
     'public/scripts/game-engine/rules/upkeep.js',

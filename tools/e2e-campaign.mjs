@@ -146,14 +146,65 @@ try {
     check('the New campaign button is on the welcome screen',
         await page.locator('#cw-new-campaign').count() === 1);
 
+    /**
+     * Contesta a «quien eres», que es lo que ahora abre una campana recien creada.
+     *
+     * El asistente pedia una lista de nombres entre el genero del mundo y el narrador, y
+     * de cada linea salia una ficha generica. Ahora el personaje se hace al entrar, asi
+     * que **toda** creacion pasa por aqui. Devuelve lo que se vio del cuadro, para que
+     * quien llama pueda comprobarlo sin repetir los selectores.
+     *
+     * @param {string} name
+     * @param {{race?: string, className?: string}} [extra]
+     */
+    const answerHeroCreator = async (name, extra = {}) => {
+        await page.waitForSelector('.hc-root', { timeout: 60000 });
+
+        const seen = await page.evaluate(() => ({
+            wand: document.querySelectorAll('.hc-wand').length,
+            wandOff: document.querySelector('.hc-wand')?.disabled ?? null,
+            face: document.querySelector('.hc-face-file')?.getAttribute('type') || '',
+            wandTitle: document.querySelector('.hc-wand')?.getAttribute('title') || '',
+            typed: document.querySelectorAll('.hc-root input[type="text"].hc-face').length,
+            labels: [...document.querySelectorAll('.hc-root .hc-label')]
+                .map(l => (l.textContent || '').trim()),
+        }));
+
+        await page.fill('.hc-root .hc-name', name);
+        if (extra.race) await page.fill('.hc-root .hc-race', extra.race);
+        if (extra.className) await page.fill('.hc-root .hc-class', extra.className);
+
+        await page.locator('.popup-button-ok').last().click();
+        await page.waitForSelector('.hc-root', { state: 'detached', timeout: 30000 });
+        await page.waitForTimeout(1200);
+        return seen;
+    };
+
     step('2. The wizard creates a world, a chat, and puts the party on the board');
     await page.click('#cw-new-campaign');
     await page.waitForSelector('.cw-root');
     const proposed = await page.inputValue('.cw-root input.cw-input >> nth=0');
     check('it proposes a free name instead of demanding one', Boolean(proposed), `proposed "${proposed}"`);
 
-    await page.fill('.cw-root textarea.cw-party-input', 'Lyra\nBrand');
+    // Un nombre no es un personaje, asi que el paso de los nombres ya no existe.
+    check('el asistente ya no pide una lista de nombres sueltos',
+        await page.locator('.cw-party-input').count() === 0,
+        `${await page.locator('.cw-party-input').count()} cajas de nombres`);
+
     await page.click('.popup-button-ok');
+
+    const heroBox = await answerHeroCreator('Lyra', { race: 'Media elfa', className: 'Picara' });
+    check('empezar una campana te pregunta quien eres',
+        heroBox.labels.some(l => /Nombre/.test(l)) && heroBox.labels.some(l => /Qui.n eres/.test(l)),
+        JSON.stringify(heroBox.labels));
+    check('la cara se busca en el disco, no se teclea una ruta',
+        heroBox.face === 'file' && heroBox.typed === 0, JSON.stringify(heroBox));
+    // Encendida o apagada depende del proveedor que haya puesto; que exista y diga para
+    // que sirve, no. Lo que hace al pulsarla se prueba en el paso 41, con un modelo de
+    // mentira, que es gratis y siempre contesta lo mismo.
+    check('y trae la varita, con su explicacion puesta',
+        heroBox.wand === 1 && (heroBox.wandTitle || '').length > 20,
+        `varita=${heroBox.wand} apagada=${heroBox.wandOff} pista="${heroBox.wandTitle}"`);
 
     const toast = page.locator('#toast-container .toast', { hasText: 'creada' });
     await toast.first().waitFor({ state: 'visible', timeout: 60000 }).catch(() => {});
@@ -168,13 +219,17 @@ try {
     const positions = (state.party || []).map(m => `${m?.name}(${m?.mapPosition?.gridX},${m?.mapPosition?.gridY})`);
 
     check('a chat exists and is bound to the new world', Boolean(state.world), `world_info=${state.world}`);
-    check('the party is built from the world entries', (state.party || []).length === 2, positions.join('  '));
+    check('se empieza solo, con el personaje que acabas de hacer y nadie mas',
+        (state.party || []).length === 1 && state.party[0]?.name === 'Lyra', positions.join('  '));
+    check('y con sus numeros puestos, no con la ficha a medio hacer',
+        Number(state.party?.[0]?.maxHp) > 0 && Number(state.party?.[0]?.speed) > 0,
+        `PG=${state.party?.[0]?.maxHp} vel=${state.party?.[0]?.speed}`);
     check('nobody starts on (0,0), which is a wall in every template',
         positions.length > 0 && !positions.some(p => p.includes('(0,0)')), positions.join('  '));
     check('you are already on the first board, with no /go and no /enter',
         Boolean(state.location && state.board), `${state.location} / ${state.board}`);
     check('the board is on screen with its walls', walls > 20, `${walls} wall cells`);
-    check('both characters are on it', tokens === 2, `${tokens} tokens`);
+    check('tu personaje esta de pie en el', tokens === 1, `${tokens} tokens`);
 
     /**
      * Aparta los avisos: se quedan encima de las barras de botones unos segundos y se
@@ -255,6 +310,60 @@ try {
             await page.waitForTimeout(250);
         }
     };
+
+    /**
+     * Mete a alguien mas en el grupo por donde el juego deja hacerlo: el editor.
+     *
+     * Ahora se empieza solo —el personaje se hace al entrar y nadie mas viene con el— asi
+     * que el grupo crece reclutando. Es el mismo boton que pulsa quien juega, sin tocar
+     * codigo, y lo que escribe es una ficha del Lorebook como cualquier otra.
+     *
+     * @param {string} name
+     * @param {string} where La localidad donde se esta jugando.
+     */
+    const recruitCompanion = async (name, where) => {
+        await clearToasts();
+        await page.evaluate(() => {
+            void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/campana');
+        });
+        await page.waitForSelector('.ce-root', { timeout: 20000 });
+
+        await page.locator('.ce-tab').filter({ hasText: 'Personajes' }).click();
+        await page.waitForTimeout(400);
+        await page.locator('.ce-add-person').click();
+        await page.waitForTimeout(400);
+
+        const person = page.locator('.ce-person').last();
+        await person.locator('.ce-card-head').click();
+        await page.waitForTimeout(300);
+        await person.locator('.ce-person-name input').fill(name);
+        // Con la ficha que le escribas: los seis atributos, luego PG maximos, CA y
+        // velocidad. Alguien del mundo nace con diez de vida, que para un aldeano esta
+        // bien y para quien va a pelear contigo no.
+        await person.locator('.ce-stats input').nth(6).fill('30');
+        await person.locator('.ce-where select').selectOption(where);
+        await person.locator('.ce-recruit').click();
+        await page.waitForTimeout(400);
+
+        await page.locator('.popup-button-ok').last().click();
+        await page.waitForTimeout(3500);
+        await clearToasts();
+    };
+
+    // Y ahora el segundo, porque el grupo ya no llega hecho: Lyra recluta a Brand por
+    // donde se recluta de verdad. Lo que sigue —el combate, los vinculos, el relevo—
+    // necesita a dos, y asi se comprueba de paso que reclutar funciona desde el principio.
+    await recruitCompanion('Brand', state.location);
+
+    const pair = await readState();
+    const cells = (pair.party || []).map(m => `${m?.mapPosition?.gridX},${m?.mapPosition?.gridY}`);
+    check('reclutar mete a alguien en el grupo sin escribir una linea de codigo',
+        (pair.party || []).length === 2, (pair.party || []).map(m => m?.name).join(', '));
+    check('y no lo planta encima de ti: una criatura por casilla',
+        new Set(cells).size === cells.length, cells.join('  '));
+    check('los dos estan en el tablero',
+        await page.locator('.wm-token').filter({ visible: true }).count() === 2,
+        `${await page.locator('.wm-token').filter({ visible: true }).count()} tokens`);
 
     step('3. A door on the board opens when it is clicked');
     const door = page.locator('.wm-terrain-door').filter({ visible: true }).first();
@@ -392,6 +501,26 @@ try {
     check('the world name was carried into step 2',
         (await page.inputValue('.cw-root input.cw-input >> nth=0')).includes('Cripta de Sal'));
 
+    // Cambiar de idea recoge el panel: se quedaba abierto debajo de la plantilla elegida,
+    // ensenando un mundo que ya no se iba a crear.
+    await page.locator('.cw-template-card:not(.cw-template-ai):not(.cw-template-import)').first().click();
+    await page.waitForTimeout(400);
+    const panels7 = await page.evaluate(() => ({
+        ai: document.querySelector('.cw-ai')?.offsetParent !== null,
+        imp: document.querySelector('.cw-import')?.offsetParent !== null,
+    }));
+    check('elegir una plantilla normal recoge lo de la IA y lo de importar',
+        panels7.ai === false && panels7.imp === false, JSON.stringify(panels7));
+
+    // Y volver no pierde lo generado: el mundo escrito sigue ahi, listo para crearse.
+    await page.locator('.cw-template-ai').click();
+    await page.waitForTimeout(400);
+    check('y volver a la IA no tira lo que ya habia escrito',
+        (await page.locator('.cw-ai-map').inputValue()).trim().length > 0);
+    check('ni deja puesto el nombre de la plantilla a la que te asomaste',
+        (await page.inputValue('.cw-root input.cw-input >> nth=0')).includes('Cripta de Sal'),
+        await page.inputValue('.cw-root input.cw-input >> nth=0'));
+
     // Accept it, then build the world through the very same createCampaign the wizard
     // uses. Driving askWizard directly means this test owns the glue that campaigns.js
     // normally owns, so the world is then started from its card like any other: that is
@@ -449,18 +578,21 @@ try {
     check('it is listed as a campaign that was never played', await aiCard.count() === 1);
 
     await aiCard.locator('.campaign-start').click();
-    await page.waitForSelector('.party-picker-container', { timeout: 20000 });
-    // The picker binds its click handler a moment after the markup lands.
+
+    // Un mundo generado no trae grupo: a la IA todavia no se le piden personajes. El
+    // selector no tenia a quien ofrecer y no salia, asi que se entraba sin nadie. Ahora
+    // se pregunta lo mismo que al crear una campana, por el mismo cuadro.
+    await answerHeroCreator('Vera', { className: 'Clériga' });
     await page.waitForTimeout(1500);
-    const pickable = await page.locator('.party-card').count();
-    for (let i = 0; i < Math.min(2, pickable); i++) {
-        await page.locator('.party-card').nth(i).click();
-    }
-    check('the party picker offers the generated world characters', pickable >= 1, `${pickable} cards`);
-    await page.click('.popup-button-ok');
-    await page.waitForTimeout(2500);
 
     const aiState = await readState();
+    check('un mundo sin gente te pregunta quien eres en vez de dejarte solo',
+        (aiState.party || []).length === 1 && aiState.party[0]?.name === 'Vera',
+        (aiState.party || []).map(m => m?.name).join(', ') || '(nadie)');
+
+    // Y aqui tambien hace falta alguien mas: lo que viene —iniciativa, vinculos, relevo—
+    // se juega en esta campana y no existe con una sola persona.
+    await recruitCompanion('Tolomeo', String(aiState.location || ''));
     const aiWalls = await page.locator('.wm-terrain-wall').filter({ visible: true }).count();
     check('you end up on the board the model generated',
         aiState.world === 'Cripta de Sal' && aiState.board === 'Nave anegada',
@@ -1649,9 +1781,12 @@ try {
         okReport.counts);
     check('el nombre del mundo lo propone el paquete', /Molino/.test(okReport.name), okReport.name);
 
-    await page.locator('.cw-root textarea.cw-party-input').fill('Lyra\nBrand');
     await page.click('.popup-button-ok');
-    await page.waitForTimeout(6000);
+
+    // Un libro trae el mundo, no a quien lo recorre: el paquete describe localidades,
+    // bichos y misiones, y ninguna ficha de grupo. Asi que aqui tambien se pregunta.
+    await answerHeroCreator('Lyra', { race: 'Media elfa', className: 'Pícara' });
+    await page.waitForTimeout(4000);
 
     const imported = await page.evaluate(async () => {
         const wi = await import('/scripts/world-info.js');
@@ -1709,8 +1844,15 @@ try {
         && imported.objectives[1]?.allyId === imported.miraUid
         && imported.objectives[2]?.rounds === 6,
         JSON.stringify(imported.objectives));
-    check('el grupo esta en las casillas que dibuja el libro',
-        JSON.stringify(imported.party) === JSON.stringify(['Lyra@2,7', 'Brand@3,7']), JSON.stringify(imported.party));
+    check('el grupo esta en la casilla que dibuja el libro',
+        JSON.stringify(imported.party) === JSON.stringify(['Lyra@2,7']), JSON.stringify(imported.party));
+
+    // Y el segundo, por el mismo sitio que en las demas campanas.
+    await recruitCompanion('Brand', String(imported.location || ''));
+    const pair23 = await readState();
+    check('y se le puede sumar alguien del libro sin tocar el Lorebook a mano',
+        (pair23.party || []).length === 2,
+        (pair23.party || []).map(m => m?.name).join(', '));
 
     // Y se juega: la prueba de que la importacion sirve es que /fight encuentre enemigos.
     await page.evaluate(() => {
@@ -3437,8 +3579,11 @@ try {
         JSON.stringify(buttons37));
 
     await page.fill('.cw-root input.cw-input >> nth=0', 'El Vado Escrito');
-    await page.fill('.cw-root textarea.cw-party-input', 'Sela');
     await page.locator('.popup-button-custom').filter({ hasText: 'escribir el mundo' }).click();
+
+    // Tambien por aqui: la partida se abre, te preguntan quien eres, y solo despues
+    // aparece el editor. Ese es el orden en que se piensa una campana.
+    await answerHeroCreator('Sela');
 
     // El editor tarda lo que tarde en crearse el mundo y abrirse la partida detras.
     await page.waitForSelector('.ce-root', { timeout: 60000 });
@@ -3571,10 +3716,10 @@ try {
         JSON.stringify(edge40));
 
     await page.fill('.cw-root input.cw-input >> nth=0', 'La Marca del Hambre');
-    await page.fill('.cw-root textarea.cw-party-input', 'Bruna\nBrand');
     await page.locator('.cw-saves-shelter').check();
     await page.locator('.popup-button-ok').last().click();
-    await page.waitForTimeout(6000);
+    await answerHeroCreator('Bruna');
+    await page.waitForTimeout(3000);
     await clearToasts();
 
     const edgeStored40 = await page.evaluate(async () => {
@@ -3778,6 +3923,83 @@ try {
     check('y las demas campanas siguen ahi: se borra una, no la estanteria',
         gone.left === before38.cards.length - 1,
         `${before38.cards.length} -> ${gone.left}`);
+
+    step('41. La varita: decirle que escriba, no escribirlo tu');
+    // Con un modelo de mentira, que es gratis y siempre dice lo mismo. Lo que se prueba
+    // es todo lo que hay del boton para aca: que lo escrito viaja como encargo, que lo
+    // devuelto se limpia, y que la cara se sube al elegirla y no al guardar.
+    const wand41 = await page.evaluate(async () => {
+        const [{ openHeroCreator }, { Popup, POPUP_TYPE }] = await Promise.all([
+            import('/scripts/game-engine/ui/hero-creator.js'),
+            import('/scripts/popup.js'),
+        ]);
+
+        window.__wand = { asked: null, uploaded: null, answers: null };
+
+        openHeroCreator({
+            worldName: 'El Vado Escrito',
+            genre: 'Terror gótico',
+            races: ['Media elfa'],
+            classes: ['Pícara'],
+            generate: async (params) => {
+                window.__wand.asked = params;
+                return '"Ficha: Creció sin nada y aprendió a no pedirlo."';
+            },
+            uploadFace: async (file) => {
+                window.__wand.uploaded = file.name;
+                return 'img/subida.png';
+            },
+            Popup,
+            POPUP_TYPE,
+        }).then(a => { window.__wand.answers = a; });
+
+        return true;
+    });
+    check('el cuadro se abre para probarlo', wand41 === true);
+
+    await page.waitForSelector('.hc-root', { timeout: 15000 });
+    await page.fill('.hc-root .hc-name', 'Lyra');
+    await page.fill('.hc-root .hc-about', 'algo triste sobre lo pobre que es');
+    check('con un modelo conectado la varita se enciende',
+        await page.locator('.hc-wand:disabled').count() === 0);
+
+    await page.locator('.hc-wand').click();
+    await page.waitForTimeout(1500);
+
+    const written41 = await page.inputValue('.hc-root .hc-about');
+    const sent41 = await page.evaluate(() => window.__wand.asked);
+    check('lo escrito viaja como encargo, no como borrador que pulir',
+        /Lo que quiere quien juega: algo triste/.test(sent41?.prompt || ''), sent41?.prompt || '');
+    check('y se le dice el mundo y el tono, que es lo que hace que encaje',
+        /El Vado Escrito/.test(sent41?.prompt || '') && /terror/i.test(sent41?.prompt || ''));
+    check('se le ata corto en largo, porque esto va en el prompt de cada turno',
+        /dos y cuatro frases/i.test(sent41?.systemPrompt || ''), sent41?.systemPrompt || '');
+    check('lo devuelto sustituye al encargo, ya limpio de comillas y encabezados',
+        written41 === 'Creció sin nada y aprendió a no pedirlo.', written41);
+
+    // La cara: se sube al elegirla, asi que un fallo se ve mientras aun puedes cambiarla.
+    await page.setInputFiles('.hc-root .hc-face-file', {
+        name: 'lyra.png', mimeType: 'image/png',
+        buffer: Buffer.from('89504e470d0a1a0a', 'hex'),
+    });
+    await page.waitForTimeout(900);
+    const face41 = await page.evaluate(() => ({
+        uploaded: window.__wand.uploaded,
+        stored: document.querySelector('.hc-face')?.value || '',
+        shown: document.querySelector('.hc-face-preview')?.getAttribute('src') || '',
+    }));
+    check('elegir una imagen del disco la sube ahi mismo',
+        face41.uploaded === 'lyra.png', JSON.stringify(face41));
+    check('y lo que se guarda es la ruta que devuelve el servidor, no el archivo',
+        face41.stored === 'img/subida.png' && face41.shown === 'img/subida.png',
+        JSON.stringify(face41));
+
+    await page.locator('.popup-button-ok').last().click();
+    await page.waitForTimeout(800);
+    const kept41 = await page.evaluate(() => window.__wand.answers);
+    check('y lo que sale del cuadro es la ficha entera, con su cara puesta',
+        kept41?.name === 'Lyra' && kept41?.image === 'img/subida.png'
+        && /aprendió a no pedirlo/.test(kept41?.about || ''), JSON.stringify(kept41));
 
     console.log('\n--- console errors ---');
     console.log(problems.size ? [...problems].join('\n') : '(none)');
