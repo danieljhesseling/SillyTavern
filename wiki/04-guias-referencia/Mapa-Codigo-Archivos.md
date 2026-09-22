@@ -76,7 +76,7 @@ Módulos puros: sin DOM, sin estado global, sin lecturas del chat. Por eso se pr
 | `ui/rules-editor.js` | 297 | El editor visual de reglas (`/rules`), con importar y exportar | ✅ |
 | `cost/prompt-meter.js` | 239 | Desglosa lo que se envía cada turno y acumula el gasto | ✅ |
 | `ui/prompt-preview.js` | 179 | El panel de `/prompt` | ✅ |
-| `campaign/campaign-pack-schema.js` | 568 | El contrato del paquete de campaña, generado desde el motor | ✅ |
+| `campaign/campaign-pack-schema.js` | 573 | El contrato del paquete de campaña, generado desde el motor | ✅ |
 | `campaign/campaign-pack.js` | 538 | Si un paquete se sostiene: errores, avisos y lo que se reparó | ✅ |
 | `campaign/campaign-export.js` | 349 | El camino de vuelta: empaquetar tu campaña para mandarla (A2) | ✅ |
 | `campaign/checkpoint.js` | 141 | Puntos de retorno, y uno automático antes de cada jefe (PROP2-163) | ✅ |
@@ -112,7 +112,7 @@ Módulos puros: sin DOM, sin estado global, sin lecturas del chat. Por eso se pr
 | `ui/shell/scene-audio.js` | 180 | Qué suena en cada escena, con tus propias pistas (A3) | ✅ |
 | `ui/campaign-panel.js` | 149 | La pestaña Campaña: el calendario y los vínculos | ✅ |
 | `combat/bond-perks.js` | 114 | Las perks que cambian un combate: aguantar, rematar, dar el relevo | ✅ |
-| `ui/campaign-schema-panel.js` | 111 | Las ocho vistas de `/esquema-campana` | ✅ |
+| `ui/campaign-schema-panel.js` | 111 | Las diez vistas de `/esquema-campana` | ✅ |
 | `campaign/campaign-view.js` | 110 | El calendario y los vínculos como algo que dibujar | ✅ |
 | `combat/scenario-board.js` | 102 | Juzga los objetivos contra el tablero y decide el combate | ✅ |
 
@@ -177,6 +177,7 @@ Cada uno cuesta en cada merge. La lista no debería crecer.
 | :--- | :--- |
 | `check-fork-types.mjs` | Gate de tipos sobre los 64 archivos propios. Falla si aparece un error |
 | `check-prompt-shape.mjs` | Falla si la forma del prompt cambia sin que nadie lo diga |
+| `gem-instructions.mjs` | Genera `wiki/GEM_CREAR_CAMPANA.md` desde el contrato; con `--check` falla si se quedó viejo |
 | `check-engine-wiring.mjs` | Lista los módulos del motor que el juego no carga. Informa, no falla |
 | `e2e-campaign.mjs` | Recorre el juego en un navegador real, con servidor y datos propios. 202 comprobaciones |
 

@@ -57,9 +57,9 @@ Lo que vuelve se enseña antes de crear nada: el mapa, los enemigos, dónde empi
 
 El camino largo, y el que más da. Te lleva un rato la primera vez y luego se repite en dos minutos.
 
-1. En el chat, `/esquema-campana`. Se abre el contrato: el esquema, las reglas que un esquema no puede expresar y un ejemplo de salida correcta.
-2. **Copia las instrucciones** y pégaselas a tu Gem de Gemini (o al modelo que uses para esto, fuera del juego, con tu propia suscripción).
-3. Dale el libro de campaña y pídele el paquete, sección por sección si es largo.
+1. Monta el Gem con **[[GEM_CREAR_CAMPANA]]**: trae el bloque exacto que va en su caja de instrucciones —quién es, cómo trabaja, el contrato entero y una muestra— y cómo hablarle después. Si prefieres verlo dentro del juego, `/esquema-campana` enseña lo mismo.
+2. Dale el libro de campaña y pídele el paquete **sección por sección**: `world`, `locations`, `confidants`, `bestiary`, `items`, `boards`, `quests`. Corrige lo que no te guste antes de pasar a la siguiente.
+3. Al final dile **«ensambla»**: te devuelve el paquete completo en un solo bloque, que es lo único que el juego acepta.
 4. Vuelve aquí: **Nueva campaña → Importar un libro**, pega el JSON y pulsa **Comprobar**.
 
 El informe sale **antes de crear nada** y dice tres cosas por separado:

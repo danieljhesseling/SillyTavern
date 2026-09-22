@@ -394,6 +394,11 @@ export function getPackRules() {
         'Escribe **nombres**, nunca identificadores internos: el importador los resuelve al crear las entradas.',
         'Una localidad puede tener **0 tableros**: una aldea donde solo se habla y se comercia es tan valida como una cripta. Declarala en `locations` aunque no tenga ninguno.',
         'El `locationName` de un tablero deberia coincidir con el nombre de una localidad de `locations`. Si no esta declarada, se crea a partir del tablero.',
+        // Las tres que el validador ya aplicaba y las instrucciones callaban: un Gem que no
+        // las sabe las rompe, y se entera dos libros mas tarde.
+        `Cada tablero mide entre ${BOARD_LIMITS.minWidth}×${BOARD_LIMITS.minHeight} y ${BOARD_LIMITS.maxWidth}×${BOARD_LIMITS.maxHeight} casillas. Uno de 14×10 ya da una escena; por encima de 24×18 se juega lento.`,
+        'Desde donde empieza el grupo tiene que poderse llegar a toda casilla de suelo, abriendo puertas. Un enemigo en una sala incomunicada es un error; una sala vacía incomunicada, un aviso.',
+        'Los nombres de `items` tampoco se repiten, y su `rarity` es una de las cuatro que conocen las tablas de botín: una rareza inventada nunca cae.',
     ];
 }
 

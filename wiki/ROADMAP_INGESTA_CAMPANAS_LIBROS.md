@@ -231,6 +231,9 @@ Correcto: `name`, `cr`, `hp`, `armorClass`, `profile` (solo `aggressive`, `skirm
 > 2. **Un validador que no perdone**, que al importar diga qué falta, qué sobra y qué se ha reparado. Cuando el productor vive fuera del repositorio, la frontera tiene que ser dura.
 > 3. **Un paquete de ejemplo** que puedas enseñarle al Gem como muestra de salida correcta.
 
+> [!NOTE]
+> **Desde el 2026-09-22 los tres puntos están cubiertos, y el primero en un archivo**: [[GEM_CREAR_CAMPANA]] es el documento que se pega en el Gem, generado por `tools/gem-instructions.mjs` desde `campaign-pack-schema.js` —esquema, reglas, leyenda y muestra— más lo único escrito a mano: quién es el Gem, cómo trabaja sección a sección y cómo se ensambla el paquete al final. `node tools/gem-instructions.mjs --check` falla si el archivo se ha quedado viejo respecto al motor, así que la copia y el código no pueden separarse sin que se note.
+
 La estrategia de tres pasos que describe el texto original —esqueleto, bestiario, campaña y mazmorras— es sensata por el límite de tokens de salida, y se mantiene como nota tuya. El resto de esta sección es tuyo y el código no opina.
 
 ---
@@ -240,7 +243,7 @@ Cuatro tareas, en este orden. El orden importa: cada una produce lo que la sigui
 
 ### G1 · El esquema, exportable `HECHO — 2026-09-21`
 
-**`/esquema-campana`** abre el contrato con ocho vistas: las instrucciones completas, el esquema a secas, un ejemplo de salida correcta y una por cada sección — porque un libro no cabe en una respuesta y el Gem tendrá que producirlo por partes.
+**`/esquema-campana`** abre el contrato con diez vistas: las instrucciones completas, el esquema a secas, un ejemplo de salida correcta y una por cada sección — porque un libro no cabe en una respuesta y el Gem tendrá que producirlo por partes.
 
 Los siete tipos de objetivo salen de `scenarios.js`, los cuatro perfiles de `enemy-ai.js` y los caracteres del mapa de `terrain.js`. **Se genera, no se escribe**: si el motor cambia, cambia lo que pegas.
 

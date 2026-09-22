@@ -742,6 +742,7 @@ node tools/check-fork-types.mjs      # 0 errores en los 64 archivos del fork
 node tools/check-engine-wiring.mjs   # los 50 modulos del motor, conectados al juego
 node tools/e2e-campaign.mjs          # 202 comprobaciones en un navegador real
 node tools/check-prompt-shape.mjs    # falla si la forma del prompt cambia sin decirlo
+node tools/gem-instructions.mjs --check   # el .md del Gem sigue diciendo lo que el motor lee
 ESLINT_USE_FLAT_CONFIG=false npx eslint --ext .js,.mjs public/scripts/game-engine public/scripts/party public/scripts/party.js public/scripts/campaigns.js public/scripts/world-map-renderer.js tools   # 0 errores
 git fetch upstream && git merge upstream/release
 ```

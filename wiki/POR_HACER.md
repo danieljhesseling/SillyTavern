@@ -371,6 +371,8 @@ Cinco, y con ellas **el bloque A queda vacío**.
 
 **Los dados, repetibles** (`combat/seeded-random.js`, 15 tests). `/semilla molino` y la partida rueda igual dos veces; `/semilla` sola vuelve al azar. Sin esto, cada pregunta sobre si un cambio mejoró algo chocaba con la misma pared: el combate fue distinto, así que quién sabe. La semilla se guarda con la partida, no con la sesión.
 
+**El documento del Gem** (`tools/gem-instructions.mjs --check`). Falla si [[GEM_CREAR_CAMPANA]] ya no dice lo que el motor lee: el contrato cambió y nadie regeneró lo que se pega en el Gem. Es la misma regla que el esquema en pantalla, llevada al archivo.
+
 **El snapshot del prompt** (`tools/check-prompt-shape.mjs`). Falla si la forma del prompt cambia sin que nadie lo diga. Comprueba **la forma** —qué bloques hay, en qué orden, de qué nivel— y nunca el texto, que debe cambiar en cada turno. Mover un bloque hacia delante invalida la caché de todo lo que venga detrás, y eso ya no puede pasar en silencio.
 
 **Y el recorrido ya cubría las salas**: los pasos 23 y 24 importan un libro, abren una puerta y pelean con lo que había detrás.
@@ -519,7 +521,7 @@ La barra de acciones no pide teclear: **Atacar** despliega los enemigos que est�
 
 ### G1 · El contrato del paquete, exportable — 2026-09-21
 
-`/esquema-campana` abre lo que hay que pegar en tu Gem: ocho vistas — las instrucciones completas, el esquema a secas, un ejemplo de salida correcta, y una por cada sección del paquete, porque un libro no cabe en una sola respuesta y tendrá que producirlo por partes.
+`/esquema-campana` abre lo que hay que pegar en tu Gem: diez vistas — las instrucciones completas, el esquema a secas, un ejemplo de salida correcta, y una por cada sección del paquete, porque un libro no cabe en una sola respuesta y tendrá que producirlo por partes.
 
 **Lo importante no es el panel, es de dónde sale.** El esquema se **genera** desde el propio motor:
 
