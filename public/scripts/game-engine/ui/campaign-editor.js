@@ -165,6 +165,8 @@ function foldedCard(title, subtitle, onRemove, cls = '') {
  * Abre el editor. Devuelve el modelo editado, o null si se cancela.
  *
  * @param {Object} input
+ * @param {((boards: string[]) => any|null)|null} [input.writeQuest] Una misión del
+ *        compendio, con los tableros que hay para elegir dónde se juega.
  * @param {((cr: number) => any|null)|null} [input.breedMonster] Un bicho del compendio,
  *        del desafío que se le pida. Misma regla: sin batería de bestiario, no hay botón.
  * @param {(() => any|null)|null} [input.forgeItem] Un objeto del compendio, para el
@@ -177,7 +179,8 @@ function foldedCard(title, subtitle, onRemove, cls = '') {
  * @returns {Promise<any|null>}
  */
 export async function openCampaignEditor({
-    metadata, entries, Popup, POPUP_TYPE, forgeItem = null, breedMonster = null,
+    metadata, entries, Popup, POPUP_TYPE,
+    forgeItem = null, breedMonster = null, writeQuest = null,
 }) {
     const model = buildEditorModel(metadata, entries);
 
@@ -263,6 +266,20 @@ export async function openCampaignEditor({
             { placeholder: 'Fantasía oscura, ciencia ficción…' }));
         body.append(field('Sinopsis', model.world.description, v => { model.world.description = v; },
             { area: true, cls: 'ce-wide' }));
+
+        // La semilla se ensena y no se edita: cambiarsela a una campana empezada haria que
+        // lo que se genere a partir de ahora no pegue con lo que ya se genero. Se ve para
+        // poder copiarla, que es como se comparte un mundo.
+        const worldSeed = String(model.world.seed || '').trim();
+        if (worldSeed) {
+            const seed = $('<div class="ce-seed"></div>');
+            seed.append($('<span class="ce-label"></span>').text('Semilla del mundo'));
+            seed.append($('<code class="ce-seed-value"></code>').text(worldSeed));
+            seed.append($('<div class="ce-hint"></div>').text(
+                'Quien la escriba al crear una campaña tendrá este mismo mundo.',
+            ));
+            body.append(seed);
+        }
     }
 
     /**
@@ -848,7 +865,35 @@ export async function openCampaignEditor({
                 'ce-quest',
             );
 
-            inner.append(field('Nombre', quest.name, v => { quest.name = v; }, { cls: 'ce-quest-name' }));
+            const questRow = $('<div class="ce-forge-row"></div>');
+            questRow.append(field('Nombre', quest.name, v => { quest.name = v; }, { cls: 'ce-quest-name' }));
+
+            // Encargar: verbo + objeto + giro. El giro es lo que separa un recado de una
+            // mision, y por eso viene puesto en la descripcion y no hay que inventarlo.
+            if (writeQuest) {
+                const order = $('<button class="menu_button ce-quest-roll" type="button"></button>')
+                    .attr('title', 'Sacar un encargo del compendio, con su giro')
+                    .append('<i class="fa-solid fa-scroll"></i>')
+                    .append($('<span></span>').text(' Encargar'));
+                order.on('click', () => {
+                    const made = writeQuest(boards.map((/** @type {any} */ b) => String(b[0])).filter(Boolean));
+                    if (!made) {
+                        order.prop('disabled', true).attr('title', 'La batería de misiones está vacía');
+                        return;
+                    }
+                    Object.assign(quest, {
+                        name: made.name,
+                        description: quest.description || made.description,
+                        // El acto y el tablero son cosa tuya si ya los pusiste.
+                        boardName: quest.boardName || made.boardName,
+                    });
+                    refreshSummary();
+                    draw();
+                });
+                questRow.append(order);
+            }
+
+            inner.append(questRow);
 
             const where = $('<div class="ce-grid"></div>');
             where.append(pick('Dónde se juega', quest.boardName, boards,

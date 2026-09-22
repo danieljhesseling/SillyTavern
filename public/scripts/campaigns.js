@@ -21,6 +21,7 @@ import { escapeHtml, saveBase64AsFile } from './utils.js';
 import { getCompendium } from './game-engine/compendio/browser.js';
 import { makeName } from './game-engine/compendio/names.js';
 import { createSeededRandom } from './game-engine/combat/seeded-random.js';
+import { seedOf, derive } from './game-engine/campaign/seed.js';
 
 /**
  * Fetches recent chats with metadata from the cross-character API.
@@ -1071,7 +1072,10 @@ async function createStartingHero(worldName) {
     // El compendio, si lo hay. Sin batería de nombres no hay dado y el campo se queda
     // como estaba: aditivo, como todo lo demás del compendio.
     const { compendium } = await getCompendium();
-    const seed = String(data.metadata?.seed || worldName);
+    // La del mundo. Si este mundo es viejo y no tiene, se tira con su nombre: sale
+    // algo, pero no es reproducible, y `ensureSeed` le pondra una la primera vez que
+    // alguien abra su editor.
+    const seed = seedOf(data.metadata) || worldName;
     let rolls = 0;
     const rollName = compendium.has('nombres')
         // Con la semilla de la campaña y el número de tirada: el mismo mundo propone los
@@ -1081,7 +1085,7 @@ async function createStartingHero(worldName) {
             kind: 'person',
             culture: String(data.metadata?.culture || ''),
             region: String(data.metadata?.region || ''),
-            random: createSeededRandom(`${seed}|nombre|${rolls++}`),
+            random: createSeededRandom(derive(seed, 'nombre', rolls++)),
         })
         : null;
 

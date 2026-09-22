@@ -65,7 +65,7 @@ const DEFAULT_LOCATION_GRID = 50;
 
 /**
  * @typedef {Object} EditorModel
- * @property {{displayName: string, genre: string, description: string}} world
+ * @property {{displayName: string, genre: string, description: string, seed: string}} world
  * @property {EditorLocation[]} locations
  * @property {EditorCharacter[]} characters
  * @property {any[]} bestiary
@@ -209,6 +209,8 @@ export function buildEditorModel(metadata, entries = {}) {
             displayName: text(source.displayName),
             genre: text(source.genre),
             description: text(source.description),
+            // De solo lectura: se ensena para copiarla, no para cambiarla.
+            seed: text(source.seed),
         },
         locations: (Array.isArray(source.locationMaps) ? source.locationMaps : []).map(location => ({
             name: text(location?.name),

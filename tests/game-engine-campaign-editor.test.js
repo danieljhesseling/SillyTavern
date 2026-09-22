@@ -56,7 +56,16 @@ describe('lo que el editor enseña', () => {
             displayName: 'El Molino',
             genre: 'Fantasía oscura',
             description: 'Un molino con algo debajo.',
+            // Se lee para enseñarla; cambiarla a una campaña empezada haría que lo que se
+            // genere a partir de ahora no pegue con lo que ya se generó.
+            seed: '',
         });
+    });
+
+    test('y su semilla, cuando el mundo la tiene', () => {
+        const source = world();
+        source.seed = 'molino-ceniza-siete';
+        expect(buildEditorModel(source, {}).world.seed).toBe('molino-ceniza-siete');
     });
 
     test('las localidades con sus campos', () => {

@@ -1,0 +1,523 @@
+{
+  "version": 1,
+  "domain": "misiones",
+  "about": "La gramática de una misión: VERBO + OBJETO + GIRO + RECOMPENSA. El verbo dice qué hay que hacer y a qué tipo de objeto le pega ('wants': animado, cosa o cualquiera). El objeto trae dos formas: 'name' con su preposición puesta para el título (al testigo) y 'bare' para la prosa (el testigo). El GIRO es lo que separa un recado de una misión, y la RECOMPENSA casi nunca es oro: un favor, un contacto o una llave se recuerdan más y son más fáciles de equilibrar.",
+  "rows": [
+    {
+      "id": "verbo-rescatar",
+      "name": "Rescatar",
+      "kind": "verbo",
+      "wants": ["persona", "bestia"],
+      "tags": ["gente", "prisa"],
+      "weight": 10,
+      "line": "Hay que sacar a {objeto} de donde esté, y hay prisa."
+    },
+    {
+      "id": "verbo-escoltar",
+      "name": "Escoltar",
+      "kind": "verbo",
+      "wants": ["persona", "bestia", "cosa"],
+      "tags": ["camino"],
+      "weight": 9,
+      "line": "Alguien tiene que llevar a {objeto} hasta el otro lado sin que le pase nada."
+    },
+    {
+      "id": "verbo-encontrar",
+      "name": "Encontrar",
+      "kind": "verbo",
+      "wants": ["persona", "bestia", "cosa", "sitio", "idea"],
+      "tags": ["rastro"],
+      "weight": 10,
+      "line": "Nadie sabe dónde está {objeto}, y alguien paga por saberlo."
+    },
+    {
+      "id": "verbo-recuperar",
+      "name": "Recuperar",
+      "kind": "verbo",
+      "wants": ["cosa", "bestia"],
+      "tags": ["robo"],
+      "weight": 10,
+      "line": "Se lo llevaron, y quieren {objeto} de vuelta antes de que aparezca en un mercado."
+    },
+    {
+      "id": "verbo-robar",
+      "name": "Robar",
+      "kind": "verbo",
+      "wants": ["cosa"],
+      "tags": ["sigilo", "turbio"],
+      "weight": 8,
+      "line": "Hay que hacerse con {objeto} sin que nadie sepa quién fue."
+    },
+    {
+      "id": "verbo-entregar",
+      "name": "Entregar",
+      "kind": "verbo",
+      "wants": ["cosa"],
+      "tags": ["camino"],
+      "weight": 9,
+      "line": "Llevar {objeto} hasta su destino, y que llegue sin abrir."
+    },
+    {
+      "id": "verbo-vigilar",
+      "name": "Vigilar",
+      "kind": "verbo",
+      "wants": ["persona", "sitio"],
+      "tags": ["espera"],
+      "weight": 7,
+      "line": "Toca quedarse mirando {objeto} unos días y contar lo que pase."
+    },
+    {
+      "id": "verbo-destruir",
+      "name": "Destruir",
+      "kind": "verbo",
+      "wants": ["cosa", "sitio"],
+      "tags": ["fuego"],
+      "weight": 7,
+      "line": "Hay que acabar con {objeto} de manera que no pueda rehacerse."
+    },
+    {
+      "id": "verbo-limpiar",
+      "name": "Limpiar",
+      "kind": "verbo",
+      "wants": ["sitio"],
+      "tags": ["pelea"],
+      "weight": 9,
+      "line": "Hay algo viviendo en {objeto} y nadie se atreve a entrar."
+    },
+    {
+      "id": "verbo-convencer",
+      "name": "Convencer",
+      "kind": "verbo",
+      "wants": ["persona"],
+      "tags": ["palabra"],
+      "weight": 8,
+      "line": "Alguien tiene que sentarse con {objeto} y hacerle cambiar de idea."
+    },
+    {
+      "id": "verbo-cerrar",
+      "name": "Cerrar",
+      "kind": "verbo",
+      "wants": ["sitio"],
+      "tags": ["arcano"],
+      "weight": 6,
+      "line": "Lo que hay en {objeto} lleva demasiado tiempo abierto."
+    },
+    {
+      "id": "verbo-enterrar",
+      "name": "Enterrar",
+      "kind": "verbo",
+      "wants": ["persona", "cosa"],
+      "tags": ["creencia", "luto"],
+      "weight": 6,
+      "line": "Queda pendiente dar sepultura como es debido a {objeto}."
+    },
+
+    {
+      "id": "objeto-testigo",
+      "name": "al testigo",
+      "bare": "el testigo",
+      "kind": "objeto",
+      "sort": "persona",
+      "tags": ["gente", "ley"],
+      "weight": 9,
+      "detail": "que vio algo que no debía y lleva desde entonces escondido"
+    },
+    {
+      "id": "objeto-nina",
+      "name": "a la hija del molinero",
+      "bare": "la hija del molinero",
+      "kind": "objeto",
+      "sort": "persona",
+      "tags": ["gente", "pueblo"],
+      "weight": 9,
+      "detail": "que no ha vuelto desde la feria"
+    },
+    {
+      "id": "objeto-capitan",
+      "name": "al capitán",
+      "bare": "el capitán",
+      "kind": "objeto",
+      "sort": "persona",
+      "tags": ["gente", "guardia"],
+      "weight": 7,
+      "detail": "que lleva tres días sin dar señales a su guarnición"
+    },
+    {
+      "id": "objeto-deudor",
+      "name": "al que debe el dinero",
+      "bare": "el que debe el dinero",
+      "kind": "objeto",
+      "sort": "persona",
+      "tags": ["gente", "turbio"],
+      "weight": 8,
+      "detail": "que se marchó del pueblo la misma noche del plazo"
+    },
+    {
+      "id": "objeto-viuda",
+      "name": "a la viuda",
+      "bare": "la viuda",
+      "kind": "objeto",
+      "sort": "persona",
+      "tags": ["gente", "luto"],
+      "weight": 6,
+      "detail": "que no quiere marcharse de una casa que ya no es suya"
+    },
+    {
+      "id": "objeto-rebano",
+      "name": "el rebaño",
+      "bare": "el rebaño",
+      "kind": "objeto",
+      "sort": "bestia",
+      "tags": ["campo"],
+      "weight": 7,
+      "detail": "que se dispersó cuando algo bajó de los montes"
+    },
+    {
+      "id": "objeto-cargamento",
+      "name": "el cargamento",
+      "bare": "el cargamento",
+      "kind": "objeto",
+      "sort": "cosa",
+      "tags": ["comercio"],
+      "weight": 10,
+      "detail": "que no llegó a su destino y por el que hay quien ya ha pagado"
+    },
+    {
+      "id": "objeto-reliquia",
+      "name": "la reliquia",
+      "bare": "la reliquia",
+      "kind": "objeto",
+      "sort": "cosa",
+      "tags": ["creencia"],
+      "weight": 9,
+      "detail": "que llevaba doscientos años en el mismo sitio"
+    },
+    {
+      "id": "objeto-libro",
+      "name": "el libro de cuentas",
+      "bare": "el libro de cuentas",
+      "kind": "objeto",
+      "sort": "cosa",
+      "tags": ["papel", "turbio"],
+      "weight": 8,
+      "detail": "en el que están escritos nombres que a alguien no le conviene que se lean"
+    },
+    {
+      "id": "objeto-mapa",
+      "name": "el mapa viejo",
+      "bare": "el mapa viejo",
+      "kind": "objeto",
+      "sort": "cosa",
+      "tags": ["papel"],
+      "weight": 8,
+      "detail": "que enseña un camino que ya no existe, o que nunca existió"
+    },
+    {
+      "id": "objeto-llave",
+      "name": "la llave",
+      "bare": "la llave",
+      "kind": "objeto",
+      "sort": "cosa",
+      "tags": ["cerradura"],
+      "weight": 8,
+      "detail": "que abre algo que lleva cerrado más tiempo del que nadie recuerda"
+    },
+    {
+      "id": "objeto-cuerpo",
+      "name": "el cuerpo",
+      "bare": "el cuerpo",
+      "kind": "objeto",
+      "sort": "cosa",
+      "tags": ["luto"],
+      "weight": 7,
+      "detail": "que quedó donde cayó, y que su familia quiere de vuelta"
+    },
+    {
+      "id": "objeto-pozo",
+      "name": "el pozo",
+      "bare": "el pozo",
+      "kind": "objeto",
+      "sort": "sitio",
+      "tags": ["sitio"],
+      "weight": 8,
+      "detail": "del que ya no sale agua, y sí otras cosas"
+    },
+    {
+      "id": "objeto-molino",
+      "name": "el molino",
+      "bare": "el molino",
+      "kind": "objeto",
+      "sort": "sitio",
+      "tags": ["sitio", "pueblo"],
+      "weight": 9,
+      "detail": "que lleva parado desde el invierno y al que nadie sube ya"
+    },
+    {
+      "id": "objeto-cripta",
+      "name": "la cripta",
+      "bare": "la cripta",
+      "kind": "objeto",
+      "sort": "sitio",
+      "tags": ["sitio", "cripta"],
+      "weight": 8,
+      "detail": "cuya puerta apareció abierta una mañana"
+    },
+    {
+      "id": "objeto-puente",
+      "name": "el puente",
+      "bare": "el puente",
+      "kind": "objeto",
+      "sort": "sitio",
+      "tags": ["sitio", "camino"],
+      "weight": 7,
+      "detail": "que alguien cortó a propósito, y por el que ya nadie cruza"
+    },
+    {
+      "id": "objeto-deuda",
+      "name": "la deuda",
+      "bare": "la deuda",
+      "kind": "objeto",
+      "sort": "cosa",
+      "tags": ["turbio", "comercio"],
+      "weight": 7,
+      "detail": "que cambió de manos tantas veces que ya nadie sabe quién cobra"
+    },
+    {
+      "id": "objeto-semilla",
+      "name": "el grano del año",
+      "bare": "el grano del año",
+      "kind": "objeto",
+      "sort": "cosa",
+      "tags": ["campo", "hambre"],
+      "weight": 6,
+      "detail": "del que depende que el pueblo pase el invierno"
+    },
+    {
+      "id": "objeto-nombre",
+      "name": "el nombre verdadero",
+      "bare": "el nombre verdadero",
+      "kind": "objeto",
+      "sort": "idea",
+      "tags": ["arcano"],
+      "weight": 5,
+      "detail": "que alguien se llevó a la tumba a propósito"
+    },
+    {
+      "id": "objeto-campana",
+      "name": "la campana",
+      "bare": "la campana",
+      "kind": "objeto",
+      "sort": "cosa",
+      "tags": ["pueblo", "creencia"],
+      "weight": 6,
+      "detail": "que dejó de sonar, y con ella se fue la gente"
+    },
+
+    {
+      "id": "giro-mienten",
+      "name": "quien te contrata miente",
+      "kind": "giro",
+      "tags": ["traicion"],
+      "weight": 10,
+      "note": "Quien lo encarga no lo está contando todo, y lo que calla es lo importante."
+    },
+    {
+      "id": "giro-ya-no-esta",
+      "name": "ya no está ahí",
+      "kind": "giro",
+      "tags": ["rastro"],
+      "weight": 9,
+      "note": "Cuando lleguéis ya no estará donde os han dicho, y el rastro será reciente."
+    },
+    {
+      "id": "giro-otro-lo-busca",
+      "name": "hay otro buscándolo",
+      "kind": "giro",
+      "tags": ["rival"],
+      "weight": 10,
+      "note": "No sois los únicos que lo buscan, y los otros salieron antes."
+    },
+    {
+      "id": "giro-no-quiere",
+      "name": "no quiere que lo salven",
+      "kind": "giro",
+      "tags": ["gente"],
+      "weight": 8,
+      "sort": ["persona", "bestia"],
+      "note": "Está donde está porque quiere, y no piensa agradecer que lo saquéis."
+    },
+    {
+      "id": "giro-precio",
+      "name": "el precio es otro",
+      "kind": "giro",
+      "tags": ["turbio"],
+      "weight": 8,
+      "note": "Lo que os piden a cambio no es lo que os dijeron al principio."
+    },
+    {
+      "id": "giro-plazo",
+      "name": "hay menos tiempo del que dicen",
+      "kind": "giro",
+      "tags": ["prisa"],
+      "weight": 9,
+      "note": "El plazo real es la mitad del que os han dado, y eso se sabe tarde."
+    },
+    {
+      "id": "giro-guardado",
+      "name": "está mejor guardado de lo que parecía",
+      "kind": "giro",
+      "tags": ["pelea"],
+      "weight": 9,
+      "note": "Quien lo tiene no es quien os dijeron, y no está solo."
+    },
+    {
+      "id": "giro-conocido",
+      "name": "conocéis al culpable",
+      "kind": "giro",
+      "tags": ["gente", "vinculo"],
+      "weight": 7,
+      "note": "Quien lo hizo es alguien con quien ya habéis tratado, y lo sabréis al verlo."
+    },
+    {
+      "id": "giro-dos-duenos",
+      "name": "lo reclaman dos",
+      "kind": "giro",
+      "tags": ["politica"],
+      "weight": 8,
+      "sort": ["cosa", "sitio", "idea"],
+      "note": "Dos partes lo dan por suyo, y cualquiera de las dos que quede contenta os hará un enemigo."
+    },
+    {
+      "id": "giro-maldito",
+      "name": "trae lo suyo detrás",
+      "kind": "giro",
+      "tags": ["arcano"],
+      "weight": 6,
+      "sort": ["cosa"],
+      "note": "Lo que lleváis encima no viene solo, y se nota al segundo día."
+    },
+    {
+      "id": "giro-falso",
+      "name": "es una copia",
+      "kind": "giro",
+      "tags": ["engano"],
+      "weight": 7,
+      "sort": ["cosa"],
+      "note": "Lo que encontraréis no es lo que buscabais, aunque lo parezca hasta que alguien lo mire bien."
+    },
+    {
+      "id": "giro-sabe-mas",
+      "name": "sabe más de lo que cuenta",
+      "kind": "giro",
+      "tags": ["gente"],
+      "weight": 8,
+      "sort": ["persona", "sitio", "cosa"],
+      "note": "Hay alguien allí que sabe exactamente qué pasó, y no piensa decirlo gratis."
+    },
+    {
+      "id": "giro-trampa",
+      "name": "es un cebo",
+      "kind": "giro",
+      "tags": ["traicion", "pelea"],
+      "weight": 7,
+      "note": "Todo esto se ha montado para que vayáis, y alguien os espera allí."
+    },
+    {
+      "id": "giro-cuesta-caro",
+      "name": "salvarlo cuesta otra cosa",
+      "kind": "giro",
+      "tags": ["eleccion"],
+      "weight": 7,
+      "note": "Se puede conseguir, pero no sin dejar atrás algo que también importaba."
+    },
+    {
+      "id": "giro-ya-hecho",
+      "name": "alguien se os adelantó",
+      "kind": "giro",
+      "tags": ["rival"],
+      "weight": 6,
+      "note": "Está hecho cuando llegáis, y ahora la pregunta es quién y por qué."
+    },
+
+    {
+      "id": "premio-favor",
+      "name": "un favor",
+      "kind": "recompensa",
+      "tags": ["social"],
+      "weight": 10,
+      "note": "Pagan con un favor, de los que se cobran cuando hacen falta."
+    },
+    {
+      "id": "premio-contacto",
+      "name": "un contacto",
+      "kind": "recompensa",
+      "tags": ["social"],
+      "weight": 9,
+      "note": "A cambio os presentan a alguien que abre puertas donde vosotros no llegáis."
+    },
+    {
+      "id": "premio-llave",
+      "name": "una llave",
+      "kind": "recompensa",
+      "tags": ["acceso"],
+      "weight": 8,
+      "note": "La paga es una llave, y con ella un sitio al que hasta ahora no podíais entrar."
+    },
+    {
+      "id": "premio-techo",
+      "name": "un sitio donde dormir",
+      "kind": "recompensa",
+      "tags": ["descanso"],
+      "weight": 8,
+      "note": "Ofrecen techo y comida mientras estéis por aquí, que no es poco."
+    },
+    {
+      "id": "premio-oro",
+      "name": "la bolsa acordada",
+      "kind": "recompensa",
+      "tags": ["oro"],
+      "weight": 9,
+      "note": "Pagan lo acordado, en monedas y por adelantado la mitad."
+    },
+    {
+      "id": "premio-arma",
+      "name": "algo de la familia",
+      "kind": "recompensa",
+      "tags": ["objeto"],
+      "weight": 7,
+      "note": "Ofrecen algo que llevaba generaciones en la familia, y les cuesta soltarlo."
+    },
+    {
+      "id": "premio-informacion",
+      "name": "lo que saben",
+      "kind": "recompensa",
+      "tags": ["saber"],
+      "weight": 8,
+      "note": "A cambio os cuentan lo que saben, que es más de lo que habían dicho."
+    },
+    {
+      "id": "premio-perdon",
+      "name": "que se olvide lo anterior",
+      "kind": "recompensa",
+      "tags": ["ley"],
+      "weight": 6,
+      "note": "La paga es que nadie vuelva a mencionar lo que hicisteis la última vez."
+    },
+    {
+      "id": "premio-gente",
+      "name": "alguien que se une",
+      "kind": "recompensa",
+      "tags": ["grupo"],
+      "weight": 6,
+      "note": "Si sale bien, alguien de allí querrá iros detrás."
+    },
+    {
+      "id": "premio-nada",
+      "name": "nada, y lo saben",
+      "kind": "recompensa",
+      "tags": ["honor"],
+      "weight": 4,
+      "note": "No tienen con qué pagaros, y lo dicen a la cara antes de pediroslo."
+    }
+  ]
+}

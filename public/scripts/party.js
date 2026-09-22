@@ -23,9 +23,14 @@ import {
 import { escapeHtml, download } from './utils.js';
 import { createSeededRandom, seedFrom } from './game-engine/combat/seeded-random.js';
 import { getCompendium } from './game-engine/compendio/browser.js';
+import { ensureSeed, derive, describeSeed } from './game-engine/campaign/seed.js';
+import {
+    planTravel, travelEvents, describeTravel, DEFAULT_TRAVEL_EVENTS,
+} from './game-engine/world/travel.js';
 import { forgeItem as forgeFromCompendium, forgeItems, describeItem } from './game-engine/compendio/forge.js';
 import { makeNames } from './game-engine/compendio/names.js';
 import { breedMonster as breedFromCompendium, breedBand, describeMonster } from './game-engine/compendio/bestiary.js';
+import { writeQuest as writeFromCompendium, writeQuestBoard, describeQuest } from './game-engine/compendio/quests.js';
 import {
     rollDice, rollDiceDetailed, getRollClassification, getRollClassificationLabel,
     getDistanceInFeet, getAttackRangeFeet, describeCover,
@@ -4290,19 +4295,37 @@ export async function openCampaignBuilder() {
         // El compendio, si lo hay. Sin batería de materiales no hay botón de forjar y la
         // ficha se rellena a mano, igual que siempre.
         const { compendium } = await getCompendium();
-        const forgeSeed = String(data.metadata?.seed || worldName);
+
+        // Un mundo de antes de que esto existiera se lleva una semilla aqui, que es el
+        // primer sitio donde ya estabamos cargando y guardando su metadata. A partir de
+        // ese momento es reproducible como cualquier otro.
+        const seeded = ensureSeed(data.metadata ?? {});
+        if (seeded.rolled) {
+            data.metadata = seeded.metadata;
+            await saveWorldInfo(worldName, data, true);
+            console.log(`[compendio] ${describeSeed(seeded.seed)}`);
+        }
+
+        const forgeSeed = seeded.seed;
         let forged = 0;
 
         const edited = await openCampaignEditor({
             metadata: data.metadata ?? {},
             entries: data.entries ?? {},
+            writeQuest: compendium.has('misiones')
+                ? (/** @type {string[]} */ boards) => writeFromCompendium({
+                    compendium,
+                    boards,
+                    random: createSeededRandom(derive(forgeSeed, 'encargo', forged++)),
+                })
+                : null,
             breedMonster: compendium.has('bestiario')
                 ? (/** @type {number} */ cr) => breedFromCompendium({
                     compendium,
                     cr: Number(cr) || 0.5,
                     // El bioma de la campana, si lo dice: el pantano no da lobos de nieve.
                     biome: String(data.metadata?.biome || ''),
-                    random: createSeededRandom(`${forgeSeed}|criar|${forged++}`),
+                    random: createSeededRandom(derive(forgeSeed, 'criar', forged++)),
                 })
                 : null,
             forgeItem: compendium.has('materiales')
@@ -4310,7 +4333,7 @@ export async function openCampaignBuilder() {
                 // mismas cosas en el mismo orden, y cada martillazo saca una distinta.
                 ? () => forgeFromCompendium({
                     compendium,
-                    random: createSeededRandom(`${forgeSeed}|forja|${forged++}`),
+                    random: createSeededRandom(derive(forgeSeed, 'forja', forged++)),
                 })
                 : null,
             Popup,
@@ -5479,23 +5502,108 @@ function runShellChip(chip) {
  * @param {string} name
  * @returns {string}
  */
-function travelTo(name) {
-    // La misma regla que apaga la pestana de Exploracion, aqui abajo: si solo se
-    // cerraran los botones, `/go` seguiria sacandote de la pelea.
+/**
+ * Lo que cuesta el viaje, antes de gastarlo.
+ *
+ * No es un aviso de cortesia: los dias de camino curan, dan hambre y acercan la cuenta
+ * semanal, asi que un viaje de cinco dias es una decision. Se ensena por donde se pasa
+ * porque esa es la mitad de la decision: el rodeo corto o el largo que evita el paso.
+ *
+ * @param {{to: string, days: number, legs: string[]}} plan
+ * @returns {Promise<boolean>}
+ */
+async function askBeforeTravelling(plan) {
+    const jornadas = plan.days === 1 ? 'un día de camino' : `${plan.days} días de camino`;
+    const por = plan.legs.length > 1
+        ? `Se pasa por ${plan.legs.slice(0, -1).join(', ')}.`
+        : 'Se va directo.';
+
+    const answer = await Popup.show.confirm(
+        `Viajar a ${plan.to}`,
+        `${jornadas}. ${por} Por el camino se come, se cura y corre la semana.`,
+        { okButton: 'Viajar', cancelButton: 'Ahora no' },
+    );
+    return Boolean(answer);
+}
+
+/**
+ * Ir a otro sitio, con lo que cuesta.
+ *
+ * El mundo es una **lista**: la distancia no se mide en casillas, se declara en dias. Y
+ * los dias pasan por el mismo reloj que cura, da de comer y cobra la semana, asi que un
+ * viaje largo **se paga en comida**. Eso es lo que hace que elegir ruta sea una decision.
+ *
+ * Por el camino pasan cosas. Lo que devuelve la tabla son hechos ya decididos —con sus
+ * dias de retraso contados— y el narrador los cuenta: el motor decide, el modelo narra.
+ *
+ * @param {string} name
+ * @param {{confirm?: (plan: any) => Promise<boolean>}} [options]
+ * @returns {Promise<string>}
+ */
+async function travelWithTime(name, options = {}) {
+    // La misma regla que apaga la pestana de Exploracion: si solo se cerraran los botones,
+    // `/go` seguiria sacandote de la pelea.
     const held = holdDuringCombat(combatEncounter, 'travel');
     if (held) {
         toastr.warning(held, 'Combate en marcha');
         return '';
     }
 
+    const locations = getCurrentWorldLocationMaps();
     const wanted = String(name || '').trim();
-    const match = getCurrentWorldLocationMaps().find(l => l.name.toLowerCase() === wanted.toLowerCase());
+    const match = locations.find(l => String(l.name).toLowerCase() === wanted.toLowerCase());
     if (!match) return '';
+
+    const plan = planTravel({ from: currentLocationName, to: match.name, locations });
+    if (!plan.ok) {
+        // El motivo, no un boton que no hace nada: "el paso esta cerrado" es una meta.
+        toastr.info(plan.reason, `No se puede ir a "${match.name}"`);
+        return '';
+    }
+
+    if (options.confirm && !(await options.confirm({ ...plan, to: match.name }))) return '';
+
+    // Los sucesos del camino, con la semilla del mundo: el mismo viaje sale igual dos
+    // veces, que es lo unico que la semilla promete.
+    const worldName = String(chat_metadata?.[METADATA_KEY] || '');
+    const { compendium } = await getCompendium();
+    const fromBattery = compendium.has('mundo')
+        ? compendium.find('mundo', { kind: 'suceso' })
+        : [];
+
+    const events = travelEvents({
+        days: plan.days,
+        table: fromBattery.length > 0 ? fromBattery : DEFAULT_TRAVEL_EVENTS,
+        random: createSeededRandom(derive(worldName, 'viaje', currentLocationName, match.name)),
+    });
+    const delay = events.reduce((sum, event) => sum + event.days, 0);
 
     currentLocationName = match.name;
     currentBoardName = '';
     saveCurrentLocation();
     saveCurrentBoard();
+
+    // El reloj de uno en uno: cada dia cura, pasa hambre y acerca la cuenta semanal. Un
+    // salto de cinco dias de golpe se saltaria cuatro de esos.
+    for (let day = 0; day < plan.days + delay; day++) advanceCampaignDay();
+
+    const told = [describeTravel(plan)];
+    if (delay > 0) told.push(`${delay} de retraso`);
+    toastr.info(told.join(' · '), `Llegáis a ${match.name}`);
+
+    for (const event of events) {
+        toastr.info(event.note, `Día ${event.day}: ${event.name}`, { timeOut: 6000 });
+    }
+
+    // Y el narrador se entera, por el canal que el modelo lee de verdad. Un mensaje de
+    // sistema lo veria quien juega y no lo veria el modelo, que es justo al reves.
+    const note = [
+        `El grupo viaja hasta ${match.name}. ${describeTravel(plan)}.`,
+        ...events.map(event => `Día ${event.day}: ${event.name}. ${event.note}`),
+        'Cuenta el viaje en un párrafo breve. No inventes nada que no esté aquí.',
+    ].join('\n');
+    postForModel(note).catch(error => console.error('[party] travel note failed', error));
+
     return match.name;
 }
 
@@ -5556,7 +5664,7 @@ async function openCompendiumLibrary() {
         // una partida entera para descubrir que la daga sale siempre. Cada bateria se
         // prueba con quien la sortea de verdad, no con una lista de nombres.
         sample: (domain, seed, howMany) => {
-            const random = createSeededRandom(`${seed}|probar|${domain}`);
+            const random = createSeededRandom(derive(seed, 'probar', domain));
 
             if (domain === 'nombres') {
                 return makeNames({ compendium, howMany, random });
@@ -5566,6 +5674,9 @@ async function openCompendiumLibrary() {
             }
             if (domain === 'bestiario') {
                 return breedBand({ compendium, howMany, cr: 1, random }).map(describeMonster);
+            }
+            if (domain === 'misiones') {
+                return writeQuestBoard({ compendium, howMany, random }).map(describeQuest);
             }
             // Las que todavia no tienen generador se ensenan tal cual: sirve para ver que
             // el filtro y los pesos hacen lo suyo antes de que exista quien las use.
@@ -5694,7 +5805,12 @@ function buildShellOptions() {
             else void takeRest(action === 'short' ? 'corto' : 'largo');
         },
         onEnterBoard: (name) => { enterBoard(name); renderLocationMapsPreview(); },
-        onTravel: (name) => { travelTo(name); renderLocationMapsPreview(); },
+        // Un clic nunca gasta nada; lo gasta el boton que lo confirma. Y viajar gasta
+        // dias, comida y la cuenta de la semana, asi que primero se dice lo que cuesta.
+        onTravel: (name) => {
+            void travelWithTime(name, { confirm: askBeforeTravelling })
+                .then(() => renderLocationMapsPreview());
+        },
         // Los paneles de SillyTavern se abren donde estan: en pausa su barra vuelve
         // arriba, por encima de esta capa, y el boton pulsa el mismo icono de siempre.
         onOptions: () => { $('#ai-config-button .drawer-toggle').trigger('click'); },
@@ -8054,8 +8170,11 @@ export function initPartyPanel() {
                 enumProvider: locationEnumProvider,
             }),
         ],
-        callback: (_args, value) => {
-            const arrived = travelTo(String(value));
+        // Sin confirmacion: escribir el comando ya es la decision. El clic del mapa si
+        // pregunta, porque un clic no puede gastar dias sin avisar. Lo que no cambia es el
+        // coste: dos formas de viajar y una gratis seria una forma de saltarse el hambre.
+        callback: async (_args, value) => {
+            const arrived = await travelWithTime(String(value));
             if (!arrived) {
                 // Si el combate lo retuvo, ya lo ha dicho: dos avisos y uno falso seria peor.
                 if (!holdDuringCombat(combatEncounter, 'travel')) {

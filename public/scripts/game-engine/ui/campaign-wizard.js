@@ -21,6 +21,7 @@ import {
     buildEncounterRules,
 } from '../campaign/starter-templates.js';
 import { uniqueWorldName } from '../campaign/campaign-worlds.js';
+import { ensureSeed } from '../campaign/seed.js';
 import { validateNarrator, VERBOSITY, DEFAULT_VERBOSITY } from '../campaign/narrator.js';
 import { MORTALITY, SAVES, DEFAULT_SURVIVAL } from '../rules/mortality.js';
 import { normalizeMap, findPartyStart } from '../world-builder/world-schema.js';
@@ -44,7 +45,7 @@ import { normalizeMap, findPartyStart } from '../world-builder/world-schema.js';
  * @param {string[]} [deps.existingWorldNames]
  * @param {((idea: string, partySize: number) => Promise<{template: any, warnings: string[], errors: string[]}>)|null} [deps.generateWorld]
  *        Injected so this module never imports a provider. Absent means no AI card.
- * @returns {Promise<{templateId: string, worldName: string, genre: string, description: string, party: string[], generatedTemplate: any, importedPack: any, writeWorld: boolean, narrator: any, survival: any}|null>}
+ * @returns {Promise<{templateId: string, worldName: string, genre: string, description: string, seed: string, party: string[], generatedTemplate: any, importedPack: any, writeWorld: boolean, narrator: any, survival: any}|null>}
  */
 /** Sitio que se reserva en los tableros para el grupo, aunque empieces solo. */
 const PARTY_ROOM = 4;
@@ -108,6 +109,16 @@ export async function askWizard({ Popup, POPUP_TYPE, existingWorldNames = [], ge
     step2.append($('<label class="cw-label"></label>').text('Nombre').append(nameInput));
     step2.append($('<label class="cw-label"></label>').text('Género').append(genreInput));
     step2.append($('<label class="cw-label"></label>').text('Descripción').append(descInput));
+
+    // La semilla, opcional. Vacia es una nueva; escrita es el mundo de otro, exacto.
+    // Esta a la vista y no escondida porque compartir un mundo es escribir tres palabras.
+    const seedInput = $('<input type="text" class="text_pole cw-input cw-seed" maxlength="60">')
+        .attr('placeholder', 'vacío = una nueva. O la de alguien: molino-ceniza-siete');
+    step2.append($('<label class="cw-label"></label>').text('Semilla').append(seedInput));
+    step2.append($('<div class="cw-hint"></div>').text(
+        'Dos campañas de la misma idea salen distintas porque la semilla se tira, no se '
+        + 'saca de lo que escribas. La tuya vuelve exacta siempre que la abras.',
+    ));
 
     const nameWarning = $('<div class="cw-warning"></div>').hide();
     step2.append(nameWarning);
@@ -556,6 +567,7 @@ export async function askWizard({ Popup, POPUP_TYPE, existingWorldNames = [], ge
         worldName: String(nameInput.val() || '').trim(),
         genre: String(genreInput.val() || '').trim(),
         description: String(descInput.val() || '').trim(),
+        seed: String(seedInput.val() || '').trim(),
         // Vacio a proposito: el personaje se hace al entrar, con su propia pantalla.
         party: [],
         generatedTemplate,
@@ -593,7 +605,7 @@ export async function askWizard({ Popup, POPUP_TYPE, existingWorldNames = [], ge
  * tested, in one place.
  *
  * @param {Object} input
- * @param {{templateId: string, worldName: string, genre: string, description: string, party: string[], generatedTemplate?: any, importedPack?: any}} input.answers
+ * @param {{templateId: string, worldName: string, genre: string, description: string, seed?: string, party: string[], generatedTemplate?: any, importedPack?: any}} input.answers
  * @param {(name: string) => Promise<any>} input.createWorld  Resolves false when the name is refused.
  * @param {(name: string) => Promise<any>} input.loadWorld
  * @param {(name: string, data: any) => Promise<any>} input.saveWorld
@@ -646,6 +658,10 @@ export async function createCampaign({
         genre: answers.genre,
         description: answers.description,
     }));
+
+    // La semilla del mundo: se tira ahora y se queda para siempre. Sin esto, lo unico de
+    // donde sacar el azar era el nombre, y dos campanas llamadas igual salian iguales.
+    data.metadata = ensureSeed(data.metadata, { seed: answers.seed }).metadata;
 
     /** @type {any[]} */
     const partyEntries = [];

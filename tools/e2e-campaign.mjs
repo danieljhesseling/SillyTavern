@@ -105,11 +105,20 @@ try {
     const problems = new Set();
     page.on('pageerror', e => problems.add(`PAGEERROR ${e.message}`));
     page.on('console', m => {
-        if (m.type() === 'error') problems.add(`ERROR ${m.text().slice(0, 200)}`);
+        // El navegador tambien grita por cada bateria del compendio que no esta, y no
+        // dice cual. Como el oyente de abajo ya las deja pasar a proposito, este mensaje
+        // suelto solo taparia los errores que si importan.
+        const line = m.text();
+        if (m.type() !== 'error') return;
+        if (/Failed to load resource.*404/.test(line)) return;
+        problems.add(`ERROR ${line.slice(0, 200)}`);
     });
-    // Y cual, que 'Failed to load resource' sin la direccion no sirve de nada.
+    // Y cual, que 'Failed to load resource' sin la direccion no sirve de nada. Una
+    // bateria del compendio que no esta **no es un 404 que importe**: es una que todavia
+    // no se ha escrito, y el paso 42 comprueba que el juego lo dice en vez de romperse.
     page.on('response', r => {
-        if (r.status() === 404) problems.add(`404 ${r.url().replace(BASE, '')}`);
+        const path = r.url().replace(BASE, '');
+        if (r.status() === 404 && !path.startsWith('/compendio/')) problems.add(`404 ${path}`);
     });
 
     /** What the game holds for the chat that is currently open. */
@@ -243,6 +252,17 @@ try {
     const positions = (state.party || []).map(m => `${m?.name}(${m?.mapPosition?.gridX},${m?.mapPosition?.gridY})`);
 
     check('a chat exists and is bound to the new world', Boolean(state.world), `world_info=${state.world}`);
+
+    // La semilla del mundo: se tira al crear y se queda. Sin ella, lo unico de donde
+    // sacar el azar era el nombre, y dos campanas llamadas igual salian iguales.
+    const seed2 = await page.evaluate(async () => {
+        const wi = await import('/scripts/world-info.js');
+        const ctx = window.SillyTavern.getContext();
+        const data = await wi.loadWorldInfo(ctx.chatMetadata.world_info);
+        return String(data?.metadata?.seed || '');
+    });
+    check('la campana nace con su semilla, en palabras y no en un numero',
+        /^[a-z0-9]+(-[a-z0-9]+){2}$/.test(seed2), seed2 || '(sin semilla)');
     check('se empieza solo, con el personaje que acabas de hacer y nadie mas',
         (state.party || []).length === 1 && state.party[0]?.name === 'Lyra', positions.join('  '));
     check('y con sus numeros puestos, no con la ficha a medio hacer',
@@ -3631,7 +3651,7 @@ try {
 
     await page.locator('.gs-menu-back').click();
     await page.waitForTimeout(700);
-    check('volver deja el menu como estaba', await page.locator('.gs-menu-btn').count() === 3);
+    check('volver deja el menu como estaba', await page.locator('.gs-menu-btn').count() === 4);
 
     // El interruptor de la pausa, y la prueba de que la puerta de salida es de verdad.
     await page.keyboard.press('Escape');
@@ -3819,6 +3839,8 @@ try {
         JSON.stringify(edge40));
 
     await page.fill('.cw-root input.cw-input >> nth=0', 'La Marca del Hambre');
+    // Y la semilla de otro: escribirla es tener su mismo mundo.
+    await page.fill('.cw-root .cw-seed', 'Molino Ceniza Siete');
     await page.locator('.cw-saves-shelter').check();
     await page.locator('.popup-button-ok').last().click();
     await answerHeroCreator('Bruna');
@@ -3832,6 +3854,17 @@ try {
     });
     check('lo elegido queda en el paquete de reglas de la campana, no en un ajuste global',
         edgeStored40?.saves === 'shelter', JSON.stringify(edgeStored40));
+
+    const seed40 = await page.evaluate(async () => {
+        const wi = await import('/scripts/world-info.js');
+        const data = await wi.loadWorldInfo('La Marca del Hambre');
+        return String(data?.metadata?.seed || '');
+    });
+    check('escribir una semilla da ese mundo y no otro, aunque se teclee a lo bruto',
+        seed40 === 'molino-ceniza-siete', seed40 || '(sin semilla)');
+    // Lo que de verdad prueba la idea: dos campanas distintas, dos semillas distintas.
+    check('y dos campanas no comparten semilla',
+        seed40 !== seed2, `${seed2} / ${seed40}`);
 
     // --- Una herida que se queda -----------------------------------------------------
     const hurt40 = await page.evaluate(async () => {
@@ -4119,13 +4152,15 @@ try {
         const [
             { getCompendium, DOMAINS }, { makeName, makeNames, culturesOf },
             { forgeItem, forgeItems, describeItem },
-            { breedMonster, breedBand, describeMonster }, { createSeededRandom },
+            { breedMonster, breedBand, describeMonster },
+            { writeQuest, writeQuestBoard }, { createSeededRandom },
         ] = await Promise.all([
             import('/scripts/game-engine/compendio/browser.js')
                 .then(async (m) => ({ ...m, ...(await import('/scripts/game-engine/compendio/compendio.js')) })),
             import('/scripts/game-engine/compendio/names.js'),
             import('/scripts/game-engine/compendio/forge.js'),
             import('/scripts/game-engine/compendio/bestiary.js'),
+            import('/scripts/game-engine/compendio/quests.js'),
             import('/scripts/game-engine/combat/seeded-random.js'),
         ]);
 
@@ -4168,6 +4203,15 @@ try {
             })),
             cripta: breedMonster({
                 compendium, biome: 'cripta', templates: 0, random: createSeededRandom('tumba'),
+            }),
+
+            // B9: verbo + objeto + giro + recompensa.
+            tablon: writeQuestBoard({
+                compendium, howMany: 5, random: createSeededRandom('tablon'),
+            }),
+            encargo: writeQuest({
+                compendium, act: 2, boards: ['Sala de entrada'],
+                random: createSeededRandom('encargo'),
             }),
         };
     });
@@ -4225,15 +4269,50 @@ try {
     check('con su debilidad escrita, que es lo que hace jugable una pelea',
         (lib42.cripta?.description || '').length > 20, lib42.cripta?.description || '');
 
+    // --- B9: las misiones -------------------------------------------------------------
+    check('un tablon son cinco encargos que no se repiten',
+        lib42.tablon.length === 5
+        && new Set(lib42.tablon.map(q => `${q.from.verbo}|${q.from.giro}`)).size === 5,
+        lib42.tablon.map(q => q.name).join(' | '));
+    check('cada una se llama por lo que hay que hacer, y con mayuscula',
+        lib42.tablon.every(q => /^[A-ZÁÉÍÓÚÑ]/.test(q.name) && !/[{}]/.test(q.name)),
+        lib42.tablon.map(q => q.name).join(' | '));
+    // El giro es lo que separa un recado de una mision.
+    check('y todas traen su giro escrito en la descripcion',
+        lib42.tablon.every(q => q.from.giro && q.description.length > 80),
+        lib42.tablon[0]?.description || '');
+    check('el acto y el tablero son los que se piden, no otros',
+        lib42.encargo?.act === 2 && lib42.encargo?.boardName === 'Sala de entrada',
+        JSON.stringify({ acto: lib42.encargo?.act, tablero: lib42.encargo?.boardName }));
+
     step('43. La pantalla del compendio, desde el menu principal');
     // Tu biblioteca, no la de una campana: por eso se llega desde el menu de titulo y no
     // desde /campana. Se cierra la partida para volver al titulo, que es donde vive.
     await clearToasts();
-    await page.evaluate(() => {
-        void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/modojuego');
-    });
+    // `/modojuego` es un interruptor y el paso anterior lo deja encendido: pedirlo a
+    // ciegas apagaria justo la pantalla que este paso viene a mirar.
+    if (await page.locator('#game-shell').count() === 0) {
+        await page.evaluate(() => {
+            void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/modojuego');
+        });
+    }
     await page.waitForSelector('#game-shell', { timeout: 15000 });
     await page.waitForTimeout(1200);
+
+    // El titulo se queda en la vista de "Cargar partida" si alguien la abrio antes —el
+    // paso de borrar campanas vive ahi—, y esa vista solo tiene el boton de volver.
+    if (await page.locator('.gs-menu-back').count() > 0) {
+        await page.locator('.gs-menu-back').click();
+        await page.waitForTimeout(700);
+    }
+
+    // Y la biblioteca vive en el menu de titulo, asi que hay que estar en el titulo.
+    if (await page.locator('.gs-menu-btn').count() === 0) {
+        await page.keyboard.press('Escape');
+        await page.waitForSelector('.gs-pause', { timeout: 5000 });
+        await page.locator('.gs-pause-btn', { hasText: 'Salir al menu principal' }).click();
+        await page.waitForTimeout(1200);
+    }
 
     const menu43 = await page.evaluate(() => [...document.querySelectorAll('.gs-menu-btn')]
         .map(b => (b.querySelector('.gs-menu-label')?.textContent || '').trim()));
@@ -4318,6 +4397,84 @@ try {
     await page.locator('.popup-button-ok').last().click();
     await page.waitForTimeout(800);
     await leaveGameMode();
+
+    step('44. Viajar: el mundo es una lista, y la distancia cuesta dias');
+    // Se le escriben rutas al mundo abierto: el mundo es una **lista**, asi que la
+    // distancia no se mide en casillas, se declara en dias.
+    const routed = await page.evaluate(async () => {
+        const wi = await import('/scripts/world-info.js');
+        const ctx = window.SillyTavern.getContext();
+        const worldName = ctx.chatMetadata.world_info;
+        const data = await wi.loadWorldInfo(worldName);
+
+        const places = data.metadata.locationMaps ?? [];
+        if (places.length < 2) {
+            // Un mundo de una sola localidad no sirve para esto: se le anaden dos.
+            const first = places[0];
+            places.push({ ...first, name: 'El Molino', boards: [] });
+            places.push({ ...first, name: 'La Ermita', boards: [] });
+        }
+        places[0].routes = [{ to: 'El Molino', days: 2 }, { to: 'La Ermita', days: 9 }];
+        places[1].routes = [{ to: 'La Ermita', days: 2 }];
+
+        data.metadata.locationMaps = places;
+        await wi.saveWorldInfo(worldName, data, true);
+        return { worldName, aqui: String(ctx.chatMetadata.currentLocation || ''), sitios: places.map(p => p.name) };
+    });
+    check('el mundo es una lista de sitios con rutas, no un tablero',
+        routed.sitios.length >= 3, JSON.stringify(routed.sitios));
+
+    // El rodeo corto gana al camino largo, y se dice por donde se pasa.
+    const plan44 = await page.evaluate(async () => {
+        const wi = await import('/scripts/world-info.js');
+        const { planTravel, describeTravel } = await import('/scripts/game-engine/world/travel.js');
+        const ctx = window.SillyTavern.getContext();
+        const data = await wi.loadWorldInfo(ctx.chatMetadata.world_info);
+        const locations = data.metadata.locationMaps;
+
+        return {
+            corto: planTravel({ from: locations[0].name, to: 'El Molino', locations }),
+            rodeo: planTravel({ from: locations[0].name, to: 'La Ermita', locations }),
+            dicho: describeTravel(planTravel({ from: locations[0].name, to: 'La Ermita', locations })),
+        };
+    });
+    check('lo directo cuesta lo que dice su ruta',
+        plan44.corto.ok && plan44.corto.days === 2, JSON.stringify(plan44.corto));
+    check('y si el rodeo es mas corto, se va por el rodeo y se dice por donde',
+        plan44.rodeo.days === 4 && plan44.rodeo.legs.join(' > ') === 'El Molino > La Ermita',
+        plan44.dicho);
+
+    // Y viajar de verdad: los dias pasan por el mismo reloj que cura, da de comer y cobra.
+    const before44 = await page.evaluate(() =>
+        Number(window.SillyTavern.getContext().chatMetadata?.calendar?.day ?? 0));
+
+    await page.evaluate(async (to) => {
+        const ctx = window.SillyTavern.getContext();
+        await ctx.executeSlashCommandsWithOptions(`/go ${to}`);
+    }, 'El Molino');
+    await page.waitForTimeout(2500);
+
+    const after44 = await page.evaluate(() => {
+        const ctx = window.SillyTavern.getContext();
+        const chat = ctx.chat || [];
+        return {
+            day: Number(ctx.chatMetadata?.calendar?.day ?? 0),
+            donde: String(ctx.chatMetadata?.currentLocation || ''),
+            ultimo: String(chat[chat.length - 1]?.mes || ''),
+            esSistema: Boolean(chat[chat.length - 1]?.is_system),
+        };
+    });
+
+    check('viajar mueve al grupo al sitio al que va',
+        after44.donde === 'El Molino', after44.donde);
+    // Un viaje que no cuesta nada es una pantalla de carga.
+    check('y pasan los dias del camino, no cero',
+        after44.day >= before44 + 2, `día ${before44} -> ${after44.day}`);
+    // El motor decide y el narrador cuenta: la nota no puede ser un mensaje de sistema,
+    // porque entonces la ve quien juega y no la ve el modelo.
+    check('el narrador se entera del viaje, por el canal que el modelo lee',
+        /viaja hasta El Molino/.test(after44.ultimo) && after44.esSistema === false,
+        after44.ultimo.slice(0, 90));
 
     console.log('\n--- console errors ---');
     console.log(problems.size ? [...problems].join('\n') : '(none)');
