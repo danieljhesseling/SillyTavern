@@ -22,6 +22,8 @@ import {
 } from './dnd-system.js';
 import { escapeHtml, download } from './utils.js';
 import { createSeededRandom, seedFrom } from './game-engine/combat/seeded-random.js';
+import { getCompendium } from './game-engine/compendio/browser.js';
+import { forgeItem as forgeFromCompendium } from './game-engine/compendio/forge.js';
 import {
     rollDice, rollDiceDetailed, getRollClassification, getRollClassificationLabel,
     getDistanceInFeet, getAttackRangeFeet, describeCover,
@@ -4278,9 +4280,23 @@ export async function openCampaignBuilder() {
         const { openCampaignEditor } = await import('./game-engine/ui/campaign-editor.js');
         const { applyEditorModel, describeModel, planEntryChanges } = await import('./game-engine/campaign/campaign-editor.js');
 
+        // El compendio, si lo hay. Sin batería de materiales no hay botón de forjar y la
+        // ficha se rellena a mano, igual que siempre.
+        const { compendium } = await getCompendium();
+        const forgeSeed = String(data.metadata?.seed || worldName);
+        let forged = 0;
+
         const edited = await openCampaignEditor({
             metadata: data.metadata ?? {},
             entries: data.entries ?? {},
+            forgeItem: compendium.has('materiales')
+                // Con la semilla del mundo y el número de forja: el mismo mundo propone las
+                // mismas cosas en el mismo orden, y cada martillazo saca una distinta.
+                ? () => forgeFromCompendium({
+                    compendium,
+                    random: createSeededRandom(`${forgeSeed}|forja|${forged++}`),
+                })
+                : null,
             Popup,
             POPUP_TYPE,
         });

@@ -1,0 +1,156 @@
+{
+  "version": 1,
+  "domain": "nombres",
+  "about": "De qué se hacen los nombres. Una fila no es un nombre: son sus trozos y sus plantillas, y de ahí salen cientos. Una plantilla es texto con {huecos}; un hueco es una lista de 'parts'. Repetir una plantilla en la lista es subirle el peso.",
+  "rows": [
+    {
+      "id": "personas-norte",
+      "name": "Gente del norte",
+      "kind": "person",
+      "culture": "norte",
+      "tags": ["frio", "duro", "montana"],
+      "weight": 10,
+      "when": { "region": ["norte", "montana", "*"] },
+      "parts": {
+        "inicio": [
+          "Bran", "Hal", "Sig", "Thor", "Ulf", "Gunn", "Ket", "Rav", "Sten", "Yrd",
+          "Bork", "Vald", "Ing", "Skar", "Hrol", "Ase", "Dag", "Eir", "Fenn", "Grim"
+        ],
+        "medio": ["a", "e", "o", "va", "ri", "un"],
+        "fin": [
+          "dar", "vik", "ne", "gar", "dis", "run", "mund", "borg", "hild", "stein",
+          "var", "ulf"
+        ]
+      },
+      "patterns": ["{inicio}{fin}", "{inicio}{fin}", "{inicio}{medio}{fin}"]
+    },
+    {
+      "id": "personas-valle",
+      "name": "Gente del valle",
+      "kind": "person",
+      "culture": "valle",
+      "tags": ["templado", "labranza"],
+      "weight": 10,
+      "when": { "region": ["valle", "llanura", "*"] },
+      "parts": {
+        "inicio": [
+          "Ali", "Ber", "Cel", "Dami", "Eli", "Fio", "Gio", "Lena", "Mar", "Nero",
+          "Oli", "Pia", "Ren", "Sera", "Tali", "Vero", "Amo", "Bris", "Cari", "Duro"
+        ],
+        "medio": ["an", "el", "in", "or", "ia", "re"],
+        "fin": ["na", "no", "ra", "ro", "lle", "sso", "mia", "nte", "sca", "ndo"]
+      },
+      "patterns": ["{inicio}{fin}", "{inicio}{fin}", "{inicio}{medio}{fin}"]
+    },
+    {
+      "id": "personas-arena",
+      "name": "Gente de la arena",
+      "kind": "person",
+      "culture": "arena",
+      "tags": ["seco", "caravana"],
+      "weight": 10,
+      "when": { "region": ["desierto", "arena", "*"] },
+      "parts": {
+        "inicio": [
+          "Az", "Bad", "Cala", "Dhar", "Fai", "Ha", "Imr", "Jal", "Kha", "Lail",
+          "Mus", "Nas", "Qas", "Rah", "Sal", "Tar", "Umm", "Yas", "Zah", "Sahr"
+        ],
+        "medio": ["a", "i", "u", "ra", "il", "an"],
+        "fin": ["im", "ad", "ir", "un", "ra", "sha", "ban", "zir", "med", "wan"]
+      },
+      "patterns": ["{inicio}{fin}", "{inicio}{fin}", "{inicio}{medio}{fin}"]
+    },
+    {
+      "id": "personas-bosque",
+      "name": "Gente del bosque",
+      "kind": "person",
+      "culture": "bosque",
+      "tags": ["antiguo", "callado"],
+      "weight": 10,
+      "when": { "region": ["bosque", "soto", "*"] },
+      "parts": {
+        "inicio": [
+          "Ae", "Bri", "Cael", "Dae", "Ela", "Fael", "Gwyn", "Ilu", "Lira", "Mir",
+          "Nae", "Ori", "Syl", "Tha", "Vael", "Ysh", "Eryn", "Fin", "Lae", "Ni"
+        ],
+        "medio": ["a", "e", "i", "la", "ri", "the"],
+        "fin": ["riel", "wen", "dor", "lin", "thas", "ael", "ys", "mir", "nor", "eth"]
+      },
+      "patterns": ["{inicio}{fin}", "{inicio}{fin}", "{inicio}{medio}{fin}"]
+    },
+    {
+      "id": "sitios-comunes",
+      "name": "Sitios con nombre de lo que son",
+      "kind": "place",
+      "tags": ["geografia"],
+      "weight": 10,
+      "parts": {
+        "cabeza": [
+          "Vado", "Puente", "Alto", "Peñón", "Molino", "Cruce", "Otero", "Paso",
+          "Soto", "Mirador", "Hondón", "Majadal", "Yermo", "Recodo"
+        ],
+        "cabezaf": [
+          "Fuente", "Ribera", "Ermita", "Torre", "Cañada", "Loma", "Poza", "Herrería"
+        ],
+        "cosa": [
+          "Sauce", "Cuervo", "Lobo", "Hierro", "Espino", "Tordo", "Roble", "Junco",
+          "Zorro", "Álamo", "Yunque", "Ahogado", "Ciervo", "Peregrino"
+        ],
+        "cosaf": [
+          "Ceniza", "Niebla", "Sal", "Hiel", "Piedra", "Sombra", "Cruz", "Espina",
+          "Losa", "Arena", "Hoguera", "Yegua"
+        ]
+      },
+      "patterns": [
+        "{cabeza} del {cosa}",
+        "{cabeza} de la {cosaf}",
+        "{cabezaf} del {cosa}",
+        "{cabezaf} de la {cosaf}"
+      ]
+    },
+    {
+      "id": "tabernas",
+      "name": "Tabernas y posadas",
+      "kind": "tavern",
+      "tags": ["pueblo", "camino"],
+      "weight": 10,
+      "parts": {
+        "bicho": [
+          "Cuervo", "Lobo", "Jabalí", "Toro", "Gato", "Perro", "Ciervo", "Sapo",
+          "Buey", "Erizo", "Ganso", "Caballo"
+        ],
+        "mote": [
+          "Ahogado", "Torcido", "Rojo", "Manco", "Ciego", "Dormido", "Borracho",
+          "Viejo", "Hambriento", "Mudo", "Paciente", "Tuerto"
+        ],
+        "bichaf": [
+          "Cabra", "Urraca", "Zorra", "Liebre", "Yegua", "Garza", "Mula", "Rata",
+          "Cierva", "Oca", "Loba", "Trucha"
+        ],
+        "motef": [
+          "Ahogada", "Torcida", "Roja", "Manca", "Ciega", "Dormida", "Borracha",
+          "Vieja", "Hambrienta", "Muda", "Paciente", "Tuerta"
+        ]
+      },
+      "patterns": ["El {bicho} {mote}", "La {bichaf} {motef}"]
+    },
+    {
+      "id": "apodos",
+      "name": "Apodos que se ganan",
+      "kind": "nickname",
+      "tags": ["mote"],
+      "weight": 10,
+      "parts": {
+        "mote": [
+          "Manco", "Tuerto", "Callado", "Rápido", "Sucio", "Cuervo", "Zurdo",
+          "Torcido", "Paciente", "Lento", "Frío", "Justo", "Sordo", "Descalzo"
+        ],
+        "motef": [
+          "Manca", "Tuerta", "Callada", "Rápida", "Sucia", "Zurda", "Torcida",
+          "Paciente", "Lenta", "Fría", "Justa", "Sorda", "Descalza"
+        ]
+      },
+      "patterns": ["el {mote}", "la {motef}"]
+    }
+  ]
+}

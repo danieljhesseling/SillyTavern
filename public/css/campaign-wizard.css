@@ -537,6 +537,19 @@ textarea.cw-ai-map {
     gap: 8px;
 }
 
+/* El dado, junto al nombre. Cuadrado y pequeno: es un gesto, no una decision. */
+.hc-dice {
+    font-size: 0.8rem;
+    padding: 2px 8px;
+    margin: 0;
+    line-height: 1.6;
+}
+
+.hc-dice:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
 .hc-wand {
     font-size: 0.72rem;
     padding: 2px 8px;

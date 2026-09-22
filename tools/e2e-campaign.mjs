@@ -107,6 +107,10 @@ try {
     page.on('console', m => {
         if (m.type() === 'error') problems.add(`ERROR ${m.text().slice(0, 200)}`);
     });
+    // Y cual, que 'Failed to load resource' sin la direccion no sirve de nada.
+    page.on('response', r => {
+        if (r.status() === 404) problems.add(`404 ${r.url().replace(BASE, '')}`);
+    });
 
     /** What the game holds for the chat that is currently open. */
     const readState = () => page.evaluate(() => {
@@ -155,7 +159,7 @@ try {
      * quien llama pueda comprobarlo sin repetir los selectores.
      *
      * @param {string} name
-     * @param {{race?: string, className?: string}} [extra]
+     * @param {{race?: string, className?: string, dice?: boolean}} [extra]
      */
     const answerHeroCreator = async (name, extra = {}) => {
         await page.waitForSelector('.hc-root', { timeout: 60000 });
@@ -165,10 +169,22 @@ try {
             wandOff: document.querySelector('.hc-wand')?.disabled ?? null,
             face: document.querySelector('.hc-face-file')?.getAttribute('type') || '',
             wandTitle: document.querySelector('.hc-wand')?.getAttribute('title') || '',
+            dice: document.querySelectorAll('.hc-dice').length,
             typed: document.querySelectorAll('.hc-root input[type="text"].hc-face').length,
             labels: [...document.querySelectorAll('.hc-root .hc-label')]
                 .map(l => (l.textContent || '').trim()),
         }));
+
+        // El dado saca un nombre del compendio. Se pulsa dos veces a proposito: lo que
+        // importa no es que salga uno, es que salga **otro**.
+        if (extra.dice && seen.dice > 0) {
+            await page.locator('.hc-dice').click();
+            await page.waitForTimeout(300);
+            seen.rolled = [await page.inputValue('.hc-root .hc-name')];
+            await page.locator('.hc-dice').click();
+            await page.waitForTimeout(300);
+            seen.rolled.push(await page.inputValue('.hc-root .hc-name'));
+        }
 
         await page.fill('.hc-root .hc-name', name);
         if (extra.race) await page.fill('.hc-root .hc-race', extra.race);
@@ -193,7 +209,15 @@ try {
 
     await page.click('.popup-button-ok');
 
-    const heroBox = await answerHeroCreator('Lyra', { race: 'Media elfa', className: 'Picara' });
+    const heroBox = await answerHeroCreator('Lyra', {
+        race: 'Media elfa', className: 'Picara', dice: true,
+    });
+    check('el dado saca un nombre del compendio, sin escribir nada',
+        heroBox.dice === 1 && (heroBox.rolled?.[0] || '').length > 1
+        && !/[{}]/.test(heroBox.rolled?.[0] || ''),
+        JSON.stringify(heroBox.rolled));
+    check('y otro distinto cada vez que se pulsa',
+        heroBox.rolled?.[0] !== heroBox.rolled?.[1], JSON.stringify(heroBox.rolled));
     check('empezar una campana te pregunta quien eres',
         heroBox.labels.some(l => /Nombre/.test(l)) && heroBox.labels.some(l => /Qui.n eres/.test(l)),
         JSON.stringify(heroBox.labels));
@@ -3779,7 +3803,14 @@ try {
         const injuries = await import('/scripts/game-engine/rules/injuries.js');
         const mortality = await import('/scripts/game-engine/rules/mortality.js');
         const ctx = window.SillyTavern.getContext();
-        const member = { name: 'Bruna', motive: 'bond', speed: 30, hp: 0 };
+        // Con sus caracteristicas puestas, como las tiene cualquiera del grupo: sin ellas
+        // la base es cero y el suelo de la tabla (ninguna baja de 1) **subia** lo que
+        // la herida dice que baja.
+        const member = {
+            name: 'Bruna', motive: 'bond', hp: 0,
+            speed: 30, strength: 12, dexterity: 14, constitution: 13,
+            intelligence: 10, wisdom: 12, charisma: 11, maxHp: 24,
+        };
 
         const fall = mortality.resolveFall(member, { roll: () => 0.55 });
         const patch = injuries.applyInjury(member, fall.injury);
@@ -3991,7 +4022,7 @@ try {
             },
             uploadFace: async (file) => {
                 window.__wand.uploaded = file.name;
-                return 'img/subida.png';
+                return 'img/user-default.png';
             },
             Popup,
             POPUP_TYPE,
@@ -4035,15 +4066,97 @@ try {
     check('elegir una imagen del disco la sube ahi mismo',
         face41.uploaded === 'lyra.png', JSON.stringify(face41));
     check('y lo que se guarda es la ruta que devuelve el servidor, no el archivo',
-        face41.stored === 'img/subida.png' && face41.shown === 'img/subida.png',
+        face41.stored === 'img/user-default.png' && face41.shown === 'img/user-default.png',
         JSON.stringify(face41));
 
     await page.locator('.popup-button-ok').last().click();
     await page.waitForTimeout(800);
     const kept41 = await page.evaluate(() => window.__wand.answers);
     check('y lo que sale del cuadro es la ficha entera, con su cara puesta',
-        kept41?.name === 'Lyra' && kept41?.image === 'img/subida.png'
+        kept41?.name === 'Lyra' && kept41?.image === 'img/user-default.png'
         && /aprendió a no pedirlo/.test(kept41?.about || ''), JSON.stringify(kept41));
+
+    step('42. El compendio: la biblioteca de la que tiran los generadores');
+    // La bateria de nombres, leida del disco por el navegador. Lo que se comprueba es que
+    // el archivo que viene escrito **carga, valida y produce**, que es lo que ninguna
+    // prueba de Node puede decir: alli el archivo se lee a mano y aqui lo sirve el server.
+    const lib42 = await page.evaluate(async () => {
+        const [
+            { getCompendium, DOMAINS }, { makeName, makeNames, culturesOf },
+            { forgeItem, forgeItems, describeItem }, { createSeededRandom },
+        ] = await Promise.all([
+            import('/scripts/game-engine/compendio/browser.js')
+                .then(async (m) => ({ ...m, ...(await import('/scripts/game-engine/compendio/compendio.js')) })),
+            import('/scripts/game-engine/compendio/names.js'),
+            import('/scripts/game-engine/compendio/forge.js'),
+            import('/scripts/game-engine/combat/seeded-random.js'),
+        ]);
+
+        const { compendium, errors, loaded } = await getCompendium();
+        const ten = makeNames({
+            compendium, howMany: 10, random: createSeededRandom('molino'),
+        });
+
+        return {
+            errors,
+            loaded,
+            filas: compendium.count('nombres'),
+            faltan: compendium.missing(),
+            dominios: DOMAINS.length,
+            culturas: culturesOf(compendium).sort(),
+            diez: ten,
+            sitio: makeName({ compendium, kind: 'place', random: createSeededRandom('vado') }),
+            taberna: makeName({ compendium, kind: 'tavern', random: createSeededRandom('taberna') }),
+            // Dos veces la misma semilla: el mismo mundo propone lo mismo.
+            otraVez: makeNames({
+                compendium, howMany: 10, random: createSeededRandom('molino'),
+            }),
+
+            // B2: forma por material. Ocho cosas y una descrita.
+            ocho: forgeItems({ compendium, howMany: 8, random: createSeededRandom('fragua') })
+                .map(describeItem),
+            arma: forgeItem({ compendium, itemType: 'weapon', random: createSeededRandom('hoja') }),
+            armadura: forgeItem({ compendium, itemType: 'armor', random: createSeededRandom('peto') }),
+        };
+    });
+
+    check('la bateria carga desde el disco y no tiene ni un error',
+        lib42.errors.length === 0 && lib42.loaded.includes('nombres'),
+        JSON.stringify({ errores: lib42.errors, cargadas: lib42.loaded }));
+    check('y dice cuales faltan, que es media lista de tareas',
+        lib42.faltan.length === lib42.dominios - lib42.loaded.length
+        && !lib42.faltan.some(d => lib42.loaded.includes(d)),
+        `${lib42.faltan.length} sin escribir de ${lib42.dominios}`);
+    check('trae las cuatro culturas de gente',
+        JSON.stringify(lib42.culturas) === JSON.stringify(['arena', 'bosque', 'norte', 'valle']),
+        JSON.stringify(lib42.culturas));
+    check('diez personas son diez nombres, y ninguno repetido',
+        lib42.diez.length === 10 && new Set(lib42.diez).size === 10, lib42.diez.join(', '));
+    check('ninguno lleva un hueco sin rellenar',
+        lib42.diez.every(n => !/[{}]/.test(n)), lib42.diez.join(', '));
+    check('un sitio se llama como lo que es',
+        / de(l| la) /.test(lib42.sitio), lib42.sitio);
+    check('y una taberna, como una taberna',
+        /^(El|La) /.test(lib42.taberna), lib42.taberna);
+    // La semilla es lo que hace que dos partidas del mismo texto se puedan comparar.
+    check('la misma semilla propone exactamente lo mismo',
+        JSON.stringify(lib42.diez) === JSON.stringify(lib42.otraVez),
+        `${lib42.diez[0]} / ${lib42.otraVez[0]}`);
+
+    // --- B2: de que estan hechas las cosas -------------------------------------------
+    check('forjar da ocho cosas distintas, con su peso y su daño',
+        lib42.ocho.length === 8 && new Set(lib42.ocho).size === 8,
+        lib42.ocho.join(' | '));
+    check('un arma sale con dados de daño y su ranura',
+        lib42.arma?.type === 'weapon' && /^\d+d\d+$/.test(lib42.arma?.damageDice || '')
+        && lib42.arma?.slot === 'weapon',
+        JSON.stringify(lib42.arma));
+    check('una armadura no trae dados, porque una armadura no pega',
+        lib42.armadura?.type === 'armor' && !lib42.armadura?.damageDice,
+        JSON.stringify(lib42.armadura));
+    check('y el nombre dice de que esta hecha, no es un numero',
+        / de /.test(lib42.arma?.name || '') && !/[{}]/.test(lib42.arma?.name || ''),
+        lib42.arma?.name || '');
 
     console.log('\n--- console errors ---');
     console.log(problems.size ? [...problems].join('\n') : '(none)');

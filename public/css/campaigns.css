@@ -1527,3 +1527,27 @@
         grid-row: auto;
     }
 }
+
+/* Forjar: el boton pertenece al campo del nombre, no al formulario. */
+.ce-forge-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+}
+
+.ce-forge-row > .ce-field {
+    flex: 1;
+    min-width: 0;
+}
+
+.ce-forge {
+    font-size: 0.74rem;
+    padding: 2px 10px;
+    margin: 0;
+    white-space: nowrap;
+}
+
+.ce-forge:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}

@@ -165,13 +165,16 @@ function foldedCard(title, subtitle, onRemove, cls = '') {
  * Abre el editor. Devuelve el modelo editado, o null si se cancela.
  *
  * @param {Object} input
+ * @param {(() => any|null)|null} [input.forgeItem] Un objeto del compendio, para el
+ *        botón de forjar. Sin batería de materiales no hay botón y la ficha se rellena a
+ *        mano, como siempre: el compendio es aditivo.
  * @param {any} input.metadata El bloque `metadata` del mundo abierto.
  * @param {any} input.entries Las fichas del Lorebook, por uid.
  * @param {any} input.Popup
  * @param {any} input.POPUP_TYPE
  * @returns {Promise<any|null>}
  */
-export async function openCampaignEditor({ metadata, entries, Popup, POPUP_TYPE }) {
+export async function openCampaignEditor({ metadata, entries, Popup, POPUP_TYPE, forgeItem = null }) {
     const model = buildEditorModel(metadata, entries);
 
     // El bestiario sale del propio modelo y no de fuera: asi un bicho escrito hace un
@@ -688,7 +691,36 @@ export async function openCampaignEditor({ metadata, entries, Popup, POPUP_TYPE 
                 'ce-item',
             );
 
-            inner.append(field('Nombre', item.name, v => { item.name = v; }, { cls: 'ce-item-name' }));
+            const nameRow = $('<div class="ce-forge-row"></div>');
+            nameRow.append(field('Nombre', item.name, v => { item.name = v; }, { cls: 'ce-item-name' }));
+
+            // Forjar: forma por material. Rellena la ficha **entera** y la deja editable,
+            // que es lo que separa una ayuda de una caja negra.
+            if (forgeItem) {
+                const forge = $('<button class="menu_button ce-forge" type="button"></button>')
+                    .attr('title', 'Sacar una forma y un material del compendio')
+                    .append('<i class="fa-solid fa-hammer"></i>')
+                    .append($('<span></span>').text(' Forjar'));
+                forge.on('click', () => {
+                    const made = forgeItem();
+                    if (!made) {
+                        forge.prop('disabled', true).attr('title', 'La batería de materiales está vacía');
+                        return;
+                    }
+                    Object.assign(item, {
+                        name: made.name, type: made.type, category: made.category,
+                        rarity: made.rarity, weight: made.weight, damageDice: made.damageDice,
+                        damageType: made.damageType, slot: made.slot,
+                        // La descripción no se pisa si ya escribiste algo: lo tuyo manda.
+                        description: item.description || made.description,
+                    });
+                    refreshSummary();
+                    draw();
+                });
+                nameRow.append(forge);
+            }
+
+            inner.append(nameRow);
 
             const what = $('<div class="ce-grid"></div>');
             what.append(pick('Qué es', item.type, [

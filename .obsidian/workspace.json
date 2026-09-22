@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "wiki/HOME.md",
+                "file": "wiki/ROADMAP_COMPENDIO.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "HOME"
+              "title": "ROADMAP_COMPENDIO"
             }
           }
         ]
@@ -99,7 +99,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "wiki/HOME.md",
+                "file": "wiki/ROADMAP_COMPENDIO.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -118,7 +118,7 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "wiki/HOME.md",
+                "file": "wiki/ROADMAP_COMPENDIO.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
@@ -161,7 +161,7 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "wiki/HOME.md",
+                "file": "wiki/ROADMAP_COMPENDIO.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
@@ -190,17 +190,24 @@
   },
   "active": "e4a815deb0fecab8",
   "lastOpenFiles": [
-    "tests/game-engine-needs.test.js",
-    "tests/game-engine-needs.test.js.tmp.56780.e2368e73150d",
-    "public/scripts/game-engine/rules/needs.js",
-    "data/_cache/characters/9a8f9a80798623f4fc015966b09cd46ebb5a824b8d661334e83f26dec25d61b6",
-    "data/default-user/backups/chat_narrador_20260922-134813.jsonl",
-    "data/default-user/backups/chat_narrador_20260922-134249.jsonl",
-    "data/default-user/backups/chat_narrador_20260922-134235.jsonl",
-    "data/default-user/backups/chat_narrador_20260922-134225.jsonl",
-    "data/default-user/backups/chat_narrador_20260922-134025.jsonl",
-    "data/default-user/backups/chat_narrador_20260922-134015.jsonl",
-    "data/default-user/backups/chat_narrador_20260922-133829.jsonl",
+    "tests/game-engine-forge.test.js",
+    "public/scripts/game-engine/compendio/forge.js",
+    "public/compendio/materiales.json",
+    "public/scripts/game-engine/compendio/browser.js",
+    "tests/game-engine-names.test.js",
+    "tests/game-engine-compendio.test.js",
+    "public/compendio/nombres.json",
+    "public/compendio",
+    "public/scripts/game-engine/compendio/names.js",
+    "public/scripts/game-engine/compendio/compendio.js",
+    "public/scripts/game-engine/compendio",
+    "wiki/HOME.md",
+    "wiki/ROADMAP_COMPENDIO.md",
+    "wiki/ALGORITMOS_GENERACION.md",
+    "data/default-user/thumbnails/avatar/Jaggy1.png",
+    "data/default-user/characters/Jaggy1.png",
+    "data/default-user/thumbnails/avatar/Jaggy.png",
+    "data/default-user/characters/Jaggy.png",
     "wiki/PLAN_CREAR_CAMPANA.md",
     "wiki/PROPUESTA_FRONTEND_MODO_JUEGO.md",
     "wiki/ROADMAP_MAESTRO.md",
@@ -228,13 +235,6 @@
     "node_modules/jimp/browser/README.md",
     "node_modules/body-parser/README.md",
     "node_modules/jimp/node_modules/@jimp/types/node_modules/@jimp/png/test/images/options.png",
-    "node_modules/jimp/node_modules/@jimp/types/node_modules/@jimp/png/test/images/dice.png",
-    "node_modules/jimp/node_modules/@jimp/types/README.md",
-    "node_modules/form-data/README.md",
-    "node_modules/jimp/node_modules/@jimp/types/CHANGELOG.md",
-    "node_modules/jimp/node_modules/@jimp/types/node_modules/@jimp/bmp/test/images/windows95.png",
-    "node_modules/jimp/node_modules/@jimp/types/node_modules/@jimp/bmp/test/images/windows95.bmp",
-    "node_modules/jimp/node_modules/@jimp/types/node_modules/@jimp/gif/test/images/flower.gif",
-    "node_modules/jimp/node_modules/@jimp/types/node_modules/@jimp/gif/test/images/animated.gif"
+    "node_modules/jimp/node_modules/@jimp/types/node_modules/@jimp/png/test/images/dice.png"
   ]
 }

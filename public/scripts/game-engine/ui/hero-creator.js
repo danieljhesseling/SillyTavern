@@ -59,13 +59,15 @@ function suggestField(label, options, placeholder, cls) {
  *        inyectada. Sin ella no hay varita, y se dice en vez de ofrecer un boton muerto.
  * @param {((file: File) => Promise<string>)|null} [input.uploadFace] Sube una imagen y
  *        devuelve la ruta con la que el juego la puede pintar.
+ * @param {(() => string)|null} [input.rollName] Un nombre del compendio. Sin batería de
+ *        nombres no hay dado, y el campo se queda como estaba: el compendio es aditivo.
  * @param {any} input.Popup
  * @param {any} input.POPUP_TYPE
  * @returns {Promise<any|null>}
  */
 export async function openHeroCreator({
     worldName = '', races = [], classes = [], genre = '',
-    generate = null, uploadFace = null, Popup, POPUP_TYPE,
+    generate = null, uploadFace = null, rollName = null, Popup, POPUP_TYPE,
 }) {
     const root = $('<div class="hc-root"></div>');
 
@@ -77,11 +79,30 @@ export async function openHeroCreator({
     ));
 
     const nameField = $('<label class="hc-field"></label>');
-    nameField.append($('<span class="hc-label"></span>').text('Nombre'));
+    const nameHead = $('<span class="hc-label hc-label-row"></span>');
+    nameHead.append($('<span></span>').text('Nombre'));
+
+    // El dado saca uno del compendio. No es un capricho: quedarse en blanco delante del
+    // primer campo es donde mucha gente cierra la ventana.
+    const dice = rollName
+        ? $('<button type="button" class="menu_button hc-dice" title="Sacar uno del compendio"></button>')
+            .append('<i class="fa-solid fa-dice-d20"></i>')
+        : null;
+    if (dice) nameHead.append(dice);
+    nameField.append(nameHead);
+
     const nameInput = $('<input type="text" class="text_pole hc-input hc-name" maxlength="60" />')
         .attr('placeholder', 'Lyra, Brand, la que no dice su nombre…');
     nameField.append(nameInput);
     root.append(nameField);
+
+    dice?.on('click', () => {
+        const rolled = rollName();
+        if (rolled) nameInput.val(rolled);
+        // Sin nada que sacar se dice una vez y el botón se apaga, en vez de no hacer nada
+        // cada vez que lo pulsas.
+        else dice.prop('disabled', true).attr('title', 'La batería de nombres está vacía');
+    });
 
     const row = $('<div class="hc-row"></div>');
     row.append(suggestField('Género', GENDERS, 'Como se presenta', 'hc-gender'));

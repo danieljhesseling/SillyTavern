@@ -18,6 +18,9 @@ import {
 } from './game-engine/campaign/narrator.js';
 import { generateWorld } from './game-engine/world-builder/world-schema.js';
 import { escapeHtml, saveBase64AsFile } from './utils.js';
+import { getCompendium } from './game-engine/compendio/browser.js';
+import { makeName } from './game-engine/compendio/names.js';
+import { createSeededRandom } from './game-engine/combat/seeded-random.js';
 
 /**
  * Fetches recent chats with metadata from the cross-character API.
@@ -1065,6 +1068,23 @@ async function createStartingHero(worldName) {
     const catalogue = await loadDndCatalog(worldName).catch(() => null);
     const { openHeroCreator } = await import('./game-engine/ui/hero-creator.js');
 
+    // El compendio, si lo hay. Sin batería de nombres no hay dado y el campo se queda
+    // como estaba: aditivo, como todo lo demás del compendio.
+    const { compendium } = await getCompendium();
+    const seed = String(data.metadata?.seed || worldName);
+    let rolls = 0;
+    const rollName = compendium.has('nombres')
+        // Con la semilla de la campaña y el número de tirada: el mismo mundo propone los
+        // mismos nombres en el mismo orden, y cada pulsación da uno distinto.
+        ? () => makeName({
+            compendium,
+            kind: 'person',
+            culture: String(data.metadata?.culture || ''),
+            region: String(data.metadata?.region || ''),
+            random: createSeededRandom(`${seed}|nombre|${rolls++}`),
+        })
+        : null;
+
     const answers = await openHeroCreator({
         worldName,
         races: catalogue?.races ?? [],
@@ -1073,6 +1093,7 @@ async function createStartingHero(worldName) {
         // Sin proveedor conectado no hay varita, y el boton lo dice en vez de fallar.
         generate: online_status !== 'no_connection' ? (params) => generateRaw(params) : null,
         uploadFace: (file) => uploadHeroFace(file, worldName),
+        rollName,
         Popup,
         POPUP_TYPE,
     });
