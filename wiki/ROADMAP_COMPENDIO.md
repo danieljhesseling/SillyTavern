@@ -9,6 +9,25 @@ algo distinto jugando**. Ése es el criterio de que una batería está hecha.
 
 ---
 
+## Dónde vamos
+
+| | Qué | Filas | Lo que produce |
+| :--- | :--- | ---: | :--- |
+| ✅ | **El cargador** (`compendio/compendio.js`) | — | Valida diciendo archivo y fila, tolera lo que falta, sortea con tu semilla |
+| ✅ | **B1 nombres** | 7 | ~6.700 nombres de persona, 572 sitios, 288 tabernas |
+| ✅ | **La pantalla** (menú principal → *Compendio*) | — | Qué hay, qué falta y qué sale si lo pides |
+| ✅ | **B2 materiales** | 40 | 240 objetos: forma × material |
+| ✅ | **B6 bestiario** | 35 | 2.420 bichos: arquetipo × plantillas |
+| ⬜ | B3 armas · B4 armaduras y trastos · B5 habilidades | | |
+| ⬜ | B7 personas · B8 sitios · B9 misiones | | |
+| ⬜ | B10 facciones · B11 mundo · B12 estados | | |
+
+**82 filas escritas, unas 9.400 cosas distintas.** Ésa es la cuenta que importa: lo que se escribe una vez y lo que sale de ello.
+
+> **Lo que la pantalla todavía no hace:** editar y quitar un libro entero. Las dos necesitan una ruta para escribir en el disco, y eso es código de servidor. Enseñar un campo editable que no guarda sería prometer algo que no pasa.
+
+---
+
 ## Antes de la primera batería: lo que comparten todas
 
 Esto sí hay que hacerlo una vez, y son dos archivos. Sin ello cada batería inventaría su

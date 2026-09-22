@@ -1685,13 +1685,17 @@ try {
     await page.waitForSelector('#game-shell', { timeout: 15000 });
     await page.waitForTimeout(800);
 
-    // El compendio es el mismo editor de reglas de `/rules`, abierto desde la pausa.
+    // La pausa abre las reglas, que es el mismo editor de `/rules`. Se llamaba
+    // "Compendio y reglas" y ahora no: el compendio es la biblioteca de contenido,
+    // y dos cosas con el mismo nombre es como se pierde una de las dos.
     await page.keyboard.press('Escape');
     await page.waitForSelector('.gs-pause', { timeout: 5000 });
-    await page.locator('.gs-pause-btn', { hasText: 'Compendio' }).click();
+    await page.locator('.gs-pause-btn', { hasText: 'Reglas' }).click();
     await page.waitForSelector('.rx-root', { timeout: 20000 });
-    check('el compendio de la pausa abre el editor de reglas de siempre',
+    check('las reglas de la pausa abren el editor de siempre',
         await page.locator('.rx-root').count() === 1);
+    check('y ningun boton de la pausa se llama ya Compendio, que es otra cosa',
+        await page.locator('.gs-pause-btn', { hasText: 'Compendio' }).count() === 0);
     await page.locator('.popup-button-cancel').last().click();
     await page.waitForTimeout(700);
 
@@ -1893,6 +1897,13 @@ try {
         (pair23.party || []).map(m => m?.name).join(', '));
 
     // Y se juega: la prueba de que la importacion sirve es que /fight encuentre enemigos.
+    // Con semilla: lo que duerme tras una puerta no sale por nombrarlo, asi que la
+    // casilla se sortea, y un sorteo sin semilla hace que esta comprobacion salga cara o
+    // cruz. Ademas es lo que la semilla promete: la misma partida, la misma casilla.
+    await page.evaluate(() => window.SillyTavern.getContext()
+        .executeSlashCommandsWithOptions('/semilla molino'));
+    await page.waitForTimeout(600);
+
     await page.evaluate(() => {
         void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/fight Cuervo grande 1');
     });
@@ -1919,6 +1930,28 @@ try {
         .executeSlashCommandsWithOptions('/combat-stop'));
     await page.waitForTimeout(900);
     await clearDiceOverlay();
+
+    // Y la misma semilla lo pone en la misma casilla: sin esto, "dos partidas iguales"
+    // era mentira en cuanto no habia nada dibujado despierto.
+    const again = await page.evaluate(async () => {
+        const ctx = window.SillyTavern.getContext();
+        await ctx.executeSlashCommandsWithOptions('/semilla molino');
+        await ctx.executeSlashCommandsWithOptions('/fight Cuervo grande 1');
+        await new Promise(r => setTimeout(r, 1200));
+        const enemy = (ctx.chatMetadata.combatEncounter?.enemies || [])[0];
+        await ctx.executeSlashCommandsWithOptions('/combat-stop');
+        return enemy ? { x: enemy.gridX, y: enemy.gridY } : null;
+    });
+    await page.waitForTimeout(900);
+    await clearDiceOverlay();
+    check('y con la misma semilla cae en la misma casilla',
+        again?.x === fight.enemies[0]?.x && again?.y === fight.enemies[0]?.y,
+        JSON.stringify({ primera: fight.enemies[0], segunda: again }));
+
+    // De vuelta al azar, que es como juega el resto del recorrido.
+    await page.evaluate(() => window.SillyTavern.getContext()
+        .executeSlashCommandsWithOptions('/semilla'));
+    await page.waitForTimeout(600);
 
     step('24. Salas y puertas: lo que duerme detras no aparece hasta que abres');
     // Seguimos en el libro importado del paso anterior. El sotano tiene su guardian
@@ -3570,9 +3603,11 @@ try {
     }));
 
     check('al arrancar, el juego se abre solo y ensena su menu',
-        onTitle.scene === 'title' && onTitle.buttons.length === 3, JSON.stringify(onTitle));
-    check('con las tres cosas que se pueden hacer al abrirlo',
-        onTitle.buttons.join(' | ') === 'Partida nueva | Cargar partida | Opciones',
+        onTitle.scene === 'title' && onTitle.buttons.length === 4, JSON.stringify(onTitle));
+    // Eran tres; el compendio hace cuatro, y va antes que los ajustes porque es
+    // contenido y no una preferencia.
+    check('con las cuatro cosas que se pueden hacer al abrirlo',
+        onTitle.buttons.join(' | ') === 'Partida nueva | Cargar partida | Compendio | Opciones',
         onTitle.buttons.join(' | '));
     check('y dice cuantas partidas hay guardadas, sin entrar',
         onTitle.hints.some(h => /campana/.test(h)), JSON.stringify(onTitle.hints));
@@ -4083,12 +4118,14 @@ try {
     const lib42 = await page.evaluate(async () => {
         const [
             { getCompendium, DOMAINS }, { makeName, makeNames, culturesOf },
-            { forgeItem, forgeItems, describeItem }, { createSeededRandom },
+            { forgeItem, forgeItems, describeItem },
+            { breedMonster, breedBand, describeMonster }, { createSeededRandom },
         ] = await Promise.all([
             import('/scripts/game-engine/compendio/browser.js')
                 .then(async (m) => ({ ...m, ...(await import('/scripts/game-engine/compendio/compendio.js')) })),
             import('/scripts/game-engine/compendio/names.js'),
             import('/scripts/game-engine/compendio/forge.js'),
+            import('/scripts/game-engine/compendio/bestiary.js'),
             import('/scripts/game-engine/combat/seeded-random.js'),
         ]);
 
@@ -4117,6 +4154,21 @@ try {
                 .map(describeItem),
             arma: forgeItem({ compendium, itemType: 'weapon', random: createSeededRandom('hoja') }),
             armadura: forgeItem({ compendium, itemType: 'armor', random: createSeededRandom('peto') }),
+
+            // B6: arquetipo por plantilla, con los numeros de su desafio.
+            banda: breedBand({ compendium, howMany: 4, cr: 1, random: createSeededRandom('manada') })
+                .map(describeMonster),
+            flojo: breedMonster({
+                compendium, cr: 0.25, templates: 0, random: createSeededRandom('cria'),
+            }),
+            // Olvidando lo ultimo: si no, la memoria de no-repetir aparta al que acaba de
+            // salir y los dos bichos no serian el mismo, que es lo que se compara.
+            duro: (compendium.forget(), breedMonster({
+                compendium, cr: 5, templates: 0, random: createSeededRandom('cria'),
+            })),
+            cripta: breedMonster({
+                compendium, biome: 'cripta', templates: 0, random: createSeededRandom('tumba'),
+            }),
         };
     });
 
@@ -4157,6 +4209,115 @@ try {
     check('y el nombre dice de que esta hecha, no es un numero',
         / de /.test(lib42.arma?.name || '') && !/[{}]/.test(lib42.arma?.name || ''),
         lib42.arma?.name || '');
+
+    // --- B6: los bichos ---------------------------------------------------------------
+    check('una banda son cuatro bichos distintos, no cuatro copias',
+        lib42.banda.length === 4 && new Set(lib42.banda).size === 4, lib42.banda.join(' | '));
+    // Escribir "35 puntos de vida" en una ficha la ata a un nivel concreto, y por eso los
+    // bestiarios envejecen mal. Aqui los numeros salen del desafio.
+    check('el mismo arquetipo aguanta mas cuando el desafio es mayor',
+        lib42.duro.from.arquetipo === lib42.flojo.from.arquetipo
+        && lib42.duro.hp > lib42.flojo.hp,
+        `${lib42.flojo.name} CR0.25 ${lib42.flojo.hp}PG -> CR5 ${lib42.duro.hp}PG`);
+    check('y trae su perfil tactico, de los cuatro que el motor mueve',
+        ['aggressive', 'skirmisher', 'guardian', 'coward'].includes(lib42.cripta?.profile),
+        JSON.stringify({ bicho: lib42.cripta?.name, perfil: lib42.cripta?.profile }));
+    check('con su debilidad escrita, que es lo que hace jugable una pelea',
+        (lib42.cripta?.description || '').length > 20, lib42.cripta?.description || '');
+
+    step('43. La pantalla del compendio, desde el menu principal');
+    // Tu biblioteca, no la de una campana: por eso se llega desde el menu de titulo y no
+    // desde /campana. Se cierra la partida para volver al titulo, que es donde vive.
+    await clearToasts();
+    await page.evaluate(() => {
+        void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/modojuego');
+    });
+    await page.waitForSelector('#game-shell', { timeout: 15000 });
+    await page.waitForTimeout(1200);
+
+    const menu43 = await page.evaluate(() => [...document.querySelectorAll('.gs-menu-btn')]
+        .map(b => (b.querySelector('.gs-menu-label')?.textContent || '').trim()));
+    check('el menu principal ofrece el compendio, antes que los ajustes',
+        menu43.includes('Compendio')
+        && menu43.indexOf('Compendio') < menu43.indexOf('Opciones'),
+        JSON.stringify(menu43));
+
+    await page.locator('.gs-menu-btn', { hasText: 'Compendio' }).click();
+    await page.waitForSelector('.cx-root', { timeout: 15000 });
+
+    const panel43 = await page.evaluate(() => ({
+        tabs: [...document.querySelectorAll('.cx-tab')].map(t => ({
+            name: (t.querySelector('span')?.textContent || '').trim(),
+            count: (t.querySelector('.cx-count')?.textContent || '').trim(),
+            empty: t.classList.contains('empty'),
+        })),
+        intro: document.querySelector('.cx-intro')?.textContent || '',
+        errors: document.querySelectorAll('.cx-errors').length,
+    }));
+
+    check('con una pestana por bateria y su cuenta',
+        panel43.tabs.length === lib42.dominios
+        && panel43.tabs.filter(t => !t.empty).length === lib42.loaded.length
+        && panel43.tabs.every(t => t.empty || Number(t.count) > 0),
+        JSON.stringify(panel43.tabs.filter(t => !t.empty)));
+    // Apagada y con su motivo, igual que las escenas apagadas del Modo Juego: la pantalla
+    // es de paso la barra de progreso del roadmap.
+    check('las que faltan salen apagadas, no escondidas',
+        panel43.tabs.filter(t => t.empty).length === lib42.dominios - lib42.loaded.length
+        && panel43.tabs.every(t => t.empty || t.count !== '—'),
+        `${panel43.tabs.filter(t => t.empty).length} sin escribir`);
+    check('y dice cuantas baterias hay y cuantas filas, sin errores que contar',
+        new RegExp(`${lib42.loaded.length} de ${lib42.dominios} baterías, \\d+ filas`).test(panel43.intro)
+        && panel43.errors === 0,
+        panel43.intro);
+
+    // El boton de probar: diez tiradas con la semilla que escribas.
+    await page.locator('.cx-try-go').click();
+    await page.waitForTimeout(700);
+    const tried43 = await page.evaluate(() =>
+        [...document.querySelectorAll('.cx-try-line')].map(l => l.textContent || ''));
+    check('probar saca diez, con la semilla escrita',
+        tried43.length === 10 && new Set(tried43).size === 10, tried43.join(', '));
+
+    // Y cada bateria se prueba con quien la sortea de verdad.
+    await page.locator('.cx-tab', { hasText: 'Materiales' }).click();
+    await page.waitForTimeout(400);
+    await page.locator('.cx-try-go').click();
+    await page.waitForTimeout(700);
+    const forged43 = await page.evaluate(() =>
+        [...document.querySelectorAll('.cx-try-line')].map(l => l.textContent || ''));
+    check('y materiales se prueba forjando, no listando filas',
+        forged43.length > 0 && forged43.every(l => /kg/.test(l)), forged43.join(' | '));
+
+    const rows43 = await page.evaluate(() => document.querySelectorAll('.cx-row').length);
+    check('la tabla ensena las filas de la bateria abierta',
+        rows43 >= 40, `${rows43} lineas con la cabecera`);
+
+    await page.locator('.cx-tab', { hasText: 'Bestiario' }).click();
+    await page.waitForTimeout(400);
+    await page.locator('.cx-try-go').click();
+    await page.waitForTimeout(700);
+    const bred43 = await page.evaluate(() =>
+        [...document.querySelectorAll('.cx-try-line')].map(l => l.textContent || ''));
+    check('y el bestiario se prueba criando, con sus puntos de vida',
+        bred43.length > 0 && bred43.every(l => /PG/.test(l) && /CR/.test(l)),
+        bred43.join(' | '));
+
+    // Y una que todavia no existe dice que no existe, y donde iria.
+    await page.locator('.cx-tab', { hasText: 'Personas' }).click();
+    await page.waitForTimeout(400);
+    const missing43 = await page.evaluate(() => ({
+        title: document.querySelector('.cx-empty-title')?.textContent || '',
+        path: document.querySelector('.cx-empty code')?.textContent || '',
+    }));
+    check('una bateria sin escribir dice que falta y donde va',
+        /todavía no existe/.test(missing43.title)
+        && missing43.path === 'public/compendio/personas.json',
+        JSON.stringify(missing43));
+
+    await page.locator('.popup-button-ok').last().click();
+    await page.waitForTimeout(800);
+    await leaveGameMode();
 
     console.log('\n--- console errors ---');
     console.log(problems.size ? [...problems].join('\n') : '(none)');

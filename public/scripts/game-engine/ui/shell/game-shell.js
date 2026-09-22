@@ -61,7 +61,8 @@ import { playForScene, stopSceneAudio } from './scene-audio.js';
  * @property {(boardName: string) => void} onEnterBoard
  * @property {(locationName: string) => void} onTravel
  * @property {() => void} onOptions Open SillyTavern's own settings, where they are.
- * @property {() => void} onCompendium The rules editor.
+ * @property {() => void} onRules El editor de reglas de la campaña.
+ * @property {() => void} [onCompendium] La biblioteca de contenido, desde el menú.
  * @property {() => void} [onExport] Empaquetar la campana para compartirla.
  * @property {() => void} [onEditCampaign] El editor del mundo y sus localidades.
  * @property {() => void} [onAudio] Los ajustes de sonido.
@@ -248,8 +249,9 @@ function renderSwitcher(bar, situation, current) {
 /**
  * El menu principal: lo primero que se ve al abrir el juego.
  *
- * Tres cosas y una puerta de salida. La puerta importa tanto como las tres: debajo de esta
- * capa sigue estando SillyTavern entero, y esconderlo seria mentir sobre lo que es esto.
+ * Cuatro cosas y una puerta de salida. La puerta importa tanto como las cuatro: debajo de
+ * esta capa sigue estando SillyTavern entero, y esconderlo seria mentir sobre lo que es
+ * esto. El compendio va antes que las opciones porque es contenido, no ajustes.
  *
  * @param {HTMLElement} menu
  */
@@ -296,6 +298,11 @@ function renderTitleMenu(menu) {
             titleView = 'load';
             refreshGameShell();
         });
+    // La biblioteca no necesita partida abierta: es tuya, no de una campana.
+    if (options?.onCompendium) {
+        item('Compendio', 'fa-book-open', 'Tu biblioteca: armas, bichos, gente, nombres',
+            () => options?.onCompendium?.());
+    }
     item('Opciones', 'fa-sliders', 'Los ajustes de SillyTavern, donde siempre',
         () => options?.onOptions());
 
@@ -654,7 +661,7 @@ function setPaused(next) {
 
     item('Continuar', 'fa-play', () => setPaused(false), 'Esc');
     item('Opciones', 'fa-sliders', () => options?.onOptions());
-    item('Compendio y reglas', 'fa-book', () => options?.onCompendium());
+    item('Reglas del juego', 'fa-scale-balanced', () => options?.onRules());
     if (options.onEditCampaign) {
         item('Editar la campana', 'fa-map-location-dot', () => {
             setPaused(false);

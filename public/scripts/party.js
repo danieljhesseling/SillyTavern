@@ -23,7 +23,9 @@ import {
 import { escapeHtml, download } from './utils.js';
 import { createSeededRandom, seedFrom } from './game-engine/combat/seeded-random.js';
 import { getCompendium } from './game-engine/compendio/browser.js';
-import { forgeItem as forgeFromCompendium } from './game-engine/compendio/forge.js';
+import { forgeItem as forgeFromCompendium, forgeItems, describeItem } from './game-engine/compendio/forge.js';
+import { makeNames } from './game-engine/compendio/names.js';
+import { breedMonster as breedFromCompendium, breedBand, describeMonster } from './game-engine/compendio/bestiary.js';
 import {
     rollDice, rollDiceDetailed, getRollClassification, getRollClassificationLabel,
     getDistanceInFeet, getAttackRangeFeet, describeCover,
@@ -2324,6 +2326,11 @@ function startCombat(template, count, gridWidth = 50, gridHeight = 50) {
             x: Number(m.mapPosition?.gridX) || 0,
             y: Number(m.mapPosition?.gridY) || 0,
         })),
+        // Con el dado de la partida, no con Math.random. Cuando no hay nada dibujado que
+        // este despierto, la casilla se sortea — y una tirada que se salte la semilla hace
+        // que dos partidas con la misma semilla dejen de salir iguales, que es justo lo
+        // unico que la semilla promete.
+        random: nextRandom,
     });
 
     /** @type {import('./dnd-system.js').EnemyInstance[]} */
@@ -4289,6 +4296,15 @@ export async function openCampaignBuilder() {
         const edited = await openCampaignEditor({
             metadata: data.metadata ?? {},
             entries: data.entries ?? {},
+            breedMonster: compendium.has('bestiario')
+                ? (/** @type {number} */ cr) => breedFromCompendium({
+                    compendium,
+                    cr: Number(cr) || 0.5,
+                    // El bioma de la campana, si lo dice: el pantano no da lobos de nieve.
+                    biome: String(data.metadata?.biome || ''),
+                    random: createSeededRandom(`${forgeSeed}|criar|${forged++}`),
+                })
+                : null,
             forgeItem: compendium.has('materiales')
                 // Con la semilla del mundo y el número de forja: el mismo mundo propone las
                 // mismas cosas en el mismo orden, y cada martillazo saca una distinta.
@@ -5521,14 +5537,55 @@ function enterBoard(name) {
 }
 
 /**
- * El compendio: el editor de reglas de la campana abierta.
+ * El compendio: la biblioteca de contenido de la que tiran los generadores.
  *
- * Extraido de `/rules` porque el menu de pausa abre lo mismo. Una segunda copia seria un
- * segundo sitio donde olvidarse de volver a aplicar el paquete despues de guardarlo.
+ * No hace falta tener una partida abierta, y por eso vive en el menu de titulo: el
+ * compendio es **tuyo**, no de una campana. Lo que se ve es que baterias hay, cuantas
+ * filas traen, **cuales faltan** y que sale si lo pides con una semilla.
+ *
+ * @returns {Promise<void>}
+ */
+async function openCompendiumLibrary() {
+    const { compendium, errors } = await getCompendium();
+    const { openCompendiumPanel } = await import('./game-engine/ui/compendio-panel.js');
+
+    await openCompendiumPanel({
+        compendium,
+        errors,
+        // Probar es lo que hace util la pantalla: diez tiradas con tu semilla, sin jugarte
+        // una partida entera para descubrir que la daga sale siempre. Cada bateria se
+        // prueba con quien la sortea de verdad, no con una lista de nombres.
+        sample: (domain, seed, howMany) => {
+            const random = createSeededRandom(`${seed}|probar|${domain}`);
+
+            if (domain === 'nombres') {
+                return makeNames({ compendium, howMany, random });
+            }
+            if (domain === 'materiales') {
+                return forgeItems({ compendium, howMany, random }).map(describeItem);
+            }
+            if (domain === 'bestiario') {
+                return breedBand({ compendium, howMany, cr: 1, random }).map(describeMonster);
+            }
+            // Las que todavia no tienen generador se ensenan tal cual: sirve para ver que
+            // el filtro y los pesos hacen lo suyo antes de que exista quien las use.
+            return compendium.take(domain, howMany, { random })
+                .map((/** @type {any} */ row) => row.name);
+        },
+        Popup,
+        POPUP_TYPE,
+    });
+}
+
+/**
+ * Las reglas de la campana abierta.
+ *
+ * Extraido de `/rules` porque el menu de pausa abre lo mismo. Una segunda copia seria
+ * un segundo sitio donde olvidarse de volver a aplicar el paquete despues de guardarlo.
  *
  * @returns {Promise<string>}
  */
-async function openCompendium() {
+async function openRules() {
     const worldName = String(chat_metadata?.[METADATA_KEY] || '');
     if (!worldName) {
         toastr.warning('Abre una campana primero.');
@@ -5641,7 +5698,8 @@ function buildShellOptions() {
         // Los paneles de SillyTavern se abren donde estan: en pausa su barra vuelve
         // arriba, por encima de esta capa, y el boton pulsa el mismo icono de siempre.
         onOptions: () => { $('#ai-config-button .drawer-toggle').trigger('click'); },
-        onCompendium: () => { void openCompendium(); },
+        onRules: () => { void openRules(); },
+        onCompendium: () => { void openCompendiumLibrary(); },
         onEditCampaign: () => { void openCampaignBuilder(); },
         // El asistente de campana vive en la pantalla de bienvenida, que viaja dentro del
         // chat adoptado: pulsar su boton es pulsar el que ya existe.
@@ -8265,7 +8323,7 @@ export function initPartyPanel() {
         name: 'rules',
         helpString: '<div>Abre el editor de reglas de la campaña: tipos de daño, propiedades de armas y armaduras, condiciones, rarezas. '
             + 'Lo que guardes se aplica al recargar.</div>',
-        callback: () => openCompendium(),
+        callback: () => openRules(),
     }));
 
     // The prompt preview (wiki/ROADMAP.md, T3). Recording is a listener rather than a

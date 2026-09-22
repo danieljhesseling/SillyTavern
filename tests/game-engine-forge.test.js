@@ -1,14 +1,25 @@
 import fs from 'node:fs';
 import { describe, test, expect } from '@jest/globals';
 import { createCompendium, validateBattery } from '../public/scripts/game-engine/compendio/compendio.js';
-import { forgeItem, forgeItems, describeItem, ITEM_TYPES } from '../public/scripts/game-engine/compendio/forge.js';
+import {
+    forgeItem, forgeItems, describeItem, ITEM_TYPES,
+    RARITY_LADDER, propertyBalance, raiseRarity, withBonus,
+} from '../public/scripts/game-engine/compendio/forge.js';
 
 const materiales = JSON.parse(fs.readFileSync(
     new URL('../public/compendio/materiales.json', import.meta.url), 'utf8',
 ));
+const propiedades = JSON.parse(fs.readFileSync(
+    new URL('../public/compendio/propiedades.json', import.meta.url), 'utf8',
+));
 
 /** La biblioteca de verdad, la que viene escrita. */
-const real = (config) => createCompendium({ materiales: materiales.rows }, config);
+const real = (config) => createCompendium({
+    materiales: materiales.rows, propiedades: propiedades.rows,
+}, config);
+
+/** Solo formas y materiales, para lo que no va de propiedades. */
+const plain = (config) => createCompendium({ materiales: materiales.rows }, config);
 
 /** Un azar que va diciendo lo que le mandes. */
 const fixed = (...values) => {
@@ -64,9 +75,9 @@ describe('forjar una cosa', () => {
     });
 
     test('sale con todos los campos que la ficha de objeto pide', () => {
-        const item = forgeItem({ compendium: real(), random: fixed(0.1, 0.4) });
+        const item = forgeItem({ compendium: plain(), random: fixed(0.1, 0.4) });
         expect(Object.keys(item).sort()).toEqual([
-            'category', 'damageDice', 'damageType', 'description', 'from',
+            'category', 'damageDice', 'damageType', 'description', 'effects', 'from',
             'name', 'rarity', 'slot', 'type', 'weight',
         ]);
         expect(ITEM_TYPES).toContain(item.type);
@@ -74,7 +85,7 @@ describe('forjar una cosa', () => {
     });
 
     test('el nombre es la forma y el material, no un número', () => {
-        const item = forgeItem({ compendium: real(), random: fixed(0.02, 0.02) });
+        const item = forgeItem({ compendium: plain(), random: fixed(0.02, 0.02) });
         expect(item.name).toMatch(/^.+ de .+$/);
         expect(item.name).not.toMatch(/[{}]/);
     });
@@ -91,7 +102,7 @@ describe('forjar una cosa', () => {
         const byId = new Map(materiales.rows.map(r => [r.id, r]));
         const random = rolling(11);
         for (let i = 0; i < 200; i++) {
-            const item = forgeItem({ compendium: real(), random });
+            const item = forgeItem({ compendium: plain(), random });
             const forma = byId.get(item.from.forma);
             const material = byId.get(item.from.material);
             expect(material.when.itemType).toContain(forma.itemType);
@@ -101,7 +112,7 @@ describe('forjar una cosa', () => {
     test('los kilos salen de la forma por el material, con un decimal', () => {
         const random = rolling(3);
         for (let i = 0; i < 100; i++) {
-            const item = forgeItem({ compendium: real(), random });
+            const item = forgeItem({ compendium: plain(), random });
             expect(item.weight).toBe(Math.round(item.weight * 10) / 10);
             expect(item.weight).toBeGreaterThan(0);
         }
@@ -111,7 +122,7 @@ describe('forjar una cosa', () => {
         const byId = new Map(materiales.rows.map(r => [r.id, r]));
         const random = rolling(5);
         for (let i = 0; i < 100; i++) {
-            const item = forgeItem({ compendium: real(), random });
+            const item = forgeItem({ compendium: plain(), random });
             expect(item.rarity).toBe(byId.get(item.from.material).rarity);
         }
     });
@@ -134,7 +145,7 @@ describe('forjar una cosa', () => {
 
 describe('forjar un montón', () => {
     test('ocho cosas son ocho combinaciones distintas', () => {
-        const items = forgeItems({ compendium: real(), howMany: 8, random: rolling(13) });
+        const items = forgeItems({ compendium: plain(), howMany: 8, random: rolling(13) });
         expect(items).toHaveLength(8);
         const keys = items.map(i => `${i.from.forma}|${i.from.material}`);
         expect(new Set(keys).size).toBe(8);
@@ -164,5 +175,151 @@ describe('contado en una línea', () => {
     test('y lo corriente no se anuncia como raro', () => {
         expect(describeItem({ name: 'Morral de cuero', weight: 0.9, rarity: 'Common' }))
             .toBe('Morral de cuero · 0.9 kg');
+    });
+});
+
+describe('las propiedades: lo que da y lo que quita', () => {
+    test('propiedades.json pasa su propia validación', () => {
+        expect(validateBattery('propiedades', propiedades)).toEqual([]);
+    });
+
+    // La regla de la casa para el botín: un objeto que solo suma se equipa y se olvida.
+    // Si da algo, tiene que costar algo.
+    test('ninguna suma sin restar', () => {
+        for (const row of propiedades.rows) {
+            const { gives, takes } = propertyBalance(row);
+            if (gives > 0) expect(takes).toBeGreaterThan(0);
+        }
+    });
+
+    test('y ninguna se pasa de lo que puede dar', () => {
+        for (const row of propiedades.rows) {
+            expect(propertyBalance(row).gives).toBeLessThanOrEqual(8);
+        }
+    });
+
+    test('las que llevan adjetivo traen las dos formas', () => {
+        for (const row of propiedades.rows) {
+            if (String(row.pattern).includes('{adj}')) {
+                expect(String(row.adjf || '').length).toBeGreaterThan(2);
+                expect(String(row.adjm || '').length).toBeGreaterThan(2);
+            } else expect(String(row.sustantivo || '').length).toBeGreaterThan(2);
+        }
+    });
+
+    test('y sus efectos tocan una característica de verdad', () => {
+        const stats = [
+            'armorClass', 'strength', 'dexterity', 'constitution',
+            'intelligence', 'wisdom', 'charisma',
+        ];
+        for (const row of propiedades.rows) {
+            for (const effect of row.effects ?? []) {
+                expect(stats).toContain(effect.stat);
+                expect(Number.isInteger(effect.modifier)).toBe(true);
+            }
+        }
+    });
+});
+
+describe('el bono va dentro de los dados', () => {
+    // `rollWith` entiende NdM+K, así que el bono tiene que acabar dentro de la cadena.
+    // Dejarlo en un campo aparte sería un número que nadie suma.
+    test('se pega al formulario, que es como el motor lo tira', () => {
+        expect(withBonus('1d8', 1)).toBe('1d8+1');
+        expect(withBonus('1d6', -1)).toBe('1d6-1');
+        expect(withBonus('1d8+1', 1)).toBe('1d8+2');
+    });
+
+    test('y un bono que se anula no deja un +0 colgando', () => {
+        expect(withBonus('1d8+1', -1)).toBe('1d8');
+    });
+
+    test('lo que no son dados se queda como está', () => {
+        expect(withBonus('', 2)).toBe('');
+        expect(withBonus('a mano', 2)).toBe('a mano');
+    });
+});
+
+describe('la escalera de rareza', () => {
+    test('sube peldaños', () => {
+        expect(raiseRarity('Common', 1)).toBe('Uncommon');
+        expect(raiseRarity('Common', 2)).toBe('Rare');
+    });
+
+    test('y no se sale por arriba ni por abajo', () => {
+        expect(raiseRarity('Very Rare', 3)).toBe('Very Rare');
+        expect(raiseRarity('Common', -5)).toBe('Common');
+        expect(raiseRarity('inventada', 1)).toBe(RARITY_LADDER[1]);
+    });
+});
+
+describe('forjar con propiedades', () => {
+    test('el adjetivo concuerda con la forma', () => {
+        const byId = new Map([...materiales.rows, ...propiedades.rows].map(r => [r.id, r]));
+        const random = rolling(23);
+        for (let i = 0; i < 150; i++) {
+            const item = forgeItem({ compendium: real(), properties: 1, random });
+            const property = byId.get(item.from.propiedades[0]);
+            if (!property || !String(property.pattern).includes('{adj}')) continue;
+
+            const forma = byId.get(item.from.forma);
+            const wanted = forma.gender === 'f' ? property.adjf : property.adjm;
+            expect(item.name).toContain(wanted);
+        }
+    });
+
+    test('el bono de daño llega a los dados', () => {
+        const byId = new Map(propiedades.rows.map(r => [r.id, r]));
+        const random = rolling(29);
+        for (let i = 0; i < 150; i++) {
+            const item = forgeItem({ compendium: real(), itemType: 'weapon', properties: 1, random });
+            const bonus = Number(byId.get(item.from.propiedades[0])?.damageBonus || 0);
+            if (bonus > 0) expect(item.damageDice).toMatch(/\+\d+$/);
+            if (bonus < 0) expect(item.damageDice).toMatch(/-\d+$/);
+        }
+    });
+
+    test('y lo que hace al equiparlo viaja en `effects`', () => {
+        const byId = new Map(propiedades.rows.map(r => [r.id, r]));
+        const random = rolling(31);
+        for (let i = 0; i < 150; i++) {
+            const item = forgeItem({ compendium: real(), properties: 1, random });
+            const property = byId.get(item.from.propiedades[0]);
+            expect(item.effects).toEqual(property?.effects ?? []);
+        }
+    });
+
+    test('pedir cero no cuelga ninguna', () => {
+        const item = forgeItem({ compendium: real(), properties: 0, random: rolling(37) });
+        expect(item.from.propiedades).toEqual([]);
+        expect(item.effects).toEqual([]);
+    });
+
+    // Sin la batería de propiedades el botín funciona como antes: aditivo, como todo.
+    test('sin batería de propiedades se forja igual, sin ellas', () => {
+        const item = forgeItem({ compendium: plain(), properties: 2, random: rolling(41) });
+        expect(item).not.toBe(null);
+        expect(item.from.propiedades).toEqual([]);
+    });
+
+    test('la rareza sube con lo que la propiedad pida', () => {
+        const byId = new Map([...materiales.rows, ...propiedades.rows].map(r => [r.id, r]));
+        const random = rolling(43);
+        for (let i = 0; i < 100; i++) {
+            const item = forgeItem({ compendium: real(), properties: 1, random });
+            const material = byId.get(item.from.material);
+            const step = Number(byId.get(item.from.propiedades[0])?.rarityStep || 0);
+            expect(item.rarity).toBe(raiseRarity(material?.rarity || 'Common', step));
+        }
+    });
+
+    test('y sigue sin salir nada con números imposibles', () => {
+        const random = rolling(47);
+        for (let i = 0; i < 200; i++) {
+            const item = forgeItem({ compendium: real(), random });
+            expect(item.weight).toBeGreaterThan(0);
+            expect(item.name).not.toMatch(/[{}]/);
+            expect(RARITY_LADDER).toContain(item.rarity);
+        }
     });
 });

@@ -122,7 +122,9 @@ describe('la biblioteca cargada', () => {
     });
 
     test('y lo que falta por escribir, que es media lista de tareas', () => {
-        expect(c().missing()).toEqual(DOMAINS.filter(d => d !== 'armas'));
+        expect(c().missing()).toEqual(DOMAINS);
+        expect(createCompendium({ nombres: [] }).missing())
+            .toEqual(DOMAINS.filter(d => d !== 'nombres'));
     });
 
     test('se busca por id, que es como se referencian entre baterías', () => {
@@ -184,11 +186,13 @@ describe('no repetirse', () => {
 
 describe('cargar lo que exista', () => {
     const read = (files) => async (domain) => (domain in files ? files[domain] : null);
+    const twoDomains = ['armas', 'bestiario'];
 
     // Sin `armas.json` el botín funciona como siempre. Es lo que permite ir una por tarde.
     test('una batería que falta no es un error', async () => {
         const { compendium, errors, loaded } = await loadCompendium({
             read: read({ armas: battery([row()]) }),
+            domains: twoDomains,
         });
         expect(errors).toEqual([]);
         expect(loaded).toEqual(['armas']);
@@ -199,6 +203,7 @@ describe('cargar lo que exista', () => {
     test('una batería rota no entra a medias: no entra', async () => {
         const { compendium, errors } = await loadCompendium({
             read: read({ armas: battery([row(), { name: 'sin id' }]) }),
+            domains: twoDomains,
         });
         expect(errors.join(' ')).toMatch(/fila 2/);
         expect(compendium.has('armas')).toBe(false);
@@ -211,6 +216,7 @@ describe('cargar lo que exista', () => {
                 if (domain === 'nombres') return { version: 1, domain: 'nombres', rows: [row()] };
                 return null;
             },
+            domains: ['armas', 'nombres'],
         });
         expect(errors.join(' ')).toMatch(/armas\.json/);
         expect(compendium.has('nombres')).toBe(true);
@@ -220,6 +226,7 @@ describe('cargar lo que exista', () => {
         const heard = [];
         await loadCompendium({
             read: read({ armas: battery([{ name: 'sin id' }]) }),
+            domains: twoDomains,
             warn: (m) => heard.push(m),
         });
         expect(heard.join(' ')).toMatch(/armas\.json, fila 1/);

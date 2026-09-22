@@ -25,7 +25,7 @@
 
 /** Las doce baterias, en el orden en que el roadmap las cuenta. */
 export const DOMAINS = [
-    'nombres', 'materiales', 'armas', 'armaduras', 'trastos', 'habilidades',
+    'nombres', 'materiales', 'propiedades', 'habilidades',
     'bestiario', 'personas', 'sitios', 'misiones', 'facciones', 'mundo', 'estados',
 ];
 

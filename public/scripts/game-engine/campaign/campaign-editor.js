@@ -270,6 +270,15 @@ export function buildEditorModel(metadata, entries = {}) {
             damageType: text(item?.damageType),
             slot: text(item?.slot),
             description: text(item?.description),
+            // Lo que hace al equiparlo. `applyEquipmentEffects` lo lee: `armorClass` sube
+            // la CA y el resto suben la caracteristica. El editor no los dibuja todavia,
+            // pero perderlos al guardar convertiria una espada rúnica en una espada.
+            effects: (Array.isArray(item?.effects) ? item.effects : [])
+                .map((/** @type {any} */ effect) => ({
+                    stat: text(effect?.stat),
+                    modifier: Number(effect?.modifier) || 0,
+                }))
+                .filter((/** @type {any} */ effect) => effect.stat),
         })),
         quests: (Array.isArray(source.quests) ? source.quests : []).map(quest => ({
             name: text(quest?.name),
@@ -541,6 +550,12 @@ export function applyEditorModel(metadata, model) {
                 damageType: text(item.damageType),
                 slot: text(item.slot),
                 description: text(item.description),
+                effects: (Array.isArray(item.effects) ? item.effects : [])
+                    .map((/** @type {any} */ effect) => ({
+                        stat: text(effect?.stat),
+                        modifier: Number(effect?.modifier) || 0,
+                    }))
+                    .filter((/** @type {any} */ effect) => effect.stat),
             })),
         quests: (model.quests ?? [])
             .filter((/** @type {any} */ quest) => text(quest.name))

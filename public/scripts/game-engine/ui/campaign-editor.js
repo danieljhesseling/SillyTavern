@@ -165,6 +165,8 @@ function foldedCard(title, subtitle, onRemove, cls = '') {
  * Abre el editor. Devuelve el modelo editado, o null si se cancela.
  *
  * @param {Object} input
+ * @param {((cr: number) => any|null)|null} [input.breedMonster] Un bicho del compendio,
+ *        del desafío que se le pida. Misma regla: sin batería de bestiario, no hay botón.
  * @param {(() => any|null)|null} [input.forgeItem] Un objeto del compendio, para el
  *        botón de forjar. Sin batería de materiales no hay botón y la ficha se rellena a
  *        mano, como siempre: el compendio es aditivo.
@@ -174,7 +176,9 @@ function foldedCard(title, subtitle, onRemove, cls = '') {
  * @param {any} input.POPUP_TYPE
  * @returns {Promise<any|null>}
  */
-export async function openCampaignEditor({ metadata, entries, Popup, POPUP_TYPE, forgeItem = null }) {
+export async function openCampaignEditor({
+    metadata, entries, Popup, POPUP_TYPE, forgeItem = null, breedMonster = null,
+}) {
     const model = buildEditorModel(metadata, entries);
 
     // El bestiario sale del propio modelo y no de fuera: asi un bicho escrito hace un
@@ -596,7 +600,37 @@ export async function openCampaignEditor({ metadata, entries, Popup, POPUP_TYPE,
                 'ce-beast',
             );
 
-            inner.append(field('Nombre', enemy.name, v => { enemy.name = v; }, { cls: 'ce-beast-name' }));
+            const beastRow = $('<div class="ce-forge-row"></div>');
+            beastRow.append(field('Nombre', enemy.name, v => { enemy.name = v; }, { cls: 'ce-beast-name' }));
+
+            // Criar: arquetipo por plantilla. Los números salen de su desafío, así que un
+            // bicho de CR 1/4 y uno de CR 3 se escriben con la misma fila.
+            if (breedMonster) {
+                const breed = $('<button class="menu_button ce-breed" type="button"></button>')
+                    .attr('title', 'Sacar un arquetipo y sus plantillas del compendio')
+                    .append('<i class="fa-solid fa-paw"></i>')
+                    .append($('<span></span>').text(' Criar'));
+                breed.on('click', () => {
+                    // Con el desafío que ya tenga escrito: quien lo ha puesto a 2 quiere
+                    // un bicho de 2, no que se lo cambie el compendio.
+                    const made = breedMonster(enemy.cr);
+                    if (!made) {
+                        breed.prop('disabled', true).attr('title', 'La batería de bestiario está vacía');
+                        return;
+                    }
+                    Object.assign(enemy, {
+                        name: made.name, hp: made.hp, armorClass: made.armorClass,
+                        cr: made.cr, speed: made.speed, attackRangeFeet: made.attackRangeFeet,
+                        profile: made.profile,
+                        description: enemy.description || made.description,
+                    });
+                    refreshSummary();
+                    draw();
+                });
+                beastRow.append(breed);
+            }
+
+            inner.append(beastRow);
 
             const stats = $('<div class="ce-grid"></div>');
             stats.append(numberField('PG', enemy.hp, v => { enemy.hp = Math.max(1, v); }, { min: 1 }));
@@ -711,6 +745,7 @@ export async function openCampaignEditor({ metadata, entries, Popup, POPUP_TYPE,
                         name: made.name, type: made.type, category: made.category,
                         rarity: made.rarity, weight: made.weight, damageDice: made.damageDice,
                         damageType: made.damageType, slot: made.slot,
+                        effects: made.effects ?? [],
                         // La descripción no se pisa si ya escribiste algo: lo tuyo manda.
                         description: item.description || made.description,
                     });

@@ -39,6 +39,8 @@ const FORK_FILES = [
     'public/scripts/game-engine/compendio/compendio.js',
     'public/scripts/game-engine/compendio/names.js',
     'public/scripts/game-engine/compendio/forge.js',
+    'public/scripts/game-engine/compendio/bestiary.js',
+    'public/scripts/game-engine/ui/compendio-panel.js',
     'public/scripts/game-engine/compendio/browser.js',
     'public/scripts/game-engine/ui/hero-creator.js',
     'public/scripts/game-engine/rules/injuries.js',
