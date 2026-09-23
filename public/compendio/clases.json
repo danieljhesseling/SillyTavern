@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "domain": "clases",
+  "about": "A qué se dedica alguien, y qué le da. El 'id' de la clase es el que usan las habilidades en su 'when.class': lo que aquí se llama 'picaro' es lo que allí abre el Ataque furtivo, así que elegir clase trae sus habilidades sin escribir nada dos veces. 'hitDie' es el dado de golpe —lo que aguanta— y 'effects' usa la misma forma que los objetos y las razas. Igual que ellas: cada clase quita algo, porque una que solo sume se elige siempre.",
+  "rows": [
+    {
+      "id": "guerrero", "name": "Guerrero", "kind": "clase", "weight": 10,
+      "tags": ["armas", "comun"],
+      "hitDie": "1d10",
+      "effects": [{ "stat": "strength", "modifier": 2 }, { "stat": "maxHp", "modifier": 4 }, { "stat": "intelligence", "modifier": -1 }],
+      "note": "Sabe pelear y sabe cuándo no hacerlo. Es lo que sostiene una línea."
+    },
+    {
+      "id": "barbaro", "name": "Bárbaro", "kind": "clase", "weight": 9,
+      "tags": ["armas"],
+      "hitDie": "1d12",
+      "effects": [{ "stat": "strength", "modifier": 2 }, { "stat": "maxHp", "modifier": 6 }, { "stat": "armorClass", "modifier": -1 }],
+      "note": "Aguanta más que nadie porque no se protege: es lo mismo dicho de dos maneras."
+    },
+    {
+      "id": "picaro", "name": "Pícaro", "kind": "clase", "weight": 10,
+      "tags": ["sombra", "comun"],
+      "hitDie": "1d8",
+      "effects": [{ "stat": "dexterity", "modifier": 2 }, { "stat": "constitution", "modifier": -1 }],
+      "note": "Hace mucho daño una vez y luego no conviene que lo encuentren."
+    },
+    {
+      "id": "clerigo", "name": "Clérigo", "kind": "clase", "weight": 9,
+      "tags": ["fe"],
+      "hitDie": "1d8",
+      "effects": [{ "stat": "wisdom", "modifier": 2 }, { "stat": "dexterity", "modifier": -1 }],
+      "note": "Es lo que hace que una herida mala no acabe la campaña."
+    },
+    {
+      "id": "druida", "name": "Druida", "kind": "clase", "weight": 8,
+      "tags": ["fe", "monte"],
+      "hitDie": "1d8",
+      "effects": [{ "stat": "wisdom", "modifier": 2 }, { "stat": "strength", "modifier": -1 }],
+      "note": "Sabe del campo lo que los demás no saben, y eso en un viaje largo vale más que una espada."
+    },
+    {
+      "id": "mago", "name": "Mago", "kind": "clase", "weight": 9,
+      "tags": ["arcano"],
+      "hitDie": "1d6",
+      "effects": [{ "stat": "intelligence", "modifier": 2 }, { "stat": "constitution", "modifier": -2 }],
+      "note": "Decide una pelea desde atrás, si llega vivo a decidirla."
+    },
+    {
+      "id": "bardo", "name": "Bardo", "kind": "clase", "weight": 8,
+      "tags": ["arcano", "gente"],
+      "hitDie": "1d8",
+      "effects": [{ "stat": "charisma", "modifier": 2 }, { "stat": "strength", "modifier": -1 }],
+      "note": "Resuelve fuera del tablero la mitad de lo que otros resuelven dentro."
+    },
+    {
+      "id": "explorador", "name": "Explorador", "kind": "clase", "weight": 9,
+      "tags": ["monte", "armas"],
+      "hitDie": "1d10",
+      "effects": [{ "stat": "dexterity", "modifier": 2 }, { "stat": "charisma", "modifier": -1 }],
+      "note": "Llega antes, ve primero y dispara desde donde no le ven."
+    },
+    {
+      "id": "soldado", "name": "Soldado", "kind": "clase", "weight": 8,
+      "tags": ["historico", "armas"],
+      "hitDie": "1d10",
+      "effects": [{ "stat": "constitution", "modifier": 2 }, { "stat": "maxHp", "modifier": 3 }, { "stat": "charisma", "modifier": -1 }],
+      "note": "Sin magia ninguna: disciplina, una lanza y saber dónde ponerse."
+    },
+    {
+      "id": "erudito", "name": "Erudito", "kind": "clase", "weight": 7,
+      "tags": ["terror", "historico"],
+      "hitDie": "1d6",
+      "effects": [{ "stat": "intelligence", "modifier": 2 }, { "stat": "strength", "modifier": -2 }],
+      "note": "Lo que sabe es lo único que sirve contra algunas cosas. Pelear no es lo suyo."
+    }
+  ]
+}

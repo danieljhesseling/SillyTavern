@@ -24,7 +24,7 @@
  * Ver wiki/ROADMAP_COMPENDIO.md, B10 (F3).
  */
 
-import { speaksPlural } from './factions.js';
+import { speaksPlural, priceFactor, describeStanding } from './factions.js';
 
 /** Lo que encarece cada cosa. Poco cada una: lo que pesa es que se juntan. */
 const CLOSED_ROAD = 0.15;
@@ -129,7 +129,13 @@ export function marketPressure({ here, locations = [], factions = [] }) {
     if (owner) {
         const busy = Boolean(text(owner.goal?.kind)) && !owner.goal?.done
             && number(owner.goal?.at, 0) < number(owner.goal?.of, 1);
-        tax = busy ? 2 : 1.5;
+        // Y lo que piensan de ti. Quien te debe una no te cobra el maximo; quien te tiene
+        // ganas se cobra la ojeriza en el mismo sitio donde se cobra todo: el viernes.
+        const standing = number(owner.reputation, 0);
+        tax = (busy ? 2 : 1.5) * priceFactor(standing);
+        if (standing !== 0) {
+            reasons.push(`Y ${describeStanding(standing)}.`);
+        }
         // «Los de Ribera del Yunque manda aquí» lo escribe una maquina, no una persona.
         const many = speaksPlural(owner.name);
         reasons.push(busy

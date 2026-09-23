@@ -3,6 +3,7 @@ import {
     GOALS, readFaction, readFactions, clockOf, heldBack, tickFactions,
     outcomeOf, applyOutcome, newsFor, describeFaction, rollFactions, validateFactionRows,
     pushClock, pushFaction, busyFactions, speaksPlural, describeOutcome, namesOf,
+    STANDING, standingWith, changeStanding, describeStanding, priceFactor,
 } from '../public/scripts/game-engine/campaign/factions.js';
 import { createCompendium, validateBattery } from '../public/scripts/game-engine/compendio/compendio.js';
 import { createSeededRandom } from '../public/scripts/game-engine/combat/seeded-random.js';
@@ -502,5 +503,58 @@ describe('un id no es un nombre', () => {
     test('y empujar el reloj de la lista, también', () => {
         const { event } = pushFaction([suya, otra], 'molino', 3);
         expect(event.note).toContain('Los de la Ermita');
+    });
+});
+
+describe('lo que piensan de ti', () => {
+    const suya = () => faction({ enemies: ['ermita'] });
+    const otra = { id: 'ermita', name: 'Los de la Ermita', seat: 'La Ermita', enemies: ['molino'] };
+
+    test('se empieza sin que nadie sepa quién eres', () => {
+        expect(standingWith([suya()], 'molino')).toBe(0);
+        expect(describeStanding(0)).toMatch(/no saben quién sois/);
+    });
+
+    // Ayudar a alguien es ponerse en contra de su enemigo.
+    test('subir con unos baja con sus enemigos', () => {
+        const after = changeStanding([suya(), otra], 'molino', 2);
+        expect(standingWith(after, 'molino')).toBe(2);
+        expect(standingWith(after, 'ermita')).toBe(-2);
+    });
+
+    test('y a quien no tiene nada que ver no le cambia nada', () => {
+        const tercera = { id: 'tercera', name: 'Los de allá' };
+        const after = changeStanding([suya(), otra, tercera], 'molino', 2);
+        expect(standingWith(after, 'tercera')).toBe(0);
+    });
+
+    // Cinco encargos es tenerlos de tu lado, no una barra de cien horas.
+    test('no se pasa de la escala, ni por arriba ni por abajo', () => {
+        const arriba = changeStanding([suya()], 'molino', 99);
+        expect(standingWith(arriba, 'molino')).toBe(STANDING);
+        const abajo = changeStanding([suya()], 'molino', -99);
+        expect(standingWith(abajo, 'molino')).toBe(-STANDING);
+    });
+
+    test('un nombre que no está no mueve nada', () => {
+        expect(changeStanding([suya()], 'nadie', 2)[0].reputation).toBe(0);
+    });
+
+    // Un número entre -5 y 5 no dice nada; «os deben una» sí.
+    test('se dice en palabras, y nunca en blanco', () => {
+        for (let at = -STANDING; at <= STANDING; at++) {
+            expect(describeStanding(at)).not.toBe('');
+            expect(describeStanding(at)).not.toMatch(/undefined|NaN/);
+        }
+        expect(describeStanding(5)).toMatch(/deben/);
+        expect(describeStanding(-5)).toMatch(/ganas/);
+    });
+
+    // Quien te debe una no te cobra el máximo; quien te tiene ganas, de más.
+    test('lo que piensan de ti se paga el viernes', () => {
+        expect(priceFactor(0)).toBe(1);
+        expect(priceFactor(5)).toBeLessThan(1);
+        expect(priceFactor(-5)).toBeGreaterThan(1);
+        expect(priceFactor(999)).toBe(priceFactor(STANDING));
     });
 });

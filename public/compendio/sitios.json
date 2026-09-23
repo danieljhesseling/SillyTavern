@@ -9,9 +9,19 @@
       "kind": "tipo",
       "locationType": "village",
       "shape": "camp",
-      "tags": ["gente", "refugio"],
+      "tags": [
+        "gente",
+        "refugio"
+      ],
       "weight": 10,
-      "when": { "biome": ["llanura", "valle", "camino", "bosque"] },
+      "when": {
+        "biome": [
+          "llanura",
+          "valle",
+          "camino",
+          "bosque"
+        ]
+      },
       "note": "Se come caliente y se duerme bajo techo, si te dejan."
     },
     {
@@ -20,9 +30,19 @@
       "kind": "tipo",
       "locationType": "city",
       "shape": "camp",
-      "tags": ["gente", "ley", "mercado"],
+      "tags": [
+        "gente",
+        "ley",
+        "mercado"
+      ],
       "weight": 6,
-      "when": { "biome": ["llanura", "camino", "valle"] },
+      "when": {
+        "biome": [
+          "llanura",
+          "camino",
+          "valle"
+        ]
+      },
       "note": "Hay guardia, hay mercado y hay quien te vigila por los dos."
     },
     {
@@ -31,9 +51,19 @@
       "kind": "tipo",
       "locationType": "ruins",
       "shape": "rooms",
-      "tags": ["viejo", "peligro"],
+      "tags": [
+        "viejo",
+        "peligro"
+      ],
       "weight": 10,
-      "when": { "biome": ["bosque", "llanura", "montana", "pantano"] },
+      "when": {
+        "biome": [
+          "bosque",
+          "llanura",
+          "montana",
+          "pantano"
+        ]
+      },
       "note": "Alguien vivió aquí y dejó de hacerlo de golpe."
     },
     {
@@ -42,9 +72,18 @@
       "kind": "tipo",
       "locationType": "dungeon",
       "shape": "temple",
-      "tags": ["muerte", "cerrado"],
+      "tags": [
+        "muerte",
+        "cerrado"
+      ],
       "weight": 8,
-      "when": { "biome": ["cueva", "montana", "bosque"] },
+      "when": {
+        "biome": [
+          "cueva",
+          "montana",
+          "bosque"
+        ]
+      },
       "note": "Se baja por unas escaleras y el aire cambia al tercer escalón."
     },
     {
@@ -53,9 +92,18 @@
       "kind": "tipo",
       "locationType": "wilderness",
       "shape": "cave",
-      "tags": ["oscuro", "natural"],
+      "tags": [
+        "oscuro",
+        "natural"
+      ],
       "weight": 9,
-      "when": { "biome": ["cueva", "montana", "desierto"] },
+      "when": {
+        "biome": [
+          "cueva",
+          "montana",
+          "desierto"
+        ]
+      },
       "note": "No la construyó nadie, y eso no la hace más segura."
     },
     {
@@ -64,9 +112,17 @@
       "kind": "tipo",
       "locationType": "dungeon",
       "shape": "cave",
-      "tags": ["oficio", "oscuro"],
+      "tags": [
+        "oficio",
+        "oscuro"
+      ],
       "weight": 7,
-      "when": { "biome": ["montana", "cueva"] },
+      "when": {
+        "biome": [
+          "montana",
+          "cueva"
+        ]
+      },
       "note": "Se excavó por algo, y ese algo se acabó o se despertó."
     },
     {
@@ -75,9 +131,18 @@
       "kind": "tipo",
       "locationType": "outpost",
       "shape": "rooms",
-      "tags": ["militar", "camino"],
+      "tags": [
+        "militar",
+        "camino"
+      ],
       "weight": 8,
-      "when": { "biome": ["camino", "montana", "llanura"] },
+      "when": {
+        "biome": [
+          "camino",
+          "montana",
+          "llanura"
+        ]
+      },
       "note": "Cuatro hombres, una torre y un aburrimiento de años."
     },
     {
@@ -86,9 +151,19 @@
       "kind": "tipo",
       "locationType": "camp",
       "shape": "camp",
-      "tags": ["camino", "gente"],
+      "tags": [
+        "camino",
+        "gente"
+      ],
       "weight": 9,
-      "when": { "biome": ["bosque", "llanura", "camino", "desierto"] },
+      "when": {
+        "biome": [
+          "bosque",
+          "llanura",
+          "camino",
+          "desierto"
+        ]
+      },
       "note": "Levantado esta semana, y se nota en que todo está a medio atar."
     },
     {
@@ -97,9 +172,18 @@
       "kind": "tipo",
       "locationType": "sanctuary",
       "shape": "temple",
-      "tags": ["creencia", "refugio"],
+      "tags": [
+        "creencia",
+        "refugio"
+      ],
       "weight": 6,
-      "when": { "biome": ["montana", "bosque", "desierto"] },
+      "when": {
+        "biome": [
+          "montana",
+          "bosque",
+          "desierto"
+        ]
+      },
       "note": "Alguien viene a cuidarlo, aunque no siempre se sabe quién."
     },
     {
@@ -108,17 +192,26 @@
       "kind": "tipo",
       "locationType": "wilderness",
       "shape": "cave",
-      "tags": ["agua", "enfermo"],
+      "tags": [
+        "agua",
+        "enfermo"
+      ],
       "weight": 6,
-      "when": { "biome": ["pantano"] },
+      "when": {
+        "biome": [
+          "pantano"
+        ]
+      },
       "note": "No hay camino: hay sitios donde se hunde menos."
     },
-
     {
       "id": "sala-pozo",
       "name": "La sala del pozo",
       "kind": "sala",
-      "tags": ["agua", "mazmorra"],
+      "tags": [
+        "agua",
+        "mazmorra"
+      ],
       "weight": 9,
       "rows": [
         "#######",
@@ -135,7 +228,10 @@
       "id": "sala-nichos",
       "name": "La galería de nichos",
       "kind": "sala",
-      "tags": ["cripta", "muerte"],
+      "tags": [
+        "cripta",
+        "muerte"
+      ],
       "weight": 9,
       "rows": [
         "#########",
@@ -151,7 +247,9 @@
       "id": "sala-cruce",
       "name": "El cruce",
       "kind": "sala",
-      "tags": ["paso"],
+      "tags": [
+        "paso"
+      ],
       "weight": 10,
       "rows": [
         "  ###  ",
@@ -168,7 +266,10 @@
       "id": "sala-hundida",
       "name": "La sala hundida",
       "kind": "sala",
-      "tags": ["terreno", "ruina"],
+      "tags": [
+        "terreno",
+        "ruina"
+      ],
       "weight": 8,
       "rows": [
         "#########",
@@ -184,7 +285,10 @@
       "id": "sala-columnas",
       "name": "La sala de columnas",
       "kind": "sala",
-      "tags": ["templo", "cobertura"],
+      "tags": [
+        "templo",
+        "cobertura"
+      ],
       "weight": 9,
       "rows": [
         "#########",
@@ -201,7 +305,10 @@
       "id": "sala-almacen",
       "name": "El almacén",
       "kind": "sala",
-      "tags": ["oficio", "cobertura"],
+      "tags": [
+        "oficio",
+        "cobertura"
+      ],
       "weight": 8,
       "rows": [
         "########",
@@ -216,7 +323,10 @@
       "id": "sala-ele",
       "name": "El recodo",
       "kind": "sala",
-      "tags": ["paso", "emboscada"],
+      "tags": [
+        "paso",
+        "emboscada"
+      ],
       "weight": 8,
       "rows": [
         "######   ",
@@ -233,7 +343,9 @@
       "id": "sala-guardia",
       "name": "El cuerpo de guardia",
       "kind": "sala",
-      "tags": ["militar"],
+      "tags": [
+        "militar"
+      ],
       "weight": 7,
       "rows": [
         "#######",
@@ -244,12 +356,13 @@
       ],
       "note": "Mesa en el centro, bancos a los lados y una puerta que se atranca."
     },
-
     {
       "id": "estado-habitada",
       "name": "Habitada",
       "kind": "estado",
-      "tags": ["gente"],
+      "tags": [
+        "gente"
+      ],
       "weight": 10,
       "cover": 0.12,
       "rough": 0,
@@ -259,7 +372,9 @@
       "id": "estado-saqueada",
       "name": "Saqueada",
       "kind": "estado",
-      "tags": ["ruina"],
+      "tags": [
+        "ruina"
+      ],
       "weight": 9,
       "cover": 0.05,
       "rough": 0.05,
@@ -269,7 +384,9 @@
       "id": "estado-inundada",
       "name": "Inundada",
       "kind": "estado",
-      "tags": ["agua"],
+      "tags": [
+        "agua"
+      ],
       "weight": 7,
       "cover": 0.08,
       "rough": 0.3,
@@ -279,7 +396,9 @@
       "id": "estado-quemada",
       "name": "Quemada",
       "kind": "estado",
-      "tags": ["fuego"],
+      "tags": [
+        "fuego"
+      ],
       "weight": 7,
       "cover": 0.06,
       "rough": 0.15,
@@ -289,7 +408,10 @@
       "id": "estado-derrumbada",
       "name": "Derrumbada",
       "kind": "estado",
-      "tags": ["ruina", "terreno"],
+      "tags": [
+        "ruina",
+        "terreno"
+      ],
       "weight": 8,
       "cover": 0.2,
       "rough": 0.2,
@@ -299,11 +421,63 @@
       "id": "estado-tomada",
       "name": "Tomada",
       "kind": "estado",
-      "tags": ["militar"],
+      "tags": [
+        "militar"
+      ],
       "weight": 6,
       "cover": 0.18,
       "rough": 0,
       "note": "Alguien se ha hecho fuerte aquí: barricadas donde antes había paso."
+    },
+    {
+      "id": "tipo-castillo",
+      "name": "Castillo",
+      "kind": "tipo",
+      "weight": 7,
+      "when": {
+        "biome": [
+          "montana",
+          "llanura",
+          "camino",
+          "valle"
+        ]
+      },
+      "shape": "rooms",
+      "note": "Se levantó para que costara entrar, y sigue costando.",
+      "locationType": "outpost"
+    },
+    {
+      "id": "tipo-puerto",
+      "name": "Puerto",
+      "kind": "tipo",
+      "weight": 8,
+      "when": {
+        "biome": [
+          "costa",
+          "rio",
+          "pantano"
+        ]
+      },
+      "shape": "camp",
+      "note": "Todo el que llega trae algo, y todo el que se va se lleva otra cosa.",
+      "locationType": "city"
+    },
+    {
+      "id": "tipo-torre",
+      "name": "Torre",
+      "kind": "tipo",
+      "weight": 7,
+      "when": {
+        "biome": [
+          "montana",
+          "llanura",
+          "bosque",
+          "camino"
+        ]
+      },
+      "shape": "temple",
+      "note": "Una sola escalera, y arriba lo que se quiso guardar lejos.",
+      "locationType": "outpost"
     }
   ]
 }

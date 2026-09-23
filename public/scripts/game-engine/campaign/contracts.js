@@ -297,7 +297,13 @@ export function contractsFromFactions({ factions, random = Math.random, renown =
             ? String(enemy?.name || place || pick(random, PATRONS))
             : String(faction.name);
 
-        const rank = pick(random, available);
+        // A quien le caes bien te da lo mejor que tiene; a quien no, lo que sobra. Es la
+        // otra cara de tomar partido: ayudar a unos cierra puertas en la casa de enfrente.
+        const standing = Number(against ? enemy?.reputation : faction.reputation) || 0;
+        const rank = standing >= 2
+            ? available[available.length - 1]
+            : (standing <= -2 ? available[0] : pick(random, available));
+
         const title = GOAL_TITLE[goal][against ? 'against' : 'forThem']
             .replace('{place}', place || 'el yermo')
             .replace('{who}', String(faction.name));

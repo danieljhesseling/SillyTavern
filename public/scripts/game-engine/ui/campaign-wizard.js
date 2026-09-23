@@ -609,7 +609,10 @@ export async function askWizard({ Popup, POPUP_TYPE, existingWorldNames = [], ge
  * tested, in one place.
  *
  * @param {Object} input
- * @param {{templateId: string, worldName: string, genre: string, description: string, seed?: string, party: string[], generatedTemplate?: any, importedPack?: any}} input.answers
+ * @param {{templateId: string, worldName: string, genre: string, description: string,
+ *   seed?: string, party: string[], generatedTemplate?: any, importedPack?: any,
+ *   locations?: any[], factions?: any[], people?: any[], quests?: any[],
+ *   board?: any}} input.answers
  * @param {(name: string) => Promise<any>} input.createWorld  Resolves false when the name is refused.
  * @param {(name: string) => Promise<any>} input.loadWorld
  * @param {(name: string, data: any) => Promise<any>} input.saveWorld
@@ -667,6 +670,17 @@ export async function createCampaign({
     // donde sacar el azar era el nombre, y dos campanas llamadas igual salian iguales.
     data.metadata = ensureSeed(data.metadata, { seed: answers.seed }).metadata;
 
+    // Los sitios que se hayan decidido en el taller mandan sobre los que el mundo se
+    // pondria solo: lo que tocas se queda. Sin tocar nada, esto llega vacio y el mundo
+    // nace con sus vecinos como hasta ahora.
+    applyChosenLocations(data.metadata, answers.locations);
+
+    // Y las facciones que se hayan escrito. Sin tocar el paso 9, esto llega vacio y se
+    // reparten solas con la semilla, como hasta ahora.
+    if (Array.isArray(answers.factions) && answers.factions.length > 0) {
+        data.metadata.factions = answers.factions;
+    }
+
     // Un mundo de un solo sitio no tiene distancia, y sin distancia no hay viaje que
     // cueste dias ni facciones que quieran lo de al lado. Asi que nace con vecinos, y
     // quien vive en ellos. Todo con la semilla del mundo: dos campanas con el mismo texto
@@ -691,6 +705,36 @@ export async function createCampaign({
         if (spec.group === 'Monsters') monsterIds[spec.title] = String(entry.uid);
     }
 
+    // La gente del taller entra como entradas de verdad: un vecino que solo existiera en
+    // una lista no lo leeria el modelo, que es lo unico para lo que sirve un vecino.
+    for (const person of (Array.isArray(answers.people) ? answers.people : [])) {
+        const entry = createEntry(answers.worldName, data);
+        if (!entry) continue;
+        const name = String(person?.name ?? '').trim();
+        entry.comment = name;
+        entry.key = [name, String(person?.title ?? '').trim()].filter(Boolean);
+        entry.content = [person?.backstory, person?.personality].filter(Boolean).join(' ');
+        entry.group = 'Characters';
+        entry.dndData = {
+            entityType: 'npc',
+            name,
+            title: String(person?.title ?? '').trim(),
+            race: String(person?.race ?? '').trim(),
+            charClass: String(person?.className ?? '').trim(),
+            factions: Array.isArray(person?.factions) ? person.factions : [],
+            mapPosition: { locationName: String(person?.locationName ?? '').trim(), gridX: 0, gridY: 0 },
+        };
+    }
+
+    // Y las misiones escritas, con los mandos del tablon. Las demas las hace el motor
+    // mientras juegas: esto es solo lo que da el tono.
+    if (Array.isArray(answers.quests) && answers.quests.length > 0) {
+        data.metadata.writtenQuests = answers.quests;
+    }
+    if (answers.board && typeof answers.board === 'object') {
+        data.metadata.boardRules = answers.board;
+    }
+
     // Only now are the monster ids known, so the board's encounter rules are written
     // here rather than in buildWorldMetadata. Without this, /fight finds no enemies.
     const board = data.metadata?.locationMaps?.[0]?.boards?.[0];
@@ -698,12 +742,17 @@ export async function createCampaign({
 
     await saveWorld(answers.worldName, data);
 
+    // Donde acaba el grupo es donde **ha quedado** el primer sitio, no como se llamaba en
+    // la plantilla: si en el taller le cambiaste el nombre, quien nos llama tiene que
+    // saber el bueno o la partida empieza sin tablero.
+    const firstPlace = (data.metadata?.locationMaps ?? [])[0];
+
     return {
         worldName: answers.worldName,
         party: partyEntries.map(entry => entry.comment),
         partyEntries,
-        locationName: template.locationName,
-        boardName: template.boardName,
+        locationName: String(firstPlace?.name || template.locationName),
+        boardName: String(firstPlace?.boards?.[0]?.name || template.boardName),
     };
 }
 
@@ -729,6 +778,45 @@ export function buildNewCampaignCta(hasCampaigns) {
                 <i class="fa-solid fa-plus"></i> Nueva campaña
             </button>
         </div>`;
+}
+
+/**
+ * Los sitios que se decidieron en el taller.
+ *
+ * El primero **conserva el tablero de la plantilla**: es donde empieza el grupo, y perderlo
+ * seria empezar una partida sin sitio donde estar. Los demas entran tal cual, con sus
+ * tableros por generar —el generador los rellena al entrar, con la semilla del mundo—.
+ *
+ * Sin nada decidido no toca nada, y el mundo se puebla solo como siempre.
+ *
+ * @param {any} metadata
+ * @param {any[]} [chosen]
+ * @returns {void}
+ */
+function applyChosenLocations(metadata, chosen) {
+    const list = Array.isArray(chosen) ? chosen : [];
+    if (list.length === 0) return;
+
+    const already = Array.isArray(metadata?.locationMaps) ? metadata.locationMaps : [];
+    const first = already[0] ?? {};
+
+    metadata.locationMaps = list.map((place, i) => ({
+        // El de partida se queda con lo que la plantilla puso: su tablero y su tamano.
+        ...(i === 0 ? first : {}),
+        name: String(place?.name ?? '').trim() || String(first.name ?? 'El primer sitio'),
+        description: String(place?.description ?? '').trim(),
+        url: '',
+        gridWidth: Number(first.gridWidth) || 20,
+        gridHeight: Number(first.gridHeight) || 15,
+        biome: String(place?.biome ?? '').trim(),
+        placeType: String(place?.type ?? '').trim(),
+        routes: Array.isArray(place?.routes) ? place.routes : [],
+        boards: i === 0
+            ? (Array.isArray(first.boards) ? first.boards : [])
+            : [],
+        // Lo que se pidio en el paso 4, para que el generador sepa que hacer al entrar.
+        wanted: Array.isArray(place?.boards) ? place.boards : [],
+    }));
 }
 
 /**

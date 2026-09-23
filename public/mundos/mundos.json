@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "about": "Los mundos precreados. Cada uno es contenido + semilla: la semilla va escrita aquí a propósito, porque un mundo precreado es *ese* mundo y dos personas que lo jueguen tienen que poder hablar de lo mismo. Quien quiera otra versión le da a volver a tirar. Añadir un quinto mundo es añadir una entrada a este archivo: no hay código que tocar. Por ahora cada uno trae su ficha y con qué sitio empieza; cuando el taller tenga los trece pasos, aquí se dirá además qué filas de cada batería entran (ver wiki/ROADMAP_CREACION.md, T6).",
+  "worlds": [
+    {
+      "id": "costa",
+      "name": "La costa que no duerme",
+      "genre": "Terror",
+      "note": "Un pueblo de pescadores que lleva demasiado tiempo teniendo suerte.",
+      "synopsis": "Nadie se ahoga en esta costa desde hace treinta años, y en el pueblo eso no se celebra: se calla. Las capturas son buenas, los niños nacen sanos y por las noches se oye algo bajo el embarcadero. Aquí no se gana matando lo que hay en el agua, porque no se puede; se gana entendiendo qué se le prometió y quién lo firmó.",
+      "seed": "sal-niebla-tres",
+      "templateId": "tavern",
+      "icon": "fa-water",
+      "traits": ["Sin razas fantásticas", "Lo que hay ahí fuera no se mata a espadazos", "El miedo cuenta más que los puntos de vida"]
+    },
+    {
+      "id": "ocaso",
+      "name": "Las tierras del ocaso",
+      "genre": "Fantasía épica",
+      "note": "Tres casas, un paso de montaña y un invierno que llega antes de tiempo.",
+      "synopsis": "El reino no se cae de golpe: se cae porque nadie repara los puentes. Las casas grandes llevan dos generaciones midiéndose y este invierno una de ellas va a mover ficha. Hay elfos, hay enanos y hay caminos largos — y lo que decide la partida no es quién pega más fuerte, sino quién llega antes al paso.",
+      "seed": "roble-invierno-nueve",
+      "templateId": "forest",
+      "icon": "fa-crown",
+      "traits": ["Razas clásicas", "Facciones grandes y relojes lentos", "Los viajes cuestan días de verdad"]
+    },
+    {
+      "id": "pantalla",
+      "name": "El mundo tras la pantalla",
+      "genre": "Isekai",
+      "note": "Te despertaste aquí con una barra de vida encima y nadie te ha explicado nada.",
+      "synopsis": "El sistema te dice tu nivel, tu daño y cuánto te falta para el siguiente. Lo que no te dice es por qué los demás también lo ven, ni qué pasa cuando esa barra llega a cero. Los números están a la vista y son reales; la gente que conoces, también. Lo segundo pesa más que lo primero.",
+      "seed": "torre-siete-brasa",
+      "templateId": "dungeon",
+      "icon": "fa-gamepad",
+      "traits": ["Los números se ven, y son de verdad", "Los vínculos pesan más que el combate", "Subir de nivel se nota en una tarde"]
+    },
+    {
+      "id": "1387",
+      "name": "1387",
+      "genre": "Histórico",
+      "note": "Sin magia. Una compañía libre, un invierno y una paga que no llega.",
+      "synopsis": "No hay dragones ni hechizos: hay una compañía de doce que cobra tarde, un señor que promete y un camino que se cierra con la nieve. Una herida mal cerrada te deja cojo el resto de la campaña y el viernes hay que pagar igual. Lo que se decide aquí es a quién se le paga primero.",
+      "seed": "yunque-hiel-catorce",
+      "templateId": "tavern",
+      "icon": "fa-scroll",
+      "traits": ["Sin magia", "Las heridas se quedan", "La cuenta del viernes aprieta de verdad"]
+    }
+  ]
+}

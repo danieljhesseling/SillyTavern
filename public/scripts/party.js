@@ -33,9 +33,11 @@ import { breedMonster as breedFromCompendium, breedBand, describeMonster } from 
 import { writeQuest as writeFromCompendium, writeQuestBoard, describeQuest } from './game-engine/compendio/quests.js';
 import { writePerson as writePersonFromCompendium, writeVillage, describePerson } from './game-engine/compendio/people.js';
 import { injuryTableFor, causesOf } from './game-engine/compendio/ailments.js';
+import { racesOf, kindsOf, describeKin, validateKin } from './game-engine/compendio/kin.js';
 import {
     readFactions, tickFactions, outcomeOf, applyOutcome, newsFor, describeFaction,
     rollFactions, validateFactionRows, busyFactions, pushFaction, speaksPlural, namesOf,
+    changeStanding, describeStanding, standingWith,
 } from './game-engine/campaign/factions.js';
 import { marketPressure, applyMarket, describeMarket } from './game-engine/campaign/economy.js';
 import {
@@ -757,6 +759,10 @@ async function reloadWorldFactions() {
     try {
         const data = await loadWorldInfo(worldName);
         currentWorldFactions = readFactions(data?.metadata?.factions);
+        // Y los mandos del tablon, que se leen en el mismo sitio y para lo mismo.
+        lastBoardRules = data?.metadata?.boardRules ?? null;
+        lastWrittenQuests = Array.isArray(data?.metadata?.writtenQuests)
+            ? data.metadata.writtenQuests : [];
     } catch (error) {
         console.error('[party] no se pudieron leer las facciones', error);
         currentWorldFactions = [];
@@ -2591,6 +2597,21 @@ function describeWorldFactions() {
 }
 
 /**
+ * Las facciones que te dejarian pasar por lo suyo.
+ *
+ * A partir de que te miran bien: por debajo de eso te conocen, que no es lo mismo que
+ * abrirte un paso que cerraron.
+ *
+ * @returns {string[]}
+ */
+function friendlyFactions() {
+    return readFactions(getCurrentWorldFactions())
+        .filter(faction => standingWith(getCurrentWorldFactions(), faction.id) >= 2)
+        .map(faction => faction.name)
+        .filter(Boolean);
+}
+
+/**
  * De quien es un sitio, en las palabras que lee el modelo.
  *
  * Una faccion manda en lo que tiene (`holds`) y se sienta en su sede. Un vecino de ahi
@@ -2646,15 +2667,24 @@ async function settleFactionStake(contract) {
         const { factions, event } = pushFaction(
             before, String(contract.faction), contract.against ? -segments : segments,
         );
-        if (!event) return;
+
+        // Lo que piensan de ti se mueve aunque el reloj no: parar a quien ya estaba a cero
+        // sigue siendo haberte puesto en su contra, y ellos se acuerdan.
+        const seen = changeStanding(factions, String(contract.faction), contract.against ? -1 : 1);
+        const mine = seen.find(f => f.id === String(contract.faction));
+        const saidStanding = mine
+            ? `${mine.name}: ${describeStanding(mine.reputation)}.`
+            : '';
+
+        if (!event && !saidStanding) return;
 
         // Empujar hasta el final cumple la meta igual que cumplirla con el tiempo: una
         // sola forma de que un reloj lleno cambie el mundo.
         let locations = Array.isArray(data.metadata.locationMaps) ? data.metadata.locationMaps : [];
-        let people = factions;
+        let people = seen;
         /** @type {string[]} */
         const changed = [];
-        if (event.kind === 'cumple') {
+        if (event?.kind === 'cumple') {
             const who = people.find(f => f.id === event.faction);
             if (who) {
                 const applied = applyOutcome({ locations, factions: people, outcome: outcomeOf(who) });
@@ -2671,8 +2701,9 @@ async function settleFactionStake(contract) {
         await refreshWorldMapGlobals(worldName);
         if (isShellOpen()) refreshGameShell();
 
-        toastr.info(event.note, 'Se nota ahí fuera', { timeOut: 9000 });
-        postForModel([event.note, ...changed, 'Cuéntalo en una frase. No inventes nada que no esté aquí.']
+        const told = [event?.note, saidStanding, ...changed].filter(Boolean);
+        toastr.info(told[0], 'Se nota ahí fuera', { timeOut: 9000 });
+        postForModel([...told, 'Cuéntalo en una frase. No inventes nada que no esté aquí.']
             .join('\n'))
             .catch(error => console.error('[party] faction stake note failed', error));
     } catch (error) {
@@ -2755,6 +2786,27 @@ function currentMarket() {
 }
 
 /**
+ * Lo que el mundo dijo sobre su tablon, en el taller.
+ *
+ * Sin nada dicho, lo de siempre: uno de cada tres encargos de faccion y ninguna mision
+ * escrita. Es la copia leida, porque esto se llama al dibujar y no puede esperar.
+ *
+ * @returns {{factionShare: number, theme: string, written: any[]}}
+ */
+function worldBoardRules() {
+    return {
+        factionShare: Number(lastBoardRules?.factionShare) || 3,
+        theme: String(lastBoardRules?.theme ?? ''),
+        written: Array.isArray(lastWrittenQuests) ? lastWrittenQuests : [],
+    };
+}
+
+/** @type {any} */
+let lastBoardRules = null;
+/** @type {any[]} */
+let lastWrittenQuests = [];
+
+/**
  * El tablon, llenandolo si hace falta.
  *
  * Los encargos vencen solos y el hueco se rellena: un tablon que se vacia deja de tirar
@@ -2775,8 +2827,29 @@ function refreshContractBoard() {
 
     const wanted = boardSize(guild);
 
-    // Uno de cada tres encargos sale de lo que alguien quiere de verdad. No mas: un tablon
-    // que solo habla de facciones deja de ofrecer trabajo y pasa a ser una guerra.
+    // Las que el mundo trae escritas salen una vez, al principio: son las que dan el tono.
+    // Lo demas lo genera el tablon segun se va vaciando.
+    const written = worldBoardRules().written;
+    if (kept.length === 0 && written.length > 0) {
+        kept.push(...written.filter((/** @type {any} */ q) => q.atStart !== false).map(
+            (/** @type {any} */ quest, /** @type {number} */ i) => ({
+                id: `w_${i}_${String(quest.title ?? '').slice(0, 12)}`,
+                rank: 'D',
+                kind: 'cull',
+                title: String(quest.title ?? '').trim(),
+                locationName: String(quest.where ?? '').trim(),
+                reward: Math.max(0, Number(quest.reward) || 40),
+                days: today + 14,
+                difficulty: 0.25,
+                patron: 'El mundo',
+            }),
+        ));
+    }
+
+    // Uno de cada N encargos sale de lo que alguien quiere de verdad. Lo dice el mundo, y
+    // por defecto uno de cada tres: un tablon que solo habla de facciones deja de ofrecer
+    // trabajo y pasa a ser una guerra.
+    const share = Math.max(1, Number(worldBoardRules().factionShare) || 3);
     const huecos = wanted - kept.length;
     if (huecos > 0) {
         const suyos = contractsFromFactions({
@@ -2786,7 +2859,7 @@ function refreshContractBoard() {
             random: nextRandom,
             renown: guild.renown,
             day: today,
-            count: Math.max(1, Math.floor(huecos / 3)),
+            count: Math.max(0, Math.floor(huecos / share)),
         });
         kept.push(...suyos);
     }
@@ -6039,7 +6112,14 @@ async function travelWithTime(name, options = {}) {
         };
     }
 
-    const plan = planTravel({ from: currentLocationName, to: match.name, locations });
+    // Un paso cerrado por alguien que te debe una se abre para ti: es donde de verdad se
+    // nota haberse ganado a alguien.
+    const plan = planTravel({
+        from: currentLocationName,
+        to: match.name,
+        locations,
+        friendly: friendlyFactions(),
+    });
     // El motivo, no un boton que no hace nada: "el paso esta cerrado" es una meta.
     if (!plan.ok) return { to: '', reason: plan.reason };
 
@@ -6169,7 +6249,11 @@ async function openCompendiumLibrary() {
 
     // Un vocabulario cerrado mal escrito pasa la validacion de toda fila y luego no hace
     // lo que dice. Se cuenta aqui, junto a lo que no se pudo leer.
-    const broken = [...validateAbilities(compendium), ...validateFactionRows(compendium)];
+    const broken = [
+        ...validateAbilities(compendium),
+        ...validateFactionRows(compendium),
+        ...validateKin(compendium),
+    ];
 
     await openCompendiumPanel({
         compendium,
@@ -6209,6 +6293,12 @@ async function openCompendiumLibrary() {
                 });
                 const names = namesOf(rolled);
                 return rolled.map(faction => describeFaction(faction, names));
+            }
+            if (domain === 'razas' || domain === 'clases') {
+                // Se prueban ensenando lo que dan y lo que quitan: una lista de nombres no
+                // dice si elegir raza significa algo.
+                const rows = domain === 'razas' ? racesOf(compendium) : kindsOf(compendium);
+                return rows.slice(0, howMany).map(row => `${row.name} · ${describeKin(row)}`);
             }
             if (domain === 'habilidades') {
                 // Lo que sabe hacer una clase, que es lo que la bateria hace. Una lista

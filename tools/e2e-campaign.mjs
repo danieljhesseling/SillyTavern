@@ -214,18 +214,216 @@ try {
         return seen;
     };
 
-    step('2. The wizard creates a world, a chat, and puts the party on the board');
+    step('2. El taller crea un mundo, un chat, y pone al grupo en el tablero');
     await page.click('#cw-new-campaign');
-    await page.waitForSelector('.cw-root');
-    const proposed = await page.inputValue('.cw-root input.cw-input >> nth=0');
+
+    // La puerta: tres caminos, y la unica pregunta que se puede hacer antes de saber nada
+    // del mundo es «¿lo escribo yo o juego ya?».
+    await page.waitForSelector('.tl-door-grid');
+    const puertas = await page.evaluate(() =>
+        [...document.querySelectorAll('.tl-door-card-title')].map(e => e.textContent || ''));
+    check('al crear campana se elige por donde se empieza',
+        puertas.length === 3 && puertas.some(t => /desde cero/i.test(t))
+        && puertas.some(t => /precreados/i.test(t)) && puertas.some(t => /libro/i.test(t)),
+        puertas.join(' | '));
+
+    await page.locator('.tl-door-card').first().click();
+    await page.waitForSelector('.tl-root');
+
+    // Paso 1 de 13, y lo dice: contar sobre los hechos seria mentir en la unica pantalla
+    // que dice cuanto falta.
+    const paso1 = await page.evaluate(() => ({
+        dicho: document.querySelector('.tl-bar-said')?.textContent || '',
+        semilla: /** @type {HTMLInputElement|null} */ (
+            document.querySelector('.tl-input.mono'))?.value || '',
+        tarjetas: document.querySelectorAll('.tl-card').length,
+    }));
+    check('el taller dice por donde va, sobre los trece pasos',
+        /Paso 1 de 13/.test(paso1.dicho), paso1.dicho);
+    check('y llega con una semilla ya tirada, en tres palabras',
+        /^[a-z]+-[a-z]+-[a-z]+$/.test(paso1.semilla), paso1.semilla);
+    check('con tarjetas para elegir con que sitio empieza', paso1.tarjetas >= 3, `${paso1.tarjetas}`);
+
+    // Sin elegir sitio no se pasa, y se dice por que: un boton apagado que no lo dice es
+    // la forma mas rapida de que alguien cierre la ventana.
+    await page.locator('.tl-next').click();
+    await page.waitForTimeout(300);
+    const frena = await page.evaluate(() => document.querySelector('.tl-said')?.textContent || '');
+    check('no deja pasar sin elegir, y dice que falta', /sitio|nombre/i.test(frena), frena);
+
+    await page.locator('.tl-card').first().click();
+    await page.waitForTimeout(300);
+    const elegida = await page.locator('.tl-card.picked').count();
+    check('lo elegido se marca, que es lo unico que hay que mirar', elegida === 1, `${elegida}`);
+
+    const proposed = await page.evaluate(() =>
+        /** @type {HTMLInputElement|null} */ (document.querySelector('.tl-input'))?.value || '');
     check('it proposes a free name instead of demanding one', Boolean(proposed), `proposed "${proposed}"`);
 
-    // Un nombre no es un personaje, asi que el paso de los nombres ya no existe.
-    check('el asistente ya no pide una lista de nombres sueltos',
-        await page.locator('.cw-party-input').count() === 0,
-        `${await page.locator('.cw-party-input').count()} cajas de nombres`);
+    // Paso 2: quien lo cuenta. Se puede saltar — se juega sin narrador.
+    await page.locator('.tl-next').click();
+    await page.waitForTimeout(400);
+    const paso2 = await page.evaluate(() => ({
+        dicho: document.querySelector('.tl-bar-said')?.textContent || '',
+        narradores: document.querySelectorAll('.tl-card').length,
+        mas: document.querySelectorAll('.tl-card.add').length,
+    }));
+    check('el paso 2 ofrece narradores hechos y uno para escribir el tuyo',
+        /Paso 2 de 13/.test(paso2.dicho) && paso2.narradores >= 4 && paso2.mas === 1,
+        `${paso2.dicho} · ${paso2.narradores} tarjetas`);
 
-    await page.click('.popup-button-ok');
+    await page.locator('.tl-skip').click();
+    await page.waitForTimeout(600);
+
+    // Paso 3: los sitios. Llega con el de partida y con los vecinos que la semilla iba a
+    // poner sola al crear el mundo — ensenarlos antes es lo unico que permite tocarlos.
+    const paso3 = await page.evaluate(() => ({
+        dicho: document.querySelector('.tl-bar-said')?.textContent || '',
+        sitios: [...document.querySelectorAll('.tl-card:not(.add) .tl-card-title')]
+            .map(e => e.textContent || ''),
+        marcados: document.querySelectorAll('.tl-card.picked').length,
+    }));
+    check('el paso 3 llega con los sitios que la semilla iba a poner sola',
+        /Paso 3 de 13/.test(paso3.dicho) && paso3.sitios.length >= 3 && paso3.marcados >= 3,
+        `${paso3.dicho} · ${paso3.sitios.join(', ')}`);
+
+    // Y se pueden tocar: abrir uno ensena su ficha con su tipologia.
+    await page.locator('.tl-card:not(.add)').nth(1).click();
+    await page.waitForTimeout(400);
+    const tipos = await page.evaluate(() =>
+        [...document.querySelectorAll('.tl-form select option')].map(o => o.textContent || ''));
+    check('cada sitio dice que clase de sitio es, y las hay de todo tipo',
+        tipos.some(t => /Aldea/i.test(t)) && tipos.some(t => /Castillo/i.test(t))
+        && tipos.some(t => /Puerto/i.test(t)) && tipos.some(t => /Torre/i.test(t)),
+        tipos.filter(Boolean).join(', '));
+
+    await page.locator('.tl-next').click();
+    await page.waitForTimeout(600);
+
+    // Paso 4: un acordeon por sitio, que es lo que hace que se entienda a cual pertenece
+    // cada tablero sin leerlo en el nombre.
+    const paso4 = await page.evaluate(() => ({
+        dicho: document.querySelector('.tl-bar-said')?.textContent || '',
+        sitios: document.querySelectorAll('.tl-place').length,
+    }));
+    check('el paso 4 da un acordeon por sitio para sus tableros',
+        /Paso 4 de 13/.test(paso4.dicho) && paso4.sitios === paso3.marcados,
+        `${paso4.dicho} · ${paso4.sitios} acordeones`);
+
+    await page.locator('.tl-place .tl-card.add').first().click();
+    await page.waitForTimeout(400);
+    const tablero = await page.evaluate(() => ({
+        cuantos: document.querySelectorAll('.tl-place .tl-card.picked').length,
+        formas: [...document.querySelectorAll('.tl-place select option')].map(o => o.textContent || ''),
+    }));
+    check('se le puede anadir un tablero, diciendo como es por dentro',
+        tablero.cuantos === 1 && tablero.formas.some(f => /Salas y pasillos/i.test(f))
+        && tablero.formas.some(f => /Cueva/i.test(f)),
+        tablero.formas.filter(Boolean).join(', '));
+
+    await page.locator('.tl-next').click();
+    await page.waitForTimeout(600);
+
+    // Pasos 5, 6 y 7: elegir de una lista. Los tres son la misma pantalla con otras filas.
+    const paso5 = await page.evaluate(() => ({
+        dicho: document.querySelector('.tl-bar-said')?.textContent || '',
+        marcadas: document.querySelectorAll('.tl-card.picked').length,
+    }));
+    check('el paso 5 llega con las habilidades escritas, y todas dentro',
+        /Paso 5 de 13/.test(paso5.dicho) && paso5.marcadas >= 20,
+        `${paso5.dicho} · ${paso5.marcadas} marcadas`);
+
+    await page.locator('.tl-next').click();
+    await page.waitForTimeout(500);
+
+    // Razas: cada una da algo y **quita** algo, que es lo que la hace una decision.
+    const paso6 = await page.evaluate(() => ({
+        dicho: document.querySelector('.tl-bar-said')?.textContent || '',
+        lineas: [...document.querySelectorAll('.tl-card:not(.add) .tl-card-note')]
+            .map(e => e.textContent || ''),
+    }));
+    check('el paso 6 ensena lo que cada raza da y lo que quita',
+        /Paso 6 de 13/.test(paso6.dicho) && paso6.lineas.length >= 10
+        && paso6.lineas.every(l => /\+\d/.test(l) && /-\d/.test(l)),
+        `${paso6.dicho} · ${paso6.lineas[0]}`);
+
+    await page.locator('.tl-next').click();
+    await page.waitForTimeout(500);
+
+    const paso7 = await page.evaluate(() => ({
+        dicho: document.querySelector('.tl-bar-said')?.textContent || '',
+        lineas: [...document.querySelectorAll('.tl-card:not(.add) .tl-card-note')]
+            .map(e => e.textContent || ''),
+    }));
+    check('y el 7 el dado de golpe de cada clase',
+        /Paso 7 de 13/.test(paso7.dicho) && paso7.lineas.every(l => /\dd\d/.test(l)),
+        `${paso7.dicho} · ${paso7.lineas[0]}`);
+
+    // Del 7 se pasa al 9: el paso 8 (objetos) todavia no esta hecho, y un paso que se
+    // ensena vacio promete algo que no pasa.
+    await page.locator('.tl-next').click();
+    await page.waitForTimeout(500);
+
+    // Paso 9: las facciones **de verdad**, las que tienen meta y reloj. Llegan repartidas
+    // por la semilla, que es lo que el mundo iba a hacer solo al crearse.
+    const paso9 = await page.evaluate(() => ({
+        dicho: document.querySelector('.tl-bar-said')?.textContent || '',
+        bandos: [...document.querySelectorAll('.tl-card:not(.add) .tl-card-title')]
+            .map(e => e.textContent || ''),
+    }));
+    check('el paso 9 llega con las facciones que la semilla iba a repartir',
+        /Paso 9 de 13/.test(paso9.dicho) && paso9.bandos.length >= 2,
+        `${paso9.dicho} · ${paso9.bandos.join(', ')}`);
+
+    await page.locator('.tl-card:not(.add)').first().click();
+    await page.waitForTimeout(400);
+    const suMeta = await page.evaluate(() =>
+        [...document.querySelectorAll('.tl-form select option')].map(o => o.textContent || ''));
+    // Y lo que piensan de ti se dice en palabras, no en un numero entre -5 y 5.
+    check('cada faccion dice que quiere y que piensan de ti',
+        suMeta.some(t => /Quedarse con un sitio/i.test(t))
+        && suMeta.some(t => /Acabar con otra facción/i.test(t))
+        && suMeta.some(t => /deben más de una/i.test(t)),
+        suMeta.filter(Boolean).slice(0, 12).join(', '));
+
+    await page.locator('.tl-next').click();
+    await page.waitForTimeout(600);
+
+    // Paso 11: quien vive aqui. Sale del compendio con la semilla, y va el penultimo
+    // porque se rellena con la raza, la clase, el sitio y la bandera de los pasos de
+    // arriba.
+    const paso11 = await page.evaluate(() => ({
+        dicho: document.querySelector('.tl-bar-said')?.textContent || '',
+        gente: [...document.querySelectorAll('.tl-card:not(.add) .tl-card-title')]
+            .map(e => e.textContent || ''),
+    }));
+    check('el paso 11 llega con vecinos ya escritos',
+        /Paso 11 de 13/.test(paso11.dicho) && paso11.gente.length >= 2
+        && paso11.gente.every(n => n && !/undefined/.test(n)),
+        `${paso11.dicho} · ${paso11.gente.join(', ')}`);
+
+    await page.locator('.tl-next').click();
+    await page.waitForTimeout(600);
+
+    // Paso 12: no es escribir un tablon. Son los mandos de como salen las demas.
+    const paso12 = await page.evaluate(() => ({
+        dicho: document.querySelector('.tl-bar-said')?.textContent || '',
+        mandos: [...document.querySelectorAll('.tl-form select option')].map(o => o.textContent || ''),
+        dice: document.querySelector('.tl-step-hint')?.textContent || '',
+    }));
+    check('el paso 12 son los mandos del tablon, no un tablon que rellenar',
+        /Paso 12 de 13/.test(paso12.dicho)
+        && paso12.mandos.some(t => /Uno de cada tres/i.test(t))
+        && /se rellena solo/i.test(paso12.dice),
+        `${paso12.dicho} · ${paso12.mandos.filter(Boolean).join(', ')}`);
+
+    await page.locator('.tl-next').click();
+    await page.waitForTimeout(600);
+    check('y de ahi se llega al ultimo paso',
+        /Paso 13 de 13/.test(await page.evaluate(() =>
+            document.querySelector('.tl-bar-said')?.textContent || '')));
+
+    await page.locator('.tl-next').click();
 
     const heroBox = await answerHeroCreator('Lyra', {
         race: 'Media elfa', className: 'Picara', dice: true,
@@ -1794,11 +1992,12 @@ try {
     step('23. Importar un libro: del paquete del Gem a un tablero jugable');
     await closeChat();
     await page.click('#cw-new-campaign');
-    await page.waitForSelector('.cw-root');
-    await page.locator('.cw-template-import').click();
-    await page.waitForTimeout(400);
+    // El tercer camino de la puerta: pegar el JSON. Se comprueba antes de crear nada.
+    await page.waitForSelector('.tl-door-grid');
+    await page.locator('.tl-door-card').nth(2).click();
+    await page.waitForSelector('.tl-pack-box');
 
-    check('el asistente ofrece importar un libro', await page.locator('.cw-import').isVisible());
+    check('el taller ofrece importar un libro', await page.locator('.cw-import-text').isVisible());
 
     // Primero uno roto, porque es lo que de verdad llega: el informe tiene que decir que
     // pasa antes de que se cree nada.
@@ -1844,15 +2043,29 @@ try {
     const okReport = await page.evaluate(() => ({
         ok: document.querySelector('.cw-import-verdict')?.classList.contains('ok'),
         counts: document.querySelector('.cw-import-counts')?.textContent || '',
-        name: document.querySelector('.cw-root input.cw-input')?.value || '',
     }));
     check('el ejemplo del contrato pasa la comprobacion', okReport.ok === true, okReport.counts);
     check('y el informe cuenta lo que trae',
         /2 localidades, 2 tableros, 2 enemigos, 1 companeros, 2 misiones, 4 objetivos/.test(okReport.counts),
         okReport.counts);
-    check('el nombre del mundo lo propone el paquete', /Molino/.test(okReport.name), okReport.name);
 
-    await page.click('.popup-button-ok');
+    // Aceptado el libro, el taller sigue por donde siguen los otros dos caminos, y el
+    // nombre del mundo lo propone el paquete.
+    await page.locator('.popup:visible .popup-button-ok').last().click();
+    await page.waitForSelector('.tl-root');
+    const delLibro = await page.evaluate(() =>
+        /** @type {HTMLInputElement|null} */ (document.querySelector('.tl-input'))?.value || '');
+    check('el nombre del mundo lo propone el paquete', /Molino/.test(delLibro), delLibro);
+
+    // Paso 1 y 2 van solos: el libro ya trae la ficha. Los sitios del libro los pone su
+    // propio importador, asi que los pasos 3 y 4 se saltan.
+    await page.locator('.tl-next').click();
+    await page.waitForTimeout(400);
+    for (let i = 0; i < 9; i++) {
+        await page.locator('.tl-skip').click();
+        await page.waitForTimeout(400);
+    }
+    await page.locator('.tl-next').click();
 
     // Un libro trae el mundo, no a quien lo recorre: el paquete describe localidades,
     // bichos y misiones, y ninguna ficha de grupo. Asi que aqui tambien se pregunta.

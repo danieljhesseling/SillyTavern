@@ -33,6 +33,8 @@ export const DOMAIN_LABELS = {
     trastos: ['Trastos', 'Lo que no mata ni protege, pero pesa'],
     propiedades: ['Propiedades', 'Lo que da y lo que quita: sin contrapartida no hay decisión'],
     habilidades: ['Habilidades', 'Lo que sabe hacer alguien, y cuánto se gasta'],
+    razas: ['Razas', 'De qué está hecha la gente, y qué le da — y qué le quita'],
+    clases: ['Clases', 'A qué se dedica, su dado de golpe y en qué es buena'],
     bestiario: ['Bestiario', 'Arquetipos y plantillas que se apilan'],
     personas: ['Personas', 'Qué quiere y qué teme: de ahí salen todas sus decisiones'],
     sitios: ['Sitios', 'Tipos de localidad y plantillas de sala'],

@@ -117,16 +117,24 @@ function days(value) {
  * Las rutas que salen de un sitio, normalizadas.
  *
  * @param {any} location
+ * @param {string[]} [friendly] Nombres de facciones que te dejarian pasar.
  * @returns {Array<{to: string, days: number, note: string, closed: boolean, oneWay: boolean}>}
  */
-export function routesOf(location) {
+export function routesOf(location, friendly = []) {
+    // Un paso cerrado por alguien que te debe una se abre para ti. Lo cierran las
+    // facciones al tomar un sitio, y la nota dice quien: sin eso, ganarse a alguien no se
+    // notaria en lo unico que de verdad se nota, que es donde puedes ir.
+    const friends = (Array.isArray(friendly) ? friendly : []).map(text).filter(Boolean);
+    const opensForYou = (/** @type {any} */ route) => friends.length > 0
+        && friends.some(name => text(route?.note).includes(name));
+
     return (Array.isArray(location?.routes) ? location.routes : [])
         .map((/** @type {any} */ route) => ({
             to: text(route?.to),
             days: days(route?.days),
             note: text(route?.note),
             // Un paso cerrado sigue en la lista: se ve que existe y que ahora no se puede.
-            closed: Boolean(route?.closed),
+            closed: Boolean(route?.closed) && !opensForYou(route),
             // Y una ruta vale para ir y volver salvo que diga lo contrario. Sin esto el
             // campo existia en el archivo y no hacia nada, que es peor que no existir.
             oneWay: Boolean(route?.oneWay),
@@ -142,9 +150,10 @@ export function routesOf(location) {
  * de que alguien escriba solo la mitad.
  *
  * @param {any[]} locations
+ * @param {string[]} [friendly] Facciones que te abren lo que cerraron.
  * @returns {Map<string, Array<{to: string, days: number, note: string}>>}
  */
-export function buildRouteMap(locations) {
+export function buildRouteMap(locations, friendly = []) {
     /** @type {Map<string, Array<{to: string, days: number, note: string}>>} */
     const graph = new Map();
 
@@ -163,7 +172,7 @@ export function buildRouteMap(locations) {
         if (!from) continue;
         if (!graph.has(from)) graph.set(from, []);
 
-        for (const route of routesOf(location)) {
+        for (const route of routesOf(location, friendly)) {
             if (route.closed) continue;
             add(from, { to: route.to, days: route.days, note: route.note });
             if (!route.oneWay) add(route.to, { to: from, days: route.days, note: route.note });
@@ -183,9 +192,10 @@ export function buildRouteMap(locations) {
  * @param {string} input.from
  * @param {string} input.to
  * @param {any[]} input.locations La lista del mundo. Es una lista, no un tablero.
+ * @param {string[]} [input.friendly] Facciones que te abren lo que cerraron.
  * @returns {{ok: boolean, days: number, legs: string[], reason: string}}
  */
-export function planTravel({ from, to, locations }) {
+export function planTravel({ from, to, locations, friendly = [] }) {
     const start = text(from);
     const end = text(to);
 
@@ -200,7 +210,7 @@ export function planTravel({ from, to, locations }) {
         return { ok: false, days: 0, legs: [], reason: `"${end}" no está en el mapa.` };
     }
 
-    const graph = buildRouteMap(locations);
+    const graph = buildRouteMap(locations, friendly);
     const fromHere = graph.get(start) ?? [];
 
     // Un sitio sin rutas es un sitio al que se va directo: un mundo a medio escribir

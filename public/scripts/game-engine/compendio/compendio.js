@@ -23,9 +23,10 @@
  * Ver wiki/ROADMAP_COMPENDIO.md y wiki/ALGORITMOS_GENERACION.md (#196, #198, #199).
  */
 
-/** Las doce baterias, en el orden en que el roadmap las cuenta. */
+/** Las dieciseis baterias, en el orden en que el roadmap las cuenta. */
 export const DOMAINS = [
     'nombres', 'materiales', 'armas', 'armaduras', 'trastos', 'propiedades', 'habilidades',
+    'razas', 'clases',
     'bestiario', 'personas', 'sitios', 'misiones', 'facciones', 'mundo', 'estados',
 ];
 

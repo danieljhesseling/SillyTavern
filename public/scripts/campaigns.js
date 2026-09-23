@@ -23,6 +23,7 @@ import { makeName } from './game-engine/compendio/names.js';
 import { createSeededRandom } from './game-engine/combat/seeded-random.js';
 import { seedOf, derive } from './game-engine/campaign/seed.js';
 import { abilitiesFor, nameAndAbility } from './game-engine/compendio/skills.js';
+import { racesOf, kindsOf, describeKin } from './game-engine/compendio/kin.js';
 
 /**
  * Fetches recent chats with metadata from the cross-character API.
@@ -792,6 +793,49 @@ async function openCampaignChat({ worldName, party, partyEntries, locationName, 
 }
 
 /**
+ * El lapicito: que el modelo escriba una frase donde tiene sentido.
+ *
+ * Una llamada corta y sin historia: lo que sale entra en un campo de texto que la persona
+ * puede borrar, no en las reglas del juego. Sin proveedor conectado, quien llama no pasa
+ * esta funcion y el boton no aparece — uno que solo puede fallar es peor que ninguno.
+ *
+ * @param {string} key Que campo se esta escribiendo.
+ * @param {any} state El taller, para saber de que mundo va.
+ * @returns {Promise<string>}
+ */
+async function writeWithModel(key, state) {
+    const world = [
+        state?.fields?.worldName ? `El mundo se llama "${state.fields.worldName}".` : '',
+        state?.fields?.genre ? `Es de genero ${state.fields.genre}.` : '',
+        state?.fields?.description ? `Lo que hay escrito: ${state.fields.description}` : '',
+    ].filter(Boolean).join(' ');
+
+    /** @type {Record<string, string>} */
+    const WHAT = {
+        description: 'Escribe la sinopsis de este mundo en dos o tres frases: que sitio es '
+            + 'antes de que llegue nadie. Sin listas.',
+        nPersonality: 'Describe en dos frases el tono de quien narra esta partida: como habla '
+            + 'y que mira. No describas su aspecto ni su historia.',
+        nDescription: 'Escribe en dos frases que sabe y de donde viene quien narra esta partida.',
+        nGreeting: 'Escribe la primera frase con la que quien narra abre esta campana. Una sola '
+            + 'frase, dicha al grupo.',
+    };
+    const what = WHAT[key];
+    if (!what) return '';
+
+    try {
+        const said = await generateRaw({
+            prompt: `${what}${world ? ` ${world}` : ''} Responde solo con el texto, sin comillas.`,
+        });
+        return String(said ?? '').trim().replace(/^["\u00ab]|["\u00bb]$/g, '').trim();
+    } catch (error) {
+        console.error('[campaigns] el lapicito no pudo escribir', error);
+        toastr.warning('No se pudo escribir ahora mismo.', 'El modelo no contestó');
+        return '';
+    }
+}
+
+/**
  * Runs the campaign wizard end to end and leaves the player standing on the first board.
  */
 async function startCampaignWizard() {
@@ -799,21 +843,38 @@ async function startCampaignWizard() {
     wizardRunning = true;
 
     try {
-        const answers = await askWizard({
-            Popup,
-            POPUP_TYPE,
-            existingWorldNames: Array.isArray(world_names) ? world_names : [],
-            // generateRaw goes through whichever provider is configured, so the blank
-            // canvas is not tied to one vendor. Offered only when something is connected:
-            // a button that can only fail is worse than no button.
-            generateWorld: online_status !== 'no_connection'
-                ? (idea, partySize) => generateWorld({
-                    idea,
-                    partySize,
-                    generate: params => generateRaw(params),
-                })
-                : null,
-        });
+        // El taller nuevo (wiki/ROADMAP_CREACION.md). Devuelve lo mismo que el asistente
+        // de siempre, asi que todo lo de abajo sigue igual. Si algo falla al abrirlo, se
+        // cae al asistente viejo: quedarse sin poder crear campana no es una opcion.
+        const { askTaller } = await import('./game-engine/ui/taller/taller.js')
+            .catch(error => {
+                console.error('[campaigns] no se pudo abrir el taller', error);
+                return { askTaller: null };
+            });
+
+        const answers = askTaller
+            ? await askTaller({
+                Popup,
+                POPUP_TYPE,
+                existingWorldNames: Array.isArray(world_names) ? world_names : [],
+                // El lapicito: escribir una frase con el modelo, donde tiene sentido.
+                write: online_status !== 'no_connection' ? writeWithModel : null,
+            })
+            : await askWizard({
+                Popup,
+                POPUP_TYPE,
+                existingWorldNames: Array.isArray(world_names) ? world_names : [],
+                // generateRaw goes through whichever provider is configured, so the blank
+                // canvas is not tied to one vendor. Offered only when something is connected:
+                // a button that can only fail is worse than no button.
+                generateWorld: online_status !== 'no_connection'
+                    ? (idea, partySize) => generateWorld({
+                        idea,
+                        partySize,
+                        generate: params => generateRaw(params),
+                    })
+                    : null,
+            });
         if (!answers) return;
 
         /** @type {import('./game-engine/ui/campaign-wizard.js').WizardResult} */
@@ -1090,10 +1151,18 @@ async function createStartingHero(worldName) {
         })
         : null;
 
+    // Las razas y clases escritas, con lo que dan y lo que quitan detras del nombre. Antes
+    // esta lista salia de los personajes que ya existian, asi que en un mundo nuevo estaba
+    // vacia y escribir «enano» no hacia nada.
+    const razas = racesOf(compendium);
+    const clases = kindsOf(compendium);
+    const conEfectos = (/** @type {any[]} */ rows) => rows
+        .map(row => `${row.name} — ${describeKin(row)}`);
+
     const answers = await openHeroCreator({
         worldName,
-        races: catalogue?.races ?? [],
-        classes: catalogue?.classes ?? [],
+        races: [...conEfectos(razas), ...(catalogue?.races ?? [])],
+        classes: [...conEfectos(clases), ...(catalogue?.classes ?? [])],
         genre: String(data.metadata?.genre || ''),
         // Sin proveedor conectado no hay varita, y el boton lo dice en vez de fallar.
         generate: online_status !== 'no_connection' ? (params) => generateRaw(params) : null,
@@ -1114,7 +1183,19 @@ async function createStartingHero(worldName) {
     // de serie, igual que hasta ahora.
     const known = abilitiesFor({ compendium, className: answers.className, level: 1 });
 
+    // Lo elegido puede venir con su renglon de efectos detras: se busca por como empieza.
+    const pickedBy = (/** @type {any[]} */ rows, /** @type {string} */ said) =>
+        rows.find(row => String(said || '').startsWith(String(row.name))) ?? null;
+    const raceRow = pickedBy(razas, answers.race);
+    const classRow = pickedBy(clases, answers.className);
+
+    // Y en la ficha se guarda el nombre limpio, no el renglon con los numeros.
+    if (raceRow) answers.race = String(raceRow.name);
+    if (classRow) answers.className = String(classRow.name);
+
     const spec = buildHeroEntry(answers, {
+        raceRow,
+        classRow,
         locationName: String(place?.name || ''),
         cell,
         preset: catalogue?.classPresets?.get?.(answers.className) ?? null,

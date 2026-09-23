@@ -38,6 +38,14 @@ export const DEFAULT_PACE = 7;
 export const DEFAULT_SEGMENTS = 6;
 
 /**
+ * Lo lejos que puede llegar lo que piensan de ti, para arriba y para abajo.
+ *
+ * Corta a proposito: cinco encargos a favor de alguien es tenerlos de tu lado, no una
+ * barra que se llena durante cien horas.
+ */
+export const STANDING = 5;
+
+/**
  * @param {any} value
  * @returns {string}
  */
@@ -111,6 +119,8 @@ export function readFaction(raw) {
         holds: names(source.holds),
         enemies: names(source.enemies),
         note: text(source.note),
+        // Lo que piensan de ti. Hasta F4 esto era un numero que no cambiaba ninguna regla.
+        reputation: Math.max(-STANDING, Math.min(STANDING, whole(source.reputation, 0))),
         goal: {
             kind,
             target: text(source.goal?.target),
@@ -411,6 +421,93 @@ export function applyOutcome({ locations, factions, outcome }) {
     }
 
     return { locations: places, factions: people, changed };
+}
+
+/**
+ * Lo que piensan de ti los de esa faccion.
+ *
+ * @param {any[]} factions
+ * @param {string} id
+ * @returns {number}
+ */
+export function standingWith(factions, id) {
+    const found = readFactions(factions).find(faction => faction.id === text(id));
+    return found ? found.reputation : 0;
+}
+
+/**
+ * Cambiar lo que piensan de ti, sin pasarse de la escala.
+ *
+ * Ayudar a alguien **es ponerse en contra de su enemigo**: el mismo encargo mueve las dos
+ * reputaciones en sentidos contrarios, que es lo que convierte tomar partido en una
+ * decision y no en una forma de caerle bien a todo el mundo.
+ *
+ * @param {any[]} factions
+ * @param {string} id
+ * @param {number} amount
+ * @returns {any[]}
+ */
+export function changeStanding(factions, id, amount) {
+    const all = readFactions(factions);
+    const who = all.find(faction => faction.id === text(id));
+    if (!who || whole(amount, 0) === 0) return all;
+
+    const move = whole(amount, 0);
+    const enemies = new Set(who.enemies);
+
+    return all.map((faction) => {
+        if (faction.id === who.id) return withStanding(faction, faction.reputation + move);
+        if (enemies.has(faction.id)) return withStanding(faction, faction.reputation - move);
+        return faction;
+    });
+}
+
+/**
+ * @param {any} faction
+ * @param {number} value
+ * @returns {any}
+ */
+function withStanding(faction, value) {
+    return {
+        ...faction,
+        reputation: Math.max(-STANDING, Math.min(STANDING, Math.round(value))),
+    };
+}
+
+/**
+ * Lo que piensan de ti, en palabras.
+ *
+ * Un numero entre -5 y 5 no dice nada; «os deben una» si. Y es lo que el narrador puede
+ * leer sin tener que interpretar una escala.
+ *
+ * @param {number} value
+ * @returns {string}
+ */
+export function describeStanding(value) {
+    const at = whole(value, 0);
+    if (at >= 4) return 'os deben más de una';
+    if (at >= 2) return 'os miran bien';
+    if (at >= 1) return 'os conocen, y no les molestáis';
+    if (at <= -4) return 'os tienen ganas';
+    if (at <= -2) return 'no os quieren cerca';
+    if (at <= -1) return 'os han tomado ojeriza';
+    return 'no saben quién sois';
+}
+
+/**
+ * Lo que la reputacion le hace a lo que te cobran.
+ *
+ * Quien te debe una no te cobra el maximo, y quien te tiene ganas te cobra de mas. Se
+ * devuelve un multiplicador para que quien llama siga decidiendo el precio.
+ *
+ * @param {number} value
+ * @returns {number}
+ */
+export function priceFactor(value) {
+    const at = Math.max(-STANDING, Math.min(STANDING, whole(value, 0)));
+    // Un 5% por escalon: cinco encargos cambian el precio un cuarto, que se nota en la
+    // cuenta del viernes sin volverla gratis.
+    return Math.round((1 - (at * 0.05)) * 100) / 100;
 }
 
 /**

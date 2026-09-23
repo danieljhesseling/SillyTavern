@@ -19,6 +19,8 @@
  * Ver wiki/ROADMAP_MAESTRO.md, Nivel 1.
  */
 
+import { applyKin } from '../compendio/kin.js';
+
 /** Lo que se ofrece cuando el mundo no trae razas propias. */
 export const DEFAULT_RACES = [
     'Humano', 'Elfo', 'Enano', 'Mediano', 'Semiorco', 'Tiflin', 'Gnomo', 'Draconido',
@@ -96,6 +98,8 @@ export function heroContent(answers) {
  * @param {string} [where.locationName] Dónde empieza.
  * @param {{x: number, y: number}} [where.cell] Y en qué casilla.
  * @param {any} [where.preset] Los números de su clase, si el mundo los describe.
+ * @param {any} [where.raceRow] La fila de la raza: lo que suma y lo que quita.
+ * @param {any} [where.classRow] Y la de la clase.
  * @returns {{group: string, title: string, content: string, keys: string[], dndData: any}}
  */
 export function buildHeroEntry(answers, where = {}) {
@@ -108,6 +112,27 @@ export function buildHeroEntry(answers, where = {}) {
         const parsed = Number(value);
         return Number.isFinite(parsed) ? parsed : fallback;
     };
+
+    // De donde parte: lo que diga la clase del mundo, y si no, los diez de siempre.
+    const base = {
+        strength: num(preset.strength, 10),
+        dexterity: num(preset.dexterity, 10),
+        constitution: num(preset.constitution, 10),
+        intelligence: num(preset.intelligence, 10),
+        wisdom: num(preset.wisdom, 10),
+        charisma: num(preset.charisma, 10),
+        armorClass: num(preset.armorClass, 10),
+        speed: num(preset.speed, 30),
+        // Treinta cuando la clase no dice otra cosa, que es lo que el motor le da a
+        // cualquiera del grupo. Diez parecia mas de manual, pero dejaba al personaje con
+        // la mitad de vida de la que tienen medidos los enemigos de las plantillas.
+        maxHp: num(preset.maxHp ?? preset.hp, 30),
+    };
+
+    // Y lo que la raza y la clase le suman y le quitan. Hasta que existieron las baterias,
+    // elegir «enano» era escribir una palabra en la ficha: ni un punto de mas ni uno de
+    // menos. Sin ellas esto no hace nada y la ficha sale como salia.
+    const { stats } = applyKin({ sheet: base, race: where.raceRow, kind: where.classRow });
 
     return {
         group: 'Characters',
@@ -122,21 +147,15 @@ export function buildHeroEntry(answers, where = {}) {
             gender: text(answers?.gender),
             level: 1,
             image: text(answers?.image),
-            // Los numeros de la clase cuando el mundo la describe, y los de siempre si no.
-            // Es lo que hace que elegir una clase signifique algo.
-            str: num(preset.strength, 10),
-            dex: num(preset.dexterity, 10),
-            con: num(preset.constitution, 10),
-            int: num(preset.intelligence, 10),
-            wis: num(preset.wisdom, 10),
-            cha: num(preset.charisma, 10),
-            ac: num(preset.armorClass, 10),
-            speed: num(preset.speed, 30),
-            // Treinta cuando la clase no dice otra cosa, que es lo que el motor le da a
-            // cualquiera del grupo (`Number(d.maxHp) || 30`). Diez parecia mas de manual,
-            // pero dejaba al personaje con la mitad de vida de la que tienen medidos los
-            // enemigos de las plantillas: la primera pelea era una derrota.
-            maxHp: num(preset.maxHp ?? preset.hp, 30),
+            str: stats.strength,
+            dex: stats.dexterity,
+            con: stats.constitution,
+            int: stats.intelligence,
+            wis: stats.wisdom,
+            cha: stats.charisma,
+            ac: stats.armorClass,
+            speed: stats.speed,
+            maxHp: stats.maxHp,
             mapPosition: {
                 locationName: text(where.locationName),
                 gridX: num(cell.x, 1),

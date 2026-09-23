@@ -319,3 +319,39 @@ describe('sucesos que piden sitio y tiempo', () => {
         for (const event of out) expect(event.climate).toBe('lluvia');
     });
 });
+
+describe('lo que te abren por caerles bien', () => {
+    const cerrado = () => ([
+        {
+            name: 'El Molino',
+            routes: [
+                { to: 'La Ermita', days: 2, closed: true, note: 'Cerrado por Los del Vado.' },
+                { to: 'La Cripta', days: 9 },
+            ],
+        },
+        { name: 'La Ermita', routes: [] },
+        { name: 'La Cripta', routes: [{ to: 'La Ermita', days: 2 }] },
+    ]);
+
+    // Es donde de verdad se nota haberse ganado a alguien.
+    test('un paso que cerró quien te debe una se abre para ti', () => {
+        const sinAmigos = planTravel({ from: 'El Molino', to: 'La Ermita', locations: cerrado() });
+        const conAmigos = planTravel({
+            from: 'El Molino', to: 'La Ermita', locations: cerrado(), friendly: ['Los del Vado'],
+        });
+        expect(sinAmigos.days).toBe(11);
+        expect(conAmigos.days).toBe(2);
+    });
+
+    test('pero solo el que cerró esa facción', () => {
+        const otros = planTravel({
+            from: 'El Molino', to: 'La Ermita', locations: cerrado(), friendly: ['Los de la Sal'],
+        });
+        expect(otros.days).toBe(11);
+    });
+
+    test('y sin amigos, todo sigue como estaba', () => {
+        expect(routesOf(cerrado()[0])[0].closed).toBe(true);
+        expect(routesOf(cerrado()[0], [])[0].closed).toBe(true);
+    });
+});

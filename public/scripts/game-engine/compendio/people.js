@@ -206,9 +206,13 @@ function capitalise(value) {
  * @param {() => number} [input.random]
  * @param {string} [input.culture]
  * @param {string} [input.locationName]
+ * @param {{name: string, wants?: string, note?: string}|null} [input.banner] De quien es el
+ *   sitio: la llevan todos los que viven en el.
  * @returns {any[]}
  */
-export function writeVillage({ compendium, howMany, random = Math.random, culture = '', locationName = '' }) {
+export function writeVillage({
+    compendium, howMany, random = Math.random, culture = '', locationName = '', banner = null,
+}) {
     /** @type {any[]} */
     const out = [];
     const jobs = new Set();
@@ -217,7 +221,8 @@ export function writeVillage({ compendium, howMany, random = Math.random, cultur
     const fears = new Set();
 
     for (let i = 0; i < Math.max(0, howMany) * 8 && out.length < howMany; i++) {
-        const person = writePerson({ compendium, random, culture, locationName });
+        // La bandera es del sitio, asi que la llevan todos los que viven en el.
+        const person = writePerson({ compendium, random, culture, locationName, banner });
         if (!person) break;
 
         // Tres vecinos que quieren lo mismo y temen lo mismo no son tres vecinos: son el

@@ -1,0 +1,275 @@
+{
+  "version": 1,
+  "domain": "razas",
+  "about": "De qué está hecha la gente, y qué le da. Los 'effects' son la misma forma que ya usan los objetos —{ stat, modifier } sobre las características del motor— así que no hay mecanismo nuevo: se aplican al crear el personaje y se ven en su ficha. La regla que las hace decisiones y no números más altos: **cada raza quita algo**. Una que solo sume se elige siempre y entonces no hay nada que elegir. Cada mundo preselecciona las suyas (el de terror marca 'humano' y poco más), pero ninguna desaparece: si quieres meter elfos en 1387, los metes.",
+  "rows": [
+    {
+      "id": "raza-humano",
+      "name": "Humano",
+      "kind": "raza",
+      "weight": 10,
+      "tags": [
+        "comun"
+      ],
+      "effects": [
+        {
+          "stat": "charisma",
+          "modifier": 1
+        },
+        {
+          "stat": "constitution",
+          "modifier": 1
+        },
+        {
+          "stat": "wisdom",
+          "modifier": -1
+        }
+      ],
+      "note": "Llegan a todo y no destacan en nada. Donde otros tienen un don, ellos tienen prisa, y eso se paga."
+    },
+    {
+      "id": "raza-enano",
+      "name": "Enano",
+      "kind": "raza",
+      "weight": 9,
+      "tags": [
+        "fantasia"
+      ],
+      "effects": [
+        {
+          "stat": "constitution",
+          "modifier": 2
+        },
+        {
+          "stat": "dexterity",
+          "modifier": -1
+        },
+        {
+          "stat": "speed",
+          "modifier": -5
+        }
+      ],
+      "note": "Aguantan lo que haga falta y andan poco. Bajo tierra no se pierden nunca."
+    },
+    {
+      "id": "raza-elfo",
+      "name": "Elfo",
+      "kind": "raza",
+      "weight": 9,
+      "tags": [
+        "fantasia"
+      ],
+      "effects": [
+        {
+          "stat": "dexterity",
+          "modifier": 2
+        },
+        {
+          "stat": "constitution",
+          "modifier": -1
+        }
+      ],
+      "note": "Rápidos y finos, y se rompen antes que nadie."
+    },
+    {
+      "id": "raza-media-elfa",
+      "name": "Media elfa",
+      "kind": "raza",
+      "weight": 9,
+      "tags": [
+        "fantasia",
+        "comun"
+      ],
+      "effects": [
+        {
+          "stat": "charisma",
+          "modifier": 2
+        },
+        {
+          "stat": "wisdom",
+          "modifier": -1
+        }
+      ],
+      "note": "Caen bien en los dos sitios y no son de ninguno."
+    },
+    {
+      "id": "raza-mediano",
+      "name": "Mediano",
+      "kind": "raza",
+      "weight": 8,
+      "tags": [
+        "fantasia"
+      ],
+      "effects": [
+        {
+          "stat": "dexterity",
+          "modifier": 2
+        },
+        {
+          "stat": "strength",
+          "modifier": -2
+        },
+        {
+          "stat": "armorClass",
+          "modifier": 1
+        }
+      ],
+      "note": "Pequeños, escurridizos y difíciles de acertar. Cargar un saco ya es otra cosa."
+    },
+    {
+      "id": "raza-semiorco",
+      "name": "Semiorco",
+      "kind": "raza",
+      "weight": 8,
+      "tags": [
+        "fantasia"
+      ],
+      "effects": [
+        {
+          "stat": "strength",
+          "modifier": 2
+        },
+        {
+          "stat": "maxHp",
+          "modifier": 3
+        },
+        {
+          "stat": "charisma",
+          "modifier": -2
+        }
+      ],
+      "note": "Nadie discute con ellos, y no por lo que dicen."
+    },
+    {
+      "id": "raza-gnomo",
+      "name": "Gnomo",
+      "kind": "raza",
+      "weight": 7,
+      "tags": [
+        "fantasia"
+      ],
+      "effects": [
+        {
+          "stat": "intelligence",
+          "modifier": 2
+        },
+        {
+          "stat": "strength",
+          "modifier": -2
+        }
+      ],
+      "note": "Saben cómo funciona todo. Levantarlo es problema de otro."
+    },
+    {
+      "id": "raza-tiefling",
+      "name": "Tiflin",
+      "kind": "raza",
+      "weight": 6,
+      "tags": [
+        "fantasia",
+        "oscuro"
+      ],
+      "effects": [
+        {
+          "stat": "charisma",
+          "modifier": 2
+        },
+        {
+          "stat": "wisdom",
+          "modifier": -1
+        }
+      ],
+      "note": "Llaman la atención sin abrir la boca, y no siempre para bien."
+    },
+    {
+      "id": "raza-marcado",
+      "name": "Marcado",
+      "kind": "raza",
+      "weight": 6,
+      "tags": [
+        "terror",
+        "oscuro"
+      ],
+      "effects": [
+        {
+          "stat": "wisdom",
+          "modifier": 2
+        },
+        {
+          "stat": "charisma",
+          "modifier": -2
+        },
+        {
+          "stat": "maxHp",
+          "modifier": -2
+        }
+      ],
+      "note": "Algo les pasó de pequeños, en la costa. Ven lo que los demás no, y por eso duermen mal."
+    },
+    {
+      "id": "raza-braceado",
+      "name": "Braceado",
+      "kind": "raza",
+      "weight": 5,
+      "tags": [
+        "terror"
+      ],
+      "effects": [
+        {
+          "stat": "constitution",
+          "modifier": 2
+        },
+        {
+          "stat": "intelligence",
+          "modifier": -2
+        },
+        {
+          "stat": "speed",
+          "modifier": 5
+        }
+      ],
+      "note": "Nadan mejor de lo que debería poder nadie. En el pueblo no se habla de ello."
+    },
+    {
+      "id": "raza-huesped",
+      "name": "Huésped",
+      "kind": "raza",
+      "weight": 5,
+      "tags": [
+        "isekai"
+      ],
+      "effects": [
+        {
+          "stat": "intelligence",
+          "modifier": 2
+        },
+        {
+          "stat": "constitution",
+          "modifier": -2
+        }
+      ],
+      "note": "No es de aquí y se le nota: sabe cosas que no debería y ninguna le sirve para cargar leña."
+    },
+    {
+      "id": "raza-sangre-alta",
+      "name": "Sangre alta",
+      "kind": "raza",
+      "weight": 6,
+      "tags": [
+        "historico",
+        "fantasia"
+      ],
+      "effects": [
+        {
+          "stat": "charisma",
+          "modifier": 2
+        },
+        {
+          "stat": "constitution",
+          "modifier": -1
+        }
+      ],
+      "note": "Nació donde había de todo, y se nota en cómo habla y en cómo aguanta el frío."
+    }
+  ]
+}
