@@ -62,6 +62,9 @@ body.game-shell-on {
 
 .gs-chips {
     position: relative;
+    /* Por encima del chat: la lista de tiradas se abre hacia arriba, sobre el, y sin
+     * esto el chat se quedaba con el clic. */
+    z-index: 20;
 }
 
 /* La lista de tiradas sale encima de la fila, centrada. */

@@ -5064,6 +5064,8 @@ try {
         Boolean(card46.remedy && !card46.remedy.off && /150/.test(card46.remedy.text)) && card46.retire === 3,
         JSON.stringify(card46));
 
+    const speedBefore46 = await page.evaluate(async () =>
+        (await import('/scripts/party.js')).getPartyMembersSnapshot()[1]?.speed);
     await page.locator('.cc-stance-btn[data-stance="atras"]').click();
     await page.waitForTimeout(500);
     await page.locator('.cc-remedy-btn[data-remedy="lost_leg"]').click();
@@ -5084,9 +5086,12 @@ try {
         };
     });
     check('pulsar una postura la guarda en su ficha', after46.stance === 'atras', String(after46.stance));
+    // Diez pies de vuelta: la pierna perdida quitaba 15 y la de palo quita 5. Se compara con
+    // lo de antes porque puede arrastrar otras cosas (agotamiento) que tambien restan.
     check('el remedio cambia la pierna perdida por la de palo, y se nota en la velocidad',
-        after46.injuries.includes('wooden_leg') && !after46.injuries.includes('lost_leg') && after46.speed === 25,
-        JSON.stringify(after46));
+        after46.injuries.includes('wooden_leg') && !after46.injuries.includes('lost_leg')
+        && after46.speed - Number(speedBefore46) === 10,
+        JSON.stringify({ ...after46, antes: speedBefore46 }));
     check('se paga del oro del grupo', after46.gold === 50, `${after46.gold} de oro`);
     check('y el narrador se entera por el canal que lee', after46.told > 0, `${after46.told} mensaje(s)`);
     await clearToasts();
