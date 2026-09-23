@@ -45,9 +45,9 @@ export const STEPS = [
     { id: 'habilidades', title: 'Habilidades', hint: 'Lo que sabe hacer la gente.', optional: true, built: true },
     { id: 'razas', title: 'Razas', hint: 'De qué está hecha la gente, y qué les da.', optional: true, built: true },
     { id: 'clases', title: 'Clases', hint: 'A qué se dedican, y qué les da.', optional: true, built: true },
-    { id: 'objetos', title: 'Objetos', hint: 'Lo que se lleva encima.', optional: true, built: false },
+    { id: 'objetos', title: 'Objetos', hint: 'Lo que se lleva encima.', optional: true, built: true },
     { id: 'facciones', title: 'Facciones', hint: 'Quién quiere qué, y contra quién.', optional: true, built: true },
-    { id: 'bestiario', title: 'Bestiario', hint: 'Lo que hay ahí fuera.', optional: true, built: false },
+    { id: 'bestiario', title: 'Bestiario', hint: 'Lo que hay ahí fuera.', optional: true, built: true },
     { id: 'personajes', title: 'Personajes', hint: 'Quién vive aquí.', optional: true, built: true },
     { id: 'misiones', title: 'Misiones', hint: 'Las que trae el mundo, y cómo salen las demás.', optional: true, built: true },
     { id: 'jugabilidad', title: 'Jugabilidad', hint: 'Cuánto duele perder.', optional: true, built: true },
@@ -706,6 +706,14 @@ export function blocksNext(state, stepId) {
         }
     }
 
+    if (step.id === 'narrador') {
+        // Se puede jugar sin narrador; lo que no se puede es tener uno sin nombre, porque
+        // es lo que encabeza cada mensaje suyo.
+        if (pickedIn(state, 'narrador').length > 0 && !text(state?.narrator?.name)) {
+            return 'Ponle nombre a quien narra.';
+        }
+    }
+
     if (step.id === 'localidades') {
         const places = pickedLocations(state);
         if (places.some(place => !text(place.name))) return 'Hay un sitio sin nombre.';
@@ -817,13 +825,22 @@ export function toAnswers(state) {
         party: [],
         generatedTemplate: state?.source?.generatedTemplate ?? null,
         importedPack: state?.path === 'libro' ? (state?.source?.pack ?? state?.source ?? null) : null,
-        writeWorld: false,
+        writeWorld: Boolean(state?.writeWorld),
         survival: state?.survival ?? null,
         narrator: state?.narrator ?? null,
         // Quien vive aqui y las misiones que dan el tono, con los mandos del tablon.
         people: state?.path === 'libro' ? [] : pickedPeople(state),
         quests: state?.path === 'libro' ? [] : pickedQuests(state),
         board: boardRulesOf(state),
+        // Lo que entra en el mundo de cada bateria. Sin esto, marcar y desmarcar seria
+        // decoracion: los generadores seguirian tirando de todo lo escrito.
+        picks: {
+            razas: pickedIn(state, 'razas'),
+            clases: pickedIn(state, 'clases'),
+            habilidades: pickedIn(state, 'habilidades'),
+            objetos: pickedIn(state, 'objetos'),
+            bestiario: pickedIn(state, 'bestiario'),
+        },
         // Igual que los sitios: si has tocado el paso 9, mandan las tuyas.
         factions: state?.path === 'libro' ? [] : pickedFactions(state),
         // Si has tocado el paso 3, lo que hayas puesto manda y el mundo no se puebla solo.

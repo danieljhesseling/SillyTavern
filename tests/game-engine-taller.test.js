@@ -30,10 +30,11 @@ describe('los trece pasos', () => {
         expect(STEPS.filter(s => s.optional).length).toBe(12);
     });
 
-    // Un paso que se enseña vacío promete algo que no pasa.
-    test('solo se recorren los que están hechos', () => {
+    // Un paso que se enseña vacío promete algo que no pasa. Ya están los trece, así que
+    // se recorren los trece — y si alguno se apagara, el recorrido lo saltaría solo.
+    test('solo se recorren los que están hechos, y ya están todos', () => {
         expect(walkableSteps().every(s => s.built)).toBe(true);
-        expect(walkableSteps().length).toBeLessThan(STEPS.length);
+        expect(walkableSteps()).toHaveLength(STEPS.length);
     });
 
     test('y un id que no existe no es un paso', () => {
@@ -226,8 +227,8 @@ describe('el puente con lo que ya hay', () => {
 
         expect(Object.keys(toAnswers(state)).sort()).toEqual([
             'board', 'description', 'factions', 'generatedTemplate', 'genre',
-            'importedPack', 'locations', 'narrator', 'party', 'people', 'quests', 'seed',
-            'survival', 'templateId', 'worldName', 'writeWorld',
+            'importedPack', 'locations', 'narrator', 'party', 'people', 'picks', 'quests',
+            'seed', 'survival', 'templateId', 'worldName', 'writeWorld',
         ]);
     });
 

@@ -21,7 +21,23 @@ describe('las dos casillas', () => {
 
     test('y lo elegido se respeta', () => {
         expect(readSurvival({ mortality: MORTALITY.EVERYONE, saves: SAVES.SHELTER }))
-            .toEqual({ mortality: MORTALITY.EVERYONE, saves: SAVES.SHELTER });
+            .toEqual({ ...DEFAULT_SURVIVAL, mortality: MORTALITY.EVERYONE, saves: SAVES.SHELTER });
+    });
+
+    // Lo que se puede apagar. Una campaña vieja, que no dice nada, no cambia sola.
+    test('lo que no se dice sigue encendido', () => {
+        const todo = readSurvival({});
+        expect(todo.needs).toBe(true);
+        expect(todo.exposure).toBe(true);
+        expect(todo.injuries).toBe(true);
+        expect(todo.loyalty).toBe(true);
+    });
+
+    test('y apagar uno no apaga los demás', () => {
+        const sinHambre = readSurvival({ needs: false });
+        expect(sinHambre.needs).toBe(false);
+        expect(sinHambre.injuries).toBe(true);
+        expect(sinHambre.mortality).toBe(DEFAULT_SURVIVAL.mortality);
     });
 });
 

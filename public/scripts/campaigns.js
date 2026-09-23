@@ -8,7 +8,7 @@ import {
     getCharacters,
 } from '../script.js';
 import { Popup, POPUP_TYPE, POPUP_RESULT } from './popup.js';
-import { buildNewCampaignCta, askWizard, createCampaign } from './game-engine/ui/campaign-wizard.js';
+import { buildNewCampaignCta, createCampaign } from './game-engine/ui/campaign-wizard.js';
 import { openCampaignBuilder, loadDndCatalog, setPartyFromWorldEntries } from './party.js';
 import { isCampaignWorld, getStartingPoint } from './game-engine/campaign/campaign-worlds.js';
 import { buildHeroEntry, describeHero } from './game-engine/campaign/hero.js';
@@ -793,6 +793,19 @@ async function openCampaignChat({ worldName, party, partyEntries, locationName, 
 }
 
 /**
+ * Las notas de una ficha, miren donde miren.
+ *
+ * Una ficha v2 las guarda en `data.creator_notes`; una vieja, en `creatorcomment`. Buscar
+ * solo en una de las dos es como no buscar: la lista de personajes mira las dos.
+ *
+ * @param {any} card
+ * @returns {string}
+ */
+function notesOf(card) {
+    return String(card?.data?.creator_notes ?? card?.creatorcomment ?? card?.creator_notes ?? '');
+}
+
+/**
  * El lapicito: que el modelo escriba una frase donde tiene sentido.
  *
  * Una llamada corta y sin historia: lo que sale entra en un campo de texto que la persona
@@ -843,38 +856,45 @@ async function startCampaignWizard() {
     wizardRunning = true;
 
     try {
-        // El taller nuevo (wiki/ROADMAP_CREACION.md). Devuelve lo mismo que el asistente
-        // de siempre, asi que todo lo de abajo sigue igual. Si algo falla al abrirlo, se
-        // cae al asistente viejo: quedarse sin poder crear campana no es una opcion.
-        const { askTaller } = await import('./game-engine/ui/taller/taller.js')
-            .catch(error => {
-                console.error('[campaigns] no se pudo abrir el taller', error);
-                return { askTaller: null };
-            });
+        // El taller (wiki/ROADMAP_CREACION.md). Devuelve lo mismo que devolvia el
+        // asistente de siempre, asi que todo lo de abajo sigue igual.
+        const { askTaller } = await import('./game-engine/ui/taller/taller.js');
 
-        const answers = askTaller
-            ? await askTaller({
-                Popup,
-                POPUP_TYPE,
-                existingWorldNames: Array.isArray(world_names) ? world_names : [],
-                // El lapicito: escribir una frase con el modelo, donde tiene sentido.
-                write: online_status !== 'no_connection' ? writeWithModel : null,
-            })
-            : await askWizard({
-                Popup,
-                POPUP_TYPE,
-                existingWorldNames: Array.isArray(world_names) ? world_names : [],
-                // generateRaw goes through whichever provider is configured, so the blank
-                // canvas is not tied to one vendor. Offered only when something is connected:
-                // a button that can only fail is worse than no button.
-                generateWorld: online_status !== 'no_connection'
-                    ? (idea, partySize) => generateWorld({
-                        idea,
-                        partySize,
-                        generate: params => generateRaw(params),
-                    })
-                    : null,
-            });
+        const answers = await askTaller({
+            Popup,
+            POPUP_TYPE,
+            existingWorldNames: Array.isArray(world_names) ? world_names : [],
+            // El lapicito: escribir una frase con el modelo, donde tiene sentido.
+            write: online_status !== 'no_connection' ? writeWithModel : null,
+            // Los narradores que ya tienes escritos de otras campanas: volver a
+            // escribirlos seria escribirlos dos veces.
+            narrators: /** @type {any[]} */ (characters ?? [])
+                // Una ficha cargada guarda las notas en `data.creator_notes` o en
+                // `creatorcomment`, **nunca** en `creator_notes` a secas: es lo mismo que
+                // lee la lista de personajes de SillyTavern.
+                .filter(card => /Narrador de la campa/i.test(notesOf(card)))
+                .map(card => ({
+                    id: `mio-${String(card.avatar ?? card.name)}`,
+                    name: String(card.name ?? ''),
+                    note: notesOf(card).slice(0, 80),
+                    personality: String(card.personality ?? ''),
+                    description: String(card.description ?? ''),
+                    greeting: String(card.first_mes ?? ''),
+                    image: String(card.avatar ? `/thumbnail?type=avatar&file=${encodeURIComponent(card.avatar)}` : ''),
+                    verbosity: DEFAULT_VERBOSITY,
+                })),
+            // La cara de quien narra, buscada en el disco como la del personaje.
+            uploadFace: (file) => uploadHeroFace(file, 'campaigns'),
+            // Y que escriba el mundo entero, si hay proveedor. `generateRaw` va por el que
+            // este configurado, asi que esto no se ata a ningun fabricante.
+            makeWorld: online_status !== 'no_connection'
+                ? (idea, partySize) => generateWorld({
+                    idea,
+                    partySize,
+                    generate: params => generateRaw(params),
+                })
+                : null,
+        });
         if (!answers) return;
 
         /** @type {import('./game-engine/ui/campaign-wizard.js').WizardResult} */

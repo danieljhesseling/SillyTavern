@@ -46,19 +46,35 @@ export const SAVES = {
 export const DEFAULT_SURVIVAL = {
     mortality: MORTALITY.MERCENARIES,
     saves: SAVES.FREE,
+    // Lo que se puede apagar. Todo encendido por defecto: es como se ha jugado hasta hoy,
+    // y apagarlo tiene que ser una decision de quien crea la campana, no un descuido.
+    needs: true,
+    exposure: true,
+    injuries: true,
+    loyalty: true,
 };
 
 /**
  * @param {any} rules
- * @returns {{mortality: string, saves: string}}
+ * @returns {{mortality: string, saves: string, needs: boolean, exposure: boolean,
+ *   injuries: boolean, loyalty: boolean}}
  */
 export function readSurvival(rules) {
     const source = (rules && typeof rules === 'object') ? rules : {};
+    /** Lo que no diga nada sigue encendido: una campana vieja no cambia sola. */
+    const on = (/** @type {string} */ key) => source[key] !== false;
     const mortality = Object.values(MORTALITY).includes(source.mortality)
         ? source.mortality : DEFAULT_SURVIVAL.mortality;
     const saves = Object.values(SAVES).includes(source.saves)
         ? source.saves : DEFAULT_SURVIVAL.saves;
-    return { mortality, saves };
+    return {
+        mortality,
+        saves,
+        needs: on('needs'),
+        exposure: on('exposure'),
+        injuries: on('injuries'),
+        loyalty: on('loyalty'),
+    };
 }
 
 /**

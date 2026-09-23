@@ -2112,3 +2112,73 @@
 .tl-pack-said.bad {
     color: rgba(228, 130, 110, 0.95);
 }
+
+/* Lo que escribe el modelo se enseña antes de crear nada: un mundo generado que aparece
+   ya hecho es un mundo que no se puede corregir. */
+.tl-gen-out {
+    margin-top: 10px;
+}
+
+.tl-gen-map {
+    width: 100%;
+    margin-top: 8px;
+    font-family: var(--monoFontFamily, monospace);
+    font-size: 0.75rem;
+    white-space: pre;
+}
+
+.tl-gen-bad,
+.tl-gen-warn {
+    margin-bottom: 4px;
+    padding: 4px 8px;
+    border-radius: 5px;
+    font-size: 0.78rem;
+}
+
+.tl-gen-bad {
+    background: rgba(160, 60, 50, 0.2);
+}
+
+.tl-gen-warn {
+    background: rgba(170, 130, 40, 0.18);
+}
+
+.tl-empty {
+    padding: 14px;
+    opacity: 0.7;
+    font-size: 0.85rem;
+}
+
+.tl-drop {
+    margin-top: 6px;
+}
+
+/* La cara de quien narra: se busca en el disco y se ve al elegirla. */
+.tl-file-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* El CSS global de SillyTavern esconde **todos** los `input[type=file]`, y esa regla pesa
+   mas que una clase suelta: por eso un `.tl-file { display: block }` no ganaba y el campo
+   seguia invisible. Hay que igualarle el peso nombrando el tipo. */
+input[type="file"].tl-file {
+    display: inline-block;
+    flex: 1;
+    font-size: 0.78rem;
+    min-width: 0;
+}
+
+.tl-face {
+    width: 48px;
+    height: 48px;
+    border-radius: 6px;
+    object-fit: cover;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.tl-hint.bad {
+    color: rgba(228, 130, 110, 0.95);
+    opacity: 1;
+}

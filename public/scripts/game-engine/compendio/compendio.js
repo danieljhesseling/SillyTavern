@@ -193,6 +193,46 @@ export function pickWeighted(rows, random) {
 }
 
 /**
+ * Las baterias con solo lo que un mundo dejo entrar.
+ *
+ * Un mundo precreado no es un archivo de contenido aparte: es una **seleccion** sobre estas
+ * mismas filas. Quitar los elfos es lo que hace que el de terror sea el de terror, y sin
+ * este filtro quitarlos seria un tachon en una pantalla: los generadores seguirian
+ * sacandolos.
+ *
+ * Un dominio que el mundo no menciona entra **entero**. Lo contrario obligaria a marcar
+ * las 447 filas para jugar, y entonces nadie marcaria nada.
+ *
+ * @param {Record<string, any[]>} batteries
+ * @param {Record<string, string[]>} picks Por dominio, los ids que entran.
+ * @returns {Record<string, any[]>}
+ */
+export function onlyPicked(batteries, picks) {
+    const source = (batteries && typeof batteries === 'object') ? batteries : {};
+    const wanted = (picks && typeof picks === 'object') ? picks : {};
+
+    /** @type {Record<string, any[]>} */
+    const out = {};
+    for (const [domain, rows] of Object.entries(source)) {
+        const list = Array.isArray(rows) ? rows : [];
+        const ids = wanted[domain];
+
+        // Ni dicho, ni vacio: una lista vacia es «no elegi nada», y de ahi a dejar el mundo
+        // sin bichos hay un paso que nadie quiso dar.
+        if (!Array.isArray(ids) || ids.length === 0) {
+            out[domain] = list;
+            continue;
+        }
+
+        const keep = new Set(ids.map(text));
+        out[domain] = list.filter(row => keep.has(text(row?.id)));
+    }
+
+    // Y lo que el mundo marco de una bateria que no esta cargada no inventa la bateria.
+    return out;
+}
+
+/**
  * La biblioteca ya cargada, con lo que hace falta para sacar cosas de ella.
  *
  * @param {Record<string, any[]>} batteries Filas por dominio. Lo que falte, falta.
@@ -318,7 +358,8 @@ export function createCompendium(batteries, config = {}) {
  * @param {(domain: string) => Promise<any|null>} input.read
  * @param {string[]} [input.domains]
  * @param {(message: string) => void} [input.warn] Donde van los problemas de validacion.
- * @returns {Promise<{compendium: ReturnType<typeof createCompendium>, errors: string[], loaded: string[]}>}
+ * @returns {Promise<{compendium: ReturnType<typeof createCompendium>, errors: string[],
+ *   loaded: string[], batteries: Record<string, any[]>}>}
  */
 export async function loadCompendium({ read, domains = DOMAINS, warn = null }) {
     /** @type {Record<string, any[]>} */
@@ -353,5 +394,7 @@ export async function loadCompendium({ read, domains = DOMAINS, warn = null }) {
 
     if (warn) for (const message of errors) warn(message);
 
-    return { compendium: createCompendium(batteries), errors, loaded };
+    // Las filas salen tambien crudas: un mundo puede querer solo una parte, y para eso
+    // hay que poder volver a construir la biblioteca con menos.
+    return { compendium: createCompendium(batteries), errors, loaded, batteries };
 }

@@ -34,7 +34,7 @@
  * @property {string} [value]
  * @property {string} [hint]        Lo que va debajo, explicando.
  * @property {string} [placeholder]
- * @property {'text'|'area'|'choice'|'check'} [kind]
+ * @property {'text'|'area'|'choice'|'check'|'file'} [kind]
  * @property {Array<{id: string, label: string}>} [options] Para `choice`.
  * @property {boolean} [wand]       Si lleva el lapicito de escribir con el modelo.
  * @property {boolean} [mono]       Para la semilla, que se lee mejor en monoespaciada.
@@ -86,11 +86,43 @@ function drawCard(card, onPick) {
  * @param {Field} field
  * @param {(key: string, value: string) => void} onWrite
  * @param {((key: string) => Promise<string>)|null} onWand
+ * @param {((file: any) => Promise<string>)|null} [onFile]
  * @returns {JQuery}
  */
-function drawField(field, onWrite, onWand) {
+function drawField(field, onWrite, onWand, onFile = null) {
     const row = $('<div class="tl-field"></div>');
     const kind = text(field.kind) || 'text';
+
+    // La cara: se busca en el disco y se ve al elegirla. Se sube al elegir y no al
+    // guardar, para que si falla te enteres mientras todavia puedes cambiarla.
+    if (kind === 'file') {
+        row.addClass('is-file');
+        row.append($('<div class="tl-field-head"></div>')
+            .append($('<label class="tl-label"></label>').text(text(field.label))));
+
+        const pick = $('<input type="file" class="tl-file" accept="image/*">');
+        const seen = $('<img class="tl-face" alt="">').toggle(Boolean(text(field.value)));
+        if (text(field.value)) seen.attr('src', text(field.value));
+
+        pick.on('change', async () => {
+            const file = /** @type {any} */ (pick[0])?.files?.[0];
+            if (!file || !onFile) return;
+            try {
+                const path = await onFile(file);
+                if (!text(path)) return;
+                seen.attr('src', path).show();
+                onWrite(text(field.key), path);
+            } catch (error) {
+                console.error('[taller] no se pudo guardar esa imagen', error);
+                row.append($('<div class="tl-hint bad"></div>')
+                    .text('No se pudo guardar esa imagen. Puedes seguir sin cara.'));
+            }
+        });
+
+        row.append($('<div class="tl-file-row"></div>').append(pick).append(seen));
+        if (text(field.hint)) row.append($('<div class="tl-hint"></div>').text(text(field.hint)));
+        return row;
+    }
 
     if (kind === 'check') {
         const id = `tl-${text(field.key)}`;
@@ -169,11 +201,13 @@ function drawField(field, onWrite, onWand) {
  * @param {(id: string) => void} input.onPick
  * @param {(key: string, value: string) => void} input.onWrite
  * @param {((key: string) => Promise<string>)|null} [input.onWand]
+ * @param {((file: any) => Promise<string>)|null} [input.onFile] Para los campos de imagen.
  * @returns {void}
  */
 export function drawStep(into, {
     title, hint, cards, fields, onPick, onWrite,
     cardsTitle = '', formTitle = '', formOpen = true, cardsOpen = null, onWand = null,
+    onFile = null,
 }) {
     into.empty();
 
@@ -196,7 +230,7 @@ export function drawStep(into, {
     if (rows.length > 0) {
         into.append(fold(text(formTitle) || 'La ficha', formOpen, (body) => {
             const form = $('<div class="tl-form"></div>');
-            for (const field of rows) form.append(drawField(field, onWrite, onWand));
+            for (const field of rows) form.append(drawField(field, onWrite, onWand, onFile));
             body.append(form);
         }));
     }

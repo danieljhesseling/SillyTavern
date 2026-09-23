@@ -22,6 +22,12 @@
 const SURVIVAL = {
     mortality: 'mercenaries',
     saves: 'free',
+    // Lo que se puede apagar desde el taller. Todo encendido: es como se ha jugado hasta
+    // hoy, y apagarlo tiene que ser una decision, no un descuido.
+    needs: true,
+    exposure: true,
+    injuries: true,
+    loyalty: true,
 };
 
 /**

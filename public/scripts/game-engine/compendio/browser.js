@@ -13,7 +13,7 @@
 
 import { loadCompendium, createCompendium, DOMAINS } from './compendio.js';
 
-/** @type {{compendium: any, errors: string[], loaded: string[]}|null} */
+/** @type {{compendium: any, errors: string[], loaded: string[], batteries: any}|null} */
 let cached = null;
 /** @type {Promise<any>|null} */
 let loading = null;
@@ -39,7 +39,7 @@ async function readBattery(domain) {
  * Nunca lanza: si el disco falla entero, devuelve una biblioteca vacia y el juego se
  * comporta como el dia antes de que existiera el compendio.
  *
- * @returns {Promise<{compendium: any, errors: string[], loaded: string[]}>}
+ * @returns {Promise<{compendium: any, errors: string[], loaded: string[], batteries: any}>}
  */
 export async function getCompendium() {
     if (cached) return cached;
@@ -59,7 +59,10 @@ export async function getCompendium() {
             return result;
         }).catch((error) => {
             console.error('[compendio] no se pudo cargar', error);
-            cached = { compendium: createCompendium({}), errors: [String(error?.message || error)], loaded: [] };
+            cached = {
+                compendium: createCompendium({}),
+                errors: [String(error?.message || error)], loaded: [], batteries: {},
+            };
             loading = null;
             return cached;
         });

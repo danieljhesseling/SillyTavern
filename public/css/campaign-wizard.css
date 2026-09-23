@@ -571,7 +571,10 @@ textarea.cw-ai-map {
     gap: 8px;
 }
 
-.hc-face-file {
+/* Igual que arriba: la regla global `input[type=file] { display: none }` pesa mas que una
+   clase, asi que hay que nombrar el tipo para ganarle. */
+input[type="file"].hc-face-file {
+    display: inline-block;
     flex: 1;
     font-size: 0.74rem;
     min-width: 0;

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "about": "Narradores hechos, para no tener que escribir uno antes de jugar. Lo que hay aquí es exactamente lo que el formulario del paso 2 rellena, así que elegir uno es lo mismo que escribirlo a mano pero más rápido — y se puede cambiar antes de crear la campaña. Añadir otro es añadir una entrada: no hay código que tocar. El oficio (qué es narrar, que no interpreta al grupo, que las tiradas las decide el juego) no se escribe aquí: lo pone el motor en cada ficha, para que ningún narrador pueda olvidarlo.",
+  "about": "Narradores hechos, para no tener que escribir uno antes de jugar. Lo que hay aquí es exactamente lo que el formulario del paso 2 rellena, así que elegir uno es lo mismo que escribirlo a mano pero más rápido — y se puede cambiar antes de crear la campaña. Añadir otro es añadir una entrada: no hay código que tocar. El oficio (qué es narrar, que no interpreta al grupo, que las tiradas las decide el juego) no se escribe aquí: lo pone el motor en cada ficha, para que ningún narrador pueda olvidarlo. El campo \"verbosity\" es un vocabulario CERRADO del motor: terse, brief, full o novel. Cualquier otra cosa deja el desplegable en blanco, que es justo lo que pasaba cuando decia \"normal\".",
   "narrators": [
     {
       "id": "cronista",
@@ -20,7 +20,7 @@
       "personality": "Cálida y directa, con guasa. Habla de la gente antes que de los sitios y se acuerda de los nombres. Cuando algo va mal lo dice sin dramatizarlo.",
       "description": "Lleva treinta años oyendo a gente como vosotros contar cómo les fue. Sabe cuándo alguien miente y cuándo solo está asustado.",
       "greeting": "Sentaos, que esto va para largo. ¿Por dónde íbamos?",
-      "verbosity": "normal"
+      "verbosity": "full"
     },
     {
       "id": "sombra",
@@ -30,7 +30,7 @@
       "personality": "Frío y paciente. Describe lo que hay sin decir si es bueno o malo, y se detiene en los detalles que preferiríais no mirar. Nunca avisa.",
       "description": "Estaba aquí antes y seguirá después. Lo que le interesa no es quién gana, sino qué decidís cuando no hay una buena opción.",
       "greeting": "Ya estáis dentro. No hacía falta que llamarais.",
-      "verbosity": "normal"
+      "verbosity": "brief"
     },
     {
       "id": "juglar",
@@ -40,7 +40,7 @@
       "personality": "Grandilocuente y con ritmo. Exagera un poco —lo justo—, cierra las escenas con una frase que se queda, y disfruta cuando algo sale mal porque eso sí es una buena historia.",
       "description": "Va con vosotros por la canción que saldrá de esto. Si la campaña es aburrida, se le nota.",
       "greeting": "¡Ah, por fin! Llevaba media estrofa esperándoos.",
-      "verbosity": "detailed"
+      "verbosity": "novel"
     }
   ]
 }

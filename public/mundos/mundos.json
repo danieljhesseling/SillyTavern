@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "about": "Los mundos precreados. Cada uno es contenido + semilla: la semilla va escrita aquí a propósito, porque un mundo precreado es *ese* mundo y dos personas que lo jueguen tienen que poder hablar de lo mismo. Quien quiera otra versión le da a volver a tirar. Añadir un quinto mundo es añadir una entrada a este archivo: no hay código que tocar. Por ahora cada uno trae su ficha y con qué sitio empieza; cuando el taller tenga los trece pasos, aquí se dirá además qué filas de cada batería entran (ver wiki/ROADMAP_CREACION.md, T6).",
+  "about": "Los mundos precreados. Cada uno es contenido + semilla: la semilla va escrita aquí a propósito, porque un mundo precreado es *ese* mundo y dos personas que lo jueguen tienen que poder hablar de lo mismo. Quien quiera otra versión le da a volver a tirar. Y un mundo no es un archivo de contenido aparte: es una **selección** sobre las mismas baterías —qué razas y qué clases entran— más quién lo narra, cuánto duele perder y de qué tira su tablón. Las habilidades salen solas de las clases marcadas: escribirlas otra vez sería escribir dos veces lo mismo. Añadir un quinto mundo es añadir una entrada aquí: no hay código que tocar.",
   "worlds": [
     {
       "id": "costa",
@@ -11,7 +11,35 @@
       "seed": "sal-niebla-tres",
       "templateId": "tavern",
       "icon": "fa-water",
-      "traits": ["Sin razas fantásticas", "Lo que hay ahí fuera no se mata a espadazos", "El miedo cuenta más que los puntos de vida"]
+      "traits": [
+        "Sin razas fantásticas",
+        "Lo que hay ahí fuera no se mata a espadazos",
+        "El miedo cuenta más que los puntos de vida"
+      ],
+      "picks": {
+        "razas": [
+          "raza-humano",
+          "raza-marcado",
+          "raza-braceado"
+        ],
+        "clases": [
+          "picaro",
+          "clerigo",
+          "erudito",
+          "soldado",
+          "explorador"
+        ]
+      },
+      "narrator": "sombra",
+      "board": {
+        "factionShare": 5,
+        "theme": "general"
+      },
+      "survival": {
+        "mortality": "everyone",
+        "saves": "shelter"
+      },
+      "why": "Sin razas fantásticas y sin magos: lo que hay en el agua no se resuelve con un conjuro, se resuelve sabiendo qué se le prometió. Muere cualquiera y solo se guarda en el refugio."
     },
     {
       "id": "ocaso",
@@ -22,7 +50,38 @@
       "seed": "roble-invierno-nueve",
       "templateId": "forest",
       "icon": "fa-crown",
-      "traits": ["Razas clásicas", "Facciones grandes y relojes lentos", "Los viajes cuestan días de verdad"]
+      "traits": [
+        "Razas clásicas",
+        "Facciones grandes y relojes lentos",
+        "Los viajes cuestan días de verdad"
+      ],
+      "picks": {
+        "razas": [
+          "raza-humano",
+          "raza-enano",
+          "raza-elfo",
+          "raza-media-elfa",
+          "raza-mediano",
+          "raza-semiorco",
+          "raza-gnomo"
+        ],
+        "clases": [
+          "guerrero",
+          "barbaro",
+          "picaro",
+          "clerigo",
+          "druida",
+          "mago",
+          "bardo",
+          "explorador"
+        ]
+      },
+      "narrator": "cronista",
+      "board": {
+        "factionShare": 2,
+        "theme": "general"
+      },
+      "why": "Las siete razas clásicas y las ocho clases. Uno de cada dos encargos sale de lo que quiere una casa: aquí la guerra es el fondo de todo."
     },
     {
       "id": "pantalla",
@@ -33,7 +92,33 @@
       "seed": "torre-siete-brasa",
       "templateId": "dungeon",
       "icon": "fa-gamepad",
-      "traits": ["Los números se ven, y son de verdad", "Los vínculos pesan más que el combate", "Subir de nivel se nota en una tarde"]
+      "traits": [
+        "Los números se ven, y son de verdad",
+        "Los vínculos pesan más que el combate",
+        "Subir de nivel se nota en una tarde"
+      ],
+      "picks": {
+        "razas": [
+          "raza-humano",
+          "raza-huesped",
+          "raza-elfo",
+          "raza-media-elfa"
+        ],
+        "clases": [
+          "guerrero",
+          "picaro",
+          "mago",
+          "bardo",
+          "clerigo",
+          "explorador"
+        ]
+      },
+      "narrator": "juglar",
+      "board": {
+        "factionShare": 3,
+        "theme": "general"
+      },
+      "why": "Puedes ser de aquí o haber llegado. Se guarda cuando quieras: la gracia no es perderlo todo, es ver subir los números."
     },
     {
       "id": "1387",
@@ -44,7 +129,35 @@
       "seed": "yunque-hiel-catorce",
       "templateId": "tavern",
       "icon": "fa-scroll",
-      "traits": ["Sin magia", "Las heridas se quedan", "La cuenta del viernes aprieta de verdad"]
+      "traits": [
+        "Sin magia",
+        "Las heridas se quedan",
+        "La cuenta del viernes aprieta de verdad"
+      ],
+      "picks": {
+        "razas": [
+          "raza-humano",
+          "raza-sangre-alta"
+        ],
+        "clases": [
+          "soldado",
+          "guerrero",
+          "picaro",
+          "clerigo",
+          "explorador",
+          "erudito"
+        ]
+      },
+      "narrator": "posadero",
+      "board": {
+        "factionShare": 3,
+        "theme": "general"
+      },
+      "survival": {
+        "mortality": "everyone",
+        "saves": "shelter"
+      },
+      "why": "Humanos y nada más. Sin magos ni druidas: un clérigo aquí es alguien que sabe rezar y coser heridas. Muere cualquiera."
     }
   ]
 }

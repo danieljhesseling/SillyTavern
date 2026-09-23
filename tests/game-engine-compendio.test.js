@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import { describe, test, expect } from '@jest/globals';
 import {
     DOMAINS, validateBattery, matches, pickWeighted, createCompendium, loadCompendium,
+    onlyPicked,
 } from '../public/scripts/game-engine/compendio/compendio.js';
 
 /** Un azar que va diciendo lo que le mandes, para que una prueba sea una prueba. */
@@ -261,5 +262,37 @@ describe('la batería que viene escrita', () => {
                 }
             }
         }
+    });
+});
+
+describe('solo lo que el mundo dejó entrar', () => {
+    const bats = () => ({
+        razas: [{ id: 'humano' }, { id: 'elfo' }, { id: 'enano' }],
+        bestiario: [{ id: 'lobo' }, { id: 'oso' }],
+    });
+
+    // Quitar los elfos es lo que hace que el de terror sea el de terror.
+    test('lo desmarcado no sale', () => {
+        const solo = onlyPicked(bats(), { razas: ['humano', 'enano'] });
+        expect(solo.razas.map(r => r.id)).toEqual(['humano', 'enano']);
+    });
+
+    // Lo contrario obligaría a marcar las 447 filas para jugar.
+    test('una batería que el mundo no menciona entra entera', () => {
+        expect(onlyPicked(bats(), { razas: ['humano'] }).bestiario).toHaveLength(2);
+    });
+
+    // «No elegí nada» no es «quiero un mundo sin bichos».
+    test('y una lista vacía tampoco la vacía', () => {
+        expect(onlyPicked(bats(), { bestiario: [] }).bestiario).toHaveLength(2);
+    });
+
+    test('sin nada dicho, todo entra', () => {
+        expect(onlyPicked(bats(), null)).toEqual(bats());
+        expect(onlyPicked(bats(), {})).toEqual(bats());
+    });
+
+    test('y marcar de una batería que no está no la inventa', () => {
+        expect(onlyPicked(bats(), { armas: ['daga'] }).armas).toBeUndefined();
     });
 });

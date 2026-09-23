@@ -34,6 +34,7 @@ import { writeQuest as writeFromCompendium, writeQuestBoard, describeQuest } fro
 import { writePerson as writePersonFromCompendium, writeVillage, describePerson } from './game-engine/compendio/people.js';
 import { injuryTableFor, causesOf } from './game-engine/compendio/ailments.js';
 import { racesOf, kindsOf, describeKin, validateKin } from './game-engine/compendio/kin.js';
+import { createCompendium, onlyPicked } from './game-engine/compendio/compendio.js';
 import {
     readFactions, tickFactions, outcomeOf, applyOutcome, newsFor, describeFaction,
     rollFactions, validateFactionRows, busyFactions, pushFaction, speaksPlural, namesOf,
@@ -77,7 +78,7 @@ import {
 import {
     tickNeeds, exhaustionInjury, describeNeeds, LETHAL_EXHAUSTION,
 } from './game-engine/rules/needs.js';
-import { resolveFall, describeSurvival, canCheckpoint } from './game-engine/rules/mortality.js';
+import { resolveFall, describeSurvival, canCheckpoint, readSurvival } from './game-engine/rules/mortality.js';
 import { weeklyBill, settleWeek, describeBill } from './game-engine/rules/upkeep.js';
 import {
     generateBoardOfContracts, contractsFromFactions, expireContracts, describeContract,
@@ -763,6 +764,9 @@ async function reloadWorldFactions() {
         lastBoardRules = data?.metadata?.boardRules ?? null;
         lastWrittenQuests = Array.isArray(data?.metadata?.writtenQuests)
             ? data.metadata.writtenQuests : [];
+        // Y lo que este mundo dejo entrar de cada bateria.
+        lastPicks = (data?.metadata?.picks && typeof data.metadata.picks === 'object')
+            ? data.metadata.picks : null;
     } catch (error) {
         console.error('[party] no se pudieron leer las facciones', error);
         currentWorldFactions = [];
@@ -2058,6 +2062,15 @@ async function openOwnSheet(member) {
  *
  * @param {any} member
  */
+/**
+ * Las reglas de filo de esta campana.
+ *
+ * @returns {any}
+ */
+function currentSurvival() {
+    return readSurvival(getActiveRuleset()?.survival ?? null);
+}
+
 function applyFall(member, cause = '') {
     const fall = resolveFall(member, {
         roll: () => nextRandom(),
@@ -2073,6 +2086,14 @@ function applyFall(member, cause = '') {
         member.dead = true;
         postCombatNarration(`⚰️ [COMBAT] ${fall.reason}`);
         toastr.error(fall.reason, 'Se acabo', { timeOut: 15000 });
+        return;
+    }
+
+    // Un mundo puede decidir que las heridas no quedan: se levanta y ya esta.
+    if (!currentSurvival().injuries) {
+        member.hp = 1;
+        member.deathSaves = clearDeathSaves();
+        postCombatNarration(`🩸 [COMBAT] ${fall.reason}`);
         return;
     }
 
@@ -2786,6 +2807,20 @@ function currentMarket() {
 }
 
 /**
+ * La biblioteca de **esta** campana.
+ *
+ * La misma de siempre, menos lo que el mundo dejo fuera. Un mundo sin nada elegido la
+ * recibe entera, que es como estaba antes de que el taller existiera.
+ *
+ * @returns {Promise<any>}
+ */
+async function campaignCompendium() {
+    const { compendium, batteries } = await getCompendium();
+    if (!lastPicks || !batteries) return compendium;
+    return createCompendium(onlyPicked(batteries, lastPicks));
+}
+
+/**
  * Lo que el mundo dijo sobre su tablon, en el taller.
  *
  * Sin nada dicho, lo de siempre: uno de cada tres encargos de faccion y ninguna mision
@@ -2803,6 +2838,9 @@ function worldBoardRules() {
 
 /** @type {any} */
 let lastBoardRules = null;
+/** Lo que este mundo dejo entrar de cada bateria, o null si no eligio. */
+/** @type {any} */
+let lastPicks = null;
 /** @type {any[]} */
 let lastWrittenQuests = [];
 
@@ -2962,7 +3000,12 @@ function passNeeds(days) {
     for (const member of partyMembers) {
         if (member.dead) continue;
 
-        const tick = tickNeeds(member, { hours, climate, sheltered });
+        // Un mundo puede decidir que aqui no se pasa hambre, o que el clima no mata.
+        const rules = currentSurvival();
+        if (!rules.needs) continue;
+        const tick = tickNeeds(member, {
+            hours, climate: rules.exposure ? climate : 'templado', sheltered,
+        });
         member.needs = tick.needs;
         said.push(...tick.lines);
 
@@ -3017,7 +3060,10 @@ function chargeWeek() {
     // Y la lealtad, que es lo que convierte no pagar en una consecuencia y no en un
     // numero rojo. Quien llega al fondo se va: es la decision que tomaste con la cuenta
     // delante, no un castigo por jugar mal.
-    const loyalty = settleLoyalty(partyMembers, week.unpaid);
+    // Y que la gente se vaya cuando no cobra: se puede apagar, y entonces se quedan.
+    const loyalty = currentSurvival().loyalty
+        ? settleLoyalty(partyMembers, week.unpaid)
+        : { leaving: [], lines: [] };
     if (loyalty.leaving.length > 0) {
         partyMembers = partyMembers.filter(m => !loyalty.leaving.includes(String(m.name)));
         renderPartyMembers();
@@ -4710,7 +4756,7 @@ export async function openCampaignBuilder() {
 
         // El compendio, si lo hay. Sin batería de materiales no hay botón de forjar y la
         // ficha se rellena a mano, igual que siempre.
-        const { compendium } = await getCompendium();
+        const compendium = await campaignCompendium();
 
         // Un mundo de antes de que esto existiera se lleva una semilla aqui, que es el
         // primer sitio donde ya estabamos cargando y guardando su metadata. A partir de
@@ -5068,7 +5114,7 @@ async function acceptContract(id) {
 
     // De que clase es el sitio, de que esta hecho por dentro y en que estado esta. Sin
     // bateria de sitios sale lo de siempre: salas y pasillos, como hasta ahora.
-    const { compendium } = await getCompendium();
+    const compendium = await campaignCompendium();
     const seed = derive(seedOfWorld(data.metadata), 'encargo', String(contract.id));
     const random = createSeededRandom(seed);
     const biome = biomeHere(data.metadata);
@@ -6131,7 +6177,7 @@ async function travelWithTime(name, options = {}) {
     // Los sucesos del camino, con la semilla del mundo: el mismo viaje sale igual dos
     // veces, que es lo unico que la semilla promete.
     const worldName = String(chat_metadata?.[METADATA_KEY] || '');
-    const { compendium } = await getCompendium();
+    const compendium = await campaignCompendium();
     const hasWorld = compendium.has('mundo');
     const table = hasWorld ? compendium.find('mundo', { kind: 'suceso' }) : [];
 

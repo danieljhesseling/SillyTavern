@@ -359,8 +359,22 @@ try {
         /Paso 7 de 13/.test(paso7.dicho) && paso7.lineas.every(l => /\dd\d/.test(l)),
         `${paso7.dicho} · ${paso7.lineas[0]}`);
 
-    // Del 7 se pasa al 9: el paso 8 (objetos) todavia no esta hecho, y un paso que se
-    // ensena vacio promete algo que no pasa.
+    await page.locator('.tl-next').click();
+    await page.waitForTimeout(500);
+
+    // Paso 8: las formas de las tres baterias juntas. Quitar una quita dieciseis objetos,
+    // porque el material lo pone otra bateria.
+    const paso8 = await page.evaluate(() => ({
+        dicho: document.querySelector('.tl-bar-said')?.textContent || '',
+        cosas: document.querySelectorAll('.tl-card:not(.add)').length,
+        lineas: [...document.querySelectorAll('.tl-card:not(.add) .tl-card-note')]
+            .map(e => e.textContent || ''),
+    }));
+    check('el paso 8 junta armas, armaduras y trastos',
+        /Paso 8 de 13/.test(paso8.dicho) && paso8.cosas >= 60
+        && paso8.lineas.some(l => /\dd\d/.test(l)) && paso8.lineas.some(l => /CA \d/.test(l)),
+        `${paso8.dicho} · ${paso8.cosas} formas`);
+
     await page.locator('.tl-next').click();
     await page.waitForTimeout(500);
 
@@ -385,6 +399,18 @@ try {
         && suMeta.some(t => /Acabar con otra facción/i.test(t))
         && suMeta.some(t => /deben más de una/i.test(t)),
         suMeta.filter(Boolean).slice(0, 12).join(', '));
+
+    await page.locator('.tl-next').click();
+    await page.waitForTimeout(600);
+
+    // Paso 10: lo que hay ahi fuera.
+    const paso10 = await page.evaluate(() => ({
+        dicho: document.querySelector('.tl-bar-said')?.textContent || '',
+        bichos: document.querySelectorAll('.tl-card:not(.add)').length,
+    }));
+    check('el paso 10 trae el bestiario entero, marcado',
+        /Paso 10 de 13/.test(paso10.dicho) && paso10.bichos >= 30,
+        `${paso10.dicho} · ${paso10.bichos} filas`);
 
     await page.locator('.tl-next').click();
     await page.waitForTimeout(600);
@@ -2061,7 +2087,7 @@ try {
     // propio importador, asi que los pasos 3 y 4 se saltan.
     await page.locator('.tl-next').click();
     await page.waitForTimeout(400);
-    for (let i = 0; i < 9; i++) {
+    for (let i = 0; i < 11; i++) {
         await page.locator('.tl-skip').click();
         await page.waitForTimeout(400);
     }
@@ -3906,20 +3932,23 @@ try {
     step('37. Crear una campana y caer escribiendo el mundo, sin teclear un comando');
 
     await page.click('#cw-new-campaign');
-    await page.waitForSelector('.cw-root', { timeout: 20000 });
+    await page.waitForSelector('.tl-door-grid', { timeout: 20000 });
+    await page.locator('.tl-door-card').first().click();
+    await page.waitForSelector('.tl-root', { timeout: 20000 });
+    await page.locator('.tl-card:not(.add)').first().click();
+    await page.waitForTimeout(300);
 
-    const buttons37 = await page.evaluate(() => {
-        const dialog = document.querySelector('dialog.popup:not([style*="display: none"]) .popup-controls')
-            ?? document.querySelector('.popup-controls');
-        return [...(dialog?.querySelectorAll('.menu_button') ?? [])]
-            .map(b => (b.textContent || '').trim()).filter(Boolean);
-    });
-    check('el asistente ofrece las dos salidas, y ninguna pide un comando',
-        buttons37.some(b => /Crear y jugar/.test(b)) && buttons37.some(b => /escribir el mundo/.test(b)),
+    // Las dos salidas, las dos sin teclear un comando: una cae jugando y la otra cae
+    // jugando **y** con el editor del mundo delante.
+    const buttons37 = await page.evaluate(() => [...document.querySelectorAll('.tl-foot .menu_button')]
+        .map(b => (b.textContent || '').trim()).filter(Boolean));
+    check('el taller ofrece las dos salidas, y ninguna pide un comando',
+        buttons37.some(b => /escribir el mundo/.test(b))
+        && [...buttons37, 'Siguiente'].some(b => /Siguiente|Crear y jugar/.test(b)),
         JSON.stringify(buttons37));
 
-    await page.fill('.cw-root input.cw-input >> nth=0', 'El Vado Escrito');
-    await page.locator('.popup-button-custom').filter({ hasText: 'escribir el mundo' }).click();
+    await page.fill('.tl-input >> nth=0', 'El Vado Escrito');
+    await page.locator('.tl-write').click();
 
     // Tambien por aqui: la partida se abre, te preguntan quien eres, y solo despues
     // aparece el editor. Ese es el orden en que se piensa una campana.
@@ -3956,42 +3985,51 @@ try {
         await closeChat();
     }
     await page.click('#cw-new-campaign');
-    await page.waitForSelector('.cw-root', { timeout: 20000 });
+    await page.waitForSelector('.tl-door-grid', { timeout: 20000 });
+    await page.locator('.tl-door-card').first().click();
+    await page.waitForSelector('.tl-root', { timeout: 20000 });
+    await page.locator('.tl-card:not(.add)').first().click();
+    await page.waitForTimeout(300);
+
+    await page.fill('.tl-input >> nth=0', 'La Cripta Narrada');
+    await page.locator('.tl-next').click();
+    await page.waitForTimeout(500);
 
     const step4 = await page.evaluate(() => ({
-        title: [...document.querySelectorAll('.cw-step-title')].map(t => (t.textContent || '').trim()),
-        boxHidden: (document.querySelector('.cw-narrator')?.getBoundingClientRect().height || 0) === 0,
+        title: document.querySelector('.tl-step-title')?.textContent || '',
+        campos: document.querySelectorAll('.tl-form .tl-input').length,
     }));
-    check('el asistente pregunta quien lo cuenta',
-        step4.title.some(t => /Quién lo cuenta/.test(t)), JSON.stringify(step4.title));
-    check('y no lo pide: los campos estan plegados hasta que dices que si',
-        step4.boxHidden === true, `plegado: ${step4.boxHidden}`);
+    check('el taller pregunta quien lo cuenta',
+        /Qui.n lo cuenta/i.test(step4.title), step4.title);
+    // No lo pide: hasta que eliges a alguien no hay ficha que rellenar.
+    check('y no lo pide: no hay campos hasta que eliges narrador',
+        step4.campos === 0, `${step4.campos} campos`);
 
-    await page.locator('.cw-narrator-on').check();
+    // La tarjeta del `+`: escribir el tuyo.
+    await page.locator('.tl-card.add').first().click();
     await page.waitForTimeout(400);
-    const opened = await page.evaluate(() =>
-        (document.querySelector('.cw-narrator')?.getBoundingClientRect().height || 0) > 0);
-    check('al pedirlo se abren sus campos', opened === true, `abierto: ${opened}`);
+    const opened = await page.evaluate(() => document.querySelectorAll('.tl-form .tl-input').length);
+    check('al pedirlo se abren sus campos', opened >= 4, `${opened} campos`);
 
-    await page.fill('.cw-root input.cw-input >> nth=0', 'La Cripta Narrada');
-    await page.fill('.cw-narrator-name', 'El Cronista');
-    await page.fill('.cw-narrator-tone', 'Seco, ironico, nunca adorna una muerte.');
-    await page.fill('.cw-narrator-about', 'Estuvo en el asedio y no lo cuenta.');
-    await page.fill('.cw-narrator-greeting', 'La cripta sigue ahi. Decidme que haceis.');
+    await page.fill('.tl-form .tl-input >> nth=0', 'El Cronista');
+    await page.fill('.tl-form .tl-input >> nth=1', 'Seco, ironico, nunca adorna una muerte.');
+    await page.fill('.tl-form .tl-input >> nth=2', 'Estuvo en el asedio y no lo cuenta.');
+    await page.fill('.tl-form .tl-input >> nth=3', 'La cripta sigue ahi. Decidme que haceis.');
 
     // Un narrador sin nombre no se puede crear: es lo que encabeza cada mensaje.
-    await page.fill('.cw-narrator-name', '');
-    await page.locator('.popup-button-ok').last().click();
-    await page.waitForTimeout(800);
+    await page.fill('.tl-form .tl-input >> nth=0', '');
+    await page.locator('.tl-next').click();
+    await page.waitForTimeout(400);
     const refused39 = await page.evaluate(() => ({
-        open: document.querySelectorAll('.cw-root').length,
-        warning: document.querySelector('.cw-narrator-warning')?.textContent || '',
+        open: document.querySelectorAll('.tl-root').length,
+        warning: document.querySelector('.tl-said')?.textContent || '',
     }));
     check('un narrador sin nombre no pasa, y dice por que',
-        refused39.open === 1 && /nombre/.test(refused39.warning), JSON.stringify(refused39));
+        refused39.open === 1 && /nombre/i.test(refused39.warning), JSON.stringify(refused39));
 
-    await page.fill('.cw-narrator-name', 'El Cronista');
-    await page.locator('.popup-button-ok').last().click();
+    await page.fill('.tl-form .tl-input >> nth=0', 'El Cronista');
+    await page.locator('.tl-write').click();
+    await page.waitForTimeout(600);
 
     // Y aqui tambien: todo lo que crea una campana pasa por el cuadro. Las
     // comprobaciones de este paso leen el estado, asi que sin contestarlo el cuadro
@@ -4041,6 +4079,14 @@ try {
     check('el mundo se acuerda de quien lo narra, no la sesion',
         remembered === narrator.avatar, `${remembered}`);
 
+    // «Crear y escribir el mundo» cae con el editor delante, que es lo que promete. El
+    // paso siguiente necesita el menu, asi que primero se cierra lo que haya abierto.
+    const abierto = await page.locator('.popup:visible .popup-button-ok').count();
+    if (abierto > 0) {
+        await page.locator('.popup:visible .popup-button-ok').last().click();
+        await page.waitForTimeout(800);
+    }
+
     step('40. El desgaste: heridas que quedan y una cuenta que vence');
 
     await clearToasts();
@@ -4050,21 +4096,38 @@ try {
 
     // Una campana con el filo puesto: mueren todos y se guarda solo en el refugio.
     await page.click('#cw-new-campaign');
-    await page.waitForSelector('.cw-root', { timeout: 20000 });
+    await page.waitForSelector('.tl-door-grid', { timeout: 20000 });
+    await page.locator('.tl-door-card').first().click();
+    await page.waitForSelector('.tl-root', { timeout: 20000 });
+    await page.locator('.tl-card:not(.add)').first().click();
+    await page.waitForTimeout(300);
 
-    const edge40 = await page.evaluate(() => ({
-        title: [...document.querySelectorAll('.cw-step-title')].map(t => (t.textContent || '').trim()),
-        boxes: document.querySelectorAll('.cw-edge-line input').length,
-    }));
-    check('el asistente pregunta cuanto duele perder',
-        edge40.title.some(t => /duele perder/.test(t)) && edge40.boxes === 2,
-        JSON.stringify(edge40));
-
-    await page.fill('.cw-root input.cw-input >> nth=0', 'La Marca del Hambre');
+    await page.fill('.tl-input >> nth=0', 'La Marca del Hambre');
     // Y la semilla de otro: escribirla es tener su mismo mundo.
-    await page.fill('.cw-root .cw-seed', 'Molino Ceniza Siete');
-    await page.locator('.cw-saves-shelter').check();
-    await page.locator('.popup-button-ok').last().click();
+    await page.fill('.tl-input.mono', 'Molino Ceniza Siete');
+
+    // El ultimo paso: cuanto duele perder. Doce «siguiente» desde el primero, que son los
+    // trece menos el que ya estas mirando.
+    for (let i = 0; i < 12; i++) {
+        await page.locator('.tl-next').click();
+        await page.waitForTimeout(250);
+    }
+    const edge40 = await page.evaluate(() => ({
+        title: document.querySelector('.tl-step-title')?.textContent || '',
+        boxes: document.querySelectorAll('.tl-field.is-check input').length,
+        dichos: [...document.querySelectorAll('.tl-check-label')].map(l => l.textContent || ''),
+    }));
+    // Seis interruptores, y los seis apagan algo que de verdad corre: morir, guardar,
+    // hambre, clima, heridas y que la gente se vaya.
+    check('el taller pregunta cuanto duele perder',
+        /Jugabilidad/i.test(edge40.title) && edge40.boxes === 6
+        && edge40.dichos.some(t => /hambre/i.test(t))
+        && edge40.dichos.some(t => /heridas se quedan/i.test(t))
+        && edge40.dichos.some(t => /se va si no cobra/i.test(t)),
+        JSON.stringify(edge40.dichos));
+
+    await page.locator('.tl-field.is-check input >> nth=1').check();
+    await page.locator('.tl-next').click();
     await answerHeroCreator('Bruna');
     await page.waitForTimeout(3000);
     await clearToasts();
@@ -4372,7 +4435,7 @@ try {
     // prueba de Node puede decir: alli el archivo se lee a mano y aqui lo sirve el server.
     const lib42 = await page.evaluate(async () => {
         const [
-            { getCompendium, DOMAINS }, { makeName, makeNames, culturesOf },
+            { getCompendium, DOMAINS, createCompendium }, { makeName, makeNames, culturesOf },
             { forgeItem, forgeItems, describeItem },
             { breedMonster, breedBand, describeMonster },
             { writeQuest, writeQuestBoard }, { createSeededRandom },
@@ -4386,7 +4449,7 @@ try {
             import('/scripts/game-engine/combat/seeded-random.js'),
         ]);
 
-        const { compendium, errors, loaded } = await getCompendium();
+        const { compendium, errors, loaded, batteries } = await getCompendium();
         const ten = makeNames({
             compendium, howMany: 10, random: createSeededRandom('molino'),
         });
@@ -4401,9 +4464,15 @@ try {
             diez: ten,
             sitio: makeName({ compendium, kind: 'place', random: createSeededRandom('vado') }),
             taberna: makeName({ compendium, kind: 'tavern', random: createSeededRandom('taberna') }),
-            // Dos veces la misma semilla: el mismo mundo propone lo mismo.
+            // Dos veces la misma semilla **sobre una biblioteca recien abierta**: el
+            // mismo mundo propone lo mismo. Tiene que ser recien abierta porque el
+            // compendio recuerda las ultimas filas para no repetirlas, y esa memoria es
+            // de la sesion, no de la semilla: pedirselo dos veces seguidas a la misma
+            // biblioteca es justo lo que **no** debe dar lo mismo.
             otraVez: makeNames({
-                compendium, howMany: 10, random: createSeededRandom('molino'),
+                compendium: createCompendium(batteries),
+                howMany: 10,
+                random: createSeededRandom('molino'),
             }),
 
             // B2: forma por material. Ocho cosas y una descrita.

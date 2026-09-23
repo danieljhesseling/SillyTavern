@@ -29,6 +29,10 @@ import { VERBOSITY, DEFAULT_VERBOSITY } from '../../campaign/narrator.js';
 import { MORTALITY, SAVES, DEFAULT_SURVIVAL } from '../../rules/mortality.js';
 import { GOALS, describeStanding, STANDING } from '../../campaign/factions.js';
 import { racesOf, kindsOf, describeKin } from '../../compendio/kin.js';
+import { rollFactions } from '../../campaign/factions.js';
+import { writeVillage } from '../../compendio/people.js';
+import { createSeededRandom } from '../../combat/seeded-random.js';
+import { derive } from '../../campaign/seed.js';
 import { nameAndAbility, asAbility } from '../../compendio/skills.js';
 
 /** Como se llama cada forma de tablero, para no ensenar `rooms` a quien juega. */
@@ -257,9 +261,16 @@ async function askPack({ Popup, POPUP_TYPE }) {
  * @param {any} input.POPUP_TYPE
  * @param {string[]} [input.existingWorldNames]
  * @param {((key: string, state: any) => Promise<string>)|null} [input.write] El lapicito.
+ * @param {((idea: string, partySize: number) => Promise<any>)|null} [input.makeWorld] Que lo
+ *        escriba el modelo. Sin proveedor no se pasa, y la tarjeta no aparece.
+ * @param {any[]} [input.narrators] Los que ya tienes escritos de otras campanas.
+ * @param {((file: any) => Promise<string>)|null} [input.uploadFace] Guardar una imagen.
  * @returns {Promise<any>} Las respuestas que `createCampaign` espera, o null.
  */
-export async function askTaller({ Popup, POPUP_TYPE, existingWorldNames = [], write = null }) {
+export async function askTaller({
+    Popup, POPUP_TYPE, existingWorldNames = [], write = null, makeWorld = null,
+    narrators = [], uploadFace = null,
+}) {
     const path = await askPath({ Popup, POPUP_TYPE });
     if (!path) return null;
 
@@ -286,6 +297,8 @@ export async function askTaller({ Popup, POPUP_TYPE, existingWorldNames = [], wr
     const [mundos, narradores] = await Promise.all([read(MUNDOS), read(NARRADORES)]);
     const worlds = Array.isArray(mundos?.worlds) ? mundos.worlds : [];
     const voices = Array.isArray(narradores?.narrators) ? narradores.narrators : [];
+    // Los que ya tienes escritos: un narrador de otra campana sirve para esta.
+    const mine = (Array.isArray(narrators) ? narrators : []).filter(v => text(v?.name));
 
     let state = startTaller({ path, source });
 
@@ -298,11 +311,24 @@ export async function askTaller({ Popup, POPUP_TYPE, existingWorldNames = [], wr
     const back = $('<button type="button" class="menu_button tl-back"></button>').text('Atrás');
     const skip = $('<button type="button" class="menu_button tl-skip"></button>').text('Saltar');
     const next = $('<button type="button" class="menu_button tl-next"></button>').text('Siguiente');
-    foot.append(back).append(said).append(skip).append(next);
+    // La segunda salida, como en el asistente de siempre: crear y caer con el editor
+    // delante. Solo en el ultimo paso, porque antes de eso no hay nada que crear.
+    const write2 = $('<button type="button" class="menu_button tl-write"></button>')
+        .append('<i class="fa-solid fa-feather"></i>')
+        .append($('<span></span>').text(' Crear y escribir el mundo'));
+    foot.append(back).append(said).append(skip).append(write2).append(next);
     root.append(bar).append(body).append(foot);
 
     /** El narrador elegido de la lista, para poder volver a enseñarlo. */
     let voice = null;
+
+    /** El mundo que ha escrito el modelo, si se ha pedido. */
+    /** @type {any} */
+    let made = null;
+
+    /** La biblioteca, para lo que se reparte mas tarde. */
+    /** @type {any} */
+    let library = null;
 
     /** Que tarjeta esta abierta en cada paso. Es de la pantalla, no del mundo. */
     const editing = {
@@ -311,7 +337,7 @@ export async function askTaller({ Popup, POPUP_TYPE, existingWorldNames = [], wr
     };
 
     /** Las filas de cada paso que se elige de una lista. */
-    const catalogues = { habilidades: [], razas: [], clases: [] };
+    const catalogues = { habilidades: [], razas: [], clases: [], objetos: [], bestiario: [] };
 
     /** Los tipos de sitio del compendio, para el desplegable del paso 3. */
     let placeTypes = [];
@@ -374,6 +400,17 @@ export async function askTaller({ Popup, POPUP_TYPE, existingWorldNames = [], wr
         return row.append(select);
     }
 
+    /** Crear ya, cayendo con el editor del mundo delante. */
+    const finishWriting = () => {
+        const stuck = blocksNext(state, progressOf(state).step.id);
+        if (stuck) {
+            said.text(stuck).addClass('bad');
+            return;
+        }
+        state = { ...state, writeWorld: true };
+        popup.completeAffirmative();
+    };
+
     const advance = () => {
         const moved = goNext(state);
         if (moved.reason) {
@@ -406,13 +443,157 @@ export async function askTaller({ Popup, POPUP_TYPE, existingWorldNames = [], wr
         else if (step.id === 'habilidades') drawPicks('habilidades');
         else if (step.id === 'razas') drawPicks('razas');
         else if (step.id === 'clases') drawPicks('clases');
+        else if (step.id === 'objetos') drawPicks('objetos');
+        else if (step.id === 'bestiario') drawPicks('bestiario');
         else if (step.id === 'personajes') drawPeople();
         else if (step.id === 'misiones') drawQuests();
         else drawPlay();
 
         back.prop('disabled', state.at === 0);
         skip.toggle(Boolean(step.optional));
+        // Escribir el mundo se ofrece en cuanto **hay mundo que escribir**: con el paso 1
+        // resuelto. Quien ya sabe lo que quiere no tiene que pasar por los trece.
+        write2.toggle(blocksNext(state, 'mundo') === '');
         next.text(state.at >= walkableSteps().length - 1 ? 'Crear y jugar' : 'Siguiente');
+    }
+
+    /**
+     * El sitio de partida se llama como el mundo, hasta que alguien lo cambie.
+     *
+     * Sin esto se quedaba con su nombre de relleno, y las facciones acababan llamandose
+     * «Los de El primer sitio», que no lo escribe nadie.
+     *
+     * @returns {void}
+     */
+    function followWorldName() {
+        const first = locationsOf(state)[0];
+        if (!first?.fixed || first.touched) return;
+        state = {
+            ...state,
+            locations: locationsOf(state).map(place => (place.id === first.id
+                ? { ...place, name: text(state.fields.worldName) || place.name }
+                : place)),
+        };
+    }
+
+    /**
+     * Pedirle al modelo que escriba el sitio de partida.
+     *
+     * Lo que devuelve **se ensena antes de crear nada**: el mapa, lo que ha reparado al
+     * leerlo y lo que le falta. Un mundo generado que aparece ya hecho es un mundo que no
+     * se puede corregir.
+     *
+     * @returns {Promise<void>}
+     */
+    async function askGenerated() {
+        const root = $('<div class="tl-gen"></div>');
+        root.append($('<div class="tl-step-hint"></div>').text(
+            'Describe el mundo que quieres. Lo que salga se ensena antes de crear nada.',
+        ));
+        const idea = $('<textarea class="text_pole tl-input" rows="3" '
+            + 'placeholder="una cripta inundada con cultistas"></textarea>');
+        const go = $('<button type="button" class="menu_button tl-gen-go"></button>')
+            .append('<i class="fa-solid fa-wand-magic-sparkles"></i>')
+            .append($('<span></span>').text(' Construirlo'));
+        const out = $('<div class="tl-gen-out"></div>').hide();
+        root.append(idea).append(go).append(out);
+
+        /** @type {any} */
+        let built = null;
+
+        go.on('click', async () => {
+            const said = text(idea.val());
+            if (!said) return;
+            go.prop('disabled', true);
+            out.empty().show().append($('<div class="tl-hint"></div>').text('Escribiendo…'));
+
+            const result = await makeWorld(said, 2);
+            go.prop('disabled', false);
+            out.empty();
+
+            for (const bad of (result?.errors ?? [])) {
+                out.append($('<div class="tl-gen-bad"></div>').text(bad));
+            }
+            for (const warn of (result?.warnings ?? [])) {
+                out.append($('<div class="tl-gen-warn"></div>').text(warn));
+            }
+            if (!result?.template) return;
+
+            built = result.template;
+            out.append($('<div class="tl-hint"></div>').text(
+                `${text(built.name)} — ${text(built.locationName)}, ${text(built.boardName)}`,
+            ));
+            out.append($('<textarea class="text_pole tl-gen-map" rows="10" readonly></textarea>')
+                .val((built.map ?? []).join('\n')));
+        });
+
+        const popup = new Popup(root, POPUP_TYPE.CONFIRM, '', {
+            okButton: 'Usar este mundo', cancelButton: 'Cancelar', wide: true, large: true,
+        });
+        const ok = await popup.show();
+        if (!ok || !built) return;
+
+        made = built;
+        state = pickCard(state, 'mundo', 'generated', true);
+        if (!state.pinned?.worldName) {
+            state.fields.worldName = uniqueWorldName(text(built.name), existingWorldNames);
+        }
+        draw();
+    }
+
+    /**
+     * Lo que un mundo precreado marca en los demas pasos.
+     *
+     * Un mundo **no es un archivo de contenido aparte**: es una seleccion sobre las mismas
+     * baterias. El de terror quita los elfos, y eso es lo que lo hace el de terror.
+     *
+     * Las habilidades salen solas de las clases marcadas: escribirlas otra vez en el
+     * archivo del mundo seria escribir dos veces lo mismo, y es asi como dos listas acaban
+     * diciendo cosas distintas.
+     *
+     * @param {any} world
+     * @returns {void}
+     */
+    function applyWorld(world) {
+        const picks = world?.picks ?? {};
+
+        for (const which of ['razas', 'clases']) {
+            const wanted = (Array.isArray(picks[which]) ? picks[which] : []).map(text);
+            if (wanted.length === 0) continue;
+            // Se reemplaza, no se suma: elegir otro mundo tiene que cambiar el mundo.
+            state = { ...state, picked: { ...state.picked, [which]: wanted } };
+        }
+
+        const classes = new Set(pickedIn(state, 'clases'));
+        if (classes.size > 0) {
+            state = {
+                ...state,
+                picked: {
+                    ...state.picked,
+                    habilidades: (catalogues.habilidades ?? [])
+                        .filter((/** @type {any} */ row) => {
+                            const suyas = (row.when?.class ?? []).map(text);
+                            // Lo que sabe cualquiera entra siempre: vendar, cubrirse, dar la voz.
+                            return suyas.length === 0 || suyas.includes('*')
+                                || suyas.some((/** @type {string} */ name) => classes.has(name));
+                        })
+                        .map((/** @type {any} */ row) => text(row.id)),
+                },
+            };
+        }
+
+        // Quien lo narra, cuanto duele perder y de que tira su tablon.
+        const voz = voices.find(v => text(v.id) === text(world?.narrator));
+        if (voz && !state.narrator) {
+            state = pickCard(state, 'narrador', text(voz.id), true);
+            state.narrator = {
+                name: text(voz.name), personality: text(voz.personality),
+                description: text(voz.description), greeting: text(voz.greeting),
+                verbosity: text(voz.verbosity) || DEFAULT_VERBOSITY,
+            };
+        }
+        if (world?.survival && !state.survival) state.survival = { ...world.survival };
+        if (world?.board) state = setBoardRules(state, world.board);
     }
 
     /** Paso 1: la ficha del mundo, y de donde sale. */
@@ -424,6 +605,19 @@ export async function askTaller({ Popup, POPUP_TYPE, existingWorldNames = [], wr
                 id: option.id, title: option.name, note: option.description,
                 icon: 'fa-map', picked: isPicked(state, 'mundo', option.id),
             }));
+            // Y que lo escriba el modelo, si hay proveedor. Un boton que solo puede fallar
+            // es peor que ningun boton.
+            if (makeWorld) {
+                cards.push({
+                    id: 'generated',
+                    title: made ? `Generado: ${text(made.name)}` : 'Generar con IA',
+                    note: made
+                        ? 'Lo que ha escrito el modelo. Pulsa otra vez para pedir otro.'
+                        : 'Describe el mundo que quieres y lo construye.',
+                    icon: 'fa-wand-magic-sparkles',
+                    picked: isPicked(state, 'mundo', 'generated'),
+                });
+            }
         } else if (state.path === 'mundo') {
             cards = worlds.map(world => ({
                 id: text(world.id), title: text(world.name), note: text(world.note),
@@ -467,6 +661,10 @@ export async function askTaller({ Popup, POPUP_TYPE, existingWorldNames = [], wr
                 },
             ],
             onPick: (id) => {
+                if (id === 'generated') {
+                    void askGenerated();
+                    return;
+                }
                 state = pickCard(state, 'mundo', id, true);
                 if (!isPicked(state, 'mundo', id)) { draw(); return; }
 
@@ -487,18 +685,15 @@ export async function askTaller({ Popup, POPUP_TYPE, existingWorldNames = [], wr
                             : value;
                     }
                 }
+                if (world) applyWorld(world);
+                // Elegir tambien pone nombre al mundo, asi que el sitio de partida lo sigue.
+                followWorldName();
                 draw();
             },
             onWrite: (key, value) => {
                 state = writeField(state, key, value);
                 if (key !== 'worldName') return;
-                // El sitio de partida se llama como el mundo hasta que alguien lo cambie.
-                const first = locationsOf(state)[0];
-                if (first?.fixed && !first.touched) {
-                    state = { ...state, locations: locationsOf(state).map(p => (p.id === first.id
-                        ? { ...p, name: text(value) }
-                        : p)) };
-                }
+                followWorldName();
                 draw();
             },
             onWand: write ? (key) => write(key, state) : null,
@@ -522,6 +717,13 @@ export async function askTaller({ Popup, POPUP_TYPE, existingWorldNames = [], wr
                 icon: text(v.icon) || 'fa-comment', image: text(v.image),
                 picked: chosen === text(v.id),
             })),
+            // Y los que ya tienes: un narrador escrito para otra campana sirve para esta,
+            // y volver a escribirlo seria escribirlo dos veces.
+            ...mine.map(v => ({
+                id: text(v.id), title: text(v.name), note: text(v.note) || 'De otra campaña.',
+                icon: 'fa-user-pen', image: text(v.image),
+                picked: chosen === text(v.id),
+            })),
         ];
 
         const current = state.narrator ?? {};
@@ -537,6 +739,10 @@ export async function askTaller({ Popup, POPUP_TYPE, existingWorldNames = [], wr
             fields: chosen ? [
                 { key: 'nName', label: 'Nombre', value: text(current.name), placeholder: 'Narrador' },
                 {
+                    key: 'nFace', label: 'Su cara', value: text(current.image), kind: 'file',
+                    hint: 'Se busca en el disco. Es lo que se ve en cada mensaje suyo.',
+                },
+                {
                     key: 'nPersonality', label: 'Tono', value: text(current.personality), kind: 'area',
                     placeholder: 'Seco y preciso. No adorna.', wand: true,
                 },
@@ -550,7 +756,10 @@ export async function askTaller({ Popup, POPUP_TYPE, existingWorldNames = [], wr
                 },
                 {
                     key: 'nVerbosity', label: 'Cuánto se extiende',
-                    value: text(current.verbosity) || DEFAULT_VERBOSITY, kind: 'choice',
+                    // Lo que no este en el vocabulario del motor cae en el de siempre: un
+                    // desplegable en blanco no dice nada y no se puede arreglar mirandolo.
+                    value: VERBOSITY[text(current.verbosity)] ? text(current.verbosity) : DEFAULT_VERBOSITY,
+                    kind: 'choice',
                     options: Object.entries(VERBOSITY).map(([id, v]) => ({
                         id, label: text(/** @type {any} */ (v)?.label) || id,
                     })),
@@ -562,7 +771,7 @@ export async function askTaller({ Popup, POPUP_TYPE, existingWorldNames = [], wr
                 if (!picked) {
                     state.narrator = null;
                 } else {
-                    voice = voices.find(v => text(v.id) === picked) ?? null;
+                    voice = [...voices, ...mine].find(v => text(v.id) === picked) ?? null;
                     state.narrator = voice
                         ? {
                             name: text(voice.name), personality: text(voice.personality),
@@ -585,6 +794,7 @@ export async function askTaller({ Popup, POPUP_TYPE, existingWorldNames = [], wr
                 if (field) state.narrator[field] = text(value);
             },
             onWand: write ? (key) => write(key, state) : null,
+            onFile: uploadFace,
         });
     }
 
@@ -782,6 +992,37 @@ export async function askTaller({ Popup, POPUP_TYPE, existingWorldNames = [], wr
      * numero que no cambiaba ninguna regla.
      */
     function drawFactions() {
+        // La primera vez que se llega, las que el mundo repartiria solo — ya con los
+        // nombres definitivos de los sitios.
+        if (library && factionsOf(state).length === 0 && !state.path.includes('libro')) {
+            const dentro = locationsOf(state)
+                .filter(place => isPicked(state, 'localidades', text(place.id)))
+                .map(place => ({ name: text(place.name) }));
+
+            const repartidas = rollFactions({
+                compendium: library,
+                locations: dentro,
+                random: createSeededRandom(derive(state.fields.seed, 'facciones')),
+            });
+            for (const faction of repartidas) state = addFaction(state, faction).state;
+
+            // Y las que podrian haber salido, sin marcar: quitar una y poner otra es lo
+            // que hace que este mundo sea el tuyo.
+            const otras = rollFactions({
+                compendium: library,
+                locations: dentro,
+                random: createSeededRandom(derive(state.fields.seed, 'facciones', 'mas')),
+                count: 4,
+            });
+            const puestas = new Set(factionsOf(state).map(f => text(f.name).toLowerCase()));
+            for (const faction of otras) {
+                if (puestas.has(text(faction.name).toLowerCase())) continue;
+                puestas.add(text(faction.name).toLowerCase());
+                const made = addFaction(state, faction);
+                state = pickCard(made.state, 'facciones', made.id);
+            }
+        }
+
         const all = factionsOf(state);
         const open = editing.facciones;
         const places = locationsOf(state)
@@ -923,6 +1164,31 @@ export async function askTaller({ Popup, POPUP_TYPE, existingWorldNames = [], wr
                 cards: 'A que se puede dedicar',
                 line: describeKin,
             },
+            objetos: {
+                title: 'Objetos',
+                hint: 'De que formas hay armas, armaduras y trastos. El material lo pone otra '
+                    + 'bateria: forma x material = objeto, asi que quitar una forma quita '
+                    + 'dieciseis objetos.',
+                cards: 'Lo que puede existir aqui',
+                line: (/** @type {any} */ row) => [
+                    row.damageDice ? `${row.damageDice} ${text(row.damageType)}` : '',
+                    row.armorClass ? `CA ${row.armorClass}` : '',
+                    Number(row.hands) >= 2 ? 'a dos manos' : '',
+                    row.rangeFeet ? `${row.rangeFeet} ft` : '',
+                    `${row.kg} kg`,
+                ].filter(Boolean).join(' - '),
+            },
+            bestiario: {
+                title: 'Bestiario',
+                hint: 'Lo que hay ahi fuera. Los arquetipos son el bicho y las plantillas se les '
+                    + 'apilan encima: quitar una plantilla quita una familia entera.',
+                cards: 'Lo que puede salirte al paso',
+                line: (/** @type {any} */ row) => [
+                    text(row.kind) === 'plantilla' ? 'Plantilla' : '',
+                    row.cr !== undefined ? `CR ${row.cr}` : '',
+                    text(row.profile),
+                ].filter(Boolean).join(' - ') || text(row.note),
+            },
         }[which];
 
         const open = editing[which];
@@ -930,7 +1196,10 @@ export async function askTaller({ Popup, POPUP_TYPE, existingWorldNames = [], wr
             id: text(row.id),
             title: text(row.name),
             note: said.line(row),
-            icon: which === 'razas' ? 'fa-user-group' : (which === 'clases' ? 'fa-shield-halved' : 'fa-hand-sparkles'),
+            icon: {
+                razas: 'fa-user-group', clases: 'fa-shield-halved', habilidades: 'fa-hand-sparkles',
+                objetos: 'fa-gem', bestiario: 'fa-dragon',
+            }[which] ?? 'fa-circle',
             picked: isPicked(state, which, text(row.id)),
         }));
 
@@ -971,6 +1240,27 @@ export async function askTaller({ Popup, POPUP_TYPE, existingWorldNames = [], wr
      * escribirlo dos veces.
      */
     function drawPeople() {
+        // Y los vecinos, con la bandera de quien mande donde viven: es lo que le da a uno
+        // un motivo que no es suyo.
+        if (library && peopleOf(state).length === 0) {
+            const home = locationsOf(state)
+                .filter(place => isPicked(state, 'localidades', text(place.id)))[0];
+            const suyos = factionsOf(state).find(f => text(f.seat) === text(home?.name));
+            const vecinos = writeVillage({
+                compendium: library,
+                howMany: 8,
+                locationName: text(home?.name),
+                banner: suyos ? { name: text(suyos.name), wants: '', note: text(suyos.note) } : null,
+                random: createSeededRandom(derive(state.fields.seed, 'vecindario')),
+            });
+            // Los tres primeros entran; los demas se ensenan para poder elegirlos. Un paso
+            // que solo ofrece lo que ya esta dentro no es una eleccion.
+            (Array.isArray(vecinos) ? vecinos : []).forEach((person, i) => {
+                const made = addPerson(state, person);
+                state = i < 3 ? made.state : pickCard(made.state, 'personajes', made.id);
+            });
+        }
+
         const all = peopleOf(state);
         const open = editing.personajes;
         const places = locationsOf(state)
@@ -1193,7 +1483,8 @@ export async function askTaller({ Popup, POPUP_TYPE, existingWorldNames = [], wr
         const survival = state.survival ?? { ...DEFAULT_SURVIVAL };
         drawStep(body, {
             title: 'Jugabilidad',
-            hint: 'Se puede cambiar luego en /rules, y viaja con la campaña si la exportas.',
+            hint: 'Todo esto se puede cambiar luego en /rules, y viaja con la campaña si la '
+                + 'exportas. Cada interruptor apaga algo que de verdad corre.',
             formTitle: 'Cuánto duele perder',
             cards: [],
             fields: [
@@ -1209,23 +1500,55 @@ export async function askTaller({ Popup, POPUP_TYPE, existingWorldNames = [], wr
                     hint: 'Apagado, guardas cuando quieras — y entonces lo de arriba pesa menos, '
                         + 'porque siempre puedes volver atrás.',
                 },
+                {
+                    key: 'needs', label: 'Se pasa hambre y sed', kind: 'check',
+                    value: survival.needs === false ? '' : 'si',
+                    hint: 'Comer y beber cuesta dinero todas las semanas, y quien no lo hace se '
+                        + 'va apagando. Apagado, el viaje solo cuesta días.',
+                },
+                {
+                    key: 'exposure', label: 'El frío y el calor hacen daño', kind: 'check',
+                    value: survival.exposure === false ? '' : 'si',
+                    hint: 'Dormir a la intemperie en un sitio helador se paga en vida. Apagado, '
+                        + 'el clima solo se cuenta.',
+                },
+                {
+                    key: 'injuries', label: 'Las heridas se quedan', kind: 'check',
+                    value: survival.injuries === false ? '' : 'si',
+                    hint: 'Caer a cero deja algo encima el resto de la campaña. Apagado, te '
+                        + 'levantas entero.',
+                },
+                {
+                    key: 'loyalty', label: 'La gente se va si no cobra', kind: 'check',
+                    value: survival.loyalty === false ? '' : 'si',
+                    hint: 'Quien vino por dinero se marcha cuando el viernes no sale. Apagado, '
+                        + 'se quedan pase lo que pase.',
+                },
             ],
             onPick: () => {},
             onWrite: (key, value) => {
                 const on = text(value) === 'si';
-                state.survival = {
-                    mortality: key === 'mortality'
-                        ? (on ? MORTALITY.EVERYONE : DEFAULT_SURVIVAL.mortality)
-                        : (state.survival?.mortality ?? DEFAULT_SURVIVAL.mortality),
-                    saves: key === 'saves'
-                        ? (on ? SAVES.SHELTER : DEFAULT_SURVIVAL.saves)
-                        : (state.survival?.saves ?? DEFAULT_SURVIVAL.saves),
-                };
+                const before = state.survival ?? { ...DEFAULT_SURVIVAL };
+
+                if (key === 'mortality') {
+                    state.survival = {
+                        ...before,
+                        mortality: on ? MORTALITY.EVERYONE : DEFAULT_SURVIVAL.mortality,
+                    };
+                    return;
+                }
+                if (key === 'saves') {
+                    state.survival = { ...before, saves: on ? SAVES.SHELTER : DEFAULT_SURVIVAL.saves };
+                    return;
+                }
+                // Los demas son si o no, y lo que no se dice sigue encendido.
+                state.survival = { ...before, [key]: on };
             },
         });
     }
 
     back.on('click', () => { state = goBack(state); said.text('').removeClass('bad'); draw(); });
+    write2.on('click', finishWriting);
     skip.on('click', advance);
     next.on('click', advance);
 
@@ -1237,13 +1560,10 @@ export async function askTaller({ Popup, POPUP_TYPE, existingWorldNames = [], wr
     try {
         if (path === 'libro') throw new Error('un libro trae sus sitios');
 
-        const [{ getCompendium }, { rollNeighbours }, { createSeededRandom }, { derive }] =
-            await Promise.all([
-                import('../../compendio/browser.js'),
-                import('../../world/neighbours.js'),
-                import('../../combat/seeded-random.js'),
-                import('../../campaign/seed.js'),
-            ]);
+        const [{ getCompendium }, { rollNeighbours }] = await Promise.all([
+            import('../../compendio/browser.js'),
+            import('../../world/neighbours.js'),
+        ]);
         const { compendium } = await getCompendium();
         placeTypes = compendium.has('sitios') ? compendium.find('sitios', { kind: 'tipo' }) : [];
 
@@ -1253,6 +1573,13 @@ export async function askTaller({ Popup, POPUP_TYPE, existingWorldNames = [], wr
             ? compendium.find('habilidades', { kind: 'habilidad' }) : [];
         catalogues.razas = racesOf(compendium);
         catalogues.clases = kindsOf(compendium);
+        // Las formas de las tres baterias juntas: quien elige no tiene por que saber en
+        // que archivo estaba cada una.
+        catalogues.objetos = ['armas', 'armaduras', 'trastos']
+            .filter(domain => compendium.has(domain))
+            .flatMap(domain => compendium.find(domain, { kind: 'forma' }));
+        catalogues.bestiario = compendium.has('bestiario')
+            ? compendium.find('bestiario', {}) : [];
         for (const [which, rows] of Object.entries(catalogues)) {
             for (const row of rows) state = pickCard(state, which, text(row.id));
         }
@@ -1265,37 +1592,36 @@ export async function askTaller({ Popup, POPUP_TYPE, existingWorldNames = [], wr
             fixed: true,
         }).state;
 
-        state = proposeLocations(state, rollNeighbours({
+        // Los vecinos que el mundo iba a poner: esos entran marcados.
+        const vecinos = rollNeighbours({
             compendium,
             locations: [{ name: locationsOf(state)[0].name, gridWidth: 20, gridHeight: 15 }],
             random: createSeededRandom(derive(state.fields.seed, 'vecinos')),
-        }));
-
-        // Y quien manda en ellos: las mismas que el mundo repartiria solo, para que se
-        // puedan tocar antes. Sin la bateria de facciones esto sale vacio.
-        const { rollFactions } = await import('../../campaign/factions.js');
-        const repartidas = rollFactions({
-            compendium,
-            locations: locationsOf(state).map(place => ({ name: place.name })),
-            random: createSeededRandom(derive(state.fields.seed, 'facciones')),
         });
-        for (const faction of repartidas) state = addFaction(state, faction).state;
+        state = proposeLocations(state, vecinos);
 
-        // Y quien vive en el primer sitio. Con su bandera si alguien manda alli, que es lo
-        // que le da un motivo que no es suyo.
-        const { writeVillage } = await import('../../compendio/people.js');
-        const home = locationsOf(state)[0];
-        const suyos = repartidas.find((/** @type {any} */ f) => text(f.seat) === text(home?.name));
-        const vecinos = writeVillage({
+        // Y unos cuantos mas, **sin marcar**: se ensena lo que podria haber, no solo lo
+        // que hay. Elegir entre lo que existe es elegir; mirar tres tarjetas ya puestas,
+        // no.
+        const otros = rollNeighbours({
             compendium,
-            howMany: 3,
-            locationName: text(home?.name),
-            banner: suyos ? { name: text(suyos.name), wants: '', note: text(suyos.note) } : null,
-            random: createSeededRandom(derive(state.fields.seed, 'vecindario')),
+            locations: [{ name: locationsOf(state)[0].name, gridWidth: 20, gridHeight: 15 }],
+            random: createSeededRandom(derive(state.fields.seed, 'vecinos', 'mas')),
+            howMany: 6,
         });
-        for (const person of (Array.isArray(vecinos) ? vecinos : [])) {
-            state = addPerson(state, person).state;
+        const yaEstan = new Set(locationsOf(state).map(place => text(place.name).toLowerCase()));
+        for (const place of otros) {
+            if (yaEstan.has(text(place.name).toLowerCase())) continue;
+            yaEstan.add(text(place.name).toLowerCase());
+            const made = addLocation(state, place);
+            // Se anaden **fuera** del mundo: estan para poder elegirlas.
+            state = pickCard(made.state, 'localidades', made.id);
         }
+
+        // Las facciones y la gente se reparten **al llegar a su paso**, no aqui: al abrir,
+        // el sitio de partida todavia no tiene su nombre, y «Los de El primer sitio» no lo
+        // escribe nadie.
+        library = compendium;
     } catch (error) {
         console.error('[taller] no se pudieron proponer sitios', error);
     }
@@ -1313,5 +1639,9 @@ export async function askTaller({ Popup, POPUP_TYPE, existingWorldNames = [], wr
     const stuck = blocksNext(state, progressOf(state).step.id);
     if (stuck) return null;
 
-    return toAnswers(state);
+    const answers = toAnswers(state);
+    // El mundo escrito por el modelo viaja como plantilla, que es lo que `createCampaign`
+    // ya sabia comerse.
+    if (made && answers.templateId === 'generated') answers.generatedTemplate = made;
+    return answers;
 }
