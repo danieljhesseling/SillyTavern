@@ -27,6 +27,7 @@ import { describeInjuries } from '../../rules/injuries.js';
 import { describeNeeds } from '../../rules/needs.js';
 import { readDeathSaves, isDying } from '../../rules/death-saves.js';
 import { levelForXp } from '../../rules/level-up.js';
+import { armourClassOf, describeArmour } from '../../rules/equipment.js';
 
 /** Las seis, en el orden en que se leen en una hoja de personaje. */
 export const SHEET_ABILITIES = [
@@ -104,6 +105,10 @@ export function buildCharacterSheet({ member, slotInfo = {}, abilities = [], xpT
     const level = Math.max(1, number(member?.level, 1));
     const nextLevel = xpTable ? levelForXp(xp + 1, xpTable) : level;
 
+    // Lo que lleva puesto, sumado una vez: la ficha lo ensena y el combate tira contra lo
+    // mismo. Dos cuentas distintas de la misma CA seria la peor clase de fallo.
+    const armour = armourClassOf({ member, dexModifier: modifierOf(member?.dexterity) });
+
     return {
         name: String(member?.name ?? ''),
         avatar: String(member?.avatar ?? ''),
@@ -132,7 +137,10 @@ export function buildCharacterSheet({ member, slotInfo = {}, abilities = [], xpT
         })),
 
         defence: {
-            armorClass: number(member?.armorClass, 10),
+            // Lo que lleva puesto manda sobre el numero de la ficha; y se dice de donde
+            // sale cada punto, porque una CA que no se puede explicar parece una trampa.
+            armorClass: armour.worn ? armour.armorClass : number(member?.armorClass, 10),
+            armourFrom: armour.worn ? describeArmour(armour) : '',
             speed: number(member?.speed, 30),
             initiative: modifierOf(member?.dexterity),
         },

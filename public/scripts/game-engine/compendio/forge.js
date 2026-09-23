@@ -18,6 +18,10 @@
  */
 
 import { fillPattern } from './names.js';
+import { pickWeighted } from './compendio.js';
+
+/** Donde viven las formas. El material siempre en `materiales`. */
+export const FORM_DOMAINS = ['armas', 'armaduras', 'trastos', 'materiales'];
 
 /** Lo que el editor de campana sabe dibujar. */
 export const ITEM_TYPES = ['weapon', 'armor', 'gear'];
@@ -119,6 +123,21 @@ function kilos(value) {
 }
 
 /**
+ * El adjetivo en plural, si lo que describe son varias cosas.
+ *
+ * Vocal + s, consonante + es: la regla de toda la vida, y cubre lo que hay escrito.
+ *
+ * @param {string} word
+ * @param {boolean} many
+ * @returns {string}
+ */
+function pluralise(word, many) {
+    const clean = text(word);
+    if (!many || !clean || clean.endsWith('s')) return clean;
+    return /[aeiouáéíóú]$/i.test(clean) ? `${clean}s` : `${clean}es`;
+}
+
+/**
  * Un objeto hecho de una forma y un material.
  *
  * Devuelve null cuando la bateria no esta, y quien llama sigue con lo que hiciera antes:
@@ -134,6 +153,7 @@ function kilos(value) {
  *        ninguna: un mundo donde todo tiene apellido cansa igual que uno donde nada lo tiene.
  * @returns {{name: string, type: string, category: string, rarity: string, weight: number,
  *   damageDice: string, damageType: string, slot: string, description: string,
+ *   hands: number, rangeFeet: number, armorClass: number, dexMode: string,
  *   effects: Array<{stat: string, modifier: number}>,
  *   from: {forma: string, material: string, propiedades: string[]}}|null}
  */
@@ -147,20 +167,43 @@ export function forgeItem({
     if (text(itemType)) askForma.itemType = text(itemType);
     if (text(category)) askForma.category = text(category);
 
-    const forma = compendium.pick('materiales', { where: askForma, random });
+    // Las formas viven en tres archivos —armas, armaduras y trastos— porque se eligen por
+    // cosas distintas y porque un archivo por tema es lo que hace que se pueda escribir sin
+    // tocar codigo. Aqui se juntan en un solo monton y se sortea una: quien forja no tiene
+    // por que saber en que archivo estaba.
+    const pool = FORM_DOMAINS
+        .filter(domain => compendium.has?.(domain))
+        .flatMap(domain => compendium.find(domain, askForma));
+    const forma = pickWeighted(pool, random);
     if (!forma) return null;
 
     // El material tiene que pegar con la forma: no hay cotas de malla de roble. Lo dice
     // el propio material en su `when.itemType`, que es donde lo puede cambiar quien
     // escribe el archivo sin tocar esto.
     /** @type {Record<string, any>} */
-    const askMaterial = { kind: 'material', itemType: text(forma.itemType) };
+    const askMaterial = {
+        kind: 'material',
+        itemType: text(forma.itemType),
+        // Y por la categoria, que es lo que impide un arco de piedra. Un material que no
+        // dice nada sigue valiendo para todo: restringir es opcional y se hace desde el
+        // archivo, no desde aqui.
+        category: text(forma.category),
+    };
     if (text(rarity)) askMaterial.rarity = text(rarity);
 
     // Si se pidio una rareza que ningun material tiene, mejor el objeto sin ella que
     // ningun objeto: quien lo pidio ya vera que la rareza no es la que queria.
     const material = compendium.pick('materiales', { where: askMaterial, random })
-        ?? compendium.pick('materiales', { where: { kind: 'material', itemType: text(forma.itemType) }, random });
+        // Solo se afloja la rareza, que es lo que puede no existir. La categoria se
+        // mantiene: aflojarla tambien era por donde se colaba un arco de piedra.
+        ?? compendium.pick('materiales', {
+            where: {
+                kind: 'material',
+                itemType: text(forma.itemType),
+                category: text(forma.category),
+            },
+            random,
+        });
 
     const pattern = material ? (text(forma.pattern) || '{forma}') : '{forma}';
     let name = fillPattern(pattern, {
@@ -184,6 +227,9 @@ export function forgeItem({
     let damage = 0;
     let step = 0;
     const feminine = text(forma.gender) === 'f';
+    // «Grebas de cuero adornada» lo escribe una maquina. Las formas que son varias cosas
+    // lo dicen con `number: "p"`, y el adjetivo de la propiedad las sigue.
+    const plural = text(forma.number) === 'p';
     /** @type {Array<{stat: string, modifier: number}>} */
     const effects = [];
     /** @type {string[]} */
@@ -200,9 +246,12 @@ export function forgeItem({
 
         name = fillPattern(text(property.pattern) || '{cosa}', {
             cosa: [name],
-            adj: [text(feminine ? property.adjf : property.adjm)],
+            adj: [pluralise(text(feminine ? property.adjf : property.adjm), plural)],
             sustantivo: [text(property.sustantivo)],
         }, random).replace(/\s+/g, ' ').trim();
+        // «de el vado» no lo escribe nadie. La misma contraccion que ya hacen las
+        // misiones, aqui tambien.
+        name = name.replace(/\bde el\b/g, 'del').replace(/\ba el\b/g, 'al');
     }
 
     return {
@@ -214,6 +263,13 @@ export function forgeItem({
         damageDice: withBonus(text(forma.damageDice), damage),
         damageType: text(forma.damageType),
         slot: text(forma.slot),
+        // Lo que decide si el arma sirve para algo, y que hasta ahora se quedaba en la
+        // fila: sin `hands` un arma a dos manos no quitaba el escudo, sin `rangeFeet` un
+        // arco era cuerpo a cuerpo, y sin `armorClass` una coraza no protegia de nada.
+        hands: Math.max(1, number(forma.hands, 1)),
+        rangeFeet: Math.max(0, number(forma.rangeFeet, 0)),
+        armorClass: Math.max(0, number(forma.armorClass, 0)),
+        dexMode: text(forma.dexMode),
         description: notes.filter(Boolean).join(' '),
         effects,
         from: {
@@ -236,12 +292,15 @@ export function forgeItem({
  * @param {() => number} [input.random]
  * @param {string} [input.itemType]
  * @param {string} [input.rarity]
+ * @param {string} [input.category] Hoja, asta, distancia… Sin esto, pedir un monton de
+ *        armas de distancia devolvia hachas.
  * @param {number} [input.properties] Cuantas propiedades por objeto. Por defecto, lo de
  *        siempre: una o ninguna.
  * @returns {any[]}
  */
 export function forgeItems({
-    compendium, howMany, random = Math.random, itemType = '', rarity = '', properties = -1,
+    compendium, howMany, random = Math.random, itemType = '', rarity = '',
+    category = '', properties = -1,
 }) {
     /** @type {any[]} */
     const out = [];
@@ -250,7 +309,7 @@ export function forgeItems({
     // Se intenta el doble de veces que objetos se piden: con pocas formas, insistir hasta
     // el infinito colgaria, y rendirse a la primera daria siempre menos de los pedidos.
     for (let i = 0; i < Math.max(0, howMany) * 2 && out.length < howMany; i++) {
-        const item = forgeItem({ compendium, random, itemType, rarity, properties });
+        const item = forgeItem({ compendium, random, itemType, rarity, category, properties });
         if (!item) break;
 
         const key = `${item.from.forma}|${item.from.material}|${item.from.propiedades.join(',')}`;
@@ -272,6 +331,13 @@ export function describeItem(item) {
     if (!item) return '';
     const bits = [text(item.name)];
     if (text(item.damageDice)) bits.push(`${item.damageDice} ${text(item.damageType)}`.trim());
+    // Lo que decide si lo coges: hasta donde llega, si te deja el escudo y cuanto protege.
+    // Sin esto, una placa completa y un jubon se leian igual: un nombre y unos kilos.
+    if (number(item.rangeFeet, 0) > 0) bits.push(`${item.rangeFeet} ft`);
+    if (number(item.hands, 1) >= 2) bits.push('a dos manos');
+    if (number(item.armorClass, 0) > 0) {
+        bits.push(text(item.slot) === 'body' ? `CA ${item.armorClass}` : `+${item.armorClass} CA`);
+    }
     bits.push(`${item.weight} kg`);
     if (text(item.rarity) && item.rarity !== 'Common') bits.push(text(item.rarity));
     return bits.filter(Boolean).join(' · ');

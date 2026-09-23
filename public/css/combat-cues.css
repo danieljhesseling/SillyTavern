@@ -770,6 +770,17 @@
     opacity: 0.8;
 }
 
+/* Por que la cuenta cuesta lo que cuesta. Va pegada a la cuenta, no con las facciones:
+   lo que se paga el viernes se lee en el mismo sitio. */
+.cp-market {
+    margin-top: 4px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: rgba(170, 120, 40, 0.16);
+    font-size: 0.78em;
+    opacity: 0.9;
+}
+
 /* Lo que se mueve ahi fuera sin ti. Va con el reloj porque es la misma cosa: los dias que
    curan a los tuyos tambien acercan a los otros a lo que quieren. */
 .cp-world-title {

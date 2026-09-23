@@ -16,7 +16,9 @@ algo distinto jugando**. Ése es el criterio de que una batería está hecha.
 | ✅ | **El cargador** (`compendio/compendio.js`) | — | Valida diciendo archivo y fila, tolera lo que falta, sortea con tu semilla |
 | ✅ | **La pantalla** (menú principal → *Compendio*) | — | Qué hay, qué falta y qué sale si lo pides |
 | ✅ | **B1 nombres** | 7 | ~6.700 nombres de persona, 572 sitios, 288 tabernas |
-| ✅ | **B2 materiales** + propiedades | 58 | 240 objetos (forma × material) y 18 propiedades que suman y quitan |
+| ✅ | **B2 materiales** + propiedades | 34 | 16 materiales y 18 propiedades que suman y quitan |
+| ✅ | **B3 armas** | 30 | 480 armas: 30 formas × 16 materiales, y cada una pega distinto |
+| ✅ | **B4 armaduras · trastos** | 34 | Lo que protege y lo que pesa, con su clase de armadura |
 | ✅ | **B5 habilidades** | 25 | 8 clases que saben algo distinto desde el nivel 1 |
 | ✅ | **B6 bestiario** | 35 | 2.420 bichos: arquetipo × plantillas |
 | ✅ | **B7 personas** | 76 | 14.400 vecinos antes de contar rasgos y voz |
@@ -25,9 +27,8 @@ algo distinto jugando**. Ése es el criterio de que una batería está hecha.
 | ✅ | **B11 mundo** | 29 | 7 biomas, clima que se encadena, 15 sucesos de camino |
 | ✅ | **B12 estados** | 39 | 33 heridas según la causa y 6 enfermedades con fases |
 | ✅ | **B10 facciones** | 29 | 14 moldes × 15 metas, y un mundo que va a lo suyo |
-| ⬜ | B3 armas · B4 armaduras y trastos | | La forja ya las haría; falta escribirlas |
 
-**379 filas escritas.** Ésa es la cuenta que importa: lo que se escribe una vez y lo que sale de ello.
+**447 filas escritas, las doce baterías.** Ésa es la cuenta que importa: lo que se escribe una vez y lo que sale de ello.
 
 > **B10 se escribió la última, y con razón.** Hasta F1 una facción era un campo de texto libre que nadie leía. Primero el sistema —`campaign/factions.js`: metas, relojes y dónde aterrizan—, y con él ya escrito, la batería. Al revés habrían sido 29 filas que nadie mira.
 
@@ -176,22 +177,47 @@ objeto a la vez.
 - **Enciende:** #109, #118, #120
 - **Qué ves:** «Daga de hueso del Vado» en vez de «Daga #47», y la plata **haciendo algo**
 
-### B3 · `armas.json`
+### B3 · `armas.json` — *hecha*
 
-- **Campos propios:** `damageDice`, `damageType`, `rangeFeet`, `hands`, `budget`, `rarity`
-- **Mínimo:** 30. **Rico:** 150
+- **Campos propios:** `damageDice`, `damageType`, `rangeFeet`, `hands`, `category`
+- **Escritas:** 30 formas × 16 materiales = 480 armas, antes de las propiedades
 - **Enciende:** #110, #111, #117, #119
-- **Qué ves:** botín que no se repite y que **cuesta decidir** — porque cada arma suma algo y
-  quita algo
+- **Qué ves:** botín que no se repite y que **cuesta decidir**
 
-### B4 · `armaduras.json` y `trastos.json`
+**Y lo que costó de verdad no fue escribir las filas.** El equipo era decorado: la forja ya
+escribía `damageDice` en cada objeto y **el combate no lo leía**. El alcance salía de buscar
+`bow|crossbow|sling|wand` en el nombre —en inglés, así que un «Arco corto de tejo» del
+compendio era cuerpo a cuerpo— y el daño salía **solo del nivel**, así que una daga y un
+hacha a dos manos pegaban igual. Escribir treinta armas encima de eso habrían sido treinta
+filas que nadie mira.
 
-Van juntas en la misma tarde porque comparten forma con B3.
+La regla que lo arregla sin tirar la progresión (`rules/equipment.js`):
 
-- **Campos propios:** `armorClass`, `dexMode`, `slot`, `bulk`
-- **Mínimo:** 15 y 40. **Rico:** 50 y 150
+> **El nivel dice de qué dado partes; el arma te mueve por la escalera.**
+
+El nivel sigue dando la base que daba —1d8, 1d10, 2d8— y el arma sube o baja por una
+escalera de dados: una daga baja dos peldaños, un arma a dos manos sube tres. Un nivel 9 con
+una daga sigue siendo nivel 9, pero elegir arma **cuesta algo**.
+
+Y dos reglas más que salen de los mismos campos: un arma a dos manos **deja sin escudo** (y
+lo dice, no se limita a no dejarte), y `rangeFeet` hace que un arco del compendio por fin
+dispare.
+
+### B4 · `armaduras.json` y `trastos.json` — *hechas*
+
+- **Campos propios:** `armorClass`, `dexMode` (`full|half|none`), `slot`
+- **Escritas:** 16 armaduras y 18 trastos
 - **Enciende:** #100, #115, #119
-- **Qué ves:** el inventario como un problema de espacio, no como una lista
+- **Qué ves:** que elegir armadura sea una decisión y no un número más alto
+
+Una armadura de cuerpo **sustituye** al 10 de partida; el escudo y las piezas sueltas suman.
+Y la destreza cuenta según lo que la armadura deje: entera en una ligera, hasta +2 en una
+media, nada en una placa. Por eso la placa completa (CA 18) no es automáticamente mejor que
+el cuero tachonado (CA 12) si eres ágil — y por eso hay algo que decidir.
+
+`applyEquipmentEffects` existía en `dnd-system.js` desde siempre y **no la llamaba nadie**.
+Ahora la CA del combate y la de la ficha salen del mismo sitio, y la ficha dice de dónde
+sale cada punto: *«CA 18 (Cota de malla 14, Destreza +2, Escudo +2)»*.
 
 ### B5 · `habilidades.json` — *hecha*
 
@@ -282,6 +308,17 @@ alguien quiere de verdad. Un encargo de facción se ve distinto —dice *en cont
 favor*, y qué se juega el mundo si sale bien— y al entregarlo **mueve su reloj un segmento**.
 Cogerlo es tomar partido: lo que frena a unos adelanta a otros, y el tablón ofrece las dos
 caras. Sin eso, el mundo se movía y tú mirabas.
+
+**Y lo que cuesta vivir donde vives** (F3): un paso cerrado no es solo un rodeo, es comida
+que no llega. Los caminos cerrados y los peajes suben el pan y la posada; quien manda en el
+sitio cobra `taxPerWeek` —que siempre se llamó «lo que pide el señor del sitio» y hasta
+ahora no había ningún señor—, y si está pagando una guerra, cobra el doble. El panel de
+campaña lo dice junto a la cuenta: *«El camino a La Ermita está cerrado, y por ahí venía
+comida. La comida cuesta un 15% más.»* Una cuenta que sube sin decir por qué es un impuesto;
+una que lo dice es una razón para ir a abrir el paso.
+
+Los sueldos no suben —quien va contigo por dinero cobra lo pactado— ni el cirujano, que
+cobra por su trabajo.
 
 Y la gente de un sitio que es de alguien **lleva su bandera**: en la ficha, donde el editor
 de personajes ya la leía, y en lo que el modelo lee, con lo que los suyos quieren. Es lo que

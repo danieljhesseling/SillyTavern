@@ -39,6 +39,8 @@ const FORK_FILES = [
     'public/scripts/game-engine/campaign/seed.js',
     'public/scripts/game-engine/campaign/factions.js',
     'public/scripts/game-engine/world/neighbours.js',
+    'public/scripts/game-engine/rules/equipment.js',
+    'public/scripts/game-engine/campaign/economy.js',
     'public/scripts/game-engine/world/travel.js',
     'public/scripts/game-engine/board/hazards.js',
     'public/scripts/game-engine/world-builder/shapes.js',

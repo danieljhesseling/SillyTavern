@@ -27,7 +27,10 @@ import { DOMAINS } from '../compendio/compendio.js';
 /** Como se llama cada bateria en pantalla, y que se supone que trae. */
 export const DOMAIN_LABELS = {
     nombres: ['Nombres', 'De qué se hacen los nombres de cada cultura'],
-    materiales: ['Materiales', 'Formas y materiales: forma × material = objeto'],
+    materiales: ['Materiales', 'De qué está hecha una cosa: forma × material = objeto'],
+    armas: ['Armas', 'Qué dado hace, a cuántas manos va y hasta dónde llega'],
+    armaduras: ['Armaduras', 'Cuánto protege y cuánta destreza te deja usar'],
+    trastos: ['Trastos', 'Lo que no mata ni protege, pero pesa'],
     propiedades: ['Propiedades', 'Lo que da y lo que quita: sin contrapartida no hay decisión'],
     habilidades: ['Habilidades', 'Lo que sabe hacer alguien, y cuánto se gasta'],
     bestiario: ['Bestiario', 'Arquetipos y plantillas que se apilan'],

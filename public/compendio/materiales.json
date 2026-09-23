@@ -1,533 +1,325 @@
 {
   "version": 1,
   "domain": "materiales",
-  "about": "De qué están hechas las cosas y qué forma tienen. Una FORMA dice qué es (daga, cota de malla, farol) y trae los números que el motor juega. Un MATERIAL la modifica: pesa distinto, vale distinto y a veces hace algo. Forma × material = el objeto. OJO con 'weight': en el compendio es el peso al sortear, no los kilos. Los kilos van en 'kg', porque la ficha de objeto ya llama 'weight' a los suyos y dos cosas con el mismo nombre es como se pierde un número.",
+  "about": "De que esta hecha una cosa. Las formas viven en armas.json, armaduras.json y trastos.json; aqui esta el material, que es la otra mitad: forma x material = objeto. Un material dice en su \"when.itemType\" con que formas pega, para que no haya cotas de malla de roble.",
   "rows": [
-    {
-      "id": "forma-daga",
-      "name": "Daga",
-      "gender": "f",
-      "kind": "forma",
-      "itemType": "weapon",
-      "category": "hoja",
-      "tags": ["ligera", "oculta"],
-      "weight": 10,
-      "kg": 0.5,
-      "damageDice": "1d4",
-      "damageType": "perforante",
-      "slot": "weapon",
-      "hands": 1,
-      "pattern": "{forma} de {material}"
-    },
-    {
-      "id": "forma-espada-corta",
-      "name": "Espada corta",
-      "gender": "f",
-      "kind": "forma",
-      "itemType": "weapon",
-      "category": "hoja",
-      "tags": ["ligera", "militar"],
-      "weight": 10,
-      "kg": 1,
-      "damageDice": "1d6",
-      "damageType": "cortante",
-      "slot": "weapon",
-      "hands": 1,
-      "pattern": "{forma} de {material}"
-    },
-    {
-      "id": "forma-espada-larga",
-      "name": "Espada larga",
-      "gender": "f",
-      "kind": "forma",
-      "itemType": "weapon",
-      "category": "hoja",
-      "tags": ["militar"],
-      "weight": 8,
-      "kg": 1.5,
-      "damageDice": "1d8",
-      "damageType": "cortante",
-      "slot": "weapon",
-      "hands": 1,
-      "pattern": "{forma} de {material}"
-    },
-    {
-      "id": "forma-hacha",
-      "name": "Hacha",
-      "gender": "f",
-      "kind": "forma",
-      "itemType": "weapon",
-      "category": "filo",
-      "tags": ["bruta"],
-      "weight": 9,
-      "kg": 2,
-      "damageDice": "1d8",
-      "damageType": "cortante",
-      "slot": "weapon",
-      "hands": 1,
-      "pattern": "{forma} de {material}"
-    },
-    {
-      "id": "forma-maza",
-      "name": "Maza",
-      "gender": "f",
-      "kind": "forma",
-      "itemType": "weapon",
-      "category": "contundente",
-      "tags": ["bruta", "clero"],
-      "weight": 8,
-      "kg": 2,
-      "damageDice": "1d6",
-      "damageType": "contundente",
-      "slot": "weapon",
-      "hands": 1,
-      "pattern": "{forma} de {material}"
-    },
-    {
-      "id": "forma-martillo",
-      "name": "Martillo de guerra",
-      "gender": "m",
-      "kind": "forma",
-      "itemType": "weapon",
-      "category": "contundente",
-      "tags": ["bruta"],
-      "weight": 6,
-      "kg": 3,
-      "damageDice": "1d10",
-      "damageType": "contundente",
-      "slot": "weapon",
-      "hands": 2,
-      "pattern": "{forma} de {material}"
-    },
-    {
-      "id": "forma-lanza",
-      "name": "Lanza",
-      "gender": "f",
-      "kind": "forma",
-      "itemType": "weapon",
-      "category": "asta",
-      "tags": ["alcance"],
-      "weight": 9,
-      "kg": 1.5,
-      "damageDice": "1d6",
-      "damageType": "perforante",
-      "slot": "weapon",
-      "hands": 1,
-      "pattern": "{forma} de {material}"
-    },
-    {
-      "id": "forma-alabarda",
-      "name": "Alabarda",
-      "gender": "f",
-      "kind": "forma",
-      "itemType": "weapon",
-      "category": "asta",
-      "tags": ["alcance", "militar"],
-      "weight": 5,
-      "kg": 3,
-      "damageDice": "1d10",
-      "damageType": "cortante",
-      "slot": "weapon",
-      "hands": 2,
-      "pattern": "{forma} de {material}"
-    },
-    {
-      "id": "forma-baston",
-      "name": "Bastón",
-      "gender": "m",
-      "kind": "forma",
-      "itemType": "weapon",
-      "category": "contundente",
-      "tags": ["humilde", "camino"],
-      "weight": 7,
-      "kg": 2,
-      "damageDice": "1d6",
-      "damageType": "contundente",
-      "slot": "weapon",
-      "hands": 2,
-      "pattern": "{forma} de {material}"
-    },
-    {
-      "id": "forma-arco-corto",
-      "name": "Arco corto",
-      "gender": "m",
-      "kind": "forma",
-      "itemType": "weapon",
-      "category": "distancia",
-      "tags": ["caza", "alcance"],
-      "weight": 8,
-      "kg": 1,
-      "damageDice": "1d6",
-      "damageType": "perforante",
-      "slot": "weapon",
-      "hands": 2,
-      "pattern": "{forma} de {material}"
-    },
-    {
-      "id": "forma-arco-largo",
-      "name": "Arco largo",
-      "gender": "m",
-      "kind": "forma",
-      "itemType": "weapon",
-      "category": "distancia",
-      "tags": ["militar", "alcance"],
-      "weight": 6,
-      "kg": 1,
-      "damageDice": "1d8",
-      "damageType": "perforante",
-      "slot": "weapon",
-      "hands": 2,
-      "pattern": "{forma} de {material}"
-    },
-    {
-      "id": "forma-ballesta",
-      "name": "Ballesta",
-      "gender": "f",
-      "kind": "forma",
-      "itemType": "weapon",
-      "category": "distancia",
-      "tags": ["alcance", "lenta"],
-      "weight": 5,
-      "kg": 2.5,
-      "damageDice": "1d8",
-      "damageType": "perforante",
-      "slot": "weapon",
-      "hands": 2,
-      "pattern": "{forma} de {material}"
-    },
-    {
-      "id": "forma-cota-malla",
-      "name": "Cota de malla",
-      "gender": "f",
-      "kind": "forma",
-      "itemType": "armor",
-      "category": "malla",
-      "tags": ["pesada"],
-      "weight": 8,
-      "kg": 9,
-      "slot": "body",
-      "pattern": "{forma} de {material}"
-    },
-    {
-      "id": "forma-coraza",
-      "name": "Coraza",
-      "gender": "f",
-      "kind": "forma",
-      "itemType": "armor",
-      "category": "placa",
-      "tags": ["pesada", "militar"],
-      "weight": 6,
-      "kg": 11,
-      "slot": "body",
-      "pattern": "{forma} de {material}"
-    },
-    {
-      "id": "forma-jubon",
-      "name": "Jubón",
-      "gender": "m",
-      "kind": "forma",
-      "itemType": "armor",
-      "category": "ligera",
-      "tags": ["ligera", "camino"],
-      "weight": 10,
-      "kg": 4,
-      "slot": "body",
-      "pattern": "{forma} de {material}"
-    },
-    {
-      "id": "forma-casco",
-      "name": "Casco",
-      "gender": "m",
-      "kind": "forma",
-      "itemType": "armor",
-      "category": "placa",
-      "tags": ["militar"],
-      "weight": 9,
-      "kg": 2,
-      "slot": "head",
-      "pattern": "{forma} de {material}"
-    },
-    {
-      "id": "forma-escudo",
-      "name": "Escudo",
-      "gender": "m",
-      "kind": "forma",
-      "itemType": "armor",
-      "category": "escudo",
-      "tags": ["militar"],
-      "weight": 9,
-      "kg": 3,
-      "slot": "shield",
-      "pattern": "{forma} de {material}"
-    },
-    {
-      "id": "forma-grebas",
-      "name": "Grebas",
-      "gender": "f",
-      "kind": "forma",
-      "itemType": "armor",
-      "category": "placa",
-      "tags": ["militar"],
-      "weight": 6,
-      "kg": 2.5,
-      "slot": "feet",
-      "pattern": "{forma} de {material}"
-    },
-    {
-      "id": "forma-farol",
-      "name": "Farol",
-      "gender": "m",
-      "kind": "forma",
-      "itemType": "gear",
-      "category": "luz",
-      "tags": ["mazmorra"],
-      "weight": 10,
-      "kg": 1,
-      "slot": "",
-      "pattern": "{forma} de {material}"
-    },
-    {
-      "id": "forma-ganzuas",
-      "name": "Ganzúas",
-      "gender": "f",
-      "kind": "forma",
-      "itemType": "gear",
-      "category": "oficio",
-      "tags": ["ladron"],
-      "weight": 8,
-      "kg": 0.5,
-      "slot": "",
-      "pattern": "{forma} de {material}"
-    },
-    {
-      "id": "forma-cadena",
-      "name": "Cadena",
-      "gender": "f",
-      "kind": "forma",
-      "itemType": "gear",
-      "category": "carga",
-      "tags": ["pesada"],
-      "weight": 7,
-      "kg": 5,
-      "slot": "",
-      "pattern": "{forma} de {material}"
-    },
-    {
-      "id": "forma-odre",
-      "name": "Odre",
-      "gender": "m",
-      "kind": "forma",
-      "itemType": "gear",
-      "category": "provision",
-      "tags": ["camino"],
-      "weight": 9,
-      "kg": 2,
-      "slot": "",
-      "pattern": "{forma} de {material}"
-    },
-    {
-      "id": "forma-morral",
-      "name": "Morral",
-      "gender": "m",
-      "kind": "forma",
-      "itemType": "gear",
-      "category": "carga",
-      "tags": ["camino"],
-      "weight": 9,
-      "kg": 1.5,
-      "slot": "",
-      "pattern": "{forma} de {material}"
-    },
-    {
-      "id": "forma-amuleto",
-      "name": "Amuleto",
-      "gender": "m",
-      "kind": "forma",
-      "itemType": "gear",
-      "category": "adorno",
-      "tags": ["creencia"],
-      "weight": 7,
-      "kg": 0.2,
-      "slot": "ring",
-      "pattern": "{forma} de {material}"
-    },
-
     {
       "id": "material-hierro",
       "name": "hierro",
       "kind": "material",
-      "tags": ["metal", "corriente"],
+      "tags": [
+        "metal",
+        "corriente"
+      ],
       "weight": 14,
       "kg": 1,
       "weightMultiplier": 1,
       "rarity": "Common",
       "effect": "",
-      "when": { "itemType": ["weapon", "armor", "gear"] }
+      "when": {
+        "itemType": [
+          "weapon",
+          "armor",
+          "gear"
+        ]
+      }
     },
     {
       "id": "material-acero",
       "name": "acero",
       "kind": "material",
-      "tags": ["metal", "bueno"],
+      "tags": [
+        "metal",
+        "bueno"
+      ],
       "weight": 12,
       "weightMultiplier": 0.95,
       "rarity": "Common",
       "effect": "Bien templado. No se mella a la primera.",
-      "when": { "itemType": ["weapon", "armor"] }
+      "when": {
+        "itemType": [
+          "weapon",
+          "armor"
+        ]
+      }
     },
     {
       "id": "material-bronce",
       "name": "bronce",
       "kind": "material",
-      "tags": ["metal", "viejo"],
+      "tags": [
+        "metal",
+        "viejo"
+      ],
       "weight": 8,
       "weightMultiplier": 1.1,
       "rarity": "Common",
       "effect": "De antes de que se supiera hacer acero.",
-      "when": { "itemType": ["weapon", "armor", "gear"] }
+      "when": {
+        "itemType": [
+          "weapon",
+          "armor",
+          "gear"
+        ]
+      }
     },
     {
       "id": "material-roble",
       "name": "roble",
       "kind": "material",
-      "tags": ["madera", "corriente"],
+      "tags": [
+        "madera",
+        "corriente"
+      ],
       "weight": 10,
       "weightMultiplier": 0.8,
       "rarity": "Common",
       "effect": "",
-      "when": { "itemType": ["weapon", "gear"] }
+      "when": {
+        "itemType": [
+          "weapon",
+          "gear"
+        ]
+      }
     },
     {
       "id": "material-cuero",
       "name": "cuero",
       "kind": "material",
-      "tags": ["organico", "ligero"],
+      "tags": [
+        "organico",
+        "ligero"
+      ],
       "weight": 10,
       "weightMultiplier": 0.6,
       "rarity": "Common",
       "effect": "",
-      "when": { "itemType": ["armor", "gear"] }
+      "when": {
+        "itemType": [
+          "armor",
+          "gear"
+        ]
+      }
     },
     {
       "id": "material-hueso",
       "name": "hueso",
       "kind": "material",
-      "tags": ["organico", "pobre"],
+      "tags": [
+        "organico",
+        "pobre"
+      ],
       "weight": 7,
       "weightMultiplier": 0.7,
       "rarity": "Common",
       "effect": "Quien la hizo no tenía hierro, o no quería usarlo.",
-      "when": { "itemType": ["weapon", "gear"] }
+      "when": {
+        "itemType": [
+          "weapon",
+          "gear"
+        ]
+      }
     },
     {
       "id": "material-cuerno",
       "name": "cuerno",
       "kind": "material",
-      "tags": ["organico"],
+      "tags": [
+        "organico"
+      ],
       "weight": 6,
       "weightMultiplier": 0.7,
       "rarity": "Common",
       "effect": "",
-      "when": { "itemType": ["weapon", "gear"] }
+      "when": {
+        "itemType": [
+          "weapon",
+          "gear"
+        ]
+      }
     },
     {
       "id": "material-piedra",
       "name": "piedra",
       "kind": "material",
-      "tags": ["mineral", "antiguo"],
+      "tags": [
+        "mineral",
+        "antiguo"
+      ],
       "weight": 5,
       "weightMultiplier": 1.6,
       "rarity": "Common",
       "effect": "Pesa el doble de lo que debería y aguanta el triple.",
-      "when": { "itemType": ["weapon", "gear"] }
+      "when": {
+        "itemType": [
+          "weapon",
+          "gear"
+        ],
+        "category": [
+          "hoja",
+          "filo",
+          "contundente",
+          "asta",
+          "oficio",
+          "adorno"
+        ]
+      }
     },
     {
       "id": "material-estano",
       "name": "estaño",
       "kind": "material",
-      "tags": ["metal", "pobre"],
+      "tags": [
+        "metal",
+        "pobre"
+      ],
       "weight": 6,
       "weightMultiplier": 1,
       "rarity": "Common",
       "effect": "Se dobla si le das un mal golpe.",
-      "when": { "itemType": ["armor", "gear"] }
+      "when": {
+        "itemType": [
+          "armor",
+          "gear"
+        ]
+      }
     },
     {
       "id": "material-peltre",
       "name": "peltre",
       "kind": "material",
-      "tags": ["metal", "pobre"],
+      "tags": [
+        "metal",
+        "pobre"
+      ],
       "weight": 6,
       "weightMultiplier": 1.05,
       "rarity": "Common",
       "effect": "",
-      "when": { "itemType": ["gear"] }
+      "when": {
+        "itemType": [
+          "gear"
+        ]
+      }
     },
     {
       "id": "material-plata",
       "name": "plata",
       "kind": "material",
-      "tags": ["metal", "bendito"],
+      "tags": [
+        "metal",
+        "bendito"
+      ],
       "weight": 4,
       "weightMultiplier": 1.05,
       "rarity": "Uncommon",
       "effect": "Hiere a los no-muertos como si la hoja estuviera bendita.",
-      "when": { "itemType": ["weapon", "gear"] }
+      "when": {
+        "itemType": [
+          "weapon",
+          "gear"
+        ]
+      }
     },
     {
       "id": "material-obsidiana",
       "name": "obsidiana",
       "kind": "material",
-      "tags": ["mineral", "fragil"],
+      "tags": [
+        "mineral",
+        "fragil"
+      ],
       "weight": 4,
       "weightMultiplier": 0.9,
       "rarity": "Uncommon",
       "effect": "Corta como no corta nada, y se rompe igual de fácil.",
-      "when": { "itemType": ["weapon"] }
+      "when": {
+        "itemType": [
+          "weapon"
+        ],
+        "category": [
+          "hoja",
+          "filo",
+          "contundente",
+          "asta",
+          "oficio",
+          "adorno"
+        ]
+      }
     },
     {
       "id": "material-ambar",
       "name": "ámbar",
       "kind": "material",
-      "tags": ["mineral", "raro"],
+      "tags": [
+        "mineral",
+        "raro"
+      ],
       "weight": 3,
       "weightMultiplier": 0.5,
       "rarity": "Uncommon",
       "effect": "Tiene algo dentro. A veces parece que se mueve.",
-      "when": { "itemType": ["gear"] }
+      "when": {
+        "itemType": [
+          "gear"
+        ]
+      }
     },
     {
       "id": "material-sal",
       "name": "sal",
       "kind": "material",
-      "tags": ["mineral", "extrano"],
+      "tags": [
+        "mineral",
+        "extrano"
+      ],
       "weight": 3,
       "weightMultiplier": 1.2,
       "rarity": "Uncommon",
       "effect": "Escuece en lo que no debería seguir vivo.",
-      "when": { "itemType": ["gear"] }
+      "when": {
+        "itemType": [
+          "gear"
+        ]
+      }
     },
     {
       "id": "material-nacar",
       "name": "nácar",
       "kind": "material",
-      "tags": ["organico", "adorno"],
+      "tags": [
+        "organico",
+        "adorno"
+      ],
       "weight": 3,
       "weightMultiplier": 0.8,
       "rarity": "Uncommon",
       "effect": "",
-      "when": { "itemType": ["gear", "armor"] }
+      "when": {
+        "itemType": [
+          "gear",
+          "armor"
+        ]
+      }
     },
     {
       "id": "material-hierro-frio",
       "name": "hierro frío",
       "kind": "material",
-      "tags": ["metal", "hadas"],
+      "tags": [
+        "metal",
+        "hadas"
+      ],
       "weight": 2,
       "weightMultiplier": 1,
       "rarity": "Rare",
       "effect": "Lo que vive debajo de las colinas no sana de estas heridas.",
-      "when": { "itemType": ["weapon", "armor"] }
+      "when": {
+        "itemType": [
+          "weapon",
+          "armor"
+        ]
+      }
     }
   ]
 }

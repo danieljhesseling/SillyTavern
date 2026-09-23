@@ -122,7 +122,9 @@ describe('la biblioteca cargada', () => {
     });
 
     test('y lo que falta por escribir, que es media lista de tareas', () => {
-        expect(c().missing()).toEqual(DOMAINS);
+        // El ejemplo de aquí trae armas, así que ésa ya no falta: es justo lo que
+        // `missing()` tiene que decir.
+        expect(c().missing()).toEqual(DOMAINS.filter(d => d !== 'armas'));
         expect(createCompendium({ nombres: [] }).missing())
             .toEqual(DOMAINS.filter(d => d !== 'nombres'));
     });

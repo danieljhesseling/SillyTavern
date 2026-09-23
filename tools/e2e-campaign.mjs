@@ -4377,9 +4377,23 @@ try {
     check('y materiales se prueba forjando, no listando filas',
         forged43.length > 0 && forged43.every(l => /kg/.test(l)), forged43.join(' | '));
 
+    // Y las armas, que son las que mas filas tienen desde que las formas se mudaron a su
+    // propio archivo: materiales se quedo con los 16 materiales.
+    await page.locator('.cx-tab', { hasText: 'Armas' }).click();
+    await page.waitForTimeout(400);
     const rows43 = await page.evaluate(() => document.querySelectorAll('.cx-row').length);
     check('la tabla ensena las filas de la bateria abierta',
-        rows43 >= 40, `${rows43} lineas con la cabecera`);
+        rows43 >= 30, `${rows43} lineas con la cabecera`);
+
+    await page.locator('.cx-try-go').click();
+    await page.waitForTimeout(700);
+    const armas43 = await page.evaluate(() =>
+        [...document.querySelectorAll('.cx-try-line')].map(l => l.textContent || ''));
+    // Un arma que no dice lo que hace es un nombre: el dado, y el alcance si lo tiene.
+    check('y las armas se prueban forjandolas, con su dado',
+        armas43.length > 0 && armas43.every(l => /\dd\d/.test(l))
+        && armas43.some(l => /ft|a dos manos/.test(l)),
+        armas43.join(' | '));
 
     await page.locator('.cx-tab', { hasText: 'Bestiario' }).click();
     await page.waitForTimeout(400);
@@ -4631,8 +4645,49 @@ try {
         && tablon45.loQueSeJuega.every(t => /semana/.test(t) && !t.includes('undefined')),
         tablon45.loQueSeJuega.join(' | '));
 
-    await page.locator('.popup-button-close, .popup-button-ok').last().click();
-    await page.waitForTimeout(600);
+    // El panel del gremio se cierra con su boton «Cerrar», que es el ok del popup. El
+    // selector tiene que ser el del popup **visible**: los cerrados siguen en el DOM y
+    // clicar uno invisible cuelga el recorrido entero.
+    await page.locator('.popup:visible .popup-button-ok').last().click();
+    await page.waitForTimeout(800);
+
+    // F3: un paso cerrado no es solo un rodeo, es comida que no llega. Se cierra uno y se
+    // mira lo unico que de verdad aprieta en este juego: la cuenta del viernes.
+    const mercado45 = await page.evaluate(async () => {
+        const wi = await import('/scripts/world-info.js');
+        const { marketPressure, applyMarket, describeMarket } =
+            await import('/scripts/game-engine/campaign/economy.js');
+        const ctx = window.SillyTavern.getContext();
+        const world = ctx.chatMetadata.world_info;
+        const data = await wi.loadWorldInfo(world);
+        const locations = data.metadata.locationMaps ?? [];
+        const aqui = String(ctx.chatMetadata.currentLocation || '');
+        const factions = data.metadata.factions ?? [];
+
+        const antes = marketPressure({ here: aqui, locations, factions });
+
+        // Se le cierra un camino al sitio donde esta el grupo, como haria una faccion al
+        // tomar lo de al lado.
+        const place = locations.find((/** @type {any} */ l) => l.name === aqui);
+        const route = (place?.routes ?? [])[0]
+            ?? locations.flatMap((/** @type {any} */ l) => l.routes ?? [])
+                .find((/** @type {any} */ r) => r.to === aqui);
+        if (route) route.closed = true;
+
+        const despues = marketPressure({ here: aqui, locations, factions });
+        return {
+            antes: antes.food,
+            despues: despues.food,
+            dicho: describeMarket(despues),
+            comidaAntes: applyMarket({ foodPerDay: 2, taxPerWeek: 3 }, antes).foodPerDay,
+            comidaDespues: applyMarket({ foodPerDay: 2, taxPerWeek: 3 }, despues).foodPerDay,
+        };
+    });
+    check('un paso cerrado sube el pan, y dice por que',
+        mercado45.despues > mercado45.antes
+        && mercado45.comidaDespues > mercado45.comidaAntes
+        && /cerrado|entra nada/.test(mercado45.dicho),
+        `${mercado45.antes} -> ${mercado45.despues} · ${mercado45.dicho}`);
 
     // Y lo que se ve al jugar: el panel de campana lo cuenta sin abrir ningun archivo.
     // Viajar deja abierta la pestana de localizacion, asi que primero se abre la suya.

@@ -37,6 +37,7 @@ import {
     readFactions, tickFactions, outcomeOf, applyOutcome, newsFor, describeFaction,
     rollFactions, validateFactionRows, busyFactions, pushFaction,
 } from './game-engine/campaign/factions.js';
+import { marketPressure, applyMarket, describeMarket } from './game-engine/campaign/economy.js';
 import {
     abilitiesFor, classesOf, nameAndAbility, validateAbilities,
 } from './game-engine/compendio/skills.js';
@@ -47,6 +48,7 @@ import {
     createEmptyCombatEncounter, normalizeCombatEncounter, setRandomSource, nextRandom,
 } from './party/combat-rules.js';
 import { escItemText, buildPartyItemSections } from './party/item-forms.js';
+import { armourClassOf, shieldBlocked } from './game-engine/rules/equipment.js';
 import { resolveEntryMapPosition } from './party/positions.js';
 import { createCampaignState } from './party/campaign-state.js';
 import {
@@ -1357,8 +1359,26 @@ function applyRollGuard(messageId) {
  * @param {{armorClass?: number|null, gridX?: number, gridY?: number, mapPosition?: {gridX?: number, gridY?: number}|null}} target
  * @returns {{ac: number, cover: number}}
  */
+/**
+ * La clase de armadura de lo que lleva puesto, o 0 si no lleva nada que la de.
+ *
+ * @param {any} who
+ * @returns {number}
+ */
+function wornArmorClass(who) {
+    if (!Array.isArray(who?.items) || !who?.equippedItems) return 0;
+    const sum = armourClassOf({
+        member: who,
+        dexModifier: getAbilityModifier(Number(who.dexterity) || 10),
+    });
+    return sum.worn ? sum.armorClass : 0;
+}
+
 function getTargetArmorClass(target, attacker = null) {
-    const base = Number(target?.armorClass) || 10;
+    // Lo que lleva puesto manda sobre el numero de la ficha, **solo si lo lleva puesto**:
+    // una armadura equipada es un hecho, y el numero escrito a mano era una promesa. Sin
+    // nada con clase de armadura encima, todo sigue exactamente como estaba.
+    const base = wornArmorClass(target) || Number(target?.armorClass) || 10;
     const x = Number(target?.gridX ?? target?.mapPosition?.gridX);
     const y = Number(target?.gridY ?? target?.mapPosition?.gridY);
 
@@ -2693,7 +2713,29 @@ function getGuild() {
  * @returns {any}
  */
 function currentUpkeepRules() {
-    return upkeepWithBuildings(getActiveRuleset()?.upkeep ?? null, getGuild());
+    // Tres capas, y en este orden: la campana pone los precios, el gremio los abarata con
+    // lo que haya construido, y el mundo de fuera los sube. Preguntarlo en dos sitios
+    // distintos seria acabar cobrando dos cosas distintas.
+    return applyMarket(
+        upkeepWithBuildings(getActiveRuleset()?.upkeep ?? null, getGuild()),
+        currentMarket(),
+    );
+}
+
+/**
+ * Como esta el mercado donde esta el grupo.
+ *
+ * Un paso cerrado no es solo un rodeo: es comida que no llega. Sin facciones ni caminos
+ * cerrados devuelve 1 y la cuenta sale como salia siempre.
+ *
+ * @returns {any}
+ */
+function currentMarket() {
+    return marketPressure({
+        here: currentLocationName,
+        locations: getCurrentWorldLocationMaps(),
+        factions: getCurrentWorldFactions(),
+    });
 }
 
 /**
@@ -3282,6 +3324,9 @@ function renderCampaignTab() {
         // Sin nadie en el grupo no hay cuenta que pasar, y un panel de ceros estorba.
         bill: partyMembers.length > 0 ? weeklyBill(partyMembers, { rules: currentUpkeepRules() }) : null,
         daysToBill: Number.isFinite(due) ? Math.max(0, due - today) : 0,
+        // Una cuenta que sube sin decir por que es un impuesto; una que dice «han cerrado
+        // el paso del norte» es una razon para ir a abrirlo.
+        market: describeMarket(currentMarket()),
         // Como esta cada uno: solo aparece quien tiene algo que contar.
         needs: partyMembers
             .map(member => ({ name: member.name, said: describeNeeds(member) }))
@@ -6122,8 +6167,14 @@ async function openCompendiumLibrary() {
             if (domain === 'nombres') {
                 return makeNames({ compendium, howMany, random });
             }
-            if (domain === 'materiales') {
+            if (domain === 'materiales' || domain === 'trastos') {
                 return forgeItems({ compendium, howMany, random }).map(describeItem);
+            }
+            if (domain === 'armas' || domain === 'armaduras') {
+                // Del tipo que toca: una pestaña de armas que ensena faroles no dice si
+                // la bateria de armas esta bien.
+                const itemType = domain === 'armas' ? 'weapon' : 'armor';
+                return forgeItems({ compendium, howMany, random, itemType }).map(describeItem);
             }
             if (domain === 'bestiario') {
                 return breedBand({ compendium, howMany, cr: 1, random }).map(describeMonster);
@@ -7358,6 +7409,16 @@ function rebuildInventoryPanel(panel, member) {
  * @param {string} slot
  */
 function showEquipSelector(panel, member, slot) {
+    // Renunciar al escudo tiene que pagar algo, o nadie renunciaria al escudo. Y se dice
+    // el motivo, que es lo que convierte una regla en una decision entendida.
+    if (slot === 'shield') {
+        const sinMano = shieldBlocked(member);
+        if (sinMano) {
+            toastr.info(sinMano, 'No puedes llevar escudo');
+            return;
+        }
+    }
+
     const eligibleItems = (member.items || []).filter(item => {
         if (item.slot !== slot) return false;
         // Check not already equipped

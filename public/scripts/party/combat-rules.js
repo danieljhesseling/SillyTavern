@@ -10,6 +10,7 @@
 
 import { getAbilityModifier } from '../dnd-system.js';
 import { createEncounter, normalizeEncounter } from '../game-engine/combat/turn-machine.js';
+import { weaponDamage, weaponRange } from '../game-engine/rules/equipment.js';
 
 /** @typedef {import('./types.js').PartyMember} PartyMember */
 
@@ -184,9 +185,19 @@ export function buildReachableCells(originX, originY, remainingFeet, gridWidth, 
 }
 
 /**
+ * Hasta donde alcanza quien ataca.
+ *
+ * Primero **lo que diga el arma**. Antes esto solo miraba el nombre —en ingles— asi que un
+ * «Arco corto de tejo» salido del compendio era cuerpo a cuerpo: el campo existia en la
+ * fila y no llegaba hasta aqui. El nombre y la clase siguen detras, para todo lo que se
+ * escribio antes de que las armas dijeran su alcance.
+ *
  * @param {PartyMember|null} member
  */
 export function getAttackRangeFeet(member) {
+    const declared = weaponRange(member);
+    if (declared > 0) return declared;
+
     const equippedWeaponId = member?.equippedItems?.weapon;
     const equippedWeapon = equippedWeaponId ? (member.items || []).find(/** @param {import('../dnd-system.js').DndItem} item */ (item) => item.id === equippedWeaponId) : null;
     const weaponName = String(equippedWeapon?.name || '').toLowerCase();
@@ -198,15 +209,28 @@ export function getAttackRangeFeet(member) {
 }
 
 /**
+ * Lo que hace de dano quien ataca.
+ *
+ * **El nivel dice de que dado partes; el arma te mueve por la escalera.** Hasta aqui el
+ * dano salia solo del nivel, asi que una daga y un hacha a dos manos pegaban igual y el
+ * `damageDice` que la forja escribia en cada objeto no lo leia nadie. El nivel sigue
+ * mandando —un nivel 9 con una daga sigue siendo un nivel 9— y el arma decide desde donde.
+ *
+ * Sin arma, o con una que no dice su dado, sale lo mismo de siempre.
+ *
  * @param {PartyMember|null} member
  * @param {number} rangeFeet
  */
 export function getPlayerDamageFormula(member, rangeFeet) {
     const level = Number(member?.level) || 1;
-    if (rangeFeet > 5) return level >= 5 ? '1d10' : '1d8';
-    if (level >= 9) return '2d8';
-    if (level >= 5) return '1d10';
-    return '1d8';
+
+    let base;
+    if (rangeFeet > 5) base = level >= 5 ? '1d10' : '1d8';
+    else if (level >= 9) base = '2d8';
+    else if (level >= 5) base = '1d10';
+    else base = '1d8';
+
+    return weaponDamage(member, base) || base;
 }
 
 /**

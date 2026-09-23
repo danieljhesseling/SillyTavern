@@ -98,7 +98,9 @@ export async function openCharacterPanel({
     root.append(stats);
 
     const defence = $('<div class="ch-stats ch-defence"></div>');
-    defence.append(box('CA', sheet.defence.armorClass));
+    // Con de donde sale cada punto, si sale de lo que lleva puesto: una CA que no se
+    // puede explicar se siente como una trampa del motor.
+    defence.append(box('CA', sheet.defence.armorClass, sheet.defence.armourFrom ?? ''));
     defence.append(box('Velocidad', `${sheet.defence.speed} pies`));
     defence.append(box('Iniciativa', `${sheet.defence.initiative >= 0 ? '+' : ''}${sheet.defence.initiative}`));
     defence.append(box('Oro', sheet.gold));

@@ -1,0 +1,571 @@
+{
+  "version": 1,
+  "domain": "armas",
+  "about": "De que forma tiene un arma. El material lo pone materiales.json: forma x material = arma. Tres campos deciden si sirve para algo y los tres los lee el combate: \"damageDice\" mueve el dano por la escalera de dados (el nivel dice de que dado partes, el arma te mueve desde ahi), \"hands\" a 2 quita el escudo, y \"rangeFeet\" es hasta donde llega -sin el, un arco es cuerpo a cuerpo-. \"weight\" es lo que pesa en el sorteo; lo que pesa de verdad es \"kg\".",
+  "rows": [
+    {
+      "id": "forma-daga",
+      "name": "Daga",
+      "gender": "f",
+      "kind": "forma",
+      "itemType": "weapon",
+      "category": "hoja",
+      "tags": [
+        "ligera",
+        "oculta"
+      ],
+      "weight": 10,
+      "kg": 0.5,
+      "damageDice": "1d4",
+      "damageType": "perforante",
+      "slot": "weapon",
+      "hands": 1,
+      "pattern": "{forma} de {material}",
+      "rangeFeet": 20
+    },
+    {
+      "id": "forma-espada-corta",
+      "name": "Espada corta",
+      "gender": "f",
+      "kind": "forma",
+      "itemType": "weapon",
+      "category": "hoja",
+      "tags": [
+        "ligera",
+        "militar"
+      ],
+      "weight": 10,
+      "kg": 1,
+      "damageDice": "1d6",
+      "damageType": "cortante",
+      "slot": "weapon",
+      "hands": 1,
+      "pattern": "{forma} de {material}"
+    },
+    {
+      "id": "forma-espada-larga",
+      "name": "Espada larga",
+      "gender": "f",
+      "kind": "forma",
+      "itemType": "weapon",
+      "category": "hoja",
+      "tags": [
+        "militar"
+      ],
+      "weight": 8,
+      "kg": 1.5,
+      "damageDice": "1d8",
+      "damageType": "cortante",
+      "slot": "weapon",
+      "hands": 1,
+      "pattern": "{forma} de {material}"
+    },
+    {
+      "id": "forma-hacha",
+      "name": "Hacha",
+      "gender": "f",
+      "kind": "forma",
+      "itemType": "weapon",
+      "category": "filo",
+      "tags": [
+        "bruta"
+      ],
+      "weight": 9,
+      "kg": 2,
+      "damageDice": "1d8",
+      "damageType": "cortante",
+      "slot": "weapon",
+      "hands": 1,
+      "pattern": "{forma} de {material}"
+    },
+    {
+      "id": "forma-maza",
+      "name": "Maza",
+      "gender": "f",
+      "kind": "forma",
+      "itemType": "weapon",
+      "category": "contundente",
+      "tags": [
+        "bruta",
+        "clero"
+      ],
+      "weight": 8,
+      "kg": 2,
+      "damageDice": "1d6",
+      "damageType": "contundente",
+      "slot": "weapon",
+      "hands": 1,
+      "pattern": "{forma} de {material}"
+    },
+    {
+      "id": "forma-martillo",
+      "name": "Martillo de guerra",
+      "gender": "m",
+      "kind": "forma",
+      "itemType": "weapon",
+      "category": "contundente",
+      "tags": [
+        "bruta"
+      ],
+      "weight": 6,
+      "kg": 3,
+      "damageDice": "1d10",
+      "damageType": "contundente",
+      "slot": "weapon",
+      "hands": 2,
+      "pattern": "{forma} de {material}"
+    },
+    {
+      "id": "forma-lanza",
+      "name": "Lanza",
+      "gender": "f",
+      "kind": "forma",
+      "itemType": "weapon",
+      "category": "asta",
+      "tags": [
+        "alcance"
+      ],
+      "weight": 9,
+      "kg": 1.5,
+      "damageDice": "1d6",
+      "damageType": "perforante",
+      "slot": "weapon",
+      "hands": 1,
+      "pattern": "{forma} de {material}",
+      "rangeFeet": 30
+    },
+    {
+      "id": "forma-alabarda",
+      "name": "Alabarda",
+      "gender": "f",
+      "kind": "forma",
+      "itemType": "weapon",
+      "category": "asta",
+      "tags": [
+        "alcance",
+        "militar"
+      ],
+      "weight": 5,
+      "kg": 3,
+      "damageDice": "1d10",
+      "damageType": "cortante",
+      "slot": "weapon",
+      "hands": 2,
+      "pattern": "{forma} de {material}"
+    },
+    {
+      "id": "forma-baston",
+      "name": "Bastón",
+      "gender": "m",
+      "kind": "forma",
+      "itemType": "weapon",
+      "category": "contundente",
+      "tags": [
+        "humilde",
+        "camino"
+      ],
+      "weight": 7,
+      "kg": 2,
+      "damageDice": "1d6",
+      "damageType": "contundente",
+      "slot": "weapon",
+      "hands": 2,
+      "pattern": "{forma} de {material}"
+    },
+    {
+      "id": "forma-arco-corto",
+      "name": "Arco corto",
+      "gender": "m",
+      "kind": "forma",
+      "itemType": "weapon",
+      "category": "distancia",
+      "tags": [
+        "caza",
+        "alcance"
+      ],
+      "weight": 8,
+      "kg": 1,
+      "damageDice": "1d6",
+      "damageType": "perforante",
+      "slot": "weapon",
+      "hands": 2,
+      "pattern": "{forma} de {material}",
+      "rangeFeet": 80
+    },
+    {
+      "id": "forma-arco-largo",
+      "name": "Arco largo",
+      "gender": "m",
+      "kind": "forma",
+      "itemType": "weapon",
+      "category": "distancia",
+      "tags": [
+        "militar",
+        "alcance"
+      ],
+      "weight": 6,
+      "kg": 1,
+      "damageDice": "1d8",
+      "damageType": "perforante",
+      "slot": "weapon",
+      "hands": 2,
+      "pattern": "{forma} de {material}",
+      "rangeFeet": 150
+    },
+    {
+      "id": "forma-ballesta",
+      "name": "Ballesta",
+      "gender": "f",
+      "kind": "forma",
+      "itemType": "weapon",
+      "category": "distancia",
+      "tags": [
+        "alcance",
+        "lenta"
+      ],
+      "weight": 5,
+      "kg": 2.5,
+      "damageDice": "1d8",
+      "damageType": "perforante",
+      "slot": "weapon",
+      "hands": 2,
+      "pattern": "{forma} de {material}",
+      "rangeFeet": 100
+    },
+    {
+      "id": "forma-estoque",
+      "name": "Estoque",
+      "gender": "m",
+      "kind": "forma",
+      "itemType": "weapon",
+      "category": "hoja",
+      "tags": [
+        "militar"
+      ],
+      "weight": 8,
+      "kg": 1.2,
+      "damageDice": "1d8",
+      "damageType": "perforante",
+      "slot": "weapon",
+      "hands": 1,
+      "pattern": "{forma} de {material}"
+    },
+    {
+      "id": "forma-cimitarra",
+      "name": "Cimitarra",
+      "gender": "f",
+      "kind": "forma",
+      "itemType": "weapon",
+      "category": "hoja",
+      "tags": [
+        "ligera"
+      ],
+      "weight": 8,
+      "kg": 1.2,
+      "damageDice": "1d6",
+      "damageType": "cortante",
+      "slot": "weapon",
+      "hands": 1,
+      "pattern": "{forma} de {material}"
+    },
+    {
+      "id": "forma-espadon",
+      "name": "Espadón",
+      "gender": "m",
+      "kind": "forma",
+      "itemType": "weapon",
+      "category": "hoja",
+      "tags": [
+        "militar"
+      ],
+      "weight": 8,
+      "kg": 3.5,
+      "damageDice": "2d6",
+      "damageType": "cortante",
+      "slot": "weapon",
+      "hands": 2,
+      "pattern": "{forma} de {material}"
+    },
+    {
+      "id": "forma-cuchillo-monte",
+      "name": "Cuchillo de monte",
+      "gender": "m",
+      "kind": "forma",
+      "itemType": "weapon",
+      "category": "hoja",
+      "tags": [
+        "ligera",
+        "oficio"
+      ],
+      "weight": 8,
+      "kg": 0.4,
+      "damageDice": "1d4",
+      "damageType": "cortante",
+      "slot": "weapon",
+      "hands": 1,
+      "pattern": "{forma} de {material}",
+      "rangeFeet": 20
+    },
+    {
+      "id": "forma-hacha-mano",
+      "name": "Hacha de mano",
+      "gender": "f",
+      "kind": "forma",
+      "itemType": "weapon",
+      "category": "filo",
+      "tags": [
+        "ligera"
+      ],
+      "weight": 8,
+      "kg": 1,
+      "damageDice": "1d6",
+      "damageType": "cortante",
+      "slot": "weapon",
+      "hands": 1,
+      "pattern": "{forma} de {material}",
+      "rangeFeet": 20
+    },
+    {
+      "id": "forma-hacha-dos-manos",
+      "name": "Hacha a dos manos",
+      "gender": "f",
+      "kind": "forma",
+      "itemType": "weapon",
+      "category": "filo",
+      "tags": [
+        "militar"
+      ],
+      "weight": 8,
+      "kg": 3.5,
+      "damageDice": "1d12",
+      "damageType": "cortante",
+      "slot": "weapon",
+      "hands": 2,
+      "pattern": "{forma} de {material}"
+    },
+    {
+      "id": "forma-segur",
+      "name": "Segur",
+      "gender": "f",
+      "kind": "forma",
+      "itemType": "weapon",
+      "category": "filo",
+      "tags": [
+        "oficio"
+      ],
+      "weight": 8,
+      "kg": 2.5,
+      "damageDice": "1d8",
+      "damageType": "cortante",
+      "slot": "weapon",
+      "hands": 1,
+      "pattern": "{forma} de {material}"
+    },
+    {
+      "id": "forma-porra",
+      "name": "Porra",
+      "gender": "f",
+      "kind": "forma",
+      "itemType": "weapon",
+      "category": "contundente",
+      "tags": [
+        "sencilla"
+      ],
+      "weight": 8,
+      "kg": 1,
+      "damageDice": "1d4",
+      "damageType": "contundente",
+      "slot": "weapon",
+      "hands": 1,
+      "pattern": "{forma} de {material}"
+    },
+    {
+      "id": "forma-mayal",
+      "name": "Mayal",
+      "gender": "m",
+      "kind": "forma",
+      "itemType": "weapon",
+      "category": "contundente",
+      "tags": [
+        "militar"
+      ],
+      "weight": 8,
+      "kg": 2,
+      "damageDice": "1d8",
+      "damageType": "contundente",
+      "slot": "weapon",
+      "hands": 1,
+      "pattern": "{forma} de {material}"
+    },
+    {
+      "id": "forma-mazo",
+      "name": "Mazo",
+      "gender": "m",
+      "kind": "forma",
+      "itemType": "weapon",
+      "category": "contundente",
+      "tags": [
+        "militar",
+        "oficio"
+      ],
+      "weight": 8,
+      "kg": 4.5,
+      "damageDice": "2d6",
+      "damageType": "contundente",
+      "slot": "weapon",
+      "hands": 2,
+      "pattern": "{forma} de {material}"
+    },
+    {
+      "id": "forma-pica",
+      "name": "Pica",
+      "gender": "f",
+      "kind": "forma",
+      "itemType": "weapon",
+      "category": "asta",
+      "tags": [
+        "militar"
+      ],
+      "weight": 8,
+      "kg": 8,
+      "damageDice": "1d10",
+      "damageType": "perforante",
+      "slot": "weapon",
+      "hands": 2,
+      "pattern": "{forma} de {material}"
+    },
+    {
+      "id": "forma-tridente",
+      "name": "Tridente",
+      "gender": "m",
+      "kind": "forma",
+      "itemType": "weapon",
+      "category": "asta",
+      "tags": [
+        "oficio"
+      ],
+      "weight": 8,
+      "kg": 2,
+      "damageDice": "1d6",
+      "damageType": "perforante",
+      "slot": "weapon",
+      "hands": 1,
+      "pattern": "{forma} de {material}",
+      "rangeFeet": 20
+    },
+    {
+      "id": "forma-guja",
+      "name": "Guja",
+      "gender": "f",
+      "kind": "forma",
+      "itemType": "weapon",
+      "category": "asta",
+      "tags": [
+        "militar"
+      ],
+      "weight": 8,
+      "kg": 3,
+      "damageDice": "1d10",
+      "damageType": "cortante",
+      "slot": "weapon",
+      "hands": 2,
+      "pattern": "{forma} de {material}"
+    },
+    {
+      "id": "forma-honda",
+      "name": "Honda",
+      "gender": "f",
+      "kind": "forma",
+      "itemType": "weapon",
+      "category": "distancia",
+      "tags": [
+        "sencilla"
+      ],
+      "weight": 8,
+      "kg": 0.2,
+      "damageDice": "1d4",
+      "damageType": "contundente",
+      "slot": "weapon",
+      "hands": 1,
+      "pattern": "{forma} de {material}",
+      "rangeFeet": 60
+    },
+    {
+      "id": "forma-jabalina",
+      "name": "Jabalina",
+      "gender": "f",
+      "kind": "forma",
+      "itemType": "weapon",
+      "category": "distancia",
+      "tags": [
+        "sencilla"
+      ],
+      "weight": 8,
+      "kg": 0.8,
+      "damageDice": "1d6",
+      "damageType": "perforante",
+      "slot": "weapon",
+      "hands": 1,
+      "pattern": "{forma} de {material}",
+      "rangeFeet": 90
+    },
+    {
+      "id": "forma-ballesta-mano",
+      "name": "Ballesta de mano",
+      "gender": "f",
+      "kind": "forma",
+      "itemType": "weapon",
+      "category": "distancia",
+      "tags": [
+        "ligera",
+        "oculta"
+      ],
+      "weight": 8,
+      "kg": 1.5,
+      "damageDice": "1d6",
+      "damageType": "perforante",
+      "slot": "weapon",
+      "hands": 1,
+      "pattern": "{forma} de {material}",
+      "rangeFeet": 60
+    },
+    {
+      "id": "forma-arco-compuesto",
+      "name": "Arco compuesto",
+      "gender": "m",
+      "kind": "forma",
+      "itemType": "weapon",
+      "category": "distancia",
+      "tags": [
+        "militar"
+      ],
+      "weight": 8,
+      "kg": 1.2,
+      "damageDice": "1d8",
+      "damageType": "perforante",
+      "slot": "weapon",
+      "hands": 2,
+      "pattern": "{forma} de {material}",
+      "rangeFeet": 120
+    },
+    {
+      "id": "forma-cerbatana",
+      "name": "Cerbatana",
+      "gender": "f",
+      "kind": "forma",
+      "itemType": "weapon",
+      "category": "distancia",
+      "tags": [
+        "oculta"
+      ],
+      "weight": 5,
+      "kg": 0.3,
+      "damageDice": "1d4",
+      "damageType": "perforante",
+      "slot": "weapon",
+      "hands": 1,
+      "pattern": "{forma} de {material}",
+      "rangeFeet": 60
+    }
+  ]
+}

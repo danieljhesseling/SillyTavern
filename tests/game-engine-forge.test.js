@@ -6,20 +6,32 @@ import {
     RARITY_LADDER, propertyBalance, raiseRarity, withBonus,
 } from '../public/scripts/game-engine/compendio/forge.js';
 
-const materiales = JSON.parse(fs.readFileSync(
-    new URL('../public/compendio/materiales.json', import.meta.url), 'utf8',
+const read = (name) => JSON.parse(fs.readFileSync(
+    new URL(`../public/compendio/${name}.json`, import.meta.url), 'utf8',
 ));
-const propiedades = JSON.parse(fs.readFileSync(
-    new URL('../public/compendio/propiedades.json', import.meta.url), 'utf8',
-));
+
+const materiales = read('materiales');
+const propiedades = read('propiedades');
+// Las formas viven en tres archivos, porque se eligen por cosas distintas.
+const armas = read('armas');
+const armaduras = read('armaduras');
+const trastos = read('trastos');
+
+/** Todas las formas juntas, que es como las ve la forja. */
+const formas = [...armas.rows, ...armaduras.rows, ...trastos.rows];
+
+const batteries = () => ({
+    materiales: materiales.rows, armas: armas.rows,
+    armaduras: armaduras.rows, trastos: trastos.rows,
+});
 
 /** La biblioteca de verdad, la que viene escrita. */
-const real = (config) => createCompendium({
-    materiales: materiales.rows, propiedades: propiedades.rows,
-}, config);
+const real = (config) => createCompendium(
+    { ...batteries(), propiedades: propiedades.rows }, config,
+);
 
 /** Solo formas y materiales, para lo que no va de propiedades. */
-const plain = (config) => createCompendium({ materiales: materiales.rows }, config);
+const plain = (config) => createCompendium(batteries(), config);
 
 /** Un azar que va diciendo lo que le mandes. */
 const fixed = (...values) => {
@@ -39,14 +51,15 @@ describe('la batería que viene escrita', () => {
     });
 
     test('trae formas y materiales, que son las dos mitades', () => {
-        const kinds = new Set(materiales.rows.map(r => r.kind));
-        expect(kinds).toEqual(new Set(['forma', 'material']));
-        expect(materiales.rows.filter(r => r.kind === 'forma').length).toBeGreaterThanOrEqual(20);
+        // Los materiales por su lado y las formas por el suyo: forma x material = objeto.
+        expect(new Set(materiales.rows.map(r => r.kind))).toEqual(new Set(['material']));
+        expect(new Set(formas.map(r => r.kind))).toEqual(new Set(['forma']));
+        expect(formas.length).toBeGreaterThanOrEqual(20);
         expect(materiales.rows.filter(r => r.kind === 'material').length).toBeGreaterThanOrEqual(12);
     });
 
     test('cada forma dice qué es, y es algo que el editor sabe dibujar', () => {
-        for (const forma of materiales.rows.filter(r => r.kind === 'forma')) {
+        for (const forma of formas) {
             expect(ITEM_TYPES).toContain(forma.itemType);
             expect(Number(forma.kg)).toBeGreaterThan(0);
         }
@@ -54,7 +67,7 @@ describe('la batería que viene escrita', () => {
 
     // Un material que no encaja con ninguna forma es una fila que no sale nunca.
     test('y cada material encaja con algo', () => {
-        const types = new Set(materiales.rows.filter(r => r.kind === 'forma').map(r => r.itemType));
+        const types = new Set(formas.map(r => r.itemType));
         for (const material of materiales.rows.filter(r => r.kind === 'material')) {
             const fits = (material.when?.itemType ?? []).filter(t => types.has(t));
             expect(fits.length).toBeGreaterThan(0);
@@ -62,7 +75,7 @@ describe('la batería que viene escrita', () => {
     });
 
     test('las armas traen dados de daño y las armaduras no', () => {
-        for (const forma of materiales.rows.filter(r => r.kind === 'forma')) {
+        for (const forma of formas) {
             if (forma.itemType === 'weapon') expect(forma.damageDice).toMatch(/^\d+d\d+$/);
             else expect(forma.damageDice ?? '').toBe('');
         }
@@ -77,8 +90,11 @@ describe('forjar una cosa', () => {
     test('sale con todos los campos que la ficha de objeto pide', () => {
         const item = forgeItem({ compendium: plain(), random: fixed(0.1, 0.4) });
         expect(Object.keys(item).sort()).toEqual([
-            'category', 'damageDice', 'damageType', 'description', 'effects', 'from',
-            'name', 'rarity', 'slot', 'type', 'weight',
+            // Los cuatro del final son los que deciden si el objeto sirve para algo: a
+            // cuantas manos va, hasta donde llega, cuanto protege y cuanta destreza deja.
+            'armorClass', 'category', 'damageDice', 'damageType', 'description', 'dexMode',
+            'effects', 'from', 'hands', 'name', 'rangeFeet', 'rarity', 'slot', 'type',
+            'weight',
         ]);
         expect(ITEM_TYPES).toContain(item.type);
         expect(item.weight).toBeGreaterThan(0);
@@ -99,7 +115,7 @@ describe('forjar una cosa', () => {
 
     // No hay cotas de malla de roble. Lo dice el material en su `when`, no este código.
     test('el material encaja con la forma, siempre', () => {
-        const byId = new Map(materiales.rows.map(r => [r.id, r]));
+        const byId = new Map([...materiales.rows, ...formas].map(r => [r.id, r]));
         const random = rolling(11);
         for (let i = 0; i < 200; i++) {
             const item = forgeItem({ compendium: plain(), random });
@@ -119,7 +135,7 @@ describe('forjar una cosa', () => {
     });
 
     test('la rareza la pone el material', () => {
-        const byId = new Map(materiales.rows.map(r => [r.id, r]));
+        const byId = new Map([...materiales.rows, ...formas].map(r => [r.id, r]));
         const random = rolling(5);
         for (let i = 0; i < 100; i++) {
             const item = forgeItem({ compendium: plain(), random });
@@ -255,7 +271,7 @@ describe('la escalera de rareza', () => {
 
 describe('forjar con propiedades', () => {
     test('el adjetivo concuerda con la forma', () => {
-        const byId = new Map([...materiales.rows, ...propiedades.rows].map(r => [r.id, r]));
+        const byId = new Map([...materiales.rows, ...formas, ...propiedades.rows].map(r => [r.id, r]));
         const random = rolling(23);
         for (let i = 0; i < 150; i++) {
             const item = forgeItem({ compendium: real(), properties: 1, random });
@@ -303,7 +319,7 @@ describe('forjar con propiedades', () => {
     });
 
     test('la rareza sube con lo que la propiedad pida', () => {
-        const byId = new Map([...materiales.rows, ...propiedades.rows].map(r => [r.id, r]));
+        const byId = new Map([...materiales.rows, ...formas, ...propiedades.rows].map(r => [r.id, r]));
         const random = rolling(43);
         for (let i = 0; i < 100; i++) {
             const item = forgeItem({ compendium: real(), properties: 1, random });

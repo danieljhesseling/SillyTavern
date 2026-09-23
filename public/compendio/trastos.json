@@ -1,0 +1,278 @@
+{
+  "version": 1,
+  "domain": "trastos",
+  "about": "Lo que no mata ni protege pero pesa: faroles, cuerdas, picos, provisiones. Van aparte de las armas porque se eligen por otra cosa -por lo que dejan hacer, no por lo que suman-. La mayoria no tiene ranura: se llevan, no se equipan.",
+  "rows": [
+    {
+      "id": "forma-farol",
+      "name": "Farol",
+      "gender": "m",
+      "kind": "forma",
+      "itemType": "gear",
+      "category": "luz",
+      "tags": [
+        "mazmorra"
+      ],
+      "weight": 10,
+      "kg": 1,
+      "slot": "",
+      "pattern": "{forma} de {material}"
+    },
+    {
+      "id": "forma-ganzuas",
+      "name": "Ganzúas",
+      "gender": "f",
+      "kind": "forma",
+      "itemType": "gear",
+      "category": "oficio",
+      "tags": [
+        "ladron"
+      ],
+      "weight": 8,
+      "kg": 0.5,
+      "slot": "",
+      "pattern": "{forma} de {material}",
+      "number": "p"
+    },
+    {
+      "id": "forma-cadena",
+      "name": "Cadena",
+      "gender": "f",
+      "kind": "forma",
+      "itemType": "gear",
+      "category": "carga",
+      "tags": [
+        "pesada"
+      ],
+      "weight": 7,
+      "kg": 5,
+      "slot": "",
+      "pattern": "{forma} de {material}"
+    },
+    {
+      "id": "forma-odre",
+      "name": "Odre",
+      "gender": "m",
+      "kind": "forma",
+      "itemType": "gear",
+      "category": "provision",
+      "tags": [
+        "camino"
+      ],
+      "weight": 9,
+      "kg": 2,
+      "slot": "",
+      "pattern": "{forma} de {material}"
+    },
+    {
+      "id": "forma-morral",
+      "name": "Morral",
+      "gender": "m",
+      "kind": "forma",
+      "itemType": "gear",
+      "category": "carga",
+      "tags": [
+        "camino"
+      ],
+      "weight": 9,
+      "kg": 1.5,
+      "slot": "",
+      "pattern": "{forma} de {material}"
+    },
+    {
+      "id": "forma-amuleto",
+      "name": "Amuleto",
+      "gender": "m",
+      "kind": "forma",
+      "itemType": "gear",
+      "category": "adorno",
+      "tags": [
+        "creencia"
+      ],
+      "weight": 7,
+      "kg": 0.2,
+      "slot": "ring",
+      "pattern": "{forma} de {material}"
+    },
+    {
+      "id": "forma-cuerda",
+      "name": "Cuerda",
+      "gender": "f",
+      "kind": "forma",
+      "itemType": "gear",
+      "category": "carga",
+      "tags": [
+        "util"
+      ],
+      "weight": 8,
+      "kg": 3,
+      "slot": "",
+      "pattern": "{forma} de {material}"
+    },
+    {
+      "id": "forma-pico",
+      "name": "Pico",
+      "gender": "m",
+      "kind": "forma",
+      "itemType": "gear",
+      "category": "oficio",
+      "tags": [
+        "util"
+      ],
+      "weight": 8,
+      "kg": 4,
+      "slot": "",
+      "pattern": "{forma} de {material}"
+    },
+    {
+      "id": "forma-pala",
+      "name": "Pala",
+      "gender": "f",
+      "kind": "forma",
+      "itemType": "gear",
+      "category": "oficio",
+      "tags": [
+        "util"
+      ],
+      "weight": 8,
+      "kg": 3,
+      "slot": "",
+      "pattern": "{forma} de {material}"
+    },
+    {
+      "id": "forma-catalejo",
+      "name": "Catalejo",
+      "gender": "m",
+      "kind": "forma",
+      "itemType": "gear",
+      "category": "oficio",
+      "tags": [
+        "fino"
+      ],
+      "weight": 5,
+      "kg": 0.5,
+      "slot": "",
+      "pattern": "{forma} de {material}"
+    },
+    {
+      "id": "forma-tienda",
+      "name": "Tienda",
+      "gender": "f",
+      "kind": "forma",
+      "itemType": "gear",
+      "category": "carga",
+      "tags": [
+        "campamento"
+      ],
+      "weight": 8,
+      "kg": 8,
+      "slot": "",
+      "pattern": "{forma} de {material}"
+    },
+    {
+      "id": "forma-yesquero",
+      "name": "Yesquero",
+      "gender": "m",
+      "kind": "forma",
+      "itemType": "gear",
+      "category": "luz",
+      "tags": [
+        "util"
+      ],
+      "weight": 8,
+      "kg": 0.2,
+      "slot": "",
+      "pattern": "{forma} de {material}"
+    },
+    {
+      "id": "forma-antorcha",
+      "name": "Antorcha",
+      "gender": "f",
+      "kind": "forma",
+      "itemType": "gear",
+      "category": "luz",
+      "tags": [
+        "util"
+      ],
+      "weight": 8,
+      "kg": 0.5,
+      "slot": "",
+      "pattern": "{forma} de {material}"
+    },
+    {
+      "id": "forma-sal",
+      "name": "Saco de sal",
+      "gender": "m",
+      "kind": "forma",
+      "itemType": "gear",
+      "category": "provision",
+      "tags": [
+        "comercio"
+      ],
+      "weight": 8,
+      "kg": 2,
+      "slot": "",
+      "pattern": "{forma} de {material}"
+    },
+    {
+      "id": "forma-campana",
+      "name": "Campana",
+      "gender": "f",
+      "kind": "forma",
+      "itemType": "gear",
+      "category": "adorno",
+      "tags": [
+        "ruido"
+      ],
+      "weight": 8,
+      "kg": 1.5,
+      "slot": "",
+      "pattern": "{forma} de {material}"
+    },
+    {
+      "id": "forma-espejo",
+      "name": "Espejo",
+      "gender": "m",
+      "kind": "forma",
+      "itemType": "gear",
+      "category": "adorno",
+      "tags": [
+        "fino"
+      ],
+      "weight": 5,
+      "kg": 0.5,
+      "slot": "ring",
+      "pattern": "{forma} de {material}"
+    },
+    {
+      "id": "forma-red",
+      "name": "Red",
+      "gender": "f",
+      "kind": "forma",
+      "itemType": "gear",
+      "category": "oficio",
+      "tags": [
+        "util"
+      ],
+      "weight": 8,
+      "kg": 3,
+      "slot": "",
+      "pattern": "{forma} de {material}"
+    },
+    {
+      "id": "forma-cepo",
+      "name": "Cepo",
+      "gender": "m",
+      "kind": "forma",
+      "itemType": "gear",
+      "category": "oficio",
+      "tags": [
+        "trampa"
+      ],
+      "weight": 8,
+      "kg": 5,
+      "slot": "",
+      "pattern": "{forma} de {material}"
+    }
+  ]
+}

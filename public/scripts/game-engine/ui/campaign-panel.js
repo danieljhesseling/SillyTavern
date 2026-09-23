@@ -31,11 +31,12 @@ import { buildCampaignView, getRecordableEvents } from '../campaign/campaign-vie
  * @param {number} [input.daysToBill] Cuantos dias faltan para que venza.
  * @param {Array<{name: string, said: string}>} [input.needs] Quien pasa hambre, sed o frio.
  * @param {string[]} [input.world] Lo que se mueve ahi fuera sin ti: facciones y sus relojes.
+ * @param {string} [input.market] Por que la cuenta cuesta lo que cuesta, si cuesta mas.
  */
 export function renderCampaignPanel(container, {
     calendar, bonds, party, onAdvanceSlot, onAdvanceDay, onRecordEvent,
     onShortRest = null, onLongRest = null, bill = null, daysToBill = 0, needs = [],
-    world = [],
+    world = [], market = '',
 }) {
     const view = buildCampaignView({ calendar, bonds, party });
     container.empty();
@@ -97,6 +98,10 @@ export function renderCampaignPanel(container, {
     // impuesto, y una que ves venir es una decision. Es media razon de que quieras
     // aceptar el encargo de manana.
     if (bill) container.append(renderBill(bill, daysToBill));
+
+    // Y por que cuesta eso. Una cuenta que sube sin decir por que es un impuesto; una que
+    // dice «han cerrado el paso del norte» es una razon para ir a abrirlo.
+    if (bill && market) container.append($('<div class="cp-market"></div>').text(market));
 
     // Y como esta cada uno. Debajo de la cuenta porque es la misma pregunta con otra
     // moneda: la cuenta dice si llegas a fin de semana, esto si llegan ellos.
