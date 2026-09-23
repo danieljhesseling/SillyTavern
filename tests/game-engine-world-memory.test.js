@@ -53,6 +53,16 @@ describe('el bloque del narrador', () => {
     });
 });
 
+test('lo que tienen entre manos va lo primero, para que el narrador empuje hacia ahí', () => {
+    const block = worldMemoryBlock({ focus: 'El primer ahogado — Alguien sabe quién era.', today: 1 });
+    expect(block.split('\n')[1]).toBe('- Lo que tienen entre manos: El primer ahogado — Alguien sabe quién era.');
+});
+
+test('un nombre en plural corta el paso sin «Los de»', () => {
+    const cuervos = { id: 'c', name: 'Los Cuervos', seat: 'Torre', holds: [], reputation: -3, enemies: [] };
+    expect(roadTrouble({ factions: [cuervos], places: ['Torre'], purse: 100 })?.name).toBe('Los Cuervos os cortan el paso');
+});
+
 describe('roadTrouble', () => {
     test('quien os tiene ganas y manda por donde pasáis os para', () => {
         const trouble = roadTrouble({ factions: [casa, cuervos], places: ['Paso Alto', 'Vado'], purse: 100 });

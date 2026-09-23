@@ -19,7 +19,7 @@
  * Puro: decide y cuenta. Quien llama cobra, paga y escribe.
  */
 
-import { readFactions } from './factions.js';
+import { readFactions, saysWith } from './factions.js';
 
 /** Los días que hay para devolver el favor. */
 export const DEBT_DAYS = 14;
@@ -119,7 +119,7 @@ export function offerPatronage({ shortfall, factions = [], here = '', today }) {
         rank: 'D',
         kind: rival ? 'steal' : 'recover',
         title: rival
-            ? `El favor de ${patron.name}: sacar algo de ${place || 'lo de ' + rival.name} sin que ${rival.name} se entere`
+            ? `El favor de ${patron.name}: sacar algo de ${place || 'lo de ' + rival.name} sin que ${rival.name} ${saysWith(rival.name, 'se entere', 'se enteren')}`
             : `El favor de ${patron.name}: recuperar lo suyo en ${place || 'el yermo'}`,
         locationName: String(place || here || ''),
         reward: 0,
@@ -137,7 +137,10 @@ export function offerPatronage({ shortfall, factions = [], here = '', today }) {
             patron: patron.id, patronName: patron.name, amount, owed: amount, day, dueDay, contractId: contract.id,
         },
         contract,
-        line: `${patron.name} pone los ${amount} de oro que faltan. No quiere el oro de vuelta: quiere un favor, `
+        // «Los de la Cañada pone» no lo dice nadie: el nombre manda sobre el verbo.
+        line: `${patron.name} ${saysWith(patron.name, 'pone', 'ponen')} los ${amount} de oro que faltan. `
+            + `No ${saysWith(patron.name, 'quiere', 'quieren')} el oro de vuelta: `
+            + `${saysWith(patron.name, 'quiere', 'quieren')} un favor, `
             + `antes del día ${dueDay}. Está en el tablón.`,
     };
 }

@@ -2,6 +2,7 @@ import { describe, test, expect } from '@jest/globals';
 import {
     PATHS, STEPS, stepById, walkableSteps, startTaller, writeField, isPinned, reroll,
     pickCard, pickedIn, isPicked, blocksNext, goNext, goBack, progressOf, toAnswers,
+    PACK_STEPS, carriesPack, packContents,
 } from '../public/scripts/game-engine/campaign/taller.js';
 import { createSeededRandom } from '../public/scripts/game-engine/combat/seeded-random.js';
 
@@ -246,6 +247,44 @@ describe('el puente con lo que ya hay', () => {
         const libro = startTaller({ path: 'libro', source: { pack: { hola: 1 } }, random: dado() });
         expect(toAnswers(libro).importedPack).toEqual({ hola: 1 });
         expect(toAnswers(desdeCero()).importedPack).toBe(null);
+    });
+
+    test('un mundo precreado con paquete viaja con él, y conserva su semilla', () => {
+        const mundo = startTaller({ path: 'mundo', random: dado() });
+        const escrito = { ...writeField(mundo, 'seed', 'sal-niebla-tres'),
+            source: { pack: { world: { name: 'La costa' } }, templateId: 'imported' } };
+        const answers = toAnswers(escrito);
+        expect(carriesPack(escrito)).toBe(true);
+        expect(answers.templateId).toBe('imported');
+        expect(answers.importedPack).toEqual({ world: { name: 'La costa' } });
+        expect(answers.seed).toBe('sal-niebla-tres');
+        // Lo que trae el paquete no se elige en el taller: su importador lo pone.
+        expect(answers.locations).toEqual([]);
+        expect(answers.factions).toEqual([]);
+        expect(answers.people).toEqual([]);
+    });
+
+    test('sin paquete, un mundo precreado sigue siendo el de siempre', () => {
+        const mundo = startTaller({ path: 'mundo', random: dado() });
+        expect(carriesPack(mundo)).toBe(false);
+        expect(toAnswers(mundo).importedPack).toBe(null);
+    });
+
+    test('lo que trae el paquete, paso por paso, en nombres', () => {
+        const pack = {
+            world: { factions: [{ name: 'La Orden' }] },
+            locations: [{ name: 'El Molino' }, { name: 'El Vado' }],
+            boards: [{ name: 'Planta baja' }],
+            confidants: [{ name: 'Mira' }],
+            quests: [{ name: 'El sótano' }],
+        };
+        expect(packContents(pack, 'localidades')).toEqual(['El Molino', 'El Vado']);
+        expect(packContents(pack, 'tableros')).toEqual(['Planta baja']);
+        expect(packContents(pack, 'facciones')).toEqual(['La Orden']);
+        expect(packContents(pack, 'personajes')).toEqual(['Mira']);
+        expect(packContents(pack, 'misiones')).toEqual(['El sótano']);
+        expect(packContents(pack, 'razas')).toEqual([]);
+        expect(PACK_STEPS.every(id => STEPS.some(step => step.id === id))).toBe(true);
     });
 
     test('y el grupo va vacío: el personaje se hace al entrar', () => {

@@ -90,6 +90,8 @@ import { playForScene, stopSceneAudio } from './scene-audio.js';
  * @property {() => Array<{id: string, label: string, icon: string, detail: string, enabled: boolean}>} [getChecks]
  *   Las tiradas de habilidad que se pueden intentar fuera de combate.
  * @property {(skill: string) => void} [onCheck]
+ * @property {() => {title: string, hint: string, act: number}|null} [getFocus]
+ *   Lo que se tiene entre manos: el hito abierto del hilo.
  * @property {() => void} [onClose] Anything the game wants undone when the shell closes.
  * @property {(message: string) => void} [notify]
  */
@@ -490,6 +492,26 @@ function toggleChecks(row, checks) {
         list.appendChild(pick);
     }
     row.appendChild(list);
+}
+
+/**
+ * Lo que tienes entre manos, siempre a la vista.
+ *
+ * Una linea: el hito abierto y su pista. Es la respuesta a «empiezo y no se que hacer», y
+ * por eso no se esconde en ningun menu.
+ *
+ * @param {HTMLElement|null} slot
+ */
+function renderFocus(slot) {
+    if (!slot) return;
+    slot.textContent = '';
+    const focus = options?.getFocus?.() ?? null;
+    slot.classList.toggle('gs-focus-empty', !focus);
+    if (!focus) return;
+    slot.appendChild(el('i', 'fa-solid fa-compass'));
+    slot.appendChild(el('span', 'gs-focus-title', focus.title));
+    if (focus.hint) slot.appendChild(el('span', 'gs-focus-hint', focus.hint));
+    slot.title = `Acto ${focus.act}`;
 }
 
 /**
@@ -934,6 +956,7 @@ export function refreshGameShell() {
     }
 
     renderClock(/** @type {HTMLElement} */ (root.querySelector('.gs-clock')));
+    renderFocus(/** @type {HTMLElement} */ (root.querySelector('.gs-focus')));
     renderActionChips(/** @type {HTMLElement} */ (root.querySelector('.gs-chips')));
 
     renderSwitcher(/** @type {HTMLElement} */ (root.querySelector('.gs-scenes')), situation, scene);
@@ -1022,6 +1045,7 @@ export function openGameShell(shellOptions) {
 
     const head = el('header', 'gs-head');
     head.appendChild(el('div', 'gs-head-state'));
+    head.appendChild(el('div', 'gs-focus'));
     head.appendChild(el('div', 'gs-clock'));
     head.appendChild(el('nav', 'gs-scenes'));
     const close = makeButton('gs-close');

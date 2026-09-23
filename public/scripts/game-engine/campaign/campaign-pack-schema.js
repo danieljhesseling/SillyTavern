@@ -241,6 +241,7 @@ function buildSectionSchemas() {
                 description: { type: 'string' },
                 region: { type: 'string', description: 'La comarca o zona a la que pertenece.' },
                 factionName: { type: 'string', description: 'La facción que la controla, si alguna.' },
+                hidden: { type: 'boolean', description: 'Si empieza escondida: no se puede ir hasta que un hito del hilo la revela.' },
             },
         },
     };

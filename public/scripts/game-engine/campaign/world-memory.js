@@ -20,7 +20,7 @@
  * Puro: no guarda ni manda nada.
  */
 
-import { readFactions, describeStanding } from './factions.js';
+import { readFactions, describeStanding, speaksPlural } from './factions.js';
 import { describeDebt } from './patronage.js';
 
 /** Cuántos hechos se recuerdan. Más, y el bloque del narrador deja de ser barato. */
@@ -73,12 +73,16 @@ export function recordDeed(deeds, day, text) {
  * @param {any} [input.deeds]
  * @param {any[]} [input.factions]
  * @param {any} [input.debt]
+ * @param {string} [input.focus] Lo que el grupo tiene entre manos (el hito abierto del hilo).
  * @param {number} input.today
  * @returns {string} Vacío si no hay nada que contar.
  */
-export function worldMemoryBlock({ deeds = [], factions = [], debt = null, today }) {
+export function worldMemoryBlock({ deeds = [], factions = [], debt = null, focus = '', today }) {
     /** @type {string[]} */
     const lines = [];
+
+    // Primero lo que tienen entre manos: es hacia donde el narrador tiene que empujar.
+    if (String(focus).trim()) lines.push(`- Lo que tienen entre manos: ${String(focus).trim()}`);
 
     const recent = readDeeds(deeds).slice(-DEEDS_TOLD);
     for (const deed of recent) {
@@ -127,7 +131,8 @@ export function roadTrouble({ factions, places, purse }) {
     const pays = Number(purse) >= toll;
     return {
         faction: worst.id,
-        name: `Los de ${worst.name} os cortan el paso`,
+        // «Los de Los Cuervos» no lo dice nadie: un nombre en plural va solo.
+        name: `${speaksPlural(worst.name) ? worst.name : `Los de ${worst.name}`} os cortan el paso`,
         note: pays
             ? `Se acuerdan de vosotros. Pagáis ${toll} de oro por pasar.`
             : `Se acuerdan de vosotros, y no lleváis los ${toll} de oro que piden: rodeo por el monte, un día más.`,

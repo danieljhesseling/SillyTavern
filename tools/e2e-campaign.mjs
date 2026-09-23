@@ -5025,6 +5025,9 @@ try {
         const friend = party[1];
         if (friend) {
             const leg = injuries.INJURY_TABLE.find((/** @type {any} */ i) => i.id === 'lost_leg');
+            // Sin nada mas encima: otra herida que tambien reste velocidad la dejaria en el
+            // suelo de 5 antes y despues, y el remedio no se veria.
+            friend.injuries = [];
             const patch = injuries.applyInjury(friend, leg);
             Object.assign(friend, { injuries: patch.injuries, baseStats: patch.baseStats, ...patch.stats });
         }
@@ -5154,7 +5157,7 @@ try {
         const debt = ctx.chatMetadata.debt || null;
         const favor = (ctx.chatMetadata.contractBoard || []).find((/** @type {any} */ c) => c?.favor);
         const told = (ctx.chat || []).filter((/** @type {any} */ m) => !m.is_system
-            && /pone los \d+ de oro que faltan/.test(String(m.mes || '')));
+            && /ponen? los \d+ de oro que faltan/.test(String(m.mes || '')));
         return { debt, favor: favor ? { title: favor.title, reward: favor.reward, id: favor.id } : null, told: told.length };
     });
     check('sin oro el viernes, alguien del mundo paga lo que falta',
@@ -5173,7 +5176,7 @@ try {
     });
     check('antes de cada turno, el narrador recibe lo que el mundo sabe del grupo',
         /\[LO QUE EL MUNDO SABE DEL GRUPO\]/.test(memory46.value)
-        && /pagó vuestra cuenta/.test(memory46.value) && /Debéis/.test(memory46.value),
+        && /pag(ó|aron) vuestra cuenta/.test(memory46.value) && /Debéis/.test(memory46.value),
         memory46.value.replace(/\n/g, ' | ').slice(0, 200));
 
     // --- Un combate: enemigos con su perfil, y maniobras en la barra ---------------------
@@ -5181,6 +5184,22 @@ try {
         const wi = await import('/scripts/world-info.js');
         return String(wi.getCurrentWorldEnemies()[0]?.name || '');
     });
+    // Se pelea dentro de un tablero: el de este sitio, o el del primer sitio que tenga uno.
+    const arena46 = await page.evaluate(async () => {
+        const wi = await import('/scripts/world-info.js');
+        const ctx = window.SillyTavern.getContext();
+        const places = wi.getCurrentWorldLocationMaps();
+        const here = String(ctx.chatMetadata.currentLocation || '');
+        const withBoard = places.find((/** @type {any} */ l) => l.name === here && (l.boards || []).length > 0)
+            ?? places.find((/** @type {any} */ l) => (l.boards || []).length > 0);
+        if (!withBoard) return null;
+        if (withBoard.name !== here) await ctx.executeSlashCommandsWithOptions(`/go ${withBoard.name}`);
+        await ctx.executeSlashCommandsWithOptions(`/enter ${withBoard.boards[0].name}`);
+        return { place: withBoard.name, board: withBoard.boards[0].name };
+    });
+    await page.waitForTimeout(1500);
+    await clearToasts();
+    check('hay un tablero donde pelear', Boolean(arena46), JSON.stringify(arena46));
     await page.evaluate(async (name) => {
         const ctx = window.SillyTavern.getContext();
         for (const member of ctx.chatMetadata.party || []) member.hp = member.maxHp;
@@ -5233,6 +5252,207 @@ try {
     await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/combat-stop'));
     await page.waitForTimeout(1000);
     await clearDiceOverlay();
+
+    step('47. M0: un mundo precreado escrito entero trae su paquete, no su plantilla');
+    // Los mundos que se publican no se tocan para probar esto: se le sirve al taller un
+    // quinto mundo que apunta al paquete de ejemplo del esquema, como lo serviria el disco.
+    const { buildExamplePack } = await import(
+        new URL('../public/scripts/game-engine/campaign/campaign-pack-schema.js', import.meta.url).href);
+    const examplePack47 = buildExamplePack();
+    await page.route('**/mundos/mundos.json', async (route) => {
+        const response = await route.fetch();
+        const json = await response.json();
+        json.worlds.push({
+            id: 'prueba-paquete', name: 'El Molino de prueba', genre: 'Fantasía oscura',
+            note: 'Un mundo escrito entero, para probar la puerta.', synopsis: 'Cuervos y un sótano.',
+            seed: 'molino-prueba-uno', templateId: 'tavern', icon: 'fa-feather',
+            pack: '/mundos/prueba-paquete.pack.json',
+            board: { factionShare: 5, theme: 'general' },
+        });
+        await route.fulfill({ response, json });
+    });
+    await page.route('**/mundos/prueba-paquete.pack.json', route => route.fulfill({ json: examplePack47 }));
+
+    if (await page.locator('#game-shell').count() > 0) {
+        await page.evaluate(() => { void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/modojuego'); });
+        await page.waitForTimeout(1000);
+    }
+    await clearToasts();
+    if (await page.locator('#cw-new-campaign').count() === 0) {
+        await closeChat();
+    }
+    await page.click('#cw-new-campaign');
+    await page.waitForSelector('.tl-door-grid', { timeout: 20000 });
+    await page.locator('.tl-door-card').nth(1).click();
+    await page.waitForSelector('.tl-root', { timeout: 20000 });
+    await page.locator('.tl-card', { hasText: 'El Molino de prueba' }).first().click();
+    await page.waitForTimeout(2000);
+    const picked47 = await page.evaluate(() => ({
+        said: document.querySelector('.tl-said')?.textContent || '',
+        bad: Boolean(document.querySelector('.tl-said.bad')),
+        seed: /** @type {HTMLInputElement|null} */ (document.querySelector('.tl-input.mono'))?.value || '',
+    }));
+    check('elegir un mundo con paquete lo carga y lo da por bueno',
+        !picked47.bad && picked47.seed === 'molino-prueba-uno', JSON.stringify(picked47));
+
+    // Paso 3, las localidades: las trae el paquete, y se ensenan en vez del formulario.
+    await page.locator('.tl-next').click();
+    await page.waitForTimeout(300);
+    await page.locator('.tl-next').click();
+    await page.waitForTimeout(500);
+    const places47 = await page.evaluate(() => ({
+        title: document.querySelector('.tl-step-title')?.textContent || '',
+        hint: document.querySelector('.tl-step-hint')?.textContent || '',
+        cards: [...document.querySelectorAll('.tl-card')].map(c => (c.textContent || '').trim()),
+    }));
+    check('las localidades las trae el mundo escrito, y se dice',
+        /Localidades/.test(places47.title) && /trae escritos/.test(places47.hint)
+        && places47.cards.some(t => /Molino de los Cuervos/.test(t)) && places47.cards.some(t => /Vado de la Rueda/.test(t)),
+        JSON.stringify(places47));
+
+    for (let i = 0; i < 10; i++) {
+        await page.locator('.tl-next').click();
+        await page.waitForTimeout(250);
+    }
+    const last47 = await page.evaluate(() => document.querySelector('.tl-next')?.textContent || '');
+    check('se llega al final del taller', /Crear y jugar/.test(last47), last47);
+    await page.locator('.tl-next').click();
+    await answerHeroCreator('Ines');
+    await page.waitForTimeout(3000);
+    await clearToasts();
+
+    const made47 = await page.evaluate(async () => {
+        const wi = await import('/scripts/world-info.js');
+        const ctx = window.SillyTavern.getContext();
+        const name = String(ctx.chatMetadata.world_info || '');
+        const data = await wi.loadWorldInfo(name);
+        return {
+            name,
+            places: (data?.metadata?.locationMaps ?? []).map((/** @type {any} */ l) => l.name),
+            boards: (data?.metadata?.locationMaps ?? []).flatMap((/** @type {any} */ l) => (l.boards ?? []).map((/** @type {any} */ b) => b.name)),
+            seed: String(data?.metadata?.seed || ''),
+            rules: data?.metadata?.boardRules ?? null,
+        };
+    });
+    check('la campana nace con los sitios y los tableros del paquete, no con los de la plantilla',
+        made47.places.includes('El Molino de los Cuervos') && made47.places.includes('Vado de la Rueda')
+        && made47.boards.includes('Planta baja del molino'),
+        JSON.stringify(made47));
+    check('y conserva lo que es del mundo: su semilla y su tablon',
+        made47.seed === 'molino-prueba-uno' && made47.rules?.factionShare === 5, JSON.stringify(made47));
+    await page.unroute('**/mundos/mundos.json');
+    await page.unroute('**/mundos/prueba-paquete.pack.json');
+
+    step('48. H: la mecha, lo que tienes entre manos y un sitio que se revela');
+    // El mismo mundo de prueba, ahora con hilo: una mecha que pide ir al Vado y, al llegar,
+    // revela un sitio escondido que antes no estaba en el mapa.
+    const hiloPack48 = {
+        ...buildExamplePack(),
+        world: { ...buildExamplePack().world, name: 'El Molino con hilo' },
+        locations: [
+            ...buildExamplePack().locations,
+            { name: 'La cueva escondida', type: 'dungeon', description: 'Detrás del molino, bajo la hiedra.', hidden: true },
+        ],
+        plot: {
+            title: 'Los cuervos callados',
+            milestones: [
+                {
+                    id: 'callados', act: 1, title: 'Los cuervos se han callado',
+                    hint: 'En el Vado alguien sabe por qué.',
+                    scene: 'Al amanecer no grazna ni un cuervo en todo el molino. Mira dice que eso solo pasó una vez.',
+                    opens: { kind: 'start' }, asks: { kind: 'arrive', place: 'Vado de la Rueda' },
+                    changes: { reveal: ['La cueva escondida'] },
+                },
+                {
+                    id: 'la-cueva', act: 1, title: 'La cueva bajo la hiedra',
+                    hint: 'Por fin se sabe dónde está.',
+                    opens: { kind: 'after', milestone: 'callados' }, asks: { kind: 'arrive', place: 'La cueva escondida' },
+                },
+            ],
+        },
+    };
+    await page.route('**/mundos/mundos.json', async (route) => {
+        const response = await route.fetch();
+        const json = await response.json();
+        json.worlds.push({
+            id: 'prueba-hilo', name: 'El Molino con hilo', genre: 'Fantasía oscura',
+            note: 'Un mundo con hilo, para probar la mecha.', synopsis: 'Cuervos callados.',
+            seed: 'molino-hilo-dos', templateId: 'tavern', icon: 'fa-feather',
+            pack: '/mundos/prueba-hilo.pack.json',
+        });
+        await route.fulfill({ response, json });
+    });
+    await page.route('**/mundos/prueba-hilo.pack.json', route => route.fulfill({ json: hiloPack48 }));
+
+    await clearToasts();
+    if (await page.locator('#game-shell').count() > 0) {
+        await page.evaluate(() => { void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/modojuego'); });
+        await page.waitForTimeout(1000);
+    }
+    if (await page.locator('#cw-new-campaign').count() === 0) {
+        await closeChat();
+    }
+    await page.click('#cw-new-campaign');
+    await page.waitForSelector('.tl-door-grid', { timeout: 20000 });
+    await page.locator('.tl-door-card').nth(1).click();
+    await page.waitForSelector('.tl-root', { timeout: 20000 });
+    await page.locator('.tl-card', { hasText: 'El Molino con hilo' }).first().click();
+    await page.waitForTimeout(2000);
+    for (let i = 0; i < 12; i++) {
+        await page.locator('.tl-next').click();
+        await page.waitForTimeout(250);
+    }
+    await page.locator('.tl-next').click();
+    await answerHeroCreator('Oria');
+    await page.waitForTimeout(4000);
+    await clearToasts();
+
+    const start48 = await page.evaluate(async () => {
+        const wi = await import('/scripts/world-info.js');
+        const ctx = window.SillyTavern.getContext();
+        const data = await wi.loadWorldInfo(String(ctx.chatMetadata.world_info || ''));
+        const mecha = (ctx.chat || []).filter((/** @type {any} */ m) => !m.is_system
+            && /\[HILO\]/.test(String(m.mes || '')) && /no grazna ni un cuervo/.test(String(m.mes || '')));
+        return {
+            state: ctx.chatMetadata.plotState ?? null,
+            mecha: mecha.length,
+            visible: (data?.metadata?.locationMaps ?? []).map((/** @type {any} */ l) => l.name),
+            hidden: (data?.metadata?.hiddenLocations ?? []).map((/** @type {any} */ l) => l.name),
+        };
+    });
+    check('la partida empieza con la mecha: la primera escena, por el canal que el modelo lee',
+        start48.mecha > 0 && JSON.stringify(start48.state?.open) === '["callados"]', JSON.stringify(start48));
+    check('el sitio escondido no esta en el mapa hasta que lo revela el hilo',
+        !start48.visible.includes('La cueva escondida') && start48.hidden.includes('La cueva escondida'),
+        JSON.stringify({ visible: start48.visible, hidden: start48.hidden }));
+
+    await page.evaluate(() => { void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/modojuego'); });
+    await page.waitForSelector('#game-shell', { timeout: 15000 });
+    await page.waitForTimeout(1200);
+    const focus48 = await page.evaluate(() => document.querySelector('#game-shell .gs-focus')?.textContent || '');
+    check('arriba, siempre a la vista, lo que tienes entre manos',
+        /Los cuervos se han callado/.test(focus48) && /Vado/.test(focus48), focus48);
+
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/go Vado de la Rueda'));
+    await page.waitForTimeout(3500);
+    await clearToasts();
+    const after48 = await page.evaluate(async () => {
+        const wi = await import('/scripts/world-info.js');
+        const ctx = window.SillyTavern.getContext();
+        const data = await wi.loadWorldInfo(String(ctx.chatMetadata.world_info || ''));
+        return {
+            state: ctx.chatMetadata.plotState ?? null,
+            visible: (data?.metadata?.locationMaps ?? []).map((/** @type {any} */ l) => l.name),
+            focus: document.querySelector('#game-shell .gs-focus')?.textContent || '',
+        };
+    });
+    check('llegar al Vado cumple el hito y revela la cueva en el mapa',
+        (after48.state?.done ?? []).includes('callados') && after48.visible.includes('La cueva escondida'),
+        JSON.stringify(after48));
+    check('y lo que tienes entre manos pasa al siguiente hito', /La cueva bajo la hiedra/.test(after48.focus), after48.focus);
+
+    await page.unroute('**/mundos/mundos.json');
+    await page.unroute('**/mundos/prueba-hilo.pack.json');
 
     console.log('\n--- console errors ---');
     console.log(problems.size ? [...problems].join('\n') : '(none)');

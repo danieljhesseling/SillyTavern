@@ -169,6 +169,9 @@ export function normalizePack(raw) {
             locations,
             boards,
             quests,
+            // El hilo del mundo (fase H). Se lee con tolerancia al importarlo; aqui solo
+            // se conserva, para que normalizar un paquete no lo tire.
+            plot: source.plot && typeof source.plot === 'object' ? source.plot : null,
         },
         repairs,
     };

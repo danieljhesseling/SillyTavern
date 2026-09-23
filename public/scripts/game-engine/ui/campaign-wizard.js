@@ -633,6 +633,17 @@ export async function createCampaign({
             party: answers.party,
             createWorld, loadWorld, saveWorld, createEntry,
         });
+
+        // Lo que el taller decidio encima del paquete: la semilla (un mundo precreado *es*
+        // su semilla, y un libro la trae para ser reproducible) y las reglas del tablon. El
+        // importador no las conoce, y sin esto se perdian las dos.
+        const seeded = await loadWorld(imported.worldName);
+        if (seeded) {
+            seeded.metadata = ensureSeed(seeded.metadata ?? {}, { seed: answers.seed }).metadata;
+            if (answers.board && typeof answers.board === 'object') seeded.metadata.boardRules = answers.board;
+            await saveWorld(imported.worldName, seeded);
+        }
+
         return {
             worldName: imported.worldName,
             party: imported.party,

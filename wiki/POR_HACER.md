@@ -9,7 +9,7 @@ author: DanielJHesseling / Claude Opus 5
 # 📋 Por Hacer
 
 > [!NOTE]
-> **Esto es el marcador, no el plan.** Lo que se hace *después* está en **[[ROADMAP_MAESTRO]]**, partido en niveles. Aquí van las tareas sueltas: **A** hecho, **D** decidido, **P** propuesto.
+> **Esto es el marcador, no el plan.** Lo que se hace *después* está en **[[ROADMAP_MAESTRO]]**, partido en niveles. Lo siguiente, y lo urgente —los mundos precreados están vacíos—, en **[[ROADMAP_MUNDOS_VIVOS]]**. Aquí van las tareas sueltas: **A** hecho, **D** decidido, **P** propuesto.
 
 Lo que falta, dividido por **quién tiene que actuar**:
 

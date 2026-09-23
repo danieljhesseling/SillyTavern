@@ -1,5 +1,6 @@
 import { describe, test, expect } from '@jest/globals';
 import { createCampaign, buildNewCampaignCta } from '../public/scripts/game-engine/ui/campaign-wizard.js';
+import { buildExamplePack } from '../public/scripts/game-engine/campaign/campaign-pack-schema.js';
 
 /**
  * Fake world-info backend that records what happens to it, in order.
@@ -42,6 +43,20 @@ const answers = (overrides = {}) => ({
 });
 
 describe('createCampaign', () => {
+    test('desde un paquete, se quedan la semilla y las reglas del tablón que decidió el taller', async () => {
+        const backend = fakeBackend();
+        await createCampaign({
+            answers: answers({
+                templateId: 'imported', importedPack: buildExamplePack(), worldName: 'El Molino',
+                seed: 'sal-niebla-tres', board: { factionShare: 5, theme: 'general' },
+            }),
+            ...backend.deps,
+        });
+        expect(backend.saved.metadata.seed).toBe('sal-niebla-tres');
+        expect(backend.saved.metadata.boardRules).toEqual({ factionShare: 5, theme: 'general' });
+        expect(backend.saved.metadata.locationMaps.length).toBeGreaterThan(0);
+    });
+
     test('creates the world, then fills it, then saves it, in that order', async () => {
         const backend = fakeBackend();
         await createCampaign({ answers: answers(), ...backend.deps });

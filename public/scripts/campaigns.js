@@ -9,7 +9,7 @@ import {
 } from '../script.js';
 import { Popup, POPUP_TYPE, POPUP_RESULT } from './popup.js';
 import { buildNewCampaignCta, createCampaign } from './game-engine/ui/campaign-wizard.js';
-import { openCampaignBuilder, loadDndCatalog, setPartyFromWorldEntries } from './party.js';
+import { openCampaignBuilder, loadDndCatalog, setPartyFromWorldEntries, beginCampaignPlot } from './party.js';
 import { isCampaignWorld, getStartingPoint } from './game-engine/campaign/campaign-worlds.js';
 import { buildHeroEntry, describeHero } from './game-engine/campaign/hero.js';
 import { planCampaignDeletion, describeDeletion } from './game-engine/campaign/campaign-delete.js';
@@ -985,6 +985,9 @@ async function startCampaignWizard() {
         // Y ahora sí, quién eres. Después de abrir la partida: el personaje entra en un
         // mundo que ya existe, que es el orden en que se piensa.
         await createStartingHero(created.worldName);
+
+        // La mecha: la primera escena de la partida es un problema, no una descripcion.
+        await beginCampaignPlot();
 
         // "Crear y escribir el mundo": la partida ya esta abierta detras, asi que cerrar
         // el editor deja a quien lo abrio jugando, no en una pantalla muerta.

@@ -63,8 +63,8 @@ body.game-shell-on {
 .gs-chips {
     position: relative;
     /* Por encima del chat: la lista de tiradas se abre hacia arriba, sobre el, y sin
-     * esto el chat se quedaba con el clic. */
-    z-index: 20;
+     * esto el chat (#chat lleva z-index 30 en style.css) se quedaba con el clic. */
+    z-index: 40;
 }
 
 /* La lista de tiradas sale encima de la fila, centrada. */
@@ -995,4 +995,34 @@ body.game-shell-on.game-shell-paused #top-settings-holder {
     opacity: 0.55;
     text-align: center;
     line-height: 1.4;
+}
+
+/* ---- Lo que tienes entre manos (fase H) ----
+ * El hito abierto del hilo, arriba y siempre a la vista. Corto: si no cabe, se recorta
+ * la pista, nunca el titulo. */
+.gs-focus {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    flex: 1 1 auto;
+    padding: 0 10px;
+    font-size: 0.9em;
+    overflow: hidden;
+}
+
+.gs-focus-empty {
+    display: none;
+}
+
+.gs-focus-title {
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.gs-focus-hint {
+    opacity: 0.7;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }

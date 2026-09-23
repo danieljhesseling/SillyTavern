@@ -213,6 +213,10 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
           "factionName": {
             "type": "string",
             "description": "La facción que la controla, si alguna."
+          },
+          "hidden": {
+            "type": "boolean",
+            "description": "Si empieza escondida: no se puede ir hasta que un hito del hilo la revela."
           }
         }
       }
@@ -896,6 +900,10 @@ que ya está en el bloque de instrucciones; se ofrecen sueltos porque un libro n
       "factionName": {
         "type": "string",
         "description": "La facción que la controla, si alguna."
+      },
+      "hidden": {
+        "type": "boolean",
+        "description": "Si empieza escondida: no se puede ir hasta que un hito del hilo la revela."
       }
     }
   }

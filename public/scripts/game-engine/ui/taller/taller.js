@@ -21,6 +21,7 @@ import {
     addFaction, editFaction, removeFaction, factionsOf,
     addPerson, editPerson, removePerson, peopleOf,
     addQuest, editQuest, removeQuest, questsOf, boardRulesOf, setBoardRules,
+    PACK_STEPS, packContents,
 } from '../../campaign/taller.js';
 import { drawStep } from './paso.js';
 import { getTemplateOptions } from '../../campaign/starter-templates.js';
@@ -435,7 +436,8 @@ export async function askTaller({
         fill.append($('<div class="tl-bar-fill"></div>').css('width', `${Math.round((at / of) * 100)}%`));
         bar.append(fill);
 
-        if (step.id === 'mundo') drawWorld();
+        if (state.path === 'mundo' && state.source?.pack && PACK_STEPS.includes(step.id)) drawCarried(step);
+        else if (step.id === 'mundo') drawWorld();
         else if (step.id === 'narrador') drawNarrator();
         else if (step.id === 'localidades') drawPlaces();
         else if (step.id === 'tableros') drawBoards();
@@ -554,6 +556,66 @@ export async function askTaller({
      * @param {any} world
      * @returns {void}
      */
+    /**
+     * Cargar el paquete de un mundo precreado, si lo trae, y comprobarlo.
+     *
+     * Un paquete roto no se lleva: el mundo se crea como siempre, desde su plantilla, y se
+     * dice por que. Elegir otro mundo sin paquete suelta el anterior.
+     *
+     * @param {any} world
+     * @returns {Promise<void>}
+     */
+    async function carryPack(world) {
+        const url = text(world?.pack);
+        if (!url) {
+            if (state.source?.pack) state = { ...state, source: null };
+            return;
+        }
+
+        said.text('Cargando el mundo…').removeClass('bad');
+        const pack = await read(url);
+        const { validatePack } = await import('../../campaign/campaign-pack.js');
+        const found = pack ? validatePack(pack) : null;
+        // Mientras cargaba, se ha podido elegir otro: entonces este ya no toca.
+        if (!isPicked(state, 'mundo', text(world.id))) return;
+
+        if (!found?.ok) {
+            state = { ...state, source: null };
+            const why = found?.errors?.[0]?.message ?? 'no se pudo leer';
+            said.text(`El mundo escrito no se ha podido cargar (${why}): se crea desde su plantilla.`).addClass('bad');
+            console.error('[taller] paquete del mundo', url, found?.errors ?? 'sin leer');
+            draw();
+            return;
+        }
+
+        state = { ...state, source: { pack, templateId: 'imported', metadata: pack.metadata ?? {} } };
+        said.text('').removeClass('bad');
+        draw();
+    }
+
+    /**
+     * Un paso cuyo contenido trae el mundo escrito: se ensena lo que trae, no un formulario.
+     *
+     * @param {any} step
+     */
+    function drawCarried(step) {
+        const names = packContents(state.source?.pack, step.id);
+        drawStep(body, {
+            title: step.title,
+            hint: names.length > 0
+                ? 'Este mundo los trae escritos. Se cambian después en /campana.'
+                : 'Este mundo no trae ninguno escrito: saldrán jugando.',
+            cardsTitle: `Lo que trae (${names.length})`,
+            cardsOpen: true,
+            cards: names.map((name, index) => ({
+                id: `carried_${index}`, title: name, note: '', icon: 'fa-feather', picked: true,
+            })),
+            fields: [],
+            onPick: () => {},
+            onWrite: () => {},
+        });
+    }
+
     function applyWorld(world) {
         const picks = world?.picks ?? {};
 
@@ -689,6 +751,9 @@ export async function askTaller({
                 // Elegir tambien pone nombre al mundo, asi que el sitio de partida lo sigue.
                 followWorldName();
                 draw();
+                // Y si el mundo esta escrito entero, su paquete. Se carga despues de dibujar:
+                // elegir no puede esperar a la red.
+                void carryPack(world);
             },
             onWrite: (key, value) => {
                 state = writeField(state, key, value);

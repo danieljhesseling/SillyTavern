@@ -234,6 +234,9 @@ export function buildImportPlan(raw, options = {}) {
     /** @type {Map<string, any>} */
     const locations = new Map();
     let placements = 0;
+    const hiddenNames = new Set(pack.locations
+        .filter((/** @type {any} */ place) => place?.hidden === true)
+        .map((/** @type {any} */ place) => text(place.name)));
 
     // Primero las que el paquete declara, y en su orden. Antes las localidades se
     // deducian **solo** de los tableros, asi que un sitio sin tablero no llegaba a
@@ -352,7 +355,11 @@ export function buildImportPlan(raw, options = {}) {
             genre: text(pack.world.genre),
             description: text(pack.world.synopsis),
             worldMapUrl: '',
-            locationMaps: [...locations.values()],
+            // Las escondidas no estan en el mapa hasta que un hito del hilo las revela: asi
+            // nada que liste sitios tiene que saber que existen.
+            locationMaps: [...locations.values()].filter(place => !hiddenNames.has(place.name)),
+            hiddenLocations: [...locations.values()].filter(place => hiddenNames.has(place.name)),
+            plot: pack.plot ?? null,
             boards: [],
             packVersion: pack.version,
             // El catalogo del mundo: los objetos que existen antes de que nadie los lleve

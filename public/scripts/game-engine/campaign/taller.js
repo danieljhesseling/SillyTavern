@@ -802,6 +802,51 @@ export function progressOf(state) {
 }
 
 /**
+ * Los pasos cuyo contenido trae escrito el paquete de un mundo.
+ *
+ * Con un paquete, las localidades, los tableros, las facciones, la gente y las misiones
+ * ya estan escritos: elegirlos aqui seria ofrecer cambiar algo que luego no se usa. Lo
+ * demas —quien narra, razas, clases, cuanto duele— sigue siendo del taller.
+ */
+export const PACK_STEPS = ['localidades', 'tableros', 'facciones', 'personajes', 'misiones'];
+
+/**
+ * Si el contenido de este taller lo trae un paquete escrito.
+ *
+ * Dos caminos lo traen: **un libro** pegado del Gem, y **un mundo precreado** que apunta a
+ * su paquete (`pack` en `mundos.json`). Por dentro son lo mismo: el importador pone los
+ * sitios, la gente y los tableros. Lo que cambia es que el mundo precreado conserva lo
+ * suyo —semilla, narrador, dureza y tablon—, porque eso es lo que lo hace *ese* mundo.
+ *
+ * @param {any} state
+ * @returns {boolean}
+ */
+export function carriesPack(state) {
+    return state?.path === 'libro' || Boolean(state?.source?.pack);
+}
+
+/**
+ * Lo que trae el paquete para un paso, en nombres, para ensenarlo en vez del formulario.
+ *
+ * @param {any} pack
+ * @param {string} stepId
+ * @returns {string[]}
+ */
+export function packContents(pack, stepId) {
+    const names = (/** @type {any} */ list) => (Array.isArray(list) ? list : [])
+        .map((/** @type {any} */ row) => text(row?.name ?? row?.title ?? row?.key))
+        .filter(Boolean);
+    switch (stepId) {
+        case 'localidades': return names(pack?.locations);
+        case 'tableros': return names(pack?.boards);
+        case 'facciones': return names(pack?.world?.factions);
+        case 'personajes': return names(pack?.confidants);
+        case 'misiones': return names(pack?.quests);
+        default: return [];
+    }
+}
+
+/**
  * Lo que el creador de campanas de hoy sabe comerse.
  *
  * Este es el puente entero. Mientras el taller crece paso a paso, lo de abajo —crear el
@@ -813,6 +858,9 @@ export function progressOf(state) {
 export function toAnswers(state) {
     const fields = state?.fields ?? {};
     const elegido = pickedIn(state, 'mundo')[0] ?? '';
+    // Lo que trae un paquete —un libro, o un mundo precreado escrito entero— no se elige
+    // aqui: lo pone su importador, y lo del taller solo podria pisarlo.
+    const fromPack = carriesPack(state);
 
     return {
         // De donde sale el primer tablero. En los otros dos caminos lo dice la fuente.
@@ -824,13 +872,13 @@ export function toAnswers(state) {
         // Vacio a proposito: el personaje se hace al entrar, con su propia pantalla.
         party: [],
         generatedTemplate: state?.source?.generatedTemplate ?? null,
-        importedPack: state?.path === 'libro' ? (state?.source?.pack ?? state?.source ?? null) : null,
+        importedPack: fromPack ? (state?.source?.pack ?? state?.source ?? null) : null,
         writeWorld: Boolean(state?.writeWorld),
         survival: state?.survival ?? null,
         narrator: state?.narrator ?? null,
         // Quien vive aqui y las misiones que dan el tono, con los mandos del tablon.
-        people: state?.path === 'libro' ? [] : pickedPeople(state),
-        quests: state?.path === 'libro' ? [] : pickedQuests(state),
+        people: fromPack ? [] : pickedPeople(state),
+        quests: fromPack ? [] : pickedQuests(state),
         board: boardRulesOf(state),
         // Lo que entra en el mundo de cada bateria. Sin esto, marcar y desmarcar seria
         // decoracion: los generadores seguirian tirando de todo lo escrito.
@@ -842,11 +890,11 @@ export function toAnswers(state) {
             bestiario: pickedIn(state, 'bestiario'),
         },
         // Igual que los sitios: si has tocado el paso 9, mandan las tuyas.
-        factions: state?.path === 'libro' ? [] : pickedFactions(state),
+        factions: fromPack ? [] : pickedFactions(state),
         // Si has tocado el paso 3, lo que hayas puesto manda y el mundo no se puebla solo.
         // Salvo con un libro: sus localidades las pone su importador, y las de aqui solo
         // podrian pisarlas.
-        locations: state?.path === 'libro' ? [] : pickedLocations(state).map(place => ({
+        locations: fromPack ? [] : pickedLocations(state).map(place => ({
             name: text(place.name),
             type: text(place.type),
             biome: text(place.biome),

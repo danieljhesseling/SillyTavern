@@ -38,7 +38,7 @@ import { createCompendium, onlyPicked } from './game-engine/compendio/compendio.
 import {
     readFactions, tickFactions, outcomeOf, applyOutcome, newsFor, describeFaction,
     rollFactions, validateFactionRows, busyFactions, pushFaction, speaksPlural, namesOf,
-    changeStanding, describeStanding, standingWith,
+    changeStanding, describeStanding, standingWith, saysWith,
 } from './game-engine/campaign/factions.js';
 import { marketPressure, applyMarket, describeMarket } from './game-engine/campaign/economy.js';
 import {
@@ -90,6 +90,9 @@ import { readRemedies, remediesFor, applyRemedy, shouldOfferRetirement } from '.
 import { readDebt, offerPatronage, settlesDebt, debtDue, describeDebt } from './game-engine/campaign/patronage.js';
 import { SKILLS, checkOptions, rollCheck } from './game-engine/rules/checks.js';
 import { recordDeed, worldMemoryBlock, roadTrouble } from './game-engine/campaign/world-memory.js';
+import {
+    readPlot, startPlot, plotEvent, focusOf, describeFocus, plotFromFaction,
+} from './game-engine/campaign/plot.js';
 import { promptKey } from './game-engine/cost/prompt-order.js';
 import {
     generateBoardOfContracts, contractsFromFactions, expireContracts, describeContract,
@@ -2751,12 +2754,13 @@ function deliverTakenContract() {
     delete chat_metadata[TAKEN_KEY];
 
     noteDeed(`Entregasteis el encargo «${taken.title}»${taken.patron ? ` (lo pedía ${taken.patron})` : ''}.`);
+    notePlot({ kind: 'contract', id: String(taken.id), faction: String(taken.faction || ''), against: Boolean(taken.against) });
 
     // Si era el favor que se debia, la cuenta queda saldada.
     const debt = getDebt();
     if (settlesDebt(debt, taken)) {
         delete chat_metadata[DEBT_KEY];
-        const paid = `Favor cumplido: ${debt?.patronName} da la deuda por saldada.`;
+        const paid = `Favor cumplido: ${debt?.patronName} ${saysWith(debt?.patronName, 'da', 'dan')} la deuda por saldada.`;
         void postForModel(`🤝 [CAMPAÑA] ${paid}`);
         toastr.success(paid, 'Deuda saldada', { timeOut: 12000 });
     }
@@ -3099,6 +3103,7 @@ function refreshContractBoard() {
  * @param {any} calendar
  */
 function onTimePassed(days, calendar) {
+    notePlot({ kind: 'day', day: Math.floor(Number(calendar?.day) || 0) });
     if (!chat_metadata) return;
 
     // 1. Curar. Lo permanente se queda; lo demas cuenta los dias.
@@ -3269,6 +3274,144 @@ function noteDeed(text) {
     saveMetadata();
 }
 
+/** El hilo de la campana, y por donde va. */
+const PLOT_KEY = 'plot';
+const PLOT_STATE_KEY = 'plotState';
+
+/** @returns {import('./game-engine/campaign/plot.js').Plot|null} */
+function getPlot() {
+    return readPlot(chat_metadata?.[PLOT_KEY]);
+}
+
+/**
+ * Poner el hilo en marcha, si esta campana todavia no lo tiene.
+ *
+ * El del mundo si lo trae escrito; si no, el de su faccion mas peligrosa. Con `announce`
+ * se cuenta la mecha, que es como empieza una campana nueva. Sin el, se pone en silencio:
+ * una campana que ya iba por la mitad no puede empezar de repente por la primera escena.
+ *
+ * @param {{announce?: boolean}} [options]
+ * @returns {Promise<void>}
+ */
+async function ensurePlot({ announce = false } = {}) {
+    if (!chat_metadata || chat_metadata[PLOT_STATE_KEY]) return;
+    const worldName = String(chat_metadata?.[METADATA_KEY] || '');
+    if (!worldName) return;
+
+    let written = null;
+    try {
+        const data = await loadWorldInfo(worldName);
+        written = readPlot(data?.metadata?.plot);
+    } catch (error) {
+        console.warn('[party] no se pudo leer el hilo del mundo', error);
+    }
+    // Mientras se leia, otra llamada ha podido ponerlo.
+    if (chat_metadata[PLOT_STATE_KEY]) return;
+
+    const plot = written ?? plotFromFaction({ factions: getCurrentWorldFactions() });
+    if (!plot) return;
+
+    chat_metadata[PLOT_KEY] = plot;
+    const step = startPlot(plot);
+    chat_metadata[PLOT_STATE_KEY] = step.state;
+    saveMetadata();
+    if (announce) await applyPlotStep(step);
+    else if (isShellOpen()) refreshGameShell();
+
+    // Donde ya se esta tambien cuenta: si la partida empieza en la sede de quien hay que
+    // ir a ver, no hace falta salir y volver.
+    if (currentLocationName) notePlot({ kind: 'arrive', place: currentLocationName });
+}
+
+/**
+ * Lo que un suceso del juego le hace al hilo.
+ *
+ * @param {any} event
+ */
+function notePlot(event) {
+    const plot = getPlot();
+    if (!plot || !chat_metadata) return;
+    const step = plotEvent(plot, chat_metadata[PLOT_STATE_KEY], event);
+    if (step.opened.length === 0 && step.done.length === 0) return;
+    chat_metadata[PLOT_STATE_KEY] = step.state;
+    saveMetadata();
+    void applyPlotStep(step);
+}
+
+/**
+ * Aplicar un paso del hilo: revelar sitios, mover reputaciones y contarlo.
+ *
+ * Lo que se cuenta va al narrador por el canal que lee, con la escena escrita y la orden
+ * de no inventar: la trama es del mundo, no del modelo.
+ *
+ * @param {import('./game-engine/campaign/plot.js').PlotStep} step
+ * @returns {Promise<void>}
+ */
+async function applyPlotStep(step) {
+    if (step.changes.reveal.length > 0) await revealLocations(step.changes.reveal);
+    for (const [faction, amount] of Object.entries(step.changes.standing)) {
+        void shiftFactionStanding(faction, amount);
+    }
+
+    /** @type {string[]} */
+    const lines = [];
+    for (const milestone of step.done) {
+        noteDeed(`Cumplido: ${milestone.title}.`);
+        // Los que se cumplen solos son escenas: se cuentan al abrirse, no dos veces.
+        if (milestone.asks.kind !== 'none') lines.push(`Hecho: ${milestone.title}.`);
+    }
+    for (const milestone of step.opened) {
+        if (milestone.scene) lines.push(milestone.scene);
+    }
+    if (step.changes.reveal.length > 0) lines.push(`Ahora se sabe cómo llegar a: ${step.changes.reveal.join(', ')}.`);
+
+    const focus = focusOf(getPlot(), chat_metadata?.[PLOT_STATE_KEY]);
+    if (focus) toastr.info(describeFocus(focus), 'Lo que tienes entre manos', { timeOut: 10000 });
+    if (isShellOpen()) refreshGameShell();
+
+    if (lines.length === 0) return;
+    lines.push('Cuéntalo en uno o dos párrafos, en el tono de la campaña. No inventes nada que no esté aquí.');
+    await postForModel(`[HILO] ${lines.join('\n')}`)
+        .catch(error => console.error('[party] plot note failed', error));
+}
+
+/**
+ * Pasar al mapa los sitios que el hilo acaba de revelar.
+ *
+ * Las escondidas viven en `hiddenLocations`, fuera de la lista que usa todo lo demas: asi
+ * nada tiene que saber que existen hasta que existen.
+ *
+ * @param {string[]} names
+ * @returns {Promise<void>}
+ */
+async function revealLocations(names) {
+    const worldName = String(chat_metadata?.[METADATA_KEY] || '');
+    if (!worldName) return;
+    try {
+        const data = await loadWorldInfo(worldName);
+        if (!data?.metadata) return;
+        const wanted = new Set(names.map(n => String(n).toLowerCase()));
+        const hidden = Array.isArray(data.metadata.hiddenLocations) ? data.metadata.hiddenLocations : [];
+        const found = hidden.filter((/** @type {any} */ l) => wanted.has(String(l?.name).toLowerCase()));
+        if (found.length === 0) return;
+        data.metadata.hiddenLocations = hidden.filter((/** @type {any} */ l) => !found.includes(l));
+        data.metadata.locationMaps = [...(data.metadata.locationMaps ?? []), ...found];
+        await saveWorldInfo(worldName, data, true);
+        await refreshWorldMapGlobals(worldName);
+    } catch (error) {
+        console.error('[party] no se pudo revelar el sitio', error);
+    }
+}
+
+/**
+ * Empezar el hilo de una campana recien creada, contando la mecha.
+ *
+ * @returns {Promise<void>}
+ */
+export async function beginCampaignPlot() {
+    await ensurePlot({ announce: true });
+}
+
 /**
  * El bloque de lo que el mundo sabe del grupo, puesto al dia antes de cada turno.
  *
@@ -3280,6 +3423,7 @@ function refreshWorldMemoryPrompt() {
         deeds: chat_metadata[DEEDS_KEY],
         factions: getCurrentWorldFactions(),
         debt: getDebt(),
+        focus: describeFocus(focusOf(getPlot(), chat_metadata[PLOT_STATE_KEY])),
         today: Math.max(1, Math.floor(Number(getCampaignCalendar()?.day) || 1)),
     }) : '';
     setExtensionPrompt(key, block, extension_prompt_types.IN_PROMPT, 0, false, extension_prompt_roles.SYSTEM);
@@ -3313,7 +3457,7 @@ function takePatronage(shortfall) {
     saveMetadata();
     savePartyState();
 
-    noteDeed(`${offer.debt.patronName} pagó vuestra cuenta de la semana.`);
+    noteDeed(`${offer.debt.patronName} ${saysWith(offer.debt.patronName, 'pagó', 'pagaron')} vuestra cuenta de la semana.`);
     void postForModel(`🤝 [CAMPAÑA] ${offer.line}`);
     toastr.info(offer.line, 'Alguien paga por vosotros', { timeOut: 15000 });
     return true;
@@ -3467,6 +3611,7 @@ async function passFactionDays(days) {
         /** @type {string[]} */
         const changed = [];
         for (const event of events.filter(e => e.kind === 'cumple')) {
+            notePlot({ kind: 'clock', faction: String(event.faction) });
             const who = people.find(f => f.id === event.faction);
             if (!who) continue;
             const applied = applyOutcome({ locations, factions: people, outcome: outcomeOf(who) });
@@ -4089,6 +4234,12 @@ function endCombat(reason = 'ended') {
     // careful work for nothing.
     if (reason === 'victory') {
         awardEncounterLoot(combatEncounter.enemies.filter(e => (e.currentHp || 0) <= 0));
+
+        // El hilo: ganar aqui, y a quien se ha derrotado.
+        for (const fallen of combatEncounter.enemies.filter(e => (e.currentHp || 0) <= 0)) {
+            notePlot({ kind: 'defeat', enemy: String(fallen.name) });
+        }
+        notePlot({ kind: 'win', place: currentLocationName, board: currentBoardName });
 
         // Surviving a fight together is a recorded fact, which is the whole point of the
         // bond design: the engine decides it happened, the model writes about it later.
@@ -6647,6 +6798,7 @@ function runSkillCheck(skill) {
     });
 
     chat_metadata[PENDING_CHECK_KEY] = { line: result.line, draft: result.draft };
+    notePlot({ kind: 'check', skill, success: result.success });
     saveMetadata();
     draftInChat(result.draft);
     if (isShellOpen()) refreshGameShell();
@@ -6875,6 +7027,7 @@ async function travelWithTime(name, options = {}) {
     currentBoardName = '';
     saveCurrentLocation();
     saveCurrentBoard();
+    notePlot({ kind: 'arrive', place: match.name });
 
     // El reloj de uno en uno: cada dia cura, pasa hambre y acerca la cuenta semanal. Un
     // salto de cinco dias de golpe se saltaria cuatro de esos.
@@ -7238,6 +7391,7 @@ function buildShellOptions() {
             ? []
             : checkOptions(partyMembers[0], { locked: Boolean(chat_metadata?.[PENDING_CHECK_KEY]) })),
         onCheck: (skill) => { runSkillCheck(skill); },
+        getFocus: () => focusOf(getPlot(), chat_metadata?.[PLOT_STATE_KEY]),
         onCompanion: (memberId) => openCompanionCard(memberId),
         onClock: (action) => {
             if (action === 'slot') advanceCampaignSlot();
@@ -10462,6 +10616,17 @@ export function initPartyPanel() {
         } catch (error) {
             console.error('[party] world memory prompt failed', error);
         }
+    });
+
+    // El hilo: a quien nombras al hablar, estando donde estas.
+    eventSource.on(event_types.MESSAGE_SENT, (/** @type {number} */ messageId) => {
+        const said = String(chat?.[messageId]?.mes || '');
+        if (said) notePlot({ kind: 'say', text: said, place: currentLocationName });
+    });
+
+    // Una campana de antes del hilo lo recibe en silencio la primera vez que se juega.
+    eventSource.on(event_types.CHAT_CHANGED, () => {
+        setTimeout(() => { void ensurePlot({ announce: false }); }, 1500);
     });
 
     // Enviado el mensaje con la tirada, se puede volver a intentar algo.

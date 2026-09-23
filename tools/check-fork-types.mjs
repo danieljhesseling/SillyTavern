@@ -66,6 +66,7 @@ const FORK_FILES = [
     'public/scripts/game-engine/rules/checks.js',
     'public/scripts/game-engine/campaign/patronage.js',
     'public/scripts/game-engine/campaign/world-memory.js',
+    'public/scripts/game-engine/campaign/plot.js',
     'public/scripts/game-engine/rules/mortality.js',
     'public/scripts/game-engine/rules/upkeep.js',
     'public/scripts/game-engine/rules/needs.js',
