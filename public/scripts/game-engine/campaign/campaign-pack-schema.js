@@ -261,6 +261,11 @@ function buildSectionSchemas() {
                     description: 'Comportamiento táctico. Solo estos cuatro.',
                 },
                 attackRangeFeet: { type: 'integer', description: '5 en cuerpo a cuerpo, 30 a 120 a distancia.' },
+                abilities: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    description: 'Ids del catálogo de habilidades (rules.abilities) que sabe usar. El motor decide cuándo: cura a los suyos, gasta lo que tiene usos contados en cuanto llega, y usa lo de siempre si pega más que su golpe.',
+                },
                 description: { type: 'string' },
             },
         },

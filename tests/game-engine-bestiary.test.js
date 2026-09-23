@@ -122,10 +122,20 @@ describe('criar un bicho', () => {
     test('sale con los campos que la ficha de enemigo pide', () => {
         const monster = breedMonster({ compendium: real(), cr: 1, random: rolling(7) });
         expect(Object.keys(monster).sort()).toEqual([
-            'armorClass', 'attackRangeFeet', 'cr', 'description', 'from',
+            'abilities', 'armorClass', 'attackRangeFeet', 'cr', 'description', 'from',
             'hp', 'name', 'profile', 'speed',
         ]);
         expect(PROFILES).toContain(monster.profile);
+    });
+
+    test('lo que sabe hacer es lo suyo más lo de sus plantillas', () => {
+        const compendium = {
+            has: () => true,
+            pick: () => ({ id: 'a', name: 'Cultista', kind: 'arquetipo', abilities: ['rayo_de_fuego'] }),
+            take: () => [{ id: 'p', name: 'sagrado', kind: 'plantilla', abilities: 'curar_heridas, rayo_de_fuego' }],
+        };
+        const monster = breedMonster({ compendium, cr: 1, templates: 1, random: rolling(1) });
+        expect(monster.abilities).toEqual(['rayo_de_fuego', 'curar_heridas']);
     });
 
     test('el desafío manda sobre la vida', () => {

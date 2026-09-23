@@ -2,7 +2,7 @@
 title: Por Hacer — Estado Real y Pendientes
 tags: [todo, pendientes, estado, roadmap, deuda]
 created: 2026-09-20
-updated: 2026-09-22
+updated: 2026-09-23
 author: DanielJHesseling / Claude Opus 5
 ---
 
@@ -335,7 +335,10 @@ No cuesta tokens — la resolvería el motor, como el resto del combate — pero
 
 > **Lo que no entra, y se dice**: no hay ranuras de nivel 1 a 9, ni conjuros preparados, ni concentración, ni áreas de efecto — una línea de 30 pies es geometría nueva en el tablero, y eso es otra batería. **Los enemigos todavía no las usan**: el catálogo es compartido y su IA no sabe lanzarlas. Si algún día hacen falta las ranuras de verdad, se añaden encima de esto; al revés no.
 
-### D6 · ¿Que el DM pida tiradas? ❌ **Decidido: no, el 2026-09-22**
+### D6 · ¿Que el DM pida tiradas? ❌ **Decidido: no, el 2026-09-22** · 🔄 **Hecho al revés, el 2026-09-23**
+
+> [!TIP]
+> **Lo que cambió.** El «no» era por dos motivos: tokens en cada turno y un modelo que tiene que obedecer un protocolo. La variante hecha el 2026-09-23 no tiene ninguno de los dos: **quien pide la tirada eres tú**, con el botón **Tirada** de la fila de fichas (o `/tirada persuasion`). El motor tira con la ficha del tuyo y deja el resultado escrito **al principio de tu mensaje**: `[TIRADA Persuasión de Lyra: d20 11 +7 = 18 contra CD 12 → Éxito. El dado ya está tirado…]`. El modelo lee un resultado ya decidido, unos quince tokens y solo en ese turno. Una tirada por mensaje: hasta que lo envías, volver a pulsar da la misma. `rules/checks.js`. Lo de abajo sigue siendo cierto para la versión en la que el narrador **pide** la tirada.
 
 La Pieza 1 de [[PLAN_JUEGO_TIPO_FRIENDS_AND_FABLES]]: que el narrador escriba `[CHECK: Percepción | CD 13 | Actor: Lyra]`, el motor tire el d20 con su modificador y el resultado decida lo que pasa. Es lo que hace que un DM de IA se sienta un DM y no un narrador.
 
@@ -402,7 +405,7 @@ De [[DISENO_GENERADOR_MUNDOS_PROFUNDO]]. Ordenadas por lo que dan a cambio de lo
 
 | ID | Propuesta | Por qué |
 | :--- | :--- | :--- |
-| **P17** 💡 | **Que la reputación de facción haga algo** | El importador **ya guarda** la reputación de cada facción, y **nada la lee**: es un número decorativo. La escala del documento (−100 a +100, con hostilidad, recargo, descuento y acceso) coincide con el rango que ya usa el paquete de reglas. Es la pieza con más juego por menos código de toda la lista |
+| **P17** 💡 | **Que la reputación de facción haga algo** · ✅ **en gran parte, a 2026-09-23** | *Ya no es cierto lo de «nada la lee»*: toca el precio del mercado (`economy.js`), abre pasos cerrados a quien os mira bien, y desde el 2026-09-23 **llega al narrador** (bloque de memoria del mundo) y **cobra peaje en el camino** a quien os tiene ganas. Lo que queda de la propuesta original: la escala de −100 a +100 del documento (el motor usa −5 a +5) y el acceso a tiendas. Texto original: El importador **ya guarda** la reputación de cada facción, y **nada la lee**: es un número decorativo. La escala del documento (−100 a +100, con hostilidad, recargo, descuento y acceso) coincide con el rango que ya usa el paquete de reglas. Es la pieza con más juego por menos código de toda la lista |
 | **P18** 💡 | **Rutas de viaje con tiempo y peligro** | Hoy `/go` te teletransporta gratis. Un grafo de rutas con `distanceDays`, `dangerLevel` y peaje conecta el mapa con **el calendario que ya existe**: viajar gastaría bloques del día, y el día ya significa algo desde los descansos |
 | **P19** | **Horarios de PNJ por franja del día** | Que el herrero esté en la fragua por la mañana y en la taberna por la noche. Con el calendario y las localidades puestas, es casi solo datos |
 | **P20** | **Interactuables en el tablero** | Cofres con CD de forzado, palancas que abren puertas, barricadas con PG. El tablero ya sabe de puertas y salas: esto es la misma idea con otro nombre |
@@ -430,6 +433,10 @@ No es trabajo pendiente, es información: cosas que están así **a propósito**
 | **El guardián de tiradas solo mira afirmaciones estructuradas** | `1d20+5 = 23` sí; «saca un 18» no. Reescribir prosa exige entender la frase, y equivocarse es peor que no tocarla. El prompt debe pedir la forma estructurada |
 | **La cobertura cuenta por casilla, no por línea de tiro** | Simplificación declarada de D&D 5e. Arreglarla es A5 |
 | **`dynamic-context-manager.js`, `campaigns.js` y `world-content-browser.js` sin tests** | 1.232 tests cubren el motor nuevo; estos tres (unas 3.000 líneas) siguen a cero. `MAINT-03` |
+| **Los remedios viven en el código** (`rules/remedies.js`) | El paquete de reglas no tiene sección para ellos, así que no se editan desde `/rules`. `readRemedies` ya acepta una tabla propia; falta la sección, su editor y que viaje al exportar |
+| **Las tiradas de habilidad usan CD 12 fija y una competencia por clase aproximada** | El motor no guarda qué competencias eligió cada personaje, así que sale de una lista corta por clase (`rules/checks.js`). La CD no la decide nadie en la escena: si la eligiera quien juega, elegiría la fácil; si la eligiera el modelo, volveríamos a D6 |
+| **El bloque de memoria del mundo cuesta tokens en cada turno** | Unas pocas líneas (tres hechos, las facciones que no os son indiferentes, la deuda) y solo si hay algo. Va en el nivel `quest`, detrás de todo lo que cambia menos, así que no rompe la caché del prefijo |
+| **Los enemigos solo usan habilidades si sus datos las declaran** | `abilities: [ids]` en el bicho (bestiario, paquete del Gem, plantillas). De serie las traen el cultista, el ogro, el esqueleto y las plantillas *sagrado* y *jefe* |
 | **La generación con IA no se ha probado con un proveedor real** | El recorrido de navegador usa un generador simulado: ejercita todo menos la llamada. Falta ver si un modelo concreto respeta el esquema del mapa |
 
 ---
@@ -477,6 +484,27 @@ Lo que **no** se puede probar todavía: calendario, vínculos y escenarios (#6, 
 ---
 
 ## ✅ Hecho, para no rehacerlo
+
+### Las siete fallas del análisis de diseño — 2026-09-23
+
+Un análisis de diseño (pegado en la conversación) señalaba siete sitios donde los sistemas se comían entre sí. Las siete, hechas. Cada fila dice por separado **lógica y pruebas**, **conectado al juego** y **con botón**:
+
+| Falla | Qué se hizo | Lógica · pruebas | Conectado | Botón |
+| :--- | :--- | :--- | :--- | :--- |
+| **1. Compañero querido y mutilado** | Cada herida que no cura tiene un **remedio** que la cambia por otra más llevadera (pierna de palo, garfio, lente, bendición). Y quien ya no está para salir puede **quedarse en casa** con un puesto del gremio que abarata algo cada semana | `rules/remedies.js`, `campaign/guild.js` (`STAFF_ROLES`) · 17 | Paga del oro del grupo, reescribe `baseStats` por `setInjury`, y se lo dice al narrador por `postForModel` | En la ficha del compañero |
+| **2. El chat no sirve en combate** | Las cuatro acciones básicas de 5e que faltaban: **esquivar, destrabarse, empujar, ayudar**, con **ventaja y desventaja** de verdad (tumbado, cubriéndose, ayudado) en todos los ataques | `combat/maneuvers.js` · 19 | En los ataques del grupo y de los enemigos, en los de oportunidad y en el cambio de turno; sobrevive a recargar | **Maniobras** en la barra de combate · `/maniobra` |
+| **3. La ficha muerta fuera de combate** | D6 al revés: la tirada la pides tú, la tira el motor, y el modelo lee el resultado dentro de tu mensaje | `rules/checks.js` · 13 | El resultado viaja en tu mensaje; se bloquea hasta que lo envías | **Tirada** en la fila de fichas · `/tirada` |
+| **4. La espiral de la cuenta** | La primera vez que no llega, **una facción paga lo que falta a cambio de un favor** en el tablón. Cumplirlo salda la deuda; dejarlo pasar cuesta el doble y su enfado. Sin facciones, un prestamista con intereses | `campaign/patronage.js` · 14 | En el cobro del viernes y al entregar encargos | Se ve en el tablón, en `/cuenta` y en el aviso |
+| **5. El aliado suicida** | Una IA propia para aliados con **tres posturas** (a tu lado, a la carga, atrás). Nunca sale andando del alcance de un enemigo (se destraba primero) y malherido se retira. Sin elegir, a tu lado | `combat/ally-ai.js` · 15 | Sustituye a `planEnemyTurn` en el turno del compañero que va solo | En la ficha del compañero · `/postura` |
+| **6. Combate plano** | **Los enemigos usan el catálogo de habilidades**: curan a los suyos, gastan lo de usos contados en cuanto llegan, y el que tiene un rayo se queda a su distancia | `combat/enemy-abilities.js` · 12 | En el turno del enemigo, por la misma `planAbilityUse` del grupo | — (lo hace el enemigo) |
+| **7. Un mundo que no reacciona** | Un **registro de hechos** que ve el motor, un **bloque para el narrador** con lo último hecho, la reputación y la deuda, y **peaje en el camino** si pasáis por lo de quien os tiene ganas | `campaign/world-memory.js` · 9 | Bloque `GAME_040_quest_ctx_memory` antes de cada turno; peaje al viajar | — (se nota jugando) |
+
+**Dos fallos de antes que salieron por el camino, y arreglados:**
+
+- **Todos los enemigos peleaban como agresivos de cuerpo a cuerpo.** `extractWorldMonsterTemplates` leía el Lorebook y tiraba `profile` y `attackRangeFeet`, y las dos formas de poner un enemigo en el tablero tampoco los copiaban. El arquero esquelético bajaba a dar puñetazos. Ahora pasan los tres: perfil, alcance y habilidades.
+- **`/cuenta` enseñaba una cifra y el viernes cobraba otra.** Leía los precios de la campaña a pelo, sin el gremio ni el mercado. Ahora usa `currentUpkeepRules()`, igual que el cobro.
+
+**Lo que se comprobó en el navegador**: E2E_PENDIENTE
 
 ### Quién eres: el personaje, hecho al entrar — 2026-09-22
 

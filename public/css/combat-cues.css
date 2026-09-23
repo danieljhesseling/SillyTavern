@@ -184,6 +184,49 @@
     margin-top: 8px;
 }
 
+/* La postura: tres botones, uno encendido. Se elige de un vistazo, también peleando. */
+.cc-stance {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.cc-stance-title {
+    width: 100%;
+    font-size: 0.8em;
+    opacity: 0.7;
+}
+
+.cc-stance-btn {
+    font-size: 0.82em;
+    opacity: 0.6;
+}
+
+.cc-stance-btn.active {
+    opacity: 1;
+    outline: 1px solid var(--SmartThemeQuoteColor, #e0b050);
+}
+
+/* Lo que se puede hacer con una herida que no cura. */
+.cc-remedies {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.cc-remedy-title {
+    font-size: 0.8em;
+    opacity: 0.7;
+}
+
+.cc-remedy-btn {
+    font-size: 0.82em;
+    text-align: left;
+}
+
 .cc-gifts-title {
     width: 100%;
     font-size: 0.8em;

@@ -5000,6 +5000,235 @@ try {
         && !weather44.conSol.includes('suceso-barro'),
         weather44.conSol.join(', '));
 
+    step('46. Lo que faltaba: postura, remedios, tiradas, deuda, memoria y maniobras');
+    // Preparar el caso no se hace con clics —nadie pierde una pierna a proposito—: se
+    // escribe en la partida y se recarga el grupo como al abrir el chat. Todo lo que se
+    // comprueba despues, en cambio, es lo que haria quien juega.
+    await clearToasts();
+    // Recargar el grupo desde la partida, como al abrir el chat.
+    const reloadParty46 = () => page.evaluate(async () => {
+        const ctx = window.SillyTavern.getContext();
+        await ctx.saveMetadata();
+        await ctx.eventSource.emit(ctx.eventTypes.CHAT_CHANGED, ctx.getCurrentChatId?.());
+        return (ctx.chatMetadata.party || []).map((/** @type {any} */ m) => ({ name: m.name, gold: m.gold }));
+    });
+
+    await page.evaluate(async () => {
+        const ctx = window.SillyTavern.getContext();
+        const injuries = await import('/scripts/game-engine/rules/injuries.js');
+        const party = ctx.chatMetadata.party || [];
+        // Esta campana se empezo sola: se le pone una companera de vinculo, copia de la
+        // tuya con otro nombre, como la dejaria el asistente.
+        if (party.length === 1) {
+            party.push({ ...JSON.parse(JSON.stringify(party[0])), id: Date.now(), name: 'Sela', motive: 'bond' });
+        }
+        const friend = party[1];
+        if (friend) {
+            const leg = injuries.INJURY_TABLE.find((/** @type {any} */ i) => i.id === 'lost_leg');
+            const patch = injuries.applyInjury(friend, leg);
+            Object.assign(friend, { injuries: patch.injuries, baseStats: patch.baseStats, ...patch.stats });
+        }
+        for (const m of party) m.gold = 0;
+        if (party[0]) party[0].gold = 200;
+    });
+    const setup46 = await reloadParty46();
+    await page.waitForTimeout(1500);
+    check('hay un companero a quien mirar la ficha', setup46.length >= 2, JSON.stringify(setup46));
+
+    if (await page.locator('#game-shell').count() === 0) {
+        await page.evaluate(() => { void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/modojuego'); });
+        await page.waitForSelector('#game-shell', { timeout: 15000 });
+    }
+    await page.waitForTimeout(900);
+    await page.keyboard.press('1');
+    await page.waitForTimeout(700);
+    await clearToasts();
+
+    // --- La postura y el remedio, en la ficha del companero --------------------------
+    await page.locator('#game-shell .gs-chip').nth(1).click();
+    await page.waitForSelector('.cc-card', { timeout: 8000 });
+    const card46 = await page.evaluate(() => ({
+        stances: [...document.querySelectorAll('.cc-stance-btn')].map(b => ({
+            id: b.getAttribute('data-stance'), on: b.classList.contains('active'),
+        })),
+        remedy: (() => {
+            const b = document.querySelector('.cc-remedy-btn[data-remedy="lost_leg"]');
+            return b ? { text: b.textContent || '', off: /** @type {HTMLButtonElement} */ (b).disabled } : null;
+        })(),
+        retire: document.querySelectorAll('.cc-remedy-btn[data-retire]').length,
+    }));
+    check('la ficha ofrece tres posturas, y sin elegir esta a tu lado',
+        card46.stances.length === 3 && card46.stances.find(s => s.on)?.id === 'cerca',
+        JSON.stringify(card46.stances));
+    check('una pierna perdida ofrece su remedio, con el precio, y quedarse en casa',
+        Boolean(card46.remedy && !card46.remedy.off && /150/.test(card46.remedy.text)) && card46.retire === 3,
+        JSON.stringify(card46));
+
+    await page.locator('.cc-stance-btn[data-stance="atras"]').click();
+    await page.waitForTimeout(500);
+    await page.locator('.cc-remedy-btn[data-remedy="lost_leg"]').click();
+    await page.waitForTimeout(1500);
+    const after46 = await page.evaluate(async () => {
+        const party = await import('/scripts/party.js');
+        const ctx = window.SillyTavern.getContext();
+        const members = party.getPartyMembersSnapshot();
+        const friend = members[1];
+        const told = (ctx.chat || []).filter((/** @type {any} */ m) => !m.is_system
+            && /pierna de palo/i.test(String(m.mes || '')));
+        return {
+            stance: friend?.stance,
+            injuries: (friend?.injuries || []).map((/** @type {any} */ i) => i.id),
+            speed: friend?.speed,
+            gold: members.reduce((/** @type {number} */ s, /** @type {any} */ m) => s + (Number(m.gold) || 0), 0),
+            told: told.length,
+        };
+    });
+    check('pulsar una postura la guarda en su ficha', after46.stance === 'atras', String(after46.stance));
+    check('el remedio cambia la pierna perdida por la de palo, y se nota en la velocidad',
+        after46.injuries.includes('wooden_leg') && !after46.injuries.includes('lost_leg') && after46.speed === 25,
+        JSON.stringify(after46));
+    check('se paga del oro del grupo', after46.gold === 50, `${after46.gold} de oro`);
+    check('y el narrador se entera por el canal que lee', after46.told > 0, `${after46.told} mensaje(s)`);
+    await clearToasts();
+
+    // --- Tirar fuera de combate --------------------------------------------------------
+    const checkChip = page.locator('#game-shell .gs-chip-check').filter({ visible: true }).first();
+    check('la fila de fichas trae el boton de tirada', await checkChip.count() === 1, '');
+    await checkChip.click();
+    await page.waitForTimeout(400);
+    const list46 = await page.evaluate(() => [...document.querySelectorAll('.gs-checks .gs-target')]
+        .map(b => ({ id: b.getAttribute('data-check'), text: b.textContent || '', off: /** @type {HTMLButtonElement} */ (b).disabled })));
+    check('ofrece las ocho, con lo que suma cada una',
+        list46.length === 8 && list46.every(o => /[+-]\d/.test(o.text) && !o.off),
+        list46.map(o => o.text.slice(0, 18)).join(' | '));
+    await page.locator('.gs-checks [data-check="persuasion"]').click();
+    await page.waitForTimeout(900);
+    await clearDiceOverlay();
+    const rolled46 = await page.evaluate(() => ({
+        draft: /** @type {HTMLTextAreaElement} */ (document.querySelector('#send_textarea'))?.value || '',
+        pending: Boolean(window.SillyTavern.getContext().chatMetadata.pendingCheck),
+    }));
+    check('el motor tira y deja el resultado escrito en tu mensaje, para que el modelo lo lea',
+        /^\[TIRADA Persuasión de .+: d20 \d+ [+-]\d+ = \d+ contra CD 12 → (Éxito|Fallo)/.test(rolled46.draft)
+        && rolled46.pending,
+        rolled46.draft.slice(0, 120));
+
+    await page.locator('#game-shell .gs-chip-check').filter({ visible: true }).first().click();
+    await page.waitForTimeout(400);
+    const locked46 = await page.evaluate(() => [...document.querySelectorAll('.gs-checks .gs-target')]
+        .every(b => /** @type {HTMLButtonElement} */ (b).disabled));
+    check('hasta enviarlo, no se puede volver a tirar', locked46, String(locked46));
+    await page.locator('#game-shell .gs-chip-check').filter({ visible: true }).first().click();
+
+    // Enviar de verdad pediria un modelo; el cerrojo escucha el mismo evento que emite el envio.
+    const unlocked46 = await page.evaluate(async () => {
+        const ctx = window.SillyTavern.getContext();
+        await ctx.eventSource.emit(ctx.eventTypes.MESSAGE_SENT, (ctx.chat || []).length - 1);
+        const input = /** @type {HTMLTextAreaElement} */ (document.querySelector('#send_textarea'));
+        if (input) input.value = '';
+        return !ctx.chatMetadata.pendingCheck;
+    });
+    check('al enviar el mensaje (su evento), se puede volver a intentar algo', unlocked46, String(unlocked46));
+
+    // --- La deuda: el viernes sin oro ----------------------------------------------------
+    await page.evaluate(() => {
+        const ctx = window.SillyTavern.getContext();
+        for (const m of ctx.chatMetadata.party || []) m.gold = 0;
+        // Vence hoy: el dia se lee del reloj, que es lo que ve quien juega.
+        const label = document.querySelector('#game-shell .gs-clock-label')?.textContent || '';
+        ctx.chatMetadata.upkeepDueDay = Number((label.match(/Día (\d+)/) || [])[1]) || 1;
+        delete ctx.chatMetadata.debt;
+    });
+    await reloadParty46();
+    await page.waitForTimeout(1200);
+    await clearToasts();
+    await page.locator('#game-shell .gs-clock-btn', { hasText: 'Dormir' }).first().click();
+    await page.waitForTimeout(2500);
+    const debt46 = await page.evaluate(() => {
+        const ctx = window.SillyTavern.getContext();
+        const debt = ctx.chatMetadata.debt || null;
+        const favor = (ctx.chatMetadata.contractBoard || []).find((/** @type {any} */ c) => c?.favor);
+        const told = (ctx.chat || []).filter((/** @type {any} */ m) => !m.is_system
+            && /pone los \d+ de oro que faltan/.test(String(m.mes || '')));
+        return { debt, favor: favor ? { title: favor.title, reward: favor.reward, id: favor.id } : null, told: told.length };
+    });
+    check('sin oro el viernes, alguien del mundo paga lo que falta',
+        Boolean(debt46.debt?.patronName) && Number(debt46.debt?.amount) > 0, JSON.stringify(debt46.debt));
+    check('y lo que pide a cambio es un favor en el tablon, sin paga',
+        !debt46.debt?.contractId || (debt46.favor?.id === debt46.debt.contractId && debt46.favor.reward === 0),
+        JSON.stringify(debt46.favor));
+    check('y se lo cuenta al narrador', debt46.told > 0, `${debt46.told} mensaje(s)`);
+
+    // --- Lo que el mundo sabe: el bloque que va en el prompt ----------------------------
+    const memory46 = await page.evaluate(async () => {
+        const ctx = window.SillyTavern.getContext();
+        await ctx.eventSource.emit(ctx.eventTypes.GENERATION_STARTED, 'normal', {}, true);
+        const block = ctx.extensionPrompts?.GAME_040_quest_ctx_memory;
+        return { value: String(block?.value || ''), role: block?.role };
+    });
+    check('antes de cada turno, el narrador recibe lo que el mundo sabe del grupo',
+        /\[LO QUE EL MUNDO SABE DEL GRUPO\]/.test(memory46.value)
+        && /pagó vuestra cuenta/.test(memory46.value) && /Debéis/.test(memory46.value),
+        memory46.value.replace(/\n/g, ' | ').slice(0, 200));
+
+    // --- Un combate: enemigos con su perfil, y maniobras en la barra ---------------------
+    const foe46 = await page.evaluate(async () => {
+        const wi = await import('/scripts/world-info.js');
+        return String(wi.getCurrentWorldEnemies()[0]?.name || '');
+    });
+    await page.evaluate(async (name) => {
+        const ctx = window.SillyTavern.getContext();
+        for (const member of ctx.chatMetadata.party || []) member.hp = member.maxHp;
+        await ctx.saveMetadata();
+        void ctx.executeSlashCommandsWithOptions(`/fight ${name} 1`);
+    }, foe46);
+    await page.waitForTimeout(2200);
+    await clearDiceOverlay();
+
+    const enemy46 = await page.evaluate(() => {
+        const enc = window.SillyTavern.getContext().chatMetadata.combatEncounter;
+        const e = enc?.enemies?.[0];
+        return e ? { profile: e.profile, range: e.attackRangeFeet, abilities: Array.isArray(e.abilities) } : null;
+    });
+    check('el enemigo llega al tablero con su perfil y su alcance (antes se perdian)',
+        Boolean(enemy46?.profile) && Number(enemy46?.range) >= 5 && enemy46?.abilities === true,
+        `${foe46}: ${JSON.stringify(enemy46)}`);
+
+    let turn46 = null;
+    for (let i = 0; i < 12; i++) {
+        turn46 = await page.evaluate(() => {
+            const enc = window.SillyTavern.getContext().chatMetadata.combatEncounter;
+            const entry = enc?.turnOrder?.[enc?.currentTurnIndex];
+            return enc?.active && entry && !entry.isEnemy && !enc.turnState?.actionUsed ? String(entry.id) : null;
+        });
+        if (turn46) break;
+        await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/combat-end'));
+        await page.waitForTimeout(700);
+        await clearDiceOverlay();
+    }
+    check('hay un turno tuyo con la accion sin gastar', Boolean(turn46), String(turn46));
+
+    const maneuvers46 = page.locator('#game-shell .gs-btn-maneuvers');
+    check('la barra de combate trae el boton de maniobras', await maneuvers46.count() === 1, '');
+    await maneuvers46.click();
+    await page.waitForTimeout(400);
+    const rows46 = await page.evaluate(() => [...document.querySelectorAll('.gs-maneuvers .gs-target')]
+        .map(b => b.getAttribute('data-maneuver')));
+    check('esquivar, destrabarse, empujar y ayudar', rows46.join(',') === 'esquivar,destrabarse,empujar,ayudar',
+        rows46.join(','));
+    await page.locator('.gs-maneuvers [data-maneuver="esquivar"]').click();
+    await page.waitForTimeout(900);
+    const dodged46 = await page.evaluate(() => {
+        const enc = window.SillyTavern.getContext().chatMetadata.combatEncounter;
+        return { dodging: enc?.maneuvers?.dodging ?? [], spent: Boolean(enc?.turnState?.actionUsed) };
+    });
+    check('esquivar gasta la accion y queda apuntado hasta tu proximo turno',
+        dodged46.spent && dodged46.dodging.includes(String(turn46)), JSON.stringify(dodged46));
+
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/combat-stop'));
+    await page.waitForTimeout(1000);
+    await clearDiceOverlay();
+
     console.log('\n--- console errors ---');
     console.log(problems.size ? [...problems].join('\n') : '(none)');
 } catch (error) {

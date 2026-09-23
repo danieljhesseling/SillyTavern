@@ -18,6 +18,7 @@
  * See wiki/ROADMAP.md, Fase B (B1, B3).
  */
 
+import { readManeuvers } from './maneuvers.js';
 import { normalizeTimers } from './condition-timers.js';
 
 /**
@@ -48,6 +49,8 @@ import { normalizeTimers } from './condition-timers.js';
  * @property {TurnState|null} turnState
  * @property {import('./condition-timers.js').ConditionTimer[]} [conditionTimers]
  *   Las condiciones que una habilidad puso con fecha de caducidad.
+ * @property {import('./maneuvers.js').ManeuverState} [maneuvers]
+ *   Quien se cubre, quien se destraba y a quien le han abierto la guardia.
  */
 
 /** The three things a combatant may spend besides movement. */
@@ -94,6 +97,9 @@ export function normalizeEncounter(raw) {
         // Lo que una habilidad puso con fecha de caducidad. Sin esto, el encuentro se
         // normaliza y el apunte desaparece: la condicion se quedaria para siempre.
         conditionTimers: normalizeTimers(raw.conditionTimers),
+        // Quien se cubre, quien se destraba y a quien le han abierto la guardia: sin esto,
+        // recargar la partida a mitad de ronda borraba un esquivar ya pagado.
+        maneuvers: readManeuvers(raw.maneuvers),
     };
 }
 

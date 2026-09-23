@@ -117,6 +117,7 @@
     },
     {
       "id": "bestia-esqueleto",
+      "abilities": ["golpe_de_escudo"],
       "name": "Esqueleto",
       "kind": "arquetipo",
       "gender": "m",
@@ -213,6 +214,7 @@
     },
     {
       "id": "bestia-ogro",
+      "abilities": ["golpe_de_escudo"],
       "name": "Ogro",
       "kind": "arquetipo",
       "gender": "m",
@@ -261,6 +263,7 @@
     },
     {
       "id": "bestia-cultista",
+      "abilities": ["rayo_de_fuego", "curar_heridas"],
       "name": "Cultista",
       "kind": "arquetipo",
       "gender": "m",
@@ -418,6 +421,7 @@
     },
     {
       "id": "plantilla-jefe",
+      "abilities": ["tomar_aliento"],
       "name": "jefe",
       "kind": "plantilla",
       "adj": "jefe",
@@ -536,6 +540,7 @@
     },
     {
       "id": "plantilla-sagrado",
+      "abilities": ["curar_heridas"],
       "name": "marcado",
       "kind": "plantilla",
       "adj": "marcado",

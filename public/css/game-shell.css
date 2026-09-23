@@ -60,6 +60,16 @@ body.game-shell-on {
     padding: 0 8px;
 }
 
+.gs-chips {
+    position: relative;
+}
+
+/* La lista de tiradas sale encima de la fila, centrada. */
+.gs-checks {
+    left: 50%;
+    transform: translateX(-50%);
+}
+
 .gs-chips-empty {
     display: none;
 }

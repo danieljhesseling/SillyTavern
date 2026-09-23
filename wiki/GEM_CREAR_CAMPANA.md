@@ -2,7 +2,7 @@
 title: Instrucciones para el Gem — el paquete de una campaña
 tags: [gem, gemini, campanas, importar, contrato, seeding]
 created: 2026-09-22
-updated: 2026-09-22
+updated: 2026-09-23
 author: generado por tools/gem-instructions.mjs
 ---
 
@@ -83,7 +83,7 @@ y el importador los resuelve al crear las entradas.
 
 # Contrato del paquete de campaña
 
-Versión 1. Generado desde el motor el 2026-09-22.
+Versión 1. Generado desde el motor el 2026-09-23.
 
 Devuelve **solo JSON válido** que cumpla este esquema. Una sección por respuesta si el
 libro es largo; el orden recomendado es: world → locations → confidants → bestiary → items → boards → quests.
@@ -328,6 +328,13 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
           "attackRangeFeet": {
             "type": "integer",
             "description": "5 en cuerpo a cuerpo, 30 a 120 a distancia."
+          },
+          "abilities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Ids del catálogo de habilidades (rules.abilities) que sabe usar. El motor decide cuándo: cura a los suyos, gasta lo que tiene usos contados en cuanto llega, y usa lo de siempre si pega más que su golpe."
           },
           "description": {
             "type": "string"
@@ -968,6 +975,13 @@ que ya está en el bloque de instrucciones; se ofrecen sueltos porque un libro n
       "attackRangeFeet": {
         "type": "integer",
         "description": "5 en cuerpo a cuerpo, 30 a 120 a distancia."
+      },
+      "abilities": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Ids del catálogo de habilidades (rules.abilities) que sabe usar. El motor decide cuándo: cura a los suyos, gasta lo que tiene usos contados en cuanto llega, y usa lo de siempre si pega más que su golpe."
       },
       "description": {
         "type": "string"

@@ -162,6 +162,8 @@ const RULES = getActiveRuleset();
  * @property {number} [attackRangeFeet] - Reach in feet. Defaults to melee when absent.
  * @property {number} [range] - Legacy spelling of attackRangeFeet.
  * @property {'aggressive'|'skirmisher'|'guardian'|'coward'} [profile] - Tactical behaviour; aggressive when absent.
+ * @property {string[]} [abilities] - Ids from the campaign's ability catalogue it knows how to use.
+ * @property {Record<string, number>} [abilityUses] - How many times it has used each one this fight.
  * @property {string} [size] - D&D creature size. Decides how many cells the token covers; Medium when absent.
  * @property {string[]} [activeConditions] - Conditions currently on it, drawn as markers.
  * @property {number} gridX

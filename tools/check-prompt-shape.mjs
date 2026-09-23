@@ -40,6 +40,7 @@ const BLOCKS = [
     { source: 'ctx', id: 'meta', tier: 'rules', what: 'Instruccion maestra del sistema' },
     { source: 'ctx', id: 'relationships', tier: 'npc', what: 'Vinculos con los companeros' },
     { source: 'ctx', id: 'quests', tier: 'quest', what: 'Misiones en curso' },
+    { source: 'ctx', id: 'memory', tier: 'quest', what: 'Lo que el mundo sabe del grupo: hechos, reputacion, deudas' },
     { source: 'ctx', id: 'board', tier: 'combat', what: 'Tablero y posiciones' },
     { source: 'dyn', id: 'ejemplo_reglas', tier: 'rules', what: 'Instruccion dinamica de reglas' },
     { source: 'dyn', id: 'ejemplo_combate', tier: 'combat', what: 'Instruccion dinamica de combate' },

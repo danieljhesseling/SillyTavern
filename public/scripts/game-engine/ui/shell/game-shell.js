@@ -84,6 +84,12 @@ import { playForScene, stopSceneAudio } from './scene-audio.js';
  * @property {() => Array<{id: string, label: string, detail: string, enabled: boolean, needsAlly: boolean, allies: Array<{id: string, name: string}>}>} [getAbilities]
  *   Las habilidades sobre uno mismo o sobre un aliado, ya juzgadas.
  * @property {(abilityId: string, allyId?: string) => void} [onAbility]
+ * @property {() => Array<{id: string, label: string, icon: string, detail: string, enabled: boolean, needsTarget: boolean, targets: Array<{id: string, name: string}>}>} [getManeuvers]
+ *   Esquivar, destrabarse, empujar y ayudar, ya juzgadas.
+ * @property {(maneuverId: string, targetId?: string) => void} [onManeuver]
+ * @property {() => Array<{id: string, label: string, icon: string, detail: string, enabled: boolean}>} [getChecks]
+ *   Las tiradas de habilidad que se pueden intentar fuera de combate.
+ * @property {(skill: string) => void} [onCheck]
  * @property {() => void} [onClose] Anything the game wants undone when the shell closes.
  * @property {(message: string) => void} [notify]
  */
@@ -364,6 +370,56 @@ function toggleAbilities(footer, abilities) {
 }
 
 /**
+ * La lista de maniobras, con el mismo gesto que la de habilidades.
+ *
+ * Empujar y ayudar preguntan a quien, entre los que tienes pegados: son los unicos a los
+ * que se puede.
+ *
+ * @param {HTMLElement} footer
+ * @param {Array<any>} maneuvers
+ */
+function toggleManeuvers(footer, maneuvers) {
+    const open = footer.querySelector('.gs-maneuvers');
+    if (open) {
+        open.remove();
+        return;
+    }
+
+    const list = el('div', 'gs-targets gs-maneuvers');
+    list.appendChild(el('div', 'gs-targets-title', 'En vez de pegar'));
+
+    for (const maneuver of maneuvers) {
+        const row = makeButton('gs-target');
+        row.dataset.maneuver = maneuver.id;
+        row.appendChild(el('span', 'gs-target-name', maneuver.label));
+        row.appendChild(el('span', 'gs-target-detail', maneuver.detail));
+        row.disabled = !maneuver.enabled;
+        row.title = maneuver.detail;
+        row.addEventListener('click', () => {
+            if (!maneuver.needsTarget) {
+                list.remove();
+                options?.onManeuver?.(maneuver.id);
+                return;
+            }
+            list.textContent = '';
+            list.appendChild(el('div', 'gs-targets-title', `${maneuver.label} — ¿a quien?`));
+            for (const target of maneuver.targets) {
+                const pick = makeButton('gs-target');
+                pick.appendChild(el('span', 'gs-target-name', target.name));
+                pick.addEventListener('click', () => {
+                    list.remove();
+                    options?.onManeuver?.(maneuver.id, target.id);
+                });
+                list.appendChild(pick);
+            }
+        });
+        list.appendChild(row);
+    }
+
+    footer.appendChild(list);
+}
+
+/**
  * Draw the row of things that can be done without typing them.
  *
  * Cada ficha sale del estado, asi que ninguna ofrece algo que luego no pase. La que abre
@@ -379,8 +435,9 @@ function renderActionChips(row) {
     }
 
     const chips = options.getChips();
+    const checks = options?.getChecks?.() ?? [];
     row.textContent = '';
-    row.classList.toggle('gs-chips-empty', chips.length === 0);
+    row.classList.toggle('gs-chips-empty', chips.length === 0 && checks.length === 0);
 
     for (const chip of chips) {
         const button = makeButton(`gs-chip-action gs-chip-${chip.source}`);
@@ -392,6 +449,47 @@ function renderActionChips(row) {
         button.addEventListener('click', () => options?.onChip?.(chip));
         row.appendChild(button);
     }
+
+    // Intentar algo: el dado lo tira el motor y el narrador lee el resultado ya decidido.
+    if (checks.length > 0) {
+        const button = makeButton('gs-chip-action gs-chip-motor gs-chip-check');
+        button.title = 'El motor tira el dado; el narrador solo lee el resultado';
+        button.appendChild(el('i', 'fa-solid fa-dice-d20'));
+        button.appendChild(el('span', 'gs-chip-action-label', 'Tirada'));
+        button.addEventListener('click', () => toggleChecks(row, checks));
+        row.appendChild(button);
+    }
+}
+
+/**
+ * La lista de tiradas, encima de la fila de fichas.
+ *
+ * @param {HTMLElement} row
+ * @param {Array<any>} checks
+ */
+function toggleChecks(row, checks) {
+    const open = row.querySelector('.gs-checks');
+    if (open) {
+        open.remove();
+        return;
+    }
+
+    const list = el('div', 'gs-targets gs-checks');
+    list.appendChild(el('div', 'gs-targets-title', 'Intentarlo: el dado decide, no la prosa'));
+    for (const check of checks) {
+        const pick = makeButton('gs-target');
+        pick.dataset.check = check.id;
+        pick.appendChild(el('span', 'gs-target-name', check.label));
+        pick.appendChild(el('span', 'gs-target-detail', check.detail));
+        pick.disabled = !check.enabled;
+        pick.title = check.detail;
+        pick.addEventListener('click', () => {
+            list.remove();
+            options?.onCheck?.(check.id);
+        });
+        list.appendChild(pick);
+    }
+    row.appendChild(list);
 }
 
 /**
@@ -480,6 +578,18 @@ function renderActionBar(footer, bar) {
         abilities.title = bar.isPlayerTurn ? 'Lo que sabes hacer' : 'No es tu turno';
         abilities.addEventListener('click', () => toggleAbilities(footer, own));
         buttons.appendChild(abilities);
+    }
+
+    // Lo que se hace en vez de pegar. Antes solo se podia *contar* en el chat.
+    const maneuvers = options?.getManeuvers?.() ?? [];
+    if (maneuvers.length > 0) {
+        const button = makeButton('gs-btn gs-btn-maneuvers');
+        button.appendChild(el('i', 'fa-solid fa-person-rays'));
+        button.appendChild(el('span', '', ' Maniobras'));
+        button.disabled = !bar.isPlayerTurn;
+        button.title = bar.isPlayerTurn ? 'Esquivar, destrabarse, empujar, ayudar' : 'No es tu turno';
+        button.addEventListener('click', () => toggleManeuvers(footer, maneuvers));
+        buttons.appendChild(button);
     }
 
     const objectives = makeButton('gs-btn');

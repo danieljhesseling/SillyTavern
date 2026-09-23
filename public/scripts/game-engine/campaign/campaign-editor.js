@@ -723,6 +723,7 @@ export function planEntryChanges(entries, model) {
             speed: enemy.speed,
             attackRangeFeet: enemy.attackRangeFeet,
             profile: text(enemy.profile) || DEFAULT_PROFILE,
+            ...(Array.isArray(enemy.abilities) ? { abilities: enemy.abilities } : {}),
         });
     }
 

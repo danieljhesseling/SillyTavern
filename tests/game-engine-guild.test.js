@@ -14,7 +14,7 @@ describe('leer un gremio', () => {
     });
 
     test('y de nada, sin romperse', () => {
-        expect(readGuild(null)).toEqual({ name: '', theme: 'general', renown: 0, buildings: {} });
+        expect(readGuild(null)).toEqual({ name: '', theme: 'general', renown: 0, buildings: {}, staff: [] });
     });
 
     test('un edificio no sube más allá de su último nivel, se guarde lo que se guarde', () => {

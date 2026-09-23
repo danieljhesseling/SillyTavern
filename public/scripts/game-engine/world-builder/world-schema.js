@@ -264,6 +264,9 @@ export function normalizeGeneratedWorld(raw, partySize = 2) {
             cr: number(e.cr, 0, 5, 0.25),
             profile,
             attackRangeFeet: number(e.attackRangeFeet, 5, 120, 5),
+            abilities: Array.isArray(e.abilities)
+                ? e.abilities.map((/** @type {any} */ id) => text(id, '', 40)).filter(Boolean).slice(0, 4)
+                : [],
         };
     });
 

@@ -142,6 +142,8 @@ export function buildPackEntries(pack) {
                 // `aggressive` sin decir nada. Ahora se escribe el que de verdad se juega.
                 profile: text(enemy.profile) || DEFAULT_PROFILE,
                 attackRangeFeet: Number(enemy.attackRangeFeet) || 5,
+                // Los ids del catalogo de habilidades que sabe usar: el cultista que tira rayos.
+                abilities: Array.isArray(enemy.abilities) ? enemy.abilities.map(text).filter(Boolean) : [],
             },
         });
     }

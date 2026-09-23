@@ -150,6 +150,8 @@ export function breedMonster({ compendium, random = Math.random, cr = 0.5, biome
     let speed = number(archetype.speed, 30);
     let level = number(cr, 0.5);
     let profile = text(archetype.profile);
+    // Lo que sabe hacer: lo suyo mas lo de sus plantillas. Un cultista «sagrado» cura.
+    const abilities = new Set(listOf(archetype.abilities));
 
     for (const template of stack) {
         hpFactor *= number(template.hpFactor, 1);
@@ -159,6 +161,7 @@ export function breedMonster({ compendium, random = Math.random, cr = 0.5, biome
         // La ultima manda: apilar "rabioso" sobre "herido" deja al bicho rabioso, que es
         // lo que dice el nombre que lee quien juega.
         if (PROFILES.includes(text(template.profile))) profile = text(template.profile);
+        for (const id of listOf(template.abilities)) abilities.add(id);
     }
 
     const description = [
@@ -175,9 +178,21 @@ export function breedMonster({ compendium, random = Math.random, cr = 0.5, biome
         speed: Math.max(5, speed),
         attackRangeFeet: Math.max(5, number(archetype.rangeFeet, 5)),
         profile: PROFILES.includes(profile) ? profile : 'aggressive',
+        abilities: [...abilities],
         description,
         from: { arquetipo: text(archetype.id), plantillas: stack.map((/** @type {any} */ t) => text(t.id)) },
     };
+}
+
+/**
+ * Una lista de ids, venga como lista o como texto con comas.
+ *
+ * @param {any} value
+ * @returns {string[]}
+ */
+function listOf(value) {
+    const raw = Array.isArray(value) ? value : String(value ?? '').split(',');
+    return raw.map((/** @type {any} */ id) => text(id)).filter(Boolean);
 }
 
 /**

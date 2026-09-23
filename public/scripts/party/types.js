@@ -32,6 +32,8 @@
  * @property {any[]} [injuries] Lo que arrastra de combates anteriores.
  * @property {Record<string, number>} [baseStats] Sus numeros antes de la primera herida.
  * @property {number} [unpaidWeeks] Semanas que lleva sin cobrar.
+ * @property {string} [stance] Como pelea cuando se lleva solo: `cerca`, `carga` o `atras`.
+ * @property {string} [role] Si se ha retirado a un puesto en el gremio, cual.
  * @property {any} [needs] Horas sin comer, beber, dormir y a la intemperie.
  * @property {any} [needs] Horas sin comer, beber, dormir y a la intemperie.
  *   Como va la cuenta mientras esta a 0 PG.

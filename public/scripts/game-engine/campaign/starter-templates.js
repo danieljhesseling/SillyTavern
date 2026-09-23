@@ -25,7 +25,7 @@ import { terrainFromAsciiMap } from '../board/terrain.js';
  * @property {string[]} map          ASCII layout, see terrainFromAsciiMap.
  * @property {string} locationName
  * @property {string} boardName
- * @property {Array<{name: string, hp: number, armorClass: number, cr: number, profile: string, attackRangeFeet?: number}>} enemies
+ * @property {Array<{name: string, hp: number, armorClass: number, cr: number, profile: string, attackRangeFeet?: number, abilities?: string[]}>} enemies
  * @property {Array<{x: number, y: number}>} partyStart
  * @property {Array<any>} [objectives]  Scenario objectives, if the board is a mission.
  */
@@ -52,7 +52,8 @@ export const STARTER_TEMPLATES = [
             '################',
         ],
         enemies: [
-            { name: 'Esqueleto', hp: 13, armorClass: 13, cr: 0.25, profile: 'aggressive' },
+            // Con escudo: una vez por combate lo usa para tirarte al suelo.
+            { name: 'Esqueleto', hp: 13, armorClass: 13, cr: 0.25, profile: 'aggressive', abilities: ['golpe_de_escudo'] },
             { name: 'Arquero esquelético', hp: 9, armorClass: 12, cr: 0.25, profile: 'skirmisher', attackRangeFeet: 60 },
         ],
         partyStart: [{ x: 2, y: 8 }, { x: 3, y: 8 }, { x: 2, y: 7 }, { x: 3, y: 7 }],
@@ -253,6 +254,7 @@ export function buildWorldEntries(template, partyNames) {
                 speed: 30,
                 profile: enemy.profile,
                 attackRangeFeet: enemy.attackRangeFeet ?? 5,
+                abilities: enemy.abilities ?? [],
             },
         });
     }

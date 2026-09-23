@@ -213,6 +213,12 @@ function extractWorldMonsterTemplates(data) {
             charisma: toNumber(d.cha ?? d.charisma, 10),
             speed: toNumber(d.speed, 30),
             cr: toNumber(d.cr, 0.25),
+            // Como pelea, hasta donde llega y que sabe hacer. Se leian del Lorebook y se
+            // tiraban aqui, asi que todo bicho peleaba como agresivo de cuerpo a cuerpo.
+            profile: String(d.profile || '').trim() || undefined,
+            attackRangeFeet: toNumber(d.attackRangeFeet ?? d.range, 5),
+            abilities: (Array.isArray(d.abilities) ? d.abilities : String(d.abilities || '').split(','))
+                .map((id) => String(id).trim()).filter(Boolean),
         });
     }
 

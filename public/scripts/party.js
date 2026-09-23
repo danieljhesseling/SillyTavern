@@ -2,7 +2,7 @@ import { t } from './i18n.js';
 import { power_user } from './power-user.js';
 import { POPUP_TYPE, POPUP_RESULT, Popup } from './popup.js';
 import { sendSystemMessage, system_message_types } from './system-messages.js';
-import { getThumbnailUrl, chat, chat_metadata, saveMetadata, eventSource, event_types, setUserName, addOneMessage, saveChatConditional, substituteParams, system_avatar, generateRaw, online_status } from '../script.js';
+import { getThumbnailUrl, chat, chat_metadata, saveMetadata, eventSource, event_types, setUserName, addOneMessage, saveChatConditional, substituteParams, system_avatar, generateRaw, online_status, setExtensionPrompt, extension_prompt_types, extension_prompt_roles } from '../script.js';
 import { getMessageTimeStamp } from './RossAscends-mods.js';
 import { getCurrentWorldMapUrl, getCurrentWorldLocationMaps, getCurrentWorldBoards, getCurrentWorldEnemies, getCurrentWorldNPCs, loadWorldInfo, saveWorldInfo, createWorldInfoEntry, refreshWorldMapGlobals, METADATA_KEY } from './world-info.js';
 import { renderWorldMapView, renderLocationView } from './world-map-renderer.js';
@@ -56,12 +56,18 @@ import { resolveEntryMapPosition } from './party/positions.js';
 import { createCampaignState } from './party/campaign-state.js';
 import {
     normalizeTerrain, setCell as setTerrainCell, getTerrainOptions, getCoverBonus, setDoorOpen,
-    parseCellKey, terrainFromAsciiMap, cellKey,
+    parseCellKey, terrainFromAsciiMap, cellKey, isPassable,
 } from './game-engine/board/terrain.js';
 import { getReachableCells, findPath, getPathCost } from './game-engine/board/pathfinding.js';
 import { getCoverAlongLine } from './game-engine/board/line-of-sight.js';
 import { createEmptyFog, normalizeFog, updateFog } from './game-engine/board/fog-of-war.js';
 import { planEnemyTurn } from './game-engine/combat/enemy-ai.js';
+import { planAllyTurn, stanceOf, STANCES } from './game-engine/combat/ally-ai.js';
+import { chooseEnemyAbility, longestReach, averageOf } from './game-engine/combat/enemy-abilities.js';
+import {
+    MANEUVERS, judgeManeuvers, recordManeuver, startTurn as startManeuverTurn, attackEdge,
+    consumeHelp, rollWithEdge, describeEdge, resolveShove, readManeuvers,
+} from './game-engine/combat/maneuvers.js';
 import { planWalk, canWalk } from './game-engine/board/walk.js';
 import { enterCell, describeHazard } from './game-engine/board/hazards.js';
 import {
@@ -80,16 +86,21 @@ import {
 } from './game-engine/rules/needs.js';
 import { resolveFall, describeSurvival, canCheckpoint, readSurvival } from './game-engine/rules/mortality.js';
 import { weeklyBill, settleWeek, describeBill } from './game-engine/rules/upkeep.js';
+import { readRemedies, remediesFor, applyRemedy, shouldOfferRetirement } from './game-engine/rules/remedies.js';
+import { readDebt, offerPatronage, settlesDebt, debtDue, describeDebt } from './game-engine/campaign/patronage.js';
+import { SKILLS, checkOptions, rollCheck } from './game-engine/rules/checks.js';
+import { recordDeed, worldMemoryBlock, roadTrouble } from './game-engine/campaign/world-memory.js';
+import { promptKey } from './game-engine/cost/prompt-order.js';
 import {
     generateBoardOfContracts, contractsFromFactions, expireContracts, describeContract,
 } from './game-engine/campaign/contracts.js';
 import {
-    readGuild, upkeepWithBuildings, boardSize, settleLoyalty, completeContract,
+    readGuild, upkeepWithBuildings, boardSize, settleLoyalty, completeContract, STAFF_ROLES, retireTo,
     upgradeCost, describeGuild,
 } from './game-engine/campaign/guild.js';
 import { generateBoard } from './game-engine/world-builder/dungeon-generator.js';
 import {
-    formParty, canControl, describeMode, readMode, MODES, readReasons,
+    formParty, canControl, describeMode, readMode, MODES,
 } from './game-engine/rules/companions.js';
 import { describeLootItem } from './game-engine/combat/loot-items.js';
 import { planSpawnCells } from './game-engine/combat/spawn.js';
@@ -1738,7 +1749,18 @@ function resolveEnemyAttackOn(enemy, target) {
     /** @type {string[]} */
     const lines = [];
 
-    const attackRoll = rollDiceDetailed('1d20', 20);
+    // Esquivar, estar en el suelo: lo que cambia el dado antes de tirarlo.
+    const edge = attackEdge({
+        targetId: String(target.id),
+        targetConditions: target.activeConditions ?? [],
+        attackerConditions: enemy.activeConditions ?? [],
+        distanceFeet: getDistanceInFeet(
+            Number(enemy.gridX) || 0, Number(enemy.gridY) || 0,
+            Number(target.mapPosition?.gridX) || 0, Number(target.mapPosition?.gridY) || 0),
+        maneuvers: combatEncounter.maneuvers,
+    });
+    const edged = rollWithEdge(() => rollDiceDetailed('1d20', 20).total, edge.mode);
+    const attackRoll = { total: edged.natural, natural: edged.natural };
     const d20 = attackRoll.total;
     const attackMod = Math.max(
         getAbilityModifier(enemy.strength || 10),
@@ -1761,7 +1783,7 @@ function resolveEnemyAttackOn(enemy, target) {
     });
 
     lines.push(`👹 ${enemy.name} ataca a ${target.name}.`);
-    lines.push(`🎲 Tirada de ataque: d20(${d20}) ${attackMod >= 0 ? '+' : ''}${attackMod} = ${attackTotal} vs AC ${targetAc}${describeCover(targetCover)}`);
+    lines.push(`🎲 Tirada de ataque: d20(${d20}) ${attackMod >= 0 ? '+' : ''}${attackMod} = ${attackTotal} vs AC ${targetAc}${describeCover(targetCover)}${describeEdge(edged, edge.mode, edge.reasons)}`);
 
     if (!isHit) {
         lines.push('❌ Resultado: fallo.');
@@ -1787,6 +1809,41 @@ function resolveEnemyAttackOn(enemy, target) {
         glyph: 'dmg',
     });
 
+    lines.push(`✅ Resultado: impacto${isCrit ? ' critico' : ''}.`);
+    lines.push(`💥 Tirada de daño: ${dmgFormula}(${baseDamage})${isCrit ? ` + crit(${critBonus})` : ''} + mod(${strMod}) = ${totalDamage}`);
+    lines.push(...damagePartyMember(target, totalDamage, isCrit));
+
+    if (target.hp > 0 && isCrit && Math.random() < 0.35) {
+        const pool = ['Bleeding', 'Poisoned', 'Prone', 'Frightened'];
+        const candidates = pool.filter(status => !target.activeConditions.includes(status));
+        if (candidates.length) {
+            const status = candidates[Math.floor(Math.random() * candidates.length)];
+            target.activeConditions.push(status);
+            lines.push(`🧪 Efecto adicional: ${target.name} queda ${status}.`);
+        }
+    }
+
+    savePartyState();
+    saveCombatState();
+    return lines.join('\n');
+}
+
+/**
+ * Un golpe que le llega a alguien del grupo: el ataque de un enemigo o su habilidad.
+ *
+ * Una sola puerta, para que un conjuro que tumba a alguien cuente igual que una espada:
+ * el companero de rango 8 que se interpone, la cuenta de salvaciones al caer, y el fallo
+ * automatico si ya estaba en el suelo.
+ *
+ * @param {any} target
+ * @param {number} totalDamage
+ * @param {boolean} [isCrit]
+ * @returns {string[]}
+ */
+function damagePartyMember(target, totalDamage, isCrit = false) {
+    /** @type {string[]} */
+    const lines = [];
+
     // Rank 8: a companion steps in rather than watch them drop. Once a day, and only
     // when the blow would really have finished them.
     const rescue = planEndure({
@@ -1810,9 +1867,6 @@ function resolveEnemyAttackOn(enemy, target) {
     }
 
     target.activeConditions = Array.isArray(target.activeConditions) ? target.activeConditions : [];
-
-    lines.push(`✅ Resultado: impacto${isCrit ? ' critico' : ''}.`);
-    lines.push(`💥 Tirada de daño: ${dmgFormula}(${baseDamage})${isCrit ? ` + crit(${critBonus})` : ''} + mod(${strMod}) = ${totalDamage}`);
     lines.push(`❤️ Estado de ${target.name}: ${target.hp}/${target.maxHp}`);
 
     if (target.hp === 0) {
@@ -1831,18 +1885,53 @@ function resolveEnemyAttackOn(enemy, target) {
             lines.push(`🩸 ${target.name} cae a 0 PG y empieza a jugarsela: `
                 + 'tres exitos para estabilizarse, tres fallos y se acabo.');
         }
-    } else if (isCrit && Math.random() < 0.35) {
-        const pool = ['Bleeding', 'Poisoned', 'Prone', 'Frightened'];
-        const candidates = pool.filter(status => !target.activeConditions.includes(status));
-        if (candidates.length) {
-            const status = candidates[Math.floor(Math.random() * candidates.length)];
-            target.activeConditions.push(status);
-            lines.push(`🧪 Efecto adicional: ${target.name} queda ${status}.`);
-        }
+    }
+
+    return lines;
+}
+
+/**
+ * Un enemigo usa una habilidad del catalogo.
+ *
+ * La decision es de `enemy-abilities.js`; la tirada, de `planAbilityUse`, la misma que usa
+ * el grupo. Aqui solo se escribe en las fichas.
+ *
+ * @param {any} enemy
+ * @param {import('./game-engine/combat/enemy-abilities.js').AbilityChoice} choice
+ * @returns {string}
+ */
+function resolveEnemyAbility(enemy, choice) {
+    const { ability } = choice;
+    const target = choice.side === 'enemy'
+        ? partyMembers.find(m => String(m.id) === choice.targetId)
+        : (choice.side === 'self' ? enemy : getEnemyByInstanceId(choice.targetId));
+    if (!target) return '';
+
+    const plan = planAbilityUse({
+        actor: enemy,
+        target,
+        ability,
+        roll: (/** @type {string} */ formula) => rollDiceDetailed(formula, 8),
+        attackModifier: Math.max(getAbilityModifier(enemy.strength || 10), getAbilityModifier(enemy.dexterity || 10)),
+        targetAc: choice.side === 'enemy' ? getTargetArmorClass(target, enemy).ac : 10,
+        saveModifier: choice.side === 'enemy' ? abilityModifier(target, ability.saveAbility) : 0,
+    });
+    enemy.abilityUses = spendAbilityUse(enemy, ability);
+
+    const lines = [...plan.lines];
+    if (plan.damage > 0 && choice.side === 'enemy') lines.push(...damagePartyMember(target, plan.damage, plan.crit));
+    if (plan.healing > 0 && choice.side !== 'enemy') {
+        target.currentHp = Math.min(Number(target.maxHp) || 0, (Number(target.currentHp) || 0) + plan.healing);
+        lines.push(`❤️ Estado de ${target.name}: ${target.currentHp}/${target.maxHp}`);
+    }
+    if (plan.condition) {
+        const who = choice.side === 'enemy' ? String(target.id) : String(target.instanceId);
+        applyTimedCondition(target, who, plan.condition, plan.conditionRounds);
     }
 
     savePartyState();
     saveCombatState();
+    renderPartyMembers();
     return lines.join('\n');
 }
 
@@ -1864,6 +1953,7 @@ function resolveEnemyTurnAction(turnEntry) {
     // Math.sign and went through walls, and which assumed every creature had five feet of
     // reach whatever it was holding.
     const { terrain, gridWidth, gridHeight } = getActiveBoardContext();
+    const known = knownAbilities(enemy, getAbilityCatalogue());
 
     /** @param {any} member */
     const memberCell = (member) => ({
@@ -1879,7 +1969,9 @@ function resolveEnemyTurnAction(turnEntry) {
             currentHp: Number(enemy.currentHp) || 0,
             maxHp: Number(enemy.maxHp) || 0,
             speedFeet: Number(enemy.speed) || 30,
-            attackRangeFeet: Number(enemy.attackRangeFeet ?? enemy.range) || 5,
+            // Un cultista con un rayo de 120 ft se queda a su distancia, no se acerca a dar
+            // punetazos. Sin habilidades, su alcance de siempre.
+            attackRangeFeet: Math.max(Number(enemy.attackRangeFeet ?? enemy.range) || 5, longestReach(enemy, known)),
             profile: enemy.profile,
         },
         targets: livingParty.map(member => {
@@ -1915,8 +2007,42 @@ function resolveEnemyTurnAction(turnEntry) {
         lines.push(`🚶 ${enemy.name} avanza a (${plan.destination.x + 1}, ${plan.destination.y + 1}). ${plan.rationale} (${plan.movementCostFeet} ft)`);
     }
 
-    if (plan.action !== 'attack' || !plan.targetId) {
-        lines.push(`⛔ ${enemy.name}: ${plan.rationale}`);
+    // Antes que el golpe: si trae algo mejor que pegar y le llega, lo usa.
+    const choice = chooseEnemyAbility({
+        actor: { id: String(enemy.instanceId), abilityUses: enemy.abilityUses, currentHp: enemy.currentHp, maxHp: enemy.maxHp },
+        from: { x: Number(enemy.gridX) || 0, y: Number(enemy.gridY) || 0 },
+        abilities: known,
+        targets: livingParty.map(member => ({
+            id: String(member.id), gridX: memberCell(member).x, gridY: memberCell(member).y,
+            currentHp: Number(member.hp) || 0, maxHp: Number(member.maxHp) || 0,
+        })),
+        allies: getAliveEnemies()
+            .filter(other => other.instanceId !== enemy.instanceId)
+            .map(other => ({
+                id: String(other.instanceId), gridX: Number(other.gridX) || 0, gridY: Number(other.gridY) || 0,
+                currentHp: Number(other.currentHp) || 0, maxHp: Number(other.maxHp) || 0,
+            })),
+        focusId: plan.focusId,
+        basicAverage: averageOf(getEnemyDamageFormula(enemy.cr || 0)) + Math.max(0, getAbilityModifier(enemy.strength || 10)),
+        basicRangeFeet: Number(enemy.attackRangeFeet ?? enemy.range) || 5,
+    });
+    if (choice) {
+        lines.push(`✨ ${enemy.name}: ${choice.reason}`);
+        lines.push(resolveEnemyAbility(enemy, choice));
+        saveCombatState();
+        return lines.join('\n');
+    }
+
+    // El plan se hizo con el alcance de sus habilidades; si no ha usado ninguna, su golpe
+    // tiene que llegar de verdad.
+    const basicReach = Number(enemy.attackRangeFeet ?? enemy.range) || 5;
+    const struck = plan.targetId ? livingParty.find(member => String(member.id) === plan.targetId) : null;
+    const struckCell = struck ? memberCell(struck) : null;
+    const outOfReach = struckCell
+        && getDistanceInFeet(Number(enemy.gridX) || 0, Number(enemy.gridY) || 0, struckCell.x, struckCell.y) > basicReach;
+
+    if (plan.action !== 'attack' || !plan.targetId || outOfReach) {
+        lines.push(`⛔ ${enemy.name}: ${outOfReach ? 'No le llega el golpe.' : plan.rationale}`);
         if (movedThisTurn) saveCombatState();
         return lines.join('\n');
     }
@@ -1958,6 +2084,8 @@ function canTurnEntryAct(entry) {
  */
 function chargeOpportunityAttacks(member, from, to) {
     if (!combatEncounter.active) return;
+    // Quien se ha destrabado se va sin pagar: para eso gasto la accion.
+    if (readManeuvers(combatEncounter.maneuvers).disengaged.includes(String(member.id))) return;
 
     const attacks = findOpportunityAttacks({
         mover: member,
@@ -2124,6 +2252,9 @@ function advanceTurnIndex() {
     if (advanced === combatEncounter) return null;   // nobody left who can act
 
     Object.assign(combatEncounter, advanced);
+    // Lo que caduca cuando vuelve a tocarle a alguien: su esquivar, su destrabarse, su ayuda.
+    const starting = getCurrentTurnEntry();
+    if (starting) combatEncounter.maneuvers = startManeuverTurn(combatEncounter.maneuvers, String(starting.id));
     saveCombatState();
 
     // Announced here rather than inside the machine, which stays pure and silent.
@@ -2166,10 +2297,11 @@ function actsOnItsOwn(entry) {
 /**
  * El turno de un companero que se lleva solo.
  *
- * Usa **la misma maquina que juega a los enemigos** —`planEnemyTurn` no sabe de bandos, le
- * das objetivos y aliados— y despues aplica lo que decide **por los mismos caminos que
- * usarias tu**: mover cuesta pies, atacar gasta la accion y tira contra la misma CA. Es lo
- * que impide que un companero automatico haga lo que tu no puedes.
+ * Decide con **su propia maquina** (`ally-ai.js`), no con la de los enemigos: una IA que
+ * vale para un goblin no vale para alguien a quien le tienes carino. Sigue la postura que
+ * le has puesto en su ficha, no sale del alcance de nadie andando y se retira malherido.
+ * Lo que decide lo aplica **por los mismos caminos que usarias tu**: mover cuesta pies,
+ * atacar gasta la accion y tira contra la misma CA.
  *
  * @param {any} entry
  * @returns {string}
@@ -2187,34 +2319,47 @@ function resolveAllyTurnAction(entry) {
         gridY: Number(m.mapPosition?.gridY) || 0,
     });
 
-    const plan = planEnemyTurn({
+    // Su postura la eliges tu, en su ficha. Sin elegir, se queda a tu lado: el valor
+    // por defecto de antes era cargar, y eso no lo habia decidido nadie.
+    const stance = stanceOf(member);
+    const yours = partyMembers[0];
+    const leader = yours && String(yours.id) !== String(member.id) && (Number(yours.hp) || 0) > 0
+        ? cellOf(yours) : null;
+
+    const plan = planAllyTurn({
         actor: {
             id: String(member.id),
+            name: String(member.name),
             ...cellOf(member),
             currentHp: Number(member.hp) || 0,
             maxHp: Number(member.maxHp) || 1,
             speedFeet: Number(member.speed) || 30,
-            attackRangeFeet: 5,
-            // Como pelea cuando decide el: sale de sus razones, no de su clase.
-            profile: /** @type {any} */ (readReasons(member).profile),
+            // Su arma de verdad: un arquero que se queda atras tiene que poder disparar.
+            attackRangeFeet: getAttackRangeFeet(member),
         },
-        targets: living.map((/** @type {any} */ e) => ({
+        leader,
+        enemies: living.map((/** @type {any} */ e) => ({
             id: String(e.instanceId),
             gridX: Number(e.gridX) || 0,
             gridY: Number(e.gridY) || 0,
             currentHp: Number(e.currentHp) || 0,
             maxHp: Number(e.maxHp) || 1,
+            reachFeet: Number(e.attackRangeFeet) || 5,
         })),
         allies: partyMembers
             .filter(m => Number(m.id) !== Number(member.id) && (Number(m.hp) || 0) > 0)
             .map(m => ({ id: String(m.id), ...cellOf(m) })),
+        stance,
         terrain,
         gridWidth,
         gridHeight,
     });
 
     /** @type {string[]} */
-    const lines = [`[COMBAT] ${member.name} decide por su cuenta: ${plan.rationale}`];
+    const lines = [`[COMBAT] ${member.name} (${STANCES[/** @type {keyof typeof STANCES} */ (stance)].label.toLowerCase()}) decide por su cuenta: ${plan.rationale}`];
+
+    // Destrabarse va **antes** de moverse: es lo que le deja irse sin pagar el golpe.
+    if (plan.action === 'disengage') performManeuver('destrabarse');
 
     const here = cellOf(member);
     if (plan.destination && (plan.destination.x !== here.gridX || plan.destination.y !== here.gridY)) {
@@ -2222,6 +2367,8 @@ function resolveAllyTurnAction(entry) {
         // oportunidad igual que si lo arrastraras tu.
         handlePlayerCombatMove(`${plan.destination.x + 1},${plan.destination.y + 1}`);
     }
+
+    if (plan.action === 'dodge') performManeuver('esquivar');
 
     if (plan.action === 'attack' && plan.targetId != null) {
         const target = living.find((/** @type {any} */ e) => String(e.instanceId) === String(plan.targetId));
@@ -2350,6 +2497,11 @@ function instancesFromPlacements(placements) {
             charisma: template.charisma,
             speed: template.speed,
             cr: template.cr,
+            // Sin esto, todos peleaban como agresivos de cuerpo a cuerpo: el arquero del
+            // mundo bajaba a dar punetazos.
+            profile: /** @type {any} */ (template).profile,
+            attackRangeFeet: /** @type {any} */ (template).attackRangeFeet,
+            abilities: /** @type {any} */ (template).abilities,
             gridX: placement.x,
             gridY: placement.y,
         });
@@ -2451,6 +2603,11 @@ function startCombat(template, count, gridWidth = 50, gridHeight = 50) {
             charisma: template.charisma,
             speed: template.speed,
             cr: template.cr,
+            // Sin esto, todos peleaban como agresivos de cuerpo a cuerpo: el arquero del
+            // mundo bajaba a dar punetazos.
+            profile: /** @type {any} */ (template).profile,
+            attackRangeFeet: /** @type {any} */ (template).attackRangeFeet,
+            abilities: /** @type {any} */ (template).abilities,
             gridX: spawnCells[i]?.x ?? 0,
             gridY: spawnCells[i]?.y ?? 0,
         });
@@ -2592,6 +2749,17 @@ function deliverTakenContract() {
     guild.renown = done.renown;
     chat_metadata[GUILD_KEY] = guild;
     delete chat_metadata[TAKEN_KEY];
+
+    noteDeed(`Entregasteis el encargo «${taken.title}»${taken.patron ? ` (lo pedía ${taken.patron})` : ''}.`);
+
+    // Si era el favor que se debia, la cuenta queda saldada.
+    const debt = getDebt();
+    if (settlesDebt(debt, taken)) {
+        delete chat_metadata[DEBT_KEY];
+        const paid = `Favor cumplido: ${debt?.patronName} da la deuda por saldada.`;
+        void postForModel(`🤝 [CAMPAÑA] ${paid}`);
+        toastr.success(paid, 'Deuda saldada', { timeOut: 12000 });
+    }
     saveMetadata();
     savePartyState();
 
@@ -3039,7 +3207,15 @@ function passNeeds(days) {
  * lo que se nota en la partida siguiente.
  */
 function chargeWeek() {
-    const bill = weeklyBill(partyMembers, { rules: currentUpkeepRules() });
+    // Primero cobran lo que se debe: el viernes es el viernes para todos.
+    settleDueDebt();
+
+    let bill = weeklyBill(partyMembers, { rules: currentUpkeepRules() });
+    // Si no llega, alguien pone lo que falta. Una vez: es para romper la espiral, no para
+    // que la cuenta deje de importar.
+    if (bill.total > bill.purse && takePatronage(bill.total - bill.purse)) {
+        bill = weeklyBill(partyMembers, { rules: currentUpkeepRules() });
+    }
     const week = settleWeek(partyMembers, bill);
 
     // Se cobra por cabeza, empezando por quien mas lleva: el oro es del grupo.
@@ -3073,6 +3249,125 @@ function chargeWeek() {
     savePartyState();
     postCombatNarration(`💰 [CAMPAÑA] ${week.lines.join(' ')}`);
     if (!week.paid) toastr.warning(week.lines.join('\n'), 'La cuenta no sale', { timeOut: 15000 });
+}
+
+/** Donde se apunta lo que se debe, y a quien. */
+const DEBT_KEY = 'debt';
+
+/** Lo que el grupo ha hecho y el mundo ha visto. */
+const DEEDS_KEY = 'deeds';
+
+/**
+ * Apuntar un hecho, con el dia de hoy.
+ *
+ * @param {string} text
+ */
+function noteDeed(text) {
+    if (!chat_metadata) return;
+    const today = Math.max(1, Math.floor(Number(getCampaignCalendar()?.day) || 1));
+    chat_metadata[DEEDS_KEY] = recordDeed(chat_metadata[DEEDS_KEY], today, text);
+    saveMetadata();
+}
+
+/**
+ * El bloque de lo que el mundo sabe del grupo, puesto al dia antes de cada turno.
+ *
+ * Vacio cuando no hay nada que contar: un bloque vacio no cuesta ni un token.
+ */
+function refreshWorldMemoryPrompt() {
+    const key = promptKey('quest', 'memory', 'ctx');
+    const block = chat_metadata ? worldMemoryBlock({
+        deeds: chat_metadata[DEEDS_KEY],
+        factions: getCurrentWorldFactions(),
+        debt: getDebt(),
+        today: Math.max(1, Math.floor(Number(getCampaignCalendar()?.day) || 1)),
+    }) : '';
+    setExtensionPrompt(key, block, extension_prompt_types.IN_PROMPT, 0, false, extension_prompt_roles.SYSTEM);
+}
+
+/** @returns {import('./game-engine/campaign/patronage.js').Debt|null} */
+function getDebt() {
+    return readDebt(chat_metadata?.[DEBT_KEY]);
+}
+
+/**
+ * Alguien paga lo que falta de la semana, a cambio de un favor.
+ *
+ * @param {number} shortfall
+ * @returns {boolean} Si ha pagado alguien.
+ */
+function takePatronage(shortfall) {
+    if (!chat_metadata || getDebt()) return false;
+    const today = Math.max(1, Math.floor(Number(getCampaignCalendar()?.day) || 1));
+    const offer = offerPatronage({
+        shortfall, factions: getCurrentWorldFactions(), here: currentLocationName, today,
+    });
+    if (!offer) return false;
+
+    const holder = partyMembers.find(m => (Number(m.hp) || 0) > 0) ?? partyMembers[0];
+    if (!holder) return false;
+    holder.gold = (Number(holder.gold) || 0) + offer.debt.amount;
+
+    chat_metadata[DEBT_KEY] = offer.debt;
+    if (offer.contract) chat_metadata[BOARD_KEY] = [offer.contract, ...(chat_metadata[BOARD_KEY] ?? [])];
+    saveMetadata();
+    savePartyState();
+
+    noteDeed(`${offer.debt.patronName} pagó vuestra cuenta de la semana.`);
+    void postForModel(`🤝 [CAMPAÑA] ${offer.line}`);
+    toastr.info(offer.line, 'Alguien paga por vosotros', { timeOut: 15000 });
+    return true;
+}
+
+/**
+ * Llega el dia y la deuda sigue ahi: vienen a cobrar.
+ */
+function settleDueDebt() {
+    const debt = getDebt();
+    if (!debt) return;
+    const today = Math.max(1, Math.floor(Number(getCampaignCalendar()?.day) || 1));
+    const due = debtDue({ debt, today, purse: partyPurse() });
+    if (!due.due) return;
+
+    payFromParty(due.take);
+    if (due.debt) chat_metadata[DEBT_KEY] = due.debt;
+    else delete chat_metadata[DEBT_KEY];
+    // El favor sin hacer ya no esta en el tablon: ahora quieren oro.
+    if (debt.contractId) {
+        chat_metadata[BOARD_KEY] = (chat_metadata[BOARD_KEY] ?? [])
+            .filter((/** @type {any} */ c) => String(c?.id) !== debt.contractId);
+    }
+    saveMetadata();
+    savePartyState();
+
+    if (due.standing && debt.patron) void shiftFactionStanding(debt.patron, due.standing);
+    if (debt.contractId) noteDeed(`Dejasteis sin hacer el favor que debíais a ${debt.patronName}.`);
+    void postForModel(`💸 [CAMPAÑA] ${due.line}`);
+    toastr.warning(due.line, 'Vienen a cobrar', { timeOut: 15000 });
+}
+
+/**
+ * Mover lo que una faccion piensa de vosotros, y guardarlo en el mundo.
+ *
+ * @param {string} factionId
+ * @param {number} amount
+ * @returns {Promise<void>}
+ */
+async function shiftFactionStanding(factionId, amount) {
+    const worldName = String(chat_metadata?.[METADATA_KEY] || '');
+    if (!worldName) return;
+    try {
+        const data = await loadWorldInfo(worldName);
+        if (!data?.metadata) return;
+        const moved = changeStanding(readFactions(data.metadata.factions), factionId, amount);
+        data.metadata.factions = moved;
+        currentWorldFactions = moved;
+        await saveWorldInfo(worldName, data, true);
+        await refreshWorldMapGlobals(worldName);
+        if (isShellOpen()) refreshGameShell();
+    } catch (error) {
+        console.error('[party] no se pudo mover la reputacion', error);
+    }
 }
 
 /** @returns {any} */
@@ -4306,6 +4601,112 @@ function handlePlayerCombatMove(rawValue) {
 }
 
 /**
+ * Una maniobra: esquivar, destrabarse, empujar o ayudar.
+ *
+ * Gasta la accion, como en 5e. El boton de la barra de combate, el comando
+ * `/maniobra` y el companero que se lleva solo pasan todos por aqui.
+ *
+ * @param {string} kind
+ * @param {string} [targetId] El `instanceId` del enemigo, para empujar y ayudar.
+ * @returns {string}
+ */
+function performManeuver(kind, targetId = '') {
+    const entry = getCurrentTurnEntry();
+    const member = getCurrentActingMember();
+    if (!combatEncounter.active || !entry || entry.isEnemy || !member) {
+        toastr.warning('No hay un turno de jugador activo.');
+        return '';
+    }
+    const maneuver = MANEUVERS[/** @type {keyof typeof MANEUVERS} */ (kind)];
+    if (!maneuver) {
+        toastr.warning(`No conozco esa maniobra. Hay: ${Object.keys(MANEUVERS).join(', ')}.`);
+        return '';
+    }
+    if (!hasAction(combatEncounter, 'action')) {
+        toastr.warning('Tu accion de este turno ya fue usada.');
+        return '';
+    }
+
+    const from = { x: Number(member.mapPosition?.gridX) || 0, y: Number(member.mapPosition?.gridY) || 0 };
+    /** @type {any} */
+    let target = null;
+    if (maneuver.needsTarget) {
+        target = getAliveEnemies().find((/** @type {any} */ e) => String(e.instanceId) === String(targetId))
+            ?? resolveCombatTargetByName(targetId);
+        const far = !target || getDistanceInFeet(from.x, from.y, Number(target.gridX) || 0, Number(target.gridY) || 0) > 5;
+        if (far) {
+            toastr.warning(`${maneuver.label}: tiene que ser un enemigo pegado a ti.`);
+            return '';
+        }
+    }
+
+    Object.assign(combatEncounter, useAction(combatEncounter, 'action'));
+    const id = String(member.id);
+    /** @type {string[]} */
+    const lines = [];
+
+    if (kind === 'esquivar' || kind === 'destrabarse') {
+        combatEncounter.maneuvers = recordManeuver(combatEncounter.maneuvers, kind, id);
+        lines.push(kind === 'esquivar'
+            ? `🛡️ ${member.name} se cubre: hasta su proximo turno, atacarle es con desventaja.`
+            : `🏃 ${member.name} se destraba: este turno se mueve sin dar ataques de oportunidad.`);
+    } else if (kind === 'ayudar') {
+        combatEncounter.maneuvers = recordManeuver(combatEncounter.maneuvers, 'ayudar', id, String(target.instanceId));
+        lines.push(`🤝 ${member.name} distrae a ${target.name}: el proximo ataque del grupo contra el va con ventaja.`);
+    } else {
+        // Empujar: Atletismo contra el mejor de Atletismo y Acrobacias del otro.
+        const mine = getAbilityModifier(member.strength || 10);
+        const theirs = Math.max(getAbilityModifier(target.strength || 10), getAbilityModifier(target.dexterity || 10));
+        const attackRoll = rollDiceDetailed('1d20', 20).total;
+        const defenseRoll = rollDiceDetailed('1d20', 20).total;
+        const attackTotal = attackRoll + mine;
+        const defenseTotal = defenseRoll + theirs;
+        const { terrain, gridWidth, gridHeight } = getActiveBoardContext();
+        const taken = new Set([
+            ...getAliveEnemies().map((/** @type {any} */ e) => cellKey(Number(e.gridX) || 0, Number(e.gridY) || 0)),
+            ...partyMembers.filter(m => (Number(m.hp) || 0) > 0)
+                .map(m => cellKey(Number(m.mapPosition?.gridX) || 0, Number(m.mapPosition?.gridY) || 0)),
+        ]);
+        const shove = resolveShove({
+            from,
+            target: { x: Number(target.gridX) || 0, y: Number(target.gridY) || 0 },
+            attackTotal,
+            defenseTotal,
+            isFree: (x, y) => isPassable(terrain, x, y, gridWidth, gridHeight) && !taken.has(cellKey(x, y)),
+        });
+
+        showCombatDiceRoll({
+            title: `${member.name} empuja`,
+            subtitle: `Contra ${target.name}`,
+            formula: `1d20${mine >= 0 ? '+' : ''}${mine}`,
+            detail: `d20(${attackRoll}) ${mine >= 0 ? '+' : ''}${mine} = ${attackTotal} contra ${defenseTotal}`,
+            total: attackTotal,
+            dc: defenseTotal + 1,
+            natural: attackRoll,
+            glyph: 'd20',
+        });
+        lines.push(`💪 ${member.name} empuja a ${target.name}: ${attackTotal} contra ${defenseTotal}.`);
+        if (!shove.success) {
+            lines.push(`❌ ${target.name} aguanta el empujon.`);
+        } else if (shove.pushedTo) {
+            target.gridX = shove.pushedTo.x;
+            target.gridY = shove.pushedTo.y;
+            lines.push(`✅ ${target.name} retrocede a (${shove.pushedTo.x + 1}, ${shove.pushedTo.y + 1}).`);
+        } else {
+            // Sin sitio detras, cae: el empujon no se pierde, cambia de forma.
+            applyTimedCondition(target, String(target.instanceId), 'Prone', 1);
+            lines.push(`✅ ${target.name} no tiene a donde ir y cae al suelo: pegarle de cerca va con ventaja.`);
+        }
+    }
+
+    saveCombatState();
+    savePartyState();
+    postCombatNarration(`[COMBAT] ${lines.join('\n')}`);
+    renderLocationMapsPreview();
+    return `${member.name}: ${maneuver.label}`;
+}
+
+/**
  * @param {string} rawTargetName
  */
 function handlePlayerCombatAttack(rawTargetName) {
@@ -4337,7 +4738,18 @@ function handlePlayerCombatAttack(rawTargetName) {
     }
 
     const attackMod = getPlayerAttackModifier(member, rangeFeet);
-    const attackRoll = rollDiceDetailed('1d20', 20);
+    const edge = attackEdge({
+        targetId: String(target.instanceId),
+        targetConditions: target.activeConditions ?? [],
+        attackerConditions: member.activeConditions ?? [],
+        distanceFeet,
+        maneuvers: combatEncounter.maneuvers,
+        byParty: true,
+    });
+    const edged = rollWithEdge(() => rollDiceDetailed('1d20', 20).total, edge.mode);
+    const attackRoll = { total: edged.natural, natural: edged.natural };
+    // La ayuda vale para un golpe: se gasta aunque falle.
+    if (edge.usesHelp) combatEncounter.maneuvers = consumeHelp(combatEncounter.maneuvers, String(target.instanceId));
     const attackTotal = attackRoll.total + attackMod;
     const { ac: targetAc, cover: targetCover } = getTargetArmorClass(target, member);
     const isCrit = attackRoll.natural === 20;
@@ -4356,7 +4768,7 @@ function handlePlayerCombatAttack(rawTargetName) {
 
     const lines = [];
     lines.push(`🗡️ ${member.name} ataca a ${target.name}.`);
-    lines.push(`🎲 Tirada de ataque: d20(${attackRoll.total}) ${attackMod >= 0 ? '+' : ''}${attackMod} = ${attackTotal} vs AC ${targetAc}${describeCover(targetCover)}`);
+    lines.push(`🎲 Tirada de ataque: d20(${attackRoll.total}) ${attackMod >= 0 ? '+' : ''}${attackMod} = ${attackTotal} vs AC ${targetAc}${describeCover(targetCover)}${describeEdge(edged, edge.mode, edge.reasons)}`);
 
     Object.assign(combatEncounter, useAction(combatEncounter, 'action'));
 
@@ -5207,13 +5619,17 @@ async function acceptContract(id) {
  */
 function showWeeklyBill() {
     const rules = getActiveRuleset();
-    const bill = weeklyBill(partyMembers, { rules: rules?.upkeep ?? null });
+    // Los mismos precios que se cobran el viernes: con el gremio y el mercado encima. Leer
+    // los de la campana a pelo ensenaba una cuenta y cobraba otra.
+    const bill = weeklyBill(partyMembers, { rules: currentUpkeepRules() });
 
     const today = Math.max(1, Math.floor(Number(getCampaignCalendar()?.day) || 1));
     const due = Number(chat_metadata?.[BILL_DUE_KEY]);
     const daysLeft = Number.isFinite(due) ? Math.max(0, due - today) : 0;
 
     const lines = describeBill(bill, daysLeft);
+    const debt = describeDebt(getDebt(), today);
+    if (debt) lines.push(debt);
     lines.push(describeSurvival(rules?.survival ?? null));
     lines.push(describeMode(rules?.companions ?? null));
 
@@ -5832,6 +6248,67 @@ function openCompanionCard(memberId) {
         card.maxed ? `${card.points} puntos` : `${card.points} / ${card.nextAt} para el rango ${card.rank + 1}`,
     ));
 
+    // Como pelea cuando no lo llevas tu. Un clic, y vale tambien en mitad de un combate:
+    // es justo cuando se ve que la que tenia no era la buena.
+    const stanceRow = $('<div class="cc-stance"></div>');
+    stanceRow.append($('<div class="cc-stance-title"></div>').text('En combate'));
+    const current = stanceOf(member);
+    for (const [id, stance] of Object.entries(STANCES)) {
+        const pick = $('<button class="menu_button cc-stance-btn" type="button"></button>')
+            .attr('data-stance', id)
+            .attr('title', stance.description)
+            .toggleClass('active', id === current)
+            .append(`<i class="fa-solid ${stance.icon}"></i>`)
+            .append($('<span></span>').text(` ${stance.label}`));
+        pick.on('click', () => {
+            setMemberStance(member, id);
+            stanceRow.find('.cc-stance-btn').removeClass('active');
+            pick.addClass('active');
+        });
+        stanceRow.append(pick);
+    }
+    root.append(stanceRow);
+
+    // Lo que no cura. Un remedio cuesta oro; quedarse en casa cuesta tenerle a tu lado.
+    const table = readRemedies();
+    const remedies = remediesFor(member, partyPurse(), table);
+    const lasting = readInjuries(member).filter(injury => injury.permanent);
+    if (lasting.length > 0) {
+        const box = $('<div class="cc-remedies"></div>');
+        box.append($('<div class="cc-remedy-title"></div>').text(
+            `Arrastra: ${lasting.map(injury => injury.label.toLowerCase()).join(', ')}.`));
+        for (const option of remedies) {
+            const buy = $('<button class="menu_button cc-remedy-btn" type="button"></button>')
+                .attr('data-remedy', option.injuryId)
+                .attr('title', option.remedy.description)
+                .prop('disabled', combatEncounter.active || !option.affordable)
+                .text(`${option.remedy.label} — ${option.remedy.cost} de oro`);
+            buy.on('click', () => {
+                closeCompanionCard();
+                buyRemedy(member, option.injuryId);
+            });
+            box.append(buy);
+        }
+
+        if (!combatEncounter.active) {
+            box.append($('<div class="cc-remedy-title"></div>').text(shouldOfferRetirement(member)
+                ? 'Ya no está para salir. Puede quedarse en casa:'
+                : 'O quedarse en casa, si lo prefieres:'));
+            for (const [role, job] of Object.entries(STAFF_ROLES)) {
+                const stay = $('<button class="menu_button cc-remedy-btn" type="button"></button>')
+                    .attr('data-retire', role)
+                    .attr('title', job.describe)
+                    .text(`${job.label}: ${job.describe}`);
+                stay.on('click', () => {
+                    closeCompanionCard();
+                    retireMember(member, role);
+                });
+                box.append(stay);
+            }
+        }
+        root.append(box);
+    }
+
     const actions = $('<div class="cc-actions"></div>');
     for (const action of card.actions) {
         const button = $('<button class="menu_button cc-btn" type="button"></button>');
@@ -5893,6 +6370,122 @@ function openCompanionCard(memberId) {
     root.append(close);
 
     $('body').append($('<div class="cc-overlay"></div>').on('click', () => closeCompanionCard()).append(root));
+}
+
+/** @returns {number} El oro de todo el grupo, que es de todos. */
+function partyPurse() {
+    return partyMembers.reduce((sum, m) => sum + Math.max(0, Number(m.gold) || 0), 0);
+}
+
+/**
+ * Pagar del bolsillo del grupo, empezando por quien mas lleva.
+ *
+ * @param {number} amount
+ * @returns {boolean} Si llegaba.
+ */
+function payFromParty(amount) {
+    if (partyPurse() < amount) return false;
+    let owed = amount;
+    for (const member of [...partyMembers].sort((a, b) => (Number(b.gold) || 0) - (Number(a.gold) || 0))) {
+        if (owed <= 0) break;
+        const has = Math.max(0, Number(member.gold) || 0);
+        const taken = Math.min(has, owed);
+        member.gold = has - taken;
+        owed -= taken;
+    }
+    return true;
+}
+
+/**
+ * Comprar el remedio de una herida que no cura.
+ *
+ * @param {any} member
+ * @param {string} injuryId
+ * @returns {string}
+ */
+function buyRemedy(member, injuryId) {
+    if (combatEncounter.active) {
+        toastr.warning('No en mitad de un combate.');
+        return '';
+    }
+    const table = readRemedies();
+    const remedy = table[injuryId];
+    const patch = applyRemedy(member, injuryId, table);
+    if (!remedy || !patch) {
+        toastr.warning('Esa herida no tiene remedio, o ya no la tiene.');
+        return '';
+    }
+    if (!payFromParty(remedy.cost)) {
+        toastr.warning(`No llega el oro: cuesta ${remedy.cost}.`);
+        return '';
+    }
+
+    member.injuries = patch.injuries;
+    member.baseStats = patch.baseStats;
+    Object.assign(member, patch.stats);
+    savePartyState();
+    renderPartyMembers();
+
+    const line = remedy.becomes
+        ? `${member.name} estrena ${remedy.label.toLowerCase()} (${remedy.cost} de oro). Ahora: ${String(remedy.becomes.label).toLowerCase()}.`
+        : `${member.name}: ${remedy.label.toLowerCase()} (${remedy.cost} de oro). La herida se cierra del todo.`;
+    // Al narrador, que es quien tiene que saber que Bruna ahora lleva pierna de palo.
+    void postForModel(`🦿 [CAMPAÑA] ${line}`);
+    toastr.success(line, 'Remedio');
+    return line;
+}
+
+/**
+ * Que alguien deje de salir y se quede en casa con un puesto.
+ *
+ * Sale del grupo —no pelea, no cobra, no come a cuenta del grupo— y entra en el gremio,
+ * donde su puesto abarata algo cada semana.
+ *
+ * @param {any} member
+ * @param {string} role
+ * @returns {string}
+ */
+function retireMember(member, role) {
+    if (combatEncounter.active) {
+        toastr.warning('No en mitad de un combate.');
+        return '';
+    }
+    if (String(partyMembers[0]?.id) === String(member.id)) {
+        toastr.warning('El tuyo no se retira: es tu partida.');
+        return '';
+    }
+    const result = retireTo(getGuild(), String(member.name), role);
+    if (!result.ok) {
+        toastr.warning(result.line);
+        return '';
+    }
+
+    chat_metadata[GUILD_KEY] = result.guild;
+    partyMembers = partyMembers.filter(m => String(m.id) !== String(member.id));
+    saveMetadata();
+    savePartyState();
+    renderPartyMembers();
+
+    noteDeed(result.line);
+    void postForModel(`🏠 [GREMIO] ${result.line}`);
+    toastr.success(result.line, 'Se queda en casa', { timeOut: 12000 });
+    return result.line;
+}
+
+/**
+ * Cambiar la postura de alguien.
+ *
+ * @param {any} member
+ * @param {string} stance
+ * @returns {string}
+ */
+function setMemberStance(member, stance) {
+    if (!(stance in STANCES)) return '';
+    member.stance = stance;
+    savePartyState();
+    const label = STANCES[/** @type {keyof typeof STANCES} */ (stance)].label;
+    toastr.info(`${member.name}: ${label.toLowerCase()}.`);
+    return `${member.name}: ${label}`;
 }
 
 /**
@@ -5990,14 +6583,74 @@ function runShellChip(chip) {
         return;
     }
 
-    if (chip.draft) {
-        const input = /** @type {HTMLTextAreaElement|null} */ (document.querySelector('#send_textarea'));
-        if (!input) return;
-        input.value = chip.draft;
-        input.focus();
-        input.setSelectionRange(input.value.length, input.value.length);
-        input.dispatchEvent(new Event('input', { bubbles: true }));
+    if (chip.draft) draftInChat(chip.draft);
+}
+
+/**
+ * Dejar una frase empezada en el cuadro del chat, con el cursor al final.
+ *
+ * @param {string} text
+ */
+function draftInChat(text) {
+    const input = /** @type {HTMLTextAreaElement|null} */ (document.querySelector('#send_textarea'));
+    if (!input) return;
+    input.value = text;
+    input.focus();
+    input.setSelectionRange(input.value.length, input.value.length);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+/** La tirada hecha que todavia no se ha enviado. Una por mensaje. */
+const PENDING_CHECK_KEY = 'pendingCheck';
+
+/**
+ * Intentar algo fuera de combate: el motor tira y el narrador lee el resultado.
+ *
+ * El resultado viaja **dentro de tu mensaje**, que es lo unico que el modelo lee seguro.
+ * Se guarda hasta que lo envias: volver a pulsar da la misma tirada, no otra.
+ *
+ * @param {string} skill
+ * @returns {string}
+ */
+function runSkillCheck(skill) {
+    if (combatEncounter.active) {
+        toastr.warning('En combate se pelea con la barra de abajo.');
+        return '';
     }
+    const pending = chat_metadata?.[PENDING_CHECK_KEY];
+    if (pending?.draft) {
+        toastr.info('Ya has tirado. Envia el mensaje antes de intentar otra cosa.');
+        draftInChat(String(pending.draft));
+        return String(pending.line || '');
+    }
+
+    const member = partyMembers[0];
+    if (!member) {
+        toastr.warning('No hay nadie en el grupo que pueda intentarlo.');
+        return '';
+    }
+    const result = rollCheck({ member, skill, rollD20: () => rollDiceDetailed('1d20', 20).total });
+    if (!result) {
+        toastr.warning(`No conozco esa tirada. Hay: ${Object.keys(SKILLS).join(', ')}.`);
+        return '';
+    }
+
+    showCombatDiceRoll({
+        title: `${member.name}: ${result.label}`,
+        subtitle: result.success ? 'Sale' : 'No sale',
+        formula: `1d20${result.modifier >= 0 ? '+' : ''}${result.modifier}`,
+        detail: `d20(${result.natural}) ${result.modifier >= 0 ? '+' : ''}${result.modifier} = ${result.total}`,
+        total: result.total,
+        dc: result.dc,
+        natural: result.natural,
+        glyph: 'd20',
+    });
+
+    chat_metadata[PENDING_CHECK_KEY] = { line: result.line, draft: result.draft };
+    saveMetadata();
+    draftInChat(result.draft);
+    if (isShellOpen()) refreshGameShell();
+    return result.line;
 }
 
 /**
@@ -6205,6 +6858,13 @@ async function travelWithTime(name, options = {}) {
         weather,
         random,
     });
+
+    // Quien os tiene ganas y manda por donde pasais os para: peaje, o rodeo.
+    const trouble = roadTrouble({ factions: getCurrentWorldFactions(), places: plan.legs, purse: partyPurse() });
+    if (trouble?.toll) payFromParty(trouble.toll);
+    if (trouble) {
+        events.push({ day: 1, id: `peaje_${trouble.faction}`, name: trouble.name, note: trouble.note, days: trouble.days, climate: '' });
+    }
 
     // Un atajo resta y una tormenta suma, pero un viaje nunca dura menos de un dia:
     // llegar antes de salir no lo cuenta nadie.
@@ -6574,6 +7234,10 @@ function buildShellOptions() {
         }),
         getChips: buildShellChips,
         onChip: runShellChip,
+        getChecks: () => (combatEncounter.active || !partyMembers[0]
+            ? []
+            : checkOptions(partyMembers[0], { locked: Boolean(chat_metadata?.[PENDING_CHECK_KEY]) })),
+        onCheck: (skill) => { runSkillCheck(skill); },
         onCompanion: (memberId) => openCompanionCard(memberId),
         onClock: (action) => {
             if (action === 'slot') advanceCampaignSlot();
@@ -6661,6 +7325,21 @@ function buildShellOptions() {
             const ally = allyId ? partyMembers.find(m => String(m.id) === String(allyId)) : null;
             useAbility(member, ability, ability.target === 'ally' ? ally : null);
         },
+        getManeuvers: () => {
+            const member = getCurrentActingMember();
+            if (!member || !combatEncounter.active) return [];
+            const x = Number(member.mapPosition?.gridX) || 0;
+            const y = Number(member.mapPosition?.gridY) || 0;
+            return judgeManeuvers({
+                hasAction: hasAction(combatEncounter, 'action'),
+                enemies: getAliveEnemies().map((/** @type {any} */ e) => ({
+                    id: String(e.instanceId),
+                    name: String(e.name),
+                    distanceFeet: getDistanceInFeet(x, y, Number(e.gridX) || 0, Number(e.gridY) || 0),
+                })),
+            });
+        },
+        onManeuver: (maneuverId, targetId) => { performManeuver(maneuverId, targetId); },
         onObjectives: () => {
             const verdict = judgeCurrentScenario();
             toastr.info(
@@ -9643,6 +10322,70 @@ export function initPartyPanel() {
     }));
 
     SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'tirada',
+        helpString: '<div>Intentar algo fuera de combate. El motor tira el dado con la ficha del tuyo y deja '
+            + 'el resultado escrito en el chat, para que el narrador lo lea: <code>/tirada persuasion</code>. '
+            + 'Una por mensaje.</div>',
+        unnamedArgumentList: [
+            SlashCommandArgument.fromProps({
+                description: 'la habilidad',
+                typeList: [ARGUMENT_TYPE.STRING],
+                isRequired: true,
+                enumList: Object.entries(SKILLS).map(([id, def]) => new SlashCommandEnumValue(id, def.label)),
+            }),
+        ],
+        callback: (_args, value) => runSkillCheck(String(value ?? '').trim().toLowerCase()),
+    }));
+
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'maniobra',
+        helpString: '<div>En vez de atacar: <code>/maniobra esquivar</code>, <code>/maniobra destrabarse</code>, '
+            + '<code>/maniobra empujar Goblin</code> o <code>/maniobra ayudar Goblin</code>. Gasta la accion.</div>',
+        unnamedArgumentList: [
+            SlashCommandArgument.fromProps({
+                description: 'la maniobra y, si hace falta, a quien',
+                typeList: [ARGUMENT_TYPE.STRING],
+                isRequired: true,
+            }),
+        ],
+        callback: (_args, value) => {
+            const [kind, ...rest] = String(value ?? '').trim().split(/\s+/);
+            return performManeuver(String(kind || '').toLowerCase(), rest.join(' '));
+        },
+    }));
+
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'postura',
+        helpString: '<div>Como pelea un companero cuando se lleva solo: '
+            + '<code>/postura Bruna cerca</code> (a tu lado), <code>carga</code> o <code>atras</code>. '
+            + 'Sin postura, dice la que tiene.</div>',
+        unnamedArgumentList: [
+            SlashCommandArgument.fromProps({
+                description: 'nombre y postura',
+                typeList: [ARGUMENT_TYPE.STRING],
+                isRequired: true,
+            }),
+        ],
+        callback: (_args, value) => {
+            const parts = String(value ?? '').trim().split(/\s+/);
+            const last = String(parts[parts.length - 1] || '').toLowerCase();
+            const hasStance = parts.length > 1 && last in STANCES;
+            const name = (hasStance ? parts.slice(0, -1) : parts).join(' ').toLowerCase();
+            const member = partyMembers.find(m => String(m.name).toLowerCase() === name);
+            if (!member) {
+                toastr.warning(`No encuentro a "${name}" en el grupo.`);
+                return '';
+            }
+            if (!hasStance) {
+                const label = STANCES[/** @type {keyof typeof STANCES} */ (stanceOf(member))].label;
+                toastr.info(`${member.name}: ${label.toLowerCase()}.`);
+                return label;
+            }
+            return setMemberStance(member, last);
+        },
+    }));
+
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
         name: 'rollguard',
         helpString: '<div>Controla la correccion de tiradas inventadas por el modelo. '
             + '<code>/rollguard</code> muestra el modo actual. '
@@ -9712,6 +10455,24 @@ export function initPartyPanel() {
     // Runs before the message is rendered, so the player only ever sees the corrected
     // text. Corrections are announced rather than applied quietly: a number that changes
     // with no explanation is indistinguishable from a bug.
+    // Lo que el mundo sabe del grupo, al dia justo antes de montar el prompt.
+    eventSource.on(event_types.GENERATION_STARTED, () => {
+        try {
+            refreshWorldMemoryPrompt();
+        } catch (error) {
+            console.error('[party] world memory prompt failed', error);
+        }
+    });
+
+    // Enviado el mensaje con la tirada, se puede volver a intentar algo.
+    eventSource.on(event_types.MESSAGE_SENT, () => {
+        if (chat_metadata?.[PENDING_CHECK_KEY]) {
+            delete chat_metadata[PENDING_CHECK_KEY];
+            saveMetadata();
+            if (isShellOpen()) refreshGameShell();
+        }
+    });
+
     eventSource.on(event_types.MESSAGE_RECEIVED, (/** @type {number} */ messageId) => {
         try {
             applyRollGuard(messageId);

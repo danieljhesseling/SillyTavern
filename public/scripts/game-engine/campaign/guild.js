@@ -24,6 +24,7 @@
  * @property {string} theme      Una de `GUILD_THEMES`.
  * @property {number} renown     Lo que se ha ganado a pulso. Abre rangos del tablón.
  * @property {Record<string, number>} buildings Qué hay construido, y a qué nivel.
+ * @property {Array<{name: string, role: string}>} staff Quien se ha quedado en casa, y haciendo qué.
  */
 
 /**
@@ -65,6 +66,37 @@ export const BUILDINGS = {
         effect: {},
     },
 };
+
+/**
+ * Los puestos de quien deja de salir.
+ *
+ * Es la otra salida de una herida que no cura: Bruna ya no corre, pero sabe dónde pagan
+ * mejor. Cada puesto toca **un número que ya existe**, igual que un edificio de nivel
+ * uno, y por eso se nota en la cuenta de la semana y no en una barra aparte.
+ */
+export const STAFF_ROLES = {
+    consejero: {
+        label: 'Consejero del gremio',
+        describe: 'Sabe quién paga y quién no: el tablón trae un encargo más.',
+        effect: {},
+        board: 1,
+    },
+    intendente: {
+        label: 'Intendente',
+        describe: 'Lleva la despensa y regatea: la comida sale más barata.',
+        effect: { foodPerDay: -0.5 },
+        board: 0,
+    },
+    curandero: {
+        label: 'Curandero de casa',
+        describe: 'Cose y venda en casa: curar cuesta menos cada día.',
+        effect: { healingPerDay: -1.5 },
+        board: 0,
+    },
+};
+
+/** Más gente en casa que esto, y la casa se llena de jubilados. */
+export const MAX_STAFF = 3;
 
 /** Cuánta reputación da terminar un encargo de cada rango. */
 export const RENOWN_BY_RANK = { D: 1, C: 2, B: 4, A: 7, S: 12 };
@@ -110,6 +142,10 @@ export function readGuild(raw) {
         theme: String(source.theme ?? 'general'),
         renown: Math.max(0, Math.floor(number(source.renown))),
         buildings,
+        staff: (Array.isArray(source.staff) ? source.staff : [])
+            .filter((/** @type {any} */ s) => s && String(s.role) in STAFF_ROLES && String(s.name ?? '').trim())
+            .slice(0, MAX_STAFF)
+            .map((/** @type {any} */ s) => ({ name: String(s.name).trim(), role: String(s.role) })),
     };
 }
 
@@ -153,6 +189,14 @@ export function upkeepWithBuildings(upkeepRules, guild) {
         }
     }
 
+    // Quien se ha quedado en casa cuenta como un edificio de nivel uno.
+    for (const person of guild?.staff ?? []) {
+        const effect = STAFF_ROLES[/** @type {keyof typeof STAFF_ROLES} */ (person.role)]?.effect ?? {};
+        for (const [field, amount] of Object.entries(effect)) {
+            prices[field] = Math.max(0, number(prices[field]) + number(amount));
+        }
+    }
+
     return prices;
 }
 
@@ -163,7 +207,34 @@ export function upkeepWithBuildings(upkeepRules, guild) {
  * @returns {number}
  */
 export function boardSize(guild) {
-    return 4 + Math.max(0, Math.floor(number(guild?.buildings?.library)));
+    const advisers = (guild?.staff ?? [])
+        .reduce((sum, person) => sum + (STAFF_ROLES[/** @type {keyof typeof STAFF_ROLES} */ (person.role)]?.board ?? 0), 0);
+    return 4 + Math.max(0, Math.floor(number(guild?.buildings?.library))) + advisers;
+}
+
+/**
+ * Darle a alguien un puesto en casa.
+ *
+ * @param {GuildState} guild
+ * @param {string} name
+ * @param {string} role Uno de `STAFF_ROLES`.
+ * @returns {{ok: boolean, guild: GuildState, line: string}}
+ */
+export function retireTo(guild, name, role) {
+    const read = readGuild(guild);
+    const job = STAFF_ROLES[/** @type {keyof typeof STAFF_ROLES} */ (role)];
+    if (!job) return { ok: false, guild: read, line: 'Ese puesto no existe.' };
+    if (read.staff.length >= MAX_STAFF) {
+        return { ok: false, guild: read, line: `En casa ya hay ${MAX_STAFF}: no cabe nadie más.` };
+    }
+    const who = String(name ?? '').trim();
+    if (!who) return { ok: false, guild: read, line: 'Falta quién.' };
+
+    return {
+        ok: true,
+        guild: { ...read, staff: [...read.staff, { name: who, role }] },
+        line: `${who} se queda en casa como ${job.label.toLowerCase()}. ${job.describe}`,
+    };
 }
 
 /**
@@ -241,6 +312,10 @@ export function describeGuild(guild) {
     const built = Object.entries(guild.buildings ?? {})
         .map(([key, level]) => `${BUILDINGS[key]?.label ?? key} ${level}`);
     parts.push(built.length > 0 ? built.join(', ') : 'sin construir nada');
+
+    const staff = (guild.staff ?? [])
+        .map(person => `${person.name} (${STAFF_ROLES[/** @type {keyof typeof STAFF_ROLES} */ (person.role)]?.label.toLowerCase() ?? person.role})`);
+    if (staff.length > 0) parts.push(`en casa: ${staff.join(', ')}`);
 
     return parts.join(' · ');
 }
