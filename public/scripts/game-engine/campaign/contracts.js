@@ -30,6 +30,9 @@
  * @property {number} days       Cuántos días quedan para entregarlo.
  * @property {number} difficulty El desafío recomendado, para poblar el sitio.
  * @property {string} patron     Quién lo pide.
+ * @property {string} [faction]   La facción cuyo reloj mueve, si es de los que toman partido.
+ * @property {boolean} [against]  Si va en su contra o a su favor.
+ * @property {number} [segments]  Cuánto le mueve el reloj al entregarlo.
  */
 
 /**
@@ -204,6 +207,140 @@ export function generateBoardOfContracts(options = {}) {
     }
 
     return contracts;
+}
+
+/**
+ * Qué clase de trabajo es parar (o ayudar) a cada meta.
+ *
+ * Sin vocabulario nuevo: las cinco metas se dicen con los verbos que el tablón ya sabe
+ * resolver, porque cada uno lleva su objetivo de tablero detrás. Inventar un verbo nuevo
+ * aquí sería inventar un objetivo que nadie sabe juzgar.
+ */
+const GOAL_WORK = {
+    conquistar: { against: 'hold', forThem: 'cull' },
+    recuperar: { against: 'hold', forThem: 'recover' },
+    encontrar: { against: 'recover', forThem: 'recover' },
+    destruir: { against: 'cull', forThem: 'cull' },
+    controlar: { against: 'steal', forThem: 'cull' },
+};
+
+/** Cómo se dice cada encargo, según se vaya a favor o en contra. */
+const GOAL_TITLE = {
+    conquistar: {
+        against: 'Aguantar {place} antes de que la tomen {who}',
+        forThem: 'Despejar {place} para {who}',
+    },
+    recuperar: {
+        against: 'Que {who} no vuelva a {place}',
+        forThem: 'Devolver {place} a {who}',
+    },
+    encontrar: {
+        against: 'Llegar a {place} antes que {who}',
+        forThem: 'Encontrar el camino a {place} para {who}',
+    },
+    destruir: {
+        against: 'Proteger a los que {who} quiere borrar',
+        forThem: 'Quitar de en medio lo que estorba a {who}',
+    },
+    controlar: {
+        against: 'Romper el peaje de {who} camino de {place}',
+        forThem: 'Asegurar el camino a {place} para {who}',
+    },
+};
+
+/**
+ * Encargos que salen de lo que alguien quiere de verdad.
+ *
+ * Es la diferencia entre un recado y tomar partido. Un encargo normal se entrega y se
+ * cobra; éste **mueve el reloj de una facción**, así que cogerlo es decidir quién gana
+ * algo esta semana. Y como cada facción tiene enemigos, el mismo tablón ofrece las dos
+ * caras: parar a unos es ayudar a otros, y eso lo eliges tú.
+ *
+ * Recibe las facciones ya leídas, no el mundo: este módulo sigue sin saber guardar nada.
+ *
+ * @param {Object} options
+ * @param {any[]} options.factions Las que tienen algo entre manos.
+ * @param {() => number} [options.random]
+ * @param {number} [options.renown]
+ * @param {number} [options.day]
+ * @param {number} [options.count]
+ * @returns {Contract[]}
+ */
+export function contractsFromFactions({ factions, random = Math.random, renown = 0, day = 1, count = 2 }) {
+    const busy = (Array.isArray(factions) ? factions : [])
+        .filter(faction => GOAL_WORK[String(faction?.goal?.kind ?? '')]);
+    if (busy.length === 0) return [];
+
+    const available = ranksFor(number(renown, 0));
+    const today = Math.max(1, Math.floor(number(day, 1)));
+    const wanted = Math.max(0, Math.floor(number(count, 2)));
+    const byId = new Map(busy.map(faction => [String(faction.id), faction]));
+
+    /** @type {Contract[]} */
+    const out = [];
+
+    for (let i = 0; i < wanted && i < busy.length; i++) {
+        const faction = busy[i % busy.length];
+        const goal = String(faction.goal.kind);
+        const place = String(faction.goal.target || '');
+
+        // En contra la mitad de las veces. Un tablón que solo ofrece pararlos no es tomar
+        // partido, es una lista de deberes.
+        const against = random() < 0.5;
+        const enemy = (Array.isArray(faction.enemies) ? faction.enemies : [])
+            .map((/** @type {string} */ id) => byId.get(String(id)))
+            .find(Boolean);
+
+        // Quien paga: ayudarles lo pide quien manda ahí; pararlos, quien tiene algo que
+        // perder. Sin enemigo escrito, el sitio que está a punto de perderlo.
+        const patron = against
+            ? String(enemy?.name || place || pick(random, PATRONS))
+            : String(faction.name);
+
+        const rank = pick(random, available);
+        const title = GOAL_TITLE[goal][against ? 'against' : 'forThem']
+            .replace('{place}', place || 'el yermo')
+            .replace('{who}', String(faction.name));
+
+        out.push({
+            id: `f_${String(faction.id)}_${i}_${Math.floor(random() * 100000)}`,
+            rank: rank.id,
+            kind: GOAL_WORK[goal][against ? 'against' : 'forThem'],
+            title,
+            locationName: place,
+            // Paga algo más: quien se mete en medio de una guerra cobra el riesgo.
+            reward: Math.round(between(random, rank.reward[0], rank.reward[1]) * 1.25),
+            // Y corre más prisa, porque su reloj no espera: el plazo es lo que tarda un
+            // segmento suyo en llenarse, no lo que tarda un recado.
+            days: today + Math.max(3, Math.min(
+                between(random, rank.days[0], rank.days[1]),
+                Math.max(1, Math.floor(number(faction.goal.pace, 7))),
+            )),
+            difficulty: rank.difficulty,
+            patron,
+            // Lo que lo hace distinto de un recado: al entregarlo, su reloj se mueve.
+            faction: String(faction.id),
+            against,
+            segments: 1,
+        });
+    }
+
+    return out;
+}
+
+/**
+ * Lo que un encargo de facción le hace al mundo, en una línea.
+ *
+ * @param {any} contract
+ * @param {string} factionName
+ * @returns {string}
+ */
+export function describeStake(contract, factionName) {
+    if (!contract?.faction) return '';
+    const who = String(factionName || 'ellos');
+    return contract.against
+        ? `Si sale bien, ${who} pierde una semana de trabajo.`
+        : `Si sale bien, ${who} gana una semana.`;
 }
 
 /**

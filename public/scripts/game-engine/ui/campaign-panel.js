@@ -30,10 +30,12 @@ import { buildCampaignView, getRecordableEvents } from '../campaign/campaign-vie
  * @param {any} [input.bill] La cuenta de la semana, si hay grupo al que pasarsela.
  * @param {number} [input.daysToBill] Cuantos dias faltan para que venza.
  * @param {Array<{name: string, said: string}>} [input.needs] Quien pasa hambre, sed o frio.
+ * @param {string[]} [input.world] Lo que se mueve ahi fuera sin ti: facciones y sus relojes.
  */
 export function renderCampaignPanel(container, {
     calendar, bonds, party, onAdvanceSlot, onAdvanceDay, onRecordEvent,
     onShortRest = null, onLongRest = null, bill = null, daysToBill = 0, needs = [],
+    world = [],
 }) {
     const view = buildCampaignView({ calendar, bonds, party });
     container.empty();
@@ -102,6 +104,15 @@ export function renderCampaignPanel(container, {
         container.append($('<div class="cp-need"></div>')
             .append($('<span class="cp-need-who"></span>').text(entry.name))
             .append($('<span class="cp-need-what"></span>').text(entry.said)));
+    }
+
+    // Y lo que pasa ahi fuera mientras tanto. Va con el reloj porque es la misma cosa:
+    // los dias que curan a los tuyos tambien acercan a los otros a lo que quieren.
+    if (Array.isArray(world) && world.length > 0) {
+        container.append($('<div class="cp-world-title"></div>').text('Ahí fuera'));
+        for (const line of world) {
+            container.append($('<div class="cp-world"></div>').text(line));
+        }
     }
 
     if (view.characters.length === 0) {

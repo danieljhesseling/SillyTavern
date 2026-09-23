@@ -22,6 +22,7 @@ import { getCompendium } from './game-engine/compendio/browser.js';
 import { makeName } from './game-engine/compendio/names.js';
 import { createSeededRandom } from './game-engine/combat/seeded-random.js';
 import { seedOf, derive } from './game-engine/campaign/seed.js';
+import { abilitiesFor, nameAndAbility } from './game-engine/compendio/skills.js';
 
 /**
  * Fetches recent chats with metadata from the cross-character API.
@@ -1109,6 +1110,10 @@ async function createStartingHero(worldName) {
     const board = (place?.boards ?? [])[0];
     const cell = board?.partyStart?.[0] ?? { x: 1, y: 1 };
 
+    // Lo que sabe hacer por ser de su clase. Sin bateria de habilidades no sabe nada
+    // de serie, igual que hasta ahora.
+    const known = abilitiesFor({ compendium, className: answers.className, level: 1 });
+
     const spec = buildHeroEntry(answers, {
         locationName: String(place?.name || ''),
         cell,
@@ -1123,6 +1128,10 @@ async function createStartingHero(worldName) {
     entry.content = spec.content;
     entry.group = spec.group;
     entry.dndData = spec.dndData;
+    if (known.length > 0) {
+        // En la ficha, con la forma que el panel de habilidades ya lee.
+        entry.dndData.abilities = known;
+    }
 
     await saveWorldInfo(worldName, data, true);
 
@@ -1130,6 +1139,9 @@ async function createStartingHero(worldName) {
     setPartyFromWorldEntries([entry], worldName);
 
     toastr.success(describeHero(answers), 'Tu personaje');
+    if (known.length > 0) {
+        toastr.info(known.map(nameAndAbility).join('. '), 'Lo que sabes hacer', { timeOut: 9000 });
+    }
     return true;
 }
 

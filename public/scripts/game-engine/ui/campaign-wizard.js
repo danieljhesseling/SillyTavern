@@ -21,7 +21,11 @@ import {
     buildEncounterRules,
 } from '../campaign/starter-templates.js';
 import { uniqueWorldName } from '../campaign/campaign-worlds.js';
-import { ensureSeed } from '../campaign/seed.js';
+import { ensureSeed, seedOf, derive } from '../campaign/seed.js';
+import { rollFactions } from '../campaign/factions.js';
+import { withNeighbours } from '../world/neighbours.js';
+import { getCompendium } from '../compendio/browser.js';
+import { createSeededRandom } from '../combat/seeded-random.js';
 import { validateNarrator, VERBOSITY, DEFAULT_VERBOSITY } from '../campaign/narrator.js';
 import { MORTALITY, SAVES, DEFAULT_SURVIVAL } from '../rules/mortality.js';
 import { normalizeMap, findPartyStart } from '../world-builder/world-schema.js';
@@ -663,6 +667,12 @@ export async function createCampaign({
     // donde sacar el azar era el nombre, y dos campanas llamadas igual salian iguales.
     data.metadata = ensureSeed(data.metadata, { seed: answers.seed }).metadata;
 
+    // Un mundo de un solo sitio no tiene distancia, y sin distancia no hay viaje que
+    // cueste dias ni facciones que quieran lo de al lado. Asi que nace con vecinos, y
+    // quien vive en ellos. Todo con la semilla del mundo: dos campanas con el mismo texto
+    // salen distintas, y la misma campana repetida sale igual.
+    await populateWorld(data.metadata);
+
     /** @type {any[]} */
     const partyEntries = [];
     /** @type {Record<string, string>} */
@@ -719,4 +729,38 @@ export function buildNewCampaignCta(hasCampaigns) {
                 <i class="fa-solid fa-plus"></i> Nueva campaña
             </button>
         </div>`;
+}
+
+/**
+ * Poblar el mundo recien hecho: primero los sitios, luego quien vive en ellos.
+ *
+ * Aparte, y con su propio try: un fallo leyendo el compendio no puede impedir crear la
+ * campana. Un mundo pelado se juega como se jugaba; uno a medias, no.
+ *
+ * @param {any} metadata
+ * @returns {Promise<void>}
+ */
+async function populateWorld(metadata) {
+    try {
+        const { compendium } = await getCompendium();
+        const seed = seedOf(metadata);
+
+        // Primero los sitios, porque las facciones quieren **sitios**: repartirlas antes
+        // de que exista a donde ir las dejaria a todas sin nada que querer.
+        metadata.locationMaps = withNeighbours({
+            compendium,
+            locations: Array.isArray(metadata?.locationMaps) ? metadata.locationMaps : [],
+            random: createSeededRandom(derive(seed, 'vecinos')),
+        });
+
+        metadata.factions = rollFactions({
+            compendium,
+            locations: metadata.locationMaps,
+            random: createSeededRandom(derive(seed, 'facciones')),
+        });
+    } catch (error) {
+        // Un mundo pelado se juega; uno a medias, no. Crear la campana manda.
+        console.error('[campaña] no se pudo poblar el mundo', error);
+        metadata.factions = Array.isArray(metadata.factions) ? metadata.factions : [];
+    }
 }

@@ -21,8 +21,10 @@
  *
  * Puro: recibe la lista y el azar, y devuelve un plan. No mueve a nadie ni toca el reloj.
  *
- * Ver wiki/ALGORITMOS_GENERACION.md (#43-#56) y wiki/ROADMAP_MAESTRO.md.
+ * Ver wiki/ALGORITMOS_GENERACION.md (#43-#66) y wiki/ROADMAP_MAESTRO.md.
  */
+
+import { matches, pickWeighted } from '../compendio/compendio.js';
 
 /** Lo que cuesta un viaje cuando el mundo no dice nada. */
 export const DEFAULT_DAYS = 2;
@@ -256,6 +258,53 @@ export function planTravel({ from, to, locations }) {
 }
 
 /**
+ * Que tiempo hace cada dia del viaje.
+ *
+ * Cadena de Markov: **el tiempo de manana depende del de hoy**. Una tirada suelta por dia
+ * da sol-tormenta-sol, que no lo cree nadie; una matriz de transiciones da rachas, que es
+ * como se comporta el tiempo de verdad y ademas se puede ver venir.
+ *
+ * El primer dia sale de los climas que el bioma admite: en una cueva no nieva.
+ *
+ * @param {Object} input
+ * @param {number} input.days
+ * @param {any[]} [input.table]      Las filas `kind: 'clima'` del compendio.
+ * @param {string[]} [input.climates] Los que admite el bioma. Vacio: todos.
+ * @param {() => number} [input.random]
+ * @returns {string[]} Uno por dia.
+ */
+export function rollWeather({ days: total, table = [], climates = [], random = Math.random }) {
+    const rows = (Array.isArray(table) ? table : []).filter(row => text(row?.climate));
+    if (rows.length === 0) return [];
+
+    const byName = new Map(rows.map(row => [text(row.climate), row]));
+    const allowed = climates.length > 0
+        ? rows.filter(row => climates.map(text).includes(text(row.climate)))
+        : rows;
+    if (allowed.length === 0) return [];
+
+    /** @type {string[]} */
+    const out = [];
+    let current = text(pickWeighted(allowed.map(row => ({ ...row, weight: number(row.weight, 1) })), random)?.climate);
+
+    for (let day = 0; day < Math.max(0, Math.round(total)); day++) {
+        out.push(current);
+
+        // A donde puede ir manana. Una transicion a un clima que el bioma no admite se
+        // ignora: el archivo describe el tiempo en general, y el sitio manda.
+        const transitions = Object.entries(byName.get(current)?.transitions ?? {})
+            .map(([to, weight]) => ({ id: to, weight: number(weight, 0) }))
+            .filter(edge => byName.has(edge.id)
+                && (climates.length === 0 || climates.map(text).includes(edge.id)));
+
+        const next = pickWeighted(transitions, random);
+        current = next ? text(next.id) : current;
+    }
+
+    return out;
+}
+
+/**
  * Lo que pasa por el camino.
  *
  * Un viaje que solo gasta dias es una pantalla de carga. Una tirada por dia contra una
@@ -266,30 +315,47 @@ export function planTravel({ from, to, locations }) {
  *
  * @param {Object} input
  * @param {number} input.days      Los del viaje.
- * @param {any[]} [input.table]    Filas con `{id, name, note, days?, chance?}`.
+ * @param {any[]} [input.table]    Filas con `{id, name, note, days?, when?}`.
  * @param {() => number} [input.random]
  * @param {number} [input.chance]  Probabilidad por dia cuando la fila no diga la suya.
- * @returns {Array<{day: number, id: string, name: string, note: string, days: number}>}
+ * @param {string} [input.biome]   Por donde se pasa.
+ * @param {string[]} [input.weather] Que tiempo hizo cada dia.
+ * @returns {Array<{day: number, id: string, name: string, note: string, days: number, climate: string}>}
  */
-export function travelEvents({ days: total, table = [], random = Math.random, chance = 0.35 }) {
+export function travelEvents({
+    days: total, table = [], random = Math.random, chance = 0.35, biome = '', weather = [],
+}) {
     const rows = (Array.isArray(table) ? table : []).filter(Boolean);
     if (rows.length === 0) return [];
 
-    /** @type {Array<{day: number, id: string, name: string, note: string, days: number}>} */
+    /** @type {Array<{day: number, id: string, name: string, note: string, days: number, climate: string}>} */
     const out = [];
+    // Lo mismo dos veces en el mismo viaje se lee como un error, no como mala suerte.
+    const already = new Set();
 
     for (let day = 1; day <= Math.max(0, Math.round(total)); day++) {
         if (random() >= chance) continue;
 
-        const row = rows[Math.floor(random() * rows.length) % rows.length];
+        // Solo lo que pega con donde se esta y con el tiempo que hace: una tormenta no
+        // cae con el cielo despejado, y eso lo dice la fila, no este codigo.
+        const climate = text(weather[day - 1]);
+        const fit = rows.filter(row => matches(row, { biome: text(biome), climate })
+            && !already.has(text(row.id)));
+        if (fit.length === 0) continue;
+
+        const row = pickWeighted(fit.map(r => ({ ...r, weight: number(r.weight, 1) })), random);
+        if (!row) continue;
+
+        already.add(text(row.id));
         out.push({
             day,
             id: text(row.id),
             name: text(row.name),
             note: text(row.note),
-            // Un retraso es lo unico que un suceso puede cobrar por su cuenta: el reloj
-            // ya sabe lo que cuesta un dia de mas, y no hace falta inventar otra moneda.
-            days: Math.max(0, Math.round(number(row.days, 0))),
+            climate,
+            // Dias de mas o de menos: el reloj ya sabe lo que cuesta un dia, y un atajo
+            // que no pudiera restarlos seria un atajo que no existe.
+            days: Math.round(number(row.days, 0)),
         });
     }
 

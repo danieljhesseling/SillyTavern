@@ -51,11 +51,20 @@ try {
 }
 
 let failures = 0;
+/** Lo que fallo, con su paso: el recorrido son 400 lineas y el fallo puede quedar en medio. */
+const failed = [];
+let currentStep = '(antes de empezar)';
 const check = (name, ok, detail = '') => {
-    if (!ok) failures++;
+    if (!ok) {
+        failures++;
+        failed.push(`${currentStep} - ${name}${detail ? ` -> ${detail}` : ''}`);
+    }
     console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? `\n        -> ${detail}` : ''}`);
 };
-const step = title => console.log(`\n=== ${title} ===`);
+const step = (title) => {
+    currentStep = title;
+    console.log(`\n=== ${title} ===`);
+};
 
 const dataRoot = mkdtempSync(join(tmpdir(), 'st-e2e-'));
 console.log(`Temporary data root: ${dataRoot}`);
@@ -1587,13 +1596,13 @@ try {
             exploreWhy: explore ? (explore.title || '') : '',
         };
     });
-    // Explorar pide **a donde ir**: con una sola localidad y sin mapa de mundo, esa
-    // pestana abria un mapa de un punto, asi que salir del tablero deja la pantalla
-    // en la conversacion. Lo que no puede pasar es que se quede en blanco ni que la
-    // pestana apagada no diga por que.
-    check('salir del tablero sin sitio a donde ir deja la conversacion, y dice por que',
-        left.scene === 'dialogue' && !left.empty
-        && left.exploreOff === true && /nada que mostrar/.test(left.exploreWhy),
+    // Explorar pide **a donde ir**. Cuando un mundo nuevo tenia una sola localidad, esa
+    // pestana abria un mapa de un punto y salir del tablero caia en la conversacion con
+    // el boton apagado. Desde que nace con vecinos hay sitios de verdad, asi que esto
+    // comprueba lo contrario: que se va al mapa y que el boton dice cuantos hay.
+    check('salir del tablero lleva al mapa, con los sitios a los que ir',
+        left.scene === 'exploration' && !left.empty && left.places === true
+        && left.exploreOff === false && /\[\d+\]/.test(left.exploreWhy),
         JSON.stringify(left));
     check('y la cabecera sigue diciendo lo que paso de verdad',
         left.reason === 'se ha salido del tablero', left.reason);
@@ -4382,23 +4391,38 @@ try {
         bred43.length > 0 && bred43.every(l => /PG/.test(l) && /CR/.test(l)),
         bred43.join(' | '));
 
-    // Y una que todavia no existe dice que no existe, y donde iria.
-    await page.locator('.cx-tab', { hasText: 'Personas' }).click();
+    // Y las facciones se prueban repartiendolas por el mundo: quien manda donde, que
+    // quiere y por donde va su reloj. Una lista de nombres no diria si eso funciona.
+    await page.locator('.cx-tab', { hasText: 'Facciones' }).click();
     await page.waitForTimeout(400);
-    const missing43 = await page.evaluate(() => ({
-        title: document.querySelector('.cx-empty-title')?.textContent || '',
-        path: document.querySelector('.cx-empty code')?.textContent || '',
-    }));
-    check('una bateria sin escribir dice que falta y donde va',
-        /todavía no existe/.test(missing43.title)
-        && missing43.path === 'public/compendio/personas.json',
-        JSON.stringify(missing43));
+    await page.locator('.cx-try-go').click();
+    await page.waitForTimeout(700);
+    const bandos43 = await page.evaluate(() =>
+        [...document.querySelectorAll('.cx-try-line')].map(l => l.textContent || ''));
+    check('y las facciones se prueban repartiendolas, con su reloj y su motivo',
+        bandos43.length > 0
+        && bandos43.every(l => / de \d/.test(l) && l.includes('—'))
+        && !bandos43.join(' ').includes('undefined'),
+        bandos43.join(' | '));
 
     await page.locator('.popup-button-ok').last().click();
     await page.waitForTimeout(800);
     await leaveGameMode();
 
     step('44. Viajar: el mundo es una lista, y la distancia cuesta dias');
+    // El paso anterior deja el menu de titulo, que es donde vive el compendio y donde no
+    // hay campana abierta. Viajar necesita un mundo, asi que se retoma uno.
+    if (await page.evaluate(() => !window.SillyTavern.getContext().chatMetadata?.world_info)) {
+        // El paso anterior sale del Modo Juego, asi que aqui no hay menu de titulo: las
+        // campanas estan en la pantalla de bienvenida, que es donde las deja cerrar chat.
+        await page.waitForSelector('.campaign-card .campaign-continue', { timeout: 20000 });
+        await page.locator('.campaign-card .campaign-continue').first().click();
+        await page.waitForTimeout(4000);
+        await clearToasts();
+    }
+    check('se puede retomar una campana para viajar en ella',
+        await page.evaluate(() => Boolean(window.SillyTavern.getContext().chatMetadata?.world_info)));
+
     // Se le escriben rutas al mundo abierto: el mundo es una **lista**, asi que la
     // distancia no se mide en casillas, se declara en dias.
     const routed = await page.evaluate(async () => {
@@ -4408,24 +4432,34 @@ try {
         const data = await wi.loadWorldInfo(worldName);
 
         const places = data.metadata.locationMaps ?? [];
-        if (places.length < 2) {
-            // Un mundo de una sola localidad no sirve para esto: se le anaden dos.
-            const first = places[0];
-            places.push({ ...first, name: 'El Molino', boards: [] });
-            places.push({ ...first, name: 'La Ermita', boards: [] });
+        // Una campana nueva ya nace con vecinos, asi que aqui no se inventan nombres: se
+        // usan los que tenga. Solo se completan los que falten para tener tres.
+        while (places.length < 3) {
+            places.push({ ...places[0], name: `Sitio ${places.length}`, boards: [], routes: [] });
         }
-        places[0].routes = [{ to: 'El Molino', days: 2 }, { to: 'La Ermita', days: 9 }];
-        places[1].routes = [{ to: 'La Ermita', days: 2 }];
+        const donde = places.map(p => p.name);
+        // Y se le reescriben las rutas para que haya un camino corto y un rodeo largo,
+        // que es lo que este paso viene a comprobar.
+        places[0].routes = [{ to: donde[1], days: 2 }, { to: donde[2], days: 9 }];
+        places[1].routes = [{ to: donde[2], days: 2 }];
+        for (const place of places.slice(3)) place.routes = [{ to: donde[2], days: 4 }];
+        // Que clase de sitio es cada uno: de ahi sale que tiempo puede hacer.
+        places[0].biome = 'camino';
+        places[1].biome = 'montana';
+        places[2].biome = 'pantano';
 
         data.metadata.locationMaps = places;
         await wi.saveWorldInfo(worldName, data, true);
-        return { worldName, aqui: String(ctx.chatMetadata.currentLocation || ''), sitios: places.map(p => p.name) };
+        // Guardar escribe el archivo; el juego viaja con la copia que cargo al abrir la
+        // campana. Sin refrescarla, `/go El Molino` no encuentra El Molino y no dice nada.
+        await wi.refreshWorldMapGlobals(worldName);
+        return { worldName, aqui: String(ctx.chatMetadata.currentLocation || ''), sitios: donde };
     });
     check('el mundo es una lista de sitios con rutas, no un tablero',
         routed.sitios.length >= 3, JSON.stringify(routed.sitios));
 
     // El rodeo corto gana al camino largo, y se dice por donde se pasa.
-    const plan44 = await page.evaluate(async () => {
+    const plan44 = await page.evaluate(async ([cerca, lejos]) => {
         const wi = await import('/scripts/world-info.js');
         const { planTravel, describeTravel } = await import('/scripts/game-engine/world/travel.js');
         const ctx = window.SillyTavern.getContext();
@@ -4433,25 +4467,32 @@ try {
         const locations = data.metadata.locationMaps;
 
         return {
-            corto: planTravel({ from: locations[0].name, to: 'El Molino', locations }),
-            rodeo: planTravel({ from: locations[0].name, to: 'La Ermita', locations }),
-            dicho: describeTravel(planTravel({ from: locations[0].name, to: 'La Ermita', locations })),
+            corto: planTravel({ from: locations[0].name, to: cerca, locations }),
+            rodeo: planTravel({ from: locations[0].name, to: lejos, locations }),
+            dicho: describeTravel(planTravel({ from: locations[0].name, to: lejos, locations })),
         };
-    });
+    }, [routed.sitios[1], routed.sitios[2]]);
     check('lo directo cuesta lo que dice su ruta',
         plan44.corto.ok && plan44.corto.days === 2, JSON.stringify(plan44.corto));
     check('y si el rodeo es mas corto, se va por el rodeo y se dice por donde',
-        plan44.rodeo.days === 4 && plan44.rodeo.legs.join(' > ') === 'El Molino > La Ermita',
+        plan44.rodeo.days === 4
+        && plan44.rodeo.legs.join(' > ') === `${routed.sitios[1]} > ${routed.sitios[2]}`,
         plan44.dicho);
 
     // Y viajar de verdad: los dias pasan por el mismo reloj que cura, da de comer y cobra.
     const before44 = await page.evaluate(() =>
         Number(window.SillyTavern.getContext().chatMetadata?.calendar?.day ?? 0));
 
+    // `travelWithTime` devuelve '' por cuatro motivos distintos —combate en marcha, sitio
+    // que no existe, ruta cerrada, cancelado— y todos se ven igual desde fuera. Sin los
+    // avisos, un viaje que no ocurre es un fallo mudo.
+    await page.evaluate(() =>
+        document.querySelectorAll('#toast-container .toast').forEach(t => t.remove()));
+
     await page.evaluate(async (to) => {
         const ctx = window.SillyTavern.getContext();
         await ctx.executeSlashCommandsWithOptions(`/go ${to}`);
-    }, 'El Molino');
+    }, routed.sitios[1]);
     await page.waitForTimeout(2500);
 
     const after44 = await page.evaluate(() => {
@@ -4462,19 +4503,165 @@ try {
             donde: String(ctx.chatMetadata?.currentLocation || ''),
             ultimo: String(chat[chat.length - 1]?.mes || ''),
             esSistema: Boolean(chat[chat.length - 1]?.is_system),
+            avisos: [...document.querySelectorAll('#toast-container .toast')]
+                .map(t => t.innerText.replace(/\s+/g, ' ').trim()).join(' | '),
         };
     });
 
     check('viajar mueve al grupo al sitio al que va',
-        after44.donde === 'El Molino', after44.donde);
+        after44.donde === routed.sitios[1],
+        `${after44.donde} — avisos: ${after44.avisos || '(ninguno)'}`);
     // Un viaje que no cuesta nada es una pantalla de carga.
     check('y pasan los dias del camino, no cero',
         after44.day >= before44 + 2, `día ${before44} -> ${after44.day}`);
     // El motor decide y el narrador cuenta: la nota no puede ser un mensaje de sistema,
     // porque entonces la ve quien juega y no la ve el modelo.
     check('el narrador se entera del viaje, por el canal que el modelo lee',
-        /viaja hasta El Molino/.test(after44.ultimo) && after44.esSistema === false,
+        after44.ultimo.includes(`viaja hasta ${routed.sitios[1]}`) && after44.esSistema === false,
         after44.ultimo.slice(0, 90));
+
+    // --- B11: el tiempo del camino ---------------------------------------------------
+    const weather44 = await page.evaluate(async () => {
+        const [{ getCompendium }, { rollWeather, travelEvents }, { createSeededRandom }] =
+            await Promise.all([
+                import('/scripts/game-engine/compendio/browser.js'),
+                import('/scripts/game-engine/world/travel.js'),
+                import('/scripts/game-engine/combat/seeded-random.js'),
+            ]);
+
+        const { compendium } = await getCompendium();
+        const climates = compendium.find('mundo', { kind: 'clima' });
+        const cueva = compendium.find('mundo', { kind: 'bioma', biome: 'cueva' })[0];
+
+        const dias = rollWeather({
+            days: 40, table: climates, random: createSeededRandom('camino'),
+        });
+        let rachas = 0;
+        for (let i = 1; i < dias.length; i++) if (dias[i] === dias[i - 1]) rachas++;
+
+        return {
+            tiene: compendium.has('mundo'),
+            biomas: compendium.find('mundo', { kind: 'bioma' }).length,
+            dias,
+            rachas,
+            // En una cueva no nieva: el bioma manda sobre lo que puede hacer.
+            bajoTierra: rollWeather({
+                days: 12, table: climates, climates: cueva?.climates ?? [],
+                random: createSeededRandom('cueva'),
+            }),
+            // Y una tormenta no cae con el cielo despejado.
+            conSol: travelEvents({
+                days: 12,
+                table: compendium.find('mundo', { kind: 'suceso' }),
+                biome: 'camino',
+                weather: new Array(12).fill('despejado'),
+                random: createSeededRandom('sol'),
+                chance: 1,
+            }).map(e => e.id),
+        };
+    });
+
+    step('45. Facciones: el mundo sigue adelante cuando no miras');
+    // Lo que se comprueba aqui no es que el modulo sume bien —eso ya lo dicen las pruebas—
+    // sino que una campana **recien creada** tiene vecinos, tiene facciones y que los dias
+    // del viaje han corrido tambien para ellas.
+    const bandos45 = await page.evaluate(async () => {
+        const wi = await import('/scripts/world-info.js');
+        const ctx = window.SillyTavern.getContext();
+        const data = await wi.loadWorldInfo(ctx.chatMetadata.world_info);
+        return {
+            sitios: (data.metadata.locationMaps ?? []).map((/** @type {any} */ l) => l.name),
+            bandos: (data.metadata.factions ?? []).map((/** @type {any} */ f) => ({
+                name: f.name, seat: f.seat, kind: f.goal?.kind,
+                target: f.goal?.target, at: f.goal?.at, days: f.goal?.days,
+            })),
+        };
+    });
+
+    check('una campana nueva nace con sitios a los que ir',
+        bandos45.sitios.length >= 3, bandos45.sitios.join(', '));
+    check('y con gente que quiere algo, cada una en su sitio',
+        bandos45.bandos.length >= 2
+        && bandos45.bandos.every(f => f.name && f.seat && f.kind && f.target)
+        && new Set(bandos45.bandos.map(f => f.seat)).size === bandos45.bandos.length,
+        bandos45.bandos.map(f => `${f.name} (${f.seat}) ${f.kind} ${f.target}`).join(' | '));
+    // El mismo reloj que el hambre: si los dias del viaje no les corren, tienen el suyo.
+    check('los dias del viaje corren tambien para ellas',
+        bandos45.bandos.some(f => Number(f.days) > 0 || Number(f.at) > 0),
+        bandos45.bandos.map(f => `${f.name}: ${f.at} seg, ${f.days} d`).join(' | '));
+
+    // Dormir no puede pararles el reloj: el descanso largo adelanta el dia por dentro del
+    // modulo de campana, asi que por ahi se les escapaban los dias.
+    const durmiendo45 = await page.evaluate(async () => {
+        const wi = await import('/scripts/world-info.js');
+        const ctx = window.SillyTavern.getContext();
+        const world = ctx.chatMetadata.world_info;
+        const cuenta = async () => {
+            const data = await wi.loadWorldInfo(world);
+            return (data.metadata.factions ?? [])
+                .reduce((/** @type {number} */ sum, /** @type {any} */ f) =>
+                    sum + (Number(f.goal?.at) * 100) + Number(f.goal?.days || 0), 0);
+        };
+        const antes = await cuenta();
+        await ctx.executeSlashCommandsWithOptions('/descanso largo');
+        await new Promise(resolve => setTimeout(resolve, 2500));
+        return { antes, despues: await cuenta() };
+    });
+    check('y dormir no les para el reloj',
+        durmiendo45.despues > durmiendo45.antes,
+        `${durmiendo45.antes} -> ${durmiendo45.despues}`);
+
+    // El tablon: parte de lo que ofrece sale de lo que alguien quiere de verdad, y tiene
+    // que decir de que lado te pone **antes** de aceptar, no despues.
+    void page.evaluate(() => window.SillyTavern.getContext()
+        .executeSlashCommandsWithOptions('/gremio'));
+    await page.waitForSelector('.gd-board', { timeout: 15000 });
+    await page.waitForTimeout(500);
+    const tablon45 = await page.evaluate(() => ({
+        encargos: document.querySelectorAll('.gd-contract').length,
+        deLado: [...document.querySelectorAll('.gd-side')].map(e => e.textContent || ''),
+        loQueSeJuega: [...document.querySelectorAll('.gd-stake')].map(e => e.textContent || ''),
+    }));
+    check('el tablon ofrece encargos que toman partido',
+        tablon45.encargos > 0 && tablon45.deLado.length > 0
+        && tablon45.deLado.every(t => t === 'en contra' || t === 'a favor'),
+        `${tablon45.encargos} encargos, ${tablon45.deLado.length} con bando`);
+    check('y dice lo que se juega el mundo antes de aceptar',
+        tablon45.loQueSeJuega.length === tablon45.deLado.length
+        && tablon45.loQueSeJuega.every(t => /semana/.test(t) && !t.includes('undefined')),
+        tablon45.loQueSeJuega.join(' | '));
+
+    await page.locator('.popup-button-close, .popup-button-ok').last().click();
+    await page.waitForTimeout(600);
+
+    // Y lo que se ve al jugar: el panel de campana lo cuenta sin abrir ningun archivo.
+    // Viajar deja abierta la pestana de localizacion, asi que primero se abre la suya.
+    await page.locator('#rm_tab_campaign').click();
+    await page.waitForTimeout(600);
+    const panel45 = await page.evaluate(async () => {
+        const lines = [...document.querySelectorAll('.cp-world')].map(l => l.textContent || '');
+        return { lines, title: document.querySelector('.cp-world-title')?.textContent || '' };
+    });
+    check('y el panel de campana dice que se mueve ahi fuera',
+        panel45.title === 'Ahí fuera' && panel45.lines.length > 0
+        && panel45.lines.every(l => / de \d/.test(l) && !l.includes('undefined')),
+        panel45.lines.join(' | ') || '(el panel de campana no estaba abierto)');
+
+
+    check('la bateria del mundo trae sus biomas',
+        weather44.tiene && weather44.biomas >= 6, `${weather44.biomas} biomas`);
+    check('el viaje tiene tiempo, un dia por jornada',
+        weather44.dias.length === 40, [...new Set(weather44.dias)].join(', '));
+    // Una tirada suelta por dia da sol-tormenta-sol, que no lo cree nadie.
+    check('y hace rachas, porque el tiempo de manana depende del de hoy',
+        weather44.rachas > 8, `${weather44.rachas} dias repiten el del dia anterior`);
+    check('bajo tierra no nieva: el sitio manda sobre el tiempo',
+        new Set(weather44.bajoTierra).size === 1 && weather44.bajoTierra[0] === 'despejado',
+        [...new Set(weather44.bajoTierra)].join(', '));
+    check('y con el cielo despejado no cae una tormenta',
+        !weather44.conSol.includes('suceso-tormenta')
+        && !weather44.conSol.includes('suceso-barro'),
+        weather44.conSol.join(', '));
 
     console.log('\n--- console errors ---');
     console.log(problems.size ? [...problems].join('\n') : '(none)');
@@ -4497,6 +4684,10 @@ try {
         console.log(`\nKept for inspection: ${dataRoot}`);
     }
 }
-
+if (failed.length > 0) {
+    // Repetido al final a proposito: quien lee este recorrido lo lee por el rabo.
+    console.log('\n--- lo que fallo ---');
+    for (const line of failed) console.log(`  ${line}`);
+}
 console.log(`\n${failures === 0 ? 'ALL CHECKS PASSED' : `${failures} CHECK(S) FAILED`}`);
 process.exit(failures === 0 ? 0 : 1);

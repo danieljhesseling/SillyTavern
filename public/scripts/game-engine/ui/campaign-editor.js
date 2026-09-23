@@ -165,6 +165,10 @@ function foldedCard(title, subtitle, onRemove, cls = '') {
  * Abre el editor. Devuelve el modelo editado, o null si se cancela.
  *
  * @param {Object} input
+ * @param {string[]} [input.biomes] Los biomas que el compendio trae, para poder elegir
+ *        uno en vez de teclearlo. Sin batería de mundo, el campo no aparece.
+ * @param {((where: string) => any|null)|null} [input.writePerson] Alguien del compendio,
+ *        con su oficio, lo que quiere y lo que teme.
  * @param {((boards: string[]) => any|null)|null} [input.writeQuest] Una misión del
  *        compendio, con los tableros que hay para elegir dónde se juega.
  * @param {((cr: number) => any|null)|null} [input.breedMonster] Un bicho del compendio,
@@ -180,7 +184,7 @@ function foldedCard(title, subtitle, onRemove, cls = '') {
  */
 export async function openCampaignEditor({
     metadata, entries, Popup, POPUP_TYPE,
-    forgeItem = null, breedMonster = null, writeQuest = null,
+    forgeItem = null, breedMonster = null, writeQuest = null, writePerson = null, biomes = [],
 }) {
     const model = buildEditorModel(metadata, entries);
 
@@ -416,6 +420,13 @@ export async function openCampaignEditor({
             grid.append(field('Región', location.region, v => { location.region = v; },
                 { placeholder: 'La ribera, el norte…' }));
             grid.append(field('Facción que manda', location.factionName, v => { location.factionName = v; }));
+            // El bioma sale de la batería del mundo: se elige, no se teclea, porque un
+            // bioma mal escrito es un filtro que no encuentra nada y no dice por qué.
+            if (biomes.length > 0) {
+                grid.append(pick('Qué clase de sitio es', location.biome,
+                    /** @type {any} */ ([['', 'Sin decir'], ...biomes.map(b => [b, b])]),
+                    v => { location.biome = v; }, { cls: 'ce-biome' }));
+            }
             card.append(grid);
             card.append(field('Descripción', location.description, v => { location.description = v; },
                 { area: true, cls: 'ce-wide' }));
@@ -454,7 +465,8 @@ export async function openCampaignEditor({
         addLocation.on('click', () => {
             const created = createLocation(`Sitio ${model.locations.length + 1}`);
             model.locations.push({
-                name: created.name, type: '', description: '', region: '', factionName: '', boards: [],
+                name: created.name, type: '', description: '', region: '', biome: '',
+                factionName: '', boards: [],
             });
             refreshSummary();
             draw();
@@ -481,8 +493,37 @@ export async function openCampaignEditor({
             'ce-person',
         );
 
-        const who = $('<div class="ce-grid"></div>');
+        const who = $('<div class="ce-forge-row"></div>');
         who.append(field('Nombre', person.name, v => { person.name = v; }, { cls: 'ce-person-name' }));
+
+        // Escribir: oficio, dos rasgos que no se contradigan, lo que quiere y lo que teme.
+        // Esas dos ultimas son las que hacen que haga cosas cuando no estas mirando.
+        if (writePerson) {
+            const write = $('<button class="menu_button ce-write-person" type="button"></button>')
+                .attr('title', 'Sacar a alguien del compendio, con su oficio y lo que quiere')
+                .append('<i class="fa-solid fa-feather"></i>')
+                .append($('<span></span>').text(' Escribir'));
+            write.on('click', () => {
+                const made = writePerson(person.locationName);
+                if (!made) {
+                    write.prop('disabled', true).attr('title', 'La batería de personas está vacía');
+                    return;
+                }
+                Object.assign(person, {
+                    name: made.name || person.name,
+                    title: made.title,
+                    abilities: made.abilities,
+                    arcana: made.arcana,
+                    // Lo tuyo manda: si ya habias escrito su pasado, no se pisa.
+                    backstory: person.backstory || made.backstory,
+                    personality: person.personality || made.personality,
+                    keys: person.keys.length > 0 ? person.keys : made.keys,
+                });
+                refreshSummary();
+                draw();
+            });
+            who.append(write);
+        }
         who.append(field('Título', person.title, v => { person.title = v; },
             { placeholder: 'el de la guardia, la molinera…' }));
         inner.append(who);

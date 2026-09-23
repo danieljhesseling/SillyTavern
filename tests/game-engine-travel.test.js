@@ -1,8 +1,15 @@
 import { describe, test, expect } from '@jest/globals';
+import fs from 'node:fs';
 import {
     DEFAULT_DAYS, MIN_DAYS, MAX_DAYS, routesOf, buildRouteMap,
-    planTravel, travelEvents, describeTravel,
+    planTravel, travelEvents, describeTravel, rollWeather,
 } from '../public/scripts/game-engine/world/travel.js';
+import { validateBattery } from '../public/scripts/game-engine/compendio/compendio.js';
+
+const mundo = JSON.parse(fs.readFileSync(
+    new URL('../public/compendio/mundo.json', import.meta.url), 'utf8',
+));
+const of = (kind) => mundo.rows.filter(r => r.kind === kind);
 
 /** Un mundo de cuatro sitios: una lista, no un tablero. */
 const world = () => [
@@ -134,8 +141,14 @@ describe('lo que pasa por el camino', () => {
 
     test('cada suceso dice en qué día fue', () => {
         const events = travelEvents({ days: 4, table, random: () => 0, chance: 1 });
-        expect(events).toHaveLength(4);
-        expect(events.map(e => e.day)).toEqual([1, 2, 3, 4]);
+        expect(events.map(e => e.day)).toEqual([1, 2]);
+    });
+
+    // Lo mismo dos veces en el mismo viaje se lee como un error, no como mala suerte.
+    test('y no se repite ninguno, aunque sobren días', () => {
+        const events = travelEvents({ days: 10, table, random: () => 0, chance: 1 });
+        expect(events).toHaveLength(table.length);
+        expect(new Set(events.map(e => e.id)).size).toBe(events.length);
     });
 
     test('con probabilidad cero, el viaje es aburrido', () => {
@@ -178,5 +191,131 @@ describe('contado para el botón', () => {
     test('y si no se puede, dice el motivo y no los días', () => {
         expect(describeTravel({ ok: false, days: 0, legs: [], reason: 'El paso está cerrado.' }))
             .toBe('El paso está cerrado.');
+    });
+});
+
+describe('la batería del mundo', () => {
+    test('mundo.json pasa su propia validación', () => {
+        expect(validateBattery('mundo', mundo)).toEqual([]);
+    });
+
+    test('trae biomas, climas y sucesos', () => {
+        expect(new Set(mundo.rows.map(r => r.kind)))
+            .toEqual(new Set(['bioma', 'clima', 'suceso']));
+    });
+
+    // Un bioma que admite un clima que no existe deja el tiempo colgado.
+    test('los climas que un bioma admite existen', () => {
+        const known = new Set(of('clima').map(c => c.climate));
+        for (const biome of of('bioma')) {
+            for (const climate of biome.climates) expect(known).toContain(climate);
+        }
+    });
+
+    // Una transición a un clima que no existe es un callejón sin salida.
+    test('y las transiciones de un clima llevan a climas que existen', () => {
+        const known = new Set(of('clima').map(c => c.climate));
+        for (const climate of of('clima')) {
+            for (const to of Object.keys(climate.transitions)) expect(known).toContain(to);
+        }
+    });
+
+    test('todo clima puede salir de sí mismo a alguna parte', () => {
+        for (const climate of of('clima')) {
+            expect(Object.keys(climate.transitions).length).toBeGreaterThan(1);
+        }
+    });
+
+    // Un suceso que pide algo que ningún bioma ni clima tiene no sale nunca.
+    test('lo que un suceso pide existe en el mundo', () => {
+        const biomes = new Set(of('bioma').map(b => b.biome));
+        const climates = new Set(of('clima').map(c => c.climate));
+        for (const event of of('suceso')) {
+            for (const biome of event.when?.biome ?? []) expect(biomes).toContain(biome);
+            for (const climate of event.when?.climate ?? []) expect(climates).toContain(climate);
+        }
+    });
+
+    test('y hay sucesos que valen en cualquier sitio, para que el camino nunca esté vacío', () => {
+        expect(of('suceso').filter(e => !e.when).length).toBeGreaterThanOrEqual(3);
+    });
+});
+
+describe('el tiempo del viaje', () => {
+    const climates = of('clima');
+
+    test('sin tabla no hay tiempo, y no revienta', () => {
+        expect(rollWeather({ days: 5, random: () => 0 })).toEqual([]);
+    });
+
+    test('sale un día por cada día de camino', () => {
+        expect(rollWeather({ days: 6, table: climates, random: rolling(7) })).toHaveLength(6);
+    });
+
+    // En una cueva no nieva.
+    test('el bioma manda sobre lo que puede hacer', () => {
+        const weather = rollWeather({
+            days: 10, table: climates, climates: ['despejado'], random: rolling(3),
+        });
+        expect(new Set(weather)).toEqual(new Set(['despejado']));
+    });
+
+    // Una tirada suelta por día da sol-tormenta-sol, que no lo cree nadie.
+    test('hay rachas: el tiempo de mañana depende del de hoy', () => {
+        const weather = rollWeather({ days: 60, table: climates, random: rolling(11) });
+        let repeats = 0;
+        for (let i = 1; i < weather.length; i++) if (weather[i] === weather[i - 1]) repeats++;
+        expect(repeats).toBeGreaterThan(10);
+    });
+
+    test('y la misma semilla da el mismo tiempo', () => {
+        expect(rollWeather({ days: 8, table: climates, random: rolling(5) }))
+            .toEqual(rollWeather({ days: 8, table: climates, random: rolling(5) }));
+    });
+});
+
+describe('sucesos que piden sitio y tiempo', () => {
+    const events = of('suceso');
+
+    // Una tormenta no cae con el cielo despejado, y eso lo dice la fila.
+    test('solo sale lo que pega con el tiempo que hace', () => {
+        const random = rolling(13);
+        for (let i = 0; i < 60; i++) {
+            const out = travelEvents({
+                days: 3, table: events, random, chance: 1,
+                biome: 'camino', weather: ['despejado', 'despejado', 'despejado'],
+            });
+            for (const event of out) {
+                const row = events.find(e => e.id === event.id);
+                if (row.when?.climate) expect(row.when.climate).toContain('despejado');
+            }
+        }
+    });
+
+    test('ni con el bioma equivocado', () => {
+        const random = rolling(17);
+        const out = travelEvents({
+            days: 20, table: events, random, chance: 1,
+            biome: 'camino', weather: new Array(20).fill('despejado'),
+        });
+        for (const event of out) {
+            const row = events.find(e => e.id === event.id);
+            if (row.when?.biome) expect(row.when.biome).toContain('camino');
+        }
+    });
+
+    // Un atajo que no pudiera restar días sería un atajo que no existe.
+    test('un atajo resta días, no los redondea a cero', () => {
+        const shortcut = [{ id: 'atajo', name: 'Un atajo', days: -1, note: 'Se gana un día.' }];
+        const [event] = travelEvents({ days: 1, table: shortcut, random: () => 0, chance: 1 });
+        expect(event.days).toBe(-1);
+    });
+
+    test('y cada suceso dice con qué tiempo pasó', () => {
+        const out = travelEvents({
+            days: 2, table: events, random: rolling(19), chance: 1,
+            biome: 'camino', weather: ['lluvia', 'lluvia'],
+        });
+        for (const event of out) expect(event.climate).toBe('lluvia');
     });
 });

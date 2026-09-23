@@ -1,0 +1,321 @@
+{
+  "version": 1,
+  "domain": "personas",
+  "about": "De qué está hecha una persona. Un RASGO dice cómo es, y algunos se llevan mal entre sí ('conflictsWith'). Un DESEO y un MIEDO son las dos tiradas de las que salen todas sus decisiones: sin ellas un PNJ es una ficha que espera a que le hablen. Un OFICIO es una mecánica, no un adorno: el herrero repara, el barquero cruza. Un SECRETO trae escrito qué haría que se supiera, porque un secreto sin salida no es una trama. Una VOZ le da al narrador con qué distinguirlos. Y un ARCANO es a qué se agarra el vínculo.",
+  "rows": [
+    {
+      "id": "rasgo-terco", "name": "terco", "namef": "terca", "kind": "rasgo", "weight": 10,
+      "tags": ["caracter"], "conflictsWith": ["docil"],
+      "note": "No cambia de idea porque se lo pidan; cambia cuando le enseñan que se equivocaba."
+    },
+    {
+      "id": "rasgo-docil", "name": "conciliador", "namef": "conciliadora", "kind": "rasgo", "weight": 8,
+      "tags": ["caracter"], "conflictsWith": ["terco"],
+      "note": "Prefiere ceder a discutir, y eso le ha costado cosas."
+    },
+    {
+      "id": "rasgo-endeudado", "name": "endeudado", "namef": "endeudada", "kind": "rasgo", "weight": 9,
+      "tags": ["dinero"],
+      "note": "Debe dinero a alguien que no olvida, y calcula todo en función de eso."
+    },
+    {
+      "id": "rasgo-devoto", "name": "devoto", "namef": "devota", "kind": "rasgo", "weight": 8,
+      "tags": ["creencia"], "conflictsWith": ["descreido"],
+      "note": "Reza antes de decidir, y cumple lo que promete delante de un altar."
+    },
+    {
+      "id": "rasgo-descreido", "name": "descreído", "namef": "descreída", "kind": "rasgo", "weight": 7,
+      "tags": ["creencia"], "conflictsWith": ["devoto"],
+      "note": "Ha visto demasiado como para creerse lo que le cuentan."
+    },
+    {
+      "id": "rasgo-generoso", "name": "generoso", "namef": "generosa", "kind": "rasgo", "weight": 8,
+      "tags": ["trato"], "conflictsWith": ["tacano"],
+      "note": "Da lo que tiene antes de que se lo pidan, aunque le haga falta."
+    },
+    {
+      "id": "rasgo-tacano", "name": "agarrado", "namef": "agarrada", "kind": "rasgo", "weight": 8,
+      "tags": ["trato", "dinero"], "conflictsWith": ["generoso"],
+      "note": "Cuenta las monedas dos veces y se acuerda de a quién fió."
+    },
+    {
+      "id": "rasgo-callado", "name": "callado", "namef": "callada", "kind": "rasgo", "weight": 9,
+      "tags": ["trato"], "conflictsWith": ["charlatan"],
+      "note": "Dice lo justo, y lo que dice va en serio."
+    },
+    {
+      "id": "rasgo-charlatan", "name": "hablador", "namef": "habladora", "kind": "rasgo", "weight": 9,
+      "tags": ["trato"], "conflictsWith": ["callado"],
+      "note": "Cuenta más de lo que debería, y a veces eso es útil."
+    },
+    {
+      "id": "rasgo-rencoroso", "name": "rencoroso", "namef": "rencorosa", "kind": "rasgo", "weight": 8,
+      "tags": ["caracter"],
+      "note": "Lleva la cuenta de lo que le han hecho, y no se le pasa."
+    },
+    {
+      "id": "rasgo-curioso", "name": "curioso", "namef": "curiosa", "kind": "rasgo", "weight": 9,
+      "tags": ["caracter"],
+      "note": "Pregunta lo que no le importa, y por eso sabe cosas."
+    },
+    {
+      "id": "rasgo-cansado", "name": "cansado", "namef": "cansada", "kind": "rasgo", "weight": 8,
+      "tags": ["caracter"],
+      "note": "Lleva demasiado tiempo haciendo esto y se le nota en todo."
+    },
+
+    {
+      "id": "deseo-marcharse", "name": "marcharse de aquí", "kind": "deseo", "weight": 10,
+      "tags": ["camino"], "note": "Quiere irse y no tiene con qué. Lo dirá en cuanto haya confianza."
+    },
+    {
+      "id": "deseo-saldar", "name": "saldar lo que debe", "kind": "deseo", "weight": 9,
+      "tags": ["dinero"], "note": "Todo lo que hace va a parar a esa deuda."
+    },
+    {
+      "id": "deseo-volver", "name": "que alguien vuelva", "kind": "deseo", "weight": 9,
+      "tags": ["gente"], "note": "Espera a alguien que se fue, y no admite que no vaya a volver."
+    },
+    {
+      "id": "deseo-respeto", "name": "que lo tomen en serio", "kind": "deseo", "weight": 9,
+      "tags": ["orgullo"], "note": "Lo que más le duele es que le hablen como a un crío."
+    },
+    {
+      "id": "deseo-venganza", "name": "cobrarse una", "kind": "deseo", "weight": 8,
+      "tags": ["rencor"], "note": "Sabe quién fue y lleva años esperando a poder hacer algo."
+    },
+    {
+      "id": "deseo-enterrar", "name": "enterrar a los suyos", "kind": "deseo", "weight": 7,
+      "tags": ["luto"], "note": "Quedaron donde cayeron, y eso no le deja dormir."
+    },
+    {
+      "id": "deseo-oficio", "name": "hacer bien su trabajo", "kind": "deseo", "weight": 9,
+      "tags": ["oficio"], "note": "No pide más que poder seguir con lo suyo sin que le molesten."
+    },
+    {
+      "id": "deseo-saber", "name": "saber qué pasó", "kind": "deseo", "weight": 9,
+      "tags": ["misterio"], "note": "Hay algo que nadie le ha explicado y se le ha metido dentro."
+    },
+    {
+      "id": "deseo-proteger", "name": "que no le pase nada a alguien", "kind": "deseo", "weight": 10,
+      "tags": ["gente"], "note": "Todo lo que decide lo decide pensando en esa persona."
+    },
+    {
+      "id": "deseo-perdon", "name": "que lo perdonen", "kind": "deseo", "weight": 8,
+      "tags": ["culpa"], "note": "Hizo algo y lleva cargándolo desde entonces."
+    },
+    {
+      "id": "deseo-tierra", "name": "un trozo de tierra", "kind": "deseo", "weight": 7,
+      "tags": ["campo"], "note": "Trabaja la de otro y quiere la suya antes de que se le acaben las fuerzas."
+    },
+    {
+      "id": "deseo-mando", "name": "mandar aquí", "kind": "deseo", "weight": 6,
+      "tags": ["poder"], "note": "Cree que lo haría mejor, y puede que tenga razón."
+    },
+
+    {
+      "id": "miedo-hambre", "name": "pasar hambre otra vez", "kind": "miedo", "weight": 9,
+      "tags": ["hambre"], "note": "Ya le pasó una vez y guarda comida donde no debería."
+    },
+    {
+      "id": "miedo-solo", "name": "quedarse solo", "kind": "miedo", "weight": 9,
+      "tags": ["gente"], "note": "Aguanta lo que sea antes que quedarse sin nadie."
+    },
+    {
+      "id": "miedo-agua", "name": "el agua", "kind": "miedo", "weight": 7,
+      "tags": ["fobia"], "note": "No cruza un río ni por dinero, y no explica por qué."
+    },
+    {
+      "id": "miedo-oscuro", "name": "lo que hay debajo", "kind": "miedo", "weight": 8,
+      "tags": ["fobia"], "note": "No baja a ningún sótano. Ni al suyo."
+    },
+    {
+      "id": "miedo-verguenza", "name": "que se sepa", "kind": "miedo", "weight": 10,
+      "tags": ["secreto"], "note": "Todo lo que hace está calculado para que no se sepa aquello."
+    },
+    {
+      "id": "miedo-guardia", "name": "la guardia", "kind": "miedo", "weight": 8,
+      "tags": ["ley"], "note": "Cambia de acera cuando ve un uniforme, y tiene motivos."
+    },
+    {
+      "id": "miedo-morir", "name": "morirse antes de acabar", "kind": "miedo", "weight": 8,
+      "tags": ["muerte"], "note": "Tiene algo a medias y sabe que no le queda tanto tiempo."
+    },
+    {
+      "id": "miedo-parecerse", "name": "acabar como su padre", "kind": "miedo", "weight": 7,
+      "tags": ["familia"], "note": "Evita cualquier cosa que se le parezca, y a veces se pasa."
+    },
+    {
+      "id": "miedo-deber", "name": "deberle algo a alguien", "kind": "miedo", "weight": 8,
+      "tags": ["dinero"], "note": "Paga por adelantado y no acepta favores sin devolverlos."
+    },
+    {
+      "id": "miedo-elegir", "name": "tener que elegir", "kind": "miedo", "weight": 7,
+      "tags": ["caracter"], "note": "Da largas hasta que ya no hay nada que elegir."
+    },
+
+    {
+      "id": "oficio-herrero", "name": "herrero", "gender": "m", "kind": "oficio", "weight": 10,
+      "title": "el herrero", "stat": "strength", "does": "repara y afila lo que le lleves, si tiene carbón.",
+      "tags": ["taller"]
+    },
+    {
+      "id": "oficio-barquero", "name": "barquera", "gender": "f", "kind": "oficio", "weight": 8,
+      "title": "la barquera", "stat": "constitution", "does": "cruza a quien pague, y sabe por dónde se vadea.",
+      "tags": ["agua", "camino"]
+    },
+    {
+      "id": "oficio-escriba", "name": "escriba", "gender": "m", "kind": "oficio", "weight": 8,
+      "title": "el escriba", "stat": "intelligence", "does": "lee lo que le lleves, incluso lo que nadie más entiende.",
+      "tags": ["papel"]
+    },
+    {
+      "id": "oficio-boticaria", "name": "boticaria", "gender": "f", "kind": "oficio", "weight": 9,
+      "title": "la boticaria", "stat": "wisdom", "does": "cura lo que se cura con hierbas, y avisa de lo que no.",
+      "tags": ["cura"]
+    },
+    {
+      "id": "oficio-tabernero", "name": "tabernero", "gender": "m", "kind": "oficio", "weight": 10,
+      "title": "el tabernero", "stat": "charisma", "does": "da cama y comida, y se entera de todo antes que nadie.",
+      "tags": ["pueblo"]
+    },
+    {
+      "id": "oficio-cazador", "name": "cazadora", "gender": "f", "kind": "oficio", "weight": 9,
+      "title": "la cazadora", "stat": "dexterity", "does": "sabe leer un rastro y por dónde no hay que ir.",
+      "tags": ["bosque"]
+    },
+    {
+      "id": "oficio-guardia", "name": "guardia", "gender": "m", "kind": "oficio", "weight": 9,
+      "title": "el de la guardia", "stat": "strength", "does": "mira para otro lado si le conviene, y no si no.",
+      "tags": ["ley"]
+    },
+    {
+      "id": "oficio-molinero", "name": "molinero", "gender": "m", "kind": "oficio", "weight": 8,
+      "title": "el molinero", "stat": "constitution", "does": "muele el grano de medio valle y sabe quién no trajo el suyo.",
+      "tags": ["campo"]
+    },
+    {
+      "id": "oficio-prestamista", "name": "prestamista", "gender": "m", "kind": "oficio", "weight": 7,
+      "title": "el que presta", "stat": "intelligence", "does": "adelanta dinero, y lleva la cuenta mejor que nadie.",
+      "tags": ["dinero", "turbio"]
+    },
+    {
+      "id": "oficio-clerigo", "name": "clérigo", "gender": "m", "kind": "oficio", "weight": 8,
+      "title": "el clérigo", "stat": "wisdom", "does": "entierra, casa y bendice, y guarda lo que le confiesan.",
+      "tags": ["creencia"]
+    },
+    {
+      "id": "oficio-buhonero", "name": "buhonera", "gender": "f", "kind": "oficio", "weight": 8,
+      "title": "la buhonera", "stat": "charisma", "does": "compra y vende de todo, y viene cada pocas semanas.",
+      "tags": ["camino", "comercio"]
+    },
+    {
+      "id": "oficio-minero", "name": "minero", "gender": "m", "kind": "oficio", "weight": 7,
+      "title": "el minero", "stat": "constitution", "does": "conoce las galerías, incluidas las que se cerraron.",
+      "tags": ["cueva"]
+    },
+
+    {
+      "id": "secreto-robo", "name": "robó lo que guarda", "kind": "secreto", "weight": 9,
+      "outIf": "alguien reconoce la marca del fondo", "tags": ["turbio"]
+    },
+    {
+      "id": "secreto-hijo", "name": "tiene un hijo que nadie sabe", "kind": "secreto", "weight": 8,
+      "outIf": "el crío viene a buscarlo", "tags": ["familia"]
+    },
+    {
+      "id": "secreto-testigo", "name": "vio quién fue y calló", "kind": "secreto", "weight": 10,
+      "outIf": "acusan a quien no fue", "tags": ["ley"]
+    },
+    {
+      "id": "secreto-deuda", "name": "debe más de lo que puede pagar", "kind": "secreto", "weight": 9,
+      "outIf": "vienen a cobrar delante de gente", "tags": ["dinero"]
+    },
+    {
+      "id": "secreto-trato", "name": "hizo un trato con la gente equivocada", "kind": "secreto", "weight": 8,
+      "outIf": "aparece quien se lo ofreció", "tags": ["turbio"]
+    },
+    {
+      "id": "secreto-nombre", "name": "no se llama como dice", "kind": "secreto", "weight": 7,
+      "outIf": "alguien del norte lo reconoce", "tags": ["pasado"]
+    },
+    {
+      "id": "secreto-enfermo", "name": "está enfermo y no lo dice", "kind": "secreto", "weight": 8,
+      "outIf": "se cae delante de alguien", "tags": ["cuerpo"]
+    },
+    {
+      "id": "secreto-desertor", "name": "se fue del ejército sin permiso", "kind": "secreto", "weight": 7,
+      "outIf": "pasa por aquí una columna", "tags": ["ley", "pasado"]
+    },
+    {
+      "id": "secreto-culpa", "name": "dejó morir a alguien por miedo", "kind": "secreto", "weight": 8,
+      "outIf": "vuelve al sitio donde pasó", "tags": ["culpa"]
+    },
+    {
+      "id": "secreto-reliquia", "name": "sabe dónde está lo que todos buscan", "kind": "secreto", "weight": 6,
+      "outIf": "alguien le ofrece lo bastante", "tags": ["misterio"]
+    },
+
+    {
+      "id": "voz-corto", "name": "habla en frases cortas", "kind": "voz", "weight": 10, "tags": ["habla"] },
+    {
+      "id": "voz-formal", "name": "trata de usted a todo el mundo", "kind": "voz", "weight": 8, "tags": ["habla"] },
+    {
+      "id": "voz-rodeos", "name": "da rodeos antes de llegar a lo suyo", "kind": "voz", "weight": 9, "tags": ["habla"] },
+    {
+      "id": "voz-refranes", "name": "habla con refranes", "kind": "voz", "weight": 7, "tags": ["habla"] },
+    {
+      "id": "voz-preguntas", "name": "responde con preguntas", "kind": "voz", "weight": 8, "tags": ["habla"] },
+    {
+      "id": "voz-nombre", "name": "repite el nombre de quien le habla", "kind": "voz", "weight": 8, "tags": ["habla"] },
+    {
+      "id": "voz-jura", "name": "jura cada dos frases", "kind": "voz", "weight": 7, "tags": ["habla"] },
+    {
+      "id": "voz-tecnico", "name": "lo explica todo como si fuera su oficio", "kind": "voz", "weight": 8, "tags": ["habla"] },
+    {
+      "id": "voz-bajito", "name": "habla tan bajo que hay que acercarse", "kind": "voz", "weight": 7, "tags": ["habla"] },
+    {
+      "id": "voz-interrumpe", "name": "termina las frases de los demás", "kind": "voz", "weight": 7, "tags": ["habla"] },
+
+    {
+      "id": "arcano-ermitano", "name": "El Ermitaño", "kind": "arcano", "weight": 8,
+      "note": "Sabe algo que solo cuenta a quien vuelve una segunda vez."
+    },
+    {
+      "id": "arcano-torre", "name": "La Torre", "kind": "arcano", "weight": 7,
+      "note": "Todo lo que tenía se le vino abajo, y de ahí viene lo que es ahora."
+    },
+    {
+      "id": "arcano-fuerza", "name": "La Fuerza", "kind": "arcano", "weight": 8,
+      "note": "Aguanta lo que no debería, y no lo cuenta."
+    },
+    {
+      "id": "arcano-emperatriz", "name": "La Emperatriz", "kind": "arcano", "weight": 7,
+      "note": "Cuida de los suyos aunque no se lo pidan y aunque no se lo agradezcan."
+    },
+    {
+      "id": "arcano-loco", "name": "El Loco", "kind": "arcano", "weight": 8,
+      "note": "Empieza cosas sin saber cómo acaban, y a veces por eso salen."
+    },
+    {
+      "id": "arcano-justicia", "name": "La Justicia", "kind": "arcano", "weight": 8,
+      "note": "Mide lo que se debe y lo que se ha hecho, y no perdona ninguna de las dos."
+    },
+    {
+      "id": "arcano-colgado", "name": "El Colgado", "kind": "arcano", "weight": 6,
+      "note": "Lleva años esperando algo, y esperar lo ha cambiado."
+    },
+    {
+      "id": "arcano-estrella", "name": "La Estrella", "kind": "arcano", "weight": 7,
+      "note": "Sigue creyendo que esto se puede arreglar, contra toda evidencia."
+    },
+    {
+      "id": "arcano-luna", "name": "La Luna", "kind": "arcano", "weight": 7,
+      "note": "Nada de lo que dice es exactamente mentira, y nada es exactamente verdad."
+    },
+    {
+      "id": "arcano-muerte", "name": "La Muerte", "kind": "arcano", "weight": 6,
+      "note": "Está a punto de dejar de ser quien era, y lo sabe."
+    }
+  ]
+}

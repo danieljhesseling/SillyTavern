@@ -14,15 +14,22 @@ algo distinto jugando**. Ése es el criterio de que una batería está hecha.
 | | Qué | Filas | Lo que produce |
 | :--- | :--- | ---: | :--- |
 | ✅ | **El cargador** (`compendio/compendio.js`) | — | Valida diciendo archivo y fila, tolera lo que falta, sortea con tu semilla |
-| ✅ | **B1 nombres** | 7 | ~6.700 nombres de persona, 572 sitios, 288 tabernas |
 | ✅ | **La pantalla** (menú principal → *Compendio*) | — | Qué hay, qué falta y qué sale si lo pides |
-| ✅ | **B2 materiales** | 40 | 240 objetos: forma × material |
+| ✅ | **B1 nombres** | 7 | ~6.700 nombres de persona, 572 sitios, 288 tabernas |
+| ✅ | **B2 materiales** + propiedades | 58 | 240 objetos (forma × material) y 18 propiedades que suman y quitan |
+| ✅ | **B5 habilidades** | 25 | 8 clases que saben algo distinto desde el nivel 1 |
 | ✅ | **B6 bestiario** | 35 | 2.420 bichos: arquetipo × plantillas |
-| ⬜ | B3 armas · B4 armaduras y trastos · B5 habilidades | | |
-| ⬜ | B7 personas · B8 sitios · B9 misiones | | |
-| ⬜ | B10 facciones · B11 mundo · B12 estados | | |
+| ✅ | **B7 personas** | 76 | 14.400 vecinos antes de contar rasgos y voz |
+| ✅ | **B8 sitios** | 24 | 10 tipos × 8 salas × 6 estados |
+| ✅ | **B9 misiones** | 57 | 36.000 encargos: verbo × objeto × giro × recompensa |
+| ✅ | **B11 mundo** | 29 | 7 biomas, clima que se encadena, 15 sucesos de camino |
+| ✅ | **B12 estados** | 39 | 33 heridas según la causa y 6 enfermedades con fases |
+| ✅ | **B10 facciones** | 29 | 14 moldes × 15 metas, y un mundo que va a lo suyo |
+| ⬜ | B3 armas · B4 armaduras y trastos | | La forja ya las haría; falta escribirlas |
 
-**82 filas escritas, unas 9.400 cosas distintas.** Ésa es la cuenta que importa: lo que se escribe una vez y lo que sale de ello.
+**379 filas escritas.** Ésa es la cuenta que importa: lo que se escribe una vez y lo que sale de ello.
+
+> **B10 se escribió la última, y con razón.** Hasta F1 una facción era un campo de texto libre que nadie leía. Primero el sistema —`campaign/factions.js`: metas, relojes y dónde aterrizan—, y con él ya escrito, la batería. Al revés habrían sido 29 filas que nadie mira.
 
 > **Lo que la pantalla todavía no hace:** editar y quitar un libro entero. Las dos necesitan una ruta para escribir en el disco, y eso es código de servidor. Enseñar un campo editable que no guarda sería prometer algo que no pasa.
 
@@ -186,14 +193,21 @@ Van juntas en la misma tarde porque comparten forma con B3.
 - **Enciende:** #100, #115, #119
 - **Qué ves:** el inventario como un problema de espacio, no como una lista
 
-### B5 · `habilidades.json`
+### B5 · `habilidades.json` — *hecha*
 
-- **Campos propios:** `resource` (`at_will|short_rest|long_rest`), `range`, `effect`, `cost`
-- **Mínimo:** 25. **Rico:** 120
+- **Campos propios:** `cost`, `resource`, `target`, `resolution`, `level`, `rangeFeet`,
+  `damage` / `healing`, `saveDc`, y `when.class`
+- **Escritas:** 25 en 8 clases, más las que sabe cualquiera (`"class": ["*"]`)
 - **Enciende:** #70, #79
-- **Qué ves:** que elegir clase signifique algo desde el nivel 1
-- **Ojo:** `resource` solo admite esos tres valores; cualquier otro degrada a `at_will` sin
-  avisar. Es justo el caso que el validador tiene que cazar
+- **Qué ves:** elegir «Pícara» ya no es una palabra en la cabecera: el héroe nace con lo
+  suyo en la ficha, y el aviso te lo dice
+- **Ojo:** aquí mandan **cuatro vocabularios cerrados**, no uno. Un valor inventado pasa la
+  validación de toda fila y luego no hace lo que dice —`per_long_rest` degrada a `at_will`,
+  y algo de una vez al día pasa a poder usarse cada turno—. Por eso `validateAbility` es
+  aparte, y lo que caza sale en la pantalla del compendio, no en la consola
+- **Y lo que se aprendió:** un campo que el motor escribe y la fila no trae sale impreso
+  como `undefined`. Pasó dos veces: sin `rangeFeet` salía «undefined ft», y una `resolution:
+  "save"` sin `saveDc` escribía «salvación CD undefined». Las dos son ahora reglas
 
 ### B6 · `bestiario.json` — *la que más cambia el juego*
 
@@ -235,14 +249,54 @@ La gramática: verbos, objetos, sitios, plazos y **giros**.
 - **Qué ves:** 12 × 20 × 15 son **3.600 misiones** con cuarenta y siete filas. Y el giro es lo
   que separa un recado de una misión
 
-### B10 · `facciones.json`
+### B10 · `facciones.json` — *hecha*
 
-Arquetipos de facción con sus tres ejes y sus objetivos típicos.
+Dos clases de fila, y ni un campo de más: **moldes** (`kind: "faccion"` — cómo se llaman,
+a qué ritmo van, qué clase de metas persiguen) y **metas** (`kind: "meta"` — qué quieren y
+por qué).
 
-- **Campos propios:** `goals`, `methods`, `taboo`, `startingAxes`
-- **Mínimo:** 10. **Rico:** 30
+- **Campos propios:** `patterns` (con `{sitio}`), `goals`, `pace`, `of` · y en las metas,
+  `goal` y `note`
+- **Escritas:** 14 moldes y 15 metas, tres por cada finalidad
 - **Enciende:** #135–#144
 - **Qué ves:** que el mundo se mueva **aunque no estés**
+- **Ojo:** `goal` es un vocabulario **cerrado** del motor —`encontrar`, `conquistar`,
+  `recuperar`, `destruir`, `controlar`— y cada una aterriza en la lista de sitios: un
+  camino que se abre, un paso que se cierra, un dueño que cambia, un peaje que suma un día.
+  Una meta que al cumplirse no moviera nada de eso sería una barra y nada más, así que
+  `validateFactionRows` no deja escribirla
+- **Y una regla que parece de estilo y no lo es:** una plantilla de nombre sin `{sitio}`
+  hace que todas las facciones de ese molde se llamen igual. También se caza
+
+**El sistema que la lee** es `campaign/factions.js`, escrito *antes* que la batería:
+
+| Lo que pasa | Dónde aterriza |
+| :--- | :--- |
+| `conquistar` / `recuperar` | El sitio cambia de dueño, y se cierran los caminos a casa de sus enemigos |
+| `destruir` | La facción desaparece y lo que había cerrado se reabre |
+| `encontrar` | Se abre un camino que no estaba: un atajo de un día |
+| `controlar` | Ese camino cuesta un día más — peaje |
+
+**Y lo que tú puedes hacer al respecto** (F2): parte del tablón de encargos sale de lo que
+alguien quiere de verdad. Un encargo de facción se ve distinto —dice *en contra* o *a
+favor*, y qué se juega el mundo si sale bien— y al entregarlo **mueve su reloj un segmento**.
+Cogerlo es tomar partido: lo que frena a unos adelanta a otros, y el tablón ofrece las dos
+caras. Sin eso, el mundo se movía y tú mirabas.
+
+Y la gente de un sitio que es de alguien **lleva su bandera**: en la ficha, donde el editor
+de personajes ya la leía, y en lo que el modelo lee, con lo que los suyos quieren. Es lo que
+le da a un vecino un motivo que no es suyo sin escribírselo a mano.
+
+Tres decisiones que valen más que el código:
+
+1. **No hay azar en el reloj.** Un segmento cada `pace` días y ya. El azar es justo lo que
+   hace que las guerras de Bannerlord se sientan ruido: no puedes planear contra ellas. La
+   semilla decide **quiénes son y qué quieren**, no cuándo llegan.
+2. **El reloj no avanza el día que el grupo está en el sitio que quieren.** Estar presente
+   es la primera forma de frenarlos, no cuesta interfaz y da un motivo para viajar.
+3. **Solo se cuenta lo que te alcanza.** El motor mueve a todas; el modelo narra lo que
+   pasa donde estás o a un camino de aquí. Lo demás se sabrá al llegar — así es un mundo y
+   no un menú de noticias.
 
 ### B11 · `mundo.json`
 

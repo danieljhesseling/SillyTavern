@@ -12,7 +12,7 @@
  * Ver wiki/ROADMAP_MAESTRO.md, Nivel 4.
  */
 
-import { RANKS, deadlineOf, describeContract } from '../campaign/contracts.js';
+import { RANKS, deadlineOf, describeContract, describeStake } from '../campaign/contracts.js';
 import { BUILDINGS, upgradeCost, describeGuild, boardSize } from '../campaign/guild.js';
 
 /** Cómo se lee cada rango, para no enseñar solo una letra. */
@@ -29,9 +29,12 @@ const RANK_LABELS = Object.fromEntries(RANKS.map(rank => [rank.id, rank.label]))
  * @param {any[]} input.roster     Quién está en la compañía.
  * @param {any} input.Popup
  * @param {any} input.POPUP_TYPE
+ * @param {Record<string, string>} [input.factionNames] Como se llama cada faccion, por id.
  * @returns {Promise<{accepted: string, built: string}|null>}
  */
-export async function openGuildPanel({ guild, board, day, purse, roster, Popup, POPUP_TYPE }) {
+export async function openGuildPanel({
+    guild, board, day, purse, roster, Popup, POPUP_TYPE, factionNames = {},
+}) {
     /** Lo único que sale de aquí: qué encargo se acepta y qué se construye. */
     let accepted = '';
     let built = '';
@@ -68,6 +71,11 @@ export async function openGuildPanel({ guild, board, day, purse, roster, Popup, 
             .text(contract.rank)
             .attr('title', RANK_LABELS[contract.rank] ?? ''));
         top.append($('<span class="gd-contract-title"></span>').text(contract.title));
+        if (contract.faction) {
+            top.append($('<span class="gd-side"></span>')
+                .text(contract.against ? 'en contra' : 'a favor')
+                .toggleClass('against', Boolean(contract.against)));
+        }
         card.append(top);
 
         const meta = $('<div class="gd-contract-meta"></div>');
@@ -76,6 +84,14 @@ export async function openGuildPanel({ guild, board, day, purse, roster, Popup, 
         meta.append($('<span></span>').text(contract.patron));
         if (contract.locationName) meta.append($('<span></span>').text(contract.locationName));
         card.append(meta);
+
+        // Lo que se juega el mundo con esto. Un encargo que mueve el reloj de alguien no
+        // es un recado: es tomar partido, y hay que poder verlo **antes** de aceptar.
+        if (contract.faction) {
+            card.append($('<div class="gd-stake"></div>')
+                .toggleClass('against', Boolean(contract.against))
+                .text(describeStake(contract, factionNames?.[contract.faction] ?? '')));
+        }
 
         const take = $('<button class="menu_button gd-take" type="button"></button>')
             .append('<i class="fa-solid fa-hand-fist"></i>')

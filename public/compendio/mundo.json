@@ -1,0 +1,301 @@
+{
+  "version": 1,
+  "domain": "mundo",
+  "about": "De qué está hecho el mundo por fuera. Un BIOMA dice qué clase de sitio es y qué bichos y climas le tocan. Un CLIMA es un estado con su matriz de transiciones: el tiempo de mañana depende del de hoy, así que nunca sale sol-tormenta-sol. Un SUCESO es lo que pasa en el camino, y puede pedir un bioma o un clima concretos: una tormenta no cae con el cielo despejado. Los tres tienen quien los lea: el bioma filtra el bestiario, el clima se tira durante el viaje y los sucesos cuestan días.",
+  "rows": [
+    {
+      "id": "bioma-bosque",
+      "name": "Bosque",
+      "kind": "bioma",
+      "biome": "bosque",
+      "tags": ["verde", "cerrado"],
+      "weight": 10,
+      "climates": ["despejado", "lluvia", "niebla"],
+      "note": "Se camina despacio y no se ve venir nada."
+    },
+    {
+      "id": "bioma-llanura",
+      "name": "Llanura",
+      "kind": "bioma",
+      "biome": "llanura",
+      "tags": ["abierto", "campo"],
+      "weight": 10,
+      "climates": ["despejado", "viento", "lluvia"],
+      "note": "Se avanza rápido y se ve a quien viene desde lejos."
+    },
+    {
+      "id": "bioma-montana",
+      "name": "Montaña",
+      "kind": "bioma",
+      "biome": "montana",
+      "tags": ["alto", "duro"],
+      "weight": 8,
+      "climates": ["despejado", "viento", "nieve", "niebla"],
+      "note": "Cada jornada cuesta el doble, y arriba hace otro tiempo."
+    },
+    {
+      "id": "bioma-pantano",
+      "name": "Pantano",
+      "kind": "bioma",
+      "biome": "pantano",
+      "tags": ["agua", "enfermo"],
+      "weight": 7,
+      "climates": ["lluvia", "niebla", "bochorno"],
+      "note": "Huele a agua parada y el suelo no aguanta el peso."
+    },
+    {
+      "id": "bioma-desierto",
+      "name": "Desierto",
+      "kind": "bioma",
+      "biome": "desierto",
+      "tags": ["seco", "abierto"],
+      "weight": 6,
+      "climates": ["despejado", "bochorno", "viento"],
+      "note": "De día quema y de noche hiela. El agua se lleva encima."
+    },
+    {
+      "id": "bioma-camino",
+      "name": "Camino",
+      "kind": "bioma",
+      "biome": "camino",
+      "tags": ["ruta", "gente"],
+      "weight": 10,
+      "climates": ["despejado", "lluvia", "viento"],
+      "note": "Hay posadas, peajes y quien se aprovecha de las dos cosas."
+    },
+    {
+      "id": "bioma-cueva",
+      "name": "Bajo tierra",
+      "kind": "bioma",
+      "biome": "cueva",
+      "tags": ["cerrado", "oscuro"],
+      "weight": 6,
+      "climates": ["despejado"],
+      "note": "Ahí abajo el tiempo no cambia, y por eso se pierde la cuenta."
+    },
+
+    {
+      "id": "clima-despejado",
+      "name": "Despejado",
+      "kind": "clima",
+      "climate": "despejado",
+      "tags": ["bueno"],
+      "weight": 10,
+      "extraDays": 0,
+      "transitions": { "despejado": 6, "lluvia": 2, "viento": 2, "niebla": 1 },
+      "note": "Buen día para andar."
+    },
+    {
+      "id": "clima-lluvia",
+      "name": "Lluvia",
+      "kind": "clima",
+      "climate": "lluvia",
+      "tags": ["agua"],
+      "weight": 8,
+      "extraDays": 0,
+      "transitions": { "lluvia": 4, "despejado": 3, "niebla": 2, "tormenta": 2 },
+      "note": "Cala hasta los huesos y el camino se vuelve barro."
+    },
+    {
+      "id": "clima-tormenta",
+      "name": "Tormenta",
+      "kind": "clima",
+      "climate": "tormenta",
+      "tags": ["agua", "malo"],
+      "weight": 3,
+      "extraDays": 1,
+      "transitions": { "lluvia": 5, "tormenta": 2, "despejado": 1 },
+      "note": "No se anda con esto: se busca dónde meterse y se espera."
+    },
+    {
+      "id": "clima-niebla",
+      "name": "Niebla",
+      "kind": "clima",
+      "climate": "niebla",
+      "tags": ["ciego"],
+      "weight": 6,
+      "extraDays": 0,
+      "transitions": { "niebla": 4, "despejado": 3, "lluvia": 2 },
+      "note": "No se ve a diez pasos, y hay que ir pegados."
+    },
+    {
+      "id": "clima-viento",
+      "name": "Viento",
+      "kind": "clima",
+      "climate": "viento",
+      "tags": ["frio"],
+      "weight": 6,
+      "extraDays": 0,
+      "transitions": { "viento": 3, "despejado": 4, "lluvia": 2, "tormenta": 1 },
+      "note": "Empuja de lado todo el día y cansa más de lo que parece."
+    },
+    {
+      "id": "clima-nieve",
+      "name": "Nieve",
+      "kind": "clima",
+      "climate": "nieve",
+      "tags": ["frio", "malo"],
+      "weight": 4,
+      "extraDays": 1,
+      "transitions": { "nieve": 4, "viento": 3, "despejado": 2 },
+      "note": "Cubre el camino y borra las señales. Se avanza la mitad."
+    },
+    {
+      "id": "clima-bochorno",
+      "name": "Bochorno",
+      "kind": "clima",
+      "climate": "bochorno",
+      "tags": ["calor"],
+      "weight": 5,
+      "extraDays": 0,
+      "transitions": { "bochorno": 4, "despejado": 3, "tormenta": 2 },
+      "note": "Pesa el aire y el agua se acaba antes de lo previsto."
+    },
+
+    {
+      "id": "suceso-tormenta",
+      "name": "Hay que parar",
+      "kind": "suceso",
+      "tags": ["clima"],
+      "weight": 9,
+      "days": 1,
+      "when": { "climate": ["tormenta", "nieve"] },
+      "note": "El tiempo no deja seguir. Se busca dónde meterse y se pierde el día."
+    },
+    {
+      "id": "suceso-barro",
+      "name": "El camino hecho barro",
+      "kind": "suceso",
+      "tags": ["clima"],
+      "weight": 7,
+      "days": 1,
+      "when": { "climate": ["lluvia", "tormenta"] },
+      "note": "Las ruedas se hunden y hay que empujar. Se pierde media jornada, y luego la otra media."
+    },
+    {
+      "id": "suceso-perdidos",
+      "name": "Se pierde el camino",
+      "kind": "suceso",
+      "tags": ["clima"],
+      "weight": 7,
+      "days": 1,
+      "when": { "climate": ["niebla", "nieve"] },
+      "note": "Sin señales que seguir se anda un buen rato en la dirección equivocada."
+    },
+    {
+      "id": "suceso-desprendimiento",
+      "name": "Un desprendimiento",
+      "kind": "suceso",
+      "tags": ["terreno"],
+      "weight": 6,
+      "days": 1,
+      "when": { "biome": ["montana", "cueva"] },
+      "note": "La piedra ha bajado sola y tapa el paso. Rodear cuesta un día."
+    },
+    {
+      "id": "suceso-crecida",
+      "name": "El agua ha subido",
+      "kind": "suceso",
+      "tags": ["terreno"],
+      "weight": 6,
+      "days": 1,
+      "when": { "biome": ["pantano", "bosque"] },
+      "note": "El vado ya no es vado. O se espera a que baje, o se rodea."
+    },
+    {
+      "id": "suceso-sed",
+      "name": "El agua se acaba",
+      "kind": "suceso",
+      "tags": ["terreno", "calor"],
+      "weight": 6,
+      "days": 0,
+      "when": { "biome": ["desierto"] },
+      "note": "Hay que racionar lo que queda y buscar antes de lo previsto."
+    },
+    {
+      "id": "suceso-ermitano",
+      "name": "Un ermitaño",
+      "kind": "suceso",
+      "tags": ["gente"],
+      "weight": 8,
+      "days": 0,
+      "note": "Un viejo que vive solo comparte agua y avisa de lo que hay más adelante."
+    },
+    {
+      "id": "suceso-carreta",
+      "name": "Una carreta",
+      "kind": "suceso",
+      "tags": ["gente"],
+      "weight": 8,
+      "days": 0,
+      "when": { "biome": ["camino", "llanura"] },
+      "note": "Va en la misma dirección y deja subir a quien quiera descansar las piernas."
+    },
+    {
+      "id": "suceso-peaje",
+      "name": "Un peaje",
+      "kind": "suceso",
+      "tags": ["gente", "turbio"],
+      "weight": 7,
+      "days": 0,
+      "when": { "biome": ["camino", "montana"] },
+      "note": "Dos hombres cobran por pasar. Discutirlo cuesta más que pagarlo."
+    },
+    {
+      "id": "suceso-humo",
+      "name": "Humo a lo lejos",
+      "kind": "suceso",
+      "tags": ["senal"],
+      "weight": 8,
+      "days": 0,
+      "note": "Se ve humo hacia un lado del camino. Nadie sabe de qué, y nadie quiere acercarse."
+    },
+    {
+      "id": "suceso-rastro",
+      "name": "Un rastro",
+      "kind": "suceso",
+      "tags": ["senal"],
+      "weight": 9,
+      "days": 0,
+      "note": "Huellas frescas cruzan el camino y siguen hacia donde vosotros vais."
+    },
+    {
+      "id": "suceso-mojon",
+      "name": "Un mojón caído",
+      "kind": "suceso",
+      "tags": ["senal"],
+      "weight": 6,
+      "days": 0,
+      "note": "Una piedra con letras gastadas, tirada en la cuneta. Alguien la tiró a propósito."
+    },
+    {
+      "id": "suceso-noche-mala",
+      "name": "Una noche mala",
+      "kind": "suceso",
+      "tags": ["descanso"],
+      "weight": 7,
+      "days": 0,
+      "when": { "climate": ["viento", "nieve", "lluvia"] },
+      "note": "La noche fue peor de lo que nadie esperaba y se durmió poco."
+    },
+    {
+      "id": "suceso-equipo",
+      "name": "Algo se parte",
+      "kind": "suceso",
+      "tags": ["equipo"],
+      "weight": 6,
+      "days": 1,
+      "note": "Se rompe algo del equipo y arreglarlo lleva toda una mañana y media tarde."
+    },
+    {
+      "id": "suceso-atajo",
+      "name": "Un atajo",
+      "kind": "suceso",
+      "tags": ["camino"],
+      "weight": 5,
+      "days": -1,
+      "when": { "climate": ["despejado"] },
+      "note": "Alguien del lugar enseña un paso que no está en ningún mapa. Se gana un día."
+    }
+  ]
+}

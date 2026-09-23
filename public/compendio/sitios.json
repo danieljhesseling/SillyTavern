@@ -1,0 +1,309 @@
+{
+  "version": 1,
+  "domain": "sitios",
+  "about": "De qué clase es un sitio y de qué está hecho por dentro. Un TIPO dice qué forma tienen sus tableros (salas, cueva, campamento, templo), en qué bioma cae y qué se encuentra allí. Una SALA es un trozo de mapa escrito a mano que el generador estampa dentro de uno generado: cuatro giros por dos espejos son ocho salas por cada una escrita. El espacio en blanco de una sala NO se toca, y por eso una sala puede tener forma de ele. Un ESTADO cambia lo que hay: saqueada, inundada, quemada, habitada.",
+  "rows": [
+    {
+      "id": "tipo-aldea",
+      "name": "Aldea",
+      "kind": "tipo",
+      "locationType": "village",
+      "shape": "camp",
+      "tags": ["gente", "refugio"],
+      "weight": 10,
+      "when": { "biome": ["llanura", "valle", "camino", "bosque"] },
+      "note": "Se come caliente y se duerme bajo techo, si te dejan."
+    },
+    {
+      "id": "tipo-ciudad",
+      "name": "Ciudad",
+      "kind": "tipo",
+      "locationType": "city",
+      "shape": "camp",
+      "tags": ["gente", "ley", "mercado"],
+      "weight": 6,
+      "when": { "biome": ["llanura", "camino", "valle"] },
+      "note": "Hay guardia, hay mercado y hay quien te vigila por los dos."
+    },
+    {
+      "id": "tipo-ruina",
+      "name": "Ruina",
+      "kind": "tipo",
+      "locationType": "ruins",
+      "shape": "rooms",
+      "tags": ["viejo", "peligro"],
+      "weight": 10,
+      "when": { "biome": ["bosque", "llanura", "montana", "pantano"] },
+      "note": "Alguien vivió aquí y dejó de hacerlo de golpe."
+    },
+    {
+      "id": "tipo-cripta",
+      "name": "Cripta",
+      "kind": "tipo",
+      "locationType": "dungeon",
+      "shape": "temple",
+      "tags": ["muerte", "cerrado"],
+      "weight": 8,
+      "when": { "biome": ["cueva", "montana", "bosque"] },
+      "note": "Se baja por unas escaleras y el aire cambia al tercer escalón."
+    },
+    {
+      "id": "tipo-cueva",
+      "name": "Cueva",
+      "kind": "tipo",
+      "locationType": "wilderness",
+      "shape": "cave",
+      "tags": ["oscuro", "natural"],
+      "weight": 9,
+      "when": { "biome": ["cueva", "montana", "desierto"] },
+      "note": "No la construyó nadie, y eso no la hace más segura."
+    },
+    {
+      "id": "tipo-mina",
+      "name": "Mina",
+      "kind": "tipo",
+      "locationType": "dungeon",
+      "shape": "cave",
+      "tags": ["oficio", "oscuro"],
+      "weight": 7,
+      "when": { "biome": ["montana", "cueva"] },
+      "note": "Se excavó por algo, y ese algo se acabó o se despertó."
+    },
+    {
+      "id": "tipo-puesto",
+      "name": "Puesto de guardia",
+      "kind": "tipo",
+      "locationType": "outpost",
+      "shape": "rooms",
+      "tags": ["militar", "camino"],
+      "weight": 8,
+      "when": { "biome": ["camino", "montana", "llanura"] },
+      "note": "Cuatro hombres, una torre y un aburrimiento de años."
+    },
+    {
+      "id": "tipo-campamento",
+      "name": "Campamento",
+      "kind": "tipo",
+      "locationType": "camp",
+      "shape": "camp",
+      "tags": ["camino", "gente"],
+      "weight": 9,
+      "when": { "biome": ["bosque", "llanura", "camino", "desierto"] },
+      "note": "Levantado esta semana, y se nota en que todo está a medio atar."
+    },
+    {
+      "id": "tipo-santuario",
+      "name": "Santuario",
+      "kind": "tipo",
+      "locationType": "sanctuary",
+      "shape": "temple",
+      "tags": ["creencia", "refugio"],
+      "weight": 6,
+      "when": { "biome": ["montana", "bosque", "desierto"] },
+      "note": "Alguien viene a cuidarlo, aunque no siempre se sabe quién."
+    },
+    {
+      "id": "tipo-pantano",
+      "name": "Tremedal",
+      "kind": "tipo",
+      "locationType": "wilderness",
+      "shape": "cave",
+      "tags": ["agua", "enfermo"],
+      "weight": 6,
+      "when": { "biome": ["pantano"] },
+      "note": "No hay camino: hay sitios donde se hunde menos."
+    },
+
+    {
+      "id": "sala-pozo",
+      "name": "La sala del pozo",
+      "kind": "sala",
+      "tags": ["agua", "mazmorra"],
+      "weight": 9,
+      "rows": [
+        "#######",
+        "#.....#",
+        "#.~~~.#",
+        "#.~C~.#",
+        "#.~~~.#",
+        "#.....#",
+        "###.###"
+      ],
+      "note": "Un brocal en el centro y agua alrededor. Se rodea o se moja."
+    },
+    {
+      "id": "sala-nichos",
+      "name": "La galería de nichos",
+      "kind": "sala",
+      "tags": ["cripta", "muerte"],
+      "weight": 9,
+      "rows": [
+        "#########",
+        "#C.C.C.C#",
+        "#.......#",
+        "#.......#",
+        "#C.C.C.C#",
+        "####.####"
+      ],
+      "note": "Dos filas de huecos en la pared, y lo que había dentro no siempre sigue dentro."
+    },
+    {
+      "id": "sala-cruce",
+      "name": "El cruce",
+      "kind": "sala",
+      "tags": ["paso"],
+      "weight": 10,
+      "rows": [
+        "  ###  ",
+        "  #.#  ",
+        "###.###",
+        "#.....#",
+        "###.###",
+        "  #.#  ",
+        "  ###  "
+      ],
+      "note": "Cuatro pasillos y ninguna cobertura. Quedarse en medio es una mala idea."
+    },
+    {
+      "id": "sala-hundida",
+      "name": "La sala hundida",
+      "kind": "sala",
+      "tags": ["terreno", "ruina"],
+      "weight": 8,
+      "rows": [
+        "#########",
+        "#.......#",
+        "#.~~~~~.#",
+        "#.~~~~~.#",
+        "#.......#",
+        "####.####"
+      ],
+      "note": "El suelo cedió hace tiempo y el centro está lleno de escombro."
+    },
+    {
+      "id": "sala-columnas",
+      "name": "La sala de columnas",
+      "kind": "sala",
+      "tags": ["templo", "cobertura"],
+      "weight": 9,
+      "rows": [
+        "#########",
+        "#.......#",
+        "#.C.C.C.#",
+        "#.......#",
+        "#.C.C.C.#",
+        "#.......#",
+        "####.####"
+      ],
+      "note": "Seis columnas en rejilla. Se pelea a base de asomarse y esconderse."
+    },
+    {
+      "id": "sala-almacen",
+      "name": "El almacén",
+      "kind": "sala",
+      "tags": ["oficio", "cobertura"],
+      "weight": 8,
+      "rows": [
+        "########",
+        "#cc..cc#",
+        "#......#",
+        "#cc..cc#",
+        "###..###"
+      ],
+      "note": "Cajas apiladas contra las paredes y un pasillo en medio."
+    },
+    {
+      "id": "sala-ele",
+      "name": "El recodo",
+      "kind": "sala",
+      "tags": ["paso", "emboscada"],
+      "weight": 8,
+      "rows": [
+        "######   ",
+        "#....#   ",
+        "#.c..#   ",
+        "#....####",
+        "#.......#",
+        "#####..C#",
+        "    #####"
+      ],
+      "note": "Un giro cerrado: no se ve lo que hay al otro lado hasta estar dentro."
+    },
+    {
+      "id": "sala-guardia",
+      "name": "El cuerpo de guardia",
+      "kind": "sala",
+      "tags": ["militar"],
+      "weight": 7,
+      "rows": [
+        "#######",
+        "#c...c#",
+        "#..C..#",
+        "#c...c#",
+        "###D###"
+      ],
+      "note": "Mesa en el centro, bancos a los lados y una puerta que se atranca."
+    },
+
+    {
+      "id": "estado-habitada",
+      "name": "Habitada",
+      "kind": "estado",
+      "tags": ["gente"],
+      "weight": 10,
+      "cover": 0.12,
+      "rough": 0,
+      "note": "Hay gente viviendo aquí. Las cosas están donde alguien las dejó a propósito."
+    },
+    {
+      "id": "estado-saqueada",
+      "name": "Saqueada",
+      "kind": "estado",
+      "tags": ["ruina"],
+      "weight": 9,
+      "cover": 0.05,
+      "rough": 0.05,
+      "note": "Se lo llevaron todo y dejaron lo que no valía. Está despejado y da mal cuerpo."
+    },
+    {
+      "id": "estado-inundada",
+      "name": "Inundada",
+      "kind": "estado",
+      "tags": ["agua"],
+      "weight": 7,
+      "cover": 0.08,
+      "rough": 0.3,
+      "note": "El agua llega por la rodilla en media planta. Se avanza la mitad."
+    },
+    {
+      "id": "estado-quemada",
+      "name": "Quemada",
+      "kind": "estado",
+      "tags": ["fuego"],
+      "weight": 7,
+      "cover": 0.06,
+      "rough": 0.15,
+      "note": "Ardió hace poco. Queda ceniza, vigas caídas y un olor que no se va."
+    },
+    {
+      "id": "estado-derrumbada",
+      "name": "Derrumbada",
+      "kind": "estado",
+      "tags": ["ruina", "terreno"],
+      "weight": 8,
+      "cover": 0.2,
+      "rough": 0.2,
+      "note": "Media bóveda en el suelo. Hay cobertura de sobra y ningún camino recto."
+    },
+    {
+      "id": "estado-tomada",
+      "name": "Tomada",
+      "kind": "estado",
+      "tags": ["militar"],
+      "weight": 6,
+      "cover": 0.18,
+      "rough": 0,
+      "note": "Alguien se ha hecho fuerte aquí: barricadas donde antes había paso."
+    }
+  ]
+}

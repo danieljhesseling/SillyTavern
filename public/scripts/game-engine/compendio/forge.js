@@ -236,9 +236,13 @@ export function forgeItem({
  * @param {() => number} [input.random]
  * @param {string} [input.itemType]
  * @param {string} [input.rarity]
+ * @param {number} [input.properties] Cuantas propiedades por objeto. Por defecto, lo de
+ *        siempre: una o ninguna.
  * @returns {any[]}
  */
-export function forgeItems({ compendium, howMany, random = Math.random, itemType = '', rarity = '' }) {
+export function forgeItems({
+    compendium, howMany, random = Math.random, itemType = '', rarity = '', properties = -1,
+}) {
     /** @type {any[]} */
     const out = [];
     const seen = new Set();
@@ -246,7 +250,7 @@ export function forgeItems({ compendium, howMany, random = Math.random, itemType
     // Se intenta el doble de veces que objetos se piden: con pocas formas, insistir hasta
     // el infinito colgaria, y rendirse a la primera daria siempre menos de los pedidos.
     for (let i = 0; i < Math.max(0, howMany) * 2 && out.length < howMany; i++) {
-        const item = forgeItem({ compendium, random, itemType, rarity });
+        const item = forgeItem({ compendium, random, itemType, rarity, properties });
         if (!item) break;
 
         const key = `${item.from.forma}|${item.from.material}|${item.from.propiedades.join(',')}`;

@@ -4,7 +4,7 @@ import { POPUP_TYPE, POPUP_RESULT, Popup } from './popup.js';
 import { sendSystemMessage, system_message_types } from './system-messages.js';
 import { getThumbnailUrl, chat, chat_metadata, saveMetadata, eventSource, event_types, setUserName, addOneMessage, saveChatConditional, substituteParams, system_avatar, generateRaw, online_status } from '../script.js';
 import { getMessageTimeStamp } from './RossAscends-mods.js';
-import { getCurrentWorldMapUrl, getCurrentWorldLocationMaps, getCurrentWorldBoards, getCurrentWorldEnemies, getCurrentWorldNPCs, loadWorldInfo, saveWorldInfo, createWorldInfoEntry, METADATA_KEY } from './world-info.js';
+import { getCurrentWorldMapUrl, getCurrentWorldLocationMaps, getCurrentWorldBoards, getCurrentWorldEnemies, getCurrentWorldNPCs, loadWorldInfo, saveWorldInfo, createWorldInfoEntry, refreshWorldMapGlobals, METADATA_KEY } from './world-info.js';
 import { renderWorldMapView, renderLocationView } from './world-map-renderer.js';
 import { SlashCommandParser } from './slash-commands/SlashCommandParser.js';
 import { SlashCommand } from './slash-commands/SlashCommand.js';
@@ -21,16 +21,25 @@ import {
     clampRelationshipScore, generateEnemyInstanceId, normalizeDndEntityType,
 } from './dnd-system.js';
 import { escapeHtml, download } from './utils.js';
-import { createSeededRandom, seedFrom } from './game-engine/combat/seeded-random.js';
+import { createSeededRandom, seedFrom, rollWith } from './game-engine/combat/seeded-random.js';
 import { getCompendium } from './game-engine/compendio/browser.js';
 import { ensureSeed, derive, describeSeed } from './game-engine/campaign/seed.js';
 import {
-    planTravel, travelEvents, describeTravel, DEFAULT_TRAVEL_EVENTS,
+    planTravel, travelEvents, describeTravel, rollWeather, DEFAULT_TRAVEL_EVENTS, MIN_DAYS,
 } from './game-engine/world/travel.js';
 import { forgeItem as forgeFromCompendium, forgeItems, describeItem } from './game-engine/compendio/forge.js';
 import { makeNames } from './game-engine/compendio/names.js';
 import { breedMonster as breedFromCompendium, breedBand, describeMonster } from './game-engine/compendio/bestiary.js';
 import { writeQuest as writeFromCompendium, writeQuestBoard, describeQuest } from './game-engine/compendio/quests.js';
+import { writePerson as writePersonFromCompendium, writeVillage, describePerson } from './game-engine/compendio/people.js';
+import { injuryTableFor, causesOf } from './game-engine/compendio/ailments.js';
+import {
+    readFactions, tickFactions, outcomeOf, applyOutcome, newsFor, describeFaction,
+    rollFactions, validateFactionRows, busyFactions, pushFaction,
+} from './game-engine/campaign/factions.js';
+import {
+    abilitiesFor, classesOf, nameAndAbility, validateAbilities,
+} from './game-engine/compendio/skills.js';
 import {
     rollDice, rollDiceDetailed, getRollClassification, getRollClassificationLabel,
     getDistanceInFeet, getAttackRangeFeet, describeCover,
@@ -49,6 +58,7 @@ import { getCoverAlongLine } from './game-engine/board/line-of-sight.js';
 import { createEmptyFog, normalizeFog, updateFog } from './game-engine/board/fog-of-war.js';
 import { planEnemyTurn } from './game-engine/combat/enemy-ai.js';
 import { planWalk, canWalk } from './game-engine/board/walk.js';
+import { enterCell, describeHazard } from './game-engine/board/hazards.js';
 import {
     buildTracker, describeTurn, statusMarkers, sizeToCells, toggleCondition,
 } from './game-engine/combat/initiative-tracker.js';
@@ -66,7 +76,7 @@ import {
 import { resolveFall, describeSurvival, canCheckpoint } from './game-engine/rules/mortality.js';
 import { weeklyBill, settleWeek, describeBill } from './game-engine/rules/upkeep.js';
 import {
-    generateBoardOfContracts, expireContracts, describeContract,
+    generateBoardOfContracts, contractsFromFactions, expireContracts, describeContract,
 } from './game-engine/campaign/contracts.js';
 import {
     readGuild, upkeepWithBuildings, boardSize, settleLoyalty, completeContract,
@@ -716,6 +726,40 @@ function saveCurrentBoard() {
 function loadCurrentLocation() {
     currentLocationName = (chat_metadata && chat_metadata['currentLocation']) || '';
     currentBoardName = (chat_metadata && chat_metadata['currentBoard']) || '';
+    // Y quien se mueve ahi fuera, que el panel de campana dibuja sin poder esperar.
+    void reloadWorldFactions();
+}
+
+/**
+ * Las facciones del mundo abierto, ya leidas.
+ *
+ * Mismo apano que `lastCompendium`: `renderCampaignTab` se dibuja de golpe y no puede ser
+ * `async`. Sin facciones escritas esto es una lista vacia y el panel queda como estaba.
+ *
+ * @type {any[]}
+ */
+let currentWorldFactions = [];
+
+/** @returns {any[]} */
+function getCurrentWorldFactions() {
+    return currentWorldFactions;
+}
+
+/** @returns {Promise<any[]>} */
+async function reloadWorldFactions() {
+    const worldName = String(chat_metadata?.[METADATA_KEY] || '');
+    if (!worldName) {
+        currentWorldFactions = [];
+        return currentWorldFactions;
+    }
+    try {
+        const data = await loadWorldInfo(worldName);
+        currentWorldFactions = readFactions(data?.metadata?.factions);
+    } catch (error) {
+        console.error('[party] no se pudieron leer las facciones', error);
+        currentWorldFactions = [];
+    }
+    return currentWorldFactions;
 }
 
 /**
@@ -1988,12 +2032,15 @@ async function openOwnSheet(member) {
  *
  * @param {any} member
  */
-function applyFall(member) {
+function applyFall(member, cause = '') {
     const fall = resolveFall(member, {
         roll: () => nextRandom(),
         rules: getActiveRuleset()?.survival ?? null,
         // Caer con el golpe todavia encima deja peor recuerdo que desangrarse despacio.
         severity: (Number(member.hp) || 0) < 0 ? 1 : 0,
+        // De que viene el golpe elige la rama: una caida rompe huesos, el fuego quema
+        // manos y el frio se lleva dedos. Sin bateria de estados, la tabla de siempre.
+        table: injuryTableFor(lastCompendium, cause),
     });
 
     if (fall.outcome === 'dies') {
@@ -2503,6 +2550,98 @@ function deliverTakenContract() {
 
     postCombatNarration(`🏆 [GREMIO] ${done.line}`);
     toastr.success(done.line, 'Encargo entregado', { timeOut: 12000 });
+
+    // Y si el encargo tomaba partido, el mundo se entera: es lo que lo separa de un
+    // recado. Va aparte porque escribir el mundo es asincrono y esto no puede serlo.
+    if (taken.faction) void settleFactionStake(taken);
+}
+
+/**
+ * De quien es un sitio, en las palabras que lee el modelo.
+ *
+ * Una faccion manda en lo que tiene (`holds`) y se sienta en su sede. Un vecino de ahi
+ * carga con lo que los suyos quieren, y eso es justo lo que le da un motivo propio sin
+ * escribirle uno a mano.
+ *
+ * @param {string} placeName
+ * @param {any} rawFactions
+ * @returns {{name: string, wants: string, note: string}|null}
+ */
+function bannerOf(placeName, rawFactions) {
+    const where = String(placeName || '').trim().toLowerCase();
+    if (!where) return null;
+
+    const owner = readFactions(rawFactions).find(faction =>
+        String(faction.seat).toLowerCase() === where
+        || faction.holds.some((/** @type {string} */ held) => String(held).toLowerCase() === where));
+    if (!owner) return null;
+
+    const wants = {
+        encontrar: `buscan el camino a ${owner.goal.target}`,
+        conquistar: `quieren ${owner.goal.target}`,
+        recuperar: `quieren recuperar ${owner.goal.target}`,
+        destruir: 'van a por alguien',
+        controlar: `quieren el camino a ${owner.goal.target}`,
+    }[owner.goal.kind] ?? '';
+
+    return { name: owner.name, wants, note: owner.note };
+}
+
+/**
+ * Lo que un encargo entregado le hace al reloj de quien lo pedia (o lo sufria).
+ *
+ * Aqui se cierra la otra mitad del bucle de las facciones: hasta ahora el mundo se movia
+ * y tu mirabas. Un encargo en contra les quita una semana de trabajo; uno a favor se la
+ * da. Tomar partido es la unica forma de que el reloj de otro dependa de ti.
+ *
+ * @param {any} contract
+ * @returns {Promise<void>}
+ */
+async function settleFactionStake(contract) {
+    const worldName = String(chat_metadata?.[METADATA_KEY] || '');
+    if (!worldName) return;
+
+    try {
+        const data = await loadWorldInfo(worldName);
+        const before = readFactions(data?.metadata?.factions);
+        if (before.length === 0) return;
+
+        const segments = Math.max(1, Math.floor(Number(contract.segments) || 1));
+        const { factions, event } = pushFaction(
+            before, String(contract.faction), contract.against ? -segments : segments,
+        );
+        if (!event) return;
+
+        // Empujar hasta el final cumple la meta igual que cumplirla con el tiempo: una
+        // sola forma de que un reloj lleno cambie el mundo.
+        let locations = Array.isArray(data.metadata.locationMaps) ? data.metadata.locationMaps : [];
+        let people = factions;
+        /** @type {string[]} */
+        const changed = [];
+        if (event.kind === 'cumple') {
+            const who = people.find(f => f.id === event.faction);
+            if (who) {
+                const applied = applyOutcome({ locations, factions: people, outcome: outcomeOf(who) });
+                locations = applied.locations;
+                people = applied.factions;
+                changed.push(...applied.changed);
+            }
+        }
+
+        data.metadata.factions = people;
+        data.metadata.locationMaps = locations;
+        currentWorldFactions = people;
+        await saveWorldInfo(worldName, data, true);
+        await refreshWorldMapGlobals(worldName);
+        if (isShellOpen()) refreshGameShell();
+
+        toastr.info(event.note, 'Se nota ahí fuera', { timeOut: 9000 });
+        postForModel([event.note, ...changed, 'Cuéntalo en una frase. No inventes nada que no esté aquí.']
+            .join('\n'))
+            .catch(error => console.error('[party] faction stake note failed', error));
+    } catch (error) {
+        console.error('[party] no se pudo mover el reloj de la facción', error);
+    }
 }
 
 // ================================================================
@@ -2577,6 +2716,23 @@ function refreshContractBoard() {
     }
 
     const wanted = boardSize(guild);
+
+    // Uno de cada tres encargos sale de lo que alguien quiere de verdad. No mas: un tablon
+    // que solo habla de facciones deja de ofrecer trabajo y pasa a ser una guerra.
+    const huecos = wanted - kept.length;
+    if (huecos > 0) {
+        const suyos = contractsFromFactions({
+            factions: busyFactions(getCurrentWorldFactions())
+                // Los que ya estan en el tablon no se repiten: un encargo por faccion.
+                .filter((/** @type {any} */ f) => !kept.some((/** @type {any} */ c) => c.faction === f.id)),
+            random: nextRandom,
+            renown: guild.renown,
+            day: today,
+            count: Math.max(1, Math.floor(huecos / 3)),
+        });
+        kept.push(...suyos);
+    }
+
     if (kept.length < wanted) {
         const fresh = generateBoardOfContracts({
             random: nextRandom,
@@ -2690,7 +2846,8 @@ function passNeeds(days) {
         // campana, igual que si lo hubiera tumbado una espada. Una sola puerta a la muerte.
         if (tick.collapsed || tick.exhaustion >= LETHAL_EXHAUSTION) {
             member.hp = 0;
-            applyFall(member);
+            // Quien cae por el clima cae por el clima: el frio se lleva dedos, no brazos.
+            applyFall(member, climate === 'frio' ? 'frio' : '');
         }
     }
 
@@ -2750,15 +2907,129 @@ const saveCampaignState = (calendar, bonds) => campaign.save(calendar, bonds);
 // El reloj del Modo Juego lee lo mismo que la pestana de Campana, asi que pasar el
 // tiempo tiene que redibujarlo: sin esto el dia cambiaba y la cabecera no se enteraba.
 const advanceCampaignSlot = () => {
+    const before = campaignDay();
     const result = campaign.advanceSlot();
     if (isShellOpen()) refreshGameShell();
+    // Pasar el ultimo turno del dia es pasar de dia, aunque el boton diga otra cosa.
+    chargeFactionDays(before);
     return result;
 };
+/**
+ * Los dias que le deben a las facciones.
+ *
+ * Se acumulan y se vuelcan de una vez porque escribir el mundo es asincrono: un viaje de
+ * cinco dias llama a `advanceCampaignDay` cinco veces seguidas, y cinco escrituras a la
+ * vez del mismo archivo es como se pierde una. El `setTimeout(0)` espera a que termine el
+ * bucle entero, que es sincrono, y entonces pasa los cinco dias de golpe.
+ */
+let factionDaysDue = 0;
+/** @type {any} */
+let factionTickTimer = null;
+
+function scheduleFactionTick() {
+    if (factionTickTimer) clearTimeout(factionTickTimer);
+    factionTickTimer = setTimeout(() => {
+        const days = factionDaysDue;
+        factionDaysDue = 0;
+        factionTickTimer = null;
+        void passFactionDays(days);
+    }, 0);
+}
+
+/**
+ * Lo que el calendario se haya movido, se lo deben las facciones.
+ *
+ * **Se mide, no se confia.** Sumar uno al pasar el dia parecia lo mismo y no lo era: un
+ * descanso largo adelanta el dia **por dentro** del modulo de campana, y un turno que
+ * cierra la noche tambien. Por esos dos caminos dormir les salia gratis, que es justo el
+ * reloj aparte que este sistema no quiere tener.
+ *
+ * @param {number} before El dia que marcaba el calendario antes.
+ */
+function chargeFactionDays(before) {
+    const days = campaignDay() - before;
+    if (days <= 0) return;
+    // El mismo dia que cura y da de comer acerca a los otros a lo que quieren.
+    factionDaysDue += days;
+    scheduleFactionTick();
+}
+
+/** @returns {number} */
+function campaignDay() {
+    return Math.max(0, Math.floor(Number(getCampaignCalendar()?.day) || 0));
+}
+
 const advanceCampaignDay = () => {
+    const before = campaignDay();
     const result = campaign.advanceDay();
     if (isShellOpen()) refreshGameShell();
+    chargeFactionDays(before);
     return result;
 };
+/**
+ * Los dias de las facciones, con lo que cambien.
+ *
+ * Aditivo como el compendio: una campana sin facciones no pierde nada, porque sin filas
+ * esto no hace nada. Y lo que cambia se guarda en el mundo —no en el chat— porque las
+ * rutas cerradas y los duenos de cada sitio **son** el mundo.
+ *
+ * @param {number} days
+ * @returns {Promise<void>}
+ */
+async function passFactionDays(days) {
+    const worldName = String(chat_metadata?.[METADATA_KEY] || '');
+    if (!worldName || days <= 0) return;
+
+    try {
+        const data = await loadWorldInfo(worldName);
+        const before = readFactions(data?.metadata?.factions);
+        if (before.length === 0) return;
+
+        const { factions, events } = tickFactions({
+            factions: before, days, here: currentLocationName,
+        });
+
+        // Lo que se cumple cambia la lista de sitios, que es lo que el viaje ya lee.
+        let locations = Array.isArray(data.metadata.locationMaps) ? data.metadata.locationMaps : [];
+        let people = factions;
+        /** @type {string[]} */
+        const changed = [];
+        for (const event of events.filter(e => e.kind === 'cumple')) {
+            const who = people.find(f => f.id === event.faction);
+            if (!who) continue;
+            const applied = applyOutcome({ locations, factions: people, outcome: outcomeOf(who) });
+            locations = applied.locations;
+            people = applied.factions;
+            changed.push(...applied.changed);
+        }
+
+        data.metadata.factions = people;
+        data.metadata.locationMaps = locations;
+        currentWorldFactions = people;
+        await saveWorldInfo(worldName, data, true);
+        // Guardar escribe el archivo; el viaje va con la copia en memoria. Sin esto, un
+        // paso que se cierra hoy se seguiria pudiendo andar hasta reabrir la campana.
+        await refreshWorldMapGlobals(worldName);
+        if (isShellOpen()) refreshGameShell();
+
+        // Y solo se cuenta lo que llega hasta aqui: el motor mueve a todos, pero lo que
+        // pasa en la otra punta del mundo se sabra al llegar.
+        const news = newsFor({ events, here: currentLocationName, locations, factions: people });
+        if (news.length === 0) return;
+
+        for (const line of news) toastr.info(line, 'Se sabe algo', { timeOut: 8000 });
+        const note = [
+            ...news,
+            ...changed,
+            'Cuéntalo como un rumor que llega, en una o dos frases. No inventes nada que no esté aquí.',
+        ].join('\n');
+        postForModel(note).catch(error => console.error('[party] faction news failed', error));
+    } catch (error) {
+        // Que el mundo no avance no puede romper la partida: es lo que hay encima, no debajo.
+        console.error('[party] faction tick failed', error);
+    }
+}
+
 /** @param {string} characterId @param {string} eventType */
 const recordCampaignBondEvent = (characterId, eventType) => {
     const result = campaign.recordBond(characterId, eventType);
@@ -2768,8 +3039,12 @@ const recordCampaignBondEvent = (characterId, eventType) => {
 const getCurrentSlotLabel = () => campaign.getSlotLabel();
 /** @param {'corto'|'largo'} kind @returns {Promise<string>} */
 const takeRest = async (kind) => {
+    const before = campaignDay();
     const result = await campaign.rest(kind);
     if (isShellOpen()) refreshGameShell();
+    // Un descanso largo adelanta el dia por dentro: sin esto, dormir era la forma de
+    // pararles el reloj.
+    chargeFactionDays(before);
     return result;
 };
 const getCampaignMap = () => campaign.getMap();
@@ -3011,6 +3286,9 @@ function renderCampaignTab() {
         needs: partyMembers
             .map(member => ({ name: member.name, said: describeNeeds(member) }))
             .filter(entry => entry.said),
+        // Lo que se mueve ahi fuera sin ti. Sin facciones escritas, la lista sale vacia
+        // y el panel queda como estaba.
+        world: readFactions(getCurrentWorldFactions()).map(describeFaction),
         onAdvanceSlot: advanceCampaignSlot,
         onAdvanceDay: advanceCampaignDay,
         onShortRest: () => { void takeRest('corto'); },
@@ -3823,6 +4101,10 @@ function handlePlayerCombatMove(rawValue) {
         gridX: targetX,
         gridY: targetY,
     };
+
+    // Lo que hubiera puesto en esa casilla. Se resuelve **despues** de mover: una trampa
+    // salta porque has llegado, no para impedir que llegues.
+    fireHazardsOnEnter(member, targetX, targetY);
     Object.assign(combatEncounter, spendMovement(combatEncounter, distanceFeet, Number(member.speed) || 30));
     savePartyState();
     saveCombatState();
@@ -4312,6 +4594,17 @@ export async function openCampaignBuilder() {
         const edited = await openCampaignEditor({
             metadata: data.metadata ?? {},
             entries: data.entries ?? {},
+            writePerson: compendium.has('personas')
+                ? (/** @type {string} */ where) => writePersonFromCompendium({
+                    compendium,
+                    locationName: where,
+                    culture: String(data.metadata?.culture || ''),
+                    // De quien es ese sitio. Es lo que le da a un vecino un motivo que no
+                    // es suyo, y lo que hace que valga la pena preguntarle.
+                    banner: bannerOf(where, data.metadata?.factions),
+                    random: createSeededRandom(derive(forgeSeed, 'persona', forged++)),
+                })
+                : null,
             writeQuest: compendium.has('misiones')
                 ? (/** @type {string[]} */ boards) => writeFromCompendium({
                     compendium,
@@ -4324,10 +4617,14 @@ export async function openCampaignBuilder() {
                     compendium,
                     cr: Number(cr) || 0.5,
                     // El bioma de la campana, si lo dice: el pantano no da lobos de nieve.
-                    biome: String(data.metadata?.biome || ''),
+                    biome: biomeHere(data.metadata),
                     random: createSeededRandom(derive(forgeSeed, 'criar', forged++)),
                 })
                 : null,
+            biomes: compendium.has('mundo')
+                ? compendium.find('mundo', { kind: 'bioma' })
+                    .map((/** @type {any} */ row) => String(row.biome || '')).filter(Boolean)
+                : [],
             forgeItem: compendium.has('materiales')
                 // Con la semilla del mundo y el número de forja: el mismo mundo propone las
                 // mismas cosas en el mismo orden, y cada martillazo saca una distinta.
@@ -4564,6 +4861,10 @@ async function openGuild() {
     const { openGuildPanel } = await import('./game-engine/ui/guild-panel.js');
     const choice = await openGuildPanel({
         guild, board, day: today, purse, roster: partyMembers, Popup, POPUP_TYPE,
+        // Para que el tablon pueda decir a quien ayudas o a quien paras por su nombre.
+        factionNames: Object.fromEntries(
+            getCurrentWorldFactions().map((/** @type {any} */ f) => [f.id, f.name]),
+        ),
     });
     if (!choice) return describeGuild(guild);
 
@@ -4631,9 +4932,31 @@ async function acceptContract(id) {
     const bestiary = getCurrentWorldEnemies()
         .map((/** @type {any} */ e) => String(e?.name || '')).filter(Boolean);
 
+    // De que clase es el sitio, de que esta hecho por dentro y en que estado esta. Sin
+    // bateria de sitios sale lo de siempre: salas y pasillos, como hasta ahora.
+    const { compendium } = await getCompendium();
+    const seed = derive(seedOfWorld(data.metadata), 'encargo', String(contract.id));
+    const random = createSeededRandom(seed);
+    const biome = biomeHere(data.metadata);
+
+    const type = compendium.has('sitios')
+        ? compendium.pick('sitios', { where: { kind: 'tipo', biome }, random })
+            ?? compendium.pick('sitios', { where: { kind: 'tipo' }, random })
+        : null;
+    const state = compendium.has('sitios')
+        ? compendium.pick('sitios', { where: { kind: 'estado' }, random })
+        : null;
+    const templates = compendium.has('sitios')
+        ? compendium.find('sitios', { kind: 'sala' }).map((/** @type {any} */ row) => row.rows)
+        : [];
+
     const generated = generateBoard({
-        random: nextRandom,
+        // El dado del mundo, no el de la sesion: el mismo encargo da el mismo sitio.
+        random,
         size: contract.difficulty >= 5 ? 'large' : (contract.difficulty >= 1 ? 'medium' : 'small'),
+        shape: String(type?.shape || 'rooms'),
+        templates,
+        state: state ? { cover: state.cover, rough: state.rough } : null,
         bestiary,
         partySize: Math.max(1, partyMembers.length),
     });
@@ -4653,7 +4976,12 @@ async function acceptContract(id) {
     const boardName = `${contract.title} (encargo)`;
     const built = {
         name: boardName,
-        description: `Encargo de rango ${contract.rank} para ${contract.patron}.`,
+        description: [
+            `Encargo de rango ${contract.rank} para ${contract.patron}.`,
+            // Lo que el sitio es y como esta, escrito donde el narrador lo lee.
+            type ? `${type.name}: ${type.note}` : '',
+            state ? `${state.name}. ${state.note}` : '',
+        ].filter(Boolean).join(' '),
         url: '',
         gridWidth: generated.gridWidth,
         gridHeight: generated.gridHeight,
@@ -5493,15 +5821,100 @@ function runShellChip(chip) {
 }
 
 /**
- * Viajar a una localizacion. Devuelve el nombre real al que se ha llegado, o '' si no
- * existe.
+ * El compendio ya cargado, para lo que no puede esperar a una promesa.
  *
- * Extraido de `/go` para que el Modo Juego viaje por el mismo camino que el comando: dos
- * formas de ir al mismo sitio son dos sitios donde se puede olvidar guardar el estado.
+ * `applyFall` se llama desde dentro de una tirada de combate y no puede ser `async`: lo
+ * que hay aqui es lo que ya se cargo antes, y si todavia no hay nada se usa la tabla del
+ * motor. Aditivo, como todo lo demas.
  *
- * @param {string} name
+ * @type {any}
+ */
+let lastCompendium = { has: () => false, find: () => [] };
+
+// Se rellena en cuanto alguien pide el compendio por primera vez.
+void getCompendium().then(({ compendium }) => {
+    lastCompendium = compendium;
+    const causes = causesOf(compendium);
+    if (causes.length > 0) console.log(`[compendio] heridas por causa: ${causes.join(', ')}`);
+});
+
+/**
+ * La semilla del mundo abierto, o cadena vacia si es de antes de que existieran.
+ *
+ * @param {any} metadata
  * @returns {string}
  */
+function seedOfWorld(metadata) {
+    return String(metadata?.seed || '');
+}
+
+/**
+ * El bioma del sitio donde esta el grupo.
+ *
+ * Es lo que hace que el pantano no de lobos de nieve. Estaba leyendose de
+ * `metadata.biome`, que no existe: el bioma es de **cada localidad**, porque un mundo
+ * tiene pantano y montana a la vez.
+ *
+ * @param {any} metadata
+ * @returns {string}
+ */
+function biomeHere(metadata) {
+    const here = (metadata?.locationMaps ?? [])
+        .find((/** @type {any} */ l) => String(l?.name || '') === currentLocationName);
+    return String(here?.biome || '');
+}
+
+/**
+ * Lo que hay puesto en esa casilla, disparado.
+ *
+ * El motor decide que salta y cuanto duele; el narrador lo cuenta. Al reves —dejarselo al
+ * modelo— es como acaban las trampas haciendo un dano distinto cada vez.
+ *
+ * Y el dado es el de la partida: una trampa que se saltara la semilla haria que dos
+ * partidas con la misma semilla dejaran de salir iguales.
+ *
+ * @param {any} member
+ * @param {number} x
+ * @param {number} y
+ */
+function fireHazardsOnEnter(member, x, y) {
+    const board = getActiveBoardContext().board;
+    if (!board) return;
+
+    const { fired, hazards } = enterCell(board, { x, y });
+    if (fired.length === 0) return;
+
+    board.hazards = hazards;
+    persistBoardTerrain(board);
+
+    for (const hazard of fired) {
+        if (hazard.effect === 'damage' && hazard.damageDice) {
+            const roll = rollWith(hazard.damageDice, nextRandom);
+            member.hp = Math.max(0, (Number(member.hp) || 0) - roll.total);
+            postCombatNarration(
+                `[TABLERO] ${hazard.name} salta bajo ${member.name}: ${roll.total} de daño.`,
+            );
+            // A cero manda la misma puerta de siempre: una sola forma de caer.
+            // Lo que salta en el tablero dice de que es: fuego es fuego.
+            if (member.hp === 0) applyFall(member, String(hazard.cause || ''));
+        } else if (hazard.effect === 'condition' && hazard.condition) {
+            member.activeConditions = Array.isArray(member.activeConditions)
+                ? member.activeConditions : [];
+            if (!member.activeConditions.includes(hazard.condition)) {
+                member.activeConditions.push(hazard.condition);
+            }
+            postCombatNarration(
+                `[TABLERO] ${hazard.name} deja a ${member.name}: ${hazard.condition}.`,
+            );
+        } else {
+            postCombatNarration(`[TABLERO] ${describeHazard(hazard)}.`);
+        }
+    }
+
+    savePartyState();
+    renderLocationMapsPreview();
+}
+
 /**
  * Lo que cuesta el viaje, antes de gastarlo.
  *
@@ -5536,47 +5949,80 @@ async function askBeforeTravelling(plan) {
  * Por el camino pasan cosas. Lo que devuelve la tabla son hechos ya decididos —con sus
  * dias de retraso contados— y el narrador los cuenta: el motor decide, el modelo narra.
  *
+ * Devuelve **el motivo**, no un texto vacio: no viajar tiene cuatro causas distintas
+ * —hay pelea, ese sitio no existe, no hay camino, o te lo has pensado mejor— y las cuatro
+ * se veian igual desde fuera. Quien llama decide como contarlo; avisar aqui y ademas alli
+ * era como `/go` acababa diciendo dos cosas, una de ellas falsa.
+ *
  * @param {string} name
  * @param {{confirm?: (plan: any) => Promise<boolean>}} [options]
- * @returns {Promise<string>}
+ * @returns {Promise<{to: string, reason: string}>}
  */
 async function travelWithTime(name, options = {}) {
     // La misma regla que apaga la pestana de Exploracion: si solo se cerraran los botones,
     // `/go` seguiria sacandote de la pelea.
     const held = holdDuringCombat(combatEncounter, 'travel');
-    if (held) {
-        toastr.warning(held, 'Combate en marcha');
-        return '';
-    }
+    if (held) return { to: '', reason: held };
 
     const locations = getCurrentWorldLocationMaps();
     const wanted = String(name || '').trim();
     const match = locations.find(l => String(l.name).toLowerCase() === wanted.toLowerCase());
-    if (!match) return '';
-
-    const plan = planTravel({ from: currentLocationName, to: match.name, locations });
-    if (!plan.ok) {
-        // El motivo, no un boton que no hace nada: "el paso esta cerrado" es una meta.
-        toastr.info(plan.reason, `No se puede ir a "${match.name}"`);
-        return '';
+    if (!match) {
+        // Y con los nombres que si valen: un nombre mal escrito se arregla solo si se ve.
+        const hay = locations.map((/** @type {any} */ l) => String(l.name)).filter(Boolean);
+        return {
+            to: '',
+            reason: hay.length > 0
+                ? `No hay ningún sitio que se llame "${wanted}". Hay: ${hay.join(', ')}.`
+                : `No hay ningún sitio que se llame "${wanted}".`,
+        };
     }
 
-    if (options.confirm && !(await options.confirm({ ...plan, to: match.name }))) return '';
+    const plan = planTravel({ from: currentLocationName, to: match.name, locations });
+    // El motivo, no un boton que no hace nada: "el paso esta cerrado" es una meta.
+    if (!plan.ok) return { to: '', reason: plan.reason };
+
+    // Pensarselo mejor no es un fallo: sin motivo, nadie avisa de nada.
+    if (options.confirm && !(await options.confirm({ ...plan, to: match.name }))) {
+        return { to: '', reason: '' };
+    }
 
     // Los sucesos del camino, con la semilla del mundo: el mismo viaje sale igual dos
     // veces, que es lo unico que la semilla promete.
     const worldName = String(chat_metadata?.[METADATA_KEY] || '');
     const { compendium } = await getCompendium();
-    const fromBattery = compendium.has('mundo')
-        ? compendium.find('mundo', { kind: 'suceso' })
+    const hasWorld = compendium.has('mundo');
+    const table = hasWorld ? compendium.find('mundo', { kind: 'suceso' }) : [];
+
+    // Por donde se va y que tiempo admite: en una cueva no nieva, y eso lo dice la
+    // bateria, no este codigo.
+    const biome = String(match.biome || '');
+    const climates = hasWorld
+        ? (compendium.find('mundo', { kind: 'bioma', biome })[0]?.climates ?? [])
+        : [];
+
+    const random = createSeededRandom(derive(worldName, 'viaje', currentLocationName, match.name));
+    const weather = hasWorld
+        ? rollWeather({
+            days: plan.days,
+            table: compendium.find('mundo', { kind: 'clima' }),
+            climates,
+            random,
+        })
         : [];
 
     const events = travelEvents({
         days: plan.days,
-        table: fromBattery.length > 0 ? fromBattery : DEFAULT_TRAVEL_EVENTS,
-        random: createSeededRandom(derive(worldName, 'viaje', currentLocationName, match.name)),
+        table: table.length > 0 ? table : DEFAULT_TRAVEL_EVENTS,
+        biome,
+        weather,
+        random,
     });
+
+    // Un atajo resta y una tormenta suma, pero un viaje nunca dura menos de un dia:
+    // llegar antes de salir no lo cuenta nadie.
     const delay = events.reduce((sum, event) => sum + event.days, 0);
+    const total = Math.max(MIN_DAYS, plan.days + delay);
 
     currentLocationName = match.name;
     currentBoardName = '';
@@ -5585,10 +6031,12 @@ async function travelWithTime(name, options = {}) {
 
     // El reloj de uno en uno: cada dia cura, pasa hambre y acerca la cuenta semanal. Un
     // salto de cinco dias de golpe se saltaria cuatro de esos.
-    for (let day = 0; day < plan.days + delay; day++) advanceCampaignDay();
+    for (let day = 0; day < total; day++) advanceCampaignDay();
 
     const told = [describeTravel(plan)];
     if (delay > 0) told.push(`${delay} de retraso`);
+    else if (delay < 0) told.push(`${-delay} menos de lo previsto`);
+    if (weather.length > 0) told.push(`tiempo: ${[...new Set(weather)].join(', ')}`);
     toastr.info(told.join(' · '), `Llegáis a ${match.name}`);
 
     for (const event of events) {
@@ -5599,12 +6047,13 @@ async function travelWithTime(name, options = {}) {
     // sistema lo veria quien juega y no lo veria el modelo, que es justo al reves.
     const note = [
         `El grupo viaja hasta ${match.name}. ${describeTravel(plan)}.`,
+        weather.length > 0 ? `El tiempo, día a día: ${weather.join(', ')}.` : '',
         ...events.map(event => `Día ${event.day}: ${event.name}. ${event.note}`),
         'Cuenta el viaje en un párrafo breve. No inventes nada que no esté aquí.',
-    ].join('\n');
+    ].filter(Boolean).join('\n');
     postForModel(note).catch(error => console.error('[party] travel note failed', error));
 
-    return match.name;
+    return { to: match.name, reason: '' };
 }
 
 /**
@@ -5657,9 +6106,13 @@ async function openCompendiumLibrary() {
     const { compendium, errors } = await getCompendium();
     const { openCompendiumPanel } = await import('./game-engine/ui/compendio-panel.js');
 
+    // Un vocabulario cerrado mal escrito pasa la validacion de toda fila y luego no hace
+    // lo que dice. Se cuenta aqui, junto a lo que no se pudo leer.
+    const broken = [...validateAbilities(compendium), ...validateFactionRows(compendium)];
+
     await openCompendiumPanel({
         compendium,
-        errors,
+        errors: [...errors, ...broken],
         // Probar es lo que hace util la pantalla: diez tiradas con tu semilla, sin jugarte
         // una partida entera para descubrir que la daga sale siempre. Cada bateria se
         // prueba con quien la sortea de verdad, no con una lista de nombres.
@@ -5678,14 +6131,131 @@ async function openCompendiumLibrary() {
             if (domain === 'misiones') {
                 return writeQuestBoard({ compendium, howMany, random }).map(describeQuest);
             }
-            // Las que todavia no tienen generador se ensenan tal cual: sirve para ver que
-            // el filtro y los pesos hacen lo suyo antes de que exista quien las use.
-            return compendium.take(domain, howMany, { random })
-                .map((/** @type {any} */ row) => row.name);
+            if (domain === 'facciones') {
+                // Se prueba repartiendolas por el mundo abierto, que es para lo que son.
+                // Sin campana abierta, por un mundo de mentira: la bateria se ve igual.
+                const places = getCurrentWorldLocationMaps().length >= 2
+                    ? getCurrentWorldLocationMaps()
+                    : [{ name: 'El Molino' }, { name: 'La Ermita' }, { name: 'Cripta olvidada' }];
+                return rollFactions({ compendium, locations: places, random, count: howMany })
+                    .map(describeFaction);
+            }
+            if (domain === 'habilidades') {
+                // Lo que sabe hacer una clase, que es lo que la bateria hace. Una lista
+                // de nombres sueltos no dice si elegir clase significa algo.
+                const classes = classesOf(compendium);
+                const className = classes[Math.floor(random() * classes.length) % classes.length] ?? '';
+                const known = abilitiesFor({ compendium, className, level: 3 });
+                return [
+                    `${className || 'Cualquiera'}, a nivel 3:`,
+                    ...known.map(nameAndAbility),
+                ];
+            }
+            if (domain === 'personas') {
+                // Un pueblo, no filas sueltas: lo que se quiere ver es que cada uno
+                // quiere algo distinto y que el oficio no se repite.
+                return writeVillage({ compendium, howMany, locationName: 'El Molino', random })
+                    .flatMap((/** @type {any} */ person) => [
+                        describePerson(person),
+                        `   ${person.backstory}`,
+                    ]);
+            }
+            if (domain === 'mundo') return sampleJourney(compendium, random);
+            if (domain === 'sitios') return samplePlace(compendium, random);
+            if (domain === 'propiedades') {
+                // Solo lo que lleva propiedad: forjar sin ellas es probar la otra bateria.
+                return forgeItems({ compendium, howMany, random, properties: 1 })
+                    .map(describeItem);
+            }
+
+            // Lo que todavia no tiene generador se ensena **agrupado por clase**: una
+            // lista que mezcla biomas, climas y sucesos no dice nada de ninguno.
+            const rows = compendium.take(domain, howMany * 2, { random });
+            /** @type {Map<string, string[]>} */
+            const byKind = new Map();
+            for (const row of rows) {
+                const kind = String(row.kind || 'filas');
+                if (!byKind.has(kind)) byKind.set(kind, []);
+                byKind.get(kind)?.push(String(row.name));
+            }
+            return [...byKind.entries()].map(([kind, names]) => `${kind}: ${names.join(', ')}`);
         },
         Popup,
         POPUP_TYPE,
     });
+}
+
+/**
+ * Un viaje entero, que es lo que la bateria del mundo **hace**.
+ *
+ * Ensenar sus filas sueltas —«Niebla, Viento, Un desprendimiento, Despejado»— no dice
+ * nada de ninguna: lo que se quiere ver es que el tiempo hace rachas, que en un sitio no
+ * puede nevar y que los sucesos encajan con lo que hace ese dia.
+ *
+ * @param {any} compendium
+ * @param {() => number} random
+ * @returns {string[]}
+ */
+function sampleJourney(compendium, random) {
+    const biome = compendium.pick('mundo', { where: { kind: 'bioma' }, random });
+    if (!biome) return [];
+
+    const days = 6;
+    const weather = rollWeather({
+        days,
+        table: compendium.find('mundo', { kind: 'clima' }),
+        climates: biome.climates ?? [],
+        random,
+    });
+    const events = travelEvents({
+        days,
+        table: compendium.find('mundo', { kind: 'suceso' }),
+        biome: String(biome.biome || ''),
+        weather,
+        random,
+    });
+
+    const lines = [`Seis días por ${String(biome.name).toLowerCase()}: ${weather.join(' · ')}`];
+    for (const event of events) {
+        const cost = event.days > 0 ? ` (+${event.days} día)`
+            : (event.days < 0 ? ` (−${-event.days} día)` : '');
+        lines.push(`Día ${event.day} · ${event.name}${cost} — ${event.note}`);
+    }
+    if (events.length === 0) lines.push('Seis días sin nada que contar. También pasa.');
+
+    return lines;
+}
+
+/**
+ * Un sitio entero, dibujado.
+ *
+ * La bateria de sitios no es una lista de nombres: es de que forma es un sitio, que salas
+ * escritas a mano lleva dentro y en que estado esta. Eso solo se ve mirando el mapa.
+ *
+ * @param {any} compendium
+ * @param {() => number} random
+ * @returns {string[]}
+ */
+function samplePlace(compendium, random) {
+    const type = compendium.pick('sitios', { where: { kind: 'tipo' }, random });
+    const state = compendium.pick('sitios', { where: { kind: 'estado' }, random });
+    if (!type) return [];
+
+    const board = generateBoard({
+        random,
+        size: 'small',
+        shape: String(type.shape || 'rooms'),
+        templates: compendium.find('sitios', { kind: 'sala' })
+            .map((/** @type {any} */ row) => row.rows),
+        state: state ? { cover: state.cover, rough: state.rough } : null,
+        partySize: 2,
+        bestiary: ['Lobo'],
+    });
+
+    return [
+        `${type.name}${state ? ` · ${state.name}` : ''} · forma "${type.shape}"`,
+        ...board.map,
+    ];
 }
 
 /**
@@ -5809,7 +6379,11 @@ function buildShellOptions() {
         // dias, comida y la cuenta de la semana, asi que primero se dice lo que cuesta.
         onTravel: (name) => {
             void travelWithTime(name, { confirm: askBeforeTravelling })
-                .then(() => renderLocationMapsPreview());
+                .then(({ reason }) => {
+                    // Cancelar no lleva motivo: solo se avisa de lo que impide viajar.
+                    if (reason) toastr.info(reason, 'No se puede viajar');
+                    renderLocationMapsPreview();
+                });
         },
         // Los paneles de SillyTavern se abren donde estan: en pausa su barra vuelve
         // arriba, por encima de esta capa, y el boton pulsa el mismo icono de siempre.
@@ -6471,7 +7045,13 @@ function buildCharacterSheetTab(member, dndCatalog) {
         renderIdentitySubtitle();
     });
 
-    const factionOptions = Array.from(new Set([...(dndCatalog.factions || []), ...(member.factions || [])].filter(Boolean))).sort((a, b) => a.localeCompare(b));
+    // Las del mundo primero: son las que tienen planes y reloj, asi que poner a alguien
+    // en una de ellas le da un motivo de verdad. Las escritas a mano siguen valiendo.
+    const factionOptions = Array.from(new Set([
+        ...getCurrentWorldFactions().map((/** @type {any} */ f) => String(f?.name || '')),
+        ...(dndCatalog.factions || []),
+        ...(member.factions || []),
+    ].filter(Boolean))).sort((a, b) => a.localeCompare(b));
     const factionSelect = identityRow.find('.dnd-faction-select');
     for (const faction of factionOptions) {
         factionSelect.append(`<option value="${escapeHtml(faction)}">${escapeHtml(faction)}</option>`);
@@ -8174,17 +8754,16 @@ export function initPartyPanel() {
         // pregunta, porque un clic no puede gastar dias sin avisar. Lo que no cambia es el
         // coste: dos formas de viajar y una gratis seria una forma de saltarse el hambre.
         callback: async (_args, value) => {
-            const arrived = await travelWithTime(String(value));
-            if (!arrived) {
-                // Si el combate lo retuvo, ya lo ha dicho: dos avisos y uno falso seria peor.
-                if (!holdDuringCombat(combatEncounter, 'travel')) {
-                    toastr.warning(`Location "${String(value).trim()}" not found.`);
-                }
+            const { to, reason } = await travelWithTime(String(value));
+            if (!to) {
+                // El motivo que venga, una sola vez: antes esto decia «not found» aunque
+                // el sitio existiera y lo que fallara fuese el camino.
+                if (reason) toastr.warning(reason, 'No se puede viajar');
                 return '';
             }
             setPartyTab('location');
-            toastr.info(`📍 ${t`Traveled to`} ${arrived}`);
-            return arrived;
+            toastr.info(`📍 ${t`Traveled to`} ${to}`);
+            return to;
         },
     }));
 

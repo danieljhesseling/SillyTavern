@@ -1,7 +1,7 @@
 import { describe, test, expect } from '@jest/globals';
 import {
     RANKS, CONTRACT_KINDS, GUILD_THEMES, ranksFor, generateBoardOfContracts,
-    deadlineOf, expireContracts, describeContract,
+    deadlineOf, expireContracts, describeContract, contractsFromFactions, describeStake,
 } from '../public/scripts/game-engine/campaign/contracts.js';
 import { createSeededRandom } from '../public/scripts/game-engine/combat/seeded-random.js';
 
@@ -178,5 +178,89 @@ describe('leído en el tablón', () => {
             id: 'x', rank: 'D', kind: 'cull', title: 'Tarde', reward: 10, days: 2, patron: 'nadie', locationName: '', difficulty: 0.25,
         }, 10);
         expect(said).toMatch(/vencido/);
+    });
+});
+
+describe('encargos que toman partido', () => {
+    const bandos = () => ([
+        {
+            id: 'molino', name: 'Los del Molino', seat: 'El molino', enemies: ['ermita'],
+            goal: { kind: 'conquistar', target: 'Vado del Sauce', pace: 8, of: 6, at: 1 },
+        },
+        {
+            id: 'ermita', name: 'Los de la Ermita', seat: 'Vado del Sauce', enemies: ['molino'],
+            goal: { kind: 'controlar', target: 'El molino', pace: 5, of: 4, at: 0 },
+        },
+    ]);
+    const suyos = (seed = 'toma partido', count = 2) => contractsFromFactions({
+        factions: bandos(), random: createSeededRandom(seed), renown: 30, day: 10, count,
+    });
+
+    test('sin facciones no hay ninguno, y el tablón sigue como estaba', () => {
+        expect(contractsFromFactions({ factions: [], random: createSeededRandom('x') })).toEqual([]);
+    });
+
+    test('una facción sin meta no genera encargo', () => {
+        expect(contractsFromFactions({
+            factions: [{ id: 'q', name: 'Quieta', goal: {} }], random: createSeededRandom('x'),
+        })).toEqual([]);
+    });
+
+    // Lo que lo separa de un recado: al entregarlo, el reloj de alguien se mueve.
+    test('cada uno dice a quién mueve y hacia dónde', () => {
+        for (const contract of suyos()) {
+            expect(['molino', 'ermita']).toContain(contract.faction);
+            expect(typeof contract.against).toBe('boolean');
+            expect(contract.segments).toBeGreaterThan(0);
+        }
+    });
+
+    test('y tiene la misma forma que cualquier otro encargo del tablón', () => {
+        for (const contract of suyos()) {
+            expect(Object.keys(CONTRACT_KINDS)).toContain(contract.kind);
+            expect(RANKS.map(r => r.id)).toContain(contract.rank);
+            expect(contract.title).not.toMatch(/[{}]|undefined/);
+            expect(contract.reward).toBeGreaterThan(0);
+            expect(contract.days).toBeGreaterThan(10);
+        }
+    });
+
+    // Su reloj no espera: el plazo es lo que tarda un segmento suyo, no lo que tarda un recado.
+    test('el plazo no pasa de lo que tarda un segmento suyo', () => {
+        for (const contract of suyos()) {
+            expect(contract.days - 10).toBeLessThanOrEqual(8);
+        }
+    });
+
+    test('quien lo paga no es quien lo sufre', () => {
+        const suyo = suyos().filter(c => c.faction === 'molino');
+        expect(suyo.map(c => c.patron))
+            .toEqual(suyo.map(c => (c.against ? 'Los de la Ermita' : 'Los del Molino')));
+    });
+
+    test('nombra el sitio que está en juego', () => {
+        for (const contract of suyos()) {
+            expect(['Vado del Sauce', 'El molino']).toContain(contract.locationName);
+        }
+    });
+
+    // La misma semilla, el mismo tablón: dos partidas iguales se pueden comparar.
+    test('la misma semilla da los mismos, y otra da otros', () => {
+        expect(suyos('una').map(c => c.title)).toEqual(suyos('una').map(c => c.title));
+        expect(suyos('una').map(c => c.title)).not.toEqual(suyos('otra').map(c => c.title));
+    });
+
+    test('no pide más de los que hay', () => {
+        expect(suyos('x', 9)).toHaveLength(2);
+    });
+
+    // Hay que poder verlo antes de aceptar, no después.
+    test('se puede decir qué se juega el mundo', () => {
+        const [contract] = suyos();
+        expect(describeStake(contract, 'Los del Molino')).toMatch(/pierde una semana|gana una semana/);
+    });
+
+    test('y un encargo normal no se juega nada', () => {
+        expect(describeStake({ id: 'c1', title: 'Recado' }, 'Nadie')).toBe('');
     });
 });

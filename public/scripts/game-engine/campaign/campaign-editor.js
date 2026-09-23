@@ -39,6 +39,7 @@ const DEFAULT_LOCATION_GRID = 50;
  * @property {string} type
  * @property {string} description
  * @property {string} region
+ * @property {string} biome Qué clase de sitio es: lo lee el bestiario y lo lee el viaje.
  * @property {string} factionName
  * @property {EditorBoard[]} boards
  */
@@ -217,6 +218,9 @@ export function buildEditorModel(metadata, entries = {}) {
             type: LOCATION_TYPES.includes(text(location?.locationType)) ? text(location.locationType) : '',
             description: text(location?.description),
             region: text(location?.region),
+            // Que clase de sitio es. Lo lee el bestiario para no sacar lobos de nieve en
+            // un pantano, y el viaje para saber que tiempo puede hacer.
+            biome: text(location?.biome),
             factionName: text(location?.controllingFaction),
             boards: (Array.isArray(location?.boards) ? location.boards : []).map(board => ({
                 name: text(board?.name),
@@ -524,6 +528,7 @@ export function applyEditorModel(metadata, model) {
             name: text(location.name),
             description: text(location.description),
             region: text(location.region),
+            biome: text(location.biome),
             locationType: text(location.type),
             controllingFaction: text(location.factionName),
             gridWidth: Number(before.gridWidth) || DEFAULT_LOCATION_GRID,

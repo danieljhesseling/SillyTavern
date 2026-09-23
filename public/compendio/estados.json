@@ -1,0 +1,257 @@
+{
+  "version": 1,
+  "domain": "estados",
+  "about": "Lo que le queda a alguien después. Una HERIDA lleva su causa: una caída, el fuego y una hoja no dejan lo mismo, y la tabla de cada causa va de la más leve a la más grave porque la tirada indexa por posición. Los días a cero son permanentes. Una ENFERMEDAD tiene curso: tres etapas y una tirada por día para pasar de una a otra, así que es una carrera contra el reloj y no un número que baja. Los modificadores usan los nombres que el motor ya lee (speed, strength, maxHp…), porque se escriben encima de la ficha.",
+  "rows": [
+    {
+      "id": "caida-magullado", "name": "Magullado", "kind": "herida", "cause": "caida",
+      "weight": 10, "days": 3, "modifiers": { "constitution": -1 },
+      "note": "Duele al respirar y se nota al levantarse."
+    },
+    {
+      "id": "caida-tobillo", "name": "Tobillo torcido", "kind": "herida", "cause": "caida",
+      "weight": 10, "days": 5, "modifiers": { "speed": -5 },
+      "note": "Cojea, y cuesta el doble subir una cuesta."
+    },
+    {
+      "id": "caida-costillas", "name": "Costillas rotas", "kind": "herida", "cause": "caida",
+      "weight": 8, "days": 12, "modifiers": { "strength": -2 },
+      "note": "No puede cargar peso, y respirar hondo le corta."
+    },
+    {
+      "id": "caida-conmocion", "name": "Conmoción", "kind": "herida", "cause": "caida",
+      "weight": 7, "days": 10, "modifiers": { "wisdom": -2, "dexterity": -1 },
+      "note": "Le cuesta seguir lo que pasa y pierde el hilo a media frase."
+    },
+    {
+      "id": "caida-espalda", "name": "Espalda partida", "kind": "herida", "cause": "caida",
+      "weight": 4, "days": 0, "modifiers": { "speed": -15, "dexterity": -2 },
+      "note": "Se levantó, pero ya no anda como antes. Y no va a volver a hacerlo."
+    },
+
+    {
+      "id": "hoja-corte", "name": "Corte limpio", "kind": "herida", "cause": "hoja",
+      "weight": 10, "days": 4, "modifiers": { "maxHp": -2 },
+      "note": "Cierra bien si se cose pronto."
+    },
+    {
+      "id": "hoja-profundo", "name": "Corte profundo", "kind": "herida", "cause": "hoja",
+      "weight": 10, "days": 7, "modifiers": { "maxHp": -3 },
+      "note": "Se abre otra vez en cuanto se esfuerza."
+    },
+    {
+      "id": "hoja-tendon", "name": "Tendón cortado", "kind": "herida", "cause": "hoja",
+      "weight": 7, "days": 16, "modifiers": { "dexterity": -2 },
+      "note": "La mano no responde como debería, y lo sabe cada vez que coge algo."
+    },
+    {
+      "id": "hoja-vientre", "name": "Herida en el vientre", "kind": "herida", "cause": "hoja",
+      "weight": 5, "days": 0, "modifiers": { "maxHp": -5, "constitution": -1 },
+      "note": "Nunca vuelve a aguantar lo mismo."
+    },
+    {
+      "id": "hoja-mano", "name": "Mano perdida", "kind": "herida", "cause": "hoja",
+      "weight": 3, "days": 0, "modifiers": { "strength": -2, "dexterity": -1 },
+      "note": "Se acabaron las armas a dos manos."
+    },
+
+    {
+      "id": "golpe-moraton", "name": "Moratón feo", "kind": "herida", "cause": "contundente",
+      "weight": 10, "days": 3, "modifiers": { "constitution": -1 },
+      "note": "Negro y del tamaño de una mano. Duele más al día siguiente."
+    },
+    {
+      "id": "golpe-dedos", "name": "Dedos rotos", "kind": "herida", "cause": "contundente",
+      "weight": 9, "days": 9, "modifiers": { "dexterity": -2 },
+      "note": "Cierra el puño y se le van los ojos."
+    },
+    {
+      "id": "golpe-brazo", "name": "Brazo roto", "kind": "herida", "cause": "contundente",
+      "weight": 8, "days": 18, "modifiers": { "strength": -3 },
+      "note": "Entablillado y en cabestrillo. No sostiene un arma a dos manos."
+    },
+    {
+      "id": "golpe-pierna", "name": "Pierna rota", "kind": "herida", "cause": "contundente",
+      "weight": 7, "days": 14, "modifiers": { "speed": -10 },
+      "note": "Apenas se mueve, y cada paso se le nota en la cara."
+    },
+    {
+      "id": "golpe-cadera", "name": "Cadera deshecha", "kind": "herida", "cause": "contundente",
+      "weight": 3, "days": 0, "modifiers": { "speed": -15 },
+      "note": "Anda con muleta, y va a andar con muleta el resto de su vida."
+    },
+
+    {
+      "id": "fuego-chamuscado", "name": "Chamuscado", "kind": "herida", "cause": "fuego",
+      "weight": 10, "days": 2, "modifiers": { "charisma": -1 },
+      "note": "Sin cejas y oliendo a quemado una semana."
+    },
+    {
+      "id": "fuego-quemadura", "name": "Quemadura", "kind": "herida", "cause": "fuego",
+      "weight": 10, "days": 8, "modifiers": { "maxHp": -3 },
+      "note": "La piel tirante duele con cualquier movimiento."
+    },
+    {
+      "id": "fuego-manos", "name": "Manos quemadas", "kind": "herida", "cause": "fuego",
+      "weight": 8, "days": 14, "modifiers": { "dexterity": -2 },
+      "note": "Agarrar algo con fuerza es pedirle demasiado."
+    },
+    {
+      "id": "fuego-pulmones", "name": "Humo en los pulmones", "kind": "herida", "cause": "fuego",
+      "weight": 6, "days": 20, "modifiers": { "constitution": -2 },
+      "note": "Tose al andar deprisa y se queda sin aire antes que nadie."
+    },
+    {
+      "id": "fuego-cara", "name": "La cara quemada", "kind": "herida", "cause": "fuego",
+      "weight": 4, "days": 0, "modifiers": { "charisma": -3 },
+      "note": "La gente aparta la vista, y él ya se ha acostumbrado a eso."
+    },
+
+    {
+      "id": "frio-sabanones", "name": "Sabañones", "kind": "herida", "cause": "frio",
+      "weight": 10, "days": 4, "modifiers": { "dexterity": -1 },
+      "note": "Los dedos no obedecen hasta media mañana."
+    },
+    {
+      "id": "frio-congelacion", "name": "Congelación", "kind": "herida", "cause": "frio",
+      "weight": 9, "days": 10, "modifiers": { "constitution": -2 },
+      "note": "La piel blanca y dura tarda días en volver a su color."
+    },
+    {
+      "id": "frio-entumecido", "name": "Entumecido", "kind": "herida", "cause": "frio",
+      "weight": 8, "days": 6, "modifiers": { "speed": -5, "dexterity": -1 },
+      "note": "Se mueve como si llevara el doble de ropa encima."
+    },
+    {
+      "id": "frio-dedos", "name": "Dedos perdidos", "kind": "herida", "cause": "frio",
+      "weight": 4, "days": 0, "modifiers": { "dexterity": -2 },
+      "note": "Se quedaron negros y hubo que quitarlos. Dos de la mano izquierda."
+    },
+    {
+      "id": "frio-pie", "name": "Pie perdido", "kind": "herida", "cause": "frio",
+      "weight": 3, "days": 0, "modifiers": { "speed": -15, "dexterity": -1 },
+      "note": "Lo dejó en la montaña sin enterarse hasta que fue tarde."
+    },
+
+    {
+      "id": "veneno-nauseas", "name": "Náuseas", "kind": "herida", "cause": "veneno",
+      "weight": 10, "days": 2, "modifiers": { "constitution": -1 },
+      "note": "No retiene nada y se levanta mareado."
+    },
+    {
+      "id": "veneno-debilidad", "name": "Debilidad", "kind": "herida", "cause": "veneno",
+      "weight": 10, "days": 6, "modifiers": { "strength": -2 },
+      "note": "Le tiemblan las manos y se cansa de estar de pie."
+    },
+    {
+      "id": "veneno-vision", "name": "Visión borrosa", "kind": "herida", "cause": "veneno",
+      "weight": 8, "days": 8, "modifiers": { "wisdom": -2, "dexterity": -1 },
+      "note": "Ve doble a ratos y prefiere no decirlo."
+    },
+    {
+      "id": "veneno-corazon", "name": "El corazón tocado", "kind": "herida", "cause": "veneno",
+      "weight": 5, "days": 0, "modifiers": { "constitution": -2, "maxHp": -4 },
+      "note": "Sobrevivió, pero algo dentro no volvió a ir como iba."
+    },
+
+    {
+      "id": "bestia-aranazos", "name": "Arañazos", "kind": "herida", "cause": "bestia",
+      "weight": 10, "days": 3, "modifiers": { "maxHp": -2 },
+      "note": "Cuatro líneas paralelas que escuecen más de lo que parece."
+    },
+    {
+      "id": "bestia-mordisco", "name": "Mordisco", "kind": "herida", "cause": "bestia",
+      "weight": 10, "days": 9, "modifiers": { "maxHp": -3, "constitution": -1 },
+      "note": "Se infecta si no se limpia bien, y casi nunca se limpia bien."
+    },
+    {
+      "id": "bestia-desgarro", "name": "Desgarro", "kind": "herida", "cause": "bestia",
+      "weight": 7, "days": 15, "modifiers": { "strength": -2, "speed": -5 },
+      "note": "Se llevó un trozo de pierna. Cojeará hasta que cierre del todo."
+    },
+    {
+      "id": "bestia-ojo", "name": "Ojo perdido", "kind": "herida", "cause": "bestia",
+      "weight": 4, "days": 0, "modifiers": { "dexterity": -2 },
+      "note": "Calcula mal las distancias, y con un arco eso se acabó."
+    },
+
+    {
+      "id": "enf-fiebre", "name": "Fiebre de los pantanos", "kind": "enfermedad",
+      "weight": 10, "tags": ["pantano", "agua"],
+      "catch": "beber donde no se debe o dormir con la ropa mojada",
+      "stages": [
+        { "label": "destemplado", "days": 2, "modifiers": { "constitution": -1 },
+          "note": "Tiene frío con el sol dando y no le da importancia." },
+        { "label": "con fiebre", "days": 4, "modifiers": { "constitution": -2, "strength": -1 },
+          "note": "Suda de noche y no aguanta una jornada entera." },
+        { "label": "ardiendo", "days": 6, "modifiers": { "constitution": -3, "strength": -2, "wisdom": -2 },
+          "note": "Habla con gente que no está. Sin alguien que lo cuide, no pasa de aquí." }
+      ]
+    },
+    {
+      "id": "enf-tos", "name": "La tos del minero", "kind": "enfermedad",
+      "weight": 8, "tags": ["cueva", "polvo"],
+      "catch": "semanas respirando polvo bajo tierra",
+      "stages": [
+        { "label": "carraspera", "days": 5, "modifiers": {},
+          "note": "Se aclara la garganta cada poco y se ríe de quien se lo dice." },
+        { "label": "tos seca", "days": 10, "modifiers": { "constitution": -1 },
+          "note": "Tose por la noche y no deja dormir a nadie." },
+        { "label": "tos con sangre", "days": 0, "modifiers": { "constitution": -2, "maxHp": -4 },
+          "note": "Ya no se va. Se aprende a vivir con ella, el tiempo que quede." }
+      ]
+    },
+    {
+      "id": "enf-infeccion", "name": "Infección", "kind": "enfermedad",
+      "weight": 10, "tags": ["herida"],
+      "catch": "una herida mal lavada",
+      "stages": [
+        { "label": "enrojecida", "days": 2, "modifiers": {},
+          "note": "El borde caliente y rojo. Todavía se coge a tiempo." },
+        { "label": "supurando", "days": 3, "modifiers": { "constitution": -2, "maxHp": -3 },
+          "note": "Huele mal y la línea roja sube por el brazo." },
+        { "label": "gangrena", "days": 4, "modifiers": { "constitution": -3, "maxHp": -6, "strength": -2 },
+          "note": "O se corta lo que haya que cortar, o se acabó." }
+      ]
+    },
+    {
+      "id": "enf-sarna", "name": "Sarna", "kind": "enfermedad",
+      "weight": 7, "tags": ["suciedad", "camino"],
+      "catch": "dormir donde durmió medio camino antes que tú",
+      "stages": [
+        { "label": "picores", "days": 4, "modifiers": {},
+          "note": "Se rasca sin darse cuenta y culpa a las chinches." },
+        { "label": "en carne viva", "days": 8, "modifiers": { "charisma": -2, "constitution": -1 },
+          "note": "No duerme, y nadie quiere compartir manta con él." },
+        { "label": "extendida", "days": 12, "modifiers": { "charisma": -3, "constitution": -2 },
+          "note": "Se le nota en la cara y en las manos. En los pueblos lo miran raro." }
+      ]
+    },
+    {
+      "id": "enf-mal-de-cripta", "name": "Mal de cripta", "kind": "enfermedad",
+      "weight": 5, "tags": ["cripta", "nomuerto"],
+      "catch": "pasar una noche donde hay muertos mal enterrados",
+      "stages": [
+        { "label": "sueños malos", "days": 3, "modifiers": { "wisdom": -1 },
+          "note": "Se despierta tres veces por noche y no recuerda por qué." },
+        { "label": "el frío dentro", "days": 6, "modifiers": { "wisdom": -2, "constitution": -2 },
+          "note": "No entra en calor ni al lado del fuego." },
+        { "label": "la mirada ida", "days": 0, "modifiers": { "wisdom": -3, "charisma": -2 },
+          "note": "Habla de los que se fueron como si los viera. Ya no se le va." }
+      ]
+    },
+    {
+      "id": "enf-hambre-vieja", "name": "El hambre vieja", "kind": "enfermedad",
+      "weight": 6, "tags": ["hambre"],
+      "catch": "semanas comiendo menos de lo que se gasta",
+      "stages": [
+        { "label": "flojera", "days": 3, "modifiers": { "strength": -1 },
+          "note": "Se cansa antes y lo disimula." },
+        { "label": "encías sangrando", "days": 7, "modifiers": { "strength": -2, "constitution": -1 },
+          "note": "Escupe sangre al lavarse y se le mueve un diente." },
+        { "label": "sin fuerzas", "days": 14, "modifiers": { "strength": -3, "constitution": -2, "speed": -5 },
+          "note": "Andar una jornada entera ya no está a su alcance." }
+      ]
+    }
+  ]
+}

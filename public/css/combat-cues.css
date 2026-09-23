@@ -770,6 +770,24 @@
     opacity: 0.8;
 }
 
+/* Lo que se mueve ahi fuera sin ti. Va con el reloj porque es la misma cosa: los dias que
+   curan a los tuyos tambien acercan a los otros a lo que quieren. */
+.cp-world-title {
+    margin-top: 10px;
+    font-size: 0.75em;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    opacity: 0.6;
+}
+
+.cp-world {
+    margin-top: 4px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: rgba(70, 90, 140, 0.16);
+    font-size: 0.8em;
+}
+
 /* ================================================================
    La ficha de mirar (wiki/ROADMAP_MAESTRO.md, Nivel 1)
 

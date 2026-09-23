@@ -31,12 +31,12 @@ export const DOMAIN_LABELS = {
     propiedades: ['Propiedades', 'Lo que da y lo que quita: sin contrapartida no hay decisión'],
     habilidades: ['Habilidades', 'Lo que sabe hacer alguien, y cuánto se gasta'],
     bestiario: ['Bestiario', 'Arquetipos y plantillas que se apilan'],
-    personas: ['Personas', 'Rasgos, deseos, miedos y oficios'],
+    personas: ['Personas', 'Qué quiere y qué teme: de ahí salen todas sus decisiones'],
     sitios: ['Sitios', 'Tipos de localidad y plantillas de sala'],
     misiones: ['Misiones', 'Verbo + objeto + giro: el giro es lo que separa un recado de una misión'],
     facciones: ['Facciones', 'Quién quiere qué, y contra quién'],
     mundo: ['Mundo', 'Biomas, climas y estaciones'],
-    estados: ['Estados', 'Heridas, enfermedades y condiciones'],
+    estados: ['Estados', 'Heridas según de qué vengan, y enfermedades con su curso'],
 };
 
 /**

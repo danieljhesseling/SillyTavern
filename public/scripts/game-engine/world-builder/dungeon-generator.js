@@ -22,6 +22,11 @@
  * Ver wiki/ROADMAP_MAESTRO.md, Nivel 3.
  */
 
+import {
+    SHAPES, carveCave, carveCamp, carveTemple, floodRegions,
+    connectRegions, applyCoverBudget, placeRoom, COVER_BUDGET,
+} from './shapes.js';
+
 /**
  * @typedef {Object} GeneratedRoom
  * @property {number} x  Esquina superior izquierda, contando el muro.
@@ -123,6 +128,14 @@ function centreOf(room) {
  * @param {() => number} [options.random] El dado. Sin él, `Math.random` — pero entonces
  *        deja de ser repetible, que es medio sentido de esto.
  * @param {'small'|'medium'|'large'} [options.size]
+ * @param {string} [options.shape] De que forma es: salas, cueva, campamento o templo.
+ *        Una cueva no tiene salas y un campamento no tiene pasillos: cada uno pide otro
+ *        algoritmo, no otro tamano.
+ * @param {string[][]} [options.templates] Salas escritas a mano, para estampar dentro. Un
+ *        algoritmo hace sitios variados y ninguno memorable; una sala escrita es
+ *        memorable y siempre la misma. Estampar una dentro del otro da las dos cosas.
+ * @param {{cover?: number, rough?: number}} [options.state] En que estado esta el sitio.
+ *        Una cripta inundada y una saqueada no se juegan igual.
  * @param {string[]} [options.bestiary] Nombres del bestiario del mundo, para poblarlo.
  * @param {number} [options.partySize]
  * @param {number} [options.enemyCount] Cuántos bichos. Por defecto, uno por sala menos una.
@@ -132,6 +145,13 @@ export function generateBoard(options = {}) {
     const random = typeof options.random === 'function' ? options.random : Math.random;
     const shape = BOARD_SHAPES[options.size ?? 'medium'] ?? BOARD_SHAPES.medium;
     const { width, height } = shape;
+
+    // De que forma es el sitio. Una cueva no tiene salas y un campamento no tiene
+    // pasillos: cada uno pide **otro algoritmo**, no otro tamano.
+    const style = SHAPES.includes(String(options.shape || '')) ? String(options.shape) : 'rooms';
+    if (style !== 'rooms') {
+        return generateShaped(style, { width, height, random, ...options });
+    }
 
     // Todo muro, y las salas se excavan. Empezar lleno y vaciar garantiza el borde
     // exterior cerrado, que es lo primero que comprueba el validador del paquete.
@@ -159,25 +179,39 @@ export function generateBoard(options = {}) {
         const from = centreOf(rooms[i - 1]);
         const to = centreOf(rooms[i]);
 
-        const carve = (/** @type {number} */ x, /** @type {number} */ y) => {
+        /**
+         * Excava una casilla del pasillo.
+         *
+         * Una puerta es **cruzar una pared**, no excavar un tunel. Lo que decide cual de
+         * las dos cosas esta pasando es lo que hay **delante**: si al otro lado ya hay
+         * suelo, este muro es la pared de una sala y ahi va la puerta; si delante sigue
+         * habiendo roca, esto es un tunel y una puerta en mitad de la roca no la pone
+         * nadie. Sin esta distincion salian pasillos enteros de puertas.
+         *
+         * @param {number} x
+         * @param {number} y
+         * @param {number} dx Hacia donde avanza el pasillo.
+         * @param {number} dy
+         */
+        const carve = (x, y, dx, dy) => {
             if (y <= 0 || y >= height - 1 || x <= 0 || x >= width - 1) return;
-            // Al atravesar un muro entre dos salas queda una puerta: es lo que hace que
-            // el tablero tenga ritmo en vez de ser una nave diáfana.
-            if (grid[y][x] === '#') {
-                // Atravesar un tramo de muro —con muro a los dos lados— es cruzar una
-                // pared, y ahi va la puerta. Abrir un muro suelto es solo ensanchar.
-                const wallAbove = grid[y - 1]?.[x] === '#' && grid[y + 1]?.[x] === '#';
-                const wallBeside = grid[y][x - 1] === '#' && grid[y][x + 1] === '#';
-                grid[y][x] = (wallAbove || wallBeside) ? 'D' : '.';
-                if (grid[y][x] === 'D') doors.push({ x, y });
-            }
+            if (grid[y][x] !== '#') return;
+
+            const acrossWall = dx !== 0
+                ? grid[y - 1]?.[x] === '#' && grid[y + 1]?.[x] === '#'
+                : grid[y][x - 1] === '#' && grid[y][x + 1] === '#';
+            const ahead = grid[y + dy]?.[x + dx];
+            const opens = ahead !== undefined && ahead !== '#';
+
+            grid[y][x] = (acrossWall && opens) ? 'D' : '.';
+            if (grid[y][x] === 'D') doors.push({ x, y });
         };
 
         const stepX = from.x < to.x ? 1 : -1;
-        for (let x = from.x; x !== to.x; x += stepX) carve(x, from.y);
+        for (let x = from.x; x !== to.x; x += stepX) carve(x, from.y, stepX, 0);
         const stepY = from.y < to.y ? 1 : -1;
-        for (let y = from.y; y !== to.y; y += stepY) carve(to.x, y);
-        carve(to.x, to.y);
+        for (let y = from.y; y !== to.y; y += stepY) carve(to.x, y, 0, stepY);
+        carve(to.x, to.y, stepX, 0);
     }
 
     // Cobertura: unas pocas columnas sueltas dentro de las salas grandes. Una sala vacía
@@ -192,6 +226,13 @@ export function generateBoard(options = {}) {
             if (grid[y][x] === '.') grid[y][x] = random() < 0.5 ? 'c' : 'C';
         }
     }
+
+    // Las salas escritas a mano y el estado del sitio, **antes** de colocar a nadie: si
+    // se estampa despues, una sala puede caerle encima al grupo y dejarlo dentro de un
+    // muro. Primero se termina el mapa, luego se reparte la gente.
+    stampWritten(grid, options, random);
+    applyState(grid, options, random);
+    connectRegions(grid);
 
     const floorsOf = (/** @type {GeneratedRoom} */ room) => {
         /** @type {Array<{x: number, y: number}>} */
@@ -234,6 +275,147 @@ export function generateBoard(options = {}) {
         partyStart,
         enemies,
         doors,
+    };
+}
+
+/**
+ * Estampa las salas escritas a mano que quepan.
+ *
+ * @param {string[][]} grid
+ * @param {any} options
+ * @param {() => number} random
+ */
+function stampWritten(grid, options, random) {
+    const templates = (Array.isArray(options.templates) ? options.templates : [])
+        .filter(rows => Array.isArray(rows) && rows.length > 0);
+    if (templates.length === 0) return;
+
+    // Una o dos, no cinco: un tablero hecho solo de salas escritas es un tablero escrito
+    // a mano con pasos de mas.
+    const wanted = between(random, 1, Math.min(2, templates.length));
+    const used = new Set();
+
+    for (let i = 0; i < wanted; i++) {
+        let at = between(random, 0, templates.length - 1);
+        for (let guard = 0; guard < templates.length && used.has(at); guard++) {
+            at = (at + 1) % templates.length;
+        }
+        if (used.has(at)) break;
+        used.add(at);
+        placeRoom(grid, templates[at], random);
+    }
+}
+
+/**
+ * Deja el sitio como su estado dice que esta.
+ *
+ * @param {string[][]} grid
+ * @param {any} options
+ * @param {() => number} random
+ */
+function applyState(grid, options, random) {
+    const state = (options.state && typeof options.state === 'object') ? options.state : null;
+    if (!state) return;
+
+    const cover = Number(state.cover);
+    if (Number.isFinite(cover)) {
+        // Un margen estrecho alrededor de lo que pide el estado: exigir el numero exacto
+        // haria dar vueltas al presupuesto sin que se note la diferencia.
+        applyCoverBudget(grid, random, {
+            min: Math.max(0, cover - 0.03),
+            max: Math.min(1, cover + 0.03),
+        });
+    }
+
+    const rough = Number(state.rough);
+    if (!Number.isFinite(rough) || rough <= 0) return;
+
+    const height = grid.length;
+    const width = grid[0]?.length ?? 0;
+    for (let y = 1; y < height - 1; y++) {
+        for (let x = 1; x < width - 1; x++) {
+            if (grid[y][x] === '.' && random() < rough) grid[y][x] = '~';
+        }
+    }
+}
+
+/**
+ * Un sitio que no se construye con salas y pasillos.
+ *
+ * Lo que cambia es **como se excava**; lo demas —quien entra por donde, donde esperan los
+ * bichos, que haya cobertura de sobra— es lo mismo, porque son decisiones de juego y no
+ * de geometria.
+ *
+ * Como no hay salas rectangulares, el grupo y los bichos se reparten por **los trozos de
+ * suelo unidos entre si**: el grupo en el mas grande y los bichos lejos de el. Que no
+ * compartan sitio es lo que da un turno para mirar antes de que empiece el ruido.
+ *
+ * @param {string} style
+ * @param {any} options
+ * @returns {GeneratedBoard}
+ */
+function generateShaped(style, options) {
+    const { width, height, random } = options;
+    const grid = Array.from({ length: height }, () => Array.from({ length: width }, () => '#'));
+
+    if (style === 'cave') carveCave(grid, random);
+    else if (style === 'camp') carveCamp(grid, random);
+    else carveTemple(grid, random);
+
+    // Las dos guardas que valen para todas las formas: que se llegue a todo y que no
+    // salga pelado. Las dos se arreglan aqui y no en el validador, porque cazarlo tarde
+    // solo sirve para tirar el tablero.
+    stampWritten(grid, options, random);
+    connectRegions(grid);
+
+    // El estado manda sobre el presupuesto de siempre; sin estado, el de siempre.
+    if (options.state) applyState(grid, options, random);
+    else applyCoverBudget(grid, random, COVER_BUDGET);
+
+    const regions = floodRegions(grid);
+    const floor = regions[0] ?? [];
+
+    // Un rectangulo que envuelve cada trozo, para que lo que venga detras —el editor, el
+    // paquete, las salas con puerta— siga leyendo lo mismo que siempre.
+    const rooms = regions.slice(0, 6).map(region => {
+        const xs = region.map(cell => cell.x);
+        const ys = region.map(cell => cell.y);
+        const x = Math.min(...xs);
+        const y = Math.min(...ys);
+        return { x, y, width: Math.max(...xs) - x + 1, height: Math.max(...ys) - y + 1 };
+    });
+
+    const wanted = Math.max(1, Math.floor(Number(options.partySize) || 2));
+
+    /** @type {Array<{name: string, x: number, y: number}>} */
+    const enemies = [];
+    const bestiary = (Array.isArray(options.bestiary) ? options.bestiary : []).filter(Boolean);
+
+    // Suelo limpio: un bicho encima de una columna no se puede dibujar, y descartarlas
+    // de una en una dejaba campamentos enteros sin un solo enemigo.
+    const clear = floor.filter(cell => grid[cell.y]?.[cell.x] === '.');
+
+    if (bestiary.length > 0 && clear.length > wanted) {
+        const count = Math.max(1, Math.floor(Number(options.enemyCount) || 3));
+        // Del final de la lista hacia atras: es lo mas lejos del inicio que hay sin
+        // medir distancias, y medirlas aqui no compra nada.
+        for (let i = 0; i < count && i < clear.length - wanted; i++) {
+            enemies.push({
+                name: bestiary[between(random, 0, bestiary.length - 1)],
+                ...clear[clear.length - 1 - i],
+            });
+        }
+    }
+
+    return {
+        map: grid.map(row => row.join('')),
+        gridWidth: width,
+        gridHeight: height,
+        rooms,
+        partyStart: clear.slice(0, wanted),
+        enemies,
+        // Una cueva no tiene puertas, y fingirlas seria dibujar una puerta en la roca.
+        doors: [],
     };
 }
 

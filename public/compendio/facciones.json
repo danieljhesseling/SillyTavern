@@ -1,0 +1,167 @@
+{
+  "version": 1,
+  "domain": "facciones",
+  "about": "Quién quiere qué, y contra quién. Dos clases de fila: 'faccion' es el molde —cómo se llaman, a qué ritmo van, qué clase de metas persiguen— y 'meta' es lo que quieren y el motivo. El campo 'goal' de una meta es un vocabulario CERRADO del motor: encontrar, conquistar, recuperar, destruir, controlar. Cada una aterriza en la lista de sitios (un camino que se abre, un paso que se cierra, un dueño que cambia, un peaje), porque una barra que sube y no mueve nada sería decorado. 'pace' son los días que tarda un segmento del reloj y 'of' cuántos segmentos tiene: pocos y lentos, que se juega contra ellos.",
+  "rows": [
+    {
+      "id": "fac-casa", "name": "Casa con tierras", "kind": "faccion", "weight": 10,
+      "tags": ["noble", "tierra"],
+      "patterns": ["La casa de {sitio}", "Los señores de {sitio}", "El brazo de {sitio}"],
+      "goals": ["conquistar", "recuperar"], "pace": 8, "of": 6
+    },
+    {
+      "id": "fac-gremio", "name": "Gremio de mercaderes", "kind": "faccion", "weight": 10,
+      "tags": ["dinero", "camino"],
+      "patterns": ["El gremio de {sitio}", "Los tratantes de {sitio}", "La bolsa de {sitio}"],
+      "goals": ["controlar", "encontrar"], "pace": 6, "of": 5
+    },
+    {
+      "id": "fac-bandidos", "name": "Gente del camino", "kind": "faccion", "weight": 9,
+      "tags": ["bandido", "camino"],
+      "patterns": ["Los de {sitio}", "La cuadrilla de {sitio}", "Los lobos de {sitio}"],
+      "goals": ["controlar", "conquistar"], "pace": 5, "of": 4
+    },
+    {
+      "id": "fac-templo", "name": "Orden del templo", "kind": "faccion", "weight": 9,
+      "tags": ["fe", "orden"],
+      "patterns": ["La orden de {sitio}", "Los hermanos de {sitio}", "El cabildo de {sitio}"],
+      "goals": ["recuperar", "encontrar", "destruir"], "pace": 9, "of": 6
+    },
+    {
+      "id": "fac-mineros", "name": "Compañía minera", "kind": "faccion", "weight": 8,
+      "tags": ["dinero", "tierra"],
+      "patterns": ["La compañía de {sitio}", "Los picos de {sitio}", "La veta de {sitio}"],
+      "goals": ["encontrar", "controlar"], "pace": 7, "of": 5
+    },
+    {
+      "id": "fac-milicia", "name": "Milicia del valle", "kind": "faccion", "weight": 9,
+      "tags": ["armas", "tierra"],
+      "patterns": ["La milicia de {sitio}", "Los escudos de {sitio}", "La guardia de {sitio}"],
+      "goals": ["recuperar", "destruir"], "pace": 7, "of": 5
+    },
+    {
+      "id": "fac-circulo", "name": "Círculo de arcanos", "kind": "faccion", "weight": 7,
+      "tags": ["arcano", "secreto"],
+      "patterns": ["El círculo de {sitio}", "Los que leen en {sitio}", "La torre de {sitio}"],
+      "goals": ["encontrar", "destruir"], "pace": 10, "of": 6
+    },
+    {
+      "id": "fac-clan", "name": "Clan de las alturas", "kind": "faccion", "weight": 8,
+      "tags": ["clan", "monte"],
+      "patterns": ["El clan de {sitio}", "Los hijos de {sitio}", "La sangre de {sitio}"],
+      "goals": ["recuperar", "conquistar"], "pace": 6, "of": 5
+    },
+    {
+      "id": "fac-corte", "name": "Gente de la corte", "kind": "faccion", "weight": 7,
+      "tags": ["noble", "secreto"],
+      "patterns": ["La corte de {sitio}", "Los consejeros de {sitio}", "El sello de {sitio}"],
+      "goals": ["controlar", "destruir"], "pace": 9, "of": 6
+    },
+    {
+      "id": "fac-barcas", "name": "Gente de las barcas", "kind": "faccion", "weight": 8,
+      "tags": ["agua", "camino"],
+      "patterns": ["Los barqueros de {sitio}", "La flota de {sitio}", "Los remos de {sitio}"],
+      "goals": ["controlar", "encontrar"], "pace": 6, "of": 4
+    },
+    {
+      "id": "fac-culto", "name": "Culto callado", "kind": "faccion", "weight": 6,
+      "tags": ["secreto", "fe"],
+      "patterns": ["Los callados de {sitio}", "La vigilia de {sitio}", "Los de la noche de {sitio}"],
+      "goals": ["encontrar", "conquistar"], "pace": 11, "of": 7
+    },
+    {
+      "id": "fac-mercenarios", "name": "Compañía libre", "kind": "faccion", "weight": 9,
+      "tags": ["armas", "dinero"],
+      "patterns": ["La compañía de {sitio}", "Las lanzas de {sitio}", "Los de paga de {sitio}"],
+      "goals": ["conquistar", "destruir"], "pace": 5, "of": 4
+    },
+    {
+      "id": "fac-labradores", "name": "Concejo de labradores", "kind": "faccion", "weight": 7,
+      "tags": ["tierra", "gente"],
+      "patterns": ["El concejo de {sitio}", "Los labradores de {sitio}", "La era de {sitio}"],
+      "goals": ["recuperar", "controlar"], "pace": 10, "of": 5
+    },
+    {
+      "id": "fac-exiliados", "name": "Los que fueron echados", "kind": "faccion", "weight": 7,
+      "tags": ["exilio", "gente"],
+      "patterns": ["Los echados de {sitio}", "Los que vuelven a {sitio}", "La memoria de {sitio}"],
+      "goals": ["recuperar", "destruir"], "pace": 8, "of": 6
+    },
+
+    {
+      "id": "meta-camino-viejo", "kind": "meta", "name": "El camino viejo", "weight": 10,
+      "goal": "encontrar",
+      "note": "Dicen que hubo un camino más corto y que alguien lo cerró a propósito."
+    },
+    {
+      "id": "meta-vena", "kind": "meta", "name": "La veta", "weight": 9,
+      "goal": "encontrar",
+      "note": "Hay metal bueno bajo esa tierra y lo saben desde hace dos inviernos."
+    },
+    {
+      "id": "meta-reliquia", "kind": "meta", "name": "La reliquia", "weight": 8,
+      "goal": "encontrar",
+      "note": "Buscan algo que se perdió allí, y no dicen qué es."
+    },
+    {
+      "id": "meta-tierra", "kind": "meta", "name": "Más tierra", "weight": 10,
+      "goal": "conquistar",
+      "note": "Necesitan más tierra de la que tienen, y esa está al lado."
+    },
+    {
+      "id": "meta-paso", "kind": "meta", "name": "El paso", "weight": 9,
+      "goal": "conquistar",
+      "note": "Quien tenga ese sitio tiene el paso, y quien tiene el paso cobra."
+    },
+    {
+      "id": "meta-agua", "kind": "meta", "name": "El agua", "weight": 8,
+      "goal": "conquistar",
+      "note": "El agua viene de allí. Sin ella el verano que viene no se aguanta."
+    },
+    {
+      "id": "meta-fue-nuestro", "kind": "meta", "name": "Era nuestro", "weight": 10,
+      "goal": "recuperar",
+      "note": "Era suyo hasta hace dos generaciones y no han dejado de decirlo."
+    },
+    {
+      "id": "meta-tumbas", "kind": "meta", "name": "Las tumbas", "weight": 9,
+      "goal": "recuperar",
+      "note": "Sus muertos están allí, y ahora hay otros viviendo encima."
+    },
+    {
+      "id": "meta-deuda", "kind": "meta", "name": "La deuda", "weight": 8,
+      "goal": "recuperar",
+      "note": "Lo dieron en prenda por una deuda que ya pagaron."
+    },
+    {
+      "id": "meta-sangre", "kind": "meta", "name": "La cuenta pendiente", "weight": 10,
+      "goal": "destruir",
+      "note": "Hubo una noche mala hace años y todavía llevan la cuenta."
+    },
+    {
+      "id": "meta-estorbo", "kind": "meta", "name": "El estorbo", "weight": 9,
+      "goal": "destruir",
+      "note": "Mientras los otros estén ahí, nada de lo que planean sale."
+    },
+    {
+      "id": "meta-hereje", "kind": "meta", "name": "Lo que no debería existir", "weight": 7,
+      "goal": "destruir",
+      "note": "Creen que los otros no deberían existir, y lo creen de verdad."
+    },
+    {
+      "id": "meta-peaje", "kind": "meta", "name": "El peaje", "weight": 10,
+      "goal": "controlar",
+      "note": "Si todo el que pase deja algo, no hace falta pelear por nada."
+    },
+    {
+      "id": "meta-sal", "kind": "meta", "name": "La sal", "weight": 9,
+      "goal": "controlar",
+      "note": "Por ese camino va la sal, y sin sal no hay invierno que se aguante."
+    },
+    {
+      "id": "meta-precio", "kind": "meta", "name": "El precio", "weight": 8,
+      "goal": "controlar",
+      "note": "Quieren ser los únicos que pongan precio a lo que entra y sale."
+    }
+  ]
+}
