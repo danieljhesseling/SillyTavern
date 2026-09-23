@@ -35,7 +35,7 @@ import { writePerson as writePersonFromCompendium, writeVillage, describePerson 
 import { injuryTableFor, causesOf } from './game-engine/compendio/ailments.js';
 import {
     readFactions, tickFactions, outcomeOf, applyOutcome, newsFor, describeFaction,
-    rollFactions, validateFactionRows, busyFactions, pushFaction,
+    rollFactions, validateFactionRows, busyFactions, pushFaction, speaksPlural, namesOf,
 } from './game-engine/campaign/factions.js';
 import { marketPressure, applyMarket, describeMarket } from './game-engine/campaign/economy.js';
 import {
@@ -2577,6 +2577,20 @@ function deliverTakenContract() {
 }
 
 /**
+ * Las facciones del mundo, en una linea cada una.
+ *
+ * Con los nombres delante: lo que quiere una meta `destruir` es otra faccion, y sin la
+ * lista el panel decia «van a por fac-4-fac-corte».
+ *
+ * @returns {string[]}
+ */
+function describeWorldFactions() {
+    const all = readFactions(getCurrentWorldFactions());
+    const names = namesOf(all);
+    return all.map(faction => describeFaction(faction, names));
+}
+
+/**
  * De quien es un sitio, en las palabras que lee el modelo.
  *
  * Una faccion manda en lo que tiene (`holds`) y se sienta en su sede. Un vecino de ahi
@@ -2596,12 +2610,14 @@ function bannerOf(placeName, rawFactions) {
         || faction.holds.some((/** @type {string} */ held) => String(held).toLowerCase() === where));
     if (!owner) return null;
 
+    // «Es de La casa del Vado, los que quieren…» no lo dice nadie: el nombre manda.
+    const many = speaksPlural(owner.name);
     const wants = {
-        encontrar: `buscan el camino a ${owner.goal.target}`,
-        conquistar: `quieren ${owner.goal.target}`,
-        recuperar: `quieren recuperar ${owner.goal.target}`,
-        destruir: 'van a por alguien',
-        controlar: `quieren el camino a ${owner.goal.target}`,
+        encontrar: `${many ? 'buscan' : 'busca'} el camino a ${owner.goal.target}`,
+        conquistar: `${many ? 'quieren' : 'quiere'} ${owner.goal.target}`,
+        recuperar: `${many ? 'quieren' : 'quiere'} recuperar ${owner.goal.target}`,
+        destruir: `${many ? 'van' : 'va'} a por alguien`,
+        controlar: `${many ? 'quieren' : 'quiere'} el camino a ${owner.goal.target}`,
     }[owner.goal.kind] ?? '';
 
     return { name: owner.name, wants, note: owner.note };
@@ -3333,7 +3349,7 @@ function renderCampaignTab() {
             .filter(entry => entry.said),
         // Lo que se mueve ahi fuera sin ti. Sin facciones escritas, la lista sale vacia
         // y el panel queda como estaba.
-        world: readFactions(getCurrentWorldFactions()).map(describeFaction),
+        world: describeWorldFactions(),
         onAdvanceSlot: advanceCampaignSlot,
         onAdvanceDay: advanceCampaignDay,
         onShortRest: () => { void takeRest('corto'); },
@@ -6188,8 +6204,11 @@ async function openCompendiumLibrary() {
                 const places = getCurrentWorldLocationMaps().length >= 2
                     ? getCurrentWorldLocationMaps()
                     : [{ name: 'El Molino' }, { name: 'La Ermita' }, { name: 'Cripta olvidada' }];
-                return rollFactions({ compendium, locations: places, random, count: howMany })
-                    .map(describeFaction);
+                const rolled = rollFactions({
+                    compendium, locations: places, random, count: howMany,
+                });
+                const names = namesOf(rolled);
+                return rolled.map(faction => describeFaction(faction, names));
             }
             if (domain === 'habilidades') {
                 // Lo que sabe hacer una clase, que es lo que la bateria hace. Una lista

@@ -93,13 +93,13 @@ describe('cómo está el mercado', () => {
         const sum = here(world(), [bando({ goal: { kind: '', done: true } })]);
         expect(sum.tax).toBe(1.5);
         expect(sum.holder).toBe('molino');
-        expect(sum.reasons.join(' ')).toMatch(/cobra por ello/);
+        expect(sum.reasons.join(' ')).toMatch(/cobran por ello/);
     });
 
     test('y si anda pagando una guerra, cobra el doble', () => {
         const sum = here(world(), [bando()]);
         expect(sum.tax).toBe(2);
-        expect(sum.reasons.join(' ')).toMatch(/pagando lo suyo con tus impuestos/);
+        expect(sum.reasons.join(' ')).toMatch(/están pagando lo suyo con tus impuestos/);
     });
 
     test('quien manda en otro sitio no cobra aquí', () => {

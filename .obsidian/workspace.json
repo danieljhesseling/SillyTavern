@@ -183,6 +183,9 @@
   },
   "active": "e4a815deb0fecab8",
   "lastOpenFiles": [
+    "tests/game-engine-economy.test.js",
+    "public/scripts/game-engine/campaign/economy.js",
+    "public/scripts/game-engine/campaign/economy.js.tmp.56780.b696a64f370e",
     "wiki/ROADMAP_COMPENDIO.md",
     "tests/game-engine-armas.test.js",
     "public/compendio/trastos.json",
@@ -192,8 +195,6 @@
     "public/scripts/game-engine/rules/equipment.js",
     "tests/sedP5ngmy",
     "tools/seda6Wd6Q",
-    "tests/game-engine-neighbours.test.js",
-    "public/scripts/game-engine/world/neighbours.js",
     "wiki/HOME.md",
     "wiki/ALGORITMOS_GENERACION.md",
     "data/default-user/thumbnails/avatar/Jaggy1.png",

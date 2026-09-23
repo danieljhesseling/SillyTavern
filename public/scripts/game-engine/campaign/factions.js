@@ -64,6 +64,32 @@ function names(value) {
 }
 
 /**
+ * Si el nombre de una faccion pide verbo en plural.
+ *
+ * «Los de Ribera del Yunque **manda** aqui» lo escribe una maquina. En castellano el
+ * articulo lo dice todo: «Los de…» y «Las…» son varios; «La casa de…» y «El gremio de…»
+ * son uno. No hace falta un campo en el archivo para algo que ya esta en el nombre.
+ *
+ * @param {any} name
+ * @returns {boolean}
+ */
+export function speaksPlural(name) {
+    return /^(los|las)\b/i.test(text(name));
+}
+
+/**
+ * El verbo que le toca a ese nombre.
+ *
+ * @param {any} name
+ * @param {string} one Como se dice de uno.
+ * @param {string} many Como se dice de varios.
+ * @returns {string}
+ */
+export function saysWith(name, one, many) {
+    return speaksPlural(name) ? many : one;
+}
+
+/**
  * Una faccion tal como se puede usar, venga como venga escrita.
  *
  * Tolerante igual que el compendio: una faccion a medias no puede dejar la campana sin
@@ -108,6 +134,22 @@ export function readFactions(raw) {
 }
 
 /**
+ * Como se llama cada faccion, por id.
+ *
+ * Lo que quiere una meta `destruir` es **otra faccion**, asi que su objetivo es un id. Sin
+ * esto el panel decia «van a por fac-4-fac-corte», que no lo lee nadie.
+ *
+ * @param {any[]} factions
+ * @returns {Record<string, string>}
+ */
+export function namesOf(factions) {
+    /** @type {Record<string, string>} */
+    const out = {};
+    for (const faction of readFactions(factions)) out[faction.id] = faction.name;
+    return out;
+}
+
+/**
  * Como va el reloj, para poder enseñarlo.
  *
  * @param {any} faction
@@ -141,7 +183,8 @@ export function heldBack(faction, here) {
     const where = text(here);
     if (!where) return '';
     if (read.goal.target && where.toLowerCase() === read.goal.target.toLowerCase()) {
-        return `El grupo está en ${read.goal.target}, y mientras esté no avanzan.`;
+        return `El grupo está en ${read.goal.target}, y mientras esté `
+            + `${saysWith(read.name, 'no avanza', 'no avanzan')}.`;
     }
     return '';
 }
@@ -160,6 +203,7 @@ export function heldBack(faction, here) {
  */
 export function tickFactions({ factions, days = 1, here = '' }) {
     const total = Math.max(0, whole(days, 1));
+    const names = namesOf(factions);
     /** @type {any[]} */
     const events = [];
 
@@ -185,7 +229,7 @@ export function tickFactions({ factions, days = 1, here = '' }) {
                 kind: goal.at >= goal.of ? 'cumple' : 'avanza',
                 at: goal.at, of: goal.of, target: goal.target, goalKind: goal.kind,
                 note: goal.at >= goal.of
-                    ? describeOutcome({ ...faction, goal })
+                    ? describeOutcome({ ...faction, goal }, names)
                     : `${faction.name}: ${goal.at} de ${goal.of}.`,
             });
         }
@@ -232,16 +276,27 @@ export function outcomeOf(faction) {
  * Lo que cambia en el mundo, en una linea.
  *
  * @param {any} faction
+ * @param {Record<string, string>} [names] Como se llama cada faccion, por id.
  * @returns {string}
  */
-export function describeOutcome(faction) {
+export function describeOutcome(faction, names = {}) {
     const read = readFaction(faction);
     const outcome = outcomeOf(read);
-    if (outcome.kind === 'toma') return `${read.name} se queda con ${outcome.place}.`;
-    if (outcome.kind === 'cae') return `${read.name} acaba con ${outcome.other}.`;
-    if (outcome.kind === 'halla') return `${read.name} encuentra el camino viejo a ${outcome.place}.`;
-    if (outcome.kind === 'peaje') return `${read.name} cobra peaje en el camino a ${outcome.place}.`;
-    return `${read.name} consigue lo que quería.`;
+    const quien = (/** @type {string} */ id) => text(names?.[text(id)]) || text(id);
+    const dice = (/** @type {string} */ one, /** @type {string} */ many) =>
+        saysWith(read.name, one, many);
+
+    if (outcome.kind === 'toma') return `${read.name} ${dice('se queda', 'se quedan')} con ${outcome.place}.`;
+    if (outcome.kind === 'cae') {
+        return `${read.name} ${dice('acaba', 'acaban')} con ${quien(outcome.other)}.`;
+    }
+    if (outcome.kind === 'halla') {
+        return `${read.name} ${dice('encuentra', 'encuentran')} el camino viejo a ${outcome.place}.`;
+    }
+    if (outcome.kind === 'peaje') {
+        return `${read.name} ${dice('cobra', 'cobran')} peaje en el camino a ${outcome.place}.`;
+    }
+    return `${read.name} ${dice('consigue', 'consiguen')} lo que quería.`;
 }
 
 /**
@@ -370,9 +425,10 @@ export function applyOutcome({ locations, factions, outcome }) {
  *
  * @param {any} faction
  * @param {number} segments En contra, negativo.
+ * @param {Record<string, string>} [names] Como se llama cada faccion, por id.
  * @returns {{faction: any, event: any}}
  */
-export function pushClock(faction, segments) {
+export function pushClock(faction, segments, names = {}) {
     const read = readFaction(faction);
     const move = whole(segments, 0);
     // Lo ya cumplido no se deshace: el sitio ya cambio de manos.
@@ -391,10 +447,10 @@ export function pushClock(faction, segments) {
             kind: at >= goal.of ? 'cumple' : (move > 0 ? 'avanza' : 'atras'),
             at, of: goal.of, target: goal.target, goalKind: goal.kind,
             note: at >= goal.of
-                ? describeOutcome(moved)
+                ? describeOutcome(moved, names)
                 : (move > 0
-                    ? `${read.name} gana terreno: ${at} de ${goal.of}.`
-                    : `${read.name} pierde terreno: ${at} de ${goal.of}.`),
+                    ? `${read.name} ${saysWith(read.name, 'gana', 'ganan')} terreno: ${at} de ${goal.of}.`
+                    : `${read.name} ${saysWith(read.name, 'pierde', 'pierden')} terreno: ${at} de ${goal.of}.`),
         },
     };
 }
@@ -410,9 +466,10 @@ export function pushClock(faction, segments) {
 export function pushFaction(factions, id, segments) {
     /** @type {any} */
     let event = null;
+    const names = namesOf(factions);
     const moved = readFactions(factions).map((faction) => {
         if (faction.id !== text(id)) return faction;
-        const pushed = pushClock(faction, segments);
+        const pushed = pushClock(faction, segments, names);
         event = pushed.event;
         return pushed.faction;
     });
@@ -618,21 +675,25 @@ function fillName(mold, seat, random) {
  * La faccion en una linea, con su reloj.
  *
  * @param {any} faction
+ * @param {Record<string, string>} [names] Como se llama cada faccion, por id.
  * @returns {string}
  */
-export function describeFaction(faction) {
+export function describeFaction(faction, names = {}) {
     const read = readFaction(faction);
     const clock = clockOf(read);
+    // Lo que quiere una meta `destruir` es otra faccion, y su objetivo es un id.
+    const target = text(names?.[read.goal.target]) || read.goal.target;
     const where = read.seat ? ` (${read.seat})` : '';
     if (!clock.moving) return `${read.name}${where} · sin nada entre manos`;
 
+    const many = speaksPlural(read.name);
     const wants = {
-        encontrar: `busca el camino a ${read.goal.target}`,
-        conquistar: `quiere ${read.goal.target}`,
-        recuperar: `quiere recuperar ${read.goal.target}`,
-        destruir: `va a por ${read.goal.target}`,
-        controlar: `quiere el camino a ${read.goal.target}`,
-    }[read.goal.kind] ?? 'tiene planes';
+        encontrar: `${many ? 'buscan' : 'busca'} el camino a ${target}`,
+        conquistar: `${many ? 'quieren' : 'quiere'} ${target}`,
+        recuperar: `${many ? 'quieren' : 'quiere'} recuperar ${target}`,
+        destruir: `${many ? 'van' : 'va'} a por ${target}`,
+        controlar: `${many ? 'quieren' : 'quiere'} el camino a ${target}`,
+    }[read.goal.kind] ?? `${many ? 'tienen' : 'tiene'} planes`;
 
     return `${read.name}${where} · ${wants} · ${clock.at} de ${clock.of}`
         + (clock.days > 0 ? ` · ${clock.days} días` : '')

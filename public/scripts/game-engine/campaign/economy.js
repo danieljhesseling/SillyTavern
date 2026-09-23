@@ -24,6 +24,8 @@
  * Ver wiki/ROADMAP_COMPENDIO.md, B10 (F3).
  */
 
+import { speaksPlural } from './factions.js';
+
 /** Lo que encarece cada cosa. Poco cada una: lo que pesa es que se juntan. */
 const CLOSED_ROAD = 0.15;
 const TOLL = 0.1;
@@ -128,9 +130,13 @@ export function marketPressure({ here, locations = [], factions = [] }) {
         const busy = Boolean(text(owner.goal?.kind)) && !owner.goal?.done
             && number(owner.goal?.at, 0) < number(owner.goal?.of, 1);
         tax = busy ? 2 : 1.5;
+        // «Los de Ribera del Yunque manda aquí» lo escribe una maquina, no una persona.
+        const many = speaksPlural(owner.name);
         reasons.push(busy
-            ? `${text(owner.name)} manda aquí, y está pagando lo suyo con tus impuestos.`
-            : `${text(owner.name)} manda aquí, y cobra por ello.`);
+            ? `${text(owner.name)} ${many ? 'mandan' : 'manda'} aquí, y ${many ? 'están' : 'está'} `
+                + 'pagando lo suyo con tus impuestos.'
+            : `${text(owner.name)} ${many ? 'mandan' : 'manda'} aquí, y `
+                + `${many ? 'cobran' : 'cobra'} por ello.`);
     }
 
     return {

@@ -123,8 +123,12 @@ export function writePerson({
     // Lo unico de la ficha que lee el modelo son estas dos. Los numeros son del motor.
     // De quien es este sitio, si es de alguien. Es lo que le da a un vecino un motivo
     // que no es suyo: lo que quieren los que mandan aqui le pasa a el tambien.
+    // «Es de La casa del Vado, los que quiere…» no lo dice nadie. El articulo del nombre
+    // decide, y quien pone la bandera ya manda el verbo hecho.
     const flag = banner && text(banner.name)
-        ? `Es de ${text(banner.name)}${text(banner.wants) ? `, los que ${text(banner.wants)}` : ''}.`
+        ? `Es de ${text(banner.name)}${text(banner.wants)
+            ? `, ${/^(los|las)\b/i.test(text(banner.name)) ? 'los que' : 'que'} ${text(banner.wants)}`
+            : ''}.`
             + (text(banner.note) ? ` ${text(banner.note)}` : '')
         : '';
 

@@ -2,7 +2,7 @@ import { describe, test, expect } from '@jest/globals';
 import {
     GOALS, readFaction, readFactions, clockOf, heldBack, tickFactions,
     outcomeOf, applyOutcome, newsFor, describeFaction, rollFactions, validateFactionRows,
-    pushClock, pushFaction, busyFactions,
+    pushClock, pushFaction, busyFactions, speaksPlural, describeOutcome, namesOf,
 } from '../public/scripts/game-engine/campaign/factions.js';
 import { createCompendium, validateBattery } from '../public/scripts/game-engine/compendio/compendio.js';
 import { createSeededRandom } from '../public/scripts/game-engine/combat/seeded-random.js';
@@ -67,7 +67,10 @@ describe('el reloj', () => {
         const { factions, events } = tickFactions({ factions: [faction()], days: 30, here: 'La Ermita' });
         expect(factions[0].goal.at).toBe(0);
         expect(events[0].kind).toBe('quieto');
+        // «Los del Molino» son varios, así que no avanzan; «La casa del Vado» no avanza.
         expect(heldBack(faction(), 'La Ermita')).toMatch(/mientras esté no avanzan/);
+        expect(heldBack(faction({ name: 'La casa del Vado' }), 'La Ermita'))
+            .toMatch(/mientras esté no avanza\./);
     });
 
     test('pero estar en otro sitio no frena nada', () => {
@@ -231,7 +234,7 @@ describe('contada en una línea', () => {
     test('dice qué quiere y por dónde va', () => {
         const line = describeFaction(faction());
         expect(line).toMatch(/Los del Molino \(El Molino\)/);
-        expect(line).toMatch(/quiere La Ermita/);
+        expect(line).toMatch(/quieren La Ermita/);
         expect(line).toMatch(/0 de 3/);
     });
 
@@ -389,13 +392,13 @@ describe('empujar un reloj', () => {
         const { faction: despues, event } = pushClock(antes, -1);
         expect(clockOf(despues).at).toBe(1);
         expect(event.kind).toBe('atras');
-        expect(event.note).toMatch(/pierde terreno/);
+        expect(event.note).toMatch(/pierden terreno/);
     });
 
     test('a favor se lo adelanta', () => {
         const { faction: despues, event } = pushClock(faction(), 1);
         expect(clockOf(despues).at).toBe(1);
-        expect(event.note).toMatch(/gana terreno/);
+        expect(event.note).toMatch(/ganan terreno/);
     });
 
     // Un empujón vale un segmento entero: has deshecho su trabajo, no lo has pausado.
@@ -422,7 +425,7 @@ describe('empujar un reloj', () => {
     test('empujar hasta el final cumple la meta, como cumplirla con el tiempo', () => {
         const { event } = pushClock(faction(), 3);
         expect(event.kind).toBe('cumple');
-        expect(event.note).toMatch(/se queda con La Ermita/);
+        expect(event.note).toMatch(/se quedan con La Ermita/);
     });
 
     test('sobre la lista, solo se mueve la que se nombra', () => {
@@ -440,5 +443,64 @@ describe('empujar un reloj', () => {
     test('las que tienen algo entre manos se pueden listar', () => {
         const quieta = { id: 'q', name: 'Quieta' };
         expect(busyFactions([faction(), quieta]).map(f => f.id)).toEqual(['molino']);
+    });
+});
+
+describe('el nombre manda en el verbo', () => {
+    // «Los de Ribera del Yunque manda aquí» lo escribe una máquina, no una persona.
+    test('«Los…» y «Las…» son varios; lo demás es uno', () => {
+        expect(speaksPlural('Los del Molino')).toBe(true);
+        expect(speaksPlural('Las lanzas del Vado')).toBe(true);
+        expect(speaksPlural('La casa del Vado')).toBe(false);
+        expect(speaksPlural('El gremio de la Sal')).toBe(false);
+        expect(speaksPlural('')).toBe(false);
+    });
+
+    test('y cada frase lo sigue', () => {
+        expect(describeFaction(faction())).toMatch(/quieren La Ermita/);
+        expect(describeFaction(faction({ name: 'La casa del Vado' }))).toMatch(/quiere La Ermita/);
+    });
+
+    test('también al cumplir una meta', () => {
+        expect(describeOutcome(faction())).toMatch(/se quedan con/);
+        expect(describeOutcome(faction({ name: 'El sello de la Sal' }))).toMatch(/se queda con/);
+    });
+
+    test('y al ganar o perder terreno', () => {
+        expect(pushClock(faction(), 1).event.note).toMatch(/ganan terreno/);
+        expect(pushClock(faction({ name: 'La casa del Vado' }), 1).event.note)
+            .toMatch(/gana terreno/);
+    });
+});
+
+describe('un id no es un nombre', () => {
+    const suya = faction({ goal: { kind: 'destruir', target: 'ermita', of: 3 } });
+    const otra = { id: 'ermita', name: 'Los de la Ermita', seat: 'La Ermita' };
+    const names = () => namesOf([suya, otra]);
+
+    // «Van a por fac-4-fac-corte» no lo lee nadie.
+    test('la meta de destruir apunta a alguien, y se dice su nombre', () => {
+        expect(describeFaction(suya, names())).toContain('Los de la Ermita');
+        expect(describeFaction(suya, names())).not.toContain('ermita)');
+    });
+
+    test('y al cumplirla también', () => {
+        expect(describeOutcome(suya, names())).toContain('Los de la Ermita');
+    });
+
+    // Sin la lista delante no se inventa un nombre: se dice lo que hay.
+    test('sin la lista se dice el id, que es mejor que nada', () => {
+        expect(describeOutcome(suya)).toContain('ermita');
+    });
+
+    test('el tick ya trae la lista, así que sus noticias salen con nombre', () => {
+        const { events } = tickFactions({ factions: [suya, otra], days: 500 });
+        const cumple = events.find(e => e.kind === 'cumple' && e.faction === 'molino');
+        expect(cumple.note).toContain('Los de la Ermita');
+    });
+
+    test('y empujar el reloj de la lista, también', () => {
+        const { event } = pushFaction([suya, otra], 'molino', 3);
+        expect(event.note).toContain('Los de la Ermita');
     });
 });
