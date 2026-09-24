@@ -287,13 +287,15 @@ El reloj de la semana. **Sin esto, todo lo demás es una demo bonita.**
 
 1. **Las dos casillas al crear la campaña** — cuándo se guarda, quién puede morir. Guardadas en el paquete de reglas, editables en `/rules`, viajan con la campaña.
 2. **La cuenta**: comida al día; sueldos, alojamiento y tasas a la semana; curas y reparaciones al volver. **Todo del mismo bolsillo.**
-3. **La tabla de heridas** al caer a 0: temporales con sus días, y permanentes. Modificadores sobre `speed`, CA, características y carga — campos que el motor ya lee.
-4. **Qué pasa al morir**, según la casilla: el mercenario muere y hay que contratar; el del vínculo queda marcado.
-5. **El panel de la cuenta**, con lo que debes **antes** de que venza.
-6. **Un tablón de encargos flaco** — sin rangos todavía. Hasta un aventurero solo lee los avisos de la taberna.
-7. **La plantilla**: contratar, con su sueldo y su motivo. Aquí entra el tercer origen — **héroes de otras campañas**, con sus cicatrices y con el nivel negociado.
+3. **Fail-Forward ante impago (Bancarrota reactiva)**: Si llega el viernes y falta oro, no hay parálisis ni game-over ciego. Una facción local o prestamista cubre la cuenta a cambio de un contrato forzoso con dilema moral (*ver [[ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES]] §3*).
+4. **La tabla de heridas** al caer a 0: temporales con sus días, y permanentes. Modificadores sobre `speed`, CA, características y carga — campos que el motor ya lee.
+5. **Prótesis y Roles de Campamento**: Un compañero mutilado no es un lastre condenado a pudrirse: las forjas ofrecen prótesis que transforman la lesión, o el héroe puede pasar a rol pasivo en campamento/gremio (intendente, consejero).
+6. **Qué pasa al morir**, según la casilla: el mercenario muere y hay que contratar; el del vínculo queda marcado.
+7. **El panel de la cuenta**, con lo que debes **antes** de que venza.
+8. **Un tablón de encargos flaco** — sin rangos todavía. Hasta un aventurero solo lee los avisos de la taberna.
+9. **La plantilla**: contratar, con su sueldo y su motivo. Aquí entra el tercer origen — **héroes de otras campañas**, con sus cicatrices y con el nivel negociado.
 
-**Hecho cuando**: una semana mala te obliga a elegir entre pagar a Brand o curarle la pierna a Bruna, y esa elección cambia quién sigue contigo.
+**Hecho cuando**: una semana mala te obliga a elegir entre pagar a Brand o curarle la pierna a Bruna, y esa elección cambia quién sigue contigo o te arroja a una deuda de facción.
 
 ---
 
@@ -302,11 +304,13 @@ El reloj de la semana. **Sin esto, todo lo demás es una demo bonita.**
 Que jugar escriba mundo — **para llenar ese tablón**. Generar mundos «porque sí» es una demo; generar el sitio donde se juega el encargo que aceptaste el martes es un juego.
 
 1. **Generadores con semilla** para sala, localidad, PNJ, objeto y encuentro. Deterministas, cero tokens.
-2. **Bautizo en lote** — el modelo pone nombres y una línea de sabor, en una sola llamada.
-3. **Lo generado se guarda de verdad** — como localidad, ficha o misión en el Lorebook, editable en `/campana`. La tercera puerta al mismo destino.
-4. **Semilla del mundo** — la campaña entera repetible.
+2. **Desacoplamiento de tableros**: La geometría del mapa (`terrain.js`) nace limpia de enemigos clavados. Los hostiles o PNJ se instancian dinámicamente según la misión activa, el peligro del bioma y la hora (*ver [[ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES]] §4.1*).
+3. **Nodos de Servicios de Localidad**: Cada asentamiento expone botones mecánicos funcionales (`services: ['inn', 'blacksmith', 'apothecary', 'temple', 'board']`) que interactúan directamente con el oro, inventario y heridas del grupo sin depender de prosa libre.
+4. **Bautizo en lote** — el modelo pone nombres y una línea de sabor, en una sola llamada.
+5. **Lo generado se guarda de verdad** — como localidad, ficha o misión en el Lorebook, editable en `/campana`. La tercera puerta al mismo destino.
+6. **Semilla del mundo** — la campaña entera repetible.
 
-**Hecho cuando**: una puerta que la conversación se inventó se puede volver a cruzar mañana, y la sala de detrás sigue siendo la misma.
+**Hecho cuando**: una puerta que la conversación se inventó se puede volver a cruzar mañana, y la sala de detrás sigue siendo la misma, con enemigos que responden a la misión del momento.
 
 ---
 
@@ -325,10 +329,11 @@ Que jugar escriba mundo — **para llenar ese tablón**. Generar mundos «porque
 
 1. **Ficha de razones** de cada compañero: qué quiere, a quién odia, qué rango acepta.
 2. **Formación de grupo por afinidad**, dicha en una frase que se puede leer.
-3. **Compañeros autónomos en combate**, reusando los perfiles tácticos de los enemigos.
-4. **Modo grupo**: lo de hoy, explícito y elegible al crear la campaña.
+3. **Posturas tácticas de combate en Modo Solo** (`stances`): El aliado no usa IA de monstruo errática; el jugador elige con 1 clic: *Defensiva* (cobertura cercana), *Agresiva* (carga por flancos), o *Retaguardia* (distancia máxima y conjuros).
+4. **Compañeros autónomos en combate**, respetando su postura y sin suicidarse por A* ciego.
+5. **Modo grupo**: lo de hoy, explícito y elegible al crear la campaña.
 
-**Hecho cuando**: pides a Brand que vaya a una misión, se niega, y entiendes por qué sin preguntar.
+**Hecho cuando**: pides a Brand que vaya a una misión, decide ir, y en combate cubre tu espalda porque su postura es Defensiva, en vez de correr solo contra tres ogros.
 
 ---
 
@@ -370,6 +375,7 @@ Once documentos y ninguno decía cuál venía después de cuál. Así queda:
 | Documento | Para qué sirve ahora |
 | :--- | :--- |
 | **[[ROADMAP_MAESTRO]]** *(este)* | El único plan. Todo lo demás cuelga de aquí |
+| [[ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES]] | Diagnóstico lúdico y catálogo de soluciones sistémicas (0 tokens) |
 | [[POR_HACER]] | El marcador vivo: A hecho, D decidido, P propuesto |
 | [[EMPEZAR_UNA_CAMPANA]] | La guía del jugador. La única que no habla de código |
 | [[GEM_CREAR_CAMPANA]] | Generado por `tools/gem-instructions.mjs`. No se edita a mano |

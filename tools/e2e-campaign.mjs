@@ -3236,6 +3236,8 @@ try {
         return (enc?.enemies || [])[0]?.currentHp ?? null;
     });
 
+    // Un aviso encima se queda con el clic: se quitan antes, como en el resto del recorrido.
+    await clearToasts();
     await page.locator('.tc-btn').filter({ hasText: 'Rayo de fuego' }).first().click();
     await page.waitForTimeout(1600);
     await clearDiceOverlay();
@@ -3330,9 +3332,15 @@ try {
         const entry = enc?.turnOrder?.[enc?.currentTurnIndex];
         const me = (ctx.chatMetadata.party || []).find(m => String(m.id) === String(entry?.id));
         const from = { x: me?.mapPosition?.gridX ?? 0, y: me?.mapPosition?.gridY ?? 0 };
-        // La mas lejana de las encendidas: asi la ruta tiene varios pasos que dibujar.
+        // La mas lejana de las encendidas y sin nadie encima: una ficha dibujada sobre la
+        // casilla se lleva el raton antes que ella.
+        const taken = new Set([
+            ...(ctx.chatMetadata.party || []).map(m => `${m.mapPosition?.gridX},${m.mapPosition?.gridY}`),
+            ...(enc?.enemies || []).map(e => `${e.gridX},${e.gridY}`),
+        ]);
         const cells = [...document.querySelectorAll('.wm-highlight-move.wm-highlight-clickable')]
-            .map(node => ({ x: Number(node.dataset.x), y: Number(node.dataset.y) }));
+            .map(node => ({ x: Number(node.dataset.x), y: Number(node.dataset.y) }))
+            .filter(cell => !taken.has(`${cell.x},${cell.y}`));
         cells.sort((a, b) =>
             (Math.abs(b.x - from.x) + Math.abs(b.y - from.y)) - (Math.abs(a.x - from.x) + Math.abs(a.y - from.y)));
         return cells[0] ?? null;
@@ -4028,6 +4036,9 @@ try {
         refused39.open === 1 && /nombre/i.test(refused39.warning), JSON.stringify(refused39));
 
     await page.fill('.tl-form .tl-input >> nth=0', 'El Cronista');
+    // Con cara propia: el paso 49 lo reutiliza y comprueba que la copia la conserva.
+    await page.setInputFiles('.tl-form .tl-file', join(ROOT, 'public', 'img', 'quill.png'));
+    await page.waitForTimeout(1500);
     await page.locator('.tl-write').click();
     await page.waitForTimeout(600);
 
@@ -4797,8 +4808,12 @@ try {
         return {
             day: Number(ctx.chatMetadata?.calendar?.day ?? 0),
             donde: String(ctx.chatMetadata?.currentLocation || ''),
-            ultimo: String(chat[chat.length - 1]?.mes || ''),
-            esSistema: Boolean(chat[chat.length - 1]?.is_system),
+            // Al llegar puede venir detras la gente del sitio (G3): la nota del viaje es
+            // una de las ultimas, no por fuerza la ultima.
+            ...(() => {
+                const note = chat.slice(-3).reverse().find((/** @type {any} */ m) => /viaja hasta/.test(String(m?.mes || '')));
+                return { ultimo: String(note?.mes || chat[chat.length - 1]?.mes || ''), esSistema: Boolean(note ? note.is_system : true) };
+            })(),
             avisos: [...document.querySelectorAll('#toast-container .toast')]
                 .map(t => t.innerText.replace(/\s+/g, ' ').trim()).join(' | '),
         };
@@ -5033,6 +5048,18 @@ try {
         }
         for (const m of party) m.gold = 0;
         if (party[0]) party[0].gold = 200;
+    });
+    // Los remedios los hace un herrero (DL1): el sitio donde esta el grupo pasa a tenerlo.
+    await page.evaluate(async () => {
+        const ctx = window.SillyTavern.getContext();
+        const wi = await import('/scripts/world-info.js');
+        const world = String(ctx.chatMetadata?.world_info || '');
+        const data = await wi.loadWorldInfo(world);
+        const here = (data?.metadata?.locationMaps || []).find((/** @type {any} */ l) => l?.name === ctx.chatMetadata?.currentLocation);
+        if (!data || !here) return;
+        here.services = [...new Set([...(here.services || []), 'herreria'])];
+        await wi.saveWorldInfo(world, data, true);
+        await wi.refreshWorldMapGlobals(world);
     });
     const setup46 = await reloadParty46();
     await page.waitForTimeout(1500);
@@ -5453,6 +5480,325 @@ try {
 
     await page.unroute('**/mundos/mundos.json');
     await page.unroute('**/mundos/prueba-hilo.pack.json');
+
+    step('49. M1: 1387, el mundo escrito entero, desde el menú');
+    // Nada simulado: el mundo tal como se publica, elegido con clics en el taller.
+    await clearToasts();
+    if (await page.locator('#game-shell').count() > 0) {
+        await page.evaluate(() => { void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/modojuego'); });
+        await page.waitForTimeout(1000);
+    }
+    if (await page.locator('#cw-new-campaign').count() === 0) {
+        await closeChat();
+    }
+    await page.click('#cw-new-campaign');
+    await page.waitForSelector('.tl-door-grid', { timeout: 20000 });
+    await page.locator('.tl-door-card').nth(1).click();
+    await page.waitForSelector('.tl-root', { timeout: 20000 });
+    await page.locator('.tl-card', { hasText: '1387' }).first().click();
+    await page.waitForTimeout(2500);
+    const picked49 = await page.evaluate(() => ({
+        bad: document.querySelector('.tl-said.bad')?.textContent || '',
+    }));
+    check('elegir 1387 carga su paquete sin quejas', !picked49.bad, picked49.bad || 'ok');
+    await page.locator('.tl-next').click();
+    await page.waitForTimeout(300);
+    // Lo narra El Cronista, el de otra campana: se hace una copia, y tiene que salir con su
+    // cara y no con la interrogacion.
+    // Los narradores propios, no los de serie: `hasText` con texto no distingue mayusculas,
+    // y «El cronista» de serie no tiene cara.
+    const cronista49 = page.locator('.tl-card[data-card^="mio-"]', { hasText: /El Cronista/ }).first();
+    const hasCronista49 = await cronista49.count() > 0;
+    if (hasCronista49) {
+        await cronista49.click();
+        await page.waitForTimeout(400);
+    }
+    await page.locator('.tl-next').click();
+    await page.waitForTimeout(500);
+    const places49 = await page.evaluate(() => [...document.querySelectorAll('.tl-card')].map(c => (c.textContent || '').trim()));
+    check('el taller enseña las localidades escritas de 1387',
+        places49.some(t => /Pueblo de Barro/.test(t)) && places49.some(t => /Castillo de Vane/.test(t)), places49.slice(0, 8).join(' | '));
+    for (let i = 0; i < 10; i++) {
+        await page.locator('.tl-next').click();
+        await page.waitForTimeout(250);
+    }
+    await page.locator('.tl-next').click();
+    // El creador de personaje respeta lo que el mundo deja entrar, y dice cómo empieza.
+    await page.waitForSelector('.hc-root', { timeout: 60000 });
+    const hero49 = await page.evaluate(() => ({
+        races: [...document.querySelectorAll('.hc-root datalist')].map(list => [...list.querySelectorAll('option')]
+            .map(o => String(o.getAttribute('value') || '').split(' — ')[0])),
+        premise: document.querySelector('.hc-premise-text')?.textContent || '',
+    }));
+    const race49 = hero49.races.find(list => list.some(v => /Humano/i.test(v))) ?? [];
+    check('el creador de personaje solo ofrece las razas del mundo',
+        race49.length > 0 && race49.every(v => /Humano|Sangre alta/i.test(v)), JSON.stringify(race49));
+    check('y dice cómo empieza la historia, para que el pasado encaje', /cáliz/i.test(hero49.premise), hero49.premise.slice(0, 120));
+    await answerHeroCreator('Wendel');
+    await page.waitForTimeout(1500);
+    const face49 = await page.evaluate(async () => {
+        const ctx = window.SillyTavern.getContext();
+        const wi = await import('/scripts/world-info.js');
+        const data = await wi.loadWorldInfo(String(ctx.chatMetadata?.world_info || ''));
+        const copy = String(data?.metadata?.narratorAvatar || '');
+        const source = (ctx.characters || []).find((/** @type {any} */ c) => c?.name === 'El Cronista' && c.avatar !== copy)?.avatar || '';
+        // Las dos caras, pequenas, pixel a pixel: la copia se parece a la de El Cronista y no
+        // a la de por defecto.
+        const pixels = async (/** @type {string} */ url) => {
+            const img = document.createElement('img');
+            img.src = url;
+            await img.decode();
+            const canvas = document.createElement('canvas');
+            canvas.width = 16; canvas.height = 24;
+            const g = /** @type {CanvasRenderingContext2D} */ (canvas.getContext('2d'));
+            g.drawImage(img, 0, 0, 16, 24);
+            return [...g.getImageData(0, 0, 16, 24).data];
+        };
+        const diff = (/** @type {number[]} */ a, /** @type {number[]} */ b) =>
+            Math.round(a.reduce((sum, v, i) => sum + Math.abs(v - b[i]), 0) / a.length);
+        if (!copy || !source) return { copy, source, toSource: -1, toDefault: -1 };
+        const mine = await pixels(`/characters/${encodeURIComponent(copy)}?t=${Date.now()}`);
+        return {
+            copy, source,
+            toSource: diff(mine, await pixels(`/characters/${encodeURIComponent(source)}?t=${Date.now()}`)),
+            toDefault: diff(mine, await pixels('/img/ai4.png')),
+        };
+    });
+    check('un narrador de otra campana se copia con su cara, no con la interrogacion',
+        hasCronista49 && face49.copy !== face49.source && face49.toSource >= 0 && face49.toSource < 8 && face49.toDefault > 20,
+        JSON.stringify(face49));
+    await page.waitForTimeout(5000);
+    await clearToasts();
+
+    const world49 = await page.evaluate(async () => {
+        const wi = await import('/scripts/world-info.js');
+        const ctx = window.SillyTavern.getContext();
+        const data = await wi.loadWorldInfo(String(ctx.chatMetadata.world_info || ''));
+        const mecha = (ctx.chat || []).filter((/** @type {any} */ m) => !m.is_system
+            && /\[HILO\]/.test(String(m.mes || '')) && /cáliz/.test(String(m.mes || '')));
+        return {
+            places: (data?.metadata?.locationMaps ?? []).length,
+            hidden: (data?.metadata?.hiddenLocations ?? []).length,
+            factions: (data?.metadata?.factions ?? []).length,
+            rumors: (data?.metadata?.rumors ?? []).length,
+            contracts: (data?.metadata?.writtenContracts ?? []).length,
+            abilities: (data?.metadata?.rulesetPack?.abilities ?? []).length,
+            survival: data?.metadata?.rulesetPack?.survival ?? null,
+            seed: String(data?.metadata?.seed || ''),
+            here: String(ctx.chatMetadata.currentLocation || ''),
+            mecha: mecha.length,
+            focus: ctx.chatMetadata.plotState?.open ?? [],
+        };
+    });
+    check('1387 nace entero: siete sitios, cuatro escondidos, tres facciones vivas',
+        world49.places === 7 && world49.hidden === 4 && world49.factions === 3, JSON.stringify(world49));
+    check('con sus rumores, sus encargos y sus habilidades de trinchera',
+        world49.rumors >= 25 && world49.contracts >= 14 && world49.abilities >= 9, JSON.stringify(world49));
+    check('y con lo suyo de siempre: su semilla y su dureza',
+        world49.seed === 'yunque-hiel-catorce' && world49.survival?.mortality === 'everyone', JSON.stringify(world49));
+    check('la partida empieza con el cáliz en el petate, contado al narrador',
+        world49.mecha > 0 && world49.focus.includes('el-caliz-ensangrentado'), JSON.stringify({ mecha: world49.mecha, open: world49.focus }));
+
+    await page.evaluate(() => { void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/modojuego'); });
+    await page.waitForSelector('#game-shell', { timeout: 15000 });
+    await page.waitForTimeout(1500);
+    const shell49 = await page.evaluate(() => ({
+        focus: document.querySelector('#game-shell .gs-focus')?.textContent || '',
+        fight: [...document.querySelectorAll('button')].some(b => /iniciar combate/i.test(b.textContent || '')),
+    }));
+    check('arriba dice qué tienes entre manos', /cáliz/i.test(shell49.focus), shell49.focus);
+    check('y en el cuarto de la posada se puede empezar la pelea', shell49.fight, JSON.stringify(shell49));
+
+    // Los rumores del pueblo, desde su ficha: se cuentan al narrador, uno cada vez.
+    await page.keyboard.press('1');
+    await page.waitForTimeout(800);
+    const rumorChip = page.locator('#game-shell .gs-chip-action', { hasText: 'Escuchar rumores' }).first();
+    check('la fila de fichas ofrece escuchar rumores en el pueblo', await rumorChip.count() === 1, '');
+    if (await rumorChip.count() === 1) {
+        await rumorChip.click();
+        await page.waitForTimeout(2000);
+    }
+    const rumor49 = await page.evaluate(() => {
+        const ctx = window.SillyTavern.getContext();
+        return {
+            heard: ctx.chatMetadata.rumorsHeard ?? [],
+            told: (ctx.chat || []).filter((/** @type {any} */ m) => !m.is_system && /\[RUMOR\]/.test(String(m.mes || ''))).length,
+        };
+    });
+    check('escuchar cuenta un rumor al narrador y lo apunta', rumor49.heard.length === 1 && rumor49.told === 1, JSON.stringify(rumor49));
+
+    // El tablón: lo escrito del acto 1, antes que lo generado.
+    void page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/gremio'));
+    await page.waitForSelector('.gd-board', { timeout: 15000 });
+    await page.waitForTimeout(600);
+    const board49 = await page.evaluate(() => {
+        const ctx = window.SillyTavern.getContext();
+        const board = ctx.chatMetadata.contractBoard ?? [];
+        return {
+            written: board.filter((/** @type {any} */ c) => c.written).map((/** @type {any} */ c) => c.title),
+            total: board.length,
+        };
+    });
+    check('el tablón trae los encargos escritos del acto 1, y la mayoría del tablón es escrito',
+        board49.written.length >= 1 && board49.written.length >= Math.round(board49.total * 0.5),
+        JSON.stringify(board49));
+    await page.locator('.popup:visible .popup-button-ok').last().click();
+    await page.waitForTimeout(800);
+
+    step('50. G: el mundo crece mientras juegas');
+    // En la campaña de 1387 recién creada. Primero se sale del tablero: explorar es cosa del
+    // mapa, no de una sala.
+    await clearToasts();
+    if (await page.locator('#game-shell').count() === 0) {
+        await page.evaluate(() => { void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/modojuego'); });
+        await page.waitForSelector('#game-shell', { timeout: 15000 });
+    }
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/leave'));
+    await page.waitForTimeout(1200);
+    await page.keyboard.press('1');
+    await page.waitForTimeout(800);
+    await clearToasts();
+
+    const before50 = await page.evaluate(async () => {
+        const wi = await import('/scripts/world-info.js');
+        const ctx = window.SillyTavern.getContext();
+        const data = await wi.loadWorldInfo(String(ctx.chatMetadata.world_info || ''));
+        return (data?.metadata?.locationMaps ?? []).map((/** @type {any} */ l) => l.name);
+    });
+
+    const explore50 = page.locator('#game-shell .gs-chip-action', { hasText: 'Explorar los alrededores' }).first();
+    check('fuera del tablero, la fila de fichas ofrece explorar los alrededores', await explore50.count() === 1, '');
+    if (await explore50.count() === 1) {
+        await explore50.click();
+        await page.waitForTimeout(3500);
+        await clearToasts();
+    }
+    const after50 = await page.evaluate(async () => {
+        const wi = await import('/scripts/world-info.js');
+        const ctx = window.SillyTavern.getContext();
+        const data = await wi.loadWorldInfo(String(ctx.chatMetadata.world_info || ''));
+        const places = data?.metadata?.locationMaps ?? [];
+        const found = places[places.length - 1];
+        const people = Object.values(data?.entries ?? {}).filter((/** @type {any} */ e) =>
+            e?.dndData?.entityType === 'npc' && e.dndData?.mapPosition?.locationName === found?.name);
+        const monsters = Object.values(data?.entries ?? {}).filter((/** @type {any} */ e) =>
+            e?.dndData?.entityType === 'monster' && e.dndData?.generated);
+        return {
+            names: places.map((/** @type {any} */ l) => l.name),
+            found: found ? { name: found.name, discovered: found.discovered, boards: (found.boards ?? []).length, routes: found.routes } : null,
+            people: people.length,
+            monsters: monsters.length,
+            told: (ctx.chat || []).filter((/** @type {any} */ m) => !m.is_system && /\[EXPLORAR\]/.test(String(m.mes || ''))).length,
+        };
+    });
+    check('explorar descubre un sitio nuevo en el mapa, con su camino y su tablero',
+        after50.names.length === before50.length + 1 && after50.found?.discovered === 'seed'
+        && after50.found.boards === 1 && (after50.found.routes ?? []).length === 1, JSON.stringify(after50.found));
+    check('con gente que vive allí y bichos de su bioma, guardados en el mundo',
+        after50.people >= 1 && after50.monsters >= 1, JSON.stringify({ people: after50.people, monsters: after50.monsters }));
+    check('y se lo cuenta al narrador', after50.told === 1, `${after50.told} mensaje(s)`);
+
+    // G6: el narrador propone un sitio. Es la misma herramienta que llamaría el modelo.
+    const proposed50 = await page.evaluate(async () => {
+        const { ToolManager } = await import('/scripts/tool-calling.js');
+        const said = await ToolManager.invokeFunctionTool('proponer_sitio', { nombre: 'La cueva del humo', descripcion: 'Se ve humo tras el pinar.' });
+        return { said: String(said ?? ''), stored: window.SillyTavern.getContext().chatMetadata.placeProposals ?? [] };
+    });
+    check('lo que propone el narrador no crea nada: queda como propuesta',
+        /Propuesto/.test(proposed50.said) && proposed50.stored.length === 1, JSON.stringify(proposed50));
+    await page.waitForTimeout(800);
+    const seek50 = page.locator('#game-shell .gs-chip-action', { hasText: 'Buscar La cueva del humo' }).first();
+    check('y aparece como ficha para ir a buscarlo', await seek50.count() === 1, '');
+    if (await seek50.count() === 1) {
+        await seek50.click();
+        await page.waitForTimeout(3500);
+        await clearToasts();
+    }
+    const cave50 = await page.evaluate(async () => {
+        const wi = await import('/scripts/world-info.js');
+        const ctx = window.SillyTavern.getContext();
+        const data = await wi.loadWorldInfo(String(ctx.chatMetadata.world_info || ''));
+        const cave = (data?.metadata?.locationMaps ?? []).find((/** @type {any} */ l) => l.name === 'La cueva del humo');
+        return { cave: cave ? { discovered: cave.discovered, description: cave.description } : null, left: ctx.chatMetadata.placeProposals ?? [] };
+    });
+    check('ir a buscarlo lo pone en el mapa, con lo que se contó de él',
+        cave50.cave?.discovered === 'chat' && /humo/.test(String(cave50.cave?.description)) && cave50.left.length === 0,
+        JSON.stringify(cave50));
+
+    step('51. L, C1 y T1: la posada, cómo está el grupo y el precipicio');
+    // Seguimos en 1387, en El Pueblo de Barro. Oro en el bolsillo para poder pagar, puesto en
+    // la partida y recargado como al abrir el chat.
+    await page.evaluate(async () => {
+        const ctx = window.SillyTavern.getContext();
+        for (const m of ctx.chatMetadata.party || []) m.gold = 20;
+        await ctx.saveMetadata();
+        await ctx.eventSource.emit(ctx.eventTypes.CHAT_CHANGED, ctx.getCurrentChatId?.());
+    });
+    await page.waitForTimeout(1500);
+    if (await page.locator('#game-shell').count() === 0) {
+        await page.evaluate(() => { void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/modojuego'); });
+        await page.waitForSelector('#game-shell', { timeout: 15000 });
+    }
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/go El Pueblo de Barro'));
+    await page.waitForTimeout(1500);
+    await page.keyboard.press('2');
+    await page.waitForTimeout(1000);
+    await clearToasts();
+
+    const services51 = await page.evaluate(() => [...document.querySelectorAll('#game-shell .gs-service')].map(box => ({
+        id: box.getAttribute('data-service'),
+        actions: [...box.querySelectorAll('.gs-service-btn')].map(b => b.getAttribute('data-action')),
+    })));
+    check('en la exploración, el pueblo enseña sus servicios con lo que se puede hacer',
+        services51.some(s => s.id === 'posada' && s.actions.includes('inn-meal') && s.actions.includes('inn-room'))
+        && services51.some(s => s.id === 'tablon'),
+        JSON.stringify(services51));
+    check('y en la posada se puede hablar con quien la atiende',
+        services51.some(s => s.id === 'posada' && s.actions.includes('inn-talk')), JSON.stringify(services51));
+
+    const goldBefore51 = await page.evaluate(async () => (await import('/scripts/party.js')).getPartyMembersSnapshot()
+        .reduce((/** @type {number} */ s, /** @type {any} */ m) => s + (Number(m.gold) || 0), 0));
+    await page.locator('#game-shell .gs-service-btn[data-action="inn-meal"]').click();
+    await page.waitForTimeout(1200);
+    const meal51 = await page.evaluate(async () => {
+        const members = (await import('/scripts/party.js')).getPartyMembersSnapshot();
+        return {
+            gold: members.reduce((/** @type {number} */ s, /** @type {any} */ m) => s + (Number(m.gold) || 0), 0),
+            size: members.length,
+            hungry: members.filter((/** @type {any} */ m) => Number(m.needs?.hunger) > 0).length,
+        };
+    });
+    check('comer caliente cobra una moneda por cabeza y quita el hambre',
+        goldBefore51 - meal51.gold === meal51.size && meal51.hungry === 0, JSON.stringify({ antes: goldBefore51, ...meal51 }));
+
+    await clearToasts();
+    await page.locator('#game-shell .gs-service-btn[data-action="inn-talk"]').click();
+    await page.waitForTimeout(600);
+    const talk51 = await page.evaluate(() => /** @type {HTMLTextAreaElement} */ (document.querySelector('#send_textarea'))?.value || '');
+    check('hablar con quien atiende deja la frase empezada', /^Le digo a Giles: /.test(talk51), talk51);
+    await page.evaluate(() => { const i = /** @type {HTMLTextAreaElement} */ (document.querySelector('#send_textarea')); if (i) i.value = ''; });
+
+    // C1: lo que el narrador sabe del cuerpo del grupo, antes de cada turno.
+    const body51 = await page.evaluate(async () => {
+        const ctx = window.SillyTavern.getContext();
+        await ctx.eventSource.emit(ctx.eventTypes.GENERATION_STARTED, 'normal', {}, true);
+        const key = Object.keys(ctx.extensionPrompts || {}).find(k => k.endsWith('_body'));
+        return { key: key || '', value: String(ctx.extensionPrompts?.[key || '']?.value || '') };
+    });
+    check('antes de cada turno, el narrador sabe cómo está el grupo, al final del prompt',
+        /combat/.test(body51.key) && /\[CÓMO ESTÁ EL GRUPO\]/.test(body51.value) && /El Pueblo de Barro/.test(body51.value),
+        `${body51.key} · ${body51.value.replace(/\n/g, ' | ').slice(0, 160)}`);
+
+    // T1: el desfiladero de las torres del peaje se dibuja como precipicio.
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/go El Peaje Norte'));
+    await page.waitForTimeout(2500);
+    await clearToasts();
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/enter La vanguardia en el peaje'));
+    await page.waitForTimeout(1500);
+    await page.keyboard.press('3');
+    await page.waitForTimeout(1200);
+    const chasm51 = await page.evaluate(() => document.querySelectorAll('.wm-terrain-chasm').length);
+    check('en las torres del peaje, el lado del desfiladero es precipicio', chasm51 >= 4, `${chasm51} casillas`);
 
     console.log('\n--- console errors ---');
     console.log(problems.size ? [...problems].join('\n') : '(none)');

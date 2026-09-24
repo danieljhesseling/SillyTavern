@@ -83,6 +83,7 @@ export function getMapLegend() {
     const names = {
         wall: 'muro', door: 'puerta', difficult: 'terreno difícil',
         cover_half: 'cobertura media', cover_three_quarters: 'cobertura de tres cuartos',
+        chasm: 'precipicio (no se anda; a quien empujan dentro, cae)',
     };
     const legend = { '.': 'suelo transitable' };
     for (const [char, cell] of Object.entries(ASCII_TERRAIN)) {

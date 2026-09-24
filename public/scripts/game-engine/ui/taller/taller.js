@@ -652,6 +652,7 @@ export async function askTaller({
                 name: text(voz.name), personality: text(voz.personality),
                 description: text(voz.description), greeting: text(voz.greeting),
                 verbosity: text(voz.verbosity) || DEFAULT_VERBOSITY,
+                image: text(voz.image),
             };
         }
         if (world?.survival && !state.survival) state.survival = { ...world.survival };
@@ -842,6 +843,8 @@ export async function askTaller({
                             name: text(voice.name), personality: text(voice.personality),
                             description: text(voice.description), greeting: text(voice.greeting),
                             verbosity: text(voice.verbosity) || DEFAULT_VERBOSITY,
+                            // Con su cara: sin ella, la copia salia con la interrogacion.
+                            image: text(voice.image),
                         }
                         : { name: '', personality: '', description: '', greeting: '', verbosity: DEFAULT_VERBOSITY };
                 }
@@ -853,7 +856,7 @@ export async function askTaller({
                 };
                 const map = {
                     nName: 'name', nPersonality: 'personality', nDescription: 'description',
-                    nGreeting: 'greeting', nVerbosity: 'verbosity',
+                    nGreeting: 'greeting', nVerbosity: 'verbosity', nFace: 'image',
                 };
                 const field = map[key];
                 if (field) state.narrator[field] = text(value);

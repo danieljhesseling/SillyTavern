@@ -37,7 +37,9 @@ export const ASKS = ['arrive', 'win', 'defeat', 'talk', 'check', 'contract', 'no
  * @property {string} scene  Lo que el narrador cuenta al abrirse.
  * @property {{kind: string, place?: string, milestone?: string, id?: string, day?: number, faction?: string}} opens
  * @property {{kind: string, place?: string, board?: string, enemy?: string, npc?: string, skill?: string, id?: string, faction?: string, against?: boolean}} asks
- * @property {{reveal: string[], open: string[], standing: Record<string, number>, ending: string}} changes
+ * @property {{reveal: string[], open: string[], standing: Record<string, number>, ending: string, endingBy: Record<string, string>}} changes
+ *   `endingBy`: el final depende de con quien os hayais aliado — la faccion que mejor os
+ *   mira, de entre estas, decide cual. `ending` es el de reserva.
  */
 
 /**
@@ -45,6 +47,7 @@ export const ASKS = ['arrive', 'win', 'defeat', 'talk', 'check', 'contract', 'no
  * @property {string} title
  * @property {'written'|'faction'} source
  * @property {Milestone[]} milestones
+ * @property {Record<string, {title: string, scene: string}>} endings Lo que se cuenta en cada final.
  */
 
 /**
@@ -79,6 +82,12 @@ function readMilestone(raw, index) {
     const changes = raw.changes && typeof raw.changes === 'object' ? raw.changes : {};
     const list = (/** @type {any} */ v) => (Array.isArray(v) ? v.map(text).filter(Boolean) : []);
 
+    /** @type {Record<string, string>} */
+    const endingBy = {};
+    for (const [faction, ending] of Object.entries(changes.endingBy ?? {})) {
+        if (text(faction) && text(ending)) endingBy[text(faction)] = text(ending);
+    }
+
     /** @type {Record<string, number>} */
     const standing = {};
     for (const [faction, amount] of Object.entries(changes.standing ?? {})) {
@@ -94,7 +103,9 @@ function readMilestone(raw, index) {
         scene: text(raw.scene),
         opens: { ...opens, kind: OPENS.includes(text(opens.kind)) ? text(opens.kind) : 'after' },
         asks: { ...asks, kind: ASKS.includes(text(asks.kind)) ? text(asks.kind) : 'none' },
-        changes: { reveal: list(changes.reveal), open: list(changes.open), standing, ending: text(changes.ending) },
+        changes: {
+            reveal: list(changes.reveal), open: list(changes.open), standing, ending: text(changes.ending), endingBy,
+        },
     };
 }
 
@@ -110,10 +121,18 @@ export function readPlot(raw) {
         .map(readMilestone)
         .filter(/** @returns {m is Milestone} */ m => m !== null);
     if (milestones.length === 0) return null;
+    /** @type {Record<string, {title: string, scene: string}>} */
+    const endings = {};
+    for (const [id, ending] of Object.entries(raw.endings ?? {})) {
+        if (text(id) && ending && typeof ending === 'object') {
+            endings[text(id)] = { title: text(/** @type {any} */ (ending).title), scene: text(/** @type {any} */ (ending).scene) };
+        }
+    }
     return {
         title: text(raw.title),
         source: raw.source === 'faction' ? 'faction' : 'written',
         milestones,
+        endings,
     };
 }
 
@@ -188,7 +207,7 @@ function opensWith(opens, event) {
  * @property {PlotState} state
  * @property {Milestone[]} opened Los que se acaban de abrir, en orden: su escena se cuenta.
  * @property {Milestone[]} done   Los que se acaban de cumplir.
- * @property {{reveal: string[], standing: Record<string, number>, ending: string}} changes
+ * @property {{reveal: string[], standing: Record<string, number>, ending: string, endingBy: Record<string, string>}} changes
  */
 
 /**
@@ -222,7 +241,29 @@ function openAll(plot, state, toOpen, step) {
  * @returns {boolean}
  */
 export function hasEnded(plot, state) {
-    return plot.milestones.some(m => m.changes.ending && readPlotState(state).done.includes(m.id));
+    const done = readPlotState(state).done;
+    return plot.milestones.some(m => (m.changes.ending || Object.keys(m.changes.endingBy).length > 0)
+        && done.includes(m.id));
+}
+
+/**
+ * Cual de los finales toca, visto lo que piensan de vosotros.
+ *
+ * Con `endingBy`, gana la faccion que mejor os mira de entre las que tienen final: con
+ * quien os habeis aliado es lo que decide como acaba. Sin nada que decidir, el de reserva.
+ *
+ * @param {{ending: string, endingBy: Record<string, string>}} changes
+ * @param {any[]} factions
+ * @returns {string}
+ */
+export function chooseEnding(changes, factions) {
+    const options = Object.entries(changes?.endingBy ?? {});
+    if (options.length === 0) return text(changes?.ending);
+    const standing = new Map(readFactions(factions).map(f => [f.id, f.reputation]));
+    const best = options
+        .map(([faction, ending], index) => ({ ending, index, value: standing.get(faction) ?? -Infinity }))
+        .sort((a, b) => b.value - a.value || a.index - b.index)[0];
+    return best && best.value > -Infinity ? best.ending : (text(changes?.ending) || options[0][1]);
 }
 
 /**
@@ -244,6 +285,7 @@ function complete(plot, state, milestone, step) {
         step.changes.standing[faction] = (step.changes.standing[faction] ?? 0) + amount;
     }
     if (milestone.changes.ending) step.changes.ending = milestone.changes.ending;
+    if (Object.keys(milestone.changes.endingBy).length > 0) step.changes.endingBy = milestone.changes.endingBy;
 
     const byId = new Map(plot.milestones.map(m => [m.id, m]));
     return [
@@ -254,7 +296,7 @@ function complete(plot, state, milestone, step) {
 
 /** @returns {PlotStep} */
 function emptyStep(/** @type {PlotState} */ state) {
-    return { state, opened: [], done: [], changes: { reveal: [], standing: {}, ending: '' } };
+    return { state, opened: [], done: [], changes: { reveal: [], standing: {}, ending: '', endingBy: {} } };
 }
 
 /**

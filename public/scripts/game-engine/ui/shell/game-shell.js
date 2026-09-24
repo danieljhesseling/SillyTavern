@@ -90,6 +90,9 @@ import { playForScene, stopSceneAudio } from './scene-audio.js';
  * @property {() => Array<{id: string, label: string, icon: string, detail: string, enabled: boolean}>} [getChecks]
  *   Las tiradas de habilidad que se pueden intentar fuera de combate.
  * @property {(skill: string) => void} [onCheck]
+ * @property {() => Array<{id: string, label: string, icon: string, actions: Array<{id: string, label: string, detail: string, enabled: boolean}>}>} [getServices]
+ *   Los servicios de aqui, con lo que se puede hacer en cada uno.
+ * @property {(actionId: string) => void} [onService]
  * @property {() => {title: string, hint: string, act: number}|null} [getFocus]
  *   Lo que se tiene entre manos: el hito abierto del hilo.
  * @property {() => void} [onClose] Anything the game wants undone when the shell closes.
@@ -858,6 +861,33 @@ function renderExploration(panel, view) {
     here.appendChild(el('div', 'gs-here-name', view.here || 'En ninguna parte todavia'));
     if (view.description) here.appendChild(el('div', 'gs-here-desc', view.description));
     panel.appendChild(here);
+
+    // Lo que hay aqui: la posada, la herreria, el templo, el tablon. Cada tarjeta con lo que
+    // se puede hacer, y lo que cuesta dicho antes de pulsar.
+    const services = options?.getServices?.() ?? [];
+    if (services.length > 0) {
+        panel.appendChild(el('div', 'gs-places-title', 'Aquí'));
+        const grid = el('div', 'gs-services');
+        for (const card of services) {
+            const box = el('div', 'gs-service');
+            box.dataset.service = card.id;
+            const head = el('div', 'gs-service-head');
+            head.appendChild(el('i', `fa-solid ${card.icon}`));
+            head.appendChild(el('span', '', card.label));
+            box.appendChild(head);
+            for (const action of card.actions) {
+                const button = makeButton('gs-service-btn');
+                button.dataset.action = action.id;
+                button.textContent = action.label;
+                button.title = action.detail;
+                button.disabled = !action.enabled;
+                button.addEventListener('click', () => options?.onService?.(action.id));
+                box.appendChild(button);
+            }
+            grid.appendChild(box);
+        }
+        panel.appendChild(grid);
+    }
 
     if (view.boards.length > 0) {
         panel.appendChild(el('div', 'gs-places-title', 'Tableros de aqui'));

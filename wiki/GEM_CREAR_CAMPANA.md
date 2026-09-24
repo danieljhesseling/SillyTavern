@@ -248,7 +248,7 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
             "items": {
               "type": "string"
             },
-            "description": "Filas de la misma longitud, entre 8 y 40 columnas y entre 6 y 30 filas. Borde exterior siempre de muro. Solo estos caracteres: '.' suelo transitable, '#' muro, 'D' puerta cerrada, 'o' puerta abierta, '~' terreno difícil, 'c' cobertura media, 'C' cobertura de tres cuartos."
+            "description": "Filas de la misma longitud, entre 8 y 40 columnas y entre 6 y 30 filas. Borde exterior siempre de muro. Solo estos caracteres: '.' suelo transitable, '#' muro, 'D' puerta cerrada, 'o' puerta abierta, '~' terreno difícil, 'c' cobertura media, 'C' cobertura de tres cuartos, 'v' precipicio (no se anda; a quien empujan dentro, cae)."
           },
           "partyStart": {
             "type": "array",
@@ -558,6 +558,7 @@ crear cobertura y rutas, y no dibujes una sala vacía.
 - `~` terreno difícil
 - `c` cobertura media
 - `C` cobertura de tres cuartos
+- `v` precipicio (no se anda; a quien empujan dentro, cae)
 
 ## Muestra de salida correcta
 
@@ -1087,7 +1088,7 @@ que ya está en el bloque de instrucciones; se ofrecen sueltos porque un libro n
         "items": {
           "type": "string"
         },
-        "description": "Filas de la misma longitud, entre 8 y 40 columnas y entre 6 y 30 filas. Borde exterior siempre de muro. Solo estos caracteres: '.' suelo transitable, '#' muro, 'D' puerta cerrada, 'o' puerta abierta, '~' terreno difícil, 'c' cobertura media, 'C' cobertura de tres cuartos."
+        "description": "Filas de la misma longitud, entre 8 y 40 columnas y entre 6 y 30 filas. Borde exterior siempre de muro. Solo estos caracteres: '.' suelo transitable, '#' muro, 'D' puerta cerrada, 'o' puerta abierta, '~' terreno difícil, 'c' cobertura media, 'C' cobertura de tres cuartos, 'v' precipicio (no se anda; a quien empujan dentro, cae)."
       },
       "partyStart": {
         "type": "array",

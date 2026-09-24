@@ -14,7 +14,7 @@ author: DanielJHesseling / Antigravity AI
 
 ---
 
-## 📍 Lectura del 2026-09-22: qué de esto ya existe, y qué hay que corregir
+## 📍 Lectura del 2026-09-23: qué de esto ya existe, y qué hay que corregir
 
 Este es un documento de **diseño**. Lo que falta y en qué orden vive en **[[POR_HACER]]**, no aquí: un marcador metido en un documento de diseño se pudre en dos días, y ya ha pasado dos veces en esta wiki.
 
@@ -25,9 +25,11 @@ Este es un documento de **diseño**. Lo que falta y en qué orden vive en **[[PO
 | Salas, puertas y niebla dinámica; los enemigos de una sala cerrada "duermen" y entran en iniciativa al abrirla | ✅ Hecho, y comprobado en navegador (paso 24 del recorrido) |
 | Los 7 tipos de objetivo (`eliminate` … `loot`), principales y opcionales | ✅ Hechos, y editables sin tocar World Info |
 | Cobertura ligera **+2 CA** y pesada **+5 CA** | ✅ Exactamente esos números, y por **línea de fuego**: lo que da cobertura es lo que hay entre tirador y objetivo |
-| Reputación de −100 a +100 | ✅ Ese es el rango del paquete de reglas. Pero **nadie la lee**: hoy es un número decorativo (**P17**) |
+| Reputación de −100 a +100 | ✅ Hecho y conectado: `economy.js` modifica precios, cobra peajes de camino y la memoria del mundo informa al narrador |
 | Casi todas las reglas de validación cruzada de la sección 5 | ✅ Ya las aplica `campaign-pack.js`: rectangularidad, borde de muro, inicio del grupo en casilla transitable, enemigo que no está en el bestiario, misión que apunta a un tablero inexistente |
 | Compilación a Lorebook + `chat_metadata` + Modo Juego (sección 7) | ✅ Es literalmente lo que hace el importador desde la Fase G |
+| Localidades con 0, 1 o N tableros | ✅ Hecho en Fase A4: localidades puramente sociales/comerciales son válidas |
+| Catálogo único de magias y habilidades | ✅ Hecho en D5: `rules/abilities.js` con panel `/habilidades` |
 
 ### Lo que hay que corregir antes de usarlo como contrato
 
@@ -35,12 +37,13 @@ Este es un documento de **diseño**. Lo que falta y en qué orden vive en **[[PO
 2. **Los caracteres de terreno nuevos no existen.** `W` (agua), `L` (letal), `T` (trampa) y `^` (elevación) no los entiende el tablero: hoy los tipos de terreno son **código**, no datos (**P23**).
 3. **No conviene un segundo esquema.** `campaign-pack-schema.js` no está escrito a mano: se **genera** desde el motor — los tipos de objetivo desde `scenarios.js`, los perfiles desde `enemy-ai.js`, los caracteres del mapa desde `terrain.js` — y eso es a propósito, porque el productor de los datos (tu Gem) vive fuera de este repositorio y un contrato copiado a mano se queda viejo en silencio. Un `DEEP_WORLD_SCHEMA` de 300 líneas en un `.md` es exactamente esa copia. **Lo que vale de aquí son los campos**; el sitio donde ponerlos es el esquema generado, ampliándolo.
 4. **Los modelos citados son de otra época** y el fork es agnóstico de proveedor: `/esquema-campana` entrega el contrato para pegárselo a cualquier modelo, y la generación con IA ya funciona sin estar atada a Gemini.
+5. **Los tableros NO deben guardar enemigos estáticos de fábrica.** La geometría del mapa nace limpia (`terrain.js`). Los enemigos se instancian contextualmente según la misión activa o la tabla de peligro del bioma (*ver [[ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES]] §4.1*). Clavar enemigos fijos a un mapa hace que los tableros se sientan como escaparates muertos.
+6. **Las localidades requieren nodos de servicio explícitos (`services: []`).** Posada, herrería, boticario, templo, tablón y prestamista deben responder a botones funcionales con impacto real en oro, inventario y heridas (*[[ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES]] §4.2*).
 
 ### Lo que sí entra en el plan, y dónde
 
-- **La regla de 0, 1 o N tableros por localidad** es la mejor idea del documento y hoy **no se puede expresar**: el paquete deduce las localidades de los tableros, así que un pueblo sin tablero no existe. Eso es la mitad del bucle de Persona, y está en **A4** de [[POR_HACER]].
-- El **catálogo único de magias y habilidades** referenciado por id desde personajes y enemigos: es la forma de datos que le faltaba a **D5**.
-- **P17** a **P23**: reputación con efectos, rutas de viaje con tiempo y peligro, horarios de PNJ, interactuables, oleadas, fases de jefe y terreno nuevo.
+- **P18** a **P23**: rutas de viaje con tiempo y peligro, horarios de PNJ, interactuables, oleadas, fases de jefe y terreno nuevo.
+- **A13** y **A14**: Desacoplar enemigos de tableros y nodos de servicio en localidades.
 
 ---
 
@@ -204,10 +207,10 @@ Los tableros tácticos dejan de ser cuadrículas planas para convertirse en esce
   * Cofres cerrados (`locked: true`, CD de forzado, botín contenido).
   * Palancas y mecanismos (`triggersAction: 'openDoor(x,y)'` o `'drainWater'`).
   * Barricadas destruibles con sus propios HP y CA.
-* **Puntos de Inicio & Refuerzos Dinámicos**:
+* **Puntos de Inicio & Desacoplamiento de Encuentros**:
   * `partyStart`: Coordenadas seguras donde se despliega el grupo al entrar.
-  * `initialEnemies`: Coordenadas iniciales de los monstruos en las salas visibles.
-  * `reinforcementWaves`: Refuerzos programados (ej. "En la ronda 3, 2 arqueros entran por la celda (12, 0)" o "Si salta la alarma, aparecen 3 guardias").
+  * **Spawners por Misión** (`missionSpawns`): Los enemigos **no se graban estáticamente en el tablero base**. Pertenecen a la misión o contrato activo y se instancian al iniciar el encargo (*ver [[ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES]] §4.1*).
+  * `reinforcementWaves`: Refuerzos contextuales programados (ej. "En la ronda 3 entran 2 arqueros" o "Si salta la alarma, aparecen 3 guardias").
 * **Escenarios y Condiciones de Victoria/Derrota (Gloomhaven style)**:
   * 7 tipos de objetivo soportados: `eliminate`, `eliminate_all`, `survive_rounds`, `reach_cell`, `escort`, `protect`, `loot`.
   * Objetivos principales (obligatorios para la victoria) y opcionales (recompensas adicionales de oro/XP).

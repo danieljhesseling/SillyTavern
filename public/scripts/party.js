@@ -56,7 +56,7 @@ import { resolveEntryMapPosition } from './party/positions.js';
 import { createCampaignState } from './party/campaign-state.js';
 import {
     normalizeTerrain, setCell as setTerrainCell, getTerrainOptions, getCoverBonus, setDoorOpen,
-    parseCellKey, terrainFromAsciiMap, cellKey, isPassable,
+    parseCellKey, terrainFromAsciiMap, cellKey, isPassable, getCell,
 } from './game-engine/board/terrain.js';
 import { getReachableCells, findPath, getPathCost } from './game-engine/board/pathfinding.js';
 import { getCoverAlongLine } from './game-engine/board/line-of-sight.js';
@@ -79,7 +79,7 @@ import {
 import { rollEncounterLoot, lootRulesWithWorldItems } from './game-engine/combat/loot.js';
 import { holdDuringCombat } from './game-engine/combat/combat-hold.js';
 import {
-    applyInjury, healInjuries, describeInjuries, readInjuries, setInjury,
+    applyInjury, healInjuries, describeInjuries, readInjuries, setInjury, treatmentCost,
 } from './game-engine/rules/injuries.js';
 import {
     tickNeeds, exhaustionInjury, describeNeeds, LETHAL_EXHAUSTION,
@@ -91,8 +91,21 @@ import { readDebt, offerPatronage, settlesDebt, debtDue, describeDebt } from './
 import { SKILLS, checkOptions, rollCheck } from './game-engine/rules/checks.js';
 import { recordDeed, worldMemoryBlock, roadTrouble } from './game-engine/campaign/world-memory.js';
 import {
-    readPlot, startPlot, plotEvent, focusOf, describeFocus, plotFromFaction,
+    readPlot, startPlot, plotEvent, focusOf, describeFocus, plotFromFaction, chooseEnding, actOf, hasEnded,
 } from './game-engine/campaign/plot.js';
+import {
+    readWrittenContracts, availableWritten, writtenSlots, toBoardContract, settlesNoFight, describeWrittenAccept,
+} from './game-engine/campaign/written-contracts.js';
+import { readRumors, nextRumor, describeRumor } from './game-engine/campaign/rumors.js';
+import { chooseSource } from './game-engine/campaign/mix.js';
+import {
+    canExplore, discoverPlace, boardForPlace, peopleWanted, readProposals, addProposal, takeProposal,
+} from './game-engine/world/growth.js';
+import { ToolManager } from './tool-calling.js';
+import { servicesOf, serviceActions } from './game-engine/campaign/services.js';
+import { chooseBark } from './game-engine/combat/barks.js';
+import { bodyLine } from './game-engine/campaign/body.js';
+import { relieve } from './game-engine/rules/needs.js';
 import { promptKey } from './game-engine/cost/prompt-order.js';
 import {
     generateBoardOfContracts, contractsFromFactions, expireContracts, describeContract,
@@ -103,7 +116,7 @@ import {
 } from './game-engine/campaign/guild.js';
 import { generateBoard } from './game-engine/world-builder/dungeon-generator.js';
 import {
-    formParty, canControl, describeMode, readMode, MODES,
+    formParty, canControl, describeMode, readMode, MODES, readReasons,
 } from './game-engine/rules/companions.js';
 import { describeLootItem } from './game-engine/combat/loot-items.js';
 import { planSpawnCells } from './game-engine/combat/spawn.js';
@@ -749,6 +762,23 @@ function loadCurrentLocation() {
     void reloadWorldFactions();
 }
 
+/** De que mundo son los datos leidos. */
+let loadedWorldName = '';
+
+/**
+ * Releer los datos del mundo si el abierto ya no es el que se leyo.
+ *
+ * Al crear una campana, el chat cambia **antes** de saber cual es su mundo: la lectura de
+ * ese momento no encuentra nada, y nadie volvia a leer. Sin esto, un mundo escrito entero
+ * se jugaba sin sus encargos, sin sus rumores y sin sus facciones hasta recargar.
+ *
+ * @returns {Promise<void>}
+ */
+async function ensureWorldData() {
+    const worldName = String(chat_metadata?.[METADATA_KEY] || '');
+    if (worldName && worldName !== loadedWorldName) await reloadWorldFactions();
+}
+
 /**
  * Las facciones del mundo abierto, ya leidas.
  *
@@ -773,11 +803,23 @@ async function reloadWorldFactions() {
     }
     try {
         const data = await loadWorldInfo(worldName);
+        loadedWorldName = worldName;
         currentWorldFactions = readFactions(data?.metadata?.factions);
         // Y los mandos del tablon, que se leen en el mismo sitio y para lo mismo.
         lastBoardRules = data?.metadata?.boardRules ?? null;
         lastWrittenQuests = Array.isArray(data?.metadata?.writtenQuests)
             ? data.metadata.writtenQuests : [];
+        // Lo que trae un mundo escrito entero: sus encargos, sus rumores y su mezcla.
+        lastWrittenContracts = readWrittenContracts(data?.metadata?.writtenContracts);
+        lastRumors = readRumors(data?.metadata?.rumors);
+        lastWorldNpcs = Object.values(data?.entries ?? {})
+            .filter((/** @type {any} */ e) => e?.dndData?.entityType === 'npc')
+            .map((/** @type {any} */ e) => ({
+                name: String(e.dndData?.name || e.comment || ''),
+                where: String(e.dndData?.mapPosition?.locationName || ''),
+                service: String(e.dndData?.service || ''),
+            }));
+        lastMix = data?.metadata?.mix ?? null;
         // Y lo que este mundo dejo entrar de cada bateria.
         lastPicks = (data?.metadata?.picks && typeof data.metadata.picks === 'object')
             ? data.metadata.picks : null;
@@ -1887,7 +1929,13 @@ function damagePartyMember(target, totalDamage, isCrit = false) {
             target.deathSaves = clearDeathSaves();
             lines.push(`🩸 ${target.name} cae a 0 PG y empieza a jugarsela: `
                 + 'tres exitos para estabilizarse, tres fallos y se acabo.');
+            // C7: alguien de pie lo grita.
+            const witness = partyMembers.find(m => String(m.id) !== String(target.id)
+                && String(m.id) !== String(partyMembers[0]?.id) && (Number(m.hp) || 0) > 0);
+            if (witness) bark(witness, 'ally_down', String(target.name));
         }
+    } else if ((Number(target.hp) || 0) / Math.max(1, Number(target.maxHp) || 1) < 0.3) {
+        bark(target, 'hurt');
     }
 
     return lines;
@@ -2715,6 +2763,17 @@ function awardEncounterLoot(defeated) {
         }
     }
 
+    // G5: a veces, algo forjado que no estaba en ninguna lista. Solo de quien plantaba cara
+    // (desafio de medio para arriba), y en la parte que la curva deja a lo generado.
+    const worthy = defeated.some((/** @type {any} */ e) => Number(e?.cr) >= 0.5);
+    if (worthy && survivors[0] && lastCompendium.has('materiales') && mixSource({ written: true }) !== 'written') {
+        const forged = forgeFromCompendium({ compendium: lastCompendium, random: nextRandom });
+        if (forged) {
+            addItemToInventory(/** @type {any} */ (survivors[0]), createItem(/** @type {any} */ (forged)));
+            postCombatNarration(`🗡️ [COMBAT] Entre lo que dejaron: ${describeItem(forged)}.`);
+        }
+    }
+
     for (const line of loot.lines) postCombatNarration(line);
 
     // Levelling is not automatic: the sheet already has a button for it, and deciding
@@ -2740,8 +2799,20 @@ function awardEncounterLoot(defeated) {
 function deliverTakenContract() {
     const taken = chat_metadata?.[TAKEN_KEY];
     if (!taken || !currentBoardName) return;
-    if (!String(currentBoardName).includes('(encargo)')) return;
+    // Uno escrito se entrega en su tablero; uno generado, en el que se le construyo.
+    const itsBoard = taken.boardName
+        ? String(currentBoardName) === String(taken.boardName)
+        : String(currentBoardName).includes('(encargo)');
+    if (!itsBoard) return;
+    finishTakenContract(taken);
+}
 
+/**
+ * Cumplir el encargo aceptado: pagar, subir la reputacion, apuntarlo y contarlo.
+ *
+ * @param {any} taken
+ */
+function finishTakenContract(taken) {
     const guild = getGuild();
     const done = completeContract(guild, taken);
 
@@ -2754,6 +2825,15 @@ function deliverTakenContract() {
     delete chat_metadata[TAKEN_KEY];
 
     noteDeed(`Entregasteis el encargo «${taken.title}»${taken.patron ? ` (lo pedía ${taken.patron})` : ''}.`);
+    // Uno escrito no vuelve a salir, y su giro es lo que se descubre al cumplirlo.
+    if (taken.written) {
+        const done = Array.isArray(chat_metadata[WRITTEN_DONE_KEY]) ? chat_metadata[WRITTEN_DONE_KEY] : [];
+        chat_metadata[WRITTEN_DONE_KEY] = [...new Set([...done, String(taken.id)])];
+        if (taken.twist) {
+            void postForModel(`[ENCARGO] «${taken.title}», cumplido. Lo que se descubre: ${taken.twist} `
+                + 'Cuéntalo en un párrafo. No inventes nada que no esté aquí.');
+        }
+    }
     notePlot({ kind: 'contract', id: String(taken.id), faction: String(taken.faction || ''), against: Boolean(taken.against) });
 
     // Si era el favor que se debia, la cuenta queda saldada.
@@ -3015,6 +3095,19 @@ let lastBoardRules = null;
 let lastPicks = null;
 /** @type {any[]} */
 let lastWrittenQuests = [];
+/** @type {import('./game-engine/campaign/written-contracts.js').WrittenContract[]} */
+let lastWrittenContracts = [];
+/** @type {import('./game-engine/campaign/rumors.js').Rumor[]} */
+let lastRumors = [];
+/** @type {any} */
+let lastMix = null;
+/** La gente del mundo: quien es, donde vive y que servicio atiende. */
+/** @type {Array<{name: string, where: string, service: string}>} */
+let lastWorldNpcs = [];
+
+/** Los encargos escritos ya entregados, y los rumores ya oidos. */
+const WRITTEN_DONE_KEY = 'writtenDone';
+const RUMORS_HEARD_KEY = 'rumorsHeard';
 
 /**
  * El tablon, llenandolo si hace falta.
@@ -3054,6 +3147,30 @@ function refreshContractBoard() {
                 patron: 'El mundo',
             }),
         ));
+    }
+
+    // Lo que trae escrito el mundo va primero, en la parte que le toca segun el acto: la
+    // curva de la mezcla (M7). Lo demas lo pone el generador, como siempre.
+    if (lastWrittenContracts.length > 0) {
+        const plot = getPlot();
+        const act = actOf(plot, chat_metadata[PLOT_STATE_KEY]);
+        const taken = chat_metadata?.[TAKEN_KEY];
+        const pool = availableWritten({
+            contracts: lastWrittenContracts,
+            act,
+            done: Array.isArray(chat_metadata[WRITTEN_DONE_KEY]) ? chat_metadata[WRITTEN_DONE_KEY] : [],
+            busy: [...kept.map((/** @type {any} */ c) => String(c.id)), taken ? String(taken.id) : ''],
+        });
+        const slots = writtenSlots({
+            wanted,
+            onBoard: kept.filter((/** @type {any} */ c) => c.written).length,
+            available: pool.length,
+            act,
+            ended: plot ? hasEnded(plot, chat_metadata[PLOT_STATE_KEY]) : false,
+            mix: lastMix,
+        });
+        // Sin pasarse del tamano del tablon: lo escrito entra en los huecos, no encima.
+        kept.push(...pool.slice(0, Math.min(slots, Math.max(0, wanted - kept.length))).map(w => toBoardContract(w, today)));
     }
 
     // Uno de cada N encargos sale de lo que alguien quiere de verdad. Lo dice el mundo, y
@@ -3277,6 +3394,8 @@ function noteDeed(text) {
 /** El hilo de la campana, y por donde va. */
 const PLOT_KEY = 'plot';
 const PLOT_STATE_KEY = 'plotState';
+/** Si la mecha ya se ha contado. */
+const PLOT_ANNOUNCED_KEY = 'plotAnnounced';
 
 /** @returns {import('./game-engine/campaign/plot.js').Plot|null} */
 function getPlot() {
@@ -3290,10 +3409,11 @@ function getPlot() {
  * se cuenta la mecha, que es como empieza una campana nueva. Sin el, se pone en silencio:
  * una campana que ya iba por la mitad no puede empezar de repente por la primera escena.
  *
- * @param {{announce?: boolean}} [options]
+ * @param {{announce?: boolean, heroNote?: string}} [options]
  * @returns {Promise<void>}
  */
-async function ensurePlot({ announce = false } = {}) {
+async function ensurePlot({ announce = false, heroNote = '' } = {}) {
+    await ensureWorldData();
     if (!chat_metadata || chat_metadata[PLOT_STATE_KEY]) return;
     const worldName = String(chat_metadata?.[METADATA_KEY] || '');
     if (!worldName) return;
@@ -3315,8 +3435,10 @@ async function ensurePlot({ announce = false } = {}) {
     const step = startPlot(plot);
     chat_metadata[PLOT_STATE_KEY] = step.state;
     saveMetadata();
-    if (announce) await applyPlotStep(step);
-    else if (isShellOpen()) refreshGameShell();
+    if (announce) {
+        chat_metadata[PLOT_ANNOUNCED_KEY] = true;
+        await applyPlotStep(step, heroNote);
+    } else if (isShellOpen()) refreshGameShell();
 
     // Donde ya se esta tambien cuenta: si la partida empieza en la sede de quien hay que
     // ir a ver, no hace falta salir y volver.
@@ -3347,7 +3469,7 @@ function notePlot(event) {
  * @param {import('./game-engine/campaign/plot.js').PlotStep} step
  * @returns {Promise<void>}
  */
-async function applyPlotStep(step) {
+async function applyPlotStep(step, heroNote = '') {
     if (step.changes.reveal.length > 0) await revealLocations(step.changes.reveal);
     for (const [faction, amount] of Object.entries(step.changes.standing)) {
         void shiftFactionStanding(faction, amount);
@@ -3364,15 +3486,38 @@ async function applyPlotStep(step) {
         if (milestone.scene) lines.push(milestone.scene);
     }
     if (step.changes.reveal.length > 0) lines.push(`Ahora se sabe cómo llegar a: ${step.changes.reveal.join(', ')}.`);
+    if (heroNote && lines.length > 0) lines.push(heroLine(heroNote));
+
+    // Un final: cual, lo decide con quien os habeis aliado. Se cuenta entero y se guarda.
+    const endingId = chooseEnding(step.changes, getCurrentWorldFactions());
+    if (endingId && chat_metadata) {
+        const ending = getPlot()?.endings?.[endingId];
+        chat_metadata.plotEnding = endingId;
+        saveMetadata();
+        if (ending?.scene) lines.push(ending.scene);
+        noteDeed(`Final: ${ending?.title || endingId}.`);
+        toastr.success(ending?.title || endingId, 'Final', { timeOut: 15000 });
+    }
 
     const focus = focusOf(getPlot(), chat_metadata?.[PLOT_STATE_KEY]);
-    if (focus) toastr.info(describeFocus(focus), 'Lo que tienes entre manos', { timeOut: 10000 });
+    // Corto: la linea fija de arriba ya lo dice, esto es solo el aviso del cambio.
+    if (focus && step.done.length > 0) toastr.info(describeFocus(focus), 'Lo que tienes entre manos', { timeOut: 5000 });
     if (isShellOpen()) refreshGameShell();
 
     if (lines.length === 0) return;
     lines.push('Cuéntalo en uno o dos párrafos, en el tono de la campaña. No inventes nada que no esté aquí.');
     await postForModel(`[HILO] ${lines.join('\n')}`)
         .catch(error => console.error('[party] plot note failed', error));
+}
+
+/**
+ * Quien juega, para la mecha: su pasado manda sobre como se cuenta la primera escena.
+ *
+ * @param {string} heroNote
+ * @returns {string}
+ */
+function heroLine(heroNote) {
+    return `Quien juega es ${heroNote}. Adapta la escena a quién es: no contradigas su pasado.`;
 }
 
 /**
@@ -3384,7 +3529,15 @@ async function applyPlotStep(step) {
  * @param {string[]} names
  * @returns {Promise<void>}
  */
-async function revealLocations(names) {
+function revealLocations(names) {
+    return worldWrite(() => revealLocationsNow(names));
+}
+
+/**
+ * @param {string[]} names
+ * @returns {Promise<void>}
+ */
+async function revealLocationsNow(names) {
     const worldName = String(chat_metadata?.[METADATA_KEY] || '');
     if (!worldName) return;
     try {
@@ -3404,12 +3557,430 @@ async function revealLocations(names) {
 }
 
 /**
+ * Escuchar lo que se cuenta aqui.
+ *
+ * Uno cada vez, sin repetir. Si lleva a un sitio escondido, oirlo lo pone en el mapa: es la
+ * forma mas natural de descubrir.
+ *
+ * @returns {Promise<string>}
+ */
+async function hearRumor() {
+    await ensureWorldData();
+    if (combatEncounter.active) {
+        toastr.warning('No en mitad de un combate.');
+        return '';
+    }
+    const heard = Array.isArray(chat_metadata?.[RUMORS_HEARD_KEY]) ? chat_metadata[RUMORS_HEARD_KEY] : [];
+    const rumor = nextRumor({ rumors: lastRumors, here: currentLocationName, heard });
+    if (!rumor) {
+        toastr.info('Aquí ya no se cuenta nada que no hayas oído.');
+        return '';
+    }
+    chat_metadata[RUMORS_HEARD_KEY] = [...heard, rumor.id];
+    saveMetadata();
+    if (rumor.leadsTo) await revealLocations([rumor.leadsTo]);
+    await postForModel(`[RUMOR] ${describeRumor(rumor)}`);
+    if (isShellOpen()) refreshGameShell();
+    return rumor.text;
+}
+
+// ================================================================
+//  El mundo crece mientras juegas (wiki/ROADMAP_MUNDOS_VIVOS.md, fase G)
+// ================================================================
+
+/** Lo que el narrador ha propuesto y nadie ha ido a buscar todavia. */
+const PROPOSALS_KEY = 'placeProposals';
+/** Cuantas veces se ha explorado: es parte de la semilla del siguiente hallazgo. */
+const EXPLORED_KEY = 'explored';
+
+/**
+ * De donde sale lo siguiente, segun el acto de la partida (M7).
+ *
+ * @param {{written?: boolean, chat?: boolean}} have
+ * @returns {'written'|'seed'|'chat'}
+ */
+function mixSource(have) {
+    const plot = getPlot();
+    const state = chat_metadata?.[PLOT_STATE_KEY];
+    return chooseSource({
+        act: actOf(plot, state),
+        ended: plot ? hasEnded(plot, state) : false,
+        mix: lastMix,
+        roll: nextRandom(),
+        have,
+    });
+}
+
+/**
+ * Escribir en el Lorebook del mundo la gente que falta en un sitio (G3).
+ *
+ * @param {any} data El mundo, ya leido: se escribe en el y se guarda fuera.
+ * @param {string} worldName
+ * @param {any} compendium
+ * @param {string} placeName
+ * @param {number} howMany
+ * @param {() => number} random
+ * @returns {any[]} Los que se han escrito.
+ */
+function writePeopleInto(data, worldName, compendium, placeName, howMany, random) {
+    /** @type {any[]} */
+    const made = [];
+    for (let i = 0; i < howMany; i++) {
+        const person = writePersonFromCompendium({
+            compendium, random, locationName: placeName, banner: bannerOf(placeName, data?.metadata?.factions),
+        });
+        if (!person) break;
+        const entry = createWorldInfoEntry(worldName, data);
+        if (!entry) break;
+        entry.comment = person.name;
+        entry.key = person.keys;
+        entry.content = [person.backstory, person.personality].filter(Boolean).join(' ');
+        entry.group = 'Characters';
+        entry.dndData = {
+            entityType: 'npc',
+            name: person.name,
+            title: person.title,
+            factions: person.factions,
+            mapPosition: { locationName: placeName, gridX: 0, gridY: 0 },
+            generated: true,
+        };
+        made.push(person);
+    }
+    return made;
+}
+
+/**
+ * Explorar los alrededores: descubrir un sitio nuevo, con su tablero, sus bichos y su gente.
+ *
+ * Gasta un bloque del dia. Con nombre, va a buscar lo que propuso el narrador (G6).
+ *
+ * @param {string} [name]
+ * @returns {Promise<string>}
+ */
+async function exploreHere(name = '') {
+    await ensureWorldData();
+    if (combatEncounter.active) {
+        toastr.warning('No en mitad de un combate.');
+        return '';
+    }
+    const worldName = String(chat_metadata?.[METADATA_KEY] || '');
+    const data = worldName ? await loadWorldInfo(worldName) : null;
+    if (!data?.metadata || !currentLocationName) {
+        toastr.warning('Primero hay que estar en algún sitio.');
+        return '';
+    }
+    const places = Array.isArray(data.metadata.locationMaps) ? data.metadata.locationMaps : [];
+    const hidden = Array.isArray(data.metadata.hiddenLocations) ? data.metadata.hiddenLocations : [];
+    const { proposal, proposals } = takeProposal(chat_metadata[PROPOSALS_KEY], name);
+    if (name && !proposal) {
+        toastr.warning(`Nadie ha hablado de «${name}».`);
+        return '';
+    }
+    if (!canExplore(places, hidden)) {
+        toastr.info('Por aquí ya no queda nada que no conozcáis.', 'Explorar');
+        return '';
+    }
+
+    const compendium = await campaignCompendium();
+    const count = Math.max(0, Number(chat_metadata[EXPLORED_KEY]) || 0);
+    const random = createSeededRandom(derive(seedOfWorld(data.metadata), 'explorar', currentLocationName, proposal?.name || String(count)));
+    const place = discoverPlace({
+        compendium, locations: [...places, ...hidden], here: currentLocationName, random,
+        name: proposal?.name ?? '', note: proposal?.note ?? '', source: proposal ? 'chat' : 'seed',
+    });
+    if (!place) {
+        toastr.info('No encontráis nada que no conozcáis ya.', 'Explorar');
+        return '';
+    }
+
+    // G4: lo que vive ahi, criado para su bioma y guardado en el bestiario del mundo.
+    const bred = compendium.has('bestiario')
+        ? breedBand({ compendium, howMany: 2, cr: 0.5, biome: place.biome, random })
+        : [];
+    for (const monster of bred) {
+        const entry = createWorldInfoEntry(worldName, data);
+        if (!entry) continue;
+        entry.comment = monster.name;
+        entry.key = [monster.name];
+        entry.content = monster.description || monster.name;
+        entry.group = 'Monsters';
+        entry.dndData = {
+            entityType: 'monster', name: monster.name, hp: monster.hp, maxHp: monster.hp,
+            armorClass: monster.armorClass, cr: monster.cr, speed: monster.speed,
+            profile: monster.profile, attackRangeFeet: monster.attackRangeFeet, abilities: monster.abilities ?? [],
+            generated: true,
+        };
+    }
+    const bestiaryNames = bred.length > 0
+        ? bred.map(m => m.name)
+        : getCurrentWorldEnemies().map((/** @type {any} */ e) => String(e?.name || '')).filter(Boolean);
+
+    // G2: su tablero, de su forma.
+    place.boards = [boardForPlace({ place, random, bestiary: bestiaryNames, partySize: partyMembers.length })];
+    // G3: su gente.
+    const people = writePeopleInto(data, worldName, compendium, place.name, 2, random);
+
+    data.metadata.locationMaps = [...places, place];
+    await saveWorldInfo(worldName, data, true);
+    await refreshWorldMapGlobals(worldName);
+
+    chat_metadata[EXPLORED_KEY] = count + 1;
+    chat_metadata[PROPOSALS_KEY] = proposals;
+    saveMetadata();
+    advanceCampaignSlot();
+
+    noteDeed(`Descubristeis ${place.name}.`);
+    const who = people.map(p => `${p.name}${p.title ? `, ${String(p.title).toLowerCase()}` : ''}`).join(' y ');
+    await postForModel(`[EXPLORAR] Explorando los alrededores de ${currentLocationName}, el grupo encuentra ${place.name}. `
+        + `${place.description}${who ? ` Allí viven ${who}.` : ''} `
+        + 'Cuéntalo en un párrafo. No inventes nada que no esté aquí.');
+    toastr.success(place.name, 'Un sitio nuevo en el mapa');
+    if (isShellOpen()) refreshGameShell();
+    return place.name;
+}
+
+/**
+ * Al llegar a un sitio con poca gente, se escribe la que falta (G3).
+ *
+ * En un mundo escrito, la mezcla decide si le toca a lo generado: un sitio que ya tiene a
+ * alguien escrito solo se completa en la parte que la curva deja a la semilla. Un sitio
+ * vacio se completa siempre, porque llegar tiene que ser llegar a alguna parte.
+ *
+ * @param {string} placeName
+ * @returns {Promise<void>}
+ */
+function populatePlace(placeName) {
+    return worldWrite(() => populatePlaceNow(placeName));
+}
+
+/**
+ * @param {string} placeName
+ * @returns {Promise<void>}
+ */
+async function populatePlaceNow(placeName) {
+    const worldName = String(chat_metadata?.[METADATA_KEY] || '');
+    if (!worldName || !placeName) return;
+    try {
+        const data = await loadWorldInfo(worldName);
+        if (!data) return;
+        const here = Object.values(data.entries ?? {}).filter((/** @type {any} */ e) =>
+            e?.dndData?.entityType === 'npc'
+            && String(e.dndData?.mapPosition?.locationName || '').toLowerCase() === placeName.toLowerCase()).length;
+        const wanted = peopleWanted(here);
+        if (wanted === 0) return;
+        if (here > 0 && mixSource({ written: true }) === 'written') return;
+
+        const compendium = await campaignCompendium();
+        const random = createSeededRandom(derive(seedOfWorld(data.metadata), 'gente', placeName));
+        const people = writePeopleInto(data, worldName, compendium, placeName, wanted, random);
+        if (people.length === 0) return;
+        await saveWorldInfo(worldName, data, true);
+        await refreshWorldMapGlobals(worldName);
+        const who = people.map(p => `${p.name}${p.title ? `, ${String(p.title).toLowerCase()}` : ''}`).join(' y ');
+        const plural = people.length > 1;
+        await postForModel(`[GENTE] En ${placeName} vive${plural ? 'n' : ''} ${who}. `
+            + `Que aparezca${plural ? 'n' : ''} con naturalidad cuando toque: el grupo no ${plural ? 'los' : 'lo'} conoce todavía.`);
+    } catch (error) {
+        console.error('[party] no se pudo poblar el sitio', error);
+    }
+}
+
+// ================================================================
+//  Servicios de cada sitio (wiki/ROADMAP_MUNDOS_VIVOS.md, fase L)
+// ================================================================
+
+/** @returns {any|null} La localidad donde esta el grupo. */
+function hereLocation() {
+    return getCurrentWorldLocationMaps().find((/** @type {any} */ l) => l?.name === currentLocationName) ?? null;
+}
+
+/** Las escrituras del archivo del mundo, en fila (ver worldWrite). */
+let worldWriteQueue = Promise.resolve();
+
+/**
+ * Hacer algo con el archivo del mundo sin pisar a otro que lo este haciendo.
+ *
+ * Llegar a un sitio dispara a la vez el hilo (revela sitios), la gente (G3) y las
+ * reputaciones. Cada uno lee el archivo entero, lo cambia y lo guarda: sin fila, el ultimo
+ * en guardar borraba lo de los demas, y la cueva que el hito acababa de revelar no salia.
+ *
+ * @param {() => Promise<void>} task
+ * @returns {Promise<void>}
+ */
+function worldWrite(task) {
+    const run = worldWriteQueue.then(task, task);
+    worldWriteQueue = run.catch(() => undefined);
+    return run;
+}
+
+/** @returns {boolean} Si aqui hay herreria: es donde se hacen los remedios (DL1). */
+function smithHere() {
+    const here = hereLocation();
+    return Boolean(here) && servicesOf(here).includes('herreria');
+}
+
+/** @returns {string[]} Donde hay herreria, para decirlo cuando aqui no la hay. */
+function smithPlaces() {
+    return getCurrentWorldLocationMaps()
+        .filter((/** @type {any} */ l) => servicesOf(l).includes('herreria'))
+        .map((/** @type {any} */ l) => String(l.name));
+}
+
+/**
+ * Los servicios de aqui, con lo que se puede hacer en cada uno, ya juzgado.
+ *
+ * @returns {ReturnType<typeof serviceActions>}
+ */
+function buildServiceCards() {
+    const location = hereLocation();
+    if (!location || !chat_metadata) return [];
+    const purse = partyPurse();
+    const table = readRemedies();
+    const remedies = partyMembers.flatMap(m => remediesFor(m, purse, table)
+        .map(option => ({ id: option.injuryId, name: String(m.name), label: option.remedy.label, cost: option.remedy.cost })));
+    const price = Number(currentUpkeepRules().healingPerDay) || 5;
+    const cure = partyMembers.reduce((total, m) => {
+        const cost = treatmentCost(m, price);
+        return { gold: total.gold + cost.gold, days: Math.max(total.days, cost.days) };
+    }, { gold: 0, days: 0 });
+    const innkeeper = lastWorldNpcs.find(n => n.service === 'posada'
+        && n.where.toLowerCase() === String(currentLocationName).toLowerCase())?.name ?? '';
+
+    return serviceActions({
+        location,
+        purse,
+        partySize: partyMembers.length,
+        fighting: combatEncounter.active,
+        companions: partyMembers.slice(1).filter(m => !m.dead).map(m => ({ id: String(m.id), name: String(m.name) })),
+        rumors: rumorsLeftHere(),
+        innkeeper,
+        remedies,
+        cure,
+    });
+}
+
+/**
+ * Hacer algo en un servicio de aqui.
+ *
+ * @param {string} actionId
+ * @returns {Promise<string>}
+ */
+async function runService(actionId) {
+    const action = buildServiceCards().flatMap(card => card.actions).find(a => a.id === actionId);
+    if (!action || !action.enabled) {
+        toastr.warning(action?.detail || 'Eso no se puede hacer aquí ahora.');
+        return '';
+    }
+    // Los remedios se cobran solos, en `buyRemedy`: no se paga dos veces.
+    const smith = actionId.startsWith('smith:');
+    if (!smith && action.cost > 0 && !payFromParty(action.cost)) {
+        toastr.warning(`No llega el oro: cuesta ${action.cost}.`);
+        return '';
+    }
+
+    if (actionId === 'inn-common') await takeRest('corto');
+    else if (actionId === 'inn-room') await takeRest('largo');
+    else if (actionId === 'inn-meal') {
+        for (const member of partyMembers) {
+            member.needs = relieve(member, 'ate');
+            member.needs = relieve(member, 'drank');
+        }
+        postCombatNarration(`🍲 [POSADA] Comida caliente para todos (${action.cost} de oro).`);
+    } else if (actionId.startsWith('inn-round:')) {
+        const member = partyMembers.find(m => String(m.id) === String(action.target));
+        if (member) {
+            recordCampaignBondEvent(String(member.id), 'shared_downtime');
+            advanceCampaignSlot();
+            await postForModel(`[POSADA] Invitas a ${member.name} a una ronda en ${currentLocationName}. `
+                + `Cuenta la conversación en un párrafo: que ${member.name} hable de lo suyo. No inventes hechos nuevos del mundo.`);
+        }
+    } else if (actionId === 'inn-rumor') await hearRumor();
+    else if (actionId === 'inn-talk') draftInChat(`Le digo a ${action.target}: `);
+    else if (smith) {
+        const [, injuryId, name] = actionId.split(':');
+        const member = partyMembers.find(m => String(m.name) === name);
+        if (member) buyRemedy(member, injuryId);
+    } else if (actionId === 'temple-cure') {
+        for (const member of partyMembers) {
+            const patch = healInjuries(member, 9999);
+            member.injuries = patch.injuries;
+            member.baseStats = patch.baseStats;
+            Object.assign(member, patch.stats);
+        }
+        await postForModel(`[TEMPLO] En el templo de ${currentLocationName} os cosen y os vendan (${action.cost} de oro). `
+            + 'Las heridas que se curan con tiempo quedan cerradas. Cuéntalo en dos frases.');
+    } else if (actionId === 'board') await openGuild();
+
+    savePartyState();
+    saveMetadata();
+    renderPartyMembers();
+    if (isShellOpen()) refreshGameShell();
+    return action.label;
+}
+
+// ================================================================
+//  Lo que dicen los companeros en combate (C7)
+// ================================================================
+
+/** La ultima frase, para no repetirla. */
+let lastBark = '';
+
+/**
+ * Que un companero diga algo, a veces. El tuyo no: sus palabras las pones tu.
+ *
+ * Es de adorno —no cambia nada y no se le manda al modelo—, asi que usa `Math.random` y no
+ * el dado de la partida: no puede mover ninguna tirada de las que si cuentan.
+ *
+ * @param {any} member
+ * @param {string} event
+ * @param {string} [about]
+ */
+function bark(member, event, about = '') {
+    if (!member || String(member.id) === String(partyMembers[0]?.id)) return;
+    const line = chooseBark({ event, wants: readReasons(member).wants, about, last: lastBark, random: Math.random });
+    if (!line) return;
+    lastBark = line;
+    postCombatNarration(`💬 ${member.name}: «${line}»`);
+    const token = [...document.querySelectorAll('.wm-token')]
+        .find(t => t instanceof HTMLElement && t.dataset.tokenId === String(member.id) && t.offsetParent);
+    if (!token) return;
+    const bubble = document.createElement('div');
+    bubble.className = 'wm-bark';
+    bubble.textContent = line;
+    token.appendChild(bubble);
+    setTimeout(() => bubble.remove(), 2600);
+}
+
+/** @returns {number} Los rumores que quedan por oir aqui. */
+function rumorsLeftHere() {
+    const heard = Array.isArray(chat_metadata?.[RUMORS_HEARD_KEY]) ? chat_metadata[RUMORS_HEARD_KEY] : [];
+    return lastRumors.filter(r => r.where.toLowerCase() === String(currentLocationName).toLowerCase()
+        && !heard.includes(r.id)).length;
+}
+
+/**
  * Empezar el hilo de una campana recien creada, contando la mecha.
  *
  * @returns {Promise<void>}
  */
-export async function beginCampaignPlot() {
-    await ensurePlot({ announce: true });
+export async function beginCampaignPlot(heroNote = '') {
+    await ensurePlot({ announce: true, heroNote });
+    // Al crear la campana, el arranque silencioso (el de las campanas viejas, al cambiar de
+    // chat) puede haber ganado la carrera: entonces el hilo ya esta en marcha y la mecha no
+    // se ha contado. Se cuenta ahora, una sola vez.
+    const plot = getPlot();
+    if (plot && chat_metadata && !chat_metadata[PLOT_ANNOUNCED_KEY]) {
+        chat_metadata[PLOT_ANNOUNCED_KEY] = true;
+        saveMetadata();
+        const opening = startPlot(plot);
+        const lines = opening.opened.map(m => m.scene).filter(Boolean);
+        if (lines.length > 0 && heroNote) lines.push(heroLine(heroNote));
+        if (lines.length > 0) {
+            lines.push('Cuéntalo en uno o dos párrafos, en el tono de la campaña. No inventes nada que no esté aquí.');
+            await postForModel(`[HILO] ${lines.join('\n')}`)
+                .catch(error => console.error('[party] opening note failed', error));
+        }
+    }
 }
 
 /**
@@ -3427,6 +3998,16 @@ function refreshWorldMemoryPrompt() {
         today: Math.max(1, Math.floor(Number(getCampaignCalendar()?.day) || 1)),
     }) : '';
     setExtensionPrompt(key, block, extension_prompt_types.IN_PROMPT, 0, false, extension_prompt_roles.SYSTEM);
+
+    // C1: como esta el grupo. Va con lo que cambia en cada turno, al final del prompt.
+    const body = chat_metadata ? bodyLine({
+        party: partyMembers,
+        day: Math.max(1, Math.floor(Number(getCampaignCalendar()?.day) || 1)),
+        slot: getCurrentSlotLabel(),
+        climate: String(chat_metadata[CLIMATE_KEY] || ''),
+        place: currentLocationName,
+    }) : '';
+    setExtensionPrompt(promptKey('combat', 'body', 'ctx'), body, extension_prompt_types.IN_PROMPT, 0, false, extension_prompt_roles.SYSTEM);
 }
 
 /** @returns {import('./game-engine/campaign/patronage.js').Debt|null} */
@@ -3497,7 +4078,16 @@ function settleDueDebt() {
  * @param {number} amount
  * @returns {Promise<void>}
  */
-async function shiftFactionStanding(factionId, amount) {
+function shiftFactionStanding(factionId, amount) {
+    return worldWrite(() => shiftFactionStandingNow(factionId, amount));
+}
+
+/**
+ * @param {string} factionId
+ * @param {number} amount
+ * @returns {Promise<void>}
+ */
+async function shiftFactionStandingNow(factionId, amount) {
     const worldName = String(chat_metadata?.[METADATA_KEY] || '');
     if (!worldName) return;
     try {
@@ -4235,6 +4825,10 @@ function endCombat(reason = 'ended') {
     if (reason === 'victory') {
         awardEncounterLoot(combatEncounter.enemies.filter(e => (e.currentHp || 0) <= 0));
 
+        // C7: alguien lo celebra.
+        const cheering = partyMembers.filter(m => String(m.id) !== String(partyMembers[0]?.id) && (Number(m.hp) || 0) > 0);
+        if (cheering.length > 0) bark(cheering[Math.floor(Math.random() * cheering.length)], 'victory');
+
         // El hilo: ganar aqui, y a quien se ha derrotado.
         for (const fallen of combatEncounter.enemies.filter(e => (e.currentHp || 0) <= 0)) {
             notePlot({ kind: 'defeat', enemy: String(fallen.name) });
@@ -4824,6 +5418,7 @@ function performManeuver(kind, targetId = '') {
             attackTotal,
             defenseTotal,
             isFree: (x, y) => isPassable(terrain, x, y, gridWidth, gridHeight) && !taken.has(cellKey(x, y)),
+            isChasm: (x, y) => getCell(terrain, x, y)?.type === 'chasm',
         });
 
         showCombatDiceRoll({
@@ -4839,6 +5434,14 @@ function performManeuver(kind, targetId = '') {
         lines.push(`💪 ${member.name} empuja a ${target.name}: ${attackTotal} contra ${defenseTotal}.`);
         if (!shove.success) {
             lines.push(`❌ ${target.name} aguanta el empujon.`);
+        } else if (shove.falls && shove.pushedTo) {
+            // Al vacio: fuera del combate, sin tirada de dano. Es lo que tiene un precipicio.
+            target.gridX = shove.pushedTo.x;
+            target.gridY = shove.pushedTo.y;
+            target.currentHp = 0;
+            combatEncounter.conditionTimers = clearTimersFor(combatEncounter.conditionTimers, String(target.instanceId));
+            lines.push(`✅ ${target.name} pierde pie y cae al vacío.`);
+            bark(member, 'kill');
         } else if (shove.pushedTo) {
             target.gridX = shove.pushedTo.x;
             target.gridY = shove.pushedTo.y;
@@ -4853,6 +5456,11 @@ function performManeuver(kind, targetId = '') {
     saveCombatState();
     savePartyState();
     postCombatNarration(`[COMBAT] ${lines.join('\n')}`);
+    // Un empujon al vacio puede ser el ultimo golpe del combate.
+    if (kind === 'empujar' && !checkScenarioOutcome() && getAliveEnemies().length === 0 && !judgeCurrentScenario()) {
+        postCombatNarration('🏆 [COMBAT] Todos los enemigos han sido derrotados.');
+        endCombat('victory');
+    }
     renderLocationMapsPreview();
     return `${member.name}: ${maneuver.label}`;
 }
@@ -4985,6 +5593,8 @@ function handlePlayerCombatAttack(rawTargetName) {
     }
 
     saveCombatState();
+    // C7: quien pega dice algo, a veces. No cuesta tokens: son frases escritas.
+    bark(member, target.currentHp === 0 ? 'kill' : (isCrit ? 'crit' : 'hit'));
     postCombatNarration(lines.join('\n'));
 
     // A scenario decides the fight when the board carries one: clearing the enemies is
@@ -5589,6 +6199,7 @@ function deliverGifts(gifts, catalogue) {
  * @returns {Promise<string>}
  */
 async function openGuild() {
+    await ensureWorldData();
     const worldName = String(chat_metadata?.[METADATA_KEY] || '');
     if (!worldName) {
         toastr.warning('Abre una campana antes de mirar el tablon.');
@@ -5667,6 +6278,21 @@ async function acceptContract(id) {
     const board = chat_metadata?.[BOARD_KEY] ?? [];
     const contract = board.find((/** @type {any} */ c) => String(c?.id) === String(id));
     if (!contract) return '';
+
+    // Uno escrito ya tiene su sitio: el tablero del guion, o ninguno si se resuelve sin
+    // pelear. No se genera nada.
+    if (contract.written) {
+        chat_metadata[TAKEN_KEY] = contract;
+        chat_metadata[BOARD_KEY] = board.filter((/** @type {any} */ c) => String(c?.id) !== String(id));
+        saveMetadata();
+        const said = describeWrittenAccept(contract);
+        postCombatNarration(`📄 [GREMIO] ${said}`);
+        void postForModel(`[ENCARGO] ${said} Cuéntalo en una o dos frases. No inventes nada que no esté aquí.`);
+        const formedWritten = formParty(partyMembers, contract, { max: Math.max(1, partyMembers.length) });
+        for (const line of formedWritten.lines) postCombatNarration(`🫱 [GREMIO] ${line}`);
+        toastr.success(contract.locationName, 'Encargo aceptado');
+        return said;
+    }
 
     const worldName = String(chat_metadata?.[METADATA_KEY] || '');
     const data = await loadWorldInfo(worldName);
@@ -6428,11 +7054,18 @@ function openCompanionCard(memberId) {
         const box = $('<div class="cc-remedies"></div>');
         box.append($('<div class="cc-remedy-title"></div>').text(
             `Arrastra: ${lasting.map(injury => injury.label.toLowerCase()).join(', ')}.`));
+        // Los remedios los hace un herrero (DL1): aqui se dice donde hay uno.
+        if (remedies.length > 0 && !smithHere()) {
+            const where = smithPlaces();
+            box.append($('<div class="cc-remedy-title"></div>').text(where.length > 0
+                ? `Esto lo hace un herrero: en ${where.slice(0, 3).join(', ')}.`
+                : 'Esto lo hace un herrero, y por aquí no hay ninguno.'));
+        }
         for (const option of remedies) {
             const buy = $('<button class="menu_button cc-remedy-btn" type="button"></button>')
                 .attr('data-remedy', option.injuryId)
                 .attr('title', option.remedy.description)
-                .prop('disabled', combatEncounter.active || !option.affordable)
+                .prop('disabled', combatEncounter.active || !option.affordable || !smithHere())
                 .text(`${option.remedy.label} — ${option.remedy.cost} de oro`);
             buy.on('click', () => {
                 closeCompanionCard();
@@ -6557,6 +7190,10 @@ function payFromParty(amount) {
 function buyRemedy(member, injuryId) {
     if (combatEncounter.active) {
         toastr.warning('No en mitad de un combate.');
+        return '';
+    }
+    if (!smithHere()) {
+        toastr.warning('Esto lo hace un herrero: hay que estar donde haya uno.');
         return '';
     }
     const table = readRemedies();
@@ -6688,6 +7325,11 @@ function namesInLastNarration() {
  * @returns {import('./game-engine/ui/shell/action-chips.js').ActionChip[]}
  */
 function buildShellChips() {
+    // Si los datos del mundo son de otro, se releen y la fila se vuelve a dibujar.
+    const worldName = String(chat_metadata?.[METADATA_KEY] || '');
+    if (worldName && worldName !== loadedWorldName) {
+        void ensureWorldData().then(() => { if (isShellOpen()) refreshGameShell(); });
+    }
     const location = currentLocationName
         ? getCurrentWorldLocationMaps().find(l => l.name === currentLocationName)
         : null;
@@ -6706,6 +7348,10 @@ function buildShellChips() {
         // Cuantos dados quedan sale del nivel y de los ya gastados; las caras las
         // lee el descanso, que puede esperar al Lorebook porque es asincrono.
         hitDice: availableHitDice(partyMembers),
+        rumors: rumorsLeftHere(),
+        explore: Boolean(currentLocationName) && !currentBoardName
+            && canExplore(getCurrentWorldLocationMaps(), []),
+        proposals: readProposals(chat_metadata?.[PROPOSALS_KEY]).map(p => ({ name: p.name })),
     });
 }
 
@@ -6799,6 +7445,9 @@ function runSkillCheck(skill) {
 
     chat_metadata[PENDING_CHECK_KEY] = { line: result.line, draft: result.draft };
     notePlot({ kind: 'check', skill, success: result.success });
+    // Un encargo que se resuelve sin pelear se da por hecho con una tirada buena en su sitio.
+    const takenNow = chat_metadata?.[TAKEN_KEY];
+    if (settlesNoFight(takenNow, { place: currentLocationName, success: result.success })) finishTakenContract(takenNow);
     saveMetadata();
     draftInChat(result.draft);
     if (isShellOpen()) refreshGameShell();
@@ -7028,6 +7677,7 @@ async function travelWithTime(name, options = {}) {
     saveCurrentLocation();
     saveCurrentBoard();
     notePlot({ kind: 'arrive', place: match.name });
+    void populatePlace(match.name);
 
     // El reloj de uno en uno: cada dia cura, pasa hambre y acerca la cuenta semanal. Un
     // salto de cinco dias de golpe se saltaria cuatro de esos.
@@ -7392,6 +8042,8 @@ function buildShellOptions() {
             : checkOptions(partyMembers[0], { locked: Boolean(chat_metadata?.[PENDING_CHECK_KEY]) })),
         onCheck: (skill) => { runSkillCheck(skill); },
         getFocus: () => focusOf(getPlot(), chat_metadata?.[PLOT_STATE_KEY]),
+        getServices: () => buildServiceCards(),
+        onService: (actionId) => { void runService(actionId); },
         onCompanion: (memberId) => openCompanionCard(memberId),
         onClock: (action) => {
             if (action === 'slot') advanceCampaignSlot();
@@ -10476,6 +11128,23 @@ export function initPartyPanel() {
     }));
 
     SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'explorar',
+        helpString: '<div>Explorar los alrededores: gasta un rato del día y descubre un sitio nuevo junto a donde '
+            + 'estás. Con un nombre, va a buscar lo que el narrador mencionó: <code>/explorar La cueva del norte</code>.</div>',
+        unnamedArgumentList: [
+            SlashCommandArgument.fromProps({ description: 'lo que se va a buscar', typeList: [ARGUMENT_TYPE.STRING], isRequired: false }),
+        ],
+        callback: (_args, value) => exploreHere(String(value ?? '').trim()),
+    }));
+
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'rumor',
+        helpString: '<div>Escuchar lo que se cuenta donde estás. Uno cada vez, sin repetir; '
+            + 'alguno lleva a sitios que no están en el mapa.</div>',
+        callback: () => hearRumor(),
+    }));
+
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
         name: 'tirada',
         helpString: '<div>Intentar algo fuera de combate. El motor tira el dado con la ficha del tuyo y deja '
             + 'el resultado escrito en el chat, para que el narrador lo lea: <code>/tirada persuasion</code>. '
@@ -10618,6 +11287,35 @@ export function initPartyPanel() {
         }
     });
 
+    // G6: el narrador puede proponer un sitio. No lo crea: queda como opcion para quien juega.
+    ToolManager.registerFunctionTool({
+        name: 'proponer_sitio',
+        displayName: 'Proponer un sitio',
+        description: 'Úsala cuando la narración mencione un sitio concreto al que el grupo podría ir y que no está en el mapa '
+            + '(una cueva, una granja, un paso). No lo crea: lo propone, y el jugador decide si va a buscarlo.',
+        parameters: {
+            type: 'object',
+            properties: {
+                nombre: { type: 'string', description: 'Nombre corto del sitio, como lo diría la gente.' },
+                descripcion: { type: 'string', description: 'Una frase: lo que se sabe de él.' },
+            },
+            required: ['nombre'],
+        },
+        action: async (/** @type {{nombre: string, descripcion?: string}} */ params) => {
+            const known = getCurrentWorldLocationMaps().map((/** @type {any} */ l) => String(l?.name || ''));
+            const result = addProposal(chat_metadata?.[PROPOSALS_KEY], {
+                name: params?.nombre, note: params?.descripcion, near: currentLocationName,
+            }, known);
+            if (!result.added) return `No se apunta: ${result.reason}`;
+            chat_metadata[PROPOSALS_KEY] = result.proposals;
+            saveMetadata();
+            if (isShellOpen()) refreshGameShell();
+            return 'Propuesto. El jugador lo verá como opción; no lo narres como un sitio ya visitado.';
+        },
+        shouldRegister: () => Boolean(chat_metadata?.[METADATA_KEY]),
+        stealth: true,
+    });
+
     // El hilo: a quien nombras al hablar, estando donde estas.
     eventSource.on(event_types.MESSAGE_SENT, (/** @type {number} */ messageId) => {
         const said = String(chat?.[messageId]?.mes || '');
@@ -10626,7 +11324,12 @@ export function initPartyPanel() {
 
     // Una campana de antes del hilo lo recibe en silencio la primera vez que se juega.
     eventSource.on(event_types.CHAT_CHANGED, () => {
-        setTimeout(() => { void ensurePlot({ announce: false }); }, 1500);
+        setTimeout(() => {
+            // Una campana sin nada jugado es una que se esta creando: su mecha la cuenta
+            // `beginCampaignPlot`. Poner el hilo en silencio aqui se la comeria.
+            const played = (chat || []).filter(m => m && !m.is_system).length;
+            if (played > 1) void ensurePlot({ announce: false });
+        }, 1500);
     });
 
     // Enviado el mensaje con la tirada, se puede volver a intentar algo.

@@ -65,6 +65,11 @@
       "what": "Tablero y posiciones"
     },
     {
+      "key": "GAME_070_combat_ctx_body",
+      "tier": "combat",
+      "what": "Como esta el grupo: vida, heridas, cansancio (C1)"
+    },
+    {
       "key": "GAME_070_combat_dyn_ejemplo_combate",
       "tier": "combat",
       "what": "Instruccion dinamica de combate"

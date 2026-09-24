@@ -506,6 +506,23 @@ textarea.cw-ai-map {
     opacity: 0.65;
 }
 
+/* Como empieza la historia: lo que el pasado tiene que poder alcanzar. */
+.hc-premise {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 6px 10px;
+    border-left: 3px solid var(--SmartThemeQuoteColor, #e0b050);
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 4px;
+}
+
+.hc-premise-text {
+    font-size: 0.85rem;
+    font-style: italic;
+    opacity: 0.85;
+}
+
 .hc-field {
     display: flex;
     flex-direction: column;

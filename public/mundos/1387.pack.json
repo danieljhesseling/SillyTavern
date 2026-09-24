@@ -1,0 +1,3452 @@
+{
+  "version": 1,
+  "world": {
+    "name": "El valle de Vane",
+    "genre": "Histórico",
+    "synopsis": "Un mercenario atrapado en el Valle de Vane, un rincón fronterizo olvidado, con los pasos del sur cerrados por una nevada que se adelantó. Sin magia, sin razas fantásticas y sin heroísmo gratis: cada día cuesta una ración, cada herida se infecta y la posada cobra los viernes. Tres facciones se despedazan por el valle —el señor de Montesclaros en su castillo, los Lobos del Bosque en la espesura y la Casa Keller bajando del norte— y todas necesitan una espada que se pueda comprar.",
+    "factions": [
+      {
+        "id": "leales-de-montesclaros",
+        "name": "Leales de Montesclaros",
+        "goals": "El señor de Montesclaros impone la ley marcial. Confisca toda la comida del valle para su castillo, condenando a todos los demás a morir de inanición.",
+        "onSuccess": "El señor de Montesclaros impone la ley marcial. Confisca toda la comida del valle para su castillo, condenando a todos los demás a morir de inanición.",
+        "reputation": 0,
+        "seat": "Castillo de Vane",
+        "holds": [
+          "Castillo de Vane",
+          "El Pueblo de Barro"
+        ],
+        "enemies": [
+          "la-casa-keller",
+          "los-lobos-del-bosque"
+        ],
+        "goal": {
+          "kind": "controlar",
+          "target": "El Pueblo de Barro",
+          "pace": 10
+        }
+      },
+      {
+        "id": "los-lobos-del-bosque",
+        "name": "Los Lobos del Bosque",
+        "goals": "Asaltan el castillo y matan al señor. El valle cae en la anarquía absoluta, sin ley, donde el más fuerte roba lo poco que queda.",
+        "onSuccess": "Asaltan el castillo y matan al señor. El valle cae en la anarquía absoluta, sin ley, donde el más fuerte roba lo poco que queda.",
+        "reputation": 0,
+        "seat": "Campamento Furtivo",
+        "holds": [
+          "Campamento Furtivo",
+          "El Camino Viejo"
+        ],
+        "enemies": [
+          "leales-de-montesclaros",
+          "la-casa-keller"
+        ],
+        "goal": {
+          "kind": "destruir",
+          "target": "Castillo de Vane",
+          "pace": 6
+        }
+      },
+      {
+        "id": "la-casa-keller",
+        "name": "La Casa Keller",
+        "goals": "Los Keller arrasan el pueblo para dar un escarmiento y cuelgan de los árboles a todo aquel que no jure lealtad.",
+        "onSuccess": "Los Keller arrasan el pueblo para dar un escarmiento y cuelgan de los árboles a todo aquel que no jure lealtad.",
+        "reputation": -1,
+        "seat": "Campamento Keller",
+        "holds": [
+          "Campamento Keller",
+          "El Peaje Norte"
+        ],
+        "enemies": [
+          "leales-de-montesclaros",
+          "los-lobos-del-bosque"
+        ],
+        "goal": {
+          "kind": "conquistar",
+          "target": "El Pueblo de Barro",
+          "pace": 8
+        }
+      }
+    ],
+    "loreEntries": []
+  },
+  "locations": [
+    {
+      "name": "El Pueblo de Barro",
+      "type": "village",
+      "description": "Un amasijo de cabañas de madera podrida hundiéndose en la nieve negra y el fango. Huele a humo de turba, a sudor rancio y a coles hervidas.",
+      "hidden": false,
+      "biome": "costa",
+      "services": [
+        "posada",
+        "herreria",
+        "tienda",
+        "tablon"
+      ],
+      "factionName": "Leales de Montesclaros",
+      "routes": [
+        {
+          "to": "El Camino Viejo",
+          "days": 1
+        },
+        {
+          "to": "Castillo de Vane",
+          "days": 1
+        },
+        {
+          "to": "La Granja Quemada",
+          "days": 1
+        },
+        {
+          "to": "El Cruce de Caminos",
+          "days": 1
+        }
+      ]
+    },
+    {
+      "name": "Castillo de Vane",
+      "type": "city",
+      "description": "Una mole de piedra gris mal mantenida, con estandartes rasgados por el viento gélido. Huele a leña de pino quemada y a la sangre seca del patíbulo.",
+      "hidden": false,
+      "biome": "urbano",
+      "services": [
+        "tienda",
+        "templo"
+      ],
+      "factionName": "Leales de Montesclaros",
+      "routes": [
+        {
+          "to": "El Pueblo de Barro",
+          "days": 1
+        },
+        {
+          "to": "El Peaje Norte",
+          "days": 2
+        },
+        {
+          "to": "La Ermita Derruida",
+          "days": 1
+        },
+        {
+          "to": "El Cruce de Caminos",
+          "days": 1
+        }
+      ]
+    },
+    {
+      "name": "El Peaje Norte",
+      "type": "outpost",
+      "description": "Dos torres de vigilancia de madera a medio pudrir bloqueando el desfiladero que da al norte. Huele a hierro oxidado, a miedo y a viento cortante.",
+      "hidden": false,
+      "biome": "montaña",
+      "services": [
+        "tablon"
+      ],
+      "factionName": "Leales de Montesclaros",
+      "routes": [
+        {
+          "to": "Castillo de Vane",
+          "days": 2
+        },
+        {
+          "to": "El Lago Helado",
+          "days": 1
+        },
+        {
+          "to": "Campamento Keller",
+          "days": 1
+        },
+        {
+          "to": "La Mina Abandonada",
+          "days": 2
+        }
+      ]
+    },
+    {
+      "name": "El Camino Viejo",
+      "type": "wilderness",
+      "description": "Una antigua calzada imperial devorada por los pinos y cubierta por un palmo de nieve virgen. Huele a resina, a humedad profunda y al aliento de los lobos.",
+      "hidden": false,
+      "biome": "bosque",
+      "services": [],
+      "factionName": "Los Lobos del Bosque",
+      "routes": [
+        {
+          "to": "El Pueblo de Barro",
+          "days": 1
+        },
+        {
+          "to": "Campamento Furtivo",
+          "days": 1
+        }
+      ]
+    },
+    {
+      "name": "La Ermita Derruida",
+      "type": "sanctuary",
+      "description": "Cuatro paredes de piedra sin techo donde un monje medio loco cose a los moribundos. Huele a alcohol de quemar, a hierbas amargas y a carne cauterizada.",
+      "hidden": false,
+      "biome": "montaña",
+      "services": [
+        "templo"
+      ],
+      "factionName": "",
+      "routes": [
+        {
+          "to": "Castillo de Vane",
+          "days": 1
+        },
+        {
+          "to": "El Lago Helado",
+          "days": 1
+        }
+      ]
+    },
+    {
+      "name": "La Granja Quemada",
+      "type": "ruins",
+      "description": "Los esqueletos carbonizados de un granero y una casa, sobresaliendo como huesos negros en la nieve. Huele a ceniza fría y a cadáveres que nadie ha enterrado.",
+      "hidden": false,
+      "biome": "rural",
+      "services": [],
+      "factionName": "",
+      "routes": [
+        {
+          "to": "El Pueblo de Barro",
+          "days": 1
+        },
+        {
+          "to": "La Mina Abandonada",
+          "days": 2
+        }
+      ]
+    },
+    {
+      "name": "El Lago Helado",
+      "type": "wilderness",
+      "description": "Una inmensa llanura de hielo grisáceo que cruje con cada paso pesado. Huele a escarcha pura y a pescado podrido en las orillas.",
+      "hidden": false,
+      "biome": "hielo",
+      "services": [],
+      "factionName": "",
+      "routes": [
+        {
+          "to": "El Peaje Norte",
+          "days": 1
+        },
+        {
+          "to": "La Ermita Derruida",
+          "days": 1
+        }
+      ]
+    },
+    {
+      "name": "Campamento Furtivo",
+      "type": "camp",
+      "description": "Un laberinto de tiendas hechas con pieles y ramas, escondido en la espesura más densa del bosque. Huele a carne asada, a humedad y a acero afilado con piedra.",
+      "hidden": true,
+      "biome": "bosque",
+      "services": [
+        "tienda",
+        "tablon"
+      ],
+      "factionName": "Los Lobos del Bosque",
+      "routes": [
+        {
+          "to": "El Camino Viejo",
+          "days": 1
+        },
+        {
+          "to": "El Cruce de Caminos",
+          "days": 1
+        }
+      ]
+    },
+    {
+      "name": "Campamento Keller",
+      "type": "camp",
+      "description": "Líneas perfectas de tiendas negras y estacas afiladas, un campamento militar de libro plantado en el hielo. Huele a aceite de armas, a caballos y a disciplina militar.",
+      "hidden": true,
+      "biome": "montaña",
+      "services": [
+        "herreria",
+        "tienda"
+      ],
+      "factionName": "La Casa Keller",
+      "routes": [
+        {
+          "to": "El Peaje Norte",
+          "days": 1
+        }
+      ]
+    },
+    {
+      "name": "La Mina Abandonada",
+      "type": "dungeon",
+      "description": "Una herida negra en el costado de la montaña, apuntalada con vigas que están a punto de ceder. Huele a carbón, a azufre y al sudor de los contrabandistas.",
+      "hidden": true,
+      "biome": "cueva",
+      "services": [],
+      "factionName": "La Casa Keller",
+      "routes": [
+        {
+          "to": "La Granja Quemada",
+          "days": 2
+        },
+        {
+          "to": "El Peaje Norte",
+          "days": 2
+        }
+      ]
+    },
+    {
+      "name": "El Cruce de Caminos",
+      "type": "ruins",
+      "description": "Donde convergen los caminos principales del valle, el deshielo ha convertido la tierra en un lago de fango infranqueable. Huele a barro, a lluvia inminente y a muerte.",
+      "hidden": true,
+      "biome": "rural",
+      "services": [],
+      "factionName": "",
+      "routes": [
+        {
+          "to": "El Pueblo de Barro",
+          "days": 1
+        },
+        {
+          "to": "Castillo de Vane",
+          "days": 1
+        },
+        {
+          "to": "Campamento Furtivo",
+          "days": 1
+        }
+      ]
+    }
+  ],
+  "confidants": [
+    {
+      "name": "Bran",
+      "description": "Bran se sienta a afilar su espada junto al fuego. Te confiesa que la hoja pertenecía a su hijo, que murió en el sur por culpa de un general incompetente. Te cobra la ración, pero hoy no te cobra las palabras.",
+      "className": "guerrero",
+      "motive": "coin",
+      "arcana": "",
+      "scenes": [
+        {
+          "rank": 2,
+          "title": "El peso del acero",
+          "scene": "Bran se sienta a afilar su espada junto al fuego. Te confiesa que la hoja pertenecía a su hijo, que murió en el sur por culpa de un general incompetente. Te cobra la ración, pero hoy no te cobra las palabras."
+        },
+        {
+          "rank": 4,
+          "title": "La rodilla que falla",
+          "scene": "Durante la marcha, Bran se tropieza y no puede levantarse. Te pide que lo dejes atrás, que un mercenario cojo es carne muerta. Tienes que convencerle de que en tu escuadra nadie se queda tirado en la nieve."
+        },
+        {
+          "rank": 6,
+          "title": "El estandarte quemado",
+          "scene": "Encontráis los restos de su antigua compañía congelados en un barranco. Bran te pide ayuda para quemar los cuerpos y no dejar sus anillos a los carroñeros. Si le ayudas, empieza a llamarte 'capitán'."
+        },
+        {
+          "rank": 8,
+          "title": "Una jarra por los caídos",
+          "scene": "En la taberna de Giles, Bran gasta su paga en comprarte la mejor cerveza aguada que hay. Te jura que, aunque una semana no le pagues, su acero cubrirá tu espalda."
+        },
+        {
+          "rank": 10,
+          "title": "La última trinchera",
+          "scene": "Antes de la batalla final, Bran afila la espada de su hijo por última vez. Te mira a los ojos: «Hacía años que no luchaba por algo que no fuera oro. Gracias por devolverme la honra»."
+        }
+      ]
+    },
+    {
+      "name": "Aldara",
+      "description": "Elara te enseña a despellejar un conejo congelado. Es seca, parca en palabras. Te explica que el valle no es cruel, solo indiferente, y que espera que tú no seas otro noble estúpido que se cree inmortal.",
+      "className": "explorador",
+      "motive": "bond",
+      "arcana": "",
+      "scenes": [
+        {
+          "rank": 2,
+          "title": "Trampas en la nieve",
+          "scene": "Elara te enseña a despellejar un conejo congelado. Es seca, parca en palabras. Te explica que el valle no es cruel, solo indiferente, y que espera que tú no seas otro noble estúpido que se cree inmortal."
+        },
+        {
+          "rank": 4,
+          "title": "La cabaña de su padre",
+          "scene": "Te lleva a unas ruinas en el bosque. Te cuenta que los Montesclaros quemaron esto hace diez años por no pagar un impuesto absurdo. Te pide que le ayudes a desenterrar un arco de tejo que escondió de niña."
+        },
+        {
+          "rank": 6,
+          "title": "Sangre en el hielo",
+          "scene": "Mientras exploráis, Elara recibe un corte feo de un furtivo. Se niega a parar. Tienes que usar fuerza o persuasión para obligarla a sentarse y vendarla, enseñándole que aceptar ayuda no es ser débil."
+        },
+        {
+          "rank": 8,
+          "title": "La presa grande",
+          "scene": "Cazáis a un gran ciervo blanco. En lugar de venderlo para hacerse rica, lo reparte entre los muertos de hambre del pueblo de barro. Te guarda el mejor corte a ti y sonríe por primera vez en toda la campaña."
+        },
+        {
+          "rank": 10,
+          "title": "La guía del norte",
+          "scene": "Con el deshielo, Aldara te entrega un mapa hecho a mano de unos pasos secretos hacia el sur. «Nadie me había seguido el ritmo nunca», dice. Es lo más parecido a un abrazo que vas a sacarle."
+        }
+      ]
+    },
+    {
+      "name": "Arthur «Doc»",
+      "description": "Arthur está suturando tu brazo, pero le tiemblan las manos. Huele a licor barato. Te confiesa que lo expulsaron del gremio de cirujanos de la capital por amputar la pierna equivocada a un conde.",
+      "className": "clerigo",
+      "motive": "coin",
+      "arcana": "",
+      "scenes": [
+        {
+          "rank": 2,
+          "title": "El temblor en las manos",
+          "scene": "Arthur está suturando tu brazo, pero le tiemblan las manos. Huele a licor barato. Te confiesa que lo expulsaron del gremio de cirujanos de la capital por amputar la pierna equivocada a un conde."
+        },
+        {
+          "rank": 4,
+          "title": "El matasanos",
+          "scene": "Un campesino os escupe en la calle, reconociendo a Arthur. Lo culpa de la muerte de su mujer. Arthur no se defiende y acepta los golpes. Tienes que intervenir y decidir si apartar al campesino o dejar que Arthur purgue su culpa."
+        },
+        {
+          "rank": 6,
+          "title": "Manuscritos manchados",
+          "scene": "Arthur pierde su bolsa médica en un charco de fango. Cae de rodillas, llorando por sus libros de anatomía. Si te ensucias en el barro para recuperarlos página por página, se da cuenta de que para ti no es solo 'el curandero'."
+        },
+        {
+          "rank": 8,
+          "title": "La operación sin alcohol",
+          "scene": "Un compañero (o tú mismo) necesita cirugía urgente en medio del bosque y no hay licor para calmar los nervios del doctor. Arthur respira hondo, coge el bisturí en seco y no le tiembla el pulso. Ha recuperado la confianza."
+        },
+        {
+          "rank": 10,
+          "title": "El juramento renovado",
+          "scene": "Arthur tira su botella de licor al fuego de la posada. Se ajusta las gafas y jura mantenerte con vida hasta que acabe este maldito invierno. Esta vez le crees."
+        }
+      ]
+    },
+    {
+      "name": "Isolda",
+      "description": "Isolda, vestida de muchacho del establo, se limpia la sangre de los nudillos. Es la hija bastarda de Lord Vane. Te dice que te sigue porque eres el único que no la trata como a un cristal, pero que no te fíes de ella.",
+      "className": "picaro",
+      "motive": "bond",
+      "arcana": "",
+      "scenes": [
+        {
+          "rank": 2,
+          "title": "Seda y barro",
+          "scene": "Isolda, vestida de muchacho del establo, se limpia la sangre de los nudillos. Es la hija bastarda de Lord Vane. Te dice que te sigue porque eres el único que no la trata como a un cristal, pero que no te fíes de ella."
+        },
+        {
+          "rank": 4,
+          "title": "El anillo robado",
+          "scene": "Descubres que Isolda te ha robado parte de tu paga. No para ella, sino para sobornar a un mensajero y enviar una carta al sur. Tienes que elegir si castigarla por robar o pagar tú el resto del soborno para ayudarla."
+        },
+        {
+          "rank": 6,
+          "title": "Las sombras de su padre",
+          "scene": "Asesinos del castillo vienen a por ella; Lord Vane quiere borrar las pruebas de su bastardía. Tras el combate, Isolda se desmorona. Se da cuenta de que su familia realmente la quiere muerta."
+        },
+        {
+          "rank": 8,
+          "title": "Enseñar a morder",
+          "scene": "Te pide que le enseñes el golpe sucio que usas para desarmar. Pasáis la noche entrenando en el barro. Al final, te tira al suelo de una zancadilla, se ríe y te ayuda a levantarte. Te has ganado su lealtad absoluta."
+        },
+        {
+          "rank": 10,
+          "title": "El nombre propio",
+          "scene": "Isolda tira al río un colgante con el blasón de los Montesclaros. Renuncia al apellido y a la herencia. «Solo Isolda. Y soy de tu compañía»."
+        }
+      ]
+    },
+    {
+      "name": "Grimm",
+      "description": "Grimm es una montaña de músculos que habla con gruñidos. En la posada le ves entregar toda su semana de sueldo a un mensajero. Te mira, señala un dibujo arrugado de una mujer y tres niños, y asiente.",
+      "className": "soldado",
+      "motive": "coin",
+      "arcana": "",
+      "scenes": [
+        {
+          "rank": 2,
+          "title": "La bolsa al sur",
+          "scene": "Grimm es una montaña de músculos que habla con gruñidos. En la posada le ves entregar toda su semana de sueldo a un mensajero. Te mira, señala un dibujo arrugado de una mujer y tres niños, y asiente."
+        },
+        {
+          "rank": 4,
+          "title": "La provocación",
+          "scene": "Unos mercenarios borrachos se burlan de Grimm en la taberna y escupen sobre el dibujo de su familia. Él aprieta los puños y no hace nada, por miedo a acabar preso y no poder mandar dinero. Tú decides si pelear en su lugar o sacarlo de allí."
+        },
+        {
+          "rank": 6,
+          "title": "El hachazo salvador",
+          "scene": "En una emboscada, alguien va a matarte por la espalda. Grimm se interpone, se lleva el tajo en el hombro y tumba al atacante. Esa semana te cobra el doble por la herida, pero el respeto se le nota en la cara."
+        },
+        {
+          "rank": 8,
+          "title": "La primera palabra",
+          "scene": "Al calor de la lumbre le coses la herida del hombro y le pasas la bota de vino. Grimm bebe, te mira y, con una voz profunda como una cueva, dice: «Gracias, jefe». Es la primera vez que le oyes hablar."
+        },
+        {
+          "rank": 10,
+          "title": "El muro de hierro",
+          "scene": "Grimm te enseña una carta: su familia está a salvo en la capital. Ya no necesita tu plata para ellos. La dobla, se la guarda en el pecho y se pone a tu lado en la fila. «Hasta el paso», dice. Es la frase más larga que le has oído."
+        }
+      ]
+    }
+  ],
+  "npcs": [
+    {
+      "id": "el-tabernero-giles",
+      "name": "Giles",
+      "trade": "Tabernero",
+      "where": "El Pueblo de Barro",
+      "wants": "Que alguien le pague la cuenta del soldado muerto antes del viernes.",
+      "knows": "Quién entra y quién sale del pueblo de noche, por el crujido de la madera.",
+      "secret": "Aguó la cerveza de la compañía mercenaria para quedarse con la plata de la diferencia.",
+      "voice": "Lenta, ronca, siempre midiendo si el que le habla tiene dinero para pagar.",
+      "service": "posada"
+    },
+    {
+      "id": "alguacil-torres",
+      "name": "Torres",
+      "trade": "Alguacil",
+      "where": "El Pueblo de Barro",
+      "wants": "Un chivo expiatorio rápido para el asesinato y que Vane le deje en paz.",
+      "knows": "Que sus propios guardias aceptan sobornos de los furtivos.",
+      "secret": "Él fue quien dejó la puerta trasera de la posada abierta la noche del asesinato.",
+      "voice": "Grita mucho para ocultar que está aterrorizado.",
+      "service": ""
+    },
+    {
+      "id": "el-herrero-dunstan",
+      "name": "Dunstan",
+      "trade": "Herrero",
+      "where": "El Pueblo de Barro",
+      "wants": "Acero de verdad. Está harto de fundir herraduras para hacer espadas.",
+      "knows": "Que hay una veta de hierro puro en la mina abandonada.",
+      "secret": "Fabrica puntas de flecha en secreto para los Lobos del Bosque.",
+      "voice": "Cortante. Da golpes al yunque para interrumpir a quien le molesta.",
+      "service": "herreria"
+    },
+    {
+      "id": "el-enterrador-yorick",
+      "name": "Yorick",
+      "trade": "Enterrador",
+      "where": "El Pueblo de Barro",
+      "wants": "Botas. Los muertos a veces traen botas de buena piel y él se las queda.",
+      "knows": "Cuántos soldados han muerto de verdad en el peaje (muchos más de los que dicen).",
+      "secret": "Vende cadáveres frescos a los lobos de verdad para que no entren al pueblo.",
+      "voice": "Arrastra las eses y siempre parece que se está riendo por dentro.",
+      "service": ""
+    },
+    {
+      "id": "la-madame-vera",
+      "name": "Vera",
+      "trade": "Dueña del burdel (clausurado)",
+      "where": "El Pueblo de Barro",
+      "wants": "Un salvoconducto para sacar a sus chicas del valle.",
+      "knows": "Las debilidades de los oficiales de Vane y de Keller.",
+      "secret": "Escondió al recaudador dos días antes de que lo mataran.",
+      "voice": "Maternal, pero con la mirada fría de un usurero.",
+      "service": "tienda"
+    },
+    {
+      "id": "lord-vane",
+      "name": "Lord Edmund Vane",
+      "trade": "Señor del Valle",
+      "where": "Castillo de Vane",
+      "wants": "Mantener el control del valle hasta primavera, cueste la sangre que cueste.",
+      "knows": "Que el rey le ha dado por muerto y no enviará refuerzos.",
+      "secret": "No tiene oro en la bóveda, solo cobre pintado y pagarés.",
+      "voice": "Culto, sosegado, pero tose a menudo, tapándose la boca con un pañuelo de seda sucia.",
+      "service": ""
+    },
+    {
+      "id": "el-pagador-fantasma",
+      "name": "Oswald el Senescal",
+      "trade": "Senescal y Pagador",
+      "where": "Castillo de Vane",
+      "wants": "Recuperar el libro de cuentas del recaudador muerto.",
+      "knows": "Cuánto debe exactamente Lord Vane a la Casa Keller.",
+      "secret": "Odia a Vane y está dispuesto a abrir las puertas del castillo por el precio adecuado.",
+      "voice": "Siseante y nasal, siempre rodeado de pergaminos.",
+      "service": "tienda"
+    },
+    {
+      "id": "el-guardia-corrupto",
+      "name": "Garret",
+      "trade": "Guardia de la puerta",
+      "where": "Castillo de Vane",
+      "wants": "Suficiente plata para desertar esta misma noche.",
+      "knows": "Los cambios de guardia de la patrulla del camino viejo.",
+      "secret": "Se durmió en su guardia el día que robaron la pólvora del castillo.",
+      "voice": "Nerviosa, mirando a todas partes.",
+      "service": ""
+    },
+    {
+      "id": "el-vigia-tuerto",
+      "name": "El Tuerto",
+      "trade": "Vigía",
+      "where": "El Peaje Norte",
+      "wants": "Una botella de licor fuerte para aguantar el frío de la torre.",
+      "knows": "Los movimientos exactos de las patrullas de Keller.",
+      "secret": "Perdió el ojo por una paliza de sus propios compañeros, no en combate.",
+      "voice": "Escupe antes de responder a cualquier pregunta.",
+      "service": "tablon"
+    },
+    {
+      "id": "el-monje-cirujano",
+      "name": "Hermano Silas",
+      "trade": "Cirujano y clérigo",
+      "where": "La Ermita Derruida",
+      "wants": "Agujas limpias, hilo de seda y alcohol de quemar.",
+      "knows": "Tratar la gangrena y quién fue apuñalado la noche del asesinato.",
+      "secret": "Remata a los soldados que sufren demasiado y se queda con sus pertenencias.",
+      "voice": "Monótona, vacía de empatía. Solo ve carne y problemas mecánicos.",
+      "service": "templo"
+    },
+    {
+      "id": "la-viuda-hambrienta",
+      "name": "Marta",
+      "trade": "Campesina",
+      "where": "La Granja Quemada",
+      "wants": "Venganza contra los hombres de Vane que quemaron su silo.",
+      "knows": "Dónde enterró su difunto marido la herencia (plata antigua).",
+      "secret": "Envenenó el pozo de la granja antes de que llegaran los soldados.",
+      "voice": "Rasposa, llena de odio y ceniza.",
+      "service": ""
+    },
+    {
+      "id": "el-pescador-loco",
+      "name": "Finn",
+      "trade": "Pescador de hielo",
+      "where": "El Lago Helado",
+      "wants": "Que le devuelvan su arpón de la suerte.",
+      "knows": "Dónde el hielo es lo bastante grueso para cruzar con caballos.",
+      "secret": "Sabe que hay armas hundidas en el centro del lago.",
+      "voice": "Canturrea en lugar de hablar. Le falta la mitad de los dientes.",
+      "service": ""
+    },
+    {
+      "id": "karl-el-sordo",
+      "name": "Karl",
+      "trade": "Líder de los furtivos",
+      "where": "Campamento Furtivo",
+      "wants": "Armar a los campesinos para asaltar el castillo de Vane.",
+      "knows": "Quién ordenó realmente poner el cáliz en tu mochila.",
+      "secret": "No está sordo, solo finge para escuchar lo que dicen a sus espaldas.",
+      "voice": "Grita más de lo necesario y ladea la cabeza al 'escuchar'.",
+      "service": ""
+    },
+    {
+      "id": "la-cazadora-nils",
+      "name": "Nils",
+      "trade": "Lugarteniente y cazadora",
+      "where": "Campamento Furtivo",
+      "wants": "Evitar la guerra directa. Prefiere una guerra de guerrillas.",
+      "knows": "Cómo rastrear en la nieve profunda sin dejar huellas.",
+      "secret": "Está enamorada de un soldado de la guarnición de Vane.",
+      "voice": "Práctica, directa al grano, no usa metáforas.",
+      "service": "tienda"
+    },
+    {
+      "id": "capitana-keller",
+      "name": "Elara Keller",
+      "trade": "Comandante de la Vanguardia",
+      "where": "Campamento Keller",
+      "wants": "Una victoria rápida para impresionar a su padre, el Duque.",
+      "knows": "Los puntos ciegos de la muralla del castillo de Vane.",
+      "secret": "Sus líneas de suministro están cortadas; si no toma el castillo en 30 días, morirán de hambre.",
+      "voice": "Autoritaria, orgullosa, acostumbrada a que la obedezcan al instante.",
+      "service": ""
+    },
+    {
+      "id": "el-intendente-norteño",
+      "name": "Ulric",
+      "trade": "Intendente",
+      "where": "Campamento Keller",
+      "wants": "Suministros frescos (carne o grano, no le importa el origen).",
+      "knows": "Los códigos de señales de los vigías de Vane.",
+      "secret": "Falsifica los registros para quedarse una porción de las raciones.",
+      "voice": "Cansada y burocrática. Trata la guerra como un problema matemático.",
+      "service": "tienda"
+    },
+    {
+      "id": "la-forjadora-hilda",
+      "name": "Hilda",
+      "trade": "Herrera de guerra",
+      "where": "Campamento Keller",
+      "wants": "Carbón de calidad para sus fraguas.",
+      "knows": "Cómo reparar armaduras pesadas perforadas.",
+      "secret": "Siente un respeto profundo por el herrero Dunstan y le envía mensajes en secreto.",
+      "voice": "Vozarrón grave, casi como un trueno, siempre manchada de hollín.",
+      "service": "herreria"
+    },
+    {
+      "id": "el-boticario",
+      "name": "Maese Ambrosio",
+      "trade": "Contrabandista de hierbas",
+      "where": "La Mina Abandonada",
+      "wants": "Un escolta para salir del valle con su oro.",
+      "knows": "Cómo hacer pólvora negra rudimentaria.",
+      "secret": "Él proporcionó el veneno que mató al recaudador (el cuchillo fue solo para despistar).",
+      "voice": "Sibilante, usa palabras muy largas para sonar más inteligente de lo que es.",
+      "service": ""
+    },
+    {
+      "id": "el-espia-de-keller",
+      "name": "Sombra",
+      "trade": "Infiltrador",
+      "where": "La Mina Abandonada",
+      "wants": "Que entregues un mensaje cifrado a la Capitana si él muere.",
+      "knows": "Los túneles secretos que conectan la mina con las bodegas del castillo.",
+      "secret": "Es el hermano menor de la Capitana Keller, enviado en misión suicida.",
+      "voice": "Apenas un susurro. Tos sanguinolenta.",
+      "service": ""
+    },
+    {
+      "id": "el-nino-soplillo",
+      "name": "Pip",
+      "trade": "Huérfano y mensajero",
+      "where": "El Cruce de Caminos",
+      "wants": "Medio pan duro y que nadie le pegue hoy.",
+      "knows": "Dónde se esconden los mercenarios que desertaron.",
+      "secret": "Roba los anillos de los cadáveres atrapados en el fango.",
+      "voice": "Aguda, rápida. Si le miras mal, sale corriendo.",
+      "service": ""
+    },
+    {
+      "id": "el-desertor-ahorcado",
+      "name": "Darek",
+      "trade": "Ex-soldado",
+      "where": "El Camino Viejo",
+      "wants": "Que alguien corte la soga que aún lleva atada al cuello.",
+      "knows": "Cómo evitar la emboscada principal de los Lobos del Bosque.",
+      "secret": "Los suyos le colgaron por robar comida, no por desertar. Sobrevivió porque la rama cedió.",
+      "voice": "Rasgada. Le cuesta respirar y siempre se agarra el cuello.",
+      "service": ""
+    },
+    {
+      "id": "el-mercader-atrapado",
+      "name": "Valerius",
+      "trade": "Comerciante",
+      "where": "El Pueblo de Barro",
+      "wants": "Contratar guardaespaldas para cuando se abra el paso.",
+      "knows": "El precio real de las cosas en el sur (aquí te están estafando).",
+      "secret": "Su caravana transportaba esclavos, no especias, y los dejó morir de frío.",
+      "voice": "Zalamera, untuosa, siempre frotándose las manos enguantadas.",
+      "service": "tablon"
+    }
+  ],
+  "bestiary": [
+    {
+      "name": "Campesino desesperado",
+      "hp": 8,
+      "armorClass": 10,
+      "cr": 0.125,
+      "profile": "coward",
+      "attackRangeFeet": 5,
+      "abilities": [
+        "hab-empujon"
+      ],
+      "description": "Ojos hundidos, empuña una horca oxidada y tiembla de frío.",
+      "weakness": "Huyen en cuanto ven a uno de los suyos caer o si los intiman de verdad.",
+      "boss": false
+    },
+    {
+      "name": "Furtivo de los Lobos",
+      "hp": 16,
+      "armorClass": 13,
+      "cr": 0.5,
+      "profile": "skirmisher",
+      "attackRangeFeet": 30,
+      "abilities": [
+        "hab-esfumarse",
+        "trampa_de_cuerda"
+      ],
+      "description": "Lleva pieles sobre cuero endurecido. Dispara y retrocede hacia los árboles.",
+      "weakness": "Dependen del terreno difícil; en campo abierto o cuerpo a cuerpo caen rápido.",
+      "boss": false
+    },
+    {
+      "name": "Perro del Cuervo",
+      "hp": 22,
+      "armorClass": 14,
+      "cr": 1,
+      "profile": "aggressive",
+      "attackRangeFeet": 5,
+      "abilities": [
+        "hab-embate",
+        "lanzar_tierra"
+      ],
+      "description": "Ex-compañero tuyo con cota de mallas abollada y mirada inyectada en sangre.",
+      "weakness": "Atacan al que más daño hace, descuidando su propia defensa.",
+      "boss": false
+    },
+    {
+      "name": "Garth el Sanguinario",
+      "hp": 35,
+      "armorClass": 15,
+      "cr": 2,
+      "profile": "aggressive",
+      "attackRangeFeet": 5,
+      "abilities": [
+        "hab-furia",
+        "romper_rodilla"
+      ],
+      "description": "El sargento que lideró el motín. Le falta media oreja y lleva un hacha de dos manos afiladísima.",
+      "weakness": "Si fallas su ataque principal por esquivar, pierde el equilibrio.",
+      "boss": false
+    },
+    {
+      "name": "Guardia de Montesclaros",
+      "hp": 12,
+      "armorClass": 12,
+      "cr": 0.25,
+      "profile": "guardian",
+      "attackRangeFeet": 10,
+      "abilities": [
+        "hab-cubrirse"
+      ],
+      "description": "Lleva los colores de Vane, pero la armadura le viene grande porque ha perdido peso.",
+      "weakness": "Luchan en bloque. Si separas la formación, entran en pánico.",
+      "boss": false
+    },
+    {
+      "name": "Alabardero del Castillo",
+      "hp": 26,
+      "armorClass": 15,
+      "cr": 1,
+      "profile": "guardian",
+      "attackRangeFeet": 10,
+      "abilities": [
+        "hab-empujon"
+      ],
+      "description": "Veteranos leales que cobran de la reserva privada de Vane. Disciplinados y letales.",
+      "weakness": "Lentos de maniobra. Flanquearlos anula su ventaja de alcance.",
+      "boss": false
+    },
+    {
+      "name": "Infantería de Keller",
+      "hp": 18,
+      "armorClass": 14,
+      "cr": 0.5,
+      "profile": "aggressive",
+      "attackRangeFeet": 5,
+      "abilities": [
+        "hab-embate"
+      ],
+      "description": "Jóvenes del norte, fanatizados y envueltos en tabardos negros.",
+      "weakness": "Avanzan en línea recta sin importar las trampas o el barro.",
+      "boss": false
+    },
+    {
+      "name": "Rompehielos de Keller",
+      "hp": 40,
+      "armorClass": 16,
+      "cr": 2,
+      "profile": "guardian",
+      "attackRangeFeet": 5,
+      "abilities": [
+        "hab-empujon",
+        "grito_de_filas"
+      ],
+      "description": "Acero de la cabeza a los pies. Cada paso que dan hace temblar la nieve.",
+      "weakness": "Vulnerables a ser empujados contra el barro o el agua; su armadura pesa demasiado.",
+      "boss": false
+    },
+    {
+      "name": "Sombra, el espía",
+      "hp": 30,
+      "armorClass": 15,
+      "cr": 2,
+      "profile": "skirmisher",
+      "attackRangeFeet": 5,
+      "abilities": [
+        "hab-ataque-furtivo",
+        "hab-esfumarse",
+        "lanzar_tierra"
+      ],
+      "description": "Viste de blanco grisáceo para fundirse con la nieve. Usa dagas untadas en estiércol.",
+      "weakness": "Su tos lo delata si intentas usar Percepción mientras está escondido.",
+      "boss": false
+    },
+    {
+      "name": "Lobo famélico",
+      "hp": 11,
+      "armorClass": 13,
+      "cr": 0.25,
+      "profile": "aggressive",
+      "attackRangeFeet": 5,
+      "abilities": [
+        "hab-rastrear"
+      ],
+      "description": "Pellejo y huesos. Desesperados por la carne fresca.",
+      "weakness": "El fuego. Una antorcha los mantiene a raya mejor que una espada.",
+      "boss": false
+    },
+    {
+      "name": "Ambrosio el Envenenador",
+      "hp": 22,
+      "armorClass": 11,
+      "cr": 1,
+      "profile": "coward",
+      "attackRangeFeet": 20,
+      "abilities": [
+        "hab-primeros-auxilios"
+      ],
+      "description": "Se esconde detrás de sus matones, arrojando frascos que queman los ojos.",
+      "weakness": "No tiene armas cuerpo a cuerpo. Si le acorralas, se rinde.",
+      "boss": false
+    },
+    {
+      "name": "Alguacil Torres",
+      "hp": 45,
+      "armorClass": 14,
+      "cr": 3,
+      "profile": "aggressive",
+      "attackRangeFeet": 5,
+      "abilities": [
+        "romper_rodilla",
+        "hab-burla"
+      ],
+      "description": "Jefe del Acto 1. Sudoroso, acorralado y dispuesto a matarte para ocultar que él dejó entrar al asesino.",
+      "weakness": "Es cobarde en el fondo. Si matas a sus guardias primero, sus ataques pierden precisión.",
+      "boss": true
+    },
+    {
+      "name": "Capitana Keller",
+      "hp": 80,
+      "armorClass": 17,
+      "cr": 5,
+      "profile": "skirmisher",
+      "attackRangeFeet": 10,
+      "abilities": [
+        "grito_de_filas",
+        "hab-embate",
+        "hab-segundo-aliento"
+      ],
+      "description": "Jefe del Acto 2. Fría como el hielo que pisa, armada con una pica de acero negro.",
+      "weakness": "Su orgullo. Si la provocas con Persuasión/Engaño en combate, cometerá errores para atacarte a ti.",
+      "boss": true
+    },
+    {
+      "name": "Lord Vane",
+      "hp": 60,
+      "armorClass": 16,
+      "cr": 5,
+      "profile": "guardian",
+      "attackRangeFeet": 5,
+      "abilities": [
+        "hab-cubrirse",
+        "hab-ataque-furtivo"
+      ],
+      "description": "Jefe del Acto 3. Lucha con espada ropera y daga de parada. Tose sangre pero pelea con la gracia de un duelista desesperado.",
+      "weakness": "Su enfermedad. Cada tres rondas sufre un ataque de tos que le impide usar reacciones.",
+      "boss": true
+    },
+    {
+      "name": "Lobo alfa",
+      "hp": 22,
+      "armorClass": 13,
+      "cr": 1,
+      "profile": "aggressive",
+      "attackRangeFeet": 5,
+      "abilities": [
+        "romper_rodilla"
+      ],
+      "description": "Más grande que los otros, con el hocico lleno de cicatrices. Los demás no comen hasta que él come.",
+      "weakness": "Si cae, la manada se desbanda.",
+      "boss": false
+    }
+  ],
+  "items": [
+    {
+      "name": "Cáliz ensangrentado de Vane",
+      "type": "gear",
+      "rarity": "Very Rare",
+      "description": "Oro macizo, manchado de sangre reseca. Pesa demasiado para el tamaño que tiene. Devolverlo puede comprar un perdón temporal."
+    },
+    {
+      "name": "Libro de cuentas negro",
+      "type": "gear",
+      "rarity": "Rare",
+      "description": "Tiene las tapas forradas en piel de cerdo. Demuestra que Lord Vane lleva un año sin pagar al rey. Si sale a la luz, el castillo se amotina."
+    },
+    {
+      "name": "Planos de infiltración",
+      "type": "gear",
+      "rarity": "Uncommon",
+      "description": "Dibujados en un cuero muy fino. Marcan un túnel de drenaje que lleva directamente a las bodegas del castillo de Vane."
+    },
+    {
+      "name": "Anillo de plata tosca",
+      "type": "gear",
+      "rarity": "Common",
+      "description": "Lleva grabado un lobo aullando. Perteneció a un soldado ahorcado por robar comida. Sirve para que los furtivos confíen en ti."
+    },
+    {
+      "name": "Cofre de herencia enterrado",
+      "type": "gear",
+      "rarity": "Rare",
+      "description": "Plata de la época del imperio, desenterrada del barro de una granja quemada. Suficiente para pagar a una compañía entera un mes."
+    },
+    {
+      "name": "Acero negro de Keller",
+      "type": "weapon",
+      "rarity": "Rare",
+      "description": "Hilda la forjadora la hizo a medida para el jugador. Está perfectamente equilibrada y no se mella ni golpeando piedra.",
+      "damageDice": "1d8"
+    },
+    {
+      "name": "Arpón de hielo dentado",
+      "type": "weapon",
+      "rarity": "Uncommon",
+      "description": "Huele a pescado muerto, pero sus dientes están diseñados para perforar cuero endurecido y no soltar la presa.",
+      "damageDice": "1d6"
+    },
+    {
+      "name": "Cota de escamas norteña",
+      "type": "armor",
+      "rarity": "Rare",
+      "description": "Arrancada del cadáver de un sargento de vanguardia. Mantiene el calor corporal mucho mejor que la chatarra del sur."
+    },
+    {
+      "name": "Frascos de boticario",
+      "type": "gear",
+      "rarity": "Uncommon",
+      "description": "Contienen una mezcla volátil de azufre y brea. Silas los usaba para cegar a los cobradores de deudas."
+    },
+    {
+      "name": "Barrilito de pólvora negra",
+      "type": "gear",
+      "rarity": "Rare",
+      "description": "Robado de las reservas del norte. Si le acercas una antorcha, volará una puerta de madera maciza (o tus manos)."
+    },
+    {
+      "name": "Ración de invierno",
+      "type": "gear",
+      "rarity": "Common",
+      "description": "Tasajo salado, galleta dura como piedra y nueces pasadas. Necesario para no morir de hambre al viajar."
+    },
+    {
+      "name": "Aguardiente médico",
+      "type": "gear",
+      "rarity": "Common",
+      "description": "Te emborracha si lo bebes, te desinfecta si lo viertes en una herida abierta."
+    },
+    {
+      "name": "Rollo de lino limpio",
+      "type": "gear",
+      "rarity": "Common",
+      "description": "Difíciles de conseguir en el valle. Evitan que una herida grave se infecte y te mate de fiebre."
+    },
+    {
+      "name": "Pasta de musgo y brea",
+      "type": "gear",
+      "rarity": "Uncommon",
+      "description": "Cierra cortes profundos casi al instante. Escuece como si te quemaran."
+    },
+    {
+      "name": "Espada de leva",
+      "type": "weapon",
+      "rarity": "Common",
+      "description": "Acero de baja calidad, lleno de muescas. Mejor que los puños, peor que casi cualquier otra cosa.",
+      "damageDice": "1d6"
+    },
+    {
+      "name": "Hacha de cuña pesada",
+      "type": "weapon",
+      "rarity": "Common",
+      "description": "Diseñada para partir troncos, pero parte cascos de cuero con la misma facilidad.",
+      "damageDice": "1d8"
+    },
+    {
+      "name": "Daga de mano izquierda",
+      "type": "weapon",
+      "rarity": "Uncommon",
+      "description": "Tiene una guarda gruesa para atrapar la hoja del enemigo y romperla.",
+      "damageDice": "1d4"
+    },
+    {
+      "name": "Gambesón grueso",
+      "type": "armor",
+      "rarity": "Common",
+      "description": "Lino relleno de estopa. Para bien los cortes, pero huele a perro mojado y pesa horrores."
+    },
+    {
+      "name": "Escudo de lágrima viejo",
+      "type": "armor",
+      "rarity": "Common",
+      "description": "Ha salvado la vida a tres dueños anteriores. La madera está cediendo."
+    },
+    {
+      "name": "Capelina de acero",
+      "type": "armor",
+      "rarity": "Common",
+      "description": "El abollón lateral demuestra que salvó una cabeza, aunque su dueño debió quedar sordo."
+    },
+    {
+      "name": "Rollo de cuerda (50 pies)",
+      "type": "gear",
+      "rarity": "Common",
+      "description": "Esencial para trampas, descensos o para ahorcar a un traidor."
+    },
+    {
+      "name": "Dados de hueso limados",
+      "type": "gear",
+      "rarity": "Common",
+      "description": "El seis pesa menos. Útiles para desplumar a guardias incautos."
+    },
+    {
+      "name": "Papel sellado en negro",
+      "type": "gear",
+      "rarity": "Uncommon",
+      "description": "Permite cruzar los controles del norte sin que te disparen al instante."
+    }
+  ],
+  "boards": [
+    {
+      "id": "enc-huida-posada",
+      "name": "El cuarto de la posada",
+      "mapId": "habitacion-de-la-posada",
+      "locationName": "El Pueblo de Barro",
+      "map": [
+        "################",
+        "#...c..........#",
+        "#######o########",
+        "#c....c....C...#",
+        "#..............#",
+        "#.....c........#",
+        "#......~....c..#",
+        "#C.............#",
+        "#######o########",
+        "#......~.......#",
+        "################"
+      ],
+      "partyStart": [
+        {
+          "x": 3,
+          "y": 5
+        },
+        {
+          "x": 4,
+          "y": 5
+        },
+        {
+          "x": 3,
+          "y": 6
+        }
+      ],
+      "enemies": [
+        {
+          "name": "Guardia de Montesclaros",
+          "x": 6,
+          "y": 3
+        },
+        {
+          "name": "Guardia de Montesclaros",
+          "x": 8,
+          "y": 3
+        },
+        {
+          "name": "Alguacil Torres",
+          "x": 7,
+          "y": 3
+        }
+      ]
+    },
+    {
+      "id": "enc-emboscada-bosque",
+      "name": "Los claros del Camino Viejo",
+      "mapId": "emboscada-en-el-bosque",
+      "locationName": "El Camino Viejo",
+      "map": [
+        "#################",
+        "#.##~~~~......C.#",
+        "#.#..~c~...~..#.#",
+        "#.....~....~c.#.#",
+        "#c~...C.......~.#",
+        "#.~~.....c....~c#",
+        "#.C..~~~~.......#",
+        "#.#..~~~~~c..C..#",
+        "#.#.........~...#",
+        "#################"
+      ],
+      "partyStart": [
+        {
+          "x": 1,
+          "y": 5
+        },
+        {
+          "x": 1,
+          "y": 6
+        },
+        {
+          "x": 1,
+          "y": 7
+        },
+        {
+          "x": 1,
+          "y": 4
+        }
+      ],
+      "enemies": [
+        {
+          "name": "Furtivo de los Lobos",
+          "x": 3,
+          "y": 2
+        },
+        {
+          "name": "Furtivo de los Lobos",
+          "x": 13,
+          "y": 2
+        },
+        {
+          "name": "Campesino desesperado",
+          "x": 6,
+          "y": 5
+        },
+        {
+          "name": "Campesino desesperado",
+          "x": 8,
+          "y": 5
+        },
+        {
+          "name": "Campesino desesperado",
+          "x": 10,
+          "y": 5
+        }
+      ]
+    },
+    {
+      "id": "enc-los-falsos-desertores",
+      "name": "La granja quemada",
+      "mapId": "los-campos-yermos",
+      "locationName": "La Granja Quemada",
+      "map": [
+        "####################",
+        "#..................#",
+        "#..~~~c......c~~~..#",
+        "#.~~C~~......~~C~~.#",
+        "#.~~~..........~~~.#",
+        "#......c....c......#",
+        "#......#D##D#......#",
+        "#......#....#......#",
+        "#......######......#",
+        "####################"
+      ],
+      "partyStart": [
+        {
+          "x": 8,
+          "y": 7
+        },
+        {
+          "x": 9,
+          "y": 7
+        },
+        {
+          "x": 10,
+          "y": 7
+        },
+        {
+          "x": 11,
+          "y": 7
+        }
+      ],
+      "enemies": [
+        {
+          "name": "Campesino desesperado",
+          "x": 8,
+          "y": 3
+        },
+        {
+          "name": "Campesino desesperado",
+          "x": 9,
+          "y": 3
+        },
+        {
+          "name": "Campesino desesperado",
+          "x": 10,
+          "y": 3
+        },
+        {
+          "name": "Campesino desesperado",
+          "x": 11,
+          "y": 3
+        }
+      ]
+    },
+    {
+      "id": "enc-emboscada-por-el-hierro",
+      "name": "El hierro en el bosque",
+      "mapId": "emboscada-en-el-bosque",
+      "locationName": "El Camino Viejo",
+      "map": [
+        "#################",
+        "#.##~~~~......C.#",
+        "#.#..~c~...~..#.#",
+        "#.....~....~c.#.#",
+        "#c~...C.......~.#",
+        "#.~~.....c....~c#",
+        "#.C..~~~~.......#",
+        "#.#..~~~~~c..C..#",
+        "#.#.........~...#",
+        "#################"
+      ],
+      "partyStart": [
+        {
+          "x": 1,
+          "y": 5
+        },
+        {
+          "x": 1,
+          "y": 6
+        },
+        {
+          "x": 1,
+          "y": 7
+        },
+        {
+          "x": 1,
+          "y": 4
+        }
+      ],
+      "enemies": [
+        {
+          "name": "Furtivo de los Lobos",
+          "x": 3,
+          "y": 2
+        },
+        {
+          "name": "Furtivo de los Lobos",
+          "x": 13,
+          "y": 2
+        },
+        {
+          "name": "Lobo famélico",
+          "x": 6,
+          "y": 6
+        },
+        {
+          "name": "Lobo famélico",
+          "x": 10,
+          "y": 6
+        }
+      ]
+    },
+    {
+      "id": "enc-pelea-callejon",
+      "name": "El callejón inundado",
+      "mapId": "callejon-del-barro",
+      "locationName": "El Pueblo de Barro",
+      "map": [
+        "#################",
+        "#~c~~....~C...~.#",
+        "#~~......~~~~...#",
+        "#.......c...~~..#",
+        "#...C......~c~..#",
+        "#.......~~......#",
+        "#################"
+      ],
+      "partyStart": [
+        {
+          "x": 1,
+          "y": 3
+        },
+        {
+          "x": 2,
+          "y": 3
+        },
+        {
+          "x": 1,
+          "y": 4
+        }
+      ],
+      "enemies": [
+        {
+          "name": "Perro del Cuervo",
+          "x": 12,
+          "y": 2
+        },
+        {
+          "name": "Perro del Cuervo",
+          "x": 14,
+          "y": 4
+        },
+        {
+          "name": "Garth el Sanguinario",
+          "x": 12,
+          "y": 3
+        }
+      ]
+    },
+    {
+      "id": "enc-asedio-a-la-granja",
+      "name": "El asedio de la granja",
+      "mapId": "los-campos-yermos",
+      "locationName": "La Granja Quemada",
+      "map": [
+        "####################",
+        "#..................#",
+        "#..~~~c......c~~~..#",
+        "#.~~C~~......~~C~~.#",
+        "#.~~~..........~~~.#",
+        "#......c....c......#",
+        "#......#D##D#......#",
+        "#......#....#......#",
+        "#......######......#",
+        "####################"
+      ],
+      "partyStart": [
+        {
+          "x": 8,
+          "y": 7
+        },
+        {
+          "x": 9,
+          "y": 7
+        },
+        {
+          "x": 10,
+          "y": 7
+        },
+        {
+          "x": 11,
+          "y": 7
+        }
+      ],
+      "enemies": [
+        {
+          "name": "Infantería de Keller",
+          "x": 3,
+          "y": 1
+        },
+        {
+          "name": "Infantería de Keller",
+          "x": 8,
+          "y": 1
+        },
+        {
+          "name": "Infantería de Keller",
+          "x": 12,
+          "y": 1
+        },
+        {
+          "name": "Infantería de Keller",
+          "x": 16,
+          "y": 1
+        },
+        {
+          "name": "Rompehielos de Keller",
+          "x": 10,
+          "y": 2
+        }
+      ]
+    },
+    {
+      "id": "enc-escolta-quebradiza",
+      "name": "El monje sobre el hielo",
+      "mapId": "el-hielo-quebradisimo",
+      "locationName": "El Lago Helado",
+      "map": [
+        "####################",
+        "#......~~~~~~......#",
+        "#..~~~........~~~..#",
+        "#.~~..c......c..~~.#",
+        "#~~..............~~#",
+        "#~....C..~~..C....~#",
+        "#~~.....~~~~.....~~#",
+        "#.~~~..~~~~~~..~~~.#",
+        "#.....~~~~~~~~.....#",
+        "####################"
+      ],
+      "partyStart": [
+        {
+          "x": 3,
+          "y": 4
+        },
+        {
+          "x": 4,
+          "y": 4
+        },
+        {
+          "x": 3,
+          "y": 5
+        }
+      ],
+      "enemies": [
+        {
+          "name": "Lobo famélico",
+          "x": 2,
+          "y": 1
+        },
+        {
+          "name": "Lobo famélico",
+          "x": 6,
+          "y": 2
+        },
+        {
+          "name": "Lobo famélico",
+          "x": 12,
+          "y": 2
+        },
+        {
+          "name": "Lobo famélico",
+          "x": 16,
+          "y": 1
+        },
+        {
+          "name": "Lobo famélico",
+          "x": 10,
+          "y": 1
+        }
+      ]
+    },
+    {
+      "id": "enc-patrullas-en-la-nieve",
+      "name": "Las empalizadas del peaje",
+      "mapId": "barricadas-del-norte",
+      "locationName": "El Peaje Norte",
+      "map": [
+        "###################",
+        "#..c....~C~....c..#",
+        "#C..~..~~C~~..~..C#",
+        "#.C...~~..c..~~.C.#",
+        "##C.............C##",
+        "###D###########D###",
+        "#.................#",
+        "#..c.....C.....c..#",
+        "#.................#",
+        "###################"
+      ],
+      "partyStart": [
+        {
+          "x": 8,
+          "y": 8
+        },
+        {
+          "x": 9,
+          "y": 8
+        },
+        {
+          "x": 10,
+          "y": 8
+        }
+      ],
+      "enemies": [
+        {
+          "name": "Furtivo de los Lobos",
+          "x": 1,
+          "y": 3
+        },
+        {
+          "name": "Furtivo de los Lobos",
+          "x": 9,
+          "y": 3
+        },
+        {
+          "name": "Furtivo de los Lobos",
+          "x": 17,
+          "y": 3
+        }
+      ]
+    },
+    {
+      "id": "enc-carreta-en-el-hielo",
+      "name": "La carreta hundida",
+      "mapId": "el-hielo-quebradisimo",
+      "locationName": "El Lago Helado",
+      "map": [
+        "####################",
+        "#......~~~~~~......#",
+        "#..~~~........~~~..#",
+        "#.~~..c......c..~~.#",
+        "#~~..............~~#",
+        "#~....C..~~..C....~#",
+        "#~~.....~~~~.....~~#",
+        "#.~~~..~~~~~~..~~~.#",
+        "#.....~~~~~~~~.....#",
+        "####################"
+      ],
+      "partyStart": [
+        {
+          "x": 3,
+          "y": 4
+        },
+        {
+          "x": 4,
+          "y": 4
+        },
+        {
+          "x": 3,
+          "y": 5
+        }
+      ],
+      "enemies": [
+        {
+          "name": "Perro del Cuervo",
+          "x": 5,
+          "y": 4
+        },
+        {
+          "name": "Perro del Cuervo",
+          "x": 10,
+          "y": 4
+        },
+        {
+          "name": "Perro del Cuervo",
+          "x": 15,
+          "y": 4
+        }
+      ]
+    },
+    {
+      "id": "enc-espia-mina",
+      "name": "Los túneles de la mina",
+      "mapId": "galeria-de-contrabando",
+      "locationName": "La Mina Abandonada",
+      "map": [
+        "##################",
+        "#..C..~~....c....#",
+        "#.....~C.........#",
+        "#...c.~~C...C....#",
+        "#C....~~....c....#",
+        "#.......~~.......#",
+        "##################"
+      ],
+      "partyStart": [
+        {
+          "x": 1,
+          "y": 2
+        },
+        {
+          "x": 1,
+          "y": 3
+        },
+        {
+          "x": 2,
+          "y": 3
+        }
+      ],
+      "enemies": [
+        {
+          "name": "Sombra, el espía",
+          "x": 8,
+          "y": 1
+        },
+        {
+          "name": "Perro del Cuervo",
+          "x": 4,
+          "y": 2
+        },
+        {
+          "name": "Perro del Cuervo",
+          "x": 12,
+          "y": 2
+        }
+      ]
+    },
+    {
+      "id": "enc-asalto-peaje",
+      "name": "El asalto de las empalizadas",
+      "mapId": "barricadas-del-norte",
+      "locationName": "El Peaje Norte",
+      "map": [
+        "###################",
+        "#..c....~C~....c..#",
+        "#C..~..~~C~~..~..C#",
+        "#.C...~~..c..~~.C.#",
+        "##C.............C##",
+        "###D###########D###",
+        "#.................#",
+        "#..c.....C.....c..#",
+        "#.................#",
+        "###################"
+      ],
+      "partyStart": [
+        {
+          "x": 8,
+          "y": 8
+        },
+        {
+          "x": 9,
+          "y": 8
+        },
+        {
+          "x": 10,
+          "y": 8
+        }
+      ],
+      "enemies": [
+        {
+          "name": "Infantería de Keller",
+          "x": 4,
+          "y": 2
+        },
+        {
+          "name": "Infantería de Keller",
+          "x": 10,
+          "y": 2
+        },
+        {
+          "name": "Infantería de Keller",
+          "x": 14,
+          "y": 2
+        },
+        {
+          "name": "Rompehielos de Keller",
+          "x": 8,
+          "y": 4
+        },
+        {
+          "name": "Rompehielos de Keller",
+          "x": 12,
+          "y": 4
+        }
+      ]
+    },
+    {
+      "id": "enc-frenar-la-carreta",
+      "name": "El cruce inundado",
+      "mapId": "el-barrizal-final",
+      "locationName": "El Cruce de Caminos",
+      "map": [
+        "###################",
+        "#~~~~~....c..~~~~~#",
+        "#~~~........c.~~~~#",
+        "#~~...C..~......~~#",
+        "#.....~~.~~.......#",
+        "#......~~~C.......#",
+        "#~~....c~~......~~#",
+        "#~~~~........C.~~~#",
+        "#~~~~~....c..~~~~~#",
+        "###################"
+      ],
+      "partyStart": [
+        {
+          "x": 8,
+          "y": 3
+        },
+        {
+          "x": 8,
+          "y": 4
+        },
+        {
+          "x": 11,
+          "y": 4
+        }
+      ],
+      "enemies": [
+        {
+          "name": "Furtivo de los Lobos",
+          "x": 2,
+          "y": 1
+        },
+        {
+          "name": "Furtivo de los Lobos",
+          "x": 6,
+          "y": 1
+        },
+        {
+          "name": "Furtivo de los Lobos",
+          "x": 12,
+          "y": 1
+        },
+        {
+          "name": "Furtivo de los Lobos",
+          "x": 16,
+          "y": 1
+        }
+      ]
+    },
+    {
+      "id": "enc-asalto-keller",
+      "name": "La tienda de mando",
+      "mapId": "tienda-de-mando-keller",
+      "locationName": "Campamento Keller",
+      "map": [
+        "#################",
+        "#C..c.......c..C#",
+        "#...............#",
+        "#...c..C.C..c...#",
+        "#...............#",
+        "##o###########o##",
+        "#.~...........~.#",
+        "#.~~.........~~.#",
+        "#...............#",
+        "#################"
+      ],
+      "partyStart": [
+        {
+          "x": 7,
+          "y": 8
+        },
+        {
+          "x": 8,
+          "y": 8
+        },
+        {
+          "x": 9,
+          "y": 8
+        }
+      ],
+      "enemies": [
+        {
+          "name": "Capitana Keller",
+          "x": 8,
+          "y": 2
+        },
+        {
+          "name": "Rompehielos de Keller",
+          "x": 4,
+          "y": 4
+        },
+        {
+          "name": "Rompehielos de Keller",
+          "x": 12,
+          "y": 4
+        }
+      ]
+    },
+    {
+      "id": "enc-defensa-vane",
+      "name": "Las puertas del castillo",
+      "mapId": "las-puertas-del-castillo",
+      "locationName": "Castillo de Vane",
+      "map": [
+        "####################",
+        "#C.c............c.C#",
+        "##.......C.C......##",
+        "###~~~~.......~~~~##",
+        "###~~~~..c.c..~~~~##",
+        "#.......~~~~~......#",
+        "#c..C...~~~~~...C.c#",
+        "#..................#",
+        "####################"
+      ],
+      "partyStart": [
+        {
+          "x": 9,
+          "y": 7
+        },
+        {
+          "x": 10,
+          "y": 7
+        },
+        {
+          "x": 11,
+          "y": 7
+        }
+      ],
+      "enemies": [
+        {
+          "name": "Lord Vane",
+          "x": 10,
+          "y": 2
+        },
+        {
+          "name": "Alabardero del Castillo",
+          "x": 6,
+          "y": 4
+        },
+        {
+          "name": "Alabardero del Castillo",
+          "x": 8,
+          "y": 4
+        },
+        {
+          "name": "Alabardero del Castillo",
+          "x": 12,
+          "y": 4
+        },
+        {
+          "name": "Alabardero del Castillo",
+          "x": 14,
+          "y": 4
+        }
+      ]
+    },
+    {
+      "id": "enc-emboscada-lobos-alfa",
+      "name": "Lobos en el pueblo",
+      "mapId": "callejon-del-barro",
+      "locationName": "El Pueblo de Barro",
+      "map": [
+        "#################",
+        "#~c~~....~C...~.#",
+        "#~~......~~~~...#",
+        "#.......c...~~..#",
+        "#...C......~c~..#",
+        "#.......~~......#",
+        "#################"
+      ],
+      "partyStart": [
+        {
+          "x": 1,
+          "y": 3
+        },
+        {
+          "x": 2,
+          "y": 3
+        },
+        {
+          "x": 1,
+          "y": 4
+        }
+      ],
+      "enemies": [
+        {
+          "name": "Lobo alfa",
+          "x": 1,
+          "y": 1
+        },
+        {
+          "name": "Lobo alfa",
+          "x": 15,
+          "y": 1
+        },
+        {
+          "name": "Lobo famélico",
+          "x": 4,
+          "y": 2
+        },
+        {
+          "name": "Lobo famélico",
+          "x": 8,
+          "y": 2
+        },
+        {
+          "name": "Lobo famélico",
+          "x": 12,
+          "y": 2
+        }
+      ]
+    },
+    {
+      "id": "enc-vanguardia-peaje",
+      "name": "La vanguardia en el peaje",
+      "mapId": "el-peaje-norte",
+      "locationName": "El Peaje Norte",
+      "map": [
+        "##################",
+        "#....#......#....#",
+        "#.c..D......D..c.#",
+        "#....#......#....#",
+        "###.##......##.###",
+        "#......~~~~.....v#",
+        "#...c..~~~~..c..v#",
+        "#...............v#",
+        "#.......C.......v#",
+        "##################"
+      ],
+      "partyStart": [
+        {
+          "x": 6,
+          "y": 8
+        },
+        {
+          "x": 7,
+          "y": 8
+        },
+        {
+          "x": 9,
+          "y": 8
+        }
+      ],
+      "enemies": [
+        {
+          "name": "Infantería de Keller",
+          "x": 3,
+          "y": 1
+        },
+        {
+          "name": "Infantería de Keller",
+          "x": 14,
+          "y": 1
+        },
+        {
+          "name": "Infantería de Keller",
+          "x": 8,
+          "y": 2
+        },
+        {
+          "name": "Rompehielos de Keller",
+          "x": 9,
+          "y": 3
+        }
+      ]
+    },
+    {
+      "id": "el-gran-salon",
+      "name": "El gran salón de Vane",
+      "mapId": "el-gran-salon",
+      "locationName": "Castillo de Vane",
+      "map": [
+        "##################",
+        "#C..............C#",
+        "#................#",
+        "#..c..........c..#",
+        "#....cccccccc....#",
+        "#....cccccccc....#",
+        "#..c..........c..#",
+        "#................#",
+        "#C..............C#",
+        "##################"
+      ],
+      "partyStart": [
+        {
+          "x": 8,
+          "y": 7
+        },
+        {
+          "x": 9,
+          "y": 7
+        }
+      ],
+      "enemies": []
+    },
+    {
+      "id": "el-patio-de-la-ermita",
+      "name": "El patio de la ermita",
+      "mapId": "el-patio-de-la-ermita",
+      "locationName": "La Ermita Derruida",
+      "map": [
+        "################",
+        "#C....#..#....C#",
+        "#.....#..#.....#",
+        "#..c........c..#",
+        "#......~~......#",
+        "#..c........c..#",
+        "#.....#..#.....#",
+        "#.....#..#.....#",
+        "################"
+      ],
+      "partyStart": [
+        {
+          "x": 7,
+          "y": 3
+        },
+        {
+          "x": 8,
+          "y": 3
+        }
+      ],
+      "enemies": []
+    },
+    {
+      "id": "el-fuego-del-campamento",
+      "name": "El fuego del campamento",
+      "mapId": "el-fuego-del-campamento",
+      "locationName": "Campamento Furtivo",
+      "map": [
+        "##################",
+        "#~~c....~~....c~~#",
+        "#~..............~#",
+        "#..C...c..c...C..#",
+        "#......~~~~......#",
+        "#......~~~~......#",
+        "#..C...c..c...C..#",
+        "#~..............~#",
+        "#~~c....~~....c~~#",
+        "##################"
+      ],
+      "partyStart": [
+        {
+          "x": 8,
+          "y": 2
+        },
+        {
+          "x": 9,
+          "y": 2
+        }
+      ],
+      "enemies": []
+    }
+  ],
+  "quests": [
+    {
+      "id": "q-enc-huida-posada",
+      "name": "El cuarto de la posada",
+      "act": 1,
+      "description": "Acto 1. Tienes el cáliz, solo tienes que llegar a la ventana y huir de Torres, no matarlo hoy.",
+      "boardId": "enc-huida-posada",
+      "objectives": [
+        {
+          "type": "reach_cell",
+          "label": "Salir por la ventana",
+          "cell": {
+            "x": 7,
+            "y": 9
+          }
+        }
+      ]
+    },
+    {
+      "id": "q-enc-emboscada-bosque",
+      "name": "Los claros del Camino Viejo",
+      "act": 1,
+      "description": "Acto 1. El primer choque con los Lobos del Bosque.",
+      "boardId": "enc-emboscada-bosque",
+      "objectives": [
+        {
+          "type": "eliminate_all",
+          "label": "Acto 1"
+        }
+      ]
+    },
+    {
+      "id": "q-enc-los-falsos-desertores",
+      "name": "La granja quemada",
+      "act": 1,
+      "description": "Acto 1 (Encargo). Son granjeros defendiendo leña. Si matas a 2, el resto huye y ganas.",
+      "boardId": "enc-los-falsos-desertores",
+      "objectives": [
+        {
+          "type": "eliminate_all",
+          "label": "Acto 1 (Encargo)"
+        }
+      ]
+    },
+    {
+      "id": "q-enc-emboscada-por-el-hierro",
+      "name": "El hierro en el bosque",
+      "act": 1,
+      "description": "Acto 1 (encargo). La carga robada está al fondo del claro: llegar a ella con los Lobos encima.",
+      "boardId": "enc-emboscada-por-el-hierro",
+      "objectives": [
+        {
+          "type": "reach_cell",
+          "label": "Llegar a la carga de lingotes",
+          "cell": {
+            "x": 14,
+            "y": 8
+          }
+        }
+      ]
+    },
+    {
+      "id": "q-enc-pelea-callejon",
+      "name": "El callejón inundado",
+      "act": 2,
+      "description": "Acto 2 (Encargo/Libre). Garth te acorrala para cobrar deudas viejas.",
+      "boardId": "enc-pelea-callejon",
+      "objectives": [
+        {
+          "type": "eliminate",
+          "label": "Acto 2 (Encargo/Libre)",
+          "target": "Garth el Sanguinario"
+        }
+      ]
+    },
+    {
+      "id": "q-enc-asedio-a-la-granja",
+      "name": "El asedio de la granja",
+      "act": 2,
+      "description": "Acto 2 (Encargo). Tienes que aguantar dentro de la granja (abajo) hasta que se queden sin antorchas y huyan.",
+      "boardId": "enc-asedio-a-la-granja",
+      "objectives": [
+        {
+          "type": "survive_rounds",
+          "label": "Acto 2 (Encargo)",
+          "rounds": 5
+        }
+      ]
+    },
+    {
+      "id": "q-enc-escolta-quebradiza",
+      "name": "El monje sobre el hielo",
+      "act": 2,
+      "description": "Acto 2 (encargo). El hielo cruje y los lobos rodean al monje: aguantar cuatro rondas mientras cruza.",
+      "boardId": "enc-escolta-quebradiza",
+      "objectives": [
+        {
+          "type": "survive_rounds",
+          "label": "Cubrir al monje mientras cruza",
+          "rounds": 4
+        }
+      ]
+    },
+    {
+      "id": "q-enc-patrullas-en-la-nieve",
+      "name": "Las empalizadas del peaje",
+      "act": 2,
+      "description": "Acto 2 (Encargo). Limpiar las empalizadas desde fuera hacia dentro.",
+      "boardId": "enc-patrullas-en-la-nieve",
+      "objectives": [
+        {
+          "type": "eliminate_all",
+          "label": "Acto 2 (Encargo)"
+        }
+      ]
+    },
+    {
+      "id": "q-enc-carreta-en-el-hielo",
+      "name": "La carreta hundida",
+      "act": 2,
+      "description": "Acto 2 (Encargo). Hay que coger las hierbas congeladas del centro del lago antes de que los mercenarios te tiren al agua helada.",
+      "boardId": "enc-carreta-en-el-hielo",
+      "objectives": [
+        {
+          "type": "reach_cell",
+          "label": "Llegar a la carreta de las hierbas",
+          "cell": {
+            "x": 10,
+            "y": 5
+          }
+        }
+      ]
+    },
+    {
+      "id": "q-enc-espia-mina",
+      "name": "Los túneles de la mina",
+      "act": 2,
+      "description": "Acto 2 (Hilo). Sombra intenta huir. Si él muere, sus matones escapan.",
+      "boardId": "enc-espia-mina",
+      "objectives": [
+        {
+          "type": "eliminate",
+          "label": "Acto 2 (Hilo)",
+          "target": "Sombra, el espía"
+        }
+      ]
+    },
+    {
+      "id": "q-enc-asalto-peaje",
+      "name": "El asalto de las empalizadas",
+      "act": 2,
+      "description": "Acto 2 (Hilo). El contraataque desesperado de la Casa Montesclaros para recuperar el norte.",
+      "boardId": "enc-asalto-peaje",
+      "objectives": [
+        {
+          "type": "eliminate_all",
+          "label": "Acto 2 (Hilo)"
+        }
+      ]
+    },
+    {
+      "id": "q-enc-frenar-la-carreta",
+      "name": "El cruce inundado",
+      "act": 3,
+      "description": "Acto 3 (Encargo). Los furtivos intentan cruzar. Mantenlos a raya en el fango 6 rondas.",
+      "boardId": "enc-frenar-la-carreta",
+      "objectives": [
+        {
+          "type": "survive_rounds",
+          "label": "Acto 3 (Encargo)",
+          "rounds": 6
+        }
+      ]
+    },
+    {
+      "id": "q-enc-asalto-keller",
+      "name": "La tienda de mando",
+      "act": 3,
+      "description": "Acto 3 (Hilo - Final B/C). Sangre en la tienda de mando. La Capitana y su escolta pesada contra ti.",
+      "boardId": "enc-asalto-keller",
+      "objectives": [
+        {
+          "type": "eliminate",
+          "label": "Acto 3 (Hilo - Final B/C)",
+          "target": "Capitana Keller"
+        }
+      ]
+    },
+    {
+      "id": "q-enc-defensa-vane",
+      "name": "Las puertas del castillo",
+      "act": 3,
+      "description": "Acto 3 (Hilo - Final A/C). Atacas las puertas del castillo. El viejo tose, pero sus alabarderos formarán un muro infranqueable a menos que los rompas.",
+      "boardId": "enc-defensa-vane",
+      "objectives": [
+        {
+          "type": "eliminate",
+          "label": "Acto 3 (Hilo - Final A/C)",
+          "target": "Lord Vane"
+        }
+      ]
+    },
+    {
+      "id": "q-enc-emboscada-lobos-alfa",
+      "name": "Lobos en el pueblo",
+      "act": 3,
+      "description": "Acto 3 (libre). El hambre mete a los lobos en el pueblo. Hay que aguantar en el callejón, con Giles detrás.",
+      "boardId": "enc-emboscada-lobos-alfa",
+      "objectives": [
+        {
+          "type": "survive_rounds",
+          "label": "Aguantar hasta que llegue la guardia",
+          "rounds": 4
+        }
+      ]
+    },
+    {
+      "id": "q-enc-vanguardia-peaje",
+      "name": "La vanguardia en el peaje",
+      "act": 2,
+      "description": "Acto 2 (hilo). La vanguardia de Keller ha tomado las torres. Son profesionales y te superan en número.",
+      "boardId": "enc-vanguardia-peaje",
+      "objectives": [
+        {
+          "type": "eliminate_all",
+          "label": "Recuperar el peaje"
+        }
+      ]
+    }
+  ],
+  "contracts": [
+    {
+      "id": "e-acero-robado-1",
+      "title": "El carro desaparecido",
+      "verb": "investigar",
+      "chain": {
+        "id": "c-acero-robado",
+        "part": 1,
+        "of": 3
+      },
+      "patron": "Dunstan",
+      "faction": null,
+      "where": "El Pueblo de Barro",
+      "act": 1,
+      "noFight": true,
+      "reward": 15,
+      "rewardText": "15 monedas de plata y un afilado gratis",
+      "twist": "Nadie asaltó el carro. El carretero vendió el hierro a los furtivos y fingió el robo.",
+      "boardId": ""
+    },
+    {
+      "id": "e-acero-robado-2",
+      "title": "Recuperar la carga",
+      "verb": "recuperar",
+      "chain": {
+        "id": "c-acero-robado",
+        "part": 2,
+        "of": 3
+      },
+      "patron": "Dunstan",
+      "faction": {
+        "id": "los-lobos-del-bosque",
+        "against": true
+      },
+      "where": "El Camino Viejo",
+      "act": 1,
+      "noFight": false,
+      "reward": 30,
+      "rewardText": "30 monedas de plata",
+      "twist": "Los lobos ya han fundido parte del hierro, los lingotes pesan el doble por el hielo.",
+      "boardId": "enc-emboscada-por-el-hierro"
+    },
+    {
+      "id": "e-acero-robado-3",
+      "title": "Doble juego",
+      "verb": "entregar",
+      "chain": {
+        "id": "c-acero-robado",
+        "part": 3,
+        "of": 3
+      },
+      "patron": "Karl",
+      "faction": {
+        "id": "leales-de-montesclaros",
+        "against": true
+      },
+      "where": "Campamento Furtivo",
+      "act": 2,
+      "noFight": true,
+      "reward": 0,
+      "rewardText": "Cota de mallas abollada (armadura media) y favor de los Lobos",
+      "twist": "Karl te paga más que Dunstan para que lleves armas forjadas de contrabando al pueblo saltándote el control de Vane.",
+      "boardId": ""
+    },
+    {
+      "id": "e-desertores-granja",
+      "title": "Limpiar la escoria",
+      "verb": "cazar",
+      "chain": null,
+      "patron": "Torres",
+      "faction": {
+        "id": "leales-de-montesclaros",
+        "against": false
+      },
+      "where": "La Granja Quemada",
+      "act": 1,
+      "noFight": false,
+      "reward": 20,
+      "rewardText": "20 monedas de plata, si traes sus orejas",
+      "twist": "Los 'desertores' no son soldados, son campesinos armados con horcas que solo querían leña de la granja.",
+      "boardId": "enc-los-falsos-desertores"
+    },
+    {
+      "id": "e-deudas-de-juego",
+      "title": "El pagador moroso",
+      "verb": "negociar",
+      "chain": null,
+      "patron": "Giles",
+      "faction": null,
+      "where": "Castillo de Vane",
+      "act": 1,
+      "noFight": true,
+      "reward": 0,
+      "rewardText": "Giles te perdona la cuenta de la posada de esta semana",
+      "twist": "El guardia corrupto del castillo es quien debe el dinero, y te ofrece un pase rápido por la puerta trasera a cambio de que le mientas a Giles.",
+      "boardId": ""
+    },
+    {
+      "id": "e-escolta-medica",
+      "title": "Sangre en el hielo",
+      "verb": "escoltar",
+      "chain": null,
+      "patron": "Hermano Silas",
+      "faction": null,
+      "where": "El Lago Helado",
+      "act": 2,
+      "noFight": false,
+      "reward": 0,
+      "rewardText": "El monje te curará dos heridas graves gratis",
+      "twist": "A mitad del lago el hielo cede, atrayendo a carroñeros ahogados. Hay que proteger al monje mientras el hielo cruje.",
+      "boardId": "enc-escolta-quebradiza"
+    },
+    {
+      "id": "e-provisiones-podridas",
+      "title": "Sabotaje en las tripas",
+      "verb": "robar",
+      "chain": null,
+      "patron": "Ulric",
+      "faction": {
+        "id": "la-casa-keller",
+        "against": false
+      },
+      "where": "Castillo de Vane",
+      "act": 2,
+      "noFight": true,
+      "reward": 50,
+      "rewardText": "50 monedas de plata (mucho dinero)",
+      "twist": "No te pide que robes la comida, sino que robes los gatos del castillo para que las ratas arruinen el grano de Vane desde dentro.",
+      "boardId": ""
+    },
+    {
+      "id": "e-hierbas-congeladas",
+      "title": "Remedios bajo cero",
+      "verb": "recuperar",
+      "chain": {
+        "id": "c-el-boticario",
+        "part": 1,
+        "of": 2
+      },
+      "patron": "Maese Ambrosio",
+      "faction": null,
+      "where": "El Lago Helado",
+      "act": 2,
+      "noFight": false,
+      "reward": 10,
+      "rewardText": "10 ungüentos coagulantes (consumibles)",
+      "twist": "Las hierbas están en una carreta hundida, pero unos bandidos la están usando como cobertura para una emboscada.",
+      "boardId": "enc-carreta-en-el-hielo"
+    },
+    {
+      "id": "e-silenciar-silas",
+      "title": "Cortar la lengua",
+      "verb": "silenciar",
+      "chain": {
+        "id": "c-el-boticario",
+        "part": 2,
+        "of": 2
+      },
+      "patron": "Oswald el Senescal",
+      "faction": {
+        "id": "leales-de-montesclaros",
+        "against": false
+      },
+      "where": "La Mina Abandonada",
+      "act": 2,
+      "noFight": true,
+      "reward": 60,
+      "rewardText": "60 monedas de plata",
+      "twist": "Silas te ofrece más del doble de dinero si lo escoltas fuera del mapa en lugar de matarlo o intimidarlo para que calle.",
+      "boardId": ""
+    },
+    {
+      "id": "e-lobos-hambrientos",
+      "title": "Noche en la granja",
+      "verb": "aguantar",
+      "chain": null,
+      "patron": "Marta",
+      "faction": null,
+      "where": "La Granja Quemada",
+      "act": 2,
+      "noFight": false,
+      "reward": 0,
+      "rewardText": "El cofre de plata antigua de su difunto marido",
+      "twist": "No vienen lobos salvajes, vienen saqueadores de Keller hambrientos. Tienes que aguantar 5 rondas defendiendo la puerta hasta que se rindan.",
+      "boardId": "enc-asedio-a-la-granja"
+    },
+    {
+      "id": "e-mensajes-interceptados",
+      "title": "Papeles al fuego",
+      "verb": "investigar",
+      "chain": null,
+      "patron": "Elara Keller",
+      "faction": {
+        "id": "leales-de-montesclaros",
+        "against": true
+      },
+      "where": "El Camino Viejo",
+      "act": 2,
+      "noFight": true,
+      "reward": 0,
+      "rewardText": "Salvoconducto de la Casa Keller",
+      "twist": "Los mensajes interceptados no son órdenes militares, son cartas de amor entre la cazadora Nils y un guardia del castillo.",
+      "boardId": ""
+    },
+    {
+      "id": "e-fuego-en-la-nieve",
+      "title": "Purgar los alrededores",
+      "verb": "limpiar",
+      "chain": {
+        "id": "c-polvora",
+        "part": 1,
+        "of": 3
+      },
+      "patron": "Hilda",
+      "faction": {
+        "id": "la-casa-keller",
+        "against": false
+      },
+      "where": "El Peaje Norte",
+      "act": 2,
+      "noFight": false,
+      "reward": 0,
+      "rewardText": "Una espada ancha forjada a medida (arma)",
+      "twist": "Tienes que limpiar la zona exterior de patrullas de los Lobos del Bosque que están marcando objetivos para los arqueros.",
+      "boardId": "enc-patrullas-en-la-nieve"
+    },
+    {
+      "id": "e-robar-la-polvora",
+      "title": "El oro negro",
+      "verb": "robar",
+      "chain": {
+        "id": "c-polvora",
+        "part": 2,
+        "of": 3
+      },
+      "patron": "Karl",
+      "faction": {
+        "id": "la-casa-keller",
+        "against": true
+      },
+      "where": "El Peaje Norte",
+      "act": 3,
+      "noFight": true,
+      "reward": 50,
+      "rewardText": "50 monedas de plata y un barril de pólvora pequeño para ti",
+      "twist": "Puedes entrar a cuchillo, pero es más fácil sobornar al Vigía Tuerto para que mire a otro lado mientras vacías los barriles en sacos.",
+      "boardId": ""
+    },
+    {
+      "id": "e-defender-el-cruce",
+      "title": "Que no pase la carreta",
+      "verb": "aguantar",
+      "chain": {
+        "id": "c-polvora",
+        "part": 3,
+        "of": 3
+      },
+      "patron": "Lord Edmund Vane",
+      "faction": {
+        "id": "los-lobos-del-bosque",
+        "against": true
+      },
+      "where": "El Cruce de Caminos",
+      "act": 3,
+      "noFight": false,
+      "reward": 100,
+      "rewardText": "Título nobiliario sin tierras y 100 de plata",
+      "twist": "Los furtivos traen la pólvora robada en una carreta encendida. Tienes que destruir la carreta antes de que cruce el mapa, no matar a los asaltantes.",
+      "boardId": "enc-frenar-la-carreta"
+    },
+    {
+      "id": "e-el-anillo-del-desertor",
+      "title": "Petición de un ahorcado",
+      "verb": "recuperar",
+      "chain": null,
+      "patron": "Darek",
+      "faction": null,
+      "where": "El Pueblo de Barro",
+      "act": 1,
+      "noFight": true,
+      "reward": 0,
+      "rewardText": "El ahorcado te cuenta un atajo secreto en el Camino Viejo",
+      "twist": "El enterrador Yorick tiene el anillo. Te lo dará si le consigues un cadáver fresco o le pagas el equivalente en oro.",
+      "boardId": ""
+    }
+  ],
+  "rumors": [
+    {
+      "id": "r-plata-falsa",
+      "by": "Giles",
+      "where": "El Pueblo de Barro",
+      "text": "Vane está pagando a la guarnición con cobre pintado de plata. En cuanto rasquen las monedas, arderá el castillo.",
+      "truth": "si",
+      "leadsTo": "Castillo de Vane"
+    },
+    {
+      "id": "r-traicion-en-la-puerta",
+      "by": "",
+      "where": "El Pueblo de Barro",
+      "text": "El alguacil Torres no rompió la puerta de la posada por casualidad. Él tenía la llave de atrás.",
+      "truth": "si",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-el-campamento-oculto",
+      "by": "Marta",
+      "where": "La Granja Quemada",
+      "text": "Los furtivos no duermen a la intemperie. Tienen un campamento permanente donde la maleza es más densa, al sur del camino viejo.",
+      "truth": "si",
+      "leadsTo": "Campamento Furtivo"
+    },
+    {
+      "id": "r-herrero-traidor",
+      "by": "",
+      "where": "El Pueblo de Barro",
+      "text": "Dunstan se queja del hierro, pero de noche su fragua echa humo. Le forja flechas a los furtivos.",
+      "truth": "si",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-el-pozo-envenenado",
+      "by": "Yorick",
+      "where": "El Pueblo de Barro",
+      "text": "Ni se te ocurra beber agua de la granja quemada. Los muertos de allí no cayeron por las flechas, sino echando espuma por la boca.",
+      "truth": "si",
+      "leadsTo": "La Granja Quemada"
+    },
+    {
+      "id": "r-keller-no-pasa",
+      "by": "Lord Edmund Vane",
+      "where": "Castillo de Vane",
+      "text": "Es imposible que los Keller crucen el peaje antes del deshielo, están bloqueados por veinte metros de nieve.",
+      "truth": "no",
+      "leadsTo": "Campamento Keller"
+    },
+    {
+      "id": "r-minas-bajo-la-nieve",
+      "by": "Dunstan",
+      "where": "El Pueblo de Barro",
+      "text": "Las armas norteñas están entrando por alguna parte. Los viejos decían que había una mina olvidada que cruzaba la montaña.",
+      "truth": "si",
+      "leadsTo": "La Mina Abandonada"
+    },
+    {
+      "id": "r-fantasma-del-lago",
+      "by": "Finn",
+      "where": "El Lago Helado",
+      "text": "Bajo el hielo nadan los muertos. Te agarran de las botas y te ahogan si te quedas quieto.",
+      "truth": "medias",
+      "leadsTo": "El Lago Helado"
+    },
+    {
+      "id": "r-capitana-invencible",
+      "by": "El Tuerto",
+      "where": "El Peaje Norte",
+      "text": "La Capitana Keller mató a un oso pardo con las manos desnudas. Es inmortal.",
+      "truth": "no",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-peste-en-la-ermita",
+      "by": "",
+      "where": "Castillo de Vane",
+      "text": "No vayas a la ermita. El monje que está allí ha perdido la cabeza y mata a los pacientes para robarles.",
+      "truth": "medias",
+      "leadsTo": "La Ermita Derruida"
+    },
+    {
+      "id": "r-la-hija-de-vane",
+      "by": "Vera",
+      "where": "El Pueblo de Barro",
+      "text": "Vane no tiene herederos, por eso se aferra a la silla. Aunque, hace años, tuve a una chica suya trabajando aquí.",
+      "truth": "si",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-polvora-robada",
+      "by": "Ulric",
+      "where": "Campamento Keller",
+      "text": "Perdimos un barril de pólvora negra en el traslado. Si Vane averigua cómo usarlo, nos volará el campamento.",
+      "truth": "medias",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-el-cruce-inundado",
+      "by": "Pip",
+      "where": "El Cruce de Caminos",
+      "text": "Ayer un caballo entero desapareció tragado por el barro del cruce. No intentéis pasar con armadura.",
+      "truth": "si",
+      "leadsTo": "El Cruce de Caminos"
+    },
+    {
+      "id": "r-el-pago-del-asesino",
+      "by": "Giles",
+      "where": "El Pueblo de Barro",
+      "text": "Al mercenario forastero le pagaron un cáliz por matar al recaudador. Pobre diablo, lo van a colgar igual.",
+      "truth": "no",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-sordera-fingida",
+      "by": "Nils",
+      "where": "Campamento Furtivo",
+      "text": "No grites tanto cuando hables con Karl. Te oye perfectamente, pero se hace el sordo para ganar tiempo pensando la respuesta.",
+      "truth": "si",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-el-espia-enfermo",
+      "by": "Maese Ambrosio",
+      "where": "La Mina Abandonada",
+      "text": "Hay un chaval en las minas, vestido de blanco. Tose tanto que juraría que tiene la tisis blanca del norte.",
+      "truth": "si",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-botas-nuevas",
+      "by": "",
+      "where": "El Pueblo de Barro",
+      "text": "El enterrador lleva botas de oficial. Y esta semana no ha habido batallas oficiales. Está desenterrando a los nuestros.",
+      "truth": "si",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-rompehielos",
+      "by": "El Tuerto",
+      "where": "El Peaje Norte",
+      "text": "Los soldados de armadura pesada de Keller son lentos. Si los tiras al barro, no pueden levantarse sin ayuda.",
+      "truth": "si",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-caza-de-brujas",
+      "by": "",
+      "where": "El Pueblo de Barro",
+      "text": "El cirujano de la ermita hace magia. He visto a hombres sin brazos volver a caminar.",
+      "truth": "no",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-amor-enemigo",
+      "by": "Garret",
+      "where": "Castillo de Vane",
+      "text": "Alguien del castillo le deja mensajes a los Lobos del bosque en el hueco de un roble. Traición pura.",
+      "truth": "si",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-hermandad-del-acero",
+      "by": "Dunstan",
+      "where": "El Pueblo de Barro",
+      "text": "La fragua de Keller suena distinta. Quien maneja el martillo es un maestro, no un militar. Me gustaría conocerlo.",
+      "truth": "si",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-el-mudo-que-no-lo-es",
+      "by": "",
+      "where": "Castillo de Vane",
+      "text": "El gigante ese, Grimm. No habla porque le cortaron la lengua en las guerras del sur.",
+      "truth": "no",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-oro-falso",
+      "by": "Vera",
+      "where": "El Pueblo de Barro",
+      "text": "El recaudador no llevaba la recaudación cuando lo mataron. Vane lo escondió antes para fingir el robo.",
+      "truth": "medias",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-la-tos-de-vane",
+      "by": "Oswald el Senescal",
+      "where": "Castillo de Vane",
+      "text": "Lord Vane no llega a la primavera. Esa tos que tiene es la podredumbre del pulmón. Si se alarga el combate, se asfixiará.",
+      "truth": "si",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-fuego-amigo",
+      "by": "",
+      "where": "La Granja Quemada",
+      "text": "Fueron los Lobos quienes quemaron la granja para culpar al castillo y ganar adeptos.",
+      "truth": "no",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-el-paso-sur",
+      "by": "Valerius",
+      "where": "El Pueblo de Barro",
+      "text": "Hay un paso secreto al sur que no se nieva. Pero solo los exploradores nativos saben cómo encontrarlo.",
+      "truth": "si",
+      "leadsTo": ""
+    }
+  ],
+  "abilities": [
+    {
+      "id": "rayo_de_fuego",
+      "name": "Rayo de fuego",
+      "description": "Un dardo de fuego que no se acaba nunca. El truco de quien sabe algo de magia.",
+      "cost": "action",
+      "resource": "at_will",
+      "rangeFeet": 120,
+      "target": "enemy",
+      "resolution": "attack",
+      "damage": "1d10",
+      "damageType": "Fire"
+    },
+    {
+      "id": "curar_heridas",
+      "name": "Curar heridas",
+      "description": "Cierra lo que se pueda cerrar, con las manos encima.",
+      "cost": "action",
+      "resource": "long_rest",
+      "usesPerRest": 2,
+      "rangeFeet": 5,
+      "target": "ally",
+      "resolution": "auto",
+      "healing": "1d8+3"
+    },
+    {
+      "id": "tomar_aliento",
+      "name": "Tomar aliento",
+      "description": "Un segundo de respiro en mitad de la pelea.",
+      "cost": "bonus",
+      "resource": "short_rest",
+      "usesPerRest": 1,
+      "target": "self",
+      "resolution": "auto",
+      "healing": "1d10+2"
+    },
+    {
+      "id": "furia",
+      "name": "Furia",
+      "description": "Dejar de pensar, que a veces es lo que hace falta.",
+      "cost": "bonus",
+      "resource": "long_rest",
+      "usesPerRest": 2,
+      "target": "self",
+      "resolution": "auto",
+      "condition": "Frightened",
+      "conditionRounds": 3
+    },
+    {
+      "id": "golpe_de_escudo",
+      "name": "Golpe de escudo",
+      "description": "El escudo tambien pega, y tira al suelo.",
+      "cost": "action",
+      "resource": "short_rest",
+      "usesPerRest": 1,
+      "rangeFeet": 5,
+      "target": "enemy",
+      "resolution": "save",
+      "saveAbility": "strength",
+      "saveDc": 13,
+      "damage": "1d4",
+      "damageType": "Bludgeoning",
+      "condition": "Prone",
+      "conditionRounds": 1
+    },
+    {
+      "id": "hab-embate",
+      "name": "Embate",
+      "description": "Un golpe de los de siempre, dado por quien sabe darlo.",
+      "cost": "action",
+      "resource": "at_will",
+      "target": "enemy",
+      "resolution": "attack",
+      "rangeFeet": 5,
+      "damage": "1d8",
+      "damageType": "Slashing"
+    },
+    {
+      "id": "hab-segundo-aliento",
+      "name": "Segundo aliento",
+      "description": "Un segundo de respiro en mitad de la pelea. Se aprende a base de necesitarlo.",
+      "cost": "bonus",
+      "resource": "short_rest",
+      "target": "self",
+      "resolution": "auto",
+      "usesPerRest": 1,
+      "rangeFeet": 5,
+      "healing": "1d10+2"
+    },
+    {
+      "id": "hab-furia",
+      "name": "Furia",
+      "description": "Dejar de pensar, que a veces es lo que hace falta. Después se paga.",
+      "cost": "bonus",
+      "resource": "long_rest",
+      "target": "self",
+      "resolution": "auto",
+      "usesPerRest": 2,
+      "rangeFeet": 5
+    },
+    {
+      "id": "hab-empujon",
+      "name": "Empujón",
+      "description": "Apartarlo de donde está, que a veces vale más que hacerle daño.",
+      "cost": "bonus",
+      "resource": "short_rest",
+      "target": "enemy",
+      "resolution": "attack",
+      "usesPerRest": 2,
+      "rangeFeet": 5
+    },
+    {
+      "id": "hab-ataque-furtivo",
+      "name": "Ataque furtivo",
+      "description": "Donde más duele, y solo cuando nadie está mirando.",
+      "cost": "action",
+      "resource": "at_will",
+      "target": "enemy",
+      "resolution": "attack",
+      "rangeFeet": 5,
+      "damage": "2d6",
+      "damageType": "Piercing"
+    },
+    {
+      "id": "hab-esfumarse",
+      "name": "Esfumarse",
+      "description": "Salir de la vista sin que nadie sepa por dónde. Dura lo que dura.",
+      "cost": "bonus",
+      "resource": "short_rest",
+      "target": "self",
+      "resolution": "auto",
+      "usesPerRest": 2,
+      "rangeFeet": 5
+    },
+    {
+      "id": "hab-burla",
+      "name": "Burla que escuece",
+      "description": "Le dice lo justo para que falle lo siguiente que haga.",
+      "cost": "bonus",
+      "resource": "at_will",
+      "target": "enemy",
+      "resolution": "save",
+      "rangeFeet": 60,
+      "saveDc": 12,
+      "saveAbility": "wisdom",
+      "condition": "Frightened",
+      "conditionRounds": 2
+    },
+    {
+      "id": "hab-rastrear",
+      "name": "Leer el rastro",
+      "description": "Qué pasó aquí, cuántos eran y hacia dónde fueron.",
+      "cost": "action",
+      "resource": "at_will",
+      "target": "self",
+      "resolution": "auto",
+      "rangeFeet": 5
+    },
+    {
+      "id": "hab-primeros-auxilios",
+      "name": "Primeros auxilios",
+      "description": "Apretar, vendar y que aguante hasta que haya quien sepa más.",
+      "cost": "action",
+      "resource": "short_rest",
+      "target": "ally",
+      "resolution": "auto",
+      "usesPerRest": 1,
+      "rangeFeet": 5,
+      "healing": "1d4+1"
+    },
+    {
+      "id": "hab-cubrirse",
+      "name": "Cubrirse",
+      "description": "Pegarse a lo que haya y hacerse pequeño. No es glorioso y funciona.",
+      "cost": "action",
+      "resource": "at_will",
+      "target": "self",
+      "resolution": "auto",
+      "rangeFeet": 5
+    },
+    {
+      "id": "lanzar_tierra",
+      "name": "Lanzar tierra",
+      "description": "Fango o nieve a los ojos. Sucio, pero funciona.",
+      "cost": "action",
+      "resource": "at_will",
+      "rangeFeet": 5,
+      "target": "enemy",
+      "resolution": "save",
+      "saveAbility": "dexterity",
+      "saveDc": 12,
+      "condition": "Blinded",
+      "conditionRounds": 1
+    },
+    {
+      "id": "romper_rodilla",
+      "name": "Romper rodilla",
+      "description": "Un golpe bajo a la articulación. Quien lo recibe acaba en el suelo.",
+      "cost": "action",
+      "resource": "short_rest",
+      "usesPerRest": 1,
+      "rangeFeet": 5,
+      "target": "enemy",
+      "resolution": "attack",
+      "damage": "1d6",
+      "damageType": "Bludgeoning",
+      "condition": "Prone",
+      "conditionRounds": 1
+    },
+    {
+      "id": "grito_de_filas",
+      "name": "Grito de filas",
+      "description": "El sargento pega un grito y a un compañero se le pasa el temblor de piernas.",
+      "cost": "bonus",
+      "resource": "short_rest",
+      "usesPerRest": 1,
+      "rangeFeet": 30,
+      "target": "ally",
+      "resolution": "auto",
+      "healing": "1d6+1"
+    },
+    {
+      "id": "trampa_de_cuerda",
+      "name": "Trampa de cuerda",
+      "description": "Un lazo escondido en la nieve. Quien lo pisa se queda enganchado.",
+      "cost": "action",
+      "resource": "short_rest",
+      "usesPerRest": 1,
+      "rangeFeet": 10,
+      "target": "enemy",
+      "resolution": "save",
+      "saveAbility": "dexterity",
+      "saveDc": 12,
+      "condition": "Restrained",
+      "conditionRounds": 1
+    }
+  ],
+  "plot": {
+    "title": "El valle de Vane",
+    "milestones": [
+      {
+        "id": "el-caliz-ensangrentado",
+        "act": 1,
+        "title": "El cáliz ensangrentado",
+        "hint": "Te han colado el botín del asesinato. Sal vivo del cuarto: la ventana da al callejón.",
+        "scene": "Viernes por la mañana, en el cuarto más barato de la posada de El Pueblo de Barro. Hoy toca pagar la semana y no tienes un duro. Al calzarte notas algo en el petate: un cáliz de oro macizo cubierto de sangre seca. No es tuyo. Abajo, gritos. El alguacil Torres y sus guardias revientan la puerta buscando al forastero que ha matado esta noche al recaudador de Montesclaros. Te miran a ti, miran el cáliz. No hay tiempo para juicios: o la ventana, o te abres paso.",
+        "opens": {
+          "kind": "start"
+        },
+        "asks": {
+          "kind": "win",
+          "board": "El cuarto de la posada"
+        },
+        "changes": {
+          "reveal": [],
+          "open": [
+            "el-precio-del-escape"
+          ],
+          "standing": {
+            "leales-de-montesclaros": -1
+          },
+          "ending": "",
+          "endingBy": {}
+        }
+      },
+      {
+        "id": "el-precio-del-escape",
+        "act": 1,
+        "title": "El precio del escape",
+        "hint": "Giles vio quién entró en tu cuarto anoche, pero la información cuesta dinero.",
+        "scene": "Has salido vivo del cuarto, pero el pueblo entero te busca. Te has colado por la puerta trasera de la taberna. Giles está limpiando jarras. No grita al verte. Te dice que sabe quién metió el cáliz en tu petate, pero en 1387 nadie regala nada. Tienes que convencerle, o pagarle, para que te señale la dirección correcta antes de que vuelvan los guardias.",
+        "opens": {
+          "kind": "after",
+          "milestone": "el-caliz-ensangrentado"
+        },
+        "asks": {
+          "kind": "talk",
+          "npc": "Giles"
+        },
+        "changes": {
+          "reveal": [
+            "Campamento Furtivo"
+          ],
+          "open": [
+            "la-pista-en-el-barro"
+          ],
+          "standing": {},
+          "ending": "",
+          "endingBy": {}
+        }
+      },
+      {
+        "id": "la-pista-en-el-barro",
+        "act": 1,
+        "title": "La pista en el barro",
+        "hint": "El rastro del verdadero asesino lleva al campamento de los furtivos.",
+        "scene": "El barro del camino viejo está congelado, pero las huellas que te vendió Giles son claras. Llegas al lindero del bosque. Una flecha se clava a un palmo de tu bota. Los Lobos del Bosque te están apuntando desde las ramas. Tienen al hombre que puso el cáliz en tu bolsa, pero consideran que ahora les pertenece a ellos.",
+        "opens": {
+          "kind": "after",
+          "milestone": "el-precio-del-escape"
+        },
+        "asks": {
+          "kind": "arrive",
+          "place": "Campamento Furtivo"
+        },
+        "changes": {
+          "reveal": [],
+          "open": [
+            "el-invierno-cierra-el-paso"
+          ],
+          "standing": {
+            "los-lobos-del-bosque": 1
+          },
+          "ending": "",
+          "endingBy": {}
+        }
+      },
+      {
+        "id": "el-invierno-cierra-el-paso",
+        "act": 1,
+        "title": "El invierno cierra el paso",
+        "hint": "Llevar el cáliz al castillo de Vane puede comprarte el perdón y una cama caliente.",
+        "scene": "Recuperas el cáliz, pero el cielo se ha vuelto plomo. Los primeros copos de nieve caen pesados como piedras. El paso de montaña del sur acaba de quedar sepultado. Estás atrapado en el valle hasta la primavera. Llegas a las puertas del castillo de Vane con el cáliz en la mano. Los guardias abren el rastrillo. Vas a conocer al señor de este pozo.",
+        "opens": {
+          "kind": "after",
+          "milestone": "la-pista-en-el-barro"
+        },
+        "asks": {
+          "kind": "arrive",
+          "place": "Castillo de Vane"
+        },
+        "changes": {
+          "reveal": [],
+          "open": [
+            "el-hambre-de-los-lobos"
+          ],
+          "standing": {
+            "leales-de-montesclaros": 2,
+            "los-lobos-del-bosque": -1
+          },
+          "ending": "",
+          "endingBy": {}
+        }
+      },
+      {
+        "id": "el-hambre-de-los-lobos",
+        "act": 2,
+        "title": "El hambre de los Lobos",
+        "hint": "Los campesinos se mueren de hambre en el bosque y planean asaltar los graneros del pueblo.",
+        "scene": "Llevas semanas atrapado en el hielo. Karl el Sordo te encuentra en un cruce de caminos. Los Lobos del Bosque no tienen comida. Te pide que mires hacia otro lado esta noche, cuando bajen a saquear los graneros del pueblo. Si avisas al alguacil, morirán mujeres y niños en el bosque. Si te callas, el pueblo pasará hambre. Tu espada decide quién come esta semana.",
+        "opens": {
+          "kind": "after",
+          "milestone": "el-invierno-cierra-el-paso"
+        },
+        "asks": {
+          "kind": "talk",
+          "npc": "Karl"
+        },
+        "changes": {
+          "reveal": [],
+          "open": [
+            "la-oferta-del-castillo"
+          ],
+          "standing": {
+            "los-lobos-del-bosque": 1,
+            "leales-de-montesclaros": -1
+          },
+          "ending": "",
+          "endingBy": {}
+        }
+      },
+      {
+        "id": "la-oferta-del-castillo",
+        "act": 2,
+        "title": "La oferta del castillo",
+        "hint": "Lord Vane te ofrece oro a cambio de traicionar a los líderes furtivos.",
+        "scene": "Te convocan al gran salón. Hace tanto frío dentro como fuera, pero aquí beben vino caliente. Lord Vane está desesperado. Sabe que las arcas menguan. Te pone una bolsa de plata en la mesa: es tuya si le traes las cabezas de los líderes de los Lobos. Y si no aceptas, te recuerda que la posada es suya y puede dejarte durmiendo en la nieve.",
+        "opens": {
+          "kind": "after",
+          "milestone": "el-hambre-de-los-lobos"
+        },
+        "asks": {
+          "kind": "check",
+          "skill": "persuasion"
+        },
+        "changes": {
+          "reveal": [],
+          "open": [
+            "la-vanguardia-de-keller"
+          ],
+          "standing": {
+            "leales-de-montesclaros": 1
+          },
+          "ending": "",
+          "endingBy": {}
+        }
+      },
+      {
+        "id": "la-vanguardia-de-keller",
+        "act": 2,
+        "title": "La vanguardia de Keller",
+        "hint": "Exploradores acorazados del norte han tomado el peaje. Vane te paga por echarlos.",
+        "scene": "Ha ocurrido lo peor. La nieve no ha detenido a la Casa Keller. Su vanguardia ha cruzado las montañas del norte a pie y han masacrado a la guardia del peaje. Has sido contratado para liderar un contraataque desesperado. Cuando llegas, ves sus armaduras negras recortadas contra la nieve. Son profesionales. Y te superan en número.",
+        "opens": {
+          "kind": "after",
+          "milestone": "la-oferta-del-castillo"
+        },
+        "asks": {
+          "kind": "win",
+          "board": "La vanguardia en el peaje"
+        },
+        "changes": {
+          "reveal": [
+            "Campamento Keller",
+            "La Mina Abandonada"
+          ],
+          "open": [
+            "el-paso-de-los-contrabandistas"
+          ],
+          "standing": {
+            "la-casa-keller": -2,
+            "leales-de-montesclaros": 2
+          },
+          "ending": "",
+          "endingBy": {}
+        }
+      },
+      {
+        "id": "el-paso-de-los-contrabandistas",
+        "act": 2,
+        "title": "El paso de los contrabandistas",
+        "hint": "Hay un túnel bajo la montaña que los Keller están usando para meter armas en el valle.",
+        "scene": "Un rastro de sangre del peaje te lleva hasta un lugar que no está en los mapas: la vieja mina de hierro. Huele a carbón y a sudor frío. Alguien está introduciendo acero de contrabando en el valle para armar a los furtivos y desestabilizar a Lord Vane. Descubrir quién maneja las cuerdas aquí cambiará la guerra.",
+        "opens": {
+          "kind": "after",
+          "milestone": "la-vanguardia-de-keller"
+        },
+        "asks": {
+          "kind": "arrive",
+          "place": "La Mina Abandonada"
+        },
+        "changes": {
+          "reveal": [],
+          "open": [
+            "la-nieve-manchada"
+          ],
+          "standing": {},
+          "ending": "",
+          "endingBy": {}
+        }
+      },
+      {
+        "id": "la-nieve-manchada",
+        "act": 2,
+        "title": "La nieve manchada",
+        "hint": "Un espía norteño tiene los planos de las defensas del castillo. No debe escapar.",
+        "scene": "Lo has arrinconado cerca de la linde del bosque. El espía jadea, con la bota hundida en la nieve profunda. Tiene el pergamino apretado en el puño. Te mira y escupe sangre. Te ofrece el triple de lo que te paga Vane si le dejas marchar con esos planos. El oro pesa, pero las represalias de Vane pesan más. Toca decidir rápido.",
+        "opens": {
+          "kind": "after",
+          "milestone": "el-paso-de-los-contrabandistas"
+        },
+        "asks": {
+          "kind": "defeat",
+          "enemy": "Sombra, el espía"
+        },
+        "changes": {
+          "reveal": [],
+          "open": [
+            "el-asalto-al-peaje"
+          ],
+          "standing": {
+            "la-casa-keller": -1
+          },
+          "ending": "",
+          "endingBy": {}
+        }
+      },
+      {
+        "id": "el-asalto-al-peaje",
+        "act": 2,
+        "title": "El asalto al peaje",
+        "hint": "Los Keller han roto las defensas. Es una masacre a gran escala.",
+        "scene": "El cielo arde, literalmente. Flechas incendiarias llueven sobre las empalizadas del norte. El ejército principal de Keller no ha esperado a la primavera; han traído rompehielos. El caos es total. Soldados corriendo envueltos en llamas, gritos en la oscuridad y tú, en medio de todo, con la espada en la mano, cubriendo la retirada o sumándote a la carnicería.",
+        "opens": {
+          "kind": "after",
+          "milestone": "la-nieve-manchada"
+        },
+        "asks": {
+          "kind": "win",
+          "board": "El asalto de las empalizadas"
+        },
+        "changes": {
+          "reveal": [],
+          "open": [
+            "el-deshielo"
+          ],
+          "standing": {
+            "la-casa-keller": -3
+          },
+          "ending": "",
+          "endingBy": {}
+        }
+      },
+      {
+        "id": "el-deshielo",
+        "act": 3,
+        "title": "El deshielo",
+        "hint": "La nieve se ha fundido. El pueblo está inundado de barro y refugiados.",
+        "scene": "El goteo del agua sobre la madera podrida marca el fin del invierno. El deshielo ha convertido los caminos en ríos de barro y sangre vieja. El pueblo es un caos de heridos y desertores. Ya nadie tiene dinero para pagarte. El momento de la verdad ha llegado: las tres facciones están a un día de marcha de aniquilarse mutuamente.",
+        "opens": {
+          "kind": "after",
+          "milestone": "el-asalto-al-peaje"
+        },
+        "asks": {
+          "kind": "arrive",
+          "place": "El Pueblo de Barro"
+        },
+        "changes": {
+          "reveal": [],
+          "open": [
+            "el-ultimatum"
+          ],
+          "standing": {},
+          "ending": "",
+          "endingBy": {}
+        }
+      },
+      {
+        "id": "el-ultimatum",
+        "act": 3,
+        "title": "El ultimátum",
+        "hint": "Emisarios de los tres bandos te buscan. Elige a quién le vendes la espada.",
+        "scene": "Las cartas están sobre la mesa. Lord Vane está atrincherado; Karl el Sordo prepara las antorchas; y la Capitana Keller ha plantado su estandarte negro a las afueras. Tienes emisarios de los tres buscándote. Saben que tú, el comodín de esta partida, el perro de la guerra que sobrevivió al invierno, inclinarás la balanza. Toca elegir bando. Y no hay vuelta atrás.",
+        "opens": {
+          "kind": "after",
+          "milestone": "el-deshielo"
+        },
+        "asks": {
+          "kind": "none"
+        },
+        "changes": {
+          "reveal": [
+            "El Cruce de Caminos"
+          ],
+          "open": [
+            "la-ultima-paga"
+          ],
+          "standing": {},
+          "ending": "",
+          "endingBy": {}
+        }
+      },
+      {
+        "id": "la-ultima-paga",
+        "act": 3,
+        "title": "La última paga: las puertas del castillo",
+        "hint": "Con Keller o con los Lobos, se acaba en las puertas del castillo.",
+        "scene": "El barro te llega a los tobillos. Huele a hierro, entrañas y humo. El choque de los escudos ahoga hasta los truenos. Esta no es una escaramuza de callejón, esto es una guerra y tú estás en la primera línea cobrando tu deuda. Aprietas los dientes, levantas el acero y cargas contra la línea enemiga. Que los dioses se apiaden del que se cruce, porque tú vienes a cobrar.",
+        "opens": {
+          "kind": "after",
+          "milestone": "el-ultimatum"
+        },
+        "asks": {
+          "kind": "win",
+          "board": "Las puertas del castillo"
+        },
+        "changes": {
+          "reveal": [],
+          "open": [],
+          "standing": {},
+          "ending": "anarquia-del-barro",
+          "endingBy": {
+            "la-casa-keller": "yugo-de-hierro",
+            "los-lobos-del-bosque": "anarquia-del-barro"
+          }
+        }
+      },
+      {
+        "id": "la-ultima-paga-norte",
+        "act": 3,
+        "title": "La última paga: la tienda de Keller",
+        "hint": "Con Vane, se acaba en la tienda de mando de la Capitana.",
+        "scene": "Lord Vane te da la última bolsa de plata que le queda, y no es suya. Si la Capitana Keller cae, el norte se retira hasta la primavera. Su tienda de mando está al otro lado del peaje.",
+        "opens": {
+          "kind": "after",
+          "milestone": "el-ultimatum"
+        },
+        "asks": {
+          "kind": "win",
+          "board": "La tienda de mando"
+        },
+        "changes": {
+          "reveal": [],
+          "open": [],
+          "standing": {},
+          "ending": "status-quo-de-sangre",
+          "endingBy": {}
+        }
+      },
+      {
+        "id": "el-valle-arde",
+        "act": 3,
+        "title": "El valle arde",
+        "hint": "",
+        "scene": "No ha hecho falta nadie. Los Lobos del Bosque han bajado de noche, han abierto las puertas desde dentro y han colgado a Lord Vane de su propio rastrillo.",
+        "opens": {
+          "kind": "clock",
+          "faction": "los-lobos-del-bosque"
+        },
+        "asks": {
+          "kind": "none"
+        },
+        "changes": {
+          "reveal": [],
+          "open": [],
+          "standing": {},
+          "ending": "anarquia-del-barro",
+          "endingBy": {}
+        }
+      },
+      {
+        "id": "el-yugo-llega",
+        "act": 3,
+        "title": "El yugo llega del norte",
+        "hint": "",
+        "scene": "La Casa Keller no ha esperado a nadie. Sus estandartes negros ya ondean sobre El Pueblo de Barro, y los que no juran lealtad cuelgan de los árboles del camino.",
+        "opens": {
+          "kind": "clock",
+          "faction": "la-casa-keller"
+        },
+        "asks": {
+          "kind": "none"
+        },
+        "changes": {
+          "reveal": [],
+          "open": [],
+          "standing": {},
+          "ending": "yugo-de-hierro",
+          "endingBy": {}
+        }
+      }
+    ],
+    "endings": {
+      "yugo-de-hierro": {
+        "title": "El yugo de hierro",
+        "scene": "La bandera negra ondea sobre las ruinas humeantes del castillo de Vane. La Capitana Keller te tira una bolsa pesada a los pies: hay más oro del que has visto en tu vida. A tu alrededor, los soldados de Vane cuelgan de las almenas y los campesinos reconstruyen el peaje a latigazos. Eres rico. Sobreviviste al invierno. Pero al salir del valle, la gente aparta la mirada: eres el mercenario que vendió su hogar."
+      },
+      "status-quo-de-sangre": {
+        "title": "El status quo de sangre",
+        "scene": "Lord Vane tose sangre sobre sus alfombras, pero respira. Los Keller han vuelto a las montañas y los Lobos han caído en el bosque. Tu paga llega en un cofre de plata fina. El valle sigue siendo de los Montesclaros, aunque los campos estén yermos y apenas quede quien los trabaje. Has cumplido como un profesional. Te marchas por el paso del sur dejando atrás un cementerio gobernado por un noble endeudado."
+      },
+      "anarquia-del-barro": {
+        "title": "La anarquía del barro",
+        "scene": "No hay reyes en el valle de Vane. Karl el Sordo y los suyos han pasado a cuchillo a los nobles y han echado a los invasores. El castillo es una ruina saqueada donde los campesinos se reparten el grano de los señores. No hay bolsa de oro para ti: un abrazo tosco, una buena armadura arrancada a un oficial de Keller y un caballo para cruzar el paso. Dejas atrás un lugar sin ley, libre pero hambriento, y una leyenda sobre el lobo solitario que destrozó una corona."
+      }
+    }
+  }
+}

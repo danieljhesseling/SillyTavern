@@ -117,7 +117,7 @@ bicho:
 
 bicho:
   id: el-espia-de-keller
-  nombre: "Sombra" (Hermano de Elara)
+  nombre: '"Sombra" (Hermano de Elara)'
   pg: 30
   ca: 15
   desafio: 2
@@ -485,4 +485,4 @@ encuentro:
   objetivo: { tipo: protect, pnj: el-tabernero-giles }
   nota: "Acto 3 (Libre). El invierno aprieta tanto que las bestias entran en el pueblo por comida fresca. Defiende a Giles en el callejón."
 
-  LOS TABLEROS LOS PUEDES MEJORAR LIBREMENT ;) 
+LOS TABLEROS LOS PUEDES MEJORAR LIBREMENT ;) 

@@ -23,6 +23,7 @@
  * @property {number} movementCost  Multiplier applied per cell entered; Infinity if impassable.
  * @property {number} coverBonus    AC bonus granted to a target standing behind it.
  * @property {boolean} [stateful]   Whether individual cells carry extra state (doors).
+ * @property {boolean} [lethal]     Whoever ends up in it is out of the fight (a chasm).
  */
 
 /**
@@ -81,6 +82,19 @@ export const TERRAIN_TYPES = {
         movementCost: Infinity,
         coverBonus: 0,
         stateful: true,
+    },
+    /**
+     * Un precipicio: no se anda por el, pero se ve a traves, y a quien empujan dentro se
+     * cae. Es lo que hace que empujar sea una forma de ganar un combate y no solo de
+     * ganar una casilla.
+     */
+    chasm: {
+        label: 'Chasm',
+        blocksMovement: true,
+        blocksSight: false,
+        movementCost: Infinity,
+        coverBonus: 0,
+        lethal: true,
     },
 };
 
@@ -307,6 +321,7 @@ export const ASCII_TERRAIN = {
     '~': { type: 'difficult' },
     'c': { type: 'cover_half' },
     'C': { type: 'cover_three_quarters' },
+    'v': { type: 'chasm' },
 };
 
 /**

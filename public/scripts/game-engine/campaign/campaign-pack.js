@@ -172,6 +172,13 @@ export function normalizePack(raw) {
             // El hilo del mundo (fase H). Se lee con tolerancia al importarlo; aqui solo
             // se conserva, para que normalizar un paquete no lo tire.
             plot: source.plot && typeof source.plot === 'object' ? source.plot : null,
+            // Lo que un mundo escrito entero trae ademas (fase M): la gente con lo que
+            // quiere y sabe, los rumores, los encargos del tablon y las habilidades que no
+            // estan en el catalogo de serie. Opcionales: un paquete de ayer entra igual.
+            npcs: list(source.npcs),
+            rumors: list(source.rumors),
+            contracts: list(source.contracts),
+            abilities: list(source.abilities),
         },
         repairs,
     };

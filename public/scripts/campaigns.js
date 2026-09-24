@@ -24,6 +24,7 @@ import { createSeededRandom } from './game-engine/combat/seeded-random.js';
 import { seedOf, derive } from './game-engine/campaign/seed.js';
 import { abilitiesFor, nameAndAbility } from './game-engine/compendio/skills.js';
 import { racesOf, kindsOf, describeKin } from './game-engine/compendio/kin.js';
+import { readPlot, plotFromFaction, startPlot } from './game-engine/campaign/plot.js';
 
 /**
  * Fetches recent chats with metadata from the cross-character API.
@@ -646,6 +647,29 @@ let pendingWorldChoice = null;
 let wizardRunning = false;
 
 /**
+ * Una cara guardada, como archivo para adjuntar.
+ *
+ * @param {string} url La miniatura de un personaje (`/thumbnail?type=avatar&file=…`) o una
+ *   imagen subida.
+ * @returns {Promise<File|null>}
+ */
+async function faceAsFile(url) {
+    try {
+        const thumb = url.match(/[?&]type=avatar&file=([^&]+)/);
+        const source = thumb ? `/characters/${thumb[1]}` : url;
+        const response = await fetch(source, { cache: 'no-cache' });
+        if (!response.ok) return null;
+        const blob = await response.blob();
+        if (!blob.size) return null;
+        const name = decodeURIComponent(source.split('/').pop()?.split('?')[0] || 'narrador.png');
+        return new File([blob], name, { type: blob.type || 'image/png' });
+    } catch (error) {
+        console.warn('[campaigns] no se pudo copiar la cara del narrador', error);
+        return null;
+    }
+}
+
+/**
  * Crea la ficha de personaje del narrador de una campaña.
  *
  * Es una ficha normal de SillyTavern, no una cosa aparte: se edita, se exporta y se borra
@@ -667,6 +691,13 @@ async function createNarratorCharacter(answers, world) {
     // que queremos en vez de fallar por una imagen.
     if (answers?.image instanceof File && answers.image.size > 0) {
         form.append('avatar', answers.image, answers.image.name || 'narrador.png');
+    } else if (typeof answers?.image === 'string' && answers.image.trim()) {
+        // Una cara que ya existe: la de un narrador que ya tienes, o la que se acaba de
+        // subir. Llegaba como direccion y solo se adjuntaba un archivo, asi que la copia
+        // salia con la interrogacion. Se descarga y se adjunta; de un narrador que ya
+        // existe, a tamano completo y no la miniatura.
+        const face = await faceAsFile(answers.image.trim());
+        if (face) form.append('avatar', face, face.name);
     }
 
     try {
@@ -930,6 +961,26 @@ async function startCampaignWizard() {
             }
         }
 
+        // Lo que el mundo deja entrar de cada bateria: las razas, las clases, los bichos. Se
+        // elegia en el taller y no se guardaba en ningun sitio, asi que ni el creador de
+        // personaje ni los generadores lo podian respetar.
+        if (answers.picks && typeof answers.picks === 'object') {
+            try {
+                const data = await loadWorldInfo(created.worldName);
+                if (data) {
+                    /** @type {Record<string, string[]>} */
+                    const picks = {};
+                    for (const [domain, ids] of Object.entries(answers.picks)) {
+                        if (Array.isArray(ids) && ids.length > 0) picks[domain] = ids.map(String);
+                    }
+                    data.metadata = Object.assign(data.metadata ?? {}, { picks });
+                    await saveWorldInfo(created.worldName, data, true);
+                }
+            } catch (error) {
+                console.error('[campaigns] could not store the picks', error);
+            }
+        }
+
         // El filo de la campana: se eligio en el paso 5 y vive en su paquete de reglas,
         // que es donde ya viven las armas y las condiciones. Asi se cambia luego en
         // `/rules` y viaja con la campana al exportarla.
@@ -984,10 +1035,11 @@ async function startCampaignWizard() {
 
         // Y ahora sí, quién eres. Después de abrir la partida: el personaje entra en un
         // mundo que ya existe, que es el orden en que se piensa.
-        await createStartingHero(created.worldName);
+        const hero = await createStartingHero(created.worldName);
 
-        // La mecha: la primera escena de la partida es un problema, no una descripcion.
-        await beginCampaignPlot();
+        // La mecha: la primera escena de la partida es un problema, no una descripcion. Y
+        // se cuenta con quien eres delante, para que no contradiga lo que escribiste.
+        await beginCampaignPlot(hero || '');
 
         // "Crear y escribir el mundo": la partida ya esta abierta detras, asi que cerrar
         // el editor deja a quien lo abrio jugando, no en una pantalla muerta.
@@ -1140,16 +1192,16 @@ async function uploadHeroFace(file, worldName) {
  * lo que cuelga de ella —el grupo, las heridas, el hambre, la cuenta— sigue valiendo igual.
  *
  * @param {string} worldName
- * @returns {Promise<boolean>} Si se creó alguien.
+ * @returns {Promise<string>} Quién es, en una línea para el narrador; vacío si no se creó nadie.
  */
 async function createStartingHero(worldName) {
     const data = await loadWorldInfo(worldName);
-    if (!data) return false;
+    if (!data) return '';
 
     // Solo si no hay nadie: una campaña retomada ya tiene su gente.
     const existing = Object.values(data.entries ?? {})
         .filter((/** @type {any} */ e) => String(e?.dndData?.entityType) === 'character');
-    if (existing.length > 0) return false;
+    if (existing.length > 0) return '';
 
     const catalogue = await loadDndCatalog(worldName).catch(() => null);
     const { openHeroCreator } = await import('./game-engine/ui/hero-creator.js');
@@ -1177,16 +1229,34 @@ async function createStartingHero(worldName) {
     // Las razas y clases escritas, con lo que dan y lo que quitan detras del nombre. Antes
     // esta lista salia de los personajes que ya existian, asi que en un mundo nuevo estaba
     // vacia y escribir «enano» no hacia nada.
-    const razas = racesOf(compendium);
-    const clases = kindsOf(compendium);
+    //
+    // Y solo las que el mundo deja entrar: ofrecer un elfo en un mundo de humanos y sangre
+    // alta es ofrecer algo que el mundo dice que no existe.
+    const picks = data.metadata?.picks ?? {};
+    const allowed = (/** @type {any[]} */ rows, /** @type {string} */ domain) => {
+        const ids = Array.isArray(picks[domain]) ? picks[domain].map(String) : [];
+        return ids.length > 0 ? rows.filter(row => ids.includes(String(row.id))) : rows;
+    };
+    const razas = allowed(racesOf(compendium), 'razas');
+    const clases = allowed(kindsOf(compendium), 'clases');
+    const limited = Array.isArray(picks.razas) || Array.isArray(picks.clases);
     const conEfectos = (/** @type {any[]} */ rows) => rows
         .map(row => `${row.name} — ${describeKin(row)}`);
 
+    // Como empieza la partida, para que el pasado que se escriba pueda llegar ahi.
+    const opening = (() => {
+        const plot = readPlot(data.metadata?.plot) ?? plotFromFaction({ factions: data.metadata?.factions ?? [] });
+        const scene = plot ? startPlot(plot).opened.map(m => m.scene).find(Boolean) : '';
+        const said = String(scene || data.metadata?.description || '').trim();
+        return said.length > 320 ? `${said.slice(0, 317).replace(/\s+\S*$/, '')}…` : said;
+    })();
+
     const answers = await openHeroCreator({
         worldName,
-        races: [...conEfectos(razas), ...(catalogue?.races ?? [])],
-        classes: [...conEfectos(clases), ...(catalogue?.classes ?? [])],
+        races: [...conEfectos(razas), ...(limited ? [] : (catalogue?.races ?? []))],
+        classes: [...conEfectos(clases), ...(limited ? [] : (catalogue?.classes ?? []))],
         genre: String(data.metadata?.genre || ''),
+        premise: opening,
         // Sin proveedor conectado no hay varita, y el boton lo dice en vez de fallar.
         generate: online_status !== 'no_connection' ? (params) => generateRaw(params) : null,
         uploadFace: (file) => uploadHeroFace(file, worldName),
@@ -1194,7 +1264,7 @@ async function createStartingHero(worldName) {
         Popup,
         POPUP_TYPE,
     });
-    if (!answers) return false;
+    if (!answers) return '';
 
     // Donde empieza: la primera casilla del primer tablero, que es donde el asistente
     // ponia al grupo. Sin tablero, una casilla que no es un muro.
@@ -1225,7 +1295,7 @@ async function createStartingHero(worldName) {
     });
 
     const entry = /** @type {any} */ (createWorldInfoEntry(worldName, data));
-    if (!entry) return false;
+    if (!entry) return '';
 
     entry.comment = spec.title;
     entry.key = spec.keys;
@@ -1246,7 +1316,8 @@ async function createStartingHero(worldName) {
     if (known.length > 0) {
         toastr.info(known.map(nameAndAbility).join('. '), 'Lo que sabes hacer', { timeOut: 9000 });
     }
-    return true;
+    const who = [answers.race, answers.className].filter(Boolean).join(', ');
+    return [`${answers.name}${who ? ` (${who})` : ''}`, answers.about].filter(Boolean).join('. ');
 }
 
 /**

@@ -282,6 +282,21 @@ El [[ROADMAP_MAESTRO]], Nivel 2. Lo que hace que quieras jugar mañana.
 
 ---
 
+### A13 · Desacoplar enemigos de los tableros (Spawning dinámico) 🟡 **En diseño**
+Los tableros en las plantillas y generadores nacían con enemigos fijos clavados en casillas, lo que volvía las salas estáticas o museos sin rejugabilidad (*[[ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES]] §4.1*).
+- **Geometría pura**: El tablero solo almacena muros `#`, suelo `.`, mesas `c`, coberturas `C`, puertas `D` y puntos de aparición `partyStart`.
+- **Spawning contextual**: Los enemigos se instancian únicamente al aceptar una misión o contrato, o según la tabla de peligro del bioma (`spawnTable`), adaptándose al nivel de la party.
+- **Tableros sociales pacíficos**: Una taberna o castillo se explora sin combate; solo si un evento o encargo estalla se puebla de combatientes.
+
+---
+
+### A14 · Nodos de Servicios en Localidades (Taberna, Forja, Tienda, Templo) 🟡 **En diseño**
+Hoy una localidad sin tablero táctico es solo un cartel de texto. Si el jugador entra y quiere comprar o curarse, depende de inventárselo con el LLM en el chat sin que el oro ni el inventario del motor se enteren (*[[ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES]] §4.2*).
+- **Esquema de servicios**: Añadir `services: SettlementServiceType[]` a cada localidad (`tavern`, `blacksmith`, `apothecary`, `temple`, `job_board`, `moneylender`).
+- **Botones funcionales en pantalla de exploración**: Al visitar un pueblo, el HUD ofrece botones directos para comerciar, reparar equipo, tratar heridas y aceptar contratos con interacción real sobre el oro e inventario.
+
+---
+
 ## 🟠 D — Necesita una decisión
 
 Cada una es una bifurcación real: las dos salidas son defendibles y la elección cuesta después. Llevan mi recomendación, pero la decisión no es mía.
@@ -348,6 +363,18 @@ La costura ya existe y es la buena: `roll-guard.js` intercepta las tiradas que e
 
 **Decidido que no, por ahora.** Cuesta en todos los turnos y depende de que el modelo obedezca; el motor ya tira, ya audita y ya corrige lo que el narrador se invente. Si algún día apetece, la costura (`roll-guard.js`) sigue ahí.
 
+### D7 · Posturas de aliados en Modo Solo (`Stances`)
+En Modo Solo, dejar a los compañeros a merced del A* de monstruos provoca que se suiciden contra enemigos lejanos (*misión de escolta frustrante*).
+- **Opción A (Recomendada)**: Selector de 1 clic en la tarjeta del aliado durante el combate: *Defensivo* (guardaespaldas del líder), *Agresivo* (carga sobre el más débil) o *Retaguardia* (distancia máxima y conjuros).
+- **Opción B**: Órdenes tácticas por texto en chat (ej. `/order Brand defiende`).
+- **Recomendación**: Opción A. Es inmediata, visual, determinista y a cero tokens.
+
+### D8 · Fail-Forward ante impago de Upkeep (Bancarrota)
+Si llega el viernes y el grupo no puede pagar comida, alojamiento y salarios:
+- **Opción A (Recomendada)**: **Evento de deuda de facción**. Un usurero local o facción con reputación positiva paga la cuenta a cambio de imponer un contrato obligatorio de alto riesgo con dilema moral.
+- **Opción B**: Los mercenarios abandonan el grupo inmediatamente y el jugador sufre penalización de cansancio por dormir en la intemperie.
+- **Recomendación**: Opción A. Enriquecer la narrativa convirtiendo la bancarrota en un catalizador de aventuras (*Fail-Forward*) en lugar de un bloqueo frustrante.
+
 ---
 
 ## ✅ Decisiones tomadas — 2026-09-21
@@ -412,6 +439,8 @@ De [[DISENO_GENERADOR_MUNDOS_PROFUNDO]]. Ordenadas por lo que dan a cambio de lo
 | **P21** | **Oleadas de refuerzos** | *«En la ronda 3 entran dos arqueros por la casilla (12,0)»*. El despertar de salas ya existe; esto es lo mismo disparado por ronda o por evento |
 | **P22** | **Fases de jefe** | Al 50% de PG cambia de perfil táctico o sube la CA. Barato: el perfil ya es un campo, y cambiarlo a mitad de combate es una línea |
 | **P23** | **Terreno nuevo: agua, lava, trampas, elevación** | El documento propone `W`, `L`, `T`, `^`. **Prerrequisito**: hoy los tipos de terreno son **código** (`board/terrain.js`), no datos. Sacarlos al paquete de reglas es la mitad del trabajo, y de paso cumple tu requisito de *«sin tocar código»* en un sitio donde aún no se cumple |
+| **P24** 💡 | **Action Chips de diálogo con tiradas D&D en cliente** | Rescatar la ficha fuera de combate (*[[ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES]] §3*): botones sugeridos en la escena de diálogo (ej. `[Persuadir CD 12]`, `[Intimidar CD 14]`) que resuelven d20 + bono en JS e inyectan solo el resultado al modelo. 0 tokens adicionales y la ficha importa en el rol social |
+| **P25** 💡 | **Prótesis y roles de campamento para amputaciones** | Evitar la frustración de retirar al confidente más querido (*[[ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES]] §3*): prótesis enanas/mágicas que sustituyen penalizadores por mecánicas únicas, o roles pasivos en campamento (intendente, consejero táctico) que dan ventajas a la party |
 
 ### Sobre el propio desarrollo
 

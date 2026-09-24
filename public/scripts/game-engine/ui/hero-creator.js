@@ -54,6 +54,7 @@ function suggestField(label, options, placeholder, cls) {
  * @param {string} [input.worldName]
  * @param {string[]} [input.races]   Las del mundo, si las tiene.
  * @param {string[]} [input.classes]
+ * @param {string} [input.premise] Como empieza la partida: el pasado tiene que encajar.
  * @param {string} [input.genre]
  * @param {((params: any) => Promise<string>)|null} [input.generate] La llamada al modelo,
  *        inyectada. Sin ella no hay varita, y se dice en vez de ofrecer un boton muerto.
@@ -66,7 +67,7 @@ function suggestField(label, options, placeholder, cls) {
  * @returns {Promise<any|null>}
  */
 export async function openHeroCreator({
-    worldName = '', races = [], classes = [], genre = '',
+    worldName = '', races = [], classes = [], genre = '', premise = '',
     generate = null, uploadFace = null, rollName = null, Popup, POPUP_TYPE,
 }) {
     const root = $('<div class="hc-root"></div>');
@@ -109,6 +110,15 @@ export async function openHeroCreator({
     row.append(suggestField('Raza', races.length > 0 ? races : DEFAULT_RACES, 'Humano, elfo…', 'hc-race'));
     row.append(suggestField('Clase', classes.length > 0 ? classes : DEFAULT_CLASSES, 'Guerrero, pícara…', 'hc-class'));
     root.append(row);
+
+    // Como empieza: lo que escribas de ti tiene que poder llegar ahi, y el narrador lo va
+    // a respetar. Es lo que da a quien juega algo de mando sobre la historia.
+    if (String(premise).trim()) {
+        const opening = $('<div class="hc-premise"></div>');
+        opening.append($('<span class="hc-label"></span>').text('Así empieza tu historia'));
+        opening.append($('<div class="hc-premise-text"></div>').text(String(premise).trim()));
+        root.append(opening);
+    }
 
     const aboutField = $('<label class="hc-field"></label>');
     const aboutHead = $('<span class="hc-label hc-label-row"></span>');
@@ -177,7 +187,7 @@ export async function openHeroCreator({
                 race: String(root.find('.hc-race').val() || ''),
                 className: String(root.find('.hc-class').val() || ''),
                 about: asked,
-            }, { worldName, genre });
+            }, { worldName, genre, premise });
 
             const answer = await generate({ prompt, systemPrompt, responseLength: 300 });
             const written = cleanHeroAbout(String(answer ?? ''));

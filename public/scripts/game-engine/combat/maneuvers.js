@@ -236,14 +236,18 @@ export function describeEdge(roll, mode, reasons) {
  * @param {number} input.attackTotal
  * @param {number} input.defenseTotal
  * @param {(x: number, y: number) => boolean} input.isFree Si se puede acabar en esa casilla.
- * @returns {{success: boolean, pushedTo: {x: number, y: number}|null, prone: boolean}}
+ * @param {(x: number, y: number) => boolean} [input.isChasm] Si detras hay un precipicio.
+ * @returns {{success: boolean, pushedTo: {x: number, y: number}|null, prone: boolean, falls: boolean}}
  */
-export function resolveShove({ from, target, attackTotal, defenseTotal, isFree }) {
-    if (!(Number(attackTotal) > Number(defenseTotal))) return { success: false, pushedTo: null, prone: false };
+export function resolveShove({ from, target, attackTotal, defenseTotal, isFree, isChasm = () => false }) {
+    if (!(Number(attackTotal) > Number(defenseTotal))) return { success: false, pushedTo: null, prone: false, falls: false };
 
     const dx = Math.sign(target.x - from.x);
     const dy = Math.sign(target.y - from.y);
     const to = { x: target.x + dx, y: target.y + dy };
-    if ((dx !== 0 || dy !== 0) && isFree(to.x, to.y)) return { success: true, pushedTo: to, prone: false };
-    return { success: true, pushedTo: null, prone: true };
+    const moves = dx !== 0 || dy !== 0;
+    // Detras, el vacio: el empujon lo decide todo.
+    if (moves && isChasm(to.x, to.y)) return { success: true, pushedTo: to, prone: false, falls: true };
+    if (moves && isFree(to.x, to.y)) return { success: true, pushedTo: to, prone: false, falls: false };
+    return { success: true, pushedTo: null, prone: true, falls: false };
 }

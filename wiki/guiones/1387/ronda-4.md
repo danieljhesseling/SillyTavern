@@ -243,7 +243,7 @@ pnj:
   servicio: tablon
 
 
-  ¡A sus puestos, que entran los actores! Se quita la bufanda, se sirve un vaso de agua haciéndolo pasar por aguardiente enano... ah no, que aquí no hay enanos... aguardiente peleón, y se cruje los nudillos.
+¡A sus puestos, que entran los actores! Se quita la bufanda, se sirve un vaso de agua haciéndolo pasar por aguardiente enano... ah no, que aquí no hay enanos... aguardiente peleón, y se cruje los nudillos.
 
 El mapa está muy bien para no perderse, pero un mundo sin gente con deudas es solo un trozo de papel. En 1387, la gente es miserable, tiene frío y, sobre todo, tiene un precio.
 
@@ -544,7 +544,7 @@ confidente:
 
 confidente:
   id: doc-silas-joven
-  nombre: "Doc" Arthur
+  nombre: '"Doc" Arthur'
   clase: clerigo # (Mecánicamente clérigo: cura heridas usando hab-primeros-auxilios, cero magia)
   motivo: dinero
   escenas:
@@ -606,4 +606,4 @@ confidente:
       escena: "Al calor de la lumbre, estás cosiendo su herida del hombro. Le pasas la bota de vino. Grimm bebe, te mira y con una voz profunda como una cueva dice: «Gracias, jefe». Es la primera vez que le oyes hablar. Motivo cambia a 'vínculo'."
     - rango: 10
       titulo: El muro de hierro
-      escena: "Grimm te muestra una carta que le ha llegado. Su familia está a salvo en la capital con e
+      escena: "Grimm te muestra una carta que le ha llegado. Su familia está a salvo en la capital con e"

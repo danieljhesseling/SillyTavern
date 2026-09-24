@@ -178,7 +178,7 @@ export function buildHeroEntry(answers, where = {}) {
  * turnos de la partida.
  *
  * @param {Partial<HeroAnswers>} answers
- * @param {{worldName?: string, genre?: string}} [world]
+ * @param {{worldName?: string, genre?: string, premise?: string}} [world]
  * @returns {{systemPrompt: string, prompt: string}}
  */
 export function buildHeroPrompt(answers, world = {}) {
@@ -198,6 +198,9 @@ export function buildHeroPrompt(answers, world = {}) {
         who ? `Es ${who}.` : '',
         text(world.worldName) ? `La partida ocurre en "${text(world.worldName)}".` : '',
         text(world.genre) ? `El tono es ${text(world.genre).toLowerCase()}.` : '',
+        // Como empieza la partida: su pasado tiene que poder llegar ahi. Un militar retirado
+        // no puede ser, a la vez, un chaval que roba en las calles.
+        text(world.premise) ? `Así empieza la partida: ${text(world.premise)} Su pasado tiene que encajar con eso.` : '',
         '',
         text(answers?.about)
             ? `Lo que quiere quien juega: ${text(answers.about)}`

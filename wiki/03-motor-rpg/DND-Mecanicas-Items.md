@@ -127,7 +127,36 @@ interface DndItem {
 
 ---
 
-## 5. Enlaces Relacionados
+## 5. Tiradas de Habilidad Fuera de Combate & Action Chips (`rules/checks.js`)
+
+Para rescatar las 18 habilidades de la ficha D&D 5e fuera del combate (*[[ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES]] §2.7*), el motor permite resolver tiradas de habilidad directamente en el cliente mediante un botón en la barra o sugerencias automáticas (*Action Chips*):
+
+```mermaid
+graph LR
+    ActionChip[Botón de Acción Social: Persuadir CD 12] --> EngineRoll[Motor JS: d20 + Carisma + Bono = 16]
+    EngineRoll --> ResultInject[Prefijo en Mensaje: [TIRADA Éxito]]
+    ResultInject --> LLM[El Narrador describe la reacción según el resultado canónico]
+```
+
+- **Cero Gasto de Tokens en Arbitraje**: El motor calcula la tirada en JavaScript. El modelo no decide si superaste la CD; recibe el veredicto resuelto y se limita a narrar las consecuencias dramáticas.
+- **Competencias por Clase**: Aplica el bonificador de competencia (+2 a nivel 1–4) según el trasfondo y arquetipo del actor.
+
+---
+
+## 6. Posturas Tácticas de Compañeros en Modo Solo (`Stances`)
+
+Para evitar que los aliados en Modo Solo tomen rutas suicidas con la IA de monstruos (*[[ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES]] §2.5*), el jugador puede alternar con un solo clic la postura táctica de cada compañero:
+
+| Postura | Comportamiento en Rejilla | Acción Típica |
+| :--- | :--- | :--- |
+| **🛡️ Defensiva (Guardaespaldas)** | Se mantiene en celdas adyacentes al líder o interponiéndose ante el atacante más cercano | Acción de Esquiva (*Dodge*) o Ataque de Oportunidad |
+| **⚔️ Agresiva (Carga)** | Avanza sobre el enemigo con menor CA o menor vida a su alcance | Ataque principal o uso de habilidades ofensivas |
+| **🏹 Retaguardia (Soporte / Rango)** | Mantiene una distancia de 4 a 6 casillas del peligro con línea de tiro despejada | Ataques a distancia o conjuros curativos |
+
+---
+
+## 7. Enlaces Relacionados
+- [[ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES]]: Diagnóstico lúdico sobre la ficha muerta y el aliado suicida.
 - [[Sistema-Party]]: Estructura de `partyMembers` que contiene los ítems equipados.
 - [[World-Content-Popups]]: Modales interactivos para crear y editar objetos mágicos y armas.
 - [[Dynamic-Context-Manager]]: Notificación al LLM del equipamiento portado por el grupo.

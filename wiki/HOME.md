@@ -16,6 +16,7 @@ Bienvenido a la **Wiki Oficial de SillyTavern & Motor RPG** (`my-silly` fork de 
 > | Vengo a… | Abre |
 > | :--- | :--- |
 > | **Saber qué se hace después** | **[[ROADMAP_MAESTRO]]** — el único plan vivo. Todo lo demás cuelga de ahí |
+> | **Entender fallas de diseño & soluciones** | **[[ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES]]** — análisis lúdico y amortiguadores de sistemas |
 > | **Jugar** | [[EMPEZAR_UNA_CAMPANA]] |
 > | **Coger una tarea** | [[POR_HACER]] |
 > | **Entender por qué el juego es así** | [[ROADMAP]] (el acta de las fases A–H) y [[PROPUESTA_JUEGO_DND_GLOOMHAVEN_PERSONA]] (la visión original) |
@@ -46,6 +47,7 @@ mindmap
       [[Extensiones-Plugins]]
       [[Seguridad-Autenticacion]]
     Motor RPG D&D
+      [[ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES]]
       [[Sistema-Party]]
       [[DND-Mecanicas-Items]]
       [[Dynamic-Context-Manager]]
@@ -109,6 +111,7 @@ El núcleo de juego de rol agregado en la rama `my-silly` con más de 24,000 lí
 
 ### 4. 🔍 Auditoría Técnica, Calidad & Futuro
 Diagnóstico crítico y catálogo exhaustivo de propuestas de mejora:
+- **[[ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES]]** ⚖️ **Análisis Profundo de Fallas Jugables & Soluciones Sistémicas.** El diagnóstico de fondo sobre la colisión entre D&D, Gloomhaven, Persona y Darkest Dungeon. Detalla las 7 fallas lúdicas críticas (afecto vs mutilación, chat vs tablero, espiral de upkeep, tableros escaparate, acompañante suicida, localidades muros de texto y ficha dormida) y aporta soluciones técnicas a 0 tokens (prótesis, posturas, fail-forward y tableros desacoplados).
 - **[[ROADMAP_MAESTRO]]** 🗺️ **El mapa de todos los mapas, y el único plan vivo.** Empieza por la pregunta que ordena todo —**¿por qué querrías jugar mañana?**— y parte lo que queda en seis niveles, cada uno jugable por sí solo: el tablero que sigue a la conversación, **el desgaste** (comer, cobrar, heridas que no sanan, muerte permanente), el mundo que crece solo, el gremio como capa opcional, los modos de juego y el bucle cerrado. Dice en claro **qué veo posible y qué no**.
 - **[[ALGORITMOS_GENERACION]]** 🎲 **200 ideas para que dos partidas del mismo texto no se parezcan.** Todo sin IA: tablas, pesos, ruido y una semilla que se guarda con la campaña. La regla que las ordena es una sola — **la semilla no es el texto**: se tira al crear el mundo y lo escrito solo inclina los pesos. Va por áreas (terreno, enemigos, botín, misiones, nombres, facciones) y termina diciendo cuáles diez cambian más que las otras ciento noventa.
 - **[[ROADMAP_CREACION]]** 🏗️ **El taller de campañas: trece pasos y tres formas de empezar.** Funde el asistente de *Nueva campaña* con el editor de `/campana`, que hoy hacen lo mismo a medias y no se ven entre ellos. Un solo componente —tarjetas, una con un `+`, y el formulario debajo— configurado trece veces, para que no haya trece sitios donde arreglar el mismo fallo. Dice qué paso va antes que cuál y por qué, cómo funciona la semilla cuando eliges a mano (**es el dado de lo que no has elegido**), y las dos cosas que hay que arreglar antes de empezar.

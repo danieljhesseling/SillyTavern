@@ -22,6 +22,7 @@ public/
 │
 ├── css/                     # Capas de estilos modulares
 │   ├── campaigns.css        # Tarjetas de campaña y panel de selección en bienvenida (1,301 líneas)
+│   ├── game-shell.css       # Layout y escenas a pantalla completa del Modo Videojuego
 │   ├── dnd-character.css    # Ficha de personaje D&D, inventario, ranuras y estados (1,330 líneas)
 │   ├── world-map.css        # Contenedor zoomable de mapas, niebla y tokens (1,383 líneas)
 │   ├── dynamic-context-manager.css # Modal y reglas de contexto dinámico (355 líneas)
@@ -37,6 +38,15 @@ public/
 │   └── eventemitter.js      # Bus de eventos desacoplado
 │
 └── scripts/                 # Módulos ES funcionales (más de 80 archivos)
+    ├── game-engine/         # Motor RPG modular, desacoplado y con tests en Node.js
+    │   ├── ui/shell/        # Game Shell: director de escenas, pantalla de título, pausa
+    │   │   ├── game-shell.js     # Contenedor raíz y transiciones cinemáticas
+    │   │   ├── scene-director.js # Orquestador canónico de cambio de escena
+    │   │   ├── welcome-title.js  # Pantalla de título de videojuego
+    │   │   └── pause-menu.js     # Menú de pausa (Esc) con opciones de juego
+    │   ├── combat/          # Máquina de combate táctico 0 tokens, iniciativa, turnos
+    │   ├── board/           # Tablero determinista, cuadrícula A*, niebla, terreno
+    │   └── rules/           # Reglas D&D 5e: heridas, descansos, sueldos, compañeros
     ├── party.js             # Gestor de grupo RPG, ficha D&D e inventario (4,734 líneas)
     ├── dnd-system.js        # Lógica matemática D&D 5e, slots, dados y modificadores (1,327 líneas)
     ├── dynamic-context-manager.js # Gestor de contexto dinámico y tokens (1,919 líneas)
@@ -169,8 +179,45 @@ El ciclo de presentación de mensajes de chat opera bajo las siguientes etapas:
 
 ---
 
-## 6. Enlaces Relacionados
+## 6. 🎮 El Modo Videojuego (Game Shell) & Director de Escenas
+
+A través del comando `/modojuego` (o arrancando con el modo habilitado), SillyTavern oculta los cajones técnicos y se transforma en un videojuego cinemático de tres escenas gestionado por `public/scripts/game-engine/ui/shell/`:
+
+```mermaid
+graph TD
+    EngineState[Estado Canónico del Motor] --> SceneDirector[scene-director.js]
+    
+    SceneDirector -->|combatEncounter.active| SceneCombat[⚔️ Escena Combate: Tablero VTT + HUD Táctico]
+    SceneDirector -->|Hay localización sin combate| SceneExploration[🗺️ Escena Exploración: Mapa POIs + Servicios]
+    SceneDirector -->|Por defecto / Narrativa| SceneDialogue[🎭 Escena Diálogo: Chat + Retrato + Tablero lateral]
+
+    subgraph DOM_Magic["Técnica de Reubicación Limpia"]
+        Sheld[#sheld original de SillyTavern] -.->|Mover nodo sin recrear| SceneDialogue
+    end
+```
+
+### A. Reubicación Dinámica de `#sheld` (Sin Duplicar el Chat)
+Para conservar el 100% de la compatibilidad con el streaming de texto, swipes, expresiones regulares, macros y adjuntos de SillyTavern, el Shell **no recrea** la interfaz de conversación:
+- Localiza el elemento contenedor `#sheld` (que aloja `#chat` y `#form_sheld`).
+- Mediante JavaScript nativo, traslada el nodo DOM `#sheld` al panel izquierdo de la **Escena de Diálogo**.
+- Al salir del modo videojuego, `#sheld` vuelve exactamente a su posición jerárquica original en `index.html`.
+
+### B. El Orquestador de Escenas (`scene-director.js`)
+El director de escena **obedece al motor de juego canónico**, no a la prosa libre del LLM:
+- **Combate (`combat`)**: Se activa si `combatEncounter.active === true` o si hay un tablero táctico activo en confrontación.
+- **Exploración (`exploration`)**: Se activa cuando el grupo viaja a una localización geográfica en el mapa pero no está en cuadrícula de batalla.
+- **Diálogo (`dialogue`)**: Escena por defecto para conversar con el narrador y los acompañantes. En pantallas panorámicas, reserva el 50% derecho para mostrar el tablero táctico o la ilustración de la sala en tiempo real.
+
+### C. Pantalla de Título & Menú de Pausa
+- **Pantalla de Título (`welcome-title.js`)**: Portada inmersiva con fondo temático, botones de *Nueva Campaña*, *Continuar Partida* y *Configuración*, cubriendo la interfaz de bienvenida de SillyTavern.
+- **Menú de Pausa (`pause-menu.js`)**: Al pulsar `Esc`, se despliega un menú transparente que permite pausar la música, editar la campaña con `/campana`, revisar las reglas con `/rules`, o salir al menú principal.
+
+---
+
+## 7. Enlaces Relacionados
 - [[Arquitectura-General]]: Visión sistémica global.
+- [[ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES]]: Diagnóstico lúdico y soluciones de diseño.
+- [[PROPUESTA_FRONTEND_MODO_JUEGO]]: Documento de diseño original del Game Shell (Fase H).
 - [[Ciclo-De-Vida-Prompt]]: Flujo detallado desde la pulsación de tecla hasta la respuesta del LLM.
 - [[Sistema-Party]]: Estructura interna de `party.js` y gestión del grupo.
 - [[Campanas-Mapas-Tableros]]: Mecánicas del renderizador de mapas en `world-map-renderer.js`.

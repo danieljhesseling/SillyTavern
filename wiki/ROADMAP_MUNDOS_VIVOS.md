@@ -266,6 +266,47 @@ Hoy un encargo **genera** su mazmorra. Con cinco tableros escritos por mundo, el
 
 ## ✅ Hecho, para no rehacerlo
 
+### G, M7, T1, L1–L3, C1 y C7 — 2026-09-23
+
+| Pieza | Qué hace | Lógica · pruebas | En el navegador |
+| :--- | :--- | :--- | :--- |
+| **G1–G2, G4** | Ficha «Explorar los alrededores» (`/explorar`): gasta un bloque del día y descubre un sitio con camino, tablero y bichos de su bioma. Tope de 18 sitios | `world/growth.js` | Paso 50 ✅ |
+| **G3** | Al llegar a un sitio con poca gente se escribe la que falta, y se cuenta al narrador | `peopleWanted` | Paso 50 ✅ (en un sitio descubierto) |
+| **G5** | El botín de rango alto saca objetos de la forja | `awardEncounterLoot` | Solo por pruebas |
+| **G6** | La herramienta `proponer_sitio`: el narrador propone, no crea. Sale una ficha para ir a buscarlo | `addProposal`, `takeProposal` | Paso 50 ✅ |
+| **M7** | La curva 80/60/40/10 decide escrito, semilla o chat en el tablón y en la gente | `campaign/mix.js` | Paso 49 ✅ (tablón) |
+| **T1** | Precipicio (`v` en los mapas): empujar a alguien dentro lo saca del combate | `terrain.js`, `resolveShove` | Se dibuja: paso 51 ✅. El empujón al vacío, solo por pruebas |
+| **L1–L3** | Servicios por tipo de sitio, tarjetas en la exploración; la posada: sala común, habitación, comida, rumores y hablar con quien atiende | `campaign/services.js` | Paso 51 ✅ |
+| **L4 (DL1)** | Los remedios solo se compran donde hay herrería; la ficha dice dónde hay una | `smithHere` | Paso 46 ✅ |
+| **C1** | «Cómo está el grupo» al final del prompt, cada turno | `campaign/body.js` | Paso 51 ✅ |
+| **C7** | Frases de compañeros en combate según lo que quiere cada uno, sin llamar al modelo | `combat/barks.js` | Solo por pruebas |
+
+**Arreglos de la misma tanda:**
+
+- **El personaje encaja con el mundo.** El creador solo ofrece las razas y clases que el mundo eligió, y enseña «Así empieza tu historia» con la primera escena del hilo. El narrador recibe quién es el personaje junto con la mecha, y la orden de no contradecir su pasado. Paso 49 ✅.
+- **La copia de un narrador sale con su cara.** Elegir un narrador de otra campaña no copiaba la imagen, y la cara subida en «Su cara» no se guardaba. Paso 49 ✅.
+- **Las escrituras del mundo van en fila.** Al llegar a un sitio, el hilo, la gente y la reputación guardaban el archivo del mundo a la vez, y el último borraba lo de los demás (la cueva revelada no salía). Paso 48 ✅.
+
+### M1 y M6 — 1387, escrito entero — 2026-09-23
+
+El guion del Gem (`wiki/guiones/1387/ronda-1…7`) más una ronda de correcciones (`ronda-8-claude.md`, con el porqué de cada cambio) se convierten con **`tools/guion-a-paquete.mjs`** en `public/mundos/1387.pack.json`, y `mundos.json` apunta a él. El mismo conversor sirve para la costa, el ocaso y la pantalla.
+
+| Pieza | Qué hace | Pruebas |
+| :--- | :--- | :--- |
+| **El paquete aprende** | Facciones vivas (sede, dominios, enemigos, meta con ritmo), caminos con días, bioma y servicios, PNJ (quiere, sabe, voz; el secreto no va al narrador), rumores, encargos escritos, habilidades nuevas y finales | `game-engine-world-1387` · 8 |
+| **Encargos escritos** | Salen en el tablón por acto y por cadena, mezclados con los generados según la curva (80/60/40/10 %). Los de combate se entregan al ganar su tablero; los que no tienen pelea, con una tirada buena en su sitio. Su giro se cuenta al cumplirlos | `written-contracts.js` · 6 |
+| **Rumores** | Ficha «Escuchar rumores» en cada sitio con algo que oír (`/rumor`). Uno cada vez, sin repetir, sin decir si es verdad; el que lleva a un sitio escondido lo pone en el mapa | `rumors.js` · 2 |
+| **Finales según el bando** | Un hito puede acabar la partida con un final que decide la facción que mejor os mira, y se narra su escena | `plot.js` · 3 |
+| **M6** | `tools/check-world-density.mjs`: cuenta contra el listón y busca huecos (referencias rotas, sitios inalcanzables, hitos que no se abren, lugares sin nada que hacer, tres encargos seguidos del mismo verbo) | 1387: **llega al listón** |
+
+**1387 hoy**: 16 hitos y 3 finales, 15 encargos (8 sin pelear, 3 cadenas), 7 sitios + 4 que se descubren, 22 PNJ, 5 confidentes con 5 escenas cada uno, 14 tableros y 16 combates, 15 bichos con 3 jefes, 3 facciones, 23 objetos y 26 rumores.
+
+**Lo que no está, dicho claro:**
+
+- **Reclutar a los confidentes.** Existen en el mundo como gente con sus escenas escritas, pero todavía no hay forma de que se unan al grupo (la *plantilla*, pendiente desde A11). Sin eso, sus escenas de vínculo no se disparan.
+- **La mezcla (M7) solo toca el tablón.** La gente, los encuentros y el botín todavía no se mezclan con lo generado: eso llega con la fase G.
+- **Los servicios se guardan pero no tienen botón** (fase L), y las `mecanica_pendiente` de los tableros esperan a la fase T.
+
 ### M0 y H1–H4 — 2026-09-23
 
 | Pieza | Qué hace | Lógica · pruebas | Conectado | En el navegador |

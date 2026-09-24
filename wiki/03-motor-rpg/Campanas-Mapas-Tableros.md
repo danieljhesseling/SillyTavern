@@ -62,12 +62,16 @@ graph LR
 - Planos de asentamientos, distritos urbanos o mapas de superficie de mazmorras.
 - Muestra puntos clave y conexiones con otros mapas o tableros interiores.
 
-### Nivel 3: Tableros Tácticos de Combate (Tactical Boards)
-- Diseñados específicamente para resolver escaramuzas y encuentros bélicos.
+### Nivel 3: Tableros Tácticos de Combate & Espacios Sociales (Tactical Boards)
+- Diseñados para resolver escaramuzas tácticas o interactuar en espacios interiores complejos (como tabernas o salones).
+- **Desacoplamiento Canónico (Geometría vs. Spawners)**:
+  - Un tablero **no guarda enemigos estáticos pegados de fábrica** (*ver [[ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES]] §4.1*). Guardar enemigos fijos convierte las salas en museos rígidos sin rejugabilidad.
+  - El tablero almacena exclusivamente **geometría física** mediante mapas ASCII (`terrain.js`): muros (`#`), suelo transitable (`.`), mesas (`c`), coberturas (`C`), puertas (`D`) y zonas de entrada (`partyStart`).
+  - Los ocupantes (enemigos hostiles o PNJ pacíficos) son **instanciados dinámicamente** según el contexto: la misión activa del gremio, contratos del tablón o tablas de encuentro por peligro de bioma (`spawnTable`). Una taberna es pacífica hasta que una misión desata una reyerta.
 - **Cuadrícula Superpuesta (Grid)**: Ajuste dinámico del tamaño de celda (ej. 50px por casilla estándar de 5 pies).
 - **Colocación de Tokens**:
   - Cada miembro del grupo, aliado, PNJ o monstruo enemigo se representa mediante una ficha circular con su avatar y nombre.
-  - Los tokens pueden ser arrastrados y soltados en cualquier celda de la cuadrícula.
+  - Los tokens pueden ser arrastrados y soltados en cualquier celda de la cuadrícula o movidos con el cursor según su velocidad Chebyshev.
 - **Panel de Coordenadas**: Panel lateral retráctil que lista todos los personajes en el mapa y permite modificar con precisión numérica sus coordenadas `X` e `Y`.
 
 ---
@@ -99,7 +103,29 @@ Con esta información, el modelo de lenguaje describe los ataques considerando r
 
 ---
 
-## 6. Enlaces Relacionados
+## 6. Nodos de Servicios de Asentamiento (`Settlement Services`)
+
+Para evitar que las localidades sin tablero sean meros "muros de texto" donde el comercio o las curas dependan de inventarse cosas con el LLM (*[[ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES]] §4.2*), cada asentamiento define una lista explícita de servicios funcionales (`services: []`):
+
+```mermaid
+graph TD
+    Town[Localidad / Pueblo] --> Services[Nodos de Servicio]
+    Services --> Inn[🍺 Taberna / Posada: Descanso & Rumores]
+    Services --> Forge[⚔️ Herrería: Compra/Venta & Prótesis]
+    Services --> Apothecary[🧪 Boticario: Pociones & Tratamiento Heridas]
+    Services --> Temple[✨ Templo: Curar Mutilaciones & Bendiciones]
+    Services --> Board[📜 Tablón de Misiones: Contratos del Gremio]
+    Services --> Moneylender[💰 Prestamista: Deuda Fail-Forward ante Upkeep]
+```
+
+- **Operaciones Mecánicas Reales**:
+  - Al pulsar sobre un servicio en la pantalla de exploración, se abre una interfaz directa que descuenta el oro del grupo, actualiza el inventario de la ficha o reduce los días restantes de una herida (`daysLeft`).
+  - No requiere consumo de tokens para transacciones rutinarias; el LLM solo interviene si se desea conversar narrativamente con el comerciante.
+
+---
+
+## 7. Enlaces Relacionados
+- [[ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES]]: Análisis de diseño sobre tableros vacíos y servicios.
 - [[Sistema-Party]]: Miembros del grupo representados como tokens en el tablero.
 - [[WorldInfo-Lorebooks]]: Definición de mapas y tableros en el esquema `dndData`.
 - [[Dynamic-Context-Manager]]: Activación de estado `combat` al desplegar el tablero.

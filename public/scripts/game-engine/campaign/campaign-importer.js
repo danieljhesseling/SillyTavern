@@ -117,6 +117,48 @@ export function buildPackEntries(pack) {
                 name,
                 arcana: text(person.arcana),
                 initialBondPoints: Number(person.initialBondPoints) || 0,
+                confidant: true,
+                charClass: text(person.className),
+                motive: text(person.motive) === 'coin' ? 'coin' : 'bond',
+                // Las escenas de vinculo, por rango: las cuenta el narrador al llegar a
+                // cada uno. Escritas, no improvisadas.
+                bondScenes: (Array.isArray(person.scenes) ? person.scenes : [])
+                    .filter((/** @type {any} */ scene) => text(scene?.scene))
+                    .map((/** @type {any} */ scene) => ({
+                        rank: Math.max(1, Math.floor(Number(scene.rank) || 1)),
+                        title: text(scene.title),
+                        scene: text(scene.scene),
+                    })),
+            },
+        });
+    }
+
+    // La gente del mundo. Lo que quiere, lo que sabe y como habla va en la entrada, que es
+    // lo que el narrador lee cuando se la nombra; el secreto no, porque el narrador lo
+    // contaria a la primera. Se queda en la ficha, para quien lo descubra.
+    for (const person of pack.npcs ?? []) {
+        const name = text(person.name);
+        if (!name) continue;
+        entries.push({
+            group: 'Characters',
+            title: name,
+            content: [
+                text(person.trade) ? `${name}, ${text(person.trade).toLowerCase()}.` : '',
+                text(person.wants) ? `Quiere: ${text(person.wants)}` : '',
+                text(person.knows) ? `Sabe: ${text(person.knows)}` : '',
+                text(person.voice) ? `Cómo habla: ${text(person.voice)}` : '',
+            ].filter(Boolean).join(' '),
+            keys: [name],
+            dndData: {
+                entityType: 'npc',
+                name,
+                title: text(person.trade),
+                wants: text(person.wants),
+                knows: text(person.knows),
+                secret: text(person.secret),
+                voice: text(person.voice),
+                service: text(person.service),
+                mapPosition: { locationName: text(person.where), gridX: 0, gridY: 0 },
             },
         });
     }
@@ -257,6 +299,12 @@ export function buildImportPlan(raw, options = {}) {
             region: text(place.region),
             locationType: text(place.type),
             controllingFaction: text(place.factionName),
+            biome: text(place.biome),
+            services: (Array.isArray(place.services) ? place.services : []).map(text).filter(Boolean),
+            // Los caminos, con lo que cuesta andarlos. Es lo que lee el viaje.
+            routes: (Array.isArray(place.routes) ? place.routes : [])
+                .filter((/** @type {any} */ route) => text(route?.to))
+                .map((/** @type {any} */ route) => ({ to: text(route.to), days: Math.max(1, Math.floor(Number(route.days) || 1)) })),
             boards: [],
         });
     }
@@ -360,6 +408,35 @@ export function buildImportPlan(raw, options = {}) {
             locationMaps: [...locations.values()].filter(place => !hiddenNames.has(place.name)),
             hiddenLocations: [...locations.values()].filter(place => hiddenNames.has(place.name)),
             plot: pack.plot ?? null,
+            // Las facciones vivas: con sede, enemigos y un reloj. Las que solo traen nombre
+            // y metas siguen siendo entradas del Lorebook y nada mas, como antes.
+            factions: (pack.world.factions ?? [])
+                .filter((/** @type {any} */ f) => text(f?.id) && (text(f?.seat) || f?.goal))
+                .map((/** @type {any} */ f) => ({
+                    id: text(f.id),
+                    name: text(f.name) || text(f.id),
+                    seat: text(f.seat),
+                    holds: (Array.isArray(f.holds) ? f.holds : []).map(text).filter(Boolean),
+                    enemies: (Array.isArray(f.enemies) ? f.enemies : []).map(text).filter(Boolean),
+                    note: text(f.onSuccess) || text(f.goals),
+                    reputation: Math.round(Number(f.reputation) || 0),
+                    goal: {
+                        kind: text(f.goal?.kind),
+                        target: text(f.goal?.target),
+                        pace: Math.max(1, Math.floor(Number(f.goal?.pace) || 7)),
+                    },
+                })),
+            rumors: (pack.rumors ?? []).filter((/** @type {any} */ r) => text(r?.text)).map((/** @type {any} */ r) => ({
+                id: text(r.id), by: text(r.by), where: text(r.where), text: text(r.text),
+                truth: text(r.truth), leadsTo: text(r.leadsTo),
+            })),
+            // Los encargos del tablon que trae el mundo. El tablero de cada uno se guarda
+            // por nombre, que es como lo encuentra el juego.
+            writtenContracts: (pack.contracts ?? []).filter((/** @type {any} */ c) => text(c?.id) && text(c?.title))
+                .map((/** @type {any} */ c) => ({ ...c, boardName: c.boardId ? boardNameOf(pack, text(c.boardId)) : '' })),
+            // Las habilidades que el mundo trae de mas: van al paquete de reglas, que es de
+            // donde lee el catalogo el combate.
+            ...((pack.abilities ?? []).length > 0 ? { rulesetPack: { id: 'campaign', name: text(pack.world.name), abilities: pack.abilities } } : {}),
             boards: [],
             packVersion: pack.version,
             // El catalogo del mundo: los objetos que existen antes de que nadie los lleve
@@ -418,7 +495,9 @@ export function resolveNames(plan, idsByName) {
     const unresolved = [];
     const idOf = (/** @type {string} */ name) => ids.get(String(name).toLowerCase()) ?? '';
 
-    for (const location of plan.metadata.locationMaps) {
+    // Tambien los de los sitios escondidos: se revelan despues, pero sus bichos y sus
+    // objetivos tienen que estar resueltos desde ya.
+    for (const location of [...plan.metadata.locationMaps, ...(plan.metadata.hiddenLocations ?? [])]) {
         for (const board of location.boards) {
             const names = plan.enemiesByBoard[board.packBoardId] ?? [];
 

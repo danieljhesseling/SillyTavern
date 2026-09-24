@@ -117,7 +117,7 @@ describe('resolveShove', () => {
 
     test('gana, y el otro retrocede en línea recta', () => {
         const result = resolveShove({ from: { x: 2, y: 2 }, target: { x: 3, y: 3 }, attackTotal: 15, defenseTotal: 10, isFree: free });
-        expect(result).toEqual({ success: true, pushedTo: { x: 4, y: 4 }, prone: false });
+        expect(result).toEqual({ success: true, pushedTo: { x: 4, y: 4 }, prone: false, falls: false });
     });
 
     test('el empate lo gana quien se defiende', () => {
@@ -125,8 +125,16 @@ describe('resolveShove', () => {
             .toBe(false);
     });
 
+    test('con un precipicio detrás, cae al vacío', () => {
+        const result = resolveShove({
+            from: { x: 2, y: 2 }, target: { x: 3, y: 2 }, attackTotal: 15, defenseTotal: 3,
+            isFree: () => false, isChasm: (x, y) => x === 4 && y === 2,
+        });
+        expect(result).toEqual({ success: true, pushedTo: { x: 4, y: 2 }, prone: false, falls: true });
+    });
+
     test('sin sitio detrás, cae al suelo', () => {
         const result = resolveShove({ from: { x: 2, y: 2 }, target: { x: 3, y: 2 }, attackTotal: 15, defenseTotal: 3, isFree: () => false });
-        expect(result).toEqual({ success: true, pushedTo: null, prone: true });
+        expect(result).toEqual({ success: true, pushedTo: null, prone: true, falls: false });
     });
 });

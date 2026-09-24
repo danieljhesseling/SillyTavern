@@ -130,6 +130,17 @@ describe('la varita', () => {
         expect(prompt).toMatch(/tono es oscuro/);
     });
 
+    // Un militar retirado no puede empezar la partida robando en las calles: la varita
+    // tiene que saber como empieza para escribir un pasado que llegue ahi.
+    test('sabe cómo empieza la partida, y le pide que el pasado encaje', () => {
+        const { prompt } = buildHeroPrompt(
+            { name: 'Lyra' },
+            { worldName: '1387', premise: 'Te despiertas en la posada con un cáliz robado en el petate.' },
+        );
+        expect(prompt).toMatch(/Así empieza la partida: Te despiertas en la posada/);
+        expect(prompt).toMatch(/Su pasado tiene que encajar con eso/);
+    });
+
     test('y sin nada escrito se le pide que invente', () => {
         const { prompt } = buildHeroPrompt({ name: 'Lyra', race: 'Elfa' });
         expect(prompt).toMatch(/Invéntale un pasado/);

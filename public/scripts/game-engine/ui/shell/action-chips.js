@@ -44,11 +44,14 @@ const MAX_CHIPS = 6;
  * @param {Array<{name: string}>} [input.boards] Tableros de aqui, si no hay ninguno abierto.
  * @param {boolean} [input.hurt] Si alguien esta por debajo de su maximo.
  * @param {number} [input.hitDice] Dados de golpe que le quedan al grupo.
+ * @param {number} [input.rumors] Los rumores que quedan por oir aqui.
+ * @param {boolean} [input.explore] Si se puede explorar los alrededores.
+ * @param {Array<{name: string}>} [input.proposals] Los sitios que el narrador ha propuesto.
  * @returns {ActionChip[]}
  */
 export function buildActionChips({
     fighting = false, hasBoard = false, doors = [], companions = [], mentioned = [],
-    places = [], boards = [], hurt = false, hitDice = 0,
+    places = [], boards = [], hurt = false, hitDice = 0, rumors = 0, explore = false, proposals = [],
 } = {}) {
     if (fighting) return [];
 
@@ -71,6 +74,18 @@ export function buildActionChips({
         });
     }
 
+    // Lo que el narrador ha propuesto: es de lo que se estaba hablando, y existe solo si se
+    // va a buscar. Va delante de casi todo.
+    for (const proposal of proposals.slice(0, 2)) {
+        chips.push({
+            id: `seek:${proposal.name}`,
+            label: `Buscar ${proposal.name}`,
+            icon: 'fa-magnifying-glass-location',
+            source: 'sabor',
+            command: `/explorar ${proposal.name}`,
+        });
+    }
+
     // Hablar. Los que la escena acaba de nombrar van delante: es de quien se estaba
     // hablando, y lo normal es querer responderle.
     const named = new Set(mentioned.map(name => String(name).toLowerCase()));
@@ -85,6 +100,27 @@ export function buildActionChips({
             // Hablar lo resuelve el modelo, siempre: el motor no sabe que se dicen.
             source: isNamed ? 'sabor' : 'motor',
             draft: `Hablo con ${companion.name} sobre `,
+        });
+    }
+
+    // Lo que se cuenta aqui. Va antes que descansar: oir es gratis y lleva a sitios.
+    if (rumors > 0) {
+        chips.push({
+            id: 'rumor',
+            label: `Escuchar rumores (${rumors})`,
+            icon: 'fa-ear-listen',
+            source: 'motor',
+            command: '/rumor',
+        });
+    }
+
+    if (explore && !hasBoard) {
+        chips.push({
+            id: 'explore',
+            label: 'Explorar los alrededores',
+            icon: 'fa-compass',
+            source: 'motor',
+            command: '/explorar',
         });
     }
 
