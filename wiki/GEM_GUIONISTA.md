@@ -214,6 +214,11 @@ Tres frases del principio, ambiguas, cada una ligada a un hito. Van en el bloque
 mundo:
   id: la-costa
   estacion: otono       # en la que empieza: primavera | verano | otono | invierno (56 días cada una)
+  villano:              # quien se deja ver en mitad del hilo, no solo al final
+    nombre: La Viuda Negra
+    asoma:
+      - { acto: 2, escena: "Desde el espigón, alguien os mira con catalejo." }
+      - { hito: la-firma, escena: "Ella entra en la taberna, os sonríe y se va." }
   presagio:
     - { frase: "Lo que el mar se lleva, lo devuelve con otra cara.", se_cumple: el-primer-ahogado }
     - { frase: "Firmarás sin pluma.", se_cumple: la-firma }
@@ -234,6 +239,7 @@ localidad:
     - { a: la-atalaya, dias: 2 }
     - { a: cala-de-los-votos, dias: 1, cerrado_hasta: la-firma }
     - { a: el-islote, dias: 1, estaciones: [invierno] }   # solo se pasa en invierno: el agua se hiela
+    - { a: puerto-lejano, dias: 4, barco: true }          # por mar: pasaje por cabeza y día, más rápido, sin peajes
   servicios: [posada, herreria, templo, tienda]   # posada | herreria | tienda | templo | tablon
   pnj: [maren-la-viuda, el-tabernero-olsen]
   tableros: [el-embarcadero]

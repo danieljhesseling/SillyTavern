@@ -1986,3 +1986,9 @@ body.game-colorblind .pg-down .pg-fill {
     30% { transform: scale(1.1) rotate(-12deg); opacity: 1; }
     100% { transform: scale(0.1) rotate(200deg); opacity: 0; }
 }
+
+/* Idea 75: la escalera al nivel siguiente. */
+.wm-terrain-stairs {
+    background: repeating-linear-gradient(0deg, rgba(200, 180, 140, 0.55) 0 3px, rgba(60, 50, 40, 0.8) 3px 6px);
+    border: 1px solid rgba(220, 200, 150, 0.7);
+}

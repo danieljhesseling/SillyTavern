@@ -65,6 +65,7 @@ const SIMPLE_ASKS = ['arrive', 'win', 'defeat', 'talk', 'check', 'contract'];
  * @property {number} within  Idea 106: días para cumplirlo desde que se abre; 0 es sin plazo.
  * @property {{reveal: string[], open: string[], standing: Record<string, number>}} late
  *   Lo que pasa si se pasa el plazo.
+ * @property {string[]} [backgrounds] Idea 105: solo se abre si el héroe tiene uno de estos trasfondos.
  */
 
 /**
@@ -74,6 +75,7 @@ const SIMPLE_ASKS = ['arrive', 'win', 'defeat', 'talk', 'check', 'contract'];
  * @property {Milestone[]} milestones
  * @property {Record<string, {title: string, scene: string}>} endings Lo que se cuenta en cada final.
  * @property {Array<{text: string, milestone: string}>} omens Idea 114: el presagio del principio.
+ * @property {any} [villain] Idea 115: el villano que se deja ver entre actos.
  */
 
 /**
@@ -153,6 +155,8 @@ function readMilestone(raw, index) {
         title,
         hint: text(raw.hint),
         scene: text(raw.scene),
+        // Idea 184: para qué trasfondos es; vacío, para todos.
+        backgrounds: list(raw.backgrounds),
         opens: { ...opens, kind: OPENS.includes(text(opens.kind)) ? text(opens.kind) : 'after' },
         asks: { ...asks, kind: ASKS.includes(text(asks.kind)) ? text(asks.kind) : 'none' },
         changes: {
@@ -195,6 +199,8 @@ export function readPlot(raw) {
         milestones,
         endings,
         omens,
+        // Idea 115: el villano y cuándo asoma. Lo lee `villain.js`.
+        villain: raw.villain && typeof raw.villain === 'object' ? raw.villain : null,
     };
 }
 

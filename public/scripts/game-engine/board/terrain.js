@@ -96,6 +96,14 @@ export const TERRAIN_TYPES = {
         coverBonus: 0,
         lethal: true,
     },
+    /** Idea 75: una escalera al nivel siguiente del mismo sitio. Se pisa como el suelo. */
+    stairs: {
+        label: 'Stairs',
+        blocksMovement: false,
+        blocksSight: false,
+        movementCost: 1,
+        coverBonus: 0,
+    },
 };
 
 /** The type assumed for any cell not present in the sparse map. */
@@ -333,6 +341,8 @@ export const ASCII_TERRAIN = {
     'c': { type: 'cover_half' },
     'C': { type: 'cover_three_quarters' },
     'v': { type: 'chasm' },
+    // Idea 75: la escalera al nivel siguiente.
+    '>': { type: 'stairs' },
 };
 
 /**
@@ -376,6 +386,7 @@ const CELL_WORDS = {
     cover_half: 'Media cobertura: +2 a la CA de quien está detrás',
     cover_three_quarters: 'Tres cuartos de cobertura: +5 a la CA',
     chasm: 'Precipicio: no se pasa, y a quien empujan dentro, cae',
+    stairs: 'Escalera: baja al nivel siguiente',
 };
 
 /**

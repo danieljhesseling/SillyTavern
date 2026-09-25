@@ -9,7 +9,7 @@
  * Puro: dice lo que cuesta y deja la ficha como tiene que quedar. Quien llama cobra.
  */
 
-import { PERKS, perksOf, takePerk } from './level-perks.js';
+import { ALL_PERKS, perksOf, takePerk } from './level-perks.js';
 
 /** Lo que cuesta rehacer cada mejora. */
 export const RESPEC_PRICE = 30;
@@ -55,7 +55,7 @@ export function redoPerks(member, chosen) {
     const ids = [...new Set((Array.isArray(chosen) ? chosen : []).map(String))];
     if (count === 0) return { ok: false, reason: 'No tiene mejoras que rehacer.', patch: null };
     if (ids.length !== count) return { ok: false, reason: `Hay que elegir ${count}.`, patch: null };
-    if (ids.some(id => !PERKS.some(p => p.id === id))) return { ok: false, reason: 'Esa mejora no existe.', patch: null };
+    if (ids.some(id => !ALL_PERKS.some(p => p.id === id))) return { ok: false, reason: 'Esa mejora no existe.', patch: null };
     /** @type {any} */
     let sheet = { ...member, ...undoPerks(member) };
     for (const id of ids) {

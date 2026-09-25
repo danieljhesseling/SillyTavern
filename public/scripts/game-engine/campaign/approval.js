@@ -32,6 +32,7 @@ export const DECISIONS = {
     'hito-luchando': { label: 'resolverlo luchando', moods: { blood: 1, glory: 1, quiet: -1 } },
     'hito-hablando': { label: 'resolverlo hablando', moods: { quiet: 1, knowledge: 1, blood: -1 } },
     'hito-maña': { label: 'resolverlo con maña', moods: { knowledge: 1, glory: -1 } },
+    'robar': { label: 'robar en una tienda', moods: { coin: 1, quiet: -1, glory: -1 } },
 };
 
 /** Lo que se guarda por compañero. */

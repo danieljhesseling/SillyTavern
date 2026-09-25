@@ -28,6 +28,9 @@ import { terrainFromAsciiMap } from '../board/terrain.js';
  * @property {Array<{name: string, hp: number, armorClass: number, cr: number, profile: string, attackRangeFeet?: number, abilities?: string[]}>} enemies
  * @property {Array<{x: number, y: number}>} partyStart
  * @property {Array<any>} [objectives]  Scenario objectives, if the board is a mission.
+ * @property {Array<{name: string, type: string, description: string, routes: Array<{to: string, days: number, sea?: boolean}>}>} [places]
+ *   Idea 178: los sitios de alrededor, con sus caminos, para empezar de cero con más base.
+ * @property {string} [season] La estación en la que empieza.
  */
 
 /** @type {StarterTemplate[]} */
@@ -108,6 +111,65 @@ export const STARTER_TEMPLATES = [
         ],
         enemies: [],
         partyStart: [{ x: 6, y: 7 }, { x: 7, y: 7 }, { x: 5, y: 7 }, { x: 8, y: 7 }],
+    },
+    // Idea 178: dos mundos de cero con más base: su género, su tablero y los sitios de
+    // alrededor ya unidos por caminos.
+    {
+        id: 'terror',
+        name: 'Casa del ahorcado',
+        description: 'Terror: una casa de campo cerrada desde que colgaron al dueño, un pueblo que no habla de ello y un cementerio con la verja rota.',
+        genre: 'Terror',
+        season: 'otono',
+        locationName: 'La casa del ahorcado',
+        boardName: 'El vestíbulo',
+        map: [
+            '################',
+            '#......#.......#',
+            '#..c...#...C...#',
+            '#......D.......#',
+            '#......#.......#',
+            '###D####....c..#',
+            '#..............#',
+            '#...~~.....c...#',
+            '################',
+        ],
+        enemies: [
+            { name: 'Aparecido', hp: 14, armorClass: 12, cr: 0.5, profile: 'aggressive' },
+            { name: 'Rata del sótano', hp: 5, armorClass: 11, cr: 0.125, profile: 'coward' },
+        ],
+        partyStart: [{ x: 2, y: 6 }, { x: 3, y: 6 }, { x: 2, y: 7 }, { x: 3, y: 7 }],
+        places: [
+            { name: 'Villacerrada', type: 'village', description: 'Un pueblo de ventanas cerradas: nadie habla de la casa.', routes: [{ to: 'La casa del ahorcado', days: 1 }] },
+            { name: 'El cementerio viejo', type: 'ruins', description: 'La verja está rota por dentro.', routes: [{ to: 'Villacerrada', days: 1 }, { to: 'La casa del ahorcado', days: 1 }] },
+        ],
+    },
+    {
+        id: 'piratas',
+        name: 'La costa de los naufragios',
+        description: 'Piratas: un puerto donde todo se compra, una cala escondida y un islote al que solo se llega en barco.',
+        genre: 'Piratas',
+        season: 'verano',
+        locationName: 'Puerto Salobre',
+        boardName: 'El muelle',
+        map: [
+            '################',
+            '#..............#',
+            '#..cc....cc....#',
+            '#..............#',
+            '#~~~~~~.....c..#',
+            '#~~~~~~........#',
+            '#~~~~~~....C...#',
+            '################',
+        ],
+        enemies: [
+            { name: 'Contrabandista', hp: 11, armorClass: 12, cr: 0.25, profile: 'skirmisher' },
+            { name: 'Tirador del muelle', hp: 9, armorClass: 12, cr: 0.25, profile: 'skirmisher', attackRangeFeet: 60 },
+        ],
+        partyStart: [{ x: 10, y: 2 }, { x: 11, y: 2 }, { x: 10, y: 3 }, { x: 11, y: 3 }],
+        places: [
+            { name: 'La cala del tuerto', type: 'camp', description: 'Donde se descarga lo que no pasa por la aduana.', routes: [{ to: 'Puerto Salobre', days: 1 }] },
+            { name: 'El islote de los ahogados', type: 'ruins', description: 'Un faro apagado y lo que dejó el mar.', routes: [{ to: 'Puerto Salobre', days: 2, sea: true }] },
+        ],
     },
     {
         id: 'blank',
@@ -195,8 +257,17 @@ export function buildWorldMetadata(template, overrides = {}) {
                         encounterRules: [],
                     },
                 ],
+                routes: (template.places ?? []).flatMap(place => place.routes.filter(r => r.to === template.locationName)
+                    .map(r => ({ to: place.name, days: r.days, ...(r.sea ? { sea: true } : {}) }))),
             },
+            ...(template.places ?? []).map(place => ({
+                name: place.name, description: place.description, url: '', gridWidth, gridHeight, boards: [],
+                locationType: place.type,
+                routes: place.routes.filter(r => r.to !== template.locationName).map(r => ({ ...r })),
+            })),
         ],
+        // Idea 178: los sitios de alrededor, unidos por caminos, y la estación en que empieza.
+        ...(template.season ? { season: template.season } : {}),
         boards: [],
     };
 }

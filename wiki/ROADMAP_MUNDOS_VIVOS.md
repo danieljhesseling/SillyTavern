@@ -266,9 +266,40 @@ Hoy un encargo **genera** su mazmorra. Con cinco tableros escritos por mundo, el
 
 ## ✅ Hecho, para no rehacerlo
 
+### Batería 8 de [IDEAS_200](IDEAS_200.md) — 2026-09-25
+
+Comprobada en el navegador en el paso 59 del recorrido (21 comprobaciones), salvo dos que van por pruebas: el árbol por clase (48) y el mundo que se adapta al héroe (184). Las ilustraciones (183) se han probado con PixelLab simulado: el botón, la petición y que la imagen se queda en el mundo; no se ha gastado ningún crédito de verdad.
+
+Por el camino salieron dos fallos que no eran del recorrido: **el menú de pausa no cabía** en pantallas bajas (con el taller y los dos interruptores nuevos, lo de abajo quedaba fuera y no se podía pulsar; ahora se desplaza) y **las maniobras salían viejas** (la lista se calculaba al pintar la barra, no al pulsar: una caja que ardía o se rompía seguía en ella).
+
+| Idea | Qué hace | Módulo |
+| :--- | :--- | :--- |
+| **25** Red de seguridad | Opcional, en la pausa. Tras dos derrotas (o huidas) seguidas, los enemigos del siguiente combate salen con menos vida y peor defensa, y se dice. Una victoria pone la cuenta a cero | `campaign/safety-net.js` |
+| **29** Se van | Opcional, en la pausa. Una vez por semana: quien acumula disgustos (idea 28) y no tiene vínculo 3 avisa, con el motivo; si sigue, se va | `campaign/departures.js` |
+| **31** Charlas de campamento | Al acampar se elige a dos del grupo para que hablen junto al fuego: una llamada al narrador, con lo que busca cada uno y su último roce. Si habían chocado hoy, hacen las paces | `campaign/camp-talk.js` |
+| **40** Ronda con tema | Invitar a una ronda pregunta de qué se habla: su pasado, lo que teme o lo que quiere. Si toca lo que busca, cuenta como escena de confidente | `camp-talk.js` |
+| **48** Árbol por clase | Cinco familias de oficios, cada una con tres ramas de tres. Al subir de nivel se elige el siguiente paso de una rama, en orden. Los efectos son los de las mejoras sueltas | `rules/class-trees.js`, `level-perks.js` |
+| **75** Mazmorras de varios niveles | Un tablero puede tener escaleras (`>`) al siguiente nivel; junto a ellas, la fila ofrece «Bajar por la escalera». Cada nivel guarda lo suyo. Los encargos grandes salen con dos niveles | `board/dungeon-levels.js`, `terrain.js` |
+| **94** Rivales | Una compañía con nombre, sacado de la semilla, se lleva cada semana el mejor encargo que no has cogido, y se sabe | `campaign/rivals.js` |
+| **96** Ley y crimen | En la tienda, «Llevárselo sin pagar»: Juego de manos contra la vigilancia. Si os pillan, multa doble y el sitio os apunta. Con 2 o más, al llegar os paran los guardias: pagar o huir. Se olvida un punto por semana | `campaign/crime.js` |
+| **105** Escoltas | En un encargo de escolta, quien lo pide va en el tablero con el grupo y hay que sacarlo vivo por la salida marcada. Si cae, el encargo se pierde | `campaign/guests.js` |
+| **115** Villano que se deja ver | El guion puede decir quién es y cuándo asoma (`villano:` con `asoma` por acto o por hito): una escena corta, al narrador y al diario, una vez cada una | `campaign/villain.js` |
+| **124** Almacén del gremio | En el gremio se guarda y se saca lo que no se lleva encima. Lo puesto y lo maldito no se guardan | `campaign/storage.js`, `guild-panel.js` |
+| **130** Barcos | Una ruta con `barco: true` en el guion va por mar: más rápido y sin sucesos del camino, pero con pasaje por cabeza y día. Sin oro no se embarca | `world/ships.js`, `travel.js` |
+| **131** Mercenarios | Con un encargo entre manos, la posada ofrece a alguien que se alquila solo para ese encargo. Pega como uno más y se va al acabar | `guests.js` |
+| **140** Actitudes | El narrador puede proponer (`cambiar_actitud`) que alguien mire mejor o peor al grupo: un paso cada vez, uno por persona y día, entre −3 y +3. Se nota en las tiradas de trato con esa persona | `campaign/attitudes.js` |
+| **143** Resumen por acto | Al cerrarse un acto, el motor lo resume (hitos y hechos, sin llamada) en la memoria del mundo, y los mensajes de ese acto dejan de mandarse al modelo | `campaign/act-summary.js` |
+| **175** Vista previa del mundo | Desde la pausa («Taller del mundo»): los sitios con sus caminos, las facciones y el hilo por actos | `campaign/world-preview.js`, `ui/world-workshop.js` |
+| **176** Editor de hitos | En el mismo taller: cada hito es una tarjeta en la columna de su acto; se arrastra a otro acto y se le cambia título, pista, tras qué hito se abre y qué pide. No deja un hilo roto | `campaign/plot-graph.js`, `world-workshop.js` |
+| **178** Plantillas de mundo | Dos nuevas para empezar de cero, terror y piratas, con más sitios, caminos y su estación | `campaign/starter-templates.js` |
+| **179** Héroes veteranos | Al empezar, además de hacer uno nuevo, se puede traer al héroe de otra campaña, con su arma y lo puesto, y como mucho a nivel 5. Los muertos no vuelven | `campaign/veterans.js`, `campaigns.js` |
+| **183** Ilustraciones | Opcional. Con una clave de PixelLab en los ajustes del taller, cada sitio o PNJ tiene un botón que dice lo que cuesta; lo que llega se guarda en el mundo | `campaign/illustrations.js` |
+| **184** El mundo se adapta al héroe | Un hito con `trasfondo:` en el guion solo existe para esos héroes; los demás se cierran sin decir nada al empezar | `campaign/hero-fit.js`, `plot.js` |
+| **185** Modo director | En el taller: añadir un PNJ (dónde vive, oficio, qué quiere) o un sitio unido a otro con su camino, en mitad de la partida | `campaign/director.js` |
+
 ### Batería 7 de [IDEAS_200](IDEAS_200.md) — 2026-09-24
 
-VERIFICACION7_PENDIENTE
+Comprobada en el navegador en el paso 58 del recorrido (27 comprobaciones), salvo los bichos que migran (97), que van por pruebas: en el navegador se ve la estación y el camino que se cierra fuera de ella (74), que es el mismo mecanismo.
 
 | Idea | Qué hace | Módulo |
 | :--- | :--- | :--- |

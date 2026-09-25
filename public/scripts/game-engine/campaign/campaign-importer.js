@@ -320,6 +320,8 @@ export function buildImportPlan(raw, options = {}) {
                     days: Math.max(1, Math.floor(Number(route.days) || 1)),
                     // Idea 74: en qué estaciones se pasa. Sin nada, todo el año.
                     ...(Array.isArray(route.seasons) && route.seasons.length > 0 ? { seasons: route.seasons.map(text).filter(Boolean) } : {}),
+                    // Idea 130: por mar.
+                    ...(route.sea ? { sea: true } : {}),
                 })),
             boards: [],
         });

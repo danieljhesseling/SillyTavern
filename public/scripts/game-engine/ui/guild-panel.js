@@ -33,16 +33,21 @@ const RANK_LABELS = Object.fromEntries(RANKS.map(rank => [rank.id, rank.label]))
  * @param {any[]} [input.bench] Idea 42: quien está en casa.
  * @param {boolean} [input.partyFull] Si el grupo ya no admite a nadie más.
  * @param {boolean} [input.fighting]
- * @returns {Promise<{accepted: string, built: string, benched: string, called: string}|null>}
+ * @param {any[]} [input.storage] Idea 124: lo que hay en el almacén.
+ * @param {Array<{memberId: string, memberName: string, itemId: string, name: string}>} [input.carried] Lo que se puede dejar.
+ * @returns {Promise<{accepted: string, built: string, benched: string, called: string, stored: string, retrieved: string}|null>}
  */
 export async function openGuildPanel({
     guild, board, day, purse, roster, Popup, POPUP_TYPE, factionNames = {}, bench = [], partyFull = false, fighting = false,
+    storage = [], carried = [],
 }) {
     /** Lo único que sale de aquí: qué encargo se acepta, qué se construye y a quién se rota. */
     let accepted = '';
     let built = '';
     let benched = '';
     let called = '';
+    let stored = '';
+    let retrieved = '';
 
     const root = $('<div class="gd-root"></div>');
 
@@ -201,6 +206,36 @@ export async function openGuildPanel({
         root.append(home);
     }
 
+    // ---- El almacén (idea 124) -------------------------------------------------
+    root.append($('<div class="gd-title"></div>').text('El almacén'));
+    root.append($('<div class="gd-hint"></div>').text('Lo que no hace falta llevar encima se deja aquí. Lo puesto y lo maldito, no.'));
+    const shelf = $('<div class="gd-roster gd-storage"></div>');
+    if (storage.length === 0) shelf.append($('<div class="gd-empty"></div>').text('El almacén está vacío.'));
+    for (const item of storage) {
+        const row = $('<div class="gd-member"></div>');
+        row.append($('<span class="gd-member-name"></span>').text(String(item?.name ?? '')));
+        const take = $('<button class="menu_button gd-retrieve" type="button"></button>').text('Sacar')
+            .attr('data-item', String(item?.id ?? '')).prop('disabled', fighting);
+        take.on('click', () => {
+            retrieved = String(item?.id ?? '');
+            popup.completeAffirmative();
+        });
+        shelf.append(row.append(take));
+    }
+    for (const thing of carried.slice(0, 12)) {
+        const row = $('<div class="gd-member"></div>');
+        row.append($('<span class="gd-member-name"></span>').text(`${thing.name}`));
+        row.append($('<span class="gd-member-why"></span>').text(thing.memberName));
+        const keep = $('<button class="menu_button gd-store" type="button"></button>').text('Guardar')
+            .attr('data-item', thing.itemId).prop('disabled', fighting);
+        keep.on('click', () => {
+            stored = `${thing.memberId}:${thing.itemId}`;
+            popup.completeAffirmative();
+        });
+        shelf.append(row.append(keep));
+    }
+    root.append(shelf);
+
     const popup = new Popup(root, POPUP_TYPE.TEXT, '', {
         okButton: 'Cerrar',
         wide: true,
@@ -209,5 +244,5 @@ export async function openGuildPanel({
     });
 
     await popup.show();
-    return (accepted || built || benched || called) ? { accepted, built, benched, called } : null;
+    return (accepted || built || benched || called || stored || retrieved) ? { accepted, built, benched, called, stored, retrieved } : null;
 }

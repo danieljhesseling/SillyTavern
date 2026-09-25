@@ -58,13 +58,17 @@ const MAX_CHIPS = 7;
  * @param {Array<{id: string, label: string, icon: string, draft?: string, command?: string}>} [input.replies] Lo que se
  *   le puede decir a quien se está hablando (idea 144). Va delante: la conversación está en marcha.
  * @param {Array<{id: string, label: string, icon: string, command: string}>} [input.extras] Lo que ofrece el
- *   narrador (idea 139) y acampar donde no hay posada (idea 67). Van con lo propuesto.
+ *   narrador (idea 139). Va con lo propuesto.
+ * @param {boolean} [input.camp] Si aquí se puede acampar (idea 67). Va con descansar, detrás de
+ *   forrajear: es otra forma de pasar la noche.
+ * @param {boolean} [input.stairs] Si alguien está en una escalera que baja (idea 75). Va delante:
+ *   es a donde se iba.
  * @returns {ActionChip[]}
  */
 export function buildActionChips({
     fighting = false, hasBoard = false, doors = [], companions = [], mentioned = [],
     places = [], boards = [], hurt = false, hitDice = 0, rumors = 0, explore = false, proposals = [], requests = [], forage = false,
-    people = [], prisoners = [], limit = MAX_CHIPS, typed = [], replies = [], extras = [],
+    people = [], prisoners = [], limit = MAX_CHIPS, typed = [], replies = [], extras = [], camp = false, stairs = false,
 } = {}) {
     if (fighting) return [];
 
@@ -120,7 +124,10 @@ export function buildActionChips({
         });
     }
 
-    // Ideas 139 y 67: lo que el narrador ofrece coger, y acampar.
+    // Idea 75: la escalera al nivel siguiente.
+    if (stairs) chips.push({ id: 'stairs', label: 'Bajar por la escalera', icon: 'fa-stairs', source: 'motor', command: '/bajar' });
+
+    // Idea 139: lo que el narrador ofrece coger.
     for (const extra of extras.slice(0, 3)) {
         chips.push({ id: extra.id, label: extra.label, icon: extra.icon, source: 'motor', command: extra.command });
     }
@@ -203,6 +210,11 @@ export function buildActionChips({
             source: 'motor',
             command: '/forrajear',
         });
+    }
+
+    // Idea 67: donde no hay posada, se acampa.
+    if (camp && !hasBoard) {
+        chips.push({ id: 'camp', label: 'Acampar aquí', icon: 'fa-campground', source: 'motor', command: '/acampar' });
     }
 
     if (hurt && hitDice > 0) {

@@ -2,7 +2,7 @@
 title: Instrucciones para el Gem — el paquete de una campaña
 tags: [gem, gemini, campanas, importar, contrato, seeding]
 created: 2026-09-22
-updated: 2026-09-24
+updated: 2026-09-25
 author: generado por tools/gem-instructions.mjs
 ---
 
@@ -83,7 +83,7 @@ y el importador los resuelve al crear las entradas.
 
 # Contrato del paquete de campaña
 
-Versión 1. Generado desde el motor el 2026-09-24.
+Versión 1. Generado desde el motor el 2026-09-25.
 
 Devuelve **solo JSON válido** que cumpla este esquema. Una sección por respuesta si el
 libro es largo; el orden recomendado es: world → locations → confidants → bestiary → items → boards → quests.
@@ -252,7 +252,7 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
             "items": {
               "type": "string"
             },
-            "description": "Filas de la misma longitud, entre 8 y 40 columnas y entre 6 y 30 filas. Borde exterior siempre de muro. Solo estos caracteres: '.' suelo transitable, '#' muro, 'D' puerta cerrada, 'L' puerta cerrada con llave (se abre con una llave, con maña o a golpes; el jefe del tablero suelta la llave), 'o' puerta abierta, '~' terreno difícil, 'c' cobertura media, 'C' cobertura de tres cuartos, 'v' precipicio (no se anda; a quien empujan dentro, cae)."
+            "description": "Filas de la misma longitud, entre 8 y 40 columnas y entre 6 y 30 filas. Borde exterior siempre de muro. Solo estos caracteres: '.' suelo transitable, '#' muro, 'D' puerta cerrada, 'L' puerta cerrada con llave (se abre con una llave, con maña o a golpes; el jefe del tablero suelta la llave), 'o' puerta abierta, '~' terreno difícil, 'c' cobertura media, 'C' cobertura de tres cuartos, 'v' precipicio (no se anda; a quien empujan dentro, cae), '>' stairs."
           },
           "partyStart": {
             "type": "array",
@@ -602,6 +602,7 @@ crear cobertura y rutas, y no dibujes una sala vacía.
 - `c` cobertura media
 - `C` cobertura de tres cuartos
 - `v` precipicio (no se anda; a quien empujan dentro, cae)
+- `>` stairs
 
 ## Muestra de salida correcta
 
@@ -1173,7 +1174,7 @@ que ya está en el bloque de instrucciones; se ofrecen sueltos porque un libro n
         "items": {
           "type": "string"
         },
-        "description": "Filas de la misma longitud, entre 8 y 40 columnas y entre 6 y 30 filas. Borde exterior siempre de muro. Solo estos caracteres: '.' suelo transitable, '#' muro, 'D' puerta cerrada, 'L' puerta cerrada con llave (se abre con una llave, con maña o a golpes; el jefe del tablero suelta la llave), 'o' puerta abierta, '~' terreno difícil, 'c' cobertura media, 'C' cobertura de tres cuartos, 'v' precipicio (no se anda; a quien empujan dentro, cae)."
+        "description": "Filas de la misma longitud, entre 8 y 40 columnas y entre 6 y 30 filas. Borde exterior siempre de muro. Solo estos caracteres: '.' suelo transitable, '#' muro, 'D' puerta cerrada, 'L' puerta cerrada con llave (se abre con una llave, con maña o a golpes; el jefe del tablero suelta la llave), 'o' puerta abierta, '~' terreno difícil, 'c' cobertura media, 'C' cobertura de tres cuartos, 'v' precipicio (no se anda; a quien empujan dentro, cae), '>' stairs."
       },
       "partyStart": {
         "type": "array",

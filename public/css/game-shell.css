@@ -941,6 +941,10 @@ body.game-shell-on {
 
 .gs-pause-card {
     min-width: 300px;
+    /* Con el taller y los interruptores nuevos, en pantallas bajas no cabía: lo de abajo
+       quedaba fuera y no se podía pulsar. */
+    max-height: calc(100% - 24px);
+    overflow-y: auto;
     padding: 18px;
     border: 1px solid var(--SmartThemeBorderColor, #444);
     border-radius: 12px;

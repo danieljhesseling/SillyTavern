@@ -34,6 +34,7 @@
  * @property {Record<string, number>} [abilityUses] Cuantas veces ha usado cada una desde el ultimo descanso.
  * @property {{successes: number, failures: number, stable: boolean, dead: boolean}} [deathSaves]
  * @property {boolean} [dead] Se acabo: la campana lo permitia y fallo la tercera.
+ * @property {{kind: string, contractId: string}} [guest] Idea 131: va con el grupo por un encargo (escoltado o mercenario).
  * @property {'coin'|'bond'} [motive] Por que te sigue. Sin decir nada, por vinculo.
  * @property {any[]} [injuries] Lo que arrastra de combates anteriores.
  * @property {Record<string, number>} [baseStats] Sus numeros antes de la primera herida.

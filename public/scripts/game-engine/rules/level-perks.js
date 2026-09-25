@@ -24,6 +24,8 @@
  * @property {{maxHp?: number, speed?: number, initiative?: number, attack?: number, armorClass?: number, skill?: string, amount?: number}} effect
  */
 
+import { TREE_NODES, nextTreeSteps } from './class-trees.js';
+
 /** @type {Perk[]} */
 export const PERKS = [
     { id: 'aguante', label: 'Aguante', describe: '+4 PG máximos, para siempre.', effect: { maxHp: 4 } },
@@ -43,6 +45,9 @@ export const PERKS = [
 /** Cuántas se ofrecen. */
 export const PERK_CHOICES = 3;
 
+/** Idea 48: las sueltas y los pasos de los árboles de cada oficio. */
+export const ALL_PERKS = /** @type {Perk[]} */ ([...PERKS, ...TREE_NODES]);
+
 /**
  * Las que ya tiene alguien.
  *
@@ -51,7 +56,7 @@ export const PERK_CHOICES = 3;
  */
 export function perksOf(member) {
     const ids = new Set((Array.isArray(member?.perks) ? member.perks : []).map(String));
-    return PERKS.filter(p => ids.has(p.id));
+    return ALL_PERKS.filter(p => ids.has(p.id));
 }
 
 /**
@@ -63,6 +68,9 @@ export function perksOf(member) {
  * @returns {Perk[]}
  */
 export function perkChoices({ member, random }) {
+    // Idea 48: quien tiene árbol elige por qué rama seguir: el siguiente paso de cada una.
+    const tree = nextTreeSteps(member);
+    if (tree.length > 0) return tree;
     const taken = new Set(perksOf(member).map(p => p.id));
     const pool = PERKS.filter(p => !taken.has(p.id));
     /** @type {Perk[]} */
@@ -82,7 +90,7 @@ export function perkChoices({ member, random }) {
  * @returns {{perks: string[], maxHp?: number, hp?: number, speed?: number}|null}
  */
 export function takePerk(member, perkId) {
-    const perk = PERKS.find(p => p.id === String(perkId));
+    const perk = ALL_PERKS.find(p => p.id === String(perkId));
     if (!perk) return null;
     const perks = [...new Set([...(Array.isArray(member?.perks) ? member.perks.map(String) : []), perk.id])];
     /** @type {{perks: string[], maxHp?: number, hp?: number, speed?: number}} */

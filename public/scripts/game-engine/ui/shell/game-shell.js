@@ -69,6 +69,7 @@ import { SHORTCUTS, actionForKey } from './shortcuts.js';
  * @property {() => void} [onExport] Empaquetar la campana para compartirla.
  * @property {() => void} [onCheckWorld] Si el mundo llega al listón (idea 181).
  * @property {() => void} [onShareWorld] El código del mundo, para compartirlo (idea 180).
+ * @property {() => void} [onWorkshop] El taller del mundo (ideas 175, 176, 183 y 185).
  * @property {() => void} [onEditCampaign] El editor del mundo y sus localidades.
  * @property {() => void} [onAudio] Los ajustes de sonido.
  * @property {() => void} onMainMenu Leave the campaign, without leaving the game.
@@ -716,7 +717,9 @@ function renderActionBar(footer, bar) {
         button.appendChild(el('span', '', ' Maniobras'));
         button.disabled = !bar.isPlayerTurn;
         button.title = bar.isPlayerTurn ? 'Esquivar, destrabarse, empujar, ayudar' : 'No es tu turno';
-        button.addEventListener('click', () => toggleManeuvers(footer, maneuvers));
+        // Se vuelven a pedir al pulsar: el tablero cambia entre medias (una caja que arde o se
+        // rompe) y la lista de cuando se pintó la barra ya no vale.
+        button.addEventListener('click', () => toggleManeuvers(footer, options?.getManeuvers?.() ?? maneuvers));
         buttons.appendChild(button);
     }
 
@@ -931,6 +934,13 @@ function setPaused(next) {
         item('¿Llega al listón?', 'fa-list-check', () => {
             setPaused(false);
             options?.onCheckWorld?.();
+        });
+    }
+    // Ideas 175, 176, 183 y 185: el taller del mundo.
+    if (options.onWorkshop) {
+        item('Taller del mundo', 'fa-screwdriver-wrench', () => {
+            setPaused(false);
+            options?.onWorkshop?.();
         });
     }
     // Idea 180: el código del mundo, para que otro juegue el mismo.

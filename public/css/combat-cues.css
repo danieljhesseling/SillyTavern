@@ -1359,3 +1359,81 @@
     height: 100%;
     object-fit: cover;
 }
+
+/* Ideas 175, 176, 183 y 185: el taller del mundo. */
+.ww-root {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    text-align: left;
+}
+
+.ww-option {
+    justify-content: flex-start;
+}
+
+.ww-line {
+    font-size: 0.9em;
+}
+
+.ww-subject {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ww-art {
+    width: 40px;
+    height: 40px;
+    object-fit: cover;
+    image-rendering: pixelated;
+    border-radius: 4px;
+}
+
+.pe-board {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+}
+
+.pe-col {
+    flex: 1 1 0;
+    min-width: 160px;
+    min-height: 120px;
+    padding: 6px;
+    border: 1px dashed var(--SmartThemeBorderColor, #444);
+    border-radius: 8px;
+}
+
+.pe-col-title {
+    font-weight: bold;
+    margin-bottom: 4px;
+}
+
+.pe-card {
+    padding: 6px;
+    margin-bottom: 6px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    cursor: grab;
+}
+
+.pe-card-after {
+    font-size: 0.8em;
+    opacity: 0.7;
+}
+
+.pe-form,
+.dr-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+    margin: 4px 0;
+}
+
+.pe-note {
+    min-height: 1.2em;
+    color: #e2a86a;
+}

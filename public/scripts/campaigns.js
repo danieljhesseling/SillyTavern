@@ -10,7 +10,7 @@ import {
 } from '../script.js';
 import { Popup, POPUP_TYPE, POPUP_RESULT } from './popup.js';
 import { buildNewCampaignCta, createCampaign } from './game-engine/ui/campaign-wizard.js';
-import { openCampaignBuilder, loadDndCatalog, setPartyFromWorldEntries, beginCampaignPlot } from './party.js';
+import { openCampaignBuilder, loadDndCatalog, setPartyFromWorldEntries, beginCampaignPlot, adoptVeteranGear } from './party.js';
 import { isCampaignWorld, getStartingPoint } from './game-engine/campaign/campaign-worlds.js';
 import { buildHeroEntry, describeHero } from './game-engine/campaign/hero.js';
 import { planCampaignDeletion, describeDeletion } from './game-engine/campaign/campaign-delete.js';
@@ -27,6 +27,7 @@ import { abilitiesFor, nameAndAbility } from './game-engine/compendio/skills.js'
 import { racesOf, kindsOf, describeKin } from './game-engine/compendio/kin.js';
 import { readPlot, plotFromFaction, startPlot } from './game-engine/campaign/plot.js';
 import { saveSummary, describeSave, describeSaveParty } from './game-engine/campaign/save-card.js';
+import { listVeterans, veteranHero } from './game-engine/campaign/veterans.js';
 
 /**
  * Fetches recent chats with metadata from the cross-character API.
@@ -1204,6 +1205,64 @@ async function uploadHeroFace(file, worldName) {
  * @param {string} worldName
  * @returns {Promise<string>} Quién es, en una línea para el narrador; vacío si no se creó nadie.
  */
+/**
+ * Idea 179: los héroes vivos de otras partidas, para traer a uno. Null si se prefiere uno nuevo.
+ *
+ * @param {string} worldName
+ * @returns {Promise<any|null>}
+ */
+async function pickVeteran(worldName) {
+    const chats = await fetchRecentChatsWithMetadata(100).catch(() => []);
+    const veterans = listVeterans(chats.map((/** @type {any} */ c) => ({ world: String(c?.chat_metadata?.world_info || ''), meta: c?.chat_metadata ?? {} })), worldName).slice(0, 4);
+    if (veterans.length === 0) return null;
+    const body = $('<div class="vt-root"></div>');
+    body.append($('<h3></h3>').text('¿Quién entra?'));
+    body.append($('<p></p>').text('Puedes hacer un héroe nuevo o traer a uno de otra partida: llega con su oficio, sus números y lo que lleva puesto, como mucho a nivel 5.'));
+    const picked = await new Popup(body[0], POPUP_TYPE.TEXT, '', {
+        okButton: false, cancelButton: false,
+        customButtons: [
+            { text: 'Uno nuevo', result: 90, classes: ['vt-new'] },
+            ...veterans.map((v, i) => ({ text: `Traer a ${v.line}`, result: 91 + i, classes: ['vt-veteran'] })),
+        ],
+    }).show();
+    const index = Number(picked) - 91;
+    return index >= 0 && veterans[index] ? veterans[index].hero : null;
+}
+
+/**
+ * Idea 179: escribir al veterano en este mundo, con lo suyo.
+ *
+ * @param {string} worldName
+ * @param {any} data
+ * @param {any} hero
+ * @returns {Promise<string>}
+ */
+async function adoptVeteran(worldName, data, hero) {
+    const vet = veteranHero(hero, Date.now());
+    const place = (data.metadata?.locationMaps ?? [])[0];
+    const cell = (place?.boards ?? [])[0]?.partyStart?.[0] ?? { x: 1, y: 1 };
+    const spec = buildHeroEntry({
+        name: vet.name, race: vet.race, className: String(vet.class ?? vet.charClass ?? ''), gender: vet.gender,
+        background: vet.background, about: String(vet.description ?? vet.about ?? ''), image: vet.avatar,
+    }, { raceRow: null, classRow: null, locationName: String(place?.name || ''), cell, preset: null });
+    const entry = /** @type {any} */ (createWorldInfoEntry(worldName, data));
+    if (!entry) return '';
+    entry.comment = spec.title;
+    entry.key = spec.keys;
+    entry.content = spec.content;
+    entry.group = spec.group;
+    entry.dndData = {
+        ...spec.dndData, level: vet.level,
+        str: vet.strength, dex: vet.dexterity, con: vet.constitution, int: vet.intelligence, wis: vet.wisdom, cha: vet.charisma,
+        maxHp: vet.maxHp, ac: vet.armorClass, speed: vet.speed, abilities: Array.isArray(vet.abilities) ? vet.abilities : [],
+    };
+    await saveWorldInfo(worldName, data, true);
+    setPartyFromWorldEntries([entry], worldName);
+    adoptVeteranGear({ items: vet.items, equippedItems: vet.equippedItems, perks: Array.isArray(vet.perks) ? vet.perks : [] });
+    toastr.success(`${vet.name} vuelve, a nivel ${vet.level}.`, 'Un veterano');
+    return `${vet.name}, que viene de otra historia. ${String(vet.description ?? '')}`.trim();
+}
+
 async function createStartingHero(worldName) {
     const data = await loadWorldInfo(worldName);
     if (!data) return '';
@@ -1260,6 +1319,10 @@ async function createStartingHero(worldName) {
         const said = String(scene || data.metadata?.description || '').trim();
         return said.length > 320 ? `${said.slice(0, 317).replace(/\s+\S*$/, '')}…` : said;
     })();
+
+    // Idea 179: antes de hacer uno nuevo, se puede traer a un veterano de otra partida.
+    const veteran = await pickVeteran(worldName);
+    if (veteran) return await adoptVeteran(worldName, data, veteran);
 
     const answers = await openHeroCreator({
         worldName,

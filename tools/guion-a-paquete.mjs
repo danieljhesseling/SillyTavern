@@ -248,6 +248,8 @@ function buildPack(g, catalogue) {
             days: Number(r.dias) || 1,
             // Idea 74: «estaciones: [invierno]» es un camino que solo se pasa entonces.
             ...(listOf(r.estaciones).length > 0 ? { seasons: listOf(r.estaciones) } : {}),
+            // Idea 130: «barco: true» es un pasaje por mar.
+            ...(r.barco ? { sea: true } : {}),
         })),
     }));
 
@@ -422,6 +424,8 @@ function buildPack(g, catalogue) {
         },
         // Idea 111: no se ve hasta que se cumple.
         ...(h.oculto ? { hidden: true } : {}),
+        // Idea 184: solo para ciertos trasfondos.
+        ...(listOf(h.trasfondo).length > 0 ? { backgrounds: listOf(h.trasfondo) } : {}),
         // Idea 106: N días desde que se abre; si no, pasa lo de `si_no`.
         ...(h.plazo ? {
             within: Number(h.plazo.dias) || 0,
@@ -463,7 +467,16 @@ function buildPack(g, catalogue) {
         contracts,
         rumors,
         abilities,
-        plot: { title: text(world.nombre), milestones, endings, ...(omens.length > 0 ? { omens } : {}) },
+        plot: {
+            title: text(world.nombre), milestones, endings, ...(omens.length > 0 ? { omens } : {}),
+            // Idea 115: el villano y cuándo asoma.
+            ...(world.villano?.nombre ? {
+                villain: {
+                    name: text(world.villano.nombre),
+                    appears: (world.villano.asoma ?? []).map((/** @type {any} */ a) => ({ act: Number(a.acto) || 0, milestone: text(a.hito ?? ''), scene: text(a.escena) })),
+                },
+            } : {}),
+        },
         mix: world.mezcla ?? undefined,
     };
     return { pack, notes };
