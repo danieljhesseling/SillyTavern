@@ -101,7 +101,8 @@ export function planShortRest({ party = [], rollDie, hitDieByClass = {} }) {
     let healed = 0;
     let diceSpent = 0;
 
-    for (const member of (Array.isArray(party) ? party : []).filter(Boolean)) {
+    // Quien ha muerto no se levanta durmiendo: la muerte es para siempre (idea 36).
+    for (const member of (Array.isArray(party) ? party : []).filter(m => m && !m.dead)) {
         const maxHp = Math.max(0, Number(member?.maxHp) || 0);
         const hpBefore = Math.max(0, Number(member?.hp) || 0);
         const dice = getHitDice(member, hitDieByClass);
@@ -166,7 +167,8 @@ export function planLongRest({ party = [], hitDieByClass = {} }) {
     let healed = 0;
     let diceRegained = 0;
 
-    for (const member of (Array.isArray(party) ? party : []).filter(Boolean)) {
+    // Quien ha muerto no se levanta durmiendo: la muerte es para siempre (idea 36).
+    for (const member of (Array.isArray(party) ? party : []).filter(m => m && !m.dead)) {
         const maxHp = Math.max(0, Number(member?.maxHp) || 0);
         const hpBefore = Math.max(0, Number(member?.hp) || 0);
         const dice = getHitDice(member, hitDieByClass);

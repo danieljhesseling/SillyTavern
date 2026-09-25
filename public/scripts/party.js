@@ -2,7 +2,8 @@ import { t } from './i18n.js';
 import { power_user } from './power-user.js';
 import { POPUP_TYPE, POPUP_RESULT, Popup } from './popup.js';
 import { sendSystemMessage, system_message_types } from './system-messages.js';
-import { getThumbnailUrl, chat, chat_metadata, saveMetadata, eventSource, event_types, setUserName, addOneMessage, saveChatConditional, substituteParams, system_avatar, generateRaw, online_status, setExtensionPrompt, extension_prompt_types, extension_prompt_roles } from '../script.js';
+import { getThumbnailUrl, chat, chat_metadata, saveMetadata, eventSource, event_types, setUserName, addOneMessage, saveChatConditional, substituteParams, system_avatar, generateRaw, online_status, setExtensionPrompt, extension_prompt_types, extension_prompt_roles, saveSettingsDebounced } from '../script.js';
+import { extension_settings } from './extensions.js';
 import { getMessageTimeStamp } from './RossAscends-mods.js';
 import { getCurrentWorldMapUrl, getCurrentWorldLocationMaps, getCurrentWorldBoards, getCurrentWorldEnemies, getCurrentWorldNPCs, loadWorldInfo, saveWorldInfo, createWorldInfoEntry, refreshWorldMapGlobals, METADATA_KEY } from './world-info.js';
 import { renderWorldMapView, renderLocationView } from './world-map-renderer.js';
@@ -36,13 +37,13 @@ import { injuryTableFor, causesOf } from './game-engine/compendio/ailments.js';
 import { racesOf, kindsOf, describeKin, validateKin } from './game-engine/compendio/kin.js';
 import { createCompendium, onlyPicked } from './game-engine/compendio/compendio.js';
 import {
-    readFactions, tickFactions, outcomeOf, applyOutcome, newsFor, describeFaction,
+    readFactions, tickFactions, outcomeOf, applyOutcome, newsFor, describeFaction, priceFactor,
     rollFactions, validateFactionRows, busyFactions, pushFaction, speaksPlural, namesOf,
     changeStanding, describeStanding, standingWith, saysWith,
 } from './game-engine/campaign/factions.js';
-import { marketPressure, applyMarket, describeMarket } from './game-engine/campaign/economy.js';
+import { marketPressure, applyMarket, describeMarket, warPressure } from './game-engine/campaign/economy.js';
 import {
-    abilitiesFor, classesOf, nameAndAbility, validateAbilities,
+    abilitiesFor, classesOf, nameAndAbility, validateAbilities, asAbility,
 } from './game-engine/compendio/skills.js';
 import {
     rollDice, rollDiceDetailed, getRollClassification, getRollClassificationLabel,
@@ -51,25 +52,62 @@ import {
     createEmptyCombatEncounter, normalizeCombatEncounter, setRandomSource, nextRandom,
 } from './party/combat-rules.js';
 import { escItemText, buildPartyItemSections } from './party/item-forms.js';
-import { armourClassOf, shieldBlocked } from './game-engine/rules/equipment.js';
+import { armourClassOf, shieldBlocked, bestFor, weaponOf as heldWeapon, weaponBonus } from './game-engine/rules/equipment.js';
 import { resolveEntryMapPosition } from './party/positions.js';
 import { createCampaignState } from './party/campaign-state.js';
 import {
     normalizeTerrain, setCell as setTerrainCell, getTerrainOptions, getCoverBonus, setDoorOpen,
-    parseCellKey, terrainFromAsciiMap, cellKey, isPassable, getCell,
+    parseCellKey, terrainFromAsciiMap, cellKey, isPassable, getCell, isLocked, unlockDoor, lockedDoors, breakDoor,
 } from './game-engine/board/terrain.js';
 import { getReachableCells, findPath, getPathCost } from './game-engine/board/pathfinding.js';
 import { getCoverAlongLine } from './game-engine/board/line-of-sight.js';
 import { createEmptyFog, normalizeFog, updateFog } from './game-engine/board/fog-of-war.js';
 import { planEnemyTurn } from './game-engine/combat/enemy-ai.js';
-import { planAllyTurn, stanceOf, STANCES } from './game-engine/combat/ally-ai.js';
+import { planAllyTurn, stanceOf, STANCES, PREFERENCES, DEFAULT_PREFERENCE } from './game-engine/combat/ally-ai.js';
 import { chooseEnemyAbility, longestReach, averageOf } from './game-engine/combat/enemy-abilities.js';
 import {
     MANEUVERS, judgeManeuvers, recordManeuver, startTurn as startManeuverTurn, attackEdge,
-    consumeHelp, rollWithEdge, describeEdge, resolveShove, readManeuvers,
+    consumeHelp, rollWithEdge, describeEdge, resolveShove, readManeuvers, noteKnockdown, takeCombo, COMBO_DICE,
+    canHide, hideDC, revealHidden,
 } from './game-engine/combat/maneuvers.js';
+import { THROWABLES, judgeThrows, throwablesOf, burningPuddle } from './game-engine/combat/throwables.js';
+import { readyAttack, dropReadied, readiedAgainst } from './game-engine/combat/readied.js';
+import { canReact, markReacted, bossLine } from './game-engine/combat/boss-reaction.js';
+import { perkChoices, takePerk, perkBonus, PERKS, perksOf } from './game-engine/rules/level-perks.js';
+import { hasMaster, lessonsHere, describeLesson, LESSON } from './game-engine/campaign/masters.js';
+import { startGame, drawDie, stand, cheat, payout, describeGame, roundsLeft, BETS } from './game-engine/campaign/tavern-dice.js';
+import { MOUNTS, addMount, mountedDays, feedPerWeek, describeMounts } from './game-engine/world/mounts.js';
+import { assignRoles, rollRoles, describeRoles } from './game-engine/world/travel-roles.js';
+import { isIndoors, carriesLight, combatVisibility, visibilityPenalties, sightFeetFor } from './game-engine/world/visibility.js';
+import { companionEpilogues } from './game-engine/campaign/epilogues.js';
+import { canPry, notePry, secretNote, describeSecrets, SECRET_DC, SECRET_SKILL } from './game-engine/campaign/npc-secrets.js';
+import { repliesFor } from './game-engine/ui/shell/replies.js';
+import { checkWorldDensity, gemRequest } from './game-engine/campaign/world-density.js';
+import { SCENERY, sceneryNear, judgeSceneryThrow } from './game-engine/combat/throwables.js';
+import { spreadFire } from './game-engine/board/living-terrain.js';
+import { playCue } from './game-engine/ui/shell/action-sounds.js';
+import { loadAudioSettings } from './game-engine/ui/shell/scene-audio.js';
+import { trophiesOf, trophyItem, canCraft, cloakItem, upgradedWeapon, RECIPES } from './game-engine/campaign/trophies.js';
+import { seasonOf, seasonClimates, describeSeason, openInSeason, readSeason } from './game-engine/world/seasons.js';
+import { canCamp, nightRisk, defaultGuards, resolveNight, campMorning, MAX_GUARDS } from './game-engine/campaign/camp.js';
+import { approvalFor, approvalFromOpinions, noteApproval, frictionsOn, describeApproval, approvalOf, DECISIONS } from './game-engine/campaign/approval.js';
+import { duePersonalQuests, personalQuestFor, describePersonalAsk } from './game-engine/campaign/personal-quests.js';
+import { readBench, benchMember, callFromBench, whereHired } from './game-engine/campaign/bench.js';
+import { respecCost, redoPerks } from './game-engine/rules/respec.js';
+import { languageBarrier, languagesOf } from './game-engine/rules/languages.js';
+import { saveSet, applySet, readSets } from './game-engine/rules/equipment-sets.js';
+import { giveItem } from './game-engine/rules/give-item.js';
+import { neighboursOf, fateAt, driftOf, describeFate } from './game-engine/world/people-fate.js';
+import { namedContract, hasNamed, NAMED_CHANCE } from './game-engine/campaign/named-contracts.js';
+import { addOffer, takeOffer, resolveOffer, offerChips } from './game-engine/campaign/item-offers.js';
+import { toneNote, nextTone, describeTone, readTone } from './game-engine/campaign/scene-tone.js';
+import { makeShareCode } from './game-engine/campaign/share-code.js';
+import { speakerOf, initialsOf, hueOf } from './game-engine/ui/shell/speakers.js';
+import { describeForecast, describeIntents } from './game-engine/combat/forecast.js';
+import { noteDealt, noteTaken, buildVictoryReport } from './game-engine/combat/tally.js';
+import { planRetreat } from './game-engine/combat/retreat.js';
 import { planWalk, canWalk } from './game-engine/board/walk.js';
-import { enterCell, describeHazard } from './game-engine/board/hazards.js';
+import { enterCell, describeHazard, passiveSpot, hazardsAt, visibleHazards } from './game-engine/board/hazards.js';
 import {
     buildTracker, describeTurn, statusMarkers, sizeToCells, toggleCondition,
 } from './game-engine/combat/initiative-tracker.js';
@@ -87,11 +125,25 @@ import {
 import { resolveFall, describeSurvival, canCheckpoint, readSurvival } from './game-engine/rules/mortality.js';
 import { weeklyBill, settleWeek, describeBill } from './game-engine/rules/upkeep.js';
 import { readRemedies, remediesFor, applyRemedy, shouldOfferRetirement } from './game-engine/rules/remedies.js';
-import { readDebt, offerPatronage, settlesDebt, debtDue, describeDebt } from './game-engine/campaign/patronage.js';
-import { SKILLS, checkOptions, rollCheck } from './game-engine/rules/checks.js';
+import { readDebt, offerPatronage, settlesDebt, debtDue, describeDebt, borrow, repay, LOAN } from './game-engine/campaign/patronage.js';
+import { rollLine, damageLine } from './game-engine/rules/roll-line.js';
+import { epitaphFor, heirloomOf, heirOf, addGrave, gravesAt, readGraves, addToHall, readHall, describeHallEntry } from './game-engine/campaign/legacy.js';
+import { addFame, fameAt, fameNote, describeFame } from './game-engine/campaign/fame.js';
+import { lootable, relicsFor, describeRelic } from './game-engine/campaign/relics.js';
+import { dressLoot, templeWork, identify, liftCurse, canTakeOff, shownName, curseInjury, TEMPLE_PRICES } from './game-engine/campaign/item-lore.js';
+import { SKILLS, checkOptions, rollCheck, skillModifier } from './game-engine/rules/checks.js';
+import {
+    PACES, readPace, paceDays, paceEvents, isSetback, setbackChoice, resolveSetback, FORCE_DC, FORCE_HURT, RUSH_REST_HOURS,
+} from './game-engine/world/travel-choices.js';
+import { shiftFortune, fortuneLine } from './game-engine/world/fortune.js';
+import { queueNews, deliverNews, clockWarnings } from './game-engine/world/news.js';
+import { dueHints, buildJournal, buildHelp, pendingByPlace, buildRecap } from './game-engine/campaign/guidance.js';
+import { addNotice, unseenCount, glanceRow, MAX_VISIBLE_TOASTS } from './game-engine/ui/shell/notices.js';
+import { addRequest, takeRequest, readRequests } from './game-engine/campaign/check-requests.js';
 import { recordDeed, worldMemoryBlock, roadTrouble } from './game-engine/campaign/world-memory.js';
 import {
     readPlot, startPlot, plotEvent, focusOf, describeFocus, plotFromFaction, chooseEnding, actOf, hasEnded,
+    visibleOpen, secretsOf, omensOf, daysLeftOf, cluesOf, closedOf,
 } from './game-engine/campaign/plot.js';
 import {
     readWrittenContracts, availableWritten, writtenSlots, toBoardContract, settlesNoFight, describeWrittenAccept,
@@ -102,23 +154,39 @@ import {
     canExplore, discoverPlace, boardForPlace, peopleWanted, readProposals, addProposal, takeProposal,
 } from './game-engine/world/growth.js';
 import { ToolManager } from './tool-calling.js';
-import { servicesOf, serviceActions } from './game-engine/campaign/services.js';
-import { chooseBark } from './game-engine/combat/barks.js';
+import { servicesOf, serviceActions, SERVICE_INFO } from './game-engine/campaign/services.js';
+import { chooseBark, opinionOf, wantsOf, chooseEnemyBark } from './game-engine/combat/barks.js';
+import { critEffect, roleOf, breaksMorale, isFlanked } from './game-engine/combat/crits.js';
+import { groupMorale, campJobOf, withJob, whoMourns, mourningFor } from './game-engine/campaign/company.js';
+import { takePrisoners, prisonerChips, dealWith, BOUNTY } from './game-engine/campaign/prisoners.js';
+import { findShortcut, applyShortcut, roadEncounter, roadStop } from './game-engine/world/road.js';
+import { addRoll, diceStats, readRolls } from './game-engine/campaign/dice-log.js';
+import { basePrice, weeklyStock, priceToday, sellPrice, canSell, junkOf } from './game-engine/campaign/shop.js';
+import { festivalsOf, festivalToday, daysUntil } from './game-engine/world/festivals.js';
+import { readLetters, newLetters } from './game-engine/campaign/letters.js';
+import { bump, describeStats } from './game-engine/campaign/stats.js';
+import { intentSkills } from './game-engine/campaign/intents.js';
+import { tipFor, GLOSSARY } from './game-engine/ui/shell/tips.js';
+import { LENGTHS, lengthNote, nextLength } from './game-engine/campaign/narration.js';
+import { noteFeat, newNickname, traitBonus, traitsOf, addScar, desireLine, heroStory, TRAIT_AT, knackBonus, knacksOf, KNACK_AT } from './game-engine/campaign/feats.js';
+import { forageCheck, forageResult } from './game-engine/campaign/forage.js';
+import { readRecruits, recruitActions, bondSceneFor, describeMeeting, describeJoin, arrivalLines } from './game-engine/campaign/recruit.js';
+import { addMemory, memoryLines, lastMemoryWith } from './game-engine/campaign/memories.js';
 import { bodyLine } from './game-engine/campaign/body.js';
-import { relieve } from './game-engine/rules/needs.js';
+import { relieve, readNeeds } from './game-engine/rules/needs.js';
 import { promptKey } from './game-engine/cost/prompt-order.js';
 import {
     generateBoardOfContracts, contractsFromFactions, expireContracts, describeContract,
 } from './game-engine/campaign/contracts.js';
 import {
     readGuild, upkeepWithBuildings, boardSize, settleLoyalty, completeContract, STAFF_ROLES, retireTo,
-    upgradeCost, describeGuild,
+    upgradeCost, describeGuild, trainingFor,
 } from './game-engine/campaign/guild.js';
 import { generateBoard } from './game-engine/world-builder/dungeon-generator.js';
 import {
     formParty, canControl, describeMode, readMode, MODES, readReasons,
 } from './game-engine/rules/companions.js';
-import { describeLootItem } from './game-engine/combat/loot-items.js';
+import { describeLootItem, declaredLootNames } from './game-engine/combat/loot-items.js';
 import { planSpawnCells } from './game-engine/combat/spawn.js';
 import { buildTargetCard, describeTargetCard } from './game-engine/combat/target-card.js';
 import {
@@ -139,7 +207,7 @@ import {
 import { renderCampaignPanel } from './game-engine/ui/campaign-panel.js';
 import {
     buildEpiloguePrompt, createCombatLogPanel, renderCombatLog, setRound,
-    rollEntry, lineToEntry, append as appendLogEntry,
+    rollEntry, lineToEntry, append as appendLogEntry, filterLog, renderLogFilters, logFilterOf,
 } from './game-engine/ui/combat-log.js';
 import { buildGameMessage, CHANNEL } from './game-engine/ui/chat-channel.js';
 import { guardRolls, guardImpossibleRolls, describeCorrections } from './game-engine/combat/roll-guard.js';
@@ -634,6 +702,8 @@ export function setPartyFromWorldEntries(entries, worldName = null) {
             level: Number(d.level) || 1,
             class: d.charClass || 'Adventurer',
             race: d.race || '',
+            // Idea 49: el trasfondo, que las tiradas leen.
+            background: d.background || '',
             factions: parseFactionValues(d.factions || d.faction),
             hp: Number(d.maxHp) || 30,
             maxHp: Number(d.maxHp) || 30,
@@ -789,6 +859,28 @@ async function ensureWorldData() {
  */
 let currentWorldFactions = [];
 
+/** Idea 74: la estación en la que empezó el mundo; vacía es la de siempre (otoño). */
+let lastWorldSeason = '';
+
+/**
+ * Idea 74: la estación de hoy.
+ *
+ * @returns {string}
+ */
+function currentSeason() {
+    return seasonOf(Math.max(1, campaignDay()), lastWorldSeason || undefined);
+}
+
+/**
+ * Idea 97: los bichos del mundo que andan por aquí en esta estación.
+ *
+ * @returns {any[]}
+ */
+function enemiesInSeason() {
+    const season = currentSeason();
+    return getCurrentWorldEnemies().filter((/** @type {any} */ e) => openInSeason(e?.seasons, season));
+}
+
 /** @returns {any[]} */
 function getCurrentWorldFactions() {
     return currentWorldFactions;
@@ -812,14 +904,24 @@ async function reloadWorldFactions() {
         // Lo que trae un mundo escrito entero: sus encargos, sus rumores y su mezcla.
         lastWrittenContracts = readWrittenContracts(data?.metadata?.writtenContracts);
         lastRumors = readRumors(data?.metadata?.rumors);
+        lastWorldSeason = readSeason(data?.metadata?.season);
         lastWorldNpcs = Object.values(data?.entries ?? {})
             .filter((/** @type {any} */ e) => e?.dndData?.entityType === 'npc')
             .map((/** @type {any} */ e) => ({
                 name: String(e.dndData?.name || e.comment || ''),
                 where: String(e.dndData?.mapPosition?.locationName || ''),
                 service: String(e.dndData?.service || ''),
+                // Idea 110: lo que esconde. No va al narrador hasta que se sonsaca.
+                secret: String(e.dndData?.secret || ''),
+                // Idea 59: la lengua que habla; vacío es la común.
+                language: String(e.dndData?.language || ''),
+                // Idea 87: quien ha muerto sigue en el mundo, pero ya no atiende.
+                dead: Boolean(e.dndData?.dead),
             }));
         lastMix = data?.metadata?.mix ?? null;
+        // Los confidentes, para reclutarlos en la posada (idea 26).
+        lastConfidantEntries = Object.fromEntries(Object.entries(data?.entries ?? {})
+            .filter(([, e]) => /** @type {any} */ (e)?.dndData?.confidant));
         // Y lo que este mundo dejo entrar de cada bateria.
         lastPicks = (data?.metadata?.picks && typeof data.metadata.picks === 'object')
             ? data.metadata.picks : null;
@@ -1082,7 +1184,17 @@ let activeTerrainBrush = null;
  *
  * @param {any} board
  */
-async function persistBoardTerrain(board) {
+function persistBoardTerrain(board) {
+    // En la fila de escrituras del mundo: abrir una puerta mientras llega gente nueva al
+    // sitio guardaba dos copias del mundo, y la ultima borraba a la otra.
+    return worldWrite(() => persistBoardTerrainNow(board));
+}
+
+/**
+ * @param {any} board
+ * @returns {Promise<void>}
+ */
+async function persistBoardTerrainNow(board) {
     if (!currentLocationName || !board) return;
     try {
         const worldName = chat_metadata?.[METADATA_KEY];
@@ -1103,6 +1215,9 @@ async function persistBoardTerrain(board) {
         stored.terrain = board.terrain;
         stored.fog = board.fog;
         stored.fogEnabled = board.fogEnabled;
+        // Lo que arde o se ha descubierto (ideas 23 y 122): sin esto, un charco de aceite
+        // desaparecía al recargar.
+        if (Array.isArray(board.hazards)) stored.hazards = board.hazards;
         // Que salas se han revelado es parte del estado del tablero: sin esto, una
         // mazmorra se volveria a cerrar sola al recargar.
         if (board.rooms) stored.rooms = board.rooms;
@@ -1284,6 +1399,17 @@ let combatLogEntries = [];
 /** The mounted panel, when the board is on screen. Null when it is not. */
 let combatLogPanel = null;
 
+/** Idea 20: el filtro del registro. Vive aquí, porque el panel se repinta entero. */
+let combatLogFilter = { kind: 'all', who: '' };
+
+/**
+ * Pinta el registro con el filtro puesto.
+ */
+function paintCombatLog() {
+    if (!combatLogPanel) return;
+    renderCombatLog(combatLogPanel, filterLog(combatLogEntries, combatLogFilter));
+}
+
 /**
  * Adds an entry to the log and repaints it if it is visible.
  * @param {import('./game-engine/ui/combat-log.js').LogEntry|null} item
@@ -1291,7 +1417,7 @@ let combatLogPanel = null;
 function pushCombatLogEntry(item) {
     if (!item) return;
     combatLogEntries = appendLogEntry(combatLogEntries, item);
-    if (combatLogPanel) renderCombatLog(combatLogPanel, combatLogEntries);
+    paintCombatLog();
 }
 
 /**
@@ -1444,7 +1570,8 @@ function getTargetArmorClass(target, attacker = null) {
     // Lo que lleva puesto manda sobre el numero de la ficha, **solo si lo lleva puesto**:
     // una armadura equipada es un hecho, y el numero escrito a mano era una promesa. Sin
     // nada con clase de armadura encima, todo sigue exactamente como estaba.
-    const base = wornArmorClass(target) || Number(target?.armorClass) || 10;
+    // Idea 46: la «piel dura» de quien la eligió al subir de nivel.
+    const base = (wornArmorClass(target) || Number(target?.armorClass) || 10) + perkBonus(target, 'armorClass');
     const x = Number(target?.gridX ?? target?.mapPosition?.gridX);
     const y = Number(target?.gridY ?? target?.mapPosition?.gridY);
 
@@ -1712,6 +1839,10 @@ function queueCombatDiceRoll(payload) {
  * @param {{ title: string, subtitle: string, formula: string, detail: string, total: number, dc?: number|null, natural?: number|null, glyph?: string }} param0
  */
 function showCombatDiceRoll({ title, subtitle, formula, detail, total, dc = null, natural = null, glyph = 'd20' }) {
+    // Idea 168: cada d20, apuntado, para poder contestar a «este dado me odia».
+    if (glyph === 'd20' && chat_metadata && Number(natural) >= 1) {
+        chat_metadata[DICE_LOG_KEY] = addRoll(chat_metadata[DICE_LOG_KEY], { title: String(title), natural: Number(natural), total: Number(total) || 0, dc });
+    }
     const classification = getRollClassification(natural, total, dc);
 
     // The log gets the breakdown, not the prose: seeing "1d20+5 · 17 · vs 15" is what
@@ -1795,14 +1926,23 @@ function resolveEnemyAttackOn(enemy, target) {
     const lines = [];
 
     // Esquivar, estar en el suelo: lo que cambia el dado antes de tirarlo.
+    const enemyFeet = getDistanceInFeet(
+        Number(enemy.gridX) || 0, Number(enemy.gridY) || 0,
+        Number(target.mapPosition?.gridX) || 0, Number(target.mapPosition?.gridY) || 0);
     const edge = attackEdge({
         targetId: String(target.id),
         targetConditions: target.activeConditions ?? [],
         attackerConditions: enemy.activeConditions ?? [],
-        distanceFeet: getDistanceInFeet(
-            Number(enemy.gridX) || 0, Number(enemy.gridY) || 0,
-            Number(target.mapPosition?.gridX) || 0, Number(target.mapPosition?.gridY) || 0),
+        // Ideas 73 y 90: la niebla y la noche estorban a los dos bandos.
+        hindered: visibilityPenalties(boardVisibility(), enemyFeet),
+        distanceFeet: enemyFeet,
         maneuvers: combatEncounter.maneuvers,
+        // El flanqueo vale para los dos bandos.
+        flanked: flankedFrom(
+            { x: Number(enemy.gridX) || 0, y: Number(enemy.gridY) || 0 },
+            { x: Number(target.mapPosition?.gridX) || 0, y: Number(target.mapPosition?.gridY) || 0 },
+            getAliveEnemies().filter(e => e !== enemy).map(e => ({ x: Number(e.gridX) || 0, y: Number(e.gridY) || 0 })),
+        ),
     });
     const edged = rollWithEdge(() => rollDiceDetailed('1d20', 20).total, edge.mode);
     const attackRoll = { total: edged.natural, natural: edged.natural };
@@ -1828,7 +1968,7 @@ function resolveEnemyAttackOn(enemy, target) {
     });
 
     lines.push(`👹 ${enemy.name} ataca a ${target.name}.`);
-    lines.push(`🎲 Tirada de ataque: d20(${d20}) ${attackMod >= 0 ? '+' : ''}${attackMod} = ${attackTotal} vs AC ${targetAc}${describeCover(targetCover)}${describeEdge(edged, edge.mode, edge.reasons)}`);
+    lines.push(attackLine({ who: enemy.name, at: target.name, total: attackTotal, ac: targetAc, hit: isHit, natural: d20, modifier: attackMod, cover: targetCover, edge: describeEdge(edged, edge.mode, edge.reasons) }));
 
     if (!isHit) {
         lines.push('❌ Resultado: fallo.');
@@ -1855,8 +1995,10 @@ function resolveEnemyAttackOn(enemy, target) {
     });
 
     lines.push(`✅ Resultado: impacto${isCrit ? ' critico' : ''}.`);
-    lines.push(`💥 Tirada de daño: ${dmgFormula}(${baseDamage})${isCrit ? ` + crit(${critBonus})` : ''} + mod(${strMod}) = ${totalDamage}`);
+    lines.push(damageLine({ total: totalDamage, formula: dmgFormula, rolled: baseDamage, modifier: strMod, crit: isCrit ? critBonus : 0 }));
     lines.push(...damagePartyMember(target, totalDamage, isCrit));
+    floatOnToken(target.id, `-${totalDamage}`, isCrit ? 'crit' : 'damage');
+    enemyBark(enemy, 'hit');
 
     if (target.hp > 0 && isCrit && Math.random() < 0.35) {
         const pool = ['Bleeding', 'Poisoned', 'Prone', 'Frightened'];
@@ -1902,17 +2044,24 @@ function damagePartyMember(target, totalDamage, isCrit = false) {
     // Antes de escribir el dano: hace falta saber si ya estaba en el suelo, porque un
     // golpe sobre un cuerpo caido cuenta distinto que el golpe que lo tira.
     const wasDown = (Number(target.hp) || 0) <= 0;
+    const before = Number(target.hp) || 0;
 
     if (rescue) {
         saveCampaignState(null, spendPerk(getCampaignBonds(), rescue.saviourId, rescue.perkId));
         target.hp = 1;
         lines.push(`🛡️ ${rescue.saviourName} se interpone: ${target.name} aguanta con 1 HP.`);
+        rememberTogether(`${rescue.saviourName} se interpuso para salvar a ${target.name} en ${currentBoardName || currentLocationName}.`,
+            [rescue.saviourName, String(target.name)]);
+        recordFeat(partyMembers.find(m => String(m.id) === String(rescue.saviourId)), 'rescue');
     } else {
         target.hp = Math.max(0, (target.hp || 0) - totalDamage);
     }
 
     target.activeConditions = Array.isArray(target.activeConditions) ? target.activeConditions : [];
     lines.push(`❤️ Estado de ${target.name}: ${target.hp}/${target.maxHp}`);
+    if (combatEncounter.active) {
+        combatEncounter.tally = noteTaken(combatEncounter.tally, target.id, before - (Number(target.hp) || 0), !wasDown && target.hp === 0);
+    }
 
     if (target.hp === 0) {
         if (!target.activeConditions.includes('Unconscious')) {
@@ -1927,6 +2076,7 @@ function damagePartyMember(target, totalDamage, isCrit = false) {
             lines.push(hit.line);
         } else {
             target.deathSaves = clearDeathSaves();
+            recordFeat(target, 'downed');
             lines.push(`🩸 ${target.name} cae a 0 PG y empieza a jugarsela: `
                 + 'tres exitos para estabilizarse, tres fallos y se acabo.');
             // C7: alguien de pie lo grita.
@@ -1986,23 +2136,20 @@ function resolveEnemyAbility(enemy, choice) {
     return lines.join('\n');
 }
 
-function resolveEnemyTurnAction(turnEntry) {
-    const enemy = combatEncounter.enemies.find(e => e.instanceId === turnEntry.id && e.currentHp > 0);
-    if (!enemy) {
-        return '[COMBAT] El enemigo no puede actuar (derrotado o no encontrado).';
-    }
-
-    const livingParty = getLivingPartyMembers();
-    if (!livingParty.length) {
-        return `[COMBAT] ${enemy.name} ruge sobre un campo sin oponentes conscientes.`;
-    }
-
+/**
+ * Lo que haria este enemigo si le tocase ahora: a por quien va y adonde se mueve.
+ *
+ * Lo usa su turno de verdad y lo usan las intenciones que se ven en la barra: al ser la
+ * misma cuenta, lo que se anuncia es lo que pasa (salvo que el grupo se mueva antes, que
+ * es justo para lo que sirve verlo).
+ *
+ * @param {any} enemy
+ * @returns {import('./game-engine/combat/enemy-ai.js').TurnPlan}
+ */
+function planFor(enemy) {
     const enemyX = Number.isFinite(Number(enemy.gridX)) ? Number(enemy.gridX) : 0;
     const enemyY = Number.isFinite(Number(enemy.gridY)) ? Number(enemy.gridY) : 0;
-
-    // The tactical planner replaces the old straight-line walk, which stepped with
-    // Math.sign and went through walls, and which assumed every creature had five feet of
-    // reach whatever it was holding.
+    const livingParty = getLivingPartyMembers();
     const { terrain, gridWidth, gridHeight } = getActiveBoardContext();
     const known = knownAbilities(enemy, getAbilityCatalogue());
 
@@ -2012,14 +2159,15 @@ function resolveEnemyTurnAction(turnEntry) {
         y: Number.isFinite(Number(member.mapPosition?.gridY)) ? Number(member.mapPosition.gridY) : 0,
     });
 
-    const plan = planEnemyTurn({
+    return planEnemyTurn({
         actor: {
             id: String(enemy.instanceId),
             gridX: enemyX,
             gridY: enemyY,
             currentHp: Number(enemy.currentHp) || 0,
             maxHp: Number(enemy.maxHp) || 0,
-            speedFeet: Number(enemy.speed) || 30,
+            // Agarrado o apresado no anda: pega a quien tenga al lado, si tiene a alguien.
+            speedFeet: heldInPlace(enemy) ? 0 : Number(enemy.speed) || 30,
             // Un cultista con un rayo de 120 ft se queda a su distancia, no se acerca a dar
             // punetazos. Sin habilidades, su alcance de siempre.
             attackRangeFeet: Math.max(Number(enemy.attackRangeFeet ?? enemy.range) || 5, longestReach(enemy, known)),
@@ -2048,14 +2196,95 @@ function resolveEnemyTurnAction(turnEntry) {
         gridWidth,
         gridHeight,
     });
+}
+
+/**
+ * Lo que va a hacer cada enemigo, en una linea por enemigo.
+ *
+ * @returns {string[]}
+ */
+function buildEnemyIntents() {
+    if (!combatEncounter.active) return [];
+    const names = Object.fromEntries(partyMembers.map(m => [String(m.id), String(m.name)]));
+    return describeIntents(
+        getAliveEnemies().map(enemy => ({ name: String(enemy.name), plan: planFor(enemy) })),
+        names,
+    ).map(intent => intent.text);
+}
+
+function resolveEnemyTurnAction(turnEntry) {
+    const enemy = combatEncounter.enemies.find(e => e.instanceId === turnEntry.id && e.currentHp > 0);
+    if (!enemy) {
+        return '[COMBAT] El enemigo no puede actuar (derrotado o no encontrado).';
+    }
+
+    const livingParty = getLivingPartyMembers();
+    if (!livingParty.length) {
+        return `[COMBAT] ${enemy.name} ruge sobre un campo sin oponentes conscientes.`;
+    }
+
+    // Idea 6: con su bando cayendo y malherido, quien no es jefe puede rendirse.
+    if (breaksMorale({
+        enemy, started: combatEncounter.enemies.length, standing: getAliveEnemies().length, random: Math.random,
+    })) {
+        enemyBark(enemy, 'surrender');
+        enemy.currentHp = 0;
+        enemy.surrendered = true;
+        saveCombatState();
+        const said = `🏳️ [COMBAT] ${enemy.name} tira el arma y se rinde.`;
+        if (getAliveEnemies().length === 0) {
+            postCombatNarration(said);
+            postCombatNarration('🏆 [COMBAT] No queda nadie dispuesto a pelear.');
+            endCombat('victory');
+            return '';
+        }
+        return said;
+    }
+
+    const known = knownAbilities(enemy, getAbilityCatalogue());
+
+    /** @param {any} member */
+    const memberCell = (member) => ({
+        x: Number.isFinite(Number(member.mapPosition?.gridX)) ? Number(member.mapPosition.gridX) : 0,
+        y: Number.isFinite(Number(member.mapPosition?.gridY)) ? Number(member.mapPosition.gridY) : 0,
+    });
+
+    const plan = planFor(enemy);
 
     const lines = [];
     const movedThisTurn = plan.movementCostFeet > 0;
 
     if (movedThisTurn) {
+        const leftFrom = { x: Number(enemy.gridX) || 0, y: Number(enemy.gridY) || 0 };
         enemy.gridX = plan.destination.x;
         enemy.gridY = plan.destination.y;
         lines.push(`🚶 ${enemy.name} avanza a (${plan.destination.x + 1}, ${plan.destination.y + 1}). ${plan.rationale} (${plan.movementCostFeet} ft)`);
+        // Idea 4: quien le esperaba con el golpe preparado, se lo da antes de que haga nada.
+        const ambusher = readiedAgainst({
+            readied: combatEncounter.readied,
+            members: livingParty.map(member => ({
+                id: String(member.id), x: memberCell(member).x, y: memberCell(member).y, reachFeet: getAttackRangeFeet(member),
+            })),
+            from: leftFrom,
+            to: { x: Number(enemy.gridX) || 0, y: Number(enemy.gridY) || 0 },
+            distanceFeet: (a, b) => getDistanceInFeet(a.x, a.y, b.x, b.y),
+        });
+        if (ambusher) {
+            combatEncounter.readied = dropReadied(combatEncounter.readied, ambusher);
+            const waiting = partyMembers.find(member => String(member.id) === ambusher);
+            lines.push(`⚡ ${waiting?.name ?? 'Alguien'} estaba esperando a ${enemy.name}: golpe preparado.`);
+            postCombatNarration(`[COMBAT] ${lines.join('\n')}`);
+            lines.length = 0;
+            resolveFollowUpAttack(ambusher, enemy, 'descarga el golpe preparado sobre');
+            saveCombatState();
+            if ((Number(enemy.currentHp) || 0) <= 0) {
+                if (!checkScenarioOutcome() && getAliveEnemies().length === 0 && !judgeCurrentScenario()) {
+                    postCombatNarration('🏆 [COMBAT] Todos los enemigos han sido derrotados.');
+                    endCombat('victory');
+                }
+                return '';
+            }
+        }
     }
 
     // Antes que el golpe: si trae algo mejor que pegar y le llega, lo usa.
@@ -2220,16 +2449,106 @@ async function openOwnSheet(member) {
     const rules = getActiveRuleset();
     const { openCharacterPanel } = await import('./game-engine/ui/character-panel.js');
 
-    await openCharacterPanel({
-        member,
-        slotInfo: rules?.slotInfo ?? {},
-        abilities: getAbilityCatalogue(),
-        xpTable: rules?.progression?.xpThresholds ?? null,
-        bondRank: Number(getCampaignBonds()?.[String(member.id)]?.rank) || 0,
-        onEdit: () => { void openPartyMemberModal(member); },
-        Popup,
-        POPUP_TYPE,
+    // Lo que se toca en la ficha (dar algo, ponerse un juego) la cierra; se vuelve a abrir
+    // al día, hasta que se cierra sin tocar nada.
+    for (let open = 0; open < 20; open++) {
+        const result = await openCharacterPanel({
+            member,
+            slotInfo: rules?.slotInfo ?? {},
+            abilities: getAbilityCatalogue(),
+            xpTable: rules?.progression?.xpThresholds ?? null,
+            bondRank: Number(getCampaignBonds()?.[String(member.id)]?.rank) || 0,
+            onEdit: () => { void openPartyMemberModal(member); },
+            // Idea 59: lo que habla.
+            languages: languagesOf(member),
+            // Idea 62: sus juegos de equipo.
+            sets: readSets(member),
+            onSaveSet: (name) => wearSet(member, name, 'save'),
+            onApplySet: (name) => wearSet(member, name, 'apply'),
+            // Idea 163: a quién darle algo.
+            mates: partyMembers.filter(m => m !== member && !m.dead)
+                .map(m => ({ id: String(m.id), name: String(m.name), avatar: String(m.avatar || '') })),
+            onGive: (itemId, toId) => handItem(member, itemId, toId),
+            Popup,
+            POPUP_TYPE,
+        });
+        if (result !== 'changed') break;
+    }
+}
+
+/**
+ * Idea 62: guardar lo que se lleva puesto con un nombre, o ponerse un juego guardado. Lo
+ * maldito que no se suelta se queda donde está.
+ *
+ * @param {any} member
+ * @param {string} name
+ * @param {'save'|'apply'} what
+ * @returns {boolean}
+ */
+function wearSet(member, name, what) {
+    if (what === 'save') {
+        const saved = saveSet(member, name);
+        if (!saved.ok) {
+            toastr.warning(saved.line);
+            return false;
+        }
+        member.equipmentSets = saved.sets;
+        savePartyState();
+        toastr.success(saved.line, 'Juego de equipo');
+        return true;
+    }
+    if (combatEncounter.active) {
+        toastr.warning('En combate no hay tiempo de cambiarse de todo.');
+        return false;
+    }
+    const worn = applySet(member, name, (slot) => {
+        const id = member.equippedItems?.[slot];
+        return Boolean((member.items ?? []).find((/** @type {any} */ i) => i.id === id)?.cursed);
     });
+    if (!worn.ok) {
+        toastr.warning(worn.line);
+        return false;
+    }
+    member.equippedItems = worn.equippedItems;
+    // Lo maldito que uno se pone se descubre al ponérselo, como con una pieza suelta.
+    for (const id of Object.values(worn.equippedItems)) {
+        const item = (member.items ?? []).find((/** @type {any} */ i) => i.id === id);
+        if (item?.cursed && item.identified === false) {
+            item.identified = true;
+            toastr.error(`${item.name} se os pega a la mano: ${item.curse?.label ?? 'está maldito'}.`, 'Maldito', { timeOut: 12000 });
+        }
+    }
+    syncCurse(member);
+    savePartyState();
+    renderPartyMembers();
+    toastr.success(worn.line, 'Juego de equipo');
+    return true;
+}
+
+/**
+ * Idea 163: darle algo a otro del grupo.
+ *
+ * @param {any} member
+ * @param {string} itemId
+ * @param {string} toId
+ * @returns {boolean}
+ */
+function handItem(member, itemId, toId) {
+    const to = partyMembers.find(m => String(m.id) === String(toId));
+    const given = giveItem({ from: member, to, itemId });
+    if (!given.ok || !given.from || !given.to || !to) {
+        toastr.warning(given.reason || 'No se puede.');
+        return false;
+    }
+    member.items = given.from.items;
+    member.equippedItems = given.from.equippedItems;
+    to.items = given.to.items;
+    syncCurse(member);
+    savePartyState();
+    renderPartyMembers();
+    postCombatNarration(`🎒 [GRUPO] ${given.line}`);
+    toastr.success(given.line, 'Repartir');
+    return true;
 }
 
 /**
@@ -2250,6 +2569,52 @@ function currentSurvival() {
     return readSurvival(getActiveRuleset()?.survival ?? null);
 }
 
+/**
+ * Ideas 36 y 199: lo que queda de quien muere. Epitafio, tumba donde cayó, lo mejor que
+ * llevaba para quien más le quería, y un sitio en el salón de la fama.
+ *
+ * @param {any} member
+ * @param {number} today
+ * @param {any} bonds
+ */
+function buryMember(member, today, bonds) {
+    const place = currentLocationName || '';
+    const epitaph = epitaphFor(member, { day: today, place, className: String(member.charClass ?? member.className ?? '') });
+    if (chat_metadata) {
+        chat_metadata[GRAVES_KEY] = addGrave(chat_metadata[GRAVES_KEY], { name: String(member.name), place, day: today, epitaph });
+        saveMetadata();
+    }
+    // Lo que se hereda: el arma que llevaba, o lo que más valía.
+    const heir = heirOf({
+        dead: member,
+        party: partyMembers,
+        bondRanks: Object.fromEntries(partyMembers.map(m => [String(m.id), getBondProgress(bonds, String(m.id)).rank])),
+    });
+    const heirloom = heirloomOf(member);
+    let inherited = '';
+    if (heir && heirloom) {
+        removeItemFromInventory(/** @type {any} */ (member), String(heirloom.id));
+        heir.items = heir.items ?? [];
+        addItemToInventory(/** @type {any} */ (heir), createItem(/** @type {any} */ ({
+            ...heirloom,
+            id: undefined,
+            heirloom: String(member.name),
+            description: [String(heirloom.description ?? ''), `Era de ${member.name}.`].filter(Boolean).join(' '),
+        })));
+        inherited = `${heir.name} se queda con ${heirloom.name}.`;
+    }
+    // Idea 199: el salón de la fama no es de ninguna partida.
+    const settings = /** @type {any} */ (extension_settings);
+    settings.partyHall = addToHall(settings.partyHall, {
+        name: String(member.name), world: String(chat_metadata?.[METADATA_KEY] ?? ''), day: today, epitaph,
+        when: new Date().toISOString(),
+    });
+    saveSettingsDebounced();
+    postCombatNarration(`🪦 [CAMPAÑA] ${epitaph}${inherited ? ` ${inherited}` : ''}`);
+    void postForModel(`[MUERTE] ${epitaph}${inherited ? ` ${inherited}` : ''} Ya no está: que se note en lo que cuentes, y que nadie le haga hablar.`)
+        .catch(error => console.error('[party] death note failed', error));
+}
+
 function applyFall(member, cause = '') {
     const fall = resolveFall(member, {
         roll: () => nextRandom(),
@@ -2263,8 +2628,26 @@ function applyFall(member, cause = '') {
 
     if (fall.outcome === 'dies') {
         member.dead = true;
+        countStat('deaths');
         postCombatNarration(`⚰️ [COMBAT] ${fall.reason}`);
         toastr.error(fall.reason, 'Se acabo', { timeOut: 15000 });
+        // Idea 43: quien le quería, o quien busca calma, guarda duelo un dia.
+        const today = Math.max(1, Math.floor(Number(getCampaignCalendar()?.day) || 1));
+        const bonds = getCampaignBonds();
+        for (const grief of whoMourns({
+            party: partyMembers.filter(m => m !== member).map(m => ({
+                id: m.id, name: m.name, hp: m.hp, wants: readReasons(m).wants,
+                bondWithDead: getBondProgress(bonds, String(m.id)).rank,
+            })),
+            dead: String(member.name),
+            today,
+        })) {
+            const mourner = partyMembers.find(m => String(m.id) === grief.id);
+            if (mourner) mourner.mourning = grief.mourning;
+        }
+        buryMember(member, today, bonds);
+        rememberTogether(`${member.name} murió en ${currentBoardName || currentLocationName}.`,
+            partyMembers.map(m => String(m.name)));
         return;
     }
 
@@ -2292,6 +2675,42 @@ function applyFall(member, cause = '') {
     toastr.warning(describeInjuries(member).join('\n'), fall.reason, { timeOut: 15000 });
 }
 
+/**
+ * Idea 186: un sonido por acción, si no se han apagado en «Sonido».
+ *
+ * @param {string} kind
+ */
+function soundCue(kind) {
+    const settings = loadAudioSettings();
+    playCue(kind, { enabled: settings.enabled && settings.effects, volume: settings.volume });
+}
+
+/**
+ * Idea 23: al empezar cada ronda, el fuego se extiende a lo que arde de al lado (cajas,
+ * puertas, maleza), se apaga a las tres rondas, y con lluvia no prende.
+ */
+function burnRound() {
+    const context = getActiveBoardContext();
+    const board = context.board;
+    if (!board || !Array.isArray(board.hazards) || board.hazards.length === 0) return;
+    const step = spreadFire({
+        hazards: board.hazards,
+        terrain: context.terrain,
+        round: Number(combatEncounter.round) || 1,
+        random: nextRandom,
+        wet: boardVisibility().wet,
+        outdoors: !isIndoors(board, hereLocation()),
+        width: context.gridWidth,
+        height: context.gridHeight,
+    });
+    if (step.lines.length === 0) return;
+    board.hazards = step.hazards;
+    board.terrain = step.terrain;
+    persistBoardTerrain(board);
+    postCombatNarration(`[COMBAT] ${step.lines.join('\n')}`);
+    renderLocationMapsPreview();
+}
+
 function advanceTurnIndex() {
     if (!combatEncounter.active || combatEncounter.turnOrder.length === 0) return null;
 
@@ -2306,6 +2725,8 @@ function advanceTurnIndex() {
     // Lo que caduca cuando vuelve a tocarle a alguien: su esquivar, su destrabarse, su ayuda.
     const starting = getCurrentTurnEntry();
     if (starting) combatEncounter.maneuvers = startManeuverTurn(combatEncounter.maneuvers, String(starting.id));
+    // Idea 4: lo preparado dura hasta que vuelve a tocarle.
+    if (starting) combatEncounter.readied = dropReadied(combatEncounter.readied, String(starting.id));
     saveCombatState();
 
     // Announced here rather than inside the machine, which stays pure and silent.
@@ -2322,6 +2743,8 @@ function advanceTurnIndex() {
 
         // Ronda nueva, reacciones nuevas.
         usedReactions = new Set();
+        // Idea 23: el tablero cambia mientras se pelea.
+        burnRound();
         // A scenario won by the clock has no other moment to notice.
         if (checkScenarioOutcome()) return null;
     }
@@ -2396,11 +2819,14 @@ function resolveAllyTurnAction(entry) {
             currentHp: Number(e.currentHp) || 0,
             maxHp: Number(e.maxHp) || 1,
             reachFeet: Number(e.attackRangeFeet) || 5,
+            boss: Boolean(e.boss),
         })),
         allies: partyMembers
             .filter(m => Number(m.id) !== Number(member.id) && (Number(m.hp) || 0) > 0)
             .map(m => ({ id: String(m.id), ...cellOf(m) })),
         stance,
+        // Idea 35: a quien prefiere, de su ficha.
+        prefer: String(member.prefer || DEFAULT_PREFERENCE),
         terrain,
         gridWidth,
         gridHeight,
@@ -2480,9 +2906,19 @@ function runCombatTurnLoop(includeCurrent = true) {
  * @param {number} gridH
  */
 function toggleBoardDoor(board, gx, gy, open, gridW, gridH) {
+    if (open && isLocked(normalizeTerrain(board.terrain), gx, gy)) {
+        void tryUnlock(board, gx, gy, gridW, gridH);
+        return;
+    }
     if (!open) {
+        // Idea 23: una puerta rota ya no se cierra.
+        if (getCell(normalizeTerrain(board.terrain), gx, gy).broken) {
+            toastr.info('Está rota: ya no se cierra.', 'La puerta');
+            return;
+        }
         board.terrain = setDoorOpen(normalizeTerrain(board.terrain), gx, gy, false);
         persistBoardTerrain(board);
+        soundCue('door');
         postCombatNarration(`[BOARD] La puerta de (${gx + 1}, ${gy + 1}) queda cerrada.`);
         renderLocationMapsPreview();
         return;
@@ -2501,6 +2937,7 @@ function toggleBoardDoor(board, gx, gy, open, gridW, gridH) {
     board.terrain = result.terrain;
     board.rooms = result.rooms;
     persistBoardTerrain(board);
+    soundCue('door');
     postCombatNarration(`[BOARD] La puerta de (${gx + 1}, ${gy + 1}) queda abierta.`);
 
     if (result.revealedRoom) {
@@ -2606,6 +3043,7 @@ function wakeRoomEnemies(board, room) {
  * @returns {string} Initiative order summary string
  */
 function startCombat(template, count, gridWidth = 50, gridHeight = 50) {
+    if (!combatEncounter.active) countStat('fights');
     // A new fight starts with an empty log: the last one's blow-by-blow is already in
     // the chat, and leaving it here would read as if it were still happening.
     combatLogEntries = [];
@@ -2643,6 +3081,8 @@ function startCombat(template, count, gridWidth = 50, gridHeight = 50) {
             templateId: template.id,
             name: count > 1 ? `${template.name} ${i + 1}` : template.name,
             avatar: template.avatar,
+            // Idea 24: el jefe del guion lo es también en el tablero.
+            boss: Boolean(/** @type {any} */ (template).boss),
             currentHp: template.maxHp,
             maxHp: template.maxHp,
             armorClass: template.armorClass,
@@ -2687,10 +3127,19 @@ function beginEncounterWith(newEnemies) {
 
     /** @type {import('./dnd-system.js').TurnEntry[]} */
     const turnEntries = [];
-    for (const m of partyMembers) {
-        const init = rollInitiativeWithPopover(m.name, m.dexterity || 10, 'ally');
+    // Ideas 39 y 41: la moral del grupo y quien vigila mueven la iniciativa de todos.
+    const morale = partyMorale();
+    const sentinel = withJob(partyMembers, 'centinela') ? 1 : 0;
+    // Quien ha muerto ya no pelea (idea 36): antes seguía tirando iniciativa, y un descanso
+    // lo ponía en pie otra vez.
+    for (const m of partyMembers.filter(member => !member.dead)) {
+        const init = rollInitiativeWithPopover(m.name, m.dexterity || 10, 'ally') + morale.value + sentinel + perkBonus(m, 'initiative');
         turnEntries.push({ id: String(m.id), name: m.name, initiative: init, isEnemy: false });
     }
+    if (morale.value !== 0) postCombatNarration(`🫂 [COMBAT] Moral del grupo: ${morale.label}.`);
+    // Ideas 73 y 90: la niebla, la lluvia, el viento o la noche, dichos antes del primer golpe.
+    const seen = boardVisibility();
+    if (seen.note) postCombatNarration(`🌫️ [COMBAT] ${seen.note}`);
 
     const enemies = [...combatEncounter.enemies, ...newEnemies];
     for (const e of enemies) {
@@ -2724,6 +3173,85 @@ function beginEncounterWith(newEnemies) {
 }
 
 /**
+ * Ideas 119 y 135: de quién fue lo que cae. Un nombre del compendio y un sitio del mundo.
+ *
+ * Con su propia semilla (mundo, objeto, día y cuál): el mismo botín cuenta lo mismo, y los
+ * dados del combate no se enteran de que alguien ha inventado una historia.
+ *
+ * @param {string} name
+ * @param {number} index
+ * @returns {{owner: string, place: string, random: () => number}}
+ */
+function lootLore(name, index) {
+    const random = createSeededRandom(derive(String(chat_metadata?.[METADATA_KEY] || ''), 'botin', String(name), String(campaignDay()), String(index)));
+    const owner = lastCompendium?.has?.('nombres')
+        ? String(makeNames({ compendium: lastCompendium, howMany: 1, random })[0] ?? '')
+        : '';
+    const places = getCurrentWorldLocationMaps().map((/** @type {any} */ l) => String(l?.name ?? '')).filter(Boolean);
+    const place = places.length > 0 ? places[Math.floor(random() * places.length) % places.length] : currentLocationName;
+    return { owner: owner || ['Brunilda', 'Odo el Tuerto', 'Mencía', 'Rodrigo de la Cruz'][Math.floor(random() * 4) % 4], place, random };
+}
+
+/**
+ * Idea 135: lo maldito que se lleva puesto resta, como una herida. Se vuelve a mirar cada
+ * vez que se pone o se quita algo, y al quitar la maldición.
+ *
+ * @param {any} member
+ */
+function syncCurse(member) {
+    const patch = setInjury(member, curseInjury(member), 'curse');
+    member.injuries = patch.injuries;
+    member.baseStats = patch.baseStats;
+    Object.assign(member, patch.stats);
+}
+
+/**
+ * Idea 135: soltar lo que se lleva, salvo que esté maldito.
+ *
+ * @param {any} member
+ * @param {string} slot
+ * @returns {boolean}
+ */
+function tryUnequip(member, slot) {
+    const worn = (member.items ?? []).find((/** @type {any} */ i) => i.id === member.equippedItems?.[slot]);
+    const off = canTakeOff(worn);
+    if (!off.ok) {
+        toastr.warning(off.reason, 'Maldito');
+        return false;
+    }
+    unequipItem(member, slot);
+    syncCurse(member);
+    savePartyState();
+    return true;
+}
+
+/**
+ * Idea 135: ponerse algo. Lo que ya está en esa ranura y está maldito no se deja quitar, y
+ * lo maldito que uno se pone se descubre al ponérselo.
+ *
+ * @param {any} member
+ * @param {string} itemId
+ * @param {string} slot
+ * @returns {boolean}
+ */
+function tryEquip(member, itemId, slot) {
+    const worn = (member.items ?? []).find((/** @type {any} */ i) => i.id === member.equippedItems?.[slot]);
+    if (worn && worn.id !== itemId && !canTakeOff(worn).ok) {
+        toastr.warning(canTakeOff(worn).reason, 'Maldito');
+        return false;
+    }
+    equipItem(member, itemId, slot);
+    const item = (member.items ?? []).find((/** @type {any} */ i) => i.id === itemId);
+    if (item?.cursed && item.identified === false) {
+        item.identified = true;
+        toastr.error(`${item.name} se os pega a la mano: ${item.curse?.label ?? 'está maldito'}. ${item.curse?.note ?? ''}`, 'Maldito', { timeOut: 12000 });
+    }
+    syncCurse(member);
+    savePartyState();
+    return true;
+}
+
+/**
  * Hands out what the encounter was worth.
  *
  * Only on a victory: walking away or being wiped out leaves the bodies where they are.
@@ -2741,7 +3269,8 @@ function awardEncounterLoot(defeated) {
     // Sin esto, escribir objetos seria llenar una lista que el juego no mira.
     const loot = rollEncounterLoot(defeated, survivors.length, {
         roll: (/** @type {string} */ formula) => rollDice(formula, 6),
-        rules: lootRulesWithWorldItems(worldItemCatalogue),
+        // Idea 132: las reliquias no caen como botín: llegan con su hito o su encargo.
+        rules: lootRulesWithWorldItems(lootable(worldItemCatalogue)),
     });
 
     for (const member of survivors) {
@@ -2756,11 +3285,14 @@ function awardEncounterLoot(defeated) {
         // Un miembro del grupo *es* su ficha: lleva `items` directamente.
         const holder = survivors[0];
         holder.items = holder.items ?? [];
-        for (const dropped of loot.items) {
-            const item = createItem(/** @type {any} */ (
-                describeLootItem(dropped.name, dropped.rarity, worldItemCatalogue)));
+        loot.items.forEach((dropped, index) => {
+            const spec = describeLootItem(dropped.name, dropped.rarity, worldItemCatalogue);
+            // Ideas 119 y 135: lo de las tablas trae historia, y alguno muerde. Lo escrito
+            // por el mundo ya trae la suya.
+            const written = worldItemCatalogue.some((/** @type {any} */ i) => String(i?.name ?? '').toLowerCase() === String(dropped.name).toLowerCase());
+            const item = createItem(/** @type {any} */ (written ? spec : dressLoot(spec, lootLore(String(dropped.name), index))));
             addItemToInventory(/** @type {any} */ (holder), item);
-        }
+        });
     }
 
     // G5: a veces, algo forjado que no estaba en ninguna lista. Solo de quien plantaba cara
@@ -2769,18 +3301,30 @@ function awardEncounterLoot(defeated) {
     if (worthy && survivors[0] && lastCompendium.has('materiales') && mixSource({ written: true }) !== 'written') {
         const forged = forgeFromCompendium({ compendium: lastCompendium, random: nextRandom });
         if (forged) {
-            addItemToInventory(/** @type {any} */ (survivors[0]), createItem(/** @type {any} */ (forged)));
+            addItemToInventory(/** @type {any} */ (survivors[0]), createItem(/** @type {any} */ (dressLoot(forged, lootLore(String(forged.name), -1)))));
             postCombatNarration(`🗡️ [COMBAT] Entre lo que dejaron: ${describeItem(forged)}.`);
         }
     }
 
     for (const line of loot.lines) postCombatNarration(line);
+    if (loot.goldEach > 0) soundCue('coin');
+
+    // Idea 121: las bestias dejan materiales, para la herrería.
+    if (survivors[0]) {
+        for (const enemy of defeated) {
+            for (const name of trophiesOf(enemy, nextRandom)) {
+                addItemToInventory(/** @type {any} */ (survivors[0]), createItem(/** @type {any} */ (trophyItem(name))));
+                postCombatNarration(`🦴 [COMBAT] De ${String(enemy?.name ?? 'la bestia')}: ${name}.`);
+            }
+        }
+    }
 
     // Levelling is not automatic: the sheet already has a button for it, and deciding
     // when to level is a player's business, not the engine's.
     for (const member of survivors) {
         if (member.xpNext > 0 && member.xp >= member.xpNext) {
             postCombatNarration(`⭐ [COMBAT] ${member.name} tiene experiencia para subir de nivel.`);
+            soundCue('level');
         }
     }
 
@@ -2823,8 +3367,12 @@ function finishTakenContract(taken) {
     guild.renown = done.renown;
     chat_metadata[GUILD_KEY] = guild;
     delete chat_metadata[TAKEN_KEY];
+    countStat('contracts');
+    countStat('gold', Number(done.gold) || 0);
 
     noteDeed(`Entregasteis el encargo «${taken.title}»${taken.patron ? ` (lo pedía ${taken.patron})` : ''}.`);
+    // Idea 85: al sitio le va mejor.
+    void shiftPlaceFortune(String(taken.locationName ?? ''), 1);
     // Uno escrito no vuelve a salir, y su giro es lo que se descubre al cumplirlo.
     if (taken.written) {
         const done = Array.isArray(chat_metadata[WRITTEN_DONE_KEY]) ? chat_metadata[WRITTEN_DONE_KEY] : [];
@@ -2835,6 +3383,23 @@ function finishTakenContract(taken) {
         }
     }
     notePlot({ kind: 'contract', id: String(taken.id), faction: String(taken.faction || ''), against: Boolean(taken.against) });
+    // Idea 52: donde se entrega, se sabe.
+    raiseFame(String(taken.locationName ?? '') || currentLocationName);
+    // Idea 30: el encargo de un compañero pesa el doble en su vínculo.
+    if (taken.personal) {
+        const friend = partyMembers.find(m => String(m.id) === String(taken.personal));
+        if (friend) {
+            recordCampaignBondEvent(String(friend.id), 'quest_together');
+            recordCampaignBondEvent(String(friend.id), 'quest_together');
+            toastr.success(`${friend.name} no lo olvida.`, '🤝 Encargo personal');
+            void postForModel(`[ENCARGO PERSONAL] ${friend.name} ve cumplido lo suyo: «${taken.title}». Que lo agradezca a su manera, en una o dos frases.`);
+        }
+    }
+    // Idea 132: la reliquia de este encargo, si la tiene.
+    const relicLines = deliverRelics({ kind: 'contract', id: String(taken.id) });
+    if (relicLines.length > 0) {
+        void postForModel(`[RELIQUIA] ${relicLines.join(' ')} Cuéntalo en una frase. No inventes nada que no esté aquí.`);
+    }
 
     // Si era el favor que se debia, la cuenta queda saldada.
     const debt = getDebt();
@@ -2927,7 +3492,15 @@ function bannerOf(placeName, rawFactions) {
  * @param {any} contract
  * @returns {Promise<void>}
  */
-async function settleFactionStake(contract) {
+function settleFactionStake(contract) {
+    return worldWrite(() => settleFactionStakeNow(contract));
+}
+
+/**
+ * @param {any} contract
+ * @returns {Promise<void>}
+ */
+async function settleFactionStakeNow(contract) {
     const worldName = String(chat_metadata?.[METADATA_KEY] || '');
     if (!worldName) return;
 
@@ -2945,8 +3518,12 @@ async function settleFactionStake(contract) {
         // sigue siendo haberte puesto en su contra, y ellos se acuerdan.
         const seen = changeStanding(factions, String(contract.faction), contract.against ? -1 : 1);
         const mine = seen.find(f => f.id === String(contract.faction));
+        // Idea 104: lo que se gana con unos se pierde con sus enemigos, y se dice.
+        const rivals = seen.filter(f => f.id !== String(contract.faction)
+            && f.reputation < (factions.find(g => g.id === f.id)?.reputation ?? f.reputation));
         const saidStanding = mine
             ? `${mine.name}: ${describeStanding(mine.reputation)}.`
+                + (rivals.length > 0 ? ` ${rivals.map(r => r.name).join(' y ')} no lo olvida${rivals.length > 1 ? 'n' : ''}: os mira${rivals.length > 1 ? 'n' : ''} peor.` : '')
             : '';
 
         if (!event && !saidStanding) return;
@@ -3002,6 +3579,8 @@ const campaign = createCampaignState({
     renderParty: () => renderPartyMembers(),
     renderCampaign: () => renderCampaignTab(),
     narrate: (text) => postCombatNarration(text),
+    // Cada rango tiene su escena escrita, si el compañero la trae (idea 26).
+    rankedUp: (member, rank) => tellBondScene(member, rank),
     isFighting: () => Boolean(combatEncounter.active),
     worldName: () => String(chat_metadata?.[METADATA_KEY] || ''),
     loadWorld: (name) => loadWorldInfo(name),
@@ -3102,8 +3681,15 @@ let lastRumors = [];
 /** @type {any} */
 let lastMix = null;
 /** La gente del mundo: quien es, donde vive y que servicio atiende. */
-/** @type {Array<{name: string, where: string, service: string}>} */
+/** @type {Array<{name: string, where: string, service: string, secret?: string, language?: string, dead?: boolean}>} */
 let lastWorldNpcs = [];
+/** Las fichas de los confidentes del mundo, por uid. */
+/** @type {Record<string, any>} */
+let lastConfidantEntries = {};
+/** A quien se ha conocido ya en una posada: el paso antes de pedirle que venga. */
+const RECRUITS_MET_KEY = 'recruitsMet';
+/** Lo que el grupo recuerda haber vivido junto (idea 34). */
+const MEMORIES_KEY = 'sharedMemories';
 
 /** Los encargos escritos ya entregados, y los rumores ya oidos. */
 const WRITTEN_DONE_KEY = 'writtenDone';
@@ -3126,6 +3712,8 @@ function refreshContractBoard() {
 
     for (const gone of expired) {
         postCombatNarration(`📄 [GREMIO] Se paso el plazo: ${gone.title}.`);
+        // Y al sitio que lo pedia, peor.
+        void shiftPlaceFortune(String(gone.locationName ?? ''), -1);
     }
 
     const wanted = boardSize(guild);
@@ -3191,6 +3779,14 @@ function refreshContractBoard() {
         kept.push(...suyos);
     }
 
+    // Idea 116: uno te nombra, por tu trasfondo. Uno a la vez, y en el hueco de uno
+    // generado: el tablón no crece, y lo escrito sigue siendo la mayoría.
+    const places116 = getCurrentWorldLocationMaps().map((/** @type {any} */ l) => String(l?.name || '')).filter(Boolean);
+    const bestiary116 = enemiesInSeason().map((/** @type {any} */ e) => String(e?.name || '')).filter(Boolean);
+    if (kept.length < wanted && !hasNamed(kept) && nextRandom() < NAMED_CHANCE.chance) {
+        const named = namedContract({ hero: partyMembers[0], places: places116, bestiary: bestiary116, random: nextRandom, day: today });
+        if (named) kept.push(named);
+    }
     if (kept.length < wanted) {
         const fresh = generateBoardOfContracts({
             random: nextRandom,
@@ -3198,15 +3794,18 @@ function refreshContractBoard() {
             renown: guild.renown,
             theme: guild.theme,
             day: today,
-            places: getCurrentWorldLocationMaps().map((/** @type {any} */ l) => String(l?.name || '')).filter(Boolean),
-            bestiary: getCurrentWorldEnemies().map((/** @type {any} */ e) => String(e?.name || '')).filter(Boolean),
+            places: places116,
+            // Idea 97: los que migran solo salen en su estación.
+            bestiary: bestiary116,
         });
         kept.push(...fresh);
     }
 
     chat_metadata[BOARD_KEY] = kept;
     saveMetadata();
-    return kept;
+    // Idea 30: y lo que pidan los tuyos, si ya toca.
+    offerPersonalQuests();
+    return /** @type {any[]} */ (chat_metadata[BOARD_KEY]);
 }
 
 /**
@@ -3222,6 +3821,11 @@ function refreshContractBoard() {
 function onTimePassed(days, calendar) {
     notePlot({ kind: 'day', day: Math.floor(Number(calendar?.day) || 0) });
     if (!chat_metadata) return;
+    // Idea 103: si el hilo lleva dias quieto, llega una pista.
+    giveDueHints();
+    // Ideas 113 y 89: las cartas que se escriben hoy, y la fiesta de hoy.
+    writeLetters();
+    tellFestival();
 
     // 1. Curar. Lo permanente se queda; lo demas cuenta los dias.
     /** @type {string[]} */
@@ -3233,7 +3837,13 @@ function onTimePassed(days, calendar) {
         member.injuries = patch.injuries;
         member.baseStats = patch.baseStats;
         Object.assign(member, patch.stats);
-        for (const injury of patch.healed) mended.push(`${member.name}: ${injury.label.toLowerCase()}, curado.`);
+        for (const injury of patch.healed) {
+            mended.push(`${member.name}: ${injury.label.toLowerCase()}, curado.`);
+            // Idea 56: la herida se va, la marca se queda. E impone.
+            member.scars = addScar(member, injury.label);
+            mended.push('Le queda una cicatriz (+1 a Intimidación, hasta +2).');
+            checkNickname(member);
+        }
     }
     if (mended.length > 0) {
         postCombatNarration(`🩹 [CAMPAÑA] ${mended.join(' ')}`);
@@ -3331,6 +3941,8 @@ function passNeeds(days) {
 function chargeWeek() {
     // Primero cobran lo que se debe: el viernes es el viernes para todos.
     settleDueDebt();
+    // Idea 87: y de vez en cuando, sin guerra de por medio, alguien se muda.
+    void driftPeople();
 
     let bill = weeklyBill(partyMembers, { rules: currentUpkeepRules() });
     // Si no llega, alguien pone lo que falta. Una vez: es para romper la espiral, no para
@@ -3367,6 +3979,23 @@ function chargeWeek() {
         renderPartyMembers();
     }
     for (const line of loyalty.lines) postCombatNarration(`🤝 [GREMIO] ${line}`);
+
+    // Idea 129: lo que comen las monturas.
+    const feed = feedPerWeek(chat_metadata?.[MOUNTS_KEY]);
+    if (feed > 0) {
+        payFromParty(Math.min(feed, partyPurse()));
+        postCombatNarration(`🐴 [CAMPAÑA] El pienso de las monturas: ${feed} de oro.`);
+    }
+
+    // Idea 37: el maestro de armas enseña a los que van por detrás.
+    const lessons = trainingFor(getGuild(), partyMembers);
+    for (const lesson of lessons) {
+        const member = partyMembers.find(m => String(m.id) === lesson.id);
+        if (member) member.xp = (Number(member.xp) || 0) + lesson.xp;
+    }
+    if (lessons.length > 0) {
+        postCombatNarration(`🗡️ [GREMIO] El maestro de armas os entrena: ${lessons.map(l => l.name).join(', ')} ganan ${lessons[0].xp} de experiencia.`);
+    }
 
     savePartyState();
     postCombatNarration(`💰 [CAMPAÑA] ${week.lines.join(' ')}`);
@@ -3432,12 +4061,13 @@ async function ensurePlot({ announce = false, heroNote = '' } = {}) {
     if (!plot) return;
 
     chat_metadata[PLOT_KEY] = plot;
-    const step = startPlot(plot);
+    const step = startPlot(plot, Math.max(1, campaignDay()));
     chat_metadata[PLOT_STATE_KEY] = step.state;
     saveMetadata();
     if (announce) {
         chat_metadata[PLOT_ANNOUNCED_KEY] = true;
         await applyPlotStep(step, heroNote);
+        await tellOmens(plot);
     } else if (isShellOpen()) refreshGameShell();
 
     // Donde ya se esta tambien cuenta: si la partida empieza en la sede de quien hay que
@@ -3453,8 +4083,11 @@ async function ensurePlot({ announce = false, heroNote = '' } = {}) {
 function notePlot(event) {
     const plot = getPlot();
     if (!plot || !chat_metadata) return;
-    const step = plotEvent(plot, chat_metadata[PLOT_STATE_KEY], event);
-    if (step.opened.length === 0 && step.done.length === 0) return;
+    // Con el día de hoy: es lo que mide los plazos (idea 106).
+    const step = plotEvent(plot, chat_metadata[PLOT_STATE_KEY], event, campaignDay());
+    // Una pista suelta también es un paso (idea 107): sin ella aquí, una tirada que solo
+    // sumaba una pista no se guardaba, y la investigación no avanzaba nunca.
+    if (step.opened.length === 0 && step.done.length === 0 && step.missed.length === 0 && step.clues.length === 0) return;
     chat_metadata[PLOT_STATE_KEY] = step.state;
     saveMetadata();
     void applyPlotStep(step);
@@ -3477,13 +4110,53 @@ async function applyPlotStep(step, heroNote = '') {
 
     /** @type {string[]} */
     const lines = [];
+    // Idea 101: cómo se cumplió, cuando había varias formas.
+    const WAYS = { win: 'luchando', talk: 'hablando', check: 'con maña', arrive: 'llegando', defeat: 'derrotándole', contract: 'con un encargo' };
+    // Idea 107: las pistas que se acaban de encontrar.
+    for (const found of step.clues) {
+        noteDeed(`Una pista para «${found.milestone.title}» (${found.found} de ${found.need}).`);
+        lines.push(`Una pista más para «${found.milestone.title}»: ${found.found} de ${found.need}.`);
+        toastr.info(`${found.found} de ${found.need}`, `🔍 Una pista: ${found.milestone.title}`, { timeOut: 8000 });
+    }
     for (const milestone of step.done) {
-        noteDeed(`Cumplido: ${milestone.title}.`);
-        // Los que se cumplen solos son escenas: se cuentan al abrirse, no dos veces.
-        if (milestone.asks.kind !== 'none') lines.push(`Hecho: ${milestone.title}.`);
+        const via = step.via?.[milestone.id];
+        noteDeed(`Cumplido${via ? ` (${WAYS[/** @type {keyof typeof WAYS} */ (via)] ?? via})` : ''}: ${milestone.title}.`);
+        // Idea 28: cómo se resolvió, cuando había más de una forma, también se juzga.
+        if (via) judgeDecision(via === 'win' || via === 'defeat' ? 'hito-luchando' : via === 'talk' ? 'hito-hablando' : via === 'check' ? 'hito-maña' : '');
+        if (milestone.hidden) {
+            // Idea 111: un secreto de la historia. Su escena se cuenta ahora, al encontrarlo.
+            lines.push(`Un secreto de la historia: ${milestone.title}.`);
+            if (milestone.scene) lines.push(milestone.scene);
+            toastr.success(milestone.title, '🏅 Un secreto de la historia', { timeOut: 12000 });
+        } else if (milestone.asks.kind !== 'none') {
+            // Los que se cumplen solos son escenas: se cuentan al abrirse, no dos veces.
+            lines.push(`Hecho: ${milestone.title}.`);
+            // Idea 52: lo que se hace en un sitio, allí se sabe.
+            raiseFame(currentLocationName);
+        }
+        // Idea 132: la reliquia de este hito, si la tiene.
+        lines.push(...deliverRelics({ kind: 'milestone', id: milestone.id }));
     }
     for (const milestone of step.opened) {
-        if (milestone.scene) lines.push(milestone.scene);
+        // Lo oculto no se cuenta al abrirse: sería decirlo.
+        if (milestone.scene && !milestone.hidden) lines.push(milestone.scene);
+    }
+    // Idea 102: los caminos que se cierran por lo que se ha elegido.
+    for (const milestone of step.closed ?? []) {
+        noteDeed(`Se cierra un camino: ${milestone.title}.`);
+        lines.push(`Por lo que habéis elegido, se cierra un camino: ${milestone.title}.`);
+        toastr.warning(milestone.title, '🚧 Se cierra un camino', { timeOut: 10000 });
+    }
+    // Idea 106: lo que tenía plazo y se ha pasado.
+    for (const milestone of step.missed) {
+        noteDeed(`Se os pasó el plazo: ${milestone.title}.`);
+        lines.push(`Se ha pasado el plazo y ya no hay remedio: ${milestone.title}.`);
+        toastr.warning(milestone.title, '⌛ Se os pasó el plazo', { timeOut: 12000 });
+    }
+    // Idea 114: el presagio que se cumple.
+    for (const omen of step.omens) {
+        lines.push(`Se cumple el presagio del principio: «${omen}».`);
+        toastr.info(`«${omen}»`, '🔮 Se cumple el presagio', { timeOut: 12000 });
     }
     if (step.changes.reveal.length > 0) lines.push(`Ahora se sabe cómo llegar a: ${step.changes.reveal.join(', ')}.`);
     if (heroNote && lines.length > 0) lines.push(heroLine(heroNote));
@@ -3497,9 +4170,30 @@ async function applyPlotStep(step, heroNote = '') {
         if (ending?.scene) lines.push(ending.scene);
         noteDeed(`Final: ${ending?.title || endingId}.`);
         toastr.success(ending?.title || endingId, 'Final', { timeOut: 15000 });
+        // Idea 200: la partida en numeros, al cerrar.
+        const numbers = $('<div class="st-root"></div>');
+        numbers.append($('<h3></h3>').text(`Final: ${ending?.title || endingId}`));
+        for (const line of statsLines()) numbers.append($('<div class="jr-item"></div>').text(line));
+        // Idea 111: los secretos encontrados, y cuántos había.
+        const secrets = secretsOf(getPlot(), chat_metadata?.[PLOT_STATE_KEY]);
+        if (secrets.total > 0) numbers.append($('<div class="jr-item"></div>').text(`Secretos de la historia: ${secrets.found.length} de ${secrets.total}`));
+        // Idea 109: qué fue de cada uno.
+        const bondsNow = getCampaignBonds();
+        const epilogues = companionEpilogues({
+            party: partyMembers,
+            ranks: Object.fromEntries(partyMembers.map(m => [String(m.id), getBondProgress(bondsNow, String(m.id)).rank])),
+            ending: String(ending?.title || endingId),
+            graves: readGraves(chat_metadata?.[GRAVES_KEY]),
+        });
+        if (epilogues.length > 0) {
+            numbers.append($('<h4></h4>').text('Qué fue de cada uno'));
+            for (const line of epilogues) numbers.append($('<div class="jr-item ep-line"></div>').text(line));
+            lines.push(`Qué fue de cada uno: ${epilogues.join(' ')}`);
+        }
+        void new Popup(numbers[0], POPUP_TYPE.TEXT, '', { okButton: 'Cerrar', leftAlign: true }).show();
     }
 
-    const focus = focusOf(getPlot(), chat_metadata?.[PLOT_STATE_KEY]);
+    const focus = focusOf(getPlot(), chat_metadata?.[PLOT_STATE_KEY], campaignDay());
     // Corto: la linea fija de arriba ya lo dice, esto es solo el aviso del cambio.
     if (focus && step.done.length > 0) toastr.info(describeFocus(focus), 'Lo que tienes entre manos', { timeOut: 5000 });
     if (isShellOpen()) refreshGameShell();
@@ -3577,9 +4271,17 @@ async function hearRumor() {
         return '';
     }
     chat_metadata[RUMORS_HEARD_KEY] = [...heard, rumor.id];
+    countStat('rumors');
+    // Idea 91: cuando se oyo, para saber si ya se ha enfriado.
+    chat_metadata[RUMORS_HEARD_ON_KEY] = {
+        ...(chat_metadata[RUMORS_HEARD_ON_KEY] ?? {}),
+        [rumor.id]: Math.max(1, Math.floor(Number(getCampaignCalendar()?.day) || 1)),
+    };
     saveMetadata();
     if (rumor.leadsTo) await revealLocations([rumor.leadsTo]);
     await postForModel(`[RUMOR] ${describeRumor(rumor)}`);
+    // Idea 72: a veces, de paso, alguien menciona un camino de pastores.
+    await learnShortcut(String(rumor.id));
     if (isShellOpen()) refreshGameShell();
     return rumor.text;
 }
@@ -3695,7 +4397,7 @@ async function exploreHere(name = '') {
 
     // G4: lo que vive ahi, criado para su bioma y guardado en el bestiario del mundo.
     const bred = compendium.has('bestiario')
-        ? breedBand({ compendium, howMany: 2, cr: 0.5, biome: place.biome, random })
+        ? breedBand({ compendium, howMany: 2, cr: 0.5, biome: place.biome, random, season: currentSeason() })
         : [];
     for (const monster of bred) {
         const entry = createWorldInfoEntry(worldName, data);
@@ -3813,6 +4515,849 @@ function worldWrite(task) {
     return run;
 }
 
+/** Los avisos del juego, guardados para la bandeja (idea 159). */
+/** @type {import('./game-engine/ui/shell/notices.js').Notice[]} */
+let notices = [];
+/** Cuando se abrio la bandeja por ultima vez: lo de despues esta sin ver. */
+let noticesSeenAt = 0;
+
+/**
+ * Idea 159: cada aviso del juego se guarda en la bandeja, y en pantalla nunca hay mas de
+ * tres a la vez, para que no tapen los botones. Solo con el Modo Juego abierto: fuera,
+ * SillyTavern avisa como siempre.
+ */
+function installNoticeTray() {
+    const t = /** @type {any} */ (toastr);
+    if (t.gameTrayInstalled) return;
+    t.gameTrayInstalled = true;
+    for (const kind of ['info', 'success', 'warning', 'error']) {
+        const original = t[kind].bind(t);
+        t[kind] = (/** @type {any} */ message, /** @type {any} */ title, /** @type {any} */ opts) => {
+            const shown = original(message, title, opts);
+            if (isShellOpen()) {
+                notices = addNotice(notices, { kind, title: String(title ?? ''), message: String(message ?? ''), at: Date.now() });
+                trimToasts();
+                const badge = document.querySelector('.gs-tray-count');
+                if (badge) badge.textContent = String(unseenCount(notices, noticesSeenAt) || '');
+            }
+            return shown;
+        };
+    }
+}
+
+/** Dejar a la vista solo los tres ultimos avisos. */
+function trimToasts() {
+    const shown = $('#toast-container .toast');
+    if (shown.length <= MAX_VISIBLE_TOASTS) return;
+    const newestOnTop = Boolean(/** @type {any} */ (toastr).options?.newestOnTop);
+    (newestOnTop ? shown.slice(MAX_VISIBLE_TOASTS) : shown.slice(0, shown.length - MAX_VISIBLE_TOASTS)).remove();
+}
+
+/** La bandeja: los ultimos avisos, el mas nuevo arriba. */
+function openNoticeTray() {
+    const body = $('<div class="nt-root"></div>');
+    body.append($('<h3></h3>').text('Avisos'));
+    if (notices.length === 0) body.append($('<div class="jr-item"></div>').text('Nada todavía.'));
+    const now = Date.now();
+    for (const notice of [...notices].reverse()) {
+        const row = $('<div class="nt-row"></div>').addClass(`nt-${notice.kind}`).toggleClass('nt-new', notice.at > noticesSeenAt);
+        const ago = Math.max(0, Math.round((now - notice.at) / 60000));
+        row.append($('<div class="nt-head"></div>').text(`${notice.title || 'Aviso'}${notice.count > 1 ? ` ×${notice.count}` : ''}`
+            + ` · ${ago === 0 ? 'ahora' : `hace ${ago} min`}`));
+        if (notice.message) row.append($('<div class="nt-text"></div>').text(notice.message));
+        body.append(row);
+    }
+    noticesSeenAt = now;
+    if (isShellOpen()) refreshGameShell();
+    void new Popup(body[0], POPUP_TYPE.TEXT, '', { okButton: 'Cerrar', allowVerticalScrolling: true, leftAlign: true }).show();
+}
+
+/** Idea 162: el grupo de un vistazo. */
+function openPartyGlance() {
+    const bonds = getCampaignBonds();
+    const body = $('<div class="pg-root"></div>');
+    body.append($('<h3></h3>').text('El grupo'));
+    let gold = 0;
+    for (const member of partyMembers) {
+        const row = glanceRow(member, {
+            injuries: describeInjuries(member),
+            needs: describeNeeds(member),
+            rank: member === partyMembers[0] ? 0 : getBondProgress(bonds, String(member.id)).rank,
+        });
+        gold += row.gold;
+        const box = $('<div class="pg-row"></div>').addClass(`pg-${row.state}`);
+        const head = $('<div class="pg-head"></div>');
+        head.append($('<span class="pg-name"></span>').text(row.name));
+        head.append($('<span class="pg-hp"></span>').text(`PG ${row.hp}`));
+        head.append($('<span class="pg-gold"></span>').text(`${row.gold} de oro`));
+        box.append(head);
+        box.append($('<div class="pg-bar"></div>').append($('<div class="pg-fill"></div>').css('width', `${row.pct}%`)));
+        // Idea 61: lo que lleva en la mano.
+        const weapon = heldWeapon(member);
+        box.append($('<div class="pg-line pg-weapon"></div>').text(weapon ? `Lleva: ${weapon.name}${weapon.damageDice ? ` (${weapon.damageDice})` : ''}` : 'Pelea con las manos'));
+        for (const line of row.lines) box.append($('<div class="pg-line"></div>').text(line));
+        // Idea 57: su historia, de lo que el motor ya apunto.
+        const story = $('<button type="button" class="menu_button pg-story"></button>').text('Su historia');
+        story.on('click', () => openHeroStory(member));
+        box.append(story);
+        body.append(box);
+    }
+    body.append($('<div class="pg-total"></div>').text(`Oro del grupo: ${gold}`));
+    // Idea 39: la moral, con lo que da.
+    body.append($('<div class="pg-morale"></div>').text(`Moral: ${partyMorale().label}`));
+    void new Popup(body[0], POPUP_TYPE.TEXT, '', { okButton: 'Cerrar', allowVerticalScrolling: true, leftAlign: true }).show();
+}
+
+/** El contador de tokens del ultimo turno, ya escrito (idea 147). */
+/** @type {{text: string, title: string, high: boolean}|null} */
+let lastMeter = null;
+
+/**
+ * Idea 68: cazar y forrajear. Gasta un bloque del dia; tira quien mejor mire.
+ *
+ * @returns {string}
+ */
+function runForage() {
+    if (combatEncounter.active) {
+        toastr.warning('No mientras peleáis.');
+        return '';
+    }
+    const where = hereLocation();
+    const allowed = forageCheck(where ?? {});
+    if (!where || !allowed.allowed) {
+        toastr.info(allowed.why || 'Aquí no hay dónde buscar.');
+        return '';
+    }
+    const standing = partyMembers.filter(m => (Number(m.hp) || 0) > 0);
+    // Idea 41: si hay rastreador, sale el, y con ventaja.
+    const tracker = withJob(partyMembers, 'rastreador');
+    const best = tracker ?? standing.reduce((/** @type {any} */ top, m) =>
+        (!top || skillModifier(m, 'perception').modifier > skillModifier(top, 'perception').modifier ? m : top), null);
+    if (!best) return '';
+    const d20 = () => (tracker
+        ? Math.max(rollDiceDetailed('1d20', 20).total, rollDiceDetailed('1d20', 20).total)
+        : rollDiceDetailed('1d20', 20).total);
+    const roll = rollCheck({ member: best, skill: 'perception', rollD20: d20, dc: allowed.dc });
+    const result = forageResult({ success: Boolean(roll?.success), who: String(best.name) });
+    for (const member of partyMembers) {
+        if (result.ate) member.needs = relieve(member, 'ate');
+        if (result.drank) member.needs = relieve(member, 'drank');
+    }
+    savePartyState();
+    advanceCampaignSlot();
+    if (roll) postCombatNarration(roll.said);
+    postCombatNarration(`🌿 [CAMPO] ${result.line}`);
+    toastr.info(result.line, 'Cazar y forrajear', { timeOut: 7000 });
+    if (isShellOpen()) refreshGameShell();
+    return result.line;
+}
+
+/**
+ * Idea 86: lo que en este sitio se sabe del grupo, para que la gente salude con eso.
+ *
+ * @returns {{place: string, lines: string[]}|null}
+ */
+function localMemory() {
+    if (!currentLocationName || !chat_metadata) return null;
+    const place = currentLocationName.toLowerCase();
+    const said = (Array.isArray(chat_metadata[DEEDS_KEY]) ? chat_metadata[DEEDS_KEY] : [])
+        .filter((/** @type {any} */ d) => String(d?.text ?? '').toLowerCase().includes(place))
+        .slice(-2)
+        .map((/** @type {any} */ d) => String(d.text));
+    const fortune = fortuneLine(hereLocation());
+    // Idea 52: si aquí os conocen. Idea 36: quién está enterrado aquí.
+    const fame = fameNote(chat_metadata[FAME_KEY], currentLocationName);
+    const buried = gravesAt(chat_metadata[GRAVES_KEY], currentLocationName).map(g => `Aquí está enterrado ${g.name}.`);
+    const lines = [fortune, fame, ...buried, ...said].filter(Boolean);
+    return lines.length > 0 ? { place: currentLocationName, lines } : null;
+}
+
+/**
+ * Idea 52: sumar fama en un sitio, y avisar si se sube un peldaño.
+ *
+ * @param {string} place
+ * @param {number} [amount]
+ */
+function raiseFame(place, amount = 1) {
+    if (!chat_metadata || !String(place ?? '').trim()) return;
+    const out = addFame(chat_metadata[FAME_KEY], String(place), amount);
+    chat_metadata[FAME_KEY] = out.fame;
+    saveMetadata();
+    if (out.rose) toastr.success(`En ${place} ${out.label}.`, '🌟 Fama', { timeOut: 8000 });
+}
+
+/**
+ * Idea 132: las reliquias que llegan con lo que se acaba de cumplir. Devuelve lo que hay que
+ * contarle al narrador.
+ *
+ * @param {{kind: 'milestone'|'contract', id: string}} event
+ * @returns {string[]}
+ */
+function deliverRelics(event) {
+    if (!chat_metadata) return [];
+    const given = Array.isArray(chat_metadata[RELICS_GIVEN_KEY]) ? chat_metadata[RELICS_GIVEN_KEY] : [];
+    const relics = relicsFor(worldItemCatalogue, event, given);
+    const holder = partyMembers.find(m => !m.dead && (Number(m.hp) || 0) > 0) ?? partyMembers[0];
+    if (relics.length === 0 || !holder) return [];
+    holder.items = holder.items ?? [];
+    for (const relic of relics) {
+        const item = createItem(/** @type {any} */ ({ ...describeLootItem(String(relic.name), String(relic.rarity ?? ''), worldItemCatalogue), relic: true }));
+        addItemToInventory(/** @type {any} */ (holder), item);
+        chat_metadata[RELICS_GIVEN_KEY] = [...(chat_metadata[RELICS_GIVEN_KEY] ?? []), String(relic.name)];
+        noteDeed(`${holder.name} lleva ahora ${relic.name}.`);
+        toastr.success(describeRelic(relic), '🏺 Una reliquia', { timeOut: 12000 });
+    }
+    saveMetadata();
+    savePartyState();
+    return relics.map(relic => `${holder.name} se queda con ${describeRelic(relic)}`);
+}
+
+/** El dia en que se oyo cada rumor (idea 91). */
+const RUMORS_HEARD_ON_KEY = 'rumorsHeardOn';
+/** Los prisioneros que lleva el grupo (idea 7). */
+const PRISONERS_KEY = 'prisoners';
+/** Los d20 que ha tirado el motor (idea 168). */
+const DICE_LOG_KEY = 'diceLog';
+/** El regateo de hoy (idea 126): donde, que dia y si salio. */
+const HAGGLE_KEY = 'haggle';
+/** Las cartas que esperan, y las ya mandadas (idea 113). */
+const LETTERS_KEY = 'letters';
+const LETTERS_SENT_KEY = 'lettersSent';
+/** La ultima fiesta contada (idea 89): para no contarla dos veces el mismo dia. */
+const FESTIVAL_TOLD_KEY = 'festivalTold';
+/** La partida en numeros (idea 200). */
+const STATS_KEY = 'stats';
+/** El largo de la narracion elegido en la partida (idea 149). */
+const LENGTH_KEY = 'narrationLength';
+/** Las tumbas de quien ha muerto, con su epitafio (idea 36). */
+const GRAVES_KEY = 'graves';
+/** La fama del grupo, sitio a sitio (idea 52). */
+const FAME_KEY = 'fame';
+/** Las reliquias ya entregadas (idea 132): cada una llega una vez. */
+const RELICS_GIVEN_KEY = 'relicsGiven';
+/** Lo que ya han dicho los confidentes al llegar a cada sitio (idea 45). */
+const ARRIVALS_HEARD_KEY = 'arrivalsHeard';
+/** Los secretos de la gente: los sabidos y los intentos de hoy (idea 110). */
+const SECRETS_KEY = 'npcSecrets';
+/** Las monturas del grupo (idea 129). */
+const MOUNTS_KEY = 'mounts';
+/** Las partidas de dados de hoy en la taberna (idea 128). */
+const DICE_GAME_KEY = 'tavernDice';
+/** La letra del narrador (idea 195). */
+const NARRATOR_FONT_KEY = 'narratorFont';
+/** El tiempo de hoy donde se está, cuando se sabe por el viaje (ideas 73 y 90). */
+const WEATHER_TODAY_KEY = 'weatherToday';
+// Batería 7: lo que les parece a los compañeros (28, 32), a quién se le ofreció ya su
+// encargo (30) y quién se queda en casa (42).
+const APPROVAL_KEY = 'approval';
+const PERSONAL_ASKED_KEY = 'personalAsked';
+const BENCH_KEY = 'bench';
+// Idea 139: lo que el narrador ofrece coger.
+const OFFERS_KEY = 'itemOffers';
+// Idea 142: el tono de la escena, elegido en la pausa.
+const TONE_KEY = 'sceneTone';
+
+/** Con quién se está hablando, para las respuestas sugeridas (idea 144). */
+let talkingTo = '';
+/** Lo último que gritó un jefe al contestar (idea 24). */
+let lastBossLine = '';
+/** Si alguien acaba de caer al vacío, para dejar ver la caída (idea 189). */
+let fellThisTurn = false;
+
+/** Lo que se guarda en este navegador, sin que falle si no se puede. */
+const localFlag = {
+    /** @param {string} key @returns {string} */
+    get(key) {
+        try { return String(globalThis.localStorage?.getItem(key) ?? ''); } catch { return ''; }
+    },
+    /** @param {string} key @param {string} value */
+    set(key, value) {
+        try { globalThis.localStorage?.setItem(key, value); } catch { /* sin almacenamiento: se juega igual */ }
+    },
+};
+/** Idea 148: el modo ahorro, en este navegador. */
+const SAVER_KEY = 'sillytavern_gameSaver';
+/** Idea 172: los colores para daltonismo, en este navegador. */
+const COLORBLIND_KEY = 'sillytavern_gameColorblind';
+/** Idea 155: los consejos ya vistos, en este navegador. */
+const TIPS_SEEN_KEY = 'sillytavern_gameTipsSeen';
+
+/** @returns {boolean} */
+function saverOn() {
+    return localFlag.get(SAVER_KEY) === '1';
+}
+
+/**
+ * Idea 200: sumar a la partida en numeros.
+ *
+ * @param {'fights'|'wins'|'fled'|'deaths'|'gold'|'rumors'|'trips'|'contracts'} key
+ * @param {number} [amount]
+ */
+function countStat(key, amount = 1) {
+    if (!chat_metadata) return;
+    chat_metadata[STATS_KEY] = bump(chat_metadata[STATS_KEY], key, amount);
+    saveMetadata();
+}
+
+/** @returns {string[]} La partida en numeros, en lineas. */
+function statsLines() {
+    return describeStats(chat_metadata?.[STATS_KEY], {
+        days: Math.max(1, Math.floor(Number(getCampaignCalendar()?.day) || 1)),
+        places: getCurrentWorldLocationMaps().length,
+    });
+}
+
+/**
+ * Idea 155: un consejo, la primera vez que aparece cada cosa.
+ *
+ * @param {string} situation
+ */
+function showTip(situation) {
+    const seen = localFlag.get(TIPS_SEEN_KEY).split(',').filter(Boolean);
+    const tip = tipFor(situation, seen);
+    if (!tip) return;
+    localFlag.set(TIPS_SEEN_KEY, [...seen, tip.id].join(','));
+    toastr.info(tip.text, 'Consejo', { timeOut: 12000 });
+}
+
+/**
+ * Vender: cada cosa la vende quien la lleva, y el oro va a su bolsa (ideas 118 y L5).
+ *
+ * @param {Array<{memberId: string, itemId: string, name: string, price: number}>} sales
+ */
+function sellItems(sales) {
+    let total = 0;
+    for (const sale of sales) {
+        const member = partyMembers.find(m => String(m.id) === sale.memberId);
+        if (!member) continue;
+        removeItemFromInventory(/** @type {any} */ (member), sale.itemId);
+        member.gold = (Number(member.gold) || 0) + sale.price;
+        total += sale.price;
+    }
+    if (total === 0) return;
+    savePartyState();
+    countStat('gold', total);
+    postCombatNarration(`🪙 [TIENDA] Vendéis ${sales.map(s => s.name).join(', ')}: ${total} de oro.`);
+    toastr.success(`${total} de oro`, 'Vendido', { timeOut: 5000 });
+}
+
+/** Idea 126: regatear, una vez al dia en cada tienda. */
+function haggle() {
+    if (!chat_metadata) return;
+    const who = partyMembers.filter(m => (Number(m.hp) || 0) > 0)
+        .reduce((/** @type {any} */ top, m) => (!top || skillModifier(m, 'persuasion').modifier > skillModifier(top, 'persuasion').modifier ? m : top), null);
+    if (!who) return;
+    const roll = rollCheck({ member: who, skill: 'persuasion', rollD20: () => rollDiceDetailed('1d20', 20).total, dc: 12 });
+    chat_metadata[HAGGLE_KEY] = {
+        place: currentLocationName,
+        day: Math.max(1, Math.floor(Number(getCampaignCalendar()?.day) || 1)),
+        ok: Boolean(roll?.success),
+    };
+    saveMetadata();
+    if (roll) postCombatNarration(roll.said);
+    toastr.info(roll?.success ? `${who.name} saca un 15 % menos para hoy.` : `${who.name} no convence al tendero: hoy, al precio que hay.`, 'Regateo', { timeOut: 6000 });
+}
+
+/**
+ * Idea 113: leer una carta, contarla y guardarla en la cronica.
+ *
+ * @param {string} id
+ * @returns {Promise<void>}
+ */
+async function readLetter(id) {
+    if (!chat_metadata) return;
+    const letters = readLetters(chat_metadata[LETTERS_KEY]);
+    const letter = letters.find(l => l.id === id);
+    if (!letter) return;
+    chat_metadata[LETTERS_KEY] = letters.filter(l => l.id !== id);
+    saveMetadata();
+    noteDeed(`Carta de ${letter.from}: ${letter.text}`);
+    await postForModel(`[CARTA] ${letter.text} Cuéntalo como una carta que os dan en la posada: el papel, la letra, quién la trae. No inventes nada más de lo que dice.`);
+}
+
+/** Idea 113: las cartas de hoy, a la posada. */
+function writeLetters() {
+    if (!chat_metadata) return;
+    const debt = getDebt();
+    const today = Math.max(1, Math.floor(Number(getCampaignCalendar()?.day) || 1));
+    const sent = Array.isArray(chat_metadata[LETTERS_SENT_KEY]) ? chat_metadata[LETTERS_SENT_KEY].map(String) : [];
+    const fresh = newLetters({
+        factions: getCurrentWorldFactions(),
+        debt: debt ? { amount: Number(debt.owed) || Number(debt.amount) || 0, due: Number(debt.dueDay) || 0, creditor: debt.patronName } : null,
+        today,
+        sent,
+    });
+    if (fresh.length === 0) return;
+    chat_metadata[LETTERS_KEY] = [...readLetters(chat_metadata[LETTERS_KEY]), ...fresh].slice(-4);
+    chat_metadata[LETTERS_SENT_KEY] = [...sent, ...fresh.map(l => l.id)].slice(-60);
+    saveMetadata();
+    toastr.info(fresh.map(l => l.from).join(', '), 'Hay cartas para vosotros en la posada', { timeOut: 7000 });
+}
+
+/** Idea 156: el glosario, en una ventana. */
+function openGlossary() {
+    const body = $('<div class="gl-root"></div>');
+    body.append($('<h3></h3>').text('Glosario'));
+    for (const entry of GLOSSARY) {
+        const row = $('<div class="gl-row"></div>');
+        row.append($('<div class="gl-term"></div>').text(entry.term));
+        row.append($('<div class="gl-means"></div>').text(entry.means));
+        body.append(row);
+    }
+    void new Popup(body[0], POPUP_TYPE.TEXT, '', { okButton: 'Cerrar', allowVerticalScrolling: true, leftAlign: true }).show();
+}
+
+/** Idea 172: aplicar los colores para daltonismo. */
+function applyColorblind() {
+    document.body.classList.toggle('game-colorblind', localFlag.get(COLORBLIND_KEY) === '1');
+}
+
+/**
+ * Las fiestas del mundo abierto (idea 89), por sitio.
+ *
+ * @returns {Record<string, {day: number, name: string}>}
+ */
+function worldFestivals() {
+    const worldName = String(chat_metadata?.[METADATA_KEY] || '');
+    return festivalsOf(getCurrentWorldLocationMaps(), key => createSeededRandom(derive(worldName, 'fiesta', key)));
+}
+
+/** @returns {{day: number, name: string}|null} La fiesta de hoy aqui. */
+function festivalHere() {
+    return festivalToday(worldFestivals(), currentLocationName, Math.max(1, Math.floor(Number(getCampaignCalendar()?.day) || 1)));
+}
+
+/** Idea 89: contar la fiesta de hoy, una vez. */
+function tellFestival() {
+    const festival = festivalHere();
+    if (!festival || !chat_metadata) return;
+    const today = Math.max(1, Math.floor(Number(getCampaignCalendar()?.day) || 1));
+    const stamp = `${today}:${currentLocationName}`;
+    if (chat_metadata[FESTIVAL_TOLD_KEY] === stamp) return;
+    chat_metadata[FESTIVAL_TOLD_KEY] = stamp;
+    saveMetadata();
+    const line = `Hoy es ${festival.name} en ${currentLocationName}: la comida de la posada corre a cuenta del pueblo y en la tienda rebajan.`;
+    toastr.success(line, '¡Fiesta!', { timeOut: 9000 });
+    void postForModel(`[FIESTA] ${line} Que se note en la calle: música, gente, puestos. No inventes nada más.`);
+}
+
+/**
+ * Quien manda en un sitio, si alguien manda.
+ *
+ * @param {string} place
+ * @returns {any|null}
+ */
+function rulerOf(place) {
+    const at = String(place).toLowerCase();
+    return getCurrentWorldFactions().find(f => String(f.seat ?? '').toLowerCase() === at
+        || (f.holds ?? []).some((/** @type {string} */ h) => String(h).toLowerCase() === at)) ?? null;
+}
+
+/**
+ * La tienda de aqui esta semana (ideas 118, 126, 127 y 134), con sus precios de hoy.
+ *
+ * @returns {{stock: Array<{name: string, price: number, reasons: string[]}>, reasons: string[], haggled: boolean, triedToday: boolean}}
+ */
+function shopHere() {
+    const worldName = String(chat_metadata?.[METADATA_KEY] || '');
+    const today = Math.max(1, Math.floor(Number(getCampaignCalendar()?.day) || 1));
+    const week = Math.floor((today - 1) / 7);
+    const ruler = rulerOf(currentLocationName);
+    const market = currentMarket();
+    const haggle = chat_metadata?.[HAGGLE_KEY];
+    const triedToday = Boolean(haggle && haggle.place === currentLocationName && Number(haggle.day) === today);
+    const haggled = triedToday && Boolean(haggle.ok);
+    const names = weeklyStock({
+        names: declaredLootNames(),
+        describe: (name) => describeLootItem(name),
+        random: createSeededRandom(derive(worldName, 'tienda', currentLocationName, String(week))),
+        reputation: Number(ruler?.reputation) || 0,
+        // Idea 122: el aceite y la red, siempre.
+        always: Object.values(THROWABLES).map(t => t.name),
+    });
+    // Idea 84: con una guerra en marcha, el acero se paga caro.
+    const war = warPressure({ here: currentLocationName, factions: getCurrentWorldFactions() });
+    // Idea 52: donde os conocen, os lo dejan mejor.
+    const fame = fameAt(chat_metadata?.[FAME_KEY], currentLocationName);
+    const stock = names.map(name => {
+        const spec = describeLootItem(name);
+        const steel = ['weapon', 'armor'].includes(String(spec.category));
+        const food = Number(market?.food) || 1;
+        return {
+            name,
+            ...priceToday({
+                base: basePrice(spec),
+                market: steel ? Math.round(food * war.steel * 100) / 100 : food,
+                marketReasons: [...(Array.isArray(market?.reasons) ? market.reasons : []), ...(steel ? war.reasons : [])],
+                standing: ruler ? priceFactor(Number(ruler.reputation) || 0) : 1,
+                ruler: String(ruler?.name ?? ''),
+                haggled,
+                festival: Boolean(festivalHere()),
+                fame: { discount: fame.discount, label: fame.label },
+            }),
+        };
+    });
+    return { stock, reasons: [...new Set(stock.flatMap(s => s.reasons))], haggled, triedToday };
+}
+
+/**
+ * Idea 7: que hacer con un prisionero.
+ *
+ * @param {string} what interrogar, entregar o soltar.
+ * @param {string} id
+ * @returns {Promise<string>}
+ */
+async function handlePrisoner(what, id) {
+    if (!chat_metadata) return '';
+    const kind = /^interrog/i.test(what) ? 'ask' : /^entreg/i.test(what) ? 'give' : 'free';
+    const { prisoner, prisoners } = dealWith(chat_metadata[PRISONERS_KEY], id, kind);
+    if (!prisoner) {
+        toastr.warning('No hay ningún prisionero así.');
+        return '';
+    }
+    chat_metadata[PRISONERS_KEY] = prisoners;
+    saveMetadata();
+    // Idea 28: lo que les parece a los tuyos lo que haces con él.
+    judgeDecision(kind === 'ask' ? 'interrogar' : kind === 'give' ? 'entregar-prisionero' : 'soltar-prisionero');
+    if (kind === 'ask') {
+        const heard = Array.isArray(chat_metadata[RUMORS_HEARD_KEY]) ? chat_metadata[RUMORS_HEARD_KEY] : [];
+        const rumor = lastRumors.find(r => !heard.includes(r.id));
+        if (!rumor) {
+            await postForModel(`[INTERROGATORIO] ${prisoner.name} no sabe nada que no sepáis ya. Cuéntalo en una frase.`);
+            return 'nada';
+        }
+        chat_metadata[RUMORS_HEARD_KEY] = [...heard, rumor.id];
+        chat_metadata[RUMORS_HEARD_ON_KEY] = { ...(chat_metadata[RUMORS_HEARD_ON_KEY] ?? {}), [rumor.id]: Math.max(1, Math.floor(Number(getCampaignCalendar()?.day) || 1)) };
+        saveMetadata();
+        if (rumor.leadsTo) await revealLocations([rumor.leadsTo]);
+        await postForModel(`[INTERROGATORIO] ${prisoner.name} acaba contando lo que sabe: ${rumor.text} `
+            + 'Cuéntalo en su voz, a regañadientes. No inventes nada más.');
+        return rumor.text;
+    }
+    if (kind === 'give') {
+        const holder = partyMembers.find(m => (m.hp || 0) > 0) ?? partyMembers[0];
+        if (holder) holder.gold = (Number(holder.gold) || 0) + BOUNTY;
+        savePartyState();
+        const place = currentLocationName.toLowerCase();
+        const rulers = getCurrentWorldFactions().find(f => String(f.seat ?? '').toLowerCase() === place
+            || (f.holds ?? []).some((/** @type {string} */ h) => String(h).toLowerCase() === place));
+        if (rulers) void shiftFactionStanding(String(rulers.id), 1);
+        noteDeed(`Entregasteis a ${prisoner.name} en ${currentLocationName}${rulers ? ` (${rulers.name} lo agradece)` : ''}.`);
+        toastr.success(`+${BOUNTY} de oro${rulers ? ` · ${rulers.name} os mira mejor` : ''}`, `${prisoner.name}, entregado`);
+        return 'entregado';
+    }
+    noteDeed(`Soltasteis a ${prisoner.name}.`);
+    postCombatNarration(`🕊️ [CAMPAÑA] ${prisoner.name} se va sin mirar atrás.`);
+    return 'suelto';
+}
+
+/**
+ * Idea 72: un atajo que se oye en la posada, con la semilla del mundo.
+ *
+ * @param {string} about
+ * @returns {Promise<void>}
+ */
+function learnShortcut(about) {
+    const worldName = String(chat_metadata?.[METADATA_KEY] || '');
+    if (!worldName) return Promise.resolve();
+    return worldWrite(async () => {
+        const data = await loadWorldInfo(worldName);
+        const maps = data?.metadata?.locationMaps;
+        if (!Array.isArray(maps)) return;
+        const shortcut = findShortcut({
+            locations: maps, from: currentLocationName,
+            random: createSeededRandom(derive(seedOfWorld(data.metadata), 'atajo', about)),
+        });
+        if (!shortcut) return;
+        data.metadata.locationMaps = applyShortcut(maps, shortcut);
+        await saveWorldInfo(worldName, data, true);
+        await refreshWorldMapGlobals(worldName);
+        const line = `Un camino de pastores acorta el viaje entre ${shortcut.from} y ${shortcut.to}: ${shortcut.days} día(s).`;
+        noteDeed(line);
+        toastr.info(line, 'Un atajo', { timeOut: 9000 });
+        void postForModel(`[ATAJO] De paso, alguien menciona esto: ${line} Cuéntalo en una frase.`);
+    });
+}
+
+/** Como rehacer la ultima respuesta (idea 150): una instruccion de una sola vez. */
+const RETRY_NOTES = {
+    otra: '',
+    corto: '[NOTA PARA ESTA RESPUESTA] Más corta: la mitad de largo, sin perder lo que pasa.',
+    intenso: '[NOTA PARA ESTA RESPUESTA] Más intensa: más tensión y detalle sensorial, sin inventar hechos nuevos.',
+};
+
+/**
+ * Idea 150: rehacer la ultima respuesta del narrador, igual, mas corta o mas intensa.
+ *
+ * @param {string} mode otra, corto o intenso.
+ * @returns {Promise<void>}
+ */
+async function retryLastReply(mode) {
+    const note = RETRY_NOTES[/** @type {keyof typeof RETRY_NOTES} */ (mode)] ?? '';
+    const key = promptKey('combat', 'retry', 'ctx');
+    setExtensionPrompt(key, note, extension_prompt_types.IN_PROMPT, 0, false, extension_prompt_roles.SYSTEM);
+    try {
+        const { executeSlashCommandsWithOptions } = await import('./slash-commands.js');
+        await executeSlashCommandsWithOptions('/regenerate await=true');
+    } finally {
+        // Una vez y ya: la siguiente respuesta vuelve a ser la de siempre.
+        setExtensionPrompt(key, '', extension_prompt_types.IN_PROMPT, 0, false, extension_prompt_roles.SYSTEM);
+    }
+}
+
+/** Idea 168: el historial de dados, con sus cuentas. */
+function openDiceHistory() {
+    const stats = diceStats(chat_metadata?.[DICE_LOG_KEY]);
+    const body = $('<div class="dl-root"></div>');
+    body.append($('<h3></h3>').text('Los dados'));
+    body.append($('<div class="jr-item"></div>').text(stats.count > 0
+        ? `${stats.count} tiradas de d20 · media ${String(stats.average).replace('.', ',')} · ${stats.twenties} veintes · ${stats.ones} unos`
+            + (stats.judged > 0 ? ` · ${stats.passed} de ${stats.judged} salieron` : '')
+        : 'Todavía no se ha tirado nada.'));
+    body.append($('<div class="jr-item dl-verdict"></div>').text(stats.verdict));
+    const last = readRolls(chat_metadata?.[DICE_LOG_KEY]).slice(-12).reverse();
+    if (last.length > 0) body.append($('<div class="jr-title"></div>').text('Las últimas'));
+    for (const roll of last) {
+        body.append($('<div class="jr-item dl-roll"></div>').text(`${roll.title}: ${roll.natural}${roll.dc !== null ? ` (total ${roll.total} contra ${roll.dc})` : ''}`));
+    }
+    void new Popup(body[0], POPUP_TYPE.TEXT, '', { okButton: 'Cerrar', allowVerticalScrolling: true, leftAlign: true }).show();
+}
+
+/**
+ * Idea 57: la historia de alguien del grupo.
+ *
+ * @param {any} member
+ */
+function openHeroStory(member) {
+    const lines = heroStory({
+        member,
+        deeds: Array.isArray(chat_metadata?.[DEEDS_KEY]) ? chat_metadata[DEEDS_KEY] : [],
+        memories: Array.isArray(chat_metadata?.[MEMORIES_KEY]) ? chat_metadata[MEMORIES_KEY] : [],
+    });
+    const body = $('<div class="hs-root"></div>');
+    body.append($('<h3></h3>').text(`La historia de ${member.name}${member.nickname ? ` «${member.nickname}»` : ''}`));
+    if (lines.length === 0) body.append($('<div class="jr-item"></div>').text('Todavía no ha pasado nada que contar.'));
+    for (const line of lines) body.append($('<div class="jr-item"></div>').text(line));
+    void new Popup(body[0], POPUP_TYPE.TEXT, '', { okButton: 'Cerrar', allowVerticalScrolling: true, leftAlign: true }).show();
+}
+
+/** Las pistas del hilo: cuando se abrio cada hito, que nivel se ha dado y cuales. */
+const HINTS_KEY = 'threadHints';
+/** Las tiradas que ha pedido el narrador y esperan a que se tiren (idea 138). */
+const CHECK_REQUESTS_KEY = 'checkRequests';
+
+/** @returns {any[]} Los hitos abiertos del hilo que se ven: los ocultos no (idea 111). */
+function openMilestones() {
+    const plot = getPlot();
+    if (!plot || !chat_metadata) return [];
+    return visibleOpen(plot, chat_metadata[PLOT_STATE_KEY]);
+}
+
+/** Dar las pistas que tocan hoy (idea 103). */
+function giveDueHints() {
+    if (!chat_metadata) return;
+    const open = openMilestones();
+    if (open.length === 0) return;
+    const saved = chat_metadata[HINTS_KEY] ?? {};
+    const due = dueHints({
+        open,
+        openedDay: saved.openedDay,
+        given: saved.given,
+        // Idea 41: con un erudito en el grupo, las pistas llegan un dia antes.
+        today: Math.max(1, Math.floor(Number(getCampaignCalendar()?.day) || 1)) + (withJob(partyMembers, 'erudito') ? 1 : 0),
+        skillLabel: (skill) => SKILLS[/** @type {keyof typeof SKILLS} */ (skill)]?.label ?? skill,
+    });
+    /** @type {Record<string, string[]>} */
+    const clues = { ...(saved.clues ?? {}) };
+    for (const hint of due.hints) clues[hint.id] = [...(clues[hint.id] ?? []), hint.text];
+    chat_metadata[HINTS_KEY] = { openedDay: due.openedDay, given: due.given, clues };
+    saveMetadata();
+    for (const hint of due.hints) {
+        toastr.info(hint.text, 'Una pista', { timeOut: 10000 });
+        void postForModel('[PISTA] El grupo lleva días sin avanzar. Que les llegue esto por boca de alguien del lugar, '
+            + `con naturalidad y sin nombrar reglas: ${hint.text}`);
+    }
+}
+
+/** Idea 100: el diario, con lo que el grupo sabe. */
+function openJournal() {
+    const today = Math.max(1, Math.floor(Number(getCampaignCalendar()?.day) || 1));
+    const heardIds = Array.isArray(chat_metadata?.[RUMORS_HEARD_KEY]) ? chat_metadata[RUMORS_HEARD_KEY] : [];
+    const heard = heardIds
+        .map((/** @type {string} */ id) => lastRumors.find(r => r.id === id))
+        .filter(Boolean)
+        .map((/** @type {any} */ r) => ({
+            text: r.text, by: r.by, where: r.where, leadsTo: r.leadsTo,
+            day: Number(chat_metadata?.[RUMORS_HEARD_ON_KEY]?.[r.id]) || 0,
+        }));
+    const sections = buildJournal({
+        // Idea 106: lo que tiene plazo lo dice.
+        open: openMilestones().map(m => {
+            const left = daysLeftOf(getPlot(), chat_metadata?.[PLOT_STATE_KEY], m.id, today);
+            return left == null ? m : { ...m, title: `${m.title} (${left === 0 ? 'hoy es el último día' : `quedan ${left} día(s)`})` };
+        }),
+        clues: chat_metadata?.[HINTS_KEY]?.clues ?? {},
+        taken: chat_metadata?.[TAKEN_KEY] ?? null,
+        today,
+        heard,
+        memories: memoryLines(chat_metadata?.[MEMORIES_KEY], today),
+        deeds: Array.isArray(chat_metadata?.[DEEDS_KEY]) ? chat_metadata[DEEDS_KEY] : [],
+    });
+    // Idea 114: el presagio, con lo que ya se ha cumplido.
+    const omens = omensOf(getPlot(), chat_metadata?.[PLOT_STATE_KEY]);
+    if (omens.length > 0) sections.push({ title: 'El presagio', items: omens.map(o => `${o.fulfilled ? '✓' : '·'} «${o.text}»`) });
+    // Idea 111: los secretos, sin decir cuáles faltan.
+    const secrets = secretsOf(getPlot(), chat_metadata?.[PLOT_STATE_KEY]);
+    if (secrets.total > 0) {
+        sections.push({ title: `Secretos de la historia (${secrets.found.length} de ${secrets.total})`, items: secrets.found.length > 0 ? secrets.found : ['Ninguno todavía. Hay cosas que se encuentran sin buscarlas.'] });
+    }
+    // Idea 107: las investigaciones, con lo que falta y dónde.
+    for (const case107 of cluesOf(getPlot(), chat_metadata?.[PLOT_STATE_KEY])) {
+        sections.push({
+            title: `Investigación: ${case107.title} (${case107.found} de ${case107.need} pistas)`,
+            items: case107.missing.map(c => `Falta: ${SKILLS[/** @type {keyof typeof SKILLS} */ (c.skill)]?.label ?? c.skill} en ${c.place}`),
+        });
+    }
+    // Idea 102: los caminos que se cerraron.
+    const closed = closedOf(getPlot(), chat_metadata?.[PLOT_STATE_KEY]);
+    if (closed.length > 0) sections.push({ title: 'Caminos cerrados', items: closed });
+    // Idea 110: lo que sabéis de la gente.
+    const pried = describeSecrets(chat_metadata?.[SECRETS_KEY]);
+    if (pried.length > 0) sections.push({ title: 'Lo que sabéis de la gente', items: pried });
+    // Idea 129: las monturas.
+    const mounts = describeMounts(chat_metadata?.[MOUNTS_KEY]);
+    if (mounts) sections.push({ title: 'Monturas', items: [mounts] });
+    // Idea 52: dónde os conocen.
+    const known = describeFame(chat_metadata?.[FAME_KEY]);
+    if (known.length > 0) sections.push({ title: 'Dónde os conocen', items: known });
+    // Idea 36: quien se quedó por el camino.
+    const graves = readGraves(chat_metadata?.[GRAVES_KEY]);
+    if (graves.length > 0) sections.push({ title: 'Los que se quedaron', items: graves.map(g => g.epitaph) });
+    // Idea 200: mientras se juega, la partida en numeros tambien esta en el diario.
+    sections.push({ title: 'La partida en números', items: statsLines() });
+    const body = $('<div class="jr-root"></div>');
+    body.append($('<h3></h3>').text('Diario'));
+    for (const section of sections) {
+        body.append($('<div class="jr-title"></div>').text(section.title));
+        for (const item of section.items) body.append($('<div class="jr-item"></div>').text(item));
+    }
+    void new Popup(body[0], POPUP_TYPE.TEXT, '', { okButton: 'Cerrar', allowVerticalScrolling: true, leftAlign: true }).show();
+}
+
+/** Idea 136: todo lo que se puede hacer ahora, junto y pulsable. */
+function openHelp() {
+    const sections = buildHelp({
+        focus: focusOf(getPlot(), chat_metadata?.[PLOT_STATE_KEY], campaignDay()),
+        services: buildServiceCards(),
+        boards: currentBoardName ? [] : getLocationBoards(hereLocation()).map((/** @type {any} */ b) => String(b.name)),
+        chips: buildShellChips().map(c => ({ id: c.id, label: c.label })),
+        places: getCurrentWorldLocationMaps().filter(l => l.name !== currentLocationName).length,
+        fighting: Boolean(combatEncounter.active),
+    });
+    const body = $('<div class="hp-root"></div>');
+    body.append($('<h3></h3>').text('¿Qué puedo hacer aquí?'));
+    /** @type {Popup|null} */
+    let popup = null;
+    for (const section of sections) {
+        body.append($('<div class="jr-title"></div>').text(section.title));
+        for (const item of section.items) {
+            const row = item.key
+                ? $('<button type="button" class="menu_button hp-item"></button>').attr('data-key', item.key)
+                : $('<div class="hp-item hp-still"></div>');
+            row.append($('<span class="hp-label"></span>').text(item.label));
+            if (item.detail) row.append($('<span class="hp-detail"></span>').text(item.detail));
+            if (item.key) {
+                row.on('click', () => {
+                    void popup?.completeCancelled();
+                    runHelpItem(item.key);
+                });
+            }
+            body.append(row);
+        }
+    }
+    popup = new Popup(body[0], POPUP_TYPE.TEXT, '', { okButton: 'Cerrar', allowVerticalScrolling: true, leftAlign: true });
+    void popup.show();
+}
+
+/** @param {string} key */
+function runHelpItem(key) {
+    const [kind, ...rest] = key.split(':');
+    const value = rest.join(':');
+    if (kind === 'journal') openJournal();
+    else if (kind === 'glossary') openGlossary();
+    else if (kind === 'service') void runService(value);
+    else if (kind === 'board') {
+        enterBoard(value);
+        renderLocationMapsPreview();
+        if (isShellOpen()) refreshGameShell();
+    } else if (kind === 'chip') {
+        const chip = buildShellChips().find(c => c.id === value);
+        if (chip) runShellChip(chip);
+    }
+}
+
+/** Las noticias que esperan a que el grupo llegue a donde se oyen (idea 82). */
+const NEWS_KEY = 'newsPending';
+
+/**
+ * Contar al llegar lo que se comenta aqui de lo que paso lejos.
+ *
+ * @param {string} place
+ * @returns {Promise<void>}
+ */
+async function tellArrivalNews(place) {
+    if (!chat_metadata || !place) return;
+    const today = Math.max(1, Math.floor(Number(getCampaignCalendar()?.day) || 1));
+    const locations = getCurrentWorldLocationMaps();
+    const { told, pending } = deliverNews(
+        chat_metadata[NEWS_KEY],
+        list => newsFor({ events: list, here: place, locations, factions: getCurrentWorldFactions() }),
+        today,
+    );
+    chat_metadata[NEWS_KEY] = pending;
+    saveMetadata();
+    if (told.length === 0) return;
+    for (const line of told) {
+        toastr.info(line, `Se comenta en ${place}`, { timeOut: 8000 });
+        // Idea 95: lo que se sabe del mundo queda en la cronica.
+        noteDeed(`Se supo en ${place}: ${line.replace(/^Hace \d+ día\(s\): /, '')}`);
+    }
+    await postForModel([
+        `[NOTICIAS] Al llegar a ${place}, se comenta:`,
+        ...told.map(line => `- ${line}`),
+        'Cuéntalo como lo que se oye al llegar, en una o dos frases. No inventes nada más.',
+    ].join('\n'));
+}
+
+/**
+ * Idea 85: mover la fortuna de un sitio, y contar si abre o cierra algo.
+ *
+ * @param {string} place
+ * @param {number} delta
+ * @returns {Promise<void>}
+ */
+function shiftPlaceFortune(place, delta) {
+    const worldName = String(chat_metadata?.[METADATA_KEY] || '');
+    if (!worldName || !place) return Promise.resolve();
+    return worldWrite(async () => {
+        const data = await loadWorldInfo(worldName);
+        const maps = data?.metadata?.locationMaps;
+        if (!Array.isArray(maps)) return;
+        const index = maps.findIndex((/** @type {any} */ l) => String(l?.name).toLowerCase() === place.toLowerCase());
+        if (index < 0) return;
+        const { location, change } = shiftFortune(maps[index], delta, servicesOf(maps[index]));
+        maps[index] = location;
+        await saveWorldInfo(worldName, data, true);
+        await refreshWorldMapGlobals(worldName);
+        if (change) {
+            noteDeed(change);
+            toastr.info(change, place, { timeOut: 8000 });
+            void postForModel(`[EL MUNDO CAMBIA] ${change} Que se note cuando el grupo pase por allí, sin inventar más.`);
+        }
+        if (isShellOpen()) refreshGameShell();
+    });
+}
+
 /** @returns {boolean} Si aqui hay herreria: es donde se hacen los remedios (DL1). */
 function smithHere() {
     const here = hereLocation();
@@ -3846,7 +5391,7 @@ function buildServiceCards() {
     const innkeeper = lastWorldNpcs.find(n => n.service === 'posada'
         && n.where.toLowerCase() === String(currentLocationName).toLowerCase())?.name ?? '';
 
-    return serviceActions({
+    const cards = serviceActions({
         location,
         purse,
         partySize: partyMembers.length,
@@ -3856,7 +5401,391 @@ function buildServiceCards() {
         innkeeper,
         remedies,
         cure,
+        // Idea 135: lo que hay que llevar al templo.
+        relics: (() => {
+            const work = templeWork(partyMembers);
+            return { unknown: work.unknown.length, cursed: work.cursed.length, identify: TEMPLE_PRICES.identify, lift: TEMPLE_PRICES.lift };
+        })(),
     });
+    // Idea 89: dia de fiesta, la comida corre a cuenta del pueblo.
+    const feast = festivalHere();
+    const innCard = cards.find(card => card.id === 'posada');
+    const meal = innCard?.actions.find(a => a.id === 'inn-meal');
+    if (feast && meal) Object.assign(meal, { cost: 0, enabled: !combatEncounter.active, label: 'Comer caliente (gratis: es fiesta)', detail: `Hoy es ${feast.name}.` });
+    // Idea 129: el establo de la posada. Idea 128: los dados.
+    if (innCard) {
+        for (const [id, mount] of Object.entries(MOUNTS)) {
+            innCard.actions.push({
+                id: `inn-mount:${id}`, label: `Comprar ${id === 'mula' ? 'una mula' : 'un caballo'} (${mount.price} de oro)`,
+                detail: `Para ir montados hace falta una por cabeza. Come ${mount.feedPerWeek} de oro de pienso a la semana.`,
+                enabled: !combatEncounter.active && purse >= mount.price, cost: mount.price, target: id,
+            });
+        }
+        const diceToday = roundsLeft(chat_metadata?.[DICE_GAME_KEY], currentLocationName, Math.max(1, campaignDay()));
+        if (!diceToday.banned && diceToday.left > 0) {
+            innCard.actions.push({
+                id: 'inn-dice', label: `Jugar a los dados: a veintiuno (${diceToday.left} hoy)`,
+                detail: 'Se apuesta, se piden dados y se suma. Quien se pasa de 21, pierde.',
+                enabled: !combatEncounter.active && purse >= BETS[0], cost: 0,
+            });
+        }
+    }
+    // Idea 54: en los pueblos, quien enseña.
+    if (hasMaster(location) && lastCompendium?.has?.('habilidades')) {
+        /** @type {any[]} */
+        const lessonActions = [];
+        for (const member of partyMembers.filter(m => !m.dead)) {
+            const className = String(/** @type {any} */ (member).charClass ?? /** @type {any} */ (member).class ?? '').toLowerCase()
+                .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            const lessons = lessonsHere({
+                candidates: abilitiesFor({ compendium: lastCompendium, className, level: Number(member.level) || 1 }),
+                known: Array.isArray(member.abilities) ? member.abilities.map(String) : [],
+                // La semilla del mundo y del sitio: el mismo maestro enseña siempre lo mismo.
+                random: createSeededRandom(derive(String(chat_metadata?.[METADATA_KEY] || ''), 'maestro', String(currentLocationName))),
+            });
+            for (const lesson of lessons) {
+                lessonActions.push({
+                    id: `learn:${member.id}:${lesson.ability.id}`,
+                    label: `${member.name}: aprender «${lesson.ability.name}» (${lesson.price} de oro, ${lesson.days} días)`,
+                    detail: String(lesson.ability.description || ''),
+                    enabled: !combatEncounter.active && purse >= lesson.price, cost: lesson.price, target: lesson.ability.id,
+                });
+            }
+        }
+        if (lessonActions.length > 0) cards.push({ id: 'maestro', label: 'Quien enseña', icon: 'fa-graduation-cap', actions: lessonActions.slice(0, 4) });
+    }
+    /** @param {'templo'|'herreria'} id @returns {any} */
+    const cardOf = (id) => {
+        if (!servicesOf(location).includes(id)) return null;
+        let card = cards.find(c => c.id === id);
+        if (!card) {
+            card = { id, label: SERVICE_INFO[id].label, icon: SERVICE_INFO[id].icon, actions: [] };
+            cards.push(card);
+        }
+        return card;
+    };
+    // Idea 58: en el templo se rehace quien quiera volver a elegir sus mejoras. Se paga al
+    // confirmar: elegir puede acabar en no hacer nada.
+    const temple = cardOf('templo');
+    for (const member of temple ? partyMembers.filter(m => !m.dead) : []) {
+        const cost = respecCost(member);
+        if (cost <= 0) continue;
+        temple.actions.push({
+            id: `temple-respec:${member.id}`, label: `Rehacer a ${member.name}: volver a elegir sus mejoras (${cost} de oro)`,
+            detail: purse < cost ? `No llega el oro: cuesta ${cost}.` : 'Se deshacen las que tiene y se eligen otras tantas, las que quiera.',
+            enabled: !combatEncounter.active && purse >= cost, cost: 0, target: String(member.id),
+        });
+    }
+    // Ideas 120 y 121: lo que el herrero hace con lo que traéis de caza.
+    const smithy = cardOf('herreria');
+    if (smithy) {
+        const cloak = canCraft({ recipe: 'capa', party: partyMembers, purse });
+        smithy.actions.push({
+            id: 'craft:capa', label: `${RECIPES.capa.label} (${RECIPES.capa.gold} de oro y dos pieles)`,
+            detail: cloak.reason || RECIPES.capa.note, enabled: !combatEncounter.active && cloak.ok, cost: 0,
+        });
+        for (const member of partyMembers.filter(m => !m.dead)) {
+            const weapon = heldWeapon(member);
+            if (!weapon) continue;
+            const upgrade = canCraft({ recipe: 'mejora', party: partyMembers, purse, weapon });
+            smithy.actions.push({
+                id: `craft:mejora:${member.id}`,
+                label: `Mejorar ${weapon.name} de ${member.name} (+1: ${RECIPES.mejora.gold} de oro y algo duro)`,
+                detail: upgrade.reason || RECIPES.mejora.note, enabled: !combatEncounter.active && upgrade.ok, cost: 0, target: String(member.id),
+            });
+        }
+    }
+    // Idea 113: las cartas que esperan, se recogen en la posada.
+    if (innCard) {
+        for (const letter of readLetters(chat_metadata?.[LETTERS_KEY]).slice(0, 2)) {
+            innCard.actions.push({
+                id: `inn-letter:${letter.id}`, label: `Leer la carta de ${letter.from}`,
+                detail: 'Os la guardaban en la posada.', enabled: !combatEncounter.active, cost: 0, target: letter.id,
+            });
+        }
+    }
+    // Ideas 118, 126, 127 y 134: la tienda.
+    if (servicesOf(location).includes('tienda')) {
+        const shop = shopHere();
+        const hero = partyMembers[0];
+        const junk = junkOf(partyMembers);
+        const sellable = partyMembers.flatMap(m => (m.items ?? []).filter((/** @type {any} */ i) => canSell(i, m))
+            .map((/** @type {any} */ i) => ({ member: m, item: i, price: sellPrice(i) })))
+            .filter(x => !junk.some(j => j.itemId === String(x.item.id)))
+            .sort((a, b) => b.price - a.price)
+            .slice(0, 2);
+        /** @type {any[]} */
+        const shopActions = shop.stock.map(offer => ({
+            id: `shop-buy:${offer.name}`,
+            label: `${offer.name} (${offer.price} de oro)`,
+            detail: offer.reasons.length > 0 ? `Precio de hoy: ${offer.reasons.join(' · ')}` : 'Al precio de siempre.',
+            enabled: !combatEncounter.active && Boolean(hero) && purse >= offer.price,
+            cost: offer.price,
+            target: offer.name,
+        }));
+        if (junk.length > 0) {
+            const total = junk.reduce((sum, j) => sum + j.price, 0);
+            shopActions.push({
+                id: 'shop-junk', label: `Vender la chatarra (${junk.length} ${junk.length === 1 ? 'cosa' : 'cosas'}, ${total} de oro)`,
+                detail: junk.map(j => j.name).slice(0, 6).join(', '), enabled: !combatEncounter.active, cost: 0,
+            });
+        }
+        for (const sale of sellable) {
+            shopActions.push({
+                id: `shop-sell:${sale.member.id}:${sale.item.id}`, label: `Vender ${sale.item.name} (${sale.price} de oro)`,
+                detail: `Lo lleva ${sale.member.name}.`, enabled: !combatEncounter.active, cost: 0,
+            });
+        }
+        if (!shop.triedToday) {
+            shopActions.push({
+                id: 'shop-haggle', label: 'Regatear (Persuasión, CD 12)',
+                detail: 'Una vez al día en cada tienda: si sale, un 15 % menos hoy.', enabled: !combatEncounter.active, cost: 0,
+            });
+        }
+        shopActions.push({ id: 'shop-prices', label: '¿Por qué estos precios?', detail: 'Lo que sube y lo que baja, parte a parte.', enabled: true, cost: 0 });
+        // Idea 125: quien presta, con ventanilla. Una deuda a la vez.
+        const debt = getDebt();
+        if (!debt) {
+            for (const amount of LOAN.amounts) {
+                shopActions.push({
+                    id: `lend:${amount}`, label: `Pedir prestados ${amount} de oro`,
+                    detail: `Hay que devolver ${Math.ceil(amount * (1 + LOAN.interest))} en ${LOAN.days} días.`,
+                    enabled: !combatEncounter.active, cost: 0, target: String(amount),
+                });
+            }
+        } else if (!debt.contractId) {
+            shopActions.push({
+                id: 'repay', label: `Devolver lo que debéis (${debt.owed} de oro)`, detail: `A ${debt.patronName}.`,
+                enabled: !combatEncounter.active && purse >= debt.owed, cost: 0,
+            });
+        }
+        cards.push({ id: 'tienda', label: 'La tienda', icon: 'fa-shop', actions: shopActions });
+    }
+
+    // Idea 26: en la posada se busca compañia. Primero se conoce, luego se pide.
+    const inn = cards.find(card => card.id === 'posada');
+    if (inn) {
+        // Idea 42: con el grupo lleno, el nuevo se va a casa.
+        inn.actions.push(...recruitActions(currentRecruits(), {
+            bench: true,
+            fighting: combatEncounter.active, purse, partySize: partyMembers.length,
+        }));
+    }
+    return cards;
+}
+
+/** @returns {import('./game-engine/campaign/recruit.js').Recruit[]} */
+function currentRecruits() {
+    return readRecruits({ entries: lastConfidantEntries, party: partyMembers, met: chat_metadata?.[RECRUITS_MET_KEY] });
+}
+
+/**
+ * Conocer a un confidente: el narrador cuenta la escena de su ficha.
+ *
+ * @param {string} uid
+ * @returns {Promise<void>}
+ */
+async function meetRecruit(uid) {
+    const recruit = currentRecruits().find(r => r.uid === uid);
+    if (!recruit || !chat_metadata) return;
+    const met = Array.isArray(chat_metadata[RECRUITS_MET_KEY]) ? chat_metadata[RECRUITS_MET_KEY].map(String) : [];
+    chat_metadata[RECRUITS_MET_KEY] = [...new Set([...met, uid])];
+    saveMetadata();
+    await postForModel(describeMeeting(recruit, currentLocationName));
+    if (isShellOpen()) refreshGameShell();
+}
+
+/**
+ * Que un confidente se una al grupo.
+ *
+ * Su ficha del mundo pasa a ser de personaje: asi la sincronizacion del grupo lo reconoce
+ * como de los tuyos y no lo saca al recargar. Se lleva sus escenas de vinculo.
+ *
+ * @param {string} uid
+ * @returns {Promise<void>}
+ */
+async function hireRecruit(uid) {
+    const recruit = currentRecruits().find(r => r.uid === uid);
+    const worldName = String(chat_metadata?.[METADATA_KEY] || '');
+    if (!recruit || !worldName) return;
+    /** @type {any} */
+    let joined = null;
+    await worldWrite(async () => {
+        const data = await loadWorldInfo(worldName);
+        const entry = data?.entries?.[uid]
+            ?? Object.values(data?.entries ?? {}).find((/** @type {any} */ e) => String(e?.uid) === uid);
+        if (!data || !entry) return;
+        entry.dndData = {
+            ...entry.dndData,
+            entityType: 'character',
+            level: Math.max(1, Number(partyMembers[0]?.level) || 1),
+            mapPosition: { locationName: currentLocationName, gridX: 0, gridY: 0 },
+        };
+        joined = memberFromEntry(entry, worldName);
+        Object.assign(joined, {
+            motive: recruit.motive,
+            // Lo que le mueve: de su ficha, o de su motivo y su oficio. Es lo que decide de
+            // que opina y como habla en combate.
+            reasons: {
+                ...(joined.reasons ?? {}),
+                wants: wantsOf({ motive: recruit.motive, className: recruit.className, wants: entry.dndData.wants }),
+            },
+            confidant: true,
+            bondScenes: Array.isArray(entry.dndData.bondScenes) ? entry.dndData.bondScenes : [],
+            // Idea 45: lo que dice al llegar a cada sitio suyo va con él.
+            arrivals: Array.isArray(entry.dndData.arrivals) ? entry.dndData.arrivals : [],
+        });
+        // Antes de guardar el mundo: al guardarlo se sincroniza el grupo, y tiene que
+        // encontrarlo ya dentro para no meterlo dos veces. Idea 42: si no cabe, a casa.
+        if (whereHired(partyMembers) === 'bench' && chat_metadata) {
+            chat_metadata[BENCH_KEY] = [...readBench(chat_metadata[BENCH_KEY]), joined];
+            saveMetadata();
+            toastr.info(`${joined.name} se queda en casa, en el gremio: el grupo está lleno.`, 'Contratado');
+        } else {
+            partyMembers.push(joined);
+        }
+        savePartyState();
+        await saveWorldInfo(worldName, data, true);
+        delete lastConfidantEntries[uid];
+    });
+    if (!joined) return;
+    renderPartyMembers();
+    noteDeed(`${recruit.name} se unió al grupo en ${currentLocationName}.`);
+    rememberTogether(`${recruit.name} se unió al grupo en ${currentLocationName}.`, [String(partyMembers[0]?.name ?? ''), recruit.name]);
+    await postForModel(describeJoin(recruit));
+    if (isShellOpen()) refreshGameShell();
+}
+
+/**
+ * La escena escrita de un rango de vinculo, al narrador. Sin escena escrita, nada: el
+ * aviso de siempre ya dice que el vinculo ha subido.
+ *
+ * @param {any} member
+ * @param {number} rank
+ */
+function tellBondScene(member, rank) {
+    const scene = bondSceneFor(member, rank);
+    if (!scene) return;
+    void postForModel(`[ESCENA DE VÍNCULO · ${member.name}, rango ${rank}${scene.title ? `: ${scene.title}` : ''}] `
+        + `${scene.scene} Narra esta escena en tu voz, sin decidir por el jugador.`);
+}
+
+/**
+ * Apuntar algo que el grupo vivio junto.
+ *
+ * @param {string} text
+ * @param {string[]} who
+ */
+function rememberTogether(text, who) {
+    if (!chat_metadata) return;
+    const day = Math.max(1, Math.floor(Number(getCampaignCalendar()?.day) || 1));
+    chat_metadata[MEMORIES_KEY] = addMemory(chat_metadata[MEMORIES_KEY], { day, text, who: who.filter(Boolean) });
+    saveMetadata();
+}
+
+/** Lo ultimo que opino cada uno: no se repite la frase seguida. */
+/** @type {Map<string, string>} */
+const lastOpinion = new Map();
+
+/**
+ * Idea 27: al aceptar un encargo, quien tenga algo que decir lo dice.
+ *
+ * @param {any} contract
+ */
+function voiceOpinions(contract) {
+    const said = partyMembers.slice(1)
+        .filter(m => !m.dead && (Number(m.hp) || 0) > 0)
+        .map(m => ({ member: m, opinion: opinionOf(readReasons(m).wants, contract, { last: lastOpinion.get(String(m.id)) ?? '' }) }))
+        .filter(x => x.opinion);
+    for (const { member, opinion } of said.slice(0, 2)) {
+        if (!opinion) continue;
+        lastOpinion.set(String(member.id), opinion.line);
+        postCombatNarration(`💬 ${member.name}: «${opinion.line}»`);
+        toastr.info(`«${opinion.line}»`, `${opinion.mood === 'like' ? '👍' : '👎'} ${member.name}`, { timeOut: 6000 });
+    }
+    // Idea 28: y lo que opinan cuenta para el vínculo. Ya se ha visto: no se repite.
+    judgeDecision('', {
+        verdicts: approvalFromOpinions(said, m => readReasons(m).wants, `aceptar «${String(contract?.title ?? 'el encargo')}»`),
+        quiet: true,
+    });
+}
+
+/**
+ * Idea 58: rehacerse en el templo. Se deshacen las mejoras y se eligen otras tantas, las que
+ * se quieran de la lista entera. Se paga al confirmar.
+ *
+ * @param {string} memberId
+ * @returns {Promise<void>}
+ */
+async function respecMember(memberId) {
+    const member = partyMembers.find(m => String(m.id) === String(memberId));
+    if (!member) return;
+    const cost = respecCost(member);
+    const had = perksOf(member).map(p => p.id);
+    const body = $('<div class="rs-root"></div>');
+    body.append($('<h3></h3>').text(`Rehacer a ${member.name}`));
+    body.append($('<p></p>').text(`Elige ${had.length}, las que quieras. Cuesta ${cost} de oro.`));
+    const list = $('<div class="rs-perks"></div>');
+    for (const perk of PERKS) {
+        const box = $('<input type="checkbox" class="rs-perk">').attr('value', perk.id).prop('checked', had.includes(perk.id));
+        list.append($('<label class="rs-perk-row"></label>').append(box).append($('<span></span>').text(` ${perk.label}: ${perk.describe}`)));
+    }
+    body.append(list);
+    const ok = await new Popup(body[0], POPUP_TYPE.CONFIRM, '', { okButton: 'Rehacer', cancelButton: 'Dejarlo' }).show();
+    if (!ok) return;
+    const chosen = body.find('.rs-perk:checked').map((_, el) => String($(el).val())).get();
+    const redone = redoPerks(member, chosen);
+    if (!redone.ok || !redone.patch) {
+        toastr.warning(redone.reason, 'Rehacerse');
+        return;
+    }
+    if (!payFromParty(cost)) {
+        toastr.warning(`No llega el oro: cuesta ${cost}.`);
+        return;
+    }
+    Object.assign(member, redone.patch);
+    savePartyState();
+    renderPartyMembers();
+    const line = `${member.name} se rehace en el templo: ${perksOf(member).map(p => p.label).join(', ')}.`;
+    postCombatNarration(`🕯️ [TEMPLO] ${line}`);
+    toastr.success(line, 'Rehacerse');
+}
+
+/**
+ * Ideas 120 y 121: el herrero convierte lo cazado en algo: una capa de pieles, o el arma a +1.
+ *
+ * @param {string} actionId `craft:capa` o `craft:mejora:<id>`.
+ */
+function craftAtSmith(actionId) {
+    const [, recipe, memberId] = actionId.split(':');
+    const member = recipe === 'mejora' ? partyMembers.find(m => String(m.id) === memberId) : partyMembers[0];
+    const weapon = recipe === 'mejora' && member ? heldWeapon(member) : null;
+    const plan = canCraft({ recipe, party: partyMembers, purse: partyPurse(), weapon });
+    if (!plan.ok || !member) {
+        toastr.warning(plan.reason || 'No se puede.', 'La herrería');
+        return;
+    }
+    if (!payFromParty(plan.gold)) {
+        toastr.warning(`No llega el oro: cuesta ${plan.gold}.`);
+        return;
+    }
+    for (const used of plan.use) {
+        const owner = partyMembers.find(m => String(m.id) === used.memberId);
+        if (owner) removeItemFromInventory(/** @type {any} */ (owner), used.itemId);
+    }
+    const spent = plan.use.map(u => u.name).join(', ');
+    let line = '';
+    if (recipe === 'capa') {
+        addItemToInventory(/** @type {any} */ (member), createItem(/** @type {any} */ (cloakItem())));
+        line = `El herrero cose una capa de pieles para ${member.name} (${plan.gold} de oro, ${spent}).`;
+    } else if (weapon) {
+        Object.assign(weapon, upgradedWeapon(weapon));
+        line = `El herrero mejora el arma de ${member.name}: ahora es ${weapon.name} (${plan.gold} de oro, ${spent}).`;
+    }
+    savePartyState();
+    renderPartyMembers();
+    postCombatNarration(`⚒️ [HERRERÍA] ${line}`);
+    toastr.success(line, 'La herrería');
 }
 
 /**
@@ -3891,10 +5820,34 @@ async function runService(actionId) {
         if (member) {
             recordCampaignBondEvent(String(member.id), 'shared_downtime');
             advanceCampaignSlot();
+            const shared = lastMemoryWith(chat_metadata?.[MEMORIES_KEY], String(member.name));
             await postForModel(`[POSADA] Invitas a ${member.name} a una ronda en ${currentLocationName}. `
+                + (shared ? `Puede salir algo que vivisteis juntos: ${shared} ` : '')
                 + `Cuenta la conversación en un párrafo: que ${member.name} hable de lo suyo. No inventes hechos nuevos del mundo.`);
         }
-    } else if (actionId === 'inn-rumor') await hearRumor();
+    } else if (actionId.startsWith('inn-letter:')) await readLetter(String(action.target));
+    else if (actionId.startsWith('shop-buy:')) {
+        const hero = partyMembers[0];
+        if (hero) {
+            hero.items = hero.items ?? [];
+            addItemToInventory(/** @type {any} */ (hero), createItem(/** @type {any} */ (describeLootItem(String(action.target)))));
+            savePartyState();
+            postCombatNarration(`🛒 [TIENDA] ${hero.name} compra ${action.target} por ${action.cost} de oro.`);
+        }
+    } else if (actionId === 'shop-junk') sellItems(junkOf(partyMembers));
+    else if (actionId.startsWith('shop-sell:')) {
+        const [, memberId, itemId] = actionId.split(':');
+        const member = partyMembers.find(m => String(m.id) === memberId);
+        const item = (member?.items ?? []).find((/** @type {any} */ i) => String(i.id) === itemId);
+        if (member && item) sellItems([{ memberId, itemId, name: String(item.name), price: sellPrice(item) }]);
+    } else if (actionId === 'shop-haggle') haggle();
+    else if (actionId === 'shop-prices') {
+        const shop = shopHere();
+        const said = shop.reasons.length > 0 ? shop.reasons.join('\n') : 'Hoy, al precio de siempre: ni el sitio está caro ni os tratan distinto.';
+        void Popup.show.text('Los precios de hoy', said);
+    } else if (actionId.startsWith('inn-meet:')) await meetRecruit(String(action.target));
+    else if (actionId.startsWith('inn-hire:')) await hireRecruit(String(action.target));
+    else if (actionId === 'inn-rumor') await hearRumor();
     else if (actionId === 'inn-talk') draftInChat(`Le digo a ${action.target}: `);
     else if (smith) {
         const [, injuryId, name] = actionId.split(':');
@@ -3909,6 +5862,61 @@ async function runService(actionId) {
         }
         await postForModel(`[TEMPLO] En el templo de ${currentLocationName} os cosen y os vendan (${action.cost} de oro). `
             + 'Las heridas que se curan con tiempo quedan cerradas. Cuéntalo en dos frases.');
+    } else if (actionId === 'temple-identify') {
+        // Idea 135: se mira cada cosa; lo maldito se dice.
+        /** @type {string[]} */
+        const said = [];
+        for (const { memberId, itemId } of templeWork(partyMembers).unknown) {
+            const member = partyMembers.find(m => String(m.id) === memberId);
+            const index = (member?.items ?? []).findIndex((/** @type {any} */ i) => String(i.id) === itemId);
+            if (!member || index < 0) continue;
+            const seen = identify(/** @type {any} */ (member.items)[index]);
+            /** @type {any} */ (member.items)[index] = seen.item;
+            said.push(seen.line);
+        }
+        postCombatNarration(`🔎 [TEMPLO] ${said.join(' ')}`);
+        void Popup.show.text('Lo que traéis', said.join('\n'));
+    } else if (actionId === 'temple-lift') {
+        /** @type {string[]} */
+        const freed = [];
+        for (const { memberId, itemId } of templeWork(partyMembers).cursed) {
+            const member = partyMembers.find(m => String(m.id) === memberId);
+            const index = (member?.items ?? []).findIndex((/** @type {any} */ i) => String(i.id) === itemId);
+            if (!member || index < 0) continue;
+            freed.push(String(/** @type {any} */ (member.items)[index].name));
+            /** @type {any} */ (member.items)[index] = liftCurse(/** @type {any} */ (member.items)[index]);
+            syncCurse(member);
+        }
+        postCombatNarration(`🕯️ [TEMPLO] Quitan la maldición: ${freed.join(', ')}. Ya se puede soltar.`);
+    } else if (actionId.startsWith('inn-mount:')) {
+        // Idea 129: ya está pagada; al establo.
+        if (chat_metadata) chat_metadata[MOUNTS_KEY] = addMount(chat_metadata[MOUNTS_KEY], String(action.target));
+        postCombatNarration(`🐴 [POSADA] En el establo: ${describeMounts(chat_metadata?.[MOUNTS_KEY])}.`);
+    } else if (actionId === 'inn-dice') await playTavernDice();
+    else if (actionId.startsWith('temple-respec:')) await respecMember(String(action.target));
+    else if (actionId.startsWith('craft:')) craftAtSmith(actionId);
+    else if (actionId.startsWith('learn:')) {
+        const [, memberId, abilityId] = actionId.split(':');
+        await learnAbility(memberId, abilityId);
+    } else if (actionId.startsWith('lend:')) {
+        // Idea 125: pedir prestado porque se quiere.
+        const lent = borrow({ amount: Number(action.target), today: Math.max(1, campaignDay()), here: currentLocationName, debt: getDebt() });
+        const holder = partyMembers.find(m => !m.dead) ?? partyMembers[0];
+        if (lent.debt && holder && chat_metadata) {
+            chat_metadata[DEBT_KEY] = lent.debt;
+            holder.gold = (Number(holder.gold) || 0) + lent.debt.amount;
+            noteDeed(`${lent.debt.patronName} os prestó ${lent.debt.amount} de oro.`);
+            void postForModel(`💰 [CAMPAÑA] ${lent.line}`);
+            toastr.info(lent.line, 'Préstamo', { timeOut: 10000 });
+        } else toastr.warning(lent.line);
+    } else if (actionId === 'repay') {
+        const paid = repay(getDebt(), partyPurse());
+        if (paid.ok && payFromParty(paid.pay) && chat_metadata) {
+            delete chat_metadata[DEBT_KEY];
+            noteDeed(paid.line);
+            postCombatNarration(`💰 [CAMPAÑA] ${paid.line}`);
+            toastr.success(paid.line, 'Deuda saldada', { timeOut: 10000 });
+        } else toastr.warning(paid.line);
     } else if (actionId === 'board') await openGuild();
 
     savePartyState();
@@ -3951,6 +5959,572 @@ function bark(member, event, about = '') {
     setTimeout(() => bubble.remove(), 2600);
 }
 
+/**
+ * Idea 77: al ganar en un tablero con puertas cerradas con llave, la llave, una vez.
+ */
+function dropBoardKey() {
+    const context = getActiveBoardContext();
+    if (!context.board || lockedDoors(normalizeTerrain(context.board.terrain)).length === 0) return;
+    const hero = partyMembers[0];
+    const name = `Llave de ${currentBoardName || 'este sitio'}`;
+    if (!hero || (hero.items ?? []).some((/** @type {any} */ i) => i?.name === name)) return;
+    hero.items = hero.items ?? [];
+    addItemToInventory(/** @type {any} */ (hero), createItem(/** @type {any} */ ({ name, type: 'gear', category: 'gear', subcategory: 'tool', weight: 0.1, description: 'Abre las puertas cerradas de este sitio.' })));
+    savePartyState();
+    postCombatNarration(`🗝️ [COMBAT] Entre lo que dejaron: ${name}.`);
+}
+
+/**
+ * Idea 77: una puerta cerrada con llave. Con la llave se abre; si no, con maña o a golpes.
+ *
+ * @param {any} board
+ * @param {number} gx
+ * @param {number} gy
+ * @param {number} gridW
+ * @param {number} gridH
+ * @returns {Promise<void>}
+ */
+async function tryUnlock(board, gx, gy, gridW, gridH) {
+    const key = partyMembers.flatMap(m => (m.items ?? []).map((/** @type {any} */ item) => ({ member: m, item })))
+        .find(({ item }) => /llave|ganz[uú]a/i.test(String(item?.name ?? '')));
+    const body = $('<div class="tr-setback"></div>');
+    body.append($('<h3></h3>').text('Puerta cerrada con llave'));
+    body.append($('<p></p>').text(key ? `${key.member.name} lleva ${key.item.name}.` : 'Nadie lleva la llave. Se puede abrir con maña o echarla abajo.'));
+    const picked = await new Popup(body[0], POPUP_TYPE.TEXT, '', {
+        okButton: false,
+        cancelButton: 'Dejarla',
+        customButtons: [
+            ...(key ? [{ text: `Usar ${key.item.name}`, result: 31, classes: ['lk-key'] }] : []),
+            { text: 'Con maña (Juego de manos, CD 14)', result: 32, classes: ['lk-pick'] },
+            { text: 'A golpes (Atletismo, CD 16)', result: 33, classes: ['lk-force'] },
+        ],
+    }).show();
+    if (picked !== 31 && picked !== 32 && picked !== 33) return;
+    let opened = picked === 31;
+    if (!opened) {
+        const skill = picked === 32 ? 'sleight' : 'athletics';
+        const dc = picked === 32 ? 14 : 16;
+        const who = partyMembers.filter(m => (Number(m.hp) || 0) > 0)
+            .reduce((/** @type {any} */ top, m) => (!top || skillModifier(m, skill).modifier > skillModifier(top, skill).modifier ? m : top), null);
+        const roll = who ? rollCheck({ member: who, skill, rollD20: () => rollDiceDetailed('1d20', 20).total, dc }) : null;
+        if (roll) postCombatNarration(roll.said);
+        opened = Boolean(roll?.success);
+        if (!opened) {
+            toastr.info('La cerradura aguanta.', 'Puerta cerrada');
+            return;
+        }
+    }
+    // Idea 23: a golpes, la puerta no se abre: se rompe, y ya no se cierra.
+    board.terrain = picked === 33
+        ? breakDoor(normalizeTerrain(board.terrain), gx, gy)
+        : unlockDoor(normalizeTerrain(board.terrain), gx, gy);
+    persistBoardTerrain(board);
+    if (picked === 33) postCombatNarration(`🪓 [BOARD] La puerta de (${gx + 1}, ${gy + 1}) salta a golpes: queda rota, y ya no se cierra.`);
+    toggleBoardDoor(board, gx, gy, true, gridW, gridH);
+}
+
+/**
+ * Ideas 28 y 32: lo que les parece a los compañeros lo que acabas de hacer. Suma o resta
+ * un punto de vínculo y se ve; y si chocan dos, se cuenta al narrador y pesa en la moral de
+ * hoy.
+ *
+ * @param {string} decision Una de `DECISIONS`, o vacía si ya vienen juzgadas.
+ * @param {{verdicts?: any[], quiet?: boolean}} [options] Las ya juzgadas (las opiniones de un
+ *   encargo), y si no hace falta enseñarlas otra vez.
+ */
+function judgeDecision(decision, { verdicts = undefined, quiet = false } = {}) {
+    if (!chat_metadata) return;
+    const judged = verdicts ?? approvalFor({ party: partyMembers, decision, wantsOf: m => readReasons(m).wants });
+    if (judged.length === 0) return;
+    for (const verdict of judged) recordCampaignBondEvent(verdict.id, verdict.mood > 0 ? 'approved' : 'disapproved');
+    const { state, friction } = noteApproval(chat_metadata[APPROVAL_KEY], judged, campaignDay());
+    chat_metadata[APPROVAL_KEY] = state;
+    saveMetadata();
+    if (!quiet) toastr.info(describeApproval(judged), `Les parece: ${DECISIONS[decision]?.label ?? judged[0].what}`, { timeOut: 7000 });
+    if (friction) {
+        postCombatNarration(`⚡ [GRUPO] ${friction.line}`);
+        toastr.warning(friction.line, '⚡ Roce en el grupo', { timeOut: 9000 });
+        void postForModel(`[ROCE] ${friction.line} Cuéntalo en una o dos frases: discuten, y nadie se va.`);
+    }
+}
+
+/**
+ * Idea 87: los que el hilo necesita, que ni se mudan ni mueren por azar.
+ *
+ * @returns {string[]}
+ */
+function plotPeople() {
+    const plot = getPlot();
+    /** @type {string[]} */
+    const names = [];
+    for (const milestone of plot?.milestones ?? []) {
+        const asks = /** @type {any} */ (milestone.asks);
+        for (const ask of [asks, ...(Array.isArray(asks?.options) ? asks.options : [])]) {
+            if (ask?.npc) names.push(String(ask.npc));
+        }
+    }
+    return names;
+}
+
+/**
+ * Idea 87: apuntar en el mundo lo que le ha pasado a alguien. Muerto sigue en el mundo
+ * (el narrador tiene que saberlo), pero ya no atiende; mudado, vive en otro sitio.
+ *
+ * @param {any} data
+ * @param {import('./game-engine/world/people-fate.js').Fate} fate
+ */
+function applyFate(data, fate) {
+    const entry = Object.values(data?.entries ?? {})
+        .find((/** @type {any} */ e) => e?.dndData?.entityType === 'npc' && String(e.dndData.name || e.comment) === fate.name);
+    if (!entry) return;
+    const npc = lastWorldNpcs.find(n => n.name === fate.name);
+    if (fate.kind === 'muere') {
+        entry.dndData.dead = true;
+        entry.content = `${String(entry.content || '')}\n(Murió en ${fate.from}${fate.why ? ` ${fate.why}` : ''}.)`.trim();
+        if (npc) npc.dead = true;
+    } else {
+        entry.dndData.mapPosition = { ...(entry.dndData.mapPosition ?? {}), locationName: fate.to };
+        if (npc) npc.where = fate.to;
+    }
+}
+
+/**
+ * Idea 87: una mudanza sin guerra, una vez a la semana como mucho.
+ *
+ * @returns {Promise<void>}
+ */
+async function driftPeople() {
+    const worldName = String(chat_metadata?.[METADATA_KEY] || '');
+    if (!worldName) return;
+    const fate = driftOf({
+        npcs: lastWorldNpcs.filter(n => !n.dead),
+        neighbours: neighboursOf(getCurrentWorldLocationMaps()),
+        keep: plotPeople(),
+        random: createSeededRandom(derive(worldName, 'mudanza', String(campaignDay()))),
+    });
+    if (!fate) return;
+    await worldWrite(async () => {
+        const data = await loadWorldInfo(worldName);
+        if (!data) return;
+        applyFate(data, fate);
+        await saveWorldInfo(worldName, data, true);
+    });
+    const line = describeFate(fate);
+    toastr.info(line, 'Se sabe algo', { timeOut: 8000 });
+    void postForModel(`[MUNDO] ${line} Cuéntalo como algo que se comenta, en una frase. No inventes nada más.`);
+}
+
+/**
+ * Idea 67: si aquí se puede acampar.
+ *
+ * @returns {{ok: boolean, reason: string}}
+ */
+function campHere() {
+    const here = hereLocation();
+    return canCamp({ locationType: String(here?.locationType ?? here?.type ?? ''), fighting: combatEncounter.active });
+}
+
+/**
+ * Idea 67: acampar. El fuego, las guardias, con quién se charla y si se busca cena; y lo
+ * que pase de noche. Luego se duerme como un descanso largo.
+ *
+ * @returns {Promise<string>}
+ */
+async function campNight() {
+    const allowed = campHere();
+    if (!currentLocationName || !allowed.ok) {
+        toastr.info(allowed.reason || 'Aquí no se acampa.', 'Acampar');
+        return '';
+    }
+    const here = hereLocation();
+    const living = partyMembers.filter(m => !m.dead && (Number(m.hp) || 0) > 0);
+    const perception = (/** @type {any} */ m) => skillModifier(m, 'perception').modifier;
+    const suggested = defaultGuards(living, perception);
+    const weather = weatherHere();
+
+    const body = $('<div class="cp-root"></div>');
+    body.append($('<h3></h3>').text(`Acampar en ${currentLocationName}`));
+    if (weather) body.append($('<p class="cp-weather"></p>').text(`Hoy: ${weather}.`));
+    const fire = $('<input type="checkbox" class="cp-fire">').prop('checked', true);
+    body.append($('<label class="cp-row"></label>').append(fire)
+        .append($('<span></span>').text(' Encender fuego: abriga y deja cocinar, pero se ve de lejos.')));
+    body.append($('<div class="cp-sub"></div>').text(`Quién hace guardia (hasta ${MAX_GUARDS}):`));
+    for (const member of living) {
+        const box = $('<input type="checkbox" class="cp-guard">').attr('value', String(member.id))
+            .prop('checked', suggested.includes(String(member.id)));
+        const mod = perception(member);
+        body.append($('<label class="cp-row"></label>').append(box)
+            .append($('<span></span>').text(` ${member.name} (Percepción ${mod >= 0 ? '+' : ''}${mod})`)));
+    }
+    const talk = $('<select class="cp-talk"></select>').append($('<option value=""></option>').text('Nadie: cada uno a lo suyo'));
+    for (const member of living.slice(1)) talk.append($('<option></option>').attr('value', String(member.id)).text(member.name));
+    body.append($('<label class="cp-row"></label>').append($('<span></span>').text('Charlar junto al fuego con: ')).append(talk));
+    const cook = $('<input type="checkbox" class="cp-cook">').prop('checked', true);
+    body.append($('<label class="cp-row"></label>').append(cook)
+        .append($('<span></span>').text(' Buscar algo que cenar (Supervivencia, CD 12)')));
+    const ok = await new Popup(body[0], POPUP_TYPE.CONFIRM, '', { okButton: 'Pasar la noche', cancelButton: 'Mejor no' }).show();
+    if (!ok) return '';
+
+    const lit = Boolean(fire.prop('checked'));
+    const guardIds = body.find('.cp-guard:checked').map((_, el) => String($(el).val())).get().slice(0, MAX_GUARDS);
+    const guards = living.filter(m => guardIds.includes(String(m.id)));
+    const friend = living.find(m => String(m.id) === String(talk.val() || ''));
+    const wantsDinner = Boolean(cook.prop('checked'));
+    /** @type {string[]} */
+    const lines = [];
+
+    // La cena: con fuego, lo que se encuentre.
+    let caught = false;
+    if (wantsDinner && lit) {
+        const cooker = living.reduce((/** @type {any} */ top, m) => (!top || skillModifier(m, 'survival').modifier > skillModifier(top, 'survival').modifier ? m : top), null);
+        const roll = cooker ? rollCheck({ member: cooker, skill: 'survival', rollD20: () => rollDiceDetailed('1d20', 20).total, dc: 12 }) : null;
+        if (roll) {
+            postCombatNarration(roll.said);
+            caught = roll.success;
+        }
+    }
+
+    // La noche: el sitio, el fuego y de quién es la tierra.
+    const ruler = rulerOf(currentLocationName);
+    const hostile = Boolean(ruler) && standingWith(getCurrentWorldFactions(), String(ruler.id)) < 0;
+    const random = createSeededRandom(derive(String(chat_metadata?.[METADATA_KEY] || ''), 'noche', currentLocationName, String(campaignDay())));
+    const beasts = enemiesInSeason().map((/** @type {any} */ e) => String(e?.name || '')).filter(Boolean);
+    const night = resolveNight({
+        risk: nightRisk({ locationType: String(here?.locationType ?? here?.type ?? ''), fire: lit, hostile }),
+        guards,
+        random,
+        rollD20: () => rollDiceDetailed('1d20', 20).total,
+        perceptionOf: perception,
+        purse: partyPurse(),
+        intruder: beasts.length > 0 ? beasts[Math.floor(random() * beasts.length) % beasts.length] : '',
+    });
+    if (night.loss) payFromParty(night.loss.amount);
+    if (night.watch) postCombatNarration(`🎲 Guardia de ${night.watch.name}: ${night.watch.total} contra ${night.watch.dc} ${night.watch.success ? '✓' : '✗'}`);
+    lines.push(night.line);
+
+    // La charla.
+    if (friend) {
+        recordCampaignBondEvent(String(friend.id), 'shared_downtime');
+        lines.push(`${partyMembers[0]?.name ?? 'Alguien'} y ${friend.name} hablan hasta tarde${lit ? ' junto al fuego' : ''}.`);
+    }
+
+    // Y se duerme.
+    await takeRest('largo');
+    const morning = campMorning({ party: living, fire: lit, weather, cook: wantsDinner, caught });
+    for (const id of morning.restless) {
+        const member = partyMembers.find(m => String(m.id) === id);
+        if (!member) continue;
+        const needs = readNeeds(member);
+        member.needs = { ...needs, rest: needs.rest + RUSH_REST_HOURS };
+    }
+    if (morning.fed) for (const member of living) member.needs = relieve(member, 'ate');
+    lines.push(...morning.lines);
+    savePartyState();
+
+    const said = lines.join(' ');
+    postCombatNarration(`🏕️ [CAMPAMENTO] ${said}`);
+    toastr.info(lines.join('\n'), '🏕️ La noche', { timeOut: 12000 });
+    void postForModel(`[CAMPAMENTO] Noche en ${currentLocationName}. ${said} Cuéntalo en un párrafo. No inventes nada que no esté aquí.`);
+    if (isShellOpen()) refreshGameShell();
+    return said;
+}
+
+/**
+ * Idea 139: apuntar lo que ofrece el narrador, para que quien juega lo coja si quiere.
+ *
+ * @param {any} name
+ * @param {any} note
+ * @param {any} to
+ * @returns {string}
+ */
+function offerItem(name, note, to) {
+    if (!chat_metadata) return 'No hay partida.';
+    const result = addOffer(chat_metadata[OFFERS_KEY], { name: String(name ?? ''), note: String(note ?? ''), to: String(to ?? '') }, { day: campaignDay() });
+    if (!result.added) return `No se ofrece: ${result.reason}`;
+    chat_metadata[OFFERS_KEY] = result.offers;
+    saveMetadata();
+    if (isShellOpen()) refreshGameShell();
+    return 'Ofrecido. El jugador lo verá como opción; no narres que ya lo lleva.';
+}
+
+/**
+ * Idea 139: coger lo que ofreció el narrador. Entra lo que el motor conoce, y si es mágico
+ * o no lo conoce, una curiosidad que no hace nada.
+ *
+ * @param {string} idOrName
+ * @returns {string}
+ */
+function acceptOffer(idOrName) {
+    if (!chat_metadata) return '';
+    const { offer, offers } = takeOffer(chat_metadata[OFFERS_KEY], idOrName);
+    if (!offer) {
+        toastr.info('No hay nada así esperando.', 'Coger');
+        return '';
+    }
+    const catalogue = [...worldItemCatalogue, ...declaredLootNames().map(name => describeLootItem(name))];
+    const { item, known } = resolveOffer(offer, catalogue);
+    const holder = partyMembers.find(m => !m.dead && String(m.name).toLowerCase() === offer.to.toLowerCase())
+        ?? partyMembers.find(m => !m.dead) ?? partyMembers[0];
+    if (!holder) return '';
+    const spec = known ? describeLootItem(String(item.name), String(item.rarity ?? ''), worldItemCatalogue) : item;
+    addItemToInventory(/** @type {any} */ (holder), createItem(/** @type {any} */ (spec)));
+    chat_metadata[OFFERS_KEY] = offers;
+    saveMetadata();
+    savePartyState();
+    const line = `${holder.name} coge ${offer.name}${known ? '' : ' (una curiosidad: no hace nada que el juego sepa)'}.`;
+    postCombatNarration(`🎁 [CAMPAÑA] ${line}`);
+    toastr.success(line, 'Coger');
+    if (isShellOpen()) refreshGameShell();
+    return line;
+}
+
+/**
+ * Idea 145: la cara de quien habla, delante de su párrafo. Solo se dibuja: el texto del
+ * mensaje no cambia, y lo que lee el modelo tampoco.
+ *
+ * @param {number} messageId
+ */
+function decorateSpeakers(messageId) {
+    const message = chat?.[messageId];
+    if (!message || message.is_user || message.is_system || !chat_metadata?.[METADATA_KEY]) return;
+    const block = /** @type {HTMLElement|null} */ (document.querySelector(`#chat .mes[mesid="${messageId}"] .mes_text`));
+    if (!block) return;
+    /** @type {Map<string, string>} */
+    const faces = new Map();
+    for (const npc of lastWorldNpcs) if (!npc.dead && npc.name) faces.set(npc.name, '');
+    for (const member of partyMembers) if (member?.name) faces.set(String(member.name), String(member.avatar || ''));
+    const names = [...faces.keys()];
+    // Un mensaje de un solo párrafo puede venir sin <p>: entonces el bloque entero.
+    const paragraphs = block.querySelectorAll('p');
+    const list = paragraphs.length > 0 ? [...paragraphs] : [block];
+    for (const paragraph of list) {
+        if (paragraph.querySelector('.sp-badge')) continue;
+        const who = speakerOf(paragraph.textContent || '', names);
+        if (!who) continue;
+        const badge = document.createElement('span');
+        badge.className = 'sp-badge';
+        badge.title = who;
+        badge.dataset.speaker = who;
+        const avatar = faces.get(who) ?? '';
+        if (avatar && !/user-default/.test(avatar)) {
+            const img = document.createElement('img');
+            img.src = avatar;
+            img.alt = '';
+            badge.appendChild(img);
+        } else {
+            badge.textContent = initialsOf(who);
+            badge.style.setProperty('--sp-hue', String(hueOf(who)));
+        }
+        paragraph.prepend(badge);
+    }
+}
+
+/**
+ * Idea 180: el código de este mundo, para que otro lo juegue igual.
+ *
+ * @returns {Promise<void>}
+ */
+async function shareWorld() {
+    const worldName = String(chat_metadata?.[METADATA_KEY] || '');
+    const data = worldName ? await loadWorldInfo(worldName) : null;
+    const code = makeShareCode({ seed: seedOfWorld(data?.metadata), origin: String(data?.metadata?.origin ?? '') });
+    if (!code) {
+        toastr.info('Este mundo no tiene semilla: no se puede compartir con un código.', 'Compartir');
+        return;
+    }
+    const body = $('<div class="sw-root"></div>');
+    body.append($('<h3></h3>').text('Compartir este mundo'));
+    body.append($('<p></p>').text('Quien escriba este código en la semilla del taller juega el mismo mundo. Lo que se cambie a mano en el taller no viaja en él.'));
+    const box = $('<input type="text" class="text_pole sw-code" readonly>').val(code);
+    const copy = $('<button class="menu_button sw-copy" type="button"></button>').text('Copiar');
+    copy.on('click', async () => {
+        try {
+            await navigator.clipboard.writeText(code);
+            toastr.success('Copiado.', 'Compartir');
+        } catch {
+            box.trigger('select');
+        }
+    });
+    body.append($('<div class="sw-row"></div>').append(box).append(copy));
+    await new Popup(body[0], POPUP_TYPE.TEXT, '', { okButton: 'Cerrar' }).show();
+}
+
+/**
+ * Idea 39: la moral del grupo, de sus vinculos, su hambre y sus heridas.
+ *
+ * @returns {{value: -1|0|1, label: string}}
+ */
+function partyMorale() {
+    const bonds = getCampaignBonds();
+    return groupMorale({
+        ranks: partyMembers.slice(1).map(m => getBondProgress(bonds, String(m.id)).rank),
+        hungry: partyMembers.filter(m => /hambre|sed/i.test(describeNeeds(m))).length,
+        wounded: partyMembers.filter(m => (Number(m.hp) || 0) / Math.max(1, Number(m.maxHp) || 1) < 0.5).length,
+        size: partyMembers.length,
+        mourning: partyMembers.filter(m => mourningFor(m, campaignDay())).length,
+        // Idea 32: los roces de hoy también pesan.
+        friction: frictionsOn(chat_metadata?.[APPROVAL_KEY], campaignDay()),
+    });
+}
+
+/**
+ * Idea 9: lo que pisa un enemigo al que empujan encima de algo (trampa, fuego).
+ *
+ * @param {any} enemy
+ * @param {{x: number, y: number}} cell
+ * @returns {string[]}
+ */
+function shovedInto(enemy, cell) {
+    const board = getActiveBoardContext().board;
+    if (!board || hazardsAt(board, cell.x, cell.y).length === 0) return [];
+    const { fired, hazards } = enterCell(board, cell);
+    board.hazards = hazards;
+    persistBoardTerrain(board);
+    /** @type {string[]} */
+    const lines = [];
+    for (const hazard of fired) {
+        if (hazard.effect === 'damage' && hazard.damageDice) {
+            const roll = rollWith(hazard.damageDice, nextRandom);
+            enemy.currentHp = Math.max(0, (Number(enemy.currentHp) || 0) - roll.total);
+            lines.push(`🔥 Cae encima de ${hazard.name.toLowerCase()}: ${roll.total} de daño.`);
+            if (enemy.currentHp === 0) lines.push(`☠️ ${enemy.name} no se levanta.`);
+        } else if (hazard.effect === 'condition' && hazard.condition) {
+            applyTimedCondition(enemy, String(enemy.instanceId), hazard.condition, 2);
+            lines.push(`🪤 ${hazard.name}: ${enemy.name} queda ${String(hazard.condition).toLowerCase()}.`);
+        } else {
+            lines.push(`🪤 ${describeHazard(hazard)}.`);
+        }
+    }
+    return lines;
+}
+
+/**
+ * Si algo le tiene sujeto en su sitio (agarrado o apresado).
+ *
+ * @param {any} creature
+ * @returns {boolean}
+ */
+function heldInPlace(creature) {
+    const said = (Array.isArray(creature?.activeConditions) ? creature.activeConditions : []).map((/** @type {string} */ c) => String(c).toLowerCase());
+    return said.includes('grappled') || said.includes('restrained');
+}
+
+/**
+ * El id de ficha de un enemigo en el tablero: los enemigos van en negativo, por orden.
+ *
+ * @param {any} enemy
+ * @returns {number}
+ */
+function enemyTokenId(enemy) {
+    return -(combatEncounter.enemies.indexOf(enemy) + 1);
+}
+
+/** Lo ultimo que grito cada enemigo, para no repetirlo. */
+let lastEnemyBark = '';
+
+/**
+ * Idea 190: un enemigo grita algo, a veces. Sin llamar al modelo.
+ *
+ * @param {any} enemy
+ * @param {'hit'|'hurt'|'ally_down'|'surrender'} event
+ */
+function enemyBark(enemy, event) {
+    if (!enemy) return;
+    const line = chooseEnemyBark({ event, profile: enemy.profile, boss: Boolean(enemy.boss), last: lastEnemyBark, random: Math.random });
+    if (!line) return;
+    lastEnemyBark = line;
+    postCombatNarration(`🗯️ ${enemy.name}: «${line}»`);
+    floatOnToken(enemyTokenId(enemy), line, 'bark');
+}
+
+/**
+ * Idea 188: algo que sale flotando de una ficha (daño, un grito). Se pinta un poco despues,
+ * cuando el tablero ya se ha redibujado con el golpe.
+ *
+ * @param {number|string} tokenId
+ * @param {string} text
+ * @param {'damage'|'crit'|'heal'|'bark'} kind
+ */
+function floatOnToken(tokenId, text, kind) {
+    setTimeout(() => {
+        const token = [...document.querySelectorAll('.wm-token')]
+            .find(t => t instanceof HTMLElement && t.dataset.tokenId === String(tokenId) && t.offsetParent);
+        if (!token) return;
+        const node = document.createElement('div');
+        node.className = kind === 'bark' ? 'wm-bark wm-bark-enemy' : `wm-float wm-float-${kind}`;
+        node.textContent = text;
+        token.appendChild(node);
+        setTimeout(() => node.remove(), kind === 'bark' ? 2600 : 1400);
+    }, 250);
+}
+
+/**
+ * Ideas 44 y 47: apuntar una hazaña, y contar si trae apodo o rasgo nuevo.
+ *
+ * @param {any} member
+ * @param {'kill'|'crit'|'downed'|'rescue'|'hit'} kind
+ * @param {string} [about]
+ */
+function recordFeat(member, kind, about = '') {
+    if (!member) return;
+    member.feats = noteFeat(member, kind, about);
+    if (kind === 'hit' && about && member.feats.hitsWith[about] === KNACK_AT) {
+        const line = `${member.name} le ha cogido el tranquillo a ${about}: +1 al daño con ella.`;
+        postCombatNarration(`🗡️ ${line}`);
+        toastr.info(line, 'Soltura', { timeOut: 8000 });
+        noteDeed(line);
+    }
+    if (kind === 'kill' && about && member.feats.killsBy[about] === TRAIT_AT) {
+        const line = `${member.name} ya sabe cómo pelear contra ${about}: +1 al atacarle.`;
+        postCombatNarration(`🎯 ${line}`);
+        toastr.info(line, 'Rasgo nuevo', { timeOut: 8000 });
+        noteDeed(line);
+    }
+    checkNickname(member);
+}
+
+/**
+ * Si alguien se ha ganado un apodo, ponerselo y contarlo.
+ *
+ * @param {any} member
+ */
+function checkNickname(member) {
+    const nickname = newNickname(member);
+    if (nickname) {
+        member.nickname = nickname.name;
+        const line = `Desde hoy le llaman ${member.name} «${nickname.name}»: ${nickname.why}.`;
+        postCombatNarration(`🏷️ ${line}`);
+        toastr.success(line, 'Un apodo', { timeOut: 9000 });
+        noteDeed(line);
+        rememberTogether(line, [String(member.name)]);
+    }
+}
+
+/**
+ * Si el grupo tiene flanqueado a este enemigo desde la casilla de este miembro.
+ *
+ * @param {any} member
+ * @param {any} enemy
+ * @returns {boolean}
+ */
+function partyFlanks(member, enemy) {
+    const cell = (/** @type {any} */ m) => ({ x: Number(m?.mapPosition?.gridX) || 0, y: Number(m?.mapPosition?.gridY) || 0 });
+    return flankedFrom(cell(member), { x: Number(enemy.gridX) || 0, y: Number(enemy.gridY) || 0 },
+        getLivingPartyMembers().filter(m => String(m.id) !== String(member.id)).map(cell));
+}
+
+/**
+ * Idea 3: si quien ataca tiene a un compañero suyo pegado al objetivo por el otro lado.
+ *
+ * @param {{x: number, y: number}} from
+ * @param {{x: number, y: number}} at
+ * @param {Array<{x: number, y: number}>} friends
+ * @returns {boolean}
+ */
+function flankedFrom(from, at, friends) {
+    return isFlanked(from, at, friends);
+}
+
 /** @returns {number} Los rumores que quedan por oir aqui. */
 function rumorsLeftHere() {
     const heard = Array.isArray(chat_metadata?.[RUMORS_HEARD_KEY]) ? chat_metadata[RUMORS_HEARD_KEY] : [];
@@ -3972,15 +6546,33 @@ export async function beginCampaignPlot(heroNote = '') {
     if (plot && chat_metadata && !chat_metadata[PLOT_ANNOUNCED_KEY]) {
         chat_metadata[PLOT_ANNOUNCED_KEY] = true;
         saveMetadata();
-        const opening = startPlot(plot);
-        const lines = opening.opened.map(m => m.scene).filter(Boolean);
+        const opening = startPlot(plot, Math.max(1, campaignDay()));
+        const lines = opening.opened.filter(m => !m.hidden).map(m => m.scene).filter(Boolean);
         if (lines.length > 0 && heroNote) lines.push(heroLine(heroNote));
         if (lines.length > 0) {
             lines.push('Cuéntalo en uno o dos párrafos, en el tono de la campaña. No inventes nada que no esté aquí.');
             await postForModel(`[HILO] ${lines.join('\n')}`)
                 .catch(error => console.error('[party] opening note failed', error));
         }
+        await tellOmens(plot);
     }
+}
+
+/**
+ * Idea 114: el presagio, al empezar. Al narrador, para que lo diga tal cual; y en el chat,
+ * para quien juega. Una vez.
+ *
+ * @param {import('./game-engine/campaign/plot.js').Plot} plot
+ * @returns {Promise<void>}
+ */
+async function tellOmens(plot) {
+    if (!chat_metadata || chat_metadata.omensTold || (plot.omens ?? []).length === 0) return;
+    chat_metadata.omensTold = true;
+    saveMetadata();
+    const said = plot.omens.map(o => `«${o.text}»`).join(' ');
+    postCombatNarration(`🔮 [HILO] El presagio: ${said}`);
+    await postForModel(`[PRESAGIO] Alguien lo murmura, o se sueña. Dilo tal cual, sin explicarlo: ${said}`)
+        .catch(error => console.error('[party] omens note failed', error));
 }
 
 /**
@@ -3994,13 +6586,21 @@ function refreshWorldMemoryPrompt() {
         deeds: chat_metadata[DEEDS_KEY],
         factions: getCurrentWorldFactions(),
         debt: getDebt(),
-        focus: describeFocus(focusOf(getPlot(), chat_metadata[PLOT_STATE_KEY])),
+        focus: describeFocus(focusOf(getPlot(), chat_metadata[PLOT_STATE_KEY], campaignDay())),
         today: Math.max(1, Math.floor(Number(getCampaignCalendar()?.day) || 1)),
+        memories: memoryLines(chat_metadata[MEMORIES_KEY], Math.max(1, Math.floor(Number(getCampaignCalendar()?.day) || 1))),
+        here: localMemory(),
+        // Idea 148: en modo ahorro, lo justo.
+        compact: saverOn(),
     }) : '';
+    // Idea 149: el largo elegido en la partida manda sobre el de la ficha.
+    setExtensionPrompt(promptKey('rules', 'length', 'ctx'), chat_metadata ? lengthNote(String(chat_metadata[LENGTH_KEY] ?? '')) : '',
+        extension_prompt_types.IN_PROMPT, 0, false, extension_prompt_roles.SYSTEM);
     setExtensionPrompt(key, block, extension_prompt_types.IN_PROMPT, 0, false, extension_prompt_roles.SYSTEM);
 
-    // C1: como esta el grupo. Va con lo que cambia en cada turno, al final del prompt.
-    const body = chat_metadata ? bodyLine({
+    // C1: como esta el grupo. Va con lo que cambia en cada turno, al final del prompt. En
+    // modo ahorro no va: es lo primero que se puede quitar sin que la historia lo note.
+    const body = chat_metadata && !saverOn() ? bodyLine({
         party: partyMembers,
         day: Math.max(1, Math.floor(Number(getCampaignCalendar()?.day) || 1)),
         slot: getCurrentSlotLabel(),
@@ -4008,6 +6608,11 @@ function refreshWorldMemoryPrompt() {
         place: currentLocationName,
     }) : '';
     setExtensionPrompt(promptKey('combat', 'body', 'ctx'), body, extension_prompt_types.IN_PROMPT, 0, false, extension_prompt_roles.SYSTEM);
+
+    // Idea 142: el tono de la escena, una frase con lo que cambia en cada turno. Vacío si no
+    // toca ninguno: un bloque vacío no cuesta nada.
+    const tone = chat_metadata ? toneNote({ chosen: String(chat_metadata[TONE_KEY] || ''), fighting: combatEncounter.active }) : '';
+    setExtensionPrompt(promptKey('combat', 'tone', 'ctx'), tone, extension_prompt_types.IN_PROMPT, 0, false, extension_prompt_roles.SYSTEM);
 }
 
 /** @returns {import('./game-engine/campaign/patronage.js').Debt|null} */
@@ -4182,7 +6787,15 @@ const advanceCampaignDay = () => {
  * @param {number} days
  * @returns {Promise<void>}
  */
-async function passFactionDays(days) {
+function passFactionDays(days) {
+    return worldWrite(() => passFactionDaysNow(days));
+}
+
+/**
+ * @param {number} days
+ * @returns {Promise<void>}
+ */
+async function passFactionDaysNow(days) {
     const worldName = String(chat_metadata?.[METADATA_KEY] || '');
     if (!worldName || days <= 0) return;
 
@@ -4194,20 +6807,42 @@ async function passFactionDays(days) {
         const { factions, events } = tickFactions({
             factions: before, days, here: currentLocationName,
         });
+        // Idea 117: la meta de una faccion se nota antes de cumplirse.
+        events.push(...clockWarnings(before, factions));
 
         // Lo que se cumple cambia la lista de sitios, que es lo que el viaje ya lee.
         let locations = Array.isArray(data.metadata.locationMaps) ? data.metadata.locationMaps : [];
         let people = factions;
         /** @type {string[]} */
         const changed = [];
+        /** @type {Array<import('./game-engine/world/people-fate.js').Fate>} */
+        const fates = [];
         for (const event of events.filter(e => e.kind === 'cumple')) {
             notePlot({ kind: 'clock', faction: String(event.faction) });
             const who = people.find(f => f.id === event.faction);
             if (!who) continue;
-            const applied = applyOutcome({ locations, factions: people, outcome: outcomeOf(who) });
+            const outcome = outcomeOf(who);
+            const applied = applyOutcome({ locations, factions: people, outcome });
+            // Idea 87: la gente de allí no sigue igual: alguno muere y otro se va.
+            const fallen = outcome.kind === 'cae' ? people.find(f => f.id === outcome.other) : null;
+            const place = outcome.kind === 'toma' ? String(outcome.place || '') : String(fallen?.seat || '');
+            if (place) {
+                fates.push(...fateAt({
+                    npcs: lastWorldNpcs.filter(n => !n.dead),
+                    place,
+                    cause: outcome.kind === 'toma' ? `cuando ${who.name} lo tomó` : `cuando cayó ${fallen?.name ?? 'su gente'}`,
+                    neighbours: neighboursOf(locations),
+                    keep: plotPeople(),
+                    random: createSeededRandom(derive(worldName, 'gente', place, String(campaignDay()))),
+                }));
+            }
             locations = applied.locations;
             people = applied.factions;
             changed.push(...applied.changed);
+        }
+        for (const fate of fates) {
+            applyFate(data, fate);
+            changed.push(describeFate(fate));
         }
 
         data.metadata.factions = people;
@@ -4222,6 +6857,12 @@ async function passFactionDays(days) {
         // Y solo se cuenta lo que llega hasta aqui: el motor mueve a todos, pero lo que
         // pasa en la otra punta del mundo se sabra al llegar.
         const news = newsFor({ events, here: currentLocationName, locations, factions: people });
+        // Lo que no se oye desde aqui se guarda: se contara al llegar a donde se oiga.
+        if (chat_metadata) {
+            const today = Math.max(1, Math.floor(Number(getCampaignCalendar()?.day) || 1));
+            chat_metadata[NEWS_KEY] = queueNews(chat_metadata[NEWS_KEY], events, news, today);
+            saveMetadata();
+        }
         if (news.length === 0) return;
 
         for (const line of news) toastr.info(line, 'Se sabe algo', { timeOut: 8000 });
@@ -4240,14 +6881,59 @@ async function passFactionDays(days) {
 /** @param {string} characterId @param {string} eventType */
 const recordCampaignBondEvent = (characterId, eventType) => {
     const result = campaign.recordBond(characterId, eventType);
+    // Idea 30: quien llega a vínculo 3 te pide lo suyo.
+    offerPersonalQuests();
     if (isShellOpen()) refreshGameShell();
     return result;
 };
+
+/**
+ * Idea 30: quien llega a vínculo 3 te pide lo suyo. Va al tablón, con su nombre, y se le
+ * ofrece una sola vez.
+ */
+function offerPersonalQuests() {
+    if (!chat_metadata || !chat_metadata[METADATA_KEY]) return;
+    const bonds = getCampaignBonds();
+    const asked = Array.isArray(chat_metadata[PERSONAL_ASKED_KEY]) ? chat_metadata[PERSONAL_ASKED_KEY].map(String) : [];
+    const due = duePersonalQuests({ party: partyMembers, rankOf: m => getBondProgress(bonds, String(m.id)).rank, asked });
+    if (due.length === 0) return;
+    const places = getCurrentWorldLocationMaps().map((/** @type {any} */ l) => String(l?.name || '')).filter(Boolean);
+    // Sin los sitios del mundo cargados todavía, se espera: un encargo en ninguna parte
+    // mandaría al grupo a un sitio inventado.
+    if (places.length === 0) return;
+    const board = Array.isArray(chat_metadata[BOARD_KEY]) ? chat_metadata[BOARD_KEY] : [];
+    const bestiary = getCurrentWorldEnemies().map((/** @type {any} */ e) => String(e?.name || '')).filter(Boolean);
+    for (const member of due) {
+        const reasons = readReasons(member);
+        const random = createSeededRandom(derive(String(chat_metadata[METADATA_KEY] || ''), 'personal', String(member.id)));
+        const quest = personalQuestFor({
+            member, wants: reasons.wants, hates: reasons.hates, places, here: currentLocationName, bestiary, random, day: campaignDay(),
+        });
+        board.unshift(quest);
+        asked.push(String(member.id));
+        const said = describePersonalAsk(member, quest);
+        toastr.info(said, `🤝 ${member.name}`, { timeOut: 10000 });
+        postCombatNarration(`🤝 [GRUPO] ${said}`);
+        void postForModel(`[ENCARGO PERSONAL] ${member.name} le pide al grupo algo suyo: ${quest.title}. Que lo pida con sus palabras, en una o dos frases.`);
+    }
+    chat_metadata[BOARD_KEY] = board;
+    chat_metadata[PERSONAL_ASKED_KEY] = asked;
+    saveMetadata();
+}
 const getCurrentSlotLabel = () => campaign.getSlotLabel();
 /** @param {'corto'|'largo'} kind @returns {Promise<string>} */
 const takeRest = async (kind) => {
     const before = campaignDay();
     const result = await campaign.rest(kind);
+    // Idea 41: con un sanador en el grupo, un descanso corto cura algo mas.
+    const healer = kind === 'corto' ? withJob(partyMembers, 'sanador') : null;
+    if (healer) {
+        for (const member of partyMembers.filter(m => (Number(m.hp) || 0) > 0)) {
+            member.hp = Math.min(Number(member.maxHp) || 1, (Number(member.hp) || 0) + rollDiceDetailed('1d6', 6).total);
+        }
+        savePartyState();
+        postCombatNarration(`🩹 [CAMPAÑA] ${healer.name} cura heridas mientras descansáis.`);
+    }
     if (isShellOpen()) refreshGameShell();
     // Un descanso largo adelanta el dia por dentro: sin esto, dormir era la forma de
     // pararles el reloj.
@@ -4300,6 +6986,7 @@ function resolveUltimateStrike(rawTargetName) {
     }
 
     target.currentHp = Math.max(0, (Number(target.currentHp) || 0) - plan.damage);
+    combatEncounter.tally = noteDealt(combatEncounter.tally, plan.actorId, plan.damage, target.currentHp === 0);
     saveCampaignState(null, spendPerk(getCampaignBonds(), plan.actorId, 'ultimate'));
     saveCombatState();
 
@@ -4338,9 +7025,19 @@ function recordContradictions(messageId) {
         slotLabel: getCurrentSlotLabel(),
         locationName: currentLocationName,
         combatActive: Boolean(combatEncounter.active),
+        // Idea 141: quien ha muerto de verdad no habla.
+        dead: [
+            ...readGraves(chat_metadata?.[GRAVES_KEY]).map(g => ({ name: g.name, day: g.day })),
+            ...partyMembers.filter(m => m.dead && !readGraves(chat_metadata?.[GRAVES_KEY]).some(g => g.name === m.name))
+                .map(m => ({ name: String(m.name) })),
+        ],
     });
 
     if (found.length === 0) return;
+    // Idea 141: esto sí se ve. Un muerto que habla rompe la partida para quien la juega.
+    for (const item of found.filter(f => f.kind === 'muerto que habla')) {
+        toastr.warning(`${item.message} El motor lo tiene por muerto: puedes regenerar la respuesta.`, '⚠️ El narrador se ha equivocado', { timeOut: 15000 });
+    }
 
     if (chat_metadata) {
         chat_metadata[CONTRADICTIONS_KEY] = appendContradictions(
@@ -4520,7 +7217,7 @@ function renderCampaignTab() {
  * @param {string} actorId
  * @param {import('./dnd-system.js').EnemyInstance} target
  */
-function resolveFollowUpAttack(actorId, target) {
+function resolveFollowUpAttack(actorId, target, how = 'ataca de seguimiento a') {
     const ally = partyMembers.find(m => String(m.id) === String(actorId));
     if (!ally || (target.currentHp || 0) <= 0) return;
 
@@ -4544,8 +7241,8 @@ function resolveFollowUpAttack(actorId, target) {
     });
 
     const lines = [];
-    lines.push(`🤝 ${ally.name} ataca de seguimiento a ${target.name}.`);
-    lines.push(`🎲 Tirada de ataque: d20(${attackRoll.total}) ${attackMod >= 0 ? '+' : ''}${attackMod} = ${attackTotal} vs AC ${targetAc}${describeCover(cover)}`);
+    lines.push(`🤝 ${ally.name} ${how} ${target.name}.`);
+    lines.push(attackLine({ who: ally.name, at: target.name, total: attackTotal, ac: targetAc, hit: isHit, natural: attackRoll.total, modifier: attackMod, cover }));
 
     if (!isHit) {
         lines.push('❌ Resultado: fallo.');
@@ -4561,8 +7258,11 @@ function resolveFollowUpAttack(actorId, target) {
     const totalDamage = Math.max(1, damageRoll.total + (critRoll?.total || 0) + damageMod);
 
     target.currentHp = Math.max(0, (target.currentHp || 0) - totalDamage);
+    combatEncounter.tally = noteDealt(combatEncounter.tally, ally.id, totalDamage, target.currentHp === 0);
+    floatOnToken(enemyTokenId(target), `-${totalDamage}`, 'damage');
+    if (target.currentHp === 0) recordFeat(ally, 'kill', String(target.name));
     lines.push(`✅ Resultado: impacto${isCrit ? ' critico' : ''}.`);
-    lines.push(`💥 Tirada de dano: ${damageFormula}(${damageRoll.total}) + mod(${damageMod}) = ${totalDamage}`);
+    lines.push(damageLine({ total: totalDamage, formula: damageFormula, rolled: damageRoll.total, modifier: damageMod }));
     lines.push(`❤️ Estado de ${target.name}: ${target.currentHp}/${target.maxHp}`);
 
     if (target.currentHp === 0) lines.push(`☠️ ${target.name} cae derrotado.`);
@@ -4818,12 +7518,17 @@ function checkScenarioOutcome() {
  */
 function endCombat(reason = 'ended') {
     postCombatNarration('🏁 [COMBAT] El combate termina.');
-    postCombatNarration(buildCombatSummary(/** @type {'victory'|'defeat'|'manual'|'ended'} */ (reason)));
+    postCombatNarration(buildCombatSummary(/** @type {'victory'|'defeat'|'manual'|'ended'} */ (reason === 'fled' ? 'manual' : reason)));
 
     // Winning has to be worth something, or the tactical engine underneath is doing
     // careful work for nothing.
+    /** @type {ReturnType<typeof awardEncounterLoot>} */
+    let loot = null;
+    if (reason === 'fled') countStat('fled');
     if (reason === 'victory') {
-        awardEncounterLoot(combatEncounter.enemies.filter(e => (e.currentHp || 0) <= 0));
+        countStat('wins');
+        loot = awardEncounterLoot(combatEncounter.enemies.filter(e => (e.currentHp || 0) <= 0));
+        if (loot?.gold) countStat('gold', loot.gold);
 
         // C7: alguien lo celebra.
         const cheering = partyMembers.filter(m => String(m.id) !== String(partyMembers[0]?.id) && (Number(m.hp) || 0) > 0);
@@ -4834,6 +7539,8 @@ function endCombat(reason = 'ended') {
             notePlot({ kind: 'defeat', enemy: String(fallen.name) });
         }
         notePlot({ kind: 'win', place: currentLocationName, board: currentBoardName });
+        // Idea 52: el sitio sabe quién le ha quitado ese peso de encima.
+        raiseFame(currentLocationName);
 
         // Surviving a fight together is a recorded fact, which is the whole point of the
         // bond design: the engine decides it happened, the model writes about it later.
@@ -4841,7 +7548,9 @@ function endCombat(reason = 'ended') {
         if (survivors.length > 1) {
             let bonds = getCampaignBonds();
             for (const member of survivors) {
-                bonds = recordBondEvent(bonds, String(member.id), 'combat_together').state;
+                const together = recordBondEvent(bonds, String(member.id), 'combat_together');
+                bonds = together.state;
+                if (together.rankedUp) tellBondScene(member, together.rankAfter);
             }
             saveCampaignState(null, bonds);
         }
@@ -4857,15 +7566,137 @@ function endCombat(reason = 'ended') {
     const epilogue = buildEpiloguePrompt([], {
         rounds: Number(combatEncounter.round) || 1,
         victory: reason === 'victory',
-        abandoned: reason === 'manual',
+        abandoned: reason === 'manual' || reason === 'fled',
         survivors: partyMembers.filter(m => (m.hp || 0) > 0).map(m => m.name),
         defeated: combatEncounter.enemies.filter(e => (e.currentHp || 0) <= 0).map(e => e.name),
     });
     postForModel(epilogue).catch(error => console.error('[party] could not post the combat epilogue', error));
 
+    // Idea 191: ganar se celebra, con la cuenta delante.
+    if (reason === 'victory') {
+        const report = buildVictoryReport({
+            tally: combatEncounter.tally,
+            party: partyMembers,
+            rounds: Number(combatEncounter.round) || 1,
+            loot,
+            defeated: combatEncounter.enemies.filter(e => (e.currentHp || 0) <= 0).length,
+        });
+        // Idea 63: lo nuevo, frente a lo que ya lleva quien mas lo aprovecha.
+        report.upgrades = (loot?.items ?? []).map(item => bestFor(item, partyMembers)).filter(Boolean);
+        showVictoryScreen(report);
+        // Idea 34: lo que se recuerda de este combate.
+        const where = currentBoardName || currentLocationName;
+        for (const row of report.rows.filter(r => r.downed)) {
+            rememberTogether(`${row.name} cayó en ${where} y se levantó.`, [row.name]);
+        }
+        // Idea 7: quien se rindio se queda con el grupo, hasta que se decida que hacer.
+        const surrendered = combatEncounter.enemies.filter(e => e.surrendered).map(e => String(e.name));
+        if (surrendered.length > 0 && chat_metadata) {
+            chat_metadata[PRISONERS_KEY] = takePrisoners(chat_metadata[PRISONERS_KEY], surrendered, {
+                day: Math.max(1, Math.floor(Number(getCampaignCalendar()?.day) || 1)), place: where,
+            });
+            saveMetadata();
+            postCombatNarration(`⛓️ [COMBAT] Prisioneros: ${surrendered.join(', ')}. Se puede interrogarlos, entregarlos o soltarlos.`);
+            showTip('prisoners');
+        }
+        // Idea 77: si el tablero tiene puertas con llave, el que mandaba la llevaba encima.
+        dropBoardKey();
+    }
+
     combatEncounter = createEmptyCombatEncounter();
     combatBoardSelection = { tokenId: null, boardName: '', locationName: '' };
     saveCombatState();
+}
+
+/**
+ * La pantalla de victoria: quien hizo que, que os lleváis y quien cayo por el camino.
+ *
+ * No tapa la partida: es una tarjeta que se cierra sola o al pulsarla, porque detras
+ * sigue el epilogo del narrador, que es lo que importa leer.
+ *
+ * @param {import('./game-engine/combat/tally.js').VictoryReport} report
+ */
+function showVictoryScreen(report) {
+    $('.vs-card').remove();
+    const card = $('<div class="vs-card" role="status"></div>');
+    card.append($('<div class="vs-title"></div>').text(`🏆 ${report.title}`));
+    const table = $('<div class="vs-rows"></div>');
+    for (const row of report.rows) {
+        const line = $('<div class="vs-row"></div>').toggleClass('vs-best', row.best);
+        line.append($('<span class="vs-name"></span>').text(`${row.best ? '⭐ ' : ''}${row.name}`));
+        line.append($('<span class="vs-num"></span>').text(`${row.dealt} hecho`));
+        line.append($('<span class="vs-num"></span>').text(`${row.kills} tumbados`));
+        line.append($('<span class="vs-num"></span>').text(`${row.taken} recibido`));
+        table.append(line);
+    }
+    card.append(table);
+    if (report.best) card.append($('<div class="vs-line"></div>').text(report.best));
+    card.append($('<div class="vs-line vs-loot"></div>').text(`Os lleváis: ${report.loot}`));
+    for (const scar of report.scars) card.append($('<div class="vs-line vs-scar"></div>').text(scar));
+    for (const upgrade of report.upgrades ?? []) card.append($('<div class="vs-line vs-upgrade"></div>').text(`⬆️ ${upgrade}`));
+    card.append($('<div class="vs-hint"></div>').text('Pulsa para cerrar'));
+    card.on('click', () => card.remove());
+    $('body').append(card);
+    setTimeout(() => card.remove(), 20000);
+}
+
+/**
+ * Idea 108: la tarjeta de «Anteriormente…». No tapa nada (no se puede pulsar) y se va sola.
+ */
+function showRecap() {
+    const today = Math.max(1, Math.floor(Number(getCampaignCalendar()?.day) || 1));
+    const recap = buildRecap({
+        day: today,
+        place: currentLocationName,
+        focus: focusOf(getPlot(), chat_metadata?.[PLOT_STATE_KEY], campaignDay()),
+        deeds: Array.isArray(chat_metadata?.[DEEDS_KEY]) ? chat_metadata[DEEDS_KEY] : [],
+        memory: memoryLines(chat_metadata?.[MEMORIES_KEY], today).slice(-1)[0] ?? '',
+        taken: chat_metadata?.[TAKEN_KEY] ?? null,
+    });
+    if (!recap) return;
+    $('.rc-card').remove();
+    const card = $('<div class="rc-card" role="status"></div>');
+    card.append($('<div class="rc-title"></div>').text(recap.title));
+    for (const line of recap.lines) card.append($('<div class="rc-line"></div>').text(line));
+    $('body').append(card);
+    setTimeout(() => card.addClass('rc-leaving'), 11000);
+    setTimeout(() => card.remove(), 12000);
+}
+
+/**
+ * Idea 22: huir, con su precio dicho antes.
+ *
+ * @returns {Promise<void>}
+ */
+async function retreatFromCombat() {
+    if (!combatEncounter.active) return;
+    const cell = (/** @type {any} */ pos) => ({ x: Number(pos?.gridX) || 0, y: Number(pos?.gridY) || 0 });
+    const plan = planRetreat({
+        party: partyMembers.map(m => ({ id: m.id, name: m.name, ...cell(m.mapPosition), hp: Number(m.hp) || 0 })),
+        enemies: getAliveEnemies().map(e => ({ id: e.instanceId, name: e.name, ...cell(e), hp: Number(e.currentHp) || 0 })),
+        disengaged: readManeuvers(combatEncounter.maneuvers).disengaged,
+        distanceFeet: getDistanceInFeet,
+    });
+    const go = await Popup.show.confirm('¿Huir del combate?', plan.summary);
+    if (!go || !combatEncounter.active) return;
+
+    const lines = ['🏃 [COMBAT] El grupo se retira.'];
+    for (const blow of plan.blows) {
+        const enemy = getEnemyByInstanceId(blow.enemyId);
+        const member = partyMembers.find(m => String(m.id) === blow.memberId);
+        if (enemy && member && (Number(enemy.currentHp) || 0) > 0) {
+            lines.push(`↩️ ${enemy.name} aprovecha que ${member.name} se da la vuelta.`);
+            lines.push(resolveEnemyAttackOn(enemy, member));
+        }
+    }
+    postCombatNarration(lines.filter(Boolean).join('\n'));
+    noteDeed(`Huisteis de ${currentBoardName || currentLocationName || 'un combate'}.`);
+    savePartyState();
+    renderPartyMembers();
+    endCombat('fled');
+    renderLocationMapsPreview();
+    // Idea 28: huir también se juzga.
+    judgeDecision('retirada');
 }
 
 /**
@@ -4886,6 +7717,8 @@ function buildEnemyTokens() {
             hp: e.currentHp,
             maxHp: e.maxHp,
             isEnemy: true,
+            // Idea 13: que se lea el tablero de un vistazo.
+            role: roleOf(e),
             statuses: statusMarkers(e.activeConditions),
             sizeCells: sizeToCells(e.size),
         });
@@ -5018,7 +7851,8 @@ export function getBoardContextSnapshot() {
 function buildTokens(locationFilter) {
     /** @type {import('./world-map-renderer.js').TokenData[]} */
     const result = [];
-    for (const m of partyMembers) {
+    // Los muertos no andan por el tablero: están en su tumba (idea 36).
+    for (const m of partyMembers.filter(member => !member.dead)) {
         const pos = m.mapPosition || { locationName: '', gridX: 0, gridY: 0 };
         if (locationFilter && pos.locationName !== locationFilter) continue;
         result.push({
@@ -5029,6 +7863,7 @@ function buildTokens(locationFilter) {
             gridY: pos.gridY || 0,
             level: m.level,
             className: m.class,
+            weapon: String(heldWeapon(m)?.name ?? ''),
             hp: m.hp,
             maxHp: m.maxHp,
             // Drawn over the token, so what is wrong with a character is visible on the
@@ -5098,7 +7933,32 @@ function openTargetCard(member, enemy) {
     const distanceFeet = getDistanceInFeet(
         origin.gridX || 0, origin.gridY || 0, enemy.gridX || 0, enemy.gridY || 0,
     );
-    const { cover } = getTargetArmorClass(enemy, member);
+    const { ac, cover } = getTargetArmorClass(enemy, member);
+
+    // Idea 2: lo que va a pasar si ataca, con las mismas cuentas que la tirada.
+    const forecastRange = getAttackRangeFeet(member);
+    const forecastEdge = attackEdge({
+        targetId: String(enemy.instanceId),
+        targetConditions: enemy.activeConditions ?? [],
+        attackerConditions: member.activeConditions ?? [],
+        distanceFeet,
+        maneuvers: combatEncounter.maneuvers,
+        byParty: true,
+        flanked: partyFlanks(member, enemy),
+        attackerId: String(member.id),
+        hindered: visibilityPenalties(boardVisibility(), distanceFeet),
+    });
+    const forecast = describeForecast({
+        attackMod: getPlayerAttackModifier(member, forecastRange) + traitBonus(member, enemy.name) + perkBonus(member, 'attack') + weaponBonus(member),
+        armorClass: ac,
+        mode: forecastEdge.mode,
+        reasons: forecastEdge.reasons,
+        formula: getPlayerDamageFormula(member, forecastRange),
+        damageBonus: Math.max(0, getPlayerAttackModifier(member, forecastRange)),
+        targetHp: Number(enemy.currentHp) || 0,
+    });
+    const intent = planFor(enemy);
+    const intentTarget = partyMembers.find(m => String(m.id) === String(intent.targetId ?? intent.focusId ?? ''));
 
     // Las que este personaje se sabe y van sobre un enemigo, cada una con su veredicto:
     // un conjuro de 120 ft no esta "fuera de alcance" porque la espada llegue a 5.
@@ -5141,6 +8001,8 @@ function openTargetCard(member, enemy) {
     const root = $('<div class="tc-card"></div>');
     root.append($('<div class="tc-name"></div>').text(card.name));
     root.append($('<div class="tc-stats"></div>').text(describeTargetCard(card)));
+    if (card.inRange) root.append($('<div class="tc-forecast"></div>').text(forecast.text));
+    if (intentTarget) root.append($('<div class="tc-intent"></div>').text(`Va a por ${intentTarget.name}.`));
 
     const bar = $('<div class="tc-hp"></div>');
     const pct = card.maxHp > 0 ? Math.round((card.hp / card.maxHp) * 100) : 0;
@@ -5193,7 +8055,7 @@ function closeTargetCard() {
  *
  * @param {number} gridX
  * @param {number} gridY
- * @returns {{cells: Array<{gridX: number, gridY: number}>, feet: number, ok: boolean}|null}
+ * @returns {{cells: Array<{gridX: number, gridY: number}>, feet: number, ok: boolean, provokes: string[]}|null}
  */
 function previewMovement(gridX, gridY) {
     const member = getCurrentActingMember();
@@ -5213,10 +8075,22 @@ function previewMovement(gridX, gridY) {
     if (!path || path.length === 0) return null;
 
     const feet = getPathCost(terrain, path) * 5;
+    // Idea 1: quien te golpearia al salir de su alcance, con la misma cuenta que el golpe.
+    const disengaged = readManeuvers(combatEncounter.maneuvers).disengaged.includes(String(member.id));
+    const provokes = disengaged ? [] : findOpportunityAttacks({
+        mover: member,
+        from: { x: origin.gridX || 0, y: origin.gridY || 0 },
+        to: { x: gridX, y: gridY },
+        threats: getAliveEnemies(),
+        reachOf: (/** @type {any} */ enemy) => Number(enemy?.attackRangeFeet) || 5,
+        isAlive: (/** @type {any} */ enemy) => (Number(enemy?.currentHp) || 0) > 0,
+        canReact: (/** @type {any} */ enemy) => !usedReactions.has(String(enemy.instanceId)),
+    }).map(attack => String(attack.threat.name));
     return {
         cells: path.slice(1).map(cell => ({ gridX: cell.x, gridY: cell.y })),
         feet,
         ok: feet <= getRemainingMovementFeet(member),
+        provokes,
     };
 }
 
@@ -5346,6 +8220,284 @@ function handlePlayerCombatMove(rawValue) {
 }
 
 /**
+ * Ideas 73 y 90: el tiempo de hoy aquí. Si se ha llegado hoy de viaje, el del último día del
+ * camino; si no, el que toca con la semilla del mundo, del sitio y del día.
+ *
+ * @returns {string}
+ */
+function weatherHere() {
+    const today = Math.max(1, campaignDay());
+    const known = chat_metadata?.[WEATHER_TODAY_KEY];
+    if (known && Number(known.day) === today && String(known.place) === String(currentLocationName)) return String(known.weather || '');
+    if (!lastCompendium?.has?.('mundo')) return '';
+    const biome = String(hereLocation()?.biome || '');
+    const climates = seasonClimates(lastCompendium.find('mundo', { kind: 'bioma', biome })[0]?.climates ?? [], currentSeason());
+    const random = createSeededRandom(derive(String(chat_metadata?.[METADATA_KEY] || ''), 'tiempo', String(currentLocationName), String(today)));
+    return String(rollWeather({ days: 1, table: lastCompendium.find('mundo', { kind: 'clima' }), climates, random })[0] ?? '');
+}
+
+/**
+ * Ideas 73 y 90: cómo se ve en el tablero ahora: el tiempo, la hora y si hay luz.
+ *
+ * @returns {{maxFeet: number|null, reasons: string[], windy: boolean, wet: boolean, note: string}}
+ */
+function boardVisibility() {
+    const { board } = getActiveBoardContext();
+    return combatVisibility({
+        weather: weatherHere(),
+        slot: getCurrentSlotLabel(),
+        indoors: isIndoors(board, hereLocation()),
+        lit: carriesLight(partyMembers),
+    });
+}
+
+/**
+ * Idea 11: si hay dónde esconderse, mirando desde cada enemigo en pie.
+ *
+ * @param {any} member
+ * @returns {{ok: boolean, reason: string}}
+ */
+function hideCheck(member) {
+    const x = Number(member?.mapPosition?.gridX) || 0;
+    const y = Number(member?.mapPosition?.gridY) || 0;
+    const terrain = getActiveBoardTerrain();
+    return canHide(getAliveEnemies().map((/** @type {any} */ e) => ({
+        name: String(e.name),
+        cover: Number(getCoverAlongLine(terrain, Number(e.gridX) || 0, Number(e.gridY) || 0, x, y, getCoverBonus)) || 0,
+    })));
+}
+
+/**
+ * Idea 146: un ataque, dicho como todas las tiradas.
+ *
+ * @param {{who: string, at: string, total: number, ac: number, hit: boolean, natural: number, modifier: number, cover?: number, edge?: string}} input
+ * @returns {string}
+ */
+function attackLine({ who, at, total, ac, hit, natural, modifier, cover = 0, edge = '' }) {
+    const covered = describeCover(cover).trim().replace(/^\(|\)$/g, '');
+    const edged = String(edge ?? '').trim().replace(/^·\s*/, '');
+    return rollLine({
+        what: 'Ataque', who, at, total, against: ac, label: 'CA', success: hit, natural, modifier,
+        extra: [covered, edged].filter(Boolean).join(' · '),
+    });
+}
+
+/**
+ * Idea 122: lanzar el aceite o la red. Gasta la acción y el objeto.
+ *
+ * Es un ataque a distancia improvisado: d20 más la Destreza contra la CA, con la ventaja o
+ * la desventaja que toque. El aceite deja la casilla ardiendo aunque falle.
+ *
+ * @param {string} kind `aceite` o `red`.
+ * @param {string} targetId
+ * @returns {string}
+ */
+function throwItem(kind, targetId) {
+    const entry = getCurrentTurnEntry();
+    const member = getCurrentActingMember();
+    if (!combatEncounter.active || !entry || entry.isEnemy || !member) {
+        toastr.warning('No hay un turno de jugador activo.');
+        return '';
+    }
+    const spec = THROWABLES[kind];
+    const carried = throwablesOf(member).find(t => t.kind === kind);
+    if (!spec || !carried) {
+        toastr.warning('No lleva nada así para lanzar.');
+        return '';
+    }
+    if (!hasAction(combatEncounter, 'action')) {
+        toastr.warning('Tu accion de este turno ya fue usada.');
+        return '';
+    }
+    const target = getAliveEnemies().find((/** @type {any} */ e) => String(e.instanceId) === String(targetId))
+        ?? resolveCombatTargetByName(targetId);
+    const x = Number(member.mapPosition?.gridX) || 0;
+    const y = Number(member.mapPosition?.gridY) || 0;
+    const distanceFeet = target ? getDistanceInFeet(x, y, Number(target.gridX) || 0, Number(target.gridY) || 0) : Infinity;
+    if (!target || distanceFeet > spec.rangeFeet) {
+        toastr.warning(`${spec.label}: tiene que ser alguien a menos de ${spec.rangeFeet} pies.`);
+        return '';
+    }
+
+    Object.assign(combatEncounter, useAction(combatEncounter, 'action'));
+    consumeItemInInventory(/** @type {any} */ (member), carried.itemId);
+    const modifier = getAbilityModifier(member.dexterity || 10);
+    const edge = attackEdge({
+        targetId: String(target.instanceId),
+        targetConditions: target.activeConditions ?? [],
+        attackerConditions: member.activeConditions ?? [],
+        distanceFeet,
+        maneuvers: combatEncounter.maneuvers,
+        byParty: true,
+        attackerId: String(member.id),
+        hindered: visibilityPenalties(boardVisibility(), distanceFeet),
+    });
+    if (edge.usesHidden) combatEncounter.maneuvers = revealHidden(combatEncounter.maneuvers, String(member.id));
+    const edged = rollWithEdge(() => rollDiceDetailed('1d20', 20).total, edge.mode);
+    const natural = edged.natural;
+    const total = natural + modifier;
+    const { ac } = getTargetArmorClass(target, member);
+    const hit = natural === 20 || (natural !== 1 && total >= ac);
+    showCombatDiceRoll({
+        title: `${member.name} lanza`,
+        subtitle: `${spec.name} contra ${target.name}`,
+        formula: `1d20${modifier >= 0 ? '+' : ''}${modifier}`,
+        detail: `d20(${natural}) ${modifier >= 0 ? '+' : ''}${modifier} = ${total} contra CA ${ac}`,
+        total,
+        dc: ac,
+        natural,
+        glyph: 'd20',
+    });
+
+    /** @type {string[]} */
+    const lines = [`🫙 ${member.name} lanza ${spec.name.toLowerCase()} a ${target.name}.`];
+    lines.push(rollLine({
+        what: 'Lanzar', who: member.name, at: target.name, total, against: ac, label: 'CA', success: hit, natural, modifier,
+        extra: describeEdge(edged, edge.mode, edge.reasons),
+    }));
+    if (kind === 'aceite') {
+        if (hit) {
+            const burn = rollDiceDetailed(spec.damageDice || '2d4', 4).total;
+            target.currentHp = Math.max(0, (Number(target.currentHp) || 0) - burn);
+            combatEncounter.tally = noteDealt(combatEncounter.tally, member.id, burn, target.currentHp === 0);
+            floatOnToken(enemyTokenId(target), `-${burn}`, 'damage');
+            lines.push(`🔥 ${target.name} arde: ${burn} de daño.`);
+            if (target.currentHp === 0) {
+                lines.push(`☠️ ${target.name} cae.`);
+                recordFeat(member, 'kill', String(target.name));
+            }
+        } else {
+            lines.push('❌ El frasco no le da, pero revienta a sus pies.');
+        }
+        // Aunque falle: el aceite cae y arde. El primero que lo pise, se quema. Con lluvia,
+        // no prende (idea 73).
+        const board = getActiveBoardContext().board;
+        if (boardVisibility().wet) {
+            lines.push('💧 Con esta agua, el aceite no prende.');
+        } else if (board) {
+            board.hazards = [...(Array.isArray(board.hazards) ? board.hazards : []),
+                burningPuddle({ x: Number(target.gridX) || 0, y: Number(target.gridY) || 0, round: Number(combatEncounter.round) || 1 })];
+            persistBoardTerrain(board);
+            lines.push('🔥 El suelo arde donde cayó: el primero que lo pise, se quema.');
+        }
+    } else if (hit) {
+        applyTimedCondition(target, String(target.instanceId), spec.condition || 'Restrained', spec.rounds || 2);
+        lines.push(`🕸️ ${target.name} queda enredado en la red: no se mueve, y pegarle va con ventaja.`);
+    } else {
+        lines.push('❌ La red cae al suelo, vacía.');
+    }
+
+    saveCombatState();
+    savePartyState();
+    postCombatNarration(`[COMBAT] ${lines.join('\n')}`);
+    if (!checkScenarioOutcome() && getAliveEnemies().length === 0 && !judgeCurrentScenario()) {
+        postCombatNarration('🏆 [COMBAT] Todos los enemigos han sido derrotados.');
+        endCombat('victory');
+    }
+    renderLocationMapsPreview();
+    return `${member.name}: ${spec.label}`;
+}
+
+/**
+ * Idea 8: coger lo que hay a mano —una caja, un barril, una silla de al lado— y tirárselo a
+ * alguien. Con la Fuerza, sin competencia: es un ataque improvisado. Y la caja se rompe al
+ * caer, así que quien se cubría detrás, ya no.
+ *
+ * @param {string} targetId
+ * @returns {string}
+ */
+function throwScenery(targetId) {
+    const entry = getCurrentTurnEntry();
+    const member = getCurrentActingMember();
+    if (!combatEncounter.active || !entry || entry.isEnemy || !member) {
+        toastr.warning('No hay un turno de jugador activo.');
+        return '';
+    }
+    if (!hasAction(combatEncounter, 'action')) {
+        toastr.warning('Tu accion de este turno ya fue usada.');
+        return '';
+    }
+    const context = getActiveBoardContext();
+    const x = Number(member.mapPosition?.gridX) || 0;
+    const y = Number(member.mapPosition?.gridY) || 0;
+    const spot = sceneryNear(context.terrain, x, y, context.gridWidth, context.gridHeight)[0];
+    if (!spot || !context.board) {
+        toastr.warning('No hay nada a mano que lanzar: una caja o un barril al lado.');
+        return '';
+    }
+    const target = getAliveEnemies().find((/** @type {any} */ e) => String(e.instanceId) === String(targetId))
+        ?? resolveCombatTargetByName(targetId);
+    const distanceFeet = target ? getDistanceInFeet(x, y, Number(target.gridX) || 0, Number(target.gridY) || 0) : Infinity;
+    if (!target || distanceFeet > SCENERY.rangeFeet) {
+        toastr.warning(`${SCENERY.label}: tiene que ser alguien a menos de ${SCENERY.rangeFeet} pies.`);
+        return '';
+    }
+
+    Object.assign(combatEncounter, useAction(combatEncounter, 'action'));
+    const strength = getAbilityModifier(member.strength || 10);
+    const edge = attackEdge({
+        targetId: String(target.instanceId),
+        targetConditions: target.activeConditions ?? [],
+        attackerConditions: member.activeConditions ?? [],
+        distanceFeet,
+        maneuvers: combatEncounter.maneuvers,
+        byParty: true,
+        attackerId: String(member.id),
+        hindered: visibilityPenalties(boardVisibility(), distanceFeet),
+    });
+    if (edge.usesHidden) combatEncounter.maneuvers = revealHidden(combatEncounter.maneuvers, String(member.id));
+    const edged = rollWithEdge(() => rollDiceDetailed('1d20', 20).total, edge.mode);
+    const natural = edged.natural;
+    const total = natural + strength;
+    const { ac } = getTargetArmorClass(target, member);
+    const hit = natural === 20 || (natural !== 1 && total >= ac);
+    soundCue(hit ? 'hit' : 'miss');
+    showCombatDiceRoll({
+        title: `${member.name} lanza`,
+        subtitle: `Lo que hay a mano contra ${target.name}`,
+        formula: `1d20${strength >= 0 ? '+' : ''}${strength}`,
+        detail: `d20(${natural}) ${strength >= 0 ? '+' : ''}${strength} = ${total} contra CA ${ac}`,
+        total,
+        dc: ac,
+        natural,
+        glyph: 'd20',
+    });
+
+    /** @type {string[]} */
+    const lines = [`📦 ${member.name} coge lo que hay a mano en (${spot.x + 1}, ${spot.y + 1}) y se lo tira a ${target.name}.`];
+    lines.push(rollLine({
+        what: 'Lanzar', who: member.name, at: target.name, total, against: ac, label: 'CA', success: hit, natural, modifier: strength,
+        extra: describeEdge(edged, edge.mode, edge.reasons),
+    }));
+    if (hit) {
+        const damage = Math.max(1, rollDiceDetailed(SCENERY.damageDice, 6).total + strength);
+        target.currentHp = Math.max(0, (Number(target.currentHp) || 0) - damage);
+        combatEncounter.tally = noteDealt(combatEncounter.tally, member.id, damage, target.currentHp === 0);
+        floatOnToken(enemyTokenId(target), `-${damage}`, 'damage');
+        lines.push(`💥 Le da de lleno: ${damage} de daño.`);
+        if (target.currentHp === 0) {
+            lines.push(`☠️ ${target.name} cae.`);
+            recordFeat(member, 'kill', String(target.name));
+        }
+    } else {
+        lines.push('❌ No le da.');
+    }
+    // Se rompe al caer: donde estaba, ya no hay dónde cubrirse.
+    context.board.terrain = setTerrainCell(context.terrain, spot.x, spot.y, 'floor');
+    persistBoardTerrain(context.board);
+    lines.push('🪵 Se rompe al caer: ahí ya no hay dónde cubrirse.');
+
+    saveCombatState();
+    postCombatNarration(`[COMBAT] ${lines.join('\n')}`);
+    if (!checkScenarioOutcome() && getAliveEnemies().length === 0 && !judgeCurrentScenario()) {
+        postCombatNarration('🏆 [COMBAT] Todos los enemigos han sido derrotados.');
+        endCombat('victory');
+    }
+    renderLocationMapsPreview();
+    return `${member.name}: ${SCENERY.label}`;
+}
+
+/**
  * Una maniobra: esquivar, destrabarse, empujar o ayudar.
  *
  * Gasta la accion, como en 5e. El boton de la barra de combate, el comando
@@ -5385,6 +8537,15 @@ function performManeuver(kind, targetId = '') {
         }
     }
 
+    // Idea 11: sin cobertura no se gasta la acción en intentarlo.
+    if (kind === 'esconderse') {
+        const hide = hideCheck(member);
+        if (!hide.ok) {
+            toastr.warning(hide.reason, 'Esconderse');
+            return '';
+        }
+    }
+
     Object.assign(combatEncounter, useAction(combatEncounter, 'action'));
     const id = String(member.id);
     /** @type {string[]} */
@@ -5395,9 +8556,59 @@ function performManeuver(kind, targetId = '') {
         lines.push(kind === 'esquivar'
             ? `🛡️ ${member.name} se cubre: hasta su proximo turno, atacarle es con desventaja.`
             : `🏃 ${member.name} se destraba: este turno se mueve sin dar ataques de oportunidad.`);
+    } else if (kind === 'preparar') {
+        // Idea 4: el golpe espera al primero que se acerque.
+        combatEncounter.readied = readyAttack(combatEncounter.readied, id, Number(combatEncounter.round) || 1);
+        lines.push(`⏳ ${member.name} prepara el golpe: el primero que se le acerque antes de su turno se lo lleva.`);
     } else if (kind === 'ayudar') {
         combatEncounter.maneuvers = recordManeuver(combatEncounter.maneuvers, 'ayudar', id, String(target.instanceId));
         lines.push(`🤝 ${member.name} distrae a ${target.name}: el proximo ataque del grupo contra el va con ventaja.`);
+    } else if (kind === 'esconderse') {
+        // Idea 11: con algo delante de cada uno que mira, Sigilo contra su mejor Percepción.
+        const dc = hideDC(getAliveEnemies().map((/** @type {any} */ e) => ({ wisdom: Number(e.wisdom) || 10 })));
+        const { modifier } = skillModifier(member, 'stealth');
+        const natural = rollDiceDetailed('1d20', 20).total;
+        const total = natural + modifier;
+        showCombatDiceRoll({
+            title: `${member.name} se esconde`,
+            subtitle: 'Sigilo contra su Percepción',
+            formula: `1d20${modifier >= 0 ? '+' : ''}${modifier}`,
+            detail: `d20(${natural}) ${modifier >= 0 ? '+' : ''}${modifier} = ${total} contra ${dc}`,
+            total,
+            dc,
+            natural,
+            glyph: 'd20',
+        });
+        lines.push(rollLine({ what: 'Sigilo', who: member.name, total, against: dc, label: 'Percepción', success: total >= dc, natural, modifier }));
+        if (total >= dc) {
+            combatEncounter.maneuvers = recordManeuver(combatEncounter.maneuvers, 'esconderse', id);
+            lines.push(`🫥 ${member.name} desaparece tras la cobertura: su próximo ataque, con ventaja.`);
+        } else {
+            lines.push(`👀 Le han visto: ${member.name} no consigue esconderse.`);
+        }
+    } else if (kind === 'agarrar') {
+        // Idea 10: Atletismo contra el mejor de Atletismo y Acrobacias del otro, como empujar.
+        const mine = getAbilityModifier(member.strength || 10);
+        const theirs = Math.max(getAbilityModifier(target.strength || 10), getAbilityModifier(target.dexterity || 10));
+        const attackRoll = rollDiceDetailed('1d20', 20).total;
+        const defenseRoll = rollDiceDetailed('1d20', 20).total;
+        showCombatDiceRoll({
+            title: `${member.name} agarra`,
+            subtitle: `Contra ${target.name}`,
+            formula: `1d20${mine >= 0 ? '+' : ''}${mine}`,
+            detail: `d20(${attackRoll}) ${mine >= 0 ? '+' : ''}${mine} = ${attackRoll + mine} contra ${defenseRoll + theirs}`,
+            total: attackRoll + mine,
+            dc: defenseRoll + theirs + 1,
+            natural: attackRoll,
+            glyph: 'd20',
+        });
+        lines.push(rollLine({ what: 'Agarrar', who: member.name, at: target.name, total: attackRoll + mine, against: defenseRoll + theirs, label: '', success: attackRoll + mine > defenseRoll + theirs, natural: attackRoll, modifier: mine }));
+        if (attackRoll + mine > defenseRoll + theirs) {
+            applyTimedCondition(target, String(target.instanceId), 'Grappled', 1);
+            lines.push(`✅ ${target.name} queda agarrado: no se mueve hasta el próximo turno de ${member.name}.`);
+        } else {
+            lines.push(`❌ ${target.name} se suelta.`);
+        }
     } else {
         // Empujar: Atletismo contra el mejor de Atletismo y Acrobacias del otro.
         const mine = getAbilityModifier(member.strength || 10);
@@ -5431,7 +8642,7 @@ function performManeuver(kind, targetId = '') {
             natural: attackRoll,
             glyph: 'd20',
         });
-        lines.push(`💪 ${member.name} empuja a ${target.name}: ${attackTotal} contra ${defenseTotal}.`);
+        lines.push(rollLine({ what: 'Empujar', who: member.name, at: target.name, total: attackTotal, against: defenseTotal, label: '', success: attackTotal > defenseTotal, natural: attackRoll, modifier: mine }));
         if (!shove.success) {
             lines.push(`❌ ${target.name} aguanta el empujon.`);
         } else if (shove.falls && shove.pushedTo) {
@@ -5442,20 +8653,39 @@ function performManeuver(kind, targetId = '') {
             combatEncounter.conditionTimers = clearTimersFor(combatEncounter.conditionTimers, String(target.instanceId));
             lines.push(`✅ ${target.name} pierde pie y cae al vacío.`);
             bark(member, 'kill');
+            // Idea 189: que se vea caer antes de que desaparezca.
+            $(`.wm-token[data-token-id="${enemyTokenId(target)}"]`).addClass('wm-token-falling');
+            fellThisTurn = true;
         } else if (shove.pushedTo) {
             target.gridX = shove.pushedTo.x;
             target.gridY = shove.pushedTo.y;
             lines.push(`✅ ${target.name} retrocede a (${shove.pushedTo.x + 1}, ${shove.pushedTo.y + 1}).`);
+            // Idea 9: si detras habia algo puesto (una trampa, fuego), lo pisa el.
+            lines.push(...shovedInto(target, shove.pushedTo));
         } else {
             // Sin sitio detras, cae: el empujon no se pierde, cambia de forma.
             applyTimedCondition(target, String(target.instanceId), 'Prone', 1);
             lines.push(`✅ ${target.name} no tiene a donde ir y cae al suelo: pegarle de cerca va con ventaja.`);
+            // Idea 17: el siguiente de los tuyos que le pegue esta ronda, remata la jugada.
+            combatEncounter.maneuvers = noteKnockdown(combatEncounter.maneuvers, String(target.instanceId), id, Number(combatEncounter.round) || 1);
         }
     }
 
     saveCombatState();
     savePartyState();
     postCombatNarration(`[COMBAT] ${lines.join('\n')}`);
+    if (fellThisTurn) {
+        // Idea 189: la caída se ve entera antes de repintar el tablero.
+        fellThisTurn = false;
+        setTimeout(() => {
+            if (!checkScenarioOutcome() && getAliveEnemies().length === 0 && !judgeCurrentScenario()) {
+                postCombatNarration('🏆 [COMBAT] Todos los enemigos han sido derrotados.');
+                endCombat('victory');
+            }
+            renderLocationMapsPreview();
+        }, 900);
+        return `${member.name}: ${maneuver.label}`;
+    }
     // Un empujon al vacio puede ser el ultimo golpe del combate.
     if (kind === 'empujar' && !checkScenarioOutcome() && getAliveEnemies().length === 0 && !judgeCurrentScenario()) {
         postCombatNarration('🏆 [COMBAT] Todos los enemigos han sido derrotados.');
@@ -5496,7 +8726,9 @@ function handlePlayerCombatAttack(rawTargetName) {
         return '';
     }
 
-    const attackMod = getPlayerAttackModifier(member, rangeFeet);
+    // Idea 47: lo aprendido a fuerza de tumbar a los de su clase.
+    // Idea 120: el «+1» del arma suma al ataque y al daño.
+    const attackMod = getPlayerAttackModifier(member, rangeFeet) + traitBonus(member, target.name) + perkBonus(member, 'attack') + weaponBonus(member);
     const edge = attackEdge({
         targetId: String(target.instanceId),
         targetConditions: target.activeConditions ?? [],
@@ -5504,11 +8736,16 @@ function handlePlayerCombatAttack(rawTargetName) {
         distanceFeet,
         maneuvers: combatEncounter.maneuvers,
         byParty: true,
+        flanked: partyFlanks(member, target),
+        attackerId: String(member.id),
+        hindered: visibilityPenalties(boardVisibility(), distanceFeet),
     });
     const edged = rollWithEdge(() => rollDiceDetailed('1d20', 20).total, edge.mode);
     const attackRoll = { total: edged.natural, natural: edged.natural };
     // La ayuda vale para un golpe: se gasta aunque falle.
     if (edge.usesHelp) combatEncounter.maneuvers = consumeHelp(combatEncounter.maneuvers, String(target.instanceId));
+    // Idea 11: quien ataca desde su escondite deja de estar escondido.
+    if (edge.usesHidden) combatEncounter.maneuvers = revealHidden(combatEncounter.maneuvers, String(member.id));
     const attackTotal = attackRoll.total + attackMod;
     const { ac: targetAc, cover: targetCover } = getTargetArmorClass(target, member);
     const isCrit = attackRoll.natural === 20;
@@ -5527,10 +8764,12 @@ function handlePlayerCombatAttack(rawTargetName) {
 
     const lines = [];
     lines.push(`🗡️ ${member.name} ataca a ${target.name}.`);
-    lines.push(`🎲 Tirada de ataque: d20(${attackRoll.total}) ${attackMod >= 0 ? '+' : ''}${attackMod} = ${attackTotal} vs AC ${targetAc}${describeCover(targetCover)}${describeEdge(edged, edge.mode, edge.reasons)}`);
+    lines.push(attackLine({ who: member.name, at: target.name, total: attackTotal, ac: targetAc, hit: isHit, natural: attackRoll.total, modifier: attackMod, cover: targetCover, edge: describeEdge(edged, edge.mode, edge.reasons) }));
 
     Object.assign(combatEncounter, useAction(combatEncounter, 'action'));
 
+    // Idea 186: cada golpe suena según salga.
+    soundCue(isHit ? (isCrit ? 'crit' : 'hit') : 'miss');
     if (!isHit) {
         lines.push('❌ Resultado: fallo.');
         saveCombatState();
@@ -5542,8 +8781,11 @@ function handlePlayerCombatAttack(rawTargetName) {
     const damageFormula = getPlayerDamageFormula(member, rangeFeet);
     const damageRoll = rollDiceDetailed(damageFormula, 8);
     const critRoll = isCrit ? rollDiceDetailed(damageFormula, 8) : null;
-    const damageMod = Math.max(0, getPlayerAttackModifier(member, rangeFeet));
+    // Idea 55: con el arma de siempre, se pega mejor.
+    const weaponName = String(heldWeapon(member)?.name ?? '');
+    const damageMod = Math.max(0, getPlayerAttackModifier(member, rangeFeet)) + knackBonus(member, weaponName) + weaponBonus(member);
     const totalDamage = Math.max(1, damageRoll.total + (critRoll?.total || 0) + damageMod);
+    if (weaponName) recordFeat(member, 'hit', weaponName);
 
     showCombatDiceRoll({
         title: `${member.name} tira dano`,
@@ -5557,12 +8799,62 @@ function handlePlayerCombatAttack(rawTargetName) {
     });
 
     target.currentHp = Math.max(0, (target.currentHp || 0) - totalDamage);
+    combatEncounter.tally = noteDealt(combatEncounter.tally, member.id, totalDamage, target.currentHp === 0);
     lines.push(`✅ Resultado: impacto${isCrit ? ' critico' : ''}.`);
-    lines.push(`💥 Tirada de dano: ${damageFormula}(${damageRoll.total})${isCrit ? ` + crit(${critRoll?.total || 0})` : ''} + mod(${damageMod}) = ${totalDamage}`);
+    lines.push(damageLine({ total: totalDamage, formula: damageFormula, rolled: damageRoll.total, modifier: damageMod, crit: isCrit ? (critRoll?.total || 0) : 0 }));
+    floatOnToken(enemyTokenId(target), `-${totalDamage}`, isCrit ? 'crit' : 'damage');
+    if (isCrit) recordFeat(member, 'crit');
+    // Idea 17: rematar la jugada de un compañero suma.
+    const combo = takeCombo(combatEncounter.maneuvers, {
+        targetId: String(target.instanceId), attackerId: String(member.id), round: Number(combatEncounter.round) || 1,
+    });
+    if (combo.combo && target.currentHp > 0) {
+        combatEncounter.maneuvers = combo.state;
+        const extra = rollDiceDetailed(COMBO_DICE, 4).total;
+        target.currentHp = Math.max(0, target.currentHp - extra);
+        combatEncounter.tally = noteDealt(combatEncounter.tally, member.id, extra, target.currentHp === 0);
+        const partner = partyMembers.find(m => String(m.id) === combo.by);
+        lines.push(`🤝 Jugada combinada: ${member.name} remata lo que empezó ${partner?.name ?? 'un compañero'}: ${extra} más.`);
+    }
+    // Idea 15: un critico hace algo, segun el arma.
+    if (isCrit && target.currentHp > 0) {
+        const effect = critEffect(String(heldWeapon(member)?.damageType ?? ''));
+        if (effect.kind === 'damage') {
+            const extra = rollDiceDetailed(effect.dice, 8).total;
+            target.currentHp = Math.max(0, target.currentHp - extra);
+            combatEncounter.tally = noteDealt(combatEncounter.tally, member.id, extra, target.currentHp === 0);
+            lines.push(`🩸 El crítico ${effect.label}: ${extra} más.`);
+        } else {
+            applyTimedCondition(target, String(target.instanceId), effect.condition, effect.rounds);
+            lines.push(`💢 El crítico ${effect.label}.`);
+            if (effect.condition === 'Prone') {
+                combatEncounter.maneuvers = noteKnockdown(combatEncounter.maneuvers, String(target.instanceId), String(member.id), Number(combatEncounter.round) || 1);
+            }
+        }
+    }
+    if (target.currentHp === 0) {
+        recordFeat(member, 'kill', String(target.name));
+        const friend = getAliveEnemies()[0];
+        if (friend) enemyBark(friend, 'ally_down');
+    } else if (target.currentHp / Math.max(1, Number(target.maxHp) || 1) < 0.5) {
+        enemyBark(target, 'hurt');
+    }
     lines.push(`❤️ Estado de ${target.name}: ${target.currentHp}/${target.maxHp}`);
 
     if (target.currentHp === 0) {
         lines.push(`☠️ ${target.name} cae derrotado.`);
+    }
+
+    // Idea 24: el jefe contesta, una vez por ronda, si le llega quien le ha pegado.
+    const round24 = Number(combatEncounter.round) || 1;
+    if (canReact({
+        enemy: target, reacted: combatEncounter.bossReacted, id: String(target.instanceId), round: round24,
+        distanceFeet, reachFeet: Number(target.attackRangeFeet ?? target.range) || 5,
+    })) {
+        combatEncounter.bossReacted = markReacted(combatEncounter.bossReacted, String(target.instanceId), round24);
+        lastBossLine = bossLine(Math.random, lastBossLine);
+        lines.push(`👑 ${target.name}: «${lastBossLine}» Contesta en el acto.`);
+        lines.push(resolveEnemyAttackOn(target, member));
     }
 
     // Rank 3: a critical opens the door for a companion who can already reach the target.
@@ -5612,6 +8904,24 @@ function handlePlayerCombatAttack(rawTargetName) {
 
     renderLocationMapsPreview();
     return `${member.name} golpea a ${target.name}`;
+}
+
+/**
+ * Idea 153: pasar el turno con el golpe sin dar, preguntando antes. Solo cuando de verdad
+ * se puede pegar a alguien: si no hay a quien, no hay nada que perder y no se pregunta.
+ *
+ * @returns {Promise<void>}
+ */
+async function confirmEndTurn() {
+    const member = getCurrentActingMember();
+    const reachable = member && hasAction(combatEncounter, 'action') ? getAttackableEnemiesForMember(member) : [];
+    if (reachable.length > 0) {
+        const go = await Popup.show.confirm('¿Acabar el turno?',
+            `Aún puedes atacar a ${reachable.map(e => e.name).slice(0, 3).join(', ')}. Si acabas, la acción se pierde.`,
+            { okButton: 'Acabar igual', cancelButton: 'Seguir' });
+        if (!go) return;
+    }
+    endPlayerCombatTurn();
 }
 
 function endPlayerCombatTurn() {
@@ -5718,6 +9028,10 @@ function buildCombatSection(board) {
                 .toggleClass('bloodied', entry.bloodied);
 
             row.append($('<span class="wm-init-score"></span>').text(String(entry.initiative)));
+            // Idea 5: la cara, o la inicial si no la tiene. Se reconoce antes que un nombre.
+            row.append(entry.avatar
+                ? $('<img class="wm-init-face" alt="">').attr('src', entry.avatar)
+                : $('<span class="wm-init-face wm-init-initial"></span>').text(entry.name.charAt(0).toUpperCase()));
 
             const body = $('<div class="wm-init-body"></div>');
             const nameLine = $('<div class="wm-init-name-line"></div>');
@@ -5860,7 +9174,7 @@ function buildShellSituation() {
  */
 function buildShellCombatBar() {
     if (!combatEncounter.active) {
-        return { active: false, round: 0, turnLabel: '', movement: '', isPlayerTurn: false, hasAction: false, targets: [] };
+        return { active: false, round: 0, turnLabel: '', movement: '', isPlayerTurn: false, hasAction: false, targets: [], intents: [], canAuto: false };
     }
 
     const entry = getCurrentTurnEntry();
@@ -5882,6 +9196,10 @@ function buildShellCombatBar() {
         isPlayerTurn,
         hasAction: isPlayerTurn && hasAction(combatEncounter, 'action'),
         targets,
+        // Idea 14: a por quien va cada uno, para reaccionar antes.
+        intents: buildEnemyIntents(),
+        // Idea 18: el turno de un compañero lo puede jugar la maquina, con su postura.
+        canAuto: isPlayerTurn && Boolean(member) && String(member?.id) !== String(partyMembers[0]?.id),
     };
 }
 
@@ -6063,6 +9381,7 @@ function memberFromEntry(entry, worldName) {
         level: Number(d.level) || 1,
         class: d.charClass || 'Adventurer',
         race: d.race || '',
+        background: d.background || '',
         factions: parseFactionValues(d.factions || d.faction),
         hp: Number(d.maxHp) || 30,
         maxHp: Number(d.maxHp) || 30,
@@ -6141,6 +9460,7 @@ function syncPartyWithEntries(entries, worldName) {
         existing.level = Number(d.level) || existing.level;
         existing.class = d.charClass || existing.class;
         existing.race = d.race ?? existing.race;
+        existing.background = d.background ?? existing.background;
         existing.avatar = d.image || existing.avatar;
         existing.personality = d.personality ?? existing.personality;
         existing.strength = Number(d.str) || existing.strength;
@@ -6215,6 +9535,10 @@ async function openGuild() {
     const { openGuildPanel } = await import('./game-engine/ui/guild-panel.js');
     const choice = await openGuildPanel({
         guild, board, day: today, purse, roster: partyMembers, Popup, POPUP_TYPE,
+        // Idea 42: quien está en casa, y si cabe alguien más en el grupo.
+        bench: readBench(chat_metadata?.[BENCH_KEY]),
+        partyFull: whereHired(partyMembers) === 'bench',
+        fighting: combatEncounter.active,
         // Para que el tablon pueda decir a quien ayudas o a quien paras por su nombre.
         factionNames: Object.fromEntries(
             getCurrentWorldFactions().map((/** @type {any} */ f) => [f.id, f.name]),
@@ -6224,7 +9548,47 @@ async function openGuild() {
 
     if (choice.built) return raiseBuilding(choice.built, purse);
     if (choice.accepted) return await acceptContract(choice.accepted);
+    if (choice.benched) return rotateBench('bench', choice.benched);
+    if (choice.called) return rotateBench('call', choice.called);
     return '';
+}
+
+/**
+ * Idea 42: dejar a alguien en casa, o llamarle. Quien llega tarda un día.
+ *
+ * @param {'bench'|'call'} what
+ * @param {string} id
+ * @returns {string}
+ */
+function rotateBench(what, id) {
+    if (!chat_metadata) return '';
+    if (combatEncounter.active) {
+        toastr.warning('No mientras peleáis.');
+        return '';
+    }
+    const result = what === 'bench'
+        ? { ...benchMember({ party: partyMembers, bench: chat_metadata[BENCH_KEY], id }), days: 0 }
+        : callFromBench({ party: partyMembers, bench: chat_metadata[BENCH_KEY], id });
+    if (!result.ok) {
+        toastr.warning(result.line);
+        return '';
+    }
+    partyMembers = result.party;
+    chat_metadata[BENCH_KEY] = result.bench;
+    if (what === 'call') {
+        const back = partyMembers[partyMembers.length - 1];
+        // Llega donde está el grupo, al lado del primero.
+        const lead = partyMembers[0]?.mapPosition ?? { locationName: currentLocationName, gridX: 0, gridY: 0 };
+        if (back) back.mapPosition = { locationName: currentLocationName, gridX: (Number(lead.gridX) || 0) + 1, gridY: Number(lead.gridY) || 0 };
+        for (let day = 0; day < result.days; day++) advanceCampaignDay();
+    }
+    savePartyState();
+    saveMetadata();
+    renderPartyMembers();
+    postCombatNarration(`🏠 [GREMIO] ${result.line}`);
+    toastr.info(result.line, what === 'bench' ? 'A casa' : 'De vuelta');
+    if (isShellOpen()) refreshGameShell();
+    return result.line;
 }
 
 /**
@@ -6290,6 +9654,7 @@ async function acceptContract(id) {
         void postForModel(`[ENCARGO] ${said} Cuéntalo en una o dos frases. No inventes nada que no esté aquí.`);
         const formedWritten = formParty(partyMembers, contract, { max: Math.max(1, partyMembers.length) });
         for (const line of formedWritten.lines) postCombatNarration(`🫱 [GREMIO] ${line}`);
+        voiceOpinions(contract);
         toastr.success(contract.locationName, 'Encargo aceptado');
         return said;
     }
@@ -6298,7 +9663,8 @@ async function acceptContract(id) {
     const data = await loadWorldInfo(worldName);
     if (!data) return '';
 
-    const bestiary = getCurrentWorldEnemies()
+    // Idea 97: los que migran solo salen en su estación.
+    const bestiary = enemiesInSeason()
         .map((/** @type {any} */ e) => String(e?.name || '')).filter(Boolean);
 
     // De que clase es el sitio, de que esta hecho por dentro y en que estado esta. Sin
@@ -6380,6 +9746,7 @@ async function acceptContract(id) {
     if (formed.going.length === 0) {
         toastr.warning('Nadie quiere ir a este. Mira sus motivos en el registro.', 'Sin grupo');
     }
+    voiceOpinions(contract);
     toastr.success(`${placeName} — ${boardName}`, 'Encargo aceptado');
     renderLocationMapsPreview();
     return line;
@@ -6670,6 +10037,9 @@ function useAbility(member, ability, target) {
 
     if (plan.damage > 0 && ability.target === 'enemy') {
         subject.currentHp = Math.max(0, (Number(subject.currentHp) || 0) - plan.damage);
+        combatEncounter.tally = noteDealt(combatEncounter.tally, member.id, plan.damage, subject.currentHp === 0);
+        floatOnToken(enemyTokenId(subject), `-${plan.damage}`, 'damage');
+        if (subject.currentHp === 0) recordFeat(member, 'kill', String(subject.name));
         lines.push(`❤️ Estado de ${subject.name}: ${subject.currentHp}/${subject.maxHp}`);
         if (subject.currentHp === 0) {
             lines.push(`☠️ ${subject.name} cae derrotado.`);
@@ -6897,11 +10267,38 @@ async function openLevelUpCard(member) {
         root.append(grid);
     }
 
+    // Idea 46: una mejora a elegir entre tres. Con la semilla de quién sube y a qué nivel.
+    const offered = perkChoices({
+        member,
+        random: createSeededRandom(derive(String(chat_metadata?.[METADATA_KEY] || ''), 'mejora', String(member.id), String(plan.to))),
+    });
+    let chosenPerk = '';
+    if (offered.length > 0) {
+        root.append($('<div class="lu-subtitle"></div>').text('Una mejora a elegir'));
+        const perksBox = $('<div class="lu-perks"></div>');
+        for (const perk of offered) {
+            const button = $('<button type="button" class="menu_button lu-perk"></button>').attr('data-perk', perk.id);
+            button.append($('<span class="lu-perk-name"></span>').text(perk.label));
+            button.append($('<span class="lu-perk-desc"></span>').text(perk.describe));
+            button.on('click', () => {
+                chosenPerk = perk.id;
+                perksBox.find('.lu-perk').removeClass('chosen');
+                button.addClass('chosen');
+                refresh();
+            });
+            perksBox.append(button);
+        }
+        root.append(perksBox);
+    }
+
     const actions = $('<div class="lu-actions"></div>');
     const confirm = $('<button class="menu_button lu-btn lu-confirm" type="button"></button>').text('Subir de nivel');
 
     function refresh() {
-        const verdict = validateAbilityPicks(picks, plan, member);
+        const picked = validateAbilityPicks(picks, plan, member);
+        const verdict = picked.ok && offered.length > 0 && !chosenPerk
+            ? { ok: false, error: 'Falta elegir una mejora.' }
+            : picked;
         confirm.prop('disabled', !verdict.ok);
         confirm.attr('title', verdict.ok ? 'Escribe el nivel en la ficha' : verdict.error);
         const spent = Object.values(picks).reduce((total, value) => total + value, 0);
@@ -6920,10 +10317,15 @@ async function openLevelUpCard(member) {
 
     confirm.on('click', () => {
         if (!validateAbilityPicks(picks, plan, member).ok) return;
+        if (offered.length > 0 && !chosenPerk) return;
         Object.assign(member, buildLevelUpPatch(member, plan, picks));
+        // Idea 46: lo elegido, que se nota jugando.
+        const perkPatch = chosenPerk ? takePerk(member, chosenPerk) : null;
+        if (perkPatch) Object.assign(member, perkPatch);
         savePartyState();
         renderPartyMembers();
-        postCombatNarration(`⭐ [NIVEL] ${describeLevelUp(member, plan)}`);
+        const perkNote = chosenPerk ? ` Mejora: ${offered.find(o => o.id === chosenPerk)?.label ?? chosenPerk}.` : '';
+        postCombatNarration(`⭐ [NIVEL] ${describeLevelUp(member, plan)}${perkNote}`);
         void popup.complete(POPUP_RESULT.AFFIRMATIVE);
         renderLocationMapsPreview();
         if (isShellOpen()) refreshGameShell();
@@ -7024,6 +10426,54 @@ function openCompanionCard(memberId) {
     root.append($('<div class="cc-points"></div>').text(
         card.maxed ? `${card.points} puntos` : `${card.points} / ${card.nextAt} para el rango ${card.rank + 1}`,
     ));
+    // Idea 38: que quiere ahora, en una linea. Y lo que se ha ganado (44, 47, 56).
+    const needs = describeNeeds(member);
+    const wants = desireLine({
+        mourning: mourningFor(member, Math.max(1, Math.floor(Number(getCampaignCalendar()?.day) || 1))),
+        wants: readReasons(member).wants,
+        hpPct: Math.round(((Number(member.hp) || 0) / Math.max(1, Number(member.maxHp) || 1)) * 100),
+        hungry: /hambre|sed/i.test(needs),
+        tired: /sueño/i.test(needs),
+    });
+    if (wants) root.append($('<div class="cc-wants"></div>').text(`Ahora: ${wants}`));
+    // Idea 28: lo que le ha parecido lo último que hicisteis.
+    const liked = approvalOf(chat_metadata?.[APPROVAL_KEY], String(member.id));
+    if (liked.recent.length > 0) {
+        const box = $('<div class="cc-approval"></div>');
+        box.append($('<div class="cc-approval-title"></div>').text('Lo último que le ha parecido'));
+        for (const line of liked.recent) box.append($('<div class="cc-approval-line"></div>').text(line));
+        root.append(box);
+    }
+    const earned = [
+        member.nickname ? `Le llaman «${member.nickname}»` : '',
+        ...traitsOf(member).map(t => t.label),
+        ...knacksOf(member),
+        ...(Array.isArray(member.scars) ? member.scars : []),
+    ].filter(Boolean);
+    if (earned.length > 0) root.append($('<div class="cc-earned"></div>').text(earned.join(' · ')));
+    // Idea 41: lo que hace fuera del combate.
+    const job = campJobOf(member);
+    if (job) root.append($('<div class="cc-job"></div>').text(`${job.label}: ${job.effect}`));
+    // Idea 35: a quien va primero.
+    const preferRow = $('<div class="cc-stance cc-prefer"></div>');
+    preferRow.append($('<div class="cc-stance-title"></div>').text('Va primero a'));
+    const prefer = String(member.prefer || DEFAULT_PREFERENCE);
+    for (const [id, option] of Object.entries(PREFERENCES)) {
+        const pick = $('<button class="menu_button cc-prefer-btn" type="button"></button>')
+            .attr('data-prefer', id)
+            .attr('title', option.description)
+            .toggleClass('active', id === prefer)
+            .append(`<i class="fa-solid ${option.icon}"></i>`)
+            .append($('<span></span>').text(` ${option.label}`));
+        pick.on('click', () => {
+            member.prefer = id;
+            savePartyState();
+            preferRow.find('.cc-prefer-btn').removeClass('active');
+            pick.addClass('active');
+        });
+        preferRow.append(pick);
+    }
+    root.append(preferRow);
 
     // Como pelea cuando no lo llevas tu. Un clic, y vale tambien en mitad de un combate:
     // es justo cuando se ve que la que tenia no era la buena.
@@ -7324,7 +10774,11 @@ function namesInLastNarration() {
  *
  * @returns {import('./game-engine/ui/shell/action-chips.js').ActionChip[]}
  */
-function buildShellChips() {
+/**
+ * @param {number} [limit] Cuantas caben; sin decir, las de la fila.
+ * @returns {import('./game-engine/ui/shell/action-chips.js').ActionChip[]}
+ */
+function buildShellChips(limit = undefined) {
     // Si los datos del mundo son de otro, se releen y la fila se vuelve a dibujar.
     const worldName = String(chat_metadata?.[METADATA_KEY] || '');
     if (worldName && worldName !== loadedWorldName) {
@@ -7338,20 +10792,45 @@ function buildShellChips() {
         fighting: combatEncounter.active,
         hasBoard: Boolean(currentBoardName),
         doors: closedDoorsNearParty(),
-        companions: partyMembers.map(m => ({ name: m.name })),
+        // Con los muertos no se habla (idea 36).
+        companions: partyMembers.filter(m => !m.dead).map(m => ({ name: m.name })),
         mentioned: namesInLastNarration(),
         places: getCurrentWorldLocationMaps()
             .filter(l => l.name !== currentLocationName)
             .map(l => ({ name: l.name })),
         boards: getLocationBoards(location).map((/** @type {any} */ b) => ({ name: b.name })),
-        hurt: partyMembers.some(m => (Number(m.hp) || 0) < (Number(m.maxHp) || 0)),
+        hurt: partyMembers.some(m => !m.dead && (Number(m.hp) || 0) < (Number(m.maxHp) || 0)),
         // Cuantos dados quedan sale del nivel y de los ya gastados; las caras las
         // lee el descanso, que puede esperar al Lorebook porque es asincrono.
         hitDice: availableHitDice(partyMembers),
         rumors: rumorsLeftHere(),
+        forage: Boolean(currentLocationName) && !currentBoardName && forageCheck(hereLocation() ?? {}).allowed,
         explore: Boolean(currentLocationName) && !currentBoardName
             && canExplore(getCurrentWorldLocationMaps(), []),
         proposals: readProposals(chat_metadata?.[PROPOSALS_KEY]).map(p => ({ name: p.name })),
+        ...(limit !== undefined ? { limit } : {}),
+        // Idea 151: con quien se puede hablar aqui, ademas de los tuyos.
+        people: lastWorldNpcs
+            .filter(n => !n.dead && n.where.toLowerCase() === String(currentLocationName).toLowerCase())
+            .map(n => ({ name: n.name })),
+        // Ideas 139 y 67: lo que ofrece el narrador, y acampar donde no hay posada.
+        extras: [
+            ...offerChips(chat_metadata?.[OFFERS_KEY]),
+            ...(currentLocationName && !currentBoardName && campHere().ok
+                ? [{ id: 'camp', label: 'Acampar aquí', icon: 'fa-campground', command: '/acampar' }] : []),
+        ],
+        // Idea 7: los prisioneros, con lo que se puede hacer con ellos aqui.
+        prisoners: prisonerChips(chat_metadata?.[PRISONERS_KEY], {
+            authority: Boolean(location) && servicesOf(location).some(sv => sv === 'tablon' || sv === 'templo'),
+            fighting: combatEncounter.active,
+        }),
+        // Idea 137: lo que estas escribiendo pide una tirada.
+        typed: typedIntents.map(skill => ({ skill, label: SKILLS[/** @type {keyof typeof SKILLS} */ (skill)]?.label ?? skill })),
+        // Idea 144: lo que se le puede decir a quien se está hablando.
+        replies: currentReplies(),
+        requests: readRequests(chat_metadata?.[CHECK_REQUESTS_KEY], SKILLS).map(r => ({
+            skill: r.skill, label: SKILLS[/** @type {keyof typeof SKILLS} */ (r.skill)].label, reason: r.reason, dc: r.dc,
+        })),
     });
 }
 
@@ -7365,6 +10844,26 @@ function buildShellChips() {
  * @param {import('./game-engine/ui/shell/action-chips.js').ActionChip} chip
  */
 function runShellChip(chip) {
+    // Idea 144: hablar con alguien de aquí abre sus respuestas; despedirse las cierra. Y la
+    // fila se redibuja en el acto, detrás de la frase empezada: si no, las respuestas no
+    // salían hasta que pasara otra cosa.
+    if (chip.id.startsWith('talk-local:') || chip.id === 'reply-bye') {
+        talkingTo = chip.id === 'reply-bye' ? '' : chip.id.slice('talk-local:'.length);
+        if (isShellOpen()) setTimeout(() => refreshGameShell(), 0);
+    }
+    // Idea 169: las que no cabian en la fila.
+    if (chip.id === 'more') {
+        openAllChips();
+        return;
+    }
+    // Idea 137: tirar por lo que se esta escribiendo, sin borrarlo.
+    if (chip.id.startsWith('typed:')) {
+        const input = /** @type {HTMLTextAreaElement|null} */ (document.querySelector('#send_textarea'));
+        runSkillCheck(chip.id.slice('typed:'.length), String(input?.value ?? ''));
+        typedIntents = [];
+        if (isShellOpen()) refreshGameShell();
+        return;
+    }
     if (chip.cell) {
         const context = getActiveBoardContext();
         if (!context.board) return;
@@ -7381,6 +10880,83 @@ function runShellChip(chip) {
     }
 
     if (chip.draft) draftInChat(chip.draft);
+}
+
+/**
+ * Idea 144: lo que se le puede decir a quien se está hablando, si sigue aquí.
+ *
+ * @returns {Array<{id: string, label: string, icon: string, draft?: string, command?: string}>}
+ */
+function currentReplies() {
+    if (!talkingTo || combatEncounter.active) return [];
+    const npc = lastWorldNpcs.find(n => n.name === talkingTo && n.where.toLowerCase() === String(currentLocationName).toLowerCase());
+    if (!npc) return [];
+    const pry = canPry({ npc, here: currentLocationName, secrets: chat_metadata?.[SECRETS_KEY], today: Math.max(1, campaignDay()) });
+    return repliesFor({ name: npc.name, rumors: rumorsLeftHere(), canPry: pry.ok })
+        .map(reply => (reply.action === 'pry' ? { ...reply, command: `/sonsacar ${npc.name}` } : reply));
+}
+
+/**
+ * Idea 110: sonsacarle a alguien lo que esconde. Perspicacia, una vez al día por persona.
+ * Si sale, su secreto pasa a la ficha que lee el narrador: desde entonces habla distinto.
+ *
+ * @param {string} name
+ * @returns {Promise<string>}
+ */
+async function pryNpc(name) {
+    const npc = lastWorldNpcs.find(n => n.name.toLowerCase() === String(name ?? '').trim().toLowerCase());
+    const today = Math.max(1, campaignDay());
+    const verdict = npc ? canPry({ npc, here: currentLocationName, secrets: chat_metadata?.[SECRETS_KEY], today }) : { ok: false, reason: 'No hay nadie así aquí.' };
+    if (!npc || !verdict.ok || !chat_metadata) {
+        toastr.info(verdict.reason, 'Sonsacar');
+        return '';
+    }
+    const who = partyMembers.filter(m => !m.dead && (Number(m.hp) || 0) > 0)
+        .reduce((/** @type {any} */ best, m) => (!best || skillModifier(m, SECRET_SKILL).modifier > skillModifier(best, SECRET_SKILL).modifier ? m : best), null);
+    if (!who) return '';
+    // Idea 59: sonsacar a quien habla otra lengua, también con desventaja si nadie la entiende.
+    const barrier = listenerBarrier(who, SECRET_SKILL, npc.name);
+    if (barrier.note) postCombatNarration(`🗣️ [CAMPAÑA] ${barrier.note}`);
+    const roll = rollCheck({
+        member: who, skill: SECRET_SKILL, rollD20: () => rollDiceDetailed('1d20', 20).total, dc: SECRET_DC,
+        ...(barrier.edge ? { edge: barrier.edge, why: 'no habla su lengua' } : {}),
+    });
+    if (!roll) return '';
+    showCombatDiceRoll({
+        title: `${who.name}: ${roll.label}`,
+        subtitle: `Sonsacar a ${npc.name}`,
+        formula: `1d20${roll.modifier >= 0 ? '+' : ''}${roll.modifier}`,
+        detail: `d20(${roll.natural}) ${roll.modifier >= 0 ? '+' : ''}${roll.modifier} = ${roll.total}`,
+        total: roll.total,
+        dc: roll.dc,
+        natural: roll.natural,
+        glyph: 'd20',
+    });
+    postCombatNarration(roll.said);
+    chat_metadata[SECRETS_KEY] = notePry(chat_metadata[SECRETS_KEY], { name: npc.name, secret: String(npc.secret) }, roll.success, today);
+    saveMetadata();
+    if (roll.success) {
+        const worldName = String(chat_metadata?.[METADATA_KEY] || '');
+        await worldWrite(async () => {
+            const data = await loadWorldInfo(worldName);
+            const entry = Object.values(data?.entries ?? {}).find((/** @type {any} */ e) => e?.dndData?.entityType === 'npc'
+                && String(e.dndData?.name || e.comment || '').toLowerCase() === npc.name.toLowerCase());
+            if (!data || !entry) return;
+            const note = secretNote(String(npc.secret));
+            if (!String(/** @type {any} */ (entry).content || '').includes(note)) {
+                /** @type {any} */ (entry).content = `${String(/** @type {any} */ (entry).content || '')} ${note}`.trim();
+                await saveWorldInfo(worldName, data, true);
+            }
+        });
+        noteDeed(`${who.name} le sacó a ${npc.name} su secreto.`);
+        toastr.success(String(npc.secret), `🗝️ Lo que escondía ${npc.name}`, { timeOut: 12000 });
+        await postForModel(`[SECRETO] ${who.name} le saca a ${npc.name} lo que escondía: ${npc.secret} `
+            + 'Cuéntalo en su voz, a regañadientes. No inventes nada más.');
+    } else {
+        toastr.info(`${npc.name} se cierra en banda. Hoy no hay nada que sacarle.`, 'Sonsacar', { timeOut: 8000 });
+    }
+    if (isShellOpen()) refreshGameShell();
+    return roll.said;
 }
 
 /**
@@ -7409,7 +10985,55 @@ const PENDING_CHECK_KEY = 'pendingCheck';
  * @param {string} skill
  * @returns {string}
  */
-function runSkillCheck(skill) {
+/** Lo que pide lo que se esta escribiendo (idea 137). */
+/** @type {string[]} */
+let typedIntents = [];
+
+/** Idea 169: todas las fichas, en una ventana. */
+function openAllChips() {
+    const chips = buildShellChips(Infinity);
+    const body = $('<div class="hp-root"></div>');
+    body.append($('<h3></h3>').text('Todo lo que se puede hacer'));
+    /** @type {Popup|null} */
+    let popup = null;
+    for (const chip of chips) {
+        const row = $('<button type="button" class="menu_button hp-item"></button>').attr('data-chip', chip.id);
+        row.append($('<span class="hp-label"></span>').text(chip.label));
+        row.on('click', () => {
+            void popup?.completeCancelled();
+            runShellChip(chip);
+        });
+        body.append(row);
+    }
+    popup = new Popup(body[0], POPUP_TYPE.TEXT, '', { okButton: 'Cerrar', allowVerticalScrolling: true, leftAlign: true });
+    void popup.show();
+}
+
+/**
+ * @param {string} skill
+ * @param {string} [keep] Lo que ya estaba escrito: la tirada va delante y lo escrito se queda.
+ * @returns {string}
+ */
+/**
+ * Idea 59: cómo va una tirada de trato con quien se está hablando, por la lengua.
+ *
+ * @param {any} speaker
+ * @param {string} skill
+ * @param {string} [name] Con quién, si no es con quien se está hablando.
+ * @returns {{edge: ''|'disadvantage', by: string, note: string}}
+ */
+function listenerBarrier(speaker, skill, name = '') {
+    const who = String(name || talkingTo || '');
+    const listener = who
+        ? lastWorldNpcs.find(n => n.name.toLowerCase() === who.toLowerCase() && n.where.toLowerCase() === String(currentLocationName).toLowerCase())
+        : null;
+    if (!listener?.language) return { edge: '', by: '', note: '' };
+    return languageBarrier({ speaker, party: partyMembers, language: listener.language, skill, listener: listener.name });
+}
+
+function runSkillCheck(skill, keep = '') {
+    // Idea 138: si la pidio el narrador, con su dificultad, y la peticion se gasta.
+    const asked = takeRequest(chat_metadata?.[CHECK_REQUESTS_KEY], skill, SKILLS);
     if (combatEncounter.active) {
         toastr.warning('En combate se pelea con la barra de abajo.');
         return '';
@@ -7426,7 +11050,15 @@ function runSkillCheck(skill) {
         toastr.warning('No hay nadie en el grupo que pueda intentarlo.');
         return '';
     }
-    const result = rollCheck({ member, skill, rollD20: () => rollDiceDetailed('1d20', 20).total });
+    // Idea 59: si se habla con alguien de aquí que habla otra lengua.
+    const barrier = listenerBarrier(member, skill);
+    if (barrier.note) postCombatNarration(`🗣️ [CAMPAÑA] ${barrier.note}`);
+    const result = rollCheck({
+        member, skill, rollD20: () => rollDiceDetailed('1d20', 20).total,
+        ...(asked.request ? { dc: asked.request.dc } : {}),
+        ...(barrier.edge ? { edge: barrier.edge, why: 'no habla su lengua' } : {}),
+    });
+    if (result && asked.request && chat_metadata) chat_metadata[CHECK_REQUESTS_KEY] = asked.requests;
     if (!result) {
         toastr.warning(`No conozco esa tirada. Hay: ${Object.keys(SKILLS).join(', ')}.`);
         return '';
@@ -7444,12 +11076,13 @@ function runSkillCheck(skill) {
     });
 
     chat_metadata[PENDING_CHECK_KEY] = { line: result.line, draft: result.draft };
-    notePlot({ kind: 'check', skill, success: result.success });
+    // Idea 107: con el sitio, que es donde está la pista.
+    notePlot({ kind: 'check', skill, success: result.success, place: currentLocationName });
     // Un encargo que se resuelve sin pelear se da por hecho con una tirada buena en su sitio.
     const takenNow = chat_metadata?.[TAKEN_KEY];
     if (settlesNoFight(takenNow, { place: currentLocationName, success: result.success })) finishTakenContract(takenNow);
     saveMetadata();
-    draftInChat(result.draft);
+    draftInChat(String(keep).trim() ? `${result.line}\n${String(keep).trim()}` : result.draft);
     if (isShellOpen()) refreshGameShell();
     return result.line;
 }
@@ -7516,10 +11149,25 @@ function fireHazardsOnEnter(member, x, y) {
     if (!board) return;
 
     const { fired, hazards } = enterCell(board, { x, y });
-    if (fired.length === 0) return;
-
     board.hazards = hazards;
+
+    // Idea 78: lo que hay al lado se ve sin buscarlo, si se tiene buen ojo.
+    const passive = 10 + skillModifier(member, 'perception').modifier;
+    const spotted = passiveSpot(board, { x, y }, passive);
+    if (spotted.spotted.length > 0) {
+        board.hazards = spotted.hazards;
+        for (const hazard of spotted.spotted) {
+            const line = `${member.name} se fija: ${hazard.tell || describeHazard(hazard)} en (${hazard.x + 1}, ${hazard.y + 1}).`;
+            postCombatNarration(`👁️ [TABLERO] ${line}`);
+            toastr.warning(line, 'Cuidado', { timeOut: 8000 });
+        }
+    }
+    if (fired.length === 0 && spotted.spotted.length === 0) return;
     persistBoardTerrain(board);
+    if (fired.length === 0) {
+        renderLocationMapsPreview();
+        return;
+    }
 
     for (const hazard of fired) {
         if (hazard.effect === 'damage' && hazard.damageDice) {
@@ -7557,7 +11205,7 @@ function fireHazardsOnEnter(member, x, y) {
  * porque esa es la mitad de la decision: el rodeo corto o el largo que evita el paso.
  *
  * @param {{to: string, days: number, legs: string[]}} plan
- * @returns {Promise<boolean>}
+ * @returns {Promise<string|false>} El ritmo elegido, o `false` si no se va.
  */
 async function askBeforeTravelling(plan) {
     const jornadas = plan.days === 1 ? 'un día de camino' : `${plan.days} días de camino`;
@@ -7565,12 +11213,145 @@ async function askBeforeTravelling(plan) {
         ? `Se pasa por ${plan.legs.slice(0, -1).join(', ')}.`
         : 'Se va directo.';
 
-    const answer = await Popup.show.confirm(
-        `Viajar a ${plan.to}`,
-        `${jornadas}. ${por} Por el camino se come, se cura y corre la semana.`,
-        { okButton: 'Viajar', cancelButton: 'Ahora no' },
-    );
-    return Boolean(answer);
+    showTip('travel');
+    // Idea 64: el ritmo es una decision. Cada boton dice lo que cuesta.
+    const body = $('<div class="tr-ask"></div>');
+    body.append($('<h3></h3>').text(`Viajar a ${plan.to}`));
+    body.append($('<p></p>').text(`${jornadas} a paso normal. ${por} Por el camino se come, se cura y corre la semana.`));
+    body.append($('<p class="tr-ask-hint"></p>').text('¿A qué ritmo?'));
+    const ids = Object.keys(PACES);
+    const popup = new Popup(body[0], POPUP_TYPE.TEXT, '', {
+        okButton: false,
+        cancelButton: 'Ahora no',
+        customButtons: ids.map((id, i) => {
+            const pace = PACES[/** @type {keyof typeof PACES} */ (id)];
+            const days = paceDays(plan.days, id);
+            return {
+                text: `${pace.label} · ${days} ${days === 1 ? 'día' : 'días'}`,
+                tooltip: pace.note,
+                result: 10 + i,
+                classes: [`tr-pace-${id}`],
+            };
+        }),
+    });
+    const answer = Number(await popup.show()) - 10;
+    return answer >= 0 && answer < ids.length ? ids[answer] : false;
+}
+
+/**
+ * Ideas 88 y 92: lo que sale al paso por el camino, y lo que se hace con ello.
+ *
+ * @param {() => number} random El azar del viaje, con la semilla del mundo.
+ * @returns {Promise<any|null>} El suceso, para contarlo con el resto del viaje.
+ */
+async function meetOnTheRoad(random) {
+    const goods = declaredLootNames().filter(name => describeLootItem(name).category === 'magic');
+    const met = roadEncounter({
+        factions: getCurrentWorldFactions(),
+        goods,
+        random,
+        discount: withJob(partyMembers, 'buscavidas') ? 0.25 : 0,
+    });
+    if (!met) return null;
+    const body = $('<div class="tr-setback"></div>');
+    if (met.kind === 'bounty') {
+        body.append($('<h3></h3>').text('Cazarrecompensas'));
+        body.append($('<p></p>').text(`Gente de ${met.faction} os corta el paso: hay precio por vuestras cabezas.`));
+        const purse = partyPurse();
+        const picked = await new Popup(body[0], POPUP_TYPE.TEXT, '', {
+            okButton: false,
+            cancelButton: false,
+            customButtons: [
+                ...(purse >= met.toll ? [{ text: `Pagar ${met.toll} de oro`, result: 41, classes: ['rd-pay'] }] : []),
+                { text: `Plantar cara (Intimidación, CD ${met.dc})`, result: 42, classes: ['rd-face'] },
+            ],
+        }).show();
+        if (picked === 41 && payFromParty(met.toll)) {
+            judgeDecision('pagar');
+            return { day: 1, id: 'cazarrecompensas', name: 'Cazarrecompensas', note: `Pagasteis ${met.toll} de oro para que os dejaran pasar.`, days: 0, climate: '' };
+        }
+        judgeDecision('plantar-cara');
+        const who = partyMembers.filter(m => (Number(m.hp) || 0) > 0)
+            .reduce((/** @type {any} */ top, m) => (!top || skillModifier(m, 'intimidation').modifier > skillModifier(top, 'intimidation').modifier ? m : top), null);
+        const roll = who ? rollCheck({ member: who, skill: 'intimidation', rollD20: () => rollDiceDetailed('1d20', 20).total, dc: met.dc }) : null;
+        if (roll) postCombatNarration(roll.said);
+        if (roll?.success) {
+            noteDeed(`${who.name} hizo darse la vuelta a unos cazarrecompensas de ${met.faction}.`);
+            return { day: 1, id: 'cazarrecompensas', name: 'Cazarrecompensas', note: `${who.name} les planta cara y se dan la vuelta.`, days: 0, climate: '' };
+        }
+        const hurt = rollDiceDetailed('1d8', 8).total;
+        if (who) who.hp = Math.max(1, (Number(who.hp) || 0) - hurt);
+        savePartyState();
+        return { day: 1, id: 'cazarrecompensas', name: 'Cazarrecompensas', note: `No se asustan: hay pelea, ${who?.name ?? 'alguien'} se lleva ${hurt} de daño y perdéis un día escapando.`, days: 1, climate: '' };
+    }
+    body.append($('<h3></h3>').text('Un mercader en el camino'));
+    body.append($('<p></p>').text(`Trae ${met.item}, y os lo deja en ${met.price} de oro.`));
+    const buy = await new Popup(body[0], POPUP_TYPE.TEXT, '', {
+        okButton: false,
+        cancelButton: false,
+        customButtons: [
+            ...(partyPurse() >= met.price ? [{ text: `Comprarlo (${met.price} de oro)`, result: 51, classes: ['rd-buy'] }] : []),
+            { text: 'Seguir el camino', result: 52, classes: ['rd-pass'] },
+        ],
+    }).show();
+    if (buy === 51 && payFromParty(met.price) && partyMembers[0]) {
+        partyMembers[0].items = partyMembers[0].items ?? [];
+        addItemToInventory(/** @type {any} */ (partyMembers[0]), createItem(/** @type {any} */ (describeLootItem(met.item))));
+        savePartyState();
+        return { day: 1, id: 'mercader', name: 'Un mercader', note: `Le comprasteis ${met.item} por ${met.price} de oro.`, days: 0, climate: '' };
+    }
+    return { day: 1, id: 'mercader', name: 'Un mercader', note: `Traía ${met.item}; seguisteis de largo.`, days: 0, climate: '' };
+}
+
+/**
+ * Idea 66: cada contratiempo que retrasa se decide. Rodear cuesta sus dias; forzar el
+ * paso es una tirada de Atletismo de quien mejor la tenga.
+ *
+ * @param {any[]} events
+ * @returns {Promise<any[]>}
+ */
+async function decideSetbacks(events) {
+    /** @type {any[]} */
+    const out = [];
+    for (const event of events) {
+        // El peaje de una faccion ya trae su decision (pagar o rodear), y los atajos no se eligen.
+        if (!isSetback(event) || String(event.id ?? '').startsWith('peaje_')) {
+            out.push(event);
+            continue;
+        }
+        const choice = setbackChoice(event, SKILLS.athletics.label);
+        const body = $('<div class="tr-setback"></div>');
+        body.append($('<h3></h3>').text(`Día ${event.day}: ${choice.title}`));
+        body.append($('<p></p>').text(event.note));
+        const picked = await new Popup(body[0], POPUP_TYPE.TEXT, '', {
+            okButton: false,
+            cancelButton: false,
+            customButtons: [
+                { text: choice.detour, result: 21, classes: ['tr-detour'] },
+                { text: choice.force, result: 22, classes: ['tr-force'] },
+            ],
+        }).show();
+
+        if (picked !== 22) {
+            out.push({ ...event, ...resolveSetback(event, 'detour') });
+            continue;
+        }
+        const standing = partyMembers.filter(m => (Number(m.hp) || 0) > 0);
+        const best = standing.reduce((/** @type {any} */ top, m) =>
+            (!top || skillModifier(m, 'athletics').modifier > skillModifier(top, 'athletics').modifier ? m : top), null);
+        if (!best) {
+            out.push({ ...event, ...resolveSetback(event, 'detour') });
+            continue;
+        }
+        const roll = rollCheck({ member: best, skill: 'athletics', rollD20: () => rollDiceDetailed('1d20', 20).total, dc: FORCE_DC });
+        const hurt = roll?.success ? 0 : rollDiceDetailed(`1d${FORCE_HURT}`, FORCE_HURT).total;
+        // En el camino no se muere: se llega peor.
+        if (hurt > 0) best.hp = Math.max(1, (Number(best.hp) || 0) - hurt);
+        const done = resolveSetback(event, 'force', { success: Boolean(roll?.success), who: String(best.name), hurt });
+        if (roll) postCombatNarration(roll.said);
+        out.push({ ...event, days: done.days, note: done.note });
+    }
+    return out;
 }
 
 /**
@@ -7589,7 +11370,8 @@ async function askBeforeTravelling(plan) {
  * era como `/go` acababa diciendo dos cosas, una de ellas falsa.
  *
  * @param {string} name
- * @param {{confirm?: (plan: any) => Promise<boolean>}} [options]
+ * @param {{confirm?: (plan: any) => Promise<boolean|string>}} [options] Si pregunta, puede
+ *   devolver el ritmo elegido; y entonces tambien se deciden los contratiempos.
  * @returns {Promise<{to: string, reason: string}>}
  */
 async function travelWithTime(name, options = {}) {
@@ -7619,13 +11401,18 @@ async function travelWithTime(name, options = {}) {
         to: match.name,
         locations,
         friendly: friendlyFactions(),
+        // Idea 74: el lago helado solo se cruza en invierno.
+        season: currentSeason(),
     });
     // El motivo, no un boton que no hace nada: "el paso esta cerrado" es una meta.
     if (!plan.ok) return { to: '', reason: plan.reason };
 
     // Pensarselo mejor no es un fallo: sin motivo, nadie avisa de nada.
-    if (options.confirm && !(await options.confirm({ ...plan, to: match.name }))) {
-        return { to: '', reason: '' };
+    let pace = 'normal';
+    if (options.confirm) {
+        const answer = await options.confirm({ ...plan, to: match.name });
+        if (!answer) return { to: '', reason: '' };
+        if (typeof answer === 'string') pace = readPace(answer);
     }
 
     // Los sucesos del camino, con la semilla del mundo: el mismo viaje sale igual dos
@@ -7638,8 +11425,9 @@ async function travelWithTime(name, options = {}) {
     // Por donde se va y que tiempo admite: en una cueva no nieva, y eso lo dice la
     // bateria, no este codigo.
     const biome = String(match.biome || '');
+    // Idea 74: y el tiempo de la estación.
     const climates = hasWorld
-        ? (compendium.find('mundo', { kind: 'bioma', biome })[0]?.climates ?? [])
+        ? seasonClimates(compendium.find('mundo', { kind: 'bioma', biome })[0]?.climates ?? [], currentSeason())
         : [];
 
     const random = createSeededRandom(derive(worldName, 'viaje', currentLocationName, match.name));
@@ -7667,29 +11455,110 @@ async function travelWithTime(name, options = {}) {
         events.push({ day: 1, id: `peaje_${trouble.faction}`, name: trouble.name, note: trouble.note, days: trouble.days, climate: '' });
     }
 
+    // El ritmo: con cuidado se esquivan contratiempos; y cada uno que queda se decide, si
+    // hay a quien preguntar (el `/go` escrito no pregunta nada).
+    const paced = paceEvents(events, pace, random);
+    // Idea 65: quien guía, quien vigila y quien caza, cada uno con su tirada. Con su propia
+    // semilla, para no mover el resto del viaje.
+    const roleRandom = createSeededRandom(derive(worldName, 'papeles', currentLocationName, match.name, String(campaignDay())));
+    const roles = rollRoles({
+        roles: assignRoles({
+            party: partyMembers.filter(m => !m.dead && (Number(m.hp) || 0) > 0),
+            modifierOf: (m, skill) => skillModifier(m, skill).modifier,
+        }),
+        rollD20: () => 1 + (Math.floor(roleRandom() * 20) % 20),
+        days: plan.days,
+    });
+    if (roles.dodge) {
+        const index = paced.events.findIndex(event => isSetback(event));
+        if (index >= 0) paced.avoided.push(String(paced.events.splice(index, 1)[0]?.name ?? 'un contratiempo'));
+    }
+    const trip = options.confirm ? await decideSetbacks(paced.events) : paced.events;
+    // Ideas 88 y 92: cazarrecompensas o un mercader, si hay a quien preguntar.
+    if (options.confirm) {
+        const met = await meetOnTheRoad(random);
+        if (met) trip.push(met);
+    }
+    // Idea 71: una parada por el camino, con el azar del viaje.
+    const stop = roadStop({ days: plan.days, random });
+
     // Un atajo resta y una tormenta suma, pero un viaje nunca dura menos de un dia:
     // llegar antes de salir no lo cuenta nadie.
-    const delay = events.reduce((sum, event) => sum + event.days, 0);
-    const total = Math.max(MIN_DAYS, plan.days + delay);
+    const delay = trip.reduce((sum, event) => sum + event.days, 0);
+    // Idea 129: con montura para todos se llega antes. Idea 65: y un buen guía ahorra un día.
+    const ride = mountedDays({
+        days: paceDays(plan.days, pace),
+        mounts: chat_metadata?.[MOUNTS_KEY],
+        riders: partyMembers.filter(m => !m.dead).length,
+    });
+    const total = Math.max(MIN_DAYS, ride.days + delay - (roles.dayLess ? 1 : 0));
 
     currentLocationName = match.name;
     currentBoardName = '';
     saveCurrentLocation();
     saveCurrentBoard();
+    countStat('trips');
     notePlot({ kind: 'arrive', place: match.name });
     void populatePlace(match.name);
 
     // El reloj de uno en uno: cada dia cura, pasa hambre y acerca la cuenta semanal. Un
     // salto de cinco dias de golpe se saltaria cuatro de esos.
-    for (let day = 0; day < total; day++) advanceCampaignDay();
+    for (let day = 0; day < total; day++) {
+        advanceCampaignDay();
+        // Por el camino se duerme de noche y se bebe de la cantimplora; comer es otra cosa
+        // (las raciones, el cazador). Antes, cada día de viaje contaba veinticuatro horas
+        // despierto y sin beber, y un viaje de cuatro días mataba de sed o de sueño aunque se
+        // saliera comido y descansado. El paso rápido sigue debiendo el sueño al llegar.
+        for (const member of partyMembers.filter(m => !m.dead)) {
+            member.needs = relieve(member, 'slept');
+            member.needs = relieve(member, 'drank');
+        }
+    }
 
-    const told = [describeTravel(plan)];
+    // A paso rapido se llega sin haber dormido.
+    if (pace === 'rapido') {
+        for (const member of partyMembers) {
+            const needs = readNeeds(member);
+            member.needs = { ...needs, rest: needs.rest + RUSH_REST_HOURS };
+        }
+        savePartyState();
+    }
+    // Idea 65: el cazador da de comer a todos por el camino.
+    if (roles.fed) {
+        for (const member of partyMembers.filter(m => !m.dead)) member.needs = relieve(member, 'ate');
+        savePartyState();
+    }
+    // Ideas 73 y 90: el tiempo de hoy aquí es el del último día del camino.
+    if (chat_metadata && weather.length > 0) {
+        chat_metadata[WEATHER_TODAY_KEY] = { day: Math.max(1, campaignDay()), place: match.name, weather: weather[weather.length - 1] };
+        saveMetadata();
+    }
+    // Idea 144: al irse del sitio se acaba la conversación.
+    talkingTo = '';
+    // Idea 71: lo que da la parada, después de los días, para que no lo borren.
+    if (stop) trip.push({ day: Math.max(1, total), id: `parada_${stop.id}`, name: stop.name, note: takeRoadStop(stop, random), days: 0, climate: '' });
+    // Idea 82: lo que se comenta aqui, de lo que paso lejos. Detras de los dias en la fila,
+    // para que ya este lo de hoy.
+    void worldWrite(() => tellArrivalNews(match.name));
+    // Idea 45: lo que dicen los confidentes al llegar a un sitio suyo.
+    sayArrivals(match.name);
+    // Idea 36: quien está enterrado aquí.
+    for (const grave of gravesAt(chat_metadata?.[GRAVES_KEY], match.name)) {
+        toastr.info(grave.epitaph, `🪦 Aquí está enterrado ${grave.name}`, { timeOut: 8000 });
+    }
+
+    const told = [pace === 'normal' ? describeTravel(plan) : `${PACES[readPace(pace)].label}: ${total} día(s)`];
+    if (paced.avoided.length > 0) told.push(`esquivado: ${paced.avoided.join(', ')}`);
     if (delay > 0) told.push(`${delay} de retraso`);
     else if (delay < 0) told.push(`${-delay} menos de lo previsto`);
     if (weather.length > 0) told.push(`tiempo: ${[...new Set(weather)].join(', ')}`);
+    if (ride.note) told.push(ride.note);
+    if (roles.results.length > 0) told.push(describeRoles(roles.results));
+    // Idea 192: el camino se ve pasar, sin parar el juego.
+    if (options.confirm) showTravelTransition(match.name, total);
     toastr.info(told.join(' · '), `Llegáis a ${match.name}`);
 
-    for (const event of events) {
+    for (const event of trip) {
         toastr.info(event.note, `Día ${event.day}: ${event.name}`, { timeOut: 6000 });
     }
 
@@ -7697,13 +11566,263 @@ async function travelWithTime(name, options = {}) {
     // sistema lo veria quien juega y no lo veria el modelo, que es justo al reves.
     const note = [
         `El grupo viaja hasta ${match.name}. ${describeTravel(plan)}.`,
+        pace !== 'normal' ? `Van a paso ${PACES[readPace(pace)].label.toLowerCase()}: ${total} día(s). ${PACES[readPace(pace)].note}` : '',
+        paced.avoided.length > 0 ? `Vieron venir y esquivaron: ${paced.avoided.join(', ')}.` : '',
         weather.length > 0 ? `El tiempo, día a día: ${weather.join(', ')}.` : '',
-        ...events.map(event => `Día ${event.day}: ${event.name}. ${event.note}`),
+        roles.results.length > 0 ? `En el camino: ${describeRoles(roles.results)}.` : '',
+        ride.note ? `Van montados: ${ride.note}.` : '',
+        ...trip.map(event => `Día ${event.day}: ${event.name}. ${event.note}`),
         'Cuenta el viaje en un párrafo breve. No inventes nada que no esté aquí.',
     ].filter(Boolean).join('\n');
     postForModel(note).catch(error => console.error('[party] travel note failed', error));
 
     return { to: match.name, reason: '' };
+}
+
+/**
+ * Idea 199: el salón de la fama. Los caídos de todas las partidas, el más reciente arriba.
+ */
+function openHallOfFame() {
+    const hall = readHall(/** @type {any} */ (extension_settings).partyHall);
+    const body = $('<div class="jr-root hall-root"></div>');
+    body.append($('<h3></h3>').text('Salón de la fama'));
+    if (hall.length === 0) body.append($('<div class="jr-item"></div>').text('Todavía no ha caído nadie.'));
+    for (const entry of hall) body.append($('<div class="jr-item hall-entry"></div>').text(describeHallEntry(entry)));
+    void new Popup(body[0], POPUP_TYPE.TEXT, '', { okButton: 'Cerrar', allowVerticalScrolling: true, leftAlign: true }).show();
+}
+
+/**
+ * Idea 128: a veintiuno, en la taberna. Se apuesta, se piden dados, se planta; y quien tenga
+ * buenas manos puede hacer trampa una vez.
+ *
+ * @returns {Promise<void>}
+ */
+async function playTavernDice() {
+    if (!chat_metadata) return;
+    const today = Math.max(1, campaignDay());
+    const hero = partyMembers.find(m => !m.dead) ?? partyMembers[0];
+    const left = roundsLeft(chat_metadata[DICE_GAME_KEY], currentLocationName, today);
+    if (!hero || left.banned || left.left <= 0) {
+        toastr.info(left.banned ? 'Aquí ya os conocen: hoy no os dejan jugar.' : 'Por hoy ya está bien de dados.');
+        return;
+    }
+    const betBox = $('<div class="td-root"></div>');
+    betBox.append($('<h3></h3>').text('A veintiuno'));
+    betBox.append($('<p></p>').text('Se tiran dados y se suman. Quien se pasa de 21, pierde; al plantarte, la casa tira hasta 17.'));
+    const purse = partyPurse();
+    const bet = await new Popup(betBox[0], POPUP_TYPE.TEXT, '', {
+        okButton: false,
+        cancelButton: 'Mejor no',
+        customButtons: BETS.filter(b => purse >= b).map(b => ({ text: `Apostar ${b}`, result: 100 + b, classes: ['td-bet'] })),
+    }).show();
+    if (typeof bet !== 'number' || bet < 100) return;
+    let game = startGame(bet - 100, nextRandom);
+    while (game.state === 'playing') {
+        const table = $('<div class="td-root"></div>');
+        table.append($('<h3></h3>').text('A veintiuno'));
+        table.append($('<p class="td-table"></p>').text(describeGame(game)));
+        const choice = await new Popup(table[0], POPUP_TYPE.TEXT, '', {
+            okButton: false,
+            cancelButton: false,
+            customButtons: [
+                { text: 'Otro dado', result: 61, classes: ['td-draw'] },
+                { text: 'Plantarse', result: 62, classes: ['td-stand'] },
+                ...(game.cheated ? [] : [{ text: 'Hacer trampa (Juego de manos)', result: 63, classes: ['td-cheat'] }]),
+            ],
+        }).show();
+        if (choice === 61) game = drawDie(game, nextRandom);
+        else if (choice === 63) {
+            const trick = rollCheck({ member: hero, skill: 'sleight', rollD20: () => rollDiceDetailed('1d20', 20).total, dc: 14 });
+            if (trick) postCombatNarration(trick.said);
+            game = cheat(game, { total: Number(trick?.total) || 0 });
+        } else game = stand(game, nextRandom);
+    }
+    const money = payout(game);
+    if (money > 0) hero.gold = (Number(hero.gold) || 0) + money;
+    else if (money < 0) payFromParty(-money);
+    const before = chat_metadata[DICE_GAME_KEY];
+    const same = before && before.place === currentLocationName && Number(before.day) === today;
+    chat_metadata[DICE_GAME_KEY] = {
+        place: currentLocationName, day: today,
+        played: (same ? Number(before.played) || 0 : 0) + 1,
+        banned: game.state === 'caught' || Boolean(same && before.banned),
+    };
+    countStat('gold', Math.max(0, money));
+    saveMetadata();
+    savePartyState();
+    postCombatNarration(`🎲 [TABERNA] ${hero.name} juega a veintiuno. ${describeGame(game)}`);
+    const result = $('<div class="td-root"></div>');
+    result.append($('<h3></h3>').text(game.state === 'won' ? 'Ganáis' : game.state === 'push' ? 'Empate' : 'Perdéis'));
+    result.append($('<p class="td-table"></p>').text(describeGame(game)));
+    await new Popup(result[0], POPUP_TYPE.TEXT, '', { okButton: 'Vale' }).show();
+}
+
+/**
+ * Idea 54: aprender con quien enseña. Se paga (ya pagado al pulsar), pasan los días, y la
+ * habilidad entra en el catálogo del mundo si no estaba y en la ficha de quien aprende.
+ *
+ * @param {string} memberId
+ * @param {string} abilityId
+ * @returns {Promise<void>}
+ */
+async function learnAbility(memberId, abilityId) {
+    const member = partyMembers.find(m => String(m.id) === String(memberId));
+    const worldName = String(chat_metadata?.[METADATA_KEY] || '');
+    if (!member || !worldName || !lastCompendium?.has?.('habilidades')) return;
+    const ability = lastCompendium.find('habilidades', { kind: 'habilidad' })
+        .filter((/** @type {any} */ row) => String(row.id) === String(abilityId))
+        .map(asAbility)[0];
+    if (!ability) return;
+    await worldWrite(async () => {
+        const data = await loadWorldInfo(worldName);
+        if (!data) return;
+        const pack = structuredClone(data.metadata?.rulesetPack ?? getActiveRuleset());
+        pack.abilities = Array.isArray(pack.abilities) ? pack.abilities : [];
+        if (!pack.abilities.some((/** @type {any} */ a) => String(a?.id) === ability.id)) pack.abilities.push(ability);
+        data.metadata = data.metadata ?? {};
+        data.metadata.rulesetPack = pack;
+        await saveWorldInfo(worldName, data, true);
+    });
+    await applyCampaignRuleset(worldName);
+    member.abilities = [...new Set([...(Array.isArray(member.abilities) ? member.abilities.map(String) : []), ability.id])];
+    for (let day = 0; day < LESSON.days; day++) advanceCampaignDay();
+    savePartyState();
+    const line = describeLesson(String(member.name), ability, currentLocationName);
+    noteDeed(line);
+    toastr.success(line, '📜 Aprendido', { timeOut: 10000 });
+    await postForModel(`[APRENDIZAJE] ${line} Cuéntalo en dos frases. No inventes nada más.`);
+}
+
+/** Idea 195: las letras que puede llevar el narrador. */
+const NARRATOR_FONTS = [
+    { id: '', label: 'la de siempre' },
+    { id: 'libro', label: 'de libro' },
+    { id: 'pluma', label: 'a pluma' },
+    { id: 'maquina', label: 'de máquina' },
+];
+
+/** Idea 195: poner la letra del narrador de esta campaña. */
+function applyNarratorFont() {
+    document.body.dataset.narratorFont = String(chat_metadata?.[NARRATOR_FONT_KEY] || '');
+}
+
+/**
+ * Idea 181: ¿llega este mundo al listón? El mismo informe que la herramienta de consola,
+ * sobre el mundo abierto, con el encargo para el Gem listo para copiar.
+ *
+ * @returns {Promise<string>}
+ */
+async function checkCurrentWorld() {
+    const worldName = String(chat_metadata?.[METADATA_KEY] || '');
+    const data = worldName ? await loadWorldInfo(worldName) : null;
+    if (!data) {
+        toastr.warning('Abre una campaña para comprobar su mundo.');
+        return '';
+    }
+    const built = buildPackFromWorld({
+        worldName, metadata: data.metadata ?? {}, entries: data.entries ?? {}, synopsis: String(data.metadata?.synopsis ?? ''),
+    });
+    const { pack } = normalizePack(built);
+    // Lo que el paquete exportado no lleva y el comprobador mira: la gente del mundo, los
+    // encargos escritos, los rumores y el hilo.
+    const npcs = Object.values(data.entries ?? {})
+        .filter((/** @type {any} */ e) => e?.dndData?.entityType === 'npc')
+        .map((/** @type {any} */ e) => ({
+            name: String(e.dndData.name || e.comment || ''),
+            where: String(e.dndData.mapPosition?.locationName || ''),
+            wants: String(e.dndData.wants || ''),
+            knows: String(e.dndData.knows || ''),
+        }));
+    const report = checkWorldDensity({
+        ...pack,
+        npcs,
+        plot: data.metadata?.plot ?? /** @type {any} */ (pack).plot,
+        contracts: data.metadata?.writtenContracts ?? [],
+        rumors: data.metadata?.rumors ?? [],
+    });
+    const body = $('<div class="jr-root wd-root"></div>');
+    body.append($('<h3></h3>').text(`¿Llega al listón? ${report.ok ? 'Sí' : `${report.errors.length} cosa(s) por arreglar`}`));
+    for (const line of report.counts) body.append($('<div class="jr-item wd-count"></div>').text(line));
+    if (report.errors.length > 0) body.append($('<div class="jr-title"></div>').text('Por arreglar'));
+    for (const line of report.errors.slice(0, 20)) body.append($('<div class="jr-item wd-error"></div>').text(line));
+    if (report.warnings.length > 0) body.append($('<div class="jr-title"></div>').text('Conviene mirar'));
+    for (const line of report.warnings.slice(0, 20)) body.append($('<div class="jr-item wd-warning"></div>').text(line));
+    const request = gemRequest(report);
+    const result = await new Popup(body[0], POPUP_TYPE.TEXT, '', {
+        okButton: 'Cerrar',
+        allowVerticalScrolling: true,
+        leftAlign: true,
+        customButtons: request ? [{ text: 'Copiar el encargo para el Gem', result: 71, classes: ['wd-copy'] }] : [],
+    }).show();
+    if (result === 71 && request) {
+        await navigator.clipboard?.writeText(request).catch(() => {});
+        toastr.success('El encargo está copiado: pégalo en el Gem.', 'Copiado');
+    }
+    return report.ok ? 'llega' : `${report.errors.length} por arreglar`;
+}
+
+/**
+ * Idea 192: el viaje se ve pasar: el nombre del sitio y los días, en una franja que se va sola.
+ * No para nada ni pide nada; solo es para que el tiempo se note.
+ *
+ * @param {string} to
+ * @param {number} days
+ */
+function showTravelTransition(to, days) {
+    document.querySelectorAll('.tr-transition').forEach(el => el.remove());
+    const box = $('<div class="tr-transition" aria-hidden="true"></div>');
+    box.append($('<div class="tr-transition-title"></div>').text(`Camino de ${to}`));
+    const track = $('<div class="tr-transition-days"></div>');
+    for (let day = 1; day <= Math.min(days, 7); day++) {
+        track.append($('<span class="tr-transition-day"></span>').text(`Día ${day}`).css('animation-delay', `${(day - 1) * 0.25}s`));
+    }
+    box.append(track);
+    $('body').append(box);
+    setTimeout(() => box.remove(), 1400 + Math.min(days, 7) * 250);
+}
+
+/**
+ * Idea 71: lo que da una parada del camino. Toca números que ya existen: la sed, el hambre,
+ * el sueño, la vida.
+ *
+ * @param {{id: string, name: string, note: string, relieve: Array<'ate'|'drank'|'slept'>, heal: string, cost: number}} stop
+ * @param {() => number} random El azar del viaje: el mismo camino cura lo mismo.
+ * @returns {string} Lo que se cuenta.
+ */
+function takeRoadStop(stop, random) {
+    const alive = partyMembers.filter(m => !m.dead);
+    const bill = stop.cost * alive.length;
+    if (bill > 0 && !payFromParty(bill)) return `${stop.note} Pero no llega el oro, y seguís de largo.`;
+    for (const member of alive) {
+        for (const what of stop.relieve) member.needs = relieve(member, what);
+        if (stop.heal) {
+            const maxHp = Number(member.maxHp) || 0;
+            member.hp = Math.min(maxHp || Infinity, (Number(member.hp) || 0) + rollWith(stop.heal, random).total);
+        }
+    }
+    savePartyState();
+    return bill > 0 ? `${stop.note} (${bill} de oro)` : stop.note;
+}
+
+/**
+ * Idea 45: lo que dice cada confidente que va en el grupo al llegar a un sitio suyo. Una vez
+ * por confidente y sitio; la voz es del guionista, así que no llama al modelo.
+ *
+ * @param {string} place
+ */
+function sayArrivals(place) {
+    if (!chat_metadata) return;
+    const lines = arrivalLines({
+        party: partyMembers, entries: lastConfidantEntries, place,
+        heard: chat_metadata[ARRIVALS_HEARD_KEY],
+    });
+    if (lines.length === 0) return;
+    chat_metadata[ARRIVALS_HEARD_KEY] = [...(chat_metadata[ARRIVALS_HEARD_KEY] ?? []), ...lines.map(l => l.key)];
+    saveMetadata();
+    for (const said of lines) {
+        postCombatNarration(`💬 ${said.name}: «${said.line}»`);
+        toastr.info(`«${said.line}»`, `💬 ${said.name}`, { timeOut: 8000 });
+    }
 }
 
 /**
@@ -8002,7 +12121,7 @@ async function openRules() {
  * @returns {import('./game-engine/ui/shell/exploration-scene.js').ExplorationView}
  */
 function buildShellExploration() {
-    return buildExplorationView({
+    const view = buildExplorationView({
         locationMaps: getCurrentWorldLocationMaps(),
         campaignMap: getCampaignMap(),
         currentLocation: currentLocationName,
@@ -8012,12 +12131,47 @@ function buildShellExploration() {
         calendar: getCampaignCalendar(),
         xpTable: getXpTable(),
     });
+    // Idea 81: lo pendiente en cada sitio, para decidir adonde ir.
+    /** @type {Record<string, number>} */
+    const unheard = {};
+    const heardIds = Array.isArray(chat_metadata?.[RUMORS_HEARD_KEY]) ? chat_metadata[RUMORS_HEARD_KEY] : [];
+    for (const rumor of lastRumors) {
+        if (heardIds.includes(rumor.id)) continue;
+        unheard[rumor.where] = (unheard[rumor.where] ?? 0) + 1;
+    }
+    const pending = pendingByPlace({
+        places: view.places.map(p => p.name),
+        board: chat_metadata?.[BOARD_KEY] ?? [],
+        taken: chat_metadata?.[TAKEN_KEY] ?? null,
+        rumors: unheard,
+        thread: openMilestones().map(m => String(m?.asks?.place ?? '')).filter(Boolean),
+    });
+    // Idea 89: la fiesta que se acerca, en la lista de viaje.
+    const festivals = worldFestivals();
+    const today = Math.max(1, Math.floor(Number(getCampaignCalendar()?.day) || 1));
+    const soon = (/** @type {string} */ name) => {
+        const festival = festivals[name];
+        if (!festival) return '';
+        const left = daysUntil(festival, today);
+        return left === 0 ? `hoy, ${festival.name}` : left <= 3 ? `${festival.name} en ${left} día${left === 1 ? '' : 's'}` : '';
+    };
+    // Idea 85: como le va a este sitio por lo que hicisteis.
+    return {
+        ...view,
+        places: view.places.map(p => ({
+            ...p,
+            pending: [pending[p.name] ?? '', soon(p.name) ? `Fiesta: ${soon(p.name)}` : ''].filter(Boolean).join(' · '),
+        })),
+        fortune: fortuneLine(hereLocation()),
+    };
 }
 
 /**
  * @returns {import('./game-engine/ui/shell/game-shell.js').ShellOptions}
  */
 function buildShellOptions() {
+    installNoticeTray();
+    applyColorblind();
     // El panel podia estar plegado antes de encender el Shell, y apagarlo tiene que
     // dejarlo como estaba: el Shell lo despliega porque es su escenario, no porque el
     // jugador lo pidiera.
@@ -8034,6 +12188,8 @@ function buildShellOptions() {
             slotLabel: getCurrentSlotLabel(),
             fighting: combatEncounter.active,
             party: partyMembers,
+            // Idea 74: la estación, y lo que le queda.
+            season: chat_metadata?.[METADATA_KEY] ? describeSeason(Math.max(1, campaignDay()), lastWorldSeason || undefined) : '',
         }),
         getChips: buildShellChips,
         onChip: runShellChip,
@@ -8041,7 +12197,14 @@ function buildShellOptions() {
             ? []
             : checkOptions(partyMembers[0], { locked: Boolean(chat_metadata?.[PENDING_CHECK_KEY]) })),
         onCheck: (skill) => { runSkillCheck(skill); },
-        getFocus: () => focusOf(getPlot(), chat_metadata?.[PLOT_STATE_KEY]),
+        getFocus: () => focusOf(getPlot(), chat_metadata?.[PLOT_STATE_KEY], campaignDay()),
+        onJournal: () => openJournal(),
+        onGlance: () => openPartyGlance(),
+        getNoticeCount: () => unseenCount(notices, noticesSeenAt),
+        onTray: () => openNoticeTray(),
+        getMeter: () => lastMeter,
+        onMeter: () => { void import('./game-engine/ui/prompt-preview.js').then(m => m.openPromptPreview({ Popup, POPUP_TYPE })); },
+        onHelp: () => openHelp(),
         getServices: () => buildServiceCards(),
         onService: (actionId) => { void runService(actionId); },
         onCompanion: (memberId) => openCompanionCard(memberId),
@@ -8066,6 +12229,11 @@ function buildShellOptions() {
         onOptions: () => { $('#ai-config-button .drawer-toggle').trigger('click'); },
         onRules: () => { void openRules(); },
         onCompendium: () => { void openCompendiumLibrary(); },
+        // Idea 181: el comprobador de densidad, desde la partida.
+        onCheckWorld: () => { void checkCurrentWorld(); },
+        // Idea 199: los caídos de todas las partidas.
+        countHall: () => readHall(/** @type {any} */ (extension_settings).partyHall).length,
+        onHall: () => { openHallOfFame(); },
         onEditCampaign: () => { void openCampaignBuilder(); },
         // El asistente de campana vive en la pantalla de bienvenida, que viaja dentro del
         // chat adoptado: pulsar su boton es pulsar el que ya existe.
@@ -8090,12 +12258,50 @@ function buildShellOptions() {
         onMainMenu: () => { $('#option_close_chat').trigger('click'); },
         renderStage: () => renderLocationMapsPreview(),
         onAttack: (name) => handlePlayerCombatAttack(name),
-        onEndTurn: () => endPlayerCombatTurn(),
-        onFlee: () => {
-            if (!combatEncounter.active) return;
-            endCombat('manual');
+        onEndTurn: () => { void confirmEndTurn(); },
+        onAutoTurn: () => {
+            const entry = getCurrentTurnEntry();
+            if (!entry || entry.isEnemy || !combatEncounter.active) return;
+            postCombatNarration(resolveAllyTurnAction(entry));
+            if (combatEncounter.active) endPlayerCombatTurn();
             renderLocationMapsPreview();
         },
+        onDice: () => openDiceHistory(),
+        onGlossary: () => openGlossary(),
+        onScene: (scene) => showTip(scene),
+        getToggles: () => [
+            { id: 'saver', label: saverOn() ? 'Modo ahorro: encendido' : 'Modo ahorro: apagado', on: saverOn() },
+            { id: 'length', label: `Largo de la narración: ${LENGTHS[/** @type {keyof typeof LENGTHS} */ (String(chat_metadata?.[LENGTH_KEY] || 'ficha'))]?.label ?? 'Lo de su ficha'}`, on: Boolean(chat_metadata?.[LENGTH_KEY]) },
+            { id: 'colorblind', label: localFlag.get(COLORBLIND_KEY) === '1' ? 'Colores para daltonismo: sí' : 'Colores para daltonismo: no', on: localFlag.get(COLORBLIND_KEY) === '1' },
+            // Idea 195: la letra del narrador, de la campaña.
+            { id: 'font', label: `Letra del narrador: ${(NARRATOR_FONTS.find(f => f.id === String(chat_metadata?.[NARRATOR_FONT_KEY] || '')) ?? NARRATOR_FONTS[0]).label}`, on: Boolean(chat_metadata?.[NARRATOR_FONT_KEY]) },
+            // Idea 142: el tono de la escena.
+            { id: 'tone', label: describeTone(chat_metadata?.[TONE_KEY]), on: readTone(chat_metadata?.[TONE_KEY]) !== 'auto' },
+        ],
+        onToggle: (id) => {
+            if (id === 'saver') localFlag.set(SAVER_KEY, saverOn() ? '' : '1');
+            else if (id === 'colorblind') {
+                localFlag.set(COLORBLIND_KEY, localFlag.get(COLORBLIND_KEY) === '1' ? '' : '1');
+                applyColorblind();
+            } else if (id === 'font' && chat_metadata) {
+                const at = NARRATOR_FONTS.findIndex(f => f.id === String(chat_metadata[NARRATOR_FONT_KEY] || ''));
+                chat_metadata[NARRATOR_FONT_KEY] = NARRATOR_FONTS[(at + 1) % NARRATOR_FONTS.length].id;
+                saveMetadata();
+                applyNarratorFont();
+            } else if (id === 'length' && chat_metadata) {
+                const next = nextLength(String(chat_metadata[LENGTH_KEY] || 'ficha'));
+                chat_metadata[LENGTH_KEY] = next === 'ficha' ? '' : next;
+                saveMetadata();
+            } else if (id === 'tone' && chat_metadata) {
+                chat_metadata[TONE_KEY] = nextTone(chat_metadata[TONE_KEY]);
+                saveMetadata();
+            }
+            refreshWorldMemoryPrompt();
+        },
+        // Idea 180: el código del mundo.
+        onShareWorld: () => { void shareWorld(); },
+        onRetry: (mode) => { void retryLastReply(mode); },
+        onFlee: () => { void retreatFromCombat(); },
         onClose: () => setLocationMapsHidden(wasHidden),
         getAbilities: () => {
             const member = getCurrentActingMember();
@@ -8136,16 +12342,30 @@ function buildShellOptions() {
             if (!member || !combatEncounter.active) return [];
             const x = Number(member.mapPosition?.gridX) || 0;
             const y = Number(member.mapPosition?.gridY) || 0;
-            return judgeManeuvers({
+            const enemies = getAliveEnemies().map((/** @type {any} */ e) => ({
+                id: String(e.instanceId),
+                name: String(e.name),
+                distanceFeet: getDistanceInFeet(x, y, Number(e.gridX) || 0, Number(e.gridY) || 0),
+            }));
+            // Idea 8: lo que hay a mano en el tablero, si hay algo al lado.
+            const board8 = getActiveBoardContext();
+            const scenery = judgeSceneryThrow({
+                near: sceneryNear(board8.terrain, x, y, board8.gridWidth, board8.gridHeight),
                 hasAction: hasAction(combatEncounter, 'action'),
-                enemies: getAliveEnemies().map((/** @type {any} */ e) => ({
-                    id: String(e.instanceId),
-                    name: String(e.name),
-                    distanceFeet: getDistanceInFeet(x, y, Number(e.gridX) || 0, Number(e.gridY) || 0),
-                })),
+                enemies,
             });
+            return [
+                ...judgeManeuvers({ hasAction: hasAction(combatEncounter, 'action'), enemies, hide: hideCheck(member) }),
+                // Idea 122: lo que lleva para lanzar, con la misma forma que una maniobra.
+                ...judgeThrows({ member, hasAction: hasAction(combatEncounter, 'action'), enemies }),
+                ...(scenery ? [scenery] : []),
+            ];
         },
-        onManeuver: (maneuverId, targetId) => { performManeuver(maneuverId, targetId); },
+        onManeuver: (maneuverId, targetId) => {
+            if (maneuverId === 'lanzar:objeto') throwScenery(targetId);
+            else if (String(maneuverId).startsWith('lanzar:')) throwItem(String(maneuverId).slice('lanzar:'.length), targetId);
+            else performManeuver(maneuverId, targetId);
+        },
         onObjectives: () => {
             const verdict = judgeCurrentScenario();
             toastr.info(
@@ -8397,9 +12617,10 @@ function drawLocationMapsPreview() {
         const boardTerrain = normalizeTerrain(selectedBoard.terrain);
         const fogOn = Boolean(selectedBoard.fogEnabled);
         const boardFog = normalizeFog(selectedBoard.fog);
+        const sightNow = fogOn ? boardVisibility() : null;
         const partySight = allBoardTokens
             .filter(t => !t.isEnemy)
-            .map(t => ({ gridX: t.gridX, gridY: t.gridY, sightFeet: t.sightFeet }));
+            .map(t => ({ gridX: t.gridX, gridY: t.gridY, sightFeet: sightNow ? sightFeetFor(sightNow, t.sightFeet ?? 60) : t.sightFeet }));
         const fogState = fogOn
             ? updateFog(boardFog, boardTerrain, partySight, boardGridW, boardGridH)
             : { fog: boardFog, visible: new Set() };
@@ -8430,6 +12651,8 @@ function drawLocationMapsPreview() {
             // the board is redrawn: fog is recomputed from the new terrain on the way.
             onDoorToggle: (gx, gy, open) =>
                 toggleBoardDoor(selectedBoard, gx, gy, open, boardGridW, boardGridH),
+            // Lo ya visto del tablero, a la vista (idea 122: el aceite que arde).
+            hazards: visibleHazards(selectedBoard).map((/** @type {any} */ h) => ({ x: h.x, y: h.y, name: h.name, kind: h.kind, note: h.tell })),
             tokens: allBoardTokens,
             onTokenClick: (tokenId) => handleCombatTokenClick(tokenId),
             // Clic en una casilla encendida: mover. Solo las encendidas responden.
@@ -8518,7 +12741,17 @@ function drawLocationMapsPreview() {
             const logPanel = createCombatLogPanel({ title: 'Registro de combate' });
             contentRoot.append(logPanel);
             combatLogPanel = logPanel;
-            renderCombatLog(logPanel, combatLogEntries);
+            // Idea 20: de quién y de qué. «Mis tiradas» es Tiradas más tu nombre.
+            logPanel.attr('data-kind', combatLogFilter.kind).attr('data-who', combatLogFilter.who);
+            const people = [...partyMembers.map(m => String(m.name)), ...combatEncounter.enemies.map((/** @type {any} */ e) => String(e.name))]
+                .filter((name, index, all) => name && all.indexOf(name) === index);
+            const repaint = () => {
+                combatLogFilter = logFilterOf(logPanel);
+                renderLogFilters(logPanel, people, repaint);
+                paintCombatLog();
+            };
+            renderLogFilters(logPanel, people, repaint);
+            paintCombatLog();
             setRound(logPanel, combatEncounter.active ? (Number(combatEncounter.round) || 1) : 0);
         }
 
@@ -8953,7 +13186,7 @@ function buildInventoryTab(member) {
 
             slotEl.on('click', function () {
                 if (equippedItem) {
-                    unequipItem(member, slotKey);
+                    tryUnequip(member, slotKey);
                     rebuildInventoryPanel(panel, member);
                 } else {
                     showEquipSelector(panel, member, slotKey);
@@ -9077,7 +13310,7 @@ function showEquipSelector(panel, member, slot) {
         <div class="dnd-item-card" data-item-id="${item.id}" style="cursor:pointer;">
             ${item.image ? `<img class="dnd-item-img" src="${item.image}" />` : '<div class="dnd-item-img-placeholder"><i class="fa-solid fa-box"></i></div>'}
             <div class="dnd-item-info">
-                <div class="dnd-item-name">${item.name}</div>
+                <div class="dnd-item-name">${shownName(item)}</div>
                 <div class="dnd-item-meta">${item.type} · ${item.weight} lbs</div>
             </div>
         </div>
@@ -9091,7 +13324,7 @@ function showEquipSelector(panel, member, slot) {
 
     popupEl.find('.dnd-item-card').on('click', function () {
         const itemId = $(this).data('item-id');
-        equipItem(member, itemId, slot);
+        tryEquip(member, itemId, slot);
         selectorPopup.complete(0);
         rebuildInventoryPanel(panel, member);
     });
@@ -9266,13 +13499,14 @@ function buildItemListSection(panel, member) {
             const isEquipped = Object.values(member.equippedItems || {}).includes(item.id);
             const isEquippableSlot = Boolean(item.slot && Object.values(EQUIPMENT_SLOTS).includes(item.slot));
             const canUseConsumable = item.consumable && ((item.uses ?? 1) > 0);
-            const effectsText = (item.effects || []).map(/** @param {import('./dnd-system.js').DndItemEffect} e */ e => `${e.stat} ${e.modifier >= 0 ? '+' : ''}${e.modifier}`).join(', ');
+            // Idea 135: de lo que no se ha identificado no se sabe lo que hace.
+            const effectsText = /** @type {any} */ (item).identified === false ? '' : (item.effects || []).map(/** @param {import('./dnd-system.js').DndItemEffect} e */ e => `${e.stat} ${e.modifier >= 0 ? '+' : ''}${e.modifier}`).join(', ');
             const metaText = buildItemMetaSummary(item).join(' · ');
             const card = $(`
                 <div class="dnd-item-card ${isEquipped ? 'equipped' : ''}" data-item-id="${item.id}">
                     ${item.image ? `<img class="dnd-item-img" src="${item.image}" />` : '<div class="dnd-item-img-placeholder"><i class="fa-solid fa-box"></i></div>'}
                     <div class="dnd-item-info">
-                        <div class="dnd-item-name">${item.name}${isEquipped ? ' <span style="color:#2dd4bf;font-size:0.7rem;">(equipped)</span>' : ''}</div>
+                        <div class="dnd-item-name">${shownName(item)}${isEquipped ? ' <span style="color:#2dd4bf;font-size:0.7rem;">(equipped)</span>' : ''}</div>
                         <div class="dnd-item-meta">${metaText}${effectsText ? ' · ' + effectsText : ''}</div>
                     </div>
                     <div class="dnd-item-actions">
@@ -9287,14 +13521,14 @@ function buildItemListSection(panel, member) {
 
             card.find('.equip-btn').on('click', function (e) {
                 e.stopPropagation();
-                if (item.slot) equipItem(member, item.id, item.slot);
+                if (item.slot) tryEquip(member, item.id, item.slot);
                 rebuildInventoryPanel(panel, member);
             });
 
             card.find('.unequip-btn').on('click', function (e) {
                 e.stopPropagation();
                 const slot = Object.entries(member.equippedItems || {}).find(([, v]) => v === item.id)?.[0];
-                if (slot) unequipItem(member, slot);
+                if (slot) tryUnequip(member, slot);
                 rebuildInventoryPanel(panel, member);
             });
 
@@ -10389,6 +14623,10 @@ export function initPartyPanel() {
 
     eventSource.on(event_types.CHAT_CHANGED, () => {
         loadPartyForChat();
+        // Idea 195: la letra del narrador es de la campaña.
+        applyNarratorFont();
+        // Idea 144: en otra partida no se está hablando con nadie.
+        talkingTo = '';
         // Y volver a dibujar donde estabas. `loadPartyForChat` restaura la localidad y el
         // tablero en memoria, pero nadie repintaba el panel: al cargar una partida veias
         // el selector de "¿donde estas?" y habia que volver a entrar a mano en el sitio
@@ -11128,6 +15366,27 @@ export function initPartyPanel() {
     }));
 
     SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'prisionero',
+        helpString: '<div>Qué hacer con un prisionero: <code>/prisionero interrogar p1</code>, '
+            + '<code>/prisionero entregar p1</code> o <code>/prisionero soltar p1</code>.</div>',
+        unnamedArgumentList: [
+            SlashCommandArgument.fromProps({ description: 'acción e id', typeList: [ARGUMENT_TYPE.STRING], isRequired: true }),
+        ],
+        callback: async (_args, value) => {
+            const [what, id] = String(value ?? '').trim().split(/\s+/);
+            const said = await handlePrisoner(String(what ?? ''), String(id ?? ''));
+            if (isShellOpen()) refreshGameShell();
+            return said;
+        },
+    }));
+
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'forrajear',
+        helpString: '<div>Cazar y forrajear: gasta un rato del día. Si sale, todos comen y beben; si no, al menos agua.</div>',
+        callback: () => runForage(),
+    }));
+
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
         name: 'explorar',
         helpString: '<div>Explorar los alrededores: gasta un rato del día y descubre un sitio nuevo junto a donde '
             + 'estás. Con un nombre, va a buscar lo que el narrador mencionó: <code>/explorar La cueva del norte</code>.</div>',
@@ -11163,7 +15422,8 @@ export function initPartyPanel() {
     SlashCommandParser.addCommandObject(SlashCommand.fromProps({
         name: 'maniobra',
         helpString: '<div>En vez de atacar: <code>/maniobra esquivar</code>, <code>/maniobra destrabarse</code>, '
-            + '<code>/maniobra empujar Goblin</code> o <code>/maniobra ayudar Goblin</code>. Gasta la accion.</div>',
+            + '<code>/maniobra empujar Goblin</code>, <code>/maniobra ayudar Goblin</code>, <code>/maniobra esconderse</code> '
+            + 'o <code>/maniobra lanzar red Goblin</code> (y <code>aceite</code>, u <code>objeto</code> para lo que haya a mano en el tablero). Gasta la accion.</div>',
         unnamedArgumentList: [
             SlashCommandArgument.fromProps({
                 description: 'la maniobra y, si hace falta, a quien',
@@ -11173,8 +15433,57 @@ export function initPartyPanel() {
         ],
         callback: (_args, value) => {
             const [kind, ...rest] = String(value ?? '').trim().split(/\s+/);
+            // Idea 122: «lanzar red Goblin» o «lanzar:red Goblin».
+            if (/^lanzar/i.test(String(kind))) {
+                const what = String(kind).includes(':') ? String(kind).split(':')[1] : String(rest.shift() ?? '');
+                // Idea 8: «lanzar objeto Goblin» coge lo que haya a mano en el tablero.
+                if (what.toLowerCase() === 'objeto') return throwScenery(rest.join(' '));
+                return throwItem(what.toLowerCase(), rest.join(' '));
+            }
             return performManeuver(String(kind || '').toLowerCase(), rest.join(' '));
         },
+    }));
+
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'ofrecer-objeto',
+        helpString: '<div>Idea 139: lo mismo que hace el narrador con <code>dar_objeto</code>: <code>/ofrecer-objeto Manta de lana</code> '
+            + 'deja el objeto para cogerlo desde la fila de fichas.</div>',
+        unnamedArgumentList: [
+            SlashCommandArgument.fromProps({ description: 'qué es', typeList: [ARGUMENT_TYPE.STRING], isRequired: true }),
+        ],
+        callback: (_args, value) => offerItem(String(value ?? ''), '', ''),
+    }));
+
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'aceptar-objeto',
+        helpString: '<div>Idea 139: coger lo que ofreció el narrador. <code>/aceptar-objeto Manta de lana</code>.</div>',
+        unnamedArgumentList: [
+            SlashCommandArgument.fromProps({ description: 'cuál', typeList: [ARGUMENT_TYPE.STRING], isRequired: true }),
+        ],
+        callback: (_args, value) => acceptOffer(String(value ?? '')),
+    }));
+
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'acampar',
+        helpString: '<div>Idea 67: acampar aquí, donde no hay posada: el fuego, las guardias, la charla y la cena. '
+            + 'Luego se duerme como un descanso largo.</div>',
+        callback: async () => campNight(),
+    }));
+
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'sonsacar',
+        helpString: '<div>Idea 110: sonsacarle a alguien de aquí lo que esconde (Perspicacia, una vez al día). '
+            + '<code>/sonsacar Giles</code>.</div>',
+        unnamedArgumentList: [
+            SlashCommandArgument.fromProps({ description: 'a quién', typeList: [ARGUMENT_TYPE.STRING], isRequired: true }),
+        ],
+        callback: async (_args, value) => pryNpc(String(value ?? '')),
+    }));
+
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'comprobar-mundo',
+        helpString: '<div>Idea 181: si el mundo abierto llega al listón, y el encargo para el Gem con lo que falta.</div>',
+        callback: async () => checkCurrentWorld(),
     }));
 
     SlashCommandParser.addCommandObject(SlashCommand.fromProps({
@@ -11267,7 +15576,14 @@ export function initPartyPanel() {
     // Loaded lazily so the meter never delays startup for a panel most turns never open.
     eventSource.on(event_types.GENERATE_AFTER_DATA, (/** @type {any} */ data, /** @type {boolean} */ dryRun) => {
         import('./game-engine/ui/prompt-preview.js')
-            .then(({ recordPrompt }) => recordPrompt(data, dryRun))
+            .then(({ recordPrompt, meterView }) => {
+                recordPrompt(data, dryRun);
+                // Idea 147: lo que cuesta cada turno, a la vista mientras se juega.
+                if (!dryRun) {
+                    lastMeter = meterView();
+                    if (isShellOpen()) refreshGameShell();
+                }
+            })
             .catch(error => console.error('[party] prompt meter failed', error));
     });
 
@@ -11316,10 +15632,69 @@ export function initPartyPanel() {
         stealth: true,
     });
 
+    // Idea 139: el narrador ofrece un objeto; quien juega decide si lo coge, y lo que entra lo
+    // decide el motor.
+    ToolManager.registerFunctionTool({
+        name: 'dar_objeto',
+        displayName: 'Ofrecer un objeto',
+        description: 'Úsala cuando la narración ponga un objeto concreto al alcance del grupo (lo que deja un caído, un regalo, algo sobre una mesa). '
+            + 'No lo da: lo ofrece, y el jugador decide si lo coge. Lo que es de verdad lo decide el juego.',
+        parameters: {
+            type: 'object',
+            properties: {
+                nombre: { type: 'string', description: 'Qué es, en pocas palabras: «Manta de lana», «Daga oxidada».' },
+                descripcion: { type: 'string', description: 'Una frase: de dónde sale o cómo es.' },
+                para: { type: 'string', description: 'Quién del grupo lo recibe, si es para alguien concreto.' },
+            },
+            required: ['nombre'],
+        },
+        action: async (/** @type {{nombre: string, descripcion?: string, para?: string}} */ params) => offerItem(params?.nombre, params?.descripcion, params?.para),
+        shouldRegister: () => Boolean(chat_metadata?.[METADATA_KEY]),
+        stealth: true,
+    });
+
+    // Idea 138: el narrador pide una tirada; la tira quien juega, con el dado del motor.
+    ToolManager.registerFunctionTool({
+        name: 'pedir_tirada',
+        displayName: 'Pedir una tirada',
+        description: 'Úsala cuando la escena pida una prueba del jugador (convencer, escalar, mentir, fijarse) y el resultado no sea obvio. '
+            + 'No tires tú ni narres el resultado: aparece un botón para que el jugador tire, y el resultado te llega en su mensaje.',
+        parameters: {
+            type: 'object',
+            properties: {
+                habilidad: { type: 'string', description: `Una de: ${Object.values(SKILLS).map(s => s.label).join(', ')}.` },
+                motivo: { type: 'string', description: 'Qué se intenta, en pocas palabras. Ejemplo: convencer al guardia.' },
+                dificultad: { type: 'number', description: 'CD de 5 (fácil) a 25 (casi imposible). Normal: 12.' },
+            },
+            required: ['habilidad'],
+        },
+        action: async (/** @type {{habilidad: string, motivo?: string, dificultad?: number}} */ params) => {
+            if (combatEncounter.active) return 'En combate no: las tiradas las lleva la barra de combate.';
+            const result = addRequest(chat_metadata?.[CHECK_REQUESTS_KEY], {
+                skill: params?.habilidad, reason: params?.motivo, dc: params?.dificultad,
+            }, SKILLS);
+            if (!result.added) return `No se pide: ${result.reason}`;
+            chat_metadata[CHECK_REQUESTS_KEY] = result.requests;
+            saveMetadata();
+            if (isShellOpen()) refreshGameShell();
+            return 'Pedida. Termina tu respuesta dejando la situación abierta; no narres si sale o no.';
+        },
+        shouldRegister: () => Boolean(chat_metadata?.[METADATA_KEY]),
+        stealth: true,
+    });
+
     // El hilo: a quien nombras al hablar, estando donde estas.
     eventSource.on(event_types.MESSAGE_SENT, (/** @type {number} */ messageId) => {
         const said = String(chat?.[messageId]?.mes || '');
         if (said) notePlot({ kind: 'say', text: said, place: currentLocationName });
+    });
+
+    // Idea 108: al abrir una campana ya jugada, lo que hace falta para retomar.
+    eventSource.on(event_types.CHAT_CHANGED, () => {
+        setTimeout(() => {
+            const played = (chat || []).filter(m => m && !m.is_system).length;
+            if (played > 3 && chat_metadata?.[METADATA_KEY]) showRecap();
+        }, 2500);
     });
 
     // Una campana de antes del hilo lo recibe en silencio la primera vez que se juega.
@@ -11330,6 +15705,25 @@ export function initPartyPanel() {
             const played = (chat || []).filter(m => m && !m.is_system).length;
             if (played > 1) void ensurePlot({ announce: false });
         }, 1500);
+    });
+
+    // Idea 137: mientras se escribe, si lo escrito pide una tirada, se ofrece.
+    /** @type {ReturnType<typeof setTimeout>|null} */
+    let typingTimer = null;
+    $(document).on('input', '#send_textarea', () => {
+        if (typingTimer) clearTimeout(typingTimer);
+        typingTimer = setTimeout(() => {
+            const said = String(/** @type {HTMLTextAreaElement|null} */ (document.querySelector('#send_textarea'))?.value ?? '');
+            const next = /^\[TIRADA/.test(said.trim()) ? [] : intentSkills(said);
+            if (next.join() === typedIntents.join()) return;
+            typedIntents = next;
+            if (isShellOpen()) refreshGameShell();
+        }, 400);
+    });
+    eventSource.on(event_types.MESSAGE_SENT, () => {
+        if (typedIntents.length === 0) return;
+        typedIntents = [];
+        if (isShellOpen()) refreshGameShell();
     });
 
     // Enviado el mensaje con la tirada, se puede volver a intentar algo.
@@ -11365,6 +15759,17 @@ export function initPartyPanel() {
             if (isShellOpen()) refreshGameShell();
         });
     }
+
+    // Idea 145: la cara de quien habla, en cada mensaje del narrador que se pinta.
+    eventSource.on(event_types.CHARACTER_MESSAGE_RENDERED, (/** @type {number} */ messageId) => decorateSpeakers(Number(messageId)));
+    for (const redrawn of [event_types.MESSAGE_SWIPED, event_types.MESSAGE_UPDATED, event_types.MESSAGE_EDITED]) {
+        eventSource.on(redrawn, (/** @type {number} */ messageId) => setTimeout(() => decorateSpeakers(Number(messageId)), 50));
+    }
+    eventSource.on(event_types.CHAT_CHANGED, () => {
+        setTimeout(() => {
+            for (const node of document.querySelectorAll('#chat .mes')) decorateSpeakers(Number(node.getAttribute('mesid')));
+        }, 1200);
+    });
 
     // ================================================================
     //  Auto-detect location / board names in user messages

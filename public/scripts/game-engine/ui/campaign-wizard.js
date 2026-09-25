@@ -680,6 +680,8 @@ export async function createCampaign({
     // La semilla del mundo: se tira ahora y se queda para siempre. Sin esto, lo unico de
     // donde sacar el azar era el nombre, y dos campanas llamadas igual salian iguales.
     data.metadata = ensureSeed(data.metadata, { seed: answers.seed }).metadata;
+    // Idea 180: de qué mundo o plantilla parte, para el código de compartir.
+    if (answers.templateId && !data.metadata.origin) data.metadata.origin = String(answers.templateId);
 
     // Los sitios que se hayan decidido en el taller mandan sobre los que el mundo se
     // pondria solo: lo que tocas se queda. Sin tocar nada, esto llega vacio y el mundo

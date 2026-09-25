@@ -19,6 +19,12 @@
  * @property {number} level
  * @property {string} class
  * @property {string} race
+ * @property {string} [background] El trasfondo (idea 49): da competencias en las tiradas.
+ * @property {string} [nickname] El apodo ganado (idea 44).
+ * @property {string[]} [scars] Las cicatrices de heridas ya curadas (idea 56).
+ * @property {any} [feats] Las hazañas que lleva: tumbados, criticos, caidas, rescates.
+ * @property {string} [prefer] A quien va primero en combate (idea 35).
+ * @property {{for: string, until: number}} [mourning] Por quien guarda duelo, y hasta cuando (idea 43).
  * @property {string[]} factions
  * @property {number} hp
  * @property {number} maxHp

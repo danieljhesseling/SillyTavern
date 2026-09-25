@@ -27,6 +27,7 @@ import { buildPartyStrip } from './party-strip.js';
  * @property {boolean} current Whether the party is standing there.
  * @property {number} boards How many boards the place holds.
  * @property {string[]} reasons Why it is shut, when it is.
+ * @property {string} [pending] Lo que hay pendiente alli (idea 81).
  */
 
 /**
@@ -43,6 +44,7 @@ import { buildPartyStrip } from './party-strip.js';
  * @property {BoardView[]} boards
  * @property {PlaceView[]} places
  * @property {import('./party-strip.js').PartyChip[]} party
+ * @property {string} [fortune] Como le va a este sitio por lo que hizo el grupo.
  */
 
 /**

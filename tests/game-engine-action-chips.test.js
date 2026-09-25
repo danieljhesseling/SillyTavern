@@ -86,7 +86,7 @@ describe('descansar y moverse', () => {
 });
 
 describe('la fila se lee de un vistazo', () => {
-    test('nunca pasa de seis', () => {
+    test('nunca pasa de siete: seis, y la que dice cuántas quedan (idea 169)', () => {
         const chips = buildActionChips({
             doors: [{ x: 1, y: 1, distance: 1 }, { x: 2, y: 2, distance: 2 }],
             companions: [{ name: 'A' }, { name: 'B' }, { name: 'C' }],
@@ -94,7 +94,8 @@ describe('la fila se lee de un vistazo', () => {
             boards: [{ name: 'X' }, { name: 'Y' }],
             places: [{ name: 'Z' }],
         });
-        expect(chips).toHaveLength(6);
+        expect(chips).toHaveLength(7);
+        expect(chips.at(-1)).toMatchObject({ id: 'more', label: '+3 más' });
     });
 
     test('y se cuenta en una linea', () => {

@@ -276,6 +276,9 @@ export function buildEditorModel(metadata, entries = {}) {
             damageType: text(item?.damageType),
             slot: text(item?.slot),
             description: text(item?.description),
+            // Idea 132: a qué está ligada, si es una reliquia. El editor no la dibuja todavía,
+            // pero perderla al guardar la convertiría en botín.
+            boundTo: item?.boundTo && typeof item.boundTo === 'object' ? item.boundTo : null,
             // Lo que hace al equiparlo. `applyEquipmentEffects` lo lee: `armorClass` sube
             // la CA y el resto suben la caracteristica. El editor no los dibuja todavia,
             // pero perderlos al guardar convertiria una espada rúnica en una espada.
@@ -557,6 +560,7 @@ export function applyEditorModel(metadata, model) {
                 damageType: text(item.damageType),
                 slot: text(item.slot),
                 description: text(item.description),
+                ...(item.boundTo && typeof item.boundTo === 'object' ? { boundTo: item.boundTo } : {}),
                 effects: (Array.isArray(item.effects) ? item.effects : [])
                     .map((/** @type {any} */ effect) => ({
                         stat: text(effect?.stat),

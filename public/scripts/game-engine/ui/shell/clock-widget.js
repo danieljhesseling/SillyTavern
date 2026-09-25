@@ -64,9 +64,10 @@ export function availableHitDice(party, hitDieByClass = {}) {
  * @param {boolean} [input.fighting]
  * @param {Array<any>} [input.party]
  * @param {Record<string, string>} [input.hitDieByClass]
+ * @param {string} [input.season] Idea 74: la estación, dicha.
  * @returns {ClockView}
  */
-export function buildClockView({ day = 1, slotLabel = '', fighting = false, party = [], hitDieByClass = {} } = {}) {
+export function buildClockView({ day = 1, slotLabel = '', fighting = false, party = [], hitDieByClass = {}, season = '' } = {}) {
     const dice = availableHitDice(party, hitDieByClass);
 
     const actions = ACTIONS.map(action => {
@@ -85,7 +86,7 @@ export function buildClockView({ day = 1, slotLabel = '', fighting = false, part
     return {
         day: safeDay,
         slot,
-        label: slot ? `Día ${safeDay} · ${slot}` : `Día ${safeDay}`,
+        label: [`Día ${safeDay}`, slot, String(season || '').trim()].filter(Boolean).join(' · '),
         actions,
     };
 }

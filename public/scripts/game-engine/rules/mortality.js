@@ -55,6 +55,43 @@ export const DEFAULT_SURVIVAL = {
 };
 
 /**
+ * Las dificultades con nombre (idea 198): tres puntos de partida para no tener que decidir
+ * seis interruptores. Se eligen de una vez y luego se afinan uno a uno si se quiere.
+ */
+export const DIFFICULTIES = {
+    historia: {
+        label: 'Historia',
+        note: 'Para contar una historia: nadie de los tuyos muere, se guarda cuando se quiere, sin hambre ni frío.',
+        survival: { mortality: MORTALITY.MERCENARIES, saves: SAVES.FREE, needs: false, exposure: false, injuries: true, loyalty: false },
+    },
+    veterana: {
+        label: 'Veterana',
+        note: 'Lo de siempre: muere quien va por dinero, hay hambre, frío y heridas que se quedan.',
+        survival: { ...DEFAULT_SURVIVAL },
+    },
+    hierro: {
+        label: 'De hierro',
+        note: 'Puede morir cualquiera, y solo se guarda en el refugio. Cada decisión pesa.',
+        survival: { mortality: MORTALITY.EVERYONE, saves: SAVES.SHELTER, needs: true, exposure: true, injuries: true, loyalty: true },
+    },
+};
+
+/**
+ * Qué dificultad con nombre es una supervivencia, si es una de las tres.
+ *
+ * @param {any} survival
+ * @returns {string} La clave, o vacío si está afinada a mano.
+ */
+export function difficultyOf(survival) {
+    const read = readSurvival(survival);
+    for (const [id, preset] of Object.entries(DIFFICULTIES)) {
+        const want = readSurvival(preset.survival);
+        if (Object.keys(want).every(key => /** @type {any} */ (want)[key] === /** @type {any} */ (read)[key])) return id;
+    }
+    return '';
+}
+
+/**
  * @param {any} rules
  * @returns {{mortality: string, saves: string, needs: boolean, exposure: boolean,
  *   injuries: boolean, loyalty: boolean}}

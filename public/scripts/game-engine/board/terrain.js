@@ -108,6 +108,8 @@ export const TERRAIN_SCHEMA_VERSION = 1;
  * @typedef {Object} TerrainCell
  * @property {string} type
  * @property {boolean} [open]  Doors only.
+ * @property {boolean} [locked] Doors only: cerrada con llave (idea 77).
+ * @property {boolean} [broken] Doors only: rota (idea 23). Se queda abierta para siempre.
  */
 
 /**
@@ -170,6 +172,10 @@ export function normalizeTerrain(raw) {
         const cell = { type };
         if (TERRAIN_TYPES[type].stateful) {
             cell.open = Boolean(value && typeof value === 'object' && value.open);
+            // Una puerta abierta no puede estar cerrada con llave.
+            if (!cell.open && value && typeof value === 'object' && value.locked) cell.locked = true;
+            // Y una rota solo puede estar abierta (idea 23).
+            if (cell.open && value && typeof value === 'object' && value.broken) cell.broken = true;
         }
         cells[key] = cell;
     }
@@ -215,7 +221,7 @@ export function getCellDefinition(terrain, x, y) {
  * @param {number} x
  * @param {number} y
  * @param {string} type
- * @param {{ open?: boolean }} [options]
+ * @param {{ open?: boolean, locked?: boolean, broken?: boolean }} [options]
  * @returns {BoardTerrain}
  */
 export function setCell(terrain, x, y, type, options = {}) {
@@ -232,6 +238,8 @@ export function setCell(terrain, x, y, type, options = {}) {
     const cell = { type };
     if (TERRAIN_TYPES[type].stateful) {
         cell.open = Boolean(options.open);
+        if (!cell.open && options.locked) cell.locked = true;
+        if (cell.open && options.broken) cell.broken = true;
     }
     return { version: TERRAIN_SCHEMA_VERSION, cells: { ...base.cells, [key]: cell } };
 }
@@ -246,7 +254,8 @@ export function setCell(terrain, x, y, type, options = {}) {
  */
 export function setDoorOpen(terrain, x, y, open) {
     const cell = getCell(terrain, x, y);
-    if (cell.type !== 'door') return normalizeTerrain(terrain);
+    // Una puerta rota ya no se cierra (idea 23).
+    if (cell.type !== 'door' || cell.broken) return normalizeTerrain(terrain);
     return setCell(terrain, x, y, 'door', { open: Boolean(open) });
 }
 
@@ -317,6 +326,8 @@ export function getCoverBonus(terrain, x, y) {
 export const ASCII_TERRAIN = {
     '#': { type: 'wall' },
     'D': { type: 'door', open: false },
+    // Idea 77: cerrada con llave. Se abre con una llave, con maña o a golpes.
+    'L': { type: 'door', open: false, locked: true },
     'o': { type: 'door', open: true },
     '~': { type: 'difficult' },
     'c': { type: 'cover_half' },
@@ -341,7 +352,7 @@ export function terrainFromAsciiMap(rows) {
         [...String(row ?? '')].forEach((char, x) => {
             const cell = ASCII_TERRAIN[char];
             if (cell) {
-                terrain = setCell(terrain, x, y, cell.type, { open: cell.open });
+                terrain = setCell(terrain, x, y, cell.type, { open: /** @type {any} */ (cell).open, locked: /** @type {any} */ (cell).locked });
             }
         });
     });
@@ -355,4 +366,85 @@ export function terrainFromAsciiMap(rows) {
  */
 export function getTerrainOptions() {
     return Object.entries(TERRAIN_TYPES).map(([value, definition]) => [value, definition.label]);
+}
+
+/** Cómo se dice cada terreno a quien juega (idea 164). */
+const CELL_WORDS = {
+    floor: 'Suelo',
+    wall: 'Pared: no se pasa ni se ve a través',
+    difficult: 'Terreno difícil: cada casilla cuesta el doble',
+    cover_half: 'Media cobertura: +2 a la CA de quien está detrás',
+    cover_three_quarters: 'Tres cuartos de cobertura: +5 a la CA',
+    chasm: 'Precipicio: no se pasa, y a quien empujan dentro, cae',
+};
+
+/**
+ * Lo que es una casilla, dicho para quien juega (idea 164).
+ *
+ * @param {BoardTerrain|null} terrain
+ * @param {number} x
+ * @param {number} y
+ * @returns {string} `Casilla (3, 5) · Terreno difícil: …`
+ */
+export function describeCell(terrain, x, y) {
+    const cell = getCell(/** @type {BoardTerrain} */ (terrain), x, y);
+    const said = cell.type === 'door'
+        ? (cell.broken ? 'Puerta rota: ya no se cierra'
+            : cell.open ? 'Puerta abierta'
+                : cell.locked ? 'Puerta cerrada con llave: con una llave, con maña o a golpes'
+                    : 'Puerta cerrada: se abre con una ficha o pulsándola')
+        : (CELL_WORDS[/** @type {keyof typeof CELL_WORDS} */ (cell.type)] ?? 'Suelo');
+    return `Casilla (${Math.trunc(x) + 1}, ${Math.trunc(y) + 1}) · ${said}`;
+}
+
+/**
+ * Si una puerta está cerrada con llave (idea 77).
+ *
+ * @param {BoardTerrain} terrain
+ * @param {number} x
+ * @param {number} y
+ * @returns {boolean}
+ */
+export function isLocked(terrain, x, y) {
+    const cell = getCell(terrain, x, y);
+    return cell.type === 'door' && !cell.open && Boolean(cell.locked);
+}
+
+/**
+ * Quitar la llave a una puerta: sigue cerrada, pero ya se abre como cualquier otra.
+ *
+ * @param {BoardTerrain} terrain
+ * @param {number} x
+ * @param {number} y
+ * @returns {BoardTerrain}
+ */
+export function unlockDoor(terrain, x, y) {
+    if (!isLocked(terrain, x, y)) return normalizeTerrain(terrain);
+    return setCell(terrain, x, y, 'door', { open: false, locked: false });
+}
+
+/**
+ * Romper una puerta: a golpes o por el fuego (idea 23). Se queda abierta para siempre, y
+ * ya no se cierra ni con llave.
+ *
+ * @param {BoardTerrain} terrain
+ * @param {number} x
+ * @param {number} y
+ * @returns {BoardTerrain}
+ */
+export function breakDoor(terrain, x, y) {
+    if (getCell(terrain, x, y).type !== 'door') return normalizeTerrain(terrain);
+    return setCell(terrain, x, y, 'door', { open: true, broken: true });
+}
+
+/**
+ * Las puertas con llave que quedan en un tablero.
+ *
+ * @param {BoardTerrain} terrain
+ * @returns {Array<{x: number, y: number}>}
+ */
+export function lockedDoors(terrain) {
+    return Object.entries(normalizeTerrain(terrain).cells)
+        .filter(([, cell]) => cell.type === 'door' && cell.locked)
+        .map(([key]) => /** @type {{x: number, y: number}} */ (parseCellKey(key)));
 }

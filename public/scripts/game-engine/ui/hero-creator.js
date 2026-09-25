@@ -18,6 +18,8 @@ import {
     DEFAULT_RACES, DEFAULT_CLASSES, GENDERS, validateHero, describeHero,
     buildHeroPrompt, cleanHeroAbout,
 } from '../campaign/hero.js';
+import { BACKGROUNDS, guessBackground, describeBackground } from '../campaign/backgrounds.js';
+import { SKILLS } from '../rules/checks.js';
 
 /**
  * Un campo con su etiqueta, y una lista de sugerencias que no obliga a nada.
@@ -142,6 +144,33 @@ export async function openHeroCreator({
     aboutField.append(aboutInput);
     root.append(aboutField);
 
+    // Idea 49: el pasado cuenta en las reglas. Se propone solo con lo que escribes arriba
+    // (hasta que lo eliges a mano) y dice lo que da.
+    const backgroundField = $('<label class="hc-field"></label>');
+    backgroundField.append($('<span class="hc-label"></span>').text('Trasfondo'));
+    const backgroundSelect = $('<select class="text_pole hc-input hc-background"></select>');
+    backgroundSelect.append($('<option value=""></option>').text('— Sin trasfondo —'));
+    for (const [id, background] of Object.entries(BACKGROUNDS)) {
+        backgroundSelect.append($('<option></option>').attr('value', id).text(background.label));
+    }
+    const backgroundHint = $('<div class="hc-background-hint"></div>');
+    const showBackground = () => {
+        const label = (/** @type {string} */ skill) => SKILLS[/** @type {keyof typeof SKILLS} */ (skill)]?.label ?? skill;
+        backgroundHint.text(describeBackground(String(backgroundSelect.val() || ''), label).replace(/^Trasfondo: [^(]*/, ''));
+    };
+    let backgroundTouched = false;
+    backgroundSelect.on('change', () => { backgroundTouched = true; showBackground(); });
+    aboutInput.on('input change', () => {
+        if (backgroundTouched) return;
+        const guess = guessBackground(String(aboutInput.val() || ''));
+        if (guess && guess !== backgroundSelect.val()) {
+            backgroundSelect.val(guess);
+            showBackground();
+        }
+    });
+    backgroundField.append(backgroundSelect, backgroundHint);
+    root.append(backgroundField);
+
     // La cara: se elige del disco. Pedir una ruta escrita a mano era pedir que alguien
     // supiera donde vive el servidor.
     const faceField = $('<label class="hc-field"></label>');
@@ -191,7 +220,7 @@ export async function openHeroCreator({
 
             const answer = await generate({ prompt, systemPrompt, responseLength: 300 });
             const written = cleanHeroAbout(String(answer ?? ''));
-            if (written) aboutInput.val(written);
+            if (written) aboutInput.val(written).trigger('change');
             else warning.text('El modelo no devolvió nada. Prueba a decirle algo más concreto.').show();
         } catch (error) {
             console.error('[hero] the wand failed', error);
@@ -209,6 +238,7 @@ export async function openHeroCreator({
         className: String(root.find('.hc-class').val() || '').trim(),
         about: String(aboutInput.val() || '').trim(),
         image: String(faceValue.val() || '').trim(),
+        background: String(root.find('.hc-background').val() || '').trim(),
     });
 
     const popup = new Popup(root, POPUP_TYPE.CONFIRM, '', {

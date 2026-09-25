@@ -37,16 +37,30 @@ function box(label, value, hint = '') {
  * @param {any} [input.xpTable]
  * @param {number} [input.bondRank]
  * @param {(() => void)|null} [input.onEdit] Abrir el editor de siempre.
+ * @param {string[]} [input.languages] Idea 59: lo que habla.
+ * @param {Array<{name: string}>} [input.sets] Idea 62: sus juegos de equipo.
+ * @param {Array<{id: string, name: string, avatar?: string}>} [input.mates] Idea 163: a quién se le puede dar algo.
+ * @param {((itemId: string, toId: string) => boolean)|null} [input.onGive]
+ * @param {((name: string) => boolean)|null} [input.onSaveSet]
+ * @param {((name: string) => boolean)|null} [input.onApplySet]
  * @param {any} input.Popup
  * @param {any} input.POPUP_TYPE
- * @returns {Promise<void>}
+ * @returns {Promise<string>} `changed` si se ha tocado algo, para volver a abrirla al día.
  */
 export async function openCharacterPanel({
     member, slotInfo = {}, abilities = [], xpTable = null, bondRank = 0,
-    onEdit = null, Popup, POPUP_TYPE,
+    onEdit = null, languages = [], sets = [], mates = [], onGive = null, onSaveSet = null, onApplySet = null,
+    Popup, POPUP_TYPE,
 }) {
     const sheet = buildCharacterSheet({ member, slotInfo, abilities, xpTable, bondRank });
     const root = $('<div class="ch-root"></div>');
+    let changed = '';
+    /** @param {boolean} done */
+    const after = (done) => {
+        if (!done) return;
+        changed = 'changed';
+        popup.completeAffirmative();
+    };
 
     // ---- Quién es, y cómo está -------------------------------------------
     const head = $('<div class="ch-head"></div>');
@@ -60,6 +74,8 @@ export async function openCharacterPanel({
     }
     head.append(who);
     root.append(head);
+    // Idea 59: lo que habla, que ahora importa.
+    if (languages.length > 0) root.append($('<div class="ch-langs"></div>').text(`Habla: ${languages.join(', ')}`));
 
     // La vida, primero y grande: es lo que se viene a mirar.
     const health = $('<div class="ch-health"></div>')
@@ -118,6 +134,23 @@ export async function openCharacterPanel({
     }
     root.append(worn);
 
+    // ---- Idea 62: los juegos de equipo guardados ---------------------------
+    if (onSaveSet || onApplySet) {
+        const outfits = $('<div class="ch-sets"></div>');
+        for (const set of sets) {
+            const wear = $('<button class="menu_button ch-set-apply" type="button"></button>')
+                .attr('data-set', set.name).text(`Ponerse «${set.name}»`);
+            wear.on('click', () => after(Boolean(onApplySet?.(set.name))));
+            outfits.append(wear);
+        }
+        const name = $('<input type="text" class="text_pole ch-set-name" placeholder="Sigilo, Combate…" maxlength="24" />');
+        const keep = $('<button class="menu_button ch-set-save" type="button"></button>').text('Guardar lo que lleva');
+        keep.on('click', () => after(Boolean(onSaveSet?.(String(name.val() ?? '').trim()))));
+        outfits.append($('<div class="ch-set-new"></div>').append(name).append(keep));
+        root.append($('<div class="ch-title-row"></div>').text('Juegos de equipo'));
+        root.append(outfits);
+    }
+
     // ---- Lo que sabe hacer -------------------------------------------------
     if (sheet.abilities.length > 0) {
         root.append($('<div class="ch-title-row"></div>').text('Habilidades'));
@@ -138,10 +171,46 @@ export async function openCharacterPanel({
     if (sheet.inventory.length === 0) {
         bag.append($('<div class="ch-empty"></div>').text('No lleva nada encima.'));
     }
+    // Idea 163: arrastrar a la cara de quien lo va a llevar, o elegirlo en la lista.
+    if (onGive && mates.length > 0 && sheet.inventory.length > 0) {
+        const faces = $('<div class="ch-mates"></div>');
+        faces.append($('<span class="ch-mates-hint"></span>').text('Arrastra algo a quien se lo quieras dar:'));
+        for (const mate of mates) {
+            const face = $('<div class="ch-mate"></div>').attr('data-member', mate.id).attr('title', mate.name);
+            if (mate.avatar) face.append($('<img alt="">').attr('src', mate.avatar));
+            face.append($('<span></span>').text(mate.name));
+            face.on('dragover', (event) => {
+                event.preventDefault();
+                face.addClass('over');
+            });
+            face.on('dragleave', () => face.removeClass('over'));
+            face.on('drop', (event) => {
+                event.preventDefault();
+                face.removeClass('over');
+                const id = String(/** @type {DragEvent} */ (event.originalEvent)?.dataTransfer?.getData('text/plain') ?? '');
+                if (id) after(Boolean(onGive(id, mate.id)));
+            });
+            faces.append(face);
+        }
+        root.append(faces);
+    }
     for (const item of sheet.inventory) {
-        const row = $('<div class="ch-item"></div>');
+        const row = $('<div class="ch-item"></div>').attr('data-item', item.id);
         row.append($('<span class="ch-item-name"></span>').text(item.name));
         if (item.weight > 0) row.append($('<span class="ch-item-weight"></span>').text(`${item.weight} kg`));
+        if (onGive && mates.length > 0 && item.id) {
+            row.attr('draggable', 'true');
+            row.on('dragstart', (event) => {
+                /** @type {DragEvent} */ (event.originalEvent)?.dataTransfer?.setData('text/plain', item.id);
+            });
+            const give = $('<select class="ch-give"></select>').append($('<option value=""></option>').text('Dar a…'));
+            for (const mate of mates) give.append($('<option></option>').attr('value', mate.id).text(mate.name));
+            give.on('change', () => {
+                const to = String(give.val() ?? '');
+                if (to) after(Boolean(onGive(item.id, to)));
+            });
+            row.append(give);
+        }
         bag.append(row);
     }
     root.append(bag);
@@ -177,4 +246,5 @@ export async function openCharacterPanel({
     });
 
     await popup.show();
+    return changed;
 }

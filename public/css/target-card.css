@@ -76,3 +76,19 @@
     background: rgba(208, 138, 134, 0.18);
     font-size: 0.85em;
 }
+
+/* Idea 2: lo que va a pasar si atacas, con las mismas cuentas que la tirada. */
+.tc-forecast {
+    margin-top: 6px;
+    padding: 5px 8px;
+    border-radius: 6px;
+    background: rgba(214, 180, 106, 0.16);
+    font-size: 0.88em;
+}
+
+/* Idea 14: a por quien va este enemigo. */
+.tc-intent {
+    margin-top: 4px;
+    font-size: 0.85em;
+    opacity: 0.8;
+}

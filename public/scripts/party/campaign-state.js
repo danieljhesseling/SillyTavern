@@ -44,6 +44,7 @@ export const CAMPAIGN_MAP_KEY = 'campaignMap';
  * @property {() => void} renderParty
  * @property {() => void} renderCampaign
  * @property {(text: string) => void} narrate
+ * @property {(member: any, rank: number) => void} [rankedUp] Al subir de rango: su escena.
  * @property {() => boolean} isFighting
  * @property {() => string} worldName
  * @property {(name: string) => Promise<any>} loadWorld
@@ -148,6 +149,7 @@ export function createCampaignState(deps) {
 
         if (result.rankedUp) {
             deps.narrate(`✨ [CAMPAÑA] Tu vínculo con ${member.name} sube al rango ${result.rankAfter}.`);
+            deps.rankedUp?.(member, result.rankAfter);
 
             for (const perk of result.unlockedPerks) {
                 deps.narrate(`🎖️ [CAMPAÑA] Desbloqueado: ${perk.label} — ${perk.description}`);

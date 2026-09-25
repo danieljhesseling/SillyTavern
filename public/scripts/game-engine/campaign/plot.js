@@ -11,6 +11,22 @@
  *   al hablar, sacar una tirada o entregar un encargo (de una facción, o uno concreto);
  * - **qué cambia** al cumplirse: revelar sitios, abrir otros hitos y mover la reputación.
  *
+ * Y tres cosas más, escritas por el guionista (ideas 106, 111 y 114):
+ *
+ * - **Un plazo**: N días desde que se abre. Si se pasan, el hito se pierde y pasa lo que diga
+ *   `late` (lo normal: abrir el siguiente, peor parado).
+ * - **Oculto**: no sale en pantalla ni en el diario hasta que se cumple por casualidad. Es un
+ *   logro de la historia, no una tarea.
+ * - **El presagio**: tres frases al empezar, cada una ligada a un hito. Se cumple con él.
+ *
+ * Y tres formas de pedir y de cambiar (ideas 101, 102 y 107):
+ *
+ * - **Varias formas** (`any`): luchar, hablar o colarse; cualquiera lo cumple, y se apunta
+ *   cuál fue.
+ * - **Bifurcaciones** (`changes.close`): cumplir uno cierra otros. Ayudar a unos cierra el
+ *   camino de los otros, y ya no se abre.
+ * - **Investigaciones** (`clues`): reunir N pistas, cada una con una tirada en un sitio.
+ *
  * El hilo va escrito en el paquete del mundo. Un mundo que no trae uno recibe el de su
  * facción más peligrosa (`plotFromFaction`): su meta es lo que pasa si nadie la para, y su
  * reloj la cuenta atrás. Así la partida empieza con un problema aunque nadie lo escribiera.
@@ -26,7 +42,10 @@ import { readFactions, clockOf, saysWith } from './factions.js';
 export const OPENS = ['start', 'arrive', 'after', 'contract', 'day', 'clock'];
 
 /** Lo que puede pedir. `none` se cumple en cuanto se abre: una escena, sin más. */
-export const ASKS = ['arrive', 'win', 'defeat', 'talk', 'check', 'contract', 'none'];
+export const ASKS = ['arrive', 'win', 'defeat', 'talk', 'check', 'contract', 'none', 'any', 'clues'];
+
+/** Lo que puede ser cada una de las formas de un `any`: todo lo que se mira de un suceso. */
+const SIMPLE_ASKS = ['arrive', 'win', 'defeat', 'talk', 'check', 'contract'];
 
 /**
  * @typedef {Object} Milestone
@@ -36,10 +55,16 @@ export const ASKS = ['arrive', 'win', 'defeat', 'talk', 'check', 'contract', 'no
  * @property {string} hint   Lo que se ve en pantalla mientras está abierto.
  * @property {string} scene  Lo que el narrador cuenta al abrirse.
  * @property {{kind: string, place?: string, milestone?: string, id?: string, day?: number, faction?: string}} opens
- * @property {{kind: string, place?: string, board?: string, enemy?: string, npc?: string, skill?: string, id?: string, faction?: string, against?: boolean}} asks
- * @property {{reveal: string[], open: string[], standing: Record<string, number>, ending: string, endingBy: Record<string, string>}} changes
+ * @property {{kind: string, place?: string, board?: string, enemy?: string, npc?: string, skill?: string, id?: string, faction?: string, against?: boolean, options?: any[], need?: number, clues?: Array<{place: string, skill: string}>}} asks
+ *   `options`: las formas de un `any` (idea 101). `clues` y `need`: las pistas de una investigación (idea 107).
+ * @property {{reveal: string[], open: string[], standing: Record<string, number>, ending: string, endingBy: Record<string, string>, close: string[]}} changes
  *   `endingBy`: el final depende de con quien os hayais aliado — la faccion que mejor os
- *   mira, de entre estas, decide cual. `ending` es el de reserva.
+ *   mira, de entre estas, decide cual. `ending` es el de reserva. `close`: los hitos que
+ *   se cierran al cumplir este (idea 102).
+ * @property {boolean} hidden Idea 111: no se ve hasta que se cumple.
+ * @property {number} within  Idea 106: días para cumplirlo desde que se abre; 0 es sin plazo.
+ * @property {{reveal: string[], open: string[], standing: Record<string, number>}} late
+ *   Lo que pasa si se pasa el plazo.
  */
 
 /**
@@ -48,10 +73,14 @@ export const ASKS = ['arrive', 'win', 'defeat', 'talk', 'check', 'contract', 'no
  * @property {'written'|'faction'} source
  * @property {Milestone[]} milestones
  * @property {Record<string, {title: string, scene: string}>} endings Lo que se cuenta en cada final.
+ * @property {Array<{text: string, milestone: string}>} omens Idea 114: el presagio del principio.
  */
 
 /**
- * @typedef {{open: string[], done: string[]}} PlotState
+ * @typedef {{open: string[], done: string[], missed: string[], since: Record<string, number>, closed: string[], clues: Record<string, number[]>}} PlotState
+ *   `missed`: los que se perdieron por plazo. `since`: el día en que se abrió cada uno.
+ *   `closed`: los que cerró una bifurcación (idea 102). `clues`: las pistas halladas de cada
+ *   investigación, por su número (idea 107).
  */
 
 /** @param {any} value */
@@ -78,7 +107,24 @@ function readMilestone(raw, index) {
     if (!id || !title) return null;
 
     const opens = raw.opens && typeof raw.opens === 'object' ? raw.opens : { kind: 'after' };
-    const asks = raw.asks && typeof raw.asks === 'object' ? raw.asks : { kind: 'none' };
+    const rawAsks = raw.asks && typeof raw.asks === 'object' ? raw.asks : { kind: 'none' };
+    // Idea 101: las formas de un `any`, cada una de las que se sabe mirar.
+    const options = (Array.isArray(rawAsks.options) ? rawAsks.options : [])
+        .filter((/** @type {any} */ o) => o && SIMPLE_ASKS.includes(text(o.kind)))
+        .map((/** @type {any} */ o) => ({ ...o, kind: text(o.kind) }));
+    // Idea 107: las pistas de una investigación, cada una en un sitio y con una tirada.
+    const clues = (Array.isArray(rawAsks.clues) ? rawAsks.clues : [])
+        .filter((/** @type {any} */ c) => text(c?.place) && text(c?.skill))
+        .map((/** @type {any} */ c) => ({ place: text(c.place), skill: text(c.skill) }));
+    const askKind = text(rawAsks.kind) === 'any' && options.length === 0 ? 'none'
+        : text(rawAsks.kind) === 'clues' && clues.length === 0 ? 'none'
+            : text(rawAsks.kind);
+    const asks = {
+        ...rawAsks,
+        kind: askKind,
+        ...(askKind === 'any' ? { options } : {}),
+        ...(askKind === 'clues' ? { clues, need: Math.max(1, Math.min(clues.length, Math.floor(Number(rawAsks.need) || clues.length))) } : {}),
+    };
     const changes = raw.changes && typeof raw.changes === 'object' ? raw.changes : {};
     const list = (/** @type {any} */ v) => (Array.isArray(v) ? v.map(text).filter(Boolean) : []);
 
@@ -88,12 +134,18 @@ function readMilestone(raw, index) {
         if (text(faction) && text(ending)) endingBy[text(faction)] = text(ending);
     }
 
-    /** @type {Record<string, number>} */
-    const standing = {};
-    for (const [faction, amount] of Object.entries(changes.standing ?? {})) {
-        const n = Math.round(Number(amount) || 0);
-        if (n !== 0) standing[text(faction)] = n;
-    }
+    /** @param {any} source @returns {Record<string, number>} */
+    const standingOf = (source) => {
+        /** @type {Record<string, number>} */
+        const out = {};
+        for (const [faction, amount] of Object.entries(source ?? {})) {
+            const n = Math.round(Number(amount) || 0);
+            if (n !== 0) out[text(faction)] = n;
+        }
+        return out;
+    };
+    const standing = standingOf(changes.standing);
+    const late = raw.late && typeof raw.late === 'object' ? raw.late : {};
 
     return {
         id,
@@ -105,7 +157,11 @@ function readMilestone(raw, index) {
         asks: { ...asks, kind: ASKS.includes(text(asks.kind)) ? text(asks.kind) : 'none' },
         changes: {
             reveal: list(changes.reveal), open: list(changes.open), standing, ending: text(changes.ending), endingBy,
+            close: list(changes.close),
         },
+        hidden: Boolean(raw.hidden),
+        within: Math.max(0, Math.floor(Number(raw.within) || 0)),
+        late: { reveal: list(late.reveal), open: list(late.open), standing: standingOf(late.standing) },
     };
 }
 
@@ -128,11 +184,17 @@ export function readPlot(raw) {
             endings[text(id)] = { title: text(/** @type {any} */ (ending).title), scene: text(/** @type {any} */ (ending).scene) };
         }
     }
+    const ids = new Set(milestones.map(m => m.id));
+    const omens = (Array.isArray(raw.omens) ? raw.omens : [])
+        .map((/** @type {any} */ o) => ({ text: text(o?.text), milestone: text(o?.milestone) }))
+        .filter((/** @type {{text: string, milestone: string}} */ o) => o.text && ids.has(o.milestone))
+        .slice(0, 3);
     return {
         title: text(raw.title),
         source: raw.source === 'faction' ? 'faction' : 'written',
         milestones,
         endings,
+        omens,
     };
 }
 
@@ -142,7 +204,19 @@ export function readPlot(raw) {
  */
 export function readPlotState(raw) {
     const list = (/** @type {any} */ v) => (Array.isArray(v) ? [...new Set(v.map(text).filter(Boolean))] : []);
-    return { open: list(raw?.open), done: list(raw?.done) };
+    /** @type {Record<string, number>} */
+    const since = {};
+    for (const [id, day] of Object.entries(raw?.since && typeof raw.since === 'object' ? raw.since : {})) {
+        const n = Math.floor(Number(day) || 0);
+        if (text(id) && n > 0) since[text(id)] = n;
+    }
+    /** @type {Record<string, number[]>} */
+    const clues = {};
+    for (const [id, found] of Object.entries(raw?.clues && typeof raw.clues === 'object' ? raw.clues : {})) {
+        const indexes = (Array.isArray(found) ? found : []).map(n => Math.floor(Number(n))).filter(n => Number.isFinite(n) && n >= 0);
+        if (text(id) && indexes.length > 0) clues[text(id)] = [...new Set(indexes)];
+    }
+    return { open: list(raw?.open), done: list(raw?.done), missed: list(raw?.missed), since, closed: list(raw?.closed), clues };
 }
 
 /**
@@ -155,6 +229,9 @@ export function readPlotState(raw) {
 function asksFor(asks, event) {
     const kind = text(event?.kind);
     switch (asks.kind) {
+        // Idea 101: cualquiera de sus formas lo cumple.
+        case 'any':
+            return (asks.options ?? []).some(option => asksFor(option, event));
         case 'arrive':
             return kind === 'arrive' && lower(event.place) === lower(asks.place);
         case 'win':
@@ -207,6 +284,12 @@ function opensWith(opens, event) {
  * @property {PlotState} state
  * @property {Milestone[]} opened Los que se acaban de abrir, en orden: su escena se cuenta.
  * @property {Milestone[]} done   Los que se acaban de cumplir.
+ * @property {Milestone[]} missed Los que se acaban de perder por plazo (idea 106).
+ * @property {string[]} omens     Las frases del presagio que se acaban de cumplir (idea 114).
+ * @property {Milestone[]} closed Los que cierra una bifurcación (idea 102).
+ * @property {Record<string, string>} via Cómo se cumplió cada uno de un `any` (idea 101).
+ * @property {Array<{milestone: Milestone, found: number, need: number, clue: {place: string, skill: string}}>} clues
+ *   Las pistas que se acaban de encontrar (idea 107).
  * @property {{reveal: string[], standing: Record<string, number>, ending: string, endingBy: Record<string, string>}} changes
  */
 
@@ -217,17 +300,21 @@ function opensWith(opens, event) {
  * @param {PlotState} state
  * @param {Milestone[]} toOpen
  * @param {PlotStep} step
+ * @param {number} [today] Para apuntar desde cuándo está abierto: es lo que mide el plazo.
  */
-function openAll(plot, state, toOpen, step) {
+function openAll(plot, state, toOpen, step, today = 0) {
     const queue = [...toOpen];
     // Un hito que se abre a sí mismo en círculo no puede colgar la partida.
     for (let guard = 0; queue.length > 0 && guard < 200; guard++) {
         const milestone = /** @type {Milestone} */ (queue.shift());
         if (state.open.includes(milestone.id) || state.done.includes(milestone.id)) continue;
+        // Lo que cerró una bifurcación no vuelve a abrirse (idea 102).
+        if (state.closed.includes(milestone.id)) continue;
         // Con un final ya alcanzado no se abre nada más: «llegasteis tarde» no puede
         // pasar después de haberlos parado.
         if (hasEnded(plot, state)) break;
         state.open.push(milestone.id);
+        if (today > 0) state.since[milestone.id] = today;
         step.opened.push(milestone);
         if (milestone.asks.kind === 'none') queue.push(...complete(plot, state, milestone, step));
     }
@@ -286,6 +373,16 @@ function complete(plot, state, milestone, step) {
     }
     if (milestone.changes.ending) step.changes.ending = milestone.changes.ending;
     if (Object.keys(milestone.changes.endingBy).length > 0) step.changes.endingBy = milestone.changes.endingBy;
+    for (const omen of plot.omens ?? []) if (omen.milestone === milestone.id) step.omens.push(omen.text);
+    // Idea 102: los caminos que cierra.
+    const byIdAll = new Map(plot.milestones.map(m => [m.id, m]));
+    for (const id of milestone.changes.close ?? []) {
+        const closing = byIdAll.get(id);
+        if (!closing || state.done.includes(id) || state.closed.includes(id)) continue;
+        state.open = state.open.filter(open => open !== id);
+        state.closed.push(id);
+        step.closed.push(closing);
+    }
 
     const byId = new Map(plot.milestones.map(m => [m.id, m]));
     return [
@@ -296,19 +393,20 @@ function complete(plot, state, milestone, step) {
 
 /** @returns {PlotStep} */
 function emptyStep(/** @type {PlotState} */ state) {
-    return { state, opened: [], done: [], changes: { reveal: [], standing: {}, ending: '', endingBy: {} } };
+    return { state, opened: [], done: [], missed: [], omens: [], closed: [], via: {}, clues: [], changes: { reveal: [], standing: {}, ending: '', endingBy: {} } };
 }
 
 /**
  * Empezar: se abren los hitos que se abren al empezar. El primero es la mecha.
  *
  * @param {Plot} plot
+ * @param {number} [today] El día en que empieza, para los plazos.
  * @returns {PlotStep}
  */
-export function startPlot(plot) {
-    const state = { open: [], done: [] };
+export function startPlot(plot, today = 1) {
+    const state = readPlotState(null);
     const step = emptyStep(state);
-    openAll(plot, state, plot.milestones.filter(m => m.opens.kind === 'start'), step);
+    openAll(plot, state, plot.milestones.filter(m => m.opens.kind === 'start'), step, today);
     return step;
 }
 
@@ -321,39 +419,177 @@ export function startPlot(plot) {
  * @param {Plot|null} plot
  * @param {any} rawState
  * @param {any} event `{kind: 'arrive'|'win'|'defeat'|'say'|'check'|'contract'|'day'|'clock', …}`
+ * @param {number} [today] Hoy. Un suceso `day` trae el suyo; sin día, los plazos no se miden.
  * @returns {PlotStep}
  */
-export function plotEvent(plot, rawState, event) {
+export function plotEvent(plot, rawState, event, today = 0) {
     const state = readPlotState(rawState);
     const step = emptyStep(state);
     if (!plot) return step;
+    const now = text(event?.kind) === 'day' ? Math.floor(Number(event.day) || 0) : Math.floor(Number(today) || 0);
 
     const byId = new Map(plot.milestones.map(m => [m.id, m]));
     /** @type {Milestone[]} */
     const next = [];
     for (const id of [...state.open]) {
         const milestone = byId.get(id);
-        if (milestone && asksFor(milestone.asks, event)) next.push(...complete(plot, state, milestone, step));
+        if (!milestone || !state.open.includes(id)) continue;
+        // Idea 107: una pista más, si la tirada es la de una pista de aquí que falta.
+        if (milestone.asks.kind === 'clues') {
+            if (text(event?.kind) !== 'check' || !event.success) continue;
+            const found = state.clues[id] ?? [];
+            const index = (milestone.asks.clues ?? []).findIndex((clue, i) => !found.includes(i)
+                && lower(clue.skill) === lower(event.skill)
+                && (!clue.place || lower(clue.place) === lower(event.place)));
+            if (index < 0) continue;
+            state.clues[id] = [...found, index];
+            const need = milestone.asks.need ?? (milestone.asks.clues ?? []).length;
+            step.clues.push({ milestone, found: state.clues[id].length, need, clue: (milestone.asks.clues ?? [])[index] });
+            if (state.clues[id].length >= need) next.push(...complete(plot, state, milestone, step));
+            continue;
+        }
+        if (asksFor(milestone.asks, event)) {
+            // Idea 101: de las formas, cuál fue.
+            if (milestone.asks.kind === 'any') {
+                const way = (milestone.asks.options ?? []).find(option => asksFor(option, event));
+                if (way) step.via[milestone.id] = way.kind;
+            }
+            next.push(...complete(plot, state, milestone, step));
+        }
+    }
+    // Idea 106: lo que tenía plazo y no se hizo a tiempo se pierde, y pasa lo que diga.
+    if (text(event?.kind) === 'day' && now > 0) {
+        for (const id of [...state.open]) {
+            const milestone = byId.get(id);
+            const opened = state.since[id];
+            if (!milestone || milestone.within <= 0 || !opened || now <= opened + milestone.within) continue;
+            state.open = state.open.filter(open => open !== id);
+            if (!state.missed.includes(id)) state.missed.push(id);
+            step.missed.push(milestone);
+            step.changes.reveal.push(...milestone.late.reveal);
+            for (const [faction, amount] of Object.entries(milestone.late.standing)) {
+                step.changes.standing[faction] = (step.changes.standing[faction] ?? 0) + amount;
+            }
+            next.push(...milestone.late.open.map(open => byId.get(open)).filter(/** @returns {m is Milestone} */ m => Boolean(m)));
+        }
     }
     next.push(...plot.milestones.filter(m => opensWith(m.opens, event)));
-    openAll(plot, state, next, step);
+    openAll(plot, state, next, step, now);
     return step;
 }
 
 /**
  * Lo que tienes entre manos: el hito abierto del acto más temprano.
  *
+ * Lo oculto no cuenta (idea 111). Con `today`, dice cuántos días quedan si tiene plazo.
+ *
  * @param {Plot|null} plot
  * @param {any} rawState
- * @returns {{id: string, act: number, title: string, hint: string}|null}
+ * @param {number} [today]
+ * @returns {{id: string, act: number, title: string, hint: string, daysLeft: number|null}|null}
  */
-export function focusOf(plot, rawState) {
+export function focusOf(plot, rawState, today = 0) {
     if (!plot) return null;
     const state = readPlotState(rawState);
-    const open = plot.milestones.filter(m => state.open.includes(m.id));
+    const open = plot.milestones.filter(m => state.open.includes(m.id) && !m.hidden);
     const first = open.sort((a, b) => a.act - b.act
         || plot.milestones.indexOf(a) - plot.milestones.indexOf(b))[0];
-    return first ? { id: first.id, act: first.act, title: first.title, hint: first.hint } : null;
+    if (!first) return null;
+    return { id: first.id, act: first.act, title: first.title, hint: first.hint, daysLeft: daysLeftOf(plot, state, first.id, today) };
+}
+
+/**
+ * Cuántos días le quedan a un hito con plazo (idea 106). Null si no tiene, o si no se sabe
+ * qué día es.
+ *
+ * @param {Plot|null} plot
+ * @param {any} rawState
+ * @param {string} id
+ * @param {number} today
+ * @returns {number|null}
+ */
+export function daysLeftOf(plot, rawState, id, today) {
+    const milestone = plot?.milestones.find(m => m.id === id);
+    const opened = readPlotState(rawState).since[id];
+    if (!milestone || milestone.within <= 0 || !opened || !(Number(today) > 0)) return null;
+    return Math.max(0, opened + milestone.within - Math.floor(Number(today)));
+}
+
+/**
+ * Los hitos abiertos que se ven: todos menos los ocultos (idea 111).
+ *
+ * @param {Plot|null} plot
+ * @param {any} rawState
+ * @returns {Milestone[]}
+ */
+export function visibleOpen(plot, rawState) {
+    if (!plot) return [];
+    const state = readPlotState(rawState);
+    return plot.milestones.filter(m => state.open.includes(m.id) && !m.hidden);
+}
+
+/**
+ * Las investigaciones abiertas: cuántas pistas van, y dónde y con qué faltan (idea 107).
+ *
+ * @param {Plot|null} plot
+ * @param {any} rawState
+ * @returns {Array<{id: string, title: string, found: number, need: number, missing: Array<{place: string, skill: string}>}>}
+ */
+export function cluesOf(plot, rawState) {
+    if (!plot) return [];
+    const state = readPlotState(rawState);
+    return plot.milestones
+        .filter(m => m.asks.kind === 'clues' && state.open.includes(m.id) && !m.hidden)
+        .map(m => {
+            const found = state.clues[m.id] ?? [];
+            return {
+                id: m.id,
+                title: m.title,
+                found: found.length,
+                need: m.asks.need ?? (m.asks.clues ?? []).length,
+                missing: (m.asks.clues ?? []).filter((_, i) => !found.includes(i)),
+            };
+        });
+}
+
+/**
+ * Los caminos que se cerraron por una bifurcación (idea 102).
+ *
+ * @param {Plot|null} plot
+ * @param {any} rawState
+ * @returns {string[]}
+ */
+export function closedOf(plot, rawState) {
+    if (!plot) return [];
+    const state = readPlotState(rawState);
+    return plot.milestones.filter(m => state.closed.includes(m.id)).map(m => m.title);
+}
+
+/**
+ * Los secretos de la historia: cuántos hay y cuáles se han encontrado (idea 111).
+ *
+ * @param {Plot|null} plot
+ * @param {any} rawState
+ * @returns {{found: string[], total: number}}
+ */
+export function secretsOf(plot, rawState) {
+    if (!plot) return { found: [], total: 0 };
+    const state = readPlotState(rawState);
+    const hidden = plot.milestones.filter(m => m.hidden);
+    return { found: hidden.filter(m => state.done.includes(m.id)).map(m => m.title), total: hidden.length };
+}
+
+/**
+ * El presagio, frase a frase, y si ya se ha cumplido (idea 114).
+ *
+ * @param {Plot|null} plot
+ * @param {any} rawState
+ * @returns {Array<{text: string, fulfilled: boolean}>}
+ */
+export function omensOf(plot, rawState) {
+    if (!plot) return [];
+    const state = readPlotState(rawState);
+    return (plot.omens ?? []).map(o => ({ text: o.text, fulfilled: state.done.includes(o.milestone) }));
 }
 
 /**
@@ -373,12 +609,15 @@ export function actOf(plot, rawState) {
 /**
  * La línea para la pantalla y para el narrador.
  *
- * @param {{title: string, hint: string}|null} focus
+ * @param {{title: string, hint: string, daysLeft?: number|null}|null} focus
  * @returns {string}
  */
 export function describeFocus(focus) {
     if (!focus) return '';
-    return focus.hint ? `${focus.title} — ${focus.hint}` : focus.title;
+    const base = focus.hint ? `${focus.title} — ${focus.hint}` : focus.title;
+    // Idea 106: un plazo se dice siempre, que es lo que lo hace un plazo y no una sorpresa.
+    if (focus.daysLeft == null) return base;
+    return `${base} · ${focus.daysLeft === 0 ? 'hoy es el último día' : `quedan ${focus.daysLeft} día(s)`}`;
 }
 
 /** Cómo se dice lo que quiere una facción, por tipo de meta. */

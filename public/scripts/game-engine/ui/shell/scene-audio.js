@@ -32,6 +32,7 @@ export const AUDIO_SCENES = [
  * @property {boolean} enabled
  * @property {number} volume De 0 a 1.
  * @property {Record<string, string>} tracks Una dirección por escena.
+ * @property {boolean} effects Los sonidos de cada acción (idea 186): encendidos salvo que se apaguen.
  */
 
 /**
@@ -55,6 +56,7 @@ export function normalizeAudioSettings(raw) {
         enabled: source.enabled !== false,
         volume: Number.isFinite(volume) ? Math.min(1, Math.max(0, volume)) : 0.4,
         tracks,
+        effects: source.effects !== false,
     };
 }
 

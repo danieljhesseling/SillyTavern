@@ -64,6 +64,7 @@ mindmap
     Jugar
       [[EMPEZAR_UNA_CAMPANA]]
     Cajones de ideas
+      [[IDEAS_200]]
       [[PROPUESTAS_MEJORA_V2]]
       [[PROPUESTAS_MEJORA]]
       [[PROBLEMAS_TECNICOS]]
@@ -118,6 +119,7 @@ Diagnóstico crítico y catálogo exhaustivo de propuestas de mejora:
 - **[[ROADMAP_COMPENDIO]]** 📚 **La biblioteca de contenido, batería a batería.** Un JSON por dominio en `public/compendio/` —armas, habilidades, bichos, gente, nombres— del que tiran los generadores con la semilla. Doce baterías, cada una una tarde: se añade sola, **no rompe nada si falta**, y al terminarla se ve algo distinto jugando. Dice qué campos lleva cada fila, cuántas hacen falta de verdad y en qué orden conviene hacerlas.
 - [[PROBLEMAS_TECNICOS]]: **Auditoría profunda** con 15 hallazgos críticos de seguridad (XSS, CSP), desincronización de estado, cuellos de botella de memoria y ausencia de tests. Con el estado de cada hallazgo comprobado contra el código: 6 corregidos, 4 parciales y 5 abiertos.
 - [[PROPUESTAS_MEJORA]]: **Catálogo de 200 propuestas técnicas estructuradas** en 10 áreas estratégicas (arquitectura, seguridad, D&D, VTT, agentes, UI/UX, bases de datos y DevOps). Cada propuesta con novedad lleva su marca de estado, y el anexo recoge 12 propuestas propias.
+- [[IDEAS_200]]: **200 ideas de jugabilidad (2026-09-24)**: combate, compañeros, viaje, mundo vivo, hilo, economía, chat, interfaz y creación, sobre el motor de Mundos vivos. Ya solo las que quedan: 22, más 3 aparcadas.
 - [[PROPUESTAS_MEJORA_V2]]: **Catálogo V2 de 200 Nuevas Propuestas de Mejora**: Nueva batería de 200 propuestas adaptadas a la madurez actual del motor (Game Shell, Zero Comandos, táctica avanzada, magia y spell slots, bucle social Persona y economía reactiva).
 - [[PROPUESTA_JUEGO_DND_GLOOMHAVEN_PERSONA]]: `la visión original` **Propuesta de Motor Híbrido RPG** (Persona + Gloomhaven + D&D 5e): combate táctico algorítmico 0 tokens, social links con perks de combate, calendario y lienzo blanco de world building. Incluye el estado de cada pilar y las correcciones que la realidad impuso.
 - [[ROADMAP_INGESTA_CAMPANAS_LIBROS]]: `G1–G4 hechas` — vive como **el contrato del paquete**. **De un libro a una campaña jugable.** El contrato de datos entre un GEM de Gemini y el motor. El validador y el importador **ya están**; lo que se pega en el Gem lo genera [[GEM_CREAR_CAMPANA]].

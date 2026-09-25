@@ -122,14 +122,17 @@ export function breedName(archetype, templates, random) {
  * @param {number} [input.cr]        El desafio que se quiere. Manda sobre todo lo demas.
  * @param {string} [input.biome]     Donde se juega: el pantano no da lobos de nieve.
  * @param {number} [input.templates] Cuantas plantillas apilar. Por defecto, una o ninguna.
+ * @param {string} [input.season]    La estación (idea 97): los que migran solo salen en la suya.
  * @returns {any|null}
  */
-export function breedMonster({ compendium, random = Math.random, cr = 0.5, biome = '', templates = -1 }) {
+export function breedMonster({ compendium, random = Math.random, cr = 0.5, biome = '', templates = -1, season = '' }) {
     if (!compendium?.has?.('bestiario')) return null;
 
     /** @type {Record<string, any>} */
     const ask = { kind: 'arquetipo' };
     if (text(biome)) ask.biome = text(biome);
+    // Quien no dice estación sale siempre; quien la dice, solo en ella.
+    if (text(season)) ask.season = text(season);
 
     // Un bioma sin bichos escritos no puede dejar el tablero vacio: se prueba sin el.
     const archetype = compendium.pick('bestiario', { where: ask, random })
@@ -207,15 +210,16 @@ function listOf(value) {
  * @param {() => number} [input.random]
  * @param {number} [input.cr]
  * @param {string} [input.biome]
+ * @param {string} [input.season] La estación (idea 97).
  * @returns {any[]}
  */
-export function breedBand({ compendium, howMany, random = Math.random, cr = 0.5, biome = '' }) {
+export function breedBand({ compendium, howMany, random = Math.random, cr = 0.5, biome = '', season = '' }) {
     /** @type {any[]} */
     const out = [];
     const seen = new Set();
 
     for (let i = 0; i < Math.max(0, howMany) * 3 && out.length < howMany; i++) {
-        const monster = breedMonster({ compendium, random, cr, biome });
+        const monster = breedMonster({ compendium, random, cr, biome, season });
         if (!monster) break;
 
         const key = `${monster.from.arquetipo}|${monster.from.plantillas.join(',')}`;

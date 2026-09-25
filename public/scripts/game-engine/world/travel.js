@@ -25,6 +25,7 @@
  */
 
 import { matches, pickWeighted } from '../compendio/compendio.js';
+import { openInSeason, describeSeasons } from './seasons.js';
 
 /** Lo que cuesta un viaje cuando el mundo no dice nada. */
 export const DEFAULT_DAYS = 2;
@@ -118,23 +119,29 @@ function days(value) {
  *
  * @param {any} location
  * @param {string[]} [friendly] Nombres de facciones que te dejarian pasar.
+ * @param {string} [season] La estación de hoy (idea 74). Sin ella, ninguna ruta se cierra
+ *   por la estación.
  * @returns {Array<{to: string, days: number, note: string, closed: boolean, oneWay: boolean}>}
  */
-export function routesOf(location, friendly = []) {
+export function routesOf(location, friendly = [], season = '') {
     // Un paso cerrado por alguien que te debe una se abre para ti. Lo cierran las
     // facciones al tomar un sitio, y la nota dice quien: sin eso, ganarse a alguien no se
     // notaria en lo unico que de verdad se nota, que es donde puedes ir.
     const friends = (Array.isArray(friendly) ? friendly : []).map(text).filter(Boolean);
     const opensForYou = (/** @type {any} */ route) => friends.length > 0
         && friends.some(name => text(route?.note).includes(name));
+    // Idea 74: el lago helado solo se cruza en invierno. Lo que no dice estaciones vale siempre.
+    const outOfSeason = (/** @type {any} */ route) => Boolean(text(season)) && !openInSeason(route?.seasons, season);
 
     return (Array.isArray(location?.routes) ? location.routes : [])
         .map((/** @type {any} */ route) => ({
             to: text(route?.to),
             days: days(route?.days),
-            note: text(route?.note),
+            note: outOfSeason(route)
+                ? [text(route?.note), `Cerrado: ${describeSeasons(route?.seasons)}`].filter(Boolean).join('. ')
+                : text(route?.note),
             // Un paso cerrado sigue en la lista: se ve que existe y que ahora no se puede.
-            closed: Boolean(route?.closed) && !opensForYou(route),
+            closed: (Boolean(route?.closed) && !opensForYou(route)) || outOfSeason(route),
             // Y una ruta vale para ir y volver salvo que diga lo contrario. Sin esto el
             // campo existia en el archivo y no hacia nada, que es peor que no existir.
             oneWay: Boolean(route?.oneWay),
@@ -151,9 +158,10 @@ export function routesOf(location, friendly = []) {
  *
  * @param {any[]} locations
  * @param {string[]} [friendly] Facciones que te abren lo que cerraron.
+ * @param {string} [season] La estación de hoy (idea 74).
  * @returns {Map<string, Array<{to: string, days: number, note: string}>>}
  */
-export function buildRouteMap(locations, friendly = []) {
+export function buildRouteMap(locations, friendly = [], season = '') {
     /** @type {Map<string, Array<{to: string, days: number, note: string}>>} */
     const graph = new Map();
 
@@ -172,7 +180,7 @@ export function buildRouteMap(locations, friendly = []) {
         if (!from) continue;
         if (!graph.has(from)) graph.set(from, []);
 
-        for (const route of routesOf(location, friendly)) {
+        for (const route of routesOf(location, friendly, season)) {
             if (route.closed) continue;
             add(from, { to: route.to, days: route.days, note: route.note });
             if (!route.oneWay) add(route.to, { to: from, days: route.days, note: route.note });
@@ -193,9 +201,10 @@ export function buildRouteMap(locations, friendly = []) {
  * @param {string} input.to
  * @param {any[]} input.locations La lista del mundo. Es una lista, no un tablero.
  * @param {string[]} [input.friendly] Facciones que te abren lo que cerraron.
+ * @param {string} [input.season] La estación de hoy (idea 74).
  * @returns {{ok: boolean, days: number, legs: string[], reason: string}}
  */
-export function planTravel({ from, to, locations, friendly = [] }) {
+export function planTravel({ from, to, locations, friendly = [], season = '' }) {
     const start = text(from);
     const end = text(to);
 
@@ -210,12 +219,17 @@ export function planTravel({ from, to, locations, friendly = [] }) {
         return { ok: false, days: 0, legs: [], reason: `"${end}" no está en el mapa.` };
     }
 
-    const graph = buildRouteMap(locations, friendly);
+    const graph = buildRouteMap(locations, friendly, season);
     const fromHere = graph.get(start) ?? [];
 
     // Un sitio sin rutas es un sitio al que se va directo: un mundo a medio escribir
-    // —o uno de antes de que esto existiera— tiene que seguir siendo jugable.
-    if (!start || fromHere.length === 0) {
+    // —o uno de antes de que esto existiera— tiene que seguir siendo jugable. Pero uno con
+    // rutas escritas y todas cerradas no: antes se colaba por aquí, y cerrar el único paso
+    // de un sitio dejaba ir a cualquier parte.
+    const all = Array.isArray(locations) ? locations : [];
+    const written = [...all.filter((/** @type {any} */ l) => text(l?.name) === start).flatMap((/** @type {any} */ l) => routesOf(l)),
+        ...all.flatMap((/** @type {any} */ l) => routesOf(l).filter(r => r.to === start && !r.oneWay))];
+    if (!start || (fromHere.length === 0 && written.length === 0)) {
         return { ok: true, days: DEFAULT_DAYS, legs: [end], reason: '' };
     }
 
@@ -252,11 +266,17 @@ export function planTravel({ from, to, locations, friendly = [] }) {
     }
 
     if (!cost.has(end)) {
+        // Si el paso directo está cerrado, se dice por qué: «solo en invierno» es una meta.
+        const shut = all.filter((/** @type {any} */ l) => text(l?.name) === start)
+            .flatMap((/** @type {any} */ l) => routesOf(l, friendly, season))
+            .find(r => r.to === end && r.closed);
         return {
             ok: false,
             days: 0,
             legs: [],
-            reason: `No hay camino abierto desde "${start}" hasta "${end}".`,
+            reason: shut?.note
+                ? `El paso de "${start}" a "${end}" está cerrado. ${shut.note}.`.replace(/\.\.$/, '.')
+                : `No hay camino abierto desde "${start}" hasta "${end}".`,
         };
     }
 

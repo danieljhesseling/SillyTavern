@@ -613,3 +613,10 @@ input[type="file"].hc-face-file {
     border-radius: 6px;
     padding: 6px 8px;
 }
+
+/* Idea 49: lo que da el trasfondo, dicho debajo. */
+.hc-background-hint {
+    margin-top: 4px;
+    font-size: 0.85em;
+    opacity: 0.8;
+}

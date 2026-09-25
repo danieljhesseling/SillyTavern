@@ -34,7 +34,8 @@ import { DEFAULT_PROFILE } from '../combat/enemy-ai.js';
  * tipo de terreno no deje al exportador escribiendo suelo donde había un muro.
  */
 const CHAR_BY_CELL = Object.entries(ASCII_TERRAIN).reduce((map, [char, cell]) => {
-    map[`${cell.type}:${cell.open === true}`] = char;
+    // La llave cuenta: una puerta cerrada con llave (`L`) no es una cerrada sin mas (`D`).
+    map[`${cell.type}:${cell.open === true}:${/** @type {any} */ (cell).locked === true}`] = char;
     return map;
 }, /** @type {Record<string, string>} */ ({}));
 
@@ -54,8 +55,9 @@ function text(value) {
  */
 function charFor(cell) {
     if (!cell || cell.type === 'floor') return '.';
-    return CHAR_BY_CELL[`${cell.type}:${cell.open === true}`]
-        ?? CHAR_BY_CELL[`${cell.type}:false`]
+    return CHAR_BY_CELL[`${cell.type}:${cell.open === true}:${cell.locked === true}`]
+        ?? CHAR_BY_CELL[`${cell.type}:${cell.open === true}:false`]
+        ?? CHAR_BY_CELL[`${cell.type}:false:false`]
         ?? '.';
 }
 
@@ -315,6 +317,7 @@ export function buildPackFromWorld({ worldName, metadata, entries, synopsis = ''
                 if (text(item.damageType)) packed.damageType = text(item.damageType);
                 if (text(item.slot)) packed.slot = text(item.slot);
                 if (text(item.description)) packed.description = text(item.description);
+                if (item.boundTo && typeof item.boundTo === 'object') packed.boundTo = item.boundTo;
                 return packed;
             }),
         locations,

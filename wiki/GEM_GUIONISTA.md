@@ -54,8 +54,8 @@ Consecuencias para ti:
 - **Los compañeros** tienen un **rango de vínculo del 1 al 10**. Suben pasando tiempo con ellos, y ciertos rangos dan ventajas en combate. Quien te sigue **por vínculo** no muere, queda marcado; quien te sigue **por dinero** sí muere, y se va si no cobra.
 - **Las facciones** tienen una meta y **un reloj** que avanza solo con los días. Si nadie las para, cumplen su meta y **el mundo cambia**: toman un sitio, cierran un camino. Lo que piensan del grupo va de −5 a +5 y cambia precios, pasos y peajes.
 - **El tablón de encargos** siempre tiene trabajo. Los encargos de facción «toman partido»: ayudar a unos es fastidiar a sus enemigos.
-- **Tiradas fuera de combate**: el jugador pulsa «Persuasión», «Sigilo», etc., y el motor tira un d20 contra **CD 12**. Hay ocho: Persuasión, Engaño, Intimidación, Perspicacia, Percepción, Investigación, Sigilo y Atletismo.
-- **En combate**, además de atacar: **esquivar, destrabarse, empujar y ayudar**. Empujar a alguien contra una pared lo tira al suelo; pronto, también a un precipicio.
+- **Tiradas fuera de combate**: el jugador pulsa «Persuasión», «Sigilo», etc., y el motor tira un d20 contra **CD 12**. Hay diez: Persuasión, Engaño, Intimidación, Perspicacia, Percepción, Investigación, Sigilo, Atletismo, Juego de manos y Supervivencia.
+- **En combate**, además de atacar: **esquivar, destrabarse, empujar y ayudar**. Empujar a alguien contra una pared lo tira al suelo, y a un precipicio (`v`) lo saca del combate. **Agarrar** deja al enemigo quieto. Los enemigos malheridos pueden **rendirse** y quedar como prisioneros.
 - **Los enemigos** tienen un **perfil**: `aggressive` (va a por el más cercano), `skirmisher` (dispara y retrocede), `guardian` (protege al más herido de los suyos) y `coward` (huye malherido). Pueden usar **habilidades**.
 
 ### Lo que el motor **no** sabe hacer (no lo pidas)
@@ -116,17 +116,17 @@ Es **el montón escrito**; el motor pone el resto.
 
 | Pieza | Cuánto |
 | :--- | :--- |
-| **El hilo** | 3 actos, **12–15 hitos**, una **mecha** (la primera escena) y **2–3 finales** según con quién se alíe el grupo |
+| **El hilo** | 3 actos, **12–15 hitos**, una **mecha** (la primera escena) y **2–3 finales** según con quién se alíe el grupo. Y **2–3 secretos** (hitos ocultos), **1–2 plazos** y **el presagio** |
 | **Encargos** | **14–16**, de ellos **3–4 cadenas** de 2–3 partes. **Al menos un tercio se resuelve sin pelear** |
 | **Localidades** | **7–8** al empezar y **2–3** escondidas que se descubren (por un hito o un rumor) |
 | **Dentro de cada localidad** | 3–4 PNJ, 3–5 rumores, sus servicios y 1–2 tableros |
 | **PNJ con nombre** | **22–28**; cada uno **quiere algo** y **sabe algo** |
-| **Confidentes** | **5–6**, con **5 escenas de vínculo** cada uno (rangos 2, 4, 6, 8 y 10) |
+| **Confidentes** | **5–6**, con **5 escenas de vínculo** cada uno (rangos 2, 4, 6, 8 y 10) y **una frase al llegar** a 2–3 sitios suyos |
 | **Tableros** | **10–12**, dibujados |
 | **Encuentros** | **15–18**: qué bichos, en qué tablero, con qué objetivo |
 | **Bestiario** | **15–20**, con **3 jefes** (uno por acto) y **4–5 enemigos con nombre** |
 | **Facciones** | **3–4**, con meta, enemigos y un reloj pensado para veinte horas |
-| **Objetos** | **20–30**, de ellos **8–10 con historia** (ligados a un encargo o un hito) |
+| **Objetos** | **20–30**, de ellos **8–10 reliquias** (con historia y ligadas a un encargo o un hito: llegan al cumplirlo) |
 | **Rumores** | **25–40** en total |
 
 ### Las reglas de la variedad
@@ -170,15 +170,54 @@ hito:
   acto: 1
   titulo: El primer ahogado en treinta años
   abre: al_empezar            # al_empezar | llegar: <localidad> | tras_hito: <hito> | tras_encargo: <encargo> | dias: N | reloj_lleno: <faccion>
-  pide: "hablar_con: maren-la-viuda"   # llegar | ganar_tablero | hablar_con | tirada: <habilidad> | entregar: <objeto> | derrotar: <bicho>
+  pide: "hablar_con: maren-la-viuda"   # llegar | ganar_tablero | hablar_con | tirada: <habilidad> | entregar: <objeto> | derrotar: <bicho> | pistas: N
+  # pide también puede ser una lista: cualquiera de esas formas lo cumple (luchar, hablar o colarse)
   cambia:
     revela: [cala-de-los-votos]        # localidades que aparecen
     aparece: [el-hermano-ahogado]      # PNJ que entran en el mundo
     abre_hito: la-firma
     reputacion: { cofradia-del-muelle: -1 }
+    cierra: [el-trato-de-aldric]      # opcional: hitos que se cierran al cumplir este (bifurcación)
   pista: "Alguien del pueblo sabe quién era, y no quiere decirlo."
   escena: >
     Lo que ve el grupo al abrirse este hito, en 3–5 frases, para que el narrador lo cuente.
+  oculto: false        # true = un secreto: no sale en pantalla ni en el diario hasta que se cumple por casualidad
+  plazo:               # opcional: días desde que se abre. Si no se cumple a tiempo, se pierde y pasa `si_no`
+    dias: 3
+    si_no: { reputacion: { cofradia-del-muelle: -2 }, abre_hito: la-firma }   # abre lo siguiente, peor parado
+```
+
+**Los secretos** (`oculto: true`) son logros de la historia: se abren al empezar, piden algo que se hace por curiosidad (llegar a un sitio apartado, hablar con quien nadie habla) y su escena solo se cuenta al cumplirse. Sin `pista`: un secreto con pista no es secreto.
+
+**Un plazo** tiene que decir en `si_no` qué se abre después; si no, la historia se queda parada.
+
+**Varias formas de cumplirlo**: pon `pide` como lista. Lo mejor es una de cada estilo, para que el grupo elija el suyo:
+```yaml
+  pide: ["ganar_tablero: el-embarcadero", "tirada: sigilo", "hablar_con: maren-la-viuda"]
+```
+
+**Una bifurcación**: dos hitos que se abren a la vez, y cada uno `cierra` el otro. Ayudar a unos es dejar tirados a los otros; y cada uno debe abrir su propio camino (`abre_hito`), para que la historia siga.
+
+**Una investigación**: `pide: "pistas: 3"` y, aparte, dónde está cada pista y con qué se saca. Se cumple al juntar las que pida; conviene poner una más de las necesarias.
+```yaml
+  pide: "pistas: 3"
+  pistas:
+    - { donde: puerto-de-gris, tirada: investigacion }
+    - { donde: la-lonja, tirada: perspicacia }
+    - { donde: cala-de-los-votos, tirada: percepcion }
+    - { donde: la-atalaya, tirada: supervivencia }
+```
+
+### El presagio
+Tres frases del principio, ambiguas, cada una ligada a un hito. Van en el bloque `mundo:` y se cumplen con su hito; el juego lo dice.
+```yaml
+mundo:
+  id: la-costa
+  estacion: otono       # en la que empieza: primavera | verano | otono | invierno (56 días cada una)
+  presagio:
+    - { frase: "Lo que el mar se lleva, lo devuelve con otra cara.", se_cumple: el-primer-ahogado }
+    - { frase: "Firmarás sin pluma.", se_cumple: la-firma }
+    - { frase: "La última marea sube de día.", se_cumple: la-marea-final }
 ```
 
 ### Localidad
@@ -194,6 +233,7 @@ localidad:
   caminos:
     - { a: la-atalaya, dias: 2 }
     - { a: cala-de-los-votos, dias: 1, cerrado_hasta: la-firma }
+    - { a: el-islote, dias: 1, estaciones: [invierno] }   # solo se pasa en invierno: el agua se hiela
   servicios: [posada, herreria, templo, tienda]   # posada | herreria | tienda | templo | tablon
   pnj: [maren-la-viuda, el-tabernero-olsen]
   tableros: [el-embarcadero]
@@ -211,6 +251,7 @@ pnj:
   secreto: "Ella también firmó."
   voz: "Frases cortas. Nunca dice el nombre del mar."
   servicio: null        # si atiende un servicio: posada | herreria | tienda | templo
+  idioma: null          # si no habla la común: «norteño», «élfico»… Quien no lo entienda, trata con desventaja
 confidente:
   id: tomas-el-cordelero
   nombre: Tomás
@@ -219,6 +260,8 @@ confidente:
   escenas:              # una cada dos rangos
     - { rango: 2, titulo: "...", escena: "..." }
     - { rango: 4, titulo: "...", escena: "..." }
+  al_llegar:            # lo que dice al llegar a un sitio suyo, una vez, si va en el grupo
+    puerto-de-gris: "Aquí aprendí a hacer nudos. Y a no preguntar de quién eran las redes."
 ```
 
 ### Facción
@@ -263,6 +306,8 @@ Los mapas tienen de **8 a 40 columnas** y de **6 a 30 filas**, todas las filas c
 | `~` | terreno difícil (barro, escombros, agua baja) |
 | `c` | cobertura media (mesa, carro, barril) |
 | `C` | cobertura de tres cuartos (columna, muro bajo) |
+| `v` | precipicio: no se anda, y a quien empujan dentro, cae |
+| `L` | puerta cerrada con llave: se abre con una llave, con maña o a golpes; el jefe del tablero suelta la llave |
 
 ```yaml
 tablero:
@@ -296,6 +341,7 @@ bicho:
   alcance: 5              # pies: 5 cuerpo a cuerpo, 30–120 a distancia
   habilidades: []         # ids de la lista de abajo
   jefe: false
+  estaciones: []          # si migra: [invierno, otono]. Fuera de ellas no sale. Vacío: todo el año
   descripcion: "Una frase que se vea."
   debilidad: "Lo que el grupo puede descubrir con una tirada."
 ```
@@ -308,7 +354,7 @@ objeto:
   tipo: trinket           # weapon | armor | trinket | consumable
   rareza: Uncommon        # Common | Uncommon | Rare | Very Rare
   historia: "De quién era y qué abre."
-  ligado_a: la-firma      # hito o encargo, si lo hay
+  ligado_a: la-firma      # hito o encargo: es una reliquia. Llega al grupo al cumplirlo, una vez, y nunca cae como botín
 rumor:
   id: r-luces-en-la-cala
   dicho_por: el-tabernero-olsen    # o «cualquiera» en una localidad

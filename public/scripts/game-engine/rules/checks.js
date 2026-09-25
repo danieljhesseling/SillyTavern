@@ -17,6 +17,11 @@
  * Puro: tira con el dado que le den y no toca nada.
  */
 
+import { backgroundGives } from '../campaign/backgrounds.js';
+import { scarBonus } from '../campaign/feats.js';
+import { rollLine } from './roll-line.js';
+import { perkBonus } from './level-perks.js';
+
 /**
  * Las habilidades que se pueden intentar, con su característica.
  *
@@ -32,6 +37,10 @@ export const SKILLS = {
     investigation: { label: 'Investigación', ability: 'intelligence', verb: 'Registro con cuidado', icon: 'fa-magnifying-glass' },
     stealth: { label: 'Sigilo', ability: 'dexterity', verb: 'Intento pasar sin que me vean', icon: 'fa-user-ninja' },
     athletics: { label: 'Atletismo', ability: 'strength', verb: 'Intento a pulso', icon: 'fa-dumbbell' },
+    // Idea 77: abrir una cerradura con maña, o lo que haga falta con los dedos.
+    sleight: { label: 'Juego de manos', ability: 'dexterity', verb: 'Intento con maña', icon: 'fa-hand-sparkles' },
+    // Idea 65: guiar, cazar, leer el rastro. La de los caminos.
+    survival: { label: 'Supervivencia', ability: 'wisdom', verb: 'Busco el rastro', icon: 'fa-compass' },
 };
 
 /**
@@ -42,17 +51,17 @@ export const SKILLS = {
  * que un pícaro y un guerrero intenten engañar igual o no.
  */
 const CLASS_SKILLS = {
-    rogue: ['deception', 'stealth', 'perception', 'investigation', 'insight'],
+    rogue: ['deception', 'stealth', 'perception', 'investigation', 'insight', 'sleight'],
     bard: ['persuasion', 'deception', 'insight', 'perception'],
     paladin: ['persuasion', 'intimidation', 'athletics'],
     fighter: ['athletics', 'intimidation', 'perception'],
-    barbarian: ['athletics', 'intimidation', 'perception'],
-    ranger: ['stealth', 'perception', 'athletics'],
+    barbarian: ['athletics', 'intimidation', 'perception', 'survival'],
+    ranger: ['stealth', 'perception', 'athletics', 'survival'],
     cleric: ['insight', 'persuasion'],
     wizard: ['investigation', 'insight'],
     warlock: ['deception', 'intimidation'],
     sorcerer: ['persuasion', 'deception'],
-    druid: ['perception', 'insight'],
+    druid: ['perception', 'insight', 'survival'],
     monk: ['athletics', 'stealth', 'insight'],
 };
 
@@ -105,8 +114,14 @@ export function skillModifier(member, skill) {
     const score = Number(member?.[def.ability]) || 10;
     const ability = Math.floor((score - 10) / 2);
     const key = classKey(member?.class);
-    const proficient = Boolean(key && CLASS_SKILLS[/** @type {keyof typeof CLASS_SKILLS} */ (key)].includes(skill));
-    return { modifier: ability + (proficient ? proficiencyBonus(member?.level) : 0), proficient };
+    // Idea 49: lo que se le da bien por su pasado, ademas de por su clase.
+    const proficient = Boolean(key && CLASS_SKILLS[/** @type {keyof typeof CLASS_SKILLS} */ (key)].includes(skill))
+        || backgroundGives(member?.background, skill);
+    // Idea 56: las cicatrices imponen.
+    const scars = skill === 'intimidation' ? scarBonus(member) : 0;
+    // Idea 46: lo elegido al subir de nivel.
+    const perks = perkBonus(member, 'skill', skill);
+    return { modifier: ability + (proficient ? proficiencyBonus(member?.level) : 0) + scars + perks, proficient };
 }
 
 /**
@@ -145,22 +160,30 @@ export function checkOptions(member, { locked = false } = {}) {
  * @param {string} input.skill
  * @param {() => number} input.rollD20
  * @param {number} [input.dc]
- * @returns {{skill: string, label: string, natural: number, modifier: number, total: number, dc: number, success: boolean, line: string, draft: string}|null}
+ * @param {''|'advantage'|'disadvantage'} [input.edge] Idea 59: sin la lengua de quien escucha,
+ *   con desventaja. Se tiran dos dados y se queda el que toca.
+ * @param {string} [input.why] Por qué, para la línea de la tirada.
+ * @returns {{skill: string, label: string, natural: number, modifier: number, total: number, dc: number, success: boolean, line: string, said: string, draft: string}|null}
+ *   `line` es para el modelo, con la orden de no cambiarlo; `said`, la misma tirada para el registro.
  */
-export function rollCheck({ member, skill, rollD20, dc = DEFAULT_DC }) {
+export function rollCheck({ member, skill, rollD20, dc = DEFAULT_DC, edge = '', why = '' }) {
     const def = SKILLS[/** @type {keyof typeof SKILLS} */ (skill)];
     if (!def || !member) return null;
     const { modifier } = skillModifier(member, skill);
-    const natural = Math.max(1, Math.min(20, Math.floor(Number(rollD20()) || 1)));
+    const die = () => Math.max(1, Math.min(20, Math.floor(Number(rollD20()) || 1)));
+    const first = die();
+    const second = edge ? die() : first;
+    const natural = edge === 'disadvantage' ? Math.min(first, second) : edge === 'advantage' ? Math.max(first, second) : first;
     const total = natural + modifier;
     const success = natural === 20 || (natural !== 1 && total >= dc);
-    const sign = modifier >= 0 ? '+' : '';
     const verdict = natural === 20 ? 'Éxito rotundo' : natural === 1 ? 'Fallo rotundo' : (success ? 'Éxito' : 'Fallo');
     const name = String(member?.name || 'Alguien');
 
-    // Lo lee el modelo: tiene que ser corto, sin ambigüedad, y decir que no se discute.
-    const line = `[TIRADA ${def.label} de ${name}: d20 ${natural} ${sign}${modifier} = ${total} contra CD ${dc} → ${verdict}. `
-        + 'El dado ya está tirado: narra la consecuencia, no lo cambies.]';
+    // Lo lee el modelo: tiene que ser corto, sin ambigüedad, y decir que no se discute. Con
+    // la misma forma que todas las tiradas (idea 146).
+    const extra = edge ? `${edge === 'disadvantage' ? 'desventaja' : 'ventaja'}: ${first} y ${second}${why ? `, ${why}` : ''}` : '';
+    const said = rollLine({ what: def.label, who: name, total, against: dc, label: 'CD', success, verdict, natural, modifier, ...(extra ? { extra } : {}) });
+    const line = `[TIRADA ${said}. El dado ya está tirado: narra la consecuencia, no lo cambies.]`;
 
     return {
         skill,
@@ -171,6 +194,7 @@ export function rollCheck({ member, skill, rollD20, dc = DEFAULT_DC }) {
         dc,
         success,
         line,
+        said,
         draft: `${line}\n${def.verb} `,
     };
 }

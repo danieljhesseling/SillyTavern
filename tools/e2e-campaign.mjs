@@ -110,6 +110,11 @@ try {
         acceptDownloads: true,
     });
     const page = await context.newPage();
+    // Los consejos de la primera vez (idea 155) son avisos arriba a la derecha: en el recorrido
+    // se dan por vistos para que no tapen clics. El paso 55 los prueba aparte.
+    await page.addInitScript(() => {
+        try { window.localStorage.setItem('sillytavern_gameTipsSeen', 'dialogue,exploration,combat,travel,prisoners'); } catch { /* sin almacenamiento */ }
+    });
 
     const problems = new Set();
     page.on('pageerror', e => problems.add(`PAGEERROR ${e.message}`));
@@ -513,7 +518,7 @@ try {
      * comen el clic. Es cosa del recorrido, no del juego — quien juega espera o los cierra.
      */
     const clearToasts = () => page.evaluate(() => {
-        document.querySelectorAll('#toast-container .toast').forEach(t => t.remove());
+        document.querySelectorAll('#toast-container .toast, .vs-card').forEach(t => t.remove());
     });
 
     /** Back to the welcome screen the way a player gets there: close the chat. */
@@ -1943,6 +1948,15 @@ try {
     // y dos cosas con el mismo nombre es como se pierde una de las dos.
     await page.keyboard.press('Escape');
     await page.waitForSelector('.gs-pause', { timeout: 5000 });
+    // La barra vuelve en fila, arriba. Devuelta con un `revert`, quedaba en bloque: los
+    // iconos en columna por el centro, encima del menu, y Opciones no se podia pulsar.
+    const bar22 = await page.evaluate(() => {
+        const holder = document.querySelector('#top-settings-holder')?.getBoundingClientRect();
+        const icons = [...document.querySelectorAll('#top-settings-holder .drawer-icon')].map(i => i.getBoundingClientRect());
+        return { icons: icons.length, inBar: Boolean(holder) && icons.every(r => r.bottom <= (holder?.bottom ?? 0) + 2) };
+    });
+    check('en pausa, la barra de SillyTavern vuelve en fila, arriba, sin tapar el menu',
+        bar22.icons >= 5 && bar22.inBar, JSON.stringify(bar22));
     await page.locator('.gs-pause-btn', { hasText: 'Reglas' }).click();
     await page.waitForSelector('.rx-root', { timeout: 20000 });
     check('las reglas de la pausa abren el editor de siempre',
@@ -2959,7 +2973,11 @@ try {
 
     if (await endTurn.count() === 1 && !await endTurn.isDisabled()) {
         await endTurn.click();
-        await page.waitForTimeout(1600);
+        await page.waitForTimeout(700);
+        // Con el golpe en la mano, pregunta antes (idea 153): aqui se acaba igual.
+        const endAnyway = page.locator('.popup:visible .popup-button-ok', { hasText: 'Acabar igual' });
+        if (await endAnyway.count() > 0) await endAnyway.last().click();
+        await page.waitForTimeout(900);
         await clearDiceOverlay();
         const turnAfter = await page.evaluate(() => {
             const enc = window.SillyTavern.getContext().chatMetadata.combatEncounter;
@@ -3030,7 +3048,13 @@ try {
     await plus.click();
     await plus.click();
     await page.waitForTimeout(300);
-    check('repartidos los dos puntos, ya se puede confirmar',
+    // Idea 46: además, una mejora a elegir entre tres. Sin elegirla no se confirma.
+    const perks31 = await page.evaluate(() => [...document.querySelectorAll('.lu-perk')].map(b => b.getAttribute('data-perk') || ''));
+    check('al subir se ofrecen tres mejoras a elegir, y sin elegir no se confirma (46)',
+        perks31.length === 3 && await page.locator('.lu-confirm').isDisabled(), JSON.stringify(perks31));
+    await page.locator('.lu-perk').first().click();
+    await page.waitForTimeout(300);
+    check('repartidos los dos puntos y elegida la mejora, ya se puede confirmar',
         !await page.locator('.lu-confirm').isDisabled(),
         await page.locator('.lu-remaining').innerText());
 
@@ -3046,6 +3070,8 @@ try {
     check('y la mejora de caracteristica que repartiste',
         heroAfter.strength === (heroBefore.strength || 10) + 2,
         `${heroBefore.strength} -> ${heroAfter.strength}`);
+    const perksAfter31 = await page.evaluate(() => (window.SillyTavern.getContext().chatMetadata.party || [])[0]?.perks ?? []);
+    check('y la mejora elegida queda en la ficha (46)', perksAfter31.length === 1 && perksAfter31[0] === perks31[0], JSON.stringify(perksAfter31));
 
     await page.keyboard.press('Escape');
     await page.waitForTimeout(600);
@@ -3217,6 +3243,8 @@ try {
     }
     check('hay un turno de jugador para lanzarla', Boolean(actingId32), String(actingId32));
 
+    // Los dados de la tirada de antes pueden seguir encima y quedarse el clic.
+    await clearDiceOverlay();
     await page.locator(`.wm-token[data-token-id="${actingId32}"]`).filter({ visible: true }).first().click();
     await page.waitForTimeout(600);
     await page.locator('.wm-token-enemy').filter({ visible: true }).first().click();
@@ -3356,7 +3384,8 @@ try {
         cost: document.querySelector('.wm-path-cost')?.textContent || '',
     }));
     check('pasar por encima de una casilla dibuja la ruta y lo que cuesta',
-        trajectory.steps > 0 && /^\d+ ft$/.test(trajectory.cost), JSON.stringify(trajectory));
+        // Con el aviso de la idea 1 si la ruta sale del alcance de alguien: depende de dónde cayó.
+        trajectory.steps > 0 && /^\d+ ft( · te golpea .+)?$/.test(trajectory.cost), JSON.stringify(trajectory));
 
     // --- PROP2-053: escaparse de un enemigo cuesta un golpe ------------------------
     const adjacency = await page.evaluate(async () => {
@@ -3437,6 +3466,19 @@ try {
     await page.waitForTimeout(400);
     await page.keyboard.press('Escape');
     await page.waitForTimeout(800);
+    // El otro, entero: si cae tambien, el combate acaba en derrota antes de que nadie
+    // tenga que tirar salvaciones, y eso no es lo que se prueba aqui.
+    if (await page.locator('.party-card').count() > 1) {
+        await page.locator('.party-card').nth(1).click();
+        await page.waitForSelector('.dnd-modal', { timeout: 10000 });
+        await page.locator('.dnd-tab[data-tab="progression"]').click();
+        await page.waitForTimeout(400);
+        await page.locator('.hp-current-input').fill('99');
+        await page.locator('.hp-current-input').dispatchEvent('change');
+        await page.waitForTimeout(400);
+        await page.keyboard.press('Escape');
+        await page.waitForTimeout(800);
+    }
 
     const downNow = await page.evaluate(() => (window.SillyTavern.getContext().chatMetadata.party || [])
         .map(m => `${m.name}:${m.hp}`));
@@ -3460,10 +3502,15 @@ try {
         const said = [...document.querySelectorAll('.mes_text')].map(m => m.textContent || '');
         const member = (window.SillyTavern.getContext().chatMetadata.party || [])
             .find(m => (m.deathSaves?.successes || 0) + (m.deathSaves?.failures || 0) > 0 || m.deathSaves?.dead);
+        const enc = window.SillyTavern.getContext().chatMetadata.combatEncounter;
         return {
             rolled: said.some(t => /salvaci[óo]n de muerte/i.test(t)),
             counted: Boolean(member),
             saves: member?.deathSaves ?? null,
+            active: Boolean(enc?.active),
+            round: Number(enc?.round) || 0,
+            party: (window.SillyTavern.getContext().chatMetadata.party || []).map(m => `${m.name}:${m.hp}`),
+            last: said.slice(-3).map(t => t.slice(0, 80)),
         };
     });
     check('a 0 PG se tiran salvaciones de muerte en vez de no pasar nada',
@@ -4822,9 +4869,11 @@ try {
     check('viajar mueve al grupo al sitio al que va',
         after44.donde === routed.sitios[1],
         `${after44.donde} — avisos: ${after44.avisos || '(ninguno)'}`);
-    // Un viaje que no cuesta nada es una pantalla de carga.
+    // Un viaje que no cuesta nada es una pantalla de carga. Un buen guía ahorra un día
+    // (idea 65), y lo dice la nota del viaje.
+    const guided44 = /Guía: [^(]+\(\d+ contra \d+ ✓\)/u.test(after44.ultimo);
     check('y pasan los dias del camino, no cero',
-        after44.day >= before44 + 2, `día ${before44} -> ${after44.day}`);
+        after44.day >= before44 + (guided44 ? 1 : 2), `día ${before44} -> ${after44.day}${guided44 ? ' (con guía)' : ''}`);
     // El motor decide y el narrador cuenta: la nota no puede ser un mensaje de sistema,
     // porque entonces la ve quien juega y no la ve el modelo.
     check('el narrador se entera del viaje, por el canal que el modelo lee',
@@ -5091,7 +5140,8 @@ try {
         card46.stances.length === 3 && card46.stances.find(s => s.on)?.id === 'cerca',
         JSON.stringify(card46.stances));
     check('una pierna perdida ofrece su remedio, con el precio, y quedarse en casa',
-        Boolean(card46.remedy && !card46.remedy.off && /150/.test(card46.remedy.text)) && card46.retire === 3,
+        // Cuatro puestos en casa desde la idea 37: el maestro de armas.
+        Boolean(card46.remedy && !card46.remedy.off && /150/.test(card46.remedy.text)) && card46.retire === 4,
         JSON.stringify(card46));
 
     const speedBefore46 = await page.evaluate(async () =>
@@ -5133,8 +5183,8 @@ try {
     await page.waitForTimeout(400);
     const list46 = await page.evaluate(() => [...document.querySelectorAll('.gs-checks .gs-target')]
         .map(b => ({ id: b.getAttribute('data-check'), text: b.textContent || '', off: /** @type {HTMLButtonElement} */ (b).disabled })));
-    check('ofrece las ocho, con lo que suma cada una',
-        list46.length === 8 && list46.every(o => /[+-]\d/.test(o.text) && !o.off),
+    check('ofrece las diez (con Juego de manos y Supervivencia), con lo que suma cada una',
+        list46.length === 10 && list46.every(o => /[+-]\d/.test(o.text) && !o.off),
         list46.map(o => o.text.slice(0, 18)).join(' | '));
     await page.locator('.gs-checks [data-check="persuasion"]').click();
     await page.waitForTimeout(900);
@@ -5144,7 +5194,7 @@ try {
         pending: Boolean(window.SillyTavern.getContext().chatMetadata.pendingCheck),
     }));
     check('el motor tira y deja el resultado escrito en tu mensaje, para que el modelo lo lea',
-        /^\[TIRADA Persuasión de .+: d20 \d+ [+-]\d+ = \d+ contra CD 12 → (Éxito|Fallo)/.test(rolled46.draft)
+        /^\[TIRADA 🎲 Persuasión de .+: \d+ contra CD 12 [✓✗] (Éxito|Fallo)/u.test(rolled46.draft)
         && rolled46.pending,
         rolled46.draft.slice(0, 120));
 
@@ -5265,7 +5315,7 @@ try {
     await page.waitForTimeout(400);
     const rows46 = await page.evaluate(() => [...document.querySelectorAll('.gs-maneuvers .gs-target')]
         .map(b => b.getAttribute('data-maneuver')));
-    check('esquivar, destrabarse, empujar y ayudar', rows46.join(',') === 'esquivar,destrabarse,empujar,ayudar',
+    check('esquivar, destrabarse, empujar, ayudar, agarrar, esconderse y preparar', rows46.join(',') === 'esquivar,destrabarse,empujar,ayudar,agarrar,esconderse,preparar',
         rows46.join(','));
     await page.locator('.gs-maneuvers [data-maneuver="esquivar"]').click();
     await page.waitForTimeout(900);
@@ -5518,10 +5568,17 @@ try {
     const places49 = await page.evaluate(() => [...document.querySelectorAll('.tl-card')].map(c => (c.textContent || '').trim()));
     check('el taller enseña las localidades escritas de 1387',
         places49.some(t => /Pueblo de Barro/.test(t)) && places49.some(t => /Castillo de Vane/.test(t)), places49.slice(0, 8).join(' | '));
+    /** @type {string[]} */
+    let difficulties49 = [];
     for (let i = 0; i < 10; i++) {
         await page.locator('.tl-next').click();
         await page.waitForTimeout(250);
+        // Idea 198: de paso, el paso de jugabilidad trae las tres dificultades con nombre.
+        const seen = await page.evaluate(() => [...document.querySelectorAll('.tl-card-title')].map(t => (t.textContent || '').trim()));
+        if (seen.includes('De hierro')) difficulties49 = seen;
     }
+    check('el taller ofrece dificultades con nombre: Historia, Veterana y De hierro (198)',
+        ['Historia', 'Veterana', 'De hierro'].every(n => difficulties49.includes(n)), JSON.stringify(difficulties49));
     await page.locator('.tl-next').click();
     // El creador de personaje respeta lo que el mundo deja entrar, y dice cómo empieza.
     await page.waitForSelector('.hc-root', { timeout: 60000 });
@@ -5534,6 +5591,15 @@ try {
     check('el creador de personaje solo ofrece las razas del mundo',
         race49.length > 0 && race49.every(v => /Humano|Sangre alta/i.test(v)), JSON.stringify(race49));
     check('y dice cómo empieza la historia, para que el pasado encaje', /cáliz/i.test(hero49.premise), hero49.premise.slice(0, 120));
+    // Idea 49: lo que escribes propone el trasfondo, y dice lo que da.
+    await page.fill('.hc-root .hc-about', 'Un militar jubilado que ya no duerme bien.');
+    await page.waitForTimeout(300);
+    const background49 = await page.evaluate(() => ({
+        value: /** @type {HTMLSelectElement|null} */ (document.querySelector('.hc-root .hc-background'))?.value || '',
+        hint: document.querySelector('.hc-root .hc-background-hint')?.textContent || '',
+    }));
+    check('escribir «militar jubilado» propone el trasfondo de soldado, y dice lo que da (49)',
+        background49.value === 'soldado' && /Atletismo y Intimidación/.test(background49.hint), JSON.stringify(background49));
     await answerHeroCreator('Wendel');
     await page.waitForTimeout(1500);
     const face49 = await page.evaluate(async () => {
@@ -5726,6 +5792,22 @@ try {
         JSON.stringify(cave50));
 
     step('51. L, C1 y T1: la posada, cómo está el grupo y el precipicio');
+    // Agua y comida antes de cada viaje largo, como haría quien juega: tres días de camino
+    // sin beber matan (es la regla), y en estos pasos se prueba otra cosa. Hasta la idea 36
+    // un muerto se levantaba al recargar la vida y seguía peleando; ya no.
+    const provision51 = async () => {
+        await page.evaluate(async () => {
+            const ctx = window.SillyTavern.getContext();
+            for (const m of ctx.chatMetadata.party || []) if (!m.dead) m.needs = {};
+            await ctx.saveMetadata();
+            await ctx.eventSource.emit(ctx.eventTypes.CHAT_CHANGED, ctx.getCurrentChatId?.());
+        });
+        await page.waitForTimeout(1500);
+        if (await page.locator('#game-shell').count() === 0) {
+            await page.evaluate(() => { void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/modojuego'); });
+            await page.waitForSelector('#game-shell', { timeout: 15000 });
+        }
+    };
     // Seguimos en 1387, en El Pueblo de Barro. Oro en el bolsillo para poder pagar, puesto en
     // la partida y recargado como al abrir el chat.
     await page.evaluate(async () => {
@@ -5790,6 +5872,7 @@ try {
         `${body51.key} · ${body51.value.replace(/\n/g, ' | ').slice(0, 160)}`);
 
     // T1: el desfiladero de las torres del peaje se dibuja como precipicio.
+    await provision51();
     await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/go El Peaje Norte'));
     await page.waitForTimeout(2500);
     await clearToasts();
@@ -5799,6 +5882,2392 @@ try {
     await page.waitForTimeout(1200);
     const chasm51 = await page.evaluate(() => document.querySelectorAll('.wm-terrain-chasm').length);
     check('en las torres del peaje, el lado del desfiladero es precipicio', chasm51 >= 4, `${chasm51} casillas`);
+
+    step('52. Las 20 primeras ideas: combate, compañeros, viaje, pistas y comodidad');
+    // Seguimos en 1387, en El Peaje Norte, dentro de «La vanguardia en el peaje».
+    // Preparar un caso (vida del enemigo, donde esta) se hace en la partida y se recarga
+    // como al abrir el chat; lo que se comprueba despues es lo que haria quien juega.
+    const reload52 = async () => {
+        await page.evaluate(async () => {
+            const ctx = window.SillyTavern.getContext();
+            await ctx.saveMetadata();
+            await ctx.eventSource.emit(ctx.eventTypes.CHAT_CHANGED, ctx.getCurrentChatId?.());
+        });
+        await page.waitForTimeout(1500);
+        if (await page.locator('#game-shell').count() === 0) {
+            await page.evaluate(() => { void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/modojuego'); });
+            await page.waitForSelector('#game-shell', { timeout: 15000 });
+        }
+    };
+    const toPlayerTurn52 = async () => {
+        for (let i = 0; i < 12; i++) {
+            const who = await page.evaluate(() => {
+                const enc = window.SillyTavern.getContext().chatMetadata.combatEncounter;
+                const entry = enc?.turnOrder?.[enc?.currentTurnIndex];
+                return !enc?.active ? 'over' : (entry?.isEnemy ? 'enemy' : 'player');
+            });
+            if (who !== 'enemy') return who;
+            await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/combat-end'));
+            await page.waitForTimeout(700);
+            await clearDiceOverlay();
+        }
+        return 'enemy';
+    };
+    // Un enemigo con la vida que haga falta, y quien le toca andando hasta pegarse a el:
+    // lo que haria quien juega. Recargar la partida a mitad de combate no vale para esto.
+    const fightNextTo52 = async (/** @type {number} */ hp) => {
+        await clearToasts();
+        await page.evaluate(() => { void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/fight Infantería de Keller 1'); });
+        await page.waitForTimeout(1500);
+        await clearDiceOverlay();
+        const started = await page.evaluate(async (life) => {
+            const enc = (await import('/scripts/party.js')).getCombatEncounter();
+            for (const enemy of enc?.enemies || []) enemy.currentHp = life;
+            return {
+                active: Boolean(enc?.active),
+                board: String(window.SillyTavern.getContext().chatMetadata.currentBoard || ''),
+                toasts: [...document.querySelectorAll('#toast-container .toast')].map(t => (t.textContent || '').trim()).join(' | '),
+            };
+        }, hp);
+        if (!started.active) return `sin combate: ${JSON.stringify(started)}`;
+        await page.keyboard.press('3');
+        await page.waitForTimeout(800);
+        for (let i = 0; i < 16; i++) {
+            const turn = await toPlayerTurn52();
+            if (turn !== 'player') return turn;
+            const gap = await page.evaluate(async () => {
+                const party = await import('/scripts/party.js');
+                const enc = party.getCombatEncounter();
+                const entry = enc.turnOrder?.[enc.currentTurnIndex];
+                const me = party.getPartyMembersSnapshot().find(m => String(m.id) === String(entry?.id));
+                const foe = (enc.enemies || []).find((/** @type {any} */ e) => (e.currentHp || 0) > 0);
+                if (!me || !foe) return null;
+                const x = Number(me.mapPosition?.gridX) || 0;
+                const y = Number(me.mapPosition?.gridY) || 0;
+                return { x, y, dx: foe.gridX - x, dy: foe.gridY - y };
+            });
+            if (!gap) return 'over';
+            if (Math.max(Math.abs(gap.dx), Math.abs(gap.dy)) <= 1) return 'player';
+            const before = `${gap.x},${gap.y}`;
+            await page.evaluate(({ x, y }) => window.SillyTavern.getContext().executeSlashCommandsWithOptions(`/combat-move ${x + 1} ${y + 1}`),
+                { x: gap.x + Math.sign(gap.dx), y: gap.y + Math.sign(gap.dy) });
+            await page.waitForTimeout(400);
+            const after = await page.evaluate(async () => {
+                const party = await import('/scripts/party.js');
+                const enc = party.getCombatEncounter();
+                const entry = enc.turnOrder?.[enc.currentTurnIndex];
+                const me = party.getPartyMembersSnapshot().find(m => String(m.id) === String(entry?.id));
+                return `${Number(me?.mapPosition?.gridX) || 0},${Number(me?.mapPosition?.gridY) || 0}`;
+            });
+            // Sin movimiento que gastar (o con la casilla ocupada), se pasa el turno.
+            if (after === before) {
+                await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/combat-end'));
+                await page.waitForTimeout(700);
+                await clearDiceOverlay();
+            }
+        }
+        return 'lejos';
+    };
+    const closePopup52 = async () => {
+        const ok = page.locator('.popup:visible .popup-button-ok');
+        if (await ok.count() > 0) await ok.last().click();
+        await page.waitForTimeout(500);
+    };
+    const lastForModel52 = (/** @type {RegExp} */ pattern) => page.evaluate((source) => {
+        const re = new RegExp(source);
+        return (window.SillyTavern.getContext().chat || [])
+            .filter((/** @type {any} */ m) => !m.is_system)
+            .map((/** @type {any} */ m) => String(m.mes || ''))
+            .filter(text => re.test(text)).pop() || '';
+    }, pattern.source);
+
+    // --- 2 y 14: la cuenta antes del golpe, y a por quien va cada uno ---------------------
+    // El grupo llega de las pruebas de antes como llega: se le cura para que el combate no
+    // se acabe en el primer golpe del enemigo.
+    await page.evaluate(() => {
+        for (const m of window.SillyTavern.getContext().chatMetadata.party || []) {
+            m.hp = Math.max(Number(m.maxHp) || 30, 30);
+            m.maxHp = m.hp;
+            m.activeConditions = [];
+            m.deathSaves = undefined;
+        }
+    });
+    await reload52();
+    await clearToasts();
+    const turn52 = await fightNextTo52(1);
+    const intents52 = await page.evaluate(() => document.querySelector('#game-shell .gs-intents')?.textContent || '');
+    check('en combate se ve a por quién va cada enemigo (14)',
+        turn52 === 'player' && /Infantería de Keller (→|va hacia)/.test(intents52), `${turn52} · ${intents52}`);
+
+    await page.locator('.wm-token-enemy').filter({ visible: true }).first().click({ timeout: 10000 }).catch(() => {});
+    await page.waitForSelector('.tc-card', { timeout: 8000 }).catch(() => {});
+    const card52 = await page.evaluate(() => ({
+        forecast: document.querySelector('.tc-forecast')?.textContent || '',
+        intent: document.querySelector('.tc-intent')?.textContent || '',
+    }));
+    check('la tarjeta del enemigo dice la probabilidad, el daño y si lo tumba (2)',
+        /^\d+ % de acertar.*de daño · lo tumba si acierta$/.test(card52.forecast), card52.forecast);
+    check('y a por quién va a ir él', /^Va a por .+\.$/.test(card52.intent), card52.intent);
+
+    // --- 191: ganar, con la cuenta delante ---------------------------------------------------
+    // Con la guardia baja, para que no dependa de la suerte del dado.
+    await page.evaluate(async () => {
+        for (const enemy of (await import('/scripts/party.js')).getCombatEncounter().enemies || []) enemy.armorClass = 2;
+    });
+    await page.locator('.tc-card .tc-btn', { hasText: 'Atacar' }).click({ timeout: 8000 }).catch(() => {});
+    await page.evaluate(() => document.querySelectorAll('.tc-overlay').forEach(o => o.remove()));
+    await page.waitForTimeout(900);
+    await clearDiceOverlay();
+    for (let i = 0; i < 30; i++) {
+        if (await page.locator('.vs-card').count() > 0) break;
+        const state = await toPlayerTurn52();
+        if (state === 'over') break;
+        await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/combat-attack Infantería de Keller'));
+        await page.waitForTimeout(800);
+        await clearDiceOverlay();
+        if (await page.locator('.vs-card').count() > 0) break;
+        // Pasar el turno: la accion ya esta gastada, y sin esto el siguiente ataque se rechaza.
+        await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/combat-end'));
+        await page.waitForTimeout(600);
+        await clearDiceOverlay();
+    }
+    await page.waitForSelector('.vs-card', { timeout: 8000 }).catch(() => {});
+    const victory52 = await page.evaluate(() => ({
+        title: document.querySelector('.vs-title')?.textContent || '',
+        rows: document.querySelectorAll('.vs-row').length,
+        best: document.querySelector('.vs-line')?.textContent || '',
+        loot: document.querySelector('.vs-loot')?.textContent || '',
+    }));
+    check('al ganar sale la pantalla de victoria: quién hizo qué y qué os lleváis (191)',
+        /Victoria/.test(victory52.title) && victory52.rows >= 1 && /sostuvo el combate/.test(victory52.best) && /Os lleváis/.test(victory52.loot),
+        JSON.stringify(victory52));
+    await page.locator('.vs-card').click().catch(() => {});
+
+    // --- 22: huir, con el precio dicho antes -----------------------------------------------
+    await fightNextTo52(99);
+    await clearToasts();
+    await page.locator('#game-shell .gs-btn-quiet', { hasText: 'Abandonar' }).click({ timeout: 8000 }).catch(() => {});
+    await page.waitForSelector('.popup:visible', { timeout: 8000 }).catch(() => {});
+    const flee52 = await page.evaluate(() => document.querySelector('.popup:not([closing]) .popup-content')?.textContent || '');
+    check('abandonar dice antes lo que cuesta: quién se lleva un golpe al darse la vuelta (22)',
+        /Infantería de Keller golpea a .+ Se deja el botín/.test(flee52), flee52.replace(/\s+/g, ' ').slice(0, 160));
+    await closePopup52();
+    await clearDiceOverlay();
+    const fled52 = await page.evaluate(() => {
+        const ctx = window.SillyTavern.getContext();
+        const said = (ctx.chat || []).map((/** @type {any} */ m) => String(m.mes || ''));
+        return {
+            active: Boolean(ctx.chatMetadata.combatEncounter?.active),
+            retreat: said.some(t => /El grupo se retira/.test(t)),
+            blow: said.some(t => /aprovecha que .+ se da la vuelta/.test(t)),
+            deed: JSON.stringify(ctx.chatMetadata.deeds || []).includes('Huisteis'),
+        };
+    });
+    check('y al huir, el golpe se paga, el combate acaba y queda en la memoria',
+        !fled52.active && fled52.retreat && fled52.blow && fled52.deed, JSON.stringify(fled52));
+
+    // --- 64, 66, 82 y 103: viajar a un ritmo, las noticias al llegar y la pista -------------
+    await page.evaluate(() => {
+        const ctx = window.SillyTavern.getContext();
+        const meta = ctx.chatMetadata;
+        const today = Math.max(1, Math.floor(Number(meta.calendar?.day) || 1));
+        for (const m of meta.party || []) { m.gold = 100; m.hp = m.maxHp; }
+        // Algo que paso lejos, que se oye desde el pueblo.
+        meta.newsPending = [{ day: today, faction: 'prueba', target: 'El Pueblo de Barro', kind: 'avanza', note: 'Dicen que han visto humo en el molino.' }];
+        // Y el hilo lleva una semana quieto: toca pista.
+        const open = meta.plotState?.open?.[0];
+        if (open) meta.threadHints = { openedDay: { [open]: today - 10 }, given: {}, clues: {} };
+    });
+    await reload52();
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/leave').catch(() => {}));
+    await provision51();
+    await page.keyboard.press('2');
+    await page.waitForTimeout(1000);
+    await clearToasts();
+    await page.locator('#game-shell .gs-place', { hasText: 'El Pueblo de Barro' }).first().click();
+    await page.waitForSelector('.popup:visible .tr-pace-rapido', { timeout: 8000 });
+    const paces52 = await page.evaluate(() => [...document.querySelectorAll('.popup:not([closing]) [class*="tr-pace-"]')]
+        .map(b => (b.textContent || '').trim()));
+    check('viajar pregunta el ritmo, y cada uno dice los días (64)',
+        paces52.length === 3 && paces52.every(t => /· \d+ días?$/.test(t)), JSON.stringify(paces52));
+    await page.locator('.popup:visible .tr-pace-rapido').click();
+    // Los contratiempos que salgan se deciden: aquí, rodeando.
+    let setbacks52 = 0;
+    for (let i = 0; i < 6; i++) {
+        await page.waitForTimeout(900);
+        const detour = page.locator('.popup:visible .tr-detour');
+        if (await detour.count() === 0) break;
+        setbacks52 += 1;
+        await detour.first().click();
+    }
+    await page.waitForTimeout(2500);
+    const trip52 = await page.evaluate(() => {
+        const meta = window.SillyTavern.getContext().chatMetadata;
+        return {
+            here: String(meta.currentLocation || ''),
+            rest: Number(meta.party?.[0]?.needs?.rest) || 0,
+            given: meta.threadHints?.given ?? {},
+        };
+    });
+    check('a paso rápido se llega, pero sin haber dormido',
+        trip52.here === 'El Pueblo de Barro' && trip52.rest >= 24, JSON.stringify({ ...trip52, setbacks: setbacks52 }));
+    const news52 = await lastForModel52(/\[NOTICIAS\]/);
+    check('al llegar se cuenta lo que pasó lejos y se oye desde aquí (82)', /humo en el molino/.test(news52), news52.slice(0, 140));
+    const hint52 = await lastForModel52(/\[PISTA\]/);
+    check('el hilo llevaba días quieto: llega una pista, por boca de alguien (103)',
+        /\[PISTA\].+(Hay que|Lo que buscáis|podría saber|Se habla|tablón)/.test(hint52), hint52.slice(0, 160));
+
+    // --- 159: la bandeja guarda lo que avisaron los toasts ---------------------------------
+    const tray52 = await page.evaluate(() => document.querySelector('#game-shell .gs-tray-count')?.textContent || '');
+    await page.locator('#game-shell .gs-tray').click();
+    await page.waitForSelector('.nt-root', { timeout: 8000 });
+    const trayRows52 = await page.evaluate(() => document.querySelectorAll('.nt-row').length);
+    check('los avisos del viaje quedan en la bandeja, con cuántos sin ver (159)',
+        Number(tray52) > 0 && trayRows52 > 0, `${tray52} sin ver · ${trayRows52} en la bandeja`);
+    await closePopup52();
+    const trayAfter52 = await page.evaluate(() => document.querySelector('#game-shell .gs-tray-count')?.textContent || '');
+    check('y al mirarla, ya no hay nada sin ver', trayAfter52 === '', `«${trayAfter52}»`);
+
+    // --- 100 y 136: el diario y «¿qué hago?» -----------------------------------------------
+    await page.locator('#game-shell .gs-help').click();
+    await page.waitForSelector('.hp-root', { timeout: 8000 });
+    const help52 = await page.evaluate(() => [...document.querySelectorAll('.hp-root [data-key]')].map(b => b.getAttribute('data-key')));
+    check('«¿qué hago?» junta todo lo que se puede hacer aquí, pulsable (136)',
+        help52.includes('journal') && help52.some(k => /^service:inn-/.test(String(k))), JSON.stringify(help52.slice(0, 8)));
+    await page.locator('.hp-root [data-key="journal"]').click();
+    await page.waitForSelector('.jr-root', { timeout: 8000 });
+    const journal52 = await page.evaluate(() => ({
+        titles: [...document.querySelectorAll('.jr-title')].map(t => t.textContent || ''),
+        clue: [...document.querySelectorAll('.jr-item')].some(i => /↳/.test(i.textContent || '')),
+    }));
+    check('el diario dice lo que tenéis entre manos, con la pista dada, y lo que habéis oído (100)',
+        journal52.titles.includes('Entre manos') && journal52.clue, JSON.stringify(journal52));
+    await closePopup52();
+
+    // --- 26 y 34: conocer y reclutar a un confidente, y lo que se recuerda --------------------
+    await clearToasts();
+    const meet52 = page.locator('#game-shell .gs-service-btn[data-action^="inn-meet:"]').first();
+    const meetCount52 = await page.locator('#game-shell .gs-service-btn[data-action^="inn-meet:"]').count();
+    const uid52 = String(await meet52.getAttribute('data-action').catch(() => '')).split(':')[1] || '';
+    check('en la posada se puede conocer a los confidentes del mundo (26)', meetCount52 >= 1, `${meetCount52} para conocer`);
+    await meet52.click();
+    await page.waitForTimeout(1500);
+    const met52 = await lastForModel52(/\[CONOCÉIS A /);
+    check('conocerle se lo cuenta al narrador, con la escena de su ficha', met52.length > 0, met52.slice(0, 120));
+    const sizeBefore52 = await page.evaluate(() => (window.SillyTavern.getContext().chatMetadata.party || []).length);
+    await clearToasts();
+    await page.locator(`#game-shell .gs-service-btn[data-action="inn-hire:${uid52}"]`).click();
+    await page.waitForTimeout(2500);
+    const hired52 = await page.evaluate(async () => {
+        const party = (await import('/scripts/party.js')).getPartyMembersSnapshot();
+        const last = /** @type {any} */ (party[party.length - 1]);
+        const meta = window.SillyTavern.getContext().chatMetadata;
+        return {
+            size: party.length,
+            name: String(last?.name || ''),
+            confidant: Boolean(last?.confidant),
+            scenes: Array.isArray(last?.bondScenes) ? last.bondScenes.length : 0,
+            memory: JSON.stringify(meta.sharedMemories || []),
+        };
+    });
+    check('y contratarle le mete en el grupo, con sus escenas de vínculo',
+        hired52.size === sizeBefore52 + 1 && hired52.confidant && hired52.scenes > 0, JSON.stringify({ ...hired52, memory: undefined }));
+    check('queda como recuerdo compartido (34)', /se unió al grupo/.test(hired52.memory), hired52.memory.slice(0, 140));
+
+    for (let i = 0; i < 6; i++) {
+        if (await lastForModel52(/\[ESCENA DE VÍNCULO · /)) break;
+        await page.evaluate((who) => window.SillyTavern.getContext().executeSlashCommandsWithOptions(`/bond ${who} confidant_scene`), hired52.name);
+        await page.waitForTimeout(700);
+    }
+    const scene52 = await lastForModel52(/\[ESCENA DE VÍNCULO · /);
+    check('al subir el vínculo, el narrador recibe su escena escrita (26)',
+        scene52.includes(hired52.name), scene52.slice(0, 140));
+    const memoryBlock52 = await page.evaluate(async () => {
+        const ctx = window.SillyTavern.getContext();
+        await ctx.eventSource.emit(ctx.eventTypes.GENERATION_STARTED, 'normal', {}, true);
+        const keys = Object.keys(ctx.extensionPrompts || {});
+        const key = keys.find(k => k.endsWith('_quest_ctx_memory')) ?? '';
+        return `${key} · ${String(ctx.extensionPrompts?.[key]?.value || '')} · ${keys.filter(k => k.startsWith('GAME_')).join(', ')}`;
+    });
+    check('y el narrador lee lo que el grupo recuerda', /Recuerdan: .*se unió al grupo/.test(memoryBlock52),
+        memoryBlock52.replace(/\n/g, ' | ').slice(0, 300));
+
+    // --- 162: el grupo de un vistazo -------------------------------------------------------
+    await page.locator('#game-shell .gs-glance').click();
+    await page.waitForSelector('.pg-root', { timeout: 8000 });
+    const glance52 = await page.evaluate(() => ({
+        rows: document.querySelectorAll('.pg-row').length,
+        total: document.querySelector('.pg-total')?.textContent || '',
+    }));
+    check('el grupo de un vistazo: una fila por cada uno y el oro junto (162)',
+        glance52.rows === hired52.size && /Oro del grupo: \d+/.test(glance52.total), JSON.stringify(glance52));
+    await closePopup52();
+
+    // --- 27 y 85: opinan del encargo, y el pueblo recuerda lo que no se hizo ------------------
+    await page.evaluate(() => {
+        const meta = window.SillyTavern.getContext().chatMetadata;
+        const today = Math.max(1, Math.floor(Number(meta.calendar?.day) || 1));
+        const base = { rank: 'D', kind: 'hunt', difficulty: 1, segments: 1, patron: 'Prueba', written: true };
+        meta.contractBoard = [
+            ...(meta.contractBoard || []),
+            { ...base, id: 'p52-caducado-1', title: 'Se pasó el plazo uno', locationName: 'El Pueblo de Barro', reward: 20, days: today - 1 },
+            { ...base, id: 'p52-caducado-2', title: 'Se pasó el plazo dos', locationName: 'El Pueblo de Barro', reward: 20, days: today - 1 },
+            { ...base, id: 'p52-bien-pagado', title: 'Prueba bien pagada', locationName: 'El Pueblo de Barro', reward: 60, days: today + 10 },
+        ];
+    });
+    await reload52();
+    await page.keyboard.press('2');
+    await page.waitForTimeout(800);
+    await clearToasts();
+    await page.locator('#game-shell .gs-service-btn[data-action="board"]').click();
+    await page.waitForSelector('.gd-root', { timeout: 8000 });
+    await page.locator('.gd-contract', { hasText: 'Prueba bien pagada' }).locator('.gd-take').click();
+    await page.waitForTimeout(2500);
+    const opinion52 = await page.evaluate(() => (window.SillyTavern.getContext().chat || [])
+        .map((/** @type {any} */ m) => String(m.mes || '')).filter(t => /^💬 .+: «/.test(t)).pop() || '');
+    check('al aceptar un encargo, un compañero dice lo que le parece (27)', /^💬 Bran: «.+»$/.test(opinion52), opinion52);
+    await page.keyboard.press('2');
+    await page.waitForTimeout(1500);
+    const fortune52 = await page.evaluate(() => ({
+        line: document.querySelector('#game-shell .gs-here-fortune')?.textContent || '',
+        said: (window.SillyTavern.getContext().chat || []).map((/** @type {any} */ m) => String(m.mes || ''))
+            .filter(t => /\[EL MUNDO CAMBIA\]/.test(t)).pop() || '',
+    }));
+    check('dos plazos perdidos en el pueblo cierran algo, y se nota al volver (85)',
+        /ha cerrado/.test(fortune52.said) && /no vinisteis/.test(fortune52.line), JSON.stringify(fortune52).slice(0, 200));
+
+    // --- 138: el narrador pide una tirada, y la tira quien juega -----------------------------
+    const asked52 = await page.evaluate(async () => {
+        const { ToolManager } = await import('/scripts/tool-calling.js');
+        return String(await ToolManager.invokeFunctionTool('pedir_tirada', { habilidad: 'Persuasión', motivo: 'convencer a Giles', dificultad: 14 }) ?? '');
+    });
+    await page.waitForTimeout(800);
+    const chip52 = page.locator('#game-shell .gs-chip-action', { hasText: 'Tirar Persuasión (convencer a Giles) · CD 14' });
+    const chipCount52 = await chip52.count();
+    check('el narrador pide una tirada y sale como ficha (138)', /Pedida/.test(asked52) && chipCount52 === 1, `${asked52} · ${chipCount52} ficha(s)`);
+    await closePopup52();
+    await clearToasts();
+    await page.evaluate(() => {
+        const chip = [...document.querySelectorAll('#game-shell .gs-chip-action')]
+            .find(b => /Tirar Persuasión \(convencer a Giles\)/.test(b.textContent || ''));
+        if (chip instanceof HTMLElement) chip.click();
+    });
+    await page.waitForTimeout(1200);
+    await clearDiceOverlay();
+    const rolled52 = await page.evaluate(() => {
+        const meta = window.SillyTavern.getContext().chatMetadata;
+        return { draft: String(meta.pendingCheck?.draft || ''), left: (meta.checkRequests || []).length };
+    });
+    check('al pulsarla se tira con la dificultad que pidió, y la petición se gasta',
+        /CD 14/.test(rolled52.draft) && rolled52.left === 0, JSON.stringify(rolled52).slice(0, 200));
+    await page.evaluate(() => { const i = /** @type {HTMLTextAreaElement} */ (document.querySelector('#send_textarea')); if (i) i.value = ''; });
+
+    // --- 147: lo que cuesta cada turno, a la vista ------------------------------------------
+    await page.evaluate(async () => {
+        const ctx = window.SillyTavern.getContext();
+        await ctx.eventSource.emit(ctx.eventTypes.GENERATE_AFTER_DATA,
+            { messages: [{ role: 'system', content: 'Una escena larga. '.repeat(600) }, { role: 'user', content: 'Hola.' }] }, false);
+    });
+    await page.waitForTimeout(1200);
+    const meter52 = await page.evaluate(() => document.querySelector('#game-shell .gs-meter')?.textContent || '');
+    check('arriba se ve lo que costó el último turno y la sesión (147)', /≈[\d.]+k? por turno · sesión [\d.]+k?/.test(meter52), meter52);
+
+    // --- 49: el trasfondo quedó en la ficha y cuenta en las tiradas -------------------------
+    const background52 = await page.evaluate(async () => {
+        const party = (await import('/scripts/party.js')).getPartyMembersSnapshot();
+        const { skillModifier } = await import('/scripts/game-engine/rules/checks.js');
+        const hero = /** @type {any} */ (party[0]);
+        return { background: String(hero?.background || ''), intimidation: skillModifier(hero, 'intimidation').proficient };
+    });
+    check('el militar jubilado es Soldado veterano y se le da bien intimidar (49)',
+        background52.background === 'soldado' && background52.intimidation, JSON.stringify(background52));
+
+    step('53. La segunda batería: el tablero habla, los compañeros crecen y el mundo recuerda');
+    // Seguimos en 1387, en El Pueblo de Barro, con Bran en el grupo.
+    // Lo que sale flotando o grita un enemigo dura un segundo: se apunta al aparecer.
+    await page.evaluate(() => {
+        /** @type {any} */ (window).__seen53 = [];
+        new window.MutationObserver(list => {
+            for (const change of list) {
+                for (const node of change.addedNodes) {
+                    if (node instanceof HTMLElement && /wm-float|wm-bark-enemy/.test(node.className)) {
+                        /** @type {any} */ (window).__seen53.push(`${node.className}: ${node.textContent}`);
+                    }
+                }
+            }
+        }).observe(document.body, { childList: true, subtree: true });
+    });
+
+    // --- 108: al abrir una partida jugada, «Anteriormente…» ---------------------------------
+    await page.evaluate(() => {
+        for (const m of window.SillyTavern.getContext().chatMetadata.party || []) {
+            m.hp = Math.max(Number(m.maxHp) || 30, 30);
+            m.maxHp = m.hp;
+            m.activeConditions = [];
+        }
+    });
+    await reload52();
+    await page.waitForSelector('.rc-card', { timeout: 6000 }).catch(() => {});
+    const recap53 = await page.evaluate(() => [...document.querySelectorAll('.rc-card div')].map(d => d.textContent || ''));
+    check('al volver a una partida sale «Anteriormente…» con lo justo para retomar (108)',
+        /^Anteriormente… \(día \d+, en El Pueblo de Barro\)$/.test(recap53[0] ?? '') && recap53.length >= 2, JSON.stringify(recap53).slice(0, 220));
+    const recapClicks53 = await page.evaluate(() => getComputedStyle(document.querySelector('.rc-card') ?? document.body).pointerEvents);
+    check('y no tapa nada: no se puede pulsar', recapClicks53 === 'none', recapClicks53);
+
+    // --- 81 y 86: lo pendiente en cada sitio, y lo que aquí se sabe de vosotros --------------
+    await page.keyboard.press('2');
+    await page.waitForTimeout(900);
+    const pending53 = await page.evaluate(() => [...document.querySelectorAll('#game-shell .gs-place-pending')].map(p => p.textContent || ''));
+    check('la lista de viaje dice lo pendiente en cada sitio (81)', pending53.some(t => /^Pendiente: /.test(t)), JSON.stringify(pending53).slice(0, 200));
+    const local53 = await page.evaluate(async () => {
+        const ctx = window.SillyTavern.getContext();
+        await ctx.eventSource.emit(ctx.eventTypes.GENERATION_STARTED, 'normal', {}, true);
+        const key = Object.keys(ctx.extensionPrompts || {}).find(k => k.endsWith('_quest_ctx_memory')) ?? '';
+        return String(ctx.extensionPrompts?.[key]?.value || '');
+    });
+    check('el narrador sabe lo que en este pueblo se acuerdan de vosotros (86)',
+        /- En El Pueblo de Barro se acuerdan: /.test(local53), local53.replace(/\n/g, ' | ').slice(0, 260));
+
+    // --- 91: en el diario, cuándo se oyó cada rumor -----------------------------------------
+    await page.locator('#game-shell .gs-journal').click();
+    await page.waitForSelector('.jr-root', { timeout: 8000 });
+    const rumors53 = await page.evaluate(() => [...document.querySelectorAll('.jr-item')].map(i => i.textContent || '').filter(t => /^«/.test(t)));
+    check('el diario dice cuándo se oyó cada rumor, para saber si ya está frío (91)',
+        rumors53.some(t => / · (hoy|hace \d+ día\(s\)|ya frío)/.test(t)), JSON.stringify(rumors53).slice(0, 200));
+    await closePopup52();
+
+    // --- 38, 44 y 56: qué quiere, y lo que se ha ganado --------------------------------------
+    // Bran con un moratón que se cura mañana, y dormir una noche.
+    await page.evaluate(() => {
+        const bran = (window.SillyTavern.getContext().chatMetadata.party || []).find((/** @type {any} */ m) => m.name === 'Bran');
+        if (bran) bran.injuries = [{ id: 'golpe-moraton', label: 'Moratón', modifiers: {}, days: 3, daysLeft: 1 }];
+    });
+    await reload52();
+    await page.evaluate(() => document.querySelectorAll('.rc-card').forEach(c => c.remove()));
+    await clearToasts();
+    await page.locator('#game-shell .gs-clock-btn', { hasText: 'Dormir' }).click();
+    await page.waitForTimeout(1500);
+    const scar53 = await page.evaluate(async () => {
+        const bran = /** @type {any} */ ((await import('/scripts/party.js')).getPartyMembersSnapshot().find(m => m.name === 'Bran'));
+        const { skillModifier } = await import('/scripts/game-engine/rules/checks.js');
+        return { scars: bran?.scars ?? [], intimidation: bran ? skillModifier(bran, 'intimidation').modifier : null, base: bran ? Math.floor(((Number(bran.charisma) || 10) - 10) / 2) : null };
+    });
+    check('una herida que se cura deja cicatriz, y la cicatriz impone (56)',
+        scar53.scars.includes('Cicatriz de moratón') && scar53.intimidation !== null && scar53.intimidation >= Number(scar53.base) + 1, JSON.stringify(scar53));
+    await clearToasts();
+    await page.keyboard.press('1');
+    await page.waitForTimeout(700);
+    await page.locator('#game-shell .gs-chip').nth(1).click({ timeout: 8000 }).catch(() => {});
+    await page.waitForSelector('.cc-card', { timeout: 8000 }).catch(() => {});
+    const card53 = await page.evaluate(() => ({
+        wants: document.querySelector('.cc-wants')?.textContent || '',
+        earned: document.querySelector('.cc-earned')?.textContent || '',
+    }));
+    check('la ficha del compañero dice qué quiere ahora (38)', /^Ahora: .+/.test(card53.wants), card53.wants);
+    check('y lo que se ha ganado: su cicatriz', /Cicatriz de moratón/.test(card53.earned), card53.earned);
+    await page.evaluate(() => document.querySelectorAll('.cc-overlay, .cc-card').forEach(c => c.remove()));
+
+    // --- 68: fuera del pueblo se puede cazar y forrajear ------------------------------------
+    await provision51();
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/go El Camino Viejo'));
+    await page.waitForTimeout(2500);
+    await clearToasts();
+    await page.keyboard.press('1');
+    await page.waitForTimeout(900);
+    const forageChip53 = page.locator('#game-shell .gs-chip-action', { hasText: 'Cazar y forrajear' });
+    const forageCount53 = await forageChip53.count();
+    if (forageCount53 > 0) await forageChip53.first().click({ timeout: 8000 }).catch(() => {});
+    await page.waitForTimeout(1500);
+    const foraged53 = await page.evaluate(() => (window.SillyTavern.getContext().chat || [])
+        .map((/** @type {any} */ m) => String(m.mes || '')).filter(t => /\[CAMPO\]/.test(t)).pop() || '');
+    check('en el bosque sale la ficha de cazar y forrajear, y se resuelve con una tirada (68)',
+        forageCount53 === 1 && /(encuentra de comer|vuelve con agua)/.test(foraged53), `${forageCount53} ficha(s) · ${foraged53}`);
+
+    // --- 1, 13, 153, 164, 188, 190 y 6: una pelea con lobos ---------------------------------
+    await provision51();
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/go El Pueblo de Barro'));
+    await page.waitForTimeout(2500);
+    // El grupo, curado antes de pelear: lo que se comprueba aquí es el tablero, no la suerte
+    // (con dos lobos y Bran a media vida, a veces Bran moría y lo de después se quedaba sin él).
+    await page.evaluate(() => {
+        for (const m of window.SillyTavern.getContext().chatMetadata.party || []) {
+            if (m.dead) continue;
+            m.maxHp = Math.max(Number(m.maxHp) || 30, 40);
+            m.hp = m.maxHp;
+            m.activeConditions = [];
+            m.deathSaves = undefined;
+        }
+    });
+    await reload52();
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/enter Lobos en el pueblo'));
+    await page.waitForTimeout(1200);
+    await clearToasts();
+    // Que los enemigos griten siempre en esta prueba: la frase es lo que se comprueba, no la suerte.
+    await page.evaluate(async () => {
+        const barks = await import('/scripts/game-engine/combat/barks.js');
+        barks.ENEMY_CHANCE.hit = 1;
+        barks.ENEMY_CHANCE.hurt = 1;
+    });
+    await page.evaluate(() => { void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/fight Lobo famélico 2'); });
+    await page.waitForTimeout(1500);
+    await clearDiceOverlay();
+    await page.keyboard.press('3');
+    await page.waitForTimeout(900);
+    const roles53 = await page.evaluate(() => [...document.querySelectorAll('.wm-token-enemy .wm-token-role')].map(r => r.getAttribute('title') || ''));
+    check('cada enemigo lleva en su ficha cómo pelea (13)', roles53.length >= 1 && roles53.every(t => /: /.test(t)), JSON.stringify(roles53));
+
+    // Andar hasta pegarse a un lobo, como antes.
+    let near53 = 'lejos';
+    for (let i = 0; i < 16; i++) {
+        const turn = await toPlayerTurn52();
+        if (turn !== 'player') { near53 = turn; break; }
+        const gap = await page.evaluate(async () => {
+            const party = await import('/scripts/party.js');
+            const enc = party.getCombatEncounter();
+            const entry = enc.turnOrder?.[enc.currentTurnIndex];
+            const me = party.getPartyMembersSnapshot().find(m => String(m.id) === String(entry?.id));
+            const foe = (enc.enemies || []).find((/** @type {any} */ e) => (e.currentHp || 0) > 0);
+            if (!me || !foe) return null;
+            const x = Number(me.mapPosition?.gridX) || 0;
+            const y = Number(me.mapPosition?.gridY) || 0;
+            return { x, y, dx: foe.gridX - x, dy: foe.gridY - y };
+        });
+        if (!gap) { near53 = 'over'; break; }
+        if (Math.max(Math.abs(gap.dx), Math.abs(gap.dy)) <= 1) { near53 = 'player'; break; }
+        await page.evaluate(({ x, y }) => window.SillyTavern.getContext().executeSlashCommandsWithOptions(`/combat-move ${x + 1} ${y + 1}`),
+            { x: gap.x + Math.sign(gap.dx), y: gap.y + Math.sign(gap.dy) });
+        await page.waitForTimeout(400);
+        const moved = await page.evaluate(async () => {
+            const party = await import('/scripts/party.js');
+            const enc = party.getCombatEncounter();
+            const entry = enc.turnOrder?.[enc.currentTurnIndex];
+            const me = party.getPartyMembersSnapshot().find(m => String(m.id) === String(entry?.id));
+            return `${Number(me?.mapPosition?.gridX) || 0},${Number(me?.mapPosition?.gridY) || 0}`;
+        });
+        if (moved === `${gap.x},${gap.y}`) {
+            await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/combat-end'));
+            await page.waitForTimeout(700);
+            await clearDiceOverlay();
+        }
+    }
+    await clearDiceOverlay();
+    await clearToasts();
+
+    // 164: lo que es la casilla bajo el ratón.
+    const boardBox53 = await page.locator('.wm-terrain-layer').filter({ visible: true }).first().boundingBox().catch(() => null);
+    if (boardBox53) await page.mouse.move(boardBox53.x + boardBox53.width * 0.1, boardBox53.y + boardBox53.height * 0.1);
+    await page.waitForTimeout(300);
+    const cell53 = await page.evaluate(() => [...document.querySelectorAll('.wm-cell-info')].map(c => c.textContent || '').find(Boolean) || '');
+    check('al pasar el ratón por el tablero se dice qué es cada casilla (164)', /^Casilla \(\d+, \d+\) · /.test(cell53), cell53);
+
+    // 153: con el golpe en la mano, acabar el turno pregunta.
+    const endTurn53 = page.locator('#game-shell .gs-btn').filter({ hasText: 'Fin de turno' }).first();
+    if (near53 === 'player' && !await endTurn53.isDisabled().catch(() => true)) await endTurn53.click();
+    await page.waitForTimeout(700);
+    const ask53 = await page.evaluate(() => document.querySelector('.popup:not([closing]) .popup-content')?.textContent || '');
+    check('acabar el turno con un enemigo a tiro pregunta antes (153)', /¿Acabar el turno\?.*Aún puedes atacar a Lobo/.test(ask53.replace(/\s+/g, ' ')), ask53.replace(/\s+/g, ' ').slice(0, 140));
+    const cancel53 = page.locator('.popup:visible .popup-button-cancel');
+    if (await cancel53.count() > 0) await cancel53.last().click();
+    await page.waitForTimeout(500);
+
+    // 1: pulsar tu ficha y pasar por una casilla que te saca del alcance de un lobo dice que
+    // te golpea. En un turno nuevo (el de antes gasto el movimiento), y si un critico lo ha
+    // dejado sin poder moverse, en el siguiente.
+    let provoke53 = '';
+    let lit53 = 0;
+    /** @type {{x: number, y: number}|null} */
+    let away53 = null;
+    let pathCost53 = '';
+    for (let attempt = 0; attempt < 4 && !/te golpea/.test(pathCost53); attempt++) {
+        await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/combat-end'));
+        await page.waitForTimeout(700);
+        await clearDiceOverlay();
+        if (await toPlayerTurn52() !== 'player') break;
+        await clearDiceOverlay();
+        await clearToasts();
+        provoke53 = await page.evaluate(async () => {
+            const party = await import('/scripts/party.js');
+            const enc = party.getCombatEncounter();
+            return String(enc.turnOrder?.[enc.currentTurnIndex]?.id ?? '');
+        });
+        await page.waitForTimeout(500);
+        await clearDiceOverlay();
+        await page.locator(`.wm-token[data-token-id="${provoke53}"]`).filter({ visible: true }).first().click({ timeout: 8000 }).catch(() => {});
+        await page.waitForTimeout(600);
+        lit53 = await page.evaluate(() => document.querySelectorAll('.wm-highlight-move.wm-highlight-clickable').length);
+        // Basta con salir del alcance de uno de los que te tienen pegado: ese te golpea.
+        away53 = await page.evaluate(async () => {
+            const party = await import('/scripts/party.js');
+            const enc = party.getCombatEncounter();
+            const entry = enc.turnOrder?.[enc.currentTurnIndex];
+            const me = party.getPartyMembersSnapshot().find(m => String(m.id) === String(entry?.id));
+            const at = { x: Number(me?.mapPosition?.gridX) || 0, y: Number(me?.mapPosition?.gridY) || 0 };
+            const gap = (/** @type {any} */ a, /** @type {any} */ b) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
+            const close = (enc.enemies || []).filter((/** @type {any} */ e) => (e.currentHp || 0) > 0
+                && gap({ x: e.gridX, y: e.gridY }, at) <= 1);
+            const cells = [...document.querySelectorAll('.wm-highlight-move.wm-highlight-clickable')]
+                .map(c => ({ x: Number(c.getAttribute('data-x')), y: Number(c.getAttribute('data-y')) }))
+                .filter(c => close.some((/** @type {any} */ f) => gap({ x: f.gridX, y: f.gridY }, c) > 1));
+            return cells[0] ?? null;
+        });
+        if (away53) await page.locator(`.wm-highlight-clickable[data-x="${away53.x}"][data-y="${away53.y}"]`).first().hover({ timeout: 5000 }).catch(() => {});
+        await page.waitForTimeout(400);
+        pathCost53 = await page.evaluate(() => document.querySelector('.wm-path-cost')?.textContent || '');
+    }
+    check('la ruta que te saca del alcance de un lobo avisa de que te golpea (1)',
+        /ft · te golpea Lobo famélico/.test(pathCost53), `${provoke53} · ${lit53} casillas · ${JSON.stringify(away53)} · ${pathCost53}`);
+    await page.mouse.move(5, 5);
+
+    // 188 y 190: pegar, ver el número y oír al lobo.
+    const adjacent53 = await page.evaluate(async () => {
+        const party = await import('/scripts/party.js');
+        const enc = party.getCombatEncounter();
+        for (const e of enc.enemies || []) e.armorClass = 2;
+        const entry = enc.turnOrder?.[enc.currentTurnIndex];
+        const me = party.getPartyMembersSnapshot().find(m => String(m.id) === String(entry?.id));
+        const x = Number(me?.mapPosition?.gridX) || 0;
+        const y = Number(me?.mapPosition?.gridY) || 0;
+        const foe = (enc.enemies || []).find((/** @type {any} */ e) => (e.currentHp || 0) > 0
+            && Math.max(Math.abs(e.gridX - x), Math.abs(e.gridY - y)) <= 1);
+        return String(foe?.name ?? '');
+    });
+    await page.evaluate(async () => {
+        const barks = await import('/scripts/game-engine/combat/barks.js');
+        barks.ENEMY_CHANCE.ally_down = 1;
+    });
+    await page.evaluate((name) => window.SillyTavern.getContext().executeSlashCommandsWithOptions(`/combat-attack ${name}`), adjacent53);
+    await page.waitForTimeout(1500);
+    await clearDiceOverlay();
+    const seen53 = await page.evaluate(() => /** @type {any} */ (window).__seen53 ?? []);
+    check('el daño sale flotando de la ficha (188)', seen53.some((/** @type {string} */ s) => /wm-float.*: -\d+/.test(s)), `${adjacent53} · ${JSON.stringify(seen53).slice(0, 200)}`);
+    const barked53 = await page.evaluate(() => (window.SillyTavern.getContext().chat || [])
+        .map((/** @type {any} */ m) => String(m.mes || '')).filter(t => /^🗯️ Lobo/.test(t)).pop() || '');
+    check('y los lobos gritan, sin llamar al modelo (190)', barked53.length > 0 || seen53.some((/** @type {string} */ s) => /wm-bark-enemy/.test(s)), barked53);
+
+    // 6: con la mitad del bando caído y malherido, el otro se rinde.
+    await page.evaluate(async () => {
+        const enc = (await import('/scripts/party.js')).getCombatEncounter();
+        const alive = (enc.enemies || []).filter((/** @type {any} */ e) => (e.currentHp || 0) > 0);
+        alive.forEach((/** @type {any} */ e, /** @type {number} */ i) => {
+            if (i === 0) { e.currentHp = 1; e.maxHp = Math.max(10, Number(e.maxHp) || 10); } else e.currentHp = 0;
+        });
+        /** @type {any} */ (window).__random53 = Math.random;
+        Math.random = () => 0.01;
+    });
+    for (let i = 0; i < 8; i++) {
+        const state = await page.evaluate(() => {
+            const enc = window.SillyTavern.getContext().chatMetadata.combatEncounter;
+            return enc?.active ? 'on' : 'over';
+        });
+        if (state === 'over') break;
+        await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/combat-end'));
+        await page.waitForTimeout(800);
+        await clearDiceOverlay();
+    }
+    await page.evaluate(() => { Math.random = /** @type {any} */ (window).__random53 ?? Math.random; });
+    const surrender53 = await page.evaluate(() => (window.SillyTavern.getContext().chat || [])
+        .map((/** @type {any} */ m) => String(m.mes || '')).filter(t => /se rinde/.test(t)).pop() || '');
+    check('un enemigo malherido de un bando que cae se rinde, y el combate se gana (6)',
+        /🏳️ \[COMBAT\] Lobo famélico( \d+)? tira el arma y se rinde/.test(surrender53)
+        && !(await page.evaluate(() => Boolean(window.SillyTavern.getContext().chatMetadata.combatEncounter?.active))),
+        surrender53);
+    await page.evaluate(async () => {
+        const barks = await import('/scripts/game-engine/combat/barks.js');
+        barks.ENEMY_CHANCE.hit = 0.25;
+        barks.ENEMY_CHANCE.hurt = 0.35;
+        barks.ENEMY_CHANCE.ally_down = 0.5;
+    });
+    await clearToasts();
+
+    step('54. La tercera batería: prisioneros, llaves, el camino, el grupo y las teclas');
+    // Seguimos en 1387, en El Pueblo de Barro, dentro de «Lobos en el pueblo», con el lobo
+    // que se rindió en el paso 53.
+    await clearToasts();
+    const chipTexts54 = () => page.evaluate(() => [...document.querySelectorAll('#game-shell .gs-chip-action')].map(b => (b.textContent || '').trim()));
+    const clickChip54 = (/** @type {RegExp} */ pattern) => page.evaluate((source) => {
+        const chip = [...document.querySelectorAll('#game-shell .gs-chip-action')].find(b => new RegExp(source).test(b.textContent || ''));
+        if (chip instanceof HTMLElement) chip.click();
+        return Boolean(chip);
+    }, pattern.source);
+    await page.keyboard.press('1');
+    await page.waitForTimeout(800);
+
+    // --- 7: el prisionero -------------------------------------------------------------------
+    const prisoners54 = await page.evaluate(() => (window.SillyTavern.getContext().chatMetadata.prisoners ?? []).map((/** @type {any} */ p) => p.name));
+    check('quien se rindió queda como prisionero (7)', prisoners54.some((/** @type {string} */ n) => /Lobo famélico/.test(n)), JSON.stringify(prisoners54));
+    await clickChip54(/^Interrogar a Lobo/);
+    await page.waitForTimeout(1800);
+    const asked54 = await lastForModel52(/\[INTERROGATORIO\]/);
+    check('interrogarle le saca lo que sabe, y se le cuenta al narrador', asked54.length > 0, asked54.slice(0, 140));
+    const gold54 = async () => page.evaluate(async () => (await import('/scripts/party.js')).getPartyMembersSnapshot()
+        .reduce((/** @type {number} */ s, /** @type {any} */ m) => s + (Number(m.gold) || 0), 0));
+    const goldBefore54 = await gold54();
+    const gave54 = await clickChip54(/^Entregar a Lobo/);
+    await page.waitForTimeout(1200);
+    const goldAfter54 = await gold54();
+    check('y entregarle donde hay autoridad paga (7)', gave54 && goldAfter54 === goldBefore54 + 10, `${goldBefore54} → ${goldAfter54}`);
+
+    // --- 151: se habla con la gente del sitio ---------------------------------------------
+    const chips54 = await chipTexts54();
+    check('la fila de fichas ofrece hablar con la gente de aquí, no solo con los tuyos (151)',
+        chips54.some(t => /^Hablar con Giles/.test(t)), JSON.stringify(chips54));
+
+    // --- 150: rehacer la última respuesta ---------------------------------------------------
+    const retry54 = await page.evaluate(() => [...document.querySelectorAll('#game-shell .gs-retry-btn')].map(b => b.getAttribute('data-retry')));
+    check('bajo quien habla hay «otra vez», «más corto» y «más intenso» (150)',
+        JSON.stringify(retry54) === JSON.stringify(['otra', 'corto', 'intenso']), JSON.stringify(retry54));
+
+    // --- 152, 95 y 168: las teclas, la crónica y los dados ---------------------------------------
+    await page.mouse.click(5, 5);
+    await page.keyboard.press('d');
+    await page.waitForSelector('.jr-root', { timeout: 6000 }).catch(() => {});
+    const journal54 = await page.evaluate(() => [...document.querySelectorAll('.jr-title')].map(t => t.textContent || ''));
+    check('la tecla D abre el diario, y el diario trae la crónica (152, 95)', journal54.includes('Crónica'), JSON.stringify(journal54));
+    await closePopup52();
+    await page.keyboard.press('?');
+    await page.waitForTimeout(300);
+    const keys54 = await page.evaluate(() => document.querySelectorAll('.gs-keys .gs-keys-row').length);
+    await page.keyboard.press('?');
+    await page.waitForTimeout(300);
+    const keysGone54 = await page.evaluate(() => document.querySelectorAll('.gs-keys').length);
+    check('? enseña la chuleta de atajos, y la quita (152)', keys54 >= 8 && keysGone54 === 0, `${keys54} teclas · ${keysGone54}`);
+    await page.keyboard.press('t');
+    await page.waitForSelector('.dl-root', { timeout: 6000 }).catch(() => {});
+    const dice54 = await page.evaluate(() => document.querySelector('.dl-root')?.textContent || '');
+    check('la tecla T abre el historial de dados, con sus cuentas (168)', /\d+ tiradas de d20 · media [\d,]+/.test(dice54), dice54.slice(0, 160));
+    await closePopup52();
+
+    // --- 39 y 57: la moral y la historia de cada uno -----------------------------------------
+    await page.keyboard.press('g');
+    await page.waitForSelector('.pg-root', { timeout: 6000 }).catch(() => {});
+    const morale54 = await page.evaluate(() => document.querySelector('.pg-morale')?.textContent || '');
+    check('el grupo de un vistazo dice la moral (39)', /^Moral: /.test(morale54), morale54);
+    await page.locator('.pg-row').nth(1).locator('.pg-story').click({ timeout: 6000 }).catch(() => {});
+    await page.waitForSelector('.hs-root', { timeout: 6000 }).catch(() => {});
+    const story54 = await page.evaluate(() => [...document.querySelectorAll('.hs-root .jr-item')].map(i => i.textContent || ''));
+    check('y cada uno tiene su historia, de lo apuntado (57)', story54.some(t => /Bran se unió al grupo/.test(t)), JSON.stringify(story54).slice(0, 200));
+    await closePopup52();
+    await closePopup52();
+
+    // --- 35 y 41: a quién va primero, y su oficio -----------------------------------------------
+    await page.locator('#game-shell .gs-chip').nth(1).click({ timeout: 8000 }).catch(() => {});
+    await page.waitForSelector('.cc-card', { timeout: 8000 }).catch(() => {});
+    const job54 = await page.evaluate(() => document.querySelector('.cc-job')?.textContent || '');
+    check('la ficha del compañero dice su oficio de campamento (41)', /^Centinela: /.test(job54), job54);
+    const prefers54 = await page.locator('.cc-prefer-btn').count();
+    await page.locator('.cc-prefer-btn[data-prefer="jefe"]').click({ timeout: 6000 }).catch(() => {});
+    await page.waitForTimeout(500);
+    const prefer54 = await page.evaluate(async () => {
+        const bran = /** @type {any} */ ((await import('/scripts/party.js')).getPartyMembersSnapshot().find(m => m.name === 'Bran'));
+        return String(bran?.prefer ?? '');
+    });
+    check('y se le puede decir a quién va primero (35)', prefers54 === 4 && prefer54 === 'jefe', `${prefers54} botones · ${prefer54}`);
+    await page.evaluate(() => document.querySelectorAll('.cc-overlay, .cc-card').forEach(c => c.remove()));
+
+    // --- 77: una puerta cerrada con llave ------------------------------------------------------
+    await page.evaluate(async () => {
+        const ctx = window.SillyTavern.getContext();
+        const wi = await import('/scripts/world-info.js');
+        const world = String(ctx.chatMetadata?.world_info || '');
+        const data = await wi.loadWorldInfo(world);
+        const hero = (ctx.chatMetadata.party || [])[0];
+        const board = (data?.metadata?.locationMaps || []).flatMap((/** @type {any} */ l) => l.boards || [])
+            .find((/** @type {any} */ b) => b?.name === 'Lobos en el pueblo');
+        if (!data || !board || !hero) return;
+        const x = Math.max(0, (Number(hero.mapPosition?.gridX) || 0) - 1);
+        const y = Number(hero.mapPosition?.gridY) || 0;
+        board.terrain = board.terrain ?? { version: 1, cells: {} };
+        board.terrain.cells = { ...(board.terrain.cells ?? {}), [`${x},${y}`]: { type: 'door', open: false, locked: true } };
+        await wi.saveWorldInfo(world, data, true);
+        await wi.refreshWorldMapGlobals(world);
+    });
+    await reload52();
+    await page.keyboard.press('1');
+    await page.waitForTimeout(900);
+    await clearToasts();
+    await page.evaluate(() => document.querySelectorAll('.rc-card').forEach(c => c.remove()));
+    const opened54 = await clickChip54(/^Abrir la puerta/);
+    await page.waitForSelector('.popup:visible .lk-pick', { timeout: 6000 }).catch(() => {});
+    const lock54 = await page.evaluate(() => ({
+        title: document.querySelector('.popup:not([closing]) .tr-setback h3')?.textContent || '',
+        options: [...document.querySelectorAll('.popup:not([closing]) [class*="lk-"]')].map(b => (b.textContent || '').trim()),
+    }));
+    check('una puerta con llave no se abre sin más: se ofrece la llave, la maña o los golpes (77)',
+        opened54 && lock54.title === 'Puerta cerrada con llave' && lock54.options.some(t => /Juego de manos/.test(t)) && lock54.options.some(t => /Atletismo/.test(t)),
+        JSON.stringify(lock54));
+    const leave54 = page.locator('.popup:visible .popup-button-cancel');
+    if (await leave54.count() > 0) await leave54.last().click();
+    await page.waitForTimeout(500);
+
+    // --- 10 y 21: agarrar a un lobo, y su ficha dice qué le pasa --------------------------------
+    await page.evaluate(() => { void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/fight Lobo famélico 1'); });
+    await page.waitForTimeout(1500);
+    await clearDiceOverlay();
+    // Un lobo que aguante hasta que alguien lo agarre: lo que se prueba es agarrar, no quién
+    // lo mata antes (con el grupo entero, Bran lo tumbaba en dos rondas).
+    await page.evaluate(async () => {
+        for (const enemy of (await import('/scripts/party.js')).getCombatEncounter().enemies || []) {
+            enemy.maxHp = Math.max(Number(enemy.maxHp) || 0, 99);
+            enemy.currentHp = enemy.maxHp;
+        }
+    });
+    await page.keyboard.press('3');
+    await page.waitForTimeout(800);
+    let grabbed54 = false;
+    let autoSeen54 = false;
+    for (let i = 0; i < 20 && !grabbed54; i++) {
+        const turn = await toPlayerTurn52();
+        if (turn !== 'player') break;
+        // Idea 18: si el turno es de Bran y la maquina lo puede jugar, se le deja.
+        const isBran = await page.evaluate(async () => {
+            const party = await import('/scripts/party.js');
+            const enc = party.getCombatEncounter();
+            return String(enc.turnOrder?.[enc.currentTurnIndex]?.name ?? '') === 'Bran';
+        });
+        if (isBran && await page.locator('#game-shell .gs-btn-auto').count() > 0) {
+            autoSeen54 = true;
+            await page.locator('#game-shell .gs-btn-auto').click();
+            await page.waitForTimeout(900);
+            await clearDiceOverlay();
+            continue;
+        }
+        const foe = await page.evaluate(async () => {
+            const party = await import('/scripts/party.js');
+            const enc = party.getCombatEncounter();
+            const entry = enc.turnOrder?.[enc.currentTurnIndex];
+            const me = party.getPartyMembersSnapshot().find(m => String(m.id) === String(entry?.id));
+            const x = Number(me?.mapPosition?.gridX) || 0;
+            const y = Number(me?.mapPosition?.gridY) || 0;
+            const wolf = (enc.enemies || []).find((/** @type {any} */ e) => (e.currentHp || 0) > 0);
+            return wolf ? { name: String(wolf.name), x, y, dx: wolf.gridX - x, dy: wolf.gridY - y } : null;
+        });
+        if (!foe) break;
+        if (Math.max(Math.abs(foe.dx), Math.abs(foe.dy)) <= 1) {
+            await page.evaluate((name) => window.SillyTavern.getContext().executeSlashCommandsWithOptions(`/maniobra agarrar ${name}`), foe.name);
+            await page.waitForTimeout(900);
+            await clearDiceOverlay();
+            grabbed54 = await page.evaluate(() => (window.SillyTavern.getContext().chat || [])
+                .some((/** @type {any} */ m) => /queda agarrado/.test(String(m.mes || ''))));
+            if (!grabbed54) {
+                await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/combat-end'));
+                await page.waitForTimeout(700);
+                await clearDiceOverlay();
+            }
+        } else {
+            await page.evaluate(({ x, y }) => window.SillyTavern.getContext().executeSlashCommandsWithOptions(`/combat-move ${x + 1} ${y + 1}`),
+                { x: foe.x + Math.sign(foe.dx), y: foe.y + Math.sign(foe.dy) });
+            await page.waitForTimeout(400);
+            await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/combat-end'));
+            await page.waitForTimeout(700);
+            await clearDiceOverlay();
+        }
+    }
+    await page.waitForTimeout(600);
+    const grabTitle54 = await page.evaluate(() => [...document.querySelectorAll('.wm-token-enemy .wm-token-status')].map(s => s.getAttribute('title') || ''));
+    check('agarrar a un lobo lo deja quieto (10)', grabbed54, `${grabbed54}`);
+    check('y su ficha dice qué le pasa, no solo cómo se llama (21)',
+        grabTitle54.some(t => /^Agarrado: no se puede mover/.test(t)), JSON.stringify(grabTitle54));
+    // Idea 18: el botón solo sale en el modo en que llevas a todo el grupo. En esta campaña
+    // Bran se lleva solo, así que aquí no se puede ver: se dice, sin contarlo como hecho.
+    if (autoSeen54) check('el turno de un compañero lo puede jugar la máquina, con su postura (18)', true, 'visto y pulsado');
+    else console.log('NOTA  18: en esta campaña Bran se lleva solo; el botón «Que actúe solo» no se ha podido ver.');
+    await page.evaluate(() => { void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/combat-stop'); });
+    await page.waitForTimeout(1200);
+    await clearDiceOverlay();
+    await clearToasts();
+
+    // --- 72: un atajo que se oye en la posada ------------------------------------------------
+    await page.evaluate(async () => { (await import('/scripts/game-engine/world/road.js')).ROAD_CHANCE.shortcut = 1; });
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/leave').catch(() => {}));
+    await page.waitForTimeout(600);
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/rumor'));
+    await page.waitForTimeout(2500);
+    const shortcut54 = await page.evaluate(() => JSON.stringify(window.SillyTavern.getContext().chatMetadata.deeds || []).match(/Un camino de pastores[^"]*/)?.[0] ?? '');
+    check('a veces, al oír un rumor, alguien menciona un atajo, y el camino se acorta (72)', shortcut54.length > 0, shortcut54);
+    await page.evaluate(async () => { (await import('/scripts/game-engine/world/road.js')).ROAD_CHANCE.shortcut = 0.3; });
+
+    // --- 88 y 92: lo que sale al paso por el camino ------------------------------------------
+    await page.evaluate(async () => {
+        const ctx = window.SillyTavern.getContext();
+        const wi = await import('/scripts/world-info.js');
+        const world = String(ctx.chatMetadata?.world_info || '');
+        const data = await wi.loadWorldInfo(world);
+        if (Array.isArray(data?.metadata?.factions) && data.metadata.factions[0]) {
+            data.metadata.factions[0].reputation = -4;
+            await wi.saveWorldInfo(world, data, true);
+        }
+        const road = await import('/scripts/game-engine/world/road.js');
+        road.ROAD_CHANCE.bounty = 1;
+        road.ROAD_CHANCE.merchant = 0;
+        for (const m of ctx.chatMetadata.party || []) m.gold = 100;
+    });
+    await reload52();
+    /** @param {string} to */
+    const travel54 = async (to) => {
+        /** @type {string[]} */
+        const seen = [];
+        await provision51();
+        await page.keyboard.press('2');
+        await page.waitForTimeout(900);
+        await clearToasts();
+        await page.locator('#game-shell .gs-place', { hasText: to }).first().click({ timeout: 8000 }).catch(() => {});
+        await page.waitForSelector('.popup:visible .tr-pace-normal', { timeout: 8000 }).catch(() => {});
+        await page.locator('.popup:visible .tr-pace-normal').click({ timeout: 5000 }).catch(() => {});
+        for (let i = 0; i < 8; i++) {
+            await page.waitForTimeout(900);
+            if (await page.locator('.popup:visible .tr-detour').count() > 0) {
+                seen.push('contratiempo');
+                await page.locator('.popup:visible .tr-detour').first().click();
+                continue;
+            }
+            if (await page.locator('.popup:visible .rd-face').count() > 0) {
+                seen.push(`cazarrecompensas: ${await page.evaluate(() => document.querySelector('.popup:not([closing]) .tr-setback p')?.textContent || '')}`);
+                await page.locator('.popup:visible .rd-face').first().click();
+                continue;
+            }
+            if (await page.locator('.popup:visible .rd-pass').count() > 0) {
+                seen.push(`mercader: ${await page.evaluate(() => document.querySelector('.popup:not([closing]) .tr-setback p')?.textContent || '')}`);
+                await page.locator('.popup:visible .rd-pass').first().click();
+                continue;
+            }
+            break;
+        }
+        await page.waitForTimeout(2000);
+        return seen;
+    };
+    const bounty54 = await travel54('El Camino Viejo');
+    check('con una facción que os odia, en el camino os salen cazarrecompensas: pagar o plantar cara (88)',
+        bounty54.some(s => /^cazarrecompensas: Gente de .+ os corta el paso/.test(s)), JSON.stringify(bounty54));
+    await page.evaluate(async () => {
+        const road = await import('/scripts/game-engine/world/road.js');
+        road.ROAD_CHANCE.bounty = 0;
+        road.ROAD_CHANCE.merchant = 1;
+    });
+    const merchant54 = await travel54('El Pueblo de Barro');
+    check('y a veces un mercader con género raro, que se compra o no (92)',
+        merchant54.some(s => /^mercader: Trae .+ y os lo deja en \d+ de oro/.test(s)), JSON.stringify(merchant54));
+    await page.evaluate(async () => {
+        const road = await import('/scripts/game-engine/world/road.js');
+        road.ROAD_CHANCE.bounty = 0.35;
+        road.ROAD_CHANCE.merchant = 0.2;
+    });
+    await clearToasts();
+
+    step('55. La cuarta batería: la tienda, las cartas, la fiesta, lo que escribes y los interruptores');
+    // Seguimos en 1387, en El Pueblo de Barro, con una facción que os odia (paso 54).
+    await clearToasts();
+    const serviceActions55 = () => page.evaluate(() => [...document.querySelectorAll('#game-shell .gs-service[data-service="tienda"] .gs-service-btn')]
+        .map(b => ({ id: b.getAttribute('data-action') || '', text: (b.textContent || '').trim(), off: /** @type {HTMLButtonElement} */ (b).disabled, title: b.getAttribute('title') || '' })));
+
+    // --- 118, 126, 127 y 134: la tienda ------------------------------------------------------
+    await page.evaluate(() => {
+        const party = window.SillyTavern.getContext().chatMetadata.party || [];
+        for (const m of party) m.gold = 200;
+        const bran = party.find((/** @type {any} */ m) => m.name === 'Bran');
+        if (bran) bran.items = [...(bran.items || []), { id: 'chatarra-55', name: 'Daga mellada', category: 'weapon', subcategory: 'simple_melee', type: 'weapon' }];
+    });
+    // En el paso 53 el pueblo perdió su tienda (dos encargos caducados, idea 85): se le
+    // devuelve para poder probarla aquí.
+    await page.evaluate(async () => {
+        const ctx = window.SillyTavern.getContext();
+        const wi = await import('/scripts/world-info.js');
+        const world = String(ctx.chatMetadata?.world_info || '');
+        const data = await wi.loadWorldInfo(world);
+        const here = (data?.metadata?.locationMaps || []).find((/** @type {any} */ l) => l?.name === 'El Pueblo de Barro');
+        if (!data || !here) return;
+        here.services = [...new Set([...(here.services || []), 'tienda'])];
+        await wi.saveWorldInfo(world, data, true);
+        await wi.refreshWorldMapGlobals(world);
+    });
+    await reload52();
+    await page.evaluate(() => document.querySelectorAll('.rc-card').forEach(c => c.remove()));
+    await page.keyboard.press('2');
+    await page.waitForTimeout(1000);
+    const shop55 = await serviceActions55();
+    const buys55 = shop55.filter(a => a.id.startsWith('shop-buy:'));
+    check('el pueblo tiene tienda, con el género de la semana y su precio (134)',
+        buys55.length >= 4 && buys55.every(a => /\(\d+ de oro\)$/.test(a.text)), JSON.stringify(buys55.map(a => a.text)));
+    const buy55 = buys55.find(a => !a.off);
+    const goldBefore55 = await gold54();
+    if (buy55) await page.locator(`#game-shell .gs-service-btn[data-action="${buy55.id}"]`).click();
+    await page.waitForTimeout(1200);
+    const bought55 = await page.evaluate(async (name) => {
+        const party = (await import('/scripts/party.js')).getPartyMembersSnapshot();
+        return (party[0]?.items || []).some((/** @type {any} */ i) => i.name === name);
+    }, buy55 ? buy55.id.slice('shop-buy:'.length) : '');
+    const price55 = Number(/\((\d+) de oro\)/.exec(buy55?.text ?? '')?.[1] ?? 0);
+    check('comprar cobra lo que dice y lo mete en la mochila', bought55 && (await gold54()) === goldBefore55 - price55,
+        `${buy55?.text ?? 'nada'} · ${goldBefore55} → ${await gold54()}`);
+
+    await clearToasts();
+    await page.locator('#game-shell .gs-service-btn[data-action="shop-prices"]').click({ timeout: 6000 }).catch(() => {});
+    await page.waitForSelector('.popup:visible', { timeout: 6000 }).catch(() => {});
+    const why55 = await page.evaluate(() => document.querySelector('.popup:not([closing]) .popup-content')?.textContent || '');
+    check('la tienda dice por qué cuesta lo que cuesta (127)', /(%: |al precio de siempre)/.test(why55), why55.replace(/\s+/g, ' ').slice(0, 200));
+    await closePopup52();
+
+    const junk55 = shop55.find(a => a.id === 'shop-junk');
+    const goldBeforeJunk55 = await gold54();
+    if (junk55) await page.locator('#game-shell .gs-service-btn[data-action="shop-junk"]').click({ timeout: 6000 }).catch(() => {});
+    await page.waitForTimeout(1200);
+    const sold55 = await page.evaluate(async () => {
+        const party = (await import('/scripts/party.js')).getPartyMembersSnapshot();
+        return !party.some((/** @type {any} */ m) => (m.items || []).some((/** @type {any} */ i) => i.id === 'chatarra-55'));
+    });
+    check('vender la chatarra de un golpe: se va lo común, entra el oro (118)',
+        Boolean(junk55) && sold55 && (await gold54()) > goldBeforeJunk55, `${junk55?.text ?? 'sin botón'} · ${goldBeforeJunk55} → ${await gold54()}`);
+
+    await clearToasts();
+    await page.locator('#game-shell .gs-service-btn[data-action="shop-haggle"]').click({ timeout: 6000 }).catch(() => {});
+    await page.waitForTimeout(1200);
+    const haggle55 = await page.evaluate(() => ({
+        rolled: (window.SillyTavern.getContext().chat || []).some((/** @type {any} */ m) => /🎲 Persuasión de /.test(String(m.mes || ''))),
+        stored: window.SillyTavern.getContext().chatMetadata.haggle ?? null,
+    }));
+    const haggleGone55 = !(await serviceActions55()).some(a => a.id === 'shop-haggle');
+    check('regatear es una tirada de Persuasión, una vez al día (126)', haggle55.rolled && Boolean(haggle55.stored) && haggleGone55,
+        JSON.stringify({ ...haggle55, otraVez: !haggleGone55 }));
+
+    // --- 89: la fiesta del pueblo -------------------------------------------------------------
+    await page.evaluate(async () => {
+        const ctx = window.SillyTavern.getContext();
+        const [{ festivalsOf }, { createSeededRandom }, { derive }] = await Promise.all([
+            import('/scripts/game-engine/world/festivals.js'),
+            import('/scripts/game-engine/combat/seeded-random.js'),
+            import('/scripts/game-engine/campaign/seed.js'),
+        ]);
+        const wi = await import('/scripts/world-info.js');
+        const world = String(ctx.chatMetadata?.world_info || '');
+        const data = await wi.loadWorldInfo(world);
+        const festivals = festivalsOf(data?.metadata?.locationMaps || [], key => createSeededRandom(derive(world, 'fiesta', key)));
+        const mine = festivals['El Pueblo de Barro'];
+        const today = Math.max(1, Math.floor(Number(ctx.chatMetadata.calendar?.day) || 1));
+        const month = Math.floor((today - 1) / 28);
+        if (mine && ctx.chatMetadata.calendar) ctx.chatMetadata.calendar.day = month * 28 + mine.day + (month * 28 + mine.day < today ? 28 : 0);
+    });
+    await reload52();
+    await page.evaluate(() => document.querySelectorAll('.rc-card').forEach(c => c.remove()));
+    await page.keyboard.press('2');
+    await page.waitForTimeout(1000);
+    const feast55 = await page.evaluate(() => ({
+        meal: [...document.querySelectorAll('#game-shell .gs-service-btn[data-action="inn-meal"]')].map(b => (b.textContent || '').trim())[0] ?? '',
+        shop: [...document.querySelectorAll('#game-shell .gs-service[data-service="tienda"] .gs-service-btn[data-action^="shop-buy:"]')].map(b => b.getAttribute('title') || '')[0] ?? '',
+    }));
+    check('el día de fiesta del pueblo, comer sale gratis y la tienda rebaja (89)',
+        /gratis: es fiesta/.test(feast55.meal) && /día de fiesta/.test(feast55.shop), JSON.stringify(feast55));
+
+    // --- 113 y 200: las cartas y la partida en números ---------------------------------------
+    await clearToasts();
+    await page.locator('#game-shell .gs-clock-btn', { hasText: 'Dormir' }).click({ timeout: 6000 }).catch(() => {});
+    await page.waitForTimeout(1500);
+    await page.keyboard.press('2');
+    await page.waitForTimeout(800);
+    const letter55 = page.locator('#game-shell .gs-service-btn[data-action^="inn-letter:"]').first();
+    const letterCount55 = await page.locator('#game-shell .gs-service-btn[data-action^="inn-letter:"]').count();
+    if (letterCount55 > 0) await letter55.click();
+    await page.waitForTimeout(1500);
+    const read55 = await lastForModel52(/\[CARTA\]/);
+    check('quien os odia os escribe, y la carta se recoge en la posada (113)',
+        letterCount55 >= 1 && /\[CARTA\] Una carta sin firmar, con el sello de/.test(read55), `${letterCount55} carta(s) · ${read55.slice(0, 120)}`);
+    await page.keyboard.press('d');
+    await page.waitForSelector('.jr-root', { timeout: 6000 }).catch(() => {});
+    const numbers55 = await page.evaluate(() => {
+        const titles = [...document.querySelectorAll('.jr-title')];
+        const at = titles.findIndex(t => (t.textContent || '') === 'La partida en números');
+        if (at < 0) return [];
+        const out = [];
+        for (let n = titles[at].nextElementSibling; n && !n.classList.contains('jr-title'); n = n.nextElementSibling) out.push(n.textContent || '');
+        return out;
+    });
+    check('el diario trae la partida en números (200)', numbers55.some(t => /\d+ combates: \d+ ganados/.test(t)), JSON.stringify(numbers55));
+    await closePopup52();
+
+    // --- 61: el arma, en el grupo de un vistazo -----------------------------------------------
+    await page.keyboard.press('g');
+    await page.waitForSelector('.pg-root', { timeout: 6000 }).catch(() => {});
+    const weapon55 = await page.evaluate(() => [...document.querySelectorAll('.pg-weapon')].map(w => w.textContent || ''));
+    check('el grupo de un vistazo dice lo que lleva cada uno en la mano (61)',
+        weapon55.length >= 2 && weapon55.every(t => /^(Lleva: |Pelea con las manos)/.test(t)), JSON.stringify(weapon55));
+    await closePopup52();
+
+    // --- 156: el glosario ----------------------------------------------------------------------
+    await page.keyboard.press('l');
+    await page.waitForSelector('.gl-root', { timeout: 6000 }).catch(() => {});
+    const glossary55 = await page.evaluate(() => document.querySelectorAll('.gl-row').length);
+    check('la L abre el glosario: las palabras de las reglas, en llano (156)', glossary55 >= 12, `${glossary55} palabras`);
+    await closePopup52();
+
+    // --- 137: lo que escribes pide una tirada ---------------------------------------------------
+    await page.keyboard.press('1');
+    await page.waitForTimeout(600);
+    await page.evaluate(() => {
+        const meta = window.SillyTavern.getContext().chatMetadata;
+        delete meta.pendingCheck;
+    });
+    await page.locator('#send_textarea').fill('Intento convencer al tendero de que nos fíe hasta el viernes');
+    await page.waitForTimeout(1200);
+    const typed55 = await chipTexts54();
+    await clickChip54(/Persuasión \(por lo que escribes\)/);
+    await page.waitForTimeout(1200);
+    await clearDiceOverlay();
+    const draft55 = await page.evaluate(() => /** @type {HTMLTextAreaElement} */ (document.querySelector('#send_textarea'))?.value || '');
+    check('escribir «intento convencer…» ofrece tirar Persuasión (137)', typed55.some(t => /Persuasión \(por lo que escribes\)/.test(t)), JSON.stringify(typed55));
+    check('y la tirada va delante sin borrar lo escrito', /^\[TIRADA 🎲 Persuasión[\s\S]*convencer al tendero/.test(draft55), draft55.slice(0, 160));
+    await page.evaluate(() => {
+        const input = /** @type {HTMLTextAreaElement|null} */ (document.querySelector('#send_textarea'));
+        if (input) input.value = '';
+        delete window.SillyTavern.getContext().chatMetadata.pendingCheck;
+    });
+
+    // --- 148, 149 y 172: los interruptores del menú de pausa ------------------------------------
+    const pauseItem55 = async (/** @type {RegExp} */ label) => {
+        await page.keyboard.press('Escape');
+        await page.waitForSelector('.gs-pause', { timeout: 5000 }).catch(() => {});
+        await page.locator('.gs-pause-toggle', { hasText: label }).first().click({ timeout: 5000 }).catch(() => {});
+        await page.waitForTimeout(400);
+        await page.keyboard.press('Escape');
+        await page.waitForTimeout(400);
+    };
+    const prompt55 = () => page.evaluate(async () => {
+        const ctx = window.SillyTavern.getContext();
+        await ctx.eventSource.emit(ctx.eventTypes.GENERATION_STARTED, 'normal', {}, true);
+        const read = (/** @type {string} */ end) => {
+            const key = Object.keys(ctx.extensionPrompts || {}).find(k => k.endsWith(end)) ?? '';
+            return String(ctx.extensionPrompts?.[key]?.value || '');
+        };
+        return { body: read('_combat_ctx_body'), memory: read('_quest_ctx_memory'), length: read('_rules_ctx_length') };
+    });
+    const before55 = await prompt55();
+    await pauseItem55(/^Modo ahorro/);
+    const saver55 = await prompt55();
+    check('el modo ahorro quita el estado del grupo y recorta la memoria (148)',
+        before55.body.length > 0 && saver55.body === '' && saver55.memory.length < before55.memory.length,
+        `cuerpo ${before55.body.length} → ${saver55.body.length} · memoria ${before55.memory.length} → ${saver55.memory.length}`);
+    await pauseItem55(/^Modo ahorro/);
+    await pauseItem55(/^Largo de la narración/);
+    const length55 = await prompt55();
+    check('el largo de la narración se cambia desde la partida (149)', /^\[LARGO\] Responde en un párrafo corto/.test(length55.length), length55.length);
+    for (let i = 0; i < 3; i++) await pauseItem55(/^Largo de la narración/);
+    await pauseItem55(/^Colores para daltonismo/);
+    const colorblind55 = await page.evaluate(() => document.body.classList.contains('game-colorblind'));
+    await pauseItem55(/^Colores para daltonismo/);
+    const colorblindOff55 = await page.evaluate(() => document.body.classList.contains('game-colorblind'));
+    check('los colores para daltonismo se encienden y se apagan (172)', colorblind55 && !colorblindOff55, `${colorblind55} → ${colorblindOff55}`);
+
+    // --- 155: un consejo la primera vez --------------------------------------------------------
+    await page.keyboard.press('1');
+    await page.waitForTimeout(700);
+    await page.evaluate(() => window.localStorage.setItem('sillytavern_gameTipsSeen', 'dialogue,combat,travel,prisoners'));
+    await clearToasts();
+    await page.keyboard.press('2');
+    await page.waitForTimeout(900);
+    const tip55 = await page.evaluate(() => [...document.querySelectorAll('#toast-container .toast')].map(t => t.textContent || '').find(t => /Consejo/.test(t)) ?? '');
+    const tipSeen55 = await page.evaluate(() => window.localStorage.getItem('sillytavern_gameTipsSeen') || '');
+    check('la primera vez explorando sale un consejo, y no vuelve a salir (155)',
+        /servicios del sitio y el mapa/.test(tip55) && /exploration/.test(tipSeen55), `${tip55.slice(0, 100)} · ${tipSeen55}`);
+    await clearToasts();
+
+    step('56. La quinta batería: lo que se esconde en el hilo, lo que se lanza y lo que queda de quien muere');
+    // Seguimos en 1387, en El Pueblo de Barro (paso 55).
+    await clearToasts();
+    const journal56 = async () => {
+        await page.mouse.click(5, 5);
+        await page.keyboard.press('d');
+        await page.waitForSelector('.jr-root', { timeout: 6000 }).catch(() => {});
+        const sections = await page.evaluate(() => {
+            /** @type {Record<string, string[]>} */
+            const out = {};
+            for (const title of [...document.querySelectorAll('.jr-title')]) {
+                const items = [];
+                for (let n = title.nextElementSibling; n && !n.classList.contains('jr-title'); n = n.nextElementSibling) items.push(n.textContent || '');
+                out[title.textContent || ''] = items;
+            }
+            return out;
+        });
+        await closePopup52();
+        return sections;
+    };
+    const chatHas56 = (/** @type {string} */ text, /** @type {boolean|null} */ system = null) => page.evaluate(({ text, system }) =>
+        (window.SillyTavern.getContext().chat || []).some((/** @type {any} */ m) => String(m.mes || '').includes(text)
+            && (system === null || Boolean(m.is_system) === system)), { text, system });
+    const toasts56 = () => page.evaluate(() => [...document.querySelectorAll('#toast-container .toast')].map(t => (t.textContent || '').trim()).join(' | '));
+    const go56 = async (/** @type {string} */ place) => {
+        await provision51();
+        await clearToasts();
+        await page.evaluate((to) => window.SillyTavern.getContext().executeSlashCommandsWithOptions(`/go ${to}`), place);
+        await page.waitForTimeout(2500);
+    };
+    // Lo que se cambia a mano (vida, cosas, necesidades) va a la ficha guardada y se recarga,
+    // como al abrir la partida.
+    const patchParty56 = async (/** @type {(arg: any) => void} */ patch, /** @type {any} */ arg = null) => {
+        await page.evaluate(patch, arg);
+        await reload52();
+    };
+
+    // --- 114 y 111: el presagio, y los secretos que no se dicen ------------------------------
+    const omenSaid56 = await chatHas56('El presagio: «El oro que no es tuyo pesará más que la nieve.»', true);
+    const omenModel56 = await chatHas56('[PRESAGIO]', false);
+    const journalA56 = await journal56();
+    const omens56 = journalA56['El presagio'] ?? [];
+    check('el presagio se dice al empezar, al narrador y en el chat, y queda en el diario (114)',
+        omenSaid56 && omenModel56 && omens56.length === 3 && omens56.every(o => /^· «/.test(o)),
+        JSON.stringify({ omenSaid56, omenModel56, omens56 }));
+    const secretsA56 = Object.keys(journalA56).find(t => /^Secretos de la historia/.test(t)) ?? '';
+    check('el diario cuenta los secretos de la historia sin decir cuáles (111)', secretsA56 === 'Secretos de la historia (0 de 2)', secretsA56);
+
+    // Un compañero vivo en el grupo: si el de antes cayó por el camino, se contrata otro en la
+    // posada, como lo haría quien juega. Así lo de abajo no depende de los dados de antes.
+    const companions56 = () => page.evaluate(async () => (await import('/scripts/party.js')).getPartyMembersSnapshot()
+        .filter((/** @type {any} */ m, /** @type {number} */ i) => i > 0 && !m.dead).map((/** @type {any} */ m) => String(m.name)));
+    if ((await companions56()).length === 0) {
+        await patchParty56(() => {
+            const hero = (window.SillyTavern.getContext().chatMetadata.party || [])[0];
+            if (hero) hero.gold = Math.max(Number(hero.gold) || 0, 100);
+        });
+        await page.evaluate(() => document.querySelectorAll('.rc-card').forEach(c => c.remove()));
+        await page.keyboard.press('2');
+        await page.waitForTimeout(1000);
+        const meet56 = page.locator('#game-shell .gs-service-btn[data-action^="inn-meet:"]').first();
+        const uid56 = String(await meet56.getAttribute('data-action').catch(() => '')).split(':')[1] || '';
+        if (uid56) {
+            await meet56.click({ timeout: 6000 }).catch(() => {});
+            await page.waitForTimeout(1500);
+            await clearToasts();
+            await page.locator(`#game-shell .gs-service-btn[data-action="inn-hire:${uid56}"]`).click({ timeout: 6000 }).catch(() => {});
+            await page.waitForTimeout(2500);
+        }
+    }
+    const hired56 = await companions56();
+    check('hay un compañero vivo para lo que sigue (contratado otra vez si hizo falta)', hired56.length > 0, JSON.stringify(hired56));
+
+    // --- 45 y 71: lo que dicen al llegar, y una parada por el camino --------------------------
+    const arrival56 = await page.evaluate(async () => {
+        const ctx = window.SillyTavern.getContext();
+        const here = String(ctx.chatMetadata.currentLocation || '');
+        const wi = await import('/scripts/world-info.js');
+        const data = await wi.loadWorldInfo(String(ctx.chatMetadata?.world_info || ''));
+        for (const m of /** @type {any[]} */ ((await import('/scripts/party.js')).getPartyMembersSnapshot())) {
+            if (m.dead || (m.wiUid == null && !Array.isArray(m.arrivals))) continue;
+            const entry = Object.values(data?.entries || {}).find((/** @type {any} */ e) => String(e.uid) === String(m.wiUid));
+            const arrivals = Array.isArray(m.arrivals) && m.arrivals.length > 0 ? m.arrivals : (/** @type {any} */ (entry)?.dndData?.arrivals || []);
+            const arrival = arrivals.find((/** @type {any} */ a) => a.place !== here);
+            if (arrival) return { name: String(m.name), place: String(arrival.place), line: String(arrival.line) };
+        }
+        return null;
+    });
+    await page.evaluate(async () => { (await import('/scripts/game-engine/world/road.js')).ROAD_CHANCE.stop = 1; });
+    if (arrival56) await go56(arrival56.place);
+    await page.evaluate(async () => { (await import('/scripts/game-engine/world/road.js')).ROAD_CHANCE.stop = 0.35; });
+    const said56 = arrival56 ? await chatHas56(`💬 ${arrival56.name}: «${arrival56.line}»`, true) : false;
+    check('un confidente dice lo suyo al llegar a un sitio suyo, con la voz del guion (45)', said56, JSON.stringify(arrival56));
+    const trip56 = await lastForModel52(/^El grupo viaja hasta /);
+    check('y por el camino, una parada que se nota: agua, comida, sueño o vida (71)',
+        Boolean(arrival56) && trip56.startsWith(`El grupo viaja hasta ${arrival56?.place}`)
+        && /Un pozo de agua clara|Un santuario del camino|Una venta en el cruce|Un refugio de pastores/.test(trip56),
+        trip56.slice(0, 260));
+
+    // --- 111: un secreto de la historia, encontrado sin buscarlo -----------------------------
+    await go56('El Lago Helado');
+    const secretModel56 = await lastForModel52(/Un secreto de la historia: El hielo que escucha/);
+    const journalB56 = await journal56();
+    const secretsB56 = Object.entries(journalB56).find(([title]) => /^Secretos de la historia/.test(title));
+    check('llegar al lago helado destapa un secreto: se cuenta, y el diario lo apunta (111)',
+        Boolean(secretModel56) && secretsB56?.[0] === 'Secretos de la historia (1 de 2)' && (secretsB56?.[1] ?? []).includes('El hielo que escucha'),
+        JSON.stringify({ secretModel56: secretModel56.slice(0, 80), secretsB56 }));
+
+    // --- 5, 11, 20, 122, 146, 132 y 52: un combate en el peaje ---------------------------------
+    await go56('El Peaje Norte');
+    await patchParty56(() => {
+        const meta = window.SillyTavern.getContext().chatMetadata;
+        // Cielo despejado: con lluvia el aceite no prende (idea 73), y aquí se prueba que prende.
+        meta.weatherToday = { day: Math.max(1, Math.floor(Number(meta.calendar?.day) || 1)), place: 'El Peaje Norte', weather: 'despejado' };
+        const state = meta.plotState || { open: [], done: [] };
+        meta.plotState = { ...state, open: [...new Set([...(state.open || []), 'la-vanguardia-de-keller'])] };
+        for (const m of meta.party || []) {
+            m.hp = Math.max(Number(m.maxHp) || 30, 30);
+            m.maxHp = m.hp;
+            m.activeConditions = [];
+            m.deathSaves = undefined;
+            m.needs = {};
+            m.items = [...(m.items || []).filter((/** @type {any} */ i) => !/^(Red|Frasco de aceite)$/.test(String(i.name))),
+                { id: `red-56-${m.id}`, name: 'Red', category: 'gear', subcategory: 'generic', consumable: true, uses: 1 },
+                { id: `aceite-56-${m.id}`, name: 'Frasco de aceite', category: 'gear', subcategory: 'generic', consumable: true, uses: 1 }];
+        }
+    });
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/enter La vanguardia en el peaje'));
+    await page.waitForTimeout(1500);
+    const turn56 = await fightNextTo52(99);
+    await page.evaluate(async () => {
+        for (const enemy of (await import('/scripts/party.js')).getCombatEncounter().enemies || []) enemy.armorClass = 2;
+    });
+    const faces56 = await page.evaluate(() => document.querySelectorAll('.wm-init-face').length);
+    check('la barra de iniciativa trae la cara (o la inicial) de cada uno (5)', turn56 === 'player' && faces56 >= 2, `${turn56} · ${faces56} caras`);
+
+    await page.locator('#game-shell .gs-btn-maneuvers').click({ timeout: 8000 }).catch(() => {});
+    await page.waitForTimeout(400);
+    const rows56 = await page.evaluate(() => [...document.querySelectorAll('.gs-maneuvers .gs-target')]
+        .map(b => ({ id: b.getAttribute('data-maneuver') || '', off: /** @type {HTMLButtonElement} */ (b).disabled, title: b.getAttribute('title') || '' })));
+    const hide56 = rows56.find(r => r.id === 'esconderse');
+    check('esconderse está en las maniobras, y si no hay cobertura dice por qué (11)',
+        Boolean(hide56) && (!hide56?.off || /te ve de lleno|nadie de quien/.test(hide56?.title ?? '')), JSON.stringify(hide56));
+    check('y lo que lleva para lanzar sale con las maniobras (122)',
+        rows56.some(r => r.id === 'lanzar:red') && rows56.some(r => r.id === 'lanzar:aceite'), rows56.map(r => r.id).join(','));
+    await page.locator('.gs-maneuvers [data-maneuver="lanzar:red"]').click({ timeout: 6000 }).catch(() => {});
+    await page.waitForTimeout(300);
+    await page.locator('.gs-maneuvers .gs-target').first().click({ timeout: 6000 }).catch(() => {});
+    await page.waitForTimeout(1000);
+    await clearDiceOverlay();
+    const net56 = await page.evaluate(async () => {
+        const enc = (await import('/scripts/party.js')).getCombatEncounter();
+        const said = (window.SillyTavern.getContext().chat || []).map((/** @type {any} */ m) => String(m.mes || ''));
+        return {
+            restrained: (enc.enemies || []).some((/** @type {any} */ e) => (e.activeConditions || []).includes('Restrained')),
+            line: said.filter(t => t.includes('🎲 Lanzar de ')).pop() || '',
+            missed: said.some(t => t.includes('La red cae al suelo')),
+        };
+    });
+    check('la red se lanza desde la barra: una tirada con la forma de todas, y el enemigo queda sujeto (122, 146)',
+        /🎲 Lanzar de .+ a .+: \d+ contra CA 2 [✓✗]/u.test(net56.line) && (net56.restrained || net56.missed), JSON.stringify(net56));
+
+    // El aceite, en el siguiente turno de alguien del grupo que tenga a tiro al enemigo.
+    for (let i = 0; i < 8; i++) {
+        await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/combat-end'));
+        await page.waitForTimeout(700);
+        await clearDiceOverlay();
+        if (await toPlayerTurn52() !== 'player') break;
+        const shot = await page.evaluate(async () => {
+            const party = await import('/scripts/party.js');
+            const enc = party.getCombatEncounter();
+            const entry = enc.turnOrder?.[enc.currentTurnIndex];
+            const me = party.getPartyMembersSnapshot().find((/** @type {any} */ m) => String(m.id) === String(entry?.id));
+            const foe = (enc.enemies || []).find((/** @type {any} */ e) => (e.currentHp || 0) > 0);
+            if (!me || !foe) return '';
+            const far = Math.max(Math.abs(foe.gridX - (Number(me.mapPosition?.gridX) || 0)), Math.abs(foe.gridY - (Number(me.mapPosition?.gridY) || 0)));
+            return far <= 4 ? String(foe.name) : '';
+        });
+        if (!shot) continue;
+        await page.evaluate((foe) => window.SillyTavern.getContext().executeSlashCommandsWithOptions(`/maniobra lanzar aceite ${foe}`), shot);
+        await page.waitForTimeout(1000);
+        await clearDiceOverlay();
+        break;
+    }
+    await page.waitForTimeout(600);
+    const oil56 = await page.evaluate(() => ({
+        said: (window.SillyTavern.getContext().chat || []).some((/** @type {any} */ m) => String(m.mes || '').includes('El suelo arde donde cayó')),
+        drawn: [...document.querySelectorAll('.wm-hazard.wm-hazard-fire')].map(h => h.getAttribute('title') || ''),
+    }));
+    check('el aceite deja el suelo ardiendo donde cae, aunque falle, y se ve en el tablero (122)',
+        oil56.said && oil56.drawn.some(t => /Aceite ardiendo/.test(t)), JSON.stringify(oil56));
+
+    // 20: el registro, filtrado.
+    const filters56 = await page.evaluate(() => [...document.querySelectorAll('.cl-filters .cl-filter')].map(b => (b.textContent || '').trim()));
+    await page.evaluate(() => /** @type {HTMLElement|undefined} */ ([...document.querySelectorAll('.cl-filters .cl-filter')].find(b => /Tiradas/.test(b.textContent || '')))?.click());
+    await page.waitForTimeout(300);
+    const logRolls56 = await page.evaluate(() => {
+        const rows = [...document.querySelectorAll('.combat-log-panel .cl-row')];
+        return { rows: rows.length, withRoll: rows.filter(r => r.querySelector('.cl-roll')).length };
+    });
+    await page.evaluate(() => /** @type {HTMLElement|undefined} */ ([...document.querySelectorAll('.cl-filters .cl-filter')].find(b => /Todo/.test(b.textContent || '')))?.click());
+    check('el registro de combate se filtra: solo las tiradas, o lo de uno (20)',
+        filters56.join(',') === 'Todo,Tiradas,Daño' && logRolls56.rows > 0 && logRolls56.rows === logRolls56.withRoll, JSON.stringify({ filters56, logRolls56 }));
+
+    // Y ganar: el hito de la vanguardia trae su reliquia.
+    await page.evaluate(async () => {
+        for (const enemy of (await import('/scripts/party.js')).getCombatEncounter().enemies || []) {
+            enemy.currentHp = Math.min(Number(enemy.currentHp) || 1, 1);
+            enemy.armorClass = 2;
+        }
+    });
+    for (let i = 0; i < 30; i++) {
+        if (await page.locator('.vs-card').count() > 0) break;
+        const state = await toPlayerTurn52();
+        if (state === 'over') break;
+        const foe = await page.evaluate(async () => {
+            const enc = (await import('/scripts/party.js')).getCombatEncounter();
+            return String((enc.enemies || []).find((/** @type {any} */ e) => (e.currentHp || 0) > 0)?.name ?? '');
+        });
+        if (!foe) break;
+        await page.evaluate((name) => window.SillyTavern.getContext().executeSlashCommandsWithOptions(`/combat-attack ${name}`), foe);
+        await page.waitForTimeout(800);
+        await clearDiceOverlay();
+        if (await page.locator('.vs-card').count() > 0) break;
+        await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/combat-end'));
+        await page.waitForTimeout(600);
+        await clearDiceOverlay();
+    }
+    await page.waitForTimeout(1500);
+    await page.locator('.vs-card').click().catch(() => {});
+    const relic56 = await page.evaluate(async () => {
+        const meta = window.SillyTavern.getContext().chatMetadata;
+        const items = (await import('/scripts/party.js')).getPartyMembersSnapshot().flatMap((/** @type {any} */ m) => m.items || []);
+        const cota = items.find((/** @type {any} */ i) => i.name === 'Cota de escamas norteña');
+        return {
+            done: (meta.plotState?.done || []).includes('la-vanguardia-de-keller'),
+            relic: Boolean(cota?.relic),
+            story: String(cota?.description ?? ''),
+            given: meta.relicsGiven || [],
+        };
+    });
+    check('al cumplir su hito llega la reliquia, con su historia, y queda apuntada para no repetirse (132)',
+        relic56.done && relic56.relic && /sargento de vanguardia/.test(relic56.story) && relic56.given.includes('Cota de escamas norteña'),
+        JSON.stringify(relic56));
+    const attack56 = await page.evaluate(() => (window.SillyTavern.getContext().chat || []).map((/** @type {any} */ m) => String(m.mes || ''))
+        .filter(t => /🎲 Ataque de /u.test(t)).pop() || '');
+    const english56 = await chatHas56('vs AC');
+    check('los ataques se dicen como todas las tiradas, y ya no en inglés (146)',
+        /🎲 Ataque de .+ a .+: \d+ contra CA \d+ [✓✗] \(d20 \d+/u.test(attack56) && !english56, attack56.slice(0, 200));
+    const fame56 = await page.evaluate(() => window.SillyTavern.getContext().chatMetadata.fame || {});
+    const journalC56 = await journal56();
+    check('lo que se hace en un sitio da fama allí, y el diario dice dónde os conocen (52)',
+        (Number(fame56['El Peaje Norte']) || 0) >= 2 && (journalC56['Dónde os conocen'] || []).some(t => /El Peaje Norte: os conocen/.test(t)),
+        JSON.stringify({ fame56, known: journalC56['Dónde os conocen'] }));
+
+    // --- 122, 84 y 125: la tienda y quien presta ---------------------------------------------
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/leave').catch(() => {}));
+    await go56('El Pueblo de Barro');
+    await page.evaluate(async () => {
+        const ctx = window.SillyTavern.getContext();
+        const wi = await import('/scripts/world-info.js');
+        const world = String(ctx.chatMetadata?.world_info || '');
+        const data = await wi.loadWorldInfo(world);
+        const here = (data?.metadata?.locationMaps || []).find((/** @type {any} */ l) => l?.name === 'El Pueblo de Barro');
+        if (!data || !here) return;
+        here.services = [...new Set([...(here.services || []), 'tienda', 'templo'])];
+        // Los relojes de las facciones, a cero: siete días de sueño más abajo no pueden
+        // traer un final por medio.
+        for (const faction of data.metadata.factions || []) if (faction?.goal) faction.goal.at = 0;
+        await wi.saveWorldInfo(world, data, true);
+        await wi.refreshWorldMapGlobals(world);
+    });
+    await patchParty56(() => {
+        const meta = window.SillyTavern.getContext().chatMetadata;
+        delete meta.debt;
+        const hero = (meta.party || [])[0];
+        if (hero) {
+            hero.gold = 300;
+            hero.items = [...(hero.items || []), { id: 'anillo-56', name: 'Anillo de resistencia', category: 'magic', subcategory: 'ring', slot: 'ring', rarity: 'Rare',
+                identified: false, cursed: true, curse: { id: 'torpeza', label: 'Maldición de la torpeza', note: 'Las manos no obedecen.', stat: 'dexterity' } }];
+        }
+    });
+    await page.evaluate(() => document.querySelectorAll('.rc-card').forEach(c => c.remove()));
+    await page.keyboard.press('2');
+    await page.waitForTimeout(1000);
+    const service56 = (/** @type {string} */ id) => page.evaluate((svc) => [...document.querySelectorAll(`#game-shell .gs-service[data-service="${svc}"] .gs-service-btn`)]
+        .map(b => ({ id: b.getAttribute('data-action') || '', text: (b.textContent || '').trim(), title: b.getAttribute('title') || '' })), id);
+    const shop56 = await service56('tienda');
+    const buys56 = shop56.filter(a => a.id.startsWith('shop-buy:'));
+    const steel56 = await page.evaluate(async (names) => {
+        const { describeLootItem } = await import('/scripts/game-engine/combat/loot-items.js');
+        return names.filter(n => ['weapon', 'armor'].includes(String(describeLootItem(n).category)));
+    }, buys56.map(b => b.id.slice('shop-buy:'.length)));
+    check('el aceite y la red, siempre en la tienda; y con guerra, el acero se paga caro (122, 84)',
+        buys56[0]?.id === 'shop-buy:Frasco de aceite' && buys56[1]?.id === 'shop-buy:Red'
+        && buys56.filter(b => steel56.includes(b.id.slice('shop-buy:'.length))).every(b => /en guerra/.test(b.title)),
+        JSON.stringify({ buys: buys56.map(b => b.text), steel56, titles: buys56.filter(b => steel56.includes(b.id.slice(9))).map(b => b.title) }));
+    const goldBeforeLoan56 = await gold54();
+    await page.locator('#game-shell .gs-service-btn[data-action="lend:50"]').click({ timeout: 6000 }).catch(() => {});
+    await page.waitForTimeout(1200);
+    const debt56 = await page.evaluate(() => window.SillyTavern.getContext().chatMetadata.debt ?? null);
+    const goldLoan56 = await gold54();
+    await clearToasts();
+    await page.locator('#game-shell .gs-service-btn[data-action="repay"]').click({ timeout: 6000 }).catch(() => {});
+    await page.waitForTimeout(1200);
+    const debtAfter56 = await page.evaluate(() => window.SillyTavern.getContext().chatMetadata.debt ?? null);
+    const goldRepaid56 = await gold54();
+    check('en la tienda se puede pedir prestado, y devolverlo antes de que vengan a cobrar (125)',
+        debt56?.amount === 50 && goldLoan56 === goldBeforeLoan56 + 50 && !debtAfter56 && goldRepaid56 === goldLoan56 - Number(debt56?.owed),
+        JSON.stringify({ debt56, goldBeforeLoan56, goldLoan56, goldRepaid56 }));
+
+    // --- 135: el templo mira lo que traéis, y quita lo que muerde ------------------------------
+    const temple56 = (await service56('templo')).map(a => a.id);
+    await clearToasts();
+    await page.locator('#game-shell .gs-service-btn[data-action="temple-identify"]').click({ timeout: 6000 }).catch(() => {});
+    await page.waitForSelector('.popup:visible', { timeout: 6000 }).catch(() => {});
+    const seen56 = await page.evaluate(() => document.querySelector('.popup:not([closing]) .popup-content')?.textContent || '');
+    await closePopup52();
+    await page.locator('#game-shell .gs-service-btn[data-action="temple-lift"]').click({ timeout: 6000 }).catch(() => {});
+    await page.waitForTimeout(1200);
+    const ring56 = await page.evaluate(async () => {
+        const hero = (await import('/scripts/party.js')).getPartyMembersSnapshot()[0];
+        const ring = (hero?.items || []).find((/** @type {any} */ i) => i.id === 'anillo-56');
+        return ring ? { cursed: Boolean(ring.cursed), identified: ring.identified } : null;
+    });
+    check('lo que cae sin identificar se lleva al templo: se sabe si está maldito, y se quita (135)',
+        temple56.includes('temple-identify') && /Maldición de la torpeza/.test(seen56) && ring56?.cursed === false && ring56?.identified === true,
+        JSON.stringify({ temple56, seen56: seen56.slice(0, 120), ring56 }));
+
+    // --- 106 y 37: un plazo que se pasa, y el maestro de armas que entrena ---------------------
+    await patchParty56(() => {
+        const meta = window.SillyTavern.getContext().chatMetadata;
+        const today = Math.max(1, Math.floor(Number(meta.calendar?.day) || 1));
+        const state = meta.plotState || { open: [], done: [] };
+        meta.plotState = { ...state, open: [...new Set([...(state.open || []), 'la-nieve-manchada'])], since: { ...(state.since || {}), 'la-nieve-manchada': today } };
+        meta.guild = { ...(meta.guild || {}), staff: [...((meta.guild || {}).staff || []).filter((/** @type {any} */ s) => s.role !== 'maestro'), { name: 'Tobías el Viejo', role: 'maestro' }] };
+        const hero = (meta.party || [])[0];
+        const second = (meta.party || []).find((/** @type {any} */ m, /** @type {number} */ i) => i > 0 && !m.dead);
+        if (hero && second) {
+            hero.level = Math.max(3, Number(hero.level) || 1);
+            second.level = hero.level - 1;
+            second.xp = 0;
+        }
+    });
+    const journalD56 = await journal56();
+    const snow56 = (journalD56['Entre manos'] || []).find(t => /La nieve manchada/.test(t)) ?? '';
+    check('lo que tiene plazo dice en el diario cuántos días quedan (106)', /quedan 3 día\(s\)/.test(snow56), snow56.slice(0, 120));
+    for (let i = 0; i < 7; i++) {
+        // Comer y beber antes de dormir: esto no es la prueba del hambre.
+        await patchParty56(() => {
+            for (const m of window.SillyTavern.getContext().chatMetadata.party || []) {
+                m.needs = {};
+                m.hp = Math.max(Number(m.hp) || 1, 1);
+            }
+        });
+        await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/time sleep'));
+        await page.waitForTimeout(900);
+    }
+    const late56 = await page.evaluate(() => {
+        const meta = window.SillyTavern.getContext().chatMetadata;
+        const state = meta.plotState || {};
+        return { missed: state.missed || [], open: state.open || [], deed: JSON.stringify(meta.deeds || []).includes('Se os pasó el plazo: La nieve manchada') };
+    });
+    check('si el plazo pasa, el hito se pierde, se dice, y la historia sigue peor parada (106)',
+        late56.missed.includes('la-nieve-manchada') && late56.open.includes('el-asalto-al-peaje') && late56.deed, JSON.stringify(late56));
+    const trained56 = await page.evaluate(async () => ({
+        said: (window.SillyTavern.getContext().chat || []).some((/** @type {any} */ m) => String(m.mes || '').includes('El maestro de armas os entrena')),
+        xp: Number((await import('/scripts/party.js')).getPartyMembersSnapshot()
+            .find((/** @type {any} */ m, /** @type {number} */ i) => i > 0 && !m.dead)?.xp) || 0,
+    }));
+    check('con un maestro de armas en casa, quien va por detrás gana experiencia cada semana (37)', trained56.said && trained56.xp >= 150, JSON.stringify(trained56));
+
+    // --- 36, 199 y 141: lo que queda de quien muere --------------------------------------------
+    // Quien va por la paga muere de verdad (la campaña es «solo mercenarios»): se le pone ese
+    // motivo, y sed de sobra, y se duerme.
+    const dying56 = (await companions56())[0] ?? '';
+    await patchParty56((who) => {
+        const meta = window.SillyTavern.getContext().chatMetadata;
+        for (const m of meta.party || []) m.needs = {};
+        const dying = (meta.party || []).find((/** @type {any} */ m) => m.name === who);
+        if (dying) {
+            dying.motive = 'coin';
+            dying.needs = { thirst: 500 };
+            dying.items = [...(dying.items || []), { id: 'espada-56', name: 'Espada de leva', category: 'weapon', subcategory: 'martial_melee', slot: 'weapon', damageDice: '1d8' }];
+            dying.equippedItems = { ...(dying.equippedItems || {}), weapon: 'espada-56' };
+        }
+    }, dying56);
+    await clearToasts();
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/time sleep'));
+    await page.waitForTimeout(1500);
+    const death56 = await page.evaluate((who) => {
+        const ctx = window.SillyTavern.getContext();
+        const meta = ctx.chatMetadata;
+        const said = (ctx.chat || []);
+        return {
+            grave: (meta.graves || []).find((/** @type {any} */ g) => g.name === who) ?? null,
+            said: said.some((/** @type {any} */ m) => String(m.mes || '').startsWith(`🪦 [CAMPAÑA] ${who}`)),
+            model: said.some((/** @type {any} */ m) => !m.is_system && String(m.mes || '').startsWith(`[MUERTE] ${who}`)),
+            heir: (meta.party || []).some((/** @type {any} */ m) => !m.dead && (m.items || []).some((/** @type {any} */ i) => i.heirloom === who)),
+            hall: (/** @type {any} */ (ctx).extensionSettings?.partyHall || []).some((/** @type {any} */ e) => e.name === who),
+        };
+    }, dying56);
+    check('quien muere deja epitafio, tumba donde cayó, lo que llevaba para quien le quería y un sitio en el salón (36, 199)',
+        Boolean(dying56) && Boolean(death56.grave?.epitaph) && death56.said && death56.model && death56.heir && death56.hall,
+        JSON.stringify({ dying56, ...death56 }));
+
+    // 141: el narrador le hace hablar. Se simula su respuesta como llega de verdad.
+    await clearToasts();
+    await page.evaluate(async (who) => {
+        const ctx = window.SillyTavern.getContext();
+        ctx.chat.push({ name: 'Narrador', is_user: false, is_system: false, mes: `${who} se acerca al fuego y dice: «Aún me queda una jarra».`, send_date: Date.now(), extra: {} });
+        await ctx.eventSource.emit(ctx.eventTypes.MESSAGE_RECEIVED, ctx.chat.length - 1);
+    }, dying56);
+    await page.waitForTimeout(700);
+    const warned56 = await toasts56();
+    check('si el narrador hace hablar a un muerto, se avisa a quien juega (141)',
+        /El narrador se ha equivocado/.test(warned56) && warned56.includes(`hace hablar a ${dying56}`), warned56.slice(0, 200));
+
+    // 199: el salón, desde el menú principal.
+    await clearToasts();
+    await page.keyboard.press('Escape');
+    await page.waitForSelector('.gs-pause', { timeout: 5000 }).catch(() => {});
+    await page.locator('.gs-pause-btn', { hasText: 'Salir al menu principal' }).click({ timeout: 6000 }).catch(() => {});
+    await page.waitForTimeout(1500);
+    if (await page.locator('.gs-menu-back').count() > 0) {
+        await page.locator('.gs-menu-back').click();
+        await page.waitForTimeout(700);
+    }
+    const menu56 = await page.evaluate(() => [...document.querySelectorAll('.gs-menu-btn .gs-menu-label')].map(l => (l.textContent || '').trim()));
+    await page.locator('.gs-menu-btn', { hasText: 'Salón de la fama' }).click({ timeout: 6000 }).catch(() => {});
+    await page.waitForSelector('.hall-root', { timeout: 6000 }).catch(() => {});
+    const hall56 = await page.evaluate(() => [...document.querySelectorAll('.hall-entry')].map(e => e.textContent || ''));
+    check('el salón de la fama se abre desde el menú principal, con los caídos de todas las partidas (199)',
+        menu56.includes('Salón de la fama') && hall56.some(t => t.startsWith(dying56)), JSON.stringify({ menu56, hall56: hall56.map(t => t.slice(0, 80)) }));
+    await closePopup52();
+
+    step('57. La sexta batería: el hilo con decisiones, el jefe que contesta, la noche y la taberna');
+    // Venimos del menú principal (el salón de la fama, paso 56).
+    await clearToasts();
+
+    // --- 160: cargar partida de un vistazo -----------------------------------------------------
+    if (await page.locator('.gs-menu-back').count() === 0) {
+        await page.locator('.gs-menu-btn', { hasText: 'Cargar partida' }).click({ timeout: 8000 }).catch(() => {});
+        await page.waitForTimeout(1500);
+    }
+    await page.waitForSelector('#game-shell .campaign-save-line', { timeout: 20000 }).catch(() => {});
+    const saves57 = await page.evaluate(() => [...document.querySelectorAll('#game-shell .campaign-card')].map(card => ({
+        world: card.getAttribute('data-world') || '',
+        line: card.querySelector('.campaign-save-line')?.textContent || '',
+        party: card.querySelector('.campaign-save-party')?.textContent || '',
+    })));
+    const save57 = saves57.find(s => /El Pueblo de Barro|El Peaje Norte|Castillo de Vane|El Lago Helado/.test(s.line));
+    check('cargar partida dice el día, el sitio y lo que tenéis entre manos, y quién va (160)',
+        Boolean(save57) && /^Día \d+ · .+ · .+/.test(save57?.line ?? '') && (save57?.party ?? '').length > 0, JSON.stringify(saves57.slice(0, 4)));
+    await page.locator(`#game-shell .campaign-card[data-world="${save57?.world ?? ''}"] .campaign-continue`).first().click({ timeout: 8000 }).catch(() => {});
+    await page.waitForTimeout(4000);
+    if (await page.locator('#game-shell').count() === 0) {
+        await page.evaluate(() => { void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/modojuego'); });
+        await page.waitForSelector('#game-shell', { timeout: 15000 });
+    }
+    await clearToasts();
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/leave').catch(() => {}));
+    await go56('El Pueblo de Barro');
+    await page.evaluate(() => document.querySelectorAll('.rc-card').forEach(c => c.remove()));
+
+    // --- 144 y 110: hablar con alguien, lo que se le puede decir, y sonsacarle -------------------
+    await page.keyboard.press('1');
+    await page.waitForTimeout(900);
+    const talk57 = await clickChip54(/^Hablar con Giles/);
+    await page.waitForTimeout(700);
+    const replies57 = await page.evaluate(() => [...document.querySelectorAll('#game-shell .gs-chip-action')].map(b => (b.textContent || '').trim()));
+    check('al hablar con alguien del sitio, la fila ofrece qué decirle (144)',
+        talk57 && replies57.some(t => /¿Qué necesitas, Giles\?/.test(t)), JSON.stringify(replies57.slice(0, 5)));
+    let secret57 = false;
+    for (let i = 0; i < 10 && !secret57; i++) {
+        await page.evaluate(() => {
+            const meta = window.SillyTavern.getContext().chatMetadata;
+            meta.npcSecrets = { known: meta.npcSecrets?.known ?? {}, tried: {} };
+        });
+        await clearToasts();
+        await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/sonsacar Giles'));
+        await page.waitForTimeout(1200);
+        await clearDiceOverlay();
+        secret57 = await page.evaluate(() => Boolean(window.SillyTavern.getContext().chatMetadata.npcSecrets?.known?.Giles));
+    }
+    const pried57 = await page.evaluate(async () => {
+        const ctx = window.SillyTavern.getContext();
+        const wi = await import('/scripts/world-info.js');
+        const data = await wi.loadWorldInfo(String(ctx.chatMetadata?.world_info || ''));
+        const entry = Object.values(data?.entries || {}).find((/** @type {any} */ e) => e?.dndData?.name === 'Giles');
+        return {
+            known: ctx.chatMetadata.npcSecrets?.known?.Giles?.secret ?? '',
+            sheet: String(/** @type {any} */ (entry)?.content || ''),
+            told: (ctx.chat || []).some((/** @type {any} */ m) => !m.is_system && String(m.mes || '').startsWith('[SECRETO]')),
+        };
+    });
+    check('sonsacar a alguien destapa su secreto: pasa a su ficha para el narrador, y se cuenta (110)',
+        secret57 && pried57.known.length > 0 && pried57.sheet.includes('que el grupo ya conoce') && pried57.told,
+        JSON.stringify({ secret57, known: pried57.known.slice(0, 60), told: pried57.told }));
+
+    // --- 128: a veintiuno, en la taberna ---------------------------------------------------------
+    await patchParty56(() => {
+        const hero = (window.SillyTavern.getContext().chatMetadata.party || [])[0];
+        if (hero) hero.gold = Math.max(Number(hero.gold) || 0, 400);
+    });
+    await page.evaluate(() => document.querySelectorAll('.rc-card').forEach(c => c.remove()));
+    await page.keyboard.press('2');
+    await page.waitForTimeout(1000);
+    const goldBeforeDice57 = await gold54();
+    await page.locator('#game-shell .gs-service-btn[data-action="inn-dice"]').click({ timeout: 6000 }).catch(() => {});
+    await page.waitForSelector('.popup:visible .td-bet', { timeout: 6000 }).catch(() => {});
+    await page.locator('.popup:visible .td-bet').first().click({ timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(600);
+    await page.locator('.popup:visible .td-stand').first().click({ timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(800);
+    const dice57 = await page.evaluate(() => ({
+        text: document.querySelector('.popup:not([closing]) .td-table')?.textContent || '',
+        state: window.SillyTavern.getContext().chatMetadata.tavernDice ?? null,
+    }));
+    await closePopup52();
+    const goldAfterDice57 = await gold54();
+    check('en la taberna se juega a veintiuno: se apuesta, se planta y se cobra o se paga (128)',
+        /^Tú: .* = \d+ · La casa: .* = \d+ · /.test(dice57.text) && dice57.state?.played === 1
+        && [5, -5, 0].includes(goldAfterDice57 - goldBeforeDice57),
+        JSON.stringify({ ...dice57, antes: goldBeforeDice57, despues: goldAfterDice57 }));
+
+    // --- 54: aprender con quien enseña -----------------------------------------------------------
+    const lessons57 = await page.evaluate(() => [...document.querySelectorAll('#game-shell .gs-service[data-service="maestro"] .gs-service-btn')]
+        .map(b => ({ id: b.getAttribute('data-action') || '', text: (b.textContent || '').trim() })));
+    const lesson57 = lessons57[0];
+    const day57 = await page.evaluate(() => Number(window.SillyTavern.getContext().chatMetadata.calendar?.day) || 0);
+    if (lesson57) await page.locator(`#game-shell .gs-service-btn[data-action="${lesson57.id}"]`).click({ timeout: 6000 }).catch(() => {});
+    await page.waitForTimeout(2500);
+    const learned57 = await page.evaluate(async (id) => {
+        const [, memberId, abilityId] = String(id).split(':');
+        const member = (await import('/scripts/party.js')).getPartyMembersSnapshot().find((/** @type {any} */ m) => String(m.id) === memberId);
+        return {
+            knows: (member?.abilities || []).includes(abilityId),
+            day: Number(window.SillyTavern.getContext().chatMetadata.calendar?.day) || 0,
+        };
+    }, lesson57?.id ?? '');
+    check('en el pueblo hay quien enseña: se paga, pasan dos días y se sabe (54)',
+        Boolean(lesson57) && learned57.knows && learned57.day >= day57 + 2, JSON.stringify({ lessons57, day57, ...learned57 }));
+
+    // --- 129, 65 y 192: a caballo, cada uno con su papel, y el camino se ve ----------------------
+    await patchParty56(() => {
+        const meta = window.SillyTavern.getContext().chatMetadata;
+        const alive = (meta.party || []).filter((/** @type {any} */ m) => !m.dead).length;
+        meta.mounts = { caballo: alive };
+        for (const m of meta.party || []) m.gold = Math.max(Number(m.gold) || 0, 100);
+    });
+    await page.keyboard.press('2');
+    await page.waitForTimeout(900);
+    await clearToasts();
+    await page.locator('#game-shell .gs-place', { hasText: 'El Peaje Norte' }).first().click({ timeout: 8000 }).catch(() => {});
+    await page.waitForSelector('.popup:visible .tr-pace-normal', { timeout: 8000 }).catch(() => {});
+    await page.locator('.popup:visible .tr-pace-normal').click({ timeout: 5000 }).catch(() => {});
+    let transition57 = false;
+    for (let i = 0; i < 10; i++) {
+        await page.waitForTimeout(400);
+        if (await page.locator('.tr-transition').count() > 0) transition57 = true;
+        const detour = page.locator('.popup:visible .tr-detour');
+        if (await detour.count() > 0) await detour.first().click().catch(() => {});
+        const pass = page.locator('.popup:visible .rd-pass, .popup:visible .rd-pay');
+        if (await pass.count() > 0) await pass.first().click().catch(() => {});
+    }
+    const trip57 = await lastForModel52(/^El grupo viaja hasta El Peaje Norte/);
+    check('con montura para todos se llega antes (129)', /Van montados: a caballo: \d+ día\(s\) menos/.test(trip57), trip57.slice(0, 300));
+    check('y en el camino cada uno tiene su papel, con su tirada (65)', /En el camino: Guía: .+ \(\d+ contra 12 [✓✗]\)/u.test(trip57), trip57.slice(0, 300));
+    check('y el viaje se ve pasar, sin parar el juego (192)', transition57, String(transition57));
+
+    // --- 73, 90, 24 y 4: la niebla, el jefe que contesta y el golpe preparado --------------------
+    await patchParty56(() => {
+        const meta = window.SillyTavern.getContext().chatMetadata;
+        const today = Math.max(1, Math.floor(Number(meta.calendar?.day) || 1));
+        meta.weatherToday = { day: today, place: 'El Peaje Norte', weather: 'niebla' };
+        for (const m of meta.party || []) {
+            if (m.dead) continue;
+            m.hp = Math.max(Number(m.maxHp) || 30, 40);
+            m.maxHp = m.hp;
+            m.activeConditions = [];
+            m.needs = {};
+        }
+    });
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/enter La vanguardia en el peaje'));
+    await page.waitForTimeout(1500);
+    await clearToasts();
+    await page.evaluate(() => { void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/fight Infantería de Keller 1'); });
+    await page.waitForTimeout(1500);
+    await clearDiceOverlay();
+    const fog57 = await page.evaluate(() => (window.SillyTavern.getContext().chat || [])
+        .map((/** @type {any} */ m) => String(m.mes || '')).filter(t => t.startsWith('🌫️ [COMBAT]')).pop() || '');
+    check('en combate, la niebla se dice antes del primer golpe: no se ve más allá de 30 pies (73)',
+        /No se ve más allá de 30 pies \(con esta niebla no se ve\)/.test(fog57), fog57);
+
+    // 4: preparar el golpe, lejos del enemigo, y que venga. El soldado se pone a tres
+    // casillas, en suelo libre y dentro del tablero: si no, casi siempre llega pegado antes
+    // de que nadie prepare nada, y el golpe no tiene a quién esperar.
+    let readied57 = '';
+    for (let i = 0; i < 6 && !readied57; i++) {
+        const turn = await toPlayerTurn52();
+        if (turn !== 'player') break;
+        const far = await page.evaluate(async () => {
+            const party = await import('/scripts/party.js');
+            const lib = await import('/scripts/game-engine/board/terrain.js');
+            const wi = await import('/scripts/world-info.js');
+            const ctx = window.SillyTavern.getContext();
+            const enc = party.getCombatEncounter();
+            const entry = enc.turnOrder?.[enc.currentTurnIndex];
+            const me = party.getPartyMembersSnapshot().find((/** @type {any} */ m) => String(m.id) === String(entry?.id));
+            const foe = (enc.enemies || []).find((/** @type {any} */ e) => (e.currentHp || 0) > 0);
+            if (!me || !foe) return false;
+            const data = await wi.loadWorldInfo(String(ctx.chatMetadata.world_info || ''));
+            const place = (data?.metadata?.locationMaps || []).find((/** @type {any} */ l) => l.name === ctx.chatMetadata.currentLocation);
+            const board = (place?.boards || []).find((/** @type {any} */ b) => b.name === ctx.chatMetadata.currentBoard);
+            const terrain = lib.normalizeTerrain(board?.terrain);
+            // El borde son las paredes: fuera de ellas el terreno vacío también es «suelo».
+            const cells = Object.keys(terrain.cells).map(key => key.split(',').map(Number));
+            const maxX = Math.max(0, ...cells.map(c => c[0]));
+            const maxY = Math.max(0, ...cells.map(c => c[1]));
+            const mx = Number(me.mapPosition?.gridX) || 0;
+            const my = Number(me.mapPosition?.gridY) || 0;
+            const taken = new Set([
+                ...party.getPartyMembersSnapshot().map((/** @type {any} */ m) => `${m.mapPosition?.gridX},${m.mapPosition?.gridY}`),
+                ...(enc.enemies || []).filter((/** @type {any} */ e) => e !== foe && (e.currentHp || 0) > 0).map((/** @type {any} */ e) => `${e.gridX},${e.gridY}`),
+            ]);
+            const spot = [[3, 0], [-3, 0], [0, -3], [0, 3], [3, -3], [-3, -3], [3, 3], [-3, 3]]
+                .map(([dx, dy]) => ({ x: mx + dx, y: my + dy }))
+                .find(c => c.x > 0 && c.y > 0 && c.x < maxX && c.y < maxY
+                    && lib.isPassable(terrain, c.x, c.y, maxX + 1, maxY + 1) && !taken.has(`${c.x},${c.y}`));
+            if (!spot) return false;
+            foe.gridX = spot.x;
+            foe.gridY = spot.y;
+            return true;
+        });
+        if (far) await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/maniobra preparar'));
+        await page.waitForTimeout(500);
+        await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/combat-end'));
+        await page.waitForTimeout(900);
+        await clearDiceOverlay();
+        readied57 = await page.evaluate(() => (window.SillyTavern.getContext().chat || [])
+            .map((/** @type {any} */ m) => String(m.mes || '')).find(t => /estaba esperando a .+: golpe preparado/.test(t)) || '');
+    }
+    check('un golpe preparado salta con el primero que se acerca, antes de que haga nada (4)', Boolean(readied57), readied57.slice(0, 200));
+
+    // 24: el jefe contesta. Se le hace jefe aquí, en el combate de verdad.
+    const turn57 = await fightNextTo52(99);
+    await page.evaluate(async () => {
+        for (const enemy of (await import('/scripts/party.js')).getCombatEncounter().enemies || []) {
+            enemy.boss = true;
+            enemy.armorClass = 2;
+            enemy.currentHp = Math.max(Number(enemy.currentHp) || 0, 60);
+        }
+    });
+    const foe57 = await page.evaluate(async () => String(((await import('/scripts/party.js')).getCombatEncounter().enemies || [])
+        .find((/** @type {any} */ e) => (e.currentHp || 0) > 0)?.name ?? ''));
+    if (turn57 === 'player') await page.evaluate((name) => window.SillyTavern.getContext().executeSlashCommandsWithOptions(`/combat-attack ${name}`), foe57);
+    await page.waitForTimeout(1200);
+    await clearDiceOverlay();
+    const boss57 = await page.evaluate(() => (window.SillyTavern.getContext().chat || [])
+        .map((/** @type {any} */ m) => String(m.mes || '')).find(t => /👑 .+: «.+» Contesta en el acto\./u.test(t)) || '');
+    check('el jefe contesta al golpe, una vez por ronda (24)', Boolean(boss57), `${turn57} · ${boss57.slice(0, 200)}`);
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/combat-stop').catch(() => {}));
+    await page.waitForTimeout(800);
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/leave').catch(() => {}));
+    await page.waitForTimeout(800);
+
+    // --- 195 y 181: la letra del narrador, y si el mundo llega al listón --------------------------
+    await clearToasts();
+    await page.keyboard.press('Escape');
+    await page.waitForSelector('.gs-pause', { timeout: 5000 }).catch(() => {});
+    await page.locator('.gs-pause-toggle[data-toggle="font"]').click({ timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(400);
+    const font57 = await page.evaluate(() => document.body.dataset.narratorFont || '');
+    check('la letra del narrador se cambia desde la pausa, y es de la campaña (195)', font57 === 'libro', font57);
+    await page.locator('.gs-pause-btn', { hasText: '¿Llega al listón?' }).click({ timeout: 5000 }).catch(() => {});
+    await page.waitForSelector('.wd-root', { timeout: 10000 }).catch(() => {});
+    const density57 = await page.evaluate(() => ({
+        title: document.querySelector('.wd-root h3')?.textContent || '',
+        counts: document.querySelectorAll('.wd-root .wd-count').length,
+    }));
+    check('desde la pausa se ve si el mundo llega al listón, con lo que falta (181)',
+        /^¿Llega al listón\?/.test(density57.title) && density57.counts >= 15, JSON.stringify(density57));
+    await closePopup52();
+
+    // --- 101, 102, 107 y 109: el hilo con decisiones, y el final de cada uno ----------------------
+    // Tres hitos de prueba en el hilo de esta partida (el de 1387 no los trae): una
+    // investigación de dos pistas, uno de varias formas y dos que se cierran entre sí. Lo
+    // que se comprueba es lo que hace el juego con ellos al jugar.
+    await go56('El Pueblo de Barro');
+    await page.evaluate(() => {
+        const meta = window.SillyTavern.getContext().chatMetadata;
+        const today = Math.max(1, Math.floor(Number(meta.calendar?.day) || 1));
+        const ending = Object.keys(meta.plot?.endings || {})[0] ?? '';
+        meta.plot.milestones.push(
+            { id: 'prueba-pistas', act: 1, title: 'Las cuentas del recaudador', hint: 'Alguien sabe quién lo mató.', scene: '', opens: { kind: 'start' },
+                asks: { kind: 'clues', need: 2, clues: [{ place: 'El Pueblo de Barro', skill: 'investigation' }, { place: 'El Pueblo de Barro', skill: 'insight' }, { place: 'Castillo de Vane', skill: 'perception' }] },
+                changes: { reveal: [], open: [], standing: {}, ending: '', endingBy: {}, close: [] } },
+            { id: 'prueba-formas', act: 1, title: 'Quitarse de encima al alguacil', hint: 'Torres sigue buscando al forastero.', scene: '', opens: { kind: 'start' },
+                asks: { kind: 'any', options: [{ kind: 'win', board: 'Nadie' }, { kind: 'check', skill: 'deception' }] },
+                changes: { reveal: [], open: [], standing: {}, ending: '', endingBy: {}, close: ['prueba-cerrada'] } },
+            { id: 'prueba-cerrada', act: 1, title: 'Entregarse a Torres', hint: 'Contarle la verdad, a ver qué pasa.', scene: '', opens: { kind: 'start' },
+                asks: { kind: 'talk', npc: 'Nadie que exista' }, changes: { reveal: [], open: [], standing: {}, ending: '', endingBy: {}, close: [] } },
+            { id: 'prueba-final', act: 3, title: 'El final de la prueba', hint: 'Convencer a alguien de que se acabó.', scene: '', opens: { kind: 'start' },
+                asks: { kind: 'check', skill: 'persuasion' }, changes: { reveal: [], open: [], standing: {}, ending, endingBy: {} } },
+        );
+        const state = meta.plotState;
+        meta.plotState = { ...state, open: [...new Set([...(state.open || []), 'prueba-pistas', 'prueba-formas', 'prueba-cerrada'])], since: { ...(state.since || {}), 'prueba-pistas': today } };
+    });
+    await reload52();
+    const roll57 = async (/** @type {string} */ skill) => {
+        for (let i = 0; i < 12; i++) {
+            await page.evaluate(() => { delete window.SillyTavern.getContext().chatMetadata.pendingCheck; });
+            await page.evaluate((s) => window.SillyTavern.getContext().executeSlashCommandsWithOptions(`/tirada ${s}`), skill);
+            await page.waitForTimeout(700);
+            await clearDiceOverlay();
+            const ok = await page.evaluate(() => /✓/.test(String(window.SillyTavern.getContext().chatMetadata.pendingCheck?.line || '')));
+            if (ok) return true;
+        }
+        return false;
+    };
+    await roll57('investigation');
+    const clue57 = await page.evaluate(() => ({
+        found: window.SillyTavern.getContext().chatMetadata.plotState?.clues?.['prueba-pistas'] ?? [],
+        told: (window.SillyTavern.getContext().chat || []).some((/** @type {any} */ m) => /Una pista más para «Las cuentas del recaudador»: 1 de 2/.test(String(m.mes || ''))),
+    }));
+    const journal57 = await journal56();
+    const case57 = Object.keys(journal57).find(t => /^Investigación: Las cuentas del recaudador \(1 de 2 pistas\)$/.test(t)) ?? '';
+    check('una investigación junta pistas con tiradas en su sitio, y el diario dice cuántas faltan y dónde (107)',
+        clue57.found.length === 1 && clue57.told && Boolean(case57) && (journal57[case57] || []).some(t => /^Falta: /.test(t)),
+        JSON.stringify({ ...clue57, case57, missing: journal57[case57] }));
+    await roll57('insight');
+    const solved57 = await page.evaluate(() => (window.SillyTavern.getContext().chatMetadata.plotState?.done || []).includes('prueba-pistas'));
+    check('con las pistas que pide, la investigación se cumple (107)', solved57, String(solved57));
+
+    await roll57('deception');
+    const fork57 = await page.evaluate(() => {
+        const meta = window.SillyTavern.getContext().chatMetadata;
+        return {
+            done: (meta.plotState?.done || []).includes('prueba-formas'),
+            closed: meta.plotState?.closed || [],
+            deed: JSON.stringify(meta.deeds || []).includes('Cumplido (con maña): Quitarse de encima al alguacil'),
+        };
+    });
+    check('un hito con varias formas se cumple con cualquiera, y se apunta cuál (101)', fork57.done && fork57.deed, JSON.stringify(fork57));
+    const journalFork57 = await journal56();
+    check('y al cumplirlo se cierra el otro camino, que queda en el diario (102)',
+        fork57.closed.includes('prueba-cerrada') && (journalFork57['Caminos cerrados'] || []).includes('Entregarse a Torres'),
+        JSON.stringify({ closed: fork57.closed, diario: journalFork57['Caminos cerrados'] }));
+
+    // 109: el final, con lo que fue de cada uno.
+    await page.evaluate(() => {
+        const meta = window.SillyTavern.getContext().chatMetadata;
+        meta.plotState = { ...meta.plotState, open: [...new Set([...(meta.plotState.open || []), 'prueba-final'])] };
+    });
+    await reload52();
+    await roll57('persuasion');
+    await page.waitForSelector('.st-root', { timeout: 8000 }).catch(() => {});
+    const ending57 = await page.evaluate(() => ({
+        title: document.querySelector('.st-root h3')?.textContent || '',
+        epilogues: [...document.querySelectorAll('.st-root .ep-line')].map(l => l.textContent || ''),
+    }));
+    check('al final, qué fue de cada compañero, según su vínculo y si llegó (109)',
+        /^Final: /.test(ending57.title) && ending57.epilogues.length >= 1, JSON.stringify(ending57));
+    await closePopup52();
+
+    step('58. La séptima batería: el tablero cambia, el grupo por dentro, el campamento y la herrería');
+    await clearToasts();
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/combat-stop').catch(() => {}));
+    await page.waitForTimeout(600);
+
+    // Dos compañeros vivos con lo suyo (Lyra busca tranquilidad, Kael gloria) y Lyra a punto de
+    // pedir lo suyo (vínculo 3). El héroe, soldado, con una mejora, un arma y lo cazado.
+    await patchParty56(() => {
+        const meta = window.SillyTavern.getContext().chatMetadata;
+        const party = meta.party || [];
+        const hero = party[0];
+        const clone = (/** @type {number} */ id, /** @type {string} */ name, /** @type {string} */ wants) => ({
+            ...JSON.parse(JSON.stringify(hero)), id, name, wiUid: null, personaId: null, dead: false, hp: 30, maxHp: 30,
+            reasons: { wants, hates: '', profile: 'aggressive' }, motive: 'bond', loyalty: 3, items: [], equippedItems: {},
+            perks: [], equipmentSets: [], languages: [], injuries: [], activeConditions: [], background: '',
+        });
+        meta.party = [...party.filter((/** @type {any} */ m, /** @type {number} */ i) => i === 0 || !['Lyra', 'Kael'].includes(m.name)),
+            clone(958001, 'Lyra', 'quiet'), clone(958002, 'Kael', 'glory')];
+        hero.background = 'soldado';
+        hero.gold = Math.max(Number(hero.gold) || 0, 900);
+        hero.perks = ['aguante'];
+        hero.items = [...(hero.items || []).filter((/** @type {any} */ i) => !/^(Piel de lobo|Colmillo de lobo|Espada del 58.*|Capa de pieles|Manta de lana)$/.test(String(i.name))),
+            { id: 'piel-58-a', name: 'Piel de lobo', type: 'gear', category: 'gear', subcategory: 'material', weight: 2 },
+            { id: 'piel-58-b', name: 'Piel de lobo', type: 'gear', category: 'gear', subcategory: 'material', weight: 2 },
+            { id: 'colmillo-58', name: 'Colmillo de lobo', type: 'gear', category: 'gear', subcategory: 'material', weight: 0.5 },
+            { id: 'espada-58', name: 'Espada del 58', type: 'weapon', category: 'weapon', subcategory: 'martial', weight: 1.5, damageDice: '1d8', damageType: 'slashing', slot: 'weapon' },
+            { id: 'cuerda-58', name: 'Cuerda del 58', type: 'gear', category: 'gear', subcategory: 'tool', weight: 1 }];
+        hero.equippedItems = { ...(hero.equippedItems || {}), weapon: 'espada-58' };
+        for (const m of meta.party) if (!m.dead) { m.needs = {}; m.hp = Math.max(Number(m.hp) || 0, 20); }
+        meta.bonds = { version: 1, bonds: { ...(meta.bonds?.bonds || {}), 958001: { characterId: '958001', points: 14, usedOncePerDay: [] } } };
+        meta.approval = { log: [], frictions: [] };
+        meta.personalAsked = [];
+        meta.bench = [];
+    });
+    const heroId58 = await page.evaluate(async () => String((await import('/scripts/party.js')).getPartyMembersSnapshot()[0]?.id ?? ''));
+
+    // --- 139: el narrador ofrece algo, y se coge desde la fila --------------------------------
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/ofrecer-objeto Manta de lana'));
+    await page.keyboard.press('1');
+    await page.waitForTimeout(800);
+    const offered58 = await clickChip54(/^Coger: Manta de lana/);
+    await page.waitForTimeout(900);
+    const took58 = await page.evaluate(async () => ({
+        has: (await import('/scripts/party.js')).getPartyMembersSnapshot().some((/** @type {any} */ m) => (m.items || []).some((/** @type {any} */ i) => i.name === 'Manta de lana')),
+        said: (window.SillyTavern.getContext().chat || []).some((/** @type {any} */ m) => /🎁 \[CAMPAÑA\] .+ coge Manta de lana/.test(String(m.mes || ''))),
+        left: (window.SillyTavern.getContext().chatMetadata.itemOffers || []).length,
+    }));
+    check('el narrador ofrece un objeto y se coge desde la fila: entra lo que el juego decide (139)',
+        offered58 && took58.has && took58.said && took58.left === 0, JSON.stringify({ offered58, ...took58 }));
+
+    // --- 142 y 180: el tono en la pausa, y el código del mundo -----------------------------------
+    await page.keyboard.press('Escape');
+    await page.waitForSelector('.gs-pause', { timeout: 5000 }).catch(() => {});
+    await page.locator('.gs-pause-toggle[data-toggle="tone"]').click({ timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(500);
+    const tone58 = await page.evaluate(() => {
+        const ctx = window.SillyTavern.getContext();
+        const key = Object.keys(ctx.extensionPrompts || {}).find(k => k.endsWith('_tone')) || '';
+        return {
+            label: document.querySelector('.gs-pause-toggle[data-toggle="tone"]')?.textContent || '',
+            saved: String(ctx.chatMetadata.sceneTone || ''),
+            prompt: String(ctx.extensionPrompts?.[key]?.value || ''),
+        };
+    });
+    check('el tono de la escena se elige en la pausa y va al narrador en su bloque (142)',
+        tone58.label === 'Tono: tenso' && tone58.saved === 'tensa' && /^Tono de la escena: tenso/.test(tone58.prompt), JSON.stringify(tone58));
+    await page.locator('.gs-pause-btn', { hasText: 'Compartir este mundo' }).click({ timeout: 5000 }).catch(() => {});
+    await page.waitForSelector('.popup:visible .sw-code', { timeout: 8000 }).catch(() => {});
+    const code58 = await page.evaluate(() => /** @type {HTMLInputElement|null} */ (document.querySelector('.popup:not([closing]) .sw-code'))?.value || '');
+    check('desde la pausa se comparte el mundo con un código: su semilla, y de dónde parte (180)', /^yunque-hiel-catorce(@[a-z0-9ñ_-]+)?$/.test(code58), code58);
+    await closePopup52();
+
+    // --- 116: el tablón te nombra por tu trasfondo -----------------------------------------------
+    // Con sitio en el tablón: uno de relleno (para que no vuelvan a salir los del principio) y
+    // la biblioteca del gremio arriba.
+    await page.evaluate(async () => {
+        (await import('/scripts/game-engine/campaign/named-contracts.js')).NAMED_CHANCE.chance = 1;
+        const meta = window.SillyTavern.getContext().chatMetadata;
+        const today = Math.max(1, Math.floor(Number(meta.calendar?.day) || 1));
+        meta.contractBoard = [{ id: 'relleno-58', rank: 'D', kind: 'cull', title: 'Relleno del 58', locationName: '', reward: 10, days: today + 30, difficulty: 0.25, patron: 'e2e' }];
+        meta.guild = { ...(meta.guild || {}), buildings: { ...(meta.guild?.buildings || {}), library: 3 } };
+    });
+    void page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/gremio'));
+    await page.waitForSelector('.gd-board', { timeout: 15000 }).catch(() => {});
+    await page.waitForTimeout(600);
+    const named58 = await page.evaluate(() => [...document.querySelectorAll('.gd-contract-title')].map(t => t.textContent || ''));
+    check('uno del tablón te nombra, por tu trasfondo (116)', named58.some(t => /^Para .+: un viejo compañero de armas pide ayuda/.test(t)), JSON.stringify(named58));
+    await page.locator('.popup:visible .popup-button-ok').last().click({ timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(600);
+    await page.evaluate(async () => { (await import('/scripts/game-engine/campaign/named-contracts.js')).NAMED_CHANCE.chance = 0.5; });
+
+    // --- 121, 120 y 58: la herrería y el templo, en Castillo de Vane ------------------------------
+    await go56('Castillo de Vane');
+    await page.evaluate(() => document.querySelectorAll('.rc-card').forEach(c => c.remove()));
+    await page.keyboard.press('2');
+    await page.waitForTimeout(1000);
+    await clearToasts();
+    await page.locator('#game-shell .gs-service-btn[data-action="craft:capa"]').click({ timeout: 6000 }).catch(() => {});
+    await page.waitForTimeout(800);
+    await clearToasts();
+    await page.locator(`#game-shell .gs-service-btn[data-action="craft:mejora:${heroId58}"]`).click({ timeout: 6000 }).catch(() => {});
+    await page.waitForTimeout(800);
+    const smith58 = await page.evaluate(async () => {
+        const hero = (await import('/scripts/party.js')).getPartyMembersSnapshot()[0];
+        const { weaponBonus } = await import('/scripts/game-engine/rules/equipment.js');
+        return {
+            cloak: (hero.items || []).some((/** @type {any} */ i) => i.name === 'Capa de pieles'),
+            skins: (hero.items || []).filter((/** @type {any} */ i) => i.name === 'Piel de lobo').length,
+            weapon: (hero.items || []).find((/** @type {any} */ i) => i.id === 'espada-58')?.name ?? '',
+            bonus: weaponBonus(hero),
+        };
+    });
+    check('en la herrería, dos pieles hacen una capa (121)', smith58.cloak && smith58.skins === 0, JSON.stringify(smith58));
+    check('y algo duro y oro dejan el arma a +1, que suma al ataque y al daño (120)', smith58.weapon === 'Espada del 58 +1' && smith58.bonus === 1, JSON.stringify(smith58));
+    await clearToasts();
+    await page.locator(`#game-shell .gs-service-btn[data-action="temple-respec:${heroId58}"]`).click({ timeout: 6000 }).catch(() => {});
+    await page.waitForSelector('.popup:visible .rs-perks', { timeout: 6000 }).catch(() => {});
+    await page.evaluate(() => {
+        for (const box of /** @type {NodeListOf<HTMLInputElement>} */ (document.querySelectorAll('.popup:not([closing]) .rs-perk'))) box.checked = box.value === 'labia';
+    });
+    await page.locator('.popup:visible .popup-button-ok').last().click({ timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(800);
+    const respec58 = await page.evaluate(async () => (await import('/scripts/party.js')).getPartyMembersSnapshot()[0]?.perks ?? []);
+    check('en el templo se rehace: las mejoras de antes por otras tantas, pagando (58)', JSON.stringify(respec58) === '["labia"]', JSON.stringify(respec58));
+
+    // --- 59, 163 y 62: la ficha: lo que habla, dar cosas y los juegos de equipo --------------------
+    const openSheet58 = async () => {
+        await page.evaluate(() => document.querySelectorAll('.cc-overlay, .cc-card').forEach(c => c.remove()));
+        await page.keyboard.press('1');
+        await page.waitForTimeout(500);
+        await page.locator('#game-shell .gs-chip').first().click({ timeout: 8000 }).catch(() => {});
+        await page.waitForSelector('.ch-root', { timeout: 8000 }).catch(() => {});
+    };
+    await openSheet58();
+    const langs58 = await page.evaluate(() => document.querySelector('.ch-root .ch-langs')?.textContent || '');
+    check('la ficha dice lo que habla cada uno (59)', /^Habla: común/.test(langs58), langs58);
+    await page.locator('.ch-item', { hasText: 'Capa de pieles' }).locator('.ch-give').selectOption('958001', { timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(900);
+    await page.waitForSelector('.ch-root', { timeout: 8000 }).catch(() => {});
+    await page.locator('.ch-item', { hasText: 'Cuerda del 58' }).dragTo(page.locator('.ch-mate[data-member="958002"]'), { timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(900);
+    await page.waitForSelector('.ch-root', { timeout: 8000 }).catch(() => {});
+    await page.locator('.ch-set-name').fill('Combate', { timeout: 5000 }).catch(() => {});
+    await page.locator('.ch-set-save').click({ timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(900);
+    await closePopup52();
+    const given58 = await page.evaluate(async () => {
+        const party = (await import('/scripts/party.js')).getPartyMembersSnapshot();
+        const has = (/** @type {string} */ name, /** @type {string} */ item) => (party.find((/** @type {any} */ m) => m.name === name)?.items || []).some((/** @type {any} */ i) => i.name === item);
+        return { lyraCloak: has('Lyra', 'Capa de pieles'), kaelRope: has('Kael', 'Cuerda del 58'), heroCloak: has(party[0].name, 'Capa de pieles'), sets: (party[0].equipmentSets || []).map((/** @type {any} */ s) => s.name) };
+    });
+    check('se da algo a otro desde la ficha, eligiéndolo o arrastrándolo a su cara (163)',
+        given58.lyraCloak && !given58.heroCloak && given58.kaelRope, JSON.stringify(given58));
+    // Se quita el arma (como si se hubiera cambiado) y se vuelve al juego guardado de un clic.
+    await patchParty56(() => {
+        const hero = (window.SillyTavern.getContext().chatMetadata.party || [])[0];
+        if (hero) hero.equippedItems = { ...(hero.equippedItems || {}), weapon: null };
+    });
+    await openSheet58();
+    await page.locator('.ch-set-apply[data-set="Combate"]').click({ timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(900);
+    await closePopup52();
+    const outfit58 = await page.evaluate(async () => (await import('/scripts/party.js')).getPartyMembersSnapshot()[0]?.equippedItems?.weapon ?? '');
+    check('lo que se lleva se guarda con nombre y se vuelve a ello de una vez (62)', given58.sets.includes('Combate') && outfit58 === 'espada-58', JSON.stringify({ sets: given58.sets, outfit58 }));
+
+    // --- 8, 23 y 186: en El Peaje Norte, una caja a mano, el fuego que prende y los sonidos -----
+    await go56('El Peaje Norte');
+    await patchParty56(() => {
+        const meta = window.SillyTavern.getContext().chatMetadata;
+        const today = Math.max(1, Math.floor(Number(meta.calendar?.day) || 1));
+        meta.weatherToday = { day: today, place: 'El Peaje Norte', weather: 'despejado' };
+        for (const m of meta.party || []) if (!m.dead) { m.hp = Math.max(Number(m.maxHp) || 30, 40); m.maxHp = m.hp; m.needs = {}; m.activeConditions = []; }
+    });
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/enter La vanguardia en el peaje'));
+    await page.waitForTimeout(1500);
+    const turn58 = await fightNextTo52(99);
+    const crate58 = await page.evaluate(async () => {
+        const party = await import('/scripts/party.js');
+        const wi = await import('/scripts/world-info.js');
+        const ctx = window.SillyTavern.getContext();
+        const enc = party.getCombatEncounter();
+        for (const enemy of enc.enemies || []) enemy.armorClass = 2;
+        const entry = enc.turnOrder?.[enc.currentTurnIndex];
+        const me = party.getPartyMembersSnapshot().find((/** @type {any} */ m) => String(m.id) === String(entry?.id));
+        const place = wi.getCurrentWorldLocationMaps().find((/** @type {any} */ l) => l.name === ctx.chatMetadata.currentLocation);
+        const board = (place?.boards || []).find((/** @type {any} */ b) => b.name === ctx.chatMetadata.currentBoard);
+        if (!me || !board) return null;
+        const x = Number(me.mapPosition?.gridX) || 0;
+        const y = Number(me.mapPosition?.gridY) || 0;
+        const taken = new Set([
+            ...party.getPartyMembersSnapshot().map((/** @type {any} */ m) => `${m.mapPosition?.gridX},${m.mapPosition?.gridY}`),
+            ...(enc.enemies || []).map((/** @type {any} */ e) => `${e.gridX},${e.gridY}`),
+        ]);
+        board.terrain = board.terrain && typeof board.terrain === 'object' ? board.terrain : { version: 1, cells: {} };
+        board.terrain.cells = board.terrain.cells || {};
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]]) {
+            const key = `${x + dx},${y + dy}`;
+            if (taken.has(key) || board.terrain.cells[key]) continue;
+            board.terrain.cells[key] = { type: 'cover_half' };
+            return { key };
+        }
+        return null;
+    });
+    await page.locator('#game-shell .gs-btn-maneuvers').click({ timeout: 8000 }).catch(() => {});
+    await page.waitForTimeout(400);
+    const rows58 = await page.evaluate(() => [...document.querySelectorAll('.gs-maneuvers .gs-target')]
+        .map(b => ({ id: b.getAttribute('data-maneuver') || '', off: /** @type {HTMLButtonElement} */ (b).disabled })));
+    await page.locator('.gs-maneuvers [data-maneuver="lanzar:objeto"]').click({ timeout: 6000 }).catch(() => {});
+    await page.waitForTimeout(300);
+    await page.locator('.gs-maneuvers .gs-target').first().click({ timeout: 6000 }).catch(() => {});
+    await page.waitForTimeout(1000);
+    await clearDiceOverlay();
+    const thrown58 = await page.evaluate(async (key) => {
+        const wi = await import('/scripts/world-info.js');
+        const ctx = window.SillyTavern.getContext();
+        const place = wi.getCurrentWorldLocationMaps().find((/** @type {any} */ l) => l.name === ctx.chatMetadata.currentLocation);
+        const board = (place?.boards || []).find((/** @type {any} */ b) => b.name === ctx.chatMetadata.currentBoard);
+        const said = (ctx.chat || []).map((/** @type {any} */ m) => String(m.mes || ''));
+        return {
+            line: said.filter(t => t.includes('📦 ')).pop() || '',
+            cell: board?.terrain?.cells?.[String(key)]?.type ?? 'floor',
+            cues: (await import('/scripts/game-engine/ui/shell/action-sounds.js')).lastCues(),
+        };
+    }, crate58?.key ?? '');
+    check('con una caja al lado, «lanzar lo que hay a mano» sale en las maniobras (8)',
+        turn58 === 'player' && rows58.some(r => r.id === 'lanzar:objeto' && !r.off), `${turn58} · ${JSON.stringify(rows58)}`);
+    check('y se lanza: una tirada con la Fuerza, y la caja se rompe al caer (8)',
+        /📦 .+ coge lo que hay a mano/.test(thrown58.line) && /🪵 Se rompe al caer/.test(thrown58.line) && thrown58.cell === 'floor', JSON.stringify(thrown58));
+    check('y cada golpe suena según salga (186)', thrown58.cues.some(c => c === 'hit' || c === 'miss' || c === 'crit'), JSON.stringify(thrown58.cues));
+
+    // El fuego: un charco ardiendo junto a una puerta y a unas cajas. Al empezar la ronda, prende.
+    await page.evaluate(async () => {
+        (await import('/scripts/game-engine/board/living-terrain.js')).FIRE.spread = 1;
+        const wi = await import('/scripts/world-info.js');
+        const ctx = window.SillyTavern.getContext();
+        const place = wi.getCurrentWorldLocationMaps().find((/** @type {any} */ l) => l.name === ctx.chatMetadata.currentLocation);
+        const board = (place?.boards || []).find((/** @type {any} */ b) => b.name === ctx.chatMetadata.currentBoard);
+        if (!board) return;
+        board.terrain.cells['7,2'] = { type: 'cover_half' };
+        board.hazards = [...(Array.isArray(board.hazards) ? board.hazards : []),
+            { id: 'fuego-58', name: 'Aceite ardiendo', kind: 'fuego', trigger: 'enter', x: 6, y: 2, tell: 'Un charco de aceite en llamas.', effect: 'damage', damageDice: '1d4', cause: 'fuego', seen: true, armed: true, once: false }];
+    });
+    const burntNow58 = () => page.evaluate(async () => {
+        const wi = await import('/scripts/world-info.js');
+        const ctx = window.SillyTavern.getContext();
+        const place = wi.getCurrentWorldLocationMaps().find((/** @type {any} */ l) => l.name === ctx.chatMetadata.currentLocation);
+        const board = (place?.boards || []).find((/** @type {any} */ b) => b.name === ctx.chatMetadata.currentBoard);
+        return { door: board?.terrain?.cells?.['5,2'] ?? null, crate: board?.terrain?.cells?.['7,2']?.type ?? 'floor' };
+    });
+    let burnt58 = await burntNow58();
+    // Otros fuegos del tablero también prenden (tres casillas por ronda como mucho): se espera a
+    // que le toque a la caja y a la puerta.
+    for (let i = 0; i < 8 && !(burnt58.crate === 'floor' && burnt58.door?.broken); i++) {
+        await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/combat-end'));
+        await page.waitForTimeout(700);
+        await clearDiceOverlay();
+        burnt58 = await burntNow58();
+        if (await toPlayerTurn52() === 'over') break;
+    }
+    const fire58 = await page.evaluate(() => (window.SillyTavern.getContext().chat || [])
+        .map((/** @type {any} */ m) => String(m.mes || '')).filter(t => t.includes('El fuego se extiende')).join(' | '));
+    check('al empezar la ronda el fuego se extiende: las cajas arden y se quedan en nada (23)',
+        /El fuego se extiende: .*arden las cajas en \(8, 3\)/.test(fire58) && burnt58.crate === 'floor', JSON.stringify({ fire58: fire58.slice(0, 200), ...burnt58 }));
+    check('y la puerta de madera arde: queda rota y abierta, ya no se cierra (23)',
+        Boolean(burnt58.door?.broken) && Boolean(burnt58.door?.open), JSON.stringify(burnt58.door));
+    await page.evaluate(async () => { (await import('/scripts/game-engine/board/living-terrain.js')).FIRE.spread = 0.5; });
+
+    // --- 28, 32 y 30: se huye; a Lyra le parece bien y a Kael no, chocan, y Lyra pide lo suyo ----
+    const inFight58 = await page.evaluate(() => Boolean(window.SillyTavern.getContext().chatMetadata.combatEncounter?.active));
+    if (!inFight58) {
+        await page.evaluate(() => { void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/fight Infantería de Keller 1'); });
+        await page.waitForTimeout(1500);
+        await clearDiceOverlay();
+    }
+    await clearToasts();
+    await page.keyboard.press('3');
+    await page.waitForTimeout(600);
+    await page.locator('#game-shell .gs-btn', { hasText: 'Abandonar' }).first().click({ timeout: 6000 }).catch(() => {});
+    await page.waitForSelector('.popup:visible .popup-button-ok', { timeout: 6000 }).catch(() => {});
+    await page.locator('.popup:visible .popup-button-ok').last().click({ timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(1500);
+    await clearDiceOverlay();
+    const approval58 = await page.evaluate(() => {
+        const meta = window.SillyTavern.getContext().chatMetadata;
+        const said = (window.SillyTavern.getContext().chat || []).map((/** @type {any} */ m) => String(m.mes || ''));
+        return {
+            log: (meta.approval?.log || []).map((/** @type {any} */ e) => `${e.id}:${e.mood}`),
+            friction: said.filter(t => t.includes('⚡ [GRUPO]')).pop() || '',
+            roce: said.some(t => t.startsWith('[ROCE]')),
+            asked: meta.personalAsked || [],
+            quest: (meta.contractBoard || []).find((/** @type {any} */ c) => c?.personal === '958001')?.title || '',
+            pedido: said.some(t => t.includes('🤝 [GRUPO] Lyra tiene algo que pedirte')),
+        };
+    });
+    check('huir se juzga: a quien busca tranquilidad le parece bien y a quien busca gloria no (28)',
+        approval58.log.includes('958001:1') && approval58.log.includes('958002:-1'), JSON.stringify(approval58.log));
+    check('y chocan entre ellos: se dice, y le llega al narrador (32)',
+        /Lyra y Kael chocan por retirarse del combate/.test(approval58.friction) && approval58.roce, approval58.friction);
+    check('y quien llega a vínculo 3 pide lo suyo: un encargo con su nombre en el tablón (30)',
+        approval58.asked.includes('958001') && /^Lyra quiere/.test(approval58.quest) && approval58.pedido, JSON.stringify(approval58));
+    await page.keyboard.press('1');
+    await page.waitForTimeout(600);
+    await page.locator('#game-shell .gs-chip', { hasText: 'Lyra' }).first().click({ timeout: 8000 }).catch(() => {});
+    await page.waitForSelector('.cc-card', { timeout: 8000 }).catch(() => {});
+    const card58 = await page.evaluate(() => [...document.querySelectorAll('.cc-approval-line')].map(l => l.textContent || ''));
+    check('y su ficha dice lo último que le ha parecido (28)', card58.includes('👍 retirarse del combate'), JSON.stringify(card58));
+    await page.evaluate(() => document.querySelectorAll('.cc-overlay, .cc-card').forEach(c => c.remove()));
+
+    // --- 42: el banquillo: Kael se queda en casa, y se le llama -------------------------------
+    const guild58 = async () => {
+        void page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/gremio'));
+        await page.waitForSelector('.gd-board', { timeout: 15000 }).catch(() => {});
+        await page.waitForTimeout(500);
+    };
+    await guild58();
+    await page.locator('.gd-bench[data-member="958002"]').click({ timeout: 6000 }).catch(() => {});
+    await page.waitForTimeout(900);
+    const benched58 = await page.evaluate(async () => ({
+        party: (await import('/scripts/party.js')).getPartyMembersSnapshot().map((/** @type {any} */ m) => m.name),
+        bench: (window.SillyTavern.getContext().chatMetadata.bench || []).map((/** @type {any} */ m) => m.name),
+        day: Number(window.SillyTavern.getContext().chatMetadata.calendar?.day) || 0,
+    }));
+    await guild58();
+    await page.locator('.gd-call[data-member="958002"]').click({ timeout: 6000 }).catch(() => {});
+    await page.waitForTimeout(900);
+    const called58 = await page.evaluate(async () => ({
+        party: (await import('/scripts/party.js')).getPartyMembersSnapshot().map((/** @type {any} */ m) => m.name),
+        bench: (window.SillyTavern.getContext().chatMetadata.bench || []).length,
+        day: Number(window.SillyTavern.getContext().chatMetadata.calendar?.day) || 0,
+    }));
+    check('en el gremio se deja a alguien en casa, y deja el hueco (42)',
+        !benched58.party.includes('Kael') && benched58.bench.includes('Kael'), JSON.stringify(benched58));
+    check('y se le llama: vuelve al grupo al día siguiente (42)',
+        called58.party.includes('Kael') && called58.bench === 0 && called58.day === benched58.day + 1, JSON.stringify(called58));
+
+    // --- 74: la estación en el reloj, y un camino que solo se pasa en invierno --------------------
+    await page.keyboard.press('2');
+    await page.waitForTimeout(700);
+    const season58 = await page.evaluate(() => document.querySelector('#game-shell .gs-clock-label')?.textContent || '');
+    check('el reloj dice la estación y lo que le queda (74)', /· (Primavera|Verano|Otoño|Invierno) · (quedan \d+ días|último día)$/.test(season58), season58);
+    await page.evaluate(async () => {
+        const wi = await import('/scripts/world-info.js');
+        for (const place of wi.getCurrentWorldLocationMaps()) {
+            for (const route of place.routes || []) {
+                if (place.name === 'El Lago Helado' || route.to === 'El Lago Helado') route.seasons = ['verano'];
+            }
+        }
+    });
+    await clearToasts();
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/go El Lago Helado'));
+    await page.waitForTimeout(1500);
+    const shut58 = await page.evaluate(() => ({
+        here: String(window.SillyTavern.getContext().chatMetadata.currentLocation || ''),
+        toasts: [...document.querySelectorAll('#toast-container .toast')].map(t => (t.textContent || '').trim()).join(' | '),
+    }));
+    check('un camino que solo se pasa en verano está cerrado el resto del año, y se dice por qué (74)',
+        shut58.here === 'El Peaje Norte' && /solo en verano/.test(shut58.toasts), JSON.stringify(shut58));
+    await page.evaluate(async () => {
+        const wi = await import('/scripts/world-info.js');
+        for (const place of wi.getCurrentWorldLocationMaps()) for (const route of place.routes || []) delete route.seasons;
+    });
+
+    // --- 67: acampar en El Lago Helado, con fuego, guardia, charla y cena -------------------------
+    await go56('El Lago Helado');
+    await page.evaluate(async () => { (await import('/scripts/game-engine/campaign/camp.js')).NIGHT_CHANCE.scale = 5; });
+    await page.keyboard.press('1');
+    await page.waitForTimeout(700);
+    // Va con descansar: si la fila está llena, está en «+N más».
+    let campChip58 = await page.evaluate(() => [...document.querySelectorAll('#game-shell .gs-chip-action')].some(b => /Acampar aquí/.test(b.textContent || '')));
+    if (!campChip58 && await clickChip54(/^\+\d+ más$/)) {
+        await page.waitForSelector('.popup:visible .hp-root', { timeout: 5000 }).catch(() => {});
+        campChip58 = await page.evaluate(() => [...document.querySelectorAll('.popup:not([closing]) .hp-item')].some(b => b.getAttribute('data-chip') === 'camp'));
+        await closePopup52();
+    }
+    const campDay58 = await page.evaluate(() => Number(window.SillyTavern.getContext().chatMetadata.calendar?.day) || 0);
+    const lyraBefore58 = await page.evaluate(() => Number(window.SillyTavern.getContext().chatMetadata.bonds?.bonds?.[958001]?.points) || 0);
+    await clearToasts();
+    void page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/acampar'));
+    await page.waitForSelector('.popup:visible .cp-root', { timeout: 8000 }).catch(() => {});
+    await page.locator('.popup:visible .cp-talk').selectOption('958001', { timeout: 5000 }).catch(() => {});
+    await page.locator('.popup:visible .popup-button-ok').last().click({ timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(3000);
+    await clearDiceOverlay();
+    const camp58 = await page.evaluate(() => {
+        const ctx = window.SillyTavern.getContext();
+        const said = (ctx.chat || []).map((/** @type {any} */ m) => String(m.mes || ''));
+        return {
+            line: said.filter(t => t.includes('🏕️ [CAMPAMENTO]')).pop() || '',
+            model: said.some(t => t.startsWith('[CAMPAMENTO]')),
+            day: Number(ctx.chatMetadata.calendar?.day) || 0,
+            lyra: Number(ctx.chatMetadata.bonds?.bonds?.[958001]?.points) || 0,
+        };
+    });
+    check('fuera de pueblos se puede acampar desde la fila (67)', campChip58, String(campChip58));
+    check('y la noche en el campamento pasa: lo que se acerca, la guardia, la charla y la cena, y amanece (67)',
+        /(se acerca de noche|entra en el campamento|La noche pasa sin sobresaltos)/.test(camp58.line)
+        && /hablan hasta tarde/.test(camp58.line) && /(Se cena caliente|No sale nada que echar al fuego)/.test(camp58.line)
+        && camp58.model && camp58.day > campDay58 && camp58.lyra > lyraBefore58, JSON.stringify(camp58));
+    await page.evaluate(async () => { (await import('/scripts/game-engine/campaign/camp.js')).NIGHT_CHANCE.scale = 1; });
+
+    // --- 145: la cara de quien habla, en el chat --------------------------------------------------
+    const speaker58 = await page.evaluate(async () => {
+        const ctx = window.SillyTavern.getContext();
+        const message = { name: ctx.name2 || 'Narrador', is_user: false, is_system: false, send_date: String(Date.now()), mes: '—No pienso pagar ni una moneda más —dice Giles—. Ni hoy ni mañana.', extra: {} };
+        ctx.chat.push(message);
+        ctx.addOneMessage(message);
+        const id = ctx.chat.length - 1;
+        await ctx.eventSource.emit(ctx.eventTypes.CHARACTER_MESSAGE_RENDERED, id);
+        await new Promise(resolve => setTimeout(resolve, 300));
+        const badge = document.querySelector(`#chat .mes[mesid="${id}"] .sp-badge`);
+        return { title: badge?.getAttribute('title') || '', text: badge?.textContent || '' };
+    });
+    check('cuando habla alguien del mundo, su párrafo lleva su cara o sus iniciales (145)', speaker58.title === 'Giles' && speaker58.text === 'G', JSON.stringify(speaker58));
+
+    // --- 87: sin guerra, alguien se muda; se sabe ------------------------------------------------
+    await page.evaluate(async () => { (await import('/scripts/game-engine/world/people-fate.js')).FATE_CHANCE.drift = 1; });
+    let moved58 = '';
+    for (let i = 0; i < 8 && !moved58; i++) {
+        // Descansar no da de beber: se repone antes, o una semana al raso mata de sed.
+        await provision51();
+        await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/descanso largo'));
+        await page.waitForTimeout(1500);
+        moved58 = await page.evaluate(() => (window.SillyTavern.getContext().chat || [])
+            .map((/** @type {any} */ m) => String(m.mes || '')).filter(t => /^\[MUNDO\] .+ se ha ido de .+: ahora vive en /.test(t)).pop() || '');
+    }
+    await page.evaluate(async () => { (await import('/scripts/game-engine/world/people-fate.js')).FATE_CHANCE.drift = 0.1; });
+    const where58 = await page.evaluate(async (line) => {
+        const [, name, to] = /\[MUNDO\] (.+?) se ha ido de .+: ahora vive en ([^.]+)\./.exec(String(line)) ?? [];
+        const wi = await import('/scripts/world-info.js');
+        const data = await wi.loadWorldInfo(String(window.SillyTavern.getContext().chatMetadata.world_info || ''));
+        const entry = Object.values(data?.entries || {}).find((/** @type {any} */ e) => e?.dndData?.entityType === 'npc' && e.dndData.name === name);
+        return { name: name ?? '', to: to ?? '', now: String(/** @type {any} */ (entry)?.dndData?.mapPosition?.locationName ?? '') };
+    }, moved58);
+    check('de vez en cuando alguien del mundo se muda a otro sitio: se cuenta y el mundo lo apunta (87)',
+        Boolean(moved58) && where58.now === where58.to && Boolean(where58.to), JSON.stringify({ moved58: moved58.slice(0, 160), ...where58 }));
 
     console.log('\n--- console errors ---');
     console.log(problems.size ? [...problems].join('\n') : '(none)');

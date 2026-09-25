@@ -83,11 +83,13 @@ export function servicesOf(location) {
  * @param {string} [input.innkeeper] Quien atiende la posada, si tiene nombre.
  * @param {Array<{id: string, name: string, label: string, cost: number}>} [input.remedies] Lo que hace el herrero.
  * @param {{gold: number, days: number}} [input.cure] Lo que cuesta que el templo cure al grupo.
+ * @param {{unknown: number, cursed: number, identify: number, lift: number}} [input.relics] Idea 135:
+ *   lo que hay que llevar al templo (sin identificar, malditos) y lo que cobra por cada cosa.
  * @returns {Array<{id: string, label: string, icon: string, actions: ServiceAction[]}>}
  */
 export function serviceActions({
     location, purse, partySize, fighting = false, companions = [], rumors = 0, innkeeper = '',
-    remedies = [], cure = { gold: 0, days: 0 },
+    remedies = [], cure = { gold: 0, days: 0 }, relics = { unknown: 0, cursed: 0, identify: 5, lift: 40 },
 }) {
     const heads = Math.max(1, Math.floor(Number(partySize) || 1));
     const gold = Math.max(0, Number(purse) || 0);
@@ -126,6 +128,17 @@ export function serviceActions({
         if (service === 'templo' && cure.gold > 0) {
             actions.push(action('temple-cure', 'Que os curen',
                 `Cierra todas las heridas que se curan con tiempo (${cure.days} día(s) de reposo). ${cure.gold} de oro.`, cure.gold));
+        }
+        // Idea 135: lo que no se sabe qué es, y lo que muerde.
+        if (service === 'templo' && relics.unknown > 0) {
+            const cost = relics.unknown * relics.identify;
+            actions.push(action('temple-identify', `Que miren lo que traéis (${relics.unknown})`,
+                `Se sabe qué es cada cosa, maldición incluida. ${cost} de oro.`, cost));
+        }
+        if (service === 'templo' && relics.cursed > 0) {
+            const cost = relics.cursed * relics.lift;
+            actions.push(action('temple-lift', `Quitar la maldición (${relics.cursed})`,
+                `Se va lo que resta, y ya se puede soltar. ${cost} de oro.`, cost));
         }
         if (service === 'tablon') {
             actions.push({ id: 'board', label: 'Mirar el tablón', detail: 'Los encargos de aquí.', enabled: !fighting, cost: 0 });

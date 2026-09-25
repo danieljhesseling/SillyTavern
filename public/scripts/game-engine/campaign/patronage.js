@@ -208,3 +208,56 @@ export function describeDebt(debt, today) {
         ? `Debéis un favor a ${debt.patronName} (pagaron ${debt.amount} de oro por vosotros); ${when}.`
         : `Debéis ${debt.owed} de oro a ${debt.patronName}; ${when}.`;
 }
+
+/** Lo que presta quien presta cuando se le pide (idea 125): cuánto, a cuánto y a cuántos días. */
+export const LOAN = { amounts: [50, 100], interest: 0.25, days: 14 };
+
+/**
+ * Quién presta en un sitio: el de siempre, con el nombre del pueblo.
+ *
+ * @param {string} here
+ * @returns {string}
+ */
+export function lenderName(here) {
+    const where = String(here ?? '').trim();
+    return where ? `El prestamista de ${where}` : LENDER_NAME;
+}
+
+/**
+ * Pedir prestado porque se quiere, no porque no llegue (idea 125).
+ *
+ * La deuda ya existía para el viernes sin oro; aquí tiene cara y ventanilla. Una sola deuda a
+ * la vez, como siempre: con otra encima, no presta nadie.
+ *
+ * @param {Object} input
+ * @param {number} input.amount
+ * @param {number} input.today
+ * @param {string} input.here
+ * @param {Debt|null} [input.debt] La que haya.
+ * @returns {{debt: Debt|null, line: string}}
+ */
+export function borrow({ amount, today, here, debt = null }) {
+    if (debt) return { debt: null, line: `Ya debéis a ${debt.patronName}: hasta saldarlo, nadie presta.` };
+    const lent = Math.max(1, Math.floor(Number(amount) || 0));
+    const day = Math.max(1, Math.floor(Number(today) || 1));
+    const owed = Math.ceil(lent * (1 + LOAN.interest));
+    const patronName = lenderName(here);
+    return {
+        debt: { patron: '', patronName, amount: lent, owed, day, dueDay: day + LOAN.days, contractId: '' },
+        line: `${patronName} os presta ${lent} de oro. Quiere ${owed} de vuelta antes del día ${day + LOAN.days}.`,
+    };
+}
+
+/**
+ * Devolverlo antes de que vengan a cobrar. Un favor no se paga con oro: se hace.
+ *
+ * @param {Debt|null} debt
+ * @param {number} purse
+ * @returns {{ok: boolean, pay: number, line: string}}
+ */
+export function repay(debt, purse) {
+    if (!debt) return { ok: false, pay: 0, line: 'No debéis nada.' };
+    if (debt.contractId) return { ok: false, pay: 0, line: `A ${debt.patronName} se le debe un favor: está en el tablón.` };
+    if (Math.floor(Number(purse) || 0) < debt.owed) return { ok: false, pay: 0, line: `No llega: son ${debt.owed} de oro.` };
+    return { ok: true, pay: debt.owed, line: `Pagáis ${debt.owed} de oro a ${debt.patronName}. Cuenta saldada.` };
+}

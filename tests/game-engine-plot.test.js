@@ -51,7 +51,7 @@ describe('leer el hilo', () => {
     });
 
     test('el estado se lee sin repetidos', () => {
-        expect(readPlotState({ open: ['a', 'a'], done: null })).toEqual({ open: ['a'], done: [] });
+        expect(readPlotState({ open: ['a', 'a'], done: null })).toEqual({ open: ['a'], done: [], missed: [], since: {}, closed: [], clues: {} });
     });
 });
 

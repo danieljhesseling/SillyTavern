@@ -35,6 +35,11 @@
   ],
   "blocks": [
     {
+      "key": "GAME_010_rules_ctx_length",
+      "tier": "rules",
+      "what": "El largo de la narracion elegido en la partida (idea 149)"
+    },
+    {
       "key": "GAME_010_rules_ctx_meta",
       "tier": "rules",
       "what": "Instruccion maestra del sistema"
@@ -68,6 +73,11 @@
       "key": "GAME_070_combat_ctx_body",
       "tier": "combat",
       "what": "Como esta el grupo: vida, heridas, cansancio (C1)"
+    },
+    {
+      "key": "GAME_070_combat_ctx_retry",
+      "tier": "combat",
+      "what": "Una sola vez: rehacer la ultima respuesta mas corta o mas intensa (idea 150)"
     },
     {
       "key": "GAME_070_combat_dyn_ejemplo_combate",

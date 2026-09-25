@@ -26,7 +26,7 @@
  */
 
 /** Mas de esto y la fila deja de leerse de un vistazo. */
-const MAX_CHIPS = 6;
+const MAX_CHIPS = 7;
 
 /**
  * Que se puede hacer, dado lo que el motor sabe.
@@ -46,17 +46,63 @@ const MAX_CHIPS = 6;
  * @param {number} [input.hitDice] Dados de golpe que le quedan al grupo.
  * @param {number} [input.rumors] Los rumores que quedan por oir aqui.
  * @param {boolean} [input.explore] Si se puede explorar los alrededores.
+ * @param {boolean} [input.forage] Si se puede cazar y forrajear aqui (idea 68).
+ * @param {Array<{name: string}>} [input.people] La gente del sitio con quien se puede hablar (idea 151).
+ * @param {Array<{id: string, label: string, icon: string, command: string}>} [input.prisoners] Lo que se
+ *   puede hacer con los prisioneros (idea 7), ya decidido.
+ * @param {number} [input.limit] Cuántas caben en la fila; las demás van en «+N más» (idea 169).
+ * @param {Array<{skill: string, label: string}>} [input.typed] Lo que pide lo que se está escribiendo (idea 137).
  * @param {Array<{name: string}>} [input.proposals] Los sitios que el narrador ha propuesto.
+ * @param {Array<{skill: string, label: string, reason: string, dc: number}>} [input.requests] Las tiradas que
+ *   ha pedido el narrador y esperan (idea 138).
+ * @param {Array<{id: string, label: string, icon: string, draft?: string, command?: string}>} [input.replies] Lo que se
+ *   le puede decir a quien se está hablando (idea 144). Va delante: la conversación está en marcha.
+ * @param {Array<{id: string, label: string, icon: string, command: string}>} [input.extras] Lo que ofrece el
+ *   narrador (idea 139) y acampar donde no hay posada (idea 67). Van con lo propuesto.
  * @returns {ActionChip[]}
  */
 export function buildActionChips({
     fighting = false, hasBoard = false, doors = [], companions = [], mentioned = [],
-    places = [], boards = [], hurt = false, hitDice = 0, rumors = 0, explore = false, proposals = [],
+    places = [], boards = [], hurt = false, hitDice = 0, rumors = 0, explore = false, proposals = [], requests = [], forage = false,
+    people = [], prisoners = [], limit = MAX_CHIPS, typed = [], replies = [], extras = [],
 } = {}) {
     if (fighting) return [];
 
     /** @type {ActionChip[]} */
     const chips = [];
+
+    // Idea 144: si se está hablando con alguien, lo que se le puede decir.
+    for (const reply of replies.slice(0, 3)) {
+        chips.push({
+            id: reply.id,
+            label: reply.label,
+            icon: reply.icon,
+            source: reply.command ? 'motor' : 'sabor',
+            ...(reply.draft ? { draft: reply.draft } : {}),
+            ...(reply.command ? { command: reply.command } : {}),
+        });
+    }
+
+    // Lo que se esta escribiendo, antes que nada: es lo que se quiere hacer ahora mismo.
+    for (const intent of typed.slice(0, 2)) {
+        chips.push({
+            id: `typed:${intent.skill}`,
+            label: `🎲 ${intent.label} (por lo que escribes)`,
+            icon: 'fa-dice-d20',
+            source: 'sabor',
+        });
+    }
+
+    // Lo que el narrador acaba de pedir va lo primero: la escena esta esperando esa tirada.
+    for (const request of requests.slice(0, 2)) {
+        chips.push({
+            id: `check-request:${request.skill}`,
+            label: `Tirar ${request.label}${request.reason ? ` (${request.reason})` : ''} · CD ${request.dc}`,
+            icon: 'fa-dice-d20',
+            source: 'motor',
+            command: `/tirada ${request.skill}`,
+        });
+    }
 
     // Las puertas primero: son lo unico que cambia el mapa, y de lo que depende el
     // siguiente combate. La mas cercana antes que la de la otra punta.
@@ -72,6 +118,11 @@ export function buildActionChips({
             source: 'motor',
             cell: { x: door.x, y: door.y },
         });
+    }
+
+    // Ideas 139 y 67: lo que el narrador ofrece coger, y acampar.
+    for (const extra of extras.slice(0, 3)) {
+        chips.push({ id: extra.id, label: extra.label, icon: extra.icon, source: 'motor', command: extra.command });
     }
 
     // Lo que el narrador ha propuesto: es de lo que se estaba hablando, y existe solo si se
@@ -103,6 +154,26 @@ export function buildActionChips({
         });
     }
 
+    // La gente de aqui: tambien se habla con quien no es del grupo (idea 151).
+    const ours = new Set(companions.map(c => String(c.name).toLowerCase()));
+    const locals = [...people]
+        .filter(p => p && String(p.name).trim() && !ours.has(String(p.name).toLowerCase()))
+        .sort((a, b) => Number(named.has(String(b.name).toLowerCase())) - Number(named.has(String(a.name).toLowerCase())));
+    for (const person of locals.slice(0, 2)) {
+        chips.push({
+            id: `talk-local:${person.name}`,
+            label: `Hablar con ${person.name}`,
+            icon: 'fa-comments',
+            source: named.has(String(person.name).toLowerCase()) ? 'sabor' : 'motor',
+            draft: `Le digo a ${person.name}: `,
+        });
+    }
+
+    // Los prisioneros: interrogar, entregar o soltar.
+    for (const chip of prisoners.slice(0, 3)) {
+        chips.push({ id: chip.id, label: chip.label, icon: chip.icon, source: 'motor', command: chip.command });
+    }
+
     // Lo que se cuenta aqui. Va antes que descansar: oir es gratis y lleva a sitios.
     if (rumors > 0) {
         chips.push({
@@ -121,6 +192,16 @@ export function buildActionChips({
             icon: 'fa-compass',
             source: 'motor',
             command: '/explorar',
+        });
+    }
+
+    if (forage && !hasBoard) {
+        chips.push({
+            id: 'forage',
+            label: 'Cazar y forrajear',
+            icon: 'fa-leaf',
+            source: 'motor',
+            command: '/forrajear',
         });
     }
 
@@ -163,7 +244,17 @@ export function buildActionChips({
         }
     }
 
-    return chips.slice(0, MAX_CHIPS);
+    // Idea 169: si no caben, la ultima dice cuantas quedan y las abre todas. Antes se
+    // cortaban sin avisar, y lo que no salia parecia no existir.
+    if (chips.length <= limit) return chips;
+    const shown = chips.slice(0, Math.max(0, limit - 1));
+    shown.push({
+        id: 'more',
+        label: `+${chips.length - shown.length} más`,
+        icon: 'fa-ellipsis',
+        source: 'motor',
+    });
+    return shown;
 }
 
 /**

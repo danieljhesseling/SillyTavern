@@ -22,6 +22,7 @@ import {
     directScene, isSceneAvailable, describeScene, sceneForShortcut, labelFor,
 } from './scene-director.js';
 import { playForScene, stopSceneAudio } from './scene-audio.js';
+import { SHORTCUTS, actionForKey } from './shortcuts.js';
 
 /**
  * @typedef {import('./scene-director.js').SceneName} SceneName
@@ -48,6 +49,8 @@ import { playForScene, stopSceneAudio } from './scene-audio.js';
  * @property {boolean} isPlayerTurn Whether the buttons should do anything at all.
  * @property {boolean} hasAction Whether the action of the turn is still unspent.
  * @property {ShellTarget[]} targets Enemies in reach of the current actor.
+ * @property {string[]} [intents] A por quien va cada enemigo, una linea por enemigo.
+ * @property {boolean} [canAuto] Si el turno es de un compañero que puede jugar la maquina (idea 18).
  */
 
 /**
@@ -64,6 +67,8 @@ import { playForScene, stopSceneAudio } from './scene-audio.js';
  * @property {() => void} onRules El editor de reglas de la campaña.
  * @property {() => void} [onCompendium] La biblioteca de contenido, desde el menú.
  * @property {() => void} [onExport] Empaquetar la campana para compartirla.
+ * @property {() => void} [onCheckWorld] Si el mundo llega al listón (idea 181).
+ * @property {() => void} [onShareWorld] El código del mundo, para compartirlo (idea 180).
  * @property {() => void} [onEditCampaign] El editor del mundo y sus localidades.
  * @property {() => void} [onAudio] Los ajustes de sonido.
  * @property {() => void} onMainMenu Leave the campaign, without leaving the game.
@@ -79,6 +84,8 @@ import { playForScene, stopSceneAudio } from './scene-audio.js';
  * @property {(memberId: string) => void} [onCompanion] Abrir la ficha de un companero.
  * @property {() => void} [onNewCampaign] Empezar una partida desde el menu principal.
  * @property {() => number} [countCampaigns] Cuantas partidas hay para cargar.
+ * @property {() => number} [countHall] Cuantos caidos hay en el salon de la fama (idea 199).
+ * @property {() => void} [onHall] Abrir el salon de la fama.
  * @property {() => boolean} [getAutostart] Si el juego se abre solo al arrancar.
  * @property {(value: boolean) => void} [setAutostart]
  * @property {() => Array<{id: string, label: string, detail: string, enabled: boolean, needsAlly: boolean, allies: Array<{id: string, name: string}>}>} [getAbilities]
@@ -95,6 +102,21 @@ import { playForScene, stopSceneAudio } from './scene-audio.js';
  * @property {(actionId: string) => void} [onService]
  * @property {() => {title: string, hint: string, act: number}|null} [getFocus]
  *   Lo que se tiene entre manos: el hito abierto del hilo.
+ * @property {() => void} [onJournal] Abrir el diario (idea 100).
+ * @property {() => void} [onGlance] El grupo de un vistazo (idea 162).
+ * @property {() => number} [getNoticeCount] Avisos sin ver (idea 159).
+ * @property {() => void} [onTray] Abrir la bandeja de avisos.
+ * @property {() => void} [onAutoTurn] Que el compañero de turno actue solo (idea 18).
+ * @property {() => void} [onDice] El historial de dados (idea 168).
+ * @property {(mode: string) => void} [onRetry] Rehacer la ultima respuesta (idea 150).
+ * @property {() => void} [onGlossary] El glosario (idea 156).
+ * @property {(scene: string) => void} [onScene] Al cambiar de escena: el consejo de la primera vez (idea 155).
+ * @property {() => Array<{id: string, label: string, on: boolean}>} [getToggles] Los interruptores
+ *   del menu de pausa: modo ahorro, largo de la narracion, daltonismo (ideas 148, 149 y 172).
+ * @property {(id: string) => void} [onToggle]
+ * @property {() => {text: string, title: string, high: boolean}|null} [getMeter] Lo que costo el ultimo turno.
+ * @property {() => void} [onMeter] El desglose del prompt.
+ * @property {() => void} [onHelp] Lo que se puede hacer aqui y ahora (idea 136).
  * @property {() => void} [onClose] Anything the game wants undone when the shell closes.
  * @property {(message: string) => void} [notify]
  */
@@ -314,6 +336,12 @@ function renderTitleMenu(menu) {
         item('Compendio', 'fa-book-open', 'Tu biblioteca: armas, bichos, gente, nombres',
             () => options?.onCompendium?.());
     }
+    // Idea 199: los caidos de todas las partidas. Solo si ya ha caido alguien.
+    const fallen = options?.countHall?.() ?? 0;
+    if (fallen > 0 && options?.onHall) {
+        item('Salón de la fama', 'fa-monument', fallen === 1 ? '1 caído' : `${fallen} caídos`,
+            () => options?.onHall?.());
+    }
     item('Opciones', 'fa-sliders', 'Los ajustes de SillyTavern, donde siempre',
         () => options?.onOptions());
 
@@ -509,12 +537,68 @@ function renderFocus(slot) {
     if (!slot) return;
     slot.textContent = '';
     const focus = options?.getFocus?.() ?? null;
-    slot.classList.toggle('gs-focus-empty', !focus);
-    if (!focus) return;
-    slot.appendChild(el('i', 'fa-solid fa-compass'));
-    slot.appendChild(el('span', 'gs-focus-title', focus.title));
-    if (focus.hint) slot.appendChild(el('span', 'gs-focus-hint', focus.hint));
-    slot.title = `Acto ${focus.act}`;
+    const guide = Boolean(options?.onJournal || options?.onHelp || options?.getMeter?.());
+    slot.classList.toggle('gs-focus-empty', !focus && !guide);
+    if (focus) {
+        slot.appendChild(el('i', 'fa-solid fa-compass'));
+        slot.appendChild(el('span', 'gs-focus-title', focus.title));
+        if (focus.hint) slot.appendChild(el('span', 'gs-focus-hint', focus.hint));
+        slot.title = `Acto ${focus.act}`;
+    }
+    // Siempre a mano, aunque la fila de fichas este llena: el diario y la ayuda.
+    const buttons = el('span', 'gs-guide');
+    if (options?.onJournal) {
+        const journal = makeButton('gs-guide-btn gs-journal');
+        journal.appendChild(el('i', 'fa-solid fa-book'));
+        journal.appendChild(el('span', '', ' Diario'));
+        journal.title = 'Lo que sabéis: el hilo, las pistas, lo que habéis oído';
+        journal.addEventListener('click', () => options?.onJournal?.());
+        buttons.appendChild(journal);
+    }
+    if (options?.onGlance) {
+        const glance = makeButton('gs-guide-btn gs-glance');
+        glance.appendChild(el('i', 'fa-solid fa-users'));
+        glance.appendChild(el('span', '', ' Grupo'));
+        glance.title = 'Vida, heridas, hambre, oro y vínculo de todos';
+        glance.addEventListener('click', () => options?.onGlance?.());
+        buttons.appendChild(glance);
+    }
+    if (options?.onTray) {
+        const tray = makeButton('gs-guide-btn gs-tray');
+        tray.appendChild(el('i', 'fa-solid fa-bell'));
+        const count = options?.getNoticeCount?.() ?? 0;
+        tray.appendChild(el('span', 'gs-tray-count', count > 0 ? String(count) : ''));
+        tray.title = 'Los últimos avisos, para no perderlos';
+        tray.addEventListener('click', () => options?.onTray?.());
+        buttons.appendChild(tray);
+    }
+    if (options?.onDice) {
+        const dice = makeButton('gs-guide-btn gs-dice');
+        dice.appendChild(el('i', 'fa-solid fa-dice-d20'));
+        dice.title = 'El historial de dados: ¿el dado me odia?';
+        dice.addEventListener('click', () => options?.onDice?.());
+        buttons.appendChild(dice);
+    }
+    if (options?.onHelp) {
+        const help = makeButton('gs-guide-btn gs-help');
+        help.appendChild(el('i', 'fa-solid fa-circle-question'));
+        help.appendChild(el('span', '', ' ¿Qué hago?'));
+        help.title = 'Todo lo que se puede hacer aquí y ahora';
+        help.addEventListener('click', () => options?.onHelp?.());
+        buttons.appendChild(help);
+    }
+    // Idea 147: lo que cuesta cada turno, siempre a la vista.
+    const meter = options?.getMeter?.() ?? null;
+    if (meter) {
+        const tokens = makeButton('gs-guide-btn gs-meter');
+        tokens.classList.toggle('gs-meter-high', meter.high);
+        tokens.appendChild(el('i', 'fa-solid fa-coins'));
+        tokens.appendChild(el('span', '', ` ${meter.text}`));
+        tokens.title = meter.title;
+        tokens.addEventListener('click', () => options?.onMeter?.());
+        buttons.appendChild(tokens);
+    }
+    if (buttons.childElementCount > 0) slot.appendChild(buttons);
 }
 
 /**
@@ -571,6 +655,15 @@ function renderActionBar(footer, bar) {
     if (bar.movement) status.appendChild(el('span', 'gs-move-label', bar.movement));
     footer.appendChild(status);
 
+    // Lo que van a hacer: se reacciona a algo que se ve (esquivar, ayudar, apartarse).
+    if (bar.intents && bar.intents.length > 0) {
+        const intents = el('div', 'gs-intents');
+        intents.appendChild(el('i', 'fa-solid fa-eye'));
+        intents.appendChild(el('span', '', ` ${bar.intents.join(' · ')}`));
+        intents.title = 'Lo que haría cada enemigo si le tocase ahora';
+        footer.appendChild(intents);
+    }
+
     const buttons = el('div', 'gs-actions-buttons');
 
     const attack = makeButton('gs-btn gs-btn-attack');
@@ -583,6 +676,16 @@ function renderActionBar(footer, bar) {
                 : 'Elegir objetivo';
     attack.addEventListener('click', () => toggleTargets(footer, bar));
     buttons.appendChild(attack);
+
+    // Idea 18: el turno de un compañero, con su postura, sin mover sus fichas a mano.
+    if (bar.canAuto && options?.onAutoTurn) {
+        const auto = makeButton('gs-btn gs-btn-auto');
+        auto.appendChild(el('i', 'fa-solid fa-robot'));
+        auto.appendChild(el('span', '', ' Que actúe solo'));
+        auto.title = 'Juega su turno con la postura y la preferencia de su ficha';
+        auto.addEventListener('click', () => options?.onAutoTurn?.());
+        buttons.appendChild(auto);
+    }
 
     const endTurn = makeButton('gs-btn');
     endTurn.appendChild(el('i', 'fa-solid fa-forward'));
@@ -690,6 +793,20 @@ function renderDialogue(scene, view) {
             who.appendChild(el('div', 'gs-speaker-rank', view.speaker.rankLabel));
         }
         speaker.appendChild(who);
+        // Idea 150: rehacer la ultima respuesta, igual, mas corta o con mas nervio.
+        if (options?.onRetry) {
+            const retry = el('div', 'gs-retry');
+            for (const [mode, label, icon] of [['otra', 'Otra vez', 'fa-rotate'], ['corto', 'Más corto', 'fa-compress'], ['intenso', 'Más intenso', 'fa-fire']]) {
+                const button = makeButton('gs-retry-btn');
+                button.dataset.retry = mode;
+                button.appendChild(el('i', `fa-solid ${icon}`));
+                button.appendChild(el('span', '', ` ${label}`));
+                button.title = 'Rehace la última respuesta del narrador';
+                button.addEventListener('click', () => options?.onRetry?.(mode));
+                retry.appendChild(button);
+            }
+            speaker.appendChild(retry);
+        }
     } else {
         speaker.appendChild(el('div', 'gs-speaker-empty', 'Nadie ha dicho nada todavia.'));
     }
@@ -809,11 +926,43 @@ function setPaused(next) {
             options?.onExport?.();
         });
     }
+    // Idea 181: lo que le falta al mundo, con el encargo para el Gem.
+    if (options.onCheckWorld) {
+        item('¿Llega al listón?', 'fa-list-check', () => {
+            setPaused(false);
+            options?.onCheckWorld?.();
+        });
+    }
+    // Idea 180: el código del mundo, para que otro juegue el mismo.
+    if (options.onShareWorld) {
+        item('Compartir este mundo', 'fa-share-nodes', () => {
+            setPaused(false);
+            options?.onShareWorld?.();
+        });
+    }
     if (options.onAudio) {
         item('Sonido', 'fa-music', () => {
             setPaused(false);
             options?.onAudio?.();
         });
+    }
+    // Ideas 148, 149 y 172: lo que cambia como se juega, sin salir de la partida. En una fila
+    // de botones pequeños: como botones grandes, el menu ya no cabia en pantallas bajas.
+    const toggles = options.getToggles?.() ?? [];
+    if (toggles.length > 0) {
+        const row = el('div', 'gs-pause-toggles');
+        for (const toggle of toggles) {
+            const button = makeButton(`gs-pause-toggle${toggle.on ? ' on' : ''}`);
+            button.dataset.toggle = toggle.id;
+            button.textContent = toggle.label;
+            button.addEventListener('click', () => {
+                options?.onToggle?.(toggle.id);
+                setPaused(false);
+                setPaused(true);
+            });
+            row.appendChild(button);
+        }
+        card.appendChild(row);
     }
     if (options.getAutostart && options.setAutostart) {
         // La puerta de salida de verdad: apagado, la aplicacion arranca como la de
@@ -860,6 +1009,7 @@ function renderExploration(panel, view) {
     const here = el('div', 'gs-here');
     here.appendChild(el('div', 'gs-here-name', view.here || 'En ninguna parte todavia'));
     if (view.description) here.appendChild(el('div', 'gs-here-desc', view.description));
+    if (view.fortune) here.appendChild(el('div', 'gs-here-fortune', view.fortune));
     panel.appendChild(here);
 
     // Lo que hay aqui: la posada, la herreria, el templo, el tablon. Cada tarjeta con lo que
@@ -920,6 +1070,7 @@ function renderExploration(panel, view) {
             ? place.reasons.join(' ')
             : place.boards === 1 ? '1 tablero' : `${place.boards} tableros`;
         body.appendChild(el('div', 'gs-place-note', note));
+        if (place.pending) body.appendChild(el('div', 'gs-place-pending', place.pending));
         row.appendChild(body);
 
         row.disabled = place.status === 'locked' || place.current;
@@ -956,6 +1107,8 @@ export function refreshGameShell() {
     // on every redraw in between.
     if (choice.event || scene !== root.dataset.scene) sceneReason = choice.reason;
 
+    // Idea 155: la primera vez en cada escena, un consejo.
+    if (scene !== root.dataset.scene && scene !== SCENE.TITLE) options.onScene?.(scene === SCENE.COMBAT ? 'combat' : scene === SCENE.EXPLORATION ? 'exploration' : 'dialogue');
     root.dataset.scene = scene;
     root.dataset.source = choice.source;
 
@@ -1050,7 +1203,40 @@ function handleKey(event) {
     if (scene) {
         event.preventDefault();
         setScene(scene);
+        return;
     }
+
+    // Idea 152: el resto de atajos. Con una ventana abierta delante, las teclas son suyas.
+    if (document.querySelector('dialog[open]')) return;
+    const action = actionForKey(event);
+    if (!action) return;
+    event.preventDefault();
+    if (action === 'journal') options?.onJournal?.();
+    else if (action === 'glance') options?.onGlance?.();
+    else if (action === 'help') options?.onHelp?.();
+    else if (action === 'tray') options?.onTray?.();
+    else if (action === 'dice') options?.onDice?.();
+    else if (action === 'glossary') options?.onGlossary?.();
+    else if (action === 'keys') toggleKeySheet();
+}
+
+/** Idea 152: la chuleta de atajos, encima de todo; se quita con la misma tecla o pulsandola. */
+function toggleKeySheet() {
+    const open = document.querySelector('.gs-keys');
+    if (open) {
+        open.remove();
+        return;
+    }
+    const sheet = el('div', 'gs-keys');
+    sheet.appendChild(el('div', 'gs-keys-title', 'Atajos de teclado'));
+    for (const shortcut of SHORTCUTS) {
+        const row = el('div', 'gs-keys-row');
+        row.appendChild(el('kbd', '', shortcut.key));
+        row.appendChild(el('span', '', shortcut.label));
+        sheet.appendChild(row);
+    }
+    sheet.addEventListener('click', () => sheet.remove());
+    document.body.appendChild(sheet);
 }
 
 /**

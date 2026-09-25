@@ -68,7 +68,7 @@ describe('rollCheck', () => {
 
     test('la línea para el modelo lo dice todo y pide no cambiarlo', () => {
         const result = rollCheck({ member: bardo, skill: 'deception', rollD20: () => 15 });
-        expect(result?.line).toBe('[TIRADA Engaño de Lyra: d20 15 +7 = 22 contra CD 12 → Éxito. '
+        expect(result?.line).toBe('[TIRADA 🎲 Engaño de Lyra: 22 contra CD 12 ✓ Éxito (d20 15 +7). '
             + 'El dado ya está tirado: narra la consecuencia, no lo cambies.]');
         expect(result?.draft).toMatch(/\nIntento engañar $/);
     });

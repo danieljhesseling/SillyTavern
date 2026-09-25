@@ -219,6 +219,11 @@ function extractWorldMonsterTemplates(data) {
             attackRangeFeet: toNumber(d.attackRangeFeet ?? d.range, 5),
             abilities: (Array.isArray(d.abilities) ? d.abilities : String(d.abilities || '').split(','))
                 .map((id) => String(id).trim()).filter(Boolean),
+            // Idea 24: si es un jefe. Contesta una vez por ronda y no se rinde.
+            boss: Boolean(d.boss),
+            // Idea 97: en qué estaciones anda. Sin nada, todo el año.
+            seasons: (Array.isArray(d.seasons) ? d.seasons : String(d.seasons || '').split(','))
+                .map((/** @type {any} */ s) => String(s).trim()).filter(Boolean),
         });
     }
 

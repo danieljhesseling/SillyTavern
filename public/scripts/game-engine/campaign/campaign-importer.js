@@ -129,6 +129,10 @@ export function buildPackEntries(pack) {
                         title: text(scene.title),
                         scene: text(scene.scene),
                     })),
+                // Idea 45: lo que dice al llegar a cada sitio, si el guion lo escribe.
+                arrivals: (Array.isArray(person.arrivals) ? person.arrivals : [])
+                    .filter((/** @type {any} */ a) => text(a?.place) && text(a?.line))
+                    .map((/** @type {any} */ a) => ({ place: text(a.place), line: text(a.line) })),
             },
         });
     }
@@ -157,6 +161,8 @@ export function buildPackEntries(pack) {
                 knows: text(person.knows),
                 secret: text(person.secret),
                 voice: text(person.voice),
+                // Idea 59: la lengua que habla. Vacía es la común.
+                ...(text(person.language) ? { language: text(person.language) } : {}),
                 service: text(person.service),
                 mapPosition: { locationName: text(person.where), gridX: 0, gridY: 0 },
             },
@@ -186,6 +192,11 @@ export function buildPackEntries(pack) {
                 attackRangeFeet: Number(enemy.attackRangeFeet) || 5,
                 // Los ids del catalogo de habilidades que sabe usar: el cultista que tira rayos.
                 abilities: Array.isArray(enemy.abilities) ? enemy.abilities.map(text).filter(Boolean) : [],
+                // Idea 24: el jefe lo es en el tablero, no solo en el guion. Sin esto no se
+                // rendía nunca por serlo, ni contestaba.
+                boss: Boolean(enemy.boss),
+                // Idea 97: en qué estaciones anda. Sin nada, todo el año.
+                ...(Array.isArray(enemy.seasons) && enemy.seasons.length > 0 ? { seasons: enemy.seasons.map(text).filter(Boolean) } : {}),
             },
         });
     }
@@ -304,7 +315,12 @@ export function buildImportPlan(raw, options = {}) {
             // Los caminos, con lo que cuesta andarlos. Es lo que lee el viaje.
             routes: (Array.isArray(place.routes) ? place.routes : [])
                 .filter((/** @type {any} */ route) => text(route?.to))
-                .map((/** @type {any} */ route) => ({ to: text(route.to), days: Math.max(1, Math.floor(Number(route.days) || 1)) })),
+                .map((/** @type {any} */ route) => ({
+                    to: text(route.to),
+                    days: Math.max(1, Math.floor(Number(route.days) || 1)),
+                    // Idea 74: en qué estaciones se pasa. Sin nada, todo el año.
+                    ...(Array.isArray(route.seasons) && route.seasons.length > 0 ? { seasons: route.seasons.map(text).filter(Boolean) } : {}),
+                })),
             boards: [],
         });
     }
@@ -402,6 +418,8 @@ export function buildImportPlan(raw, options = {}) {
             displayName: text(pack.world.name),
             genre: text(pack.world.genre),
             description: text(pack.world.synopsis),
+            // Idea 74: la estación en la que empieza. Sin nada, otoño.
+            ...(text(pack.world.season) ? { season: text(pack.world.season) } : {}),
             worldMapUrl: '',
             // Las escondidas no estan en el mapa hasta que un hito del hilo las revela: asi
             // nada que liste sitios tiene que saber que existen.
@@ -452,6 +470,10 @@ export function buildImportPlan(raw, options = {}) {
                     damageType: text(item.damageType),
                     slot: text(item.slot),
                     description: text(item.description),
+                    // Idea 132: una reliquia llega con su hito o su encargo, no como botín.
+                    ...(item.boundTo && typeof item.boundTo === 'object' && text(item.boundTo.id)
+                        ? { boundTo: { kind: item.boundTo.kind === 'contract' ? 'contract' : 'milestone', id: text(item.boundTo.id) } }
+                        : {}),
                 })),
             // Las misiones, como cosa propia y no como el nombre de un tablero. El motor
             // ya las sabe encadenar; hasta ahora nadie podia escribirlas.

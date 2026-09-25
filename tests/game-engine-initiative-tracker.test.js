@@ -31,7 +31,7 @@ describe('status markers', () => {
 
     test('a condition becomes a marker with an icon and a Spanish label', () => {
         expect(statusMarkers(['Poisoned'])).toEqual([
-            { key: 'poisoned', icon: 'fa-flask', label: 'Envenenado' },
+            { key: 'poisoned', icon: 'fa-flask', label: 'Envenenado', effect: 'ataca y tira con desventaja' },
         ]);
     });
 

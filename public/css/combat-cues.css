@@ -199,7 +199,8 @@
     opacity: 0.7;
 }
 
-.cc-stance-btn {
+.cc-stance-btn,
+.cc-prefer-btn {
     font-size: 0.82em;
     opacity: 0.6;
 }
@@ -1061,4 +1062,300 @@
 
 .ch-edit {
     align-self: flex-start;
+}
+
+/* Idea 191: la pantalla de victoria. No tapa la partida: se cierra sola o al pulsarla. */
+.vs-card {
+    position: fixed;
+    top: 72px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9000;
+    min-width: min(420px, calc(100vw - 32px));
+    max-width: calc(100vw - 32px);
+    padding: 14px 16px;
+    border-radius: 10px;
+    border: 1px solid rgba(214, 180, 106, 0.55);
+    background: rgba(24, 20, 16, 0.95);
+    color: #eee4d2;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+    cursor: pointer;
+}
+
+.vs-title {
+    font-size: 1.15em;
+    font-weight: bold;
+    margin-bottom: 8px;
+}
+
+.vs-row {
+    display: grid;
+    grid-template-columns: 1fr auto auto auto;
+    gap: 10px;
+    font-size: 0.9em;
+    padding: 2px 0;
+}
+
+.vs-best {
+    color: #e2c27a;
+}
+
+.vs-num {
+    opacity: 0.8;
+    text-align: right;
+}
+
+.vs-line {
+    margin-top: 6px;
+    font-size: 0.9em;
+}
+
+.vs-scar {
+    color: #d08a86;
+}
+
+.vs-hint {
+    margin-top: 8px;
+    font-size: 0.75em;
+    opacity: 0.55;
+}
+
+/* Idea 63: lo del botín que mejora lo que alguien lleva. */
+.vs-upgrade {
+    color: #9fd08a;
+}
+
+/* Idea 108: «Anteriormente…». No se puede pulsar: no tapa nada, y se va sola. */
+.rc-card {
+    position: fixed;
+    left: 16px;
+    bottom: 90px;
+    z-index: 8900;
+    max-width: min(420px, calc(100vw - 32px));
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(214, 180, 106, 0.5);
+    background: rgba(24, 20, 16, 0.92);
+    color: #eee4d2;
+    pointer-events: none;
+    transition: opacity 1s ease;
+}
+
+.rc-leaving {
+    opacity: 0;
+}
+
+.rc-title {
+    font-weight: bold;
+    margin-bottom: 6px;
+    color: #e2c27a;
+}
+
+.rc-line {
+    font-size: 0.9em;
+    margin: 2px 0;
+}
+
+/* Ideas 38, 44, 47 y 56: qué quiere ahora y lo que se ha ganado. */
+.cc-wants {
+    margin: 6px 0 2px;
+    font-size: 0.9em;
+    font-style: italic;
+}
+
+.cc-earned {
+    margin-bottom: 6px;
+    font-size: 0.85em;
+    color: #e2c27a;
+}
+
+/* Ideas 35 y 41: a quién va primero y su oficio de campamento. */
+.cc-job {
+    margin: 2px 0 6px;
+    font-size: 0.85em;
+    opacity: 0.9;
+}
+
+.cc-prefer-btn.active {
+    border-color: rgba(214, 180, 106, 0.8);
+    background: rgba(214, 180, 106, 0.18);
+}
+
+/* Idea 46: una mejora a elegir al subir de nivel. */
+.lu-perks {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: 4px 0 8px;
+}
+
+.lu-perk {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+    padding: 6px 10px;
+}
+
+.lu-perk.chosen {
+    outline: 2px solid #e2c27a;
+}
+
+.lu-perk-name {
+    font-weight: bold;
+}
+
+.lu-perk-desc {
+    font-size: 0.85em;
+    opacity: 0.85;
+}
+
+/* Idea 28: lo último que le ha parecido a un compañero. */
+.cc-approval {
+    margin: 6px 0;
+    padding: 6px 8px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 6px;
+    font-size: 0.85em;
+}
+
+.cc-approval-title {
+    opacity: 0.7;
+    margin-bottom: 2px;
+}
+
+/* Idea 59: lo que habla. */
+.ch-langs {
+    margin: 4px 0 8px;
+    font-size: 0.9em;
+    opacity: 0.85;
+}
+
+/* Idea 62: los juegos de equipo. */
+.ch-sets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.ch-set-new {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex: 1 1 260px;
+}
+
+.ch-set-name {
+    flex: 1;
+    min-width: 0;
+}
+
+/* Idea 163: repartir: se arrastra a la cara de quien lo va a llevar. */
+.ch-mates {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 6px;
+    font-size: 0.85em;
+}
+
+.ch-mates-hint {
+    opacity: 0.7;
+}
+
+.ch-mate {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border: 1px dashed var(--SmartThemeBorderColor, #444);
+    border-radius: 14px;
+}
+
+.ch-mate img {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.ch-mate.over {
+    border-style: solid;
+    border-color: #e2c27a;
+    background: rgba(226, 194, 122, 0.15);
+}
+
+.ch-item[draggable="true"] {
+    cursor: grab;
+}
+
+.ch-give {
+    margin-left: auto;
+    max-width: 9em;
+    font-size: 0.85em;
+}
+
+/* Idea 58: rehacerse en el templo. Idea 67: el campamento. Idea 180: compartir el mundo. */
+.rs-perks,
+.cp-root {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    text-align: left;
+}
+
+.rs-perk-row,
+.cp-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.cp-sub {
+    margin-top: 6px;
+    opacity: 0.8;
+}
+
+.cp-weather {
+    opacity: 0.8;
+    margin: 0 0 4px;
+}
+
+.sw-row {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.sw-code {
+    flex: 1;
+    font-family: monospace;
+}
+
+/* Idea 145: la cara de quien habla, delante de su párrafo. */
+.sp-badge {
+    --sp-hue: 30;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.6em;
+    height: 1.6em;
+    margin-right: 0.4em;
+    vertical-align: middle;
+    border-radius: 50%;
+    overflow: hidden;
+    font-size: 0.8em;
+    font-weight: bold;
+    color: #fff;
+    background: hsl(var(--sp-hue), 45%, 38%);
+    user-select: none;
+}
+
+.sp-badge img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }

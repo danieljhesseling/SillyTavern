@@ -145,6 +145,19 @@ export function weaponDamage(member, base) {
 }
 
 /**
+ * Lo que suma el arma al ataque y al daño: su «+1» (idea 120).
+ *
+ * El campo existía en la ficha de cada objeto (`magicalBonus`) y el combate no lo leía: una
+ * espada +2 pegaba como una normal. Ahora suma, de 0 a 3.
+ *
+ * @param {any} member
+ * @returns {number}
+ */
+export function weaponBonus(member) {
+    return Math.max(0, Math.min(3, Math.floor(number(weaponOf(member)?.magicalBonus, 0))));
+}
+
+/**
  * Hasta donde llega el arma, si lo dice.
  *
  * Devuelve 0 cuando no lo dice, para que quien llama siga con su regla de siempre —la que
@@ -240,4 +253,50 @@ export function armourClassOf({ member, dexModifier }) {
 export function describeArmour(sum) {
     if (!sum) return '';
     return `CA ${sum.armorClass} (${sum.from.join(', ')})`;
+}
+
+/**
+ * Lo nuevo frente a lo que lleva (idea 63): «+1 de daño frente a su garrote».
+ *
+ * Solo lo que el motor sabe medir: el peldaño de daño de un arma y la CA de una pieza. Lo
+ * demás se deja sin decir, en vez de inventar una comparación.
+ *
+ * @param {any} item
+ * @param {any} member
+ * @returns {{delta: number, line: string}}
+ */
+export function compareItem(item, member) {
+    if (!item) return { delta: 0, line: '' };
+    if (item.damageDice || text(item.slot) === 'weapon') {
+        const now = weaponOf(member);
+        const delta = damageStepOf(item) - damageStepOf(now);
+        const against = now ? text(now.name) || 'su arma' : 'sus puños';
+        if (delta === 0) return { delta, line: `igual que ${against}` };
+        return { delta, line: `${delta > 0 ? '+' : ''}${delta} de daño frente a ${against}` };
+    }
+    const slot = text(item.slot);
+    const ac = number(item.armorClass, 0);
+    if (slot && ac) {
+        const now = equippedIn(member, slot);
+        const delta = ac - number(now?.armorClass, 0);
+        const against = now ? text(now.name) || 'lo que lleva' : 'nada';
+        return { delta, line: delta === 0 ? `igual que ${against}` : `${delta > 0 ? '+' : ''}${delta} de CA frente a ${against}` };
+    }
+    return { delta: 0, line: '' };
+}
+
+/**
+ * A quién le viene mejor un objeto nuevo, y cuánto.
+ *
+ * @param {any} item
+ * @param {any[]} party
+ * @returns {string} «Daga: +1 de daño para Bruna frente a sus puños», o vacío.
+ */
+export function bestFor(item, party) {
+    let best = { delta: 0, line: '', name: '' };
+    for (const member of party || []) {
+        const said = compareItem(item, member);
+        if (said.delta > best.delta) best = { ...said, name: text(member?.name) };
+    }
+    return best.delta > 0 ? `${text(item?.name)}: ${best.line.replace(/^(\+\d+ de (?:daño|CA))/, `$1 para ${best.name}`)}` : '';
 }

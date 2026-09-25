@@ -20,6 +20,8 @@
  */
 
 import { applyKin } from '../compendio/kin.js';
+import { describeBackground } from './backgrounds.js';
+import { SKILLS } from '../rules/checks.js';
 
 /** Lo que se ofrece cuando el mundo no trae razas propias. */
 export const DEFAULT_RACES = [
@@ -41,6 +43,7 @@ export const GENDERS = ['Mujer', 'Hombre', 'No binario', 'Sin especificar'];
  * @property {string} race
  * @property {string} className
  * @property {string} about   Una línea sobre quién es. Es lo que lee el modelo.
+ * @property {string} [background] El trasfondo (idea 49): da competencias y un contacto.
  * @property {string} image
  */
 
@@ -87,6 +90,7 @@ export function heroContent(answers) {
     return [
         what ? `${name}: ${what}.` : `${name} forma parte del grupo.`,
         text(answers?.about),
+        describeBackground(text(answers?.background), skill => SKILLS[/** @type {keyof typeof SKILLS} */ (skill)]?.label ?? skill),
     ].filter(Boolean).join('\n\n');
 }
 
@@ -145,6 +149,7 @@ export function buildHeroEntry(answers, where = {}) {
             charClass: text(answers?.className),
             race: text(answers?.race),
             gender: text(answers?.gender),
+            background: text(answers?.background),
             level: 1,
             image: text(answers?.image),
             str: stats.strength,

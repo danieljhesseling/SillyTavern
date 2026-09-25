@@ -2182,3 +2182,39 @@ input[type="file"].tl-file {
     color: rgba(228, 130, 110, 0.95);
     opacity: 1;
 }
+
+/* Idea 160: la partida de un vistazo. */
+.campaign-save-line {
+    font-size: 0.85em;
+    opacity: 0.9;
+    margin-top: 2px;
+}
+
+.campaign-save-party {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.8em;
+    opacity: 0.8;
+    margin-top: 2px;
+}
+
+.campaign-face {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.campaign-face.fallen {
+    filter: grayscale(1);
+    opacity: 0.6;
+}
+
+/* Idea 42: el banquillo del gremio. */
+.gd-bench,
+.gd-call {
+    margin-left: auto;
+    padding: 2px 8px;
+    font-size: 0.85em;
+}

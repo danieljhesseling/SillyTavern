@@ -27,6 +27,8 @@
  * @property {string} [damageType]
  * @property {string} [description]
  * @property {string} [slot] Una de las ranuras del motor, en minusculas.
+ * @property {boolean} [consumable] Se gasta al usarse (idea 122: lo que se lanza).
+ * @property {number} [uses]
  */
 
 /** What each thing the loot tables can drop is made of. */
@@ -49,6 +51,9 @@ const CATALOGUE = {
     'Capa de sombras': { type: 'gear', category: 'magic', subcategory: 'wondrous', weight: 1 },
     'Hoja del alba': { type: 'weapon', category: 'weapon', subcategory: 'martial_melee', weight: 1.5, damageDice: '1d8', damageType: 'radiant', slot: 'weapon' },
     'Talismán del corazón firme': { type: 'gear', category: 'magic', subcategory: 'wondrous', weight: 0.2 },
+    // Idea 122: lo que se lanza en combate (`combat/throwables.js`). Siempre en la tienda.
+    'Frasco de aceite': { type: 'gear', category: 'gear', subcategory: 'throwable', weight: 0.5, consumable: true, uses: 1, description: 'Se lanza: si da, 2d4 de fuego; y la casilla arde para el primero que la pise.' },
+    'Red': { type: 'gear', category: 'gear', subcategory: 'throwable', weight: 1.5, consumable: true, uses: 1, description: 'Se lanza: si da, deja al enemigo sujeto dos rondas.' },
 };
 
 /** What anything undeclared becomes: a real item, of the most ordinary kind. */

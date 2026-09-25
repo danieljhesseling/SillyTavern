@@ -38,11 +38,13 @@ const order = await import(pathToFileURL(
  */
 const BLOCKS = [
     { source: 'ctx', id: 'meta', tier: 'rules', what: 'Instruccion maestra del sistema' },
+    { source: 'ctx', id: 'length', tier: 'rules', what: 'El largo de la narracion elegido en la partida (idea 149)' },
     { source: 'ctx', id: 'relationships', tier: 'npc', what: 'Vinculos con los companeros' },
     { source: 'ctx', id: 'quests', tier: 'quest', what: 'Misiones en curso' },
     { source: 'ctx', id: 'memory', tier: 'quest', what: 'Lo que el mundo sabe del grupo: hechos, reputacion, deudas' },
     { source: 'ctx', id: 'board', tier: 'combat', what: 'Tablero y posiciones' },
     { source: 'ctx', id: 'body', tier: 'combat', what: 'Como esta el grupo: vida, heridas, cansancio (C1)' },
+    { source: 'ctx', id: 'retry', tier: 'combat', what: 'Una sola vez: rehacer la ultima respuesta mas corta o mas intensa (idea 150)' },
     { source: 'dyn', id: 'ejemplo_reglas', tier: 'rules', what: 'Instruccion dinamica de reglas' },
     { source: 'dyn', id: 'ejemplo_combate', tier: 'combat', what: 'Instruccion dinamica de combate' },
     { source: 'instr', id: 'ejemplo_custom', tier: 'custom', what: 'Instruccion activa del jugador' },

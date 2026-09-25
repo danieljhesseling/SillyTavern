@@ -230,3 +230,33 @@
     width: 100%;
     box-sizing: border-box;
 }
+
+/* Idea 20: los filtros del registro. */
+.cl-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 6px;
+}
+
+.cl-filter {
+    padding: 1px 8px;
+    font-size: 0.72rem;
+    color: #ffd98a;
+    background: transparent;
+    border: 1px solid rgba(240, 190, 90, 0.35);
+    border-radius: 10px;
+    cursor: pointer;
+}
+
+.cl-filter.active {
+    color: #0e0e14;
+    background: #f0be5a;
+}
+
+.cl-who {
+    margin-left: auto;
+    max-width: 50%;
+    font-size: 0.72rem;
+}

@@ -19,6 +19,7 @@
  */
 
 import { readManeuvers } from './maneuvers.js';
+import { readTally } from './tally.js';
 import { normalizeTimers } from './condition-timers.js';
 
 /**
@@ -43,6 +44,8 @@ import { normalizeTimers } from './condition-timers.js';
  * @typedef {Object} Encounter
  * @property {boolean} active
  * @property {any[]} enemies
+ * @property {Array<{id: string, round: number}>} [readied] Quién tiene un golpe preparado (idea 4).
+ * @property {Record<string, number>} [bossReacted] En qué ronda contestó cada jefe (idea 24).
  * @property {TurnEntry[]} turnOrder
  * @property {number} currentTurnIndex
  * @property {number} round
@@ -51,6 +54,8 @@ import { normalizeTimers } from './condition-timers.js';
  *   Las condiciones que una habilidad puso con fecha de caducidad.
  * @property {import('./maneuvers.js').ManeuverState} [maneuvers]
  *   Quien se cubre, quien se destraba y a quien le han abierto la guardia.
+ * @property {import('./tally.js').Tally} [tally]
+ *   La cuenta del combate, para la pantalla de victoria.
  */
 
 /** The three things a combatant may spend besides movement. */
@@ -100,6 +105,8 @@ export function normalizeEncounter(raw) {
         // Quien se cubre, quien se destraba y a quien le han abierto la guardia: sin esto,
         // recargar la partida a mitad de ronda borraba un esquivar ya pagado.
         maneuvers: readManeuvers(raw.maneuvers),
+        // Quien hizo cuanto: sin esto, recargar a mitad de combate vaciaba la cuenta.
+        tally: readTally(raw.tally),
     };
 }
 

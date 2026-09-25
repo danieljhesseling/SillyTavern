@@ -30,14 +30,19 @@ const RANK_LABELS = Object.fromEntries(RANKS.map(rank => [rank.id, rank.label]))
  * @param {any} input.Popup
  * @param {any} input.POPUP_TYPE
  * @param {Record<string, string>} [input.factionNames] Como se llama cada faccion, por id.
- * @returns {Promise<{accepted: string, built: string}|null>}
+ * @param {any[]} [input.bench] Idea 42: quien está en casa.
+ * @param {boolean} [input.partyFull] Si el grupo ya no admite a nadie más.
+ * @param {boolean} [input.fighting]
+ * @returns {Promise<{accepted: string, built: string, benched: string, called: string}|null>}
  */
 export async function openGuildPanel({
-    guild, board, day, purse, roster, Popup, POPUP_TYPE, factionNames = {},
+    guild, board, day, purse, roster, Popup, POPUP_TYPE, factionNames = {}, bench = [], partyFull = false, fighting = false,
 }) {
-    /** Lo único que sale de aquí: qué encargo se acepta y qué se construye. */
+    /** Lo único que sale de aquí: qué encargo se acepta, qué se construye y a quién se rota. */
     let accepted = '';
     let built = '';
+    let benched = '';
+    let called = '';
 
     const root = $('<div class="gd-root"></div>');
 
@@ -151,15 +156,50 @@ export async function openGuildPanel({
     if (roster.length === 0) {
         people.append($('<div class="gd-empty"></div>').text('No hay nadie contratado todavía.'));
     }
-    for (const member of roster) {
+    roster.forEach((member, index) => {
         const paid = String(member?.motive ?? '').toLowerCase() === 'coin';
         const row = $('<div class="gd-member"></div>');
         row.append($('<span class="gd-member-name"></span>').text(String(member?.name ?? '')));
         row.append($('<span class="gd-member-why"></span>').text(
             paid ? `por dinero · lealtad ${Number(member?.loyalty) || 0}` : 'por un vínculo'));
+        // Idea 42: cualquiera menos tú puede quedarse en casa.
+        if (index > 0 && !member?.dead) {
+            const home = $('<button class="menu_button gd-bench" type="button"></button>').text('Dejar en casa')
+                .attr('data-member', String(member?.id ?? ''))
+                .prop('disabled', fighting)
+                .attr('title', fighting ? 'No mientras peleáis.' : 'Se queda en el gremio; se le llama cuando haga falta.');
+            home.on('click', () => {
+                benched = String(member?.id ?? '');
+                popup.completeAffirmative();
+            });
+            row.append(home);
+        }
         people.append(row);
-    }
+    });
     root.append(people);
+
+    // ---- Quién está en casa (idea 42) ----------------------------------------
+    if (bench.length > 0) {
+        root.append($('<div class="gd-title"></div>').text('En casa'));
+        root.append($('<div class="gd-hint"></div>').text(
+            partyFull ? 'El grupo está lleno: deja antes a alguien en casa para llamar a otro.'
+                : 'Llamar a alguien cuesta un día: tarda en llegar.'));
+        const home = $('<div class="gd-roster gd-bench-list"></div>');
+        for (const member of bench) {
+            const row = $('<div class="gd-member"></div>');
+            row.append($('<span class="gd-member-name"></span>').text(String(member?.name ?? '')));
+            const call = $('<button class="menu_button gd-call" type="button"></button>').text('Llamar')
+                .attr('data-member', String(member?.id ?? ''))
+                .prop('disabled', partyFull || fighting);
+            call.on('click', () => {
+                called = String(member?.id ?? '');
+                popup.completeAffirmative();
+            });
+            row.append(call);
+            home.append(row);
+        }
+        root.append(home);
+    }
 
     const popup = new Popup(root, POPUP_TYPE.TEXT, '', {
         okButton: 'Cerrar',
@@ -169,5 +209,5 @@ export async function openGuildPanel({
     });
 
     await popup.show();
-    return (accepted || built) ? { accepted, built } : null;
+    return (accepted || built || benched || called) ? { accepted, built, benched, called } : null;
 }

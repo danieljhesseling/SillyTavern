@@ -39,6 +39,9 @@ export const BOND_EVENTS = {
     saved_their_life: { points: 6, label: 'Le salvaste la vida' },
     let_them_fall: { points: -5, label: 'Le dejaste caer' },
     betrayed: { points: -12, label: 'Traición' },
+    // Idea 28: lo que le parece lo que haces. Poco, pero se acumula.
+    approved: { points: 1, label: 'Le pareció bien lo que hiciste' },
+    disapproved: { points: -1, label: 'No le pareció bien lo que hiciste' },
     manual: { points: 1, label: 'Ajuste manual' },
 };
 

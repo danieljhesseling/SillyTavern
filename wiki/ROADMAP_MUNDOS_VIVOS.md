@@ -266,6 +266,210 @@ Hoy un encargo **genera** su mazmorra. Con cinco tableros escritos por mundo, el
 
 ## ✅ Hecho, para no rehacerlo
 
+### Batería 7 de [IDEAS_200](IDEAS_200.md) — 2026-09-24
+
+VERIFICACION7_PENDIENTE
+
+| Idea | Qué hace | Módulo |
+| :--- | :--- | :--- |
+| **8** Lanzar lo que hay a mano | Con una caja, un barril o una silla al lado (la media cobertura), «Lanzar lo que hay a mano» sale en las maniobras: con la Fuerza, 1d6 si le da, y la caja se rompe al caer | `combat/throwables.js` (`SCENERY`) |
+| **23** Terreno que cambia | Al empezar cada ronda, el fuego prende en lo que arde de al lado (cajas, puertas de madera y, a cielo abierto, maleza), lo deja en nada y se apaga a las tres rondas; con lluvia, se apaga. Una puerta que arde o que se abre a golpes queda rota: ya no se cierra | `board/living-terrain.js`, `terrain.js` (`breakDoor`) |
+| **28** Aprobación visible | Pagar o plantar cara, soltar o entregar a un prisionero, huir, cómo se cumple un hito y los encargos: a cada compañero le parece bien o mal según lo que busca (👍/👎), suma o resta un punto de vínculo, y su ficha dice lo último que le ha parecido | `campaign/approval.js` |
+| **30** Encargo personal | Al llegar a vínculo 3, cada compañero pide lo suyo (una deuda, una venganza, poner a salvo a alguien…). Va al tablón con su nombre, y cumplirlo cuenta el doble para el vínculo | `campaign/personal-quests.js` |
+| **32** Roces | Si a uno le parece bien y a otro mal, chocan: se dice, el narrador lo cuenta, y ese día pesa en la moral del grupo | `approval.js` (`frictionOf`), `company.js` |
+| **42** Banquillo | En el gremio se deja a alguien en casa y se le llama (tarda un día). Con el grupo lleno, el nuevo que se contrata se va a casa | `campaign/bench.js` |
+| **58** Rehacerse | En el templo se vuelven a elegir las mejoras de nivel, las que se quieran, a 30 de oro cada una | `rules/respec.js` |
+| **59** Idiomas | Cada uno habla lo de su raza (la ficha lo dice). Con alguien que habla otra lengua (`idioma` en el guion), si nadie la entiende, las tiradas de trato van con desventaja; si alguien sí, traduce | `rules/languages.js` |
+| **62** Juegos de equipo | En la ficha se guarda lo que se lleva con un nombre («Combate») y se vuelve a ello de un clic. Lo maldito se queda | `rules/equipment-sets.js` |
+| **67** El campamento | Donde no hay posada, «Acampar aquí»: fuego (abriga y deja cocinar, pero se ve), quién hace guardia, con quién se charla y buscar qué cenar. De noche puede acercarse algo: quien vigila tira Percepción, y si no lo ve, roba oro | `campaign/camp.js` |
+| **74** Estaciones | Cuatro de 56 días, en el reloj. Un camino puede pasarse solo en su estación (`estaciones` en el guion), y el tiempo cambia con ella | `world/seasons.js`, `travel.js` |
+| **87** La gente se muda o muere | Cuando una facción toma un sitio (o cae), alguno de los de allí muere y otro se va al de al lado; y de vez en cuando alguien se muda. Nunca quien necesita el hilo | `world/people-fate.js` |
+| **97** Bichos que migran | Los que dicen sus estaciones (`estaciones` en el guion) solo salen en ellas, en los encargos y en lo que se descubre | `seasons.js`, `bestiary.js` |
+| **116** Encargos que te nombran | Uno del tablón te busca a ti, por tu trasfondo: al soldado, un viejo compañero de armas; al noble, su familia | `campaign/named-contracts.js` |
+| **120** Mejorar armas | En la herrería, algo duro (un colmillo, una garra) y 80 de oro dejan el arma a +1. Y el «+1» de un arma por fin suma al ataque y al daño | `campaign/trophies.js`, `equipment.js` (`weaponBonus`) |
+| **121** Materiales de caza | Las bestias dejan pieles, colmillos, garras… Con dos pieles, el herrero hace una capa que abriga (se duerme en la nieve sin fuego) | `trophies.js` |
+| **139** El narrador ofrece objetos | `dar_objeto`: lo que el narrador pone a mano sale en la fila como «Coger: …». Entra lo que el juego conoce; lo mágico o desconocido, como una curiosidad que no hace nada | `campaign/item-offers.js` |
+| **142** Tono por escena | En la pausa: automático (en combate, tenso), tenso, cómico, sombrío o épico. Es una frase al final del prompt | `campaign/scene-tone.js` |
+| **145** Retrato en línea | Cuando habla alguien del mundo o del grupo («—dice Giles»), su párrafo lleva su cara o sus iniciales | `ui/shell/speakers.js` |
+| **163** Repartir | En la ficha, arrastrar un objeto a la cara de otro, o «Dar a…» | `rules/give-item.js` |
+| **180** Semilla compartible | En la pausa, «Compartir este mundo»: `semilla@origen`. Pegado en la semilla del taller, pone la semilla y elige el mundo de partida | `campaign/share-code.js` |
+| **186** Sonidos por acción | Golpe, crítico, fallo, puerta, monedas y subir de nivel, hechos al momento (sin archivos). Se apagan en «Sonido» | `ui/shell/action-sounds.js` |
+
+### Batería 6 de [IDEAS_200](IDEAS_200.md) — 2026-09-24
+
+Comprobada en el navegador en el paso 57 del recorrido (18 comprobaciones; la 46 en el paso 31, al subir de nivel), salvo tres cosas que van por pruebas: la caída al precipicio que se ve (189, es una animación), la noche (90: en el navegador se ha probado la niebla, que es el mismo mecanismo) y la desventaja al atacar lejos con niebla o viento (73: se ve el aviso al empezar el combate).
+
+Y tres arreglos que salieron por el camino: **la barra de SillyTavern en la pausa** (venía de antes: al pausar, sus iconos quedaban en columna por el centro de la pantalla, encima del menú, y «Opciones» no se podía pulsar), **las respuestas sugeridas salen al momento** (no aparecían hasta que pasaba otra cosa) y **una pista suelta cuenta** (una tirada que solo sumaba una pista no se guardaba, y la investigación no avanzaba nunca).
+
+| Idea | Qué hace | Módulo |
+| :--- | :--- | :--- |
+| **101** Varias formas de cumplir un hito | `pide` como lista: luchar, hablar o colarse; cualquiera lo cumple, y se apunta cuál («Cumplido (con maña)») | `plot.js` (`any`) |
+| **102** Bifurcaciones | `cambia: { cierra: [...] }`: cumplir uno cierra otros, que ya no se abren. El diario los apunta en «Caminos cerrados» | `plot.js` (`close`) |
+| **107** Investigaciones | `pide: "pistas: N"` y `pistas:` con sitio y tirada. Cada tirada buena en su sitio es una pista; el diario dice cuántas van y cuáles faltan | `plot.js` (`clues`), `cluesOf` |
+| **109** Epílogo por compañero | Al final, qué fue de cada uno: por su vínculo, si venía por el oro y si llegó vivo (el caído, con su epitafio) | `campaign/epilogues.js` |
+| **110** Secretos que se destapan | Sonsacar (Perspicacia, una vez al día): el secreto pasa a la ficha que lee el narrador y al diario. `/sonsacar Giles` | `campaign/npc-secrets.js` |
+| **144** Respuestas sugeridas | Al hablar con alguien del sitio, la fila ofrece «¿Qué se cuenta?», «¿Qué necesitas?» y sonsacarle | `ui/shell/replies.js` |
+| **4** Preparar golpe | Maniobra nueva: el primer enemigo que se te acerque antes de tu turno se lleva un golpe antes de actuar | `combat/readied.js` |
+| **24** Reacción de jefe | Un jefe contesta en el acto al que le pega, una vez por ronda. Y los jefes del guion ya son jefes en el tablero (antes se perdía la marca al importar) | `combat/boss-reaction.js` |
+| **73** El tiempo en combate | Niebla o tormenta: más allá de 30 pies, con desventaja; nieve, 60; viento, lo que se tira se desvía; lluvia, el aceite no prende. Se dice al empezar el combate | `world/visibility.js` |
+| **90** Noche en los tableros | De noche y a cielo abierto, más allá de 30 pies no se ve (60 con antorcha o farol); la niebla de guerra se cierra igual | `visibility.js` |
+| **46** Subir de nivel como momento | Además de los números, una mejora a elegir entre tres: reflejos, mano firme, piel dura, labia… Cada una se nota donde toca | `rules/level-perks.js` |
+| **54** Maestros | En pueblos y ciudades, alguien enseña un par de habilidades de tu oficio: 50 de oro y dos días | `campaign/masters.js` |
+| **65** Papeles de viaje | Guía (Supervivencia: un día menos), vigía (Percepción: se esquiva un contratiempo) y cazador (comida para todos), cada uno con su tirada. Supervivencia es habilidad nueva | `world/travel-roles.js` |
+| **129** Monturas | Mula o caballo en el establo de la posada; con montura para todos se llega antes. Comen: pienso cada semana | `world/mounts.js` |
+| **128** Dados en la taberna | A veintiuno: se apuesta, se piden dados, se planta; y se puede hacer trampa (Juego de manos). Tres partidas al día | `campaign/tavern-dice.js` |
+| **160** Cargar partida de un vistazo | Cada partida dice el día, el sitio, lo que hay entre manos y quién va (con sus caras) | `campaign/save-card.js` |
+| **181** ¿Llega al listón? | El comprobador de densidad, desde la pausa, con el encargo para el Gem listo para copiar. La herramienta usa el mismo módulo | `campaign/world-density.js` |
+| **189** Caída al precipicio | Quien cae al vacío se ve caer | CSS |
+| **192** Transiciones | El viaje se ve pasar: el sitio y los días, en una franja que se va sola | CSS |
+| **195** Letra del narrador | En la pausa: de libro, a pluma o de máquina. Es de la campaña | CSS |
+
+### Batería 5 de [IDEAS_200](IDEAS_200.md) — 2026-09-24
+
+Comprobada en el navegador en el paso 56 del recorrido (24 comprobaciones), salvo tres cosas que van por pruebas: que esconderse dé de verdad la ventaja en el golpe siguiente (11; en el navegador se ve el botón y por qué no se puede), la historia del botín (119, que sale con lo que caiga) y lo que hace un objeto maldito al ponérselo (135: resta y no se suelta; el templo sí se ha probado).
+
+Y tres arreglos que salieron por el camino, porque el recorrido los tapaba: **la muerte ya es para siempre** (un descanso largo levantaba a los muertos y seguían en la iniciativa), **por el camino se duerme y se bebe** (un viaje de cuatro días mataba de sed o de sueño aunque se saliera comido; el paso rápido sigue debiendo el sueño) y **lo ya visto del tablero se dibuja** (trampas descubiertas, el aceite que arde).
+
+| Idea | Qué hace | Módulo |
+| :--- | :--- | :--- |
+| **5** Caras en la iniciativa | Cada fila de la barra de iniciativa lleva la cara de quien actúa, o su inicial | `buildTracker` (`avatar`) |
+| **11** Esconderse | Maniobra nueva: con cobertura media o más frente a **cada** enemigo, Sigilo contra su mejor Percepción pasiva. Si sale, el próximo ataque va con ventaja y a quien se esconde se le pega con desventaja; dura hasta que ataca o hasta el final de su turno siguiente | `maneuvers.js` (`canHide`, `hideDC`) |
+| **20** Filtros del registro | Todo · Tiradas · Daño, y de quién. «Mis tiradas» es Tiradas más tu nombre | `filterLog` |
+| **122** Aceite y red | Se lanzan desde las maniobras (o `/maniobra lanzar red Goblin`). El aceite: 2d4 de fuego y la casilla arde para el primero que la pise, aunque falle; **el charco se ve en el tablero** (y con él, cualquier trampa ya descubierta, que antes no se dibujaba). La red: sujeto dos rondas. Siempre en la tienda. Y ahora **sujeto** da ventaja contra él y desventaja a sus golpes, como en 5e | `combat/throwables.js` |
+| **146** Un formato para las tiradas | «🎲 Persuasión de Bran: 15 contra CD 12 ✓ Éxito (d20 12 +3)»; ataques, daño, agarrar y empujar igual. Se acabó el «vs AC» | `rules/roll-line.js` |
+| **36** Muertes con peso | Epitafio con lo que hizo; tumba donde cayó (se ve al volver y el narrador lo sabe); lo mejor que llevaba pasa a quien más le quería. Y **la muerte ya es para siempre**: antes, un descanso largo levantaba a 1 PG a quien estaba a 0, muertos incluidos, y el muerto seguía tirando iniciativa. Ahora no descansa, no pelea, no sale en el tablero ni en las fichas de hablar | `campaign/legacy.js`, `rest.js` |
+| **199** Salón de la fama | Los caídos de todas las partidas, en el menú principal. Se guarda en los ajustes de SillyTavern, no en una campaña | `legacy.js` |
+| **37** El retirado entrena | Puesto nuevo en el gremio, **maestro de armas**: cada semana, quien va por detrás del mejor del grupo gana 150 de experiencia | `trainingFor` |
+| **45** Frase al llegar | El guion escribe una frase por confidente y sitio (`al_llegar`); se dice una vez, si va en el grupo, sin llamar al modelo | `arrivalLines` |
+| **52** Fama por pueblo | Entregar un encargo, ganar un tablero o cumplir un hito en un sitio da fama allí: «os conocen» (−5 % en la tienda), «sois alguien» (−10 %), «sois los héroes del sitio» (−15 %). El narrador lo sabe y el diario lo dice | `campaign/fame.js` |
+| **71** Paradas del camino | Un pozo, un santuario, una venta o un refugio: la sed, la vida, el hambre o el sueño. Con el azar del viaje | `roadStop` |
+| **84** El acero con la guerra | Con una facción conquistando o destruyendo, armas y armaduras +20 %; +35 % donde manda ella | `warPressure` |
+| **106** Plazos | Un hito puede tener días para cumplirse desde que se abre. Se dice en el diario; si pasa, se pierde y ocurre lo de `si_no` | `plot.js` (`within`, `late`) |
+| **111** Hitos ocultos | No salen en pantalla ni en el diario hasta que se cumplen; el diario cuenta «Secretos de la historia (1 de 2)» y el final también | `visibleOpen`, `secretsOf` |
+| **114** El presagio | Tres frases al empezar, al narrador y en el chat. Cada una se cumple con su hito, y se dice | `omensOf` |
+| **132** Reliquias | Un objeto `ligado_a` un hito o un encargo ya no cae como botín: llega al cumplirlo, una vez, con su historia. 1387 tiene diez | `campaign/relics.js` |
+| **119** Botín con historia | Lo que cae de poco común para arriba dice de quién fue: «Fue de Brunilda, que lo perdió a los dados en El Peaje Norte» | `campaign/item-lore.js` |
+| **135** Objetos malditos | Lo equipable que cae puede estar maldito, y cae sin identificar. Maldito y puesto: −2 a una característica (como una herida) y no se suelta. El templo lo mira (5 de oro) y lo quita (40) | `item-lore.js` |
+| **125** Prestamista | En la tienda: pedir 50 o 100 de oro (+25 % en 14 días) y devolverlo antes de que vengan a cobrar | `borrow`, `repay` |
+| **141** El muerto que habla | Si el narrador hace hablar a alguien que ha muerto, sale un aviso (y se puede regenerar) | `contradiction-log.js` |
+
+**Para el Gem**: los campos nuevos (`oculto`, `plazo`, `presagio`, `al_llegar` y lo que significa `ligado_a`) están en [GEM_GUIONISTA](GEM_GUIONISTA.md). La [ronda 9 de 1387](guiones/1387/ronda-9-claude.md) los usa: la escribí yo para que se vean, y el Gem la puede reescribir entera.
+
+### Batería 4 de [IDEAS_200](IDEAS_200.md), con la tienda (L5) — 2026-09-24
+
+Comprobada en el navegador en el paso 55 del recorrido (y la 198 en el 49), salvo: la soltura con un arma (55), «llegasteis tarde» por grados (117), decir el coste en las facciones rivales (104) y las fichas agrupadas (169), que van por pruebas; y «rellena los huecos» (182), que es de la herramienta.
+
+| Idea | Qué hace | Módulo |
+| :--- | :--- | :--- |
+| **L5** La tienda | En los sitios con tienda: comprar, vender y regatear. El precio sale del objeto, de lo caro que esté el sitio y de lo que os aprecie quien manda | `campaign/shop.js` |
+| **134** Género de la semana | Cada semana, lo que traiga el carro (con la semilla); quien os aprecia saca algo de la trastienda | `weeklyStock` |
+| **127** Precios que dicen por qué | «+15 %: han cerrado el paso · −10 %: Vane os aprecia · −15 %: habéis regateado» | `priceToday` |
+| **118** Vender la chatarra | Todo lo común que no lleva nadie puesto, de un clic. Lo puesto y las llaves no se venden | `junkOf` |
+| **126** Regatear | Persuasión CD 12, una vez al día en cada tienda: −15 % ese día | `haggle` |
+| **89** Fiestas | Cada pueblo tiene su día de fiesta al mes: comida gratis en la posada, −10 % en la tienda; la lista de viaje avisa si se acerca | `world/festivals.js` |
+| **113** Cartas | Quien os aprecia (+3) ofrece trabajo; quien os odia (−3) amenaza; el prestamista avisa antes del vencimiento. Se recogen en la posada | `campaign/letters.js` |
+| **117** Llegasteis tarde, por grados | A la mitad y a tres cuartos de la meta de una facción, una noticia | `clockWarnings` |
+| **104** Cadenas con coste | Lo que se gana con unos se pierde con sus enemigos, y ahora se dice | `settleFactionStake` |
+| **55** Soltura con un arma | 15 golpes con la misma arma: +1 al daño con ella | `feats.js` |
+| **61** El arma en la ficha | En el grupo de un vistazo y en la ficha del tablero | glance, `buildTokens` |
+| **137** Leer la intención | Mientras escribes «intento convencer…», sale «🎲 Persuasión»; la tirada va delante sin borrar lo escrito | `campaign/intents.js` |
+| **148** Modo ahorro | En el menú de pausa: fuera el estado del grupo, memoria del mundo a lo justo | `worldMemoryBlock` (`compact`) |
+| **149** Largo de la narración | En el menú de pausa: breve, normal o extenso, sobre lo de la ficha del narrador | `campaign/narration.js` |
+| **155** Ayuda la primera vez | Un consejo la primera vez en cada escena, al viajar y con el primer prisionero | `ui/shell/tips.js` |
+| **156** Glosario | CA, CD, ventaja, iniciativa… en llano. Tecla L o desde «¿Qué hago?» | `tips.js` |
+| **169** Fichas agrupadas | Si no caben, la última dice «+N más» y las abre todas | `action-chips.js` |
+| **172** Daltonismo | Azul y naranja en vez de verde y rojo, y bordes discontinuos en los enemigos | CSS |
+| **182** Rellena los huecos | `node tools/check-world-density.mjs <paquete> --gem` escribe el encargo para el Gem | herramienta |
+| **198** Dificultades con nombre | Historia, Veterana y De hierro en el taller, que afinan los interruptores | `DIFFICULTIES` |
+| **200** La partida en números | En el diario siempre, y al final de la partida | `campaign/stats.js` |
+
+### Batería 3 de [IDEAS_200](IDEAS_200.md) — 2026-09-24
+
+Comprobada en el navegador en el paso 54 del recorrido, salvo: empujar a lo peligroso (9), la jugada combinada (17) y el duelo (43), que dependen de dados o de una muerte y van por pruebas; y «que actúe solo» (18), que solo sale en el modo en que llevas a todo el grupo.
+
+| Idea | Qué hace | Módulo |
+| :--- | :--- | :--- |
+| **7** Prisioneros | Quien se rinde queda con el grupo: interrogarle da un rumor; entregarle donde hay tablón o templo, 10 de oro y buena fama; soltarle, nada | `campaign/prisoners.js`, `/prisionero` |
+| **9** Empujar a lo peligroso | Si detrás hay una trampa o fuego, lo pisa el empujado | `shovedInto` |
+| **10** Agarrar | Quinta maniobra: Atletismo enfrentado; el agarrado no se mueve hasta tu próximo turno | `maneuvers.js`, `heldInPlace` |
+| **17** Jugada combinada | Rematar a quien otro de los tuyos tiró al suelo esta ronda: +1d4 | `noteKnockdown`, `takeCombo` |
+| **18** Que actúe solo | En el modo en que los llevas a todos, el turno de un compañero lo juega la máquina con su postura | barra de combate |
+| **21** Estados explicados | «Agarrado: no se puede mover hasta que le suelten», en la ficha del tablero | `STATUS_ICONS` |
+| **35** Va primero a… | En la ficha del compañero: al más débil, al más cercano, a los tiradores o al jefe | `byPreference` |
+| **39** Moral del grupo | Vínculos altos y enteros, +1 a la iniciativa; hambre, heridas o luto, −1 | `campaign/company.js` |
+| **41** Oficios de campamento | Rastreador (forrajea con ventaja), sanador (cura tras descanso corto), centinela (+1 iniciativa), buscavidas (descuento del mercader), erudito (pistas un día antes) | `company.js` |
+| **43** Duelo | Si muere alguien, quien busca calma o estaba muy unido pide un día; pesa en la moral | `company.js` |
+| **57** Historia de cada uno | Desde el grupo de un vistazo: lo que ha hecho y le ha pasado, por fecha | `heroStory` |
+| **72** Atajos | A veces, al oír un rumor, alguien menciona un camino de pastores: un día menos, para siempre | `world/road.js` |
+| **77** Llaves | Puertas cerradas con llave (`L` en los mapas): con llave, con maña (Juego de manos) o a golpes; el que manda en el tablero suelta la llave | `terrain.js`, `tryUnlock` |
+| **88** Cazarrecompensas | Con una facción a −3 o menos, en el camino: pagar o plantar cara (Intimidación) | `roadEncounter` |
+| **92** Mercader ambulante | Género raro en el camino, se compra o no | `roadEncounter` |
+| **95** Crónica | El diario trae lo que ha pasado, lo último arriba; las noticias también quedan | `buildJournal` |
+| **150** Rehacer la respuesta | Bajo quien habla: «otra vez», «más corto», «más intenso» | `retryLastReply` |
+| **151** Hablar con… | La gente del sitio, no solo los tuyos, en la fila de fichas | `action-chips.js` |
+| **152** Atajos de teclado | D diario, G grupo, H ayuda, B avisos, T dados, ? chuleta | `ui/shell/shortcuts.js` |
+| **168** Historial de dados | Media, veintes, unos y cuántas salieron, con veredicto | `campaign/dice-log.js` |
+
+**Nuevo en los mapas del Gem**: `L`, puerta cerrada con llave. Y una habilidad más, **Juego de manos**.
+
+### Batería 2 de [IDEAS_200](IDEAS_200.md) — 2026-09-24
+
+Comprobada en el navegador en el paso 53 del recorrido; el flanqueo (3), los críticos con efecto (15), los rasgos (47), los apodos (44), comparar objetos (63) y las trampas a la vista (78), por pruebas (dependen de dados o de muchos combates).
+
+| Idea | Qué hace | Módulo |
+| :--- | :--- | :--- |
+| **1** Golpes al moverse | La ruta que te saca del alcance de un enemigo sale en rojo: «25 ft · te golpea Lobo» | `previewMovement`, renderizador |
+| **3** Flanqueo | Un aliado pegado al objetivo por el lado contrario da ventaja cuerpo a cuerpo. Vale para los dos bandos, y la vista previa lo cuenta | `combat/crits.js` (`isFlanked`), `attackEdge` |
+| **6** Moral | Quien no es jefe, malherido y con su bando por la mitad, puede rendirse (el cobarde antes). Si no queda nadie, se gana | `breaksMorale` |
+| **13** Rol en el icono | Bruto, tirador, guardián, escaramuzador, cobarde, lanzador o jefe, en la esquina de la ficha | `roleOf` |
+| **15** Críticos con efecto | Contundente derriba, cortante sangra (+1d6), perforante deja clavado | `critEffect` |
+| **190** Gritos de enemigos | Según cómo pelean (y el jefe, a su manera), sin tokens | `chooseEnemyBark` |
+| **188** Números flotantes | El daño sale de la ficha; el crítico, más grande | `floatOnToken` |
+| **164** Detalle de casilla | Bajo el ratón: «Casilla (2, 2) · Terreno difícil: cada casilla cuesta el doble» | `describeCell` |
+| **153** ¿Acabar el turno? | Si aún puedes atacar a alguien, pregunta antes | `confirmEndTurn` |
+| **38** Qué quiere ahora | Una línea en la ficha del compañero, primero el cuerpo y luego lo que le mueve | `campaign/feats.js` |
+| **44** Apodos | «Tres Vidas», «el Escudo», «Mano de Hierro», «Siegavidas», «Mil Cicatrices». El primero que se gana se queda | `feats.js` |
+| **47** Rasgos | Cinco tumbados de lo mismo: +1 al atacarles | `feats.js` |
+| **56** Cicatrices | Una herida curada deja marca: +1 a Intimidación, hasta +2 | `feats.js`, `skillModifier` |
+| **63** Comparar | La pantalla de victoria dice a quién le viene mejor lo que habéis sacado | `compareItem`, `bestFor` |
+| **68** Cazar y forrajear | Fuera de los pueblos: gasta un rato, tira Percepción (más fácil en el bosque) y da de comer | `campaign/forage.js`, `/forrajear` |
+| **78** Trampas a la vista | Al pasar al lado de una, la Percepción pasiva la descubre | `passiveSpot` |
+| **81** Pendientes por sitio | La lista de viaje dice «Pendiente: tu encargo · 2 encargos · 11 rumores» | `pendingByPlace` |
+| **86** Saludos con memoria | El narrador sabe qué se recuerda de vosotros en el sitio donde estáis | `worldMemoryBlock` (`here`) |
+| **91** Rumores que se enfrían | El diario dice cuándo se oyó cada uno; pasados 14 días, «ya frío» | `buildJournal` |
+| **108** Anteriormente… | Al abrir una partida jugada, una tarjeta con lo justo para retomar. No tapa nada | `buildRecap` |
+
+**Y la 27, ampliada**: seis frases por caso, sin repetir la última, y cada confidente con su carácter (oro si va por dinero; si va por el vínculo, según su oficio).
+
+### Las 20 primeras de [IDEAS_200](IDEAS_200.md) — 2026-09-24
+
+Todas con pruebas propias y comprobadas en el navegador en el paso 52 del recorrido (la 49, también en el 49; la 174 es de la herramienta y se comprueba en consola).
+
+| Idea | Qué hace | Módulo |
+| :--- | :--- | :--- |
+| **2** Vista previa del golpe | La tarjeta del enemigo dice «62 % de acertar, con ventaja (está en el suelo) · 4–11 de daño · puede tumbarlo», con las mismas cuentas que la tirada | `combat/forecast.js` |
+| **14** Intenciones | La barra de combate dice a por quién va cada enemigo, y su tarjeta también. Es el mismo plan que ejecuta su turno | `forecast.js`, `planFor` |
+| **22** Huir con precio | «Abandonar» dice antes lo que cuesta: cada enemigo pegado da un golpe al darse la vuelta (destrabarse lo evita), se deja el botín y queda en la memoria | `combat/retreat.js` |
+| **191** Pantalla de victoria | Quién hizo cuánto, quién tumbó a quién, el botín y quién cayó. No tapa: se cierra sola | `combat/tally.js` |
+| **26** Reclutar confidentes | En la posada: «Conocer a…» (el narrador cuenta su escena) y luego «Contratar» (25 de oro si va por dinero) o «Pedir que venga». Sus escenas de vínculo por fin se cuentan al subir de rango | `campaign/recruit.js` |
+| **27** Opinan | Al aceptar un encargo, hasta dos compañeros dicen lo que les parece según lo que quieren. Lo que no les importa no lo comentan | `opinionOf` en `barks.js` |
+| **34** Recuerdos compartidos | Rescates, caídas y fichajes quedan como recuerdos; el narrador lee los tres últimos y salen en las rondas de la posada | `campaign/memories.js` |
+| **49** Trasfondo | En el creador, se propone solo con lo que escribes («militar jubilado» → Soldado veterano), da competencia en dos tiradas y un contacto que el narrador conoce | `campaign/backgrounds.js` |
+| **64** Ritmo de viaje | Rápido (menos días, se llega sin dormir), normal o con cuidado (más días, la mitad de los contratiempos se esquivan) | `world/travel-choices.js` |
+| **66** Contratiempos con elección | Cada suceso que retrasa pregunta: rodear, o forzar el paso con Atletismo (si falla, daño y el tiempo igual). El `/go` escrito no pregunta | `travel-choices.js` |
+| **82** Noticias al llegar | Lo que hacen las facciones lejos se guarda y se cuenta al llegar a donde se oye | `world/news.js` |
+| **85** Consecuencias | Cada sitio tiene fortuna: cumplir allí abre un servicio al segundo; dejar caducar, lo cierra. Se ve en la exploración | `world/fortune.js` |
+| **100** Diario | Botón «Diario»: el hilo, las pistas dadas, el encargo, lo oído (con quién y adónde lleva) y lo que se recuerda | `campaign/guidance.js` |
+| **103** Pistas que escalan | A los 3 días sin avanzar, una pista que apunta; a los 6, una que dice qué hacer. Llega por boca de alguien | `guidance.js` |
+| **136** «¿Qué hago?» | Todo lo que se puede hacer ahora, junto y pulsable | `guidance.js` |
+| **138** El narrador pide tiradas | Herramienta `pedir_tirada`: sale una ficha «Tirar Persuasión (convencer a Giles) · CD 14», y el dado lo tira quien juega | `campaign/check-requests.js` |
+| **147** Tokens a la vista | Arriba, «≈3.2k por turno · sesión 41k» (y el precio si lo has puesto), en rojo si un turno pasa de 6000 | `describeMeter` |
+| **159** Bandeja de avisos | Los avisos se guardan (los repetidos juntos) y nunca hay más de tres en pantalla. Campanita con los sin ver | `ui/shell/notices.js` |
+| **162** El grupo de un vistazo | Vida, heridas, hambre y sed, estados, vínculo y oro de todos en una ventana | `notices.js` |
+| **174** Errores del guion | El conversor junta todos los errores, dice ronda, línea, causa y arreglo en castellano, y sitúa los fallos del paquete en su ronda | `campaign/guion-errors.js` |
+
+**Arreglos de paso**: el héroe no llevaba el trasfondo al grupo (salía de otra función); los relojes de las facciones también guardan el mundo en fila.
+
 ### G, M7, T1, L1–L3, C1 y C7 — 2026-09-23
 
 | Pieza | Qué hace | Lógica · pruebas | En el navegador |

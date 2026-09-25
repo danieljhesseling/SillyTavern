@@ -20,24 +20,25 @@
  * Anything unknown still shows, with a neutral mark: a condition nobody drew is a
  * condition the player forgets they have.
  *
- * @type {Record<string, {icon: string, label: string}>}
+ * @type {Record<string, {icon: string, label: string, effect: string}>}
  */
 export const STATUS_ICONS = {
-    blinded: { icon: 'fa-eye-slash', label: 'Cegado' },
-    charmed: { icon: 'fa-heart', label: 'Encantado' },
-    deafened: { icon: 'fa-ear-deaf', label: 'Ensordecido' },
-    frightened: { icon: 'fa-face-scream', label: 'Asustado' },
-    grappled: { icon: 'fa-hand-fist', label: 'Agarrado' },
-    incapacitated: { icon: 'fa-ban', label: 'Incapacitado' },
-    invisible: { icon: 'fa-ghost', label: 'Invisible' },
-    paralyzed: { icon: 'fa-bolt', label: 'Paralizado' },
-    petrified: { icon: 'fa-gem', label: 'Petrificado' },
-    poisoned: { icon: 'fa-flask', label: 'Envenenado' },
-    prone: { icon: 'fa-person-falling', label: 'Derribado' },
-    restrained: { icon: 'fa-link', label: 'Apresado' },
-    stunned: { icon: 'fa-star', label: 'Aturdido' },
-    unconscious: { icon: 'fa-bed', label: 'Inconsciente' },
-    exhaustion: { icon: 'fa-battery-quarter', label: 'Agotado' },
+    blinded: { icon: 'fa-eye-slash', label: 'Cegado', effect: 'no ve: sus ataques van con desventaja y a él se le acierta mejor' },
+    charmed: { icon: 'fa-heart', label: 'Encantado', effect: 'no puede atacar a quien le encantó' },
+    deafened: { icon: 'fa-ear-deaf', label: 'Ensordecido', effect: 'no oye nada' },
+    frightened: { icon: 'fa-face-scream', label: 'Asustado', effect: 'ataca con desventaja mientras vea lo que le asusta' },
+    grappled: { icon: 'fa-hand-fist', label: 'Agarrado', effect: 'no se puede mover hasta que le suelten' },
+    incapacitated: { icon: 'fa-ban', label: 'Incapacitado', effect: 'no puede actuar' },
+    invisible: { icon: 'fa-ghost', label: 'Invisible', effect: 'no se le ve: se le ataca con desventaja' },
+    paralyzed: { icon: 'fa-bolt', label: 'Paralizado', effect: 'ni se mueve ni actúa; los golpes de cerca son críticos' },
+    petrified: { icon: 'fa-gem', label: 'Petrificado', effect: 'convertido en piedra' },
+    poisoned: { icon: 'fa-flask', label: 'Envenenado', effect: 'ataca y tira con desventaja' },
+    prone: { icon: 'fa-person-falling', label: 'Derribado', effect: 'de cerca se le pega con ventaja; de lejos, con desventaja' },
+    restrained: { icon: 'fa-link', label: 'Apresado', effect: 'no se mueve, y se le acierta mejor' },
+    stunned: { icon: 'fa-star', label: 'Aturdido', effect: 'no actúa este turno' },
+    unconscious: { icon: 'fa-bed', label: 'Inconsciente', effect: 'en el suelo, tirando salvaciones de muerte' },
+    exhaustion: { icon: 'fa-battery-quarter', label: 'Agotado', effect: 'cansado: todo le cuesta más' },
+    bleeding: { icon: 'fa-droplet', label: 'Sangrando', effect: 'pierde vida hasta que alguien le cure' },
 };
 
 /** Shown for a condition the rule pack has but this table does not. */
@@ -80,7 +81,7 @@ export function statusMarkers(conditions) {
         // The older sheet keeps conditions as free text, comma or semicolon separated.
         : String(conditions ?? '').split(/[,;]/);
 
-    /** @type {Array<{key: string, icon: string, label: string}>} */
+    /** @type {Array<{key: string, icon: string, label: string, effect: string}>} */
     const markers = [];
     const seen = new Set();
 
@@ -98,6 +99,8 @@ export function statusMarkers(conditions) {
             icon: known?.icon ?? UNKNOWN_STATUS.icon,
             // An unknown condition keeps the name it was written with.
             label: known?.label || name,
+            // Idea 21: que se sepa qué hace, no solo cómo se llama.
+            effect: known?.effect ?? '',
         });
     }
 
@@ -118,6 +121,7 @@ export function statusMarkers(conditions) {
  * @property {boolean} defeated
  * @property {boolean} bloodied     Below half, the point where tactics usually change.
  * @property {Array<{key: string, icon: string, label: string}>} statuses
+ * @property {string} avatar       Su cara, si la tiene (idea 5). Vacío: se pinta la inicial.
  */
 
 /**
@@ -182,6 +186,7 @@ export function buildTracker({ turnOrder, currentTurnIndex, round = 1, party = [
             defeated: Boolean(actor) && hp <= 0,
             bloodied: Boolean(actor) && maxHp > 0 && hp > 0 && hp <= maxHp / 2,
             statuses: statusMarkers(conditions),
+            avatar: String(actor?.avatar ?? '').trim(),
         };
     });
 

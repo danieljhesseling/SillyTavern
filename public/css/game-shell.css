@@ -9,9 +9,11 @@
  */
 
 /* La barra superior de SillyTavern estorba a pantalla completa, y solo mientras el Shell
-   esta encendido. */
-body.game-shell-on #top-bar,
-body.game-shell-on #top-settings-holder {
+   esta encendido. En pausa vuelve, y tal cual: sin tocar su `display`. Un `revert` para
+   devolverla la dejaba en bloque en vez de en fila, con los iconos en columna por el centro
+   de la pantalla y encima del menu de pausa, que se quedaban con sus clics. */
+body.game-shell-on:not(.game-shell-paused) #top-bar,
+body.game-shell-on:not(.game-shell-paused) #top-settings-holder {
     display: none !important;
 }
 
@@ -918,12 +920,9 @@ body.game-shell-on {
     display: none;
 }
 
-/* En pausa, la barra de SillyTavern vuelve: sus paneles ya estan por encima de esta capa
-   (3005 y 4005 contra 3000), asi que se abren donde siempre sin mover nada. */
-body.game-shell-on.game-shell-paused #top-bar,
-body.game-shell-on.game-shell-paused #top-settings-holder {
-    display: revert !important;
-}
+/* En pausa, la barra de SillyTavern vuelve (arriba, al apagar su regla): sus paneles ya
+   estan por encima de esta capa (3005 y 4005 contra 3000), asi que se abren donde siempre
+   sin mover nada. */
 
 /* Por encima de todo lo que traen los paneles prestados: los controles de zoom del mapa
    (25) y hasta la capa de los dados (99999) se comian el clic del menu. Sigue por debajo
@@ -1071,4 +1070,398 @@ body.game-shell-on.game-shell-paused #top-settings-holder {
 .gs-service-btn:disabled {
     opacity: 0.45;
     cursor: default;
+}
+
+/* Idea 14: lo que haria cada enemigo si le tocase ahora. */
+.gs-intents {
+    font-size: 0.85em;
+    opacity: 0.85;
+    margin: 2px 0 6px;
+}
+
+.gs-intents .fa-eye {
+    color: #d08a86;
+}
+
+/* Idea 85: como le va a este sitio por lo que hicisteis. */
+.gs-here-fortune {
+    margin-top: 4px;
+    font-size: 0.85em;
+    font-style: italic;
+    color: #e2c27a;
+}
+
+/* Ideas 64 y 66: el ritmo del viaje y los contratiempos, en su ventana. */
+.tr-ask-hint {
+    opacity: 0.8;
+    margin-bottom: 0;
+}
+
+/* Ideas 100 y 136: el diario y la ayuda, siempre a mano junto a lo que tienes entre manos. */
+.gs-guide {
+    display: flex;
+    gap: 6px;
+    margin-left: auto;
+    flex: 0 0 auto;
+}
+
+.gs-guide-btn {
+    font-size: 0.8em;
+    padding: 2px 8px;
+    border-radius: 6px;
+    border: 1px solid rgba(214, 180, 106, 0.4);
+    background: rgba(214, 180, 106, 0.1);
+    color: inherit;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.jr-root h3,
+.hp-root h3 {
+    margin-top: 0;
+}
+
+.jr-title {
+    margin: 12px 0 4px;
+    font-weight: bold;
+    color: #e2c27a;
+}
+
+.jr-item {
+    white-space: pre-wrap;
+    margin: 2px 0 6px;
+}
+
+.hp-item {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    width: 100%;
+    margin: 3px 0;
+    text-align: left;
+}
+
+.hp-still {
+    padding: 4px 0;
+}
+
+.hp-label {
+    font-weight: 600;
+}
+
+.hp-detail {
+    font-size: 0.85em;
+    opacity: 0.75;
+}
+
+/* Idea 147: el contador de tokens. Rojizo cuando el turno sale caro. */
+.gs-meter-high {
+    border-color: rgba(208, 138, 134, 0.8);
+    color: #f0b4b0;
+}
+
+/* Idea 159: la bandeja de avisos. */
+.gs-tray-count:not(:empty) {
+    margin-left: 4px;
+    padding: 0 5px;
+    border-radius: 8px;
+    background: #a5534f;
+    font-size: 0.85em;
+}
+
+.nt-row {
+    padding: 6px 8px;
+    margin: 4px 0;
+    border-left: 3px solid rgba(214, 180, 106, 0.4);
+    background: rgba(0, 0, 0, 0.15);
+}
+
+.nt-new {
+    border-left-color: #e2c27a;
+}
+
+.nt-warning,
+.nt-error {
+    border-left-color: #d08a86;
+}
+
+.nt-head {
+    font-size: 0.85em;
+    opacity: 0.8;
+}
+
+/* Idea 162: el grupo de un vistazo. */
+.pg-row {
+    margin: 8px 0;
+    padding: 6px 8px;
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.15);
+}
+
+.pg-head {
+    display: flex;
+    gap: 12px;
+    align-items: baseline;
+}
+
+.pg-name {
+    font-weight: bold;
+    flex: 1 1 auto;
+}
+
+.pg-hp,
+.pg-gold {
+    font-size: 0.85em;
+    opacity: 0.8;
+}
+
+.pg-bar {
+    height: 5px;
+    margin: 4px 0;
+    border-radius: 3px;
+    background: rgba(0, 0, 0, 0.4);
+    overflow: hidden;
+}
+
+.pg-fill {
+    height: 100%;
+    background: #6f9a5b;
+}
+
+.pg-hurt .pg-fill {
+    background: #c9a24a;
+}
+
+.pg-down .pg-fill {
+    background: #a5534f;
+}
+
+.pg-line {
+    font-size: 0.85em;
+}
+
+.pg-total {
+    margin-top: 10px;
+    font-weight: bold;
+}
+
+/* Idea 81: lo pendiente en cada sitio, en la lista de viaje. */
+.gs-place-pending {
+    font-size: 0.8em;
+    color: #e2c27a;
+}
+
+/* Idea 150: rehacer la última respuesta. */
+.gs-retry {
+    display: flex;
+    gap: 6px;
+    margin-left: auto;
+}
+
+.gs-retry-btn {
+    font-size: 0.78em;
+    padding: 2px 8px;
+    border-radius: 6px;
+    border: 1px solid rgba(214, 180, 106, 0.35);
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    opacity: 0.8;
+}
+
+.gs-retry-btn:hover {
+    opacity: 1;
+    background: rgba(214, 180, 106, 0.12);
+}
+
+/* Idea 18: que el compañero juegue su turno. */
+.gs-btn-auto .fa-robot {
+    color: #9fd08a;
+}
+
+/* Idea 152: la chuleta de atajos. */
+.gs-keys {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 9100;
+    min-width: min(320px, calc(100vw - 32px));
+    padding: 14px 18px;
+    border-radius: 10px;
+    border: 1px solid rgba(214, 180, 106, 0.55);
+    background: rgba(24, 20, 16, 0.96);
+    color: #eee4d2;
+    cursor: pointer;
+}
+
+.gs-keys-title {
+    font-weight: bold;
+    margin-bottom: 8px;
+    color: #e2c27a;
+}
+
+.gs-keys-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin: 3px 0;
+}
+
+.gs-keys-row kbd {
+    min-width: 34px;
+    text-align: center;
+    padding: 1px 6px;
+    border-radius: 4px;
+    border: 1px solid rgba(238, 228, 210, 0.4);
+    font-family: monospace;
+}
+
+/* Ideas 39 y 57: la moral del grupo y la historia de cada uno. */
+.pg-morale {
+    margin-top: 4px;
+    font-size: 0.9em;
+}
+
+.pg-story {
+    margin-top: 4px;
+    font-size: 0.8em;
+    padding: 2px 8px;
+}
+
+/* Idea 168: el veredicto del dado. */
+.dl-verdict {
+    font-style: italic;
+    color: #e2c27a;
+}
+
+/* Idea 156: el glosario. */
+.gl-row {
+    margin: 6px 0;
+}
+
+.gl-term {
+    font-weight: bold;
+    color: #e2c27a;
+}
+
+.gl-means {
+    font-size: 0.9em;
+}
+
+/* Idea 61: lo que lleva en la mano. */
+.pg-weapon {
+    opacity: 0.85;
+}
+
+/* Ideas 148, 149 y 172: los interruptores de la partida, en una fila compacta al pie de la
+   pausa. Como botones grandes, el menú ya no cabía en pantallas bajas. */
+.gs-pause-toggles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 4px 0 8px;
+}
+
+.gs-pause-toggle {
+    flex: 1 1 auto;
+    font-size: 0.78em;
+    padding: 4px 8px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    color: inherit;
+    cursor: pointer;
+}
+
+.gs-pause-toggle.on {
+    border-color: rgba(214, 180, 106, 0.8);
+    background: rgba(214, 180, 106, 0.16);
+}
+
+/* La pausa empieza debajo de la barra de SillyTavern (que vuelve en pausa, por encima) y se
+   desplaza dentro de su propio hueco: un menu mas alto que la pantalla no puede quedar debajo
+   de la barra, que se quedaba con los clics de los botones de arriba. */
+.gs-pause {
+    top: var(--topBarBlockSize, 50px);
+    overflow-y: auto;
+    align-items: safe center;
+    padding: 12px 16px;
+    box-sizing: border-box;
+}
+
+/* Idea 192: el camino se ve pasar. */
+.tr-transition {
+    position: fixed;
+    left: 50%;
+    top: 40%;
+    transform: translate(-50%, -50%);
+    z-index: 10050;
+    padding: 14px 22px;
+    background: rgba(12, 10, 8, 0.88);
+    border: 1px solid rgba(226, 194, 122, 0.5);
+    border-radius: 10px;
+    color: #f2e3c2;
+    text-align: center;
+    pointer-events: none;
+    animation: tr-fade 1.9s ease-in-out forwards;
+}
+
+.tr-transition-title {
+    font-size: 1.1em;
+    font-weight: bold;
+    margin-bottom: 6px;
+}
+
+.tr-transition-days {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+}
+
+.tr-transition-day {
+    opacity: 0;
+    animation: tr-day 0.4s ease-out forwards;
+}
+
+@keyframes tr-day {
+    to { opacity: 1; }
+}
+
+@keyframes tr-fade {
+    0% { opacity: 0; }
+    15% { opacity: 1; }
+    80% { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+/* Idea 195: la letra del narrador. Solo en lo que dice él, no en lo que escribes tú. */
+body[data-narrator-font="libro"] #chat .mes:not([is_user="true"]) .mes_text {
+    font-family: Georgia, 'Palatino Linotype', 'Book Antiqua', serif;
+}
+
+body[data-narrator-font="pluma"] #chat .mes:not([is_user="true"]) .mes_text {
+    font-family: 'Segoe Script', 'Bradley Hand', 'Comic Sans MS', cursive;
+}
+
+body[data-narrator-font="maquina"] #chat .mes:not([is_user="true"]) .mes_text {
+    font-family: 'Courier New', Courier, monospace;
+}
+
+/* Ideas 128 y 181: la mesa de dados y el informe del mundo. */
+.td-table {
+    font-size: 1.1em;
+    font-weight: bold;
+}
+
+.wd-error {
+    color: #f0a0a0;
+}
+
+.wd-warning {
+    color: #e2c27a;
+}
+
+.ep-line {
+    font-style: italic;
 }

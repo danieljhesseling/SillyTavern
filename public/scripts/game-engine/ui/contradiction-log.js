@@ -34,10 +34,17 @@
  * @property {string} [slotLabel]
  * @property {string} [locationName]
  * @property {boolean} [combatActive]
+ * @property {Array<{name: string, day?: number}>} [dead] Quien ha muerto de verdad (idea 141).
  */
 
 /** Ways a text says somebody is dead or down. */
 const FALLEN_WORDS = '(?:cae|muere|fallece|se desploma|queda fuera de combate|es derrotad[oa]|perece)';
+
+/** Lo que dice alguien que habla (idea 141). Presente y pasado: «decía» es recordar, no hablar. */
+const SPEECH_WORDS = '(?:dice|dijo|responde|respondió|grita|gritó|susurra|susurró|pregunta|preguntó|murmura|murmuró|contesta|contestó|exclama|exclamó)';
+
+/** Lo que convierte hablar de un muerto en recordarlo: no es una contradicción. */
+const REMEMBERING = /recuerd|antes de morir|tumba|lápida|fantasma|espíritu|en sueños|sueña|soñ|epitafio/i;
 
 /** Ways a text states a hit-point total. */
 const HP_PATTERN = /([A-ZÁÉÍÓÚÑ][\wÁÉÍÓÚÑáéíóúñ' -]{1,30}?)\s+(?:se queda|queda|está|esta|baja)\s+(?:a|en|con)\s+(\d{1,3})\s*(?:PG|HP|puntos de vida)/gi;
@@ -124,6 +131,28 @@ export function findContradictions(text, facts = {}) {
             claim: clean(match[0]),
             fact: `${entry.name}: ${entry.hp}/${entry.maxHp} PG`,
             message: `La narración deja a ${entry.name} en ${claimed} PG; el motor tiene ${entry.hp}.`,
+        });
+    }
+
+    // ---- idea 141: somebody dead who speaks ----
+    for (const dead of facts.dead ?? []) {
+        const anchor = clean(dead.name).split(/\s+/).sort((a, b2) => b2.length - a.length)[0] ?? '';
+        if (anchor.length < 3) continue;
+        const escaped = anchor.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const patterns = [
+            new RegExp(`\\b${escaped}\\b[^.!?\\n]{0,30}?\\b${SPEECH_WORDS}(?![\\wáéíóúñ])`, 'i'),
+            new RegExp(`\\b${SPEECH_WORDS}\\s+${escaped}\\b`, 'i'),
+            new RegExp(`\\b${escaped}\\s*:\\s*[«"—]`, 'i'),
+        ];
+        const match = patterns.map(p => prose.match(p)).find(Boolean);
+        if (!match) continue;
+        const sentence = prose.slice(Math.max(0, (match.index ?? 0) - 80), (match.index ?? 0) + match[0].length + 40);
+        if (REMEMBERING.test(sentence)) continue;
+        found.push({
+            kind: 'muerto que habla',
+            claim: clean(match[0]),
+            fact: `${dead.name} murió${dead.day ? ` el día ${dead.day}` : ''}`,
+            message: `La narración hace hablar a ${dead.name}, que murió${dead.day ? ` el día ${dead.day}` : ''}.`,
         });
     }
 

@@ -357,6 +357,16 @@
           "title": "La última trinchera",
           "scene": "Antes de la batalla final, Bran afila la espada de su hijo por última vez. Te mira a los ojos: «Hacía años que no luchaba por algo que no fuera oro. Gracias por devolverme la honra»."
         }
+      ],
+      "arrivals": [
+        {
+          "place": "El Peaje Norte",
+          "line": "Por este peaje salió mi hijo hacia el sur. Nadie le cobró la vuelta."
+        },
+        {
+          "place": "Castillo de Vane",
+          "line": "Muros gordos y un señor flaco de palabra. He servido a muchos como él."
+        }
       ]
     },
     {
@@ -390,6 +400,16 @@
           "rank": 10,
           "title": "La guía del norte",
           "scene": "Con el deshielo, Aldara te entrega un mapa hecho a mano de unos pasos secretos hacia el sur. «Nadie me había seguido el ritmo nunca», dice. Es lo más parecido a un abrazo que vas a sacarle."
+        }
+      ],
+      "arrivals": [
+        {
+          "place": "La Granja Quemada",
+          "line": "Aquí quemaron la cabaña de mi padre. Diez años, y todavía huele a humo."
+        },
+        {
+          "place": "El Lago Helado",
+          "line": "El hielo aguanta si no te paras. Si te paras, te escucha."
         }
       ]
     },
@@ -425,6 +445,16 @@
           "title": "El juramento renovado",
           "scene": "Arthur tira su botella de licor al fuego de la posada. Se ajusta las gafas y jura mantenerte con vida hasta que acabe este maldito invierno. Esta vez le crees."
         }
+      ],
+      "arrivals": [
+        {
+          "place": "La Ermita Derruida",
+          "line": "El hermano Silas cose mejor que yo con las manos quietas. No se lo digáis."
+        },
+        {
+          "place": "Campamento Furtivo",
+          "line": "Aquí me deben tres piernas y un brazo. Ni una moneda."
+        }
       ]
     },
     {
@@ -459,6 +489,16 @@
           "title": "El nombre propio",
           "scene": "Isolda tira al río un colgante con el blasón de los Montesclaros. Renuncia al apellido y a la herencia. «Solo Isolda. Y soy de tu compañía»."
         }
+      ],
+      "arrivals": [
+        {
+          "place": "Castillo de Vane",
+          "line": "No miréis las ventanas altas. Mi padre tiene la costumbre de mirar hacia abajo."
+        },
+        {
+          "place": "El Cruce de Caminos",
+          "line": "Por aquí pasan las cartas que no llegan. Yo lo sé bien."
+        }
       ]
     },
     {
@@ -492,6 +532,16 @@
           "rank": 10,
           "title": "El muro de hierro",
           "scene": "Grimm te enseña una carta: su familia está a salvo en la capital. Ya no necesita tu plata para ellos. La dobla, se la guarda en el pecho y se pone a tu lado en la fila. «Hasta el paso», dice. Es la frase más larga que le has oído."
+        }
+      ],
+      "arrivals": [
+        {
+          "place": "El Cruce de Caminos",
+          "line": "(Grimm se para, mira el camino del sur y aprieta el dibujo que lleva en el pecho.)"
+        },
+        {
+          "place": "El Peaje Norte",
+          "line": "(Grimm escupe al ver los estandartes negros. Es lo más parecido a una frase que le habéis oído.)"
         }
       ]
     }
@@ -967,63 +1017,103 @@
       "name": "Cáliz ensangrentado de Vane",
       "type": "gear",
       "rarity": "Very Rare",
-      "description": "Oro macizo, manchado de sangre reseca. Pesa demasiado para el tamaño que tiene. Devolverlo puede comprar un perdón temporal."
+      "description": "Oro macizo, manchado de sangre reseca. Pesa demasiado para el tamaño que tiene. Devolverlo puede comprar un perdón temporal.",
+      "boundTo": {
+        "kind": "milestone",
+        "id": "el-caliz-ensangrentado"
+      }
     },
     {
       "name": "Libro de cuentas negro",
       "type": "gear",
       "rarity": "Rare",
-      "description": "Tiene las tapas forradas en piel de cerdo. Demuestra que Lord Vane lleva un año sin pagar al rey. Si sale a la luz, el castillo se amotina."
+      "description": "Tiene las tapas forradas en piel de cerdo. Demuestra que Lord Vane lleva un año sin pagar al rey. Si sale a la luz, el castillo se amotina.",
+      "boundTo": {
+        "kind": "contract",
+        "id": "e-silenciar-silas"
+      }
     },
     {
       "name": "Planos de infiltración",
       "type": "gear",
       "rarity": "Uncommon",
-      "description": "Dibujados en un cuero muy fino. Marcan un túnel de drenaje que lleva directamente a las bodegas del castillo de Vane."
+      "description": "Dibujados en un cuero muy fino. Marcan un túnel de drenaje que lleva directamente a las bodegas del castillo de Vane.",
+      "boundTo": {
+        "kind": "milestone",
+        "id": "la-nieve-manchada"
+      }
     },
     {
       "name": "Anillo de plata tosca",
       "type": "gear",
       "rarity": "Common",
-      "description": "Lleva grabado un lobo aullando. Perteneció a un soldado ahorcado por robar comida. Sirve para que los furtivos confíen en ti."
+      "description": "Lleva grabado un lobo aullando. Perteneció a un soldado ahorcado por robar comida. Sirve para que los furtivos confíen en ti.",
+      "boundTo": {
+        "kind": "contract",
+        "id": "e-el-anillo-del-desertor"
+      }
     },
     {
       "name": "Cofre de herencia enterrado",
       "type": "gear",
       "rarity": "Rare",
-      "description": "Plata de la época del imperio, desenterrada del barro de una granja quemada. Suficiente para pagar a una compañía entera un mes."
+      "description": "Plata de la época del imperio, desenterrada del barro de una granja quemada. Suficiente para pagar a una compañía entera un mes.",
+      "boundTo": {
+        "kind": "contract",
+        "id": "e-lobos-hambrientos"
+      }
     },
     {
       "name": "Acero negro de Keller",
       "type": "weapon",
       "rarity": "Rare",
       "description": "Hilda la forjadora la hizo a medida para el jugador. Está perfectamente equilibrada y no se mella ni golpeando piedra.",
-      "damageDice": "1d8"
+      "damageDice": "1d8",
+      "boundTo": {
+        "kind": "contract",
+        "id": "e-fuego-en-la-nieve"
+      }
     },
     {
       "name": "Arpón de hielo dentado",
       "type": "weapon",
       "rarity": "Uncommon",
       "description": "Huele a pescado muerto, pero sus dientes están diseñados para perforar cuero endurecido y no soltar la presa.",
-      "damageDice": "1d6"
+      "damageDice": "1d6",
+      "boundTo": {
+        "kind": "contract",
+        "id": "e-escolta-medica"
+      }
     },
     {
       "name": "Cota de escamas norteña",
       "type": "armor",
       "rarity": "Rare",
-      "description": "Arrancada del cadáver de un sargento de vanguardia. Mantiene el calor corporal mucho mejor que la chatarra del sur."
+      "description": "Arrancada del cadáver de un sargento de vanguardia. Mantiene el calor corporal mucho mejor que la chatarra del sur.",
+      "boundTo": {
+        "kind": "milestone",
+        "id": "la-vanguardia-de-keller"
+      }
     },
     {
       "name": "Frascos de boticario",
       "type": "gear",
       "rarity": "Uncommon",
-      "description": "Contienen una mezcla volátil de azufre y brea. Silas los usaba para cegar a los cobradores de deudas."
+      "description": "Contienen una mezcla volátil de azufre y brea. Silas los usaba para cegar a los cobradores de deudas.",
+      "boundTo": {
+        "kind": "contract",
+        "id": "e-hierbas-congeladas"
+      }
     },
     {
       "name": "Barrilito de pólvora negra",
       "type": "gear",
       "rarity": "Rare",
-      "description": "Robado de las reservas del norte. Si le acercas una antorcha, volará una puerta de madera maciza (o tus manos)."
+      "description": "Robado de las reservas del norte. Si le acercas una antorcha, volará una puerta de madera maciza (o tus manos).",
+      "boundTo": {
+        "kind": "contract",
+        "id": "e-robar-la-polvora"
+      }
     },
     {
       "name": "Ración de invierno",
@@ -3267,6 +3357,16 @@
           },
           "ending": "",
           "endingBy": {}
+        },
+        "within": 3,
+        "late": {
+          "reveal": [],
+          "open": [
+            "el-asalto-al-peaje"
+          ],
+          "standing": {
+            "leales-de-montesclaros": -2
+          }
         }
       },
       {
@@ -3432,6 +3532,52 @@
           "ending": "yugo-de-hierro",
           "endingBy": {}
         }
+      },
+      {
+        "id": "la-soga-de-darek",
+        "act": 1,
+        "title": "La soga de Darek",
+        "hint": "",
+        "scene": "Darek se afloja la soga del cuello para poder hablar. Lleva meses sin que nadie le pregunte nada, y lo cuenta todo: la horca de Vane, la rama que se partió, los tres días colgado del miedo. Antes de que caiga la noche, en el campamento de los furtivos ya se sabe que alguien le ha escuchado.",
+        "opens": {
+          "kind": "start"
+        },
+        "asks": {
+          "kind": "talk",
+          "npc": "Darek"
+        },
+        "changes": {
+          "reveal": [],
+          "open": [],
+          "standing": {
+            "los-lobos-del-bosque": 1
+          },
+          "ending": "",
+          "endingBy": {}
+        },
+        "hidden": true
+      },
+      {
+        "id": "el-hielo-que-escucha",
+        "act": 1,
+        "title": "El hielo que escucha",
+        "hint": "",
+        "scene": "El lago cruje bajo las botas, y aguanta. En el centro, bajo el hielo, hay una cara: un soldado de otra guerra, con los ojos abiertos y el yelmo todavía puesto. En el valle nadie cruza el lago. Ahora vosotros sí.",
+        "opens": {
+          "kind": "start"
+        },
+        "asks": {
+          "kind": "arrive",
+          "place": "El Lago Helado"
+        },
+        "changes": {
+          "reveal": [],
+          "open": [],
+          "standing": {},
+          "ending": "",
+          "endingBy": {}
+        },
+        "hidden": true
       }
     ],
     "endings": {
@@ -3447,6 +3593,20 @@
         "title": "La anarquía del barro",
         "scene": "No hay reyes en el valle de Vane. Karl el Sordo y los suyos han pasado a cuchillo a los nobles y han echado a los invasores. El castillo es una ruina saqueada donde los campesinos se reparten el grano de los señores. No hay bolsa de oro para ti: un abrazo tosco, una buena armadura arrancada a un oficial de Keller y un caballo para cruzar el paso. Dejas atrás un lugar sin ley, libre pero hambriento, y una leyenda sobre el lobo solitario que destrozó una corona."
       }
-    }
+    },
+    "omens": [
+      {
+        "text": "El oro que no es tuyo pesará más que la nieve.",
+        "milestone": "el-invierno-cierra-el-paso"
+      },
+      {
+        "text": "Del norte bajará el hierro, y el peaje sangrará dos veces.",
+        "milestone": "el-asalto-al-peaje"
+      },
+      {
+        "text": "Cuando el barro vuelva a ser barro, tres voces pedirán tu espada.",
+        "milestone": "el-ultimatum"
+      }
+    ]
   }
 }

@@ -145,6 +145,7 @@ const RULES = getActiveRuleset();
 /**
  * @typedef {Object} EnemyInstance
  * @property {string} instanceId - Unique per-encounter instance id
+ * @property {boolean} [boss] - Un jefe del guion: contesta una vez por ronda y no se rinde (idea 24).
  * @property {string} templateId - References EnemyTemplate.id
  * @property {string} name - Display name (may include index, e.g. "Goblin 2")
  * @property {string} avatar

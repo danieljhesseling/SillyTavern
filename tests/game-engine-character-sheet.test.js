@@ -110,7 +110,8 @@ describe('lo que lleva puesto', () => {
 
     test('lo que carga, con su peso', () => {
         expect(sheet().inventory).toEqual([
-            { name: 'Cuerda de seda', type: 'gear', weight: 2.5, equipped: false },
+            // Con su id, para poder dárselo a otro (idea 163); sin id en la ficha, vacío.
+            { id: '', name: 'Cuerda de seda', type: 'gear', weight: 2.5, equipped: false },
         ]);
     });
 });

@@ -237,3 +237,30 @@ export function splitFixedFromConversation(blocks) {
     const total = fixed + conversation;
     return { fixed, conversation, ratio: total ? fixed / total : 0 };
 }
+
+/** A partir de aqui un turno se marca como caro (idea 147). */
+export const TURN_WARN_TOKENS = 6000;
+
+/**
+ * El contador que se ve mientras se juega: lo que ha costado el ultimo turno y la sesion.
+ *
+ * Sin turnos todavia no dice nada: un «0 tokens» parece una medida y no lo es.
+ *
+ * @param {{totalTokens: number, blocks: Array<{label: string, tokens: number}>}|null} lastTurn
+ * @param {{turns: number, promptTokens: number}} session
+ * @param {number} [pricePerMillion] Si quien juega ha puesto su precio.
+ * @returns {{text: string, title: string, high: boolean}|null}
+ */
+export function describeMeter(lastTurn, session, pricePerMillion = 0) {
+    if (!lastTurn || !(Number(lastTurn.totalTokens) > 0)) return null;
+    const k = (/** @type {number} */ n) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(Math.round(n)));
+    const turn = Number(lastTurn.totalTokens) || 0;
+    const spend = estimateSpend(/** @type {any} */ (session), pricePerMillion);
+    const money = spend.spend > 0 ? ` · ${spend.spend.toFixed(spend.spend < 0.1 ? 3 : 2)} €` : '';
+    const top = (lastTurn.blocks ?? []).slice(0, 3).map(b => `${b.label}: ${k(b.tokens)}`).join(', ');
+    return {
+        text: `≈${k(turn)} por turno · sesión ${k(Number(session?.promptTokens) || 0)}${money}`,
+        title: `Lo que se envió en el último turno, estimado. Lo más grande: ${top}. Pulsa para ver el desglose.`,
+        high: turn >= TURN_WARN_TOKENS,
+    };
+}

@@ -28,6 +28,7 @@ import { describeNeeds } from '../../rules/needs.js';
 import { readDeathSaves, isDying } from '../../rules/death-saves.js';
 import { levelForXp } from '../../rules/level-up.js';
 import { armourClassOf, describeArmour } from '../../rules/equipment.js';
+import { shownName } from '../../campaign/item-lore.js';
 
 /** Las seis, en el orden en que se leen en una hoja de personaje. */
 export const SHEET_ABILITIES = [
@@ -149,7 +150,10 @@ export function buildCharacterSheet({ member, slotInfo = {}, abilities = [], xpT
 
         // Lo que lleva encima, con su peso: es lo que decide si puedes coger una cosa mas.
         inventory: (Array.isArray(member?.items) ? member.items : []).map(item => ({
-            name: String(item?.name ?? ''),
+            // Idea 163: para dárselo a otro.
+            id: String(item?.id ?? ''),
+            // Idea 135: lo no identificado lo dice.
+            name: shownName(item),
             type: String(item?.type ?? ''),
             weight: number(item?.weight),
             equipped: Boolean(item?.equipped),

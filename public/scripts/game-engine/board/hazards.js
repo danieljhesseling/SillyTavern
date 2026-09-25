@@ -323,3 +323,33 @@ export function describeHazard(hazard) {
     if (text(hazard.note)) bits.push(text(hazard.note));
     return bits.join(' · ');
 }
+
+/**
+ * Ver una trampa antes de pisarla (idea 78).
+ *
+ * Quien pasa al lado de una trampa armada que no se ha visto la ve si su Percepción pasiva
+ * (10 más lo que sume) llega a lo que cuesta verla. Sin tirar nada ni pulsar nada: es lo
+ * que hace que andar con cuidado —o llevar a alguien atento— sirva de algo.
+ *
+ * @param {any} board
+ * @param {{x: number, y: number}} cell Donde está ahora.
+ * @param {number} passive Percepción pasiva.
+ * @param {number} [radius] Cuántas casillas alrededor.
+ * @returns {{spotted: any[], hazards: any[]}}
+ */
+export function passiveSpot(board, cell, passive, radius = 1) {
+    const all = hazardsOf(board);
+    /** @type {any[]} */
+    const spotted = [];
+    const next = all.map(hazard => {
+        // Lo que no esta en una casilla (un suceso de ronda) no se ve pasando al lado.
+        if (!hazard.armed || hazard.seen || !(hazard.x >= 0 && hazard.y >= 0)) return hazard;
+        const near = Math.max(Math.abs(number(hazard.x, -99) - number(cell?.x, 0)), Math.abs(number(hazard.y, -99) - number(cell?.y, 0)));
+        // La de debajo ya se ha pisado; esto es para las de al lado.
+        if (near === 0 || near > radius) return hazard;
+        if (number(passive, 10) < hazard.spotDC) return hazard;
+        spotted.push(hazard);
+        return { ...hazard, seen: true };
+    });
+    return { spotted, hazards: next };
+}

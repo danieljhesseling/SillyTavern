@@ -6,7 +6,7 @@ import {
 
 describe('el estado', () => {
     test('lo que no existe se lee vacío', () => {
-        expect(readManeuvers(undefined)).toEqual({ dodging: [], disengaged: [], helped: [] });
+        expect(readManeuvers(undefined)).toEqual({ dodging: [], disengaged: [], helped: [], combo: null, hidden: [] });
     });
 
     test('esquivar y destrabarse se apuntan una vez', () => {
@@ -36,8 +36,8 @@ describe('el estado', () => {
 describe('judgeManeuvers', () => {
     const enemies = [{ id: 'g', name: 'Goblin', distanceFeet: 5 }, { id: 'o', name: 'Orco', distanceFeet: 20 }];
 
-    test('las cuatro, y empujar solo a quien tienes pegado', () => {
-        const list = judgeManeuvers({ hasAction: true, enemies });
+    test('todas, y empujar solo a quien tienes pegado', () => {
+        const list = judgeManeuvers({ hasAction: true, enemies, hide: { ok: true, reason: '' } });
         expect(list.map(m => m.id)).toEqual(Object.keys(MANEUVERS));
         const shove = list.find(m => m.id === 'empujar');
         expect(shove?.targets).toEqual([{ id: 'g', name: 'Goblin' }]);

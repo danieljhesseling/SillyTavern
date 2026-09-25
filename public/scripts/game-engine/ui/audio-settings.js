@@ -34,6 +34,10 @@ export async function openAudioSettings({ Popup, POPUP_TYPE }) {
     const enabled = $('<input type="checkbox" />').prop('checked', settings.enabled);
     root.append($('<label class="as-enabled"></label>').append(enabled).append(
         $('<span></span>').text(' Sonido del Modo Juego encendido')));
+    // Idea 186: el golpe, el fallo, la puerta. No traen archivos: se hacen al momento.
+    const effects = $('<input type="checkbox" class="as-effects" />').prop('checked', settings.effects);
+    root.append($('<label class="as-enabled"></label>').append(effects).append(
+        $('<span></span>').text(' Sonidos de cada acción (golpe, fallo, puerta, monedas)')));
 
     /** @type {Record<string, JQuery>} */
     const inputs = {};
@@ -96,6 +100,7 @@ export async function openAudioSettings({ Popup, POPUP_TYPE }) {
         enabled: enabled.prop('checked'),
         volume: Number(volume.val()) / 100,
         tracks,
+        effects: effects.prop('checked'),
     });
 
     return describeAudio(saved);

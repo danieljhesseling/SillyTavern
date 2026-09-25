@@ -43,6 +43,29 @@ export const MANEUVERS = {
         description: 'Distraes a un enemigo a tu lado: el próximo ataque del grupo contra él tiene ventaja.',
         needsTarget: true,
     },
+    // Idea 10: agarrar. Atletismo contra el suyo; si ganas, no se mueve hasta tu próximo
+    // turno. Y un agarrado que empujas no tiene a dónde escapar.
+    agarrar: {
+        label: 'Agarrar',
+        icon: 'fa-hand-back-fist',
+        description: 'Atletismo contra el suyo. Si ganas, no se mueve hasta tu próximo turno.',
+        needsTarget: true,
+    },
+    // Idea 11: esconderse. Solo con algo delante de cada enemigo que mira; Sigilo contra la
+    // mejor Percepción pasiva de ellos. Si no te ven, tu próximo ataque va con ventaja.
+    esconderse: {
+        label: 'Esconderse',
+        icon: 'fa-user-secret',
+        description: 'Tras cobertura: Sigilo contra su Percepción. Si no te ven, tu próximo ataque va con ventaja.',
+        needsTarget: false,
+    },
+    // Idea 4: preparar un golpe. El primero que se te acerque se lo lleva antes de actuar.
+    preparar: {
+        label: 'Preparar golpe',
+        icon: 'fa-hourglass-half',
+        description: 'Hasta tu próximo turno: el primer enemigo que se te acerque se lleva un golpe antes de hacer nada.',
+        needsTarget: false,
+    },
 };
 
 /**
@@ -50,6 +73,10 @@ export const MANEUVERS = {
  * @property {string[]} dodging     Quién se está cubriendo, hasta su próximo turno.
  * @property {string[]} disengaged  Quién se puede mover sin pagar, este turno.
  * @property {Array<{targetId: string, by: string}>} helped A quién le han abierto la guardia.
+ * @property {{targetId: string, by: string, round: number}|null} [combo] A quién ha tirado al
+ *   suelo alguien del grupo esta ronda: el siguiente de los tuyos que le pegue, suma (idea 17).
+ * @property {Array<{id: string, fresh: boolean}>} [hidden] Quién está escondido (idea 11).
+ *   `fresh` es que se escondió en su turno de ahora: aguanta hasta el final del siguiente.
  */
 
 /**
@@ -65,6 +92,14 @@ export function readManeuvers(raw) {
             ? raw.helped
                 .filter((/** @type {any} */ h) => h && h.targetId != null)
                 .map((/** @type {any} */ h) => ({ targetId: String(h.targetId), by: String(h.by ?? '') }))
+            : [],
+        combo: raw?.combo && raw.combo.targetId != null
+            ? { targetId: String(raw.combo.targetId), by: String(raw.combo.by ?? ''), round: Math.floor(Number(raw.combo.round) || 0) }
+            : null,
+        hidden: Array.isArray(raw?.hidden)
+            ? raw.hidden
+                .filter((/** @type {any} */ h) => h && h.id != null)
+                .map((/** @type {any} */ h) => ({ id: String(h.id), fresh: Boolean(h.fresh) }))
             : [],
     };
 }
@@ -86,6 +121,12 @@ export function startTurn(raw, actorId) {
         dodging: state.dodging.filter(who => who !== id),
         disengaged: state.disengaged.filter(who => who !== id),
         helped: state.helped.filter(h => h.by !== id),
+        combo: state.combo,
+        // Escondido en este turno: aguanta el siguiente, para poder atacar desde ahí. Si
+        // tampoco entonces ataca, al empezar el otro ya le han visto.
+        hidden: (state.hidden ?? [])
+            .filter(h => h.id !== id || h.fresh)
+            .map(h => (h.id === id ? { id, fresh: false } : h)),
     };
 }
 
@@ -93,7 +134,7 @@ export function startTurn(raw, actorId) {
  * Apuntar una maniobra hecha.
  *
  * @param {any} raw
- * @param {'esquivar'|'destrabarse'|'ayudar'} kind
+ * @param {'esquivar'|'destrabarse'|'ayudar'|'esconderse'} kind
  * @param {string} actorId
  * @param {string} [targetId]
  * @returns {ManeuverState}
@@ -107,7 +148,64 @@ export function recordManeuver(raw, kind, actorId, targetId = '') {
         state.helped = state.helped.filter(h => h.targetId !== String(targetId));
         state.helped.push({ targetId: String(targetId), by: id });
     }
+    if (kind === 'esconderse') state.hidden = [...(state.hidden ?? []).filter(h => h.id !== id), { id, fresh: true }];
     return state;
+}
+
+/**
+ * Si alguien está escondido ahora mismo (idea 11).
+ *
+ * @param {any} raw
+ * @param {string} id
+ * @returns {boolean}
+ */
+export function isHidden(raw, id) {
+    return (readManeuvers(raw).hidden ?? []).some(h => h.id === String(id));
+}
+
+/**
+ * Dejar de estar escondido: al atacar, o cuando le han visto.
+ *
+ * @param {any} raw
+ * @param {string} id
+ * @returns {ManeuverState}
+ */
+export function revealHidden(raw, id) {
+    const state = readManeuvers(raw);
+    return { ...state, hidden: (state.hidden ?? []).filter(h => h.id !== String(id)) };
+}
+
+/**
+ * Si hay dónde esconderse: algo delante de **cada** enemigo que mira (idea 11).
+ *
+ * Con que uno solo te vea de lleno, no hay escondite que valga. La cobertura que cuenta es
+ * la media o más (2 de CA): detrás de una silla no se esconde nadie.
+ *
+ * @param {Array<{name: string, cover: number, sees?: boolean}>} watchers Cada enemigo en pie,
+ *   con la cobertura que tienes frente a él y si tiene línea de visión.
+ * @returns {{ok: boolean, reason: string}}
+ */
+export function canHide(watchers) {
+    const looking = (watchers || []).filter(w => w.sees !== false);
+    if ((watchers || []).length === 0) return { ok: false, reason: 'No hay nadie de quien esconderse.' };
+    const exposed = looking.filter(w => Number(w.cover) < 2);
+    if (exposed.length > 0) {
+        return { ok: false, reason: `${exposed[0].name} te ve de lleno: hace falta algo delante (mesa, carro, columna).` };
+    }
+    return { ok: true, reason: '' };
+}
+
+/**
+ * Lo que hay que sacar para esconderse: la mejor Percepción pasiva de quien mira.
+ *
+ * @param {Array<{wisdom?: number, perception?: number}>} watchers
+ * @returns {number}
+ */
+export function hideDC(watchers) {
+    const passive = (/** @type {any} */ w) => (Number.isFinite(Number(w?.perception))
+        ? 10 + Number(w.perception)
+        : 10 + Math.floor(((Number(w?.wisdom) || 10) - 10) / 2));
+    return Math.max(10, ...(watchers || []).map(passive));
 }
 
 /**
@@ -116,9 +214,10 @@ export function recordManeuver(raw, kind, actorId, targetId = '') {
  * @param {Object} input
  * @param {boolean} input.hasAction
  * @param {Array<{id: string, name: string, distanceFeet: number}>} input.enemies
+ * @param {{ok: boolean, reason: string}} [input.hide] Si hay dónde esconderse (`canHide`).
  * @returns {Array<{id: string, label: string, icon: string, detail: string, enabled: boolean, needsTarget: boolean, targets: Array<{id: string, name: string}>}>}
  */
-export function judgeManeuvers({ hasAction, enemies }) {
+export function judgeManeuvers({ hasAction, enemies, hide = { ok: false, reason: 'No hay dónde esconderse.' } }) {
     const close = (enemies || []).filter(e => Number(e.distanceFeet) <= MELEE_FEET);
     const targets = close.map(e => ({ id: String(e.id), name: String(e.name) }));
 
@@ -126,6 +225,7 @@ export function judgeManeuvers({ hasAction, enemies }) {
         let reason = '';
         if (!hasAction) reason = 'La acción de este turno ya está gastada.';
         else if (maneuver.needsTarget && targets.length === 0) reason = 'No tienes a ningún enemigo pegado.';
+        else if (id === 'esconderse' && !hide?.ok) reason = hide?.reason || 'No hay dónde esconderse.';
 
         return {
             id,
@@ -151,9 +251,13 @@ export function judgeManeuvers({ hasAction, enemies }) {
  * @param {number} input.distanceFeet
  * @param {any} [input.maneuvers]
  * @param {boolean} [input.byParty] Si ataca el grupo: la ayuda solo vale para los tuyos.
- * @returns {{mode: 'advantage'|'disadvantage'|'normal', reasons: string[], usesHelp: boolean}}
+ * @param {boolean} [input.flanked] Si hay un aliado del atacante al otro lado (idea 3).
+ * @param {string} [input.attackerId] Quién ataca: si estaba escondido, ataca con ventaja (idea 11).
+ * @param {string[]} [input.hindered] Lo que estorba desde fuera: la niebla, la noche, el viento
+ *   (ideas 73 y 90, `visibilityPenalties`). Cada cosa es una razón de desventaja.
+ * @returns {{mode: 'advantage'|'disadvantage'|'normal', reasons: string[], usesHelp: boolean, usesHidden: boolean}}
  */
-export function attackEdge({ targetId, targetConditions = [], attackerConditions = [], distanceFeet, maneuvers = null, byParty = false }) {
+export function attackEdge({ targetId, targetConditions = [], attackerConditions = [], distanceFeet, maneuvers = null, byParty = false, flanked = false, attackerId = '', hindered = [] }) {
     const state = readManeuvers(maneuvers);
     const id = String(targetId);
     const has = (/** @type {string[]} */ list, /** @type {string} */ name) =>
@@ -170,13 +274,23 @@ export function attackEdge({ targetId, targetConditions = [], attackerConditions
         else down.push('está en el suelo, y de lejos cuesta');
     }
     if (has(attackerConditions, 'Prone')) down.push('ataca desde el suelo');
+    // Sujeto (una red, un golpe que le clava): no esquiva, y pega mal (5e).
+    if (has(targetConditions, 'Restrained')) up.push('está sujeto');
+    if (has(attackerConditions, 'Restrained')) down.push('ataca sujeto');
     const usesHelp = byParty && state.helped.some(h => h.targetId === id);
     if (usesHelp) up.push('le han abierto la guardia');
+    if (flanked && Number(distanceFeet) <= MELEE_FEET) up.push('lo tenéis flanqueado');
+    // Idea 11: quien sale de su escondite pega primero; a quien no se ve, se le pega mal.
+    const usesHidden = Boolean(attackerId) && (state.hidden ?? []).some(h => h.id === String(attackerId));
+    if (usesHidden) up.push('no le ven venir');
+    if ((state.hidden ?? []).some(h => h.id === id)) down.push('no se le ve bien');
+    // Ideas 73 y 90: la niebla, la noche o el viento.
+    for (const reason of Array.isArray(hindered) ? hindered : []) if (reason) down.push(String(reason));
 
     const mode = up.length > 0 && down.length === 0 ? 'advantage'
         : down.length > 0 && up.length === 0 ? 'disadvantage'
             : 'normal';
-    return { mode, reasons: [...up, ...down], usesHelp };
+    return { mode, reasons: [...up, ...down], usesHelp, usesHidden };
 }
 
 /**
@@ -250,4 +364,36 @@ export function resolveShove({ from, target, attackTotal, defenseTotal, isFree, 
     if (moves && isChasm(to.x, to.y)) return { success: true, pushedTo: to, prone: false, falls: true };
     if (moves && isFree(to.x, to.y)) return { success: true, pushedTo: to, prone: false, falls: false };
     return { success: true, pushedTo: null, prone: true, falls: false };
+}
+
+/** Lo que suma pegar a quien un compañero acaba de tirar al suelo (idea 17). */
+export const COMBO_DICE = '1d4';
+
+/**
+ * Apuntar que alguien del grupo ha tirado a un enemigo al suelo esta ronda.
+ *
+ * @param {any} raw
+ * @param {string} targetId
+ * @param {string} by
+ * @param {number} round
+ * @returns {ManeuverState}
+ */
+export function noteKnockdown(raw, targetId, by, round) {
+    return { ...readManeuvers(raw), combo: { targetId: String(targetId), by: String(by), round: Math.floor(Number(round) || 0) } };
+}
+
+/**
+ * Si este golpe remata la jugada de otro: el enemigo lo tiró al suelo otro de los tuyos, en
+ * esta misma ronda. Se gasta al usarse.
+ *
+ * @param {any} raw
+ * @param {{targetId: string, attackerId: string, round: number}} blow
+ * @returns {{combo: boolean, by: string, state: ManeuverState}}
+ */
+export function takeCombo(raw, { targetId, attackerId, round }) {
+    const state = readManeuvers(raw);
+    const combo = state.combo;
+    const fits = Boolean(combo) && combo?.targetId === String(targetId) && combo?.by !== String(attackerId)
+        && combo?.round === Math.floor(Number(round) || 0);
+    return { combo: fits, by: fits ? String(combo?.by) : '', state: fits ? { ...state, combo: null } : state };
 }

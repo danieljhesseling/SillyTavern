@@ -88,7 +88,9 @@ export function getMapLegend() {
     const legend = { '.': 'suelo transitable' };
     for (const [char, cell] of Object.entries(ASCII_TERRAIN)) {
         const base = names[cell.type] ?? cell.type;
-        legend[char] = cell.type === 'door' ? `${base}${cell.open ? ' abierta' : ' cerrada'}` : base;
+        legend[char] = cell.type === 'door'
+            ? `${base}${cell.open ? ' abierta' : /** @type {any} */ (cell).locked ? ' cerrada con llave (se abre con una llave, con maña o a golpes; el jefe del tablero suelta la llave)' : ' cerrada'}`
+            : base;
     }
     return legend;
 }
@@ -157,6 +159,7 @@ function buildSectionSchemas() {
             name: { type: 'string', description: 'Nombre de la campaña o del libro.' },
             genre: { type: 'string' },
             synopsis: { type: 'string', description: 'Un párrafo sobre el mundo.' },
+            season: { type: 'string', description: 'La estación en la que empieza: primavera, verano, otono o invierno. Cada una dura 56 días. Sin nada, otoño.' },
             factions: {
                 type: 'array',
                 items: {
@@ -263,6 +266,7 @@ function buildSectionSchemas() {
                     description: 'Comportamiento táctico. Solo estos cuatro.',
                 },
                 attackRangeFeet: { type: 'integer', description: '5 en cuerpo a cuerpo, 30 a 120 a distancia.' },
+                seasons: { type: 'array', items: { type: 'string' }, description: 'Si migra: las estaciones en que anda (primavera, verano, otono, invierno). Fuera de ellas no sale. Sin nada, todo el año.' },
                 abilities: {
                     type: 'array',
                     items: { type: 'string' },
@@ -305,6 +309,14 @@ function buildSectionSchemas() {
                 damageType: { type: 'string', description: 'Solo las armas: cortante, perforante…' },
                 slot: { type: 'string', description: 'Dónde se equipa, si se equipa.' },
                 description: { type: 'string' },
+                boundTo: {
+                    type: 'object',
+                    description: 'Reliquia (idea 132): llega al cumplir ese hito o al entregar ese encargo, una vez, y nunca cae como botín.',
+                    properties: {
+                        kind: { type: 'string', enum: ['milestone', 'contract'] },
+                        id: { type: 'string' },
+                    },
+                },
             },
         },
     };
@@ -320,6 +332,14 @@ function buildSectionSchemas() {
                 description: { type: 'string' },
                 arcana: { type: 'string', description: 'Sabor, como en Persona. No cambia ninguna regla.' },
                 initialBondPoints: { type: 'integer', description: 'Puntos de vínculo de partida. 0 es lo normal.' },
+                arrivals: {
+                    type: 'array',
+                    description: 'Idea 45: lo que dice al llegar a un sitio, una vez, si va en el grupo.',
+                    items: {
+                        type: 'object',
+                        properties: { place: { type: 'string' }, line: { type: 'string' } },
+                    },
+                },
             },
         },
     };

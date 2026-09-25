@@ -74,29 +74,41 @@ export function recordDeed(deeds, day, text) {
  * @param {any[]} [input.factions]
  * @param {any} [input.debt]
  * @param {string} [input.focus] Lo que el grupo tiene entre manos (el hito abierto del hilo).
+ * @param {string[]} [input.memories] Lo que el grupo recuerda haber vivido junto, ya escrito.
+ * @param {{place: string, lines: string[]}|null} [input.here] Lo que se recuerda del grupo en
+ *   este sitio: con eso la gente de aqui saluda sabiendo quienes sois (idea 86).
+ * @param {boolean} [input.compact] Modo ahorro (idea 148): lo justo, menos lineas.
  * @param {number} input.today
  * @returns {string} Vacío si no hay nada que contar.
  */
-export function worldMemoryBlock({ deeds = [], factions = [], debt = null, focus = '', today }) {
+export function worldMemoryBlock({ deeds = [], factions = [], debt = null, focus = '', today, memories = [], here = null, compact = false }) {
     /** @type {string[]} */
     const lines = [];
 
     // Primero lo que tienen entre manos: es hacia donde el narrador tiene que empujar.
     if (String(focus).trim()) lines.push(`- Lo que tienen entre manos: ${String(focus).trim()}`);
 
-    const recent = readDeeds(deeds).slice(-DEEDS_TOLD);
+    const recent = readDeeds(deeds).slice(compact ? -1 : -DEEDS_TOLD);
     for (const deed of recent) {
         const ago = Math.max(0, Math.floor(Number(today) || 0) - deed.day);
         lines.push(`- ${ago === 0 ? 'Hoy' : `Hace ${ago} día(s)`}: ${deed.text}`);
     }
 
     for (const faction of readFactions(factions)) {
-        if (faction.reputation === 0) continue;
+        // En modo ahorro solo cuenta quien os tiene de verdad en cuenta, para bien o para mal.
+        if (faction.reputation === 0 || (compact && Math.abs(faction.reputation) < 2)) continue;
         lines.push(`- ${faction.name}: ${describeStanding(faction.reputation)}.`);
     }
 
     const owed = describeDebt(debt, today);
     if (owed) lines.push(`- ${owed}`);
+
+    // Lo que aqui se sabe de vosotros: la gente de este sitio saluda con eso.
+    const local = (here?.lines ?? []).filter(l => String(l).trim()).slice(0, compact ? 1 : 3);
+    if (here?.place && local.length > 0) lines.push(`- En ${here.place} se acuerdan: ${local.join(' ')}`);
+
+    // Lo que vivieron juntos: los compañeros lo sacan, y el narrador puede citarlo.
+    for (const memory of memories.filter(m => String(m).trim()).slice(compact ? -1 : 0)) lines.push(`- Recuerdan: ${String(memory).trim()}`);
 
     if (lines.length === 0) return '';
     return [

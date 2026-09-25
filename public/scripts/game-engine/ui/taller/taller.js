@@ -27,13 +27,14 @@ import { drawStep } from './paso.js';
 import { getTemplateOptions } from '../../campaign/starter-templates.js';
 import { uniqueWorldName } from '../../campaign/campaign-worlds.js';
 import { VERBOSITY, DEFAULT_VERBOSITY } from '../../campaign/narrator.js';
-import { MORTALITY, SAVES, DEFAULT_SURVIVAL } from '../../rules/mortality.js';
+import { MORTALITY, SAVES, DEFAULT_SURVIVAL, DIFFICULTIES, difficultyOf } from '../../rules/mortality.js';
 import { GOALS, describeStanding, STANDING } from '../../campaign/factions.js';
 import { racesOf, kindsOf, describeKin } from '../../compendio/kin.js';
 import { rollFactions } from '../../campaign/factions.js';
 import { writeVillage } from '../../compendio/people.js';
 import { createSeededRandom } from '../../combat/seeded-random.js';
 import { derive } from '../../campaign/seed.js';
+import { isShareCode, readShareCode } from '../../campaign/share-code.js';
 import { nameAndAbility, asAbility } from '../../compendio/skills.js';
 
 /** Como se llama cada forma de tablero, para no ensenar `rooms` a quien juega. */
@@ -695,6 +696,9 @@ export async function askTaller({
             }];
         }
 
+        // Idea 180: pegar un código de mundo en la semilla elige también de dónde parte.
+        /** @type {(id: string) => void} */
+        let pickWorld = () => {};
         drawStep(body, {
             title: 'El mundo',
             hint: 'Lo que el mundo es antes de que nadie entre en él.',
@@ -723,7 +727,7 @@ export async function askTaller({
                         : 'Lo que no escribas lo decide ella. Escribe la de alguien para jugar su mundo exacto.',
                 },
             ],
-            onPick: (id) => {
+            onPick: pickWorld = (id) => {
                 if (id === 'generated') {
                     void askGenerated();
                     return;
@@ -757,6 +761,14 @@ export async function askTaller({
                 void carryPack(world);
             },
             onWrite: (key, value) => {
+                // Idea 180: «semilla@origen» pone la semilla y elige el mundo o la plantilla.
+                if (key === 'seed' && isShareCode(value)) {
+                    const code = readShareCode(value);
+                    state = writeField(state, 'seed', code.seed);
+                    if (cards.some(card => text(card.id) === code.origin) && !isPicked(state, 'mundo', code.origin)) pickWorld(code.origin);
+                    else draw();
+                    return;
+                }
                 state = writeField(state, key, value);
                 if (key !== 'worldName') return;
                 followWorldName();
@@ -1554,7 +1566,12 @@ export async function askTaller({
             hint: 'Todo esto se puede cambiar luego en /rules, y viaja con la campaña si la '
                 + 'exportas. Cada interruptor apaga algo que de verdad corre.',
             formTitle: 'Cuánto duele perder',
-            cards: [],
+            // Idea 198: tres puntos de partida con nombre; los interruptores de abajo afinan.
+            cardsTitle: 'Dificultad',
+            cardsOpen: true,
+            cards: Object.entries(DIFFICULTIES).map(([id, preset]) => ({
+                id, title: preset.label, note: preset.note, picked: difficultyOf(survival) === id,
+            })),
             fields: [
                 {
                     key: 'mortality', label: 'Puede morir cualquiera, también los tuyos', kind: 'check',
@@ -1593,7 +1610,12 @@ export async function askTaller({
                         + 'se quedan pase lo que pase.',
                 },
             ],
-            onPick: () => {},
+            onPick: (id) => {
+                const preset = DIFFICULTIES[/** @type {keyof typeof DIFFICULTIES} */ (id)];
+                if (!preset) return;
+                state.survival = { ...preset.survival };
+                draw();
+            },
             onWrite: (key, value) => {
                 const on = text(value) === 'si';
                 const before = state.survival ?? { ...DEFAULT_SURVIVAL };

@@ -49,6 +49,53 @@ const DEFAULT_STYLE = KIND_STYLE.info;
 export const MAX_ENTRIES = 300;
 
 /**
+ * Los filtros del registro (idea 20): qué clase de línea, y de quién.
+ *
+ * «Mis tiradas» es Tiradas más tu nombre; «el daño que me han hecho», Daño más tu nombre.
+ */
+export const LOG_FILTERS = {
+    all: 'Todo',
+    rolls: 'Tiradas',
+    damage: 'Daño',
+};
+
+/** Las clases de línea que cuentan como daño. */
+const DAMAGE_KINDS = ['damage', 'hit', 'crit', 'down'];
+
+/**
+ * Si una línea habla de alguien: por la palabra más larga de su nombre, como la narración lo
+ * escribe («el Guardián» por «Guardián del grano»).
+ *
+ * @param {LogEntry} item
+ * @param {string} who
+ * @returns {boolean}
+ */
+function mentions(item, who) {
+    const anchor = String(who ?? '').trim().split(/\s+/).sort((a, b) => b.length - a.length)[0] ?? '';
+    if (anchor.length < 2) return true;
+    const hay = `${item.actor ?? ''} ${item.text ?? ''}`.toLowerCase();
+    return hay.includes(anchor.toLowerCase());
+}
+
+/**
+ * Lo que queda del registro con un filtro puesto.
+ *
+ * @param {LogEntry[]} entries
+ * @param {{kind?: string, who?: string}} [filter]
+ * @returns {LogEntry[]}
+ */
+export function filterLog(entries, filter = {}) {
+    const kind = String(filter?.kind ?? 'all');
+    const who = String(filter?.who ?? '').trim();
+    return (Array.isArray(entries) ? entries : []).filter(item => {
+        if (item.kind === 'round') return kind === 'all' && !who;
+        if (kind === 'rolls' && !item.roll) return false;
+        if (kind === 'damage' && !DAMAGE_KINDS.includes(item.kind)) return false;
+        return !who || mentions(item, who);
+    });
+}
+
+/**
  * @param {LogKind} kind
  * @param {string} text
  * @param {Partial<LogEntry>} [extra]
@@ -232,6 +279,7 @@ export function createCombatLogPanel(options = {}) {
                 <span class="cl-round-badge"></span>
                 <button class="cl-collapse" title="Plegar"><i class="fa-solid fa-chevron-down"></i></button>
             </div>
+            <div class="cl-filters"></div>
             <div class="cl-body"></div>
         </div>
     `);
@@ -245,6 +293,52 @@ export function createCombatLogPanel(options = {}) {
     });
 
     return panel;
+}
+
+/**
+ * Los botones de filtro (idea 20): la clase de línea y, si se quiere, de quién.
+ *
+ * El filtro vive en el propio panel (`data-kind`, `data-who`), así que sobrevive a cada
+ * repintado sin que quien llama tenga que guardarlo.
+ *
+ * @param {JQuery} panel
+ * @param {string[]} people Quién está en el combate, para el desplegable.
+ * @param {() => void} onChange
+ */
+export function renderLogFilters(panel, people, onChange) {
+    const box = panel.find('.cl-filters');
+    if (!box.length) return;
+    const kind = String(panel.attr('data-kind') || 'all');
+    const who = String(panel.attr('data-who') || '');
+    box.empty();
+    for (const [id, label] of Object.entries(LOG_FILTERS)) {
+        const button = $('<button type="button" class="cl-filter"></button>')
+            .attr('data-kind', id).text(label).toggleClass('active', id === kind);
+        button.on('click', () => {
+            panel.attr('data-kind', id);
+            onChange();
+        });
+        box.append(button);
+    }
+    const select = $('<select class="cl-who"></select>');
+    select.append($('<option value=""></option>').text('De todos'));
+    for (const name of people) select.append($('<option></option>').attr('value', name).text(name));
+    select.val(who);
+    select.on('change', () => {
+        panel.attr('data-who', String(select.val() || ''));
+        onChange();
+    });
+    box.append(select);
+}
+
+/**
+ * El filtro puesto en el panel.
+ *
+ * @param {JQuery} panel
+ * @returns {{kind: string, who: string}}
+ */
+export function logFilterOf(panel) {
+    return { kind: String(panel?.attr?.('data-kind') || 'all'), who: String(panel?.attr?.('data-who') || '') };
 }
 
 /**

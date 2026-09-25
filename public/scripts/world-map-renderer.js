@@ -3,7 +3,7 @@
  * Provides zoomable world map with location markers and location/board grid views with character tokens.
  */
 
-import { parseCellKey } from './game-engine/board/terrain.js';
+import { parseCellKey, describeCell } from './game-engine/board/terrain.js';
 import { getCellVisibility } from './game-engine/board/fog-of-war.js';
 
 // ============================================================
@@ -461,8 +461,10 @@ export function renderWorldMapView(target, worldMapUrl, locationMaps, callbacks 
  * @property {boolean} [isEnemy]
  * @property {boolean} [isNPC]
  * @property {number} [sightFeet] - Vision radius for fog of war; defaults when absent.
- * @property {Array<{key: string, icon: string, label: string}>} [statuses] - Condition markers to draw over the token.
+ * @property {Array<{key: string, icon: string, label: string, effect?: string}>} [statuses] - Condition markers to draw over the token.
  * @property {number} [sizeCells] - How many cells the creature covers. 1 unless it is Large or bigger.
+ * @property {{id: string, icon: string, label: string}} [role] - Idea 13: como pelea, en un icono.
+ * @property {string} [weapon] - Idea 61: lo que lleva en la mano.
  */
 
 /**
@@ -487,7 +489,7 @@ const locationViewStateMemory = new Map();
  * @param {TokenData[]} options.tokens
  * @param {(tokenId: number, gridX: number, gridY: number) => void} [options.onTokenMove]
  * @param {(tokenId: number) => void} [options.onTokenClick]
- * @param {(gridX: number, gridY: number) => {cells: Array<{gridX: number, gridY: number}>, feet: number, ok: boolean}|null} [options.onCellHover] -
+ * @param {(gridX: number, gridY: number) => {cells: Array<{gridX: number, gridY: number}>, feet: number, ok: boolean, provokes?: string[]}|null} [options.onCellHover] -
  *   Al pasar por encima de una casilla encendida: devuelve la ruta y lo que cuesta, para
  *   dibujarla antes de pulsar. Sin esto, mover es una apuesta.
  * @param {(gridX: number, gridY: number, kind: string) => void} [options.onCellClick] -
@@ -507,6 +509,8 @@ const locationViewStateMemory = new Map();
  * @param {string|null} [options.paintMode] - Terrain type being painted, or null when not editing.
  * @param {(gridX: number, gridY: number, type: string) => void} [options.onPaintCell]
  * @param {(gridX: number, gridY: number, open: boolean) => void} [options.onDoorToggle] - Click a door to open or close it. Ignored while painting.
+ * @param {Array<{x: number, y: number, name: string, kind?: string, note?: string}>} [options.hazards] - Lo que ya se ha visto
+ *   en el tablero: una trampa descubierta, el aceite que arde (idea 122). Se dibuja, y la casilla lo dice.
  */
 export function renderLocationView(target, options) {
     const {
@@ -534,6 +538,7 @@ export function renderLocationView(target, options) {
         paintMode = null,
         onPaintCell = null,
         onDoorToggle = null,
+        hazards = [],
     } = options;
 
     target.empty();
@@ -589,6 +594,23 @@ export function renderLocationView(target, options) {
     // Terrain sits under everything: it is the board itself, not an overlay on it.
     const terrainLayer = $('<div class="wm-terrain-layer"></div>');
     content.append(terrainLayer);
+
+    // Idea 164: lo que es la casilla bajo el raton, dicho en una esquina del tablero. Solo
+    // en tableros con terreno: en un mapa de localidad no hay casillas que explicar.
+    if (terrain) {
+        const cellInfo = $('<div class="wm-cell-info"></div>').hide();
+        container.append(cellInfo);
+        content.on('mousemove', (event) => {
+            const box = content[0].getBoundingClientRect();
+            if (!imgW || !box.width) return;
+            const gx = Math.floor(((event.clientX - box.left) / box.width) * gridWidth);
+            const gy = Math.floor(((event.clientY - box.top) / box.height) * gridHeight);
+            if (gx < 0 || gy < 0 || gx >= gridWidth || gy >= gridHeight) return cellInfo.hide();
+            const there = (hazards || []).filter(h => h.x === gx && h.y === gy).map(h => h.name);
+            cellInfo.text(`${describeCell(terrain, gx, gy)}${there.length > 0 ? ` · ${there.join(', ')}` : ''}`).show();
+        });
+        content.on('mouseleave', () => cellInfo.hide());
+    }
 
     // Grid overlay (drawn via CSS background-image)
     const gridOverlay = $('<div class="wm-grid-overlay"></div>');
@@ -654,6 +676,22 @@ export function renderLocationView(target, options) {
             }
 
             terrainLayer.append(el);
+        }
+
+        // Lo que ya se ha visto: una trampa descubierta, un charco de aceite ardiendo. Sin
+        // esto, «el suelo arde» solo lo contaba el chat, y cerrar un pasillo con fuego era
+        // una promesa que no se veía.
+        for (const hazard of hazards || []) {
+            if (!(hazard.x >= 0 && hazard.y >= 0)) continue;
+            terrainLayer.append($('<div class="wm-hazard"></div>')
+                .toggleClass('wm-hazard-fire', /fuego|fire/i.test(String(hazard.kind ?? '')))
+                .attr('title', [hazard.name, hazard.note].filter(Boolean).join(': '))
+                .css({
+                    left: hazard.x * cellW + 'px',
+                    top: hazard.y * cellH + 'px',
+                    width: cellW + 'px',
+                    height: cellH + 'px',
+                }));
         }
     }
 
@@ -767,9 +805,13 @@ export function renderLocationView(target, options) {
         }
 
         const last = plan.cells[plan.cells.length - 1];
+        // Idea 1: quien te golpearia al salir de su alcance, dicho antes de pulsar.
+        const provokes = Array.isArray(plan.provokes) ? plan.provokes : [];
+        if (provokes.length > 0) highlightsLayer.find('.wm-path-step').addClass('wm-path-provoke');
         const cost = $('<div class="wm-path-cost"></div>')
-            .text(`${plan.feet} ft`)
+            .text(provokes.length > 0 ? `${plan.feet} ft · te golpea ${provokes.join(', ')}` : `${plan.feet} ft`)
             .toggleClass('wm-path-far', !plan.ok)
+            .toggleClass('wm-path-provoke', provokes.length > 0)
             .css({ left: `${(last.gridX + 0.5) * cellW}px`, top: `${last.gridY * cellH}px` });
         highlightsLayer.append(cost);
     }
@@ -789,8 +831,8 @@ export function renderLocationView(target, options) {
 
             const enemyClass = token.isEnemy ? ' wm-token-enemy' : '';
             const metaText = token.isEnemy
-                ? `AC ${token.level || 10}`
-                : `Lvl ${token.level || 1} ${token.className || 'Adventurer'}`;
+                ? `${token.role ? `${token.role.label} · ` : ''}AC ${token.level || 10}`
+                : `Lvl ${token.level || 1} ${token.className || 'Adventurer'}${token.weapon ? ` · ${token.weapon}` : ''}`;
             const selectedClass = selectedTokenId === token.id ? ' wm-token-selected' : '';
             const inRangeClass = Array.isArray(highlightedTokenIds) && highlightedTokenIds.includes(token.id) ? ' wm-token-in-range' : '';
 
@@ -842,10 +884,18 @@ export function renderLocationView(target, options) {
                     strip.append(
                         $('<i class="wm-token-status fa-solid"></i>')
                             .addClass(String(status?.icon || 'fa-circle-exclamation'))
-                            .attr('title', String(status?.label || '')),
+                            .attr('title', status?.effect ? `${status.label}: ${status.effect}` : String(status?.label || '')),
                     );
                 }
                 el.append(strip);
+            }
+
+            // Idea 13: como pelea, en un icono en la esquina de la ficha.
+            if (token.isEnemy && token.role) {
+                el.append($('<i class="wm-token-role fa-solid"></i>')
+                    .addClass(String(token.role.icon))
+                    .attr('title', String(token.role.label))
+                    .attr('data-role', String(token.role.id)));
             }
 
             // Drag token

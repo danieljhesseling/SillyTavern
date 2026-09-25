@@ -38,6 +38,42 @@ export const STANCES = {
 export const DEFAULT_STANCE = 'cerca';
 
 /**
+ * A quién prefiere pegar (idea 35). La postura dice dónde se pone; esto, a quién va.
+ */
+export const PREFERENCES = {
+    debil: { label: 'Al más débil', icon: 'fa-heart-crack', description: 'Remata al que menos vida le queda.' },
+    cerca: { label: 'Al más cercano', icon: 'fa-location-crosshairs', description: 'Al que tenga más a mano.' },
+    tirador: { label: 'A los tiradores', icon: 'fa-crosshairs', description: 'Primero a los que pegan de lejos.' },
+    jefe: { label: 'Al jefe', icon: 'fa-crown', description: 'Al más duro, o al jefe si lo hay.' },
+};
+
+/** La de quien no ha elegido nada: rematar, que es lo que hacía siempre. */
+export const DEFAULT_PREFERENCE = 'debil';
+
+/**
+ * Ordenar a los enemigos por la preferencia, del que va primero al último.
+ *
+ * @template {{id: string, gridX: number, gridY: number, currentHp?: number, maxHp?: number, reachFeet?: number, boss?: boolean}} E
+ * @param {E[]} enemies
+ * @param {string} prefer
+ * @param {{x: number, y: number}} from
+ * @returns {E[]}
+ */
+export function byPreference(enemies, prefer, from) {
+    const away = (/** @type {any} */ e) => feet(from.x, from.y, e.gridX, e.gridY);
+    const tie = (/** @type {any} */ a, /** @type {any} */ b) => healthFraction(a) - healthFraction(b) || String(a.id).localeCompare(String(b.id));
+    const ranged = (/** @type {any} */ e) => (Number(e.reachFeet) || 5) > 10 ? 0 : 1;
+    const tough = (/** @type {any} */ e) => (e.boss ? 1e6 : 0) + (Number(e.maxHp) || 0);
+    const list = [...(enemies || [])];
+    switch (prefer) {
+        case 'cerca': return list.sort((a, b) => away(a) - away(b) || tie(a, b));
+        case 'tirador': return list.sort((a, b) => ranged(a) - ranged(b) || away(a) - away(b) || tie(a, b));
+        case 'jefe': return list.sort((a, b) => tough(b) - tough(a) || tie(a, b));
+        default: return list.sort(tie);
+    }
+}
+
+/**
  * El perfil de combate que ya traía la ficha, traducido a postura.
  *
  * Un compañero escrito como «hostigador» ya decía que prefería quedarse atrás; eso se
@@ -83,12 +119,13 @@ function feet(ax, ay, bx, by) {
  * @param {Array<{id: string, gridX: number, gridY: number, currentHp?: number, maxHp?: number, reachFeet?: number}>} input.enemies
  * @param {Array<{id: string, gridX: number, gridY: number}>} [input.allies]
  * @param {string} [input.stance]
+ * @param {string} [input.prefer] A quién va primero (idea 35).
  * @param {any} input.terrain
  * @param {number} input.gridWidth
  * @param {number} input.gridHeight
  * @returns {AllyPlan}
  */
-export function planAllyTurn({ actor, leader = null, enemies, allies = [], stance = DEFAULT_STANCE, terrain, gridWidth, gridHeight }) {
+export function planAllyTurn({ actor, leader = null, enemies, allies = [], stance = DEFAULT_STANCE, prefer = DEFAULT_PREFERENCE, terrain, gridWidth, gridHeight }) {
     const here = { x: actor.gridX, y: actor.gridY };
     const living = (enemies || []).filter(e => e && (Number(e.currentHp) || 0) > 0);
     const range = Math.max(5, Number(actor.attackRangeFeet) || 5);
@@ -104,9 +141,12 @@ export function planAllyTurn({ actor, leader = null, enemies, allies = [], stanc
     // Pero solo mientras aguanta; malherido se retira como todos.
     const wounded = healthFraction(actor) < FLEE_HP_FRACTION;
     if (chosen === 'carga' && !wounded) {
+        // A la carga, pero hacia quien prefiere: si hay alguno de esos, va a por el.
+        const first = byPreference(living, prefer, here)[0];
+        const preferred = prefer === DEFAULT_PREFERENCE || !first ? living : [first];
         const plan = planEnemyTurn({
             actor: { ...actor, profile: 'aggressive' },
-            targets: living,
+            targets: preferred,
             allies,
             terrain,
             gridWidth,
@@ -140,9 +180,7 @@ export function planAllyTurn({ actor, leader = null, enemies, allies = [], stanc
     const nearestEnemy = (cell) => Math.min(...living.map(e => feet(cell.x, cell.y, e.gridX, e.gridY)));
 
     /** @param {{x: number, y: number}} cell */
-    const targetFrom = (cell) => living
-        .filter(e => feet(cell.x, cell.y, e.gridX, e.gridY) <= range)
-        .sort((a, b) => healthFraction(a) - healthFraction(b) || String(a.id).localeCompare(String(b.id)))[0] ?? null;
+    const targetFrom = (cell) => byPreference(living.filter(e => feet(cell.x, cell.y, e.gridX, e.gridY) <= range), prefer, cell)[0] ?? null;
 
     /** @param {{x: number, y: number}} to */
     const route = (to) => (to.x === here.x && to.y === here.y)

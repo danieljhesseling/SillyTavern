@@ -1817,3 +1817,172 @@
     80% { opacity: 1; }
     100% { opacity: 0; }
 }
+
+/* Idea 188: el daño sale flotando de la ficha. */
+.wm-float {
+    position: absolute;
+    left: 50%;
+    top: -6px;
+    transform: translateX(-50%);
+    font-weight: bold;
+    font-size: 15px;
+    color: #f0b4b0;
+    text-shadow: 0 1px 2px #000, 0 0 4px #000;
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 30;
+    animation: wm-float-up 1.4s ease-out forwards;
+}
+
+.wm-float-crit {
+    font-size: 19px;
+    color: #ffd27a;
+}
+
+@keyframes wm-float-up {
+    from { opacity: 1; transform: translate(-50%, 0); }
+    to { opacity: 0; transform: translate(-50%, -34px); }
+}
+
+/* Idea 190: los enemigos también gritan, en rojo. */
+.wm-bark-enemy {
+    background: rgba(92, 32, 28, 0.95);
+    color: #fbe9e7;
+}
+
+/* Idea 13: como pelea cada enemigo, en la esquina de su ficha. */
+.wm-token-role {
+    position: absolute;
+    top: -4px;
+    left: -4px;
+    width: 16px;
+    height: 16px;
+    line-height: 16px;
+    border-radius: 50%;
+    font-size: 9px;
+    text-align: center;
+    background: rgba(24, 20, 16, 0.9);
+    color: #e2c27a;
+    border: 1px solid rgba(214, 180, 106, 0.6);
+    z-index: 5;
+}
+
+.wm-token-role[data-role="jefe"] {
+    color: #ffd27a;
+    border-color: #ffd27a;
+}
+
+/* Idea 1: la ruta que provoca un golpe, en rojo. */
+.wm-path-step.wm-path-provoke {
+    background: rgba(208, 90, 80, 0.85);
+}
+
+.wm-path-cost.wm-path-provoke {
+    color: #ffb4ac;
+    border-color: rgba(208, 90, 80, 0.8);
+}
+
+/* Idea 164: lo que es la casilla bajo el ratón. */
+.wm-cell-info {
+    position: absolute;
+    left: 8px;
+    bottom: 8px;
+    max-width: calc(100% - 16px);
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: rgba(20, 16, 12, 0.85);
+    color: #eee4d2;
+    font-size: 12px;
+    pointer-events: none;
+    z-index: 20;
+}
+
+/* Idea 172: colores para daltonismo. El rojo y el verde se confunden; el azul y el naranja no.
+   Además, el enemigo lleva un borde discontinuo: no depende solo del color. */
+body.game-colorblind .wm-token-enemy {
+    border-color: #e08a1e !important;
+    border-style: dashed !important;
+}
+
+body.game-colorblind .wm-token:not(.wm-token-enemy) {
+    border-color: #3b82f6 !important;
+}
+
+body.game-colorblind .wm-highlight-attack {
+    background: rgba(224, 138, 30, 0.35) !important;
+    outline: 2px dashed rgba(224, 138, 30, 0.9);
+}
+
+body.game-colorblind .wm-highlight-move {
+    background: rgba(59, 130, 246, 0.3) !important;
+}
+
+body.game-colorblind .wm-path-step.wm-path-provoke {
+    background: rgba(224, 138, 30, 0.95);
+}
+
+body.game-colorblind .wm-float-damage {
+    color: #ffc27a;
+}
+
+body.game-colorblind .pg-fill {
+    background: #3b82f6;
+}
+
+body.game-colorblind .pg-hurt .pg-fill {
+    background: #e0c21e;
+}
+
+body.game-colorblind .pg-down .pg-fill {
+    background: #e08a1e;
+}
+
+/* Idea 5: la cara de cada uno en la barra de iniciativa, o su inicial. */
+.wm-init-face {
+    width: 24px;
+    height: 24px;
+    flex: 0 0 24px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.wm-init-initial {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: bold;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.wm-init-row.enemy .wm-init-face {
+    border-color: rgba(224, 139, 122, 0.7);
+}
+
+/* Lo ya visto del tablero: una trampa descubierta, o el aceite que arde (idea 122). */
+.wm-hazard {
+    position: absolute;
+    box-sizing: border-box;
+    border: 2px dashed rgba(230, 180, 60, 0.85);
+    background: rgba(230, 180, 60, 0.18);
+    pointer-events: none;
+}
+
+.wm-hazard-fire {
+    border-color: rgba(255, 110, 40, 0.9);
+    background: radial-gradient(circle, rgba(255, 140, 40, 0.55), rgba(200, 40, 0, 0.25));
+}
+
+/* Idea 189: quien cae al precipicio, se ve caer. */
+.wm-token.wm-token-falling {
+    animation: wm-fall 0.85s ease-in forwards;
+    pointer-events: none;
+    z-index: 5;
+}
+
+@keyframes wm-fall {
+    0% { transform: scale(1) rotate(0deg); opacity: 1; }
+    30% { transform: scale(1.1) rotate(-12deg); opacity: 1; }
+    100% { transform: scale(0.1) rotate(200deg); opacity: 0; }
+}

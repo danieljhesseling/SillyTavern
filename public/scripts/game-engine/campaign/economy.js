@@ -154,6 +154,43 @@ export function marketPressure({ here, locations = [], factions = [] }) {
     };
 }
 
+/** Las metas de facción que son guerra: con ellas en marcha, el acero se paga caro (idea 84). */
+export const WAR_GOALS = ['conquistar', 'destruir'];
+
+/** Lo que sube el acero con una guerra en marcha, y lo que sube si la guerra es de quien manda aquí. */
+export const WAR_PRICE = { anywhere: 1.2, here: 1.35 };
+
+/**
+ * Lo que cuesta el acero con la guerra que haya (idea 84).
+ *
+ * Una facción que quiere conquistar o destruir algo, y va en camino, compra todas las
+ * espadas del valle. Las armas y las armaduras suben en todas partes; más, donde manda ella.
+ * Lo que se come ya lo mueven los caminos cerrados (`marketPressure`).
+ *
+ * @param {Object} input
+ * @param {string} input.here
+ * @param {any[]} [input.factions]
+ * @returns {{steel: number, reasons: string[]}}
+ */
+export function warPressure({ here, factions = [] }) {
+    const where = text(here).toLowerCase();
+    const atWar = (Array.isArray(factions) ? factions : []).filter((/** @type {any} */ f) =>
+        WAR_GOALS.includes(text(f?.goal?.kind)) && !f?.goal?.done
+        && number(f?.goal?.at, 0) < number(f?.goal?.of, 1));
+    if (atWar.length === 0) return { steel: 1, reasons: [] };
+    const holds = (/** @type {any} */ f) => text(f?.seat).toLowerCase() === where
+        || (Array.isArray(f?.holds) ? f.holds : []).some((/** @type {any} */ h) => text(h).toLowerCase() === where);
+    const local = atWar.find(holds);
+    const who = local ?? atWar[0];
+    const many = speaksPlural(who.name);
+    return {
+        steel: local ? WAR_PRICE.here : WAR_PRICE.anywhere,
+        reasons: [local
+            ? `${text(who.name)} ${many ? 'están' : 'está'} en guerra y ${many ? 'mandan' : 'manda'} aquí: se ${many ? 'llevan' : 'lleva'} todo el acero.`
+            : `${text(who.name)} ${many ? 'están' : 'está'} en guerra: las armas y las armaduras se pagan caras.`],
+    };
+}
+
 /**
  * Los precios de la semana con el mercado encima.
  *

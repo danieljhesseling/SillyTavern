@@ -1,3 +1,4 @@
+import { backgroundOf } from './game-engine/campaign/backgrounds.js';
 import {
     world_names, loadWorldInfo, saveWorldInfo, createNewWorldInfo, createWorldInfoEntry,
     deleteWorldInfo, METADATA_KEY,
@@ -25,6 +26,7 @@ import { seedOf, derive } from './game-engine/campaign/seed.js';
 import { abilitiesFor, nameAndAbility } from './game-engine/compendio/skills.js';
 import { racesOf, kindsOf, describeKin } from './game-engine/compendio/kin.js';
 import { readPlot, plotFromFaction, startPlot } from './game-engine/campaign/plot.js';
+import { saveSummary, describeSave, describeSaveParty } from './game-engine/campaign/save-card.js';
 
 /**
  * Fetches recent chats with metadata from the cross-character API.
@@ -163,6 +165,12 @@ export async function renderCampaignCards(container) {
         const lastChat = world.chats[0];
         const charName = lastChat?.char_name || '';
         const lastChatName = (lastChat?.file_name || '').replace('.jsonl', '');
+        // Idea 160: el día, el sitio, lo que hay entre manos y quién va, sin abrirla.
+        const save = saveSummary(lastChat?.chat_metadata ?? {});
+        const saveLine = describeSave(save);
+        const saveParty = describeSaveParty(save);
+        const faces = save.party.filter(m => m.avatar).slice(0, 4)
+            .map(m => `<img class="campaign-face${m.fallen ? ' fallen' : ''}" src="${escapeHtml(m.avatar)}" alt="" title="${escapeHtml(m.name)}">`).join('');
 
         html += `
         <div class="campaign-card" data-world="${escapeHtml(world.name)}">
@@ -176,6 +184,8 @@ export async function renderCampaignCards(container) {
                     <span class="campaign-sessions">${chatLabel}</span>
                     ${charName ? `<span class="campaign-char">${escapeHtml(charName)}</span>` : ''}
                 </div>
+                <div class="campaign-save-line">${escapeHtml(saveLine)}</div>
+                ${saveParty ? `<div class="campaign-save-party">${faces}<span>${escapeHtml(saveParty)}</span></div>` : ''}
                 <div class="campaign-session-name" title="${escapeHtml(lastChatName)}">${escapeHtml(lastChatName)}</div>
             </div>
             <div class="campaign-actions">
@@ -1316,8 +1326,8 @@ async function createStartingHero(worldName) {
     if (known.length > 0) {
         toastr.info(known.map(nameAndAbility).join('. '), 'Lo que sabes hacer', { timeOut: 9000 });
     }
-    const who = [answers.race, answers.className].filter(Boolean).join(', ');
-    return [`${answers.name}${who ? ` (${who})` : ''}`, answers.about].filter(Boolean).join('. ');
+    const who = [answers.race, answers.className, backgroundOf(answers.background)?.label].filter(Boolean).join(', ');
+    return [`${answers.name}${who ? ` (${who})` : ''}`, answers.about, backgroundOf(answers.background)?.contact].filter(Boolean).join('. ');
 }
 
 /**

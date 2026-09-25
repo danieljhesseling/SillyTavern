@@ -93,7 +93,37 @@ export const STAFF_ROLES = {
         effect: { healingPerDay: -1.5 },
         board: 0,
     },
+    // Idea 37: el retirado entrena. Lo que sabe no se jubila con él.
+    maestro: {
+        label: 'Maestro de armas',
+        describe: 'Entrena a los que salen: cada semana, quien va por detrás del mejor del grupo gana experiencia.',
+        effect: {},
+        board: 0,
+    },
 };
+
+/** Lo que enseña un maestro de armas en una semana, a cada uno que va por detrás (idea 37). */
+export const TRAINING_XP = 150;
+
+/**
+ * Lo que aprende el grupo en una semana con un maestro de armas en casa (idea 37).
+ *
+ * Solo quien va por detrás del de más nivel: el maestro enseña lo que sabe, y al mejor del
+ * grupo ya no le queda nada que enseñarle. Dos maestros enseñan el doble.
+ *
+ * @param {any} guild
+ * @param {Array<{id: any, name: string, level?: number, dead?: boolean}>} party
+ * @returns {Array<{id: string, name: string, xp: number}>}
+ */
+export function trainingFor(guild, party) {
+    const masters = (readGuild(guild).staff ?? []).filter(person => person.role === 'maestro');
+    const alive = (Array.isArray(party) ? party : []).filter(m => m && !m.dead);
+    if (masters.length === 0 || alive.length < 2) return [];
+    const top = Math.max(...alive.map(m => Math.max(1, Math.floor(number(m.level, 1)))));
+    return alive
+        .filter(m => Math.max(1, Math.floor(number(m.level, 1))) < top)
+        .map(m => ({ id: String(m.id), name: String(m.name), xp: TRAINING_XP * masters.length }));
+}
 
 /** Más gente en casa que esto, y la casa se llena de jubilados. */
 export const MAX_STAFF = 3;
