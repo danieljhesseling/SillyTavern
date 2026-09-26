@@ -40,11 +40,6 @@
       "what": "El largo de la narracion elegido en la partida (idea 149)"
     },
     {
-      "key": "GAME_010_rules_ctx_meta",
-      "tier": "rules",
-      "what": "Instruccion maestra del sistema"
-    },
-    {
       "key": "GAME_010_rules_dyn_ejemplo_reglas",
       "tier": "rules",
       "what": "Instruccion dinamica de reglas"
@@ -58,11 +53,6 @@
       "key": "GAME_040_quest_ctx_memory",
       "tier": "quest",
       "what": "Lo que el mundo sabe del grupo: hechos, reputacion, deudas"
-    },
-    {
-      "key": "GAME_040_quest_ctx_quests",
-      "tier": "quest",
-      "what": "Misiones en curso"
     },
     {
       "key": "GAME_070_combat_ctx_board",

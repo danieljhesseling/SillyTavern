@@ -5,14 +5,14 @@
  * the reason for it. No DOM, no jQuery, no reading of globals, so every rule below is a
  * test rather than something you have to reproduce by playing.
  *
- * It deliberately does NOT read the state of the dynamic-context-manager, even though
- * that module also has a combat/exploration/social machine. That state is decided by the
- * *model*: `detectStateFromMessage` guesses it from its own prose and the `dnd_update_state`
- * tool lets it set the state outright. A line of scene-setting saying "everyone, roll
- * initiative" would jump to the combat screen with no combat behind it. The engine knows
- * whether there is an encounter; the narrator only knows what it just wrote.
+ * It deliberately did NOT read the state of the dynamic-context-manager, whose
+ * combat/exploration/social machine was decided by the *model*: it guessed from its own prose
+ * and a tool let it set the state outright. A line of scene-setting saying "everyone, roll
+ * initiative" would jump to the combat screen with no combat behind it. Since the U1 of
+ * wiki/ROADMAP_PEGAMENTO.md it is the other way round: that module asks the engine
+ * (`getEngineSceneState` in party.js), and the guessing is gone.
  *
- * See wiki/PROPUESTA_FRONTEND_MODO_JUEGO.md, secciones 0.1 y 2 · wiki/ROADMAP.md, Fase H (H1).
+ * See wiki/archivo/PROPUESTA_FRONTEND_MODO_JUEGO.md, secciones 0.1 y 2 · wiki/ROADMAP.md, Fase H (H1).
  */
 
 import { holdDuringCombat } from '../../combat/combat-hold.js';

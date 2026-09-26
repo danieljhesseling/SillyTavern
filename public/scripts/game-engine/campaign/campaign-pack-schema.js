@@ -13,12 +13,13 @@
  * Gem changes with it. A copy kept by hand goes stale silently, and the failure shows up
  * a whole book later.
  *
- * Pure. See wiki/ROADMAP_INGESTA_CAMPANAS_LIBROS.md (G1).
+ * Pure. See wiki/archivo/ROADMAP_INGESTA_CAMPANAS_LIBROS.md (G1).
  */
 
 import { OBJECTIVE_TYPES } from './scenarios.js';
 import { ASCII_TERRAIN } from '../board/terrain.js';
 import { getProfileOptions } from '../combat/enemy-ai.js';
+import { SPECIES as PET_SPECIES } from './pet.js';
 
 /** Schema version, so a pack can say which contract it was written against. */
 export const CAMPAIGN_PACK_VERSION = 1;
@@ -84,6 +85,19 @@ export function getMapLegend() {
         wall: 'muro', door: 'puerta', difficult: 'terreno difícil',
         cover_half: 'cobertura media', cover_three_quarters: 'cobertura de tres cuartos',
         chasm: 'precipicio (no se anda; a quien empujan dentro, cae)',
+        stairs: 'escalera al nivel siguiente',
+        // R3 del roadmap de profundidad: el terreno que los elementos cambian.
+        water: 'agua poco honda (cuesta el doble; el frío la hiela)',
+        ice: 'hielo (el trueno lo quiebra, el fuego lo funde)',
+        brush: 'maleza (cuesta el doble, y arde)',
+        barrel: 'barril (cubre; con fuego, revienta)',
+        chest: 'cofre (se abre estando al lado)',
+        // B1 y B2 de LO_QUE_FALTA.
+        high: 'en alto (subir cuesta el doble; desde arriba se ataca con ventaja): torres, escalones, la empalizada',
+        exit: 'salida (quien la pisa puede irse de la pelea; con un objetivo «alcanzar» encima, salir es ganar): la ventana, la trampilla',
+        // T1 y B3.
+        lever: 'palanca (no se pisa; estando al lado, abre todas las puertas con llave del tablero): la reja del fondo',
+        barricade: 'barricada (corta el paso, no la vista; cubre a quien está detrás y a golpes se rompe: 15 de vida)',
     };
     const legend = { '.': 'suelo transitable' };
     for (const [char, cell] of Object.entries(ASCII_TERRAIN)) {
@@ -169,6 +183,11 @@ function buildSectionSchemas() {
                         name: { type: 'string' },
                         goals: { type: 'string' },
                         reputation: { type: 'integer' },
+                        magia: {
+                            type: 'string',
+                            enum: ['persigue', 'tolera', 'comercia'],
+                            description: 'Cómo ve la magia. Donde manda una que la persigue no se venden componentes; donde comercia con ella, salen más baratos. Sin nada, tolera.',
+                        },
                     },
                 },
             },
@@ -267,6 +286,11 @@ function buildSectionSchemas() {
                 },
                 attackRangeFeet: { type: 'integer', description: '5 en cuerpo a cuerpo, 30 a 120 a distancia.' },
                 seasons: { type: 'array', items: { type: 'string' }, description: 'Si migra: las estaciones en que anda (primavera, verano, otono, invierno). Fuera de ellas no sale. Sin nada, todo el año.' },
+                domable: {
+                    type: 'string',
+                    enum: [...Object.keys(PET_SPECIES), ''],
+                    description: 'Si una cría suya se puede domar al vencerlo, y en qué mascota se queda. Vacío: no se doma. Sin el campo, lo decide su nombre (lobos, cuervos, zorros, halcones, gatos).',
+                },
                 abilities: {
                     type: 'array',
                     items: { type: 'string' },
@@ -344,11 +368,46 @@ function buildSectionSchemas() {
         },
     };
 
-    return { world, locations, boards, bestiary, quests, confidants, items };
+    // R1/R10 del roadmap de profundidad: los héroes hechos, para la partida rápida.
+    const heroes = {
+        type: 'array',
+        maxItems: 3,
+        description: 'Tres héroes hechos, pensados para este mundo: quien juega elige uno y entra sin crear a nadie. '
+            + 'De las razas y clases que el mundo deja entrar.',
+        items: {
+            type: 'object',
+            required: ['name', 'race', 'className', 'about', 'pitch'],
+            properties: {
+                name: { type: 'string' },
+                race: { type: 'string', description: 'Como la llama el compendio: Humano, Enano, Media elfa…' },
+                className: { type: 'string', description: 'Como la llama el compendio: Guerrero, Pícaro, Soldado…' },
+                gender: { type: 'string', enum: ['Mujer', 'Hombre', 'No binario', 'Sin especificar'] },
+                background: { type: 'string', enum: ['soldado', 'criminal', 'erudito', 'acolito', 'forastero', 'artesano', 'noble', 'marinero', 'charlatan', 'ermitano'] },
+                about: { type: 'string', description: 'Quién es, en dos frases. Es lo que lee el narrador.' },
+                pitch: { type: 'string', description: 'Una línea para elegirlo: lo que le hace distinto.' },
+                spells: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    description: 'Ids de conjuros del grimorio, si hace magia. La magia solo existe en el grimorio del juego: no se inventa.',
+                },
+                pet: {
+                    type: 'object',
+                    description: 'La mascota con la que llega, si tiene: su nombre, su especie y su carácter.',
+                    properties: {
+                        name: { type: 'string' },
+                        species: { type: 'string', enum: Object.keys(PET_SPECIES) },
+                        character: { type: 'string', enum: ['cinica', 'leal', 'curiosa', 'miedosa', 'orgullosa'] },
+                    },
+                },
+            },
+        },
+    };
+
+    return { world, locations, boards, bestiary, quests, confidants, items, heroes };
 }
 
 /** The order the sections are best generated in, and what each one needs first. */
-export const SECTION_ORDER = ['world', 'locations', 'confidants', 'bestiary', 'items', 'boards', 'quests'];
+export const SECTION_ORDER = ['world', 'locations', 'confidants', 'bestiary', 'items', 'boards', 'quests', 'heroes'];
 
 /**
  * Las rarezas que las tablas de botín conocen.

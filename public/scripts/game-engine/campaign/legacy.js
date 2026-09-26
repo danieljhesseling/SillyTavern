@@ -123,7 +123,7 @@ export function gravesAt(raw, place) {
 }
 
 /**
- * @typedef {{name: string, world: string, day: number, epitaph: string, when: string}} HallEntry
+ * @typedef {{name: string, world: string, day: number, epitaph: string, when: string, mode?: string, iron?: boolean}} HallEntry
  */
 
 /**
@@ -138,6 +138,9 @@ export function readHall(raw) {
         .map(e => ({
             name: text(e.name), world: text(e.world), day: Math.max(1, Math.floor(Number(e.day) || 1)),
             epitaph: text(e.epitaph), when: text(e.when),
+            // R1: en qué modo se jugaba, y si fue de hierro de principio a fin.
+            ...(text(e.mode) ? { mode: text(e.mode) } : {}),
+            ...(e.iron === true ? { iron: true } : {}),
         }))
         .slice(0, HALL_MAX);
 }
@@ -165,6 +168,6 @@ export function addToHall(raw, entry) {
  * @returns {string}
  */
 export function describeHallEntry(entry) {
-    const where = [entry.world, entry.when ? entry.when.slice(0, 10) : ''].filter(Boolean).join(' · ');
+    const where = [entry.world, entry.when ? entry.when.slice(0, 10) : '', entry.iron ? 'de hierro' : ''].filter(Boolean).join(' · ');
     return `${entry.epitaph || entry.name}${where ? ` (${where})` : ''}`;
 }

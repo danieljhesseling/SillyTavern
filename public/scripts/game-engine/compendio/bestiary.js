@@ -183,6 +183,8 @@ export function breedMonster({ compendium, random = Math.random, cr = 0.5, biome
         profile: PROFILES.includes(profile) ? profile : 'aggressive',
         abilities: [...abilities],
         description,
+        // T6: si se doma, y en qué, lo dice su fila; las plantillas no lo cambian.
+        ...(archetype.domable !== undefined ? { domable: text(archetype.domable) } : {}),
         from: { arquetipo: text(archetype.id), plantillas: stack.map((/** @type {any} */ t) => text(t.id)) },
     };
 }

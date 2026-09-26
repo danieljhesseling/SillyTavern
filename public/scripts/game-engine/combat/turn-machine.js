@@ -56,6 +56,7 @@ import { normalizeTimers } from './condition-timers.js';
  *   Quien se cubre, quien se destraba y a quien le han abierto la guardia.
  * @property {import('./tally.js').Tally} [tally]
  *   La cuenta del combate, para la pantalla de victoria.
+ * @property {string[]} [left] B2: quién ha salido ya por una salida del tablero.
  */
 
 /** The three things a combatant may spend besides movement. */
@@ -107,6 +108,8 @@ export function normalizeEncounter(raw) {
         maneuvers: readManeuvers(raw.maneuvers),
         // Quien hizo cuanto: sin esto, recargar a mitad de combate vaciaba la cuenta.
         tally: readTally(raw.tally),
+        // B2: quién salió por una salida. Sin esto, recargar le devolvía a la pelea.
+        left: Array.isArray(raw.left) ? raw.left.map(String) : [],
     };
 }
 

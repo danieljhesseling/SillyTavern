@@ -158,5 +158,5 @@ SlashCommandParser.addCommandObject(SlashCommand.fromProps({
 
 ## 5. Enlaces Relacionados
 - [[Mapa-Codigo-Archivos]]: Localización de todos los archivos del proyecto.
-- [[PROBLEMAS_TECNICOS]]: Lista de problemas a tener en cuenta durante el desarrollo.
+- *PROBLEMAS_TECNICOS*: Lista de problemas a tener en cuenta durante el desarrollo.
 - [[PROPUESTAS_MEJORA]]: Líneas de trabajo recomendadas para futuras versiones.

@@ -9,7 +9,8 @@ import { lengthNote, nextLength, LENGTHS } from '../public/scripts/game-engine/c
 import { clockWarnings } from '../public/scripts/game-engine/world/news.js';
 import { noteFeat, knackBonus, knacksOf, KNACK_AT } from '../public/scripts/game-engine/campaign/feats.js';
 import { buildActionChips } from '../public/scripts/game-engine/ui/shell/action-chips.js';
-import { DIFFICULTIES, difficultyOf, DEFAULT_SURVIVAL, readSurvival } from '../public/scripts/game-engine/rules/mortality.js';
+import { DEFAULT_SURVIVAL, readSurvival } from '../public/scripts/game-engine/rules/mortality.js';
+import { MODES, modeOf, survivalFor } from '../public/scripts/game-engine/rules/modes.js';
 import { worldMemoryBlock } from '../public/scripts/game-engine/campaign/world-memory.js';
 import { actionForKey } from '../public/scripts/game-engine/ui/shell/shortcuts.js';
 
@@ -98,11 +99,12 @@ describe('el personaje y el grupo', () => {
     });
 
     test('198: tres dificultades con nombre, y se reconoce cuál es cada supervivencia', () => {
-        expect(Object.keys(DIFFICULTIES)).toEqual(['historia', 'veterana', 'hierro']);
-        expect(difficultyOf(DEFAULT_SURVIVAL)).toBe('veterana');
-        expect(difficultyOf(DIFFICULTIES.hierro.survival)).toBe('hierro');
-        expect(difficultyOf({ ...DEFAULT_SURVIVAL, exposure: false })).toBe('');
-        expect(readSurvival(DIFFICULTIES.historia.survival).needs).toBe(false);
+        // DR1: las dificultades con nombre son ahora los modos de R1.
+        expect(Object.keys(MODES)).toEqual(['relajado', 'normal', 'supervivencia']);
+        expect(modeOf(DEFAULT_SURVIVAL)).toBe('normal');
+        expect(modeOf(survivalFor(MODES.supervivencia.letters))).toBe('supervivencia');
+        expect(modeOf({ ...DEFAULT_SURVIVAL, exposure: false })).toBe('custom');
+        expect(readSurvival(survivalFor(MODES.relajado.letters)).needs).toBe(false);
     });
 });
 

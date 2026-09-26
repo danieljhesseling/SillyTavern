@@ -14,7 +14,7 @@
  *
  * Puro, y del lado del motor: usa la misma tabla de terreno que el tablero.
  *
- * Ver wiki/PROPUESTAS_MEJORA_V2.md, PROP2-039.
+ * Ver wiki/archivo/PROPUESTAS_MEJORA_V2.md, PROP2-039.
  */
 
 import { cellKey, getCell, isInsideGrid, TERRAIN_TYPES } from './terrain.js';

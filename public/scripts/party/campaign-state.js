@@ -246,6 +246,8 @@ export function createCampaignState(deps) {
         // significa: uno corto devuelve lo de descanso corto, uno largo lo devuelve todo.
         for (const member of party) {
             member.abilityUses = restoreAbilityUses(member, kind, deps.abilities?.() ?? []);
+            // R4: las cargas de los conjuros vuelven con el descanso largo (DR4).
+            if (kind === 'largo') member.spellCharges = {};
 
             // Un descanso es tambien comer, beber y dormir. Uno corto da de beber y poco
             // mas; uno largo es la noche entera, y por eso es lo unico que quita el sueno.

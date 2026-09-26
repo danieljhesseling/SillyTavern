@@ -2,6 +2,7 @@
 title: Sistema de Slash Commands & Motor de Macros
 tags: [slash-commands, macros, parser, scripting, dnd, automation, cli]
 created: 2026-09-20
+updated: 2026-09-26
 author: DanielJHesseling / Antigravity AI
 ---
 
@@ -36,44 +37,66 @@ public/scripts/slash-commands/
 
 ---
 
-## 2. Comandos Clave del Motor RPG / D&D
+## 2. Los comandos del motor RPG
 
-El fork registra comandos especializados en `party.js`, `dynamic-context-manager.js` y `dnd-system.js`:
+> [!NOTE]
+> **Puesto al día con el código el 2026-09-26.** La versión anterior de esta sección describía comandos que nunca existieron (`/party heal`, `/dnd`, `/dynctx`, `/map goto`). La lista de abajo sale de los registros reales: **55 en `party.js`** y 2 en `dynamic-context-manager.js`. Casi todos tienen su botón en el Modo Juego; el comando sigue ahí porque el recorrido de pruebas entra por él.
 
-```mermaid
-graph LR
-    Input["/party heal Valerius 15"] --> Parser[SlashCommandParser]
-    Parser --> Match{Identificar Comando}
-    Match -->|/party| PartyHandler[party.js: Ejecutor de Grupo]
-    PartyHandler --> Mutate[Actualiza HP de Valerius: hp += 15]
-    Mutate --> SyncMeta[chat_metadata.party sincronizado]
-    SyncMeta --> Redraw[Re-renderiza Ficha D&D y Barra de Estado]
-    Redraw --> Toast[Notificación / Mensaje de Sistema]
-```
+Se registran con `SlashCommandParser.addCommandObject(SlashCommand.fromProps({ name, callback, helpString, … }))`. `/help <comando>` enseña su ayuda dentro del juego.
 
-### Catálogo de Comandos D&D
-1. **Gestión de Salud y Estado (`/party`)**:
-   - `/party heal [nombre] [cantidad]`: Restaura puntos de golpe al personaje.
-   - `/party damage [nombre] [cantidad]`: Aplica daño, reduciendo HP y evaluando estados de inconsciencia si llega a 0.
-   - `/party addxp [nombre] [cantidad]`: Añade experiencia; si supera `xpNext`, sube de nivel y recalcula puntos de vida máximos.
-   - `/party addgold [cantidad]`: Modifica el inventario de monedas del grupo (oro, plata, cobre).
-   - `/party condition [nombre] [condicion]`: Aplica o retira estados alterados (ej. *Envenenado*, *Cegado*, *Aturdido*).
+**Moverse y el mundo**
 
-2. **Tiradas de Dados Animadas (`/roll` y `/dnd`)**:
-   - `/roll 1d20+5`: Ejecuta una tirada d20 sumando el bonificador, envía el resultado al chat como mensaje de sistema y dispara el overlay de animación de dados (`combatDiceOverlayElement`).
-   - `/dnd check [nombre] [habilidad]`: Realiza una prueba de característica con el modificador de la ficha.
-   - `/dnd attack [nombre] [arma]`: Realiza tirada de ataque contra la Clase de Armadura (AC) del objetivo.
+| Comando | Qué hace |
+| :--- | :--- |
+| `/go <sitio>` · `/enter <tablero>` · `/leave` | Viajar a una localización, entrar en un tablero, salir (primero del tablero, luego del sitio) |
+| `/bajar` | Bajar por la escalera al nivel siguiente, si alguien está en ella |
+| `/mapa` | El mapa en texto: sitios, caminos, lo no visitado en gris y tus notas |
+| `/explorar` · `/forrajear` · `/acampar` | Descubrir un sitio cerca, cazar y forrajear, acampar donde no hay posada. Gastan un rato del día |
+| `/rumor` | Lo que se cuenta donde estás, uno cada vez |
+| `/time` · `/descanso corto\|largo` | El día y el momento; descansar |
 
-3. **Control Táctico del Dynamic Context (`/dynctx`)**:
-   - `/dynctx state [idle|combat|exploration|social|stealth|rest]`: Cambia inmediatamente la máquina de estados de la campaña. Al entrar en `combat`, el gestor activa las reglas e instrucciones de combate en el siguiente prompt.
-   - `/dynctx budget [tokens]`: Ajusta dinámicamente el presupuesto máximo de tokens para instrucciones.
+**Pelear**
 
-4. **Navegación de Mapas y Tableros (`/map` y `/board`)**:
-   - `/map goto [nombre_lugar]`: Desplaza al grupo a una nueva ubicación, actualiza `currentLocation` y carga el mapa correspondiente.
-   - `/board set [nombre_tablero]`: Carga la cuadrícula táctica y posiciona los tokens.
-   - `/board move [token_id] [x] [y]`: Mueve un personaje o enemigo en la cuadrícula de combate.
+| Comando | Qué hace |
+| :--- | :--- |
+| `/fight <enemigo> [n]` · `/enemigos` | Empezar un combate con lo que este tablero puede sacar; ver y editar quién puede salir |
+| `/combat-attack` · `/combat-move <x> <y>` · `/combat-end` · `/combat-stop` | Atacar, mover, cerrar el turno, abandonar el combate |
+| `/maniobra <esquivar\|destrabarse\|empujar\|ayudar>` | En vez de atacar |
+| `/definitivo` · `/relevo` | Los golpes del vínculo de rango 10 y de rango 5 |
+| `/postura` | Cómo pelea un compañero que se lleva solo |
+| `/prisionero` | Qué hacer con un prisionero: interrogar, soltar, entregar |
+| `/condition <nombre> <estado>` · `/objetivos` | Poner o quitar un estado; los objetivos del escenario |
 
----
+**La magia y la mascota** (R4 y R5)
+
+| Comando | Qué hace |
+| :--- | :--- |
+| `/grimorio [todo]` | Lo que el grupo sabe lanzar, con escuela, círculo y cargas; con `todo`, toda la magia que existe |
+| `/pergamino` | Aprender el conjuro de un pergamino (el mago o el erudito). El pergamino se gasta |
+| `/mascota` | Tenerla, preguntarle lo que aprieta, acariciarla |
+| `/habilidades` | Escribir técnicas y recursos de clase, y repartir quién se sabe cada una. Los conjuros solo se ajustan: se crean en el código |
+
+**La campaña y la semana**
+
+| Comando | Qué hace |
+| :--- | :--- |
+| `/modo` | El modo de juego (Relajado, Normal, Supervivencia o a tu medida) y lo que está encendido |
+| `/mesa` · `/cuenta` · `/gremio` | La mesa de la semana, lo que debes, el tablón y la casa |
+| `/caso` · `/convencer <quién>` · `/sonsacar <quién>` | El caso abierto; el duelo de palabras; sonsacar lo que alguien esconde |
+| `/bond <nombre> <evento>` · `/actitud <quién> <±n>` | Registrar algo con un compañero; mover la actitud de alguien del mundo |
+| `/ofrecer-objeto` · `/aceptar-objeto` | Lo mismo que el narrador con `dar_objeto`, a mano |
+| `/tirada` | Intentar algo fuera de combate: el motor tira con la ficha |
+| `/punto` · `/estado` | Puntos de retorno; lo que el juego da por cierto |
+
+**Crear y ajustar**
+
+| Comando | Qué hace |
+| :--- | :--- |
+| `/campana` · `/rules` · `/narrador` · `/sonido` | El editor de la campaña, el de reglas, cuánto se extiende quien narra, qué suena en cada escena |
+| `/exportar-campana` · `/esquema-campana` · `/comprobar-mundo` | Empaquetar la campaña; el contrato para el Gem; si el mundo llega al listón |
+| `/modojuego` · `/sandbox` | El Modo Juego a pantalla completa; un tablero de pruebas que no guarda nada |
+| `/prompt` · `/contradicciones` · `/semilla` · `/rollguard` | Qué se envía al modelo; lo que la narración dijo y el motor no confirma; fijar la semilla; la corrección de tiradas inventadas |
+| `/campaign` · `/cstate <estado>` | El contexto dinámico (`dynamic-context-manager.js`): estado de la campaña, presupuesto e instrucciones |
 
 ## 3. Comandos Esenciales de SillyTavern
 

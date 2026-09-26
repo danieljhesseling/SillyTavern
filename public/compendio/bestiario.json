@@ -7,6 +7,7 @@
       "id": "bestia-lobo",
       "name": "Lobo",
       "kind": "arquetipo",
+      "domable": "perro",
       "gender": "m",
       "profile": "skirmisher",
       "tags": ["bestia", "manada"],
@@ -298,6 +299,7 @@
       "id": "bestia-cuervo",
       "name": "Cuervo grande",
       "kind": "arquetipo",
+      "domable": "cuervo",
       "gender": "m",
       "profile": "coward",
       "tags": ["alimana", "vuelo"],
@@ -554,6 +556,179 @@
       "crDelta": 0.5,
       "profile": "guardian",
       "note": "Alguien le puso una marca encima, y desde entonces obedece."
+    },
+    {
+      "id": "bestia-zorro",
+      "name": "Zorro",
+      "kind": "arquetipo",
+      "domable": "zorro",
+      "gender": "m",
+      "profile": "skirmisher",
+      "tags": [
+        "bestia",
+        "astuto"
+      ],
+      "weight": 6,
+      "when": {
+        "biome": [
+          "bosque",
+          "llanura",
+          "valle",
+          "camino"
+        ]
+      },
+      "hpFactor": 0.45,
+      "acBonus": 1,
+      "speed": 40,
+      "rangeFeet": 5,
+      "weakness": "Si se le corta la retirada, se rinde enseguida.",
+      "quirk": "Muerde y se aparta: nunca se queda al alcance."
+    },
+    {
+      "id": "bestia-halcon",
+      "name": "Halcón",
+      "kind": "arquetipo",
+      "domable": "halcon",
+      "gender": "m",
+      "profile": "skirmisher",
+      "tags": [
+        "bestia",
+        "vuelo"
+      ],
+      "weight": 5,
+      "when": {
+        "biome": [
+          "montana",
+          "llanura",
+          "costa",
+          "desierto"
+        ]
+      },
+      "hpFactor": 0.35,
+      "acBonus": 2,
+      "speed": 60,
+      "rangeFeet": 5,
+      "weakness": "Con viento en contra, no acierta.",
+      "quirk": "Baja en picado sobre el que va solo."
+    },
+    {
+      "id": "bestia-gato-montes",
+      "name": "Gato montés",
+      "kind": "arquetipo",
+      "domable": "gato",
+      "gender": "m",
+      "profile": "aggressive",
+      "tags": [
+        "bestia",
+        "solitario"
+      ],
+      "weight": 5,
+      "when": {
+        "biome": [
+          "bosque",
+          "montana",
+          "cueva"
+        ]
+      },
+      "hpFactor": 0.5,
+      "acBonus": 1,
+      "speed": 40,
+      "rangeFeet": 5,
+      "weakness": "El agua lo espanta.",
+      "quirk": "Salta desde lo alto: busca las rocas antes que el suelo."
+    },
+    {
+      "id": "bestia-chaman",
+      "name": "Chamán",
+      "kind": "arquetipo",
+      "gender": "m",
+      "profile": "guardian",
+      "abilities": [
+        "mag-latigo-espinas",
+        "hab-espinas",
+        "hab-curar"
+      ],
+      "tags": [
+        "gente",
+        "creencia",
+        "naturaleza"
+      ],
+      "weight": 5,
+      "when": {
+        "biome": [
+          "bosque",
+          "pantano",
+          "montana",
+          "cueva"
+        ]
+      },
+      "hpFactor": 0.7,
+      "acBonus": 0,
+      "speed": 30,
+      "rangeFeet": 5,
+      "weakness": "Sin sus hierbas, no cura a nadie.",
+      "quirk": "Cura primero a los suyos, y solo luego ataca."
+    },
+    {
+      "id": "bestia-nigromante",
+      "name": "Nigromante",
+      "kind": "arquetipo",
+      "gender": "m",
+      "profile": "skirmisher",
+      "abilities": [
+        "mag-toque-vampirico",
+        "hab-sueno"
+      ],
+      "tags": [
+        "gente",
+        "nigromancia",
+        "distancia"
+      ],
+      "weight": 4,
+      "when": {
+        "biome": [
+          "cripta",
+          "ruina",
+          "cueva"
+        ]
+      },
+      "hpFactor": 0.65,
+      "acBonus": 0,
+      "speed": 30,
+      "rangeFeet": 5,
+      "weakness": "La luz lo deja sin fuerzas.",
+      "quirk": "Nunca pelea solo: donde está él, hay muertos que se levantan."
+    },
+    {
+      "id": "bestia-aprendiz",
+      "name": "Aprendiz de mago",
+      "kind": "arquetipo",
+      "gender": "m",
+      "profile": "skirmisher",
+      "abilities": [
+        "hab-rayo-fuego",
+        "mag-escarcha",
+        "hab-escudo-arcano"
+      ],
+      "tags": [
+        "gente",
+        "estudio",
+        "distancia"
+      ],
+      "weight": 4,
+      "when": {
+        "biome": [
+          "ciudad",
+          "ruina",
+          "camino"
+        ]
+      },
+      "hpFactor": 0.55,
+      "acBonus": 0,
+      "speed": 30,
+      "rangeFeet": 5,
+      "weakness": "Si se le acerca alguien, se equivoca de palabra.",
+      "quirk": "Guarda las distancias y lanza desde atrás."
     }
   ]
 }

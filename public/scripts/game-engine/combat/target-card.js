@@ -8,7 +8,7 @@
  *
  * Pure: it is handed the actor, the target and the turn, and returns what to draw.
  *
- * See wiki/ROADMAP_JUEGO_SIN_COMANDOS.md, K0 y K1.
+ * See wiki/archivo/ROADMAP_JUEGO_SIN_COMANDOS.md, K0 y K1.
  */
 
 /**

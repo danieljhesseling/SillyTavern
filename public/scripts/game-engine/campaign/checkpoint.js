@@ -14,11 +14,15 @@
  *
  * Puro: recoge y devuelve. Quien lo escriba en el disco, que lo escriba.
  *
- * Ver wiki/PROPUESTAS_MEJORA_V2.md, PROP2-163.
+ * Ver wiki/archivo/PROPUESTAS_MEJORA_V2.md, PROP2-163.
  */
 
 /** Versión del formato, para que un punto viejo se reconozca en vez de romper. */
-export const CHECKPOINT_VERSION = 1;
+/**
+ * 2 desde la U2 del pegamento: el punto guarda todas las claves de juego del registro del
+ * estado, no siete. Los de la versión 1 se siguen pudiendo usar: devuelven lo que traen.
+ */
+export const CHECKPOINT_VERSION = 2;
 
 /** Dónde viven, dentro de los metadatos del chat. */
 export const CHECKPOINT_KEY = 'checkpoints';
@@ -34,6 +38,7 @@ export const MAX_CHECKPOINTS = 5;
  * @property {string} savedAt ISO, para ordenarlos y enseñarlos.
  * @property {boolean} automatic Si lo puso el juego o una persona.
  * @property {any} state Lo que hay que devolver a su sitio.
+ * @property {string} [worldFile] Dónde está guardado lo que cambió del mundo (U2).
  */
 
 /**
@@ -83,6 +88,7 @@ export function normalizeCheckpoints(raw) {
             savedAt: String(cp.savedAt ?? ''),
             automatic: Boolean(cp.automatic),
             state: cp.state,
+            ...(cp.worldFile ? { worldFile: String(cp.worldFile) } : {}),
         }))
         .filter(cp => cp.id);
 }

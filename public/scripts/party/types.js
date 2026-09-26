@@ -31,6 +31,7 @@
  * @property {number} xp
  * @property {number} xpNext
  * @property {string[]} [abilities] Los ids del catalogo que este personaje se sabe.
+ * @property {Record<string, number>} [spellCharges] R4: las cargas gastadas de cada círculo.
  * @property {Record<string, number>} [abilityUses] Cuantas veces ha usado cada una desde el ultimo descanso.
  * @property {{successes: number, failures: number, stable: boolean, dead: boolean}} [deathSaves]
  * @property {boolean} [dead] Se acabo: la campana lo permitia y fallo la tercera.

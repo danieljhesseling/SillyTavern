@@ -16,6 +16,11 @@ export const TIPS = {
     combat: 'Pulsa un enemigo para ver cuánto le das. La línea de arriba dice a por quién va cada uno. «Maniobras»: esquivar, empujar, agarrar…',
     travel: 'El ritmo decide: rápido llega antes pero sin dormir; con cuidado se esquivan contratiempos.',
     prisoners: 'Un prisionero se puede interrogar (da un rumor), entregar donde hay autoridad o soltar.',
+    // H1 de wiki/LO_QUE_FALTA.md: lo nuevo, un sistema cada vez, cuando aparece por primera vez.
+    high: 'Estás en alto: desde aquí se ataca con ventaja a quien está abajo. Subir cuesta el doble.',
+    spell: 'Los conjuros gastan cargas por círculo, que vuelven con el descanso largo. /grimorio dice cuántas quedan y qué componente piden los gordos.',
+    pet: 'Tu mascota no ocupa plaza ni cobra: comenta lo que pasa y ayuda en el tablero sin pelear en serio. /mascota para verla y acariciarla.',
+    bill: 'Ha llegado la cuenta de la semana: comida, sueldos y posada. /cuenta dice qué se paga; quien no cobra acaba yéndose.',
 };
 
 /**
@@ -47,4 +52,10 @@ export const GLOSSARY = [
     { term: 'Vínculo', means: 'Lo que te une a un compañero. Sube con lo que vivís juntos y da ventajas en combate.' },
     { term: 'Reputación', means: 'Lo que una facción piensa de vosotros, de −5 a +5. Mueve precios, peajes y cartas.' },
     { term: 'Hito', means: 'Un paso del hilo de la historia. El diario dice cuál tenéis entre manos.' },
+    // Lo que llegó con la profundidad (R1–R10) y con B1 y B2.
+    { term: 'Modo', means: 'Cuánto pesa la partida: Relajado, Normal, Supervivencia o a tu medida. Seis letras que encienden heridas, cuenta, mundo, cuerpo, hierro e intemperie. /modo lo cambia.' },
+    { term: 'Carga (de conjuro)', means: 'Cuántos conjuros de cada círculo quedan: tres de primero, dos de segundo, uno de tercero. Vuelven con el descanso largo.' },
+    { term: 'Componente', means: 'Lo que gasta un conjuro gordo: polvo de hueso, ámbar, una pluma. Sale de los trofeos de caza y de la tienda.' },
+    { term: 'En alto', means: 'Una casilla elevada (torre, escalones, empalizada). Subir cuesta el doble; desde arriba se ataca con ventaja.' },
+    { term: 'Salida', means: 'Una casilla por la que irse de la pelea. Quien sale ya no pelea; cuando salís todos, se acaba en huida.' },
 ];

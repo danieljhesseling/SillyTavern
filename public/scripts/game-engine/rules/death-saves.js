@@ -13,7 +13,7 @@
  * Puro y determinista: la tirada entra como función. Ni cura, ni narra, ni mata a nadie:
  * devuelve lo que ha pasado y quien llama lo escribe.
  *
- * Ver wiki/PROPUESTAS_MEJORA_V2.md, PROP2-059.
+ * Ver wiki/archivo/PROPUESTAS_MEJORA_V2.md, PROP2-059.
  */
 
 /** Lo que hace falta para salir, en un lado o en el otro. */

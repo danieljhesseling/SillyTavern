@@ -16,7 +16,7 @@
  *   node tools/guion-a-paquete.mjs wiki/guiones/1387            # escribe public/mundos/1387.pack.json
  *   node tools/guion-a-paquete.mjs wiki/guiones/1387 --check    # solo comprueba
  *
- * Ver wiki/ROADMAP_MUNDOS_VIVOS.md, fase M.
+ * Ver wiki/archivo/ROADMAP_MUNDOS_VIVOS.md, fase M.
  */
 
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
@@ -34,7 +34,7 @@ const yamlProblems = [];
 
 /** Lo que se puede escribir en un guion. */
 const KINDS = ['mundo', 'hito', 'final', 'localidad', 'faccion', 'pnj', 'confidente', 'encargo',
-    'tablero', 'encuentro', 'bicho', 'objeto', 'rumor', 'habilidad'];
+    'tablero', 'encuentro', 'bicho', 'objeto', 'rumor', 'habilidad', 'heroe'];
 
 /** Las habilidades de las tiradas, en castellano, a su id del motor. */
 const SKILLS = {
@@ -56,6 +56,56 @@ const listOf = (value) => (Array.isArray(value) ? value : text(value).split(',')
 
 /** @param {any} v */
 const isObject = (v) => v && typeof v === 'object' && !Array.isArray(v);
+
+/**
+ * U7 del pegamento: lo que se lee de cada bloque, para avisar de lo que no.
+ *
+ * Un campo que el conversor no conoce se ignoraba en silencio: `cerrado_hasta` se escribía,
+ * el juego no se enteraba y nadie lo sabía. Cada bloque pasa por un `Proxy` que apunta qué
+ * campos se leen; al final, lo escrito y no leído se dice, campo a campo. No hace falta una
+ * lista de campos permitidos que mantener: la verdad es lo que el conversor lee de verdad.
+ */
+/** @type {WeakMap<object, Set<string>>} */
+const readKeys = new WeakMap();
+
+/**
+ * @param {any} value
+ * @returns {any}
+ */
+function tracked(value) {
+    if (!value || typeof value !== 'object') return value;
+    return new Proxy(value, {
+        get(target, key, receiver) {
+            if (typeof key === 'string') {
+                if (!readKeys.has(target)) readKeys.set(target, new Set());
+                readKeys.get(target)?.add(key);
+            }
+            const result = Reflect.get(target, key, receiver);
+            return typeof key === 'string' && result && typeof result === 'object' ? tracked(result) : result;
+        },
+    });
+}
+
+/**
+ * Los campos escritos que nadie ha leído, con dónde están.
+ *
+ * @param {any} value
+ * @param {string} path
+ * @param {string[]} out
+ */
+function unreadFields(value, path, out) {
+    if (Array.isArray(value)) {
+        value.forEach((item, i) => unreadFields(item, `${path}[${i}]`, out));
+        return;
+    }
+    if (!isObject(value)) return;
+    const seen = readKeys.get(value) ?? new Set();
+    for (const [key, inner] of Object.entries(value)) {
+        if (key === 'id' || key === 'borrar') continue;
+        if (!seen.has(key)) out.push(`${path}.${key}`);
+        else unreadFields(inner, `${path}.${key}`, out);
+    }
+}
 
 /**
  * Un bloque encima de otro: campo a campo; las listas se sustituyen enteras.
@@ -163,7 +213,7 @@ const firstNumber = (/** @type {any} */ value) => Number(String(value ?? '').mat
  * El paquete de un guion.
  *
  * @param {ReturnType<typeof readGuion>['byKind']} g
- * @param {{abilityRows: any[], defaults: any[], asAbility: (row: any) => any}} catalogue
+ * @param {{abilityRows: any[], defaults: any[], asAbility: (row: any) => any, spellById: (id: string) => any, magicInData: (row: any) => string}} catalogue
  * @returns {{pack: any, notes: string[]}}
  */
 function buildPack(g, catalogue) {
@@ -250,6 +300,9 @@ function buildPack(g, catalogue) {
             ...(listOf(r.estaciones).length > 0 ? { seasons: listOf(r.estaciones) } : {}),
             // Idea 130: «barco: true» es un pasaje por mar.
             ...(r.barco ? { sea: true } : {}),
+            // U7 del pegamento: «cerrado_hasta: <hito>» es un camino que se abre al cumplirse
+            // ese hito. Antes se ignoraba en silencio.
+            ...(text(r.cerrado_hasta) ? { closedUntil: text(r.cerrado_hasta) } : {}),
         })),
     }));
 
@@ -260,6 +313,8 @@ function buildPack(g, catalogue) {
         goals: text(f.si_la_cumple),
         onSuccess: text(f.si_la_cumple),
         reputation: Number(f.reputacion_inicial) || 0,
+        // T4: cómo ve la magia (persigue, tolera, comercia).
+        ...(f.magia !== undefined && f.magia !== null ? { magia: text(f.magia) } : {}),
         seat: placeName(f.sede),
         holds: (f.controla ?? []).map(placeName),
         enemies: (f.enemigos ?? []).map(text),
@@ -277,7 +332,16 @@ function buildPack(g, catalogue) {
         // Idea 59: la lengua que habla, si no es la común.
         ...(text(p.idioma ?? '') ? { language: text(p.idioma) } : {}),
     }));
+    // R4/R10: los conjuros que sabe alguien se nombran por su id del grimorio; uno que no
+    // existe se avisa y se deja fuera (la magia solo existe en el código).
+    /** @param {any} list @param {string} who @returns {string[]} */
+    const spellsOf = (list, who) => listOf(list).filter(id => {
+        if (catalogue.spellById(id)) return true;
+        notes.push(`${who}: el conjuro «${id}» no está en el grimorio (la magia solo existe en el código; /grimorio dice cuáles hay)`);
+        return false;
+    });
     const confidants = all('confidente').map(c => ({
+        ...(listOf(c.conjuros).length > 0 ? { spells: spellsOf(c.conjuros, `confidente «${c.id}»`) } : {}),
         name: text(c.nombre),
         description: text(c.descripcion) || text(c.escenas?.[0]?.escena),
         className: text(c.clase),
@@ -304,13 +368,30 @@ function buildPack(g, catalogue) {
         boss: Boolean(b.jefe),
         // Idea 97: los que migran, con sus estaciones.
         ...(listOf(b.estaciones).length > 0 ? { seasons: listOf(b.estaciones) } : {}),
+        // T6: si una cría suya se doma, y en qué mascota.
+        ...(b.domable !== undefined && b.domable !== null ? { domable: text(b.domable) } : {}),
     }));
     const wanted = new Set(bestiary.flatMap(b => b.abilities));
     const fromLibrary = catalogue.abilityRows.filter(row => wanted.has(text(row.id))).map(catalogue.asAbility);
-    const written = all('habilidad').map(h => ({ ...h, id: text(h.id) }));
+    // R4 (DR3): una habilidad escrita que es magia no entra; la magia solo existe en el grimorio.
+    const written = all('habilidad').map(h => ({ ...h, id: text(h.id) })).filter(h => {
+        const magic = catalogue.magicInData({ ...h, name: text(h.name ?? h.nombre) });
+        if (magic) notes.push(`habilidad «${h.id}»: ${magic}`);
+        return !magic;
+    });
     const abilities = [...catalogue.defaults, ...fromLibrary, ...written];
     const known = new Set(abilities.map(a => text(a.id)));
-    for (const id of wanted) if (!known.has(id)) notes.push(`habilidad «${id}» no está en ningún catálogo`);
+    for (const id of wanted) if (!known.has(id) && !catalogue.spellById(id)) notes.push(`habilidad «${id}» no está en ningún catálogo ni en el grimorio`);
+
+    // --- R1/R10: los héroes hechos, para entrar sin crear a nadie. Como mucho tres.
+    const heroes = all('heroe').slice(0, 3).map(h => ({
+        name: text(h.nombre), race: text(h.raza), className: text(h.clase), gender: text(h.genero),
+        background: text(h.pasado), about: text(h.quien), pitch: text(h.gancho),
+        ...(listOf(h.conjuros).length > 0 ? { spells: spellsOf(h.conjuros, `héroe «${h.id}»`) } : {}),
+        // T5: la mascota con la que llega.
+        ...(h.mascota && typeof h.mascota === 'object' ? { pet: { name: text(h.mascota.nombre), species: text(h.mascota.especie), character: text(h.mascota.caracter) || 'leal' } } : {}),
+    }));
+    if (all('heroe').length > 3) notes.push(`${all('heroe').length} héroes hechos: solo entran los tres primeros`);
 
     // --- Los objetos y los rumores.
     // Idea 132: un objeto ligado a un hito o a un encargo es una reliquia: llega con él.
@@ -467,6 +548,7 @@ function buildPack(g, catalogue) {
         contracts,
         rumors,
         abilities,
+        ...(heroes.length > 0 ? { heroes } : {}),
         plot: {
             title: text(world.nombre), milestones, endings, ...(omens.length > 0 ? { omens } : {}),
             // Idea 115: el villano y cuándo asoma.
@@ -501,16 +583,41 @@ if (!world?.id) {
     process.exit(2);
 }
 
-const [{ asAbility }, { DEFAULT_RULESET }, { validatePack }] = await Promise.all([
-    engine('compendio/skills.js'), engine('rules/default-ruleset.js'), engine('campaign/campaign-pack.js'),
+const [{ asAbility }, { DEFAULT_RULESET }, { validatePack }, { spellById, magicInData }] = await Promise.all([
+    engine('compendio/skills.js'), engine('rules/default-ruleset.js'), engine('campaign/campaign-pack.js'), engine('rules/grimoire.js'),
 ]);
 const library = JSON.parse(readFileSync(new URL('public/compendio/habilidades.json', ROOT), 'utf8'));
-const { pack, notes } = buildPack(byKind, { abilityRows: library.rows ?? [], defaults: DEFAULT_RULESET.abilities ?? [], asAbility });
+/** @type {typeof byKind} */
+const watched = Object.fromEntries(Object.entries(byKind).map(([kind, map]) => [kind, new Map([...map].map(([id, data]) => [id, tracked(data)]))]));
+const { pack, notes } = buildPack(watched, { abilityRows: library.rows ?? [], defaults: DEFAULT_RULESET.abilities ?? [], asAbility, spellById, magicInData });
 const found = validatePack(pack);
+// Lo que pasó entero al paquete (una tabla de reputaciones, por ejemplo) se lee al escribirlo:
+// se recorre antes de contar lo que nadie leyó.
+JSON.stringify(pack);
+/** @type {string[]} */
+const ignored = [];
+for (const [kind, map] of Object.entries(byKind)) {
+    for (const [id, data] of map) unreadFields(data, `${kind} «${id}»`, ignored);
+}
 
 console.log(`Leídas ${files.length} rondas: ${files.join(', ')}`);
 for (const kind of KINDS) if (byKind[kind].size > 0) console.log(`  ${kind}: ${byKind[kind].size}`);
 for (const note of notes) console.log(`AVISO  ${note}`);
+if (ignored.length > 0) {
+    // Agrupados por campo: «voz» en 27 personas es un aviso, no veintisiete.
+    /** @type {Map<string, string[]>} */
+    const byField = new Map();
+    for (const path of ignored) {
+        const field = path.replace(/^.*?» ?/, '').replace(/\[\d+\]/g, '[]');
+        if (!byField.has(field)) byField.set(field, []);
+        byField.get(field)?.push(path);
+    }
+    console.log(`\nAVISO  ${ignored.length} campo(s) escritos que el conversor no lee: el juego no se entera de ellos.`);
+    for (const [field, paths] of byField) {
+        console.log(`       ${field} (${paths.length}): ${paths.slice(0, 3).join(', ')}${paths.length > 3 ? '…' : ''}`);
+    }
+    console.log('       Si es una errata, corrígela en una ronda nueva; si es un campo nuevo, hay que enseñárselo al conversor.');
+}
 for (const issue of found.warnings) console.log(describeIssue('AVISO', issue, locateIssue(issue.path, pack, index)));
 for (const issue of found.errors) console.log(describeIssue('ERROR', issue, locateIssue(issue.path, pack, index)));
 if (found.errors.length > 0) {

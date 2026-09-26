@@ -78,7 +78,7 @@ flowchart TD
 ### Seguridad y Cabeceras
 - **Helmet**: Se aplica al inicio del pipeline. 
   > [!WARNING]
-  > Como se analiza en [[PROBLEMAS_TECNICOS]], `server-main.js` tiene `contentSecurityPolicy: false`. Esto permite la ejecución de scripts en línea requeridos por extensiones del cliente, pero abre vectores de riesgo XSS.
+  > Como se analiza en *PROBLEMAS_TECNICOS*, `server-main.js` tiene `contentSecurityPolicy: false`. Esto permite la ejecución de scripts en línea requeridos por extensiones del cliente, pero abre vectores de riesgo XSS.
 - **Protección CSRF**: Implementada mediante `csrf-sync`. Requiere que las peticiones que mutan estado (`POST`, `PUT`, `DELETE`) incluyan la cabecera `X-CSRF-Token` o un campo en el cuerpo.
 - **Aislamiento Multi-Usuario**: Si `enableUserAccounts` está activo, `setUserDataMiddleware` vincula la sesión con el directorio de datos correspondiente (`data/<user_handle>/`).
 
@@ -140,4 +140,4 @@ A diferencia de las extensiones del frontend (que son módulos JS cargados en el
 - [[Arquitectura-General]]: Visión de conjunto del sistema.
 - [[Almacenamiento-Persistencia]]: Esquema detallado del sistema de archivos en `data/`.
 - [[Seguridad-Autenticacion]]: Análisis de controles de acceso y sesiones.
-- [[PROBLEMAS_TECNICOS]]: Hallazgos de concurrencia, bloqueo de archivos y CSP.
+- *PROBLEMAS_TECNICOS*: Hallazgos de concurrencia, bloqueo de archivos y CSP.

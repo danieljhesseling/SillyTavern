@@ -15,6 +15,8 @@
  * Puro: decide y no toca nada. Quien llama guarda el estado en el combate.
  */
 
+import { heightReason } from '../board/heights.js';
+
 /** Cuerpo a cuerpo, en pies. */
 const MELEE_FEET = 5;
 
@@ -240,6 +242,23 @@ export function judgeManeuvers({ hasAction, enemies, hide = { ok: false, reason:
 }
 
 /**
+ * Los estados que dejan a alguien sin turno: dormido, aturdido, paralizado, sin sentido.
+ * Antes eran una etiqueta, y un enemigo con *Sueño pesado* seguía pegando.
+ */
+export const INCAPACITATED = ['Unconscious', 'Stunned', 'Paralyzed', 'Incapacitated'];
+
+/**
+ * Si alguien pierde el turno por lo que tiene encima, y por qué.
+ *
+ * @param {string[]} conditions
+ * @returns {string} Vacío si puede actuar; si no, el estado que se lo impide.
+ */
+export function cannotAct(conditions) {
+    const said = (Array.isArray(conditions) ? conditions : []).map(c => String(c).toLowerCase());
+    return INCAPACITATED.find(c => said.includes(c.toLowerCase())) ?? '';
+}
+
+/**
  * Si un ataque va con ventaja, con desventaja o normal, y por qué.
  *
  * Las reglas de 5e: una de cada anula una de la otra, y varias de lo mismo no se suman.
@@ -255,9 +274,10 @@ export function judgeManeuvers({ hasAction, enemies, hide = { ok: false, reason:
  * @param {string} [input.attackerId] Quién ataca: si estaba escondido, ataca con ventaja (idea 11).
  * @param {string[]} [input.hindered] Lo que estorba desde fuera: la niebla, la noche, el viento
  *   (ideas 73 y 90, `visibilityPenalties`). Cada cosa es una razón de desventaja.
+ * @param {'above'|'below'|'level'|string} [input.height] B1: desde arriba se ataca con ventaja (`heights.js`).
  * @returns {{mode: 'advantage'|'disadvantage'|'normal', reasons: string[], usesHelp: boolean, usesHidden: boolean}}
  */
-export function attackEdge({ targetId, targetConditions = [], attackerConditions = [], distanceFeet, maneuvers = null, byParty = false, flanked = false, attackerId = '', hindered = [] }) {
+export function attackEdge({ targetId, targetConditions = [], attackerConditions = [], distanceFeet, maneuvers = null, byParty = false, flanked = false, attackerId = '', hindered = [], height = '' }) {
     const state = readManeuvers(maneuvers);
     const id = String(targetId);
     const has = (/** @type {string[]} */ list, /** @type {string} */ name) =>
@@ -277,6 +297,18 @@ export function attackEdge({ targetId, targetConditions = [], attackerConditions
     // Sujeto (una red, un golpe que le clava): no esquiva, y pega mal (5e).
     if (has(targetConditions, 'Restrained')) up.push('está sujeto');
     if (has(attackerConditions, 'Restrained')) down.push('ataca sujeto');
+    // R3 del roadmap de profundidad: los estados que eran solo una etiqueta, pesando (5e).
+    if (has(targetConditions, 'Blinded')) up.push('no ve venir el golpe');
+    if (has(attackerConditions, 'Blinded')) down.push('ataca a ciegas');
+    if (has(attackerConditions, 'Frightened')) down.push('ataca con miedo');
+    if (has(attackerConditions, 'Poisoned')) down.push('está envenenado');
+    // R5: la mascota le ha distraído. R4: bendecido pega mejor; y un escudo arcano estorba.
+    if (has(attackerConditions, 'Distraído')) down.push('le distrae la mascota');
+    if (has(attackerConditions, 'Bendecido')) up.push('va bendecido');
+    if (has(targetConditions, 'Escudado')) down.push('tiene un escudo arcano delante');
+    if (INCAPACITATED.some(c => has(targetConditions, c))) up.push('no puede defenderse');
+    if (has(attackerConditions, 'Invisible')) up.push('no se le ve');
+    if (has(targetConditions, 'Invisible')) down.push('no se le ve bien');
     const usesHelp = byParty && state.helped.some(h => h.targetId === id);
     if (usesHelp) up.push('le han abierto la guardia');
     if (flanked && Number(distanceFeet) <= MELEE_FEET) up.push('lo tenéis flanqueado');
@@ -286,6 +318,9 @@ export function attackEdge({ targetId, targetConditions = [], attackerConditions
     if ((state.hidden ?? []).some(h => h.id === id)) down.push('no se le ve bien');
     // Ideas 73 y 90: la niebla, la noche o el viento.
     for (const reason of Array.isArray(hindered) ? hindered : []) if (reason) down.push(String(reason));
+    // B1: quien pega desde arriba, pega mejor. Para los dos bandos y cualquier arma.
+    const fromAbove = heightReason(height);
+    if (fromAbove) up.push(fromAbove);
 
     const mode = up.length > 0 && down.length === 0 ? 'advantage'
         : down.length > 0 && up.length === 0 ? 'disadvantage'

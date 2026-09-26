@@ -2,14 +2,20 @@
 title: Por Hacer — Estado Real y Pendientes
 tags: [todo, pendientes, estado, roadmap, deuda]
 created: 2026-09-20
-updated: 2026-09-23
+updated: 2026-09-26
 author: DanielJHesseling / Claude Opus 5
 ---
 
 # 📋 Por Hacer
 
 > [!NOTE]
-> **Esto es el marcador, no el plan.** Lo que se hace *después* está en **[[ROADMAP_MAESTRO]]**, partido en niveles. Lo siguiente, y lo urgente —los mundos precreados están vacíos—, en **[[ROADMAP_MUNDOS_VIVOS]]**. Aquí van las tareas sueltas: **A** hecho, **D** decidido, **P** propuesto.
+> **Esto es el marcador, no el plan.** El plan, desde el 2026-09-25, es **[[ROADMAP_PEGAMENTO]]**: juntar lo construido en un solo juego. [[ROADMAP_MAESTRO]] se queda como el porqué y [[ROADMAP_MUNDOS_VIVOS]] como el acta de lo hecho. Aquí van las tareas sueltas: **A** hecho, **D** decidido, **P** propuesto.
+>
+> **Puesto al día con el código el 2026-09-25** (U0 del pegamento): A14, D7 y D8 se cerraron; A13, P6 y P25 están a medias; P16, P18 y P24 se hicieron por el camino. Cada una dice abajo con qué módulo.
+>
+> **Desde el 2026-09-26, la profundidad sigue en [[ROADMAP_PROFUNDIDAD]]** (R1–R10: modos, taller en pestañas, habilidades, magia en código, mascota, tableros con intención, enemigos, compañeros, mundo y herramientas). Lo que falta de cada fase está en su tabla «Cómo va».
+>
+> **Y lo que le falta al juego, mirado entero, en [[LO_QUE_FALTA]]** (2026-09-26), con el orden que recomiendo. Ese mismo día se ordenó la wiki: siete documentos borrados y nueve planes cerrados movidos a `wiki/archivo/`.
 
 Lo que falta, dividido por **quién tiene que actuar**:
 
@@ -25,7 +31,7 @@ El plan y el porqué están en [[ROADMAP]]; esto es el marcador.
 > **El patrón a vigilar**: había mucho motor construido y testeado, y menos motor **conectado**. Desde el 2026-09-21 **la orden responde que no falta ninguno, y ya sin salvedades**. Las tareas marcadas 🖥️ son las que convierten trabajo hecho en trabajo jugable, y un módulo que solo ejecutan los tests no cuenta como hecho:
 >
 > ```bash
-> node tools/check-engine-wiring.mjs   # 54 módulos, los 54 conectados
+> node tools/check-engine-wiring.mjs   # 234 módulos, 233 cargados por el juego (el otro, guion-errors.js, solo en pruebas: K6 de LO_QUE_FALTA)
 > ```
 
 ---
@@ -39,7 +45,7 @@ Ordenado por lo que desbloquea. Cada una tiene el camino decidido: si aparece un
 >
 > Lo que queda en este bloque es **profundidad de juego**: que subir de nivel cambie algo, que la campaña se pueda compartir, y que suene a algo. Los números A se reciclan en cada ronda; los de las rondas anteriores están fechados más abajo, en *Hecho*.
 
-Lo que entra ahora sale de **[[PLAN_JUEGO_TIPO_FRIENDS_AND_FABLES]]**, repasado el 2026-09-22. De sus seis piezas, dos ya estaban hechas (descansos e ingesta) y media tercera (las opciones rápidas). Estas tres tienen el camino decidido; las dos que no, están abajo en **D**.
+Lo que entra ahora sale de ***PLAN_JUEGO_TIPO_FRIENDS_AND_FABLES***, repasado el 2026-09-22. De sus seis piezas, dos ya estaban hechas (descansos e ingesta) y media tercera (las opciones rápidas). Estas tres tienen el camino decidido; las dos que no, están abajo en **D**.
 
 > [!TIP]
 > **Las tres hechas el 2026-09-22.** Lo que sigue se queda como estaba escrito, con el resultado debajo de cada una.
@@ -83,7 +89,7 @@ Es la pieza que menos código lleva y la que más cambia cómo se siente. Si alg
 
 ### A4 · Un pueblo tranquilo tiene que poder existir 🖥️ ✅
 
-Sale de leer [[DISENO_GENERADOR_MUNDOS_PROFUNDO]], y es su idea más valiosa: **una localidad puede tener 0, 1 o N tableros**. Hoy puede tener 1 o N. **Cero, no.**
+Sale de leer *DISENO_GENERADOR_MUNDOS_PROFUNDO*, y es su idea más valiosa: **una localidad puede tener 0, 1 o N tableros**. Hoy puede tener 1 o N. **Cero, no.**
 
 El paquete de campaña no tiene lista de localidades: el importador las **deduce** de los tableros (`board.locationName`), así que un sitio sin tablero no llega a existir. Consecuencia: una aldea donde solo se compra, se habla y se sube un vínculo — o sea, **la mitad del bucle de Persona** — no se puede escribir en un libro ni importar.
 
@@ -282,16 +288,22 @@ El [[ROADMAP_MAESTRO]], Nivel 2. Lo que hace que quieras jugar mañana.
 
 ---
 
-### A13 · Desacoplar enemigos de los tableros (Spawning dinámico) 🟡 **En diseño**
-Los tableros en las plantillas y generadores nacían con enemigos fijos clavados en casillas, lo que volvía las salas estáticas o museos sin rejugabilidad (*[[ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES]] §4.1*).
+### A13 · Desacoplar enemigos de los tableros (Spawning dinámico) 🟡 **A medias, comprobado el 2026-09-25**
+
+> **Lo que ya está:** un encargo construye su sitio **y sus enemigos al aceptarse** (`acceptContract` → `generateBoard`, con el bestiario, el nivel del grupo y ahora la estación), y los tableros escritos traen sus reglas de encuentro (`encounterRules`). Los pueblos tranquilos existen desde la A4. **Lo que no he podido comprobar:** tablas de peligro por bioma y por hora para los tableros sueltos. Se queda abierta por eso.
+
+Los tableros en las plantillas y generadores nacían con enemigos fijos clavados en casillas, lo que volvía las salas estáticas o museos sin rejugabilidad (**ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES* §4.1*).
 - **Geometría pura**: El tablero solo almacena muros `#`, suelo `.`, mesas `c`, coberturas `C`, puertas `D` y puntos de aparición `partyStart`.
 - **Spawning contextual**: Los enemigos se instancian únicamente al aceptar una misión o contrato, o según la tabla de peligro del bioma (`spawnTable`), adaptándose al nivel de la party.
 - **Tableros sociales pacíficos**: Una taberna o castillo se explora sin combate; solo si un evento o encargo estalla se puebla de combatientes.
 
 ---
 
-### A14 · Nodos de Servicios en Localidades (Taberna, Forja, Tienda, Templo) 🟡 **En diseño**
-Hoy una localidad sin tablero táctico es solo un cartel de texto. Si el jugador entra y quiere comprar o curarse, depende de inventárselo con el LLM en el chat sin que el oro ni el inventario del motor se enteren (*[[ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES]] §4.2*).
+### A14 · Nodos de Servicios en Localidades (Taberna, Forja, Tienda, Templo) ✅ **Hecho — la fase L de [[ROADMAP_MUNDOS_VIVOS]]**
+
+> Servicios por tipo de sitio (`campaign/services.js`), tarjetas en la escena del pueblo, posada, herrería, tienda, templo y quien enseña, con oro e inventario del motor. Lo de abajo se queda como se escribió.
+
+Hoy una localidad sin tablero táctico es solo un cartel de texto. Si el jugador entra y quiere comprar o curarse, depende de inventárselo con el LLM en el chat sin que el oro ni el inventario del motor se enteren (**ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES* §4.2*).
 - **Esquema de servicios**: Añadir `services: SettlementServiceType[]` a cada localidad (`tavern`, `blacksmith`, `apothecary`, `temple`, `job_board`, `moneylender`).
 - **Botones funcionales en pantalla de exploración**: Al visitar un pueblo, el HUD ofrece botones directos para comerciar, reparar equipo, tratar heridas y aceptar contratos con interacción real sobre el oro e inventario.
 
@@ -325,7 +337,10 @@ Añadir una a mano exige editar `starter-templates.js`. Convertirlas en datos (`
 
 **Recomiendo aplazarlo** hasta que quieras una plantilla fija concreta que la IA no te dé.
 
-### D5 · La magia: ¿cuánta, y cuándo? ✅ **Decidido: la ligera, el 2026-09-22**
+### D5 · La magia: ¿cuánta, y cuándo? ✅ **Decidido: la ligera, el 2026-09-22** · ✅ **Hecha desde el código en R4, el 2026-09-26**
+
+> [!NOTE]
+> **Lo de abajo es la decisión tal como se tomó.** Hoy sí hay magia: un grimorio de 25 conjuros en siete escuelas, con cargas por círculo, componentes, pergaminos y varitas, y solo existe en el código ([[ROADMAP_PROFUNDIDAD]], R4).
 
 **No hay magia.** Ninguna: ni trucos, ni espacios de conjuro, ni recursos de clase. El combate resuelve armas. Un D&D sin conjuros deja fuera a la mitad de las clases — el mago, el clérigo, el brujo y el druida no son jugables como tales — y eso ninguna narración lo tapa: puedes *contar* que lanzas una bola de fuego, pero el motor no la tira, no la resuelve y no la cuenta.
 
@@ -338,7 +353,7 @@ No cuesta tokens — la resolvería el motor, como el resto del combate — pero
 
 **Recomiendo la ligera**, y por la misma razón que funcionó el paquete de reglas: un conjuro pasa a ser **datos que editas tú** en vez de una tabla cerrada que hay que escribir clase a clase. Si más adelante quieres las ranuras de 5e de verdad, se añaden encima; al revés no.
 
-[[DISENO_GENERADOR_MUNDOS_PROFUNDO]] ya trae **la forma de los datos** para esto, y es buena: un catálogo único (`spellsAndAbilities`) que referencian por id tanto los personajes como los enemigos, con coste de acción, alcance, área, recurso que gasta, tirada o salvación, daño o curación, y condiciones que aplica. Un catálogo compartido es justo lo que hace que la misma pieza sirva para la *Furia* de un bárbaro y para el aliento de un dragon. Lo caro no es el catálogo: son las **áreas de efecto** (una línea de 30 pies es geometría nueva en el tablero) y la **concentración**.
+*DISENO_GENERADOR_MUNDOS_PROFUNDO* ya trae **la forma de los datos** para esto, y es buena: un catálogo único (`spellsAndAbilities`) que referencian por id tanto los personajes como los enemigos, con coste de acción, alcance, área, recurso que gasta, tirada o salvación, daño o curación, y condiciones que aplica. Un catálogo compartido es justo lo que hace que la misma pieza sirva para la *Furia* de un bárbaro y para el aliento de un dragon. Lo caro no es el catálogo: son las **áreas de efecto** (una línea de 30 pies es geometría nueva en el tablero) y la **concentración**.
 
 **Hecho el 2026-09-22, y la ligera.** `rules/abilities.js` (26 tests): una habilidad son cuatro preguntas — qué cuesta, cuántas veces, a quién alcanza y qué hace — y con eso salen la *Furia*, el *Tomar aliento* y el *Rayo de fuego* con las mismas piezas.
 
@@ -355,7 +370,7 @@ No cuesta tokens — la resolvería el motor, como el resto del combate — pero
 > [!TIP]
 > **Lo que cambió.** El «no» era por dos motivos: tokens en cada turno y un modelo que tiene que obedecer un protocolo. La variante hecha el 2026-09-23 no tiene ninguno de los dos: **quien pide la tirada eres tú**, con el botón **Tirada** de la fila de fichas (o `/tirada persuasion`). El motor tira con la ficha del tuyo y deja el resultado escrito **al principio de tu mensaje**: `[TIRADA Persuasión de Lyra: d20 11 +7 = 18 contra CD 12 → Éxito. El dado ya está tirado…]`. El modelo lee un resultado ya decidido, unos quince tokens y solo en ese turno. Una tirada por mensaje: hasta que lo envías, volver a pulsar da la misma. `rules/checks.js`. Lo de abajo sigue siendo cierto para la versión en la que el narrador **pide** la tirada.
 
-La Pieza 1 de [[PLAN_JUEGO_TIPO_FRIENDS_AND_FABLES]]: que el narrador escriba `[CHECK: Percepción | CD 13 | Actor: Lyra]`, el motor tire el d20 con su modificador y el resultado decida lo que pasa. Es lo que hace que un DM de IA se sienta un DM y no un narrador.
+La Pieza 1 de *PLAN_JUEGO_TIPO_FRIENDS_AND_FABLES*: que el narrador escriba `[CHECK: Percepción | CD 13 | Actor: Lyra]`, el motor tire el d20 con su modificador y el resultado decida lo que pasa. Es lo que hace que un DM de IA se sienta un DM y no un narrador.
 
 La costura ya existe y es la buena: `roll-guard.js` intercepta las tiradas que el modelo se inventa y las sustituye por las del motor. Esto es el mismo mecanismo al revés — el modelo **pide**, el motor **tira**. Y si el modelo no escribe el bloque, no se rompe nada: se sigue jugando como hoy.
 
@@ -363,13 +378,19 @@ La costura ya existe y es la buena: `roll-guard.js` intercepta las tiradas que e
 
 **Decidido que no, por ahora.** Cuesta en todos los turnos y depende de que el modelo obedezca; el motor ya tira, ya audita y ya corrige lo que el narrador se invente. Si algún día apetece, la costura (`roll-guard.js`) sigue ahí.
 
-### D7 · Posturas de aliados en Modo Solo (`Stances`)
+### D7 · Posturas de aliados en Modo Solo (`Stances`) ✅ **Hecho: la opción A**
+
+> Tres posturas en un clic, en la ficha del compañero, y `/postura` (`combat/ally-ai.js`, `STANCES`). Quien está malherido se retira sea cual sea su postura.
+
 En Modo Solo, dejar a los compañeros a merced del A* de monstruos provoca que se suiciden contra enemigos lejanos (*misión de escolta frustrante*).
 - **Opción A (Recomendada)**: Selector de 1 clic en la tarjeta del aliado durante el combate: *Defensivo* (guardaespaldas del líder), *Agresivo* (carga sobre el más débil) o *Retaguardia* (distancia máxima y conjuros).
 - **Opción B**: Órdenes tácticas por texto en chat (ej. `/order Brand defiende`).
 - **Recomendación**: Opción A. Es inmediata, visual, determinista y a cero tokens.
 
-### D8 · Fail-Forward ante impago de Upkeep (Bancarrota)
+### D8 · Fail-Forward ante impago de Upkeep (Bancarrota) ✅ **Hecho: la opción A**
+
+> La primera vez que no llega, la facción que mejor os mira paga, y lo cobra en un favor con plazo (`campaign/patronage.js`).
+
 Si llega el viernes y el grupo no puede pagar comida, alojamiento y salarios:
 - **Opción A (Recomendada)**: **Evento de deuda de facción**. Un usurero local o facción con reputación positiva paga la cuenta a cambio de imponer un contrato obligatorio de alto riesgo con dilema moral.
 - **Opción B**: Los mercenarios abandonan el grupo inmediatamente y el jugador sufre penalización de cansancio por dormir en la intemperie.
@@ -406,14 +427,14 @@ Ideas que no están en ningún plan. Ninguna es necesaria; algunas son buenas. M
 | ID | Propuesta | Por qué |
 | :--- | :--- | :--- |
 | **P5** 💡 | **Panel del estado canónico** | Una vista con todo lo que el motor da por cierto: HP, posiciones, vínculos, misiones, día, banderas. Hoy ese estado existe repartido y solo se ve de refilón. Sería el complemento de `/prompt`: uno muestra lo que se envía, el otro lo que el juego cree |
-| **P6** | **Chequeo de campaña sana** | Una orden que revise si un mundo se puede jugar: enemigos con reglas de encuentro, posiciones de inicio transitables, tableros con terreno. **Cada uno de esos tres ha sido un fallo real** — el chequeo los habría cazado a todos |
-| **P7** | **Deshacer en el tablero** | Pintar terreno y mover fichas no tiene vuelta atrás. Una pila de deshacer por tablero |
+| **P6** | **Chequeo de campaña sana** 🟡 **Sin encontrar como tal, 2026-09-25**: `/comprobar-mundo` mide si el mundo llega al listón (181), no si se puede jugar. Sigue abierta | Una orden que revise si un mundo se puede jugar: enemigos con reglas de encuentro, posiciones de inicio transitables, tableros con terreno. **Cada uno de esos tres ha sido un fallo real** — el chequeo los habría cazado a todos |
+| **P7** | **Deshacer en el tablero** → H5 de [[LO_QUE_FALTA]] | Pintar terreno y mover fichas no tiene vuelta atrás. Una pila de deshacer por tablero |
 
 ### Que el juego aguante una campaña larga
 
 | ID | Propuesta | Por qué |
 | :--- | :--- | :--- |
-| **P8** 💡 | **Punto de guardado de la partida** | Un *checkpoint* del estado canónico al que volver. Es lo que hace seguro experimentar: probar un combate difícil, o una decisión que no sabes si te va a gustar |
+| **P8** 💡 | **Punto de guardado de la partida** ✅ **Hecho** como `/punto` (PROP2-163, A5), y desde U2 guarda todo lo de juego y el mundo | Un *checkpoint* del estado canónico al que volver. Es lo que hace seguro experimentar: probar un combate difícil, o una decisión que no sabes si te va a gustar |
 | **P9** | **Exportar la campaña entera** (`.tavernworld`) | ⬆️ Subida al bloque **A2**: es la mitad que falta de *«sin marketplace»* |
 | **P10** | **Turnos transaccionales** (`N-04`) | Si un turno se corta a la mitad, ¿se aplicó el daño? Hoy cada acción se aplica al instante y el motor es determinista, así que el riesgo es bajo. Importaría si el modelo llegara a escribir estado |
 | **P11** | **Presupuesto de merge como métrica** (`N-08`) | Un script que falle si un commit toca un archivo de upstream sin justificarlo. Convierte la disciplina del fork en algo verificado en vez de recordado |
@@ -422,25 +443,25 @@ Ideas que no están en ningún plan. Ninguna es necesaria; algunas son buenas. M
 
 | ID | Propuesta | Por qué |
 | :--- | :--- | :--- |
-| **P14** | **Confidentes que no están en tu grupo** | Hoy los vínculos solo existen para miembros del grupo. En Persona la mitad de los confidentes son gente del pueblo: la tabernera, el herrero. La lógica de `bonds.js` no distingue — lo que falta es que un NPC del mundo pueda tener rango sin ir contigo a pelear |
-| **P15** | **Que el día sirva para algo más que descansar** | La tabla de bloques de tiempo de [[PROPUESTA_JUEGO_DND_GLOOMHAVEN_PERSONA]] promete *entrenar*, *estudiar* y *comprar en el mercado*. Hoy un bloque del día solo se gasta descansando o pasando el rato con alguien. Es media mecánica de Persona sin construir |
-| **P16** | **Encuentros nocturnos al acampar** | Un descanso largo en territorio hostil es hoy igual de seguro que en una posada. Con las reglas de encuentro que ya existen, montar guardia pasaría a significar algo |
+| **P14** | **Confidentes que no están en tu grupo** ✅ **Hecho en R8** (`campaign/companion-arcs.js`: los del mundo con actitud alta hacen favores sin pelear) | Hoy los vínculos solo existen para miembros del grupo. En Persona la mitad de los confidentes son gente del pueblo: la tabernera, el herrero. La lógica de `bonds.js` no distingue — lo que falta es que un NPC del mundo pueda tener rango sin ir contigo a pelear |
+| **P15** | **Que el día sirva para algo más que descansar** | La tabla de bloques de tiempo de *PROPUESTA_JUEGO_DND_GLOOMHAVEN_PERSONA* promete *entrenar*, *estudiar* y *comprar en el mercado*. Hoy un bloque del día solo se gasta descansando o pasando el rato con alguien. Es media mecánica de Persona sin construir |
+| **P16** | **Encuentros nocturnos al acampar** ✅ **Hecho** (idea 67, `campaign/camp.js`: la guardia y lo que se acerca de noche) | Un descanso largo en territorio hostil es hoy igual de seguro que en una posada. Con las reglas de encuentro que ya existen, montar guardia pasaría a significar algo |
 
 ### Del generador de mundos profundo
 
-De [[DISENO_GENERADOR_MUNDOS_PROFUNDO]]. Ordenadas por lo que dan a cambio de lo que cuestan; ninguna hace falta para jugar hoy.
+De *DISENO_GENERADOR_MUNDOS_PROFUNDO*. Ordenadas por lo que dan a cambio de lo que cuestan; ninguna hace falta para jugar hoy.
 
 | ID | Propuesta | Por qué |
 | :--- | :--- | :--- |
 | **P17** 💡 | **Que la reputación de facción haga algo** · ✅ **en gran parte, a 2026-09-23** | *Ya no es cierto lo de «nada la lee»*: toca el precio del mercado (`economy.js`), abre pasos cerrados a quien os mira bien, y desde el 2026-09-23 **llega al narrador** (bloque de memoria del mundo) y **cobra peaje en el camino** a quien os tiene ganas. Lo que queda de la propuesta original: la escala de −100 a +100 del documento (el motor usa −5 a +5) y el acceso a tiendas. Texto original: El importador **ya guarda** la reputación de cada facción, y **nada la lee**: es un número decorativo. La escala del documento (−100 a +100, con hostilidad, recargo, descuento y acceso) coincide con el rango que ya usa el paquete de reglas. Es la pieza con más juego por menos código de toda la lista |
-| **P18** 💡 | **Rutas de viaje con tiempo y peligro** | Hoy `/go` te teletransporta gratis. Un grafo de rutas con `distanceDays`, `dangerLevel` y peaje conecta el mapa con **el calendario que ya existe**: viajar gastaría bloques del día, y el día ya significa algo desde los descansos |
-| **P19** | **Horarios de PNJ por franja del día** | Que el herrero esté en la fragua por la mañana y en la taberna por la noche. Con el calendario y las localidades puestas, es casi solo datos |
-| **P20** | **Interactuables en el tablero** | Cofres con CD de forzado, palancas que abren puertas, barricadas con PG. El tablero ya sabe de puertas y salas: esto es la misma idea con otro nombre |
-| **P21** | **Oleadas de refuerzos** | *«En la ronda 3 entran dos arqueros por la casilla (12,0)»*. El despertar de salas ya existe; esto es lo mismo disparado por ronda o por evento |
-| **P22** | **Fases de jefe** | Al 50% de PG cambia de perfil táctico o sube la CA. Barato: el perfil ya es un campo, y cambiarlo a mitad de combate es una línea |
-| **P23** | **Terreno nuevo: agua, lava, trampas, elevación** | El documento propone `W`, `L`, `T`, `^`. **Prerrequisito**: hoy los tipos de terreno son **código** (`board/terrain.js`), no datos. Sacarlos al paquete de reglas es la mitad del trabajo, y de paso cumple tu requisito de *«sin tocar código»* en un sitio donde aún no se cumple |
-| **P24** 💡 | **Action Chips de diálogo con tiradas D&D en cliente** | Rescatar la ficha fuera de combate (*[[ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES]] §3*): botones sugeridos en la escena de diálogo (ej. `[Persuadir CD 12]`, `[Intimidar CD 14]`) que resuelven d20 + bono en JS e inyectan solo el resultado al modelo. 0 tokens adicionales y la ficha importa en el rol social |
-| **P25** 💡 | **Prótesis y roles de campamento para amputaciones** | Evitar la frustración de retirar al confidente más querido (*[[ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES]] §3*): prótesis enanas/mágicas que sustituyen penalizadores por mecánicas únicas, o roles pasivos en campamento (intendente, consejero táctico) que dan ventajas a la party |
+| **P18** 💡 | **Rutas de viaje con tiempo y peligro** ✅ **Hecho** (`world/travel.js`: días, pasos cerrados, estaciones y peaje en el camino) | Hoy `/go` te teletransporta gratis. Un grafo de rutas con `distanceDays`, `dangerLevel` y peaje conecta el mapa con **el calendario que ya existe**: viajar gastaría bloques del día, y el día ya significa algo desde los descansos |
+| **P19** | **Horarios de PNJ por franja del día** → T9 de [[LO_QUE_FALTA]] | Que el herrero esté en la fragua por la mañana y en la taberna por la noche. Con el calendario y las localidades puestas, es casi solo datos |
+| **P20** | **Interactuables en el tablero** 🟡 **En parte, R6**: barriles que revientan y cofres que se abren; palancas y barricadas no (T1 de [[LO_QUE_FALTA]]) | Cofres con CD de forzado, palancas que abren puertas, barricadas con PG. El tablero ya sabe de puertas y salas: esto es la misma idea con otro nombre |
+| **P21** | **Oleadas de refuerzos** ✅ **Hecho en R6** (al aguantar, entran por oleadas) | *«En la ronda 3 entran dos arqueros por la casilla (12,0)»*. El despertar de salas ya existe; esto es lo mismo disparado por ronda o por evento |
+| **P22** | **Fases de jefe** ✅ **Hecho en R6** (`combat/boss-phases.js`: refuerzos, acorralado o furia, una vez) | Al 50% de PG cambia de perfil táctico o sube la CA. Barato: el perfil ya es un campo, y cambiarlo a mitad de combate es una línea |
+| **P23** | **Terreno nuevo: agua, lava, trampas, elevación** 🟡 **En parte, R3 y R6**: agua, hielo, maleza, barriles y cofres, **en código** (DR7). La elevación no: B1 de [[LO_QUE_FALTA]] | El documento propone `W`, `L`, `T`, `^`. **Prerrequisito**: hoy los tipos de terreno son **código** (`board/terrain.js`), no datos. Sacarlos al paquete de reglas es la mitad del trabajo, y de paso cumple tu requisito de *«sin tocar código»* en un sitio donde aún no se cumple |
+| **P24** 💡 | **Action Chips de diálogo con tiradas D&D en cliente** ✅ **Hecho** (ideas 137 y 138: `campaign/intents.js` ofrece la tirada al leer lo que escribes, y el narrador puede pedirla) | Rescatar la ficha fuera de combate (**ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES* §3*): botones sugeridos en la escena de diálogo (ej. `[Persuadir CD 12]`, `[Intimidar CD 14]`) que resuelven d20 + bono en JS e inyectan solo el resultado al modelo. 0 tokens adicionales y la ficha importa en el rol social |
+| **P25** 💡 | **Prótesis y roles de campamento para amputaciones** 🟡 **En parte** (`rules/remedies.js`: la pierna de palo y los demás remedios; los roles de campamento para quien no puede pelear, no) | Evitar la frustración de retirar al confidente más querido (**ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES* §3*): prótesis enanas/mágicas que sustituyen penalizadores por mecánicas únicas, o roles pasivos en campamento (intendente, consejero táctico) que dan ventajas a la party |
 
 ### Sobre el propio desarrollo
 
@@ -460,13 +481,12 @@ No es trabajo pendiente, es información: cosas que están así **a propósito**
 | **`party/html.js` duplica `escapeHtml`** | Importar `utils.js` arrastra código que exige `window` y rompería los tests en Node. Hay un test que ancla el contrato. Si algún día `utils.js` expone un módulo hoja, esto se elimina |
 | **`escapeHtmlText` sigue en `world-info.js`** | Es correcta y está en un archivo de upstream. Consolidarla no aporta seguridad y sí coste de merge |
 | **El guardián de tiradas solo mira afirmaciones estructuradas** | `1d20+5 = 23` sí; «saca un 18» no. Reescribir prosa exige entender la frase, y equivocarse es peor que no tocarla. El prompt debe pedir la forma estructurada |
-| **La cobertura cuenta por casilla, no por línea de tiro** | Simplificación declarada de D&D 5e. Arreglarla es A5 |
-| **`dynamic-context-manager.js`, `campaigns.js` y `world-content-browser.js` sin tests** | 1.232 tests cubren el motor nuevo; estos tres (unas 3.000 líneas) siguen a cero. `MAINT-03` |
+| **`dynamic-context-manager.js`, `campaigns.js` y `world-content-browser.js` sin tests** | 3.267 pruebas cubren el motor nuevo; estos tres (unas 3.000 líneas) siguen a cero. `MAINT-03` |
 | **Los remedios viven en el código** (`rules/remedies.js`) | El paquete de reglas no tiene sección para ellos, así que no se editan desde `/rules`. `readRemedies` ya acepta una tabla propia; falta la sección, su editor y que viaje al exportar |
 | **Las tiradas de habilidad usan CD 12 fija y una competencia por clase aproximada** | El motor no guarda qué competencias eligió cada personaje, así que sale de una lista corta por clase (`rules/checks.js`). La CD no la decide nadie en la escena: si la eligiera quien juega, elegiría la fácil; si la eligiera el modelo, volveríamos a D6 |
 | **El bloque de memoria del mundo cuesta tokens en cada turno** | Unas pocas líneas (tres hechos, las facciones que no os son indiferentes, la deuda) y solo si hay algo. Va en el nivel `quest`, detrás de todo lo que cambia menos, así que no rompe la caché del prefijo |
 | **Los enemigos solo usan habilidades si sus datos las declaran** | `abilities: [ids]` en el bicho (bestiario, paquete del Gem, plantillas). De serie las traen el cultista, el ogro, el esqueleto y las plantillas *sagrado* y *jefe* |
-| **La generación con IA no se ha probado con un proveedor real** | El recorrido de navegador usa un generador simulado: ejercita todo menos la llamada. Falta ver si un modelo concreto respeta el esquema del mapa |
+| **La generación con IA no se ha probado con un proveedor real** → I1 de [[LO_QUE_FALTA]] | El recorrido de navegador usa un generador simulado: ejercita todo menos la llamada. Falta ver si un modelo concreto respeta el esquema del mapa |
 
 ---
 
@@ -872,7 +892,7 @@ ESLINT_USE_FLAT_CONFIG=false npx eslint public/scripts/game-engine public/script
 
 - [[ROADMAP]]: el plan, el porqué y el orden.
 - [[ROADMAP_INGESTA_CAMPANAS_LIBROS]]: la Fase G — meter un libro de campaña y jugarlo.
-- [[PROBLEMAS_TECNICOS]]: auditoría original, con el estado de cada hallazgo.
+- *PROBLEMAS_TECNICOS*: auditoría original, con el estado de cada hallazgo.
 - [[PROPUESTAS_MEJORA]]: catálogo de 200 con el estado de cada propuesta.
 - [[Mapa-Codigo-Archivos]]: qué archivo hace qué, y cuál está conectado.
 - [[Guia-Desarrollo-Flujo]]: la disciplina de fork.

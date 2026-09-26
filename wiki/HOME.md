@@ -2,30 +2,31 @@
 title: SillyTavern RPG Engine - Wiki Central & Hub de Conocimiento
 tags: [home, wiki, moc, silleytavern, rpg, dnd, obsidian, ai-agent, index]
 created: 2026-09-20
-updated: 2026-09-21
-author: DanielJHesseling / Antigravity AI
+updated: 2026-09-26
+author: DanielJHesseling / Antigravity AI / Claude Opus 5.5
 ---
 
 # 🏰 SillyTavern RPG Engine - Hub Central de Conocimiento
 
-Bienvenido a la **Wiki Oficial de SillyTavern & Motor RPG** (`my-silly` fork de DanielJHesseling). Este espacio ha sido estructurado como una base de conocimiento viva para **Obsidian**, diseñada para que tanto desarrolladores humanos como agentes de inteligencia artificial puedan comprender, navegar, depurar y expandir el proyecto de manera ágil y estructurada.
+Bienvenido a la **Wiki de SillyTavern & Motor RPG** (`my-silly`, el fork de DanielJHesseling). Está hecha para **Obsidian** y para que tanto personas como agentes de IA puedan entender, navegar y ampliar el proyecto.
 
 > [!IMPORTANT]
 > **Por dónde se empieza**, según a qué vengas:
 >
 > | Vengo a… | Abre |
 > | :--- | :--- |
-> | **Saber qué se hace después** | **[[ROADMAP_MAESTRO]]** — el único plan vivo. Todo lo demás cuelga de ahí |
-> | **Entender fallas de diseño & soluciones** | **[[ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES]]** — análisis lúdico y amortiguadores de sistemas |
 > | **Jugar** | [[EMPEZAR_UNA_CAMPANA]] |
-> | **Coger una tarea** | [[POR_HACER]] |
-> | **Entender por qué el juego es así** | [[ROADMAP]] (el acta de las fases A–H) y [[PROPUESTA_JUEGO_DND_GLOOMHAVEN_PERSONA]] (la visión original) |
+> | **Saber qué le falta al juego** | **[[LO_QUE_FALTA]]**: el análisis del 2026-09-26, con el orden recomendado |
+> | **Ver lo último que se construyó** | [[ROADMAP_PROFUNDIDAD]] (R1–R10) y su tabla «Cómo va» |
+> | **Coger una tarea** | [[POR_HACER]], el marcador |
+> | **Entender por qué el juego es así** | [[ROADMAP_MAESTRO]] (el porqué) y [[ROADMAP]] (el acta de las fases A–H) |
+> | **Escribir un mundo** | [[GEM_GUIONISTA]] y [[GEM_CREAR_CAMPANA]] |
 > | **Encontrar un archivo** | [[Mapa-Codigo-Archivos]] |
 >
-> Los planes cerrados llevan un aviso en su primera línea. **Ninguno es un plan ya**: son historia, y valen por el porqué.
+> **La regla de la casa**: un marcador ([[POR_HACER]]), un plan vivo y un documento de lo que falta. Un plan que se cierra pasa a `archivo/` el mismo día.
 
 > [!TIP]
-> **Modo Obsidian**: Esta wiki aprovecha los enlaces bidireccionales `[[...]]`. Abre la **Vista de Grafo (Graph View)** de Obsidian para explorar visualmente la red de dependencias entre el backend, el frontend y los subsistemas de rol.
+> **Modo Obsidian**: la wiki usa enlaces `[[...]]`, que se resuelven por nombre aunque el documento esté en `archivo/`. La **Vista de Grafo** enseña cómo se enganchan el backend, el frontend y el motor de rol.
 
 ---
 
@@ -34,6 +35,21 @@ Bienvenido a la **Wiki Oficial de SillyTavern & Motor RPG** (`my-silly` fork de 
 ```mermaid
 mindmap
   root((SillyTavern RPG))
+    Jugar
+      [[EMPEZAR_UNA_CAMPANA]]
+    Lo que falta y lo que se hace
+      [[LO_QUE_FALTA]]
+      [[POR_HACER]]
+      [[ROADMAP_PROFUNDIDAD]]
+      [[ROADMAP_PEGAMENTO]]
+    El porqué
+      [[ROADMAP_MAESTRO]]
+      [[ROADMAP]]
+    Escribir mundos
+      [[GEM_GUIONISTA]]
+      [[GEM_CREAR_CAMPANA]]
+      [[ROADMAP_COMPENDIO]]
+      [[ALGORITMOS_GENERACION]]
     Arquitectura
       [[Arquitectura-General]]
       [[Backend-Express]]
@@ -47,7 +63,6 @@ mindmap
       [[Extensiones-Plugins]]
       [[Seguridad-Autenticacion]]
     Motor RPG D&D
-      [[ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES]]
       [[Sistema-Party]]
       [[DND-Mecanicas-Items]]
       [[Dynamic-Context-Manager]]
@@ -55,26 +70,6 @@ mindmap
       [[World-Content-Popups]]
       [[Relaciones-Memorias]]
       [[Chat-Enhancements]]
-    El plan vivo
-      [[ROADMAP_MAESTRO]]
-      [[POR_HACER]]
-      [[DISENO_GENERADOR_MUNDOS_PROFUNDO]]
-      [[ROADMAP_INGESTA_CAMPANAS_LIBROS]]
-      [[GEM_CREAR_CAMPANA]]
-    Jugar
-      [[EMPEZAR_UNA_CAMPANA]]
-    Cajones de ideas
-      [[IDEAS_200]]
-      [[PROPUESTAS_MEJORA_V2]]
-      [[PROPUESTAS_MEJORA]]
-      [[PROBLEMAS_TECNICOS]]
-    Historia: planes cerrados
-      [[ROADMAP]]
-      [[PROPUESTA_JUEGO_DND_GLOOMHAVEN_PERSONA]]
-      [[PROPUESTA_FRONTEND_MODO_JUEGO]]
-      [[ROADMAP_JUEGO_SIN_COMANDOS]]
-      [[PLAN_CREAR_CAMPANA]]
-      [[PLAN_JUEGO_TIPO_FRIENDS_AND_FABLES]]
     Guías & Referencia
       [[Mapa-Codigo-Archivos]]
       [[Guia-Desarrollo-Flujo]]
@@ -85,7 +80,7 @@ mindmap
 ## 📚 Índice Temático de Documentos
 
 ### 1. 🏛️ Arquitectura & Fundamentos del Sistema
-Documentación exhaustiva sobre cómo está construido el servidor Node.js y el cliente web:
+Cómo está construido el servidor Node.js y el cliente web (sobre todo, lo que viene de upstream):
 - [[Arquitectura-General]]: Visión de alto nivel del sistema, modelos de ejecución (local, Electron, Docker, multiusuario) y ciclo de vida global.
 - [[Backend-Express]]: Desglose del servidor Express en `src/`, jerarquía de middlewares, más de 40 routers REST y motor RAG.
 - [[Frontend-Estructura]]: Estructura de `public/`, index.html monolítico, script.js y orquestación del DOM en jQuery/Vanilla.
@@ -100,41 +95,44 @@ Capacidades base que sustentan la interacción con modelos de lenguaje:
 - [[Extensiones-Plugins]]: Diferencias entre extensiones de navegador y plugins de servidor; justificación de la integración del RPG en el núcleo.
 - [[Seguridad-Autenticacion]]: Aislamiento multi-usuario, Scrypt, CSRF-Sync, listas blancas de IP y vectores de riesgo identificados.
 
-### 3. ⚔️ Motor RPG & Campañas D&D 5e (Fork DanielJHesseling)
-El núcleo de juego de rol agregado en la rama `my-silly` con más de 24,000 líneas de código:
+### 3. ⚔️ Motor RPG & Campañas (el fork)
+El juego de rol añadido en la rama `my-silly`: **234 módulos en `game-engine/` (unas 50.000 líneas)**, cableados desde `party.js` (19.000 líneas), con 3.267 pruebas unitarias y un recorrido de 73 pasos en navegador.
 - [[Sistema-Party]]: Gestión del grupo (`party.js`), líder activo, sincronización de HP/XP/Oro, leveling automático y dados.
 - [[DND-Mecanicas-Items]]: Fórmulas D&D 5e (`dnd-system.js`), modificadores, AC por tipo de armadura, ranuras anatómicas y pesos.
-- [[Dynamic-Context-Manager]]: Máquina de estados (`combat`, `exploration`, `social`), filtrado inteligente de reglas y presupuesto de tokens.
+- [[Dynamic-Context-Manager]]: El prompt por bloques y su presupuesto de tokens.
 - [[Campanas-Mapas-Tableros]]: Visualizador zoomable de mapas, planos de ciudades, tableros tácticos con cuadrícula, tokens y niebla de guerra.
-- [[World-Content-Popups]]: Formularios modales visuales para crear monstruos, objetos mágicos, conjuros y facciones en el Lorebook.
+- [[World-Content-Popups]]: Formularios modales visuales para crear monstruos, objetos y facciones en el Lorebook.
 - [[Relaciones-Memorias]]: Escala de afinidad (-100 a +100), analizador heurístico de chat y memorias narrativas persistentes.
 - [[Chat-Enhancements]]: Resaltado de términos de Lorebook con tooltips descriptivos y avatares de diálogo en línea.
 
-### 4. 🔍 Auditoría Técnica, Calidad & Futuro
-Diagnóstico crítico y catálogo exhaustivo de propuestas de mejora:
-- **[[ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES]]** ⚖️ **Análisis Profundo de Fallas Jugables & Soluciones Sistémicas.** El diagnóstico de fondo sobre la colisión entre D&D, Gloomhaven, Persona y Darkest Dungeon. Detalla las 7 fallas lúdicas críticas (afecto vs mutilación, chat vs tablero, espiral de upkeep, tableros escaparate, acompañante suicida, localidades muros de texto y ficha dormida) y aporta soluciones técnicas a 0 tokens (prótesis, posturas, fail-forward y tableros desacoplados).
-- **[[ROADMAP_MAESTRO]]** 🗺️ **El mapa de todos los mapas, y el único plan vivo.** Empieza por la pregunta que ordena todo —**¿por qué querrías jugar mañana?**— y parte lo que queda en seis niveles, cada uno jugable por sí solo: el tablero que sigue a la conversación, **el desgaste** (comer, cobrar, heridas que no sanan, muerte permanente), el mundo que crece solo, el gremio como capa opcional, los modos de juego y el bucle cerrado. Dice en claro **qué veo posible y qué no**.
-- **[[ALGORITMOS_GENERACION]]** 🎲 **200 ideas para que dos partidas del mismo texto no se parezcan.** Todo sin IA: tablas, pesos, ruido y una semilla que se guarda con la campaña. La regla que las ordena es una sola — **la semilla no es el texto**: se tira al crear el mundo y lo escrito solo inclina los pesos. Va por áreas (terreno, enemigos, botín, misiones, nombres, facciones) y termina diciendo cuáles diez cambian más que las otras ciento noventa.
-- **[[ROADMAP_CREACION]]** 🏗️ **El taller de campañas: trece pasos y tres formas de empezar.** Funde el asistente de *Nueva campaña* con el editor de `/campana`, que hoy hacen lo mismo a medias y no se ven entre ellos. Un solo componente —tarjetas, una con un `+`, y el formulario debajo— configurado trece veces, para que no haya trece sitios donde arreglar el mismo fallo. Dice qué paso va antes que cuál y por qué, cómo funciona la semilla cuando eliges a mano (**es el dado de lo que no has elegido**), y las dos cosas que hay que arreglar antes de empezar.
-- **[[ROADMAP_COMPENDIO]]** 📚 **La biblioteca de contenido, batería a batería.** Un JSON por dominio en `public/compendio/` —armas, habilidades, bichos, gente, nombres— del que tiran los generadores con la semilla. Doce baterías, cada una una tarde: se añade sola, **no rompe nada si falta**, y al terminarla se ve algo distinto jugando. Dice qué campos lleva cada fila, cuántas hacen falta de verdad y en qué orden conviene hacerlas.
-- [[PROBLEMAS_TECNICOS]]: **Auditoría profunda** con 15 hallazgos críticos de seguridad (XSS, CSP), desincronización de estado, cuellos de botella de memoria y ausencia de tests. Con el estado de cada hallazgo comprobado contra el código: 6 corregidos, 4 parciales y 5 abiertos.
-- [[PROPUESTAS_MEJORA]]: **Catálogo de 200 propuestas técnicas estructuradas** en 10 áreas estratégicas (arquitectura, seguridad, D&D, VTT, agentes, UI/UX, bases de datos y DevOps). Cada propuesta con novedad lleva su marca de estado, y el anexo recoge 12 propuestas propias.
-- [[IDEAS_200]]: **200 ideas de jugabilidad (2026-09-24)**: combate, compañeros, viaje, mundo vivo, hilo, economía, chat, interfaz y creación, sobre el motor de Mundos vivos. Todas hechas (ocho baterías); quedan solo 3 aparcadas.
-- [[PROPUESTAS_MEJORA_V2]]: **Catálogo V2 de 200 Nuevas Propuestas de Mejora**: Nueva batería de 200 propuestas adaptadas a la madurez actual del motor (Game Shell, Zero Comandos, táctica avanzada, magia y spell slots, bucle social Persona y economía reactiva).
-- [[PROPUESTA_JUEGO_DND_GLOOMHAVEN_PERSONA]]: `la visión original` **Propuesta de Motor Híbrido RPG** (Persona + Gloomhaven + D&D 5e): combate táctico algorítmico 0 tokens, social links con perks de combate, calendario y lienzo blanco de world building. Incluye el estado de cada pilar y las correcciones que la realidad impuso.
-- [[ROADMAP_INGESTA_CAMPANAS_LIBROS]]: `G1–G4 hechas` — vive como **el contrato del paquete**. **De un libro a una campaña jugable.** El contrato de datos entre un GEM de Gemini y el motor. El validador y el importador **ya están**; lo que se pega en el Gem lo genera [[GEM_CREAR_CAMPANA]].
-- [[PROPUESTA_FRONTEND_MODO_JUEGO]]: `cerrado` **Frontend Dedicado "Modo Videojuego"**: Cómo eliminar el ruido de SillyTavern mediante una Pantalla de Título (Nueva/Cargar/Opciones) y un HUD de juego inmersivo (Dock de Party, Diálogo RPG, Tablero), sin tocar `index.html`.
-- [[PLAN_JUEGO_TIPO_FRIENDS_AND_FABLES]]: `minado` **Hacia la Experiencia "Friends & Fables" (Sin Marketplace)**: Análisis comparativo y hoja de ruta para completar las 6 piezas que faltan (DM autónomo con tiradas CD y opciones rápidas, descansos D&D, magia/spell slots y subida de nivel).
-- [[ROADMAP_JUEGO_SIN_COMANDOS]]: **Juego 100% por Clics (Zero Comandos)**: Matriz de migración de comandos de barra a interacción puramente visual con ratón (mover y atacar en el tablero, interactuar con puertas, descansos en el reloj, action chips).
-- [[DISENO_GENERADOR_MUNDOS_PROFUNDO]]: **Diseño del Generador de Mundos Profundo**: Especificación de las 7 categorías maestras (Personajes, Enemigos, Mapa Mundi, Localidades con 0..N tableros, Tableros tácticos con salas/puertas, Facciones y Magias/Habilidades) con su esquema JSON unificado para IA.
-- [[PLAN_CREAR_CAMPANA]]: **Crear una campaña a mano** ✅ *hecho*: `/campana`, un editor con una pestaña por categoría (mundo, localizaciones con sus tableros, personajes, bestiario, facciones, objetos y misiones) que escribe en el mismo sitio que el importador de libros. Las seis fases, con reclutar, catálogo de objetos enganchado al botín y misiones propias.
-- [[GEM_CREAR_CAMPANA]]: **Las instrucciones del Gem que escribe campañas**, generadas desde el motor: quién es, cómo trabaja sección a sección, el contrato completo, las reglas que un esquema no puede expresar y una muestra correcta. Es el *seeding* de una campaña: pegar, pedir, ensamblar, importar.
-- [[ROADMAP]]: `fases A–H cerradas` **El acta de lo construido.** Reconcilia la auditoría, el catálogo y el diseño de juego en 6 fases ordenadas por lo que desbloquean, más las transversales de economía de tokens. Cada fase termina en algo jugable. Empieza con *Dónde Estamos*: qué está hecho, qué está conectado al juego y qué falta.
-- [[POR_HACER]]: **Lista viva de pendientes**, ordenada por lo que desbloquea. Marca con 🖥️ las tareas que convierten motor construido en juego jugable. Incluye una prueba manual de dos minutos.
+### 4. 🧭 Lo que falta, lo que se hace y el porqué
+- **[[LO_QUE_FALTA]]** 🔭 **Lo que le falta al juego (2026-09-26).** El análisis del proyecto entero tras R1–R10: la radiografía en números, lo que ya es fuerte, el diagnóstico en cinco frases, y lo que falta por áreas (terminar lo empezado, el tablero que pide el guion, la IA, el contenido, la primera hora y lo técnico). Termina con el orden recomendado y la lista de lo que descartaste, para que nadie lo vuelva a proponer.
+- **[[POR_HACER]]** 📋 **El marcador**, dividido por quién tiene que actuar: A (se hace), D (decides tú) y P (propuestas). Con la deuda conocida y una prueba manual de cinco minutos.
+- **[[ROADMAP_PROFUNDIDAD]]** 🌳 **Profundidad: más hondo, no más ancho (2026-09-26).** Diez fases, hechas: modos de juego (Relajado, Normal, Supervivencia, a tu medida) y partida rápida con héroes hechos, el taller en pestañas, habilidades con áreas y elementos que tocan el terreno, la magia solo desde el código (un grimorio de 25 conjuros), la mascota, tableros con intención, enemigos con papel y némesis, compañeros con arco y un mundo que responde. Su tabla «Cómo va» dice lo que falta de cada fase.
+- **[[ROADMAP_PEGAMENTO]]** 🧩 **El pegamento: un juego, no doscientos (2026-09-25).** Nueve fases para que lo construido se hable entre sí: un narrador, un estado, un reloj, una crónica, la Mesa de la Semana, el Duelo de Palabras, una forma de mundo, despachos y casos. Con el marcador de números que tienen que bajar.
+- **[[ROADMAP_MAESTRO]]** 🗺️ **El porqué.** La pregunta que ordena todo —**¿por qué querrías jugar mañana?**—, los cuatro relojes y los seis niveles.
+- **[[ROADMAP]]** 📜 `fases A–H cerradas` **El acta de lo construido**, que sigue valiendo por *El Principio que Ordena Todo* y *De Dónde Sale el Gasto*.
 
-### 5. 🛠️ Guías de Desarrollo & Referencia Rápida
-Herramientas para desarrolladores y agentes de IA:
-- [[Mapa-Codigo-Archivos]]: Inventario archivo por archivo que distingue el código base de los componentes del fork, con `game-engine/`, `party/` y `tools/`, y qué está conectado al juego.
+### 5. ✍️ Escribir mundos
+- **[[GEM_GUIONISTA]]** 🎬 **Las instrucciones del Gem que escribe la biblia de un mundo por rondas.** Sabe de áreas, elementos, terreno, el grimorio y los héroes hechos. `tools/guion-a-paquete.mjs` lo convierte en paquete y avisa de lo que no lee.
+- **[[GEM_CREAR_CAMPANA]]** 📦 **Las instrucciones del Gem que escribe campañas**, generadas desde el motor (`node tools/gem-instructions.mjs`): el contrato completo, las reglas que un esquema no puede expresar y una muestra correcta.
+- **[[ROADMAP_COMPENDIO]]** 📚 **La biblioteca de contenido.** Un JSON por dominio en `public/compendio/` —armas, habilidades, bichos, gente, nombres, sitios— del que tiran los generadores con la semilla. Dice qué campos lleva cada fila.
+- **[[ALGORITMOS_GENERACION]]** 🎲 **200 ideas para que dos partidas del mismo texto no se parezcan.** Todo sin IA. La regla que las ordena: **la semilla no es el texto**.
+- `guiones/1387/`: las nueve rondas del guion de 1387, el único mundo escrito entero.
+
+### 6. 🗄️ Archivo: planes cerrados
+En `wiki/archivo/`. Están hechos o minados, pero el código los cita en sus comentarios como el porqué de lo que existe, así que no se borran:
+- [[ROADMAP_MUNDOS_VIVOS]]: las localidades con servicios, los mundos precreados y las ocho baterías de ideas, con su detalle en «Hecho». Aquí se explican los números de idea que citan los comentarios del código.
+- [[ROADMAP_CREACION]]: el taller de campañas en trece pasos (lo retomó R2).
+- [[ROADMAP_INGESTA_CAMPANAS_LIBROS]]: de un libro a una campaña jugable (Fase G).
+- [[ROADMAP_JUEGO_SIN_COMANDOS]]: jugar con el ratón.
+- [[PROPUESTA_FRONTEND_MODO_JUEGO]]: el Modo Videojuego (Fase H).
+- [[PLAN_CREAR_CAMPANA]]: `/campana`, el editor por categorías.
+- [[PROPUESTAS_BUCLE_DE_JUEGO]]: el análisis del bucle del que salió el pegamento.
+- [[PROPUESTAS_MEJORA]] y [[PROPUESTAS_MEJORA_V2]]: los dos catálogos de 200 propuestas (`N-xx`, `PROP-xxx`, `PROP2-xxx`).
+
+### 7. 🛠️ Guías de Desarrollo & Referencia Rápida
+- [[Mapa-Codigo-Archivos]]: Inventario archivo por archivo que distingue el código base de los componentes del fork, con `game-engine/`, `party/` y `tools/`.
 - [[Guia-Desarrollo-Flujo]]: Manual para arrancar, depurar, extender clases, crear nuevos comandos y aplicar buenas prácticas.
 
 ---
@@ -145,28 +143,27 @@ Si eres un agente de IA interactuando con este repositorio, sigue estas directri
 
 | Si tu tarea es... | Consulta primero... | Archivo clave en el código |
 | :--- | :--- | :--- |
+| Decidir en qué trabajar a continuación | [[LO_QUE_FALTA]] §11 y [[POR_HACER]] | — |
 | Modificar la ficha de personaje D&D o el inventario | [[Sistema-Party]] y [[DND-Mecanicas-Items]] | `public/scripts/party.js` & `dnd-system.js` |
-| Añadir un nuevo estado de campaña o regla de contexto | [[Dynamic-Context-Manager]] | `public/scripts/dynamic-context-manager.js` |
-| Intervenir en los mapas, cuadrícula o tokens | [[Campanas-Mapas-Tableros]] | `public/scripts/world-map-renderer.js` |
+| Añadir o cambiar lo que se envía al modelo | [[Dynamic-Context-Manager]] | `dynamic-context-manager.js` · comprueba con `node tools/check-prompt-shape.mjs` |
+| Intervenir en los mapas, cuadrícula o tokens | [[Campanas-Mapas-Tableros]] | `public/scripts/world-map-renderer.js` · `game-engine/board/` |
+| Tocar los tableros generados | [[ROADMAP_PROFUNDIDAD]] R6 | `game-engine/world-builder/board-intent.js` y `dungeon-generator.js` |
+| Añadir un conjuro | [[ROADMAP_PROFUNDIDAD]] R4 | `game-engine/rules/grimoire.js`: **solo en código**; los datos solo ajustan números |
 | Añadir nuevos comandos de barra `/` | [[SlashCommands-Macros]] | `public/scripts/slash-commands.js` |
-| Solucionar una vulnerabilidad o condición de carrera | [[PROBLEMAS_TECNICOS]] | `src/server-main.js` & `party.js` |
-| Decidir en qué trabajar a continuación | [[ROADMAP]] | Fases A a F |
-| Reducir el gasto en tokens | [[ROADMAP]] §1 y Transversales | `dynamic-context-manager.js` |
-| Añadir tipos de arma, daño o condiciones | [[ROADMAP]] Fase C | **`/rules`** en el chat: editor visual. El origen está en `game-engine/rules/default-ruleset.js` |
+| Añadir una clave nueva a la partida | [[ROADMAP_PEGAMENTO]] U2 | `game-engine/campaign/state-registry.js` · `node tools/check-state-keys.mjs` |
+| Añadir tipos de arma, daño o condiciones | [[ROADMAP]] Fase C | **`/rules`** en el chat. El origen está en `game-engine/rules/default-ruleset.js` |
 | Saber qué se envía al modelo y qué cuesta | [[ROADMAP]] §1 y T3 | **`/prompt`** en el chat |
 | Crear un mundo con IA | [[ROADMAP]] Fase F | *Nueva campaña* → *Generar con IA* · `game-engine/world-builder/world-schema.js` |
-| Cambiar cómo se empieza una campaña o añadir una plantilla | [[ROADMAP]] *El Asistente de Campaña* | `game-engine/ui/campaign-wizard.js`, `campaigns.js`, `game-engine/campaign/starter-templates.js` |
+| Cambiar cómo se empieza una campaña | [[ROADMAP_PROFUNDIDAD]] R1 y R2 | `game-engine/ui/taller/taller.js`, `game-engine/campaign/taller.js`, `campaigns.js` |
 | Probar el tablero o el combate sin montar una campaña | [[POR_HACER]] *Probarlo a mano* | `/sandbox` → `game-engine/ui/sandbox.js` |
-| Jugar con el ratón, sin comandos | [[ROADMAP_JUEGO_SIN_COMANDOS]] | Clic en tu ficha → casillas; clic en el enemigo → su tarjeta |
-| **Empezar a jugar, de cero** | **[[EMPEZAR_UNA_CAMPANA]]** | Los tres caminos para crear una campaña, la primera sesión y los comandos |
-| Jugar en Modo Videojuego, a pantalla completa | [[PROPUESTA_FRONTEND_MODO_JUEGO]] (Fase H, completa) | **`/modojuego`** en el chat → `game-engine/ui/shell/` |
-| Meter un libro de campaña y jugarlo | [[ROADMAP_INGESTA_CAMPANAS_LIBROS]] (Fase G, completa) | **`/esquema-campana`** para el contrato → *Nueva campaña* → *Importar un libro* |
-| Experiencia Friends & Fables (DM y magia) | [[PLAN_JUEGO_TIPO_FRIENDS_AND_FABLES]] | Análisis de paridad y las 6 piezas que faltan (sin marketplace) |
+| **Empezar a jugar, de cero** | **[[EMPEZAR_UNA_CAMPANA]]** | La partida rápida, el taller, la primera sesión y los comandos |
+| Jugar en Modo Videojuego, a pantalla completa | [[PROPUESTA_FRONTEND_MODO_JUEGO]] (archivo) | **`/modojuego`** en el chat → `game-engine/ui/shell/` |
+| Meter un libro de campaña y jugarlo | [[ROADMAP_INGESTA_CAMPANAS_LIBROS]] (archivo) | **`/esquema-campana`** para el contrato → *Nueva campaña* → *Importar un libro* |
 | Integrar cambios de upstream sin romper el fork | [[Guia-Desarrollo-Flujo]] §2 | `.vscode/settings.json` & `public/index.html` |
-| Entender cómo se inyectan los datos al LLM | [[Ciclo-De-Vida-Prompt]] | `public/script.js` (~línea 3137) |
+| Entender cómo se inyectan los datos al LLM | [[Ciclo-De-Vida-Prompt]] | `public/script.js` |
 | Localizar un archivo en el proyecto | [[Mapa-Codigo-Archivos]] | Índice del repositorio |
 | Saber si algo está conectado al juego o solo probado | [[POR_HACER]] | `node tools/check-engine-wiring.mjs` |
-| Comprobar que el juego sigue jugándose de principio a fin | [[POR_HACER]] *Probarlo a mano* | `node tools/e2e-campaign.mjs` |
+| Comprobar que el juego sigue jugándose de principio a fin | [[POR_HACER]] *Probarlo a mano* | `node tools/e2e-campaign.mjs` (unos 55 min) · `node tools/e2e-quick.mjs` (2 min, la partida rápida) |
 
 ---
 
@@ -179,12 +176,14 @@ npm start
 # Iniciar con inspector de depuración de Node.js
 npm run debug
 
-# Iniciar en modo global (accesible desde la red local)
-npm run start:global
-
-# Iniciar la aplicación de escritorio con Electron
-npm run start:electron
+# Las comprobaciones del fork
+node tools/check-fork-types.mjs
+node tools/check-engine-wiring.mjs
+node tools/check-prompt-shape.mjs
+node tools/check-state-keys.mjs
+node tools/gem-instructions.mjs --check
+npm run test:unit --prefix tests
 ```
 
 > [!IMPORTANT]
-> Antes de realizar cualquier cambio que altere la estructura de `chat_metadata`, revisa [[Almacenamiento-Persistencia]] y la auditoría en [[PROBLEMAS_TECNICOS]] para garantizar la retrocompatibilidad con chats existentes.
+> Antes de cambiar la estructura de `chat_metadata`, revisa [[Almacenamiento-Persistencia]] y registra la clave en `state-registry.js`: el comprobador de claves falla si una clave nueva no está registrada.

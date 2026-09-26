@@ -12,6 +12,9 @@
  * Puro: recibe el paquete y devuelve el informe.
  */
 
+import { spellById, magicInData } from '../rules/grimoire.js';
+import { tamableAs } from './pet.js';
+
 /** El listón, por mundo. Los mínimos de la tabla de M1 (lo escrito). */
 export const QUOTA = {
     milestones: 12, endings: 2, contracts: 14, chains: 3, noFightShare: 1 / 3,
@@ -255,6 +258,22 @@ export function checkWorldDensity(pack) {
         const hasBoard = boards.some(b => low(b.locationName) === low(l.name));
         if (who + said + services === 0 && !hasBoard) errors.push(`En «${l.name}» no hay nada que hacer: ni gente, ni rumores, ni servicios, ni tablero`);
         else if (who === 0 && said === 0) warnings.push(`«${l.name}»: nadie con quien hablar y nada que oír`);
+    }
+
+    // R10 del roadmap de profundidad: lo nuevo también cuenta.
+    const heroes = list(pack?.heroes);
+    counts.push(`${heroes.length >= 3 ? '✓' : '·'} Héroes hechos: ${heroes.length} (se recomiendan 3, para la partida rápida)`);
+    if (heroes.length === 0) warnings.push('Sin héroes hechos: la partida rápida pedirá crear uno.');
+    const tamable = bestiary.filter(b => tamableAs(b)).length;
+    counts.push(`· Bestias que se pueden domar: ${tamable}`);
+    for (const row of list(pack?.abilities)) {
+        const magic = spellById(text(row?.id)) ? '' : magicInData(row);
+        if (magic) errors.push(magic);
+    }
+    for (const who of [...confidants, ...heroes]) {
+        for (const id of list(who?.spells)) {
+            if (!spellById(text(id))) errors.push(`${text(who?.name)}: el conjuro «${text(id)}» no está en el grimorio.`);
+        }
     }
 
     return { name: text(pack?.world?.name), counts, errors, warnings, short, ok: errors.length === 0 };

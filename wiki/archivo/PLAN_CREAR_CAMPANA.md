@@ -226,5 +226,5 @@ Y lo de siempre: **nada cuenta hasta que el recorrido lo hace con clics** en un 
 
 - [[POR_HACER]] — el marcador vivo; aquí solo está el diseño.
 - [[ROADMAP_INGESTA_CAMPANAS_LIBROS]] — el contrato del paquete, que es el destino que el editor tiene que respetar.
-- [[DISENO_GENERADOR_MUNDOS_PROFUNDO]] — las siete categorías, de donde sale este reparto.
+- *DISENO_GENERADOR_MUNDOS_PROFUNDO* — las siete categorías, de donde sale este reparto.
 - [[EMPEZAR_UNA_CAMPANA]] — cómo se crea una campaña hoy.

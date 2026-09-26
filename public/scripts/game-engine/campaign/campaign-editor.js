@@ -13,7 +13,7 @@
  *
  * Puro: lee el mundo, devuelve el mundo. Ni guarda, ni dibuja, ni pregunta nada.
  *
- * Ver wiki/PLAN_CREAR_CAMPANA.md, M1 y M2.
+ * Ver wiki/archivo/PLAN_CREAR_CAMPANA.md, M1 y M2.
  */
 
 import { LOCATION_TYPES, BOARD_LIMITS } from './campaign-pack-schema.js';

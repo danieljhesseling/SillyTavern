@@ -61,10 +61,14 @@ export const DEFAULT_LOOT_RULES = {
         'Uncommon': [
             'Poción de curación mayor', 'Capa del vagabundo', 'Amuleto de calor',
             'Aceite afilador', 'Botas silenciosas',
+            // R4: los pergaminos pequeños.
+            'Pergamino de Curar heridas', 'Pergamino de Sueño pesado',
         ],
         'Rare': [
             'Espada rúnica', 'Anillo de resistencia', 'Varita de destellos',
             'Armadura de escamas verdes',
+            // R4: los gordos, y la varita de escarcha.
+            'Pergamino de Bola de fuego', 'Pergamino de Relámpago', 'Varita de escarcha',
         ],
         'Very Rare': [
             'Capa de sombras', 'Hoja del alba', 'Talismán del corazón firme',

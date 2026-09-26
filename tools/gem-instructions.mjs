@@ -13,7 +13,7 @@
  *   node tools/gem-instructions.mjs            # escribe el documento
  *   node tools/gem-instructions.mjs --check    # falla si el documento se ha quedado viejo
  *
- * Ver wiki/ROADMAP_INGESTA_CAMPANAS_LIBROS.md (§4) · wiki/POR_HACER.md.
+ * Ver wiki/archivo/ROADMAP_INGESTA_CAMPANAS_LIBROS.md (§4) · wiki/POR_HACER.md.
  */
 
 import { readFileSync, writeFileSync } from 'node:fs';

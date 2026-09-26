@@ -10,7 +10,7 @@ import {
 } from '../script.js';
 import { Popup, POPUP_TYPE, POPUP_RESULT } from './popup.js';
 import { buildNewCampaignCta, createCampaign } from './game-engine/ui/campaign-wizard.js';
-import { openCampaignBuilder, loadDndCatalog, setPartyFromWorldEntries, beginCampaignPlot, adoptVeteranGear } from './party.js';
+import { openCampaignBuilder, loadDndCatalog, setPartyFromWorldEntries, beginCampaignPlot, adoptVeteranGear, applyCampaignRuleset, applyModeExtras, adoptPet } from './party.js';
 import { isCampaignWorld, getStartingPoint } from './game-engine/campaign/campaign-worlds.js';
 import { buildHeroEntry, describeHero } from './game-engine/campaign/hero.js';
 import { planCampaignDeletion, describeDeletion } from './game-engine/campaign/campaign-delete.js';
@@ -19,7 +19,7 @@ import {
 } from './game-engine/campaign/narrator.js';
 import { generateWorld } from './game-engine/world-builder/world-schema.js';
 import { escapeHtml, saveBase64AsFile } from './utils.js';
-import { getCompendium } from './game-engine/compendio/browser.js';
+import { freshCompendium } from './game-engine/compendio/browser.js';
 import { makeName } from './game-engine/compendio/names.js';
 import { createSeededRandom } from './game-engine/combat/seeded-random.js';
 import { seedOf, derive } from './game-engine/campaign/seed.js';
@@ -28,6 +28,8 @@ import { racesOf, kindsOf, describeKin } from './game-engine/compendio/kin.js';
 import { readPlot, plotFromFaction, startPlot } from './game-engine/campaign/plot.js';
 import { saveSummary, describeSave, describeSaveParty } from './game-engine/campaign/save-card.js';
 import { listVeterans, veteranHero } from './game-engine/campaign/veterans.js';
+import { readPremadeHeroes, premadeLine, premadeAnswers } from './game-engine/campaign/premade-heroes.js';
+import { spellsForClass, spellById } from './game-engine/rules/grimoire.js';
 
 /**
  * Fetches recent chats with metadata from the cross-character API.
@@ -891,20 +893,33 @@ async function writeWithModel(key, state) {
 }
 
 /**
- * Runs the campaign wizard end to end and leaves the player standing on the first board.
+ * R1 del roadmap de profundidad: la partida rápida. El mismo taller, abierto en su vista
+ * corta: un mundo precreado, un modo, y el personaje al entrar.
+ *
+ * @returns {Promise<void>}
  */
-async function startCampaignWizard() {
+export async function startQuickCampaign() {
+    await startCampaignWizard({ quick: true });
+}
+
+/**
+ * Runs the campaign wizard end to end and leaves the player standing on the first board.
+ *
+ * @param {{quick?: boolean}} [options]
+ */
+async function startCampaignWizard({ quick = false } = {}) {
     if (wizardRunning) return;
     wizardRunning = true;
 
     try {
-        // El taller (wiki/ROADMAP_CREACION.md). Devuelve lo mismo que devolvia el
+        // El taller (wiki/archivo/ROADMAP_CREACION.md). Devuelve lo mismo que devolvia el
         // asistente de siempre, asi que todo lo de abajo sigue igual.
         const { askTaller } = await import('./game-engine/ui/taller/taller.js');
 
         const answers = await askTaller({
             Popup,
             POPUP_TYPE,
+            quick,
             existingWorldNames: Array.isArray(world_names) ? world_names : [],
             // El lapicito: escribir una frase con el modelo, donde tiene sentido.
             write: online_status !== 'no_connection' ? writeWithModel : null,
@@ -992,6 +1007,19 @@ async function startCampaignWizard() {
             }
         }
 
+        // R1: los héroes hechos del mundo precreado, para elegir uno al entrar.
+        if (Array.isArray(answers.heroes) && answers.heroes.length > 0) {
+            try {
+                const data = await loadWorldInfo(created.worldName);
+                if (data) {
+                    data.metadata = Object.assign(data.metadata ?? {}, { heroes: answers.heroes });
+                    await saveWorldInfo(created.worldName, data, true);
+                }
+            } catch (error) {
+                console.error('[campaigns] could not store the premade heroes', error);
+            }
+        }
+
         // El filo de la campana: se eligio en el paso 5 y vive en su paquete de reglas,
         // que es donde ya viven las armas y las condiciones. Asi se cambia luego en
         // `/rules` y viaja con la campana al exportarla.
@@ -1043,10 +1071,19 @@ async function startCampaignWizard() {
         }
 
         await openCampaignChat({ ...created, verb: 'creada', narratorAvatar });
+        // Las reglas del mundo (el modo, la supervivencia) se aplican al cambiar de chat, pero
+        // en ese momento el chat nuevo aún no sabe de qué mundo es: se aplican aquí, ya abierto.
+        await applyCampaignRuleset(created.worldName).catch(error => console.error('[campaigns] could not apply the campaign rules', error));
+        // R1: y lo que el modo pone en la pausa (la red, los hartos).
+        applyModeExtras();
 
         // Y ahora sí, quién eres. Después de abrir la partida: el personaje entra en un
         // mundo que ya existe, que es el orden en que se piensa.
         const hero = await createStartingHero(created.worldName);
+        // T5: un héroe hecho puede llegar con su mascota; si no, se ofrece (R5).
+        const pet = startingPet;
+        startingPet = null;
+        if (!(pet && adoptPet(pet)) && hero) toastr.info('Una mascota puede acompañarte: no ocupa plaza ni cobra. Se elige en la pausa o con /mascota.', '🐾 La mascota', { timeOut: 9000 });
 
         // La mecha: la primera escena de la partida es un problema, no una descripcion. Y
         // se cuenta con quien eres delante, para que no contradiga lo que escribiste.
@@ -1089,6 +1126,8 @@ async function startUnstartedWorld(worldName) {
         await openCampaignChat({
             worldName, party: names, partyEntries: entries, locationName, boardName, verb: 'iniciada',
         });
+        // Como al crear: las reglas del mundo, con el chat ya abierto.
+        await applyCampaignRuleset(worldName).catch(error => console.error('[campaigns] could not apply the campaign rules', error));
 
         // Un mundo que nadie ha jugado puede no tener a nadie dentro —los que genera la IA
         // no traen grupo— y entonces el selector no tenia nada que enseñar y no aparecia:
@@ -1206,27 +1245,44 @@ async function uploadHeroFace(file, worldName) {
  * @returns {Promise<string>} Quién es, en una línea para el narrador; vacío si no se creó nadie.
  */
 /**
- * Idea 179: los héroes vivos de otras partidas, para traer a uno. Null si se prefiere uno nuevo.
+ * Quién entra: uno de los héroes hechos del mundo (R1), uno nuevo, o un veterano de otra
+ * partida (idea 179). Null si se prefiere uno nuevo.
  *
  * @param {string} worldName
- * @returns {Promise<any|null>}
+ * @param {import('./game-engine/campaign/premade-heroes.js').PremadeHero[]} [premade]
+ * @returns {Promise<{veteran?: any, premade?: import('./game-engine/campaign/premade-heroes.js').PremadeHero}|null>}
  */
-async function pickVeteran(worldName) {
+async function pickVeteran(worldName, premade = []) {
     const chats = await fetchRecentChatsWithMetadata(100).catch(() => []);
     const veterans = listVeterans(chats.map((/** @type {any} */ c) => ({ world: String(c?.chat_metadata?.world_info || ''), meta: c?.chat_metadata ?? {} })), worldName).slice(0, 4);
-    if (veterans.length === 0) return null;
+    if (veterans.length === 0 && premade.length === 0) return null;
     const body = $('<div class="vt-root"></div>');
     body.append($('<h3></h3>').text('¿Quién entra?'));
-    body.append($('<p></p>').text('Puedes hacer un héroe nuevo o traer a uno de otra partida: llega con su oficio, sus números y lo que lleva puesto, como mucho a nivel 5.'));
+    if (premade.length > 0) {
+        body.append($('<p></p>').text('Este mundo trae tres ya hechos, pensados para él. O haces uno tú.'));
+        const list = $('<div class="vt-premade-list"></div>');
+        for (const hero of premade) {
+            list.append($('<div class="vt-premade-row"></div>')
+                .append($('<b></b>').text(hero.name))
+                .append(document.createTextNode(` · ${hero.about}`)));
+        }
+        body.append(list);
+    }
+    if (veterans.length > 0) {
+        body.append($('<p></p>').text('También puedes traer a uno de otra partida: llega con su oficio, sus números y lo que lleva puesto, como mucho a nivel 5.'));
+    }
     const picked = await new Popup(body[0], POPUP_TYPE.TEXT, '', {
         okButton: false, cancelButton: false,
         customButtons: [
+            ...premade.map((hero, i) => ({ text: premadeLine(hero), result: 70 + i, classes: ['vt-premade'] })),
             { text: 'Uno nuevo', result: 90, classes: ['vt-new'] },
             ...veterans.map((v, i) => ({ text: `Traer a ${v.line}`, result: 91 + i, classes: ['vt-veteran'] })),
         ],
     }).show();
-    const index = Number(picked) - 91;
-    return index >= 0 && veterans[index] ? veterans[index].hero : null;
+    const chosen = Number(picked);
+    if (chosen >= 70 && chosen < 70 + premade.length) return { premade: premade[chosen - 70] };
+    const index = chosen - 91;
+    return index >= 0 && veterans[index] ? { veteran: veterans[index].hero } : null;
 }
 
 /**
@@ -1263,6 +1319,10 @@ async function adoptVeteran(worldName, data, hero) {
     return `${vet.name}, que viene de otra historia. ${String(vet.description ?? '')}`.trim();
 }
 
+/** T5: la mascota con la que llega el héroe hecho que se acaba de elegir. */
+/** @type {{name: string, species: string, character: string}|null} */
+let startingPet = null;
+
 async function createStartingHero(worldName) {
     const data = await loadWorldInfo(worldName);
     if (!data) return '';
@@ -1277,7 +1337,9 @@ async function createStartingHero(worldName) {
 
     // El compendio, si lo hay. Sin batería de nombres no hay dado y el campo se queda
     // como estaba: aditivo, como todo lo demás del compendio.
-    const { compendium } = await getCompendium();
+    // Recién abierta: «el mismo mundo propone los mismos nombres en el mismo orden» solo es
+    // verdad si lo generado antes en la pestaña no cuenta.
+    const compendium = await freshCompendium();
     // La del mundo. Si este mundo es viejo y no tiene, se tira con su nombre: sale
     // algo, pero no es reproducible, y `ensureSeed` le pondra una la primera vez que
     // alguien abra su editor.
@@ -1320,11 +1382,18 @@ async function createStartingHero(worldName) {
         return said.length > 320 ? `${said.slice(0, 317).replace(/\s+\S*$/, '')}…` : said;
     })();
 
-    // Idea 179: antes de hacer uno nuevo, se puede traer a un veterano de otra partida.
-    const veteran = await pickVeteran(worldName);
-    if (veteran) return await adoptVeteran(worldName, data, veteran);
+    // Antes de hacer uno nuevo: los héroes hechos del mundo (R1) y los veteranos de otras
+    // partidas (idea 179). Solo los de razas y clases que el mundo deja entrar.
+    const premade = readPremadeHeroes(data.metadata?.heroes, {
+        races: razas.map((/** @type {any} */ row) => String(row.name)),
+        classes: clases.map((/** @type {any} */ row) => String(row.name)),
+    }).heroes;
+    const start = await pickVeteran(worldName, premade);
+    if (start?.veteran) return await adoptVeteran(worldName, data, start.veteran);
 
-    const answers = await openHeroCreator({
+    // T5: la mascota del héroe hecho, para cuando la partida ya esté abierta.
+    startingPet = start?.premade?.pet ?? null;
+    const answers = start?.premade ? premadeAnswers(start.premade) : await openHeroCreator({
         worldName,
         races: [...conEfectos(razas), ...(limited ? [] : (catalogue?.races ?? []))],
         classes: [...conEfectos(clases), ...(limited ? [] : (catalogue?.classes ?? []))],
@@ -1348,6 +1417,8 @@ async function createStartingHero(worldName) {
     // Lo que sabe hacer por ser de su clase. Sin bateria de habilidades no sabe nada
     // de serie, igual que hasta ahora.
     const known = abilitiesFor({ compendium, className: answers.className, level: 1 });
+    // R4: y los conjuros de su clase, del grimorio: la magia no está en el compendio.
+    const spells = spellsForClass({ className: answers.className, level: 1 });
 
     // Lo elegido puede venir con su renglon de efectos detras: se busca por como empieza.
     const pickedBy = (/** @type {any[]} */ rows, /** @type {string} */ said) =>
@@ -1375,9 +1446,9 @@ async function createStartingHero(worldName) {
     entry.content = spec.content;
     entry.group = spec.group;
     entry.dndData = spec.dndData;
-    if (known.length > 0) {
-        // En la ficha, con la forma que el panel de habilidades ya lee.
-        entry.dndData.abilities = known;
+    if (known.length > 0 || spells.length > 0) {
+        // En la ficha, con la forma que el panel de habilidades ya lee; los conjuros, por su id.
+        entry.dndData.abilities = [...known, ...spells];
     }
 
     await saveWorldInfo(worldName, data, true);
@@ -1386,8 +1457,9 @@ async function createStartingHero(worldName) {
     setPartyFromWorldEntries([entry], worldName);
 
     toastr.success(describeHero(answers), 'Tu personaje');
-    if (known.length > 0) {
-        toastr.info(known.map(nameAndAbility).join('. '), 'Lo que sabes hacer', { timeOut: 9000 });
+    if (known.length > 0 || spells.length > 0) {
+        const magic = spells.map(id => spellById(id)?.name ?? id);
+        toastr.info([...known.map(nameAndAbility), ...(magic.length > 0 ? [`Conjuros: ${magic.join(', ')}`] : [])].join('. '), 'Lo que sabes hacer', { timeOut: 9000 });
     }
     const who = [answers.race, answers.className, backgroundOf(answers.background)?.label].filter(Boolean).join(', ');
     return [`${answers.name}${who ? ` (${who})` : ''}`, answers.about, backgroundOf(answers.background)?.contact].filter(Boolean).join('. ');

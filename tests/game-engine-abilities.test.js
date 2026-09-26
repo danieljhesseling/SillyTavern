@@ -213,7 +213,8 @@ describe('lo que devuelve un descanso', () => {
 describe('contada en una linea', () => {
     test('dice lo que cuesta, cuanto alcanza y que hace', () => {
         expect(describeAbility(normalizeAbility(rayo)))
-            .toBe('Acción · a voluntad · 120 ft · 1d10 de daño');
+            // R3: y su elemento, que es lo que decide qué le hace al tablero.
+            .toBe('Acción · a voluntad · 120 ft · fuego · 1d10 de daño');
         expect(describeAbility(normalizeAbility(escudo)))
             .toBe('Acción · 1x por descanso corto · 5 ft · 1d4 de daño · Prone · salvación CD 13');
         expect(describeAbility(normalizeAbility(aliento)))

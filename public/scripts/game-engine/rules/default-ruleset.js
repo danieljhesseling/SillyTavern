@@ -28,6 +28,9 @@ const SURVIVAL = {
     exposure: true,
     injuries: true,
     loyalty: true,
+    // R1: la cuenta de la semana (letra b) y el mundo que se mueve solo (letra c).
+    upkeep: true,
+    world: true,
 };
 
 /**

@@ -224,6 +224,8 @@ function extractWorldMonsterTemplates(data) {
             // Idea 97: en qué estaciones anda. Sin nada, todo el año.
             seasons: (Array.isArray(d.seasons) ? d.seasons : String(d.seasons || '').split(','))
                 .map((/** @type {any} */ s) => String(s).trim()).filter(Boolean),
+            // T6: si se doma, y en qué. Sin el campo, lo decide su nombre.
+            ...(d.domable !== undefined && d.domable !== null ? { domable: String(d.domable) } : {}),
         });
     }
 

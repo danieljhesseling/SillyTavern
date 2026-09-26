@@ -20,7 +20,7 @@
  *
  * Puro: recibe el mundo leído y devuelve el objeto. Quien lo guarde, que lo guarde.
  *
- * Ver wiki/POR_HACER.md, A2 · wiki/ROADMAP_INGESTA_CAMPANAS_LIBROS.md (G1).
+ * Ver wiki/POR_HACER.md, A2 · wiki/archivo/ROADMAP_INGESTA_CAMPANAS_LIBROS.md (G1).
  */
 
 import { CAMPAIGN_PACK_VERSION, OBJECTIVE_FIELDS } from './campaign-pack-schema.js';

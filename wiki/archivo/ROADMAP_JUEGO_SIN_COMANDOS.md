@@ -266,4 +266,4 @@ La puerta ya la pulsa el paso 24, que además comprueba que despierta lo que dor
 ## 🔗 Enlaces Relacionados
 - [[HOME]]: Hub central de la wiki.
 - [[PROPUESTA_FRONTEND_MODO_JUEGO]]: Arquitectura del Game Shell y las 3 pantallas.
-- [[PLAN_JUEGO_TIPO_FRIENDS_AND_FABLES]]: El plan hacia la experiencia completa de rol con IA.
+- *PLAN_JUEGO_TIPO_FRIENDS_AND_FABLES*: El plan hacia la experiencia completa de rol con IA.

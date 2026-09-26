@@ -13,7 +13,7 @@
  * Puro: dice **quién** ataca y **por qué**. Quien resuelve el golpe es el mismo código que
  * resuelve cualquier otro, porque un ataque de oportunidad no es un ataque distinto.
  *
- * Ver wiki/PROPUESTAS_MEJORA_V2.md, PROP2-053.
+ * Ver wiki/archivo/PROPUESTAS_MEJORA_V2.md, PROP2-053.
  */
 
 /** Cuerpo a cuerpo, en pies. Un alcance mayor no amenaza casillas adyacentes por arte de magia. */

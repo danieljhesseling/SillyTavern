@@ -70,6 +70,22 @@ export async function getCompendium() {
     return await loading;
 }
 
+/**
+ * Una biblioteca recién abierta, con los mismos archivos pero sin memoria.
+ *
+ * La compartida recuerda lo último que salió, para no repetirlo mientras se juega. Eso está
+ * bien para la variedad, pero rompe lo que promete una semilla: generar un mundo con la
+ * compartida daba otro mundo según lo que se hubiera generado antes en la pestaña, y un
+ * código de mundo (idea 180) no salía igual en casa de otro. Lo que se genera **desde la
+ * semilla del mundo** usa esta.
+ *
+ * @returns {Promise<any>}
+ */
+export async function freshCompendium() {
+    const { batteries } = await getCompendium();
+    return createCompendium(batteries ?? {});
+}
+
 /** Vuelve a leerlo del disco. Para cuando edites un archivo sin recargar la página. */
 export function forgetCompendium() {
     cached = null;

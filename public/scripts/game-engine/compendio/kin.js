@@ -17,7 +17,7 @@
  *
  * Puro: recibe el compendio y una ficha, y devuelve numeros y frases.
  *
- * Ver wiki/ROADMAP_CREACION.md, T4.
+ * Ver wiki/archivo/ROADMAP_CREACION.md, T4.
  */
 
 /** Lo que una raza o una clase puede tocar. Vocabulario cerrado del motor. */

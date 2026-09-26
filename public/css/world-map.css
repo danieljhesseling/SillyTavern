@@ -1443,6 +1443,68 @@
     box-shadow: none;
 }
 
+/* R3: el agua, el hielo y la maleza. Se pisan, así que se ven a través. */
+.wm-terrain-water {
+    background: repeating-linear-gradient(0deg,
+        rgba(60, 130, 200, 0.42) 0px, rgba(60, 130, 200, 0.42) 3px,
+        rgba(60, 130, 200, 0.22) 3px, rgba(60, 130, 200, 0.22) 6px);
+    border: 1px solid rgba(80, 150, 220, 0.5);
+}
+
+.wm-terrain-ice {
+    background: linear-gradient(135deg, rgba(210, 235, 255, 0.5) 0%, rgba(160, 200, 235, 0.3) 100%);
+    border: 1px solid rgba(220, 240, 255, 0.7);
+}
+
+.wm-terrain-brush {
+    background: repeating-linear-gradient(60deg,
+        rgba(70, 140, 60, 0.45) 0px, rgba(70, 140, 60, 0.45) 3px,
+        transparent 3px, transparent 7px);
+    border: 1px dashed rgba(90, 160, 70, 0.55);
+}
+
+/* R6: el barril y el cofre, marcados como lo que son. */
+.wm-terrain-barrel {
+    background: radial-gradient(circle at 50% 50%, rgba(150, 95, 40, 0.75) 0%, rgba(110, 70, 30, 0.6) 55%, transparent 60%);
+    border: 1px solid rgba(200, 130, 60, 0.6);
+}
+
+.wm-terrain-chest {
+    background: linear-gradient(180deg, rgba(160, 110, 40, 0.85) 0%, rgba(110, 75, 25, 0.85) 100%);
+    border: 2px solid rgba(240, 200, 90, 0.8);
+    box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.2);
+}
+
+/* B1: en alto. Unos escalones: se nota que se sube. */
+.wm-terrain-high {
+    background: repeating-linear-gradient(135deg,
+        rgba(190, 170, 120, 0.55) 0px, rgba(190, 170, 120, 0.55) 4px,
+        rgba(140, 120, 80, 0.45) 4px, rgba(140, 120, 80, 0.45) 8px);
+    border: 1px solid rgba(230, 210, 150, 0.7);
+    box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.25);
+}
+
+/* B2: una salida. Una puerta de luz: por aquí se va uno. */
+.wm-terrain-exit {
+    background: radial-gradient(circle at 50% 50%, rgba(120, 220, 140, 0.55) 0%, rgba(60, 160, 90, 0.35) 60%, transparent 75%);
+    border: 2px dashed rgba(140, 240, 160, 0.85);
+}
+
+/* T1: una palanca en la pared. */
+.wm-terrain-lever {
+    background: linear-gradient(135deg, transparent 42%, rgba(200, 200, 210, 0.9) 42%, rgba(200, 200, 210, 0.9) 58%, transparent 58%),
+        radial-gradient(circle at 30% 70%, rgba(120, 120, 130, 0.9) 0%, rgba(80, 80, 90, 0.8) 30%, transparent 32%);
+    border: 1px solid rgba(220, 220, 230, 0.7);
+}
+
+/* B3: una barricada de tablones. */
+.wm-terrain-barricade {
+    background: repeating-linear-gradient(90deg,
+        rgba(120, 80, 40, 0.85) 0px, rgba(120, 80, 40, 0.85) 5px,
+        rgba(80, 50, 25, 0.85) 5px, rgba(80, 50, 25, 0.85) 7px);
+    border: 2px solid rgba(60, 35, 15, 0.9);
+}
+
 /* El precipicio: un agujero negro con el borde marcado. Se ve a traves, no se pisa. */
 .wm-terrain-chasm {
     background: radial-gradient(circle at 50% 50%, #000 0%, #07070c 60%, #14141f 100%);

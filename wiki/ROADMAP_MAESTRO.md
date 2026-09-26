@@ -10,6 +10,9 @@ author: DanielJHesseling / Claude Opus 5
 
 > **Para qué existe este documento.** Había once planes en esta carpeta y ninguno decía cuál venía después de cuál. Las fases **A a H del [[ROADMAP]] están todas cerradas**: ese documento ya no es un plan, es el acta de lo que se construyó. Esto es lo que sigue, partido en niveles, y **cada nivel es un juego jugable**, no un tramo de obra.
 
+> [!NOTE]
+> **Desde el 2026-09-25, el plan que sigue fue [[ROADMAP_PEGAMENTO]], y después [[ROADMAP_PROFUNDIDAD]] (hechos los dos). Lo que falta ahora está en [[LO_QUE_FALTA]].** Este documento se queda como **el porqué**: los cuatro relojes y la pregunta de por qué querrías jugar mañana. Sus seis niveles están construidos; lo que falta es que se hablen entre ellos.
+
 > **Cómo leerlo.** Cada nivel dice qué desbloquea, qué parte ya existe, y —lo que más importa— **qué veo posible y qué no**. Donde algo no se puede hacer como se pidió, está dicho y está dicha la forma que sí funciona. Un plan que promete todo no sirve para elegir.
 
 > [!IMPORTANT]
@@ -287,7 +290,7 @@ El reloj de la semana. **Sin esto, todo lo demás es una demo bonita.**
 
 1. **Las dos casillas al crear la campaña** — cuándo se guarda, quién puede morir. Guardadas en el paquete de reglas, editables en `/rules`, viajan con la campaña.
 2. **La cuenta**: comida al día; sueldos, alojamiento y tasas a la semana; curas y reparaciones al volver. **Todo del mismo bolsillo.**
-3. **Fail-Forward ante impago (Bancarrota reactiva)**: Si llega el viernes y falta oro, no hay parálisis ni game-over ciego. Una facción local o prestamista cubre la cuenta a cambio de un contrato forzoso con dilema moral (*ver [[ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES]] §3*).
+3. **Fail-Forward ante impago (Bancarrota reactiva)**: Si llega el viernes y falta oro, no hay parálisis ni game-over ciego. Una facción local o prestamista cubre la cuenta a cambio de un contrato forzoso con dilema moral (*ver *ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES* §3*).
 4. **La tabla de heridas** al caer a 0: temporales con sus días, y permanentes. Modificadores sobre `speed`, CA, características y carga — campos que el motor ya lee.
 5. **Prótesis y Roles de Campamento**: Un compañero mutilado no es un lastre condenado a pudrirse: las forjas ofrecen prótesis que transforman la lesión, o el héroe puede pasar a rol pasivo en campamento/gremio (intendente, consejero).
 6. **Qué pasa al morir**, según la casilla: el mercenario muere y hay que contratar; el del vínculo queda marcado.
@@ -304,7 +307,7 @@ El reloj de la semana. **Sin esto, todo lo demás es una demo bonita.**
 Que jugar escriba mundo — **para llenar ese tablón**. Generar mundos «porque sí» es una demo; generar el sitio donde se juega el encargo que aceptaste el martes es un juego.
 
 1. **Generadores con semilla** para sala, localidad, PNJ, objeto y encuentro. Deterministas, cero tokens.
-2. **Desacoplamiento de tableros**: La geometría del mapa (`terrain.js`) nace limpia de enemigos clavados. Los hostiles o PNJ se instancian dinámicamente según la misión activa, el peligro del bioma y la hora (*ver [[ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES]] §4.1*).
+2. **Desacoplamiento de tableros**: La geometría del mapa (`terrain.js`) nace limpia de enemigos clavados. Los hostiles o PNJ se instancian dinámicamente según la misión activa, el peligro del bioma y la hora (*ver *ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES* §4.1*).
 3. **Nodos de Servicios de Localidad**: Cada asentamiento expone botones mecánicos funcionales (`services: ['inn', 'blacksmith', 'apothecary', 'temple', 'board']`) que interactúan directamente con el oro, inventario y heridas del grupo sin depender de prosa libre.
 4. **Bautizo en lote** — el modelo pone nombres y una línea de sabor, en una sola llamada.
 5. **Lo generado se guarda de verdad** — como localidad, ficha o misión en el Lorebook, editable en `/campana`. La tercera puerta al mismo destino.
@@ -375,14 +378,14 @@ Once documentos y ninguno decía cuál venía después de cuál. Así queda:
 | Documento | Para qué sirve ahora |
 | :--- | :--- |
 | **[[ROADMAP_MAESTRO]]** *(este)* | El único plan. Todo lo demás cuelga de aquí |
-| [[ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES]] | Diagnóstico lúdico y catálogo de soluciones sistémicas (0 tokens) |
+| *ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES* | Diagnóstico lúdico y catálogo de soluciones sistémicas (0 tokens) |
 | [[POR_HACER]] | El marcador vivo: A hecho, D decidido, P propuesto |
 | [[EMPEZAR_UNA_CAMPANA]] | La guía del jugador. La única que no habla de código |
 | [[GEM_CREAR_CAMPANA]] | Generado por `tools/gem-instructions.mjs`. No se edita a mano |
 | [[PROPUESTAS_MEJORA_V2]] | El catálogo reciente del que salen las tareas sueltas |
 | [[PROPUESTAS_MEJORA]] | El catálogo v1: 155 de sus 200 ideas siguen sin mirarse. Cajón de opciones, no plan |
-| [[PROBLEMAS_TECNICOS]] | La auditoría. Sigue viva porque la seguridad depende de una decisión tuya (solo local) |
-| [[DISENO_GENERADOR_MUNDOS_PROFUNDO]] | **La materia prima del Nivel 2.** Sus siete categorías son el esquema que el generador tiene que producir |
+| *PROBLEMAS_TECNICOS* | La auditoría. Sigue viva porque la seguridad depende de una decisión tuya (solo local) |
+| *DISENO_GENERADOR_MUNDOS_PROFUNDO* | **La materia prima del Nivel 2.** Sus siete categorías son el esquema que el generador tiene que producir |
 | [[ROADMAP_INGESTA_CAMPANAS_LIBROS]] | El contrato del paquete: el destino al que todo escribe |
 | [[04-guias-referencia/Mapa-Codigo-Archivos]] | Qué hay en cada archivo |
 
@@ -391,11 +394,11 @@ Once documentos y ninguno decía cuál venía después de cuál. Así queda:
 | Documento | Qué fue |
 | :--- | :--- |
 | [[ROADMAP]] | Las fases A–H, **todas cerradas**. Es el acta de lo construido, y sus secciones *El Principio que Ordena Todo* y *De Dónde Sale el Gasto* siguen siendo la mejor explicación del porqué |
-| [[PROPUESTA_JUEGO_DND_GLOOMHAVEN_PERSONA]] | La visión original. Explica **por qué** el juego es así |
+| *PROPUESTA_JUEGO_DND_GLOOMHAVEN_PERSONA* | La visión original. Explica **por qué** el juego es así |
 | [[PROPUESTA_FRONTEND_MODO_JUEGO]] | La Fase H, cerrada |
 | [[ROADMAP_JUEGO_SIN_COMANDOS]] | El juego por clics, cerrado salvo lo que quedó en [[POR_HACER]] |
 | [[PLAN_CREAR_CAMPANA]] | Las seis fases del editor, cerradas |
-| [[PLAN_JUEGO_TIPO_FRIENDS_AND_FABLES]] | El análisis comparativo. Lo valioso ya está en [[POR_HACER]] |
+| *PLAN_JUEGO_TIPO_FRIENDS_AND_FABLES* | El análisis comparativo. Lo valioso ya está en [[POR_HACER]] |
 
 ### Retirado
 
@@ -439,5 +442,5 @@ Dicho de otro modo: el presupuesto no te está obligando a hacer un juego peor. 
 
 - [[POR_HACER]] — qué se hace mañana.
 - [[ROADMAP]] — qué se hizo hasta aquí, y por qué está hecho así.
-- [[DISENO_GENERADOR_MUNDOS_PROFUNDO]] — el esquema que el Nivel 2 tiene que producir.
-- [[PROPUESTA_JUEGO_DND_GLOOMHAVEN_PERSONA]] — de dónde salió todo.
+- *DISENO_GENERADOR_MUNDOS_PROFUNDO* — el esquema que el Nivel 2 tiene que producir.
+- *PROPUESTA_JUEGO_DND_GLOOMHAVEN_PERSONA* — de dónde salió todo.

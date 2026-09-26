@@ -18,7 +18,7 @@
  * - **repairs** are what `normalizePack` already fixed. They are listed, never silent:
  *   a pack that got quietly rewritten is a pack whose author cannot learn anything.
  *
- * Pure. See wiki/ROADMAP_INGESTA_CAMPANAS_LIBROS.md (G2) · wiki/POR_HACER.md.
+ * Pure. See wiki/archivo/ROADMAP_INGESTA_CAMPANAS_LIBROS.md (G2) · wiki/POR_HACER.md.
  */
 
 import { CAMPAIGN_PACK_VERSION, OBJECTIVE_FIELDS, LOCATION_TYPES } from './campaign-pack-schema.js';

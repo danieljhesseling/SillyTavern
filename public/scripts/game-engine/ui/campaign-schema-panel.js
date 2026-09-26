@@ -4,7 +4,7 @@
  * A panel rather than a file download, because where this text is going is a text box in
  * somebody else's web app. Copying is the operation, so copying is the button.
  *
- * See wiki/ROADMAP_INGESTA_CAMPANAS_LIBROS.md (G1).
+ * See wiki/archivo/ROADMAP_INGESTA_CAMPANAS_LIBROS.md (G1).
  */
 
 import {

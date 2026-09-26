@@ -12,7 +12,7 @@
  * point is that the number is stated instead of assumed.
  *
  * Usage: node tools/check-engine-wiring.mjs
- * See wiki/POR_HACER.md and the N-10 proposal in wiki/PROPUESTAS_MEJORA.md.
+ * See wiki/POR_HACER.md and the N-10 proposal in wiki/archivo/PROPUESTAS_MEJORA.md.
  */
 
 import { readdirSync, readFileSync, statSync } from 'node:fs';
@@ -71,12 +71,25 @@ while (queue.length) {
     }
 }
 
-const unwired = engineFiles.filter(file => !reachable.has(file));
+// K6 de wiki/LO_QUE_FALTA.md: lo que solo usa una herramienta de `tools/` (el conversor del
+// guion, por ejemplo) no es código muerto: es de la herramienta. Se dice aparte.
+const TOOLS = join(ROOT, 'tools');
+const toolSource = readdirSync(TOOLS)
+    .filter(name => name.endsWith('.mjs') || name.endsWith('.js'))
+    .map(name => readFileSync(join(TOOLS, name), 'utf8'))
+    .join('\n');
+const byTools = engineFiles.filter(file => !reachable.has(file) && toolSource.includes(slashes(relative(ENGINE, file))));
+
+const unwired = engineFiles.filter(file => !reachable.has(file) && !byTools.includes(file));
 const countLines = file => readFileSync(file, 'utf8').split('\n').length;
 const show = file => slashes(relative(ROOT, file));
 
 console.log(`Engine modules: ${engineFiles.length}`);
 console.log(`Reached by the running game: ${reachable.size}`);
+if (byTools.length > 0) {
+    console.log(`Used by the tools only (not the game): ${byTools.length}`);
+    for (const file of byTools.sort()) console.log(`  ${show(file)}`);
+}
 
 if (unwired.length === 0) {
     console.log('\nEvery engine module is reachable from the running game.');

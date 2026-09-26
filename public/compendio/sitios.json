@@ -216,9 +216,9 @@
       "rows": [
         "#######",
         "#.....#",
-        "#.~~~.#",
-        "#.~C~.#",
-        "#.~~~.#",
+        "#.www.#",
+        "#.wCw.#",
+        "#.www.#",
         "#.....#",
         "###.###"
       ],
@@ -357,6 +357,103 @@
       "note": "Mesa en el centro, bancos a los lados y una puerta que se atranca."
     },
     {
+      "id": "sala-camara",
+      "name": "La cámara",
+      "kind": "sala",
+      "tags": [
+        "tesoro"
+      ],
+      "weight": 6,
+      "when": {
+        "purpose": [
+          "steal",
+          "recover"
+        ]
+      },
+      "rows": [
+        "#######",
+        "#T...T#",
+        "x.....#",
+        "#..k..#",
+        "#.....#",
+        "#c...c#",
+        "###.###"
+      ],
+      "note": "Donde se guarda lo que se viene a buscar: un cofre, dos barriles que nadie debería prender y una ventana por la que salir con ello."
+    },
+    {
+      "id": "sala-guarida",
+      "name": "La guarida",
+      "kind": "sala",
+      "tags": [
+        "bestia"
+      ],
+      "weight": 6,
+      "when": {
+        "purpose": [
+          "hunt"
+        ]
+      },
+      "rows": [
+        "#######",
+        "#bb..b#",
+        "#b....#",
+        "#..b..#",
+        "#....b#",
+        "#b.bbb#",
+        "###.###"
+      ],
+      "note": "Maleza pisada, huesos y olor a animal. Arde, si hace falta."
+    },
+    {
+      "id": "sala-altar",
+      "name": "El altar viejo",
+      "kind": "sala",
+      "tags": [
+        "defensa"
+      ],
+      "weight": 6,
+      "when": {
+        "purpose": [
+          "hold"
+        ]
+      },
+      "rows": [
+        "###.###",
+        "#c...c#",
+        "#.....#",
+        "#..C...",
+        "#.....#",
+        "#c...c#",
+        "###.###"
+      ],
+      "note": "Dos entradas y algo detrás de lo que cubrirse: aquí se aguanta."
+    },
+    {
+      "id": "sala-torre",
+      "name": "La atalaya",
+      "kind": "sala",
+      "tags": [
+        "defensa"
+      ],
+      "weight": 6,
+      "when": {
+        "purpose": [
+          "hold"
+        ]
+      },
+      "rows": [
+        "#######",
+        "#^...^#",
+        "#.....#",
+        "#..c...",
+        "#.....#",
+        "#^...^#",
+        "###.###"
+      ],
+      "note": "Cuatro puestos altos en las esquinas: quien sube, dispara con ventaja."
+    },
+    {
       "id": "estado-habitada",
       "name": "Habitada",
       "kind": "estado",
@@ -478,6 +575,81 @@
       "shape": "temple",
       "note": "Una sola escalera, y arriba lo que se quiso guardar lejos.",
       "locationType": "outpost"
+    },
+    {
+      "id": "sala-cuartel",
+      "name": "El cuartel",
+      "kind": "sala",
+      "tags": [
+        "militar",
+        "limpiar"
+      ],
+      "weight": 6,
+      "when": {
+        "purpose": [
+          "cull"
+        ]
+      },
+      "rows": [
+        "###.###",
+        "#c...c#",
+        "#.....#",
+        "...T...",
+        "#.....#",
+        "#c...c#",
+        "###.###"
+      ],
+      "note": "Cuatro puertas y un barril de aceite en medio: se limpia sala a sala, y el fuego ayuda."
+    },
+    {
+      "id": "sala-puente",
+      "name": "El puente",
+      "kind": "sala",
+      "tags": [
+        "paso",
+        "peligro"
+      ],
+      "weight": 6,
+      "when": {
+        "purpose": [
+          "escort"
+        ]
+      },
+      "rows": [
+        "###.###",
+        "#v...v#",
+        "#vv.vv#",
+        "#vv.vv#",
+        "#vv.vv#",
+        "#v...v#",
+        "###.###"
+      ],
+      "note": "Un solo paso sobre el vacío: el estrecho perfecto para una emboscada, y a quien empujan, cae."
+    },
+    {
+      "id": "sala-despacho",
+      "name": "El despacho",
+      "kind": "sala",
+      "tags": [
+        "guardado",
+        "silenciar"
+      ],
+      "weight": 6,
+      "when": {
+        "purpose": [
+          "silence"
+        ]
+      },
+      "rows": [
+        "###.###",
+        "#c...c#",
+        "#.=.=.#",
+        "#..^..#",
+        "#.....#",
+        "#C...C#",
+        "#######"
+      ],
+      "note": "Quien hay que callar, en alto y detrás de dos barricadas: bien guardado."
     }
   ]
 }

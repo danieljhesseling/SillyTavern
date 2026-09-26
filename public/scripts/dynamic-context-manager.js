@@ -11,6 +11,10 @@
  *
  * Data is stored in chat_metadata.dynamicContext and injected via the existing
  * setExtensionPrompt() pipeline with async filter callbacks.
+ *
+ * Lo que queda aquí desde la U1 del pegamento (2026-09-25): las instrucciones que escribe
+ * quien juega, los vínculos y quién está en el tablero. La escena en una partida del juego
+ * la decide el motor (`getEngineSceneState`); las misiones, el sitio y los hechos, también.
  */
 
 import {
@@ -34,8 +38,7 @@ import { SlashCommandParser } from './slash-commands/SlashCommandParser.js';
 import { SlashCommand } from './slash-commands/SlashCommand.js';
 import { ARGUMENT_TYPE, SlashCommandArgument } from './slash-commands/SlashCommandArgument.js';
 import { SlashCommandEnumValue } from './slash-commands/SlashCommandEnumValue.js';
-import { getPartyMembersSnapshot, getBoardContextSnapshot } from './party.js';
-import { ToolManager } from './tool-calling.js';
+import { getPartyMembersSnapshot, getBoardContextSnapshot, getEngineSceneState } from './party.js';
 import { escapeHtml } from './utils.js';
 
 // ─── Constants ──────────────────────────────────────────────────────────
@@ -86,10 +89,8 @@ const DEFAULT_PRIORITY = 5;
 
 /**
  * @typedef {Object} CampaignState
- * @property {string} currentState - One of CAMPAIGN_STATES
- * @property {string} activeLocation - Current location name
- * @property {string[]} activeQuests - Active quest labels
- * @property {Object<string, any>} customFlags - Arbitrary condition flags
+ * @property {string} currentState - One of CAMPAIGN_STATES. Fuera de una partida del juego, la
+ *   que se elige a mano; dentro, manda la del motor (ver `currentStateOf`).
  * @property {number} tokenBudget - Max tokens for dynamic instructions
  */
 
@@ -116,9 +117,6 @@ function getDynamicContext() {
 function getDefaultCampaignState() {
     return {
         currentState: 'idle',
-        activeLocation: '',
-        activeQuests: [],
-        customFlags: {},
         tokenBudget: DEFAULT_TOKEN_BUDGET,
     };
 }
@@ -131,6 +129,19 @@ export function getDynamicInstructions() {
 /** @returns {CampaignState} */
 export function getCampaignState() {
     return getDynamicContext().campaign;
+}
+
+/**
+ * La escena de ahora. Con una partida del juego abierta la decide el motor: hay combate o
+ * no, se está en un tablero o en el pueblo. Fuera de él, la que se eligió a mano con
+ * `/cstate`. Antes se adivinaba por la prosa del narrador, y una frase como «¡al ataque!»
+ * cambiaba la escena sin combate detrás.
+ *
+ * @param {CampaignState} campaign
+ * @returns {string}
+ */
+export function currentStateOf(campaign) {
+    return getEngineSceneState() || campaign.currentState;
 }
 
 // ─── Filtering engine ───────────────────────────────────────────────────
@@ -193,7 +204,7 @@ function evaluateInstruction(instr, activeChars, campaign) {
     if (!instr.enabled || !instr.text?.trim()) return false;
 
     // State filter
-    if (instr.states?.length > 0 && !instr.states.includes(campaign.currentState)) {
+    if (instr.states?.length > 0 && !instr.states.includes(currentStateOf(campaign))) {
         return false;
     }
 
@@ -398,752 +409,14 @@ export function updateCampaignState(updates) {
     getDynamicContext().instructions.forEach(i => { i._tokenCache = null; });
 }
 
-// ─── Auto-detection (optional) ──────────────────────────────────────────
+// ─── Lo que ya no está aquí ─────────────────────────────────────────────
 
-const COMBAT_TRIGGERS = [
-    /roll\s+initiative/i,
-    /combat\s+begins/i,
-    /draws?\s+(his|her|their|a)\s+weapon/i,
-    /attacks?\s+/i,
-    /initiative\s+order/i,
-    /¡?combate!/i,
-    /lanza(r|n)?\s+iniciativa/i,
-    /sword\s+clash/i,
-    /swings?\s+(his|her|their|a)\s+(sword|axe|mace|weapon)/i,
-    /cast(s|ing)?\s+(fireball|magic\s+missile|spell)/i,
-    /¡?al\s+ataque!/i,
-    /prepara(n|d)?\s+(sus?\s+)?(armas?|escudo)/i,
-];
-
-const COMBAT_END_TRIGGERS = [
-    /combat\s+ends/i,
-    /the\s+battle\s+is\s+over/i,
-    /sheathes?\s+(his|her|their)\s+weapon/i,
-    /fin\s+del?\s+combate/i,
-    /la\s+batalla\s+ha\s+terminado/i,
-    /enemies?\s+(are|is)\s+(defeated|slain)/i,
-    /victoria!/i,
-    /enemigos?\s+(derrotados?|vencidos?)/i,
-    /the\s+threat\s+has\s+passed/i,
-];
-
-const SOCIAL_TRIGGERS = [
-    /let('s|us)\s+talk/i,
-    /conversation\s+with/i,
-    /speaks?\s+to\s+you/i,
-    /hablemos/i,
-    /conversaci[oó]n/i,
-    /greets?\s+you/i,
-    /introduces?\s+(himself|herself|themselves)/i,
-    /te\s+saluda/i,
-    /se\s+presenta/i,
-    /negotiate|bargain|diplomacy/i,
-    /negociar?|diplomacia/i,
-];
-
-const EXPLORATION_TRIGGERS = [
-    /you\s+arrive\s+at/i,
-    /entering\s+the/i,
-    /explore\s+the/i,
-    /llegas?\s+a/i,
-    /entras?\s+(en|al)/i,
-    /exploras?/i,
-    /you\s+find\s+(yourself|a|an|the)/i,
-    /discover\s+(a|an|the)/i,
-    /descubres?/i,
-    /encuentras?/i,
-];
-
-const REST_TRIGGERS = [
-    /long\s+rest/i,
-    /short\s+rest/i,
-    /descanso\s+(largo|corto)/i,
-    /make\s+camp/i,
-    /acampan/i,
-    /set\s+up\s+camp/i,
-    /toman?\s+un\s+descanso/i,
-    /rest\s+for\s+the\s+night/i,
-    /descansan?\s+(por\s+la\s+noche|hasta\s+el\s+amanecer)/i,
-];
-
-const STEALTH_TRIGGERS = [
-    /sneak(s|ing)?\s/i,
-    /hide(s)?\s+(in|behind|under)/i,
-    /stealth\s+check/i,
-    /moves?\s+quietly/i,
-    /infiltrate/i,
-    /sigilo(so|sa)?/i,
-    /se\s+esconde/i,
-    /se\s+mueve(n)?\s+(sigilosamente|en\s+silencio)/i,
-    /escabullirse/i,
-];
-
-const TRAVEL_TRIGGERS = [
-    /travel(s|ing|led)?\s+(to|toward|north|south|east|west)/i,
-    /on\s+the\s+road/i,
-    /journey\s+(to|toward)/i,
-    /set\s+out\s+(for|toward)/i,
-    /viajan?(do)?\s+(a|hacia)/i,
-    /en\s+(el\s+)?camino/i,
-    /emprenden?\s+(el\s+)?viaje/i,
-    /parten?\s+hacia/i,
-];
-
-const SHOPPING_TRIGGERS = [
-    /shop(s|ping)?/i,
-    /merchant|vendor|trader/i,
-    /buy(s|ing)?|sell(s|ing)?|purchase/i,
-    /tienda|mercader|vendedor/i,
-    /compra(r|n|s)?|vende(r|n|s)?/i,
-    /browse\s+(the\s+)?(wares|goods|items)/i,
-    /mira(r|n)?\s+(los\s+)?(productos|artículos|mercancía)/i,
-];
-
-/**
- * Analyze a message for state change hints. Returns suggested state or null.
- * @param {string} message
- * @returns {string|null}
- */
-function detectStateFromMessage(message) {
-    if (!message) return null;
-    if (COMBAT_TRIGGERS.some(r => r.test(message))) return 'combat';
-    if (COMBAT_END_TRIGGERS.some(r => r.test(message))) return 'exploration';
-    if (REST_TRIGGERS.some(r => r.test(message))) return 'rest';
-    if (SOCIAL_TRIGGERS.some(r => r.test(message))) return 'social';
-    if (STEALTH_TRIGGERS.some(r => r.test(message))) return 'stealth';
-    if (TRAVEL_TRIGGERS.some(r => r.test(message))) return 'travel';
-    if (SHOPPING_TRIGGERS.some(r => r.test(message))) return 'shopping';
-    if (EXPLORATION_TRIGGERS.some(r => r.test(message))) return 'exploration';
-    return null;
-}
-
-/**
- * Try to extract a location name from a message.
- * @param {string} message
- * @returns {string|null}
- */
-function detectLocationFromMessage(message) {
-    if (!message) return null;
-    const patterns = [
-        /(?:you\s+arrive\s+at|entering|you\s+enter|welcome\s+to|you\s+reach)\s+(?:the\s+)?["']?([A-Z][^.!?\n"']{2,40})["']?/i,
-        /(?:llegas?\s+a|entras?\s+(?:en|al)|bienvenidos?\s+a)\s+(?:la\s+|el\s+|los\s+|las\s+)?["']?([A-ZÁÉÍÓÚÑ][^.!?\n"']{2,40})["']?/i,
-    ];
-    for (const re of patterns) {
-        const m = re.exec(message);
-        if (m && m[1]) {
-            return m[1].trim().replace(/[.,;:!?]+$/, '');
-        }
-    }
-    return null;
-}
-
-/** Auto-detect enabled flag (stored in campaign state) */
-let autoDetectEnabled = true;
-
-function setupAutoDetection() {
-    eventSource.on(event_types.MESSAGE_RECEIVED, (/** @type {number} */ messageIndex) => {
-        if (!autoDetectEnabled) return;
-        const msg = chat[messageIndex];
-        if (!msg) return;
-        const text = msg.mes || '';
-
-        // State detection
-        const suggested = detectStateFromMessage(text);
-        if (suggested && suggested !== getCampaignState().currentState) {
-            const oldState = getCampaignState().currentState;
-            updateCampaignState({ currentState: suggested });
-            injectAllDynamicContext();
-            saveMetadata();
-            console.log(`[DCM] 🔄 Auto-detected state change: "${oldState}" → "${suggested}"`);
-            if (typeof toastr !== 'undefined') {
-                toastr.info(
-                    `Campaign state: "${oldState}" → "${suggested}"`,
-                    'Dynamic Context — Auto Update',
-                    { timeOut: 5000 },
-                );
-            }
-        }
-
-        // Location detection
-        const detectedLocation = detectLocationFromMessage(text);
-        if (detectedLocation && detectedLocation !== getCampaignState().activeLocation) {
-            const oldLoc = getCampaignState().activeLocation;
-            updateCampaignState({ activeLocation: detectedLocation });
-            injectAllDynamicContext();
-            saveMetadata();
-            console.log(`[DCM] 📍 Auto-detected location: "${oldLoc || '(none)'}" → "${detectedLocation}"`);
-            if (typeof toastr !== 'undefined') {
-                toastr.info(
-                    `Location: "${detectedLocation}"`,
-                    'Dynamic Context — Auto Update',
-                    { timeOut: 5000 },
-                );
-            }
-        }
-    });
-
-    // ─── Message scanner for structured tags from AI ─────────────
-    setupMessageScanner();
-}
-
-// ─── Message Scanner (AI self-update via structured tags) ───────────────
-
-/**
- * Regex patterns that scan AI responses for structured update tags.
- * These allow the AI to directly modify campaign state, quests, location, and flags.
- */
-const TAG_PATTERNS = {
-    state: /\[(?:STATE|ESTADO)\s*:\s*([^\]]+)\]/gi,
-    location: /\[(?:LOCATION|UBICACI[OÓ]N)\s*:\s*([^\]]+)\]/gi,
-    questAdd: /\[(?:QUEST_ADD|MISI[OÓ]N_NUEVA|NEW_QUEST)\s*:\s*([^\]]+)\]/gi,
-    questComplete: /\[(?:QUEST_COMPLETE|MISI[OÓ]N_COMPLETA|QUEST_DONE)\s*:\s*([^\]]+)\]/gi,
-    questRemove: /\[(?:QUEST_REMOVE|MISI[OÓ]N_ELIMINAR)\s*:\s*([^\]]+)\]/gi,
-    flag: /\[(?:FLAG|BANDERA)\s*:\s*([^\]=]+)=([^\]]*)\]/gi,
-    flagRemove: /\[(?:FLAG_REMOVE|BANDERA_ELIMINAR)\s*:\s*([^\]]+)\]/gi,
-    addInstruction: /\[(?:INSTRUCTION|INSTRUCCIÓN)\s*:\s*([^\]|]+)\|([^\]|]+)(?:\|([^\]]+))?\]/gi,
-    removeInstruction: /\[(?:REMOVE_INSTRUCTION|ELIMINAR_INSTRUCCIÓN)\s*:\s*([^\]]+)\]/gi,
-};
-
-/**
- * Scan a message for structured update tags and apply them.
- * @param {string} text
- * @returns {{ updates: string[], stripped: string }}
- */
-function scanMessageForUpdates(text) {
-    if (!text) return { updates: [], stripped: text };
-
-    const updates = [];
-    const campaign = getCampaignState();
-    let modified = false;
-
-    // [STATE: combat] / [ESTADO: combate]
-    let match;
-    const stateRe = new RegExp(TAG_PATTERNS.state.source, TAG_PATTERNS.state.flags);
-    while ((match = stateRe.exec(text)) !== null) {
-        const newState = match[1].trim().toLowerCase();
-        if (CAMPAIGN_STATES.includes(newState) || newState.startsWith('custom:')) {
-            const old = campaign.currentState;
-            updateCampaignState({ currentState: newState });
-            updates.push(`State: "${old}" → "${newState}"`);
-            modified = true;
-        }
-    }
-
-    // [LOCATION: Dragon's Lair] / [UBICACIÓN: ...]
-    const locRe = new RegExp(TAG_PATTERNS.location.source, TAG_PATTERNS.location.flags);
-    while ((match = locRe.exec(text)) !== null) {
-        const newLoc = match[1].trim();
-        if (newLoc) {
-            const old = campaign.activeLocation;
-            updateCampaignState({ activeLocation: newLoc });
-            updates.push(`Location: "${old || '(none)'}" → "${newLoc}"`);
-            modified = true;
-        }
-    }
-
-    // [QUEST_ADD: Find the dragon] / [MISIÓN_NUEVA: ...]
-    const qaRe = new RegExp(TAG_PATTERNS.questAdd.source, TAG_PATTERNS.questAdd.flags);
-    while ((match = qaRe.exec(text)) !== null) {
-        const quest = match[1].trim();
-        if (quest && !campaign.activeQuests.includes(quest)) {
-            campaign.activeQuests.push(quest);
-            updates.push(`Quest added: "${quest}"`);
-            modified = true;
-        }
-    }
-
-    // [QUEST_COMPLETE: Find the dragon] / [MISIÓN_COMPLETA: ...]
-    const qcRe = new RegExp(TAG_PATTERNS.questComplete.source, TAG_PATTERNS.questComplete.flags);
-    while ((match = qcRe.exec(text)) !== null) {
-        const quest = match[1].trim();
-        const idx = campaign.activeQuests.findIndex(q => q.toLowerCase() === quest.toLowerCase());
-        if (idx >= 0) {
-            campaign.activeQuests.splice(idx, 1);
-            updates.push(`Quest completed: "${quest}"`);
-            modified = true;
-        }
-    }
-
-    // [QUEST_REMOVE: ...]
-    const qrRe = new RegExp(TAG_PATTERNS.questRemove.source, TAG_PATTERNS.questRemove.flags);
-    while ((match = qrRe.exec(text)) !== null) {
-        const quest = match[1].trim();
-        const idx = campaign.activeQuests.findIndex(q => q.toLowerCase() === quest.toLowerCase());
-        if (idx >= 0) {
-            campaign.activeQuests.splice(idx, 1);
-            updates.push(`Quest removed: "${quest}"`);
-            modified = true;
-        }
-    }
-
-    // [FLAG: key=value] / [BANDERA: key=value]
-    const fRe = new RegExp(TAG_PATTERNS.flag.source, TAG_PATTERNS.flag.flags);
-    while ((match = fRe.exec(text)) !== null) {
-        const key = match[1].trim();
-        const val = match[2].trim();
-        if (key) {
-            campaign.customFlags[key] = val || true;
-            updates.push(`Flag set: ${key}=${val || 'true'}`);
-            modified = true;
-        }
-    }
-
-    // [FLAG_REMOVE: key]
-    const frRe = new RegExp(TAG_PATTERNS.flagRemove.source, TAG_PATTERNS.flagRemove.flags);
-    while ((match = frRe.exec(text)) !== null) {
-        const key = match[1].trim();
-        if (key && key in campaign.customFlags) {
-            delete campaign.customFlags[key];
-            updates.push(`Flag removed: ${key}`);
-            modified = true;
-        }
-    }
-
-    // [INSTRUCTION: label|text|category] — adds a new dynamic instruction
-    const aiRe = new RegExp(TAG_PATTERNS.addInstruction.source, TAG_PATTERNS.addInstruction.flags);
-    while ((match = aiRe.exec(text)) !== null) {
-        const label = match[1].trim();
-        const instrText = match[2].trim();
-        const category = (match[3] || 'custom').trim().toLowerCase();
-        if (label && instrText) {
-            // Check if instruction with same label already exists
-            const existing = getDynamicInstructions().find(i => i.label.toLowerCase() === label.toLowerCase());
-            if (existing) {
-                existing.text = instrText;
-                existing._tokenCache = null;
-                updates.push(`Instruction updated: "${label}"`);
-            } else {
-                createDynamicInstruction({ label, text: instrText, category, priority: DEFAULT_PRIORITY });
-                updates.push(`Instruction created: "${label}" [${category}]`);
-            }
-            modified = true;
-        }
-    }
-
-    // [REMOVE_INSTRUCTION: label]
-    const riRe = new RegExp(TAG_PATTERNS.removeInstruction.source, TAG_PATTERNS.removeInstruction.flags);
-    while ((match = riRe.exec(text)) !== null) {
-        const label = match[1].trim();
-        const instr = getDynamicInstructions().find(i => i.label.toLowerCase() === label.toLowerCase());
-        if (instr) {
-            deleteDynamicInstruction(instr.id);
-            updates.push(`Instruction removed: "${label}"`);
-            modified = true;
-        }
-    }
-
-    if (modified) {
-        injectAllDynamicContext();
-        saveMetadata();
-    }
-
-    return { updates, stripped: text };
-}
-
-/**
- * Set up the message scanner that hooks into CHARACTER_MESSAGE_RENDERED events.
- * This is the fallback mechanism for models without tool calling support.
- */
-function setupMessageScanner() {
-    eventSource.on(event_types.CHARACTER_MESSAGE_RENDERED, (/** @type {number} */ messageIndex) => {
-        const msg = chat[messageIndex];
-        if (!msg?.mes || msg.is_user) return;
-
-        const { updates } = scanMessageForUpdates(msg.mes);
-
-        if (updates.length > 0) {
-            console.log(`[DCM] 🤖 AI auto-updates from message #${messageIndex}:`);
-            for (const u of updates) {
-                console.log(`[DCM]   → ${u}`);
-            }
-            if (typeof toastr !== 'undefined') {
-                toastr.success(
-                    updates.join('<br>'),
-                    'Dynamic Context — AI Update',
-                    { timeOut: 8000, escapeHtml: false },
-                );
-            }
-        }
-    });
-}
-
-// ─── Meta-instruction (tells AI about available update mechanisms) ──────
-
-/** Whether the meta-instruction that teaches the AI about tags is enabled */
-let metaInstructionEnabled = true;
-
-const META_INSTRUCTION_TEXT = `[SYSTEM: DYNAMIC CONTEXT UPDATE CAPABILITIES]
-You can update the campaign state by including special tags in your responses. These tags will be automatically parsed and applied. Use them when the narrative naturally calls for it — do NOT use them in every message, only when something meaningful changes.
-
-Available tags (use sparingly and naturally within your narration):
-- [STATE: <state>] — Change campaign state. Values: idle, combat, exploration, social, rest, stealth, travel, shopping
-- [LOCATION: <name>] — Update the current location when characters move to a new place
-- [QUEST_ADD: <name>] — Add a new quest when the story introduces one
-- [QUEST_COMPLETE: <name>] — Mark a quest as completed
-- [QUEST_REMOVE: <name>] — Remove a quest
-- [FLAG: <key>=<value>] — Set a campaign flag (useful for tracking story variables)
-- [FLAG_REMOVE: <key>] — Remove a campaign flag
-- [INSTRUCTION: <label>|<text>|<category>] — Add/update a context instruction. Categories: combat, relationship, quest, location, item, lore, rules, npc, custom
-- [REMOVE_INSTRUCTION: <label>] — Remove a context instruction by label
-
-Spanish equivalents also work: [ESTADO:], [UBICACIÓN:], [MISIÓN_NUEVA:], [MISIÓN_COMPLETA:], [BANDERA:], [INSTRUCCIÓN:], [ELIMINAR_INSTRUCCIÓN:]
-
-IMPORTANT: Place tags at the END of your message, after the narrative text. Do NOT overuse them.`;
-
-/**
- * Inject the meta-instruction that teaches the AI about the tag system.
- * Injected as a low-priority system prompt so it's trimmed when budget is tight.
- */
-function injectMetaInstruction() {
-    if (metaInstructionEnabled) {
-        setExtensionPrompt(
-            promptKey('rules', 'meta', 'ctx'),
-            META_INSTRUCTION_TEXT,
-            extension_prompt_types.IN_PROMPT,
-            2, // depth 2 — closer to the end of context
-            false,
-            extension_prompt_roles.SYSTEM,
-        );
-        console.log('[DCM] 📋 Meta-instruction injected (AI knows about update tags)');
-    } else {
-        setExtensionPrompt(promptKey('rules', 'meta', 'ctx'), '', extension_prompt_types.IN_PROMPT, 0);
-    }
-}
-
-// ─── ToolManager Integration (AI native tool calls) ─────────────────────
-
-/**
- * Register D&D campaign tools via SillyTavern's ToolManager.
- * These allow models with function-calling support to directly update campaign state.
- */
-function registerCampaignTools() {
-    // Tool: Update campaign state
-    ToolManager.registerFunctionTool({
-        name: 'dnd_update_state',
-        displayName: 'D&D: Update Campaign State',
-        description: 'Change the current D&D campaign state (e.g. combat, exploration, social, rest, stealth, travel, shopping). Use this when the narrative moves to a different phase.',
-        parameters: {
-            type: 'object',
-            properties: {
-                state: {
-                    type: 'string',
-                    description: 'The new campaign state',
-                    enum: CAMPAIGN_STATES,
-                },
-            },
-            required: ['state'],
-        },
-        action: async (/** @type {{ state: string }} */ params) => {
-            const old = getCampaignState().currentState;
-            updateCampaignState({ currentState: params.state });
-            injectAllDynamicContext();
-            await saveMetadata();
-            console.log(`[DCM] 🔧 Tool call: dnd_update_state("${params.state}") — was "${old}"`);
-            if (typeof toastr !== 'undefined') toastr.info(`State: "${old}" → "${params.state}"`, 'DCM Tool');
-            return `Campaign state updated from "${old}" to "${params.state}"`;
-        },
-        stealth: true,
-    });
-
-    // Tool: Set location
-    ToolManager.registerFunctionTool({
-        name: 'dnd_set_location',
-        displayName: 'D&D: Set Location',
-        description: 'Set the current location in the D&D campaign. Use when characters move to a new place.',
-        parameters: {
-            type: 'object',
-            properties: {
-                location: {
-                    type: 'string',
-                    description: 'The name of the new location',
-                },
-            },
-            required: ['location'],
-        },
-        action: async (/** @type {{ location: string }} */ params) => {
-            const old = getCampaignState().activeLocation;
-            updateCampaignState({ activeLocation: params.location });
-            injectAllDynamicContext();
-            await saveMetadata();
-            console.log(`[DCM] 🔧 Tool call: dnd_set_location("${params.location}") — was "${old || '(none)'}"`);
-            if (typeof toastr !== 'undefined') toastr.info(`Location: "${params.location}"`, 'DCM Tool');
-            return `Location updated to "${params.location}"`;
-        },
-        stealth: true,
-    });
-
-    // Tool: Manage quests
-    ToolManager.registerFunctionTool({
-        name: 'dnd_manage_quest',
-        displayName: 'D&D: Manage Quest',
-        description: 'Add, remove, or complete a quest in the D&D campaign.',
-        parameters: {
-            type: 'object',
-            properties: {
-                action: {
-                    type: 'string',
-                    description: 'The action to perform',
-                    enum: ['add', 'remove', 'complete'],
-                },
-                quest: {
-                    type: 'string',
-                    description: 'The quest name or description',
-                },
-            },
-            required: ['action', 'quest'],
-        },
-        action: async (/** @type {{ action: string, quest: string }} */ params) => {
-            const campaign = getCampaignState();
-            let result = '';
-            if (params.action === 'add') {
-                if (!campaign.activeQuests.includes(params.quest)) {
-                    campaign.activeQuests.push(params.quest);
-                    result = `Quest added: "${params.quest}"`;
-                } else {
-                    result = `Quest already exists: "${params.quest}"`;
-                }
-            } else if (params.action === 'remove' || params.action === 'complete') {
-                const idx = campaign.activeQuests.findIndex(q => q.toLowerCase() === params.quest.toLowerCase());
-                if (idx >= 0) {
-                    campaign.activeQuests.splice(idx, 1);
-                    result = `Quest ${params.action === 'complete' ? 'completed' : 'removed'}: "${params.quest}"`;
-                } else {
-                    result = `Quest not found: "${params.quest}"`;
-                }
-            }
-            injectAllDynamicContext();
-            await saveMetadata();
-            console.log(`[DCM] 🔧 Tool call: dnd_manage_quest(${params.action}, "${params.quest}") → ${result}`);
-            if (typeof toastr !== 'undefined') toastr.info(result, 'DCM Tool');
-            return result;
-        },
-        stealth: true,
-    });
-
-    // Tool: Set flag
-    ToolManager.registerFunctionTool({
-        name: 'dnd_set_flag',
-        displayName: 'D&D: Set Campaign Flag',
-        description: 'Set a custom campaign flag to track story variables, conditions, or events.',
-        parameters: {
-            type: 'object',
-            properties: {
-                flag: {
-                    type: 'string',
-                    description: 'The flag name/key',
-                },
-                value: {
-                    type: 'string',
-                    description: 'The flag value (use "true"/"false" for boolean flags)',
-                },
-            },
-            required: ['flag', 'value'],
-        },
-        action: async (/** @type {{ flag: string, value: string }} */ params) => {
-            const campaign = getCampaignState();
-            campaign.customFlags[params.flag] = params.value;
-            injectAllDynamicContext();
-            await saveMetadata();
-            console.log(`[DCM] 🔧 Tool call: dnd_set_flag("${params.flag}", "${params.value}")`);
-            if (typeof toastr !== 'undefined') toastr.info(`Flag: ${params.flag}=${params.value}`, 'DCM Tool');
-            return `Flag set: ${params.flag} = ${params.value}`;
-        },
-        stealth: true,
-    });
-
-    // Tool: Add/update dynamic instruction
-    ToolManager.registerFunctionTool({
-        name: 'dnd_add_instruction',
-        displayName: 'D&D: Add Context Instruction',
-        description: 'Create or update a dynamic context instruction that will be sent to the AI when conditions are met. Use this to store important campaign context, NPC details, lore, rules, etc.',
-        parameters: {
-            type: 'object',
-            properties: {
-                label: {
-                    type: 'string',
-                    description: 'A short label for the instruction (e.g. "Goblin King Personality")',
-                },
-                text: {
-                    type: 'string',
-                    description: 'The instruction text/context to inject',
-                },
-                category: {
-                    type: 'string',
-                    description: 'The category of this instruction',
-                    enum: [...INSTRUCTION_CATEGORIES],
-                },
-                priority: {
-                    type: 'number',
-                    description: 'Priority 1-10, lower = more important. Default: 5',
-                },
-                targetCharacters: {
-                    type: 'array',
-                    items: { type: 'string' },
-                    description: 'Only apply when chatting with these characters (empty = all)',
-                },
-                states: {
-                    type: 'array',
-                    items: { type: 'string' },
-                    description: 'Only active in these campaign states (empty = all)',
-                },
-                keywords: {
-                    type: 'array',
-                    items: { type: 'string' },
-                    description: 'Activate when these keywords appear in recent messages',
-                },
-            },
-            required: ['label', 'text', 'category'],
-        },
-        action: async (/** @type {Partial<DynamicInstruction> & { label: string, text: string, category: string }} */ params) => {
-            // Check if exists by label
-            const existing = getDynamicInstructions().find(i => i.label.toLowerCase() === params.label.toLowerCase());
-            if (existing) {
-                Object.assign(existing, {
-                    text: params.text,
-                    category: params.category || existing.category,
-                    priority: params.priority ?? existing.priority,
-                    targetCharacters: params.targetCharacters || existing.targetCharacters,
-                    states: params.states || existing.states,
-                    keywords: params.keywords || existing.keywords,
-                    _tokenCache: null,
-                });
-                injectAllDynamicContext();
-                await saveMetadata();
-                console.log(`[DCM] 🔧 Tool call: dnd_add_instruction — updated "${params.label}" [${params.category}]`);
-                if (typeof toastr !== 'undefined') toastr.info(`Updated: "${params.label}"`, 'DCM Tool');
-                return `Instruction updated: "${params.label}"`;
-            }
-            const instr = createDynamicInstruction({
-                label: params.label,
-                text: params.text,
-                category: params.category || 'custom',
-                priority: params.priority ?? DEFAULT_PRIORITY,
-                targetCharacters: params.targetCharacters || [],
-                states: params.states || [],
-                keywords: params.keywords || [],
-            });
-            injectAllDynamicContext();
-            await saveMetadata();
-            console.log(`[DCM] 🔧 Tool call: dnd_add_instruction — created "${params.label}" [${params.category}] (id: ${instr.id})`);
-            if (typeof toastr !== 'undefined') toastr.info(`Created: "${params.label}"`, 'DCM Tool');
-            return `Instruction created: "${params.label}" (id: ${instr.id})`;
-        },
-        stealth: true,
-    });
-
-    // Tool: Update existing instruction
-    ToolManager.registerFunctionTool({
-        name: 'dnd_update_instruction',
-        displayName: 'D&D: Update Context Instruction',
-        description: 'Modify an existing dynamic context instruction by its ID or label.',
-        parameters: {
-            type: 'object',
-            properties: {
-                id: {
-                    type: 'string',
-                    description: 'The instruction ID (or label as fallback)',
-                },
-                updates: {
-                    type: 'object',
-                    description: 'Fields to update',
-                    properties: {
-                        label: { type: 'string' },
-                        text: { type: 'string' },
-                        category: { type: 'string' },
-                        priority: { type: 'number' },
-                        enabled: { type: 'boolean' },
-                        targetCharacters: { type: 'array', items: { type: 'string' } },
-                        excludeCharacters: { type: 'array', items: { type: 'string' } },
-                        states: { type: 'array', items: { type: 'string' } },
-                        keywords: { type: 'array', items: { type: 'string' } },
-                    },
-                },
-            },
-            required: ['id', 'updates'],
-        },
-        action: async (/** @type {{ id: string, updates: Partial<DynamicInstruction> }} */ params) => {
-            let instr = getDynamicInstructions().find(i => i.id === params.id);
-            if (!instr) {
-                instr = getDynamicInstructions().find(i => i.label.toLowerCase() === params.id.toLowerCase());
-            }
-            if (!instr) return `Instruction not found: "${params.id}"`;
-            Object.assign(instr, params.updates, { _tokenCache: null });
-            injectAllDynamicContext();
-            await saveMetadata();
-            console.log(`[DCM] 🔧 Tool call: dnd_update_instruction("${instr.label}") — updated fields: ${Object.keys(params.updates).join(', ')}`);
-            if (typeof toastr !== 'undefined') toastr.info(`Updated: "${instr.label}"`, 'DCM Tool');
-            return `Instruction updated: "${instr.label}"`;
-        },
-        stealth: true,
-    });
-
-    // Tool: Remove instruction
-    ToolManager.registerFunctionTool({
-        name: 'dnd_remove_instruction',
-        displayName: 'D&D: Remove Context Instruction',
-        description: 'Remove a dynamic context instruction by its ID or label.',
-        parameters: {
-            type: 'object',
-            properties: {
-                id: {
-                    type: 'string',
-                    description: 'The instruction ID or label to remove',
-                },
-            },
-            required: ['id'],
-        },
-        action: async (/** @type {{ id: string }} */ params) => {
-            let instr = getDynamicInstructions().find(i => i.id === params.id);
-            if (!instr) {
-                instr = getDynamicInstructions().find(i => i.label.toLowerCase() === params.id.toLowerCase());
-            }
-            if (!instr) return `Instruction not found: "${params.id}"`;
-            const label = instr.label;
-            deleteDynamicInstruction(instr.id);
-            injectAllDynamicContext();
-            await saveMetadata();
-            console.log(`[DCM] 🔧 Tool call: dnd_remove_instruction("${label}")`);
-            if (typeof toastr !== 'undefined') toastr.info(`Removed: "${label}"`, 'DCM Tool');
-            return `Instruction removed: "${label}"`;
-        },
-        stealth: true,
-    });
-
-    // Tool: Get campaign status (read-only)
-    ToolManager.registerFunctionTool({
-        name: 'dnd_get_campaign_status',
-        displayName: 'D&D: Get Campaign Status',
-        description: 'Get the current campaign state, active location, quests, flags, and a summary of active instructions. Use to understand the current context before making decisions.',
-        parameters: {
-            type: 'object',
-            properties: {},
-        },
-        action: async () => {
-            const campaign = getCampaignState();
-            const instructions = getDynamicInstructions();
-            const activeChars = getActiveCharacterNames();
-            const status = {
-                state: campaign.currentState,
-                location: campaign.activeLocation || '(none)',
-                quests: campaign.activeQuests,
-                flags: campaign.customFlags,
-                activeCharacters: activeChars,
-                tokenBudget: campaign.tokenBudget,
-                instructions: instructions.filter(i => i.enabled).map(i => ({
-                    id: i.id,
-                    label: i.label,
-                    category: i.category,
-                    priority: i.priority,
-                })),
-            };
-            console.log('[DCM] 🔧 Tool call: dnd_get_campaign_status →', status);
-            return JSON.stringify(status, null, 2);
-        },
-        stealth: true,
-    });
-
-    console.log('[DCM] 🔧 Registered 8 campaign tools with ToolManager');
-}
+// Hasta el 2026-09-25 este módulo también adivinaba la escena y el sitio leyendo la prosa,
+// enseñaba al narrador a escribir etiquetas ([QUEST_ADD:], [FLAG:]…) con una instrucción
+// que iba en cada turno, y le daba ocho herramientas para apuntar misiones, banderas,
+// escena y sitio por su cuenta. Todo eso ya lo decide el motor: el director de escenas, el
+// hilo y el tablón, el viaje, y `proponer_hecho` en `party.js`. Eran dos verdades sobre lo
+// mismo, y una la escribía quien no debe. Ver wiki/ROADMAP_PEGAMENTO.md, U1.
 
 // ─── Relationship context builder ───────────────────────────────────────
 
@@ -1192,30 +465,6 @@ export function injectRelationshipContext() {
     } else {
         setExtensionPrompt(promptKey('npc', 'relationships', 'ctx'), '', extension_prompt_types.IN_PROMPT, 0);
         console.log('[DCM] 💕 No relevant relationships for current character(s)');
-    }
-}
-
-// ─── Quest context builder ──────────────────────────────────────────────
-
-/**
- * Inject active quests context.
- */
-export function injectQuestContext() {
-    const campaign = getCampaignState();
-    if (campaign.activeQuests?.length > 0) {
-        const lines = campaign.activeQuests.map((q, i) => `${i + 1}. ${q}`);
-        setExtensionPrompt(
-            promptKey('quest', 'quests', 'ctx'),
-            `[SYSTEM: ACTIVE QUESTS]\n${lines.join('\n')}`,
-            extension_prompt_types.IN_PROMPT,
-            0,
-            false,
-            extension_prompt_roles.SYSTEM,
-        );
-        console.log(`[DCM] 🗺️ Quests injected: ${campaign.activeQuests.join(', ')}`);
-    } else {
-        setExtensionPrompt(promptKey('quest', 'quests', 'ctx'), '', extension_prompt_types.IN_PROMPT, 0);
-        console.log('[DCM] 🗺️ No active quests');
     }
 }
 
@@ -1290,15 +539,12 @@ export function injectAllDynamicContext() {
     const activeChars = getActiveCharacterNames();
     console.log('[DCM] ════════════════════════════════════════════════════════');
     console.log('[DCM] 🐉 DYNAMIC CONTEXT INJECTION');
-    console.log(`[DCM]   State: ${campaign.currentState} | Location: ${campaign.activeLocation || '(none)'}`);
+    console.log(`[DCM]   State: ${currentStateOf(campaign)}`);
     console.log(`[DCM]   Active characters: ${activeChars.length ? activeChars.join(', ') : '(none)'}`);
-    console.log(`[DCM]   Quests: ${campaign.activeQuests?.length || 0} | Flags: ${Object.keys(campaign.customFlags || {}).length}`);
 
     injectDynamicInstructions();
     injectRelationshipContext();
-    injectQuestContext();
     injectBoardContext();
-    injectMetaInstruction();
 
     console.log('[DCM] ════════════════════════════════════════════════════════');
 }
@@ -1310,7 +556,7 @@ function registerSlashCommands() {
     SlashCommandParser.addCommandObject(SlashCommand.fromProps({
         name: 'campaign',
         callback: campaignCommandHandler,
-        helpString: 'Manage D&D campaign dynamic context. Subcommands: state, location, quest, flag, budget, status, instructions, autodetect, meta',
+        helpString: 'Manage D&D campaign dynamic context. Subcommands: state, budget, status, instructions',
         unnamedArgumentList: [
             SlashCommandArgument.fromProps({
                 description: 'subcommand and arguments',
@@ -1334,33 +580,6 @@ function registerSlashCommands() {
                 enumList: CAMPAIGN_STATES.map(s => new SlashCommandEnumValue(s)),
             }),
         ],
-    }));
-
-    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
-        name: 'clocation',
-        callback: async (args, value) => campaignCommandHandler(args, ['location', ...(Array.isArray(value) ? value : [value])]),
-        helpString: 'Set current location. Usage: /clocation Dragon\'s Lair',
-        unnamedArgumentList: [
-            SlashCommandArgument.fromProps({
-                description: 'location name',
-                typeList: [ARGUMENT_TYPE.STRING],
-                isRequired: true,
-            }),
-        ],
-    }));
-
-    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
-        name: 'cquest',
-        callback: async (args, value) => campaignCommandHandler(args, ['quest', ...(Array.isArray(value) ? value : [value])]),
-        helpString: 'Manage quests. Usage: /cquest add Find the dragon | /cquest remove Find the dragon | /cquest list',
-        unnamedArgumentList: [
-            SlashCommandArgument.fromProps({
-                description: 'action and quest name',
-                typeList: [ARGUMENT_TYPE.STRING],
-                isRequired: true,
-            }),
-        ],
-        splitUnnamedArgument: true,
     }));
 }
 
@@ -1387,65 +606,6 @@ async function campaignCommandHandler(_args, value) {
             await saveMetadata();
             return `Campaign state set to: ${normalized}`;
         }
-        case 'location': {
-            if (!rest) return `Current location: ${getCampaignState().activeLocation || '(none)'}`;
-            updateCampaignState({ activeLocation: rest });
-            injectAllDynamicContext();
-            await saveMetadata();
-            return `Location set to: ${rest}`;
-        }
-        case 'quest': {
-            const questParts = rest.split(/\s+/);
-            const action = (questParts[0] || '').toLowerCase();
-            const questName = questParts.slice(1).join(' ').trim();
-            const campaign = getCampaignState();
-
-            if (action === 'add' && questName) {
-                if (!campaign.activeQuests.includes(questName)) {
-                    campaign.activeQuests.push(questName);
-                    injectAllDynamicContext();
-                    await saveMetadata();
-                }
-                return `Quest added: ${questName}`;
-            } else if (action === 'remove' && questName) {
-                const idx = campaign.activeQuests.indexOf(questName);
-                if (idx >= 0) {
-                    campaign.activeQuests.splice(idx, 1);
-                    injectAllDynamicContext();
-                    await saveMetadata();
-                }
-                return `Quest removed: ${questName}`;
-            } else if (action === 'list' || !action) {
-                if (!campaign.activeQuests.length) return 'No active quests.';
-                return 'Active quests:\n' + campaign.activeQuests.map((q, i) => `${i + 1}. ${q}`).join('\n');
-            }
-            return 'Usage: /campaign quest add|remove|list <name>';
-        }
-        case 'flag': {
-            const flagParts = rest.split(/\s+/);
-            const action = (flagParts[0] || '').toLowerCase();
-            const flagKey = flagParts[1] || '';
-            const flagValue = flagParts.slice(2).join(' ');
-            const campaign = getCampaignState();
-
-            if (action === 'set' && flagKey) {
-                campaign.customFlags[flagKey] = flagValue || true;
-                injectAllDynamicContext();
-                await saveMetadata();
-                return `Flag set: ${flagKey} = ${campaign.customFlags[flagKey]}`;
-            } else if (action === 'unset' && flagKey) {
-                delete campaign.customFlags[flagKey];
-                await saveMetadata();
-                return `Flag removed: ${flagKey}`;
-            } else if (action === 'get' && flagKey) {
-                return `${flagKey} = ${campaign.customFlags[flagKey] ?? '(not set)'}`;
-            } else if (action === 'list' || !action) {
-                const entries = Object.entries(campaign.customFlags);
-                if (!entries.length) return 'No custom flags set.';
-                return entries.map(([k, v]) => `${k} = ${v}`).join('\n');
-            }
-            return 'Usage: /campaign flag set|unset|get|list <key> [value]';
-        }
         case 'budget': {
             if (!rest) return `Token budget: ${getCampaignState().tokenBudget}`;
             const num = parseInt(rest, 10);
@@ -1460,36 +620,20 @@ async function campaignCommandHandler(_args, value) {
             const relCtx = buildRelationshipContext();
             const lines = [
                 '=== Campaign Dynamic Context ===',
-                `State: ${campaign.currentState}`,
-                `Location: ${campaign.activeLocation || '(none)'}`,
-                `Quests: ${campaign.activeQuests.length ? campaign.activeQuests.join(', ') : '(none)'}`,
-                `Flags: ${Object.keys(campaign.customFlags).length ? JSON.stringify(campaign.customFlags) : '(none)'}`,
+                `State: ${currentStateOf(campaign)}${getEngineSceneState() ? ' (la decide el juego)' : ''}`,
                 `Token budget: ${result.totalTokens}/${result.budget}`,
                 `Active instructions: ${result.active.length} (${result.active.map(i => i.label).join(', ') || 'none'})`,
                 `Trimmed (over budget): ${result.trimmed.length} (${result.trimmed.map(i => i.label).join(', ') || 'none'})`,
                 `Active relationships: ${relCtx ? relCtx.split('\n').length + ' entries' : 'none'}`,
-                `Auto-detect: ${autoDetectEnabled ? 'ON' : 'OFF'}`,
-                `Meta-instruction: ${metaInstructionEnabled ? 'ON' : 'OFF'}`,
-                'AI tools: 8 registered via ToolManager',
             ];
             return lines.join('\n');
-        }
-        case 'autodetect': {
-            if (rest === 'on') { autoDetectEnabled = true; return 'Auto-detection enabled.'; }
-            if (rest === 'off') { autoDetectEnabled = false; return 'Auto-detection disabled.'; }
-            return `Auto-detect: ${autoDetectEnabled ? 'ON' : 'OFF'}. Usage: /campaign autodetect on|off`;
-        }
-        case 'meta': {
-            if (rest === 'on') { metaInstructionEnabled = true; injectMetaInstruction(); await saveMetadata(); return 'Meta-instruction enabled — AI will be informed about update tags.'; }
-            if (rest === 'off') { metaInstructionEnabled = false; injectMetaInstruction(); await saveMetadata(); return 'Meta-instruction disabled — AI will NOT see update tag instructions.'; }
-            return `Meta-instruction: ${metaInstructionEnabled ? 'ON' : 'OFF'}. Usage: /campaign meta on|off`;
         }
         case 'instructions': {
             await openDynamicInstructionsPopup();
             return '';
         }
         default:
-            return 'Subcommands: state, location, quest, flag, budget, status, instructions, autodetect, meta';
+            return 'Subcommands: state, budget, status, instructions';
     }
 }
 
@@ -1513,15 +657,10 @@ const CATEGORY_COLORS = {
  * @returns {string}
  */
 function buildCampaignStateHtml(campaign) {
+    const byEngine = Boolean(getEngineSceneState());
+    const current = currentStateOf(campaign);
     const stateOptions = CAMPAIGN_STATES.map(s =>
-        `<option value="${s}" ${s === campaign.currentState ? 'selected' : ''}>${s.charAt(0).toUpperCase() + s.slice(1)}</option>`,
-    ).join('');
-
-    const questItems = (campaign.activeQuests || []).map((q, i) =>
-        `<div class="dcm-quest-item">
-            <span>${escapeHtml(q)}</span>
-            <button class="dcm-quest-remove menu_button" data-index="${i}" title="Remove"><i class="fa-solid fa-xmark"></i></button>
-        </div>`,
+        `<option value="${s}" ${s === current ? 'selected' : ''}>${s.charAt(0).toUpperCase() + s.slice(1)}</option>`,
     ).join('');
 
     return `
@@ -1529,23 +668,11 @@ function buildCampaignStateHtml(campaign) {
         <div class="dcm-row">
             <div class="dcm-field">
                 <label>State</label>
-                <select id="dcm_state_select" class="text_pole">${stateOptions}</select>
-            </div>
-            <div class="dcm-field">
-                <label>Location</label>
-                <input type="text" id="dcm_location_input" class="text_pole" value="${escapeHtml(campaign.activeLocation || '')}" placeholder="Current location..." />
+                <select id="dcm_state_select" class="text_pole" ${byEngine ? 'disabled title="En una partida, la escena la decide el juego."' : ''}>${stateOptions}</select>
             </div>
             <div class="dcm-field dcm-field-narrow">
                 <label>Token Budget</label>
                 <input type="number" id="dcm_budget_input" class="text_pole" value="${campaign.tokenBudget || DEFAULT_TOKEN_BUDGET}" min="100" step="100" />
-            </div>
-        </div>
-        <div class="dcm-quest-section">
-            <label>Active Quests</label>
-            <div class="dcm-quest-list">${questItems || '<div class="dcm-empty">No active quests</div>'}</div>
-            <div class="dcm-row">
-                <input type="text" id="dcm_quest_input" class="text_pole flex1" placeholder="Add quest..." />
-                <button id="dcm_quest_add" class="menu_button"><i class="fa-solid fa-plus"></i></button>
             </div>
         </div>
     </div>`;
@@ -1651,12 +778,6 @@ export async function openDynamicInstructionsPopup() {
         saveMetadata();
     });
 
-    content.on('change', '#dcm_location_input', function () {
-        updateCampaignState({ activeLocation: $(this).val() });
-        injectAllDynamicContext();
-        saveMetadata();
-    });
-
     content.on('change', '#dcm_budget_input', function () {
         const val = parseInt($(this).val(), 10);
         if (!isNaN(val) && val >= 100) {
@@ -1665,44 +786,6 @@ export async function openDynamicInstructionsPopup() {
             getDynamicInstructions().forEach(i => { i._tokenCache = null; });
             injectAllDynamicContext();
             saveMetadata();
-        }
-    });
-
-    // Quest management
-    content.on('click', '#dcm_quest_add', function () {
-        const input = content.find('#dcm_quest_input');
-        const name = input.val()?.toString().trim();
-        if (name) {
-            const c = getCampaignState();
-            if (!c.activeQuests.includes(name)) {
-                c.activeQuests.push(name);
-                injectAllDynamicContext();
-                saveMetadata();
-                // Refresh quest list
-                const questHtml = c.activeQuests.map((q, i) =>
-                    `<div class="dcm-quest-item"><span>${escapeHtml(q)}</span><button class="dcm-quest-remove menu_button" data-index="${i}" title="Remove"><i class="fa-solid fa-xmark"></i></button></div>`,
-                ).join('');
-                content.find('.dcm-quest-list').html(questHtml);
-            }
-            input.val('');
-        }
-    });
-
-    content.on('keypress', '#dcm_quest_input', function (e) {
-        if (e.key === 'Enter') content.find('#dcm_quest_add').click();
-    });
-
-    content.on('click', '.dcm-quest-remove', function () {
-        const idx = parseInt($(this).data('index'), 10);
-        const c = getCampaignState();
-        if (idx >= 0 && idx < c.activeQuests.length) {
-            c.activeQuests.splice(idx, 1);
-            injectAllDynamicContext();
-            saveMetadata();
-            $(this).closest('.dcm-quest-item').remove();
-            if (!c.activeQuests.length) {
-                content.find('.dcm-quest-list').html('<div class="dcm-empty">No active quests</div>');
-            }
         }
     });
 
@@ -1899,8 +982,6 @@ async function openInstructionEditorPopup(existing) {
 
 export function initDynamicContextManager() {
     registerSlashCommands();
-    setupAutoDetection();
-    registerCampaignTools();
 
     // Hook into generation to refresh dynamic context
     eventSource.on(event_types.GENERATION_STARTED, () => {
@@ -1913,7 +994,5 @@ export function initDynamicContextManager() {
         openDynamicInstructionsPopup();
     });
 
-    console.log('[DCM] 🐉 Dynamic Context Manager initialized. Commands: /campaign, /cstate, /clocation, /cquest');
-    console.log('[DCM] 🔧 AI tools registered: dnd_update_state, dnd_set_location, dnd_manage_quest, dnd_set_flag, dnd_add_instruction, dnd_update_instruction, dnd_remove_instruction, dnd_get_campaign_status');
-    console.log('[DCM] 🤖 Message scanner active: AI can use [STATE:], [LOCATION:], [QUEST_ADD:], etc. tags');
+    console.log('[DCM] 🐉 Dynamic Context Manager initialized. Commands: /campaign, /cstate');
 }

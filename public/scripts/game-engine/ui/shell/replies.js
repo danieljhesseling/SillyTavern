@@ -34,18 +34,22 @@ const text = (value) => String(value ?? '').trim();
  * @param {string} input.name
  * @param {number} [input.rumors] Los que quedan por oír aquí.
  * @param {boolean} [input.canPry] Si esconde algo que se puede sonsacar ahora.
+ * @param {Reply[]} [input.extra] Lo que añade el pegamento: convencerle (U6), preguntarle por un caso (U8).
  * @returns {Reply[]}
  */
-export function repliesFor({ name, rumors = 0, canPry = false }) {
+export function repliesFor({ name, rumors = 0, canPry = false, extra = [] }) {
     const who = text(name);
     if (!who) return [];
+    // Por importancia: la fila enseña cuatro. Lo que mueve algo (sonsacar, el caso, convencer)
+    // va antes que los rumores, que también se oyen en la posada.
     /** @type {Reply[]} */
     const out = [];
+    out.push({ id: 'reply-want', label: `«¿Qué necesitas, ${who}?»`, draft: `Le pregunto a ${who} qué necesita, y si podemos ayudar.`, icon: 'fa-hand-holding-heart' });
+    if (canPry) out.push({ id: 'reply-pry', label: `Sonsacar a ${who} (Perspicacia)`, action: 'pry', icon: 'fa-eye' });
+    out.push(...(extra ?? []));
     if (Number(rumors) > 0) {
         out.push({ id: 'reply-rumor', label: `«¿Qué se cuenta por aquí, ${who}?»`, draft: `Le pregunto a ${who} qué se cuenta por aquí.`, icon: 'fa-ear-listen' });
     }
-    out.push({ id: 'reply-want', label: `«¿Qué necesitas, ${who}?»`, draft: `Le pregunto a ${who} qué necesita, y si podemos ayudar.`, icon: 'fa-hand-holding-heart' });
-    if (canPry) out.push({ id: 'reply-pry', label: `Sonsacar a ${who} (Perspicacia)`, action: 'pry', icon: 'fa-eye' });
-    else out.push({ id: 'reply-bye', label: `Despedirse de ${who}`, draft: `Me despido de ${who}.`, icon: 'fa-hand' });
-    return out.slice(0, 3);
+    out.push({ id: 'reply-bye', label: `Despedirse de ${who}`, draft: `Me despido de ${who}.`, icon: 'fa-hand' });
+    return out.slice(0, 4);
 }

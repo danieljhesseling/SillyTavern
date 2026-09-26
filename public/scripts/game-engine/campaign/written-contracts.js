@@ -14,7 +14,7 @@
  *
  * Puro: decide qué se ofrece y cuándo se cumple. Quien llama paga y escribe.
  *
- * Ver wiki/ROADMAP_MUNDOS_VIVOS.md, M1 y M7.
+ * Ver wiki/archivo/ROADMAP_MUNDOS_VIVOS.md, M1 y M7.
  */
 
 import { DEFAULT_CURVE, shareFor } from './mix.js';

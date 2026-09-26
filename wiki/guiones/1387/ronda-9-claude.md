@@ -1,6 +1,6 @@
 # Ronda 9 · Lo que faltaba para la quinta batería (Claude)
 
-Esta ronda no cambia la historia: le pone **cinco cosas nuevas que el motor ya sabe jugar** (ideas 45, 106, 111, 114 y 132 de [IDEAS_200](../../IDEAS_200.md)). Está escrita por Claude para que se vean en 1387; **el guionista puede reescribirla entera**: basta con otra ronda con los mismos `id`.
+Esta ronda no cambia la historia: le pone **cinco cosas nuevas que el motor ya sabe jugar** (ideas 45, 106, 111, 114 y 132 de la batería de 200 ideas, detalladas en [Mundos vivos](../../archivo/ROADMAP_MUNDOS_VIVOS.md)). Está escrita por Claude para que se vean en 1387; **el guionista puede reescribirla entera**: basta con otra ronda con los mismos `id`.
 
 - **El presagio** (114): tres frases al empezar. Cada una se cumple con un hito, y el juego lo dice.
 - **Dos secretos** (111): hitos ocultos. No salen en pantalla ni en el diario hasta que se cumplen por casualidad.

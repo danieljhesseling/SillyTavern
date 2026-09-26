@@ -10,7 +10,7 @@
  * So: use the board's own placements when it has them, fall back to a free cell when it
  * does not, and never put anybody inside a wall.
  *
- * Pure, with the randomness injected. See wiki/ROADMAP_INGESTA_CAMPANAS_LIBROS.md (G3).
+ * Pure, with the randomness injected. See wiki/archivo/ROADMAP_INGESTA_CAMPANAS_LIBROS.md (G3).
  */
 
 import { isPassable } from '../board/terrain.js';

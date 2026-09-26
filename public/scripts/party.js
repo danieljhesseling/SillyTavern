@@ -58,7 +58,48 @@ import { createCampaignState } from './party/campaign-state.js';
 import {
     normalizeTerrain, setCell as setTerrainCell, getTerrainOptions, getCoverBonus, setDoorOpen,
     parseCellKey, terrainFromAsciiMap, cellKey, isPassable, getCell, isLocked, unlockDoor, lockedDoors, breakDoor,
+    TERRAIN_TYPES,
 } from './game-engine/board/terrain.js';
+// R3 del roadmap de profundidad: áreas, elementos, usos fuera del combate y jugadas en pareja.
+import { areaCells, creaturesIn, isArea, describeArea } from './game-engine/rules/area.js';
+import { elementOf, reactTerrain, comboFor, ELEMENT_ICONS } from './game-engine/rules/tags.js';
+import { travelShortcut, lockBonus, watchBonus, duelTricks, patchUpAfterFight, whoCan } from './game-engine/rules/field-uses.js';
+// R5 del roadmap de profundidad: la mascota.
+import {
+    readPet, createPet, petComment, afterComment, shouldComment, petAdvice, supportActions, liveTogether, petDoes,
+    petChoicesFor, tamableAs, describePet, petName, SPECIES as PET_SPECIES, CHARACTERS as PET_CHARACTERS,
+} from './game-engine/campaign/pet.js';
+// R8 y R9 del roadmap de profundidad: compañeros con arco, y el mundo que responde.
+import { completeArc, homeFavors, favorDiscount, noteGone, whoComesBack, comebackOf, forgetGone } from './game-engine/campaign/companion-arcs.js';
+import { rumorsFromPlay, chronicleMemory, reactionTo } from './game-engine/campaign/world-echoes.js';
+// R7 del roadmap de profundidad: enemigos con cabeza, y la némesis.
+import { ROLES as ENEMY_ROLES, roleOf as bandRoleOf, tacticOf, leaderBonus, breaksAndRuns, describeBand } from './game-engine/combat/enemy-roles.js';
+import { readNemeses, noteEscape, whoReturns, comeback, nemesisFalls } from './game-engine/campaign/nemesis.js';
+// H2 de wiki/LO_QUE_FALTA.md: «Cómo se juega», con lo que el motor sabe.
+import { buildHowToPlay } from './game-engine/campaign/how-to-play.js';
+import { getMapLegend } from './game-engine/campaign/campaign-pack-schema.js';
+// B1 y B2 de wiki/LO_QUE_FALTA.md: la altura y las salidas del tablero.
+import { heightBetween, isHigh } from './game-engine/board/heights.js';
+import { isExit, exitCells, readLeft, leaveBoard, hasLeft, stillFighting, everyoneOut, leaveLine } from './game-engine/board/exits.js';
+// T1, T2 y B3 de wiki/LO_QUE_FALTA.md: la palanca, la barricada, la tregua y los refuerzos.
+import { hitBarricade, pullLever } from './game-engine/board/interactables.js';
+import { truceOffered, truceLine, callsForHelp, helpWave } from './game-engine/combat/morale-options.js';
+// T4: la estación y la magia, en los precios.
+import { seasonalMarket, magicStance } from './game-engine/campaign/season-market.js';
+// T3: la gente del mundo ve a la mascota.
+import { reactionsHere } from './game-engine/campaign/pet-reception.js';
+// R6: los jefes con fases.
+import { bossPhase } from './game-engine/combat/boss-phases.js';
+// R6 del roadmap de profundidad: tableros con intención.
+import { generateIntended, threatOf, budgetFor } from './game-engine/world-builder/board-intent.js';
+// R4: pergaminos y varitas.
+import { MAGIC_ITEMS, judgeMagicItems, afterUse, canLearnScroll } from './game-engine/rules/magic-items.js';
+// R4 del roadmap de profundidad: la magia, solo la del grimorio.
+import {
+    grimoireAbilities, spellById, spellAbility, spellsForClass, spendCharge, magicInData, magicLine, knownSpells, describeSpell,
+    describeCharges, SCHOOLS, COMPONENTS, SPELLS, CIRCLE_LABELS,
+} from './game-engine/rules/grimoire.js';
+import { pairOptions, pairLine } from './game-engine/rules/pair-moves.js';
 import { getReachableCells, findPath, getPathCost } from './game-engine/board/pathfinding.js';
 import { getCoverAlongLine } from './game-engine/board/line-of-sight.js';
 import { createEmptyFog, normalizeFog, updateFog } from './game-engine/board/fog-of-war.js';
@@ -68,7 +109,7 @@ import { chooseEnemyAbility, longestReach, averageOf } from './game-engine/comba
 import {
     MANEUVERS, judgeManeuvers, recordManeuver, startTurn as startManeuverTurn, attackEdge,
     consumeHelp, rollWithEdge, describeEdge, resolveShove, readManeuvers, noteKnockdown, takeCombo, COMBO_DICE,
-    canHide, hideDC, revealHidden,
+    canHide, hideDC, revealHidden, cannotAct,
 } from './game-engine/combat/maneuvers.js';
 import { THROWABLES, judgeThrows, throwablesOf, burningPuddle } from './game-engine/combat/throwables.js';
 import { readyAttack, dropReadied, readiedAgainst } from './game-engine/combat/readied.js';
@@ -84,7 +125,7 @@ import { canPry, notePry, secretNote, describeSecrets, SECRET_DC, SECRET_SKILL }
 import { repliesFor } from './game-engine/ui/shell/replies.js';
 import { checkWorldDensity, gemRequest } from './game-engine/campaign/world-density.js';
 import { SCENERY, sceneryNear, judgeSceneryThrow } from './game-engine/combat/throwables.js';
-import { spreadFire } from './game-engine/board/living-terrain.js';
+import { spreadFire, fireAt } from './game-engine/board/living-terrain.js';
 import { playCue } from './game-engine/ui/shell/action-sounds.js';
 import { loadAudioSettings } from './game-engine/ui/shell/scene-audio.js';
 import { trophiesOf, trophyItem, canCraft, cloakItem, upgradedWeapon, RECIPES } from './game-engine/campaign/trophies.js';
@@ -106,7 +147,7 @@ import { noteOutcome, shouldSoften, softenEnemy, SOFTEN_NOTE } from './game-engi
 import { judgeDepartures, describeWarning, describeLeaving } from './game-engine/campaign/departures.js';
 import { talkPairs, campTalkPrompt, makePeace, roundPrompt, topicHits, TOPICS } from './game-engine/campaign/camp-talk.js';
 import { rivalOf, rivalsTake, describeRivalTake } from './game-engine/campaign/rivals.js';
-import { stealDC, stealOutcome, guardsAt, settleGuards, coolDown } from './game-engine/campaign/crime.js';
+import { stealDC, stealOutcome, guardsAt, settleGuards, coolDown, WATCH, readWanted } from './game-engine/campaign/crime.js';
 import { store, retrieve, readStorage } from './game-engine/campaign/storage.js';
 import { guestMember, hirelingsHere, guestsLeave, wardLost, exitCell } from './game-engine/campaign/guests.js';
 import { readVillain, villainScenesDue, villainNote } from './game-engine/campaign/villain.js';
@@ -131,15 +172,19 @@ import {
 import {
     createTurnState, advanceTurn, getRemainingMovement, spendMovement, hasAction, useAction,
 } from './game-engine/combat/turn-machine.js';
-import { rollEncounterLoot, lootRulesWithWorldItems } from './game-engine/combat/loot.js';
+import { rollEncounterLoot, lootRulesWithWorldItems, DEFAULT_LOOT_RULES } from './game-engine/combat/loot.js';
 import { holdDuringCombat } from './game-engine/combat/combat-hold.js';
 import {
-    applyInjury, healInjuries, describeInjuries, readInjuries, setInjury, treatmentCost,
+    applyInjury, healInjuries, describeInjuries, readInjuries, setInjury, treatmentCost, rollInjury,
 } from './game-engine/rules/injuries.js';
 import {
     tickNeeds, exhaustionInjury, describeNeeds, LETHAL_EXHAUSTION,
 } from './game-engine/rules/needs.js';
 import { resolveFall, describeSurvival, canCheckpoint, readSurvival } from './game-engine/rules/mortality.js';
+import {
+    stagesFor, keepOn, hasLetter, describeMode as describeGameMode, recordModeChange, isIronRun, modeOf, modeLabel,
+    MODES as GAME_MODES, lettersOf,
+} from './game-engine/rules/modes.js';
 import { weeklyBill, settleWeek, describeBill } from './game-engine/rules/upkeep.js';
 import { readRemedies, remediesFor, applyRemedy, shouldOfferRetirement } from './game-engine/rules/remedies.js';
 import { readDebt, offerPatronage, settlesDebt, debtDue, describeDebt, borrow, repay, LOAN } from './game-engine/campaign/patronage.js';
@@ -157,7 +202,17 @@ import { queueNews, deliverNews, clockWarnings } from './game-engine/world/news.
 import { dueHints, buildJournal, buildHelp, pendingByPlace, buildRecap } from './game-engine/campaign/guidance.js';
 import { addNotice, unseenCount, glanceRow, MAX_VISIBLE_TOASTS } from './game-engine/ui/shell/notices.js';
 import { addRequest, takeRequest, readRequests } from './game-engine/campaign/check-requests.js';
-import { recordDeed, worldMemoryBlock, roadTrouble } from './game-engine/campaign/world-memory.js';
+import { recordDeed, proposeDeed, worldMemoryBlock, roadTrouble } from './game-engine/campaign/world-memory.js';
+import { readSession, enterScene, noteSent, noteClick, describeSession } from './game-engine/campaign/session-log.js';
+import { captureKeys, restoreKeys, captureWorld, restoreWorld } from './game-engine/campaign/state-registry.js';
+import { DAY_STAGES, WEEK_STAGES, runStages, weeksDue } from './game-engine/campaign/time-stages.js';
+import { upcoming, describeUpcoming, whenText } from './game-engine/campaign/upcoming.js';
+import { affairsOf, standingsOf, weekSummary } from './game-engine/campaign/week-table.js';
+import { STANCES as DUEL_STANCES, handFrom, startDuel, playArgument, duelOutcome, duelPrompt } from './game-engine/campaign/word-duel.js';
+import { canDispatch, dispatchOdds, dispatchDays, startDispatch, dispatchesDue, resolveDispatch } from './game-engine/campaign/dispatch.js';
+import { CASE_CHANCE, generateCase, checkCase, accuse, caseForNarrator, readCases, cluesHere } from './game-engine/campaign/cases.js';
+import { mapRows, describeRoute, setNote, markVisited } from './game-engine/campaign/text-map.js';
+import { readTaggedLine, chronicleOf, chronicleSections, foldPlan, describeFold } from './game-engine/campaign/chronicle.js';
 import {
     readPlot, startPlot, plotEvent, focusOf, describeFocus, plotFromFaction, chooseEnding, actOf, hasEnded,
     visibleOpen, secretsOf, omensOf, daysLeftOf, cluesOf, closedOf, readPlotState,
@@ -762,6 +817,8 @@ export function setPartyFromWorldEntries(entries, worldName = null) {
             relationships: [],
             memories: [],
             mapPosition: resolveEntryMapPosition(d),
+            // R3: lo que la ficha del mundo dice que sabe hacer (se escribía y no se leía).
+            abilities: abilityIdsOf(d),
         };
         partyMembers.push(member);
     }
@@ -846,6 +903,8 @@ let currentBoardName = '';
 function saveCurrentLocation() {
     if (chat_metadata) {
         chat_metadata['currentLocation'] = currentLocationName;
+        // Idea 69: el mapa sabe dónde habéis estado.
+        if (currentLocationName) chat_metadata[VISITED_KEY] = markVisited(chat_metadata[VISITED_KEY], currentLocationName);
         saveMetadata();
     }
 }
@@ -894,6 +953,9 @@ let currentWorldFactions = [];
 /** Idea 74: la estación en la que empezó el mundo; vacía es la de siempre (otoño). */
 let lastWorldSeason = '';
 
+/** R5: el género del mundo, para ofrecer la mascota que le pega. */
+let lastWorldGenre = '';
+
 /**
  * Idea 74: la estación de hoy.
  *
@@ -937,6 +999,7 @@ async function reloadWorldFactions() {
         lastWrittenContracts = readWrittenContracts(data?.metadata?.writtenContracts);
         lastRumors = readRumors(data?.metadata?.rumors);
         lastWorldSeason = readSeason(data?.metadata?.season);
+        lastWorldGenre = String(data?.metadata?.genre ?? '');
         lastWorldNpcs = Object.values(data?.entries ?? {})
             .filter((/** @type {any} */ e) => e?.dndData?.entityType === 'npc')
             .map((/** @type {any} */ e) => ({
@@ -1250,6 +1313,8 @@ async function persistBoardTerrainNow(board) {
         // Lo que arde o se ha descubierto (ideas 23 y 122): sin esto, un charco de aceite
         // desaparecía al recargar.
         if (Array.isArray(board.hazards)) stored.hazards = board.hazards;
+        // R6: y los refuerzos que ya llegaron, para que no vuelvan a llegar.
+        if (Array.isArray(board.waves)) stored.waves = board.waves;
         // Que salas se han revelado es parte del estado del tablero: sin esto, una
         // mazmorra se volveria a cerrar sola al recargar.
         if (board.rooms) stored.rooms = board.rooms;
@@ -1473,7 +1538,7 @@ function pushCombatLogLines(text) {
  *
  * @param {string} worldName
  */
-async function applyCampaignRuleset(worldName) {
+export async function applyCampaignRuleset(worldName) {
     if (!worldName) return;
 
     let worldPack = null;
@@ -1640,6 +1705,340 @@ function postCombatNarration(text) {
         isSmallSys: true,
         isNarrator: true,
     });
+    // R5: la mascota, a veces, dice algo de lo que acaba de pasar. Gratis: es del motor.
+    petReact(text);
+}
+
+/** R8: los que se fueron, con su ficha, por si vuelven. */
+const GONE_KEY = 'gone';
+
+/**
+ * R9: quien manda en un sitio nota lo que pasa en él: un caso resuelto le gusta; un crimen
+ * o la nigromancia, no. Lo mueve `changeStanding`, como los encargos.
+ *
+ * @param {string} place
+ * @param {string} what Una clave de `REACTIONS` (`world-echoes.js`).
+ * @returns {Promise<void>}
+ */
+async function nudgeRuler(place, what) {
+    const ruler = rulerOf(place);
+    const delta = reactionTo(what);
+    const worldName = String(chat_metadata?.[METADATA_KEY] || '');
+    if (!ruler || delta === 0 || !worldName) return;
+    await worldWrite(async () => {
+        const data = await loadWorldInfo(worldName);
+        if (!data) return;
+        const moved = changeStanding(readFactions(data.metadata?.factions), String(ruler.id), delta);
+        data.metadata = data.metadata ?? {};
+        data.metadata.factions = moved;
+        await saveWorldInfo(worldName, data, true);
+        currentWorldFactions = moved;
+    });
+    postCombatNarration(`🏛️ [MUNDO] ${ruler.name} ${delta > 0 ? 'lo tiene en cuenta: os mira mejor' : 'se entera: os mira peor'}.`);
+}
+
+/**
+ * R8: los favores de la gente de aquí que os aprecia (actitud +2 o más).
+ *
+ * @returns {ReturnType<typeof homeFavors>}
+ */
+function favorsHere() {
+    return homeFavors({ npcs: lastWorldNpcs, attitudes: readAttitudes(chat_metadata?.[ATTITUDES_KEY]), here: currentLocationName });
+}
+
+/**
+ * R8: si vuelve alguien de los que se fueron. Con la semilla del mundo y la semana.
+ */
+function welcomeBack() {
+    if (!chat_metadata) return;
+    const today = campaignDay();
+    const random = createSeededRandom(derive(String(chat_metadata?.[METADATA_KEY] || ''), 'vuelve', String(Math.floor(today / 7))));
+    const gone = whoComesBack({ raw: chat_metadata[GONE_KEY], today, random });
+    if (!gone || partyMembers.some(m => String(m.name) === gone.name)) return;
+    const back = comebackOf(gone);
+    const hero = partyMembers[0];
+    back.member.mapPosition = { ...(hero?.mapPosition ?? {}), locationName: currentLocationName };
+    partyMembers.push(back.member);
+    chat_metadata[GONE_KEY] = forgetGone(chat_metadata[GONE_KEY], gone.name);
+    saveMetadata();
+    savePartyState();
+    renderPartyMembers();
+    postCombatNarration(`🔁 [GRUPO] ${back.line}`);
+    void postForModel(back.forModel);
+}
+
+/** R7: los que escaparon y pueden volver. */
+const NEMESES_KEY = 'nemeses';
+
+/** R5: la mascota del héroe, en los metadatos de la partida. */
+const PET_KEY = 'pet';
+
+/** @returns {import('./game-engine/campaign/pet.js').Pet|null} */
+function currentPet() {
+    return readPet(chat_metadata?.[PET_KEY]);
+}
+
+/**
+ * T5: la mascota con la que llega un héroe hecho. Si ya hay una, se queda la que hay.
+ *
+ * @param {{name?: string, species?: string, character?: string}|null} raw
+ * @returns {boolean} Si se ha quedado.
+ */
+export function adoptPet(raw) {
+    if (!chat_metadata || !raw || currentPet()) return false;
+    const made = createPet({ name: String(raw.name ?? ''), species: String(raw.species ?? ''), character: String(raw.character ?? 'leal') });
+    if (!made) return false;
+    keepPet(made);
+    postCombatNarration(`🐾 [MASCOTA] ${petName(made)} va con vosotros desde el principio.`);
+    return true;
+}
+
+/**
+ * K3: qué ficha centrar en el tablero: la de quien tiene el turno en combate, una vez por turno.
+ *
+ * @returns {{focusTokenId?: any, focusKey?: string}}
+ */
+function activeFocus() {
+    if (!combatEncounter.active) return {};
+    const entry = getCurrentTurnEntry();
+    if (!entry || entry.isEnemy) return {};
+    return { focusTokenId: getPartyMemberByTurnEntry(entry)?.id ?? null, focusKey: `${Number(combatEncounter.round) || 1}:${String(entry.id)}` };
+}
+
+/**
+ * T3: la gente con oficio de un sitio ve a la mascota por primera vez: le gusta o no, lo
+ * dice (sin llamar al modelo) y su actitud da un paso.
+ *
+ * @param {string} place
+ */
+function petMeetsTown(place) {
+    const pet = currentPet();
+    if (!pet || !chat_metadata) return;
+    const reactions = reactionsHere({
+        pet, npcs: lastWorldNpcs, here: place, met: pet.met,
+        speciesLabel: PET_SPECIES[/** @type {keyof typeof PET_SPECIES} */ (pet.species)]?.label ?? '',
+    });
+    if (reactions.length === 0) return;
+    let attitudes = chat_metadata[ATTITUDES_KEY];
+    for (const reaction of reactions) {
+        const shifted = shiftAttitude(attitudes, { name: reaction.npc, delta: reaction.mood, day: campaignDay() });
+        if (shifted.ok) attitudes = shifted.state;
+        postCombatNarration(`🐾 [MASCOTA] ${reaction.line}`);
+    }
+    chat_metadata[ATTITUDES_KEY] = attitudes;
+    keepPet({ ...pet, met: [...pet.met, ...reactions.map(r => r.npc)] });
+}
+
+/**
+ * R5: guardar la mascota.
+ *
+ * @param {import('./game-engine/campaign/pet.js').Pet|null} pet
+ */
+function keepPet(pet) {
+    if (!chat_metadata) return;
+    chat_metadata[PET_KEY] = pet;
+    saveMetadata();
+    // H1: la primera mascota dice qué hace.
+    if (pet) showTip('pet');
+}
+
+/**
+ * R5: reaccionar a una línea de la crónica. Nunca a lo suyo, y como mucho una vez cada rato.
+ *
+ * @param {string} text
+ */
+function petReact(text) {
+    const pet = currentPet();
+    if (!pet || !chat_metadata) return;
+    const line = readTaggedLine(text);
+    if (!line || line.tag === 'MASCOTA') return;
+    const now = Array.isArray(chat) ? chat.length : 0;
+    if (!shouldComment({ pet, category: line.category, now, random: Math.random })) return;
+    const said = petComment({ pet, category: line.category, random: Math.random });
+    if (!said) return;
+    keepPet(afterComment(pet, said, now));
+    // Detrás de la línea que comenta, y sin volver a entrar aquí.
+    setTimeout(() => postCombatNarration(said), 0);
+}
+
+/**
+ * R5: algo vivido juntos (una pelea ganada, un viaje). Cada cinco, más vínculo.
+ */
+function petLivesIt() {
+    const pet = currentPet();
+    if (!pet) return;
+    const step = liveTogether(pet);
+    keepPet(step.pet);
+    if (step.line) postCombatNarration(step.line);
+}
+
+/** Los nombres de siempre de cada especie, para no pedir uno en blanco. */
+const PET_NAMES = /** @type {Record<string, string>} */ ({
+    perro: 'Canela', gato: 'Hollín', zorro: 'Rastro', halcon: 'Brisa', cuervo: 'Graznido', loro: 'Chismes', familiar: 'Chispa', espiritu: 'Susurro',
+});
+
+/**
+ * R5: la mascota en un cuadro: tenerla, preguntarle, acariciarla. Sin mascota, se elige una
+ * de las tres que le pegan al mundo.
+ *
+ * @returns {Promise<string>}
+ */
+async function openPetPanel() {
+    if (!chat_metadata || partyMembers.length === 0) {
+        toastr.info('Abre una partida con alguien en el grupo antes.', 'La mascota');
+        return '';
+    }
+    const pet = currentPet();
+    const body = $('<div class="jr-root pet-root"></div>');
+    if (!pet) {
+        body.append($('<h3></h3>').text('¿Te acompaña alguien?'));
+        body.append($('<p></p>').text('Una mascota no ocupa plaza ni cobra. Comenta lo que pasa, ayuda sin pelear y crece contigo.'));
+        const choices = petChoicesFor(lastWorldGenre);
+        const picked = await new Popup(body[0], POPUP_TYPE.TEXT, '', {
+            okButton: false, cancelButton: 'Nadie, por ahora',
+            customButtons: choices.map((species, i) => ({
+                text: `${PET_NAMES[species]}, ${PET_SPECIES[/** @type {keyof typeof PET_SPECIES} */ (species)].label}${PET_SPECIES[/** @type {keyof typeof PET_SPECIES} */ (species)].talks ? ' (habla)' : ''}`,
+                result: 60 + i, classes: ['pet-pick'],
+            })),
+        }).show();
+        const index = Number(picked) - 60;
+        const species = choices[index];
+        if (!species) return '';
+        const characters = Object.keys(PET_CHARACTERS);
+        const random = createSeededRandom(derive(String(chat_metadata?.[METADATA_KEY] || ''), 'mascota', species));
+        const made = createPet({ name: PET_NAMES[species], species, character: characters[Math.floor(random() * characters.length) % characters.length] });
+        keepPet(made);
+        if (made) postCombatNarration(`🐾 [MASCOTA] ${petName(made)} se viene contigo (${PET_CHARACTERS[made.character]}).`);
+        if (isShellOpen()) refreshGameShell();
+        return made ? petName(made) : '';
+    }
+    body.append($('<h3></h3>').text(petName(pet)));
+    body.append($('<p class="pet-sheet"></p>').text(describePet(pet)));
+    body.append($('<p></p>').text(PET_SPECIES[pet.species].note));
+    const today = campaignDay();
+    const petted = Number(chat_metadata.petPetted) === today;
+    const picked = await new Popup(body[0], POPUP_TYPE.TEXT, '', {
+        okButton: 'Cerrar',
+        customButtons: [
+            { text: PET_SPECIES[pet.species].talks ? 'Preguntarle' : 'Ver qué hace', result: 71, classes: ['pet-ask'] },
+            ...(petted ? [] : [{ text: 'Acariciarle', result: 72, classes: ['pet-pet'] }]),
+        ],
+    }).show();
+    if (picked === 71) {
+        const next = whatComes(today)[0] ?? null;
+        const urgent = weekAffairsNow()[0] ?? null;
+        const state = readCases(chat_metadata?.[CASES_KEY]);
+        const missing = state.active ? state.active.clues.find(c => !state.found.includes(c.id) && !c.misleading) : null;
+        const clue = missing ? `falta ${missing.how === 'registrar' ? `registrar ${missing.source.name}` : missing.how === 'rumor' ? `oír lo que se dice en ${missing.source.name}` : `hablar con ${missing.source.name}`}` : '';
+        postCombatNarration(petAdvice({ pet, next, urgent: urgent ? { title: urgent.title, in: urgent.in } : null, clue }));
+    } else if (picked === 72) {
+        chat_metadata.petPetted = today;
+        saveMetadata();
+        postCombatNarration(`🐾 [MASCOTA] ${pet.name} se deja hacer, y el grupo se ríe un rato.`);
+        petLivesIt();
+    }
+    return '';
+}
+
+/**
+ * R5: los asuntos de la mesa de ahora, para que la mascota sepa qué aprieta.
+ *
+ * @returns {Array<{title: string, in: number|null}>}
+ */
+function weekAffairsNow() {
+    if (!chat_metadata) return [];
+    return keepOn(affairsOf({
+        today: campaignDay(),
+        factions: currentWorldFactions,
+        taken: chat_metadata[TAKEN_KEY] ?? null,
+        board: Array.isArray(chat_metadata[BOARD_KEY]) ? chat_metadata[BOARD_KEY] : [],
+        plot: getPlot(),
+        plotState: chat_metadata[PLOT_STATE_KEY],
+        debt: chat_metadata[DEBT_KEY] ?? null,
+        party: partyMembers,
+        rivals: hasLetter(survivalNow(), 'c'),
+        mystery: readCases(chat_metadata[CASES_KEY]),
+        // T7: el harto, en la mesa.
+        leaving: leavingMembers().map(m => ({ id: m.id, name: String(m.name) })),
+        weekDue: Number(chat_metadata[BILL_DUE_KEY]) || 0,
+    }), survivalNow());
+}
+
+/**
+ * R5: domar lo que se ha vencido, si es de las que se dejan. Supervivencia, CD 12.
+ *
+ * @param {any[]} fallen Los enemigos vencidos (las instancias del combate).
+ */
+function offerTaming(fallen) {
+    // T6: se mira su ficha del mundo (el dato `domable`), y solo sin ella, su nombre.
+    const beasts = fallen.map(e => {
+        const template = getCurrentWorldEnemies().find((/** @type {any} */ t) => String(t.id) === String(e.templateId));
+        return { name: String(template?.name ?? e.name), ...(template?.domable !== undefined ? { domable: template.domable } : {}) };
+    });
+    const beast = beasts.find(b => tamableAs(b));
+    if (!beast || !chat_metadata) return;
+    const species = tamableAs(beast);
+    const toast = toastr.info('Una cría de lo que acabáis de vencer se queda mirándoos. ¿Os la lleváis? (Supervivencia, CD 12)', `🐾 ${PET_SPECIES[/** @type {keyof typeof PET_SPECIES} */ (species)].label}`, { timeOut: 15000, extendedTimeOut: 5000, closeButton: true });
+    $(toast).find('.toast-message').append($('<button class="menu_button pet-tame" style="margin-top:6px;"></button>').text('Intentarlo').on('click', () => {
+        const who = partyMembers.filter(m => (Number(m.hp) || 0) > 0).reduce((/** @type {any} */ top, m) => (!top || skillModifier(m, 'survival').modifier > skillModifier(top, 'survival').modifier ? m : top), null);
+        const roll = who ? rollCheck({ member: who, skill: 'survival', rollD20: () => rollDiceDetailed('1d20', 20).total, dc: 12 }) : null;
+        if (roll) postCombatNarration(roll.said);
+        if (!roll?.success || currentPet()) {
+            postCombatNarration('🐾 [MASCOTA] Se escapa entre la maleza. Otra vez será.');
+            return;
+        }
+        const characters = Object.keys(PET_CHARACTERS);
+        const made = createPet({ name: PET_NAMES[species] ?? 'Sin nombre', species, character: characters[Math.floor(Math.random() * characters.length) % characters.length] });
+        keepPet(made);
+        if (made) postCombatNarration(`🐾 [MASCOTA] ${petName(made)} se viene con vosotros.`);
+    }));
+}
+
+/**
+ * R5: la carta de la mascota con labia (el cuervo, el loro): roba la atención.
+ *
+ * @returns {any[]}
+ */
+function petTricks() {
+    const pet = currentPet();
+    if (!pet || !petDoes(pet, 'labia')) return [];
+    return [{ id: 'truco:mascota', kind: 'truco', label: `Que ${pet.name} le robe la atención`, as: 'enganar', power: 2 }];
+}
+
+/**
+ * R5: la mascota ayuda en combate: una vez por ronda, sin gastar la acción de nadie.
+ *
+ * @param {string} action
+ * @param {any} enemy
+ */
+function petSupport(action, enemy) {
+    const pet = currentPet();
+    if (!pet || !combatEncounter.active) return;
+    /** @type {any} */ (combatEncounter).petRound = Number(combatEncounter.round) || 1;
+    if (action === 'avisar') {
+        combatEncounter.maneuvers = recordManeuver(combatEncounter.maneuvers, 'ayudar', 'mascota', String(enemy.instanceId));
+        postCombatNarration(`🐾 [COMBAT] ${pet.name} señala a ${enemy.name}: el siguiente golpe del grupo va con ventaja.`);
+    } else if (action === 'distraer') {
+        applyTimedCondition(enemy, String(enemy.instanceId), 'Distraído', 1);
+        postCombatNarration(`🐾 [COMBAT] ${pet.name} se le mete entre las piernas a ${enemy.name}: su próximo golpe va con desventaja.`);
+    } else if (action === 'rastrear') {
+        const board = getActiveBoardContext().board;
+        const hero = partyMembers[0];
+        const at = boardCellOf(hero);
+        let found = 0;
+        if (board && Array.isArray(board.hazards)) {
+            board.hazards = board.hazards.map((/** @type {any} */ h) => {
+                if (h?.seen || Math.max(Math.abs(Number(h?.x) - at.x), Math.abs(Number(h?.y) - at.y)) > 4) return h;
+                found++;
+                return { ...h, seen: true };
+            });
+            persistBoardTerrain(board);
+        }
+        for (const foe of getAliveEnemies()) combatEncounter.maneuvers = revealHidden(combatEncounter.maneuvers, String(foe.instanceId));
+        postCombatNarration(`🐾 [COMBAT] ${pet.name} olfatea alrededor${found > 0 ? `: ${found} trampa(s) a la vista` : ''}, y quien se escondía, ya no.`);
+    }
+    saveCombatState();
+    renderLocationMapsPreview();
 }
 
 /**
@@ -1911,7 +2310,30 @@ function getCurrentTurnEntry() {
  * @returns {PartyMember[]}
  */
 function getLivingPartyMembers() {
-    return partyMembers.filter(member => (member.hp || 0) > 0);
+    // B2: quien ha salido por una salida ya no está en la pelea: nadie le ataca.
+    const left = combatEncounter.active ? readLeft(combatEncounter.left) : [];
+    return partyMembers.filter(member => (member.hp || 0) > 0 && !left.includes(String(member.id)));
+}
+
+/**
+ * La casilla de alguien del grupo en el tablero.
+ *
+ * @param {any} member
+ * @returns {{x: number, y: number}}
+ */
+function partyCell(member) {
+    return { x: Number(member?.mapPosition?.gridX) || 0, y: Number(member?.mapPosition?.gridY) || 0 };
+}
+
+/**
+ * B1: cómo está quien ataca respecto a quien recibe, en el tablero de ahora.
+ *
+ * @param {{x: number, y: number}} from
+ * @param {{x: number, y: number}} to
+ * @returns {'above'|'below'|'level'}
+ */
+function heightFor(from, to) {
+    return heightBetween(getActiveBoardContext().terrain, from, to);
 }
 
 /**
@@ -1968,6 +2390,8 @@ function resolveEnemyAttackOn(enemy, target) {
         // Ideas 73 y 90: la niebla y la noche estorban a los dos bandos.
         hindered: visibilityPenalties(boardVisibility(), enemyFeet),
         distanceFeet: enemyFeet,
+        // B1: desde arriba, mejor.
+        height: heightFor({ x: Number(enemy.gridX) || 0, y: Number(enemy.gridY) || 0 }, partyCell(target)),
         maneuvers: combatEncounter.maneuvers,
         // El flanqueo vale para los dos bandos.
         flanked: flankedFrom(
@@ -1982,6 +2406,10 @@ function resolveEnemyAttackOn(enemy, target) {
     const attackMod = Math.max(
         getAbilityModifier(enemy.strength || 10),
         getAbilityModifier(enemy.dexterity || 10),
+    // R7: con su líder cerca, pega mejor. R6: y un jefe enfurecido, más.
+    ) + (Number(/** @type {any} */ (enemy).rage) || 0) + leaderBonus(
+        { id: String(enemy.instanceId), x: Number(enemy.gridX) || 0, y: Number(enemy.gridY) || 0 },
+        getAliveEnemies().map(e => ({ id: String(e.instanceId), x: Number(e.gridX) || 0, y: Number(e.gridY) || 0, hp: Number(e.currentHp) || 0, role: String(/** @type {any} */ (e).role ?? '') })),
     );
     const attackTotal = d20 + attackMod;
     const { ac: targetAc, cover: targetCover } = getTargetArmorClass(target, enemy);
@@ -2140,27 +2568,11 @@ function resolveEnemyAbility(enemy, choice) {
         : (choice.side === 'self' ? enemy : getEnemyByInstanceId(choice.targetId));
     if (!target) return '';
 
-    const plan = planAbilityUse({
-        actor: enemy,
-        target,
-        ability,
-        roll: (/** @type {string} */ formula) => rollDiceDetailed(formula, 8),
-        attackModifier: Math.max(getAbilityModifier(enemy.strength || 10), getAbilityModifier(enemy.dexterity || 10)),
-        targetAc: choice.side === 'enemy' ? getTargetArmorClass(target, enemy).ac : 10,
-        saveModifier: choice.side === 'enemy' ? abilityModifier(target, ability.saveAbility) : 0,
-    });
     enemy.abilityUses = spendAbilityUse(enemy, ability);
-
-    const lines = [...plan.lines];
-    if (plan.damage > 0 && choice.side === 'enemy') lines.push(...damagePartyMember(target, plan.damage, plan.crit));
-    if (plan.healing > 0 && choice.side !== 'enemy') {
-        target.currentHp = Math.min(Number(target.maxHp) || 0, (Number(target.currentHp) || 0) + plan.healing);
-        lines.push(`❤️ Estado de ${target.name}: ${target.currentHp}/${target.maxHp}`);
-    }
-    if (plan.condition) {
-        const who = choice.side === 'enemy' ? String(target.id) : String(target.instanceId);
-        applyTimedCondition(target, who, plan.condition, plan.conditionRounds);
-    }
+    // R4: un cultista también gasta las cargas de su círculo.
+    if (typeof ability.circle === 'number' && ability.circle > 0) enemy.spellCharges = spendCharge(enemy, ability.circle);
+    // R3: el mismo camino que el grupo: con área, alcanza también a los suyos si están ahí.
+    const lines = resolveAbilityOnBoard({ actor: enemy, side: 'enemy', ability, subject: target });
 
     savePartyState();
     saveCombatState();
@@ -2204,6 +2616,9 @@ function planFor(enemy) {
             // punetazos. Sin habilidades, su alcance de siempre.
             attackRangeFeet: Math.max(Number(enemy.attackRangeFeet ?? enemy.range) || 5, longestReach(enemy, known)),
             profile: enemy.profile,
+            // R7: su papel y la táctica de su bando.
+            role: String(/** @type {any} */ (enemy).role ?? ''),
+            tactic: tacticOf(enemy)?.id ?? '',
         },
         targets: livingParty.map(member => {
             const cell = memberCell(member);
@@ -2249,10 +2664,32 @@ function resolveEnemyTurnAction(turnEntry) {
     if (!enemy) {
         return '[COMBAT] El enemigo no puede actuar (derrotado o no encontrado).';
     }
+    // R3: dormido, aturdido o paralizado, pierde el turno. Antes era una etiqueta.
+    const out = cannotAct(enemy.activeConditions);
+    if (out) return `💤 [COMBAT] ${enemy.name} no puede actuar (${CONDITION_WORDS[out] ?? out}): pierde el turno.`;
 
     const livingParty = getLivingPartyMembers();
     if (!livingParty.length) {
         return `[COMBAT] ${enemy.name} ruge sobre un campo sin oponentes conscientes.`;
+    }
+
+    // T2: una tregua pedida espera respuesta hasta la ronda siguiente; sin respuesta, se sigue.
+    if (/** @type {any} */ (combatEncounter).truce === 'pending') {
+        if ((Number(combatEncounter.round) || 1) > (Number(/** @type {any} */ (combatEncounter).truceRound) || 0)) {
+            /** @type {any} */ (combatEncounter).truce = 'refused';
+            saveCombatState();
+            postCombatNarration('⚔️ [COMBAT] No contestáis: vuelven a por vosotros.');
+        } else {
+            return `🏳️ [COMBAT] ${enemy.name} espera vuestra respuesta, con el arma baja.`;
+        }
+    }
+    // T2: con su líder caído y la mitad fuera, los que quedan piden tregua (una vez).
+    if (truceOffered({
+        enemies: combatEncounter.enemies.map(e => ({ name: String(e.name), hp: Number(e.currentHp) || 0, maxHp: Number(e.maxHp) || 0, boss: Boolean(/** @type {any} */ (e).boss), role: String(/** @type {any} */ (e).role ?? '') })),
+        offered: Boolean(/** @type {any} */ (combatEncounter).truce),
+    })) {
+        offerTruce();
+        return `🏳️ [COMBAT] ${enemy.name} espera vuestra respuesta, con el arma baja.`;
     }
 
     // Idea 6: con su bando cayendo y malherido, quien no es jefe puede rendirse.
@@ -2271,6 +2708,43 @@ function resolveEnemyTurnAction(turnEntry) {
             return '';
         }
         return said;
+    }
+
+    // R7: con su líder caído y malherido, huye. Sale de esta pelea… y puede volver en otra.
+    const leaderDown = combatEncounter.enemies.some(e => e !== enemy && /** @type {any} */ (e).role === 'lider' && (Number(e.currentHp) || 0) <= 0);
+    if (breaksAndRuns({ hp: Number(enemy.currentHp) || 0, maxHp: Number(enemy.maxHp) || 0, boss: Boolean(/** @type {any} */ (enemy).boss), role: String(/** @type {any} */ (enemy).role ?? '') }, leaderDown)) {
+        enemy.currentHp = 0;
+        /** @type {any} */ (enemy).fled = true;
+        const escape = noteEscape({ raw: chat_metadata?.[NEMESES_KEY], name: String(enemy.name), grudge: String(partyMembers[0]?.name ?? ''), day: campaignDay() });
+        if (chat_metadata) {
+            chat_metadata[NEMESES_KEY] = escape.list;
+            saveMetadata();
+        }
+        saveCombatState();
+        // B2: si el tablero tiene salida, se va por ella.
+        const exits = exitCells(getActiveBoardContext().terrain);
+        const way = exits.length > 0 ? ' por la salida' : '';
+        // T2: y puede volver con ayuda, dos rondas después, por donde se fue (una vez por pelea).
+        let help = '';
+        const board = getActiveBoardContext().board;
+        if (board && getAliveEnemies().length > 0 && callsForHelp({ random: Math.random, hasExit: exits.length > 0, called: Boolean(/** @type {any} */ (combatEncounter).helpCalled) })) {
+            const template = getCurrentWorldEnemies().find((/** @type {any} */ t) => String(t.id) === String(enemy.templateId));
+            board.waves = [...(Array.isArray(board.waves) ? board.waves : []), helpWave({
+                name: String(template?.name ?? enemy.name), round: Number(combatEncounter.round) || 1,
+                at: exits[0] ?? { x: Number(enemy.gridX) || 0, y: Number(enemy.gridY) || 0 },
+            })];
+            /** @type {any} */ (combatEncounter).helpCalled = true;
+            persistBoardTerrain(board);
+            help = ' Grita que vuelve con ayuda.';
+        }
+        const fled = `🏃 [COMBAT] ${enemy.name} ve caer a quien mandaba y sale corriendo${way}.${help}${escape.line ? ` ${escape.line}` : ''}`;
+        if (getAliveEnemies().length === 0) {
+            postCombatNarration(fled);
+            postCombatNarration('🏆 [COMBAT] No queda nadie dispuesto a pelear.');
+            endCombat('victory');
+            return '';
+        }
+        return fled;
     }
 
     const known = knownAbilities(enemy, getAbilityCatalogue());
@@ -2380,7 +2854,8 @@ function canTurnEntryAct(entry) {
         return Boolean(enemy && enemy.currentHp > 0);
     }
     const member = getPartyMemberByTurnEntry(entry);
-    return Boolean(member && member.hp > 0);
+    // B2: quien salió ya no tiene turno.
+    return Boolean(member && member.hp > 0 && !hasLeft(combatEncounter.left, member.id));
 }
 
 /**
@@ -2602,6 +3077,19 @@ function currentSurvival() {
 }
 
 /**
+ * R1 del roadmap de profundidad: los interruptores tal como están en el paquete, para
+ * preguntar por letras (`hasLetter`) y filtrar lo que no existe en este modo.
+ *
+ * @returns {any}
+ */
+function survivalNow() {
+    return getActiveRuleset()?.survival ?? null;
+}
+
+/** R1: el historial de modos de esta partida (DR2), para el salón de la fama. */
+const MODE_HISTORY_KEY = 'modeHistory';
+
+/**
  * Ideas 36 y 199: lo que queda de quien muere. Epitafio, tumba donde cayó, lo mejor que
  * llevaba para quien más le quería, y un sitio en el salón de la fama.
  *
@@ -2640,6 +3128,9 @@ function buryMember(member, today, bonds) {
     settings.partyHall = addToHall(settings.partyHall, {
         name: String(member.name), world: String(chat_metadata?.[METADATA_KEY] ?? ''), day: today, epitaph,
         when: new Date().toISOString(),
+        // R1 (DR2): de hierro solo si lo fue siempre.
+        mode: modeLabel(modeOf(survivalNow())),
+        iron: isIronRun(survivalNow(), chat_metadata?.[MODE_HISTORY_KEY] ?? null),
     });
     saveSettingsDebounced();
     postCombatNarration(`🪦 [CAMPAÑA] ${epitaph}${inherited ? ` ${inherited}` : ''}`);
@@ -2739,7 +3230,187 @@ function burnRound() {
     board.hazards = step.hazards;
     board.terrain = step.terrain;
     persistBoardTerrain(board);
-    postCombatNarration(`[COMBAT] ${step.lines.join('\n')}`);
+    // R6: si el fuego llega a un barril, revienta.
+    const blasts = explodeBarrels(step.burnt.filter(b => /barril/i.test(b.what)));
+    postCombatNarration(`[COMBAT] ${[...step.lines, ...blasts].join('\n')}`);
+    renderLocationMapsPreview();
+}
+
+/**
+ * R6: abrir un cofre. Hace falta estar al lado; da oro y, a veces, algo de valor. Se queda
+ * vacío (en suelo).
+ *
+ * @param {any} board
+ * @param {number} gx
+ * @param {number} gy
+ */
+function openChest(board, gx, gy) {
+    const opener = partyMembers.find(m => !m.dead && (Number(m.hp) || 0) > 0
+        && Math.max(Math.abs((Number(m.mapPosition?.gridX) || 0) - gx), Math.abs((Number(m.mapPosition?.gridY) || 0) - gy)) <= 1);
+    if (!opener) {
+        toastr.info('Hay que llegar al lado del cofre para abrirlo.', 'Un cofre');
+        return;
+    }
+    const gold = 5 + Math.floor(nextRandom() * 10) * 3;
+    opener.gold = (Number(opener.gold) || 0) + gold;
+    const rare = nextRandom() < 0.4;
+    const pool = DEFAULT_LOOT_RULES.itemsByRarity[rare ? 'Uncommon' : 'Common'] ?? [];
+    const name = pool.length > 0 && nextRandom() < 0.6 ? pool[Math.floor(nextRandom() * pool.length) % pool.length] : '';
+    if (name) addItemToInventory(/** @type {any} */ (opener), createItem(/** @type {any} */ (describeLootItem(name, rare ? 'Uncommon' : 'Common', worldItemCatalogue))));
+    board.terrain = setTerrainCell(normalizeTerrain(board.terrain), gx, gy, 'floor');
+    persistBoardTerrain(board);
+    savePartyState();
+    renderPartyMembers();
+    renderLocationMapsPreview();
+    postCombatNarration(`🧰 [TABLERO] ${opener.name} abre el cofre: ${gold} de oro${name ? ` y ${name}` : ''}.`);
+}
+
+/**
+ * T1 y B3: tirar de la palanca o golpear la barricada. Hace falta alguien al lado; en combate,
+ * el que tiene el turno, y gasta su acción (como abrir un cofre a golpes no es gratis).
+ *
+ * @param {any} board
+ * @param {number} gx
+ * @param {number} gy
+ * @param {'lever'|'barricade'} kind
+ */
+function useBoardThing(board, gx, gy, kind) {
+    const near = (/** @type {any} */ m) => Math.max(Math.abs((Number(m?.mapPosition?.gridX) || 0) - gx), Math.abs((Number(m?.mapPosition?.gridY) || 0) - gy)) <= 1;
+    const acting = combatEncounter.active ? getPartyMemberByTurnEntry(getCurrentTurnEntry()) : null;
+    const who = combatEncounter.active
+        ? (acting && near(acting) && (Number(acting.hp) || 0) > 0 ? acting : null)
+        : partyMembers.find(m => !m.dead && (Number(m.hp) || 0) > 0 && near(m));
+    const what = kind === 'lever' ? 'la palanca' : 'la barricada';
+    if (!who) {
+        toastr.info(combatEncounter.active ? `Tiene que estar al lado de ${what} quien tiene el turno.` : `Hay que llegar al lado de ${what}.`, kind === 'lever' ? 'La palanca' : 'La barricada');
+        return;
+    }
+    if (combatEncounter.active) {
+        if (!hasAction(combatEncounter, 'action')) {
+            toastr.info(`${who.name} ya ha usado su acción este turno.`, kind === 'lever' ? 'La palanca' : 'La barricada');
+            return;
+        }
+        Object.assign(combatEncounter, useAction(combatEncounter, 'action'));
+    }
+    if (kind === 'lever') {
+        const pulled = pullLever(normalizeTerrain(board.terrain));
+        board.terrain = pulled.terrain;
+        postCombatNarration(`🕹️ [TABLERO] ${who.name} tira de la palanca. ${pulled.line}`);
+        if (pulled.opened.length > 0) soundCue('door');
+    } else {
+        // Fuera de combate se rompe con calma, de una vez; en combate, con el daño del arma.
+        const damage = combatEncounter.active ? Math.max(1, rollDiceDetailed(getPlayerDamageFormula(who, 5), 8).total) : 99;
+        const hit = hitBarricade(normalizeTerrain(board.terrain), gx, gy, damage);
+        board.terrain = hit.terrain;
+        postCombatNarration(`🪓 [TABLERO] ${who.name} golpea la barricada${combatEncounter.active ? ` (−${damage})` : ''}. ${hit.line}`);
+    }
+    persistBoardTerrain(board);
+    saveCombatState();
+    renderLocationMapsPreview();
+}
+
+/**
+ * R6: revientan barriles. Quien esté pegado a uno se lleva 2d6 de fuego.
+ *
+ * @param {Array<{x: number, y: number}>} cells
+ * @returns {string[]}
+ */
+function explodeBarrels(cells) {
+    /** @type {string[]} */
+    const lines = [];
+    for (const cell of cells) {
+        const blast = rollWith('2d6', nextRandom).total;
+        const near = (/** @type {number} */ x, /** @type {number} */ y) => Math.max(Math.abs(x - cell.x), Math.abs(y - cell.y)) <= 1;
+        const hit = [];
+        for (const enemy of getAliveEnemies().filter(e => near(Number(e.gridX) || 0, Number(e.gridY) || 0))) {
+            enemy.currentHp = Math.max(0, (Number(enemy.currentHp) || 0) - blast);
+            hit.push(`${enemy.name}${enemy.currentHp === 0 ? ' (cae)' : ''}`);
+        }
+        for (const member of partyMembers.filter(m => !m.dead && (Number(m.hp) || 0) > 0 && near(Number(m.mapPosition?.gridX) || 0, Number(m.mapPosition?.gridY) || 0))) {
+            lines.push(...damagePartyMember(member, blast, false));
+            hit.push(String(member.name));
+        }
+        lines.push(`💥 Revienta un barril en (${cell.x + 1}, ${cell.y + 1}): ${blast} de fuego${hit.length > 0 ? ` a ${hit.join(', ')}` : ', y no pilla a nadie'}.`);
+    }
+    return lines;
+}
+
+/**
+ * R6: los jefes con fases (la P22): al bajar de la mitad, cambian una vez, y se dice.
+ */
+function bossPhases() {
+    const band = [...getAliveEnemies()]
+        .sort((a, b) => (Number(a.maxHp) || 0) - (Number(b.maxHp) || 0))
+        .map(e => String(e.name).replace(/\s+\d+$/, ''));
+    for (const enemy of getAliveEnemies()) {
+        const phase = bossPhase({ enemy, band });
+        if (!phase) continue;
+        Object.assign(enemy, phase.patch);
+        postCombatNarration(`👑 [COMBAT] ${phase.line}`);
+        if (phase.summon.length > 0) {
+            const board = getActiveBoardContext().board;
+            if (board) {
+                board.waves = [...(Array.isArray(board.waves) ? board.waves : []), {
+                    round: Number(combatEncounter.round) || 1, names: phase.summon, x: Number(enemy.gridX) || 0, y: Number(enemy.gridY) || 0, tell: '',
+                }];
+                arriveWaves();
+            }
+        }
+    }
+    saveCombatState();
+}
+
+/**
+ * R6: los refuerzos de un tablero (la P21). Una ronda antes se oyen (el aviso); en su ronda
+ * llegan, junto a donde dice el tablero, y entran en la iniciativa.
+ */
+function arriveWaves() {
+    const board = getActiveBoardContext().board;
+    if (!board || !Array.isArray(board.waves) || board.waves.length === 0 || !combatEncounter.active) return;
+    const round = Number(combatEncounter.round) || 1;
+    const { terrain, gridWidth, gridHeight } = getActiveBoardContext();
+    const busy = new Set([
+        ...partyMembers.map(m => `${Number(m.mapPosition?.gridX) || 0},${Number(m.mapPosition?.gridY) || 0}`),
+        ...combatEncounter.enemies.filter(e => (e.currentHp || 0) > 0).map(e => `${Number(e.gridX) || 0},${Number(e.gridY) || 0}`),
+    ]);
+    let changed = false;
+    board.waves = board.waves.map((/** @type {any} */ wave) => {
+        if (!wave || wave.done) return wave;
+        if (Number(wave.round) - 1 === round && wave.tell && !wave.told) {
+            postCombatNarration(`👂 [COMBAT] ${wave.tell}`);
+            changed = true;
+            return { ...wave, told: true };
+        }
+        if (Number(wave.round) > round) return wave;
+        // Las casillas libres más cerca de por donde llegan.
+        /** @type {Array<{x: number, y: number}>} */
+        const cells = [];
+        for (let r = 0; r <= 3 && cells.length < (wave.names?.length ?? 0); r++) {
+            for (let dy = -r; dy <= r; dy++) {
+                for (let dx = -r; dx <= r; dx++) {
+                    const x = Number(wave.x) + dx;
+                    const y = Number(wave.y) + dy;
+                    if (cells.length >= (wave.names?.length ?? 0) || busy.has(`${x},${y}`) || !isPassable(terrain, x, y, gridWidth, gridHeight)) continue;
+                    busy.add(`${x},${y}`);
+                    cells.push({ x, y });
+                }
+            }
+        }
+        const arrived = instancesFromPlacements((wave.names ?? []).slice(0, cells.length).map((/** @type {string} */ name, /** @type {number} */ i) => ({ name, ...cells[i] })));
+        if (arrived.length > 0) {
+            combatEncounter.enemies = [...combatEncounter.enemies, ...arrived];
+            for (const enemy of arrived) {
+                const initiative = rollInitiativeWithPopover(enemy.name, enemy.dexterity || 10, 'enemy');
+                combatEncounter.turnOrder.push({ id: enemy.instanceId, name: enemy.name, initiative, isEnemy: true });
+            }
+            postCombatNarration(`⚠️ [COMBAT] Llegan refuerzos: ${arrived.map(e => e.name).join(', ')}.`);
+        }
+        changed = true;
+        return { ...wave, done: true };
+    });
+    if (!changed) return;
+    persistBoardTerrain(board);
+    saveCombatState();
     renderLocationMapsPreview();
 }
 
@@ -2777,6 +3448,10 @@ function advanceTurnIndex() {
         usedReactions = new Set();
         // Idea 23: el tablero cambia mientras se pelea.
         burnRound();
+        // R6: los refuerzos del tablero: se oyen una ronda antes, y llegan en la suya.
+        arriveWaves();
+        // R6: y los jefes que han bajado de la mitad cambian.
+        bossPhases();
         // A scenario won by the clock has no other moment to notice.
         if (checkScenarioOutcome()) return null;
     }
@@ -2812,9 +3487,16 @@ function actsOnItsOwn(entry) {
  * @param {any} entry
  * @returns {string}
  */
+/** R3: cómo se dicen los estados que quitan el turno. */
+const CONDITION_WORDS = /** @type {Record<string, string>} */ ({
+    Unconscious: 'dormido', Stunned: 'aturdido', Paralyzed: 'paralizado', Incapacitated: 'fuera de sí',
+});
+
 function resolveAllyTurnAction(entry) {
     const member = partyMembers.find(m => Number(m.id) === Number(entry.id));
     if (!member) return '';
+    const out = cannotAct(member.activeConditions);
+    if (out && (Number(member.hp) || 0) > 0) return `💤 [COMBAT] ${member.name} no puede actuar (${CONDITION_WORDS[out] ?? out}): pierde el turno.`;
 
     const living = combatEncounter.enemies.filter((/** @type {any} */ e) => (Number(e.currentHp) || 0) > 0);
     if (living.length === 0) return `[COMBAT] ${member.name} baja el arma: no queda nadie.`;
@@ -2904,6 +3586,11 @@ function runCombatTurnLoop(includeCurrent = true) {
         postCombatNarration(actionLog);
 
         if (!getLivingPartyMembers().length) {
+            // B2: si alguien salió antes, los de dentro han caído pero los de fuera se salvan.
+            if (everyoneOut(partyMembers.filter(m => !m.dead), combatEncounter.left)) {
+                finishEscape('Los que quedaban dentro han caído; los que salieron, se salvan.');
+                return null;
+            }
             postCombatNarration('💀 [COMBAT] Todos los miembros del grupo han caido. Fin del combate.');
             endCombat('defeat');
             return null;
@@ -2938,6 +3625,17 @@ function runCombatTurnLoop(includeCurrent = true) {
  * @param {number} gridH
  */
 function toggleBoardDoor(board, gx, gy, open, gridW, gridH) {
+    // R6: un cofre se abre, no se cierra.
+    if (getCell(normalizeTerrain(board?.terrain), gx, gy).type === 'chest') {
+        openChest(board, gx, gy);
+        return;
+    }
+    // T1 y B3: la palanca se tira; la barricada se golpea.
+    const touched = getCell(normalizeTerrain(board?.terrain), gx, gy).type;
+    if (touched === 'lever' || touched === 'barricade') {
+        useBoardThing(board, gx, gy, touched);
+        return;
+    }
     if (open && isLocked(normalizeTerrain(board.terrain), gx, gy)) {
         void tryUnlock(board, gx, gy, gridW, gridH);
         return;
@@ -3001,13 +3699,21 @@ function instancesFromPlacements(placements) {
         }
         const already = combatEncounter.enemies.filter(e => e.name.startsWith(template.name)).length
             + instances.filter(e => e.name.startsWith(template.name)).length;
+        // R7: la némesis vuelve más fuerte, y lo dice.
+        const nemesis = /** @type {any} */ (placement).nemesis ? readNemeses(chat_metadata?.[NEMESES_KEY]).find(n => n.id === /** @type {any} */ (placement).nemesis && !n.gone) : null;
+        const back = nemesis ? comeback(nemesis) : null;
+        if (back) {
+            postCombatNarration(back.line.replace(/^😈 /u, '😈 [NEMESIS] '));
+            void postForModel(back.forModel);
+        }
         instances.push({
+            ...(back ? { nemesis: /** @type {any} */ (nemesis).id } : {}),
             instanceId: generateEnemyInstanceId(),
             templateId: template.id,
             name: already > 0 ? `${template.name} ${already + 1}` : template.name,
             avatar: template.avatar,
-            currentHp: template.maxHp,
-            maxHp: template.maxHp,
+            currentHp: Math.round(template.maxHp * (back?.hpFactor ?? 1)),
+            maxHp: Math.round(template.maxHp * (back?.hpFactor ?? 1)),
             armorClass: template.armorClass,
             strength: template.strength,
             dexterity: template.dexterity,
@@ -3178,6 +3884,17 @@ function beginEncounterWith(newEnemies) {
     // Ideas 73 y 90: la niebla, la lluvia, el viento o la noche, dichos antes del primer golpe.
     const seen = boardVisibility();
     if (seen.note) postCombatNarration(`🌫️ [COMBAT] ${seen.note}`);
+    // R7: cada enemigo con su papel; sin perfil escrito, el que pide su papel. Y la banda,
+    // si es banda, se organiza a la vista.
+    for (const enemy of newEnemies) {
+        const role = bandRoleOf(enemy, knownAbilities(enemy, getAbilityCatalogue()));
+        /** @type {any} */ (enemy).role = role;
+        if (!enemy.profile) /** @type {any} */ (enemy).profile = ENEMY_ROLES[role].profile;
+    }
+    const band = newEnemies.length > 1
+        ? describeBand(newEnemies.map(e => ({ name: String(e.name), role: String(/** @type {any} */ (e).role ?? '') })), tacticOf(newEnemies[0]))
+        : '';
+    if (band) postCombatNarration(`🧠 [COMBAT] ${band}`);
 
     const enemies = [...combatEncounter.enemies, ...newEnemies];
     for (const e of enemies) {
@@ -3432,6 +4149,13 @@ function finishTakenContract(taken) {
             recordCampaignBondEvent(String(friend.id), 'quest_together');
             recordCampaignBondEvent(String(friend.id), 'quest_together');
             toastr.success(`${friend.name} no lo olvida.`, '🤝 Encargo personal');
+            // R8: su historia cambia lo que sabe hacer.
+            const arc = completeArc(friend, readReasons(friend).wants);
+            if (arc) {
+                /** @type {any} */ (friend).perks = arc.perks;
+                savePartyState();
+                postCombatNarration(`🌱 [GRUPO] ${arc.line}`);
+            }
             void postForModel(`[ENCARGO PERSONAL] ${friend.name} ve cumplido lo suyo: «${taken.title}». Que lo agradezca a su manera, en una o dos frases.`);
         }
     }
@@ -3736,6 +4460,27 @@ const WRITTEN_DONE_KEY = 'writtenDone';
 const RUMORS_HEARD_KEY = 'rumorsHeard';
 
 /**
+ * U3 del pegamento: los encargos del tablón que caducan hoy, y el sitio que los pedía lo
+ * nota. Lo llama el paso del tiempo cada día; antes solo pasaba al abrir el gremio.
+ *
+ * @param {number} today
+ * @returns {any[]} Los que siguen.
+ */
+function expireBoard(today) {
+    if (!chat_metadata) return [];
+    const { kept, expired } = expireContracts(chat_metadata[BOARD_KEY] ?? [], today);
+    if (expired.length === 0) return kept;
+    for (const gone of expired) {
+        postCombatNarration(`📄 [GREMIO] Se paso el plazo: ${gone.title}.`);
+        // Y al sitio que lo pedia, peor.
+        void shiftPlaceFortune(String(gone.locationName ?? ''), -1);
+    }
+    chat_metadata[BOARD_KEY] = kept;
+    saveMetadata();
+    return kept;
+}
+
+/**
  * El tablon, llenandolo si hace falta.
  *
  * Los encargos vencen solos y el hueco se rellena: un tablon que se vacia deja de tirar
@@ -3748,13 +4493,7 @@ function refreshContractBoard() {
 
     const guild = getGuild();
     const today = Math.max(1, Math.floor(Number(getCampaignCalendar()?.day) || 1));
-    const { kept, expired } = expireContracts(chat_metadata[BOARD_KEY] ?? [], today);
-
-    for (const gone of expired) {
-        postCombatNarration(`📄 [GREMIO] Se paso el plazo: ${gone.title}.`);
-        // Y al sitio que lo pedia, peor.
-        void shiftPlaceFortune(String(gone.locationName ?? ''), -1);
-    }
+    const kept = expireBoard(today);
 
     const wanted = boardSize(guild);
 
@@ -3859,15 +4598,668 @@ function refreshContractBoard() {
  * @param {any} calendar
  */
 function onTimePassed(days, calendar) {
-    notePlot({ kind: 'day', day: Math.floor(Number(calendar?.day) || 0) });
-    if (!chat_metadata) return;
-    // Idea 103: si el hilo lleva dias quieto, llega una pista.
-    giveDueHints();
-    // Ideas 113 y 89: las cartas que se escriben hoy, y la fiesta de hoy.
-    writeLetters();
-    tellFestival();
+    const today = Math.max(1, Math.floor(Number(calendar?.day) || 1));
+    if (!chat_metadata) {
+        notePlot({ kind: 'day', day: Math.floor(Number(calendar?.day) || 0) });
+        return;
+    }
+    // U3 del pegamento: un solo paso del tiempo, en el orden de `time-stages.js`. Si una
+    // etapa falla, las demás pasan igual (antes, un error en los rivales dejaba la cuenta
+    // sin cobrar).
+    // R1: lo que el modo apaga no pasa (sin el cuerpo no hay hambre; sin el mundo, las
+    // facciones no avanzan solas).
+    const result = runStages(stagesFor(DAY_STAGES, survivalNow()), DAY_HANDLERS, { days, today, calendar }, reportLateStage);
+    for (const failed of result.failed) console.error(`[party] la etapa «${failed.id}» del paso del tiempo falló:`, failed.error);
+}
 
-    // 1. Curar. Lo permanente se queda; lo demas cuenta los dias.
+/** @param {string} id @param {string} error */
+function reportLateStage(id, error) {
+    console.error(`[party] la etapa «${id}» del paso del tiempo falló después:`, error);
+}
+
+/**
+ * U3 del pegamento: lo que hace cada etapa del día. El orden no está aquí: está en
+ * `DAY_STAGES`, escrito una vez y probado.
+ *
+ * @type {Record<string, (context: {days: number, today: number, calendar: any}) => any>}
+ */
+const DAY_HANDLERS = {
+    hilo: ({ calendar }) => notePlot({ kind: 'day', day: Math.floor(Number(calendar?.day) || 0) }),
+    // Idea 103: si el hilo lleva dias quieto, llega una pista.
+    pistas: () => giveDueHints(),
+    // Ideas 113 y 89: las cartas que se escriben hoy, y la fiesta de hoy.
+    cartas: () => writeLetters(),
+    fiesta: () => tellFestival(),
+    curar: ({ days }) => healByDays(days),
+    // Comer, beber, dormir y aguantar el clima. Hasta ahora la comida se pagaba y no pasaba
+    // nada si no comias: un aviso y a seguir.
+    necesidades: ({ days }) => passNeeds(days),
+    // El mismo dia que cura y da de comer acerca a los otros a lo que quieren. Antes se
+    // contaba aparte, midiendo el calendario alrededor de cada forma de pasar el dia.
+    facciones: ({ days }) => {
+        factionDaysDue += Math.max(0, Math.floor(Number(days) || 0));
+        scheduleFactionTick();
+    },
+    // U8 del pegamento: vuelven los que mandasteis.
+    despachos: ({ today }) => returnDispatches(today),
+    // Antes solo vencian al abrir el gremio: no abrirlo salia gratis.
+    tablon: ({ today }) => expireBoard(today),
+    semana: ({ today }) => settleWeeks(today),
+};
+
+/**
+ * U3 del pegamento: lo de cada semana. Cobrar, lo último.
+ *
+ * @type {Record<string, () => any>}
+ */
+const WEEK_HANDLERS = {
+    // Primero cobran lo que se debe: el viernes es el viernes para todos.
+    deuda: () => settleDueDebt(),
+    // Idea 87: y de vez en cuando, sin guerra de por medio, alguien se muda.
+    gente: () => driftPeople(),
+    // Idea 29: quien está harto avisa, y si ya avisó, se va (si está puesto).
+    hartos: () => {
+        weighDepartures();
+        // R8: y quien se fue, a veces vuelve.
+        welcomeBack();
+    },
+    // Idea 94: los rivales se llevan uno del tablón.
+    rivales: () => rivalsMove(),
+    // Idea 96: lo que os buscan se va olvidando.
+    buscados: () => {
+        if (chat_metadata) chat_metadata[WANTED_KEY] = coolDown(chat_metadata[WANTED_KEY]);
+    },
+    cuenta: () => chargeBill(),
+    // U8 del pegamento: a veces, un caso.
+    caso: () => { void startCase(false); },
+    // U5 del pegamento: la mesa de la semana que empieza.
+    mesa: () => startWeekTable(),
+};
+
+/** U8 del pegamento: quién está fuera haciendo un encargo sin el héroe. */
+const DISPATCHES_KEY = 'dispatches';
+
+/**
+ * U8: mandar a uno o dos compañeros, sin el héroe, a un encargo menor del tablón. La
+ * probabilidad se ve antes de mandarlos; mientras están fuera, no van con el grupo.
+ *
+ * @param {any} contract
+ * @returns {Promise<boolean>}
+ */
+async function openDispatch(contract) {
+    if (!chat_metadata) return false;
+    const allowed = canDispatch(contract);
+    if (!allowed.ok) {
+        toastr.info(allowed.reason, 'Despachar');
+        return false;
+    }
+    const hero = partyMembers[0];
+    const candidates = partyMembers.filter(m => m !== hero && !m.dead && (Number(m.hp) || 0) > 0 && !m.guest);
+    if (candidates.length === 0) {
+        toastr.info('No hay nadie a quien mandar: el héroe no se despacha.', 'Despachar');
+        return false;
+    }
+    const body = $('<div class="dp-root"></div>');
+    body.append($('<h3></h3>').text(`Mandar a «${contract.title}»`));
+    body.append($('<p class="dp-intro"></p>').text('Uno o dos, sin el héroe. Mientras estén fuera, no van con vosotros.'));
+    for (const member of candidates) {
+        const box = $('<input type="checkbox" class="dp-pick">').attr('value', String(member.id));
+        body.append($('<label class="dp-member"></label>').append(box).append(document.createTextNode(` ${member.name} (nivel ${Number(member.level) || 1})`)));
+    }
+    const odds = $('<p class="dp-odds"></p>');
+    body.append(odds);
+    const chosen = () => candidates.filter(m => body.find(`.dp-pick[value="${String(m.id)}"]`).prop('checked')).slice(0, 2);
+    const update = () => {
+        const members = chosen();
+        if (members.length === 0) {
+            odds.text('Elige a quién mandas.');
+            return;
+        }
+        const guess = dispatchOdds({ members, contract });
+        odds.text(`${Math.round(guess.chance * 100)} % de que salga bien · de vuelta en ${dispatchDays(contract)} días.${guess.reasons.length > 0 ? ` ${guess.reasons.join('. ')}.` : ''}`);
+    };
+    body.on('change', '.dp-pick', function () {
+        // Dos como mucho: el tercero que se marca desmarca el primero.
+        if (body.find('.dp-pick:checked').length > 2) $(this).prop('checked', false);
+        update();
+    });
+    update();
+    const ok = await new Popup(body[0], POPUP_TYPE.CONFIRM, '', { okButton: 'Mandarlos', cancelButton: 'Mejor no' }).show();
+    const members = chosen();
+    if (!ok || members.length === 0) return false;
+    const { chance } = dispatchOdds({ members, contract });
+    const dispatch = startDispatch({ contract, members, today: Math.max(1, campaignDay()), chance });
+    chat_metadata[DISPATCHES_KEY] = [...(Array.isArray(chat_metadata[DISPATCHES_KEY]) ? chat_metadata[DISPATCHES_KEY] : []), dispatch];
+    chat_metadata[BOARD_KEY] = (Array.isArray(chat_metadata[BOARD_KEY]) ? chat_metadata[BOARD_KEY] : []).filter((/** @type {any} */ c) => String(c?.id) !== String(contract.id));
+    // En el sitio: `partyMembers` es el array que el resto del archivo tiene cogido.
+    for (const member of members) {
+        const at = partyMembers.indexOf(member);
+        if (at >= 0) partyMembers.splice(at, 1);
+    }
+    savePartyState();
+    renderPartyMembers();
+    saveMetadata();
+    const names = members.map(m => String(m.name)).join(' y ');
+    postCombatNarration(`🧭 [GREMIO] ${names} ${members.length > 1 ? 'salen' : 'sale'} hacia «${contract.title}»: ${Math.round(chance * 100)} % de que salga bien, de vuelta en ${dispatchDays(contract)} días.`);
+    if (isShellOpen()) refreshGameShell();
+    return true;
+}
+
+/**
+ * U8: vuelven los que mandasteis, con lo que traigan. Si sale, se cobra y el sitio lo nota;
+ * si sale mal, heridos, y si la campaña lo permite y sale muy mal, alguno no vuelve.
+ *
+ * @param {number} today
+ */
+function returnDispatches(today) {
+    if (!chat_metadata) return;
+    const { due, away } = dispatchesDue(chat_metadata[DISPATCHES_KEY], today);
+    if (due.length === 0) return;
+    chat_metadata[DISPATCHES_KEY] = away;
+    const seed = String(chat_metadata?.[METADATA_KEY] || '');
+    const survival = currentSurvival();
+    for (const dispatch of due) {
+        const random = createSeededRandom(derive(seed, 'despacho', dispatch.id));
+        const result = resolveDispatch({ dispatch, random, allowDeath: survival.mortality === 'everyone' });
+        for (const member of dispatch.members) {
+            if (String(member.id) === result.dead) {
+                member.dead = true;
+                member.hp = 0;
+                countStat('deaths');
+                buryMember(member, today, getCampaignBonds());
+            } else if (String(member.id) === result.hurt && survival.injuries) {
+                const patch = applyInjury(member, rollInjury(() => random() * 0.4));
+                member.injuries = patch.injuries;
+                member.baseStats = patch.baseStats;
+                Object.assign(member, patch.stats);
+            }
+            partyMembers.push(member);
+        }
+        if (result.success) finishDispatchedContract(dispatch.contract);
+        else void shiftPlaceFortune(String(dispatch.contract?.locationName ?? ''), -1);
+        postCombatNarration(`🧭 [GREMIO] ${result.line}`);
+        noteDeed(result.line);
+    }
+    savePartyState();
+    renderPartyMembers();
+    saveMetadata();
+    if (isShellOpen()) refreshGameShell();
+}
+
+/**
+ * U8: un encargo cumplido sin el héroe: se cobra, sube la reputación y el sitio lo nota.
+ *
+ * @param {any} contract
+ */
+function finishDispatchedContract(contract) {
+    const guild = getGuild();
+    const done = completeContract(guild, contract);
+    const holder = partyMembers.find(m => (m.hp || 0) > 0) ?? partyMembers[0];
+    if (holder) holder.gold = (Number(holder.gold) || 0) + done.gold;
+    guild.renown = done.renown;
+    chat_metadata[GUILD_KEY] = guild;
+    countStat('contracts');
+    countStat('gold', Number(done.gold) || 0);
+    void shiftPlaceFortune(String(contract?.locationName ?? ''), 1);
+}
+
+/** U8 del pegamento: los casos con verdad. */
+const CASES_KEY = 'cases';
+/** U6 del pegamento: con quién se ha tenido ya un duelo hoy. */
+const DUELS_KEY = 'duels';
+/** Ideas 69 y 70: dónde se ha estado, y las notas del mapa. */
+const VISITED_KEY = 'visited';
+const MAP_NOTES_KEY = 'mapNotes';
+
+/**
+ * U8: empezar un caso con la gente y los sitios del mundo. Cada semana, a veces; o cuando
+ * se pide. Solo si sale uno que se pueda resolver.
+ *
+ * @param {boolean} force
+ * @returns {Promise<boolean>}
+ */
+async function startCase(force) {
+    if (!chat_metadata) return false;
+    // R1: los casos son del mundo que se mueve (letra c).
+    if (!hasLetter(survivalNow(), 'c')) {
+        if (force) toastr.info('En este modo el mundo no se mueve solo: no hay casos. Se enciende con «El mundo se mueve» en /modo.', 'El caso');
+        return false;
+    }
+    const state = readCases(chat_metadata[CASES_KEY]);
+    if (state.active) return false;
+    const seed = String(chat_metadata?.[METADATA_KEY] || '');
+    const random = createSeededRandom(derive(seed, 'caso', String(campaignDay()), String(state.closed.length)));
+    if (!force && random() >= CASE_CHANCE.weekly) return false;
+    const people = lastWorldNpcs.filter(n => !n.dead && n.name).map(n => ({ name: n.name, place: n.where }));
+    const places = getCurrentWorldLocationMaps().map(l => String(l?.name ?? '')).filter(Boolean);
+    // Nunca muere quien necesita el hilo ni quien atiende un servicio (idea 87).
+    const protectedNames = [...plotPeople(), ...lastWorldNpcs.filter(n => n.service).map(n => n.name)];
+    const mystery = generateCase({ people, places, random, day: Math.max(1, campaignDay()), protectedNames });
+    if (!mystery || !checkCase(mystery).ok) {
+        if (force) toastr.info('Este mundo aún no tiene gente suficiente para un caso: hacen falta seis personas.', 'El caso');
+        return false;
+    }
+    chat_metadata[CASES_KEY] = { ...state, active: mystery, found: [] };
+    saveMetadata();
+    // Un asesinato deja a alguien menos en el mundo: el narrador tiene que saberlo.
+    if (mystery.kind === 'asesinato') {
+        await worldWrite(async () => {
+            const worldName = String(chat_metadata?.[METADATA_KEY] || '');
+            const data = await loadWorldInfo(worldName);
+            if (!data) return;
+            applyFate(data, { name: mystery.victim, kind: 'muere', from: mystery.place, to: '', why: 'a manos de alguien' });
+            await saveWorldInfo(worldName, data, true);
+        });
+    }
+    postCombatNarration(`🔎 [CASO] ${mystery.title}: pasó en ${mystery.place}, el día ${mystery.day}. Está en la mesa y en /caso.`);
+    void postForModel(`[CASO] En ${mystery.place} ha pasado algo: ${mystery.title.toLowerCase()}. Nadie sabe todavía quién fue. `
+        + 'Cuéntalo en dos frases, como se comenta en el pueblo. No sabes quién fue: no lo insinúes ni inventes pistas.');
+    if (isShellOpen()) refreshGameShell();
+    return true;
+}
+
+/**
+ * U8: una tirada del mejor del grupo para esto, contra 12.
+ *
+ * @param {string} skill
+ * @returns {boolean}
+ */
+function caseRoll(skill) {
+    const who = partyMembers.filter(m => !m.dead && (Number(m.hp) || 0) > 0)
+        .reduce((/** @type {any} */ best, m) => (!best || skillModifier(m, skill).modifier > skillModifier(best, skill).modifier ? m : best), null);
+    if (!who) return false;
+    const roll = rollCheck({ member: who, skill, rollD20: () => rollDiceDetailed('1d20', 20).total, dc: 12 });
+    if (roll) postCombatNarration(roll.said);
+    return Boolean(roll?.success);
+}
+
+/**
+ * U8: una pista encontrada: al diario del caso y al chat, a 0 tokens.
+ *
+ * @param {import('./game-engine/campaign/cases.js').CaseClue} clue
+ */
+function revealClue(clue) {
+    const state = readCases(chat_metadata?.[CASES_KEY]);
+    if (!state.active || state.found.includes(clue.id)) return;
+    chat_metadata[CASES_KEY] = { ...state, found: [...state.found, clue.id] };
+    saveMetadata();
+    postCombatNarration(`🔎 [PISTA] ${clue.fact}`);
+}
+
+/**
+ * U8: preguntarle a alguien por el caso. Lo que sabe a la vista se cuenta; lo que esconde,
+ * se sonsaca (Perspicacia).
+ *
+ * @param {string} name
+ * @returns {Promise<string>}
+ */
+async function askAboutCase(name) {
+    const state = readCases(chat_metadata?.[CASES_KEY]);
+    const clues = cluesHere(state, { person: String(name ?? '').trim() });
+    if (!state.active || clues.length === 0) {
+        toastr.info(`${name} no sabe nada más de eso.`, 'El caso');
+        return '';
+    }
+    let got = 0;
+    for (const clue of clues) {
+        if (clue.how === 'sonsacar' && !caseRoll('insight')) continue;
+        revealClue(clue);
+        got++;
+    }
+    if (got === 0) postCombatNarration(`🔎 [PISTA] ${name} se calla lo que sabe. Otro día.`);
+    if (isShellOpen()) refreshGameShell();
+    return '';
+}
+
+/**
+ * R4: Hablar con los muertos. En un asesinato, la víctima contesta una pregunta: una pista
+ * de las que señalan de verdad (no las que despistan). Gasta la carga y el polvo de hueso.
+ *
+ * @returns {string}
+ */
+function askTheDead() {
+    const state = readCases(chat_metadata?.[CASES_KEY]);
+    if (!state.active || state.active.kind !== 'asesinato') {
+        toastr.info('No hay ningún muerto a quien preguntar.', 'Hablar con los muertos');
+        return '';
+    }
+    const caster = whoCan(partyMembers, 'deadTalk');
+    const ability = caster ? getAbilityCatalogue().find(a => a.id === caster.id) : null;
+    if (!caster || !ability) {
+        toastr.info('Nadie del grupo sabe Hablar con los muertos, o no le quedan cargas.', 'Hablar con los muertos');
+        return '';
+    }
+    if (ability.component && !carriedNames().map(n => n.toLowerCase()).includes(String(ability.component).toLowerCase())) {
+        toastr.info(`Hace falta ${ability.component} (${COMPONENTS[/** @type {keyof typeof COMPONENTS} */ (ability.component)]?.from ?? 'se compra'}).`, 'Hablar con los muertos');
+        return '';
+    }
+    const clue = state.active.clues.find(c => !c.misleading && !state.found.includes(c.id));
+    const paid = payForSpell(caster.who, ability);
+    postCombatNarration(`💀 [CASO] ${caster.who.name} le pregunta a ${state.active.victim}.${paid.length > 0 ? ` ${paid.join(' ')}` : ''}`);
+    if (clue) revealClue(clue);
+    else postCombatNarration(`💀 [CASO] ${state.active.victim} no tiene nada más que decir.`);
+    for (const line of magicConsequences(ability)) postCombatNarration(line);
+    savePartyState();
+    if (isShellOpen()) refreshGameShell();
+    return '';
+}
+
+/** U8: buscar pistas aquí. Cuesta un rato del día; lo que se registra pide Investigación. */
+async function searchCaseHere() {
+    const state = readCases(chat_metadata?.[CASES_KEY]);
+    const clues = cluesHere(state, { place: currentLocationName });
+    advanceCampaignSlot();
+    let got = 0;
+    for (const clue of clues) {
+        // R5: el perro olfatea lo que otro tendría que registrar.
+        const sniffed = clue.how === 'registrar' && petDoes(currentPet(), 'olfato');
+        if (sniffed) postCombatNarration(`🐾 [MASCOTA] ${currentPet()?.name} olfatea algo y no se mueve de ahí.`);
+        if (clue.how === 'registrar' && !sniffed && !caseRoll('investigation')) continue;
+        revealClue(clue);
+        got++;
+    }
+    if (got === 0) postCombatNarration(`🔎 [PISTA] Buscáis en ${currentLocationName}, pero hoy no sale nada.`);
+    if (isShellOpen()) refreshGameShell();
+}
+
+/**
+ * U8: acusar. Una vez: equivocarse cuenta.
+ *
+ * @param {{culprit: string, motive: string, method: string}} accusation
+ * @returns {Promise<{verdict: string, line: string, reward: number}|null>}
+ */
+async function accuseCase(accusation) {
+    const state = readCases(chat_metadata?.[CASES_KEY]);
+    if (!state.active || !chat_metadata) return null;
+    const mystery = state.active;
+    const verdict = accuse(mystery, accusation);
+    const reward = verdict.verdict === 'acierto' ? 60 : verdict.verdict === 'a-medias' ? 25 : 0;
+    if (reward > 0) {
+        const holder = partyMembers.find(m => (m.hp || 0) > 0) ?? partyMembers[0];
+        if (holder) holder.gold = (Number(holder.gold) || 0) + reward;
+        savePartyState();
+        raiseFame(mystery.place);
+    } else {
+        void shiftPlaceFortune(mystery.place, -1);
+    }
+    // R9: quien manda donde pasó lo nota.
+    void nudgeRuler(mystery.place, verdict.verdict === 'error' ? 'caso-fallo' : 'caso-acierto');
+    chat_metadata[CASES_KEY] = { active: null, found: [], closed: [...state.closed, { id: mystery.id, title: mystery.title, verdict: verdict.verdict }] };
+    saveMetadata();
+    const told = verdict.verdict === 'error' ? `Acusasteis a ${accusation.culprit}, y no fue: quien lo hizo sigue suelto.` : verdict.line;
+    noteDeed(`${mystery.title}: ${told}`);
+    postCombatNarration(`⚖️ [CASO] ${verdict.line}${reward > 0 ? ` (${reward} de oro)` : ''}`);
+    void postForModel(`${caseForNarrator(mystery, state.found)}
+[CASO] El grupo acusa a ${accusation.culprit}. `
+        + `${verdict.verdict === 'error' ? 'Se equivocan: no fue.' : verdict.verdict === 'a-medias' ? 'Fue, aunque no todo encaja.' : 'Aciertan.'} Cuéntalo en tres o cuatro frases.`);
+    if (isShellOpen()) refreshGameShell();
+    return { ...verdict, reward };
+}
+
+/** U8: el tablero del caso. */
+async function openCaseBoard() {
+    const { buildCaseBoard } = await import('./game-engine/ui/case-board.js');
+    const state = readCases(chat_metadata?.[CASES_KEY]);
+    const board = buildCaseBoard({
+        state,
+        onAccuse: (accusation) => {
+            void accuseCase(accusation).then(result => {
+                if (!result) return;
+                const verdict = document.createElement('div');
+                verdict.className = 'cb-verdict';
+                verdict.dataset.verdict = result.verdict;
+                verdict.textContent = `${result.line}${result.reward > 0 ? ` (${result.reward} de oro)` : ''}`;
+                board.replaceChildren(verdict);
+            });
+        },
+    });
+    await new Popup(board, POPUP_TYPE.TEXT, '', { okButton: 'Cerrar', wide: true, allowVerticalScrolling: true, leftAlign: true }).show();
+}
+
+/**
+ * U6: si hoy aún se puede tener un duelo de palabras con alguien.
+ *
+ * @param {string} name
+ * @returns {boolean}
+ */
+function canDuel(name) {
+    return Number(chat_metadata?.[DUELS_KEY]?.[name]) !== Math.max(1, campaignDay());
+}
+
+/**
+ * U6: convencer a alguien del mundo, en un duelo de palabras. Su postura sale de la semilla
+ * (siempre la misma para la misma persona); su paciencia, de cómo os mira. Si cede, os mira
+ * mejor. El narrador lo cuenta una vez.
+ *
+ * @param {string} name
+ * @returns {Promise<string>}
+ */
+async function duelWith(name) {
+    const npc = lastWorldNpcs.find(n => !n.dead && n.name.toLowerCase() === String(name ?? '').trim().toLowerCase());
+    if (!npc || !chat_metadata) {
+        toastr.info('No hay nadie así aquí.', 'Convencer');
+        return '';
+    }
+    if (!canDuel(npc.name)) {
+        toastr.info(`Con ${npc.name} ya hablasteis hoy: mañana.`, 'Convencer');
+        return '';
+    }
+    const who = partyMembers.filter(m => (Number(m.hp) || 0) > 0 && !m.dead)
+        .reduce((/** @type {any} */ top, m) => (!top || skillModifier(m, 'persuasion').modifier > skillModifier(top, 'persuasion').modifier ? m : top), null);
+    if (!who) return '';
+    const random = createSeededRandom(derive(String(chat_metadata?.[METADATA_KEY] || ''), 'postura', npc.name));
+    const stances = Object.keys(DUEL_STANCES);
+    const stance = stances[Math.floor(random() * stances.length) % stances.length];
+    const value = Number(readAttitudes(chat_metadata?.[ATTITUDES_KEY]).values[npc.name]) || 0;
+    const mystery = readCases(chat_metadata?.[CASES_KEY]);
+    const bonds = getCampaignBonds();
+    const hand = handFrom({
+        modifiers: {
+            persuasion: skillModifier(who, 'persuasion').modifier,
+            deception: skillModifier(who, 'deception').modifier,
+            intimidation: skillModifier(who, 'intimidation').modifier,
+        },
+        evidence: mystery.active ? mystery.active.clues.filter(c => mystery.found.includes(c.id)).map(c => c.fact) : [],
+        favors: readFactions(currentWorldFactions).filter(f => Number(f.reputation) >= 2).map(f => f.name),
+        purse: partyPurse(),
+        companions: partyMembers.filter(m => m !== who && !m.dead).map(m => ({ name: String(m.name), rank: getBondProgress(bonds, String(m.id)).rank })),
+        // R3: una burla o una palabra de ánimo, si quien habla las sabe. R5: y la mascota con labia.
+        tricks: [...duelTricks(who), ...petTricks()],
+    });
+    const what = `que ${npc.name} os mire mejor`;
+    const final = await playDuel({ npc: { name: npc.name, stance }, patience: Math.max(3, Math.min(11, 7 - 2 * value)), hand, rounds: 3, speaker: String(who.name), what });
+    chat_metadata[DUELS_KEY] = { ...(chat_metadata[DUELS_KEY] ?? {}), [npc.name]: Math.max(1, campaignDay()) };
+    if (final.spent > 0) payFromParty(Math.min(final.spent, partyPurse()));
+    const outcome = duelOutcome(final) ?? 'no-cede';
+    if (outcome === 'cede') changeAttitude(npc.name, 1, 'le convencisteis');
+    saveMetadata();
+    postCombatNarration(`🗣️ [DUELO] ${who.name} habla con ${npc.name}: ${outcome === 'cede' ? 'cede' : outcome === 'a-medias' ? 'cede a medias' : 'no cede'}.`);
+    void postForModel(duelPrompt(final, what));
+    if (isShellOpen()) refreshGameShell();
+    return '';
+}
+
+/** Ideas 69 y 70: el mapa en texto, con niebla y con notas. */
+async function openTextMap() {
+    if (!chat_metadata) return;
+    const rows = mapRows({
+        locations: getCurrentWorldLocationMaps(),
+        here: currentLocationName,
+        visited: chat_metadata[VISITED_KEY] ?? [],
+        notes: chat_metadata[MAP_NOTES_KEY] ?? {},
+        friendly: friendlyFactions(),
+        season: currentSeason(),
+        done: readPlotState(chat_metadata[PLOT_STATE_KEY]).done,
+    });
+    const body = $('<div class="tm-root"></div>');
+    body.append($('<h3></h3>').text('El mapa'));
+    body.append($('<p class="tm-intro"></p>').text('Lo que no habéis pisado sale en gris, y un camino que no sale de ningún sitio conocido no se sabe adónde lleva. Cada sitio admite una nota tuya.'));
+    for (const row of rows) {
+        const item = $('<div class="tm-place"></div>').attr('data-state', row.state).attr('data-place', row.name);
+        item.append($('<div class="tm-name"></div>').text(`${row.name}${row.state === 'aqui' ? ' · aquí' : row.state === 'sin-visitar' ? ' · sin visitar' : ''}`));
+        for (const route of row.routes) item.append($('<div class="tm-route"></div>').toggleClass('tm-unknown', !route.known).text(describeRoute(route)));
+        const note = $('<input type="text" class="text_pole tm-note" maxlength="140" placeholder="Una nota tuya…">').val(row.note);
+        note.on('change', () => {
+            chat_metadata[MAP_NOTES_KEY] = setNote(chat_metadata?.[MAP_NOTES_KEY], row.name, String(note.val() ?? ''));
+            saveMetadata();
+        });
+        item.append(note);
+        body.append(item);
+    }
+    await new Popup(body[0], POPUP_TYPE.TEXT, '', { okButton: 'Cerrar', allowVerticalScrolling: true, leftAlign: true }).show();
+}
+
+/** U5 del pegamento: la mesa de la semana. */
+const WEEK_TABLE_KEY = 'weekTable';
+/** Si se abre sola cada semana (ajuste); si no, solo la primera vez y luego un aviso (DU4). */
+const WEEK_TABLE_AUTO_KEY = 'weekTableAuto';
+
+/**
+ * Empieza una semana: se apunta lo que pasó en la anterior (de la crónica, sin llamar al
+ * modelo) y la mesa se abre sola la primera vez —como un consejo— o si así se quiere; si
+ * no, se avisa y está en su botón.
+ */
+function startWeekTable() {
+    if (!chat_metadata) return;
+    const state = chat_metadata[WEEK_TABLE_KEY] ?? {};
+    const week = weekNumber(campaignDay());
+    const summary = weekSummary(chronicleOf(chat), Number(state.since) || 0);
+    chat_metadata[WEEK_TABLE_KEY] = { week, since: chat.length, summary };
+    saveMetadata();
+    const seen = localFlag.get(TIPS_SEEN_KEY).split(',').filter(Boolean);
+    if (chat_metadata[WEEK_TABLE_AUTO_KEY] || !seen.includes('mesa')) {
+        if (!seen.includes('mesa')) localFlag.set(TIPS_SEEN_KEY, [...seen, 'mesa'].join(','));
+        setTimeout(() => { void openWeekTable(); }, 300);
+        return;
+    }
+    postCombatNarration(`📋 [PARTIDA] Empieza la semana ${week}: la mesa, con lo que no cabe entero, está en su botón.`);
+}
+
+/**
+ * La semana del calendario en la que cae un día: la 1 es la de los primeros días.
+ *
+ * @param {number} day
+ * @returns {number}
+ */
+function weekNumber(day) {
+    const length = Math.max(1, Number(currentUpkeepRules().weekLength) || 7);
+    return Math.floor((Math.max(1, Math.floor(Number(day) || 1)) - 1) / length) + 1;
+}
+
+/** U5 del pegamento: la mesa de la semana. */
+async function openWeekTable() {
+    if (!chat_metadata) return;
+    const today = Math.max(1, campaignDay());
+    const state = chat_metadata[WEEK_TABLE_KEY] ?? {};
+    const bill = partyMembers.length > 0 ? weeklyBill(partyMembers, { rules: currentUpkeepRules() }) : null;
+    const due = Number(chat_metadata[BILL_DUE_KEY]) || 0;
+    const body = $('<div class="wt-root"></div>');
+    body.append($('<h3></h3>').text(`Semana ${weekNumber(today)} · ${describeSeason(today, lastWorldSeason || undefined)}`));
+    if (bill && due > 0 && hasLetter(survivalNow(), 'b')) {
+        const short = bill.purse < bill.total;
+        body.append($('<p class="wt-bill"></p>').toggleClass('wt-short', short)
+            .text(`La cuenta ${whenText(Math.max(0, due - today))}: debéis ${bill.total}, tenéis ${bill.purse}.`));
+    }
+    const section = (/** @type {string} */ title) => body.append($('<div class="wt-title"></div>').text(title));
+    const past = Array.isArray(state.summary) ? state.summary : [];
+    if (past.length > 0) {
+        section('La semana que pasó');
+        for (const line of past) body.append($('<div class="wt-line"></div>').text(line));
+    }
+    const bonds = getCampaignBonds();
+    const affairs = keepOn(affairsOf({
+        today,
+        factions: currentWorldFactions,
+        taken: chat_metadata[TAKEN_KEY] ?? null,
+        board: Array.isArray(chat_metadata[BOARD_KEY]) ? chat_metadata[BOARD_KEY] : [],
+        plot: getPlot(),
+        plotState: chat_metadata[PLOT_STATE_KEY],
+        debt: chat_metadata[DEBT_KEY] ?? null,
+        party: partyMembers,
+        rivals: hasLetter(survivalNow(), 'c'),
+        mystery: readCases(chat_metadata[CASES_KEY]),
+        // T7: el harto, en la mesa.
+        leaving: leavingMembers().map(m => ({ id: m.id, name: String(m.name) })),
+        weekDue: Number(chat_metadata[BILL_DUE_KEY]) || 0,
+    }), survivalNow());
+    section('Los asuntos: no caben todos');
+    if (affairs.length === 0) body.append($('<div class="wt-line"></div>').text('Nada aprieta esta semana. Buen momento para el gremio, la posada o el camino.'));
+    for (const affair of affairs) {
+        const card = $('<div class="wt-affair"></div>').attr('data-kind', affair.kind);
+        card.append($('<div class="wt-affair-title"></div>').text(affair.title));
+        if (affair.detail) card.append($('<div class="wt-affair-detail"></div>').text(affair.detail));
+        card.append($('<div class="wt-affair-when"></div>').text(affair.in === null ? 'Sin plazo' : `Plazo: ${whenText(affair.in)}`));
+        card.append($('<div class="wt-ignored"></div>').text(`Si no vais: ${affair.ifIgnored}.`));
+        // U8: lo menor del tablón se puede despachar.
+        if (affair.kind === 'tablon') {
+            const contract = (Array.isArray(chat_metadata[BOARD_KEY]) ? chat_metadata[BOARD_KEY] : [])
+                .find((/** @type {any} */ c) => `tablon:${String(c?.id)}` === affair.id);
+            if (contract && canDispatch(contract).ok) {
+                const send = $('<button type="button" class="menu_button wt-dispatch"></button>').text('Mandar a alguien');
+                send.on('click', async () => {
+                    if (await openDispatch(contract)) send.replaceWith($('<div class="wt-sent"></div>').text('Mandados.'));
+                });
+                card.append(send);
+            }
+        }
+        // U8: el caso, con su tablero.
+        if (affair.kind === 'caso') {
+            const look = $('<button type="button" class="menu_button wt-case"></button>').text('Ver el caso');
+            look.on('click', () => { void openCaseBoard(); });
+            card.append(look);
+        }
+        body.append(card);
+    }
+    const standings = standingsOf({
+        guild: getGuild(),
+        factions: currentWorldFactions,
+        fame: chat_metadata[FAME_KEY],
+        places: getCurrentWorldLocationMaps(),
+        wanted: chat_metadata[WANTED_KEY],
+        attitudes: chat_metadata[ATTITUDES_KEY],
+        companions: partyMembers.slice(1).map(m => ({ name: String(m.name), rank: getBondProgress(bonds, String(m.id)).rank })),
+    });
+    // R8: lo que os hace la gente de aquí que os aprecia.
+    const favors = favorsHere();
+    if (favors.length > 0) {
+        section('Quién os echa una mano aquí');
+        for (const favor of favors) body.append($('<div class="wt-line wt-favor"></div>').text(`${favor.name}: ${favor.favor}.`));
+    }
+    if (standings.length > 0) {
+        section('Cómo os ven');
+        for (const group of standings) {
+            body.append($('<div class="wt-sub"></div>').text(group.title));
+            for (const item of group.items) body.append($('<div class="wt-line"></div>').text(item));
+        }
+    }
+    const coming = describeUpcoming(whatComes(today), 6);
+    if (coming.length > 0) {
+        section('Lo que viene');
+        for (const line of coming) body.append($('<div class="wt-line"></div>').text(line));
+    }
+    await new Popup(body[0], POPUP_TYPE.TEXT, '', { okButton: 'A la semana', allowVerticalScrolling: true, leftAlign: true }).show();
+}
+
+/**
+ * Cobrar, cuando toca. El dia de vencimiento vive en la partida, no en la sesion.
+ *
+ * @param {number} today
+ */
+function settleWeeks(today) {
+    if (!chat_metadata) return;
+    const week = Math.max(1, Number(currentUpkeepRules().weekLength) || 7);
+    const { weeks, nextDue } = weeksDue(today, Number(chat_metadata[BILL_DUE_KEY]), week);
+    for (let i = 0; i < weeks; i++) chargeWeek();
+    chat_metadata[BILL_DUE_KEY] = nextDue;
+    saveMetadata();
+}
+
+/**
+ * Curar. Lo permanente se queda; lo demas cuenta los dias.
+ *
+ * @param {number} days
+ */
+function healByDays(days) {
     /** @type {string[]} */
     const mended = [];
     for (const member of partyMembers) {
@@ -3889,29 +5281,6 @@ function onTimePassed(days, calendar) {
         postCombatNarration(`🩹 [CAMPAÑA] ${mended.join(' ')}`);
         savePartyState();
     }
-
-    // 2. Comer, beber, dormir y aguantar el clima. Hasta ahora la comida se pagaba y no
-    // pasaba nada si no comias: un aviso y a seguir.
-    passNeeds(days);
-
-    // 3. Cobrar, cuando toca. El dia de vencimiento vive en la partida, no en la sesion.
-    const today = Math.max(1, Math.floor(Number(calendar?.day) || 1));
-    const week = Math.max(1, Number(currentUpkeepRules().weekLength) || 7);
-
-    let due = Number(chat_metadata[BILL_DUE_KEY]);
-    if (!Number.isFinite(due) || due <= 0) {
-        // La primera semana empieza a contar hoy, no se debe desde el minuto uno.
-        chat_metadata[BILL_DUE_KEY] = today + week;
-        saveMetadata();
-        return;
-    }
-
-    while (today >= due) {
-        chargeWeek();
-        due += week;
-    }
-    chat_metadata[BILL_DUE_KEY] = due;
-    saveMetadata();
 }
 
 /** Donde se apunta el clima del sitio donde estais. */
@@ -3979,17 +5348,15 @@ function passNeeds(days) {
  * lo que se nota en la partida siguiente.
  */
 function chargeWeek() {
-    // Primero cobran lo que se debe: el viernes es el viernes para todos.
-    settleDueDebt();
-    // Idea 87: y de vez en cuando, sin guerra de por medio, alguien se muda.
-    void driftPeople();
-    // Idea 29: quien está harto avisa, y si ya avisó, se va (si está puesto).
-    weighDepartures();
-    // Idea 94: los rivales se llevan uno del tablón.
-    rivalsMove();
-    // Idea 96: lo que os buscan se va olvidando.
-    if (chat_metadata) chat_metadata[WANTED_KEY] = coolDown(chat_metadata[WANTED_KEY]);
+    // U3 del pegamento: las etapas de la semana, en el orden de `WEEK_STAGES`.
+    const result = runStages(stagesFor(WEEK_STAGES, survivalNow()), WEEK_HANDLERS, {}, reportLateStage);
+    for (const failed of result.failed) console.error(`[party] la etapa «${failed.id}» de la semana falló:`, failed.error);
+}
 
+/** La cuenta de la semana: comida, sueldos, posada y tasas. */
+function chargeBill() {
+    // H1: la primera cuenta dice qué es (solo llega en los modos que la tienen).
+    showTip('bill');
     let bill = weeklyBill(partyMembers, { rules: currentUpkeepRules() });
     // Si no llega, alguien pone lo que falta. Una vez: es para romper la espiral, no para
     // que la cuenta deje de importar.
@@ -4021,6 +5388,10 @@ function chargeWeek() {
         ? settleLoyalty(partyMembers, week.unpaid)
         : { leaving: [], lines: [] };
     if (loyalty.leaving.length > 0) {
+        // R8: quien se va sin cobrar también puede volver.
+        for (const gone of partyMembers.filter(m => loyalty.leaving.includes(String(m.name)))) {
+            if (chat_metadata) chat_metadata[GONE_KEY] = noteGone(chat_metadata[GONE_KEY], gone, campaignDay(), 'sin cobrar');
+        }
         partyMembers = partyMembers.filter(m => !loyalty.leaving.includes(String(m.name)));
         renderPartyMembers();
     }
@@ -4064,6 +5435,295 @@ function noteDeed(text) {
     const today = Math.max(1, Math.floor(Number(getCampaignCalendar()?.day) || 1));
     chat_metadata[DEEDS_KEY] = recordDeed(chat_metadata[DEEDS_KEY], today, text);
     saveMetadata();
+}
+
+/**
+ * U1 del pegamento: un hecho que propone el narrador. El motor decide si se apunta: una
+ * frase, que no esté ya, y una al día. Sustituye a las banderas que ponía por su cuenta.
+ *
+ * @param {string} proposal
+ * @returns {string} Lo que se le contesta al narrador.
+ */
+function proposeFact(proposal) {
+    if (!chat_metadata) return 'No hay partida.';
+    const today = Math.max(1, Math.floor(Number(getCampaignCalendar()?.day) || 1));
+    const result = proposeDeed(chat_metadata[DEEDS_KEY], today, proposal);
+    if (!result.ok) return `No se apunta: ${result.reason}`;
+    chat_metadata[DEEDS_KEY] = result.deeds;
+    saveMetadata();
+    refreshWorldMemoryPrompt();
+    postCombatNarration(`📝 [MUNDO] El mundo lo recordará: ${result.deeds[result.deeds.length - 1].text}`);
+    return 'Apuntado. Sigue con la escena.';
+}
+
+/** U0 del pegamento: el diario de sesión, en esta pestaña. */
+const SESSION_LOG_KEY = 'sillytavern_gameSession';
+/** @type {import('./game-engine/campaign/session-log.js').SessionLog|null} */
+let sessionLog = null;
+
+/** @returns {import('./game-engine/campaign/session-log.js').SessionLog} */
+function currentSessionLog() {
+    if (!sessionLog) {
+        let raw = null;
+        try {
+            raw = JSON.parse(sessionStorage.getItem(SESSION_LOG_KEY) || 'null');
+        } catch {
+            raw = null;
+        }
+        sessionLog = readSession(raw, Date.now());
+    }
+    return sessionLog;
+}
+
+/** @param {import('./game-engine/campaign/session-log.js').SessionLog} next */
+function keepSessionLog(next) {
+    sessionLog = next;
+    try {
+        sessionStorage.setItem(SESSION_LOG_KEY, JSON.stringify(next));
+    } catch {
+        // Sin almacenamiento se sigue contando en memoria: se pierde al recargar, y ya.
+    }
+}
+
+/** Tu sesión: minutos por escena, mensajes, llamadas y botones. */
+async function openSessionLog() {
+    const { getSession } = await import('./game-engine/ui/prompt-preview.js');
+    const lines = describeSession(currentSessionLog(), Date.now(), getSession());
+    const body = $('<div class="sl-root"></div>');
+    body.append($('<h3></h3>').text('Tu sesión'));
+    for (const line of lines) body.append($('<p class="sl-line"></p>').text(line));
+    // R1: y en qué modo se juega.
+    body.append($('<p class="sl-line sl-mode"></p>').text(`Modo: ${describeGameMode(survivalNow())}.`));
+    body.append($('<p class="sl-hint"></p>').text('Si has escrito algo en el chat porque no había un botón para ello, apúntalo: es lo que más ayuda a decidir qué construir.'));
+    // U2 del pegamento: y lo que el juego da por cierto, clave a clave.
+    const state = $('<button type="button" class="menu_button sl-state"></button>').text('Ver lo que el juego da por cierto');
+    state.on('click', () => { void openStateView(); });
+    body.append(state);
+    await new Popup(body[0], POPUP_TYPE.TEXT, '', { okButton: 'Seguir jugando' }).show();
+}
+
+/**
+ * R4: usar un pergamino o una varita: el conjuro sale del objeto, sin gastar cargas del
+ * círculo ni componentes de quien lo usa. El pergamino se gasta; la varita pierde una carga.
+ *
+ * @param {string} itemId
+ * @param {string} targetId
+ * @returns {string}
+ */
+function useMagicItem(itemId, targetId) {
+    const member = getCurrentActingMember();
+    if (!member || !combatEncounter.active) return '';
+    const item = (Array.isArray(member.items) ? member.items : []).find((/** @type {any} */ i) => String(i.id) === String(itemId));
+    const spec = item ? MAGIC_ITEMS[String(item.name)] : null;
+    const ability = spec ? getAbilityCatalogue().find(a => a.id === spec.spell) : null;
+    if (!item || !ability || !hasAction(combatEncounter, 'action')) return '';
+    const subject = ability.target === 'self' ? member
+        : ability.target === 'ally' ? partyMembers.find(m => String(m.id) === String(targetId))
+            : getEnemyByInstanceId(String(targetId));
+    if (!subject) return '';
+    Object.assign(combatEncounter, useAction(combatEncounter, 'action'));
+    const lines = [`📜 ${member.name} usa ${item.name}.`, ...resolveAbilityOnBoard({ actor: member, side: 'party', ability, subject })];
+    const after = afterUse(item);
+    if (after.remove) removeItemFromInventory(/** @type {any} */ (member), String(item.id));
+    else /** @type {any} */ (item).charges = after.charges;
+    lines.push(after.line, ...magicConsequences(ability));
+    saveCombatState();
+    savePartyState();
+    postCombatNarration(lines.join('\n'));
+    renderPartyMembers();
+    renderLocationMapsPreview();
+    if (!checkScenarioOutcome() && getAliveEnemies().length === 0 && !judgeCurrentScenario()) {
+        postCombatNarration('🏆 [COMBAT] Todos los enemigos han sido derrotados.');
+        endCombat('victory');
+    }
+    return item.name;
+}
+
+/**
+ * R4: aprender el conjuro de un pergamino, si se ha estudiado (el mago y el erudito). El
+ * pergamino se gasta.
+ *
+ * @param {string} name Del pergamino, o vacío para el primero que haya.
+ * @returns {string}
+ */
+function learnFromScroll(name) {
+    for (const member of partyMembers.filter(m => !m.dead)) {
+        const item = (Array.isArray(member.items) ? member.items : []).find((/** @type {any} */ i) => MAGIC_ITEMS[String(i.name)]?.kind === 'scroll'
+            && (!name || String(i.name).toLowerCase().includes(String(name).toLowerCase())));
+        if (!item) continue;
+        const verdict = canLearnScroll(member, item);
+        if (!verdict.ok) continue;
+        member.abilities = [...new Set([...(Array.isArray(member.abilities) ? member.abilities.map(String) : []), verdict.spell])];
+        removeItemFromInventory(/** @type {any} */ (member), String(item.id));
+        savePartyState();
+        renderPartyMembers();
+        const line = `${member.name} estudia ${item.name} hasta sabérselo: ya sabe ${spellById(verdict.spell)?.name ?? verdict.spell}.`;
+        postCombatNarration(`📜 [APRENDIZAJE] ${line}`);
+        noteDeed(line);
+        return line;
+    }
+    toastr.info('Nadie del grupo puede aprender de un pergamino ahora: hace falta haber estudiado (el mago o el erudito), y no sabérselo ya.', 'Pergaminos');
+    return '';
+}
+
+/**
+ * R4: el grimorio del grupo, en un cuadro. Solo lee.
+ */
+async function openGrimoire(all = false) {
+    const body = $('<div class="jr-root gr-root"></div>');
+    body.append($('<h3></h3>').text(all ? 'Toda la magia que existe' : 'El grimorio'));
+    // R10: la lista entera, por círculos: no se crea, se consulta.
+    if (all) {
+        for (const circle of [0, 1, 2, 3]) {
+            body.append($('<div class="jr-title"></div>').text(CIRCLE_LABELS[/** @type {0|1|2|3} */ (circle)].replace(/^./, c => c.toUpperCase())));
+            for (const spell of SPELLS.filter(s => s.circle === circle)) {
+                body.append($('<div class="jr-item gr-spell"></div>').attr('data-spell', spell.id).attr('title', spell.note).text(`${describeSpell(spell)} · ${spell.id}`));
+            }
+        }
+        await new Popup(body[0], POPUP_TYPE.TEXT, '', { okButton: 'Cerrar', allowVerticalScrolling: true, leftAlign: true }).show();
+        return;
+    }
+    const casters = partyMembers.filter(m => !m.dead && knownSpells(m).length > 0);
+    if (casters.length === 0) {
+        body.append($('<div class="jr-item"></div>').text('Nadie del grupo hace magia. En este mundo, la única que existe es la del grimorio.'));
+    }
+    const carried = carriedNames().map(n => n.toLowerCase());
+    for (const member of casters) {
+        body.append($('<div class="jr-title"></div>').text(`${member.name}${describeCharges(member) ? ` · ${describeCharges(member)}` : ''}`));
+        for (const spell of knownSpells(member)) {
+            const missing = spell.component && !carried.includes(spell.component.toLowerCase()) ? ` (falta ${spell.component.toLowerCase()})` : '';
+            body.append($('<div class="jr-item gr-spell"></div>').attr('data-spell', spell.id).attr('title', spell.note).text(`${describeSpell(spell)}${missing}`));
+        }
+    }
+    const schools = Object.values(SCHOOLS).map(s => `${s.label}: ${s.note}`).join(' · ');
+    body.append($('<div class="jr-item gr-schools"></div>').text(schools));
+    await new Popup(body[0], POPUP_TYPE.TEXT, '', { okButton: 'Cerrar', allowVerticalScrolling: true, leftAlign: true }).show();
+}
+
+/**
+ * R1: los ajustes de la pausa que trae el modo (la red de seguridad, que los hartos se
+ * vayan), puestos al empezar una partida. Solo lo que nadie ha tocado todavía.
+ */
+export function applyModeExtras() {
+    if (!chat_metadata) return;
+    const extras = /** @type {any} */ (GAME_MODES)[modeOf(survivalNow())]?.extras;
+    if (!extras) return;
+    if (chat_metadata[SAFETY_ON_KEY] === undefined) chat_metadata[SAFETY_ON_KEY] = Boolean(extras.safetyNet);
+    if (chat_metadata[LEAVE_ON_KEY] === undefined) chat_metadata[LEAVE_ON_KEY] = Boolean(extras.companionsLeave);
+    saveMetadata();
+}
+
+/**
+ * R1 del roadmap de profundidad: cambiar el modo a mitad de partida (DR2).
+ *
+ * Los interruptores viven en el paquete de reglas del mundo, así que ahí se escriben; se
+ * leen en directo, sin recargar. El cambio queda en la crónica y en el historial, y los
+ * ajustes de la pausa que el modo trae (la red de seguridad, que los hartos se vayan) se
+ * ponen como los pone el modo: luego se tocan sueltos si se quiere.
+ *
+ * @returns {Promise<string>}
+ */
+async function openGameMode() {
+    const worldName = String(chat_metadata?.[METADATA_KEY] || '');
+    if (!worldName || !chat_metadata) {
+        toastr.warning('Abre una campaña antes de cambiarle el modo.');
+        return '';
+    }
+    const before = readSurvival(survivalNow());
+    const { openModePanel } = await import('./game-engine/ui/mode-panel.js');
+    const chosen = await openModePanel({
+        survival: before,
+        Popup,
+        POPUP_TYPE,
+        hint: 'Se puede cambiar cuando quieras, y queda escrito. Una partida que baja de Supervivencia deja de contar como de hierro.',
+    });
+    if (!chosen) return '';
+    const change = recordModeChange({ from: before, to: chosen, day: campaignDay(), history: chat_metadata[MODE_HISTORY_KEY] ?? null });
+    if (!change.changed) return '';
+
+    try {
+        const data = await loadWorldInfo(worldName);
+        if (!data) throw new Error(`no se pudo leer el mundo «${worldName}»`);
+        const pack = structuredClone(data.metadata?.rulesetPack ?? { id: 'campaign', name: worldName });
+        pack.survival = chosen;
+        data.metadata = data.metadata ?? {};
+        data.metadata.rulesetPack = pack;
+        await saveWorldInfo(worldName, data, true);
+        // Recordado para la próxima carga: si no, al volver diría que hay reglas nuevas.
+        rememberRuleset(pack);
+        setActiveRuleset(pack);
+    } catch (error) {
+        console.error('[party] el modo no se pudo guardar', error);
+        toastr.error('No se pudo guardar el modo. Sigue el de antes.', 'Modo de juego');
+        return '';
+    }
+
+    chat_metadata[MODE_HISTORY_KEY] = change.history;
+    const extras = /** @type {any} */ (GAME_MODES)[modeOf(chosen)]?.extras;
+    if (extras) {
+        chat_metadata[SAFETY_ON_KEY] = Boolean(extras.safetyNet);
+        chat_metadata[LEAVE_ON_KEY] = Boolean(extras.companionsLeave);
+    }
+    saveMetadata();
+    postCombatNarration(`⚙️ [MODO] ${change.line} ${describeGameMode(chosen)}.`);
+    renderCampaignTab();
+    refreshWorldMemoryPrompt();
+    toastr.success(describeGameMode(chosen), 'Modo de juego');
+    return change.line;
+}
+
+/** U2 del pegamento: el panel del estado. */
+async function openStateView() {
+    const { openStatePanel } = await import('./game-engine/ui/state-panel.js');
+    await openStatePanel({ metadata: chat_metadata ?? {}, Popup, POPUP_TYPE });
+}
+
+/**
+ * U3 del pegamento: lo que viene, de todos los relojes a la vez.
+ *
+ * @param {number} today
+ * @returns {import('./game-engine/campaign/upcoming.js').Upcoming[]}
+ */
+function whatComes(today) {
+    const bill = partyMembers.length > 0 ? weeklyBill(partyMembers, { rules: currentUpkeepRules() }) : null;
+    // R1: lo apagado no sale.
+    return keepOn(upcoming({
+        today,
+        factions: currentWorldFactions,
+        billDue: Number(chat_metadata?.[BILL_DUE_KEY]) || 0,
+        bill: Number(bill?.total) || 0,
+        purse: partyPurse(),
+        debt: chat_metadata?.[DEBT_KEY] ?? null,
+        taken: chat_metadata?.[TAKEN_KEY] ?? null,
+        plot: getPlot(),
+        plotState: chat_metadata?.[PLOT_STATE_KEY],
+        party: partyMembers,
+        festivals: worldFestivals(),
+        dispatches: Array.isArray(chat_metadata?.[DISPATCHES_KEY]) ? chat_metadata[DISPATCHES_KEY] : [],
+        seasonStart: lastWorldSeason || undefined,
+        // T7: los relojes que no decían su plazo.
+        leaving: leavingMembers().map(m => String(m.name)),
+        rivals: (Array.isArray(chat_metadata?.[BOARD_KEY]) ? chat_metadata[BOARD_KEY] : []).length > 0,
+        wanted: readWanted(chat_metadata?.[WANTED_KEY]),
+        hints: {
+            open: openMilestones().map((/** @type {any} */ m) => ({ id: String(m.id), title: String(m.title ?? m.id) })),
+            openedDay: chat_metadata?.[HINTS_KEY]?.openedDay ?? {},
+            given: chat_metadata?.[HINTS_KEY]?.given ?? {},
+            early: withJob(partyMembers, 'erudito') ? 1 : 0,
+        },
+    }), survivalNow());
+}
+
+/**
+ * T7: quien está harto (ya avisó) y puede irse el día de la semana, si los hartos se van en
+ * esta partida.
+ *
+ * @returns {any[]}
+ */
+function leavingMembers() {
+    if (!chat_metadata?.[LEAVE_ON_KEY]) return [];
+    const warned = Array.isArray(chat_metadata[WARNED_KEY]) ? chat_metadata[WARNED_KEY].map(String) : [];
+    return partyMembers.filter(m => !m.dead && warned.includes(String(m.id)));
 }
 
 /** El hilo de la campana, y por donde va. */
@@ -4158,8 +5818,14 @@ async function closeAct(plot, closed, opened) {
     const state = chat_metadata[PLOT_STATE_KEY];
     const doneIds = new Set(Array.isArray(state?.done) ? state.done.map(String) : []);
     const milestones = (plot?.milestones ?? []).filter((/** @type {any} */ m) => Number(m.act) === closed && doneIds.has(String(m.id))).map((/** @type {any} */ m) => String(m.title));
-    const deeds = (Array.isArray(chat_metadata[DEEDS_KEY]) ? chat_metadata[DEEDS_KEY] : [])
-        .map((/** @type {any} */ d) => (typeof d === 'string' ? d : String(d?.text ?? ''))).filter(Boolean);
+    // U4 del pegamento: lo que movió la historia en este acto, de la crónica. Antes entraban
+    // todos los hechos apuntados, fueran de este acto o de antes. Seis líneas cortas como mucho:
+    // el resumen va a la memoria del narrador en cada turno.
+    const from = Number((chat_metadata[ACT_STARTS_KEY] ?? {})[closed]) || 0;
+    const deeds = chronicleOf(chat)
+        .filter(entry => entry.index >= from && !entry.minor && entry.category !== 'partida')
+        .map(entry => entry.text.split('\n')[0].slice(0, 140))
+        .slice(-6);
     const summary = summarizeAct({ act: closed, milestones, deeds });
     chat_metadata[ACT_SUMMARIES_KEY] = addSummary(chat_metadata[ACT_SUMMARIES_KEY], closed, summary);
     const starts = chat_metadata[ACT_STARTS_KEY] && typeof chat_metadata[ACT_STARTS_KEY] === 'object' ? chat_metadata[ACT_STARTS_KEY] : {};
@@ -4373,7 +6039,10 @@ async function hearRumor() {
         return '';
     }
     const heard = Array.isArray(chat_metadata?.[RUMORS_HEARD_KEY]) ? chat_metadata[RUMORS_HEARD_KEY] : [];
-    const rumor = nextRumor({ rumors: lastRumors, here: currentLocationName, heard });
+    // R9: primero lo que se cuenta de vosotros, luego lo del guion.
+    const played = rumorsFromPlay(chronicleOf(Array.isArray(chat) ? chat : []), { told: heard })
+        .map(r => ({ id: r.id, text: r.text, where: currentLocationName, by: 'Alguien en la taberna', truth: '', leadsTo: '' }));
+    const rumor = nextRumor({ rumors: [...played, ...lastRumors], here: currentLocationName, heard });
     if (!rumor) {
         toastr.info('Aquí ya no se cuenta nada que no hayas oído.');
         return '';
@@ -4395,7 +6064,7 @@ async function hearRumor() {
 }
 
 // ================================================================
-//  El mundo crece mientras juegas (wiki/ROADMAP_MUNDOS_VIVOS.md, fase G)
+//  El mundo crece mientras juegas (wiki/archivo/ROADMAP_MUNDOS_VIVOS.md, fase G)
 // ================================================================
 
 /** Lo que el narrador ha propuesto y nadie ha ido a buscar todavia. */
@@ -4518,6 +6187,7 @@ async function exploreHere(name = '') {
             entityType: 'monster', name: monster.name, hp: monster.hp, maxHp: monster.hp,
             armorClass: monster.armorClass, cr: monster.cr, speed: monster.speed,
             profile: monster.profile, attackRangeFeet: monster.attackRangeFeet, abilities: monster.abilities ?? [],
+            ...(monster.domable !== undefined ? { domable: monster.domable } : {}),
             generated: true,
         };
     }
@@ -4596,7 +6266,7 @@ async function populatePlaceNow(placeName) {
 }
 
 // ================================================================
-//  Servicios de cada sitio (wiki/ROADMAP_MUNDOS_VIVOS.md, fase L)
+//  Servicios de cada sitio (wiki/archivo/ROADMAP_MUNDOS_VIVOS.md, fase L)
 // ================================================================
 
 /** @returns {any|null} La localidad donde esta el grupo. */
@@ -4968,20 +6638,102 @@ function sellItems(sales) {
 }
 
 /** Idea 126: regatear, una vez al dia en cada tienda. */
-function haggle() {
+async function haggle() {
     if (!chat_metadata) return;
     const who = partyMembers.filter(m => (Number(m.hp) || 0) > 0)
         .reduce((/** @type {any} */ top, m) => (!top || skillModifier(m, 'persuasion').modifier > skillModifier(top, 'persuasion').modifier ? m : top), null);
     if (!who) return;
-    const roll = rollCheck({ member: who, skill: 'persuasion', rollD20: () => rollDiceDetailed('1d20', 20).total, dc: 12 });
+    // U6 del pegamento: regatear es un duelo de tres rondas. El tendero de cada sitio tiene
+    // siempre la misma postura: la semilla del mundo y el sitio la deciden.
+    const random = createSeededRandom(derive(String(chat_metadata?.[METADATA_KEY] || ''), 'tendero', currentLocationName));
+    const stance = ['codicioso', 'desconfiado', 'orgulloso'][Math.floor(random() * 3) % 3];
+    const keeper = `El tendero de ${currentLocationName || 'aquí'}`;
+    const bonds = getCampaignBonds();
+    const hand = handFrom({
+        modifiers: {
+            persuasion: skillModifier(who, 'persuasion').modifier,
+            deception: skillModifier(who, 'deception').modifier,
+            intimidation: skillModifier(who, 'intimidation').modifier,
+        },
+        companions: partyMembers.filter(m => m !== who && !m.dead).map(m => ({ name: String(m.name), rank: getBondProgress(bonds, String(m.id)).rank })),
+        allowCoin: false,
+        tricks: [...duelTricks(who), ...petTricks()],
+    });
+    const final = await playDuel({ npc: { name: keeper, stance }, patience: 7, hand, rounds: 3, speaker: String(who.name), what: 'rebajar el precio' });
+    const outcome = duelOutcome(final) ?? 'no-cede';
+    const discount = outcome === 'cede' ? 0.2 : outcome === 'a-medias' ? 0.1 : 0;
     chat_metadata[HAGGLE_KEY] = {
         place: currentLocationName,
         day: Math.max(1, Math.floor(Number(getCampaignCalendar()?.day) || 1)),
-        ok: Boolean(roll?.success),
+        ok: discount > 0,
+        discount,
     };
     saveMetadata();
-    if (roll) postCombatNarration(roll.said);
-    toastr.info(roll?.success ? `${who.name} saca un 15 % menos para hoy.` : `${who.name} no convence al tendero: hoy, al precio que hay.`, 'Regateo', { timeOut: 6000 });
+    // Un regateo no merece una llamada al modelo: se cuenta en el chat y ya.
+    postCombatNarration(`🛒 [TIENDA] ${who.name} regatea con ${keeper.toLowerCase()}: ${discount > 0 ? `${Math.round(discount * 100)} % menos para hoy${outcome === 'a-medias' ? ', a medias' : ''}` : 'no cede, hoy al precio que hay'}.`);
+    if (isShellOpen()) refreshGameShell();
+}
+
+/** Lo que dice el duelo al acabar. */
+const DUEL_OUTCOMES = { 'cede': 'Cede.', 'a-medias': 'Cede a medias.', 'no-cede': 'No cede.' };
+
+/**
+ * U6 del pegamento: jugar un duelo de palabras en un cuadro, ronda a ronda.
+ *
+ * @param {Object} input
+ * @param {{name: string, stance: string}} input.npc
+ * @param {number} input.patience
+ * @param {import('./game-engine/campaign/word-duel.js').Argument[]} input.hand
+ * @param {number} input.rounds
+ * @param {string} input.speaker
+ * @param {string} input.what
+ * @returns {Promise<import('./game-engine/campaign/word-duel.js').DuelState>}
+ */
+function playDuel({ npc, patience, hand, rounds, speaker, what }) {
+    let state = startDuel({ npc, patience, hand, rounds });
+    const body = $('<div class="wd-root"></div>');
+    const render = () => {
+        body.empty();
+        const stance = DUEL_STANCES[state.npc.stance];
+        body.append($('<h3></h3>').text(`${speaker} habla con ${state.npc.name}`));
+        body.append($('<p class="wd-goal"></p>').text(`Para ${what}.`));
+        body.append($('<p class="wd-stance"></p>').text(`Está ${stance.label}: ${stance.note}`));
+        body.append($('<div class="wd-meters"></div>').text(`Su paciencia: ${state.patience} · Tu compostura: ${state.composure} · Ronda ${state.round} de ${state.rounds}`));
+        for (const line of state.log) body.append($('<div class="wd-log"></div>').text(line));
+        const outcome = duelOutcome(state);
+        if (outcome) {
+            body.append($('<div class="wd-outcome"></div>').attr('data-outcome', outcome).text(DUEL_OUTCOMES[outcome]));
+            return;
+        }
+        const cards = $('<div class="wd-cards"></div>');
+        for (const argument of state.hand) {
+            const signed = (/** @type {number} */ n) => `${n >= 0 ? '+' : ''}${n}`;
+            const card = $('<button type="button" class="menu_button wd-card"></button>')
+                .attr('data-id', argument.id)
+                .prop('disabled', state.used.includes(argument.id))
+                .text(argument.skill ? `${argument.label} (${signed(Number(argument.modifier) || 0)})` : argument.label);
+            card.on('click', () => {
+                state = playArgument(state, argument.id, () => rollDiceDetailed('1d20', 20).total).state;
+                // R4: una carta de conjuro gasta la carga de quien habla.
+                const spell = argument.spell ? spellById(String(argument.spell)) : null;
+                const caster = spell ? partyMembers.find(m => String(m.name) === speaker) : null;
+                if (spell && caster) {
+                    caster.spellCharges = spendCharge(caster, spell.circle);
+                    savePartyState();
+                }
+                render();
+            });
+            cards.append(card);
+        }
+        body.append(cards);
+    };
+    render();
+    return new Popup(body[0], POPUP_TYPE.TEXT, '', { okButton: 'Hecho', allowVerticalScrolling: true }).show().then(() => {
+        // R4: un Encanto que no sale bien se nota: os tiene ganas.
+        const risky = state.hand.some(a => a.risky && state.used.includes(a.id));
+        if (risky && duelOutcome(state) !== 'cede') changeAttitude(state.npc.name, -1, 'se ha dado cuenta del encanto');
+        return state;
+    });
 }
 
 /**
@@ -5093,35 +6845,43 @@ function shopHere() {
     const haggle = chat_metadata?.[HAGGLE_KEY];
     const triedToday = Boolean(haggle && haggle.place === currentLocationName && Number(haggle.day) === today);
     const haggled = triedToday && Boolean(haggle.ok);
+    // U6 del pegamento: lo que rebajó el duelo, si lo dice; si no, lo de siempre.
+    const haggleOff = haggled ? (Number(haggle.discount) > 0 ? Number(haggle.discount) : true) : false;
     const names = weeklyStock({
         names: declaredLootNames(),
         describe: (name) => describeLootItem(name),
         random: createSeededRandom(derive(worldName, 'tienda', currentLocationName, String(week))),
         reputation: Number(ruler?.reputation) || 0,
-        // Idea 122: el aceite y la red, siempre.
-        always: Object.values(THROWABLES).map(t => t.name),
+        // Idea 122: el aceite y la red, siempre. R4: y lo que gastan los conjuros que sabéis.
+        always: [...Object.values(THROWABLES).map(t => t.name), ...neededComponents()],
     });
     // Idea 84: con una guerra en marcha, el acero se paga caro.
     const war = warPressure({ here: currentLocationName, factions: getCurrentWorldFactions() });
     // Idea 52: donde os conocen, os lo dejan mejor.
     const fame = fameAt(chat_metadata?.[FAME_KEY], currentLocationName);
-    const stock = names.map(name => {
+    // T4: la estación y cómo ve la magia quien manda aquí.
+    const season = currentSeason();
+    const stance = magicStance(ruler);
+    const stock = names.flatMap(name => {
         const spec = describeLootItem(name);
         const steel = ['weapon', 'armor'].includes(String(spec.category));
         const food = Number(market?.food) || 1;
-        return {
+        const seasonal = seasonalMarket({ name, spec, season, magic: stance, ruler: String(ruler?.name ?? '') });
+        if (seasonal.banned) return [];
+        return [{
             name,
             ...priceToday({
                 base: basePrice(spec),
-                market: steel ? Math.round(food * war.steel * 100) / 100 : food,
-                marketReasons: [...(Array.isArray(market?.reasons) ? market.reasons : []), ...(steel ? war.reasons : [])],
-                standing: ruler ? priceFactor(Number(ruler.reputation) || 0) : 1,
+                market: Math.round((steel ? food * war.steel : food) * seasonal.factor * 100) / 100,
+                marketReasons: [...(Array.isArray(market?.reasons) ? market.reasons : []), ...(steel ? war.reasons : []), ...seasonal.reasons],
+                // R8: y si quien atiende os aprecia, un poco menos.
+                standing: (ruler ? priceFactor(Number(ruler.reputation) || 0) : 1) * (1 - favorDiscount(favorsHere(), 'tienda').discount),
                 ruler: String(ruler?.name ?? ''),
-                haggled,
+                haggled: haggleOff,
                 festival: Boolean(festivalHere()),
                 fame: { discount: fame.discount, label: fame.label },
             }),
-        };
+        }];
     });
     return { stock, reasons: [...new Set(stock.flatMap(s => s.reasons))], haggled, triedToday };
 }
@@ -5306,6 +7066,19 @@ function giveDueHints() {
 }
 
 /** Idea 100: el diario, con lo que el grupo sabe. */
+/**
+ * El diario, sin fallar en silencio: si algo no se puede montar, se dice y queda en la consola
+ * con su traza, en vez de que el botón no haga nada.
+ */
+function openJournalSafely() {
+    try {
+        openJournal();
+    } catch (error) {
+        console.error('[party] el diario no se pudo abrir', error);
+        toastr.error('El diario no se ha podido abrir. Queda anotado en la consola.', 'Diario');
+    }
+}
+
 function openJournal() {
     const today = Math.max(1, Math.floor(Number(getCampaignCalendar()?.day) || 1));
     const heardIds = Array.isArray(chat_metadata?.[RUMORS_HEARD_KEY]) ? chat_metadata[RUMORS_HEARD_KEY] : [];
@@ -5329,6 +7102,9 @@ function openJournal() {
         memories: memoryLines(chat_metadata?.[MEMORIES_KEY], today),
         deeds: Array.isArray(chat_metadata?.[DEEDS_KEY]) ? chat_metadata[DEEDS_KEY] : [],
     });
+    // U3 del pegamento: lo que viene, de todos los relojes a la vez. Lo primero del diario.
+    const coming = describeUpcoming(whatComes(today), 8);
+    if (coming.length > 0) sections.unshift({ title: 'Lo que viene', items: coming });
     // Idea 114: el presagio, con lo que ya se ha cumplido.
     const omens = omensOf(getPlot(), chat_metadata?.[PLOT_STATE_KEY]);
     if (omens.length > 0) sections.push({ title: 'El presagio', items: omens.map(o => `${o.fulfilled ? '✓' : '·'} «${o.text}»`) });
@@ -5361,13 +7137,89 @@ function openJournal() {
     if (graves.length > 0) sections.push({ title: 'Los que se quedaron', items: graves.map(g => g.epitaph) });
     // Idea 200: mientras se juega, la partida en numeros tambien esta en el diario.
     sections.push({ title: 'La partida en números', items: statsLines() });
+    // U4 del pegamento: lo que el mundo recuerda son los hechos; la crónica es todo lo que
+    // pasó, sacado de lo que el juego ya contó en el chat, por categorías y con filtro.
+    const remembered = sections.find(s => s.title === 'Crónica');
+    if (remembered) remembered.title = 'Lo que el mundo recuerda';
+    const told = chronicleSections(chronicleOf(chat), { limit: 8 });
     const body = $('<div class="jr-root"></div>');
     body.append($('<h3></h3>').text('Diario'));
     for (const section of sections) {
         body.append($('<div class="jr-title"></div>').text(section.title));
         for (const item of section.items) body.append($('<div class="jr-item"></div>').text(item));
     }
+    if (told.length > 0) {
+        body.append($('<div class="jr-title"></div>').text('Crónica'));
+        const filters = $('<div class="jr-filters"></div>');
+        filters.append($('<button type="button" class="menu_button jr-filter jr-filter-on" data-cat=""></button>').text('Todo'));
+        for (const section of told) filters.append($('<button type="button" class="menu_button jr-filter"></button>').attr('data-cat', section.category).text(section.title));
+        body.append(filters);
+        for (const section of told) {
+            for (const item of section.items) {
+                body.append($('<div class="jr-item jr-chron"></div>').attr('data-cat', section.category).text(`${section.title}: ${item}`));
+            }
+        }
+        body.on('click', '.jr-filter', function () {
+            const only = String($(this).attr('data-cat') || '');
+            body.find('.jr-filter').removeClass('jr-filter-on');
+            $(this).addClass('jr-filter-on');
+            body.find('.jr-chron').each(function () {
+                $(this).toggle(!only || $(this).attr('data-cat') === only);
+            });
+        });
+    }
     void new Popup(body[0], POPUP_TYPE.TEXT, '', { okButton: 'Cerrar', allowVerticalScrolling: true, leftAlign: true }).show();
+}
+
+/** U4 del pegamento (DU3): las tandas de avisos menores que el jugador ha abierto. */
+const unfoldedMessages = new Set();
+/** @type {any} */
+let foldTimer = null;
+
+/**
+ * U4 del pegamento (DU3): el chat con menos ruido. Varios avisos menores seguidos (combate,
+ * pueblo, viaje, campamento) se quedan en el último, con un «y N más» que abre el resto. Lo
+ * que mueve la historia no se pliega nunca, y nada se pierde: todo sigue en el diario.
+ */
+function foldChat() {
+    const root = document.getElementById('chat');
+    if (!root) return;
+    root.querySelectorAll('.gm-fold').forEach(node => node.remove());
+    root.querySelectorAll('.mes.gm-folded').forEach(node => node.classList.remove('gm-folded'));
+    if (!chat_metadata?.[METADATA_KEY]) return;
+    /** @type {Map<number, Element>} */
+    const nodes = new Map();
+    const lines = [...root.querySelectorAll('.mes')].map(node => {
+        const id = Number(node.getAttribute('mesid'));
+        const message = chat?.[id];
+        if (!Number.isFinite(id) || !message || message.is_user) return null;
+        nodes.set(id, node);
+        const line = readTaggedLine(String(message.mes ?? ''));
+        return line && !unfoldedMessages.has(id) ? { index: id, minor: line.minor, category: line.category } : null;
+    });
+    for (const fold of foldPlan(lines)) {
+        for (const id of fold.hide) nodes.get(id)?.classList.add('gm-folded');
+        const shown = nodes.get(fold.show);
+        if (!shown) continue;
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'gm-fold menu_button';
+        button.textContent = describeFold(fold);
+        button.addEventListener('click', () => {
+            for (const id of fold.hide) unfoldedMessages.add(id);
+            foldChat();
+        });
+        shown.before(button);
+    }
+}
+
+/** Plegar en cuanto el chat cambia, una vez por tanda de cambios. */
+function scheduleFoldChat() {
+    if (foldTimer) clearTimeout(foldTimer);
+    foldTimer = setTimeout(() => {
+        foldTimer = null;
+        foldChat();
+    }, 60);
 }
 
 /** Idea 136: todo lo que se puede hacer ahora, junto y pulsable. */
@@ -5563,8 +7415,23 @@ function buildServiceCards() {
         for (const member of partyMembers.filter(m => !m.dead)) {
             const className = String(/** @type {any} */ (member).charClass ?? /** @type {any} */ (member).class ?? '').toLowerCase()
                 .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            // R3/R4: quien enseña adelanta lo que tu clase aprendería más tarde (hasta dos
+            // niveles), y a quien hace magia le enseña conjuros de su clase del grimorio. Lo
+            // de tu nivel ya lo sabes: no se lo pagas a nadie.
+            const level = Number(member.level) || 1;
+            const now = new Set([
+                ...abilitiesFor({ compendium: lastCompendium, className, level }).map((/** @type {any} */ a) => String(a.id)),
+                ...spellsForClass({ className, level }),
+            ]);
+            // Y las técnicas de otros oficios: un maestro de armas enseña a quien pague.
+            const crafts = lastCompendium.find('habilidades', { kind: 'habilidad' })
+                .filter((/** @type {any} */ row) => row.when?.tree !== true && (Number(row.level) || 1) <= level + 2)
+                .map(asAbility);
             const lessons = lessonsHere({
-                candidates: abilitiesFor({ compendium: lastCompendium, className, level: Number(member.level) || 1 }),
+                candidates: [
+                    ...crafts,
+                    ...spellsForClass({ className, level: level + 2 }).map(id => grimoireAbilities().find(a => a.id === id)).filter(Boolean),
+                ].filter((/** @type {any} */ a) => !now.has(String(a.id))),
                 known: Array.isArray(member.abilities) ? member.abilities.map(String) : [],
                 // La semilla del mundo y del sitio: el mismo maestro enseña siempre lo mismo.
                 random: createSeededRandom(derive(String(chat_metadata?.[METADATA_KEY] || ''), 'maestro', String(currentLocationName))),
@@ -5620,6 +7487,18 @@ function buildServiceCards() {
                 detail: upgrade.reason || RECIPES.mejora.note, enabled: !combatEncounter.active && upgrade.ok, cost: 0, target: String(member.id),
             });
         }
+    }
+    // U8 del pegamento: el caso abierto, si queda algo por buscar aquí.
+    const mystery = readCases(chat_metadata?.[CASES_KEY]);
+    if (cluesHere(mystery, { place: currentLocationName }).length > 0) {
+        cards.push({
+            id: 'caso', label: 'El caso', icon: 'fa-magnifying-glass',
+            actions: [{
+                id: 'case-search', label: `Buscar pistas de «${mystery.active?.title}» aquí`,
+                detail: 'Registrar el sitio y escuchar lo que se dice. Cuesta un rato del día; registrar pide Investigación.',
+                enabled: !combatEncounter.active, cost: 0,
+            }],
+        });
     }
     // Idea 131: con un encargo entre manos, quien se alquila para él.
     if (innCard && chat_metadata?.[TAKEN_KEY]) {
@@ -5683,8 +7562,8 @@ function buildServiceCards() {
         }
         if (!shop.triedToday) {
             shopActions.push({
-                id: 'shop-haggle', label: 'Regatear (Persuasión, CD 12)',
-                detail: 'Una vez al día en cada tienda: si sale, un 15 % menos hoy.', enabled: !combatEncounter.active, cost: 0,
+                id: 'shop-haggle', label: 'Regatear: tres rondas con el tendero',
+                detail: 'Una vez al día en cada tienda. Si cede, un 20 % menos hoy; a medias, un 10 %.', enabled: !combatEncounter.active, cost: 0,
             });
         }
         shopActions.push({ id: 'shop-prices', label: '¿Por qué estos precios?', detail: 'Lo que sube y lo que baja, parte a parte.', enabled: true, cost: 0 });
@@ -5997,7 +7876,8 @@ async function runService(actionId) {
         const member = partyMembers.find(m => String(m.id) === memberId);
         const item = (member?.items ?? []).find((/** @type {any} */ i) => String(i.id) === itemId);
         if (member && item) sellItems([{ memberId, itemId, name: String(item.name), price: sellPrice(item) }]);
-    } else if (actionId === 'shop-haggle') haggle();
+    } else if (actionId === 'case-search') await searchCaseHere();
+    else if (actionId === 'shop-haggle') await haggle();
     else if (actionId === 'shop-prices') {
         const shop = shopHere();
         const said = shop.reasons.length > 0 ? shop.reasons.join('\n') : 'Hoy, al precio de siempre: ni el sitio está caro ni os tratan distinto.';
@@ -6163,7 +8043,10 @@ async function tryUnlock(board, gx, gy, gridW, gridH) {
         const dc = picked === 32 ? 14 : 16;
         const who = partyMembers.filter(m => (Number(m.hp) || 0) > 0)
             .reduce((/** @type {any} */ top, m) => (!top || skillModifier(m, skill).modifier > skillModifier(top, skill).modifier ? m : top), null);
-        const roll = who ? rollCheck({ member: who, skill, rollD20: () => rollDiceDetailed('1d20', 20).total, dc }) : null;
+        // R3: quien sabe usar la ganzúa lo tiene más fácil (+5, que se nota en la CD).
+        const trick = skill === 'sleight' && who ? lockBonus(who) : 0;
+        if (trick > 0) postCombatNarration(`🗝️ [BOARD] ${who.name} saca la ganzúa: la cerradura baja de CD ${dc} a ${dc - trick}.`);
+        const roll = who ? rollCheck({ member: who, skill, rollD20: () => rollDiceDetailed('1d20', 20).total, dc: dc - trick }) : null;
         if (roll) postCombatNarration(roll.said);
         opened = Boolean(roll?.success);
         if (!opened) {
@@ -6356,11 +8239,14 @@ async function campNight() {
     const random = createSeededRandom(derive(String(chat_metadata?.[METADATA_KEY] || ''), 'noche', currentLocationName, String(campaignDay())));
     const beasts = enemiesInSeason().map((/** @type {any} */ e) => String(e?.name || '')).filter(Boolean);
     const night = resolveNight({
-        risk: nightRisk({ locationType: String(here?.locationType ?? here?.type ?? ''), fire: lit, hostile }),
+        // R4: una Luz alumbra como un fuego, aunque no lo haya.
+        risk: nightRisk({ locationType: String(here?.locationType ?? here?.type ?? ''), fire: lit || Boolean(whoCan(living, 'campLight')), hostile }),
         guards,
         random,
         rollD20: () => rollDiceDetailed('1d20', 20).total,
-        perceptionOf: perception,
+        // R3: quien sabe dar la voz hace mejor guardia.
+        // R5: la mascota también vigila.
+        perceptionOf: (/** @type {any} */ m) => perception(m) + watchBonus(living).amount + (petDoes(currentPet(), 'guardia') ? 2 : 0),
         purse: partyPurse(),
         intruder: beasts.length > 0 ? beasts[Math.floor(random() * beasts.length) % beasts.length] : '',
     });
@@ -6713,6 +8599,8 @@ function weighDepartures() {
     }
     for (const member of verdict.leave) {
         const line = describeLeaving(member);
+        // R8: se apunta, con su ficha, por si un día vuelve.
+        if (chat_metadata) chat_metadata[GONE_KEY] = noteGone(chat_metadata[GONE_KEY], member, campaignDay(), 'harto');
         partyMembers = partyMembers.filter(m => m !== member);
         noteDeed(line);
         toastr.error(line, `👋 ${member.name}`, { timeOut: 15000 });
@@ -6769,6 +8657,8 @@ function stealItem(name, price) {
     postCombatNarration(roll.said);
     const outcome = stealOutcome({ success: roll.success, price, place: currentLocationName, wanted: chat_metadata[WANTED_KEY] });
     chat_metadata[WANTED_KEY] = outcome.wanted;
+    // R9: si os pillan, quien manda aquí lo sabe.
+    if (!outcome.free) void nudgeRuler(currentLocationName, 'crimen');
     if (outcome.free) {
         addItemToInventory(/** @type {any} */ (thief), createItem(/** @type {any} */ (describeLootItem(name, '', worldItemCatalogue))));
     } else if (!payFromParty(outcome.fine)) {
@@ -7091,7 +8981,11 @@ function refreshWorldMemoryPrompt() {
     const moods = chat_metadata ? Object.entries(readAttitudes(chat_metadata[ATTITUDES_KEY]).values)
         .filter(([name]) => lastWorldNpcs.some(n => n.name === name && n.where.toLowerCase() === String(currentLocationName).toLowerCase()))
         .map(([name, value]) => `${name} os mira de forma ${describeAttitude(value)}.`) : [];
-    const full = [block, acts.length > 0 ? `Lo que pasó antes: ${acts.join(' ')}` : '', moods.join(' ')].filter(Boolean).join('\n');
+    // R4: lo que el grupo sabe lanzar, y que no existe otra magia. Solo si alguien la hace.
+    const magic = magicLine(partyMembers);
+    // R9: lo último que pasó de verdad, de la crónica. En modo ahorro, no.
+    const lately = saverOn() ? '' : chronicleMemory(chronicleOf(Array.isArray(chat) ? chat : []));
+    const full = [block, acts.length > 0 ? `Lo que pasó antes: ${acts.join(' ')}` : '', moods.join(' '), lately, magic].filter(Boolean).join('\n');
     setExtensionPrompt(key, full, extension_prompt_types.IN_PROMPT, 0, false, extension_prompt_roles.SYSTEM);
 
     // C1: como esta el grupo. Va con lo que cambia en cada turno, al final del prompt. En
@@ -7214,11 +9108,8 @@ const saveCampaignState = (calendar, bonds) => campaign.save(calendar, bonds);
 // El reloj del Modo Juego lee lo mismo que la pestana de Campana, asi que pasar el
 // tiempo tiene que redibujarlo: sin esto el dia cambiaba y la cabecera no se enteraba.
 const advanceCampaignSlot = () => {
-    const before = campaignDay();
     const result = campaign.advanceSlot();
     if (isShellOpen()) refreshGameShell();
-    // Pasar el ultimo turno del dia es pasar de dia, aunque el boton diga otra cosa.
-    chargeFactionDays(before);
     return result;
 };
 /**
@@ -7243,23 +9134,10 @@ function scheduleFactionTick() {
     }, 0);
 }
 
-/**
- * Lo que el calendario se haya movido, se lo deben las facciones.
- *
- * **Se mide, no se confia.** Sumar uno al pasar el dia parecia lo mismo y no lo era: un
- * descanso largo adelanta el dia **por dentro** del modulo de campana, y un turno que
- * cierra la noche tambien. Por esos dos caminos dormir les salia gratis, que es justo el
- * reloj aparte que este sistema no quiere tener.
- *
- * @param {number} before El dia que marcaba el calendario antes.
- */
-function chargeFactionDays(before) {
-    const days = campaignDay() - before;
-    if (days <= 0) return;
-    // El mismo dia que cura y da de comer acerca a los otros a lo que quieren.
-    factionDaysDue += days;
-    scheduleFactionTick();
-}
+// U3 del pegamento: los días de las facciones los apunta la etapa `facciones` del paso del
+// tiempo. Todas las formas de pasar el día (el turno que cierra la noche, un descanso largo,
+// un viaje) pasan por `passTime` en `campaign-state.js`, así que ya no hace falta medir el
+// calendario alrededor de cada una.
 
 /** @returns {number} */
 function campaignDay() {
@@ -7267,10 +9145,8 @@ function campaignDay() {
 }
 
 const advanceCampaignDay = () => {
-    const before = campaignDay();
     const result = campaign.advanceDay();
     if (isShellOpen()) refreshGameShell();
-    chargeFactionDays(before);
     return result;
 };
 /**
@@ -7419,7 +9295,6 @@ function offerPersonalQuests() {
 const getCurrentSlotLabel = () => campaign.getSlotLabel();
 /** @param {'corto'|'largo'} kind @returns {Promise<string>} */
 const takeRest = async (kind) => {
-    const before = campaignDay();
     const result = await campaign.rest(kind);
     // Idea 41: con un sanador en el grupo, un descanso corto cura algo mas.
     const healer = kind === 'corto' ? withJob(partyMembers, 'sanador') : null;
@@ -7431,9 +9306,6 @@ const takeRest = async (kind) => {
         postCombatNarration(`🩹 [CAMPAÑA] ${healer.name} cura heridas mientras descansáis.`);
     }
     if (isShellOpen()) refreshGameShell();
-    // Un descanso largo adelanta el dia por dentro: sin esto, dormir era la forma de
-    // pararles el reloj.
-    chargeFactionDays(before);
     return result;
 };
 const getCampaignMap = () => campaign.getMap();
@@ -7680,18 +9552,19 @@ function renderCampaignTab() {
         bonds: getCampaignBonds(),
         party: partyMembers,
         // Sin nadie en el grupo no hay cuenta que pasar, y un panel de ceros estorba.
-        bill: partyMembers.length > 0 ? weeklyBill(partyMembers, { rules: currentUpkeepRules() }) : null,
+        // R1: sin la cuenta (letra b) no hay cuenta que enseñar.
+        bill: partyMembers.length > 0 && hasLetter(survivalNow(), 'b') ? weeklyBill(partyMembers, { rules: currentUpkeepRules() }) : null,
         daysToBill: Number.isFinite(due) ? Math.max(0, due - today) : 0,
         // Una cuenta que sube sin decir por que es un impuesto; una que dice «han cerrado
         // el paso del norte» es una razon para ir a abrirlo.
         market: describeMarket(currentMarket()),
         // Como esta cada uno: solo aparece quien tiene algo que contar.
-        needs: partyMembers
+        needs: hasLetter(survivalNow(), 'd') ? partyMembers
             .map(member => ({ name: member.name, said: describeNeeds(member) }))
-            .filter(entry => entry.said),
+            .filter(entry => entry.said) : [],
         // Lo que se mueve ahi fuera sin ti. Sin facciones escritas, la lista sale vacia
         // y el panel queda como estaba.
-        world: describeWorldFactions(),
+        world: hasLetter(survivalNow(), 'c') ? describeWorldFactions() : [],
         onAdvanceSlot: advanceCampaignSlot,
         onAdvanceDay: advanceCampaignDay,
         onShortRest: () => { void takeRest('corto'); },
@@ -7713,13 +9586,35 @@ function renderCampaignTab() {
  * @param {string} actorId
  * @param {import('./dnd-system.js').EnemyInstance} target
  */
-function resolveFollowUpAttack(actorId, target, how = 'ataca de seguimiento a') {
+/**
+ * R3 del roadmap de profundidad: a una. Quien tiene el turno ataca con ventaja (su compañero
+ * le abre la guardia) y el compañero ataca detrás, también con ventaja, gastando su reacción.
+ *
+ * @param {any} member
+ * @param {string} partnerId
+ * @param {any} enemy
+ */
+function resolvePairStrike(member, partnerId, enemy) {
+    const partner = partyMembers.find(m => String(m.id) === String(partnerId));
+    if (!partner || !combatEncounter.active) return;
+    usedReactions.add(`party:${partner.id}`);
+    postCombatNarration(`[COMBAT] ${pairLine(String(member.name), String(partner.name), String(enemy.name))}`);
+    combatEncounter.maneuvers = recordManeuver(combatEncounter.maneuvers, 'ayudar', String(partner.id), String(enemy.instanceId));
+    handlePlayerCombatAttack(String(enemy.name));
+    if ((Number(enemy.currentHp) || 0) > 0 && combatEncounter.active) {
+        resolveFollowUpAttack(String(partner.id), enemy, `va a una con ${member.name} contra`, 'advantage');
+    }
+}
+
+function resolveFollowUpAttack(actorId, target, how = 'ataca de seguimiento a', mode = /** @type {'advantage'|'disadvantage'|'normal'} */ ('normal')) {
     const ally = partyMembers.find(m => String(m.id) === String(actorId));
     if (!ally || (target.currentHp || 0) <= 0) return;
 
     const rangeFeet = getAttackRangeFeet(ally);
     const attackMod = getPlayerAttackModifier(ally, rangeFeet);
-    const attackRoll = rollDiceDetailed('1d20', 20);
+    // R3: la jugada en pareja va con ventaja.
+    const edged = rollWithEdge(() => rollDiceDetailed('1d20', 20).total, mode);
+    const attackRoll = { total: edged.natural, natural: edged.natural };
     const attackTotal = attackRoll.total + attackMod;
     const { ac: targetAc, cover } = getTargetArmorClass(target, ally);
     const isCrit = attackRoll.natural === 20;
@@ -8014,6 +9909,12 @@ function checkScenarioOutcome() {
  */
 function endCombat(reason = 'ended') {
     postCombatNarration('🏁 [COMBAT] El combate termina.');
+    // T2: la ayuda que no llegó a entrar no espera a la pelea siguiente.
+    const helpBoard = getActiveBoardContext().board;
+    if (helpBoard && Array.isArray(helpBoard.waves) && helpBoard.waves.some((/** @type {any} */ w) => w?.help && !w.done)) {
+        helpBoard.waves = helpBoard.waves.filter((/** @type {any} */ w) => !(w?.help && !w.done));
+        persistBoardTerrain(helpBoard);
+    }
     // Idea 25: la cuenta de derrotas seguidas.
     if (chat_metadata) chat_metadata[SAFETY_KEY] = noteOutcome(chat_metadata[SAFETY_KEY], reason);
     // Idea 105: si cayó a quien se escoltaba, el encargo se pierde.
@@ -8034,7 +9935,30 @@ function endCombat(reason = 'ended') {
     if (reason === 'fled') countStat('fled');
     if (reason === 'victory') {
         countStat('wins');
-        loot = awardEncounterLoot(combatEncounter.enemies.filter(e => (e.currentHp || 0) <= 0));
+        // R5: ganar juntos suma vínculo con la mascota; sin mascota, una bestia vencida se
+        // puede domar (un aviso con botón: no para la partida).
+        if (currentPet()) petLivesIt();
+        else offerTaming(combatEncounter.enemies.filter(e => (e.currentHp || 0) <= 0 && !(/** @type {any} */ (e).fled)));
+        // R3: quien sabe primeros auxilios levanta a quien quedó en el suelo.
+        const medic = patchUpAfterFight(partyMembers);
+        for (const fallenMember of medic ? partyMembers.filter(m => !m.dead && (Number(m.hp) || 0) <= 0) : []) {
+            const healed = Math.max(1, Number(rollDiceDetailed(String(medic?.formula), 4).total) || 1);
+            fallenMember.hp = Math.min(Number(fallenMember.maxHp) || healed, healed);
+            fallenMember.deathSaves = clearDeathSaves();
+            fallenMember.activeConditions = (Array.isArray(fallenMember.activeConditions) ? fallenMember.activeConditions : [])
+                .filter((/** @type {string} */ c) => c !== 'Unconscious');
+            postCombatNarration(`🩹 [COMBAT] ${medic?.who} venda a ${fallenMember.name}: se levanta con ${fallenMember.hp} PG.`);
+        }
+        loot = awardEncounterLoot(combatEncounter.enemies.filter(e => (e.currentHp || 0) <= 0 && !(/** @type {any} */ (e).fled)));
+        // R7: una némesis que cae, se acaba.
+        for (const fallen of combatEncounter.enemies.filter(e => /** @type {any} */ (e).nemesis && (e.currentHp || 0) <= 0 && !(/** @type {any} */ (e).fled))) {
+            const done = nemesisFalls(chat_metadata?.[NEMESES_KEY], String(fallen.name));
+            if (chat_metadata && done.line) {
+                chat_metadata[NEMESES_KEY] = done.list;
+                saveMetadata();
+                postCombatNarration(`😈 [NEMESIS] ${done.line}`);
+            }
+        }
         if (loot?.gold) countStat('gold', loot.gold);
 
         // C7: alguien lo celebra.
@@ -8171,6 +10095,139 @@ function showRecap() {
 }
 
 /**
+ * H2: «Cómo se juega». La página se arma con el modo de esta partida, la leyenda del tablero
+ * y las categorías de la crónica: no se escribe a mano, así que no se queda vieja.
+ *
+ * @returns {Promise<string>}
+ */
+async function openHowToPlay() {
+    const sections = buildHowToPlay({
+        survival: survivalNow(),
+        legend: getMapLegend(),
+        pet: Boolean(currentPet()),
+        magic: partyMembers.some(m => !m.dead && knownSpells(m).length > 0),
+    });
+    const body = $('<div class="jr-root hp-root"></div>');
+    body.append($('<h3></h3>').text('Cómo se juega'));
+    for (const section of sections) {
+        body.append($('<div class="jr-title"></div>').attr('data-help', section.id).text(section.title));
+        const list = $('<ul class="hp-lines"></ul>');
+        for (const line of section.lines) list.append($('<li></li>').text(line.replace(/`/g, '')));
+        body.append(list);
+    }
+    await new Popup(body[0], POPUP_TYPE.TEXT, '', { okButton: 'Cerrar', allowVerticalScrolling: true, leftAlign: true, wide: true }).show();
+    return '';
+}
+
+/**
+ * T2: el bando pide tregua. Un aviso con sus dos botones; también `/tregua sí|no`.
+ */
+function offerTruce() {
+    /** @type {any} */ (combatEncounter).truce = 'pending';
+    /** @type {any} */ (combatEncounter).truceRound = Number(combatEncounter.round) || 1;
+    saveCombatState();
+    postCombatNarration(truceLine(getAliveEnemies().map(e => String(e.name))));
+    const toast = toastr.info('Aceptarla gana el tablero, pero los que se van no dejan botín. Los tuyos lo juzgarán, la aceptes o no.', '🏳️ Piden tregua', { timeOut: 20000 });
+    const buttons = $('<div style="margin-top:6px; display:flex; gap:6px;"></div>');
+    buttons.append($('<button class="menu_button truce-yes"></button>').text('Dejarles ir').on('click', () => { answerTruce(true); }));
+    buttons.append($('<button class="menu_button truce-no"></button>').text('Sin cuartel').on('click', () => { answerTruce(false); }));
+    $(toast).find('.toast-message').append(buttons);
+}
+
+/**
+ * T2: la respuesta a la tregua.
+ *
+ * @param {boolean} accept
+ * @returns {string}
+ */
+function answerTruce(accept) {
+    if (!combatEncounter.active || /** @type {any} */ (combatEncounter).truce !== 'pending') {
+        toastr.info('Nadie está pidiendo tregua ahora.', 'La tregua');
+        return '';
+    }
+    if (!accept) {
+        /** @type {any} */ (combatEncounter).truce = 'refused';
+        saveCombatState();
+        postCombatNarration('⚔️ [COMBAT] Sin cuartel: vuelven a levantar las armas.');
+        judgeDecision('sin-cuartel');
+        return '';
+    }
+    /** @type {any} */ (combatEncounter).truce = 'accepted';
+    const leaving = getAliveEnemies();
+    for (const enemy of leaving) {
+        enemy.currentHp = 0;
+        /** @type {any} */ (enemy).fled = true;
+    }
+    saveCombatState();
+    postCombatNarration(`🤝 [COMBAT] Tregua: ${leaving.map(e => e.name).join(', ')} se van. El tablero es vuestro.`);
+    noteDeed(`Dejasteis ir a los que pidieron tregua en ${currentBoardName || currentLocationName || 'un combate'}.`);
+    judgeDecision('tregua');
+    endCombat('victory');
+    renderLocationMapsPreview();
+    return '';
+}
+
+/**
+ * B2: quien está en una salida puede irse de la pelea. Un aviso con su botón.
+ *
+ * @param {any} member
+ * @param {number} x
+ * @param {number} y
+ */
+function offerExit(member, x, y) {
+    if (!combatEncounter.active || (Number(member?.hp) || 0) <= 0) return;
+    if (!isExit(getActiveBoardContext().terrain, x, y)) return;
+    const toast = toastr.info(`${member.name} está en una salida. Salir le saca de esta pelea: nadie le ataca y ya no actúa. Cuando salgáis todos, se acaba en huida.`, '🚪 Una salida', { timeOut: 12000 });
+    $(toast).find('.toast-message').append($('<button class="menu_button exit-leave" style="margin-top:6px;"></button>').text('Salir por aquí').on('click', () => { leaveThroughExit(member); }));
+}
+
+/**
+ * B2: salir por una salida. Quien sale deja de estar en la pelea; cuando han salido todos los
+ * que siguen en pie, se acaba en huida, sin los golpes de la retirada (el camino ya se pagó).
+ *
+ * @param {any} member
+ * @returns {string}
+ */
+function leaveThroughExit(member) {
+    if (!combatEncounter.active || !member) return '';
+    const cell = partyCell(member);
+    if (!isExit(getActiveBoardContext().terrain, cell.x, cell.y)) {
+        toastr.info(`${member.name} no está en una salida: primero hay que llegar a ella.`, 'Salir');
+        return '';
+    }
+    if ((Number(member.hp) || 0) <= 0 || hasLeft(combatEncounter.left, member.id)) return '';
+    const wasTurn = String(getPartyMemberByTurnEntry(getCurrentTurnEntry())?.id ?? '') === String(member.id);
+    combatEncounter.left = leaveBoard(combatEncounter.left, member.id);
+    postCombatNarration(leaveLine(member.name, stillFighting(partyMembers, combatEncounter.left).length));
+    saveCombatState();
+    if (everyoneOut(partyMembers.filter(m => !m.dead), combatEncounter.left)) {
+        finishEscape('Todos fuera.');
+        return '';
+    }
+    renderPartyMembers();
+    renderLocationMapsPreview();
+    // Si le tocaba a él, su turno se acaba aquí.
+    if (wasTurn) endPlayerCombatTurn();
+    return '';
+}
+
+/**
+ * B2: la pelea acaba en huida por las salidas. Se deja el tablero sin ganar, se sabe y se juzga,
+ * como la retirada de siempre.
+ *
+ * @param {string} said
+ */
+function finishEscape(said) {
+    postCombatNarration(`🏃 [COMBAT] ${said} Os vais de ${currentBoardName || 'aquí'} sin ganar el tablero.`);
+    noteDeed(`Salisteis por pies de ${currentBoardName || currentLocationName || 'un combate'}.`);
+    savePartyState();
+    renderPartyMembers();
+    endCombat('fled');
+    renderLocationMapsPreview();
+    judgeDecision('retirada');
+}
+
+/**
  * Idea 22: huir, con su precio dicho antes.
  *
  * @returns {Promise<void>}
@@ -8292,6 +10349,20 @@ export function getPartyMembersSnapshot() {
 }
 
 /**
+ * La escena según el motor, para el gestor de contexto (U1 del pegamento): combate si hay un
+ * encuentro, exploración en un tablero, social en un sitio. Sin partida del juego, nada, y
+ * entonces manda la que se elija a mano con `/cstate`.
+ *
+ * @returns {string}
+ */
+export function getEngineSceneState() {
+    if (!chat_metadata?.[METADATA_KEY]) return '';
+    if (combatEncounter.active) return 'combat';
+    if (currentBoardName) return 'exploration';
+    return currentLocationName ? 'social' : 'idle';
+}
+
+/**
  * Get a snapshot of all characters/NPCs/enemies present on the current board/location.
  * Used by the Dynamic Context Manager to inject board awareness into AI context.
  * @returns {{ locationName: string, boardName: string, partyTokens: Array<{name: string}>, npcTokens: Array<{name: string}>, enemyTokens: Array<{name: string}> }}
@@ -8360,6 +10431,8 @@ function buildTokens(locationFilter) {
     const result = [];
     // Los muertos no andan por el tablero: están en su tumba (idea 36).
     for (const m of partyMembers.filter(member => !member.dead)) {
+        // B2: quien salió por una salida ya no está en este tablero mientras dure la pelea.
+        if (combatEncounter.active && hasLeft(combatEncounter.left, m.id)) continue;
         const pos = m.mapPosition || { locationName: '', gridX: 0, gridY: 0 };
         if (locationFilter && pos.locationName !== locationFilter) continue;
         result.push({
@@ -8446,6 +10519,7 @@ function openTargetCard(member, enemy) {
     const forecastRange = getAttackRangeFeet(member);
     const forecastEdge = attackEdge({
         targetId: String(enemy.instanceId),
+        height: heightFor(partyCell(member), { x: Number(enemy.gridX) || 0, y: Number(enemy.gridY) || 0 }),
         targetConditions: enemy.activeConditions ?? [],
         attackerConditions: member.activeConditions ?? [],
         distanceFeet,
@@ -8470,7 +10544,7 @@ function openTargetCard(member, enemy) {
     // Las que este personaje se sabe y van sobre un enemigo, cada una con su veredicto:
     // un conjuro de 120 ft no esta "fuera de alcance" porque la espada llegue a 5.
     const usable = knownAbilities(member, getAbilityCatalogue())
-        .filter(ability => ability.target === 'enemy')
+        .filter(ability => ability.target === 'enemy' && ability.combat !== false)
         .map(ability => {
             const verdict = canUseAbility({
                 member,
@@ -8479,6 +10553,7 @@ function openTargetCard(member, enemy) {
                 hasAction: hasAction(combatEncounter, 'action'),
                 hasBonus: hasAction(combatEncounter, 'bonus'),
                 targetAlive: (Number(enemy.currentHp) || 0) > 0,
+                carried: carriedNames(),
             });
             const left = usesLeft(member, ability);
             return {
@@ -8510,6 +10585,14 @@ function openTargetCard(member, enemy) {
     root.append($('<div class="tc-stats"></div>').text(describeTargetCard(card)));
     if (card.inRange) root.append($('<div class="tc-forecast"></div>').text(forecast.text));
     if (intentTarget) root.append($('<div class="tc-intent"></div>').text(`Va a por ${intentTarget.name}.`));
+    // R3: lo que alcanzaría cada habilidad de área, antes de usarla. Colocarse importa.
+    for (const ability of knownAbilities(member, getAbilityCatalogue()).filter(a => a.target === 'enemy' && isArea(a.area))) {
+        const { victims } = abilityVictims(member, 'party', ability, enemy);
+        const own = victims.filter(v => v.kind === 'party');
+        root.append($('<div class="tc-area"></div>').toggleClass('tc-area-risk', own.length > 0).text(
+            `${ability.name} alcanzaría a ${victims.map(v => v.ref.name).join(', ') || 'nadie'}${own.length > 0 ? ` (¡${own.length === 1 ? 'uno es de los tuyos' : `${own.length} son de los tuyos`}!)` : ''}.`,
+        ));
+    }
 
     const bar = $('<div class="tc-hp"></div>');
     const pct = card.maxHp > 0 ? Math.round((card.hp / card.maxHp) * 100) : 0;
@@ -8533,6 +10616,41 @@ function openTargetCard(member, enemy) {
             }
         });
         actions.append(button);
+    }
+
+    // R3: a una con quien tiene vínculo, si los dos están pegados a este enemigo.
+    const heroId = String(partyMembers[0]?.id ?? '');
+    const bonds = getCampaignBonds();
+    const fighters = partyMembers.filter(m => !m.dead).map(m => ({
+        id: String(m.id), name: String(m.name), ...boardCellOf(m), hp: Number(m.hp) || 0,
+        rank: getBondProgress(bonds, String(m.id)).rank, reactionUsed: usedReactions.has(`party:${m.id}`),
+    }));
+    const me = fighters.find(f => f.id === String(member.id));
+    const pairs = me && hasAction(combatEncounter, 'action')
+        ? pairOptions({ actor: me, heroId, party: fighters, enemies: [{ id: String(enemy.instanceId), name: String(enemy.name), ...boardCellOf(enemy), hp: Number(enemy.currentHp) || 0 }] })
+        : [];
+    for (const pair of pairs) {
+        const button = $('<button class="menu_button tc-btn tc-pair" type="button"></button>').text(`A una con ${pair.partnerName}`);
+        button.attr('title', 'Los dos atacáis, con ventaja. Gasta tu acción y su reacción.');
+        button.on('click', () => {
+            closeTargetCard();
+            resolvePairStrike(member, pair.partnerId, enemy);
+        });
+        actions.append(button);
+    }
+
+    // R5: la mascota, una vez por ronda, sin gastar la acción de nadie.
+    const pet = currentPet();
+    if (pet && Number(/** @type {any} */ (combatEncounter).petRound) !== (Number(combatEncounter.round) || 1)) {
+        for (const help of supportActions(pet)) {
+            const button = $('<button class="menu_button tc-btn tc-pet" type="button"></button>').attr('data-pet', help.id).text(`${pet.name}: ${help.label.toLowerCase()}`);
+            button.attr('title', help.note);
+            button.on('click', () => {
+                closeTargetCard();
+                petSupport(help.id, enemy);
+            });
+            actions.append(button);
+        }
     }
 
     const close = $('<button class="menu_button tc-btn tc-close" type="button"></button>').text('Cerrar');
@@ -8722,6 +10840,11 @@ function handlePlayerCombatMove(rawValue) {
     // con los dos objetivos en verde, y seguir en combate para siempre.
     if (checkScenarioOutcome()) return `${member.name} -> ${targetX + 1},${targetY + 1}`;
 
+    // B2: pisar una salida deja irse de la pelea: un aviso con su botón, sin parar nada.
+    offerExit(member, targetX, targetY);
+    // H1: la primera vez que alguien sube a lo alto, se dice para qué sirve.
+    if (isHigh(getActiveBoardContext().terrain, targetX, targetY)) showTip('high');
+
     renderLocationMapsPreview();
     return `${member.name} -> ${targetX + 1},${targetY + 1}`;
 }
@@ -8831,6 +10954,7 @@ function throwItem(kind, targetId) {
     const modifier = getAbilityModifier(member.dexterity || 10);
     const edge = attackEdge({
         targetId: String(target.instanceId),
+        height: heightFor(partyCell(member), { x: Number(target.gridX) || 0, y: Number(target.gridY) || 0 }),
         targetConditions: target.activeConditions ?? [],
         attackerConditions: member.activeConditions ?? [],
         distanceFeet,
@@ -8944,6 +11068,7 @@ function throwScenery(targetId) {
     const strength = getAbilityModifier(member.strength || 10);
     const edge = attackEdge({
         targetId: String(target.instanceId),
+        height: heightFor(partyCell(member), { x: Number(target.gridX) || 0, y: Number(target.gridY) || 0 }),
         targetConditions: target.activeConditions ?? [],
         attackerConditions: member.activeConditions ?? [],
         distanceFeet,
@@ -9238,6 +11363,7 @@ function handlePlayerCombatAttack(rawTargetName) {
     const attackMod = getPlayerAttackModifier(member, rangeFeet) + traitBonus(member, target.name) + perkBonus(member, 'attack') + weaponBonus(member);
     const edge = attackEdge({
         targetId: String(target.instanceId),
+        height: heightFor(partyCell(member), { x: Number(target.gridX) || 0, y: Number(target.gridY) || 0 }),
         targetConditions: target.activeConditions ?? [],
         attackerConditions: member.activeConditions ?? [],
         distanceFeet,
@@ -9915,7 +12041,21 @@ function memberFromEntry(entry, worldName) {
         relationships: [],
         memories: [],
         mapPosition: resolveEntryMapPosition(d),
+        abilities: abilityIdsOf(d),
     };
+}
+
+/**
+ * R3: lo que sabe hacer una ficha del mundo, como ids del catálogo. La ficha puede traer
+ * filas enteras (las que escribe el creador de personaje) o solo ids.
+ *
+ * @param {any} dnd
+ * @returns {string[]}
+ */
+function abilityIdsOf(dnd) {
+    return [...new Set((Array.isArray(dnd?.abilities) ? dnd.abilities : [])
+        .map((/** @type {any} */ a) => String(typeof a === 'string' ? a : a?.id ?? '').trim())
+        .filter(Boolean))];
 }
 
 /**
@@ -10279,19 +12419,39 @@ async function acceptContract(id) {
     const state = compendium.has('sitios')
         ? compendium.pick('sitios', { where: { kind: 'estado' }, random })
         : null;
+    // R6: las salas escritas, las de siempre y las pensadas para este propósito.
     const templates = compendium.has('sitios')
-        ? compendium.find('sitios', { kind: 'sala' }).map((/** @type {any} */ row) => row.rows)
+        ? compendium.find('sitios', { kind: 'sala' })
+            .filter((/** @type {any} */ row) => !Array.isArray(row.when?.purpose) || row.when.purpose.includes(String(contract.kind || '')))
+            .map((/** @type {any} */ row) => row.rows)
         : [];
 
-    const generated = generateBoard({
+    // R6: el sitio sabe para qué es. El propósito del encargo manda en la forma, el sitio en
+    // lo que trae (y en sus trampas), y los enemigos salen por presupuesto (idea 83): por el
+    // nivel y el tamaño del grupo, el encargo y el modo. Si no sale divertido, se vuelve a
+    // tirar con la semilla siguiente.
+    const heroLevels = partyMembers.filter(m => !m.dead && !m.guest).map(m => Number(m.level) || 1);
+    const generated = generateIntended({
         // El dado del mundo, no el de la sesion: el mismo encargo da el mismo sitio.
-        random,
-        size: contract.difficulty >= 5 ? 'large' : (contract.difficulty >= 1 ? 'medium' : 'small'),
-        shape: String(type?.shape || 'rooms'),
-        templates,
-        state: state ? { cover: state.cover, rough: state.rough } : null,
-        bestiary,
-        partySize: Math.max(1, partyMembers.length),
+        randomFor: (attempt) => (attempt === 0 ? random
+            : createSeededRandom(derive(seedOfWorld(data.metadata), 'encargo', String(contract.id), 'intento', String(attempt)))),
+        generate: generateBoard,
+        purpose: String(contract.kind || 'cull'),
+        site: `${String(type?.name ?? '')} ${biome}`,
+        options: enemiesInSeason().map((/** @type {any} */ e) => ({ name: String(e?.name || ''), threat: threatOf(e) })).filter(o => o.name),
+        budget: budgetFor({
+            partyLevel: heroLevels.length > 0 ? Math.round(heroLevels.reduce((a, b) => a + b, 0) / heroLevels.length) : 1,
+            partySize: Math.max(1, heroLevels.length),
+            difficulty: Number(contract.difficulty) || 1,
+            letters: lettersOf(survivalNow()),
+        }),
+        board: {
+            size: contract.difficulty >= 5 ? 'large' : (contract.difficulty >= 1 ? 'medium' : 'small'),
+            shape: String(type?.shape || 'rooms'),
+            templates,
+            state: state ? { cover: state.cover, rough: state.rough } : null,
+            partySize: Math.max(1, partyMembers.length),
+        },
     });
 
     // El sitio entra como una localidad de verdad, editable en `/campana` y exportable con
@@ -10322,7 +12482,34 @@ async function acceptContract(id) {
         partyStart: generated.partyStart,
         enemyPlacements: generated.enemies,
         objectives: /** @type {any[]} */ ([]),
+        // R6: las trampas del sitio, cada una con su aviso, y los refuerzos que llegan.
+        hazards: generated.hazards ?? [],
+        waves: generated.waves ?? [],
     };
+    // R6: si hay un caso abierto con algo que registrar en este sitio, la pista está en el
+    // tablero: en la sala del fondo, a la vista para quien la pise.
+    const openCase = readCases(chat_metadata?.[CASES_KEY]);
+    const toFind = openCase.active?.clues.find(c => c.how === 'registrar' && c.source.kind === 'sitio'
+        && String(c.source.name).toLowerCase() === String(placeName).toLowerCase() && !openCase.found.includes(c.id));
+    const clueCell = toFind ? (generated.target ?? built.enemyPlacements[built.enemyPlacements.length - 1] ?? null) : null;
+    if (toFind && clueCell) {
+        built.hazards = [...built.hazards, {
+            id: `pista-${toFind.id}`, name: 'Algo que no encaja', kind: 'pista', trigger: 'enter', effect: 'none',
+            x: clueCell.x, y: clueCell.y, tell: 'Algo que no encaja con el resto.', note: `caso:${toFind.id}`, seen: true, armed: true, once: true,
+        }];
+    }
+    // R7: si toca, la némesis vuelve: en el sitio del más fuerte, si es de este mundo.
+    const nemesis = whoReturns({ raw: chat_metadata?.[NEMESES_KEY], today: campaignDay(), random });
+    if (nemesis && getCurrentWorldEnemies().some((/** @type {any} */ e) => String(e.name) === nemesis.name) && built.enemyPlacements.length > 0) {
+        built.enemyPlacements = [{ ...built.enemyPlacements[0], name: nemesis.name, nemesis: nemesis.id }, ...built.enemyPlacements.slice(1)];
+    }
+    // R6: lo que se busca, en la sala más lejana (y en un robo, detrás de una puerta con llave).
+    if (generated.target && (contract.kind === 'recover' || contract.kind === 'steal')) {
+        built.objectives = [{
+            id: 'recuperar', type: 'reach_cell', cell: generated.target,
+            label: `Llegar a lo que se busca, en (${generated.target.x + 1}, ${generated.target.y + 1})`,
+        }];
+    }
     // Idea 105: a quien se escolta, en el tablero, y la salida adonde hay que llevarlo.
     const start = generated.partyStart?.[0] ?? { x: 1, y: 1 };
     const ward = contract.kind === 'escort'
@@ -10398,6 +12585,13 @@ async function acceptContract(id) {
  */
 function showWeeklyBill() {
     const rules = getActiveRuleset();
+    // R1: en un modo sin la cuenta (letra b) no hay nada que pagar, y se dice.
+    if (!hasLetter(rules?.survival ?? null, 'b')) {
+        const said = `En este modo no hay cuenta semanal: ni sueldos, ni posada, ni comida que pagar. ${describeGameMode(rules?.survival ?? null)}.`;
+        postCombatNarration(`📒 [CAMPAÑA] ${said}`);
+        toastr.info(said, 'La cuenta');
+        return said;
+    }
     // Los mismos precios que se cobran el viernes: con el gremio y el mercado encima. Leer
     // los de la campana a pelo ensenaba una cuenta y cobraba otra.
     const bill = weeklyBill(partyMembers, { rules: currentUpkeepRules() });
@@ -10410,6 +12604,7 @@ function showWeeklyBill() {
     const debt = describeDebt(getDebt(), today);
     if (debt) lines.push(debt);
     lines.push(describeSurvival(rules?.survival ?? null));
+    lines.push(describeGameMode(rules?.survival ?? null));
     lines.push(describeMode(rules?.companions ?? null));
 
     postCombatNarration(`📒 [CAMPAÑA] ${lines.join('\n')}`);
@@ -10443,7 +12638,7 @@ async function openAbilitiesEditor() {
 
         const { openAbilitiesPanel } = await import('./game-engine/ui/abilities-panel.js');
         const edited = await openAbilitiesPanel({
-            abilities: getAbilityCatalogue(),
+            abilities: getPackAbilities(),
             party: partyMembers,
             conditions: getActiveRuleset()?.character?.conditions ?? [],
             Popup,
@@ -10546,7 +12741,125 @@ async function exportCampaignPack() {
 }
 
 /** El catalogo de habilidades del paquete de reglas activo. */
-const getAbilityCatalogue = () => normalizeAbilities(getActiveRuleset()?.abilities);
+/**
+ * Lo que se puede saber hacer: el paquete del mundo, y debajo las filas del compendio.
+ *
+ * R3: las habilidades de clase del héroe salían del compendio y se escribían en su ficha,
+ * pero el catálogo solo leía el paquete, así que en combate no aparecía ninguna. Ahora el
+ * compendio entra debajo; si el paquete trae una con el mismo id, manda la del paquete.
+ *
+ * @returns {import('./game-engine/rules/abilities.js').Ability[]}
+ */
+const getAbilityCatalogue = () => {
+    // R4: un conjuro del paquete (por su id, o el viejo de fila de datos) solo ajusta los
+    // números del grimorio; lo que parezca magia y no esté en el grimorio no entra (DR3).
+    /** @type {Map<string, Record<string, any>>} */
+    const tuned = new Map();
+    /** @type {any[]} */
+    const plain = [];
+    for (const row of Array.isArray(getActiveRuleset()?.abilities) ? getActiveRuleset().abilities : []) {
+        const spell = spellById(String(row?.id ?? ''));
+        if (spell) {
+            tuned.set(spell.id, Object.fromEntries(['damage', 'healing', 'rangeFeet', 'saveDc', 'conditionRounds']
+                .filter(key => row?.[key] !== undefined && row?.[key] !== '').map(key => [key, row[key]])));
+            continue;
+        }
+        if (magicInData(row)) continue;
+        plain.push(row);
+    }
+    const pack = normalizeAbilities(plain);
+    const have = new Set(pack.map(ability => ability.id));
+    const rows = lastCompendium?.has?.('habilidades')
+        ? lastCompendium.find('habilidades', { kind: 'habilidad' }).map(asAbility)
+            .filter((/** @type {any} */ a) => !have.has(String(a.id)) && !magicInData(a))
+        : [];
+    const magic = grimoireAbilities().map(ability => ({ ...ability, ...(tuned.get(ability.id) ?? {}), aliases: spellById(ability.id)?.aliases ?? [] }));
+    return [...pack, ...normalizeAbilities(rows), ...normalizeAbilities(magic)];
+};
+
+/**
+ * R4: lo que lleva encima el grupo, por nombre, para los componentes de los conjuros.
+ *
+ * @returns {string[]}
+ */
+function carriedNames() {
+    return partyMembers.filter(m => !m.dead).flatMap(m => (Array.isArray(m.items) ? m.items : []).map((/** @type {any} */ item) => String(item?.name ?? '')));
+}
+
+/**
+ * R4: lo que gastan los conjuros que el grupo sabe, para que la botica lo tenga.
+ *
+ * @returns {string[]}
+ */
+function neededComponents() {
+    return [...new Set(partyMembers.filter(m => !m.dead).flatMap(m => knownSpells(m)).map(s => String(s.component ?? '')).filter(Boolean))];
+}
+
+/**
+ * R4: gastar un componente, de quien lo lleve.
+ *
+ * @param {string} name
+ * @returns {boolean}
+ */
+function consumeComponent(name) {
+    const wanted = String(name).trim().toLowerCase();
+    for (const member of partyMembers) {
+        const item = (Array.isArray(member.items) ? member.items : []).find((/** @type {any} */ i) => String(i?.name ?? '').trim().toLowerCase() === wanted);
+        if (!item) continue;
+        removeItemFromInventory(/** @type {any} */ (member), String(item.id));
+        return true;
+    }
+    return false;
+}
+
+/**
+ * R4: pagar un conjuro: la carga de su círculo y lo que gaste.
+ *
+ * @param {any} caster
+ * @param {any} ability
+ * @returns {string[]} Lo que se dice.
+ */
+function payForSpell(caster, ability) {
+    /** @type {string[]} */
+    const said = [];
+    if (typeof ability?.circle !== 'number') return said;
+    if (ability.circle > 0) caster.spellCharges = spendCharge(caster, ability.circle);
+    // H1: el primer conjuro del grupo dice cómo va lo de las cargas.
+    if (partyMembers.includes(caster)) showTip('spell');
+    if (ability.component && partyMembers.includes(caster) && consumeComponent(ability.component)) {
+        said.push(`🧪 Se gasta ${String(ability.component).toLowerCase()}.`);
+    }
+    return said;
+}
+
+/**
+ * R4: la nigromancia, en un sitio con gente, es un crimen; y a los tuyos les parece lo que
+ * les parece (a quien busca tranquilidad, mal).
+ *
+ * @param {any} ability
+ * @returns {string[]}
+ */
+function magicConsequences(ability) {
+    /** @type {string[]} */
+    const said = [];
+    if (ability?.school !== 'nigromancia') return said;
+    judgeDecision('nigromancia', { quiet: true });
+    const here = hereLocation();
+    const type = String(here?.locationType ?? here?.type ?? '').toLowerCase();
+    if (chat_metadata && currentLocationName && Object.hasOwn(WATCH, type)) {
+        const wanted = readWanted(chat_metadata[WANTED_KEY]);
+        const level = (wanted[currentLocationName] ?? 0) + 1;
+        chat_metadata[WANTED_KEY] = { ...wanted, [currentLocationName]: level };
+        saveMetadata();
+        said.push(`👁️ [GUARDIAS] Alguien os ha visto usar nigromancia en ${currentLocationName}: ahora os buscan (buscados: ${level}).`);
+        // R9: y quien manda aquí lo nota.
+        void nudgeRuler(currentLocationName, 'nigromancia');
+    }
+    return said;
+}
+
+/** Solo las del paquete del mundo: lo que el editor de habilidades escribe. */
+const getPackAbilities = () => normalizeAbilities(getActiveRuleset()?.abilities);
 
 /**
  * El modificador de una caracteristica, que es la misma cuenta de siempre.
@@ -10646,69 +12959,258 @@ function useAbility(member, ability, target) {
         hasAction: hasAction(combatEncounter, 'action'),
         hasBonus: hasAction(combatEncounter, 'bonus'),
         targetAlive: alive,
+        // R4: los componentes de los conjuros.
+        carried: carriedNames(),
     });
     if (!verdict.ok) {
         toastr.warning(verdict.reason);
         return '';
     }
 
-    const plan = planAbilityUse({
-        actor: member,
-        target: subject,
-        ability,
-        roll: (/** @type {string} */ formula) => rollDiceDetailed(formula, 8),
-        attackModifier: getPlayerAttackModifier(member, ability.rangeFeet),
-        targetAc: ability.target === 'enemy' ? getTargetArmorClass(subject, member).ac : 10,
-        saveModifier: abilityModifier(subject, ability.saveAbility),
-    });
-
     // El coste se paga aunque falle: lanzar y errar tambien gasta el turno.
     if (ability.cost !== 'free') {
         Object.assign(combatEncounter, useAction(combatEncounter, ability.cost === 'bonus' ? 'bonus' : 'action'));
     }
     member.abilityUses = spendAbilityUse(member, ability);
+    // R4: un conjuro gasta una carga de su círculo y lo que pida.
+    const paid = payForSpell(member, ability);
 
-    const lines = [...plan.lines];
-
-    if (plan.damage > 0 && ability.target === 'enemy') {
-        subject.currentHp = Math.max(0, (Number(subject.currentHp) || 0) - plan.damage);
-        combatEncounter.tally = noteDealt(combatEncounter.tally, member.id, plan.damage, subject.currentHp === 0);
-        floatOnToken(enemyTokenId(subject), `-${plan.damage}`, 'damage');
-        if (subject.currentHp === 0) recordFeat(member, 'kill', String(subject.name));
-        lines.push(`❤️ Estado de ${subject.name}: ${subject.currentHp}/${subject.maxHp}`);
-        if (subject.currentHp === 0) {
-            lines.push(`☠️ ${subject.name} cae derrotado.`);
-            combatEncounter.conditionTimers = clearTimersFor(combatEncounter.conditionTimers, String(subject.instanceId));
-        }
-    }
-
-    if (plan.healing > 0 && ability.target !== 'enemy') {
-        const before = Number(subject.hp) || 0;
-        subject.hp = Math.min(Number(subject.maxHp) || before, before + plan.healing);
-        lines.push(`❤️ Estado de ${subject.name}: ${subject.hp}/${subject.maxHp}`);
-
-        // Curar a quien estaba en el suelo lo levanta y borra la cuenta: es para lo que
-        // sirve una curacion en mitad de un combate.
-        if (before <= 0 && subject.hp > 0) {
-            subject.deathSaves = clearDeathSaves();
-            subject.activeConditions = (Array.isArray(subject.activeConditions) ? subject.activeConditions : [])
-                .filter((/** @type {string} */ c) => c !== 'Unconscious');
-            lines.push(`🙌 ${subject.name} vuelve en si.`);
-        }
-    }
-
-    if (plan.condition) {
-        const who = ability.target === 'enemy' ? String(subject.instanceId) : String(subject.id);
-        applyTimedCondition(subject, who, plan.condition, plan.conditionRounds);
-    }
+    // R3: a uno o en área, por el mismo camino que los enemigos.
+    const lines = [...resolveAbilityOnBoard({ actor: member, side: 'party', ability, subject }), ...paid, ...magicConsequences(ability)];
 
     saveCombatState();
     savePartyState();
     postCombatNarration(lines.join('\n'));
     renderPartyMembers();
     renderLocationMapsPreview();
+    if (!checkScenarioOutcome() && getAliveEnemies().length === 0 && !judgeCurrentScenario()) {
+        postCombatNarration('🏆 [COMBAT] Todos los enemigos han sido derrotados.');
+        endCombat('victory');
+    }
 
     return `${member.name} usa ${ability.name}`;
+}
+
+/**
+ * La casilla de alguien del tablero, sea del grupo o enemigo.
+ *
+ * @param {any} creature
+ * @returns {{x: number, y: number}}
+ */
+function boardCellOf(creature) {
+    return {
+        x: Number(creature?.mapPosition?.gridX ?? creature?.gridX) || 0,
+        y: Number(creature?.mapPosition?.gridY ?? creature?.gridY) || 0,
+    };
+}
+
+/**
+ * R3: a quién alcanzaría una habilidad apuntada a una casilla. El área no distingue bandos;
+ * las que van sobre aliados solo tocan a los del bando de quien la lanza (una canción no
+ * cura al enemigo), y quien la lanza nunca se da a sí mismo con lo que hace daño.
+ *
+ * @param {any} actor
+ * @param {'party'|'enemy'} side
+ * @param {any} ability
+ * @param {any} subject
+ * @returns {{cells: Array<{x: number, y: number}>, victims: Array<{kind: 'party'|'enemy', ref: any, x: number, y: number}>}}
+ */
+function abilityVictims(actor, side, ability, subject) {
+    const aim = boardCellOf(subject);
+    if (!isArea(ability.area)) {
+        const kind = partyMembers.includes(subject) ? 'party' : 'enemy';
+        return { cells: [aim], victims: [{ kind, ref: subject, ...aim }] };
+    }
+    const context = getActiveBoardContext();
+    const cells = areaCells({
+        area: ability.area, origin: boardCellOf(actor), aim,
+        terrain: context.terrain, width: context.gridWidth, height: context.gridHeight,
+    });
+    /** @type {Array<{kind: 'party'|'enemy', ref: any, x: number, y: number}>} */
+    const creatures = [
+        ...getAliveEnemies().map(e => ({ kind: /** @type {'enemy'} */ ('enemy'), ref: e, ...boardCellOf(e) })),
+        ...partyMembers.filter(m => !m.dead && (Number(m.hp) || 0) > 0).map(m => ({ kind: /** @type {'party'} */ ('party'), ref: m, ...boardCellOf(m) })),
+    ];
+    const friendly = ability.target === 'ally';
+    const victims = creaturesIn(cells, creatures).filter(v => (friendly ? v.kind === side : v.ref !== actor));
+    return { cells, victims };
+}
+
+/**
+ * R3 del roadmap de profundidad: una habilidad sobre el tablero, a uno o en área, para los
+ * dos bandos. Decide a quién toca (`rules/area.js`), tira por cada uno con
+ * `planAbilityUse`, aplica, y deja su huella en el terreno (`rules/tags.js`): un rayo de
+ * fuego prende las cajas, un cono de escarcha hiela el charco.
+ *
+ * @param {Object} input
+ * @param {any} input.actor
+ * @param {'party'|'enemy'} input.side
+ * @param {any} input.ability
+ * @param {any} input.subject El objetivo elegido, o quien la lanza si es sobre sí mismo.
+ * @returns {string[]}
+ */
+function resolveAbilityOnBoard({ actor, side, ability, subject }) {
+    const area = isArea(ability.area);
+    const { cells, victims } = abilityVictims(actor, side, ability, subject);
+    const friendly = ability.target === 'ally';
+    /** @type {string[]} */
+    const lines = [];
+    if (area) {
+        lines.push(`✨ ${actor.name} usa ${ability.name} (${describeArea(ability.area)}).`);
+        if (victims.length === 0) lines.push('No alcanza a nadie.');
+        const own = friendly ? [] : victims.filter(v => v.kind === side);
+        if (own.length > 0) lines.push(`⚠️ También alcanza a ${own.map(v => v.ref.name).join(', ')}, de los suyos.`);
+    }
+
+    const context = getActiveBoardContext();
+    const element = elementOf(ability);
+    const outdoors = context.board ? !isIndoors(context.board, hereLocation()) : true;
+    const wet = Boolean(boardVisibility().wet);
+    // R4: lo que se quita con un conjuro que roba vida.
+    let drained = 0;
+    for (const victim of victims) {
+        const target = victim.ref;
+        const plan = planAbilityUse({
+            actor,
+            target,
+            ability,
+            roll: (/** @type {string} */ formula) => rollDiceDetailed(formula, 8),
+            attackModifier: side === 'party'
+                ? getPlayerAttackModifier(actor, ability.rangeFeet)
+                : Math.max(getAbilityModifier(actor.strength || 10), getAbilityModifier(actor.dexterity || 10)),
+            targetAc: friendly || target === actor ? 10 : getTargetArmorClass(target, actor).ac,
+            saveModifier: abilityModifier(target, ability.saveAbility),
+        });
+        if (area) {
+            lines.push(`➤ ${target.name}:`);
+            lines.push(...plan.lines.slice(1));
+        } else {
+            lines.push(...plan.lines);
+        }
+        lines.push(...applyAbilityPlan({ actor, side, victim, plan }));
+        if (ability.drain && victim.kind !== side) drained += plan.damage;
+
+        // El elemento y dónde está, o cómo está: en el agua, el frío hiela.
+        if (element && plan.hit && !plan.saved && (Number(target.currentHp ?? target.hp) || 0) > 0) {
+            const standingOn = context.terrain ? getCell(context.terrain, victim.x, victim.y).type : 'floor';
+            const conditions = [...(Array.isArray(target.activeConditions) ? target.activeConditions : []), ...(wet && outdoors ? ['Mojado'] : [])];
+            const combo = comboFor({ element, standingOn, conditions });
+            if (combo) {
+                if (combo.remove) {
+                    target.activeConditions = (Array.isArray(target.activeConditions) ? target.activeConditions : []).filter((/** @type {string} */ c) => c !== combo.remove);
+                }
+                if (combo.add) applyTimedCondition(target, victim.kind === 'enemy' ? String(target.instanceId) : String(target.id), combo.add, combo.rounds);
+                lines.push(`${ELEMENT_ICONS[/** @type {keyof typeof ELEMENT_ICONS} */ (element)] ?? '✨'} ${target.name}: ${combo.line}.`);
+            }
+        }
+    }
+
+    // R4: lo que se roba, se queda.
+    if (drained > 0) {
+        const back = Math.floor(drained / 2);
+        if (side === 'party') actor.hp = Math.min(Number(actor.maxHp) || 0, (Number(actor.hp) || 0) + back);
+        else actor.currentHp = Math.min(Number(actor.maxHp) || 0, (Number(actor.currentHp) || 0) + back);
+        if (back > 0) lines.push(`🩸 ${actor.name} se queda con ${back} PG de lo que quita.`);
+    }
+
+    // La huella en el tablero: lo que prende, lo que se hiela, lo que queda en el suelo.
+    const board = context.board;
+    if (board && context.terrain && (element || ability.leaves)) {
+        let terrain = context.terrain;
+        let hazards = Array.isArray(board.hazards) ? board.hazards : [];
+        /** @type {string[]} */
+        const said = [];
+        if (element) {
+            const out = reactTerrain({ element, cells, terrain, hazards, round: Number(combatEncounter.round) || 1, outdoors, wet });
+            terrain = out.terrain;
+            hazards = out.hazards;
+            said.push(...out.lines);
+            // R6: los barriles que ha tocado el fuego revientan.
+            said.push(...explodeBarrels(out.changed.filter(c => c.from === 'barrel')));
+        }
+        // R4: un muro de fuego deja cada casilla ardiendo, sea de lo que sea (salvo la lluvia).
+        if (ability.leaves === 'fuego' && !wet) {
+            let lit = 0;
+            for (const cell of cells) {
+                if (hazards.some((/** @type {any} */ h) => h.kind === 'fuego' && h.armed !== false && Number(h.x) === cell.x && Number(h.y) === cell.y)) continue;
+                hazards = [...hazards, fireAt({ x: cell.x, y: cell.y, round: Number(combatEncounter.round) || 1, what: 'Muro de fuego' })];
+                lit++;
+            }
+            if (lit > 0) said.push(`🔥 Arden ${lit} casilla(s) durante tres rondas.`);
+        }
+        if (ability.leaves && Object.hasOwn(TERRAIN_TYPES, ability.leaves)) {
+            let left = 0;
+            for (const cell of cells) {
+                if (getCell(terrain, cell.x, cell.y).type !== 'floor') continue;
+                terrain = setTerrainCell(terrain, cell.x, cell.y, ability.leaves);
+                left++;
+            }
+            if (left > 0) said.push(`🪤 El suelo queda ${ability.leaves === 'difficult' ? 'difícil de pisar' : 'cambiado'} en ${left} casilla(s).`);
+        }
+        if (said.length > 0) {
+            board.terrain = terrain;
+            board.hazards = hazards;
+            persistBoardTerrain(board);
+            lines.push(...said);
+        }
+    }
+    return lines;
+}
+
+/**
+ * R3: aplicar a una víctima lo que decidió `planAbilityUse`. El daño cae sobre quien sea,
+ * del bando que sea: un área no pregunta.
+ *
+ * @param {Object} input
+ * @param {any} input.actor
+ * @param {'party'|'enemy'} input.side
+ * @param {{kind: 'party'|'enemy', ref: any}} input.victim
+ * @param {any} input.plan
+ * @returns {string[]}
+ */
+function applyAbilityPlan({ actor, side, victim, plan }) {
+    /** @type {string[]} */
+    const lines = [];
+    const target = victim.ref;
+    if (plan.damage > 0) {
+        if (victim.kind === 'enemy') {
+            target.currentHp = Math.max(0, (Number(target.currentHp) || 0) - plan.damage);
+            if (side === 'party') {
+                combatEncounter.tally = noteDealt(combatEncounter.tally, actor.id, plan.damage, target.currentHp === 0);
+                if (target.currentHp === 0) recordFeat(actor, 'kill', String(target.name));
+            }
+            floatOnToken(enemyTokenId(target), `-${plan.damage}`, 'damage');
+            lines.push(`❤️ Estado de ${target.name}: ${target.currentHp}/${target.maxHp}`);
+            if (target.currentHp === 0) {
+                lines.push(`☠️ ${target.name} cae derrotado.`);
+                combatEncounter.conditionTimers = clearTimersFor(combatEncounter.conditionTimers, String(target.instanceId));
+            }
+        } else {
+            lines.push(...damagePartyMember(target, plan.damage, plan.crit));
+        }
+    }
+    if (plan.healing > 0) {
+        if (victim.kind === 'enemy') {
+            target.currentHp = Math.min(Number(target.maxHp) || 0, (Number(target.currentHp) || 0) + plan.healing);
+            lines.push(`❤️ Estado de ${target.name}: ${target.currentHp}/${target.maxHp}`);
+        } else {
+            const before = Number(target.hp) || 0;
+            target.hp = Math.min(Number(target.maxHp) || before, before + plan.healing);
+            lines.push(`❤️ Estado de ${target.name}: ${target.hp}/${target.maxHp}`);
+            // Curar a quien estaba en el suelo lo levanta y borra la cuenta: es para lo que
+            // sirve una curacion en mitad de un combate.
+            if (before <= 0 && target.hp > 0) {
+                target.deathSaves = clearDeathSaves();
+                target.activeConditions = (Array.isArray(target.activeConditions) ? target.activeConditions : [])
+                    .filter((/** @type {string} */ c) => c !== 'Unconscious');
+                lines.push(`🙌 ${target.name} vuelve en si.`);
+            }
+        }
+    }
+    if (plan.condition) {
+        applyTimedCondition(target, victim.kind === 'enemy' ? String(target.instanceId) : String(target.id), plan.condition, plan.conditionRounds);
+    }
+    return lines;
 }
 
 /**
@@ -10721,6 +13223,9 @@ function useAbility(member, ability, target) {
  */
 function captureGameState() {
     return {
+        // U2 del pegamento: todo lo de juego que dice el registro del estado…
+        ...captureKeys(chat_metadata ?? {}),
+        // …y lo que vive en memoria encima, que puede ir un paso por delante de lo guardado.
         party: partyMembers,
         combatEncounter,
         calendar: getCampaignCalendar(),
@@ -10755,20 +13260,94 @@ function saveCheckpoint(label, automatic = false) {
     }
 
     const checkpoint = createCheckpoint({ label, state: captureGameState(), automatic });
-    chat_metadata[CHECKPOINT_KEY] = addCheckpoint(chat_metadata[CHECKPOINT_KEY], checkpoint);
+    const before = normalizeCheckpoints(chat_metadata[CHECKPOINT_KEY]);
+    const after = addCheckpoint(before, checkpoint);
+    chat_metadata[CHECKPOINT_KEY] = after;
     saveMetadata();
+    // DU2: el mundo también vuelve. Lo que cambia de él va a un archivo aparte, para no
+    // cargar el chat; el punto que se cae se lleva el suyo.
+    void forgetWorldFiles(before.filter(cp => !after.some(kept => kept.id === cp.id)));
+    void worldWrite(() => attachWorldToCheckpoint(checkpoint.id));
 
     postCombatNarration(`💾 [PARTIDA] Punto de retorno: ${describeCheckpoint(checkpoint)}.`);
     return checkpoint.id;
 }
 
 /**
+ * U2 (DU2): lo que cambia del mundo jugando, copiado a un archivo para un punto de retorno.
+ *
+ * @param {string} id
+ */
+async function attachWorldToCheckpoint(id) {
+    const worldName = String(chat_metadata?.[METADATA_KEY] || '');
+    if (!worldName) return;
+    try {
+        const data = await loadWorldInfo(worldName);
+        if (!data) return;
+        const bytes = new TextEncoder().encode(JSON.stringify(captureWorld(data)));
+        let binary = '';
+        for (const byte of bytes) binary += String.fromCharCode(byte);
+        const { uploadFileAttachment, deleteFileFromServer } = await import('./chats.js');
+        const url = await uploadFileAttachment(`punto-${id}.json`, btoa(binary));
+        const list = normalizeCheckpoints(chat_metadata?.[CHECKPOINT_KEY]);
+        const target = list.find(cp => cp.id === id);
+        if (!url) return;
+        // El punto se cayó mientras se subía: su archivo sobra.
+        if (!target) {
+            await deleteFileFromServer(url, true);
+            return;
+        }
+        target.worldFile = url;
+        chat_metadata[CHECKPOINT_KEY] = list;
+        saveMetadata();
+    } catch (error) {
+        console.error('[party] no se pudo guardar el mundo del punto', error);
+    }
+}
+
+/**
+ * Los archivos del mundo de los puntos que ya no están.
+ *
+ * @param {Array<{worldFile?: string}>} dropped
+ */
+async function forgetWorldFiles(dropped) {
+    const files = dropped.map(cp => cp.worldFile).filter(Boolean);
+    if (files.length === 0) return;
+    const { deleteFileFromServer } = await import('./chats.js');
+    for (const file of files) await deleteFileFromServer(String(file), true);
+}
+
+/**
+ * Devolver el mundo a como estaba en un punto: sitios, facciones y dónde vive cada persona.
+ *
+ * @param {string} file
+ * @returns {Promise<boolean>}
+ */
+async function restoreWorldFrom(file) {
+    const worldName = String(chat_metadata?.[METADATA_KEY] || '');
+    if (!worldName || !file) return false;
+    try {
+        const response = await fetch(file, { cache: 'no-store' });
+        if (!response.ok) return false;
+        const saved = await response.json();
+        const data = await loadWorldInfo(worldName);
+        if (!data || restoreWorld(data, saved) === 0) return false;
+        await saveWorldInfo(worldName, data, true);
+        await refreshWorldMapGlobals(worldName);
+        return true;
+    } catch (error) {
+        console.error('[party] no se pudo devolver el mundo del punto', error);
+        return false;
+    }
+}
+
+/**
  * Devuelve la partida a un punto guardado.
  *
  * @param {string} id
- * @returns {boolean}
+ * @returns {Promise<boolean>}
  */
-function restoreCheckpoint(id) {
+async function restoreCheckpoint(id) {
     const checkpoint = findCheckpoint(chat_metadata?.[CHECKPOINT_KEY], id);
     if (!checkpoint) {
         toastr.warning('Ese punto de retorno ya no esta.');
@@ -10776,6 +13355,9 @@ function restoreCheckpoint(id) {
     }
 
     const state = checkpoint.state ?? {};
+    // U2 del pegamento: todo lo de juego vuelve a como estaba; en un punto de antes del
+    // registro (versión 1), solo lo que traía.
+    if (chat_metadata) restoreKeys(chat_metadata, state, Number(checkpoint.version) >= 2);
 
     // El grupo se reemplaza en el sitio: `partyMembers` es el array que todo el resto del
     // archivo tiene cogido, asi que cambiarlo por otro dejaria media interfaz mirando al
@@ -10799,11 +13381,22 @@ function restoreCheckpoint(id) {
     saveCurrentLocation();
     saveCurrentBoard();
 
+    // DU2: y el mundo, si el punto lo guardó.
+    let world = false;
+    if (checkpoint.worldFile) {
+        await worldWrite(async () => {
+            world = await restoreWorldFrom(String(checkpoint.worldFile));
+        });
+    }
+    saveMetadata();
+    refreshWorldMemoryPrompt();
+
     renderPartyMembers();
     renderCampaignTab();
     renderLocationMapsPreview();
+    if (isShellOpen()) refreshGameShell();
 
-    postCombatNarration(`⏪ [PARTIDA] Vuelta a: ${describeCheckpoint(checkpoint)}.`);
+    postCombatNarration(`⏪ [PARTIDA] Vuelta a: ${describeCheckpoint(checkpoint)}.${world ? ' El mundo también vuelve a como estaba.' : ''}`);
     return true;
 }
 
@@ -10957,6 +13550,13 @@ async function openLevelUpCard(member) {
         // Idea 46: lo elegido, que se nota jugando.
         const perkPatch = chosenPerk ? takePerk(member, chosenPerk) : null;
         if (perkPatch) Object.assign(member, perkPatch);
+        // R4: quien hace magia aprende los conjuros de su clase del círculo que se le abre.
+        const before = new Set((Array.isArray(member.abilities) ? member.abilities : []).map(String));
+        const learned = spellsForClass({ className: String(member.class ?? ''), level: Number(member.level) || 1 }).filter(id => !before.has(id));
+        if (learned.length > 0) {
+            member.abilities = [...before, ...learned];
+            postCombatNarration(`📖 [NIVEL] ${member.name} aprende: ${learned.map(id => spellById(id)?.name ?? id).join(', ')}.`);
+        }
         savePartyState();
         renderPartyMembers();
         const perkNote = chosenPerk ? ` Mejora: ${offered.find(o => o.id === chosenPerk)?.label ?? chosenPerk}.` : '';
@@ -11527,7 +14127,15 @@ function currentReplies() {
     const npc = lastWorldNpcs.find(n => n.name === talkingTo && n.where.toLowerCase() === String(currentLocationName).toLowerCase());
     if (!npc) return [];
     const pry = canPry({ npc, here: currentLocationName, secrets: chat_metadata?.[SECRETS_KEY], today: Math.max(1, campaignDay()) });
-    return repliesFor({ name: npc.name, rumors: rumorsLeftHere(), canPry: pry.ok })
+    // U8 y U6 del pegamento: preguntarle por el caso, si sabe algo; y convencerle, una vez al día.
+    /** @type {any[]} */
+    const extra = [];
+    const mystery = readCases(chat_metadata?.[CASES_KEY]);
+    if (cluesHere(mystery, { person: npc.name }).length > 0) {
+        extra.push({ id: 'reply-case', label: `Preguntar a ${npc.name} por lo de ${mystery.active?.victim}`, icon: 'fa-magnifying-glass', command: `/caso preguntar ${npc.name}` });
+    }
+    if (canDuel(npc.name)) extra.push({ id: 'reply-duel', label: `Convencer a ${npc.name}`, icon: 'fa-comments', command: `/convencer ${npc.name}` });
+    return repliesFor({ name: npc.name, rumors: rumorsLeftHere(), canPry: pry.ok, extra })
         .map(reply => (reply.action === 'pry' ? { ...reply, command: `/sonsacar ${npc.name}` } : reply));
 }
 
@@ -11806,6 +14414,13 @@ function fireHazardsOnEnter(member, x, y) {
     }
 
     for (const hazard of fired) {
+        // R6: una pista del caso, puesta en el tablero: pisarla es encontrarla.
+        if (hazard.kind === 'pista') {
+            const state = readCases(chat_metadata?.[CASES_KEY]);
+            const clue = state.active?.clues.find(c => `caso:${c.id}` === String(hazard.note));
+            if (clue) revealClue(clue);
+            continue;
+        }
         if (hazard.effect === 'damage' && hazard.damageDice) {
             const roll = rollWith(hazard.damageDice, nextRandom);
             member.hp = Math.max(0, (Number(member.hp) || 0) - roll.total);
@@ -11889,6 +14504,14 @@ async function meetOnTheRoad(random) {
         discount: withJob(partyMembers, 'buscavidas') ? 0.25 : 0,
     });
     if (!met) return null;
+    // R4: con Paso sin rastro, los cazarrecompensas no os encuentran. Gasta la carga.
+    const hider = met.kind === 'bounty' ? whoCan(partyMembers, 'hideTrail') : null;
+    if (hider) {
+        const spell = spellById(hider.id);
+        if (spell) hider.who.spellCharges = spendCharge(hider.who, spell.circle);
+        savePartyState();
+        return { day: 1, id: 'paso_sin_rastro', name: 'Paso sin rastro', note: `${hider.who.name} borra vuestro rastro: la gente de ${/** @type {any} */ (met).faction} pasa de largo.`, days: 0, climate: '' };
+    }
     const body = $('<div class="tr-setback"></div>');
     if (met.kind === 'bounty') {
         body.append($('<h3></h3>').text('Cazarrecompensas'));
@@ -12039,6 +14662,8 @@ async function travelWithTime(name, options = {}) {
         friendly: friendlyFactions(),
         // Idea 74: el lago helado solo se cruza en invierno.
         season: currentSeason(),
+        // U7: lo que la historia tiene que abrir antes (`cerrado_hasta` en el guion).
+        done: readPlotState(chat_metadata?.[PLOT_STATE_KEY]).done,
     });
     // El motivo, no un boton que no hace nada: "el paso esta cerrado" es una meta.
     if (!plan.ok) return { to: '', reason: plan.reason };
@@ -12114,6 +14739,11 @@ async function travelWithTime(name, options = {}) {
         const index = paced.events.findIndex(event => isSetback(event));
         if (index >= 0) paced.avoided.push(String(paced.events.splice(index, 1)[0]?.name ?? 'un contratiempo'));
     }
+    // R5: el halcón ve el camino desde arriba y os aparta de un contratiempo.
+    if (petDoes(currentPet(), 'explora')) {
+        const index = paced.events.findIndex(event => isSetback(event));
+        if (index >= 0) paced.avoided.push(`${String(paced.events.splice(index, 1)[0]?.name ?? 'un contratiempo')} (lo vio ${currentPet()?.name})`);
+    }
     const trip = options.confirm ? await decideSetbacks(paced.events) : paced.events;
     // Ideas 88 y 92: cazarrecompensas o un mercader, si hay a quien preguntar.
     if (options.confirm && !sailing) {
@@ -12132,7 +14762,9 @@ async function travelWithTime(name, options = {}) {
         mounts: chat_metadata?.[MOUNTS_KEY],
         riders: partyMembers.filter(m => !m.dead).length,
     });
-    const total = Math.max(MIN_DAYS, ride.days + delay - (roles.dayLess ? 1 : 0));
+    // R3: quien sabe leer el rastro encuentra el atajo (y se suma al buen guía de la idea 65).
+    const shortcut = sailing ? null : travelShortcut(partyMembers, ride.days + delay - (roles.dayLess ? 1 : 0));
+    const total = Math.max(MIN_DAYS, shortcut ? shortcut.days : ride.days + delay - (roles.dayLess ? 1 : 0));
 
     currentLocationName = match.name;
     currentBoardName = '';
@@ -12183,6 +14815,8 @@ async function travelWithTime(name, options = {}) {
     void worldWrite(() => tellArrivalNews(match.name));
     // Idea 45: lo que dicen los confidentes al llegar a un sitio suyo.
     sayArrivals(match.name);
+    // T3: y la gente con oficio de aquí ve a la mascota por primera vez.
+    petMeetsTown(match.name);
     // Idea 96: si aquí os buscan, os paran.
     await stopAtGuards(match.name, Boolean(options.confirm));
     // Idea 36: quien está enterrado aquí.
@@ -12197,6 +14831,7 @@ async function travelWithTime(name, options = {}) {
     if (weather.length > 0) told.push(`tiempo: ${[...new Set(weather)].join(', ')}`);
     if (ride.note) told.push(ride.note);
     if (roles.results.length > 0) told.push(describeRoles(roles.results));
+    if (shortcut?.line) told.push(shortcut.line);
     if (sailing) told.push(describeVoyage({ fare, days: total }));
     // Idea 192: el camino se ve pasar, sin parar el juego.
     if (options.confirm) showTravelTransition(match.name, total);
@@ -12214,6 +14849,7 @@ async function travelWithTime(name, options = {}) {
         paced.avoided.length > 0 ? `Vieron venir y esquivaron: ${paced.avoided.join(', ')}.` : '',
         weather.length > 0 ? `El tiempo, día a día: ${weather.join(', ')}.` : '',
         roles.results.length > 0 ? `En el camino: ${describeRoles(roles.results)}.` : '',
+        shortcut?.line ?? '',
         ride.note ? `Van montados: ${ride.note}.` : '',
         sailing ? `Van ${describeVoyage({ fare, days: total })}.` : '',
         ...trip.map(event => `Día ${event.day}: ${event.name}. ${event.note}`),
@@ -12313,6 +14949,17 @@ async function playTavernDice() {
 async function learnAbility(memberId, abilityId) {
     const member = partyMembers.find(m => String(m.id) === String(memberId));
     const worldName = String(chat_metadata?.[METADATA_KEY] || '');
+    // R4: un conjuro no se escribe en el paquete: vive en el grimorio. Se aprende y ya.
+    const spell = spellById(String(abilityId));
+    if (member && spell) {
+        member.abilities = [...new Set([...(Array.isArray(member.abilities) ? member.abilities.map(String) : []), spell.id])];
+        for (let day = 0; day < LESSON.days; day++) advanceCampaignDay();
+        savePartyState();
+        const line = describeLesson(String(member.name), spellAbility(spell), currentLocationName);
+        noteDeed(line);
+        toastr.success(line, '📜 Aprendido', { timeOut: 10000 });
+        return;
+    }
     if (!member || !worldName || !lastCompendium?.has?.('habilidades')) return;
     const ability = lastCompendium.find('habilidades', { kind: 'habilidad' })
         .filter((/** @type {any} */ row) => String(row.id) === String(abilityId))
@@ -12843,7 +15490,7 @@ function buildShellOptions() {
             : checkOptions(partyMembers[0], { locked: Boolean(chat_metadata?.[PENDING_CHECK_KEY]) })),
         onCheck: (skill) => { runSkillCheck(skill); },
         getFocus: () => focusOf(getPlot(), chat_metadata?.[PLOT_STATE_KEY], campaignDay()),
-        onJournal: () => openJournal(),
+        onJournal: () => openJournalSafely(),
         onGlance: () => openPartyGlance(),
         getNoticeCount: () => unseenCount(notices, noticesSeenAt),
         onTray: () => openNoticeTray(),
@@ -12882,6 +15529,15 @@ function buildShellOptions() {
         onEditCampaign: () => { void openCampaignBuilder(); },
         // El asistente de campana vive en la pantalla de bienvenida, que viaja dentro del
         // chat adoptado: pulsar su boton es pulsar el que ya existe.
+        // R1: la partida rápida, el mismo taller en su vista corta.
+        onQuickStart: () => {
+            void import('./campaigns.js')
+                .then(({ startQuickCampaign }) => startQuickCampaign())
+                .catch(error => {
+                    console.error('[party] la partida rápida no pudo empezar', error);
+                    toastr.error('La partida rápida no ha podido empezar. Queda anotado en la consola.');
+                });
+        },
         onNewCampaign: () => {
             const button = document.querySelector('#cw-new-campaign');
             if (button instanceof HTMLElement) button.click();
@@ -12914,7 +15570,21 @@ function buildShellOptions() {
         onDice: () => openDiceHistory(),
         onGlossary: () => openGlossary(),
         onScene: (scene) => showTip(scene),
+        // U0 del pegamento: el diario de sesión.
+        onSceneTime: (scene) => keepSessionLog(enterScene(currentSessionLog(), scene, Date.now())),
+        onSession: () => { void openSessionLog(); },
+        onHowToPlay: () => { void openHowToPlay(); },
+        // U5 del pegamento: la semana en una mesa.
+        onWeekTable: () => { void openWeekTable(); },
+        // Ideas 69 y 70: el mapa en texto.
+        onTextMap: () => { void openTextMap(); },
+        // Idea 187: en un sitio sin tablero, la música del pueblo.
+        audioSceneFor: (scene) => (scene === 'exploration' && !currentBoardName && !combatEncounter.active ? 'town' : scene),
         getToggles: () => [
+            // R1: el modo, arriba del todo. Pulsarlo abre el selector.
+            { id: 'mode', label: `Modo: ${describeGameMode(survivalNow())}`, on: true },
+            // R5: la mascota.
+            { id: 'pet', label: currentPet() ? `Mascota: ${petName(/** @type {any} */ (currentPet()))}` : 'Mascota: ninguna', on: Boolean(currentPet()) },
             { id: 'saver', label: saverOn() ? 'Modo ahorro: encendido' : 'Modo ahorro: apagado', on: saverOn() },
             { id: 'length', label: `Largo de la narración: ${LENGTHS[/** @type {keyof typeof LENGTHS} */ (String(chat_metadata?.[LENGTH_KEY] || 'ficha'))]?.label ?? 'Lo de su ficha'}`, on: Boolean(chat_metadata?.[LENGTH_KEY]) },
             { id: 'colorblind', label: localFlag.get(COLORBLIND_KEY) === '1' ? 'Colores para daltonismo: sí' : 'Colores para daltonismo: no', on: localFlag.get(COLORBLIND_KEY) === '1' },
@@ -12925,8 +15595,18 @@ function buildShellOptions() {
             // Ideas 25 y 29: la red de seguridad, y que los hartos se vayan.
             { id: 'safety', label: chat_metadata?.[SAFETY_ON_KEY] ? 'Red de seguridad: sí' : 'Red de seguridad: no', on: Boolean(chat_metadata?.[SAFETY_ON_KEY]) },
             { id: 'leave', label: chat_metadata?.[LEAVE_ON_KEY] ? 'Los hartos se van: sí' : 'Los hartos se van: no', on: Boolean(chat_metadata?.[LEAVE_ON_KEY]) },
+            // U5 (DU4): la mesa se abre sola la primera vez; luego, con aviso, salvo que se quiera siempre.
+            { id: 'mesa', label: chat_metadata?.[WEEK_TABLE_AUTO_KEY] ? 'La mesa cada semana: se abre sola' : 'La mesa cada semana: con aviso', on: Boolean(chat_metadata?.[WEEK_TABLE_AUTO_KEY]) },
         ],
         onToggle: (id) => {
+            if (id === 'mode') {
+                void openGameMode();
+                return;
+            }
+            if (id === 'pet') {
+                void openPetPanel();
+                return;
+            }
             if (id === 'saver') localFlag.set(SAVER_KEY, saverOn() ? '' : '1');
             else if (id === 'colorblind') {
                 localFlag.set(COLORBLIND_KEY, localFlag.get(COLORBLIND_KEY) === '1' ? '' : '1');
@@ -12942,6 +15622,9 @@ function buildShellOptions() {
                 saveMetadata();
             } else if (id === 'tone' && chat_metadata) {
                 chat_metadata[TONE_KEY] = nextTone(chat_metadata[TONE_KEY]);
+                saveMetadata();
+            } else if (id === 'mesa' && chat_metadata) {
+                chat_metadata[WEEK_TABLE_AUTO_KEY] = !chat_metadata[WEEK_TABLE_AUTO_KEY];
                 saveMetadata();
             } else if ((id === 'safety' || id === 'leave') && chat_metadata) {
                 const key = id === 'safety' ? SAFETY_ON_KEY : LEAVE_ON_KEY;
@@ -12961,13 +15644,14 @@ function buildShellOptions() {
             const member = getCurrentActingMember();
             if (!member || !combatEncounter.active) return [];
             return knownAbilities(member, getAbilityCatalogue())
-                .filter(ability => ability.target !== 'enemy')
+                .filter(ability => ability.target !== 'enemy' && ability.combat !== false)
                 .map(ability => {
                     const verdict = canUseAbility({
                         member,
                         ability,
                         hasAction: hasAction(combatEncounter, 'action'),
                         hasBonus: hasAction(combatEncounter, 'bonus'),
+                        carried: carriedNames(),
                     });
                     const left = usesLeft(member, ability);
                     return {
@@ -13013,10 +15697,22 @@ function buildShellOptions() {
                 // Idea 122: lo que lleva para lanzar, con la misma forma que una maniobra.
                 ...judgeThrows({ member, hasAction: hasAction(combatEncounter, 'action'), enemies }),
                 ...(scenery ? [scenery] : []),
+                // R4: los pergaminos y las varitas, con la misma forma.
+                ...judgeMagicItems({
+                    member,
+                    hasAction: hasAction(combatEncounter, 'action'),
+                    enemies,
+                    allies: partyMembers.filter(m => (Number(m.hp) || 0) > 0).map(m => ({
+                        id: String(m.id), name: String(m.name),
+                        distanceFeet: getDistanceInFeet(x, y, Number(m.mapPosition?.gridX) || 0, Number(m.mapPosition?.gridY) || 0),
+                    })),
+                    abilityOf: (id) => getAbilityCatalogue().find(a => a.id === id),
+                }),
             ];
         },
         onManeuver: (maneuverId, targetId) => {
-            if (maneuverId === 'lanzar:objeto') throwScenery(targetId);
+            if (String(maneuverId).startsWith('leer:')) useMagicItem(String(maneuverId).slice('leer:'.length), targetId);
+            else if (maneuverId === 'lanzar:objeto') throwScenery(targetId);
             else if (String(maneuverId).startsWith('lanzar:')) throwItem(String(maneuverId).slice('lanzar:'.length), targetId);
             else performManeuver(maneuverId, targetId);
         },
@@ -13084,6 +15780,14 @@ function toggleGameMode() {
     setLocationMapsHidden(false);
     toggleGameShell(shellOptions);
     return 'modo juego encendido';
+}
+
+/**
+ * Volver a dibujar el tablero. Para las pruebas y las herramientas que cambian el terreno
+ * desde fuera: el juego ya redibuja solo cuando algo suyo lo cambia.
+ */
+export function refreshBoardView() {
+    renderLocationMapsPreview();
 }
 
 function renderLocationMapsPreview() {
@@ -13305,6 +16009,8 @@ function drawLocationMapsPreview() {
             // the board is redrawn: fog is recomputed from the new terrain on the way.
             onDoorToggle: (gx, gy, open) =>
                 toggleBoardDoor(selectedBoard, gx, gy, open, boardGridW, boardGridH),
+            // K3: la ficha a la que le toca, a la vista (una vez por turno).
+            ...activeFocus(),
             // Lo ya visto del tablero, a la vista (idea 122: el aceite que arde).
             hazards: visibleHazards(selectedBoard).map((/** @type {any} */ h) => ({ x: h.x, y: h.y, name: h.name, kind: h.kind, note: h.tell })),
             tokens: allBoardTokens,
@@ -13376,7 +16082,7 @@ function drawLocationMapsPreview() {
         }
 
 
-        // ---- Iniciar combate (wiki/ROADMAP_JUEGO_SIN_COMANDOS.md, K2) ----
+        // ---- Iniciar combate (wiki/archivo/ROADMAP_JUEGO_SIN_COMANDOS.md, K2) ----
         // Solo con lo que el grupo **ve de verdad**. `awakePlacements` esconde a los de
         // una sala sin revelar, pero un tablero sin salas no esconde nada — y entonces el
         // boton anunciaba al Carcelero de Hierro antes de que nadie lo hubiera visto. Un
@@ -15722,7 +18428,7 @@ export function initPartyPanel() {
     // The contract for the Gem that processes a book. The Gem itself lives outside this
     // program — in a Gemini subscription — so the one thing the code owes it is an exact,
     // generated schema: a copy kept by hand goes stale and the failure shows up a whole
-    // book later. See wiki/ROADMAP_INGESTA_CAMPANAS_LIBROS.md.
+    // book later. See wiki/archivo/ROADMAP_INGESTA_CAMPANAS_LIBROS.md.
     SlashCommandParser.addCommandObject(SlashCommand.fromProps({
         name: 'esquema-campana',
         helpString: '<div>Entrega el contrato del paquete de campaña para pegarlo en tu Gem: '
@@ -15736,6 +18442,104 @@ export function initPartyPanel() {
 
     // El camino de vuelta del importador: sin esto se puede meter el libro de otro y no
     // mandar el tuyo, que es media historia de "sin marketplace".
+    // U8 del pegamento: el caso.
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'caso',
+        helpString: '<div>El caso abierto: <code>/caso</code> abre su tablero; <code>/caso preguntar Giles</code> le pregunta; '
+            + '<code>/caso buscar</code> busca aquí; <code>/caso nuevo</code> empieza uno si no hay ninguno; '
+            + '<code>/caso muerto</code> le pregunta a la víctima, si alguien sabe Hablar con los muertos.</div>',
+        unnamedArgumentList: [SlashCommandArgument.fromProps({ description: 'preguntar <nombre> | buscar | nuevo', typeList: [ARGUMENT_TYPE.STRING], isRequired: false })],
+        callback: async (_args, value) => {
+            const raw = String(value ?? '').trim();
+            const [verb, ...rest] = raw.split(/\s+/);
+            if (/^preguntar$/i.test(verb)) return askAboutCase(rest.join(' '));
+            if (/^buscar$/i.test(verb)) {
+                await searchCaseHere();
+                return '';
+            }
+            if (/^nuevo$/i.test(verb)) return (await startCase(true)) ? 'caso abierto' : '';
+            // R4: el muerto contesta, si alguien sabe preguntarle.
+            if (/^muerto$/i.test(verb)) return askTheDead();
+            await openCaseBoard();
+            return '';
+        },
+    }));
+
+    // U6 del pegamento: convencer a alguien, en un duelo de palabras.
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'convencer',
+        helpString: '<div>Convencer a alguien del mundo en un duelo de palabras: tres rondas, con lo que tengáis. Una vez al día por persona.</div>',
+        unnamedArgumentList: [SlashCommandArgument.fromProps({ description: 'a quién', typeList: [ARGUMENT_TYPE.STRING], isRequired: true })],
+        callback: async (_args, value) => duelWith(String(value ?? '')),
+    }));
+
+    // Ideas 69 y 70: el mapa en texto.
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'mapa',
+        helpString: '<div>El mapa en texto: los sitios y sus caminos, lo no visitado en gris, y tus notas.</div>',
+        callback: async () => {
+            await openTextMap();
+            return '';
+        },
+    }));
+
+    // R5 del roadmap de profundidad: la mascota.
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'mascota',
+        helpString: '<div>La mascota del héroe: tenerla, preguntarle lo que aprieta, acariciarla. No ocupa plaza ni cobra.</div>',
+        callback: async () => await openPetPanel(),
+    }));
+
+    // R4: aprender de un pergamino.
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'pergamino',
+        helpString: '<div>Aprender el conjuro de un pergamino, en vez de leerlo: solo quien ha estudiado (el mago o el erudito). El pergamino se gasta.</div>',
+        unnamedArgumentList: [SlashCommandArgument.fromProps({ description: 'de qué pergamino (opcional)', typeList: [ARGUMENT_TYPE.STRING], isRequired: false })],
+        callback: async (_args, value) => learnFromScroll(String(value ?? '').trim()),
+    }));
+
+    // R4 del roadmap de profundidad: el grimorio del grupo.
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'grimorio',
+        helpString: '<div>Lo que el grupo sabe lanzar: cada conjuro con su escuela y su círculo, las cargas que quedan '
+            + 'y lo que se gasta. No existe más magia que la del grimorio.</div>',
+        unnamedArgumentList: [SlashCommandArgument.fromProps({ description: '«todo» para ver toda la magia que existe', typeList: [ARGUMENT_TYPE.STRING], isRequired: false })],
+        callback: async (_args, value) => {
+            await openGrimoire(/^todo$/i.test(String(value ?? '').trim()));
+            return '';
+        },
+    }));
+
+    // R1 del roadmap de profundidad: el modo de juego.
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'modo',
+        helpString: '<div>El modo de juego: Relajado, Normal, Supervivencia o a tu medida. Dice qué está encendido '
+            + 'y deja cambiarlo; el cambio queda en la crónica.</div>',
+        callback: async () => await openGameMode(),
+    }));
+
+    // U5 del pegamento: la mesa de la semana.
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'mesa',
+        helpString: '<div>La mesa de la semana: los asuntos que no caben todos, con su plazo y lo que pasa si no se atienden; '
+            + 'cómo os ven, y lo que viene.</div>',
+        callback: async () => {
+            await openWeekTable();
+            return '';
+        },
+    }));
+
+    // U2 del pegamento: lo que el juego da por cierto.
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'estado',
+        helpString: '<div>Lo que el juego da por cierto: cada cosa que la partida guarda, con cuánto hay, '
+            + 'y qué vuelve con un punto de retorno.</div>',
+        callback: async () => {
+            await openStateView();
+            return '';
+        },
+    }));
+
     SlashCommandParser.addCommandObject(SlashCommand.fromProps({
         name: 'punto',
         helpString: '<div>Puntos de retorno. <code>/punto</code> los lista, '
@@ -15749,7 +18553,7 @@ export function initPartyPanel() {
                 isRequired: false,
             }),
         ],
-        callback: (_args, value) => {
+        callback: async (_args, value) => {
             const raw = String(value ?? '').trim();
             const list = normalizeCheckpoints(chat_metadata?.[CHECKPOINT_KEY]);
 
@@ -15775,7 +18579,7 @@ export function initPartyPanel() {
                     toastr.warning(`No hay un punto numero ${argument}. Escribe /punto para verlos.`);
                     return '';
                 }
-                return restoreCheckpoint(target.id) ? `vuelta a ${target.label}` : '';
+                return (await restoreCheckpoint(target.id)) ? `vuelta a ${target.label}` : '';
             }
 
             toastr.warning('Usa /punto, /punto guardar <nombre> o /punto volver <numero>.');
@@ -16099,6 +18903,33 @@ export function initPartyPanel() {
     }));
 
     SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'tregua',
+        helpString: '<div>T2: contestar a quien pide tregua. <code>/tregua sí</code> les deja ir (ganáis el tablero, sin su botín); <code>/tregua no</code>, sin cuartel.</div>',
+        unnamedArgumentList: [SlashCommandArgument.fromProps({ description: 'sí o no', typeList: [ARGUMENT_TYPE.STRING], isRequired: true })],
+        callback: (_args, value) => answerTruce(/^(s[ií]|si|yes|vale|dejar)/i.test(String(value ?? '').trim())),
+    }));
+
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'ayuda',
+        helpString: '<div>H2: cómo se juega: tu modo, el tablero, la semana, la crónica y qué hacer si te pierdes.</div>',
+        callback: async () => await openHowToPlay(),
+    }));
+
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'salir',
+        helpString: '<div>B2: salir de la pelea por una salida del tablero (la casilla «x»). Sin nombre, quien tiene el turno.</div>',
+        unnamedArgumentList: [SlashCommandArgument.fromProps({ description: 'quién sale', typeList: [ARGUMENT_TYPE.STRING], isRequired: false })],
+        callback: (_args, value) => {
+            const name = String(value ?? '').trim().toLowerCase();
+            const current = getCurrentTurnEntry();
+            const member = name
+                ? partyMembers.find(m => String(m.name).toLowerCase() === name)
+                : (current && !current.isEnemy ? getPartyMemberByTurnEntry(current) : partyMembers[0]);
+            return leaveThroughExit(member);
+        },
+    }));
+
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
         name: 'bajar',
         helpString: '<div>Idea 75: bajar por la escalera al nivel siguiente, si alguien está en ella.</div>',
         callback: () => {
@@ -16382,6 +19213,52 @@ export function initPartyPanel() {
         shouldRegister: () => Boolean(chat_metadata?.[METADATA_KEY]),
         stealth: true,
     });
+
+    // U1 del pegamento: en vez de poner banderas por su cuenta, el narrador propone un hecho
+    // para que el mundo lo recuerde, y el motor decide.
+    ToolManager.registerFunctionTool({
+        name: 'proponer_hecho',
+        displayName: 'Proponer un hecho',
+        description: 'Úsala solo cuando pase algo que el mundo debería recordar más adelante y que el juego no ha visto: una promesa, una revelación, una ofensa. '
+            + 'Una frase. El juego decide si lo apunta (uno al día como mucho). No sirve para dar objetos, oro ni heridas, ni para cambiar actitudes: para eso hay otras.',
+        parameters: {
+            type: 'object',
+            properties: {
+                hecho: { type: 'string', description: 'Lo que pasó, en una frase. Ejemplo: El molinero juró venganza contra Vane.' },
+            },
+            required: ['hecho'],
+        },
+        action: async (/** @type {{hecho: string}} */ params) => proposeFact(String(params?.hecho ?? '')),
+        shouldRegister: () => Boolean(chat_metadata?.[METADATA_KEY]),
+        stealth: true,
+    });
+
+    // U4 del pegamento (DU3): el chat se pliega solo, mire quien mire lo que lo cambie.
+    const chatRoot = document.getElementById('chat');
+    if (chatRoot) {
+        new MutationObserver(mutations => {
+            // Lo que cambia el propio plegado no vuelve a plegar.
+            if (mutations.every(m => [...m.addedNodes, ...m.removedNodes].every(n => n instanceof Element && n.classList.contains('gm-fold')))) return;
+            scheduleFoldChat();
+        }).observe(chatRoot, { childList: true });
+    }
+    eventSource.on(event_types.CHAT_CHANGED, () => {
+        unfoldedMessages.clear();
+        scheduleFoldChat();
+    });
+
+    // U0 del pegamento: lo que se escribe al narrador y lo que se pulsa, mientras se juega.
+    eventSource.on(event_types.MESSAGE_SENT, () => {
+        if (isShellOpen()) keepSessionLog(noteSent(currentSessionLog()));
+    });
+    document.addEventListener('click', (event) => {
+        if (!isShellOpen() || !(event.target instanceof Element)) return;
+        const button = event.target.closest('button, .menu_button');
+        // Los botones de la pausa y los de cerrar un cuadro no son jugar.
+        if (!button || button.closest('.gs-pause, .popup-controls')) return;
+        if (!button.closest('#game-shell, .popup')) return;
+        keepSessionLog(noteClick(currentSessionLog()));
+    }, true);
 
     // El hilo: a quien nombras al hablar, estando donde estas.
     eventSource.on(event_types.MESSAGE_SENT, (/** @type {number} */ messageId) => {

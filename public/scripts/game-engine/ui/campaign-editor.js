@@ -8,7 +8,7 @@
  * Dibuja y recoge. Lo que decide qué es válido y dónde se escribe está en
  * `campaign/campaign-editor.js`; aquí no hay ni una regla.
  *
- * Ver wiki/PLAN_CREAR_CAMPANA.md, M1 a M6.
+ * Ver wiki/archivo/PLAN_CREAR_CAMPANA.md, M1 a M6.
  */
 
 import {

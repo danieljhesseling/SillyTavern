@@ -21,7 +21,7 @@
  *
  * Puro: lleva el estado y responde preguntas. No dibuja, no guarda y no crea nada.
  *
- * Ver wiki/ROADMAP_CREACION.md.
+ * Ver wiki/archivo/ROADMAP_CREACION.md.
  */
 
 import { cleanSeed, rollSeed } from './seed.js';
@@ -785,6 +785,82 @@ export function goBack(state) {
 }
 
 /**
+ * Ir a una pestaña (R2 del roadmap de profundidad). Sin pasar por las de en medio: cada una
+ * tiene valores por defecto, así que se toca solo lo que se quiere cambiar.
+ *
+ * @param {any} state
+ * @param {string} stepId
+ * @returns {any}
+ */
+export function goTo(state, stepId) {
+    const at = walkableSteps().findIndex(step => step.id === text(stepId));
+    return at >= 0 ? { ...state, at } : state;
+}
+
+/**
+ * La primera pestaña que no deja crear el mundo, con el porqué. Null si se puede crear ya.
+ *
+ * Con pasos en fila bastaba mirar el de ahora, porque los de antes ya se habían pasado. Con
+ * pestañas se puede crear desde cualquiera, así que hay que mirarlas todas.
+ *
+ * @param {any} state
+ * @returns {{step: string, reason: string}|null}
+ */
+export function firstBlock(state) {
+    for (const step of walkableSteps()) {
+        const reason = blocksNext(state, step.id);
+        if (reason) return { step: step.id, reason };
+    }
+    return null;
+}
+
+/**
+ * Lo que toca cada pestaña, como texto, para saber si se ha cambiado.
+ *
+ * @param {any} state
+ * @param {string} stepId
+ * @returns {string}
+ */
+export function stepSlice(state, stepId) {
+    const id = text(stepId);
+    /** @type {any} */
+    let part;
+    if (id === 'mundo') part = [state?.fields, state?.picked?.mundo];
+    else if (id === 'narrador') part = [state?.narrator ?? null, state?.picked?.narrador];
+    else if (id === 'localidades') part = [locationsOf(state).map(p => ({ ...p, boards: undefined })), state?.picked?.localidades];
+    else if (id === 'tableros') part = locationsOf(state).map(p => p.boards);
+    else if (id === 'facciones') part = [state?.factions, state?.picked?.facciones];
+    else if (id === 'personajes') part = [state?.people, state?.picked?.personajes];
+    else if (id === 'misiones') part = [state?.quests, state?.picked?.misiones, state?.board ?? null];
+    else if (id === 'jugabilidad') part = state?.survival ?? null;
+    else part = state?.picked?.[id] ?? null;
+    return JSON.stringify(part ?? null);
+}
+
+/**
+ * Cómo está cada pestaña ahora, para comparar después.
+ *
+ * @param {any} state
+ * @returns {Record<string, string>}
+ */
+export function baselineOf(state) {
+    return Object.fromEntries(walkableSteps().map(step => [step.id, stepSlice(state, step.id)]));
+}
+
+/**
+ * La marca de una pestaña: ⚠ si algo no cuadra, ✓ si la has cambiado, • si está como viene.
+ *
+ * @param {any} state
+ * @param {string} stepId
+ * @param {Record<string, string>} baseline
+ * @returns {'warn'|'changed'|'default'}
+ */
+export function tabStatus(state, stepId, baseline) {
+    if (blocksNext(state, stepId)) return 'warn';
+    return stepSlice(state, stepId) !== (baseline?.[stepId] ?? stepSlice(state, stepId)) ? 'changed' : 'default';
+}
+
+/**
  * Por donde va, para la barra de arriba.
  *
  * Cuenta sobre los **trece**, no sobre los construidos: decir «2 de 2» cuando quedan once
@@ -876,6 +952,8 @@ export function toAnswers(state) {
         writeWorld: Boolean(state?.writeWorld),
         survival: state?.survival ?? null,
         narrator: state?.narrator ?? null,
+        // R1: los héroes hechos del mundo precreado, para entrar sin crear a nadie.
+        heroes: Array.isArray(state?.heroes) ? state.heroes : [],
         // Quien vive aqui y las misiones que dan el tono, con los mandos del tablon.
         people: fromPack ? [] : pickedPeople(state),
         quests: fromPack ? [] : pickedQuests(state),

@@ -119,6 +119,10 @@ export function readFaction(raw) {
         holds: names(source.holds),
         enemies: names(source.enemies),
         note: text(source.note),
+        // T4: cómo ve la magia (persigue, tolera, comercia) y sus etiquetas del compendio, de
+        // donde se deduce si no lo dice.
+        magia: ['persigue', 'tolera', 'comercia'].includes(text(source.magia)) ? text(source.magia) : '',
+        tags: names(source.tags),
         // Lo que piensan de ti. Hasta F4 esto era un numero que no cambiaba ninguna regla.
         reputation: Math.max(-STANDING, Math.min(STANDING, whole(source.reputation, 0))),
         goal: {

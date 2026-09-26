@@ -21,9 +21,10 @@
  * @property {string} id
  * @property {string} label
  * @property {string} describe
- * @property {{maxHp?: number, speed?: number, initiative?: number, attack?: number, armorClass?: number, skill?: string, amount?: number}} effect
+ * @property {{maxHp?: number, speed?: number, initiative?: number, attack?: number, armorClass?: number, skill?: string, amount?: number, ability?: string}} effect
  */
 
+import { ARC_PERKS } from '../campaign/companion-arcs.js';
 import { TREE_NODES, nextTreeSteps } from './class-trees.js';
 
 /** @type {Perk[]} */
@@ -46,7 +47,7 @@ export const PERKS = [
 export const PERK_CHOICES = 3;
 
 /** Idea 48: las sueltas y los pasos de los árboles de cada oficio. */
-export const ALL_PERKS = /** @type {Perk[]} */ ([...PERKS, ...TREE_NODES]);
+export const ALL_PERKS = /** @type {Perk[]} */ ([...PERKS, ...TREE_NODES, ...ARC_PERKS]);
 
 /**
  * Las que ya tiene alguien.
@@ -87,14 +88,18 @@ export function perkChoices({ member, random }) {
  *
  * @param {any} member
  * @param {string} perkId
- * @returns {{perks: string[], maxHp?: number, hp?: number, speed?: number}|null}
+ * @returns {{perks: string[], maxHp?: number, hp?: number, speed?: number, abilities?: string[]}|null}
  */
 export function takePerk(member, perkId) {
     const perk = ALL_PERKS.find(p => p.id === String(perkId));
     if (!perk) return null;
     const perks = [...new Set([...(Array.isArray(member?.perks) ? member.perks.map(String) : []), perk.id])];
-    /** @type {{perks: string[], maxHp?: number, hp?: number, speed?: number}} */
+    /** @type {{perks: string[], maxHp?: number, hp?: number, speed?: number, abilities?: string[]}} */
     const patch = { perks };
+    // R3: el tercer paso de una rama enseña una habilidad, y se aprende ya.
+    if (perk.effect.ability) {
+        patch.abilities = [...new Set([...(Array.isArray(member?.abilities) ? member.abilities.map(String) : []), perk.effect.ability])];
+    }
     if (perk.effect.maxHp) {
         patch.maxHp = Math.max(1, (Number(member?.maxHp) || 0) + perk.effect.maxHp);
         patch.hp = Math.max(0, (Number(member?.hp) || 0) + perk.effect.maxHp);

@@ -316,4 +316,4 @@ Una cuarta tarjeta junto a *Mazmorra clásica* y *Generar con IA*: **Importar ca
 ## 🔗 Enlaces Relacionados
 - [[HOME]]: Hub central de la wiki.
 - [[ROADMAP]]: Estado del motor y baterías ejecutadas.
-- [[PROPUESTA_JUEGO_DND_GLOOMHAVEN_PERSONA]]: Documento de diseño general del motor híbrido.
+- *PROPUESTA_JUEGO_DND_GLOOMHAVEN_PERSONA*: Documento de diseño general del motor híbrido.

@@ -94,6 +94,6 @@ Dentro de la ficha D&D de cada miembro del grupo:
 ## 5. Enlaces Relacionados
 - [[Sistema-Party]]: Miembros del grupo que albergan las colecciones de relaciones y memorias.
 - [[Dynamic-Context-Manager]]: Instrucciones de categoría `relationship` condicionadas al score.
-- [[PROPUESTA_JUEGO_DND_GLOOMHAVEN_PERSONA]]: Sistema de vínculos Persona (Rangos 1-10) y perks mecánicas en combate.
+- *PROPUESTA_JUEGO_DND_GLOOMHAVEN_PERSONA*: Sistema de vínculos Persona (Rangos 1-10) y perks mecánicas en combate.
 - [[ROADMAP_JUEGO_SIN_COMANDOS]]: Fichas de confidente interactivas en el Party Strip y botones para pasar tiempo juntos.
 - [[DND-Mecanicas-Items]]: Fórmulas y utilidades matemáticas en `dnd-system.js`.

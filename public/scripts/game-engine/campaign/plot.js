@@ -33,7 +33,7 @@
  *
  * Puro: recibe sucesos y devuelve lo que cambia. Quien llama lo cuenta y lo guarda.
  *
- * Ver wiki/ROADMAP_MUNDOS_VIVOS.md, fase H.
+ * Ver wiki/archivo/ROADMAP_MUNDOS_VIVOS.md, fase H.
  */
 
 import { readFactions, clockOf, saysWith } from './factions.js';

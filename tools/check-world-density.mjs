@@ -3,7 +3,7 @@
  * ¿Llega este mundo al listón? El comprobador de densidad (M6).
  *
  * Un mundo precreado tiene que dar unas veinte horas, empezando 80 % escrito
- * (wiki/ROADMAP_MUNDOS_VIVOS.md, M1). Escribir tanto sin perderse es imposible a ojo: esto
+ * (wiki/archivo/ROADMAP_MUNDOS_VIVOS.md, M1). Escribir tanto sin perderse es imposible a ojo: esto
  * cuenta lo que hay contra el listón y, sobre todo, **busca huecos** — un sitio al que no se
  * puede llegar, un rumor que apunta a la nada, un hito que nunca se abre, un PNJ que no
  * quiere nada o un encargo cuyo tablero no existe. Es a los mundos lo que

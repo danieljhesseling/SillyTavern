@@ -20,7 +20,7 @@
  *   node tools/e2e-campaign.mjs --headed      # watch it happen
  *   node tools/e2e-campaign.mjs --keep        # keep the temp data dir for inspection
  *
- * See wiki/POR_HACER.md and the N-09 proposal in wiki/PROPUESTAS_MEJORA.md.
+ * See wiki/POR_HACER.md and the N-09 proposal in wiki/archivo/PROPUESTAS_MEJORA.md.
  */
 
 // Las funciones que se pasan a `page.evaluate` se ejecutan en el navegador, no aqui: por
@@ -56,16 +56,44 @@ const veteransOffered = [];
 /** Lo que fallo, con su paso: el recorrido son 400 lineas y el fallo puede quedar en medio. */
 const failed = [];
 let currentStep = '(antes de empezar)';
+/** K2: cuándo se comprobó algo por última vez, para el vigilante de pasos colgados. */
+let lastProgress = Date.now();
 const check = (name, ok, detail = '') => {
+    lastProgress = Date.now();
     if (!ok) {
         failures++;
         failed.push(`${currentStep} - ${name}${detail ? ` -> ${detail}` : ''}`);
     }
     console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? `\n        -> ${detail}` : ''}`);
 };
+/**
+ * K2: un paso que se cuelga (un comando que espera una ventana que nadie contesta) paraba la
+ * vuelta entera durante horas. El vigilante mira cada medio minuto: si en 4 minutos no se ha
+ * comprobado nada, dice qué ventanas hay abiertas y pulsa Escape, que las cierra y deja seguir.
+ * Un paso largo que sigue comprobando cosas no lo despierta.
+ */
+/** @type {any} */
+let watchPage = null;
+/** @type {any} */
+let watchdog = null;
+const STEP_WATCH_MS = 240000;
 const step = (title) => {
     currentStep = title;
     console.log(`\n=== ${title} ===`);
+    lastProgress = Date.now();
+    if (watchdog) clearInterval(watchdog);
+    watchdog = setInterval(async () => {
+        if (!watchPage || Date.now() - lastProgress < STEP_WATCH_MS) return;
+        lastProgress = Date.now();
+        const open = await watchPage.evaluate(() => [...document.querySelectorAll('dialog[open]')]
+            .map(d => (d.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 160))).catch(() => []);
+        console.log(`WAIT  «${title}» lleva más de ${STEP_WATCH_MS / 60000} minutos. Ventanas abiertas: ${JSON.stringify(open)}. Se pulsa Escape.`);
+        failures++;
+        failed.push(`${title} - se colgó: ${JSON.stringify(open)}`);
+        await watchPage.keyboard.press('Escape').catch(() => {});
+        await watchPage.keyboard.press('Escape').catch(() => {});
+    }, 30000);
+    watchdog.unref?.();
 };
 
 const dataRoot = mkdtempSync(join(tmpdir(), 'st-e2e-'));
@@ -112,10 +140,11 @@ try {
         acceptDownloads: true,
     });
     const page = await context.newPage();
+    watchPage = page;
     // Los consejos de la primera vez (idea 155) son avisos arriba a la derecha: en el recorrido
     // se dan por vistos para que no tapen clics. El paso 55 los prueba aparte.
     await page.addInitScript(() => {
-        try { window.localStorage.setItem('sillytavern_gameTipsSeen', 'dialogue,exploration,combat,travel,prisoners'); } catch { /* sin almacenamiento */ }
+        try { window.localStorage.setItem('sillytavern_gameTipsSeen', 'dialogue,exploration,combat,travel,prisoners,mesa,high,spell,pet,bill'); } catch { /* sin almacenamiento */ }
     });
 
     const problems = new Set();
@@ -599,6 +628,18 @@ try {
         await page.waitForTimeout(1100);
     };
 
+    /** Lo que hay delante: para cuando un clic o una tecla no hacen nada. */
+    const screenState = () => page.evaluate(() => ({
+        popups: [...document.querySelectorAll('.popup:not([closing])')].map(p => String(p.querySelector('[class$="-root"]')?.className || p.className).slice(0, 40)),
+        // Cualquier diálogo abierto, también uno que se quedó cerrándose: bloquea los atajos.
+        dialogs: [...document.querySelectorAll('dialog[open]')].map(d => `${String(d.className).slice(0, 30)}${d.hasAttribute('closing') ? ' (cerrándose)' : ''}: ${String(d.textContent || '').trim().slice(0, 50)}`),
+        turn: [...(window.SillyTavern.getContext().chat || [])].map((/** @type {any} */ m) => String(m.mes || '')).filter(t => /elige accion/.test(t)).pop()?.slice(0, 160) || '',
+        dice: Boolean(document.querySelector('.wm-dice-overlay.active')),
+        pause: Boolean(document.querySelector('.gs-pause')),
+        scene: document.getElementById('game-shell')?.dataset.scene || '',
+        focus: `${document.activeElement?.tagName || ''}.${String(document.activeElement?.className || '').slice(0, 30)}`,
+        combat: Boolean(document.querySelector('#game-shell[data-scene="combat"]')),
+    }));
     const clearDiceOverlay = async () => {
         for (let i = 0; i < 40; i++) {
             const next = page.locator('.wm-dice-overlay.active .wm-dice-next');
@@ -3140,7 +3181,7 @@ try {
     const scenes31 = await page.evaluate(() => [...document.querySelectorAll('.as-scene-name')]
         .map(n => n.textContent || ''));
     check('los ajustes de sonido ofrecen una pista por escena',
-        scenes31.length === 4 && scenes31.some(s => /Combate/.test(s)), JSON.stringify(scenes31));
+        scenes31.length === 5 && scenes31.some(s => /Combate/.test(s)) && scenes31.some(s => /^Pueblo/.test(s)), JSON.stringify(scenes31));
 
     await page.locator('.as-scene').filter({ hasText: 'Conversación' }).locator('.as-track').fill(SILENCE);
     await page.locator('.popup-button-ok').last().click();
@@ -3205,7 +3246,8 @@ try {
     check('el catalogo trae habilidades de serie, escritas como datos',
         panel32.cards >= 5 && panel32.names.includes('Rayo de fuego'), JSON.stringify(panel32.names));
     check('cada una se resume en una linea que dice lo que cuesta y que hace',
-        /Acción · a voluntad · 120 ft · 1d10 de daño/.test(panel32.summary), panel32.summary);
+        // R3: y su elemento, que es lo que decide qué le hace al tablero.
+        /Acción · a voluntad · 120 ft · fuego · 1d10 de daño/.test(panel32.summary), panel32.summary);
     check('y se puede repartir quien se la sabe, que es lo que ninguna tabla resolvia',
         panel32.who >= 2, `${panel32.who} casillas`);
 
@@ -3520,9 +3562,12 @@ try {
         const member = (window.SillyTavern.getContext().chatMetadata.party || [])
             .find(m => (m.deathSaves?.successes || 0) + (m.deathSaves?.failures || 0) > 0 || m.deathSaves?.dead);
         const enc = window.SillyTavern.getContext().chatMetadata.combatEncounter;
+        // Un 20 natural levanta a quien cae con 1 PG y borra la cuenta: también es haberla tirado.
+        const revived = said.some(t => /saca un 20 natural y vuelve en sí/.test(t));
         return {
-            rolled: said.some(t => /salvaci[óo]n de muerte/i.test(t)),
-            counted: Boolean(member),
+            rolled: revived || said.some(t => /salvaci[óo]n de muerte/i.test(t)),
+            counted: revived || Boolean(member),
+            revived,
             saves: member?.deathSaves ?? null,
             active: Boolean(enc?.active),
             round: Number(enc?.round) || 0,
@@ -3943,11 +3988,12 @@ try {
     }));
 
     check('al arrancar, el juego se abre solo y ensena su menu',
-        onTitle.scene === 'title' && onTitle.buttons.length === 4, JSON.stringify(onTitle));
+        onTitle.scene === 'title' && onTitle.buttons.length === 5, JSON.stringify(onTitle));
     // Eran tres; el compendio hace cuatro, y va antes que los ajustes porque es
-    // contenido y no una preferencia.
-    check('con las cuatro cosas que se pueden hacer al abrirlo',
-        onTitle.buttons.join(' | ') === 'Partida nueva | Cargar partida | Compendio | Opciones',
+    // contenido y no una preferencia. La partida rápida (R1) hace cinco, y va la primera:
+    // es la que menos pide.
+    check('con las cinco cosas que se pueden hacer al abrirlo',
+        onTitle.buttons.join(' | ') === 'Partida rápida | Partida nueva | Cargar partida | Compendio | Opciones',
         onTitle.buttons.join(' | '));
     check('y dice cuantas partidas hay guardadas, sin entrar',
         onTitle.hints.some(h => /campana/.test(h)), JSON.stringify(onTitle.hints));
@@ -3971,7 +4017,7 @@ try {
 
     await page.locator('.gs-menu-back').click();
     await page.waitForTimeout(700);
-    check('volver deja el menu como estaba', await page.locator('.gs-menu-btn').count() === 4);
+    check('volver deja el menu como estaba', await page.locator('.gs-menu-btn').count() === 5);
 
     // El interruptor de la pausa, y la prueba de que la puerta de salida es de verdad.
     await page.keyboard.press('Escape');
@@ -4192,19 +4238,21 @@ try {
     }
     const edge40 = await page.evaluate(() => ({
         title: document.querySelector('.tl-step-title')?.textContent || '',
-        boxes: document.querySelectorAll('.tl-field.is-check input').length,
-        dichos: [...document.querySelectorAll('.tl-check-label')].map(l => l.textContent || ''),
+        modes: [...document.querySelectorAll('.md-card')].map(c => c.getAttribute('data-mode') || ''),
+        dichos: [...document.querySelectorAll('.md-letter')].map(l => l.textContent || ''),
     }));
-    // Seis interruptores, y los seis apagan algo que de verdad corre: morir, guardar,
-    // hambre, clima, heridas y que la gente se vaya.
-    check('el taller pregunta cuanto duele perder',
-        /Jugabilidad/i.test(edge40.title) && edge40.boxes === 6
+    // R1: tres modos con nombre y seis letras, y cada letra apaga algo que de verdad corre:
+    // heridas, la cuenta, el mundo, el cuerpo, morir y guardar, y el clima.
+    check('el taller pregunta cuanto duele perder: los modos, y sus seis letras',
+        /Jugabilidad/i.test(edge40.title) && edge40.modes.length === 4 && edge40.dichos.length === 6
         && edge40.dichos.some(t => /hambre/i.test(t))
-        && edge40.dichos.some(t => /heridas se quedan/i.test(t))
-        && edge40.dichos.some(t => /se va si no cobra/i.test(t)),
-        JSON.stringify(edge40.dichos));
+        && edge40.dichos.some(t => /Heridas/.test(t))
+        && edge40.dichos.some(t => /quien no cobra acaba yéndose/i.test(t)),
+        JSON.stringify(edge40));
 
-    await page.locator('.tl-field.is-check input >> nth=1').check();
+    // El filo: «A tu medida», y la letra e (muere cualquiera, se guarda solo en el refugio).
+    await page.locator('.md-card[data-mode="custom"]').click();
+    await page.locator('.md-letter[data-letter="e"] input').check();
     await page.locator('.tl-next').click();
     await answerHeroCreator('Bruna');
     await page.waitForTimeout(3000);
@@ -4528,8 +4576,10 @@ try {
         ]);
 
         const { compendium, errors, loaded, batteries } = await getCompendium();
+        // Recién abierta, como la de `otraVez`: lo que se compara es la semilla, no lo que la
+        // biblioteca compartida recuerda de los pasos anteriores.
         const ten = makeNames({
-            compendium, howMany: 10, random: createSeededRandom('molino'),
+            compendium: createCompendium(batteries), howMany: 10, random: createSeededRandom('molino'),
         });
 
         return {
@@ -5593,12 +5643,12 @@ try {
     for (let i = 0; i < 10; i++) {
         await page.locator('.tl-next').click();
         await page.waitForTimeout(250);
-        // Idea 198: de paso, el paso de jugabilidad trae las tres dificultades con nombre.
-        const seen = await page.evaluate(() => [...document.querySelectorAll('.tl-card-title')].map(t => (t.textContent || '').trim()));
-        if (seen.includes('De hierro')) difficulties49 = seen;
+        // Idea 198, hoy R1 (DR1): la pestaña de jugabilidad trae los modos con nombre.
+        const seen = await page.evaluate(() => [...document.querySelectorAll('.md-card-title')].map(t => (t.textContent || '').trim()));
+        if (seen.includes('Supervivencia')) difficulties49 = seen;
     }
-    check('el taller ofrece dificultades con nombre: Historia, Veterana y De hierro (198)',
-        ['Historia', 'Veterana', 'De hierro'].every(n => difficulties49.includes(n)), JSON.stringify(difficulties49));
+    check('el taller ofrece los modos con nombre: Relajado, Normal, Supervivencia y a tu medida (198, R1)',
+        ['Relajado', 'Normal', 'Supervivencia', 'A tu medida'].every(n => difficulties49.includes(n)), JSON.stringify(difficulties49));
     await page.locator('.tl-next').click();
     // El creador de personaje respeta lo que el mundo deja entrar, y dice cómo empieza.
     await reachHeroCreator();
@@ -5935,9 +5985,9 @@ try {
     };
     // Un enemigo con la vida que haga falta, y quien le toca andando hasta pegarse a el:
     // lo que haria quien juega. Recargar la partida a mitad de combate no vale para esto.
-    const fightNextTo52 = async (/** @type {number} */ hp) => {
+    const fightNextTo52 = async (/** @type {number} */ hp, who = 'Infantería de Keller 1') => {
         await clearToasts();
-        await page.evaluate(() => { void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/fight Infantería de Keller 1'); });
+        await page.evaluate((foe) => { void window.SillyTavern.getContext().executeSlashCommandsWithOptions(`/fight ${foe}`); }, who);
         await page.waitForTimeout(1500);
         await clearDiceOverlay();
         const started = await page.evaluate(async (life) => {
@@ -6512,9 +6562,17 @@ try {
         });
         await page.waitForTimeout(500);
         await clearDiceOverlay();
-        await page.locator(`.wm-token[data-token-id="${provoke53}"]`).filter({ visible: true }).first().click({ timeout: 8000 }).catch(() => {});
+        const token53 = page.locator(`.wm-token[data-token-id="${provoke53}"]`).filter({ visible: true }).first();
+        await token53.click({ timeout: 8000 }).catch(() => {});
         await page.waitForTimeout(600);
         lit53 = await page.evaluate(() => document.querySelectorAll('.wm-highlight-move.wm-highlight-clickable').length);
+        // La ficha sigue elegida de un turno a otro, y pulsarla otra vez la suelta: si se ha
+        // soltado, se vuelve a pulsar.
+        if (lit53 === 0) {
+            await token53.click({ timeout: 8000 }).catch(() => {});
+            await page.waitForTimeout(600);
+            lit53 = await page.evaluate(() => document.querySelectorAll('.wm-highlight-move.wm-highlight-clickable').length);
+        }
         // Basta con salir del alcance de uno de los que te tienen pegado: ese te golpea.
         away53 = await page.evaluate(async () => {
             const party = await import('/scripts/party.js');
@@ -6534,8 +6592,22 @@ try {
         await page.waitForTimeout(400);
         pathCost53 = await page.evaluate(() => document.querySelector('.wm-path-cost')?.textContent || '');
     }
+    const screen53 = /te golpea/.test(pathCost53) ? null : await screenState();
+    // Si no sale: cómo está quien tiene el turno, y si su ficha se ve y se puede arrastrar.
+    const who53 = /te golpea/.test(pathCost53) ? null : await page.evaluate(async (id) => {
+        const party = await import('/scripts/party.js');
+        const me = party.getPartyMembersSnapshot().find((/** @type {any} */ m) => String(m.id) === String(id));
+        const token = document.querySelector(`.wm-token[data-token-id="${id}"]`);
+        const box = token?.getBoundingClientRect();
+        return {
+            conds: me?.activeConditions ?? null, hp: me?.hp ?? null,
+            token: Boolean(token), selected: token?.classList.contains('wm-token-selected') ?? false,
+            box: box ? [Math.round(box.x), Math.round(box.y), Math.round(box.width)] : null,
+            over: box ? (document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2)?.className || '').toString().slice(0, 60) : '',
+        };
+    }, provoke53);
     check('la ruta que te saca del alcance de un lobo avisa de que te golpea (1)',
-        /ft · te golpea Lobo famélico/.test(pathCost53), `${provoke53} · ${lit53} casillas · ${JSON.stringify(away53)} · ${pathCost53}`);
+        /ft · te golpea Lobo famélico/.test(pathCost53), `${provoke53} · ${lit53} casillas · ${JSON.stringify(away53)} · ${pathCost53}${screen53 ? ` · ${JSON.stringify(screen53)}` : ''}${who53 ? ` · ${JSON.stringify(who53)}` : ''}`);
     await page.mouse.move(5, 5);
 
     // 188 y 190: pegar, ver el número y oír al lobo.
@@ -6549,6 +6621,9 @@ try {
         const y = Number(me?.mapPosition?.gridY) || 0;
         const foe = (enc.enemies || []).find((/** @type {any} */ e) => (e.currentHp || 0) > 0
             && Math.max(Math.abs(e.gridX - x), Math.abs(e.gridY - y)) <= 1);
+        // Que el golpe lo tumbe: el grito de 190 sale cuando cae un aliado (o baja de la mitad),
+        // y un golpe de 2 contra un lobo entero no hacía ninguna de las dos cosas.
+        if (foe) foe.currentHp = 1;
         return String(foe?.name ?? '');
     });
     await page.evaluate(async () => {
@@ -6729,6 +6804,10 @@ try {
         for (const enemy of (await import('/scripts/party.js')).getCombatEncounter().enemies || []) {
             enemy.maxHp = Math.max(Number(enemy.maxHp) || 0, 99);
             enemy.currentHp = enemy.maxHp;
+            // Agarrar es una tirada enfrentada: con un lobo torpe, lo que se prueba es que
+            // agarrar funciona, no la suerte de los dados.
+            enemy.strength = 1;
+            enemy.dexterity = 1;
         }
     });
     await page.keyboard.press('3');
@@ -6784,7 +6863,9 @@ try {
     }
     await page.waitForTimeout(600);
     const grabTitle54 = await page.evaluate(() => [...document.querySelectorAll('.wm-token-enemy .wm-token-status')].map(s => s.getAttribute('title') || ''));
-    check('agarrar a un lobo lo deja quieto (10)', grabbed54, `${grabbed54}`);
+    const grabLines54 = grabbed54 ? [] : await page.evaluate(() => (window.SillyTavern.getContext().chat || [])
+        .map((/** @type {any} */ m) => String(m.mes || '')).filter(t => /COMBAT|Agarrar/.test(t)).slice(-5).map(t => t.slice(0, 120)));
+    check('agarrar a un lobo lo deja quieto (10)', grabbed54, `${grabbed54} ${JSON.stringify(grabLines54)}`);
     check('y su ficha dice qué le pasa, no solo cómo se llama (21)',
         grabTitle54.some(t => /^Agarrado: no se puede mover/.test(t)), JSON.stringify(grabTitle54));
     // Idea 18: el botón solo sale en el modo en que llevas a todo el grupo. En esta campaña
@@ -6938,15 +7019,35 @@ try {
         Boolean(junk55) && sold55 && (await gold54()) > goldBeforeJunk55, `${junk55?.text ?? 'sin botón'} · ${goldBeforeJunk55} → ${await gold54()}`);
 
     await clearToasts();
+    // U6 del pegamento: regatear es un duelo de tres rondas; se juegan las cartas hasta el final.
     await page.locator('#game-shell .gs-service-btn[data-action="shop-haggle"]').click({ timeout: 6000 }).catch(() => {});
-    await page.waitForTimeout(1200);
+    await page.waitForSelector('.popup:visible .wd-root', { timeout: 8000 }).catch(() => {});
+    const duel55 = await page.evaluate(() => ({
+        stance: document.querySelector('.popup:not([closing]) .wd-stance')?.textContent || '',
+        cards: [...document.querySelectorAll('.popup:not([closing]) .wd-card')].map(c => c.textContent || ''),
+    }));
+    for (let i = 0; i < 6 && await page.locator('.popup:visible .wd-outcome').count() === 0; i++) {
+        await page.locator('.popup:visible .wd-card:not([disabled])').first().click({ timeout: 4000 }).catch(() => {});
+        await page.waitForTimeout(250);
+    }
+    const outcome55 = await page.evaluate(() => ({
+        outcome: document.querySelector('.popup:not([closing]) .wd-outcome')?.getAttribute('data-outcome') || '',
+        log: [...document.querySelectorAll('.popup:not([closing]) .wd-log')].map(l => l.textContent || ''),
+    }));
+    await page.locator('.popup:visible .popup-button-ok').last().click({ timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(800);
     const haggle55 = await page.evaluate(() => ({
-        rolled: (window.SillyTavern.getContext().chat || []).some((/** @type {any} */ m) => /🎲 Persuasión de /.test(String(m.mes || ''))),
         stored: window.SillyTavern.getContext().chatMetadata.haggle ?? null,
+        said: (window.SillyTavern.getContext().chat || []).some((/** @type {any} */ m) => /🛒 \[TIENDA\] .+ regatea con el tendero de /.test(String(m.mes || ''))),
     }));
     const haggleGone55 = !(await serviceActions55()).some(a => a.id === 'shop-haggle');
-    check('regatear es una tirada de Persuasión, una vez al día (126)', haggle55.rolled && Boolean(haggle55.stored) && haggleGone55,
-        JSON.stringify({ ...haggle55, otraVez: !haggleGone55 }));
+    const expected55 = { 'cede': 0.2, 'a-medias': 0.1, 'no-cede': 0 }[/** @type {'cede'|'a-medias'|'no-cede'} */ (outcome55.outcome)];
+    check('regatear es un duelo de palabras con el tendero: su postura, tus cartas y las rondas (126, U6)',
+        /^Está (codicioso|desconfiado|orgulloso): /.test(duel55.stance) && duel55.cards.some(c => /^Convencer \([+-]\d+\)$/.test(c)) && outcome55.log.length >= 1,
+        JSON.stringify({ ...duel55, log: outcome55.log }));
+    check('y según cómo acabe rebaja un 20 %, un 10 % o nada, una vez al día (126, U6)',
+        expected55 !== undefined && Number(haggle55.stored?.discount) === expected55 && haggle55.said && haggleGone55,
+        JSON.stringify({ outcome: outcome55.outcome, ...haggle55, otraVez: !haggleGone55 }));
 
     // --- 89: la fiesta del pueblo -------------------------------------------------------------
     await page.evaluate(async () => {
@@ -7090,9 +7191,26 @@ try {
     step('56. La quinta batería: lo que se esconde en el hilo, lo que se lanza y lo que queda de quien muere');
     // Seguimos en 1387, en El Pueblo de Barro (paso 55).
     await clearToasts();
+    // Lo que Playwright dijo la última vez que no pudo pulsar el diario: nombra lo que se come el clic.
+    let clickError56 = '';
+    // Y las ventanas que había abiertas al ir a pulsarlo (la mesa de la semana, al pasar días).
+    /** @type {string[]} */
+    let blocking56 = [];
     const journal56 = async () => {
-        await page.mouse.click(5, 5);
-        await page.keyboard.press('d');
+        // Con el botón, no con la tecla: la tecla ya se prueba en el paso 54, y un clic suelto
+        // en una esquina podía caer en otra cosa.
+        await page.keyboard.press('1');
+        await page.waitForTimeout(300);
+        // Los avisos de la llegada se ponen encima del botón y se comen el clic.
+        await clearToasts();
+        // Un viaje de varios días puede abrir la mesa de la semana: es una ventana, y tapa el
+        // botón como taparía el de quien juega. Se cierra como la cerraría él.
+        blocking56 = await page.evaluate(() => [...document.querySelectorAll('dialog[open]')]
+            .map(d => (d.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 60)));
+        for (let i = 0; i < 3 && await page.locator('.popup:visible .popup-button-ok').count() > 0; i++) await closePopup52();
+        clickError56 = '';
+        await page.locator('#game-shell .gs-journal').click({ timeout: 6000 })
+            .catch((/** @type {Error} */ error) => { clickError56 = String(error?.message || error).slice(0, 900); });
         await page.waitForSelector('.jr-root', { timeout: 6000 }).catch(() => {});
         const sections = await page.evaluate(() => {
             /** @type {Record<string, string[]>} */
@@ -7191,9 +7309,36 @@ try {
     const secretModel56 = await lastForModel52(/Un secreto de la historia: El hielo que escucha/);
     const journalB56 = await journal56();
     const secretsB56 = Object.entries(journalB56).find(([title]) => /^Secretos de la historia/.test(title));
+    const screen56 = Object.keys(journalB56).length > 0 ? null : await screenState();
+    // Si no salió: ¿está el botón, se ve, y qué pasa al pulsarlo por dentro?
+    const retry56 = Object.keys(journalB56).length > 0 ? null : await page.evaluate(async () => {
+        const errors = [];
+        const onError = (/** @type {ErrorEvent} */ e) => errors.push(String(e.message || e.error));
+        window.addEventListener('error', onError);
+        const before = Boolean(document.querySelector('.jr-root'));
+        const button = /** @type {HTMLElement|null} */ (document.querySelector('#game-shell .gs-journal'));
+        const visible = Boolean(button && button.offsetParent !== null);
+        // Qué hay justo encima del centro del botón: si no es el botón, eso se come el clic.
+        const box = button?.getBoundingClientRect();
+        const over = box ? document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2) : null;
+        const onTop = over ? `${over.tagName}.${String(over.className || '').slice(0, 50)}${button?.contains(over) ? ' (el botón)' : ''}` : '';
+        const started = performance.now();
+        button?.click();
+        let took = -1;
+        while (performance.now() - started < 10000) {
+            if (document.querySelector('.jr-root')) {
+                took = Math.round(performance.now() - started);
+                break;
+            }
+            await new Promise(r => setTimeout(r, 100));
+        }
+        window.removeEventListener('error', onError);
+        document.querySelectorAll('dialog[open] .popup-button-ok').forEach(b => /** @type {HTMLElement} */ (b).click());
+        return { button: Boolean(button), visible, before, onTop, took, box: box ? [Math.round(box.x), Math.round(box.y)] : null, errors };
+    });
     check('llegar al lago helado destapa un secreto: se cuenta, y el diario lo apunta (111)',
         Boolean(secretModel56) && secretsB56?.[0] === 'Secretos de la historia (1 de 2)' && (secretsB56?.[1] ?? []).includes('El hielo que escucha'),
-        JSON.stringify({ secretModel56: secretModel56.slice(0, 80), secretsB56 }));
+        JSON.stringify({ secretModel56: secretModel56.slice(0, 80), secretsB56, titles: Object.keys(journalB56), screen56, retry56, blocking56, clickError56 }));
 
     // --- 5, 11, 20, 122, 146, 132 y 52: un combate en el peaje ---------------------------------
     await go56('El Peaje Norte');
@@ -7768,7 +7913,10 @@ try {
     await clearDiceOverlay();
     const boss57 = await page.evaluate(() => (window.SillyTavern.getContext().chat || [])
         .map((/** @type {any} */ m) => String(m.mes || '')).find(t => /👑 .+: «.+» Contesta en el acto\./u.test(t)) || '');
-    check('el jefe contesta al golpe, una vez por ronda (24)', Boolean(boss57), `${turn57} · ${boss57.slice(0, 200)}`);
+    // Si no contesta: a quién se atacó y qué dijo el combate (fallar con un 1, o no llegar).
+    const bossLines57 = boss57 ? [] : await page.evaluate(() => (window.SillyTavern.getContext().chat || [])
+        .map((/** @type {any} */ m) => String(m.mes || '')).filter(t => /COMBAT|👑/u.test(t)).slice(-5).map(t => t.slice(0, 160)));
+    check('el jefe contesta al golpe, una vez por ronda (24)', Boolean(boss57), `${turn57} · ${foe57} · ${boss57.slice(0, 200)}${bossLines57.length ? ` · ${JSON.stringify(bossLines57)}` : ''}`);
     await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/combat-stop').catch(() => {}));
     await page.waitForTimeout(800);
     await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/leave').catch(() => {}));
@@ -8680,6 +8828,1196 @@ try {
     const below59 = await page.evaluate(() => String(window.SillyTavern.getContext().chatMetadata.currentBoard || ''));
     check('junto a una escalera, la fila ofrece bajar, y se baja al nivel siguiente (75)', stairsChip59 && below59 === 'La bodega del 59 (nivel 2)', `${stairsChip59} · ${below59}`);
 
+    step('60. El pegamento, U0 y U1: tu sesión, y un solo narrador');
+    await clearToasts();
+    await clearDiceOverlay();
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/combat-stop').catch(() => {}));
+    await page.waitForTimeout(600);
+
+    // --- U0: tu sesión, desde la pausa -----------------------------------------------------------
+    await page.mouse.click(5, 5);
+    await page.keyboard.press('Escape');
+    await page.waitForSelector('.gs-pause', { timeout: 5000 }).catch(() => {});
+    await page.locator('.gs-pause-btn', { hasText: 'Tu sesión' }).click({ timeout: 5000 }).catch(() => {});
+    await page.waitForSelector('.popup:visible .sl-root', { timeout: 8000 }).catch(() => {});
+    const session60 = await page.evaluate(() => [...document.querySelectorAll('.popup:not([closing]) .sl-root .sl-line')].map(p => p.textContent || ''));
+    check('en la pausa, «Tu sesión» dice los minutos por escena, lo que se habló con el narrador y lo que se pulsó (U0)',
+        session60.length >= 3
+            && /^(Llevas \d+ minutos? jugando: .+\.|Acabas de empezar: aún no hay minutos que contar\.)$/.test(session60[0])
+            && /^Al narrador: \d+ mensajes? · \d+ llamadas?/.test(session60[1])
+            && /^Con botón: [1-9]\d* acci(ón|ones)\.$/.test(session60[2]),
+        JSON.stringify(session60));
+    await closePopup52();
+    if (await page.locator('.gs-pause').count() > 0) {
+        await page.mouse.click(5, 5);
+        await page.keyboard.press('Escape');
+        await page.waitForSelector('.gs-pause', { state: 'detached', timeout: 5000 }).catch(() => {});
+    }
+
+    // --- U1: un solo narrador -------------------------------------------------------------------
+    const narrator60 = await page.evaluate(async () => {
+        const { ToolManager } = await import('/scripts/tool-calling.js');
+        const { SlashCommandParser } = await import('/scripts/slash-commands/SlashCommandParser.js');
+        const dcm = await import('/scripts/dynamic-context-manager.js');
+        const party = await import('/scripts/party.js');
+        dcm.injectAllDynamicContext();
+        const prompts = Object.values(window.SillyTavern.getContext().extensionPrompts || {}).map((/** @type {any} */ p) => String(p?.value || ''));
+        return {
+            tools: ToolManager.tools.map(t => t.toFunctionOpenAI().function.name),
+            commands: ['cquest', 'clocation', 'cstate'].filter(name => Boolean(SlashCommandParser.commands[name])),
+            taught: prompts.some(text => /DYNAMIC CONTEXT UPDATE|ACTIVE QUESTS/.test(text)),
+            engine: party.getEngineSceneState(),
+            dcm: dcm.currentStateOf(dcm.getCampaignState()),
+        };
+    });
+    const oldTools60 = narrator60.tools.filter(name => name.startsWith('dnd_'));
+    check('el narrador ya no tiene las herramientas viejas para apuntar misiones, banderas, escena o sitio, y sí la de proponer un hecho (U1)',
+        oldTools60.length === 0 && narrator60.tools.includes('proponer_hecho') && narrator60.tools.includes('cambiar_actitud'), JSON.stringify(narrator60.tools));
+    check('ni se le enseña a escribir etiquetas ni recibe una lista de misiones aparte; /cquest y /clocation ya no existen (U1)',
+        !narrator60.taught && JSON.stringify(narrator60.commands) === '["cstate"]', JSON.stringify({ taught: narrator60.taught, commands: narrator60.commands }));
+    check('la escena de las instrucciones la decide el motor, no la prosa (U1)',
+        ['combat', 'exploration', 'social'].includes(narrator60.engine) && narrator60.dcm === narrator60.engine, JSON.stringify({ engine: narrator60.engine, dcm: narrator60.dcm }));
+
+    const fact60 = await page.evaluate(async () => {
+        const { ToolManager } = await import('/scripts/tool-calling.js');
+        const first = String(await ToolManager.invokeFunctionTool('proponer_hecho', { hecho: 'La barquera del 60 juró venganza contra Vane.' }) ?? '');
+        const second = String(await ToolManager.invokeFunctionTool('proponer_hecho', { hecho: 'El alcalde del 60 esconde algo en el sótano.' }) ?? '');
+        const deeds = window.SillyTavern.getContext().chatMetadata.deeds || [];
+        return {
+            first,
+            second,
+            last: deeds[deeds.length - 1] ?? null,
+            said: (window.SillyTavern.getContext().chat || []).some((/** @type {any} */ m) => /📝 \[MUNDO\] El mundo lo recordará: La barquera del 60/.test(String(m.mes || ''))),
+        };
+    });
+    check('el narrador propone un hecho y el motor lo apunta, marcado como suyo; el segundo del día, no (U1)',
+        /^Apuntado/.test(fact60.first) && /^No se apunta: Hoy ya/.test(fact60.second)
+            && fact60.last?.text === 'La barquera del 60 juró venganza contra Vane.' && fact60.last?.from === 'narrador' && fact60.said,
+        JSON.stringify(fact60));
+
+    step('61. El pegamento, U2: un solo estado de partida');
+    await clearToasts();
+    await clearDiceOverlay();
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/combat-stop').catch(() => {}));
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/leave').catch(() => {}));
+    await page.waitForTimeout(900);
+
+    // --- El panel: lo que el juego da por cierto, desde «Tu sesión» ------------------------------
+    await page.mouse.click(5, 5);
+    await page.keyboard.press('Escape');
+    await page.waitForSelector('.gs-pause', { timeout: 5000 }).catch(() => {});
+    await page.locator('.gs-pause-btn', { hasText: 'Tu sesión' }).click({ timeout: 5000 }).catch(() => {});
+    await page.waitForSelector('.popup:visible .sl-state', { timeout: 8000 }).catch(() => {});
+    await page.locator('.popup:visible .sl-state').click({ timeout: 5000 }).catch(() => {});
+    await page.waitForSelector('.popup:visible .sp-root', { timeout: 8000 }).catch(() => {});
+    const panel61 = await page.evaluate(() => {
+        const root = document.querySelector('.popup:not([closing]) .sp-root');
+        const row = (/** @type {string} */ key) => root?.querySelector(`tr[data-key="${key}"] td:last-child`)?.textContent || '';
+        return {
+            sections: [...(root?.querySelectorAll('.sp-section summary') ?? [])].map(s => s.textContent || ''),
+            party: row('party'),
+            tone: row('sceneTone'),
+        };
+    });
+    check('«Tu sesión» lleva al panel de lo que el juego da por cierto, clave a clave y por clases (U2)',
+        panel61.sections.length === 5 && /^La partida \(vuelve con un punto de retorno\) · \d+ de \d+$/.test(panel61.sections[0]) && /^\d+$/.test(panel61.party),
+        JSON.stringify(panel61));
+    await closePopup52();
+    await closePopup52();
+    if (await page.locator('.gs-pause').count() > 0) {
+        await page.mouse.click(5, 5);
+        await page.keyboard.press('Escape');
+        await page.waitForSelector('.gs-pause', { state: 'detached', timeout: 5000 }).catch(() => {});
+    }
+
+    // --- El punto de retorno devuelve todo, también el mundo -------------------------------------
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/punto guardar Antes del 61'));
+    // La copia del mundo se sube aparte: se espera a que el punto la tenga.
+    let worldFile61 = '';
+    for (let i = 0; i < 20 && !worldFile61; i++) {
+        await page.waitForTimeout(500);
+        worldFile61 = await page.evaluate(() => String((window.SillyTavern.getContext().chatMetadata.checkpoints || [])[0]?.worldFile || ''));
+    }
+    const watched61 = ['attitudes', 'wanted', 'guildStorage', 'plotState', 'contractBoard'];
+    const before61 = await page.evaluate(async (keys) => {
+        const meta = window.SillyTavern.getContext().chatMetadata;
+        const wi = await import('/scripts/world-info.js');
+        const data = await wi.loadWorldInfo(String(meta.world_info || ''));
+        const place = (data?.metadata?.locationMaps || [])[0];
+        return {
+            keys: Object.fromEntries(keys.map(k => [k, JSON.stringify(meta[k] ?? null)])),
+            place: String(place?.name || ''),
+            fortune: Number(place?.fortune) || 0,
+            label: (meta.checkpoints || [])[0]?.label || '',
+            version: (meta.checkpoints || [])[0]?.version || 0,
+        };
+    }, watched61);
+    // Cinco cosas de cinco sistemas distintos, y el mundo.
+    await page.evaluate(async (placeName) => {
+        const ctx = window.SillyTavern.getContext();
+        const meta = ctx.chatMetadata;
+        meta.attitudes = { ...(meta.attitudes || {}), 'Giles del 61': 3 };
+        meta.wanted = { ...(meta.wanted || {}), 'El Peaje Norte': 3 };
+        meta.guildStorage = [...(meta.guildStorage || []), { id: 'caja-61', name: 'Caja del 61' }];
+        meta.plotState = { ...(meta.plotState || {}), done: [...(meta.plotState?.done || []), 'hito-del-61'] };
+        meta.contractBoard = [];
+        await ctx.saveMetadata();
+        const wi = await import('/scripts/world-info.js');
+        const name = String(meta.world_info || '');
+        const data = await wi.loadWorldInfo(name);
+        const place = (data?.metadata?.locationMaps || []).find((/** @type {any} */ l) => l.name === placeName);
+        if (place) place.fortune = -3;
+        await wi.saveWorldInfo(name, data, true);
+    }, before61.place);
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/punto volver 1'));
+    await page.waitForTimeout(1200);
+    const after61 = await page.evaluate(async ({ keys, placeName }) => {
+        const meta = window.SillyTavern.getContext().chatMetadata;
+        const wi = await import('/scripts/world-info.js');
+        const data = await wi.loadWorldInfo(String(meta.world_info || ''));
+        const place = (data?.metadata?.locationMaps || []).find((/** @type {any} */ l) => l.name === placeName);
+        return {
+            keys: Object.fromEntries(keys.map(k => [k, JSON.stringify(meta[k] ?? null)])),
+            fortune: Number(place?.fortune) || 0,
+            said: (window.SillyTavern.getContext().chat || []).some((/** @type {any} */ m) => /⏪ \[PARTIDA\] Vuelta a: .*Antes del 61.* El mundo también vuelve a como estaba\./.test(String(m.mes || ''))),
+        };
+    }, { keys: watched61, placeName: before61.place });
+    const differ61 = watched61.filter(k => after61.keys[k] !== before61.keys[k]);
+    check('un punto de retorno guarda todo lo de juego, y su copia del mundo va en un archivo aparte (U2)',
+        before61.label === 'Antes del 61' && before61.version === 2 && /punto-cp_[a-z0-9_]+\.json$/.test(worldFile61), JSON.stringify({ label: before61.label, version: before61.version, worldFile61 }));
+    check('volver a él devuelve las actitudes, lo que os buscan, el almacén, el hilo y el tablón (U2)',
+        differ61.length === 0, JSON.stringify({ differ61, before: before61.keys, after: after61.keys }).slice(0, 600));
+    check('y el mundo también vuelve a como estaba, y se dice (U2, DU2)',
+        after61.fortune === before61.fortune && after61.said, JSON.stringify({ place: before61.place, before: before61.fortune, after: after61.fortune, said: after61.said }));
+
+    step('62. El pegamento, U3: un solo reloj');
+    await clearToasts();
+    await clearDiceOverlay();
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/combat-stop').catch(() => {}));
+    await page.waitForTimeout(500);
+
+    // --- Un encargo que vence hoy, y un descanso: vence sin abrir el gremio ----------------------
+    await page.evaluate(async () => {
+        const ctx = window.SillyTavern.getContext();
+        const meta = ctx.chatMetadata;
+        const today = Math.max(1, Math.floor(Number(meta.calendar?.day) || 1));
+        meta.contractBoard = [
+            { id: 'plazo-62', rank: 'D', kind: 'cull', title: 'Encargo que caduca del 62', locationName: '', reward: 10, days: today, difficulty: 0.25, patron: 'e2e' },
+            { id: 'sigue-62', rank: 'D', kind: 'cull', title: 'Encargo que sigue del 62', locationName: '', reward: 10, days: today + 20, difficulty: 0.25, patron: 'e2e' },
+        ];
+        await ctx.saveMetadata();
+    });
+    await provision51();
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/descanso largo'));
+    await page.waitForTimeout(1500);
+    const board62 = await page.evaluate(() => ({
+        ids: (window.SillyTavern.getContext().chatMetadata.contractBoard || []).map((/** @type {any} */ c) => c.id),
+        said: (window.SillyTavern.getContext().chat || []).some((/** @type {any} */ m) => /📄 \[GREMIO\] Se paso el plazo: Encargo que caduca del 62/.test(String(m.mes || ''))),
+    }));
+    check('un encargo del tablón vence al pasar el día, aunque no se abra el gremio, y se dice (U3)',
+        board62.said && !board62.ids.includes('plazo-62') && board62.ids.includes('sigue-62'), JSON.stringify(board62));
+
+    // --- Lo que viene: lo primero del diario --------------------------------------------------
+    await page.keyboard.press('1');
+    await page.waitForTimeout(500);
+    await page.locator('#game-shell .gs-journal').click({ timeout: 6000 }).catch(() => {});
+    await page.waitForSelector('.popup:visible .jr-root', { timeout: 8000 }).catch(() => {});
+    const coming62 = await page.evaluate(() => {
+        const root = document.querySelector('.popup:not([closing]) .jr-root');
+        const nodes = [...(root?.children ?? [])];
+        const first = nodes.findIndex(n => n.classList.contains('jr-title'));
+        const title = first >= 0 ? nodes[first].textContent || '' : '';
+        const items = [];
+        for (let i = first + 1; i < nodes.length && !nodes[i].classList.contains('jr-title'); i++) items.push(nodes[i].textContent || '');
+        return { title, items };
+    });
+    check('el diario empieza por lo que viene: los plazos de todos los relojes, con cuándo (U3)',
+        coming62.title === 'Lo que viene' && coming62.items.length > 0
+            && coming62.items.every(line => /, (hoy|mañana|en \d+ días)\.$/.test(line))
+            && coming62.items.some(line => /^La cuenta de la semana/.test(line)),
+        JSON.stringify(coming62));
+    await closePopup52();
+
+    step('63. El pegamento, U4: una sola crónica');
+    await clearToasts();
+    await clearDiceOverlay();
+
+    // --- El diario: la crónica sale de lo que el juego contó, con filtro por categoría ----------
+    await page.keyboard.press('1');
+    await page.waitForTimeout(500);
+    await page.locator('#game-shell .gs-journal').click({ timeout: 6000 }).catch(() => {});
+    await page.waitForSelector('.popup:visible .jr-root', { timeout: 8000 }).catch(() => {});
+    const diary63 = await page.evaluate(() => {
+        const root = document.querySelector('.popup:not([closing]) .jr-root');
+        return {
+            titles: [...(root?.querySelectorAll('.jr-title') ?? [])].map(t => t.textContent || ''),
+            filters: [...(root?.querySelectorAll('.jr-filter') ?? [])].map(b => b.getAttribute('data-cat') || ''),
+            cats: [...new Set([...(root?.querySelectorAll('.jr-chron') ?? [])].map(i => i.getAttribute('data-cat') || ''))],
+        };
+    });
+    check('el diario trae la crónica sacada de lo que el juego contó, por categorías, y aparte lo que el mundo recuerda (U4)',
+        diary63.titles.includes('Crónica') && diary63.titles.includes('Lo que el mundo recuerda')
+            && diary63.filters[0] === '' && diary63.filters.includes('hilo') && diary63.cats.length >= 3,
+        JSON.stringify(diary63));
+    await page.locator('.popup:visible .jr-filter[data-cat="hilo"]').click({ timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(300);
+    const filtered63 = await page.evaluate(() => {
+        const items = [...document.querySelectorAll('.popup:not([closing]) .jr-chron')];
+        const visible = items.filter(i => /** @type {HTMLElement} */ (i).offsetParent !== null);
+        return { total: items.length, visible: visible.length, cats: [...new Set(visible.map(i => i.getAttribute('data-cat')))] };
+    });
+    check('y el filtro deja ver solo una categoría (U4)',
+        filtered63.visible > 0 && filtered63.visible < filtered63.total && JSON.stringify(filtered63.cats) === '["hilo"]', JSON.stringify(filtered63));
+    await closePopup52();
+
+    // --- El chat: lo menor seguido, plegado en «y N más» que se abre --------------------------
+    await page.evaluate(async () => {
+        const ctx = window.SillyTavern.getContext();
+        // Tres compras seguidas: lo menor se pliega.
+        for (const thing of ['una cuerda', 'una antorcha', 'pan']) await ctx.executeSlashCommandsWithOptions(`/sys 🛒 [TIENDA] Wendel compra ${thing}.`);
+    });
+    await page.waitForTimeout(700);
+    const folded63 = await page.evaluate(() => ({
+        buttons: [...document.querySelectorAll('#chat .gm-fold')].map(b => b.textContent || ''),
+        hidden: document.querySelectorAll('#chat .mes.gm-folded').length,
+    }));
+    check('en el chat, varios avisos menores seguidos se quedan en el último con un «y N más» (U4, DU3)',
+        folded63.hidden >= 2 && folded63.buttons.some(t => /^y \d+ más/.test(t)), JSON.stringify(folded63));
+    await page.locator('#chat .gm-fold').last().click({ timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(400);
+    const opened63 = await page.evaluate(() => document.querySelectorAll('#chat .mes.gm-folded').length);
+    check('y al pulsarlo se abren, y se quedan abiertos (U4)', opened63 < folded63.hidden, `${folded63.hidden} → ${opened63}`);
+
+    step('64. El pegamento, U5: la Mesa de la Semana');
+    await clearToasts();
+    await clearDiceOverlay();
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/combat-stop').catch(() => {}));
+    await page.waitForTimeout(400);
+
+    // Una semana que acaba mañana, con cosas que apremian: una facción que avanza, un encargo
+    // aceptado y uno del tablón. La primera vez, la mesa se abre sola (como un consejo).
+    await page.evaluate(async () => {
+        const ctx = window.SillyTavern.getContext();
+        const meta = ctx.chatMetadata;
+        const today = Math.max(1, Math.floor(Number(meta.calendar?.day) || 1));
+        meta.upkeepDueDay = today + 1;
+        meta.contractTaken = { id: 'mesa-64', rank: 'C', kind: 'escort', title: 'Escoltar al molinero del 64', locationName: 'El Peaje Norte', reward: 70, days: today + 4, difficulty: 1, patron: 'e2e' };
+        // Dos: al cerrar la semana los rivales se llevan el mejor pagado (idea 94), y el otro queda.
+        meta.contractBoard = [
+            { id: 'tablon-64', rank: 'C', kind: 'cull', title: 'Cazar al lobo blanco del 64', locationName: '', reward: 95, days: today + 9, difficulty: 1, patron: 'e2e' },
+            { id: 'tablon-64b', rank: 'D', kind: 'cull', title: 'Limpiar el granero del 64', locationName: '', reward: 25, days: today + 9, difficulty: 0.25, patron: 'e2e' },
+        ];
+        for (const m of meta.party || []) m.gold = Math.max(Number(m.gold) || 0, 200);
+        await ctx.saveMetadata();
+        const seen = (window.localStorage.getItem('sillytavern_gameTipsSeen') || '').split(',').filter(t => t && t !== 'mesa');
+        window.localStorage.setItem('sillytavern_gameTipsSeen', seen.join(','));
+    });
+    await provision51();
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/descanso largo'));
+    await page.waitForSelector('.popup:visible .wt-root', { timeout: 8000 }).catch(() => {});
+    const table64 = await page.evaluate(() => {
+        const root = document.querySelector('.popup:not([closing]) .wt-root');
+        return {
+            head: root?.querySelector('h3')?.textContent || '',
+            titles: [...(root?.querySelectorAll('.wt-title') ?? [])].map(t => t.textContent || ''),
+            affairs: [...(root?.querySelectorAll('.wt-affair') ?? [])].map(a => ({
+                kind: a.getAttribute('data-kind'),
+                title: a.querySelector('.wt-affair-title')?.textContent || '',
+                ignored: a.querySelector('.wt-ignored')?.textContent || '',
+            })),
+            seen: (window.localStorage.getItem('sillytavern_gameTipsSeen') || '').split(',').includes('mesa'),
+        };
+    });
+    check('al empezar la semana, la primera vez, la mesa se abre sola con la semana y la estación (U5, DU4)',
+        /^Semana \d+ · /.test(table64.head) && table64.seen, JSON.stringify({ head: table64.head, seen: table64.seen }));
+    check('los asuntos salen de todos los relojes, cinco como mucho, y cada uno dice qué pasa si no se atiende (U5)',
+        table64.affairs.length >= 2 && table64.affairs.length <= 5
+            && table64.affairs.some(a => a.kind === 'encargo' && a.title === 'Escoltar al molinero del 64')
+            && table64.affairs.some(a => a.kind === 'tablon' && /del 64$/.test(a.title))
+            && table64.affairs.every(a => /^Si no vais: .+\.$/.test(a.ignored)),
+        JSON.stringify(table64.affairs));
+    check('y la mesa junta lo que viene (U5)', table64.titles.includes('Los asuntos: no caben todos') && table64.titles.includes('Lo que viene'), JSON.stringify(table64.titles));
+    await closePopup52();
+
+    // La siguiente semana ya no se abre sola: se avisa, y está en su botón.
+    await page.evaluate(async () => {
+        const ctx = window.SillyTavern.getContext();
+        const today = Math.max(1, Math.floor(Number(ctx.chatMetadata.calendar?.day) || 1));
+        ctx.chatMetadata.upkeepDueDay = today + 1;
+        await ctx.saveMetadata();
+    });
+    await provision51();
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/descanso largo'));
+    await page.waitForTimeout(1200);
+    const second64 = await page.evaluate(() => ({
+        popup: Boolean(document.querySelector('.popup:not([closing]) .wt-root')),
+        said: (window.SillyTavern.getContext().chat || []).some((/** @type {any} */ m) => /📋 \[PARTIDA\] Empieza la semana \d+: la mesa/.test(String(m.mes || ''))),
+    }));
+    await page.keyboard.press('1');
+    await page.waitForTimeout(400);
+    await page.locator('#game-shell .gs-table').click({ timeout: 6000 }).catch(() => {});
+    await page.waitForSelector('.popup:visible .wt-root', { timeout: 6000 }).catch(() => {});
+    const button64 = await page.evaluate(() => [...document.querySelectorAll('.popup:not([closing]) .wt-title')].map(t => t.textContent || ''));
+    check('después, la semana nueva se avisa, y la mesa está en su botón, con la semana que pasó (U5)',
+        !second64.popup && second64.said && button64.includes('La semana que pasó'), JSON.stringify({ ...second64, button64 }));
+    await closePopup52();
+
+    step('65. El pegamento, U8: los despachos');
+    await clearToasts();
+    await clearDiceOverlay();
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/combat-stop').catch(() => {}));
+    await page.evaluate(async () => {
+        const ctx = window.SillyTavern.getContext();
+        const meta = ctx.chatMetadata;
+        const today = Math.max(1, Math.floor(Number(meta.calendar?.day) || 1));
+        meta.contractBoard = [{ id: 'despacho-65', rank: 'D', kind: 'cull', title: 'Limpiar la bodega del 65', locationName: '', reward: 30, days: today + 12, difficulty: 0.25, patron: 'e2e' }];
+        delete meta.contractTaken;
+        meta.dispatches = [];
+        for (const m of meta.party || []) if (!m.dead) { m.hp = Math.max(Number(m.hp) || 0, 10); m.needs = {}; }
+        await ctx.saveMetadata();
+    });
+    await page.keyboard.press('1');
+    await page.waitForTimeout(400);
+    await page.locator('#game-shell .gs-table').click({ timeout: 6000 }).catch(() => {});
+    await page.waitForSelector('.popup:visible .wt-root', { timeout: 6000 }).catch(() => {});
+    await page.locator('.popup:visible .wt-affair[data-kind="tablon"] .wt-dispatch').click({ timeout: 5000 }).catch(() => {});
+    await page.waitForSelector('.popup:visible .dp-root', { timeout: 6000 }).catch(() => {});
+    await page.locator('.popup:visible .dp-pick').first().check({ timeout: 4000 }).catch(() => {});
+    await page.waitForTimeout(200);
+    const odds65 = await page.evaluate(() => document.querySelector('.popup:not([closing]) .dp-odds')?.textContent || '');
+    const sent65 = await page.evaluate(() => String(document.querySelector('.popup:not([closing]) .dp-pick')?.getAttribute('value') || ''));
+    await page.locator('.popup:visible .popup-button-ok').last().click({ timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(600);
+    await closePopup52();
+    const away65 = await page.evaluate(async (id) => {
+        const meta = window.SillyTavern.getContext().chatMetadata;
+        return {
+            inParty: ((await import('/scripts/party.js')).getPartyMembersSnapshot()).some((/** @type {any} */ m) => String(m.id) === id),
+            dispatches: (meta.dispatches || []).map((/** @type {any} */ d) => ({ backOn: d.backOn, members: d.members.map((/** @type {any} */ m) => String(m.id)) })),
+            board: (meta.contractBoard || []).map((/** @type {any} */ c) => c.id),
+            said: (window.SillyTavern.getContext().chat || []).some((/** @type {any} */ m) => /🧭 \[GREMIO\] .+ sale hacia «Limpiar la bodega del 65»: \d+ % de que salga bien, de vuelta en 2 días\./.test(String(m.mes || ''))),
+        };
+    }, sent65);
+    check('desde la mesa, lo menor del tablón se despacha: la probabilidad se ve antes, y quien va sale del grupo (U8)',
+        /^\d+ % de que salga bien · de vuelta en 2 días\./.test(odds65) && Boolean(sent65) && !away65.inParty
+            && away65.dispatches.length === 1 && away65.dispatches[0].members.includes(sent65) && !away65.board.includes('despacho-65') && away65.said,
+        JSON.stringify({ odds65, sent65, ...away65 }));
+
+    for (let i = 0; i < 2; i++) {
+        await provision51();
+        await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/descanso largo'));
+        await page.waitForTimeout(1200);
+        await closePopup52();
+    }
+    const back65 = await page.evaluate(async (id) => ({
+        inParty: ((await import('/scripts/party.js')).getPartyMembersSnapshot()).some((/** @type {any} */ m) => String(m.id) === id),
+        dispatches: (window.SillyTavern.getContext().chatMetadata.dispatches || []).length,
+        said: (window.SillyTavern.getContext().chat || []).map((/** @type {any} */ m) => String(m.mes || '')).find(t => /🧭 \[GREMIO\] .+ vuelven? de «Limpiar la bodega del 65»/.test(t)) || '',
+    }), sent65);
+    check('y a los días vuelve, con lo que traiga, y se cuenta (U8)',
+        back65.inParty && back65.dispatches === 0 && Boolean(back65.said), JSON.stringify(back65));
+
+    step('66. El pegamento, U6 y U5: convencer a alguien, y el mapa en texto');
+    await clearToasts();
+    await clearDiceOverlay();
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/combat-stop').catch(() => {}));
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/leave').catch(() => {}));
+    await go56('El Pueblo de Barro');
+    await page.evaluate(() => document.querySelectorAll('.rc-card').forEach(c => c.remove()));
+
+    // --- 69 y 70: el mapa en texto -------------------------------------------------------------
+    await page.keyboard.press('1');
+    await page.waitForTimeout(500);
+    await page.locator('#game-shell .gs-map').click({ timeout: 6000 }).catch(() => {});
+    await page.waitForSelector('.popup:visible .tm-root', { timeout: 6000 }).catch(() => {});
+    const map66 = await page.evaluate(() => [...document.querySelectorAll('.popup:not([closing]) .tm-place')].map(p => ({
+        place: p.getAttribute('data-place') || '',
+        state: p.getAttribute('data-state') || '',
+        routes: [...p.querySelectorAll('.tm-route')].map(r => r.textContent || ''),
+    })));
+    check('el mapa en texto: donde estáis primero, lo visitado, y lo no pisado en gris con caminos sin destino (69)',
+        map66[0]?.state === 'aqui' && map66[0]?.place === 'El Pueblo de Barro' && map66.some(r => r.state === 'visitado')
+            && map66.every(r => r.routes.every(t => /^→ (un camino que no conocéis|.+, \d+ días?)/.test(t))),
+        JSON.stringify(map66.slice(0, 4)));
+    await page.locator('.popup:visible .tm-note').first().fill('Nota del 66', { timeout: 4000 }).catch(() => {});
+    await page.keyboard.press('Tab');
+    await page.waitForTimeout(400);
+    const note66 = await page.evaluate(() => (window.SillyTavern.getContext().chatMetadata.mapNotes || {})['El Pueblo de Barro'] || '');
+    check('y cada sitio admite una nota tuya, que se queda (70)', note66 === 'Nota del 66', note66);
+    await closePopup52();
+
+    // --- U6: convencer a Giles, en un duelo de palabras ---------------------------------------
+    await page.keyboard.press('1');
+    await page.waitForTimeout(600);
+    const talk66 = await clickChip54(/^Hablar con Giles/);
+    await page.waitForTimeout(600);
+    const offered66 = await clickChip54(/^Convencer a Giles$/);
+    await page.waitForSelector('.popup:visible .wd-root', { timeout: 8000 }).catch(() => {});
+    for (let i = 0; i < 6 && await page.locator('.popup:visible .wd-outcome').count() === 0; i++) {
+        await page.locator('.popup:visible .wd-card:not([disabled])').first().click({ timeout: 4000 }).catch(() => {});
+        await page.waitForTimeout(250);
+    }
+    const outcome66 = await page.evaluate(() => document.querySelector('.popup:not([closing]) .wd-outcome')?.getAttribute('data-outcome') || '');
+    await page.locator('.popup:visible .popup-button-ok').last().click({ timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(800);
+    const duel66 = await page.evaluate(() => {
+        const ctx = window.SillyTavern.getContext();
+        const today = Math.max(1, Math.floor(Number(ctx.chatMetadata.calendar?.day) || 1));
+        const said = (ctx.chat || []).map((/** @type {any} */ m) => String(m.mes || ''));
+        return {
+            today: Number(ctx.chatMetadata.duels?.Giles) === today,
+            said: said.some(t => /🗣️ \[DUELO\] .+ habla con Giles: (cede|cede a medias|no cede)\./.test(t)),
+            model: said.some(t => /^\[DUELO\] Una conversación con Giles \(/.test(t)),
+        };
+    });
+    check('hablando con alguien, la fila ofrece convencerle: un duelo de tres rondas que cuenta el narrador una vez (U6)',
+        talk66 && offered66 && ['cede', 'a-medias', 'no-cede'].includes(outcome66) && duel66.today && duel66.said && duel66.model,
+        JSON.stringify({ talk66, offered66, outcome66, ...duel66 }));
+
+    step('67. El pegamento, U8: casos con verdad');
+    await clearToasts();
+    await clearDiceOverlay();
+    await page.evaluate(async () => { (await import('/scripts/game-engine/campaign/cases.js')).CASE_CHANCE.weekly = 1; });
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/caso nuevo'));
+    await page.waitForTimeout(1500);
+    const case67 = await page.evaluate(() => {
+        const ctx = window.SillyTavern.getContext();
+        const active = ctx.chatMetadata.cases?.active ?? null;
+        const said = (ctx.chat || []).map((/** @type {any} */ m) => String(m.mes || ''));
+        const witness = active?.clues.find((/** @type {any} */ c) => c.source.kind === 'persona' && c.how === 'hablar' && !c.misleading) ?? null;
+        return {
+            title: String(active?.title || ''),
+            place: String(active?.place || ''),
+            truth: active?.truth ?? null,
+            witness: witness ? { id: witness.id, name: witness.source.name, fact: witness.fact } : null,
+            told: said.some(t => active && t.startsWith(`🔎 [CASO] ${active.title}`)),
+            model: said.some(t => active && t.startsWith(`[CASO] En ${active.place} ha pasado algo`) && !t.includes(String(active.truth?.culprit))),
+        };
+    });
+    check('a veces empieza un caso con la gente del mundo: se cuenta, y el narrador no sabe quién fue (U8)',
+        Boolean(case67.title) && Boolean(case67.truth) && case67.told && case67.model, JSON.stringify({ ...case67, truth: undefined }));
+
+    await page.keyboard.press('1');
+    await page.waitForTimeout(400);
+    await page.locator('#game-shell .gs-table').click({ timeout: 6000 }).catch(() => {});
+    await page.waitForSelector('.popup:visible .wt-root', { timeout: 6000 }).catch(() => {});
+    const onTable67 = await page.evaluate(() => [...document.querySelectorAll('.popup:not([closing]) .wt-affair[data-kind="caso"] .wt-affair-title')].map(t => t.textContent || ''));
+    check('el caso sale en la mesa, aunque no tenga plazo (U8)', onTable67.includes(case67.title), JSON.stringify(onTable67));
+    await closePopup52();
+
+    if (case67.witness) await page.evaluate((name) => window.SillyTavern.getContext().executeSlashCommandsWithOptions(`/caso preguntar ${name}`), case67.witness.name);
+    await page.waitForTimeout(800);
+    const clue67 = await page.evaluate((id) => ({
+        found: (window.SillyTavern.getContext().chatMetadata.cases?.found || []).includes(id),
+        said: (window.SillyTavern.getContext().chat || []).some((/** @type {any} */ m) => /^🔎 \[PISTA\] /.test(String(m.mes || ''))),
+    }), case67.witness?.id ?? '');
+    check('preguntando a la gente se encuentran pistas, y se cuentan sin llamar al modelo (U8)', Boolean(case67.witness) && clue67.found && clue67.said, JSON.stringify({ witness: case67.witness, ...clue67 }));
+
+    const goldBefore67 = await page.evaluate(async () => ((await import('/scripts/party.js')).getPartyMembersSnapshot()).reduce((/** @type {number} */ s, /** @type {any} */ m) => s + (Number(m.gold) || 0), 0));
+    void page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/caso'));
+    await page.waitForSelector('.popup:visible .cb-root', { timeout: 6000 }).catch(() => {});
+    const facts67 = await page.evaluate(() => [...document.querySelectorAll('.popup:not([closing]) .cb-fact')].map(f => f.textContent || ''));
+    if (case67.truth) {
+        await page.selectOption('.popup:visible .cb-culprit', case67.truth.culprit).catch(() => {});
+        await page.selectOption('.popup:visible .cb-motive', case67.truth.motive).catch(() => {});
+        await page.selectOption('.popup:visible .cb-method', case67.truth.method).catch(() => {});
+    }
+    await page.locator('.popup:visible .cb-go').click({ timeout: 5000 }).catch(() => {});
+    await page.waitForSelector('.popup:visible .cb-verdict', { timeout: 6000 }).catch(() => {});
+    const verdict67 = await page.evaluate(() => document.querySelector('.popup:not([closing]) .cb-verdict')?.getAttribute('data-verdict') || '');
+    await closePopup52();
+    const after67 = await page.evaluate(async () => {
+        const meta = window.SillyTavern.getContext().chatMetadata;
+        return {
+            active: Boolean(meta.cases?.active),
+            closed: (meta.cases?.closed || []).map((/** @type {any} */ c) => c.verdict).pop() || '',
+            gold: ((await import('/scripts/party.js')).getPartyMembersSnapshot()).reduce((/** @type {number} */ s, /** @type {any} */ m) => s + (Number(m.gold) || 0), 0),
+            said: (window.SillyTavern.getContext().chat || []).some((/** @type {any} */ m) => /^⚖️ \[CASO\] Fue .+\. Encaja todo\. \(60 de oro\)$/.test(String(m.mes || ''))),
+        };
+    });
+    check('el tablero trae lo encontrado, y acusar con las tres cosas acierta: se cobra y el caso se cierra (U8)',
+        facts67.includes(case67.witness?.fact ?? '-') && verdict67 === 'acierto' && !after67.active && after67.closed === 'acierto' && after67.gold === goldBefore67 + 60 && after67.said,
+        JSON.stringify({ facts67, verdict67, goldBefore67, ...after67 }));
+    await page.evaluate(async () => { (await import('/scripts/game-engine/campaign/cases.js')).CASE_CHANCE.weekly = 0.35; });
+
+    // ============================================================ R1 y R2 del roadmap de profundidad
+    step('68. La profundidad, R1 y R2: los modos, la partida rápida y el taller en pestañas');
+    await clearToasts();
+    /**
+     * Cambiar el modo con /modo, como lo cambiaría quien juega: una tarjeta, y si hace falta,
+     * «A tu medida» y quitar letras.
+     *
+     * @param {string} mode
+     * @param {string[]} [off]
+     */
+    const mode68 = async (mode, off = []) => {
+        void page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/modo'));
+        await page.waitForSelector('.popup:visible .md-root', { timeout: 8000 });
+        await page.locator(`.popup:visible .md-card[data-mode="${mode}"]`).click();
+        if (off.length > 0) await page.locator('.popup:visible .md-card[data-mode="custom"]').click();
+        for (const letter of off) await page.locator(`.popup:visible .md-letter[data-letter="${letter}"] input`).uncheck();
+        await page.locator('.popup:visible .popup-button-ok').last().click();
+        await page.waitForTimeout(1000);
+    };
+    const survival68 = () => page.evaluate(async () => {
+        const { getActiveRuleset } = await import('/scripts/game-engine/rules/ruleset.js');
+        const { modeOf, lettersOf } = await import('/scripts/game-engine/rules/modes.js');
+        const survival = getActiveRuleset()?.survival ?? null;
+        return { mode: modeOf(survival), letters: lettersOf(survival) };
+    });
+    const lastLine68 = (/** @type {RegExp} */ pattern) => page.evaluate((source) => (window.SillyTavern.getContext().chat || [])
+        .map((/** @type {any} */ m) => String(m.mes || '')).filter(t => new RegExp(source, 'u').test(t)).pop() || '', pattern.source);
+
+    const before68 = await survival68();
+    await mode68('relajado');
+    const relaxed68 = await survival68();
+    const said68 = await lastLine68(/^⚙️ \[MODO\] /);
+    check('/modo cambia el modo a mitad de partida, y queda escrito en la crónica (R1, DR2)',
+        relaxed68.mode === 'relajado' && relaxed68.letters === 'abc' && /a Relajado\./.test(said68),
+        JSON.stringify({ before68, relaxed68, said68 }));
+
+    // Sin la cuenta (letra b) no hay cuenta: /cuenta lo dice y la mesa no la enseña.
+    await mode68('relajado', ['b']);
+    const custom68 = await survival68();
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/cuenta'));
+    await page.waitForTimeout(500);
+    const bill68 = await lastLine68(/^📒 \[CAMPAÑA\] /);
+    void page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/mesa'));
+    await page.waitForSelector('.popup:visible .wt-root, .popup:visible .wt-title', { timeout: 6000 }).catch(() => {});
+    const table68 = await page.evaluate(() => ({
+        bill: document.querySelectorAll('.popup:not([closing]) .wt-bill').length,
+        debt: document.querySelectorAll('.popup:not([closing]) .wt-affair[data-kind="deuda"]').length,
+    }));
+    await closePopup52();
+    check('a tu medida y sin la cuenta: /cuenta dice que no hay, y la mesa no la enseña (R1: lo apagado no sale)',
+        custom68.mode === 'custom' && custom68.letters === 'ac' && /no hay cuenta semanal/.test(bill68) && table68.bill === 0 && table68.debt === 0,
+        JSON.stringify({ custom68, bill68: bill68.slice(0, 120), table68 }));
+
+    // La pausa dice en qué modo se juega.
+    await page.keyboard.press('Escape');
+    await page.waitForSelector('.gs-pause', { timeout: 5000 }).catch(() => {});
+    const toggle68 = await page.evaluate(() => document.querySelector('.gs-pause-toggle[data-toggle="mode"]')?.textContent || '');
+    check('la pausa dice el modo y lo que está encendido (R1)', /^Modo: A tu medida · Heridas, El mundo se mueve$/.test(toggle68), toggle68);
+
+    // La partida rápida: desde el título, un mundo hecho, un modo, y un héroe hecho.
+    await page.locator('.gs-pause-btn', { hasText: 'Salir al menu principal' }).click();
+    await page.waitForTimeout(3000);
+    const quickItem68 = page.locator('.gs-menu-btn').filter({ hasText: 'Partida rápida' });
+    const offered68 = await quickItem68.count();
+    await quickItem68.first().click({ timeout: 8000 }).catch(() => {});
+    await page.waitForSelector('.tl-root.tl-quick', { timeout: 15000 }).catch(() => {});
+    const quick68 = await page.evaluate(() => ({
+        worlds: [...document.querySelectorAll('.tl-quick-world')].map(c => c.getAttribute('data-world') || ''),
+        modes: [...document.querySelectorAll('.tl-root .md-card')].map(c => c.getAttribute('data-mode') || ''),
+        start: Boolean(document.querySelector('.tl-start')),
+    }));
+    check('el título ofrece la partida rápida: los mundos hechos y los modos, en una pantalla (R1)',
+        offered68 === 1 && quick68.worlds.length === 4 && quick68.worlds.includes('1387')
+        && ['relajado', 'normal', 'supervivencia', 'custom'].every(m => quick68.modes.includes(m)) && quick68.start,
+        JSON.stringify({ offered68, ...quick68 }));
+
+    await page.locator('.tl-quick-world[data-world="1387"]').click({ timeout: 5000 }).catch(() => {});
+    // El paquete de 1387 se carga después de elegir: se le da tiempo.
+    await page.waitForTimeout(2500);
+    await page.locator('.tl-root .md-card[data-mode="relajado"]').click({ timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(300);
+
+    // R2: «Cambiar más cosas» abre las trece pestañas; se va directa a una y se crea desde ahí.
+    await page.locator('.tl-more').click({ timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(500);
+    await page.locator('.tl-tab[data-step="bestiario"]').click({ timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(400);
+    const tabs68 = await page.evaluate(() => ({
+        tabs: document.querySelectorAll('.tl-tab').length,
+        on: document.querySelector('.tl-tab-on')?.getAttribute('data-step') || '',
+        changed: [...document.querySelectorAll('.tl-tab.tl-tab-changed')].map(t => t.getAttribute('data-step') || ''),
+        warn: document.querySelectorAll('.tl-tab.tl-tab-warn').length,
+    }));
+    check('el taller son trece pestañas: se entra en la que se quiere, y la cambiada lleva su marca (R2)',
+        tabs68.tabs === 13 && tabs68.on === 'bestiario' && tabs68.changed.includes('jugabilidad') && tabs68.warn === 0,
+        JSON.stringify(tabs68));
+
+    await page.locator('.tl-start').click({ timeout: 5000 }).catch(() => {});
+    await page.waitForSelector('.popup:visible .vt-premade', { timeout: 120000 }).catch(() => {});
+    const premade68 = await page.evaluate(() => [...document.querySelectorAll('.popup:not([closing]) .vt-premade')].map(b => (b.textContent || '').trim()));
+    // La ventana tarda un momento en atar sus botones: si el clic llega antes, no hace nada y
+    // se queda abierta. Se espera, y si sigue ahí, se vuelve a pulsar.
+    await page.waitForTimeout(800);
+    await clearToasts();
+    let clickError68 = '';
+    for (let i = 0; i < 3 && await page.locator('.popup:visible .vt-premade').count() > 0; i++) {
+        clickError68 = await page.locator('.popup:visible .vt-premade').first().click({ timeout: 5000 })
+            .then(() => '').catch(err => String(err?.message || err).replace(/\s+/g, ' ').slice(0, 500));
+        await page.waitForTimeout(1200);
+    }
+    // Si el clic de verdad no llega, qué hay encima; y se pulsa por el DOM para que lo que
+    // sigue no caiga en cascada. Que haga falta es un fallo aparte: a quien juega le pasaría.
+    const block68 = await page.evaluate(() => {
+        const button = /** @type {HTMLElement|null} */ (document.querySelector('.popup:not([closing]) .vt-premade'));
+        if (!button) return null;
+        const r = button.getBoundingClientRect();
+        const over = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+        const said = { rect: [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)], over: over ? `${over.tagName}.${String(over.className).slice(0, 80)}` : '', inside: Boolean(over && button.contains(over)) };
+        button.click();
+        return said;
+    });
+    check('el clic de verdad llega al botón del héroe hecho (nada lo tapa)', block68 === null, JSON.stringify({ clickError68, block68 }));
+    await page.waitForTimeout(1200);
+    // Hasta que el héroe esté de verdad en el grupo: crear la ficha escribe el mundo.
+    // (Se sondea a mano: `waitForFunction` con una función async recibe una promesa, que
+    // siempre cuenta como verdadera, y no esperaba nada.)
+    let hero68 = '';
+    for (let i = 0; i < 60 && !hero68; i++) {
+        hero68 = await page.evaluate(async () => ((await import('/scripts/party.js')).getPartyMembersSnapshot())[0]?.name || '').catch(() => '');
+        if (!hero68) await page.waitForTimeout(500);
+    }
+    await page.waitForTimeout(1500);
+    const quickMode68 = await survival68();
+    const left68 = await page.evaluate(() => ({
+        premadeOpen: document.querySelectorAll('.popup:not([closing]) .vt-premade').length,
+        popups: [...document.querySelectorAll('dialog[open]')].map(d => (d.textContent || '').replace(/\s+/g, ' ').slice(0, 100)),
+        chat: window.SillyTavern.getContext().getCurrentChatId?.() ?? null,
+    }));
+    check('al entrar, el mundo ofrece tres héroes hechos; se elige uno y se juega con él, en el modo elegido (R1)',
+        premade68.length === 3 && /^Ulrich Brand · Humano, Soldado — /.test(premade68[0] || '') && hero68 === 'Ulrich Brand' && quickMode68.mode === 'relajado',
+        JSON.stringify({ premade68, hero68, quickMode68, left68 }));
+
+    // ============================================================ R3 del roadmap de profundidad
+    step('69. La profundidad, R3: habilidades con oficio');
+    await clearToasts();
+    // Lo que sabe por su clase llega a su ficha: antes se escribía en el mundo y no se leía.
+    const known69 = await page.evaluate(async () => ((await import('/scripts/party.js')).getPartyMembersSnapshot())[0]?.abilities || []);
+    check('las habilidades de clase del héroe llegan a su ficha: Ulrich, soldado, sabe su lanza y vendar (R3)',
+        known69.includes('tec-lanza-ristre') && known69.includes('hab-primeros-auxilios') && !known69.includes('tec-embestida'),
+        JSON.stringify(known69));
+
+    // Un frasco de lumbre (química, no magia: fuego en un radio de 5 ft).
+    await patchParty56(() => {
+        const hero = (window.SillyTavern.getContext().chatMetadata.party || [])[0];
+        if (hero) hero.abilities = [...new Set([...(hero.abilities || []), 'tec-frasco-lumbre'])];
+    });
+    // En el cuarto de la posada de 1387 quien pelea es la guardia de Montesclaros.
+    const turn69 = await fightNextTo52(99, 'Guardia de Montesclaros 1');
+    // Unas cajas pegadas al enemigo: el fuego prende lo que arde.
+    const crates69 = await page.evaluate(async () => {
+        const party = await import('/scripts/party.js');
+        const wi = await import('/scripts/world-info.js');
+        const ctx = window.SillyTavern.getContext();
+        const enc = party.getCombatEncounter();
+        const foe = (enc.enemies || []).find((/** @type {any} */ f) => (f.currentHp || 0) > 0);
+        const place = wi.getCurrentWorldLocationMaps().find((/** @type {any} */ l) => l.name === ctx.chatMetadata.currentLocation);
+        const board = (place?.boards || []).find((/** @type {any} */ b) => b.name === ctx.chatMetadata.currentBoard);
+        if (!foe || !board) return null;
+        const taken = new Set([
+            ...party.getPartyMembersSnapshot().map((/** @type {any} */ m) => `${m.mapPosition?.gridX},${m.mapPosition?.gridY}`),
+            ...(enc.enemies || []).map((/** @type {any} */ f) => `${f.gridX},${f.gridY}`),
+        ]);
+        board.terrain = board.terrain && typeof board.terrain === 'object' ? board.terrain : { version: 1, cells: {} };
+        board.terrain.cells = board.terrain.cells || {};
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]]) {
+            const key = `${foe.gridX + dx},${foe.gridY + dy}`;
+            const cell = board.terrain.cells[key];
+            if (taken.has(key) || (cell && cell.type !== 'floor')) continue;
+            board.terrain.cells[key] = { type: 'cover_half' };
+            return { key, foe: String(foe.name) };
+        }
+        return null;
+    });
+    await clearDiceOverlay();
+    await clearToasts();
+    await page.locator('.wm-token-enemy').filter({ visible: true }).first().click({ timeout: 6000 }).catch(() => {});
+    await page.waitForSelector('.tc-card', { timeout: 8000 }).catch(() => {});
+    const card69 = await page.evaluate(() => ({
+        area: [...document.querySelectorAll('.tc-area')].map(n => n.textContent || ''),
+        buttons: [...document.querySelectorAll('.tc-btn')].map(b => (b.textContent || '').trim()),
+    }));
+    await page.locator('.tc-btn').filter({ hasText: 'Frasco de lumbre' }).first().click({ timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(1500);
+    await clearDiceOverlay();
+    const fire69 = await page.evaluate(async (key) => {
+        const wi = await import('/scripts/world-info.js');
+        const ctx = window.SillyTavern.getContext();
+        const place = wi.getCurrentWorldLocationMaps().find((/** @type {any} */ l) => l.name === ctx.chatMetadata.currentLocation);
+        const board = (place?.boards || []).find((/** @type {any} */ b) => b.name === ctx.chatMetadata.currentBoard);
+        const said = (ctx.chat || []).map((/** @type {any} */ m) => String(m.mes || ''));
+        return {
+            used: said.some(t => /usa Frasco de lumbre \(radio de 5 ft\)/.test(t)),
+            burnt: said.some(t => /🔥 Arden las cajas/u.test(t)),
+            fire: (board?.hazards || []).some((/** @type {any} */ h) => h.kind === 'fuego' && `${h.x},${h.y}` === key && h.armed !== false),
+            cell: board?.terrain?.cells?.[key]?.type ?? 'floor',
+        };
+    }, crates69?.key ?? '');
+    check('un área dice a quién alcanzaría antes de usarla, y su fuego prende las cajas de al lado (R3)',
+        card69.area.some(t => /^Frasco de lumbre alcanzaría a /.test(t)) && fire69.used && fire69.burnt && fire69.fire && fire69.cell !== 'cover_half',
+        JSON.stringify({ chat: await page.evaluate(() => (window.SillyTavern.getContext().chat || []).slice(-4).map((/** @type {any} */ m) => String(m.mes || '').slice(0, 200))), turn69, crates69, card69, fire69 }));
+
+    // Dormido no pega: el estado pesa, no es solo una etiqueta.
+    await page.evaluate(async () => {
+        const enc = (await import('/scripts/party.js')).getCombatEncounter();
+        for (const foe of enc.enemies || []) {
+            if ((foe.currentHp || 0) > 0) foe.activeConditions = [...(foe.activeConditions || []), 'Unconscious'];
+        }
+    });
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/combat-end'));
+    await page.waitForTimeout(1500);
+    await clearDiceOverlay();
+    const slept69 = await lastLine68(/💤 \[COMBAT\] .+ no puede actuar \(dormido\): pierde el turno\./);
+    check('un enemigo dormido pierde el turno (R3: los estados pesan)', Boolean(slept69), slept69 || '(nada)');
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/combat-stop').catch(() => {}));
+    await page.waitForTimeout(800);
+
+    // ============================================================ R4 del roadmap de profundidad
+    step('70. La profundidad, R4: la magia desde el código');
+    await clearToasts();
+    // Ulrich a nivel 5, con tres conjuros del grimorio y azufre en la bolsa.
+    await patchParty56(() => {
+        const hero = (window.SillyTavern.getContext().chatMetadata.party || [])[0];
+        if (!hero) return;
+        hero.level = 5;
+        hero.hp = Math.max(Number(hero.hp) || 0, 40);
+        hero.maxHp = Math.max(Number(hero.maxHp) || 0, 40);
+        hero.abilities = [...new Set([...(hero.abilities || []), 'hab-rayo-fuego', 'mag-cono-escarcha', 'mag-bola-fuego'])];
+        hero.spellCharges = {};
+        hero.items = [...(hero.items || []), { id: 'azufre-70', name: 'Azufre', type: 'gear', category: 'gear', subcategory: 'component', weight: 0.2 }];
+    });
+    void page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/grimorio'));
+    await page.waitForSelector('.popup:visible .gr-root', { timeout: 8000 }).catch(() => {});
+    const book70 = await page.evaluate(() => ({
+        spells: [...document.querySelectorAll('.popup:not([closing]) .gr-spell')].map(s => s.textContent || ''),
+        titles: [...document.querySelectorAll('.popup:not([closing]) .gr-root .jr-title')].map(t => t.textContent || ''),
+    }));
+    await closePopup52();
+    check('el grimorio dice lo que se sabe lanzar, con su escuela, su círculo, sus cargas y lo que gasta (R4)',
+        book70.spells.includes('Bola de fuego · evocación, 3.er círculo · gasta azufre')
+        && book70.titles.some(t => /Cargas: 1\.º 3\/3 · 2\.º 2\/2 · 3\.º 1\/1/.test(t)), JSON.stringify(book70));
+
+    const magic70 = await page.evaluate(async () => {
+        const ctx = window.SillyTavern.getContext();
+        await ctx.eventSource.emit(ctx.eventTypes.GENERATION_STARTED);
+        return String(ctx.extensionPrompts?.GAME_040_quest_ctx_memory?.value || '');
+    });
+    check('el narrador sabe lo que el grupo puede lanzar, y que no existe otra magia (R4)',
+        /\[MAGIA\] Lo que el grupo sabe lanzar: Rayo de fuego, Cono de escarcha, Bola de fuego\. No existe otra magia/.test(magic70), magic70.slice(-240));
+
+    // Un cono de escarcha sobre un enemigo metido en un charco: el agua se hiela.
+    const turn70 = await fightNextTo52(99, 'Guardia de Montesclaros 1');
+    const water70 = await page.evaluate(async () => {
+        const party = await import('/scripts/party.js');
+        const wi = await import('/scripts/world-info.js');
+        const ctx = window.SillyTavern.getContext();
+        const enc = party.getCombatEncounter();
+        const foe = (enc.enemies || []).find((/** @type {any} */ f) => (f.currentHp || 0) > 0);
+        const place = wi.getCurrentWorldLocationMaps().find((/** @type {any} */ l) => l.name === ctx.chatMetadata.currentLocation);
+        const board = (place?.boards || []).find((/** @type {any} */ b) => b.name === ctx.chatMetadata.currentBoard);
+        if (!foe || !board) return null;
+        board.terrain = board.terrain && typeof board.terrain === 'object' ? board.terrain : { version: 1, cells: {} };
+        board.terrain.cells = board.terrain.cells || {};
+        const key = `${foe.gridX},${foe.gridY}`;
+        board.terrain.cells[key] = { type: 'water' };
+        return { key, foe: String(foe.name) };
+    });
+    await clearDiceOverlay();
+    await clearToasts();
+    await page.locator('.wm-token-enemy').filter({ visible: true }).first().click({ timeout: 6000 }).catch(() => {});
+    await page.waitForSelector('.tc-card', { timeout: 8000 }).catch(() => {});
+    await page.locator('.tc-btn').filter({ hasText: 'Cono de escarcha' }).first().click({ timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(1500);
+    await clearDiceOverlay();
+    const cold70 = await page.evaluate(async (key) => {
+        const wi = await import('/scripts/world-info.js');
+        const party = await import('/scripts/party.js');
+        const ctx = window.SillyTavern.getContext();
+        const place = wi.getCurrentWorldLocationMaps().find((/** @type {any} */ l) => l.name === ctx.chatMetadata.currentLocation);
+        const board = (place?.boards || []).find((/** @type {any} */ b) => b.name === ctx.chatMetadata.currentBoard);
+        const said = (ctx.chat || []).map((/** @type {any} */ m) => String(m.mes || ''));
+        return {
+            used: said.some(t => /usa Cono de escarcha \(cono de 15 ft\)/.test(t)),
+            froze: said.some(t => /❄️ El agua se hiela/u.test(t)),
+            cell: board?.terrain?.cells?.[key]?.type ?? 'floor',
+            charges: party.getPartyMembersSnapshot()[0]?.spellCharges ?? null,
+        };
+    }, water70?.key ?? '');
+    check('un cono de escarcha gasta una carga de segundo círculo y hiela el charco donde está el enemigo (R4 + R3)',
+        cold70.used && cold70.froze && cold70.cell === 'ice' && Number(cold70.charges?.[2]) === 1,
+        JSON.stringify({ chat: await page.evaluate(() => (window.SillyTavern.getContext().chat || []).slice(-4).map((/** @type {any} */ m) => String(m.mes || '').slice(0, 200))), turn70, water70, cold70 }));
+
+    // La bola de fuego, en el turno siguiente: gasta su carga y el azufre.
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/combat-end'));
+    await page.waitForTimeout(1000);
+    await clearDiceOverlay();
+    const back70 = await toPlayerTurn52();
+    await clearDiceOverlay();
+    await clearToasts();
+    await page.locator('.wm-token-enemy').filter({ visible: true }).first().click({ timeout: 6000 }).catch(() => {});
+    await page.waitForSelector('.tc-card', { timeout: 8000 }).catch(() => {});
+    await page.locator('.tc-btn').filter({ hasText: 'Bola de fuego' }).first().click({ timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(1500);
+    await clearDiceOverlay();
+    const fire70 = await page.evaluate(async () => {
+        const party = await import('/scripts/party.js');
+        const ctx = window.SillyTavern.getContext();
+        const hero = party.getPartyMembersSnapshot()[0];
+        const said = (ctx.chat || []).map((/** @type {any} */ m) => String(m.mes || ''));
+        return {
+            used: said.some(t => /usa Bola de fuego \(radio de 15 ft\)/.test(t)),
+            spent: said.some(t => /🧪 Se gasta azufre\./u.test(t)),
+            sulphur: (hero?.items || []).some((/** @type {any} */ i) => i.name === 'Azufre'),
+            charges: hero?.spellCharges ?? null,
+        };
+    });
+    check('una bola de fuego gasta la carga de tercer círculo y el azufre de la bolsa (R4)',
+        fire70.used && fire70.spent && !fire70.sulphur && Number(fire70.charges?.[3]) === 1, JSON.stringify({ back70, fire70 }));
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/combat-stop').catch(() => {}));
+    await page.waitForTimeout(800);
+
+    // ============================================================ R5 del roadmap de profundidad
+    step('71. La profundidad, R5: la mascota');
+    await clearToasts();
+    void page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/mascota'));
+    await page.waitForSelector('.popup:visible .pet-pick', { timeout: 8000 }).catch(() => {});
+    const offered71 = await page.evaluate(() => [...document.querySelectorAll('.popup:not([closing]) .pet-pick')].map(b => (b.textContent || '').trim()));
+    await page.locator('.popup:visible .pet-pick').first().click({ timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(800);
+    const pet71 = await page.evaluate(() => window.SillyTavern.getContext().chatMetadata.pet ?? null);
+    const came71 = await lastLine68(/^🐾 \[MASCOTA\] .+ se viene contigo/);
+    check('en un mundo histórico se ofrecen un perro, un halcón o un cuervo; se elige y se viene (R5)',
+        offered71.length === 3 && /^Canela, perro$/.test(offered71[0] || '') && pet71?.species === 'perro' && Boolean(came71),
+        JSON.stringify({ offered71, pet71, came71 }));
+
+    void page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/mascota'));
+    await page.waitForSelector('.popup:visible .pet-ask', { timeout: 8000 }).catch(() => {});
+    await page.locator('.popup:visible .pet-ask').first().click({ timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(800);
+    const asked71 = await lastLine68(/^🐾 \[MASCOTA\] Canela /);
+    check('preguntarle al perro es verle hacer algo: no habla, señala (R5, DR5)', /^🐾 \[MASCOTA\] Canela (te mira|tira de ti)/u.test(asked71), asked71);
+
+    const turn71 = await fightNextTo52(99, 'Guardia de Montesclaros 1');
+    await clearDiceOverlay();
+    await clearToasts();
+    await page.locator('.wm-token-enemy').filter({ visible: true }).first().click({ timeout: 6000 }).catch(() => {});
+    await page.waitForSelector('.tc-card', { timeout: 8000 }).catch(() => {});
+    const petButtons71 = await page.evaluate(() => [...document.querySelectorAll('.tc-pet')].map(b => (b.textContent || '').trim()));
+    await page.locator('.tc-pet').first().click({ timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(800);
+    const helped71 = await lastLine68(/^🐾 \[COMBAT\] Canela señala a /);
+    const marked71 = await page.evaluate(async () => {
+        const enc = (await import('/scripts/party.js')).getCombatEncounter();
+        return (enc.maneuvers?.helped || []).some((/** @type {any} */ h) => h.by === 'mascota');
+    });
+    check('en combate ayuda sin hacer daño: avisa, y el siguiente golpe del grupo va con ventaja (R5, DR6)',
+        petButtons71.includes('Canela: avisar') && Boolean(helped71) && marked71, JSON.stringify({ turn71, petButtons71, helped71, marked71 }));
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/combat-stop').catch(() => {}));
+    await page.waitForTimeout(800);
+
+    // ============================================================ R6 y R7 del roadmap de profundidad
+    step('72. La profundidad, R6 y R7: tableros con intención y enemigos con cabeza');
+    await clearToasts();
+    // R7: una banda que se organiza a la vista.
+    await page.evaluate(() => { void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/fight Guardia de Montesclaros 2'); });
+    await page.waitForTimeout(2000);
+    await clearDiceOverlay();
+    const band72 = await lastLine68(/^🧠 \[COMBAT\] /);
+    check('una banda se organiza a la vista: la guardia forma línea (R7)', /Forman línea/.test(band72), band72 || '(nada)');
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/combat-stop').catch(() => {}));
+    await page.waitForTimeout(800);
+
+    // R6: un encargo de robo generado: el sitio sabe para qué es.
+    await page.evaluate(() => {
+        const meta = window.SillyTavern.getContext().chatMetadata;
+        const today = Math.max(1, Math.floor(Number(meta.calendar?.day) || 1));
+        meta.contractBoard = [...(meta.contractBoard || []), {
+            id: 'p72-robo', title: 'Sacar el libro de cuentas', kind: 'steal', rank: 'C', difficulty: 1, segments: 1,
+            patron: 'Prueba', locationName: 'La Casa del Recaudador', reward: 40, days: today + 10,
+        }];
+    });
+    await reload52();
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/leave').catch(() => {}));
+    await page.waitForTimeout(1000);
+    await page.keyboard.press('2');
+    await page.waitForTimeout(800);
+    await clearToasts();
+    await page.locator('#game-shell .gs-service-btn[data-action="board"]').click({ timeout: 8000 }).catch(() => {});
+    await page.waitForSelector('.gd-root', { timeout: 8000 }).catch(() => {});
+    await page.locator('.gd-contract', { hasText: 'Sacar el libro de cuentas' }).locator('.gd-take').click({ timeout: 6000 }).catch(() => {});
+    await page.waitForTimeout(3500);
+    await closePopup52();
+    const steal72 = await page.evaluate(async () => {
+        const wi = await import('/scripts/world-info.js');
+        const ctx = window.SillyTavern.getContext();
+        const data = await wi.loadWorldInfo(String(ctx.chatMetadata.world_info || ''));
+        const place = (data?.metadata?.locationMaps || []).find((/** @type {any} */ l) => l.name === 'La Casa del Recaudador');
+        const board = (place?.boards || []).find((/** @type {any} */ b) => /Sacar el libro de cuentas \(encargo\)/.test(String(b.name)));
+        if (!board) return null;
+        const start = board.partyStart?.[0] ?? { x: 1, y: 1 };
+        return {
+            enemies: (board.enemyPlacements || []).length,
+            near: (board.enemyPlacements || []).filter((/** @type {any} */ e) => Math.max(Math.abs(e.x - start.x), Math.abs(e.y - start.y)) <= 4).length,
+            objective: board.objectives?.[0]?.type ?? '',
+            locked: Object.values(board.terrain?.cells || {}).some((/** @type {any} */ c) => c.type === 'door' && c.locked),
+            hazards: Array.isArray(board.hazards) ? board.hazards.length : -1,
+            waves: Array.isArray(board.waves),
+        };
+    });
+    check('un encargo de robo sale pensado para robar: enemigos por presupuesto, nadie a tiro de la entrada, y si tiene salas, lo que se busca tras una puerta con llave (R6)',
+        Boolean(steal72) && steal72.enemies >= 1 && steal72.near === 0 && steal72.hazards >= 0 && steal72.waves
+        && (steal72.objective === '' || (steal72.objective === 'reach_cell' && steal72.locked)),
+        JSON.stringify(steal72));
+
+    // R6: un barril junto al enemigo revienta con el fuego; y un jefe malherido se enfurece.
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/go El Pueblo de Barro').catch(() => {}));
+    await page.waitForTimeout(1500);
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/enter El cuarto de la posada').catch(() => {}));
+    await page.waitForTimeout(1500);
+    await clearToasts();
+    const turn72 = await fightNextTo52(99, 'Guardia de Montesclaros 1');
+    const barrel72 = await page.evaluate(async () => {
+        const party = await import('/scripts/party.js');
+        const wi = await import('/scripts/world-info.js');
+        const ctx = window.SillyTavern.getContext();
+        const enc = party.getCombatEncounter();
+        const foe = (enc.enemies || []).find((/** @type {any} */ f) => (f.currentHp || 0) > 0);
+        const place = wi.getCurrentWorldLocationMaps().find((/** @type {any} */ l) => l.name === ctx.chatMetadata.currentLocation);
+        const board = (place?.boards || []).find((/** @type {any} */ b) => b.name === ctx.chatMetadata.currentBoard);
+        if (!foe || !board) return null;
+        const taken = new Set([
+            ...party.getPartyMembersSnapshot().map((/** @type {any} */ m) => `${m.mapPosition?.gridX},${m.mapPosition?.gridY}`),
+            ...(enc.enemies || []).map((/** @type {any} */ f) => `${f.gridX},${f.gridY}`),
+        ]);
+        board.terrain = board.terrain && typeof board.terrain === 'object' ? board.terrain : { version: 1, cells: {} };
+        board.terrain.cells = board.terrain.cells || {};
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]]) {
+            const key = `${foe.gridX + dx},${foe.gridY + dy}`;
+            const cell = board.terrain.cells[key];
+            if (taken.has(key) || (cell && cell.type !== 'floor')) continue;
+            board.terrain.cells[key] = { type: 'barrel' };
+            // Y el guardia, jefe de la posada, malherido: al empezar la ronda, cambia.
+            foe.boss = true;
+            foe.currentHp = Math.floor((Number(foe.maxHp) || 20) * 0.45);
+            return { key };
+        }
+        return null;
+    });
+    await clearDiceOverlay();
+    await clearToasts();
+    await page.locator('.wm-token-enemy').filter({ visible: true }).first().click({ timeout: 6000 }).catch(() => {});
+    await page.waitForSelector('.tc-card', { timeout: 8000 }).catch(() => {});
+    await page.locator('.tc-btn').filter({ hasText: 'Frasco de lumbre' }).first().click({ timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(1500);
+    await clearDiceOverlay();
+    const boom72 = await lastLine68(/Revienta un barril/);
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/combat-end'));
+    await page.waitForTimeout(1500);
+    await clearDiceOverlay();
+    await toPlayerTurn52();
+    const phase72 = await lastLine68(/^👑 \[COMBAT\] /);
+    check('el fuego revienta un barril y alcanza a quien está al lado; y el jefe malherido cambia una vez (R6)',
+        /Revienta un barril/.test(boom72) && /(se enfurece|se acorrala|da una voz)/.test(phase72), JSON.stringify({ turn72, barrel72, boom72: boom72.slice(0, 160), phase72 }));
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/combat-stop').catch(() => {}));
+    await page.waitForTimeout(800);
+
+    // R6: un cofre al lado del héroe se abre pulsándolo.
+    const chest72 = await page.evaluate(async () => {
+        const party = await import('/scripts/party.js');
+        const wi = await import('/scripts/world-info.js');
+        const ctx = window.SillyTavern.getContext();
+        const hero = party.getPartyMembersSnapshot()[0];
+        const place = wi.getCurrentWorldLocationMaps().find((/** @type {any} */ l) => l.name === ctx.chatMetadata.currentLocation);
+        const board = (place?.boards || []).find((/** @type {any} */ b) => b.name === ctx.chatMetadata.currentBoard);
+        if (!hero || !board) return null;
+        const x = Number(hero.mapPosition?.gridX) || 0;
+        const y = Number(hero.mapPosition?.gridY) || 0;
+        board.terrain.cells = board.terrain.cells || {};
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+            const key = `${x + dx},${y + dy}`;
+            if (board.terrain.cells[key] && board.terrain.cells[key].type !== 'floor') continue;
+            board.terrain.cells[key] = { type: 'chest' };
+            return { key };
+        }
+        return null;
+    });
+    await page.evaluate(async () => (await import('/scripts/party.js')).refreshBoardView());
+    await page.waitForTimeout(1000);
+    await page.locator('.wm-terrain-chest').filter({ visible: true }).first().click({ timeout: 6000 }).catch(() => {});
+    await page.waitForTimeout(1000);
+    const opened72 = await lastLine68(/^🧰 \[TABLERO\] .+ abre el cofre: \d+ de oro/);
+    check('un cofre, estando al lado, se abre pulsándolo: oro y a veces algo más (R6)', Boolean(opened72), JSON.stringify({ chest72, opened72 }));
+
+    // ============================================================ R8 y R9 del roadmap de profundidad
+    step('73. La profundidad, R8 y R9: los que os aprecian, y el mundo que se entera');
+    await clearToasts();
+    // R8: la tendera y el posadero os aprecian.
+    await page.evaluate(() => {
+        const meta = window.SillyTavern.getContext().chatMetadata;
+        meta.attitudes = { values: { ...(meta.attitudes?.values ?? {}), Vera: 2, Giles: 3 }, changed: meta.attitudes?.changed ?? {} };
+    });
+    await reload52();
+    void page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/mesa'));
+    await page.waitForSelector('.popup:visible .wt-root', { timeout: 8000 }).catch(() => {});
+    const favors73 = await page.evaluate(() => [...document.querySelectorAll('.popup:not([closing]) .wt-favor')].map(f => f.textContent || ''));
+    await closePopup52();
+    check('en la mesa, quién os echa una mano aquí: la gente que os aprecia hace favores de su oficio (R8)',
+        favors73.includes('Vera: un 10 % menos en la tienda.') && favors73.includes('Giles: una noche gratis por semana.'), JSON.stringify(favors73));
+
+    // R9: lo que hicisteis se cuenta en la taberna.
+    await page.evaluate(async () => {
+        const ctx = window.SillyTavern.getContext();
+        ctx.chat.push({ name: 'Narrador', is_user: false, is_system: true, mes: '⚖️ [CASO] Fue Marta. Encaja todo. (60 de oro)', extra: {} });
+        await ctx.saveChat?.();
+    });
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/rumor'));
+    await page.waitForTimeout(1200);
+    const rumor73 = await page.evaluate(() => (window.SillyTavern.getContext().chat || [])
+        .map((/** @type {any} */ m) => String(m.mes || '')).filter(t => /\[RUMOR\]/.test(t)).pop() || '');
+    check('lo que hicisteis se cuenta en la taberna, antes que los rumores del guion (R9)', /forasteros han resuelto un caso: fue Marta/.test(rumor73), rumor73.slice(0, 200));
+
+    // ============================================================ B1 y B2 de wiki/LO_QUE_FALTA.md
+    step('74. B1 y B2: la altura y las salidas del tablero');
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/go El Pueblo de Barro').catch(() => {}));
+    await page.waitForTimeout(1500);
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/enter El cuarto de la posada').catch(() => {}));
+    await page.waitForTimeout(1500);
+    await clearToasts();
+    const turn74 = await fightNextTo52(99, 'Guardia de Montesclaros 1');
+    // El tablero vivo de ahora (el que lee el combate), y lo que se le pinta encima.
+    const paint74 = (/** @type {string} */ type, /** @type {boolean} */ everyone) => page.evaluate(async ({ type, everyone }) => {
+        const party = await import('/scripts/party.js');
+        const wi = await import('/scripts/world-info.js');
+        const ctx = window.SillyTavern.getContext();
+        const enc = party.getCombatEncounter();
+        const place = wi.getCurrentWorldLocationMaps().find((/** @type {any} */ l) => l.name === ctx.chatMetadata.currentLocation);
+        const board = (place?.boards || []).find((/** @type {any} */ b) => b.name === ctx.chatMetadata.currentBoard);
+        if (!board || !enc?.active) return null;
+        board.terrain = board.terrain && typeof board.terrain === 'object' ? board.terrain : { version: 1, cells: {} };
+        board.terrain.cells = board.terrain.cells || {};
+        const current = String(enc.turnOrder?.[enc.currentTurnIndex]?.id ?? '');
+        const fighting = (enc.turnOrder || []).filter((/** @type {any} */ t) => !t.isEnemy).map((/** @type {any} */ t) => String(t.id));
+        const members = party.getPartyMembersSnapshot().filter((/** @type {any} */ m) => fighting.includes(String(m.id)) && (m.hp || 0) > 0 && (everyone || String(m.id) === current));
+        for (const m of members) board.terrain.cells[`${m.mapPosition?.gridX},${m.mapPosition?.gridY}`] = { type };
+        // El que tiene el turno, el último: si sale antes, su turno se cierra y los demás se mueven.
+        return members.sort((a, b) => Number(String(a.id) === current) - Number(String(b.id) === current)).map((/** @type {any} */ m) => m.name);
+    }, { type, everyone });
+
+    // B1: quien tiene el turno, en alto; el guardia, abajo. La tirada lo dice.
+    const high74 = await paint74('high', false);
+    await clearDiceOverlay();
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/combat-attack Guardia de Montesclaros 1'));
+    await page.waitForTimeout(1200);
+    await clearDiceOverlay();
+    const above74 = await lastLine68(/ataca desde arriba/);
+    check('desde arriba se ataca con ventaja, y la tirada lo dice (B1)', Boolean(above74), JSON.stringify({ turn74, high74, above74: above74.slice(0, 200) }));
+
+    // B2: cada uno en una salida; salen de uno en uno y, con el último, se acaba en huida.
+    await toPlayerTurn52();
+    const out74 = await paint74('exit', true);
+    for (const name of out74 || []) {
+        await page.evaluate((who) => window.SillyTavern.getContext().executeSlashCommandsWithOptions(`/salir ${who}`), name);
+        await page.waitForTimeout(900);
+        await clearDiceOverlay();
+    }
+    const left74 = await page.evaluate(() => (window.SillyTavern.getContext().chat || [])
+        .map((/** @type {any} */ m) => String(m.mes || '')).filter(t => /^🚪 \[COMBAT\] /.test(t)).slice(-3));
+    const over74 = await page.evaluate(async () => Boolean((await import('/scripts/party.js')).getCombatEncounter()?.active));
+    const fled74 = await lastLine68(/Os vais de .+ sin ganar el tablero/);
+    check('cada uno sale por una salida y, cuando salen todos, la pelea acaba en huida (B2)',
+        !over74 && /el último/.test(left74.join(' ')) && Boolean(fled74), JSON.stringify({ out74, left74, over74, fled74: fled74.slice(0, 160) }));
+
+    // H2: «Cómo se juega», con el modo de esta partida y la leyenda del tablero de verdad.
+    await clearToasts();
+    void page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/ayuda'));
+    await page.waitForSelector('.popup:not([closing]) .hp-root', { timeout: 8000 }).catch(() => {});
+    const help74 = await page.evaluate(() => {
+        const root = document.querySelector('.popup:not([closing]) .hp-root');
+        return {
+            titles: [...(root?.querySelectorAll('.jr-title') ?? [])].map(t => (t.textContent || '').trim()),
+            text: (root?.textContent || '').replace(/\s+/g, ' ').slice(0, 4000),
+        };
+    });
+    await page.locator('.popup:visible .popup-button-ok').first().click({ timeout: 4000 }).catch(() => {});
+    check('«Cómo se juega» dice tu modo, el tablero con sus casillas nuevas y qué hacer si te pierdes (H2)',
+        help74.titles.some(t => /^Tu modo: /.test(t)) && /\^ en alto/.test(help74.text) && /x salida/.test(help74.text) && help74.titles.includes('Si te pierdes'),
+        JSON.stringify({ titles: help74.titles }));
+
+    // ============================================================ T1, B3 y T2 de wiki/LO_QUE_FALTA.md
+    step('75. T1, B3 y T2: la palanca, la barricada y la tregua');
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/combat-stop').catch(() => {}));
+    await page.waitForTimeout(800);
+    await clearToasts();
+    await page.keyboard.press('3');
+    await page.waitForTimeout(800);
+    // Al lado del héroe, una palanca y una barricada; y una puerta con llave en otra parte.
+    const set75 = await page.evaluate(async () => {
+        const party = await import('/scripts/party.js');
+        const wi = await import('/scripts/world-info.js');
+        const ctx = window.SillyTavern.getContext();
+        const hero = party.getPartyMembersSnapshot().find((/** @type {any} */ m) => (m.hp || 0) > 0 && !m.dead);
+        const place = wi.getCurrentWorldLocationMaps().find((/** @type {any} */ l) => l.name === ctx.chatMetadata.currentLocation);
+        const board = (place?.boards || []).find((/** @type {any} */ b) => b.name === ctx.chatMetadata.currentBoard);
+        if (!hero || !board) return null;
+        board.terrain = board.terrain && typeof board.terrain === 'object' ? board.terrain : { version: 1, cells: {} };
+        board.terrain.cells = board.terrain.cells || {};
+        const x = Number(hero.mapPosition?.gridX) || 0;
+        const y = Number(hero.mapPosition?.gridY) || 0;
+        const taken = new Set(party.getPartyMembersSnapshot().map((/** @type {any} */ m) => `${m.mapPosition?.gridX},${m.mapPosition?.gridY}`));
+        const free = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1]].map(([dx, dy]) => ({ x: x + dx, y: y + dy }))
+            .filter(c => !taken.has(`${c.x},${c.y}`) && (!board.terrain.cells[`${c.x},${c.y}`] || board.terrain.cells[`${c.x},${c.y}`].type === 'floor'));
+        if (free.length < 2) return { free: free.length };
+        board.terrain.cells[`${free[0].x},${free[0].y}`] = { type: 'lever' };
+        board.terrain.cells[`${free[1].x},${free[1].y}`] = { type: 'barricade' };
+        board.terrain.cells['0,0'] = { type: 'door', open: false, locked: true };
+        return { lever: free[0], barricade: free[1] };
+    });
+    await page.evaluate(async () => (await import('/scripts/party.js')).refreshBoardView());
+    await page.waitForTimeout(1000);
+    await clearToasts();
+    await page.locator('.wm-terrain-lever').filter({ visible: true }).first().click({ timeout: 6000 }).catch(() => {});
+    await page.waitForTimeout(900);
+    const lever75 = await lastLine68(/^🕹️ \[TABLERO\] .+ tira de la palanca\./);
+    await page.locator('.wm-terrain-barricade').filter({ visible: true }).first().click({ timeout: 6000 }).catch(() => {});
+    await page.waitForTimeout(900);
+    const bar75 = await lastLine68(/^🪓 \[TABLERO\] .+ golpea la barricada/);
+    const door75 = await page.evaluate(async () => {
+        const wi = await import('/scripts/world-info.js');
+        const ctx = window.SillyTavern.getContext();
+        const place = wi.getCurrentWorldLocationMaps().find((/** @type {any} */ l) => l.name === ctx.chatMetadata.currentLocation);
+        const board = (place?.boards || []).find((/** @type {any} */ b) => b.name === ctx.chatMetadata.currentBoard);
+        return board?.terrain?.cells?.['0,0'] ?? null;
+    });
+    check('la palanca abre la puerta con llave del tablero, y la barricada se rompe a golpes (T1, B3)',
+        /se abre/.test(lever75) && Boolean(door75?.open) && /cede/.test(bar75), JSON.stringify({ set75, lever75, bar75, door75 }));
+
+    // T2: un bando con el líder caído y la mitad fuera pide tregua; se acepta y se gana el tablero.
+    await clearToasts();
+    await page.evaluate(() => { void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/fight Guardia de Montesclaros 4'); });
+    await page.waitForTimeout(1800);
+    await clearDiceOverlay();
+    const band75 = await page.evaluate(async () => {
+        const enc = (await import('/scripts/party.js')).getCombatEncounter();
+        const foes = enc?.enemies || [];
+        if (!enc?.active || foes.length < 4) return { active: Boolean(enc?.active), foes: foes.length };
+        foes.forEach((/** @type {any} */ e, /** @type {number} */ i) => {
+            e.maxHp = 20;
+            if (i === 0) { e.role = 'lider'; e.currentHp = 0; } else if (i === 1) e.currentHp = 0; else e.currentHp = 6;
+            e.boss = false;
+        });
+        return { active: true, foes: foes.length };
+    });
+    // Se pasan turnos hasta que la pidan: si pasara una ronda sin contestar, se daría por rechazada.
+    for (let i = 0; i < 6; i++) {
+        const pending = await page.evaluate(async () => /** @type {any} */ ((await import('/scripts/party.js')).getCombatEncounter())?.truce === 'pending');
+        if (pending) break;
+        await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/combat-end'));
+        await page.waitForTimeout(1000);
+        await clearDiceOverlay();
+    }
+    const asked75 = await lastLine68(/piden tregua/);
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/tregua sí'));
+    await page.waitForTimeout(1200);
+    const truce75 = await lastLine68(/^🤝 \[COMBAT\] Tregua: /);
+    const over75 = await page.evaluate(async () => Boolean((await import('/scripts/party.js')).getCombatEncounter()?.active));
+    check('con el líder caído y la mitad fuera, piden tregua; aceptarla acaba el combate (T2)',
+        /piden tregua/.test(asked75) && Boolean(truce75) && !over75, JSON.stringify({ band75, asked75: asked75.slice(0, 160), truce75: truce75.slice(0, 160), over75 }));
+
+    if (watchdog) clearInterval(watchdog);
     console.log('\n--- console errors ---');
     console.log(problems.size ? [...problems].join('\n') : '(none)');
 } catch (error) {

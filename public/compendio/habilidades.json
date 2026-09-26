@@ -52,57 +52,6 @@
       "note": "Abrir lo que esté cerrado, si hay tiempo y nadie viene."
     },
     {
-      "id": "hab-curar", "name": "Curar heridas", "kind": "habilidad", "weight": 10,
-      "when": { "class": ["clerigo", "druida"] }, "level": 1,
-      "cost": "action", "resource": "long_rest", "usesPerRest": 2,
-      "target": "ally", "resolution": "auto", "rangeFeet": 5, "healing": "1d8+3",
-      "note": "Cierra lo que se pueda cerrar, con las manos encima."
-    },
-    {
-      "id": "hab-bendicion", "name": "Bendición", "kind": "habilidad", "weight": 9,
-      "when": { "class": ["clerigo"] }, "level": 1,
-      "cost": "action", "resource": "long_rest", "usesPerRest": 1,
-      "target": "ally", "resolution": "auto", "rangeFeet": 30,
-      "note": "Le pone las manos encima y por un rato todo le sale un poco mejor."
-    },
-    {
-      "id": "hab-luz-severa", "name": "Luz severa", "kind": "habilidad", "weight": 8,
-      "when": { "class": ["clerigo"] }, "level": 2,
-      "cost": "action", "resource": "short_rest", "usesPerRest": 1,
-      "target": "enemy", "resolution": "save", "rangeFeet": 30, "saveDc": 14, "saveAbility": "constitution",
-      "damage": "2d6", "damageType": "Radiant",
-      "note": "Lo que no debería seguir en pie se acuerda de que no debería."
-    },
-    {
-      "id": "hab-rayo-fuego", "name": "Rayo de fuego", "kind": "habilidad", "weight": 10,
-      "when": { "class": ["mago"] }, "level": 1,
-      "cost": "action", "resource": "at_will", "target": "enemy", "resolution": "attack",
-      "rangeFeet": 120, "damage": "1d10", "damageType": "Fire",
-      "note": "Un dardo de fuego que no se acaba nunca. El truco de quien sabe algo de magia."
-    },
-    {
-      "id": "hab-escudo-arcano", "name": "Escudo arcano", "kind": "habilidad", "weight": 9,
-      "when": { "class": ["mago"] }, "level": 1,
-      "cost": "free", "resource": "long_rest", "usesPerRest": 2,
-      "target": "self", "resolution": "auto",
-      "note": "Un instante de aire duro delante de la cara. Justo a tiempo, o no."
-    },
-    {
-      "id": "hab-sueno", "name": "Sueño pesado", "kind": "habilidad", "weight": 7,
-      "when": { "class": ["mago", "bardo"] }, "level": 2,
-      "cost": "action", "resource": "long_rest", "usesPerRest": 1,
-      "target": "enemy", "resolution": "save", "rangeFeet": 60,
-      "saveDc": 13, "saveAbility": "wisdom", "condition": "Unconscious", "conditionRounds": 2,
-      "note": "Al más cansado se le cierran los ojos donde está."
-    },
-    {
-      "id": "hab-mano-lejana", "name": "Mano lejana", "kind": "habilidad", "weight": 8,
-      "when": { "class": ["mago"] }, "level": 1,
-      "cost": "bonus", "resource": "at_will", "target": "self", "resolution": "auto",
-      "rangeFeet": 30,
-      "note": "Coger, tirar o abrir algo que está lejos. Pesa poco y puede con poco."
-    },
-    {
       "id": "hab-burla", "name": "Burla que escuece", "kind": "habilidad", "weight": 9,
       "when": { "class": ["bardo"] }, "level": 1,
       "cost": "bonus", "resource": "at_will", "target": "enemy", "resolution": "save",
@@ -138,22 +87,6 @@
       "note": "Qué pasó aquí, cuántos eran y hacia dónde fueron."
     },
     {
-      "id": "hab-espinas", "name": "Zarzas", "kind": "habilidad", "weight": 8,
-      "when": { "class": ["druida"] }, "level": 2,
-      "cost": "action", "resource": "long_rest", "usesPerRest": 1,
-      "target": "enemy", "resolution": "save", "rangeFeet": 60,
-      "saveDc": 13, "saveAbility": "strength", "condition": "Restrained", "conditionRounds": 2,
-      "damage": "2d4", "damageType": "Piercing",
-      "note": "El suelo se cierra alrededor de sus piernas y no le deja avanzar."
-    },
-    {
-      "id": "hab-forma-animal", "name": "Forma de bestia", "kind": "habilidad", "weight": 6,
-      "when": { "class": ["druida"] }, "level": 3,
-      "cost": "action", "resource": "long_rest", "usesPerRest": 1,
-      "target": "self", "resolution": "auto",
-      "note": "Se va y vuelve otra cosa. Lo que lleve encima se queda donde estaba."
-    },
-    {
       "id": "hab-primeros-auxilios", "name": "Primeros auxilios", "kind": "habilidad", "weight": 10,
       "when": { "class": ["*"] }, "level": 1,
       "cost": "action", "resource": "short_rest", "usesPerRest": 1,
@@ -179,6 +112,359 @@
       "cost": "free", "resource": "long_rest", "usesPerRest": 1,
       "target": "self", "resolution": "auto",
       "note": "No caerse esta vez. Una sola vez, y luego ya se verá."
+    },
+    {
+      "id": "tec-barrido",
+      "name": "Barrido",
+      "kind": "habilidad",
+      "weight": 8,
+      "when": {
+        "class": [
+          "guerrero",
+          "soldado"
+        ]
+      },
+      "level": 3,
+      "cost": "action",
+      "resource": "short_rest",
+      "usesPerRest": 1,
+      "target": "enemy",
+      "resolution": "save",
+      "rangeFeet": 5,
+      "area": {
+        "shape": "cone",
+        "size": 10
+      },
+      "saveDc": 13,
+      "saveAbility": "dexterity",
+      "damage": "1d8",
+      "damageType": "Slashing",
+      "note": "Un tajo amplio que alcanza a todo lo que tiene delante: también a los tuyos, si están ahí."
+    },
+    {
+      "id": "tec-embestida",
+      "name": "Embestida de escudo",
+      "kind": "habilidad",
+      "weight": 8,
+      "when": {
+        "class": [
+          "guerrero",
+          "barbaro",
+          "soldado"
+        ],
+        "tree": true
+      },
+      "level": 1,
+      "cost": "action",
+      "resource": "short_rest",
+      "usesPerRest": 1,
+      "target": "self",
+      "resolution": "save",
+      "area": {
+        "shape": "radius",
+        "size": 5
+      },
+      "saveDc": 13,
+      "saveAbility": "strength",
+      "condition": "Prone",
+      "conditionRounds": 1,
+      "element": "trueno",
+      "note": "Se lanza contra todo lo que tiene alrededor. Quien no aguanta, al suelo; y en el hielo, peor."
+    },
+    {
+      "id": "tec-cerrar-filas",
+      "name": "Cerrar filas",
+      "kind": "habilidad",
+      "weight": 8,
+      "when": {
+        "class": [
+          "soldado"
+        ]
+      },
+      "level": 2,
+      "cost": "bonus",
+      "resource": "short_rest",
+      "usesPerRest": 1,
+      "target": "ally",
+      "resolution": "auto",
+      "area": {
+        "shape": "radius",
+        "size": 10
+      },
+      "healing": "1d4+1",
+      "note": "Una voz, y los que están cerca se juntan y recobran el aliento."
+    },
+    {
+      "id": "tec-lanza-ristre",
+      "name": "Lanza en ristre",
+      "kind": "habilidad",
+      "weight": 8,
+      "when": {
+        "class": [
+          "soldado"
+        ]
+      },
+      "level": 1,
+      "cost": "action",
+      "resource": "short_rest",
+      "usesPerRest": 1,
+      "target": "enemy",
+      "resolution": "save",
+      "rangeFeet": 10,
+      "area": {
+        "shape": "line",
+        "size": 10
+      },
+      "saveDc": 13,
+      "saveAbility": "dexterity",
+      "damage": "1d10",
+      "damageType": "Piercing",
+      "note": "Una carga en línea recta: atraviesa a los dos primeros que se pongan delante."
+    },
+    {
+      "id": "tec-pisoton",
+      "name": "Pisotón",
+      "kind": "habilidad",
+      "weight": 8,
+      "when": {
+        "class": [
+          "barbaro"
+        ]
+      },
+      "level": 3,
+      "cost": "action",
+      "resource": "short_rest",
+      "usesPerRest": 1,
+      "target": "self",
+      "resolution": "save",
+      "area": {
+        "shape": "radius",
+        "size": 5
+      },
+      "saveDc": 13,
+      "saveAbility": "strength",
+      "damage": "1d6",
+      "damageType": "Thunder",
+      "condition": "Prone",
+      "conditionRounds": 1,
+      "note": "Un golpe contra el suelo que tumba a quien tiene al lado."
+    },
+    {
+      "id": "tec-bomba-humo",
+      "name": "Bomba de humo",
+      "kind": "habilidad",
+      "weight": 8,
+      "when": {
+        "class": [
+          "picaro"
+        ]
+      },
+      "level": 3,
+      "cost": "action",
+      "resource": "long_rest",
+      "usesPerRest": 1,
+      "target": "enemy",
+      "resolution": "save",
+      "rangeFeet": 30,
+      "area": {
+        "shape": "radius",
+        "size": 10
+      },
+      "saveDc": 13,
+      "saveAbility": "constitution",
+      "condition": "Blinded",
+      "conditionRounds": 1,
+      "note": "Una nube que no deja ver. Quien está dentro pega a ciegas."
+    },
+    {
+      "id": "tec-abrojos",
+      "name": "Abrojos",
+      "kind": "habilidad",
+      "weight": 8,
+      "when": {
+        "class": [
+          "picaro"
+        ]
+      },
+      "level": 2,
+      "cost": "action",
+      "resource": "short_rest",
+      "usesPerRest": 1,
+      "target": "enemy",
+      "resolution": "auto",
+      "rangeFeet": 20,
+      "area": {
+        "shape": "radius",
+        "size": 5
+      },
+      "leaves": "difficult",
+      "note": "Un puñado de pinchos por el suelo: por ahí se pasa despacio."
+    },
+    {
+      "id": "tec-lluvia-flechas",
+      "name": "Lluvia de flechas",
+      "kind": "habilidad",
+      "weight": 8,
+      "when": {
+        "class": [
+          "explorador"
+        ]
+      },
+      "level": 3,
+      "cost": "action",
+      "resource": "long_rest",
+      "usesPerRest": 1,
+      "target": "enemy",
+      "resolution": "save",
+      "rangeFeet": 90,
+      "area": {
+        "shape": "radius",
+        "size": 10
+      },
+      "saveDc": 13,
+      "saveAbility": "dexterity",
+      "damage": "1d8",
+      "damageType": "Piercing",
+      "note": "Al aire, en parábola: cae sobre todo lo que hay en un círculo."
+    },
+    {
+      "id": "tec-lazo",
+      "name": "Trampa de lazo",
+      "kind": "habilidad",
+      "weight": 8,
+      "when": {
+        "class": [
+          "explorador"
+        ],
+        "tree": true
+      },
+      "level": 1,
+      "cost": "action",
+      "resource": "short_rest",
+      "usesPerRest": 1,
+      "target": "enemy",
+      "resolution": "save",
+      "rangeFeet": 15,
+      "saveDc": 13,
+      "saveAbility": "dexterity",
+      "condition": "Restrained",
+      "conditionRounds": 2,
+      "note": "Un lazo escondido que se cierra en el tobillo del primero que pasa."
+    },
+    {
+      "id": "tec-camuflaje",
+      "name": "Camuflaje",
+      "kind": "habilidad",
+      "weight": 8,
+      "when": {
+        "class": [
+          "explorador"
+        ],
+        "tree": true
+      },
+      "level": 1,
+      "cost": "bonus",
+      "resource": "short_rest",
+      "usesPerRest": 1,
+      "target": "self",
+      "resolution": "auto",
+      "condition": "Invisible",
+      "conditionRounds": 1,
+      "note": "Quieto entre la maleza, no se le ve: el primer golpe va con ventaja."
+    },
+    {
+      "id": "tec-polvo-ojos",
+      "name": "Polvo en los ojos",
+      "kind": "habilidad",
+      "weight": 8,
+      "when": {
+        "class": [
+          "erudito",
+          "picaro"
+        ]
+      },
+      "level": 1,
+      "cost": "bonus",
+      "resource": "short_rest",
+      "usesPerRest": 1,
+      "target": "enemy",
+      "resolution": "save",
+      "rangeFeet": 10,
+      "saveDc": 13,
+      "saveAbility": "constitution",
+      "condition": "Blinded",
+      "conditionRounds": 1,
+      "note": "Pimienta, cal o lo que haya a mano. Un turno sin ver."
+    },
+    {
+      "id": "tec-remedio",
+      "name": "Remedio de botica",
+      "kind": "habilidad",
+      "weight": 8,
+      "when": {
+        "class": [
+          "erudito"
+        ]
+      },
+      "level": 1,
+      "cost": "action",
+      "resource": "long_rest",
+      "usesPerRest": 2,
+      "target": "ally",
+      "resolution": "auto",
+      "rangeFeet": 5,
+      "healing": "1d6+2",
+      "note": "Un emplasto que sabe hacer quien ha leído lo suficiente."
+    },
+    {
+      "id": "tec-frasco-lumbre",
+      "name": "Frasco de lumbre",
+      "kind": "habilidad",
+      "weight": 8,
+      "when": {
+        "class": [
+          "erudito"
+        ]
+      },
+      "level": 3,
+      "cost": "action",
+      "resource": "long_rest",
+      "usesPerRest": 1,
+      "target": "enemy",
+      "resolution": "save",
+      "rangeFeet": 30,
+      "area": {
+        "shape": "radius",
+        "size": 5
+      },
+      "saveDc": 13,
+      "saveAbility": "dexterity",
+      "damage": "1d6",
+      "damageType": "Fire",
+      "note": "Química, no magia: estalla, quema y prende lo que arde alrededor."
+    },
+    {
+      "id": "tec-cancion-marcha",
+      "name": "Canción de marcha",
+      "kind": "habilidad",
+      "weight": 8,
+      "when": {
+        "class": [
+          "bardo"
+        ]
+      },
+      "level": 3,
+      "cost": "bonus",
+      "resource": "long_rest",
+      "usesPerRest": 1,
+      "target": "ally",
+      "resolution": "auto",
+      "area": {
+        "shape": "radius",
+        "size": 30
+      },
+      "healing": "1d4",
+      "note": "Una canción que todos saben: los que la oyen cierran filas y respiran."
     }
   ]
 }

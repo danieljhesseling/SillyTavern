@@ -39,7 +39,41 @@
         "mortality": "everyone",
         "saves": "shelter"
       },
-      "why": "Sin razas fantásticas y sin magos: lo que hay en el agua no se resuelve con un conjuro, se resuelve sabiendo qué se le prometió. Muere cualquiera y solo se guarda en el refugio."
+      "why": "Sin razas fantásticas y sin magos: lo que hay en el agua no se resuelve con un conjuro, se resuelve sabiendo qué se le prometió. Muere cualquiera y solo se guarda en el refugio.",
+      "heroes": [
+        {
+          "name": "Maren Oyarzun",
+          "gender": "Mujer",
+          "race": "Humano",
+          "className": "Pícaro",
+          "background": "marinero",
+          "pitch": "El último ahogado de la costa era su padre",
+          "about": "Pescadora de nacimiento y contrabandista por necesidad. Su padre fue el último que se ahogó en esta costa, hace treinta años, y en el pueblo nadie quiere decirle por qué él sí."
+        },
+        {
+          "name": "Padre Anselmo",
+          "gender": "Hombre",
+          "race": "Humano",
+          "className": "Clérigo",
+          "background": "acolito",
+          "pitch": "Vino a cerrar una iglesia vacía",
+          "about": "Le mandaron a cerrar una parroquia que nadie visita. Lleva un mes aquí y ha descubierto que la gente sí reza: a otra cosa, y de noche."
+        },
+        {
+          "name": "Idoia Brea",
+          "gender": "Mujer",
+          "race": "Marcado",
+          "className": "Erudito",
+          "background": "erudito",
+          "pitch": "Lleva en la piel la marca de la costa",
+          "about": "Tiene en el brazo las mismas marcas que los pescadores viejos esconden bajo la camisa. No nació aquí. Ha venido a averiguar quién se las puso.",
+          "pet": {
+            "name": "Resaca",
+            "species": "familiar",
+            "character": "cinica"
+          }
+        }
+      ]
     },
     {
       "id": "ocaso",
@@ -81,7 +115,41 @@
         "factionShare": 2,
         "theme": "general"
       },
-      "why": "Las siete razas clásicas y las ocho clases. Uno de cada dos encargos sale de lo que quiere una casa: aquí la guerra es el fondo de todo."
+      "why": "Las siete razas clásicas y las ocho clases. Uno de cada dos encargos sale de lo que quiere una casa: aquí la guerra es el fondo de todo.",
+      "heroes": [
+        {
+          "name": "Brenna Culderrota",
+          "gender": "Mujer",
+          "race": "Enano",
+          "className": "Guerrero",
+          "background": "soldado",
+          "pitch": "Defendió un puente que se cayó igual",
+          "about": "Veterana de la guardia de un puente que ya no existe. Sabe cuánto aguanta una piedra y cuánto una promesa, y de lo segundo se fía menos."
+        },
+        {
+          "name": "Aelis Ventolargo",
+          "gender": "Hombre",
+          "race": "Elfo",
+          "className": "Explorador",
+          "background": "forastero",
+          "pitch": "Conoce los pasos antes que nadie",
+          "about": "Guía por caminos que su gente trazó hace tres siglos y que los reyes humanos dejaron cubrirse de zarza. Este invierno, quien llegue antes al paso gana."
+        },
+        {
+          "name": "Tobías Remiendo",
+          "gender": "Hombre",
+          "race": "Mediano",
+          "className": "Bardo",
+          "background": "charlatan",
+          "pitch": "Ha oído algo que vale una guerra",
+          "about": "Recoge rumores en las casas grandes y los vende en las pequeñas. Este invierno ha oído uno que no sabe a quién vender sin que le cueste el cuello.",
+          "pet": {
+            "name": "Estribillo",
+            "species": "loro",
+            "character": "orgullosa"
+          }
+        }
+      ]
     },
     {
       "id": "pantalla",
@@ -118,7 +186,41 @@
         "factionShare": 3,
         "theme": "general"
       },
-      "why": "Puedes ser de aquí o haber llegado. Se guarda cuando quieras: la gracia no es perderlo todo, es ver subir los números."
+      "why": "Puedes ser de aquí o haber llegado. Se guarda cuando quieras: la gracia no es perderlo todo, es ver subir los números.",
+      "heroes": [
+        {
+          "name": "Kaito Arenas",
+          "gender": "Hombre",
+          "race": "Huésped",
+          "className": "Guerrero",
+          "background": "forastero",
+          "pitch": "Aún no sabe si esto es un juego",
+          "about": "Hace tres semanas trabajaba en una tienda de otro mundo. Ahora ve su barra de vida flotando sobre la cabeza y le cuesta dormir."
+        },
+        {
+          "name": "Lía Sotomonte",
+          "gender": "Mujer",
+          "race": "Humano",
+          "className": "Mago",
+          "background": "erudito",
+          "pitch": "Los números ya estaban antes",
+          "about": "Nació aquí y lleva toda la vida leyendo los números que los huéspedes creen haber traído ellos. Quiere saber quién los puso, y para qué."
+        },
+        {
+          "name": "Nerea Valdés",
+          "gender": "Mujer",
+          "race": "Media elfa",
+          "className": "Clérigo",
+          "background": "acolito",
+          "pitch": "Ha visto una barra llegar a cero",
+          "about": "Cura a los huéspedes que llegan rotos. Ha visto lo que pasa cuando la barra llega a cero, y no se lo ha contado a nadie.",
+          "pet": {
+            "name": "Eco",
+            "species": "espiritu",
+            "character": "miedosa"
+          }
+        }
+      ]
     },
     {
       "id": "1387",
@@ -158,7 +260,41 @@
         "mortality": "everyone",
         "saves": "shelter"
       },
-      "why": "Humanos y nada más. Sin magos ni druidas: un clérigo aquí es alguien que sabe rezar y coser heridas. Muere cualquiera."
+      "why": "Humanos y nada más. Sin magos ni druidas: un clérigo aquí es alguien que sabe rezar y coser heridas. Muere cualquiera.",
+      "heroes": [
+        {
+          "name": "Ulrich Brand",
+          "gender": "Hombre",
+          "race": "Humano",
+          "className": "Soldado",
+          "background": "soldado",
+          "pitch": "Le deben tres meses",
+          "about": "Mercenario de una compañía que se quedó al otro lado del paso. Cobra tarde, pelea bien y no se fía de nadie que pague por adelantado."
+        },
+        {
+          "name": "Inés de Olmedo",
+          "gender": "Mujer",
+          "race": "Sangre alta",
+          "className": "Erudito",
+          "background": "noble",
+          "pitch": "Viene a cobrar lo que le deben a su casa",
+          "about": "Hija segunda de una casa que ya no tiene nada. Sabe leer, contar y mentir en tres lenguas, y ha subido al valle a cobrar una deuda de su padre."
+        },
+        {
+          "name": "Fray Rodrigo",
+          "gender": "Hombre",
+          "race": "Humano",
+          "className": "Clérigo",
+          "background": "acolito",
+          "pitch": "Sin milagros, pero con memoria",
+          "about": "Monje de la ermita derruida. No tiene milagros que ofrecer: solo vendas, latín y una memoria muy larga de quién le hizo qué a este valle.",
+          "pet": {
+            "name": "Salmo",
+            "species": "cuervo",
+            "character": "cinica"
+          }
+        }
+      ]
     }
   ]
 }

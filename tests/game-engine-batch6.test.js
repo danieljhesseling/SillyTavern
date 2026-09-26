@@ -176,10 +176,13 @@ describe('el hilo y la gente', () => {
     });
 
     test('144: tres cosas que decirle a quien se habla', () => {
-        expect(repliesFor({ name: 'Giles', rumors: 2, canPry: true }).map(r => r.id)).toEqual(['reply-rumor', 'reply-want', 'reply-pry']);
+        expect(repliesFor({ name: 'Giles', rumors: 2, canPry: true }).map(r => r.id)).toEqual(['reply-want', 'reply-pry', 'reply-rumor', 'reply-bye']);
         expect(repliesFor({ name: 'Giles' }).map(r => r.id)).toEqual(['reply-want', 'reply-bye']);
+        // U6 y U8: convencer y el caso van antes que los rumores; la fila enseña cuatro.
+        const extra = [{ id: 'reply-case', label: 'Caso', icon: 'x' }, { id: 'reply-duel', label: 'Convencer', icon: 'x' }];
+        expect(repliesFor({ name: 'Giles', rumors: 2, canPry: true, extra }).map(r => r.id)).toEqual(['reply-want', 'reply-pry', 'reply-case', 'reply-duel']);
         expect(repliesFor({ name: '' })).toEqual([]);
-        expect(repliesFor({ name: 'Giles', rumors: 1 })[0].draft).toBe('Le pregunto a Giles qué se cuenta por aquí.');
+        expect(repliesFor({ name: 'Giles', rumors: 1 }).find(r => r.id === 'reply-rumor')?.draft).toBe('Le pregunto a Giles qué se cuenta por aquí.');
     });
 
     test('160: la tarjeta de una partida: día, sitio, lo que hay entre manos y quién va', () => {

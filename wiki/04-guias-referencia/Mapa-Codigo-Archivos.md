@@ -2,7 +2,7 @@
 title: Mapa Completo del Código & Estructura de Archivos
 tags: [codigo, estructura, mapa, directorios, backend, frontend, fork, dnd]
 created: 2026-09-20
-updated: 2026-09-21
+updated: 2026-09-26
 author: DanielJHesseling / Antigravity AI
 ---
 
@@ -22,10 +22,10 @@ Este documento sirve como inventario exhaustivo del repositorio, clasificando lo
 | `src/vectors/` | Motor RAG vectorial local basado en Vectra y transformers.js. | SillyTavern Core |
 | `src/png/` | Extractor e inyector de metadatos en chunks tEXt/iTXt de imágenes PNG. | SillyTavern Core |
 | `public/` | Código fuente del cliente web servido al navegador (HTML, CSS, JS, libs). | SillyTavern Core + Fork |
-| `public/scripts/` | Módulos ES de lógica de frontend (más de 80 archivos). | SillyTavern Core + Fork |
+| `public/scripts/` | Módulos ES de lógica de frontend. | SillyTavern Core + Fork |
 | `public/scripts/game-engine/` | **Motor de juego del fork**: tablero, combate, campaña, reglas e interfaz. Módulos puros, probados en Node. | Fork |
 | `public/scripts/party/` | Piezas extraídas de `party.js` por las costuras que los tests cubren. | Fork |
-| `tools/` | Comprobaciones propias: tipos, cableado del motor y recorrido del juego en navegador. | Fork |
+| `tools/` | Comprobaciones propias: tipos, cableado, forma del prompt, claves de estado, densidad del mundo, el conversor del guion y los recorridos en navegador. | Fork |
 | `public/css/` | Hojas de estilo CSS del cliente. | SillyTavern Core + Fork |
 | `public/lib/` | Bibliotecas de terceros (jQuery, jQuery UI, Select2, Toastr, etc.). | SillyTavern Core |
 | `data/` | Directorio de almacenamiento de datos persistentes por usuario. | Generado en runtime |
@@ -33,126 +33,326 @@ Este documento sirve como inventario exhaustivo del repositorio, clasificando lo
 | `plugins/` | Directorio para plugins de servidor adicionales en Node.js. | SillyTavern Core |
 | `tests/` | Suite de pruebas automatizadas (Jest y Playwright). | SillyTavern Core |
 | `docker/` | Archivos de configuración para despliegues con Docker y Docker Compose. | SillyTavern Core |
-| `wiki/` | Esta base de conocimiento para Obsidian y agentes de IA. | Documentación |
+| `wiki/` | Esta base de conocimiento para Obsidian y agentes de IA. Los planes cerrados, en `wiki/archivo/`. | Documentación |
+| `public/compendio/` | La biblioteca de contenido: un JSON por dominio (bestiario, armas, sitios, habilidades…). | Fork |
+| `public/mundos/` | Los mundos para elegir (`mundos.json`, con sus héroes hechos) y el paquete de 1387. | Fork |
 
 ---
 
 ## 2. Inventario de Archivos Clave del Motor RPG (Fork `my-silly`)
 
 > [!NOTE]
-> **Cifras medidas el 2026-09-21.** El motor de juego vive desde entonces en dos carpetas nuevas, `game-engine/` y `party/`, que esta página no recogía. El criterio que las ordena está en [[Guia-Desarrollo-Flujo]] §2: código nuevo va en archivo nuevo, para que un merge con upstream no lo toque nunca.
+> **Regenerado el 2026-09-26 desde el código**: las líneas se cuentan y la descripción es la primera frase del comentario de cabecera de cada módulo. Si una descripción no se entiende, lo que hay que arreglar es ese comentario.
 
-### 2.1. El motor de juego — `public/scripts/game-engine/` (50 archivos, 12.516 líneas)
+### 2.1. El motor de juego — `public/scripts/game-engine/` (234 archivos, 50.348 líneas)
 
-Módulos puros: sin DOM, sin estado global, sin lecturas del chat. Por eso se prueban en Node y por eso el coste de merge es cero. Los marcados ⬜ están escritos y probados pero **el juego todavía no los carga**; compruébalo con `node tools/check-engine-wiring.mjs`.
+Módulos puros: sin DOM, sin estado global, sin lecturas del chat. Por eso se prueban en Node y el coste de merge es cero. Todos los carga el juego salvo los marcados ⬜ (`node tools/check-engine-wiring.mjs` lo comprueba).
 
-| Archivo | Líneas | Función | En el juego |
-| :--- | ---: | :--- | :---: |
-| `board/terrain.js` | 343 | Muros, cobertura, terreno difícil y puertas. Almacenamiento disperso | ✅ |
-| `board/pathfinding.js` | 262 | A*, celdas alcanzables y coste de ruta | ✅ |
-| `board/reachability.js` | 160 | ¿Se puede llegar? La inundación que caza una sala amurallada (PROP2-039) | ✅ |
-| `board/fog-of-war.js` | 189 | Niebla de 3 estados; solo se persiste lo explorado | ✅ |
-| `board/line-of-sight.js` | 166 | Visión simétrica con Bresenham canonizado | ✅ |
-| `combat/enemy-ai.js` | 447 | Cuatro perfiles tácticos. Devuelve un plan, no lo ejecuta | ✅ |
-| `combat/turn-machine.js` | 308 | Iniciativa, rondas y economía de acciones | ⬜ |
-| `combat/roll-guard.js` | 163 | Corrige tiradas inventadas por el modelo | ✅ |
-| `campaign/scenarios.js` | 307 | Siete tipos de objetivo de escenario | ⬜ |
-| `campaign/bonds.js` | 298 | Vínculos 1–10 por eventos registrados, y sus perks | ⬜ |
-| `campaign/campaign-map.js` | 403 | Salas deducidas del mapa, puertas que revelan, y localizaciones que se desbloquean | ✅ |
-| `campaign/starter-templates.js` | 253 | Las 4 plantillas del asistente, como datos | ✅ |
-| `campaign/calendar.js` | 195 | Días y bloques de tiempo estilo Persona | ⬜ |
-| `campaign/campaign-worlds.js` | 77 | Qué es una campaña, dónde empieza, nombres libres | ✅ |
-| `rules/ruleset.js` | 307 | Validación, fusión, migración y exportación de paquetes | ✅ |
-| `rules/level-up.js` | 300 | Qué da subir de nivel, con la tabla en el paquete de reglas (A1) | ✅ |
-| `rules/abilities.js` | 354 | Conjuros, técnicas y recursos de clase, como datos editables (D5) | ✅ |
-| `rules/death-saves.js` | 174 | Los tres éxitos contra los tres fallos, a 0 PG (PROP2-059) | ✅ |
-| `rules/default-ruleset.js` | 251 | Las 25 tablas D&D, fuera del código | ✅ |
-| `ui/sandbox.js` | 353 | Banco de pruebas de combate (`/sandbox`) | ✅ |
-| `ui/combat-log.js` | 293 | Registro de combate y prompt del epílogo | ✅ |
-| `ui/campaign-wizard.js` | 245 | El asistente de 3 pasos y `createCampaign` | ✅ |
-| `ui/chat-channel.js` | 86 | Decide si un mensaje lo lee solo el jugador o también el modelo | ✅ |
-| `world-builder/world-schema.js` | 334 | Genera un mundo con IA: esquema, prompt y reparación de lo que vuelva | ✅ |
-| `rules/editor-model.js` | 318 | Traduce el paquete de reglas a filas editables, y de vuelta | ✅ |
-| `ui/rules-editor.js` | 297 | El editor visual de reglas (`/rules`), con importar y exportar | ✅ |
-| `cost/prompt-meter.js` | 239 | Desglosa lo que se envía cada turno y acumula el gasto | ✅ |
-| `ui/prompt-preview.js` | 179 | El panel de `/prompt` | ✅ |
-| `campaign/campaign-pack-schema.js` | 573 | El contrato del paquete de campaña, generado desde el motor | ✅ |
-| `campaign/campaign-pack.js` | 538 | Si un paquete se sostiene: errores, avisos y lo que se reparó | ✅ |
-| `campaign/campaign-export.js` | 349 | El camino de vuelta: empaquetar tu campaña para mandarla (A2) | ✅ |
-| `campaign/checkpoint.js` | 141 | Puntos de retorno, y uno automático antes de cada jefe (PROP2-163) | ✅ |
-| `campaign/campaign-importer.js` | 508 | Del paquete a mundo, entradas, tableros y misiones; los ids, al final | ✅ |
-| `campaign/narrator.js` | 158 | Quién narra la campaña y con qué voz: la ficha que sí llega al prompt (A10) | ✅ |
-| `campaign/campaign-delete.js` | 114 | Qué se va al borrar una campaña, y qué se dice antes de tocar nada (A9) | ✅ |
-| `campaign/campaign-editor.js` | 750 | Escribir una campaña a mano: lee el mundo, lo valida y dice qué fichas tocar (M1–M6) | ✅ |
-| `ui/campaign-editor.js` | 852 | El panel de `/campana`: siete pestañas, una por categoría | ✅ |
-| `combat/spawn.js` | 95 | Dónde aparecen los enemigos: donde los dibujó el libro, nunca en un muro | ✅ |
-| `rules/rest.js` | 216 | Descanso corto y largo, con dados de golpe | ✅ |
-| `rules/injuries.js` | 286 | Lo que un combate deja encima: heridas que curan y cicatrices que no (N2) | ✅ |
-| `rules/mortality.js` | 152 | Quién muere y quién queda marcado, y cuándo se puede guardar (N2) | ✅ |
-| `rules/upkeep.js` | 247 | La cuenta de la semana: comer, cobrar, dormir bajo techo (N2) | ✅ |
-| `world-builder/dungeon-generator.js` | 253 | Un sitio donde pelear, con una semilla y cero tokens (N3) | ✅ |
-| `campaign/contracts.js` | 250 | El tablón de encargos: rangos, plazos y la temática como pesos (N4) | ✅ |
-| `campaign/guild.js` | 246 | Plantilla, lealtad, edificios y reputación (N4) | ✅ |
-| `rules/companions.js` | 247 | Por qué van contigo, por qué no, y quién se lleva solo (N5) | ✅ |
-| `ui/guild-panel.js` | 157 | El panel de `/gremio`: tablón, casa y compañía | ✅ |
-| `combat/loot-items.js` | 120 | Qué es cada cosa que sueltan los enemigos, para que se pueda usar | ✅ |
-| `combat/combat-hold.js` | 53 | Las puertas que un combate cierra mientras dura, y por qué (A8) | ✅ |
-| `combat/seeded-random.js` | 97 | Dados que se pueden repetir: una partida dos veces igual | ✅ |
-| `combat/target-card.js` | 94 | Qué dice la tarjeta de un enemigo y qué botones ofrece | ✅ |
-| `combat/condition-timers.js` | 119 | Las condiciones con duración, que se van solas al pasar la ronda (D5) | ✅ |
-| `combat/opportunity.js` | 110 | Escaparse cuesta un golpe: por eso importa la posición (PROP2-053) | ✅ |
-| `ui/contradiction-log.js` | 223 | Lo que la narración dijo y el motor no confirma | ✅ |
-| `campaign/encounter-editor.js` | 117 | Qué enemigos puede sacar un tablero, como filas | ✅ |
-| `ui/encounter-editor.js` | 119 | El panel de `/enemigos` | ✅ |
-| `rules/rule-impact.js` | 157 | Qué referencias rompería un cambio de reglas | ✅ |
-| `cost/prompt-order.js` | 184 | El orden de los bloques del prompt: de lo que nunca cambia a lo que cambia siempre | ✅ |
-| `campaign/objective-editor.js` | 351 | Objetivos como filas editables, y pedírselos a un modelo | ✅ |
-| `ui/objective-editor.js` | 203 | El panel de `/objetivos editar` | ✅ |
-| `ui/audio-settings.js` | 102 | El panel de `/sonido`: una pista por escena (A3) | ✅ |
-| `ui/abilities-panel.js` | 225 | El panel de `/habilidades`: escribir un conjuro y repartirlo (D5) | ✅ |
-| `combat/initiative-tracker.js` | 242 | Quién actúa, quién sigue y qué le pasa | ✅ |
-| `combat/loot.js` | 183 | Botín y experiencia por CR, repartidos entre los que siguen en pie | ✅ |
-| `ui/shell/game-shell.js` | 732 | La capa a pantalla completa: mueve el tablero y el chat, y los devuelve | ✅ |
-| `ui/shell/scene-director.js` | 282 | Qué pantalla toca, y qué la cambia: lee el motor, nunca al modelo | ✅ |
-| `ui/shell/dialogue-scene.js` | 115 | Quién habla en la escena de diálogo | ✅ |
-| `ui/shell/exploration-scene.js` | 145 | Dónde estás, qué hay abierto y qué le falta a lo cerrado | ✅ |
-| `ui/shell/party-strip.js` | 66 | La franja del grupo: vida, estados y rango, para dos escenas | ✅ |
-| `ui/shell/clock-widget.js` | 104 | El día, el momento y las cuatro formas de gastar tiempo (K3) | ✅ |
-| `ui/shell/action-chips.js` | 143 | Qué se puede hacer sin escribirlo, sacado del estado (K4a) | ✅ |
-| `ui/shell/companion-card.js` | 163 | La ficha de un compañero: vínculo, pasar tiempo y regalos (K4b) | ✅ |
-| `ui/shell/scene-audio.js` | 180 | Qué suena en cada escena, con tus propias pistas (A3) | ✅ |
-| `ui/campaign-panel.js` | 149 | La pestaña Campaña: el calendario y los vínculos | ✅ |
-| `combat/bond-perks.js` | 114 | Las perks que cambian un combate: aguantar, rematar, dar el relevo | ✅ |
-| `ui/campaign-schema-panel.js` | 111 | Las diez vistas de `/esquema-campana` | ✅ |
-| `campaign/campaign-view.js` | 110 | El calendario y los vínculos como algo que dibujar | ✅ |
-| `combat/scenario-board.js` | 102 | Juzga los objetivos contra el tablero y decide el combate | ✅ |
+#### `board/` — El tablero: terreno, caminos, visión, niebla y el terreno vivo (9 archivos, 2.076 líneas)
 
-### 2.2. El subsistema de grupo — `public/scripts/party/` (6 archivos, 868 líneas)
+| Archivo | Líneas | Qué hace |
+| :--- | ---: | :--- |
+| `dungeon-levels.js` | 93 | Mazmorras de varios tableros, con escaleras y estado que persiste (idea 75). |
+| `fog-of-war.js` | 189 | Fog of war. |
+| `hazards.js` | 355 | Lo que hay en el tablero y se dispara: trampas, sucesos de ronda y estados que crecen. |
+| `line-of-sight.js` | 201 | Line of sight and visible area over the board terrain. |
+| `living-terrain.js` | 147 | El tablero cambia mientras se pelea: el fuego se extiende y las puertas se rompen (idea 23, que amplía el fuego de la fase T5). |
+| `pathfinding.js` | 262 | A* pathfinding over the board terrain. |
+| `reachability.js` | 160 | ¿Se puede llegar? La pregunta que un libro generado nunca se hace. |
+| `terrain.js` | 516 | Board terrain: walls, cover, difficult ground and doors. |
+| `walk.js` | 153 | Andar por el tablero cuando no hay nadie peleando. |
+
+#### `combat/` — El combate: turnos, IA enemiga, papeles, maniobras, botín y jefes (27 archivos, 4.533 líneas)
+
+| Archivo | Líneas | Qué hace |
+| :--- | ---: | :--- |
+| `ally-ai.js` | 261 | Cómo pelea un compañero que se lleva solo. |
+| `barks.js` | 259 | Lo que dicen los compañeros en combate, sin llamar al modelo (C7). |
+| `bond-perks.js` | 191 | What a bond actually does in a fight. |
+| `boss-phases.js` | 68 | Jefes con fases: al bajar de la mitad, un jefe cambia (la P22, R6 del roadmap de profundidad). |
+| `boss-reaction.js` | 61 | La reacción del jefe: una por ronda (idea 24). |
+| `combat-hold.js` | 53 | Las puertas que un combate cierra mientras dura, y lo que se dice al encontrarlas cerradas. |
+| `condition-timers.js` | 119 | Condiciones que se van solas. |
+| `crits.js` | 105 | Criticos con efecto, rol del enemigo y moral (ideas 15, 13 y 6). |
+| `enemy-abilities.js` | 145 | Cuándo un enemigo usa una habilidad en vez de pegar. |
+| `enemy-ai.js` | 475 | Tactical enemy AI. |
+| `enemy-roles.js` | 153 | Enemigos con cabeza: cada uno tiene un papel, y su bando una forma de pelear (R7 del roadmap de profundidad). |
+| `forecast.js` | 101 | Lo que va a pasar, antes de que pase: la probabilidad de un golpe y lo que hace, y a por quien va cada enemigo. |
+| `initiative-tracker.js` | 247 | The initiative tracker: who is acting, who is next, and what is wrong with them. |
+| `loot-items.js` | 140 | What a piece of loot actually *is*. |
+| `loot.js` | 226 | What winning is worth. |
+| `maneuvers.js` | 428 | Las maniobras: lo que se puede hacer en combate además de pegar. |
+| `opportunity.js` | 110 | Ataques de oportunidad: por qué la posición importa. |
+| `readied.js` | 74 | Preparar una acción: «si alguien se me acerca, le pego» (idea 4). |
+| `retreat.js` | 62 | Huir de un combate, con su precio. |
+| `roll-guard.js` | 198 | Catches dice results the model made up and replaces them with the engine's. |
+| `scenario-board.js` | 102 | The bridge between a fight in progress and the scenario rules. |
+| `seeded-random.js` | 97 | Dice you can roll twice and get the same answer. |
+| `spawn.js` | 95 | Where the enemies stand when a fight begins. |
+| `tally.js` | 140 | La cuenta de un combate: quien hizo cuanto daño, a quien tumbo y cuanto se llevo. |
+| `target-card.js` | 106 | What the card over an enemy says, and which buttons it offers. |
+| `throwables.js` | 190 | Lo que se lanza en combate: un frasco de aceite que arde y una red (idea 122). |
+| `turn-machine.js` | 327 | Combat turn machine: initiative, rounds and the action economy. |
+
+#### `rules/` — Las reglas: paquete de reglas, habilidades, grimorio, modos, heridas, subida de nivel (30 archivos, 6.680 líneas)
+
+| Archivo | Líneas | Qué hace |
+| :--- | ---: | :--- |
+| `abilities.js` | 402 | Habilidades: conjuros, técnicas y recursos de clase, con las mismas piezas. |
+| `area.js` | 170 | Las formas en la cuadrícula: a quién toca una habilidad de área (R3 del roadmap de profundidad). |
+| `checks.js` | 200 | Las tiradas de habilidad fuera de combate: las tira el motor, el narrador lee el resultado. |
+| `class-trees.js` | 188 | Un árbol pequeño por clase: tres ramas de tres (idea 48). |
+| `companions.js` | 247 | Por qué alguien va contigo, y por qué a veces no. |
+| `death-saves.js` | 174 | Caer a 0 no es morir: es empezar a jugárselo. |
+| `default-ruleset.js` | 369 | The default rule pack: D&D 5e as this engine plays it. |
+| `editor-model.js` | 344 | The model behind the rules editor: turning a rule pack into something editable, and back, without touching the DOM. |
+| `equipment-sets.js` | 88 | Juegos de equipo guardados: cambiar de todo lo que se lleva en un clic (idea 62). |
+| `equipment.js` | 302 | Que lo que llevas encima signifique algo. |
+| `field-uses.js` | 249 | Las habilidades fuera del combate: cada una enganchada a un sistema que ya existe (R3 del roadmap de profundidad). |
+| `give-item.js` | 48 | Darle algo a otro del grupo (idea 163). |
+| `grimoire.js` | 423 | El grimorio: **toda la magia que existe**, escrita en el código (R4 del roadmap de profundidad). |
+| `injuries.js` | 311 | Lo que un combate te deja encima cuando ya ha terminado. |
+| `languages.js` | 107 | Los idiomas, que ahora importan (idea 59). |
+| `level-perks.js` | 135 | Subir de nivel como momento: una mejora a elegir entre tres (idea 46). |
+| `level-up.js` | 300 | Subir de nivel: lo que cambia, y quién lo decide. |
+| `magic-items.js` | 120 | Pergaminos y varitas: la magia del grimorio en un objeto (R4 del roadmap de profundidad). |
+| `modes.js` | 429 | Los modos de juego: qué sistemas existen en esta partida (R1 del roadmap de profundidad). |
+| `mortality.js` | 178 | Qué pasa cuando alguien se queda sin salvaciones, y cuándo se puede guardar. |
+| `needs.js` | 235 | Comer, beber, dormir y no morirse de frío. |
+| `pair-moves.js` | 81 | Ataques en pareja: con vínculo, dos pelean como uno (R3 del roadmap de profundidad). |
+| `remedies.js` | 157 | Lo que se puede hacer con una herida que no cura. |
+| `respec.js` | 70 | Rehacerse en el templo: volver a elegir las mejoras de nivel, pagando (idea 58). |
+| `rest.js` | 218 | Short and long rests. |
+| `roll-line.js` | 66 | Una sola forma de decir una tirada (idea 146). |
+| `rule-impact.js` | 157 | What a change to the rules would break. |
+| `ruleset.js` | 464 | Rule packs: the content the engine plays with, as data rather than code. |
+| `tags.js` | 201 | Las etiquetas de elemento: lo que una habilidad **le hace al mundo**, además del daño (R3 del roadmap de profundidad). |
+| `upkeep.js` | 247 | La cuenta: lo que cuesta tener a esta gente viva una semana más. |
+
+#### `campaign/` — La campaña: tiempo, gremio, encargos, vínculos, casos, crónica, mascota, némesis (98 archivos, 18.927 líneas)
+
+| Archivo | Líneas | Qué hace |
+| :--- | ---: | :--- |
+| `act-summary.js` | 76 | Resumen por acto: el chat viejo se comprime en la memoria del mundo (idea 143). |
+| `approval.js` | 180 | Lo que les parece a tus compañeros lo que haces, y cuando chocan entre ellos (ideas 28 y 32). |
+| `attitudes.js` | 79 | Cambios de actitud de un PNJ, propuestos por el narrador y con límites (idea 140). |
+| `backgrounds.js` | 129 | El trasfondo del personaje, con efecto en las reglas (idea 49). |
+| `bench.js` | 102 | El banquillo del gremio: más compañeros que huecos, y rotar quién sale (idea 42). |
+| `body.js` | 69 | Cómo está el grupo, en una línea para el narrador (C1). |
+| `bonds.js` | 300 | Social bonds: ranks one to ten, and the combat perks they unlock. |
+| `calendar.js` | 194 | Campaign calendar: days and the slots inside them. |
+| `camp-talk.js` | 98 | Charlas de campamento entre dos compañeros, y rondas con tema en la posada (ideas 31 y 40). |
+| `camp.js` | 188 | El campamento como escena: el fuego, las guardias, la charla y la cena (idea 67, y la propuesta P16 de los encuentros de noche). |
+| `campaign-delete.js` | 114 | Borrar una campaña: qué se va con ella, y qué se dice antes de tocar nada. |
+| `campaign-editor.js` | 818 | El editor de campaña: escribir a mano lo que hasta ahora solo traía un libro. |
+| `campaign-export.js` | 352 | Empaquetar una campaña: el camino de vuelta del importador. |
+| `campaign-importer.js` | 645 | From a campaign pack to a world you can play. |
+| `campaign-map.js` | 403 | Rooms, doors and the campaign map. |
+| `campaign-pack-schema.js` | 633 | The contract between a campaign pack and this engine. |
+| `campaign-pack.js` | 548 | The campaign pack: reading one, and saying what is wrong with it. |
+| `campaign-view.js` | 110 | What the campaign panel shows: the day, and where every bond stands. |
+| `campaign-worlds.js` | 77 | Worlds and campaigns are two different things, and the UI had drifted into treating them as one. |
+| `cases.js` | 297 | Casos con verdad: un misterio que el motor sabe y el narrador no (U8 del pegamento; la Propuesta 2 de wiki/PROPUESTAS_BUCLE_DE_JUEGO.md, fase F1). |
+| `check-requests.js` | 97 | El narrador pide una tirada; la tira quien juega (idea 138). |
+| `checkpoint.js` | 147 | El punto de retorno: lo que hace que probar algo difícil no dé miedo. |
+| `chronicle.js` | 162 | Una sola crónica: lo que pasó, con categoría, sacado de lo que el juego ya cuenta (U4 del pegamento). |
+| `companion-arcs.js` | 186 | Compañeros con arco: lo que cambia en alguien cuando se cumple lo suyo, los confidentes que ayudan sin venir, y quien se fue y vuelve (R8 del roadmap de profundidad). |
+| `company.js` | 101 | El grupo como grupo: moral, oficios de campamento y duelo (ideas 39, 41 y 43). |
+| `contracts.js` | 393 | El tablón de encargos: por qué sales de casa. |
+| `crime.js` | 101 | Ley y crimen: robar sube «buscado», y aparecen guardias (idea 96). |
+| `departures.js` | 59 | Se van: un compañero harto se marcha (idea 29). |
+| `dice-log.js` | 72 | El historial de dados (idea 168): ¿el dado me odia? |
+| `director.js` | 66 | Modo director: añadir un PNJ o un sitio en mitad de la partida (idea 185). |
+| `dispatch.js` | 186 | Los despachos: mandar compañeros sin el héroe a un encargo menor (U8 del pegamento; la fase F3 de la Mesa de la Semana en wiki/PROPUESTAS_BUCLE_DE_JUEGO.md). |
+| `economy.js` | 237 | Lo que cuesta vivir donde vives, que depende de quien mande. |
+| `encounter-editor.js` | 117 | Which enemies a board can field, as rows you can edit. |
+| `epilogues.js` | 81 | El epílogo de cada compañero: qué fue de él cuando todo acabó (idea 109). |
+| `factions.js` | 799 | Facciones: lo unico del mundo que tiene planes propios. |
+| `fame.js` | 103 | La fama del grupo, sitio a sitio (idea 52). |
+| `feats.js` | 233 | Lo que cada uno lleva encima de la campaña: hazañas, apodos, rasgos y cicatrices. |
+| `forage.js` | 42 | Cazar y forrajear (idea 68): el hambre tiene respuesta fuera del pueblo. |
+| `guests.js` | 127 | Quien va con el grupo solo un encargo: el que se escolta y el mercenario (ideas 105 y 131). |
+| `guidance.js` | 256 | Que nadie se quede sin saber que hacer: el diario, las pistas que escalan y la lista de lo que se puede hacer aqui (ideas 100, 103 y 136). |
+| `guild.js` | 351 | El gremio: la capa que convierte un grupo en una compañía. |
+| `guion-errors.js` ⬜ | 108 | Los errores del guion, dichos para quien lo escribe (idea 174). |
+| `hero-fit.js` | 59 | El mundo se adapta al héroe: hitos opcionales según el trasfondo (idea 184). |
+| `hero.js` | 245 | Quién eres tú: el personaje con el que empiezas a jugar. |
+| `illustrations.js` | 76 | Ilustraciones de sitios y gente con PixelLab, opcional (idea 183). |
+| `intents.js` | 39 | Leer la intención mientras se escribe (idea 137). |
+| `item-lore.js` | 208 | El botín que se recuerda, y el que muerde (ideas 119 y 135). |
+| `item-offers.js` | 118 | El narrador propone objetos, y quien juega los acepta (idea 139). |
+| `legacy.js` | 173 | Lo que queda de quien muere (ideas 36 y 199). |
+| `letters.js` | 87 | Cartas que esperan en la posada (idea 113): el mundo os busca a vosotros. |
+| `masters.js` | 90 | Maestros: aprender una habilidad en un pueblo, con oro y días (idea 54). |
+| `memories.js` | 93 | Lo que el grupo recuerda haber vivido junto. |
+| `mix.js` | 90 | La mezcla: de dónde sale cada cosa nueva que el mundo necesita (M7). |
+| `named-contracts.js` | 87 | Encargos que te nombran: el tablón habla de ti según tu trasfondo (idea 116). |
+| `narration.js` | 41 | Cuánto se extiende el narrador, y el modo ahorro (ideas 149 y 148), desde la partida. |
+| `narrator.js` | 212 | El narrador de una campaña: quién la cuenta, y con qué voz. |
+| `nemesis.js` | 143 | La némesis: quien escapa vuelve (R7 del roadmap de profundidad). |
+| `npc-secrets.js` | 108 | Secretos que se destapan (idea 110). |
+| `objective-editor.js` | 351 | The objectives of a board, as rows you can edit. |
+| `patronage.js` | 263 | Cuando no llega para pagar la semana: alguien paga por ti, y te cobra en favores. |
+| `personal-quests.js` | 96 | El encargo personal de cada compañero, al llegar a vínculo 3 (idea 30). |
+| `pet.js` | 376 | La mascota: alguien pequeño que acompaña al héroe, comenta lo que pasa y ayuda sin pelear (R5 del roadmap de profundidad). |
+| `plot-graph.js` | 93 | El hilo como grafo que se toca: mover hitos de acto, cambiar cómo se abren y qué piden (idea 176). |
+| `plot.js` | 709 | El hilo: lo que tienes entre manos. |
+| `premade-heroes.js` | 124 | Los héroes hechos de un mundo: entrar a jugar sin crear a nadie (R1, la partida rápida). |
+| `prisoners.js` | 94 | Los prisioneros (idea 7): lo que pasa con quien se rinde. |
+| `recruit.js` | 174 | Los confidentes: gente del mundo que puede unirse al grupo. |
+| `relics.js` | 68 | Las reliquias del mundo: objetos con nombre y con historia, ligados a un momento (idea 132). |
+| `rivals.js` | 54 | Aventureros rivales: otra compañía que compite por los mismos encargos (idea 94). |
+| `rumors.js` | 79 | Los rumores: lo que se oye en cada sitio. |
+| `safety-net.js` | 72 | La red de seguridad: tras dos derrotas seguidas, el siguiente encuentro baja un escalón (idea 25). |
+| `save-card.js` | 68 | Cargar partida de un vistazo: el día, el sitio, lo que tenéis entre manos y quién va (idea 160). |
+| `scenarios.js` | 306 | Scenario objectives and quest state. |
+| `scene-tone.js` | 82 | El tono de la escena: tensa, cómica, sombría o épica, en un bloque del prompt (idea 142). |
+| `seed.js` | 149 | La semilla de un mundo: lo que hace que dos campanas de la misma idea no se parezcan. |
+| `services.js` | 149 | Los servicios de una localidad: la posada, la herrería, el templo, el tablón (fase L). |
+| `session-log.js` | 166 | El diario de sesión: en qué se ha ido esta sesión de juego (U0 del pegamento). |
+| `share-code.js` | 56 | El código de un mundo: la semilla y de dónde sale, para jugar el mismo mundo sin pasarse archivos (idea 180). |
+| `shop.js` | 167 | La tienda (fase L5) y lo que se hace en ella: vender la chatarra, regatear, precios que se explican y género que cambia cada semana (ideas 118, 126, 127 y 134). |
+| `starter-templates.js` | 370 | Starter templates: a playable world in one click. |
+| `state-registry.js` | 274 | El registro del estado: todo lo que una partida guarda, declarado una vez (U2 del pegamento). |
+| `stats.js` | 64 | La partida en números (idea 200): lo que se cuenta al final, y en el diario mientras. |
+| `storage.js` | 65 | El almacén del gremio: lo que no se lleva encima se deja en casa (idea 124). |
+| `taller.js` | 984 | El taller: un mundo en trece pasos, con tres formas de empezarlo. |
+| `tavern-dice.js` | 145 | Dados en la taberna: «A veintiuno», un minijuego (idea 128). |
+| `text-map.js` | 121 | El mapa, en texto: con niebla y con notas (ideas 69 y 70, aparcadas hasta que hubiera mapa; U5 del pegamento). |
+| `time-stages.js` | 121 | Un solo paso del tiempo: las etapas, en orden, declaradas una vez (U3 del pegamento). |
+| `trophies.js` | 168 | Lo que se saca de los bichos, y lo que el herrero hace con ello (ideas 121 y 120). |
+| `upcoming.js` | 143 | Lo que viene: los plazos de todos los relojes, en una lista con fecha (U3 del pegamento). |
+| `veterans.js` | 70 | Héroes veteranos: traer tu personaje de otra campaña (idea 179). |
+| `villain.js` | 74 | Un villano que se deja ver en mitad del hilo, no solo al final (idea 115). |
+| `week-table.js` | 200 | La Mesa de la Semana: los asuntos que no caben todos, cómo os ven y lo que pasó (U5 del pegamento; la Propuesta 1 de wiki/PROPUESTAS_BUCLE_DE_JUEGO.md). |
+| `word-duel.js` | 251 | El Duelo de Palabras: una conversación que importa, jugada en rondas (U6 del pegamento; la Propuesta 3 de wiki/PROPUESTAS_BUCLE_DE_JUEGO.md). |
+| `world-density.js` | 306 | ¿Llega este mundo al listón? El comprobador de densidad (M6), como pieza del motor. |
+| `world-echoes.js` | 109 | El mundo que responde: lo que hacéis deja huella (R9 del roadmap de profundidad). |
+| `world-memory.js` | 190 | Que el mundo se acuerde de lo que hacéis. |
+| `world-preview.js` | 72 | Vista previa del mundo: los sitios con sus caminos, las facciones y el hilo por actos (idea 175). |
+| `written-contracts.js` | 199 | Los encargos que trae escritos un mundo, y cuándo salen en el tablón. |
+
+#### `world/` — El mundo: viaje, crecimiento, estaciones (14 archivos, 1.974 líneas)
+
+| Archivo | Líneas | Qué hace |
+| :--- | ---: | :--- |
+| `festivals.js` | 69 | Las fiestas de cada sitio (idea 89): un calendario con vida. |
+| `fortune.js` | 81 | Como le va a cada sitio por lo que hizo (o no hizo) el grupo (idea 85). |
+| `growth.js` | 196 | El mundo crece mientras juegas (fase G). |
+| `mounts.js` | 99 | Monturas: menos días de viaje, a cambio de oro y de pienso (idea 129). |
+| `neighbours.js` | 143 | Los vecinos: que un mundo nuevo tenga a donde ir. |
+| `news.js` | 108 | Las noticias que esperan a que llegues (idea 82). |
+| `people-fate.js` | 126 | La gente se muda o muere por lo que pasa en el mundo (idea 87). |
+| `road.js` | 148 | Lo que sale al paso por el camino: atajos, cazarrecompensas, mercaderes y paradas (ideas 72, 88, 92 y 71). |
+| `seasons.js` | 150 | Las estaciones: el calendario cambia el mapa y lo que vive en él (ideas 74 y 97). |
+| `ships.js` | 77 | Pasajes en barco desde los puertos (idea 130). |
+| `travel-choices.js` | 129 | Viajar con decisiones: a que ritmo, y que hacer con cada contratiempo. |
+| `travel-roles.js` | 86 | Papeles de viaje: quién guía, quién vigila y quién caza (idea 65). |
+| `travel.js` | 420 | Viajar: el mundo es una **lista**, no un tablero. |
+| `visibility.js` | 142 | El tiempo y la hora en el tablero: niebla, lluvia, viento y noche (ideas 73 y 90). |
+
+#### `world-builder/` — Generadores: mazmorras, formas, tableros con intención, mundos con IA (4 archivos, 1.801 líneas)
+
+| Archivo | Líneas | Qué hace |
+| :--- | ---: | :--- |
+| `board-intent.js` | 501 | Tableros con intención: el generador sabe **para qué** es el tablero (R6 del roadmap de profundidad). |
+| `dungeon-generator.js` | 435 | Un sitio donde pelear, construido con una semilla y ni un token. |
+| `shapes.js` | 528 | De que forma es un sitio. |
+| `world-schema.js` | 337 | The blank canvas: a playable world from one sentence. |
+
+#### `compendio/` — El compendio: la biblioteca de contenido en disco (10 archivos, 2.340 líneas)
+
+| Archivo | Líneas | Qué hace |
+| :--- | ---: | :--- |
+| `ailments.js` | 220 | Lo que le queda a alguien despues: heridas con causa y enfermedades con curso. |
+| `bestiary.js` | 249 | Arquetipo × plantilla = bicho. |
+| `browser.js` | 93 | El compendio, leido del disco y guardado en memoria. |
+| `compendio.js` | 400 | La biblioteca de contenido, y de donde sacan los generadores. |
+| `forge.js` | 344 | Forma × material = objeto. |
+| `kin.js` | 191 | De que esta hecha la gente y a que se dedica: razas y clases. |
+| `names.js` | 150 | Nombres que suenan al sitio del que salen. |
+| `people.js` | 260 | Gente que quiere algo. |
+| `quests.js` | 195 | Verbo + objeto + giro + recompensa = mision. |
+| `skills.js` | 238 | Lo que alguien sabe hacer, sacado del compendio. |
+
+#### `cost/` — El coste: tokens y prompt (2 archivos, 450 líneas)
+
+| Archivo | Líneas | Qué hace |
+| :--- | ---: | :--- |
+| `prompt-meter.js` | 266 | What a turn actually sends, and what it costs. |
+| `prompt-order.js` | 184 | A prompt whose beginning does not move. |
+
+#### `ui/` — Interfaz: paneles, ventanas, el taller y el Modo Juego (40 archivos, 11.567 líneas)
+
+| Archivo | Líneas | Qué hace |
+| :--- | ---: | :--- |
+| `abilities-panel.js` | 225 | El panel de habilidades: escribir un conjuro sin tocar código, y repartirlo. |
+| `audio-settings.js` | 107 | Los ajustes de sonido: cuatro casillas y un volumen. |
+| `campaign-editor.js` | 1005 | El panel de `/campana`: el mundo repartido por categorías. |
+| `campaign-panel.js` | 248 | The campaign panel: the day, the bonds, and what they unlock. |
+| `campaign-schema-panel.js` | 111 | The dialog that hands you the contract for your Gem. |
+| `campaign-wizard.js` | 869 | The campaign wizard: one button, three questions, and you are playing. |
+| `case-board.js` | 90 | El tablero del caso: lo que se sabe, los sospechosos y acusar (U8 del pegamento; la F3 de «Casos con verdad» en wiki/PROPUESTAS_BUCLE_DE_JUEGO.md). |
+| `character-panel.js` | 250 | La ficha, dibujada: lo que se mira, no lo que se edita. |
+| `chat-channel.js` | 86 | Who a game message is for. |
+| `combat-log.js` | 396 | The combat log. |
+| `compendio-panel.js` | 281 | El compendio, visto: que tienes, que te falta y que sale si lo pides. |
+| `contradiction-log.js` | 252 | What the model said against what the engine knows. |
+| `encounter-editor.js` | 119 | The panel that says which enemies a board can field. |
+| `guild-panel.js` | 248 | El panel del gremio: el tablón, la reputación y lo que hay levantado. |
+| `hero-creator.js` | 266 | «¿Quién eres?», preguntado al entrar y no al rellenar el formulario del mundo. |
+| `mode-panel.js` | 133 | Elegir el modo: tres con nombre y las seis letras sueltas (R1 del roadmap de profundidad). |
+| `objective-editor.js` | 203 | The panel that lets a board be *about* something, without opening World Info. |
+| `prompt-preview.js` | 233 | The prompt preview: what this turn is about to send, and what the session has cost. |
+| `rules-editor.js` | 297 | The rules editor: change what the game is made of without editing JavaScript. |
+| `sandbox.js` | 353 | Sandbox: a self-contained board for trying the tactical engine out. |
+| `shell/action-chips.js` | 284 | Las fichas de accion: lo que se puede hacer ahora mismo, sin escribirlo. |
+| `shell/action-sounds.js` | 110 | Un sonido por acción: el golpe, el crítico, el fallo, la puerta, las monedas (idea 186). |
+| `shell/character-sheet.js` | 202 | La ficha que enseña un videojuego, no la que edita un diseñador. |
+| `shell/clock-widget.js` | 105 | El reloj del Modo Juego: que dia es, que parte del dia, y que se puede hacer con ella. |
+| `shell/companion-card.js` | 177 | La ficha de un companero: quien es, cuanto le importas, y que puedes hacer al respecto. |
+| `shell/dialogue-scene.js` | 118 | What the dialogue scene shows: who is talking, how the party is doing, and when it is. |
+| `shell/exploration-scene.js` | 148 | What the exploration scene shows: where the party is, what else is on the map, and what is still shut. |
+| `shell/game-shell.js` | 1409 | The Game Shell: the full-screen layer the game is played in. |
+| `shell/notices.js` | 92 | La bandeja de avisos y el grupo de un vistazo (ideas 159 y 162). |
+| `shell/party-strip.js` | 77 | The party, as a row of chips: who is standing, who is hurt, who is down and what ails them. |
+| `shell/replies.js` | 55 | Respuestas sugeridas al hablar con alguien (idea 144). |
+| `shell/scene-audio.js` | 186 | El sonido del Modo Juego: una pista por escena, y silencio si no la has puesto. |
+| `shell/scene-director.js` | 316 | The scene director: which screen the game should be showing. |
+| `shell/shortcuts.js` | 38 | Los atajos de teclado del Modo Juego (idea 152), y su chuleta. |
+| `shell/speakers.js` | 76 | Quién habla en cada párrafo del narrador, para ponerle cara (idea 145). |
+| `shell/tips.js` | 50 | Ayuda la primera vez y glosario (ideas 155 y 156). |
+| `state-panel.js` | 70 | El panel del estado: lo que el juego da por cierto (U2 del pegamento; era la P5). |
+| `taller/paso.js` | 258 | Un paso del taller. El mismo para los trece. |
+| `taller/taller.js` | 1814 | El taller de campanas: la puerta de tres caminos y las pestañas. |
+| `world-workshop.js` | 210 | El taller del mundo, desde la pausa: verlo, tocar el hilo, añadir gente o sitios, e ilustrarlo (ideas 175, 176, 185 y 183). |
+
+### 2.2. El subsistema de grupo — `public/scripts/party/` (6 archivos, 963 líneas)
 
 Extraído de `party.js` por las costuras que los tests ya cubrían.
 
-| Archivo | Líneas | Función |
+| Archivo | Líneas | Qué hace |
 | :--- | ---: | :--- |
-| `campaign-state.js` | 295 | Reloj, vínculos, descansos y mapa, con sus dependencias inyectadas |
-| `combat-rules.js` | 218 | Dados, distancias, fórmulas de daño y cobertura |
-| `item-forms.js` | 183 | Formularios de objetos |
-| `positions.js` | 65 | De dónde sale la casilla de cada miembro |
-| `types.js` | 52 | Tipos compartidos |
-| `html.js` | 26 | Escape HTML sin dependencias (copia intencional, con test) |
+| `campaign-state.js` | 337 | The campaign's own state: the clock, the bonds, the rests and the map. |
+| `combat-rules.js` | 275 | Combat rules: dice, board geometry, damage formulas and encounter shape. |
+| `html.js` | 27 | HTML escaping for the party submodules. |
+| `item-forms.js` | 183 | HTML builders for the item editor form. |
+| `positions.js` | 65 | Where a party member starts on the board. |
+| `types.js` | 76 | Shared domain types for the party subsystem. |
 
 ### 2.3. Archivos del fork que siguen siendo grandes
 
 | Archivo | Líneas | Función Principal |
 | :--- | ---: | :--- |
-| `public/scripts/party.js` | 4.954 | Grupo, ficha D&D, combate real, comandos y tablero. **Sigue creciendo**: cada enganche nuevo se añade aquí, aunque la lógica viva fuera |
-| `public/scripts/dynamic-context-manager.js` | 1.911 | Estados de campaña, presupuesto de tokens y las 8 herramientas `dnd_*` |
-| `public/scripts/dnd-system.js` | 1.225 | Fórmulas D&D 5e. Lee sus tablas del paquete de reglas |
-| `public/scripts/world-map-renderer.js` | 1.188 | Mapas, tableros, capas de terreno y niebla, puertas |
-| `public/scripts/world-content-popups.js` | 1.110 | Formularios de monstruos, hechizos, ítems y facciones |
-| `public/scripts/campaigns.js` | 905 | Tarjetas de campaña y arranque de partida |
+| `public/scripts/party.js` | 19.006 | El cableado: grupo, ficha, combate real, comandos, tablero y todo lo que el jugador toca. **Sigue creciendo** unas 1.500 líneas por fase (ver K1 en [[LO_QUE_FALTA]]) |
+| `public/scripts/campaigns.js` | 1.723 | Tarjetas de campaña, la partida rápida y el arranque de partida |
+| `public/scripts/world-map-renderer.js` | 1.336 | Mapas, tableros, capas de terreno y niebla, puertas y cofres |
+| `public/scripts/dnd-system.js` | 1.230 | Fórmulas D&D 5e. Lee sus tablas del paquete de reglas |
+| `public/scripts/world-content-popups.js` | 1.110 | Formularios de monstruos, objetos y facciones |
+| `public/scripts/dynamic-context-manager.js` | 998 | Estados de campaña y presupuesto de tokens |
 | `public/scripts/world-content-browser.js` | 674 | Navegador de entidades del Lorebook |
 | `public/scripts/chat-enhancements.js` | 661 | Términos resaltados y avatares en línea |
-| `public/scripts/active-instructions.js` | 278 | Instrucciones inyectadas en el prompt |
+| `public/scripts/active-instructions.js` | 279 | Instrucciones inyectadas en el prompt |
 
 ### 2.4. Archivos de upstream que el fork modifica
 
@@ -169,28 +369,32 @@ Cada uno cuesta en cada merge. La lista no debería crecer.
 
 | Archivo | Líneas | Función |
 | :--- | ---: | :--- |
-| `public/css/world-map.css` | 1.520 | Zoom, cuadrícula, tokens, terreno, niebla y puertas |
+| `public/css/campaigns.css` | 2.438 | Tarjetas de campaña, bienvenida, partida rápida, el taller en pestañas y el selector de modos |
+| `public/css/world-map.css` | 2.026 | Zoom, cuadrícula, tokens, terreno (agua, hielo, maleza, barriles, cofres), niebla y puertas |
+| `public/css/game-shell.css` | 1.471 | El Modo Juego: la capa a pantalla completa y la retícula tablero/registro |
 | `public/css/dnd-character.css` | 1.330 | Ficha, inventario, ranuras y estados |
-| `public/css/campaigns.css` | 1.304 | Tarjetas de campaña y bienvenida |
 | `public/css/world-content-browser.css` | 794 | Cuadrícula de entidades y modales |
+| `public/css/campaign-wizard.css` | 622 | Asistente de campaña y panel de generación con IA |
 | `public/css/dynamic-context-manager.css` | 355 | Modal de reglas y barra de presupuesto |
-| `public/css/combat-log.css` | 232 | Registro de combate con marco de pixel art y `/sandbox` |
-| `public/css/chat-enhancements.css` | 149 | Términos resaltados y avatares en línea |
-| `public/css/campaign-wizard.css` | 212 | Asistente de campaña, tarjetas sin empezar y panel de generación con IA |
-| `public/css/game-shell.css` | 579 | El Modo Juego: la capa a pantalla completa y la retícula tablero/registro |
+| `public/css/combat-log.css` | 262 | Registro de combate con marco de pixel art y `/sandbox` |
 | `public/css/rules-editor.css` | 237 | El editor de reglas |
 | `public/css/campaign-panel.css` | 174 | La pestaña Campaña: calendario, vínculos y perks |
-| `public/css/prompt-preview.css` | 116 | El desglose de coste por turno |
+| `public/css/chat-enhancements.css` | 149 | Términos resaltados y avatares en línea |
+| `public/css/prompt-preview.css` | 130 | El desglose de coste por turno |
 
 ### 2.6. Herramientas — `tools/`
 
 | Archivo | Para qué |
 | :--- | :--- |
-| `check-fork-types.mjs` | Gate de tipos sobre los 64 archivos propios. Falla si aparece un error |
-| `check-prompt-shape.mjs` | Falla si la forma del prompt cambia sin que nadie lo diga |
-| `gem-instructions.mjs` | Genera `wiki/GEM_CREAR_CAMPANA.md` desde el contrato; con `--check` falla si se quedó viejo |
+| `check-fork-types.mjs` | Gate de tipos sobre los archivos propios (246 hoy). Falla si aparece un error |
 | `check-engine-wiring.mjs` | Lista los módulos del motor que el juego no carga. Informa, no falla |
-| `e2e-campaign.mjs` | Recorre el juego en un navegador real, con servidor y datos propios. 202 comprobaciones |
+| `check-prompt-shape.mjs` | Falla si la forma del prompt (9 bloques) cambia sin que nadie lo diga |
+| `check-state-keys.mjs` | Falla si una clave de la partida no está en el registro del estado |
+| `check-world-density.mjs` | Mide si un mundo llega al listón: sitios, gente, héroes hechos, bestias domables y magia en los datos |
+| `gem-instructions.mjs` | Genera `wiki/GEM_CREAR_CAMPANA.md` desde el contrato; con `--check` falla si se quedó viejo |
+| `guion-a-paquete.mjs` | Convierte el guion del Gem guionista en un paquete, y avisa de cada campo que no lee |
+| `e2e-campaign.mjs` | Recorre el juego en un navegador real, con servidor y datos propios: 73 pasos, unos 55 minutos |
+| `e2e-quick.mjs` | La partida rápida sola, con diagnóstico: unos 2 minutos |
 
 ---
 
@@ -218,5 +422,5 @@ Cada uno cuesta en cada merge. La lista no debería crecer.
 ## 4. Enlaces Relacionados
 - [[Arquitectura-General]]: Visión de conjunto de la arquitectura.
 - [[Guia-Desarrollo-Flujo]]: Instrucciones para ejecutar, depurar y programar en el proyecto.
-- [[PROBLEMAS_TECNICOS]]: Diagnóstico técnico y deuda encontrada en estos archivos.
+- *PROBLEMAS_TECNICOS*: Diagnóstico técnico y deuda encontrada en estos archivos.
 - [[PROPUESTAS_MEJORA]]: Propuestas de refactorización y desacoplamiento.

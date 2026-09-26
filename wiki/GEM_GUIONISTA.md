@@ -56,11 +56,16 @@ Consecuencias para ti:
 - **El tablón de encargos** siempre tiene trabajo. Los encargos de facción «toman partido»: ayudar a unos es fastidiar a sus enemigos.
 - **Tiradas fuera de combate**: el jugador pulsa «Persuasión», «Sigilo», etc., y el motor tira un d20 contra **CD 12**. Hay diez: Persuasión, Engaño, Intimidación, Perspicacia, Percepción, Investigación, Sigilo, Atletismo, Juego de manos y Supervivencia.
 - **En combate**, además de atacar: **esquivar, destrabarse, empujar y ayudar**. Empujar a alguien contra una pared lo tira al suelo, y a un precipicio (`v`) lo saca del combate. **Agarrar** deja al enemigo quieto. Los enemigos malheridos pueden **rendirse** y quedar como prisioneros.
-- **Los enemigos** tienen un **perfil**: `aggressive` (va a por el más cercano), `skirmisher` (dispara y retrocede), `guardian` (protege al más herido de los suyos) y `coward` (huye malherido). Pueden usar **habilidades**.
+- **Los enemigos** tienen un **perfil**: `aggressive` (va a por el más cercano), `skirmisher` (dispara y retrocede), `guardian` (protege al más herido de los suyos) y `coward` (huye malherido). Pueden usar **habilidades**. Un bicho con `jefe: true` manda a los suyos, y si cae, a los demás les tiembla el pulso.
+- **Áreas y elementos**: una habilidad puede alcanzar en radio, línea o cono (`area: { shape: radius | line | cone, size: pies }`) y llevar un elemento (`element: fuego | frio | trueno | luz | veneno | naturaleza`). El elemento hace cosas en el tablero: el fuego prende cajas, puertas y maleza; el frío hiela el agua; el trueno revienta puertas.
+- **Terreno nuevo** en los tableros: `w` agua poco honda, `i` hielo, `b` maleza (arde), `T` barriles, `k` cofres, `^` sitios altos (ventaja desde arriba) y `x` salidas (por donde escapar). Úsalo: una sala con agua y un enemigo que lanza frío es otra pelea; una torre con arqueros arriba, otra.
+- **La magia del grimorio**: los conjuros existen **solo en el código** (la lista está más abajo). Tú dices quién sabe cuál (`conjuros:` en un confidente o un héroe) por su id; no inventes ninguno.
+- **Héroes hechos**: tres por mundo, para entrar sin crear a nadie (bloque `heroe:`).
+- **Mascotas**: cualquier lobo, cuervo, zorro, halcón o gato que se venza se puede domar.
 
 ### Lo que el motor **no** sabe hacer (no lo pidas)
 
-- **Magia pesada de 5e**: ni conjuros por niveles, ni áreas de efecto, ni concentración. Hay habilidades sencillas (la lista está más abajo).
+- **Magia inventada**: ni un conjuro que no esté en el grimorio. Si una escena pide magia que no existe, cuéntala como rumor, reliquia o miedo, no como algo que alguien lanza.
 - **Terreno especial** todavía no: ni agua con corriente, ni lava, ni palancas, ni altura, ni cuerdas que se cortan. **Puedes dibujarlo y describirlo**, pero márcalo en `mecanica_pendiente:` para que se sepa que de momento es decorado.
 - **Que el narrador cree cosas.** Si una escena necesita a alguien o algo, tiene que estar escrito por ti.
 
@@ -263,6 +268,7 @@ confidente:
   nombre: Tomás
   clase: explorador
   motivo: vinculo       # vinculo | dinero
+  conjuros: []          # ids del grimorio, si hace magia (y el mundo la tiene)
   escenas:              # una cada dos rangos
     - { rango: 2, titulo: "...", escena: "..." }
     - { rango: 4, titulo: "...", escena: "..." }
@@ -281,6 +287,7 @@ faccion:
   meta: { tipo: controlar, objetivo: cala-de-los-votos, ritmo_dias: 7 }   # encontrar | conquistar | recuperar | destruir | controlar
   si_la_cumple: "Qué cambia en el mundo."
   reputacion_inicial: 0
+  magia: tolera          # persigue (sus sitios no venden componentes) | tolera | comercia (salen más baratos)
 ```
 
 ### Encargo
@@ -314,6 +321,18 @@ Los mapas tienen de **8 a 40 columnas** y de **6 a 30 filas**, todas las filas c
 | `C` | cobertura de tres cuartos (columna, muro bajo) |
 | `v` | precipicio: no se anda, y a quien empujan dentro, cae |
 | `L` | puerta cerrada con llave: se abre con una llave, con maña o a golpes; el jefe del tablero suelta la llave |
+| `>` | escalera al nivel siguiente |
+| `w` | agua poco honda: cuesta el doble, y el frío la hiela |
+| `i` | hielo: el trueno lo quiebra, el fuego lo funde |
+| `b` | maleza: cuesta el doble, y arde |
+| `T` | barril: cubre, y con fuego revienta y quema lo de al lado |
+| `k` | cofre: se abre estando al lado |
+| `^` | **en alto** (torre, escalones, empalizada): subir cuesta el doble, y desde arriba se ataca con ventaja |
+| `x` | **salida** (la ventana, la trampilla): quien la pisa puede irse de la pelea. Si el objetivo es «alcanzar» esa casilla, salir es ganar |
+| `P` | **palanca** (en la pared): estando al lado, abre todas las puertas con llave `L` del tablero |
+| `=` | **barricada**: corta el paso pero no la vista, cubre a quien está detrás y a golpes se rompe (15 de vida) |
+
+> **Antes de escribir una `mecanica_pendiente`, mira esta tabla.** Pelear desde lo alto es `^`; escapar por la ventana es `x`; lo que arde es `b` o `T`; una reja que se abre desde otra sala es `L` más una `P`; algo que cubre y se rompe es `=`. Solo lo que no esté aquí va a `mecanica_pendiente`.
 
 ```yaml
 tablero:
@@ -348,6 +367,7 @@ bicho:
   habilidades: []         # ids de la lista de abajo
   jefe: false
   estaciones: []          # si migra: [invierno, otono]. Fuera de ellas no sale. Vacío: todo el año
+  domable: perro          # si una cría suya se doma al vencerlo, y en qué mascota: perro | gato | zorro | halcon | cuervo | loro | familiar | espiritu. "" = no se doma. Sin el campo, lo decide el nombre
   descripcion: "Una frase que se vea."
   debilidad: "Lo que el grupo puede descubrir con una tirada."
 ```
@@ -371,9 +391,35 @@ rumor:
 ```
 
 ### Habilidades que ya existen
-Úsalas por id en los bichos y los confidentes: `rayo_de_fuego`, `curar_heridas`, `tomar_aliento`, `furia` y `golpe_de_escudo`. Y de la biblioteca: `hab-embate`, `hab-segundo-aliento`, `hab-furia`, `hab-empujon`, `hab-ataque-furtivo`, `hab-esfumarse`, `hab-ganzua`, `hab-curar`, `hab-bendicion`, `hab-luz-severa`, `hab-rayo-fuego`, `hab-escudo-arcano`, `hab-sueno`, `hab-mano-lejana`, `hab-burla`, `hab-animo`, `hab-marca-cazador`, `hab-disparo-certero`, `hab-rastrear`, `hab-espinas`, `hab-forma-animal`, `hab-primeros-auxilios`, `hab-cubrirse`, `hab-gritar` y `hab-aguantar`.
+Úsalas por id en los bichos y los confidentes: `tomar_aliento`, `furia` y `golpe_de_escudo`. Y de la biblioteca: `hab-embate`, `hab-segundo-aliento`, `hab-furia`, `hab-empujon`, `hab-ataque-furtivo`, `hab-esfumarse`, `hab-ganzua`, `hab-burla`, `hab-animo`, `hab-marca-cazador`, `hab-disparo-certero`, `hab-rastrear`, `hab-primeros-auxilios`, `hab-cubrirse`, `hab-gritar`, `hab-aguantar`, `tec-barrido`, `tec-embestida`, `tec-cerrar-filas`, `tec-lanza-ristre`, `tec-pisoton`, `tec-bomba-humo`, `tec-abrojos`, `tec-lluvia-flechas`, `tec-lazo`, `tec-camuflaje`, `tec-polvo-ojos`, `tec-remedio`, `tec-frasco-lumbre` y `tec-cancion-marcha`.
 
-**Si necesitas una nueva**, descríbela con estas cuatro preguntas y ponle un id: *qué cuesta* (acción, acción adicional o gratis), *cuántas veces* (a voluntad, por descanso corto o por descanso largo), *a quién alcanza* (enemigo, aliado o uno mismo, y a cuántos pies) y *qué hace* (daño con dados, curación, o una condición durante N rondas: Blinded, Charmed, Frightened, Grappled, Poisoned, Prone, Restrained, Stunned…). **Nada de áreas de efecto.** En 1387 y la costa, **nada que sea magia**: una habilidad ahí es oficio, no conjuro.
+**Si necesitas una nueva**, descríbela con estas preguntas y ponle un id: *qué cuesta* (acción, acción adicional o gratis), *cuántas veces* (a voluntad, por descanso corto o por descanso largo), *a quién alcanza* (enemigo, aliado o uno mismo, a cuántos pies, y si es en área: `area: { shape: radius | line | cone, size: pies }`) y *qué hace* (daño con dados, curación, o una condición durante N rondas: Blinded, Frightened, Poisoned, Prone, Restrained, Stunned, Invisible…). Puede llevar un `element` y dejar terreno donde cae (`leaves: difficult`). **Nunca es magia**: una habilidad es oficio. Si lleva escuela o círculo, o se llama como un conjuro, el conversor la rechaza.
+
+### Los conjuros del grimorio
+La magia **solo existe aquí**, escrita en el código. Tú nombras quién sabe cuál; no inventas ninguno. Los trucos son a voluntad; los de 1.º, 2.º y 3.er círculo gastan cargas (3, 2 y 1 por descanso largo), y los gordos, un componente.
+
+- **Trucos**: `hab-rayo-fuego` (Rayo de fuego), `mag-escarcha` (Dedo de escarcha), `mag-latigo-espinas` (Látigo de espinas), `mag-luz` (Luz), `hab-mano-lejana` (Mano lejana).
+- **1.er círculo**: `hab-curar` (Curar heridas), `hab-bendicion` (Bendición), `hab-luz-severa` (Luz severa), `hab-escudo-arcano` (Escudo arcano), `hab-sueno` (Sueño pesado), `hab-espinas` (Zarzas), `mag-ola-trueno` (Ola de trueno), `mag-encanto` (Encanto), `mag-detectar-mentiras` (Detectar mentiras), `mag-paso-sin-rastro` (Paso sin rastro).
+- **2.º círculo**: `mag-cono-escarcha` (Cono de escarcha), `mag-relampago` (Relámpago), `mag-oracion` (Oración de curación), `mag-invisibilidad` (Invisibilidad), `mag-toque-vampirico` (Toque vampírico, nigromancia), `mag-hablar-muertos` (Hablar con los muertos, nigromancia), `hab-forma-animal` (Forma de bestia).
+- **3.er círculo**: `mag-bola-fuego` (Bola de fuego), `mag-muro-fuego` (Muro de fuego), `mag-volver-orilla` (Volver de la orilla).
+
+La nigromancia, en un sitio con gente, es un crimen. En 1387 y la costa **no hay magia**: no pongas conjuros a nadie.
+
+### Héroe hecho
+Tres por mundo, pensados para él: de las razas y clases que el mundo deja entrar.
+```yaml
+heroe:
+  id: ulrich
+  nombre: Ulrich Brand
+  raza: Humano            # como la llama el compendio
+  clase: Soldado
+  genero: Hombre          # Mujer | Hombre | No binario
+  pasado: soldado         # soldado | criminal | erudito | acolito | forastero | artesano | noble | marinero | charlatan | ermitano
+  gancho: "Le deben tres meses"          # una línea para elegirlo
+  quien: "Mercenario de una compañía que se quedó al otro lado del paso."
+  conjuros: []            # ids del grimorio, si hace magia
+  mascota: { nombre: Salmo, especie: cuervo, caracter: cinica }   # opcional: llega con ella. perro | gato | zorro | halcon | cuervo | loro | familiar | espiritu
+```
 
 ---
 

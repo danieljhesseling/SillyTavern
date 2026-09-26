@@ -477,6 +477,9 @@ export function renderWorldMapView(target, worldMapUrl, locationMaps, callbacks 
 /** @type {Map<string, {scale: number, offsetX: number, offsetY: number, gridVisible: boolean}>} */
 const locationViewStateMemory = new Map();
 
+/** K3: el último turno que se centró en cada tablero, para centrar una vez por turno y no más. */
+const focusMemory = new Map();
+
 /**
  * Render an interactive location or board view with grid and character tokens.
  * @param {JQuery} target - Container to render into
@@ -509,6 +512,8 @@ const locationViewStateMemory = new Map();
  * @param {string|null} [options.paintMode] - Terrain type being painted, or null when not editing.
  * @param {(gridX: number, gridY: number, type: string) => void} [options.onPaintCell]
  * @param {(gridX: number, gridY: number, open: boolean) => void} [options.onDoorToggle] - Click a door to open or close it. Ignored while painting.
+ * @param {number|string|null} [options.focusTokenId] - La ficha a la que le toca: si no se ve (fuera del tablero o bajo otra cosa), se centra.
+ * @param {string} [options.focusKey] - Qué turno es: se centra una vez por turno, no en cada redibujado.
  * @param {Array<{x: number, y: number, name: string, kind?: string, note?: string}>} [options.hazards] - Lo que ya se ha visto
  *   en el tablero: una trampa descubierta, el aceite que arde (idea 122). Se dibuja, y la casilla lo dice.
  */
@@ -539,6 +544,8 @@ export function renderLocationView(target, options) {
         onPaintCell = null,
         onDoorToggle = null,
         hazards = [],
+        focusTokenId = null,
+        focusKey = '',
     } = options;
 
     target.empty();
@@ -659,10 +666,12 @@ export function renderLocationView(target, options) {
             // A door is the one piece of terrain that answers to the player. The layer
             // ignores pointer events so it never eats a drag; the door opts back in.
             // While painting, a click means "paint here", so the door stays inert.
-            if (cell.type === 'door' && typeof onDoorToggle === 'function' && !paintMode) {
+            // R6: un cofre también responde: se abre estando al lado.
+            // T1 y B3: la palanca y la barricada, igual.
+            if (['door', 'chest', 'lever', 'barricade'].includes(cell.type) && typeof onDoorToggle === 'function' && !paintMode) {
                 const open = Boolean(cell.open);
                 el.addClass('wm-terrain-door-actionable')
-                    .attr('title', open ? 'Cerrar la puerta' : 'Abrir la puerta')
+                    .attr('title', cell.type === 'chest' ? 'Abrir el cofre' : cell.type === 'lever' ? 'Tirar de la palanca' : cell.type === 'barricade' ? 'Golpear la barricada' : open ? 'Cerrar la puerta' : 'Abrir la puerta')
                     .on('mousedown', function (e) {
                         // Stops the board's own pan handler from starting a drag.
                         e.preventDefault();
@@ -1154,6 +1163,33 @@ export function renderLocationView(target, options) {
         renderFog();
         fullUpdate();
         gridOverlay.toggleClass('hidden', !gridVisible);
+        focusActiveToken();
+    }
+
+    /**
+     * K3: al empezar el turno de alguien, su ficha a la vista. Si en su centro hay otra cosa
+     * que el tablero (la cabecera, o nada porque está fuera), se centra; si se ve, no se toca.
+     * Una vez por turno: quien mueve el tablero a mano no se lo encuentra movido.
+     */
+    function focusActiveToken() {
+        if (focusTokenId === null || focusTokenId === undefined || !focusKey) return;
+        // Hasta que el tablero no está en la página no se sabe qué se ve.
+        if (!document.body.contains(container[0]) || !container.width()) return;
+        if (focusMemory.get(derivedViewStateKey) === focusKey) return;
+        const token = tokens.find(t => String(t.id) === String(focusTokenId));
+        if (!token || !imgW || !imgH) return;
+        focusMemory.set(derivedViewStateKey, focusKey);
+        const element = container.find(`.wm-token[data-token-id="${String(focusTokenId)}"]`)[0];
+        const rect = element?.getBoundingClientRect();
+        if (rect && rect.width > 0 && rect.height > 0) {
+            const hit = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2);
+            if (hit && container[0].contains(hit)) return;
+        }
+        const cw = container.width() || 300;
+        const ch = container.height() || 420;
+        state.offsetX = cw / 2 - (Number(token.gridX) + 0.5) * (imgW / gridWidth) * state.scale;
+        state.offsetY = ch / 2 - (Number(token.gridY) + 0.5) * (imgH / gridHeight) * state.scale;
+        fullUpdate();
     }
 
     if (hasImage) {
@@ -1230,6 +1266,8 @@ export function renderLocationView(target, options) {
     container.append(zoomControls);
 
     target.append(container);
+    // K3: con el tablero ya en la página, la ficha a la que le toca, a la vista.
+    requestAnimationFrame(() => focusActiveToken());
 
     // Characters accordion
     renderCharactersAccordion(target, tokens, (tokenId, gx, gy) => {

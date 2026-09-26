@@ -14,7 +14,7 @@
  * merge. While the shell is closed the application is exactly the one that was there
  * before it existed, and closing it has to leave the DOM exactly as it found it.
  *
- * See wiki/PROPUESTA_FRONTEND_MODO_JUEGO.md, H1 · wiki/ROADMAP.md, Fase H.
+ * See wiki/archivo/PROPUESTA_FRONTEND_MODO_JUEGO.md, H1 · wiki/ROADMAP.md, Fase H.
  */
 
 import {
@@ -84,6 +84,7 @@ import { SHORTCUTS, actionForKey } from './shortcuts.js';
  * @property {(chip: import('./action-chips.js').ActionChip) => void} [onChip]
  * @property {(memberId: string) => void} [onCompanion] Abrir la ficha de un companero.
  * @property {() => void} [onNewCampaign] Empezar una partida desde el menu principal.
+ * @property {() => void} [onQuickStart] R1: un mundo hecho, un modo y a jugar.
  * @property {() => number} [countCampaigns] Cuantas partidas hay para cargar.
  * @property {() => number} [countHall] Cuantos caidos hay en el salon de la fama (idea 199).
  * @property {() => void} [onHall] Abrir el salon de la fama.
@@ -112,6 +113,13 @@ import { SHORTCUTS, actionForKey } from './shortcuts.js';
  * @property {(mode: string) => void} [onRetry] Rehacer la ultima respuesta (idea 150).
  * @property {() => void} [onGlossary] El glosario (idea 156).
  * @property {(scene: string) => void} [onScene] Al cambiar de escena: el consejo de la primera vez (idea 155).
+ * @property {(scene: string) => void} [onSceneTime] Cada cambio de escena, también al título y al
+ *   cerrar el juego (`out`): el diario de sesión cuenta los minutos (U0 del pegamento).
+ * @property {() => void} [onSession] Tu sesión: minutos, mensajes y llamadas (U0 del pegamento).
+ * @property {() => void} [onHowToPlay] H2 de wiki/LO_QUE_FALTA.md: «Cómo se juega».
+ * @property {() => void} [onWeekTable] La mesa de la semana (U5 del pegamento).
+ * @property {() => void} [onTextMap] El mapa en texto, con niebla y notas (ideas 69 y 70).
+ * @property {(scene: string) => string} [audioSceneFor] Qué suena en una escena, según dónde se esté (idea 187).
  * @property {() => Array<{id: string, label: string, on: boolean}>} [getToggles] Los interruptores
  *   del menu de pausa: modo ahorro, largo de la narracion, daltonismo (ideas 148, 149 y 172).
  * @property {(id: string) => void} [onToggle]
@@ -324,6 +332,11 @@ function renderTitleMenu(menu) {
 
     const saved = options?.countCampaigns?.() ?? 0;
 
+    // R1 del roadmap de profundidad: empezar sin decidir casi nada.
+    if (options?.onQuickStart) {
+        item('Partida rápida', 'fa-bolt', 'Un mundo hecho, un modo y a jugar',
+            () => options?.onQuickStart?.());
+    }
     item('Partida nueva', 'fa-wand-sparkles', 'Una plantilla, un mundo generado o un libro',
         () => options?.onNewCampaign?.());
     item('Cargar partida', 'fa-folder-open',
@@ -555,6 +568,24 @@ function renderFocus(slot) {
         journal.title = 'Lo que sabéis: el hilo, las pistas, lo que habéis oído';
         journal.addEventListener('click', () => options?.onJournal?.());
         buttons.appendChild(journal);
+    }
+    // U5 del pegamento: la semana en una mesa.
+    if (options?.onWeekTable) {
+        const table = makeButton('gs-guide-btn gs-table');
+        table.appendChild(el('i', 'fa-solid fa-table-list'));
+        table.appendChild(el('span', '', ' Mesa'));
+        table.title = 'La semana: los asuntos que no caben todos, cómo os ven y lo que viene';
+        table.addEventListener('click', () => options?.onWeekTable?.());
+        buttons.appendChild(table);
+    }
+    // Ideas 69 y 70: el mapa, en texto.
+    if (options?.onTextMap) {
+        const map = makeButton('gs-guide-btn gs-map');
+        map.appendChild(el('i', 'fa-solid fa-map'));
+        map.appendChild(el('span', '', ' Mapa'));
+        map.title = 'Los sitios y sus caminos: lo no visitado en gris, y tus notas';
+        map.addEventListener('click', () => options?.onTextMap?.());
+        buttons.appendChild(map);
     }
     if (options?.onGlance) {
         const glance = makeButton('gs-guide-btn gs-glance');
@@ -915,8 +946,22 @@ function setPaused(next) {
     };
 
     item('Continuar', 'fa-play', () => setPaused(false), 'Esc');
+    // H2: cómo se juega, armado con lo que el motor sabe.
+    if (options.onHowToPlay) {
+        item('Cómo se juega', 'fa-circle-question', () => {
+            setPaused(false);
+            options?.onHowToPlay?.();
+        });
+    }
     item('Opciones', 'fa-sliders', () => options?.onOptions());
     item('Reglas del juego', 'fa-scale-balanced', () => options?.onRules());
+    // U0 del pegamento: en qué se ha ido esta sesión.
+    if (options.onSession) {
+        item('Tu sesión', 'fa-hourglass-half', () => {
+            setPaused(false);
+            options?.onSession?.();
+        });
+    }
     if (options.onEditCampaign) {
         item('Editar la campana', 'fa-map-location-dot', () => {
             setPaused(false);
@@ -1119,12 +1164,13 @@ export function refreshGameShell() {
 
     // Idea 155: la primera vez en cada escena, un consejo.
     if (scene !== root.dataset.scene && scene !== SCENE.TITLE) options.onScene?.(scene === SCENE.COMBAT ? 'combat' : scene === SCENE.EXPLORATION ? 'exploration' : 'dialogue');
+    if (scene !== root.dataset.scene) options.onSceneTime?.(scene);
     root.dataset.scene = scene;
     root.dataset.source = choice.source;
 
     // La escena manda tambien en lo que suena. Pedir la misma pista dos veces no hace
     // nada, que es justo lo que hace falta aqui: esto se redibuja en cada turno.
-    playForScene(scene);
+    playForScene(options.audioSceneFor?.(scene) ?? scene);
 
     const bar = options.getCombatBar();
     const dialogue = options.getDialogue();
@@ -1328,6 +1374,7 @@ export function openGameShell(shellOptions) {
  */
 export function closeGameShell() {
     if (!isShellOpen()) return;
+    options?.onSceneTime?.('out');
 
     setPaused(false);
     stopSceneAudio();

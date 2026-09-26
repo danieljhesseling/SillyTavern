@@ -266,7 +266,7 @@ Hoy un encargo **genera** su mazmorra. Con cinco tableros escritos por mundo, el
 
 ## ✅ Hecho, para no rehacerlo
 
-### Batería 8 de [IDEAS_200](IDEAS_200.md) — 2026-09-25
+### Batería 8 de *IDEAS_200* — 2026-09-25
 
 Comprobada en el navegador en el paso 59 del recorrido (21 comprobaciones), salvo dos que van por pruebas: el árbol por clase (48) y el mundo que se adapta al héroe (184). Las ilustraciones (183) se han probado con PixelLab simulado: el botón, la petición y que la imagen se queda en el mundo; no se ha gastado ningún crédito de verdad.
 
@@ -297,7 +297,7 @@ Por el camino salieron dos fallos que no eran del recorrido: **el menú de pausa
 | **184** El mundo se adapta al héroe | Un hito con `trasfondo:` en el guion solo existe para esos héroes; los demás se cierran sin decir nada al empezar | `campaign/hero-fit.js`, `plot.js` |
 | **185** Modo director | En el taller: añadir un PNJ (dónde vive, oficio, qué quiere) o un sitio unido a otro con su camino, en mitad de la partida | `campaign/director.js` |
 
-### Batería 7 de [IDEAS_200](IDEAS_200.md) — 2026-09-24
+### Batería 7 de *IDEAS_200* — 2026-09-24
 
 Comprobada en el navegador en el paso 58 del recorrido (27 comprobaciones), salvo los bichos que migran (97), que van por pruebas: en el navegador se ve la estación y el camino que se cierra fuera de ella (74), que es el mismo mecanismo.
 
@@ -326,7 +326,7 @@ Comprobada en el navegador en el paso 58 del recorrido (27 comprobaciones), salv
 | **180** Semilla compartible | En la pausa, «Compartir este mundo»: `semilla@origen`. Pegado en la semilla del taller, pone la semilla y elige el mundo de partida | `campaign/share-code.js` |
 | **186** Sonidos por acción | Golpe, crítico, fallo, puerta, monedas y subir de nivel, hechos al momento (sin archivos). Se apagan en «Sonido» | `ui/shell/action-sounds.js` |
 
-### Batería 6 de [IDEAS_200](IDEAS_200.md) — 2026-09-24
+### Batería 6 de *IDEAS_200* — 2026-09-24
 
 Comprobada en el navegador en el paso 57 del recorrido (18 comprobaciones; la 46 en el paso 31, al subir de nivel), salvo tres cosas que van por pruebas: la caída al precipicio que se ve (189, es una animación), la noche (90: en el navegador se ha probado la niebla, que es el mismo mecanismo) y la desventaja al atacar lejos con niebla o viento (73: se ve el aviso al empezar el combate).
 
@@ -355,7 +355,7 @@ Y tres arreglos que salieron por el camino: **la barra de SillyTavern en la paus
 | **192** Transiciones | El viaje se ve pasar: el sitio y los días, en una franja que se va sola | CSS |
 | **195** Letra del narrador | En la pausa: de libro, a pluma o de máquina. Es de la campaña | CSS |
 
-### Batería 5 de [IDEAS_200](IDEAS_200.md) — 2026-09-24
+### Batería 5 de *IDEAS_200* — 2026-09-24
 
 Comprobada en el navegador en el paso 56 del recorrido (24 comprobaciones), salvo tres cosas que van por pruebas: que esconderse dé de verdad la ventaja en el golpe siguiente (11; en el navegador se ve el botón y por qué no se puede), la historia del botín (119, que sale con lo que caiga) y lo que hace un objeto maldito al ponérselo (135: resta y no se suelta; el templo sí se ha probado).
 
@@ -384,9 +384,9 @@ Y tres arreglos que salieron por el camino, porque el recorrido los tapaba: **la
 | **125** Prestamista | En la tienda: pedir 50 o 100 de oro (+25 % en 14 días) y devolverlo antes de que vengan a cobrar | `borrow`, `repay` |
 | **141** El muerto que habla | Si el narrador hace hablar a alguien que ha muerto, sale un aviso (y se puede regenerar) | `contradiction-log.js` |
 
-**Para el Gem**: los campos nuevos (`oculto`, `plazo`, `presagio`, `al_llegar` y lo que significa `ligado_a`) están en [GEM_GUIONISTA](GEM_GUIONISTA.md). La [ronda 9 de 1387](guiones/1387/ronda-9-claude.md) los usa: la escribí yo para que se vean, y el Gem la puede reescribir entera.
+**Para el Gem**: los campos nuevos (`oculto`, `plazo`, `presagio`, `al_llegar` y lo que significa `ligado_a`) están en [GEM_GUIONISTA](../GEM_GUIONISTA.md). La [ronda 9 de 1387](../guiones/1387/ronda-9-claude.md) los usa: la escribí yo para que se vean, y el Gem la puede reescribir entera.
 
-### Batería 4 de [IDEAS_200](IDEAS_200.md), con la tienda (L5) — 2026-09-24
+### Batería 4 de *IDEAS_200*, con la tienda (L5) — 2026-09-24
 
 Comprobada en el navegador en el paso 55 del recorrido (y la 198 en el 49), salvo: la soltura con un arma (55), «llegasteis tarde» por grados (117), decir el coste en las facciones rivales (104) y las fichas agrupadas (169), que van por pruebas; y «rellena los huecos» (182), que es de la herramienta.
 
@@ -414,7 +414,7 @@ Comprobada en el navegador en el paso 55 del recorrido (y la 198 en el 49), salv
 | **198** Dificultades con nombre | Historia, Veterana y De hierro en el taller, que afinan los interruptores | `DIFFICULTIES` |
 | **200** La partida en números | En el diario siempre, y al final de la partida | `campaign/stats.js` |
 
-### Batería 3 de [IDEAS_200](IDEAS_200.md) — 2026-09-24
+### Batería 3 de *IDEAS_200* — 2026-09-24
 
 Comprobada en el navegador en el paso 54 del recorrido, salvo: empujar a lo peligroso (9), la jugada combinada (17) y el duelo (43), que dependen de dados o de una muerte y van por pruebas; y «que actúe solo» (18), que solo sale en el modo en que llevas a todo el grupo.
 
@@ -443,7 +443,7 @@ Comprobada en el navegador en el paso 54 del recorrido, salvo: empujar a lo peli
 
 **Nuevo en los mapas del Gem**: `L`, puerta cerrada con llave. Y una habilidad más, **Juego de manos**.
 
-### Batería 2 de [IDEAS_200](IDEAS_200.md) — 2026-09-24
+### Batería 2 de *IDEAS_200* — 2026-09-24
 
 Comprobada en el navegador en el paso 53 del recorrido; el flanqueo (3), los críticos con efecto (15), los rasgos (47), los apodos (44), comparar objetos (63) y las trampas a la vista (78), por pruebas (dependen de dados o de muchos combates).
 
@@ -472,7 +472,7 @@ Comprobada en el navegador en el paso 53 del recorrido; el flanqueo (3), los cr�
 
 **Y la 27, ampliada**: seis frases por caso, sin repetir la última, y cada confidente con su carácter (oro si va por dinero; si va por el vínculo, según su oficio).
 
-### Las 20 primeras de [IDEAS_200](IDEAS_200.md) — 2026-09-24
+### Las 20 primeras de *IDEAS_200* — 2026-09-24
 
 Todas con pruebas propias y comprobadas en el navegador en el paso 52 del recorrido (la 49, también en el 49; la 174 es de la herramienta y se comprueba en consola).
 
@@ -563,4 +563,4 @@ El guion del Gem (`wiki/guiones/1387/ronda-1…7`) más una ronda de correccione
 - [[POR_HACER]] — el marcador de tareas
 - [[ROADMAP_MAESTRO]] — el mapa de los demás mapas
 - [[GEM_CREAR_CAMPANA]] — el formato en el que se escriben los mundos de la fase M
-- [[DISENO_GENERADOR_MUNDOS_PROFUNDO]] — de donde salen P20 y P23
+- *DISENO_GENERADOR_MUNDOS_PROFUNDO* — de donde salen P20 y P23

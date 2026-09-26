@@ -227,7 +227,7 @@ describe('el puente con lo que ya hay', () => {
         state = pickCard(state, 'mundo', 'cripta', true);
 
         expect(Object.keys(toAnswers(state)).sort()).toEqual([
-            'board', 'description', 'factions', 'generatedTemplate', 'genre',
+            'board', 'description', 'factions', 'generatedTemplate', 'genre', 'heroes',
             'importedPack', 'locations', 'narrator', 'party', 'people', 'picks', 'quests',
             'seed', 'survival', 'templateId', 'worldName', 'writeWorld',
         ]);

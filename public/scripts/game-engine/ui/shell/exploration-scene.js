@@ -12,7 +12,7 @@
  * a place the world does not have is dropped, because offering somewhere you cannot go is
  * worse than not offering it.
  *
- * Pure. See wiki/PROPUESTA_FRONTEND_MODO_JUEGO.md, H4 · wiki/ROADMAP.md, Fase E (E3).
+ * Pure. See wiki/archivo/PROPUESTA_FRONTEND_MODO_JUEGO.md, H4 · wiki/ROADMAP.md, Fase E (E3).
  */
 
 import { normalizeCampaignMap, refreshAvailability, explainLock } from '../../campaign/campaign-map.js';

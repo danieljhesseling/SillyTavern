@@ -15,7 +15,7 @@
  *
  * Puro: dice qué hay, qué se puede hacer y cuánto cuesta. Quien llama cobra y aplica.
  *
- * Ver wiki/ROADMAP_MUNDOS_VIVOS.md, fase L.
+ * Ver wiki/archivo/ROADMAP_MUNDOS_VIVOS.md, fase L.
  */
 
 /** Lo que trae cada tipo de localidad cuando la localidad no dice nada. */

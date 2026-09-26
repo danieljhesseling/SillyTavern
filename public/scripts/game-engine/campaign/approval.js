@@ -33,6 +33,11 @@ export const DECISIONS = {
     'hito-hablando': { label: 'resolverlo hablando', moods: { quiet: 1, knowledge: 1, blood: -1 } },
     'hito-maña': { label: 'resolverlo con maña', moods: { knowledge: 1, glory: -1 } },
     'robar': { label: 'robar en una tienda', moods: { coin: 1, quiet: -1, glory: -1 } },
+    // R4 del roadmap de profundidad: a quien busca tranquilidad no le gusta; a quien busca saber, sí.
+    'nigromancia': { label: 'usar nigromancia', moods: { quiet: -1, knowledge: 1, glory: -1 } },
+    // T2 de LO_QUE_FALTA: dejar ir a quien pide tregua, o no dársela.
+    'tregua': { label: 'aceptar la tregua de quien se rinde', moods: { quiet: 1, blood: -1, coin: -1 } },
+    'sin-cuartel': { label: 'no dar cuartel a quien pide tregua', moods: { blood: 1, quiet: -1 } },
 };
 
 /** Lo que se guarda por compañero. */

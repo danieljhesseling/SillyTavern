@@ -7,7 +7,7 @@
  * icons come from the same table as the initiative tracker: a condition should not look
  * like one thing in a fight and another out of it.
  *
- * Pure. See wiki/PROPUESTA_FRONTEND_MODO_JUEGO.md, H2 y H4.
+ * Pure. See wiki/archivo/PROPUESTA_FRONTEND_MODO_JUEGO.md, H2 y H4.
  */
 
 import { buildCampaignView } from '../../campaign/campaign-view.js';

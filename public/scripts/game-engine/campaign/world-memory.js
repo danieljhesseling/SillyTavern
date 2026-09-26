@@ -33,8 +33,13 @@ export const DEEDS_TOLD = 3;
 export const HOSTILE_AT = -2;
 
 /**
- * @typedef {{day: number, text: string}} Deed
+ * @typedef {{day: number, text: string, from?: 'narrador'}} Deed
+ *   `from`: si lo propuso el narrador (`proponer_hecho`) en vez de verlo el motor.
  */
+
+/** Lo que puede medir un hecho que propone el narrador: una frase, no un párrafo. */
+export const PROPOSED_MIN = 8;
+export const PROPOSED_MAX = 140;
 
 /**
  * @param {any} raw
@@ -43,8 +48,39 @@ export const HOSTILE_AT = -2;
 export function readDeeds(raw) {
     return (Array.isArray(raw) ? raw : [])
         .filter(d => d && String(d.text ?? '').trim())
-        .map(d => ({ day: Math.max(1, Math.floor(Number(d.day) || 1)), text: String(d.text).trim() }))
+        .map(d => ({
+            day: Math.max(1, Math.floor(Number(d.day) || 1)),
+            text: String(d.text).trim(),
+            ...(d.from === 'narrador' ? { from: /** @type {'narrador'} */ ('narrador') } : {}),
+        }))
         .slice(-MAX_DEEDS);
+}
+
+/**
+ * Un hecho que propone el narrador: el motor decide si se apunta (U1 del pegamento).
+ *
+ * Sustituye a las banderas que el narrador ponía por su cuenta (`dnd_set_flag`). La
+ * diferencia es quién decide: el narrador propone una frase, y aquí se comprueba que sea
+ * una frase, que no esté ya, y que no haya propuesto otra hoy. Lo que se apunta va al
+ * bloque de memoria como cualquier hecho, marcado como suyo.
+ *
+ * @param {any} deeds
+ * @param {number} day
+ * @param {string} proposal
+ * @returns {{ok: boolean, reason: string, deeds: Deed[]}}
+ */
+export function proposeDeed(deeds, day, proposal) {
+    const list = readDeeds(deeds);
+    const today = Math.max(1, Math.floor(Number(day) || 1));
+    const clean = String(proposal ?? '').replace(/\s+/g, ' ').trim();
+    const refuse = (/** @type {string} */ reason) => ({ ok: false, reason, deeds: list });
+    if (clean.length < PROPOSED_MIN) return refuse('Hace falta una frase que diga qué pasó.');
+    if (clean.length > PROPOSED_MAX) return refuse(`Demasiado largo: una frase de ${PROPOSED_MAX} letras como mucho.`);
+    if (list.some(d => d.text.toLowerCase() === clean.toLowerCase())) return refuse('Eso ya se recuerda.');
+    if (list.some(d => d.from === 'narrador' && d.day === today)) return refuse('Hoy ya se apuntó un hecho propuesto; mañana, otro.');
+    /** @type {Deed} */
+    const deed = { day: today, text: clean, from: 'narrador' };
+    return { ok: true, reason: '', deeds: [...list, deed].slice(-MAX_DEEDS) };
 }
 
 /**

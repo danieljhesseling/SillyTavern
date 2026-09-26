@@ -20,6 +20,7 @@ import {
     ABILITY_COSTS, ABILITY_RESOURCES, ABILITY_TARGETS, ABILITY_RESOLUTIONS,
     describeAbility,
 } from '../rules/abilities.js';
+import { magicInData } from '../rules/grimoire.js';
 
 /** Los cuatro vocabularios, juntos, para poder comprobarlos de una pasada. */
 export const CLOSED_FIELDS = {
@@ -88,9 +89,15 @@ export function validateAbility(row) {
     if (text(row?.resolution) !== 'save' && row?.saveDc !== undefined) {
         errors.push(`${name}: trae una CD y no pide salvación.`);
     }
+    // R3: sobre uno mismo con un radio es «a tu alrededor»: salvan y reciben los de al lado.
+    const around = text(row?.target) === 'self' && text(row?.area?.shape) === 'radius';
     // Salva el objetivo, no quien la usa: sobre uno mismo no hay nadie al otro lado.
-    if (text(row?.resolution) === 'save' && text(row?.target) === 'self') {
+    if (text(row?.resolution) === 'save' && text(row?.target) === 'self' && !around) {
         errors.push(`${name}: pide salvación y apunta a uno mismo; no salva nadie.`);
+    }
+    // Un área tiene que ser de una forma que el motor sepa dibujar.
+    if (row?.area !== undefined && !['single', 'radius', 'line', 'cone'].includes(text(row?.area?.shape))) {
+        errors.push(`${name}: el área dice "${text(row?.area?.shape)}", que no existe. Vale: single, radius, line, cone.`);
     }
     // Una salvacion que no hace dano, no cura y no deja condicion es un dado que se tira
     // para nada: el motor la resuelve y no cambia nada en el tablero.
@@ -99,11 +106,15 @@ export function validateAbility(row) {
         errors.push(`${name}: se salva de nada — ni daño, ni cura, ni condición.`);
     }
 
+    // R4 (DR3): la magia solo existe en el grimorio del código.
+    const magic = magicInData(row);
+    if (magic) errors.push(magic);
+
     // Curar a un enemigo o hacer dano a uno mismo es casi siempre una fila mal copiada.
     if (text(row?.healing) && text(row?.target) === 'enemy') {
         errors.push(`${name}: cura, y apunta a un enemigo.`);
     }
-    if (text(row?.damage) && text(row?.target) === 'self') {
+    if (text(row?.damage) && text(row?.target) === 'self' && !around) {
         errors.push(`${name}: hace daño, y apunta a uno mismo.`);
     }
 
@@ -156,6 +167,10 @@ export function asAbility(row) {
         ability.condition = text(row.condition);
         ability.conditionRounds = Math.max(1, number(row?.conditionRounds, 1));
     }
+    // R3: el área, el elemento y lo que deja en el suelo.
+    if (row?.area && typeof row.area === 'object') ability.area = { shape: text(row.area.shape), size: number(row.area.size, 0) };
+    if (text(row?.element)) ability.element = text(row.element);
+    if (text(row?.leaves)) ability.leaves = text(row.leaves);
 
     return ability;
 }
@@ -181,6 +196,8 @@ export function abilitiesFor({ compendium, className = '', level = 1 }) {
 
     return compendium.find('habilidades', { kind: 'habilidad' })
         .filter((/** @type {any} */ row) => {
+            // R3: las que solo da el árbol de la clase (idea 48) no se aprenden subiendo.
+            if (row.when?.tree === true) return false;
             if (number(row.level, 1) > at) return false;
             const classes = (row.when?.class ?? []).map(text).map(c => c.toLowerCase());
             if (classes.length === 0 || classes.includes('*')) return true;

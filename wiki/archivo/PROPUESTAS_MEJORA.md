@@ -375,8 +375,8 @@ Propuestas que **no están** en las 200. Las ocho primeras salieron de leer el c
 
 ## Enlaces Relacionados
 - [[HOME]]: Portal principal de la Wiki.
-- [[PROBLEMAS_TECNICOS]]: Diagnóstico detallado que motiva muchas de estas propuestas.
+- *PROBLEMAS_TECNICOS*: Diagnóstico detallado que motiva muchas de estas propuestas.
 - [[Guia-Desarrollo-Flujo]]: Pautas para implementar estas mejoras en el flujo de trabajo.
 - [[ROADMAP]]: El plan que selecciona y ordena las propuestas que se van a hacer.
 - [[POR_HACER]]: Lo que falta, ordenado por lo que desbloquea.
-- [[PROPUESTA_JUEGO_DND_GLOOMHAVEN_PERSONA]]: Diseño de juego del que salen las propuestas de combate, vínculos y lienzo blanco.
+- *PROPUESTA_JUEGO_DND_GLOOMHAVEN_PERSONA*: Diseño de juego del que salen las propuestas de combate, vínculos y lienzo blanco.

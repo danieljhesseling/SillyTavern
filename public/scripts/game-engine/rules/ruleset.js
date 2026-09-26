@@ -31,7 +31,8 @@ export { RULESET_SCHEMA_VERSION };
  * @property {Object} items
  * @property {{alignments: string[], conditions: string[], modifiableStats: string[]}} character
  * @property {{xpThresholds: string[][], abilityLevels: string[]}} [progression] Lo que cuesta cada nivel.
- * @property {{mortality: string, saves: string}} [survival] Quien puede morir, y cuando se guarda.
+ * @property {{mortality: string, saves: string}} [survival] Quien puede morir, y cuando se guarda; y
+ *   los demás interruptores de los modos (R1): hambre, clima, heridas, lealtad, cuenta y mundo.
  * @property {Record<string, number>} [upkeep] Lo que cuesta tener viva a esta gente.
  * @property {{mode: string}} [companions] Quien lleva a quien: solo o en grupo.
  * @property {any[]} [abilities] Conjuros, tecnicas y recursos de clase.

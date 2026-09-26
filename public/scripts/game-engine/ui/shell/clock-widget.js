@@ -8,7 +8,7 @@
  * Decide y no dibuja: aqui solo se calcula que se puede pulsar y por que no. Quien lo
  * pinta es game-shell.js, y quien hace el trabajo sigue siendo party.js.
  *
- * Ver wiki/ROADMAP_JUEGO_SIN_COMANDOS.md, K3.
+ * Ver wiki/archivo/ROADMAP_JUEGO_SIN_COMANDOS.md, K3.
  */
 
 import { getHitDice } from '../../rules/rest.js';

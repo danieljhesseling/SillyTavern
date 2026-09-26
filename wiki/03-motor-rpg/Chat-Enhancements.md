@@ -60,7 +60,7 @@ Para no penalizar el rendimiento del navegador durante el desplazamiento del cha
 - **Exclusión de Etiquetas (`SKIP_TAGS`)**: El algoritmo omite deliberadamente bloques de código (`<code>`, `<pre>`), hipervínculos (`<a>`), campos de texto y scripts para no alterar el código formateado.
 
 > [!WARNING]
-> Como se señala en [[PROBLEMAS_TECNICOS]], el uso del límite de palabra `\b` en la expresión regular combinada falla con términos que contienen apóstrofes o caracteres especiales (ej. *D'Artagnan*, *El'Druin* o palabras acentuadas en español).
+> Como se señala en *PROBLEMAS_TECNICOS*, el uso del límite de palabra `\b` en la expresión regular combinada falla con términos que contienen apóstrofes o caracteres especiales (ej. *D'Artagnan*, *El'Druin* o palabras acentuadas en español).
 
 ---
 
@@ -68,4 +68,4 @@ Para no penalizar el rendimiento del navegador durante el desplazamiento del cha
 - [[WorldInfo-Lorebooks]]: Fuente de las claves y entidades resaltadas.
 - [[Frontend-Estructura]]: Ciclo de renderizado de mensajes en el DOM.
 - [[Sistema-Party]]: Miembros del grupo reconocidos en los diálogos en línea.
-- [[PROBLEMAS_TECNICOS]]: Análisis de rendimiento de expresiones regulares masivas.
+- *PROBLEMAS_TECNICOS*: Análisis de rendimiento de expresiones regulares masivas.

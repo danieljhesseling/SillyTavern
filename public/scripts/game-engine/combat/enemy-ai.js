@@ -18,6 +18,7 @@
  */
 
 import { cellKey } from '../board/terrain.js';
+import { isHigh } from '../board/heights.js';
 import { findPath, getReachableCells, getPathCost } from '../board/pathfinding.js';
 
 /** Fraction of maximum hit points below which a coward runs. */
@@ -65,6 +66,8 @@ export const DEFAULT_PROFILE = 'aggressive';
  * @property {number} [speedFeet]
  * @property {number} [attackRangeFeet]
  * @property {TacticalProfile} [profile]
+ * @property {string} [role] R7: tanque, tirador, sanador, líder o bruto.
+ * @property {string} [tactic] R7: la táctica de su bando (rodear, linea, proteger).
  */
 
 /**
@@ -191,14 +194,38 @@ export function selectFocus(actor, targets, terrain, gridWidth, gridHeight, occu
  * @param {Set<string>} occupied
  * @returns {{ x: number, y: number, cost: number } | null}
  */
-function findApproachCell(actor, target, attackRangeFeet, terrain, gridWidth, gridHeight, occupied) {
+function findApproachCell(actor, target, attackRangeFeet, terrain, gridWidth, gridHeight, occupied, allies = [], highOnly = false) {
     const reachable = getReachableCells(
         terrain, actor.gridX, actor.gridY, speedOf(actor), gridWidth, gridHeight, { occupied },
     );
 
+    // R7 del roadmap de profundidad: la táctica del bando elige entre las casillas buenas.
+    // Los que rodean buscan la que deja al objetivo entre ellos y un aliado (el flanco); los
+    // que forman línea, la que está pegada a uno de los suyos.
+    const friends = (allies || []).filter(a => a && a.id !== actor.id && (Number(a.currentHp) || 0) > 0);
+    /** @param {{gridX: number, gridY: number}} cell @returns {number} */
+    const tacticScore = (cell) => {
+        if (actor.tactic === 'rodear') {
+            const ox = 2 * target.gridX - cell.gridX;
+            const oy = 2 * target.gridY - cell.gridY;
+            return friends.some(f => f.gridX === ox && f.gridY === oy) ? 0 : 1;
+        }
+        if (actor.tactic === 'linea') {
+            return friends.some(f => Math.max(Math.abs(f.gridX - cell.gridX), Math.abs(f.gridY - cell.gridY)) === 1) ? 0 : 1;
+        }
+        return 0;
+    };
+
+    // B1: quien pega de lejos prefiere lo alto, si lo hay a mano.
+    /** @param {{gridX: number, gridY: number}} cell @returns {number} */
+    const heightScore = (cell) => (attackRangeFeet > 5 && isHigh(terrain, cell.gridX, cell.gridY) ? 0 : 1);
+
     const inRange = reachable
         .filter(cell => chebyshevFeet(cell.gridX, cell.gridY, target.gridX, target.gridY) <= attackRangeFeet)
-        .sort((a, b) => a.cost - b.cost
+        .filter(cell => !highOnly || isHigh(terrain, cell.gridX, cell.gridY))
+        .sort((a, b) => tacticScore(a) - tacticScore(b)
+            || heightScore(a) - heightScore(b)
+            || a.cost - b.cost
             || chebyshevFeet(a.gridX, a.gridY, target.gridX, target.gridY)
              - chebyshevFeet(b.gridX, b.gridY, target.gridX, target.gridY)
             || compareCells(a, b));
@@ -319,8 +346,14 @@ export function planEnemyTurn({ actor, targets, allies = [], terrain, gridWidth,
     const focus = selectFocus(actor, living, terrain, gridWidth, gridHeight, occupied);
     if (!focus) return standStill(actor, 'No reachable target.');
 
-    const target = focus.target;
     const range = rangeOf(actor);
+    // R7: el tirador va a por el más débil que pueda alcanzar este turno, no al más cercano.
+    const weakest = actor.role === 'tirador'
+        ? [...living]
+            .filter(t => chebyshevFeet(actor.gridX, actor.gridY, t.gridX, t.gridY) <= range + speedOf(actor))
+            .sort((a, b) => healthFraction(a) - healthFraction(b) || compareCells({ gridX: a.gridX, gridY: a.gridY }, { gridX: b.gridX, gridY: b.gridY }))[0]
+        : null;
+    const target = weakest ?? focus.target;
 
     // A skirmisher caught in melee gives ground before shooting.
     if (profile === 'skirmisher' && range > 5) {
@@ -385,6 +418,21 @@ export function planEnemyTurn({ actor, targets, allies = [], terrain, gridWidth,
 
     // Everything else, and every profile that found nothing special to do: close and hit.
     const alreadyInRange = chebyshevFeet(actor.gridX, actor.gridY, target.gridX, target.gridY) <= range;
+    // B1: quien dispara y no está en alto sube, si puede sin perder el tiro.
+    const climb = alreadyInRange && range > 5 && !isHigh(terrain, actor.gridX, actor.gridY)
+        ? findApproachCell(actor, target, range, terrain, gridWidth, gridHeight, occupied, allies, true)
+        : null;
+    if (climb) {
+        return {
+            focusId: target.id,
+            path: pathTo(actor, climb, terrain, gridWidth, gridHeight, occupied),
+            destination: { x: climb.x, y: climb.y },
+            movementCostFeet: cellsToFeet(climb.cost),
+            action: 'attack',
+            targetId: target.id,
+            rationale: 'Takes the high ground, and shoots.',
+        };
+    }
     if (alreadyInRange) {
         return {
             focusId: target.id,
@@ -397,7 +445,7 @@ export function planEnemyTurn({ actor, targets, allies = [], terrain, gridWidth,
         };
     }
 
-    const approach = findApproachCell(actor, target, range, terrain, gridWidth, gridHeight, occupied);
+    const approach = findApproachCell(actor, target, range, terrain, gridWidth, gridHeight, occupied, allies);
     if (approach) {
         return {
             focusId: target.id,
@@ -406,7 +454,9 @@ export function planEnemyTurn({ actor, targets, allies = [], terrain, gridWidth,
             movementCostFeet: cellsToFeet(approach.cost),
             action: 'attack',
             targetId: target.id,
-            rationale: 'Closes the distance and attacks.',
+            rationale: actor.tactic === 'rodear' ? 'Circles round to flank, and attacks.'
+                : actor.tactic === 'linea' ? 'Keeps the line with its own, and attacks.'
+                    : 'Closes the distance and attacks.',
         };
     }
 

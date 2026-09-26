@@ -2,6 +2,7 @@
 title: Frontend Estructura & Ecosistema de Cliente
 tags: [frontend, javascript, jquery, dom, css, ui, components, dnd]
 created: 2026-09-20
+updated: 2026-09-26
 author: DanielJHesseling / Antigravity AI
 ---
 
@@ -15,16 +16,16 @@ Este documento describe la arquitectura de la interfaz de usuario de SillyTavern
 
 ```
 public/
-├── index.html               # Documento DOM monolítico principal (~10,884 líneas)
-├── script.js                # Orquestador central de la aplicación (~12,000 líneas)
+├── index.html               # Documento DOM monolítico principal (10.840 líneas)
+├── script.js                # Orquestador central de la aplicación (12.794 líneas)
 ├── style.css                # Estilos base del sistema e interfaz de usuario
 ├── login.html               # Formulario de inicio de sesión para modo multi-usuario
 │
 ├── css/                     # Capas de estilos modulares
-│   ├── campaigns.css        # Tarjetas de campaña y panel de selección en bienvenida (1,301 líneas)
+│   ├── campaigns.css        # Tarjetas de campaña y panel de selección en bienvenida (2.438 líneas)
 │   ├── game-shell.css       # Layout y escenas a pantalla completa del Modo Videojuego
-│   ├── dnd-character.css    # Ficha de personaje D&D, inventario, ranuras y estados (1,330 líneas)
-│   ├── world-map.css        # Contenedor zoomable de mapas, niebla y tokens (1,383 líneas)
+│   ├── dnd-character.css    # Ficha de personaje D&D, inventario, ranuras y estados (1.330 líneas)
+│   ├── world-map.css        # Contenedor zoomable de mapas, niebla y tokens (2.026 líneas)
 │   ├── dynamic-context-manager.css # Modal y reglas de contexto dinámico (355 líneas)
 │   ├── chat-enhancements.css# Tooltips de entidades y avatares inline en chat (149 líneas)
 │   ├── st-tailwind.css      # Utilidades pre-generadas de estilo Tailwind
@@ -44,17 +45,21 @@ public/
     │   │   ├── scene-director.js # Orquestador canónico de cambio de escena
     │   │   ├── welcome-title.js  # Pantalla de título de videojuego
     │   │   └── pause-menu.js     # Menú de pausa (Esc) con opciones de juego
-    │   ├── combat/          # Máquina de combate táctico 0 tokens, iniciativa, turnos
-    │   ├── board/           # Tablero determinista, cuadrícula A*, niebla, terreno
-    │   └── rules/           # Reglas D&D 5e: heridas, descansos, sueldos, compañeros
-    ├── party.js             # Gestor de grupo RPG, ficha D&D e inventario (4,734 líneas)
-    ├── dnd-system.js        # Lógica matemática D&D 5e, slots, dados y modificadores (1,327 líneas)
-    ├── dynamic-context-manager.js # Gestor de contexto dinámico y tokens (1,919 líneas)
-    ├── campaigns.js         # Vista de campañas por mundos y sesiones de chat (656 líneas)
-    ├── world-map-renderer.js# Motor de renderizado de mapas con zoom y cuadrícula (927 líneas)
-    ├── world-content-popups.js # Formularios emergentes de entidades D&D (1,109 líneas)
-    ├── chat-enhancements.js # Resaltado de lorebook y avatares de diálogo en chat (663 líneas)
-    ├── active-instructions.js # Inyector de instrucciones personalizadas en el prompt (286 líneas)
+    │   ├── combat/          # Combate táctico a 0 tokens: turnos, IA enemiga, papeles, botín, jefes
+    │   ├── board/           # Tablero determinista, cuadrícula A*, niebla, terreno vivo
+    │   ├── rules/           # Reglas: paquete de reglas, habilidades, grimorio, modos, heridas
+    │   ├── campaign/        # La campaña: tiempo, gremio, encargos, casos, crónica, mascota
+    │   ├── world/           # Viaje, estaciones y crecimiento del mundo
+    │   ├── world-builder/   # Generadores: mazmorras, tableros con intención, mundos con IA
+    │   └── compendio/       # La biblioteca de contenido de public/compendio/
+    ├── party.js             # Gestor de grupo RPG, ficha D&D e inventario (19.006 líneas)
+    ├── dnd-system.js        # Lógica matemática D&D 5e, slots, dados y modificadores (1.230 líneas)
+    ├── dynamic-context-manager.js # Gestor de contexto dinámico y tokens (998 líneas)
+    ├── campaigns.js         # Vista de campañas por mundos y sesiones de chat (1.723 líneas)
+    ├── world-map-renderer.js# Motor de renderizado de mapas con zoom y cuadrícula (1.336 líneas)
+    ├── world-content-popups.js # Formularios emergentes de entidades D&D (1.110 líneas)
+    ├── chat-enhancements.js # Resaltado de lorebook y avatares de diálogo en chat (661 líneas)
+    ├── active-instructions.js # Inyector de instrucciones personalizadas en el prompt (279 líneas)
     ├── slash-commands.js    # Parser y ejecutor de comandos de barra `/`
     ├── world-info.js        # Editor y evaluador de Lorebooks
     ├── popup.js             # Sistema unificado de diálogos modales (Popup)
@@ -216,9 +221,9 @@ El director de escena **obedece al motor de juego canónico**, no a la prosa lib
 
 ## 7. Enlaces Relacionados
 - [[Arquitectura-General]]: Visión sistémica global.
-- [[ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES]]: Diagnóstico lúdico y soluciones de diseño.
+- *ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES*: Diagnóstico lúdico y soluciones de diseño.
 - [[PROPUESTA_FRONTEND_MODO_JUEGO]]: Documento de diseño original del Game Shell (Fase H).
 - [[Ciclo-De-Vida-Prompt]]: Flujo detallado desde la pulsación de tecla hasta la respuesta del LLM.
 - [[Sistema-Party]]: Estructura interna de `party.js` y gestión del grupo.
 - [[Campanas-Mapas-Tableros]]: Mecánicas del renderizador de mapas en `world-map-renderer.js`.
-- [[PROBLEMAS_TECNICOS]]: Análisis de rendimiento DOM y vulnerabilidades de interpolación.
+- *PROBLEMAS_TECNICOS*: Análisis de rendimiento DOM y vulnerabilidades de interpolación.

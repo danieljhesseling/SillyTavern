@@ -11,7 +11,7 @@
  * ya estan ahi: nombrar a alguien no lo crea.
  *
  * Decide y no dibuja, y no ejecuta nada: cada ficha dice que hay que hacer y quien la
- * pulse lo hace. Ver wiki/ROADMAP_JUEGO_SIN_COMANDOS.md, K4a.
+ * pulse lo hace. Ver wiki/archivo/ROADMAP_JUEGO_SIN_COMANDOS.md, K4a.
  */
 
 /**
@@ -75,8 +75,13 @@ export function buildActionChips({
     /** @type {ActionChip[]} */
     const chips = [];
 
+    // Idea 75: la escalera al nivel siguiente, lo primero: es a donde se iba. Con cuatro
+    // respuestas y dos puertas delante, detrás no cabía.
+    if (stairs) chips.push({ id: 'stairs', label: 'Bajar por la escalera', icon: 'fa-stairs', source: 'motor', command: '/bajar' });
+
     // Idea 144: si se está hablando con alguien, lo que se le puede decir.
-    for (const reply of replies.slice(0, 3)) {
+    // U6 y U8 del pegamento: cuatro respuestas, para que convencer y el caso quepan.
+    for (const reply of replies.slice(0, 4)) {
         chips.push({
             id: reply.id,
             label: reply.label,
@@ -123,9 +128,6 @@ export function buildActionChips({
             cell: { x: door.x, y: door.y },
         });
     }
-
-    // Idea 75: la escalera al nivel siguiente.
-    if (stairs) chips.push({ id: 'stairs', label: 'Bajar por la escalera', icon: 'fa-stairs', source: 'motor', command: '/bajar' });
 
     // Idea 139: lo que el narrador ofrece coger.
     for (const extra of extras.slice(0, 3)) {

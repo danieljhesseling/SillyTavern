@@ -22,6 +22,8 @@ export const PRICE_BY_KIND = {
     wondrous: 70, ring: 90, scroll: 40, generic: 5,
     // Idea 122: el aceite y la red. Caros para ser trastos: deciden un combate.
     throwable: 10,
+    // R4: lo que gastan los conjuros. Caro: lo gordo tiene que doler.
+    component: 20,
 };
 
 /** Cuánto multiplica la rareza. */
@@ -91,7 +93,8 @@ export function weeklyStock({ names, describe, random, reputation = 0, always = 
  * @param {string[]} [input.marketReasons]
  * @param {number} [input.standing] Factor por reputación (1 = normal; 0,9 = un 10 % menos).
  * @param {string} [input.ruler] Quién manda aquí, para decirlo.
- * @param {boolean} [input.haggled] Si hoy se ha regateado bien aquí.
+ * @param {boolean|number} [input.haggled] Si hoy se ha regateado bien aquí; o cuánto rebajó el duelo
+ *   (U6 del pegamento: 0,2 si cedió, 0,1 si cedió a medias).
  * @param {boolean} [input.festival] Si hoy es fiesta aquí (idea 89).
  * @param {{discount: number, label: string}} [input.fame] Lo que os conocen aquí (idea 52).
  * @returns {{price: number, reasons: string[]}}
@@ -117,9 +120,10 @@ export function priceToday({ base, market = 1, marketReasons = [], standing = 1,
         factor *= 1 - Number(fame.discount);
         reasons.push(`−${Math.round(Number(fame.discount) * 100)} %: aquí ${fame.label}`);
     }
-    if (haggled) {
-        factor *= 1 - HAGGLE_DISCOUNT;
-        reasons.push(`−${Math.round(HAGGLE_DISCOUNT * 100)} %: habéis regateado`);
+    const off = typeof haggled === 'number' ? Math.max(0, Math.min(0.5, haggled)) : (haggled ? HAGGLE_DISCOUNT : 0);
+    if (off > 0) {
+        factor *= 1 - off;
+        reasons.push(`−${Math.round(off * 100)} %: habéis regateado`);
     }
     return { price: Math.max(1, Math.round(Number(base) * factor)), reasons };
 }

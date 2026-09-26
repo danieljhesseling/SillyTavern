@@ -36,7 +36,17 @@ Si el servidor llevaba abierto desde antes de un cambio, reinícialo y recarga l
 
 ## 2. Crear la campaña
 
-En la pantalla de bienvenida, **Nueva campaña**. Hay tres caminos y ninguno es mejor que otro; son para tres situaciones distintas.
+### Lo más rápido: **Partida rápida**
+
+En la pantalla de título, **Partida rápida**. Eliges uno de los cuatro mundos hechos y **cómo quieres jugarlo** (los modos, en el apartado 7c). Al entrar, el mundo te ofrece **tres héroes hechos**, cada uno con su línea: pulsas uno y juegas. El tercero de cada mundo llega con su mascota. Si prefieres el tuyo, *Quién eres* sigue ahí.
+
+> **Qué mundo.** *1387* es el único escrito entero: nueve rondas de guion, quince batallas, casos y gente con nombre. *La costa que no duerme*, *Las tierras del ocaso* y *El mundo tras la pantalla* son una ficha y una semilla: se juegan, pero con lo que el generador improvisa.
+
+### Partida nueva: el taller
+
+**Partida nueva** abre el taller: **trece pestañas** (el mundo, quién lo cuenta, localidades, tableros, habilidades, razas, clases, objetos, facciones, bestiario, personajes, misiones y jugabilidad). Entras en la que quieras. Cada una lleva su marca: ✓ si la has cambiado, • si va como viene y ⚠ si algo no cuadra. **Crear y jugar** funciona desde cualquiera, y cerrar la ventana no crea nada. En *Jugabilidad* se elige el modo.
+
+Para empezar hay tres caminos, y ninguno es mejor que otro; son para tres situaciones distintas.
 
 ### a) Una plantilla — *para jugar ya*
 
@@ -154,7 +164,11 @@ Las fichas de acción de *hablar* **no envían nada**: dejan la frase empezada e
 
 ### Lanzar algo
 
-Las habilidades de tu campaña se escriben en **`/habilidades`**: un panel con un campo por cosa — qué cuesta, cuántas veces, a quién alcanza y qué hace — y, al lado, **quién se sabe cada una**. Vienen cinco de serie para que se vea cómo se escriben las demás.
+Las técnicas de tu campaña se escriben en **`/habilidades`**: un panel con un campo por cosa — qué cuesta, cuántas veces, a quién alcanza y qué hace — y, al lado, **quién se sabe cada una**. Cada clase trae las suyas desde el primer nivel, y el tercer paso de cada rama enseña una nueva.
+
+**Los conjuros son otra cosa**: salen del grimorio, que está en el código, y aquí solo se ajustan sus números. `/grimorio` dice cuáles sabe el grupo, con sus cargas (tres de 1º, dos de 2º, una de 3º, que vuelven con el descanso largo) y el componente que gastan los gordos.
+
+Algunas tienen **área** (un radio, una línea o un cono) y **elemento**: antes de usarla, la tarjeta dice a quién alcanzaría. El fuego prende la maleza y las cajas y revienta los barriles, el frío hiela el agua, el trueno revienta puertas, la naturaleza hace brotar maleza y la luz despeja la oscuridad. Lo que pasa en el tablero se ve en el tablero.
 
 | Dónde | Qué sale |
 | :--- | :--- |
@@ -189,7 +203,7 @@ Todo esto se puede seguir escribiendo, y el recorrido de pruebas entra por aquí
 | :--- | :--- |
 | `/exportar-campana` | Empaqueta tu campaña en un archivo que otro puede importar. También en el menú de pausa |
 | `/sonido` | Qué suena en cada escena. Las pistas las pones tú |
-| `/habilidades` | Escribe conjuros y técnicas, y reparte quién se sabe cada uno |
+| `/habilidades` | Escribe técnicas y reparte quién se sabe cada una. Los conjuros no se crean aquí: solo se ajustan |
 
 **Moverse por el mundo**
 
@@ -210,6 +224,20 @@ Todo esto se puede seguir escribiendo, y el recorrido de pruebas entra por aquí
 | `/combat-stop` | Abandonar el combate, con epílogo |
 | `/definitivo <enemigo>` | El golpe del vínculo de rango 10: impacta sin tirar. Una vez al día |
 | `/relevo` | Ceder tu movimiento restante a un compañero (perk de rango 5) |
+
+**La semana, la magia y la mascota**
+
+| Comando | Qué hace |
+| :--- | :--- |
+| `/modo` | En qué modo juegas y qué está encendido. Se puede cambiar a mitad de partida, y queda escrito |
+| `/mesa` | La mesa de la semana: los asuntos que no caben todos, con su plazo y lo que pasa si no se atienden |
+| `/cuenta` | Lo que debes esta semana y cuánto tienes |
+| `/grimorio` · `/grimorio todo` | Lo que el grupo sabe lanzar, con sus cargas y lo que gasta; con `todo`, toda la magia que existe |
+| `/pergamino` | Aprender el conjuro de un pergamino, en vez de leerlo (el mago o el erudito) |
+| `/mascota` | Tu mascota: tenerla, preguntarle, acariciarla. No ocupa plaza ni cobra |
+| `/caso` · `/convencer <quién>` | El caso abierto; convencer a alguien en un duelo de palabras |
+| `/mapa` | El mapa en texto, con lo no visitado en gris y tus notas |
+| `/punto` · `/estado` | Puntos de retorno; lo que el juego da por cierto |
 
 **La campaña**
 
@@ -306,13 +334,49 @@ Y no son etiquetas: una pierna rota es **−10 pies de movimiento**, y el tabler
 
 `/cuenta` te dice lo que debes **antes** de que venza. Una factura que te sorprende es un impuesto; una que ves venir es una decisión.
 
+## 7c. Los modos: cuánto quieres que pese
+
+Todo lo de 7b se puede apagar. El modo se elige al empezar (en la partida rápida o en la pestaña *Jugabilidad*) y se cambia con `/modo` cuando quieras. Son seis piezas, cada una con su letra:
+
+| Letra | Qué enciende |
+| :---: | :--- |
+| **a** · Heridas | Quien cae se levanta con una herida que tarda días en curar |
+| **b** · La cuenta | Cada semana se paga comida, sueldos y posada; quien no cobra acaba yéndose |
+| **c** · El mundo se mueve | Las facciones avanzan, los rivales se llevan encargos, la gente se muda y a veces hay un caso |
+| **d** · El cuerpo | Hambre, sed y sueño |
+| **e** · De hierro | Puede morir cualquiera, también los tuyos, y solo se guarda en el refugio |
+| **f** · La intemperie | El frío y el calor pesan, y dormir al raso se paga. Pide la **d** |
+
+| Modo | Letras | Para qué |
+| :--- | :---: | :--- |
+| **Relajado** | a b c | La historia: nadie de los tuyos muere, nada te mata de hambre ni de frío, guardas cuando quieres. Trae la red de seguridad puesta |
+| **Normal** | a b c d f | Lo de siempre: el cuerpo y el camino pesan, muere quien va por dinero, guardas cuando quieres |
+| **Supervivencia** | a b c d e f | Todo: cada decisión pesa, puede morir cualquiera y solo se guarda en el refugio |
+| **A tu medida** | las que marques | Cualquier mezcla |
+
+Lo apagado **no sale**: sin la cuenta, `/cuenta` dice que no hay y la mesa no la enseña. Cada cambio de modo queda en la crónica, y una partida que acaba entera en *de hierro* lo lleva escrito en el salón de la fama.
+
 ---
+
+## 7d. Lo alto y las salidas
+
+- **`^` en alto** (una torre, unos escalones, la empalizada): subir cuesta el doble, y desde arriba se ataca **con ventaja**. Vale para los dos bandos: el arquero enemigo también sube si puede.
+- **`x` una salida** (la ventana, la trampilla): al pisarla sale un aviso con el botón «Salir por aquí» (o `/salir`). Quien sale ya no pelea. Cuando habéis salido todos los que seguís en pie, la pelea acaba en huida: sin botín y sin ganar el tablero, pero sin los golpes de la retirada de siempre. Si el objetivo del tablero era llegar a esa casilla, pisarla es ganar.
+
+- **`P` una palanca**: estando al lado, se pulsa y se abren las puertas con llave del tablero. En combate gasta la acción.
+- **`=` una barricada**: corta el paso pero no la vista, y cubre a quien está detrás. Se pulsa para golpearla: en combate, con el daño de tu arma (15 de vida); fuera, se rompe de una vez.
+- **La tregua**: si el bando enemigo pierde a su líder y a la mitad, los que quedan pueden pedirla. «Dejarles ir» gana el tablero sin su botín; «Sin cuartel», se sigue (`/tregua sí|no`). A los tuyos les parecerá lo que les parezca.
+- **La mascota y la gente**: al llegar a un sitio, quien tiene oficio allí reacciona a tu mascota la primera vez (al posadero no suelen gustarle los perros; al herrero, sí). Una línea y un paso de actitud, que se nota en precios y tratos.
+- **Los precios cambian**: en invierno la comida y el abrigo suben; en otoño hay cosecha. Y donde quien manda persigue la magia, los componentes no se venden: toca comprarlos en otra parte.
+
+¿Perdido? **«Cómo se juega»** en la pausa, o `/ayuda`, lo explica todo con tu modo de esta partida.
 
 ## 8. Lo que todavía **no** hace
 
 Para que nadie lo descubra a mitad de una sesión:
 
-- **La magia es la capa ligera, no las ranuras de 5e.** Hay conjuros, técnicas y recursos de clase, con sus usos y sus tiradas; no hay ranuras de nivel 1 a 9, conjuros preparados, concentración ni áreas de efecto. **Los enemigos todavía no lanzan nada.**
+- **La magia es la del grimorio, no las ranuras de 5e.** 25 conjuros en siete escuelas, con cargas por círculo (tres de 1º, dos de 2º, una de 3º, que vuelven con el descanso largo), áreas, componentes que se gastan, pergaminos y varitas. No hay ranuras de nivel 1 a 9, conjuros preparados ni concentración. **Solo existe la magia del código**: un conjuro escrito en los datos se rechaza. Los enemigos lanzan solo si sus datos lo dicen (hoy, el cultista y la plantilla *sagrado*).
+- **Domar solo funciona con los bichos que lo dicen.** Lo decide el campo `domable` del bestiario (y del paquete o el guion): de serie, el lobo se queda en perro y el cuervo en cuervo. Un bicho sin el campo se decide por su nombre (lobos, cuervos, zorros, halcones y gatos). Para que otro se pueda domar, se le pone `domable` en su fila, sin tocar código.
 - **Subir de nivel no da subclases ni dotes.** Sí da puntos de golpe, dados de golpe y mejora de característica cada cuatro niveles; el arquetipo de nivel 3 y las dotes, no.
 - **El sonido no trae ni una pista.** Las pones tú en `/sonido`: aquí no hay música con licencia de nadie.
 - **Las reglas de encuentro no colocan a nadie por su cuenta** salvo en los tableros importados, que traen sus posiciones dibujadas. En los demás, `/fight` los pone en una casilla libre.
@@ -326,7 +390,8 @@ Para que nadie lo descubra a mitad de una sesión:
 El juego entero se puede recorrer en un navegador de verdad, con su propio servidor y sus propios datos, sin tocar los tuyos:
 
 ```bash
-node tools/e2e-campaign.mjs            # unas 200 comprobaciones
+node tools/e2e-quick.mjs               # solo la partida rápida, unos 2 minutos
+node tools/e2e-campaign.mjs            # 73 pasos, más de 700 comprobaciones, unos 55 minutos
 node tools/e2e-campaign.mjs --headed   # para verlo pasar
 ```
 

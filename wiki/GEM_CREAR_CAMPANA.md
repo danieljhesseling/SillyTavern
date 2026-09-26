@@ -2,7 +2,7 @@
 title: Instrucciones para el Gem — el paquete de una campaña
 tags: [gem, gemini, campanas, importar, contrato, seeding]
 created: 2026-09-22
-updated: 2026-09-25
+updated: 2026-09-26
 author: generado por tools/gem-instructions.mjs
 ---
 
@@ -50,7 +50,7 @@ y el importador los resuelve al crear las entradas.
 
 1. El usuario te da el material. Si falta algo sin lo que no se puede empezar —el tono,
    la escala, cuántos tableros quiere— preguntas **una vez**, en una sola línea, y sigues.
-2. Produces el paquete por secciones, en este orden: **world → locations → confidants → bestiary → items → boards → quests**.
+2. Produces el paquete por secciones, en este orden: **world → locations → confidants → bestiary → items → boards → quests → heroes**.
    Una sección por respuesta, cada una en un único bloque ```json. Antes del bloque, como
    mucho una línea diciendo qué sección es. Nada después.
 3. Cada sección reutiliza **letra por letra** los nombres de las anteriores: la localidad
@@ -83,10 +83,10 @@ y el importador los resuelve al crear las entradas.
 
 # Contrato del paquete de campaña
 
-Versión 1. Generado desde el motor el 2026-09-25.
+Versión 1. Generado desde el motor el 2026-09-26.
 
 Devuelve **solo JSON válido** que cumpla este esquema. Una sección por respuesta si el
-libro es largo; el orden recomendado es: world → locations → confidants → bestiary → items → boards → quests.
+libro es largo; el orden recomendado es: world → locations → confidants → bestiary → items → boards → quests → heroes.
 
 ## Esquema
 
@@ -144,6 +144,15 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
               },
               "reputation": {
                 "type": "integer"
+              },
+              "magia": {
+                "type": "string",
+                "enum": [
+                  "persigue",
+                  "tolera",
+                  "comercia"
+                ],
+                "description": "Cómo ve la magia. Donde manda una que la persigue no se venden componentes; donde comercia con ella, salen más baratos. Sin nada, tolera."
               }
             }
           }
@@ -252,7 +261,7 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
             "items": {
               "type": "string"
             },
-            "description": "Filas de la misma longitud, entre 8 y 40 columnas y entre 6 y 30 filas. Borde exterior siempre de muro. Solo estos caracteres: '.' suelo transitable, '#' muro, 'D' puerta cerrada, 'L' puerta cerrada con llave (se abre con una llave, con maña o a golpes; el jefe del tablero suelta la llave), 'o' puerta abierta, '~' terreno difícil, 'c' cobertura media, 'C' cobertura de tres cuartos, 'v' precipicio (no se anda; a quien empujan dentro, cae), '>' stairs."
+            "description": "Filas de la misma longitud, entre 8 y 40 columnas y entre 6 y 30 filas. Borde exterior siempre de muro. Solo estos caracteres: '.' suelo transitable, '#' muro, 'D' puerta cerrada, 'L' puerta cerrada con llave (se abre con una llave, con maña o a golpes; el jefe del tablero suelta la llave), 'o' puerta abierta, '~' terreno difícil, 'c' cobertura media, 'C' cobertura de tres cuartos, 'v' precipicio (no se anda; a quien empujan dentro, cae), '>' escalera al nivel siguiente, 'w' agua poco honda (cuesta el doble; el frío la hiela), 'i' hielo (el trueno lo quiebra, el fuego lo funde), 'b' maleza (cuesta el doble, y arde), 'T' barril (cubre; con fuego, revienta), 'k' cofre (se abre estando al lado), '^' en alto (subir cuesta el doble; desde arriba se ataca con ventaja): torres, escalones, la empalizada, 'x' salida (quien la pisa puede irse de la pelea; con un objetivo «alcanzar» encima, salir es ganar): la ventana, la trampilla, 'P' palanca (no se pisa; estando al lado, abre todas las puertas con llave del tablero): la reja del fondo, '=' barricada (corta el paso, no la vista; cubre a quien está detrás y a golpes se rompe: 15 de vida)."
           },
           "partyStart": {
             "type": "array",
@@ -343,6 +352,21 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
               "type": "string"
             },
             "description": "Si migra: las estaciones en que anda (primavera, verano, otono, invierno). Fuera de ellas no sale. Sin nada, todo el año."
+          },
+          "domable": {
+            "type": "string",
+            "enum": [
+              "perro",
+              "gato",
+              "zorro",
+              "halcon",
+              "cuervo",
+              "loro",
+              "familiar",
+              "espiritu",
+              ""
+            ],
+            "description": "Si una cría suya se puede domar al vencerlo, y en qué mascota se queda. Vacío: no se doma. Sin el campo, lo decide su nombre (lobos, cuervos, zorros, halcones, gatos)."
           },
           "abilities": {
             "type": "array",
@@ -564,6 +588,105 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
           }
         }
       }
+    },
+    "heroes": {
+      "type": "array",
+      "maxItems": 3,
+      "description": "Tres héroes hechos, pensados para este mundo: quien juega elige uno y entra sin crear a nadie. De las razas y clases que el mundo deja entrar.",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "race",
+          "className",
+          "about",
+          "pitch"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "race": {
+            "type": "string",
+            "description": "Como la llama el compendio: Humano, Enano, Media elfa…"
+          },
+          "className": {
+            "type": "string",
+            "description": "Como la llama el compendio: Guerrero, Pícaro, Soldado…"
+          },
+          "gender": {
+            "type": "string",
+            "enum": [
+              "Mujer",
+              "Hombre",
+              "No binario",
+              "Sin especificar"
+            ]
+          },
+          "background": {
+            "type": "string",
+            "enum": [
+              "soldado",
+              "criminal",
+              "erudito",
+              "acolito",
+              "forastero",
+              "artesano",
+              "noble",
+              "marinero",
+              "charlatan",
+              "ermitano"
+            ]
+          },
+          "about": {
+            "type": "string",
+            "description": "Quién es, en dos frases. Es lo que lee el narrador."
+          },
+          "pitch": {
+            "type": "string",
+            "description": "Una línea para elegirlo: lo que le hace distinto."
+          },
+          "spells": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Ids de conjuros del grimorio, si hace magia. La magia solo existe en el grimorio del juego: no se inventa."
+          },
+          "pet": {
+            "type": "object",
+            "description": "La mascota con la que llega, si tiene: su nombre, su especie y su carácter.",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "species": {
+                "type": "string",
+                "enum": [
+                  "perro",
+                  "gato",
+                  "zorro",
+                  "halcon",
+                  "cuervo",
+                  "loro",
+                  "familiar",
+                  "espiritu"
+                ]
+              },
+              "character": {
+                "type": "string",
+                "enum": [
+                  "cinica",
+                  "leal",
+                  "curiosa",
+                  "miedosa",
+                  "orgullosa"
+                ]
+              }
+            }
+          }
+        }
+      }
     }
   }
 }
@@ -602,7 +725,16 @@ crear cobertura y rutas, y no dibujes una sala vacía.
 - `c` cobertura media
 - `C` cobertura de tres cuartos
 - `v` precipicio (no se anda; a quien empujan dentro, cae)
-- `>` stairs
+- `>` escalera al nivel siguiente
+- `w` agua poco honda (cuesta el doble; el frío la hiela)
+- `i` hielo (el trueno lo quiebra, el fuego lo funde)
+- `b` maleza (cuesta el doble, y arde)
+- `T` barril (cubre; con fuego, revienta)
+- `k` cofre (se abre estando al lado)
+- `^` en alto (subir cuesta el doble; desde arriba se ataca con ventaja): torres, escalones, la empalizada
+- `x` salida (quien la pisa puede irse de la pelea; con un objetivo «alcanzar» encima, salir es ganar): la ventana, la trampilla
+- `P` palanca (no se pisa; estando al lado, abre todas las puertas con llave del tablero): la reja del fondo
+- `=` barricada (corta el paso, no la vista; cubre a quien está detrás y a golpes se rompe: 15 de vida)
 
 ## Muestra de salida correcta
 
@@ -809,7 +941,7 @@ ejemplo fácil no enseña.
 | Paso | Tú | El Gem |
 | :--- | :--- | :--- |
 | 1 | Pegas el libro, un resumen largo o una idea, y dices *«Empieza por `world`»* | Devuelve `world` en un bloque JSON. Si le falta algo esencial, una pregunta y sigue |
-| 2 | *«Siguiente»*, sección a sección: `locations` → `confidants` → `bestiary` → `items` → `boards` → `quests` | Una por respuesta, reutilizando los nombres exactos de las anteriores |
+| 2 | *«Siguiente»*, sección a sección: `locations` → `confidants` → `bestiary` → `items` → `boards` → `quests` → `heroes` | Una por respuesta, reutilizando los nombres exactos de las anteriores |
 | 3 | Lees cada una y corriges lo que no te guste **antes** de seguir: un nombre cambiado tarde arrastra a todo lo que lo usaba | Reescribe la sección entera |
 | 4 | *«Ensambla»* | El paquete completo en **un solo** bloque JSON. Es lo único que el juego acepta |
 | 5 | SillyTavern → **Partida nueva** → **Importar un libro** → pegas → **Comprobar el paquete** | — |
@@ -871,6 +1003,15 @@ que ya está en el bloque de instrucciones; se ofrecen sueltos porque un libro n
           },
           "reputation": {
             "type": "integer"
+          },
+          "magia": {
+            "type": "string",
+            "enum": [
+              "persigue",
+              "tolera",
+              "comercia"
+            ],
+            "description": "Cómo ve la magia. Donde manda una que la persigue no se venden componentes; donde comercia con ella, salen más baratos. Sin nada, tolera."
           }
         }
       }
@@ -1055,6 +1196,21 @@ que ya está en el bloque de instrucciones; se ofrecen sueltos porque un libro n
         },
         "description": "Si migra: las estaciones en que anda (primavera, verano, otono, invierno). Fuera de ellas no sale. Sin nada, todo el año."
       },
+      "domable": {
+        "type": "string",
+        "enum": [
+          "perro",
+          "gato",
+          "zorro",
+          "halcon",
+          "cuervo",
+          "loro",
+          "familiar",
+          "espiritu",
+          ""
+        ],
+        "description": "Si una cría suya se puede domar al vencerlo, y en qué mascota se queda. Vacío: no se doma. Sin el campo, lo decide su nombre (lobos, cuervos, zorros, halcones, gatos)."
+      },
       "abilities": {
         "type": "array",
         "items": {
@@ -1174,7 +1330,7 @@ que ya está en el bloque de instrucciones; se ofrecen sueltos porque un libro n
         "items": {
           "type": "string"
         },
-        "description": "Filas de la misma longitud, entre 8 y 40 columnas y entre 6 y 30 filas. Borde exterior siempre de muro. Solo estos caracteres: '.' suelo transitable, '#' muro, 'D' puerta cerrada, 'L' puerta cerrada con llave (se abre con una llave, con maña o a golpes; el jefe del tablero suelta la llave), 'o' puerta abierta, '~' terreno difícil, 'c' cobertura media, 'C' cobertura de tres cuartos, 'v' precipicio (no se anda; a quien empujan dentro, cae), '>' stairs."
+        "description": "Filas de la misma longitud, entre 8 y 40 columnas y entre 6 y 30 filas. Borde exterior siempre de muro. Solo estos caracteres: '.' suelo transitable, '#' muro, 'D' puerta cerrada, 'L' puerta cerrada con llave (se abre con una llave, con maña o a golpes; el jefe del tablero suelta la llave), 'o' puerta abierta, '~' terreno difícil, 'c' cobertura media, 'C' cobertura de tres cuartos, 'v' precipicio (no se anda; a quien empujan dentro, cae), '>' escalera al nivel siguiente, 'w' agua poco honda (cuesta el doble; el frío la hiela), 'i' hielo (el trueno lo quiebra, el fuego lo funde), 'b' maleza (cuesta el doble, y arde), 'T' barril (cubre; con fuego, revienta), 'k' cofre (se abre estando al lado), '^' en alto (subir cuesta el doble; desde arriba se ataca con ventaja): torres, escalones, la empalizada, 'x' salida (quien la pisa puede irse de la pelea; con un objetivo «alcanzar» encima, salir es ganar): la ventana, la trampilla, 'P' palanca (no se pisa; estando al lado, abre todas las puertas con llave del tablero): la reja del fondo, '=' barricada (corta el paso, no la vista; cubre a quien está detrás y a golpes se rompe: 15 de vida)."
       },
       "partyStart": {
         "type": "array",
@@ -1317,6 +1473,110 @@ que ya está en el bloque de instrucciones; se ofrecen sueltos porque un libro n
             }
           },
           "description": "Un objetivo. Cada tipo pide sus campos: eliminate → target · eliminate_all → nada · survive_rounds → rounds · reach_cell → cell · escort → ally, cell · protect → ally · loot → treasures"
+        }
+      }
+    }
+  }
+}
+```
+
+### `heroes`
+
+```json
+{
+  "type": "array",
+  "maxItems": 3,
+  "description": "Tres héroes hechos, pensados para este mundo: quien juega elige uno y entra sin crear a nadie. De las razas y clases que el mundo deja entrar.",
+  "items": {
+    "type": "object",
+    "required": [
+      "name",
+      "race",
+      "className",
+      "about",
+      "pitch"
+    ],
+    "properties": {
+      "name": {
+        "type": "string"
+      },
+      "race": {
+        "type": "string",
+        "description": "Como la llama el compendio: Humano, Enano, Media elfa…"
+      },
+      "className": {
+        "type": "string",
+        "description": "Como la llama el compendio: Guerrero, Pícaro, Soldado…"
+      },
+      "gender": {
+        "type": "string",
+        "enum": [
+          "Mujer",
+          "Hombre",
+          "No binario",
+          "Sin especificar"
+        ]
+      },
+      "background": {
+        "type": "string",
+        "enum": [
+          "soldado",
+          "criminal",
+          "erudito",
+          "acolito",
+          "forastero",
+          "artesano",
+          "noble",
+          "marinero",
+          "charlatan",
+          "ermitano"
+        ]
+      },
+      "about": {
+        "type": "string",
+        "description": "Quién es, en dos frases. Es lo que lee el narrador."
+      },
+      "pitch": {
+        "type": "string",
+        "description": "Una línea para elegirlo: lo que le hace distinto."
+      },
+      "spells": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Ids de conjuros del grimorio, si hace magia. La magia solo existe en el grimorio del juego: no se inventa."
+      },
+      "pet": {
+        "type": "object",
+        "description": "La mascota con la que llega, si tiene: su nombre, su especie y su carácter.",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "species": {
+            "type": "string",
+            "enum": [
+              "perro",
+              "gato",
+              "zorro",
+              "halcon",
+              "cuervo",
+              "loro",
+              "familiar",
+              "espiritu"
+            ]
+          },
+          "character": {
+            "type": "string",
+            "enum": [
+              "cinica",
+              "leal",
+              "curiosa",
+              "miedosa",
+              "orgullosa"
+            ]
+          }
         }
       }
     }

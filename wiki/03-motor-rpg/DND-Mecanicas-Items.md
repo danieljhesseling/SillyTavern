@@ -129,7 +129,7 @@ interface DndItem {
 
 ## 5. Tiradas de Habilidad Fuera de Combate & Action Chips (`rules/checks.js`)
 
-Para rescatar las 18 habilidades de la ficha D&D 5e fuera del combate (*[[ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES]] §2.7*), el motor permite resolver tiradas de habilidad directamente en el cliente mediante un botón en la barra o sugerencias automáticas (*Action Chips*):
+Para rescatar las 18 habilidades de la ficha D&D 5e fuera del combate (**ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES* §2.7*), el motor permite resolver tiradas de habilidad directamente en el cliente mediante un botón en la barra o sugerencias automáticas (*Action Chips*):
 
 ```mermaid
 graph LR
@@ -145,7 +145,7 @@ graph LR
 
 ## 6. Posturas Tácticas de Compañeros en Modo Solo (`Stances`)
 
-Para evitar que los aliados en Modo Solo tomen rutas suicidas con la IA de monstruos (*[[ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES]] §2.5*), el jugador puede alternar con un solo clic la postura táctica de cada compañero:
+Para evitar que los aliados en Modo Solo tomen rutas suicidas con la IA de monstruos (**ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES* §2.5*), el jugador puede alternar con un solo clic la postura táctica de cada compañero:
 
 | Postura | Comportamiento en Rejilla | Acción Típica |
 | :--- | :--- | :--- |
@@ -156,7 +156,7 @@ Para evitar que los aliados en Modo Solo tomen rutas suicidas con la IA de monst
 ---
 
 ## 7. Enlaces Relacionados
-- [[ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES]]: Diagnóstico lúdico sobre la ficha muerta y el aliado suicida.
+- *ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES*: Diagnóstico lúdico sobre la ficha muerta y el aliado suicida.
 - [[Sistema-Party]]: Estructura de `partyMembers` que contiene los ítems equipados.
 - [[World-Content-Popups]]: Modales interactivos para crear y editar objetos mágicos y armas.
 - [[Dynamic-Context-Manager]]: Notificación al LLM del equipamiento portado por el grupo.

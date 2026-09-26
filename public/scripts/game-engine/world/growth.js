@@ -18,7 +18,7 @@
  *
  * Puro: devuelve lo nuevo y no guarda nada.
  *
- * Ver wiki/ROADMAP_MUNDOS_VIVOS.md, fase G.
+ * Ver wiki/archivo/ROADMAP_MUNDOS_VIVOS.md, fase G.
  */
 
 import { makeName } from '../compendio/names.js';

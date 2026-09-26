@@ -28,7 +28,7 @@ describe('los ajustes de sonido', () => {
     });
 
     test('las cuatro escenas tienen nombre para los ajustes', () => {
-        expect(AUDIO_SCENES.map(s => s.id)).toEqual(['title', 'dialogue', 'exploration', 'combat']);
+        expect(AUDIO_SCENES.map(s => s.id)).toEqual(['title', 'dialogue', 'exploration', 'town', 'combat']);
         expect(AUDIO_SCENES.every(s => s.label.length > 0)).toBe(true);
     });
 });
@@ -66,5 +66,13 @@ describe('contado en una línea', () => {
 
     test('y apagado, también', () => {
         expect(describeAudio({ enabled: false, tracks: { combat: 'g.mp3' } })).toBe('El sonido está apagado.');
+    });
+});
+
+describe('idea 187: la música del pueblo', () => {
+    test('en el pueblo suena su pista; sin ella, la del viaje; y nada si no hay ninguna', () => {
+        expect(chooseTrack('town', { enabled: true, tracks: { town: 'plaza.mp3', exploration: 'camino.mp3' } })).toBe('plaza.mp3');
+        expect(chooseTrack('town', { enabled: true, tracks: { exploration: 'camino.mp3' } })).toBe('camino.mp3');
+        expect(chooseTrack('town', { enabled: true, tracks: {} })).toBeNull();
     });
 });

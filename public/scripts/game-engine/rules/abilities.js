@@ -14,7 +14,15 @@
  * prueba puede fijarlas y el registro puede enseñarlas.
  *
  * Si algún día hacen falta las ranuras de verdad, se añaden encima de esto; al revés no.
+ *
+ * R3 del roadmap de profundidad le añade tres cosas, todas opcionales: un **área** (radio,
+ * línea o cono, `rules/area.js`), un **elemento** que le hace cosas al tablero
+ * (`rules/tags.js`) y el terreno que **deja** donde cae (unos abrojos, terreno difícil).
  */
+
+import { readArea, describeArea } from './area.js';
+import { describeElement } from './tags.js';
+import { chargesLeft, canCast, CIRCLE_LABELS } from './grimoire.js';
 
 /** Qué parte del turno gasta. */
 export const ABILITY_COSTS = ['action', 'bonus', 'free'];
@@ -54,6 +62,15 @@ export const ABILITY_LABELS = {
  * @property {string} healing Fórmula, o vacío.
  * @property {string} condition Condición que aplica, o vacío.
  * @property {number} conditionRounds
+ * @property {import('./area.js').Area} area R3: a uno, o en radio, línea o cono.
+ * @property {string} element R3: fuego, frío, trueno, luz, veneno o naturaleza; o vacío.
+ * @property {string} leaves R3: el terreno que deja donde cae, o vacío.
+ * @property {number} [circle] R4: si es un conjuro del grimorio, su círculo (0 = truco).
+ * @property {string} [school] R4: su escuela.
+ * @property {string} [component] R4: lo que se gasta al lanzarlo.
+ * @property {boolean} [drain] R4: quien lo lanza se cura la mitad del daño.
+ * @property {boolean} [combat] R4: `false` si solo sirve fuera del combate.
+ * @property {string[]} [aliases] R4: los ids que tenía cuando era una fila de datos.
  */
 
 /**
@@ -123,6 +140,17 @@ export function normalizeAbility(raw, index = 0) {
         healing: text(source.healing),
         condition: text(source.condition),
         conditionRounds: Math.max(1, Math.floor(Number(source.conditionRounds) || 1)),
+        area: readArea(source.area),
+        element: text(source.element).toLowerCase(),
+        leaves: text(source.leaves),
+        // R4: lo que hace de una habilidad un conjuro del grimorio. Solo lo trae el grimorio.
+        ...(source.circle !== undefined && source.circle !== null && Number.isFinite(Number(source.circle))
+            ? { circle: Math.max(0, Math.min(3, Math.floor(Number(source.circle)))) } : {}),
+        ...(text(source.school) ? { school: text(source.school) } : {}),
+        ...(text(source.component) ? { component: text(source.component) } : {}),
+        ...(source.drain ? { drain: true } : {}),
+        ...(source.combat === false ? { combat: false } : {}),
+        ...(Array.isArray(source.aliases) && source.aliases.length > 0 ? { aliases: source.aliases.map(text).filter(Boolean) } : {}),
     };
 }
 
@@ -152,7 +180,8 @@ export function normalizeAbilities(raw) {
  */
 export function knownAbilities(member, catalogue) {
     const known = new Set((Array.isArray(member?.abilities) ? member.abilities : []).map(id => text(id)));
-    return normalizeAbilities(catalogue).filter(ability => known.has(ability.id));
+    // R4: un conjuro que se sabía con su id viejo de fila de datos se sigue sabiendo.
+    return normalizeAbilities(catalogue).filter(ability => known.has(ability.id) || (ability.aliases ?? []).some(alias => known.has(alias)));
 }
 
 /**
@@ -163,6 +192,8 @@ export function knownAbilities(member, catalogue) {
  * @returns {number}
  */
 export function usesLeft(member, ability) {
+    // R4: un conjuro no tiene usos propios: gasta las cargas de su círculo.
+    if (typeof ability?.circle === 'number') return chargesLeft(member, ability.circle);
     if (ability.resource === 'at_will') return Infinity;
     const spent = Math.max(0, Math.floor(Number(member?.abilityUses?.[ability.id]) || 0));
     return Math.max(0, ability.usesPerRest - spent);
@@ -181,12 +212,21 @@ export function usesLeft(member, ability) {
  * @param {boolean} [input.hasAction]
  * @param {boolean} [input.hasBonus]
  * @param {boolean} [input.targetAlive]
+ * @param {string[]} [input.carried] R4: lo que lleva encima el grupo, para los componentes.
  * @returns {{ok: boolean, reason: string}}
  */
 export function canUseAbility({
-    member, ability, distanceFeet = 0, hasAction = true, hasBonus = true, targetAlive = true,
+    member, ability, distanceFeet = 0, hasAction = true, hasBonus = true, targetAlive = true, carried = [],
 }) {
     if (!targetAlive) return { ok: false, reason: 'Ese objetivo ya está fuera de combate.' };
+
+    // R4: un conjuro pide su nivel, una carga de su círculo y lo que gaste. Y los que solo
+    // sirven fuera del combate no se lanzan peleando.
+    if (ability.combat === false) return { ok: false, reason: 'Esto no se usa peleando.' };
+    if (typeof ability.circle === 'number') {
+        const cast = canCast({ member, spell: ability, carried });
+        if (!cast.ok) return cast;
+    }
 
     if (usesLeft(member, ability) <= 0) {
         const when = ability.resource === 'short_rest' ? 'un descanso corto' : 'un descanso largo';
@@ -340,15 +380,23 @@ export function restoreAbilityUses(member, kind, catalogue) {
 export function describeAbility(ability) {
     const parts = [ABILITY_LABELS.costs[ability.cost]];
 
-    if (ability.resource === 'at_will') parts.push('a voluntad');
+    // R4: un conjuro dice su círculo en vez de sus usos.
+    if (typeof ability.circle === 'number') parts.push(ability.circle === 0 ? 'truco, a voluntad' : CIRCLE_LABELS[/** @type {1|2|3} */ (ability.circle)]);
+    else if (ability.resource === 'at_will') parts.push('a voluntad');
     else parts.push(`${ability.usesPerRest}x por descanso ${ability.resource === 'short_rest' ? 'corto' : 'largo'}`);
 
-    parts.push(ability.target === 'self' ? 'sobre ti' : `${ability.rangeFeet} ft`);
+    parts.push(ability.target === 'self' && ability.area?.shape !== 'radius' ? 'sobre ti' : ability.target === 'self' ? 'a tu alrededor' : `${ability.rangeFeet} ft`);
+    // R3: el área y el elemento, que es lo que decide dónde colocarse.
+    const area = describeArea(ability.area);
+    if (area) parts.push(area);
+    const element = describeElement(ability);
+    if (element) parts.push(element);
 
     if (ability.damage) parts.push(`${ability.damage} de daño`);
     if (ability.healing) parts.push(`cura ${ability.healing}`);
     if (ability.condition) parts.push(ability.condition);
     if (ability.resolution === 'save') parts.push(`salvación CD ${ability.saveDc}`);
+    if (ability.component) parts.push(`gasta ${ability.component.toLowerCase()}`);
 
     return parts.join(' · ');
 }

@@ -16,7 +16,7 @@
  * Un mundo puede traer su propia curva (`mix` en su paquete): uno de terror puede querer
  * seguir escrito hasta el final.
  *
- * Ver wiki/ROADMAP_MUNDOS_VIVOS.md, M7.
+ * Ver wiki/archivo/ROADMAP_MUNDOS_VIVOS.md, M7.
  */
 
 /** La curva de serie, por acto: qué parte sale de cada sitio. */

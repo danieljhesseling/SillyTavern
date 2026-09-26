@@ -10,7 +10,7 @@
  * declare que le gusta: `likes` y `dislikes`, dos listas que se editan como cualquier otro
  * campo. Sin ellas un regalo no da puntos, que es mejor que dar puntos por cualquier cosa.
  *
- * Ver wiki/ROADMAP_JUEGO_SIN_COMANDOS.md, K4b.
+ * Ver wiki/archivo/ROADMAP_JUEGO_SIN_COMANDOS.md, K4b.
  */
 
 import { buildCampaignView } from '../../campaign/campaign-view.js';

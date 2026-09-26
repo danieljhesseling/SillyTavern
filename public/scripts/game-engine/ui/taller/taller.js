@@ -1,5 +1,10 @@
 /**
- * El taller de campanas: la puerta de tres caminos y los pasos.
+ * El taller de campanas: la puerta de tres caminos y las pestañas.
+ *
+ * Eran trece pasos en fila; desde R2 del roadmap de profundidad son **pestañas**: todas
+ * tienen algo por defecto, así que se entra solo en las que se quieren cambiar y se crea el
+ * mundo desde cualquiera. Y la partida rápida (R1) es este mismo taller abierto en una vista
+ * corta: un mundo precreado, un modo, y a jugar.
  *
  * Sustituye al asistente de siempre **sin tocar nada de lo que hay debajo**: devuelve el
  * mismo objeto de respuestas que `createCampaign` ya sabe comerse, asi que crear la campana
@@ -10,7 +15,7 @@
  * en que orden. Lo que decide si se puede pasar de paso esta en `campaign/taller.js`, y como
  * se dibuja un paso, en `paso.js`. Tres archivos y cada uno una cosa.
  *
- * Ver wiki/ROADMAP_CREACION.md, T1.
+ * Ver wiki/archivo/ROADMAP_CREACION.md, T1.
  */
 
 import {
@@ -22,12 +27,14 @@ import {
     addPerson, editPerson, removePerson, peopleOf,
     addQuest, editQuest, removeQuest, questsOf, boardRulesOf, setBoardRules,
     PACK_STEPS, packContents,
+    goTo, firstBlock, baselineOf, tabStatus,
 } from '../../campaign/taller.js';
 import { drawStep } from './paso.js';
 import { getTemplateOptions } from '../../campaign/starter-templates.js';
 import { uniqueWorldName } from '../../campaign/campaign-worlds.js';
 import { VERBOSITY, DEFAULT_VERBOSITY } from '../../campaign/narrator.js';
-import { MORTALITY, SAVES, DEFAULT_SURVIVAL, DIFFICULTIES, difficultyOf } from '../../rules/mortality.js';
+import { DEFAULT_SURVIVAL } from '../../rules/mortality.js';
+import { buildModePicker } from '../mode-panel.js';
 import { GOALS, describeStanding, STANDING } from '../../campaign/factions.js';
 import { racesOf, kindsOf, describeKin } from '../../compendio/kin.js';
 import { rollFactions } from '../../campaign/factions.js';
@@ -267,13 +274,15 @@ async function askPack({ Popup, POPUP_TYPE }) {
  *        escriba el modelo. Sin proveedor no se pasa, y la tarjeta no aparece.
  * @param {any[]} [input.narrators] Los que ya tienes escritos de otras campanas.
  * @param {((file: any) => Promise<string>)|null} [input.uploadFace] Guardar una imagen.
+ * @param {boolean} [input.quick] R1: la partida rápida, directa a los mundos precreados.
  * @returns {Promise<any>} Las respuestas que `createCampaign` espera, o null.
  */
 export async function askTaller({
     Popup, POPUP_TYPE, existingWorldNames = [], write = null, makeWorld = null,
-    narrators = [], uploadFace = null,
+    narrators = [], uploadFace = null, quick = false,
 }) {
-    const path = await askPath({ Popup, POPUP_TYPE });
+    // R1: la partida rápida va directa a los mundos precreados.
+    const path = quick ? 'mundo' : await askPath({ Popup, POPUP_TYPE });
     if (!path) return null;
 
     /** @type {any} */
@@ -304,6 +313,15 @@ export async function askTaller({
 
     let state = startTaller({ path, source });
 
+    /** R2: cómo estaba cada pestaña al abrir (o al elegir mundo), para marcar lo cambiado. */
+    let baseline = baselineOf(state);
+
+    /** Solo se crea con «Crear y jugar»: el botón de la ventana es cancelar. */
+    let created = false;
+
+    /** R1: la vista corta de la partida rápida, hasta que se pide cambiar más cosas. */
+    let quickView = Boolean(quick);
+
     const root = $('<div class="tl-root"></div>');
     const bar = $('<div class="tl-bar"></div>');
     const body = $('<div class="tl-body"></div>');
@@ -313,12 +331,16 @@ export async function askTaller({
     const back = $('<button type="button" class="menu_button tl-back"></button>').text('Atrás');
     const skip = $('<button type="button" class="menu_button tl-skip"></button>').text('Saltar');
     const next = $('<button type="button" class="menu_button tl-next"></button>').text('Siguiente');
+    // R2: crear desde cualquier pestaña. Lo que no se ha tocado va con lo que trae por defecto.
+    const start = $('<button type="button" class="menu_button tl-start"></button>')
+        .append('<i class="fa-solid fa-play"></i>')
+        .append($('<span></span>').text(' Crear y jugar'));
     // La segunda salida, como en el asistente de siempre: crear y caer con el editor
     // delante. Solo en el ultimo paso, porque antes de eso no hay nada que crear.
     const write2 = $('<button type="button" class="menu_button tl-write"></button>')
         .append('<i class="fa-solid fa-feather"></i>')
         .append($('<span></span>').text(' Crear y escribir el mundo'));
-    foot.append(back).append(said).append(skip).append(write2).append(next);
+    foot.append(back).append(said).append(skip).append(write2).append(next).append(start);
     root.append(bar).append(body).append(foot);
 
     /** El narrador elegido de la lista, para poder volver a enseñarlo. */
@@ -402,15 +424,30 @@ export async function askTaller({
         return row.append(select);
     }
 
+    /**
+     * Crear, si ninguna pestaña lo impide. Si alguna lo impide, se va a ella y se dice por qué:
+     * con pestañas se puede crear desde cualquiera, así que hay que mirarlas todas.
+     *
+     * @returns {boolean}
+     */
+    const createNow = () => {
+        const stuck = firstBlock(state);
+        if (stuck) {
+            state = goTo(state, stuck.step);
+            quickView = false;
+            draw();
+            said.text(stuck.reason).addClass('bad');
+            return false;
+        }
+        created = true;
+        popup.completeAffirmative();
+        return true;
+    };
+
     /** Crear ya, cayendo con el editor del mundo delante. */
     const finishWriting = () => {
-        const stuck = blocksNext(state, progressOf(state).step.id);
-        if (stuck) {
-            said.text(stuck).addClass('bad');
-            return;
-        }
         state = { ...state, writeWorld: true };
-        popup.completeAffirmative();
+        if (!createNow()) state = { ...state, writeWorld: false };
     };
 
     const advance = () => {
@@ -421,7 +458,7 @@ export async function askTaller({
         }
         said.text('').removeClass('bad');
         if (moved.done) {
-            popup.completeAffirmative();
+            createNow();
             return;
         }
         state = moved.state;
@@ -432,10 +469,42 @@ export async function askTaller({
         const { at, of, step } = progressOf(state);
 
         bar.empty();
-        bar.append($('<div class="tl-bar-said"></div>').text(`Paso ${at} de ${of} · ${step.title}`));
-        const fill = $('<div class="tl-bar-track"></div>');
-        fill.append($('<div class="tl-bar-fill"></div>').css('width', `${Math.round((at / of) * 100)}%`));
-        bar.append(fill);
+        root.toggleClass('tl-quick', quickView);
+        if (quickView) {
+            drawQuick();
+            back.hide();
+            next.hide();
+            skip.hide();
+            write2.hide();
+            start.show();
+            return;
+        }
+        back.show();
+        next.show();
+        start.show();
+
+        // R2: las trece pestañas, cada una con su marca.
+        const tabs = $('<div class="tl-tabs" role="tablist"></div>');
+        walkableSteps().forEach((tab, index) => {
+            const status = tabStatus(state, tab.id, baseline);
+            const button = $('<button type="button" class="tl-tab" role="tab"></button>')
+                .attr('data-step', tab.id)
+                .attr('aria-selected', String(index === state.at))
+                .addClass(`tl-tab-${status}`)
+                .toggleClass('tl-tab-on', index === state.at)
+                .attr('title', status === 'warn' ? blocksNext(state, tab.id) : tab.hint);
+            button.append($('<span class="tl-tab-mark"></span>').text(status === 'warn' ? '⚠' : status === 'changed' ? '✓' : '•'));
+            button.append($('<span></span>').text(` ${tab.title}`));
+            button.on('click', () => {
+                state = goTo(state, tab.id);
+                said.text('').removeClass('bad');
+                draw();
+            });
+            tabs.append(button);
+        });
+        bar.append(tabs);
+        bar.append($('<div class="tl-bar-said"></div>').text(`Paso ${at} de ${of} · ${step.title}`)
+            .append($('<span class="tl-tabs-legend"></span>').text(' · ✓ cambiado · • como viene · ⚠ algo no cuadra')));
 
         if (state.path === 'mundo' && state.source?.pack && PACK_STEPS.includes(step.id)) drawCarried(step);
         else if (step.id === 'mundo') drawWorld();
@@ -453,11 +522,60 @@ export async function askTaller({
         else drawPlay();
 
         back.prop('disabled', state.at === 0);
+        // Ir en fila sigue valiendo, para quien lo prefiera: Atrás, Saltar y Siguiente.
         skip.toggle(Boolean(step.optional));
         // Escribir el mundo se ofrece en cuanto **hay mundo que escribir**: con el paso 1
         // resuelto. Quien ya sabe lo que quiere no tiene que pasar por los trece.
         write2.toggle(blocksNext(state, 'mundo') === '');
-        next.text(state.at >= walkableSteps().length - 1 ? 'Crear y jugar' : 'Siguiente');
+        const last = state.at >= walkableSteps().length - 1;
+        next.text(last ? 'Crear y jugar' : 'Siguiente');
+        // En la última, «Siguiente» ya es crear: dos botones iguales sobran.
+        start.toggle(!last);
+        start.prop('disabled', blocksNext(state, 'mundo') !== '');
+    }
+
+    /**
+     * R1: la partida rápida. Un mundo precreado y cómo se juega; el personaje, al entrar.
+     */
+    function drawQuick() {
+        body.empty();
+        const head = $('<div class="tl-step-head"></div>');
+        head.append($('<div class="tl-step-title"></div>').text('Partida rápida'));
+        head.append($('<div class="tl-step-hint"></div>').text(
+            'Elige un mundo y cómo quieres jugarlo. Tu personaje, al entrar: uno de los tres que trae cada mundo, o uno tuyo.',
+        ));
+        body.append(head);
+
+        const grid = $('<div class="tl-cards tl-quick-worlds"></div>');
+        for (const world of worlds) {
+            const id = text(world.id);
+            const card = $('<button type="button" class="tl-card tl-quick-world"></button>')
+                .attr('data-world', id)
+                .toggleClass('picked', isPicked(state, 'mundo', id));
+            card.append($(`<i class="fa-solid ${text(world.icon) || 'fa-earth-europe'} tl-card-face"></i>`));
+            card.append($('<div class="tl-card-title"></div>').text(text(world.name)));
+            card.append($('<div class="tl-card-note"></div>').text(text(world.note)));
+            card.on('click', () => {
+                if (!isPicked(state, 'mundo', id)) chooseWorld(id);
+            });
+            grid.append(card);
+        }
+        body.append(grid);
+
+        body.append($('<div class="tl-quick-title"></div>').text('Cómo lo juegas'));
+        body.append(buildModePicker(state.survival ?? { ...DEFAULT_SURVIVAL }, (chosen) => {
+            state.survival = chosen;
+        }));
+
+        const more = $('<button type="button" class="menu_button tl-more"></button>')
+            .append('<i class="fa-solid fa-sliders"></i>')
+            .append($('<span></span>').text(' Cambiar más cosas del mundo'));
+        more.on('click', () => {
+            quickView = false;
+            draw();
+        });
+        body.append(more);
+        start.prop('disabled', blocksNext(state, 'mundo') !== '');
     }
 
     /**
@@ -657,7 +775,47 @@ export async function askTaller({
             };
         }
         if (world?.survival && !state.survival) state.survival = { ...world.survival };
+        // R1: sus héroes hechos. Se reemplazan: elegir otro mundo trae los suyos.
+        state.heroes = Array.isArray(world?.heroes) ? world.heroes : [];
         if (world?.board) state = setBoardRules(state, world.board);
+    }
+
+    /**
+     * Elegir un mundo precreado o una plantilla.
+     *
+     * Elegir rellena la ficha, pero **nunca pisa lo que hayas escrito tú**: lo que tocas se
+     * queda. Y propone un nombre libre, porque pedirlo en blanco es pedir que te inventes uno
+     * antes de saber de qué va la cosa.
+     *
+     * @param {string} id
+     */
+    function chooseWorld(id) {
+        state = pickCard(state, 'mundo', id, true);
+        if (!isPicked(state, 'mundo', id)) { draw(); return; }
+
+        const world = worlds.find(w => text(w.id) === id);
+        const plantilla = getTemplateOptions().find(o => o.id === id);
+        const traido = world
+            ? [['worldName', text(world.name)], ['genre', text(world.genre)],
+                ['description', text(world.synopsis)], ['seed', text(world.seed)]]
+            : [['worldName', text(plantilla?.name)]];
+
+        for (const [key, value] of traido) {
+            if (!state.pinned?.[key] && text(value)) {
+                state.fields[key] = key === 'worldName'
+                    ? uniqueWorldName(value, existingWorldNames)
+                    : value;
+            }
+        }
+        if (world) applyWorld(world);
+        // Elegir tambien pone nombre al mundo, asi que el sitio de partida lo sigue.
+        followWorldName();
+        // R2: lo que trae el mundo es «como viene»; lo que cambies después, «cambiado».
+        baseline = baselineOf(state);
+        draw();
+        // Y si el mundo esta escrito entero, su paquete. Se carga despues de dibujar:
+        // elegir no puede esperar a la red.
+        void carryPack(world);
     }
 
     /** Paso 1: la ficha del mundo, y de donde sale. */
@@ -732,33 +890,7 @@ export async function askTaller({
                     void askGenerated();
                     return;
                 }
-                state = pickCard(state, 'mundo', id, true);
-                if (!isPicked(state, 'mundo', id)) { draw(); return; }
-
-                // Elegir rellena la ficha, pero **nunca pisa lo que hayas escrito tú**: lo
-                // que tocas se queda. Y propone un nombre libre, porque pedirlo en blanco
-                // es pedir que te inventes uno antes de saber de qué va la cosa.
-                const world = worlds.find(w => text(w.id) === id);
-                const plantilla = getTemplateOptions().find(o => o.id === id);
-                const traido = world
-                    ? [['worldName', text(world.name)], ['genre', text(world.genre)],
-                        ['description', text(world.synopsis)], ['seed', text(world.seed)]]
-                    : [['worldName', text(plantilla?.name)]];
-
-                for (const [key, value] of traido) {
-                    if (!state.pinned?.[key] && text(value)) {
-                        state.fields[key] = key === 'worldName'
-                            ? uniqueWorldName(value, existingWorldNames)
-                            : value;
-                    }
-                }
-                if (world) applyWorld(world);
-                // Elegir tambien pone nombre al mundo, asi que el sitio de partida lo sigue.
-                followWorldName();
-                draw();
-                // Y si el mundo esta escrito entero, su paquete. Se carga despues de dibujar:
-                // elegir no puede esperar a la red.
-                void carryPack(world);
+                chooseWorld(id);
             },
             onWrite: (key, value) => {
                 // Idea 180: «semilla@origen» pone la semilla y elige el mundo o la plantilla.
@@ -1559,88 +1691,28 @@ export async function askTaller({
     }
 
     /** Paso 13: cuanto duele perder. */
+    /**
+     * El modo de juego (R1 del roadmap de profundidad): tres con nombre y las seis letras
+     * para afinar. Sustituye a las dificultades de la idea 198 (DR1).
+     */
     function drawPlay() {
-        const survival = state.survival ?? { ...DEFAULT_SURVIVAL };
-        drawStep(body, {
-            title: 'Jugabilidad',
-            hint: 'Todo esto se puede cambiar luego en /rules, y viaja con la campaña si la '
-                + 'exportas. Cada interruptor apaga algo que de verdad corre.',
-            formTitle: 'Cuánto duele perder',
-            // Idea 198: tres puntos de partida con nombre; los interruptores de abajo afinan.
-            cardsTitle: 'Dificultad',
-            cardsOpen: true,
-            cards: Object.entries(DIFFICULTIES).map(([id, preset]) => ({
-                id, title: preset.label, note: preset.note, picked: difficultyOf(survival) === id,
-            })),
-            fields: [
-                {
-                    key: 'mortality', label: 'Puede morir cualquiera, también los tuyos', kind: 'check',
-                    value: survival.mortality === MORTALITY.EVERYONE ? 'si' : '',
-                    hint: 'Apagado, solo muere quien te sigue por dinero: los tuyos quedan marcados '
-                        + '— pierden un brazo, cojean, no vuelven a ver bien de un ojo.',
-                },
-                {
-                    key: 'saves', label: 'Solo se guarda en el refugio', kind: 'check',
-                    value: survival.saves === SAVES.SHELTER ? 'si' : '',
-                    hint: 'Apagado, guardas cuando quieras — y entonces lo de arriba pesa menos, '
-                        + 'porque siempre puedes volver atrás.',
-                },
-                {
-                    key: 'needs', label: 'Se pasa hambre y sed', kind: 'check',
-                    value: survival.needs === false ? '' : 'si',
-                    hint: 'Comer y beber cuesta dinero todas las semanas, y quien no lo hace se '
-                        + 'va apagando. Apagado, el viaje solo cuesta días.',
-                },
-                {
-                    key: 'exposure', label: 'El frío y el calor hacen daño', kind: 'check',
-                    value: survival.exposure === false ? '' : 'si',
-                    hint: 'Dormir a la intemperie en un sitio helador se paga en vida. Apagado, '
-                        + 'el clima solo se cuenta.',
-                },
-                {
-                    key: 'injuries', label: 'Las heridas se quedan', kind: 'check',
-                    value: survival.injuries === false ? '' : 'si',
-                    hint: 'Caer a cero deja algo encima el resto de la campaña. Apagado, te '
-                        + 'levantas entero.',
-                },
-                {
-                    key: 'loyalty', label: 'La gente se va si no cobra', kind: 'check',
-                    value: survival.loyalty === false ? '' : 'si',
-                    hint: 'Quien vino por dinero se marcha cuando el viernes no sale. Apagado, '
-                        + 'se quedan pase lo que pase.',
-                },
-            ],
-            onPick: (id) => {
-                const preset = DIFFICULTIES[/** @type {keyof typeof DIFFICULTIES} */ (id)];
-                if (!preset) return;
-                state.survival = { ...preset.survival };
-                draw();
-            },
-            onWrite: (key, value) => {
-                const on = text(value) === 'si';
-                const before = state.survival ?? { ...DEFAULT_SURVIVAL };
-
-                if (key === 'mortality') {
-                    state.survival = {
-                        ...before,
-                        mortality: on ? MORTALITY.EVERYONE : DEFAULT_SURVIVAL.mortality,
-                    };
-                    return;
-                }
-                if (key === 'saves') {
-                    state.survival = { ...before, saves: on ? SAVES.SHELTER : DEFAULT_SURVIVAL.saves };
-                    return;
-                }
-                // Los demas son si o no, y lo que no se dice sigue encendido.
-                state.survival = { ...before, [key]: on };
-            },
-        });
+        body.empty();
+        const head = $('<div class="tl-step-head"></div>');
+        head.append($('<div class="tl-step-title"></div>').text('Jugabilidad'));
+        head.append($('<div class="tl-step-hint"></div>').text(
+            'Qué sistemas existen en esta partida. Se puede cambiar luego con /modo, cuando quieras, y queda escrito.',
+        ));
+        body.append(head);
+        body.append(buildModePicker(state.survival ?? { ...DEFAULT_SURVIVAL }, (next) => {
+            state.survival = next;
+        }));
     }
 
     back.on('click', () => { state = goBack(state); said.text('').removeClass('bad'); draw(); });
     write2.on('click', finishWriting);
     skip.on('click', advance);
     next.on('click', advance);
+    start.on('click', () => { createNow(); });
 
     // Lo que el juego iba a poner solo al crear el mundo: el sitio de partida y los
     // vecinos que salen de la semilla. Ensenarlos antes es lo unico que permite tocarlos.
@@ -1650,7 +1722,7 @@ export async function askTaller({
     try {
         if (path === 'libro') throw new Error('un libro trae sus sitios');
 
-        const [{ getCompendium }, { rollNeighbours }] = await Promise.all([
+        const [{ getCompendium, freshCompendium }, { rollNeighbours }] = await Promise.all([
             import('../../compendio/browser.js'),
             import('../../world/neighbours.js'),
         ]);
@@ -1683,8 +1755,10 @@ export async function askTaller({
         }).state;
 
         // Los vecinos que el mundo iba a poner: esos entran marcados.
+        // Los vecinos salen de la semilla: con una biblioteca recién abierta, siempre los mismos.
+        const seeded = await freshCompendium();
         const vecinos = rollNeighbours({
-            compendium,
+            compendium: seeded,
             locations: [{ name: locationsOf(state)[0].name, gridWidth: 20, gridHeight: 15 }],
             random: createSeededRandom(derive(state.fields.seed, 'vecinos')),
         });
@@ -1694,7 +1768,7 @@ export async function askTaller({
         // que hay. Elegir entre lo que existe es elegir; mirar tres tarjetas ya puestas,
         // no.
         const otros = rollNeighbours({
-            compendium,
+            compendium: seeded,
             locations: [{ name: locationsOf(state)[0].name, gridWidth: 20, gridHeight: 15 }],
             random: createSeededRandom(derive(state.fields.seed, 'vecinos', 'mas')),
             howMany: 6,
@@ -1713,9 +1787,13 @@ export async function askTaller({
         // escribe nadie.
         library = compendium;
     } catch (error) {
-        console.error('[taller] no se pudieron proponer sitios', error);
+        // Con un libro no se proponen sitios a propósito: eso no es un fallo, y anotarlo en
+        // la consola como tal escondía los de verdad (K4 de wiki/LO_QUE_FALTA.md).
+        if (path !== 'libro') console.error('[taller] no se pudieron proponer sitios', error);
     }
 
+    // R2: lo que hay al abrir es «como viene».
+    baseline = baselineOf(state);
     draw();
 
     const popup = new Popup(root, POPUP_TYPE.TEXT, '', {
@@ -1724,10 +1802,11 @@ export async function askTaller({
     const finished = await popup.show();
 
     // El boton de abajo es el que crea; el del popup es cancelar. Si se cierra por ahi, no
-    // se ha hecho nada — que es lo que espera quien pulsa «Cancelar».
-    if (!finished) return null;
-    const stuck = blocksNext(state, progressOf(state).step.id);
-    if (stuck) return null;
+    // se ha hecho nada — que es lo que espera quien pulsa «Cancelar». Ojo: ese botón es el
+    // de aceptar de la ventana, así que `finished` sale verdadero también con él; por eso
+    // se mira `created`, que solo pone «Crear y jugar».
+    if (!finished || !created) return null;
+    if (firstBlock(state)) return null;
 
     const answers = toAnswers(state);
     // El mundo escrito por el modelo viaja como plantilla, que es lo que `createCampaign`

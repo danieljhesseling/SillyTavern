@@ -65,7 +65,7 @@ graph LR
 ### Nivel 3: Tableros Tácticos de Combate & Espacios Sociales (Tactical Boards)
 - Diseñados para resolver escaramuzas tácticas o interactuar en espacios interiores complejos (como tabernas o salones).
 - **Desacoplamiento Canónico (Geometría vs. Spawners)**:
-  - Un tablero **no guarda enemigos estáticos pegados de fábrica** (*ver [[ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES]] §4.1*). Guardar enemigos fijos convierte las salas en museos rígidos sin rejugabilidad.
+  - Un tablero **no guarda enemigos estáticos pegados de fábrica** (*ver *ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES* §4.1*). Guardar enemigos fijos convierte las salas en museos rígidos sin rejugabilidad.
   - El tablero almacena exclusivamente **geometría física** mediante mapas ASCII (`terrain.js`): muros (`#`), suelo transitable (`.`), mesas (`c`), coberturas (`C`), puertas (`D`) y zonas de entrada (`partyStart`).
   - Los ocupantes (enemigos hostiles o PNJ pacíficos) son **instanciados dinámicamente** según el contexto: la misión activa del gremio, contratos del tablón o tablas de encuentro por peligro de bioma (`spawnTable`). Una taberna es pacífica hasta que una misión desata una reyerta.
 - **Cuadrícula Superpuesta (Grid)**: Ajuste dinámico del tamaño de celda (ej. 50px por casilla estándar de 5 pies).
@@ -105,7 +105,7 @@ Con esta información, el modelo de lenguaje describe los ataques considerando r
 
 ## 6. Nodos de Servicios de Asentamiento (`Settlement Services`)
 
-Para evitar que las localidades sin tablero sean meros "muros de texto" donde el comercio o las curas dependan de inventarse cosas con el LLM (*[[ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES]] §4.2*), cada asentamiento define una lista explícita de servicios funcionales (`services: []`):
+Para evitar que las localidades sin tablero sean meros "muros de texto" donde el comercio o las curas dependan de inventarse cosas con el LLM (**ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES* §4.2*), cada asentamiento define una lista explícita de servicios funcionales (`services: []`):
 
 ```mermaid
 graph TD
@@ -125,10 +125,10 @@ graph TD
 ---
 
 ## 7. Enlaces Relacionados
-- [[ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES]]: Análisis de diseño sobre tableros vacíos y servicios.
+- *ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES*: Análisis de diseño sobre tableros vacíos y servicios.
 - [[Sistema-Party]]: Miembros del grupo representados como tokens en el tablero.
 - [[WorldInfo-Lorebooks]]: Definición de mapas y tableros en el esquema `dndData`.
 - [[Dynamic-Context-Manager]]: Activación de estado `combat` al desplegar el tablero.
 - [[PROPUESTA_FRONTEND_MODO_JUEGO]]: Escenarios a pantalla completa de combate y exploración (Game Shell).
 - [[ROADMAP_JUEGO_SIN_COMANDOS]]: Movimiento táctico A* y selección de objetivos point-and-click.
-- [[PROBLEMAS_TECNICOS]]: Análisis de seguridad por interpolación de nombres de tokens en `world-map-renderer.js`.
+- *PROBLEMAS_TECNICOS*: Análisis de seguridad por interpolación de nombres de tokens en `world-map-renderer.js`.

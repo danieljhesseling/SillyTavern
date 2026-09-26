@@ -29,6 +29,7 @@
  * @property {string} [slot] Una de las ranuras del motor, en minusculas.
  * @property {boolean} [consumable] Se gasta al usarse (idea 122: lo que se lanza).
  * @property {number} [uses]
+ * @property {number} [charges] R4: las cargas de una varita.
  */
 
 /** What each thing the loot tables can drop is made of. */
@@ -46,7 +47,8 @@ const CATALOGUE = {
     'Botas silenciosas': { type: 'gear', category: 'magic', subcategory: 'wondrous', weight: 0.5, slot: 'feet' },
     'Espada rúnica': { type: 'weapon', category: 'weapon', subcategory: 'martial_melee', weight: 1.5, damageDice: '1d8', damageType: 'slashing', slot: 'weapon' },
     'Anillo de resistencia': { type: 'gear', category: 'magic', subcategory: 'ring', weight: 0, slot: 'ring' },
-    'Varita de destellos': { type: 'gear', category: 'magic', subcategory: 'wand', weight: 0.5 },
+    // R4: la Varita de destellos lanza Luz severa, tres veces (`rules/magic-items.js`).
+    'Varita de destellos': { type: 'gear', category: 'magic', subcategory: 'wand', weight: 0.5, charges: 3, description: 'Lanza Luz severa. Tres cargas, y se apaga.' },
     'Armadura de escamas verdes': { type: 'armor', category: 'armor', subcategory: 'medium_armor', weight: 20, slot: 'body' },
     'Capa de sombras': { type: 'gear', category: 'magic', subcategory: 'wondrous', weight: 1 },
     'Hoja del alba': { type: 'weapon', category: 'weapon', subcategory: 'martial_melee', weight: 1.5, damageDice: '1d8', damageType: 'radiant', slot: 'weapon' },
@@ -54,6 +56,19 @@ const CATALOGUE = {
     // Idea 122: lo que se lanza en combate (`combat/throwables.js`). Siempre en la tienda.
     'Frasco de aceite': { type: 'gear', category: 'gear', subcategory: 'throwable', weight: 0.5, consumable: true, uses: 1, description: 'Se lanza: si da, 2d4 de fuego; y la casilla arde para el primero que la pise.' },
     'Red': { type: 'gear', category: 'gear', subcategory: 'throwable', weight: 1.5, consumable: true, uses: 1, description: 'Se lanza: si da, deja al enemigo sujeto dos rondas.' },
+    // R4: los pergaminos y la varita de escarcha (`rules/magic-items.js`).
+    'Pergamino de Bola de fuego': { type: 'gear', category: 'magic', subcategory: 'scroll', weight: 0.1, consumable: true, uses: 1, description: 'Se lee una vez: Bola de fuego. Quien ha estudiado puede aprenderla (/pergamino).' },
+    'Pergamino de Curar heridas': { type: 'gear', category: 'magic', subcategory: 'scroll', weight: 0.1, consumable: true, uses: 1, description: 'Se lee una vez: Curar heridas.' },
+    'Pergamino de Sueño pesado': { type: 'gear', category: 'magic', subcategory: 'scroll', weight: 0.1, consumable: true, uses: 1, description: 'Se lee una vez: Sueño pesado.' },
+    'Pergamino de Relámpago': { type: 'gear', category: 'magic', subcategory: 'scroll', weight: 0.1, consumable: true, uses: 1, description: 'Se lee una vez: Relámpago.' },
+    'Pergamino de Paso sin rastro': { type: 'gear', category: 'magic', subcategory: 'scroll', weight: 0.1, consumable: true, uses: 1, description: 'Se aprende, no se lee en combate: Paso sin rastro.' },
+    'Varita de escarcha': { type: 'gear', category: 'magic', subcategory: 'wand', weight: 0.5, charges: 3, description: 'Lanza Cono de escarcha. Tres cargas, y se apaga.' },
+    // R4 del roadmap de profundidad: lo que gastan los conjuros gordos (`rules/grimoire.js`).
+    'Ámbar': { type: 'gear', category: 'gear', subcategory: 'component', weight: 0.1, consumable: true, uses: 1, description: 'Se gasta al lanzar Relámpago.' },
+    'Mirra': { type: 'gear', category: 'gear', subcategory: 'component', weight: 0.1, consumable: true, uses: 1, description: 'Se gasta en la Oración de curación y en Volver de la orilla.' },
+    'Azufre': { type: 'gear', category: 'gear', subcategory: 'component', weight: 0.2, consumable: true, uses: 1, description: 'Se gasta en la Bola de fuego y en el Muro de fuego.' },
+    'Polvo de hueso': { type: 'gear', category: 'gear', subcategory: 'component', weight: 0.1, consumable: true, uses: 1, description: 'Se gasta al Hablar con los muertos.' },
+    'Plumas negras': { type: 'gear', category: 'gear', subcategory: 'component', weight: 0.1, consumable: true, uses: 1, description: 'Se gastan en la Invisibilidad.' },
 };
 
 /** What anything undeclared becomes: a real item, of the most ordinary kind. */

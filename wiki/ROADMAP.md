@@ -9,9 +9,9 @@ author: DanielJHesseling / Claude Opus 5
 # 🎯 Roadmap — De SillyTavern a un Juego de Rol Táctico Asequible
 
 > [!NOTE]
-> **Estado (22-09-2026)**: Las fases **A a H están todas cerradas**. Esto ya no es un plan: es el acta de lo que se construyó, y sigue valiendo por el *porqué* — sobre todo **El Principio que Ordena Todo** y **De Dónde Sale el Gasto**. El plan vivo es [[ROADMAP_MAESTRO]].
+> **Estado (22-09-2026)**: Las fases **A a H están todas cerradas**. Esto ya no es un plan: es el acta de lo que se construyó, y sigue valiendo por el *porqué* — sobre todo **El Principio que Ordena Todo** y **De Dónde Sale el Gasto**. El porqué está en [[ROADMAP_MAESTRO]]; lo último construido, en [[ROADMAP_PROFUNDIDAD]]; y lo que falta, en [[LO_QUE_FALTA]] (2026-09-26).
 
-Plan único de trabajo. Reconcilia tres fuentes: la auditoría de [[PROBLEMAS_TECNICOS]], el catálogo de [[PROPUESTAS_MEJORA]], y el diseño de juego de [[PROPUESTA_JUEGO_DND_GLOOMHAVEN_PERSONA]]. Sustituye a la versión anterior de este documento, que solo cubría higiene de ingeniería.
+Plan único de trabajo. Reconcilia tres fuentes: la auditoría de *PROBLEMAS_TECNICOS*, el catálogo de [[PROPUESTAS_MEJORA]], y el diseño de juego de *PROPUESTA_JUEGO_DND_GLOOMHAVEN_PERSONA*. Sustituye a la versión anterior de este documento, que solo cubría higiene de ingeniería.
 
 **El objetivo, en una frase**: un juego de rol táctico donde la IA escribe la historia y las relaciones, y **todo lo demás es lógica determinista**, editable por ti, que no cuesta nada ejecutar.
 
@@ -786,10 +786,10 @@ Afirmaciones de este proyecto que resultaron falsas, con lo que se hizo. Están 
 - [[POR_HACER]]: Lista viva de pendientes derivada de este plan.
 - [[ROADMAP_INGESTA_CAMPANAS_LIBROS]]: La Fase G en detalle — el contrato de datos entre tu GEM y el motor.
 - [[PROPUESTA_FRONTEND_MODO_JUEGO]]: La Fase H en detalle — las tres pantallas y por qué el director escucha al motor.
-- [[PLAN_JUEGO_TIPO_FRIENDS_AND_FABLES]]: Hacia la experiencia Friends & Fables (DM autónomo, magia, descansos y level-up, sin marketplace).
+- *PLAN_JUEGO_TIPO_FRIENDS_AND_FABLES*: Hacia la experiencia Friends & Fables (DM autónomo, magia, descansos y level-up, sin marketplace).
 - [[ROADMAP_JUEGO_SIN_COMANDOS]]: Juego 100% por clics — erradicar los comandos de barra y pasar a point-and-click táctico.
-- [[PROPUESTA_JUEGO_DND_GLOOMHAVEN_PERSONA]]: Diseño de juego del que salen las Fases B, D, E y F.
-- [[PROBLEMAS_TECNICOS]]: Auditoría de la que salen las correcciones ya aplicadas.
+- *PROPUESTA_JUEGO_DND_GLOOMHAVEN_PERSONA*: Diseño de juego del que salen las Fases B, D, E y F.
+- *PROBLEMAS_TECNICOS*: Auditoría de la que salen las correcciones ya aplicadas.
 - [[PROPUESTAS_MEJORA]]: Catálogo de 200 del que se seleccionan las `PROP-xxx` citadas; incluye el estado de cada una y el anexo con las propuestas propias (`N-01` a `N-14`).
 - [[Guia-Desarrollo-Flujo]]: La disciplina de fork que hace todo esto sostenible.
 - [[Mapa-Codigo-Archivos]]: Qué es de upstream y qué es tuyo.

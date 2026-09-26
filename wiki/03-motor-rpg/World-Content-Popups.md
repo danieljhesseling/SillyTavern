@@ -52,6 +52,10 @@ Al crear o editar una entidad, el sistema levanta un modal con campos adaptados 
 - **Objetos Mágicos**: Bonificador mágico (`+1`, `+2`, `+3`), requisito de sintonización (`Attunement`), efectos malditos y contador de cargas consumibles.
 
 ### C. Ficha de Conjuros (Spells)
+
+> [!IMPORTANT]
+> **Desde R4 (2026-09-26), esta ficha es solo lore.** Lo que se escribe aquí va al Lorebook para que el narrador lo conozca, pero **el motor no lo lanza**: los conjuros jugables viven en el grimorio, en código (`game-engine/rules/grimoire.js`, decisión DR3 de [[ROADMAP_PROFUNDIDAD]]). Una fila de datos con escuela o círculo se rechaza como habilidad.
+
 - **Escuela de Magia**: Abjuración, Conjuración, Adivinación, Encantamiento, Evocación, Ilusión, Nigromancia, Transmutación.
 - **Nivel de Conjuro**: Truco (Cantrip) o Nivel 1 al 9.
 - **Componentes**: Verbales (V), Somáticos (S), Materiales (M) y descripción de costes.

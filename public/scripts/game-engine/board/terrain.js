@@ -104,7 +104,91 @@ export const TERRAIN_TYPES = {
         movementCost: 1,
         coverBonus: 0,
     },
+    /**
+     * R3 del roadmap de profundidad (DR7: el terreno vive en el código). Agua poco honda:
+     * cuesta el doble cruzarla, y quien está dentro está mojado, que el frío aprovecha.
+     */
+    water: {
+        label: 'Shallow water',
+        blocksMovement: false,
+        blocksSight: false,
+        movementCost: 2,
+        coverBonus: 0,
+    },
+    /** Hielo: se anda por él, pero el trueno lo quiebra bajo los pies. El fuego lo funde. */
+    ice: {
+        label: 'Ice',
+        blocksMovement: false,
+        blocksSight: false,
+        movementCost: 1,
+        coverBonus: 0,
+    },
+    /** Maleza: cuesta el doble, y arde, dentro y fuera. */
+    brush: {
+        label: 'Brush',
+        blocksMovement: false,
+        blocksSight: false,
+        movementCost: 2,
+        coverBonus: 0,
+    },
+    /** R6: un barril. Cubre como unas cajas y, si le llega el fuego, revienta. */
+    barrel: {
+        label: 'Barrel',
+        blocksMovement: false,
+        blocksSight: false,
+        movementCost: 2,
+        coverBonus: 2,
+    },
+    /** R6: un cofre. No se pisa; estando al lado, se abre pulsándolo. */
+    chest: {
+        label: 'Chest',
+        blocksMovement: true,
+        blocksSight: false,
+        movementCost: Infinity,
+        coverBonus: 2,
+    },
+    /**
+     * B1 de wiki/LO_QUE_FALTA.md: en alto (una torre, unos escalones, la empalizada). Subir
+     * cuesta el doble; desde arriba se ataca con ventaja (`heights.js`).
+     */
+    high: {
+        label: 'High ground',
+        blocksMovement: false,
+        blocksSight: false,
+        movementCost: 2,
+        coverBonus: 0,
+    },
+    /** B2: una salida (la ventana, la trampilla). Quien la pisa puede irse de la pelea (`exits.js`). */
+    exit: {
+        label: 'Exit',
+        blocksMovement: false,
+        blocksSight: false,
+        movementCost: 1,
+        coverBonus: 0,
+    },
+    /** T1: una palanca en la pared. No se pisa; estando al lado, abre las puertas con llave (`interactables.js`). */
+    lever: {
+        label: 'Lever',
+        blocksMovement: true,
+        blocksSight: false,
+        movementCost: Infinity,
+        coverBonus: 0,
+    },
+    /**
+     * B3: una barricada. Corta el paso pero no la vista, cubre a quien está detrás (cuenta en
+     * la línea de tiro) y a golpes se rompe. Su vida vive en la casilla (`hp`).
+     */
+    barricade: {
+        label: 'Barricade',
+        blocksMovement: true,
+        blocksSight: false,
+        movementCost: Infinity,
+        coverBonus: 5,
+    },
 };
+
+/** B3: la vida de una barricada entera. */
+export const BARRICADE_HP = 15;
 
 /** The type assumed for any cell not present in the sparse map. */
 export const DEFAULT_TERRAIN = 'floor';
@@ -118,6 +202,7 @@ export const TERRAIN_SCHEMA_VERSION = 1;
  * @property {boolean} [open]  Doors only.
  * @property {boolean} [locked] Doors only: cerrada con llave (idea 77).
  * @property {boolean} [broken] Doors only: rota (idea 23). Se queda abierta para siempre.
+ * @property {number} [hp] Barricades only: lo que le queda (B3).
  */
 
 /**
@@ -185,6 +270,8 @@ export function normalizeTerrain(raw) {
             // Y una rota solo puede estar abierta (idea 23).
             if (cell.open && value && typeof value === 'object' && value.broken) cell.broken = true;
         }
+        // B3: lo que le queda a una barricada golpeada.
+        if (type === 'barricade' && value && typeof value === 'object' && Number(value.hp) > 0) cell.hp = Math.trunc(Number(value.hp));
         cells[key] = cell;
     }
 
@@ -229,7 +316,7 @@ export function getCellDefinition(terrain, x, y) {
  * @param {number} x
  * @param {number} y
  * @param {string} type
- * @param {{ open?: boolean, locked?: boolean, broken?: boolean }} [options]
+ * @param {{ open?: boolean, locked?: boolean, broken?: boolean, hp?: number }} [options]
  * @returns {BoardTerrain}
  */
 export function setCell(terrain, x, y, type, options = {}) {
@@ -249,6 +336,8 @@ export function setCell(terrain, x, y, type, options = {}) {
         if (!cell.open && options.locked) cell.locked = true;
         if (cell.open && options.broken) cell.broken = true;
     }
+    // B3: la vida de una barricada, si se dice.
+    if (type === 'barricade' && Number(options.hp) > 0) cell.hp = Math.trunc(Number(options.hp));
     return { version: TERRAIN_SCHEMA_VERSION, cells: { ...base.cells, [key]: cell } };
 }
 
@@ -343,6 +432,19 @@ export const ASCII_TERRAIN = {
     'v': { type: 'chasm' },
     // Idea 75: la escalera al nivel siguiente.
     '>': { type: 'stairs' },
+    // R3: el agua, el hielo y la maleza.
+    'w': { type: 'water' },
+    'i': { type: 'ice' },
+    'b': { type: 'brush' },
+    // R6: los barriles y los cofres.
+    'T': { type: 'barrel' },
+    'k': { type: 'chest' },
+    // B1 y B2: lo alto y las salidas.
+    '^': { type: 'high' },
+    'x': { type: 'exit' },
+    // T1 y B3: la palanca y la barricada.
+    'P': { type: 'lever' },
+    '=': { type: 'barricade' },
 };
 
 /**
@@ -387,6 +489,14 @@ const CELL_WORDS = {
     cover_three_quarters: 'Tres cuartos de cobertura: +5 a la CA',
     chasm: 'Precipicio: no se pasa, y a quien empujan dentro, cae',
     stairs: 'Escalera: baja al nivel siguiente',
+    water: 'Agua: cada casilla cuesta el doble, y quien está dentro se moja (el frío lo hiela)',
+    ice: 'Hielo: se anda, pero el trueno lo quiebra y el fuego lo funde',
+    brush: 'Maleza: cada casilla cuesta el doble, y arde',
+    barrel: 'Barril: cubre, y si le llega el fuego, revienta',
+    chest: 'Cofre: estando al lado, se abre pulsándolo',
+    high: 'En alto: subir cuesta el doble, y desde aquí se ataca con ventaja',
+    exit: 'Salida: quien la pisa puede irse de la pelea',
+    lever: 'Palanca: estando al lado, se tira de ella y se abren las puertas con llave',
 };
 
 /**
@@ -404,7 +514,9 @@ export function describeCell(terrain, x, y) {
             : cell.open ? 'Puerta abierta'
                 : cell.locked ? 'Puerta cerrada con llave: con una llave, con maña o a golpes'
                     : 'Puerta cerrada: se abre con una ficha o pulsándola')
-        : (CELL_WORDS[/** @type {keyof typeof CELL_WORDS} */ (cell.type)] ?? 'Suelo');
+        : cell.type === 'barricade'
+            ? `Barricada: corta el paso, cubre, y a golpes se rompe (${Number(/** @type {any} */ (cell).hp) > 0 ? Math.trunc(Number(/** @type {any} */ (cell).hp)) : BARRICADE_HP} de vida)`
+            : (CELL_WORDS[/** @type {keyof typeof CELL_WORDS} */ (cell.type)] ?? 'Suelo');
     return `Casilla (${Math.trunc(x) + 1}, ${Math.trunc(y) + 1}) · ${said}`;
 }
 

@@ -208,4 +208,4 @@ Como se detalla en `public/scripts/party.js`:
 - [[Backend-Express]]: Controladores de guardado y endpoints `/api/chats/*`.
 - [[Sistema-Party]]: Estructura en memoria del array `partyMembers`.
 - [[Campanas-Mapas-Tableros]]: Vinculación de mapas con el archivo de mundo.
-- [[PROBLEMAS_TECNICOS]]: Análisis de escrituras concurrentes y atomicidad en disco.
+- *PROBLEMAS_TECNICOS*: Análisis de escrituras concurrentes y atomicidad en disco.

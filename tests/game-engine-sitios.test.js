@@ -43,7 +43,7 @@ describe('la batería de sitios', () => {
             expect(sala.rows.length).toBeGreaterThan(2);
             const width = sala.rows[0].length;
             for (const row of sala.rows) expect(row.length).toBe(width);
-            for (const row of sala.rows) expect(row).toMatch(/^[#.~cCD ]+$/);
+            for (const row of sala.rows) expect(row).toMatch(/^[#.~cCDwibTkx^v=P ]+$/);
         }
     });
 

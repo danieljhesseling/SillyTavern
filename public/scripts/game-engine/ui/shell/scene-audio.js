@@ -24,6 +24,8 @@ export const AUDIO_SCENES = [
     { id: 'title', label: 'Menú principal' },
     { id: 'dialogue', label: 'Conversación' },
     { id: 'exploration', label: 'Viaje y mapa' },
+    // Idea 187: en un sitio sin tablero —un pueblo— puede sonar otra cosa. Sin pista, la del viaje.
+    { id: 'town', label: 'Pueblo (si no, la del viaje)' },
     { id: 'combat', label: 'Combate' },
 ];
 
@@ -72,6 +74,8 @@ export function normalizeAudioSettings(raw) {
 export function chooseTrack(scene, settings) {
     const config = normalizeAudioSettings(settings);
     if (!config.enabled) return null;
+    // Idea 187: el pueblo es una forma de estar en el mapa; sin pista propia, suena la del viaje.
+    if (String(scene) === 'town') return config.tracks.town || config.tracks.exploration || null;
     return config.tracks[String(scene)] || null;
 }
 

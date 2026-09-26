@@ -29,6 +29,8 @@ const BURNS = /** @type {Record<string, string>} */ ({
     cover_half: 'Arden las cajas',
     door: 'Arde la puerta',
     difficult: 'Arde la maleza',
+    brush: 'Arde la maleza',
+    barrel: 'Revienta un barril',
 });
 
 /** @param {any} hazard @returns {boolean} */
@@ -45,7 +47,8 @@ function isFire(hazard) {
  * @returns {boolean}
  */
 export function flammable(cell, outdoors) {
-    if (cell.type === 'cover_half') return true;
+    // R3: la maleza de verdad arde siempre; la dibujada como terreno difícil, a cielo abierto.
+    if (cell.type === 'cover_half' || cell.type === 'brush' || cell.type === 'barrel') return true;
     if (cell.type === 'door') return !cell.broken;
     return cell.type === 'difficult' && outdoors;
 }

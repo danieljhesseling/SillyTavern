@@ -24,7 +24,7 @@ import { uniqueWorldName } from '../campaign/campaign-worlds.js';
 import { ensureSeed, seedOf, derive } from '../campaign/seed.js';
 import { rollFactions } from '../campaign/factions.js';
 import { withNeighbours } from '../world/neighbours.js';
-import { getCompendium } from '../compendio/browser.js';
+import { freshCompendium } from '../compendio/browser.js';
 import { createSeededRandom } from '../combat/seeded-random.js';
 import { validateNarrator, VERBOSITY, DEFAULT_VERBOSITY } from '../campaign/narrator.js';
 import { MORTALITY, SAVES, DEFAULT_SURVIVAL } from '../rules/mortality.js';
@@ -843,7 +843,9 @@ function applyChosenLocations(metadata, chosen) {
  */
 async function populateWorld(metadata) {
     try {
-        const { compendium } = await getCompendium();
+        // Recién abierta: el mismo código de mundo da el mismo mundo, se haya generado lo que
+        // se haya generado antes en esta pestaña.
+        const compendium = await freshCompendium();
         const seed = seedOf(metadata);
 
         // Primero los sitios, porque las facciones quieren **sitios**: repartirlas antes

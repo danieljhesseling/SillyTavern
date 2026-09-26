@@ -12,7 +12,7 @@
  *
  * Dibuja y ya. Quien decide que se puede y que no es `campaign/taller.js`.
  *
- * Ver wiki/ROADMAP_CREACION.md.
+ * Ver wiki/archivo/ROADMAP_CREACION.md.
  */
 
 /**

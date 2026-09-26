@@ -2218,3 +2218,238 @@ input[type="file"].tl-file {
     padding: 2px 8px;
     font-size: 0.85em;
 }
+
+/* U0 del pegamento: tu sesión. */
+.sl-root h3 { margin: 0 0 8px; }
+.sl-line { margin: 4px 0; }
+.sl-hint { margin-top: 12px; opacity: 0.75; font-size: 0.92em; }
+
+/* U2 del pegamento: lo que el juego da por cierto. */
+.sl-state { margin-top: 10px; }
+.sp-intro { opacity: 0.8; margin: 0 0 10px; }
+.sp-section { margin: 6px 0; }
+.sp-section summary { cursor: pointer; font-weight: bold; padding: 4px 0; }
+.sp-table { width: 100%; border-collapse: collapse; font-size: 0.92em; }
+.sp-table td { padding: 2px 6px; border-bottom: 1px solid var(--SmartThemeBorderColor, #444); }
+.sp-table td:last-child { text-align: right; white-space: nowrap; opacity: 0.85; }
+
+/* U4 del pegamento: la crónica con filtro, y el chat plegado. */
+.jr-filters { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 6px; }
+.jr-filter { font-size: 0.85em; padding: 2px 8px; margin: 0; opacity: 0.7; }
+.jr-filter.jr-filter-on { opacity: 1; font-weight: bold; }
+#chat .mes.gm-folded { display: none; }
+#chat .gm-fold { display: block; margin: 2px auto; font-size: 0.82em; padding: 2px 10px; opacity: 0.75; }
+
+/* U5 del pegamento: la mesa de la semana. */
+.wt-root h3 { margin: 0 0 6px; }
+.wt-bill { margin: 0 0 8px; }
+.wt-bill.wt-short { color: var(--warning, #e0a040); font-weight: bold; }
+.wt-title { margin: 12px 0 4px; font-weight: bold; font-size: 1.05em; border-bottom: 1px solid var(--SmartThemeBorderColor, #444); }
+.wt-sub { margin: 6px 0 2px; opacity: 0.8; font-size: 0.92em; }
+.wt-line { margin: 2px 0 2px 8px; }
+.wt-affair { margin: 6px 0; padding: 6px 8px; border: 1px solid var(--SmartThemeBorderColor, #444); border-radius: 8px; }
+.wt-affair-title { font-weight: bold; }
+.wt-affair-detail, .wt-affair-when { font-size: 0.9em; opacity: 0.85; }
+.wt-ignored { font-size: 0.9em; margin-top: 2px; font-style: italic; }
+
+/* U6 del pegamento: el duelo de palabras. */
+.wd-root h3 { margin: 0 0 4px; }
+.wd-goal, .wd-stance { margin: 2px 0; opacity: 0.85; }
+.wd-meters { margin: 8px 0; font-weight: bold; }
+.wd-log { margin: 2px 0; font-size: 0.92em; }
+.wd-cards { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.wd-card { margin: 0; }
+.wd-outcome { margin-top: 10px; font-weight: bold; font-size: 1.1em; }
+
+/* U8 del pegamento: los despachos. */
+.wt-dispatch { margin-top: 6px; font-size: 0.9em; }
+.wt-sent { margin-top: 6px; font-style: italic; opacity: 0.8; }
+.dp-member { display: block; margin: 4px 0; }
+.dp-odds { margin-top: 8px; font-weight: bold; }
+
+/* U8 del pegamento: el caso. */
+.cb-where { opacity: 0.8; margin: 0 0 6px; }
+.cb-section { margin: 10px 0 4px; font-weight: bold; border-bottom: 1px solid var(--SmartThemeBorderColor, #444); }
+.cb-fact, .cb-lead { margin: 2px 0 2px 8px; }
+.cb-lead { opacity: 0.75; font-size: 0.92em; }
+.cb-suspect { margin: 6px 0 0; font-weight: bold; }
+.cb-suspect-fact { margin-left: 10px; font-size: 0.92em; }
+.cb-accuse { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 6px; }
+.cb-verdict { font-size: 1.1em; font-weight: bold; padding: 8px 0; }
+.wt-case { margin-top: 6px; font-size: 0.9em; }
+/* Ideas 69 y 70: el mapa en texto. */
+.tm-intro { opacity: 0.8; margin: 0 0 8px; }
+.tm-place { margin: 6px 0; padding: 6px 8px; border: 1px solid var(--SmartThemeBorderColor, #444); border-radius: 8px; }
+.tm-place[data-state="sin-visitar"] { opacity: 0.55; }
+.tm-place[data-state="aqui"] { border-color: var(--SmartThemeQuoteColor, #c9a227); }
+.tm-name { font-weight: bold; }
+.tm-route { font-size: 0.9em; margin-left: 8px; }
+.tm-route.tm-unknown { font-style: italic; opacity: 0.7; }
+.tm-note { margin-top: 4px; width: 100%; }
+
+
+/* R2 del roadmap de profundidad: el taller en pestañas. */
+.tl-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 6px;
+}
+
+.tl-tab {
+    padding: 3px 9px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 6px;
+    background: var(--black30a, rgba(0, 0, 0, 0.3));
+    color: inherit;
+    font-size: 0.8rem;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.tl-tab:hover {
+    border-color: rgba(228, 170, 70, 0.6);
+}
+
+.tl-tab-on {
+    border-color: rgba(228, 170, 70, 0.9);
+    background: rgba(228, 170, 70, 0.18);
+    font-weight: bold;
+}
+
+.tl-tab-mark {
+    display: inline-block;
+    width: 1em;
+    text-align: center;
+    opacity: 0.8;
+}
+
+.tl-tab-changed .tl-tab-mark {
+    color: rgba(150, 210, 120, 0.95);
+}
+
+.tl-tab-warn {
+    border-color: rgba(228, 130, 110, 0.8);
+}
+
+.tl-tab-warn .tl-tab-mark {
+    color: rgba(228, 130, 110, 0.95);
+}
+
+.tl-tabs-legend {
+    opacity: 0.6;
+}
+
+.tl-start {
+    font-weight: bold;
+}
+
+/* R1: la partida rápida. */
+.tl-quick-title {
+    margin: 14px 0 6px;
+    font-weight: bold;
+}
+
+.tl-quick-worlds .tl-card-note {
+    font-size: 0.8rem;
+    opacity: 0.75;
+}
+
+.tl-more {
+    margin-top: 12px;
+}
+
+/* R1: el selector de modos (taller, partida rápida y /modo). */
+.md-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 8px;
+}
+
+.md-card {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 8px;
+    background: var(--black30a, rgba(0, 0, 0, 0.3));
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.md-card:hover {
+    border-color: rgba(228, 170, 70, 0.6);
+}
+
+.md-card.md-picked {
+    border-color: rgba(228, 170, 70, 0.85);
+    background: rgba(228, 170, 70, 0.16);
+}
+
+.md-card-title {
+    font-weight: bold;
+}
+
+.md-card-note {
+    font-size: 0.8rem;
+    opacity: 0.75;
+}
+
+.md-letters {
+    display: none;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 10px;
+}
+
+.md-letters.md-open {
+    display: flex;
+}
+
+.md-letter {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.md-needs {
+    opacity: 0.7;
+    font-style: italic;
+}
+
+.md-said {
+    margin-top: 8px;
+    font-size: 0.85rem;
+    opacity: 0.8;
+}
+
+/* R1: los héroes hechos, al entrar. Con tres textos largos, los botones del pie se
+   aplastaban hasta no poder pulsarse (77 px de ancho): se apilan, uno por línea. */
+.popup-controls:has(.vt-premade) {
+    flex-direction: column;
+    align-items: stretch;
+    align-self: stretch;
+    gap: 6px;
+}
+
+.popup-controls .vt-premade,
+.popup-controls .vt-new,
+.popup-controls .vt-veteran {
+    width: 100%;
+    white-space: normal;
+    text-align: left;
+}
+
+/* R1: los héroes hechos, al entrar. */
+.vt-premade-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 6px 0 10px;
+    text-align: left;
+    font-size: 0.85rem;
+}

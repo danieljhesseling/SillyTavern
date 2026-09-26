@@ -65,7 +65,7 @@ sequenceDiagram
 
 ## 3. Vectores Críticos de Riesgo y Vulnerabilidades
 
-A pesar de las capas de defensa, existen aspectos críticos que requieren atención inmediata (ver análisis completo en [[PROBLEMAS_TECNICOS]]):
+A pesar de las capas de defensa, existen aspectos críticos que requieren atención inmediata (ver análisis completo en *PROBLEMAS_TECNICOS*):
 
 ### A. Deshabilitación de Content Security Policy (CSP)
 En `src/server-main.js`:
@@ -94,5 +94,5 @@ app.use(helmet({
 ## 4. Enlaces Relacionados
 - [[Backend-Express]]: Middleware de seguridad y ciclo de peticiones.
 - [[Almacenamiento-Persistencia]]: Estructura de carpetas seguras por usuario.
-- [[PROBLEMAS_TECNICOS]]: Diagnóstico en profundidad de las fallas de seguridad identificadas.
+- *PROBLEMAS_TECNICOS*: Diagnóstico en profundidad de las fallas de seguridad identificadas.
 - [[PROPUESTAS_MEJORA]]: Propuestas para cifrado en reposo y CSP estricta.

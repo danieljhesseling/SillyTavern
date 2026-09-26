@@ -19,7 +19,7 @@
  * - `importPack` does the writing, with its dependencies injected, and calls
  *   `resolveNames` once the ids are known.
  *
- * See wiki/ROADMAP_INGESTA_CAMPANAS_LIBROS.md (G3) · wiki/POR_HACER.md.
+ * See wiki/archivo/ROADMAP_INGESTA_CAMPANAS_LIBROS.md (G3) · wiki/POR_HACER.md.
  */
 
 import { terrainFromAsciiMap } from '../board/terrain.js';
@@ -30,6 +30,7 @@ const DEFAULT_LOCATION_GRID = 50;
 import { deriveRooms } from './campaign-map.js';
 import { OBJECTIVE_FIELDS } from './campaign-pack-schema.js';
 import { normalizePack } from './campaign-pack.js';
+import { spellById, magicInData } from '../rules/grimoire.js';
 
 /**
  * @typedef {Object} EntrySpec
@@ -56,6 +57,23 @@ import { normalizePack } from './campaign-pack.js';
  */
 function text(value) {
     return String(value ?? '').trim();
+}
+
+/**
+ * R4 del roadmap de profundidad: las habilidades que trae un libro, sin magia inventada. Un
+ * conjuro del grimorio, por su id, entra (y ajusta sus números); uno nuevo, no: la magia solo
+ * existe en el código. Lo que se queda fuera se dice en la consola.
+ *
+ * @param {any} pack
+ * @returns {any[]}
+ */
+function worldAbilities(pack) {
+    const rows = Array.isArray(pack?.abilities) ? pack.abilities : [];
+    const kept = rows.filter((/** @type {any} */ row) => spellById(text(row?.id)) || !magicInData(row));
+    for (const row of rows.filter((/** @type {any} */ r) => !kept.includes(r))) {
+        console.warn('[importer] magia que no está en el grimorio, fuera:', magicInData(row));
+    }
+    return kept;
 }
 
 /**
@@ -120,6 +138,8 @@ export function buildPackEntries(pack) {
                 confidant: true,
                 charClass: text(person.className),
                 motive: text(person.motive) === 'coin' ? 'coin' : 'bond',
+                // R4/R10: los conjuros que sabe, por su id del grimorio. Lo que no existe no entra.
+                ...(Array.isArray(person.spells) ? { abilities: person.spells.map(text).filter((/** @type {string} */ id) => spellById(id)) } : {}),
                 // Las escenas de vinculo, por rango: las cuenta el narrador al llegar a
                 // cada uno. Escritas, no improvisadas.
                 bondScenes: (Array.isArray(person.scenes) ? person.scenes : [])
@@ -197,6 +217,8 @@ export function buildPackEntries(pack) {
                 boss: Boolean(enemy.boss),
                 // Idea 97: en qué estaciones anda. Sin nada, todo el año.
                 ...(Array.isArray(enemy.seasons) && enemy.seasons.length > 0 ? { seasons: enemy.seasons.map(text).filter(Boolean) } : {}),
+                // T6: si se doma, y en qué.
+                ...(enemy.domable !== undefined ? { domable: text(enemy.domable) } : {}),
             },
         });
     }
@@ -322,6 +344,8 @@ export function buildImportPlan(raw, options = {}) {
                     ...(Array.isArray(route.seasons) && route.seasons.length > 0 ? { seasons: route.seasons.map(text).filter(Boolean) } : {}),
                     // Idea 130: por mar.
                     ...(route.sea ? { sea: true } : {}),
+                    // U7 del pegamento: se abre al cumplirse ese hito (`cerrado_hasta`).
+                    ...(text(route.closedUntil) ? { closedUntil: text(route.closedUntil) } : {}),
                 })),
             boards: [],
         });
@@ -440,6 +464,8 @@ export function buildImportPlan(raw, options = {}) {
                     enemies: (Array.isArray(f.enemies) ? f.enemies : []).map(text).filter(Boolean),
                     note: text(f.onSuccess) || text(f.goals),
                     reputation: Math.round(Number(f.reputation) || 0),
+                    // T4: cómo ve la magia.
+                    ...(text(f.magia) ? { magia: text(f.magia) } : {}),
                     goal: {
                         kind: text(f.goal?.kind),
                         target: text(f.goal?.target),
@@ -456,7 +482,10 @@ export function buildImportPlan(raw, options = {}) {
                 .map((/** @type {any} */ c) => ({ ...c, boardName: c.boardId ? boardNameOf(pack, text(c.boardId)) : '' })),
             // Las habilidades que el mundo trae de mas: van al paquete de reglas, que es de
             // donde lee el catalogo el combate.
-            ...((pack.abilities ?? []).length > 0 ? { rulesetPack: { id: 'campaign', name: text(pack.world.name), abilities: pack.abilities } } : {}),
+            // R1/R10: los héroes hechos del libro, para entrar sin crear a nadie.
+            ...(Array.isArray(pack.heroes) && pack.heroes.length > 0 ? { heroes: pack.heroes.slice(0, 3) } : {}),
+            // R4: un conjuro del grimorio (por su id) ajusta sus números; uno inventado no entra.
+            ...(worldAbilities(pack).length > 0 ? { rulesetPack: { id: 'campaign', name: text(pack.world.name), abilities: worldAbilities(pack) } } : {}),
             boards: [],
             packVersion: pack.version,
             // El catalogo del mundo: los objetos que existen antes de que nadie los lleve

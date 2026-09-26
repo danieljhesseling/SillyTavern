@@ -9,7 +9,7 @@
  * It does not carry the line that was said. The chat is right below the portrait and
  * already shows it; printing it twice would be two places to keep in step.
  *
- * See wiki/PROPUESTA_FRONTEND_MODO_JUEGO.md, H2 · wiki/ROADMAP.md, Fase H.
+ * See wiki/archivo/PROPUESTA_FRONTEND_MODO_JUEGO.md, H2 · wiki/ROADMAP.md, Fase H.
  */
 
 import { buildPartyStrip } from './party-strip.js';

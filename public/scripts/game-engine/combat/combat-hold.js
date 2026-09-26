@@ -15,7 +15,7 @@
  * Nunca impide **abandonar**: salir de un combate es una decisión del jugador y tiene su
  * propio botón. Lo que se frena es irse sin decidirlo.
  *
- * Puro. Ver wiki/POR_HACER.md · wiki/ROADMAP_JUEGO_SIN_COMANDOS.md.
+ * Puro. Ver wiki/POR_HACER.md · wiki/archivo/ROADMAP_JUEGO_SIN_COMANDOS.md.
  */
 
 /**
