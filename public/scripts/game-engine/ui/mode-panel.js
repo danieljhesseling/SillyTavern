@@ -1,8 +1,8 @@
 /**
  * Elegir el modo: tres con nombre y las seis letras sueltas (R1 del roadmap de profundidad).
  *
- * El mismo trozo sirve en tres sitios: la partida rápida, la pestaña de jugabilidad del
- * taller y la pausa, para cambiarlo a mitad de partida (DR2). Por eso se construye aparte y
+ * El mismo trozo sirve en dos sitios: la pestaña de jugabilidad del taller y la pausa, para
+ * cambiarlo a mitad de partida (DR2). Por eso se construye aparte y
  * cada sitio decide qué hace con lo elegido.
  *
  * Lo que se elige son los interruptores de siempre (`survival`); el modo se lee de ellos.

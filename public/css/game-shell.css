@@ -1,3 +1,20 @@
+/* ================================================================
+   La paleta del juego (Gem director de UX, 2026-09-27). Los nombres son los de sus mockups,
+   para que lo que proponga encaje sin traducir. Cambiar un color es cambiarlo aquí.
+   ================================================================ */
+:root {
+    --gs-accent-gold: #e2c27a;
+    --gs-accent-gold-hover: rgba(226, 194, 122, 0.15);
+    --gs-gold-line: rgba(214, 180, 106, 0.4);
+    --gs-danger-red: #a5534f;
+    --gs-danger-soft: #d08a86;
+    --gs-danger-bg: rgba(69, 10, 10, 0.6);
+    --gs-success-green: #6f9e5d;
+    --gs-info-blue: #6a8caf;
+    --gs-bg-dark: #12100e;
+    --gs-bg-panel: rgba(24, 20, 16, 0.95);
+}
+
 /*
  * El Modo Juego: la capa a pantalla completa.
  *
@@ -17,8 +34,27 @@ body.game-shell-on:not(.game-shell-paused) #top-settings-holder {
     display: none !important;
 }
 
+/* Los avisos flotantes, por debajo de la cabecera del juego. SillyTavern los baja el alto de su
+   barra de arriba, que aquí está oculta; con la cabecera en dos filas caían encima de la
+   segunda y tapaban el Diario unos segundos tras cada aviso. En pausa, con la barra de vuelta,
+   siguen como siempre. */
+body.game-shell-on:not(.game-shell-paused) > #toast-container {
+    margin-top: 96px;
+}
+
 body.game-shell-on {
     overflow: hidden;
+    /* La partida con la misma paleta que el título y el taller: dentro del juego, el gris del
+       tema de SillyTavern pasa a la taberna a oscuras (Daniel, 2026-09-27). Son las variables
+       del tema, redefinidas solo mientras el Modo Juego está encendido: el chat, los paneles,
+       los botones y las ventanas del juego (diario, mesa, pausa) las heredan, y al apagarlo
+       el tema vuelve tal cual. Los bordes y el texto no se tocan: son los del taller. */
+    --SmartThemeBlurTintColor: rgba(24, 20, 16, 0.92);
+    --SmartThemeChatTintColor: rgba(18, 16, 14, 0.55);
+    --SmartThemeBackgroundColor: rgba(24, 20, 16, 0.6);
+    --SmartThemeBotMesBlurTintColor: rgba(46, 36, 26, 0.35);
+    --SmartThemeUserMesBlurTintColor: rgba(0, 0, 0, 0.3);
+    --greyCAIbg: var(--gs-bg-dark);
 }
 
 .gs-root {
@@ -26,27 +62,52 @@ body.game-shell-on {
     inset: 0;
     z-index: 3000;
     display: grid;
+    /* La misma luz cálida del título, desde arriba. */
+    background: radial-gradient(ellipse at 50% -10%, rgba(58, 44, 28, 0.45) 0%, rgba(18, 16, 14, 0) 55%), var(--gs-bg-dark);
+    /* La columna no crece más que la pantalla: con los botones de la cabecera en una sola
+       fila, su ancho mínimo (casi 2000 px) ensanchaba el juego entero y el chat se salía
+       por la derecha. */
+    grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto 1fr auto;
-    background: var(--greyCAIbg, #1b1b1f);
     color: var(--SmartThemeBodyColor, #ddd);
     font-size: 0.95em;
 }
 
 /* ---------------------------------------------------------------- cabecera */
 
+/* La cabecera, en dos filas: arriba lo que tienes entre manos, las escenas y cerrar; abajo
+   el reloj a la izquierda y los botones (diario, mesa, mapa…) a la derecha. El salto lo
+   fuerza el `::after`, que ocupa una fila entera de alto cero. */
 .gs-head {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 12px;
-    padding: 6px 12px;
-    background: rgba(0, 0, 0, 0.35);
-    border-bottom: 1px solid var(--SmartThemeBorderColor, #444);
+    gap: 4px 14px;
+    padding: 8px 16px;
+    background: rgba(0, 0, 0, 0.5);
+    border-bottom: 1px solid var(--gs-gold-line);
 }
 
+.gs-head::after {
+    content: '';
+    order: 4;
+    flex-basis: 100%;
+    height: 0;
+}
+
+/* La fecha sobraba: la dice el reloj, justo debajo. Queda solo la ronda de un combate, que no
+   la dice nadie más. */
 .gs-head-state {
+    display: none;
+    order: 0;
     font-weight: bold;
     letter-spacing: 0.04em;
-    min-width: 8em;
+    white-space: nowrap;
+}
+
+.gs-head-state.gs-head-round {
+    display: block;
+    color: var(--gs-accent-gold);
 }
 
 /* ---- Las fichas de accion (K4a) ----
@@ -79,21 +140,38 @@ body.game-shell-on {
     display: none;
 }
 
+/* Las fichas de acción, con la paleta del juego (Gem director de UX, 2026-09-27): oscuras,
+   y en dorado al pasar. */
 .gs-chip-action {
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 4px 10px;
+    gap: 8px;
+    padding: 6px 14px;
     border: 1px solid var(--SmartThemeBorderColor, #444);
-    border-radius: 14px;
-    background: rgba(255, 255, 255, 0.06);
+    border-radius: 20px;
+    background: rgba(0, 0, 0, 0.4);
     color: var(--SmartThemeBodyColor, #ddd);
-    font-size: 0.82em;
+    font: inherit;
+    font-size: 0.85em;
     cursor: pointer;
+    transition: border-color 0.15s, background 0.15s, color 0.15s;
 }
 
-.gs-chip-action:hover {
-    background: rgba(255, 255, 255, 0.14);
+.gs-chip-action > i {
+    opacity: 0.7;
+}
+
+.gs-chip-action:hover,
+.gs-chip-action:focus-visible {
+    outline: none;
+    border-color: var(--gs-accent-gold);
+    background: rgba(226, 194, 122, 0.1);
+    color: var(--gs-accent-gold);
+}
+
+.gs-chip-action:hover > i,
+.gs-chip-action:focus-visible > i {
+    opacity: 1;
 }
 
 .gs-chip-sabor {
@@ -123,18 +201,23 @@ body.game-shell-on {
 .gs-clock-btn {
     display: flex;
     align-items: center;
-    gap: 5px;
-    padding: 3px 9px;
+    gap: 6px;
+    padding: 4px 10px;
     border: 1px solid var(--SmartThemeBorderColor, #444);
     border-radius: 6px;
     background: rgba(255, 255, 255, 0.05);
     color: var(--SmartThemeBodyColor, #ddd);
     font-size: 0.8em;
     cursor: pointer;
+    transition: border-color 0.15s, background 0.15s, color 0.15s;
 }
 
-.gs-clock-btn:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.12);
+.gs-clock-btn:hover:not(:disabled),
+.gs-clock-btn:focus-visible {
+    outline: none;
+    border-color: var(--gs-accent-gold);
+    background: rgba(226, 194, 122, 0.1);
+    color: var(--gs-accent-gold);
 }
 
 .gs-clock-btn:disabled {
@@ -153,8 +236,32 @@ body.game-shell-on {
 .gs-scenes {
     display: flex;
     gap: 6px;
-    flex: 1;
+    flex: 0 0 auto;
     justify-content: center;
+    order: 2;
+    /* A la derecha también cuando aún no hay misión que ocupe la fila. */
+    margin-left: auto;
+}
+
+.gs-head > .gs-close {
+    order: 3;
+}
+
+.gs-head > .gs-clock {
+    order: 5;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.gs-head > .gs-tools {
+    display: flex;
+    order: 6;
+    flex: 0 0 auto;
+    margin-left: auto;
+}
+
+.gs-tools:empty {
+    display: none;
 }
 
 .gs-scene-btn {
@@ -166,12 +273,26 @@ body.game-shell-on {
     border-radius: 6px;
     background: transparent;
     color: inherit;
+    opacity: 0.8;
     cursor: pointer;
+    transition: border-color 0.15s, background 0.15s, color 0.15s, opacity 0.15s;
 }
 
+.gs-scene-btn:hover:not(:disabled),
+.gs-scene-btn:focus-visible {
+    outline: none;
+    border-color: var(--gs-accent-gold);
+    color: var(--gs-accent-gold);
+    opacity: 1;
+}
+
+/* La escena en la que estás, en dorado, como la pestaña abierta del taller. */
 .gs-scene-btn.active {
-    background: var(--SmartThemeQuoteColor, #6a8caf);
-    color: #fff;
+    border-color: var(--gs-accent-gold);
+    background: var(--gs-accent-gold-hover);
+    color: var(--gs-accent-gold);
+    font-weight: bold;
+    opacity: 1;
 }
 
 .gs-scene-btn:disabled {
@@ -196,7 +317,10 @@ body.game-shell-on {
     opacity: 0.7;
 }
 
-.gs-close:hover {
+.gs-close:hover,
+.gs-close:focus-visible {
+    outline: none;
+    color: var(--gs-danger-soft);
     opacity: 1;
 }
 
@@ -234,33 +358,57 @@ body.game-shell-on {
    No se mueve ni se duplica nada: el panel ya esta adoptado en su seccion y lo unico que
    cambia es que deja de esconderse. Mover el chat de sitio es la forma mas rapida de
    perderle el desplazamiento y el foco, y eso ya estaba aprendido. */
+/* El chat manda: el tablero es el acompañante, la columna estrecha de la izquierda (Gem
+   director de UX, 2026-09-27; antes el tablero se llevaba el ancho y el chat, lo que
+   sobraba). */
 .gs-root[data-scene="dialogue"] .gs-stage {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(280px, 38%);
+    grid-template-columns: minmax(300px, 36%) minmax(0, 1fr);
     gap: 12px;
     align-items: stretch;
 }
 
 .gs-root[data-scene="dialogue"] .gs-scene-map {
-    display: block;
+    display: flex;
+    flex-direction: column;
     min-height: 0;
     overflow: hidden;
-    border-left: 1px solid var(--SmartThemeBorderColor, #444);
-    padding-left: 12px;
+    border-right: 1px solid var(--SmartThemeBorderColor, #444);
+    padding-right: 12px;
+}
+
+.gs-root[data-scene="dialogue"] .gs-scene-map > .gs-map-slot {
+    flex: 1 1 auto;
+}
+
+/* De acompañante, el tablero va solo: sin la columna de la derecha del combate, que aquí
+   está vacía (su ficha y el registro son de la escena de combate). */
+.gs-root[data-scene="dialogue"] .gs-adopted .wm-location-content {
+    grid-template-columns: minmax(0, 1fr);
 }
 
 .gs-root[data-scene="dialogue"] .gs-scene-dialogue {
     min-height: 0;
 }
 
-/* Sin sitio abierto no hay nada que ensenar, y media pantalla en blanco es peor que una
-   pantalla entera de chat: la columna desaparece y el chat recupera el ancho. */
-.gs-root[data-scene="dialogue"] .gs-stage:not(:has([data-map-root])) {
+/* Sin nada dibujado no hay nada que ensenar, y media pantalla en blanco es peor que una
+   pantalla entera de chat: la columna desaparece y el chat recupera el ancho. «Dibujado» es
+   la cuadricula o el mapa (`.wm-container`): el panel del sitio lleva `[data-map-root]`
+   siempre, y con eso solo la columna salia con el nombre del sitio y nada mas debajo (Gem
+   director de UX, 2026-09-27). */
+.gs-root[data-scene="dialogue"] .gs-stage:not(:has(.wm-container)) {
     display: block;
 }
 
-.gs-root[data-scene="dialogue"] .gs-scene-map:not(:has([data-map-root])) {
+.gs-root[data-scene="dialogue"] .gs-scene-map:not(:has(.wm-container)) {
     display: none;
+}
+
+/* Y el chat, solo, en una columna de lectura en el centro: a lo ancho de una pantalla
+   grande, una línea de narración no se sigue con la vista. */
+.gs-root[data-scene="dialogue"] .gs-stage:not(:has(.wm-container)) > .gs-scene-dialogue {
+    max-width: 1000px;
+    margin: 0 auto;
 }
 
 /* De acompanante: el tablero se mira, no se juega desde aqui. Los botones de la barra
@@ -270,6 +418,7 @@ body.game-shell-on {
 .gs-root[data-scene="dialogue"] .gs-scene-map .wm-terrain-palette,
 .gs-root[data-scene="dialogue"] .gs-scene-map .wm-leave-loc-btn,
 .gs-root[data-scene="dialogue"] .gs-scene-map .wm-combat-section,
+.gs-root[data-scene="dialogue"] .gs-scene-map .sc-row,
 .gs-root[data-scene="dialogue"] .gs-scene-map .gs-places {
     display: none;
 }
@@ -314,6 +463,22 @@ body.game-shell-on {
     height: 100%;
 }
 
+/* El suelo del tablero, en la misma taberna: el azul marino de su fondo desentonaba con todo
+   lo demás. Solo en el juego; el cajón lateral de SillyTavern sigue como estaba. */
+.gs-root .wm-container {
+    background: #0d0b09;
+}
+
+/* Y el alto, hasta el tablero: el panel prestado ocupa la escena, pero sus dos cajas de
+   dentro (la de SillyTavern y la del sitio) no heredaban el alto, y el «todo lo alto que
+   pueda» del tablero se quedaba en nada: la cuadricula medía 2 px y no se veía. */
+.gs-adopted > .world-map-collection,
+.gs-adopted .wm-location-shell {
+    height: 100%;
+    min-height: 0;
+    box-sizing: border-box;
+}
+
 /* Dentro del Shell la cabecera "Location Maps / Ocultar" sobra: el panel ya no comparte
    sitio con nada. */
 .gs-adopted .wm-location-toolbar {
@@ -345,6 +510,12 @@ body.game-shell-on {
     grid-column: 1;
     grid-row: 1;
     justify-self: start;
+    /* En una línea: con el ancho mínimo de los botones de SillyTavern se partía palabra a
+       palabra («Volver / a El / Pueblo / de / Barro»). */
+    width: auto;
+    white-space: nowrap;
+    align-self: start;
+    gap: 7px;
 }
 
 /* El tablero: la columna izquierda, entre la barra y el registro, y todo lo alto que
@@ -470,7 +641,7 @@ body.game-shell-on {
 }
 
 .gs-btn-attack:not(:disabled) {
-    border-color: #a5534f;
+    border-color: var(--gs-danger-red);
 }
 
 .gs-btn-quiet {
@@ -607,17 +778,35 @@ body.game-shell-on {
 .gs-chip {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 6px 10px;
-    min-width: 170px;
+    gap: 12px;
+    padding: 8px 12px;
+    min-width: 180px;
     border: 1px solid var(--SmartThemeBorderColor, #444);
     border-radius: 8px;
-    background: rgba(255, 255, 255, 0.04);
+    background: rgba(0, 0, 0, 0.4);
+    transition: border-color 0.15s, background 0.15s;
     /* Desde K4b es un <button>, y un boton sin esto trae la letra y el color del
        navegador: texto negro sobre fondo oscuro. */
     color: var(--SmartThemeBodyColor, #ddd);
     font: inherit;
     text-align: left;
+}
+
+/* La que se pulsa (abre su ficha) se enciende en dorado. */
+.gs-chip.gs-chip-clickable {
+    cursor: pointer;
+}
+
+.gs-chip.gs-chip-clickable:hover,
+.gs-chip.gs-chip-clickable:focus-visible {
+    outline: none;
+    border-color: var(--gs-accent-gold);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.gs-chip.gs-chip-clickable:hover .gs-chip-name,
+.gs-chip.gs-chip-clickable:focus-visible .gs-chip-name {
+    color: var(--gs-accent-gold);
 }
 
 .gs-chip.bloodied {
@@ -630,9 +819,11 @@ body.game-shell-on {
 }
 
 .gs-chip-avatar {
-    width: 36px;
-    height: 36px;
+    width: 40px;
+    height: 40px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 6px;
+    background: rgba(255, 255, 255, 0.05);
     object-fit: cover;
     flex: 0 0 auto;
 }
@@ -670,7 +861,7 @@ body.game-shell-on {
 
 .gs-chip-hp-fill {
     height: 100%;
-    background: #6f9e5d;
+    background: var(--gs-success-green);
 }
 
 .gs-chip.bloodied .gs-chip-hp-fill {
@@ -751,7 +942,7 @@ body.game-shell-on {
 
 .gs-board.current,
 .gs-place.current {
-    border-color: var(--SmartThemeQuoteColor, #6a8caf);
+    border-color: var(--SmartThemeQuoteColor, var(--gs-info-blue));
 }
 
 .gs-place:disabled {
@@ -765,7 +956,7 @@ body.game-shell-on {
 }
 
 .gs-place.status-complete .gs-place-icon {
-    color: #6f9e5d;
+    color: var(--gs-success-green);
 }
 
 .gs-place-body {
@@ -816,8 +1007,38 @@ body.game-shell-on {
     gap: 10px;
 }
 
+/* La taberna a oscuras (Gem director de UX, 2026-09-27): una luz cálida en el centro. En toda
+   la pantalla y no en la escena, que dejaba un marco gris con el margen del escenario. */
+.gs-root[data-scene="title"] {
+    background: radial-gradient(ellipse at 50% 42%, rgba(58, 44, 28, 0.55) 0%, rgba(18, 16, 14, 0) 60%), var(--gs-bg-dark);
+}
+
+/* Con el menú a la vista, el rótulo y el menú en el centro de la pantalla: arriba del todo
+   dejaban media pantalla vacía debajo. */
+.gs-root[data-scene="title"] .gs-scene-dialogue:has(> .gs-menu[data-view="menu"]) {
+    grid-template-rows: auto auto;
+    align-content: center;
+}
+
 .gs-root[data-scene="title"] .gs-title {
     display: block;
+    color: var(--gs-accent-gold);
+    font-family: Georgia, 'Palatino Linotype', Palatino, serif;
+    font-size: 2.4em;
+    font-weight: normal;
+    letter-spacing: 0.12em;
+    text-shadow: 0 2px 18px rgba(226, 194, 122, 0.25);
+    opacity: 1;
+}
+
+/* Un filete dorado debajo del rótulo. */
+.gs-root[data-scene="title"] .gs-title::after {
+    content: '';
+    display: block;
+    width: 160px;
+    height: 1px;
+    margin: 14px auto 0;
+    background: linear-gradient(90deg, transparent, var(--gs-accent-gold), transparent);
 }
 
 /* ---- El menu principal (la pantalla de arranque) ----
@@ -837,44 +1058,74 @@ body.game-shell-on {
     padding: 18px 0 6px;
 }
 
+/* Las entradas del menú, como las tarjetas del taller: panel oscuro, el icono dorado en su
+   caja, y el borde dorado al pasar. */
 .gs-menu-btn {
     display: flex;
     align-items: center;
-    gap: 14px;
-    width: min(360px, 84vw);
-    padding: 12px 18px;
+    gap: 16px;
+    width: min(420px, 84vw);
+    padding: 12px 18px 12px 12px;
     border: 1px solid var(--SmartThemeBorderColor, #444);
     border-radius: 10px;
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(0, 0, 0, 0.35);
     color: var(--SmartThemeBodyColor, #ddd);
     font: inherit;
     text-align: left;
     cursor: pointer;
+    transition: border-color 0.15s, background 0.15s, transform 0.15s, box-shadow 0.15s;
 }
 
-.gs-menu-btn:hover {
-    background: rgba(255, 255, 255, 0.13);
-    border-color: var(--SmartThemeQuoteColor, #6a8caf);
+.gs-menu-btn:hover,
+.gs-menu-btn:focus-visible {
+    outline: none;
+    border-color: var(--gs-accent-gold);
+    background: var(--gs-accent-gold-hover);
+    box-shadow: 0 0 0 1px var(--gs-accent-gold), 0 8px 22px rgba(0, 0, 0, 0.4);
+    transform: translateY(-2px);
+}
+
+.gs-menu-btn:active {
+    transform: translateY(0);
+}
+
+/* «Partida nueva», la que manda: con el borde dorado ya de entrada. */
+.gs-menu[data-view="menu"] > .gs-menu-btn:first-child {
+    border-color: var(--gs-gold-line);
+    background: rgba(226, 194, 122, 0.07);
 }
 
 .gs-menu-btn > i {
-    font-size: 1.1em;
-    opacity: 0.8;
-    width: 1.3em;
-    text-align: center;
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--gs-accent-gold);
+    font-size: 1.15em;
 }
 
 .gs-menu-body {
     display: flex;
     flex-direction: column;
+    gap: 2px;
 }
 
 .gs-menu-label {
-    font-size: 1.02em;
+    font-size: 1.08em;
+    font-weight: bold;
+}
+
+.gs-menu-btn:hover .gs-menu-label,
+.gs-menu-btn:focus-visible .gs-menu-label {
+    color: var(--gs-accent-gold);
 }
 
 .gs-menu-hint {
-    font-size: 0.78em;
+    font-size: 0.8em;
     opacity: 0.6;
 }
 
@@ -894,6 +1145,7 @@ body.game-shell-on {
 .gs-menu-leave:hover,
 .gs-menu-back:hover {
     opacity: 1;
+    color: var(--gs-accent-gold);
     text-decoration: underline;
 }
 
@@ -908,6 +1160,17 @@ body.game-shell-on {
 /* Mientras el menu esta a la vista, la lista de partidas no: se llega a ella pulsando
    "Cargar partida", que es un paso, no un adorno. */
 .gs-root[data-scene="title"] .gs-menu[data-view="menu"] ~ .gs-chat-slot {
+    display: none;
+}
+
+/* El título no es una partida: fuera la cabecera de la partida (estado, foco, reloj). Salir
+   del Modo Juego sigue en el menú («Salir al SillyTavern de siempre»). Sin cabecera, la
+   rejilla pierde su primera fila: el escenario ocupa el alto y el pie se queda abajo. */
+.gs-root[data-scene="title"] {
+    grid-template-rows: 1fr auto;
+}
+
+.gs-root[data-scene="title"] .gs-head {
     display: none;
 }
 
@@ -1008,7 +1271,9 @@ body.game-shell-on {
     align-items: center;
     gap: 8px;
     min-width: 0;
-    flex: 1 1 auto;
+    order: 1;
+    /* Lo que se recorta, si no cabe, es la pista de la misión (con sus puntos suspensivos). */
+    flex: 1 1 360px;
     padding: 0 10px;
     font-size: 0.9em;
     overflow: hidden;
@@ -1024,10 +1289,15 @@ body.game-shell-on {
 }
 
 .gs-focus-hint {
+    min-width: 0;
     opacity: 0.7;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+.gs-focus > .gs-guide {
+    flex: none;
 }
 
 /* ---- Los servicios de aqui (fase L) ---- */
@@ -1084,7 +1354,7 @@ body.game-shell-on {
 }
 
 .gs-intents .fa-eye {
-    color: #d08a86;
+    color: var(--gs-danger-soft);
 }
 
 /* Idea 85: como le va a este sitio por lo que hicisteis. */
@@ -1092,7 +1362,7 @@ body.game-shell-on {
     margin-top: 4px;
     font-size: 0.85em;
     font-style: italic;
-    color: #e2c27a;
+    color: var(--gs-accent-gold);
 }
 
 /* Ideas 64 y 66: el ritmo del viaje y los contratiempos, en su ventana. */
@@ -1104,20 +1374,32 @@ body.game-shell-on {
 /* Ideas 100 y 136: el diario y la ayuda, siempre a mano junto a lo que tienes entre manos. */
 .gs-guide {
     display: flex;
+    flex-wrap: wrap;
     gap: 6px;
-    margin-left: auto;
     flex: 0 0 auto;
 }
 
 .gs-guide-btn {
-    font-size: 0.8em;
-    padding: 2px 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
     border-radius: 6px;
-    border: 1px solid rgba(214, 180, 106, 0.4);
-    background: rgba(214, 180, 106, 0.1);
-    color: inherit;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--SmartThemeBodyColor, #ddd);
+    font-size: 0.8em;
     cursor: pointer;
     white-space: nowrap;
+    transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.gs-guide-btn:hover,
+.gs-guide-btn:focus-visible {
+    outline: none;
+    border-color: var(--gs-accent-gold);
+    background: rgba(226, 194, 122, 0.1);
+    color: var(--gs-accent-gold);
 }
 
 .jr-root h3,
@@ -1128,7 +1410,7 @@ body.game-shell-on {
 .jr-title {
     margin: 12px 0 4px;
     font-weight: bold;
-    color: #e2c27a;
+    color: var(--gs-accent-gold);
 }
 
 .jr-item {
@@ -1169,7 +1451,7 @@ body.game-shell-on {
     margin-left: 4px;
     padding: 0 5px;
     border-radius: 8px;
-    background: #a5534f;
+    background: var(--gs-danger-red);
     font-size: 0.85em;
 }
 
@@ -1181,12 +1463,12 @@ body.game-shell-on {
 }
 
 .nt-new {
-    border-left-color: #e2c27a;
+    border-left-color: var(--gs-accent-gold);
 }
 
 .nt-warning,
 .nt-error {
-    border-left-color: #d08a86;
+    border-left-color: var(--gs-danger-soft);
 }
 
 .nt-head {
@@ -1237,7 +1519,7 @@ body.game-shell-on {
 }
 
 .pg-down .pg-fill {
-    background: #a5534f;
+    background: var(--gs-danger-red);
 }
 
 .pg-line {
@@ -1252,7 +1534,7 @@ body.game-shell-on {
 /* Idea 81: lo pendiente en cada sitio, en la lista de viaje. */
 .gs-place-pending {
     font-size: 0.8em;
-    color: #e2c27a;
+    color: var(--gs-accent-gold);
 }
 
 /* Idea 150: rehacer la última respuesta. */
@@ -1302,7 +1584,7 @@ body.game-shell-on {
 .gs-keys-title {
     font-weight: bold;
     margin-bottom: 8px;
-    color: #e2c27a;
+    color: var(--gs-accent-gold);
 }
 
 .gs-keys-row {
@@ -1336,7 +1618,7 @@ body.game-shell-on {
 /* Idea 168: el veredicto del dado. */
 .dl-verdict {
     font-style: italic;
-    color: #e2c27a;
+    color: var(--gs-accent-gold);
 }
 
 /* Idea 156: el glosario. */
@@ -1346,7 +1628,7 @@ body.game-shell-on {
 
 .gl-term {
     font-weight: bold;
-    color: #e2c27a;
+    color: var(--gs-accent-gold);
 }
 
 .gl-means {
@@ -1463,9 +1745,94 @@ body[data-narrator-font="maquina"] #chat .mes:not([is_user="true"]) .mes_text {
 }
 
 .wd-warning {
-    color: #e2c27a;
+    color: var(--gs-accent-gold);
 }
 
 .ep-line {
     font-style: italic;
+}
+
+/* ================================================================
+   Las ventanas de la cabecera (Diario, Mesa, Mapa, Grupo, Avisos, Dados, «¿Qué hago?»), con
+   un solo marco (Gem director de UX, 2026-09-27): el mismo ancho, el panel de la taberna, el
+   borde dorado, el título en dorado con su línea, aire dentro y el mismo botón de cerrar.
+   Cada una se había hecho cuando hacía falta y se notaba. La marca es que su contenido lleve
+   `.gs-panel` (y su título, `.gs-popup-title`): una ventana nueva con esa clase ya nace así.
+   ================================================================ */
+.popup:has(.gs-panel) {
+    width: min(600px, 92vw);
+    padding: 0;
+    border: 1px solid var(--gs-gold-line);
+    border-radius: 12px;
+    background: linear-gradient(var(--gs-bg-panel), var(--gs-bg-panel)) var(--gs-bg-dark);
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.85);
+}
+
+.popup:has(.gs-panel) .popup-content {
+    margin: 0;
+    padding: 20px 24px 4px;
+}
+
+.gs-panel {
+    text-align: left;
+    font-size: 0.92rem;
+    line-height: 1.45;
+    animation: gs-popup-fade 0.15s ease-out;
+}
+
+/* Los botones de dentro, a su ancho: con el mínimo de SillyTavern, «El hilo» se partía en
+   dos líneas. */
+.gs-panel .menu_button {
+    width: auto;
+    white-space: nowrap;
+}
+
+.gs-panel > .gs-popup-title {
+    margin: 0 0 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(214, 180, 106, 0.25);
+    color: var(--gs-accent-gold);
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+
+.popup:has(.gs-panel) .popup-controls {
+    margin: 0;
+    padding: 12px 24px 18px;
+    justify-content: center;
+}
+
+/* Cerrar: un borde rojo apagado que se enciende al pasar, en vez del botón carmesí con
+   resplandor blanco de SillyTavern. */
+.popup:has(.gs-panel) .popup-controls .menu_button.popup-button-ok {
+    padding: 6px 18px;
+    border: 1px solid rgba(165, 83, 79, 0.5);
+    border-radius: 6px;
+    background: transparent;
+    box-shadow: none;
+    color: var(--gs-danger-soft);
+    filter: none;
+    font-size: 0.85rem;
+    font-weight: bold;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.popup:has(.gs-panel) .popup-controls .menu_button.popup-button-ok:hover,
+.popup:has(.gs-panel) .popup-controls .menu_button.popup-button-ok:focus-visible {
+    border-color: var(--gs-danger-red);
+    background: rgba(165, 83, 79, 0.15);
+    color: #ffb4b4;
+    filter: none;
+}
+
+@keyframes gs-popup-fade {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }

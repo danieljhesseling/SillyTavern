@@ -37,20 +37,20 @@ export const DEFAULT_ATTACK_RANGE_FEET = 5;
 /** @type {Record<string, {label: string, description: string}>} */
 export const TACTICAL_PROFILES = {
     aggressive: {
-        label: 'Aggressive',
-        description: 'Closes on the nearest target by the shortest route and attacks.',
+        label: 'Agresivo',
+        description: 'Va a por el más cercano por el camino más corto, y ataca.',
     },
     skirmisher: {
-        label: 'Skirmisher',
-        description: 'Keeps its distance. Backs away from anything in melee, then shoots.',
+        label: 'Escaramuzador',
+        description: 'Guarda la distancia: se aparta de quien le pega de cerca, y dispara.',
     },
     guardian: {
-        label: 'Guardian',
-        description: 'Puts itself between the threat and its most wounded ally.',
+        label: 'Guardián',
+        description: 'Se pone entre la amenaza y el más herido de los suyos.',
     },
     coward: {
-        label: 'Coward',
-        description: 'Fights while healthy; runs once badly hurt.',
+        label: 'Cobarde',
+        description: 'Pelea mientras está entero; malherido, huye.',
     },
 };
 
@@ -316,21 +316,21 @@ function standStill(actor, rationale, focusId = null) {
  * @returns {TurnPlan}
  */
 export function planEnemyTurn({ actor, targets, allies = [], terrain, gridWidth, gridHeight }) {
-    if (!actor) return standStill({ gridX: 0, gridY: 0 }, 'No actor.');
+    if (!actor) return standStill({ gridX: 0, gridY: 0 }, 'No hay nadie a quien mover.');
 
     const profile = TACTICAL_PROFILES[actor.profile] ? actor.profile : DEFAULT_PROFILE;
     const occupied = buildOccupiedSet([...(targets || []), ...(allies || [])], actor.id);
     const living = (targets || []).filter(t => t && (Number(t.currentHp) || 0) > 0);
 
     if (living.length === 0) {
-        return standStill(actor, 'Nothing left to fight.');
+        return standStill(actor, 'No queda nadie contra quien pelear.');
     }
 
     // A coward that is badly hurt stops caring about everything else.
     if (profile === 'coward' && healthFraction(actor) < FLEE_HP_FRACTION) {
         const retreat = findRetreatCell(actor, living, terrain, gridWidth, gridHeight, occupied);
         if (!retreat || (retreat.x === actor.gridX && retreat.y === actor.gridY)) {
-            return standStill(actor, 'Cornered, and too hurt to fight well.');
+            return standStill(actor, 'Acorralado, y demasiado herido para pelear bien.');
         }
         return {
             focusId: null,
@@ -339,12 +339,12 @@ export function planEnemyTurn({ actor, targets, allies = [], terrain, gridWidth,
             movementCostFeet: cellsToFeet(retreat.cost),
             action: 'none',
             targetId: null,
-            rationale: 'Badly wounded, breaking away.',
+            rationale: 'Malherido: se retira.',
         };
     }
 
     const focus = selectFocus(actor, living, terrain, gridWidth, gridHeight, occupied);
-    if (!focus) return standStill(actor, 'No reachable target.');
+    if (!focus) return standStill(actor, 'No llega a nadie.');
 
     const range = rangeOf(actor);
     // R7: el tirador va a por el más débil que pueda alcanzar este turno, no al más cercano.
@@ -372,8 +372,8 @@ export function planEnemyTurn({ actor, targets, allies = [], terrain, gridWidth,
                     action: stillInRange ? 'attack' : 'none',
                     targetId: stillInRange ? target.id : null,
                     rationale: stillInRange
-                        ? 'Backs out of melee and shoots.'
-                        : 'Backs out of melee, losing the shot.',
+                        ? 'Se aparta del cuerpo a cuerpo y dispara.'
+                        : 'Se aparta del cuerpo a cuerpo, y pierde el tiro.',
                 };
             }
         }
@@ -409,8 +409,8 @@ export function planEnemyTurn({ actor, targets, allies = [], terrain, gridWidth,
                     action: inRange ? 'attack' : 'none',
                     targetId: inRange ? target.id : null,
                     rationale: inRange
-                        ? 'Shields its ally and strikes.'
-                        : 'Moves to shield its ally.',
+                        ? 'Cubre a un aliado y golpea.'
+                        : 'Se pone delante de un aliado para cubrirlo.',
                 };
             }
         }
@@ -430,7 +430,7 @@ export function planEnemyTurn({ actor, targets, allies = [], terrain, gridWidth,
             movementCostFeet: cellsToFeet(climb.cost),
             action: 'attack',
             targetId: target.id,
-            rationale: 'Takes the high ground, and shoots.',
+            rationale: 'Sube a lo alto, y dispara.',
         };
     }
     if (alreadyInRange) {
@@ -441,7 +441,7 @@ export function planEnemyTurn({ actor, targets, allies = [], terrain, gridWidth,
             movementCostFeet: 0,
             action: 'attack',
             targetId: target.id,
-            rationale: 'Already in reach, attacks.',
+            rationale: 'Ya lo tiene a tiro: ataca.',
         };
     }
 
@@ -454,9 +454,9 @@ export function planEnemyTurn({ actor, targets, allies = [], terrain, gridWidth,
             movementCostFeet: cellsToFeet(approach.cost),
             action: 'attack',
             targetId: target.id,
-            rationale: actor.tactic === 'rodear' ? 'Circles round to flank, and attacks.'
-                : actor.tactic === 'linea' ? 'Keeps the line with its own, and attacks.'
-                    : 'Closes the distance and attacks.',
+            rationale: actor.tactic === 'rodear' ? 'Rodea para flanquear, y ataca.'
+                : actor.tactic === 'linea' ? 'Forma con los suyos, y ataca.'
+                    : 'Acorta la distancia y ataca.',
         };
     }
 
@@ -472,7 +472,7 @@ export function planEnemyTurn({ actor, targets, allies = [], terrain, gridWidth,
         .sort((a, b) => a.distance - b.distance || a.cell.cost - b.cell.cost || compareCells(a.cell, b.cell))[0];
 
     if (!closest || (closest.cell.gridX === actor.gridX && closest.cell.gridY === actor.gridY)) {
-        return standStill(actor, 'Cannot get any closer.', target.id);
+        return standStill(actor, 'No puede acercarse más.', target.id);
     }
 
     return {
@@ -482,7 +482,7 @@ export function planEnemyTurn({ actor, targets, allies = [], terrain, gridWidth,
         movementCostFeet: cellsToFeet(closest.cell.cost),
         action: 'none',
         targetId: null,
-        rationale: 'Advances, but cannot reach this turn.',
+        rationale: 'Avanza, pero no llega este turno.',
     };
 }
 

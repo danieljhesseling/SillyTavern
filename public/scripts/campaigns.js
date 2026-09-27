@@ -893,21 +893,41 @@ async function writeWithModel(key, state) {
 }
 
 /**
- * R1 del roadmap de profundidad: la partida rápida. El mismo taller, abierto en su vista
- * corta: un mundo precreado, un modo, y el personaje al entrar.
+ * Los narradores guardados de otras campañas, sin repetir: cada campaña guarda su narrador
+ * como una ficha, así que jugar diez veces con el mismo dejaba diez copias iguales. Se
+ * juntan los idénticos (nombre, tono, lo que sabe y con qué abre); si difieren en algo,
+ * son dos.
  *
- * @returns {Promise<void>}
+ * @param {any[]} cards
+ * @returns {any[]}
  */
-export async function startQuickCampaign() {
-    await startCampaignWizard({ quick: true });
+function savedNarrators(cards) {
+    const seen = new Set();
+    return cards.filter(card => {
+        const key = [card.name, card.personality, card.description, card.first_mes].map(v => String(v ?? '').trim().toLowerCase()).join('|');
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
+}
+
+/**
+ * Las primeras palabras de un texto, sin cortar ninguna a medias.
+ *
+ * @param {string} value
+ * @param {number} max
+ * @returns {string}
+ */
+function firstWords(value, max) {
+    const clean = String(value ?? '').replace(/\s+/g, ' ').trim();
+    if (clean.length <= max) return clean;
+    return `${clean.slice(0, max).replace(/\s+\S*$/, '')}…`;
 }
 
 /**
  * Runs the campaign wizard end to end and leaves the player standing on the first board.
- *
- * @param {{quick?: boolean}} [options]
  */
-async function startCampaignWizard({ quick = false } = {}) {
+async function startCampaignWizard() {
     if (wizardRunning) return;
     wizardRunning = true;
 
@@ -919,21 +939,21 @@ async function startCampaignWizard({ quick = false } = {}) {
         const answers = await askTaller({
             Popup,
             POPUP_TYPE,
-            quick,
             existingWorldNames: Array.isArray(world_names) ? world_names : [],
             // El lapicito: escribir una frase con el modelo, donde tiene sentido.
             write: online_status !== 'no_connection' ? writeWithModel : null,
             // Los narradores que ya tienes escritos de otras campanas: volver a
             // escribirlos seria escribirlos dos veces.
-            narrators: /** @type {any[]} */ (characters ?? [])
+            narrators: savedNarrators(/** @type {any[]} */ (characters ?? [])
                 // Una ficha cargada guarda las notas en `data.creator_notes` o en
                 // `creatorcomment`, **nunca** en `creator_notes` a secas: es lo mismo que
                 // lee la lista de personajes de SillyTavern.
-                .filter(card => /Narrador de la campa/i.test(notesOf(card)))
+                .filter(card => /Narrador de la campa/i.test(notesOf(card))))
                 .map(card => ({
                     id: `mio-${String(card.avatar ?? card.name)}`,
                     name: String(card.name ?? ''),
-                    note: notesOf(card).slice(0, 80),
+                    // Lo que se lee al elegir: cómo narra, no la nota interna.
+                    note: firstWords(String(card.personality ?? '') || String(card.description ?? ''), 90),
                     personality: String(card.personality ?? ''),
                     description: String(card.description ?? ''),
                     greeting: String(card.first_mes ?? ''),
@@ -1256,33 +1276,93 @@ async function pickVeteran(worldName, premade = []) {
     const chats = await fetchRecentChatsWithMetadata(100).catch(() => []);
     const veterans = listVeterans(chats.map((/** @type {any} */ c) => ({ world: String(c?.chat_metadata?.world_info || ''), meta: c?.chat_metadata ?? {} })), worldName).slice(0, 4);
     if (veterans.length === 0 && premade.length === 0) return null;
+
+    // Tarjetas que se pulsan (Gem director de UX, 2026-09-27): antes cada héroe se contaba
+    // dos veces, en un texto arriba y en un botón abajo, y lo que se pulsaba era el botón,
+    // lejos de lo que decía quién era.
     const body = $('<div class="vt-root"></div>');
-    body.append($('<h3></h3>').text('¿Quién entra?'));
-    if (premade.length > 0) {
-        body.append($('<p></p>').text('Este mundo trae tres ya hechos, pensados para él. O haces uno tú.'));
-        const list = $('<div class="vt-premade-list"></div>');
-        for (const hero of premade) {
-            list.append($('<div class="vt-premade-row"></div>')
-                .append($('<b></b>').text(hero.name))
-                .append(document.createTextNode(` · ${hero.about}`)));
-        }
-        body.append(list);
-    }
+    body.append($('<div class="vt-head"></div>')
+        .append($('<h3 class="vt-title"></h3>').text('¿Quién entra?'))
+        .append($('<p class="vt-sub"></p>').text(premade.length > 0
+            ? 'Este mundo trae tres ya hechos, pensados para él. O haces uno tú.'
+            : 'Uno nuevo, o uno de otra partida.')));
+
+    /** @type {Popup|null} */
+    let popup = null;
+    /**
+     * Una tarjeta. Lo que dice entero va en su etiqueta, para quien no la ve.
+     *
+     * @param {string} kind
+     * @param {number} result
+     * @param {string} label
+     * @param {string} icon
+     * @returns {JQuery}
+     */
+    const card = (kind, result, label, icon) => $('<button type="button" class="vt-card"></button>')
+        .addClass(kind).attr('aria-label', label)
+        .append($('<div class="vt-face"></div>').append(`<i class="fa-solid ${icon}"></i>`))
+        .on('click', () => { void popup?.complete(result); });
+
+    const grid = $('<div class="vt-grid"></div>');
+    premade.forEach((hero, i) => {
+        const one = card('vt-premade', 70 + i, premadeLine(hero), heroIcon(hero.className));
+        one.append($('<div class="vt-name"></div>').text(hero.name));
+        const what = [hero.race, hero.className].filter(Boolean).join(' · ');
+        if (what) one.append($('<div class="vt-what"></div>').text(what));
+        if (hero.pitch) one.append($('<div class="vt-pitch"></div>').text(hero.pitch));
+        if (hero.about) one.append($('<div class="vt-about"></div>').text(hero.about));
+        if (hero.pet?.name) one.append($('<div class="vt-pet"></div>').text(`🐾 Llega con ${hero.pet.name}, ${hero.pet.species}`));
+        one.append($('<div class="vt-go"></div>').append('<i class="fa-solid fa-play"></i>')
+            .append($('<span></span>').text(`Jugar con ${hero.name}`)));
+        grid.append(one);
+    });
+    grid.append(card('vt-new', 90, 'Uno nuevo', 'fa-user-plus')
+        .append($('<div class="vt-name"></div>').text('Uno nuevo'))
+        .append($('<div class="vt-about"></div>').text('Lo haces tú: raza, oficio, cara y quién es.'))
+        .append($('<div class="vt-go"></div>').append('<i class="fa-solid fa-pen"></i>')
+            .append($('<span></span>').text('Crearlo'))));
+    body.append(grid);
+
     if (veterans.length > 0) {
-        body.append($('<p></p>').text('También puedes traer a uno de otra partida: llega con su oficio, sus números y lo que lleva puesto, como mucho a nivel 5.'));
+        body.append($('<div class="vt-section"></div>').text('De otras partidas'));
+        body.append($('<p class="vt-note"></p>').text('Llegan con su oficio, sus números y lo que llevan puesto, como mucho a nivel 5.'));
+        const old = $('<div class="vt-grid vt-small"></div>');
+        veterans.forEach((v, i) => {
+            const hero = v.hero ?? {};
+            const cls = String(hero.class ?? hero.charClass ?? '').trim();
+            old.append(card('vt-veteran', 91 + i, `Traer a ${v.line}`, 'fa-clock-rotate-left')
+                .append($('<div class="vt-name"></div>').text(String(hero.name ?? '')))
+                .append($('<div class="vt-what"></div>').text(`${cls ? `${cls} ` : ''}de nivel ${Math.max(1, Number(hero.level) || 1)}`))
+                .append($('<div class="vt-about"></div>').text(`De ${v.world}`)));
+        });
+        body.append(old);
     }
-    const picked = await new Popup(body[0], POPUP_TYPE.TEXT, '', {
-        okButton: false, cancelButton: false,
-        customButtons: [
-            ...premade.map((hero, i) => ({ text: premadeLine(hero), result: 70 + i, classes: ['vt-premade'] })),
-            { text: 'Uno nuevo', result: 90, classes: ['vt-new'] },
-            ...veterans.map((v, i) => ({ text: `Traer a ${v.line}`, result: 91 + i, classes: ['vt-veteran'] })),
-        ],
-    }).show();
+
+    popup = new Popup(body[0], POPUP_TYPE.TEXT, '', { okButton: false, cancelButton: false, wide: true });
+    const picked = await popup.show();
     const chosen = Number(picked);
     if (chosen >= 70 && chosen < 70 + premade.length) return { premade: premade[chosen - 70] };
     const index = chosen - 91;
     return index >= 0 && veterans[index] ? { veteran: veterans[index].hero } : null;
+}
+
+/**
+ * El icono de un oficio, para la tarjeta del héroe hecho. Sin arte: Font Awesome.
+ *
+ * @param {string} className
+ * @returns {string}
+ */
+function heroIcon(className) {
+    const kind = String(className ?? '').toLowerCase();
+    if (/soldad|guerr|mercen|caballer/.test(kind)) return 'fa-shield-halved';
+    if (/erudit|mag[oa]|sabi|escrib/.test(kind)) return 'fa-book-open';
+    if (/cl[eé]rig|monj|frail|sacerd/.test(kind)) return 'fa-hands-praying';
+    if (/p[ií]car|ladr/.test(kind)) return 'fa-mask';
+    if (/explor|cazad|arquer/.test(kind)) return 'fa-compass';
+    if (/bard|jugl/.test(kind)) return 'fa-music';
+    if (/b[aá]rbar/.test(kind)) return 'fa-hand-fist';
+    if (/druid/.test(kind)) return 'fa-leaf';
+    return 'fa-user';
 }
 
 /**

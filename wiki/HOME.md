@@ -21,6 +21,7 @@ Bienvenido a la **Wiki de SillyTavern & Motor RPG** (`my-silly`, el fork de Dani
 > | **Coger una tarea** | [[POR_HACER]], el marcador |
 > | **Entender por qué el juego es así** | [[ROADMAP_MAESTRO]] (el porqué) y [[ROADMAP]] (el acta de las fases A–H) |
 > | **Escribir un mundo** | [[GEM_GUIONISTA]] y [[GEM_CREAR_CAMPANA]] |
+> | **Mejorar cómo se ve** | [[GEM_DIRECTOR_UX]] |
 > | **Encontrar un archivo** | [[Mapa-Codigo-Archivos]] |
 >
 > **La regla de la casa**: un marcador ([[POR_HACER]]), un plan vivo y un documento de lo que falta. Un plan que se cierra pasa a `archivo/` el mismo día.
@@ -108,13 +109,14 @@ El juego de rol añadido en la rama `my-silly`: **234 módulos en `game-engine/`
 ### 4. 🧭 Lo que falta, lo que se hace y el porqué
 - **[[LO_QUE_FALTA]]** 🔭 **Lo que le falta al juego (2026-09-26).** El análisis del proyecto entero tras R1–R10: la radiografía en números, lo que ya es fuerte, el diagnóstico en cinco frases, y lo que falta por áreas (terminar lo empezado, el tablero que pide el guion, la IA, el contenido, la primera hora y lo técnico). Termina con el orden recomendado y la lista de lo que descartaste, para que nadie lo vuelva a proponer.
 - **[[POR_HACER]]** 📋 **El marcador**, dividido por quién tiene que actuar: A (se hace), D (decides tú) y P (propuestas). Con la deuda conocida y una prueba manual de cinco minutos.
-- **[[ROADMAP_PROFUNDIDAD]]** 🌳 **Profundidad: más hondo, no más ancho (2026-09-26).** Diez fases, hechas: modos de juego (Relajado, Normal, Supervivencia, a tu medida) y partida rápida con héroes hechos, el taller en pestañas, habilidades con áreas y elementos que tocan el terreno, la magia solo desde el código (un grimorio de 25 conjuros), la mascota, tableros con intención, enemigos con papel y némesis, compañeros con arco y un mundo que responde. Su tabla «Cómo va» dice lo que falta de cada fase.
+- **[[ROADMAP_PROFUNDIDAD]]** 🌳 **Profundidad: más hondo, no más ancho (2026-09-26).** Diez fases, hechas: modos de juego (Relajado, Normal, Supervivencia, a tu medida) y héroes hechos, el taller en pestañas, habilidades con áreas y elementos que tocan el terreno, la magia solo desde el código (un grimorio de 25 conjuros), la mascota, tableros con intención, enemigos con papel y némesis, compañeros con arco y un mundo que responde. Su tabla «Cómo va» dice lo que falta de cada fase.
 - **[[ROADMAP_PEGAMENTO]]** 🧩 **El pegamento: un juego, no doscientos (2026-09-25).** Nueve fases para que lo construido se hable entre sí: un narrador, un estado, un reloj, una crónica, la Mesa de la Semana, el Duelo de Palabras, una forma de mundo, despachos y casos. Con el marcador de números que tienen que bajar.
 - **[[ROADMAP_MAESTRO]]** 🗺️ **El porqué.** La pregunta que ordena todo —**¿por qué querrías jugar mañana?**—, los cuatro relojes y los seis niveles.
 - **[[ROADMAP]]** 📜 `fases A–H cerradas` **El acta de lo construido**, que sigue valiendo por *El Principio que Ordena Todo* y *De Dónde Sale el Gasto*.
 
 ### 5. ✍️ Escribir mundos
 - **[[GEM_GUIONISTA]]** 🎬 **Las instrucciones del Gem que escribe la biblia de un mundo por rondas.** Sabe de áreas, elementos, terreno, el grimorio y los héroes hechos. `tools/guion-a-paquete.mjs` lo convierte en paquete y avisa de lo que no lee.
+- **[[GEM_DIRECTOR_UX]]** 🎨 **Las instrucciones del Gem director de UX/UI.** Mira capturas del juego, propone cómo mejorar lo que se ve y entrega un mockup en HTML más un «Encargo para Claude» con criterios que se comprueban en el navegador. Conoce la paleta, las clases y las restricciones del juego (sin arte, solo CSS, iconos y emoji).
 - **[[GEM_CREAR_CAMPANA]]** 📦 **Las instrucciones del Gem que escribe campañas**, generadas desde el motor (`node tools/gem-instructions.mjs`): el contrato completo, las reglas que un esquema no puede expresar y una muestra correcta.
 - **[[ROADMAP_COMPENDIO]]** 📚 **La biblioteca de contenido.** Un JSON por dominio en `public/compendio/` —armas, habilidades, bichos, gente, nombres, sitios— del que tiran los generadores con la semilla. Dice qué campos lleva cada fila.
 - **[[ALGORITMOS_GENERACION]]** 🎲 **200 ideas para que dos partidas del mismo texto no se parezcan.** Todo sin IA. La regla que las ordena: **la semilla no es el texto**.
@@ -156,14 +158,14 @@ Si eres un agente de IA interactuando con este repositorio, sigue estas directri
 | Crear un mundo con IA | [[ROADMAP]] Fase F | *Nueva campaña* → *Generar con IA* · `game-engine/world-builder/world-schema.js` |
 | Cambiar cómo se empieza una campaña | [[ROADMAP_PROFUNDIDAD]] R1 y R2 | `game-engine/ui/taller/taller.js`, `game-engine/campaign/taller.js`, `campaigns.js` |
 | Probar el tablero o el combate sin montar una campaña | [[POR_HACER]] *Probarlo a mano* | `/sandbox` → `game-engine/ui/sandbox.js` |
-| **Empezar a jugar, de cero** | **[[EMPEZAR_UNA_CAMPANA]]** | La partida rápida, el taller, la primera sesión y los comandos |
+| **Empezar a jugar, de cero** | **[[EMPEZAR_UNA_CAMPANA]]** | Las tres puertas, el taller, la primera sesión y los comandos |
 | Jugar en Modo Videojuego, a pantalla completa | [[PROPUESTA_FRONTEND_MODO_JUEGO]] (archivo) | **`/modojuego`** en el chat → `game-engine/ui/shell/` |
 | Meter un libro de campaña y jugarlo | [[ROADMAP_INGESTA_CAMPANAS_LIBROS]] (archivo) | **`/esquema-campana`** para el contrato → *Nueva campaña* → *Importar un libro* |
 | Integrar cambios de upstream sin romper el fork | [[Guia-Desarrollo-Flujo]] §2 | `.vscode/settings.json` & `public/index.html` |
 | Entender cómo se inyectan los datos al LLM | [[Ciclo-De-Vida-Prompt]] | `public/script.js` |
 | Localizar un archivo en el proyecto | [[Mapa-Codigo-Archivos]] | Índice del repositorio |
 | Saber si algo está conectado al juego o solo probado | [[POR_HACER]] | `node tools/check-engine-wiring.mjs` |
-| Comprobar que el juego sigue jugándose de principio a fin | [[POR_HACER]] *Probarlo a mano* | `node tools/e2e-campaign.mjs` (unos 55 min) · `node tools/e2e-quick.mjs` (2 min, la partida rápida) |
+| Comprobar que el juego sigue jugándose de principio a fin | [[POR_HACER]] *Probarlo a mano* | `node tools/e2e-campaign.mjs` (unos 55 min) · `node tools/e2e-quick.mjs` (2 min, empezar en 1387; con `--profundidad`, la tanda de lo nuevo) |
 
 ---
 

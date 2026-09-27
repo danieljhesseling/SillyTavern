@@ -84,7 +84,6 @@ import { SHORTCUTS, actionForKey } from './shortcuts.js';
  * @property {(chip: import('./action-chips.js').ActionChip) => void} [onChip]
  * @property {(memberId: string) => void} [onCompanion] Abrir la ficha de un companero.
  * @property {() => void} [onNewCampaign] Empezar una partida desde el menu principal.
- * @property {() => void} [onQuickStart] R1: un mundo hecho, un modo y a jugar.
  * @property {() => number} [countCampaigns] Cuantas partidas hay para cargar.
  * @property {() => number} [countHall] Cuantos caidos hay en el salon de la fama (idea 199).
  * @property {() => void} [onHall] Abrir el salon de la fama.
@@ -332,15 +331,10 @@ function renderTitleMenu(menu) {
 
     const saved = options?.countCampaigns?.() ?? 0;
 
-    // R1 del roadmap de profundidad: empezar sin decidir casi nada.
-    if (options?.onQuickStart) {
-        item('Partida rápida', 'fa-bolt', 'Un mundo hecho, un modo y a jugar',
-            () => options?.onQuickStart?.());
-    }
-    item('Partida nueva', 'fa-wand-sparkles', 'Una plantilla, un mundo generado o un libro',
+    item('Partida nueva', 'fa-wand-sparkles', 'Desde cero, un mundo hecho o un libro',
         () => options?.onNewCampaign?.());
     item('Cargar partida', 'fa-folder-open',
-        saved === 1 ? '1 campana guardada' : `${saved} campanas guardadas`,
+        saved === 1 ? '1 campaña guardada' : `${saved} campañas guardadas`,
         () => {
             titleView = 'load';
             refreshGameShell();
@@ -546,13 +540,14 @@ function toggleChecks(row, checks) {
  * por eso no se esconde en ningun menu.
  *
  * @param {HTMLElement|null} slot
+ * @param {HTMLElement|null} [tools] Donde van los botones (el diario, la mesa…).
  */
-function renderFocus(slot) {
+function renderFocus(slot, tools = null) {
     if (!slot) return;
     slot.textContent = '';
+    if (tools) tools.textContent = '';
     const focus = options?.getFocus?.() ?? null;
-    const guide = Boolean(options?.onJournal || options?.onHelp || options?.getMeter?.());
-    slot.classList.toggle('gs-focus-empty', !focus && !guide);
+    slot.classList.toggle('gs-focus-empty', !focus);
     if (focus) {
         slot.appendChild(el('i', 'fa-solid fa-compass'));
         slot.appendChild(el('span', 'gs-focus-title', focus.title));
@@ -630,7 +625,7 @@ function renderFocus(slot) {
         tokens.addEventListener('click', () => options?.onMeter?.());
         buttons.appendChild(tokens);
     }
-    if (buttons.childElementCount > 0) slot.appendChild(buttons);
+    if (buttons.childElementCount > 0) (tools ?? slot).appendChild(buttons);
 }
 
 /**
@@ -1180,6 +1175,7 @@ export function refreshGameShell() {
             ? (bar.active ? `Ronda ${bar.round}` : (situation.boardName || 'Sin tablero'))
             : dialogue.moment;
     head.title = sceneReason;
+    head.classList.toggle('gs-head-round', scene === SCENE.COMBAT && Boolean(bar.active));
 
     renderDialogue(/** @type {HTMLElement} */ (root.querySelector('.gs-scene-dialogue')), dialogue);
 
@@ -1195,7 +1191,7 @@ export function refreshGameShell() {
     }
 
     renderClock(/** @type {HTMLElement} */ (root.querySelector('.gs-clock')));
-    renderFocus(/** @type {HTMLElement} */ (root.querySelector('.gs-focus')));
+    renderFocus(/** @type {HTMLElement} */ (root.querySelector('.gs-focus')), /** @type {HTMLElement|null} */ (root.querySelector('.gs-tools')));
     renderActionChips(/** @type {HTMLElement} */ (root.querySelector('.gs-chips')));
 
     renderSwitcher(/** @type {HTMLElement} */ (root.querySelector('.gs-scenes')), situation, scene);
@@ -1319,6 +1315,9 @@ export function openGameShell(shellOptions) {
     head.appendChild(el('div', 'gs-head-state'));
     head.appendChild(el('div', 'gs-focus'));
     head.appendChild(el('div', 'gs-clock'));
+    // Diario, Mesa, Mapa, Grupo, avisos, dados y «¿Qué hago?»: abajo a la derecha, junto al
+    // reloj, y no en la línea de la misión, que es para leerla (Daniel, 2026-09-27).
+    head.appendChild(el('div', 'gs-tools'));
     head.appendChild(el('nav', 'gs-scenes'));
     const close = makeButton('gs-close');
     close.title = 'Salir del Modo Juego (Esc)';

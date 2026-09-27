@@ -5091,8 +5091,8 @@ async function openTextMap() {
         season: currentSeason(),
         done: readPlotState(chat_metadata[PLOT_STATE_KEY]).done,
     });
-    const body = $('<div class="tm-root"></div>');
-    body.append($('<h3></h3>').text('El mapa'));
+    const body = $('<div class="tm-root gs-panel"></div>');
+    body.append($('<h3 class="gs-popup-title"></h3>').text('El mapa'));
     body.append($('<p class="tm-intro"></p>').text('Lo que no habéis pisado sale en gris, y un camino que no sale de ningún sitio conocido no se sabe adónde lleva. Cada sitio admite una nota tuya.'));
     for (const row of rows) {
         const item = $('<div class="tm-place"></div>').attr('data-state', row.state).attr('data-place', row.name);
@@ -5153,8 +5153,8 @@ async function openWeekTable() {
     const state = chat_metadata[WEEK_TABLE_KEY] ?? {};
     const bill = partyMembers.length > 0 ? weeklyBill(partyMembers, { rules: currentUpkeepRules() }) : null;
     const due = Number(chat_metadata[BILL_DUE_KEY]) || 0;
-    const body = $('<div class="wt-root"></div>');
-    body.append($('<h3></h3>').text(`Semana ${weekNumber(today)} · ${describeSeason(today, lastWorldSeason || undefined)}`));
+    const body = $('<div class="wt-root gs-panel"></div>');
+    body.append($('<h3 class="gs-popup-title"></h3>').text(`Semana ${weekNumber(today)} · ${describeSeason(today, lastWorldSeason || undefined)}`));
     if (bill && due > 0 && hasLetter(survivalNow(), 'b')) {
         const short = bill.purse < bill.total;
         body.append($('<p class="wt-bill"></p>').toggleClass('wt-short', short)
@@ -5237,7 +5237,7 @@ async function openWeekTable() {
         section('Lo que viene');
         for (const line of coming) body.append($('<div class="wt-line"></div>').text(line));
     }
-    await new Popup(body[0], POPUP_TYPE.TEXT, '', { okButton: 'A la semana', allowVerticalScrolling: true, leftAlign: true }).show();
+    await new Popup(body[0], POPUP_TYPE.TEXT, '', { okButton: 'Cerrar', allowVerticalScrolling: true, leftAlign: true }).show();
 }
 
 /**
@@ -6333,8 +6333,8 @@ function trimToasts() {
 
 /** La bandeja: los ultimos avisos, el mas nuevo arriba. */
 function openNoticeTray() {
-    const body = $('<div class="nt-root"></div>');
-    body.append($('<h3></h3>').text('Avisos'));
+    const body = $('<div class="nt-root gs-panel"></div>');
+    body.append($('<h3 class="gs-popup-title"></h3>').text('Avisos'));
     if (notices.length === 0) body.append($('<div class="jr-item"></div>').text('Nada todavía.'));
     const now = Date.now();
     for (const notice of [...notices].reverse()) {
@@ -6353,8 +6353,8 @@ function openNoticeTray() {
 /** Idea 162: el grupo de un vistazo. */
 function openPartyGlance() {
     const bonds = getCampaignBonds();
-    const body = $('<div class="pg-root"></div>');
-    body.append($('<h3></h3>').text('El grupo'));
+    const body = $('<div class="pg-root gs-panel"></div>');
+    body.append($('<h3 class="gs-popup-title"></h3>').text('El grupo'));
     let gold = 0;
     for (const member of partyMembers) {
         const row = glanceRow(member, {
@@ -6994,8 +6994,8 @@ async function retryLastReply(mode) {
 /** Idea 168: el historial de dados, con sus cuentas. */
 function openDiceHistory() {
     const stats = diceStats(chat_metadata?.[DICE_LOG_KEY]);
-    const body = $('<div class="dl-root"></div>');
-    body.append($('<h3></h3>').text('Los dados'));
+    const body = $('<div class="dl-root gs-panel"></div>');
+    body.append($('<h3 class="gs-popup-title"></h3>').text('Los dados'));
     body.append($('<div class="jr-item"></div>').text(stats.count > 0
         ? `${stats.count} tiradas de d20 · media ${String(stats.average).replace('.', ',')} · ${stats.twenties} veintes · ${stats.ones} unos`
             + (stats.judged > 0 ? ` · ${stats.passed} de ${stats.judged} salieron` : '')
@@ -7142,8 +7142,8 @@ function openJournal() {
     const remembered = sections.find(s => s.title === 'Crónica');
     if (remembered) remembered.title = 'Lo que el mundo recuerda';
     const told = chronicleSections(chronicleOf(chat), { limit: 8 });
-    const body = $('<div class="jr-root"></div>');
-    body.append($('<h3></h3>').text('Diario'));
+    const body = $('<div class="jr-root gs-panel"></div>');
+    body.append($('<h3 class="gs-popup-title"></h3>').text('Diario'));
     for (const section of sections) {
         body.append($('<div class="jr-title"></div>').text(section.title));
         for (const item of section.items) body.append($('<div class="jr-item"></div>').text(item));
@@ -7232,8 +7232,8 @@ function openHelp() {
         places: getCurrentWorldLocationMaps().filter(l => l.name !== currentLocationName).length,
         fighting: Boolean(combatEncounter.active),
     });
-    const body = $('<div class="hp-root"></div>');
-    body.append($('<h3></h3>').text('¿Qué puedo hacer aquí?'));
+    const body = $('<div class="hp-root gs-panel"></div>');
+    body.append($('<h3 class="gs-popup-title"></h3>').text('¿Qué puedo hacer aquí?'));
     /** @type {Popup|null} */
     let popup = null;
     for (const section of sections) {
@@ -15529,15 +15529,6 @@ function buildShellOptions() {
         onEditCampaign: () => { void openCampaignBuilder(); },
         // El asistente de campana vive en la pantalla de bienvenida, que viaja dentro del
         // chat adoptado: pulsar su boton es pulsar el que ya existe.
-        // R1: la partida rápida, el mismo taller en su vista corta.
-        onQuickStart: () => {
-            void import('./campaigns.js')
-                .then(({ startQuickCampaign }) => startQuickCampaign())
-                .catch(error => {
-                    console.error('[party] la partida rápida no pudo empezar', error);
-                    toastr.error('La partida rápida no ha podido empezar. Queda anotado en la consola.');
-                });
-        },
         onNewCampaign: () => {
             const button = document.querySelector('#cw-new-campaign');
             if (button instanceof HTMLElement) button.click();
@@ -15936,12 +15927,12 @@ function drawLocationMapsPreview() {
     // ---- Board drill-down: if a board is selected, show it instead of the location ----
     if (selectedBoard) {
         // Board selected — render board map with a "Back to location" button
-        const backBtn = $(`<button class="menu_button wm-leave-loc-btn"><i class="fa-solid fa-arrow-left"></i> ${t`Back to`} ${escapeHtml(loc.name)}</button>`);
+        const backBtn = $(`<button class="menu_button wm-leave-loc-btn"><i class="fa-solid fa-arrow-left"></i> Volver a ${escapeHtml(loc.name)}</button>`);
 
         // Se queda a la vista, apagado y diciendo por que: esconderlo haria pensar que
         // salir del tablero ya no existe, cuando lo que pasa es que hay que acabar antes.
         const heldBack = holdDuringCombat(combatEncounter, 'board');
-        backBtn.attr('title', heldBack || `${t`Back to`} ${loc.name}`);
+        backBtn.attr('title', heldBack || `Volver a ${loc.name}`);
         backBtn.prop('disabled', Boolean(heldBack));
         backBtn.on('click', () => {
             if (holdDuringCombat(combatEncounter, 'board')) return;

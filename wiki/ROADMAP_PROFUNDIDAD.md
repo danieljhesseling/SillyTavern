@@ -193,6 +193,8 @@ Las tres dificultades de hoy (*Historia*, *Veterana*, *De hierro*) **son casi ex
 - «Tu sesión» (U0) dice en qué modo juegas.
 
 **Se ve al terminar:** «Partida rápida» en el título; 1387 en Relajado, en cuatro clics, sin cuenta ni hambre a la vista.
+
+> **2026-09-27: la «Partida rápida» se quitó del título** (decisión de Daniel): «Partida nueva» → «Un mundo hecho» hace lo mismo, con los héroes hechos y el modo en la pestaña *Jugabilidad*. Se quedan los modos, los héroes hechos y todo lo demás de R1.
 **Hecho cuando:** un paso del recorrido empieza 1387 en Relajado y comprueba que no sale nada de *d*, *e* ni *f*; otro lo cambia a Supervivencia y comprueba que aparece.
 
 ---

@@ -519,7 +519,7 @@
 }
 
 .ce-tab.active {
-    background: var(--SmartThemeQuoteColor, #6a8caf);
+    background: var(--SmartThemeQuoteColor, var(--gs-info-blue));
     color: #fff;
 }
 
@@ -1097,7 +1097,7 @@
 }
 
 .vs-best {
-    color: #e2c27a;
+    color: var(--gs-accent-gold);
 }
 
 .vs-num {
@@ -1111,7 +1111,7 @@
 }
 
 .vs-scar {
-    color: #d08a86;
+    color: var(--gs-danger-soft);
 }
 
 .vs-hint {
@@ -1148,7 +1148,7 @@
 .rc-title {
     font-weight: bold;
     margin-bottom: 6px;
-    color: #e2c27a;
+    color: var(--gs-accent-gold);
 }
 
 .rc-line {
@@ -1166,7 +1166,7 @@
 .cc-earned {
     margin-bottom: 6px;
     font-size: 0.85em;
-    color: #e2c27a;
+    color: var(--gs-accent-gold);
 }
 
 /* Ideas 35 y 41: a quién va primero y su oficio de campamento. */
@@ -1198,7 +1198,7 @@
 }
 
 .lu-perk.chosen {
-    outline: 2px solid #e2c27a;
+    outline: 2px solid var(--gs-accent-gold);
 }
 
 .lu-perk-name {
@@ -1284,7 +1284,7 @@
 
 .ch-mate.over {
     border-style: solid;
-    border-color: #e2c27a;
+    border-color: var(--gs-accent-gold);
     background: rgba(226, 194, 122, 0.15);
 }
 

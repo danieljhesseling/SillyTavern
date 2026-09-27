@@ -474,7 +474,7 @@ export function renderWorldMapView(target, worldMapUrl, locationMaps, callbacks 
  * @property {'move'|'attack'} [kind]
  */
 
-/** @type {Map<string, {scale: number, offsetX: number, offsetY: number, gridVisible: boolean}>} */
+/** @type {Map<string, {scale: number, offsetX: number, offsetY: number, gridVisible: boolean, auto?: boolean}>} */
 const locationViewStateMemory = new Map();
 
 /** K3: el último turno que se centró en cada tablero, para centrar una vez por turno y no más. */
@@ -586,6 +586,8 @@ export function renderLocationView(target, options) {
     let gridVisible = true;
     let imgW = 0;
     let imgH = 0;
+    /** Si alguien ha movido la vista a mano: mientras no, el tablero se encuadra solo. */
+    let userMoved = false;
     const derivedViewStateKey = String(viewStateKey || `${name}::${imageUrl}::${gridWidth}x${gridHeight}`);
 
     function persistViewState() {
@@ -595,7 +597,21 @@ export function renderLocationView(target, options) {
             offsetX: state.offsetX,
             offsetY: state.offsetY,
             gridVisible,
+            auto: !userMoved,
         });
+    }
+
+    /**
+     * El encuadre que llena el sitio que hay, centrado. Un tablero sin arte puede crecer
+     * hasta el doble (sus casillas no se pixelan); una imagen, no más allá de su tamaño.
+     */
+    function fitView() {
+        const cw = container.width() || 300;
+        const ch = container.height() || 420;
+        const fitScale = Math.min(cw / imgW, ch / imgH, hasImage ? 1 : 2);
+        state.scale = fitScale;
+        state.offsetX = (cw - imgW * fitScale) / 2;
+        state.offsetY = (ch - imgH * fitScale) / 2;
     }
 
     // Terrain sits under everything: it is the board itself, not an overlay on it.
@@ -1090,6 +1106,7 @@ export function renderLocationView(target, options) {
         state.offsetX = mx - ratio * (mx - state.offsetX);
         state.offsetY = my - ratio * (my - state.offsetY);
         state.scale = newScale;
+        userMoved = true;
         fullUpdate();
     });
 
@@ -1108,6 +1125,7 @@ export function renderLocationView(target, options) {
         state.offsetY += e.pageY - state.lastY;
         state.lastX = e.pageX;
         state.lastY = e.pageY;
+        userMoved = true;
         fullUpdate();
     });
     $(document).on(`mouseup.${nsId}`, function () {
@@ -1116,11 +1134,31 @@ export function renderLocationView(target, options) {
         content.removeClass('grabbing');
     });
 
+    // Doble clic: volver a encuadrar, y que se encuadre solo otra vez. (Antes llevaba la
+    // vista a la esquina con el zoom a 1, que no servía para nada.)
     container.off('dblclick').on('dblclick', function (e) {
         if (/** @type {HTMLElement} */ (e.target).closest('.wm-token')) return;
-        zoomable.reset();
+        userMoved = false;
+        if (imgW && imgH) fitView();
+        else zoomable.reset();
         fullUpdate();
     });
+
+    // Si el sitio cambia de tamaño (otra escena, otra ventana, la columna del diálogo) y
+    // nadie ha movido la vista, se vuelve a encuadrar: el primer encuadre se hacía con el
+    // tamaño que hubiera en ese momento, a veces ninguno, y ahí se quedaba.
+    if (typeof ResizeObserver === 'function') {
+        const watcher = new ResizeObserver(() => {
+            if (!document.body.contains(container[0])) {
+                watcher.disconnect();
+                return;
+            }
+            if (userMoved || !imgW || !imgH || container.width() < 40 || container.height() < 40) return;
+            fitView();
+            fullUpdate();
+        });
+        watcher.observe(container[0]);
+    }
 
     /**
      * Lays the board out once its size is known.
@@ -1141,19 +1179,16 @@ export function renderLocationView(target, options) {
         }
 
         const saved = locationViewStateMemory.get(derivedViewStateKey);
-        if (saved) {
+        if (saved) gridVisible = Boolean(saved.gridVisible);
+        // La vista que alguien movió a mano se respeta; la que se encuadró sola se vuelve a
+        // encuadrar, porque el sitio puede no ser el mismo (otra escena, otra ventana).
+        if (saved && saved.auto === false) {
+            userMoved = true;
             state.scale = Math.max(0.5, Math.min(6, Number(saved.scale) || 1));
             state.offsetX = Number(saved.offsetX) || 0;
             state.offsetY = Number(saved.offsetY) || 0;
-            gridVisible = Boolean(saved.gridVisible);
         } else {
-            // Fit only on first render for this view key
-            const cw = container.width() || 300;
-            const ch = container.height() || 420;
-            const fitScale = Math.min(cw / imgW, ch / imgH, 1);
-            state.scale = fitScale;
-            state.offsetX = (cw - imgW * fitScale) / 2;
-            state.offsetY = (ch - imgH * fitScale) / 2;
+            fitView();
         }
 
         updateGrid();
@@ -1255,8 +1290,8 @@ export function renderLocationView(target, options) {
             <button class="wm-zoom-btn ${gridVisible ? 'active' : ''}" data-action="grid" title="Toggle Grid"><i class="fa-solid fa-border-all"></i></button>
         </div>
     `);
-    zoomControls.find('[data-action="in"]').on('click', () => { state.scale = Math.min(6, state.scale * 1.3); fullUpdate(); });
-    zoomControls.find('[data-action="out"]').on('click', () => { state.scale = Math.max(0.5, state.scale / 1.3); fullUpdate(); });
+    zoomControls.find('[data-action="in"]').on('click', () => { state.scale = Math.min(6, state.scale * 1.3); userMoved = true; fullUpdate(); });
+    zoomControls.find('[data-action="out"]').on('click', () => { state.scale = Math.max(0.5, state.scale / 1.3); userMoved = true; fullUpdate(); });
     zoomControls.find('[data-action="grid"]').on('click', function () {
         gridVisible = !gridVisible;
         $(this).toggleClass('active', gridVisible);
@@ -1302,7 +1337,7 @@ function renderCharactersAccordion(target, tokens, onCoordChange) {
 
     const toggle = $(`
         <div class="wm-characters-toggle">
-            <span><i class="fa-solid fa-users" style="margin-right:6px;"></i>Characters</span>
+            <span><i class="fa-solid fa-users" style="margin-right:6px;"></i>Quién hay en el tablero</span>
             <i class="fa-solid fa-chevron-down chevron"></i>
         </div>
     `);

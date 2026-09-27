@@ -262,8 +262,8 @@ export function checkWorldDensity(pack) {
 
     // R10 del roadmap de profundidad: lo nuevo también cuenta.
     const heroes = list(pack?.heroes);
-    counts.push(`${heroes.length >= 3 ? '✓' : '·'} Héroes hechos: ${heroes.length} (se recomiendan 3, para la partida rápida)`);
-    if (heroes.length === 0) warnings.push('Sin héroes hechos: la partida rápida pedirá crear uno.');
+    counts.push(`${heroes.length >= 3 ? '✓' : '·'} Héroes hechos: ${heroes.length} (se recomiendan 3, para entrar sin crear a nadie)`);
+    if (heroes.length === 0) warnings.push('Sin héroes hechos: al entrar habrá que crear uno.');
     const tamable = bestiary.filter(b => tamableAs(b)).length;
     counts.push(`· Bestias que se pueden domar: ${tamable}`);
     for (const row of list(pack?.abilities)) {

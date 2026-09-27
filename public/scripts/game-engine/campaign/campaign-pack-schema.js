@@ -368,7 +368,7 @@ function buildSectionSchemas() {
         },
     };
 
-    // R1/R10 del roadmap de profundidad: los héroes hechos, para la partida rápida.
+    // R1/R10 del roadmap de profundidad: los héroes hechos, para entrar sin crear a nadie.
     const heroes = {
         type: 'array',
         maxItems: 3,

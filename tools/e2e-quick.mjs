@@ -1,14 +1,17 @@
 #!/usr/bin/env node
 /**
- * Un recorrido corto: la partida rápida (R1 del roadmap de profundidad), de punta a punta,
- * contra un servidor propio con un `--dataRoot` temporal, como `e2e-campaign.mjs`.
+ * Un recorrido corto: empezar una partida en 1387 desde el título («Partida nueva», un mundo
+ * hecho, un modo y un héroe hecho), de punta a punta, contra un servidor propio con un
+ * `--dataRoot` temporal, como `e2e-campaign.mjs`.
  *
- * El recorrido grande tarda cincuenta minutos y la partida rápida va al final: para mirar
- * solo esto, esto. Dice lo que pasa en cada paso, no solo si sale.
+ * El recorrido grande tarda una hora: para mirar solo esto, esto. Dice lo que pasa en cada
+ * paso, no solo si sale.
  *
  * Uso:
- *   node tools/e2e-quick.mjs            # sin ventana
- *   node tools/e2e-quick.mjs --headed   # mirándolo
+ *   node tools/e2e-quick.mjs                   # sin ventana
+ *   node tools/e2e-quick.mjs --headed          # mirándolo
+ *   node tools/e2e-quick.mjs --profundidad     # y la tanda de profundidad (altura, salidas, tregua…)
+ *   node tools/e2e-quick.mjs --captura a.png   # y una captura del título
  */
 
 /* global window, document */
@@ -82,22 +85,278 @@ try {
     await page.waitForSelector('#game-shell', { timeout: 90000 });
     await page.waitForTimeout(1500);
 
-    const quick = page.locator('.gs-menu-btn').filter({ hasText: 'Partida rápida' });
-    check('el título ofrece la partida rápida', await quick.count() === 1);
-    await quick.first().click();
-    await page.waitForSelector('.tl-root.tl-quick', { timeout: 20000 });
-    await page.locator('.tl-quick-world[data-world="1387"]').click();
+    const newGame = page.locator('.gs-menu-btn').filter({ hasText: 'Partida nueva' });
+    check('el título ofrece empezar una partida nueva', await newGame.count() === 1);
+    // UX: el título no enseña la cabecera de la partida; el escenario ocupa el alto y el pie
+    // se queda abajo (sin cabecera, la rejilla pierde una fila).
+    const title = await page.evaluate(() => {
+        const box = (/** @type {string} */ sel) => {
+            const el = document.querySelector(sel);
+            const r = el?.getBoundingClientRect();
+            return r ? { top: Math.round(r.top), bottom: Math.round(r.bottom), height: Math.round(r.height) } : null;
+        };
+        const head = document.querySelector('#game-shell .gs-head');
+        return {
+            scene: document.querySelector('#game-shell')?.getAttribute('data-scene'),
+            headShown: Boolean(head && window.getComputedStyle(head).display !== 'none'),
+            stage: box('#game-shell .gs-stage'),
+            footer: box('#game-shell .gs-actions'),
+            menu: box('#game-shell .gs-menu'),
+            viewport: window.innerHeight,
+        };
+    });
+    const centro = await page.evaluate(() => {
+        const menu = document.querySelector('#game-shell .gs-menu')?.getBoundingClientRect();
+        const title = document.querySelector('#game-shell .gs-title');
+        const tr = title?.getBoundingClientRect();
+        return {
+            gap: menu && tr ? Math.round((window.innerHeight - menu.bottom) - tr.top) : null,
+            color: title ? window.getComputedStyle(title).color : '',
+        };
+    });
+    check('en el título, el rótulo en dorado y el menú en el centro de la pantalla',
+        centro.gap !== null && Math.abs(centro.gap) <= 80 && /226, 194, 122/.test(centro.color), JSON.stringify(centro));
+    check('el título no enseña la cabecera, y el menú ocupa la pantalla con el pie abajo',
+        title.scene === 'title' && !title.headShown && (title.stage?.top ?? 99) <= 1
+        && Math.abs((title.footer?.bottom ?? 0) - title.viewport) <= 1 && (title.stage?.height ?? 0) > title.viewport * 0.8,
+        JSON.stringify(title));
+    if (process.argv.includes('--captura')) await page.screenshot({ path: process.argv[process.argv.indexOf('--captura') + 1] || 'titulo.png' });
+
+    // UX: Localidades, la lista y la ficha lado a lado (maestro-detalle), en la pantalla más
+    // pequeña que se admite, 1280×720. Por «Desde cero», que es donde se escriben: un mundo
+    // hecho las trae escritas. Se cancela al acabar, sin crear nada.
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await newGame.first().click();
+    await page.waitForSelector('.tl-door-grid', { timeout: 20000 });
+    await page.locator('.tl-door-card').nth(0).click();
+    await page.waitForSelector('.tl-root', { timeout: 20000 });
+    await page.locator('.tl-tab[data-step="localidades"]').click();
+    await page.waitForTimeout(500);
+    const sitiosAntes = await page.locator('.tl-list .tl-card').count();
+    for (let i = 0; i < 3; i++) {
+        await page.locator('.tl-toolbar .tl-add').click();
+        await page.waitForTimeout(250);
+    }
+    // El nombre, letra a letra: cada letra redibuja la tarjeta, y el cursor no se sale.
+    await page.locator('.tl-detail .tl-field[data-key="lName"] .tl-input').click();
+    await page.keyboard.type('Mirador de prueba', { delay: 25 });
+    await page.waitForTimeout(300);
+    await page.locator('.tl-detail-foot .tl-action.danger').hover();
+    await page.waitForTimeout(300);
+    const md = await page.evaluate(() => {
+        const r = (/** @type {string} */ sel) => {
+            const b = document.querySelector(sel)?.getBoundingClientRect();
+            return b ? { left: Math.round(b.left), right: Math.round(b.right), top: Math.round(b.top), bottom: Math.round(b.bottom) } : null;
+        };
+        const scroller = /** @type {HTMLElement|null} */ (document.querySelector('.tl-list-scroll'));
+        const open = document.querySelector('.tl-list .tl-card.open');
+        const oa = open?.getBoundingClientRect();
+        const sb = scroller?.getBoundingClientRect();
+        const list = r('.tl-list');
+        const detail = r('.tl-detail');
+        const popup = r('.popup:has(.tl-root)');
+        const drop = document.querySelector('.tl-detail-foot .tl-action.danger');
+        const seen = {
+            cards: document.querySelectorAll('.tl-list .tl-card').length,
+            sideBySide: Boolean(list && detail && list.right <= detail.left && Math.abs(list.top - detail.top) < 60),
+            inside: Boolean(popup && detail && detail.bottom <= popup.bottom && detail.right <= popup.right),
+            scrolls: Boolean(scroller && scroller.scrollHeight > scroller.clientHeight),
+            openVisible: Boolean(oa && sb && oa.top >= sb.top - 1 && oa.bottom <= sb.bottom + 1),
+            typed: /** @type {HTMLInputElement|null} */ (document.querySelector('.tl-detail .tl-field[data-key="lName"] .tl-input'))?.value || '',
+            openTitle: open?.querySelector('.tl-card-title')?.textContent || '',
+            drop: (drop?.textContent || '').trim(),
+            dropHover: drop ? window.getComputedStyle(drop).color : '',
+            detailStill: false,
+            addStill: false,
+        };
+        if (scroller) {
+            scroller.scrollTop = 0;
+            const top = JSON.stringify([r('.tl-detail'), r('.tl-toolbar .tl-add')]);
+            scroller.scrollTop = scroller.scrollHeight;
+            const bottom = JSON.stringify([r('.tl-detail'), r('.tl-toolbar .tl-add')]);
+            seen.detailStill = top === bottom;
+            seen.addStill = top === bottom && Boolean(r('.tl-toolbar .tl-add'));
+        }
+        return seen;
+    });
+    check('Localidades a 1280×720: lista y ficha lado a lado; la lista se mueve sola, la ficha y «Nuevo sitio» no; el nuevo se ve y se escribe de un tirón',
+        md.cards === sitiosAntes + 3 && md.sideBySide && md.inside && md.scrolls && md.openVisible
+        && md.detailStill && md.addStill && md.typed === 'Mirador de prueba' && md.openTitle === 'Mirador de prueba'
+        && /Quitar este sitio/.test(md.drop) && md.dropHover === 'rgb(255, 255, 255)', JSON.stringify(md));
+    await page.locator('.tl-detail-foot .tl-action.danger').click();
+    await page.waitForTimeout(300);
+    const trasQuitar = await page.locator('.tl-list .tl-card').count();
+    // Los filtros: por dónde está cada sitio. Quedan puestos al abrir uno.
+    const pildoras = await page.locator('.tl-pill').count();
+    /** @type {any} */
+    let filtro = null;
+    if (pildoras >= 3) {
+        await page.locator('.tl-pill').nth(1).click();
+        await page.waitForTimeout(200);
+        const want = await page.locator('.tl-pill.on').getAttribute('data-tag');
+        await page.locator('.tl-list .tl-card:not(.tl-hidden):not(.add)').first().click();
+        await page.waitForTimeout(300);
+        filtro = await page.evaluate((/** @type {string|null} */ tag) => {
+            const shown = [...document.querySelectorAll('.tl-list .tl-card:not(.tl-hidden)')];
+            return {
+                tag, still: document.querySelector('.tl-pill.on')?.getAttribute('data-tag') === tag,
+                shown: shown.length, all: document.querySelectorAll('.tl-list .tl-card').length,
+                same: shown.every(c => c.getAttribute('data-tag') === tag),
+                open: document.querySelector('.tl-detail-title')?.textContent || '',
+            };
+        }, want);
+    }
+    check('quitar un sitio lo quita de la lista; los filtros dejan solo los de ese sitio y siguen puestos al abrir uno',
+        trasQuitar === sitiosAntes + 2 && (pildoras === 0 || Boolean(filtro?.still && filtro.same && filtro.shown > 0 && filtro.shown < filtro.all && filtro.open)),
+        JSON.stringify({ trasQuitar, sitiosAntes, pildoras, filtro }));
+    if (process.argv.includes('--captura')) {
+        const base = process.argv[process.argv.indexOf('--captura') + 1] || 'titulo.png';
+        await page.screenshot({ path: `${base}.localidades.png` });
+        // Y las otras pestañas con lista y ficha, con algo abierto.
+        for (const [tab, pick] of [['tableros', '.tl-list .tl-card.add'], ['bestiario', '.tl-list .tl-card:not(.add)'], ['misiones', '']]) {
+            await page.locator(`.tl-tab[data-step="${tab}"]`).click();
+            await page.waitForTimeout(500);
+            if (pick) await page.locator(pick).first().click({ timeout: 3000 }).catch(() => {});
+            await page.waitForTimeout(300);
+            await page.screenshot({ path: `${base}.${tab}.png` });
+        }
+    }
+    await page.locator('.tl-foot .tl-cancel').click();
+    await page.waitForSelector('.tl-root', { state: 'detached', timeout: 10000 });
+    await page.setViewportSize({ width: 1400, height: 950 });
+    await page.waitForTimeout(800);
+
+    // «Partida nueva» → «Un mundo hecho» → 1387, como lo haría quien juega.
+    await newGame.first().click();
+    await page.waitForSelector('.tl-door-grid', { timeout: 20000 });
+    // UX: las tres puertas en una fila, altas, y la de encima se nota.
+    await page.waitForTimeout(400);
+    await page.locator('.tl-door-card').nth(1).hover();
+    await page.waitForTimeout(350);
+    const door = await page.evaluate(() => {
+        const cards = [...document.querySelectorAll('.tl-door-card')].map(c => c.getBoundingClientRect());
+        const hovered = document.querySelectorAll('.tl-door-card')[1];
+        return {
+            titles: [...document.querySelectorAll('.tl-door-card-title')].map(t => (t.textContent || '').trim()),
+            tops: cards.map(r => Math.round(r.top)), heights: cards.map(r => Math.round(r.height)),
+            hoverBorder: hovered ? window.getComputedStyle(hovered).borderTopColor : '',
+        };
+    });
+    check('las tres puertas van en una fila, altas, y la de encima se ilumina en dorado',
+        door.titles.join(' | ') === 'Desde cero | Un mundo hecho | Importar un libro'
+        && Math.max(...door.tops) - Math.min(...door.tops) <= 6 && door.heights.every(h => h >= 180)
+        && /226, 194, 122/.test(door.hoverBorder), JSON.stringify(door));
+    if (process.argv.includes('--captura')) await page.screenshot({ path: `${process.argv[process.argv.indexOf('--captura') + 1] || 'titulo.png'}.puertas.png` });
+    await page.locator('.tl-door-card').nth(1).click();
+    await page.waitForSelector('.tl-root', { timeout: 20000 });
+    await page.locator('.tl-card', { hasText: '1387' }).first().click();
     // El paquete se carga después de elegir: se espera a que el aviso de carga se vaya.
     const loaded = await page.waitForFunction(() => !/Cargando el mundo/.test(document.querySelector('.tl-said')?.textContent || ''), null, { timeout: 20000 }).then(() => true).catch(() => false);
     const said = await page.evaluate(() => document.querySelector('.tl-said')?.textContent || '');
     check('el paquete de 1387 se carga', loaded && !/no se ha podido cargar/.test(said), said);
+    // UX: el taller a dos columnas, la ficha fija y la semilla con su dado en la misma línea.
+    await page.waitForTimeout(500);
+    const taller = await page.evaluate(() => {
+        const tabs = [...document.querySelectorAll('.tl-tab')].map(t => t.getBoundingClientRect());
+        const seed = document.querySelector('.tl-input-group > .tl-input')?.getBoundingClientRect();
+        const dice = document.querySelector('.tl-input-group > .tl-reroll')?.getBoundingClientRect();
+        const body = document.querySelector('.tl-body')?.getBoundingClientRect();
+        return {
+            tabs: tabs.length,
+            column: tabs.length > 0 && tabs.every(r => Math.abs(r.left - tabs[0].left) < 2) && tabs.every((r, i) => i === 0 || r.top > tabs[i - 1].top),
+            sideOfBody: Boolean(body && tabs[0] && tabs[0].right <= body.left),
+            detail: document.querySelectorAll('.tl-body .tl-detail .tl-form').length,
+            seedRow: Boolean(seed && dice && Math.abs(seed.top - dice.top) < 4),
+            cancelInFoot: document.querySelectorAll('.tl-foot > .tl-cancel').length,
+            popupControls: [...document.querySelectorAll('.popup:not([closing]) .popup-controls')].filter(e => /** @type {HTMLElement} */ (e).offsetParent !== null).length,
+        };
+    });
+    check('el taller va a dos columnas: pestañas a la izquierda, la ficha al lado, semilla y dado en una línea, y Cancelar en el pie',
+        taller.tabs === 13 && taller.column && taller.sideOfBody && taller.detail === 1 && taller.seedRow && taller.cancelInFoot === 1 && taller.popupControls === 0,
+        JSON.stringify(taller));
+    // UX: la pestaña del narrador, con sus grupos y sin desplegable; eligiendo uno se ve su ficha.
+    await page.locator('.tl-tab[data-step="narrador"]').click();
+    await page.waitForTimeout(400);
+    await page.locator('.tl-card', { hasText: /cronista/i }).first().click();
+    await page.waitForTimeout(500);
+    const narrator = await page.evaluate(() => ({
+        groups: [...document.querySelectorAll('.tl-cards-group')].map(g => (g.textContent || '').trim()),
+        folds: document.querySelectorAll('.tl-body .tl-fold').length,
+        detail: document.querySelectorAll('.tl-body .tl-detail .tl-form').length,
+        file: document.querySelectorAll('.tl-body input[type="file"].tl-file').length,
+    }));
+    check('el narrador: tarjetas sin desplegable, «De serie» aparte, y su ficha al lado al elegirlo',
+        narrator.groups[0] === 'De serie' && narrator.folds === 0 && narrator.detail === 1 && narrator.file === 1, JSON.stringify(narrator));
+    if (process.argv.includes('--captura')) await page.screenshot({ path: `${process.argv[process.argv.indexOf('--captura') + 1] || 'titulo.png'}.narrador.png` });
+    await page.locator('.tl-tab[data-step="mundo"]').click();
+    await page.waitForTimeout(400);
+    if (process.argv.includes('--captura')) {
+        await page.screenshot({ path: `${process.argv[process.argv.indexOf('--captura') + 1] || 'titulo.png'}.mundo.png` });
+        // Y en una pantalla grande, que es donde sobraba hueco a los lados.
+        await page.setViewportSize({ width: 1920, height: 1080 });
+        await page.waitForTimeout(400);
+        await page.screenshot({ path: `${process.argv[process.argv.indexOf('--captura') + 1] || 'titulo.png'}.ancho.png` });
+        await page.setViewportSize({ width: 1400, height: 950 });
+        await page.waitForTimeout(400);
+        await page.evaluate(() => document.querySelector('.tl-input-group')?.scrollIntoView({ block: 'center' }));
+        await page.waitForTimeout(300);
+        await page.screenshot({ path: `${process.argv[process.argv.indexOf('--captura') + 1] || 'titulo.png'}.ficha.png` });
+        console.log('semilla:', JSON.stringify(await page.evaluate(() => {
+            const r = (/** @type {string} */ s) => { const b = document.querySelector(s)?.getBoundingClientRect(); return b ? [Math.round(b.left), Math.round(b.top), Math.round(b.width), Math.round(b.height)] : null; };
+            return { group: r('.tl-input-group'), input: r('.tl-input-group > .tl-input'), dice: r('.tl-input-group > .tl-reroll') };
+        })));
+    }
+    // El modo, en su pestaña. Si algo la tapa, se dice qué.
+    const tabError = await page.locator('.tl-tab[data-step="jugabilidad"]').click({ timeout: 8000 })
+        .then(() => '').catch((/** @type {any} */ err) => String(err?.message || err).replace(/\s+/g, ' ').slice(0, 400));
+    if (tabError) {
+        const blocked = await page.evaluate(() => {
+            const tab = document.querySelector('.tl-tab[data-step="jugabilidad"]');
+            const r = tab?.getBoundingClientRect();
+            const over = r ? document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2) : null;
+            return {
+                tabs: [...document.querySelectorAll('.tl-tab')].map(t => t.getAttribute('data-step')),
+                rect: r ? [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)] : null,
+                over: over ? `${over.tagName}.${String(over.className).slice(0, 80)}` : '',
+                popups: [...document.querySelectorAll('dialog[open]')].map(d => (d.textContent || '').replace(/\s+/g, ' ').slice(0, 100)),
+            };
+        });
+        console.log('pestaña:', tabError, JSON.stringify(blocked));
+    }
+    await page.waitForTimeout(300);
+    if (process.argv.includes('--captura')) await page.screenshot({ path: `${process.argv[process.argv.indexOf('--captura') + 1] || 'titulo.png'}.taller.png` });
     await page.locator('.tl-root .md-card[data-mode="relajado"]').click();
     await page.waitForTimeout(300);
-    await page.locator('.tl-start').click();
+    // UX: los botones del pie, en una línea (antes «Crear y jugar» se partía en tres).
+    const foot = await page.evaluate(() => [...document.querySelectorAll('.tl-foot > .menu_button')]
+        .filter(b => /** @type {HTMLElement} */ (b).offsetParent !== null)
+        .map(b => ({ text: (b.textContent || '').trim(), height: Math.round(b.getBoundingClientRect().height) })));
+    check('los botones del pie del taller van en una línea', foot.length > 0 && foot.every(b => b.height <= 44), JSON.stringify(foot));
+    // En la última pestaña, «Siguiente» ya es «Crear y jugar» (el otro botón se oculta).
+    await page.locator('.tl-next').click();
 
     await page.waitForSelector('.popup:visible .vt-premade', { timeout: 180000 });
-    const premade = await page.evaluate(() => [...document.querySelectorAll('.popup:not([closing]) .vt-premade')].map(b => (b.textContent || '').trim()));
+    const premade = await page.evaluate(() => [...document.querySelectorAll('.popup:not([closing]) .vt-premade')].map(b => (b.getAttribute('aria-label') || b.textContent || '').trim()));
     check('se ofrecen tres héroes hechos', premade.length === 3, JSON.stringify(premade));
+    // UX: quién entra, en tarjetas que se pulsan: los tres y «Uno nuevo» en una fila, sin
+    // botones al pie, y la de encima se enciende en dorado.
+    await page.waitForTimeout(500);
+    await page.locator('.popup:visible .vt-premade').nth(1).hover();
+    await page.waitForTimeout(300);
+    const entra = await page.evaluate(() => {
+        const cards = [...document.querySelectorAll('.popup:not([closing]) .vt-grid:not(.vt-small) > .vt-card')].map(c => c.getBoundingClientRect());
+        const hovered = document.querySelectorAll('.popup:not([closing]) .vt-premade')[1];
+        return {
+            cards: cards.length,
+            row: cards.length > 0 && Math.max(...cards.map(r => r.top)) - Math.min(...cards.map(r => r.top)) <= 4,
+            controls: [...document.querySelectorAll('.popup:not([closing]) .popup-controls')].filter(e => /** @type {HTMLElement} */ (e).offsetParent !== null).length,
+            hoverBorder: hovered ? window.getComputedStyle(hovered).borderTopColor : '',
+            first: document.querySelector('.popup:not([closing]) .vt-premade .vt-name')?.textContent || '',
+        };
+    });
+    check('quién entra: los tres y «Uno nuevo» en tarjetas, en una fila, sin botones al pie; la de encima en dorado',
+        entra.cards === 4 && entra.row && entra.controls === 0 && /226, 194, 122/.test(entra.hoverBorder) && entra.first === 'Ulrich Brand', JSON.stringify(entra));
+    if (process.argv.includes('--captura')) await page.screenshot({ path: `${process.argv[process.argv.indexOf('--captura') + 1] || 'titulo.png'}.heroes.png` });
     await page.waitForTimeout(800);
     let clickError = '';
     for (let i = 0; i < 3 && await page.locator('.popup:visible .vt-premade').count() > 0; i++) {
@@ -152,6 +411,129 @@ try {
         };
     });
     check('se juega con Ulrich Brand, en Relajado, en el mundo de 1387', state === 'Ulrich Brand' && after.mode === 'relajado' && /Barro|Vane/.test(String(after.location)), JSON.stringify({ state, ...after }));
+    // UX: se empieza leyendo al narrador, no plantado en el tablero. La columna del mapa solo
+    // sale si hay algo dibujado; y las fichas de acción se encienden en dorado.
+    await page.waitForTimeout(800);
+    const chipAt = page.locator('#game-shell .gs-chip-action').first();
+    if (await chipAt.count() > 0) await chipAt.hover().catch(() => {});
+    await page.waitForTimeout(300);
+    const dialogo = await page.evaluate(() => {
+        const root = document.querySelector('#game-shell');
+        const map = document.querySelector('#game-shell .gs-scene-map');
+        const chip = document.querySelector('#game-shell .gs-chip-action');
+        const talk = document.querySelector('#game-shell .gs-scene-dialogue')?.getBoundingClientRect();
+        return {
+            scene: root?.getAttribute('data-scene') || '',
+            drawn: Boolean(map?.querySelector('.wm-container')),
+            mapShown: Boolean(map && window.getComputedStyle(map).display !== 'none'),
+            chipHover: chip ? window.getComputedStyle(chip).borderTopColor : '(sin fichas)',
+            chatWidth: talk ? Math.round(talk.width) : 0,
+        };
+    });
+    check('se empieza en Diálogo; la columna del mapa solo con algo dibujado; las fichas en dorado al pasar',
+        dialogo.scene === 'dialogue' && dialogo.mapShown === dialogo.drawn
+        && (dialogo.chipHover === '(sin fichas)' || /226, 194, 122/.test(dialogo.chipHover)), JSON.stringify(dialogo));
+    // UX: el tablero se ve (la cuadrícula tiene alto) y nada ensancha la página, a 1400 y a
+    // 1920. La cabecera en una fila medía casi 2000 px y sacaba el chat por la derecha; y la
+    // cuadrícula medía 2 px porque el alto no llegaba hasta ella.
+    const captura = process.argv.includes('--captura') ? (process.argv[process.argv.indexOf('--captura') + 1] || 'titulo.png') : '';
+    const probe = () => page.evaluate(() => {
+        const box = document.querySelector('#game-shell .gs-scene-map .wm-container');
+        const r = box?.getBoundingClientRect();
+        return {
+            scene: document.querySelector('#game-shell')?.getAttribute('data-scene') || '',
+            grid: r ? [Math.round(r.width), Math.round(r.height)] : null,
+            pageWidth: document.documentElement.scrollWidth,
+            viewport: window.innerWidth,
+        };
+    });
+    // UX: la cabecera en dos filas; la fecha de arriba a la izquierda, fuera (la dice el
+    // reloj); los botones (diario, mesa…), abajo a la derecha.
+    const cabecera = await page.evaluate(() => {
+        const r = (/** @type {string} */ s) => document.querySelector(s)?.getBoundingClientRect();
+        const state = document.querySelector('#game-shell .gs-head-state');
+        const tools = r('#game-shell .gs-tools');
+        const scenes = r('#game-shell .gs-scenes');
+        const head = r('#game-shell .gs-head');
+        return {
+            stateShown: Boolean(state && window.getComputedStyle(state).display !== 'none'),
+            toolsBelow: Boolean(tools && scenes && tools.top >= scenes.bottom - 2),
+            toolsRight: Boolean(tools && head && head.right - tools.right < 40),
+            journal: Boolean(document.querySelector('#game-shell .gs-tools .gs-journal')),
+            active: document.querySelector('#game-shell .gs-scene-btn.active')?.textContent?.trim() || '',
+            activeColor: (() => { const a = document.querySelector('#game-shell .gs-scene-btn.active'); return a ? window.getComputedStyle(a).color : ''; })(),
+        };
+    });
+    // Y un aviso flotante cae por debajo de la cabecera, no encima de sus botones.
+    await page.evaluate(() => { /** @type {any} */ (window).toastr?.info('Prueba de aviso', 'Aviso'); });
+    await page.waitForTimeout(600);
+    const aviso = await page.evaluate(() => {
+        const toast = document.querySelector('body > #toast-container .toast');
+        const head = document.querySelector('#game-shell .gs-head');
+        return { toastTop: toast ? Math.round(toast.getBoundingClientRect().top) : null, headBottom: head ? Math.round(head.getBoundingClientRect().bottom) : null };
+    });
+    await page.evaluate(() => { /** @type {any} */ (window).toastr?.clear(); });
+    check('un aviso flotante cae por debajo de la cabecera, sin tapar sus botones',
+        aviso.toastTop !== null && aviso.headBottom !== null && aviso.toastTop >= aviso.headBottom, JSON.stringify(aviso));
+    check('la cabecera: sin la fecha de arriba, los botones abajo a la derecha, y la escena abierta en dorado',
+        !cabecera.stateShown && cabecera.toolsBelow && cabecera.toolsRight && cabecera.journal
+        && /^Diálogo/.test(cabecera.active) && /226, 194, 122/.test(cabecera.activeColor), JSON.stringify(cabecera));
+    // UX: las siete ventanas de la cabecera, con el mismo marco: mismo ancho, borde dorado,
+    // título en dorado y el mismo botón de cerrar, sin el fondo carmesí.
+    /** @type {any[]} */
+    const ventanas = [];
+    for (const tool of ['gs-journal', 'gs-table', 'gs-map', 'gs-glance', 'gs-tray', 'gs-dice', 'gs-help']) {
+        const button = page.locator(`#game-shell .gs-tools .${tool}`);
+        if (await button.count() === 0) {
+            ventanas.push({ tool, missing: true });
+            continue;
+        }
+        await button.click();
+        const opened = await page.waitForSelector('.popup:not([closing]) .gs-panel', { timeout: 8000 }).then(() => true).catch(() => false);
+        await page.waitForTimeout(300);
+        ventanas.push(await page.evaluate((/** @type {string} */ name) => {
+            const panel = document.querySelector('.popup:not([closing]) .gs-panel');
+            const popup = panel?.closest('.popup');
+            const title = panel?.querySelector('.gs-popup-title');
+            const close = popup?.querySelector('.popup-button-ok');
+            const css = (/** @type {Element|null|undefined} */ el, /** @type {string} */ prop) => el ? window.getComputedStyle(el).getPropertyValue(prop) : '';
+            return {
+                tool: name,
+                width: popup ? Math.round(popup.getBoundingClientRect().width) : 0,
+                border: css(popup, 'border-top-color'),
+                title: css(title, 'color'),
+                closeBg: css(close, 'background-color'),
+                closeText: (close?.textContent || '').trim(),
+            };
+        }, tool).then(v => ({ ...v, opened })));
+        if (captura && tool === 'gs-journal') await page.screenshot({ path: `${captura}.diario.png` });
+        await page.locator('.popup:not([closing]) .popup-button-ok').last().click().catch(() => {});
+        await page.waitForTimeout(400);
+    }
+    const anchos = new Set(ventanas.filter(v => !v.missing).map(v => v.width));
+    check('las ventanas de la cabecera, con el mismo marco: mismo ancho, borde y título dorados, y Cerrar sin el fondo carmesí',
+        ventanas.filter(v => !v.missing).length >= 6 && anchos.size === 1
+        && ventanas.filter(v => !v.missing).every(v => v.opened && /214, 180, 106/.test(v.border) && /226, 194, 122/.test(v.title)
+            && /rgba\(0, 0, 0, 0\)|transparent/.test(v.closeBg) && v.closeText === 'Cerrar'),
+        JSON.stringify(ventanas));
+    const seen = { dialogue: await probe() };
+    if (captura) await page.screenshot({ path: `${captura}.dialogo.png` });
+    await page.evaluate(() => /** @type {HTMLElement|null} */ (document.activeElement)?.blur());
+    await page.keyboard.press('3');
+    await page.waitForTimeout(900);
+    seen.board = await probe();
+    if (captura) await page.screenshot({ path: `${captura}.tablero.png` });
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    await page.waitForTimeout(700);
+    seen.wide = await probe();
+    if (captura) await page.screenshot({ path: `${captura}.tablero-ancho.png` });
+    await page.setViewportSize({ width: 1400, height: 950 });
+    await page.waitForTimeout(400);
+    await page.keyboard.press('1');
+    await page.waitForTimeout(500);
+    check('el tablero se ve, en Diálogo y en el Tablero (la cuadrícula con alto), y nada se sale por la derecha a 1400 ni a 1920',
+        [seen.dialogue, seen.board, seen.wide].every(s => s.grid && s.grid[1] >= 200 && s.pageWidth <= s.viewport)
+        && seen.board.scene === 'combat', JSON.stringify(seen));
     // K2: la tanda de profundidad (B1, B2, H2, T1, B3, T2) sobre la partida recién empezada.
     // `node tools/e2e-quick.mjs --profundidad`. Cada comando lleva tope: si se cuelga, se dice cuál.
     if (process.argv.includes('--profundidad')) await depthRound(page);

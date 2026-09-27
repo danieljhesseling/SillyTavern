@@ -177,9 +177,11 @@ describe('detectSceneEvent', () => {
         expect(detectSceneEvent(null, board)).toBeNull();
     });
 
-    // Opening or closing the game is not a transition inside it.
-    test('opening or closing the campaign is not an event', () => {
-        expect(detectSceneEvent({ hasChat: false }, board)).toBeNull();
+    // Abrir una partida, nueva o cargada, empieza en la conversación aunque haya un tablero
+    // abierto: el narrador es quien te sitúa. Cerrarla no es un suceso dentro de ella.
+    test('opening the campaign is an event; closing it is not', () => {
+        expect(detectSceneEvent({ hasChat: false }, board)).toBe('game_opened');
+        expect(detectSceneEvent({ hasChat: false }, { hasChat: true })).toBe('game_opened');
         expect(detectSceneEvent(board, { hasChat: false })).toBeNull();
     });
 });
@@ -224,6 +226,25 @@ describe('directScene', () => {
         const choice = directScene(playing, playing, SCENE.COMBAT);
         expect(choice.scene).toBe(SCENE.EXPLORATION);
         expect(choice.override).toBeNull();
+    });
+
+    test('being placed on the starting board, just after opening, keeps the conversation', () => {
+        const opened = directScene({ hasChat: false }, { hasChat: true }, null);
+        const placed = { hasChat: true, locationName: 'El Pueblo de Barro', boardName: 'El cuarto de la posada' };
+        expect(detectSceneEvent({ hasChat: true }, placed)).toBeNull();
+        expect(directScene({ hasChat: true }, placed, opened.override).scene).toBe(SCENE.DIALOGUE);
+        // Entrar en un tablero estando ya en un sitio sí lo abre.
+        expect(detectSceneEvent({ hasChat: true, locationName: 'El Pueblo de Barro' }, placed)).toBe('board_opened');
+    });
+
+    test('a campaign that opens on a board starts in the conversation, and the board is one key away', () => {
+        const opened = directScene({ hasChat: false }, board, null);
+        expect(opened.scene).toBe(SCENE.DIALOGUE);
+        expect(opened.event).toBe('game_opened');
+        // Lo que decide pasa a ser la elección en pie: el siguiente redibujado no vuelve al tablero.
+        expect(directScene(board, board, opened.override).scene).toBe(SCENE.DIALOGUE);
+        // Y la tecla 3 sigue llevando al tablero.
+        expect(directScene(board, board, SCENE.COMBAT).scene).toBe(SCENE.COMBAT);
     });
 
     test('closing the campaign shows the title screen', () => {

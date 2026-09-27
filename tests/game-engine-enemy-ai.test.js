@@ -159,7 +159,7 @@ describe('aggressive profile', () => {
         });
         expect(plan.action).toBe('none');
         expect(plan.destination).toEqual({ x: 2, y: 0 });
-        expect(plan.rationale).toContain('cannot reach');
+        expect(plan.rationale).toContain('no llega');
     });
 
     test('stands still when the target is sealed away', () => {
@@ -207,7 +207,7 @@ describe('skirmisher profile', () => {
         });
         expect(plan.movementCostFeet).toBeGreaterThan(0);
         expect(plan.action).toBe('attack');
-        expect(plan.rationale).toContain('Backs out of melee');
+        expect(plan.rationale).toContain('Se aparta del cuerpo a cuerpo');
 
         const distanceAfter = Math.max(
             Math.abs(plan.destination.x - 6), Math.abs(plan.destination.y - 5),
@@ -244,7 +244,7 @@ describe('coward profile', () => {
         });
         expect(plan.action).toBe('none');
         expect(plan.movementCostFeet).toBeGreaterThan(0);
-        expect(plan.rationale).toContain('Badly wounded');
+        expect(plan.rationale).toContain('Malherido');
 
         const distanceAfter = Math.max(
             Math.abs(plan.destination.x - 6), Math.abs(plan.destination.y - 5),
@@ -291,7 +291,7 @@ describe('guardian profile', () => {
         // Midpoint between the wounded ally at x=0 and the threat at x=10 is x=5.
         expect(plan.destination.y).toBe(5);
         expect(Math.abs(plan.destination.x - 5)).toBeLessThanOrEqual(1);
-        expect(plan.rationale).toContain('ally');
+        expect(plan.rationale).toContain('aliado');
     });
 
     test('with nobody to protect it just fights', () => {
@@ -311,7 +311,7 @@ describe('guardian profile', () => {
             allies: [{ id: 'dead', gridX: 0, gridY: 0, currentHp: 0, maxHp: 10 }],
             terrain: OPEN, gridWidth: 20, gridHeight: 20,
         });
-        expect(plan.rationale).not.toContain('ally');
+        expect(plan.rationale).not.toContain('aliado');
     });
 });
 
@@ -398,6 +398,6 @@ describe('getProfileOptions', () => {
     test('offers every profile for an editor', () => {
         const options = getProfileOptions();
         expect(options).toHaveLength(Object.keys(TACTICAL_PROFILES).length);
-        expect(options).toContainEqual(['aggressive', 'Aggressive']);
+        expect(options).toContainEqual(['aggressive', 'Agresivo']);
     });
 });

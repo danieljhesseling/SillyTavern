@@ -3,8 +3,8 @@
  *
  * Eran trece pasos en fila; desde R2 del roadmap de profundidad son **pestañas**: todas
  * tienen algo por defecto, así que se entra solo en las que se quieren cambiar y se crea el
- * mundo desde cualquiera. Y la partida rápida (R1) es este mismo taller abierto en una vista
- * corta: un mundo precreado, un modo, y a jugar.
+ * mundo desde cualquiera. (La partida rápida de R1, una vista corta de este taller, se quitó
+ * el 2026-09-27: «Un mundo hecho» en la puerta es lo mismo.)
  *
  * Sustituye al asistente de siempre **sin tocar nada de lo que hay debajo**: devuelve el
  * mismo objeto de respuestas que `createCampaign` ya sabe comerse, asi que crear la campana
@@ -30,6 +30,7 @@ import {
     goTo, firstBlock, baselineOf, tabStatus,
 } from '../../campaign/taller.js';
 import { drawStep } from './paso.js';
+import { TACTICAL_PROFILES } from '../../combat/enemy-ai.js';
 import { getTemplateOptions } from '../../campaign/starter-templates.js';
 import { uniqueWorldName } from '../../campaign/campaign-worlds.js';
 import { VERBOSITY, DEFAULT_VERBOSITY } from '../../campaign/narrator.js';
@@ -117,15 +118,15 @@ export async function askPath({ Popup, POPUP_TYPE }) {
 
     const doors = [
         {
-            id: 'cero', icon: 'fa-pen-nib', title: 'Crea tu mundo desde cero',
-            note: 'Lo escribes tú, paso a paso. Lo que no escribas lo decide la semilla.',
+            id: 'cero', icon: 'fa-pen-nib', title: 'Desde cero',
+            note: 'Lo escribes tú, paso a paso, o se lo pides a la IA. Lo que no escribas lo decide la semilla.',
         },
         {
-            id: 'mundo', icon: 'fa-earth-europe', title: 'Mundos precreados',
-            note: 'Cuatro mundos hechos. Eliges uno y ya estás jugando; luego cambias lo que quieras.',
+            id: 'mundo', icon: 'fa-earth-europe', title: 'Un mundo hecho',
+            note: 'Cuatro mundos ya escritos, con tres héroes cada uno. Eliges uno y a jugar; luego cambias lo que quieras.',
         },
         {
-            id: 'libro', icon: 'fa-book-open', title: 'Importa un libro',
+            id: 'libro', icon: 'fa-book-open', title: 'Importar un libro',
             note: 'Pega el JSON que te ha dado tu Gem. Se comprueba antes de crear nada.',
         },
     ];
@@ -274,15 +275,13 @@ async function askPack({ Popup, POPUP_TYPE }) {
  *        escriba el modelo. Sin proveedor no se pasa, y la tarjeta no aparece.
  * @param {any[]} [input.narrators] Los que ya tienes escritos de otras campanas.
  * @param {((file: any) => Promise<string>)|null} [input.uploadFace] Guardar una imagen.
- * @param {boolean} [input.quick] R1: la partida rápida, directa a los mundos precreados.
  * @returns {Promise<any>} Las respuestas que `createCampaign` espera, o null.
  */
 export async function askTaller({
     Popup, POPUP_TYPE, existingWorldNames = [], write = null, makeWorld = null,
-    narrators = [], uploadFace = null, quick = false,
+    narrators = [], uploadFace = null,
 }) {
-    // R1: la partida rápida va directa a los mundos precreados.
-    const path = quick ? 'mundo' : await askPath({ Popup, POPUP_TYPE });
+    const path = await askPath({ Popup, POPUP_TYPE });
     if (!path) return null;
 
     /** @type {any} */
@@ -319,9 +318,6 @@ export async function askTaller({
     /** Solo se crea con «Crear y jugar»: el botón de la ventana es cancelar. */
     let created = false;
 
-    /** R1: la vista corta de la partida rápida, hasta que se pide cambiar más cosas. */
-    let quickView = Boolean(quick);
-
     const root = $('<div class="tl-root"></div>');
     const bar = $('<div class="tl-bar"></div>');
     const body = $('<div class="tl-body"></div>');
@@ -340,7 +336,10 @@ export async function askTaller({
     const write2 = $('<button type="button" class="menu_button tl-write"></button>')
         .append('<i class="fa-solid fa-feather"></i>')
         .append($('<span></span>').text(' Crear y escribir el mundo'));
-    foot.append(back).append(said).append(skip).append(write2).append(next).append(start);
+    // Cancelar vive en el pie, con los demás: el botón propio de la ventana se oculta.
+    const cancel = $('<button type="button" class="menu_button tl-cancel"></button>').text('Cancelar');
+    cancel.on('click', () => { void popup.completeCancelled(); });
+    foot.append(cancel).append(back).append(said).append(skip).append(write2).append(next).append(start);
     root.append(bar).append(body).append(foot);
 
     /** El narrador elegido de la lista, para poder volver a enseñarlo. */
@@ -384,45 +383,21 @@ export async function askTaller({
         text(placeTypes.find(t => text(t.id) === text(place?.type))?.shape) || 'rooms';
 
     /**
-     * Una fila de texto suelta, para los formularios que no pasan por `drawStep`.
+     * El botón de meter o dejar fuera, al pie de la ficha: lo mismo que volver a pulsar la
+     * tarjeta abierta, pero diciéndolo.
      *
-     * @param {string} label
-     * @param {string} value
-     * @param {(value: string) => void} onWrite
-     * @param {() => void} [onDone]
-     * @returns {JQuery}
+     * @param {string} step
+     * @param {string} id
+     * @returns {import('./paso.js').Action}
      */
-    function fieldRow(label, value, onWrite, onDone) {
-        const row = $('<div class="tl-field"></div>');
-        row.append($('<div class="tl-field-head"></div>')
-            .append($('<label class="tl-label"></label>').text(label)));
-        const input = $('<input type="text" class="text_pole tl-input">').val(value);
-        input.on('input', () => onWrite(String(input.val() ?? '')));
-        input.on('change', () => { if (onDone) onDone(); });
-        return row.append(input);
-    }
-
-    /**
-     * Un desplegable suelto.
-     *
-     * @param {string} label
-     * @param {string} value
-     * @param {Record<string, string>} options
-     * @param {(value: string) => void} onWrite
-     * @returns {JQuery}
-     */
-    function choiceRow(label, value, options, onWrite) {
-        const row = $('<div class="tl-field"></div>');
-        row.append($('<div class="tl-field-head"></div>')
-            .append($('<label class="tl-label"></label>').text(label)));
-        const select = $('<select class="text_pole tl-input"></select>');
-        for (const [id, said] of Object.entries(options)) {
-            select.append($('<option></option>').attr('value', id).text(said));
-        }
-        select.val(value);
-        select.on('change', () => onWrite(String(select.val() ?? '')));
-        return row.append(select);
-    }
+    const inOrOut = (step, id) => ({
+        label: isPicked(state, step, id) ? 'Dejar fuera del mundo' : 'Meter en el mundo',
+        icon: isPicked(state, step, id) ? 'fa-eye-slash' : 'fa-check',
+        onClick: () => {
+            state = pickCard(state, step, id);
+            draw();
+        },
+    });
 
     /**
      * Crear, si ninguna pestaña lo impide. Si alguna lo impide, se va a ella y se dice por qué:
@@ -434,7 +409,6 @@ export async function askTaller({
         const stuck = firstBlock(state);
         if (stuck) {
             state = goTo(state, stuck.step);
-            quickView = false;
             draw();
             said.text(stuck.reason).addClass('bad');
             return false;
@@ -469,16 +443,6 @@ export async function askTaller({
         const { at, of, step } = progressOf(state);
 
         bar.empty();
-        root.toggleClass('tl-quick', quickView);
-        if (quickView) {
-            drawQuick();
-            back.hide();
-            next.hide();
-            skip.hide();
-            write2.hide();
-            start.show();
-            return;
-        }
         back.show();
         next.show();
         start.show();
@@ -493,7 +457,8 @@ export async function askTaller({
                 .addClass(`tl-tab-${status}`)
                 .toggleClass('tl-tab-on', index === state.at)
                 .attr('title', status === 'warn' ? blocksNext(state, tab.id) : tab.hint);
-            button.append($('<span class="tl-tab-mark"></span>').text(status === 'warn' ? '⚠' : status === 'changed' ? '✓' : '•'));
+            button.append($('<i class="fa-solid tl-tab-mark" aria-hidden="true"></i>')
+                .addClass(status === 'warn' ? 'fa-triangle-exclamation' : status === 'changed' ? 'fa-check' : 'fa-circle'));
             button.append($('<span></span>').text(` ${tab.title}`));
             button.on('click', () => {
                 state = goTo(state, tab.id);
@@ -503,8 +468,22 @@ export async function askTaller({
             tabs.append(button);
         });
         bar.append(tabs);
-        bar.append($('<div class="tl-bar-said"></div>').text(`Paso ${at} de ${of} · ${step.title}`)
-            .append($('<span class="tl-tabs-legend"></span>').text(' · ✓ cambiado · • como viene · ⚠ algo no cuadra')));
+        // La cabecera, a lo ancho: de qué es la ventana, por dónde vas y qué quiere decir
+        // cada marca de las pestañas.
+        const legend = $('<div class="tl-tabs-legend"></div>');
+        for (const [status, icon, said] of [
+            ['changed', 'fa-check', 'cambiado'],
+            ['default', 'fa-circle', 'como viene'],
+            ['warn', 'fa-triangle-exclamation', 'algo no cuadra'],
+        ]) {
+            legend.append($('<span></span>').addClass(`tl-legend-${status}`)
+                .append(`<i class="fa-solid ${icon}" aria-hidden="true"></i>`)
+                .append($('<span></span>').text(said)));
+        }
+        bar.append($('<div class="tl-head"></div>')
+            .append($('<div class="tl-head-title"></div>').text('Taller de campaña'))
+            .append($('<div class="tl-bar-said"></div>').text(`Paso ${at} de ${of} · ${step.title}`))
+            .append(legend));
 
         if (state.path === 'mundo' && state.source?.pack && PACK_STEPS.includes(step.id)) drawCarried(step);
         else if (step.id === 'mundo') drawWorld();
@@ -529,52 +508,9 @@ export async function askTaller({
         write2.toggle(blocksNext(state, 'mundo') === '');
         const last = state.at >= walkableSteps().length - 1;
         next.text(last ? 'Crear y jugar' : 'Siguiente');
+        next.toggleClass('tl-primary', last);
         // En la última, «Siguiente» ya es crear: dos botones iguales sobran.
         start.toggle(!last);
-        start.prop('disabled', blocksNext(state, 'mundo') !== '');
-    }
-
-    /**
-     * R1: la partida rápida. Un mundo precreado y cómo se juega; el personaje, al entrar.
-     */
-    function drawQuick() {
-        body.empty();
-        const head = $('<div class="tl-step-head"></div>');
-        head.append($('<div class="tl-step-title"></div>').text('Partida rápida'));
-        head.append($('<div class="tl-step-hint"></div>').text(
-            'Elige un mundo y cómo quieres jugarlo. Tu personaje, al entrar: uno de los tres que trae cada mundo, o uno tuyo.',
-        ));
-        body.append(head);
-
-        const grid = $('<div class="tl-cards tl-quick-worlds"></div>');
-        for (const world of worlds) {
-            const id = text(world.id);
-            const card = $('<button type="button" class="tl-card tl-quick-world"></button>')
-                .attr('data-world', id)
-                .toggleClass('picked', isPicked(state, 'mundo', id));
-            card.append($(`<i class="fa-solid ${text(world.icon) || 'fa-earth-europe'} tl-card-face"></i>`));
-            card.append($('<div class="tl-card-title"></div>').text(text(world.name)));
-            card.append($('<div class="tl-card-note"></div>').text(text(world.note)));
-            card.on('click', () => {
-                if (!isPicked(state, 'mundo', id)) chooseWorld(id);
-            });
-            grid.append(card);
-        }
-        body.append(grid);
-
-        body.append($('<div class="tl-quick-title"></div>').text('Cómo lo juegas'));
-        body.append(buildModePicker(state.survival ?? { ...DEFAULT_SURVIVAL }, (chosen) => {
-            state.survival = chosen;
-        }));
-
-        const more = $('<button type="button" class="menu_button tl-more"></button>')
-            .append('<i class="fa-solid fa-sliders"></i>')
-            .append($('<span></span>').text(' Cambiar más cosas del mundo'));
-        more.on('click', () => {
-            quickView = false;
-            draw();
-        });
-        body.append(more);
         start.prop('disabled', blocksNext(state, 'mundo') !== '');
     }
 
@@ -854,6 +790,9 @@ export async function askTaller({
             }];
         }
 
+        // El elegido es también el que se ve en la ficha de al lado.
+        cards = cards.map(card => ({ ...card, open: Boolean(card.picked) }));
+
         // Idea 180: pegar un código de mundo en la semilla elige también de dónde parte.
         /** @type {(id: string) => void} */
         let pickWorld = () => {};
@@ -862,7 +801,9 @@ export async function askTaller({
             hint: 'Lo que el mundo es antes de que nadie entre en él.',
             cardsTitle: state.path === 'mundo' ? 'Los cuatro mundos' : 'Con qué sitio empieza',
             formTitle: 'La ficha',
+            detailIcon: 'fa-earth-europe',
             formOpen: pickedIn(state, 'mundo').length > 0,
+            cardsOpen: true,
             cards,
             fields: [
                 {
@@ -909,12 +850,20 @@ export async function askTaller({
             onWand: write ? (key) => write(key, state) : null,
         });
 
-        // Volver a tirar: seguro, porque no puede borrar nada escrito a mano.
+        // Volver a tirar: seguro, porque no puede borrar nada escrito a mano. Va en la misma
+        // línea que la semilla, que es de lo que es el dado.
         const again = $('<button type="button" class="menu_button tl-reroll"></button>')
+            .attr('title', 'Volver a tirar la semilla: no borra nada escrito a mano')
             .append('<i class="fa-solid fa-dice"></i>')
-            .append($('<span></span>').text(' Volver a tirar la semilla'));
+            .append($('<span></span>').text(' Tirar otra'));
         again.on('click', () => { state = reroll(state); draw(); });
-        body.append(again);
+        const seedInput = body.find('.tl-input.mono').first();
+        if (seedInput.length > 0) {
+            seedInput.wrap('<div class="tl-input-group"></div>');
+            seedInput.after(again);
+        } else {
+            body.append(again);
+        }
     }
 
     /** Paso 2: quien lo cuenta. */
@@ -925,14 +874,15 @@ export async function askTaller({
             ...voices.map(v => ({
                 id: text(v.id), title: text(v.name), note: text(v.note),
                 icon: text(v.icon) || 'fa-comment', image: text(v.image),
-                picked: chosen === text(v.id),
+                picked: chosen === text(v.id), open: chosen === text(v.id), group: 'De serie',
             })),
             // Y los que ya tienes: un narrador escrito para otra campana sirve para esta,
-            // y volver a escribirlo seria escribirlo dos veces.
+            // y volver a escribirlo seria escribirlo dos veces. Aparte: lo tuyo no se mezcla
+            // con lo de serie.
             ...mine.map(v => ({
                 id: text(v.id), title: text(v.name), note: text(v.note) || 'De otra campaña.',
                 icon: 'fa-user-pen', image: text(v.image),
-                picked: chosen === text(v.id),
+                picked: chosen === text(v.id), open: chosen === text(v.id), group: 'Tuyos, de otras campañas',
             })),
         ];
 
@@ -943,8 +893,8 @@ export async function askTaller({
                 + 'Los números los sigue decidiendo el juego.',
             cardsTitle: 'Elige quién narra',
             cardsOpen: true,
-            formTitle: 'Su ficha',
-            formOpen: Boolean(chosen),
+            formTitle: chosen ? 'Su ficha' : 'Elige un narrador, o escribe el tuyo, y aquí sale su ficha',
+            detailIcon: 'fa-feather',
             cards,
             fields: chosen ? [
                 { key: 'nName', label: 'Nombre', value: text(current.name), placeholder: 'Narrador' },
@@ -1022,13 +972,15 @@ export async function askTaller({
         const open = editing.localidades;
 
         const cards = [
-            { id: 'nuevo', title: 'Otro sitio', note: 'Uno que te inventes tu.', add: true },
+            { id: 'nuevo', title: 'Nuevo sitio', note: 'Uno que te inventes tú.', add: true },
             ...places.map(place => ({
                 id: text(place.id),
                 title: text(place.name) || '(sin nombre)',
                 note: [typeName(place.type), text(place.biome)].filter(Boolean).join(' - '),
                 icon: place.fixed ? 'fa-flag' : 'fa-location-dot',
                 picked: isPicked(state, 'localidades', text(place.id)),
+                open: text(place.id) === open,
+                tag: text(place.biome).toLowerCase(),
             })),
         ];
 
@@ -1036,31 +988,43 @@ export async function askTaller({
 
         drawStep(body, {
             title: 'Localidades',
-            hint: 'Los sitios a los que se puede ir. La distancia se declara en dias: el mundo '
+            hint: 'Los sitios a los que se puede ir. La distancia se declara en días: el mundo '
                 + 'es una lista, no un tablero.',
             cardsTitle: 'Los sitios del mundo',
             // Aqui las tarjetas son el contenido: llegar y no verlas seria llegar a un
             // paso en blanco.
             cardsOpen: true,
-            formTitle: place ? `El sitio: ${text(place.name) || 'sin nombre'}` : 'Pulsa un sitio para cambiarlo',
-            formOpen: Boolean(place),
+            formTitle: place ? text(place.name) || 'Sin nombre' : 'Pulsa un sitio para cambiarlo',
+            detailIcon: 'fa-map-location-dot',
             cards,
             fields: place ? [
-                { key: 'lName', label: 'Nombre', value: text(place.name), placeholder: 'Como se llama' },
+                { key: 'lName', label: 'Nombre', value: text(place.name), placeholder: 'Cómo se llama' },
                 {
-                    key: 'lType', label: 'Que clase de sitio es', value: text(place.type), kind: 'choice',
+                    key: 'lType', label: 'Qué clase de sitio es', value: text(place.type), kind: 'choice',
                     options: [{ id: '', label: '-' }, ...placeTypes.map(t => ({
                         id: text(t.id), label: text(t.name),
                     }))],
-                    hint: 'De aqui sale como se genera por dentro y que tiempo puede hacer.',
+                    hint: 'De aquí sale cómo se genera por dentro y qué tiempo puede hacer.',
                 },
                 {
-                    key: 'lBiome', label: 'Donde esta', value: text(place.biome),
-                    placeholder: 'camino, montana, pantano...',
+                    key: 'lBiome', label: 'Dónde está', value: text(place.biome),
+                    placeholder: 'camino, montaña, pantano…',
                 },
                 {
-                    key: 'lNote', label: 'Que es', value: text(place.note), kind: 'area',
+                    key: 'lNote', label: 'Qué es', value: text(place.note), kind: 'area',
                     placeholder: 'Una frase.', wand: true,
+                },
+            ] : [],
+            // El de partida no se quita ni se deja fuera: sin él no hay por dónde empezar.
+            actions: place && !place.fixed ? [
+                inOrOut('localidades', text(place.id)),
+                {
+                    label: 'Quitar este sitio', icon: 'fa-trash-can', danger: true,
+                    onClick: () => {
+                        state = removeLocation(state, place.id);
+                        editing.localidades = '';
+                        draw();
+                    },
                 },
             ] : [],
             onPick: (id) => {
@@ -1086,114 +1050,104 @@ export async function askTaller({
             },
             onWand: write ? (key) => write(key, state) : null,
         });
-
-        if (place && !place.fixed) {
-            const drop = $('<button type="button" class="menu_button tl-drop"></button>')
-                .append('<i class="fa-solid fa-trash"></i>')
-                .append($('<span></span>').text(' Quitar este sitio'));
-            drop.on('click', () => {
-                state = removeLocation(state, place.id);
-                editing.localidades = '';
-                draw();
-            });
-            body.append(drop);
-        }
     }
 
     /**
      * Paso 4: los tableros, uno por sitio.
      *
-     * Un acordeon por localidad, que es lo que hace que se entienda a que sitio pertenece
-     * cada tablero sin tener que leerlo en el nombre.
+     * En la lista, un grupo por sitio con los suyos: es lo que hace que se entienda a qué
+     * sitio pertenece cada tablero sin tener que leerlo en el nombre. El `+` va en cada grupo,
+     * porque un tablero nuevo es de un sitio concreto.
      */
     function drawBoards() {
-        body.empty();
-        body.append($('<div class="tl-step-head"></div>')
-            .append($('<div class="tl-step-title"></div>').text('Tableros'))
-            .append($('<div class="tl-step-hint"></div>').text(
-                'Donde se pelea. Cada uno pertenece a un sitio, y se genera con tu semilla '
-                + 'al crear la campana.',
-            )));
-
         const places = locationsOf(state)
             .filter(place => isPicked(state, 'localidades', text(place.id)));
 
         if (places.length === 0) {
+            body.empty();
+            body.append($('<div class="tl-step-head"></div>')
+                .append($('<div class="tl-step-title"></div>').text('Tableros'))
+                .append($('<div class="tl-step-hint"></div>').text(
+                    'Donde se pelea. Cada uno pertenece a un sitio, y se genera con tu semilla '
+                    + 'al crear la campaña.',
+                )));
             body.append($('<div class="tl-empty"></div>').text(
-                'No hay ningun sitio en el mundo todavia. Vuelve al paso anterior.',
+                'No hay ningún sitio en el mundo todavía. Vuelve al paso anterior.',
             ));
             return;
         }
 
-        for (const place of places) {
-            const fold = $('<div class="tl-fold open tl-place"></div>');
-            const head = $('<button type="button" class="tl-fold-head"></button>')
-                .append('<i class="fa-solid fa-chevron-down tl-fold-arrow"></i>')
-                .append($('<span></span>').text(`${text(place.name) || '(sin nombre)'} - `
-                    + `${place.boards.length} tablero(s)`));
-            head.on('click', () => fold.toggleClass('open'));
+        const cards = places.flatMap(place => {
+            const many = place.boards.length;
+            const group = `${text(place.name) || '(sin nombre)'} · ${many} ${many === 1 ? 'tablero' : 'tableros'}`;
+            return [
+                { id: `nuevo:${text(place.id)}`, title: 'Otro tablero', note: 'Para este sitio.', add: true, group },
+                ...place.boards.map((/** @type {any} */ board) => ({
+                    id: text(board.id),
+                    title: text(board.name) || '(sin nombre)',
+                    note: [SHAPE_LABELS[text(board.shape)] ?? text(board.shape),
+                        SIZE_LABELS[text(board.size)] ?? ''].filter(Boolean).join(' - '),
+                    icon: 'fa-chess-board',
+                    picked: true,
+                    open: text(board.id) === text(editing.tableros),
+                    group,
+                })),
+            ];
+        });
 
-            const inner = $('<div class="tl-fold-body"></div>');
-            const grid = $('<div class="tl-cards"></div>');
+        const place = places.find(p => p.boards.some((/** @type {any} */ b) => text(b.id) === text(editing.tableros))) ?? null;
+        const board = place?.boards.find((/** @type {any} */ b) => text(b.id) === text(editing.tableros)) ?? null;
 
-            const add = $('<button type="button" class="tl-card add"></button>')
-                .append('<div class="tl-card-face"><i class="fa-solid fa-plus"></i></div>')
-                .append($('<div class="tl-card-title"></div>').text('Otro tablero'));
-            add.on('click', () => {
-                const made = addBoard(state, place.id, {
-                    name: `Tablero ${place.boards.length + 1}`, shape: shapeFor(place),
-                });
-                state = made.state;
-                editing.tableros = made.id;
-                draw();
-            });
-            grid.append(add);
-
-            for (const board of place.boards) {
-                const card = $('<button type="button" class="tl-card picked"></button>')
-                    .append('<div class="tl-card-face"><i class="fa-solid fa-chess-board"></i></div>')
-                    .append($('<div class="tl-card-title"></div>').text(text(board.name) || '(sin nombre)'))
-                    .append($('<div class="tl-card-note"></div>').text(
-                        [SHAPE_LABELS[text(board.shape)] ?? text(board.shape),
-                            SIZE_LABELS[text(board.size)] ?? ''].filter(Boolean).join(' - '),
-                    ));
-                card.on('click', () => {
-                    editing.tableros = editing.tableros === board.id ? '' : board.id;
-                    draw();
-                });
-                grid.append(card);
-            }
-            inner.append(grid);
-
-            const open = place.boards.find((/** @type {any} */ b) => b.id === editing.tableros);
-            if (open) {
-                const form = $('<div class="tl-form"></div>');
-                form.append(fieldRow('Nombre', text(open.name), (value) => {
-                    state = editBoard(state, place.id, open.id, { name: value });
-                }, () => draw()));
-                form.append(choiceRow('Como es por dentro', text(open.shape), SHAPE_LABELS, (value) => {
-                    state = editBoard(state, place.id, open.id, { shape: value });
-                    draw();
-                }));
-                form.append(choiceRow('Cuanto ocupa', text(open.size), SIZE_LABELS, (value) => {
-                    state = editBoard(state, place.id, open.id, { size: value });
-                    draw();
-                }));
-
-                const drop = $('<button type="button" class="menu_button tl-drop"></button>')
-                    .append('<i class="fa-solid fa-trash"></i>')
-                    .append($('<span></span>').text(' Quitar este tablero'));
-                drop.on('click', () => {
-                    state = removeBoard(state, place.id, open.id);
+        drawStep(body, {
+            title: 'Tableros',
+            hint: 'Donde se pelea. Cada uno pertenece a un sitio, y se genera con tu semilla '
+                + 'al crear la campaña.',
+            cardsTitle: 'Los tableros de cada sitio',
+            formTitle: board ? text(board.name) || 'Sin nombre' : 'Pulsa un tablero para cambiarlo',
+            detailIcon: 'fa-chess-board',
+            cards,
+            fields: board ? [
+                { key: 'bName', label: 'Nombre', value: text(board.name) },
+                {
+                    key: 'bShape', label: 'Cómo es por dentro', value: text(board.shape), kind: 'choice',
+                    options: Object.entries(SHAPE_LABELS).map(([id, label]) => ({ id, label: text(label) })),
+                },
+                {
+                    key: 'bSize', label: 'Cuánto ocupa', value: text(board.size), kind: 'choice',
+                    options: Object.entries(SIZE_LABELS).map(([id, label]) => ({ id, label: text(label) })),
+                },
+            ] : [],
+            actions: place && board ? [{
+                label: 'Quitar este tablero', icon: 'fa-trash-can', danger: true,
+                onClick: () => {
+                    state = removeBoard(state, place.id, board.id);
                     editing.tableros = '';
                     draw();
-                });
-                form.append(drop);
-                inner.append(form);
-            }
-
-            body.append(fold.append(head).append(inner));
-        }
+                },
+            }] : [],
+            onPick: (id) => {
+                if (id.startsWith('nuevo:')) {
+                    const where = places.find(p => text(p.id) === id.slice('nuevo:'.length));
+                    if (!where) return;
+                    const made = addBoard(state, where.id, {
+                        name: `Tablero ${where.boards.length + 1}`, shape: shapeFor(where),
+                    });
+                    state = made.state;
+                    editing.tableros = made.id;
+                    draw();
+                    return;
+                }
+                editing.tableros = text(editing.tableros) === id ? '' : id;
+                draw();
+            },
+            onWrite: (key, value) => {
+                if (!place || !board) return;
+                const field = { bName: 'name', bShape: 'shape', bSize: 'size' }[key];
+                if (!field) return;
+                state = editBoard(state, place.id, board.id, { [field]: value });
+                draw();
+            },
+        });
     }
 
     /**
@@ -1243,13 +1197,15 @@ export async function askTaller({
             .filter(Boolean);
 
         const cards = [
-            { id: 'nueva', title: 'Otra facción', note: 'Una que te inventes tú.', add: true },
+            { id: 'nueva', title: 'Nueva facción', note: 'Una que te inventes tú.', add: true },
             ...all.map(faction => ({
                 id: text(faction.id),
                 title: text(faction.name) || '(sin nombre)',
                 note: [text(faction.seat), GOAL_LABELS[text(faction.goal?.kind)] ?? ''].filter(Boolean).join(' - '),
                 icon: 'fa-flag',
                 picked: isPicked(state, 'facciones', text(faction.id)),
+                open: text(faction.id) === open,
+                tag: GOAL_LABELS[text(faction.goal?.kind)] ?? '',
             })),
         ];
 
@@ -1257,25 +1213,25 @@ export async function askTaller({
 
         drawStep(body, {
             title: 'Facciones',
-            hint: 'Lo unico del mundo que tiene planes propios: avanzan solas, cierran caminos '
+            hint: 'Lo único del mundo que tiene planes propios: avanzan solas, cierran caminos '
                 + 'y lo que hagan se paga el viernes.',
-            cardsTitle: 'Quien manda ahi fuera',
+            cardsTitle: 'Quién manda ahí fuera',
             cardsOpen: true,
-            formTitle: faction ? `La faccion: ${text(faction.name) || 'sin nombre'}` : 'Pulsa una para cambiarla',
-            formOpen: Boolean(faction),
+            formTitle: faction ? text(faction.name) || 'Sin nombre' : 'Pulsa una para cambiarla',
+            detailIcon: 'fa-flag',
             cards,
             fields: faction ? [
                 { key: 'fName', label: 'Nombre', value: text(faction.name), placeholder: 'Los del Molino' },
                 {
-                    key: 'fSeat', label: 'Donde mandan', value: text(faction.seat), kind: 'choice',
+                    key: 'fSeat', label: 'Dónde mandan', value: text(faction.seat), kind: 'choice',
                     options: [{ id: '', label: '-' }, ...places.map(name => ({ id: name, label: name }))],
                 },
                 {
-                    key: 'fGoal', label: 'Que quieren', value: text(faction.goal?.kind), kind: 'choice',
+                    key: 'fGoal', label: 'Qué quieren', value: text(faction.goal?.kind), kind: 'choice',
                     options: ['', ...GOALS].map(id => ({ id, label: GOAL_LABELS[id] ?? id })),
                 },
                 {
-                    key: 'fTarget', label: 'De donde, o de quien', value: text(faction.goal?.target),
+                    key: 'fTarget', label: 'De dónde, o de quién', value: text(faction.goal?.target),
                     kind: 'choice',
                     options: [
                         { id: '', label: '-' },
@@ -1283,19 +1239,30 @@ export async function askTaller({
                         ...all.filter(f => f.id !== faction.id)
                             .map(f => ({ id: text(f.id), label: text(f.name) || text(f.id) })),
                     ],
-                    hint: 'Acabar con alguien apunta a una faccion; lo demas, a un sitio.',
+                    hint: 'Acabar con alguien apunta a una facción; lo demás, a un sitio.',
                 },
                 {
                     key: 'fNote', label: 'Por que lo quieren', value: text(faction.note), kind: 'area',
-                    placeholder: 'Necesitan mas tierra de la que tienen.', wand: true,
+                    placeholder: 'Necesitan más tierra de la que tienen.', wand: true,
                 },
                 {
-                    key: 'fRep', label: 'Que piensan de ti al empezar',
+                    key: 'fRep', label: 'Qué piensan de ti al empezar',
                     value: String(Number(faction.reputation) || 0), kind: 'choice',
                     options: Array.from({ length: (STANDING * 2) + 1 }, (unused, i) => {
                         const at = i - STANDING;
                         return { id: String(at), label: describeStanding(at) };
                     }),
+                },
+            ] : [],
+            actions: faction ? [
+                inOrOut('facciones', text(faction.id)),
+                {
+                    label: 'Quitar esta facción', icon: 'fa-trash-can', danger: true,
+                    onClick: () => {
+                        state = removeFaction(state, faction.id);
+                        editing.facciones = '';
+                        draw();
+                    },
                 },
             ] : [],
             onPick: (id) => {
@@ -1326,18 +1293,6 @@ export async function askTaller({
             },
             onWand: write ? (key) => write(key, state) : null,
         });
-
-        if (faction) {
-            const drop = $('<button type="button" class="menu_button tl-drop"></button>')
-                .append('<i class="fa-solid fa-trash"></i>')
-                .append($('<span></span>').text(' Quitar esta faccion'));
-            drop.on('click', () => {
-                state = removeFaction(state, faction.id);
-                editing.facciones = '';
-                draw();
-            });
-            body.append(drop);
-        }
     }
 
     /**
@@ -1357,31 +1312,31 @@ export async function askTaller({
         const said = {
             habilidades: {
                 title: 'Habilidades',
-                hint: 'Lo que sabe hacer la gente. Cada una dice de que clase es, asi que elegir '
+                hint: 'Lo que sabe hacer la gente. Cada una dice de qué clase es, así que elegir '
                     + 'clase ya trae las suyas.',
                 cards: 'Lo que se puede aprender',
                 line: (/** @type {any} */ row) => nameAndAbility(asAbility(row)),
             },
             razas: {
                 title: 'Razas',
-                hint: 'De que esta hecha la gente. Cada una da algo y **quita** algo: una que solo '
-                    + 'sumara se elegiria siempre.',
-                cards: 'Quien puede vivir aqui',
+                hint: 'De qué está hecha la gente. Cada una da algo y quita algo: una que solo '
+                    + 'sumara se elegiría siempre.',
+                cards: 'Quién puede vivir aquí',
                 line: describeKin,
             },
             clases: {
                 title: 'Clases',
-                hint: 'A que se dedica. El dado de golpe es lo que aguanta, y lo demas se suma a '
-                    + 'sus caracteristicas al crear el personaje.',
-                cards: 'A que se puede dedicar',
+                hint: 'A qué se dedica. El dado de golpe es lo que aguanta, y lo demás se suma a '
+                    + 'sus características al crear el personaje.',
+                cards: 'A qué se puede dedicar',
                 line: describeKin,
             },
             objetos: {
                 title: 'Objetos',
-                hint: 'De que formas hay armas, armaduras y trastos. El material lo pone otra '
-                    + 'bateria: forma x material = objeto, asi que quitar una forma quita '
-                    + 'dieciseis objetos.',
-                cards: 'Lo que puede existir aqui',
+                hint: 'De qué formas hay armas, armaduras y trastos. El material lo pone otra '
+                    + 'batería: forma × material = objeto, así que quitar una forma quita '
+                    + 'dieciséis objetos.',
+                cards: 'Lo que puede existir aquí',
                 line: (/** @type {any} */ row) => [
                     row.damageDice ? `${row.damageDice} ${text(row.damageType)}` : '',
                     row.armorClass ? `CA ${row.armorClass}` : '',
@@ -1392,30 +1347,38 @@ export async function askTaller({
             },
             bestiario: {
                 title: 'Bestiario',
-                hint: 'Lo que hay ahi fuera. Los arquetipos son el bicho y las plantillas se les '
+                hint: 'Lo que hay ahí fuera. Los arquetipos son el bicho y las plantillas se les '
                     + 'apilan encima: quitar una plantilla quita una familia entera.',
                 cards: 'Lo que puede salirte al paso',
                 line: (/** @type {any} */ row) => [
                     text(row.kind) === 'plantilla' ? 'Plantilla' : '',
                     row.cr !== undefined ? `CR ${row.cr}` : '',
-                    text(row.profile),
+                    // Cómo pelea, en castellano: el motor lo guarda con su nombre de dentro.
+                    text(TACTICAL_PROFILES[text(row.profile)]?.label).toLowerCase() || text(row.profile),
                 ].filter(Boolean).join(' - ') || text(row.note),
             },
         }[which];
 
         const open = editing[which];
+        const icon = {
+            razas: 'fa-user-group', clases: 'fa-shield-halved', habilidades: 'fa-hand-sparkles',
+            objetos: 'fa-gem', bestiario: 'fa-dragon',
+        }[which] ?? 'fa-circle';
         const cards = rows.map((/** @type {any} */ row) => ({
             id: text(row.id),
             title: text(row.name),
             note: said.line(row),
-            icon: {
-                razas: 'fa-user-group', clases: 'fa-shield-halved', habilidades: 'fa-hand-sparkles',
-                objetos: 'fa-gem', bestiario: 'fa-dragon',
-            }[which] ?? 'fa-circle',
+            icon,
             picked: isPicked(state, which, text(row.id)),
+            open: text(row.id) === open,
+            // Por lo que se filtra, donde hay tantas que hace falta: sesenta formas, cuarenta bichos.
+            tag: which === 'objetos' ? ({ weapon: 'armas', armor: 'armaduras', gear: 'trastos' }[text(row.itemType)] ?? '')
+                : which === 'bestiario' ? ({ arquetipo: 'arquetipos', plantilla: 'plantillas' }[text(row.kind)] ?? '')
+                    : '',
         }));
 
         const row = rows.find((/** @type {any} */ r) => text(r.id) === open) ?? null;
+        const marked = pickedIn(state, which).length;
 
         drawStep(body, {
             title: said.title,
@@ -1423,11 +1386,13 @@ export async function askTaller({
             cardsTitle: said.cards,
             cardsOpen: true,
             formTitle: row ? text(row.name) : 'Pulsa una para leerla',
-            formOpen: Boolean(row),
+            detailIcon: icon,
+            tally: `${marked} de ${rows.length} dentro`,
             cards,
             fields: row ? [
-                { key: 'x', label: 'Que hace', value: said.line(row), hint: text(row.note) },
+                { key: 'x', label: 'Qué hace', value: said.line(row), hint: text(row.note) },
             ] : [],
+            actions: row ? [inOrOut(which, text(row.id))] : [],
             onPick: (id) => {
                 // Aqui no se escribe: se elige. Pulsar la abre, y volver a pulsarla la quita
                 // del mundo.
@@ -1437,11 +1402,6 @@ export async function askTaller({
             },
             onWrite: () => {},
         });
-
-        const marked = pickedIn(state, which).length;
-        body.append($('<div class="tl-said"></div>').text(
-            `${marked} de ${rows.length} entran en el mundo.`,
-        ));
     }
 
     /**
@@ -1480,13 +1440,15 @@ export async function askTaller({
             .map(place => text(place.name)).filter(Boolean);
 
         const cards = [
-            { id: 'nueva', title: 'Otra persona', note: 'Una que te inventes tu.', add: true },
+            { id: 'nueva', title: 'Nueva persona', note: 'Una que te inventes tú.', add: true },
             ...all.map(person => ({
                 id: text(person.id),
                 title: text(person.name) || '(sin nombre)',
                 note: [text(person.title), text(person.locationName)].filter(Boolean).join(' - '),
                 icon: 'fa-user',
                 picked: isPicked(state, 'personajes', text(person.id)),
+                open: text(person.id) === open,
+                tag: text(person.locationName),
             })),
         ];
 
@@ -1494,18 +1456,18 @@ export async function askTaller({
 
         drawStep(body, {
             title: 'Personajes',
-            hint: 'Quien vive aqui. Salen del compendio con tu semilla, y cada uno lleva lo que '
+            hint: 'Quién vive aquí. Salen del compendio con tu semilla, y cada uno lleva lo que '
                 + 'quiere y lo que teme: de ahi salen todas sus decisiones.',
             cardsTitle: 'La gente del mundo',
             cardsOpen: true,
             formTitle: person ? text(person.name) || 'Sin nombre' : 'Pulsa a alguien para cambiarlo',
-            formOpen: Boolean(person),
+            detailIcon: 'fa-user',
             cards,
             fields: person ? [
                 { key: 'pName', label: 'Nombre', value: text(person.name) },
-                { key: 'pTitle', label: 'Como le llama la gente', value: text(person.title) },
+                { key: 'pTitle', label: 'Cómo le llama la gente', value: text(person.title) },
                 {
-                    key: 'pWhere', label: 'Donde vive', value: text(person.locationName), kind: 'choice',
+                    key: 'pWhere', label: 'Dónde vive', value: text(person.locationName), kind: 'choice',
                     options: [{ id: '', label: '-' }, ...places.map(name => ({ id: name, label: name }))],
                 },
                 {
@@ -1521,10 +1483,21 @@ export async function askTaller({
                     }))],
                 },
                 {
-                    key: 'pStory', label: 'Quien es', value: text(person.backstory), kind: 'area',
-                    hint: 'Esto y lo de abajo es lo unico que lee el modelo.', wand: true,
+                    key: 'pStory', label: 'Quién es', value: text(person.backstory), kind: 'area',
+                    hint: 'Esto y lo de abajo es lo único que lee el modelo.', wand: true,
                 },
-                { key: 'pMood', label: 'Como es', value: text(person.personality), kind: 'area', wand: true },
+                { key: 'pMood', label: 'Cómo es', value: text(person.personality), kind: 'area', wand: true },
+            ] : [],
+            actions: person ? [
+                inOrOut('personajes', text(person.id)),
+                {
+                    label: 'Quitar a esta persona', icon: 'fa-trash-can', danger: true,
+                    onClick: () => {
+                        state = removePerson(state, person.id);
+                        editing.personajes = '';
+                        draw();
+                    },
+                },
             ] : [],
             onPick: (id) => {
                 if (id === 'nueva') {
@@ -1551,18 +1524,6 @@ export async function askTaller({
             },
             onWand: write ? (key) => write(key, state) : null,
         });
-
-        if (person) {
-            const drop = $('<button type="button" class="menu_button tl-drop"></button>')
-                .append('<i class="fa-solid fa-trash"></i>')
-                .append($('<span></span>').text(' Quitar a esta persona'));
-            drop.on('click', () => {
-                state = removePerson(state, person.id);
-                editing.personajes = '';
-                draw();
-            });
-            body.append(drop);
-        }
     }
 
     /**
@@ -1582,13 +1543,15 @@ export async function askTaller({
             .map(place => text(place.name)).filter(Boolean);
 
         const cards = [
-            { id: 'nueva', title: 'Otra mision', note: 'De las que dan el tono.', add: true },
+            { id: 'nueva', title: 'Nueva misión', note: 'De las que dan el tono.', add: true },
             ...all.map(quest => ({
                 id: text(quest.id),
-                title: text(quest.title) || '(sin titulo)',
+                title: text(quest.title) || '(sin título)',
                 note: [text(quest.where), quest.atStart ? 'desde el principio' : 'mezclada'].filter(Boolean).join(' - '),
                 icon: 'fa-scroll',
                 picked: isPicked(state, 'misiones', text(quest.id)),
+                open: text(quest.id) === open,
+                tag: text(quest.where),
             })),
         ];
 
@@ -1596,30 +1559,30 @@ export async function askTaller({
 
         drawStep(body, {
             title: 'Misiones',
-            hint: 'Las que trae el mundo escritas, y como salen las demas. El tablon se rellena '
-                + 'solo: lo que vence deja hueco, y uno de cada tres sale de lo que una faccion '
+            hint: 'Las que trae el mundo escritas, y cómo salen las demás. El tablón se rellena '
+                + 'solo: lo que vence deja hueco, y uno de cada tres sale de lo que una facción '
                 + 'quiere esa semana.',
             cardsTitle: 'Las que trae el mundo',
             cardsOpen: true,
-            formTitle: quest ? text(quest.title) || 'Sin titulo' : 'Los mandos del tablon',
-            formOpen: true,
+            formTitle: quest ? text(quest.title) || 'Sin título' : 'Los mandos del tablón',
+            detailIcon: quest ? 'fa-scroll' : 'fa-sliders',
             cards,
             fields: quest ? [
-                { key: 'qTitle', label: 'Titulo', value: text(quest.title), placeholder: 'Sacar lo que hay en el pozo' },
-                { key: 'qNote', label: 'De que va', value: text(quest.note), kind: 'area', wand: true },
+                { key: 'qTitle', label: 'Título', value: text(quest.title), placeholder: 'Sacar lo que hay en el pozo' },
+                { key: 'qNote', label: 'De qué va', value: text(quest.note), kind: 'area', wand: true },
                 {
-                    key: 'qWhere', label: 'Donde', value: text(quest.where), kind: 'choice',
+                    key: 'qWhere', label: 'Dónde', value: text(quest.where), kind: 'choice',
                     options: [{ id: '', label: '-' }, ...places.map(name => ({ id: name, label: name }))],
                 },
                 { key: 'qReward', label: 'Lo que paga', value: String(quest.reward || 0) },
                 {
                     key: 'qStart', label: 'Sale desde el principio', kind: 'check',
                     value: quest.atStart ? 'si' : '',
-                    hint: 'Apagado, aparece mezclada con lo que el tablon vaya generando.',
+                    hint: 'Apagado, aparece mezclada con lo que el tablón vaya generando.',
                 },
             ] : [
                 {
-                    key: 'bShare', label: 'Cuantos encargos salen de las facciones',
+                    key: 'bShare', label: 'Cuántos encargos salen de las facciones',
                     value: String(rules.factionShare), kind: 'choice',
                     options: [
                         { id: '2', label: 'Uno de cada dos' },
@@ -1627,16 +1590,36 @@ export async function askTaller({
                         { id: '5', label: 'Uno de cada cinco' },
                         { id: '99', label: 'Ninguno: solo trabajo suelto' },
                     ],
-                    hint: 'Un tablon que solo habla de facciones deja de ofrecer trabajo y pasa a '
+                    hint: 'Un tablón que solo habla de facciones deja de ofrecer trabajo y pasa a '
                         + 'ser una guerra.',
                 },
                 {
-                    key: 'bTheme', label: 'De que tira el gremio', value: text(rules.theme),
-                    placeholder: 'general, ladrones, cazadores...',
-                    hint: 'La tematica pesa sobre la misma tabla: un gremio de ladrones ve mas '
+                    key: 'bTheme', label: 'De qué tira el gremio', value: text(rules.theme),
+                    placeholder: 'general, ladrones, cazadores…',
+                    hint: 'La temática pesa sobre la misma tabla: un gremio de ladrones ve más '
                         + 'robos y menos escoltas.',
                 },
             ],
+            // Con una misión abierta, los mandos del tablón quedaban fuera de alcance: se vuelve
+            // a ellos desde aquí.
+            actions: quest ? [
+                inOrOut('misiones', text(quest.id)),
+                {
+                    label: 'Ver los mandos del tablón', icon: 'fa-sliders',
+                    onClick: () => {
+                        editing.misiones = '';
+                        draw();
+                    },
+                },
+                {
+                    label: 'Quitar esta misión', icon: 'fa-trash-can', danger: true,
+                    onClick: () => {
+                        state = removeQuest(state, quest.id);
+                        editing.misiones = '';
+                        draw();
+                    },
+                },
+            ] : [],
             onPick: (id) => {
                 if (id === 'nueva') {
                     const made = addQuest(state, { title: '', where: places[0] ?? '' });
@@ -1676,18 +1659,6 @@ export async function askTaller({
             },
             onWand: write ? (key) => write(key, state) : null,
         });
-
-        if (quest) {
-            const drop = $('<button type="button" class="menu_button tl-drop"></button>')
-                .append('<i class="fa-solid fa-trash"></i>')
-                .append($('<span></span>').text(' Quitar esta mision'));
-            drop.on('click', () => {
-                state = removeQuest(state, quest.id);
-                editing.misiones = '';
-                draw();
-            });
-            body.append(drop);
-        }
     }
 
     /** Paso 13: cuanto duele perder. */

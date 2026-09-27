@@ -211,7 +211,7 @@ try {
     const reachHeroCreator = async () => {
         await page.waitForSelector('.hc-root, .popup:visible .vt-new', { timeout: 60000 });
         if (await page.locator('.popup:visible .vt-new').count() > 0) {
-            veteransOffered.push(...await page.evaluate(() => [...document.querySelectorAll('.popup:not([closing]) .vt-veteran')].map(b => (b.textContent || '').trim())));
+            veteransOffered.push(...await page.evaluate(() => [...document.querySelectorAll('.popup:not([closing]) .vt-veteran')].map(b => (b.getAttribute('aria-label') || b.textContent || '').trim())));
             await page.locator('.popup:visible .vt-new').click();
         }
         await page.waitForSelector('.hc-root', { timeout: 60000 });
@@ -273,7 +273,7 @@ try {
         [...document.querySelectorAll('.tl-door-card-title')].map(e => e.textContent || ''));
     check('al crear campana se elige por donde se empieza',
         puertas.length === 3 && puertas.some(t => /desde cero/i.test(t))
-        && puertas.some(t => /precreados/i.test(t)) && puertas.some(t => /libro/i.test(t)),
+        && puertas.some(t => /mundo hecho/i.test(t)) && puertas.some(t => /libro/i.test(t)),
         puertas.join(' | '));
 
     await page.locator('.tl-door-card').first().click();
@@ -315,7 +315,7 @@ try {
     const paso2 = await page.evaluate(() => ({
         dicho: document.querySelector('.tl-bar-said')?.textContent || '',
         narradores: document.querySelectorAll('.tl-card').length,
-        mas: document.querySelectorAll('.tl-card.add').length,
+        mas: document.querySelectorAll('.tl-toolbar .tl-add').length,
     }));
     check('el paso 2 ofrece narradores hechos y uno para escribir el tuyo',
         /Paso 2 de 13/.test(paso2.dicho) && paso2.narradores >= 4 && paso2.mas === 1,
@@ -349,21 +349,21 @@ try {
     await page.locator('.tl-next').click();
     await page.waitForTimeout(600);
 
-    // Paso 4: un acordeon por sitio, que es lo que hace que se entienda a cual pertenece
-    // cada tablero sin leerlo en el nombre.
+    // Paso 4: en la lista, un grupo por sitio, que es lo que hace que se entienda a cual
+    // pertenece cada tablero sin leerlo en el nombre.
     const paso4 = await page.evaluate(() => ({
         dicho: document.querySelector('.tl-bar-said')?.textContent || '',
-        sitios: document.querySelectorAll('.tl-place').length,
+        sitios: document.querySelectorAll('.tl-list .tl-cards-group').length,
     }));
-    check('el paso 4 da un acordeon por sitio para sus tableros',
+    check('el paso 4 da un grupo por sitio para sus tableros',
         /Paso 4 de 13/.test(paso4.dicho) && paso4.sitios === paso3.marcados,
-        `${paso4.dicho} · ${paso4.sitios} acordeones`);
+        `${paso4.dicho} · ${paso4.sitios} grupos`);
 
-    await page.locator('.tl-place .tl-card.add').first().click();
+    await page.locator('.tl-list .tl-card.add').first().click();
     await page.waitForTimeout(400);
     const tablero = await page.evaluate(() => ({
-        cuantos: document.querySelectorAll('.tl-place .tl-card.picked').length,
-        formas: [...document.querySelectorAll('.tl-place select option')].map(o => o.textContent || ''),
+        cuantos: document.querySelectorAll('.tl-list .tl-card.picked:not(.add)').length,
+        formas: [...document.querySelectorAll('.tl-detail select option')].map(o => o.textContent || ''),
     }));
     check('se le puede anadir un tablero, diciendo como es por dentro',
         tablero.cuantos === 1 && tablero.formas.some(f => /Salas y pasillos/i.test(f))
@@ -621,9 +621,49 @@ try {
 
     /** Clicks through the dice overlay until it stops covering the page. */
     // Desde H5, Esc pausa en vez de apagar: salir es cosa del menu de pausa.
-    const leaveGameMode = async () => {
+    /**
+     * Abrir la pausa con Escape, como quien juega. Si el cursor está en la caja de escribir
+     * (en Diálogo lo está al entrar en una partida), el primer Escape solo sale de ella: es
+     * lo que hace un editor, y el juego lo hace a propósito. Entonces hace falta el segundo.
+     *
+     * @returns {Promise<any>}
+     */
+    const openPause = async () => {
+        const typing = await page.evaluate(() => {
+            const el = /** @type {HTMLElement|null} */ (document.activeElement);
+            const tag = el?.tagName?.toLowerCase();
+            return tag === 'input' || tag === 'textarea' || Boolean(el?.isContentEditable);
+        });
+        if (typing) await page.keyboard.press('Escape');
         await page.keyboard.press('Escape');
-        await page.waitForSelector('.gs-pause', { timeout: 5000 });
+        return page.waitForSelector('.gs-pause', { timeout: 5000 });
+    };
+
+    /**
+     * Pulsar un botón de la cabecera (diario, mesa…). Si el clic no llega, se apunta qué había
+     * encima y se reintenta sin avisos flotantes: que haga falta es un fallo aparte, porque a
+     * quien juega le pasaría igual.
+     *
+     * @param {string} tool La clase del botón (`gs-journal`, `gs-table`…).
+     * @returns {Promise<string>} Qué lo tapaba, o vacío si el primer clic llegó.
+     */
+    const clickTool = async (tool) => {
+        const button = page.locator(`#game-shell .gs-tools .${tool}`);
+        const first = await button.click({ timeout: 4000 }).then(() => '').catch((/** @type {any} */ err) => String(err?.message || err).replace(/\s+/g, ' ').slice(0, 200));
+        if (!first) return '';
+        const over = await page.evaluate((/** @type {string} */ name) => {
+            const el = document.querySelector(`#game-shell .gs-tools .${name}`);
+            const r = el?.getBoundingClientRect();
+            const hit = r ? document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2) : null;
+            return `${r ? [Math.round(r.x), Math.round(r.y)].join(',') : 'sin botón'} → ${hit ? `${hit.tagName}.${String(hit.className).slice(0, 60)}` : 'nada'}; pausa: ${Boolean(document.querySelector('.gs-pause'))}; ventanas: ${document.querySelectorAll('dialog[open]').length}`;
+        }, tool);
+        await clearToasts();
+        await button.click({ timeout: 4000 }).catch(() => {});
+        return `${first} | ${over}`;
+    };
+
+    const leaveGameMode = async () => {
+        await openPause();
         await page.locator('.gs-pause-btn', { hasText: 'Salir del Modo Juego' }).click();
         await page.waitForTimeout(1100);
     };
@@ -1598,8 +1638,7 @@ try {
     }
 
     // Esc pausa, como en cualquier juego; salir es una opcion del menu, no un accidente.
-    await page.keyboard.press('Escape');
-    await page.waitForSelector('.gs-pause', { timeout: 5000 });
+    await openPause();
     const pause = await page.evaluate(() => ({
         card: document.querySelectorAll('.gs-pause-btn').length,
         shell: document.querySelectorAll('#game-shell').length,
@@ -1689,9 +1728,10 @@ try {
     const chips = await page.locator('.gs-chip').count();
     check('la franja de abajo lista al grupo', chips >= 2, `${chips} fichas de grupo`);
     check('con la vida de cada uno', await page.locator('.gs-chip-hp-fill').count() === chips);
+    // La fecha la dice el reloj (el rótulo de la izquierda se quitó: repetía lo mismo).
     check('y la cabecera dice el dia y el momento',
-        /^Día \d+ · /.test(await page.locator('.gs-head-state').innerText()),
-        await page.locator('.gs-head-state').innerText());
+        /^Día \d+ · /.test(await page.locator('.gs-clock-label').first().innerText()),
+        await page.locator('.gs-clock-label').first().innerText());
 
     // Escribir desde dentro: el formulario es el de siempre, y el chat que hay en la
     // escena es el vivo, no una foto.
@@ -2002,8 +2042,7 @@ try {
     // La pausa abre las reglas, que es el mismo editor de `/rules`. Se llamaba
     // "Compendio y reglas" y ahora no: el compendio es la biblioteca de contenido,
     // y dos cosas con el mismo nombre es como se pierde una de las dos.
-    await page.keyboard.press('Escape');
-    await page.waitForSelector('.gs-pause', { timeout: 5000 });
+    await openPause();
     // La barra vuelve en fila, arriba. Devuelta con un `revert`, quedaba en bloque: los
     // iconos en columna por el centro, encima del menu, y Opciones no se podia pulsar.
     const bar22 = await page.evaluate(() => {
@@ -2887,7 +2926,7 @@ try {
         afterSlot !== clock.label && /^Día \d+ · .+/.test(afterSlot), `${clock.label} -> ${afterSlot}`);
 
     // La tira del grupo vive en el dialogo, que es donde se habla con ellos.
-    await page.locator('.gs-scene-btn', { hasText: 'Dialogo' }).click();
+    await page.locator('.gs-scene-btn', { hasText: 'Diálogo' }).click();
     await page.waitForTimeout(900);
 
     const bondBefore = await page.evaluate(() => JSON.stringify(
@@ -3191,7 +3230,7 @@ try {
         void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/modojuego');
     });
     await page.waitForSelector('#game-shell', { timeout: 15000 });
-    await page.locator('.gs-scene-btn', { hasText: 'Dialogo' }).click();
+    await page.locator('.gs-scene-btn', { hasText: 'Diálogo' }).click();
     await page.waitForTimeout(900);
 
     const sounding = await page.evaluate(async () => {
@@ -3988,15 +4027,15 @@ try {
     }));
 
     check('al arrancar, el juego se abre solo y ensena su menu',
-        onTitle.scene === 'title' && onTitle.buttons.length === 5, JSON.stringify(onTitle));
+        onTitle.scene === 'title' && onTitle.buttons.length === 4, JSON.stringify(onTitle));
     // Eran tres; el compendio hace cuatro, y va antes que los ajustes porque es
-    // contenido y no una preferencia. La partida rápida (R1) hace cinco, y va la primera:
-    // es la que menos pide.
-    check('con las cinco cosas que se pueden hacer al abrirlo',
-        onTitle.buttons.join(' | ') === 'Partida rápida | Partida nueva | Cargar partida | Compendio | Opciones',
+    // contenido y no una preferencia. (La partida rápida de R1 se quitó el 2026-09-27:
+    // «Partida nueva» con un mundo hecho es lo mismo.)
+    check('con las cuatro cosas que se pueden hacer al abrirlo',
+        onTitle.buttons.join(' | ') === 'Partida nueva | Cargar partida | Compendio | Opciones',
         onTitle.buttons.join(' | '));
     check('y dice cuantas partidas hay guardadas, sin entrar',
-        onTitle.hints.some(h => /campana/.test(h)), JSON.stringify(onTitle.hints));
+        onTitle.hints.some(h => /campaña/.test(h)), JSON.stringify(onTitle.hints));
     check('la lista de partidas espera detras, no delante',
         onTitle.cardsVisible === false, String(onTitle.cardsVisible));
     check('y siempre hay puerta de salida al SillyTavern de siempre',
@@ -4017,11 +4056,10 @@ try {
 
     await page.locator('.gs-menu-back').click();
     await page.waitForTimeout(700);
-    check('volver deja el menu como estaba', await page.locator('.gs-menu-btn').count() === 5);
+    check('volver deja el menu como estaba', await page.locator('.gs-menu-btn').count() === 4);
 
     // El interruptor de la pausa, y la prueba de que la puerta de salida es de verdad.
-    await page.keyboard.press('Escape');
-    await page.waitForSelector('.gs-pause', { timeout: 5000 });
+    await openPause();
     const pauseItems = await page.evaluate(() => [...document.querySelectorAll('.gs-pause-label')]
         .map(n => n.textContent || ''));
     check('la pausa deja apagar el arranque automatico',
@@ -4126,8 +4164,8 @@ try {
     check('y no lo pide: no hay campos hasta que eliges narrador',
         step4.campos === 0, `${step4.campos} campos`);
 
-    // La tarjeta del `+`: escribir el tuyo.
-    await page.locator('.tl-card.add').first().click();
+    // El `+` de la barra: escribir el tuyo.
+    await page.locator('.tl-toolbar .tl-add').first().click();
     await page.waitForTimeout(400);
     const opened = await page.evaluate(() => document.querySelectorAll('.tl-form .tl-input').length);
     check('al pedirlo se abren sus campos', opened >= 4, `${opened} campos`);
@@ -4404,8 +4442,7 @@ try {
     }
 
     if (await page.getAttribute('#game-shell', 'data-scene') !== 'title') {
-        await page.keyboard.press('Escape');
-        await page.waitForSelector('.gs-pause', { timeout: 5000 });
+        await openPause();
         await page.locator('.gs-pause-btn', { hasText: 'Salir al menu principal' }).click();
         await page.waitForTimeout(3000);
     }
@@ -4727,8 +4764,7 @@ try {
 
     // Y la biblioteca vive en el menu de titulo, asi que hay que estar en el titulo.
     if (await page.locator('.gs-menu-btn').count() === 0) {
-        await page.keyboard.press('Escape');
-        await page.waitForSelector('.gs-pause', { timeout: 5000 });
+        await openPause();
         await page.locator('.gs-pause-btn', { hasText: 'Salir al menu principal' }).click();
         await page.waitForTimeout(1200);
     }
@@ -7142,8 +7178,7 @@ try {
 
     // --- 148, 149 y 172: los interruptores del menú de pausa ------------------------------------
     const pauseItem55 = async (/** @type {RegExp} */ label) => {
-        await page.keyboard.press('Escape');
-        await page.waitForSelector('.gs-pause', { timeout: 5000 }).catch(() => {});
+        await openPause().catch(() => {});
         await page.locator('.gs-pause-toggle', { hasText: label }).first().click({ timeout: 5000 }).catch(() => {});
         await page.waitForTimeout(400);
         await page.keyboard.press('Escape');
@@ -7652,8 +7687,7 @@ try {
 
     // 199: el salón, desde el menú principal.
     await clearToasts();
-    await page.keyboard.press('Escape');
-    await page.waitForSelector('.gs-pause', { timeout: 5000 }).catch(() => {});
+    await openPause().catch(() => {});
     await page.locator('.gs-pause-btn', { hasText: 'Salir al menu principal' }).click({ timeout: 6000 }).catch(() => {});
     await page.waitForTimeout(1500);
     if (await page.locator('.gs-menu-back').count() > 0) {
@@ -7924,8 +7958,7 @@ try {
 
     // --- 195 y 181: la letra del narrador, y si el mundo llega al listón --------------------------
     await clearToasts();
-    await page.keyboard.press('Escape');
-    await page.waitForSelector('.gs-pause', { timeout: 5000 }).catch(() => {});
+    await openPause().catch(() => {});
     await page.locator('.gs-pause-toggle[data-toggle="font"]').click({ timeout: 5000 }).catch(() => {});
     await page.waitForTimeout(400);
     const font57 = await page.evaluate(() => document.body.dataset.narratorFont || '');
@@ -8083,8 +8116,7 @@ try {
     await clearDiceOverlay();
     // Fuera de la caja de escribir: con el foco en ella, Escape sale de la caja y no pausa.
     await page.mouse.click(5, 5);
-    await page.keyboard.press('Escape');
-    await page.waitForSelector('.gs-pause', { timeout: 5000 }).catch(() => {});
+    await openPause().catch(() => {});
     let toneClick58 = '';
     await page.locator('.gs-pause-toggle[data-toggle="tone"]').click({ timeout: 5000 }).catch((/** @type {any} */ err) => { toneClick58 = String(err?.message || err).split('\n').slice(0, 6).join(' | '); });
     await page.waitForTimeout(500);
@@ -8756,8 +8788,7 @@ try {
     const workshop59 = async (/** @type {string} */ option) => {
         await clearToasts();
         await page.mouse.click(5, 5);
-        await page.keyboard.press('Escape');
-        await page.waitForSelector('.gs-pause', { timeout: 5000 }).catch(() => {});
+        await openPause().catch(() => {});
         await page.locator('.gs-pause-btn', { hasText: 'Taller del mundo' }).click({ timeout: 5000 }).catch(() => {});
         await page.waitForSelector('.popup:visible .ww-option', { timeout: 6000 }).catch(() => {});
         await page.locator(`.popup:visible .ww-option[data-option="${option}"]`).click({ timeout: 5000 }).catch(() => {});
@@ -8836,8 +8867,7 @@ try {
 
     // --- U0: tu sesión, desde la pausa -----------------------------------------------------------
     await page.mouse.click(5, 5);
-    await page.keyboard.press('Escape');
-    await page.waitForSelector('.gs-pause', { timeout: 5000 }).catch(() => {});
+    await openPause().catch(() => {});
     await page.locator('.gs-pause-btn', { hasText: 'Tu sesión' }).click({ timeout: 5000 }).catch(() => {});
     await page.waitForSelector('.popup:visible .sl-root', { timeout: 8000 }).catch(() => {});
     const session60 = await page.evaluate(() => [...document.querySelectorAll('.popup:not([closing]) .sl-root .sl-line')].map(p => p.textContent || ''));
@@ -8904,8 +8934,7 @@ try {
 
     // --- El panel: lo que el juego da por cierto, desde «Tu sesión» ------------------------------
     await page.mouse.click(5, 5);
-    await page.keyboard.press('Escape');
-    await page.waitForSelector('.gs-pause', { timeout: 5000 }).catch(() => {});
+    await openPause().catch(() => {});
     await page.locator('.gs-pause-btn', { hasText: 'Tu sesión' }).click({ timeout: 5000 }).catch(() => {});
     await page.waitForSelector('.popup:visible .sl-state', { timeout: 8000 }).catch(() => {});
     await page.locator('.popup:visible .sl-state').click({ timeout: 5000 }).catch(() => {});
@@ -9018,9 +9047,11 @@ try {
         board62.said && !board62.ids.includes('plazo-62') && board62.ids.includes('sigue-62'), JSON.stringify(board62));
 
     // --- Lo que viene: lo primero del diario --------------------------------------------------
+    // Sin limpiar antes los avisos, a propósito: el clic tiene que llegar aunque acabe de salir
+    // uno (caían encima de la segunda fila de la cabecera).
     await page.keyboard.press('1');
     await page.waitForTimeout(500);
-    await page.locator('#game-shell .gs-journal').click({ timeout: 6000 }).catch(() => {});
+    const blocked62 = await clickTool('gs-journal');
     await page.waitForSelector('.popup:visible .jr-root', { timeout: 8000 }).catch(() => {});
     const coming62 = await page.evaluate(() => {
         const root = document.querySelector('.popup:not([closing]) .jr-root');
@@ -9031,6 +9062,7 @@ try {
         for (let i = first + 1; i < nodes.length && !nodes[i].classList.contains('jr-title'); i++) items.push(nodes[i].textContent || '');
         return { title, items };
     });
+    check('el clic llega al botón del diario aunque acabe de salir un aviso (nada lo tapa)', !blocked62, blocked62);
     check('el diario empieza por lo que viene: los plazos de todos los relojes, con cuándo (U3)',
         coming62.title === 'Lo que viene' && coming62.items.length > 0
             && coming62.items.every(line => /, (hoy|mañana|en \d+ días)\.$/.test(line))
@@ -9155,7 +9187,8 @@ try {
     }));
     await page.keyboard.press('1');
     await page.waitForTimeout(400);
-    await page.locator('#game-shell .gs-table').click({ timeout: 6000 }).catch(() => {});
+    const blocked64 = await clickTool('gs-table');
+    check('el clic llega al botón de la mesa aunque acabe de salir un aviso (nada lo tapa)', !blocked64, blocked64);
     await page.waitForSelector('.popup:visible .wt-root', { timeout: 6000 }).catch(() => {});
     const button64 = await page.evaluate(() => [...document.querySelectorAll('.popup:not([closing]) .wt-title')].map(t => t.textContent || ''));
     check('después, la semana nueva se avisa, y la mesa está en su botón, con la semana que pasó (U5)',
@@ -9341,7 +9374,7 @@ try {
     await page.evaluate(async () => { (await import('/scripts/game-engine/campaign/cases.js')).CASE_CHANCE.weekly = 0.35; });
 
     // ============================================================ R1 y R2 del roadmap de profundidad
-    step('68. La profundidad, R1 y R2: los modos, la partida rápida y el taller en pestañas');
+    step('68. La profundidad, R1 y R2: los modos, los héroes hechos y el taller en pestañas');
     await clearToasts();
     /**
      * Cambiar el modo con /modo, como lo cambiaría quien juega: una tarjeta, y si hace falta,
@@ -9394,37 +9427,35 @@ try {
         JSON.stringify({ custom68, bill68: bill68.slice(0, 120), table68 }));
 
     // La pausa dice en qué modo se juega.
-    await page.keyboard.press('Escape');
-    await page.waitForSelector('.gs-pause', { timeout: 5000 }).catch(() => {});
+    await openPause().catch(() => {});
     const toggle68 = await page.evaluate(() => document.querySelector('.gs-pause-toggle[data-toggle="mode"]')?.textContent || '');
     check('la pausa dice el modo y lo que está encendido (R1)', /^Modo: A tu medida · Heridas, El mundo se mueve$/.test(toggle68), toggle68);
 
-    // La partida rápida: desde el título, un mundo hecho, un modo, y un héroe hecho.
+    // Desde el título, «Partida nueva» con un mundo hecho: el mundo, el modo y un héroe hecho.
     await page.locator('.gs-pause-btn', { hasText: 'Salir al menu principal' }).click();
     await page.waitForTimeout(3000);
-    const quickItem68 = page.locator('.gs-menu-btn').filter({ hasText: 'Partida rápida' });
-    const offered68 = await quickItem68.count();
-    await quickItem68.first().click({ timeout: 8000 }).catch(() => {});
-    await page.waitForSelector('.tl-root.tl-quick', { timeout: 15000 }).catch(() => {});
-    const quick68 = await page.evaluate(() => ({
-        worlds: [...document.querySelectorAll('.tl-quick-world')].map(c => c.getAttribute('data-world') || ''),
+    const newItem68 = page.locator('.gs-menu-btn').filter({ hasText: 'Partida nueva' });
+    const offered68 = await newItem68.count();
+    await newItem68.first().click({ timeout: 8000 }).catch(() => {});
+    await page.waitForSelector('.tl-door-grid', { timeout: 20000 }).catch(() => {});
+    await page.locator('.tl-door-card').nth(1).click({ timeout: 8000 }).catch(() => {});
+    await page.waitForSelector('.tl-root', { timeout: 20000 }).catch(() => {});
+    await page.locator('.tl-card', { hasText: '1387' }).first().click({ timeout: 8000 }).catch(() => {});
+    // El paquete de 1387 se carga después de elegir: se le da tiempo.
+    await page.waitForTimeout(2500);
+    await page.locator('.tl-tab[data-step="jugabilidad"]').click({ timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(400);
+    const pick68 = await page.evaluate(() => ({
         modes: [...document.querySelectorAll('.tl-root .md-card')].map(c => c.getAttribute('data-mode') || ''),
         start: Boolean(document.querySelector('.tl-start')),
     }));
-    check('el título ofrece la partida rápida: los mundos hechos y los modos, en una pantalla (R1)',
-        offered68 === 1 && quick68.worlds.length === 4 && quick68.worlds.includes('1387')
-        && ['relajado', 'normal', 'supervivencia', 'custom'].every(m => quick68.modes.includes(m)) && quick68.start,
-        JSON.stringify({ offered68, ...quick68 }));
-
-    await page.locator('.tl-quick-world[data-world="1387"]').click({ timeout: 5000 }).catch(() => {});
-    // El paquete de 1387 se carga después de elegir: se le da tiempo.
-    await page.waitForTimeout(2500);
+    check('«Partida nueva» con un mundo hecho: 1387 y los cuatro modos, en el taller (R1)',
+        offered68 === 1 && ['relajado', 'normal', 'supervivencia', 'custom'].every(m => pick68.modes.includes(m)) && pick68.start,
+        JSON.stringify({ offered68, ...pick68 }));
     await page.locator('.tl-root .md-card[data-mode="relajado"]').click({ timeout: 5000 }).catch(() => {});
     await page.waitForTimeout(300);
 
-    // R2: «Cambiar más cosas» abre las trece pestañas; se va directa a una y se crea desde ahí.
-    await page.locator('.tl-more').click({ timeout: 5000 }).catch(() => {});
-    await page.waitForTimeout(500);
+    // R2: se va directa a otra pestaña y se crea desde ahí.
     await page.locator('.tl-tab[data-step="bestiario"]').click({ timeout: 5000 }).catch(() => {});
     await page.waitForTimeout(400);
     const tabs68 = await page.evaluate(() => ({
@@ -9439,7 +9470,7 @@ try {
 
     await page.locator('.tl-start').click({ timeout: 5000 }).catch(() => {});
     await page.waitForSelector('.popup:visible .vt-premade', { timeout: 120000 }).catch(() => {});
-    const premade68 = await page.evaluate(() => [...document.querySelectorAll('.popup:not([closing]) .vt-premade')].map(b => (b.textContent || '').trim()));
+    const premade68 = await page.evaluate(() => [...document.querySelectorAll('.popup:not([closing]) .vt-premade')].map(b => (b.getAttribute('aria-label') || b.textContent || '').trim()));
     // La ventana tarda un momento en atar sus botones: si el clic llega antes, no hace nada y
     // se queda abierta. Se espera, y si sigue ahí, se vuelve a pulsar.
     await page.waitForTimeout(800);

@@ -1924,7 +1924,7 @@
     font-size: 9px;
     text-align: center;
     background: rgba(24, 20, 16, 0.9);
-    color: #e2c27a;
+    color: var(--gs-accent-gold);
     border: 1px solid rgba(214, 180, 106, 0.6);
     z-index: 5;
 }

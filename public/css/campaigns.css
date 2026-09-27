@@ -1401,7 +1401,7 @@
 
 /* Lo que aprieta se tiñe; lo vencido se apaga. Un plazo que no se ve no aprieta. */
 .gd-contract.urgent {
-    border-color: rgba(228, 170, 70, 0.55);
+    border-color: rgba(226, 194, 122, 0.55);
     background: rgba(120, 80, 20, 0.16);
 }
 
@@ -1813,55 +1813,144 @@
    ================================================================ */
 
 /* La puerta: tres tarjetas y nada más. La pregunta que contesta —«¿escribo yo o juego
-   ya?»— es la única que hay que hacer antes de saber nada del mundo. */
+   ya?»— es la única que hay que hacer antes de saber nada del mundo.
+   Diseño del Gem director de UX (2026-09-27): tarjetas de decisión en tres columnas, con el
+   icono grande como ancla, y que al pasar el ratón se note que se pulsan. */
+.tl-door {
+    --tl-door-gold: var(--gs-accent-gold);
+    padding: 8px 12px 4px;
+    text-align: center;
+}
+
 .tl-door-title {
-    font-size: 1.3rem;
+    font-size: 1.5rem;
     font-weight: bold;
+    color: var(--tl-door-gold);
+    letter-spacing: 0.02em;
 }
 
 .tl-door-hint {
-    margin-bottom: 14px;
-    font-size: 0.85rem;
-    opacity: 0.7;
+    max-width: 520px;
+    margin: 6px auto 26px;
+    font-size: 0.95rem;
+    line-height: 1.4;
+    opacity: 0.75;
 }
 
 .tl-door-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
 }
 
 .tl-door-card {
+    position: relative;
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    min-height: 190px;
-    padding: 18px 14px;
+    align-items: center;
+    gap: 10px;
+    min-height: 210px;
+    padding: 26px 18px 22px;
+    overflow: hidden;
     border: 1px solid var(--SmartThemeBorderColor, #444);
     border-radius: 10px;
-    background: var(--black30a, rgba(0, 0, 0, 0.3));
+    background: rgba(0, 0, 0, 0.4);
     color: inherit;
-    text-align: left;
+    font: inherit;
+    text-align: center;
     cursor: pointer;
+    transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.2s, box-shadow 0.2s, background 0.2s;
 }
 
-.tl-door-card:hover {
-    border-color: rgba(228, 170, 70, 0.7);
-    background: rgba(228, 170, 70, 0.1);
+/* Un brillo dorado que sale de arriba al pasar el ratón. */
+.tl-door-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at top center, rgba(226, 194, 122, 0.12), transparent 70%);
+    opacity: 0;
+    transition: opacity 0.25s;
+    pointer-events: none;
+}
+
+.tl-door-card:hover,
+.tl-door-card:focus-visible {
+    border-color: var(--tl-door-gold);
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    background: rgba(226, 194, 122, 0.04);
+}
+
+.tl-door-card:focus-visible {
+    outline: 2px solid var(--tl-door-gold);
+    outline-offset: 2px;
+}
+
+.tl-door-card:hover::before,
+.tl-door-card:focus-visible::before {
+    opacity: 1;
+}
+
+.tl-door-card:active {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
 .tl-door-card > i {
-    font-size: 1.6rem;
-    opacity: 0.8;
+    position: relative;
+    margin-bottom: 6px;
+    font-size: 2.5rem;
+    opacity: 0.85;
+    transition: color 0.2s, transform 0.2s;
+}
+
+.tl-door-card:hover > i,
+.tl-door-card:focus-visible > i {
+    color: var(--tl-door-gold);
+    transform: scale(1.1);
 }
 
 .tl-door-card-title {
+    position: relative;
+    font-size: 1.1rem;
     font-weight: bold;
 }
 
 .tl-door-card-note {
-    font-size: 0.8rem;
-    opacity: 0.72;
+    position: relative;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    opacity: 0.78;
+}
+
+/* «Cancelar», el botón de la ventana: sin peso, y rojizo al acercarse (es irse). */
+.popup:has(.tl-door) .popup-button-ok:hover {
+    border-color: var(--gs-danger-red);
+    background: rgba(165, 83, 79, 0.18);
+    color: #ffb4b4;
+}
+
+/* En estrecho, una columna, con el icono a un lado. */
+@media (max-width: 768px) {
+    .tl-door-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .tl-door-card {
+        display: grid;
+        grid-template-columns: 44px 1fr;
+        align-items: center;
+        min-height: 0;
+        padding: 14px 16px;
+        text-align: left;
+    }
+
+    .tl-door-card > i {
+        grid-row: span 2;
+        margin: 0;
+        font-size: 1.8rem;
+    }
 }
 
 /* La barra de arriba: cuenta sobre los trece, no sobre los hechos. */
@@ -1880,7 +1969,7 @@
 
 .tl-bar-fill {
     height: 100%;
-    background: rgba(228, 170, 70, 0.8);
+    background: rgba(226, 194, 122, 0.8);
     transition: width 0.2s ease;
 }
 
@@ -1944,25 +2033,42 @@
 }
 
 .tl-card {
+    position: relative;
     display: flex;
     flex-direction: column;
     gap: 5px;
-    padding: 12px 10px;
+    padding: 12px;
     border: 1px solid var(--SmartThemeBorderColor, #444);
     border-radius: 8px;
-    background: var(--black30a, rgba(0, 0, 0, 0.3));
+    background: rgba(0, 0, 0, 0.3);
     color: inherit;
     text-align: left;
     cursor: pointer;
+    transition: border-color 0.15s, background 0.15s, transform 0.15s, box-shadow 0.15s;
 }
 
-.tl-card:hover {
-    border-color: rgba(228, 170, 70, 0.6);
+.tl-card:hover,
+.tl-card:focus-visible {
+    border-color: var(--gs-accent-gold);
+    background: rgba(255, 255, 255, 0.05);
+    transform: translateY(-2px);
 }
 
+/* Dentro del mundo: un velo dorado y su marca. */
 .tl-card.picked {
-    border-color: rgba(228, 170, 70, 0.85);
-    background: rgba(228, 170, 70, 0.16);
+    border-color: rgba(226, 194, 122, 0.45);
+    background: rgba(226, 194, 122, 0.07);
+}
+
+/* La abierta en la ficha de al lado: el borde dorado entero, que se vea desde lejos. */
+.tl-card.open {
+    border-color: var(--gs-accent-gold);
+    background: var(--gs-accent-gold-hover);
+    box-shadow: 0 0 0 1px var(--gs-accent-gold), 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+.tl-card.open .tl-card-title {
+    color: var(--gs-accent-gold);
 }
 
 .tl-card.add {
@@ -1970,17 +2076,35 @@
     opacity: 0.85;
 }
 
+.tl-card-in {
+    position: absolute;
+    top: 8px;
+    right: 9px;
+    color: var(--gs-accent-gold);
+    font-size: 0.72rem;
+}
+
 .tl-card-face {
     display: flex;
     align-items: center;
     justify-content: center;
     width: 100%;
-    height: 52px;
+    height: 40px;
     border-radius: 6px;
-    background: rgba(255, 255, 255, 0.05);
-    font-size: 1.3rem;
-    opacity: 0.85;
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--gs-accent-gold);
+    font-size: 1.1rem;
     object-fit: cover;
+}
+
+/* Lo que se ha dejado fuera, apagado: el icono dorado es de lo que entra. */
+.tl-card:not(.picked):not(.add) > .tl-card-face {
+    color: inherit;
+    opacity: 0.5;
+}
+
+img.tl-card-face {
+    height: 56px;
 }
 
 .tl-card-title {
@@ -2039,7 +2163,7 @@
 
 .tl-wand:hover {
     opacity: 1;
-    border-color: rgba(228, 170, 70, 0.7);
+    border-color: rgba(226, 194, 122, 0.7);
 }
 
 .tl-wand.busy {
@@ -2075,6 +2199,7 @@
 /* El pie: atrás, el motivo por el que no se puede pasar, y siguiente. */
 .tl-foot {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 10px;
     margin-top: 14px;
@@ -2082,8 +2207,16 @@
     border-top: 1px solid var(--SmartThemeBorderColor, #444);
 }
 
+/* Los botones no se encogen: «Crear y jugar» se partía en tres líneas. Si no cabe todo, el
+   pie baja a otra fila. */
+.tl-foot > .menu_button {
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
 .tl-said {
-    flex: 1;
+    flex: 1 1 180px;
+    min-width: 0;
     font-size: 0.8rem;
     opacity: 0.7;
 }
@@ -2288,6 +2421,703 @@ input[type="file"].tl-file {
 .tm-note { margin-top: 4px; width: 100%; }
 
 
+/* ================================================================
+   El taller (Gem director de UX, 2026-09-27). La ventana de lado a lado de su marco, en
+   bandas: la cabecera arriba, las trece pestañas a la izquierda, el pie abajo. La barra de
+   arriba (`.tl-bar`) se deshace en la rejilla: sus pestañas van a la columna izquierda y su
+   cabecera, a lo ancho. Solo se mueve el cuerpo; y en los pasos con lista y ficha, ni eso:
+   se mueven la lista y la ficha, cada una por su lado.
+   ================================================================ */
+.popup:has(.tl-root) .popup-controls {
+    display: none;
+}
+
+/* A lo ancho de la pantalla: con un tope de 1180 px, en una pantalla grande sobraba medio
+   metro a cada lado. El `!important` es para ganarle al 90 % que la ventana grande de
+   SillyTavern trae como obligatorio. */
+.popup:has(.tl-root) {
+    width: min(1680px, 94dvw);
+    max-width: min(1680px, 94dvw) !important;
+    padding: 0;
+    border-color: var(--gs-gold-line);
+    border-radius: 12px;
+    /* El panel del Gem sobre el oscuro de la paleta: con su 5 % de transparencia, el menú del
+       título se leía por detrás. */
+    background: linear-gradient(var(--gs-bg-panel), var(--gs-bg-panel)) var(--gs-bg-dark);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
+}
+
+.popup:has(.tl-root) .popup-body {
+    
+    padding: 0;
+}
+
+.popup:has(.tl-root) .popup-content {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+.tl-root {
+    display: grid;
+    flex: 1 1 auto;
+    min-height: 0;
+    grid-template-columns: 220px minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+        "head head"
+        "tabs body"
+        "foot foot";
+    border-radius: 12px;
+    overflow: hidden;
+    text-align: left;
+}
+
+.tl-root > .tl-bar {
+    display: contents;
+}
+
+/* La cabecera: de qué es la ventana, por dónde vas y qué quiere decir cada marca. */
+.tl-root .tl-head {
+    grid-area: head;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 24px;
+    border-bottom: 1px solid var(--SmartThemeBorderColor, #444);
+    background: rgba(0, 0, 0, 0.4);
+}
+
+.tl-head-title {
+    font-size: 1.15rem;
+    font-weight: bold;
+}
+
+.tl-root .tl-bar-said {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 0.82rem;
+    opacity: 0.55;
+}
+
+.tl-root .tl-tabs-legend {
+    display: flex;
+    gap: 16px;
+    font-size: 0.82rem;
+    opacity: 0.8;
+    white-space: nowrap;
+}
+
+.tl-tabs-legend i {
+    margin-right: 5px;
+}
+
+.tl-legend-changed i {
+    color: var(--gs-success-green);
+}
+
+.tl-legend-default i {
+    font-size: 0.45rem;
+    vertical-align: middle;
+    opacity: 0.55;
+}
+
+.tl-legend-warn i {
+    color: var(--gs-danger-soft);
+}
+
+/* Las pestañas, en su columna. */
+.tl-root .tl-tabs {
+    grid-area: tabs;
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    gap: 2px;
+    min-height: 0;
+    margin: 0;
+    padding: 12px 0;
+    overflow-y: auto;
+    border-right: 1px solid var(--SmartThemeBorderColor, #444);
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.tl-root .tl-tab {
+    display: flex;
+    flex-direction: row-reverse;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    padding: 9px 20px 9px 21px;
+    border: 0;
+    border-left: 3px solid transparent;
+    border-radius: 0;
+    background: transparent;
+    font-size: 0.88rem;
+    text-align: left;
+    opacity: 0.78;
+    transition: background 0.15s, opacity 0.15s;
+}
+
+.tl-root .tl-tab:hover,
+.tl-root .tl-tab:focus-visible {
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.tl-root .tl-tab-on {
+    opacity: 1;
+    border-left-color: var(--gs-accent-gold);
+    background: var(--gs-accent-gold-hover);
+    font-weight: bold;
+}
+
+.tl-root .tl-tab-warn {
+    border-left-color: var(--gs-danger-soft);
+}
+
+.tl-root .tl-tab-mark {
+    width: auto;
+    font-size: 0.8rem;
+    opacity: 1;
+}
+
+.tl-root .tl-tab-changed .tl-tab-mark {
+    color: var(--gs-success-green);
+}
+
+.tl-root .tl-tab-default .tl-tab-mark {
+    font-size: 0.4rem;
+    opacity: 0.45;
+}
+
+.tl-root .tl-tab-warn .tl-tab-mark {
+    color: var(--gs-danger-soft);
+}
+
+/* El cuerpo. */
+.tl-root > .tl-body {
+    grid-area: body;
+    min-width: 0;
+    min-height: 0;
+    padding: 18px 26px;
+    overflow-y: auto;
+}
+
+/* Con lista y ficha, el cuerpo no se mueve: se mueven ellas. */
+.tl-root > .tl-body:has(> .tl-work) {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.tl-root > .tl-body:has(> .tl-work) > .tl-step-head {
+    flex: none;
+}
+
+.tl-root > .tl-foot {
+    grid-area: foot;
+    margin: 0;
+    padding: 12px 24px;
+    border-top: 1px solid var(--SmartThemeBorderColor, #444);
+    background: rgba(0, 0, 0, 0.4);
+}
+
+.tl-root .tl-step-title {
+    font-size: 1.45rem;
+    color: var(--gs-accent-gold);
+}
+
+.tl-root .tl-step-hint {
+    margin-bottom: 14px;
+    font-size: 0.92rem;
+}
+
+/* Los botones con icono, con aire entre el icono y el texto: «▶Crear y jugar» iba pegado. */
+.tl-root .menu_button:has(> i) {
+    gap: 7px;
+}
+
+/* ---------------------------------------------------------------- la lista y la ficha, lado a lado */
+.tl-work {
+    display: flex;
+    flex: 1 1 auto;
+    gap: 24px;
+    min-height: 0;
+}
+
+.tl-list {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-width: 0;
+}
+
+/* La barra de la lista: los filtros y el `+`, que no se van con el scroll. Si los filtros no
+   caben, bajan de línea ellos: el `+` se queda arriba a la derecha. */
+.tl-toolbar {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 8px 12px;
+    margin-bottom: 14px;
+    padding-bottom: 12px;
+    border-bottom: 1px dashed rgba(214, 180, 106, 0.3);
+}
+
+.tl-filters {
+    display: flex;
+    flex: 1 1 0;
+    flex-wrap: wrap;
+    gap: 6px;
+    min-width: 0;
+}
+
+.tl-toolbar-title {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 0.78rem;
+    font-weight: bold;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    opacity: 0.6;
+}
+
+.tl-pill {
+    padding: 4px 12px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.05);
+    color: inherit;
+    font-size: 0.8rem;
+    opacity: 0.75;
+    cursor: pointer;
+    transition: opacity 0.15s, background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.tl-pill:hover,
+.tl-pill:focus-visible {
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.tl-pill.on {
+    opacity: 1;
+    border-color: var(--gs-accent-gold);
+    background: var(--gs-accent-gold-hover);
+    color: var(--gs-accent-gold);
+    font-weight: bold;
+}
+
+.tl-tally {
+    flex: none;
+    font-size: 0.8rem;
+    opacity: 0.6;
+    white-space: nowrap;
+}
+
+.tl-toolbar > .tl-add {
+    flex: none;
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 0 auto;
+    padding: 6px 14px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.4);
+    font-size: 0.85rem;
+    white-space: nowrap;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.tl-toolbar > .tl-add:hover,
+.tl-toolbar > .tl-add:focus-visible {
+    border-color: var(--gs-accent-gold);
+    color: var(--gs-accent-gold);
+}
+
+.tl-toolbar > .tl-add.open {
+    border-color: var(--gs-accent-gold);
+    background: var(--gs-accent-gold-hover);
+    color: var(--gs-accent-gold);
+    font-weight: bold;
+}
+
+/* La rejilla, con su propio scroll (y aire para que la tarjeta que sube no se corte). */
+.tl-list-scroll {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: 3px 8px 16px 2px;
+    overflow-y: auto;
+}
+
+/* En la lista, tarjetas algo más anchas: a lo ancho de una pantalla grande, las de 150 px
+   dejaban medio hueco a la derecha. */
+.tl-list-scroll > .tl-cards {
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+}
+
+.tl-card.tl-hidden {
+    display: none;
+}
+
+/* La ficha, fija al lado. */
+.tl-detail {
+    display: flex;
+    flex: 0 0 clamp(320px, 38%, 520px);
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.25);
+}
+
+.tl-detail-head {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 18px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.tl-detail-head > i {
+    color: var(--gs-accent-gold);
+    font-size: 1.1rem;
+}
+
+.tl-detail-title {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    color: var(--gs-accent-gold);
+    font-size: 1.05rem;
+    font-weight: bold;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.tl-detail-body {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+    padding: 16px 18px;
+    overflow-y: auto;
+}
+
+.tl-detail .tl-field {
+    margin-bottom: 10px;
+}
+
+.tl-detail .tl-hint {
+    font-size: 0.72rem;
+}
+
+/* Lo que se escribe en prosa crece con lo escrito, hasta un tope: en la ficha, estrecha, tres
+   líneas cortaban el tono del narrador a media frase. */
+.tl-detail textarea.tl-input {
+    min-height: 64px;
+    max-height: 240px;
+    field-sizing: content;
+}
+
+/* Vacía, dice qué hacer para llenarla. */
+.tl-detail.empty {
+    align-items: center;
+    justify-content: center;
+    border-style: dashed;
+    background: rgba(0, 0, 0, 0.15);
+}
+
+.tl-detail-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    max-width: 260px;
+    padding: 24px;
+    font-size: 0.9rem;
+    text-align: center;
+    opacity: 0.65;
+}
+
+.tl-detail-empty > i {
+    color: var(--gs-accent-gold);
+    font-size: 2rem;
+    opacity: 0.7;
+}
+
+/* El pie de la ficha, fijo debajo de ella: lo que se hace con ella. Lo que no se deshace, en
+   rojo. */
+.tl-detail-foot {
+    display: flex;
+    flex: none;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px 18px;
+    border-top: 1px dashed rgba(255, 255, 255, 0.08);
+}
+
+.tl-detail-foot > .tl-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin: 0;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    white-space: nowrap;
+}
+
+.tl-action.danger {
+    border-color: rgba(165, 83, 79, 0.5);
+    background: transparent;
+    color: var(--gs-danger-soft);
+}
+
+.tl-action.danger:hover,
+.tl-action.danger:focus-visible {
+    border-color: var(--gs-danger-red);
+    background: var(--gs-danger-bg);
+    color: #fff;
+}
+
+/* Las tarjetas siempre a la vista, con su título (sin desplegable). */
+.tl-section {
+    margin-top: 4px;
+}
+
+.tl-section-title {
+    margin-bottom: 10px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    opacity: 0.65;
+}
+
+/* Los grupos dentro de una rejilla: «De serie», «Tuyos, de otras campañas». */
+.tl-cards-group {
+    grid-column: 1 / -1;
+    margin: 8px 0 -2px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    color: var(--gs-accent-gold);
+    font-size: 0.78rem;
+    font-weight: bold;
+    letter-spacing: 0.03em;
+}
+
+.tl-cards-group:first-child {
+    margin-top: 0;
+}
+
+/* Subir la cara: el botón del navegador, vestido como los del juego. */
+.tl-root input[type="file"].tl-file {
+    /* El «ningún archivo» en gris suave: el color de citas del tema puede ser chillón. */
+    color: color-mix(in srgb, var(--SmartThemeBodyColor, #ddd) 60%, transparent);
+    font-size: 0.8rem;
+    cursor: pointer;
+}
+
+.tl-root input[type="file"].tl-file::file-selector-button {
+    margin-right: 12px;
+    padding: 6px 14px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--SmartThemeBodyColor, #ddd);
+    font: inherit;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.tl-root input[type="file"].tl-file::file-selector-button:hover {
+    border-color: var(--gs-accent-gold);
+    background: rgba(255, 255, 255, 0.14);
+    color: var(--gs-accent-gold);
+}
+
+.tl-root textarea.tl-input {
+    min-height: 80px;
+    line-height: 1.4;
+    resize: vertical;
+}
+
+/* La ficha fija. */
+.tl-block {
+    margin-top: 14px;
+    padding: 18px 20px 8px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.25);
+}
+
+.tl-block-title {
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    color: var(--gs-accent-gold);
+    font-size: 1.05rem;
+    font-weight: bold;
+}
+
+/* Los campos, a dos columnas; lo largo, y el que se quedaría solo en su fila, a lo ancho
+   (`tl-wide` lo pone `paso.js`). */
+.tl-block .tl-form,
+.tl-detail .tl-form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 16px;
+}
+
+.tl-form > .tl-field.tl-wide {
+    grid-column: 1 / -1;
+}
+
+.tl-root .tl-label {
+    font-size: 0.7rem;
+    font-weight: bold;
+    letter-spacing: 0.05em;
+    opacity: 0.6;
+}
+
+.tl-root .tl-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 9px 12px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.4);
+    transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+}
+
+.tl-root .tl-input:focus {
+    outline: none;
+    border-color: var(--gs-accent-gold);
+    box-shadow: 0 0 0 2px rgba(226, 194, 122, 0.2);
+    background: rgba(0, 0, 0, 0.55);
+}
+
+.tl-root .tl-input.mono {
+    color: var(--gs-info-blue);
+    letter-spacing: 0.03em;
+}
+
+/* La semilla y su dado, en una línea. */
+.tl-input-group {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+}
+
+.tl-input-group > .tl-input {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+}
+
+.tl-input-group > .tl-reroll {
+    flex: 0 0 auto;
+    margin: 0;
+    white-space: nowrap;
+}
+
+.tl-reroll:hover {
+    border-color: var(--gs-accent-gold);
+    color: var(--gs-accent-gold);
+}
+
+/* El pie: Cancelar a un lado, sin peso; «Crear y jugar», el que manda. */
+.tl-foot > .tl-cancel {
+    border-color: transparent;
+    background: transparent;
+    color: var(--gs-danger-soft);
+}
+
+.tl-foot > .tl-cancel:hover,
+.tl-foot > .tl-cancel:focus-visible {
+    border-color: var(--gs-danger-red);
+    background: rgba(165, 83, 79, 0.18);
+    color: #ffb4b4;
+}
+
+.tl-foot > .tl-start,
+.tl-foot > .tl-next.tl-primary {
+    border-color: var(--gs-accent-gold);
+    background: rgba(226, 194, 122, 0.15);
+    font-weight: bold;
+}
+
+.tl-foot > .tl-start:hover,
+.tl-foot > .tl-next.tl-primary:hover {
+    background: rgba(226, 194, 122, 0.25);
+    box-shadow: 0 0 12px rgba(226, 194, 122, 0.2);
+}
+
+.tl-foot > .tl-start > i {
+    color: var(--gs-accent-gold);
+}
+
+/* En estrecho, una columna, con las pestañas arriba como antes; la ficha, debajo de la lista. */
+@media (max-width: 900px) {
+    .tl-root {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: auto auto minmax(0, 1fr) auto;
+        grid-template-areas: "head" "tabs" "body" "foot";
+    }
+
+    .tl-root .tl-tabs-legend {
+        display: none;
+    }
+
+    .tl-root .tl-tabs {
+        flex-direction: row;
+        flex-wrap: wrap;
+        padding: 8px 12px;
+        overflow: visible;
+        border-right: 0;
+        border-bottom: 1px solid var(--SmartThemeBorderColor, #444);
+    }
+
+    .tl-root .tl-tab {
+        width: auto;
+        padding: 5px 10px;
+        border: 1px solid var(--SmartThemeBorderColor, #444);
+        border-radius: 6px;
+    }
+
+    .tl-root > .tl-body:has(> .tl-work) {
+        display: block;
+        overflow-y: auto;
+    }
+
+    .tl-work {
+        display: block;
+    }
+
+    .tl-list-scroll {
+        overflow: visible;
+    }
+
+    .tl-detail {
+        margin-top: 16px;
+    }
+
+    .tl-block .tl-form,
+    .tl-detail .tl-form {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
 /* R2 del roadmap de profundidad: el taller en pestañas. */
 .tl-tabs {
     display: flex;
@@ -2308,12 +3138,12 @@ input[type="file"].tl-file {
 }
 
 .tl-tab:hover {
-    border-color: rgba(228, 170, 70, 0.6);
+    border-color: rgba(226, 194, 122, 0.6);
 }
 
 .tl-tab-on {
-    border-color: rgba(228, 170, 70, 0.9);
-    background: rgba(228, 170, 70, 0.18);
+    border-color: rgba(226, 194, 122, 0.9);
+    background: rgba(226, 194, 122, 0.18);
     font-weight: bold;
 }
 
@@ -2344,22 +3174,7 @@ input[type="file"].tl-file {
     font-weight: bold;
 }
 
-/* R1: la partida rápida. */
-.tl-quick-title {
-    margin: 14px 0 6px;
-    font-weight: bold;
-}
-
-.tl-quick-worlds .tl-card-note {
-    font-size: 0.8rem;
-    opacity: 0.75;
-}
-
-.tl-more {
-    margin-top: 12px;
-}
-
-/* R1: el selector de modos (taller, partida rápida y /modo). */
+/* R1: el selector de modos (el taller y /modo). */
 .md-cards {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
@@ -2380,12 +3195,12 @@ input[type="file"].tl-file {
 }
 
 .md-card:hover {
-    border-color: rgba(228, 170, 70, 0.6);
+    border-color: rgba(226, 194, 122, 0.6);
 }
 
 .md-card.md-picked {
-    border-color: rgba(228, 170, 70, 0.85);
-    background: rgba(228, 170, 70, 0.16);
+    border-color: rgba(226, 194, 122, 0.85);
+    background: rgba(226, 194, 122, 0.16);
 }
 
 .md-card-title {
@@ -2427,29 +3242,186 @@ input[type="file"].tl-file {
     opacity: 0.8;
 }
 
-/* R1: los héroes hechos, al entrar. Con tres textos largos, los botones del pie se
-   aplastaban hasta no poder pulsarse (77 px de ancho): se apilan, uno por línea. */
-.popup-controls:has(.vt-premade) {
-    flex-direction: column;
-    align-items: stretch;
-    align-self: stretch;
-    gap: 6px;
+/* R1: quién entra (Gem director de UX, 2026-09-27). En bandas, como el taller: la cabecera
+   arriba y las tarjetas debajo, que se pulsan. Sin botones al pie: cada tarjeta es su botón. */
+.popup:has(.vt-root) {
+    width: min(1180px, 94dvw);
+    max-width: min(1180px, 94dvw) !important;
+    padding: 0;
+    border-color: var(--gs-gold-line);
+    border-radius: 12px;
+    background: linear-gradient(var(--gs-bg-panel), var(--gs-bg-panel)) var(--gs-bg-dark);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
 }
 
-.popup-controls .vt-premade,
-.popup-controls .vt-new,
-.popup-controls .vt-veteran {
-    width: 100%;
-    white-space: normal;
+.popup:has(.vt-root) .popup-controls {
+    display: none;
+}
+
+.popup:has(.vt-root) .popup-content {
+    margin: 0;
+    padding: 0;
+    overflow-y: auto;
+}
+
+.vt-root {
     text-align: left;
 }
 
-/* R1: los héroes hechos, al entrar. */
-.vt-premade-list {
+.vt-head {
+    padding: 18px 26px 16px;
+    border-bottom: 1px solid var(--SmartThemeBorderColor, #444);
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 12px 12px 0 0;
+}
+
+.vt-head .vt-title {
+    margin: 0 0 4px;
+    color: var(--gs-accent-gold);
+    font-size: 1.45rem;
+}
+
+.vt-sub {
+    margin: 0;
+    font-size: 0.92rem;
+    opacity: 0.75;
+}
+
+.vt-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 14px;
+    padding: 20px 26px;
+}
+
+.vt-grid.vt-small {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+    padding-top: 8px;
+}
+
+.vt-section {
+    margin: 4px 26px 0;
+    padding-top: 14px;
+    border-top: 1px dashed rgba(214, 180, 106, 0.3);
+    font-size: 0.78rem;
+    font-weight: bold;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    opacity: 0.65;
+}
+
+.vt-note {
+    margin: 4px 26px 0;
+    font-size: 0.82rem;
+    opacity: 0.6;
+}
+
+/* La tarjeta de un héroe: el oficio arriba, quién es, lo que le hace distinto, y al pie lo
+   que pasa al pulsarla. */
+.vt-card {
     display: flex;
     flex-direction: column;
     gap: 6px;
-    margin: 6px 0 10px;
+    padding: 14px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.3);
+    color: inherit;
+    font: inherit;
     text-align: left;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+
+.vt-card:hover,
+.vt-card:focus-visible {
+    outline: none;
+    border-color: var(--gs-accent-gold);
+    background: var(--gs-accent-gold-hover);
+    box-shadow: 0 0 0 1px var(--gs-accent-gold), 0 8px 22px rgba(0, 0, 0, 0.4);
+    transform: translateY(-2px);
+}
+
+.vt-card:active {
+    transform: translateY(0);
+}
+
+.vt-card.vt-new {
+    border-style: dashed;
+}
+
+.vt-face {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 52px;
+    margin-bottom: 4px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--gs-accent-gold);
+    font-size: 1.5rem;
+}
+
+.vt-small .vt-face {
+    height: 36px;
+    font-size: 1.1rem;
+}
+
+.vt-name {
+    font-size: 1.05rem;
+    font-weight: bold;
+}
+
+.vt-card:hover .vt-name,
+.vt-card:focus-visible .vt-name {
+    color: var(--gs-accent-gold);
+}
+
+.vt-what {
+    font-size: 0.8rem;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    opacity: 0.6;
+}
+
+.vt-pitch {
+    color: var(--gs-accent-gold);
+    font-style: italic;
+    font-size: 0.9rem;
+}
+
+.vt-about {
+    font-size: 0.82rem;
+    line-height: 1.4;
+    opacity: 0.75;
+}
+
+.vt-pet {
+    font-size: 0.8rem;
+    opacity: 0.85;
+}
+
+/* Lo que pasa al pulsar, al pie de la tarjeta: se enciende con ella. */
+.vt-go {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-top: auto;
+    padding-top: 10px;
+    border-top: 1px dashed rgba(255, 255, 255, 0.08);
     font-size: 0.85rem;
+    font-weight: bold;
+    opacity: 0.55;
+    transition: opacity 0.15s, color 0.15s;
+}
+
+.vt-go > i {
+    color: var(--gs-accent-gold);
+}
+
+.vt-card:hover .vt-go,
+.vt-card:focus-visible .vt-go {
+    color: var(--gs-accent-gold);
+    opacity: 1;
 }

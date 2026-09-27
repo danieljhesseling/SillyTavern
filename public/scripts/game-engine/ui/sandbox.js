@@ -285,7 +285,7 @@ export async function openSandbox({ Popup, POPUP_TYPE }) {
                 gridHeight: SANDBOX_HEIGHT,
             });
 
-            const profileLabel = TACTICAL_PROFILES[foe.profile]?.label ?? 'Aggressive';
+            const profileLabel = TACTICAL_PROFILES[foe.profile]?.label ?? 'Agresivo';
 
             if (plan.movementCostFeet > 0) {
                 foe.gridX = plan.destination.x;

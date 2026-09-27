@@ -66,9 +66,9 @@ export const SWITCHABLE_SCENES = [SCENE.DIALOGUE, SCENE.EXPLORATION, SCENE.COMBA
  * @type {Record<SceneName, {label: string, icon: string, shortcut: string}>}
  */
 export const SCENE_INFO = {
-    title: { label: 'Titulo', icon: 'fa-flag', shortcut: '' },
-    dialogue: { label: 'Dialogo', icon: 'fa-comments', shortcut: '1' },
-    exploration: { label: 'Exploracion', icon: 'fa-map', shortcut: '2' },
+    title: { label: 'Título', icon: 'fa-flag', shortcut: '' },
+    dialogue: { label: 'Diálogo', icon: 'fa-comments', shortcut: '1' },
+    exploration: { label: 'Exploración', icon: 'fa-map', shortcut: '2' },
     combat: { label: 'Combate', icon: 'fa-chess-board', shortcut: '3' },
 };
 
@@ -223,11 +223,12 @@ export function sceneTransition(before, after) {
  * conversation, because what comes next is the epilogue and the epilogue is narration.
  * So the transitions are named, one by one, instead of derived.
  *
- * @typedef {'combat_started'|'combat_ended'|'board_opened'|'board_closed'} SceneEvent
+ * @typedef {'game_opened'|'combat_started'|'combat_ended'|'board_opened'|'board_closed'} SceneEvent
  */
 
 /** What each event means, for the tooltip and for the tests. */
 const EVENT_REASONS = {
+    game_opened: 'empieza la partida',
     combat_started: 'empieza un combate',
     combat_ended: 'termina el combate',
     board_opened: 'se ha abierto un tablero',
@@ -246,13 +247,24 @@ const EVENT_REASONS = {
  */
 export function detectSceneEvent(before, after) {
     // Nothing to compare against, or no game open: the situation decides by itself.
-    if (!before || !after?.hasChat || !before.hasChat) return null;
+    if (!before || !after?.hasChat) return null;
+
+    // Una partida que se abre (nueva o cargada) empieza leyendo al narrador, que es quien
+    // te sitúa: plantado en un tablero, sin saber aún dónde estás ni por qué, era empezar
+    // la película por la mitad (Gem director de UX, 2026-09-27). Cerrarla no es un suceso:
+    // sin partida, el título lo decide solo.
+    if (!before.hasChat) return 'game_opened';
 
     if (!before.combatActive && after.combatActive) return 'combat_started';
     if (before.combatActive && !after.combatActive) return 'combat_ended';
 
     const had = Boolean(before.boardName);
     const has = Boolean(after.boardName);
+    // Un tablero que aparece a la vez que el sitio, desde ninguna parte, es el juego
+    // colocándote al empezar (`enterStartingBoard`), no alguien que entra en él: es parte de
+    // abrir la partida, y la pantalla se queda en la conversación. Entrar en un tablero de
+    // verdad se hace estando ya en un sitio.
+    if (!had && has && !before.locationName && after.locationName) return null;
     if (!had && has) return 'board_opened';
     if (had && !has) return 'board_closed';
 
@@ -268,6 +280,8 @@ export function detectSceneEvent(before, after) {
  */
 function sceneForEvent(event, situation) {
     switch (event) {
+        case 'game_opened':
+            return SCENE.DIALOGUE;
         case 'combat_started':
         case 'board_opened':
             return SCENE.COMBAT;

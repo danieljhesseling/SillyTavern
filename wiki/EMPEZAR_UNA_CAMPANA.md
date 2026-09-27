@@ -36,17 +36,21 @@ Si el servidor llevaba abierto desde antes de un cambio, reinícialo y recarga l
 
 ## 2. Crear la campaña
 
-### Lo más rápido: **Partida rápida**
+### Partida nueva: tres puertas y el taller
 
-En la pantalla de título, **Partida rápida**. Eliges uno de los cuatro mundos hechos y **cómo quieres jugarlo** (los modos, en el apartado 7c). Al entrar, el mundo te ofrece **tres héroes hechos**, cada uno con su línea: pulsas uno y juegas. El tercero de cada mundo llega con su mascota. Si prefieres el tuyo, *Quién eres* sigue ahí.
+En la pantalla de título, **Partida nueva**. Primero, tres puertas:
 
-> **Qué mundo.** *1387* es el único escrito entero: nueve rondas de guion, quince batallas, casos y gente con nombre. *La costa que no duerme*, *Las tierras del ocaso* y *El mundo tras la pantalla* son una ficha y una semilla: se juegan, pero con lo que el generador improvisa.
+| Puerta | Para qué |
+| :--- | :--- |
+| **Desde cero** | Lo escribes tú, paso a paso, o se lo pides a la IA. Lo que no escribas lo decide la semilla. Aquí están las plantillas (apartado a) y la generación con IA (b) |
+| **Un mundo hecho** | Cuatro mundos ya escritos. *1387* es el único escrito entero: nueve rondas de guion, quince batallas, casos y gente con nombre; *La costa que no duerme*, *Las tierras del ocaso* y *El mundo tras la pantalla* son una ficha y una semilla. Cada uno trae **tres héroes hechos**: al entrar pulsas uno y juegas (el tercero llega con su mascota). Si prefieres el tuyo, *Quién eres* sigue ahí |
+| **Importar un libro** | El JSON que te ha dado tu Gem (apartado c) |
 
-### Partida nueva: el taller
+Después, el **taller**: las trece pestañas a la izquierda (el mundo, quién lo cuenta, localidades, tableros, habilidades, razas, clases, objetos, facciones, bestiario, personajes, misiones y jugabilidad), cada una con su marca (✓ cambiada, • como viene, ⚠ algo no cuadra). Entras en las que quieras; **Crear y jugar** funciona desde cualquiera, y **Cancelar** no crea nada. En *Jugabilidad* se elige el modo (apartado 7c).
 
-**Partida nueva** abre el taller: **trece pestañas** (el mundo, quién lo cuenta, localidades, tableros, habilidades, razas, clases, objetos, facciones, bestiario, personajes, misiones y jugabilidad). Entras en la que quieras. Cada una lleva su marca: ✓ si la has cambiado, • si va como viene y ⚠ si algo no cuadra. **Crear y jugar** funciona desde cualquiera, y cerrar la ventana no crea nada. En *Jugabilidad* se elige el modo.
+Cada pestaña es **la lista a la izquierda y la ficha a la derecha**: pulsas una tarjeta y su ficha sale al lado, sin bajar a buscarla. Arriba de la lista, los filtros (por dónde está un sitio, qué quiere una facción, dónde vive alguien, armas o armaduras…) y el botón de añadir (**Nuevo sitio**, **Nueva facción**…), que no se va al bajar. Lo que entra en el mundo lleva una ✓ dorada; la abierta, el borde dorado entero. Al pie de la ficha: **Dejar fuera del mundo** (o **Meter en el mundo**) y, en rojo, **Quitar** lo que te hayas inventado.
 
-Para empezar hay tres caminos, y ninguno es mejor que otro; son para tres situaciones distintas.
+La prisa se resuelve igual: **Un mundo hecho** → 1387 → *Jugabilidad* → **Crear y jugar** → un héroe hecho.
 
 ### a) Una plantilla — *para jugar ya*
 
@@ -336,7 +340,7 @@ Y no son etiquetas: una pierna rota es **−10 pies de movimiento**, y el tabler
 
 ## 7c. Los modos: cuánto quieres que pese
 
-Todo lo de 7b se puede apagar. El modo se elige al empezar (en la partida rápida o en la pestaña *Jugabilidad*) y se cambia con `/modo` cuando quieras. Son seis piezas, cada una con su letra:
+Todo lo de 7b se puede apagar. El modo se elige al empezar (en la pestaña *Jugabilidad* del taller) y se cambia con `/modo` cuando quieras. Son seis piezas, cada una con su letra:
 
 | Letra | Qué enciende |
 | :---: | :--- |
@@ -390,7 +394,7 @@ Para que nadie lo descubra a mitad de una sesión:
 El juego entero se puede recorrer en un navegador de verdad, con su propio servidor y sus propios datos, sin tocar los tuyos:
 
 ```bash
-node tools/e2e-quick.mjs               # solo la partida rápida, unos 2 minutos
+node tools/e2e-quick.mjs               # solo empezar una partida en 1387, unos 2 minutos
 node tools/e2e-campaign.mjs            # 73 pasos, más de 700 comprobaciones, unos 55 minutos
 node tools/e2e-campaign.mjs --headed   # para verlo pasar
 ```

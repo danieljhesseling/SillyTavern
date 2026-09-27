@@ -1,5 +1,5 @@
 /**
- * Los héroes hechos de un mundo: entrar a jugar sin crear a nadie (R1, la partida rápida).
+ * Los héroes hechos de un mundo: entrar a jugar sin crear a nadie (R1).
  *
  * Crear un personaje es lo primero que uno espera de un juego de rol, pero no siempre lo
  * que quiere hacer esta tarde. Un mundo precreado puede traer tres ya escritos, pensados

@@ -82,7 +82,7 @@ describe('cómo se llama cada escena, ahora mismo', () => {
     });
 
     test('las demás se llaman siempre igual', () => {
-        expect(labelFor(SCENE.DIALOGUE, {})).toBe('Dialogo');
-        expect(labelFor(SCENE.EXPLORATION, {})).toBe('Exploracion');
+        expect(labelFor(SCENE.DIALOGUE, {})).toBe('Diálogo');
+        expect(labelFor(SCENE.EXPLORATION, {})).toBe('Exploración');
     });
 });
