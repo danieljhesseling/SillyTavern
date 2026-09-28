@@ -15486,7 +15486,8 @@ async function openTalk(name, draft = '', ask = '') {
                 .append(`<i class="fa-solid ${topic.locked ? 'fa-lock' : topic.icon}"></i>`).append($('<span></span>').text(topic.label));
             // Cerrado, y diciendo cómo se abre: con relación o con una tirada.
             if (topic.locked) {
-                button.addClass('tk-locked').attr('title', topic.locked).attr('aria-disabled', 'true');
+                // No va desactivado: al pulsarlo dice cómo se abre, y eso es una respuesta.
+                button.addClass('tk-locked').attr('title', topic.locked);
                 button.on('click', () => add(topic.locked ?? ''));
                 topics.append(button);
                 continue;
