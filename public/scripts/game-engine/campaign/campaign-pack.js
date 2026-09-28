@@ -120,7 +120,7 @@ export function normalizePack(raw) {
         if (type && !LOCATION_TYPES.includes(type)) {
             repairs.push({
                 path: `locations[${index}].type`,
-                message: `"${type}" no es un tipo de localidad; se ha dejado sin tipo.`,
+                message: `"${type}" no es un tipo de localización; se ha dejado sin tipo.`,
             });
         }
         return {
@@ -329,7 +329,7 @@ export function validatePack(raw) {
     pack.locations.forEach((/** @type {any} */ location, /** @type {number} */ index) => {
         const name = text(location.name);
         if (!name) {
-            errors.push({ path: `locations[${index}]`, message: 'Sin nombre: el mundo indexa las localidades por nombre.' });
+            errors.push({ path: `locations[${index}]`, message: 'Sin nombre: el mundo indexa las localizaciones por nombre.' });
             return;
         }
         if (declaredPlaces.has(name.toLowerCase())) {

@@ -242,13 +242,13 @@ describe('lo hecho a mano sobrevive a su propio exportador', () => {
 
 describe('contado en una linea', () => {
     test('dice cuanto mundo hay', () => {
-        expect(describeModel(buildEditorModel(world()))).toBe('1 localidad(es) · 1 tablero(s)');
+        expect(describeModel(buildEditorModel(world()))).toBe('1 localización(es) · 1 tablero(s)');
     });
 
     test('y avisa de los sitios donde no se pelea', () => {
         const model = buildEditorModel(world());
         model.locations.push({ name: 'Vado', type: '', description: '', region: '', factionName: '', boards: [] });
-        expect(describeModel(model)).toBe('2 localidad(es) · 1 tablero(s) · 1 sin tablero');
+        expect(describeModel(model)).toBe('2 localización(es) · 1 tablero(s) · 1 sin tablero');
     });
 });
 

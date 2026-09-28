@@ -393,8 +393,10 @@ Cada uno cuesta en cada merge. La lista no debería crecer.
 | `check-world-density.mjs` | Mide si un mundo llega al listón: sitios, gente, héroes hechos, bestias domables y magia en los datos |
 | `gem-instructions.mjs` | Genera `wiki/GEM_CREAR_CAMPANA.md` desde el contrato; con `--check` falla si se quedó viejo |
 | `guion-a-paquete.mjs` | Convierte el guion del Gem guionista en un paquete, y avisa de cada campo que no lee |
-| `e2e-campaign.mjs` | Recorre el juego en un navegador real, con servidor y datos propios: 73 pasos, unos 55 minutos |
-| `e2e-quick.mjs` | La partida rápida sola, con diagnóstico: unos 2 minutos |
+| `e2e-todo.mjs` | Lanza todas las pruebas a la vez, cada una con su servidor: `--rapido` (tests, rápida y sin modelo, unos 4 minutos) o todo (unos 15 minutos) |
+| `e2e-campaign.mjs` | Recorre el juego en un navegador real, con servidor y datos propios: 73 pasos, unos 30 minutos. `--parte a` / `--parte b` son sus dos mitades (pasos 1–48 y 49–73), y `--port` le da otro puerto |
+| `e2e-quick.mjs` | La partida rápida en 1387 y la tanda de profundidad (altura, salidas, palanca, barricada, tregua): unos 3 minutos |
+| `e2e-sin-modelo.mjs` | Una partida de 1387 entera sin modelo: que el motor lo cuente todo y el hilo avance. Unos 4 minutos |
 
 ---
 

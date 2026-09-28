@@ -35,7 +35,16 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^[/]([A-Za-z]:)/, '$1');
-const PORT = 8123;
+/** `--port N`: dos vueltas a la vez necesitan cada una el suyo. */
+const PORT = Number(process.argv[process.argv.indexOf('--port') + 1]) > 0 && process.argv.includes('--port')
+    ? Number(process.argv[process.argv.indexOf('--port') + 1]) : 8123;
+/**
+ * `--parte a` son los pasos 1 a 48; `--parte b`, del 49 al final, que empieza creando 1387
+ * desde el menú en un servidor limpio. Sin decir nada, la vuelta entera. Las dos mitades se
+ * pueden correr a la vez: `tools/e2e-todo.mjs` lo hace.
+ */
+const PART = ['a', 'b'].includes(process.argv[process.argv.indexOf('--parte') + 1]) && process.argv.includes('--parte')
+    ? process.argv[process.argv.indexOf('--parte') + 1] : '';
 const BASE = `http://127.0.0.1:${PORT}`;
 const HEADED = process.argv.includes('--headed');
 const KEEP = process.argv.includes('--keep');
@@ -51,6 +60,8 @@ try {
 }
 
 let failures = 0;
+const runStarted = Date.now();
+let stepStarted = Date.now();
 /** Idea 179: los veteranos que se ofrecieron al crear campañas. */
 const veteransOffered = [];
 /** Lo que fallo, con su paso: el recorrido son 400 lineas y el fallo puede quedar en medio. */
@@ -64,7 +75,8 @@ const check = (name, ok, detail = '') => {
         failures++;
         failed.push(`${currentStep} - ${name}${detail ? ` -> ${detail}` : ''}`);
     }
-    console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? `\n        -> ${detail}` : ''}`);
+    // Los segundos que lleva el paso, al final: para ver qué parte de un paso lento tarda.
+    console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}  [${Math.round((Date.now() - stepStarted) / 1000)} s]${detail ? `\n        -> ${detail}` : ''}`);
 };
 /**
  * K2: un paso que se cuelga (un comando que espera una ventana que nadie contesta) paraba la
@@ -77,7 +89,11 @@ let watchPage = null;
 /** @type {any} */
 let watchdog = null;
 const STEP_WATCH_MS = 240000;
+/** Cuánto tarda cada paso, para saber dónde se va el tiempo de la vuelta. */
+const stepTimes = [];
 const step = (title) => {
+    if (currentStep !== '(antes de empezar)') stepTimes.push({ title: currentStep, ms: Date.now() - stepStarted });
+    stepStarted = Date.now();
     currentStep = title;
     console.log(`\n=== ${title} ===`);
     lastProgress = Date.now();
@@ -145,6 +161,8 @@ try {
     // se dan por vistos para que no tapen clics. El paso 55 los prueba aparte.
     await page.addInitScript(() => {
         try { window.localStorage.setItem('sillytavern_gameTipsSeen', 'dialogue,exploration,combat,travel,prisoners,mesa,high,spell,pet,bill'); } catch { /* sin almacenamiento */ }
+        // Las tarjetas de sucesos (Z4) las prueba la vuelta sin modelo; aquí taparían clics.
+        try { window.localStorage.setItem('sillytavern_gameSucesos', 'off'); } catch { /* sin almacenamiento */ }
     });
 
     const problems = new Set();
@@ -200,9 +218,7 @@ try {
     }
     await page.waitForSelector('#cw-new-campaign', { timeout: 90000 });
 
-    step('1. The welcome screen offers to start a campaign');
-    check('the New campaign button is on the welcome screen',
-        await page.locator('#cw-new-campaign').count() === 1);
+    // Las funciones de ayuda de toda la vuelta, antes del primer paso: las dos mitades las usan.
 
     /**
      * Idea 179: con otras partidas guardadas, antes del creador se pregunta si entra un
@@ -263,300 +279,6 @@ try {
         return seen;
     };
 
-    step('2. El taller crea un mundo, un chat, y pone al grupo en el tablero');
-    await page.click('#cw-new-campaign');
-
-    // La puerta: tres caminos, y la unica pregunta que se puede hacer antes de saber nada
-    // del mundo es «¿lo escribo yo o juego ya?».
-    await page.waitForSelector('.tl-door-grid');
-    const puertas = await page.evaluate(() =>
-        [...document.querySelectorAll('.tl-door-card-title')].map(e => e.textContent || ''));
-    check('al crear campana se elige por donde se empieza',
-        puertas.length === 3 && puertas.some(t => /desde cero/i.test(t))
-        && puertas.some(t => /mundo hecho/i.test(t)) && puertas.some(t => /libro/i.test(t)),
-        puertas.join(' | '));
-
-    await page.locator('.tl-door-card').first().click();
-    await page.waitForSelector('.tl-root');
-
-    // Paso 1 de 13, y lo dice: contar sobre los hechos seria mentir en la unica pantalla
-    // que dice cuanto falta.
-    const paso1 = await page.evaluate(() => ({
-        dicho: document.querySelector('.tl-bar-said')?.textContent || '',
-        semilla: /** @type {HTMLInputElement|null} */ (
-            document.querySelector('.tl-input.mono'))?.value || '',
-        tarjetas: document.querySelectorAll('.tl-card').length,
-    }));
-    check('el taller dice por donde va, sobre los trece pasos',
-        /Paso 1 de 13/.test(paso1.dicho), paso1.dicho);
-    check('y llega con una semilla ya tirada, en tres palabras',
-        /^[a-z]+-[a-z]+-[a-z]+$/.test(paso1.semilla), paso1.semilla);
-    check('con tarjetas para elegir con que sitio empieza', paso1.tarjetas >= 3, `${paso1.tarjetas}`);
-
-    // Sin elegir sitio no se pasa, y se dice por que: un boton apagado que no lo dice es
-    // la forma mas rapida de que alguien cierre la ventana.
-    await page.locator('.tl-next').click();
-    await page.waitForTimeout(300);
-    const frena = await page.evaluate(() => document.querySelector('.tl-said')?.textContent || '');
-    check('no deja pasar sin elegir, y dice que falta', /sitio|nombre/i.test(frena), frena);
-
-    await page.locator('.tl-card').first().click();
-    await page.waitForTimeout(300);
-    const elegida = await page.locator('.tl-card.picked').count();
-    check('lo elegido se marca, que es lo unico que hay que mirar', elegida === 1, `${elegida}`);
-
-    const proposed = await page.evaluate(() =>
-        /** @type {HTMLInputElement|null} */ (document.querySelector('.tl-input'))?.value || '');
-    check('it proposes a free name instead of demanding one', Boolean(proposed), `proposed "${proposed}"`);
-
-    // Paso 2: quien lo cuenta. Se puede saltar — se juega sin narrador.
-    await page.locator('.tl-next').click();
-    await page.waitForTimeout(400);
-    const paso2 = await page.evaluate(() => ({
-        dicho: document.querySelector('.tl-bar-said')?.textContent || '',
-        narradores: document.querySelectorAll('.tl-card').length,
-        mas: document.querySelectorAll('.tl-toolbar .tl-add').length,
-    }));
-    check('el paso 2 ofrece narradores hechos y uno para escribir el tuyo',
-        /Paso 2 de 13/.test(paso2.dicho) && paso2.narradores >= 4 && paso2.mas === 1,
-        `${paso2.dicho} · ${paso2.narradores} tarjetas`);
-
-    await page.locator('.tl-skip').click();
-    await page.waitForTimeout(600);
-
-    // Paso 3: los sitios. Llega con el de partida y con los vecinos que la semilla iba a
-    // poner sola al crear el mundo — ensenarlos antes es lo unico que permite tocarlos.
-    const paso3 = await page.evaluate(() => ({
-        dicho: document.querySelector('.tl-bar-said')?.textContent || '',
-        sitios: [...document.querySelectorAll('.tl-card:not(.add) .tl-card-title')]
-            .map(e => e.textContent || ''),
-        marcados: document.querySelectorAll('.tl-card.picked').length,
-    }));
-    check('el paso 3 llega con los sitios que la semilla iba a poner sola',
-        /Paso 3 de 13/.test(paso3.dicho) && paso3.sitios.length >= 3 && paso3.marcados >= 3,
-        `${paso3.dicho} · ${paso3.sitios.join(', ')}`);
-
-    // Y se pueden tocar: abrir uno ensena su ficha con su tipologia.
-    await page.locator('.tl-card:not(.add)').nth(1).click();
-    await page.waitForTimeout(400);
-    const tipos = await page.evaluate(() =>
-        [...document.querySelectorAll('.tl-form select option')].map(o => o.textContent || ''));
-    check('cada sitio dice que clase de sitio es, y las hay de todo tipo',
-        tipos.some(t => /Aldea/i.test(t)) && tipos.some(t => /Castillo/i.test(t))
-        && tipos.some(t => /Puerto/i.test(t)) && tipos.some(t => /Torre/i.test(t)),
-        tipos.filter(Boolean).join(', '));
-
-    await page.locator('.tl-next').click();
-    await page.waitForTimeout(600);
-
-    // Paso 4: en la lista, un grupo por sitio, que es lo que hace que se entienda a cual
-    // pertenece cada tablero sin leerlo en el nombre.
-    const paso4 = await page.evaluate(() => ({
-        dicho: document.querySelector('.tl-bar-said')?.textContent || '',
-        sitios: document.querySelectorAll('.tl-list .tl-cards-group').length,
-    }));
-    check('el paso 4 da un grupo por sitio para sus tableros',
-        /Paso 4 de 13/.test(paso4.dicho) && paso4.sitios === paso3.marcados,
-        `${paso4.dicho} · ${paso4.sitios} grupos`);
-
-    await page.locator('.tl-list .tl-card.add').first().click();
-    await page.waitForTimeout(400);
-    const tablero = await page.evaluate(() => ({
-        cuantos: document.querySelectorAll('.tl-list .tl-card.picked:not(.add)').length,
-        formas: [...document.querySelectorAll('.tl-detail select option')].map(o => o.textContent || ''),
-    }));
-    check('se le puede anadir un tablero, diciendo como es por dentro',
-        tablero.cuantos === 1 && tablero.formas.some(f => /Salas y pasillos/i.test(f))
-        && tablero.formas.some(f => /Cueva/i.test(f)),
-        tablero.formas.filter(Boolean).join(', '));
-
-    await page.locator('.tl-next').click();
-    await page.waitForTimeout(600);
-
-    // Pasos 5, 6 y 7: elegir de una lista. Los tres son la misma pantalla con otras filas.
-    const paso5 = await page.evaluate(() => ({
-        dicho: document.querySelector('.tl-bar-said')?.textContent || '',
-        marcadas: document.querySelectorAll('.tl-card.picked').length,
-    }));
-    check('el paso 5 llega con las habilidades escritas, y todas dentro',
-        /Paso 5 de 13/.test(paso5.dicho) && paso5.marcadas >= 20,
-        `${paso5.dicho} · ${paso5.marcadas} marcadas`);
-
-    await page.locator('.tl-next').click();
-    await page.waitForTimeout(500);
-
-    // Razas: cada una da algo y **quita** algo, que es lo que la hace una decision.
-    const paso6 = await page.evaluate(() => ({
-        dicho: document.querySelector('.tl-bar-said')?.textContent || '',
-        lineas: [...document.querySelectorAll('.tl-card:not(.add) .tl-card-note')]
-            .map(e => e.textContent || ''),
-    }));
-    check('el paso 6 ensena lo que cada raza da y lo que quita',
-        /Paso 6 de 13/.test(paso6.dicho) && paso6.lineas.length >= 10
-        && paso6.lineas.every(l => /\+\d/.test(l) && /-\d/.test(l)),
-        `${paso6.dicho} · ${paso6.lineas[0]}`);
-
-    await page.locator('.tl-next').click();
-    await page.waitForTimeout(500);
-
-    const paso7 = await page.evaluate(() => ({
-        dicho: document.querySelector('.tl-bar-said')?.textContent || '',
-        lineas: [...document.querySelectorAll('.tl-card:not(.add) .tl-card-note')]
-            .map(e => e.textContent || ''),
-    }));
-    check('y el 7 el dado de golpe de cada clase',
-        /Paso 7 de 13/.test(paso7.dicho) && paso7.lineas.every(l => /\dd\d/.test(l)),
-        `${paso7.dicho} · ${paso7.lineas[0]}`);
-
-    await page.locator('.tl-next').click();
-    await page.waitForTimeout(500);
-
-    // Paso 8: las formas de las tres baterias juntas. Quitar una quita dieciseis objetos,
-    // porque el material lo pone otra bateria.
-    const paso8 = await page.evaluate(() => ({
-        dicho: document.querySelector('.tl-bar-said')?.textContent || '',
-        cosas: document.querySelectorAll('.tl-card:not(.add)').length,
-        lineas: [...document.querySelectorAll('.tl-card:not(.add) .tl-card-note')]
-            .map(e => e.textContent || ''),
-    }));
-    check('el paso 8 junta armas, armaduras y trastos',
-        /Paso 8 de 13/.test(paso8.dicho) && paso8.cosas >= 60
-        && paso8.lineas.some(l => /\dd\d/.test(l)) && paso8.lineas.some(l => /CA \d/.test(l)),
-        `${paso8.dicho} · ${paso8.cosas} formas`);
-
-    await page.locator('.tl-next').click();
-    await page.waitForTimeout(500);
-
-    // Paso 9: las facciones **de verdad**, las que tienen meta y reloj. Llegan repartidas
-    // por la semilla, que es lo que el mundo iba a hacer solo al crearse.
-    const paso9 = await page.evaluate(() => ({
-        dicho: document.querySelector('.tl-bar-said')?.textContent || '',
-        bandos: [...document.querySelectorAll('.tl-card:not(.add) .tl-card-title')]
-            .map(e => e.textContent || ''),
-    }));
-    check('el paso 9 llega con las facciones que la semilla iba a repartir',
-        /Paso 9 de 13/.test(paso9.dicho) && paso9.bandos.length >= 2,
-        `${paso9.dicho} · ${paso9.bandos.join(', ')}`);
-
-    await page.locator('.tl-card:not(.add)').first().click();
-    await page.waitForTimeout(400);
-    const suMeta = await page.evaluate(() =>
-        [...document.querySelectorAll('.tl-form select option')].map(o => o.textContent || ''));
-    // Y lo que piensan de ti se dice en palabras, no en un numero entre -5 y 5.
-    check('cada faccion dice que quiere y que piensan de ti',
-        suMeta.some(t => /Quedarse con un sitio/i.test(t))
-        && suMeta.some(t => /Acabar con otra facción/i.test(t))
-        && suMeta.some(t => /deben más de una/i.test(t)),
-        suMeta.filter(Boolean).slice(0, 12).join(', '));
-
-    await page.locator('.tl-next').click();
-    await page.waitForTimeout(600);
-
-    // Paso 10: lo que hay ahi fuera.
-    const paso10 = await page.evaluate(() => ({
-        dicho: document.querySelector('.tl-bar-said')?.textContent || '',
-        bichos: document.querySelectorAll('.tl-card:not(.add)').length,
-    }));
-    check('el paso 10 trae el bestiario entero, marcado',
-        /Paso 10 de 13/.test(paso10.dicho) && paso10.bichos >= 30,
-        `${paso10.dicho} · ${paso10.bichos} filas`);
-
-    await page.locator('.tl-next').click();
-    await page.waitForTimeout(600);
-
-    // Paso 11: quien vive aqui. Sale del compendio con la semilla, y va el penultimo
-    // porque se rellena con la raza, la clase, el sitio y la bandera de los pasos de
-    // arriba.
-    const paso11 = await page.evaluate(() => ({
-        dicho: document.querySelector('.tl-bar-said')?.textContent || '',
-        gente: [...document.querySelectorAll('.tl-card:not(.add) .tl-card-title')]
-            .map(e => e.textContent || ''),
-    }));
-    check('el paso 11 llega con vecinos ya escritos',
-        /Paso 11 de 13/.test(paso11.dicho) && paso11.gente.length >= 2
-        && paso11.gente.every(n => n && !/undefined/.test(n)),
-        `${paso11.dicho} · ${paso11.gente.join(', ')}`);
-
-    await page.locator('.tl-next').click();
-    await page.waitForTimeout(600);
-
-    // Paso 12: no es escribir un tablon. Son los mandos de como salen las demas.
-    const paso12 = await page.evaluate(() => ({
-        dicho: document.querySelector('.tl-bar-said')?.textContent || '',
-        mandos: [...document.querySelectorAll('.tl-form select option')].map(o => o.textContent || ''),
-        dice: document.querySelector('.tl-step-hint')?.textContent || '',
-    }));
-    check('el paso 12 son los mandos del tablon, no un tablon que rellenar',
-        /Paso 12 de 13/.test(paso12.dicho)
-        && paso12.mandos.some(t => /Uno de cada tres/i.test(t))
-        && /se rellena solo/i.test(paso12.dice),
-        `${paso12.dicho} · ${paso12.mandos.filter(Boolean).join(', ')}`);
-
-    await page.locator('.tl-next').click();
-    await page.waitForTimeout(600);
-    check('y de ahi se llega al ultimo paso',
-        /Paso 13 de 13/.test(await page.evaluate(() =>
-            document.querySelector('.tl-bar-said')?.textContent || '')));
-
-    await page.locator('.tl-next').click();
-
-    const heroBox = await answerHeroCreator('Lyra', {
-        race: 'Media elfa', className: 'Picara', dice: true,
-    });
-    check('el dado saca un nombre del compendio, sin escribir nada',
-        heroBox.dice === 1 && (heroBox.rolled?.[0] || '').length > 1
-        && !/[{}]/.test(heroBox.rolled?.[0] || ''),
-        JSON.stringify(heroBox.rolled));
-    check('y otro distinto cada vez que se pulsa',
-        heroBox.rolled?.[0] !== heroBox.rolled?.[1], JSON.stringify(heroBox.rolled));
-    check('empezar una campana te pregunta quien eres',
-        heroBox.labels.some(l => /Nombre/.test(l)) && heroBox.labels.some(l => /Qui.n eres/.test(l)),
-        JSON.stringify(heroBox.labels));
-    check('la cara se busca en el disco, no se teclea una ruta',
-        heroBox.face === 'file' && heroBox.typed === 0, JSON.stringify(heroBox));
-    // Encendida o apagada depende del proveedor que haya puesto; que exista y diga para
-    // que sirve, no. Lo que hace al pulsarla se prueba en el paso 41, con un modelo de
-    // mentira, que es gratis y siempre contesta lo mismo.
-    check('y trae la varita, con su explicacion puesta',
-        heroBox.wand === 1 && (heroBox.wandTitle || '').length > 20,
-        `varita=${heroBox.wand} apagada=${heroBox.wandOff} pista="${heroBox.wandTitle}"`);
-
-    const toast = page.locator('#toast-container .toast', { hasText: 'creada' });
-    await toast.first().waitFor({ state: 'visible', timeout: 60000 }).catch(() => {});
-    const toastText = ((await toast.count()) ? await toast.first().innerText() : 'NO TOAST').replace(/\s+/g, ' ');
-    check('the campaign is created and the toast says where you are', /Estás en/.test(toastText), toastText);
-
-    // The three failures the unit tests could not see, one check each.
-    await page.waitForTimeout(1500);
-    const state = await readState();
-    const walls = await page.locator('.wm-terrain-wall').filter({ visible: true }).count();
-    const tokens = await page.locator('.wm-token').filter({ visible: true }).count();
-    const positions = (state.party || []).map(m => `${m?.name}(${m?.mapPosition?.gridX},${m?.mapPosition?.gridY})`);
-
-    check('a chat exists and is bound to the new world', Boolean(state.world), `world_info=${state.world}`);
-
-    // La semilla del mundo: se tira al crear y se queda. Sin ella, lo unico de donde
-    // sacar el azar era el nombre, y dos campanas llamadas igual salian iguales.
-    const seed2 = await page.evaluate(async () => {
-        const wi = await import('/scripts/world-info.js');
-        const ctx = window.SillyTavern.getContext();
-        const data = await wi.loadWorldInfo(ctx.chatMetadata.world_info);
-        return String(data?.metadata?.seed || '');
-    });
-    check('la campana nace con su semilla, en palabras y no en un numero',
-        /^[a-z0-9]+(-[a-z0-9]+){2}$/.test(seed2), seed2 || '(sin semilla)');
-    check('se empieza solo, con el personaje que acabas de hacer y nadie mas',
-        (state.party || []).length === 1 && state.party[0]?.name === 'Lyra', positions.join('  '));
-    check('y con sus numeros puestos, no con la ficha a medio hacer',
-        Number(state.party?.[0]?.maxHp) > 0 && Number(state.party?.[0]?.speed) > 0,
-        `PG=${state.party?.[0]?.maxHp} vel=${state.party?.[0]?.speed}`);
-    check('nobody starts on (0,0), which is a wall in every template',
-        positions.length > 0 && !positions.some(p => p.includes('(0,0)')), positions.join('  '));
-    check('you are already on the first board, with no /go and no /enter',
-        Boolean(state.location && state.board), `${state.location} / ${state.board}`);
-    check('the board is on screen with its walls', walls > 20, `${walls} wall cells`);
-    check('tu personaje esta de pie en el', tokens === 1, `${tokens} tokens`);
-
     /**
      * Aparta los avisos: se quedan encima de las barras de botones unos segundos y se
      * comen el clic. Es cosa del recorrido, no del juego — quien juega espera o los cierra.
@@ -574,52 +296,6 @@ try {
         await page.waitForTimeout(800);
     };
 
-    /**
-     * Plays one combat turn for whoever is up: close the distance, then attack.
-     *
-     * Written as a helper because three checks need it and each one that reimplemented it
-     * got the same thing wrong — a single /combat-move only works if the target square is
-     * already within this turn's movement, and where the enemy lands is rolled.
-     *
-     * @returns {Promise<'attacked'|'moved'|'passed'|'over'>}
-     */
-    const playOneTurn = () => page.evaluate(async () => {
-        const ctx = window.SillyTavern.getContext();
-        const enc = ctx.chatMetadata.combatEncounter;
-        if (!enc?.active) return 'over';
-
-        const entry = enc.turnOrder?.[enc.currentTurnIndex];
-        if (!entry || entry.isEnemy) {
-            await ctx.executeSlashCommandsWithOptions('/combat-end');
-            return 'passed';
-        }
-
-        const member = (ctx.chatMetadata.party || []).find(m => String(m.id) === String(entry.id));
-        const enemy = (enc.enemies || []).find(e => (e.currentHp || 0) > 0);
-        if (!member || !enemy) {
-            await ctx.executeSlashCommandsWithOptions('/combat-end');
-            return 'passed';
-        }
-
-        const mx = member.mapPosition?.gridX ?? 0;
-        const my = member.mapPosition?.gridY ?? 0;
-        const dx = enemy.gridX - mx;
-        const dy = enemy.gridY - my;
-
-        if (Math.max(Math.abs(dx), Math.abs(dy)) <= 1) {
-            await ctx.executeSlashCommandsWithOptions(`/combat-attack ${enemy.name}`);
-            return 'attacked';
-        }
-
-        // One step at a time towards it: a whole-way move is refused when the distance is
-        // more than this turn's speed, and then nothing happens at all.
-        const stepX = mx + Math.sign(dx);
-        const stepY = my + Math.sign(dy);
-        await ctx.executeSlashCommandsWithOptions(`/combat-move ${stepX + 1} ${stepY + 1}`);
-        return 'moved';
-    });
-
-    /** Clicks through the dice overlay until it stops covering the page. */
     // Desde H5, Esc pausa en vez de apagar: salir es cosa del menu de pausa.
     /**
      * Abrir la pausa con Escape, como quien juega. Si el cursor está en la caja de escribir
@@ -680,14 +356,370 @@ try {
         focus: `${document.activeElement?.tagName || ''}.${String(document.activeElement?.className || '').slice(0, 30)}`,
         combat: Boolean(document.querySelector('#game-shell[data-scene="combat"]')),
     }));
+
+    /**
+     * Clicks through the dice overlay until it stops covering the page.
+     *
+     * Si una ventana tapa los dados (el final de la historia, la ficha del objetivo), no se
+     * pueden pulsar y esperar no lo arregla: con dos fallos seguidos se deja. Antes lo
+     * intentaba 40 veces de 4 segundos, y eso eran los 3 minutos de los pasos 57 y 72.
+     */
     const clearDiceOverlay = async () => {
+        let misses = 0;
         for (let i = 0; i < 40; i++) {
             const next = page.locator('.wm-dice-overlay.active .wm-dice-next');
             if (await next.count() === 0) return;
-            await next.click({ timeout: 4000 }).catch(() => {});
+            const clicked = await next.click({ timeout: 1500 }).then(() => true).catch(() => false);
+            if (!clicked && ++misses >= 2) return;
             await page.waitForTimeout(250);
         }
     };
+
+    // La vuelta en dos mitades que pueden correr a la vez (`--parte a` y `--parte b`): la
+    // segunda empieza en el paso 49, que crea 1387 desde el menú, y de la primera solo usa las
+    // funciones de arriba (comprobado el 2026-09-28 resolviendo los ámbitos del script).
+    /* eslint-disable indent */
+    if (PART !== 'b') {
+    step('1. The welcome screen offers to start a campaign');
+    check('the New campaign button is on the welcome screen',
+        await page.locator('#cw-new-campaign').count() === 1);
+
+    step('2. El taller crea un mundo, un chat, y pone al grupo en el tablero');
+    await page.click('#cw-new-campaign');
+
+    // La puerta: tres caminos, y la unica pregunta que se puede hacer antes de saber nada
+    // del mundo es «¿lo escribo yo o juego ya?».
+    await page.waitForSelector('.tl-door-grid');
+    const puertas = await page.evaluate(() =>
+        [...document.querySelectorAll('.tl-door-card-title')].map(e => e.textContent || ''));
+    check('al crear campana se elige por donde se empieza',
+        puertas.length === 3 && puertas.some(t => /desde cero/i.test(t))
+        && puertas.some(t => /mundo hecho/i.test(t)) && puertas.some(t => /libro/i.test(t)),
+        puertas.join(' | '));
+
+    await page.locator('.tl-door-card').first().click();
+    await page.waitForSelector('.tl-root');
+
+    // Paso 1 de 12, y lo dice: contar sobre los hechos seria mentir en la unica pantalla
+    // que dice cuanto falta.
+    const paso1 = await page.evaluate(() => ({
+        dicho: document.querySelector('.tl-bar-said')?.textContent || '',
+        semilla: /** @type {HTMLInputElement|null} */ (
+            document.querySelector('.tl-input.mono'))?.value || '',
+        tarjetas: document.querySelectorAll('.tl-card').length,
+    }));
+    check('el taller dice por donde va, sobre los doce pasos',
+        /Paso 1 de 12/.test(paso1.dicho), paso1.dicho);
+    check('y llega con una semilla ya tirada, en tres palabras',
+        /^[a-z]+-[a-z]+-[a-z]+$/.test(paso1.semilla), paso1.semilla);
+    check('con tarjetas para elegir con que sitio empieza', paso1.tarjetas >= 3, `${paso1.tarjetas}`);
+
+    // Sin elegir sitio no se pasa, y se dice por que: un boton apagado que no lo dice es
+    // la forma mas rapida de que alguien cierre la ventana.
+    await page.locator('.tl-next').click();
+    await page.waitForTimeout(300);
+    const frena = await page.evaluate(() => document.querySelector('.tl-said')?.textContent || '');
+    check('no deja pasar sin elegir, y dice que falta', /sitio|nombre/i.test(frena), frena);
+
+    await page.locator('.tl-card').first().click();
+    await page.waitForTimeout(300);
+    const elegida = await page.locator('.tl-card.picked').count();
+    check('lo elegido se marca, que es lo unico que hay que mirar', elegida === 1, `${elegida}`);
+
+    const proposed = await page.evaluate(() =>
+        /** @type {HTMLInputElement|null} */ (document.querySelector('.tl-input'))?.value || '');
+    check('it proposes a free name instead of demanding one', Boolean(proposed), `proposed "${proposed}"`);
+
+    // Paso 2: quien lo cuenta. Se puede saltar — se juega sin narrador.
+    await page.locator('.tl-next').click();
+    await page.waitForTimeout(400);
+    const paso2 = await page.evaluate(() => ({
+        dicho: document.querySelector('.tl-bar-said')?.textContent || '',
+        narradores: document.querySelectorAll('.tl-card').length,
+        mas: document.querySelectorAll('.tl-toolbar .tl-add').length,
+    }));
+    check('el paso 2 ofrece narradores hechos y uno para escribir el tuyo',
+        /Paso 2 de 12/.test(paso2.dicho) && paso2.narradores >= 4 && paso2.mas === 1,
+        `${paso2.dicho} · ${paso2.narradores} tarjetas`);
+
+    await page.locator('.tl-skip').click();
+    await page.waitForTimeout(600);
+
+    // Paso 3: los sitios. Llega con el de partida y con los vecinos que la semilla iba a
+    // poner sola al crear el mundo — ensenarlos antes es lo unico que permite tocarlos.
+    const paso3 = await page.evaluate(() => ({
+        dicho: document.querySelector('.tl-bar-said')?.textContent || '',
+        sitios: [...document.querySelectorAll('.tl-card:not(.add) .tl-card-title')]
+            .map(e => e.textContent || ''),
+        marcados: document.querySelectorAll('.tl-card.picked').length,
+    }));
+    check('el paso 3 llega con los sitios que la semilla iba a poner sola',
+        /Paso 3 de 12/.test(paso3.dicho) && paso3.sitios.length >= 3 && paso3.marcados >= 3,
+        `${paso3.dicho} · ${paso3.sitios.join(', ')}`);
+
+    // Y se pueden tocar: abrir uno ensena su ficha con su tipologia.
+    await page.locator('.tl-card:not(.add)').nth(1).click();
+    await page.waitForTimeout(400);
+    const tipos = await page.evaluate(() =>
+        [...document.querySelectorAll('.tl-form select option')].map(o => o.textContent || ''));
+    check('cada sitio dice que clase de sitio es, y las hay de todo tipo',
+        tipos.some(t => /Aldea/i.test(t)) && tipos.some(t => /Castillo/i.test(t))
+        && tipos.some(t => /Puerto/i.test(t)) && tipos.some(t => /Torre/i.test(t)),
+        tipos.filter(Boolean).join(', '));
+
+    await page.locator('.tl-next').click();
+    await page.waitForTimeout(600);
+
+    // Paso 4: en la lista, un grupo por sitio, que es lo que hace que se entienda a cual
+    // pertenece cada tablero sin leerlo en el nombre.
+    const paso4 = await page.evaluate(() => ({
+        dicho: document.querySelector('.tl-bar-said')?.textContent || '',
+        sitios: document.querySelectorAll('.tl-list .tl-cards-group').length,
+    }));
+    check('el paso 4 da un grupo por sitio para sus tableros',
+        /Paso 4 de 12/.test(paso4.dicho) && paso4.sitios === paso3.marcados,
+        `${paso4.dicho} · ${paso4.sitios} grupos`);
+
+    await page.locator('.tl-list .tl-card.add').first().click();
+    await page.waitForTimeout(400);
+    const tablero = await page.evaluate(() => ({
+        cuantos: document.querySelectorAll('.tl-list .tl-card.picked:not(.add)').length,
+        formas: [...document.querySelectorAll('.tl-detail select option')].map(o => o.textContent || ''),
+        casillas: document.querySelectorAll('.tl-detail .tl-bp-cell').length,
+    }));
+    check('se le puede anadir un tablero, diciendo como es por dentro, y se ve entero para pintarlo',
+        tablero.cuantos === 1 && tablero.formas.some(f => /Salas y pasillos/i.test(f))
+        && tablero.formas.some(f => /Cueva/i.test(f)) && tablero.casillas >= 100,
+        `${tablero.casillas} casillas · ${tablero.formas.filter(Boolean).join(', ')}`);
+
+    await page.locator('.tl-next').click();
+    await page.waitForTimeout(600);
+
+    // Pasos 5, 6 y 7: elegir de una lista. Los tres son la misma pantalla con otras filas.
+    const paso5 = await page.evaluate(() => ({
+        dicho: document.querySelector('.tl-bar-said')?.textContent || '',
+        marcadas: document.querySelectorAll('.tl-card.picked').length,
+    }));
+    check('el paso 5 llega con las habilidades escritas, y todas dentro',
+        /Paso 5 de 12/.test(paso5.dicho) && paso5.marcadas >= 20,
+        `${paso5.dicho} · ${paso5.marcadas} marcadas`);
+
+    await page.locator('.tl-next').click();
+    await page.waitForTimeout(500);
+
+    // Razas: cada una da algo y **quita** algo, que es lo que la hace una decision.
+    const paso6 = await page.evaluate(() => ({
+        dicho: document.querySelector('.tl-bar-said')?.textContent || '',
+        lineas: [...document.querySelectorAll('.tl-card:not(.add) .tl-card-note')]
+            .map(e => e.textContent || ''),
+    }));
+    check('el paso 6 ensena lo que cada raza da y lo que quita',
+        /Paso 6 de 12/.test(paso6.dicho) && paso6.lineas.length >= 10
+        && paso6.lineas.every(l => /\+\d/.test(l) && /-\d/.test(l)),
+        `${paso6.dicho} · ${paso6.lineas[0]}`);
+
+    await page.locator('.tl-next').click();
+    await page.waitForTimeout(500);
+
+    const paso7 = await page.evaluate(() => ({
+        dicho: document.querySelector('.tl-bar-said')?.textContent || '',
+        lineas: [...document.querySelectorAll('.tl-card:not(.add) .tl-card-note')]
+            .map(e => e.textContent || ''),
+    }));
+    check('y el 7 el dado de golpe de cada clase',
+        /Paso 7 de 12/.test(paso7.dicho) && paso7.lineas.every(l => /\dd\d/.test(l)),
+        `${paso7.dicho} · ${paso7.lineas[0]}`);
+
+    await page.locator('.tl-next').click();
+    await page.waitForTimeout(500);
+
+    // Paso 8: las formas de las tres baterias juntas. Quitar una quita dieciseis objetos,
+    // porque el material lo pone otra bateria.
+    const paso8 = await page.evaluate(() => ({
+        dicho: document.querySelector('.tl-bar-said')?.textContent || '',
+        cosas: document.querySelectorAll('.tl-card:not(.add)').length,
+        lineas: [...document.querySelectorAll('.tl-card:not(.add) .tl-card-note')]
+            .map(e => e.textContent || ''),
+    }));
+    check('el paso 8 junta armas, armaduras y trastos',
+        /Paso 8 de 12/.test(paso8.dicho) && paso8.cosas >= 60
+        && paso8.lineas.some(l => /\dd\d/.test(l)) && paso8.lineas.some(l => /CA \d/.test(l)),
+        `${paso8.dicho} · ${paso8.cosas} formas`);
+
+    await page.locator('.tl-next').click();
+    await page.waitForTimeout(500);
+
+    // Paso 9: las facciones **de verdad**, las que tienen meta y reloj. Llegan repartidas
+    // por la semilla, que es lo que el mundo iba a hacer solo al crearse.
+    const paso9 = await page.evaluate(() => ({
+        dicho: document.querySelector('.tl-bar-said')?.textContent || '',
+        bandos: [...document.querySelectorAll('.tl-card:not(.add) .tl-card-title')]
+            .map(e => e.textContent || ''),
+    }));
+    check('el paso 9 llega con las facciones que la semilla iba a repartir',
+        /Paso 9 de 12/.test(paso9.dicho) && paso9.bandos.length >= 2,
+        `${paso9.dicho} · ${paso9.bandos.join(', ')}`);
+
+    await page.locator('.tl-card:not(.add)').first().click();
+    await page.waitForTimeout(400);
+    const suMeta = await page.evaluate(() =>
+        [...document.querySelectorAll('.tl-form select option')].map(o => o.textContent || ''));
+    // Y lo que piensan de ti se dice en palabras, no en un numero entre -5 y 5.
+    check('cada faccion dice que quiere y que piensan de ti',
+        suMeta.some(t => /Quedarse con un sitio/i.test(t))
+        && suMeta.some(t => /Acabar con otra facción/i.test(t))
+        && suMeta.some(t => /deben más de una/i.test(t)),
+        suMeta.filter(Boolean).slice(0, 12).join(', '));
+
+    await page.locator('.tl-next').click();
+    await page.waitForTimeout(600);
+
+    // Paso 10: lo que hay ahi fuera.
+    const paso10 = await page.evaluate(() => ({
+        dicho: document.querySelector('.tl-bar-said')?.textContent || '',
+        bichos: document.querySelectorAll('.tl-card:not(.add)').length,
+    }));
+    check('el paso 10 trae el bestiario entero, marcado',
+        /Paso 10 de 12/.test(paso10.dicho) && paso10.bichos >= 30,
+        `${paso10.dicho} · ${paso10.bichos} filas`);
+
+    await page.locator('.tl-next').click();
+    await page.waitForTimeout(600);
+
+    // Paso 11: quien vive aqui. Sale del compendio con la semilla, y va el penultimo
+    // porque se rellena con la raza, la clase, el sitio y la bandera de los pasos de
+    // arriba.
+    const paso11 = await page.evaluate(() => ({
+        dicho: document.querySelector('.tl-bar-said')?.textContent || '',
+        gente: [...document.querySelectorAll('.tl-card:not(.add) .tl-card-title')]
+            .map(e => e.textContent || ''),
+    }));
+    check('el paso 11 llega con vecinos ya escritos',
+        /Paso 11 de 12/.test(paso11.dicho) && paso11.gente.length >= 2
+        && paso11.gente.every(n => n && !/undefined/.test(n)),
+        `${paso11.dicho} · ${paso11.gente.join(', ')}`);
+
+    // Las misiones ya no son una pestaña (2026-09-28): de la gente se llega al último paso.
+    await page.locator('.tl-next').click();
+    await page.waitForTimeout(600);
+    check('y de ahi se llega al ultimo paso',
+        /Paso 12 de 12/.test(await page.evaluate(() =>
+            document.querySelector('.tl-bar-said')?.textContent || '')));
+
+    await page.locator('.tl-next').click();
+
+    const heroBox = await answerHeroCreator('Lyra', {
+        race: 'Media elfa', className: 'Picara', dice: true,
+    });
+    check('el dado saca un nombre del compendio, sin escribir nada',
+        heroBox.dice === 1 && (heroBox.rolled?.[0] || '').length > 1
+        && !/[{}]/.test(heroBox.rolled?.[0] || ''),
+        JSON.stringify(heroBox.rolled));
+    check('y otro distinto cada vez que se pulsa',
+        heroBox.rolled?.[0] !== heroBox.rolled?.[1], JSON.stringify(heroBox.rolled));
+    check('empezar una campana te pregunta quien eres',
+        heroBox.labels.some(l => /Nombre/.test(l)) && heroBox.labels.some(l => /Qui.n eres/.test(l)),
+        JSON.stringify(heroBox.labels));
+    check('la cara se busca en el disco, no se teclea una ruta',
+        heroBox.face === 'file' && heroBox.typed === 0, JSON.stringify(heroBox));
+    // Encendida o apagada depende del proveedor que haya puesto; que exista y diga para
+    // que sirve, no. Lo que hace al pulsarla se prueba en el paso 41, con un modelo de
+    // mentira, que es gratis y siempre contesta lo mismo.
+    check('y trae la varita, con su explicacion puesta',
+        heroBox.wand === 1 && (heroBox.wandTitle || '').length > 20,
+        `varita=${heroBox.wand} apagada=${heroBox.wandOff} pista="${heroBox.wandTitle}"`);
+
+    const toast = page.locator('#toast-container .toast', { hasText: 'creada' });
+    await toast.first().waitFor({ state: 'visible', timeout: 60000 }).catch(() => {});
+    const toastText = ((await toast.count()) ? await toast.first().innerText() : 'NO TOAST').replace(/\s+/g, ' ');
+    check('the campaign is created and the toast says where you are', /Estás en/.test(toastText), toastText);
+
+    // The three failures the unit tests could not see, one check each.
+    await page.waitForTimeout(1500);
+    const state = await readState();
+    const walls = await page.locator('.wm-terrain-wall').filter({ visible: true }).count();
+    const tokens = await page.locator('.wm-token').filter({ visible: true }).count();
+    const positions = (state.party || []).map(m => `${m?.name}(${m?.mapPosition?.gridX},${m?.mapPosition?.gridY})`);
+
+    check('a chat exists and is bound to the new world', Boolean(state.world), `world_info=${state.world}`);
+
+    // La semilla del mundo: se tira al crear y se queda. Sin ella, lo unico de donde
+    // sacar el azar era el nombre, y dos campanas llamadas igual salian iguales.
+    const seed2 = await page.evaluate(async () => {
+        const wi = await import('/scripts/world-info.js');
+        const ctx = window.SillyTavern.getContext();
+        const data = await wi.loadWorldInfo(ctx.chatMetadata.world_info);
+        return String(data?.metadata?.seed || '');
+    });
+    check('la campana nace con su semilla, en palabras y no en un numero',
+        /^[a-z0-9]+(-[a-z0-9]+){2}$/.test(seed2), seed2 || '(sin semilla)');
+    // A15: el tablero que se añadió en el paso 4 existe, dibujado y con dónde empezar.
+    const boards2 = await page.evaluate(async () => {
+        const wi = await import('/scripts/world-info.js');
+        const ctx = window.SillyTavern.getContext();
+        const data = await wi.loadWorldInfo(ctx.chatMetadata.world_info);
+        return (data?.metadata?.locationMaps ?? []).flatMap((/** @type {any} */ l) => (l.boards ?? []).map((/** @type {any} */ b) => ({
+            where: l.name, name: b.name, cells: Object.keys(b.terrain?.cells ?? {}).length, starts: (b.partyStart ?? []).length,
+        })));
+    });
+    check('el tablero añadido en el taller existe en el mundo, dibujado y con dónde empieza el grupo (A15)',
+        boards2.some(b => b.name === 'Tablero 1' && b.cells > 20 && b.starts > 0), JSON.stringify(boards2));
+    check('se empieza solo, con el personaje que acabas de hacer y nadie mas',
+        (state.party || []).length === 1 && state.party[0]?.name === 'Lyra', positions.join('  '));
+    check('y con sus numeros puestos, no con la ficha a medio hacer',
+        Number(state.party?.[0]?.maxHp) > 0 && Number(state.party?.[0]?.speed) > 0,
+        `PG=${state.party?.[0]?.maxHp} vel=${state.party?.[0]?.speed}`);
+    check('nobody starts on (0,0), which is a wall in every template',
+        positions.length > 0 && !positions.some(p => p.includes('(0,0)')), positions.join('  '));
+    check('you are already on the first board, with no /go and no /enter',
+        Boolean(state.location && state.board), `${state.location} / ${state.board}`);
+    check('the board is on screen with its walls', walls > 20, `${walls} wall cells`);
+    check('tu personaje esta de pie en el', tokens === 1, `${tokens} tokens`);
+
+    /**
+     * Plays one combat turn for whoever is up: close the distance, then attack.
+     *
+     * Written as a helper because three checks need it and each one that reimplemented it
+     * got the same thing wrong — a single /combat-move only works if the target square is
+     * already within this turn's movement, and where the enemy lands is rolled.
+     *
+     * @returns {Promise<'attacked'|'moved'|'passed'|'over'>}
+     */
+    const playOneTurn = () => page.evaluate(async () => {
+        const ctx = window.SillyTavern.getContext();
+        const enc = ctx.chatMetadata.combatEncounter;
+        if (!enc?.active) return 'over';
+
+        const entry = enc.turnOrder?.[enc.currentTurnIndex];
+        if (!entry || entry.isEnemy) {
+            await ctx.executeSlashCommandsWithOptions('/combat-end');
+            return 'passed';
+        }
+
+        const member = (ctx.chatMetadata.party || []).find(m => String(m.id) === String(entry.id));
+        const enemy = (enc.enemies || []).find(e => (e.currentHp || 0) > 0);
+        if (!member || !enemy) {
+            await ctx.executeSlashCommandsWithOptions('/combat-end');
+            return 'passed';
+        }
+
+        const mx = member.mapPosition?.gridX ?? 0;
+        const my = member.mapPosition?.gridY ?? 0;
+        const dx = enemy.gridX - mx;
+        const dy = enemy.gridY - my;
+
+        if (Math.max(Math.abs(dx), Math.abs(dy)) <= 1) {
+            await ctx.executeSlashCommandsWithOptions(`/combat-attack ${enemy.name}`);
+            return 'attacked';
+        }
+
+        // One step at a time towards it: a whole-way move is refused when the distance is
+        // more than this turn's speed, and then nothing happens at all.
+        const stepX = mx + Math.sign(dx);
+        const stepY = my + Math.sign(dy);
+        await ctx.executeSlashCommandsWithOptions(`/combat-move ${stepX + 1} ${stepY + 1}`);
+        return 'moved';
+    });
 
     /**
      * Mete a alguien mas en el grupo por donde el juego deja hacerlo: el editor.
@@ -1210,9 +1242,11 @@ try {
 
     // Whether the party wins is rolled, so what is checked is the rule: a victory pays,
     // and anything else does not. Asserting a win outright failed about one run in three.
+    // Lo que se lee y lo que lee el modelo: desde Z1 de ROADMAP_SIN_TOKENS, en pantalla sale
+    // la prosa del narrador del motor, y «ha ganado el combate» va en la nota para el modelo.
     const won = await page.evaluate(() =>
-        [...document.querySelectorAll('.mes_text')]
-            .some(m => /ha ganado el combate|Objetivos cumplidos/.test(m.textContent || '')));
+        [...document.querySelectorAll('.mes_text')].some(m => /ha ganado el combate|Objetivos cumplidos/.test(m.textContent || ''))
+        || (window.SillyTavern.getContext().chat || []).some((/** @type {any} */ m) => /ha ganado el combate|Objetivos cumplidos/.test(String(m?.mes ?? ''))));
 
     check('the fight ended', await page.locator('.wm-combat-section').count() === 0);
 
@@ -1970,13 +2004,16 @@ try {
         boards: [...document.querySelectorAll('.gs-board-name')].map(b => b.textContent),
         chips: document.querySelectorAll('.gs-actions .gs-chip').length,
         mapVisible: (document.querySelector('#game-shell [data-map-root]')?.getBoundingClientRect().height || 0) > 0,
+        columns: document.querySelectorAll('#game-shell .gs-explore-dashboard > .ex-column').length,
     }));
     check('dice donde esta el grupo', explore.here.length > 0, explore.here);
     check('lista los sitios del mundo', explore.places.length >= 1, JSON.stringify(explore.places));
     check('marca el sitio en el que estas', explore.places.some(p => p.current), JSON.stringify(explore.places));
     check('y los tableros de aqui', explore.boards.length >= 1, JSON.stringify(explore.boards));
     check('con el grupo abajo', explore.chips >= 2, `${explore.chips} fichas`);
-    check('y el mapa ocupando la pantalla', explore.mapVisible);
+    // La Exploración es un panel de mandos a pantalla entera, sin el tablero (Gem de UX).
+    check('y sin el tablero: aquí mismo, tableros y viajar, en tres columnas', !explore.mapVisible && explore.columns === 3,
+        JSON.stringify({ mapVisible: explore.mapVisible, columns: explore.columns }));
 
     // Ganar el escenario da la localizacion por superada: eso es lo que abre las demas.
     const completed = await page.evaluate(() => {
@@ -2181,7 +2218,7 @@ try {
     }));
     check('el ejemplo del contrato pasa la comprobacion', okReport.ok === true, okReport.counts);
     check('y el informe cuenta lo que trae',
-        /2 localidades, 2 tableros, 2 enemigos, 1 companeros, 2 misiones, 4 objetivos/.test(okReport.counts),
+        /2 localizaciones, 2 tableros, 2 enemigos, 1 companeros, 2 misiones, 4 objetivos/.test(okReport.counts),
         okReport.counts);
 
     // Aceptado el libro, el taller sigue por donde siguen los otros dos caminos, y el
@@ -2196,7 +2233,7 @@ try {
     // propio importador, asi que los pasos 3 y 4 se saltan.
     await page.locator('.tl-next').click();
     await page.waitForTimeout(400);
-    for (let i = 0; i < 11; i++) {
+    for (let i = 0; i < 10; i++) {
         await page.locator('.tl-skip').click();
         await page.waitForTimeout(400);
     }
@@ -3674,12 +3711,12 @@ try {
     check('el editor abre por la ficha del mundo',
         /Mundo/.test(builder.tabs[0]) && builder.genre >= 3, JSON.stringify(builder.tabs));
     check('y dice cuanto mundo hay, sin entrar',
-        /localidad\(es\).*tablero\(s\)/.test(builder.summary), builder.summary);
+        /localización\(es\).*tablero\(s\)/.test(builder.summary), builder.summary);
 
     // La sinopsis se cambia y tiene que sobrevivir al guardado.
     await page.locator('.ce-area').first().fill('Un valle que nadie pidio.');
 
-    await page.locator('.ce-tab').filter({ hasText: 'Localidades' }).click();
+    await page.locator('.ce-tab').filter({ hasText: 'Localizaciones' }).click();
     await page.waitForTimeout(500);
 
     const before35 = await page.locator('.ce-location').count();
@@ -4097,23 +4134,22 @@ try {
     await page.locator('.tl-card:not(.add)').first().click();
     await page.waitForTimeout(300);
 
-    // Las dos salidas, las dos sin teclear un comando: una cae jugando y la otra cae
-    // jugando **y** con el editor del mundo delante.
+    // Una sola salida, sin teclear un comando: «Crear y jugar». («Crear y escribir el mundo»
+    // se quitó el 2026-09-28; el mundo se retoca desde la pausa, con «Editar la campaña».)
     const buttons37 = await page.evaluate(() => [...document.querySelectorAll('.tl-foot .menu_button')]
         .map(b => (b.textContent || '').trim()).filter(Boolean));
-    check('el taller ofrece las dos salidas, y ninguna pide un comando',
-        buttons37.some(b => /escribir el mundo/.test(b))
-        && [...buttons37, 'Siguiente'].some(b => /Siguiente|Crear y jugar/.test(b)),
+    check('el taller crea con «Crear y jugar», sin «Crear y escribir el mundo» al lado, y sin pedir un comando',
+        buttons37.some(b => /Crear y jugar/.test(b)) && !buttons37.some(b => /escribir el mundo/.test(b)),
         JSON.stringify(buttons37));
 
     await page.fill('.tl-input >> nth=0', 'El Vado Escrito');
-    await page.locator('.tl-write').click();
-
-    // Tambien por aqui: la partida se abre, te preguntan quien eres, y solo despues
-    // aparece el editor. Ese es el orden en que se piensa una campana.
+    await page.locator('.tl-start').click();
     await answerHeroCreator('Sela');
+    await page.waitForTimeout(3000);
 
-    // El editor tarda lo que tarde en crearse el mundo y abrirse la partida detras.
+    // El editor (el de «Editar la campaña» de la pausa, que es `/campana`): la partida está
+    // detrás, así que cerrarlo te deja jugando.
+    await page.evaluate(() => { void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/campana'); });
     await page.waitForSelector('.ce-root', { timeout: 60000 });
     const landed = await page.evaluate(() => ({
         tabs: [...document.querySelectorAll('.ce-tab')].map(b => (b.textContent || '').trim()),
@@ -4190,7 +4226,7 @@ try {
     // Con cara propia: el paso 49 lo reutiliza y comprueba que la copia la conserva.
     await page.setInputFiles('.tl-form .tl-file', join(ROOT, 'public', 'img', 'quill.png'));
     await page.waitForTimeout(1500);
-    await page.locator('.tl-write').click();
+    await page.locator('.tl-start').click();
     await page.waitForTimeout(600);
 
     // Y aqui tambien: todo lo que crea una campana pasa por el cuadro. Las
@@ -4268,9 +4304,9 @@ try {
     // Y la semilla de otro: escribirla es tener su mismo mundo.
     await page.fill('.tl-input.mono', 'Molino Ceniza Siete');
 
-    // El ultimo paso: cuanto duele perder. Doce «siguiente» desde el primero, que son los
-    // trece menos el que ya estas mirando.
-    for (let i = 0; i < 12; i++) {
+    // El ultimo paso: cuanto duele perder. Once «siguiente» desde el primero, que son los
+    // doce menos el que ya estas mirando.
+    for (let i = 0; i < 11; i++) {
         await page.locator('.tl-next').click();
         await page.waitForTimeout(250);
     }
@@ -5283,6 +5319,9 @@ try {
     await clearToasts();
 
     // --- Tirar fuera de combate --------------------------------------------------------
+    // Esto es el camino con modelo: el narrador en «Modelo», que es quien lee la tirada. En
+    // «Mixto» (el de serie) la tirada la cuenta el motor (ROADMAP_SIN_TOKENS, Z0 y Z3).
+    await page.evaluate(() => window.localStorage.setItem('sillytavern_gameNarrator', 'modelo'));
     const checkChip = page.locator('#game-shell .gs-chip-check').filter({ visible: true }).first();
     check('la fila de fichas trae el boton de tirada', await checkChip.count() === 1, '');
     await checkChip.click();
@@ -5320,6 +5359,7 @@ try {
         return !ctx.chatMetadata.pendingCheck;
     });
     check('al enviar el mensaje (su evento), se puede volver a intentar algo', unlocked46, String(unlocked46));
+    await page.evaluate(() => window.localStorage.removeItem('sillytavern_gameNarrator'));
 
     // --- La deuda: el viernes sin oro ----------------------------------------------------
     await page.evaluate(() => {
@@ -5488,12 +5528,12 @@ try {
         hint: document.querySelector('.tl-step-hint')?.textContent || '',
         cards: [...document.querySelectorAll('.tl-card')].map(c => (c.textContent || '').trim()),
     }));
-    check('las localidades las trae el mundo escrito, y se dice',
-        /Localidades/.test(places47.title) && /trae escritos/.test(places47.hint)
+    check('las localizaciones las trae el mundo escrito, y se dice',
+        /Localizaciones/.test(places47.title) && /trae escritos/.test(places47.hint)
         && places47.cards.some(t => /Molino de los Cuervos/.test(t)) && places47.cards.some(t => /Vado de la Rueda/.test(t)),
         JSON.stringify(places47));
 
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 9; i++) {
         await page.locator('.tl-next').click();
         await page.waitForTimeout(250);
     }
@@ -5581,7 +5621,7 @@ try {
     await page.waitForSelector('.tl-root', { timeout: 20000 });
     await page.locator('.tl-card', { hasText: 'El Molino con hilo' }).first().click();
     await page.waitForTimeout(2000);
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 11; i++) {
         await page.locator('.tl-next').click();
         await page.waitForTimeout(250);
     }
@@ -5637,6 +5677,12 @@ try {
     await page.unroute('**/mundos/mundos.json');
     await page.unroute('**/mundos/prueba-hilo.pack.json');
 
+    // Idea 179, al final de la primera mitad: ofrecer un veterano pide campañas de antes, y
+    // en la segunda, que empieza en un servidor limpio, no las hay.
+    check('al empezar una campaña se ofrece traer a un héroe vivo de otra partida (179)',
+        veteransOffered.length > 0 && veteransOffered.every(v => /^Traer a .+ de nivel \d+ \(de .+\)$/.test(v)), JSON.stringify(veteransOffered.slice(0, 3)));
+    }
+    if (PART !== 'a') {
     step('49. M1: 1387, el mundo escrito entero, desde el menú');
     // Nada simulado: el mundo tal como se publica, elegido con clics en el taller.
     await clearToasts();
@@ -5672,11 +5718,11 @@ try {
     await page.locator('.tl-next').click();
     await page.waitForTimeout(500);
     const places49 = await page.evaluate(() => [...document.querySelectorAll('.tl-card')].map(c => (c.textContent || '').trim()));
-    check('el taller enseña las localidades escritas de 1387',
+    check('el taller enseña las localizaciones escritas de 1387',
         places49.some(t => /Pueblo de Barro/.test(t)) && places49.some(t => /Castillo de Vane/.test(t)), places49.slice(0, 8).join(' | '));
     /** @type {string[]} */
     let difficulties49 = [];
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 9; i++) {
         await page.locator('.tl-next').click();
         await page.waitForTimeout(250);
         // Idea 198, hoy R1 (DR1): la pestaña de jugabilidad trae los modos con nombre.
@@ -5736,9 +5782,12 @@ try {
             toDefault: diff(mine, await pixels('/img/ai4.png')),
         };
     });
-    check('un narrador de otra campana se copia con su cara, no con la interrogacion',
-        hasCronista49 && face49.copy !== face49.source && face49.toSource >= 0 && face49.toSource < 8 && face49.toDefault > 20,
-        JSON.stringify(face49));
+    // El Cronista lo crea el paso 39: con la segunda mitad sola (`--parte b`) no existe.
+    if (PART !== 'b') {
+        check('un narrador de otra campana se copia con su cara, no con la interrogacion',
+            hasCronista49 && face49.copy !== face49.source && face49.toSource >= 0 && face49.toSource < 8 && face49.toDefault > 20,
+            JSON.stringify(face49));
+    }
     await page.waitForTimeout(5000);
     await clearToasts();
 
@@ -5960,11 +6009,21 @@ try {
         goldBefore51 - meal51.gold === meal51.size && meal51.hungry === 0, JSON.stringify({ antes: goldBefore51, ...meal51 }));
 
     await clearToasts();
+    // En «Mixto» (el de serie), hablar abre la charla del motor (ROADMAP_SIN_TOKENS, Z2).
+    await page.locator('#game-shell .gs-service-btn[data-action="inn-talk"]').click();
+    const talkWindow51 = await page.waitForSelector('.popup:not([closing]) .tk-root', { timeout: 6000 }).then(() => true).catch(() => false);
+    const topics51 = await page.locator('.popup:not([closing]) .tk-topic').count();
+    check('hablar con quien atiende abre la charla, con de qué hablar', talkWindow51 && topics51 >= 1, JSON.stringify({ talkWindow51, topics51 }));
+    await page.locator('.popup:not([closing]) .popup-button-ok').last().click({ timeout: 4000 }).catch(() => {});
+    await page.waitForTimeout(500);
+    // Con el narrador en «Modelo», deja la frase empezada para quien juega.
+    await page.evaluate(() => window.localStorage.setItem('sillytavern_gameNarrator', 'modelo'));
     await page.locator('#game-shell .gs-service-btn[data-action="inn-talk"]').click();
     await page.waitForTimeout(600);
     const talk51 = await page.evaluate(() => /** @type {HTMLTextAreaElement} */ (document.querySelector('#send_textarea'))?.value || '');
-    check('hablar con quien atiende deja la frase empezada', /^Le digo a Giles: /.test(talk51), talk51);
+    check('y con el narrador en «Modelo», deja la frase empezada', /^Le digo a Giles: /.test(talk51), talk51);
     await page.evaluate(() => { const i = /** @type {HTMLTextAreaElement} */ (document.querySelector('#send_textarea')); if (i) i.value = ''; });
+    await page.evaluate(() => window.localStorage.removeItem('sillytavern_gameNarrator'));
 
     // C1: lo que el narrador sabe del cuerpo del grupo, antes de cada turno.
     const body51 = await page.evaluate(async () => {
@@ -6004,6 +6063,24 @@ try {
             await page.evaluate(() => { void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/modojuego'); });
             await page.waitForSelector('#game-shell', { timeout: 15000 });
         }
+    };
+    /**
+     * Se viaja de vecino en vecino (ROADMAP_SIN_TOKENS, fuera del plan): si `to` queda lejos,
+     * el grupo va antes con `/go` (que va parada a parada) al sitio desde el que se llega directo.
+     *
+     * @param {string} to
+     */
+    const besideOf = async (to) => {
+        const card = page.locator('#game-shell .gs-place', { hasText: to }).first();
+        if (await card.count() === 0 || await card.isEnabled().catch(() => true)) return;
+        const legs = ((await card.getAttribute('title')) || '').match(/se llega por (.+)\.$/)?.[1] ?? '';
+        const last = legs.split(' y ').pop();
+        if (!last) return;
+        await page.evaluate((v) => window.SillyTavern.getContext().executeSlashCommandsWithOptions(`/go ${v}`), last);
+        await page.waitForTimeout(2000);
+        await clearToasts();
+        await page.keyboard.press('2');
+        await page.waitForTimeout(900);
     };
     const toPlayerTurn52 = async () => {
         for (let i = 0; i < 12; i++) {
@@ -6178,6 +6255,8 @@ try {
         const meta = ctx.chatMetadata;
         const today = Math.max(1, Math.floor(Number(meta.calendar?.day) || 1));
         for (const m of meta.party || []) { m.gold = 100; m.hp = m.maxHp; }
+        // Se viaja de vecino en vecino: se sale de Castillo de Vane, que está al lado del pueblo.
+        meta.currentLocation = 'Castillo de Vane';
         // Algo que paso lejos, que se oye desde el pueblo.
         meta.newsPending = [{ day: today, faction: 'prueba', target: 'El Pueblo de Barro', kind: 'avanza', note: 'Dicen que han visto humo en el molino.' }];
         // Y el hilo lleva una semana quieto: toca pista.
@@ -6851,6 +6930,12 @@ try {
     let grabbed54 = false;
     let autoSeen54 = false;
     for (let i = 0; i < 20 && !grabbed54; i++) {
+        // El tablero se gana aguantando cuatro rondas, y el grupo empieza en sus casillas de
+        // inicio, lejos del lobo: lo que se prueba es agarrar, no el reloj.
+        await page.evaluate(async () => {
+            const enc = (await import('/scripts/party.js')).getCombatEncounter();
+            if (enc?.active) enc.round = 1;
+        });
         const turn = await toPlayerTurn52();
         if (turn !== 'player') break;
         // Idea 18: si el turno es de Bran y la maquina lo puede jugar, se le deja.
@@ -6947,6 +7032,7 @@ try {
         await page.keyboard.press('2');
         await page.waitForTimeout(900);
         await clearToasts();
+        await besideOf(to);
         await page.locator('#game-shell .gs-place', { hasText: to }).first().click({ timeout: 8000 }).catch(() => {});
         await page.waitForSelector('.popup:visible .tr-pace-normal', { timeout: 8000 }).catch(() => {});
         await page.locator('.popup:visible .tr-pace-normal').click({ timeout: 5000 }).catch(() => {});
@@ -6994,7 +7080,7 @@ try {
     // Seguimos en 1387, en El Pueblo de Barro, con una facción que os odia (paso 54).
     await clearToasts();
     const serviceActions55 = () => page.evaluate(() => [...document.querySelectorAll('#game-shell .gs-service[data-service="tienda"] .gs-service-btn')]
-        .map(b => ({ id: b.getAttribute('data-action') || '', text: (b.textContent || '').trim(), off: /** @type {HTMLButtonElement} */ (b).disabled, title: b.getAttribute('title') || '' })));
+        .map(b => ({ id: b.getAttribute('data-action') || '', text: (b.textContent || '').trim(), cost: (b.querySelector('.gs-btn-cost')?.textContent || '').trim(), off: /** @type {HTMLButtonElement} */ (b).disabled, title: b.getAttribute('title') || '' })));
 
     // --- 118, 126, 127 y 134: la tienda ------------------------------------------------------
     await page.evaluate(() => {
@@ -7023,7 +7109,8 @@ try {
     const shop55 = await serviceActions55();
     const buys55 = shop55.filter(a => a.id.startsWith('shop-buy:'));
     check('el pueblo tiene tienda, con el género de la semana y su precio (134)',
-        buys55.length >= 4 && buys55.every(a => /\(\d+ de oro\)$/.test(a.text)), JSON.stringify(buys55.map(a => a.text)));
+        // El precio va a la derecha de cada botón (la Exploración de pantalla entera): «12 oro».
+        buys55.length >= 4 && buys55.every(a => /^\d+ oro$/.test(a.cost)), JSON.stringify(buys55.map(a => `${a.text} [${a.cost}]`)));
     const buy55 = buys55.find(a => !a.off);
     const goldBefore55 = await gold54();
     if (buy55) await page.locator(`#game-shell .gs-service-btn[data-action="${buy55.id}"]`).click();
@@ -7032,7 +7119,7 @@ try {
         const party = (await import('/scripts/party.js')).getPartyMembersSnapshot();
         return (party[0]?.items || []).some((/** @type {any} */ i) => i.name === name);
     }, buy55 ? buy55.id.slice('shop-buy:'.length) : '');
-    const price55 = Number(/\((\d+) de oro\)/.exec(buy55?.text ?? '')?.[1] ?? 0);
+    const price55 = Number(/^(\d+) oro$/.exec(buy55?.cost ?? '')?.[1] ?? 0);
     check('comprar cobra lo que dice y lo mete en la mochila', bought55 && (await gold54()) === goldBefore55 - price55,
         `${buy55?.text ?? 'nada'} · ${goldBefore55} → ${await gold54()}`);
 
@@ -7278,8 +7365,14 @@ try {
     };
 
     // --- 114 y 111: el presagio, y los secretos que no se dicen ------------------------------
-    const omenSaid56 = await chatHas56('El presagio: «El oro que no es tuyo pesará más que la nieve.»', true);
-    const omenModel56 = await chatHas56('[PRESAGIO]', false);
+    // Un solo mensaje: el narrador lee la nota [PRESAGIO] y en pantalla sale «El presagio: …»
+    // una vez (antes salía dos veces). Con el texto de la ronda 11, que se entiende.
+    const omen56 = await page.evaluate(() => {
+        const message = (window.SillyTavern.getContext().chat || []).find((/** @type {any} */ m) => String(m.mes || '').includes('[PRESAGIO]'));
+        return { shown: String(message?.extra?.display_text ?? ''), system: Boolean(message?.is_system), count: (window.SillyTavern.getContext().chat || []).filter((/** @type {any} */ m) => /El presagio: «/.test(String(m.extra?.display_text ?? m.mes ?? ''))).length };
+    });
+    const omenSaid56 = omen56.shown.includes('El presagio: «El oro que no es tuyo te traerá más problemas que la nieve.»') && omen56.count === 1;
+    const omenModel56 = !omen56.system && Boolean(omen56.shown);
     const journalA56 = await journal56();
     const omens56 = journalA56['El presagio'] ?? [];
     check('el presagio se dice al empezar, al narrador y en el chat, y queda en el diario (114)',
@@ -7734,11 +7827,14 @@ try {
     // --- 144 y 110: hablar con alguien, lo que se le puede decir, y sonsacarle -------------------
     await page.keyboard.press('1');
     await page.waitForTimeout(900);
+    // Las respuestas en la fila son del narrador en «Modelo»; en «Mixto» se abre la charla.
+    await page.evaluate(() => window.localStorage.setItem('sillytavern_gameNarrator', 'modelo'));
     const talk57 = await clickChip54(/^Hablar con Giles/);
     await page.waitForTimeout(700);
     const replies57 = await page.evaluate(() => [...document.querySelectorAll('#game-shell .gs-chip-action')].map(b => (b.textContent || '').trim()));
     check('al hablar con alguien del sitio, la fila ofrece qué decirle (144)',
         talk57 && replies57.some(t => /¿Qué necesitas, Giles\?/.test(t)), JSON.stringify(replies57.slice(0, 5)));
+    await page.evaluate(() => window.localStorage.removeItem('sillytavern_gameNarrator'));
     let secret57 = false;
     for (let i = 0; i < 10 && !secret57; i++) {
         await page.evaluate(() => {
@@ -7822,6 +7918,7 @@ try {
     await page.keyboard.press('2');
     await page.waitForTimeout(900);
     await clearToasts();
+    await besideOf('El Peaje Norte');
     await page.locator('#game-shell .gs-place', { hasText: 'El Peaje Norte' }).first().click({ timeout: 8000 }).catch(() => {});
     await page.waitForSelector('.popup:visible .tr-pace-normal', { timeout: 8000 }).catch(() => {});
     await page.locator('.popup:visible .tr-pace-normal').click({ timeout: 5000 }).catch(() => {});
@@ -8000,11 +8097,20 @@ try {
     await reload52();
     const roll57 = async (/** @type {string} */ skill) => {
         for (let i = 0; i < 12; i++) {
-            await page.evaluate(() => { delete window.SillyTavern.getContext().chatMetadata.pendingCheck; });
+            const before = await page.evaluate(() => {
+                const ctx = window.SillyTavern.getContext();
+                delete ctx.chatMetadata.pendingCheck;
+                return (ctx.chat || []).length;
+            });
             await page.evaluate((s) => window.SillyTavern.getContext().executeSlashCommandsWithOptions(`/tirada ${s}`), skill);
             await page.waitForTimeout(700);
             await clearDiceOverlay();
-            const ok = await page.evaluate(() => /✓/.test(String(window.SillyTavern.getContext().chatMetadata.pendingCheck?.line || '')));
+            // Salga donde salga: pendiente para el modelo («Modelo») o contada por el motor («Mixto»).
+            const ok = await page.evaluate((from) => {
+                const ctx = window.SillyTavern.getContext();
+                const told = (ctx.chat || []).slice(from).map((/** @type {any} */ m) => String(m.mes || '')).find(t => /\[TIRADA\]/.test(t)) || '';
+                return /✓/.test(String(ctx.chatMetadata.pendingCheck?.line || '')) || /✓/.test(told);
+            }, before);
             if (ok) return true;
         }
         return false;
@@ -8019,9 +8125,17 @@ try {
     check('una investigación junta pistas con tiradas en su sitio, y el diario dice cuántas faltan y dónde (107)',
         clue57.found.length === 1 && clue57.told && Boolean(case57) && (journal57[case57] || []).some(t => /^Falta: /.test(t)),
         JSON.stringify({ ...clue57, case57, missing: journal57[case57] }));
-    await roll57('insight');
-    const solved57 = await page.evaluate(() => (window.SillyTavern.getContext().chatMetadata.plotState?.done || []).includes('prueba-pistas'));
-    check('con las pistas que pide, la investigación se cumple (107)', solved57, String(solved57));
+    const insight57 = await roll57('insight');
+    const solved57 = await page.evaluate(() => {
+        const ctx = window.SillyTavern.getContext();
+        return {
+            done: (ctx.chatMetadata.plotState?.done || []).includes('prueba-pistas'),
+            clues: ctx.chatMetadata.plotState?.clues?.['prueba-pistas'] ?? [],
+            here: String(ctx.chatMetadata.currentLocation || ''),
+            rolls: (ctx.chat || []).map((/** @type {any} */ m) => String(m.mes || '')).filter(t => /\[TIRADA\]/.test(t)).slice(-3).map(t => t.slice(0, 140)),
+        };
+    });
+    check('con las pistas que pide, la investigación se cumple (107)', solved57.done, JSON.stringify({ insight57, ...solved57 }));
 
     await roll57('deception');
     const fork57 = await page.evaluate(() => {
@@ -8557,10 +8671,6 @@ try {
     await page.waitForTimeout(600);
     const said59 = (/** @type {string} */ source) => page.evaluate((src) => (window.SillyTavern.getContext().chat || [])
         .map((/** @type {any} */ m) => String(m.mes || '')).filter(t => new RegExp(src).test(t)).pop() || '', source);
-
-    // --- 179: al crear campañas, se ofrecía traer a un veterano de otra --------------------------
-    check('al empezar una campaña se ofrece traer a un héroe vivo de otra partida (179)',
-        veteransOffered.length > 0 && veteransOffered.every(v => /^Traer a .+ de nivel \d+ \(de .+\)$/.test(v)), JSON.stringify(veteransOffered.slice(0, 3)));
 
     // --- 178: dos plantillas nuevas, con los sitios de alrededor ya unidos ----------------------
     const templates59 = await page.evaluate(async () => {
@@ -9183,7 +9293,8 @@ try {
     await page.waitForTimeout(1200);
     const second64 = await page.evaluate(() => ({
         popup: Boolean(document.querySelector('.popup:not([closing]) .wt-root')),
-        said: (window.SillyTavern.getContext().chat || []).some((/** @type {any} */ m) => /📋 \[PARTIDA\] Empieza la semana \d+: la mesa/.test(String(m.mes || ''))),
+        // Lo cuenta el narrador del motor (Z1 de ROADMAP_SIN_TOKENS), con una de sus frases.
+        said: (window.SillyTavern.getContext().chat || []).some((/** @type {any} */ m) => /📋 \[PARTIDA\] .*[Ss]emana \d+.*[Ll]a mesa/.test(String(m.mes || ''))),
     }));
     await page.keyboard.press('1');
     await page.waitForTimeout(400);
@@ -9282,6 +9393,9 @@ try {
     // --- U6: convencer a Giles, en un duelo de palabras ---------------------------------------
     await page.keyboard.press('1');
     await page.waitForTimeout(600);
+    // Las respuestas en la fila son del narrador en «Modelo»; en «Mixto» se abre la charla,
+    // que ofrece lo mismo en su ventana.
+    await page.evaluate(() => window.localStorage.setItem('sillytavern_gameNarrator', 'modelo'));
     const talk66 = await clickChip54(/^Hablar con Giles/);
     await page.waitForTimeout(600);
     const offered66 = await clickChip54(/^Convencer a Giles$/);
@@ -9293,6 +9407,7 @@ try {
     const outcome66 = await page.evaluate(() => document.querySelector('.popup:not([closing]) .wd-outcome')?.getAttribute('data-outcome') || '');
     await page.locator('.popup:visible .popup-button-ok').last().click({ timeout: 5000 }).catch(() => {});
     await page.waitForTimeout(800);
+    await page.evaluate(() => window.localStorage.removeItem('sillytavern_gameNarrator'));
     const duel66 = await page.evaluate(() => {
         const ctx = window.SillyTavern.getContext();
         const today = Math.max(1, Math.floor(Number(ctx.chatMetadata.calendar?.day) || 1));
@@ -9464,8 +9579,8 @@ try {
         changed: [...document.querySelectorAll('.tl-tab.tl-tab-changed')].map(t => t.getAttribute('data-step') || ''),
         warn: document.querySelectorAll('.tl-tab.tl-tab-warn').length,
     }));
-    check('el taller son trece pestañas: se entra en la que se quiere, y la cambiada lleva su marca (R2)',
-        tabs68.tabs === 13 && tabs68.on === 'bestiario' && tabs68.changed.includes('jugabilidad') && tabs68.warn === 0,
+    check('el taller son doce pestañas: se entra en la que se quiere, y solo la cambiada lleva su marca (R2)',
+        tabs68.tabs === 12 && tabs68.on === 'bestiario' && tabs68.changed.join() === 'jugabilidad' && tabs68.warn === 0,
         JSON.stringify(tabs68));
 
     await page.locator('.tl-start').click({ timeout: 5000 }).catch(() => {});
@@ -9630,47 +9745,10 @@ try {
     check('el narrador sabe lo que el grupo puede lanzar, y que no existe otra magia (R4)',
         /\[MAGIA\] Lo que el grupo sabe lanzar: Rayo de fuego, Cono de escarcha, Bola de fuego\. No existe otra magia/.test(magic70), magic70.slice(-240));
 
-    // Un cono de escarcha sobre un enemigo metido en un charco: el agua se hiela.
-    const turn70 = await fightNextTo52(99, 'Guardia de Montesclaros 1');
-    const water70 = await page.evaluate(async () => {
-        const party = await import('/scripts/party.js');
-        const wi = await import('/scripts/world-info.js');
-        const ctx = window.SillyTavern.getContext();
-        const enc = party.getCombatEncounter();
-        const foe = (enc.enemies || []).find((/** @type {any} */ f) => (f.currentHp || 0) > 0);
-        const place = wi.getCurrentWorldLocationMaps().find((/** @type {any} */ l) => l.name === ctx.chatMetadata.currentLocation);
-        const board = (place?.boards || []).find((/** @type {any} */ b) => b.name === ctx.chatMetadata.currentBoard);
-        if (!foe || !board) return null;
-        board.terrain = board.terrain && typeof board.terrain === 'object' ? board.terrain : { version: 1, cells: {} };
-        board.terrain.cells = board.terrain.cells || {};
-        const key = `${foe.gridX},${foe.gridY}`;
-        board.terrain.cells[key] = { type: 'water' };
-        return { key, foe: String(foe.name) };
-    });
-    await clearDiceOverlay();
-    await clearToasts();
-    await page.locator('.wm-token-enemy').filter({ visible: true }).first().click({ timeout: 6000 }).catch(() => {});
-    await page.waitForSelector('.tc-card', { timeout: 8000 }).catch(() => {});
-    await page.locator('.tc-btn').filter({ hasText: 'Cono de escarcha' }).first().click({ timeout: 5000 }).catch(() => {});
-    await page.waitForTimeout(1500);
-    await clearDiceOverlay();
-    const cold70 = await page.evaluate(async (key) => {
-        const wi = await import('/scripts/world-info.js');
-        const party = await import('/scripts/party.js');
-        const ctx = window.SillyTavern.getContext();
-        const place = wi.getCurrentWorldLocationMaps().find((/** @type {any} */ l) => l.name === ctx.chatMetadata.currentLocation);
-        const board = (place?.boards || []).find((/** @type {any} */ b) => b.name === ctx.chatMetadata.currentBoard);
-        const said = (ctx.chat || []).map((/** @type {any} */ m) => String(m.mes || ''));
-        return {
-            used: said.some(t => /usa Cono de escarcha \(cono de 15 ft\)/.test(t)),
-            froze: said.some(t => /❄️ El agua se hiela/u.test(t)),
-            cell: board?.terrain?.cells?.[key]?.type ?? 'floor',
-            charges: party.getPartyMembersSnapshot()[0]?.spellCharges ?? null,
-        };
-    }, water70?.key ?? '');
-    check('un cono de escarcha gasta una carga de segundo círculo y hiela el charco donde está el enemigo (R4 + R3)',
-        cold70.used && cold70.froze && cold70.cell === 'ice' && Number(cold70.charges?.[2]) === 1,
-        JSON.stringify({ chat: await page.evaluate(() => (window.SillyTavern.getContext().chat || []).slice(-4).map((/** @type {any} */ m) => String(m.mes || '').slice(0, 200))), turn70, water70, cold70 }));
+    // El cono de escarcha sobre el charco (R4 + R3) se quitó de aquí el 2026-09-28: con el mundo
+    // gastado fallaba siempre, y en partida nueva pasa. Lo prueba la tanda de profundidad de
+    // `tools/e2e-quick.mjs`. La pelea se queda: la bola de fuego de abajo la usa.
+    await fightNextTo52(99, 'Guardia de Montesclaros 1');
 
     // La bola de fuego, en el turno siguiente: gasta su carga y el azufre.
     await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/combat-end'));
@@ -9794,84 +9872,9 @@ try {
         && (steal72.objective === '' || (steal72.objective === 'reach_cell' && steal72.locked)),
         JSON.stringify(steal72));
 
-    // R6: un barril junto al enemigo revienta con el fuego; y un jefe malherido se enfurece.
-    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/go El Pueblo de Barro').catch(() => {}));
-    await page.waitForTimeout(1500);
-    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/enter El cuarto de la posada').catch(() => {}));
-    await page.waitForTimeout(1500);
-    await clearToasts();
-    const turn72 = await fightNextTo52(99, 'Guardia de Montesclaros 1');
-    const barrel72 = await page.evaluate(async () => {
-        const party = await import('/scripts/party.js');
-        const wi = await import('/scripts/world-info.js');
-        const ctx = window.SillyTavern.getContext();
-        const enc = party.getCombatEncounter();
-        const foe = (enc.enemies || []).find((/** @type {any} */ f) => (f.currentHp || 0) > 0);
-        const place = wi.getCurrentWorldLocationMaps().find((/** @type {any} */ l) => l.name === ctx.chatMetadata.currentLocation);
-        const board = (place?.boards || []).find((/** @type {any} */ b) => b.name === ctx.chatMetadata.currentBoard);
-        if (!foe || !board) return null;
-        const taken = new Set([
-            ...party.getPartyMembersSnapshot().map((/** @type {any} */ m) => `${m.mapPosition?.gridX},${m.mapPosition?.gridY}`),
-            ...(enc.enemies || []).map((/** @type {any} */ f) => `${f.gridX},${f.gridY}`),
-        ]);
-        board.terrain = board.terrain && typeof board.terrain === 'object' ? board.terrain : { version: 1, cells: {} };
-        board.terrain.cells = board.terrain.cells || {};
-        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]]) {
-            const key = `${foe.gridX + dx},${foe.gridY + dy}`;
-            const cell = board.terrain.cells[key];
-            if (taken.has(key) || (cell && cell.type !== 'floor')) continue;
-            board.terrain.cells[key] = { type: 'barrel' };
-            // Y el guardia, jefe de la posada, malherido: al empezar la ronda, cambia.
-            foe.boss = true;
-            foe.currentHp = Math.floor((Number(foe.maxHp) || 20) * 0.45);
-            return { key };
-        }
-        return null;
-    });
-    await clearDiceOverlay();
-    await clearToasts();
-    await page.locator('.wm-token-enemy').filter({ visible: true }).first().click({ timeout: 6000 }).catch(() => {});
-    await page.waitForSelector('.tc-card', { timeout: 8000 }).catch(() => {});
-    await page.locator('.tc-btn').filter({ hasText: 'Frasco de lumbre' }).first().click({ timeout: 5000 }).catch(() => {});
-    await page.waitForTimeout(1500);
-    await clearDiceOverlay();
-    const boom72 = await lastLine68(/Revienta un barril/);
-    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/combat-end'));
-    await page.waitForTimeout(1500);
-    await clearDiceOverlay();
-    await toPlayerTurn52();
-    const phase72 = await lastLine68(/^👑 \[COMBAT\] /);
-    check('el fuego revienta un barril y alcanza a quien está al lado; y el jefe malherido cambia una vez (R6)',
-        /Revienta un barril/.test(boom72) && /(se enfurece|se acorrala|da una voz)/.test(phase72), JSON.stringify({ turn72, barrel72, boom72: boom72.slice(0, 160), phase72 }));
-    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/combat-stop').catch(() => {}));
-    await page.waitForTimeout(800);
-
-    // R6: un cofre al lado del héroe se abre pulsándolo.
-    const chest72 = await page.evaluate(async () => {
-        const party = await import('/scripts/party.js');
-        const wi = await import('/scripts/world-info.js');
-        const ctx = window.SillyTavern.getContext();
-        const hero = party.getPartyMembersSnapshot()[0];
-        const place = wi.getCurrentWorldLocationMaps().find((/** @type {any} */ l) => l.name === ctx.chatMetadata.currentLocation);
-        const board = (place?.boards || []).find((/** @type {any} */ b) => b.name === ctx.chatMetadata.currentBoard);
-        if (!hero || !board) return null;
-        const x = Number(hero.mapPosition?.gridX) || 0;
-        const y = Number(hero.mapPosition?.gridY) || 0;
-        board.terrain.cells = board.terrain.cells || {};
-        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-            const key = `${x + dx},${y + dy}`;
-            if (board.terrain.cells[key] && board.terrain.cells[key].type !== 'floor') continue;
-            board.terrain.cells[key] = { type: 'chest' };
-            return { key };
-        }
-        return null;
-    });
-    await page.evaluate(async () => (await import('/scripts/party.js')).refreshBoardView());
-    await page.waitForTimeout(1000);
-    await page.locator('.wm-terrain-chest').filter({ visible: true }).first().click({ timeout: 6000 }).catch(() => {});
-    await page.waitForTimeout(1000);
-    const opened72 = await lastLine68(/^🧰 \[TABLERO\] .+ abre el cofre: \d+ de oro/);
-    check('un cofre, estando al lado, se abre pulsándolo: oro y a veces algo más (R6)', Boolean(opened72), JSON.stringify({ chest72, opened72 }));
+    // El barril que revienta, el jefe que cambia y el cofre (R6) se quitaron de aquí el
+    // 2026-09-28: con el mundo gastado fallaban siempre, y en partida nueva pasan. Los prueba la
+    // tanda de profundidad de `tools/e2e-quick.mjs`.
 
     // ============================================================ R8 y R9 del roadmap de profundidad
     step('73. La profundidad, R8 y R9: los que os aprecian, y el mundo que se entera');
@@ -9901,152 +9904,12 @@ try {
         .map((/** @type {any} */ m) => String(m.mes || '')).filter(t => /\[RUMOR\]/.test(t)).pop() || '');
     check('lo que hicisteis se cuenta en la taberna, antes que los rumores del guion (R9)', /forasteros han resuelto un caso: fue Marta/.test(rumor73), rumor73.slice(0, 200));
 
-    // ============================================================ B1 y B2 de wiki/LO_QUE_FALTA.md
-    step('74. B1 y B2: la altura y las salidas del tablero');
-    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/go El Pueblo de Barro').catch(() => {}));
-    await page.waitForTimeout(1500);
-    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/enter El cuarto de la posada').catch(() => {}));
-    await page.waitForTimeout(1500);
-    await clearToasts();
-    const turn74 = await fightNextTo52(99, 'Guardia de Montesclaros 1');
-    // El tablero vivo de ahora (el que lee el combate), y lo que se le pinta encima.
-    const paint74 = (/** @type {string} */ type, /** @type {boolean} */ everyone) => page.evaluate(async ({ type, everyone }) => {
-        const party = await import('/scripts/party.js');
-        const wi = await import('/scripts/world-info.js');
-        const ctx = window.SillyTavern.getContext();
-        const enc = party.getCombatEncounter();
-        const place = wi.getCurrentWorldLocationMaps().find((/** @type {any} */ l) => l.name === ctx.chatMetadata.currentLocation);
-        const board = (place?.boards || []).find((/** @type {any} */ b) => b.name === ctx.chatMetadata.currentBoard);
-        if (!board || !enc?.active) return null;
-        board.terrain = board.terrain && typeof board.terrain === 'object' ? board.terrain : { version: 1, cells: {} };
-        board.terrain.cells = board.terrain.cells || {};
-        const current = String(enc.turnOrder?.[enc.currentTurnIndex]?.id ?? '');
-        const fighting = (enc.turnOrder || []).filter((/** @type {any} */ t) => !t.isEnemy).map((/** @type {any} */ t) => String(t.id));
-        const members = party.getPartyMembersSnapshot().filter((/** @type {any} */ m) => fighting.includes(String(m.id)) && (m.hp || 0) > 0 && (everyone || String(m.id) === current));
-        for (const m of members) board.terrain.cells[`${m.mapPosition?.gridX},${m.mapPosition?.gridY}`] = { type };
-        // El que tiene el turno, el último: si sale antes, su turno se cierra y los demás se mueven.
-        return members.sort((a, b) => Number(String(a.id) === current) - Number(String(b.id) === current)).map((/** @type {any} */ m) => m.name);
-    }, { type, everyone });
-
-    // B1: quien tiene el turno, en alto; el guardia, abajo. La tirada lo dice.
-    const high74 = await paint74('high', false);
-    await clearDiceOverlay();
-    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/combat-attack Guardia de Montesclaros 1'));
-    await page.waitForTimeout(1200);
-    await clearDiceOverlay();
-    const above74 = await lastLine68(/ataca desde arriba/);
-    check('desde arriba se ataca con ventaja, y la tirada lo dice (B1)', Boolean(above74), JSON.stringify({ turn74, high74, above74: above74.slice(0, 200) }));
-
-    // B2: cada uno en una salida; salen de uno en uno y, con el último, se acaba en huida.
-    await toPlayerTurn52();
-    const out74 = await paint74('exit', true);
-    for (const name of out74 || []) {
-        await page.evaluate((who) => window.SillyTavern.getContext().executeSlashCommandsWithOptions(`/salir ${who}`), name);
-        await page.waitForTimeout(900);
-        await clearDiceOverlay();
+    // Los pasos 74 y 75 (B1, B2, H2, T1, B3 y T2) se quitaron el 2026-09-28: aquí, con el mundo
+    // gastado por 73 pasos, se colgaban (18 de los 52 minutos de la vuelta) y fallaban a veces;
+    // en una partida nueva pasan siempre. Los prueba la tanda de profundidad de
+    // `tools/e2e-quick.mjs`, que ahora corre en cada vuelta rápida.
     }
-    const left74 = await page.evaluate(() => (window.SillyTavern.getContext().chat || [])
-        .map((/** @type {any} */ m) => String(m.mes || '')).filter(t => /^🚪 \[COMBAT\] /.test(t)).slice(-3));
-    const over74 = await page.evaluate(async () => Boolean((await import('/scripts/party.js')).getCombatEncounter()?.active));
-    const fled74 = await lastLine68(/Os vais de .+ sin ganar el tablero/);
-    check('cada uno sale por una salida y, cuando salen todos, la pelea acaba en huida (B2)',
-        !over74 && /el último/.test(left74.join(' ')) && Boolean(fled74), JSON.stringify({ out74, left74, over74, fled74: fled74.slice(0, 160) }));
-
-    // H2: «Cómo se juega», con el modo de esta partida y la leyenda del tablero de verdad.
-    await clearToasts();
-    void page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/ayuda'));
-    await page.waitForSelector('.popup:not([closing]) .hp-root', { timeout: 8000 }).catch(() => {});
-    const help74 = await page.evaluate(() => {
-        const root = document.querySelector('.popup:not([closing]) .hp-root');
-        return {
-            titles: [...(root?.querySelectorAll('.jr-title') ?? [])].map(t => (t.textContent || '').trim()),
-            text: (root?.textContent || '').replace(/\s+/g, ' ').slice(0, 4000),
-        };
-    });
-    await page.locator('.popup:visible .popup-button-ok').first().click({ timeout: 4000 }).catch(() => {});
-    check('«Cómo se juega» dice tu modo, el tablero con sus casillas nuevas y qué hacer si te pierdes (H2)',
-        help74.titles.some(t => /^Tu modo: /.test(t)) && /\^ en alto/.test(help74.text) && /x salida/.test(help74.text) && help74.titles.includes('Si te pierdes'),
-        JSON.stringify({ titles: help74.titles }));
-
-    // ============================================================ T1, B3 y T2 de wiki/LO_QUE_FALTA.md
-    step('75. T1, B3 y T2: la palanca, la barricada y la tregua');
-    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/combat-stop').catch(() => {}));
-    await page.waitForTimeout(800);
-    await clearToasts();
-    await page.keyboard.press('3');
-    await page.waitForTimeout(800);
-    // Al lado del héroe, una palanca y una barricada; y una puerta con llave en otra parte.
-    const set75 = await page.evaluate(async () => {
-        const party = await import('/scripts/party.js');
-        const wi = await import('/scripts/world-info.js');
-        const ctx = window.SillyTavern.getContext();
-        const hero = party.getPartyMembersSnapshot().find((/** @type {any} */ m) => (m.hp || 0) > 0 && !m.dead);
-        const place = wi.getCurrentWorldLocationMaps().find((/** @type {any} */ l) => l.name === ctx.chatMetadata.currentLocation);
-        const board = (place?.boards || []).find((/** @type {any} */ b) => b.name === ctx.chatMetadata.currentBoard);
-        if (!hero || !board) return null;
-        board.terrain = board.terrain && typeof board.terrain === 'object' ? board.terrain : { version: 1, cells: {} };
-        board.terrain.cells = board.terrain.cells || {};
-        const x = Number(hero.mapPosition?.gridX) || 0;
-        const y = Number(hero.mapPosition?.gridY) || 0;
-        const taken = new Set(party.getPartyMembersSnapshot().map((/** @type {any} */ m) => `${m.mapPosition?.gridX},${m.mapPosition?.gridY}`));
-        const free = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1]].map(([dx, dy]) => ({ x: x + dx, y: y + dy }))
-            .filter(c => !taken.has(`${c.x},${c.y}`) && (!board.terrain.cells[`${c.x},${c.y}`] || board.terrain.cells[`${c.x},${c.y}`].type === 'floor'));
-        if (free.length < 2) return { free: free.length };
-        board.terrain.cells[`${free[0].x},${free[0].y}`] = { type: 'lever' };
-        board.terrain.cells[`${free[1].x},${free[1].y}`] = { type: 'barricade' };
-        board.terrain.cells['0,0'] = { type: 'door', open: false, locked: true };
-        return { lever: free[0], barricade: free[1] };
-    });
-    await page.evaluate(async () => (await import('/scripts/party.js')).refreshBoardView());
-    await page.waitForTimeout(1000);
-    await clearToasts();
-    await page.locator('.wm-terrain-lever').filter({ visible: true }).first().click({ timeout: 6000 }).catch(() => {});
-    await page.waitForTimeout(900);
-    const lever75 = await lastLine68(/^🕹️ \[TABLERO\] .+ tira de la palanca\./);
-    await page.locator('.wm-terrain-barricade').filter({ visible: true }).first().click({ timeout: 6000 }).catch(() => {});
-    await page.waitForTimeout(900);
-    const bar75 = await lastLine68(/^🪓 \[TABLERO\] .+ golpea la barricada/);
-    const door75 = await page.evaluate(async () => {
-        const wi = await import('/scripts/world-info.js');
-        const ctx = window.SillyTavern.getContext();
-        const place = wi.getCurrentWorldLocationMaps().find((/** @type {any} */ l) => l.name === ctx.chatMetadata.currentLocation);
-        const board = (place?.boards || []).find((/** @type {any} */ b) => b.name === ctx.chatMetadata.currentBoard);
-        return board?.terrain?.cells?.['0,0'] ?? null;
-    });
-    check('la palanca abre la puerta con llave del tablero, y la barricada se rompe a golpes (T1, B3)',
-        /se abre/.test(lever75) && Boolean(door75?.open) && /cede/.test(bar75), JSON.stringify({ set75, lever75, bar75, door75 }));
-
-    // T2: un bando con el líder caído y la mitad fuera pide tregua; se acepta y se gana el tablero.
-    await clearToasts();
-    await page.evaluate(() => { void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/fight Guardia de Montesclaros 4'); });
-    await page.waitForTimeout(1800);
-    await clearDiceOverlay();
-    const band75 = await page.evaluate(async () => {
-        const enc = (await import('/scripts/party.js')).getCombatEncounter();
-        const foes = enc?.enemies || [];
-        if (!enc?.active || foes.length < 4) return { active: Boolean(enc?.active), foes: foes.length };
-        foes.forEach((/** @type {any} */ e, /** @type {number} */ i) => {
-            e.maxHp = 20;
-            if (i === 0) { e.role = 'lider'; e.currentHp = 0; } else if (i === 1) e.currentHp = 0; else e.currentHp = 6;
-            e.boss = false;
-        });
-        return { active: true, foes: foes.length };
-    });
-    // Se pasan turnos hasta que la pidan: si pasara una ronda sin contestar, se daría por rechazada.
-    for (let i = 0; i < 6; i++) {
-        const pending = await page.evaluate(async () => /** @type {any} */ ((await import('/scripts/party.js')).getCombatEncounter())?.truce === 'pending');
-        if (pending) break;
-        await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/combat-end'));
-        await page.waitForTimeout(1000);
-        await clearDiceOverlay();
-    }
-    const asked75 = await lastLine68(/piden tregua/);
-    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/tregua sí'));
-    await page.waitForTimeout(1200);
-    const truce75 = await lastLine68(/^🤝 \[COMBAT\] Tregua: /);
-    const over75 = await page.evaluate(async () => Boolean((await import('/scripts/party.js')).getCombatEncounter()?.active));
-    check('con el líder caído y la mitad fuera, piden tregua; aceptarla acaba el combate (T2)',
-        /piden tregua/.test(asked75) && Boolean(truce75) && !over75, JSON.stringify({ band75, asked75: asked75.slice(0, 160), truce75: truce75.slice(0, 160), over75 }));
+    /* eslint-enable indent */
 
     if (watchdog) clearInterval(watchdog);
     console.log('\n--- console errors ---');
@@ -10069,6 +9932,11 @@ try {
     } else {
         console.log(`\nKept for inspection: ${dataRoot}`);
     }
+}
+stepTimes.push({ title: currentStep, ms: Date.now() - stepStarted });
+console.log(`\n--- lo que mas tarda (vuelta entera: ${Math.round((Date.now() - runStarted) / 60000)} min) ---`);
+for (const { title, ms } of [...stepTimes].sort((a, b) => b.ms - a.ms).slice(0, 15)) {
+    console.log(`  ${String(Math.round(ms / 1000)).padStart(4)} s  ${title}`);
 }
 if (failed.length > 0) {
     // Repetido al final a proposito: quien lee este recorrido lo lee por el rabo.

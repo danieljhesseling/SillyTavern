@@ -2,9 +2,9 @@ import { t } from './i18n.js';
 import { power_user } from './power-user.js';
 import { POPUP_TYPE, POPUP_RESULT, Popup } from './popup.js';
 import { sendSystemMessage, system_message_types } from './system-messages.js';
-import { getThumbnailUrl, chat, chat_metadata, saveMetadata, eventSource, event_types, setUserName, addOneMessage, saveChatConditional, substituteParams, system_avatar, generateRaw, online_status, setExtensionPrompt, extension_prompt_types, extension_prompt_roles, saveSettingsDebounced } from '../script.js';
+import { getThumbnailUrl, chat, chat_metadata, saveMetadata, eventSource, event_types, setUserName, addOneMessage, saveChatConditional, substituteParams, system_avatar, generateRaw, online_status, setExtensionPrompt, extension_prompt_types, extension_prompt_roles, saveSettingsDebounced, characters as stCharacters, this_chid, sendMessageAsUser, updateMessageBlock } from '../script.js';
 import { extension_settings } from './extensions.js';
-import { getMessageTimeStamp } from './RossAscends-mods.js';
+import { getMessageTimeStamp, shouldSendOnEnter } from './RossAscends-mods.js';
 import { getCurrentWorldMapUrl, getCurrentWorldLocationMaps, getCurrentWorldBoards, getCurrentWorldEnemies, getCurrentWorldNPCs, loadWorldInfo, saveWorldInfo, createWorldInfoEntry, refreshWorldMapGlobals, METADATA_KEY } from './world-info.js';
 import { renderWorldMapView, renderLocationView } from './world-map-renderer.js';
 import { SlashCommandParser } from './slash-commands/SlashCommandParser.js';
@@ -26,7 +26,7 @@ import { createSeededRandom, seedFrom, rollWith } from './game-engine/combat/see
 import { getCompendium } from './game-engine/compendio/browser.js';
 import { ensureSeed, derive, describeSeed } from './game-engine/campaign/seed.js';
 import {
-    planTravel, travelEvents, describeTravel, rollWeather, DEFAULT_TRAVEL_EVENTS, MIN_DAYS,
+    planTravel, reachFrom, travelEvents, describeTravel, rollWeather, DEFAULT_TRAVEL_EVENTS, MIN_DAYS,
 } from './game-engine/world/travel.js';
 import { forgeItem as forgeFromCompendium, forgeItems, describeItem } from './game-engine/compendio/forge.js';
 import { makeNames } from './game-engine/compendio/names.js';
@@ -36,6 +36,7 @@ import { writePerson as writePersonFromCompendium, writeVillage, describePerson 
 import { injuryTableFor, causesOf } from './game-engine/compendio/ailments.js';
 import { racesOf, kindsOf, describeKin, validateKin } from './game-engine/compendio/kin.js';
 import { createCompendium, onlyPicked } from './game-engine/compendio/compendio.js';
+import { mergeWorldRows } from './game-engine/campaign/world-rows.js';
 import {
     readFactions, tickFactions, outcomeOf, applyOutcome, newsFor, describeFaction, priceFactor,
     rollFactions, validateFactionRows, busyFactions, pushFaction, speaksPlural, namesOf,
@@ -121,7 +122,7 @@ import { MOUNTS, addMount, mountedDays, feedPerWeek, describeMounts } from './ga
 import { assignRoles, rollRoles, describeRoles } from './game-engine/world/travel-roles.js';
 import { isIndoors, carriesLight, combatVisibility, visibilityPenalties, sightFeetFor } from './game-engine/world/visibility.js';
 import { companionEpilogues } from './game-engine/campaign/epilogues.js';
-import { canPry, notePry, secretNote, describeSecrets, SECRET_DC, SECRET_SKILL } from './game-engine/campaign/npc-secrets.js';
+import { canPry, notePry, secretNote, describeSecrets, readSecrets, SECRET_DC, SECRET_SKILL } from './game-engine/campaign/npc-secrets.js';
 import { repliesFor } from './game-engine/ui/shell/replies.js';
 import { checkWorldDensity, gemRequest } from './game-engine/campaign/world-density.js';
 import { SCENERY, sceneryNear, judgeSceneryThrow } from './game-engine/combat/throwables.js';
@@ -200,6 +201,9 @@ import {
 import { shiftFortune, fortuneLine } from './game-engine/world/fortune.js';
 import { queueNews, deliverNews, clockWarnings } from './game-engine/world/news.js';
 import { dueHints, buildJournal, buildHelp, pendingByPlace, buildRecap } from './game-engine/campaign/guidance.js';
+import { splitModelNote } from './game-engine/campaign/model-note.js';
+import { narrate as narrateMoment, rememberUsed, listNames, daysText } from './game-engine/campaign/engine-narrator.js';
+import { talkTopics, topicAnswer, threatAnswer, talkNote, talkPromptNote, sceneAddressee, narratorAskNote, effectiveAttitude, confronts, keepSpeech } from './game-engine/campaign/talk.js';
 import { addNotice, unseenCount, glanceRow, MAX_VISIBLE_TOASTS } from './game-engine/ui/shell/notices.js';
 import { addRequest, takeRequest, readRequests } from './game-engine/campaign/check-requests.js';
 import { recordDeed, proposeDeed, worldMemoryBlock, roadTrouble } from './game-engine/campaign/world-memory.js';
@@ -238,6 +242,11 @@ import { festivalsOf, festivalToday, daysUntil } from './game-engine/world/festi
 import { readLetters, newLetters } from './game-engine/campaign/letters.js';
 import { bump, describeStats } from './game-engine/campaign/stats.js';
 import { intentSkills } from './game-engine/campaign/intents.js';
+import { readBox, boxExamples, explainMiss } from './game-engine/campaign/read-box.js';
+import { outcomeOf as checkOutcome, consequence } from './game-engine/campaign/consequences.js';
+import {
+    sucesoCount, pickSucesos, sucesoById, optionView, resolveOption, readSucesoState, noteSuceso, dueFollowUp, describeEffect,
+} from './game-engine/campaign/sucesos.js';
 import { tipFor, GLOSSARY } from './game-engine/ui/shell/tips.js';
 import { LENGTHS, lengthNote, nextLength } from './game-engine/campaign/narration.js';
 import { noteFeat, newNickname, traitBonus, traitsOf, addScar, desireLine, heroStory, TRAIT_AT, knackBonus, knacksOf, KNACK_AT } from './game-engine/campaign/feats.js';
@@ -1006,6 +1015,11 @@ async function reloadWorldFactions() {
                 name: String(e.dndData?.name || e.comment || ''),
                 where: String(e.dndData?.mapPosition?.locationName || ''),
                 service: String(e.dndData?.service || ''),
+                // Z2 de ROADMAP_SIN_TOKENS: de qué se puede hablar con él sin modelo.
+                trade: String(e.dndData?.trade || e.dndData?.title || ''),
+                wants: String(e.dndData?.wants || ''),
+                knows: String(e.dndData?.knows || ''),
+                voice: String(e.dndData?.voice || ''),
                 // Idea 110: lo que esconde. No va al narrador hasta que se sonsaca.
                 secret: String(e.dndData?.secret || ''),
                 // Idea 59: la lengua que habla; vacío es la común.
@@ -1020,6 +1034,9 @@ async function reloadWorldFactions() {
         // Y lo que este mundo dejo entrar de cada bateria.
         lastPicks = (data?.metadata?.picks && typeof data.metadata.picks === 'object')
             ? data.metadata.picks : null;
+        // Y lo que escribio o retoco en el taller: su raza, su arma, su bicho.
+        lastWorldRows = (data?.metadata?.worldRows && typeof data.metadata.worldRows === 'object')
+            ? data.metadata.worldRows : null;
     } catch (error) {
         console.error('[party] no se pudieron leer las facciones', error);
         currentWorldFactions = [];
@@ -1709,6 +1726,352 @@ function postCombatNarration(text) {
     petReact(text);
 }
 
+/** Z1 de ROADMAP_SIN_TOKENS: las últimas frases del narrador del motor, para no repetirlas. */
+const NARRATOR_RECENT_KEY = 'narratorRecent';
+
+/**
+ * Z3: lo que ya se sacó hoy con tiradas en cada sitio (`keys`: sitio y habilidad) y lo que ya
+ * se examinó (`looked`). Tirar veinte veces no da veinte bolsas.
+ */
+const FIELD_GAINS_KEY = 'fieldGains';
+
+/** Z4: los sucesos que salieron, y los que volverán. */
+const SUCESOS_KEY = 'sucesos';
+
+/** Z4: se pueden apagar (las vueltas de prueba lo hacen, para que no salgan tarjetas en medio). */
+const SUCESOS_STORAGE = 'sillytavern_gameSucesos';
+
+/** @returns {boolean} */
+function sucesosOn() {
+    try {
+        return localStorage.getItem(SUCESOS_STORAGE) !== 'off';
+    } catch {
+        return true;
+    }
+}
+
+/** Las tarjetas, de una en una: dos que salen a la vez no se tapan. */
+let sucesoQueue = Promise.resolve();
+
+/**
+ * Z4 de ROADMAP_SIN_TOKENS: los sucesos de un momento (el viaje, la llegada, el descanso, la
+ * semana), en tarjetas con decisión. Antes, lo que vuelve: una continuación que toca hoy aquí
+ * sale primero. No espera a que se decida: la tarjeta sale en cuanto se puede.
+ *
+ * @param {string} moment
+ * @param {Record<string, any>} [facts]
+ * @param {number} [days] Los días de camino, si es un viaje.
+ * @returns {void}
+ */
+function playSucesos(moment, facts = {}, days = 1) {
+    if (!sucesosOn() || !chat_metadata?.[METADATA_KEY] || combatEncounter.active) return;
+    sucesoQueue = sucesoQueue.then(async () => {
+        const { compendium } = await getCompendium();
+        if (!compendium?.has?.('sucesos')) return;
+        const rows = compendium.find('sucesos', {});
+        const state = readSucesoState(chat_metadata?.[SUCESOS_KEY]);
+        const companion = partyMembers.slice(1).find(m => !m.dead);
+        const all = { sitio: currentLocationName, ...(companion ? { companero: String(companion.name) } : {}), ...facts };
+        const random = createSeededRandom(derive(String(chat_metadata?.[METADATA_KEY] || ''), 'sucesos', moment, String(chat.length), String(campaignDay())));
+        /** @type {any[]} */
+        const cards = [];
+        const due = moment === 'viaje' ? '' : dueFollowUp(state, { day: campaignDay(), place: currentLocationName });
+        const followed = due ? sucesoById(rows, due, all) : null;
+        if (followed) cards.push(followed);
+        else cards.push(...pickSucesos({ rows, moment, facts: all, count: sucesoCount({ moment, days, random }), random, seen: state.seen }));
+        for (const card of cards) await showSuceso(card, random);
+    }).catch(error => console.error('[party] suceso failed', error));
+}
+
+/**
+ * Una tarjeta: la situación, las opciones con su precio y, al elegir, lo que pasa. Lo
+ * elegido queda en el chat (y en el Diario) y en lo que los sucesos recuerdan.
+ *
+ * @param {any} card
+ * @param {() => number} random
+ * @returns {Promise<void>}
+ */
+async function showSuceso(card, random) {
+    const body = $('<div class="su-root gs-panel"></div>').attr('data-suceso', card.id);
+    body.append($('<h3 class="gs-popup-title"></h3>').text(card.name));
+    body.append($('<div class="su-text"></div>').text(card.text));
+    const list = $('<div class="su-options"></div>');
+    const result = $('<div class="su-result"></div>').hide();
+    /** @type {Popup|null} */
+    let popup = null;
+    let chosen = false;
+    const companion = partyMembers.slice(1).some(m => !m.dead);
+    for (const option of card.options) {
+        const view = optionView(option, { purse: partyPurse(), companion, skills: SKILLS });
+        const button = $('<button type="button" class="su-option"></button>').prop('disabled', !view.enabled).attr('title', view.why || '')
+            .append($('<span class="su-label"></span>').text(option.label));
+        if (view.price) button.append($('<span class="su-price"></span>').text(view.price));
+        button.on('click', async () => {
+            if (chosen) return;
+            chosen = true;
+            list.find('.su-option').prop('disabled', true);
+            button.addClass('chosen');
+            const member = partyMembers.find(m => !m.dead) ?? partyMembers[0];
+            let success = true;
+            let rolled = '';
+            if (option.check && member) {
+                const roll = rollCheck({ member, skill: option.check.skill, rollD20: () => rollDiceDetailed('1d20', 20).total, dc: Number(option.check.dc) || DEFAULT_DC });
+                if (roll) {
+                    success = roll.success;
+                    rolled = noteRollInWindow(member, roll);
+                }
+            }
+            const done = resolveOption(option, { success });
+            const said = applySucesoEffects(done.effects, random);
+            result.empty();
+            if (rolled) result.append($('<div class="su-roll"></div>').text(rolled));
+            result.append($('<div></div>').text(done.then || 'Hecho.'));
+            if (said.length > 0) result.append($('<div class="su-effects"></div>').text(said.join(' · ')));
+            result.show();
+            if (chat_metadata) {
+                chat_metadata[SUCESOS_KEY] = noteSuceso(readSucesoState(chat_metadata[SUCESOS_KEY]), { id: card.id, follow: done.follow, day: campaignDay() });
+                saveMetadata();
+            }
+            const check = option.check ? ` (${SKILLS[/** @type {keyof typeof SKILLS} */ (option.check.skill)]?.label ?? option.check.skill}: ${success ? 'sale' : 'no sale'})` : '';
+            await postForModel(
+                `[SUCESO] ${card.text} Quien juega elige: ${option.label}${check}. ${done.then}${said.length > 0 ? ` (${said.join(', ')})` : ''} Si lo cuentas, en dos frases y sin cambiar lo que pasó.`,
+                { show: `🃏 [SUCESO] ${card.name}: ${option.label}${check}. ${done.then}${said.length > 0 ? ` (${said.join(', ')})` : ''}` },
+            );
+            savePartyState();
+            if (isShellOpen()) refreshGameShell();
+            const go = $('<button type="button" class="menu_button su-go"></button>').text('Seguir');
+            go.on('click', () => { void popup?.completeAffirmative(); });
+            body.append(go);
+        });
+        list.append(button);
+    }
+    body.append(list).append(result);
+    popup = new Popup(body[0], POPUP_TYPE.TEXT, '', { okButton: false, cancelButton: false, allowVerticalScrolling: true, leftAlign: true });
+    await popup.show();
+    // Cerrar sin elegir es dejarlo estar: se apunta que salió, para que no vuelva enseguida.
+    if (!chosen && chat_metadata) {
+        chat_metadata[SUCESOS_KEY] = noteSuceso(readSucesoState(chat_metadata[SUCESOS_KEY]), { id: card.id, day: campaignDay() });
+        saveMetadata();
+    }
+}
+
+/**
+ * Una tirada hecha dentro de una ventana (una charla, un suceso): se apunta en el registro de
+ * dados, como todas, y se dice en la ventana. El cartel del dado no: iría detrás de la
+ * ventana, sin verse ni poder pulsarse hasta cerrarla.
+ *
+ * @param {any} member
+ * @param {{label: string, natural: number, total: number, dc: number, said: string}} roll
+ * @returns {string}
+ */
+function noteRollInWindow(member, roll) {
+    if (chat_metadata) {
+        chat_metadata[DICE_LOG_KEY] = addRoll(chat_metadata[DICE_LOG_KEY], { title: `${member.name}: ${roll.label}`, natural: Number(roll.natural), total: Number(roll.total) || 0, dc: roll.dc });
+    }
+    return roll.said;
+}
+
+/**
+ * Lo que hace una opción, en lo que ya existe. Devuelve cada efecto dicho en llano.
+ *
+ * @param {string[]} effects
+ * @param {() => number} random
+ * @returns {string[]}
+ */
+function applySucesoEffects(effects, random) {
+    /** @type {string[]} */
+    const said = [];
+    const alive = partyMembers.filter(m => !m.dead && (Number(m.hp) || 0) > 0);
+    const someone = () => alive[Math.floor(random() * alive.length)] ?? partyMembers[0];
+    const amountOf = (/** @type {string} */ value) => (/d/.test(value) ? rollDiceDetailed(value.replace(/^[+-]/, ''), 6).total : Math.abs(Number(value) || 0));
+    for (const effect of effects) {
+        const [kind, amount = ''] = String(effect).split(':');
+        if (kind === 'oro') {
+            const n = amountOf(amount);
+            if (amount.startsWith('-')) {
+                const paid = Math.min(n, partyPurse());
+                if (paid > 0) payFromParty(paid);
+                said.push(`−${paid} de oro`);
+            } else if (partyMembers[0]) {
+                partyMembers[0].gold = (Number(partyMembers[0].gold) || 0) + n;
+                said.push(`+${n} de oro`);
+            }
+        } else if (kind === 'hora') {
+            advanceCampaignSlot();
+            said.push('se va un rato');
+        } else if (kind === 'dia') {
+            advanceCampaignDay();
+            said.push('se pierde un día');
+        } else if (kind === 'herida') {
+            const who = someone();
+            if (who) {
+                const before = Number(who.hp) || 0;
+                who.hp = Math.max(1, before - Math.max(1, amountOf(amount || '1')));
+                said.push(`${who.name} −${before - who.hp} de vida`);
+            }
+        } else if (kind === 'cura') {
+            const who = [...alive].sort((a, b) => ((Number(a.hp) || 0) - (Number(a.maxHp) || 0)) - ((Number(b.hp) || 0) - (Number(b.maxHp) || 0)))[0];
+            if (who) {
+                const before = Number(who.hp) || 0;
+                who.hp = Math.min(Number(who.maxHp) || before, before + amountOf(amount || '1d6'));
+                said.push(`${who.name} +${who.hp - before} de vida`);
+            }
+        } else if (kind === 'comida') {
+            for (const one of alive) one.needs = relieve(one, 'ate');
+            said.push('coméis');
+        } else if (kind === 'fama') {
+            raiseFame(currentLocationName, amount.startsWith('-') ? -1 : 1);
+            said.push(describeEffect(effect));
+        } else if (kind === 'faccion') {
+            const ruler = rulerOf(currentLocationName);
+            if (ruler?.id) {
+                void shiftFactionStanding(String(ruler.id), amount.startsWith('-') ? -1 : 1);
+                said.push(`${ruler.name} os mira ${amount.startsWith('-') ? 'peor' : 'mejor'}`);
+            }
+        } else if (kind === 'vinculo') {
+            const friend = partyMembers.slice(1).filter(m => !m.dead)[0];
+            if (friend) {
+                recordCampaignBondEvent(String(friend.id), 'shared_downtime');
+                said.push(`más cerca de ${friend.name}`);
+            }
+        } else if (kind === 'rumor') {
+            if (rumorsLeftHere() > 0) {
+                void hearRumor();
+                said.push('os enteráis de algo');
+            }
+        } else if (kind === 'pista') {
+            const cases = readCases(chat_metadata?.[CASES_KEY]);
+            const clue = cases.active ? cluesHere(cases, { place: currentLocationName }).find(c => !cases.found.includes(c.id)) : null;
+            if (clue) {
+                revealClue(clue);
+                said.push('una pista');
+            }
+        }
+    }
+    return said;
+}
+
+/**
+ * @returns {{day: number, keys: string[], looked: string[]}}
+ */
+function fieldGainsToday() {
+    const today = campaignDay();
+    const stored = chat_metadata?.[FIELD_GAINS_KEY];
+    if (!stored || Number(stored.day) !== today) return { day: today, keys: [], looked: [] };
+    return {
+        day: today,
+        keys: Array.isArray(stored.keys) ? stored.keys.map(String) : [],
+        looked: Array.isArray(stored.looked) ? stored.looked.map(String) : [],
+    };
+}
+
+/**
+ * Contar un momento con las frases del motor (`public/compendio/frases.json`), a 0 tokens.
+ * Vacío si lo cuenta el modelo (modo «Modelo») o si no hay frases que valgan.
+ *
+ * @param {string} moment Uno de `MOMENTS` (`engine-narrator.js`).
+ * @param {Record<string, any>} facts
+ * @returns {string}
+ */
+function tellMoment(moment, facts) {
+    if (modelNarrates() || !lastCompendium?.has?.('frases')) return '';
+    const rows = lastCompendium.find('frases', {});
+    const random = createSeededRandom(derive(String(chat_metadata?.[METADATA_KEY] || ''), 'narrador', moment, String(chat.length)));
+    const told = narrateMoment({ rows, moment, facts, random, recent: chat_metadata?.[NARRATOR_RECENT_KEY] });
+    if (chat_metadata && told.used.length > 0) chat_metadata[NARRATOR_RECENT_KEY] = rememberUsed(chat_metadata[NARRATOR_RECENT_KEY], told.used);
+    return told.text;
+}
+
+/**
+ * Una línea del narrador del motor: con su nombre y su cara, como habla el narrador, y sin
+ * llegar al modelo (que tiene los hechos por su nota). Z1 de ROADMAP_SIN_TOKENS.
+ *
+ * @param {string} text
+ * @returns {Promise<void>}
+ */
+async function postEngineLine(text) {
+    if (typeof text !== 'string' || !text.trim()) return;
+    const card = /** @type {any} */ (stCharacters)?.[/** @type {any} */ (this_chid)];
+    const message = buildGameMessage({
+        text: text.trim(),
+        channel: CHANNEL.PLAYER,
+        name: String(card?.name || chat_metadata?.narrator_name || 'Narrador'),
+        avatar: card?.avatar ? getThumbnailUrl('avatar', card.avatar) : system_avatar,
+        timestamp: getMessageTimeStamp(),
+        compact: false,
+    });
+    chat.push(message);
+    addOneMessage(message);
+    await saveChatConditional();
+}
+
+/**
+ * «dos», «tres»…, para contar en una frase.
+ *
+ * @param {number} n
+ * @returns {string}
+ */
+function numberWord(n) {
+    return ['cero', 'uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez'][n] ?? String(n);
+}
+
+/**
+ * Lo que el narrador del motor sabe de un sitio al llegar: cómo es, a qué hora, con qué
+ * tiempo, quién hay y qué os espera.
+ *
+ * @param {string} name
+ * @param {boolean} first La primera vez que se llega.
+ * @returns {Record<string, any>}
+ */
+function placeFacts(name, first) {
+    const same = (/** @type {any} */ a) => String(a ?? '').toLowerCase() === String(name).toLowerCase();
+    const place = /** @type {any} */ (getCurrentWorldLocationMaps().find((/** @type {any} */ l) => same(l.name)) ?? {});
+    const people = lastWorldNpcs.filter(n => !n.dead && same(n.where)).slice(0, 3).map(n => n.name);
+    const hooks = [];
+    if (openMilestones().some(m => same(m?.asks?.place))) hooks.push('el hilo pasa por aquí');
+    if (same(chat_metadata?.[TAKEN_KEY]?.locationName)) hooks.push('aquí está vuestro encargo');
+    const offered = (chat_metadata?.[BOARD_KEY] ?? []).filter((/** @type {any} */ c) => same(c?.locationName)).length;
+    if (offered > 0) hooks.push(offered === 1 ? 'hay un encargo en el tablón' : `hay ${numberWord(offered)} encargos en el tablón`);
+    const heardIds = Array.isArray(chat_metadata?.[RUMORS_HEARD_KEY]) ? chat_metadata[RUMORS_HEARD_KEY] : [];
+    const unheard = lastRumors.filter(r => same(r.where) && !heardIds.includes(r.id)).length;
+    if (unheard > 0) hooks.push(unheard === 1 ? 'alguien tiene algo que contar' : 'se oyen cosas que valdría la pena escuchar');
+    return {
+        sitio: String(place.name || name),
+        descripcion: first ? String(place.description || '') : '',
+        primera: first ? 'sí' : 'no',
+        hora: String(getCurrentSlotLabel() || '').toLowerCase(),
+        tiempo: weatherHere(),
+        gente: listNames(people),
+        gente_n: people.length,
+        gancho: listNames(hooks),
+    };
+}
+
+/**
+ * Entrar en un tablero, contado: qué hay que hacer y quién espera.
+ *
+ * @param {string} boardName
+ * @returns {void}
+ */
+function tellBoard(boardName) {
+    const place = getCurrentWorldLocationMaps().find((/** @type {any} */ l) => l.name === currentLocationName);
+    const board = /** @type {any} */ (getLocationBoards(place).find((/** @type {any} */ b) => b.name === boardName) ?? {});
+    const goal = String(board.objectives?.[0]?.label || '').trim();
+    /** @type {Record<string, number>} */
+    const count = {};
+    for (const foe of board.enemyPlacements ?? []) {
+        const name = String(foe?.name || '').trim();
+        if (name) count[name] = (count[name] ?? 0) + 1;
+    }
+    const foes = Object.entries(count).map(([name, n]) => (n > 1 ? `${name} (${n})` : name));
+    const told = tellMoment('tablero', {
+        tablero: boardName,
+        objetivo: goal ? goal[0].toLocaleLowerCase('es') + goal.slice(1) : '',
+        enemigos: listNames(foes),
+    });
+    if (told) void postEngineLine(told);
+}
+
 /** R8: los que se fueron, con su ficha, por si vuelven. */
 const GONE_KEY = 'gone';
 
@@ -2053,9 +2416,10 @@ function petSupport(action, enemy) {
  * the player's next turn, so a finished combat still costs nothing by itself.
  *
  * @param {string} text
+ * @param {{show?: string}} [options] `show`: lo que se ve si cuenta el motor (Z1).
  * @returns {Promise<void>}
  */
-async function postForModel(text) {
+async function postForModel(text, options = {}) {
     if (typeof text !== 'string' || !text.trim()) return;
 
     const message = buildGameMessage({
@@ -2066,6 +2430,13 @@ async function postForModel(text) {
         timestamp: getMessageTimeStamp(),
         compact: true,
     });
+    // El modelo lee la nota entera; en pantalla sale solo lo que pasó, sin la orden al
+    // narrador («Cuéntalo en un párrafo…»), que sin modelo se leía como un error y con él
+    // como una instrucción colada (ROADMAP_SIN_TOKENS, Z0).
+    const { said } = splitModelNote(message.mes);
+    // Z1: si cuenta el motor, lo que se ve es su prosa (el modelo sigue leyendo los hechos).
+    const shown = !modelNarrates() && typeof options?.show === 'string' && options.show.trim() ? options.show.trim() : said;
+    if (shown !== message.mes) /** @type {any} */ (message.extra).display_text = shown;
 
     chat.push(message);
     await eventSource.emit(event_types.MESSAGE_RECEIVED, chat.length - 1, 'game-engine');
@@ -2673,9 +3044,11 @@ function resolveEnemyTurnAction(turnEntry) {
         return `[COMBAT] ${enemy.name} ruge sobre un campo sin oponentes conscientes.`;
     }
 
-    // T2: una tregua pedida espera respuesta hasta la ronda siguiente; sin respuesta, se sigue.
+    // T2: una tregua pedida espera respuesta hasta que a uno de los vuestros le haya tocado y
+    // la haya dejado pasar; sin respuesta, se sigue. Antes caducaba al cambiar de ronda, y si
+    // en la iniciativa los enemigos iban antes que el grupo, caducaba sin que os tocara.
     if (/** @type {any} */ (combatEncounter).truce === 'pending') {
-        if ((Number(combatEncounter.round) || 1) > (Number(/** @type {any} */ (combatEncounter).truceRound) || 0)) {
+        if (/** @type {any} */ (combatEncounter).truceSeen) {
             /** @type {any} */ (combatEncounter).truce = 'refused';
             saveCombatState();
             postCombatNarration('⚔️ [COMBAT] No contestáis: vuelven a por vosotros.');
@@ -3134,7 +3507,9 @@ function buryMember(member, today, bonds) {
     });
     saveSettingsDebounced();
     postCombatNarration(`🪦 [CAMPAÑA] ${epitaph}${inherited ? ` ${inherited}` : ''}`);
-    void postForModel(`[MUERTE] ${epitaph}${inherited ? ` ${inherited}` : ''} Ya no está: que se note en lo que cuentes, y que nadie le haga hablar.`)
+    void postForModel(`[MUERTE] ${epitaph}${inherited ? ` ${inherited}` : ''} Ya no está: que se note en lo que cuentes, y que nadie le haga hablar.`, {
+        show: [tellMoment('muerte', { quien: String(member?.name || ''), epitafio: String(epitaph || '') }), inherited].filter(Boolean).join(' '),
+    })
         .catch(error => console.error('[party] death note failed', error));
 }
 
@@ -3416,6 +3791,13 @@ function arriveWaves() {
 
 function advanceTurnIndex() {
     if (!combatEncounter.active || combatEncounter.turnOrder.length === 0) return null;
+
+    // T2: si acaba el turno de alguien del grupo con una tregua pedida, ya la ha visto: sin
+    // respuesta, el siguiente enemigo la da por rechazada.
+    const ending = getCurrentTurnEntry();
+    if (ending && !ending.isEnemy && /** @type {any} */ (combatEncounter).truce === 'pending') {
+        /** @type {any} */ (combatEncounter).truceSeen = true;
+    }
 
     // The machine owns the walk: it skips the fallen, wraps the order and counts the
     // round. This used to be a second implementation of the same thing, right here.
@@ -4343,6 +4725,12 @@ const campaign = createCampaignState({
     renderParty: () => renderPartyMembers(),
     renderCampaign: () => renderCampaignTab(),
     narrate: (text) => postCombatNarration(text),
+    // Z1 de ROADMAP_SIN_TOKENS: el descanso, contado por el narrador del motor.
+    tellRest: (kind) => tellMoment('descanso', {
+        largo: kind === 'largo' ? 'sí' : 'no',
+        dia: Math.max(1, Number(getCampaignCalendar()?.day) || 1) + (kind === 'largo' ? 1 : 0),
+        tiempo: weatherHere(),
+    }),
     // Cada rango tiene su escena escrita, si el compañero la trae (idea 26).
     rankedUp: (member, rank) => tellBondScene(member, rank),
     isFighting: () => Boolean(combatEncounter.active),
@@ -4411,8 +4799,9 @@ function currentMarket() {
  */
 async function campaignCompendium() {
     const { compendium, batteries } = await getCompendium();
-    if (!lastPicks || !batteries) return compendium;
-    return createCompendium(onlyPicked(batteries, lastPicks));
+    if ((!lastPicks && !lastWorldRows) || !batteries) return compendium;
+    const own = mergeWorldRows(batteries, lastWorldRows);
+    return createCompendium(lastPicks ? onlyPicked(own, lastPicks) : own);
 }
 
 /**
@@ -4436,6 +4825,9 @@ let lastBoardRules = null;
 /** Lo que este mundo dejo entrar de cada bateria, o null si no eligio. */
 /** @type {any} */
 let lastPicks = null;
+/** Las filas que este mundo escribio o retoco en el taller, por dominio, o null. */
+/** @type {Record<string, any[]>|null} */
+let lastWorldRows = null;
 /** @type {any[]} */
 let lastWrittenQuests = [];
 /** @type {import('./game-engine/campaign/written-contracts.js').WrittenContract[]} */
@@ -5132,7 +5524,10 @@ function startWeekTable() {
         setTimeout(() => { void openWeekTable(); }, 300);
         return;
     }
-    postCombatNarration(`📋 [PARTIDA] Empieza la semana ${week}: la mesa, con lo que no cabe entero, está en su botón.`);
+    const weekTold = tellMoment('semana', { semana: week, cuenta: 'La mesa, con lo que no cabe entero, está en su botón.' });
+    postCombatNarration(`📋 [PARTIDA] ${weekTold || `Empieza la semana ${week}: la mesa, con lo que no cabe entero, está en su botón.`}`);
+    // Z4: la semana también trae lo suyo.
+    playSucesos('semana');
 }
 
 /**
@@ -5832,7 +6227,9 @@ async function closeAct(plot, closed, opened) {
     const range = hideRange({ from: Number(starts[closed]) || 0, to: chat.length - 1 });
     chat_metadata[ACT_STARTS_KEY] = { ...starts, [opened]: chat.length };
     saveMetadata();
-    postCombatNarration(`📜 [HILO] Se cierra el acto ${closed}. ${summary}`);
+    // Z1: si cuenta el motor, el cierre en su prosa; si no, el resumen. Una vez, no las dos.
+    const closing = tellMoment('acto', { acto: closed, hitos: listNames(milestones) });
+    postCombatNarration(closing ? `📜 [HILO] ${closing}` : `📜 [HILO] Se cierra el acto ${closed}. ${summary}`);
     if (range) {
         try {
             const { hideChatMessageRange } = await import('./chats.js');
@@ -6032,7 +6429,7 @@ async function revealLocationsNow(names) {
  *
  * @returns {Promise<string>}
  */
-async function hearRumor() {
+async function hearRumor(by = '') {
     await ensureWorldData();
     if (combatEncounter.active) {
         toastr.warning('No en mitad de un combate.');
@@ -6042,7 +6439,11 @@ async function hearRumor() {
     // R9: primero lo que se cuenta de vosotros, luego lo del guion.
     const played = rumorsFromPlay(chronicleOf(Array.isArray(chat) ? chat : []), { told: heard })
         .map(r => ({ id: r.id, text: r.text, where: currentLocationName, by: 'Alguien en la taberna', truth: '', leadsTo: '' }));
-    const rumor = nextRumor({ rumors: [...played, ...lastRumors], here: currentLocationName, heard });
+    // Z2: preguntado a alguien, lo que cuenta él.
+    const pool = by ? lastRumors.filter(r => String(r.by || '').toLowerCase() === String(by).toLowerCase()) : [...played, ...lastRumors];
+    const rumor = by
+        ? pool.find(r => !heard.includes(r.id)) ?? null
+        : nextRumor({ rumors: pool, here: currentLocationName, heard });
     if (!rumor) {
         toastr.info('Aquí ya no se cuenta nada que no hayas oído.');
         return '';
@@ -6494,6 +6895,59 @@ function deliverRelics(event) {
 const RUMORS_HEARD_ON_KEY = 'rumorsHeardOn';
 /** Los prisioneros que lleva el grupo (idea 7). */
 const PRISONERS_KEY = 'prisoners';
+
+/**
+ * Los tableros cuya pelea escrita ya se ganó, como `sitio::tablero`: sus enemigos no vuelven a
+ * dibujarse ni a ofrecer pelea (2026-09-28).
+ */
+const BOARDS_WON_KEY = 'boardsWon';
+
+/**
+ * @param {string} location
+ * @param {string} board
+ * @returns {string}
+ */
+function boardKeyOf(location, board) {
+    return `${String(location || '')}::${String(board || '')}`;
+}
+
+/**
+ * Si la pelea que trae escrita este tablero ya se ganó.
+ *
+ * @param {string} location
+ * @param {string} board
+ * @returns {boolean}
+ */
+function isBoardWon(location, board) {
+    const won = chat_metadata?.[BOARDS_WON_KEY];
+    return Array.isArray(won) && won.includes(boardKeyOf(location, board));
+}
+
+/**
+ * Quien espera en el tablero sin pelear todavía: los enemigos que trae escritos y que el grupo
+ * ve. Antes solo salían al empezar el combate, y el texto decía que el alguacil y sus guardias
+ * revientan la puerta sobre un tablero donde no había nadie (Daniel, 2026-09-28).
+ *
+ * @param {Array<{name: string, x: number, y: number}>} waiting
+ * @returns {import('./world-map-renderer.js').TokenData[]}
+ */
+function buildBoardIdleEnemyTokens(waiting) {
+    const templates = getCurrentWorldEnemies();
+    return waiting.map((placement, index) => {
+        const template = templates.find(e => String(e.name).toLowerCase() === String(placement.name).toLowerCase());
+        return {
+            id: -(2000 + index),
+            name: String(placement.name),
+            avatar: template?.avatar ?? '',
+            gridX: Number(placement.x) || 0,
+            gridY: Number(placement.y) || 0,
+            hp: Number(template?.maxHp) || undefined,
+            maxHp: Number(template?.maxHp) || undefined,
+            isEnemy: true,
+            idle: true,
+        };
+    });
+}
 /** Los d20 que ha tirado el motor (idea 168). */
 const DICE_LOG_KEY = 'diceLog';
 /** El regateo de hoy (idea 126): donde, que dia y si salio. */
@@ -6555,6 +7009,10 @@ const ART_STORAGE = 'sillytavern_illustrations';
 
 /** Con quién se está hablando, para las respuestas sugeridas (idea 144). */
 let talkingTo = '';
+/** El botón «Al narrador» está puesto: lo próximo que se escriba es para él (2026-09-28). */
+let askingNarrator = false;
+/** Lo que se acaba de escribir es para el narrador: contesta él, y con su nombre. */
+let narratorTurn = false;
 /** Lo último que gritó un jefe al contestar (idea 24). */
 let lastBossLine = '';
 /** Si alguien acaba de caer al vacío, para dejar ver la caída (idea 189). */
@@ -6979,6 +7437,12 @@ const RETRY_NOTES = {
  * @returns {Promise<void>}
  */
 async function retryLastReply(mode) {
+    // El regenerar de SillyTavern borra el último mensaje si no es tuyo, sea lo que sea: con
+    // una línea del motor al final, «Otra vez» se la llevaba (ROADMAP_SIN_TOKENS, Z0).
+    if (!lastIsModelReply()) {
+        toastr.info('Lo último no lo ha contado el narrador: no hay nada que repetir.');
+        return;
+    }
     const note = RETRY_NOTES[/** @type {keyof typeof RETRY_NOTES} */ (mode)] ?? '';
     const key = promptKey('combat', 'retry', 'ctx');
     setExtensionPrompt(key, note, extension_prompt_types.IN_PROMPT, 0, false, extension_prompt_roles.SYSTEM);
@@ -6989,6 +7453,16 @@ async function retryLastReply(mode) {
         // Una vez y ya: la siguiente respuesta vuelve a ser la de siempre.
         setExtensionPrompt(key, '', extension_prompt_types.IN_PROMPT, 0, false, extension_prompt_roles.SYSTEM);
     }
+}
+
+/**
+ * Si lo último del chat es una respuesta del modelo (y no una línea o nota del motor).
+ *
+ * @returns {boolean}
+ */
+function lastIsModelReply() {
+    const last = chat?.[chat.length - 1];
+    return Boolean(last && !last.is_user && !last.is_system && last.extra?.model !== 'game-engine');
 }
 
 /** Idea 168: el historial de dados, con sus cuentas. */
@@ -7229,11 +7703,40 @@ function openHelp() {
         services: buildServiceCards(),
         boards: currentBoardName ? [] : getLocationBoards(hereLocation()).map((/** @type {any} */ b) => String(b.name)),
         chips: buildShellChips().map(c => ({ id: c.id, label: c.label })),
-        places: getCurrentWorldLocationMaps().filter(l => l.name !== currentLocationName).length,
+        places: neighbourPlaces().length,
         fighting: Boolean(combatEncounter.active),
+        engineReads: narratorMode() === 'motor',
     });
+    showHelpSections('¿Qué puedo hacer aquí?', sections);
+}
+
+/**
+ * Z3: un edificio de aquí, con lo que se puede hacer dentro: «voy a la posada».
+ *
+ * @param {string} serviceId
+ * @returns {void}
+ */
+function openService(serviceId) {
+    const card = buildServiceCards().find(c => c.id === serviceId);
+    if (!card) return;
+    const line = tellMoment('servicio', { servicio: serviceId });
+    if (line) void postEngineLine(line);
+    showHelpSections(card.label, [{
+        title: 'Qué se puede hacer',
+        items: card.actions.map(a => ({ label: a.label, detail: a.detail, key: a.enabled ? `service:${a.id}` : '' })),
+    }]);
+}
+
+/**
+ * La ventana de «¿Qué puedo hacer aquí?»: secciones de cosas que se pulsan.
+ *
+ * @param {string} title
+ * @param {Array<{title: string, items: Array<{label: string, detail: string, key: string}>}>} sections
+ * @returns {void}
+ */
+function showHelpSections(title, sections) {
     const body = $('<div class="hp-root gs-panel"></div>');
-    body.append($('<h3 class="gs-popup-title"></h3>').text('¿Qué puedo hacer aquí?'));
+    body.append($('<h3 class="gs-popup-title"></h3>').text(title));
     /** @type {Popup|null} */
     let popup = null;
     for (const section of sections) {
@@ -7885,7 +8388,7 @@ async function runService(actionId) {
     } else if (actionId.startsWith('inn-meet:')) await meetRecruit(String(action.target));
     else if (actionId.startsWith('inn-hire:')) await hireRecruit(String(action.target));
     else if (actionId === 'inn-rumor') await hearRumor();
-    else if (actionId === 'inn-talk') draftInChat(`Le digo a ${action.target}: `);
+    else if (actionId === 'inn-talk') startTalk(String(action.target));
     else if (smith) {
         const [, injuryId, name] = actionId.split(':');
         const member = partyMembers.find(m => String(m.name) === name);
@@ -8950,8 +9453,9 @@ async function tellOmens(plot) {
     chat_metadata.omensTold = true;
     saveMetadata();
     const said = plot.omens.map(o => `«${o.text}»`).join(' ');
-    postCombatNarration(`🔮 [HILO] El presagio: ${said}`);
-    await postForModel(`[PRESAGIO] Alguien lo murmura, o se sueña. Dilo tal cual, sin explicarlo: ${said}`)
+    // Un solo mensaje: el narrador lee la nota, y quien juega lo ve una vez (antes salía
+    // dos: la línea del hilo y la nota, que sin modelo también se veía).
+    await postForModel(`[PRESAGIO] Alguien lo murmura, o se sueña. Dilo tal cual, sin explicarlo: ${said}`, { show: `🔮 [HILO] El presagio: ${said}` })
         .catch(error => console.error('[party] omens note failed', error));
 }
 
@@ -9002,7 +9506,162 @@ function refreshWorldMemoryPrompt() {
     // Idea 142: el tono de la escena, una frase con lo que cambia en cada turno. Vacío si no
     // toca ninguno: un bloque vacío no cuesta nada.
     const tone = chat_metadata ? toneNote({ chosen: String(chat_metadata[TONE_KEY] || ''), fighting: combatEncounter.active }) : '';
-    setExtensionPrompt(promptKey('combat', 'tone', 'ctx'), tone, extension_prompt_types.IN_PROMPT, 0, false, extension_prompt_roles.SYSTEM);
+    // Y con quién se está hablando: que conteste esa persona, no el narrador. Va con lo que
+    // cambia en cada turno, al final.
+    setExtensionPrompt(promptKey('combat', 'tone', 'ctx'), [tone, narratorTurn ? narratorAskNote() : speakingNote()].filter(Boolean).join('\n'),
+        extension_prompt_types.IN_PROMPT, 0, false, extension_prompt_roles.SYSTEM);
+}
+
+/**
+ * Con quién se está hablando ahora, si es alguien que puede contestar: alguien de aquí o de
+ * tu grupo, y sin pelea en marcha.
+ *
+ * @returns {{name: string, npc: any|null}|null}
+ */
+function speakingWith() {
+    const who = String(talkingTo || '').trim();
+    if (!who || combatEncounter.active) return null;
+    const npc = lastWorldNpcs.find(n => !n.dead && n.name === who && n.where.toLowerCase() === String(currentLocationName).toLowerCase()) ?? null;
+    if (npc) return { name: npc.name, npc };
+    const friend = partyMembers.slice(1).find(m => !m.dead && String(m.name) === who);
+    return friend ? { name: String(friend.name), npc: null } : null;
+}
+
+/**
+ * Qué se hace con lo que se escribe en la caja (Daniel, 2026-09-28: «el narrador ha de narrar
+ * en momentos más importantes», y con el alguacil delante «¿qué pasa?» lo contestaba él).
+ *
+ * - Con el botón «Al narrador» puesto, va al narrador, fuera de la escena, y contesta él.
+ * - Lo que el motor entiende (ir, entrar, descansar…) lo hace el motor, como antes.
+ * - Lo demás va al modelo, y **contesta quien tienes delante**: a quien nombras, si está aquí,
+ *   o quien te está plantando cara en el tablero. Desde ahí se está hablando con esa persona
+ *   (sus respuestas sugeridas y «Despedirse»), hasta despedirse, irse o empezar la pelea.
+ * - Si no hay nadie delante, contesta el narrador contando qué pasa.
+ *
+ * Una sola llamada por mensaje: cambia el estado del turno.
+ *
+ * @param {string} said
+ * @returns {'engine'|'model'}
+ */
+export function routeTyped(said) {
+    narratorTurn = askingNarrator;
+    askingNarrator = false;
+    showNarratorAsk();
+    if (narratorTurn) return 'model';
+    if (engineTakesBox(said)) return 'engine';
+    if (!chat_metadata?.[METADATA_KEY] || speakingWith() || combatEncounter.active) return 'model';
+    const intent = readBox(said, boxContext());
+    if (intent.do !== 'unknown' && !(intent.do === 'check' && SOCIAL_SKILLS.includes(String(intent.skill)))) return 'model';
+    const who = sceneAddressee({
+        said,
+        people: lastWorldNpcs.filter(n => !n.dead && n.where.toLowerCase() === String(currentLocationName).toLowerCase()).map(n => n.name),
+        companions: partyMembers.slice(1).filter(m => !m.dead).map(m => String(m.name)),
+        waiting: waitingHere(),
+    });
+    if (who) {
+        talkingTo = who;
+        notePlot({ kind: 'talk', npc: who });
+        if (isShellOpen()) refreshGameShell();
+    }
+    return 'model';
+}
+
+/**
+ * Z3 y Z6: si lo escrito lo hace el motor. Sin modelo, todo; en «Mixto», lo que la caja
+ * entiende, salvo hablando con alguien o convenciéndole con tus palabras.
+ *
+ * @param {string} said
+ * @returns {boolean}
+ */
+function engineTakesBox(said) {
+    if (!chat_metadata?.[METADATA_KEY]) return false;
+    const mode = narratorMode();
+    if (mode === 'motor') return true;
+    if (mode !== 'mixto' || speakingWith()) return false;
+    const intent = readBox(said, boxContext());
+    return intent.do !== 'unknown' && !(intent.do === 'check' && SOCIAL_SKILLS.includes(String(intent.skill)));
+}
+
+/**
+ * El botón «Al narrador»: lo próximo que escribas es para él. Sin modelo no hay a quién
+ * preguntar, así que abre lo mismo que «¿Qué hago?». Pulsarlo otra vez lo quita.
+ *
+ * @returns {void}
+ */
+function askNarrator() {
+    if (narratorMode() === 'motor') {
+        void openHelp();
+        return;
+    }
+    askingNarrator = !askingNarrator;
+    showNarratorAsk();
+    const box = /** @type {HTMLTextAreaElement|null} */ (document.querySelector('#send_textarea'));
+    box?.focus();
+}
+
+/**
+ * Que se note que lo próximo va al narrador: la caja lo dice, y el botón queda encendido.
+ *
+ * @returns {void}
+ */
+function showNarratorAsk() {
+    const box = /** @type {HTMLTextAreaElement|null} */ (document.querySelector('#send_textarea'));
+    if (box) {
+        if (askingNarrator && !box.dataset.placeholderBefore) box.dataset.placeholderBefore = box.placeholder;
+        box.placeholder = askingNarrator ? 'Pregúntale al narrador, fuera de la escena…' : (box.dataset.placeholderBefore || box.placeholder);
+        if (!askingNarrator) delete box.dataset.placeholderBefore;
+        box.classList.toggle('gs-asking-narrator', askingNarrator);
+    }
+    document.querySelectorAll('#game-shell .gs-chip-narrator').forEach(b => b.classList.toggle('on', askingNarrator));
+}
+
+/**
+ * Para el modelo: a quién le habla quien juega, con su oficio, su voz y cómo os mira.
+ *
+ * @returns {string}
+ */
+function speakingNote() {
+    const with_ = speakingWith();
+    if (!with_) return '';
+    if (!with_.npc) return talkPromptNote({ name: with_.name, companion: true });
+    return talkPromptNote({
+        name: with_.name, trade: String(with_.npc.trade ?? ''), voice: String(with_.npc.voice ?? ''),
+        attitudeWord: describeAttitude(attitudeTowards(with_.name)), confronting: confrontingNow(with_.name),
+    });
+}
+
+/**
+ * Quién espera en el tablero sin pelear todavía: los enemigos escritos que el grupo ve. Sin
+ * tablero, en combate o con su pelea ya ganada, nadie.
+ *
+ * @returns {string[]}
+ */
+function waitingHere() {
+    if (!currentBoardName || combatEncounter.active || isBoardWon(currentLocationName, currentBoardName)) return [];
+    const board = getActiveBoardContext().board;
+    return awakePlacements(board?.rooms, board?.enemyPlacements ?? []).map((/** @type {any} */ p) => String(p.name));
+}
+
+/**
+ * Si alguien os está plantando cara ahora: está entre los que esperan en el tablero para
+ * pelear (el alguacil Torres, con sus guardias en la posada).
+ *
+ * @param {string} name
+ * @returns {boolean}
+ */
+function confrontingNow(name) {
+    return confronts(name, waitingHere());
+}
+
+/**
+ * Cómo os mira alguien ahora mismo: lo apuntado, salvo que os esté plantando cara, que
+ * entonces como mucho receloso (Daniel, 2026-09-28: Torres salía «neutral» reventando la puerta).
+ *
+ * @param {string} name
+ * @returns {number}
+ */
+function attitudeTowards(name) {
+    return effectiveAttitude(attitudeBonus(chat_metadata?.[ATTITUDES_KEY], name), confrontingNow(name));
 }
 
 /** @returns {import('./game-engine/campaign/patronage.js').Debt|null} */
@@ -9296,6 +9955,8 @@ const getCurrentSlotLabel = () => campaign.getSlotLabel();
 /** @param {'corto'|'largo'} kind @returns {Promise<string>} */
 const takeRest = async (kind) => {
     const result = await campaign.rest(kind);
+    // Z4: de noche pasan cosas.
+    if (kind === 'largo') playSucesos('descanso');
     // Idea 41: con un sanador en el grupo, un descanso corto cura algo mas.
     const healer = kind === 'corto' ? withJob(partyMembers, 'sanador') : null;
     if (healer) {
@@ -9970,6 +10631,17 @@ function endCombat(reason = 'ended') {
             notePlot({ kind: 'defeat', enemy: String(fallen.name) });
         }
         notePlot({ kind: 'win', place: currentLocationName, board: currentBoardName });
+        // La pelea escrita del tablero, ganada: sus enemigos no vuelven a dibujarse. Cuenta si
+        // en esta pelea estaba alguno de los que el tablero trae (el botón, una sala que se
+        // abre o `/fight` con su nombre); una pelea suelta no se los lleva.
+        const wonBoard = getActiveBoardContext().board;
+        const written = new Set((wonBoard?.enemyPlacements ?? []).map((/** @type {any} */ p) => String(p.name).toLowerCase()));
+        const fought = combatEncounter.enemies.some(e => written.has(String(e.name).replace(/\s+\d+$/, '').toLowerCase()));
+        if (currentBoardName && fought && chat_metadata && !isBoardWon(currentLocationName, currentBoardName)) {
+            const won = Array.isArray(chat_metadata[BOARDS_WON_KEY]) ? chat_metadata[BOARDS_WON_KEY] : [];
+            chat_metadata[BOARDS_WON_KEY] = [...won, boardKeyOf(currentLocationName, currentBoardName)];
+            saveMetadata();
+        }
         // Idea 52: el sitio sabe quién le ha quitado ese peso de encima.
         raiseFame(currentLocationName);
 
@@ -10001,7 +10673,16 @@ function endCombat(reason = 'ended') {
         survivors: partyMembers.filter(m => (m.hp || 0) > 0).map(m => m.name),
         defeated: combatEncounter.enemies.filter(e => (e.currentHp || 0) <= 0).map(e => e.name),
     });
-    postForModel(epilogue).catch(error => console.error('[party] could not post the combat epilogue', error));
+    // Z1: si cuenta el motor, el final de la pelea en prosa.
+    const wounded = partyMembers.filter(m => (m.hp || 0) > 0 && (m.hp || 0) <= (Number(m.maxHp) || 1) / 2).map(m => m.name);
+    const fallenFoes = [...new Set(combatEncounter.enemies.filter(e => (e.currentHp || 0) <= 0).map(e => String(e.name).replace(/\s+\d+$/, '')))];
+    const ending = tellMoment('fin-combate', {
+        ganado: reason === 'victory' ? 'sí' : (reason === 'manual' || reason === 'fled' ? 'huida' : 'no'),
+        caidos: listNames(fallenFoes),
+        heridos: wounded.length === 0 ? '' : `${listNames(wounded)} ${wounded.length === 1 ? 'sale malherido' : 'salen malheridos'}.`,
+        botin: listNames((loot?.items ?? []).map((/** @type {any} */ item) => String(item?.name || '')).filter(Boolean).slice(0, 3)),
+    });
+    postForModel(epilogue, { show: ending }).catch(error => console.error('[party] could not post the combat epilogue', error));
 
     // Idea 191: ganar se celebra, con la cuenta delante.
     if (reason === 'victory') {
@@ -10124,7 +10805,8 @@ async function openHowToPlay() {
  */
 function offerTruce() {
     /** @type {any} */ (combatEncounter).truce = 'pending';
-    /** @type {any} */ (combatEncounter).truceRound = Number(combatEncounter.round) || 1;
+    // Todavía no le ha tocado a nadie del grupo desde que la piden (ver `advanceTurnIndex`).
+    /** @type {any} */ (combatEncounter).truceSeen = false;
     saveCombatState();
     postCombatNarration(truceLine(getAliveEnemies().map(e => String(e.name))));
     const toast = toastr.info('Aceptarla gana el tablero, pero los que se van no dejan botín. Los tuyos lo juzgarán, la aceptes o no.', '🏳️ Piden tregua', { timeOut: 20000 });
@@ -10365,7 +11047,7 @@ export function getEngineSceneState() {
 /**
  * Get a snapshot of all characters/NPCs/enemies present on the current board/location.
  * Used by the Dynamic Context Manager to inject board awareness into AI context.
- * @returns {{ locationName: string, boardName: string, partyTokens: Array<{name: string}>, npcTokens: Array<{name: string}>, enemyTokens: Array<{name: string}> }}
+ * @returns {{ locationName: string, boardName: string, partyTokens: Array<{name: string}>, npcTokens: Array<{name: string}>, enemyTokens: Array<{name: string}>, fighting: boolean }}
  */
 export function getBoardContextSnapshot() {
     /** @type {{name: string}[]} */
@@ -10380,6 +11062,9 @@ export function getBoardContextSnapshot() {
         partyTokens,
         npcTokens,
         enemyTokens,
+        // Sin pelea, los enemigos que salen son los que el tablero trae y todavía no pelean:
+        // el prompt no puede decir «en combate» (Daniel lo vio en el prompt, 2026-09-28).
+        fighting: Boolean(combatEncounter.active),
     };
 
     if (!currentLocationName) return snapshot;
@@ -10415,6 +11100,12 @@ export function getBoardContextSnapshot() {
     if (combatEncounter.active && combatEncounter.enemies.length > 0) {
         for (const e of combatEncounter.enemies) {
             snapshot.enemyTokens.push({ name: e.name });
+        }
+    } else if (currentBoardName && !isBoardWon(currentLocationName, currentBoardName)) {
+        // Sin pelea, los que el tablero trae escritos y están a la vista: los mismos que se dibujan.
+        const board = getActiveBoardContext().board;
+        for (const p of awakePlacements(board?.rooms, board?.enemyPlacements ?? [])) {
+            snapshot.enemyTokens.push({ name: String(p.name) });
         }
     }
 
@@ -12769,10 +13460,15 @@ const getAbilityCatalogue = () => {
     }
     const pack = normalizeAbilities(plain);
     const have = new Set(pack.map(ability => ability.id));
-    const rows = lastCompendium?.has?.('habilidades')
+    // Las del mundo primero: una habilidad retocada en el taller tapa a la de serie.
+    const own = (Array.isArray(lastWorldRows?.habilidades) ? lastWorldRows.habilidades : [])
+        .filter((/** @type {any} */ row) => String(row?.kind || 'habilidad') === 'habilidad')
+        .map(asAbility).filter((/** @type {any} */ a) => !have.has(String(a.id)) && !magicInData(a));
+    for (const ability of own) have.add(String(ability.id));
+    const rows = [...own, ...(lastCompendium?.has?.('habilidades')
         ? lastCompendium.find('habilidades', { kind: 'habilidad' }).map(asAbility)
             .filter((/** @type {any} */ a) => !have.has(String(a.id)) && !magicInData(a))
-        : [];
+        : [])];
     const magic = grimoireAbilities().map(ability => ({ ...ability, ...(tuned.get(ability.id) ?? {}), aliases: spellById(ability.id)?.aliases ?? [] }));
     return [...pack, ...normalizeAbilities(rows), ...normalizeAbilities(magic)];
 };
@@ -14010,6 +14706,156 @@ function namesInLastNarration() {
  * @returns {import('./game-engine/ui/shell/action-chips.js').ActionChip[]}
  */
 /**
+ * Z3: lo que hay aquí, para leer la caja con los nombres de aquí.
+ *
+ * @returns {import('./game-engine/campaign/read-box.js').BoxContext}
+ */
+function boxContext() {
+    const location = hereLocation();
+    const shop = buildServiceCards().find(c => c.id === 'tienda');
+    return {
+        fighting: Boolean(combatEncounter.active),
+        foes: combatEncounter.active ? getAliveEnemies().map((/** @type {any} */ e) => String(e.name)) : [],
+        places: neighbourPlaces(),
+        boards: currentBoardName ? [] : getLocationBoards(location).map((/** @type {any} */ b) => String(b.name)),
+        onBoard: Boolean(currentBoardName),
+        people: lastWorldNpcs.filter(n => !n.dead && n.where.toLowerCase() === String(currentLocationName).toLowerCase()).map(n => n.name),
+        companions: partyMembers.slice(1).filter(m => !m.dead).map(m => String(m.name)),
+        services: location ? servicesOf(location) : [],
+        wares: (shop?.actions ?? []).filter(a => a.id.startsWith('shop-buy:')).map(a => a.id.slice('shop-buy:'.length)),
+        goods: (shop?.actions ?? []).filter(a => a.id.startsWith('shop-sell:')).map(a => a.label.replace(/^Vender /, '').replace(/ \(\d+ de oro\)$/, '')),
+    };
+}
+
+/** Z3: mientras la caja la lee el motor, lo escrito no se vuelve a leer como mensaje. */
+let readingBox = false;
+
+/**
+ * Z3 de ROADMAP_SIN_TOKENS: sin modelo, la caja la lee el motor. Lo escrito queda en el
+ * chat, como siempre, y se hace lo que dice; si no lo entiende, lo dice y enseña qué se
+ * puede escribir aquí.
+ *
+ * @param {string} said
+ * @returns {Promise<void>}
+ */
+async function readTheBox(said) {
+    await ensureWorldData();
+    const context = boxContext();
+    const intent = readBox(said, context);
+    readingBox = true;
+    try {
+        await sendMessageAsUser(said, '');
+    } finally {
+        readingBox = false;
+    }
+    await doBoxIntent(intent, context);
+    if (isShellOpen()) refreshGameShell();
+}
+
+/**
+ * Hacer lo que la caja entendió: lo mismo que la ficha o el comando de siempre.
+ *
+ * @param {import('./game-engine/campaign/read-box.js').BoxIntent} intent
+ * @param {import('./game-engine/campaign/read-box.js').BoxContext} context
+ * @returns {Promise<void>}
+ */
+async function doBoxIntent(intent, context) {
+    const run = (/** @type {string} */ command) => import('./slash-commands.js').then(m => m.executeSlashCommandsWithOptions(command));
+    const name = String(intent.name ?? '');
+    const shopAction = (/** @type {string} */ prefix, /** @type {string} */ item) => buildServiceCards().find(c => c.id === 'tienda')
+        ?.actions.find(a => a.id.startsWith(prefix) && (a.id.includes(item) || a.label.includes(item)))?.id ?? '';
+    switch (intent.do) {
+        case 'go': {
+            const { reason } = await travelWithTime(name, { confirm: askBeforeTravelling });
+            if (reason) toastr.info(reason, 'No se puede viajar');
+            renderLocationMapsPreview();
+            return;
+        }
+        case 'enter': await run(`/enter ${name}`); return;
+        case 'leave': await run('/leave'); return;
+        case 'service': openService(name); return;
+        case 'talk': startTalk(name, '', String(intent.topic ?? '')); return;
+        case 'threaten': startTalk(name, '', 'amenazar'); return;
+        case 'duel': await run(`/convencer ${name}`); return;
+        case 'pry': await run(`/sonsacar ${name}`); return;
+        case 'round': {
+            const member = intent.companion ? partyMembers.find(m => String(m.name) === name) : null;
+            if (member) await runService(`inn-round:${member.id}`);
+            else startTalk(name, '', 'ronda');
+            return;
+        }
+        case 'attack': handlePlayerCombatAttack(name); return;
+        case 'move': handlePlayerCombatMove(`${intent.x} ${intent.y}`); return;
+        case 'end-turn': endPlayerCombatTurn(); return;
+        case 'check': {
+            // «Observo a Torres»: la tirada es con él delante.
+            const npc = name ? worldNpc(name) : null;
+            if (npc) talkingTo = npc.name;
+            runSkillCheck(String(intent.skill), '', String(intent.what ?? ''));
+            return;
+        }
+        case 'rest': await run(`/descanso ${intent.long ? 'largo' : 'corto'}`); return;
+        case 'camp': await run('/acampar'); return;
+        case 'explore': await run('/explorar'); return;
+        case 'forage': await run('/forrajear'); return;
+        case 'rumor': await run('/rumor'); return;
+        case 'wait': {
+            // Hasta el momento pedido, o un rato; nunca más de un día.
+            const slots = getCampaignCalendar()?.slots ?? [];
+            if (intent.until && slots[Number(getCampaignCalendar()?.slotIndex) || 0]?.id === intent.until) {
+                postCombatNarration(`⏳ [CAMPAÑA] Ya es ${String(getCurrentSlotLabel() || '').toLowerCase()}.`);
+                return;
+            }
+            for (let step = 0; step < 3; step++) {
+                advanceCampaignSlot();
+                const now = getCampaignCalendar();
+                if (!intent.until || slots[Number(now?.slotIndex) || 0]?.id === intent.until) break;
+            }
+            postCombatNarration(`⏳ [CAMPAÑA] Esperáis. Ya es ${String(getCurrentSlotLabel() || '').toLowerCase()}.`);
+            return;
+        }
+        case 'buy': {
+            const id = name ? shopAction('shop-buy:', name) : '';
+            if (id) await runService(id);
+            else openService('tienda');
+            return;
+        }
+        case 'sell': {
+            const id = name === '*' ? 'shop-junk' : name ? shopAction('shop-sell:', name) : '';
+            if (id) await runService(id);
+            else openService('tienda');
+            return;
+        }
+        case 'steal': {
+            const id = shopAction('shop-steal:', name);
+            if (id) await runService(id);
+            else openService('tienda');
+            return;
+        }
+        case 'help': openHelp(); return;
+        case 'journal': openJournalSafely(); return;
+        default: {
+            const why = explainMiss(intent, context) || 'Eso no lo sé hacer sin narrador.';
+            const tries = boxExamples(context).map(e => `«${e}»`).join(' · ');
+            postCombatNarration(`🤔 [CAJA] ${why} Prueba: ${tries}. O pulsa una ficha, o «¿Qué hago?».`);
+        }
+    }
+}
+
+/**
+ * A dónde se puede ir desde aquí, de un solo camino: los vecinos abiertos.
+ *
+ * @returns {string[]}
+ */
+function neighbourPlaces() {
+    const reach = reachFrom({
+        from: currentLocationName, locations: getCurrentWorldLocationMaps(),
+        friendly: friendlyFactions(), season: currentSeason(), done: readPlotState(chat_metadata?.[PLOT_STATE_KEY]).done,
+    });
+    return Object.entries(reach).filter(([, way]) => way.reach === 'near').map(([name]) => name);
+}
+
+/**
  * @param {number} [limit] Cuantas caben; sin decir, las de la fila.
  * @returns {import('./game-engine/ui/shell/action-chips.js').ActionChip[]}
  */
@@ -14028,11 +14874,11 @@ function buildShellChips(limit = undefined) {
         hasBoard: Boolean(currentBoardName),
         doors: closedDoorsNearParty(),
         // Con los muertos no se habla (idea 36).
-        companions: partyMembers.filter(m => !m.dead).map(m => ({ name: m.name })),
+        // Con los compañeros: el primero es quien juega, y hablar consigo mismo no es hablar.
+        companions: partyMembers.slice(1).filter(m => !m.dead).map(m => ({ name: m.name })),
         mentioned: namesInLastNarration(),
-        places: getCurrentWorldLocationMaps()
-            .filter(l => l.name !== currentLocationName)
-            .map(l => ({ name: l.name })),
+        // Se viaja a los vecinos: una ficha a la otra punta del mapa sería un salto.
+        places: neighbourPlaces().map(name => ({ name })),
         boards: getLocationBoards(location).map((/** @type {any} */ b) => ({ name: b.name })),
         hurt: partyMembers.some(m => !m.dead && (Number(m.hp) || 0) < (Number(m.maxHp) || 0)),
         // Cuantos dados quedan sale del nivel y de los ya gastados; las caras las
@@ -14049,7 +14895,8 @@ function buildShellChips(limit = undefined) {
             .filter(n => !n.dead && n.where.toLowerCase() === String(currentLocationName).toLowerCase())
             .map(n => ({ name: n.name })),
         // Idea 139: lo que ofrece el narrador.
-        extras: offerChips(chat_metadata?.[OFFERS_KEY]),
+        // Z3: y lo que el sitio deja examinar, sin que nadie lo ofrezca.
+        extras: [...offerChips(chat_metadata?.[OFFERS_KEY]), ...lookChips()],
         // Idea 67: acampar donde no hay posada.
         camp: Boolean(currentLocationName) && !currentBoardName && campHere().ok,
         // Idea 75: la escalera al nivel siguiente.
@@ -14085,6 +14932,14 @@ function runShellChip(chip) {
     if (chip.id.startsWith('talk-local:') || chip.id === 'reply-bye') {
         talkingTo = chip.id === 'reply-bye' ? '' : chip.id.slice('talk-local:'.length);
         if (isShellOpen()) setTimeout(() => refreshGameShell(), 0);
+    }
+    // Hablar con alguien cuenta al pulsar, no al enviar: sin modelo no se envía nada, y el
+    // hilo se quedaba esperando (ROADMAP_SIN_TOKENS, Z0).
+    const talkTo = chip.id.startsWith('talk-local:') ? chip.id.slice('talk-local:'.length)
+        : chip.id.startsWith('talk:') ? chip.id.slice('talk:'.length) : '';
+    if (talkTo) {
+        startTalk(talkTo, String(chip.draft || ''));
+        return;
     }
     // Idea 169: las que no cabian en la fila.
     if (chip.id === 'more') {
@@ -14135,7 +14990,8 @@ function currentReplies() {
         extra.push({ id: 'reply-case', label: `Preguntar a ${npc.name} por lo de ${mystery.active?.victim}`, icon: 'fa-magnifying-glass', command: `/caso preguntar ${npc.name}` });
     }
     if (canDuel(npc.name)) extra.push({ id: 'reply-duel', label: `Convencer a ${npc.name}`, icon: 'fa-comments', command: `/convencer ${npc.name}` });
-    return repliesFor({ name: npc.name, rumors: rumorsLeftHere(), canPry: pry.ok, extra })
+    // Quien os planta cara no pregunta qué necesitáis: se le contesta (2026-09-28).
+    return repliesFor({ name: npc.name, rumors: rumorsLeftHere(), canPry: pry.ok, extra, confronting: confrontingNow(npc.name) })
         .map(reply => (reply.action === 'pry' ? { ...reply, command: `/sonsacar ${npc.name}` } : reply));
 }
 
@@ -14219,6 +15075,53 @@ function draftInChat(text) {
 /** La tirada hecha que todavia no se ha enviado. Una por mensaje. */
 const PENDING_CHECK_KEY = 'pendingCheck';
 
+/** Z6 de ROADMAP_SIN_TOKENS: quién cuenta la partida. Es de quien juega, no de la campaña. */
+const NARRATOR_MODE_STORAGE = 'sillytavern_gameNarrator';
+/** Motor: 0 tokens. Mixto: el motor cuenta y el modelo añade en lo que importa. Modelo: como antes. */
+const NARRATOR_MODES = ['motor', 'mixto', 'modelo'];
+
+/** Z6: cómo se llama cada modo en la pausa, y qué quiere decir. */
+const NARRATOR_LABELS = { motor: 'Motor (0 tokens)', mixto: 'Mixto', modelo: 'Modelo' };
+const NARRATOR_HINTS = {
+    motor: 'Todo lo cuenta el juego y no se gasta ni un token. Lo que escribes en la caja lo lee el juego.',
+    mixto: 'El juego cuenta y resuelve, y hace lo que entiende de la caja; el modelo contesta lo demás y a quien le hablas.',
+    modelo: 'Como antes: cuenta el modelo, y las fichas de hablar dejan la frase empezada.',
+};
+
+/**
+ * El modo elegido, o «mixto» si no se ha elegido nunca (DZ3).
+ *
+ * @returns {string}
+ */
+function storedNarratorMode() {
+    try {
+        const stored = String(localStorage.getItem(NARRATOR_MODE_STORAGE) || '');
+        return NARRATOR_MODES.includes(stored) ? stored : 'mixto';
+    } catch {
+        return 'mixto';
+    }
+}
+
+/**
+ * Quién cuenta ahora: sin proveedor, siempre el motor.
+ *
+ * @returns {string}
+ */
+function narratorMode() {
+    return online_status === 'no_connection' ? 'motor' : storedNarratorMode();
+}
+
+/**
+ * Si el modelo lo cuenta todo, como antes: la tirada espera al mensaje, hablar deja la frase
+ * empezada. En «Motor» y en «Mixto», el motor resuelve y cuenta, y nada espera a un mensaje
+ * enviado, que sin modelo no se envía (ROADMAP_SIN_TOKENS, Z0).
+ *
+ * @returns {boolean}
+ */
+function modelNarrates() {
+    return narratorMode() === 'modelo';
+}
+
 /**
  * Intentar algo fuera de combate: el motor tira y el narrador lee el resultado.
  *
@@ -14253,11 +15156,6 @@ function openAllChips() {
 }
 
 /**
- * @param {string} skill
- * @param {string} [keep] Lo que ya estaba escrito: la tirada va delante y lo escrito se queda.
- * @returns {string}
- */
-/**
  * Idea 59: cómo va una tirada de trato con quien se está hablando, por la lengua.
  *
  * @param {any} speaker
@@ -14274,19 +15172,32 @@ function listenerBarrier(speaker, skill, name = '') {
     return languageBarrier({ speaker, party: partyMembers, language: listener.language, skill, listener: listener.name });
 }
 
-function runSkillCheck(skill, keep = '') {
+/**
+ * @param {string} skill
+ * @param {string} [keep] Lo que ya estaba escrito: la tirada va delante y lo escrito se queda.
+ * @param {string} [what] Z3: lo que se intenta, en infinitivo, para contarlo sin modelo.
+ * @returns {string}
+ */
+function runSkillCheck(skill, keep = '', what = '') {
     // Idea 138: si la pidio el narrador, con su dificultad, y la peticion se gasta.
     const asked = takeRequest(chat_metadata?.[CHECK_REQUESTS_KEY], skill, SKILLS);
     if (combatEncounter.active) {
         toastr.warning('En combate se pelea con la barra de abajo.');
         return '';
     }
+    // Quién cuenta la tirada: el modelo si narra él; en «Mixto», también si la pidió él (idea
+    // 138) o si hay algo escrito en la caja (lo vas a enviar, y la tirada va delante para que
+    // la lea). Si no, el motor.
+    const toModel = modelNarrates() || (narratorMode() === 'mixto' && (Boolean(asked.request) || Boolean(String(keep).trim())));
     const pending = chat_metadata?.[PENDING_CHECK_KEY];
-    if (pending?.draft) {
+    if (pending?.draft && toModel) {
         toastr.info('Ya has tirado. Envia el mensaje antes de intentar otra cosa.');
         draftInChat(String(pending.draft));
         return String(pending.line || '');
     }
+    // Sin modelo no hay mensaje que la gaste: una pendiente de antes no bloquea nada (y una
+    // partida que se quedó así, tras recargar, se desatasca aquí).
+    if (pending && chat_metadata) delete chat_metadata[PENDING_CHECK_KEY];
 
     const member = partyMembers[0];
     if (!member) {
@@ -14299,7 +15210,7 @@ function runSkillCheck(skill, keep = '') {
     const result = rollCheck({
         member, skill, rollD20: () => rollDiceDetailed('1d20', 20).total,
         // Idea 140: la actitud de con quien se habla baja o sube lo que hace falta.
-        dc: (asked.request ? asked.request.dc : DEFAULT_DC) - (SOCIAL_SKILLS.includes(skill) && talkingTo ? attitudeBonus(chat_metadata?.[ATTITUDES_KEY], talkingTo) : 0),
+        dc: (asked.request ? asked.request.dc : DEFAULT_DC) - (SOCIAL_SKILLS.includes(skill) && talkingTo ? attitudeTowards(talkingTo) : 0),
         ...(barrier.edge ? { edge: barrier.edge, why: 'no habla su lengua' } : {}),
     });
     if (result && asked.request && chat_metadata) chat_metadata[CHECK_REQUESTS_KEY] = asked.requests;
@@ -14308,9 +15219,11 @@ function runSkillCheck(skill, keep = '') {
         return '';
     }
 
+    // Z3: sin modelo, fallar por poco sale a medias: se consigue, pero se paga.
+    const halfway = !toModel && checkOutcome(result) === 'medias';
     showCombatDiceRoll({
         title: `${member.name}: ${result.label}`,
-        subtitle: result.success ? 'Sale' : 'No sale',
+        subtitle: result.success ? 'Sale' : halfway ? 'A medias' : 'No sale',
         formula: `1d20${result.modifier >= 0 ? '+' : ''}${result.modifier}`,
         detail: `d20(${result.natural}) ${result.modifier >= 0 ? '+' : ''}${result.modifier} = ${result.total}`,
         total: result.total,
@@ -14319,16 +15232,359 @@ function runSkillCheck(skill, keep = '') {
         glyph: 'd20',
     });
 
-    chat_metadata[PENDING_CHECK_KEY] = { line: result.line, draft: result.draft };
+    // Con modelo, la consecuencia la cuenta él con el mensaje que se envíe; sin modelo, la
+    // tirada se cuenta aquí, y hace algo (Z3): no hay mensaje que esperar.
+    if (toModel) chat_metadata[PENDING_CHECK_KEY] = { line: result.line, draft: result.draft };
+    else tellCheck(member, result, what);
     // Idea 107: con el sitio, que es donde está la pista.
     notePlot({ kind: 'check', skill, success: result.success, place: currentLocationName });
     // Un encargo que se resuelve sin pelear se da por hecho con una tirada buena en su sitio.
     const takenNow = chat_metadata?.[TAKEN_KEY];
     if (settlesNoFight(takenNow, { place: currentLocationName, success: result.success })) finishTakenContract(takenNow);
     saveMetadata();
-    draftInChat(String(keep).trim() ? `${result.line}\n${String(keep).trim()}` : result.draft);
+    if (toModel) draftInChat(String(keep).trim() ? `${result.line}\n${String(keep).trim()}` : result.draft);
     if (isShellOpen()) refreshGameShell();
     return result.line;
+}
+
+/**
+ * Z3 de ROADMAP_SIN_TOKENS: sin modelo, una tirada se cuenta y hace algo. Bien, a medias o
+ * mal, y cada resultado con su efecto en lo que ya existe: una pista del caso, un rumor,
+ * unas monedas, algo de comer, un rato del día, una herida, o cómo os mira con quien se
+ * habla.
+ *
+ * @param {any} member Quien lo intenta.
+ * @param {{skill: string, success: boolean, total: number, dc: number, natural: number, said: string}} result
+ * @param {string} [what] Lo que se intentaba, en infinitivo.
+ * @returns {void}
+ */
+function tellCheck(member, result, what = '') {
+    const outcome = checkOutcome(result);
+    const gains = fieldGainsToday();
+    const key = `${currentLocationName}|${result.skill}`;
+    const fresh = !gains.keys.includes(key);
+    const npc = talkingTo ? worldNpc(talkingTo) : null;
+    const cases = readCases(chat_metadata?.[CASES_KEY]);
+    const clue = cases.active ? cluesHere(cases, { place: currentLocationName }).find(c => !cases.found.includes(c.id)) ?? null : null;
+    const effects = consequence({
+        skill: result.skill,
+        outcome,
+        can: {
+            pista: Boolean(clue), rumor: rumorsLeftHere() > 0, oro: fresh, comida: fresh,
+            mirada: Boolean(npc), sabe: Boolean(npc?.knows), busca: Boolean(npc?.wants),
+        },
+    });
+    const said = outcome === 'medias' ? result.said.replace(/ ✗ Fallo\b/, ' ✗ A medias') : result.said;
+    const prose = tellMoment(`tirada-${outcome}`, { quien: String(member?.name || ''), que: String(what || '').trim(), habilidad: result.skill });
+    /** @type {string[]} */
+    const notes = [];
+    /** @type {Array<() => void>} */
+    const after = [];
+    let gained = false;
+    for (const effect of effects) {
+        if (effect.kind === 'pista' && clue) after.push(() => revealClue(clue));
+        else if (effect.kind === 'rumor') after.push(() => { void hearRumor(); });
+        else if (effect.kind === 'oro') {
+            const gold = Math.max(1, rollDiceDetailed(String(effect.amount || '1d4'), 4).total);
+            member.gold = (Number(member.gold) || 0) + gold;
+            notes.push(`Encontráis ${gold} de oro.`);
+            gained = true;
+        } else if (effect.kind === 'comida') {
+            for (const one of partyMembers) {
+                if (!one.dead) one.needs = relieve(one, 'ate');
+            }
+            notes.push('Algo de comer: se os pasa el hambre.');
+            gained = true;
+        } else if (effect.kind === 'hora') {
+            // El reloj, detrás de la tirada: si no, el aviso de la hora salía antes que ella.
+            after.unshift(() => { advanceCampaignSlot(); });
+            notes.push('Se os va un rato.');
+        } else if (effect.kind === 'herida') {
+            const before = Number(member.hp) || 0;
+            const hurt = /d/.test(String(effect.amount)) ? rollDiceDetailed(String(effect.amount), 4).total : Number(effect.amount) || 1;
+            member.hp = Math.max(1, before - hurt);
+            if (before > member.hp) notes.push(`${member.name} se hace daño: −${before - member.hp} de vida.`);
+        } else if (effect.kind === 'mirada' && npc) {
+            const delta = Number(effect.amount) || 0;
+            after.push(() => { changeAttitude(npc.name, delta, delta > 0 ? 'le habéis convencido' : 'no le ha gustado'); });
+        } else if (effect.kind === 'sabe' && npc?.knows) {
+            after.push(() => { sayInTalk(npc, threatAnswer({ npc, success: true }), `${npc.name} lo suelta: ${npc.knows}`); });
+        } else if (effect.kind === 'busca' && npc?.wants) {
+            const wants = String(npc.wants).trim();
+            notes.push(`Le caláis: lo que de verdad busca ${npc.name} es ${wants.charAt(0).toLocaleLowerCase('es')}${wants.slice(1)}`);
+        }
+    }
+    if (outcome !== 'mal' && effects.length === 0 && !fresh) notes.push('Aquí ya no queda nada más que sacar hoy.');
+    if (gained && chat_metadata) chat_metadata[FIELD_GAINS_KEY] = { ...gains, keys: [...gains.keys, key] };
+    postCombatNarration(`🎲 [TIRADA] ${[`${said}.`, prose, ...notes].filter(Boolean).join(' ')}`);
+    for (const run of after) run();
+    savePartyState();
+}
+
+/**
+ * Z3: lo que se puede examinar aquí sin que nadie lo ofrezca: dos cosas del sitio, cada una
+ * con su tirada, una vez al día. Es la versión del motor de «Buscar X» y de la tirada que
+ * pide el sitio, que antes solo ofrecía el modelo.
+ *
+ * @returns {Array<{id: string, label: string, icon: string, command: string}>}
+ */
+function lookChips() {
+    if (!currentLocationName || currentBoardName || combatEncounter.active || !lastCompendium?.has?.('frases')) return [];
+    const place = hereLocation();
+    const tipo = String(place?.locationType || place?.type || '');
+    const rows = lastCompendium.find('frases', { kind: 'mirar', ...(tipo ? { tipo } : {}) });
+    const own = rows.filter((/** @type {any} */ r) => r.when?.tipo);
+    const pool = own.length > 0 ? own : rows;
+    const random = createSeededRandom(derive(String(chat_metadata?.[METADATA_KEY] || ''), 'mirar', currentLocationName, String(campaignDay())));
+    const looked = fieldGainsToday().looked;
+    return pool.map((/** @type {any} */ row) => ({ row, at: random() }))
+        .sort((a, b) => a.at - b.at)
+        .slice(0, 2)
+        .map(({ row }) => row)
+        .filter((/** @type {any} */ row) => !looked.includes(`${currentLocationName}|${row.id}`))
+        .map((/** @type {any} */ row) => ({
+            id: `look:${row.id}`,
+            label: `${String(row.verbo).charAt(0).toLocaleUpperCase('es')}${String(row.verbo).slice(1)} ${row.text}`,
+            icon: SKILLS[/** @type {keyof typeof SKILLS} */ (row.skill)]?.icon ?? 'fa-eye',
+            command: `/examinar ${row.id}`,
+        }));
+}
+
+/**
+ * Z3: examinar algo de aquí. Una de las cosas del sitio (por su id) o lo que se escriba:
+ * «/examinar la cerradura del baúl».
+ *
+ * @param {string} value
+ * @returns {Promise<void>}
+ */
+async function lookAt(value) {
+    const wanted = String(value ?? '').trim();
+    if (!wanted) return;
+    const row = lastCompendium?.has?.('frases')
+        ? lastCompendium.find('frases', { kind: 'mirar' }).find((/** @type {any} */ r) => r.id === wanted) : null;
+    if (row) {
+        const gains = fieldGainsToday();
+        if (chat_metadata) chat_metadata[FIELD_GAINS_KEY] = { ...gains, looked: [...gains.looked, `${currentLocationName}|${row.id}`] };
+        runSkillCheck(String(row.skill), '', `${row.verbo} ${row.text}`);
+    } else {
+        const intent = readBox(`examino ${wanted}`, boxContext());
+        runSkillCheck(String(intent.skill || 'investigation'), '', intent.what || `examinar ${wanted}`);
+    }
+    if (isShellOpen()) refreshGameShell();
+}
+
+/**
+ * Hablar con alguien: el hilo se entera, y con modelo queda la frase empezada para que la
+ * termine quien juega. Sin modelo, se abre la charla (Z2).
+ *
+ * @param {string} name
+ * @param {string} [draft] La frase empezada, para el modelo.
+ * @param {string} [ask] Z3: de qué preguntar nada más abrir (`sabe`, `rumor`…) o qué hacer (`amenazar`, `ronda`).
+ * @returns {void}
+ */
+function startTalk(name, draft = '', ask = '') {
+    const who = String(name ?? '').trim();
+    if (!who) return;
+    notePlot({ kind: 'talk', npc: who, place: currentLocationName });
+    // Desde ahora se habla con él: con modelo, contesta él (y no el narrador).
+    const known = worldNpc(who)?.name ?? partyMembers.slice(1).find(m => !m.dead && String(m.name).toLowerCase() === who.toLowerCase())?.name;
+    if (known) {
+        talkingTo = String(known);
+        if (isShellOpen()) setTimeout(() => refreshGameShell(), 0);
+    }
+    if (modelNarrates()) {
+        draftInChat(draft || `Le digo a ${who}: `);
+        return;
+    }
+    // Z2: la charla, con temas y respuestas del motor.
+    void openTalk(who, draft, ask);
+}
+
+/**
+ * La gente del mundo por su nombre.
+ *
+ * @param {string} name
+ * @returns {any|null}
+ */
+function worldNpc(name) {
+    const who = String(name ?? '').trim().toLowerCase();
+    return lastWorldNpcs.find(n => n.name.toLowerCase() === who) ?? null;
+}
+
+/**
+ * Lo que dice alguien en una charla: la frase del banco (o, si no hay, el dato tal cual),
+ * en la ventana y en el chat, con los hechos para el modelo si lo hay.
+ *
+ * @param {any} npc
+ * @param {{moment: string, facts: Record<string, any>}|null} plan
+ * @param {string} fallback Lo que se dice si el banco no tiene frase.
+ * @returns {string}
+ */
+function sayInTalk(npc, plan, fallback) {
+    const line = (plan ? tellMoment(plan.moment, plan.facts) : '') || fallback;
+    if (line) void postForModel(talkNote(npc, line), { show: `🗣️ [GENTE] ${line}` });
+    return line;
+}
+
+/**
+ * Z2 de ROADMAP_SIN_TOKENS: hablar con alguien sin modelo. Una ventana con de qué se puede
+ * hablar (lo que sabe, lo que busca, lo que se cuenta, el caso) y qué se puede hacer
+ * (convencer, sonsacar, amenazar, invitar a una ronda). Lo que contesta depende de cómo os
+ * mire; y lo que dice queda en la ventana y en el chat.
+ *
+ * @param {string} name
+ * @param {string} [draft] La frase empezada, para decírselo con tus palabras si hay modelo.
+ * @param {string} [ask] Z3: lo que se pidió al escribirlo: un tema o una acción (`amenazar`, `ronda`).
+ * @returns {Promise<void>}
+ */
+async function openTalk(name, draft = '', ask = '') {
+    await ensureWorldData();
+    const npc = worldNpc(name);
+    // Un compañero, o alguien que el mundo no conoce: una línea, y la caja si hay modelo.
+    if (!npc) {
+        postCombatNarration(`🗣️ [GENTE] Hablas con ${name}.`);
+        if (narratorMode() !== 'motor') draftInChat(draft || `Le digo a ${name}: `);
+        return;
+    }
+    talkingTo = npc.name;
+    // Cómo os mira de verdad ahora: quien os planta cara no os mira neutral (2026-09-28).
+    const attitude = () => attitudeTowards(npc.name);
+    const confronting = confrontingNow(npc.name);
+    // Si se le ha calado (sonsacado con éxito): abre lo que busca y lo que piensa de vosotros.
+    const read = () => Boolean(readSecrets(chat_metadata?.[SECRETS_KEY]).known[npc.name]);
+    const same = (/** @type {any} */ a) => String(a ?? '').toLowerCase() === npc.name.toLowerCase();
+    const milestone = openMilestones().find(m => m?.asks?.kind === 'talk' && same(m.asks.npc)) ?? null;
+    const heard = Array.isArray(chat_metadata?.[RUMORS_HEARD_KEY]) ? chat_metadata[RUMORS_HEARD_KEY] : [];
+    const hasRumor = () => lastRumors.some(r => same(r.by) && !heard.includes(r.id));
+    const cases = readCases(chat_metadata?.[CASES_KEY]);
+    const hasCase = Boolean(cases.active) && cluesHere(cases, { person: npc.name }).length > 0;
+
+    const body = $('<div class="tk-root gs-panel"></div>');
+    body.append($('<h3 class="gs-popup-title"></h3>').text(npc.name));
+    const who = $('<div class="tk-who"></div>');
+    const mood = $('<span class="tk-mood"></span>');
+    const drawMood = () => mood.text(`Os mira de forma ${describeAttitude(attitude())}`).attr('data-band', attitude() >= 1 ? 'buena' : attitude() < 0 ? 'mala' : 'neutra');
+    drawMood();
+    if (npc.trade) who.append($('<span class="tk-trade"></span>').text(npc.trade));
+    who.append(mood);
+    body.append(who);
+    if (npc.voice) body.append($('<div class="tk-voice"></div>').text(`Cómo habla: ${npc.voice}`));
+    const log = $('<div class="tk-log"></div>');
+    const add = (/** @type {string} */ line) => {
+        if (!line) return;
+        log.append($('<div class="tk-line"></div>').text(line));
+        log.scrollTop(log[0]?.scrollHeight ?? 0);
+    };
+
+    /** @type {Popup|null} */
+    let popup = null;
+    const topics = $('<div class="tk-topics"></div>');
+    const drawTopics = () => {
+        topics.empty();
+        for (const topic of talkTopics({ npc, milestone, hasRumor: hasRumor(), hasCase, attitude: attitude(), read: read(), confronting })) {
+            const button = $('<button type="button" class="menu_button tk-topic"></button>').attr('data-topic', topic.id)
+                .append(`<i class="fa-solid ${topic.locked ? 'fa-lock' : topic.icon}"></i>`).append($('<span></span>').text(topic.label));
+            // Cerrado, y diciendo cómo se abre: con relación o con una tirada.
+            if (topic.locked) {
+                button.addClass('tk-locked').attr('title', topic.locked).attr('aria-disabled', 'true');
+                button.on('click', () => add(topic.locked ?? ''));
+                topics.append(button);
+                continue;
+            }
+            button.on('click', async () => {
+                if (topic.id === 'rumor') {
+                    const said = await hearRumor(npc.name);
+                    add(said ? `${npc.name} cuenta: «${said}»` : `${npc.name} no tiene nada nuevo que contar.`);
+                    drawTopics();
+                    return;
+                }
+                if (topic.id === 'caso') {
+                    const before = chat.length;
+                    await askAboutCase(npc.name);
+                    const told = chat.slice(before).map(m => String(m.extra?.display_text ?? m.mes ?? '')).filter(Boolean);
+                    add(told.length > 0 ? told.join(' ') : `${npc.name} no sabe nada más del caso.`);
+                    return;
+                }
+                const plan = topicAnswer({ npc, topic: topic.id, attitude: attitude(), attitudeWord: describeAttitude(attitude()), milestone });
+                const fallback = topic.id === 'sabe' ? `${npc.name}: ${npc.knows}` : topic.id === 'quiere' ? `Lo que busca ${npc.name}: ${npc.wants}` : '';
+                add(sayInTalk(npc, plan, fallback));
+            });
+            topics.append(button);
+        }
+    };
+    drawTopics();
+    body.append(topics).append(log);
+
+    // Lo que se puede hacer, además de preguntar.
+    const actions = $('<div class="tk-actions"></div>');
+    const act = (/** @type {string} */ label, /** @type {string} */ icon, /** @type {() => void|Promise<void>} */ run, /** @type {string} */ title, /** @type {string} */ id = '') => {
+        const button = $('<button type="button" class="menu_button tk-act"></button>').attr('title', title).attr('data-act', id)
+            .append(`<i class="fa-solid ${icon}"></i>`).append($('<span></span>').text(label));
+        button.on('click', () => { void run(); });
+        actions.append(button);
+    };
+    const closeAndRun = (/** @type {string} */ command) => {
+        void popup?.completeAffirmative();
+        setTimeout(() => { void import('./slash-commands.js').then(m => m.executeSlashCommandsWithOptions(command)); }, 300);
+    };
+    act('Convencer', 'fa-comments', () => closeAndRun(`/convencer ${npc.name}`), 'El Duelo de Palabras: tres rondas, y cede o no cede', 'convencer');
+    act('Sonsacar', 'fa-user-secret', () => closeAndRun(`/sonsacar ${npc.name}`), 'Perspicacia: lo que esconde, si lo notas', 'sonsacar');
+    act('Amenazar', 'fa-hand-fist', () => {
+        const member = partyMembers[0];
+        const result = member ? rollCheck({ member, skill: 'intimidation', rollD20: () => rollDiceDetailed('1d20', 20).total, dc: DEFAULT_DC }) : null;
+        if (!result) return;
+        add(noteRollInWindow(member, result));
+        const plan = threatAnswer({ npc, success: result.success });
+        add(sayInTalk(npc, plan, result.success ? `${npc.name} lo suelta: ${npc.knows}` : `${npc.name} no se deja amenazar.`));
+        // Amenazar se paga, salga o no.
+        changeAttitude(npc.name, -1, 'amenazado');
+        drawMood();
+    }, 'Intimidación: si sale, lo suelta aunque no os quiera; os lo tendrá en cuenta siempre', 'amenazar');
+    const inn = (/** @type {any} */ (getCurrentWorldLocationMaps().find((/** @type {any} */ l) => l.name === currentLocationName))?.services ?? []).includes('posada');
+    // A quien viene a por vosotros no se le invita a una ronda.
+    if (inn && !confronting) {
+        act('Invitar a una ronda', 'fa-beer-mug-empty', () => {
+            if (!payFromParty(2)) {
+                add('No os llega ni para una ronda.');
+                return;
+            }
+            const before = attitude();
+            const result = shiftAttitude(chat_metadata?.[ATTITUDES_KEY], { name: npc.name, delta: 1, day: campaignDay() });
+            if (result.ok && chat_metadata) {
+                chat_metadata[ATTITUDES_KEY] = result.state;
+                saveMetadata();
+                refreshWorldMemoryPrompt();
+            }
+            const changed = attitude() !== before;
+            add(sayInTalk(npc, { moment: changed ? 'charla-ronda' : 'charla-ronda-no', facts: { quien: npc.name, actitud_texto: describeAttitude(attitude()) } },
+                changed ? `Una ronda para ${npc.name}.` : `${npc.name} acepta la ronda.`));
+            drawMood();
+            drawTopics();
+        }, 'Dos de oro. Una vez al día, mejora cómo os mira', 'ronda');
+    }
+    // Con modelo que acompaña, también se le puede decir algo con tus palabras.
+    let keepTalking = false;
+    if (narratorMode() === 'mixto') {
+        act('Decírselo con tus palabras', 'fa-pen', () => {
+            // La conversación sigue en la caja: lo que se escriba lo contesta él.
+            keepTalking = true;
+            void popup?.completeAffirmative();
+            draftInChat(draft || `Le digo a ${npc.name}: `);
+        }, 'Lo escribes tú, y lo contesta el modelo', 'palabras');
+    }
+    body.append(actions);
+
+    // De quien os planta cara no se despide uno: se cierra la ventana y sigue la escena.
+    popup = new Popup(body[0], POPUP_TYPE.TEXT, '', { okButton: confronting ? 'Cerrar' : 'Despedirse', allowVerticalScrolling: true, leftAlign: true });
+    if (isShellOpen()) refreshGameShell();
+    // Z3: «le pregunto a Giles por los rumores», «amenazo a Torres»: nada más abrir, eso.
+    if (ask) setTimeout(() => body.find(`[data-topic="${ask}"], [data-act="${ask}"]`).first().trigger('click'), 80);
+    await popup.show();
+    // «Despedirse» acaba la conversación; seguirla con tus palabras, no.
+    if (!keepTalking && talkingTo === npc.name) {
+        talkingTo = '';
+        if (isShellOpen()) refreshGameShell();
+    }
 }
 
 /**
@@ -14631,9 +15887,12 @@ async function decideSetbacks(events) {
  * @param {string} name
  * @param {{confirm?: (plan: any) => Promise<boolean|string>}} [options] Si pregunta, puede
  *   devolver el ritmo elegido; y entonces tambien se deciden los contratiempos.
- * @returns {Promise<{to: string, reason: string}>}
+ * @returns {Promise<{to: string, reason: string, via?: string}>} `via`: si el sitio no es vecino,
+ *   por dónde se empieza.
  */
 async function travelWithTime(name, options = {}) {
+    // Z1: la primera vez que se llega a un sitio, el narrador lo describe.
+    const visitedBefore = Array.isArray(chat_metadata?.[VISITED_KEY]) ? [...chat_metadata[VISITED_KEY]] : [];
     // La misma regla que apaga la pestana de Exploracion: si solo se cerraran los botones,
     // `/go` seguiria sacandote de la pelea.
     const held = holdDuringCombat(combatEncounter, 'travel');
@@ -14664,9 +15923,11 @@ async function travelWithTime(name, options = {}) {
         season: currentSeason(),
         // U7: lo que la historia tiene que abrir antes (`cerrado_hasta` en el guion).
         done: readPlotState(chat_metadata?.[PLOT_STATE_KEY]).done,
+        // De vecino en vecino: a lo que queda más lejos se llega pasando por en medio.
+        directOnly: true,
     });
     // El motivo, no un boton que no hace nada: "el paso esta cerrado" es una meta.
-    if (!plan.ok) return { to: '', reason: plan.reason };
+    if (!plan.ok) return { to: '', reason: plan.reason, ...(plan.via ? { via: plan.via } : {}) };
 
     // Pensarselo mejor no es un fallo: sin motivo, nadie avisa de nada.
     let pace = 'normal';
@@ -14766,10 +16027,18 @@ async function travelWithTime(name, options = {}) {
     const shortcut = sailing ? null : travelShortcut(partyMembers, ride.days + delay - (roles.dayLess ? 1 : 0));
     const total = Math.max(MIN_DAYS, shortcut ? shortcut.days : ride.days + delay - (roles.dayLess ? 1 : 0));
 
+    // Z4: de dónde se sale, para los sucesos del camino.
+    const previousPlace = currentLocationName;
     currentLocationName = match.name;
     currentBoardName = '';
     saveCurrentLocation();
     saveCurrentBoard();
+    // El grupo viaja entero. Sin esto, cada uno seguía «estando» en el sitio de antes, y al
+    // entrar en un tablero de aquí no aparecía nadie.
+    for (const member of partyMembers.filter(m => !m.dead)) {
+        member.mapPosition = { ...(member.mapPosition ?? { gridX: 0, gridY: 0 }), locationName: match.name };
+    }
+    savePartyState();
     countStat('trips');
     notePlot({ kind: 'arrive', place: match.name });
     void populatePlace(match.name);
@@ -14855,7 +16124,20 @@ async function travelWithTime(name, options = {}) {
         ...trip.map(event => `Día ${event.day}: ${event.name}. ${event.note}`),
         'Cuenta el viaje en un párrafo breve. No inventes nada que no esté aquí.',
     ].filter(Boolean).join('\n');
-    postForModel(note).catch(error => console.error('[party] travel note failed', error));
+    // Z1: si cuenta el motor, el viaje y la llegada en prosa.
+    const lowerFirst = (/** @type {string} */ s) => (s ? s[0].toLocaleLowerCase('es') + s.slice(1) : s);
+    const road = tellMoment('viaje', {
+        destino: match.name,
+        dias: total,
+        dias_texto: daysText(total),
+        tiempo: String(weather[weather.length - 1] ?? ''),
+        sucesos: trip.length > 0 ? `${trip.map(event => lowerFirst(String(event.note || event.name).replace(/\.$/, ''))).join('; ')}.` : '',
+    });
+    const arrival = tellMoment('llegada', placeFacts(match.name, !visitedBefore.includes(match.name)));
+    postForModel(note, { show: [road, arrival].filter(Boolean).join('\n\n') }).catch(error => console.error('[party] travel note failed', error));
+    // Z4: lo que hubo que decidir por el camino, y lo que espera al llegar (o lo que vuelve).
+    playSucesos('viaje', { destino: match.name, sitio: previousPlace || match.name, tiempo: String(weather[weather.length - 1] ?? ''), bioma: biome }, total);
+    playSucesos('llegada', { sitio: match.name });
 
     return { to: match.name, reason: '' };
 }
@@ -15151,7 +16433,26 @@ function enterBoard(name) {
 
     currentBoardName = match.name;
     saveCurrentBoard();
+    placePartyAtStart(match);
     return match.name;
+}
+
+/**
+ * Al entrar en un tablero, el grupo se pone en sus casillas de inicio, como al empezar una
+ * campaña: la casilla de otro tablero puede caer en un muro de este, o fuera del mapa.
+ * Uno en cada casilla, por orden; si hay más gente que casillas, en la primera.
+ *
+ * @param {any} board
+ * @returns {void}
+ */
+function placePartyAtStart(board) {
+    const starts = Array.isArray(board?.partyStart) ? board.partyStart : [];
+    if (starts.length === 0 || combatEncounter.active) return;
+    partyMembers.filter(m => !m.dead).forEach((member, index) => {
+        const cell = starts[index] ?? starts[0];
+        member.mapPosition = { locationName: currentLocationName, gridX: Number(cell?.x) || 0, gridY: Number(cell?.y) || 0 };
+    });
+    savePartyState();
 }
 
 /**
@@ -15422,6 +16723,7 @@ function buildShellExploration() {
         bonds: getCampaignBonds(),
         calendar: getCampaignCalendar(),
         xpTable: getXpTable(),
+        travel: { friendly: friendlyFactions(), season: currentSeason(), done: readPlotState(chat_metadata?.[PLOT_STATE_KEY]).done },
     });
     // Idea 81: lo pendiente en cada sitio, para decidir adonde ir.
     /** @type {Record<string, number>} */
@@ -15489,6 +16791,9 @@ function buildShellOptions() {
             ? []
             : checkOptions(partyMembers[0], { locked: Boolean(chat_metadata?.[PENDING_CHECK_KEY]) })),
         onCheck: (skill) => { runSkillCheck(skill); },
+        onAskNarrator: () => askNarrator(),
+        isAskingNarrator: () => askingNarrator,
+        canAskNarrator: () => !combatEncounter.active && Boolean(partyMembers[0]),
         getFocus: () => focusOf(getPlot(), chat_metadata?.[PLOT_STATE_KEY], campaignDay()),
         onJournal: () => openJournalSafely(),
         onGlance: () => openPartyGlance(),
@@ -15577,6 +16882,13 @@ function buildShellOptions() {
             // R5: la mascota.
             { id: 'pet', label: currentPet() ? `Mascota: ${petName(/** @type {any} */ (currentPet()))}` : 'Mascota: ninguna', on: Boolean(currentPet()) },
             { id: 'saver', label: saverOn() ? 'Modo ahorro: encendido' : 'Modo ahorro: apagado', on: saverOn() },
+            // Z6 de ROADMAP_SIN_TOKENS: quién cuenta (y cuánto se gasta), y si salen sucesos.
+            {
+                id: 'narrator',
+                label: `Narrador: ${NARRATOR_LABELS[/** @type {keyof typeof NARRATOR_LABELS} */ (storedNarratorMode())]}${online_status === 'no_connection' && storedNarratorMode() !== 'motor' ? ' (sin conexión: Motor)' : ''}`,
+                on: storedNarratorMode() !== 'modelo',
+            },
+            { id: 'sucesos', label: sucesosOn() ? 'Sucesos con decisión: sí' : 'Sucesos con decisión: no', on: sucesosOn() },
             { id: 'length', label: `Largo de la narración: ${LENGTHS[/** @type {keyof typeof LENGTHS} */ (String(chat_metadata?.[LENGTH_KEY] || 'ficha'))]?.label ?? 'Lo de su ficha'}`, on: Boolean(chat_metadata?.[LENGTH_KEY]) },
             { id: 'colorblind', label: localFlag.get(COLORBLIND_KEY) === '1' ? 'Colores para daltonismo: sí' : 'Colores para daltonismo: no', on: localFlag.get(COLORBLIND_KEY) === '1' },
             // Idea 195: la letra del narrador, de la campaña.
@@ -15598,7 +16910,17 @@ function buildShellOptions() {
                 void openPetPanel();
                 return;
             }
-            if (id === 'saver') localFlag.set(SAVER_KEY, saverOn() ? '' : '1');
+            if (id === 'narrator') {
+                const next = NARRATOR_MODES[(NARRATOR_MODES.indexOf(storedNarratorMode()) + 1) % NARRATOR_MODES.length];
+                try {
+                    localStorage.setItem(NARRATOR_MODE_STORAGE, next);
+                } catch { /* sin almacenamiento, se queda como estaba */ }
+                toastr.info(NARRATOR_HINTS[/** @type {keyof typeof NARRATOR_HINTS} */ (next)], `Narrador: ${NARRATOR_LABELS[/** @type {keyof typeof NARRATOR_LABELS} */ (next)]}`);
+            } else if (id === 'sucesos') {
+                try {
+                    localStorage.setItem(SUCESOS_STORAGE, sucesosOn() ? 'off' : 'on');
+                } catch { /* sin almacenamiento, se queda como estaba */ }
+            } else if (id === 'saver') localFlag.set(SAVER_KEY, saverOn() ? '' : '1');
             else if (id === 'colorblind') {
                 localFlag.set(COLORBLIND_KEY, localFlag.get(COLORBLIND_KEY) === '1' ? '' : '1');
                 applyColorblind();
@@ -15629,6 +16951,7 @@ function buildShellOptions() {
         // Ideas 175, 176, 183 y 185: el taller del mundo.
         onWorkshop: () => { void openWorkshop(); },
         onRetry: (mode) => { void retryLastReply(mode); },
+        canRetry: () => narratorMode() !== 'motor',
         onFlee: () => { void retreatFromCombat(); },
         onClose: () => setLocationMapsHidden(wasHidden),
         getAbilities: () => {
@@ -15979,6 +17302,15 @@ function drawLocationMapsPreview() {
             persistBoardTerrain(selectedBoard);
         }
 
+        // Fuera de combate, los enemigos que el tablero trae escritos y el grupo ve: se dibujan
+        // quietos, y son los mismos que ofrece el botón de empezar. Solo lo que el grupo **ve
+        // de verdad**: `awakePlacements` esconde a los de una sala sin revelar, y la niebla al
+        // resto. Un tablero ya ganado no los vuelve a poner.
+        const waiting = combatEncounter.active || isBoardWon(currentLocationName, selectedBoard.name) ? [] : awakePlacements(selectedBoard.rooms, selectedBoard.enemyPlacements ?? [])
+            .filter((/** @type {any} */ p) => !fogOn
+                || fogState.visible.has(cellKey(Number(p.x) || 0, Number(p.y) || 0)));
+        allBoardTokens.push(...buildBoardIdleEnemyTokens(waiting));
+
         renderLocationView(boardPanel, {
             name: selectedBoard.name,
             imageUrl: selectedBoard.url,
@@ -16078,12 +17410,7 @@ function drawLocationMapsPreview() {
         // una sala sin revelar, pero un tablero sin salas no esconde nada — y entonces el
         // boton anunciaba al Carcelero de Hierro antes de que nadie lo hubiera visto. Un
         // boton que te chiva lo que hay detras de la puerta es lo contrario de un juego.
-        if (!combatEncounter.active) {
-            const awake = awakePlacements(selectedBoard.rooms, selectedBoard.enemyPlacements ?? [])
-                .filter((/** @type {any} */ p) => !fogOn
-                    || fogState.visible.has(cellKey(Number(p.x) || 0, Number(p.y) || 0)));
-            if (awake.length > 0) contentRoot.append(buildStartCombatButton(selectedBoard, awake));
-        }
+        if (waiting.length > 0) contentRoot.append(buildStartCombatButton(selectedBoard, waiting));
 
         // ---- Combat log (wiki/ROADMAP.md, Fase B4) ----
         // Beside the real board now, not only inside /sandbox. It appears once there is
@@ -16150,6 +17477,7 @@ function drawLocationMapsPreview() {
             currentBoardName = String($(this).data('board'));
             combatBoardSelection = { tokenId: null, boardName: '', locationName: '' };
             saveCurrentBoard();
+            placePartyAtStart(getLocationBoards(loc).find((/** @type {any} */ b) => b.name === currentBoardName));
             renderLocationMapsPreview();
         });
         contentRoot.append(boardsSection);
@@ -18044,7 +19372,17 @@ export function initPartyPanel() {
         // pregunta, porque un clic no puede gastar dias sin avisar. Lo que no cambia es el
         // coste: dos formas de viajar y una gratis seria una forma de saltarse el hambre.
         callback: async (_args, value) => {
-            const { to, reason } = await travelWithTime(String(value));
+            // Escribirlo es decidir el viaje entero; pero se hace de vecino en vecino, llegando
+            // de verdad a cada sitio de en medio, no de un salto.
+            let { to, reason, via } = await travelWithTime(String(value));
+            for (let hop = 0; !to && via && hop < 8; hop++) {
+                const step = await travelWithTime(via);
+                if (!step.to) {
+                    reason = step.reason;
+                    break;
+                }
+                ({ to, reason, via } = await travelWithTime(String(value)));
+            }
             if (!to) {
                 // El motivo que venga, una sola vez: antes esto decia «not found» aunque
                 // el sitio existiera y lo que fallara fuese el camino.
@@ -18085,7 +19423,8 @@ export function initPartyPanel() {
             }
 
             setPartyTab('location');
-            toastr.info(`🎲 ${t`Entered`} ${entered}`);
+            toastr.info(`🎲 Entras en ${entered}`);
+            tellBoard(String(entered));
             return entered;
         },
     }));
@@ -18140,7 +19479,7 @@ export function initPartyPanel() {
                 currentBoardName = '';
                 saveCurrentBoard();
                 setPartyTab('location');
-                toastr.info(`← ${t`Left`} ${leftBoard}`);
+                toastr.info(`← Sales de ${leftBoard}`);
                 return leftBoard;
             }
             if (currentLocationName) {
@@ -18150,7 +19489,7 @@ export function initPartyPanel() {
                 saveCurrentLocation();
                 saveCurrentBoard();
                 setPartyTab('location');
-                toastr.info(`← ${t`Left`} ${leftLoc}`);
+                toastr.info(`← Sales de ${leftLoc}`);
                 return leftLoc;
             }
             toastr.info(t`Nowhere to leave.`);
@@ -18580,7 +19919,7 @@ export function initPartyPanel() {
 
     SlashCommandParser.addCommandObject(SlashCommand.fromProps({
         name: 'campana',
-        helpString: '<div>El editor de la campana abierta: el mundo y sus localidades, con sus tableros. '
+        helpString: '<div>El editor de la campana abierta: el mundo y sus localizaciones, con sus tableros. '
             + 'Escribe donde escribe el importador de libros.</div>',
         callback: async () => await openCampaignBuilder(),
     }));
@@ -18850,6 +20189,32 @@ export function initPartyPanel() {
         helpString: '<div>Escuchar lo que se cuenta donde estás. Uno cada vez, sin repetir; '
             + 'alguno lleva a sitios que no están en el mapa.</div>',
         callback: () => hearRumor(),
+    }));
+
+    // Z2 de ROADMAP_SIN_TOKENS: hablar con alguien escribiéndolo, igual que pulsando su ficha.
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'hablar',
+        helpString: '<div>Hablar con alguien de aquí: <code>/hablar Giles</code>. Abre la charla: qué sabe, qué busca, '
+            + 'qué se cuenta, y convencer, sonsacar, amenazar o invitar a una ronda. Sin gastar tokens.</div>',
+        unnamedArgumentList: [SlashCommandArgument.fromProps({ description: 'Con quién', typeList: [ARGUMENT_TYPE.STRING], isRequired: true })],
+        callback: (_args, value) => {
+            const who = String(value ?? '').trim();
+            if (!who) return '';
+            startTalk(worldNpc(who)?.name ?? who);
+            return '';
+        },
+    }));
+
+    // Z3: examinar algo de aquí, con su tirada y su consecuencia.
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'examinar',
+        helpString: '<div>Examinar algo de aquí: <code>/examinar la cerradura del baúl</code>. Tira lo que toque '
+            + '(Investigación, Percepción, Supervivencia…) y sale bien, a medias o mal, con su efecto.</div>',
+        unnamedArgumentList: [SlashCommandArgument.fromProps({ description: 'Qué', typeList: [ARGUMENT_TYPE.STRING], isRequired: true })],
+        callback: async (_args, value) => {
+            await lookAt(String(value ?? ''));
+            return '';
+        },
     }));
 
     SlashCommandParser.addCommandObject(SlashCommand.fromProps({
@@ -19275,6 +20640,31 @@ export function initPartyPanel() {
         }, 1500);
     });
 
+    // Z3 de ROADMAP_SIN_TOKENS: sin modelo, SillyTavern no envía nada (no hay con quién
+    // hablar) y lo escrito se quedaba en la caja. Aquí se lee antes, y se hace lo que dice.
+    // Y a quién va lo que no hace el motor: `routeTyped`.
+    const takeBox = (/** @type {Event} */ event) => {
+        const input = /** @type {HTMLTextAreaElement|null} */ (document.querySelector('#send_textarea'));
+        const said = String(input?.value ?? '').trim();
+        if (!said || said.startsWith('/') || routeTyped(said) !== 'engine') return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        if (input) {
+            input.value = '';
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        void readTheBox(said);
+    };
+    document.addEventListener('keydown', (event) => {
+        if (!(event.target instanceof HTMLElement) || event.target.id !== 'send_textarea') return;
+        if (event.key !== 'Enter' || event.shiftKey || event.ctrlKey || event.altKey || event.isComposing || !shouldSendOnEnter()) return;
+        if (Popup.util.isPopupOpen()) return;
+        takeBox(event);
+    }, true);
+    document.addEventListener('click', (event) => {
+        if (event.target instanceof Element && event.target.closest('#send_but')) takeBox(event);
+    }, true);
+
     // Idea 137: mientras se escribe, si lo escrito pide una tirada, se ofrece.
     /** @type {ReturnType<typeof setTimeout>|null} */
     let typingTimer = null;
@@ -19301,6 +20691,32 @@ export function initPartyPanel() {
             saveMetadata();
             if (isShellOpen()) refreshGameShell();
         }
+    });
+
+    // Con modelo, a quien se le habla contesta él: la respuesta sale a su nombre, no al del
+    // narrador. Y así también la lee el modelo en lo que viene después.
+    eventSource.on(event_types.MESSAGE_RECEIVED, (/** @type {number} */ messageId) => {
+        const message = chat?.[messageId];
+        // Lo que se le preguntó al narrador lo contesta él, con su nombre.
+        if (narratorTurn && message && !message.is_user && !message.is_system) {
+            narratorTurn = false;
+            return;
+        }
+        const with_ = speakingWith();
+        if (!with_ || !message || message.is_user || message.is_system || message.extra?.model === 'game-engine') return;
+        message.name = with_.name;
+        // Habla una persona: sin el párrafo de narración que el modelo pone delante a veces.
+        const spoken = keepSpeech(String(message.mes ?? ''));
+        if (spoken !== message.mes) {
+            message.mes = spoken;
+            try {
+                updateMessageBlock(Number(messageId), message);
+            } catch (error) {
+                console.error('[party] no se pudo recortar la respuesta', error);
+            }
+        }
+        const shown = document.querySelector(`#chat .mes[mesid="${messageId}"] .name_text`);
+        if (shown) shown.textContent = with_.name;
     });
 
     eventSource.on(event_types.MESSAGE_RECEIVED, (/** @type {number} */ messageId) => {
@@ -19343,9 +20759,9 @@ export function initPartyPanel() {
     //  Auto-detect location / board names in user messages
     // ================================================================
 
-    eventSource.on(event_types.USER_MESSAGE_RENDERED, (/** @type {number} */ messageId) => {
+    eventSource.on(event_types.USER_MESSAGE_RENDERED, async (/** @type {number} */ messageId) => {
         const message = chat[messageId];
-        if (!message || !message.mes) return;
+        if (!message || !message.mes || readingBox) return;
         const text = message.mes.toLowerCase();
 
         // ── Natural-language combat commands (only while combat is active) ──
@@ -19376,37 +20792,26 @@ export function initPartyPanel() {
             }
         }
 
-        const locs = getCurrentWorldLocationMaps();
-        if (!locs || locs.length === 0) return;
+        if (getCurrentWorldLocationMaps().length === 0) return;
 
-        // Check boards at current location first (more specific)
-        if (currentLocationName) {
-            const loc = locs.find(l => l.name === currentLocationName);
-            const boards = (loc && Array.isArray(loc.boards)) ? loc.boards : [];
-            for (const b of boards) {
-                if (b.name && text.includes(b.name.toLowerCase())) {
-                    currentBoardName = b.name;
-                    saveCurrentBoard();
-                    setPartyTab('location');
-                    toastr.info(`🎲 ${t`Entered`} ${b.name}`);
-                    return;
-                }
-            }
-        }
-
-        // Check location names
-        for (const l of locs) {
-            if (l.name && text.includes(l.name.toLowerCase())) {
-                if (l.name !== currentLocationName) {
-                    currentLocationName = l.name;
-                    currentBoardName = '';
-                    saveCurrentLocation();
-                    saveCurrentBoard();
-                    setPartyTab('location');
-                    toastr.info(`📍 ${t`Traveled to`} ${l.name}`);
-                }
-                return;
-            }
+        // Z3: con modelo, «entramos en el callejón» entra y «vamos a Castillo de Vane» viaja,
+        // con sus días y solo a un vecino, antes de que conteste: así lo cuenta él. Nombrar
+        // un sitio de pasada ya no teletransporta a nadie.
+        const intent = readBox(message.mes, boxContext());
+        if (intent.do === 'talk' && intent.name && worldNpc(String(intent.name))) {
+            talkingTo = String(worldNpc(String(intent.name))?.name);
+            notePlot({ kind: 'talk', npc: talkingTo, place: currentLocationName });
+        } else if (intent.do === 'enter' && intent.name) {
+            currentBoardName = String(intent.name);
+            saveCurrentBoard();
+            placePartyAtStart(getLocationBoards(hereLocation()).find((/** @type {any} */ b) => b.name === currentBoardName));
+            setPartyTab('location');
+            toastr.info(`🎲 Entras en ${intent.name}`);
+            tellBoard(String(intent.name));
+        } else if (intent.do === 'go' && intent.name) {
+            const { to, reason } = await travelWithTime(String(intent.name));
+            if (to) setPartyTab('location');
+            else if (reason) toastr.info(reason, 'No se puede viajar');
         }
     });
 }

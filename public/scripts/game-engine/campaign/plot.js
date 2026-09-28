@@ -247,10 +247,13 @@ function asksFor(asks, event) {
         case 'defeat':
             return kind === 'defeat' && lower(event.enemy).startsWith(lower(asks.enemy));
         case 'talk':
-            // Se nombra a alguien al hablar, estando donde está. El motor no sabe de qué
-            // se habla, pero sí a quién se dirige quien juega.
-            return kind === 'say' && Boolean(asks.npc)
-                && lower(event.text).includes(lower(asks.npc))
+            // Se habla con alguien estando donde está: pulsando «Hablar con…» (`talk`, sin que
+            // haga falta modelo) o nombrándole en un mensaje (`say`). El motor no sabe de qué
+            // se habla, pero sí a quién se dirige quien juega. Antes solo contaba el mensaje,
+            // y sin modelo no se envía: 1387 se paraba en su hito 2 (ROADMAP_SIN_TOKENS, Z0).
+            return Boolean(asks.npc)
+                && ((kind === 'say' && lower(event.text).includes(lower(asks.npc)))
+                    || (kind === 'talk' && lower(event.npc) === lower(asks.npc)))
                 && (!asks.place || lower(event.place) === lower(asks.place));
         case 'check':
             return kind === 'check' && Boolean(event.success) && lower(event.skill) === lower(asks.skill);
@@ -424,7 +427,7 @@ export function startPlot(plot, today = 1) {
  *
  * @param {Plot|null} plot
  * @param {any} rawState
- * @param {any} event `{kind: 'arrive'|'win'|'defeat'|'say'|'check'|'contract'|'day'|'clock', …}`
+ * @param {any} event `{kind: 'arrive'|'win'|'defeat'|'say'|'talk'|'check'|'contract'|'day'|'clock', …}`
  * @param {number} [today] Hoy. Un suceso `day` trae el suyo; sin día, los plazos no se miden.
  * @returns {PlotStep}
  */

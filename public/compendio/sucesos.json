@@ -1,0 +1,904 @@
+{
+  "version": 1,
+  "domain": "sucesos",
+  "about": "Sucesos con decisiones (Z4 de ROADMAP_SIN_TOKENS): una situación y dos o tres opciones con su precio. WHEN.momento dice cuándo sale: viaje, llegada, descanso, semana o continuacion (solo vuelve si otra opción lo pidió con FOLLOW). También valen tiempo, bioma y tipo, como en las demás baterías. En el TEXT y las opciones, huecos: {sitio}, {destino}, {companero}. Cada opción puede tener COST (oro, horas, dias: se paga antes), CHECK (skill y dc: una tirada), EFFECTS (siempre), SUCCESS y FAIL (lo de la tirada: effects y then), THEN (lo que pasa, dicho) y FOLLOW (id y days: el suceso que vuelve). Los efectos: oro:+1d6, oro:-2, hora, dia, herida:1d4, cura:1d6, comida, fama:+1, faccion:-1, vinculo:+1, rumor, pista.",
+  "rows": [
+    {
+      "id": "desertores-pan",
+      "name": "Desertores que piden pan",
+      "weight": 5,
+      "when": {
+        "momento": "viaje"
+      },
+      "text": "Camino de {destino}, tres desertores flacos como palos os cortan el paso. No van armados: piden pan.",
+      "options": [
+        {
+          "label": "Compartir las provisiones",
+          "cost": {
+            "oro": 2
+          },
+          "effects": [
+            "fama:+1"
+          ],
+          "then": "Comen allí mismo, sin hablar. El más joven dice que se llama Tomás y que no lo olvidará.",
+          "follow": {
+            "id": "desertor-posada",
+            "days": 3
+          }
+        },
+        {
+          "label": "Echarlos",
+          "check": {
+            "skill": "intimidation",
+            "dc": 11
+          },
+          "success": {
+            "then": "Se apartan del camino sin rechistar."
+          },
+          "fail": {
+            "effects": [
+              "herida:1d4"
+            ],
+            "then": "Uno saca un cuchillo escondido antes de salir corriendo."
+          }
+        },
+        {
+          "label": "Preguntarles qué hay más adelante",
+          "check": {
+            "skill": "insight",
+            "dc": 12
+          },
+          "success": {
+            "effects": [
+              "rumor"
+            ],
+            "then": "Hablan de lo que han visto por el camino, y parece verdad."
+          },
+          "fail": {
+            "effects": [
+              "hora"
+            ],
+            "then": "Se lían a contar sus penas y se os va la tarde."
+          }
+        }
+      ],
+      "kind": "suceso"
+    },
+    {
+      "id": "carro-volcado",
+      "name": "Un carro volcado",
+      "weight": 5,
+      "when": {
+        "momento": "viaje"
+      },
+      "text": "Un carro volcado en la cuneta, y el mulero atrapado debajo, pidiendo ayuda a gritos.",
+      "options": [
+        {
+          "label": "Levantarlo a pulso",
+          "check": {
+            "skill": "athletics",
+            "dc": 12
+          },
+          "success": {
+            "effects": [
+              "oro:+1d6",
+              "fama:+1"
+            ],
+            "then": "Lo sacáis. El mulero os paga con lo que lleva encima."
+          },
+          "fail": {
+            "effects": [
+              "herida:1d4",
+              "fama:+1"
+            ],
+            "then": "El carro cede y alguien se lleva un golpe, pero el mulero sale."
+          }
+        },
+        {
+          "label": "Registrar la carga mientras grita",
+          "check": {
+            "skill": "sleight",
+            "dc": 13
+          },
+          "success": {
+            "effects": [
+              "oro:+2d6"
+            ],
+            "then": "Nadie ve nada. Os vais con los bolsillos más llenos."
+          },
+          "fail": {
+            "effects": [
+              "fama:-1"
+            ],
+            "then": "Os ve. Lo contará en el primer pueblo que pise."
+          }
+        },
+        {
+          "label": "Seguir de largo",
+          "then": "Sus gritos se oyen un buen trecho."
+        }
+      ],
+      "kind": "suceso"
+    },
+    {
+      "id": "puente-roto",
+      "name": "El puente roto",
+      "weight": 4,
+      "when": {
+        "momento": "viaje"
+      },
+      "text": "El puente está roto, y el río baja crecido y marrón.",
+      "options": [
+        {
+          "label": "Vadearlo",
+          "check": {
+            "skill": "athletics",
+            "dc": 12
+          },
+          "success": {
+            "then": "El agua llega al pecho, pero pasáis todos."
+          },
+          "fail": {
+            "effects": [
+              "herida:1d4"
+            ],
+            "then": "La corriente arrastra a alguien contra las piedras."
+          }
+        },
+        {
+          "label": "Rodear hasta el vado de abajo",
+          "cost": {
+            "dias": 1
+          },
+          "then": "Un día entero de rodeo, pero secos."
+        },
+        {
+          "label": "Pagar al barquero",
+          "cost": {
+            "oro": 3
+          },
+          "then": "Un viejo con una barca que hace agua os pasa en dos viajes."
+        }
+      ],
+      "kind": "suceso"
+    },
+    {
+      "id": "herido-camino",
+      "name": "Un herido en el camino",
+      "weight": 4,
+      "when": {
+        "momento": "viaje"
+      },
+      "text": "Junto al camino hay un hombre sentado, con una flecha clavada en el hombro.",
+      "options": [
+        {
+          "label": "Sacarle la flecha y vendarle",
+          "check": {
+            "skill": "survival",
+            "dc": 11
+          },
+          "success": {
+            "effects": [
+              "fama:+1",
+              "rumor"
+            ],
+            "then": "Aguanta sin gritar. Os cuenta quién le disparó."
+          },
+          "fail": {
+            "effects": [
+              "hora"
+            ],
+            "then": "Cuesta más de lo que parecía, pero sale."
+          }
+        },
+        {
+          "label": "Dejarle algo de comer",
+          "cost": {
+            "oro": 1
+          },
+          "effects": [
+            "fama:+1"
+          ],
+          "then": "Os da las gracias con la boca llena."
+        },
+        {
+          "label": "No meterse",
+          "then": "Os mira pasar sin decir nada."
+        }
+      ],
+      "kind": "suceso"
+    },
+    {
+      "id": "cruce-sin-senales",
+      "name": "Un cruce sin señales",
+      "weight": 4,
+      "when": {
+        "momento": "viaje"
+      },
+      "text": "Un cruce de caminos sin señales. Los tres parecen ir hacia {destino}.",
+      "options": [
+        {
+          "label": "Orientarse por el sol",
+          "check": {
+            "skill": "survival",
+            "dc": 12
+          },
+          "success": {
+            "then": "Acertáis a la primera."
+          },
+          "fail": {
+            "effects": [
+              "dia"
+            ],
+            "then": "El camino elegido da un rodeo de un día."
+          }
+        },
+        {
+          "label": "Esperar a que pase alguien",
+          "cost": {
+            "horas": 1
+          },
+          "effects": [
+            "rumor"
+          ],
+          "then": "Pasa un pastor que os indica el camino y os cuenta lo que se dice por ahí."
+        }
+      ],
+      "kind": "suceso"
+    },
+    {
+      "id": "peaje-garrotes",
+      "name": "Un peaje de garrotes",
+      "weight": 4,
+      "when": {
+        "momento": "viaje"
+      },
+      "text": "Cuatro tipos con garrotes han cruzado un tronco en el camino. «Se paga por pasar.»",
+      "options": [
+        {
+          "label": "Pagar",
+          "cost": {
+            "oro": 3
+          },
+          "then": "Apartan el tronco con una reverencia de burla."
+        },
+        {
+          "label": "Plantarles cara",
+          "check": {
+            "skill": "intimidation",
+            "dc": 13
+          },
+          "success": {
+            "effects": [
+              "fama:+1"
+            ],
+            "then": "Se miran entre ellos y apartan el tronco."
+          },
+          "fail": {
+            "effects": [
+              "herida:1d4",
+              "oro:-2"
+            ],
+            "then": "Hay golpes, y al final pagáis igual."
+          }
+        },
+        {
+          "label": "Regatear",
+          "check": {
+            "skill": "persuasion",
+            "dc": 12
+          },
+          "success": {
+            "effects": [
+              "oro:-1"
+            ],
+            "then": "Una moneda, y os dejan pasar entre risas."
+          },
+          "fail": {
+            "effects": [
+              "oro:-4"
+            ],
+            "then": "Os ha salido más caro por hablar."
+          }
+        }
+      ],
+      "kind": "suceso"
+    },
+    {
+      "id": "buhonero-solo",
+      "name": "Un buhonero solo",
+      "weight": 3,
+      "when": {
+        "momento": "viaje"
+      },
+      "text": "Un buhonero cargado hasta las cejas os pide compañía hasta {destino}: el camino no es seguro.",
+      "options": [
+        {
+          "label": "Acompañarle",
+          "cost": {
+            "horas": 1
+          },
+          "effects": [
+            "oro:+1d4",
+            "rumor"
+          ],
+          "then": "Va despacio, pero paga, y no calla en todo el camino."
+        },
+        {
+          "label": "Decirle que no",
+          "then": "Se queda en el cruce, esperando a otros."
+        }
+      ],
+      "kind": "suceso"
+    },
+    {
+      "id": "tormenta-encima",
+      "name": "Una tormenta encima",
+      "weight": 4,
+      "when": {
+        "momento": "viaje",
+        "tiempo": [
+          "tormenta",
+          "lluvia",
+          "viento"
+        ]
+      },
+      "text": "El cielo se pone negro de golpe. La tormenta se os viene encima.",
+      "options": [
+        {
+          "label": "Buscar refugio",
+          "check": {
+            "skill": "survival",
+            "dc": 11
+          },
+          "success": {
+            "then": "Una cueva poco honda, justo a tiempo."
+          },
+          "fail": {
+            "effects": [
+              "herida:1"
+            ],
+            "then": "No hay dónde meterse: os cala hasta los huesos."
+          }
+        },
+        {
+          "label": "Esperar a que escampe",
+          "cost": {
+            "dias": 1
+          },
+          "then": "Un día entero bajo unas rocas, viendo llover."
+        }
+      ],
+      "kind": "suceso"
+    },
+    {
+      "id": "cadaver-camino",
+      "name": "Un muerto en el camino",
+      "weight": 4,
+      "when": {
+        "momento": "viaje"
+      },
+      "text": "Un muerto en mitad del camino, sin botas y sin capa. Hace poco.",
+      "options": [
+        {
+          "label": "Registrarlo",
+          "check": {
+            "skill": "investigation",
+            "dc": 11
+          },
+          "success": {
+            "effects": [
+              "oro:+1d4",
+              "rumor"
+            ],
+            "then": "En el forro del jubón, unas monedas y una carta a medio escribir."
+          },
+          "fail": {
+            "effects": [
+              "hora"
+            ],
+            "then": "Nada que no se hayan llevado ya."
+          }
+        },
+        {
+          "label": "Enterrarlo",
+          "cost": {
+            "horas": 1
+          },
+          "effects": [
+            "vinculo:+1",
+            "fama:+1"
+          ],
+          "then": "Una tumba poco honda y una piedra encima. A los tuyos les parece bien."
+        },
+        {
+          "label": "Pasar de largo",
+          "then": "Los cuervos ya estaban esperando."
+        }
+      ],
+      "kind": "suceso"
+    },
+    {
+      "id": "patrulla-papeles",
+      "name": "Una patrulla",
+      "weight": 3,
+      "when": {
+        "momento": "viaje"
+      },
+      "text": "Una patrulla os da el alto. «¿A dónde vais, y quién os manda?»",
+      "options": [
+        {
+          "label": "Decir la verdad",
+          "cost": {
+            "horas": 1
+          },
+          "then": "Preguntas y más preguntas, pero os dejan seguir."
+        },
+        {
+          "label": "Contarles otra cosa",
+          "check": {
+            "skill": "deception",
+            "dc": 12
+          },
+          "success": {
+            "then": "Se lo creen, y hasta os desean buen viaje."
+          },
+          "fail": {
+            "effects": [
+              "oro:-3",
+              "faccion:-1"
+            ],
+            "then": "Se huelen la mentira: multa, y os apuntan."
+          }
+        },
+        {
+          "label": "Untarles",
+          "cost": {
+            "oro": 2
+          },
+          "then": "El sargento guarda las monedas sin mirarlas."
+        }
+      ],
+      "kind": "suceso"
+    },
+    {
+      "id": "setas-bosque",
+      "name": "Setas",
+      "weight": 3,
+      "when": {
+        "momento": "viaje",
+        "bioma": [
+          "bosque",
+          "pantano",
+          "colinas"
+        ]
+      },
+      "text": "Un claro lleno de setas gordas. Alguien dice que conoce esas.",
+      "options": [
+        {
+          "label": "Recogerlas",
+          "check": {
+            "skill": "survival",
+            "dc": 12
+          },
+          "success": {
+            "effects": [
+              "comida"
+            ],
+            "then": "Buenas de verdad: cena caliente esta noche."
+          },
+          "fail": {
+            "effects": [
+              "herida:1d4"
+            ],
+            "then": "No eran esas. Una noche mala para alguien."
+          }
+        },
+        {
+          "label": "Dejarlas",
+          "then": "Mejor no arriesgarse."
+        }
+      ],
+      "kind": "suceso"
+    },
+    {
+      "id": "nina-perdida",
+      "name": "Una niña perdida",
+      "weight": 3,
+      "when": {
+        "momento": "viaje"
+      },
+      "text": "Una niña sola, sentada en una piedra, dice que se ha perdido volviendo de {sitio}.",
+      "options": [
+        {
+          "label": "Llevarla de vuelta",
+          "cost": {
+            "dias": 1
+          },
+          "effects": [
+            "fama:+1",
+            "vinculo:+1"
+          ],
+          "then": "Un día de vuelta atrás. Su madre llora y os da lo único que tiene: las gracias.",
+          "follow": {
+            "id": "nina-agradecida",
+            "days": 5
+          }
+        },
+        {
+          "label": "Indicarle el camino",
+          "then": "Se va por donde le decís, mirando atrás."
+        }
+      ],
+      "kind": "suceso"
+    },
+    {
+      "id": "mojon-tallado",
+      "name": "Un mojón tallado",
+      "weight": 2,
+      "when": {
+        "momento": "viaje"
+      },
+      "text": "Un mojón viejo con marcas talladas a cuchillo, recientes.",
+      "options": [
+        {
+          "label": "Descifrarlas",
+          "check": {
+            "skill": "investigation",
+            "dc": 12
+          },
+          "success": {
+            "effects": [
+              "rumor",
+              "pista"
+            ],
+            "then": "Son señales de contrabandistas: dónde se esconde lo que no quieren que se vea."
+          },
+          "fail": {
+            "then": "Rayas y más rayas. Nada que se entienda."
+          }
+        },
+        {
+          "label": "Seguir",
+          "then": "Alguien más las leerá."
+        }
+      ],
+      "kind": "suceso"
+    },
+    {
+      "id": "pelea-puerta",
+      "name": "Una pelea en la puerta",
+      "weight": 4,
+      "when": {
+        "momento": "llegada"
+      },
+      "text": "Nada más llegar a {sitio}, dos borrachos se pegan en la puerta de la taberna.",
+      "options": [
+        {
+          "label": "Separarlos",
+          "check": {
+            "skill": "athletics",
+            "dc": 12
+          },
+          "success": {
+            "effects": [
+              "fama:+1"
+            ],
+            "then": "Uno en cada mano. Os invitan a la primera ronda."
+          },
+          "fail": {
+            "effects": [
+              "herida:1"
+            ],
+            "then": "Os lleváis un puñetazo que no era para vosotros."
+          }
+        },
+        {
+          "label": "Mirar y escuchar",
+          "effects": [
+            "rumor"
+          ],
+          "then": "Se pelean por una deuda, y en los gritos sale de todo."
+        }
+      ],
+      "kind": "suceso"
+    },
+    {
+      "id": "mendigo-sabe",
+      "name": "Un mendigo que sabe cosas",
+      "weight": 4,
+      "when": {
+        "momento": "llegada"
+      },
+      "text": "Un mendigo ciego os coge de la manga en {sitio}. «Una moneda, y os digo lo que nadie os dirá.»",
+      "options": [
+        {
+          "label": "Darle una moneda",
+          "cost": {
+            "oro": 1
+          },
+          "effects": [
+            "rumor"
+          ],
+          "then": "Se guarda la moneda y habla en voz muy baja."
+        },
+        {
+          "label": "Soltarse",
+          "then": "Os suelta, y se ríe solo."
+        }
+      ],
+      "kind": "suceso"
+    },
+    {
+      "id": "reliquia-feria",
+      "name": "Una reliquia de feria",
+      "weight": 3,
+      "when": {
+        "momento": "llegada"
+      },
+      "text": "En {sitio}, un tipo vende «un dedo del santo» por cinco de oro.",
+      "options": [
+        {
+          "label": "Mirarla bien",
+          "check": {
+            "skill": "insight",
+            "dc": 12
+          },
+          "success": {
+            "effects": [
+              "rumor"
+            ],
+            "then": "Es un hueso de cerdo, y él lo sabe. Os cuenta otra cosa a cambio de no delatarle."
+          },
+          "fail": {
+            "effects": [
+              "oro:-5"
+            ],
+            "then": "Os la colocan. Muy santa no parece."
+          }
+        },
+        {
+          "label": "Pasar",
+          "then": "Ya le comprará otro."
+        }
+      ],
+      "kind": "suceso"
+    },
+    {
+      "id": "ruido-noche",
+      "name": "Un ruido en la noche",
+      "weight": 4,
+      "when": {
+        "momento": "descanso"
+      },
+      "text": "A media noche, un ruido fuera. Pasos, o algo que se arrastra.",
+      "options": [
+        {
+          "label": "Levantarse a mirar",
+          "check": {
+            "skill": "perception",
+            "dc": 12
+          },
+          "success": {
+            "effects": [
+              "pista"
+            ],
+            "then": "Alguien huye entre las sombras y se le cae algo."
+          },
+          "fail": {
+            "effects": [
+              "herida:1"
+            ],
+            "then": "Tropezáis en la oscuridad. No había nada, o ya no está."
+          }
+        },
+        {
+          "label": "Seguir durmiendo",
+          "effects": [
+            "oro:-1d4"
+          ],
+          "then": "Por la mañana falta algo de la bolsa."
+        }
+      ],
+      "kind": "suceso"
+    },
+    {
+      "id": "hoguera-historia",
+      "name": "Una historia junto al fuego",
+      "weight": 4,
+      "when": {
+        "momento": "descanso"
+      },
+      "text": "Junto al fuego, {companero} se queda callado mucho rato. Parece que quiere contar algo.",
+      "options": [
+        {
+          "label": "Preguntarle",
+          "needs": "companero",
+          "effects": [
+            "vinculo:+1"
+          ],
+          "then": "Habla de antes de todo esto. Se le nota más ligero al acabar."
+        },
+        {
+          "label": "Dejarle en paz",
+          "then": "Se duerme el primero."
+        }
+      ],
+      "kind": "suceso"
+    },
+    {
+      "id": "frio-que-pela",
+      "name": "Un frío que pela",
+      "weight": 3,
+      "when": {
+        "momento": "descanso"
+      },
+      "text": "Hace un frío que pela, y el fuego no llega para todos.",
+      "options": [
+        {
+          "label": "Compartir mantas",
+          "effects": [
+            "vinculo:+1"
+          ],
+          "then": "Apretados, pero nadie tirita."
+        },
+        {
+          "label": "Buscar más leña de noche",
+          "check": {
+            "skill": "survival",
+            "dc": 11
+          },
+          "success": {
+            "then": "Una buena brazada. Fuego hasta el amanecer."
+          },
+          "fail": {
+            "effects": [
+              "herida:1"
+            ],
+            "then": "Un mal paso en la oscuridad."
+          }
+        }
+      ],
+      "kind": "suceso"
+    },
+    {
+      "id": "cobrador",
+      "name": "El cobrador",
+      "weight": 4,
+      "when": {
+        "momento": "semana"
+      },
+      "text": "Llega un cobrador con dos guardias: el impuesto de la semana, también para los de paso.",
+      "options": [
+        {
+          "label": "Pagar",
+          "cost": {
+            "oro": 3
+          },
+          "effects": [
+            "faccion:+1"
+          ],
+          "then": "Lo apunta en su libro, y hasta sonríe."
+        },
+        {
+          "label": "Negarse",
+          "check": {
+            "skill": "intimidation",
+            "dc": 13
+          },
+          "success": {
+            "effects": [
+              "faccion:-1"
+            ],
+            "then": "Se van sin cobrar, pero lo apuntan."
+          },
+          "fail": {
+            "effects": [
+              "oro:-5",
+              "faccion:-1"
+            ],
+            "then": "Cobran, con recargo, y lo apuntan."
+          }
+        }
+      ],
+      "kind": "suceso"
+    },
+    {
+      "id": "feria-semana",
+      "name": "Día de mercado",
+      "weight": 3,
+      "when": {
+        "momento": "semana"
+      },
+      "text": "Es día de mercado en {sitio}: gente de toda la comarca, y ganas de gastar.",
+      "options": [
+        {
+          "label": "Echar un pulso por dinero",
+          "check": {
+            "skill": "athletics",
+            "dc": 13
+          },
+          "success": {
+            "effects": [
+              "oro:+2d4",
+              "fama:+1"
+            ],
+            "then": "Ganáis, y la gente lo comenta."
+          },
+          "fail": {
+            "effects": [
+              "oro:-2"
+            ],
+            "then": "El herrero del pueblo no se deja ganar."
+          }
+        },
+        {
+          "label": "Escuchar a los de fuera",
+          "effects": [
+            "rumor"
+          ],
+          "then": "Los de fuera traen noticias de lejos."
+        }
+      ],
+      "kind": "suceso"
+    },
+    {
+      "id": "desertor-posada",
+      "name": "El desertor agradecido",
+      "weight": 1,
+      "when": {
+        "momento": "continuacion"
+      },
+      "text": "Tomás, el desertor al que disteis pan en el camino, está aquí. Ha encontrado trabajo, y os busca.",
+      "options": [
+        {
+          "label": "Escucharle",
+          "effects": [
+            "rumor",
+            "pista"
+          ],
+          "then": "Os cuenta algo que ha oído en el cuartel y que nadie más os diría."
+        },
+        {
+          "label": "Invitarle a un trago",
+          "cost": {
+            "oro": 1
+          },
+          "effects": [
+            "fama:+1",
+            "rumor"
+          ],
+          "then": "Con el vino suelta más de lo que pensaba."
+        }
+      ],
+      "kind": "suceso"
+    },
+    {
+      "id": "nina-agradecida",
+      "name": "La madre de la niña",
+      "weight": 1,
+      "when": {
+        "momento": "continuacion"
+      },
+      "text": "La madre de la niña que devolvisteis os ha encontrado. Trae algo envuelto en un trapo.",
+      "options": [
+        {
+          "label": "Aceptarlo",
+          "effects": [
+            "oro:+1d6",
+            "cura:1d6"
+          ],
+          "then": "Unas monedas ahorradas y un ungüento de su abuela, que cura de verdad."
+        },
+        {
+          "label": "No aceptarlo",
+          "effects": [
+            "fama:+1"
+          ],
+          "then": "Se va llorando otra vez. Esto se va a saber."
+        }
+      ],
+      "kind": "suceso"
+    }
+  ]
+}

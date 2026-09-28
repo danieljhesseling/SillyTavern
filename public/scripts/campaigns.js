@@ -860,7 +860,18 @@ function notesOf(card) {
  * @param {any} state El taller, para saber de que mundo va.
  * @returns {Promise<string>}
  */
-async function writeWithModel(key, state) {
+/**
+ * El lapicito del taller: una frase escrita por el modelo para un campo.
+ *
+ * @param {string} key El campo.
+ * @param {any} state El taller.
+ * @param {any} [subject] Lo que está abierto en la ficha (el sitio, la facción, la persona,
+ *   la misión), para que sepa de qué escribe.
+ * @returns {Promise<string>}
+ */
+async function writeWithModel(key, state, subject = null) {
+    const s = subject ?? {};
+    const name = String(s.name ?? s.title ?? '').trim();
     const world = [
         state?.fields?.worldName ? `El mundo se llama "${state.fields.worldName}".` : '',
         state?.fields?.genre ? `Es de genero ${state.fields.genre}.` : '',
@@ -876,6 +887,13 @@ async function writeWithModel(key, state) {
         nDescription: 'Escribe en dos frases que sabe y de donde viene quien narra esta partida.',
         nGreeting: 'Escribe la primera frase con la que quien narra abre esta campana. Una sola '
             + 'frase, dicha al grupo.',
+        // Estos cinco salían en la ficha y no escribían nada: no estaban en la lista
+        // (ROADMAP_SIN_TOKENS, Z0).
+        lNote: `Escribe en una frase qué es el sitio ${name ? `«${name}»` : 'que se describe'}${s.biome ? `, en ${s.biome}` : ''}: cómo es y qué se va a buscar allí. Sin listas.`,
+        fNote: `Escribe en una o dos frases por qué ${name ? `la facción «${name}»` : 'esta facción'} quiere lo que quiere${s.seat ? `, desde ${s.seat}` : ''}.`,
+        pStory: `Escribe en dos o tres frases quién es ${name || 'esta persona'}${s.title ? `, ${s.title}` : ''}${s.locationName ? `, que vive en ${s.locationName}` : ''}: de dónde viene y qué le pasó.`,
+        pMood: `Describe en dos frases cómo es ${name || 'esta persona'}: su carácter y cómo habla. No cuentes su historia.`,
+        qNote: `Escribe en una o dos frases de qué va la misión ${name ? `«${name}»` : ''}${s.where ? `, en ${s.where}` : ''}: qué hay que hacer y por qué importa.`,
     };
     const what = WHAT[key];
     if (!what) return '';
@@ -1010,16 +1028,20 @@ async function startCampaignWizard() {
         // Lo que el mundo deja entrar de cada bateria: las razas, las clases, los bichos. Se
         // elegia en el taller y no se guardaba en ningun sitio, asi que ni el creador de
         // personaje ni los generadores lo podian respetar.
-        if (answers.picks && typeof answers.picks === 'object') {
+        // Y las filas que el mundo escribio o retoco en el taller: una raza suya, un arma
+        // cambiada. Van con el mundo, no con las baterias de todos.
+        const worldRows = (answers.worldRows && typeof answers.worldRows === 'object'
+            && Object.keys(answers.worldRows).length > 0) ? answers.worldRows : null;
+        if ((answers.picks && typeof answers.picks === 'object') || worldRows) {
             try {
                 const data = await loadWorldInfo(created.worldName);
                 if (data) {
                     /** @type {Record<string, string[]>} */
                     const picks = {};
-                    for (const [domain, ids] of Object.entries(answers.picks)) {
+                    for (const [domain, ids] of Object.entries(answers.picks ?? {})) {
                         if (Array.isArray(ids) && ids.length > 0) picks[domain] = ids.map(String);
                     }
-                    data.metadata = Object.assign(data.metadata ?? {}, { picks });
+                    data.metadata = Object.assign(data.metadata ?? {}, { picks }, worldRows ? { worldRows } : {});
                     await saveWorldInfo(created.worldName, data, true);
                 }
             } catch (error) {
@@ -1419,7 +1441,7 @@ async function createStartingHero(worldName) {
     // como estaba: aditivo, como todo lo demás del compendio.
     // Recién abierta: «el mismo mundo propone los mismos nombres en el mismo orden» solo es
     // verdad si lo generado antes en la pestaña no cuenta.
-    const compendium = await freshCompendium();
+    const compendium = await freshCompendium(data.metadata?.worldRows);
     // La del mundo. Si este mundo es viejo y no tiene, se tira con su nombre: sale
     // algo, pero no es reproducible, y `ensureSeed` le pondra una la primera vez que
     // alguien abra su editor.

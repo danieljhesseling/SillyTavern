@@ -174,6 +174,17 @@ body.game-shell-on {
     opacity: 1;
 }
 
+/* «Al narrador» puesto: lo próximo que se escriba es para él, y la caja lo dice. */
+.gs-chip-action.gs-chip-narrator.on {
+    border-color: var(--gs-accent-gold);
+    background: rgba(226, 194, 122, 0.18);
+    color: var(--gs-accent-gold);
+}
+
+#send_textarea.gs-asking-narrator {
+    box-shadow: inset 0 0 0 1px var(--gs-accent-gold);
+}
+
 .gs-chip-sabor {
     opacity: 0.8;
     border-style: dashed;
@@ -342,11 +353,21 @@ body.game-shell-on {
 }
 
 /* El tablero y el mapa son la misma seccion: cambia lo que la rodea, no el panel. */
-.gs-root[data-scene="combat"] .gs-scene-map,
-.gs-root[data-scene="exploration"] .gs-scene-map {
+.gs-root[data-scene="combat"] .gs-scene-map {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 12px;
+}
+
+/* La Exploración, a pantalla entera y sin el tablero (Gem director de UX, 2026-09-27): el
+   tablero vacío se llevaba el 70 % de la pantalla, y lo que de verdad se hace aquí
+   —comprar, hablar, viajar— se apretaba en una columna de 300 px con scroll infinito. */
+.gs-root[data-scene="exploration"] .gs-scene-map {
+    display: block;
+}
+
+.gs-root[data-scene="exploration"] .gs-map-slot {
+    display: none !important;
 }
 
 /* ------------------------------------------------ el tablero, mientras se habla
@@ -880,86 +901,137 @@ body.game-shell-on {
 /* ---------------------------------------------------------------- escena de exploracion */
 
 .gs-places {
-    width: 300px;
-    max-width: 34vw;
+    width: 100%;
+    max-width: 1680px;
+    height: 100%;
+    margin: 0 auto;
+    padding: 18px 32px 32px;
+    box-sizing: border-box;
     overflow-y: auto;
-    padding-right: 4px;
 }
 
-.gs-here {
-    padding: 8px 10px;
-    border: 1px solid var(--SmartThemeBorderColor, #444);
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.05);
-    margin-bottom: 12px;
+/* Arriba, el sitio y a qué huele: con la letra y el dorado de la portada. */
+.gs-here.ex-head {
+    max-width: 920px;
+    margin-bottom: 22px;
+}
+
+.ex-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--gs-accent-gold);
+}
+
+.ex-title .fa-location-dot {
+    font-size: 1.6em;
 }
 
 .gs-here-name {
-    font-weight: bold;
-    font-size: 1.05em;
+    font-family: Georgia, 'Palatino Linotype', Palatino, serif;
+    font-size: 2em;
+    line-height: 1.2;
+    text-shadow: 0 2px 18px rgba(226, 194, 122, 0.2);
 }
 
 .gs-here-desc {
-    font-size: 0.85em;
-    opacity: 0.7;
-    margin-top: 3px;
+    margin-top: 8px;
+    font-size: 1.02em;
+    line-height: 1.55;
+    opacity: 0.85;
+}
+
+/* Debajo, tres columnas: aquí mismo, los tableros y viajar. */
+.gs-explore-dashboard {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 24px;
+    align-items: start;
+}
+
+.ex-column {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
 }
 
 .gs-places-title {
-    font-size: 0.78em;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    opacity: 0.55;
-    margin: 10px 0 5px;
-}
-
-.gs-board-list,
-.gs-place-list {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-}
-
-.gs-board,
-.gs-place {
     display: flex;
     align-items: center;
-    gap: 9px;
+    gap: 8px;
+    font-size: 0.8em;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    opacity: 0.75;
+    padding-bottom: 8px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid var(--gs-gold-line);
+}
+
+.ex-subtitle {
+    font-size: 0.75em;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    opacity: 0.5;
+    margin: 8px 0 0;
+}
+
+.ex-empty {
+    font-size: 0.9em;
+    font-style: italic;
+    opacity: 0.55;
+    padding: 6px 2px;
+}
+
+/* Las tarjetas: fondo translúcido, el icono en su cuadro y el borde dorado al pasar. */
+.gs-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
     width: 100%;
-    padding: 7px 10px;
+    padding: 14px 16px;
     border: 1px solid var(--SmartThemeBorderColor, #444);
-    border-radius: 7px;
-    background: rgba(255, 255, 255, 0.04);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.03);
     color: inherit;
     cursor: pointer;
     text-align: left;
+    transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
 }
 
-.gs-board:hover:not(:disabled),
-.gs-place:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.12);
+.gs-card:hover:not(:disabled),
+.gs-card:focus-visible {
+    outline: none;
+    transform: translateY(-2px);
+    border-color: var(--gs-accent-gold);
+    background: rgba(226, 194, 122, 0.06);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
 }
 
-.gs-board.current,
-.gs-place.current {
-    border-color: var(--SmartThemeQuoteColor, var(--gs-info-blue));
+.gs-card.current {
+    border-color: var(--gs-accent-gold);
+    background: var(--gs-accent-gold-hover);
 }
 
-.gs-place:disabled {
-    cursor: not-allowed;
+.gs-card:disabled {
+    cursor: default;
 }
 
-/* Un sitio cerrado se ve, y dice por que: esconderlo haria la campana mas pequena de lo
-   que es y no dejaria nada a lo que apuntar. */
-.gs-place.status-locked {
-    opacity: 0.55;
+.gs-card-icon {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--gs-accent-gold);
+    font-size: 1.1em;
 }
 
-.gs-place.status-complete .gs-place-icon {
-    color: var(--gs-success-green);
-}
-
-.gs-place-body {
+.gs-card-body {
     flex: 1;
     min-width: 0;
 }
@@ -967,14 +1039,34 @@ body.game-shell-on {
 .gs-place-name,
 .gs-board-name {
     font-weight: bold;
+    font-size: 1.02em;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
 .gs-place-note {
-    font-size: 0.8em;
+    font-size: 0.84em;
     opacity: 0.7;
+    margin-top: 2px;
+}
+
+/* Lo que no es vecino se ve, con lo que cuesta y por dónde; pero no se pulsa. Un sitio
+   cerrado dice por qué: esconderlo haría la campaña más pequeña y no dejaría meta. */
+.gs-place:disabled:not(.current) {
+    opacity: 0.6;
+}
+
+.gs-place.reach-far:disabled .gs-card-icon,
+.gs-place.reach-shut .gs-card-icon,
+.gs-place.reach-none .gs-card-icon,
+.gs-place.status-locked .gs-card-icon {
+    color: inherit;
+    opacity: 0.7;
+}
+
+.gs-place.status-complete .gs-card-icon {
+    color: var(--gs-success-green);
 }
 
 /* El cajon del grupo esconde la pestana que no toca con esta clase, y el panel del
@@ -1300,50 +1392,70 @@ body.game-shell-on {
     flex: none;
 }
 
-/* ---- Los servicios de aqui (fase L) ---- */
-.gs-services {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-    gap: 8px;
-    margin-bottom: 12px;
-}
-
+/* ---- Los servicios de aqui (fase L): un edificio por tarjeta ---- */
 .gs-service {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    padding: 8px;
     border: 1px solid var(--SmartThemeBorderColor, #444);
-    border-radius: 8px;
+    border-radius: 10px;
     background: rgba(255, 255, 255, 0.03);
+    overflow: hidden;
 }
 
 .gs-service-head {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-weight: 600;
-    margin-bottom: 2px;
+    gap: 10px;
+    padding: 11px 14px;
+    font-weight: bold;
+    border-bottom: 1px solid var(--SmartThemeBorderColor, #444);
+    background: rgba(255, 255, 255, 0.02);
 }
 
-.gs-service-btn {
-    text-align: left;
-    padding: 4px 8px;
-    border: 1px solid transparent;
-    border-radius: 5px;
-    background: rgba(255, 255, 255, 0.06);
-    color: inherit;
+.gs-service-head .fa-solid {
+    color: var(--gs-accent-gold);
+}
+
+.gs-service-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 12px;
+}
+
+.gs-btn-action {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--SmartThemeBodyColor, #ddd);
     cursor: pointer;
-    font-size: 0.88em;
+    text-align: left;
+    font-size: 0.92em;
+    transition: background 0.15s ease, border-color 0.15s ease;
 }
 
-.gs-service-btn:hover:not(:disabled) {
-    border-color: var(--SmartThemeQuoteColor, #e0b050);
+.gs-btn-action:hover:not(:disabled),
+.gs-btn-action:focus-visible {
+    outline: none;
+    background: rgba(255, 255, 255, 0.08);
+    border-color: var(--gs-accent-gold);
 }
 
-.gs-service-btn:disabled {
+.gs-btn-action:disabled {
     opacity: 0.45;
     cursor: default;
+}
+
+.gs-btn-cost {
+    flex: none;
+    font-family: ui-monospace, Consolas, monospace;
+    font-size: 0.85em;
+    color: var(--gs-accent-gold);
+    opacity: 0.85;
 }
 
 /* Idea 14: lo que haria cada enemigo si le tocase ahora. */
@@ -1835,4 +1947,194 @@ body[data-narrator-font="maquina"] #chat .mes:not([is_user="true"]) .mes_text {
         opacity: 1;
         transform: translateY(0);
     }
+}
+
+/* Una nota para el modelo que es solo orden no enseña nada en pantalla (ROADMAP_SIN_TOKENS,
+   Z0): sin esto quedaba un bocadillo vacío con el nombre del narrador. */
+#game-shell .mes:has(.mes_text:empty) {
+    display: none;
+}
+
+/* ================================================================
+   Z2 de ROADMAP_SIN_TOKENS: la charla, sin modelo. Quién es y cómo os mira arriba; de qué se
+   puede hablar; lo que va contando; y lo que se puede hacer, al pie.
+   ================================================================ */
+.tk-who {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin: -4px 0 6px;
+    font-size: 0.85rem;
+}
+
+.tk-trade {
+    opacity: 0.7;
+}
+
+.tk-mood {
+    padding: 2px 10px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 12px;
+    font-size: 0.8rem;
+}
+
+.tk-mood[data-band="buena"] {
+    border-color: var(--gs-success-green);
+    color: #a8d494;
+}
+
+.tk-mood[data-band="mala"] {
+    border-color: var(--gs-danger-red);
+    color: var(--gs-danger-soft);
+}
+
+.tk-voice {
+    margin-bottom: 12px;
+    font-size: 0.85rem;
+    font-style: italic;
+    opacity: 0.7;
+}
+
+.tk-topics,
+.tk-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+/* Lo que todavía no cuenta: se ve, con su candado, y al pulsarlo dice cómo se abre. */
+.gs-panel .tk-topic.tk-locked {
+    opacity: 0.55;
+    border-style: dashed;
+}
+
+.gs-panel .tk-topic,
+.gs-panel .tk-act {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin: 0;
+    padding: 5px 12px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 16px;
+    background: rgba(0, 0, 0, 0.35);
+    font-size: 0.85rem;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.gs-panel .tk-topic:hover,
+.gs-panel .tk-topic:focus-visible,
+.gs-panel .tk-act:hover,
+.gs-panel .tk-act:focus-visible {
+    outline: none;
+    border-color: var(--gs-accent-gold);
+    background: rgba(226, 194, 122, 0.1);
+    color: var(--gs-accent-gold);
+}
+
+.gs-panel .tk-act {
+    border-radius: 6px;
+}
+
+.tk-log {
+    min-height: 56px;
+    max-height: 260px;
+    margin: 12px 0;
+    padding: 10px 14px;
+    overflow-y: auto;
+    border-left: 2px solid var(--gs-gold-line);
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.22);
+    line-height: 1.5;
+}
+
+.tk-log:empty::before {
+    content: 'Pregúntale algo.';
+    opacity: 0.5;
+    font-style: italic;
+}
+
+.tk-line + .tk-line {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed rgba(255, 255, 255, 0.06);
+}
+
+.tk-actions {
+    padding-top: 10px;
+    border-top: 1px dashed rgba(255, 255, 255, 0.08);
+}
+
+/* Z4 de ROADMAP_SIN_TOKENS: un suceso es una tarjeta con dos o tres opciones y su precio. */
+.su-text {
+    font-size: 1.02em;
+    line-height: 1.55;
+    margin: 4px 0 14px;
+}
+
+.su-options {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.su-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.03);
+    color: inherit;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.su-option:hover:not(:disabled),
+.su-option:focus-visible {
+    outline: none;
+    border-color: var(--gs-accent-gold);
+    background: var(--gs-accent-gold-hover);
+}
+
+.su-option:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
+.su-option.chosen {
+    opacity: 1;
+    border-color: var(--gs-accent-gold);
+    background: var(--gs-accent-gold-hover);
+}
+
+.su-price {
+    flex: none;
+    font-size: 0.85em;
+    color: var(--gs-accent-gold);
+    opacity: 0.85;
+}
+
+.su-result {
+    margin-top: 14px;
+    padding: 10px 14px;
+    border-left: 2px solid var(--gs-accent-gold);
+    background: rgba(255, 255, 255, 0.03);
+    line-height: 1.5;
+}
+
+.su-effects {
+    margin-top: 6px;
+    font-size: 0.88em;
+    opacity: 0.8;
+}
+
+.su-go {
+    margin-top: 14px;
+    width: auto;
 }

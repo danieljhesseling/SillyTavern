@@ -23,11 +23,15 @@
  * Ver wiki/ROADMAP_COMPENDIO.md y wiki/ALGORITMOS_GENERACION.md (#196, #198, #199).
  */
 
-/** Las dieciseis baterias, en el orden en que el roadmap las cuenta. */
+/**
+ * Las baterias, en el orden en que el roadmap las cuenta. Las frases del narrador del motor
+ * (Z1 de ROADMAP_SIN_TOKENS) van las ultimas: no las lee ningun generador de mundo.
+ */
 export const DOMAINS = [
     'nombres', 'materiales', 'armas', 'armaduras', 'trastos', 'propiedades', 'habilidades',
     'razas', 'clases',
     'bestiario', 'personas', 'sitios', 'misiones', 'facciones', 'mundo', 'estados',
+    'frases', 'sucesos',
 ];
 
 /** Cuantas filas recientes se recuerdan por dominio, para no repetir. */

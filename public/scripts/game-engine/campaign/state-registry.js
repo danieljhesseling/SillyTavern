@@ -56,6 +56,7 @@ export const STATE_KEYS = [
     { key: 'petPetted', kind: 'juego', owner: 'party.js', what: 'El día en que se acarició a la mascota por última vez' },
     { key: 'mapNotes', kind: 'juego', owner: 'party.js', what: 'Tus notas en el mapa' },
     { key: 'prisoners', kind: 'juego', owner: 'party.js', what: 'Los prisioneros' },
+    { key: 'boardsWon', kind: 'juego', owner: 'party.js', what: 'Los tableros cuya pelea escrita ya se ganó: sus enemigos no vuelven' },
     { key: 'graves', kind: 'juego', owner: 'party.js', what: 'Las tumbas de los caídos' },
     { key: 'relicsGiven', kind: 'juego', owner: 'party.js', what: 'Las reliquias ya entregadas' },
     // --- El dinero y el gremio
@@ -99,6 +100,9 @@ export const STATE_KEYS = [
     { key: 'explored', kind: 'juego', owner: 'party.js', what: 'Lo que se ha explorado alrededor' },
     { key: 'climate', kind: 'juego', owner: 'party.js', what: 'El clima de estos días' },
     { key: 'weatherToday', kind: 'juego', owner: 'party.js', what: 'El tiempo de hoy' },
+    { key: 'narratorRecent', kind: 'juego', owner: 'party.js', what: 'Las últimas frases del narrador del motor, para no repetirlas' },
+    { key: 'fieldGains', kind: 'juego', owner: 'party.js', what: 'Lo que ya se sacó hoy con tiradas en cada sitio, y lo que ya se examinó' },
+    { key: 'sucesos', kind: 'juego', owner: 'party.js', what: 'Los últimos sucesos con decisión que salieron, y los que volverán días después' },
     // --- Los compañeros por dentro
     { key: 'approval', kind: 'juego', owner: 'party.js', what: 'Lo que les ha parecido a los compañeros lo que hacéis' },
     { key: 'personalAsked', kind: 'juego', owner: 'party.js', what: 'Quién ha pedido ya su encargo personal' },

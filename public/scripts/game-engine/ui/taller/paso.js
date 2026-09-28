@@ -376,12 +376,14 @@ function restore(into, kept) {
  * @param {(key: string, value: string) => void} input.onWrite
  * @param {((key: string) => Promise<string>)|null} [input.onWand]
  * @param {((file: any) => Promise<string>)|null} [input.onFile] Para los campos de imagen.
+ * @param {((body: JQuery) => void)|null} [input.extra] Lo propio de esta ficha, debajo de los
+ *        campos: el tablero para pintarlo.
  * @returns {void}
  */
 export function drawStep(into, {
     title, hint, cards, fields, onPick, onWrite,
     cardsTitle = '', formTitle = '', formOpen = true, cardsOpen = null, onWand = null,
-    onFile = null, detailIcon = 'fa-pen-to-square', actions = [], tally = '',
+    onFile = null, detailIcon = 'fa-pen-to-square', actions = [], tally = '', extra = null,
 }) {
     const kept = remember(into, text(title));
     into.empty();
@@ -512,6 +514,7 @@ export function drawStep(into, {
                 .append($('<div class="tl-detail-title"></div>').text(text(formTitle) || 'La ficha')));
             const inside = $('<div class="tl-detail-body"></div>');
             fillForm(inside);
+            if (typeof extra === 'function') extra(inside);
             detail.append(inside);
             // Los botones, fuera del scroll: una ficha larga (la del narrador) los escondía abajo.
             if (buttons.length > 0) detail.append(drawActions(buttons));

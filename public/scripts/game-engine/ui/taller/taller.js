@@ -25,10 +25,14 @@ import {
     addBoard, editBoard, removeBoard,
     addFaction, editFaction, removeFaction, factionsOf,
     addPerson, editPerson, removePerson, peopleOf,
-    addQuest, editQuest, removeQuest, questsOf, boardRulesOf, setBoardRules,
-    PACK_STEPS, packContents,
+    setBoardRules,
     goTo, firstBlock, baselineOf, tabStatus,
+    ownRows, writeRow, dropRow, packEditsOf, writePackRow, dropPackRow, stepSlice,
 } from '../../campaign/taller.js';
+import {
+    PACK_EDIT_STEPS, PACK_NEW_LABELS, packItems, placeNames, packNote, packForm, applyPackField, newPackRow, packProblem,
+} from '../../campaign/pack-edits.js';
+import { rowForm, applyRowField, rowProblems, newRow, mergeRows, NEW_LABELS } from '../../campaign/world-rows.js';
 import { drawStep } from './paso.js';
 import { TACTICAL_PROFILES } from '../../combat/enemy-ai.js';
 import { getTemplateOptions } from '../../campaign/starter-templates.js';
@@ -41,7 +45,9 @@ import { racesOf, kindsOf, describeKin } from '../../compendio/kin.js';
 import { rollFactions } from '../../campaign/factions.js';
 import { writeVillage } from '../../compendio/people.js';
 import { createSeededRandom } from '../../combat/seeded-random.js';
-import { derive } from '../../campaign/seed.js';
+import { derive, cleanSeed } from '../../campaign/seed.js';
+import { draftOf } from '../../campaign/board-draft.js';
+import { drawBoardPaint } from './board-paint.js';
 import { isShareCode, readShareCode } from '../../campaign/share-code.js';
 import { nameAndAbility, asAbility } from '../../compendio/skills.js';
 
@@ -194,7 +200,7 @@ async function askPack({ Popup, POPUP_TYPE }) {
 
         const c = found.counts;
         report.append($('<div class="cw-import-counts"></div>').text(
-            `${c.world || 'Sin nombre'} - ${c.locations} localidades, ${c.boards} tableros, `
+            `${c.world || 'Sin nombre'} - ${c.locations} localizaciones, ${c.boards} tableros, `
             + `${c.enemies} enemigos, ${c.confidants} companeros, ${c.quests} misiones, `
             + `${c.objectives} objetivos.`));
 
@@ -270,7 +276,8 @@ async function askPack({ Popup, POPUP_TYPE }) {
  * @param {any} input.Popup
  * @param {any} input.POPUP_TYPE
  * @param {string[]} [input.existingWorldNames]
- * @param {((key: string, state: any) => Promise<string>)|null} [input.write] El lapicito.
+ * @param {((key: string, state: any, subject?: any) => Promise<string>)|null} [input.write] El lapicito
+ *   (con lo que esté abierto en la ficha, para que sepa de qué escribe).
  * @param {((idea: string, partySize: number) => Promise<any>)|null} [input.makeWorld] Que lo
  *        escriba el modelo. Sin proveedor no se pasa, y la tarjeta no aparece.
  * @param {any[]} [input.narrators] Los que ya tienes escritos de otras campanas.
@@ -331,15 +338,12 @@ export async function askTaller({
     const start = $('<button type="button" class="menu_button tl-start"></button>')
         .append('<i class="fa-solid fa-play"></i>')
         .append($('<span></span>').text(' Crear y jugar'));
-    // La segunda salida, como en el asistente de siempre: crear y caer con el editor
-    // delante. Solo en el ultimo paso, porque antes de eso no hay nada que crear.
-    const write2 = $('<button type="button" class="menu_button tl-write"></button>')
-        .append('<i class="fa-solid fa-feather"></i>')
-        .append($('<span></span>').text(' Crear y escribir el mundo'));
     // Cancelar vive en el pie, con los demás: el botón propio de la ventana se oculta.
+    // («Crear y escribir el mundo» se quitó el 2026-09-28: sobraba al lado de «Crear y jugar».
+    // El mundo se retoca luego desde la pausa, con «Editar la campaña».)
     const cancel = $('<button type="button" class="menu_button tl-cancel"></button>').text('Cancelar');
     cancel.on('click', () => { void popup.completeCancelled(); });
-    foot.append(cancel).append(back).append(said).append(skip).append(write2).append(next).append(start);
+    foot.append(cancel).append(back).append(said).append(skip).append(next).append(start);
     root.append(bar).append(body).append(foot);
 
     /** El narrador elegido de la lista, para poder volver a enseñarlo. */
@@ -354,9 +358,10 @@ export async function askTaller({
     let library = null;
 
     /** Que tarjeta esta abierta en cada paso. Es de la pantalla, no del mundo. */
+    /** @type {Record<string, string>} */
     const editing = {
         localidades: '', tableros: '', facciones: '',
-        habilidades: '', razas: '', clases: '', personajes: '', misiones: '',
+        habilidades: '', razas: '', clases: '', personajes: '',
     };
 
     /** Las filas de cada paso que se elige de una lista. */
@@ -418,12 +423,6 @@ export async function askTaller({
         return true;
     };
 
-    /** Crear ya, cayendo con el editor del mundo delante. */
-    const finishWriting = () => {
-        state = { ...state, writeWorld: true };
-        if (!createNow()) state = { ...state, writeWorld: false };
-    };
-
     const advance = () => {
         const moved = goNext(state);
         if (moved.reason) {
@@ -447,7 +446,7 @@ export async function askTaller({
         next.show();
         start.show();
 
-        // R2: las trece pestañas, cada una con su marca.
+        // R2: las doce pestañas, cada una con su marca.
         const tabs = $('<div class="tl-tabs" role="tablist"></div>');
         walkableSteps().forEach((tab, index) => {
             const status = tabStatus(state, tab.id, baseline);
@@ -485,7 +484,7 @@ export async function askTaller({
             .append($('<div class="tl-bar-said"></div>').text(`Paso ${at} de ${of} · ${step.title}`))
             .append(legend));
 
-        if (state.path === 'mundo' && state.source?.pack && PACK_STEPS.includes(step.id)) drawCarried(step);
+        if (state.path === 'mundo' && state.source?.pack && PACK_EDIT_STEPS.includes(step.id)) drawPackStep(step);
         else if (step.id === 'mundo') drawWorld();
         else if (step.id === 'narrador') drawNarrator();
         else if (step.id === 'localidades') drawPlaces();
@@ -497,21 +496,35 @@ export async function askTaller({
         else if (step.id === 'objetos') drawPicks('objetos');
         else if (step.id === 'bestiario') drawPicks('bestiario');
         else if (step.id === 'personajes') drawPeople();
-        else if (step.id === 'misiones') drawQuests();
         else drawPlay();
 
         back.prop('disabled', state.at === 0);
         // Ir en fila sigue valiendo, para quien lo prefiera: Atrás, Saltar y Siguiente.
         skip.toggle(Boolean(step.optional));
-        // Escribir el mundo se ofrece en cuanto **hay mundo que escribir**: con el paso 1
-        // resuelto. Quien ya sabe lo que quiere no tiene que pasar por los trece.
-        write2.toggle(blocksNext(state, 'mundo') === '');
         const last = state.at >= walkableSteps().length - 1;
         next.text(last ? 'Crear y jugar' : 'Siguiente');
         next.toggleClass('tl-primary', last);
         // En la última, «Siguiente» ya es crear: dos botones iguales sobran.
         start.toggle(!last);
         start.prop('disabled', blocksNext(state, 'mundo') !== '');
+    }
+
+    /**
+     * Las marcas de las pestañas, sin redibujar nada más. Al escribir un texto largo no se
+     * redibuja (se perdería el cursor a media frase), pero lo que avisa tiene que avisar ya.
+     *
+     * @returns {void}
+     */
+    function markTabs() {
+        bar.find('.tl-tab').each((unused, element) => {
+            const button = $(element);
+            const id = String(button.attr('data-step') ?? '');
+            const status = tabStatus(state, id, baseline);
+            button.removeClass('tl-tab-changed tl-tab-default tl-tab-warn').addClass(`tl-tab-${status}`)
+                .attr('title', status === 'warn' ? blocksNext(state, id) : text(walkableSteps().find(s => s.id === id)?.hint));
+            button.find('.tl-tab-mark').removeClass('fa-triangle-exclamation fa-check fa-circle')
+                .addClass(status === 'warn' ? 'fa-triangle-exclamation' : status === 'changed' ? 'fa-check' : 'fa-circle');
+        });
     }
 
     /**
@@ -644,30 +657,115 @@ export async function askTaller({
         }
 
         state = { ...state, source: { pack, templateId: 'imported', metadata: pack.metadata ?? {} } };
+        // Lo que trae el paquete es «como viene»: sin esto, sus cuatro pestañas salían como
+        // cambiadas nada más cargarlo, porque la foto de antes era la de «desde cero».
+        baseline = { ...baseline, ...Object.fromEntries(PACK_EDIT_STEPS.map(id => [id, stepSlice(state, id)])) };
         said.text('').removeClass('bad');
         draw();
     }
 
     /**
-     * Un paso cuyo contenido trae el mundo escrito: se ensena lo que trae, no un formulario.
+     * Un paso cuyo contenido trae el mundo escrito: lo que trae, con su ficha al lado para
+     * retocarlo, y el `+` para añadir. Lo tocado se guarda aparte y va encima al crear.
      *
      * @param {any} step
      */
-    function drawCarried(step) {
-        const names = packContents(state.source?.pack, step.id);
+    function drawPackStep(step) {
+        const pack = state.source?.pack;
+        const which = String(step.id);
+        const edits = packEditsOf(state);
+        const items = packItems(pack, edits, which);
+        const places = placeNames(pack, edits);
+        const factions = packItems(pack, edits, 'facciones').map(f => text(f.row?.name)).filter(Boolean);
+        const open = items.find(item => item.key === editing[which]) ?? null;
+        const icon = { localidades: 'fa-location-dot', tableros: 'fa-chess-board', facciones: 'fa-flag', personajes: 'fa-user' }[which];
+        // Los tableros, por sitio; la gente, compañeros aparte: así se lee a quién pertenece cada uno.
+        const groupOf = (/** @type {any} */ item) => (which === 'tableros'
+            ? text(item.row?.locationName) || 'Sin sitio'
+            : which === 'personajes' ? (item.kind === 'companero' ? 'Compañeros' : 'Vecinos') : '');
+
+        const problem = open ? packProblem(open, items) : '';
+        const fields = open ? packForm(open, { places, factions }) : [];
+        if (problem && fields[0]) fields[0] = { ...fields[0], hint: problem };
+        const board = open?.kind === 'tablero' ? open : null;
+        /** Lo abierto como está ahora: después de un trazo, `open` ya es de antes. */
+        const now = () => packItems(pack, packEditsOf(state), which).find(item => item.key === open?.key) ?? open;
+
         drawStep(body, {
             title: step.title,
-            hint: names.length > 0
-                ? 'Este mundo los trae escritos. Se cambian después en /campana.'
-                : 'Este mundo no trae ninguno escrito: saldrán jugando.',
-            cardsTitle: `Lo que trae (${names.length})`,
+            hint: 'Este mundo los trae escritos. Pulsa uno para retocarlo o añade los tuyos: '
+                + 'se ponen encima al crear la campaña, y el mundo de serie no cambia.',
+            cardsTitle: `Lo que trae (${items.length})`,
             cardsOpen: true,
-            cards: names.map((name, index) => ({
-                id: `carried_${index}`, title: name, note: '', icon: 'fa-feather', picked: true,
-            })),
-            fields: [],
-            onPick: () => {},
-            onWrite: () => {},
+            formTitle: open ? text(open.row?.name) || 'Sin nombre' : 'Pulsa uno para cambiarlo',
+            detailIcon: icon,
+            cards: [
+                { id: 'nuevo', title: PACK_NEW_LABELS[which] ?? 'Nuevo', note: 'Uno que te inventes tú.', add: true },
+                ...items.map(item => ({
+                    id: item.key,
+                    title: text(item.row?.name) || '(sin nombre)',
+                    note: packNote(item),
+                    icon: item.kind === 'companero' ? 'fa-handshake' : icon,
+                    picked: true,
+                    open: item.key === editing[which],
+                    ...(groupOf(item) ? { group: groupOf(item) } : {}),
+                })),
+            ],
+            fields,
+            // Un tablero se ve entero y se pinta. Sus enemigos no se enseñan (Daniel, 2026-09-28).
+            extra: board ? (inside) => drawBoardPaint(inside, {
+                draft: draftOf({ ...board.row, id: board.key }, cleanSeed(state.fields.seed)),
+                onPaint: (draft) => {
+                    const item = now();
+                    state = writePackRow(state, which, item.key, { ...item.row, map: draft.map, partyStart: draft.partyStart });
+                    markTabs();
+                    body.find('.tl-card.open .tl-card-note').text(packNote(now()));
+                },
+            }) : null,
+            actions: [
+                ...(board?.mine ? [{
+                    label: 'Dibujar otro', icon: 'fa-dice',
+                    onClick: () => {
+                        const row = { ...board.row, take: (Number(board.row?.take) || 0) + 1 };
+                        delete row.map;
+                        delete row.partyStart;
+                        state = writePackRow(state, which, board.key, row);
+                        draw();
+                    },
+                }] : []),
+                ...(open && (open.mine || open.changed) ? [{
+                    label: open.mine ? 'Quitar este' : 'Volver al del mundo',
+                    icon: open.mine ? 'fa-trash-can' : 'fa-rotate-left',
+                    danger: open.mine,
+                    onClick: () => {
+                        state = dropPackRow(state, which, open.key);
+                        if (open.mine) editing[which] = '';
+                        draw();
+                    },
+                }] : []),
+            ],
+            onPick: (id) => {
+                if (id === 'nuevo') {
+                    const taken = new Set(items.map(item => item.key));
+                    let n = 1;
+                    while (taken.has(`mio:${n}`)) n++;
+                    // Un tablero nuevo nace en el sitio que estés mirando, si miras uno.
+                    const near = which === 'tableros' && open ? [text(open.row?.locationName), ...places] : places;
+                    const made = newPackRow(which, { places: near.filter(Boolean), n });
+                    state = writePackRow(state, which, made.key, made.row);
+                    editing[which] = made.key;
+                    draw();
+                    return;
+                }
+                editing[which] = editing[which] === id ? '' : id;
+                draw();
+            },
+            onWrite: (key, value) => {
+                if (!open) return;
+                state = writePackRow(state, which, open.key, applyPackField(open, key, value));
+                // Escribir un texto largo no redibuja: se perderia el cursor a media frase.
+                if (!['description', 'goals', 'wants', 'knows', 'secret', 'voice'].includes(key)) draw();
+            },
         });
     }
 
@@ -987,7 +1085,7 @@ export async function askTaller({
         const place = places.find(p => text(p.id) === open) ?? null;
 
         drawStep(body, {
-            title: 'Localidades',
+            title: 'Localizaciones',
             hint: 'Los sitios a los que se puede ir. La distancia se declara en días: el mundo '
                 + 'es una lista, no un tablero.',
             cardsTitle: 'Los sitios del mundo',
@@ -1048,7 +1146,7 @@ export async function askTaller({
                 state = editLocation(state, place.id, { [field]: value });
                 if (key !== 'lNote') draw();
             },
-            onWand: write ? (key) => write(key, state) : null,
+            onWand: write ? (key) => write(key, state, place) : null,
         });
     }
 
@@ -1086,7 +1184,8 @@ export async function askTaller({
                     id: text(board.id),
                     title: text(board.name) || '(sin nombre)',
                     note: [SHAPE_LABELS[text(board.shape)] ?? text(board.shape),
-                        SIZE_LABELS[text(board.size)] ?? ''].filter(Boolean).join(' - '),
+                        SIZE_LABELS[text(board.size)] ?? '',
+                        Array.isArray(board.map) && board.map.length > 0 ? 'pintado a mano' : ''].filter(Boolean).join(' - '),
                     icon: 'fa-chess-board',
                     picked: true,
                     open: text(board.id) === text(editing.tableros),
@@ -1098,10 +1197,12 @@ export async function askTaller({
         const place = places.find(p => p.boards.some((/** @type {any} */ b) => text(b.id) === text(editing.tableros))) ?? null;
         const board = place?.boards.find((/** @type {any} */ b) => text(b.id) === text(editing.tableros)) ?? null;
 
+        const painted = Array.isArray(board?.map) && board.map.length > 0;
+
         drawStep(body, {
             title: 'Tableros',
-            hint: 'Donde se pelea. Cada uno pertenece a un sitio, y se genera con tu semilla '
-                + 'al crear la campaña.',
+            hint: 'Donde se pelea. Cada uno pertenece a un sitio y lo dibuja tu semilla; '
+                + 'pulsa uno para verlo y pintarlo. Lo que ves es lo que se juega.',
             cardsTitle: 'Los tableros de cada sitio',
             formTitle: board ? text(board.name) || 'Sin nombre' : 'Pulsa un tablero para cambiarlo',
             detailIcon: 'fa-chess-board',
@@ -1115,9 +1216,26 @@ export async function askTaller({
                 {
                     key: 'bSize', label: 'Cuánto ocupa', value: text(board.size), kind: 'choice',
                     options: Object.entries(SIZE_LABELS).map(([id, label]) => ({ id, label: text(label) })),
+                    hint: painted ? 'Cambiar la forma o el tamaño lo vuelve a dibujar, y se pierde lo pintado.' : '',
                 },
             ] : [],
+            // El tablero entero, para pintarlo. Cada trazo se guarda al soltar el ratón.
+            extra: place && board ? (inside) => drawBoardPaint(inside, {
+                draft: draftOf(board, cleanSeed(state.fields.seed)),
+                onPaint: (draft) => {
+                    state = editBoard(state, place.id, board.id, { map: draft.map, partyStart: draft.partyStart });
+                    markTabs();
+                    body.find('.tl-card.open .tl-card-note').text([SHAPE_LABELS[text(board.shape)] ?? text(board.shape),
+                        SIZE_LABELS[text(board.size)] ?? '', 'pintado a mano'].filter(Boolean).join(' - '));
+                },
+            }) : null,
             actions: place && board ? [{
+                label: 'Dibujar otro', icon: 'fa-dice',
+                onClick: () => {
+                    state = editBoard(state, place.id, board.id, { take: (Number(board.take) || 0) + 1, map: null, partyStart: null });
+                    draw();
+                },
+            }, {
                 label: 'Quitar este tablero', icon: 'fa-trash-can', danger: true,
                 onClick: () => {
                     state = removeBoard(state, place.id, board.id);
@@ -1144,7 +1262,9 @@ export async function askTaller({
                 if (!place || !board) return;
                 const field = { bName: 'name', bShape: 'shape', bSize: 'size' }[key];
                 if (!field) return;
-                state = editBoard(state, place.id, board.id, { [field]: value });
+                // Otra forma u otro tamaño es otro tablero: se vuelve a dibujar.
+                const redraw = field === 'name' ? {} : { map: null, partyStart: null };
+                state = editBoard(state, place.id, board.id, { [field]: value, ...redraw });
                 draw();
             },
         });
@@ -1291,7 +1411,7 @@ export async function askTaller({
                 }
                 if (key !== 'fNote') draw();
             },
-            onWand: write ? (key) => write(key, state) : null,
+            onWand: write ? (key) => write(key, state, faction) : null,
         });
     }
 
@@ -1308,7 +1428,9 @@ export async function askTaller({
      * @param {string} which
      */
     function drawPicks(which) {
-        const rows = catalogues[which] ?? [];
+        const stock = catalogues[which] ?? [];
+        // Las de serie, con las tuyas encima (retocadas) y las nuevas al final.
+        const rows = mergeRows(stock, ownRows(state, which));
         const said = {
             habilidades: {
                 title: 'Habilidades',
@@ -1364,43 +1486,108 @@ export async function askTaller({
             razas: 'fa-user-group', clases: 'fa-shield-halved', habilidades: 'fa-hand-sparkles',
             objetos: 'fa-gem', bestiario: 'fa-dragon',
         }[which] ?? 'fa-circle';
-        const cards = rows.map((/** @type {any} */ row) => ({
-            id: text(row.id),
-            title: text(row.name),
-            note: said.line(row),
-            icon,
-            picked: isPicked(state, which, text(row.id)),
-            open: text(row.id) === open,
-            // Por lo que se filtra, donde hay tantas que hace falta: sesenta formas, cuarenta bichos.
-            tag: which === 'objetos' ? ({ weapon: 'armas', armor: 'armaduras', gear: 'trastos' }[text(row.itemType)] ?? '')
-                : which === 'bestiario' ? ({ arquetipo: 'arquetipos', plantilla: 'plantillas' }[text(row.kind)] ?? '')
-                    : '',
-        }));
+        // Lo tuyo se dice: lo nuevo, y lo de serie que has retocado para este mundo.
+        // Un objeto y un bicho son «él»; una raza, una clase y una habilidad, «ella».
+        const him = which === 'objetos' || which === 'bestiario';
+        const noteOf = (/** @type {any} */ row) => [row.mine ? (him ? 'Tuyo' : 'Tuya') : row.changed ? (him ? 'Retocado' : 'Retocada') : '', said.line(row)].filter(Boolean).join(' · ');
+        const cards = [
+            { id: 'nueva', title: NEW_LABELS[which] ?? 'Nueva', note: 'Parte de la que tengas abierta.', add: true },
+            ...rows.map((/** @type {any} */ row) => ({
+                id: text(row.id),
+                title: text(row.name) || '(sin nombre)',
+                note: noteOf(row),
+                icon,
+                picked: isPicked(state, which, text(row.id)),
+                open: text(row.id) === open,
+                // Por lo que se filtra, donde hay tantas que hace falta: sesenta formas, cuarenta bichos.
+                tag: which === 'objetos' ? ({ weapon: 'armas', armor: 'armaduras', gear: 'trastos' }[text(row.itemType)] ?? '')
+                    : which === 'bestiario' ? ({ arquetipo: 'arquetipos', plantilla: 'plantillas' }[text(row.kind)] ?? '')
+                        : '',
+            })),
+        ];
 
         const row = rows.find((/** @type {any} */ r) => text(r.id) === open) ?? null;
         const marked = pickedIn(state, which).length;
+        // Para las habilidades: de qué clase (también las tuyas) y cómo funciona (las de serie:
+        // una mecánica nueva es código).
+        const context = {
+            classes: mergeRows(catalogues.clases ?? [], ownRows(state, 'clases')).map((/** @type {any} */ c) => ({ id: text(c.id), name: text(c.name) })),
+            abilities: catalogues.habilidades ?? [],
+        };
+        const problems = row ? rowProblems(which, row) : [];
+        const fields = row ? rowForm(which, row, context) : [];
+        // Lo que no cuadra, debajo del nombre: sin esto, la pestaña se ponía en rojo sin decir por qué.
+        if (fields.length > 0 && problems.length > 0) fields[0] = { ...fields[0], hint: problems.join(' ') };
 
         drawStep(body, {
             title: said.title,
-            hint: said.hint,
+            hint: `${said.hint} Pulsa una para cambiarla: en este mundo, no en el compendio de todos.`,
             cardsTitle: said.cards,
             cardsOpen: true,
-            formTitle: row ? text(row.name) : 'Pulsa una para leerla',
+            formTitle: row ? text(row.name) || 'Sin nombre' : 'Pulsa una para verla y cambiarla',
             detailIcon: icon,
             tally: `${marked} de ${rows.length} dentro`,
             cards,
-            fields: row ? [
-                { key: 'x', label: 'Qué hace', value: said.line(row), hint: text(row.note) },
+            fields,
+            actions: row ? [
+                inOrOut(which, text(row.id)),
+                ...(row.mine ? [{
+                    label: him ? 'Quitar este' : 'Quitar esta', icon: 'fa-trash-can', danger: true,
+                    onClick: () => {
+                        state = dropRow(state, which, text(row.id));
+                        if (isPicked(state, which, text(row.id))) state = pickCard(state, which, text(row.id));
+                        editing[which] = '';
+                        draw();
+                    },
+                }] : row.changed ? [{
+                    label: him ? 'Volver al de serie' : 'Volver a la de serie', icon: 'fa-rotate-left',
+                    onClick: () => {
+                        state = dropRow(state, which, text(row.id));
+                        draw();
+                    },
+                }] : []),
             ] : [],
-            actions: row ? [inOrOut(which, text(row.id))] : [],
             onPick: (id) => {
-                // Aqui no se escribe: se elige. Pulsar la abre, y volver a pulsarla la quita
-                // del mundo.
+                if (id === 'nueva') {
+                    // Nace de la que estés mirando (o de la primera): hereda lo que no se ve.
+                    const from = row ?? rows[0] ?? {};
+                    const taken = new Set(rows.map((/** @type {any} */ r) => text(r.id)));
+                    let n = 1;
+                    while (taken.has(`mio-${which}-${n}`)) n++;
+                    const made = newRow(which, from, n);
+                    state = writeRow(state, which, made);
+                    if (!isPicked(state, which, made.id)) state = pickCard(state, which, made.id);
+                    editing[which] = made.id;
+                    draw();
+                    return;
+                }
+                // Pulsar la abre, y volver a pulsarla la quita del mundo.
                 if (editing[which] === id) state = pickCard(state, which, id);
                 else editing[which] = id;
                 draw();
             },
-            onWrite: () => {},
+            onWrite: (key, value) => {
+                if (!row) return;
+                const current = { ...row };
+                delete current.changed;
+                state = writeRow(state, which, applyRowField(which, current, key, value, context));
+                // Lo que se escribe a mano (qué da y qué quita, qué es) no se redibuja: se perdería
+                // lo que se está tecleando. El nombre y las listas, sí.
+                if (!['effects', 'note', 'weakness', 'quirk', 'kg'].includes(key)) {
+                    draw();
+                    return;
+                }
+                // Sin redibujar, lo que cambia a la vista: la marca de la pestaña, la línea de la
+                // tarjeta y lo que no cuadra, debajo del nombre.
+                const now = mergeRows(stock, ownRows(state, which)).find((/** @type {any} */ r) => text(r.id) === text(row.id));
+                if (!now) return;
+                markTabs();
+                body.find('.tl-card.open .tl-card-note').text(noteOf(now));
+                const first = body.find('.tl-detail .tl-field').first();
+                const problem = rowProblems(which, now).join(' ');
+                const hint = first.find('.tl-hint').length > 0 ? first.find('.tl-hint') : $('<div class="tl-hint"></div>').appendTo(first);
+                hint.text(problem).toggle(Boolean(problem));
+            },
         });
     }
 
@@ -1472,13 +1659,13 @@ export async function askTaller({
                 },
                 {
                     key: 'pRace', label: 'Raza', value: text(person.race), kind: 'choice',
-                    options: [{ id: '', label: '-' }, ...(catalogues.razas ?? []).map((/** @type {any} */ r) => ({
+                    options: [{ id: '', label: '-' }, ...mergeRows(catalogues.razas ?? [], ownRows(state, 'razas')).map((/** @type {any} */ r) => ({
                         id: text(r.name), label: text(r.name),
                     }))],
                 },
                 {
                     key: 'pClass', label: 'Clase', value: text(person.className), kind: 'choice',
-                    options: [{ id: '', label: '-' }, ...(catalogues.clases ?? []).map((/** @type {any} */ c) => ({
+                    options: [{ id: '', label: '-' }, ...mergeRows(catalogues.clases ?? [], ownRows(state, 'clases')).map((/** @type {any} */ c) => ({
                         id: text(c.name), label: text(c.name),
                     }))],
                 },
@@ -1522,146 +1709,10 @@ export async function askTaller({
                 state = editPerson(state, person.id, { [field]: value });
                 if (key === 'pName' || key === 'pTitle' || key === 'pWhere') draw();
             },
-            onWand: write ? (key) => write(key, state) : null,
+            onWand: write ? (key) => write(key, state, person) : null,
         });
     }
 
-    /**
-     * Paso 12: las misiones.
-     *
-     * **No es escribir un tablon.** Las misiones las hace el motor mientras juegas: el
-     * tablon se rellena solo cuando algo vence y uno de cada tres encargos sale de lo que
-     * una faccion quiere esa semana. Aqui solo estan las pocas que dan el tono y los
-     * mandos de como salen las demas.
-     */
-    function drawQuests() {
-        const all = questsOf(state);
-        const open = editing.misiones;
-        const rules = boardRulesOf(state);
-        const places = locationsOf(state)
-            .filter(place => isPicked(state, 'localidades', text(place.id)))
-            .map(place => text(place.name)).filter(Boolean);
-
-        const cards = [
-            { id: 'nueva', title: 'Nueva misión', note: 'De las que dan el tono.', add: true },
-            ...all.map(quest => ({
-                id: text(quest.id),
-                title: text(quest.title) || '(sin título)',
-                note: [text(quest.where), quest.atStart ? 'desde el principio' : 'mezclada'].filter(Boolean).join(' - '),
-                icon: 'fa-scroll',
-                picked: isPicked(state, 'misiones', text(quest.id)),
-                open: text(quest.id) === open,
-                tag: text(quest.where),
-            })),
-        ];
-
-        const quest = all.find(q => text(q.id) === open) ?? null;
-
-        drawStep(body, {
-            title: 'Misiones',
-            hint: 'Las que trae el mundo escritas, y cómo salen las demás. El tablón se rellena '
-                + 'solo: lo que vence deja hueco, y uno de cada tres sale de lo que una facción '
-                + 'quiere esa semana.',
-            cardsTitle: 'Las que trae el mundo',
-            cardsOpen: true,
-            formTitle: quest ? text(quest.title) || 'Sin título' : 'Los mandos del tablón',
-            detailIcon: quest ? 'fa-scroll' : 'fa-sliders',
-            cards,
-            fields: quest ? [
-                { key: 'qTitle', label: 'Título', value: text(quest.title), placeholder: 'Sacar lo que hay en el pozo' },
-                { key: 'qNote', label: 'De qué va', value: text(quest.note), kind: 'area', wand: true },
-                {
-                    key: 'qWhere', label: 'Dónde', value: text(quest.where), kind: 'choice',
-                    options: [{ id: '', label: '-' }, ...places.map(name => ({ id: name, label: name }))],
-                },
-                { key: 'qReward', label: 'Lo que paga', value: String(quest.reward || 0) },
-                {
-                    key: 'qStart', label: 'Sale desde el principio', kind: 'check',
-                    value: quest.atStart ? 'si' : '',
-                    hint: 'Apagado, aparece mezclada con lo que el tablón vaya generando.',
-                },
-            ] : [
-                {
-                    key: 'bShare', label: 'Cuántos encargos salen de las facciones',
-                    value: String(rules.factionShare), kind: 'choice',
-                    options: [
-                        { id: '2', label: 'Uno de cada dos' },
-                        { id: '3', label: 'Uno de cada tres' },
-                        { id: '5', label: 'Uno de cada cinco' },
-                        { id: '99', label: 'Ninguno: solo trabajo suelto' },
-                    ],
-                    hint: 'Un tablón que solo habla de facciones deja de ofrecer trabajo y pasa a '
-                        + 'ser una guerra.',
-                },
-                {
-                    key: 'bTheme', label: 'De qué tira el gremio', value: text(rules.theme),
-                    placeholder: 'general, ladrones, cazadores…',
-                    hint: 'La temática pesa sobre la misma tabla: un gremio de ladrones ve más '
-                        + 'robos y menos escoltas.',
-                },
-            ],
-            // Con una misión abierta, los mandos del tablón quedaban fuera de alcance: se vuelve
-            // a ellos desde aquí.
-            actions: quest ? [
-                inOrOut('misiones', text(quest.id)),
-                {
-                    label: 'Ver los mandos del tablón', icon: 'fa-sliders',
-                    onClick: () => {
-                        editing.misiones = '';
-                        draw();
-                    },
-                },
-                {
-                    label: 'Quitar esta misión', icon: 'fa-trash-can', danger: true,
-                    onClick: () => {
-                        state = removeQuest(state, quest.id);
-                        editing.misiones = '';
-                        draw();
-                    },
-                },
-            ] : [],
-            onPick: (id) => {
-                if (id === 'nueva') {
-                    const made = addQuest(state, { title: '', where: places[0] ?? '' });
-                    state = made.state;
-                    editing.misiones = made.id;
-                    draw();
-                    return;
-                }
-                if (editing.misiones === id) state = pickCard(state, 'misiones', id);
-                else editing.misiones = id;
-                draw();
-            },
-            onWrite: (key, value) => {
-                if (key === 'bShare') {
-                    state = setBoardRules(state, { factionShare: Number(value) || 3 });
-                    return;
-                }
-                if (key === 'bTheme') {
-                    state = setBoardRules(state, { theme: value });
-                    return;
-                }
-                if (!quest) return;
-                if (key === 'qStart') {
-                    state = editQuest(state, quest.id, { atStart: value === 'si' });
-                    draw();
-                    return;
-                }
-                const map = { qTitle: 'title', qNote: 'note', qWhere: 'where' };
-                if (key === 'qReward') {
-                    state = editQuest(state, quest.id, { reward: Math.max(0, Number(value) || 0) });
-                    return;
-                }
-                const field = map[key];
-                if (!field) return;
-                state = editQuest(state, quest.id, { [field]: value });
-                if (key !== 'qNote') draw();
-            },
-            onWand: write ? (key) => write(key, state) : null,
-        });
-    }
-
-    /** Paso 13: cuanto duele perder. */
     /**
      * El modo de juego (R1 del roadmap de profundidad): tres con nombre y las seis letras
      * para afinar. Sustituye a las dificultades de la idea 198 (DR1).
@@ -1680,7 +1731,6 @@ export async function askTaller({
     }
 
     back.on('click', () => { state = goBack(state); said.text('').removeClass('bad'); draw(); });
-    write2.on('click', finishWriting);
     skip.on('click', advance);
     next.on('click', advance);
     start.on('click', () => { createNow(); });

@@ -214,7 +214,7 @@ hito:
 ```
 
 ### El presagio
-Tres frases del principio, ambiguas, cada una ligada a un hito. Van en el bloque `mundo:` y se cumplen con su hito; el juego lo dice.
+Tres frases del principio que **avisan de lo que viene**, cada una ligada a un hito. Van en el bloque `mundo:` y se cumplen con su hito; el juego lo dice. Tienen que **entenderse a la primera**: dicen de qué va el peligro sin destripar cómo acaba. Nada de acertijos («el peaje sangrará dos veces» no lo entiende nadie jugando).
 ```yaml
 mundo:
   id: la-costa
@@ -225,9 +225,9 @@ mundo:
       - { acto: 2, escena: "Desde el espigón, alguien os mira con catalejo." }
       - { hito: la-firma, escena: "Ella entra en la taberna, os sonríe y se va." }
   presagio:
-    - { frase: "Lo que el mar se lleva, lo devuelve con otra cara.", se_cumple: el-primer-ahogado }
-    - { frase: "Firmarás sin pluma.", se_cumple: la-firma }
-    - { frase: "La última marea sube de día.", se_cumple: la-marea-final }
+    - { frase: "El mar os devolverá a alguien que dabais por muerto, pero no será el mismo.", se_cumple: el-primer-ahogado }
+    - { frase: "Acabarás firmando un trato que no has leído entero.", se_cumple: la-firma }
+    - { frase: "La última marea subirá en pleno día, y con ella lo peor.", se_cumple: la-marea-final }
 ```
 
 ### Localidad
@@ -426,6 +426,8 @@ heroe:
 ## El estilo
 
 - **Castellano de España**, sin anglicismos que no hagan falta.
+- **Que se entienda a la primera.** Frases cortas y vocabulario corriente. Ni acertijos ni metáforas que haya que descifrar: quien juega es un aficionado, no un lector de poesía. Si una imagen no se entiende sola, dilo llano. Claro no es soso: el tono se mantiene.
+- **Lo tuyo se lee dentro de frases del juego.** De un PNJ, `sabe` va detrás de «Sabe…» («Sabe quién entra de noche…»), `quiere` detrás de «Lo que busca Giles:» («Que alguien le pague…») y `voz` detrás de «Habla así:». Un rumor lo dice alguien del lugar, entre comillas. La `nota` de un encuentro empieza por una frase corta con lo que hay que hacer.
 - **Concreto antes que épico.** «El puente lleva tres inviernos sin tablas nuevas» vale más que «un puente antiguo y misterioso».
 - **Cada escena termina en una decisión o en una pregunta**, no en una descripción.
 - **Los villanos quieren algo razonable desde su lado.**

@@ -173,7 +173,7 @@ function buildDocument() {
         '| 4 | *«Ensambla»* | El paquete completo en **un solo** bloque JSON. Es lo único que el juego acepta |',
         '| 5 | SillyTavern → **Partida nueva** → **Importar un libro** → pegas → **Comprobar el paquete** | — |',
         '| 6 | Si Comprobar señala errores, se los pegas tal cual | Corrige solo eso y devuelve el paquete entero |',
-        '| 7 | Cuando pase: **Crear y jugar**, o **Crear y escribir el mundo** si quieres retocar algo en el editor antes | — |',
+        '| 7 | Cuando pase: **Crear y jugar**. Si luego quieres retocar algo: *Editar la campaña*, en la pausa | — |',
         '',
         'Dos cosas que ahorran vueltas:',
         '',

@@ -37,7 +37,7 @@ export const DOMAIN_LABELS = {
     clases: ['Clases', 'A qué se dedica, su dado de golpe y en qué es buena'],
     bestiario: ['Bestiario', 'Arquetipos y plantillas que se apilan'],
     personas: ['Personas', 'Qué quiere y qué teme: de ahí salen todas sus decisiones'],
-    sitios: ['Sitios', 'Tipos de localidad y plantillas de sala'],
+    sitios: ['Sitios', 'Tipos de localización y plantillas de sala'],
     misiones: ['Misiones', 'Verbo + objeto + giro: el giro es lo que separa un recado de una misión'],
     facciones: ['Facciones', 'Quién quiere qué, y contra quién'],
     mundo: ['Mundo', 'Biomas, climas y estaciones'],

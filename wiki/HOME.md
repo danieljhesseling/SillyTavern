@@ -109,6 +109,18 @@ El juego de rol añadido en la rama `my-silly`: **234 módulos en `game-engine/`
 ### 4. 🧭 Lo que falta, lo que se hace y el porqué
 - **[[LO_QUE_FALTA]]** 🔭 **Lo que le falta al juego (2026-09-26).** El análisis del proyecto entero tras R1–R10: la radiografía en números, lo que ya es fuerte, el diagnóstico en cinco frases, y lo que falta por áreas (terminar lo empezado, el tablero que pide el guion, la IA, el contenido, la primera hora y lo técnico). Termina con el orden recomendado y la lista de lo que descartaste, para que nadie lo vuelva a proponer.
 - **[[POR_HACER]]** 📋 **El marcador**, dividido por quién tiene que actuar: A (se hace), D (decides tú) y P (propuestas). Con la deuda conocida y una prueba manual de cinco minutos.
+- **[[ROADMAP_SIN_TOKENS]]** 🎲 **Sin tokens: divertido sin modelo, mejor con él (2026-09-27). El plan de ahora.** Parte de un repaso del código. Encontró tres cosas que hoy atascan el juego sin modelo: 1387 se para en el hito 2, solo se puede tirar una vez por partida, y las órdenes al narrador se ven. Encontró también diez momentos en los que el juego se calla. Nueve fases (Z0–Z8), por este orden:
+  - que nada se atasque;
+  - una vuelta de prueba sin modelo;
+  - un narrador del motor con bancos de frases;
+  - hablar con la gente sin modelo;
+  - tiradas con consecuencia y una caja que entiende;
+  - sucesos con decisiones;
+  - el modelo como mejora (modos Motor, Mixto y Modelo, con tope de gasto);
+  - hilos generados con fondo;
+  - el Gem escribiendo frases, charlas y sucesos.
+
+  Con marcador y seis decisiones para ti (DZ1–DZ6).
 - **[[ROADMAP_PROFUNDIDAD]]** 🌳 **Profundidad: más hondo, no más ancho (2026-09-26).** Diez fases, hechas: modos de juego (Relajado, Normal, Supervivencia, a tu medida) y héroes hechos, el taller en pestañas, habilidades con áreas y elementos que tocan el terreno, la magia solo desde el código (un grimorio de 25 conjuros), la mascota, tableros con intención, enemigos con papel y némesis, compañeros con arco y un mundo que responde. Su tabla «Cómo va» dice lo que falta de cada fase.
 - **[[ROADMAP_PEGAMENTO]]** 🧩 **El pegamento: un juego, no doscientos (2026-09-25).** Nueve fases para que lo construido se hable entre sí: un narrador, un estado, un reloj, una crónica, la Mesa de la Semana, el Duelo de Palabras, una forma de mundo, despachos y casos. Con el marcador de números que tienen que bajar.
 - **[[ROADMAP_MAESTRO]]** 🗺️ **El porqué.** La pregunta que ordena todo —**¿por qué querrías jugar mañana?**—, los cuatro relojes y los seis niveles.
@@ -165,7 +177,7 @@ Si eres un agente de IA interactuando con este repositorio, sigue estas directri
 | Entender cómo se inyectan los datos al LLM | [[Ciclo-De-Vida-Prompt]] | `public/script.js` |
 | Localizar un archivo en el proyecto | [[Mapa-Codigo-Archivos]] | Índice del repositorio |
 | Saber si algo está conectado al juego o solo probado | [[POR_HACER]] | `node tools/check-engine-wiring.mjs` |
-| Comprobar que el juego sigue jugándose de principio a fin | [[POR_HACER]] *Probarlo a mano* | `node tools/e2e-campaign.mjs` (unos 55 min) · `node tools/e2e-quick.mjs` (2 min, empezar en 1387; con `--profundidad`, la tanda de lo nuevo) |
+| Comprobar que el juego sigue jugándose de principio a fin | [[POR_HACER]] *Probarlo a mano* | `node tools/e2e-todo.mjs --rapido` (unos 4 min: tests, empezar en 1387 y una partida sin modelo, a la vez) · `node tools/e2e-todo.mjs` (unos 15 min: además, la vuelta entera en dos mitades a la vez) |
 
 ---
 

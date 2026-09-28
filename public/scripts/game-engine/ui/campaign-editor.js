@@ -238,7 +238,7 @@ export async function openCampaignEditor({
         tabs.empty();
         const pages = [
             ['world', 'Mundo', 'fa-globe'],
-            ['locations', 'Localidades', 'fa-location-dot'],
+            ['locations', 'Localizaciones', 'fa-location-dot'],
             ['people', 'Personajes', 'fa-user'],
             ['bestiary', 'Bestiario', 'fa-dragon'],
             ['factions', 'Facciones', 'fa-flag'],
@@ -382,7 +382,7 @@ export async function openCampaignEditor({
     function drawLocations() {
         body.empty();
         body.append($('<div class="ce-intro"></div>').text(
-            'Una localidad puede no tener ningún tablero: una aldea donde solo se habla y '
+            'Una localización puede no tener ningún tablero: una aldea donde solo se habla y '
             + 'se comercia es tan válida como una cripta.',
         ));
 
@@ -406,7 +406,7 @@ export async function openCampaignEditor({
             row.append(type);
 
             const remove = $('<button class="menu_button ce-remove" type="button"></button>')
-                .attr('title', 'Quitar esta localidad')
+                .attr('title', 'Quitar esta localización')
                 .append('<i class="fa-solid fa-trash"></i>');
             remove.on('click', () => {
                 model.locations = model.locations.filter(l => l !== location);
@@ -461,7 +461,7 @@ export async function openCampaignEditor({
 
         const addLocation = $('<button class="menu_button ce-add-location" type="button"></button>')
             .append('<i class="fa-solid fa-plus"></i>')
-            .append($('<span></span>').text(' Añadir una localidad'));
+            .append($('<span></span>').text(' Añadir una localización'));
         addLocation.on('click', () => {
             const created = createLocation(`Sitio ${model.locations.length + 1}`);
             model.locations.push({
@@ -891,7 +891,7 @@ export async function openCampaignEditor({
         if (boards.length === 1) {
             body.append($('<div class="ce-empty"></div>').text(
                 'Este mundo no tiene ningún tablero todavía, así que no hay dónde jugar una misión. '
-                + 'Añade uno en Localidades.'));
+                + 'Añade uno en Localizaciones.'));
         }
 
         for (const quest of model.quests) {

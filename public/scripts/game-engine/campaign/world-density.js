@@ -101,8 +101,8 @@ export function checkWorldDensity(pack) {
     const noFight = contracts.filter(c => c.noFight).length;
     quota('Encargos sin pelear', contracts.length ? noFight / contracts.length : 0, QUOTA.noFightShare,
         `${noFight} de ${contracts.length}`);
-    quota('Localidades al empezar', visible.length, QUOTA.visible);
-    quota('Localidades que se descubren', hidden.length, QUOTA.hidden);
+    quota('Localizaciones al empezar', visible.length, QUOTA.visible);
+    quota('Localizaciones que se descubren', hidden.length, QUOTA.hidden);
     quota('PNJ con nombre', npcs.length, QUOTA.npcs);
     quota('Confidentes', confidants.length, QUOTA.confidants);
     const maps = new Set(boards.map(b => text(b.mapId) || text(b.id)));

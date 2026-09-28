@@ -148,7 +148,7 @@ describe('la ida y la vuelta', () => {
 describe('contado en una línea', () => {
     test('dice lo que lleva', () => {
         expect(describeExport(buildPackFromWorld(world())))
-            .toBe('"Valle del Molino" · 1 localidad(es) · 1 tablero(s) · 1 enemigo(s) · 1 compañero(s) · 1 misión(es)');
+            .toBe('"Valle del Molino" · 1 localización(es) · 1 tablero(s) · 1 enemigo(s) · 1 compañero(s) · 1 misión(es)');
     });
 });
 
@@ -192,6 +192,6 @@ describe('los sitios sin tablero tambien viajan', () => {
     });
 
     test('y lo cuenta en la linea de resumen', () => {
-        expect(describeExport(buildPackFromWorld(withVillage()))).toMatch('2 localidad(es)');
+        expect(describeExport(buildPackFromWorld(withVillage()))).toMatch('2 localización(es)');
     });
 });

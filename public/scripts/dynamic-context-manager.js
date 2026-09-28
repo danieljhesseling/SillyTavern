@@ -497,7 +497,9 @@ export function buildBoardContext() {
 
     if (board.enemyTokens.length > 0) {
         const names = board.enemyTokens.map(t => t.name).join(', ');
-        lines.push(`Enemigos en combate: ${names}`);
+        lines.push(board.fighting === false
+            ? `Enemigos presentes, sin pelear todavía: ${names}`
+            : `Enemigos en combate: ${names}`);
     }
 
     if (board.partyTokens.length === 0 && board.npcTokens.length === 0 && board.enemyTokens.length === 0) {

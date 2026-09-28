@@ -15,6 +15,8 @@ author: DanielJHesseling / Claude Opus 5
 >
 > **Desde el 2026-09-26, la profundidad sigue en [[ROADMAP_PROFUNDIDAD]]** (R1–R10: modos, taller en pestañas, habilidades, magia en código, mascota, tableros con intención, enemigos, compañeros, mundo y herramientas). Lo que falta de cada fase está en su tabla «Cómo va».
 >
+> **Desde el 2026-09-27, el plan es [[ROADMAP_SIN_TOKENS]]** (Z0–Z8): un juego divertido sin gastar un token, que mejora con ellos. Sus seis decisiones (DZ1–DZ6) se tomaron con la recomendación; se cambian si dices otra cosa.
+>
 > **Y lo que le falta al juego, mirado entero, en [[LO_QUE_FALTA]]** (2026-09-26), con el orden que recomiendo. Ese mismo día se ordenó la wiki: siete documentos borrados y nueve planes cerrados movidos a `wiki/archivo/`.
 
 Lo que falta, dividido por **quién tiene que actuar**:
@@ -309,9 +311,42 @@ Hoy una localidad sin tablero táctico es solo un cartel de texto. Si el jugador
 
 ---
 
+### A15 · Los tableros de «Desde cero» no se dibujan ✅ **Arreglado el 2026-09-28**
+
+> **Lo que pasaba:** en «Desde cero», la pestaña *Tableros* dejaba añadir tableros con forma y tamaño, pero **al crear no se dibujaba ninguno**. `applyChosenLocations` (`ui/campaign-wizard.js`) los guardaba como `wanted`, y nada leía `wanted`.
+>
+> **Ahora:** el taller dibuja cada tablero con la semilla y su clave (`campaign/board-draft.js`), lo enseña en la ficha para pintarlo, y al crear se usa **ese mismo mapa**: lo que se ve es lo que se juega. Lo prueban el test de `createCampaign` y el paso 1 del e2e completo.
+
+### A16 · El taller, todo editable ✅ **Hecho el 2026-09-28**
+
+> Todas las pestañas tienen su ficha a la derecha y su botón de añadir: sitios, tableros, facciones, gente, razas, clases, habilidades, objetos y bichos. También en 1387, donde antes solo se veían.
+>
+> - Lo retocado de serie vale **solo para ese mundo**.
+> - Una raza o clase nueva escribe lo que da y lo que quita, y la pestaña avisa si solo suma.
+> - Lo propio va con el mundo (`metadata.worldRows`): el creador de personaje y la partida lo usan.
+> - La pestaña *Misiones* se quitó.
+>
+> El código está en `campaign/world-rows.js` y `campaign/pack-edits.js`. Tiene tests y el e2e rápido lo comprueba en pantalla.
+>
+> **El editor de tableros** (pedido el mismo día): la ficha de un tablero enseña el tablero entero y se pinta arrastrando el ratón, con diez pinceles (suelo, muro, puerta, coberturas, terreno difícil, agua, barril, salida y dónde empieza el grupo).
+>
+> - Vale en «Desde cero» y en los tableros de 1387.
+> - Los enemigos escritos no se enseñan (Daniel, el mismo día). Si se pinta encima de ellos, al crear se colocan en la casilla libre más cercana a la que se llega.
+> - El borde no se toca.
+> - Si el grupo se queda sin dónde empezar, la pestaña avisa.
+> - **Dibujar otro** lo vuelve a tirar con la semilla.
+>
+> El código está en `campaign/board-draft.js` y `ui/taller/board-paint.js`.
+
+---
+
 ## 🟠 D — Necesita una decisión
 
 Cada una es una bifurcación real: las dos salidas son defendibles y la elección cuesta después. Llevan mi recomendación, pero la decisión no es mía.
+
+### D9 · Lo que no cuadra en el guion de 1387 ✅ **Decidido: las recomendaciones, el 2026-09-28** ([[ronda-12-claude-decisiones]])
+
+Al reescribir 1387 para que se entienda ([[ronda-11-claude-claro]]), salieron **25 cosas que no cuadran entre textos del original**: plata u oro en la oferta del castillo, dónde está el espía, quién ataca el peaje, Aldara que a veces se llama Elara… No se tocó ningún hecho. La lista, con lo que recomiendo en cada una, está en [[DUDAS_1387]]. Lo que decidas se escribe en una ronda nueva.
 
 ### D1 · `npm audit`: 47 vulnerabilidades, una crítica
 

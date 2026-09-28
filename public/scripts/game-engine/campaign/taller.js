@@ -25,22 +25,25 @@
  */
 
 import { cleanSeed, rollSeed } from './seed.js';
+import { ROW_STEPS, rowProblems, worldRowsFor } from './world-rows.js';
+import { PACK_EDIT_STEPS, packStepProblem, applyPackEdits } from './pack-edits.js';
+import { draftOf, draftProblem } from './board-draft.js';
 
 /** Por donde se empieza. Vocabulario cerrado: cada camino llena el paso 1 de otra forma. */
 export const PATHS = ['cero', 'mundo', 'libro'];
 
 /**
- * Los trece pasos, en orden.
+ * Los doce pasos, en orden (eran trece: «Misiones» se quitó el 2026-09-28).
  *
- * Estan los trece desde el primer dia aunque solo haya dos hechos: el contador dice «2 de
- * 13» y no miente, y anadir uno es cambiar `built` — no reescribir la barra de progreso.
+ * Estan todos desde el primer dia aunque no todos estuvieran hechos: el contador dice
+ * «2 de 12» y no miente, y anadir uno es cambiar `built` — no reescribir la barra de progreso.
  *
  * `optional` es lo que se puede saltar. El 1 no: un mundo sin nombre no es un mundo.
  */
 export const STEPS = [
     { id: 'mundo', title: 'El mundo', hint: 'Lo que es antes de que nadie entre.', optional: false, built: true },
     { id: 'narrador', title: 'Quién lo cuenta', hint: 'Lo que escribas aquí llega al modelo en cada turno.', optional: true, built: true },
-    { id: 'localidades', title: 'Localidades', hint: 'Los sitios a los que se puede ir.', optional: true, built: true },
+    { id: 'localidades', title: 'Localizaciones', hint: 'Los sitios a los que se puede ir.', optional: true, built: true },
     { id: 'tableros', title: 'Tableros', hint: 'Dónde se pelea, uno por localidad.', optional: true, built: true },
     { id: 'habilidades', title: 'Habilidades', hint: 'Lo que sabe hacer la gente.', optional: true, built: true },
     { id: 'razas', title: 'Razas', hint: 'De qué está hecha la gente, y qué les da.', optional: true, built: true },
@@ -49,7 +52,8 @@ export const STEPS = [
     { id: 'facciones', title: 'Facciones', hint: 'Quién quiere qué, y contra quién.', optional: true, built: true },
     { id: 'bestiario', title: 'Bestiario', hint: 'Lo que hay ahí fuera.', optional: true, built: true },
     { id: 'personajes', title: 'Personajes', hint: 'Quién vive aquí.', optional: true, built: true },
-    { id: 'misiones', title: 'Misiones', hint: 'Las que trae el mundo, y cómo salen las demás.', optional: true, built: true },
+    // «Misiones» se quitó el 2026-09-28: las misiones las hace el motor mientras se juega, y
+    // las escritas las trae el guion.
     { id: 'jugabilidad', title: 'Jugabilidad', hint: 'Cuánto duele perder.', optional: true, built: true },
 ];
 
@@ -143,8 +147,92 @@ export function startTaller({ path, source = null, random = Math.random }) {
         board: { size: 0, theme: '', factionShare: 3 },
         narrator: null,
         survival: null,
+        // Las filas del compendio que este mundo cambia o se inventa, por pestaña y por id.
+        rows: {},
         seedRolled: chosen === 'cero' || !carried,
     };
+}
+
+/**
+ * Las filas propias de una pestaña (retocadas o nuevas), por id.
+ *
+ * @param {any} state
+ * @param {string} stepId
+ * @returns {Record<string, any>}
+ */
+export function ownRows(state, stepId) {
+    return { ...(state?.rows?.[text(stepId)] ?? {}) };
+}
+
+/**
+ * Guardar una fila propia: una copia retocada de una de serie (mismo id) o una nueva.
+ *
+ * @param {any} state
+ * @param {string} stepId
+ * @param {any} row
+ * @returns {any}
+ */
+export function writeRow(state, stepId, row) {
+    const step = text(stepId);
+    const id = text(row?.id);
+    if (!id) return state;
+    return { ...state, rows: { ...(state?.rows ?? {}), [step]: { ...ownRows(state, step), [id]: row } } };
+}
+
+/**
+ * Quitar una fila propia: una nueva desaparece; una retocada vuelve a ser la de serie.
+ *
+ * @param {any} state
+ * @param {string} stepId
+ * @param {string} id
+ * @returns {any}
+ */
+export function dropRow(state, stepId, id) {
+    const step = text(stepId);
+    const rows = ownRows(state, step);
+    delete rows[text(id)];
+    return { ...state, rows: { ...(state?.rows ?? {}), [step]: rows } };
+}
+
+/**
+ * Lo cambiado de un mundo escrito en una pestaña, por clave (ver `pack-edits.js`).
+ *
+ * @param {any} state
+ * @returns {Record<string, Record<string, any>>}
+ */
+export function packEditsOf(state) {
+    return state?.packEdits && typeof state.packEdits === 'object' ? state.packEdits : {};
+}
+
+/**
+ * Guardar lo cambiado de uno del mundo escrito, o uno nuevo.
+ *
+ * @param {any} state
+ * @param {string} stepId
+ * @param {string} key
+ * @param {any} row
+ * @returns {any}
+ */
+export function writePackRow(state, stepId, key, row) {
+    const step = text(stepId);
+    const edits = packEditsOf(state);
+    return { ...state, packEdits: { ...edits, [step]: { ...(edits[step] ?? {}), [text(key)]: row } } };
+}
+
+/**
+ * Quitar lo cambiado: uno nuevo desaparece y uno retocado vuelve a ser el del mundo.
+ *
+ * @param {any} state
+ * @param {string} stepId
+ * @param {string} key
+ * @returns {any}
+ */
+export function dropPackRow(state, stepId, key) {
+    const step = text(stepId);
+    const edits = packEditsOf(state);
+    const rows = { ...(edits[step] ?? {}) };
+    delete rows[text(key)];
+    return { ...state, packEdits: { ...edits, [step]: rows } };
 }
 
 /**
@@ -714,6 +802,11 @@ export function blocksNext(state, stepId) {
         }
     }
 
+    // Un mundo escrito: lo que se mira es lo que se ha tocado de él.
+    if (state?.source?.pack && PACK_EDIT_STEPS.includes(step.id)) {
+        return packStepProblem(state.source.pack, packEditsOf(state), step.id);
+    }
+
     if (step.id === 'localidades') {
         const places = pickedLocations(state);
         if (places.some(place => !text(place.name))) return 'Hay un sitio sin nombre.';
@@ -740,9 +833,12 @@ export function blocksNext(state, stepId) {
         if (repeated) return `Hay dos personas que se llaman "${repeated}".`;
     }
 
-    if (step.id === 'misiones') {
-        const all = pickedQuests(state);
-        if (all.some(quest => !text(quest.title))) return 'Hay una misión sin título.';
+    // Las filas propias (razas, clases…): una que no se puede usar lo dice aquí.
+    if (ROW_STEPS.includes(step.id)) {
+        for (const row of Object.values(ownRows(state, step.id))) {
+            const problem = rowProblems(step.id, row)[0];
+            if (problem) return `${text(row?.name) || 'Una'}: ${problem.charAt(0).toLocaleLowerCase('es')}${problem.slice(1)}`;
+        }
     }
 
     if (step.id === 'tableros') {
@@ -751,6 +847,11 @@ export function blocksNext(state, stepId) {
             if (repeated) return `En ${place.name} hay dos tableros que se llaman "${repeated}".`;
             if (place.boards.some((/** @type {any} */ b) => !text(b.name))) {
                 return `Hay un tablero sin nombre en ${place.name}.`;
+            }
+            // Lo pintado a mano se puede romper; lo de la semilla, no.
+            for (const board of place.boards.filter((/** @type {any} */ b) => Array.isArray(b.map) && b.map.length > 0)) {
+                const problem = draftProblem(draftOf(board, ''));
+                if (problem) return `${text(board.name)}: ${problem.charAt(0).toLocaleLowerCase('es')}${problem.slice(1)}`;
             }
         }
     }
@@ -826,14 +927,16 @@ export function stepSlice(state, stepId) {
     /** @type {any} */
     let part;
     if (id === 'mundo') part = [state?.fields, state?.picked?.mundo];
+    // En un mundo escrito, lo que cambia estas cuatro es lo tocado encima de él.
+    else if (state?.source?.pack && PACK_EDIT_STEPS.includes(id)) part = packEditsOf(state)[id] ?? null;
     else if (id === 'narrador') part = [state?.narrator ?? null, state?.picked?.narrador];
     else if (id === 'localidades') part = [locationsOf(state).map(p => ({ ...p, boards: undefined })), state?.picked?.localidades];
     else if (id === 'tableros') part = locationsOf(state).map(p => p.boards);
     else if (id === 'facciones') part = [state?.factions, state?.picked?.facciones];
     else if (id === 'personajes') part = [state?.people, state?.picked?.personajes];
-    else if (id === 'misiones') part = [state?.quests, state?.picked?.misiones, state?.board ?? null];
     else if (id === 'jugabilidad') part = state?.survival ?? null;
-    else part = state?.picked?.[id] ?? null;
+    // Las de filas: lo marcado y lo retocado o nuevo.
+    else part = [state?.picked?.[id] ?? null, state?.rows?.[id] ?? null];
     return JSON.stringify(part ?? null);
 }
 
@@ -880,11 +983,12 @@ export function progressOf(state) {
 /**
  * Los pasos cuyo contenido trae escrito el paquete de un mundo.
  *
- * Con un paquete, las localidades, los tableros, las facciones, la gente y las misiones
- * ya estan escritos: elegirlos aqui seria ofrecer cambiar algo que luego no se usa. Lo
- * demas —quien narra, razas, clases, cuanto duele— sigue siendo del taller.
+ * Con un paquete, las localidades, los tableros, las facciones y la gente ya estan
+ * escritos: se enseña lo que trae, y lo que se retoque o se añada va encima al crear
+ * (`pack-edits.js`). Lo demas —quien narra, razas, clases, cuanto duele— sigue siendo del
+ * taller.
  */
-export const PACK_STEPS = ['localidades', 'tableros', 'facciones', 'personajes', 'misiones'];
+export const PACK_STEPS = ['localidades', 'tableros', 'facciones', 'personajes'];
 
 /**
  * Si el contenido de este taller lo trae un paquete escrito.
@@ -948,7 +1052,12 @@ export function toAnswers(state) {
         // Vacio a proposito: el personaje se hace al entrar, con su propia pantalla.
         party: [],
         generatedTemplate: state?.source?.generatedTemplate ?? null,
-        importedPack: fromPack ? (state?.source?.pack ?? state?.source ?? null) : null,
+        // Con lo tocado en el taller encima: sus sitios, tableros, facciones y gente.
+        importedPack: fromPack
+            ? (state?.source?.pack
+                ? applyPackEdits(state.source.pack, packEditsOf(state), { seed: cleanSeed(fields.seed) })
+                : state?.source ?? null)
+            : null,
         writeWorld: Boolean(state?.writeWorld),
         survival: state?.survival ?? null,
         narrator: state?.narrator ?? null,
@@ -967,6 +1076,9 @@ export function toAnswers(state) {
             objetos: pickedIn(state, 'objetos'),
             bestiario: pickedIn(state, 'bestiario'),
         },
+        // Las filas que este mundo cambia o se inventa, por batería: el juego las pone encima
+        // de las de todos al leer el compendio de esta campaña.
+        worldRows: worldRowsFor(state?.rows ?? {}),
         // Igual que los sitios: si has tocado el paso 9, mandan las tuyas.
         factions: fromPack ? [] : pickedFactions(state),
         // Si has tocado el paso 3, lo que hayas puesto manda y el mundo no se puebla solo.
@@ -978,7 +1090,10 @@ export function toAnswers(state) {
             biome: text(place.biome),
             description: text(place.note),
             routes: Array.isArray(place.routes) ? place.routes : [],
-            boards: Array.isArray(place.boards) ? place.boards : [],
+            // Con su mapa ya dibujado: el mismo que se ve en la ficha, pintado o de la semilla.
+            boards: (Array.isArray(place.boards) ? place.boards : []).map((/** @type {any} */ board) => ({
+                ...board, ...draftOf(board, cleanSeed(fields.seed)),
+            })),
         })),
     };
 }

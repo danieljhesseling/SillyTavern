@@ -35,11 +35,23 @@ const text = (value) => String(value ?? '').trim();
  * @param {number} [input.rumors] Los que quedan por oír aquí.
  * @param {boolean} [input.canPry] Si esconde algo que se puede sonsacar ahora.
  * @param {Reply[]} [input.extra] Lo que añade el pegamento: convencerle (U6), preguntarle por un caso (U8).
+ * @param {boolean} [input.confronting] Si os está plantando cara: entonces no se le pregunta qué
+ *        necesita ni qué se cuenta, se le contesta (Daniel, 2026-09-28).
  * @returns {Reply[]}
  */
-export function repliesFor({ name, rumors = 0, canPry = false, extra = [] }) {
+export function repliesFor({ name, rumors = 0, canPry = false, extra = [], confronting = false }) {
     const who = text(name);
     if (!who) return [];
+    if (confronting) {
+        // Viene a por vosotros: negarlo, saber de qué se os acusa, convencerle o calarle. Sin
+        // «¿qué necesitas?», sin rumores y sin despedirse: esto se acaba hablando o peleando.
+        return [
+            { id: 'reply-deny', label: '«No he sido yo.»', draft: `Le digo a ${who}: no he sido yo.`, icon: 'fa-hand' },
+            { id: 'reply-charge', label: '«¿De qué se me acusa?»', draft: `Le pregunto a ${who} de qué se me acusa.`, icon: 'fa-scale-balanced' },
+            ...(extra ?? []).filter(r => r.id !== 'reply-case'),
+            ...(canPry ? [{ id: 'reply-pry', label: `Calar a ${who} (Perspicacia)`, action: 'pry', icon: 'fa-eye' }] : []),
+        ].slice(0, 4);
+    }
     // Por importancia: la fila enseña cuatro. Lo que mueve algo (sonsacar, el caso, convencer)
     // va antes que los rumores, que también se oyen en la posada.
     /** @type {Reply[]} */

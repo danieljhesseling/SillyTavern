@@ -386,7 +386,7 @@ export function validateModel(model) {
     for (const location of model.locations) {
         const name = text(location.name);
         if (!name) {
-            errors.push('Hay una localidad sin nombre: el mundo las indexa por nombre.');
+            errors.push('Hay una localización sin nombre: el mundo las indexa por nombre.');
             continue;
         }
         if (places.has(name.toLowerCase())) {
@@ -442,7 +442,7 @@ export function validateModel(model) {
 
         const place = text(person.locationName);
         if (place && !places.has(place.toLowerCase())) {
-            errors.push(`"${name}" dice estar en "${place}", que no es una localidad de este mundo.`);
+            errors.push(`"${name}" dice estar en "${place}", que no es una localización de este mundo.`);
         }
     }
 
@@ -800,7 +800,7 @@ export function describeModel(model) {
     const quiet = model.locations.filter(location => location.boards.length === 0).length;
 
     const parts = [
-        `${model.locations.length} localidad(es)`,
+        `${model.locations.length} localización(es)`,
         `${boards} tablero(s)`,
     ];
     if (quiet > 0) parts.push(`${quiet} sin tablero`);

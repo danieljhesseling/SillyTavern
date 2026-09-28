@@ -16,6 +16,8 @@
  * Ver wiki/ROADMAP_PEGAMENTO.md, U4.
  */
 
+import { splitModelNote } from './model-note.js';
+
 /** Las categorías, en el orden en que salen en el diario. */
 export const CATEGORIES = {
     hilo: 'El hilo',
@@ -26,6 +28,7 @@ export const CATEGORIES = {
     comercio: 'Pueblo y comercio',
     viaje: 'Viaje',
     campamento: 'Campamento',
+    dados: 'Los dados',
     partida: 'La partida',
     otros: 'Otras',
 };
@@ -43,20 +46,24 @@ export const TAG_CATEGORIES = {
     'GRUPO': 'grupo', 'VINCULO': 'grupo', 'ROCE': 'grupo', 'SE VA': 'grupo', 'HARTO': 'grupo', 'MUERTE': 'grupo', 'NIVEL': 'grupo',
     'RELIQUIA': 'grupo', 'APRENDIZAJE': 'grupo', 'ENCARGO PERSONAL': 'grupo', 'MASCOTA': 'grupo',
     'MUNDO': 'mundo', 'EL MUNDO CAMBIA': 'mundo', 'RIVALES': 'mundo', 'NOTICIAS': 'mundo', 'RUMOR': 'mundo', 'GENTE': 'mundo',
-    'FIESTA': 'mundo', 'CARTA': 'mundo', 'GUARDIAS': 'mundo', 'DIRECTOR': 'mundo', 'DUELO': 'mundo', 'NEMESIS': 'mundo',
+    'FIESTA': 'mundo', 'CARTA': 'mundo', 'SUCESO': 'mundo', 'GUARDIAS': 'mundo', 'DIRECTOR': 'mundo', 'DUELO': 'mundo', 'NEMESIS': 'mundo',
     'GREMIO': 'gremio', 'ENCARGO': 'gremio',
     'COMBAT': 'combate', 'BOARD': 'combate', 'TABLERO': 'combate',
     'TIENDA': 'comercio', 'POSADA': 'comercio', 'TABERNA': 'comercio', 'TEMPLO': 'comercio', 'HERRERÍA': 'comercio', 'ROBO': 'comercio',
     'CAMPAÑA': 'viaje', 'EXPLORAR': 'viaje', 'ATAJO': 'viaje', 'CAMPO': 'viaje',
     'CAMPAMENTO': 'campamento', 'CHARLA': 'campamento', 'DESCANSO': 'campamento',
+    // Una tirada suelta no es historia: se pliega, y no entra en el resumen del acto.
+    'TIRADA': 'dados',
     'PARTIDA': 'partida', 'CAMPANA': 'partida', 'MODO': 'partida',
+    // Z3: lo que la caja no entiende, y lo que se puede escribir en su lugar.
+    'CAJA': 'partida',
 };
 
 /**
  * Las categorías menores: en el chat se pliegan cuando van varias seguidas. Lo que mueve la
  * historia (el hilo, el grupo, el mundo, el gremio, la partida) no se pliega nunca.
  */
-export const MINOR = new Set(['combate', 'comercio', 'viaje', 'campamento']);
+export const MINOR = new Set(['combate', 'comercio', 'viaje', 'campamento', 'dados']);
 
 /**
  * @typedef {Object} ChronicleEntry
@@ -84,7 +91,7 @@ export function readTaggedLine(said) {
 /**
  * La crónica de un chat: cada mensaje del juego con etiqueta, como suceso.
  *
- * @param {Array<{mes?: string, is_user?: boolean}>} chat
+ * @param {Array<{mes?: string, is_user?: boolean, extra?: {display_text?: string}}>} chat
  * @returns {ChronicleEntry[]}
  */
 export function chronicleOf(chat) {
@@ -92,7 +99,9 @@ export function chronicleOf(chat) {
     const out = [];
     (Array.isArray(chat) ? chat : []).forEach((message, index) => {
         if (!message || message.is_user) return;
-        const line = readTaggedLine(String(message.mes ?? ''));
+        // Lo que pasó, no la orden al narrador: sin esto la crónica del Diario y el resumen
+        // del acto enseñaban «Dilo tal cual, sin explicarlo…» (ROADMAP_SIN_TOKENS, Z0).
+        const line = readTaggedLine(splitModelNote(String(message.extra?.display_text ?? message.mes ?? '')).said);
         if (line) out.push({ index, ...line });
     });
     return out;

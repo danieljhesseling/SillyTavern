@@ -80,6 +80,15 @@ describe('la mecha y el camino', () => {
         expect(plotEvent(plot, start, { kind: 'say', text: 'Maren', place: 'La atalaya' }).done).toEqual([]);
     });
 
+    // Sin modelo no se envía ningún mensaje: pulsar «Hablar con…» tiene que bastar
+    // (ROADMAP_SIN_TOKENS, Z0; 1387 se paraba en su hito 2).
+    test('pulsar «Hablar con Maren» donde está cumple el hito, sin mensaje', () => {
+        const start = startPlot(plot).state;
+        expect(plotEvent(plot, start, { kind: 'talk', npc: 'maren', place: 'Puerto de Gris' }).done.map(m => m.id)).toEqual(['ahogado']);
+        expect(plotEvent(plot, start, { kind: 'talk', npc: 'Maren', place: 'La atalaya' }).done).toEqual([]);
+        expect(plotEvent(plot, start, { kind: 'talk', npc: 'Otro', place: 'Puerto de Gris' }).done).toEqual([]);
+    });
+
     test('una tirada fallida no cumple, una buena sí, y abre lo que dice', () => {
         let state = startPlot(plot).state;
         state = plotEvent(plot, state, { kind: 'say', text: 'Maren', place: 'Puerto de Gris' }).state;

@@ -98,7 +98,10 @@ import { SHORTCUTS, actionForKey } from './shortcuts.js';
  * @property {() => Array<{id: string, label: string, icon: string, detail: string, enabled: boolean}>} [getChecks]
  *   Las tiradas de habilidad que se pueden intentar fuera de combate.
  * @property {(skill: string) => void} [onCheck]
- * @property {() => Array<{id: string, label: string, icon: string, actions: Array<{id: string, label: string, detail: string, enabled: boolean}>}>} [getServices]
+ * @property {() => void} [onAskNarrator] El botón «Al narrador»: lo próximo que se escriba es para él.
+ * @property {() => boolean} [isAskingNarrator] Si está puesto.
+ * @property {() => boolean} [canAskNarrator] Si se ofrece ahora: en combate, no.
+ * @property {() => Array<{id: string, label: string, icon: string, actions: Array<{id: string, label: string, detail: string, enabled: boolean, cost?: number}>}>} [getServices]
  *   Los servicios de aqui, con lo que se puede hacer en cada uno.
  * @property {(actionId: string) => void} [onService]
  * @property {() => {title: string, hint: string, act: number}|null} [getFocus]
@@ -110,6 +113,7 @@ import { SHORTCUTS, actionForKey } from './shortcuts.js';
  * @property {() => void} [onAutoTurn] Que el compañero de turno actue solo (idea 18).
  * @property {() => void} [onDice] El historial de dados (idea 168).
  * @property {(mode: string) => void} [onRetry] Rehacer la ultima respuesta (idea 150).
+ * @property {() => boolean} [canRetry] Si hay modelo que la rehaga: sin él, los botones no salen.
  * @property {() => void} [onGlossary] El glosario (idea 156).
  * @property {(scene: string) => void} [onScene] Al cambiar de escena: el consejo de la primera vez (idea 155).
  * @property {(scene: string) => void} [onSceneTime] Cada cambio de escena, también al título y al
@@ -477,8 +481,10 @@ function renderActionChips(row) {
 
     const chips = options.getChips();
     const checks = options?.getChecks?.() ?? [];
+    // «Al narrador», fuera de combate: en combate manda la barra de combate.
+    const narrator = Boolean(options?.onAskNarrator) && options?.canAskNarrator?.() !== false;
     row.textContent = '';
-    row.classList.toggle('gs-chips-empty', chips.length === 0 && checks.length === 0);
+    row.classList.toggle('gs-chips-empty', chips.length === 0 && checks.length === 0 && !narrator);
 
     for (const chip of chips) {
         const button = makeButton(`gs-chip-action gs-chip-${chip.source}`);
@@ -498,6 +504,18 @@ function renderActionChips(row) {
         button.appendChild(el('i', 'fa-solid fa-dice-d20'));
         button.appendChild(el('span', 'gs-chip-action-label', 'Tirada'));
         button.addEventListener('click', () => toggleChecks(row, checks));
+        row.appendChild(button);
+    }
+
+    // Hablar con el narrador directamente, fuera de la escena: lo que escribas en la caja
+    // sin esto lo contesta quien tienes delante (2026-09-28).
+    if (narrator) {
+        const button = makeButton('gs-chip-action gs-chip-motor gs-chip-narrator');
+        button.title = 'Lo próximo que escribas va al narrador, fuera de la escena: «¿qué puedo hacer?», «¿qué sé de esto?»';
+        button.classList.toggle('on', Boolean(options.isAskingNarrator?.()));
+        button.appendChild(el('i', 'fa-solid fa-feather-pointed'));
+        button.appendChild(el('span', 'gs-chip-action-label', 'Al narrador'));
+        button.addEventListener('click', () => options?.onAskNarrator?.());
         row.appendChild(button);
     }
 }
@@ -823,7 +841,8 @@ function renderDialogue(scene, view) {
         }
         speaker.appendChild(who);
         // Idea 150: rehacer la ultima respuesta, igual, mas corta o con mas nervio.
-        if (options?.onRetry) {
+        // Sin modelo no hay respuesta que rehacer: los botones no salen (ROADMAP_SIN_TOKENS, Z0).
+        if (options?.onRetry && (options.canRetry?.() ?? true)) {
             const retry = el('div', 'gs-retry');
             for (const [mode, label, icon] of [['otra', 'Otra vez', 'fa-rotate'], ['corto', 'Más corto', 'fa-compress'], ['intenso', 'Más intenso', 'fa-fire']]) {
                 const button = makeButton('gs-retry-btn');
@@ -1043,92 +1062,157 @@ function setPaused(next) {
 }
 
 /**
- * Draw the travel panel beside the map: where you are, what boards this place holds, and
- * everywhere else, with the shut ones explaining themselves.
+ * Una columna del panel de Exploración: su rótulo con icono, y lo que lleva.
  *
- * A locked place is not hidden. Hiding it would make the campaign look smaller than it
- * is and give the player nothing to aim at; showing it with its reason turns a refusal
- * into a goal.
+ * @param {string} icon
+ * @param {string} title
+ * @param {string} kind
+ * @returns {HTMLElement}
+ */
+function exploreColumn(icon, title, kind) {
+    const column = el('section', 'ex-column');
+    column.dataset.col = kind;
+    const head = el('div', 'gs-places-title ex-col-title');
+    head.appendChild(el('i', `fa-solid ${icon}`));
+    head.appendChild(el('span', '', title));
+    column.appendChild(head);
+    return column;
+}
+
+/**
+ * Una tarjeta de tablero o de sitio: el icono en su cuadro, el nombre y una o dos notas.
+ *
+ * @param {string} className
+ * @param {string} icon
+ * @param {string} name
+ * @param {string} nameClass
+ * @param {string[]} notes `[nota, pendiente]`
+ * @returns {HTMLButtonElement}
+ */
+function exploreCard(className, icon, name, nameClass, notes) {
+    const card = makeButton(`gs-card ${className}`);
+    const badge = el('span', 'gs-card-icon');
+    badge.appendChild(el('i', `fa-solid ${icon}`));
+    card.appendChild(badge);
+    const body = el('div', 'gs-card-body');
+    body.appendChild(el('div', nameClass, name));
+    const [note, pending] = notes;
+    if (note) body.appendChild(el('div', 'gs-card-note gs-place-note', note));
+    if (pending) body.appendChild(el('div', 'gs-place-pending', pending));
+    card.appendChild(body);
+    return card;
+}
+
+/**
+ * La Exploración, a pantalla entera (Gem director de UX, 2026-09-27): sin el tablero, que
+ * aquí no pinta nada, y con lo que se puede hacer en tres columnas en vez de una lista
+ * infinita. Arriba el sitio y a qué huele; debajo, lo de aquí mismo (por edificios), los
+ * tableros en los que se puede entrar y a dónde se puede viajar.
+ *
+ * Se viaja a los vecinos. Lo que queda más lejos se ve —con lo que cuesta y por dónde se
+ * pasa—, pero no se pulsa: de la posada no se salta a la otra punta del mapa.
+ *
+ * Un sitio cerrado tampoco se esconde. Esconderlo haría la campaña más pequeña de lo que
+ * es y no dejaría nada a lo que apuntar; enseñarlo con su motivo convierte un «no» en una
+ * meta.
  *
  * @param {HTMLElement} panel
  * @param {import('./exploration-scene.js').ExplorationView} view
  */
 function renderExploration(panel, view) {
+    const scroll = panel.scrollTop;
     panel.textContent = '';
 
-    const here = el('div', 'gs-here');
-    here.appendChild(el('div', 'gs-here-name', view.here || 'En ninguna parte todavia'));
+    const here = el('header', 'gs-here ex-head');
+    const title = el('div', 'ex-title');
+    title.appendChild(el('i', 'fa-solid fa-location-dot'));
+    title.appendChild(el('span', 'gs-here-name', view.here || 'En ninguna parte todavía'));
+    here.appendChild(title);
     if (view.description) here.appendChild(el('div', 'gs-here-desc', view.description));
     if (view.fortune) here.appendChild(el('div', 'gs-here-fortune', view.fortune));
     panel.appendChild(here);
 
-    // Lo que hay aqui: la posada, la herreria, el templo, el tablon. Cada tarjeta con lo que
-    // se puede hacer, y lo que cuesta dicho antes de pulsar.
+    const dashboard = el('div', 'gs-explore-dashboard');
+
+    // Aquí mismo: la posada, la herrería, el templo, el tablón. Cada edificio en su
+    // tarjeta, con lo que cuesta dicho antes de pulsar.
+    const local = exploreColumn('fa-building', 'Aquí mismo', 'here');
     const services = options?.getServices?.() ?? [];
-    if (services.length > 0) {
-        panel.appendChild(el('div', 'gs-places-title', 'Aquí'));
-        const grid = el('div', 'gs-services');
-        for (const card of services) {
-            const box = el('div', 'gs-service');
-            box.dataset.service = card.id;
-            const head = el('div', 'gs-service-head');
-            head.appendChild(el('i', `fa-solid ${card.icon}`));
-            head.appendChild(el('span', '', card.label));
-            box.appendChild(head);
-            for (const action of card.actions) {
-                const button = makeButton('gs-service-btn');
-                button.dataset.action = action.id;
-                button.textContent = action.label;
-                button.title = action.detail;
-                button.disabled = !action.enabled;
-                button.addEventListener('click', () => options?.onService?.(action.id));
-                box.appendChild(button);
-            }
-            grid.appendChild(box);
+    for (const card of services) {
+        const box = el('div', 'gs-service');
+        box.dataset.service = card.id;
+        const head = el('div', 'gs-service-head');
+        head.appendChild(el('i', `fa-solid ${card.icon}`));
+        head.appendChild(el('span', '', card.label));
+        box.appendChild(head);
+        const list = el('div', 'gs-service-actions');
+        for (const action of card.actions) {
+            const button = makeButton('gs-service-btn gs-btn-action');
+            button.dataset.action = action.id;
+            // El precio va a la derecha; dicho también en la etiqueta, se leía dos veces.
+            const priced = Number(action.cost) > 0;
+            button.appendChild(el('span', 'gs-btn-label', priced ? action.label.replace(/\s*\(\d+ de oro\)\s*$/, '') : action.label));
+            if (priced) button.appendChild(el('span', 'gs-btn-cost', `${action.cost} oro`));
+            button.title = action.detail;
+            button.disabled = !action.enabled;
+            button.addEventListener('click', () => options?.onService?.(action.id));
+            list.appendChild(button);
         }
-        panel.appendChild(grid);
+        box.appendChild(list);
+        local.appendChild(box);
     }
+    if (services.length === 0) local.appendChild(el('div', 'ex-empty', 'Aquí no hay posada, ni tienda, ni nadie que venda nada.'));
+    dashboard.appendChild(local);
 
-    if (view.boards.length > 0) {
-        panel.appendChild(el('div', 'gs-places-title', 'Tableros de aqui'));
-        const list = el('div', 'gs-board-list');
-        for (const board of view.boards) {
-            const row = makeButton('gs-board');
-            row.classList.toggle('current', board.current);
-            row.appendChild(el('i', 'fa-solid fa-chess-board'));
-            row.appendChild(el('span', 'gs-board-name', board.name));
-            row.addEventListener('click', () => options?.onEnterBoard(board.name));
-            list.appendChild(row);
+    // Los tableros de aquí: entrar lleva la pantalla al tablero.
+    const boards = exploreColumn('fa-chess-board', 'Tableros de aquí', 'boards');
+    for (const board of view.boards) {
+        const card = exploreCard('gs-board', board.icon || 'fa-chess-board', board.name, 'gs-board-name',
+            [board.current ? 'Estáis dentro' : board.note, '']);
+        card.classList.toggle('current', board.current);
+        card.title = board.current ? `Volver a ${board.name}` : `Entrar en ${board.name}`;
+        card.addEventListener('click', () => {
+            if (!board.current) options?.onEnterBoard(board.name);
+            setScene(SCENE.COMBAT);
+        });
+        boards.appendChild(card);
+    }
+    if (view.boards.length === 0) boards.appendChild(el('div', 'ex-empty', 'Aquí no hay ningún tablero.'));
+    dashboard.appendChild(boards);
+
+    // Viajar: dónde estáis, los vecinos, y lo que queda más lejos o cerrado.
+    const travel = exploreColumn('fa-map', 'Viajar', 'travel');
+    const order = { here: 0, near: 1, shut: 2, far: 3, none: 4 };
+    const sorted = [...view.places].sort((a, b) => (order[a.reach] ?? 5) - (order[b.reach] ?? 5));
+    let farTitle = false;
+    for (const place of sorted) {
+        const open = place.reach === 'near' && place.status !== 'locked';
+        if (!open && !place.current && !farTitle) {
+            travel.appendChild(el('div', 'ex-subtitle', 'Más lejos, o cerrado'));
+            farTitle = true;
         }
-        panel.appendChild(list);
+        const icon = place.current ? 'fa-location-crosshairs'
+            : place.status === 'locked' || place.reach === 'shut' || place.reach === 'none' ? 'fa-lock'
+                : place.status === 'complete' ? 'fa-circle-check' : place.icon || 'fa-location-dot';
+        const days = place.days === 1 ? '1 día de viaje' : `${place.days} días de viaje`;
+        const note = place.current ? 'Estáis aquí'
+            : place.reasons.length > 0 ? place.reasons.join(' ')
+                : place.reach === 'far' ? `${days}, pasando por ${place.via}`
+                    : place.reach === 'shut' || place.reach === 'none' ? place.why
+                        : days;
+        const card = exploreCard('gs-place', icon, place.name, 'gs-place-name', [note, place.pending ?? '']);
+        card.classList.add(`status-${place.status}`, `reach-${place.reach}`);
+        card.classList.toggle('current', place.current);
+        card.disabled = !open || place.current;
+        card.title = place.current ? 'Ya estáis aquí'
+            : open ? `Viajar a ${place.name}` : (place.reasons.join(' ') || place.why || 'No se puede ir desde aquí');
+        card.addEventListener('click', () => options?.onTravel(place.name));
+        travel.appendChild(card);
     }
+    dashboard.appendChild(travel);
 
-    panel.appendChild(el('div', 'gs-places-title', 'El mapa de campana'));
-    const places = el('div', 'gs-place-list');
-    for (const place of view.places) {
-        const row = makeButton('gs-place');
-        row.classList.add(`status-${place.status}`);
-        row.classList.toggle('current', place.current);
-
-        const icon = place.status === 'complete' ? 'fa-circle-check'
-            : place.status === 'locked' ? 'fa-lock' : 'fa-location-dot';
-        row.appendChild(el('i', `gs-place-icon fa-solid ${icon}`));
-
-        const body = el('div', 'gs-place-body');
-        body.appendChild(el('div', 'gs-place-name', place.name));
-        const note = place.reasons.length > 0
-            ? place.reasons.join(' ')
-            : place.boards === 1 ? '1 tablero' : `${place.boards} tableros`;
-        body.appendChild(el('div', 'gs-place-note', note));
-        if (place.pending) body.appendChild(el('div', 'gs-place-pending', place.pending));
-        row.appendChild(body);
-
-        row.disabled = place.status === 'locked' || place.current;
-        row.title = place.reasons.join(' ') || (place.current ? 'Ya estas aqui' : `Viajar a ${place.name}`);
-        row.addEventListener('click', () => options?.onTravel(place.name));
-        places.appendChild(row);
-    }
-    panel.appendChild(places);
+    panel.appendChild(dashboard);
+    panel.scrollTop = scroll;
 }
 
 /**

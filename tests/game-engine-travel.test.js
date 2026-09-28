@@ -2,7 +2,7 @@ import { describe, test, expect } from '@jest/globals';
 import fs from 'node:fs';
 import {
     DEFAULT_DAYS, MIN_DAYS, MAX_DAYS, routesOf, buildRouteMap,
-    planTravel, travelEvents, describeTravel, rollWeather,
+    planTravel, reachFrom, travelEvents, describeTravel, rollWeather,
 } from '../public/scripts/game-engine/world/travel.js';
 import { validateBattery } from '../public/scripts/game-engine/compendio/compendio.js';
 
@@ -126,6 +126,64 @@ describe('planear un viaje', () => {
 
     test('y empezar en ninguna parte tampoco te deja encerrado', () => {
         expect(planTravel({ from: '', to: 'La Ermita', locations: world() }).ok).toBe(true);
+    });
+});
+
+// De vecino en vecino: de la posada al pueblo y del pueblo al santuario, no de un salto.
+describe('viajar de vecino en vecino', () => {
+    test('al vecino se va por su camino, aunque el rodeo sea más corto', () => {
+        const plan = planTravel({ from: 'El Vado', to: 'La Ermita', locations: world(), directOnly: true });
+        expect(plan.ok).toBe(true);
+        expect(plan.days).toBe(5);
+        expect(plan.legs).toEqual(['La Ermita']);
+    });
+
+    test('a lo que no es vecino no se va, y se dice por dónde se llega', () => {
+        const locations = [
+            { name: 'La Posada', routes: [{ to: 'El Pueblo', days: 1 }] },
+            { name: 'El Pueblo', routes: [{ to: 'El Santuario', days: 2 }] },
+            { name: 'El Santuario', routes: [] },
+        ];
+        const plan = planTravel({ from: 'La Posada', to: 'El Santuario', locations, directOnly: true });
+        expect(plan.ok).toBe(false);
+        expect(plan.via).toBe('El Pueblo');
+        expect(plan.days).toBe(3);
+        expect(plan.reason).toMatch(/se llega por El Pueblo/);
+        // Y al revés también: los caminos valen para ir y volver.
+        expect(planTravel({ from: 'El Santuario', to: 'El Pueblo', locations, directOnly: true }).ok).toBe(true);
+    });
+
+    test('no se pasa por un sitio que el mapa todavía no enseña', () => {
+        const locations = [
+            { name: 'El Campamento', routes: [{ to: 'El Cruce', days: 1 }, { to: 'El Camino', days: 1 }] },
+            { name: 'El Camino', routes: [{ to: 'El Pueblo', days: 1 }] },
+            { name: 'El Pueblo', routes: [{ to: 'El Cruce', days: 1 }] },
+        ];
+        const plan = planTravel({ from: 'El Campamento', to: 'El Pueblo', locations, directOnly: true });
+        expect(plan.via).toBe('El Camino');
+    });
+
+    test('un mundo sin caminos escritos sigue yendo a cualquier sitio', () => {
+        expect(planTravel({ from: 'A', to: 'B', locations: [{ name: 'A' }, { name: 'B' }], directOnly: true }).ok).toBe(true);
+    });
+
+    test('desde aquí: los vecinos, los de más lejos con por dónde, y los cerrados con su motivo', () => {
+        const locations = [
+            ...world(),
+            { name: 'El Paso', routes: [{ to: 'El Vado', days: 1, closed: true, note: 'Lo cierran los de la Casa Keller' }] },
+        ];
+        const reach = reachFrom({ from: 'El Molino', locations });
+        expect(reach['El Vado']).toMatchObject({ reach: 'near', days: 2 });
+        expect(reach['La Ermita']).toMatchObject({ reach: 'near', days: 2 });
+        expect(reach['El Paso'].reach).toBe('none');
+        expect(reachFrom({ from: 'El Vado', locations })['El Paso']).toMatchObject({ reach: 'shut', reason: 'Lo cierran los de la Casa Keller' });
+        expect(reachFrom({ from: 'La Cripta', locations })['La Ermita'].reach).toBe('shut');
+        const far = reachFrom({ from: 'El Vado', locations: [
+            { name: 'El Vado', routes: [{ to: 'El Molino', days: 2 }] },
+            { name: 'El Molino', routes: [{ to: 'La Ermita', days: 2 }] },
+            { name: 'La Ermita' },
+        ] })['La Ermita'];
+        expect(far).toMatchObject({ reach: 'far', via: 'El Molino', days: 4 });
     });
 });
 

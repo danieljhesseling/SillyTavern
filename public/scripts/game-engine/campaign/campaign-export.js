@@ -335,7 +335,7 @@ export function buildPackFromWorld({ worldName, metadata, entries, synopsis = ''
 export function describeExport(pack) {
     const parts = [
         `"${pack?.world?.name ?? ''}"`,
-        `${pack?.locations?.length ?? 0} localidad(es)`,
+        `${pack?.locations?.length ?? 0} localización(es)`,
         `${pack?.boards?.length ?? 0} tablero(s)`,
         `${pack?.bestiary?.length ?? 0} enemigo(s)`,
     ];

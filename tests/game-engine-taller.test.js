@@ -9,9 +9,11 @@ import { createSeededRandom } from '../public/scripts/game-engine/combat/seeded-
 const dado = (seed = 'taller') => createSeededRandom(seed);
 const desdeCero = () => startTaller({ path: 'cero', random: dado() });
 
-describe('los trece pasos', () => {
-    test('están los trece desde el primer día', () => {
-        expect(STEPS).toHaveLength(13);
+describe('los doce pasos', () => {
+    // Eran trece; las misiones se quitaron del taller (Daniel, 2026-09-28).
+    test('están los doce desde el primer día', () => {
+        expect(STEPS).toHaveLength(12);
+        expect(stepById('misiones')).toBe(null);
         expect(STEPS[0].id).toBe('mundo');
         expect(STEPS[STEPS.length - 1].id).toBe('jugabilidad');
     });
@@ -28,11 +30,11 @@ describe('los trece pasos', () => {
     // Un mundo sin nombre no es un mundo.
     test('el primero no se puede saltar; los demás sí', () => {
         expect(stepById('mundo').optional).toBe(false);
-        expect(STEPS.filter(s => s.optional).length).toBe(12);
+        expect(STEPS.filter(s => s.optional).length).toBe(11);
     });
 
-    // Un paso que se enseña vacío promete algo que no pasa. Ya están los trece, así que
-    // se recorren los trece — y si alguno se apagara, el recorrido lo saltaría solo.
+    // Un paso que se enseña vacío promete algo que no pasa. Ya están los doce, así que
+    // se recorren los doce — y si alguno se apagara, el recorrido lo saltaría solo.
     test('solo se recorren los que están hechos, y ya están todos', () => {
         expect(walkableSteps().every(s => s.built)).toBe(true);
         expect(walkableSteps()).toHaveLength(STEPS.length);
@@ -207,14 +209,14 @@ describe('pasar de paso', () => {
 describe('por dónde va', () => {
     // Decir «2 de 2» cuando quedan once por hacer es mentir en la única pantalla que dice
     // cuánto falta.
-    test('cuenta sobre los trece, no sobre los hechos', () => {
+    test('cuenta sobre los doce, no sobre los hechos', () => {
         const dicho = progressOf(desdeCero());
-        expect(dicho.of).toBe(13);
+        expect(dicho.of).toBe(12);
         expect(dicho.at).toBe(1);
-        expect(dicho.said).toBe('Paso 1 de 13');
+        expect(dicho.said).toBe('Paso 1 de 12');
     });
 
-    test('y el segundo paso es el segundo de los trece', () => {
+    test('y el segundo paso es el segundo de los doce', () => {
         expect(progressOf({ at: 1 }).step.id).toBe('narrador');
     });
 });
@@ -229,7 +231,7 @@ describe('el puente con lo que ya hay', () => {
         expect(Object.keys(toAnswers(state)).sort()).toEqual([
             'board', 'description', 'factions', 'generatedTemplate', 'genre', 'heroes',
             'importedPack', 'locations', 'narrator', 'party', 'people', 'picks', 'quests',
-            'seed', 'survival', 'templateId', 'worldName', 'writeWorld',
+            'seed', 'survival', 'templateId', 'worldName', 'worldRows', 'writeWorld',
         ]);
     });
 

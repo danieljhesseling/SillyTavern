@@ -72,7 +72,7 @@ export function planCampaignDeletion(campaign, context = {}) {
     const lines = [
         total === 0
             ? 'No tiene ninguna sesión jugada todavía: se borra el mundo y ya está.'
-            : `Se borran **${total} sesión(es) jugadas** y el mundo entero: sus localidades, `
+            : `Se borran **${total} sesión(es) jugadas** y el mundo entero: sus localizaciones, `
                 + 'sus tableros, su gente, su bestiario y sus objetos.',
         'Esto no se puede deshacer.',
     ];

@@ -75,6 +75,8 @@ try {
         try {
             window.localStorage.setItem('sillytavern_gameTipsSeen', 'dialogue,exploration,combat,travel,prisoners,mesa,high,spell,pet,bill');
             window.localStorage.setItem('sillytavern_gameShellAutostart', 'true');
+            // Las tarjetas de sucesos (Z4) las prueba la vuelta sin modelo; aquí taparían clics.
+            window.localStorage.setItem('sillytavern_gameSucesos', 'off');
         } catch { /* nada */ }
     });
     await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
@@ -179,7 +181,7 @@ try {
         }
         return seen;
     });
-    check('Localidades a 1280×720: lista y ficha lado a lado; la lista se mueve sola, la ficha y «Nuevo sitio» no; el nuevo se ve y se escribe de un tirón',
+    check('Localizaciones a 1280×720: lista y ficha lado a lado; la lista se mueve sola, la ficha y «Nuevo sitio» no; el nuevo se ve y se escribe de un tirón',
         md.cards === sitiosAntes + 3 && md.sideBySide && md.inside && md.scrolls && md.openVisible
         && md.detailStill && md.addStill && md.typed === 'Mirador de prueba' && md.openTitle === 'Mirador de prueba'
         && /Quitar este sitio/.test(md.drop) && md.dropHover === 'rgb(255, 255, 255)', JSON.stringify(md));
@@ -209,11 +211,86 @@ try {
     check('quitar un sitio lo quita de la lista; los filtros dejan solo los de ese sitio y siguen puestos al abrir uno',
         trasQuitar === sitiosAntes + 2 && (pildoras === 0 || Boolean(filtro?.still && filtro.same && filtro.shown > 0 && filtro.shown < filtro.all && filtro.open)),
         JSON.stringify({ trasQuitar, sitiosAntes, pildoras, filtro }));
+    // Las pestañas de filas (razas, clases, habilidades, objetos, bichos) también tienen su
+    // ficha y su «+»: una raza nueva nace de otra, y se escribe qué da y qué quita.
+    await page.locator('.tl-tab[data-step="razas"]').click();
+    await page.waitForTimeout(500);
+    const razasAntes = await page.locator('.tl-list .tl-card:not(.add)').count();
+    await page.locator('.tl-toolbar .tl-add').click();
+    await page.waitForTimeout(400);
+    await page.locator('.tl-detail .tl-field[data-key="name"] .tl-input').fill('Trasgo de prueba');
+    await page.waitForTimeout(300);
+    await page.locator('.tl-detail .tl-field[data-key="effects"] .tl-input').fill('+2 Destreza');
+    await page.waitForTimeout(300);
+    const raza = await page.evaluate(() => ({
+        cards: document.querySelectorAll('.tl-list .tl-card:not(.add)').length,
+        open: (document.querySelector('.tl-list .tl-card.open')?.textContent || '').trim(),
+        fields: [...document.querySelectorAll('.tl-detail .tl-field')].map(f => f.getAttribute('data-key')),
+        warn: document.querySelector('.tl-tab[data-step="razas"]')?.classList.contains('tl-tab-warn') ?? false,
+        drop: [...document.querySelectorAll('.tl-detail-foot .tl-action')].map(a => (a.textContent || '').trim()),
+    }));
+    check('razas: el «+» hace una nueva con su ficha al lado; si solo suma, la pestaña avisa',
+        raza.cards === razasAntes + 1 && /Trasgo de prueba/.test(raza.open) && /Tuya/.test(raza.open)
+        && ['name', 'effects', 'note'].every(k => raza.fields.includes(k)) && raza.warn && raza.drop.some(t => /Quitar esta/.test(t)),
+        JSON.stringify({ razasAntes, ...raza }));
     if (process.argv.includes('--captura')) {
         const base = process.argv[process.argv.indexOf('--captura') + 1] || 'titulo.png';
+        await page.screenshot({ path: `${base}.razas.png` });
+    }
+    await page.locator('.tl-detail-foot .tl-action', { hasText: 'Quitar esta' }).click();
+    await page.waitForTimeout(300);
+
+    // Tableros: la ficha enseña el tablero entero y se pinta arrastrando el ratón. Lo que se
+    // ve es lo que se crea (antes no se dibujaba ninguno: A15).
+    await page.locator('.tl-tab[data-step="tableros"]').click();
+    await page.waitForTimeout(500);
+    await page.locator('.tl-list .tl-card.add').first().click();
+    await page.waitForTimeout(500);
+    const grid = await page.evaluate(() => {
+        const box = /** @type {HTMLElement|null} */ (document.querySelector('.tl-detail .tl-bp-grid'));
+        const w = Number(box?.style.getPropertyValue('--w') || 0);
+        return {
+            w, cells: box?.children.length ?? 0,
+            brushes: [...document.querySelectorAll('.tl-bp-brush')].map(b => (b.textContent || '').trim()),
+            starts: document.querySelectorAll('.tl-bp-cell.is-start').length,
+            said: document.querySelector('.tl-bp-said')?.textContent || '',
+        };
+    });
+    await page.locator('.tl-bp-brush[data-brush="w"]').click();
+    // Como lo haría quien juega: se baja hasta el tablero si no cabe, y se arrastra.
+    await page.locator('.tl-bp-cell[data-x="2"][data-y="2"]').scrollIntoViewIfNeeded();
+    const cellBox = async (/** @type {number} */ x, /** @type {number} */ y) => page.locator(`.tl-bp-cell[data-x="${x}"][data-y="${y}"]`).boundingBox();
+    const from = await cellBox(2, 2);
+    const to = await cellBox(5, 2);
+    if (from && to) {
+        await page.mouse.move(from.x + (from.width / 2), from.y + (from.height / 2));
+        await page.mouse.down();
+        await page.mouse.move(to.x + (to.width / 2), to.y + (to.height / 2), { steps: 8 });
+        await page.mouse.up();
+    }
+    await page.waitForTimeout(300);
+    const painted = await page.evaluate(() => ({
+        water: [2, 3, 4, 5].map(x => document.querySelector(`.tl-bp-cell[data-x="${x}"][data-y="2"]`)?.getAttribute('data-t')),
+        note: document.querySelector('.tl-list .tl-card.open .tl-card-note')?.textContent || '',
+        mark: document.querySelector('.tl-tab[data-step="tableros"]')?.className || '',
+    }));
+    if (process.argv.includes('--captura')) await page.screenshot({ path: `${process.argv[process.argv.indexOf('--captura') + 1] || 'titulo.png'}.tablero-pintado.png` });
+    await page.locator('.tl-detail-foot .tl-action', { hasText: 'Dibujar otro' }).click();
+    await page.waitForTimeout(400);
+    const redrawn = await page.evaluate(() => document.querySelector('.tl-list .tl-card.open .tl-card-note')?.textContent || '');
+    check('tableros: la ficha enseña el tablero entero con sus pinceles; arrastrando se pinta, y «Dibujar otro» lo vuelve a tirar',
+        grid.w > 0 && grid.cells % grid.w === 0 && grid.cells >= 100 && grid.brushes.length === 10 && grid.starts > 0
+        && painted.water.every(t => t === 'agua') && /pintado a mano/.test(painted.note) && /tl-tab-changed/.test(painted.mark)
+        && !/pintado a mano/.test(redrawn),
+        JSON.stringify({ grid, painted, redrawn }));
+
+    if (process.argv.includes('--captura')) {
+        const base = process.argv[process.argv.indexOf('--captura') + 1] || 'titulo.png';
+        await page.locator('.tl-tab[data-step="localidades"]').click();
+        await page.waitForTimeout(400);
         await page.screenshot({ path: `${base}.localidades.png` });
         // Y las otras pestañas con lista y ficha, con algo abierto.
-        for (const [tab, pick] of [['tableros', '.tl-list .tl-card.add'], ['bestiario', '.tl-list .tl-card:not(.add)'], ['misiones', '']]) {
+        for (const [tab, pick] of [['tableros', '.tl-list .tl-card.add'], ['bestiario', '.tl-list .tl-card:not(.add)'], ['objetos', '.tl-toolbar .tl-add'], ['habilidades', '.tl-list .tl-card:not(.add)']]) {
             await page.locator(`.tl-tab[data-step="${tab}"]`).click();
             await page.waitForTimeout(500);
             if (pick) await page.locator(pick).first().click({ timeout: 3000 }).catch(() => {});
@@ -269,11 +346,77 @@ try {
             seedRow: Boolean(seed && dice && Math.abs(seed.top - dice.top) < 4),
             cancelInFoot: document.querySelectorAll('.tl-foot > .tl-cancel').length,
             popupControls: [...document.querySelectorAll('.popup:not([closing]) .popup-controls')].filter(e => /** @type {HTMLElement} */ (e).offsetParent !== null).length,
+            changed: [...document.querySelectorAll('.tl-tab.tl-tab-changed')].map(t => t.getAttribute('data-step')),
         };
     });
+    check('recién cargado 1387, ninguna pestaña sale como cambiada: lo que trae el mundo es «como viene»',
+        taller.changed.length === 0, JSON.stringify(taller.changed));
     check('el taller va a dos columnas: pestañas a la izquierda, la ficha al lado, semilla y dado en una línea, y Cancelar en el pie',
-        taller.tabs === 13 && taller.column && taller.sideOfBody && taller.detail === 1 && taller.seedRow && taller.cancelInFoot === 1 && taller.popupControls === 0,
+        taller.tabs === 12 && taller.column && taller.sideOfBody && taller.detail === 1 && taller.seedRow && taller.cancelInFoot === 1 && taller.popupControls === 0,
         JSON.stringify(taller));
+    // Un mundo escrito también se retoca: sus sitios, tableros y gente, con ficha y «+».
+    // Un sitio nuevo se une a otro, y al crear tiene camino de ida y de vuelta.
+    await page.locator('.tl-tab[data-step="localidades"]').click();
+    await page.waitForTimeout(500);
+    await page.locator('.tl-list .tl-card', { hasText: 'El Pueblo de Barro' }).first().click();
+    await page.waitForTimeout(300);
+    const stockPlace = await page.evaluate(() => [...document.querySelectorAll('.tl-detail .tl-field')].map(f => f.getAttribute('data-key')));
+    await page.locator('.tl-toolbar .tl-add').click();
+    await page.waitForTimeout(400);
+    await page.locator('.tl-detail .tl-field[data-key="name"] .tl-input').fill('Mirador de prueba');
+    await page.waitForTimeout(300);
+    await page.locator('.tl-detail .tl-field[data-key="link"] select').selectOption('Castillo de Vane');
+    await page.waitForTimeout(300);
+    await page.locator('.tl-detail .tl-field[data-key="days"] select').selectOption('2');
+    await page.waitForTimeout(300);
+    const packPlace = await page.evaluate(() => ({
+        open: (document.querySelector('.tl-list .tl-card.open')?.textContent || '').trim(),
+        fields: [...document.querySelectorAll('.tl-detail .tl-field')].map(f => f.getAttribute('data-key')),
+        mark: document.querySelector('.tl-tab[data-step="localidades"]')?.className || '',
+    }));
+    if (process.argv.includes('--captura')) await page.screenshot({ path: `${process.argv[process.argv.indexOf('--captura') + 1] || 'titulo.png'}.1387-localidades.png` });
+    await page.locator('.tl-tab[data-step="personajes"]').click();
+    await page.waitForTimeout(500);
+    await page.locator('.tl-list .tl-card', { hasText: 'Giles' }).first().click();
+    await page.waitForTimeout(300);
+    const packPerson = await page.evaluate(() => ({
+        groups: [...document.querySelectorAll('.tl-cards-group')].map(g => (g.textContent || '').trim()),
+        fields: [...document.querySelectorAll('.tl-detail .tl-field')].map(f => f.getAttribute('data-key')),
+        add: document.querySelectorAll('.tl-toolbar .tl-add').length,
+    }));
+    if (process.argv.includes('--captura')) await page.screenshot({ path: `${process.argv[process.argv.indexOf('--captura') + 1] || 'titulo.png'}.1387-personajes.png` });
+    await page.locator('.tl-tab[data-step="tableros"]').click();
+    await page.waitForTimeout(500);
+    await page.locator('.tl-list .tl-card:not(.add)').first().click();
+    await page.waitForTimeout(300);
+    const packBoard = await page.evaluate(() => ({
+        fields: [...document.querySelectorAll('.tl-detail .tl-field')].map(f => f.getAttribute('data-key')),
+        add: document.querySelectorAll('.tl-toolbar .tl-add').length,
+        cells: document.querySelectorAll('.tl-detail .tl-bp-cell').length,
+        starts: document.querySelectorAll('.tl-detail .tl-bp-cell.is-start').length,
+        // Los enemigos no se enseñan en el taller (Daniel, 2026-09-28): ni puntos ni cuenta.
+        foesSaid: /enemigo/i.test(document.querySelector('.tl-detail .tl-bp')?.textContent || ''),
+        tab: document.querySelector('.tl-tab[data-step="localidades"]')?.textContent?.trim() || '',
+    }));
+    if (process.argv.includes('--captura')) await page.screenshot({ path: `${process.argv[process.argv.indexOf('--captura') + 1] || 'titulo.png'}.1387-tableros.png` });
+    check('1387 se retoca: sitios, gente y tableros con su ficha al lado y su «+»; un sitio nuevo pregunta de dónde se llega',
+        stockPlace.includes('name') && !stockPlace.includes('link')
+        && /Mirador de prueba/.test(packPlace.open) && /Tuyo/.test(packPlace.open) && packPlace.fields.includes('link') && /tl-tab-changed/.test(packPlace.mark)
+        && packPerson.fields.includes('wants') && packPerson.fields.includes('secret') && packPerson.add === 1 && packPerson.groups.some(g => /Vecinos/.test(g))
+        && packBoard.fields.includes('locationName') && packBoard.add === 1
+        && packBoard.cells === 16 * 11 && !packBoard.foesSaid && packBoard.starts === 3 && packBoard.tab === 'Localizaciones',
+        JSON.stringify({ stockPlace, packPlace, packPerson, packBoard }));
+
+    // Y una raza propia en 1387: tiene que llegar al mundo y al creador de personaje.
+    await page.locator('.tl-tab[data-step="razas"]').click();
+    await page.waitForTimeout(500);
+    await page.locator('.tl-toolbar .tl-add').click();
+    await page.waitForTimeout(400);
+    await page.locator('.tl-detail .tl-field[data-key="name"] .tl-input').fill('Trasgo de prueba');
+    await page.waitForTimeout(300);
+    await page.locator('.tl-detail .tl-field[data-key="effects"] .tl-input').fill('+2 Destreza, -1 Carisma');
+    await page.waitForTimeout(300);
+
     // UX: la pestaña del narrador, con sus grupos y sin desplegable; eligiendo uno se ve su ficha.
     await page.locator('.tl-tab[data-step="narrador"]').click();
     await page.waitForTimeout(400);
@@ -406,14 +549,145 @@ try {
             packSurvival: (await (await import('/scripts/world-info.js')).loadWorldInfo(String(ctx.chatMetadata?.world_info || '')))?.metadata?.rulesetPack?.survival ?? null,
             remembered: (() => { try { return JSON.parse(window.localStorage.getItem('sillytavern_activeRulesetPack') || 'null')?.survival ?? 'sin'; } catch { return 'err'; } })(),
             party: party.map((/** @type {any} */ m) => ({ name: m.name, abilities: m.abilities })),
+            trasgo: await (async () => {
+                const data = await (await import('/scripts/world-info.js')).loadWorldInfo(String(ctx.chatMetadata?.world_info || ''));
+                const rows = data?.metadata?.worldRows?.razas ?? [];
+                const mine = rows.find((/** @type {any} */ r) => r.name === 'Trasgo de prueba');
+                const { freshCompendium } = await import('/scripts/game-engine/compendio/browser.js');
+                const { racesOf } = await import('/scripts/game-engine/compendio/kin.js');
+                const races = racesOf(await freshCompendium(data?.metadata?.worldRows)).map((/** @type {any} */ r) => r.name);
+                return {
+                    saved: Boolean(mine), effects: mine?.effects ?? null,
+                    picked: (data?.metadata?.picks?.razas ?? []).includes(mine?.id),
+                    inCreator: races.includes('Trasgo de prueba'),
+                };
+            })(),
+            mirador: await (async () => {
+                const data = await (await import('/scripts/world-info.js')).loadWorldInfo(String(ctx.chatMetadata?.world_info || ''));
+                const maps = Array.isArray(data?.metadata?.locationMaps) ? data.metadata.locationMaps : [];
+                const place = maps.find((/** @type {any} */ l) => l.name === 'Mirador de prueba');
+                const vane = maps.find((/** @type {any} */ l) => l.name === 'Castillo de Vane');
+                return {
+                    ida: (place?.routes ?? []).map((/** @type {any} */ r) => `${r.to}:${r.days}`),
+                    vuelta: (vane?.routes ?? []).some((/** @type {any} */ r) => r.to === 'Mirador de prueba'),
+                };
+            })(),
             toasts: [...document.querySelectorAll('#toast-container .toast')].map(t => (t.textContent || '').trim()).slice(0, 6),
             popups: [...document.querySelectorAll('dialog[open]')].map(d => (d.textContent || '').replace(/\s+/g, ' ').slice(0, 120)),
         };
     });
     check('se juega con Ulrich Brand, en Relajado, en el mundo de 1387', state === 'Ulrich Brand' && after.mode === 'relajado' && /Barro|Vane/.test(String(after.location)), JSON.stringify({ state, ...after }));
+    check('y la raza hecha en el taller se guarda con el mundo, entra marcada y la ve el creador de personaje',
+        after.trasgo.saved && after.trasgo.picked && after.trasgo.inCreator
+        && JSON.stringify(after.trasgo.effects) === JSON.stringify([{ stat: 'dexterity', modifier: 2 }, { stat: 'charisma', modifier: -1 }]),
+        JSON.stringify(after.trasgo));
+    check('y el sitio añadido en el taller está en el mundo, con camino de ida y vuelta al Castillo de Vane',
+        after.mirador.ida.includes('Castillo de Vane:2') && after.mirador.vuelta, JSON.stringify(after.mirador));
+    // Lo que dice el texto, en el tablero: el alguacil y sus guardias revientan la puerta, y
+    // aunque todavía no haya pelea, están dibujados (quietos, sin poder moverlos).
+    await page.waitForTimeout(800);
+    const idle = await page.evaluate(() => {
+        const tokens = [...document.querySelectorAll('#game-shell .wm-token-enemy.wm-token-idle')];
+        return {
+            names: tokens.map(t => (t.querySelector('.wm-token-name')?.textContent || '').trim()).sort(),
+            fighting: Boolean(window.SillyTavern.getContext().chatMetadata.combatEncounter?.active),
+            start: (document.querySelector('#game-shell .sc-what')?.textContent || '').trim(),
+            locked: [...document.querySelectorAll('#game-shell .wm-char-idle .wm-char-coord-input')].every(i => /** @type {HTMLInputElement} */ (i).disabled),
+        };
+    });
+    check('sin pelea todavía, el tablero enseña al alguacil y a sus dos guardias, quietos, como dice el texto',
+        !idle.fighting && idle.names.join('|') === 'Alguacil Torres|Guardia de Montesclaros|Guardia de Montesclaros' && idle.locked,
+        JSON.stringify(idle));
+
+    // Lo que se escribe lo contesta quien tienes delante; al narrador se le habla con su botón
+    // (Daniel, 2026-09-28). Con un modelo «conectado» de mentira: lo que se mira es qué leería
+    // el modelo y a nombre de quién sale la respuesta, no lo que escribiría.
+    const onlineBefore = await page.evaluate(async () => (await import('/script.js')).online_status);
+    await page.evaluate(async () => (await import('/script.js')).setOnlineStatus('Prueba'));
+    const turnNotes = () => page.evaluate(async () => {
+        const ctx = window.SillyTavern.getContext();
+        await ctx.eventSource.emit(ctx.eventTypes.GENERATION_STARTED, 'normal', {}, true);
+        return Object.values(ctx.extensionPrompts || {}).map((/** @type {any} */ p) => String(p?.value ?? ''))
+            .filter(v => /\[CONVERSACIÓN\]|\[AL NARRADOR\]/.test(v)).join('\n');
+    });
+    const replyName = () => page.evaluate(async () => {
+        const ctx = window.SillyTavern.getContext();
+        ctx.chat.push({ name: 'La posadera', is_user: false, is_system: false, mes: 'Una respuesta de prueba.', extra: { model: 'prueba' } });
+        const id = ctx.chat.length - 1;
+        await ctx.eventSource.emit(ctx.eventTypes.MESSAGE_RECEIVED, id, 'normal');
+        const name = ctx.chat[id].name;
+        ctx.chat.pop();
+        return name;
+    });
+    const toScene = await page.evaluate(async () => (await import('/scripts/party.js')).routeTyped('¿Qué pasa?'));
+    const sceneNotes = await turnNotes();
+    const sceneName = await replyName();
+
+    // Y es un enfrentamiento, no una charla de taberna (Daniel, 2026-09-28): lo que se sugiere,
+    // cómo os mira, la respuesta sin párrafo de narración delante, y la ventana de charla.
+    await page.evaluate(async () => (await import('/scripts/party.js')).refreshBoardView?.());
+    await page.waitForTimeout(500);
+    const hotChips = await page.evaluate(() => [...document.querySelectorAll('#game-shell .gs-chip-action')].map(c => (c.textContent || '').trim()));
+    const trimmed = await page.evaluate(async () => {
+        const ctx = window.SillyTavern.getContext();
+        ctx.chat.push({ name: 'La posadera', is_user: false, is_system: false, mes: 'La posadera se cruza de brazos junto a la puerta.\n\n—No me cuentes milongas —gruñe.', extra: { model: 'prueba' } });
+        const id = ctx.chat.length - 1;
+        await ctx.eventSource.emit(ctx.eventTypes.MESSAGE_RECEIVED, id, 'normal');
+        const kept = { name: ctx.chat[id].name, mes: ctx.chat[id].mes };
+        ctx.chat.pop();
+        return kept;
+    });
+    void page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/hablar Torres'));
+    await page.waitForSelector('.popup:not([closing]) .tk-root', { timeout: 8000 }).catch(() => {});
+    const talkWindow = await page.evaluate(() => {
+        const root = document.querySelector('.popup:not([closing]) .tk-root');
+        return {
+            mood: (root?.querySelector('.tk-mood')?.textContent || '').trim(),
+            locked: [...(root?.querySelectorAll('.tk-topic.tk-locked') ?? [])].map(b => b.getAttribute('data-topic')),
+            open: [...(root?.querySelectorAll('.tk-topic:not(.tk-locked)') ?? [])].map(b => b.getAttribute('data-topic')),
+            ronda: Boolean(root?.querySelector('[data-act="ronda"]')),
+            ok: (document.querySelector('.popup:not([closing]) .popup-button-ok')?.textContent || '').trim(),
+        };
+    });
+    await page.locator('.popup:visible .popup-button-ok').last().click({ timeout: 4000 }).catch(() => {});
+    await page.waitForTimeout(400);
+    check('con Torres plantando cara: se sugiere contestarle, os mira receloso y lo que dice sale sin narración delante',
+        hotChips.some(t => /No he sido yo/.test(t)) && hotChips.some(t => /De qué se me acusa/.test(t)) && !hotChips.some(t => /Qué necesitas/.test(t))
+        && /os está plantando cara/.test(sceneNotes) && /Os mira de forma recelosa/.test(sceneNotes)
+        && trimmed.name === 'Torres' && trimmed.mes === '—No me cuentes milongas —gruñe.',
+        JSON.stringify({ hotChips, trimmed, sceneNotes: sceneNotes.slice(0, 400) }));
+    check('la ventana de charla con Torres: recelosa, lo que sabe, busca y piensa cerrado, sin ronda y con «Cerrar»',
+        /recelosa/.test(talkWindow.mood) && ['sabe', 'quiere', 'vosotros'].every(t => talkWindow.locked.includes(t))
+        && !talkWindow.ronda && talkWindow.ok === 'Cerrar', JSON.stringify(talkWindow));
+    await page.waitForTimeout(400);
+    await page.locator('#game-shell .gs-chip-narrator').click({ timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(300);
+    const armed = await page.evaluate(() => ({
+        on: document.querySelector('#game-shell .gs-chip-narrator')?.classList.contains('on') ?? false,
+        placeholder: /** @type {HTMLTextAreaElement|null} */ (document.querySelector('#send_textarea'))?.placeholder || '',
+    }));
+    const toNarrator = await page.evaluate(async () => (await import('/scripts/party.js')).routeTyped('¿Qué puedo hacer?'));
+    const narratorNotes = await turnNotes();
+    const narratorName = await replyName();
+    const disarmed = await page.evaluate(() => ({
+        on: document.querySelector('#game-shell .gs-chip-narrator')?.classList.contains('on') ?? false,
+        placeholder: /** @type {HTMLTextAreaElement|null} */ (document.querySelector('#send_textarea'))?.placeholder || '',
+    }));
+    check('lo que se escribe lo contesta quien tienes delante (el alguacil Torres), a su nombre',
+        toScene === 'model' && /\[CONVERSACIÓN\] Quien juega le está hablando a Torres/.test(sceneNotes) && sceneName === 'Torres',
+        JSON.stringify({ toScene, sceneNotes: sceneNotes.slice(0, 200), sceneName }));
+    check('«Al narrador»: lo siguiente va al narrador, fuera de la escena, y contesta él; luego se apaga solo',
+        armed.on && /narrador/i.test(armed.placeholder) && toNarrator === 'model'
+        && /\[AL NARRADOR\]/.test(narratorNotes) && !/\[CONVERSACIÓN\]/.test(narratorNotes) && narratorName === 'La posadera'
+        && !disarmed.on && !/narrador/i.test(disarmed.placeholder),
+        JSON.stringify({ armed, toNarrator, narratorNotes: narratorNotes.slice(0, 160), narratorName, disarmed }));
+    // Se deja todo como estaba: sin conversación con Torres y sin modelo.
+    await page.locator('#game-shell .gs-chip-action', { hasText: 'Despedirse' }).first().click({ timeout: 4000 }).catch(() => {});
+    await page.locator('#send_textarea').fill('').catch(() => {});
+    await page.evaluate(async (was) => (await import('/script.js')).setOnlineStatus(was), onlineBefore);
+    await page.waitForTimeout(300);
     // UX: se empieza leyendo al narrador, no plantado en el tablero. La columna del mapa solo
     // sale si hay algo dibujado; y las fichas de acción se encienden en dorado.
-    await page.waitForTimeout(800);
     const chipAt = page.locator('#game-shell .gs-chip-action').first();
     if (await chipAt.count() > 0) await chipAt.hover().catch(() => {});
     await page.waitForTimeout(300);
@@ -534,9 +808,142 @@ try {
     check('el tablero se ve, en Diálogo y en el Tablero (la cuadrícula con alto), y nada se sale por la derecha a 1400 ni a 1920',
         [seen.dialogue, seen.board, seen.wide].every(s => s.grid && s.grid[1] >= 200 && s.pageWidth <= s.viewport)
         && seen.board.scene === 'combat', JSON.stringify(seen));
+
+    // La Exploración a pantalla entera (Gem director de UX): sin el tablero, en tres
+    // columnas, y solo se viaja a los vecinos.
+    await page.evaluate(() => /** @type {HTMLElement|null} */ (document.activeElement)?.blur());
+    await page.keyboard.press('2');
+    await page.waitForTimeout(900);
+    const explore = await page.evaluate(() => {
+        const box = (/** @type {Element|null} */ node) => node?.getBoundingClientRect() ?? null;
+        const columns = [...document.querySelectorAll('#game-shell .gs-explore-dashboard > .ex-column')]
+            .map(c => ({ col: c.getAttribute('data-col'), top: Math.round(box(c)?.top ?? 0), width: Math.round(box(c)?.width ?? 0) }));
+        const cards = [...document.querySelectorAll('#game-shell .ex-column[data-col="travel"] .gs-place')].map(p => ({
+            name: p.querySelector('.gs-place-name')?.textContent || '',
+            note: p.querySelector('.gs-place-note')?.textContent || '',
+            open: !(/** @type {HTMLButtonElement} */ (p)).disabled,
+            here: p.classList.contains('current'),
+        }));
+        return {
+            scene: document.querySelector('#game-shell')?.getAttribute('data-scene'),
+            mapHeight: Math.round(box(document.querySelector('#game-shell .gs-map-slot'))?.height ?? 0),
+            gridHeight: Math.round(box(document.querySelector('#game-shell .wm-grid, #game-shell .wm-container'))?.height ?? 0),
+            placesWidth: Math.round(box(document.querySelector('#game-shell .gs-places'))?.width ?? 0),
+            here: document.querySelector('#game-shell .gs-here-name')?.textContent || '',
+            titleColor: window.getComputedStyle(document.querySelector('#game-shell .gs-here-name') ?? document.body).color,
+            columns,
+            services: document.querySelectorAll('#game-shell .ex-column[data-col="here"] .gs-service').length,
+            boards: document.querySelectorAll('#game-shell .ex-column[data-col="boards"] .gs-board').length,
+            cards,
+            pageWidth: document.documentElement.scrollWidth,
+            viewport: window.innerWidth,
+        };
+    });
+    if (captura) await page.screenshot({ path: `${captura}.exploracion.png` });
+    // Los vecinos de El Pueblo de Barro en 1387: el Camino Viejo, el Castillo y la Granja.
+    const neighbours = ['El Camino Viejo', 'Castillo de Vane', 'La Granja Quemada'];
+    const openCards = explore.cards.filter(c => c.open).map(c => c.name);
+    check('Exploración: sin tablero, el sitio en dorado arriba y tres columnas lado a lado (aquí mismo, tableros, viajar)',
+        explore.scene === 'exploration' && explore.mapHeight === 0 && explore.gridHeight === 0
+        && explore.columns.length === 3 && new Set(explore.columns.map(c => c.top)).size === 1
+        && explore.columns.map(c => c.col).join() === 'here,boards,travel'
+        && /226, 194, 122/.test(explore.titleColor) && explore.services >= 1 && explore.boards >= 1
+        && explore.pageWidth <= explore.viewport, JSON.stringify({ ...explore, cards: undefined }));
+    check('Exploración: solo se viaja a los vecinos; lo de más lejos se ve, apagado, con por dónde se pasa',
+        explore.here !== 'El Pueblo de Barro'
+        || (openCards.length > 0 && openCards.every(n => neighbours.includes(n))
+            && explore.cards.some(c => !c.open && !c.here && /pasando por/.test(c.note))),
+        JSON.stringify(explore.cards));
+    await page.keyboard.press('1');
+    await page.waitForTimeout(500);
+
+    // Con modelo, a quien se le habla contesta él, no el narrador (fallo visto por Daniel,
+    // 2026-09-27: «¿cómo te llamas?» al tabernero lo contestaba el narrador con otra cosa).
+    /** Lo que el modelo leería ahora al final del prompt. */
+    const promptTail = () => page.evaluate(async () => {
+        const ctx = window.SillyTavern.getContext();
+        await ctx.eventSource.emit(ctx.eventTypes.GENERATION_STARTED, 'normal', {}, true);
+        return Object.values(ctx.extensionPrompts || {}).map((/** @type {any} */ p) => String(p?.value ?? '')).filter(v => v.includes('[CONVERSACIÓN]')).join('\n');
+    });
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/hablar Giles'));
+    await page.waitForSelector('.popup:not([closing]) .tk-root', { timeout: 8000 }).catch(() => {});
+    await page.locator('.popup:not([closing]) .tk-act[data-act="palabras"]').click({ timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(600);
+    const talking = await promptTail();
+    const named = await page.evaluate(async () => {
+        const ctx = window.SillyTavern.getContext();
+        ctx.chat.push({ name: 'Narrador', is_user: false, is_system: false, mes: 'Me llamo Giles, y aquí se paga antes de beber.', extra: { model: 'prueba' } });
+        const id = ctx.chat.length - 1;
+        await ctx.eventSource.emit(ctx.eventTypes.MESSAGE_RECEIVED, id, 'normal');
+        const name = ctx.chat[id].name;
+        ctx.chat.pop();
+        return name;
+    });
+    await page.locator('#send_textarea').fill('').catch(() => {});
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/hablar Giles'));
+    await page.waitForSelector('.popup:not([closing]) .tk-root', { timeout: 8000 }).catch(() => {});
+    await page.locator('.popup:not([closing]) .popup-button-ok').last().click({ timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(600);
+    const farewell = await promptTail();
+    check('hablando con Giles, el modelo lee que conteste Giles, y su respuesta sale a su nombre; al despedirse, se acaba',
+        /Quien juega le está hablando a Giles.*contesta Giles, en primera persona, con una o dos frases/.test(talking) && named === 'Giles' && farewell === '',
+        JSON.stringify({ talking: talking.slice(0, 200), named, farewell: farewell.slice(0, 80) }));
+
+    // Z6: el modo del narrador se elige en la pausa: Mixto → Modelo → Motor → Mixto.
+    const narratorLabels = [];
+    for (let i = 0; i < 3; i++) {
+        await page.evaluate(() => /** @type {HTMLElement|null} */ (document.activeElement)?.blur());
+        await page.keyboard.press('Escape');
+        await page.waitForSelector('.gs-pause', { timeout: 5000 }).catch(() => {});
+        const toggle = page.locator('.gs-pause-toggle[data-toggle="narrator"]');
+        narratorLabels.push(await toggle.textContent().catch(() => ''));
+        await toggle.click({ timeout: 5000 }).catch(() => {});
+        await page.waitForTimeout(300);
+        await page.keyboard.press('Escape');
+        await page.waitForTimeout(300);
+    }
+    const narratorBack = await page.evaluate(() => window.localStorage.getItem('sillytavern_gameNarrator'));
+    await page.evaluate(() => /** @type {HTMLElement|null} */ (document.activeElement)?.blur());
+    await page.keyboard.press('Escape');
+    await page.waitForSelector('.gs-pause', { timeout: 5000 }).catch(() => {});
+    const sucesosToggle = await page.locator('.gs-pause-toggle[data-toggle="sucesos"]').textContent().catch(() => '');
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(300);
+    check('Z6: en la pausa se elige el narrador (Mixto, Modelo, Motor), y los sucesos se pueden apagar',
+        narratorLabels.join('|') === 'Narrador: Mixto|Narrador: Modelo|Narrador: Motor (0 tokens)' && narratorBack === 'mixto'
+        && sucesosToggle === 'Sucesos con decisión: no',
+        JSON.stringify({ narratorLabels, narratorBack, sucesosToggle }));
+
     // K2: la tanda de profundidad (B1, B2, H2, T1, B3, T2) sobre la partida recién empezada.
-    // `node tools/e2e-quick.mjs --profundidad`. Cada comando lleva tope: si se cuelga, se dice cuál.
-    if (process.argv.includes('--profundidad')) await depthRound(page);
+    // Corre siempre desde el 2026-09-28: es la que sustituye a los pasos 74 y 75 de la vuelta
+    // larga, que con el mundo gastado se colgaban. Cada comando lleva tope: si se cuelga, se dice cuál.
+    if (!process.argv.includes('--sin-profundidad')) await depthRound(page);
+
+    // El grupo viaja entero: tras llegar a otro sitio y entrar en uno de sus tableros, las
+    // fichas del grupo están en ese tablero (se viaja de vecino en vecino).
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/go Castillo de Vane'));
+    await page.waitForTimeout(2500);
+    await page.evaluate(() => { /** @type {any} */ (window).toastr?.clear(); });
+    await page.evaluate(() => /** @type {HTMLElement|null} */ (document.activeElement)?.blur());
+    await page.keyboard.press('2');
+    await page.waitForTimeout(900);
+    await page.locator('#game-shell .ex-column[data-col="boards"] .gs-board').first().click({ timeout: 8000 }).catch(() => {});
+    await page.waitForTimeout(1500);
+    const moved = await page.evaluate(async () => {
+        const party = (await import('/scripts/party.js')).getPartyMembersSnapshot();
+        const meta = window.SillyTavern.getContext().chatMetadata;
+        return {
+            here: String(meta.currentLocation || ''),
+            board: String(meta.currentBoard || ''),
+            scene: document.querySelector('#game-shell')?.getAttribute('data-scene'),
+            members: party.filter((/** @type {any} */ m) => !m.dead).map((/** @type {any} */ m) => ({
+                name: m.name, at: m.mapPosition?.locationName, token: Boolean(document.querySelector(`#game-shell .wm-token[data-token-id="${m.id}"]`)),
+            })),
+        };
+    });
+    check('tras viajar a Castillo de Vane y entrar en un tablero, el grupo está en él',
+        moved.here === 'Castillo de Vane' && Boolean(moved.board) && moved.members.length > 0 && moved.members.every(m => m.token),
+        JSON.stringify(moved));
 
     console.log('\n--- problemas ---');
     console.log(problems.length ? problems.join('\n') : '(ninguno)');
@@ -575,11 +982,14 @@ async function depthRound(page) {
         await page.waitForTimeout(700);
         return said;
     };
+    // Con una ventana encima, los dados no se pueden pulsar: con dos fallos seguidos se deja.
     const clearDice = async () => {
+        let misses = 0;
         for (let i = 0; i < 40; i++) {
             const next = page.locator('.wm-dice-overlay.active .wm-dice-next');
             if (await next.count() === 0) return;
-            await next.click({ timeout: 4000 }).catch(() => {});
+            const clicked = await next.click({ timeout: 1500 }).then(() => true).catch(() => false);
+            if (!clicked && ++misses >= 2) return;
             await page.waitForTimeout(250);
         }
     };
@@ -748,4 +1158,128 @@ async function depthRound(page) {
     await slash('/tregua sí');
     const truce = await lastLine(/^🤝 \[COMBAT\] Tregua: /);
     check('T2: con el líder caído piden tregua; aceptarla acaba el combate', Boolean(asked) && Boolean(truce) && await whoseTurn() === 'over', JSON.stringify({ band, asked: asked.slice(0, 120), truce: truce.slice(0, 120) }));
+
+    // Ganada la pelea de la posada (la tregua la gana), sus enemigos ya no se dibujan ni se ofrecen.
+    await page.evaluate(async () => (await import('/scripts/party.js')).refreshBoardView());
+    await page.waitForTimeout(800);
+    const cleared = await page.evaluate(() => ({
+        idle: document.querySelectorAll('#game-shell .wm-token-enemy.wm-token-idle').length,
+        start: document.querySelectorAll('#game-shell .sc-btn').length,
+        won: window.SillyTavern.getContext().chatMetadata.boardsWon ?? [],
+    }));
+    check('ganada la pelea del tablero, sus enemigos ya no se dibujan ni se ofrece empezarla otra vez',
+        cleared.idle === 0 && cleared.start === 0 && cleared.won.some((/** @type {string} */ k) => /::El cuarto de la posada$/.test(k)), JSON.stringify(cleared));
+
+    // R3, R4 y R6 (los pasos 70 y 72 de la vuelta larga, que allí fallaban siempre): el cono
+    // de escarcha hiela el charco donde está el guardia, el fuego revienta un barril y un
+    // cofre al lado se abre pulsándolo. En partida nueva, como el resto de la tanda.
+    console.log('\n=== Profundidad: R3, R4 y R6 ===');
+    await slash('/combat-stop');
+    await page.evaluate(async () => {
+        const ctx = window.SillyTavern.getContext();
+        const hero = (ctx.chatMetadata.party || [])[0];
+        if (hero) {
+            hero.level = 5;
+            hero.hp = Math.max(Number(hero.hp) || 0, 40);
+            hero.maxHp = Math.max(Number(hero.maxHp) || 0, 40);
+            hero.abilities = [...new Set([...(hero.abilities || []), 'tec-frasco-lumbre', 'mag-cono-escarcha'])];
+            hero.spellCharges = {};
+        }
+        await ctx.saveMetadata();
+        await ctx.eventSource.emit(ctx.eventTypes.CHAT_CHANGED, ctx.getCurrentChatId?.());
+    });
+    await page.waitForTimeout(1500);
+    /** Un guardia pegado al héroe al que le toca, con vida de sobra; y qué casilla pisa. */
+    const nextToFoe = async () => {
+        await slash('/fight Guardia de Montesclaros 1');
+        await clearDice();
+        await toPlayer();
+        return page.evaluate(async () => {
+            const party = await import('/scripts/party.js');
+            const enc = party.getCombatEncounter();
+            const entry = enc?.turnOrder?.[enc?.currentTurnIndex];
+            const me = party.getPartyMembersSnapshot().find((/** @type {any} */ m) => String(m.id) === String(entry?.id));
+            const foe = (enc?.enemies || []).find((/** @type {any} */ e) => (e.currentHp || 0) > 0);
+            if (!me || !foe) return null;
+            foe.currentHp = 99;
+            foe.maxHp = 99;
+            foe.gridX = (Number(me.mapPosition?.gridX) || 0) + 1;
+            foe.gridY = Number(me.mapPosition?.gridY) || 0;
+            return { me: { x: Number(me.mapPosition?.gridX) || 0, y: Number(me.mapPosition?.gridY) || 0 }, foe: { name: String(foe.name), x: foe.gridX, y: foe.gridY } };
+        });
+    };
+    /** Usar algo contra el guardia como quien juega: su ficha y el botón. */
+    const useOnFoe = async (/** @type {string} */ what) => {
+        await page.evaluate(async () => (await import('/scripts/party.js')).refreshBoardView());
+        await page.waitForTimeout(600);
+        await clearToasts();
+        await page.locator('.wm-token-enemy').filter({ visible: true }).first().click({ timeout: 6000 }).catch(() => {});
+        await page.waitForSelector('.tc-card', { timeout: 8000 }).catch(() => {});
+        const buttons = await page.evaluate(() => [...document.querySelectorAll('.tc-btn')].map(b => (b.textContent || '').trim()));
+        await page.locator('.tc-btn').filter({ hasText: what }).first().click({ timeout: 5000 }).catch(() => {});
+        await page.waitForTimeout(1500);
+        await clearDice();
+        // El mensaje entero de lo que se usó: si falla, que se vea qué dijo el juego.
+        const said = await page.evaluate((w) => (window.SillyTavern.getContext().chat || [])
+            .map((/** @type {any} */ m) => String(m.mes || '')).filter(t => t.includes(`usa ${w}`)).pop() || '', what);
+        return { buttons, said };
+    };
+    const cellAt = (/** @type {{x: number, y: number}} */ at) => page.evaluate(async (c) => {
+        const wi = await import('/scripts/world-info.js');
+        const ctx = window.SillyTavern.getContext();
+        const place = wi.getCurrentWorldLocationMaps().find((/** @type {any} */ l) => l.name === ctx.chatMetadata.currentLocation);
+        const board = (place?.boards || []).find((/** @type {any} */ b) => b.name === ctx.chatMetadata.currentBoard);
+        return board?.terrain?.cells?.[`${c.x},${c.y}`]?.type ?? 'floor';
+    }, at);
+
+    // R4 + R3: el cono de escarcha sobre el charco.
+    const cold = await nextToFoe();
+    if (cold) await paint('water', cold.foe);
+    const cone = await useOnFoe('Cono de escarcha');
+    const coldCell = cold ? await cellAt(cold.foe) : '';
+    check('R4 + R3: el cono de escarcha hiela el charco donde está el guardia, y se dice',
+        /usa Cono de escarcha/.test(cone.said) && coldCell === 'ice' && /❄️ El agua se hiela/u.test(cone.said),
+        JSON.stringify({ cold, coldCell, buttons: cone.buttons, said: cone.said.slice(0, 700) }));
+
+    // R6: el fuego revienta un barril pegado al guardia; y el guardia, jefe y malherido,
+    // cambia una vez al empezar la ronda.
+    await slash('/combat-stop');
+    const fire = await nextToFoe();
+    const barrelAt = fire ? { x: fire.foe.x, y: fire.foe.y + 1 } : { x: 0, y: 0 };
+    if (fire) await paint('barrel', barrelAt);
+    await page.evaluate(async () => {
+        const enc = (await import('/scripts/party.js')).getCombatEncounter();
+        const foe = (enc?.enemies || []).find((/** @type {any} */ e) => (e.currentHp || 0) > 0);
+        if (foe) {
+            foe.boss = true;
+            foe.currentHp = Math.floor((Number(foe.maxHp) || 20) * 0.45);
+        }
+    });
+    const flask = await useOnFoe('Frasco de lumbre');
+    const boom = await lastLine(/Revienta un barril/);
+    await slash('/combat-end');
+    await clearDice();
+    await toPlayer();
+    const phase = await lastLine(/^👑 \[COMBAT\] /);
+    check('R6: el fuego revienta un barril y alcanza a quien está al lado; y el jefe malherido cambia una vez',
+        Boolean(boom) && /(se enfurece|se acorrala|da una voz)/.test(phase),
+        JSON.stringify({ fire, barrelAt, barrel: await cellAt(barrelAt), buttons: flask.buttons, said: flask.said.slice(0, 700), boom: boom.slice(0, 200), phase: phase.slice(0, 160) }));
+
+    // R6: un cofre al lado del héroe se abre pulsándolo.
+    await slash('/combat-stop');
+    const hero = await page.evaluate(async () => {
+        const me = (await import('/scripts/party.js')).getPartyMembersSnapshot()[0];
+        return { x: Number(me?.mapPosition?.gridX) || 0, y: Number(me?.mapPosition?.gridY) || 0 };
+    });
+    const chestAt = { x: hero.x + 1, y: hero.y };
+    await paint('chest', chestAt);
+    await page.evaluate(async () => (await import('/scripts/party.js')).refreshBoardView());
+    await page.waitForTimeout(800);
+    await clearToasts();
+    const chestCell = await cellInfo('chest');
+    const clickChest = await page.locator('.wm-terrain-chest').filter({ visible: true }).first().click({ timeout: 6000 }).then(() => 'ok').catch((/** @type {any} */ e) => String(e?.message || e).replace(/\s+/g, ' ').slice(0, 200));
+    await page.waitForTimeout(1000);
+    const opened = await lastLine(/abre el cofre/);
+    check('R6: un cofre al lado del héroe se abre pulsándolo: oro y a veces algo más',
+        Boolean(opened), JSON.stringify({ hero, chestAt, chestCell, clickChest, opened: opened.slice(0, 200) }));
 }

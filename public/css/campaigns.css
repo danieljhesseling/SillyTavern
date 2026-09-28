@@ -2820,6 +2820,127 @@ input[type="file"].tl-file {
     font-size: 0.72rem;
 }
 
+/* El tablero en la ficha, para pintarlo (2026-09-28). Una casilla por celda, cuadradas, y lo
+   que se ve en la ficha es lo que se juega. */
+.tl-bp {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 6px;
+}
+
+.tl-bp-palette {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.tl-bp-brush {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 9px 3px 5px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.05);
+    color: inherit;
+    font-size: 0.75rem;
+    opacity: 0.8;
+    cursor: pointer;
+}
+
+.tl-bp-brush:hover {
+    opacity: 1;
+}
+
+.tl-bp-brush.on {
+    opacity: 1;
+    border-color: var(--gs-accent-gold);
+    background: var(--gs-accent-gold-hover);
+    color: var(--gs-accent-gold);
+    font-weight: bold;
+}
+
+.tl-bp-swatch {
+    width: 14px;
+    height: 14px;
+    border: 1px solid rgba(0, 0, 0, 0.5);
+    border-radius: 3px;
+}
+
+.tl-bp-grid {
+    display: grid;
+    grid-template-columns: repeat(var(--w), 1fr);
+    gap: 1px;
+    width: 100%;
+    max-width: calc(var(--w) * 24px);
+    padding: 1px;
+    border: 1px solid var(--gs-gold-line, #5a4a2a);
+    border-radius: 4px;
+    background: #110e0b;
+    cursor: crosshair;
+    touch-action: none;
+    user-select: none;
+}
+
+.tl-bp-cell {
+    position: relative;
+    aspect-ratio: 1;
+    border-radius: 1px;
+}
+
+.tl-bp-cell:hover {
+    outline: 1px solid var(--gs-accent-gold);
+    outline-offset: -1px;
+    z-index: 1;
+}
+
+.tl-bp-cell.is-edge {
+    cursor: not-allowed;
+}
+
+/* Donde empieza el grupo, en dorado. */
+.tl-bp-cell.is-start::after,
+.tl-bp-swatch[data-t="inicio"]::after {
+    position: absolute;
+    inset: 22%;
+    border-radius: 50%;
+    content: '';
+}
+
+.tl-bp-swatch[data-t="inicio"] {
+    position: relative;
+}
+
+.tl-bp-cell.is-start::after,
+.tl-bp-swatch[data-t="inicio"]::after {
+    background: var(--gs-accent-gold, #e2c27a);
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6);
+}
+
+.tl-bp-said.bad {
+    color: #ffb4b4;
+}
+
+/* Los colores de cada casilla: los mismos en la rejilla y en el pincel. */
+.tl-bp [data-t="suelo"], .tl-bp [data-t="inicio"] { background: #3a3129; }
+.tl-bp [data-t="muro"] { background: #6e6358; }
+.tl-bp [data-t="puerta"] { background: #9a6630; }
+.tl-bp [data-t="cobertura"] { background: #7c8a45; }
+.tl-bp [data-t="cobertura-alta"] { background: #55702e; }
+.tl-bp [data-t="dificil"] { background: #6b5638; }
+.tl-bp [data-t="agua"] { background: #2f6285; }
+.tl-bp [data-t="hielo"] { background: #a6cbe0; }
+.tl-bp [data-t="maleza"] { background: #4d7338; }
+.tl-bp [data-t="barril"] { background: #84532a; }
+.tl-bp [data-t="cofre"] { background: #b08a2e; }
+.tl-bp [data-t="alto"] { background: #8a7a62; }
+.tl-bp [data-t="salida"] { background: #c9a84c; }
+.tl-bp [data-t="escalera"] { background: #9c8f78; }
+.tl-bp [data-t="sima"] { background: #050403; }
+.tl-bp [data-t="palanca"] { background: #a8987c; }
+.tl-bp [data-t="barricada"] { background: #6a4424; }
+
 /* Lo que se escribe en prosa crece con lo escrito, hasta un tope: en la ficha, estrecha, tres
    líneas cortaban el tono del narrador a media frase. */
 .tl-detail textarea.tl-input {
@@ -2981,6 +3102,20 @@ input[type="file"].tl-file {
 
 .tl-form > .tl-field.tl-wide {
     grid-column: 1 / -1;
+}
+
+/* Una ficha con tablero: el tablero es lo que se mira. Más ancha, y el nombre, la forma y el
+   tamaño en una sola fila, para que el tablero quepa sin bajar. */
+.tl-detail:has(.tl-bp) {
+    flex-basis: clamp(420px, 56%, 820px);
+}
+
+.tl-detail:has(.tl-bp) .tl-form:has(> .tl-field:nth-child(3)) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.tl-detail:has(.tl-bp) .tl-form > .tl-field.tl-wide {
+    grid-column: auto;
 }
 
 .tl-root .tl-label {

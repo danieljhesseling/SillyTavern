@@ -292,9 +292,9 @@ describe('quien vive aquí y qué se cuenta', () => {
         expect(questsOf(removeQuest(state, id))).toEqual([]);
     });
 
-    test('una misión sin título no vale', () => {
-        expect(blocksNext(addQuest(empezado(), { title: '' }).state, 'misiones'))
-            .toMatch(/sin título/i);
+    // La pestaña se quitó (2026-09-28): una misión sin título ya no para el taller.
+    test('las misiones ya no son una pestaña que pare el taller', () => {
+        expect(blocksNext(addQuest(empezado(), { title: '' }).state, 'misiones')).toBe('');
     });
 
     // Un tablón que solo habla de facciones deja de ofrecer trabajo.

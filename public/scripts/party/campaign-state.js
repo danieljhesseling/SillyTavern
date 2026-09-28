@@ -44,6 +44,7 @@ export const CAMPAIGN_MAP_KEY = 'campaignMap';
  * @property {() => void} renderParty
  * @property {() => void} renderCampaign
  * @property {(text: string) => void} narrate
+ * @property {(kind: string) => string} [tellRest] Z1 de ROADMAP_SIN_TOKENS: el descanso contado por el narrador del motor.
  * @property {(member: any, rank: number) => void} [rankedUp] Al subir de rango: su escena.
  * @property {() => boolean} isFighting
  * @property {() => string} worldName
@@ -102,12 +103,16 @@ export function createCampaignState(deps) {
         deps.renderCampaign();
     }
 
-    /** Skips whatever is left of today. */
-    function advanceDay() {
+    /**
+     * Skips whatever is left of today.
+     *
+     * @param {boolean} [quiet] Sin la línea de «Amanece…»: el descanso la cuenta a su manera.
+     */
+    function advanceDay(quiet = false) {
         const before = getCalendar();
         const calendar = advanceToNextDay(before);
         save(calendar, resetDailyPerks(getBonds()));
-        deps.narrate(`🌅 [CAMPAÑA] Amanece el día ${calendar.day}.`);
+        if (!quiet) deps.narrate(`🌅 [CAMPAÑA] Amanece el día ${calendar.day}.`);
         passTime(Math.max(1, (Number(calendar.day) || 1) - (Number(before.day) || 1)));
         deps.renderCampaign();
     }
@@ -259,8 +264,13 @@ export function createCampaignState(deps) {
 
         deps.saveParty();
 
+        // Z1 de ROADMAP_SIN_TOKENS: el narrador del motor cuenta el descanso. El largo ya dice
+        // qué día amanece, así que la línea de «Amanece…» sobra.
+        const told = kind === 'largo' ? (deps.tellRest?.(kind) ?? '') : '';
         if (kind === 'corto') advanceSlotOfDay();
-        else advanceDay();
+        else advanceDay(Boolean(told));
+        const after = told ? '' : (deps.tellRest?.(kind) ?? '');
+        if (told || after) deps.narrate(`🌙 [DESCANSO] ${told || after}`);
 
         const lines = describeRest(kind, plan);
         deps.narrate(`[DESCANSO] ${lines.join('\n')}`);

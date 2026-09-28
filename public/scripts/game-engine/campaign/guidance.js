@@ -170,9 +170,10 @@ export function buildJournal({ open, clues = {}, taken = null, today = 1, heard 
  * @param {Array<{id: string, label: string}>} [input.chips]
  * @param {number} [input.places] A cuantos sitios se puede viajar.
  * @param {boolean} [input.fighting]
+ * @param {boolean} [input.engineReads] Si lo escrito lo lee el motor (sin modelo, Z3): entonces se dice qué entiende.
  * @returns {Array<{title: string, items: HelpItem[]}>}
  */
-export function buildHelp({ focus = null, services = [], boards = [], chips = [], places = 0, fighting = false }) {
+export function buildHelp({ focus = null, services = [], boards = [], chips = [], places = 0, fighting = false, engineReads = false }) {
     if (fighting) {
         return [{
             title: 'En combate',
@@ -192,8 +193,12 @@ export function buildHelp({ focus = null, services = [], boards = [], chips = []
     sections.push({
         title: 'Siempre',
         items: [
-            { label: 'Escribir en el chat', detail: 'Lo que quieras hacer, con tus palabras: el narrador responde.', key: '' },
-            { label: 'Tirar una habilidad', detail: 'El botón «Tirada», arriba: el dado decide y el narrador lo cuenta.', key: '' },
+            engineReads
+                ? { label: 'Escribir en el chat', detail: 'Lo entiende el juego: «voy a…», «hablo con…», «busco…», «examino…», «descanso», «espero a la noche», «compro…».', key: '' }
+                : { label: 'Escribir en el chat', detail: 'Lo que quieras hacer, con tus palabras: el narrador responde.', key: '' },
+            engineReads
+                ? { label: 'Tirar una habilidad', detail: 'El botón «Tirada», arriba: el dado decide, y sale bien, a medias o mal, con su efecto.', key: '' }
+                : { label: 'Tirar una habilidad', detail: 'El botón «Tirada», arriba: el dado decide y el narrador lo cuenta.', key: '' },
             { label: 'Glosario', detail: 'Las palabras de las reglas, en llano (tecla L).', key: 'glossary' },
             ...(places > 0 ? [{ label: `Viajar (${places} sitios)`, detail: 'En el mapa de campaña. Cuesta días y comida.', key: '' }] : []),
         ],

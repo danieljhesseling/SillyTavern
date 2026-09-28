@@ -29,6 +29,7 @@ import { createSeededRandom } from '../combat/seeded-random.js';
 import { validateNarrator, VERBOSITY, DEFAULT_VERBOSITY } from '../campaign/narrator.js';
 import { MORTALITY, SAVES, DEFAULT_SURVIVAL } from '../rules/mortality.js';
 import { normalizeMap, findPartyStart } from '../world-builder/world-schema.js';
+import { storedBoard } from '../campaign/board-draft.js';
 
 /**
  * @typedef {Object} WizardResult
@@ -447,7 +448,7 @@ export async function askWizard({ Popup, POPUP_TYPE, existingWorldNames = [], ge
 
         const c = report.counts;
         importReport.append($('<div class="cw-import-counts"></div>').text(
-            `${c.world || 'Sin nombre'} - ${c.locations} localidades, ${c.boards} tableros, `
+            `${c.world || 'Sin nombre'} - ${c.locations} localizaciones, ${c.boards} tableros, `
             + `${c.enemies} enemigos, ${c.confidants} companeros, ${c.quests} misiones, `
             + `${c.objectives} objetivos.`));
 
@@ -530,7 +531,7 @@ export async function askWizard({ Popup, POPUP_TYPE, existingWorldNames = [], ge
             text: 'Crear y escribir el mundo',
             result: WRITE_WORLD,
             icon: 'fa-pen-ruler',
-            tooltip: 'Crea la campaña y abre el editor: localidades, personajes, bestiario, objetos y misiones',
+            tooltip: 'Crea la campaña y abre el editor: localizaciones, personajes, bestiario, objetos y misiones',
         }],
         wide: true,
         allowVerticalScrolling: true,
@@ -824,12 +825,23 @@ function applyChosenLocations(metadata, chosen) {
         biome: String(place?.biome ?? '').trim(),
         placeType: String(place?.type ?? '').trim(),
         routes: Array.isArray(place?.routes) ? place.routes : [],
-        boards: i === 0
-            ? (Array.isArray(first.boards) ? first.boards : [])
-            : [],
-        // Lo que se pidio en el paso 4, para que el generador sepa que hacer al entrar.
-        wanted: Array.isArray(place?.boards) ? place.boards : [],
+        // Los del paso 4, ya dibujados: el taller los manda con su mapa, el mismo que se veía
+        // en la ficha. Antes se guardaban como «pedidos» y nada los leía, así que no salía
+        // ninguno (A15 de POR_HACER).
+        boards: [
+            ...(i === 0 && Array.isArray(first.boards) ? first.boards : []),
+            ...(Array.isArray(place?.boards) ? place.boards : [])
+                .filter((/** @type {any} */ board) => Array.isArray(board?.map) && board.map.length > 0)
+                .map((/** @type {any} */ board) => storedBoard(board, { name: String(board.name ?? '').trim() || 'Tablero' })),
+        ],
     }));
+    // Cada sitio mide lo que su tablero más grande.
+    for (const place of metadata.locationMaps) {
+        for (const board of place.boards) {
+            place.gridWidth = Math.max(Number(place.gridWidth) || 0, Number(board.gridWidth) || 0);
+            place.gridHeight = Math.max(Number(place.gridHeight) || 0, Number(board.gridHeight) || 0);
+        }
+    }
 }
 
 /**

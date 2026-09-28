@@ -465,6 +465,7 @@ export function renderWorldMapView(target, worldMapUrl, locationMaps, callbacks 
  * @property {number} [sizeCells] - How many cells the creature covers. 1 unless it is Large or bigger.
  * @property {{id: string, icon: string, label: string}} [role] - Idea 13: como pelea, en un icono.
  * @property {string} [weapon] - Idea 61: lo que lleva en la mano.
+ * @property {boolean} [idle] - Un enemigo que está en el tablero y todavía no pelea: se ve, no se mueve.
  */
 
 /**
@@ -854,9 +855,9 @@ export function renderLocationView(target, options) {
             const py = (token.gridY + 0.5) * cellH;
             const hpPct = (token.maxHp && token.maxHp > 0) ? Math.min(100, ((token.hp || 0) / token.maxHp) * 100) : 100;
 
-            const enemyClass = token.isEnemy ? ' wm-token-enemy' : '';
+            const enemyClass = token.isEnemy ? ` wm-token-enemy${token.idle ? ' wm-token-idle' : ''}` : '';
             const metaText = token.isEnemy
-                ? `${token.role ? `${token.role.label} · ` : ''}AC ${token.level || 10}`
+                ? (token.idle ? 'Aquí, sin pelear todavía' : `${token.role ? `${token.role.label} · ` : ''}AC ${token.level || 10}`)
                 : `Lvl ${token.level || 1} ${token.className || 'Adventurer'}${token.weapon ? ` · ${token.weapon}` : ''}`;
             const selectedClass = selectedTokenId === token.id ? ' wm-token-selected' : '';
             const inRangeClass = Array.isArray(highlightedTokenIds) && highlightedTokenIds.includes(token.id) ? ' wm-token-in-range' : '';
@@ -1390,6 +1391,8 @@ function renderCharactersAccordion(target, tokens, onCoordChange) {
             row.find('.wm-char-coord-input').attr('data-token-id', token.id);
             row.find('.wm-char-coord-input[data-axis="x"]').val(token.gridX);
             row.find('.wm-char-coord-input[data-axis="y"]').val(token.gridY);
+            // Quien todavía no pelea está donde lo puso el tablero: se ve, no se mueve.
+            if (token.idle) row.addClass('wm-char-idle').find('.wm-char-coord-input').prop('disabled', true);
 
             row.find('.wm-char-coord-input').on('change', function () {
                 const axis = $(this).data('axis');

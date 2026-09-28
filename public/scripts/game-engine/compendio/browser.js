@@ -12,6 +12,7 @@
  */
 
 import { loadCompendium, createCompendium, DOMAINS } from './compendio.js';
+import { mergeWorldRows } from '../campaign/world-rows.js';
 
 /** @type {{compendium: any, errors: string[], loaded: string[], batteries: any}|null} */
 let cached = null;
@@ -79,11 +80,13 @@ export async function getCompendium() {
  * código de mundo (idea 180) no salía igual en casa de otro. Lo que se genera **desde la
  * semilla del mundo** usa esta.
  *
+ * @param {Record<string, any[]>|null} [worldRows] Las filas propias del mundo.
  * @returns {Promise<any>}
  */
-export async function freshCompendium() {
+export async function freshCompendium(worldRows = null) {
     const { batteries } = await getCompendium();
-    return createCompendium(batteries ?? {});
+    // Con las filas del mundo encima, si las tiene: la raza que escribio en el taller.
+    return createCompendium(mergeWorldRows(batteries ?? {}, worldRows));
 }
 
 /** Vuelve a leerlo del disco. Para cuando edites un archivo sin recargar la página. */

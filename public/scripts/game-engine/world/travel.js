@@ -215,9 +215,11 @@ export function buildRouteMap(locations, friendly = [], season = '', done = []) 
  * @param {string[]} [input.friendly] Facciones que te abren lo que cerraron.
  * @param {string} [input.season] La estación de hoy (idea 74).
  * @param {string[]} [input.done] Los hitos cumplidos (U7: `cerrado_hasta`).
- * @returns {{ok: boolean, days: number, legs: string[], reason: string}}
+ * @param {boolean} [input.directOnly] Solo por un camino directo: de un sitio a su vecino. Si
+ *   hay que pasar por otro, no se puede, y se dice por dónde (`via`).
+ * @returns {{ok: boolean, days: number, legs: string[], reason: string, via?: string}}
  */
-export function planTravel({ from, to, locations, friendly = [], season = '', done = [] }) {
+export function planTravel({ from, to, locations, friendly = [], season = '', done = [], directOnly = false }) {
     const start = text(from);
     const end = text(to);
 
@@ -232,7 +234,11 @@ export function planTravel({ from, to, locations, friendly = [], season = '', do
         return { ok: false, days: 0, legs: [], reason: `"${end}" no está en el mapa.` };
     }
 
-    const graph = buildRouteMap(locations, friendly, season, done);
+    // Un camino a un sitio que el mapa todavía no enseña (uno que la historia revela más
+    // tarde) no se pisa: se pasaría por un sitio que no existe para quien juega.
+    const graph = new Map([...buildRouteMap(locations, friendly, season, done)]
+        .filter(([place]) => known.has(place) || place === start)
+        .map(([place, edges]) => [place, edges.filter((/** @type {{to: string}} */ edge) => known.has(edge.to))]));
     const fromHere = graph.get(start) ?? [];
 
     // Un sitio sin rutas es un sitio al que se va directo: un mundo a medio escribir
@@ -244,6 +250,13 @@ export function planTravel({ from, to, locations, friendly = [], season = '', do
         ...all.flatMap((/** @type {any} */ l) => routesOf(l).filter(r => r.to === start && !r.oneWay))];
     if (!start || (fromHere.length === 0 && written.length === 0)) {
         return { ok: true, days: DEFAULT_DAYS, legs: [end], reason: '' };
+    }
+
+    // Se va de vecino en vecino: de la posada al pueblo y del pueblo al santuario, no de
+    // la posada a la otra punta del mapa de un salto.
+    const direct = fromHere.filter(edge => edge.to === end);
+    if (directOnly && direct.length > 0) {
+        return { ok: true, days: days(Math.min(...direct.map(edge => edge.days))), legs: [end], reason: '' };
     }
 
     // Dijkstra sobre una lista de rutas: son cuatro sitios, no cuatro mil, y lo que se
@@ -297,7 +310,66 @@ export function planTravel({ from, to, locations, friendly = [], season = '', do
     const legs = [];
     for (let at = end; at && at !== start; at = cameFrom.get(at) ?? '') legs.unshift(at);
 
+    if (directOnly && legs.length > 1) {
+        return {
+            ok: false,
+            days: days(cost.get(end)),
+            legs,
+            reason: `No hay camino directo de "${start}" a "${end}": se llega por ${legs.slice(0, -1).join(' y ')}.`,
+            via: legs[0],
+        };
+    }
+
     return { ok: true, days: days(cost.get(end)), legs, reason: '' };
+}
+
+/**
+ * @typedef {Object} Reach
+ * @property {'near'|'shut'|'far'|'none'} reach `near`: hay camino directo; `shut`: lo hay, pero
+ *   está cerrado; `far`: hay que pasar por otro sitio; `none`: no se llega.
+ * @property {number} days Lo que cuesta: el camino directo, o el viaje entero si es lejos.
+ * @property {string} via Por dónde se empieza, si es lejos.
+ * @property {string} reason Por qué no se puede, si no se puede.
+ */
+
+/**
+ * Desde aquí, cómo se llega a cada sitio: los vecinos, los que tienen el paso cerrado y los
+ * que quedan más lejos, con el primer sitio por el que hay que pasar.
+ *
+ * Es lo que enseña la pantalla de Exploración: se viaja a los vecinos; lo demás se ve, con
+ * lo que cuesta y por dónde, para que sea una meta y no un botón.
+ *
+ * @param {Object} input
+ * @param {string} input.from
+ * @param {any[]} input.locations
+ * @param {string[]} [input.friendly]
+ * @param {string} [input.season]
+ * @param {string[]} [input.done]
+ * @returns {Record<string, Reach>}
+ */
+export function reachFrom({ from, locations, friendly = [], season = '', done = [] }) {
+    const start = text(from);
+    const all = Array.isArray(locations) ? locations : [];
+    /** @type {Record<string, Reach>} */
+    const out = {};
+    for (const name of all.map((/** @type {any} */ l) => text(l?.name)).filter(Boolean)) {
+        if (name === start || out[name]) continue;
+        const plan = planTravel({ from: start, to: name, locations: all, friendly, season, done, directOnly: true });
+        if (plan.ok) out[name] = { reach: 'near', days: plan.days, via: '', reason: '' };
+        else if (plan.via) out[name] = { reach: 'far', days: plan.days, via: plan.via, reason: plan.reason };
+        else {
+            // Un paso directo cerrado es un vecino con la puerta echada; si no, no se llega.
+            const shut = [...all.filter((/** @type {any} */ l) => text(l?.name) === start)
+                .flatMap((/** @type {any} */ l) => routesOf(l, friendly, season, done)).filter(r => r.to === name),
+            ...all.filter((/** @type {any} */ l) => text(l?.name) === name)
+                .flatMap((/** @type {any} */ l) => routesOf(l, friendly, season, done)).filter(r => r.to === start && !r.oneWay)]
+                .find(r => r.closed);
+            out[name] = shut
+                ? { reach: 'shut', days: shut.days, via: '', reason: shut.note || 'El paso está cerrado.' }
+                : { reach: 'none', days: 0, via: '', reason: plan.reason };
+        }
+    }
+    return out;
 }
 
 /**

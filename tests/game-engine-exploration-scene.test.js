@@ -15,7 +15,7 @@ describe('where the party is', () => {
         });
         expect(view.here).toBe('Cripta olvidada');
         expect(view.description).toBe('Fría y húmeda');
-        expect(view.boards).toEqual([
+        expect(view.boards.map(b => ({ name: b.name, current: b.current }))).toEqual([
             { name: 'Sala de entrada', current: false },
             { name: 'Cámara', current: true },
         ]);
@@ -32,7 +32,52 @@ describe('where the party is', () => {
         const view = buildExplorationView({
             locationMaps: [{ name: 'Aldea', boardName: 'Plaza' }], currentLocation: 'Aldea', party,
         });
-        expect(view.boards).toEqual([{ name: 'Plaza', current: false }]);
+        expect(view.boards).toEqual([{ name: 'Plaza', current: false, note: '', icon: 'fa-road' }]);
+    });
+
+    test('un tablero dice de qué va, con su objetivo, y lleva un icono por su nombre', () => {
+        const view = buildExplorationView({
+            locationMaps: [{ name: 'Aldea', boards: [{ name: 'El cuarto de la posada', objectives: [{ label: 'Salir vivo del cuarto' }] }] }],
+            currentLocation: 'Aldea', party,
+        });
+        expect(view.boards[0]).toMatchObject({ note: 'Salir vivo del cuarto', icon: 'fa-bed' });
+    });
+});
+
+// Se viaja a los vecinos: de la posada al pueblo y del pueblo al santuario.
+describe('a dónde se llega desde aquí', () => {
+    const roads = [
+        { name: 'La Posada', locationType: 'village', routes: [{ to: 'El Pueblo', days: 1 }] },
+        { name: 'El Pueblo', locationType: 'city', routes: [{ to: 'El Santuario', days: 2 }] },
+        { name: 'El Santuario', locationType: 'sanctuary', routes: [] },
+    ];
+
+    test('el vecino se puede; lo de más lejos dice por dónde se pasa', () => {
+        const view = buildExplorationView({ locationMaps: roads, currentLocation: 'La Posada', party });
+        const by = Object.fromEntries(view.places.map(p => [p.name, p]));
+        expect(by['La Posada'].reach).toBe('here');
+        expect(by['El Pueblo']).toMatchObject({ reach: 'near', days: 1, icon: 'fa-chess-rook' });
+        expect(by['El Santuario']).toMatchObject({ reach: 'far', via: 'El Pueblo', days: 3, icon: 'fa-place-of-worship' });
+    });
+
+    test('un camino que la historia aún no abre se ve cerrado, con su motivo', () => {
+        const view = buildExplorationView({
+            locationMaps: [
+                { name: 'La Posada', routes: [{ to: 'El Pueblo', days: 1, closedUntil: 'el-ultimatum' }] },
+                { name: 'El Pueblo', routes: [] },
+            ],
+            currentLocation: 'La Posada', party,
+        });
+        expect(view.places.find(p => p.name === 'El Pueblo')).toMatchObject({ reach: 'shut' });
+        expect(view.places.find(p => p.name === 'El Pueblo')?.why).toMatch(/más adelante en la historia/);
+        const opened = buildExplorationView({
+            locationMaps: [
+                { name: 'La Posada', routes: [{ to: 'El Pueblo', days: 1, closedUntil: 'el-ultimatum' }] },
+                { name: 'El Pueblo', routes: [] },
+            ],
+            currentLocation: 'La Posada', party, travel: { done: ['el-ultimatum'] },
+        });
+        expect(opened.places.find(p => p.name === 'El Pueblo')?.reach).toBe('near');
     });
 });
 
