@@ -32,11 +32,11 @@ import { getActiveRuleset } from '../game-engine/rules/ruleset.js';
 import { combatEncounter, partyMembers } from './state.js';
 import {
     savePartyState, getPartyEntryDisplayName, loadDndCatalog, renderPartyMembers, postCombatNarration,
-    getCampaignBonds,
 } from './main.js';
 import { canLevelUp, openLevelUpCard } from './level-up.js';
 import { getAbilityCatalogue } from './magic.js';
 import { getCurrentWorldFactions } from './factions.js';
+import { getCampaignBonds } from './time.js';
 
 /** @typedef {import('./types.js').PartyMember} PartyMember */
 /** @typedef {import('./types.js').DndCatalog} DndCatalog */

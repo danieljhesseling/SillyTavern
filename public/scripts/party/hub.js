@@ -30,8 +30,7 @@ import { combatEncounter, currentLocationName, partyMembers, setPartyMembers } f
 import { acceptContract, getGuild, refreshContractBoard } from './contracts.js';
 import {
     savePartyState, renderPartyMembers, postCombatNarration, postForModel, survivalNow, noteDeed, getPlot,
-    notePlot, countStat, getCampaignCalendar, campaignDay, advanceCampaignDay, markLocationComplete,
-    plotEndingTitle, partyPurse, payFromParty,
+    notePlot, countStat, plotEndingTitle, partyPurse, payFromParty,
 } from './main.js';
 import { instancesFromPlacements } from './combat-flow.js';
 import { awardEncounterLoot } from './loot.js';
@@ -39,6 +38,7 @@ import { recordBoardWon } from './board.js';
 import { renderLocationMapsPreview } from './board-view.js';
 import { ensureWorldData, lastHub, lastHubHome } from './world.js';
 import { getCurrentWorldFactions } from './factions.js';
+import { getCampaignCalendar, campaignDay, advanceCampaignDay, markLocationComplete } from './time.js';
 
 /** @typedef {import('./types.js').PartyMember} PartyMember */
 

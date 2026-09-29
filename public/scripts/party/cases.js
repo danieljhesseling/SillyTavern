@@ -33,11 +33,11 @@ import { currentPet, petTricks } from './pet.js';
 import { carriedNames, getAbilityCatalogue, magicConsequences, payForSpell } from './magic.js';
 import {
     savePartyState, postCombatNarration, postForModel, survivalNow, noteDeed, worldWrite, raiseFame,
-    shiftPlaceFortune, plotPeople, applyFate, changeAttitude, getCampaignBonds, advanceCampaignSlot, campaignDay,
-    partyPurse, payFromParty,
+    shiftPlaceFortune, plotPeople, applyFate, changeAttitude, partyPurse, payFromParty,
 } from './main.js';
 import { lastWorldNpcs } from './world.js';
 import { nudgeRuler } from './factions.js';
+import { getCampaignBonds, advanceCampaignSlot, campaignDay } from './time.js';
 
 /**
  * U8: empezar un caso con la gente y los sitios del mundo. Cada semana, a veces; o cuando

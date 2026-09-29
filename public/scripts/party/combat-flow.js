@@ -82,7 +82,7 @@ import { resolveEnemyAttackOn, resolveEnemyTurnAction } from './enemy-turn.js';
 import {
     savePartyState, renderPartyMembers, postCombatNarration, tellMoment, postForModel, currentSurvival,
     survivalNow, noteDeed, notePlot, raiseFame, countStat, showTip, tellBondScene, rememberTogether, bark,
-    judgeDecision, partyMorale, getCampaignCalendar, getCampaignBonds, saveCampaignState, markLocationComplete,
+    judgeDecision, partyMorale,
 } from './main.js';
 import {
     handlePlayerCombatMove, performManeuver, handlePlayerCombatAttack, endPlayerCombatTurn,
@@ -93,6 +93,7 @@ import {
 } from './board.js';
 import { renderLocationMapsPreview } from './board-view.js';
 import { lastLevelPlan, getLocationBoards, hereLocation, lastCompendium } from './world.js';
+import { getCampaignCalendar, getCampaignBonds, saveCampaignState, markLocationComplete } from './time.js';
 
 /**
  * @param {string} name

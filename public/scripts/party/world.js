@@ -34,7 +34,7 @@ import {
     currentBoardName, currentLocationName, currentWorldFactions, setCurrentBoardName, setCurrentLocationName,
     setCurrentWorldFactions, setWorldItemCatalogue,
 } from './state.js';
-import { campaignDay } from './main.js';
+import { campaignDay } from './time.js';
 
 export function saveCurrentLocation() {
     if (chat_metadata) {
