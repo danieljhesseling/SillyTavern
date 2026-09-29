@@ -3121,7 +3121,10 @@ async function displayWorldEntries(name, data, navigation = navigation_option.no
             const val = (id) => { const e = dlg.querySelector(id); return e instanceof HTMLInputElement || e instanceof HTMLTextAreaElement ? e.value.trim() : ''; };
             const numVal = (id, def) => { const v = parseFloat(val(id)); return isNaN(v) ? def : v; };
 
+            // Lo que el editor no enseña (rutas, servicios, sitios, tipo, bioma…) se conserva:
+            // antes se devolvía un objeto nuevo y guardar una localización lo borraba.
             return {
+                ...loc,
                 name: val('#wm_le_name'),
                 url: val('#wm_le_url'),
                 description: val('#wm_le_desc'),
@@ -3499,6 +3502,9 @@ async function displayWorldEntries(name, data, navigation = navigation_option.no
             };
             // Una imagen cambiada a mano ya no es la de la cuadrícula guardada.
             if (url !== (mapPatch?.url ?? board.url ?? '')) delete updated.grid;
+            // Con el terreno nuevo del mapa, las salas de antes (las de la niebla y las puertas)
+            // ya no son estas: el juego las vuelve a sacar del terreno.
+            if (mapPatch && url === mapPatch.url) delete updated.rooms;
             return updated;
         }
 

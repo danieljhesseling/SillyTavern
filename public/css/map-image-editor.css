@@ -3,6 +3,12 @@
    Un mapa de D&D en imagen convertido en tablero: cuadrícula, casillas, salas y alturas.
    ============================================================ */
 
+/* La ventana, ancha: el mapa es lo que se mira. Sin esto mide lo que su contenido más estrecho. */
+.popup:has(.mie-root) {
+    width: 94vw !important;
+    max-width: 1500px !important;
+}
+
 .mie-root {
     display: flex;
     flex-direction: column;

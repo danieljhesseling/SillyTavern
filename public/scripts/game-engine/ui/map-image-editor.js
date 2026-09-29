@@ -146,6 +146,16 @@ function numberBox(className, options = {}) {
     return input;
 }
 
+/**
+ * «1 casilla», «5 casillas».
+ *
+ * @param {number} n
+ * @returns {string}
+ */
+function cellCount(n) {
+    return n === 1 ? '1 casilla' : `${n} casillas`;
+}
+
 /** Espera a que el navegador pinte (para que «Leyendo el mapa…» se vea antes de ponerse a leer). */
 const nextFrame = () => new Promise(resolve => setTimeout(resolve, 30));
 
@@ -432,6 +442,8 @@ export async function openMapImageEditor(input) {
         } finally {
             state.busy = false;
             root.classList.remove('is-busy');
+            // Si lo hecho no ha dicho nada, el aviso de espera se quita.
+            if (say.textContent === label) tell('');
         }
     }
 
@@ -514,8 +526,13 @@ export async function openMapImageEditor(input) {
                 return;
             }
             void busy('Buscando la cuadrícula…', () => {
-                const found = detectGrid(pixels, { cellsAcross: n });
-                setGrid(found.cols > 0 ? found : makeGrid({ cell: pixels.width / n }, pixels.width, pixels.height));
+                // Quien cuenta, cuenta las casillas dibujadas; la imagen suele tener además un
+                // margen. Así que la casilla mide entre el ancho entre n y el ancho entre n + 2
+                // (hasta una casilla de margen a cada lado), y se busca solo ahí.
+                const found = detectGrid(pixels, { minCell: (pixels.width / (n + 2)) * 0.99, maxCell: (pixels.width / n) * 1.01 });
+                setGrid(found.cols > 0 && Math.abs(found.cols - n) <= 1
+                    ? { ...found, source: 'manual' }
+                    : makeGrid({ cell: pixels.width / n }, pixels.width, pixels.height));
             }).then(render);
         }));
 
@@ -544,7 +561,7 @@ export async function openMapImageEditor(input) {
                 li.append(el('span', `mie-swatch ${swatch}`), document.createTextNode(text));
                 legend.append(li);
             };
-            item('is-doubt', `Dudosas: ${left.length} de ${marks.doubtful.length}`);
+            item('is-doubt', marks.doubtful.length ? `Dudosas: ${left.length} de ${marks.doubtful.length}` : 'Dudosas: ninguna');
             if (marks.doors.length) item('is-door', `Puertas propuestas: ${marks.doors.length}`);
             if (marks.bridges.length) item('is-bridge', `Puentes propuestos: ${marks.bridges.length}`);
             panel.append(legend);
@@ -639,7 +656,7 @@ export async function openMapImageEditor(input) {
         note.value = state.zoneDraft.note;
         note.addEventListener('input', () => { state.zoneDraft.note = note.value; });
         const selected = el('div', 'mie-selected', state.selection.size
-            ? `${state.selection.size} casillas elegidas${editing ? ` · cambiando «${editing.name}»` : ''}`
+            ? `${cellCount(state.selection.size)} ${state.selection.size === 1 ? 'elegida' : 'elegidas'}${editing ? ` · cambiando «${editing.name}»` : ''}`
             : 'Ninguna casilla elegida: pulsa en el mapa.');
         const saveIt = () => {
             const result = saveZone(state.zones, { name: name.value, note: note.value, cells: [...state.selection] }, state.editingZone);
@@ -690,7 +707,7 @@ export async function openMapImageEditor(input) {
                 const pick = button('', 'mie-list-pick', () => selectZone(index));
                 const dot = el('span', 'mie-dot');
                 dot.style.background = zoneColor(index, 1);
-                pick.append(dot, el('b', '', zone.name), document.createTextNode(` · ${zoneCells(zone).length} casillas`));
+                pick.append(dot, el('b', '', zone.name), document.createTextNode(` · ${cellCount(zoneCells(zone).length)}`));
                 li.append(pick, button('×', 'mie-list-remove', () => {
                     state.zones = removeZone(state.zones, index);
                     if (state.editingZone === index) {
@@ -784,7 +801,7 @@ export async function openMapImageEditor(input) {
             const count = state.selection.size;
             state.selection = new Set();
             render();
-            tell(`${count} casillas ${value ? `a ${feetWord(value)}` : 'a ras de suelo'}.`, 'ok');
+            tell(`${cellCount(count)} ${value ? `a ${feetWord(value)}` : 'a ras de suelo'}.`, 'ok');
         };
         feet.addEventListener('keydown', (event) => {
             if (event.key !== 'Enter') return;
@@ -798,7 +815,7 @@ export async function openMapImageEditor(input) {
             button('Quitar altura', 'mie-height-clear', () => apply(0)),
         );
         panel.append(
-            el('div', 'mie-selected', state.selection.size ? `${state.selection.size} casillas elegidas.` : 'Ninguna casilla elegida: pulsa en el mapa.'),
+            el('div', 'mie-selected', state.selection.size ? `${cellCount(state.selection.size)} ${state.selection.size === 1 ? 'elegida' : 'elegidas'}.` : 'Ninguna casilla elegida: pulsa en el mapa.'),
             field('Altura en pies', feet),
             actions,
         );
@@ -819,7 +836,7 @@ export async function openMapImageEditor(input) {
             const list = el('ul', 'mie-list');
             for (const group of groups.slice(0, 12)) {
                 const li = el('li', 'mie-list-item');
-                li.append(button(`${feetWord(group.feet)} · ${group.cells.length} casillas`, 'mie-list-pick', () => {
+                li.append(button(`${feetWord(group.feet)} · ${cellCount(group.cells.length)}`, 'mie-list-pick', () => {
                     state.selection = new Set(group.cells.map(c => cellKey(c.x, c.y)));
                     state.feet = group.feet;
                     render();
@@ -982,10 +999,11 @@ export async function openMapImageEditor(input) {
 
         // Los nombres de las salas y las alturas, encima de todo.
         const label = (/** @type {string} */ text, /** @type {number} */ cx, /** @type {number} */ cy) => {
-            ctx.font = `bold ${px(13)}px sans-serif`;
+            ctx.font = `bold ${px(16)}px sans-serif`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.lineWidth = px(3);
+            ctx.lineJoin = 'round';
+            ctx.lineWidth = px(4);
             ctx.strokeStyle = 'rgba(0, 0, 0, 0.85)';
             ctx.fillStyle = '#ffffff';
             const x = offsetX + (cx + 0.5) * cell;
@@ -1092,8 +1110,8 @@ export async function openMapImageEditor(input) {
         render();
         const feet = state.step === 'heights' ? elevationAt(state.elevation, at.cx, at.cy) : 0;
         tell(state.step === 'zones'
-            ? `${cells.length} casillas. Ponle nombre y pulsa «Guardar sala».`
-            : `${cells.length} casillas, ahora ${feetWord(feet)}. Escribe la altura y pulsa «Poner altura».`);
+            ? `${cellCount(cells.length)}. Ponle nombre y pulsa «Guardar sala».`
+            : `${cellCount(cells.length)}, ahora ${feetWord(feet)}. Escribe la altura y pulsa «Poner altura».`);
     });
 
     overlay.addEventListener('mousemove', (event) => {
@@ -1204,6 +1222,7 @@ export async function openMapImageEditor(input) {
     const popup = new Popup(root, POPUP_TYPE.CONFIRM, '', {
         okButton: 'Usar este mapa',
         cancelButton: 'Cancelar',
+        wider: true,
         large: true,
         allowVerticalScrolling: true,
         onOpen: () => {
