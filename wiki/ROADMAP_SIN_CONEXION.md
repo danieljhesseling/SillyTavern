@@ -86,7 +86,7 @@ Cómo está hecho, en corto (el detalle, en [[EMPEZAR_UNA_CAMPANA]], «Jugar sin
 | **J11** · Decisiones que pesan | ⬜ | Dentro de la campaña y de una campaña a otra |
 | **J12** · Tableros y peleas | 🟡 | Hecho, en el motor: leer un mapa de D&D en imagen (cuadrícula, muros, suelo, puertas, puentes, salas con nombre y alturas) con `tools/mapa-a-tablero.mjs`, y el paquete lo acepta (J12.8 a J12.12). Falta: la pantalla para subirlo y retocarlo, y peleas que se pueden evitar |
 | **J13** · El texto del motor | ⬜ | Que todo se lea en prosa, con voz y sin repetirse |
-| **J14** · La gente: charlas y quedadas | ⬜ | Charla corta con los compañeros y dedicar una parte del día a quedar con alguien, como en *Persona*. Sus escenas, sus misiones y, si queréis, romances |
+| **J14** · La gente: charlas y quedadas | 🟡 | Hecho, en el motor y con su pantalla (J14.1 a J14.6): 170 frases de charla corta, el día por partes, quedar con alguien como escena de novela visual con su retrato y su expresión, lo que abre cada rango (el 5, moverlo tú: J7.3), quién está en cada sitio a cada hora, y las 50 escenas de confidentes de Strahd y 1387 convertidas en quedadas jugables. Falta: enchufarlo en el juego (tras J15.1), y las noches, las charlas de pareja, las misiones personales y el romance (J14.7 a J14.11) |
 | **J15** · Sentirse un juego | ⬜ | Primera partida que enseña, guardar sin miedo, menús propios |
 | **J16** · Medir la diversión | ⬜ | Vueltas automáticas, también con dos jugadores |
 | **J17** · Después: la IA como capa | ⏸️ | Aparcado (lo dijiste el 2026-09-29) |
