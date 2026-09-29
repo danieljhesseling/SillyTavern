@@ -99,12 +99,12 @@ import {
 } from './talk.js';
 import { askBeforeTravelling, campHere, neighbourPlaces, travelWithTime } from './travel.js';
 import { buildServiceCards, rumorsLeftHere, runService, worldFestivals } from './town.js';
-import { lastMeter } from './main.js';
 import {
     openTextMap, currentSessionLog, keepSessionLog, openSessionLog, openPartyGlance, openGlossary, openDiceHistory,
     openJournalSafely, openHelp, openWorkshop, shareWorld, openHowToPlay, openCampaignBuilder, openAudioSettings,
     exportCampaignPack, openHallOfFame, checkCurrentWorld, openCompendiumLibrary, openRules,
 } from './menus.js';
+import { lastMeter } from './events.js';
 
 /** Los avisos del juego, guardados para la bandeja (idea 159). */
 /** @type {import('../game-engine/ui/shell/notices.js').Notice[]} */
