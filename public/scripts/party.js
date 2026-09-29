@@ -7,9 +7,9 @@
  */
 
 export {
-    loadDndCatalog, adoptVeteranGear, giveStartingGear, setPartyFromWorldEntries, postJourney, applyModeExtras,
-    routeTyped, openCampaignBuilder, memberFromEntry, partySnapshot, adoptCarriedParty, addPartyMember,
-    removePartyMember, updatePartyMemberFromPersona, getActivePartyLeader, getPartyDescription, initPartyPanel,
+    loadDndCatalog, adoptVeteranGear, giveStartingGear, setPartyFromWorldEntries, postJourney, routeTyped,
+    openCampaignBuilder, memberFromEntry, partySnapshot, adoptCarriedParty, addPartyMember, removePartyMember,
+    updatePartyMemberFromPersona, getActivePartyLeader, getPartyDescription, initPartyPanel,
 } from './party/main.js';
 export {
     playCurrentTurnAlone, restPartyForSimulation, openBoardDoorsForSimulation, grantXpForSimulation,
@@ -22,3 +22,4 @@ export { enterStartingBoard } from './party/board.js';
 export { refreshBoardView } from './party/board-view.js';
 export { applyCampaignRuleset } from './party/world.js';
 export { notePlot, beginCampaignPlot, plotEndingTitle } from './party/plot.js';
+export { applyModeExtras } from './party/modes.js';

@@ -48,8 +48,8 @@ import {
 } from './keys.js';
 import { currentBoardName, currentLocationName, partyMembers, setPartyMembers } from './state.js';
 import {
-    savePartyState, renderPartyMembers, postCombatNarration, postForModel, currentSurvival, survivalNow, raiseFame,
-    countStat, shiftPlaceFortune, voiceOpinions, offerPersonalQuests,
+    savePartyState, renderPartyMembers, postCombatNarration, postForModel, raiseFame, countStat, shiftPlaceFortune,
+    voiceOpinions, offerPersonalQuests,
 } from './main.js';
 import { buryMember } from './combat-flow.js';
 import { deliverRelics } from './loot.js';
@@ -62,6 +62,7 @@ import { getCurrentWorldFactions, settleFactionStake } from './factions.js';
 import { getDebt, getCampaignCalendar, getCampaignBonds, campaignDay, recordCampaignBondEvent } from './time.js';
 import { getPlot, notePlot } from './plot.js';
 import { noteDeed } from './world-growth.js';
+import { currentSurvival, survivalNow } from './modes.js';
 
 /**
  * Entrega el encargo aceptado, si el combate que acaba de ganarse era el suyo.
