@@ -55,7 +55,16 @@ export function mapRows({ locations, here = '', visited = [], notes = {}, friend
     const edges = new Map(all.map(l => [text(l.name), []]));
     for (const location of all) {
         for (const route of routesOf(location, friendly, season, done)) {
-            edges.get(text(location.name))?.push({ to: route.to, days: route.days, closed: route.closed, note: route.note });
+            // J10.4: un camino a un sitio que el mapa todavía no enseña (uno escondido) no sale:
+            // sería destripar el secreto. Lo mismo que hace el viaje (`travel.js`).
+            if (!edges.has(route.to)) continue;
+            // Un camino escrito en los dos sitios sale una vez: el escrito aquí manda sobre la
+            // vuelta que se añadió desde el otro extremo.
+            const mine = edges.get(text(location.name)) ?? [];
+            const edge = { to: route.to, days: route.days, closed: route.closed, note: route.note };
+            const at = mine.findIndex(e => e.to === route.to);
+            if (at >= 0) mine[at] = edge;
+            else mine.push(edge);
             if (!route.oneWay && edges.has(route.to) && !edges.get(route.to)?.some(e => e.to === text(location.name))) {
                 edges.get(route.to)?.push({ to: text(location.name), days: route.days, closed: route.closed, note: route.note });
             }

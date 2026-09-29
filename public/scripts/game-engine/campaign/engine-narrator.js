@@ -13,7 +13,9 @@
  * - vale para los hechos (su `when`: de noche, con lluvia, la primera vez, la voz de quien
  *   narra…; quien no dice nada, vale);
  * - tiene todos sus huecos rellenos (una frase que pide `{gente}` no sale si no hay nadie);
- * - no es de las últimas que salieron, mientras haya otra.
+ * - no ha salido todavía, mientras haya otra; y si ya salieron todas, es de las que salieron
+ *   hace más (J13.2: ninguna frase repetida en diez llegadas; lo mide
+ *   `tools/variedad-frases.mjs`).
  *
  * Una parte sin frase que valga se salta: un momento sin nada que decir dice menos, no falla.
  *
@@ -53,8 +55,12 @@ export const MOMENTS = {
     servicio: ['servicio'],
 };
 
-/** Cuántas frases recientes se recuerdan para no repetirlas. */
-export const RECENT = 16;
+/**
+ * Cuántas frases recientes se recuerdan para no repetirlas, cada una una vez. Diez llegadas
+ * con su viaje ya son sesenta, y entre medias hay tiradas, charlas y descansos: con dieciséis,
+ * la llegada de hace tres viajes ya se había olvidado.
+ */
+export const RECENT = 200;
 
 /**
  * @param {any} value
@@ -99,7 +105,10 @@ export function fill(template, facts) {
  */
 export function narrate({ rows, moment, facts, random = Math.random, recent = [] }) {
     const parts = MOMENTS[/** @type {keyof typeof MOMENTS} */ (moment)] ?? [];
-    const skip = new Set(Array.isArray(recent) ? recent : []);
+    // Cuándo salió cada frase por última vez: cuanto más atrás, mejor.
+    /** @type {Map<string, number>} */
+    const seen = new Map();
+    (Array.isArray(recent) ? recent : []).forEach((id, at) => seen.set(text(id), at));
     /** @type {string[]} */
     const said = [];
     /** @type {string[]} */
@@ -110,8 +119,8 @@ export function narrate({ rows, moment, facts, random = Math.random, recent = []
             .map(row => ({ row, line: fill(row.text, facts) }))
             .filter(option => option.line !== null);
         if (usable.length === 0) continue;
-        const fresh = usable.filter(option => !skip.has(text(option.row.id)));
-        const pool = (fresh.length > 0 ? fresh : usable).map(option => ({ ...option.row, weight: Math.max(0, Number(option.row.weight ?? 1)), line: option.line }));
+        const fresh = usable.filter(option => !seen.has(text(option.row.id)));
+        const pool = (fresh.length > 0 ? fresh : oldestHalf(usable, seen)).map(option => ({ ...option.row, weight: Math.max(0, Number(option.row.weight ?? 1)), line: option.line }));
         const chosen = pickWeighted(pool, random);
         if (!chosen) continue;
         said.push(chosen.line);
@@ -121,7 +130,22 @@ export function narrate({ rows, moment, facts, random = Math.random, recent = []
 }
 
 /**
- * Las frases recientes, con las que acaban de salir y sin pasarse de la memoria.
+ * Cuando ya salieron todas las que valen: la mitad que salió hace más. Así la que acaba de
+ * salir no vuelve enseguida, y el orden no se repite siempre igual.
+ *
+ * @template {{row: any}} T
+ * @param {T[]} options
+ * @param {Map<string, number>} seen
+ * @returns {T[]}
+ */
+function oldestHalf(options, seen) {
+    const byAge = [...options].sort((a, b) => (seen.get(text(a.row.id)) ?? -1) - (seen.get(text(b.row.id)) ?? -1));
+    return byAge.slice(0, Math.max(1, Math.ceil(byAge.length / 2)));
+}
+
+/**
+ * Las frases recientes, con las que acaban de salir y sin pasarse de la memoria. Cada una
+ * una vez, en el sitio de la última vez que salió.
  *
  * @param {any} before
  * @param {string[]} used
@@ -129,7 +153,8 @@ export function narrate({ rows, moment, facts, random = Math.random, recent = []
  */
 export function rememberUsed(before, used) {
     const list = [...(Array.isArray(before) ? before.map(text) : []), ...(used ?? []).map(text)].filter(Boolean);
-    return list.slice(-RECENT);
+    const last = new Map(list.map((id, at) => [id, at]));
+    return list.filter((id, at) => last.get(id) === at).slice(-RECENT);
 }
 
 /**

@@ -76,6 +76,26 @@
       "name": "El Pueblo de Barro",
       "type": "village",
       "description": "Un amasijo de cabañas de madera podrida que se hunden en el fango y en la nieve sucia. Huele a humo de turba, a sudor rancio y a coles hervidas.",
+      "sights": [
+        {
+          "verbo": "examinar",
+          "text": "la puerta trasera de la posada",
+          "skill": "investigation",
+          "found": "La cerradura no está forzada: la abrieron con llave. Aparte de Giles, esa llave solo la tiene el alguacil."
+        },
+        {
+          "verbo": "mirar",
+          "text": "la fragua de Dunstan pasada la medianoche",
+          "skill": "perception",
+          "found": "La fragua sigue encendida y del taller salen fardos alargados envueltos en arpillera. Son flechas, y no son para Vane."
+        },
+        {
+          "verbo": "examinar",
+          "text": "las tumbas nuevas del cementerio",
+          "skill": "survival",
+          "found": "En tres tumbas la tierra está removida y vuelta a echar. A esos muertos alguien les ha quitado las botas."
+        }
+      ],
       "hidden": false,
       "biome": "costa",
       "services": [
@@ -109,6 +129,20 @@
       "name": "Castillo de Vane",
       "type": "city",
       "description": "Una mole de piedra gris y mal cuidada, con los estandartes rotos por el viento helado. Huele a leña de pino quemada y a la sangre seca del patíbulo.",
+      "sights": [
+        {
+          "verbo": "examinar",
+          "text": "las monedas de la paga de la guardia",
+          "skill": "investigation",
+          "found": "Rascadas con la uña, sueltan un polvo gris: es cobre pintado. La plata de Vane es de mentira."
+        },
+        {
+          "verbo": "mirar",
+          "text": "la muralla del lado del río",
+          "skill": "perception",
+          "found": "Hay un tramo con las piedras sueltas por donde la ronda no pasa. De noche, por ahí podría entrar alguien."
+        }
+      ],
       "hidden": false,
       "biome": "urbano",
       "services": [
@@ -133,6 +167,10 @@
           "to": "El Cruce de Caminos",
           "days": 1,
           "closedUntil": "el-ultimatum"
+        },
+        {
+          "to": "El Roble de los Recados",
+          "days": 1
         }
       ]
     },
@@ -140,6 +178,20 @@
       "name": "El Peaje Norte",
       "type": "outpost",
       "description": "Dos torres de vigilancia de madera medio podrida que cierran el desfiladero hacia el norte. Huele a hierro oxidado y a miedo, y el viento corta.",
+      "sights": [
+        {
+          "verbo": "examinar",
+          "text": "la base de las empalizadas",
+          "skill": "investigation",
+          "found": "La madera está podrida por abajo. Con un par de hachazos se vendría al suelo un tramo entero."
+        },
+        {
+          "verbo": "mirar",
+          "text": "el desfiladero desde lo alto de la torre",
+          "skill": "perception",
+          "found": "En la nieve del norte hay huellas de muchos caballos que bajan en fila hacia el peaje. Es una tropa, no unos viajeros."
+        }
+      ],
       "hidden": false,
       "biome": "montaña",
       "services": [
@@ -171,6 +223,20 @@
       "name": "El Camino Viejo",
       "type": "wilderness",
       "description": "Una antigua calzada imperial invadida por los pinos y cubierta por un palmo de nieve sin pisar. Huele a resina, a humedad y a lobo.",
+      "sights": [
+        {
+          "verbo": "examinar",
+          "text": "las losas de la calzada",
+          "skill": "investigation",
+          "found": "Bajo la nieve, las losas del imperio siguen enteras. En algunas hay flechas pintadas con cal: son marcas de los Lobos."
+        },
+        {
+          "verbo": "buscar",
+          "text": "el rastro entre los pinos",
+          "skill": "survival",
+          "found": "Varias personas van y vienen siempre por el mismo sitio, como por una senda. Las pisadas llevan hacia el sur."
+        }
+      ],
       "hidden": false,
       "biome": "bosque",
       "services": [],
@@ -184,6 +250,14 @@
           "to": "Campamento Furtivo",
           "days": 1,
           "closedUntil": "el-precio-del-escape"
+        },
+        {
+          "to": "El Roble de los Recados",
+          "days": 1
+        },
+        {
+          "to": "Los Baños Viejos",
+          "days": 1
         }
       ]
     },
@@ -191,6 +265,20 @@
       "name": "La Ermita Derruida",
       "type": "sanctuary",
       "description": "Cuatro paredes de piedra sin techo donde un monje medio loco cose a los moribundos. Huele a alcohol de quemar, a hierbas amargas y a carne cauterizada.",
+      "sights": [
+        {
+          "verbo": "mirar",
+          "text": "los catres de los heridos",
+          "skill": "insight",
+          "found": "Hay soldados de Vane y de Keller, uno al lado del otro. Aquí dentro nadie lleva insignias."
+        },
+        {
+          "verbo": "examinar",
+          "text": "el arcón del monje",
+          "skill": "investigation",
+          "found": "Dentro hay anillos, botas y una bolsa de monedas. Son cosas de muertos: Silas se queda con lo de los que no salen."
+        }
+      ],
       "hidden": false,
       "biome": "montaña",
       "services": [
@@ -205,6 +293,10 @@
         {
           "to": "El Lago Helado",
           "days": 1
+        },
+        {
+          "to": "La Choza de Brígida",
+          "days": 1
         }
       ]
     },
@@ -212,6 +304,20 @@
       "name": "La Granja Quemada",
       "type": "ruins",
       "description": "Lo que queda de un granero y una casa: vigas carbonizadas que asoman de la nieve como huesos negros. Huele a ceniza fría y a muertos que nadie ha enterrado.",
+      "sights": [
+        {
+          "verbo": "examinar",
+          "text": "el brocal del pozo",
+          "skill": "investigation",
+          "found": "Las piedras tienen manchas blancas y el agua huele a almendra amarga. Alguien echó veneno en el pozo."
+        },
+        {
+          "verbo": "buscar",
+          "text": "entre las vigas quemadas",
+          "skill": "perception",
+          "found": "Hay puntas de flecha con plumas de ganso, las que usan los Lobos. De los arqueros de Vane no hay ni una."
+        }
+      ],
       "hidden": false,
       "biome": "rural",
       "services": [],
@@ -232,6 +338,19 @@
       "name": "El Lago Helado",
       "type": "wilderness",
       "description": "Una llanura enorme de hielo gris que cruje a cada paso pesado. Huele a escarcha y, en las orillas, a pescado podrido.",
+      "sights": [
+        {
+          "verbo": "mirar",
+          "text": "los agujeros de pesca de Finn",
+          "skill": "perception",
+          "found": "Finn no pesca donde el hielo es fino. Pesca justo encima de algo oscuro que hay en el fondo, hacia el centro del lago."
+        },
+        {
+          "verbo": "examinar",
+          "text": "el hielo oscuro del centro del lago",
+          "skill": "investigation"
+        }
+      ],
       "hidden": false,
       "biome": "hielo",
       "services": [],
@@ -251,6 +370,20 @@
       "name": "Campamento Furtivo",
       "type": "camp",
       "description": "Un laberinto de tiendas de pieles y ramas, escondido en lo más espeso del bosque. Huele a carne asada, a humedad y a acero recién afilado.",
+      "sights": [
+        {
+          "verbo": "mirar",
+          "text": "las ollas del campamento",
+          "skill": "perception",
+          "found": "Hierven agua con cortezas y poco más. La carne asada es de un solo ciervo para todos: aquí se pasa hambre de verdad."
+        },
+        {
+          "verbo": "examinar",
+          "text": "las armas amontonadas junto al fuego",
+          "skill": "investigation",
+          "found": "Hay puntas de flecha nuevas, forjadas en una fragua buena. Alguien del pueblo se las hace a los Lobos."
+        }
+      ],
       "hidden": true,
       "biome": "bosque",
       "services": [
@@ -274,6 +407,20 @@
       "name": "Campamento Keller",
       "type": "camp",
       "description": "Un campamento militar de libro plantado en el hielo: tiendas negras en líneas perfectas y estacas afiladas. Huele a aceite de armas, a caballo y a disciplina.",
+      "sights": [
+        {
+          "verbo": "examinar",
+          "text": "los sacos del intendente",
+          "skill": "investigation",
+          "found": "La mitad de los sacos de grano llevan paja por dentro. Las cuentas de Ulric no cuadran, y la tropa come menos de lo que cree."
+        },
+        {
+          "verbo": "mirar",
+          "text": "la mesa de la tienda de mando",
+          "skill": "perception",
+          "found": "Hay un plano del castillo de Vane con tres puntos marcados en la muralla. Uno está en el lado del río."
+        }
+      ],
       "hidden": true,
       "biome": "montaña",
       "services": [
@@ -292,6 +439,20 @@
       "name": "La Mina Abandonada",
       "type": "dungeon",
       "description": "Un boquete negro en la ladera de la montaña, apuntalado con vigas a punto de ceder. Huele a carbón, a azufre y al sudor de los contrabandistas.",
+      "sights": [
+        {
+          "verbo": "examinar",
+          "text": "las vigas de la entrada",
+          "skill": "investigation",
+          "found": "Alguien las ha reforzado hace poco con madera nueva. La mina no está tan abandonada como dicen."
+        },
+        {
+          "verbo": "buscar",
+          "text": "en el fondo del túnel",
+          "skill": "perception",
+          "found": "De una grieta sale aire frío. El túnel sigue más allá de lo que se ve, hacia el lado del castillo."
+        }
+      ],
       "hidden": true,
       "biome": "cueva",
       "services": [],
@@ -311,6 +472,20 @@
       "name": "El Cruce de Caminos",
       "type": "ruins",
       "description": "Aquí se juntan los caminos principales del valle. El deshielo ha convertido la tierra en un lodazal que se traga a quien va cargado. Huele a barro, a lluvia cercana y a muerte.",
+      "sights": [
+        {
+          "verbo": "leer",
+          "text": "los avisos clavados en el poste",
+          "skill": "investigation",
+          "found": "Hay bandos de los tres señores, uno encima de otro. El de más arriba, el más nuevo, lleva el sello de Keller."
+        },
+        {
+          "verbo": "mirar",
+          "text": "el barro del cruce",
+          "skill": "survival",
+          "found": "Asoman una rueda de carreta y la mano de un muerto. Por el borde de la izquierda se pasa sin hundirse."
+        }
+      ],
       "hidden": true,
       "biome": "rural",
       "services": [],
@@ -326,6 +501,106 @@
         },
         {
           "to": "Campamento Furtivo",
+          "days": 1
+        }
+      ]
+    },
+    {
+      "name": "El Roble de los Recados",
+      "type": "wilderness",
+      "description": "Un roble enorme y hueco al borde del bosque, entre el castillo y el camino viejo. Huele a musgo, a humo lejano y a papel mojado.",
+      "sights": [
+        {
+          "verbo": "examinar",
+          "text": "el hueco del roble",
+          "skill": "investigation",
+          "found": "Dentro hay una carta doblada en cuatro, sin firma: una cita para la noche de mercado, junto a la puerta de atrás del castillo."
+        },
+        {
+          "verbo": "buscar",
+          "text": "las huellas alrededor del tronco",
+          "skill": "survival",
+          "found": "Hay dos rastros: botas de soldado que vienen del castillo y pies envueltos en trapos que vienen del bosque."
+        }
+      ],
+      "hidden": true,
+      "biome": "bosque",
+      "services": [],
+      "factionName": "",
+      "routes": [
+        {
+          "to": "El Camino Viejo",
+          "days": 1
+        },
+        {
+          "to": "Castillo de Vane",
+          "days": 1
+        }
+      ]
+    },
+    {
+      "name": "La Choza de Brígida",
+      "type": "sanctuary",
+      "description": "Una choza de piedra y tepe en un hayedo, por encima de la ermita, con humo en la chimenea a todas horas. Huele a hierbas secas, a leche caliente y a sangre lavada.",
+      "sights": [
+        {
+          "verbo": "mirar",
+          "text": "los manojos de hierbas del techo",
+          "skill": "perception",
+          "found": "Milenrama para cortar la sangre y corteza de sauce para la fiebre. Brígida sabe lo que hace."
+        },
+        {
+          "verbo": "examinar",
+          "text": "el altillo de la choza",
+          "skill": "investigation",
+          "found": "Entre la paja asoma una bota negra de soldado del norte, con barro fresco. Alguien duerme ahí arriba."
+        }
+      ],
+      "hidden": true,
+      "biome": "montaña",
+      "services": [
+        "templo"
+      ],
+      "places": [
+        {
+          "kind": "templo",
+          "name": "La choza de Brígida",
+          "keeper": "brigida"
+        }
+      ],
+      "factionName": "",
+      "routes": [
+        {
+          "to": "La Ermita Derruida",
+          "days": 1
+        }
+      ]
+    },
+    {
+      "name": "Los Baños Viejos",
+      "type": "ruins",
+      "description": "Unas termas de cuando el imperio, a un lado de la calzada: columnas partidas y una piscina de piedra con agua caliente que humea en mitad de la nieve. Huele a azufre, a piedra mojada y a leña.",
+      "sights": [
+        {
+          "verbo": "mirar",
+          "text": "la piscina humeante",
+          "skill": "perception",
+          "found": "El agua sale caliente de una grieta de la roca. Alrededor no cuaja la nieve: aquí se puede pasar el invierno sin helarse."
+        },
+        {
+          "verbo": "leer",
+          "text": "las letras de las columnas",
+          "skill": "investigation",
+          "found": "Son nombres de soldados del imperio. Debajo, alguien grabó otra cosa: «La senda del agua baja al sur, pero muere en el barranco»."
+        }
+      ],
+      "hidden": true,
+      "biome": "bosque",
+      "services": [],
+      "factionName": "Los Lobos del Bosque",
+      "routes": [
+        {
+          "to": "El Camino Viejo",
           "days": 1
         }
       ]
@@ -795,6 +1070,39 @@
       "secret": "Su caravana llevaba esclavos, no especias, y los dejó morir de frío.",
       "voice": "Zalamera y empalagosa. Siempre se está frotando las manos enguantadas.",
       "service": "tablon"
+    },
+    {
+      "id": "mirlo",
+      "name": "Mirlo",
+      "trade": "Chaval de los recados",
+      "where": "El Roble de los Recados",
+      "wants": "Unas botas que no dejen pasar la nieve.",
+      "knows": "De quién es cada carta que se deja en el roble: no sabe leer, pero conoce los sellos y los dobleces.",
+      "secret": "Abre las cartas y se las enseña a Oswald el Senescal a cambio de pan.",
+      "voice": "Habla deprisa y sin mirarte, siempre pendiente del camino.",
+      "service": ""
+    },
+    {
+      "id": "brigida",
+      "name": "Brígida",
+      "trade": "Partera y curandera",
+      "where": "La Choza de Brígida",
+      "wants": "Sal gorda y mantas: este invierno le suben más heridos que partos.",
+      "knows": "Que Lord Vane tiene una hija: la trajo ella al mundo hace diecinueve años, en la casa de Vera.",
+      "secret": "Esconde en el altillo a un soldado de Keller con la pierna rota. Si los Lobos lo encuentran, lo cuelgan.",
+      "voice": "Habla bajo y claro, sin prisa, como a una mujer de parto.",
+      "service": "templo"
+    },
+    {
+      "id": "otilia",
+      "name": "Otilia",
+      "trade": "Refugiada",
+      "where": "Los Baños Viejos",
+      "wants": "Que nadie más sepa que ella y sus dos hijos duermen aquí, al calor del agua.",
+      "knows": "Que la senda del agua caliente no se cubre de nieve, pero termina en un barranco: por ahí no se sale del valle.",
+      "secret": "Su marido era el carretero que fingió el robo del hierro de Dunstan. Se fue con la plata y la dejó aquí.",
+      "voice": "Desconfiada. Siempre se pone entre sus hijos y la puerta.",
+      "service": ""
     }
   ],
   "bestiary": [
@@ -1202,6 +1510,28 @@
       "type": "gear",
       "rarity": "Uncommon",
       "description": "Un salvoconducto: cruzas los controles del norte sin que te disparen al instante."
+    },
+    {
+      "name": "Mapa de la calzada imperial",
+      "type": "gear",
+      "rarity": "Uncommon",
+      "description": "Un trozo de cuero con la calzada vieja dibujada a carbón. Una cruz marca unas termas del imperio, a medio día del camino, donde no cuaja la nieve.",
+      "boundTo": {
+        "kind": "milestone",
+        "id": "el-mapa-del-explorador"
+      }
+    },
+    {
+      "name": "Espada del soldado del lago",
+      "type": "weapon",
+      "rarity": "Uncommon",
+      "damageDice": "1d8",
+      "damageType": "cortante",
+      "description": "Una espada larga de otra guerra, sacada de un fardo engrasado bajo el hielo del lago. El filo sigue bueno y no tiene ni una mancha de óxido.",
+      "boundTo": {
+        "kind": "milestone",
+        "id": "lo-que-esconde-el-hielo"
+      }
     }
   ],
   "boards": [
@@ -2836,9 +3166,9 @@
       "id": "r-amor-enemigo",
       "by": "Garret",
       "where": "Castillo de Vane",
-      "text": "Alguien del castillo les deja mensajes a los Lobos del Bosque en el hueco de un roble. Traición pura.",
+      "text": "Alguien del castillo les deja mensajes a los Lobos del Bosque en el hueco de un roble, entre el castillo y el camino viejo. Traición pura.",
       "truth": "si",
-      "leadsTo": ""
+      "leadsTo": "El Roble de los Recados"
     },
     {
       "id": "r-hermandad-del-acero",
@@ -2885,6 +3215,46 @@
       "by": "Valerius",
       "where": "El Pueblo de Barro",
       "text": "Hay un paso secreto al sur que no se cubre de nieve. Pero solo los exploradores de aquí saben encontrarlo.",
+      "truth": "si",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-la-partera-del-hayedo",
+      "by": "Hermano Silas",
+      "where": "",
+      "text": "Si algún día no me encuentras, sube al hayedo de detrás de la ermita. Allí vive Brígida, la partera: cura mejor que yo y no pregunta de qué bando eres.",
+      "truth": "si",
+      "leadsTo": "La Choza de Brígida"
+    },
+    {
+      "id": "r-heridos-sin-insignia",
+      "by": "Hermano Silas",
+      "where": "La Ermita Derruida",
+      "text": "Los de Keller me traen a sus heridos de noche y sin insignias; los de Vane, de día. Yo los coso a todos igual y no pregunto.",
+      "truth": "si",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-la-pluma-de-arrendajo",
+      "by": "Mirlo",
+      "where": "El Roble de los Recados",
+      "text": "La cazadora de los furtivos viene cada tres días. Deja su carta con una pluma de arrendajo dentro, para que el soldado sepa que es suya.",
+      "truth": "si",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-los-remedios-del-castillo",
+      "by": "Brígida",
+      "where": "La Choza de Brígida",
+      "text": "De noche suben criados del castillo a por jarabe para la tos de su señor. Pagan con cobre y piden que no se sepa.",
+      "truth": "si",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-los-lobos-se-lavan",
+      "by": "Otilia",
+      "where": "Los Baños Viejos",
+      "text": "Los Lobos bajan a lavarse aquí las noches sin luna. No hacen daño, pero lo miran todo y luego lo cuentan en su campamento.",
       "truth": "si",
       "leadsTo": ""
     }
@@ -3326,6 +3696,72 @@
         "title": "El cáliz ensangrentado",
         "hint": "Te han colado el botín del asesinato. Sal {vivo|viva} del cuarto: la ventana da al callejón.",
         "scene": "Viernes por la mañana, en el cuarto más barato de la posada de El Pueblo de Barro. Hoy toca pagar la semana y no tienes un duro. Al calzarte encuentras en el petate un cáliz de oro macizo cubierto de sangre seca. No es tuyo. Abajo hay gritos. El alguacil Torres y sus guardias revientan la puerta: buscan {al forastero|a la forastera} que anoche mató al recaudador de Montesclaros. Te miran a ti y miran el cáliz. No hay tiempo para juicios: o sales por la ventana, o te abres paso.",
+        "backdrop": "posada",
+        "beats": [
+          {
+            "text": "Viernes por la mañana. Te despiertas en el cuarto más barato de la posada de El Pueblo de Barro. Hoy toca pagar la semana, y no te queda ni una moneda."
+          },
+          {
+            "text": "Al calzarte, notas algo duro en el petate: un cáliz de oro macizo, con sangre seca en el borde. No es tuyo."
+          },
+          {
+            "text": "Abajo hay gritos. Alguien sube la escalera de dos en dos."
+          },
+          {
+            "who": "Torres",
+            "mood": "enfadado",
+            "text": "¡Abrid en nombre de Lord Vane! ¡Buscamos {al forastero|a la forastera} que anoche mató al recaudador!"
+          },
+          {
+            "text": "La puerta salta de una patada. El alguacil Torres entra con dos guardias. Te mira a ti, y luego mira el cáliz."
+          },
+          {
+            "who": "Torres",
+            "mood": "enfadado",
+            "text": "Ahí está la prueba. O te entregas, o sales de aquí con los pies por delante.",
+            "options": [
+              {
+                "id": "mirar-a-torres",
+                "text": "Antes de moverte, te fijas bien en Torres.",
+                "check": {
+                  "skill": "insight",
+                  "dc": 12,
+                  "success": {
+                    "effects": [
+                      {
+                        "rumor": "r-traicion-en-la-puerta"
+                      }
+                    ],
+                    "reply": {
+                      "text": "Torres suda y no mira a sus guardias. No ha preguntado nada: ya sabía a quién venía a buscar."
+                    }
+                  },
+                  "failure": {
+                    "reply": {
+                      "text": "No sacas nada en claro. Solo ves a un hombre que grita mucho."
+                    }
+                  }
+                }
+              },
+              {
+                "id": "gritar",
+                "text": "Gritas para que te oiga toda la posada: «¡Me lo han metido en el petate!»",
+                "effects": [
+                  {
+                    "attitude": 1,
+                    "who": "Giles"
+                  }
+                ],
+                "reply": {
+                  "text": "Abajo, en la taberna, alguien deja de fregar jarras para escuchar."
+                }
+              }
+            ]
+          },
+          {
+            "text": "Los guardias sacan las espadas. La ventana da al callejón: o sales por ahí, o te abres paso."
+          }
+        ],
         "opens": {
           "kind": "start"
         },
@@ -3351,6 +3787,67 @@
         "title": "El precio del escape",
         "hint": "Habla con Giles en la taberna: vio quién entró en tu cuarto anoche, pero cobra por contarlo.",
         "scene": "Has salido {vivo|viva} del cuarto, pero todo el pueblo te busca. Te cuelas por la puerta trasera de la taberna. Giles está limpiando jarras y no grita al verte. Dice que sabe quién metió el cáliz en tu petate, pero en 1387 nadie regala nada. Tienes que convencerle o pagarle para que te diga por dónde ir antes de que vuelvan los guardias.",
+        "backdrop": "posada",
+        "sceneDialogue": "giles-lo-que-vio",
+        "beats": [
+          {
+            "text": "Sales por la ventana y caes de espaldas en el barro del callejón. Arriba, los guardias gritan cómo eres a todo el que pasa."
+          },
+          {
+            "text": "Medio pueblo te busca con antorchas. Solo queda una puerta que nadie vigila: la de atrás de la taberna de Giles."
+          },
+          {
+            "text": "Por la rendija sale olor a cerveza agria, y se oye a Giles fregar jarras. Está solo.",
+            "options": [
+              {
+                "id": "llamar",
+                "text": "Llamas con los nudillos antes de entrar, como la gente decente.",
+                "effects": [
+                  {
+                    "attitude": 1,
+                    "who": "Giles"
+                  }
+                ],
+                "reply": {
+                  "who": "Giles",
+                  "mood": "alegre",
+                  "text": "Vaya. {Un asesino|Una asesina} con modales. Eso no se ve todos los días."
+                }
+              },
+              {
+                "id": "colarte",
+                "text": "Te cuelas sin hacer ruido por la puerta de la cocina.",
+                "check": {
+                  "skill": "stealth",
+                  "dc": 12,
+                  "success": {
+                    "effects": [
+                      {
+                        "clue": "Giles guarda un montón de monedas bajo la barra: más de las que gana un tabernero en un mes."
+                      }
+                    ],
+                    "reply": {
+                      "text": "Nadie te ve entrar. Desde la cocina ves a Giles contar monedas, y guardarlas deprisa."
+                    }
+                  },
+                  "failure": {
+                    "effects": [
+                      {
+                        "attitude": -1,
+                        "who": "Giles"
+                      }
+                    ],
+                    "reply": {
+                      "who": "Giles",
+                      "mood": "enfadado",
+                      "text": "¡Por la puerta, como todo el mundo! Casi me matas del susto."
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        ],
         "opens": {
           "kind": "after",
           "milestone": "el-caliz-ensangrentado"
@@ -3377,6 +3874,75 @@
         "title": "La pista en el barro",
         "hint": "Sigue el rastro del verdadero asesino hasta el campamento de los furtivos.",
         "scene": "El barro del camino viejo está helado, pero el rastro que te vendió Giles se sigue bien. En el lindero del bosque, una flecha se clava a un palmo de tu bota: los Lobos del Bosque te apuntan desde las ramas. Tienen al hombre que metió el cáliz en tu petate, y ahora lo consideran suyo.",
+        "backdrop": "El Camino Viejo",
+        "beats": [
+          {
+            "text": "El barro del camino viejo está helado, pero el rastro que te vendió Giles se sigue bien: botas de hombre pesado, y una gota de sangre cada pocos pasos."
+          },
+          {
+            "text": "En el lindero del bosque, una flecha se clava a un palmo de tu bota."
+          },
+          {
+            "who": "Nils",
+            "mood": "enfadado",
+            "text": "Ni un paso más. La próxima va al ojo."
+          },
+          {
+            "text": "Entre las ramas asoman media docena de arcos tensos. Son los Lobos del Bosque, los furtivos del valle."
+          },
+          {
+            "who": "Nils",
+            "mood": "neutral",
+            "text": "Buscas al que te metió el cáliz en el petate. Lo tenemos nosotros, y ahora es nuestro.",
+            "options": [
+              {
+                "id": "manos-vacias",
+                "text": "Enseñas las manos vacías y bajas el arma.",
+                "effects": [
+                  {
+                    "attitude": 1
+                  }
+                ],
+                "reply": {
+                  "who": "Nils",
+                  "mood": "neutral",
+                  "text": "Bien. Así se habla en el bosque."
+                }
+              },
+              {
+                "id": "hablar-con-karl",
+                "text": "Quiero hablar con vuestro jefe. Con Karl.",
+                "effects": [
+                  {
+                    "rumor": "r-sordera-fingida"
+                  }
+                ],
+                "reply": {
+                  "who": "Nils",
+                  "mood": "neutral",
+                  "text": "Karl decide. Y un consejo, que no le doy a cualquiera."
+                }
+              },
+              {
+                "id": "mano-a-la-espada",
+                "text": "Pones la mano en la empuñadura.",
+                "effects": [
+                  {
+                    "attitude": -1
+                  }
+                ],
+                "reply": {
+                  "who": "Nils",
+                  "mood": "enfadado",
+                  "text": "Mala idea. Hoy estoy de buenas; mañana, no sé."
+                }
+              }
+            ]
+          },
+          {
+            "text": "Nils se da la vuelta y se mete en el bosque. El campamento de los Lobos está por ahí, donde sube el humo."
+          }
+        ],
         "opens": {
           "kind": "after",
           "milestone": "el-precio-del-escape"
@@ -3403,6 +3969,66 @@
         "title": "El invierno cierra el paso",
         "hint": "Lleva el cáliz al castillo de Vane: puede comprarte el perdón y una cama caliente.",
         "scene": "Recuperas el cáliz, pero el cielo se ha puesto gris plomo y caen los primeros copos, pesados como piedras. La nieve acaba de sepultar el paso de montaña del sur: estás {atrapado|atrapada} en el valle hasta la primavera. Llegas a las puertas del castillo de Vane con el cáliz en la mano, y los guardias levantan el rastrillo. Vas a conocer al señor de este agujero.",
+        "backdrop": "Castillo de Vane",
+        "beats": [
+          {
+            "text": "Sales del campamento con el cáliz envuelto en un trapo. El cielo se ha puesto gris plomo."
+          },
+          {
+            "text": "Empiezan a caer copos gordos y lentos. Al mediodía ya no se ve el camino, y un pastor baja corriendo del sur: la nieve ha tapado el paso de la montaña."
+          },
+          {
+            "text": "Hasta la primavera, nadie sale del valle. Tampoco tú."
+          },
+          {
+            "text": "Llegas a las puertas del castillo de Vane con el cáliz en la mano. Desde la muralla te apuntan dos ballestas."
+          },
+          {
+            "who": "Garret",
+            "mood": "neutral",
+            "text": "¡Alto! ¿Quién va? Un momento… ¿Eso es el cáliz del recaudador?",
+            "options": [
+              {
+                "id": "para-vane",
+                "text": "Lo traigo para Lord Vane, en persona.",
+                "effects": [
+                  {
+                    "attitude": 1,
+                    "who": "Lord Edmund Vane"
+                  }
+                ],
+                "reply": {
+                  "who": "Garret",
+                  "mood": "neutral",
+                  "text": "Eso le gustará. Pasa, y no hagas ruido: el señor tiene un mal día."
+                }
+              },
+              {
+                "id": "para-el-frio",
+                "text": "Toma, para el frío. ¿Qué se cuenta ahí dentro?",
+                "if": {
+                  "gold": 2
+                },
+                "effects": [
+                  {
+                    "gold": -2
+                  },
+                  {
+                    "rumor": "r-amor-enemigo"
+                  }
+                ],
+                "reply": {
+                  "who": "Garret",
+                  "mood": "alegre",
+                  "text": "Se cuenta mucho, y nada bueno. Yo no te he dicho nada, ¿eh?"
+                }
+              }
+            ]
+          },
+          {
+            "text": "El rastrillo sube con un chirrido. Vas a conocer al señor de este valle."
+          }
+        ],
         "opens": {
           "kind": "after",
           "milestone": "la-pista-en-el-barro"
@@ -3430,6 +4056,95 @@
         "title": "El hambre de los Lobos",
         "hint": "Habla con Karl el Sordo en el Campamento Furtivo: los suyos se mueren de hambre y planean asaltar los graneros del pueblo.",
         "scene": "Llevas semanas {atrapado|atrapada} por el hielo cuando Karl el Sordo te sale al paso en el bosque. Los Lobos del Bosque no tienen comida y esta noche bajarán a saquear los graneros del pueblo: Karl te pide que mires hacia otro lado. Si avisas al alguacil, morirán mujeres y niños en el bosque. Si callas, el pueblo pasará hambre. Tu espada decide quién come esta semana.",
+        "backdrop": "El Camino Viejo",
+        "beats": [
+          {
+            "text": "Llevas semanas {atrapado|atrapada} por el hielo. El pan del pueblo ya sabe a serrín, y hay cola en la puerta del granero."
+          },
+          {
+            "text": "Una tarde, en el camino del bosque, Karl el Sordo te sale al paso. Viene solo y sin arco."
+          },
+          {
+            "who": "Karl",
+            "mood": "enfadado",
+            "text": "¡Los míos se mueren de hambre! ¡Esta noche bajamos a por los graneros del pueblo!"
+          },
+          {
+            "who": "Karl",
+            "mood": "triste",
+            "text": "No te pido que nos ayudes. Te pido que mires hacia otro lado."
+          },
+          {
+            "text": "Si avisas al alguacil, morirán mujeres y niños en el bosque. Si callas, el pueblo pasará hambre."
+          },
+          {
+            "who": "Karl",
+            "mood": "neutral",
+            "text": "¿Y bien? ¡Habla alto, que no te oigo!",
+            "options": [
+              {
+                "id": "mirar-a-otro-lado",
+                "text": "Esta noche no he visto nada.",
+                "effects": [
+                  {
+                    "attitude": 1
+                  }
+                ],
+                "journal": "Le prometiste a Karl mirar hacia otro lado la noche del asalto a los graneros.",
+                "reply": {
+                  "who": "Karl",
+                  "mood": "alegre",
+                  "text": "¡Eso quería oír! Los Lobos no olvidan a quien les deja comer."
+                }
+              },
+              {
+                "id": "defender-graneros",
+                "text": "Si tocáis los graneros, me tendréis enfrente.",
+                "effects": [
+                  {
+                    "attitude": -1
+                  }
+                ],
+                "journal": "Le dijiste a Karl que defenderías los graneros del pueblo.",
+                "reply": {
+                  "who": "Karl",
+                  "mood": "enfadado",
+                  "text": "Entonces esta noche nos veremos las caras. Piénsatelo bien."
+                }
+              },
+              {
+                "id": "no-grites",
+                "text": "No hace falta que grites, Karl. Me oyes de sobra.",
+                "check": {
+                  "skill": "insight",
+                  "dc": 13,
+                  "success": {
+                    "effects": [
+                      {
+                        "attitude": 1
+                      },
+                      {
+                        "rumor": "r-sordera-fingida"
+                      }
+                    ],
+                    "reply": {
+                      "who": "Karl",
+                      "mood": "alegre",
+                      "text": "Pocos se dan cuenta. Hablemos bajo, entonces."
+                    }
+                  },
+                  "failure": {
+                    "reply": {
+                      "who": "Karl",
+                      "mood": "enfadado",
+                      "text": "¿Qué dices? ¡Más alto!"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        ],
         "opens": {
           "kind": "after",
           "milestone": "el-invierno-cierra-el-paso"
@@ -3770,6 +4485,58 @@
         },
         "changes": {
           "reveal": [],
+          "open": [],
+          "standing": {},
+          "ending": "",
+          "endingBy": {}
+        },
+        "hidden": true
+      },
+      {
+        "id": "lo-que-esconde-el-hielo",
+        "act": 1,
+        "title": "Lo que esconde el hielo",
+        "hint": "",
+        "scene": "Rascáis la escarcha donde el hielo es más oscuro. A un palmo hay fardos atados y envueltos en grasa: armas que alguien escondió para volver a por ellas. Con paciencia y un hacha sacáis uno. Dentro hay una espada larga de otra guerra, sin una mancha de óxido. Desde la orilla, Finn os mira y no dice nada: ya lo sabía.",
+        "opens": {
+          "kind": "start"
+        },
+        "asks": {
+          "kind": "clues",
+          "need": 1,
+          "clues": [
+            {
+              "place": "El Lago Helado",
+              "skill": "investigation"
+            }
+          ]
+        },
+        "changes": {
+          "reveal": [],
+          "open": [],
+          "standing": {},
+          "ending": "",
+          "endingBy": {}
+        },
+        "hidden": true
+      },
+      {
+        "id": "el-mapa-del-explorador",
+        "act": 1,
+        "title": "El mapa del explorador",
+        "hint": "",
+        "scene": "Entre las cosas del explorador de los Lobos hay un trozo de cuero doblado: la calzada vieja dibujada a carbón y una cruz junto a unas termas del imperio que nadie usa. Ya sabéis dónde se calientan los Lobos cuando aprieta el frío.",
+        "opens": {
+          "kind": "start"
+        },
+        "asks": {
+          "kind": "win",
+          "board": "Los claros del Camino Viejo"
+        },
+        "changes": {
+          "reveal": [
+            "Los Baños Viejos"
+          ],
           "open": [],
           "standing": {},
           "ending": "",

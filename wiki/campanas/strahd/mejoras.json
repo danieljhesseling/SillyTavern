@@ -1100,6 +1100,61 @@
         "id": "sangrienta-bienvenida",
         "quest": "q_taberna",
         "scene": "Una Bruja Baroviana está acechando a los clientes de la taberna Sangre de la Enredadera. Es hora de demostrar de qué estáis {hechos|hechas}.",
+        "backdrop": "posada",
+        "beats": [
+          {
+            "text": "propio: La niebla os ha dejado en una aldea gris, de casas cerradas y ventanas tapiadas. La única luz sale de una taberna: Sangre de la Enredadera."
+          },
+          {
+            "text": "propio: Dentro hay poca gente y nadie habla. Junto al fuego, un hombre joven y ancho de hombros bebe solo."
+          },
+          {
+            "who": "Ismark Kolyanovich",
+            "mood": "triste",
+            "text": "propio: Forasteros. Hacía tiempo que la niebla no dejaba pasar a nadie. Soy Ismark; aquí me llaman el Menor."
+          },
+          {
+            "text": "propio: En el rincón, una vieja encorvada no deja de mirar a los clientes. Tiene las uñas negras y sonríe con demasiados dientes."
+          },
+          {
+            "who": "Ismark Kolyanovich",
+            "mood": "enfadado",
+            "text": "propio: Esa no es de aquí. En Barovia, las viejas que sonríen así no venden hierbas.",
+            "options": [
+              {
+                "id": "a-mi-lado",
+                "text": "propio: Quédate detrás de mí, Ismark.",
+                "effects": [
+                  {
+                    "attitude": 1
+                  }
+                ],
+                "reply": {
+                  "who": "Ismark Kolyanovich",
+                  "mood": "alegre",
+                  "text": "propio: Detrás no: a tu lado. Mi padre no crió a un cobarde."
+                }
+              },
+              {
+                "id": "que-sabes",
+                "text": "propio: ¿Qué sabes de ella?",
+                "effects": [
+                  {
+                    "rumor": "r-no-invitar"
+                  }
+                ],
+                "reply": {
+                  "who": "Ismark Kolyanovich",
+                  "mood": "triste",
+                  "text": "propio: Nada bueno. Aquí se aprende pronto a no abrir la puerta de noche."
+                }
+              }
+            ]
+          },
+          {
+            "text": "propio: La vieja se levanta despacio. Debajo del chal se le mueve algo que no son brazos."
+          }
+        ],
         "opens": {
           "kind": "start"
         },
@@ -1112,6 +1167,63 @@
         "id": "asedio-en-la-mansion",
         "quest": "q_asedio_mansion",
         "after": "sangrienta-bienvenida",
+        "backdrop": "Aldea de Barovia",
+        "beats": [
+          {
+            "text": "propio: Ismark os lleva a la casa de su familia, en lo alto de la aldea. La verja está arañada, y en el barro hay huellas de pies descalzos."
+          },
+          {
+            "who": "Ismark Kolyanovich",
+            "mood": "triste",
+            "text": "propio: Mi padre murió hace tres noches. Desde entonces, los muertos vienen a llamar a la puerta."
+          },
+          {
+            "text": "propio: Abre una mujer joven de pelo castaño, con una espada corta en la mano. Tiene dos marcas rojas en el cuello."
+          },
+          {
+            "who": "Ireena Kolyana",
+            "mood": "enfadado",
+            "text": "propio: ¿Estos son los que traes, hermano? Ya se les oye en el cementerio. Vienen."
+          },
+          {
+            "who": "Ireena Kolyana",
+            "mood": "neutral",
+            "text": "propio: Esta casa es mía, y la defiendo yo. ¿Qué vais a hacer vosotros?",
+            "options": [
+              {
+                "id": "a-tu-lado",
+                "text": "propio: Pelearemos a tu lado, Ireena.",
+                "effects": [
+                  {
+                    "attitude": 1
+                  }
+                ],
+                "reply": {
+                  "who": "Ireena Kolyana",
+                  "mood": "alegre",
+                  "text": "propio: Por fin alguien que no me manda a esconderme."
+                }
+              },
+              {
+                "id": "dentro",
+                "text": "propio: Entra y atranca la puerta. Es a ti a quien buscan.",
+                "effects": [
+                  {
+                    "give": "Agua bendita"
+                  }
+                ],
+                "reply": {
+                  "who": "Ireena Kolyana",
+                  "mood": "triste",
+                  "text": "propio: Está bien. Toma esto: era de mi padre. Con ellos, funciona."
+                }
+              }
+            ]
+          },
+          {
+            "text": "propio: Del cementerio llega un ruido de pies que se arrastran. Muchos pies."
+          }
+        ],
         "open": [
           "lectura-interrumpida"
         ]
@@ -1120,6 +1232,58 @@
         "id": "el-grito-en-el-sotano",
         "quest": "q_sotano_iglesia",
         "after": "sangrienta-bienvenida",
+        "backdrop": "templo",
+        "beats": [
+          {
+            "text": "propio: La iglesia de la aldea está helada. Delante del altar, un cura flaco reza sin levantar la cabeza."
+          },
+          {
+            "text": "propio: Debajo del suelo, algo grita. No es un grito de dolor: es de hambre."
+          },
+          {
+            "who": "Donavich",
+            "mood": "triste",
+            "text": "propio: Es mi hijo, Doru. Fue al castillo a matar al conde, y volvió así."
+          },
+          {
+            "who": "Donavich",
+            "mood": "triste",
+            "text": "propio: Lo tengo encerrado, sin comer. No puedo abrir esa trampilla, y tampoco puedo dejarlo ahí para siempre.",
+            "options": [
+              {
+                "id": "rapido",
+                "text": "propio: Lo haremos rápido, padre. No sufrirá.",
+                "effects": [
+                  {
+                    "give": "Estaca de madera"
+                  }
+                ],
+                "reply": {
+                  "who": "Donavich",
+                  "mood": "triste",
+                  "text": "propio: Entonces llevaos esto. Yo nunca he tenido valor de usarla."
+                }
+              },
+              {
+                "id": "otra-forma",
+                "text": "propio: Buscaremos otra forma. Tiene que haberla.",
+                "effects": [
+                  {
+                    "attitude": 1
+                  }
+                ],
+                "reply": {
+                  "who": "Donavich",
+                  "mood": "alegre",
+                  "text": "propio: Que Dios os oiga. Pero si os muerde, no dudéis."
+                }
+              }
+            ]
+          },
+          {
+            "text": "propio: Donavich os da la llave de la trampilla. Le tiemblan las manos."
+          }
+        ],
         "open": []
       },
       {
@@ -1218,6 +1382,27 @@
           "la-orden-del-dragon-de-plata": "la-orden-descansa",
           "los-vistani": "la-caravana-se-va"
         }
+      },
+      {
+        "id": "la-puerta-sin-pomo",
+        "act": 3,
+        "title": "propio: La puerta sin pomo",
+        "hint": "",
+        "scene": "propio: Tanteáis la pared a la izquierda de la puerta de hierro hasta dar con una piedra que se hunde al apretarla. La puerta se abre sin ruido. Dentro no hay nadie: polvo y un fuego apagado hace semanas. Bajo un tablón suelto del suelo, el viejo cazador dejó un estuche de repuesto: estacas, agua bendita y un espejo de plata.",
+        "opens": {
+          "kind": "start"
+        },
+        "asks": {
+          "kind": "clues",
+          "need": 1,
+          "clues": [
+            {
+              "place": "Torre de Van Richten",
+              "skill": "investigation"
+            }
+          ]
+        },
+        "hidden": true
       }
     ],
     "endings": {

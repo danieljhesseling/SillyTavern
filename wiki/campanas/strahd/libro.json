@@ -117,6 +117,19 @@
       "region": "Lago Baratok",
       "biome": "bosque",
       "description": "Una torre vieja en un islote del lago Baratok, unida a la orilla por un camino de tierra. La levantó un mago muerto hace siglos y la puerta de hierro no tiene pomo.",
+      "sights": [
+        {
+          "verbo": "examinar",
+          "text": "propio: la puerta de hierro sin pomo",
+          "skill": "investigation"
+        },
+        {
+          "verbo": "buscar",
+          "text": "propio: huellas en el camino de tierra",
+          "skill": "survival",
+          "found": "propio: Hay muchas huellas de lobo. Y otras de botas pequeñas y ligeras que llegan hasta el pie de la torre y no vuelven."
+        }
+      ],
       "routes": [
         {
           "to": "Argynvostholt",
@@ -136,6 +149,20 @@
       "biome": "cueva",
       "factionName": "Los Hijos de la Madre Noche",
       "description": "Unas cuevas sobre el lago, con la entrada tallada como la boca de un lobo. Dentro huele a sangre y a humo, y se oyen niños.",
+      "sights": [
+        {
+          "verbo": "examinar",
+          "text": "propio: la boca de lobo tallada en la entrada",
+          "skill": "investigation",
+          "found": "propio: En la piedra hay roces de cuerda y arañazos de uñas pequeñas. Por aquí han metido a niños a rastras."
+        },
+        {
+          "verbo": "mirar",
+          "text": "propio: el altar del fondo de la cueva",
+          "skill": "perception",
+          "found": "propio: Es una mujer de piedra con cabeza de lobo, rodeada de ofrendas: monedas, huesos y juguetes."
+        }
+      ],
       "routes": [
         {
           "to": "Torre de Van Richten",
@@ -154,6 +181,20 @@
       "region": "Río Luna",
       "biome": "bosque",
       "description": "Un pueblo que el río ahogó hace años. Casas hundidas en el barro, nubes de moscas y, en medio, una choza sobre un tocón enorme con raíces como patas.",
+      "sights": [
+        {
+          "verbo": "mirar",
+          "text": "propio: la choza sobre el tocón",
+          "skill": "perception",
+          "found": "propio: Las raíces del tocón se mueven despacio, como patas que se desperezan. La choza no está quieta."
+        },
+        {
+          "verbo": "examinar",
+          "text": "propio: los espantapájaros del pantano",
+          "skill": "investigation",
+          "found": "propio: Están rellenos de paja y de cuervos muertos, y en vez de manos llevan cuchillos cosidos."
+        }
+      ],
       "routes": [
         {
           "to": "Bodega El Mago de los Vinos",
@@ -172,6 +213,20 @@
       "region": "Borde de la niebla",
       "biome": "montaña",
       "description": "Una colina de tumbas antiguas en el borde del valle. Arriba, dentro de un círculo de piedras negras, los druidas han levantado un muñeco de ramas enorme que se parece al conde.",
+      "sights": [
+        {
+          "verbo": "mirar",
+          "text": "propio: el muñeco de ramas de la cima",
+          "skill": "perception",
+          "found": "propio: Es enorme y tiene la cara del conde. En el pecho le han dejado un hueco del tamaño de una piña."
+        },
+        {
+          "verbo": "examinar",
+          "text": "propio: las piedras negras del círculo",
+          "skill": "investigation",
+          "found": "propio: Están llenas de rayas nuevas: los druidas cuentan los días que faltan para algo. Quedan pocos."
+        }
+      ],
       "routes": [
         {
           "to": "Bodega El Mago de los Vinos",
@@ -180,6 +235,210 @@
         {
           "to": "Aldea de Krezk",
           "days": 1
+        }
+      ]
+    },
+    {
+      "name": "La Cascada del Tser",
+      "type": "wilderness",
+      "hidden": true,
+      "region": "Río Ivlis",
+      "biome": "bosque",
+      "description": "propio: Un salto de agua helada entre rocas negras, río abajo del estanque de los vistani. Detrás de la cortina de agua hay una cueva seca con restos de fuego.",
+      "sights": [
+        {
+          "verbo": "examinar",
+          "text": "propio: la cueva de detrás del agua",
+          "skill": "investigation",
+          "found": "propio: Hay un catre de hojas, libros hinchados por la humedad y una varita partida en dos. Alguien vive aquí desde hace tiempo."
+        },
+        {
+          "verbo": "mirar",
+          "text": "propio: las rocas del fondo del salto",
+          "skill": "perception",
+          "found": "propio: Entre las rocas hay jirones de tela buena, de túnica de mago, enganchados hace mucho."
+        }
+      ],
+      "routes": [
+        {
+          "to": "Campamento del Estanque Tser",
+          "days": 1
+        }
+      ]
+    },
+    {
+      "name": "El Nido de la Pluma",
+      "type": "ruins",
+      "hidden": true,
+      "region": "El Valle Central",
+      "biome": "bosque",
+      "description": "propio: Un campanario solo en mitad del bosque, lo único que queda de una aldea que ya no existe. Arriba anidan cientos de cuervos, y de vez en cuando se oye hablar a alguien.",
+      "sights": [
+        {
+          "verbo": "mirar",
+          "text": "propio: los cuervos del campanario",
+          "skill": "perception",
+          "found": "propio: No graznan cuando entras: te miran. Uno baja a la barandilla, como si esperara que dijeras algo."
+        },
+        {
+          "verbo": "examinar",
+          "text": "propio: la campana rajada",
+          "skill": "investigation",
+          "found": "propio: Por dentro tiene grabados nombres de familias de Vallaki y de Krezk, con una pluma al lado de cada uno."
+        }
+      ],
+      "routes": [
+        {
+          "to": "Ciudad de Vallaki",
+          "days": 1
+        }
+      ]
+    },
+    {
+      "name": "Aldea de Barovia",
+      "sights": [
+        {
+          "verbo": "mirar",
+          "text": "propio: las ventanas tapiadas de las casas",
+          "skill": "perception",
+          "found": "propio: Detrás de cada tabla hay ristras de ajos y una cruz de palo. Aquí nadie abre de noche desde hace años."
+        },
+        {
+          "verbo": "examinar",
+          "text": "propio: las contraventanas de la mansión del burgomaestre",
+          "skill": "investigation",
+          "found": "propio: Tienen arañazos hondos, de garras, a la altura de un hombre. Algo ha intentado entrar muchas noches seguidas."
+        },
+        {
+          "verbo": "examinar",
+          "text": "propio: el suelo de la iglesia",
+          "skill": "investigation",
+          "found": "propio: Entre dos losas sale un aire frío y, a ratos, un gemido. Hay alguien encerrado debajo."
+        }
+      ]
+    },
+    {
+      "name": "Castillo Ravenloft",
+      "sights": [
+        {
+          "verbo": "mirar",
+          "text": "propio: el puente sobre el abismo",
+          "skill": "perception",
+          "found": "propio: Las tablas crujen y faltan algunas. Abajo solo hay niebla, y desde la niebla sube el ruido de una cascada."
+        },
+        {
+          "verbo": "examinar",
+          "text": "propio: los retratos del vestíbulo",
+          "skill": "investigation",
+          "found": "propio: Todos son del mismo hombre, pintados en siglos distintos. En ninguno ha envejecido."
+        }
+      ]
+    },
+    {
+      "name": "Campamento del Estanque Tser",
+      "sights": [
+        {
+          "verbo": "mirar",
+          "text": "propio: los carros pintados",
+          "skill": "perception",
+          "found": "propio: Uno tiene candado y huele a vino caro. Los vistani de aquí comen mejor que nadie en el valle."
+        },
+        {
+          "verbo": "mirar",
+          "text": "propio: cómo miran los vistani la tienda de la adivina",
+          "skill": "insight",
+          "found": "propio: Nadie entra sin que Madam Eva lo llame. Los suyos le tienen más miedo que cariño."
+        }
+      ]
+    },
+    {
+      "name": "Ciudad de Vallaki",
+      "sights": [
+        {
+          "verbo": "leer",
+          "text": "propio: el cartel de la fiesta de esta semana",
+          "skill": "investigation",
+          "found": "propio: El barón anuncia otra fiesta obligatoria. Abajo, en letra pequeña: «Quien no esté contento será castigado»."
+        },
+        {
+          "verbo": "mirar",
+          "text": "propio: el desván de la casa del barón",
+          "skill": "perception",
+          "found": "propio: De noche sale por la ventana una luz morada, y a veces pasa por delante una sombra con capa."
+        },
+        {
+          "verbo": "examinar",
+          "text": "propio: la puerta del taller del ataudero",
+          "skill": "investigation",
+          "found": "propio: Está cerrada por dentro, pero hay tierra fresca en el umbral. Alguien mete y saca cajas pesadas de noche."
+        }
+      ]
+    },
+    {
+      "name": "Viejo Mascahuesos",
+      "sights": [
+        {
+          "verbo": "examinar",
+          "text": "propio: la harina del molino",
+          "skill": "investigation",
+          "found": "propio: No es harina de trigo: es gris y tiene trocitos duros. Mejor no preguntar de qué está hecha."
+        },
+        {
+          "verbo": "mirar",
+          "text": "propio: las aspas del molino",
+          "skill": "perception",
+          "found": "propio: Giran aunque no sople el viento. En el piso de arriba llora un niño."
+        }
+      ]
+    },
+    {
+      "name": "Argynvostholt",
+      "sights": [
+        {
+          "verbo": "examinar",
+          "text": "propio: la estatua del dragón del patio",
+          "skill": "investigation",
+          "found": "propio: Es un dragón de plata con una grieta en el pecho. A sus pies hay flores secas que alguien dejó no hace mucho."
+        },
+        {
+          "verbo": "mirar",
+          "text": "propio: el faro de lo alto de la torre",
+          "skill": "perception",
+          "found": "propio: Está apagado, con la leña preparada y sin encender, como si esperara algo."
+        }
+      ]
+    },
+    {
+      "name": "Bodega El Mago de los Vinos",
+      "sights": [
+        {
+          "verbo": "examinar",
+          "text": "propio: las cepas del viñedo",
+          "skill": "survival",
+          "found": "propio: Las viñas están enfermas: hojas negras y uvas secas. La tierra ya no da como antes."
+        },
+        {
+          "verbo": "mirar",
+          "text": "propio: los cuervos del tejado",
+          "skill": "perception",
+          "found": "propio: Hay muchos más de lo normal y no quitan ojo del camino. Cuando alguien se acerca, uno sale volando hacia Vallaki."
+        }
+      ]
+    },
+    {
+      "name": "Aldea de Krezk",
+      "sights": [
+        {
+          "verbo": "mirar",
+          "text": "propio: la abadía desde la muralla",
+          "skill": "perception",
+          "found": "propio: Arriba, en la abadía, alguien grita y otro se ríe. La campana suena sin que sea hora de nada."
+        },
+        {
+          "verbo": "examinar",
+          "text": "propio: el estanque del santuario",
+          "skill": "investigation",
+          "found": "propio: El agua no se hiela aunque haga un frío que parte las piedras. Está tibia, como en una mañana de verano."
         }
       ]
     }
@@ -775,6 +1034,50 @@
       "secret": "La habitación de la torre se alcanza por un ascensor que llena la cabina de gas de dormir.",
       "voice": "Se ríe solo. Cuenta chistes malos en el peor momento.",
       "service": ""
+    },
+    {
+      "id": "nikolai-barquero",
+      "name": "Nikolai",
+      "trade": "propio: Barquero del lago Baratok",
+      "where": "Torre de Van Richten",
+      "wants": "propio: Que le paguen lo que le prometió el viejo de la torre antes de irse.",
+      "knows": "propio: Que el viejo de la torre se marchó hace un mes en un carro de feria, y que desde entonces los lobos rondan el islote.",
+      "secret": "propio: Vio a una mujer vistani entrar en la torre por una ventana alta, sin tocar la puerta. No se lo ha contado a nadie.",
+      "voice": "propio: Masculla entre dientes y escupe al agua antes de cada frase.",
+      "service": ""
+    },
+    {
+      "id": "gavril-druida",
+      "name": "Gavril",
+      "trade": "propio: Druida joven",
+      "where": "Colina Yester",
+      "wants": "propio: Irse del círculo sin que los mayores le vean: ya no cree que el conde mande en la lluvia.",
+      "knows": "propio: Qué noche piensan despertar al muñeco de ramas, y que para eso necesitan meterle la gema verde en el pecho.",
+      "secret": "propio: Fue él quien sacó la gema de la bodega. Se la dio a los mayores y desde entonces no duerme.",
+      "voice": "propio: Habla en susurros y no deja de mirar las piedras negras.",
+      "service": ""
+    },
+    {
+      "id": "ermitano-cascada",
+      "name": "El ermitaño de la cascada",
+      "trade": "propio: Mago que ha perdido la memoria",
+      "where": "La Cascada del Tser",
+      "wants": "propio: Recordar su nombre. Lo tiene en la punta de la lengua desde hace un año.",
+      "knows": "propio: Cómo es el castillo por dentro: estuvo allí y peleó con el conde, aunque no recuerda cómo acabó.",
+      "secret": "propio: Recuerda mucho más de lo que dice. Se hace el loco para que los murciélagos del conde dejen de buscarle.",
+      "voice": "propio: Habla solo y a trozos, y de pronto suelta algo muy sensato.",
+      "service": ""
+    },
+    {
+      "id": "dragomir-nido",
+      "name": "Dragomir",
+      "trade": "propio: Guardián del nido de los cuervos",
+      "where": "El Nido de la Pluma",
+      "wants": "propio: Que alguien lleve noticias del castillo a la bodega sin que le sigan los murciélagos.",
+      "knows": "propio: Qué caminos vigilan los murciélagos del conde y a qué horas.",
+      "secret": "propio: La primera gema de la bodega la perdió él: se la cambió a la vieja del molino por un pastel que le hizo soñar con su mujer muerta.",
+      "voice": "propio: Habla poco y con la cabeza ladeada, como un pájaro.",
+      "service": ""
     }
   ],
   "bestiary": [
@@ -1053,6 +1356,17 @@
       "rarity": "Common",
       "weight": 0.5,
       "description": "Una muñeca con una sonrisa rara y un vestido de saco. En la etiqueta pone: «Si no es divertido, no es Blinsky»."
+    },
+    {
+      "name": "Estuche de repuesto de Van Richten",
+      "type": "gear",
+      "rarity": "Uncommon",
+      "weight": 2,
+      "description": "propio: Un estuche de cuero escondido bajo el suelo de la torre: tres estacas de fresno, un mazo, dos frascos de agua bendita y un espejo de plata.",
+      "boundTo": {
+        "kind": "milestone",
+        "id": "la-puerta-sin-pomo"
+      }
     }
   ],
   "boards": [
@@ -1854,7 +2168,7 @@
       "where": "Campamento del Estanque Tser",
       "text": "Hace un año vino un mago a echar al conde. Pelearon en el castillo y el conde lo tiró por la cascada. Nadie encontró el cuerpo.",
       "truth": "si",
-      "leadsTo": ""
+      "leadsTo": "La Cascada del Tser"
     },
     {
       "id": "r-las-pociones-de-la-niebla",
@@ -1879,6 +2193,14 @@
       "text": "Mi hija lleva un día sin aparecer. Alguien la vio cerca del lago de Vallaki, con un pescador borracho.",
       "truth": "si",
       "leadsTo": "Ciudad de Vallaki"
+    },
+    {
+      "id": "r-el-nido-de-la-pluma",
+      "by": "Urwin Martikov",
+      "where": "",
+      "text": "propio: Si algún día necesitáis ayuda contra el conde, id al campanario viejo del bosque, a un día de aquí. Decid que os manda Urwin. Y no lo contéis en voz alta.",
+      "truth": "si",
+      "leadsTo": "El Nido de la Pluma"
     },
     {
       "id": "r-los-festivales",
@@ -2077,6 +2399,38 @@
       "by": "Rahadin",
       "where": "Castillo Ravenloft",
       "text": "El amo os espera a cenar. Sois sus invitados, y nadie se levanta de la mesa antes de tiempo.",
+      "truth": "si",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-la-puerta-sin-pomo",
+      "by": "Nikolai",
+      "where": "Torre de Van Richten",
+      "text": "propio: La puerta de hierro no tiene pomo, pero el viejo entraba sin llave. Tocaba algo de la pared, a la izquierda, y la puerta se abría sola.",
+      "truth": "si",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-el-muneco-anda",
+      "by": "Gavril",
+      "where": "Colina Yester",
+      "text": "propio: El muñeco de ramas no está muerto. Cuando le metan la gema en el pecho, echará a andar, y lo primero que pisará será la bodega.",
+      "truth": "si",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-donde-duerme-el-conde",
+      "by": "El ermitaño de la cascada",
+      "where": "La Cascada del Tser",
+      "text": "propio: El conde no duerme en una cama. Duerme abajo del todo, entre los muertos de su familia, y hay que bajar mucho para encontrarlo.",
+      "truth": "si",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-el-viento-del-norte",
+      "by": "Dragomir",
+      "where": "El Nido de la Pluma",
+      "text": "propio: Los murciélagos del conde no vuelan con viento del norte. Si tenéis que cruzar el valle de noche, que sea con viento del norte.",
       "truth": "si",
       "leadsTo": ""
     }

@@ -129,6 +129,7 @@ const FORK_FILES = [
     'public/scripts/game-engine/campaign/save-card.js',
     'public/scripts/game-engine/campaign/saved-games.js',
     'public/scripts/game-engine/campaign/world-density.js',
+    'public/scripts/game-engine/campaign/sights.js',
     // Batería 7.
     'public/scripts/game-engine/world/seasons.js',
     'public/scripts/game-engine/campaign/camp.js',
@@ -212,6 +213,9 @@ const FORK_FILES = [
     // J8.1 a J8.6: las charlas con ramas, y su ventana.
     'public/scripts/game-engine/campaign/dialogues.js',
     'public/scripts/game-engine/ui/dialogue-window.js',
+    // J9.2: las escenas del hilo, jugadas, y su ventana.
+    'public/scripts/game-engine/campaign/plot-scenes.js',
+    'public/scripts/game-engine/ui/plot-scene.js',
     'public/scripts/game-engine/campaign/read-box.js',
     'public/scripts/game-engine/campaign/consequences.js',
     'public/scripts/game-engine/campaign/sucesos.js',

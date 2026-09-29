@@ -50,7 +50,7 @@ y el importador los resuelve al crear las entradas.
 
 1. El usuario te da el material. Si falta algo sin lo que no se puede empezar —el tono,
    la escala, cuántos tableros quiere— preguntas **una vez**, en una sola línea, y sigues.
-2. Produces el paquete por secciones, en este orden: **world → locations → confidants → bestiary → items → boards → quests → heroes → dialogues**.
+2. Produces el paquete por secciones, en este orden: **world → locations → confidants → bestiary → items → boards → quests → heroes → dialogues → plot**.
    Una sección por respuesta, cada una en un único bloque ```json. Antes del bloque, como
    mucho una línea diciendo qué sección es. Nada después.
 3. Cada sección reutiliza **letra por letra** los nombres de las anteriores: la localidad
@@ -86,7 +86,7 @@ y el importador los resuelve al crear las entradas.
 Versión 1. Generado desde el motor el 2026-09-29.
 
 Devuelve **solo JSON válido** que cumpla este esquema. Una sección por respuesta si el
-libro es largo; el orden recomendado es: world → locations → confidants → bestiary → items → boards → quests → heroes → dialogues.
+libro es largo; el orden recomendado es: world → locations → confidants → bestiary → items → boards → quests → heroes → dialogues → plot.
 
 ## Esquema
 
@@ -94,7 +94,7 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Paquete de campaña",
-  "description": "Una campaña completa lista para importar: el mundo, sus compañeros, su bestiario, sus tableros y sus misiones.",
+  "description": "Una campaña completa lista para importar: el mundo, sus compañeros, su bestiario, sus tableros, sus misiones y su hilo.",
   "type": "object",
   "required": [
     "version",
@@ -288,6 +288,61 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
           "type": "boolean"
         }
       }
+    },
+    "sceneLine": {
+      "type": "object",
+      "required": [
+        "text"
+      ],
+      "properties": {
+        "who": {
+          "type": "string",
+          "description": "Quién lo dice: alguien de npcs o de confidants, con su nombre exacto (sale su retrato). Sin who, lo cuenta el narrador, sin retrato."
+        },
+        "mood": {
+          "type": "string",
+          "enum": [
+            "neutral",
+            "alegre",
+            "enfadado",
+            "triste"
+          ],
+          "description": "La cara del retrato."
+        },
+        "text": {
+          "type": "string",
+          "description": "De una a tres frases llanas, sin acertijos. Con {forma|forma} donde se habla a quien juega."
+        }
+      }
+    },
+    "sceneBranch": {
+      "type": "object",
+      "properties": {
+        "effects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/dialogueEffect"
+          }
+        },
+        "journal": {
+          "type": "string",
+          "description": "Lo que queda en el Diario."
+        },
+        "reply": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/sceneLine"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/sceneLine"
+              }
+            }
+          ],
+          "description": "Lo que se oye si sale así."
+        }
+      }
     }
   },
   "properties": {
@@ -318,6 +373,32 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
           "type": "string",
           "description": "La estación en la que empieza: primavera, verano, otono o invierno. Cada una dura 56 días. Sin nada, otoño."
         },
+        "levels": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20
+          },
+          "minItems": 2,
+          "maxItems": 2,
+          "description": "Para qué nivel es, desde y hasta: [1, 4]. Sale en el tablón del gremio. Sin nada, se calcula del desafío de los bichos."
+        },
+        "journey": {
+          "type": "object",
+          "description": "A cuántos días queda del gremio de Puerto Alba y cómo se llega. Sale en el tablón y se cuenta al salir. Sin nada, 5 días.",
+          "properties": {
+            "days": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 60
+            },
+            "how": {
+              "type": "string",
+              "description": "Una frase: «Subís por el camino del norte hasta un valle de montaña»."
+            }
+          }
+        },
         "factions": {
           "type": "array",
           "items": {
@@ -326,6 +407,10 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
               "name"
             ],
             "properties": {
+              "id": {
+                "type": "string",
+                "description": "Corto, en minúsculas y con guiones («los-vistani»): así la nombran el hilo y los encargos."
+              },
               "name": {
                 "type": "string"
               },
@@ -419,7 +504,7 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
           },
           "hidden": {
             "type": "boolean",
-            "description": "Si empieza escondida: no se puede ir hasta que un hito del hilo la revela."
+            "description": "Si empieza escondida: no se puede ir hasta que la revela un hito del hilo (`changes.reveal`) o un rumor que lleva a ella (`leadsTo`)."
           },
           "places": {
             "type": "array",
@@ -455,6 +540,46 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
                 "description": {
                   "type": "string",
                   "description": "Una línea, si hace falta."
+                }
+              }
+            }
+          },
+          "sights": {
+            "type": "array",
+            "description": "Lo que se puede examinar aquí (J10.2): dos o tres cosas concretas de este sitio, cada una con su tirada. Salen como «Examinar…» antes que las genéricas. Una tirada buena aquí también encuentra la pista de un hito que se busca aquí (`asks.clues`): así se esconde un secreto.",
+            "items": {
+              "type": "object",
+              "required": [
+                "text"
+              ],
+              "properties": {
+                "verbo": {
+                  "type": "string",
+                  "description": "Qué se hace, en infinitivo: «examinar», «mirar», «buscar», «leer». Sin él, «examinar»."
+                },
+                "text": {
+                  "type": "string",
+                  "description": "Sobre qué, corto y concreto: «el hueco del roble», «las huellas de la nieve»."
+                },
+                "skill": {
+                  "type": "string",
+                  "enum": [
+                    "persuasion",
+                    "deception",
+                    "intimidation",
+                    "insight",
+                    "perception",
+                    "investigation",
+                    "stealth",
+                    "athletics",
+                    "sleight",
+                    "survival"
+                  ],
+                  "description": "Con qué se tira. Sin ella, investigation."
+                },
+                "found": {
+                  "type": "string",
+                  "description": "Lo que se ve si la tirada sale bien: una o dos frases llanas."
                 }
               }
             }
@@ -1182,6 +1307,490 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
           }
         }
       }
+    },
+    "plot": {
+      "type": "object",
+      "required": [
+        "milestones"
+      ],
+      "description": "El hilo de la campaña: lo que tienes entre manos en cada momento, de la primera escena a uno de sus finales.",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "milestones": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "title",
+              "hint",
+              "scene",
+              "opens",
+              "asks"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Único en el hilo: es a lo que apuntan opens, changes y las charlas."
+              },
+              "act": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 3
+              },
+              "title": {
+                "type": "string"
+              },
+              "hint": {
+                "type": "string",
+                "description": "Lo que se ve en pantalla mientras está abierto: qué hacer y dónde, en una frase."
+              },
+              "scene": {
+                "type": "string",
+                "description": "Lo que pasa al abrirse, en dos a cuatro frases. Hace falta aunque traiga beats: es lo que lee el narrador."
+              },
+              "beats": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "text"
+                  ],
+                  "properties": {
+                    "who": {
+                      "type": "string",
+                      "description": "Quién lo dice: alguien de npcs o de confidants, con su nombre exacto (sale su retrato). Sin who, lo cuenta el narrador, sin retrato."
+                    },
+                    "mood": {
+                      "type": "string",
+                      "enum": [
+                        "neutral",
+                        "alegre",
+                        "enfadado",
+                        "triste"
+                      ],
+                      "description": "La cara del retrato."
+                    },
+                    "text": {
+                      "type": "string",
+                      "description": "De una a tres frases llanas, sin acertijos. Con {forma|forma} donde se habla a quien juega."
+                    },
+                    "options": {
+                      "type": "array",
+                      "description": "Una decisión, tras esta línea: lo que puede decir o hacer quien juega. Como las opciones de una charla, pero sin next: la escena sigue. Los efectos sin who son con quien dice la línea; si la dice el narrador, attitude y bond llevan who.",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "text"
+                        ],
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "description": "Único en la decisión."
+                          },
+                          "text": {
+                            "type": "string",
+                            "description": "Lo que dice o hace quien juega."
+                          },
+                          "if": {
+                            "anyOf": [
+                              {
+                                "$ref": "#/definitions/dialogueCondition"
+                              },
+                              {
+                                "type": "array",
+                                "items": {
+                                  "$ref": "#/definitions/dialogueCondition"
+                                }
+                              }
+                            ]
+                          },
+                          "effects": {
+                            "type": "array",
+                            "items": {
+                              "$ref": "#/definitions/dialogueEffect"
+                            }
+                          },
+                          "reply": {
+                            "anyOf": [
+                              {
+                                "$ref": "#/definitions/sceneLine"
+                              },
+                              {
+                                "type": "array",
+                                "items": {
+                                  "$ref": "#/definitions/sceneLine"
+                                }
+                              }
+                            ],
+                            "description": "Lo que se oye al elegirla: una línea o varias."
+                          },
+                          "tag": {
+                            "type": "string"
+                          },
+                          "hidden": {
+                            "type": "boolean"
+                          },
+                          "journal": {
+                            "type": "string"
+                          },
+                          "check": {
+                            "type": "object",
+                            "required": [
+                              "skill",
+                              "success",
+                              "failure"
+                            ],
+                            "properties": {
+                              "skill": {
+                                "type": "string",
+                                "enum": [
+                                  "persuasion",
+                                  "deception",
+                                  "intimidation",
+                                  "insight",
+                                  "perception",
+                                  "investigation",
+                                  "stealth",
+                                  "athletics",
+                                  "sleight",
+                                  "survival"
+                                ]
+                              },
+                              "dc": {
+                                "type": "integer",
+                                "description": "De 5 a 30; 12 es un intento normal."
+                              },
+                              "success": {
+                                "$ref": "#/definitions/sceneBranch"
+                              },
+                              "partial": {
+                                "$ref": "#/definitions/sceneBranch"
+                              },
+                              "failure": {
+                                "$ref": "#/definitions/sceneBranch"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "description": "Solo en los hitos importantes: la escena jugada, de 3 a 8 líneas, con una o dos decisiones que cambien algo (cómo os mira alguien, un rumor, un objeto, un hito). Ejemplo: [{\"text\": \"Llegas al muelle al caer la tarde.\"}, {\"who\": \"Tomás\", \"mood\": \"enfadado\", \"text\": \"¡Al ladrón!\", \"options\": [{\"id\": \"yo\", \"text\": \"¡Yo lo paro!\", \"effects\": [{\"attitude\": 1}], \"reply\": {\"who\": \"Tomás\", \"mood\": \"alegre\", \"text\": \"¡Gracias!\"}}]}]."
+              },
+              "sceneDialogue": {
+                "type": "string",
+                "description": "El id de una charla de dialogues que se abre al acabar la escena."
+              },
+              "backdrop": {
+                "type": "string",
+                "description": "Dónde pasa la escena, para el fondo: gremio, posada, herreria, tienda, templo, tablon, plaza, muelle, o el nombre de una localización."
+              },
+              "prologue": {
+                "type": "boolean",
+                "description": "Del prólogo: los primeros hitos, hasta la prueba (el último del prólogo que pide ganar un tablero). Ganar la prueba da el prólogo entero por hecho, aunque se haya saltado algo."
+              },
+              "hidden": {
+                "type": "boolean",
+                "description": "Un secreto: no se ve hasta que se cumple por casualidad."
+              },
+              "within": {
+                "type": "integer",
+                "description": "Días para cumplirlo desde que se abre. Sin él, sin plazo."
+              },
+              "late": {
+                "type": "object",
+                "description": "Lo que pasa si se pasa el plazo.",
+                "properties": {
+                  "reveal": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Localizaciones que se ponen en el mapa."
+                  },
+                  "open": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Hitos que se abren."
+                  },
+                  "standing": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "integer"
+                    },
+                    "description": "Cómo os mira cada facción, por su id: {\"los-vistani\": 1}."
+                  }
+                }
+              },
+              "backgrounds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "soldado",
+                    "criminal",
+                    "erudito",
+                    "acolito",
+                    "forastero",
+                    "artesano",
+                    "noble",
+                    "marinero",
+                    "charlatan",
+                    "ermitano"
+                  ]
+                },
+                "description": "Solo para héroes con uno de estos trasfondos. Sin nada, para todos."
+              },
+              "opens": {
+                "type": "object",
+                "required": [
+                  "kind"
+                ],
+                "description": "Qué lo abre. start: al empezar. after: al cumplirse milestone. arrive: al llegar a place. contract: al entregar el encargo id. day: el día day. clock: cuando la facción faction llena su reloj.",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "start",
+                      "arrive",
+                      "after",
+                      "contract",
+                      "day",
+                      "clock"
+                    ]
+                  },
+                  "milestone": {
+                    "type": "string"
+                  },
+                  "place": {
+                    "type": "string"
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "day": {
+                    "type": "integer"
+                  },
+                  "faction": {
+                    "type": "string"
+                  }
+                }
+              },
+              "asks": {
+                "type": "object",
+                "required": [
+                  "kind"
+                ],
+                "description": "Qué pide. arrive: llegar a place. win: ganar el tablero board (su name). defeat: derrotar a enemy. talk: hablar con npc. check: sacar una tirada de skill. contract: entregar el encargo id, o uno de faction (against: en su contra). none: nada, se cumple al abrirse. any: cualquiera de options. clues: need pistas, cada una una tirada en un sitio.",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "arrive",
+                      "win",
+                      "defeat",
+                      "talk",
+                      "check",
+                      "contract",
+                      "none",
+                      "any",
+                      "clues"
+                    ]
+                  },
+                  "place": {
+                    "type": "string"
+                  },
+                  "board": {
+                    "type": "string"
+                  },
+                  "enemy": {
+                    "type": "string"
+                  },
+                  "npc": {
+                    "type": "string"
+                  },
+                  "skill": {
+                    "type": "string",
+                    "enum": [
+                      "persuasion",
+                      "deception",
+                      "intimidation",
+                      "insight",
+                      "perception",
+                      "investigation",
+                      "stealth",
+                      "athletics",
+                      "sleight",
+                      "survival"
+                    ]
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "faction": {
+                    "type": "string"
+                  },
+                  "against": {
+                    "type": "boolean"
+                  },
+                  "need": {
+                    "type": "integer"
+                  },
+                  "options": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "kind"
+                      ],
+                      "properties": {
+                        "kind": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "clues": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "place",
+                        "skill"
+                      ],
+                      "properties": {
+                        "place": {
+                          "type": "string"
+                        },
+                        "skill": {
+                          "type": "string",
+                          "enum": [
+                            "persuasion",
+                            "deception",
+                            "intimidation",
+                            "insight",
+                            "perception",
+                            "investigation",
+                            "stealth",
+                            "athletics",
+                            "sleight",
+                            "survival"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "changes": {
+                "type": "object",
+                "description": "Lo que cambia al cumplirse.",
+                "properties": {
+                  "reveal": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Localizaciones ocultas que se ponen en el mapa."
+                  },
+                  "open": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Hitos que se abren."
+                  },
+                  "close": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Hitos que se cierran para siempre: el camino que no se tomó."
+                  },
+                  "standing": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "integer"
+                    },
+                    "description": "Cómo os mira cada facción, por su id: {\"los-vistani\": 1}."
+                  },
+                  "ending": {
+                    "type": "string",
+                    "description": "El final al que lleva, de endings."
+                  },
+                  "endingBy": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string"
+                    },
+                    "description": "El final según con quién os hayáis aliado: {\"id-de-faccion\": \"id-de-final\"}; decide la que mejor os mire."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "endings": {
+          "type": "object",
+          "description": "Los finales, por su id.",
+          "additionalProperties": {
+            "type": "object",
+            "required": [
+              "title",
+              "scene"
+            ],
+            "properties": {
+              "title": {
+                "type": "string"
+              },
+              "scene": {
+                "type": "string"
+              },
+              "epilogues": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "who": {
+                      "type": "string"
+                    },
+                    "text": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "description": "Qué fue de la gente con este final."
+              }
+            }
+          }
+        },
+        "omens": {
+          "type": "array",
+          "maxItems": 3,
+          "description": "El presagio: hasta tres frases al empezar, cada una ligada al hito que la cumple.",
+          "items": {
+            "type": "object",
+            "required": [
+              "text",
+              "milestone"
+            ],
+            "properties": {
+              "text": {
+                "type": "string"
+              },
+              "milestone": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
     }
   }
 }
@@ -1207,6 +1816,8 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
 16. Solo un tablero hecho de un mapa dibujado lleva `image` y `grid`, y su `map` mide lo mismo que la cuadrícula (lo escribe `tools/mapa-a-tablero.mjs` a partir de la imagen). Sin imagen, no escribas ninguno de los dos. Las `zones` (las salas con nombre) sí valen en cualquier tablero.
 17. En `dialogues`, el `speaker` de cada charla es alguien de `npcs` o de `confidants`, cada `next` lleva a un nudo que existe, y a todos los nudos se llega desde el de inicio. Un hito, un rumor o un objeto de una condición o de un efecto se nombra como está en el paquete (el hito y el rumor, por su id).
 18. En una charla, lo que depende de quién eres (`species`, `class`, `background`, `gender`) solo le sale a quien encaja, con su etiqueta delante: «[Enano] …». Cada tirada lleva `success` y `failure`; `partial` es opcional. Las líneas son de una a tres frases llanas, sin acertijos, con `{forma|forma}` donde se habla a quien juega.
+19. En `plot`, cada `opens.milestone`, `changes.open` y `changes.close` nombra un hito del hilo por su id, cada `asks.board` un tablero por su `name`, y cada `changes.ending` un final de `endings`. El primer hito se abre con `start`: es la mecha de la campaña.
+20. Los hitos importantes traen su escena en `beats`: de 3 a 8 líneas, cada una de alguien de `npcs` o `confidants` (sin `who`, del narrador), y una o dos decisiones que cambien algo: cómo os mira alguien, un rumor, un objeto o un hito. `scene` sigue haciendo falta: es lo que lee el narrador. `sceneDialogue` nombra una charla de `dialogues` por su id.
 
 ## Sobre los mapas
 
@@ -1563,7 +2174,7 @@ ejemplo fácil no enseña.
 | Paso | Tú | El Gem |
 | :--- | :--- | :--- |
 | 1 | Pegas el libro, un resumen largo o una idea, y dices *«Empieza por `world`»* | Devuelve `world` en un bloque JSON. Si le falta algo esencial, una pregunta y sigue |
-| 2 | *«Siguiente»*, sección a sección: `locations` → `confidants` → `bestiary` → `items` → `boards` → `quests` → `heroes` → `dialogues` | Una por respuesta, reutilizando los nombres exactos de las anteriores |
+| 2 | *«Siguiente»*, sección a sección: `locations` → `confidants` → `bestiary` → `items` → `boards` → `quests` → `heroes` → `dialogues` → `plot` | Una por respuesta, reutilizando los nombres exactos de las anteriores |
 | 3 | Lees cada una y corriges lo que no te guste **antes** de seguir: un nombre cambiado tarde arrastra a todo lo que lo usaba | Reescribe la sección entera |
 | 4 | *«Ensambla»* | El paquete completo en **un solo** bloque JSON. Es lo único que el juego acepta |
 | 5 | SillyTavern → **Partida nueva** → **Importar un libro** → pegas → **Comprobar el paquete** | — |
@@ -1609,6 +2220,32 @@ que ya está en el bloque de instrucciones; se ofrecen sueltos porque un libro n
       "type": "string",
       "description": "La estación en la que empieza: primavera, verano, otono o invierno. Cada una dura 56 días. Sin nada, otoño."
     },
+    "levels": {
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 20
+      },
+      "minItems": 2,
+      "maxItems": 2,
+      "description": "Para qué nivel es, desde y hasta: [1, 4]. Sale en el tablón del gremio. Sin nada, se calcula del desafío de los bichos."
+    },
+    "journey": {
+      "type": "object",
+      "description": "A cuántos días queda del gremio de Puerto Alba y cómo se llega. Sale en el tablón y se cuenta al salir. Sin nada, 5 días.",
+      "properties": {
+        "days": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 60
+        },
+        "how": {
+          "type": "string",
+          "description": "Una frase: «Subís por el camino del norte hasta un valle de montaña»."
+        }
+      }
+    },
     "factions": {
       "type": "array",
       "items": {
@@ -1617,6 +2254,10 @@ que ya está en el bloque de instrucciones; se ofrecen sueltos porque un libro n
           "name"
         ],
         "properties": {
+          "id": {
+            "type": "string",
+            "description": "Corto, en minúsculas y con guiones («los-vistani»): así la nombran el hilo y los encargos."
+          },
           "name": {
             "type": "string"
           },
@@ -1715,7 +2356,7 @@ que ya está en el bloque de instrucciones; se ofrecen sueltos porque un libro n
       },
       "hidden": {
         "type": "boolean",
-        "description": "Si empieza escondida: no se puede ir hasta que un hito del hilo la revela."
+        "description": "Si empieza escondida: no se puede ir hasta que la revela un hito del hilo (`changes.reveal`) o un rumor que lleva a ella (`leadsTo`)."
       },
       "places": {
         "type": "array",
@@ -1751,6 +2392,46 @@ que ya está en el bloque de instrucciones; se ofrecen sueltos porque un libro n
             "description": {
               "type": "string",
               "description": "Una línea, si hace falta."
+            }
+          }
+        }
+      },
+      "sights": {
+        "type": "array",
+        "description": "Lo que se puede examinar aquí (J10.2): dos o tres cosas concretas de este sitio, cada una con su tirada. Salen como «Examinar…» antes que las genéricas. Una tirada buena aquí también encuentra la pista de un hito que se busca aquí (`asks.clues`): así se esconde un secreto.",
+        "items": {
+          "type": "object",
+          "required": [
+            "text"
+          ],
+          "properties": {
+            "verbo": {
+              "type": "string",
+              "description": "Qué se hace, en infinitivo: «examinar», «mirar», «buscar», «leer». Sin él, «examinar»."
+            },
+            "text": {
+              "type": "string",
+              "description": "Sobre qué, corto y concreto: «el hueco del roble», «las huellas de la nieve»."
+            },
+            "skill": {
+              "type": "string",
+              "enum": [
+                "persuasion",
+                "deception",
+                "intimidation",
+                "insight",
+                "perception",
+                "investigation",
+                "stealth",
+                "athletics",
+                "sleight",
+                "survival"
+              ],
+              "description": "Con qué se tira. Sin ella, investigation."
+            },
+            "found": {
+              "type": "string",
+              "description": "Lo que se ve si la tirada sale bien: una o dos frases llanas."
             }
           }
         }
@@ -2698,6 +3379,718 @@ que ya está en el bloque de instrucciones; se ofrecen sueltos porque un libro n
                 }
               }
             }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+### `plot`
+
+```json
+{
+  "type": "object",
+  "required": [
+    "milestones"
+  ],
+  "description": "El hilo de la campaña: lo que tienes entre manos en cada momento, de la primera escena a uno de sus finales.",
+  "definitions": {
+    "dialogueCondition": {
+      "type": "object",
+      "description": "Todo lo que se escriba tiene que cumplirse. Una lista de estos objetos: basta con uno. Lo de quién eres (species, class, background, gender), el hito y said, si no se cumplen, esconden la opción; attitude (min), item y gold la enseñan apagada, diciendo qué falta.",
+      "properties": {
+        "attitude": {
+          "description": "Cómo os mira quien habla, de -3 a 3. Un número es «al menos»; o {\"min\": 1} / {\"max\": -1}.",
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "min": {
+                  "type": "integer"
+                },
+                "max": {
+                  "type": "integer"
+                }
+              }
+            }
+          ]
+        },
+        "milestone": {
+          "description": "Un hito del hilo, por su id. Solo el id es «cumplido»; con is: open (abierto), done (cumplido) o not-done.",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "object",
+              "required": [
+                "id"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "is": {
+                  "type": "string",
+                  "enum": [
+                    "open",
+                    "done",
+                    "not-done"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        "item": {
+          "type": "string",
+          "description": "Algo que lleva el grupo, por su nombre en items."
+        },
+        "gold": {
+          "type": "integer",
+          "description": "El oro que hace falta llevar."
+        },
+        "species": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "La especie, como la llama el compendio: Enano, Elfo, Humano… Sale como «[Enano] …»."
+        },
+        "class": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "La clase: Clérigo, Soldado, Pícaro… Sale como «[Clérigo] …»."
+        },
+        "background": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "El trasfondo: soldado, criminal, erudito, acolito, forastero, artesano, noble, marinero, charlatan, ermitano."
+        },
+        "gender": {
+          "type": "string",
+          "enum": [
+            "Mujer",
+            "Hombre",
+            "No binario"
+          ],
+          "description": "Cómo se presenta quien juega."
+        },
+        "said": {
+          "type": "string",
+          "description": "El id de una opción de esta charla que ya se eligió."
+        }
+      }
+    },
+    "dialogueEffect": {
+      "type": "object",
+      "minProperties": 1,
+      "description": "Una cosa por objeto. Los que hay: attitude, clue, rumor, milestone, give, take, bond, gold, time, end.",
+      "properties": {
+        "attitude": {
+          "type": "integer",
+          "description": "+1 o -1: cómo os mira. Sin who, quien habla."
+        },
+        "clue": {
+          "type": "string",
+          "description": "Algo que se aprende: queda en el Diario."
+        },
+        "rumor": {
+          "type": "string",
+          "description": "El id de un rumor de rumors: se da por oído."
+        },
+        "milestone": {
+          "type": "string",
+          "description": "El id de un hito: se cumple."
+        },
+        "give": {
+          "type": "string",
+          "description": "Un objeto que os da, por su nombre."
+        },
+        "take": {
+          "type": "string",
+          "description": "Un objeto que os quita, por su nombre."
+        },
+        "bond": {
+          "type": "integer",
+          "description": "Puntos de vínculo con un compañero. Sin who, quien habla."
+        },
+        "gold": {
+          "type": "integer",
+          "description": "Oro que os da (positivo) o que pagáis (negativo)."
+        },
+        "who": {
+          "type": "string",
+          "description": "Con attitude o bond: con quién, si no es quien habla."
+        },
+        "time": {
+          "type": "boolean",
+          "description": "Se va un rato del día."
+        },
+        "end": {
+          "type": "boolean",
+          "description": "Se acaba la charla."
+        }
+      }
+    },
+    "sceneLine": {
+      "type": "object",
+      "required": [
+        "text"
+      ],
+      "properties": {
+        "who": {
+          "type": "string",
+          "description": "Quién lo dice: alguien de npcs o de confidants, con su nombre exacto (sale su retrato). Sin who, lo cuenta el narrador, sin retrato."
+        },
+        "mood": {
+          "type": "string",
+          "enum": [
+            "neutral",
+            "alegre",
+            "enfadado",
+            "triste"
+          ],
+          "description": "La cara del retrato."
+        },
+        "text": {
+          "type": "string",
+          "description": "De una a tres frases llanas, sin acertijos. Con {forma|forma} donde se habla a quien juega."
+        }
+      }
+    },
+    "sceneBranch": {
+      "type": "object",
+      "properties": {
+        "effects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/dialogueEffect"
+          }
+        },
+        "journal": {
+          "type": "string",
+          "description": "Lo que queda en el Diario."
+        },
+        "reply": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/sceneLine"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/sceneLine"
+              }
+            }
+          ],
+          "description": "Lo que se oye si sale así."
+        }
+      }
+    }
+  },
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "milestones": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "hint",
+          "scene",
+          "opens",
+          "asks"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Único en el hilo: es a lo que apuntan opens, changes y las charlas."
+          },
+          "act": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 3
+          },
+          "title": {
+            "type": "string"
+          },
+          "hint": {
+            "type": "string",
+            "description": "Lo que se ve en pantalla mientras está abierto: qué hacer y dónde, en una frase."
+          },
+          "scene": {
+            "type": "string",
+            "description": "Lo que pasa al abrirse, en dos a cuatro frases. Hace falta aunque traiga beats: es lo que lee el narrador."
+          },
+          "beats": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "text"
+              ],
+              "properties": {
+                "who": {
+                  "type": "string",
+                  "description": "Quién lo dice: alguien de npcs o de confidants, con su nombre exacto (sale su retrato). Sin who, lo cuenta el narrador, sin retrato."
+                },
+                "mood": {
+                  "type": "string",
+                  "enum": [
+                    "neutral",
+                    "alegre",
+                    "enfadado",
+                    "triste"
+                  ],
+                  "description": "La cara del retrato."
+                },
+                "text": {
+                  "type": "string",
+                  "description": "De una a tres frases llanas, sin acertijos. Con {forma|forma} donde se habla a quien juega."
+                },
+                "options": {
+                  "type": "array",
+                  "description": "Una decisión, tras esta línea: lo que puede decir o hacer quien juega. Como las opciones de una charla, pero sin next: la escena sigue. Los efectos sin who son con quien dice la línea; si la dice el narrador, attitude y bond llevan who.",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "text"
+                    ],
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "description": "Único en la decisión."
+                      },
+                      "text": {
+                        "type": "string",
+                        "description": "Lo que dice o hace quien juega."
+                      },
+                      "if": {
+                        "anyOf": [
+                          {
+                            "$ref": "#/definitions/dialogueCondition"
+                          },
+                          {
+                            "type": "array",
+                            "items": {
+                              "$ref": "#/definitions/dialogueCondition"
+                            }
+                          }
+                        ]
+                      },
+                      "effects": {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/definitions/dialogueEffect"
+                        }
+                      },
+                      "reply": {
+                        "anyOf": [
+                          {
+                            "$ref": "#/definitions/sceneLine"
+                          },
+                          {
+                            "type": "array",
+                            "items": {
+                              "$ref": "#/definitions/sceneLine"
+                            }
+                          }
+                        ],
+                        "description": "Lo que se oye al elegirla: una línea o varias."
+                      },
+                      "tag": {
+                        "type": "string"
+                      },
+                      "hidden": {
+                        "type": "boolean"
+                      },
+                      "journal": {
+                        "type": "string"
+                      },
+                      "check": {
+                        "type": "object",
+                        "required": [
+                          "skill",
+                          "success",
+                          "failure"
+                        ],
+                        "properties": {
+                          "skill": {
+                            "type": "string",
+                            "enum": [
+                              "persuasion",
+                              "deception",
+                              "intimidation",
+                              "insight",
+                              "perception",
+                              "investigation",
+                              "stealth",
+                              "athletics",
+                              "sleight",
+                              "survival"
+                            ]
+                          },
+                          "dc": {
+                            "type": "integer",
+                            "description": "De 5 a 30; 12 es un intento normal."
+                          },
+                          "success": {
+                            "$ref": "#/definitions/sceneBranch"
+                          },
+                          "partial": {
+                            "$ref": "#/definitions/sceneBranch"
+                          },
+                          "failure": {
+                            "$ref": "#/definitions/sceneBranch"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "description": "Solo en los hitos importantes: la escena jugada, de 3 a 8 líneas, con una o dos decisiones que cambien algo (cómo os mira alguien, un rumor, un objeto, un hito). Ejemplo: [{\"text\": \"Llegas al muelle al caer la tarde.\"}, {\"who\": \"Tomás\", \"mood\": \"enfadado\", \"text\": \"¡Al ladrón!\", \"options\": [{\"id\": \"yo\", \"text\": \"¡Yo lo paro!\", \"effects\": [{\"attitude\": 1}], \"reply\": {\"who\": \"Tomás\", \"mood\": \"alegre\", \"text\": \"¡Gracias!\"}}]}]."
+          },
+          "sceneDialogue": {
+            "type": "string",
+            "description": "El id de una charla de dialogues que se abre al acabar la escena."
+          },
+          "backdrop": {
+            "type": "string",
+            "description": "Dónde pasa la escena, para el fondo: gremio, posada, herreria, tienda, templo, tablon, plaza, muelle, o el nombre de una localización."
+          },
+          "prologue": {
+            "type": "boolean",
+            "description": "Del prólogo: los primeros hitos, hasta la prueba (el último del prólogo que pide ganar un tablero). Ganar la prueba da el prólogo entero por hecho, aunque se haya saltado algo."
+          },
+          "hidden": {
+            "type": "boolean",
+            "description": "Un secreto: no se ve hasta que se cumple por casualidad."
+          },
+          "within": {
+            "type": "integer",
+            "description": "Días para cumplirlo desde que se abre. Sin él, sin plazo."
+          },
+          "late": {
+            "type": "object",
+            "description": "Lo que pasa si se pasa el plazo.",
+            "properties": {
+              "reveal": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Localizaciones que se ponen en el mapa."
+              },
+              "open": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Hitos que se abren."
+              },
+              "standing": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "integer"
+                },
+                "description": "Cómo os mira cada facción, por su id: {\"los-vistani\": 1}."
+              }
+            }
+          },
+          "backgrounds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "soldado",
+                "criminal",
+                "erudito",
+                "acolito",
+                "forastero",
+                "artesano",
+                "noble",
+                "marinero",
+                "charlatan",
+                "ermitano"
+              ]
+            },
+            "description": "Solo para héroes con uno de estos trasfondos. Sin nada, para todos."
+          },
+          "opens": {
+            "type": "object",
+            "required": [
+              "kind"
+            ],
+            "description": "Qué lo abre. start: al empezar. after: al cumplirse milestone. arrive: al llegar a place. contract: al entregar el encargo id. day: el día day. clock: cuando la facción faction llena su reloj.",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "start",
+                  "arrive",
+                  "after",
+                  "contract",
+                  "day",
+                  "clock"
+                ]
+              },
+              "milestone": {
+                "type": "string"
+              },
+              "place": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "day": {
+                "type": "integer"
+              },
+              "faction": {
+                "type": "string"
+              }
+            }
+          },
+          "asks": {
+            "type": "object",
+            "required": [
+              "kind"
+            ],
+            "description": "Qué pide. arrive: llegar a place. win: ganar el tablero board (su name). defeat: derrotar a enemy. talk: hablar con npc. check: sacar una tirada de skill. contract: entregar el encargo id, o uno de faction (against: en su contra). none: nada, se cumple al abrirse. any: cualquiera de options. clues: need pistas, cada una una tirada en un sitio.",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "arrive",
+                  "win",
+                  "defeat",
+                  "talk",
+                  "check",
+                  "contract",
+                  "none",
+                  "any",
+                  "clues"
+                ]
+              },
+              "place": {
+                "type": "string"
+              },
+              "board": {
+                "type": "string"
+              },
+              "enemy": {
+                "type": "string"
+              },
+              "npc": {
+                "type": "string"
+              },
+              "skill": {
+                "type": "string",
+                "enum": [
+                  "persuasion",
+                  "deception",
+                  "intimidation",
+                  "insight",
+                  "perception",
+                  "investigation",
+                  "stealth",
+                  "athletics",
+                  "sleight",
+                  "survival"
+                ]
+              },
+              "id": {
+                "type": "string"
+              },
+              "faction": {
+                "type": "string"
+              },
+              "against": {
+                "type": "boolean"
+              },
+              "need": {
+                "type": "integer"
+              },
+              "options": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "kind"
+                  ],
+                  "properties": {
+                    "kind": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "clues": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "place",
+                    "skill"
+                  ],
+                  "properties": {
+                    "place": {
+                      "type": "string"
+                    },
+                    "skill": {
+                      "type": "string",
+                      "enum": [
+                        "persuasion",
+                        "deception",
+                        "intimidation",
+                        "insight",
+                        "perception",
+                        "investigation",
+                        "stealth",
+                        "athletics",
+                        "sleight",
+                        "survival"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "changes": {
+            "type": "object",
+            "description": "Lo que cambia al cumplirse.",
+            "properties": {
+              "reveal": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Localizaciones ocultas que se ponen en el mapa."
+              },
+              "open": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Hitos que se abren."
+              },
+              "close": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Hitos que se cierran para siempre: el camino que no se tomó."
+              },
+              "standing": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "integer"
+                },
+                "description": "Cómo os mira cada facción, por su id: {\"los-vistani\": 1}."
+              },
+              "ending": {
+                "type": "string",
+                "description": "El final al que lleva, de endings."
+              },
+              "endingBy": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "description": "El final según con quién os hayáis aliado: {\"id-de-faccion\": \"id-de-final\"}; decide la que mejor os mire."
+              }
+            }
+          }
+        }
+      }
+    },
+    "endings": {
+      "type": "object",
+      "description": "Los finales, por su id.",
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "title",
+          "scene"
+        ],
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "scene": {
+            "type": "string"
+          },
+          "epilogues": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "who": {
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Qué fue de la gente con este final."
+          }
+        }
+      }
+    },
+    "omens": {
+      "type": "array",
+      "maxItems": 3,
+      "description": "El presagio: hasta tres frases al empezar, cada una ligada al hito que la cumple.",
+      "items": {
+        "type": "object",
+        "required": [
+          "text",
+          "milestone"
+        ],
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "milestone": {
+            "type": "string"
           }
         }
       }

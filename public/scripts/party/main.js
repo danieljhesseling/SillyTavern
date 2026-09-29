@@ -211,181 +211,51 @@ export let lastMeter = null;
 // ============================================================
 
 
-export function initPartyPanel() {
-    // Hoisted, so this works although setPartyTab is declared further down.
-    partyTabSetter = setPartyTab;
+/**
+ * @param {'party'|'world_map'|'location'|'campaign'|'board'} tab
+ */
+export function setPartyTab(tab) {
+    const worldMapRow = $('#world_map_row');
+    const locationRow = $('#world_location_maps_row');
+    const campaignRow = $('#campaign_panel_row');
+    const partyList = $('#rm_party_list');
+    const partyFixedTop = $('#partyListFixedTop');
 
-    // The campaign tab is created from here, not from index.html: that file is
-    // upstream's, and every line the fork adds to it is paid for at every merge.
-    if ($('#rm_tab_campaign').length === 0) {
-        $('<div class="right_menu_tab" id="rm_tab_campaign" data-tab="campaign" title="Calendario y vínculos">Campaña</div>')
-            .insertAfter('#rm_tab_location');
-    }
-    if ($('#campaign_panel_row').length === 0) {
-        $('<div id="campaign_panel_row" class="world-map-row width100p marginTop10 tab-panel-hidden"></div>')
-            .insertAfter('#world_location_maps_row');
-    }
+    // Remap legacy 'board' tab to 'location'
+    const normalizedTab = /** @type {'party'|'world_map'|'location'|'campaign'} */ (tab === 'board' ? 'location' : tab);
 
-    const panel = $('#rm_party_block');
-    if (!panel.length) {
-        return;
-    }
+    $('.right_menu_tab').removeClass('active');
+    $(`#rm_tab_${normalizedTab}`).addClass('active');
 
-    loadLocationMapsVisibility();
+    // show party pane and hidden others per tab
+    partyList.toggleClass('tab-panel-hidden', normalizedTab !== 'party');
+    partyFixedTop.toggleClass('tab-panel-hidden', normalizedTab !== 'party');
+    worldMapRow.toggleClass('tab-panel-hidden', normalizedTab !== 'world_map');
+    locationRow.toggleClass('tab-panel-hidden', normalizedTab !== 'location');
+    campaignRow.toggleClass('tab-panel-hidden', normalizedTab !== 'campaign');
 
-    $('#party_add_button').off('click').on('click', async () => {
-        const worldName = chat_metadata ? chat_metadata[METADATA_KEY] : null;
-        if (!worldName) {
-            toastr.warning('Esta partida no tiene mundo: empieza una campaña primero.');
-            return;
-        }
-
-        const data = /** @type {any} */ (await loadWorldInfo(worldName));
-        if (!data?.entries) {
-            toastr.warning('No se pudo leer el mundo de esta partida.');
-            return;
-        }
-
-        // Filter to "Characters" group, exclude members already in party
-        const existingNames = new Set(partyMembers.map(m => m.name.toLowerCase()));
-        const existingUids = new Set(partyMembers.filter(m => m.wiUid != null).map(m => m.wiUid));
-        const charEntries = [];
-        for (const uid of Object.keys(data.entries)) {
-            const entry = data.entries[uid];
-            const group = (entry.group || '').trim().toLowerCase();
-            const entityType = getDndEntryType(entry);
-            const isCharacterEntry = entityType === 'character' || entityType === 'npc' || group.includes('character');
-            if (!isCharacterEntry) continue;
-            // Exclude already-in-party by uid or name
-            if (existingUids.has(Number(entry.uid))) continue;
-            const entryName = getPartyEntryDisplayName(entry).toLowerCase();
-            if (existingNames.has(entryName)) continue;
-            charEntries.push(entry);
-        }
-
-        if (charEntries.length === 0) {
-            toastr.info('No queda nadie del mundo por sumar: ya están todos en el grupo.');
-            return;
-        }
-
-        // Build a picker popup
-        const selected = await showCharacterPicker(charEntries);
-        if (!selected) return;
-
-        partyMembers.push(memberFromEntry(selected, worldName));
+    if (normalizedTab === 'party') {
         renderPartyMembers();
-        savePartyState();
-    });
-
-    $(document).on('personaStateUpdated', (_, avatarId, newState) => {
-        updatePartyMemberFromPersona(avatarId, newState);
-    });
-
-    $(document).on('worldMapUpdated', () => {
+    } else if (normalizedTab === 'world_map') {
         renderWorldMapPreview();
-    });
-
-    $(document).on('worldLocationMapsUpdated', () => {
+    } else if (normalizedTab === 'location') {
         renderLocationMapsPreview();
-    });
-
-    /**
-     * @param {'party'|'world_map'|'location'|'campaign'|'board'} tab
-     */
-    function setPartyTab(tab) {
-        const worldMapRow = $('#world_map_row');
-        const locationRow = $('#world_location_maps_row');
-        const campaignRow = $('#campaign_panel_row');
-        const partyList = $('#rm_party_list');
-        const partyFixedTop = $('#partyListFixedTop');
-
-        // Remap legacy 'board' tab to 'location'
-        const normalizedTab = /** @type {'party'|'world_map'|'location'|'campaign'} */ (tab === 'board' ? 'location' : tab);
-
-        $('.right_menu_tab').removeClass('active');
-        $(`#rm_tab_${normalizedTab}`).addClass('active');
-
-        // show party pane and hidden others per tab
-        partyList.toggleClass('tab-panel-hidden', normalizedTab !== 'party');
-        partyFixedTop.toggleClass('tab-panel-hidden', normalizedTab !== 'party');
-        worldMapRow.toggleClass('tab-panel-hidden', normalizedTab !== 'world_map');
-        locationRow.toggleClass('tab-panel-hidden', normalizedTab !== 'location');
-        campaignRow.toggleClass('tab-panel-hidden', normalizedTab !== 'campaign');
-
-        if (normalizedTab === 'party') {
-            renderPartyMembers();
-        } else if (normalizedTab === 'world_map') {
-            renderWorldMapPreview();
-        } else if (normalizedTab === 'location') {
-            renderLocationMapsPreview();
-        } else if (normalizedTab === 'campaign') {
-            renderCampaignTab();
-        }
-
-        try {
-            window.localStorage.setItem('rm_PinAndTabs_selectedTab', normalizedTab);
-        } catch (e) {
-            console.warn('Unable to store selected tab', e);
-        }
+    } else if (normalizedTab === 'campaign') {
+        renderCampaignTab();
     }
 
-    $('#rm_tab_campaign').on('click', () => setPartyTab('campaign'));
-    $('#rm_tab_party').on('click', () => setPartyTab('party'));
-    $('#rm_tab_world_map').on('click', () => setPartyTab('world_map'));
-    $('#rm_tab_location').on('click', () => setPartyTab('location'));
-
-    $(document).on('click', '.party-remove-member', null, () => {
-        // handled by individual buttons
-    });
-
-    // Read the party from the chat that is already open; CHAT_CHANGED keeps it
-    // in sync from here on. loadPartyForChat() renders on its own.
-    loadPartyForChat();
-    renderWorldMapPreview();
-    renderLocationMapsPreview();
-
-    // Restore per-session party when chat changes
-    // El juego se abre por su pantalla de titulo. Se espera a que la aplicacion termine de
-    // cargar — antes de APP_READY el chat todavia se esta montando, y adoptarlo a medias
-    // deja la pantalla en blanco.
-    eventSource.on(event_types.APP_READY, () => {
-        // Un respiro para que la pantalla de bienvenida acabe de dibujar sus campanas: es
-        // lo que el menu cuenta en "Cargar partida".
-        setTimeout(() => autostartGameShell(), 400);
-    });
-
-    eventSource.on(event_types.CHAT_CHANGED, () => {
-        loadPartyForChat();
-        // Idea 195: la letra del narrador es de la campaña.
-        applyNarratorFont();
-        // Idea 144: en otra partida no se está hablando con nadie.
-        setTalkingTo('');
-        // Y volver a dibujar donde estabas. `loadPartyForChat` restaura la localidad y el
-        // tablero en memoria, pero nadie repintaba el panel: al cargar una partida veias
-        // el selector de "¿donde estas?" y habia que volver a entrar a mano en el sitio
-        // donde ya estabas. Si el mundo aun no ha terminado de cargar, el evento
-        // `worldLocationMapsUpdated` vuelve a pasar por aqui.
-        renderWorldMapPreview();
-        renderLocationMapsPreview();
-        // Cerrar la partida ya no apaga el Modo Juego: sin campana abierta, la escena
-        // de titulo ensena la bienvenida con las campanas, que es donde hay que estar.
-        if (isShellOpen()) refreshGameShell();
-
-        // La semilla es de la partida, no de la sesion: abrir una campana con semilla
-        // fijada tiene que volver a fijarla, o el "mismo" combate saldria distinto.
-        const seed = chat_metadata?.[SEED_KEY];
-        setRandomSource(seed ? createSeededRandom(String(seed)) : null);
-        // The campaign may play by its own rules; see applyCampaignRuleset.
-        applyCampaignRuleset(String(chat_metadata?.[METADATA_KEY] || ''))
-            .catch(error => console.error('[party] campaign ruleset failed', error));
-    });
-
-    /** @type {'party'|'world_map'|'location'|'campaign'} */
-    const initiallySelected = /** @type {'party'|'world_map'|'location'|'campaign'} */ (window.localStorage.getItem('rm_PinAndTabs_selectedTab') || 'party');
-    if (typeof setPartyTab === 'function') {
-        setPartyTab(initiallySelected);
+    try {
+        window.localStorage.setItem('rm_PinAndTabs_selectedTab', normalizedTab);
+    } catch (e) {
+        console.warn('Unable to store selected tab', e);
     }
+}
 
+/**
+ * Los comandos del grupo (`/go`, `/fight`, `/tirada`...), con los proveedores de nombres que
+ * los autocompletan. En el orden de siempre: `initPartyPanel` los registra al montar el panel.
+ */
+export function registerPartyCommands() {
     // ================================================================
     //  Slash commands: /go, /enter, /leave
     // ================================================================
@@ -1539,7 +1409,14 @@ export function initPartyPanel() {
             return mode;
         },
     }));
+}
 
+/**
+ * Lo que tiene que ver con el modelo: lo que cuesta cada turno, lo que el mundo sabe del grupo
+ * justo antes de montar el prompt, y las cinco herramientas que puede llamar. El orden de las
+ * herramientas es el del prompt.
+ */
+export function registerModelTools() {
     // ================================================================
     //  What every turn costs
     // ================================================================
@@ -1692,7 +1569,14 @@ export function initPartyPanel() {
         shouldRegister: () => Boolean(chat_metadata?.[METADATA_KEY]),
         stealth: true,
     });
+}
 
+/**
+ * Lo que el panel escucha del chat mientras se juega: plegarlo, el diario de sesión, el hilo,
+ * la caja que lee el motor, lo que se escribe, lo que contesta el modelo y cómo se pinta. Va
+ * después del primer `CHAT_CHANGED` (el de `loadPartyForChat`), que se registra antes.
+ */
+export function registerChatEvents() {
     // U4 del pegamento (DU3): el chat se pliega solo, mire quien mire lo que lo cambie.
     const chatRoot = document.getElementById('chat');
     if (chatRoot) {
@@ -1918,4 +1802,145 @@ export function initPartyPanel() {
             else if (reason) toastr.info(reason, 'No se puede viajar');
         }
     });
+}
+
+export function initPartyPanel() {
+    // Hoisted, so this works although setPartyTab is declared further down.
+    partyTabSetter = setPartyTab;
+
+    // The campaign tab is created from here, not from index.html: that file is
+    // upstream's, and every line the fork adds to it is paid for at every merge.
+    if ($('#rm_tab_campaign').length === 0) {
+        $('<div class="right_menu_tab" id="rm_tab_campaign" data-tab="campaign" title="Calendario y vínculos">Campaña</div>')
+            .insertAfter('#rm_tab_location');
+    }
+    if ($('#campaign_panel_row').length === 0) {
+        $('<div id="campaign_panel_row" class="world-map-row width100p marginTop10 tab-panel-hidden"></div>')
+            .insertAfter('#world_location_maps_row');
+    }
+
+    const panel = $('#rm_party_block');
+    if (!panel.length) {
+        return;
+    }
+
+    loadLocationMapsVisibility();
+
+    $('#party_add_button').off('click').on('click', async () => {
+        const worldName = chat_metadata ? chat_metadata[METADATA_KEY] : null;
+        if (!worldName) {
+            toastr.warning('Esta partida no tiene mundo: empieza una campaña primero.');
+            return;
+        }
+
+        const data = /** @type {any} */ (await loadWorldInfo(worldName));
+        if (!data?.entries) {
+            toastr.warning('No se pudo leer el mundo de esta partida.');
+            return;
+        }
+
+        // Filter to "Characters" group, exclude members already in party
+        const existingNames = new Set(partyMembers.map(m => m.name.toLowerCase()));
+        const existingUids = new Set(partyMembers.filter(m => m.wiUid != null).map(m => m.wiUid));
+        const charEntries = [];
+        for (const uid of Object.keys(data.entries)) {
+            const entry = data.entries[uid];
+            const group = (entry.group || '').trim().toLowerCase();
+            const entityType = getDndEntryType(entry);
+            const isCharacterEntry = entityType === 'character' || entityType === 'npc' || group.includes('character');
+            if (!isCharacterEntry) continue;
+            // Exclude already-in-party by uid or name
+            if (existingUids.has(Number(entry.uid))) continue;
+            const entryName = getPartyEntryDisplayName(entry).toLowerCase();
+            if (existingNames.has(entryName)) continue;
+            charEntries.push(entry);
+        }
+
+        if (charEntries.length === 0) {
+            toastr.info('No queda nadie del mundo por sumar: ya están todos en el grupo.');
+            return;
+        }
+
+        // Build a picker popup
+        const selected = await showCharacterPicker(charEntries);
+        if (!selected) return;
+
+        partyMembers.push(memberFromEntry(selected, worldName));
+        renderPartyMembers();
+        savePartyState();
+    });
+
+    $(document).on('personaStateUpdated', (_, avatarId, newState) => {
+        updatePartyMemberFromPersona(avatarId, newState);
+    });
+
+    $(document).on('worldMapUpdated', () => {
+        renderWorldMapPreview();
+    });
+
+    $(document).on('worldLocationMapsUpdated', () => {
+        renderLocationMapsPreview();
+    });
+
+
+    $('#rm_tab_campaign').on('click', () => setPartyTab('campaign'));
+    $('#rm_tab_party').on('click', () => setPartyTab('party'));
+    $('#rm_tab_world_map').on('click', () => setPartyTab('world_map'));
+    $('#rm_tab_location').on('click', () => setPartyTab('location'));
+
+    $(document).on('click', '.party-remove-member', null, () => {
+        // handled by individual buttons
+    });
+
+    // Read the party from the chat that is already open; CHAT_CHANGED keeps it
+    // in sync from here on. loadPartyForChat() renders on its own.
+    loadPartyForChat();
+    renderWorldMapPreview();
+    renderLocationMapsPreview();
+
+    // Restore per-session party when chat changes
+    // El juego se abre por su pantalla de titulo. Se espera a que la aplicacion termine de
+    // cargar — antes de APP_READY el chat todavia se esta montando, y adoptarlo a medias
+    // deja la pantalla en blanco.
+    eventSource.on(event_types.APP_READY, () => {
+        // Un respiro para que la pantalla de bienvenida acabe de dibujar sus campanas: es
+        // lo que el menu cuenta en "Cargar partida".
+        setTimeout(() => autostartGameShell(), 400);
+    });
+
+    eventSource.on(event_types.CHAT_CHANGED, () => {
+        loadPartyForChat();
+        // Idea 195: la letra del narrador es de la campaña.
+        applyNarratorFont();
+        // Idea 144: en otra partida no se está hablando con nadie.
+        setTalkingTo('');
+        // Y volver a dibujar donde estabas. `loadPartyForChat` restaura la localidad y el
+        // tablero en memoria, pero nadie repintaba el panel: al cargar una partida veias
+        // el selector de "¿donde estas?" y habia que volver a entrar a mano en el sitio
+        // donde ya estabas. Si el mundo aun no ha terminado de cargar, el evento
+        // `worldLocationMapsUpdated` vuelve a pasar por aqui.
+        renderWorldMapPreview();
+        renderLocationMapsPreview();
+        // Cerrar la partida ya no apaga el Modo Juego: sin campana abierta, la escena
+        // de titulo ensena la bienvenida con las campanas, que es donde hay que estar.
+        if (isShellOpen()) refreshGameShell();
+
+        // La semilla es de la partida, no de la sesion: abrir una campana con semilla
+        // fijada tiene que volver a fijarla, o el "mismo" combate saldria distinto.
+        const seed = chat_metadata?.[SEED_KEY];
+        setRandomSource(seed ? createSeededRandom(String(seed)) : null);
+        // The campaign may play by its own rules; see applyCampaignRuleset.
+        applyCampaignRuleset(String(chat_metadata?.[METADATA_KEY] || ''))
+            .catch(error => console.error('[party] campaign ruleset failed', error));
+    });
+
+    /** @type {'party'|'world_map'|'location'|'campaign'} */
+    const initiallySelected = /** @type {'party'|'world_map'|'location'|'campaign'} */ (window.localStorage.getItem('rm_PinAndTabs_selectedTab') || 'party');
+    if (typeof setPartyTab === 'function') {
+        setPartyTab(initiallySelected);
+    }
+
+    registerPartyCommands();
+    registerModelTools();
+    registerChatEvents();
 }

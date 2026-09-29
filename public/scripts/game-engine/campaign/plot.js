@@ -30,6 +30,9 @@
  * Y un **prólogo** (J2.1): los hitos marcados `prologue` hasta la prueba, su último tablero.
  * Ganar la prueba lo da entero por hecho, se haya jugado o no (`prologueOf`).
  *
+ * Y **escenas** (J9.2): un hito puede traer la suya escrita (`beats`, `sceneDialogue`), que se
+ * juega en su ventana en vez de contarse. Aquí solo se guarda; la lee `plot-scenes.js`.
+ *
  * El hilo va escrito en el paquete del mundo. Un mundo que no trae uno recibe el de su
  * facción más peligrosa (`plotFromFaction`): su meta es lo que pasa si nadie la para, y su
  * reloj la cuenta atrás. Así la partida empieza con un problema aunque nadie lo escribiera.
@@ -71,6 +74,10 @@ const SIMPLE_ASKS = ['arrive', 'win', 'defeat', 'talk', 'check', 'contract'];
  * @property {string[]} [backgrounds] Idea 105: solo se abre si el héroe tiene uno de estos trasfondos.
  * @property {boolean} [prologue] J2.1: es del prólogo. El último que pide ganar un tablero es la
  *   prueba, y ganarla da el prólogo entero por hecho (`prologueOf`).
+ * @property {any[]} [beats] J9.2: la escena escrita, línea a línea, con sus decisiones
+ *   (`plot-scenes.js`). Sin ella, se cuenta `scene`.
+ * @property {string} [sceneDialogue] J9.2: la charla del paquete que se abre al acabar la escena.
+ * @property {string} [backdrop] J9.2: dónde pasa la escena, para el fondo.
  */
 
 /**
@@ -174,6 +181,10 @@ function readMilestone(raw, index) {
         late: { reveal: list(late.reveal), open: list(late.open), standing: standingOf(late.standing) },
         // J2.1: solo si lo es, para que un hilo de antes se lea igual que siempre.
         ...(raw.prologue ? { prologue: true } : {}),
+        // J9.2: la escena jugada, si la trae. Se guarda tal cual; la lee `plot-scenes.js`.
+        ...(Array.isArray(raw.beats) && raw.beats.length > 0 ? { beats: raw.beats } : {}),
+        ...(text(raw.sceneDialogue) ? { sceneDialogue: text(raw.sceneDialogue) } : {}),
+        ...(text(raw.backdrop) ? { backdrop: text(raw.backdrop) } : {}),
     };
 }
 

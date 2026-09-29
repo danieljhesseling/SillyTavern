@@ -147,6 +147,11 @@ const RESOLVED = {
         /^\.dialogues\[\d+\]\.nodes\[\d+\]\.options\[\d+\]\.(text|tag|journal)$/,
         /^\.dialogues\[\d+\]\.nodes\[\d+\]\.options\[\d+\]\.check\.(success|partial|failure)\.journal$/,
         /^\.dialogues\[\d+\]\.nodes\[\d+\](\.options\[\d+\](\.check\.(success|partial|failure))?)?\.effects\[\d+\]\.clue$/,
+        // J9.2: las escenas del hilo (`plot-scenes.js` las resuelve con tu héroe y tu grupo).
+        /^\.plot\.milestones\[\d+\]\.beats\[\d+\](\.text)?$/,
+        /^\.plot\.milestones\[\d+\]\.beats\[\d+\]\.options\[\d+\]\.(text|tag|journal)$/,
+        /^\.plot\.milestones\[\d+\]\.beats\[\d+\]\.options\[\d+\](\.check\.(success|partial|failure))?\.reply(\[\d+\])?(\.text)?$/,
+        /^\.plot\.milestones\[\d+\]\.beats\[\d+\]\.options\[\d+\](\.check\.(success|partial|failure))?\.(journal|effects\[\d+\]\.clue)$/,
     ],
 };
 

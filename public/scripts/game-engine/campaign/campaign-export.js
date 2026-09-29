@@ -235,6 +235,8 @@ export function buildPackFromWorld({ worldName, metadata, entries, synopsis = ''
         if (text(location?.description)) place.description = text(location.description);
         if (text(location?.region)) place.region = text(location.region);
         if (text(location?.controllingFaction)) place.factionName = text(location.controllingFaction);
+        // J10.2: lo que se puede examinar aquí vuelve al paquete tal y como entró.
+        if (Array.isArray(location?.sights) && location.sights.length > 0) place.sights = location.sights;
         if (place.name) locations.push(place);
 
         for (const board of Array.isArray(location?.boards) ? location.boards : []) {

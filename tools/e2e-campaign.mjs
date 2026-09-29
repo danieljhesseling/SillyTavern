@@ -8970,9 +8970,9 @@ try {
         hidden: (window.SillyTavern.getContext().chat || []).filter((/** @type {any} */ m) => m.is_system).length,
     }));
     // El cierre lo cuenta el motor con una de sus frases de `acto` (frases.json): «Se cierra el
-    // acto 1…» o «Se pasa una página: el acto 1 acaba con…». Mirar solo la primera fallaba
-    // cuando salía la otra.
-    const closed59 = await said59('📜 \\[HILO\\] (Se cierra el acto 1\\b|.*\\bel acto 1 acaba\\b)');
+    // acto 1…», «Se pasa una página: el acto 1 acaba con…», «Termina el acto 1…» (J13.4: hay
+    // ocho). Todas nombran el acto: se mira eso, no una frase en concreto.
+    const closed59 = await said59('📜 \\[HILO\\] .*\\bacto 1\\b');
     check('al cerrarse un acto, se resume en la memoria y sus mensajes salen del prompt (143)',
         Boolean(closed59) && act59.summary.includes(1) && act59.hidden > 0, JSON.stringify({ ...act59, closed59: closed59.slice(0, 100) }));
 

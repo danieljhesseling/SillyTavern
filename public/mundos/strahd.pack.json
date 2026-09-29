@@ -141,6 +141,26 @@
       "type": "village",
       "description": "El asentamiento más oprimido del valle, cediendo a la desesperanza bajo la sombra del Castillo Ravenloft.",
       "region": "El Valle Oriental",
+      "sights": [
+        {
+          "verbo": "mirar",
+          "text": "las ventanas tapiadas de las casas",
+          "skill": "perception",
+          "found": "Detrás de cada tabla hay ristras de ajos y una cruz de palo. Aquí nadie abre de noche desde hace años."
+        },
+        {
+          "verbo": "examinar",
+          "text": "las contraventanas de la mansión del burgomaestre",
+          "skill": "investigation",
+          "found": "Tienen arañazos hondos, de garras, a la altura de un hombre. Algo ha intentado entrar muchas noches seguidas."
+        },
+        {
+          "verbo": "examinar",
+          "text": "el suelo de la iglesia",
+          "skill": "investigation",
+          "found": "Entre dos losas sale un aire frío y, a ratos, un gemido. Hay alguien encerrado debajo."
+        }
+      ],
       "biome": "bosque",
       "services": [
         "posada",
@@ -181,6 +201,20 @@
       "type": "dungeon",
       "description": "La imponente y letal fortaleza del vampiro Strahd von Zarovich, construida sobre un enorme pilar de roca.",
       "region": "El Valle Oriental",
+      "sights": [
+        {
+          "verbo": "mirar",
+          "text": "el puente sobre el abismo",
+          "skill": "perception",
+          "found": "Las tablas crujen y faltan algunas. Abajo solo hay niebla, y desde la niebla sube el ruido de una cascada."
+        },
+        {
+          "verbo": "examinar",
+          "text": "los retratos del vestíbulo",
+          "skill": "investigation",
+          "found": "Todos son del mismo hombre, pintados en siglos distintos. En ninguno ha envejecido."
+        }
+      ],
       "biome": "montaña",
       "services": [],
       "routes": [
@@ -197,6 +231,20 @@
       "description": "Un campamento colorido y ruidoso a orillas de un lago, hogar de la enigmática Madam Eva.",
       "region": "Río Ivlis",
       "factionName": "Los Vistani",
+      "sights": [
+        {
+          "verbo": "mirar",
+          "text": "los carros pintados",
+          "skill": "perception",
+          "found": "Uno tiene candado y huele a vino caro. Los vistani de aquí comen mejor que nadie en el valle."
+        },
+        {
+          "verbo": "mirar",
+          "text": "cómo miran los vistani la tienda de la adivina",
+          "skill": "insight",
+          "found": "Nadie entra sin que Madam Eva lo llame. Los suyos le tienen más miedo que cariño."
+        }
+      ],
       "biome": "bosque",
       "services": [
         "tienda"
@@ -209,6 +257,10 @@
         {
           "to": "Aldea de Barovia",
           "days": 1
+        },
+        {
+          "to": "La Cascada del Tser",
+          "days": 1
         }
       ]
     },
@@ -217,6 +269,26 @@
       "type": "city",
       "description": "Una ciudad amurallada gobernada por un burgomaestre obsesionado con la idea de que los festivales alejan a los monstruos.",
       "region": "El Valle Central",
+      "sights": [
+        {
+          "verbo": "leer",
+          "text": "el cartel de la fiesta de esta semana",
+          "skill": "investigation",
+          "found": "El barón anuncia otra fiesta obligatoria. Abajo, en letra pequeña: «Quien no esté contento será castigado»."
+        },
+        {
+          "verbo": "mirar",
+          "text": "el desván de la casa del barón",
+          "skill": "perception",
+          "found": "De noche sale por la ventana una luz morada, y a veces pasa por delante una sombra con capa."
+        },
+        {
+          "verbo": "examinar",
+          "text": "la puerta del taller del ataudero",
+          "skill": "investigation",
+          "found": "Está cerrada por dentro, pero hay tierra fresca en el umbral. Alguien mete y saca cajas pesadas de noche."
+        }
+      ],
       "biome": "urbano",
       "services": [
         "posada",
@@ -268,6 +340,10 @@
         {
           "to": "Campamento del Estanque Tser",
           "days": 1
+        },
+        {
+          "to": "El Nido de la Pluma",
+          "days": 1
         }
       ]
     },
@@ -276,6 +352,20 @@
       "type": "ruins",
       "description": "Un molino de viento decrépito que huele ligeramente a repostería y desesperación.",
       "region": "El Valle Central",
+      "sights": [
+        {
+          "verbo": "examinar",
+          "text": "la harina del molino",
+          "skill": "investigation",
+          "found": "No es harina de trigo: es gris y tiene trocitos duros. Mejor no preguntar de qué está hecha."
+        },
+        {
+          "verbo": "mirar",
+          "text": "las aspas del molino",
+          "skill": "perception",
+          "found": "Giran aunque no sople el viento. En el piso de arriba llora un niño."
+        }
+      ],
       "biome": "bosque",
       "services": [],
       "routes": [
@@ -291,6 +381,20 @@
       "description": "La mansión en ruinas de una antigua orden de caballeros que fracasó en su cruzada contra Strahd.",
       "region": "El Valle Central",
       "factionName": "La Orden del Dragón de Plata",
+      "sights": [
+        {
+          "verbo": "examinar",
+          "text": "la estatua del dragón del patio",
+          "skill": "investigation",
+          "found": "Es un dragón de plata con una grieta en el pecho. A sus pies hay flores secas que alguien dejó no hace mucho."
+        },
+        {
+          "verbo": "mirar",
+          "text": "el faro de lo alto de la torre",
+          "skill": "perception",
+          "found": "Está apagado, con la leña preparada y sin encender, como si esperara algo."
+        }
+      ],
       "biome": "montaña",
       "services": [],
       "routes": [
@@ -318,6 +422,20 @@
       "type": "outpost",
       "description": "El único viñedo funcional de Barovia, asediado por criaturas del bosque y cultistas.",
       "region": "Las Colinas Occidentales",
+      "sights": [
+        {
+          "verbo": "examinar",
+          "text": "las cepas del viñedo",
+          "skill": "survival",
+          "found": "Las viñas están enfermas: hojas negras y uvas secas. La tierra ya no da como antes."
+        },
+        {
+          "verbo": "mirar",
+          "text": "los cuervos del tejado",
+          "skill": "perception",
+          "found": "Hay muchos más de lo normal y no quitan ojo del camino. Cuando alguien se acerca, uno sale volando hacia Vallaki."
+        }
+      ],
       "biome": "rural",
       "services": [
         "tienda"
@@ -347,6 +465,20 @@
       "type": "village",
       "description": "Un asentamiento fortificado construido alrededor de la Abadía de Santa Markovia, aislado en los límites de la niebla.",
       "region": "Las Colinas Occidentales",
+      "sights": [
+        {
+          "verbo": "mirar",
+          "text": "la abadía desde la muralla",
+          "skill": "perception",
+          "found": "Arriba, en la abadía, alguien grita y otro se ríe. La campana suena sin que sea hora de nada."
+        },
+        {
+          "verbo": "examinar",
+          "text": "el estanque del santuario",
+          "skill": "investigation",
+          "found": "El agua no se hiela aunque haga un frío que parte las piedras. Está tibia, como en una mañana de verano."
+        }
+      ],
       "biome": "montaña",
       "services": [
         "posada",
@@ -394,6 +526,19 @@
       "region": "Lago Baratok",
       "biome": "bosque",
       "description": "Una torre vieja en un islote del lago Baratok, unida a la orilla por un camino de tierra. La levantó un mago muerto hace siglos y la puerta de hierro no tiene pomo.",
+      "sights": [
+        {
+          "verbo": "examinar",
+          "text": "la puerta de hierro sin pomo",
+          "skill": "investigation"
+        },
+        {
+          "verbo": "buscar",
+          "text": "huellas en el camino de tierra",
+          "skill": "survival",
+          "found": "Hay muchas huellas de lobo. Y otras de botas pequeñas y ligeras que llegan hasta el pie de la torre y no vuelven."
+        }
+      ],
       "routes": [
         {
           "to": "Argynvostholt",
@@ -417,6 +562,20 @@
       "biome": "cueva",
       "factionName": "Los Hijos de la Madre Noche",
       "description": "Unas cuevas sobre el lago, con la entrada tallada como la boca de un lobo. Dentro huele a sangre y a humo, y se oyen niños.",
+      "sights": [
+        {
+          "verbo": "examinar",
+          "text": "la boca de lobo tallada en la entrada",
+          "skill": "investigation",
+          "found": "En la piedra hay roces de cuerda y arañazos de uñas pequeñas. Por aquí han metido a niños a rastras."
+        },
+        {
+          "verbo": "mirar",
+          "text": "el altar del fondo de la cueva",
+          "skill": "perception",
+          "found": "Es una mujer de piedra con cabeza de lobo, rodeada de ofrendas: monedas, huesos y juguetes."
+        }
+      ],
       "routes": [
         {
           "to": "Torre de Van Richten",
@@ -435,6 +594,20 @@
       "region": "Río Luna",
       "biome": "bosque",
       "description": "Un pueblo que el río ahogó hace años. Casas hundidas en el barro, nubes de moscas y, en medio, una choza sobre un tocón enorme con raíces como patas.",
+      "sights": [
+        {
+          "verbo": "mirar",
+          "text": "la choza sobre el tocón",
+          "skill": "perception",
+          "found": "Las raíces del tocón se mueven despacio, como patas que se desperezan. La choza no está quieta."
+        },
+        {
+          "verbo": "examinar",
+          "text": "los espantapájaros del pantano",
+          "skill": "investigation",
+          "found": "Están rellenos de paja y de cuervos muertos, y en vez de manos llevan cuchillos cosidos."
+        }
+      ],
       "routes": [
         {
           "to": "Bodega El Mago de los Vinos",
@@ -453,6 +626,20 @@
       "region": "Borde de la niebla",
       "biome": "montaña",
       "description": "Una colina de tumbas antiguas en el borde del valle. Arriba, dentro de un círculo de piedras negras, los druidas han levantado un muñeco de ramas enorme que se parece al conde.",
+      "sights": [
+        {
+          "verbo": "mirar",
+          "text": "el muñeco de ramas de la cima",
+          "skill": "perception",
+          "found": "Es enorme y tiene la cara del conde. En el pecho le han dejado un hueco del tamaño de una piña."
+        },
+        {
+          "verbo": "examinar",
+          "text": "las piedras negras del círculo",
+          "skill": "investigation",
+          "found": "Están llenas de rayas nuevas: los druidas cuentan los días que faltan para algo. Quedan pocos."
+        }
+      ],
       "routes": [
         {
           "to": "Bodega El Mago de los Vinos",
@@ -460,6 +647,62 @@
         },
         {
           "to": "Aldea de Krezk",
+          "days": 1
+        }
+      ]
+    },
+    {
+      "name": "La Cascada del Tser",
+      "type": "wilderness",
+      "hidden": true,
+      "region": "Río Ivlis",
+      "biome": "bosque",
+      "description": "Un salto de agua helada entre rocas negras, río abajo del estanque de los vistani. Detrás de la cortina de agua hay una cueva seca con restos de fuego.",
+      "sights": [
+        {
+          "verbo": "examinar",
+          "text": "la cueva de detrás del agua",
+          "skill": "investigation",
+          "found": "Hay un catre de hojas, libros hinchados por la humedad y una varita partida en dos. Alguien vive aquí desde hace tiempo."
+        },
+        {
+          "verbo": "mirar",
+          "text": "las rocas del fondo del salto",
+          "skill": "perception",
+          "found": "Entre las rocas hay jirones de tela buena, de túnica de mago, enganchados hace mucho."
+        }
+      ],
+      "routes": [
+        {
+          "to": "Campamento del Estanque Tser",
+          "days": 1
+        }
+      ]
+    },
+    {
+      "name": "El Nido de la Pluma",
+      "type": "ruins",
+      "hidden": true,
+      "region": "El Valle Central",
+      "biome": "bosque",
+      "description": "Un campanario solo en mitad del bosque, lo único que queda de una aldea que ya no existe. Arriba anidan cientos de cuervos, y de vez en cuando se oye hablar a alguien.",
+      "sights": [
+        {
+          "verbo": "mirar",
+          "text": "los cuervos del campanario",
+          "skill": "perception",
+          "found": "No graznan cuando entras: te miran. Uno baja a la barandilla, como si esperara que dijeras algo."
+        },
+        {
+          "verbo": "examinar",
+          "text": "la campana rajada",
+          "skill": "investigation",
+          "found": "Por dentro tiene grabados nombres de familias de Vallaki y de Krezk, con una pluma al lado de cada uno."
+        }
+      ],
+      "routes": [
+        {
+          "to": "Ciudad de Vallaki",
           "days": 1
         }
       ]
@@ -1208,6 +1451,17 @@
       "rarity": "Common",
       "weight": 0.5,
       "description": "Una muñeca con una sonrisa rara y un vestido de saco. En la etiqueta pone: «Si no es divertido, no es Blinsky»."
+    },
+    {
+      "name": "Estuche de repuesto de Van Richten",
+      "type": "gear",
+      "rarity": "Uncommon",
+      "weight": 2,
+      "description": "Un estuche de cuero escondido bajo el suelo de la torre: tres estacas de fresno, un mazo, dos frascos de agua bendita y un espejo de plata.",
+      "boundTo": {
+        "kind": "milestone",
+        "id": "la-puerta-sin-pomo"
+      }
     }
   ],
   "boards": [
@@ -2808,6 +3062,50 @@
       "secret": "La habitación de la torre se alcanza por un ascensor que llena la cabina de gas de dormir.",
       "voice": "Se ríe solo. Cuenta chistes malos en el peor momento.",
       "service": ""
+    },
+    {
+      "id": "nikolai-barquero",
+      "name": "Nikolai",
+      "trade": "Barquero del lago Baratok",
+      "where": "Torre de Van Richten",
+      "wants": "Que le paguen lo que le prometió el viejo de la torre antes de irse.",
+      "knows": "Que el viejo de la torre se marchó hace un mes en un carro de feria, y que desde entonces los lobos rondan el islote.",
+      "secret": "Vio a una mujer vistani entrar en la torre por una ventana alta, sin tocar la puerta. No se lo ha contado a nadie.",
+      "voice": "Masculla entre dientes y escupe al agua antes de cada frase.",
+      "service": ""
+    },
+    {
+      "id": "gavril-druida",
+      "name": "Gavril",
+      "trade": "Druida joven",
+      "where": "Colina Yester",
+      "wants": "Irse del círculo sin que los mayores le vean: ya no cree que el conde mande en la lluvia.",
+      "knows": "Qué noche piensan despertar al muñeco de ramas, y que para eso necesitan meterle la gema verde en el pecho.",
+      "secret": "Fue él quien sacó la gema de la bodega. Se la dio a los mayores y desde entonces no duerme.",
+      "voice": "Habla en susurros y no deja de mirar las piedras negras.",
+      "service": ""
+    },
+    {
+      "id": "ermitano-cascada",
+      "name": "El ermitaño de la cascada",
+      "trade": "Mago que ha perdido la memoria",
+      "where": "La Cascada del Tser",
+      "wants": "Recordar su nombre. Lo tiene en la punta de la lengua desde hace un año.",
+      "knows": "Cómo es el castillo por dentro: estuvo allí y peleó con el conde, aunque no recuerda cómo acabó.",
+      "secret": "Recuerda mucho más de lo que dice. Se hace el loco para que los murciélagos del conde dejen de buscarle.",
+      "voice": "Habla solo y a trozos, y de pronto suelta algo muy sensato.",
+      "service": ""
+    },
+    {
+      "id": "dragomir-nido",
+      "name": "Dragomir",
+      "trade": "Guardián del nido de los cuervos",
+      "where": "El Nido de la Pluma",
+      "wants": "Que alguien lleve noticias del castillo a la bodega sin que le sigan los murciélagos.",
+      "knows": "Qué caminos vigilan los murciélagos del conde y a qué horas.",
+      "secret": "La primera gema de la bodega la perdió él: se la cambió a la vieja del molino por un pastel que le hizo soñar con su mujer muerta.",
+      "voice": "Habla poco y con la cabeza ladeada, como un pájaro.",
+      "service": ""
     }
   ],
   "contracts": [
@@ -3160,7 +3458,7 @@
       "where": "Campamento del Estanque Tser",
       "text": "Hace un año vino un mago a echar al conde. Pelearon en el castillo y el conde lo tiró por la cascada. Nadie encontró el cuerpo.",
       "truth": "si",
-      "leadsTo": ""
+      "leadsTo": "La Cascada del Tser"
     },
     {
       "id": "r-las-pociones-de-la-niebla",
@@ -3185,6 +3483,14 @@
       "text": "Mi hija lleva un día sin aparecer. Alguien la vio cerca del lago de Vallaki, con un pescador borracho.",
       "truth": "si",
       "leadsTo": "Ciudad de Vallaki"
+    },
+    {
+      "id": "r-el-nido-de-la-pluma",
+      "by": "Urwin Martikov",
+      "where": "",
+      "text": "Si algún día necesitáis ayuda contra el conde, id al campanario viejo del bosque, a un día de aquí. Decid que os manda Urwin. Y no lo contéis en voz alta.",
+      "truth": "si",
+      "leadsTo": "El Nido de la Pluma"
     },
     {
       "id": "r-los-festivales",
@@ -3383,6 +3689,38 @@
       "by": "Rahadin",
       "where": "Castillo Ravenloft",
       "text": "El amo os espera a cenar. Sois sus invitados, y nadie se levanta de la mesa antes de tiempo.",
+      "truth": "si",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-la-puerta-sin-pomo",
+      "by": "Nikolai",
+      "where": "Torre de Van Richten",
+      "text": "La puerta de hierro no tiene pomo, pero el viejo entraba sin llave. Tocaba algo de la pared, a la izquierda, y la puerta se abría sola.",
+      "truth": "si",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-el-muneco-anda",
+      "by": "Gavril",
+      "where": "Colina Yester",
+      "text": "El muñeco de ramas no está muerto. Cuando le metan la gema en el pecho, echará a andar, y lo primero que pisará será la bodega.",
+      "truth": "si",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-donde-duerme-el-conde",
+      "by": "El ermitaño de la cascada",
+      "where": "La Cascada del Tser",
+      "text": "El conde no duerme en una cama. Duerme abajo del todo, entre los muertos de su familia, y hay que bajar mucho para encontrarlo.",
+      "truth": "si",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-el-viento-del-norte",
+      "by": "Dragomir",
+      "where": "El Nido de la Pluma",
+      "text": "Los murciélagos del conde no vuelan con viento del norte. Si tenéis que cruzar el valle de noche, que sea con viento del norte.",
       "truth": "si",
       "leadsTo": ""
     }
@@ -3910,6 +4248,61 @@
         "title": "Sangrienta Bienvenida",
         "hint": "Acabar con la bruja. Está en Taberna Sangre de la Enredadera (Aldea de Barovia).",
         "scene": "Una Bruja Baroviana está acechando a los clientes de la taberna Sangre de la Enredadera. Es hora de demostrar de qué estáis {hechos|hechas}.",
+        "backdrop": "posada",
+        "beats": [
+          {
+            "text": "La niebla os ha dejado en una aldea gris, de casas cerradas y ventanas tapiadas. La única luz sale de una taberna: Sangre de la Enredadera."
+          },
+          {
+            "text": "Dentro hay poca gente y nadie habla. Junto al fuego, un hombre joven y ancho de hombros bebe solo."
+          },
+          {
+            "who": "Ismark Kolyanovich",
+            "mood": "triste",
+            "text": "Forasteros. Hacía tiempo que la niebla no dejaba pasar a nadie. Soy Ismark; aquí me llaman el Menor."
+          },
+          {
+            "text": "En el rincón, una vieja encorvada no deja de mirar a los clientes. Tiene las uñas negras y sonríe con demasiados dientes."
+          },
+          {
+            "who": "Ismark Kolyanovich",
+            "mood": "enfadado",
+            "text": "Esa no es de aquí. En Barovia, las viejas que sonríen así no venden hierbas.",
+            "options": [
+              {
+                "id": "a-mi-lado",
+                "text": "Quédate detrás de mí, Ismark.",
+                "effects": [
+                  {
+                    "attitude": 1
+                  }
+                ],
+                "reply": {
+                  "who": "Ismark Kolyanovich",
+                  "mood": "alegre",
+                  "text": "Detrás no: a tu lado. Mi padre no crió a un cobarde."
+                }
+              },
+              {
+                "id": "que-sabes",
+                "text": "¿Qué sabes de ella?",
+                "effects": [
+                  {
+                    "rumor": "r-no-invitar"
+                  }
+                ],
+                "reply": {
+                  "who": "Ismark Kolyanovich",
+                  "mood": "triste",
+                  "text": "Nada bueno. Aquí se aprende pronto a no abrir la puerta de noche."
+                }
+              }
+            ]
+          },
+          {
+            "text": "La vieja se levanta despacio. Debajo del chal se le mueve algo que no son brazos."
+          }
+        ],
         "opens": {
           "kind": "start"
         },
@@ -3934,6 +4327,63 @@
         "title": "Asedio en la Mansión",
         "hint": "Derrotar a los zombis asediadores. Está en Mansión del Burgomaestre (Aldea de Barovia).",
         "scene": "Los no-muertos de Strahd asedian la mansión del burgomaestre. Debéis repeler el ataque y mantener a Ireena a salvo.",
+        "backdrop": "Aldea de Barovia",
+        "beats": [
+          {
+            "text": "Ismark os lleva a la casa de su familia, en lo alto de la aldea. La verja está arañada, y en el barro hay huellas de pies descalzos."
+          },
+          {
+            "who": "Ismark Kolyanovich",
+            "mood": "triste",
+            "text": "Mi padre murió hace tres noches. Desde entonces, los muertos vienen a llamar a la puerta."
+          },
+          {
+            "text": "Abre una mujer joven de pelo castaño, con una espada corta en la mano. Tiene dos marcas rojas en el cuello."
+          },
+          {
+            "who": "Ireena Kolyana",
+            "mood": "enfadado",
+            "text": "¿Estos son los que traes, hermano? Ya se les oye en el cementerio. Vienen."
+          },
+          {
+            "who": "Ireena Kolyana",
+            "mood": "neutral",
+            "text": "Esta casa es mía, y la defiendo yo. ¿Qué vais a hacer vosotros?",
+            "options": [
+              {
+                "id": "a-tu-lado",
+                "text": "Pelearemos a tu lado, Ireena.",
+                "effects": [
+                  {
+                    "attitude": 1
+                  }
+                ],
+                "reply": {
+                  "who": "Ireena Kolyana",
+                  "mood": "alegre",
+                  "text": "Por fin alguien que no me manda a esconderme."
+                }
+              },
+              {
+                "id": "dentro",
+                "text": "Entra y atranca la puerta. Es a ti a quien buscan.",
+                "effects": [
+                  {
+                    "give": "Agua bendita"
+                  }
+                ],
+                "reply": {
+                  "who": "Ireena Kolyana",
+                  "mood": "triste",
+                  "text": "Está bien. Toma esto: era de mi padre. Con ellos, funciona."
+                }
+              }
+            ]
+          },
+          {
+            "text": "Del cementerio llega un ruido de pies que se arrastran. Muchos pies."
+          }
+        ],
         "opens": {
           "kind": "after",
           "milestone": "sangrienta-bienvenida"
@@ -3958,6 +4408,58 @@
         "title": "El Grito en el Sótano",
         "hint": "Destruir al engendro. Está en Sótano de la Iglesia (Aldea de Barovia).",
         "scene": "El hijo del padre Donavich fue convertido en un vampiro y yace hambriento bajo la iglesia. Hay que poner fin a su sufrimiento.",
+        "backdrop": "templo",
+        "beats": [
+          {
+            "text": "La iglesia de la aldea está helada. Delante del altar, un cura flaco reza sin levantar la cabeza."
+          },
+          {
+            "text": "Debajo del suelo, algo grita. No es un grito de dolor: es de hambre."
+          },
+          {
+            "who": "Donavich",
+            "mood": "triste",
+            "text": "Es mi hijo, Doru. Fue al castillo a matar al conde, y volvió así."
+          },
+          {
+            "who": "Donavich",
+            "mood": "triste",
+            "text": "Lo tengo encerrado, sin comer. No puedo abrir esa trampilla, y tampoco puedo dejarlo ahí para siempre.",
+            "options": [
+              {
+                "id": "rapido",
+                "text": "Lo haremos rápido, padre. No sufrirá.",
+                "effects": [
+                  {
+                    "give": "Estaca de madera"
+                  }
+                ],
+                "reply": {
+                  "who": "Donavich",
+                  "mood": "triste",
+                  "text": "Entonces llevaos esto. Yo nunca he tenido valor de usarla."
+                }
+              },
+              {
+                "id": "otra-forma",
+                "text": "Buscaremos otra forma. Tiene que haberla.",
+                "effects": [
+                  {
+                    "attitude": 1
+                  }
+                ],
+                "reply": {
+                  "who": "Donavich",
+                  "mood": "alegre",
+                  "text": "Que Dios os oiga. Pero si os muerde, no dudéis."
+                }
+              }
+            ]
+          },
+          {
+            "text": "Donavich os da la llave de la trampilla. Le tiemblan las manos."
+          }
+        ],
         "opens": {
           "kind": "after",
           "milestone": "sangrienta-bienvenida"
@@ -4204,6 +4706,34 @@
             "la-orden-del-dragon-de-plata": "la-orden-descansa",
             "los-vistani": "la-caravana-se-va"
           }
+        }
+      },
+      {
+        "id": "la-puerta-sin-pomo",
+        "act": 3,
+        "title": "La puerta sin pomo",
+        "hint": "",
+        "scene": "Tanteáis la pared a la izquierda de la puerta de hierro hasta dar con una piedra que se hunde al apretarla. La puerta se abre sin ruido. Dentro no hay nadie: polvo y un fuego apagado hace semanas. Bajo un tablón suelto del suelo, el viejo cazador dejó un estuche de repuesto: estacas, agua bendita y un espejo de plata.",
+        "hidden": true,
+        "opens": {
+          "kind": "start"
+        },
+        "asks": {
+          "kind": "clues",
+          "need": 1,
+          "clues": [
+            {
+              "place": "Torre de Van Richten",
+              "skill": "investigation"
+            }
+          ]
+        },
+        "changes": {
+          "reveal": [],
+          "open": [],
+          "standing": {},
+          "ending": "",
+          "endingBy": {}
         }
       }
     ],

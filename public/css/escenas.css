@@ -1,0 +1,61 @@
+/* ================================================================
+   J9.2 · Las escenas del hilo, jugadas (public/scripts/game-engine/ui/plot-scene.js).
+   El marco es el de la quedada (`qd-*`, quedadas.css) y las opciones, las de una charla
+   (`dw-*`, dialogos.css): aquí solo lo propio de una escena con varias voces. Lo que cuenta
+   el narrador, sin retrato y en cursiva; la escena se sigue tocando en cualquier sitio.
+   Los colores son los del juego (`--gs-*`, game-shell.css). Todo cuelga de .ps-dialog.
+   ================================================================ */
+
+/* Tocar la escena la hace seguir: que se note que se puede. */
+.ps-dialog .ps-root {
+    cursor: pointer;
+}
+
+.ps-dialog .ps-root.ps-asking {
+    cursor: default;
+}
+
+/* El narrador no tiene cara: el sitio queda a la vista. */
+.ps-dialog .qd-portrait[hidden] {
+    display: none;
+}
+
+.ps-dialog .ps-narration {
+    font-size: calc(1.1rem * var(--gs-text-scale, 1));
+}
+
+/* Lo que dice la gente, recto; lo del narrador ya va en cursiva (`qd-note`). */
+.ps-dialog .ps-say {
+    font-style: normal;
+}
+
+.ps-dialog .ps-text {
+    max-height: 28vh;
+}
+
+.ps-dialog .ps-refused {
+    color: var(--gs-danger-soft, #d08a86);
+}
+
+/* Seguir, a la derecha y con sitio para el dedo. */
+.ps-dialog .ps-chips {
+    flex-direction: row;
+    align-items: center;
+}
+
+.ps-dialog.ps-dialog .ps-root.ps-asking .ps-chips {
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.ps-dialog .ps-next,
+.ps-dialog .ps-finish {
+    min-height: 2.6rem;
+    padding: 0.5rem 1.2rem;
+}
+
+@media (max-width: 700px) {
+    .ps-dialog .ps-text {
+        max-height: 40vh;
+    }
+}

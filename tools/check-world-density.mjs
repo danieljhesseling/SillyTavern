@@ -17,12 +17,16 @@
  *
  * Sale con 1 si hay algún ERROR (falta algo del listón o algo está roto). Los AVISOS son
  * cosas que conviene mirar, pero que pueden estar así a propósito.
+ *
+ * J10.2 y J10.4: después de las cifras sale cada localización con lo que tiene (gente o
+ * servicios, algo que mirar, un rumor o un hito, un secreto y, si le toca, un tablero) y los
+ * secretos del mundo con cómo se descubre cada uno. Una localización corta es un ERROR.
  */
 
 import { readFileSync } from 'node:fs';
 
 const ROOT = new URL('..', import.meta.url);
-const { checkWorldDensity, gemRequest } = await import(new URL('public/scripts/game-engine/campaign/world-density.js', ROOT).href);
+const { checkWorldDensity, gemRequest, PLACE_NEEDS, SECRET_WAYS } = await import(new URL('public/scripts/game-engine/campaign/world-density.js', ROOT).href);
 
 const file = process.argv[2];
 // Idea 182: con --gem, en vez del informe sale el encargo para el Gem guionista, listo para pegar.
@@ -46,6 +50,22 @@ if (forGem) {
 
 console.log(`Mundo: ${report.name}\n`);
 for (const line of report.counts) console.log(`  ${line}`);
+
+// J10.2: sitio por sitio. Una marca por cosa que pide, en el orden de PLACE_NEEDS.
+const needs = Object.keys(PLACE_NEEDS);
+console.log(`\nLocalizaciones (${needs.map(key => PLACE_NEEDS[key]).join(' · ')}):`);
+for (const place of report.places) {
+    const marks = needs.map(key => (place.has[key] ? '✓' : key === 'board' && !place.needsBoard ? '·' : '✗')).join(' ');
+    const said = place.ok ? `${place.reasons} razones para ir` : `le falta ${place.missing.join(', ')}`;
+    console.log(`  ${place.ok ? '✓' : '✗'} ${marks}  ${place.name}${place.hidden ? ' (escondida)' : ''}: ${said}`);
+}
+
+// J10.4: los secretos, y cómo se descubre cada uno.
+console.log(`\nSecretos (${report.secrets.length}):`);
+for (const secret of report.secrets) {
+    const how = secret.ways.map(way => SECRET_WAYS[way] ?? way).join(' o ');
+    console.log(`  · ${secret.what} (${secret.kind}): por ${how}${secret.where.length ? `, en ${secret.where.join(', ')}` : ''}`);
+}
 if (report.warnings.length) console.log('');
 for (const line of report.warnings) console.log(`AVISO  ${line}`);
 if (report.errors.length) console.log('');

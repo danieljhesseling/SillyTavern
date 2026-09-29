@@ -34,6 +34,7 @@ import { normalizeBoardGrid } from '../board/map-image.js';
 import { OBJECTIVE_FIELDS } from './campaign-pack-schema.js';
 import { normalizePack } from './campaign-pack.js';
 import { readPlaces } from './town.js';
+import { readSights } from './sights.js';
 import { spellById, magicInData } from '../rules/grimoire.js';
 
 /**
@@ -325,6 +326,9 @@ export function buildImportPlan(raw, options = {}) {
         const name = text(place.name);
         if (!name || locations.has(name)) continue;
         const inside = readPlaces(place.places, pack.npcs ?? []);
+        // J10.2: lo que se puede examinar aquí, escrito para este sitio (`sights.js`).
+        const sights = readSights(place.sights, name)
+            .map(s => ({ id: s.id, verbo: s.verbo, text: s.text, skill: s.skill, ...(s.found ? { found: s.found } : {}) }));
         locations.set(name, {
             name,
             description: text(place.description) || text(pack.world.synopsis),
@@ -342,6 +346,7 @@ export function buildImportPlan(raw, options = {}) {
             // J3.11: los sitios de dentro del pueblo, si el paquete los escribe. Quien atiende
             // cada uno va por nombre: el mundo no guarda los ids de la gente.
             ...(inside.length > 0 ? { places: inside } : {}),
+            ...(sights.length > 0 ? { sights } : {}),
             // Los caminos, con lo que cuesta andarlos. Es lo que lee el viaje.
             routes: (Array.isArray(place.routes) ? place.routes : [])
                 .filter((/** @type {any} */ route) => text(route?.to))

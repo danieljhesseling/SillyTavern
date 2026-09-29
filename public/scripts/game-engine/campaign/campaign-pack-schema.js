@@ -24,6 +24,8 @@ import { PLACE_KINDS } from './town.js';
 import { MOODS, EFFECT_KINDS, MILESTONE_STATES, DC_LIMITS } from './dialogues.js';
 import { SKILLS, DEFAULT_DC } from '../rules/checks.js';
 import { ATTITUDE } from './attitudes.js';
+import { OPENS, ASKS } from './plot.js';
+import { BACKGROUNDS } from './backgrounds.js';
 
 /** Schema version, so a pack can say which contract it was written against. */
 export const CAMPAIGN_PACK_VERSION = 1;
@@ -164,7 +166,7 @@ function buildObjectiveSchema() {
     };
 }
 
-/** Las seis secciones, cada una con su esquema. */
+/** Las secciones, cada una con su esquema. */
 function buildSectionSchemas() {
     const legend = getMapLegend();
     const legendText = Object.entries(legend).map(([c, name]) => `'${c}' ${name}`).join(', ');
@@ -178,12 +180,30 @@ function buildSectionSchemas() {
             genre: { type: 'string' },
             synopsis: { type: 'string', description: 'Un párrafo sobre el mundo.' },
             season: { type: 'string', description: 'La estación en la que empieza: primavera, verano, otono o invierno. Cada una dura 56 días. Sin nada, otoño.' },
+            // J5.2: lo que los paquetes ya traen y el Gem no sabía: para qué nivel es y a
+            // cuántos días queda del gremio. Salen en la tarjeta del tablón.
+            levels: {
+                type: 'array',
+                items: { type: 'integer', minimum: 1, maximum: 20 },
+                minItems: 2,
+                maxItems: 2,
+                description: 'Para qué nivel es, desde y hasta: [1, 4]. Sale en el tablón del gremio. Sin nada, se calcula del desafío de los bichos.',
+            },
+            journey: {
+                type: 'object',
+                description: 'A cuántos días queda del gremio de Puerto Alba y cómo se llega. Sale en el tablón y se cuenta al salir. Sin nada, 5 días.',
+                properties: {
+                    days: { type: 'integer', minimum: 1, maximum: 60 },
+                    how: { type: 'string', description: 'Una frase: «Subís por el camino del norte hasta un valle de montaña».' },
+                },
+            },
             factions: {
                 type: 'array',
                 items: {
                     type: 'object',
                     required: ['name'],
                     properties: {
+                        id: { type: 'string', description: 'Corto, en minúsculas y con guiones («los-vistani»): así la nombran el hilo y los encargos.' },
                         name: { type: 'string' },
                         goals: { type: 'string' },
                         reputation: { type: 'integer' },
@@ -314,7 +334,7 @@ function buildSectionSchemas() {
                 description: { type: 'string' },
                 region: { type: 'string', description: 'La comarca o zona a la que pertenece.' },
                 factionName: { type: 'string', description: 'La facción que la controla, si alguna.' },
-                hidden: { type: 'boolean', description: 'Si empieza escondida: no se puede ir hasta que un hito del hilo la revela.' },
+                hidden: { type: 'boolean', description: 'Si empieza escondida: no se puede ir hasta que la revela un hito del hilo (`changes.reveal`) o un rumor que lleva a ella (`leadsTo`).' },
                 places: {
                     type: 'array',
                     description: 'Opcional, para pueblos y ciudades: los sitios de dentro (la herrería, la posada, '
@@ -328,6 +348,22 @@ function buildSectionSchemas() {
                             name: { type: 'string', description: 'Su nombre aquí: «El Agua Azul». Sin él, el de su clase: «La posada».' },
                             keeper: { type: 'string', description: 'Quién lo atiende: el nombre de alguien de la gente del paquete. Sin él, el primero de aquí con ese servicio.' },
                             description: { type: 'string', description: 'Una línea, si hace falta.' },
+                        },
+                    },
+                },
+                sights: {
+                    type: 'array',
+                    description: 'Lo que se puede examinar aquí (J10.2): dos o tres cosas concretas de este sitio, '
+                        + 'cada una con su tirada. Salen como «Examinar…» antes que las genéricas. Una tirada buena '
+                        + 'aquí también encuentra la pista de un hito que se busca aquí (`asks.clues`): así se esconde un secreto.',
+                    items: {
+                        type: 'object',
+                        required: ['text'],
+                        properties: {
+                            verbo: { type: 'string', description: 'Qué se hace, en infinitivo: «examinar», «mirar», «buscar», «leer». Sin él, «examinar».' },
+                            text: { type: 'string', description: 'Sobre qué, corto y concreto: «el hueco del roble», «las huellas de la nieve».' },
+                            skill: { type: 'string', enum: Object.keys(SKILLS), description: 'Con qué se tira. Sin ella, investigation.' },
+                            found: { type: 'string', description: 'Lo que se ve si la tirada sale bien: una o dos frases llanas.' },
                         },
                     },
                 },
@@ -591,11 +627,174 @@ function buildSectionSchemas() {
         },
     };
 
-    return { world, locations, boards, bestiary, quests, confidants, items, heroes, dialogues };
+    // J5.2 y J9.2: el hilo, que el Gem no conocía. Sus hitos (qué los abre, qué piden y qué
+    // cambian), el prólogo, los finales y, en los hitos importantes, su escena jugada: líneas
+    // con quien las dice y su cara, y una o dos decisiones escritas como opciones de charla.
+    const sceneLine = {
+        type: 'object',
+        required: ['text'],
+        properties: {
+            who: { type: 'string', description: 'Quién lo dice: alguien de npcs o de confidants, con su nombre exacto (sale su retrato). Sin who, lo cuenta el narrador, sin retrato.' },
+            mood: { type: 'string', enum: MOODS, description: 'La cara del retrato.' },
+            text: { type: 'string', description: 'De una a tres frases llanas, sin acertijos. Con {forma|forma} donde se habla a quien juega.' },
+        },
+    };
+    const reply = { anyOf: [ref('sceneLine'), { type: 'array', items: ref('sceneLine') }] };
+    const sceneBranch = {
+        type: 'object',
+        properties: {
+            effects: { type: 'array', items: ref('dialogueEffect') },
+            journal: { type: 'string', description: 'Lo que queda en el Diario.' },
+            reply: { ...reply, description: 'Lo que se oye si sale así.' },
+        },
+    };
+    const beat = {
+        type: 'object',
+        required: ['text'],
+        properties: {
+            ...sceneLine.properties,
+            options: {
+                type: 'array',
+                description: 'Una decisión, tras esta línea: lo que puede decir o hacer quien juega. Como las opciones de una charla, '
+                    + 'pero sin next: la escena sigue. Los efectos sin who son con quien dice la línea; si la dice el narrador, '
+                    + 'attitude y bond llevan who.',
+                items: {
+                    type: 'object',
+                    required: ['text'],
+                    properties: {
+                        id: { type: 'string', description: 'Único en la decisión.' },
+                        text: { type: 'string', description: 'Lo que dice o hace quien juega.' },
+                        if: conditions,
+                        effects: { type: 'array', items: ref('dialogueEffect') },
+                        reply: { ...reply, description: 'Lo que se oye al elegirla: una línea o varias.' },
+                        tag: { type: 'string' },
+                        hidden: { type: 'boolean' },
+                        journal: { type: 'string' },
+                        check: {
+                            type: 'object',
+                            required: ['skill', 'success', 'failure'],
+                            properties: {
+                                skill: { type: 'string', enum: Object.keys(SKILLS) },
+                                dc: { type: 'integer', description: `De ${DC_LIMITS.min} a ${DC_LIMITS.max}; ${DEFAULT_DC} es un intento normal.` },
+                                success: ref('sceneBranch'),
+                                partial: ref('sceneBranch'),
+                                failure: ref('sceneBranch'),
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    };
+    const names = (/** @type {string} */ description) => ({ type: 'array', items: { type: 'string' }, description });
+    const standing = { type: 'object', additionalProperties: { type: 'integer' }, description: 'Cómo os mira cada facción, por su id: {"los-vistani": 1}.' };
+    const milestone = {
+        type: 'object',
+        required: ['id', 'title', 'hint', 'scene', 'opens', 'asks'],
+        properties: {
+            id: { type: 'string', description: 'Único en el hilo: es a lo que apuntan opens, changes y las charlas.' },
+            act: { type: 'integer', minimum: 1, maximum: 3 },
+            title: { type: 'string' },
+            hint: { type: 'string', description: 'Lo que se ve en pantalla mientras está abierto: qué hacer y dónde, en una frase.' },
+            scene: { type: 'string', description: 'Lo que pasa al abrirse, en dos a cuatro frases. Hace falta aunque traiga beats: es lo que lee el narrador.' },
+            beats: {
+                type: 'array',
+                items: beat,
+                description: 'Solo en los hitos importantes: la escena jugada, de 3 a 8 líneas, con una o dos decisiones que cambien algo '
+                    + '(cómo os mira alguien, un rumor, un objeto, un hito). Ejemplo: [{"text": "Llegas al muelle al caer la tarde."}, '
+                    + '{"who": "Tomás", "mood": "enfadado", "text": "¡Al ladrón!", "options": [{"id": "yo", "text": "¡Yo lo paro!", '
+                    + '"effects": [{"attitude": 1}], "reply": {"who": "Tomás", "mood": "alegre", "text": "¡Gracias!"}}]}].',
+            },
+            sceneDialogue: { type: 'string', description: 'El id de una charla de dialogues que se abre al acabar la escena.' },
+            backdrop: { type: 'string', description: `Dónde pasa la escena, para el fondo: ${Object.keys(PLACE_KINDS).join(', ')}, o el nombre de una localización.` },
+            prologue: {
+                type: 'boolean',
+                description: 'Del prólogo: los primeros hitos, hasta la prueba (el último del prólogo que pide ganar un tablero). '
+                    + 'Ganar la prueba da el prólogo entero por hecho, aunque se haya saltado algo.',
+            },
+            hidden: { type: 'boolean', description: 'Un secreto: no se ve hasta que se cumple por casualidad.' },
+            within: { type: 'integer', description: 'Días para cumplirlo desde que se abre. Sin él, sin plazo.' },
+            late: {
+                type: 'object',
+                description: 'Lo que pasa si se pasa el plazo.',
+                properties: { reveal: names('Localizaciones que se ponen en el mapa.'), open: names('Hitos que se abren.'), standing },
+            },
+            backgrounds: { type: 'array', items: { type: 'string', enum: Object.keys(BACKGROUNDS) }, description: 'Solo para héroes con uno de estos trasfondos. Sin nada, para todos.' },
+            opens: {
+                type: 'object',
+                required: ['kind'],
+                description: 'Qué lo abre. start: al empezar. after: al cumplirse milestone. arrive: al llegar a place. '
+                    + 'contract: al entregar el encargo id. day: el día day. clock: cuando la facción faction llena su reloj.',
+                properties: {
+                    kind: { type: 'string', enum: OPENS },
+                    milestone: { type: 'string' }, place: { type: 'string' }, id: { type: 'string' }, day: { type: 'integer' }, faction: { type: 'string' },
+                },
+            },
+            asks: {
+                type: 'object',
+                required: ['kind'],
+                description: 'Qué pide. arrive: llegar a place. win: ganar el tablero board (su name). defeat: derrotar a enemy. '
+                    + 'talk: hablar con npc. check: sacar una tirada de skill. contract: entregar el encargo id, o uno de faction '
+                    + '(against: en su contra). none: nada, se cumple al abrirse. any: cualquiera de options. clues: need pistas, '
+                    + 'cada una una tirada en un sitio.',
+                properties: {
+                    kind: { type: 'string', enum: ASKS },
+                    place: { type: 'string' }, board: { type: 'string' }, enemy: { type: 'string' }, npc: { type: 'string' },
+                    skill: { type: 'string', enum: Object.keys(SKILLS) }, id: { type: 'string' }, faction: { type: 'string' },
+                    against: { type: 'boolean' }, need: { type: 'integer' },
+                    options: { type: 'array', items: { type: 'object', required: ['kind'], properties: { kind: { type: 'string' } } } },
+                    clues: { type: 'array', items: { type: 'object', required: ['place', 'skill'], properties: { place: { type: 'string' }, skill: { type: 'string', enum: Object.keys(SKILLS) } } } },
+                },
+            },
+            changes: {
+                type: 'object',
+                description: 'Lo que cambia al cumplirse.',
+                properties: {
+                    reveal: names('Localizaciones ocultas que se ponen en el mapa.'),
+                    open: names('Hitos que se abren.'),
+                    close: names('Hitos que se cierran para siempre: el camino que no se tomó.'),
+                    standing,
+                    ending: { type: 'string', description: 'El final al que lleva, de endings.' },
+                    endingBy: { type: 'object', additionalProperties: { type: 'string' }, description: 'El final según con quién os hayáis aliado: {"id-de-faccion": "id-de-final"}; decide la que mejor os mire.' },
+                },
+            },
+        },
+    };
+    const plot = {
+        type: 'object',
+        required: ['milestones'],
+        description: 'El hilo de la campaña: lo que tienes entre manos en cada momento, de la primera escena a uno de sus finales.',
+        definitions: { dialogueCondition: condition, dialogueEffect: effect, sceneLine, sceneBranch },
+        properties: {
+            title: { type: 'string' },
+            milestones: { type: 'array', items: milestone },
+            endings: {
+                type: 'object',
+                description: 'Los finales, por su id.',
+                additionalProperties: {
+                    type: 'object',
+                    required: ['title', 'scene'],
+                    properties: {
+                        title: { type: 'string' },
+                        scene: { type: 'string' },
+                        epilogues: { type: 'array', items: { type: 'object', properties: { who: { type: 'string' }, text: { type: 'string' } } }, description: 'Qué fue de la gente con este final.' },
+                    },
+                },
+            },
+            omens: {
+                type: 'array',
+                maxItems: 3,
+                description: 'El presagio: hasta tres frases al empezar, cada una ligada al hito que la cumple.',
+                items: { type: 'object', required: ['text', 'milestone'], properties: { text: { type: 'string' }, milestone: { type: 'string' } } },
+            },
+        },
+    };
+
+    return { world, locations, boards, bestiary, quests, confidants, items, heroes, dialogues, plot };
 }
 
 /** The order the sections are best generated in, and what each one needs first. */
-export const SECTION_ORDER = ['world', 'locations', 'confidants', 'bestiary', 'items', 'boards', 'quests', 'heroes', 'dialogues'];
+export const SECTION_ORDER = ['world', 'locations', 'confidants', 'bestiary', 'items', 'boards', 'quests', 'heroes', 'dialogues', 'plot'];
 
 /**
  * Las rarezas que las tablas de botín conocen.
@@ -626,17 +825,19 @@ export function getSectionSchema(section) {
  */
 export function buildCampaignPackSchema() {
     const sections = buildSectionSchemas();
-    // Lo que las charlas nombran con `$ref` sube a la raíz: `#/definitions/…` es desde aquí.
+    // Lo que las charlas y el hilo nombran con `$ref` sube a la raíz: `#/definitions/…` es desde
+    // aquí. Las dos secciones comparten las condiciones y los efectos: quedan una vez.
     const { definitions, ...dialogues } = sections.dialogues;
+    const { definitions: plotDefinitions, ...plot } = sections.plot;
 
     return {
         $schema: 'http://json-schema.org/draft-07/schema#',
         title: 'Paquete de campaña',
         description: 'Una campaña completa lista para importar: el mundo, sus compañeros, '
-            + 'su bestiario, sus tableros y sus misiones.',
+            + 'su bestiario, sus tableros, sus misiones y su hilo.',
         type: 'object',
         required: ['version', 'world'],
-        definitions,
+        definitions: { ...definitions, ...plotDefinitions },
         properties: {
             version: {
                 type: 'integer',
@@ -645,6 +846,7 @@ export function buildCampaignPackSchema() {
             },
             ...sections,
             dialogues,
+            plot,
         },
     };
 }
@@ -682,6 +884,9 @@ export function getPackRules() {
         // J8.1: las charlas con ramas.
         'En `dialogues`, el `speaker` de cada charla es alguien de `npcs` o de `confidants`, cada `next` lleva a un nudo que existe, y a todos los nudos se llega desde el de inicio. Un hito, un rumor o un objeto de una condición o de un efecto se nombra como está en el paquete (el hito y el rumor, por su id).',
         'En una charla, lo que depende de quién eres (`species`, `class`, `background`, `gender`) solo le sale a quien encaja, con su etiqueta delante: «[Enano] …». Cada tirada lleva `success` y `failure`; `partial` es opcional. Las líneas son de una a tres frases llanas, sin acertijos, con `{forma|forma}` donde se habla a quien juega.',
+        // J5.2 y J9.2: el hilo y sus escenas.
+        'En `plot`, cada `opens.milestone`, `changes.open` y `changes.close` nombra un hito del hilo por su id, cada `asks.board` un tablero por su `name`, y cada `changes.ending` un final de `endings`. El primer hito se abre con `start`: es la mecha de la campaña.',
+        'Los hitos importantes traen su escena en `beats`: de 3 a 8 líneas, cada una de alguien de `npcs` o `confidants` (sin `who`, del narrador), y una o dos decisiones que cambien algo: cómo os mira alguien, un rumor, un objeto o un hito. `scene` sigue haciendo falta: es lo que lee el narrador. `sceneDialogue` nombra una charla de `dialogues` por su id.',
     ];
 }
 

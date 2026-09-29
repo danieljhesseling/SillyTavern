@@ -68,8 +68,57 @@ describe('el narrador del motor (Z1 de ROADMAP_SIN_TOKENS)', () => {
             firsts.push(out.used[0]);
             recent = rememberUsed(recent, out.used);
         }
-        // Hay tres frases de llegada por la mañana (dos propias y la genérica): las tres primeras no se repiten.
-        expect(new Set(firsts.slice(0, 3)).size).toBe(3);
+        // Hay muchas frases de llegada por la mañana: las cuatro primeras no se repiten.
+        expect(new Set(firsts).size).toBe(4);
+    });
+
+    test('J13.2: diez llegadas seguidas, con su viaje y lo de entre medias, sin una frase repetida', () => {
+        // El caso más estrecho: siempre por la mañana, con buen tiempo, de vuelta y con una
+        // sola persona a la vista. Entre llegada y llegada, tiradas y charlas gastan memoria.
+        const arrival = { sitio: 'Vane', hora: 'mañana', tiempo: 'despejado', primera: 'no', gente: 'Giles', gente_n: 1, gancho: 'hay un encargo en el tablón' };
+        const road = { destino: 'Vane', dias: 1, dias_texto: daysText(1), tiempo: 'despejado', sucesos: 'una rueda se parte.' };
+        let recent = /** @type {string[]} */ ([]);
+        const said = /** @type {string[]} */ ([]);
+        const between = /** @type {Array<[string, any]>} */ ([
+            ['tirada-bien', { quien: 'Bran', habilidad: 'perception' }],
+            ['charla-vosotros', { quien: 'Giles', actitud: 'neutra', actitud_texto: 'neutral' }],
+        ]);
+        const trip = /** @type {Array<[string, any]>} */ ([['viaje', road], ['llegada', arrival]]);
+        for (let i = 0; i < 10; i++) {
+            for (const [moment, facts] of between) recent = rememberUsed(recent, narrate({ rows, moment, facts, random: seeded(101 + i), recent }).used);
+            for (const [moment, facts] of trip) {
+                const out = narrate({ rows, moment, facts, random: seeded(201 + i), recent });
+                said.push(...out.used);
+                recent = rememberUsed(recent, out.used);
+            }
+        }
+        expect(said).toHaveLength(60);
+        expect(new Set(said).size).toBe(60);
+    });
+
+    test('cuando ya salieron todas, vuelve una de las que salieron hace más, nunca la última', () => {
+        const three = ['a', 'b', 'c'].map(id => ({ id, kind: 'llegada', weight: 1, text: `${id} en {sitio}.` }));
+        for (const r of [0, 0.5, 0.99]) {
+            const out = narrate({ rows: three, moment: 'llegada', facts: { sitio: 'Vane' }, random: () => r, recent: ['a', 'b', 'c'] });
+            expect(['a', 'b']).toContain(out.used[0]);
+        }
+        // Y una que no ha salido va antes que cualquiera que sí.
+        expect(narrate({ rows: three, moment: 'llegada', facts: { sitio: 'Vane' }, random: () => 0.99, recent: ['c', 'a'] }).used).toEqual(['b']);
+    });
+
+    test('la memoria guarda cada frase una vez, en el sitio de la última vez', () => {
+        expect(rememberUsed(['a', 'b', 'c'], ['a'])).toEqual(['b', 'c', 'a']);
+        expect(rememberUsed(null, ['x', 'x'])).toEqual(['x']);
+        const many = Array.from({ length: 300 }, (_, i) => `f${i}`);
+        const kept = rememberUsed(many, ['nueva']);
+        expect(kept.length).toBeLessThanOrEqual(200);
+        expect(kept[kept.length - 1]).toBe('nueva');
+    });
+
+    test('J13.4: cada parte de cada momento tiene al menos ocho frases', () => {
+        for (const part of new Set(Object.values(MOMENTS).flat())) {
+            expect([part, rows.filter((/** @type {any} */ r) => r.kind === part).length >= 8]).toEqual([part, true]);
+        }
     });
 
     test('una frase de una voz solo sale con esa voz', () => {

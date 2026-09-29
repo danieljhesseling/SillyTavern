@@ -4,7 +4,7 @@
  * El diálogo no movía nada: se podía convencer a Giles en el chat y al día siguiente seguía
  * igual. Ahora el narrador puede proponer (`cambiar_actitud`) que alguien mire mejor o peor
  * al grupo, y el motor lo apunta con límites: un paso cada vez, uno por persona y día, y
- * entre −3 (hostil) y +3 (de los vuestros). La actitud se nota en las tiradas de trato con
+ * entre −3 (hostil) y +3 (leal: de los vuestros). La actitud se nota en las tiradas de trato con
  * esa persona: suma o resta lo que valga.
  *
  * Puro: apunta, limita y dice cuánto suma.
@@ -14,7 +14,8 @@
 export const ATTITUDE = { min: -3, max: 3 };
 
 /** Cómo se dice cada punto. */
-const WORDS = { '-3': 'hostil', '-2': 'recelosa', '-1': 'fría', 0: 'neutral', 1: 'cordial', 2: 'amistosa', 3: 'de los vuestros' };
+// Se leen detrás de «os mira de forma…»: «de forma de los vuestros» no se dice (J13).
+const WORDS = { '-3': 'hostil', '-2': 'recelosa', '-1': 'fría', 0: 'neutral', 1: 'cordial', 2: 'amistosa', 3: 'leal' };
 
 /** @param {any} value @returns {string} */
 const text = (value) => String(value ?? '').trim();

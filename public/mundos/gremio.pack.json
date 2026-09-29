@@ -410,6 +410,23 @@
         "title": "El ratero del muelle",
         "hint": "Para al ratero. Pulsa «Iniciar combate»; en tu turno, acércate a él y atácale.",
         "scene": "La barca del correo te deja en el muelle de Puerto Alba al caer la tarde, {cansado|cansada} del viaje. Huele a sal y a pescado frito. De pronto, un grito: «¡Al ladrón!». Un ratero le ha quitado la bolsa a Tomás, el posadero, y se ha metido en el embarcadero. No tiene por dónde salir, y saca un cuchillo.",
+        "backdrop": "muelle",
+        "beats": [
+          { "text": "La barca del correo te deja en el muelle de Puerto Alba al caer la tarde, {cansado|cansada} del viaje. Huele a sal y a pescado frito." },
+          { "who": "Tomás", "mood": "enfadado", "text": "¡Al ladrón! ¡Ese desgraciado me ha quitado la bolsa!" },
+          { "text": "Un chico flaco corre por las tablas con una bolsa de cuero en la mano. Se mete en el embarcadero, pero allí no hay salida: solo agua." },
+          { "text": "Se da la vuelta, te ve y saca un cuchillo." },
+          {
+            "who": "Tomás", "mood": "triste", "text": "¡Ahí dentro va la paga de toda la semana! ¡Sin ella no pago ni al panadero!",
+            "options": [
+              { "id": "yo-me-encargo", "text": "Quédate atrás, Tomás. Yo me encargo.", "effects": [{ "attitude": 1 }],
+                "reply": { "who": "Tomás", "mood": "alegre", "text": "¡Que los dioses te lo paguen! Cuidado con ese cuchillo." } },
+              { "id": "cuanto-pagas", "text": "¿Y cuánto me das si te la devuelvo?", "effects": [{ "gold": 3 }, { "attitude": -1 }],
+                "reply": { "who": "Tomás", "mood": "enfadado", "text": "¿Encima me cobras? Toma, tres monedas. ¡Pero corre!" } }
+            ]
+          },
+          { "text": "El ratero mira el agua, te mira a ti y aprieta el cuchillo. No va a soltar la bolsa por las buenas." }
+        ],
         "opens": { "kind": "start" },
         "asks": { "kind": "win", "board": "El muelle de Puerto Alba" },
         "changes": { "reveal": [], "open": [], "standing": {}, "ending": "", "endingBy": {} }
@@ -421,6 +438,24 @@
         "title": "Una charla con Tomás",
         "hint": "Pulsa «Hablar con Tomás» y pregúntale qué se cuenta en el puerto.",
         "scene": "El ratero suelta la bolsa, y dos pescadores se lo llevan a rastras hacia la guardia. Tomás, un hombre redondo con el delantal lleno de manchas, recoge sus monedas del suelo. «¡Gracias! Soy Tomás, el de la posada del gremio. Te debo una. Pregúntame lo que quieras: por mi barra pasa todo el puerto.»",
+        "backdrop": "muelle",
+        "beats": [
+          { "text": "El ratero suelta la bolsa. Dos pescadores lo agarran de los brazos y se lo llevan a rastras hacia la guardia." },
+          { "text": "Tomás es un hombre redondo, con el delantal lleno de manchas. Recoge sus monedas del suelo una a una, sin prisa." },
+          { "who": "Tomás", "mood": "alegre", "text": "¡Gracias! Soy Tomás, el de la posada del gremio. Te debo una, y yo pago lo que debo." },
+          {
+            "who": "Tomás", "mood": "neutral", "text": "Dime qué quieres por ayudarme.",
+            "options": [
+              { "id": "una-cerveza", "text": "Con una cerveza me doy por {pagado|pagada}.", "effects": [{ "attitude": 1 }],
+                "reply": { "who": "Tomás", "mood": "alegre", "text": "¡Eso está hecho! Y cuando quieras otra, aquí estoy." } },
+              { "id": "unas-monedas", "text": "Unas monedas. El viaje me ha dejado sin nada.", "effects": [{ "gold": 2 }],
+                "reply": { "who": "Tomás", "mood": "neutral", "text": "Justo es. Toma, dos monedas. La cerveza, eso sí, te la cobro." } },
+              { "id": "que-se-cuenta", "text": "Cuéntame qué se dice por el puerto.", "effects": [{ "rumor": "r-vuelta-de-barovia" }],
+                "reply": { "who": "Tomás", "mood": "triste", "text": "Lo de siempre: que Barovia se traga a la gente." } }
+            ]
+          },
+          { "who": "Tomás", "mood": "alegre", "text": "Pásate por la taberna cuando quieras. Por mi barra pasa todo el puerto, y yo me entero de todo." }
+        ],
         "opens": { "kind": "after", "milestone": "el-muelle" },
         "asks": { "kind": "talk", "npc": "Tomás" },
         "changes": { "reveal": [], "open": [], "standing": {}, "ending": "", "endingBy": {} }
@@ -432,6 +467,23 @@
         "title": "La Casa del Gremio",
         "hint": "Pulsa «Hablar con Brunilda»: es la maestra del gremio.",
         "scene": "Mientras habláis, llega una mujer de pelo gris y corto, con una cicatriz en la barbilla: Brunilda, la maestra del gremio. «Así que tú has parado al ratero. Ven conmigo.» Te lleva a la plaza, a la Casa del Gremio: una posada grande con un tablón en el salón. Ahí se apuntan las compañías y se reparten las campañas. Se vuelve con oro, aunque no siempre vuelven todos.",
+        "backdrop": "gremio",
+        "beats": [
+          { "text": "Mientras habláis, se acerca una mujer de pelo gris y corto, con una cicatriz en la barbilla. En el muelle todos le abren paso." },
+          { "who": "Tomás", "mood": "alegre", "text": "¡Brunilda! Mira, {este es el que|esta es la que} ha parado al ratero." },
+          { "who": "Brunilda", "mood": "neutral", "text": "Ya lo he visto. Soy Brunilda, la maestra del gremio. Ven conmigo." },
+          { "text": "Te lleva a la plaza, a la Casa del Gremio: una posada grande con un tablón en el salón. Ahí se apuntan las compañías y se reparten las campañas." },
+          {
+            "who": "Brunilda", "mood": "neutral", "text": "Aquí se vuelve con oro, aunque no siempre vuelven todos. ¿Qué te trae a Puerto Alba?",
+            "options": [
+              { "id": "trabajo", "text": "Busco trabajo, del que se paga bien.", "effects": [{ "attitude": 1 }],
+                "reply": { "who": "Brunilda", "mood": "alegre", "text": "Sin rodeos. Así me gusta." } },
+              { "id": "que-es-el-tablon", "text": "¿Qué es eso del tablón?", "effects": [{ "rumor": "r-el-tablon" }],
+                "reply": { "who": "Brunilda", "mood": "neutral", "text": "Es donde se reparte el trabajo. Te lo explico, que la primera vez nadie lo entiende." } }
+            ]
+          },
+          { "who": "Brunilda", "mood": "neutral", "text": "Antes de apuntarte en el libro, tú y yo tenemos que hablar. Búscame en el salón." }
+        ],
         "opens": { "kind": "after", "milestone": "la-charla" },
         "asks": { "kind": "talk", "npc": "Brunilda" },
         "changes": { "reveal": [], "open": [], "standing": {}, "ending": "", "endingBy": {} }
@@ -443,6 +495,27 @@
         "title": "La prueba del gremio",
         "hint": "Ve a la bodega: «Salir del tablero» y luego «Entrar en La bodega del gremio». Allí, pulsa «Iniciar combate» cuando estés {listo|lista}.",
         "scene": "Brunilda te mira de arriba abajo, como quien calcula lo que aguanta una cuerda. «Parar a un ratero lo hace cualquiera. ¿Quieres ser de los nuestros? Baja a la bodega: hay ratas entre los barriles. Si subes {entero|entera}, te apunto en el libro.»",
+        "backdrop": "gremio",
+        "beats": [
+          { "text": "Brunilda te lleva detrás de la barra, hasta una trampilla. Del agujero sube olor a vino agrio y a algo muerto." },
+          { "who": "Brunilda", "mood": "neutral", "text": "Parar a un ratero lo hace cualquiera. Abajo hay ratas entre los barriles, gordas como gatos." },
+          {
+            "who": "Brunilda", "mood": "neutral", "text": "Si subes {entero|entera}, te apunto en el libro del gremio. ¿Alguna pregunta?",
+            "options": [
+              { "id": "voy-ya", "text": "Ninguna. Voy ahora mismo.", "effects": [{ "attitude": 1 }],
+                "reply": { "who": "Brunilda", "mood": "alegre", "text": "Así me gusta. Te espero aquí arriba." } },
+              {
+                "id": "cuanto-por-rata", "text": "¿Cuánto se paga por rata?",
+                "check": {
+                  "skill": "persuasion", "dc": 12,
+                  "success": { "effects": [{ "gold": 3 }], "reply": { "who": "Brunilda", "mood": "alegre", "text": "Qué cara más dura. Una moneda por cola, hasta tres. No te acostumbres." } },
+                  "failure": { "effects": [{ "attitude": -1 }], "reply": { "who": "Brunilda", "mood": "enfadado", "text": "Aquí se paga con el libro, no con monedas. Baja de una vez." } }
+                }
+              }
+            ]
+          },
+          { "text": "La trampilla cruje al abrirse. Abajo, algo chilla y se esconde entre los barriles." }
+        ],
         "opens": { "kind": "after", "milestone": "el-gremio" },
         "asks": { "kind": "win", "board": "La bodega del gremio" },
         "changes": { "reveal": [], "open": ["el-tablon"], "standing": {}, "ending": "", "endingBy": {} }

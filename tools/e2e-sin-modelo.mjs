@@ -23,12 +23,13 @@
 
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^[/]([A-Za-z]:)/, '$1');
-const PORT = 8125;
+// Con --port, otro: para correr a la vez que otras vueltas.
+const PORT = Number(process.argv.includes('--port') ? process.argv[process.argv.indexOf('--port') + 1] : '') || 8125;
 const BASE = `http://127.0.0.1:${PORT}`;
 const HEADED = process.argv.includes('--headed');
 const STRICT = process.argv.includes('--estricto');
@@ -359,7 +360,7 @@ try {
         /fría|recelosa|hostil/.test(threat.mood || '') && threat.lines.length >= 2 && !/guardias aceptan sobornos/.test(threat.lines[threat.lines.length - 1] || ''),
         JSON.stringify(threat));
     check('Z2: lo que sabe, solo a quien os aprecia',
-        knowsSaid.every(k => /cordial|amistosa|de los vuestros/.test(k.mood || '') ? k.told : !k.told), JSON.stringify(knowsSaid));
+        knowsSaid.every(k => /cordial|amistosa|leal/.test(k.mood || '') ? k.told : !k.told), JSON.stringify(knowsSaid));
 
     // --- Tiradas: tres seguidas, y ninguna se queda echada ------------------------------
     for (const skill of ['investigation', 'perception', 'insight']) {
@@ -452,12 +453,19 @@ try {
         const tail = (await seen()).chat.slice(-40).filter(t => t.trim() && !/^\[|^⚔️|^🗡️|^🎲|^🛡️|^💬|^⏳|^🚶/.test(t));
         console.log(`\n--- lo que contó el narrador ---\n${tail.join('\n\n')}\n---\n`);
     }
+    // J13.4: son cientos de frases, así que no se busca una en concreto: se mira que salga
+    // alguna del banco de ese momento, por sus trozos fijos (lo que va entre los huecos).
+    const bank = /** @type {any[]} */ (JSON.parse(readFileSync(join(ROOT, 'public/compendio/frases.json'), 'utf8')).rows);
+    const toldBy = (/** @type {string} */ said, /** @type {string} */ kind) => bank.filter(row => row.kind === kind).some(row => {
+        const pieces = String(row.text).split(/\{[^{}]*\}/).map(piece => piece.trim().toLowerCase()).filter(piece => piece.length >= 6);
+        return pieces.length > 0 && pieces.every(piece => said.toLowerCase().includes(piece));
+    });
     check('Z1: el final de la pelea se cuenta en prosa del motor',
-        /Se acabó|Cuando cae el último|Después del ruido|Salís de allí|No ha salido/.test(tells.pelea), tells.pelea.slice(-300));
+        toldBy(tells.pelea, 'fin-combate'), tells.pelea.slice(-300));
     check('Z1: el descanso se cuenta, y el día nuevo se dice una vez',
-        /\[DESCANSO\] (Dormís|La noche|La nieve)/.test(tells.descanso) && (tells.descanso.match(/día \d+/g) || []).length === 1, tells.descanso.slice(0, 300));
+        /\[DESCANSO\]/.test(tells.descanso) && toldBy(tells.descanso, 'descanso') && (tells.descanso.match(/día \d+/g) || []).length === 1, tells.descanso.slice(0, 300));
     check('Z1: el viaje y la llegada, en prosa: los días de camino, cómo es el sitio la primera vez y quién hay',
-        /de camino hasta Campamento Furtivo|hasta Campamento Furtivo/.test(tells.viaje) && /Llegáis a Campamento Furtivo|Campamento Furtivo sale de la niebla|Entráis/.test(tells.viaje),
+        /Campamento Furtivo/.test(tells.viaje) && toldBy(tells.viaje, 'viaje') && toldBy(tells.viaje, 'llegada'),
         tells.viaje.slice(0, 400));
 
     // --- El recuento ---------------------------------------------------------------------

@@ -101,6 +101,10 @@ function buildPlot(plot, quests, boards) {
             title: m.title ?? quest?.name ?? m.id,
             hint: m.hint ?? [goals.length > 0 ? `${goals.join('. ')}.` : '', where].filter(Boolean).join(' '),
             scene: m.scene ?? quest?.description ?? '',
+            // J9.2: la escena jugada, y lo demás que el hilo sabe leer y el contrato publica
+            // (J5.2). Solo si lo trae: un hito sin nada de esto sale igual que siempre.
+            ...Object.fromEntries(['backdrop', 'beats', 'sceneDialogue', 'prologue', 'hidden', 'within', 'late', 'backgrounds']
+                .filter(key => m[key] !== undefined).map(key => [key, m[key]])),
             opens: m.opens ?? { kind: 'after', milestone: m.after },
             asks: m.asks ?? (board ? { kind: 'win', board: board.name } : { kind: 'none' }),
             changes: {
@@ -109,6 +113,7 @@ function buildPlot(plot, quests, boards) {
                 standing: m.standing ?? {},
                 ending: m.ending ?? '',
                 endingBy: m.endingBy ?? {},
+                ...(m.close ? { close: m.close } : {}),
             },
         };
     });

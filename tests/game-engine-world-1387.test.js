@@ -53,7 +53,8 @@ describe('1387, el mundo escrito', () => {
 
     test('trae la gente, los rumores, los encargos y las habilidades nuevas', () => {
         const plan = buildImportPlan(pack);
-        expect(plan.entries.filter((/** @type {any} */ e) => e.dndData?.entityType === 'npc' && !e.dndData?.confidant)).toHaveLength(22);
+        // 22 del guion y 3 de J10.4: Mirlo, Brígida y Otilia, en los sitios que se descubren.
+        expect(plan.entries.filter((/** @type {any} */ e) => e.dndData?.entityType === 'npc' && !e.dndData?.confidant)).toHaveLength(25);
         expect(plan.metadata.rumors.length).toBeGreaterThanOrEqual(25);
         expect(plan.metadata.writtenContracts.length).toBeGreaterThanOrEqual(14);
         expect(plan.metadata.writtenContracts.filter((/** @type {any} */ c) => !c.noFight).every((/** @type {any} */ c) => c.boardName)).toBe(true);

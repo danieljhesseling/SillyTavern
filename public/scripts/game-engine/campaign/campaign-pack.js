@@ -31,7 +31,10 @@ import { normalizeBoardGrid } from '../board/map-image.js';
 import { validateZones } from '../board/zones.js';
 import { normalizeElevation } from '../board/heights.js';
 import { checkDialogues } from './dialogues.js';
+import { checkPlotScenes } from './plot-scenes.js';
 import { PLACE_KINDS } from './town.js';
+import { SKILLS } from '../rules/checks.js';
+import { DEFAULT_SIGHT_SKILL } from './sights.js';
 
 /**
  * @typedef {Object} Issue
@@ -453,6 +456,25 @@ export function validatePack(raw) {
                 });
             }
         });
+
+        // J10.2: lo que se puede examinar. Una sin nada que mirar no sale; una tirada que no
+        // existe se hace con la de examinar.
+        if (location.sights !== undefined && !Array.isArray(location.sights)) {
+            warnings.push({ path: `locations[${index}].sights`, message: 'Tiene que ser una lista; se ignora.' });
+        }
+        (Array.isArray(location.sights) ? location.sights : []).forEach((/** @type {any} */ sight, /** @type {number} */ at) => {
+            if (typeof sight === 'string' ? !text(sight) : !text(sight?.text)) {
+                warnings.push({ path: `locations[${index}].sights[${at}]`, message: 'Sin `text` (sobre qué se mira): no saldrá.' });
+                return;
+            }
+            const skill = typeof sight === 'string' ? '' : text(sight?.skill);
+            if (skill && !(skill in SKILLS)) {
+                warnings.push({
+                    path: `locations[${index}].sights[${at}].skill`,
+                    message: `"${skill}" no es una tirada; se hará con "${DEFAULT_SIGHT_SKILL}". Las que hay: ${Object.keys(SKILLS).join(', ')}.`,
+                });
+            }
+        });
     });
 
     const bestiary = new Set(pack.bestiary.map((/** @type {any} */ e) => text(e.name).toLowerCase()).filter(Boolean));
@@ -641,6 +663,20 @@ export function validatePack(raw) {
         });
         errors.push(...talks.errors);
         warnings.push(...talks.warnings);
+    }
+
+    // J9.2: las escenas del hilo. Quién habla, la charla que sigue y, en cada decisión, lo mismo
+    // que en una charla: sus efectos, sus condiciones y sus tiradas.
+    if (pack.plot && Array.isArray(pack.plot.milestones)) {
+        const scenes = checkPlotScenes(pack.plot, {
+            people: [...pack.npcs, ...pack.confidants].map((/** @type {any} */ p) => text(p?.name)).filter(Boolean),
+            rumors: pack.rumors.map((/** @type {any} */ r) => text(r?.id)).filter(Boolean),
+            items: pack.items.map((/** @type {any} */ i) => text(i?.name)).filter(Boolean),
+            dialogues: pack.dialogues.map((/** @type {any} */ d) => text(d?.id)).filter(Boolean),
+            places: [...pack.locations.map((/** @type {any} */ l) => text(l?.name)), ...pack.boards.map((/** @type {any} */ b) => text(b?.locationName))].filter(Boolean),
+        });
+        errors.push(...scenes.errors);
+        warnings.push(...scenes.warnings);
     }
 
     // Cuantos sitios tendra el mundo: los declarados, mas los que solo existen porque
