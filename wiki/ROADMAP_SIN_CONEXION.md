@@ -49,6 +49,8 @@ author: DanielJHesseling / Claude Opus 5.5
 
 **Más tarde, el mismo día, con varios agentes a la vez:** el texto del motor concuerda con el género de tu personaje (J1.4: se escribe `{cansado|cansada}`); el gremio guarda varios personajes tuyos y al entrar eliges con quién (J1.6, J18.1); los consejos de la primera vez salen uno a uno, cuando toca, y la prueba de la bodega se puede saltar (J2.2, J2.3); y terminar una campaña tiene su escena, con epílogos, lo que se lleva cada uno y la vuelta al gremio, que la apunta en el Salón de la fama (J4.5, J3.9).
 
+**El arte (2026-09-29, con PixelLab):** 442 imágenes en `public/img/game-engine/pixel/`: iconos de clases, especies, objetos, habilidades, estados y conjuros; 75 criaturas; 112 retratos (la gente de Puerto Alba, Strahd y 1387, los mercenarios y héroes de reserva) y 39 escenarios de día y de noche. Se están haciendo retratos por especie y clase, expresiones para la novela visual y losetas para el tablero, y conectándolo todo al juego.
+
 **Jugar con amigos (J6) está aparcado** hasta nueva orden (lo dijiste el 2026-09-28). Tampoco hay más personajes que los mercenarios sencillos del gremio.
 
 Cómo está hecho, en corto (el detalle, en [[EMPEZAR_UNA_CAMPANA]], «Jugar sin conexión»):
@@ -70,13 +72,13 @@ Cómo está hecho, en corto (el detalle, en [[EMPEZAR_UNA_CAMPANA]], «Jugar sin
 | **J9** · La historia de cada campaña | ⬜ | Escenas en vez de avisos, hitos, finales y un Diario que se lee como un libro |
 | **J10** · El mundo de cada campaña | ⬜ | Sitios con cosas que hacer, caminos que se abren, sucesos y secretos |
 | **J11** · Decisiones que pesan | ⬜ | Dentro de la campaña y de una campaña a otra |
-| **J12** · Tableros y peleas | ⬜ | Tableros hechos a partir de un mapa de D&D en imagen; peleas que se pueden evitar; trampas fuera de combate |
+| **J12** · Tableros y peleas | 🟡 | Hecho, en el motor: leer un mapa de D&D en imagen (cuadrícula, muros, suelo, puertas, puentes, salas con nombre y alturas) con `tools/mapa-a-tablero.mjs`, y el paquete lo acepta (J12.8 a J12.12). Falta: la pantalla para subirlo y retocarlo, y peleas que se pueden evitar |
 | **J13** · El texto del motor | ⬜ | Que todo se lea en prosa, con voz y sin repetirse |
 | **J14** · La gente: charlas y quedadas | ⬜ | Charla corta con los compañeros y dedicar una parte del día a quedar con alguien, como en *Persona*. Sus escenas, sus misiones y, si queréis, romances |
 | **J15** · Sentirse un juego | ⬜ | Primera partida que enseña, guardar sin miedo, menús propios |
 | **J16** · Medir la diversión | ⬜ | Vueltas automáticas, también con dos jugadores |
 | **J17** · Después: la IA como capa | ⏸️ | Aparcado (lo dijiste el 2026-09-29) |
-| **J19** · La magia de D&D | ⬜ | Espacios de conjuro, preparados y conocidos, concentración, invocaciones, zonas de conjuro en el tablero y objetos mágicos. Todo como datos |
+| **J19** · La magia de D&D | 🟡 | Hecho, en el motor: 81 conjuros como datos, espacios de conjuro de 5e, preparados y conocidos, concentración, invocaciones, zonas, reacciones, rituales y objetos con cargas. Falta: conectarlo al combate, al descanso y a subir de nivel (tras partir `party.js`) |
 | **J20** · Jugar desde el móvil | ⬜ | La pantalla en vertical y horizontal, el tablero a toques, botones de dedo, sin teclado y como app en la pantalla de inicio |
 | **J18** · La cara del juego | ✅ | Elegir con quién entras (J18.1), la pantalla de crear personaje (J18.2) y la novela visual con su registro (J18.3 a J18.6) |
 
