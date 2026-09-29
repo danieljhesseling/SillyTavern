@@ -97,8 +97,8 @@ Capacidades base que sustentan la interacción con modelos de lenguaje:
 - [[Seguridad-Autenticacion]]: Aislamiento multi-usuario, Scrypt, CSRF-Sync, listas blancas de IP y vectores de riesgo identificados.
 
 ### 3. ⚔️ Motor RPG & Campañas (el fork)
-El juego de rol añadido en la rama `my-silly`: **255 módulos en `game-engine/` (unas 56.000 líneas)**, cableados desde `party.js` (21.000 líneas), con 3.468 pruebas unitarias y cuatro vueltas en el navegador.
-- [[Sistema-Party]]: Gestión del grupo (`party.js`), líder activo, sincronización de HP/XP/Oro, leveling automático y dados.
+El juego de rol añadido en la rama `my-silly`: **255 módulos en `game-engine/` (unas 56.000 líneas)**, cableados desde `party/` (42 módulos, 24.000 líneas; `party.js` es su fachada), con 3.468 pruebas unitarias y cuatro vueltas en el navegador.
+- [[Sistema-Party]]: Gestión del grupo (`party/`), líder activo, sincronización de HP/XP/Oro, leveling automático y dados.
 - [[DND-Mecanicas-Items]]: Fórmulas D&D 5e (`dnd-system.js`), modificadores, AC por tipo de armadura, ranuras anatómicas y pesos.
 - [[Dynamic-Context-Manager]]: El prompt por bloques y su presupuesto de tokens.
 - [[Campanas-Mapas-Tableros]]: Visualizador zoomable de mapas, planos de ciudades, tableros tácticos con cuadrícula, tokens y niebla de guerra.
@@ -162,7 +162,7 @@ Si eres un agente de IA interactuando con este repositorio, sigue estas directri
 | Decidir en qué trabajar a continuación | [[ROADMAP_SIN_CONEXION]] §4 (el orden y los hitos), [[LO_QUE_FALTA]] §12 y [[POR_HACER]] | — |
 | Tocar el gremio y sus campañas | [[ROADMAP_SIN_CONEXION]] y [[EMPEZAR_UNA_CAMPANA]] (1b) | `game-engine/campaign/hub.js` · `campaigns.js` · `node tools/e2e-gremio.mjs` |
 | Convertir una campaña en JSON (como Strahd) | [[ROADMAP_SIN_CONEXION]] J5 | `wiki/campanas/` · `node tools/campana-a-paquete.mjs strahd` |
-| Modificar la ficha de personaje D&D o el inventario | [[Sistema-Party]] y [[DND-Mecanicas-Items]] | `public/scripts/party.js` & `dnd-system.js` |
+| Modificar la ficha de personaje D&D o el inventario | [[Sistema-Party]] y [[DND-Mecanicas-Items]] | `public/scripts/party/sheet.js` & `dnd-system.js` |
 | Añadir o cambiar lo que se envía al modelo | [[Dynamic-Context-Manager]] | `dynamic-context-manager.js` · comprueba con `node tools/check-prompt-shape.mjs` |
 | Intervenir en los mapas, cuadrícula o tokens | [[Campanas-Mapas-Tableros]] | `public/scripts/world-map-renderer.js` · `game-engine/board/` |
 | Tocar los tableros generados | [[ROADMAP_PROFUNDIDAD]] R6 (archivo) | `game-engine/world-builder/board-intent.js` y `dungeon-generator.js` |

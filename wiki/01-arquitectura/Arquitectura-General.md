@@ -29,7 +29,7 @@ graph TD
     subgraph Frontend [Cliente Web (public/)]
         UI[UI Monolítica (index.html + CSS)]
         CoreScript[Script Central (script.js)]
-        PartyMod[Motor de Party (party.js)]
+        PartyMod[Motor de Party (party/)]
         DndSys[Reglas & Items (dnd-system.js)]
         DynCtx[Dynamic Context Manager]
         MapEngine[World Map & Board Renderer]
@@ -123,7 +123,7 @@ SillyTavern soporta múltiples modos de despliegue según el caso de uso del usu
    - Carga avatares y personajes iniciales.
    - Inicializa los subsistemas del motor RPG:
      ```javascript
-     initPartyPanel();              // public/scripts/party.js
+     initPartyPanel();              // public/scripts/party/main.js (vía la fachada party.js)
      initActiveInstructions();      // public/scripts/active-instructions.js
      initDynamicContextManager();   // public/scripts/dynamic-context-manager.js
      initChatEnhancements();        // public/scripts/chat-enhancements.js

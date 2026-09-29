@@ -31,7 +31,7 @@ Números sacados del código el 2026-09-29.
 | Qué | Cuánto | Lo que dice |
 | :--- | ---: | :--- |
 | Módulos del motor (`game-engine/`) | **255** · 56.090 líneas | El juego carga 253. `guion-errors.js` solo lo usan las herramientas, y `hours.js` (T9) solo las pruebas |
-| `party.js`, el cableado | **21.268 líneas** | Todo lo que el jugador toca pasa por un solo archivo. Partirlo es J15.1 del plan |
+| `party/`, el cableado | **42 módulos, 24.447 líneas** | Partido en J15.1: un módulo por cosa (el más grande, `sheet.js`, 1.809 líneas) y `party.js` de fachada. Ver [[Mapa-Codigo-Archivos]], 2.2 |
 | Pruebas unitarias | **3.468** en 155 archivos | Todas en verde |
 | Vueltas en el navegador | **4**, unos 15 minutos a la vez | La completa (en dos mitades), la rápida, la sin modelo y la del gremio: `node tools/e2e-todo.mjs` |
 | Comandos | **63** | Muchos sin botón todavía (H3) |
@@ -62,7 +62,7 @@ Para saber qué no hay que tocar:
 2. **Hay dos mundos escritos**, 1387 y Strahd. Los otros tres se juegan con lo que el generador improvisa.
 3. **La primera hora no enseña nada.** 87 claves, 18 relojes y 63 comandos, y el juego no explica ninguno. Ya está en el plan: J2.2 (enseñar jugando) y J15.4 (comandos a botones).
 4. **La generación de mundos con IA nunca se ha probado con un proveedor real** (I1). Es la única tubería que no se ha visto funcionar.
-5. **Cada cambio cuesta más que el anterior**, por `party.js` (21.268 líneas; partirlo es J15.1). Las pruebas ya no son el freno: las cuatro vueltas tardan unos 15 minutos a la vez.
+5. **Cada cambio costaba más que el anterior**, por `party.js` (22.000 líneas). J15.1 lo partió en 42 módulos de `party/`: ahora se toca el del tema y varios agentes pueden trabajar a la vez sin pisarse. Las pruebas ya no son el freno: las cuatro vueltas tardan unos 15 minutos a la vez.
 
 ---
 
@@ -141,7 +141,6 @@ No hay tutorial dentro del juego. H1 y H3 ya están en el plan; H4 y H5, no.
 
 | ID | Qué | Quién | Esf. | Por qué |
 | :--- | :--- | :---: | :---: | :--- |
-| **K1** 💡 | **Partir `party.js` por dominios** · → J15.1 | A | L | 21.268 líneas. La magia, la mascota, los encargos, el turno enemigo y los tableros con propósito pueden vivir en `party/`, como ya viven `html.js` o `campaign-state.js`. El plan lo pone antes de partir la partida (J4.2) y de jugar con amigos (J6) |
 | **K3** 🟡 | **Los pasos que fallan a veces** | A | S | Tres arreglados el 2026-09-26 (el 68, el 190 y el 53). **Queda** el 24 (el contador del jefe), con su diagnóstico puesto |
 | **K4** 🟡 | **Errores de las vueltas** | A | S | El error 500 al guardar el chat, que el pegamento dejó apuntado, sigue sin mirar. Y si una vuelta sigue viva (cortada, o de otra sesión), la siguiente en el mismo puerto no arranca: se cierra a mano o se usa `--port` |
 | **K5** | **Tres archivos grandes sin pruebas** | A | M | `campaigns.js` (2.245 líneas), `dynamic-context-manager.js` (1.000) y `world-content-browser.js` (674). Solo los tocan las vueltas en el navegador |
@@ -229,6 +228,7 @@ Lo que este documento pedía el 2026-09-26 y ya está. Cada cosa, con su módulo
 - **C3** · Siete salas, una por propósito (2026-09-26): el cuartel, el puente y el despacho se sumaron a la cámara, la guarida, el altar y la atalaya.
 - **C5** · El paquete de 1387, al día con su guion (2026-09-28, con la ronda 12): los 7 caminos con `cerrado_hasta` se abren al cumplirse su hito.
 - **H2** · «Cómo se juega» en la pausa y con `/ayuda` (2026-09-26): `campaign/how-to-play.js`, armado con el modo de la partida.
+- **K1** · `party.js` partido por dominios (J15.1, 2026-09-29): 42 módulos en `party/`, `state.js` para lo que escriben varios, `keys.js` para las claves y `party.js` de fachada. `tests/party-facade.test.js` cuida que siga así; el reparto, en [[Mapa-Codigo-Archivos]] (2.2).
 - **K2** · Las vueltas en tandas (2026-09-28): de 70 minutos a unos 15, sin quitar comprobaciones. `tools/e2e-todo.mjs` lo lanza todo a la vez.
 - **K6** · `guion-errors.js` no era código muerto (2026-09-26): lo usa el conversor del guion, y el comprobador de cableado lo dice aparte.
 

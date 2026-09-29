@@ -52,7 +52,8 @@ public/
     │   ├── world/           # Viaje, estaciones y crecimiento del mundo
     │   ├── world-builder/   # Generadores: mazmorras, tableros con intención, mundos con IA
     │   └── compendio/       # La biblioteca de contenido de public/compendio/
-    ├── party.js             # Gestor de grupo RPG, ficha D&D e inventario (19.006 líneas)
+    ├── party.js             # Fachada de party/: reexporta lo que usan los demás (29 líneas)
+    ├── party/               # El juego que cuelga del panel del grupo, un módulo por cosa (42, J15.1)
     ├── dnd-system.js        # Lógica matemática D&D 5e, slots, dados y modificadores (1.230 líneas)
     ├── dynamic-context-manager.js # Gestor de contexto dinámico y tokens (998 líneas)
     ├── campaigns.js         # Vista de campañas por mundos y sesiones de chat (1.723 líneas)
@@ -224,6 +225,6 @@ El director de escena **obedece al motor de juego canónico**, no a la prosa lib
 - *ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES*: Diagnóstico lúdico y soluciones de diseño.
 - [[PROPUESTA_FRONTEND_MODO_JUEGO]]: Documento de diseño original del Game Shell (Fase H).
 - [[Ciclo-De-Vida-Prompt]]: Flujo detallado desde la pulsación de tecla hasta la respuesta del LLM.
-- [[Sistema-Party]]: Estructura interna de `party.js` y gestión del grupo.
+- [[Sistema-Party]]: Estructura interna de `party/` y gestión del grupo.
 - [[Campanas-Mapas-Tableros]]: Mecánicas del renderizador de mapas en `world-map-renderer.js`.
 - *PROBLEMAS_TECNICOS*: Análisis de rendimiento DOM y vulnerabilidades de interpolación.

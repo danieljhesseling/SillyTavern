@@ -197,7 +197,7 @@ Los Lorebooks almacenan información del mundo y entradas reactivas por palabras
 ## 5. Sincronización y Retos de Persistencia
 
 ### Doble Persistencia de Party (Metadata vs LocalStorage)
-Como se detalla en `public/scripts/party.js`:
+Como se detalla en `public/scripts/party/roster.js`:
 - `savePartyState()` guarda en `window.localStorage.setItem('sillytavern_partyMembers', ...)` para respaldo rápido en navegador.
 - Paralelamente, `savePartyToMetadata()` persiste en `chat_metadata.party` y llama a `saveMetadata()`, enviando una petición `POST /api/chats/save` al backend.
 - **Riesgo Detectado**: Si el usuario abre dos pestañas del navegador con chats distintos, `localStorage` sobreescribe el grupo globalmente provocando desincronización entre chats. La fuente de la verdad debe ser siempre `chat_metadata`.

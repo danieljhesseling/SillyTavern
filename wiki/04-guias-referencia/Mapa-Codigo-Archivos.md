@@ -2,7 +2,7 @@
 title: Mapa Completo del Código & Estructura de Archivos
 tags: [codigo, estructura, mapa, directorios, backend, frontend, fork, dnd]
 created: 2026-09-20
-updated: 2026-09-26
+updated: 2026-09-29
 author: DanielJHesseling / Antigravity AI
 ---
 
@@ -24,7 +24,7 @@ Este documento sirve como inventario exhaustivo del repositorio, clasificando lo
 | `public/` | Código fuente del cliente web servido al navegador (HTML, CSS, JS, libs). | SillyTavern Core + Fork |
 | `public/scripts/` | Módulos ES de lógica de frontend. | SillyTavern Core + Fork |
 | `public/scripts/game-engine/` | **Motor de juego del fork**: tablero, combate, campaña, reglas e interfaz. Módulos puros, probados en Node. | Fork |
-| `public/scripts/party/` | Piezas extraídas de `party.js` por las costuras que los tests cubren. | Fork |
+| `public/scripts/party/` | El juego que cuelga del panel del grupo, un módulo por cosa (J15.1). `party.js` es su fachada. | Fork |
 | `tools/` | Comprobaciones propias: tipos, cableado, forma del prompt, claves de estado, densidad del mundo, el conversor del guion y los recorridos en navegador. | Fork |
 | `public/css/` | Hojas de estilo CSS del cliente. | SillyTavern Core + Fork |
 | `public/lib/` | Bibliotecas de terceros (jQuery, jQuery UI, Select2, Toastr, etc.). | SillyTavern Core |
@@ -329,24 +329,69 @@ Módulos puros: sin DOM, sin estado global, sin lecturas del chat. Por eso se pr
 | `taller/taller.js` | 1814 | El taller de campanas: la puerta de tres caminos y las pestañas. |
 | `world-workshop.js` | 210 | El taller del mundo, desde la pausa: verlo, tocar el hilo, añadir gente o sitios, e ilustrarlo (ideas 175, 176, 185 y 183). |
 
-### 2.2. El subsistema de grupo — `public/scripts/party/` (6 archivos, 963 líneas)
+### 2.2. El subsistema de grupo — `public/scripts/party/` (42 archivos, 24.447 líneas)
 
-Extraído de `party.js` por las costuras que los tests ya cubrían.
+Todo el juego que cuelga del panel del grupo. Hasta J15.1 era un solo `party.js` de 22.000 líneas; ahora es un módulo por cosa, y `public/scripts/party.js` (29 líneas) es una **fachada** que reexporta, nombre a nombre, lo que importan `script.js`, `campaigns.js`, el gestor de contexto y las pruebas del navegador.
+
+Tres reglas lo mantienen en pie (las comprueba `tests/party-facade.test.js`):
+
+- **Nadie de `party/` importa la fachada**: los módulos se importan entre sí directamente, aunque sea en círculo.
+- **Nada se hace al importar**: en el nivel superior solo hay declaraciones. Las funciones se llaman en tiempo de juego, cuando todos los módulos ya están cargados. Las dos excepciones son construir el estado de campaña (`time.js`) y pedir el compendio (`world.js`).
+- **Lo que escriben varios módulos vive en `state.js`**, y se cambia con su `set…` (`setPartyMembers(x)`, no `partyMembers = x`): un módulo no puede asignar lo que importa. Lo que escribe uno solo vive en ese módulo y los demás lo leen.
+
+Dónde va algo nuevo: en el módulo de su tema. Una clave de `chat_metadata` va a `keys.js` (y a `state-registry.js`); un comando, a `commands.js`; un evento del chat o una herramienta del modelo, a `events.js`.
 
 | Archivo | Líneas | Qué hace |
 | :--- | ---: | :--- |
-| `campaign-state.js` | 337 | The campaign's own state: the clock, the bonds, the rests and the map. |
-| `combat-rules.js` | 275 | Combat rules: dice, board geometry, damage formulas and encounter shape. |
+| `main.js` | 218 | El panel: `initPartyPanel` (lo que llama `script.js`) y `setPartyTab`. Registra, en este orden, los comandos, lo del modelo y los eventos del chat. |
+| `commands.js` | 1229 | Los 66 comandos de barra (`registerPartyCommands`), con los proveedores de nombres que los autocompletan. |
+| `events.js` | 440 | Las cinco herramientas del modelo y el coste de cada turno (`registerModelTools`), y lo que se escucha del chat (`registerChatEvents`). |
+| `state.js` | 121 | El estado que escriben varios módulos: el grupo, dónde está, el combate, con quién se habla. Cada variable con su `set…`. |
+| `keys.js` | 216 | Las claves de lo guardado: en los metadatos del chat (`*_KEY`) y en este navegador (`*_STORAGE`, `localFlag`). |
+| `roster.js` | 807 | El grupo: guardarlo y cargarlo con el chat, hacerlo con las fichas del mundo, pintarlo, añadir y quitar, la bolsa común. |
+| `sheet.js` | 1809 | La ficha de un personaje: la ventana con sus pestañas, la tuya de mirar, los juegos de ropa, dar algo a otro y lo maldito. |
+| `level-up.js` | 240 | Subir de nivel, con lo que da cada nivel escrito antes de pulsar, y rehacerse en el templo. |
+| `companions.js` | 734 | Los compañeros: vínculos y escenas, opiniones, lo que dicen en combate, quién se harta, hazañas, confidentes, regalos y su tarjeta. |
+| `world.js` | 406 | El mundo abierto, leído una vez: facciones, gente, rumores, tablón, tableros, compendio, reglas, estación y tiempo de hoy. |
+| `world-growth.js` | 413 | El mundo que crece mientras se juega: explorar, la gente que falta, los hechos apuntados; y la fila para escribir el mundo sin pisarse. |
+| `factions.js` | 360 | Las facciones: lo que piensan de vosotros, lo que ganan o pierden con cada encargo, quién manda y cómo pasan sus días. |
+| `time.js` | 749 | El tiempo: el reloj y los vínculos (`campaign-state.js`), lo de cada día y cada semana, descansar, la cuenta, las deudas y la mesa de la semana. |
+| `plot.js` | 532 | El hilo: la mecha, los pasos y los actos, las pistas, el villano, los sitios que se revelan y el final. |
+| `modes.js` | 120 | El modo de la partida (R1): sus interruptores y cambiarlo a mitad de partida. |
+| `narration.js` | 866 | Lo que se cuenta: líneas del motor y del modelo, sucesos, consejos, quién narra, el chat plegado, las caras y la guardia de los dados. |
+| `talk.js` | 957 | Hablar y escribir: con quién se habla, qué hace el motor con lo escrito en la caja, las tiradas de habilidad, examinar y sonsacar. |
+| `travel.js` | 865 | Viajar: lo que cuesta, lo que sale al paso, contratiempos, paradas, acampar, forrajear, los guardias y las noticias al llegar. |
+| `town.js` | 1091 | El pueblo: servicios y tiendas, el herrero, los remedios, rumores, cartas, fiestas, fama, prisioneros y los dados de la taberna. |
+| `contracts.js` | 709 | Los encargos: el tablón, aceptarlos, cumplirlos y cobrarlos; los que se mandan sin el héroe, mercenarios, invitados y rivales. |
+| `hub.js` | 473 | El gremio de «Jugar sin conexión» (J4): la casa, sus edificios, el almacén, el tablón de campañas, contratar, el banquillo y la vuelta. |
+| `cases.js` | 372 | Los casos con verdad (U8) y los duelos de palabras (U6). |
+| `pet.js` | 297 | La mascota (R5): tenerla, guardarla, lo que hace en el pueblo y en combate, y domar lo vencido. |
+| `magic.js` | 726 | Habilidades y conjuros: el catálogo, usarlas en el tablero, componentes y precio, estados con fecha, pergaminos y el grimorio. |
+| `board.js` | 790 | El tablero: entrar, el terreno y las puertas, las fichas de cada uno, los tableros ganados y lo que se dispara al pisar. |
+| `board-view.js` | 1175 | El tablero en pantalla: el panel de la localización, las casillas encendidas, la paleta del terreno, la tarjeta de un enemigo y los clics. |
+| `combat-state.js` | 344 | El combate en curso, preguntado: de quién es el turno, quién sigue en pie, qué casillas ocupa cada uno, qué armadura tiene. |
+| `combat-flow.js` | 1510 | Una pelea de principio a fin: empezarla, iniciativa, turnos y rondas, aliados solos, salvaciones, objetivos, tregua, huida y final. |
+| `player-actions.js` | 1143 | Lo que hace quien juega en su turno: moverse, atacar, maniobras, lanzar cosas, el golpe a una, el relevo y pasar el turno. |
+| `enemy-turn.js` | 595 | El turno de los enemigos: qué hace cada uno, golpes y habilidades, ataques de oportunidad y lo que gritan. |
+| `combat-log.js` | 247 | Lo que se ve de cada tirada: los dados en pantalla, lo que sale flotando de una ficha y el registro del combate. |
+| `loot.js` | 235 | Lo que se gana: el botín de un encuentro, los cofres, las reliquias y la llave del tablero. |
+| `checkpoints.js` | 219 | Los puntos de retorno: guardar la partida entera (y lo que cambia del mundo) y volver a ella. |
+| `shell.js` | 871 | El Modo Juego: lo que dibuja cada escena, la fila de fichas, la pausa y sus opciones, la bandeja de avisos y abrirse al arrancar. |
+| `menus.js` | 1336 | Las ventanas de la pausa y los comandos: diario, ayuda, glosario, reglas, compendio, salón de la fama, sesión, taller, editor de campaña. |
+| `simulation.js` | 245 | Lo que se mira desde fuera sin pantalla: las fotos del grupo, del combate y del tablero, y los atajos de `tools/sim-campana.mjs`. |
+| `campaign-state.js` | 347 | The campaign's own state: the clock, the bonds, the rests and the map. |
+| `combat-rules.js` | 276 | Combat rules: dice, board geometry, damage formulas and encounter shape. |
 | `html.js` | 27 | HTML escaping for the party submodules. |
 | `item-forms.js` | 183 | HTML builders for the item editor form. |
 | `positions.js` | 65 | Where a party member starts on the board. |
-| `types.js` | 76 | Shared domain types for the party subsystem. |
+| `types.js` | 89 | Shared domain types for the party subsystem (`PartyMember`, `DndCatalog`). |
 
 ### 2.3. Archivos del fork que siguen siendo grandes
 
+`party.js` ya no está en esta lista: desde J15.1 es la fachada de `party/` (ver 2.2), y su módulo más grande, `sheet.js`, tiene 1.809 líneas.
+
 | Archivo | Líneas | Función Principal |
 | :--- | ---: | :--- |
-| `public/scripts/party.js` | 19.006 | El cableado: grupo, ficha, combate real, comandos, tablero y todo lo que el jugador toca. **Sigue creciendo** unas 1.500 líneas por fase (ver K1 en [[LO_QUE_FALTA]]) |
 | `public/scripts/campaigns.js` | 1.723 | Tarjetas de campaña, la partida rápida y el arranque de partida |
 | `public/scripts/world-map-renderer.js` | 1.336 | Mapas, tableros, capas de terreno y niebla, puertas y cofres |
 | `public/scripts/dnd-system.js` | 1.230 | Fórmulas D&D 5e. Lee sus tablas del paquete de reglas |

@@ -40,7 +40,7 @@ public/scripts/slash-commands/
 ## 2. Los comandos del motor RPG
 
 > [!NOTE]
-> **Puesto al día con el código el 2026-09-26.** La versión anterior de esta sección describía comandos que nunca existieron (`/party heal`, `/dnd`, `/dynctx`, `/map goto`). La lista de abajo sale de los registros reales: **55 en `party.js`** y 2 en `dynamic-context-manager.js`. Casi todos tienen su botón en el Modo Juego; el comando sigue ahí porque el recorrido de pruebas entra por él.
+> **Puesto al día con el código el 2026-09-26.** La versión anterior de esta sección describía comandos que nunca existieron (`/party heal`, `/dnd`, `/dynctx`, `/map goto`). La lista de abajo sale de los registros reales: **66 en `party/commands.js`** (`registerPartyCommands`) y 2 en `dynamic-context-manager.js`. Casi todos tienen su botón en el Modo Juego; el comando sigue ahí porque el recorrido de pruebas entra por él.
 
 Se registran con `SlashCommandParser.addCommandObject(SlashCommand.fromProps({ name, callback, helpString, … }))`. `/help <comando>` enseña su ayuda dentro del juego.
 

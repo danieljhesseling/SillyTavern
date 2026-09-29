@@ -63,7 +63,7 @@ git merge upstream/release
 > [!IMPORTANT]
 > **Código nuevo va en archivo nuevo.**
 >
-> Los archivos creados por el fork (`party.js`, `dnd-system.js`, `world-map-renderer.js`, `dynamic-context-manager.js`, `campaigns.js`, y las hojas CSS del motor RPG) **no los toca upstream jamás**: colisión cero, para siempre. Cada línea escrita dentro de un archivo de upstream, en cambio, se paga en todos los merges futuros.
+> Los archivos creados por el fork (`party.js` y `party/`, `dnd-system.js`, `world-map-renderer.js`, `dynamic-context-manager.js`, `campaigns.js`, y las hojas CSS del motor RPG) **no los toca upstream jamás**: colisión cero, para siempre. Cada línea escrita dentro de un archivo de upstream, en cambio, se paga en todos los merges futuros.
 >
 > Cuando haga falta un punto de enganche en un archivo de upstream, que sea **lo más pequeño posible**: un `import`, una llamada, un contenedor vacío que rellene el código del fork.
 
@@ -86,12 +86,12 @@ Ver [[ROADMAP]] (Batería 0) para el detalle del procedimiento y las métricas.
 ## 3. Cómo Extender el Motor RPG: Guías Paso a Paso
 
 ### A. Cómo Registrar un Nuevo Comando de Barra en el Motor RPG
-Para añadir un nuevo comando relacionado con el juego en `public/scripts/party.js`:
+Para añadir un nuevo comando relacionado con el juego, dentro de `registerPartyCommands` en `public/scripts/party/commands.js` (ese archivo ya importa lo de abajo; lo que haga el comando vive en el módulo de su tema y se importa de allí):
 
 ```javascript
-import { SlashCommandParser } from './slash-commands/SlashCommandParser.js';
-import { SlashCommand } from './slash-commands/SlashCommand.js';
-import { ARGUMENT_TYPE, SlashCommandArgument } from './slash-commands/SlashCommandArgument.js';
+import { SlashCommandParser } from '../slash-commands/SlashCommandParser.js';
+import { SlashCommand } from '../slash-commands/SlashCommand.js';
+import { ARGUMENT_TYPE, SlashCommandArgument } from '../slash-commands/SlashCommandArgument.js';
 
 SlashCommandParser.addCommandObject(SlashCommand.fromProps({
     name: 'misupercomando',

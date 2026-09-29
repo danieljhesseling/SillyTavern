@@ -7,7 +7,7 @@ author: DanielJHesseling / Antigravity AI
 
 # Sistema de Party (Grupo RPG) & Gestión de Miembros
 
-El módulo **Sistema de Party** (`public/scripts/party.js`) es la columna vertebral de la experiencia de juego de rol introducida en la rama `my-silly`. Transforma la interacción tradicional 1-a-1 de SillyTavern en una campaña cooperativa o en solitario con un grupo activo de aventureros que comparten inventario, combate, economía y presencia espacial.
+El módulo **Sistema de Party** (`public/scripts/party/`, con `party.js` de fachada desde J15.1; el reparto por módulos está en [[Mapa-Codigo-Archivos]], 2.2) es la columna vertebral de la experiencia de juego de rol introducida en la rama `my-silly`. Transforma la interacción tradicional 1-a-1 de SillyTavern en una campaña cooperativa o en solitario con un grupo activo de aventureros que comparten inventario, combate, economía y presencia espacial.
 
 ---
 
@@ -102,10 +102,10 @@ El módulo implementa las fórmulas estándar de D&D 5e:
 
 ## 4. Persistencia y Ciclo de Vida
 
-El estado del grupo se conserva mediante un doble mecanismo en `party.js`:
+El estado del grupo se conserva mediante un doble mecanismo en `party/roster.js`:
 
 ```javascript
-// public/scripts/party.js (Líneas ~93-122)
+// public/scripts/party/roster.js (savePartyState y savePartyToMetadata)
 function savePartyState() {
     // 1. Respaldo local en el almacenamiento del navegador
     try {
