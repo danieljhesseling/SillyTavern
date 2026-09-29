@@ -14,6 +14,10 @@
  */
 
 import { spawnSync } from 'node:child_process';
+import { readdirSync } from 'node:fs';
+
+/** J15.1: todo lo de `party/` es del fork. Se mira el directorio: no hay que apuntar cada módulo. */
+const PARTY_DIR = new URL('../public/scripts/party/', import.meta.url);
 
 /**
  * Files created by the fork. Upstream never touches these, so they are ours to keep clean.
@@ -284,11 +288,8 @@ const FORK_FILES = [
     'public/scripts/game-engine/campaign/bonds.js',
     'public/scripts/game-engine/campaign/scenarios.js',
     'public/scripts/game-engine/campaign/campaign-map.js',
-    'public/scripts/party/combat-rules.js',
-    'public/scripts/party/types.js',
-    'public/scripts/party/item-forms.js',
-    'public/scripts/party/html.js',
-    'public/scripts/party/positions.js',
+    // J15.1: party.js es una fachada; lo suyo vive en party/, un módulo por cosa.
+    ...readdirSync(PARTY_DIR).filter(f => f.endsWith('.js')).sort().map(f => `public/scripts/party/${f}`),
     'public/scripts/dnd-system.js',
     'public/scripts/world-map-renderer.js',
     'public/scripts/dynamic-context-manager.js',

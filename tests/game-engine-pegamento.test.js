@@ -297,7 +297,10 @@ describe('U4: una sola crónica', () => {
     });
 
     test('cada etiqueta que usa el código tiene su categoría', () => {
-        const files = ['../public/scripts/party.js', '../public/scripts/campaigns.js', '../public/scripts/party/campaign-state.js'];
+        // J15.1: party.js es una fachada; el código está en party/, un archivo por cosa.
+        const partyDir = new URL('../public/scripts/party/', import.meta.url);
+        const partyFiles = fs.readdirSync(partyDir).filter(f => f.endsWith('.js')).map(f => `../public/scripts/party/${f}`);
+        const files = ['../public/scripts/party.js', '../public/scripts/campaigns.js', ...partyFiles];
         const tags = new Set();
         for (const file of files) {
             const text = fs.readFileSync(new URL(file, import.meta.url), 'utf8');
