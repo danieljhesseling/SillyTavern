@@ -83,7 +83,7 @@ import {
     savePartyState, renderPartyMembers, lastLevelPlan, getLocationBoards, postCombatNarration, tellMoment,
     postForModel, currentSurvival, survivalNow, noteDeed, notePlot, hereLocation, raiseFame, countStat, showTip,
     tellBondScene, rememberTogether, bark, judgeDecision, partyMorale, getCampaignCalendar, getCampaignBonds,
-    saveCampaignState, markLocationComplete, lastCompendium, renderLocationMapsPreview,
+    saveCampaignState, markLocationComplete, lastCompendium,
 } from './main.js';
 import {
     handlePlayerCombatMove, performManeuver, handlePlayerCombatAttack, endPlayerCombatTurn,
@@ -92,6 +92,7 @@ import { collectedHere, awardEncounterLoot, dropBoardKey } from './loot.js';
 import {
     persistBoardTerrain, getActiveBoardContext, explodeBarrels, recordBoardWon, boardVisibility,
 } from './board.js';
+import { renderLocationMapsPreview } from './board-view.js';
 
 /**
  * @param {string} name

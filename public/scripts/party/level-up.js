@@ -20,9 +20,8 @@ import {
 } from '../game-engine/rules/level-up.js';
 import { isShellOpen, refreshGameShell } from '../game-engine/ui/shell/game-shell.js';
 import { partyMembers } from './state.js';
-import {
-    savePartyState, renderPartyMembers, postCombatNarration, campaign, payFromParty, renderLocationMapsPreview,
-} from './main.js';
+import { savePartyState, renderPartyMembers, postCombatNarration, campaign, payFromParty } from './main.js';
+import { renderLocationMapsPreview } from './board-view.js';
 
 /**
  * Idea 58: rehacerse en el templo. Se deshacen las mejoras y se eligen otras tantas, las que

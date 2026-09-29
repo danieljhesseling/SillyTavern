@@ -54,11 +54,11 @@ import { chargeOpportunityAttacks, enemyBark, resolveEnemyAttackOn } from './ene
 import { checkScenarioOutcome, endCombat, judgeCurrentScenario, offerExit, runCombatTurnLoop } from './combat-flow.js';
 import {
     savePartyState, postCombatNarration, soundCue, showTip, bark, recordFeat, getCampaignBonds, saveCampaignState,
-    renderLocationMapsPreview,
 } from './main.js';
 import {
     persistBoardTerrain, getActiveBoardTerrain, getActiveBoardContext, boardVisibility, fireHazardsOnEnter,
 } from './board.js';
+import { renderLocationMapsPreview } from './board-view.js';
 
 /** @typedef {import('./types.js').PartyMember} PartyMember */
 

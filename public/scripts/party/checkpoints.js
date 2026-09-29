@@ -24,9 +24,10 @@ import {
 import {
     savePartyState, renderPartyMembers, saveCurrentLocation, saveCurrentBoard, postCombatNarration, campaign,
     worldWrite, refreshWorldMemoryPrompt, getCampaignCalendar, getCampaignBonds, saveCampaignState, getCampaignMap,
-    renderCampaignTab, renderLocationMapsPreview,
+    renderCampaignTab,
 } from './main.js';
 import { saveCombatState } from './combat-state.js';
+import { renderLocationMapsPreview } from './board-view.js';
 
 /**
  * Todo lo que el juego da por cierto, listo para guardarlo o devolverlo a su sitio.

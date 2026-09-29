@@ -15,7 +15,8 @@ import {
 } from '../game-engine/ui/combat-log.js';
 import { DICE_LOG_KEY } from './keys.js';
 import { combatLogEntries, setCombatLogEntries } from './state.js';
-import { combatLogPanel, combatLogFilter, showTip } from './main.js';
+import { showTip } from './main.js';
+import { combatLogPanel, combatLogFilter } from './board-view.js';
 
 /** @type {HTMLElement|null} */
 let combatDiceOverlayElement = null;

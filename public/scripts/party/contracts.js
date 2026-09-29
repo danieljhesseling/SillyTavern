@@ -52,10 +52,11 @@ import {
     postForModel, currentSurvival, survivalNow, settleFactionStake, campaignCompendium, lastBoardRules,
     lastWrittenQuests, lastWrittenContracts, lastMix, noteDeed, getPlot, notePlot, raiseFame, countStat,
     shiftPlaceFortune, voiceOpinions, getDebt, getCampaignCalendar, getCampaignBonds, campaignDay,
-    recordCampaignBondEvent, offerPersonalQuests, seedOfWorld, biomeHere, renderLocationMapsPreview,
+    recordCampaignBondEvent, offerPersonalQuests, seedOfWorld, biomeHere,
 } from './main.js';
 import { buryMember } from './combat-flow.js';
 import { deliverRelics } from './loot.js';
+import { renderLocationMapsPreview } from './board-view.js';
 
 /**
  * Entrega el encargo aceptado, si el combate que acaba de ganarse era el suyo.

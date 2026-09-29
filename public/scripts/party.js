@@ -9,7 +9,7 @@
 export {
     loadDndCatalog, adoptVeteranGear, giveStartingGear, setPartyFromWorldEntries, applyCampaignRuleset,
     postJourney, applyModeExtras, notePlot, beginCampaignPlot, routeTyped, openCampaignBuilder, memberFromEntry,
-    partySnapshot, adoptCarriedParty, plotEndingTitle, refreshBoardView, addPartyMember, removePartyMember,
+    partySnapshot, adoptCarriedParty, plotEndingTitle, addPartyMember, removePartyMember,
     updatePartyMemberFromPersona, getActivePartyLeader, getPartyDescription, initPartyPanel,
 } from './party/main.js';
 export {
@@ -20,3 +20,4 @@ export {
 export { adoptPet } from './party/pet.js';
 export { postHomecoming, recordFinishedCampaign, seatPartyHero, giveStartingPurse } from './party/hub.js';
 export { enterStartingBoard } from './party/board.js';
+export { refreshBoardView } from './party/board-view.js';

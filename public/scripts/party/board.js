@@ -46,8 +46,9 @@ import { applyFall, wakeRoomEnemies } from './combat-flow.js';
 import { openChest } from './loot.js';
 import {
     savePartyState, saveCurrentLocation, saveCurrentBoard, getLocationBoards, partyTabSetter, postCombatNarration,
-    soundCue, getPlot, hereLocation, worldWrite, getCurrentSlotLabel, weatherHere, renderLocationMapsPreview,
+    soundCue, getPlot, hereLocation, worldWrite, getCurrentSlotLabel, weatherHere,
 } from './main.js';
+import { renderLocationMapsPreview } from './board-view.js';
 
 /**
  * Writes terrain and fog back into the world info file that owns the board.

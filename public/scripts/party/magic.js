@@ -37,7 +37,7 @@ import { combatEncounter, currentLocationName, partyMembers } from './state.js';
 import {
     savePartyState, renderPartyMembers, applyCampaignRuleset, postCombatNarration, nudgeRuler, postForModel,
     lastWorldRows, noteDeed, hereLocation, worldWrite, showTip, judgeDecision, recordFeat, advanceCampaignDay,
-    lastCompendium, renderLocationMapsPreview,
+    lastCompendium,
 } from './main.js';
 import {
     saveCombatState, getCurrentTurnState, getEnemyByInstanceId, getAliveEnemies, getCurrentActingMember,
@@ -47,6 +47,7 @@ import { floatOnToken } from './combat-log.js';
 import { damagePartyMember } from './enemy-turn.js';
 import { judgeCurrentScenario, checkScenarioOutcome, endCombat } from './combat-flow.js';
 import { persistBoardTerrain, getActiveBoardContext, explodeBarrels, boardVisibility } from './board.js';
+import { renderLocationMapsPreview } from './board-view.js';
 
 /**
  * R4: usar un pergamino o una varita: el conjuro sale del objeto, sin gastar cargas del
