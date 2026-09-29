@@ -893,6 +893,7 @@
       {
         "id": "sangrienta-bienvenida",
         "quest": "q_taberna",
+        "scene": "Una Bruja Baroviana está acechando a los clientes de la taberna Sangre de la Enredadera. Es hora de demostrar de qué estáis {hechos|hechas}.",
         "opens": {
           "kind": "start"
         },
