@@ -212,6 +212,16 @@ function buildTerrainPalette(board, onChange) {
 /** Whether the terrain editor is open on the current board. */
 let terrainEditing = false;
 
+/**
+ * Computes live highlight cells (movement range + attackable enemies) from a tentative drag position.
+ * Used by world-map-renderer onTokenDragging callback during drag.
+ * @param {number} tokenId
+ * @param {number} tentGX
+ * @param {number} tentGY
+ * @param {number} gridW
+ * @param {number} gridH
+ * @returns {import('../world-map-renderer.js').HighlightCell[]}
+ */
 function buildDragHighlightCells(tokenId, tentGX, tentGY, gridW, gridH) {
     if (!combatEncounter.active) return [];
     const member = partyMembers.find(m => m.id === tokenId);

@@ -607,6 +607,18 @@ function walkTowardObjective(member, goal) {
     return said;
 }
 
+/**
+ * El turno de un companero que se lleva solo.
+ *
+ * Decide con **su propia maquina** (`ally-ai.js`), no con la de los enemigos: una IA que
+ * vale para un goblin no vale para alguien a quien le tienes carino. Sigue la postura que
+ * le has puesto en su ficha, no sale del alcance de nadie andando y se retira malherido.
+ * Lo que decide lo aplica **por los mismos caminos que usarias tu**: mover cuesta pies,
+ * atacar gasta la accion y tira contra la misma CA.
+ *
+ * @param {any} entry
+ * @returns {string}
+ */
 export function resolveAllyTurnAction(entry) {
     const member = partyMembers.find(m => Number(m.id) === Number(entry.id));
     if (!member) return '';

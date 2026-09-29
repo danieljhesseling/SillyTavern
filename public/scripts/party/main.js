@@ -1,20 +1,18 @@
+/**
+ * El panel del grupo: montarlo y cambiar de pestaña.
+ *
+ * `initPartyPanel` es lo que llama `script.js` al arrancar. Monta el panel de la derecha y
+ * registra, en este orden, los comandos (`commands.js`), lo del modelo y los eventos del chat
+ * (`events.js`). El resto del juego vive en los otros módulos de `party/`; `party.js` es la
+ * fachada que los reexporta.
+ *
+ * Era `party.js` entero hasta J15.1 (wiki/ROADMAP_SIN_CONEXION.md).
+ */
+
 import { chat_metadata, eventSource, event_types } from '../../script.js';
 import { loadWorldInfo, METADATA_KEY } from '../world-info.js';
 import { createSeededRandom } from '../game-engine/combat/seeded-random.js';
 import { setRandomSource } from './combat-rules.js';
-// R3 del roadmap de profundidad: áreas, elementos, usos fuera del combate y jugadas en pareja.
-// R5 del roadmap de profundidad: la mascota.
-// R8 y R9 del roadmap de profundidad: compañeros con arco, y el mundo que responde.
-// R7 del roadmap de profundidad: enemigos con cabeza, y la némesis.
-// H2 de wiki/LO_QUE_FALTA.md: «Cómo se juega», con lo que el motor sabe.
-// B1 y B2 de wiki/LO_QUE_FALTA.md: la altura y las salidas del tablero.
-// T1, T2 y B3 de wiki/LO_QUE_FALTA.md: la palanca, la barricada, la tregua y los refuerzos.
-// T4: la estación y la magia, en los precios.
-// T3: la gente del mundo ve a la mascota.
-// R6: los jefes con fases.
-// R6 del roadmap de profundidad: tableros con intención.
-// R4: pergaminos y varitas.
-// R4 del roadmap de profundidad: la magia, solo la del grimorio.
 import { isShellOpen, refreshGameShell } from '../game-engine/ui/shell/game-shell.js';
 import { SEED_KEY } from './keys.js';
 import { partyMembers, setTalkingTo } from './state.js';
@@ -30,114 +28,12 @@ import { autostartGameShell } from './shell.js';
 import { registerPartyCommands } from './commands.js';
 import { registerChatEvents, registerModelTools } from './events.js';
 
-/** @typedef {import('./types.js').PartyMember} PartyMember */
-
-
-/** @typedef {import('./types.js').DndCatalog} DndCatalog */
-
-
-// ============================================================
-//  WORLD MAP, LOCATION, AND BOARD VIEWS
-// ============================================================
-
-
-// ============================================================
-//  COMBAT ENCOUNTER STATE
-// ============================================================
-
-
 /**
- * Computes live highlight cells (movement range + attackable enemies) from a tentative drag position.
- * Used by world-map-renderer onTokenDragging callback during drag.
- * @param {number} tokenId
- * @param {number} tentGX
- * @param {number} tentGY
- * @param {number} gridW
- * @param {number} gridH
- * @returns {import('../world-map-renderer.js').HighlightCell[]}
- */
-
-
-/**
- * Switches the right-hand panel tab. Defined inside initPartyPanel, so it is handed out
- * here once that has run.
+ * La función que cambia de pestaña en el panel de la derecha, una vez montado el panel.
+ * `initPartyPanel` la pone; antes es null y quien la llame no hace nada (`board.js`).
  * @type {((tab: 'party'|'world_map'|'location'|'campaign') => void)|null}
  */
 export let partyTabSetter = null;
-
-
-/**
- * El turno de un companero que se lleva solo.
- *
- * Decide con **su propia maquina** (`ally-ai.js`), no con la de los enemigos: una IA que
- * vale para un goblin no vale para alguien a quien le tienes carino. Sigue la postura que
- * le has puesto en su ficha, no sale del alcance de nadie andando y se retira malherido.
- * Lo que decide lo aplica **por los mismos caminos que usarias tu**: mover cuesta pies,
- * atacar gasta la accion y tira contra la misma CA.
- *
- * @param {any} entry
- * @returns {string}
- */
-
-
-// ================================================================
-//  Campaign clock and bonds (wiki/ROADMAP.md, Fase D)
-// ================================================================
-
-
-// ================================================================
-//  El mundo crece mientras juegas (wiki/archivo/ROADMAP_MUNDOS_VIVOS.md, fase G)
-// ================================================================
-
-
-// ================================================================
-//  Servicios de cada sitio (wiki/archivo/ROADMAP_MUNDOS_VIVOS.md, fase L)
-// ================================================================
-
-
-// ================================================================
-//  Lo que dicen los companeros en combate (C7)
-// ================================================================
-
-
-// U3 del pegamento: los días de las facciones los apunta la etapa `facciones` del paso del
-// tiempo. Todas las formas de pasar el día (el turno que cierra la noche, un descanso largo,
-// un viaje) pasan por `passTime` en `campaign-state.js`, así que ya no hace falta medir el
-// calendario alrededor de cada una.
-
-
-// ---------------------------------------------------------------------------
-// El Modo Juego (wiki/ROADMAP.md, Fase H · PROPUESTA_FRONTEND_MODO_JUEGO.md, H1)
-//
-// Pegamento y nada mas: el Shell no sabe nada de D&D y este bloque no sabe nada de
-// pantallas. Lo que el director necesita son hechos que el motor ya tiene.
-// ---------------------------------------------------------------------------
-
-
-// ============================================================
-//  CHARACTER SHEET TAB
-// ============================================================
-
-
-// ============================================================
-//  INVENTORY TAB
-// ============================================================
-
-
-// ============================================================
-//  PROGRESSION TAB
-// ============================================================
-
-
-// ============================================================
-//  RELATIONSHIPS TAB
-// ============================================================
-
-
-// ============================================================
-//  MEMORIES TAB
-// ============================================================
-
 
 /**
  * @param {'party'|'world_map'|'location'|'campaign'|'board'} tab
@@ -181,7 +77,7 @@ export function setPartyTab(tab) {
 
 
 export function initPartyPanel() {
-    // Hoisted, so this works although setPartyTab is declared further down.
+    // Desde aquí el panel existe: `partyTabSetter` ya puede cambiar de pestaña.
     partyTabSetter = setPartyTab;
 
     // The campaign tab is created from here, not from index.html: that file is
