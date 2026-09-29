@@ -59,10 +59,9 @@ import {
 } from './narration.js';
 import { payFromParty, savePartyState } from './roster.js';
 import { changeAttitude } from './companions.js';
-import {
-    hearRumor, openJournalSafely, openHelp, openService, buildServiceCards, runService, rumorsLeftHere,
-} from './main.js';
+import { openJournalSafely, openHelp } from './main.js';
 import { neighbourPlaces, askBeforeTravelling, travelWithTime } from './travel.js';
+import { hearRumor, openService, buildServiceCards, runService, rumorsLeftHere } from './town.js';
 
 /**
  * @returns {{day: number, keys: string[], looked: string[]}}

@@ -38,10 +38,11 @@ import { deliverRelics } from './loot.js';
 import { ensureWorldData, lastHubHome } from './world.js';
 import { getCurrentWorldFactions, shiftFactionStanding } from './factions.js';
 import { campaignDay, getCampaignBonds, getCampaignCalendar } from './time.js';
-import { raiseFame, statsLines } from './main.js';
+import { statsLines } from './main.js';
 import { noteDeed, worldWrite, refreshWorldMemoryPrompt } from './world-growth.js';
 import { whoPlays, postCombatNarration, tellMoment, postForModel, showTip } from './narration.js';
 import { judgeDecision } from './companions.js';
+import { raiseFame } from './town.js';
 
 /**
  * El hilo, con sus escenas y pistas ya concordadas con quien juega (J1.4): el guion escribe

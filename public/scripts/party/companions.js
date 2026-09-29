@@ -52,7 +52,7 @@ import {
 import { noteDeed, refreshWorldMemoryPrompt, worldWrite } from './world-growth.js';
 import { postCombatNarration, postForModel } from './narration.js';
 import { getActivePartyLeader, memberFromEntry, partyPurse, renderPartyMembers, savePartyState } from './roster.js';
-import { smithHere, smithPlaces, buyRemedy } from './main.js';
+import { smithHere, smithPlaces, buyRemedy } from './town.js';
 
 /**
  * R8: los favores de la gente de aquí que os aprecia (actitud +2 o más).
