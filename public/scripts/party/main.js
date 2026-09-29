@@ -336,21 +336,26 @@ import { buildActionChips } from '../game-engine/ui/shell/action-chips.js';
 import { buildCompanionCard, judgeGift } from '../game-engine/ui/shell/companion-card.js';
 import { buildPackFromWorld, describeExport } from '../game-engine/campaign/campaign-export.js';
 import { normalizePack, validatePack } from '../game-engine/campaign/campaign-pack.js';
+import {
+    ACT_STARTS_KEY, ACT_SUMMARIES_KEY, APPROVAL_KEY, ARRIVALS_HEARD_KEY, ART_STORAGE, ATTITUDES_KEY, BENCH_KEY,
+    BILL_DUE_KEY, BOARDS_WON_KEY, BOARD_KEY, CAMPAIGN_START_KEY, CASES_KEY, CHECK_REQUESTS_KEY, CLIMATE_KEY,
+    COLORBLIND_KEY, CONTRADICTIONS_KEY, DEBT_KEY, DEEDS_KEY, DICE_GAME_KEY, DICE_LOG_KEY, DISPATCHES_KEY,
+    DUELS_KEY, EXPLORED_KEY, FAME_KEY, FESTIVAL_TOLD_KEY, FIELD_GAINS_KEY, GAME_SHELL_AUTOSTART_KEY, GONE_KEY,
+    GRAVES_KEY, GUILD_KEY, HAGGLE_KEY, HERO_FIT_KEY, HINTS_KEY, LEAVE_ON_KEY, LENGTH_KEY, LETTERS_KEY,
+    LETTERS_SENT_KEY, LEVEL_SAID_KEY, LOCATION_MAPS_MANUAL_HIDDEN_KEY, MAP_NOTES_KEY, MEMORIES_KEY,
+    MODE_HISTORY_KEY, MOUNTS_KEY, NARRATOR_FONT_KEY, NARRATOR_MODE_STORAGE, NARRATOR_RECENT_KEY, NEMESES_KEY,
+    NEWS_KEY, OFFERS_KEY, PENDING_CHECK_KEY, PERSONAL_ASKED_KEY, PET_KEY, PLOT_ANNOUNCED_KEY, PLOT_KEY,
+    PLOT_STATE_KEY, PRISONERS_KEY, PROPOSALS_KEY, RECRUITS_MET_KEY, RELICS_GIVEN_KEY, ROLL_GUARD_KEY,
+    RUMORS_HEARD_KEY, RUMORS_HEARD_ON_KEY, SAFETY_KEY, SAFETY_ON_KEY, SAVER_KEY, SECRETS_KEY, SEED_KEY,
+    SESSION_LOG_KEY, STATS_KEY, STORAGE_KEY, SUCESOS_KEY, SUCESOS_STORAGE, TAKEN_KEY, TIPS_SEEN_KEY, TONE_KEY,
+    VILLAIN_SEEN_KEY, VISITED_KEY, WANTED_KEY, WARNED_KEY, WEATHER_TODAY_KEY, WEEK_TABLE_AUTO_KEY, WEEK_TABLE_KEY,
+    WRITTEN_DONE_KEY, localFlag,
+} from './keys.js';
 
 /** @typedef {import('./types.js').PartyMember} PartyMember */
 /** @type {PartyMember[]} */
 let partyMembers = [];
 
-const LOCATION_MAPS_MANUAL_HIDDEN_KEY = 'sillytavern_locationMapsManualHidden';
-
-/**
- * Si el Modo Juego se abre solo al arrancar.
- *
- * Encendido por defecto: este fork es un juego, y un juego se abre por su pantalla de
- * titulo, no por la bandeja de entrada de un chat. Pero se apaga con un clic desde la
- * pausa, y apagado la aplicacion arranca exactamente como la de siempre.
- */
-const GAME_SHELL_AUTOSTART_KEY = 'sillytavern_gameShellAutostart';
 
 /** @type {boolean} */
 let locationMapsManuallyHidden = false;
@@ -1712,8 +1717,6 @@ export async function applyCampaignRuleset(worldName) {
  */
 let worldItemCatalogue = [];
 
-/** Where the guard's mode lives, so it travels with the campaign. */
-const ROLL_GUARD_KEY = 'rollGuardMode';
 
 /**
  * How strictly the engine polices dice the model writes.
@@ -1858,20 +1861,6 @@ function postCombatNarration(text) {
     petReact(text);
 }
 
-/** Z1 de ROADMAP_SIN_TOKENS: las últimas frases del narrador del motor, para no repetirlas. */
-const NARRATOR_RECENT_KEY = 'narratorRecent';
-
-/**
- * Z3: lo que ya se sacó hoy con tiradas en cada sitio (`keys`: sitio y habilidad) y lo que ya
- * se examinó (`looked`). Tirar veinte veces no da veinte bolsas.
- */
-const FIELD_GAINS_KEY = 'fieldGains';
-
-/** Z4: los sucesos que salieron, y los que volverán. */
-const SUCESOS_KEY = 'sucesos';
-
-/** Z4: se pueden apagar (las vueltas de prueba lo hacen, para que no salgan tarjetas en medio). */
-const SUCESOS_STORAGE = 'sillytavern_gameSucesos';
 
 /** @returns {boolean} */
 function sucesosOn() {
@@ -2208,8 +2197,6 @@ function tellBoard(boardName) {
     if (told) void postEngineLine(told);
 }
 
-/** R8: los que se fueron, con su ficha, por si vuelven. */
-const GONE_KEY = 'gone';
 
 /**
  * R9: quien manda en un sitio nota lo que pasa en él: un caso resuelto le gusta; un crimen
@@ -2266,11 +2253,6 @@ function welcomeBack() {
     void postForModel(back.forModel);
 }
 
-/** R7: los que escaparon y pueden volver. */
-const NEMESES_KEY = 'nemeses';
-
-/** R5: la mascota del héroe, en los metadatos de la partida. */
-const PET_KEY = 'pet';
 
 /** @returns {import('../game-engine/campaign/pet.js').Pet|null} */
 function currentPet() {
@@ -3667,8 +3649,6 @@ function survivalNow() {
     return getActiveRuleset()?.survival ?? null;
 }
 
-/** R1: el historial de modos de esta partida (DR2), para el salón de la fama. */
-const MODE_HISTORY_KEY = 'modeHistory';
 
 /**
  * Ideas 36 y 199: lo que queda de quien muere. Epitafio, tumba donde cayó, lo mejor que
@@ -4431,8 +4411,6 @@ function instancesFromPlacements(placements) {
     return instances;
 }
 
-/** J4.6: hacia dónde se dijo ya que se ajustan los enemigos (`up` o `down`). */
-const LEVEL_SAID_KEY = 'levelAdjustSaid';
 
 /**
  * J4.6: cuánto se aparta el grupo de lo que pide el tablero abierto. Solo en los tableros
@@ -5121,13 +5099,6 @@ const campaign = createCampaignState({
     timePasses: (days, calendar) => onTimePassed(days, calendar),
 });
 
-/** Donde se apunta el dia en que vence la proxima cuenta. */
-const BILL_DUE_KEY = 'upkeepDueDay';
-
-/** El gremio y su tablon viven en la partida, no en la sesion. */
-const GUILD_KEY = 'guild';
-const BOARD_KEY = 'contractBoard';
-const TAKEN_KEY = 'contractTaken';
 
 /** @returns {any} */
 function getGuild() {
@@ -5221,14 +5192,7 @@ let lastWorldNpcs = [];
 /** Las fichas de los confidentes del mundo, por uid. */
 /** @type {Record<string, any>} */
 let lastConfidantEntries = {};
-/** A quien se ha conocido ya en una posada: el paso antes de pedirle que venga. */
-const RECRUITS_MET_KEY = 'recruitsMet';
-/** Lo que el grupo recuerda haber vivido junto (idea 34). */
-const MEMORIES_KEY = 'sharedMemories';
 
-/** Los encargos escritos ya entregados, y los rumores ya oidos. */
-const WRITTEN_DONE_KEY = 'writtenDone';
-const RUMORS_HEARD_KEY = 'rumorsHeard';
 
 /**
  * U3 del pegamento: los encargos del tablón que caducan hoy, y el sitio que los pedía lo
@@ -5447,8 +5411,6 @@ const WEEK_HANDLERS = {
     mesa: () => startWeekTable(),
 };
 
-/** U8 del pegamento: quién está fuera haciendo un encargo sin el héroe. */
-const DISPATCHES_KEY = 'dispatches';
 
 /**
  * U8: mandar a uno o dos compañeros, sin el héroe, a un encargo menor del tablón. La
@@ -5574,13 +5536,6 @@ function finishDispatchedContract(contract) {
     void shiftPlaceFortune(String(contract?.locationName ?? ''), 1);
 }
 
-/** U8 del pegamento: los casos con verdad. */
-const CASES_KEY = 'cases';
-/** U6 del pegamento: con quién se ha tenido ya un duelo hoy. */
-const DUELS_KEY = 'duels';
-/** Ideas 69 y 70: dónde se ha estado, y las notas del mapa. */
-const VISITED_KEY = 'visited';
-const MAP_NOTES_KEY = 'mapNotes';
 
 /**
  * U8: empezar un caso con la gente y los sitios del mundo. Cada semana, a veces; o cuando
@@ -5880,10 +5835,6 @@ async function openTextMap() {
     await new Popup(body[0], POPUP_TYPE.TEXT, '', { okButton: 'Cerrar', allowVerticalScrolling: true, leftAlign: true }).show();
 }
 
-/** U5 del pegamento: la mesa de la semana. */
-const WEEK_TABLE_KEY = 'weekTable';
-/** Si se abre sola cada semana (ajuste); si no, solo la primera vez y luego un aviso (DU4). */
-const WEEK_TABLE_AUTO_KEY = 'weekTableAuto';
 
 /**
  * Empieza una semana: se apunta lo que pasó en la anterior (de la crónica, sin llamar al
@@ -6057,8 +6008,6 @@ function healByDays(days) {
     }
 }
 
-/** Donde se apunta el clima del sitio donde estais. */
-const CLIMATE_KEY = 'climate';
 
 /**
  * Lo que unas horas mas le hacen al grupo: hambre, sed, sueno y frio.
@@ -6193,11 +6142,6 @@ function chargeBill() {
     if (!week.paid) toastr.warning(week.lines.join('\n'), 'La cuenta no sale', { timeOut: 15000 });
 }
 
-/** Donde se apunta lo que se debe, y a quien. */
-const DEBT_KEY = 'debt';
-
-/** Lo que el grupo ha hecho y el mundo ha visto. */
-const DEEDS_KEY = 'deeds';
 
 /**
  * Apuntar un hecho, con el dia de hoy.
@@ -6230,8 +6174,6 @@ function proposeFact(proposal) {
     return 'Apuntado. Sigue con la escena.';
 }
 
-/** U0 del pegamento: el diario de sesión, en esta pestaña. */
-const SESSION_LOG_KEY = 'sillytavern_gameSession';
 /** @type {import('../game-engine/campaign/session-log.js').SessionLog|null} */
 let sessionLog = null;
 
@@ -6500,11 +6442,6 @@ function leavingMembers() {
     return partyMembers.filter(m => !m.dead && warned.includes(String(m.id)));
 }
 
-/** El hilo de la campana, y por donde va. */
-const PLOT_KEY = 'plot';
-const PLOT_STATE_KEY = 'plotState';
-/** Si la mecha ya se ha contado. */
-const PLOT_ANNOUNCED_KEY = 'plotAnnounced';
 
 /**
  * El hilo, con sus escenas y pistas ya concordadas con quien juega (J1.4): el guion escribe
@@ -6751,8 +6688,6 @@ async function applyPlotStep(step, heroNote = '') {
         .catch(error => console.error('[party] plot note failed', error));
 }
 
-/** J4.5: cómo empezó el grupo la campaña, para contar al final lo que se lleva cada uno. */
-const CAMPAIGN_START_KEY = 'campaignStart';
 
 /**
  * J4.5: lo que cuenta el final de la campaña abierta. Null si no ha llegado a ninguno.
@@ -6964,10 +6899,6 @@ async function hearRumor(by = '') {
 //  El mundo crece mientras juegas (wiki/archivo/ROADMAP_MUNDOS_VIVOS.md, fase G)
 // ================================================================
 
-/** Lo que el narrador ha propuesto y nadie ha ido a buscar todavia. */
-const PROPOSALS_KEY = 'placeProposals';
-/** Cuantas veces se ha explorado: es parte de la semilla del siguiente hallazgo. */
-const EXPLORED_KEY = 'explored';
 
 /**
  * De donde sale lo siguiente, segun el acto de la partida (M7).
@@ -7387,16 +7318,6 @@ function deliverRelics(event) {
     return relics.map(relic => `${holder.name} se queda con ${describeRelic(relic)}`);
 }
 
-/** El dia en que se oyo cada rumor (idea 91). */
-const RUMORS_HEARD_ON_KEY = 'rumorsHeardOn';
-/** Los prisioneros que lleva el grupo (idea 7). */
-const PRISONERS_KEY = 'prisoners';
-
-/**
- * Los tableros cuya pelea escrita ya se ganó, como `sitio::tablero`: sus enemigos no vuelven a
- * dibujarse ni a ofrecer pelea (2026-09-28).
- */
-const BOARDS_WON_KEY = 'boardsWon';
 
 /**
  * @param {string} location
@@ -7458,64 +7379,6 @@ function buildBoardIdleEnemyTokens(waiting) {
         };
     });
 }
-/** Los d20 que ha tirado el motor (idea 168). */
-const DICE_LOG_KEY = 'diceLog';
-/** El regateo de hoy (idea 126): donde, que dia y si salio. */
-const HAGGLE_KEY = 'haggle';
-/** Las cartas que esperan, y las ya mandadas (idea 113). */
-const LETTERS_KEY = 'letters';
-const LETTERS_SENT_KEY = 'lettersSent';
-/** La ultima fiesta contada (idea 89): para no contarla dos veces el mismo dia. */
-const FESTIVAL_TOLD_KEY = 'festivalTold';
-/** La partida en numeros (idea 200). */
-const STATS_KEY = 'stats';
-/** El largo de la narracion elegido en la partida (idea 149). */
-const LENGTH_KEY = 'narrationLength';
-/** Las tumbas de quien ha muerto, con su epitafio (idea 36). */
-const GRAVES_KEY = 'graves';
-/** La fama del grupo, sitio a sitio (idea 52). */
-const FAME_KEY = 'fame';
-/** Las reliquias ya entregadas (idea 132): cada una llega una vez. */
-const RELICS_GIVEN_KEY = 'relicsGiven';
-/** Lo que ya han dicho los confidentes al llegar a cada sitio (idea 45). */
-const ARRIVALS_HEARD_KEY = 'arrivalsHeard';
-/** Los secretos de la gente: los sabidos y los intentos de hoy (idea 110). */
-const SECRETS_KEY = 'npcSecrets';
-/** Las monturas del grupo (idea 129). */
-const MOUNTS_KEY = 'mounts';
-/** Las partidas de dados de hoy en la taberna (idea 128). */
-const DICE_GAME_KEY = 'tavernDice';
-/** La letra del narrador (idea 195). */
-const NARRATOR_FONT_KEY = 'narratorFont';
-/** El tiempo de hoy donde se está, cuando se sabe por el viaje (ideas 73 y 90). */
-const WEATHER_TODAY_KEY = 'weatherToday';
-// Batería 7: lo que les parece a los compañeros (28, 32), a quién se le ofreció ya su
-// encargo (30) y quién se queda en casa (42).
-const APPROVAL_KEY = 'approval';
-const PERSONAL_ASKED_KEY = 'personalAsked';
-const BENCH_KEY = 'bench';
-// Idea 139: lo que el narrador ofrece coger.
-const OFFERS_KEY = 'itemOffers';
-// Idea 142: el tono de la escena, elegido en la pausa.
-const TONE_KEY = 'sceneTone';
-// Batería 8: la red de seguridad (25), quién ya avisó que se va (29), dónde os buscan (96) y
-// el almacén del gremio (124).
-const SAFETY_KEY = 'safety';
-const SAFETY_ON_KEY = 'safetyNet';
-const LEAVE_ON_KEY = 'companionsLeave';
-const WARNED_KEY = 'departWarned';
-const WANTED_KEY = 'wanted';
-const STORAGE_KEY = 'guildStorage';
-// Batería 8: las escenas del villano ya contadas (115), la actitud de la gente (140), los
-// resúmenes de cada acto y dónde empezó cada uno en el chat (143), y si el hilo ya se adaptó
-// al héroe (184).
-const VILLAIN_SEEN_KEY = 'villainSeen';
-const ATTITUDES_KEY = 'attitudes';
-const ACT_SUMMARIES_KEY = 'actSummaries';
-const ACT_STARTS_KEY = 'actStarts';
-const HERO_FIT_KEY = 'heroFit';
-/** Idea 183: los ajustes de ilustraciones son de esta máquina (llevan una clave). */
-const ART_STORAGE = 'sillytavern_illustrations';
 
 /** Con quién se está hablando, para las respuestas sugeridas (idea 144). */
 let talkingTo = '';
@@ -7528,23 +7391,6 @@ let lastBossLine = '';
 /** Si alguien acaba de caer al vacío, para dejar ver la caída (idea 189). */
 let fellThisTurn = false;
 
-/** Lo que se guarda en este navegador, sin que falle si no se puede. */
-const localFlag = {
-    /** @param {string} key @returns {string} */
-    get(key) {
-        try { return String(globalThis.localStorage?.getItem(key) ?? ''); } catch { return ''; }
-    },
-    /** @param {string} key @param {string} value */
-    set(key, value) {
-        try { globalThis.localStorage?.setItem(key, value); } catch { /* sin almacenamiento: se juega igual */ }
-    },
-};
-/** Idea 148: el modo ahorro, en este navegador. */
-const SAVER_KEY = 'sillytavern_gameSaver';
-/** Idea 172: los colores para daltonismo, en este navegador. */
-const COLORBLIND_KEY = 'sillytavern_gameColorblind';
-/** Idea 155: los consejos ya vistos, en este navegador. */
-const TIPS_SEEN_KEY = 'sillytavern_gameTipsSeen';
 
 /** @returns {boolean} */
 function saverOn() {
@@ -8065,10 +7911,6 @@ function openHeroStory(member) {
     void new Popup(body[0], POPUP_TYPE.TEXT, '', { okButton: 'Cerrar', allowVerticalScrolling: true, leftAlign: true }).show();
 }
 
-/** Las pistas del hilo: cuando se abrio cada hito, que nivel se ha dado y cuales. */
-const HINTS_KEY = 'threadHints';
-/** Las tiradas que ha pedido el narrador y esperan a que se tiren (idea 138). */
-const CHECK_REQUESTS_KEY = 'checkRequests';
 
 /** @returns {any[]} Los hitos abiertos del hilo que se ven: los ocultos no (idea 111). */
 function openMilestones() {
@@ -8341,8 +8183,6 @@ function runHelpItem(key) {
     }
 }
 
-/** Las noticias que esperan a que el grupo llegue a donde se oyen (idea 82). */
-const NEWS_KEY = 'newsPending';
 
 /**
  * Contar al llegar lo que se comenta aqui de lo que paso lejos.
@@ -10546,9 +10386,6 @@ const getCampaignMap = () => campaign.getMap();
 /** @param {string} locationName */
 const markLocationComplete = (locationName) => campaign.markLocationComplete(locationName);
 
-/** Lo que se guarda con el chat y no vive en `party/campaign-state.js`. */
-const CONTRADICTIONS_KEY = 'contradictions';
-const SEED_KEY = 'diceSeed';
 
 /**
  * El golpe definitivo del vinculo de rango 10.
@@ -16072,11 +15909,7 @@ function draftInChat(text) {
     input.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
-/** La tirada hecha que todavia no se ha enviado. Una por mensaje. */
-const PENDING_CHECK_KEY = 'pendingCheck';
 
-/** Z6 de ROADMAP_SIN_TOKENS: quién cuenta la partida. Es de quien juega, no de la campaña. */
-const NARRATOR_MODE_STORAGE = 'sillytavern_gameNarrator';
 /** Motor: 0 tokens. Mixto: el motor cuenta y el modelo añade en lo que importa. Modelo: como antes. */
 const NARRATOR_MODES = ['motor', 'mixto', 'modelo'];
 
