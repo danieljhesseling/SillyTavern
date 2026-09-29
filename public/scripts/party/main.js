@@ -53,7 +53,7 @@ import { resolveEntryMapPosition } from './positions.js';
 import { createCampaignState } from './campaign-state.js';
 import {
     normalizeTerrain, setCell as setTerrainCell, getTerrainOptions, setDoorOpen, parseCellKey, cellKey, getCell,
-    isLocked, unlockDoor, lockedDoors, breakDoor,
+    isLocked, unlockDoor, breakDoor,
 } from '../game-engine/board/terrain.js';
 // R3 del roadmap de profundidad: áreas, elementos, usos fuera del combate y jugadas en pareja.
 import { isArea } from '../game-engine/rules/area.js';
@@ -105,7 +105,7 @@ import { checkWorldDensity, gemRequest } from '../game-engine/campaign/world-den
 import { sceneryNear, judgeSceneryThrow } from '../game-engine/combat/throwables.js';
 import { playCue } from '../game-engine/ui/shell/action-sounds.js';
 import { loadAudioSettings } from '../game-engine/ui/shell/scene-audio.js';
-import { trophiesOf, trophyItem, canCraft, cloakItem, upgradedWeapon, RECIPES } from '../game-engine/campaign/trophies.js';
+import { canCraft, cloakItem, upgradedWeapon, RECIPES } from '../game-engine/campaign/trophies.js';
 import { seasonOf, seasonClimates, describeSeason, openInSeason, readSeason } from '../game-engine/world/seasons.js';
 import { canCamp, nightRisk, defaultGuards, resolveNight, campMorning, MAX_GUARDS } from '../game-engine/campaign/camp.js';
 import { approvalFor, approvalFromOpinions, noteApproval, frictionsOn, describeApproval, approvalOf, DECISIONS } from '../game-engine/campaign/approval.js';
@@ -143,7 +143,6 @@ import {
     buildTracker, describeTurn, statusMarkers, sizeToCells, toggleCondition,
 } from '../game-engine/combat/initiative-tracker.js';
 import { hasAction, useAction } from '../game-engine/combat/turn-machine.js';
-import { rollEncounterLoot, lootRulesWithWorldItems, DEFAULT_LOOT_RULES } from '../game-engine/combat/loot.js';
 import { holdDuringCombat } from '../game-engine/combat/combat-hold.js';
 import {
     healInjuries, describeInjuries, readInjuries, setInjury, treatmentCost,
@@ -164,8 +163,7 @@ import {
     gravesAt, readGraves, readHall, describeHallEntry, describeHallCount,
 } from '../game-engine/campaign/legacy.js';
 import { addFame, fameAt, fameNote, describeFame } from '../game-engine/campaign/fame.js';
-import { lootable, relicsFor, describeRelic } from '../game-engine/campaign/relics.js';
-import { dressLoot, templeWork, identify, liftCurse, TEMPLE_PRICES } from '../game-engine/campaign/item-lore.js';
+import { templeWork, identify, liftCurse, TEMPLE_PRICES } from '../game-engine/campaign/item-lore.js';
 import { SKILLS, checkOptions, rollCheck, skillModifier, DEFAULT_DC } from '../game-engine/rules/checks.js';
 import {
     PACES, readPace, paceDays, paceEvents, isSetback, setbackChoice, resolveSetback, FORCE_DC, FORCE_HURT, RUSH_REST_HOURS,
@@ -235,7 +233,6 @@ import { describeLootItem, declaredLootNames } from '../game-engine/combat/loot-
 import { buildTargetCard, describeTargetCard } from '../game-engine/combat/target-card.js';
 import { deriveRooms, openDoor, awakePlacements, normalizeRooms } from '../game-engine/campaign/campaign-map.js';
 import { planUltimate } from '../game-engine/combat/bond-perks.js';
-import { treasureInChest } from '../game-engine/campaign/scenarios.js';
 import {
     formatCalendar,
 } from '../game-engine/campaign/calendar.js';
@@ -274,10 +271,10 @@ import {
     HAGGLE_KEY, HERO_FIT_KEY, HINTS_KEY, LEAVE_ON_KEY, LENGTH_KEY, LETTERS_KEY, LETTERS_SENT_KEY,
     LOCATION_MAPS_MANUAL_HIDDEN_KEY, MAP_NOTES_KEY, MEMORIES_KEY, MODE_HISTORY_KEY, MOUNTS_KEY, NARRATOR_FONT_KEY,
     NARRATOR_MODE_STORAGE, NARRATOR_RECENT_KEY, NEWS_KEY, OFFERS_KEY, PENDING_CHECK_KEY, PERSONAL_ASKED_KEY,
-    PLOT_ANNOUNCED_KEY, PLOT_KEY, PLOT_STATE_KEY, PRISONERS_KEY, PROPOSALS_KEY, RECRUITS_MET_KEY, RELICS_GIVEN_KEY,
-    ROLL_GUARD_KEY, RUMORS_HEARD_KEY, RUMORS_HEARD_ON_KEY, SAFETY_ON_KEY, SAVER_KEY, SECRETS_KEY, SEED_KEY,
-    SESSION_LOG_KEY, STATS_KEY, SUCESOS_KEY, SUCESOS_STORAGE, TAKEN_KEY, TIPS_SEEN_KEY, TONE_KEY, VILLAIN_SEEN_KEY,
-    VISITED_KEY, WANTED_KEY, WARNED_KEY, WEATHER_TODAY_KEY, WEEK_TABLE_AUTO_KEY, WEEK_TABLE_KEY, localFlag,
+    PLOT_ANNOUNCED_KEY, PLOT_KEY, PLOT_STATE_KEY, PRISONERS_KEY, PROPOSALS_KEY, RECRUITS_MET_KEY, ROLL_GUARD_KEY,
+    RUMORS_HEARD_KEY, RUMORS_HEARD_ON_KEY, SAFETY_ON_KEY, SAVER_KEY, SECRETS_KEY, SEED_KEY, SESSION_LOG_KEY,
+    STATS_KEY, SUCESOS_KEY, SUCESOS_STORAGE, TAKEN_KEY, TIPS_SEEN_KEY, TONE_KEY, VILLAIN_SEEN_KEY, VISITED_KEY,
+    WANTED_KEY, WARNED_KEY, WEATHER_TODAY_KEY, WEEK_TABLE_AUTO_KEY, WEEK_TABLE_KEY, localFlag,
 } from './keys.js';
 import {
     combatBoardSelection, combatEncounter, combatLogEntries, currentBoardName, currentLocationName,
@@ -295,8 +292,7 @@ import {
     openAbilitiesEditor, openGrimoire, useAbility, useMagicItem,
 } from './magic.js';
 import {
-    deliverTakenContract, expireBoard, finishTakenContract, getGuild, hireMercenary, openDispatch,
-    returnDispatches, rivalsMove,
+    expireBoard, finishTakenContract, getGuild, hireMercenary, openDispatch, returnDispatches, rivalsMove,
 } from './contracts.js';
 import {
     hubChips, openGuild, openHubCampaigns, openHubHire, recordFinishedCampaign, retireMember, skipHubTrial,
@@ -313,14 +309,14 @@ import {
 import { paintCombatLog, pushCombatLogEntry, pushCombatLogLines, showCombatDiceRoll } from './combat-log.js';
 import { buildEnemyIntents, damagePartyMember, planFor } from './enemy-turn.js';
 import {
-    answerTruce, applyFall, checkScenarioOutcome, endCombat, judgeCurrentScenario, leaveThroughExit,
-    resolveAllyTurnAction, restoreChatPlaceholder, retreatFromCombat, startCombat, startWaitingFight,
-    waitingSummary, wakeRoomEnemies,
+    answerTruce, applyFall, endCombat, judgeCurrentScenario, leaveThroughExit, resolveAllyTurnAction,
+    restoreChatPlaceholder, retreatFromCombat, startCombat, startWaitingFight, waitingSummary, wakeRoomEnemies,
 } from './combat-flow.js';
 import {
     confirmEndTurn, endPlayerCombatTurn, handleBatonPass, handlePlayerCombatAttack, handlePlayerCombatMove,
     hideCheck, performManeuver, resolvePairStrike, resolveUltimateStrike, throwItem, throwScenery,
 } from './player-actions.js';
+import { deliverRelics, openChest } from './loot.js';
 
 /** @typedef {import('./types.js').PartyMember} PartyMember */
 
@@ -1959,59 +1955,6 @@ export function soundCue(kind) {
 
 
 /**
- * R6: abrir un cofre. Hace falta estar al lado; da oro y, a veces, algo de valor. Se queda
- * vacío (en suelo).
- *
- * @param {any} board
- * @param {number} gx
- * @param {number} gy
- */
-function openChest(board, gx, gy) {
-    const opener = partyMembers.find(m => !m.dead && (Number(m.hp) || 0) > 0
-        && Math.max(Math.abs((Number(m.mapPosition?.gridX) || 0) - gx), Math.abs((Number(m.mapPosition?.gridY) || 0) - gy)) <= 1);
-    if (!opener) {
-        toastr.info('Hay que llegar al lado del cofre para abrirlo.', 'Un cofre');
-        return;
-    }
-    const gold = 5 + Math.floor(nextRandom() * 10) * 3;
-    opener.gold = (Number(opener.gold) || 0) + gold;
-    // Si la misión del tablero pide un tesoro, está en el cofre: es lo que hace que
-    // «Encontrar la reliquia» se pueda cumplir.
-    const wanted = treasureInChest(board?.objectives, collectedHere(board));
-    const rare = nextRandom() < 0.4;
-    const pool = DEFAULT_LOOT_RULES.itemsByRarity[rare ? 'Uncommon' : 'Common'] ?? [];
-    const name = wanted || (pool.length > 0 && nextRandom() < 0.6 ? pool[Math.floor(nextRandom() * pool.length) % pool.length] : '');
-    if (name) addItemToInventory(/** @type {any} */ (opener), createItem(/** @type {any} */ (describeLootItem(name, wanted ? '' : rare ? 'Uncommon' : 'Common', worldItemCatalogue))));
-    if (wanted) {
-        board.collectedTreasures = [...collectedHere(board), wanted];
-        if (combatEncounter.active) combatEncounter.collectedTreasures = board.collectedTreasures;
-    }
-    board.terrain = setTerrainCell(normalizeTerrain(board.terrain), gx, gy, 'floor');
-    persistBoardTerrain(board);
-    savePartyState();
-    renderPartyMembers();
-    renderLocationMapsPreview();
-    postCombatNarration(`🧰 [TABLERO] ${opener.name} abre el cofre: ${gold} de oro${name ? ` y ${name}` : ''}.`);
-    if (wanted) {
-        toastr.success(`${opener.name} encuentra ${wanted}.`, 'Lo que buscabais');
-        if (combatEncounter.active) checkScenarioOutcome();
-    }
-}
-
-/**
- * Los tesoros de la misión que ya se han sacado de este tablero, con o sin pelea.
- *
- * @param {any} board
- * @returns {string[]}
- */
-export function collectedHere(board) {
-    return [...new Set([
-        ...(Array.isArray(board?.collectedTreasures) ? board.collectedTreasures : []),
-        ...(combatEncounter.active && Array.isArray(combatEncounter.collectedTreasures) ? combatEncounter.collectedTreasures : []),
-    ].map(String))];
-}
-
-/**
  * T1 y B3: tirar de la palanca o golpear la barricada. Hace falta alguien al lado; en combate,
  * el que tiene el turno, y gasta su acción (como abrir un cofre a golpes no es gratis).
  *
@@ -2168,115 +2111,6 @@ export function toggleBoardDoor(board, gx, gy, open, gridW, gridH) {
         wakeRoomEnemies(board, result.revealedRoom);
     }
     renderLocationMapsPreview();
-}
-
-
-/**
- * Ideas 119 y 135: de quién fue lo que cae. Un nombre del compendio y un sitio del mundo.
- *
- * Con su propia semilla (mundo, objeto, día y cuál): el mismo botín cuenta lo mismo, y los
- * dados del combate no se enteran de que alguien ha inventado una historia.
- *
- * @param {string} name
- * @param {number} index
- * @returns {{owner: string, place: string, random: () => number}}
- */
-function lootLore(name, index) {
-    const random = createSeededRandom(derive(String(chat_metadata?.[METADATA_KEY] || ''), 'botin', String(name), String(campaignDay()), String(index)));
-    const owner = lastCompendium?.has?.('nombres')
-        ? String(makeNames({ compendium: lastCompendium, howMany: 1, random })[0] ?? '')
-        : '';
-    const places = getCurrentWorldLocationMaps().map((/** @type {any} */ l) => String(l?.name ?? '')).filter(Boolean);
-    const place = places.length > 0 ? places[Math.floor(random() * places.length) % places.length] : currentLocationName;
-    return { owner: owner || ['Brunilda', 'Odo el Tuerto', 'Mencía', 'Rodrigo de la Cruz'][Math.floor(random() * 4) % 4], place, random };
-}
-
-
-/**
- * Hands out what the encounter was worth.
- *
- * Only on a victory: walking away or being wiped out leaves the bodies where they are.
- * Everything is rolled by the engine and announced line by line, like every other combat
- * result, so a player can see where their gold came from.
- *
- * @param {Array<any>} defeated
- * @returns {{gold: number, xp: number, items: Array<any>}|null}
- */
-export function awardEncounterLoot(defeated) {
-    const standing = partyMembers.filter(m => (m.hp || 0) > 0);
-    // Los invitados (el mercenario, el escoltado) no van a partes: al mercenario ya se le
-    // pagó al contratarle. Antes se llevaba su parte del oro y de la experiencia, y con dos
-    // mercenarios el héroe subía de nivel a un tercio de lo que debía.
-    const own = standing.filter(m => !m.guest);
-    const survivors = own.length > 0 ? own : standing;
-    if (survivors.length === 0 || defeated.length === 0) return null;
-
-    // Lo que el autor de la campana haya escrito cae tambien, con la rareza que le puso.
-    // Sin esto, escribir objetos seria llenar una lista que el juego no mira.
-    const loot = rollEncounterLoot(defeated, survivors.length, {
-        roll: (/** @type {string} */ formula) => rollDice(formula, 6),
-        // Idea 132: las reliquias no caen como botín: llegan con su hito o su encargo.
-        rules: lootRulesWithWorldItems(lootable(worldItemCatalogue)),
-    });
-
-    for (const member of survivors) {
-        member.gold = (Number(member.gold) || 0) + loot.goldEach;
-        member.xp = (Number(member.xp) || 0) + loot.xpEach;
-    }
-
-    // Objetos de verdad, no texto. Una pocion que no se puede beber y una espada que no
-    // se puede equipar son ambientacion con pasos de mas: lo que cae entra en el
-    // inventario como `DndItem`, con su tipo, su peso y su ranura.
-    if (loot.items.length > 0) {
-        // Un miembro del grupo *es* su ficha: lleva `items` directamente.
-        const holder = survivors[0];
-        holder.items = holder.items ?? [];
-        loot.items.forEach((dropped, index) => {
-            const spec = describeLootItem(dropped.name, dropped.rarity, worldItemCatalogue);
-            // Ideas 119 y 135: lo de las tablas trae historia, y alguno muerde. Lo escrito
-            // por el mundo ya trae la suya.
-            const written = worldItemCatalogue.some((/** @type {any} */ i) => String(i?.name ?? '').toLowerCase() === String(dropped.name).toLowerCase());
-            const item = createItem(/** @type {any} */ (written ? spec : dressLoot(spec, lootLore(String(dropped.name), index))));
-            addItemToInventory(/** @type {any} */ (holder), item);
-        });
-    }
-
-    // G5: a veces, algo forjado que no estaba en ninguna lista. Solo de quien plantaba cara
-    // (desafio de medio para arriba), y en la parte que la curva deja a lo generado.
-    const worthy = defeated.some((/** @type {any} */ e) => Number(e?.cr) >= 0.5);
-    if (worthy && survivors[0] && lastCompendium.has('materiales') && mixSource({ written: true }) !== 'written') {
-        const forged = forgeFromCompendium({ compendium: lastCompendium, random: nextRandom });
-        if (forged) {
-            addItemToInventory(/** @type {any} */ (survivors[0]), createItem(/** @type {any} */ (dressLoot(forged, lootLore(String(forged.name), -1)))));
-            postCombatNarration(`🗡️ [COMBAT] Entre lo que dejaron: ${describeItem(forged)}.`);
-        }
-    }
-
-    for (const line of loot.lines) postCombatNarration(line);
-    if (loot.goldEach > 0) soundCue('coin');
-
-    // Idea 121: las bestias dejan materiales, para la herrería.
-    if (survivors[0]) {
-        for (const enemy of defeated) {
-            for (const name of trophiesOf(enemy, nextRandom)) {
-                addItemToInventory(/** @type {any} */ (survivors[0]), createItem(/** @type {any} */ (trophyItem(name))));
-                postCombatNarration(`🦴 [COMBAT] De ${String(enemy?.name ?? 'la bestia')}: ${name}.`);
-            }
-        }
-    }
-
-    // Levelling is not automatic: the sheet already has a button for it, and deciding
-    // when to level is a player's business, not the engine's.
-    for (const member of survivors) {
-        if (member.xpNext > 0 && member.xp >= member.xpNext) {
-            postCombatNarration(`⭐ [COMBAT] ${member.name} tiene experiencia para subir de nivel.`);
-            soundCue('level');
-        }
-    }
-
-    savePartyState();
-    deliverTakenContract();
-    return { gold: loot.gold, xp: loot.xp, items: loot.items };
 }
 
 
@@ -3596,7 +3430,7 @@ async function hearRumor(by = '') {
  * @param {{written?: boolean, chat?: boolean}} have
  * @returns {'written'|'seed'|'chat'}
  */
-function mixSource(have) {
+export function mixSource(have) {
     const plot = getPlot();
     const state = chat_metadata?.[PLOT_STATE_KEY];
     return chooseSource({
@@ -3980,32 +3814,6 @@ export function raiseFame(place, amount = 1) {
     chat_metadata[FAME_KEY] = out.fame;
     saveMetadata();
     if (out.rose) toastr.success(`En ${place} ${out.label}.`, '🌟 Fama', { timeOut: 8000 });
-}
-
-/**
- * Idea 132: las reliquias que llegan con lo que se acaba de cumplir. Devuelve lo que hay que
- * contarle al narrador.
- *
- * @param {{kind: 'milestone'|'contract', id: string}} event
- * @returns {string[]}
- */
-export function deliverRelics(event) {
-    if (!chat_metadata) return [];
-    const given = Array.isArray(chat_metadata[RELICS_GIVEN_KEY]) ? chat_metadata[RELICS_GIVEN_KEY] : [];
-    const relics = relicsFor(worldItemCatalogue, event, given);
-    const holder = partyMembers.find(m => !m.dead && (Number(m.hp) || 0) > 0) ?? partyMembers[0];
-    if (relics.length === 0 || !holder) return [];
-    holder.items = holder.items ?? [];
-    for (const relic of relics) {
-        const item = createItem(/** @type {any} */ ({ ...describeLootItem(String(relic.name), String(relic.rarity ?? ''), worldItemCatalogue), relic: true }));
-        addItemToInventory(/** @type {any} */ (holder), item);
-        chat_metadata[RELICS_GIVEN_KEY] = [...(chat_metadata[RELICS_GIVEN_KEY] ?? []), String(relic.name)];
-        noteDeed(`${holder.name} lleva ahora ${relic.name}.`);
-        toastr.success(describeRelic(relic), '🏺 Una reliquia', { timeOut: 12000 });
-    }
-    saveMetadata();
-    savePartyState();
-    return relics.map(relic => `${holder.name} se queda con ${describeRelic(relic)}`);
 }
 
 
@@ -5488,20 +5296,6 @@ export function bark(member, event, about = '') {
     setTimeout(() => bubble.remove(), 2600);
 }
 
-/**
- * Idea 77: al ganar en un tablero con puertas cerradas con llave, la llave, una vez.
- */
-export function dropBoardKey() {
-    const context = getActiveBoardContext();
-    if (!context.board || lockedDoors(normalizeTerrain(context.board.terrain)).length === 0) return;
-    const hero = partyMembers[0];
-    const name = `Llave de ${currentBoardName || 'este sitio'}`;
-    if (!hero || (hero.items ?? []).some((/** @type {any} */ i) => i?.name === name)) return;
-    hero.items = hero.items ?? [];
-    addItemToInventory(/** @type {any} */ (hero), createItem(/** @type {any} */ ({ name, type: 'gear', category: 'gear', subcategory: 'tool', weight: 0.1, description: 'Abre las puertas cerradas de este sitio.' })));
-    savePartyState();
-    postCombatNarration(`🗝️ [COMBAT] Entre lo que dejaron: ${name}.`);
-}
 
 /**
  * Idea 77: una puerta cerrada con llave. Con la llave se abre; si no, con maña o a golpes.

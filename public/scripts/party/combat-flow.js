@@ -82,14 +82,14 @@ import { resolveEnemyAttackOn, resolveEnemyTurnAction } from './enemy-turn.js';
 import {
     savePartyState, renderPartyMembers, lastLevelPlan, getLocationBoards, persistBoardTerrain,
     getActiveBoardContext, postCombatNarration, tellMoment, postForModel, currentSurvival, survivalNow,
-    collectedHere, explodeBarrels, awardEncounterLoot, noteDeed, notePlot, hereLocation, raiseFame, recordBoardWon,
-    countStat, showTip, tellBondScene, rememberTogether, bark, dropBoardKey, judgeDecision, partyMorale,
-    getCampaignCalendar, getCampaignBonds, saveCampaignState, markLocationComplete, boardVisibility,
-    lastCompendium, renderLocationMapsPreview,
+    explodeBarrels, noteDeed, notePlot, hereLocation, raiseFame, recordBoardWon, countStat, showTip, tellBondScene,
+    rememberTogether, bark, judgeDecision, partyMorale, getCampaignCalendar, getCampaignBonds, saveCampaignState,
+    markLocationComplete, boardVisibility, lastCompendium, renderLocationMapsPreview,
 } from './main.js';
 import {
     handlePlayerCombatMove, performManeuver, handlePlayerCombatAttack, endPlayerCombatTurn,
 } from './player-actions.js';
+import { collectedHere, awardEncounterLoot, dropBoardKey } from './loot.js';
 
 /**
  * @param {string} name
