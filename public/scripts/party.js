@@ -6,7 +6,7 @@
  * importaba (script.js, campaigns.js, las pruebas del navegador) lo sigue importando igual.
  */
 
-export { routeTyped, openCampaignBuilder, initPartyPanel } from './party/main.js';
+export { openCampaignBuilder, initPartyPanel } from './party/main.js';
 export {
     playCurrentTurnAlone, restPartyForSimulation, openBoardDoorsForSimulation, grantXpForSimulation,
     revealLocationsForSimulation, trainMercenariesForSimulation, levelUpForSimulation, getCombatEncounter,
@@ -25,3 +25,4 @@ export {
     adoptCarriedParty, addPartyMember, removePartyMember, updatePartyMemberFromPersona, getActivePartyLeader,
     getPartyDescription,
 } from './party/roster.js';
+export { routeTyped } from './party/talk.js';

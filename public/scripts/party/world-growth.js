@@ -46,8 +46,9 @@ import { campaignCompendium, currentSeason, ensureWorldData, lastMix, lastWorldN
 import { bannerOf, getCurrentWorldFactions } from './factions.js';
 import { advanceCampaignSlot, campaignDay, getCampaignCalendar, getCurrentSlotLabel, getDebt } from './time.js';
 import { getPlot } from './plot.js';
-import { localMemory, speakingNote } from './main.js';
+import { localMemory } from './main.js';
 import { postCombatNarration, postForModel, saverOn } from './narration.js';
+import { speakingNote } from './talk.js';
 
 /**
  * Apuntar un hecho, con el dia de hoy.
