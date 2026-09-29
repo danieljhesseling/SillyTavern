@@ -391,7 +391,7 @@ Así no hay que reescribir el motor para el servidor. El riesgo: si el anfitrió
 
 ### J7 · El grupo
 
-**Para qué.** **De momento es de un solo jugador** (lo dijiste el 2026-09-29): tu personaje y sus compañeros. A cada compañero lo mueve la máquina del juego (su IA táctica, sin modelo) o lo mueves tú, **como elijas**. Jugar con amigos vuelve con J6.
+**Para qué.** **De momento es de un solo jugador** (lo dijiste el 2026-09-29): tu personaje y sus compañeros. A cada compañero lo mueve la máquina del juego (su IA táctica, sin modelo) **hasta que os hacéis amigos** (vínculo 5); desde entonces, lo mueves tú si quieres. Jugar con amigos vuelve con J6.
 
 **Qué hay ya.**
 - Compañeros reclutables (`recruit.js`, hasta 5 en el grupo), con vínculo, aprobación, arcos y despedidas.
@@ -403,7 +403,7 @@ Así no hay que reescribir el motor para el servidor. El riesgo: si el anfitrió
 | :--- | :--- | :---: | :---: | :--- |
 | J7.1 | **Tu grupo**: tu personaje y, para llenar, compañeros del gremio (mercenarios, tus otros personajes) o de la campaña | A | M | e2e: un jugador con tres compañeros |
 | J7.2 | **Compañeros del gremio que duran**: los que se unen en una campaña pueden quedarse en el gremio para las siguientes | A | M | Pruebas |
-| J7.3 | **Quién mueve a cada uno: tú o el juego.** Un interruptor por compañero, en su ficha y en la barra de combate: «Lo muevo yo» o «Que lo lleve el juego». Se puede cambiar a mitad de pelea, y hay un «Todos solos» / «Todos yo» para el grupo entero | A | M | e2e: la misma pelea, primero moviéndolos tú y luego dejándolos al juego |
+| J7.3 | **Quién mueve a cada uno: tú o el juego, cuando os hacéis amigos** (lo decidiste el 2026-09-29). Al principio, cada compañero lo mueve el juego (su IA táctica). **Cuando su vínculo contigo llega al rango 5** (el de «amigo», el mismo que abre el Relevo), se desbloquea «Lo muevo yo» en su ficha y en la barra de combate, y desde entonces eliges tú. Se puede volver a dejárselo al juego cuando quieras. Tu personaje, siempre tú; tus invocaciones (J19.5) también, porque son tuyas | A | M | e2e: con vínculo 4 no aparece el botón; con vínculo 5 sí, y moverlo a mano funciona |
 | J7.4 | **Formación y papeles**: quién va delante, quién cura, quién vigila en el viaje (los papeles de viaje ya existen) | A | S | Pruebas |
 | J7.5 | **Opiniones de los compañeros a la vista** al decidir (hoy se apuntan): «A Bran le gusta esto» | A | M | Pruebas |
 
