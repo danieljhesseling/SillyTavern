@@ -46,6 +46,18 @@ export function bump(raw, key, amount = 1) {
 }
 
 /**
+ * Un número con su palabra, en singular si es uno: «1 día», «3 días».
+ *
+ * @param {number} n
+ * @param {string} one
+ * @param {string} many
+ * @returns {string}
+ */
+export function counted(n, one, many) {
+    return `${n} ${n === 1 ? one : many}`;
+}
+
+/**
  * Las líneas de la partida en números.
  *
  * @param {any} raw
@@ -54,11 +66,19 @@ export function bump(raw, key, amount = 1) {
  */
 export function describeStats(raw, { days, places }) {
     const s = readStats(raw);
+    // Cada pelea acaba ganada, huida o de otra forma: nunca hay más ganadas y huidas que
+    // peleas. Las partidas de antes no contaban las que empezaban desde el tablero, y
+    // salía «0 combates: 1 ganados».
+    const fights = Math.max(s.fights, s.wins + s.fled);
+    const day = Math.max(1, Math.floor(Number(days) || 1));
+    const place = Math.max(0, Math.floor(Number(places) || 0));
     return [
-        `${Math.max(1, Math.floor(Number(days) || 1))} días de campaña · ${Math.max(0, Number(places) || 0)} sitios en el mapa`,
-        `${s.fights} combates: ${s.wins} ganados${s.fled ? `, ${s.fled} huidas` : ''}`,
-        `${s.contracts} encargos cumplidos · ${s.gold} de oro ganado`,
-        `${s.trips} viajes · ${s.rumors} rumores oídos`,
-        s.deaths > 0 ? `${s.deaths} ${s.deaths === 1 ? 'muerte' : 'muertes'} en el grupo` : 'Nadie del grupo ha muerto',
+        `${counted(day, 'día', 'días')} de campaña · ${counted(place, 'sitio', 'sitios')} en el mapa`,
+        fights > 0
+            ? `${counted(fights, 'combate', 'combates')}: ${counted(s.wins, 'ganado', 'ganados')}${s.fled ? `, ${counted(s.fled, 'huida', 'huidas')}` : ''}`
+            : 'Ningún combate',
+        `${counted(s.contracts, 'encargo cumplido', 'encargos cumplidos')} · ${s.gold} de oro ganado`,
+        `${counted(s.trips, 'viaje', 'viajes')} · ${counted(s.rumors, 'rumor oído', 'rumores oídos')}`,
+        s.deaths > 0 ? `${counted(s.deaths, 'muerte', 'muertes')} en el grupo` : 'Nadie del grupo ha muerto',
     ];
 }

@@ -23,6 +23,7 @@
 import { readArea, describeArea } from './area.js';
 import { describeElement } from './tags.js';
 import { chargesLeft, canCast, CIRCLE_LABELS } from './grimoire.js';
+import { statusMarkers } from '../combat/initiative-tracker.js';
 
 /** Qué parte del turno gasta. */
 export const ABILITY_COSTS = ['action', 'bonus', 'free'];
@@ -394,7 +395,8 @@ export function describeAbility(ability) {
 
     if (ability.damage) parts.push(`${ability.damage} de daño`);
     if (ability.healing) parts.push(`cura ${ability.healing}`);
-    if (ability.condition) parts.push(ability.condition);
+    // La condición con su nombre en castellano («deja derribado»), no la clave de 5e («Prone»).
+    if (ability.condition) parts.push(`deja ${(statusMarkers([ability.condition])[0]?.label ?? ability.condition).toLowerCase()}`);
     if (ability.resolution === 'save') parts.push(`salvación CD ${ability.saveDc}`);
     if (ability.component) parts.push(`gasta ${ability.component.toLowerCase()}`);
 

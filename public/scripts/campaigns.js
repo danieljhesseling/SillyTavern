@@ -31,7 +31,7 @@ import { freshCompendium } from './game-engine/compendio/browser.js';
 import { makeName } from './game-engine/compendio/names.js';
 import { createSeededRandom } from './game-engine/combat/seeded-random.js';
 import { seedOf, derive } from './game-engine/campaign/seed.js';
-import { abilitiesFor, nameAndAbility } from './game-engine/compendio/skills.js';
+import { abilitiesFor } from './game-engine/compendio/skills.js';
 import { racesOf, kindsOf, describeKin } from './game-engine/compendio/kin.js';
 import { kitFor, kitSlots, describeKit } from './game-engine/campaign/starting-kit.js';
 import { armourClassOf } from './game-engine/rules/equipment.js';
@@ -254,6 +254,9 @@ function refreshTitleMenu() {
  */
 let savedGames = null;
 
+/** J0.5: si ya se está abriendo una partida. */
+let resumingGame = false;
+
 /**
  * J0.6: las tarjetas de «Cargar partida», la última jugada primero.
  *
@@ -275,18 +278,24 @@ export function savedGameCards() {
  */
 export async function continueSavedGame(id) {
     const game = savedGames?.find(g => g.id === id);
-    if (!game) return;
-    if (game.unstarted) {
-        await startUnstartedWorld(game.id);
-        return;
+    // Un doble clic no abre dos veces, ni pregunta dos veces con quién se entra.
+    if (!game || resumingGame) return;
+    resumingGame = true;
+    try {
+        if (game.unstarted) {
+            await startUnstartedWorld(game.id);
+            return;
+        }
+        const file = String(game.chat?.file_name || '').replace('.jsonl', '');
+        if (!file) return;
+        const index = characters.findIndex((/** @type {any} */ c) => c?.avatar === game.chat?.avatar);
+        if (index >= 0) await selectCharacterById(index);
+        await openCharacterChat(file);
+        // Como «Seguir» en la portada: al entrar en el gremio, con quién.
+        if (game.kind === 'gremio' && game.chatWorld === game.id) await enterHub();
+    } finally {
+        resumingGame = false;
     }
-    const file = String(game.chat?.file_name || '').replace('.jsonl', '');
-    if (!file) return;
-    const index = characters.findIndex((/** @type {any} */ c) => c?.avatar === game.chat?.avatar);
-    if (index >= 0) await selectCharacterById(index);
-    await openCharacterChat(file);
-    // Como «Seguir» en la portada: al entrar en el gremio, con quién.
-    if (game.kind === 'gremio' && game.chatWorld === game.id) await enterHub();
 }
 
 /**
@@ -1985,6 +1994,26 @@ async function adoptVeteran(worldName, data, hero) {
 let startingPet = null;
 
 /**
+ * Quitar estos avisos en cuanto se abra una ventana: dentro de una ventana, SillyTavern los
+ * pone encima, y tapaban los botones de la pregunta que sale justo después de crear.
+ *
+ * @param {Array<JQuery|undefined>} toasts
+ * @param {number} [ms] Cuánto se vigila; para entonces ya se han ido solos.
+ */
+function clearOnNextPopup(toasts, ms = 10000) {
+    const shown = toasts.filter(Boolean);
+    if (shown.length === 0) return;
+    const watcher = new MutationObserver(records => {
+        const opened = records.some(r => [...r.addedNodes].some(n => n instanceof HTMLElement && n.matches('dialog.popup')));
+        if (!opened) return;
+        for (const toast of shown) toastr.clear(toast, { force: true });
+        watcher.disconnect();
+    });
+    watcher.observe(document.body, { childList: true });
+    setTimeout(() => watcher.disconnect(), ms);
+}
+
+/**
  * @param {string} worldName
  * @param {{another?: boolean}} [options] `another` (J1.6): uno más en un gremio que ya tiene
  *   a los suyos. Va derecho a la creación, sin héroes hechos ni veteranos (el veterano de
@@ -2165,11 +2194,15 @@ async function createStartingHero(worldName, { another = false } = {}) {
     // J0.2: tu nombre es el de tu personaje; nadie te lo ha preguntado antes.
     setUserName(answers.name, { toastPersonaNameChange: false });
 
-    toastr.success([describeHero(answers), describeKit(kit)].filter(Boolean).join(' '), 'Tu personaje');
+    // Cortos: los números y el equipo ya se vieron al crearlo, y lo que sabe hacer, con su
+    // explicación, está en su ficha. Antes eran dos párrafos que seguían tapando los botones
+    // de la pregunta que se abría justo después.
+    const said = [toastr.success(`${describeHero(answers)}.`, 'Tu personaje', { timeOut: 5000 })];
     if (known.length > 0 || spells.length > 0) {
-        const magic = spells.map(id => spellById(id)?.name ?? id);
-        toastr.info([...known.map(nameAndAbility), ...(magic.length > 0 ? [`Conjuros: ${magic.join(', ')}`] : [])].join('. '), 'Lo que sabes hacer', { timeOut: 9000 });
+        const names = [...known.map((/** @type {any} */ ability) => String(ability?.name || '')), ...spells.map(id => spellById(id)?.name ?? id)];
+        said.push(toastr.info(`${names.filter(Boolean).join(', ')}.`, 'Lo que sabes hacer', { timeOut: 6000 }));
     }
+    clearOnNextPopup(said);
     const who = [answers.race, answers.className, backgroundOf(answers.background)?.label].filter(Boolean).join(', ');
     return [`${answers.name}${who ? ` (${who})` : ''}`, answers.about, backgroundOf(answers.background)?.contact].filter(Boolean).join('. ');
 }

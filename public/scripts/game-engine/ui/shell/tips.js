@@ -17,7 +17,7 @@
 
 /** Un consejo por situación, la primera vez que se ve. */
 export const TIPS = {
-    dialogue: 'Escribe lo que hace tu personaje, o usa las fichas de abajo. El Diario (D) y «¿Qué hago?» (H) están siempre a mano.',
+    dialogue: 'Escribe lo que hace tu personaje, o usa las fichas de abajo. Arriba, el diario (D) y «¿Qué hago?» (H).',
     exploration: 'Aquí están los servicios del sitio y el mapa: pulsa un sitio para viajar. Cada viaje cuesta días y comida.',
     // J2.2: al empezar la primera pelea, no al abrir el tablero (sin pelea, el tablero solo se mira).
     combat: 'Empieza la pelea: cada uno actúa en su turno. La línea de arriba dice a por quién va cada enemigo. «Maniobras»: esquivar, empujar, agarrar…',
@@ -31,7 +31,8 @@ export const TIPS = {
     // J2.2 («Enseña jugando»): lo que se aprende en el momento en que pasa por primera vez.
     move: 'Te toca. Para andar, pulsa tu ficha y luego una casilla encendida, o arrástrala. Cuando acabes, «Fin de turno».',
     attack: 'Tienes un enemigo al alcance: púlsalo para ver cuánto le das, y luego «Atacar».',
-    roll: 'Una tirada: un dado de 20 más lo que se te da bien. Si llega a la Dificultad (la CA de quien recibe el golpe, o la CD), sale.',
+    // Sale también con la tirada de un enemigo: por eso «quien tira», y no «tú».
+    roll: 'Una tirada: un dado de 20 más lo que sabe hacer quien tira. Si llega a la Dificultad (la CA de quien recibe el golpe, o la CD), sale.',
     talk: 'Pulsa un tema para preguntar: cuánto te cuenta depende de cómo te mire. «Despedirse» acaba la charla.',
     journal: 'Queda apuntado en el Diario (tecla D): lo que habéis hecho y lo que toca ahora.',
 };
@@ -70,15 +71,20 @@ export function planTip({ situation, seen, queue, busy }) {
 
 /**
  * J2.2: el siguiente que espera y aún no se ha visto. Los que se vieron mientras esperaban
- * (en otra pestaña, o porque se marcaron a mano) se quitan.
+ * (en otra pestaña, o porque se marcaron a mano) se quitan. Y los que ya no vienen a cuento
+ * también: «tienes un enemigo al alcance» con la pelea acabada confunde. Esos no cuentan
+ * como vistos: saldrán la próxima vez que pase la cosa.
  *
  * @param {string[]} queue
  * @param {string[]} seen
+ * @param {(id: string) => boolean} [fits] Si lo que enseña sigue ahí (tu turno, la charla…).
  * @returns {{id: string, queue: string[]}} `id` vacío si no queda ninguno.
  */
-export function nextQueuedTip(queue, seen) {
+export function nextQueuedTip(queue, seen, fits = () => true) {
     const waiting = (Array.isArray(queue) ? queue : []).filter(id => tipFor(id, seen));
-    return { id: waiting[0] ?? '', queue: waiting.slice(1) };
+    const index = waiting.findIndex(id => fits(id));
+    if (index === -1) return { id: '', queue: [] };
+    return { id: waiting[index], queue: waiting.slice(index + 1) };
 }
 
 /** Las palabras de las reglas, en llano. */

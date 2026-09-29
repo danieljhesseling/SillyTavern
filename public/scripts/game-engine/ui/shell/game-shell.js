@@ -182,6 +182,12 @@ let sceneReason = '';
 /** @type {((event: KeyboardEvent) => void)|null} */
 let keyHandler = null;
 /**
+ * Mide la cabecera para que los avisos flotantes caigan justo debajo (`--gs-head-bottom` en
+ * game-shell.css). Su alto cambia con lo que lleva: la misión, el reloj, cuántos botones.
+ * @type {ResizeObserver|null}
+ */
+let headWatcher = null;
+/**
  * Que ensena la pantalla de titulo: el menu, o la lista de partidas guardadas.
  *
  * Empezar en la lista — como hacia antes — es empezar en medio: lo primero que ve alguien
@@ -1579,6 +1585,25 @@ function toggleKeySheet() {
 }
 
 /**
+ * Dónde acaba la cabecera, en `--gs-head-bottom`: los avisos flotantes caen debajo (ver
+ * game-shell.css). Con un alto fijo (96 px) se colaban encima de la segunda fila cuando la
+ * misión o el reloj la hacían más alta, y el aviso se comía el clic de la Mesa o del Diario.
+ * En el título la cabecera no se ve: mide cero y los avisos van arriba del todo.
+ *
+ * @param {HTMLElement} head
+ */
+function watchHeadHeight(head) {
+    const measure = () => {
+        const bottom = Math.max(0, Math.ceil(head.getBoundingClientRect().bottom));
+        document.body.style.setProperty('--gs-head-bottom', `${bottom}px`);
+    };
+    measure();
+    headWatcher?.disconnect();
+    headWatcher = typeof ResizeObserver === 'function' ? new ResizeObserver(measure) : null;
+    headWatcher?.observe(head);
+}
+
+/**
  * Open the shell.
  *
  * @param {ShellOptions} shellOptions
@@ -1652,6 +1677,7 @@ export function openGameShell(shellOptions) {
     root.appendChild(el('footer', 'gs-actions'));
     document.body.appendChild(root);
     document.body.classList.add('game-shell-on');
+    watchHeadHeight(head);
 
     adopt(BOARD_SELECTOR, /** @type {HTMLElement} */ (map.querySelector('.gs-map-slot')));
     adopt(CHAT_SELECTOR, /** @type {HTMLElement} */ (dialogue.querySelector('.gs-chat-slot')));
@@ -1689,6 +1715,9 @@ export function closeGameShell() {
     lastSituation = null;
     sceneReason = '';
     document.body.classList.remove('game-shell-on');
+    headWatcher?.disconnect();
+    headWatcher = null;
+    document.body.style.removeProperty('--gs-head-bottom');
 
     const redraw = options?.renderStage;
     options?.onClose?.();

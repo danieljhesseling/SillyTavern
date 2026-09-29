@@ -671,7 +671,7 @@ async function showCharacterPicker(charEntries) {
         const image = entry.dndData?.image || '';
         const race = entry.dndData?.race || '';
         const charClass = entry.dndData?.charClass || '';
-        const level = entry.dndData?.level ? `Lv ${entry.dndData.level}` : '';
+        const level = entry.dndData?.level ? `nivel ${entry.dndData.level}` : '';
         const subtitle = [race, charClass, level].filter(Boolean).join(' · ');
 
         const imgHtml = image
@@ -690,15 +690,15 @@ async function showCharacterPicker(charEntries) {
     }
     gridHtml += '</div>';
 
-    const headerHtml = `<h3 style="margin:0 0 6px"><i class="fa-solid fa-user-plus"></i> ${t`Add Character to Party`}</h3>
-        <p style="margin:0 0 10px;font-size:0.85rem;color:var(--SmartThemeQuoteColor,#999)">${t`Select a character from the world to add to your party.`}</p>`;
+    const headerHtml = `<h3 style="margin:0 0 6px"><i class="fa-solid fa-user-plus"></i> Sumar a alguien al grupo</h3>
+        <p style="margin:0 0 10px;font-size:0.85rem;color:var(--SmartThemeQuoteColor,#999)">Elige a alguien del mundo para que vaya con vosotros.</p>`;
 
     const content = $(`<div class="party-picker-container">${headerHtml}${gridHtml}</div>`);
 
     const popup = new Popup(content, POPUP_TYPE.CONFIRM, undefined, {
         wider: true,
-        okButton: t`Add to Party`,
-        cancelButton: t`Cancel`,
+        okButton: 'Sumarlo al grupo',
+        cancelButton: 'Cancelar',
         allowVerticalScrolling: true,
         onOpen: () => {
             content.on('click', '.party-card', function () {
@@ -880,7 +880,7 @@ function renderPartyMembers() {
 
     if (partyMembers.length === 0) {
         list.append(
-            '<div class="flex-container alignitemscenter justifyCenter padding10"><small data-i18n="No party members.">No party members.</small></div>',
+            '<div class="flex-container alignitemscenter justifyCenter padding10"><small>Todavía no hay nadie en el grupo.</small></div>',
         );
         return;
     }
@@ -892,19 +892,19 @@ function renderPartyMembers() {
                 <div class="party-card-body">
                     <div class="party-card-heading">
                         <strong class="party-card-name">${member.name}</strong>
-                        <button class="party-card-remove menu_button fa-solid fa-trash-can" title="Remove member" data-i18n="[title]Remove member"></button>
+                        <button class="party-card-remove menu_button fa-solid fa-trash-can" title="Sacar del grupo"></button>
                     </div>
                     <div class="party-card-meta">
-                        <span data-i18n="[title]Level">Lvl ${member.level}</span>
+                        <span title="Nivel">Nivel ${member.level}</span>
                         <span>${member.class}</span>
                     </div>
                     <div class="party-card-stats">
                         <div class="party-card-stat">
-                            <div class="stat-label" data-i18n="HP">HP</div>
+                            <div class="stat-label">PG</div>
                             <div class="stat-value">${member.hp}/${member.maxHp}</div>
                         </div>
                         <div class="party-card-stat">
-                            <div class="stat-label" data-i18n="EXP">EXP</div>
+                            <div class="stat-label">PX</div>
                             <div class="stat-value">${member.xp}</div>
                         </div>
                     </div>
@@ -1173,6 +1173,8 @@ function loadCombatState() {
         combatEncounter = normalizeCombatEncounter(saved);
     } else {
         combatEncounter = createEmptyCombatEncounter();
+        // Sin pelea, la caja dice lo de siempre, y no la pelea de otro chat.
+        restoreChatPlaceholder();
     }
 }
 
@@ -2604,7 +2606,7 @@ function rollInitiativeWithPopover(name, dexterity, actorType) {
     const d20 = roll.natural ?? roll.rolls[0] ?? total;
 
     showCombatDiceRoll({
-        title: `${name} iniciativa`,
+        title: `Iniciativa de ${name}`,
         subtitle: actorType === 'enemy' ? 'Iniciativa de enemigo' : 'Iniciativa de aliado',
         formula: roll.formula,
         detail: `d20(${d20}) ${dexMod >= 0 ? '+' : ''}${dexMod} = ${total}`,
@@ -2642,7 +2644,7 @@ function ensureCombatDiceOverlay() {
                         <div class="wm-dice-metric-value" data-field="total"></div>
                     </div>
                     <div class="wm-dice-metric">
-                        <div class="wm-dice-metric-label">Formula</div>
+                        <div class="wm-dice-metric-label">Fórmula</div>
                         <div class="wm-dice-metric-value" data-field="formula"></div>
                     </div>
                 </div>
@@ -2651,7 +2653,7 @@ function ensureCombatDiceOverlay() {
                 <div class="wm-dice-detail"></div>
             </div>
             <div class="wm-dice-actions">
-                <button class="menu_button wm-dice-next" type="button">Next</button>
+                <button class="menu_button wm-dice-next" type="button">Siguiente</button>
             </div>
         </div>
     `;
@@ -2683,15 +2685,18 @@ function flushCombatDiceQueue() {
     titleEl.textContent = next.title;
     subtitleEl.textContent = next.subtitle;
     formulaEl.textContent = next.formula;
-    glyphEl.textContent = next.glyph;
+    // La cara del dado: «d20» se lee tal cual; la iniciativa y el daño, con un dibujo.
+    glyphEl.textContent = next.glyph === 'init' ? '⚡' : next.glyph === 'dmg' ? '💥' : next.glyph;
     detailEl.textContent = next.detail;
 
-    badge.textContent = getRollClassificationLabel(next.classification);
-    badge.className = `wm-dice-result-badge ${next.classification}`;
+    // Sin nada que superar (la iniciativa, el daño), no hay éxito ni fallo que decir.
+    const judged = next.dc !== '--' || next.classification !== 'success';
+    badge.textContent = judged ? getRollClassificationLabel(next.classification) : '';
+    badge.className = `wm-dice-result-badge ${judged ? next.classification : ''}`;
 
-    const finalBtnText = combatDiceQueue.length > 0 ? 'Next' : 'Close';
+    const finalBtnText = combatDiceQueue.length > 0 ? 'Siguiente' : 'Cerrar';
     nextBtn.disabled = true;
-    nextBtn.textContent = 'Rolling...';
+    nextBtn.textContent = 'Tirando…';
     dcEl.classList.add('rolling');
     totalEl.classList.add('rolling');
 
@@ -2874,7 +2879,47 @@ function announceTurnInChat(entry) {
             ? targets.map(enemy => enemy.name).join(', ')
             : 'ningun enemigo en rango';
         postCombatNarration(`💬 [COMBAT] ${member.name}, elige accion. Usa /combat-attack <objetivo>, /combat-move <x> <y> y /combat-end. Movimiento restante: ${remainingFeet} ft. Rango actual: ${rangeFeet} ft. Objetivos en rango: ${targetSummary}.`);
-        $('#send_textarea').attr('placeholder', `/combat-attack ${targets[0]?.name || '<objetivo>'} | /combat-move 12 8 | /combat-end`);
+        // En la caja, lo que entiende escrito en llano, no los comandos.
+        // Con alguien al alcance, ese; si no, cualquiera en pie: el ejemplo lleva un nombre.
+        const foes = [...targets, ...getAliveEnemies()].map(enemy => String(enemy.name));
+        const tries = boxExamples({ fighting: true, foes }).map(example => `«${example}»`);
+        setChatPlaceholder(`Te toca. Escribe, por ejemplo: ${tries.join(', ')}`, true);
+    }
+}
+
+/** La caja de escribir fuera de la pelea, dicha llana. */
+const CHAT_PLACEHOLDER = 'Escribe lo que hace tu personaje…';
+
+/**
+ * Lo que dice la caja de escribir. En tu turno, ejemplos de lo que entiende; al acabar la
+ * pelea, lo de siempre: antes se quedaba con «/combat-attack … | /combat-end» puesto para
+ * el resto de la partida. Con «Al narrador» encendido se cambia lo que vuelve al apagarlo.
+ *
+ * @param {string} text
+ * @param {boolean} fighting Si es el de la pelea, que hay que quitar al acabar.
+ */
+function setChatPlaceholder(text, fighting) {
+    const box = /** @type {HTMLTextAreaElement|null} */ (document.querySelector('#send_textarea'));
+    if (!box) return;
+    if (box.dataset.placeholderBefore !== undefined) box.dataset.placeholderBefore = text;
+    else box.placeholder = text;
+    if (fighting) box.dataset.fightPlaceholder = '1';
+    else delete box.dataset.fightPlaceholder;
+}
+
+/**
+ * Sin pelea, la caja dice lo de siempre: en una partida, lo del juego; en un chat que no lo
+ * es y que se quedó con lo del juego, lo de SillyTavern.
+ */
+function restoreChatPlaceholder() {
+    const box = /** @type {HTMLTextAreaElement|null} */ (document.querySelector('#send_textarea'));
+    if (!box) return;
+    if (chat_metadata?.[METADATA_KEY]) {
+        setChatPlaceholder(CHAT_PLACEHOLDER, false);
+        box.dataset.gamePlaceholder = '1';
+    } else if (box.dataset.gamePlaceholder || box.dataset.fightPlaceholder) {
+        setChatPlaceholder(box.getAttribute(online_status === 'no_connection' ? 'no_connection_text' : 'connected_text') || '', false);
+        delete box.dataset.gamePlaceholder;
     }
 }
 
@@ -2966,11 +3011,11 @@ function resolveEnemyAttackOn(enemy, target) {
     const totalDamage = Math.max(1, baseDamage + critBonus + strMod);
 
     showCombatDiceRoll({
-        title: `${enemy.name} tira dano`,
+        title: `${enemy.name} tira daño`,
         subtitle: `Contra ${target.name}`,
         formula: `${dmgFormula}${isCrit ? ` + ${dmgFormula}` : ''}`,
         detail: isCrit
-            ? `${baseDamageRoll.rolls.join(', ')} + crit(${critBonusRoll?.rolls.join(', ') || ''}) + mod(${strMod})`
+            ? `${baseDamageRoll.rolls.join(', ')} + crítico(${critBonusRoll?.rolls.join(', ') || ''}) + mod(${strMod})`
             : `${baseDamageRoll.rolls.join(', ')} + mod(${strMod})`,
         total: totalDamage,
         glyph: 'dmg',
@@ -3454,7 +3499,7 @@ function resolveDeathSave(member) {
     if (result.outcome === 'dead') applyFall(member);
 
     showCombatDiceRoll({
-        title: `${member.name}: salvacion de muerte`,
+        title: `${member.name}: salvación de muerte`,
         subtitle: result.outcome === 'dead' ? 'Tercer fallo' : '',
         formula: '1d20',
         detail: result.line,
@@ -4475,7 +4520,6 @@ function wakeRoomEnemies(board, room) {
  * @returns {string} Initiative order summary string
  */
 function startCombat(template, count, gridWidth = 50, gridHeight = 50) {
-    if (!combatEncounter.active) countStat('fights');
     // A new fight starts with an empty log: the last one's blow-by-blow is already in
     // the chat, and leaving it here would read as if it were still happening.
     combatLogEntries = [];
@@ -4550,6 +4594,10 @@ function startCombat(template, count, gridWidth = 50, gridHeight = 50) {
  * @returns {string} El orden de iniciativa, ya escrito.
  */
 function beginEncounterWith(newEnemies) {
+    // Idea 200: la pelea se cuenta aquí, por donde pasan todas (el botón y la ficha del
+    // tablero, una sala que se abre, `/fight`). Contada solo en `startCombat`, la bodega
+    // salía en el final como «0 combates: 1 ganados».
+    if (!combatEncounter.active) countStat('fights');
     // Idea 25: tras dos derrotas seguidas, con la red puesta, este baja un escalón.
     if (chat_metadata && shouldSoften(chat_metadata[SAFETY_KEY], Boolean(chat_metadata[SAFETY_ON_KEY])) && !combatEncounter.active) {
         for (const enemy of newEnemies) Object.assign(enemy, softenEnemy(enemy));
@@ -7556,9 +7604,26 @@ function showTip(situation) {
 /** J2.2: el siguiente consejo que esperaba, si ya no hay ninguno a la vista. */
 function showNextTip() {
     if (tipOnScreen()) return;
-    const next = nextQueuedTip(tipQueue, seenTips());
+    const next = nextQueuedTip(tipQueue, seenTips(), tipStillFits);
     tipQueue = next.queue;
     if (next.id) showTip(next.id);
+}
+
+/**
+ * J2.2: si lo que enseña un consejo que esperaba sigue ahí cuando le llega el turno: la
+ * pelea, tu turno con alguien al alcance, la ventana de la charla.
+ *
+ * @param {string} id
+ * @returns {boolean}
+ */
+function tipStillFits(id) {
+    const entry = getCurrentTurnEntry();
+    const yours = Boolean(entry && !entry.isEnemy && !actsOnItsOwn(entry));
+    if (id === 'combat') return combatEncounter.active;
+    if (id === 'move') return yours;
+    if (id === 'attack') return yours && getAttackableEnemiesForMember(getCurrentActingMember()).length > 0;
+    if (id === 'talk') return Boolean(document.querySelector('.tk-root'));
+    return true;
 }
 
 /**
@@ -11234,6 +11299,7 @@ function endCombat(reason = 'ended') {
     combatEncounter = createEmptyCombatEncounter();
     combatBoardSelection = { tokenId: null, boardName: '', locationName: '' };
     saveCombatState();
+    restoreChatPlaceholder();
 }
 
 /**
@@ -11253,7 +11319,7 @@ function showVictoryScreen(report) {
         const line = $('<div class="vs-row"></div>').toggleClass('vs-best', row.best);
         line.append($('<span class="vs-name"></span>').text(`${row.best ? '⭐ ' : ''}${row.name}`));
         line.append($('<span class="vs-num"></span>').text(`${row.dealt} hecho`));
-        line.append($('<span class="vs-num"></span>').text(`${row.kills} tumbados`));
+        line.append($('<span class="vs-num"></span>').text(`${row.kills} ${row.kills === 1 ? 'tumbado' : 'tumbados'}`));
         line.append($('<span class="vs-num"></span>').text(`${row.taken} recibido`));
         table.append(line);
     }
@@ -12744,11 +12810,11 @@ function handlePlayerCombatAttack(rawTargetName) {
     if (weaponName) recordFeat(member, 'hit', weaponName);
 
     showCombatDiceRoll({
-        title: `${member.name} tira dano`,
+        title: `${member.name} tira daño`,
         subtitle: `Contra ${target.name}`,
         formula: `${damageFormula}${isCrit ? ` + ${damageFormula}` : ''}`,
         detail: isCrit
-            ? `${damageRoll.rolls.join(', ')} + crit(${critRoll?.rolls.join(', ') || ''}) + mod(${damageMod})`
+            ? `${damageRoll.rolls.join(', ')} + crítico(${critRoll?.rolls.join(', ') || ''}) + mod(${damageMod})`
             : `${damageRoll.rolls.join(', ')} + mod(${damageMod})`,
         total: totalDamage,
         glyph: 'dmg',
@@ -12928,7 +12994,7 @@ function buildCombatSection(board) {
     const turnState = getCurrentTurnState();
 
     // Banner
-    section.append(`<div class="wm-combat-banner"><i class="fa-solid fa-swords"></i> ${t`Combat Active`} — ${escapeHtml(board.name)}</div>`);
+    section.append(`<div class="wm-combat-banner"><i class="fa-solid fa-swords"></i> En combate — ${escapeHtml(board.name)}</div>`);
 
     // ---- Scenario objectives (wiki/ROADMAP.md, Fase E) ----
     // Above the initiative order, because what the fight is *for* outranks whose turn it
@@ -13036,9 +13102,9 @@ function buildCombatSection(board) {
                     <div class="wm-combat-enemy-info">
                         <div class="wm-combat-enemy-name">${escapeHtml(enemy.name)}</div>
                         <div class="wm-combat-enemy-stats">
-                            <span>HP: ${enemy.currentHp}/${enemy.maxHp}</span>
-                            <span>AC: ${enemy.armorClass}</span>
-                            <span>CR: ${enemy.cr}</span>
+                            <span>PG ${enemy.currentHp}/${enemy.maxHp}</span>
+                            <span>CA ${enemy.armorClass}</span>
+                            <span>Desafío ${({ 0.125: '1/8', 0.25: '1/4', 0.5: '1/2' })[Number(enemy.cr)] ?? enemy.cr}</span>
                         </div>
                         <div class="wm-combat-enemy-hp-bar">
                             <div class="wm-combat-enemy-hp-fill" style="width:${hpPct}%"></div>
@@ -13047,7 +13113,7 @@ function buildCombatSection(board) {
                 </div>
             `);
         }
-        section.append('<div class="wm-combat-enemies-title">' + t`Enemies` + '</div>');
+        section.append('<div class="wm-combat-enemies-title">Enemigos</div>');
         section.append(enemyGrid);
     }
 
@@ -13064,29 +13130,31 @@ function buildCombatSection(board) {
             }))
             .sort((a, b) => a.distanceFeet - b.distanceFeet)[0] || null;
         const targetChips = targets.length
-            ? targets.map(enemy => `<span class="wm-combat-chip attack">${escapeHtml(enemy.name)} · ${getDistanceInFeet(memberX, memberY, Number(enemy.gridX) || 0, Number(enemy.gridY) || 0)} ft</span>`).join('')
-            : `<span class="wm-combat-chip attack">${t`No enemies in range`}${nearestEnemyInfo ? ` · ${t`Nearest`}: ${escapeHtml(nearestEnemyInfo.name)} (${nearestEnemyInfo.distanceFeet} ft)` : ''}</span>`;
+            ? targets.map(enemy => `<span class="wm-combat-chip attack">${escapeHtml(enemy.name)} · ${getDistanceInFeet(memberX, memberY, Number(enemy.gridX) || 0, Number(enemy.gridY) || 0)} pies</span>`).join('')
+            : `<span class="wm-combat-chip attack">Nadie al alcance${nearestEnemyInfo ? ` · el más cercano: ${escapeHtml(nearestEnemyInfo.name)} (${nearestEnemyInfo.distanceFeet} pies)` : ''}</span>`;
+        // Lo gastado y lo que queda, dicho como se diría en la mesa.
+        const spent = (/** @type {boolean} */ used) => (used ? 'gastada' : 'libre');
 
         section.append(`
             <div class="wm-combat-turn-panel">
-                <strong>${escapeHtml(currentMember.name)}</strong> · ${t`Your turn`}<br>
-                <div class="wm-combat-turn-help">${t`Action used`}: ${turnState.actionUsed ? t`yes` : t`no`} · ${t`Bonus`}: ${turnState.bonusActionUsed ? t`yes` : t`no`} · ${t`Reaction`}: ${turnState.reactionUsed ? t`yes` : t`no`} · ${t`Movement left`}: ${remainingFeet} ft · ${t`Attack range`}: ${rangeFeet} ft.</div>
+                <strong>${escapeHtml(currentMember.name)}</strong> · Te toca<br>
+                <div class="wm-combat-turn-help">Acción: ${spent(turnState.actionUsed)} · Adicional: ${spent(turnState.bonusActionUsed)} · Reacción: ${spent(turnState.reactionUsed)} · Te quedan ${remainingFeet} pies de movimiento · Alcance: ${rangeFeet} pies.</div>
                 <div class="wm-combat-chip-row">
-                    <span class="wm-combat-chip move">${t`Click your token to display movement range on the board`}</span>
+                    <span class="wm-combat-chip move">Pulsa tu ficha para ver hasta dónde puedes andar</span>
                     ${targetChips}
                 </div>
-                <div class="wm-combat-button-note">${t`Chat commands`}: /combat-attack &lt;target&gt;, /combat-move &lt;x&gt; &lt;y&gt;, /combat-end</div>
+                <div class="wm-combat-button-note">Con comandos: /combat-attack &lt;objetivo&gt;, /combat-move &lt;x&gt; &lt;y&gt;, /combat-end</div>
             </div>
         `);
     }
 
     // Action buttons
     const btnRow = $('<div class="wm-combat-buttons"></div>');
-    const endTurnBtn = $(`<button class="menu_button"><i class="fa-solid fa-forward-step"></i> ${t`End Turn`}</button>`);
+    const endTurnBtn = $('<button class="menu_button"><i class="fa-solid fa-forward-step"></i> Fin de turno</button>');
     endTurnBtn.on('click', () => {
         const nextEntry = endPlayerCombatTurn();
         if (nextEntry) {
-            toastr.info(`🎯 ${t`Turn`}: ${nextEntry}`);
+            toastr.info(`🎯 Turno de ${nextEntry}`);
         }
     });
     btnRow.append(endTurnBtn);
@@ -18132,6 +18200,9 @@ export function refreshBoardView() {
 
 function renderLocationMapsPreview() {
     drawLocationMapsPreview();
+    // La caja de escribir dice lo del juego mientras no hay pelea (la pelea pone la suya). Al
+    // cambiar de chat el mundo aún no está atado a una partida nueva: aquí ya lo está.
+    if (!combatEncounter.active) restoreChatPlaceholder();
     // El Shell dibuja su cabecera y su barra a partir del mismo estado que acaba de
     // pintar el tablero, asi que se refresca aqui y no en cada sitio que redibuja.
     if (isShellOpen()) refreshGameShell();
@@ -18149,9 +18220,9 @@ function drawLocationMapsPreview() {
     const shell = $('<div class="wm-location-shell"></div>');
     const toolbar = $(`
         <div class="wm-location-toolbar">
-            <div class="wm-location-toolbar-title"><i class="fa-solid fa-map-location-dot"></i> ${t`Location Maps`}</div>
+            <div class="wm-location-toolbar-title"><i class="fa-solid fa-map-location-dot"></i> Mapas</div>
             <div class="wm-location-toolbar-actions">
-                <button class="menu_button" data-location-toggle>${locationMapsManuallyHidden ? t`Open` : t`Hide`}</button>
+                <button class="menu_button" data-location-toggle>${locationMapsManuallyHidden ? 'Abrir' : 'Ocultar'}</button>
             </div>
         </div>
     `);
@@ -18164,7 +18235,7 @@ function drawLocationMapsPreview() {
     });
 
     if (locationMapsManuallyHidden) {
-        shell.append(`<div class="wm-location-collapsed">${t`The location panel stays hidden until you open it manually.`}</div>`);
+        shell.append('<div class="wm-location-collapsed">Los mapas quedan ocultos hasta que pulses «Abrir».</div>');
         return;
     }
 
@@ -18173,7 +18244,7 @@ function drawLocationMapsPreview() {
 
     const locationMaps = getCurrentWorldLocationMaps();
     if (!locationMaps || locationMaps.length === 0) {
-        contentRoot.html(`<div class="wm-empty-state">${t`No location maps available.`}</div>`);
+        contentRoot.html('<div class="wm-empty-state">Este mundo aún no tiene ninguna localización con mapa.</div>');
         return;
     }
 
@@ -18198,7 +18269,7 @@ function drawLocationMapsPreview() {
         }
         contentRoot.html(`
             <div class="wm-loc-chooser">
-                <div class="wm-loc-chooser-title"><i class="fa-solid fa-compass"></i> ${t`Where are you?`}</div>
+                <div class="wm-loc-chooser-title"><i class="fa-solid fa-compass"></i> ¿Dónde estáis?</div>
                 <div class="wm-loc-choose-grid">${cards}</div>
             </div>
         `);
@@ -18216,7 +18287,7 @@ function drawLocationMapsPreview() {
     const viewTabs = $(`
         <div class="wm-view-tabs">
             <div class="wm-view-tab active" data-view="location"><i class="fa-solid fa-location-dot"></i> ${loc.name}</div>
-            <div class="wm-view-tab" data-view="world"><i class="fa-solid fa-globe"></i> World</div>
+            <div class="wm-view-tab" data-view="world"><i class="fa-solid fa-globe"></i> Mundo</div>
         </div>
     `);
     const locationPanel = $('<div class="wm-view-panel active" data-view="location" data-map-root></div>');
@@ -18246,7 +18317,7 @@ function drawLocationMapsPreview() {
         }
     });
 
-    const leaveLocBtn = $(`<button class="menu_button wm-leave-loc-btn"><i class="fa-solid fa-arrow-left"></i> ${t`Leave location`}</button>`);
+    const leaveLocBtn = $('<button class="menu_button wm-leave-loc-btn"><i class="fa-solid fa-arrow-left"></i> Salir de la localización</button>');
     leaveLocBtn.on('click', () => {
         currentLocationName = '';
         currentBoardName = '';
@@ -18502,7 +18573,7 @@ function drawLocationMapsPreview() {
         }
         const boardsSection = $(`
             <div class="wm-boards-section">
-                <div class="wm-boards-section-title"><i class="fa-solid fa-chess-board"></i> ${t`Boards`}</div>
+                <div class="wm-boards-section-title"><i class="fa-solid fa-chess-board"></i> Tableros</div>
                 <div class="wm-loc-choose-grid">${boardCards}</div>
             </div>
         `);
@@ -20215,13 +20286,13 @@ export function initPartyPanel() {
     $('#party_add_button').off('click').on('click', async () => {
         const worldName = chat_metadata ? chat_metadata[METADATA_KEY] : null;
         if (!worldName) {
-            toastr.warning(t`No world info bound to this chat. Start a campaign first.`);
+            toastr.warning('Esta partida no tiene mundo: empieza una campaña primero.');
             return;
         }
 
         const data = /** @type {any} */ (await loadWorldInfo(worldName));
         if (!data?.entries) {
-            toastr.warning(t`Could not load world info entries.`);
+            toastr.warning('No se pudo leer el mundo de esta partida.');
             return;
         }
 
@@ -20243,7 +20314,7 @@ export function initPartyPanel() {
         }
 
         if (charEntries.length === 0) {
-            toastr.info(t`No available characters to add. All characters from this world are already in the party.`);
+            toastr.info('No queda nadie del mundo por sumar: ya están todos en el grupo.');
             return;
         }
 
@@ -20423,7 +20494,7 @@ export function initPartyPanel() {
                 return '';
             }
             setPartyTab('location');
-            toastr.info(`📍 ${t`Traveled to`} ${to}`);
+            toastr.info(`📍 Llegáis a ${to}`);
             return to;
         },
     }));
@@ -20443,14 +20514,14 @@ export function initPartyPanel() {
             const name = String(value).trim();
             console.log('[party] /enter called', { currentLocationName, name });
             if (!currentLocationName) {
-                toastr.warning('Choose a location first (/go).');
+                toastr.warning('Primero id a una localización (/go).');
                 return '';
             }
 
             const entered = enterBoard(name);
             if (!entered) {
                 if (!holdDuringCombat(combatEncounter, 'board')) {
-                    toastr.warning(`Board "${name}" not found at ${currentLocationName}.`);
+                    toastr.warning(`En ${currentLocationName} no hay ningún tablero «${name}».`);
                 }
                 return '';
             }
@@ -20525,7 +20596,7 @@ export function initPartyPanel() {
                 toastr.info(`← Sales de ${leftLoc}`);
                 return leftLoc;
             }
-            toastr.info(t`Nowhere to leave.`);
+            toastr.info('No estáis dentro de nada de lo que salir.');
             return '';
         },
     }));
@@ -20576,11 +20647,11 @@ export function initPartyPanel() {
             const countOverride = countMatch ? parseInt(countMatch[2], 10) : 0;
 
             if (!currentLocationName) {
-                toastr.warning(t`Choose a location first (/go).`);
+                toastr.warning('Primero id a una localización (/go).');
                 return '';
             }
             if (!currentBoardName) {
-                toastr.warning(t`Enter a board first (/enter).`);
+                toastr.warning('Primero entrad en un tablero (/enter).');
                 return '';
             }
 
@@ -20589,7 +20660,7 @@ export function initPartyPanel() {
             const board = boards.find((/** @type {any} */ b) => b.name === currentBoardName);
 
             if (!board || !board.isCombat) {
-                toastr.warning(t`This board is not a combat board.`);
+                toastr.warning('En este tablero no se pelea.');
                 return '';
             }
 
@@ -20599,13 +20670,13 @@ export function initPartyPanel() {
                 return tmpl && tmpl.name.toLowerCase() === enemyName.toLowerCase();
             });
             if (!rule) {
-                toastr.warning(`Enemy "${enemyName}" not found in encounter rules for this board.`);
+                toastr.warning(`«${enemyName}» no es de los enemigos de este tablero.`);
                 return '';
             }
 
             const template = globalEnemies.find(e => e.id === rule.enemyId);
             if (!template) {
-                toastr.warning('Enemy template not found in world enemy pool.');
+                toastr.warning('Ese enemigo no está en el bestiario del mundo.');
                 return '';
             }
 
@@ -20616,7 +20687,7 @@ export function initPartyPanel() {
                 : Math.floor(Math.random() * (rule.maxCount - rule.minCount + 1)) + rule.minCount;
             const summary = startCombat(template, count, gw, gh);
 
-            toastr.success(`⚔️ ${t`Combat started!`}\n${summary}`, '', { timeOut: 8000 });
+            toastr.success(`⚔️ ¡Empieza el combate!\n${summary}`, '', { timeOut: 8000 });
 
             // Re-render board to show enemy tokens + combat UI
             setPartyTab('location');

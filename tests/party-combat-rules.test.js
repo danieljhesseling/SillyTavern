@@ -115,10 +115,10 @@ describe('getRollClassification', () => {
 
 describe('getRollClassificationLabel', () => {
     test('maps every classification to a label', () => {
-        expect(getRollClassificationLabel('critical-success')).toBe('Victoria critica');
-        expect(getRollClassificationLabel('critical-failure')).toBe('Fracaso critico');
-        expect(getRollClassificationLabel('failure')).toBe('Fracaso');
-        expect(getRollClassificationLabel('success')).toBe('Victoria');
+        expect(getRollClassificationLabel('critical-success')).toBe('Éxito crítico');
+        expect(getRollClassificationLabel('critical-failure')).toBe('Fallo crítico');
+        expect(getRollClassificationLabel('failure')).toBe('Fallo');
+        expect(getRollClassificationLabel('success')).toBe('Éxito');
     });
 });
 

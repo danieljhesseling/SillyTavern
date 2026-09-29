@@ -216,7 +216,8 @@ describe('contada en una linea', () => {
             // R3: y su elemento, que es lo que decide qué le hace al tablero.
             .toBe('Acción · a voluntad · 120 ft · fuego · 1d10 de daño');
         expect(describeAbility(normalizeAbility(escudo)))
-            .toBe('Acción · 1x por descanso corto · 5 ft · 1d4 de daño · Prone · salvación CD 13');
+            // La condición en castellano, no con su clave de 5e.
+            .toBe('Acción · 1x por descanso corto · 5 ft · 1d4 de daño · deja derribado · salvación CD 13');
         expect(describeAbility(normalizeAbility(aliento)))
             .toBe('Acción adicional · 1x por descanso corto · sobre ti · cura 1d10+2');
     });

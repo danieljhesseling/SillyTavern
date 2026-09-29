@@ -36,10 +36,12 @@ body.game-shell-on:not(.game-shell-paused) #top-settings-holder {
 
 /* Los avisos flotantes, por debajo de la cabecera del juego. SillyTavern los baja el alto de su
    barra de arriba, que aquí está oculta; con la cabecera en dos filas caían encima de la
-   segunda y tapaban el Diario unos segundos tras cada aviso. En pausa, con la barra de vuelta,
-   siguen como siempre. */
+   segunda y tapaban el Diario unos segundos tras cada aviso. Lo que baja es lo que mide la
+   cabecera de verdad (`--gs-head-bottom`, lo pone game-shell.js): con la misión larga o el
+   reloj en dos líneas crece, y un alto fijo dejaba el aviso encima de la Mesa. En pausa, con
+   la barra de vuelta, siguen como siempre. */
 body.game-shell-on:not(.game-shell-paused) > #toast-container {
-    margin-top: 96px;
+    margin-top: calc(var(--gs-head-bottom, 96px) + 6px);
 }
 
 body.game-shell-on {
@@ -1464,6 +1466,14 @@ body.game-shell-on #character_popup {
     display: none !important;
 }
 
+/* J0.3: en el registro, las frases van sin cara (como con «ocultar avatares» de SillyTavern):
+   la del narrador es la imagen de su ficha, y la de lo que cuenta el juego, el logo de
+   SillyTavern. El nombre basta para saber quién habla; quien habla en grande ya sale en la
+   novela visual. */
+#game-shell #chat .mes:not([is_user="true"]) .mesAvatarWrapper .avatar {
+    display: none;
+}
+
 /* El título no es una partida: fuera la cabecera de la partida (estado, foco, reloj). Salir
    del Modo Juego sigue en el menú («Salir al SillyTavern de siempre»). Sin cabecera, la
    rejilla pierde su primera fila: el escenario ocupa el alto y el pie se queda abajo. */
@@ -2528,11 +2538,20 @@ body[data-narrator-font="maquina"] #chat .mes:not([is_user="true"]) .mes_text {
     border-top: 1px dashed rgba(214, 180, 106, 0.2);
 }
 
+/* «Registro» y «Ocultar UI», debajo de la caja a la derecha, como en la maqueta. Debajo de la
+   caja va la de escribir: sin el hueco de `margin-bottom` quedaban detrás de ella, apagados y
+   sin poder pulsarse, y el registro no se abría. Por encima del registro abierto (z-index 5),
+   que se cierra con el mismo botón. */
+.gs-root[data-scene="dialogue"] .gs-vn-box {
+    margin-bottom: 24px;
+}
+
 .gs-root[data-scene="dialogue"] .gs-vn-controls {
     display: flex;
     position: absolute;
     right: 1.5rem;
-    bottom: -30px;
+    bottom: -28px;
+    z-index: 6;
     gap: 1rem;
 }
 
@@ -2577,7 +2596,11 @@ body[data-narrator-font="maquina"] #chat .mes:not([is_user="true"]) .mes_text {
     display: none;
 }
 
+/* Abierto, el registro tapa la escena desde arriba. Sin `grid-area: auto` se medía desde su
+   casilla de la rejilla (la fila de escribir, abajo): un hijo absoluto de una rejilla con su
+   área puesta se coloca dentro de esa área, y el registro salía como una raya de 18 px. */
 .gs-root[data-scene="dialogue"].gs-vn-log .gs-chat-slot {
+    grid-area: auto;
     position: absolute;
     inset: 0 0 auto 0;
     z-index: 5;
@@ -2587,6 +2610,17 @@ body[data-narrator-font="maquina"] #chat .mes:not([is_user="true"]) .mes_text {
     border: 1px solid var(--gs-gold-line);
     border-radius: 12px;
     box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+}
+
+/* Con el registro abierto, la caja se aparta: el registro trae todo lo dicho y su caja de
+   escribir, y las fichas (que van por encima del chat) se montaban sobre ella. Quedan sus
+   botones, que es por donde se cierra. */
+.gs-root[data-scene="dialogue"].gs-vn-log .gs-vn-box {
+    visibility: hidden;
+}
+
+.gs-root[data-scene="dialogue"].gs-vn-log .gs-vn-controls {
+    visibility: visible;
 }
 
 .gs-root[data-scene="dialogue"] .gs-party-strip {

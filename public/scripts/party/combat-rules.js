@@ -129,10 +129,11 @@ export function getRollClassification(natural, total, dc) {
  * @param {'critical-success'|'success'|'failure'|'critical-failure'} classification
  */
 export function getRollClassificationLabel(classification) {
-    if (classification === 'critical-success') return 'Victoria critica';
-    if (classification === 'critical-failure') return 'Fracaso critico';
-    if (classification === 'failure') return 'Fracaso';
-    return 'Victoria';
+    // Una tirada sale bien o mal; «victoria» es ganar la pelea, no pasar una CD.
+    if (classification === 'critical-success') return 'Éxito crítico';
+    if (classification === 'critical-failure') return 'Fallo crítico';
+    if (classification === 'failure') return 'Fallo';
+    return 'Éxito';
 }
 
 /**

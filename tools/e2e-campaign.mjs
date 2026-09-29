@@ -2136,20 +2136,18 @@ try {
     await page.locator('.popup-button-cancel').last().click();
     await page.waitForTimeout(700);
 
-    // Opciones pulsa el icono de SillyTavern: el panel se abre donde siempre.
+    // J0.4: Opciones abre las opciones del juego, no el panel de SillyTavern; la barra de
+    // SillyTavern sigue por encima de la pausa para quien la quiera.
     await page.locator('.gs-pause-btn', { hasText: 'Opciones' }).click();
-    await page.waitForTimeout(900);
-    const options = await page.evaluate(() => {
-        const panel = document.querySelector('#left-nav-panel');
-        const box = panel?.getBoundingClientRect();
-        return {
-            open: Boolean(panel?.classList.contains('openDrawer')) && Boolean(box && box.height > 0),
-            above: Number(getComputedStyle(document.querySelector('#top-settings-holder')).zIndex) > 3000,
-        };
-    });
-    check('Opciones abre los paneles de SillyTavern tal cual, sin reubicarlos',
-        options.open && options.above, JSON.stringify(options));
-    await page.locator('#ai-config-button').click().catch(() => {});
+    await page.waitForSelector('.go-root', { timeout: 8000 }).catch(() => {});
+    const options = await page.evaluate(() => ({
+        game: document.querySelectorAll('.go-root .go-row').length,
+        stPanel: Boolean(document.querySelector('#left-nav-panel')?.classList.contains('openDrawer')),
+        above: Number(getComputedStyle(/** @type {Element} */ (document.querySelector('#top-settings-holder'))).zIndex) > 3000,
+    }));
+    check('Opciones abre las opciones del juego, no el panel de SillyTavern (J0.4)',
+        options.game > 0 && !options.stPanel && options.above, JSON.stringify(options));
+    await page.locator('.popup:has(.go-root) .popup-button-ok').click({ timeout: 4000 }).catch(() => {});
     await page.waitForTimeout(500);
 
     // Salir al menu principal cierra la partida, no el juego.
@@ -2181,7 +2179,8 @@ try {
     await page.locator('.gs-menu-btn').filter({ hasText: 'Cargar partida' }).click();
     await page.waitForTimeout(900);
 
-    await page.locator('#game-shell .campaign-card .campaign-continue').first().click();
+    // J0.6: la lista es la del juego, una tarjeta por partida; «Seguir» la sigue.
+    await page.locator('#game-shell .gs-save .gs-save-play').first().click();
     await page.waitForTimeout(3500);
     const resumed = await page.evaluate(() => ({
         shell: document.querySelectorAll('#game-shell').length,
@@ -4095,6 +4094,9 @@ try {
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.waitForSelector('#game-shell', { timeout: 40000 });
     await page.waitForTimeout(1500);
+    // J0.6: las partidas llegan un momento después del menú, y «Continuar» (J0.5) con ellas.
+    await page.waitForFunction(() => [...document.querySelectorAll('.gs-menu-hint')].some(h => /partidas? guardadas?/.test(h.textContent || '')),
+        null, { timeout: 30000 }).catch(() => {});
 
     const onTitle = await page.evaluate(() => ({
         scene: document.querySelector('#game-shell')?.getAttribute('data-scene') || '',
@@ -4105,16 +4107,16 @@ try {
     }));
 
     check('al arrancar, el juego se abre solo y ensena su menu',
-        onTitle.scene === 'title' && onTitle.buttons.length === 5, JSON.stringify(onTitle));
+        onTitle.scene === 'title' && onTitle.buttons.length === 6, JSON.stringify(onTitle));
     // Eran tres; el compendio hace cuatro, y va antes que los ajustes porque es
     // contenido y no una preferencia. (La partida rápida de R1 se quitó el 2026-09-27:
-    // «Partida nueva» con un mundo hecho es lo mismo.) Y desde el 2026-09-28, lo primero,
-    // jugar sin conexión (J0); sin gremios guardados no sale «Seguir en el gremio».
-    check('con las cinco cosas que se pueden hacer al abrirlo',
-        onTitle.buttons.join(' | ') === 'Jugar sin conexión | Partida nueva | Cargar partida | Compendio | Opciones',
+    // «Partida nueva» con un mundo hecho es lo mismo.) Y desde el 2026-09-28, jugar sin
+    // conexión (J0); y con partidas guardadas, antes que nada, «Continuar» (J0.5).
+    check('con las seis cosas que se pueden hacer al abrirlo',
+        onTitle.buttons.join(' | ') === 'Continuar | Jugar sin conexión | Partida nueva | Cargar partida | Compendio | Opciones',
         onTitle.buttons.join(' | '));
     check('y dice cuantas partidas hay guardadas, sin entrar',
-        onTitle.hints.some(h => /campaña/.test(h)), JSON.stringify(onTitle.hints));
+        onTitle.hints.some(h => /\d+ partidas? guardadas?/.test(h)), JSON.stringify(onTitle.hints));
     check('la lista de partidas espera detras, no delante',
         onTitle.cardsVisible === false, String(onTitle.cardsVisible));
     check('y siempre hay puerta de salida al SillyTavern de siempre',
@@ -4124,9 +4126,10 @@ try {
     await page.locator('.gs-menu-btn').filter({ hasText: 'Cargar partida' }).click();
     await page.waitForTimeout(1000);
 
+    // J0.6: la lista del juego, no la bienvenida de SillyTavern.
     const loading = await page.evaluate(() => ({
-        cards: document.querySelectorAll('#game-shell .campaign-card, #game-shell .campaign-card-unstarted').length,
-        visible: (document.querySelector('#game-shell .campaign-card')?.getBoundingClientRect().height || 0) > 0,
+        cards: document.querySelectorAll('#game-shell .gs-save').length,
+        visible: (document.querySelector('#game-shell .gs-save')?.getBoundingClientRect().height || 0) > 0,
         back: document.querySelectorAll('.gs-menu-back').length,
     }));
     check('"Cargar partida" ensena las campanas que ya existian',
@@ -4135,7 +4138,7 @@ try {
 
     await page.locator('.gs-menu-back').click();
     await page.waitForTimeout(700);
-    check('volver deja el menu como estaba', await page.locator('.gs-menu-btn').count() === 5);
+    check('volver deja el menu como estaba', await page.locator('.gs-menu-btn').count() === 6);
 
     // El interruptor de la pausa, y la prueba de que la puerta de salida es de verdad.
     await openPause();
@@ -4529,11 +4532,13 @@ try {
 
     await page.locator('.gs-menu-btn').filter({ hasText: 'Cargar partida' }).click();
     await page.waitForTimeout(1200);
+    await page.waitForSelector('#game-shell .gs-save', { timeout: 20000 }).catch(() => {});
 
     const before38 = await page.evaluate(() => ({
-        cards: [...document.querySelectorAll('#game-shell .campaign-card, #game-shell .campaign-card-unstarted')]
-            .map(c => c.dataset.world).filter(Boolean),
-        bins: document.querySelectorAll('#game-shell .campaign-delete').length,
+        // J0.6: la lista del juego, una tarjeta por partida, cada una con su papelera.
+        cards: [...document.querySelectorAll('#game-shell .gs-save')]
+            .map(c => /** @type {HTMLElement} */ (c).dataset.world).filter(Boolean),
+        bins: document.querySelectorAll('#game-shell .gs-save-delete').length,
     }));
     check('cada campana de la lista trae su papelera, empezada o no',
         before38.bins === before38.cards.length && before38.cards.length >= 2,
@@ -4541,7 +4546,7 @@ try {
 
     const doomed = before38.cards[before38.cards.length - 1];
 
-    await page.locator(`.campaign-delete[data-world="${doomed}"]`).first().click();
+    await page.locator(`#game-shell .gs-save-delete[data-world="${doomed}"]`).first().click();
     await page.waitForTimeout(1000);
 
     const asked = await page.evaluate(() => {
@@ -4557,13 +4562,13 @@ try {
     await page.locator('dialog.popup[open] .popup-button-cancel').last().click();
     await page.waitForTimeout(1500);
     const afterCancel = await page.evaluate((name) =>
-        document.querySelectorAll(`.campaign-card[data-world="${name}"], .campaign-card-unstarted[data-world="${name}"]`).length,
+        document.querySelectorAll(`#game-shell .gs-save[data-world="${name}"]`).length,
     doomed);
     check('cancelar deja la campana donde estaba', afterCancel === 1, `${afterCancel} tarjetas`);
 
     // Y ahora que si.
     await clearToasts();
-    await page.locator(`.campaign-delete[data-world="${doomed}"]`).first().click();
+    await page.locator(`#game-shell .gs-save-delete[data-world="${doomed}"]`).first().click();
     await page.waitForTimeout(1000);
     await page.locator('dialog.popup[open] .popup-button-ok').last().click();
     await page.waitForTimeout(4000);
@@ -4578,11 +4583,11 @@ try {
             cache: 'no-cache',
         }).then(r => (r.ok ? r.json() : []));
         return {
-            card: document.querySelectorAll(`.campaign-card[data-world="${name}"], .campaign-card-unstarted[data-world="${name}"]`).length,
+            card: document.querySelectorAll(`#game-shell .gs-save[data-world="${name}"]`).length,
             world: (wi.world_names || []).includes(name),
             sessions: (Array.isArray(chats) ? chats : [])
                 .filter(c => c.chat_metadata?.world_info === name).length,
-            left: document.querySelectorAll('#game-shell .campaign-card, #game-shell .campaign-card-unstarted').length,
+            left: document.querySelectorAll('#game-shell .gs-save').length,
         };
     }, doomed);
 
@@ -6747,23 +6752,38 @@ try {
             lit53 = await page.evaluate(() => document.querySelectorAll('.wm-highlight-move.wm-highlight-clickable').length);
         }
         // Basta con salir del alcance de uno de los que te tienen pegado: ese te golpea.
-        away53 = await page.evaluate(async () => {
+        // Las casillas encendidas incluyen las que ocupa otro (un compañero, un lobo) y las que
+        // solo se alcanzan pasando por encima de alguien; la ruta, no (el A* no atraviesa a
+        // nadie), y encima de esas no sale el precio. Se prueban las libres hasta que una lo
+        // enseñe: la primera sola fallaba según dónde hubiera acabado cada uno.
+        const aways53 = await page.evaluate(async () => {
             const party = await import('/scripts/party.js');
             const enc = party.getCombatEncounter();
             const entry = enc.turnOrder?.[enc.currentTurnIndex];
-            const me = party.getPartyMembersSnapshot().find(m => String(m.id) === String(entry?.id));
+            const members = party.getPartyMembersSnapshot();
+            const me = members.find(m => String(m.id) === String(entry?.id));
             const at = { x: Number(me?.mapPosition?.gridX) || 0, y: Number(me?.mapPosition?.gridY) || 0 };
             const gap = (/** @type {any} */ a, /** @type {any} */ b) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
-            const close = (enc.enemies || []).filter((/** @type {any} */ e) => (e.currentHp || 0) > 0
-                && gap({ x: e.gridX, y: e.gridY }, at) <= 1);
-            const cells = [...document.querySelectorAll('.wm-highlight-move.wm-highlight-clickable')]
+            const alive = (enc.enemies || []).filter((/** @type {any} */ e) => (e.currentHp || 0) > 0);
+            const close = alive.filter((/** @type {any} */ e) => gap({ x: e.gridX, y: e.gridY }, at) <= 1);
+            const taken = new Set([
+                ...alive.map((/** @type {any} */ e) => `${Number(e.gridX) || 0},${Number(e.gridY) || 0}`),
+                ...members.filter(m => m !== me).map(m => `${Number(m.mapPosition?.gridX) || 0},${Number(m.mapPosition?.gridY) || 0}`),
+            ]);
+            return [...document.querySelectorAll('.wm-highlight-move.wm-highlight-clickable')]
                 .map(c => ({ x: Number(c.getAttribute('data-x')), y: Number(c.getAttribute('data-y')) }))
-                .filter(c => close.some((/** @type {any} */ f) => gap({ x: f.gridX, y: f.gridY }, c) > 1));
-            return cells[0] ?? null;
+                .filter(c => !taken.has(`${c.x},${c.y}`))
+                .filter(c => close.some((/** @type {any} */ f) => gap({ x: f.gridX, y: f.gridY }, c) > 1))
+                .slice(0, 6);
         });
-        if (away53) await page.locator(`.wm-highlight-clickable[data-x="${away53.x}"][data-y="${away53.y}"]`).first().hover({ timeout: 5000 }).catch(() => {});
-        await page.waitForTimeout(400);
-        pathCost53 = await page.evaluate(() => document.querySelector('.wm-path-cost')?.textContent || '');
+        pathCost53 = '';
+        for (const cell of aways53) {
+            away53 = cell;
+            await page.locator(`.wm-highlight-clickable[data-x="${cell.x}"][data-y="${cell.y}"]`).first().hover({ timeout: 5000 }).catch(() => {});
+            await page.waitForTimeout(400);
+            pathCost53 = await page.evaluate(() => document.querySelector('.wm-path-cost')?.textContent || '');
+            if (/te golpea/.test(pathCost53)) break;
+        }
     }
     const screen53 = /te golpea/.test(pathCost53) ? null : await screenState();
     // Si no sale: cómo está quien tiene el turno, y si su ficha se ve y se puede arrastrar.
@@ -7281,7 +7301,7 @@ try {
         for (let n = titles[at].nextElementSibling; n && !n.classList.contains('jr-title'); n = n.nextElementSibling) out.push(n.textContent || '');
         return out;
     });
-    check('el diario trae la partida en números (200)', numbers55.some(t => /\d+ combates: \d+ ganados/.test(t)), JSON.stringify(numbers55));
+    check('el diario trae la partida en números (200)', numbers55.some(t => /\d+ combates?: \d+ ganados?|Ningún combate/.test(t)), JSON.stringify(numbers55));
     await closePopup52();
 
     // --- 61: el arma, en el grupo de un vistazo -----------------------------------------------
@@ -7862,16 +7882,17 @@ try {
         await page.locator('.gs-menu-btn', { hasText: 'Cargar partida' }).click({ timeout: 8000 }).catch(() => {});
         await page.waitForTimeout(1500);
     }
-    await page.waitForSelector('#game-shell .campaign-save-line', { timeout: 20000 }).catch(() => {});
-    const saves57 = await page.evaluate(() => [...document.querySelectorAll('#game-shell .campaign-card')].map(card => ({
+    // J0.6: la tarjeta del juego, con quién va y a qué nivel.
+    await page.waitForSelector('#game-shell .gs-save-line', { timeout: 20000 }).catch(() => {});
+    const saves57 = await page.evaluate(() => [...document.querySelectorAll('#game-shell .gs-save')].map(card => ({
         world: card.getAttribute('data-world') || '',
-        line: card.querySelector('.campaign-save-line')?.textContent || '',
-        party: card.querySelector('.campaign-save-party')?.textContent || '',
+        line: card.querySelector('.gs-save-line')?.textContent || '',
+        party: card.querySelector('.gs-save-hero')?.textContent || '',
     })));
     const save57 = saves57.find(s => /El Pueblo de Barro|El Peaje Norte|Castillo de Vane|El Lago Helado/.test(s.line));
     check('cargar partida dice el día, el sitio y lo que tenéis entre manos, y quién va (160)',
         Boolean(save57) && /^Día \d+ · .+ · .+/.test(save57?.line ?? '') && (save57?.party ?? '').length > 0, JSON.stringify(saves57.slice(0, 4)));
-    await page.locator(`#game-shell .campaign-card[data-world="${save57?.world ?? ''}"] .campaign-continue`).first().click({ timeout: 8000 }).catch(() => {});
+    await page.locator(`#game-shell .gs-save[data-world="${save57?.world ?? ''}"] .gs-save-play`).first().click({ timeout: 8000 }).catch(() => {});
     await page.waitForTimeout(4000);
     if (await page.locator('#game-shell').count() === 0) {
         await page.evaluate(() => { void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/modojuego'); });
@@ -8948,7 +8969,10 @@ try {
         summary: (window.SillyTavern.getContext().chatMetadata.actSummaries || []).map((/** @type {any} */ s) => s.act),
         hidden: (window.SillyTavern.getContext().chat || []).filter((/** @type {any} */ m) => m.is_system).length,
     }));
-    const closed59 = await said59('📜 \\[HILO\\] Se cierra el acto 1');
+    // El cierre lo cuenta el motor con una de sus frases de `acto` (frases.json): «Se cierra el
+    // acto 1…» o «Se pasa una página: el acto 1 acaba con…». Mirar solo la primera fallaba
+    // cuando salía la otra.
+    const closed59 = await said59('📜 \\[HILO\\] (Se cierra el acto 1\\b|.*\\bel acto 1 acaba\\b)');
     check('al cerrarse un acto, se resume en la memoria y sus mensajes salen del prompt (143)',
         Boolean(closed59) && act59.summary.includes(1) && act59.hidden > 0, JSON.stringify({ ...act59, closed59: closed59.slice(0, 100) }));
 
@@ -9285,8 +9309,18 @@ try {
         folded63.hidden >= 2 && folded63.buttons.some(t => /^y \d+ más/.test(t)), JSON.stringify(folded63));
     // En Diálogo el chat es el registro de la novela visual (J18.6): se abre para pulsar.
     const log63 = await page.locator('#game-shell .gs-vn-log-btn').filter({ visible: true }).count();
-    if (log63 > 0) await page.locator('#game-shell .gs-vn-log-btn').click({ timeout: 4000 }).catch(() => {});
+    const logClick63 = log63 > 0
+        ? await page.locator('#game-shell .gs-vn-log-btn').click({ timeout: 4000 }).then(() => '').catch((/** @type {any} */ err) => String(err?.message || err).replace(/\s+/g, ' ').slice(0, 200))
+        : 'sin botón';
     await page.waitForTimeout(300);
+    // El botón estaba detrás de la caja de escribir (no llegaba el clic), y abierto el registro
+    // salía como una raya: se mira que se pulse y que se vea el chat de verdad.
+    const logOpen63 = await page.evaluate(() => ({
+        open: Boolean(document.querySelector('#game-shell.gs-vn-log')),
+        chatHeight: Math.round(document.querySelector('#chat')?.getBoundingClientRect().height ?? 0),
+    }));
+    check('en Diálogo, «Registro» se pulsa y abre el chat entero encima de la escena (J18.6)',
+        !logClick63 && logOpen63.open && logOpen63.chatHeight > 300, JSON.stringify({ logClick63, ...logOpen63 }));
     await page.locator('#chat .gm-fold').last().click({ timeout: 5000 }).catch(() => {});
     await page.waitForTimeout(400);
     if (log63 > 0) await page.locator('#game-shell .gs-vn-log-btn').click({ timeout: 4000 }).catch(() => {});
@@ -9298,6 +9332,21 @@ try {
     await clearDiceOverlay();
     await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/combat-stop').catch(() => {}));
     await page.waitForTimeout(400);
+
+    // Los relojes de las facciones, a cero, como en el paso 56: llegan aquí con los días de todas
+    // las pruebas de antes, y el de los Lobos se cumplía en uno de estos dos descansos. Su
+    // final («La anarquía del barro») abría su ventana encima de todo, y el clic de la Mesa se
+    // lo comía ella, no un aviso. Aquí se prueba la mesa, no el final.
+    await page.evaluate(async () => {
+        const ctx = window.SillyTavern.getContext();
+        const wi = await import('/scripts/world-info.js');
+        const world = String(ctx.chatMetadata?.world_info || '');
+        const data = await wi.loadWorldInfo(world);
+        if (!data) return;
+        for (const faction of data.metadata?.factions || []) if (faction?.goal) faction.goal.at = 0;
+        await wi.saveWorldInfo(world, data, true);
+        await wi.refreshWorldMapGlobals(world);
+    });
 
     // Una semana que acaba mañana, con cosas que apremian: una facción que avanza, un encargo
     // aceptado y uno del tablón. La primera vez, la mesa se abre sola (como un consejo).
@@ -9751,7 +9800,10 @@ try {
         const said = (ctx.chat || []).map((/** @type {any} */ m) => String(m.mes || ''));
         return {
             used: said.some(t => /usa Frasco de lumbre \(radio de 5 ft\)/.test(t)),
-            burnt: said.some(t => /🔥 Arden las cajas/u.test(t)),
+            // Una línea por cosa que arde: si en el radio también hay una puerta o un barril, las
+            // cajas no van primero («🔥 Arde la puerta, arden las cajas.»).
+            burnt: said.some(t => /🔥 (.*, )?[Aa]rden las cajas\b/u.test(t)),
+            fireLine: said.flatMap(t => t.split('\n')).filter(t => /🔥/u.test(t)).pop() ?? '',
             fire: (board?.hazards || []).some((/** @type {any} */ h) => h.kind === 'fuego' && `${h.x},${h.y}` === key && h.armed !== false),
             cell: board?.terrain?.cells?.[key]?.type ?? 'floor',
         };

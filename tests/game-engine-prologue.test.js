@@ -41,6 +41,14 @@ describe('J2.2: enseña jugando', () => {
         // Enseñarlo ya lo saca de la cola.
         expect(planTip({ situation: 'move', seen: [], queue: ['move', 'talk'], busy: false }).queue).toEqual(['talk']);
     });
+
+    test('lo que ya no viene a cuento no sale: la pelea acabó mientras esperaba', () => {
+        const fightOver = (/** @type {string} */ id) => !['combat', 'move', 'attack'].includes(id);
+        expect(nextQueuedTip(['attack', 'journal', 'move'], [], fightOver)).toEqual({ id: 'journal', queue: ['move'] });
+        expect(nextQueuedTip(['attack', 'move'], [], fightOver)).toEqual({ id: '', queue: [] });
+        // Y no cuenta como visto: planTip lo vuelve a sacar cuando pasa otra vez.
+        expect(planTip({ situation: 'attack', seen: [], queue: [], busy: false }).show?.id).toBe('attack');
+    });
 });
 
 describe('J2.3: la prueba del gremio se puede saltar', () => {

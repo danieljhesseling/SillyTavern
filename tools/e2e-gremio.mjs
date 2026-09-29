@@ -108,10 +108,16 @@ try {
         seenTips.__tips = [];
         seenTips.__tipsAtOnce = 0;
         const isTip = (/** @type {any} */ n) => n instanceof HTMLElement && n.classList.contains('toast') && /Consejo/.test(n.querySelector('.toast-title')?.textContent || '');
+        // Y los avisos de «Tu personaje» y «Lo que sabes hacer», que tienen que ser cortos.
+        seenTips.__heroToasts = [];
+        const isHeroToast = (/** @type {any} */ n) => n instanceof HTMLElement && n.classList.contains('toast') && /Tu personaje|Lo que sabes hacer/.test(n.querySelector('.toast-title')?.textContent || '');
         new window.MutationObserver(records => {
             for (const added of records.flatMap(r => [...r.addedNodes]).filter(isTip)) {
                 seenTips.__tips.push((added.querySelector('.toast-message')?.textContent || '').trim());
                 seenTips.__tipsAtOnce = Math.max(seenTips.__tipsAtOnce, [...document.querySelectorAll('.toast')].filter(isTip).length);
+            }
+            for (const added of records.flatMap(r => [...r.addedNodes]).filter(isHeroToast)) {
+                seenTips.__heroToasts.push((added.querySelector('.toast-message')?.textContent || '').trim());
             }
         }).observe(document, { childList: true, subtree: true });
         try {
@@ -270,15 +276,22 @@ try {
     check('el prólogo se cuenta en el chat', prologue);
     await page.waitForTimeout(800);
     // J1.4: con «Mujer», «si subes entera», y ni una marca {…|…} ni un «o/a» a la vista.
-    const seen = await page.evaluate(() => [
+    const genderText = await page.evaluate(() => [
         ...(window.SillyTavern.getContext().chat || []).map((/** @type {any} */ m) => String(m.extra?.display_text || m.mes || '')),
         document.querySelector('#game-shell .gs-focus')?.textContent || '',
     ].join('\n'));
     check('el texto concuerda con Tessa: «si subes entera», sin marcas ni «o/a» (J1.4)',
-        /subes entera/.test(seen) && !/subes entero/.test(seen) && !/\{[^{}\n]*\|[^{}\n]*\}|[a-záéíóúñ]os?\/as?\b/i.test(seen),
-        (seen.match(/.{0,60}(\{[^{}\n]*\||subes enter[oa]|o\/a).{0,40}/i) ?? [''])[0]);
+        /subes entera/.test(genderText) && !/subes entero/.test(genderText) && !/\{[^{}\n]*\|[^{}\n]*\}|[a-záéíóúñ]os?\/as?\b/i.test(genderText),
+        (genderText.match(/.{0,60}(\{[^{}\n]*\||subes enter[oa]|o\/a).{0,40}/i) ?? [''])[0]);
     const hubChips = await chips();
     check('las fichas ofrecen el tablón de campañas y contratar', hubChips.some(c => /Tablón de campañas/.test(c)) && hubChips.some(c => /Contratar mercenarios/.test(c)), JSON.stringify(hubChips));
+    // Al crear, los avisos son cortos: el equipo y los números ya se vieron en la creación.
+    const heroToasts = await page.evaluate(() => /** @type {string[]} */ (/** @type {any} */ (window).__heroToasts || []));
+    check('al crear, «Tu personaje» es un aviso corto, sin repetir el equipo',
+        heroToasts.length >= 1 && heroToasts[0].startsWith('Tessa · ') && heroToasts.every(t => t.length <= 120 && !/Llevas:/.test(t)), JSON.stringify(heroToasts));
+    /** Lo que dice la caja de escribir. */
+    const placeholder = () => page.evaluate(() => /** @type {HTMLTextAreaElement|null} */ (document.querySelector('#send_textarea'))?.placeholder || '');
+    const beforeFight = await placeholder();
 
     // 3. La prueba: las ratas de la bodega. La pelea se empieza desde la fila de fichas: en
     // la escena de diálogo el botón del tablero no se ve.
@@ -288,11 +301,32 @@ try {
     if (canFight) {
         await clickChip(/^Iniciar combate/);
         await until(async () => (await state()).fighting, 10000);
+        // Los dados, en castellano: mientras rueda y cuando se pueden pasar.
+        const diceText = () => page.evaluate(() => ({
+            button: (document.querySelector('.wm-dice-overlay.active .wm-dice-next')?.textContent || '').trim(),
+            card: (document.querySelector('.wm-dice-overlay.active .wm-dice-card')?.textContent || '').replace(/\s+/g, ' ').trim(),
+        }));
+        await page.waitForSelector('.wm-dice-overlay.active', { timeout: 5000 }).catch(() => {});
+        const rolling = await diceText();
+        await page.waitForTimeout(1000);
+        const rolled = await diceText();
+        check('los dados hablan en castellano: «Tirando…» y luego «Siguiente» o «Cerrar», sin Next ni Close',
+            /^(Tirando…|Siguiente|Cerrar)$/.test(rolling.button) && /^(Siguiente|Cerrar)$/.test(rolled.button) && /Fórmula/.test(rolled.card)
+            && ![rolling, rolled].some(d => /\b(Next|Close|Rolling|Formula|init|dmg)\b/.test(`${d.button} ${d.card}`)), JSON.stringify({ rolling, rolled }));
         await clearDice();
         // J2.2: la primera pelea enseña, un consejo cada vez: el de pelear y, en tu turno, el de andar.
         const fightTips = await tipsUntil(/^Te toca/);
         check('la primera pelea trae su consejo y, en tu turno, el de andar (J2.2)',
             fightTips.filter(t => /^Empieza la pelea/.test(t)).length === 1 && fightTips.filter(t => /^Te toca/.test(t)).length === 1, JSON.stringify(fightTips));
+        // El panel del combate y la caja de escribir, en tu turno: en castellano y sin comandos.
+        const inFight = await page.evaluate(() => ({
+            panel: (document.querySelector('.wm-combat-section')?.textContent || '').replace(/\s+/g, ' ').trim(),
+            box: /** @type {HTMLTextAreaElement|null} */ (document.querySelector('#send_textarea'))?.placeholder || '',
+        }));
+        check('en la pelea, el panel dice «En combate», «Enemigos» y «Te toca», sin inglés; la caja, ejemplos en llano',
+            /En combate/.test(inFight.panel) && /Enemigos/.test(inFight.panel) && /Te toca/.test(inFight.panel) && /Fin de turno/.test(inFight.panel)
+            && !/Combat Active|Your turn|Enemies|Action used|End Turn|Movement left/.test(inFight.panel)
+            && /^Te toca/.test(inFight.box) && /«ataco a Rata de bodega/.test(inFight.box) && !/\/combat/.test(inFight.box), JSON.stringify(inFight));
         await page.evaluate(async () => {
             const enc = (await import('/scripts/party.js')).getCombatEncounter();
             for (const e of enc?.enemies ?? []) e.currentHp = 0;
@@ -306,6 +340,9 @@ try {
     now = await state();
     const tablon = await until(() => chatHas(/apunta tu nombre en el libro del gremio/), 15000);
     check('ganar la prueba abre el hilo siguiente: el tablón', !now.fighting && tablon, JSON.stringify({ fighting: now.fighting }));
+    const afterFight = await placeholder();
+    check('acabada la pelea, la caja vuelve a decir lo mismo que antes, llano y sin los comandos del combate',
+        afterFight === 'Escribe lo que hace tu personaje…' && beforeFight === afterFight, JSON.stringify({ beforeFight, afterFight }));
     // J2.2: al moverse el hilo, el del Diario. Lo que queda por enseñar no se mete en medio.
     const journalTips = await tipsUntil(/Diario/);
     check('y al moverse el hilo, el consejo del Diario (J2.2)', journalTips.filter(t => /^Queda apuntado en el Diario/.test(t)).length === 1, JSON.stringify(journalTips));
@@ -348,7 +385,17 @@ try {
         novel.scene === 'dialogue' && novel.box > 600 && novel.text.length > 0 && novel.chips > 0 && novel.chat === 'none', JSON.stringify(novel));
     if (SHOT) await page.screenshot({ path: `${SHOT}.novela.png` });
     const inHubScene = await stCharacterUi();
-    check('en el gremio no se ve ninguna ficha de SillyTavern, ni su logo como retrato (J0.3)', inHubScene.length === 0, JSON.stringify(inHubScene));
+    // Y en el registro, el chat entero, las frases van sin la cara de la ficha del narrador.
+    const openLog = () => page.evaluate(() => /** @type {HTMLElement|null} */ (document.querySelector('#game-shell .gs-vn-log-btn'))?.click());
+    await openLog();
+    await page.waitForTimeout(400);
+    const inLog = await page.evaluate(() => ({
+        lines: [...document.querySelectorAll('#game-shell #chat .mes')].filter(m => m.getBoundingClientRect().height > 1).length,
+        faces: [...document.querySelectorAll('#game-shell #chat .mes:not([is_user="true"]) .avatar img')].filter(i => i.getBoundingClientRect().width > 1).length,
+    }));
+    await openLog();
+    check('en el gremio no se ve ninguna ficha de SillyTavern, ni su logo como retrato, ni caras en el registro (J0.3)',
+        inHubScene.length === 0 && inLog.lines > 0 && inLog.faces === 0, JSON.stringify({ inHubScene, inLog }));
 
     // J0.4: las opciones son del juego, con sus palabras; sin conexión, sin panel de la API.
     await page.evaluate(() => /** @type {HTMLElement|null} */ (document.activeElement)?.blur());
@@ -551,6 +598,13 @@ try {
     // campaña queda terminada en el tablón y en el salón de la fama.
     const chatCount = (/** @type {RegExp} */ pattern) => page.evaluate((source) => (window.SillyTavern.getContext().chat || [])
         .filter((/** @type {any} */ m) => new RegExp(source).test(String(m.extra?.display_text || m.mes || ''))).length, pattern.source);
+    // El chat cambia de nombre antes de que lleguen sus metadatos: se espera a que el hilo de
+    // Strahd esté cargado, o lo que se toque aquí se lo lleva la carga.
+    await until(() => page.evaluate((world) => {
+        const meta = window.SillyTavern.getContext().chatMetadata;
+        return meta?.world_info === world && Boolean(meta?.plotState) && Boolean(meta?.plot);
+    }, strahdWorld), 30000);
+    await page.waitForTimeout(1000);
     await clearDice();
     await page.evaluate(() => document.querySelectorAll('#toast-container .toast').forEach(t => t.remove()));
     const started = await page.evaluate(async () => {
@@ -571,9 +625,17 @@ try {
             people: all('.end-epilogue'),
             companions: all('.ep-line'),
             take: all('.end-take'),
+            numbers: all('.end-number'),
             home: document.querySelectorAll('.popup:has(.end-root) .end-home').length,
         };
     });
+    // Idea 200: la partida en números, con sus singulares, y nunca más ganados que combates.
+    const fightsLine = ending.numbers.map(n => /^(\d+) combates?: (\d+) ganados?/.exec(n)).find(Boolean);
+    check('en el final, la partida en números concuerda: «1 día», no «1 días», y nunca más ganados que combates (200)',
+        ending.numbers.length >= 4 && Boolean(fightsLine) && Number(fightsLine?.[1]) >= Number(fightsLine?.[2]) && Number(fightsLine?.[1]) > 0
+        && !ending.numbers.some(n => /(^|\D)1 (días|combates|ganados|sitios|viajes|huidas|encargos|rumores)\b/.test(n))
+        && !ending.numbers.some(n => /(^|\D)(0|[2-9]|\d\d+) (día|combate|ganado|sitio|viaje|huida|encargo|rumor)\b/.test(n)),
+        JSON.stringify(ending.numbers));
     const endingTitle = ending.title.replace(/^Final: /, '');
     check('al ganar en la cripta sale el final: su título, lo que pasó, qué fue de la gente y de Gerd, y lo que se lleva cada uno, frente a cómo empezó (J4.5)',
         endShown && /^Final: (Barovia, libre|La orden descansa|La caravana se va)$/.test(ending.title) && /Strahd cae/.test(ending.scene)

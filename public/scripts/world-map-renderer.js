@@ -242,7 +242,7 @@ export function renderWorldMapView(target, worldMapUrl, locationMaps, callbacks 
     target.empty();
 
     if (!worldMapUrl) {
-        target.html('<div class="wm-empty-state">No world map selected</div>');
+        target.html('<div class="wm-empty-state">Este mundo no tiene mapa.</div>');
         return;
     }
 
@@ -416,8 +416,8 @@ export function renderWorldMapView(target, worldMapUrl, locationMaps, callbacks 
     // Zoom controls
     const zoomControls = $(`
         <div class="wm-zoom-controls">
-            <button class="wm-zoom-btn" data-action="in" title="Zoom In"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
-            <button class="wm-zoom-btn" data-action="out" title="Zoom Out"><i class="fa-solid fa-magnifying-glass-minus"></i></button>
+            <button class="wm-zoom-btn" data-action="in" title="Acercar"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
+            <button class="wm-zoom-btn" data-action="out" title="Alejar"><i class="fa-solid fa-magnifying-glass-minus"></i></button>
         </div>
     `);
     zoomControls.find('[data-action="in"]').on('click', () => { state.scale = Math.min(6, state.scale * 1.3); updateOverlays(); });
@@ -857,8 +857,8 @@ export function renderLocationView(target, options) {
 
             const enemyClass = token.isEnemy ? ` wm-token-enemy${token.idle ? ' wm-token-idle' : ''}` : '';
             const metaText = token.isEnemy
-                ? (token.idle ? 'Aquí, sin pelear todavía' : `${token.role ? `${token.role.label} · ` : ''}AC ${token.level || 10}`)
-                : `Lvl ${token.level || 1} ${token.className || 'Adventurer'}${token.weapon ? ` · ${token.weapon}` : ''}`;
+                ? (token.idle ? 'Aquí, sin pelear todavía' : `${token.role ? `${token.role.label} · ` : ''}CA ${token.level || 10}`)
+                : `${token.className || 'Aventurero'} de nivel ${token.level || 1}${token.weapon ? ` · ${token.weapon}` : ''}`;
             const selectedClass = selectedTokenId === token.id ? ' wm-token-selected' : '';
             const inRangeClass = Array.isArray(highlightedTokenIds) && highlightedTokenIds.includes(token.id) ? ' wm-token-in-range' : '';
 
@@ -1286,9 +1286,9 @@ export function renderLocationView(target, options) {
     // Zoom controls
     const zoomControls = $(`
         <div class="wm-zoom-controls">
-            <button class="wm-zoom-btn" data-action="in" title="Zoom In"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
-            <button class="wm-zoom-btn" data-action="out" title="Zoom Out"><i class="fa-solid fa-magnifying-glass-minus"></i></button>
-            <button class="wm-zoom-btn ${gridVisible ? 'active' : ''}" data-action="grid" title="Toggle Grid"><i class="fa-solid fa-border-all"></i></button>
+            <button class="wm-zoom-btn" data-action="in" title="Acercar"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
+            <button class="wm-zoom-btn" data-action="out" title="Alejar"><i class="fa-solid fa-magnifying-glass-minus"></i></button>
+            <button class="wm-zoom-btn ${gridVisible ? 'active' : ''}" data-action="grid" title="Ver u ocultar las casillas"><i class="fa-solid fa-border-all"></i></button>
         </div>
     `);
     zoomControls.find('[data-action="in"]').on('click', () => { state.scale = Math.min(6, state.scale * 1.3); userMoved = true; fullUpdate(); });
