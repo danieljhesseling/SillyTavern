@@ -38,7 +38,7 @@ export const SPELL_SCHOOLS = {
     encantamiento: { label: 'Encantamiento', note: 'La mente: dormir, obedecer, querer.' },
     evocacion: { label: 'Evocación', note: 'Fuego, rayo, luz y curación: energía a pelo.' },
     ilusion: { label: 'Ilusión', note: 'Engañar a los sentidos.' },
-    nigromancia: { label: 'Nigromancia', note: 'La vida y la muerte. En muchos sitios, un crimen.' },
+    nigromancia: { label: 'Nigromancia', note: 'La vida y la muerte. Dañar con ella o levantar muertos es, en muchos sitios, un crimen.' },
     transmutacion: { label: 'Transmutación', note: 'Cambiar cómo son las cosas.' },
 };
 

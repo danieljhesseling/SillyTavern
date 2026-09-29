@@ -2,6 +2,7 @@ import { describe, test, expect } from '@jest/globals';
 import fs from 'node:fs';
 import {
     readEpilogues, factionEpilogues, endingEpilogues, partyAtStart, readPartyStart, takeHome, campaignHallEntry, homecomingScene,
+    hallCampaignName,
 } from '../public/scripts/game-engine/campaign/campaign-end.js';
 import { addToHall, readHall, describeHallEntry, describeHallCount } from '../public/scripts/game-engine/campaign/legacy.js';
 import { readPlot } from '../public/scripts/game-engine/campaign/plot.js';
@@ -150,6 +151,21 @@ describe('J3.9: la campaña terminada, en el salón de la fama', () => {
         expect(hall.filter(e => e.kind === 'campaign')).toHaveLength(2);
         expect(describeHallCount(hall)).toBe('2 campañas terminadas · 2 caídos');
         expect(describeHallCount([])).toBe('');
+    });
+
+    test('D-J19: se llama como en el tablón, no como su hilo', () => {
+        const plot = { source: 'written', title: 'La sombra del molino' };
+        expect(hallCampaignName({ board: 'El Molino de los Cuervos', plot, world: 'El Molino de los Cuervos · Tessa' })).toBe('El Molino de los Cuervos');
+        // Sin tablón, como su hilo escrito; una improvisada, como su mundo.
+        expect(hallCampaignName({ board: '  ', plot, world: 'Mundo · Tessa' })).toBe('La sombra del molino');
+        expect(hallCampaignName({ plot: { source: 'faction', title: 'X' }, world: 'Mundo · Tessa' })).toBe('Mundo · Tessa');
+    });
+
+    test('D-J19: apuntada otra vez con su nombre del tablón, lo toma sin repetirse', () => {
+        let hall = addToHall(null, { ...entry, name: 'La sombra del molino' });
+        hall = addToHall(hall, { ...entry, name: 'El Molino de los Cuervos', when: '2026-10-01T10:00:00Z' });
+        expect(hall.filter(e => e.kind === 'campaign').map(e => e.name)).toEqual(['El Molino de los Cuervos']);
+        expect(hall[0].when).toBe('2026-09-29T10:00:00Z');
     });
 });
 

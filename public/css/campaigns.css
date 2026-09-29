@@ -3688,6 +3688,76 @@ input[type="file"].tl-file {
     word-break: break-all;
 }
 
+/* D-J22: el nivel recomendado, a la vista, en su propia línea. En naranja si tu grupo no llega. */
+.hb-levels {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 0.88rem;
+    font-weight: bold;
+    color: var(--gs-accent-gold);
+}
+
+.hb-levels.is-hard {
+    color: #e6a15a;
+}
+
+/* D-J35: una campaña añadida por ti, con «Quitar del tablón» debajo, fuera de la tarjeta. */
+.hb-tile {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+
+.hb-tile > .vt-card {
+    flex: 1;
+}
+
+.hb-remove {
+    align-self: flex-end;
+    width: auto;
+    margin: 0;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    opacity: 0.75;
+}
+
+.hb-remove:hover,
+.hb-remove:focus-visible {
+    opacity: 1;
+}
+
+/* D-J35: pegar el texto de una campaña, bajo las tarjetas. */
+.hb-paste {
+    margin: -6px 26px 14px;
+}
+
+.hb-paste-open {
+    width: auto;
+    white-space: nowrap;
+}
+
+.hb-paste-box {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.hb-paste-text {
+    width: 100%;
+    min-height: 120px;
+    font-family: monospace;
+    font-size: 0.82rem;
+    resize: vertical;
+}
+
+.hb-paste-add {
+    align-self: flex-end;
+    width: auto;
+    white-space: nowrap;
+}
+
 /* J1.6 y J18.1: tus personajes. Su cara, si la tiene, ocupa el sitio del icono; el que va
    ahora con el grupo, con el borde dorado. En el tablón no se pulsa: ya va. */
 .hb-hero .vt-face img {

@@ -72,8 +72,9 @@ export function placesOf(location, { hub = false, port = false } = {}) {
         ...(hub ? ['gremio'] : []),
         ...['posada', 'tienda', 'herreria', 'templo', 'tablon'].filter(s => services.includes(s)),
     ];
+    // D-J30: el gremio, el primero, como en la pantalla del pueblo.
     return [...new Set([
-        ...(hub && !base.includes('gremio') ? ['gremio'] : []),
+        ...(hub || base.includes('gremio') ? ['gremio'] : []),
         ...base,
         'plaza',
         ...(harbour ? ['muelle'] : []),

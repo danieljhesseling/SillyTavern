@@ -1015,6 +1015,18 @@ input[type="file"].hc-face-file {
     border-color: var(--gs-accent-gold);
 }
 
+/* D-J15: cómo te habla el texto. La pregunta de quien es no binario, y lo que sale. */
+.hc-text-form {
+    padding-left: 0.6rem;
+    border-left: 2px solid rgba(214, 180, 106, 0.3);
+}
+
+.hc-gender-note {
+    margin: -0.5rem 0 0;
+    font-size: 0.78rem;
+    opacity: 0.75;
+}
+
 /* La varita, dentro del campo y sin pisar lo que se escribe. */
 .hc-has-wand textarea.hc-input {
     padding-right: 2.4rem;

@@ -38,8 +38,11 @@ describe('los sitios de un pueblo', () => {
         expect(placeLabel('posada')).toBe('La posada');
     });
 
-    test('Puerto Alba: lo que escribe el paquete, más la plaza y el muelle', () => {
-        expect(placesOf(puertoAlba, { hub: true })).toEqual(['herreria', 'posada', 'tienda', 'templo', 'gremio', 'plaza', 'muelle']);
+    test('Puerto Alba: lo que escribe el paquete, con el gremio primero (D-J30), más la plaza y el muelle', () => {
+        expect(placesOf(puertoAlba, { hub: true })).toEqual(['gremio', 'herreria', 'posada', 'tienda', 'templo', 'plaza', 'muelle']);
+        // Una partida de antes, con el gremio al final de su lista: sale primero igual.
+        const old = { ...puertoAlba, places: [...puertoAlba.places.slice(1), puertoAlba.places[0]] };
+        expect(placesOf(old, { hub: true })[0]).toBe('gremio');
     });
 
     test('un pueblo sin lista: sus servicios y la plaza; sin muelle si no es puerto; unas ruinas, nada', () => {
@@ -128,7 +131,7 @@ describe('dónde está cada uno', () => {
     test('con los sitios de la pantalla del pueblo tal cual', () => {
         const screen = townPlaces({ location: puertoAlba, npcs: townsfolk, guild: true }).places;
         const seen = whoIsWhere({ town: 'Puerto Alba', location: puertoAlba, places: screen, slot: 'morning', hub: true, data, townsfolk });
-        expect(seen.places.map(p => p.id)).toEqual(['herreria', 'posada', 'tienda', 'templo', 'gremio', 'plaza', 'muelle']);
+        expect(seen.places.map(p => p.id)).toEqual(['gremio', 'herreria', 'posada', 'tienda', 'templo', 'plaza', 'muelle']);
         expect(whereOf(seen).Ramiro).toBe('herreria');
     });
 });
@@ -137,9 +140,9 @@ describe('dónde quedar, y las fichas', () => {
     test('los sitios abiertos, el suyo primero y los que le gustan marcados', () => {
         const places = placesOf(puertoAlba, { hub: true });
         const night = meetPlaces({ places, slot: 'night', current: 'posada', person: personOf(data, 'Gerd el Mellado') });
-        expect(night.map(p => p.id)).toEqual(['posada', 'templo', 'gremio', 'plaza', 'muelle']);
+        expect(night.map(p => p.id)).toEqual(['posada', 'gremio', 'templo', 'plaza', 'muelle']);
         expect(night.filter(p => p.liked).map(p => p.id)).toEqual(['posada', 'muelle']);
-        expect(meetPlaces({ places, slot: 'morning', current: 'nada' })[0].id).toBe('herreria');
+        expect(meetPlaces({ places, slot: 'morning', current: 'nada' })[0].id).toBe('gremio');
     });
 
     test('quedar, si la franja está libre y hay con quién; charlar, con quien está en tu sitio', () => {

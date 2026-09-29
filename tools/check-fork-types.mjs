@@ -274,6 +274,8 @@ const FORK_FILES = [
     'public/scripts/game-engine/ui/shell/dialogue-scene.js',
     'public/scripts/game-engine/ui/shell/exploration-scene.js',
     'public/scripts/game-engine/ui/shell/town-scene.js',
+    // J18.10: las etiquetas del motor, fuera de la caja.
+    'public/scripts/game-engine/ui/shell/engine-tags.js',
     'public/scripts/game-engine/ui/shell/party-strip.js',
     'public/scripts/game-engine/rules/level-up.js',
     'public/scripts/game-engine/rules/abilities.js',

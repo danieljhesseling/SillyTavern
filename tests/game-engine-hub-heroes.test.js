@@ -1,6 +1,7 @@
 import { describe, test, expect } from '@jest/globals';
 import {
     isOwnHero, activeHero, readRestingHeroes, restingUids, withResting, seatHero, swapLine, carryLine, hubHeroCards,
+    wakeFromRest, plainName, takenHeroNames, heroNameTaken, nameTakenLine,
 } from '../public/scripts/game-engine/campaign/hub-heroes.js';
 
 const tessa = {
@@ -62,6 +63,75 @@ describe('los que se quedan en el gremio', () => {
 
     test('sus fichas del mundo, para no meterlas en el grupo', () => {
         expect([...restingUids([tessa, bram, { id: 9, name: 'Sin ficha', wiUid: null }])]).toEqual([4, 7]);
+    });
+});
+
+describe('D-J12: descansar en el gremio cura con los días', () => {
+    const hurt = {
+        ...tessa, hp: 4, maxHp: 28, hitDiceSpent: 3, speed: 20, baseStats: { speed: 30 },
+        injuries: [{ id: 'broken_leg', label: 'Pierna rota', description: 'Apenas se mueve.', modifiers: { speed: -10 }, days: 14, daysLeft: 3, permanent: false }],
+        abilityUses: { segundoAliento: 1 }, slotsUsed: { 1: 2 }, needs: { hunger: 30, thirst: 20, rest: 40, exposure: 0 },
+    };
+
+    test('se apunta desde qué día descansa', () => {
+        expect(withResting([], { add: tessa, day: 7 })[0].restDay).toBe(7);
+        expect(withResting([], { add: tessa })[0]).not.toHaveProperty('restDay');
+    });
+
+    test('vuelve con la vida entera, los dados de golpe, sin hambre, y la herida curada si le dio tiempo', () => {
+        const [kept] = withResting([], { add: hurt, day: 5 });
+        const { hero, days, line } = wakeFromRest(kept, { day: 9 });
+        expect(days).toBe(4);
+        expect(hero).not.toHaveProperty('restDay');
+        expect(hero.hp).toBe(28);
+        expect(hero.hitDiceSpent).toBe(0);
+        expect(hero.injuries).toEqual([]);
+        expect(hero.speed).toBe(30);
+        expect(hero.scars).toEqual(['Cicatriz de pierna rota']);
+        expect(hero.abilityUses).toEqual({});
+        expect(hero.slotsUsed).toEqual({});
+        expect(hero.needs).toMatchObject({ hunger: 0, thirst: 0, rest: 0 });
+        expect(line).toBe('Tessa ha descansado 4 días en el gremio: vuelve con la vida entera. Se le ha curado una herida: pierna rota. Le queda la cicatriz.');
+    });
+
+    test('un solo día: se pone en pie, pero la herida sigue contando', () => {
+        const [kept] = withResting([], { add: { ...hurt, hp: 0 }, day: 5 });
+        const { hero, line } = wakeFromRest(kept, { day: 6 });
+        expect(hero.hp).toBe(1);
+        expect(hero.injuries[0].daysLeft).toBe(2);
+        expect(line).toBe('Tessa ha descansado un día en el gremio.');
+    });
+
+    test('lo permanente no se cura; sin días, o sin saber desde cuándo, nada cambia', () => {
+        const lost = { ...hurt, injuries: [{ ...hurt.injuries[0], id: 'lost_eye', label: 'Ojo perdido', days: 0, daysLeft: 0, permanent: true }] };
+        expect(wakeFromRest({ ...lost, restDay: 1 }, { day: 30 }).hero.injuries).toHaveLength(1);
+        const same = wakeFromRest({ ...hurt, restDay: 9 }, { day: 9 });
+        expect(same).toMatchObject({ days: 0, line: '' });
+        expect(same.hero.hp).toBe(4);
+        expect(wakeFromRest(hurt, { day: 30 }).hero.hp).toBe(4);
+        // Es una copia: la del gremio no cambia.
+        wakeFromRest({ ...hurt, restDay: 1 }, { day: 30 });
+        expect(hurt.hp).toBe(4);
+    });
+});
+
+describe('D-J14: dos personajes con el mismo nombre', () => {
+    test('se comparan sin tildes, sin mayúsculas y sin espacios de más', () => {
+        expect(plainName('  Íria   de  la Costa ')).toBe('iria de la costa');
+        expect(heroNameTaken('iria', ['Bram', 'Íria'])).toBe('Íria');
+        expect(heroNameTaken('TESSA ', ['Tessa'])).toBe('Tessa');
+        expect(heroNameTaken('Tess', ['Tessa'])).toBe('');
+        expect(heroNameTaken('', ['Tessa'])).toBe('');
+    });
+
+    test('los nombres del gremio: sus fichas, el que va y los que se quedan; los mercenarios no', () => {
+        const entries = [{ comment: 'Tessa', dndData: { entityType: 'character', name: 'Tessa' } }, { comment: 'Caída', dndData: { entityType: 'character' } }];
+        expect(takenHeroNames({ entries, party: [bram, gerd], resting: [tessa] })).toEqual(['Tessa', 'Caída', 'Bram']);
+        expect(takenHeroNames({})).toEqual([]);
+    });
+
+    test('lo que se dice, llano', () => {
+        expect(nameTakenLine('Tessa')).toBe('Ya hay un personaje que se llama Tessa en este gremio. Elige otro nombre.');
     });
 });
 

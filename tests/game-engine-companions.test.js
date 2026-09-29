@@ -4,6 +4,7 @@ import {
     readMode, canControl, describeMode,
 } from '../public/scripts/game-engine/rules/companions.js';
 import { applyInjury, INJURY_TABLE } from '../public/scripts/game-engine/rules/injuries.js';
+import { CONTROL_RANK, canPlayerControl, createBondState, getRank, recordBondEvent } from '../public/scripts/game-engine/campaign/bonds.js';
 
 const contract = (extra = {}) => ({
     id: 'c1', rank: 'C', kind: 'cull', title: 'Despejar el molino',
@@ -154,11 +155,29 @@ describe('los modos', () => {
         expect(DEFAULT_MODE).toBe(MODES.GROUP);
     });
 
-    test('en grupo los mueves a todos', () => {
-        const party = [brand(), bruna()];
-        for (const member of party) {
-            expect(canControl(member, party, { mode: MODES.GROUP }).allowed).toBe(true);
+    // D-J32: el vínculo 5 manda en los dos modos. Y la regla es la de `canPlayerControl`.
+    test('en los dos modos, a un compañero lo mueves desde el vínculo 5; antes, decide él', () => {
+        const party = [brand(), bruna(), { id: 3, name: 'Nella' }];
+        let bonds = createBondState();
+        // Bruna llega a amiga (rango 5): 36 puntos.
+        for (let i = 0; i < 18; i++) bonds = recordBondEvent(bonds, '2', 'combat_together').state;
+        expect(getRank(bonds, '2')).toBe(CONTROL_RANK);
+        for (const mode of [MODES.GROUP, MODES.SOLO, undefined]) {
+            const rules = mode ? { mode } : null;
+            expect(canControl(party[0], party, rules, bonds).allowed).toBe(true);
+            expect(canControl(party[1], party, rules, bonds).allowed).toBe(true);
+            const nella = canControl(party[2], party, rules, bonds);
+            expect(nella.allowed).toBe(false);
+            expect(nella.reason).toBe('Nella se lleva solo hasta que seáis amigos (vínculo 5): hasta entonces, decide lo suyo.');
+            for (const member of party) {
+                expect(canControl(member, party, rules, bonds).allowed).toBe(canPlayerControl(member, bonds, { party }));
+            }
         }
+        // Sin vínculos que leer, solo el tuyo.
+        expect(party.map(m => canControl(m, party, { mode: MODES.GROUP }).allowed)).toEqual([true, false, false]);
+        // Las invocaciones, de quien las invoca; las que van solas, del juego.
+        expect(canControl({ id: 'inv-1', name: 'Lobo', casterId: '1' }, party, null, bonds).allowed).toBe(true);
+        expect(canControl({ id: 'inv-3', name: 'Lobo', casterId: '3' }, party, null, bonds).reason).toBe('Lobo va por su cuenta: lo lleva el juego.');
     });
 
     test('en solo llevas al tuyo, que es el primero', () => {
@@ -175,9 +194,9 @@ describe('los modos', () => {
         expect(answer.reason).toMatch(/se lleva solo/);
     });
 
-    test('contado donde se elige', () => {
-        expect(describeMode({ mode: MODES.SOLO })).toMatch(/los demás deciden/);
-        expect(describeMode(null)).toBe('Los llevas a todos');
+    test('contado donde se elige: igual en los dos modos (D-J32)', () => {
+        expect(describeMode({ mode: MODES.SOLO })).toBe('Llevas al tuyo; a un compañero, desde que sois amigos (vínculo 5). Hasta entonces, decide él');
+        expect(describeMode(null)).toBe(describeMode({ mode: MODES.SOLO }));
     });
 
     test('cada deseo sabe qué trabajos le tiran', () => {

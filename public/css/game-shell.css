@@ -3712,3 +3712,73 @@ body[data-narrator-font="maquina"] #chat .mes:not([is_user="true"]) .mes_text {
         background-color: var(--gs-bg-dark);
     }
 }
+
+/* ================================================================
+   J18.7 a J18.10 · El juego sin conexión (el gremio y sus campañas). `.gs-offline` lo pone
+   game-shell.js en cada redibujo; con conexión, nada de esto cambia la pantalla.
+   ================================================================ */
+
+/* J18.7: sin caja de escribir, ni sus botones (el menú y la varita). Lo dicho sigue en el
+   «Registro», que es el chat de siempre. */
+.gs-root.gs-offline #form_sheld {
+    display: none !important;
+}
+
+/* J18.8: sin pestañas de escena ni la X. Se sale desde la pausa, y la pausa lleva su botón
+   también con ratón: sin la X, era la única puerta que no se veía. */
+.gs-root.gs-offline .gs-scenes,
+.gs-root.gs-offline .gs-head > .gs-close {
+    display: none !important;
+}
+
+.gs-root.gs-offline .gs-head > .gs-pause-open {
+    display: flex;
+    margin-left: auto;
+}
+
+/* «Continuar», al acabar de leer: el primero de la fila, en dorado. */
+.gs-chip-action.gs-chip-continue {
+    border-color: var(--gs-accent-gold);
+    background: rgba(226, 194, 122, 0.16);
+    color: var(--gs-accent-gold);
+    font-weight: bold;
+}
+
+.gs-chip-action.gs-chip-continue > i {
+    opacity: 1;
+}
+
+.gs-chip-action.gs-chip-continue:hover,
+.gs-chip-action.gs-chip-continue:focus-visible {
+    background: rgba(226, 194, 122, 0.28);
+}
+
+/* Las fichas al pie del pueblo y del tablero: una fila entera, encima del grupo. */
+.gs-actions:has(> .gs-chips-foot) {
+    flex-wrap: wrap;
+    row-gap: 8px;
+}
+
+.gs-actions > .gs-chips-foot {
+    flex: 1 1 100%;
+    padding: 0;
+}
+
+/* J18.10: las comillas que pone el chat alrededor de «…» salían dobles en la caja (“«…»”): el
+   chat las quita con `.mes q::before`, y la caja no es un `.mes`. */
+.gs-vn-text q::before,
+.gs-vn-text q::after {
+    content: none;
+}
+
+/* Y en el registro, las etiquetas del motor («[HILO]», «🗣️ [DUELO]») no se ven sin conexión:
+   game-shell.js las envuelve; fuera del juego el chat se ve como siempre. */
+.gs-root.gs-offline .gs-engine-tag {
+    display: none;
+}
+
+/* D-J24: en pausa vuelve la barra de SillyTavern, y con ella su cajón de la derecha (Party,
+   World Map, Location, Campaña), vacío: su tablero está en la escena del juego. */
+body.game-shell-on #right-nav-panel {
+    display: none !important;
+}

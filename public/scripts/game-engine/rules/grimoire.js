@@ -33,7 +33,7 @@ export const SCHOOLS = {
     adivinacion: { label: 'Adivinación', note: 'Saber lo que no se ve.' },
     naturaleza: { label: 'Naturaleza', note: 'Las plantas, las bestias y el camino.' },
     divina: { label: 'Divina', note: 'Curar, bendecir y la luz.' },
-    nigromancia: { label: 'Nigromancia', note: 'Lo que queda de los muertos. En muchos sitios, un crimen.' },
+    nigromancia: { label: 'Nigromancia', note: 'Lo que queda de los muertos. Dañar con ella o levantar muertos es, en muchos sitios, un crimen.' },
 };
 
 /** Las cargas de cada círculo por descanso largo (DR4). Los trucos no gastan. */

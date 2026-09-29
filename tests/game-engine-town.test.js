@@ -29,12 +29,13 @@ const people = [
 ];
 
 describe('los sitios de un pueblo (J3.11)', () => {
-    test('la lista escrita manda: sus nombres, su orden y quien atiende cada uno', () => {
+    test('la lista escrita manda: sus nombres, su orden y quien atiende cada uno; el gremio, primero', () => {
         const { places } = townPlaces({ location: alba, npcs: people });
-        expect(places.map(p => p.id)).toEqual(['herreria', 'posada', 'gremio', 'plaza']);
-        expect(places[0]).toMatchObject({ name: 'La herrería', art: 'herreria', keeper: { name: 'Ramiro', trade: 'Herrero' } });
-        expect(places[1]).toMatchObject({ name: 'La taberna', art: 'taberna', keeper: { name: 'Tomás' } });
-        expect(places[2].keeper?.name).toBe('Brunilda');
+        // D-J30: el gremio va el primero aunque la lista (de una partida de antes) lo ponga al final.
+        expect(places.map(p => p.id)).toEqual(['gremio', 'herreria', 'posada', 'plaza']);
+        expect(places[1]).toMatchObject({ name: 'La herrería', art: 'herreria', keeper: { name: 'Ramiro', trade: 'Herrero' } });
+        expect(places[2]).toMatchObject({ name: 'La taberna', art: 'taberna', keeper: { name: 'Tomás' } });
+        expect(places[0].keeper?.name).toBe('Brunilda');
         // Marisa atiende la tienda, que no está en la lista: sale en la plaza, no se pierde.
         expect(places[3].people.map(p => p.name)).toEqual(['Marisa']);
     });
@@ -68,7 +69,7 @@ describe('los sitios de un pueblo (J3.11)', () => {
         const old = { name: 'Puerto Alba', locationType: 'city', services: ['posada'] };
         // Un gremio de antes: Brunilda sin servicio, pero con su oficio.
         const found = townPlaces({ location: old, npcs: [{ name: 'Brunilda', where: 'Puerto Alba', service: '', trade: 'Maestra del gremio' }], guild: true });
-        expect(found.places.map(p => [p.id, p.keeper?.name ?? ''])).toEqual([['posada', ''], ['gremio', 'Brunilda']]);
+        expect(found.places.map(p => [p.id, p.keeper?.name ?? ''])).toEqual([['gremio', 'Brunilda'], ['posada', '']]);
         // Y sin nadie que lo diga, el gremio sale igual: lleva el tablón de campañas.
         expect(townPlaces({ location: old, guild: true, cards: [] }).places.map(p => p.id)).toEqual(['gremio']);
     });
@@ -131,7 +132,7 @@ describe('lo que el pueblo lee', () => {
 });
 
 describe('lo que se lee al entrar', () => {
-    const smithy = townPlaces({ location: alba, npcs: people }).places[0];
+    const smithy = /** @type {any} */ (townPlaces({ location: alba, npcs: people }).places.find(p => p.id === 'herreria'));
 
     test('quien atiende saluda según la hora, y por tu nombre', () => {
         expect(greetingFor({ place: smithy, slot: 'Mañana', hero: 'Tessa' })).toBe('Ramiro deja el martillo sobre el yunque: «Buenos días, Tessa. ¿Qué hay que arreglar?»');
@@ -191,8 +192,9 @@ describe('los sitios en el paquete', () => {
         expect(validatePack(pack).warnings.filter(w => /places/.test(w.path))).toEqual([]);
         const plan = buildImportPlan(pack);
         const town = plan.metadata.locationMaps.find((/** @type {any} */ l) => l.name === 'Puerto Alba');
+        // D-J30: el gremio, el primero.
         expect(town.places.map((/** @type {any} */ p) => [p.kind, p.keeper])).toEqual([
-            ['herreria', 'Ramiro'], ['posada', 'Tomás'], ['tienda', 'Marisa'], ['templo', 'Madre Elvira'], ['gremio', 'Brunilda'],
+            ['gremio', 'Brunilda'], ['herreria', 'Ramiro'], ['posada', 'Tomás'], ['tienda', 'Marisa'], ['templo', 'Madre Elvira'],
         ]);
     });
 });

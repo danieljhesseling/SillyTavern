@@ -20,7 +20,8 @@ import { getCoverAlongLine } from '../game-engine/board/line-of-sight.js';
 import { perkBonus } from '../game-engine/rules/level-perks.js';
 import { createTurnState, getRemainingMovement } from '../game-engine/combat/turn-machine.js';
 import { isFlanked } from '../game-engine/combat/crits.js';
-import { canControl, readMode, MODES } from '../game-engine/rules/companions.js';
+import { canControl } from '../game-engine/rules/companions.js';
+import { getCampaignBonds } from './time.js';
 import { awakePlacements } from '../game-engine/campaign/campaign-map.js';
 import { getActiveRuleset } from '../game-engine/rules/ruleset.js';
 import { combatEncounter, currentBoardName, currentLocationName, partyMembers, setCombatEncounter } from './state.js';
@@ -147,21 +148,22 @@ export function occupiedCellsFor(member) {
  * @returns {number[]}
  */
 /**
- * En solo llevas al tuyo; los demas deciden por su cuenta.
+ * Llevas al tuyo; a un compañero, desde el vínculo 5 (D-J32, en los dos modos). Los demas
+ * deciden por su cuenta.
  *
  * Se filtra aqui, en el unico sitio que decide que fichas se pueden arrastrar, para que
- * el modo no haya que recordarlo en cada pantalla.
+ * la regla no haya que recordarla en cada pantalla.
  *
  * @param {number[]} ids
  * @returns {number[]}
  */
 export function underYourHand(ids) {
     const rules = getActiveRuleset()?.companions ?? null;
-    if (readMode(rules) === MODES.GROUP) return ids;
-
+    // D-J32: el vínculo 5 manda en los dos modos; en «grupo» tampoco se mueve a todos.
+    const bonds = getCampaignBonds();
     return ids.filter((id) => {
         const member = partyMembers.find(m => Number(m.id) === Number(id));
-        return member ? canControl(member, partyMembers, rules).allowed : false;
+        return member ? canControl(member, partyMembers, rules, bonds).allowed : false;
     });
 }
 
@@ -269,7 +271,7 @@ export function actsOnItsOwn(entry) {
     if (!entry || entry.isEnemy) return false;
     const member = partyMembers.find(m => Number(m.id) === Number(entry.id));
     if (!member) return false;
-    return !canControl(member, partyMembers, getActiveRuleset()?.companions ?? null).allowed;
+    return !canControl(member, partyMembers, getActiveRuleset()?.companions ?? null, getCampaignBonds()).allowed;
 }
 
 /**

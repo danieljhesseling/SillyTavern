@@ -8,7 +8,8 @@
  * uno con quien lo lleva, y la pantalla deja moverse entre ellos como entre localizaciones.
  *
  * - **De dónde salen**: de la lista `places` de la localización si el paquete la escribe (con
- *   sus nombres y su orden); si no, de sus servicios, uno por servicio.
+ *   sus nombres y su orden); si no, de sus servicios, uno por servicio. El gremio va siempre el
+ *   primero (D-J30): en Puerto Alba es a lo que se viene.
  * - **Quién está**: la persona que el sitio nombra (`keeper`) o la primera de aquí con ese
  *   servicio. Los demás con ese servicio, con ella. Quien no atiende nada, en la plaza.
  * - **Qué se hace**: las tarjetas de servicios que ya existen (`serviceActions` y lo que añade
@@ -147,14 +148,16 @@ export function townPlaces({ location, npcs = [], cards = null, guild = false })
     const specs = written.length > 0 ? written
         : services.filter(s => s in PLACE_KINDS).map(s => ({ kind: /** @type {keyof typeof PLACE_KINDS} */ (s) }));
     const hasGuildKeeper = local.some(n => same(n.service, 'gremio'));
-    if ((guild || hasGuildKeeper) && !specs.some(s => s.kind === 'gremio')) specs.push({ kind: 'gremio' });
+    if ((guild || hasGuildKeeper) && !specs.some(s => s.kind === 'gremio')) specs.unshift({ kind: 'gremio' });
+    // D-J30: el gremio, el primero, también en una lista escrita antes (la tenía al final).
+    const ordered = [...specs.filter(s => s.kind === 'gremio'), ...specs.filter(s => s.kind !== 'gremio')];
 
     /** @type {Set<string>} */
     const taken = new Set();
     /** @type {Record<string, number>} */
     const seen = {};
     /** @type {TownPlace[]} */
-    const places = specs.map(spec => {
+    const places = ordered.map(spec => {
         const kind = PLACE_KINDS[spec.kind];
         seen[spec.kind] = (seen[spec.kind] ?? 0) + 1;
         // Quien nombra el paquete, esté donde esté apuntado; si no, el primero de aquí con su servicio.

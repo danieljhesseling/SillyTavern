@@ -145,11 +145,11 @@ const BETWEEN = [
     ['pelea', 8], ['semana', 2], ['acto', 1], ['muerte', 1],
 ];
 
-/** Quién juega: a veces ellas, a veces ellos, a veces sin decir. */
+/** Quién juega: a veces ellas, a veces ellos, a veces sin decir (D-J15: quien es no binario elige la forma). */
 const GROUPS = [
     { heroe: 'Mujer', grupo: ['Mujer', 'Mujer'] },
     { heroe: 'Hombre', grupo: ['Hombre', 'Mujer'] },
-    { heroe: 'No binario', grupo: ['No binario'] },
+    { heroe: 'No binario (en femenino)', grupo: ['No binario (en femenino)'] },
     { heroe: '', grupo: [''] },
 ];
 

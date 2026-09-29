@@ -21,6 +21,7 @@
 
 import { applyKin } from '../compendio/kin.js';
 import { describeBackground } from './backgrounds.js';
+import { genderOf } from './grammar.js';
 import { SKILLS } from '../rules/checks.js';
 
 /** Lo que se ofrece cuando el mundo no trae razas propias. */
@@ -33,8 +34,59 @@ export const DEFAULT_CLASSES = [
     'Guerrero', 'Pícara', 'Clérigo', 'Mago', 'Explorador', 'Bárbaro', 'Bardo', 'Druida',
 ];
 
-/** Cómo se presenta alguien. Texto libre también vale: es su personaje. */
-export const GENDERS = ['Mujer', 'Hombre', 'No binario', 'Sin especificar'];
+/**
+ * Cómo se presenta alguien. Texto libre también vale: es su personaje.
+ *
+ * D-J15: como en D&D, no cambia ninguna regla. Lo que decide es cómo te habla el texto: a una
+ * mujer, en femenino; a un hombre, en masculino; y quien es no binario lo elige (`TEXT_FORMS`).
+ */
+export const GENDERS = ['Mujer', 'Hombre', 'No binario'];
+
+/** D-J15: cómo te habla el texto, para quien no es ni hombre ni mujer. */
+export const TEXT_FORMS = [
+    { id: 'm', label: 'En masculino', example: '«cansado», «listo»' },
+    { id: 'f', label: 'En femenino', example: '«cansada», «lista»' },
+];
+
+/**
+ * Si con este género hay que elegir cómo te habla el texto: con «Mujer» u «Hombre», no.
+ *
+ * @param {any} gender
+ * @returns {boolean}
+ */
+export function needsTextForm(gender) {
+    const said = text(gender);
+    return Boolean(said) && genderOf(said) !== 'f' && genderOf(said) !== 'm';
+}
+
+/**
+ * Lo que se guarda en la ficha: el género y, si hace falta, cómo le habla el texto.
+ * «No binario» con `f` es «No binario (en femenino)», que el texto lee en femenino.
+ *
+ * @param {any} gender
+ * @param {any} [form] `m` o `f`.
+ * @returns {string}
+ */
+export function heroGender(gender, form = '') {
+    const said = text(gender);
+    const how = TEXT_FORMS.find(f => f.id === text(form));
+    if (!needsTextForm(said) || !how) return said;
+    return `${said} (${how.label.toLowerCase()})`;
+}
+
+/**
+ * Cómo le habla el texto a quien tiene este género, dicho para quien juega.
+ *
+ * @param {any} gender
+ * @returns {string}
+ */
+export function textFormLine(gender) {
+    const said = genderOf(gender);
+    const how = TEXT_FORMS.find(f => f.id === said);
+    return how
+        ? `El texto te habla ${how.label.toLowerCase()}: ${how.example}.`
+        : 'Sin elegir, el texto te habla en masculino.';
+}
 
 /**
  * El icono de un oficio, para las tarjetas y el retrato sin cara. Sin arte: Font Awesome.

@@ -47,6 +47,15 @@ const gemPack = (() => {
     pack.world.synopsis = `${pack.world.synopsis} [cite: 7]`;
     return { $schema: 'http://json-schema.org/draft-07/schema#', title: 'Paquete de campaña', description: 'Lo que devuelve el Gem.', ...pack };
 })();
+// D-J35 y D-J22: otra, pegada como texto, que empieza en el nivel 10.
+const HIGH = 'La Cima de prueba';
+const HIGH_ID = 'tuya-la-cima-de-prueba';
+const highPack = (() => {
+    const pack = buildExamplePack();
+    pack.world.name = HIGH;
+    pack.world.levels = [10, 12];
+    return pack;
+})();
 const noBoards = (() => {
     const pack = buildExamplePack();
     pack.world.name = 'Sin tableros';
@@ -157,8 +166,8 @@ try {
         await clickChip(/Tablón de campañas/);
         return page.waitForSelector('.hb-root [data-campaign-add]', { timeout: 15000 }).then(() => true).catch(() => false);
     };
-    /** Las tarjetas del tablón, en orden: su id (o «añadir») y lo que dicen. */
-    const boardTiles = () => page.evaluate(() => [...document.querySelectorAll('.hb-root .hb-grid > .vt-card')].map(c => ({
+    /** Las tarjetas del tablón, en orden: su id (o «añadir») y lo que dicen. D-J35: las tuyas van en su caja, con «Quitar». */
+    const boardTiles = () => page.evaluate(() => [...document.querySelectorAll('.hb-root .hb-grid > .vt-card, .hb-root .hb-grid > .hb-tile > .vt-card')].map(c => ({
         id: c.getAttribute('data-campaign') || (c.hasAttribute('data-campaign-add') ? 'añadir' : ''),
         text: (c.textContent || '').replace(/\s+/g, ' ').trim(),
     })));
@@ -249,10 +258,15 @@ try {
         added.ok && new RegExp(`Añadida al tablón: ${NAME}`).test(added.text) && /se ha quitado una marca \[cite\]/.test(added.text), added.text);
     tiles = await boardTiles();
     const mine = tiles.find(t => t.id === ID);
-    check('su tarjeta sale en el tablón, antes de «Añadir», con los niveles, la distancia y sin empezar',
+    check('su tarjeta sale en el tablón, antes de «Añadir», con el nivel recomendado, la distancia y sin empezar (D-J22)',
         Boolean(mine) && tiles.indexOf(/** @type {any} */ (mine)) === tiles.length - 2
-        && /Para nivel 1 a 2/.test(mine?.text ?? '') && /A cinco días de camino/.test(mine?.text ?? '') && /Sin empezar/.test(mine?.text ?? '')
+        && /Nivel recomendado: 1 a 2/.test(mine?.text ?? '') && /A cinco días de camino/.test(mine?.text ?? '') && /Sin empezar/.test(mine?.text ?? '')
         && /Añadida por ti/.test(mine?.text ?? '') && !/cite/.test(mine?.text ?? ''), JSON.stringify(mine));
+    const removable = await page.evaluate((id) => ({
+        mine: Boolean(document.querySelector(`.hb-root [data-campaign-remove="${id}"]`)),
+        strahd: Boolean(document.querySelector('.hb-root [data-campaign-remove="strahd"]')),
+    }), ID);
+    check('la tuya se puede quitar del tablón; las del juego, no (D-J35)', removable.mine && !removable.strahd, JSON.stringify(removable));
     if (SHOT) await page.screenshot({ path: SHOT });
     const stored = await page.evaluate(async (id) => {
         const response = await fetch(`/user/files/campana-${id}.pack.json`, { cache: 'no-cache' });
@@ -260,6 +274,46 @@ try {
         return { status: response.status, name: pack?.world?.name ?? '', schema: pack ? '$schema' in pack : null };
     }, ID);
     check('el paquete, en limpio, está entre tus archivos', stored.status === 200 && stored.name === NAME && stored.schema === false, JSON.stringify(stored));
+    const listed = await page.evaluate(async () => {
+        const response = await fetch('/user/files/tablon-campanas.json', { cache: 'no-cache' });
+        return response.ok ? ((await response.json())?.campaigns ?? []).map((/** @type {any} */ r) => r.id) : [];
+    });
+    check('y su fila, en tu lista de campañas, no en el gremio (D-J35)', JSON.stringify(listed) === JSON.stringify([ID]), JSON.stringify(listed));
+
+    // 5b. D-J35: pegar el texto. Una que empieza en el nivel 10: avisa a un grupo sin experiencia (D-J22).
+    await page.locator('.hb-root .hb-paste-open').click();
+    await page.fill('.hb-root .hb-paste-text', `\`\`\`json\n${JSON.stringify(highPack, null, 2)}\n\`\`\``);
+    await page.locator('.hb-root .hb-paste-add').click();
+    await until(() => page.evaluate((id) => Boolean(document.querySelector(`.hb-root [data-campaign="${id}"]`)), HIGH_ID), 20000);
+    const pasted = await page.evaluate(() => (document.querySelector('.hb-root .hb-import')?.textContent || '').replace(/\s+/g, ' ').trim());
+    tiles = await boardTiles();
+    const high = tiles.find(t => t.id === HIGH_ID);
+    check('pegar el texto también la añade: «Añadida al tablón», y el cuadro se vacía (D-J35)',
+        new RegExp(`Añadida al tablón: ${HIGH}`).test(pasted) && await page.inputValue('.hb-root .hb-paste-text') === '', pasted);
+    check('una que empieza en el 10: «Nivel recomendado: 10 a 12», y que no es para un grupo sin experiencia (D-J22)',
+        /Nivel recomendado: 10 a 12/.test(high?.text ?? '') && /No es para un grupo sin experiencia: empieza en el nivel 10 y tu grupo es de nivel 1/.test(high?.text ?? '')
+        && await page.locator(`.hb-root [data-campaign="${HIGH_ID}"] .hb-levels.is-hard`).count() === 1, JSON.stringify(high));
+    if (SHOT) await page.screenshot({ path: `${SHOT}.pegada.png` });
+
+    // 5c. D-J35: quitarla del tablón, con su confirmación.
+    await page.locator(`.hb-root [data-campaign-remove="${HIGH_ID}"]`).click();
+    const asked = await page.waitForSelector('.popup:has-text("del tablón?")', { timeout: 10000 }).then(() => true).catch(() => false);
+    const question = asked ? await page.evaluate(() => ([...document.querySelectorAll('.popup')].pop()?.textContent || '').replace(/\s+/g, ' ').trim()) : '';
+    await page.locator('.popup:has-text("del tablón?") .popup-button-ok').click({ timeout: 5000 }).catch(() => {});
+    await until(() => page.evaluate((id) => !document.querySelector(`.hb-root [data-campaign="${id}"]`), HIGH_ID), 15000);
+    const afterRemove = await page.evaluate(async (id) => {
+        const list = await fetch('/user/files/tablon-campanas.json', { cache: 'no-cache' }).then(r => r.json()).catch(() => null);
+        const file = await fetch(`/user/files/campana-${id}.pack.json`, { cache: 'no-cache' });
+        return {
+            report: (document.querySelector('.hb-root .hb-import')?.textContent || '').replace(/\s+/g, ' ').trim(),
+            ids: (list?.campaigns ?? []).map((/** @type {any} */ r) => r.id),
+            file: file.status,
+        };
+    }, HIGH_ID);
+    check('«Quitar del tablón» pregunta antes, lo dice llano, y la quita de tu lista y su archivo (D-J35)',
+        asked && /Deja de salir en el tablón de todos tus gremios/.test(question)
+        && new RegExp(`Quitada del tablón: ${HIGH}`).test(afterRemove.report) && JSON.stringify(afterRemove.ids) === JSON.stringify([ID]) && afterRemove.file === 404,
+        JSON.stringify({ question, afterRemove }));
 
     // 6. Cerrar el tablón y abrirlo otra vez: sigue ahí (lo guarda el gremio).
     await page.locator('.hb-root .hb-close').click({ timeout: 5000 }).catch(() => {});

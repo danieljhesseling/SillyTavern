@@ -107,7 +107,8 @@ export function serviceActions({
         if (service === 'posada') {
             actions.push(action('inn-common', 'Dormir en la sala común',
                 `Un descanso corto, entre ronquidos. ${INN_PRICES.common * heads} de oro.`, INN_PRICES.common * heads));
-            actions.push(action('inn-room', 'Coger habitación',
+            // J18.9: dormir es cosa de la posada; las dos camas empiezan igual, para encontrarlas.
+            actions.push(action('inn-room', 'Dormir en una habitación',
                 `Un descanso largo, con puerta. ${INN_PRICES.room * heads} de oro.`, INN_PRICES.room * heads));
             actions.push(action('inn-meal', 'Comer caliente',
                 `Se acaba el hambre y la sed de todos. ${INN_PRICES.meal * heads} de oro.`, INN_PRICES.meal * heads));

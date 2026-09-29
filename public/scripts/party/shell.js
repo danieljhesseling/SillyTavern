@@ -8,7 +8,7 @@
  */
 
 import { POPUP_TYPE, Popup } from '../popup.js';
-import { chat, chat_metadata, saveMetadata, online_status, name2 } from '../../script.js';
+import { chat, chat_metadata, saveMetadata, online_status, name2, getCurrentChatId } from '../../script.js';
 import { extension_settings } from '../extensions.js';
 import { getCurrentWorldMapUrl, getCurrentWorldLocationMaps, METADATA_KEY } from '../world-info.js';
 import { getDistanceInFeet } from './combat-rules.js';
@@ -181,6 +181,10 @@ function buildShellSituation() {
         // Cuantos sitios hay. Con uno solo no hay a donde viajar, y explorar no es una
         // escena: es una pestana que abre un mapa de un punto.
         placeCount: getCurrentWorldLocationMaps().length,
+        // J18.7 y J18.8: el gremio y sus campañas se juegan sin chat y sin pestañas; la escena
+        // cambia por lo que se hace. Y pasar a otro chat (a una campaña) es abrir partida.
+        offline: offlineGame(),
+        chatId: String(getCurrentChatId() ?? ''),
     };
 }
 
@@ -296,8 +300,9 @@ export function buildShellChips(limit = undefined) {
         }),
         // Idea 137: lo que estas escribiendo pide una tirada.
         typed: typedIntents.map(skill => ({ skill, label: SKILLS[/** @type {keyof typeof SKILLS} */ (skill)]?.label ?? skill })),
-        // Idea 144: lo que se le puede decir a quien se está hablando.
-        replies: currentReplies(),
+        // Idea 144: lo que se le puede decir a quien se está hablando. Sin conexión, solo lo que
+        // hace algo al pulsarlo: las que dejaban la frase empezada en la caja, sin caja, no (J18.7).
+        replies: offlineGame() ? currentReplies().filter(r => r.command || r.id === 'reply-bye') : currentReplies(),
         // J4: el tablón de campañas y los mercenarios en el gremio; volver, en una campaña.
         hub: hubChips(),
         // Los que esperan en el tablero: la pelea se empieza también desde la fila.
@@ -367,7 +372,8 @@ export function runShellChip(chip) {
         return;
     }
 
-    if (chip.draft) draftInChat(chip.draft);
+    // Sin conexión no hay caja donde dejarla (J18.7).
+    if (chip.draft && !offlineGame()) draftInChat(chip.draft);
 }
 
 /** Idea 169: todas las fichas, en una ventana. */
@@ -492,7 +498,8 @@ function buildShellOptions() {
         onCheck: (skill) => { runSkillCheck(skill); },
         onAskNarrator: () => askNarrator(),
         isAskingNarrator: () => askingNarrator,
-        canAskNarrator: () => !combatEncounter.active && Boolean(partyMembers[0]),
+        // Sin conexión no hay narrador a quien escribirle (J18.7).
+        canAskNarrator: () => !offlineGame() && !combatEncounter.active && Boolean(partyMembers[0]),
         getFocus: () => focusOf(getPlot(), chat_metadata?.[PLOT_STATE_KEY], campaignDay()),
         onJournal: () => openJournalSafely(),
         onGlance: () => openPartyGlance(),

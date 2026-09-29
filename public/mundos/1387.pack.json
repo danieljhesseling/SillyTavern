@@ -3,7 +3,7 @@
   "world": {
     "name": "El valle de Vane",
     "genre": "Histórico",
-    "synopsis": "Eres un mercenario en el Valle de Vane, un rincón olvidado de la frontera, y una nevada adelantada está a punto de cerrar los pasos del sur: te vas a quedar atrapado. Aquí no hay magia, ni razas fantásticas, ni heroísmo gratis: cada día cuesta una ración, cada herida se infecta y la posada cobra los viernes. Tres facciones se despedazan por el valle: el señor de Montesclaros, Lord Vane, en su castillo; los Lobos del Bosque, en la espesura; y la Casa Keller, que baja del norte. Las tres necesitan una espada que se pueda comprar.",
+    "synopsis": "Eres {un mercenario|una mercenaria} en el Valle de Vane, un rincón olvidado de la frontera, y una nevada adelantada está a punto de cerrar los pasos del sur: te vas a quedar {atrapado|atrapada}. Aquí no hay magia, ni razas fantásticas, ni heroísmo gratis: cada día cuesta una ración, cada herida se infecta y la posada cobra los viernes. Tres facciones se despedazan por el valle: el señor de Montesclaros, Lord Vane, en su castillo; los Lobos del Bosque, en la espesura; y la Casa Keller, que baja del norte. Las tres necesitan una espada que se pueda comprar.",
     "factions": [
       {
         "id": "leales-de-montesclaros",
@@ -627,7 +627,7 @@
         {
           "rank": 6,
           "title": "El estandarte quemado",
-          "scene": "Encontráis en un barranco los cuerpos congelados de su antigua compañía. Bran te pide ayuda para quemarlos y no dejarles los anillos a los carroñeros. Si le ayudas, empieza a llamarte «capitán»."
+          "scene": "Encontráis en un barranco los cuerpos congelados de su antigua compañía. Bran te pide ayuda para quemarlos y no dejarles los anillos a los carroñeros. Si le ayudas, empieza a llamarte «{capitán|capitana}»."
         },
         {
           "rank": 8,
@@ -653,7 +653,7 @@
     },
     {
       "name": "Aldara",
-      "description": "Aldara te enseña a despellejar un conejo congelado. Es seca y habla poco. Te explica que el valle no es cruel, solo indiferente, y que espera que no seas otro noble estúpido que se cree inmortal.",
+      "description": "Aldara te enseña a despellejar un conejo congelado. Es seca y habla poco. Te explica que el valle no es cruel, solo indiferente, y que espera que no seas {otro noble estúpido|otra noble estúpida} que se cree inmortal.",
       "className": "explorador",
       "motive": "bond",
       "arcana": "",
@@ -661,7 +661,7 @@
         {
           "rank": 2,
           "title": "Trampas en la nieve",
-          "scene": "Aldara te enseña a despellejar un conejo congelado. Es seca y habla poco. Te explica que el valle no es cruel, solo indiferente, y que espera que no seas otro noble estúpido que se cree inmortal."
+          "scene": "Aldara te enseña a despellejar un conejo congelado. Es seca y habla poco. Te explica que el valle no es cruel, solo indiferente, y que espera que no seas {otro noble estúpido|otra noble estúpida} que se cree inmortal."
         },
         {
           "rank": 4,
@@ -720,7 +720,7 @@
         {
           "rank": 8,
           "title": "La operación sin alcohol",
-          "scene": "En pleno bosque, un compañero, o tú mismo, necesita una operación urgente, y no queda licor para calmarle los nervios a Arthur. Él respira hondo, coge el bisturí sin beber y no le tiembla el pulso. Ha recuperado la confianza."
+          "scene": "En pleno bosque, un compañero, o {tú mismo|tú misma}, necesita una operación urgente, y no queda licor para calmarle los nervios a Arthur. Él respira hondo, coge el bisturí sin beber y no le tiembla el pulso. Ha recuperado la confianza."
         },
         {
           "rank": 10,
@@ -741,7 +741,7 @@
     },
     {
       "name": "Isolda",
-      "description": "Isolda, vestida de mozo de cuadra, se limpia la sangre de los nudillos. Es la hija bastarda de Lord Vane. Dice que va contigo porque eres el único que no la trata como si fuera de cristal, pero que no te fíes de ella.",
+      "description": "Isolda, vestida de mozo de cuadra, se limpia la sangre de los nudillos. Es la hija bastarda de Lord Vane. Dice que va contigo porque eres {el único|la única} que no la trata como si fuera de cristal, pero que no te fíes de ella.",
       "className": "picaro",
       "motive": "bond",
       "arcana": "",
@@ -808,7 +808,7 @@
         {
           "rank": 8,
           "title": "La primera palabra",
-          "scene": "Junto a la lumbre le coses la herida del hombro y le pasas la bota de vino. Grimm bebe, te mira y, con una voz profunda como una cueva, dice: «Gracias, jefe». Es la primera vez que le oyes hablar."
+          "scene": "Junto a la lumbre le coses la herida del hombro y le pasas la bota de vino. Grimm bebe, te mira y, con una voz profunda como una cueva, dice: «Gracias, {jefe|jefa}». Es la primera vez que le oyes hablar."
         },
         {
           "rank": 10,
@@ -3070,7 +3070,7 @@
       "id": "r-fantasma-del-lago",
       "by": "Finn",
       "where": "El Lago Helado",
-      "text": "Debajo del hielo nadan los muertos. Si te quedas quieto, te agarran de las botas y te ahogan.",
+      "text": "Debajo del hielo nadan los muertos. Si te quedas {quieto|quieta}, te agarran de las botas y te ahogan.",
       "truth": "medias",
       "leadsTo": "El Lago Helado"
     },
@@ -3118,7 +3118,7 @@
       "id": "r-el-pago-del-asesino",
       "by": "Giles",
       "where": "El Pueblo de Barro",
-      "text": "Al mercenario forastero le pagaron un cáliz por matar al recaudador. Pobre diablo, lo van a colgar igual.",
+      "text": "{Al mercenario forastero|A la mercenaria forastera} le pagaron un cáliz por matar al recaudador. {Pobre diablo: lo|Pobre diabla: la} van a colgar igual.",
       "truth": "no",
       "leadsTo": ""
     },
@@ -4337,7 +4337,7 @@
         "act": 3,
         "title": "El ultimátum",
         "hint": "Emisarios de los tres bandos te buscan. Elige a quién le vendes la espada.",
-        "scene": "Ya nadie disimula. Lord Vane se ha atrincherado en su castillo, Karl el Sordo prepara las antorchas y la Capitana Keller ha plantado su estandarte negro a las afueras. Emisarios de los tres te buscan. Saben que tú, el perro de guerra que ha sobrevivido al invierno, decidirás quién gana. Toca elegir bando, y no hay vuelta atrás.",
+        "scene": "Ya nadie disimula. Lord Vane se ha atrincherado en su castillo, Karl el Sordo prepara las antorchas y la Capitana Keller ha plantado su estandarte negro a las afueras. Emisarios de los tres te buscan. Saben que tú, {el perro de guerra|la espada a sueldo} que ha sobrevivido al invierno, decidirás quién gana. Toca elegir bando, y no hay vuelta atrás.",
         "opens": {
           "kind": "after",
           "milestone": "el-deshielo"
@@ -4475,7 +4475,7 @@
         "act": 1,
         "title": "El hielo que escucha",
         "hint": "",
-        "scene": "El lago cruje bajo las botas, pero aguanta. En el centro, bajo el hielo, hay una cara: un soldado de otra guerra, con los ojos abiertos y el yelmo todavía puesto. En el valle nadie cruza el lago. Ahora vosotros sí.",
+        "scene": "El lago cruje bajo las botas, pero aguanta. En el centro, bajo el hielo, hay una cara: un soldado de otra guerra, con los ojos abiertos y el yelmo todavía puesto. En el valle nadie cruza el lago. Ahora {vosotros|vosotras} sí.",
         "opens": {
           "kind": "start"
         },
@@ -4552,11 +4552,11 @@
       },
       "status-quo-de-sangre": {
         "title": "El status quo de sangre",
-        "scene": "Lord Vane tose sangre sobre sus alfombras, pero respira. Los Keller han vuelto a las montañas y los Lobos han caído en el bosque. Tu paga llega en un cofre de plata fina. El valle sigue siendo de los Montesclaros, aunque los campos estén yermos y apenas quede quien los trabaje. Has cumplido como un profesional. Te marchas por el paso del sur y dejas atrás un cementerio gobernado por un noble endeudado."
+        "scene": "Lord Vane tose sangre sobre sus alfombras, pero respira. Los Keller han vuelto a las montañas y los Lobos han caído en el bosque. Tu paga llega en un cofre de plata fina. El valle sigue siendo de los Montesclaros, aunque los campos estén yermos y apenas quede quien los trabaje. Has cumplido como {un profesional|una profesional}. Te marchas por el paso del sur y dejas atrás un cementerio gobernado por un noble endeudado."
       },
       "anarquia-del-barro": {
         "title": "La anarquía del barro",
-        "scene": "Ya no hay señores en el valle de Vane. Karl el Sordo y los suyos han pasado a cuchillo a los nobles y han echado a los invasores. El castillo es una ruina saqueada donde los campesinos se reparten el grano de los señores. Para ti no hay bolsa de oro: solo un abrazo tosco, una buena armadura arrancada a un oficial de Keller y un caballo para cruzar el paso. Dejas atrás un lugar sin ley, libre pero hambriento, y una leyenda: la del lobo solitario que derribó a los Montesclaros."
+        "scene": "Ya no hay señores en el valle de Vane. Karl el Sordo y los suyos han pasado a cuchillo a los nobles y han echado a los invasores. El castillo es una ruina saqueada donde los campesinos se reparten el grano de los señores. Para ti no hay bolsa de oro: solo un abrazo tosco, una buena armadura arrancada a un oficial de Keller y un caballo para cruzar el paso. Dejas atrás un lugar sin ley, libre pero hambriento, y una leyenda: la {del lobo solitario|de la loba solitaria} que derribó a los Montesclaros."
       }
     },
     "omens": [

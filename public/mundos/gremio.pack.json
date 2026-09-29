@@ -19,11 +19,11 @@
       "biome": "urbano",
       "services": ["posada", "tienda", "templo", "herreria"],
       "places": [
+        { "kind": "gremio", "name": "La Casa del Gremio", "keeper": "brunilda" },
         { "kind": "herreria", "keeper": "ramiro" },
         { "kind": "posada", "name": "La taberna", "keeper": "tomas" },
         { "kind": "tienda", "keeper": "marisa" },
-        { "kind": "templo", "name": "La capilla", "keeper": "elvira" },
-        { "kind": "gremio", "name": "La Casa del Gremio", "keeper": "brunilda" }
+        { "kind": "templo", "name": "La capilla", "keeper": "elvira" }
       ],
       "routes": []
     }

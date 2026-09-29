@@ -371,17 +371,17 @@
           "id": "gerd-robledo",
           "title": "La casa de Robledo",
           "where": "Robledo, una semana al norte",
-          "pitch": "El señor de Robledo quiere quedarse con la casa de la madre de Gerd por una renta que Gerd jura que ha pagado. Alguien se ha quedado el dinero por el camino.",
+          "pitch": "El señor de Robledo quiere quitarle la casa a la madre de Gerd por tres años de renta sin pagar. Gerd mandaba el dinero cada mes con un mensajero. Ahora que sabe leer, ha visto que los recibos que le traía eran listas de la compra.",
           "endings": [
             {
               "id": "pagar",
               "title": "Pagar la deuda",
-              "summary": "Pagáis lo que pide el señor. La madre de Gerd conserva la casa, y Gerd se queda con la espina de no saber quién le robaba."
+              "summary": "Pagáis los tres años al señor. La madre de Gerd conserva la casa, pero el mensajero se queda con lo robado y Gerd, con la espina clavada."
             },
             {
               "id": "plantar-cara",
               "title": "Plantar cara",
-              "summary": "Descubrís que el mensajero se quedaba el dinero y lo lleváis ante el señor. La casa se salva sin pagar, pero en Robledo ya no os quieren ver."
+              "summary": "Encontráis al mensajero y lo lleváis ante el señor con sus recibos falsos. La casa se salva sin pagar, pero el mensajero es sobrino del señor, y en Robledo ya no os quieren ver."
             }
           ]
         }
@@ -428,17 +428,17 @@
           "id": "nella-tobias",
           "title": "El bosque del barón",
           "where": "Hoz, en el bosque del barón",
-          "pitch": "A Tobías, el hermano pequeño de Nella, lo han pillado cazando en el bosque del barón de Hoz. En otoño lo mandan a las minas.",
+          "pitch": "A Tobías, el hermano pequeño de Nella, lo han pillado cazando en el bosque del barón de Hoz, como cazaba ella antes de irse. Dentro de un mes lo mandan a las minas.",
           "endings": [
             {
               "id": "multa",
               "title": "Pagar la multa",
-              "summary": "Pagáis al barón y Tobías sale libre y sin cuentas pendientes. Pero ahora el barón sabe dónde vive Nella."
+              "summary": "Pagáis al barón y Tobías sale libre, sin deudas. Es mucho oro, y el cartel de Nella sigue colgado: a ella el barón no la perdona."
             },
             {
               "id": "carcel",
               "title": "La cárcel de noche",
-              "summary": "Entráis de noche por donde Nella sabe y sacáis a Tobías sin pagar. El barón pone precio también a tu cabeza."
+              "summary": "Entráis de noche por donde Nella sabe y sacáis a Tobías sin pagar. Nella deja su cartel clavado en la puerta del barón. Desde entonces, el barón pone precio también a tu cabeza."
             }
           ]
         }
@@ -485,17 +485,17 @@
           "id": "osric-anillo",
           "title": "El anillo de Valdés",
           "where": "Valdés, a dos días de Puerto Alba",
-          "pitch": "Hace once años, Osric se durmió en su guardia y mataron a su señor. Todavía lleva su anillo. Quiere devolvérselo a la viuda antes de retirarse al mar.",
+          "pitch": "Hace once años, Osric se durmió en su guardia y unos bandidos mataron a su señor. Todavía lleva su anillo. Quiere devolvérselo a la viuda antes de comprarse la barca.",
           "endings": [
             {
               "id": "verdad",
               "title": "La verdad",
-              "summary": "Osric le cuenta a la viuda que se durmió. Ella le devuelve el anillo y le dice que lo lleve él: ya ha pagado bastante."
+              "summary": "Osric le cuenta a la viuda que se durmió. Ella le escucha hasta el final y le devuelve el anillo: «Quédatelo. Ya has pagado bastante». Esa noche, por primera vez en once años, Osric deja que otro haga la guardia."
             },
             {
               "id": "mentira",
               "title": "Una mentira piadosa",
-              "summary": "Le decís que su marido murió luchando. Ella llora tranquila y guarda el anillo. Osric vuelve sin el anillo y sin paz."
+              "summary": "Le decís que su marido murió luchando. Ella llora tranquila y se queda el anillo. Osric vuelve sin el anillo, pero sigue encendiendo su vela cada tarde."
             }
           ]
         }
@@ -740,9 +740,9 @@
               "then": "Eso. Despacito, que es de mi madre."
             },
             {
-              "text": "¿Cansada? Si ves un conejo a cien pasos.",
+              "text": "¿Y por qué no la lees tú?",
               "bond": 0,
-              "then": "Los conejos no llevan letra pequeña.",
+              "then": "Porque mi madre tiene la letra muy pequeña. Eso. Por eso.",
               "mood": "triste"
             },
             {
@@ -754,7 +754,7 @@
           ]
         },
         {
-          "note": "La carta es corta. Su madre está bien, el invierno ha sido duro y el tejado gotea. Al final le pide que le escriba él alguna vez, de su puño y letra.",
+          "note": "La carta la ha escrito el cura de Robledo, de parte de su madre: ella está bien, el invierno ha sido duro y el tejado gotea. Al final le pide una cosa: una línea escrita por él, aunque sea torcida.",
           "say": "No sé leer. Ni escribir. Nunca aprendí. Le mando dinero porque es lo único que sé mandarle.",
           "mood": "triste",
           "replies": [
@@ -779,7 +779,7 @@
         },
         {
           "note": "Gerd dobla la carta con cuidado y se la guarda dentro de la camisa.",
-          "say": "No se lo digas a nadie. Bueno, a Ramiro sí, que ya lo sabe: en la guerra me escribía él las cartas."
+          "say": "No se lo digas a nadie. Ramiro lo sabe: en la guerra me escribía él las cartas. Pero Ramiro escribe como habla: tres palabras y se cansa."
         }
       ]
     },
@@ -851,14 +851,14 @@
       "where": "muelle",
       "beats": [
         {
-          "note": "Gerd no está comiendo, y eso ya es raro. Tiene otra carta, y esta vez la ha leído él solo, despacio.",
-          "say": "El señor de Robledo quiere quedarse con la casa de mi madre. Dice que le debe tres años de renta. Mentira: yo le mando el dinero.",
+          "note": "Gerd no está comiendo, y eso ya es raro. Tiene otra carta del cura, y esta vez la ha leído él solo, despacio.",
+          "say": "El señor de Robledo quiere quitarle la casa a mi madre. Dice que le debe tres años de renta. ¡Mentira! Yo mando el dinero cada mes, con el mensajero.",
           "mood": "enfadado",
           "replies": [
             {
               "text": "Alguien se queda tu dinero por el camino.",
               "bond": 1,
-              "then": "Eso pienso yo. Y sé quién lleva las cartas."
+              "then": "Eso pienso yo. Y ya sé quién."
             },
             {
               "text": "¿Seguro que ha llegado todo?",
@@ -874,7 +874,31 @@
           ]
         },
         {
-          "say": "Tengo que ir a Robledo. Pagar lo que pida ese señor, o plantarle cara. No quiero ir solo.",
+          "note": "Gerd saca de la camisa un montón de papeles viejos, doblados en cuatro.",
+          "say": "Cada vez, el mensajero me traía un recibo firmado. Tres años guardándolos. Ahora que sé leer, mira lo que pone: «dos sacos de nabos», «una mula coja». ¡Son listas de la compra!",
+          "mood": "enfadado",
+          "replies": [
+            {
+              "text": "Aprender a leer te ha salido a cuenta.",
+              "bond": 1,
+              "then": "¡Ja! Pues sí. Y ahora ese mensajero me va a oír.",
+              "mood": "alegre"
+            },
+            {
+              "text": "¿Y el señor no sabe nada?",
+              "bond": 0,
+              "then": "El señor solo sabe que no le llega el dinero. Y la casa le gusta."
+            },
+            {
+              "text": "Te fiabas de papeles que no sabías leer.",
+              "bond": -1,
+              "then": "Ya lo sé. No hace falta que me lo restriegues.",
+              "mood": "triste"
+            }
+          ]
+        },
+        {
+          "say": "Tengo que ir a Robledo. Pagar otra vez lo que pide ese señor, o buscar al mensajero y plantarle cara. No quiero ir solo.",
           "replies": [
             {
               "text": "No vas a ir solo. Vamos contigo.",
@@ -890,7 +914,7 @@
           ]
         },
         {
-          "note": "Gerd te da un abrazo que te deja sin aire y huele a guiso.",
+          "note": "Gerd te da un abrazo que te deja sin aire. Huele a guiso.",
           "say": "Robledo está a una semana al norte. Cuando quieras, avísame. Yo ya tengo el escudo preparado."
         }
       ]
@@ -906,8 +930,8 @@
       "where": "plaza",
       "beats": [
         {
-          "note": "Nella está en la plaza, tirando a una diana de paja. Cada flecha, en el centro.",
-          "say": "¿Sabes por qué me llaman Tresflechas? Una feria: tres manzanas a cincuenta pasos, tres flechas. Nadie más acertó ni una.",
+          "note": "Nella está en la plaza, tirando a una diana de paja. Cada flecha, en el centro. Te ve mirando y no para.",
+          "say": "Tresflechas me llaman desde una feria: tres manzanas a cincuenta pasos y tres flechas. Nadie más acertó ni una.",
           "mood": "alegre",
           "replies": [
             {
@@ -992,7 +1016,7 @@
         },
         {
           "note": "El chaval se va corriendo con las monedas en el puño.",
-          "say": "Mi hermano pequeño tenía su edad cuando me fui. No sé si come. No sé nada de él.",
+          "say": "Mi hermano pequeño tenía su edad cuando me fui de Hoz. No sé si come. No sé nada de él.",
           "mood": "triste",
           "replies": [
             {
@@ -1030,13 +1054,13 @@
       "where": "plaza",
       "beats": [
         {
-          "note": "En la plaza han clavado un papel nuevo: una cara mal dibujada, pero se la reconoce. «Nella, cazadora furtiva. Veinte monedas. Barón de Hoz.»",
-          "say": "Veinte monedas. Me ofende más el dibujo que el precio.",
+          "note": "En la plaza han clavado un papel nuevo, con una cara mal dibujada que se reconoce igual: «Se busca a Nella la Ratera, cazadora furtiva. Veinte monedas. Barón de Hoz».",
+          "say": "La Ratera. Así me llamaban los guardas del barón. Y veinte monedas… Me ofende más el dibujo que el precio.",
           "replies": [
             {
               "text": "¿Qué hiciste?",
               "bond": 0,
-              "then": "Cazar en su bosque para que comiera mi familia. Tres inviernos."
+              "then": "Cazar en su bosque para que comiéramos en casa. Tres inviernos."
             },
             {
               "text": "El dibujo es horrible. Sales mucho mejor.",
@@ -1053,7 +1077,7 @@
           ]
         },
         {
-          "say": "Si alguien de aquí me reconoce, me llevarán de vuelta. ¿Qué harás si vienen a por mí?",
+          "say": "Por veinte monedas, en este puerto hay quien vende a su madre. ¿Qué harás tú si vienen a por mí?",
           "replies": [
             {
               "text": "Tendrán que pasar por encima de mí.",
@@ -1091,11 +1115,11 @@
       "beats": [
         {
           "note": "Nella te espera al amanecer con la mochila hecha. Tiene los ojos rojos, de no dormir.",
-          "say": "Ha llegado un buhonero de Hoz. A Tobías lo han pillado cazando. Lo mandan a las minas del barón en otoño.",
+          "say": "Ha llegado un buhonero de Hoz. A Tobías lo han pillado cazando en el bosque del barón. Dentro de un mes lo mandan a las minas.",
           "mood": "triste",
           "replies": [
             {
-              "text": "Pues vamos a buscarlo antes del otoño.",
+              "text": "Pues vamos a buscarlo. Hay tiempo.",
               "bond": 1,
               "then": "¿Así, sin más? ¿Sin preguntar por la paga?",
               "mood": "alegre"
@@ -1114,7 +1138,30 @@
           ]
         },
         {
-          "say": "Hay dos maneras: pagar la multa al barón, que es mucho dinero, o entrar de noche en su cárcel. Yo sé por dónde.",
+          "note": "Nella aprieta las correas de la mochila, más fuerte de lo que hace falta.",
+          "say": "Cazaba para que comieran en casa. Lo que hacía yo. Me fui, y le tocó a él.",
+          "mood": "triste",
+          "replies": [
+            {
+              "text": "No es culpa tuya, Nella.",
+              "bond": 1,
+              "then": "Sí lo es. Por eso voy a sacarlo yo."
+            },
+            {
+              "text": "Él eligió cazar.",
+              "bond": 0,
+              "then": "Con hambre no se elige nada."
+            },
+            {
+              "text": "Pues haberte quedado.",
+              "bond": -1,
+              "then": "¿Crees que no lo he pensado mil veces?",
+              "mood": "enfadado"
+            }
+          ]
+        },
+        {
+          "say": "Hay dos maneras de sacarlo: pagar la multa al barón, que es mucho oro, o entrar de noche en su cárcel. Yo sé por dónde.",
           "replies": [
             {
               "text": "Lo decidimos allí. Pero vamos.",
@@ -1145,34 +1192,34 @@
       "where": "posada",
       "beats": [
         {
-          "note": "Osric está en su rincón de la posada, con una jarra que le dura toda la noche.",
-          "say": "Cobro la mitad antes y la mitad después. Si no vuelvo, os ahorráis la mitad. Es un buen trato para todos.",
+          "note": "Osric está en su rincón de la posada, con una jarra que le dura toda la noche. Gerd te ha dicho que le preguntes por su mote.",
+          "say": "¿Te manda Gerd? Mediapaga, porque una vez me pagaron la mitad. Y era lo justo. No hay más que contar.",
           "replies": [
             {
-              "text": "¿Y si vuelves herido?",
+              "text": "¿La mitad de qué?",
               "bond": 0,
-              "then": "Entonces cobro entera y me quejo el doble."
+              "then": "De un año de trabajo. Otro día, quizá. Hoy no."
             },
             {
-              "text": "Qué manera más triste de verlo.",
+              "text": "Pues vaya mote más triste.",
               "bond": -1,
-              "then": "Triste no. Exacta.",
+              "then": "Triste no. Exacto.",
               "mood": "enfadado"
             },
             {
-              "text": "Para todos menos para ti.",
+              "text": "Vale. No pregunto más.",
               "bond": 1,
-              "then": "Para mí también. Muerto no gasto."
+              "then": "Bien. Me caes mejor de lo que pensaba."
             }
           ]
         },
         {
-          "say": "Si un día no vuelvo, ¿a quién le darías la otra mitad?",
+          "say": "Guardo unos ahorros para una cosa mía. Si un día no vuelvo, ¿qué harías con ellos?",
           "replies": [
             {
-              "text": "A quien tú me digas.",
+              "text": "Lo que tú me digas.",
               "bond": 1,
-              "then": "A Madre Elvira. Ella sabrá a quién le hace falta."
+              "then": "Dáselos a Madre Elvira. Ella sabrá a quién le hacen falta."
             },
             {
               "text": "Vas a volver, Osric.",
@@ -1180,7 +1227,7 @@
               "then": "Eso dicen todos. Hasta que no."
             },
             {
-              "text": "Me la quedaría yo.",
+              "text": "Me los quedaría yo.",
               "bond": -1,
               "then": "Ja. Por lo menos eres {sincero|sincera}."
             }
@@ -1204,7 +1251,7 @@
       "beats": [
         {
           "note": "Por la mañana, en el muelle, Osric mira una barca de pesca con un cartel de venta. La pintura está vieja, pero el casco es bueno.",
-          "say": "Esa. La «Gaviota». Treinta monedas de oro y es mía.",
+          "say": "Esa. La «Gaviota». Treinta monedas de oro y es mía. Para eso son los ahorros.",
           "replies": [
             {
               "text": "¿Cuánto te falta?",
@@ -1214,7 +1261,7 @@
             {
               "text": "¿Tú, pescador?",
               "bond": 0,
-              "then": "Mi padre lo era. Remiendo redes mejor que manejo la espada."
+              "then": "Mi padre pescaba en este muelle. Yo remiendo redes mejor que manejo la espada."
             },
             {
               "text": "Pescar es para quien no vale para otra cosa.",
@@ -1225,7 +1272,7 @@
           ]
         },
         {
-          "say": "El mar no te pide nada. No te pregunta a quién sirves. Sales, pescas, vuelves. ¿Tú qué harías si dejaras esto?",
+          "say": "El mar no te pide nada. No te pregunta a quién servías. Sales, pescas, vuelves. ¿Tú qué harías si dejaras esto?",
           "replies": [
             {
               "text": "Algo tranquilo. Como tú.",
@@ -1258,7 +1305,7 @@
       "beats": [
         {
           "note": "Por la tarde encuentras a Osric en la capilla, delante de una vela recién encendida.",
-          "say": "Enciendo una todos los meses. Hoy hace once años.",
+          "say": "Enciendo una cada tarde. Hoy hace once años.",
           "mood": "triste",
           "replies": [
             {
@@ -1269,7 +1316,7 @@
             {
               "text": "¿Por quién es?",
               "bond": 0,
-              "then": "Por el señor Aldric de Valdés. Yo era su escolta."
+              "then": "Por un hombre al que me tocaba cuidar."
             },
             {
               "text": "Te espero fuera.",
@@ -1280,7 +1327,7 @@
           ]
         },
         {
-          "say": "Nos tendieron una emboscada en el camino. Me tocaba la guardia y me dormí. Cuando abrí los ojos, él ya estaba muerto.",
+          "say": "Yo era el escolta del señor Aldric de Valdés. Una noche, de camino, me tocaba la guardia y me dormí. Cuando abrí los ojos, los bandidos ya se iban y mi señor estaba muerto.",
           "mood": "triste",
           "replies": [
             {
@@ -1302,8 +1349,30 @@
           ]
         },
         {
+          "say": "Su mayordomo me pagó medio año y me echó: «Media paga, para medio escolta». Así me quedó el mote.",
+          "mood": "triste",
+          "replies": [
+            {
+              "text": "Ese mote ya no te pega.",
+              "bond": 1,
+              "then": "Todavía sí. Pero gracias por decirlo."
+            },
+            {
+              "text": "¿Y no volviste a servir a nadie?",
+              "bond": 0,
+              "then": "A nadie. Desde entonces, solo encargos."
+            },
+            {
+              "text": "El mayordomo tenía razón.",
+              "bond": -1,
+              "then": "Ya. Por eso no me quito el mote.",
+              "mood": "enfadado"
+            }
+          ]
+        },
+        {
           "note": "Osric saca de la bolsa un anillo de plata con una torre grabada, lo mira y lo vuelve a guardar.",
-          "say": "Era suyo. Tenía que devolvérselo a su viuda, y nunca he tenido valor. No se lo cuentes a nadie."
+          "say": "Era suyo. Se lo quité del dedo para llevárselo a su viuda, y nunca he tenido valor. Nadie sabe que me dormí. Ahora lo sabes tú."
         }
       ]
     },
@@ -1318,8 +1387,8 @@
       "where": "muelle",
       "beats": [
         {
-          "note": "Osric te espera en el muelle, delante de la «Gaviota». Ya no lleva el cartel de venta: la ha comprado.",
-          "say": "Ya es mía. Y antes de subirme a ella para siempre, tengo que cerrar una cosa.",
+          "note": "Osric te espera en el muelle, delante de la «Gaviota». Lleva al cinto una bolsa llena: ya tiene las treinta monedas.",
+          "say": "Ya tengo el dinero. Mañana podría comprarla. Pero antes de subirme a ella, tengo que cerrar una cosa.",
           "replies": [
             {
               "text": "El anillo.",
@@ -1327,9 +1396,9 @@
               "then": "El anillo. Me conoces demasiado."
             },
             {
-              "text": "¿Te vas a ir?",
+              "text": "¿Qué cosa?",
               "bond": 0,
-              "then": "Todavía no. Primero, lo otro."
+              "then": "Lo que te conté en la capilla."
             },
             {
               "text": "¿Ahora quieres dejarlo todo?",
@@ -1340,7 +1409,7 @@
           ]
         },
         {
-          "say": "La viuda vive en Valdés, a dos días de aquí. Quiero devolverle el anillo. Y no sé si contarle la verdad o decirle que murió luchando.",
+          "say": "La viuda vive en Valdés, a dos días de aquí. Quiero devolverle el anillo. Y no sé si contarle la verdad o decirle que su marido murió luchando.",
           "replies": [
             {
               "text": "Te acompaño. Lo que le digas, lo decides allí.",
@@ -1361,7 +1430,7 @@
         },
         {
           "note": "Osric mira el mar un buen rato.",
-          "say": "Cuando quieras ir a Valdés, avísame. Esta vez no me voy a dormir."
+          "say": "Cuando quieras ir a Valdés, avísame. Por el camino, las guardias las hago yo. Y esta vez no me voy a dormir."
         }
       ]
     },

@@ -6,6 +6,7 @@ import {
 } from '../public/scripts/game-engine/campaign/campaign-import.js';
 import {
     readHub, withHubChat, withHubCampaign, withHubImported, readImportedRows, hubCampaignCards, journeyLine,
+    readImportedList, importedListFile, withImportedRow, withoutImportedRow, importedForHub, withoutHubImported, HUB_IMPORTED_LIST,
     HUB_IMPORTED_PREFIX,
 } from '../public/scripts/game-engine/campaign/hub.js';
 import { buildExamplePack } from '../public/scripts/game-engine/campaign/campaign-pack-schema.js';
@@ -162,9 +163,10 @@ describe('las campañas añadidas, en el gremio', () => {
         const cards = hubCampaignCards({ worlds, hub: withHubImported({}, row), level: 1 });
         expect(cards.map(c => c.id)).toEqual(['strahd', 'tuya-el-molino']);
         expect(cards[1]).toMatchObject({
-            name: 'El Molino de los Cuervos', levels: 'Para nivel 1 a 2', distance: 'A cinco días de camino',
-            state: 'nueva', action: 'Empezar', note: 'Añadida por ti, desde un archivo.',
+            name: 'El Molino de los Cuervos', levels: 'Nivel recomendado: 1 a 2', distance: 'A cinco días de camino',
+            state: 'nueva', action: 'Empezar', note: 'Añadida por ti, desde un archivo.', imported: true,
         });
+        expect(cards[0].imported).toBe(false);
         // Y empezada, sigue como las demás.
         const started = withHubCampaign(withHubImported({}, row), 'tuya-el-molino', { worldName: 'El Molino · Tessa' });
         expect(hubCampaignCards({ worlds, hub: started })[1]).toMatchObject({ state: 'en-curso', action: 'Seguir' });
@@ -173,6 +175,58 @@ describe('las campañas añadidas, en el gremio', () => {
     test('el viaje se cuenta como el de las demás', () => {
         expect(journeyLine({ world: row, home: 'Puerto Alba' }))
             .toBe('Salís de Puerto Alba hacia El Molino de los Cuervos. Cinco días de camino.');
+    });
+});
+
+describe('D-J35: tus campañas añadidas, en todos tus gremios', () => {
+    const molino = importedCampaignRow(buildExamplePack(), { id: 'tuya-el-molino', packUrl: '/user/files/campana-tuya-el-molino.pack.json' });
+    const pantano = { ...molino, id: 'tuya-el-pantano', name: 'El Pantano', pack: '/user/files/campana-tuya-el-pantano.pack.json' };
+    const worlds = [{ id: 'strahd', name: 'Strahd', pack: '/mundos/strahd.pack.json', levels: [1, 6] }];
+
+    test('la lista se lee de su archivo o suelta, y lo roto no entra', () => {
+        expect(readImportedList(null)).toEqual([]);
+        expect(readImportedList({ version: 1, campaigns: [molino, { ...molino, id: 'strahd' }] })).toEqual([molino]);
+        expect(readImportedList([pantano])).toEqual([pantano]);
+        expect(importedListFile([molino, 'no'])).toEqual({ version: 1, campaigns: [molino] });
+    });
+
+    test('añadir la pone al final; otra vez, la pone al día en su sitio; quitar, la saca', () => {
+        let list = withImportedRow([], molino);
+        list = withImportedRow(list, pantano);
+        list = withImportedRow(list, { ...molino, name: 'El Molino, corregido' });
+        expect(list.map(r => r.name)).toEqual(['El Molino, corregido', 'El Pantano']);
+        expect(withImportedRow(list, { id: 'strahd' })).toEqual(list);
+        expect(withoutImportedRow(list, 'tuya-el-molino').map(r => r.id)).toEqual(['tuya-el-pantano']);
+        expect(withoutImportedRow(list, 'no-esta')).toEqual(list);
+    });
+
+    test('un gremio ve tu lista, y detrás lo que guardaba él antes, sin repetir', () => {
+        const hub = withHubImported(withHubImported({}, { ...molino, name: 'Vieja' }), pantano);
+        expect(importedForHub([molino], hub).map(r => `${r.id}:${r.name}`))
+            .toEqual(['tuya-el-molino:El Molino de los Cuervos', 'tuya-el-pantano:El Pantano']);
+        expect(importedForHub([], null)).toEqual([]);
+    });
+
+    test('dos gremios distintos ven las mismas: la lista no es de ninguno', () => {
+        const uno = withHubCampaign({}, 'tuya-el-molino', { worldName: 'El Molino · Tessa' });
+        const otro = withHubChat({}, { file: 'Otro gremio', avatar: 'posadera.png' });
+        const ids = (/** @type {any} */ hub) => hubCampaignCards({ worlds, hub, imported: [molino, pantano] }).map(c => c.id);
+        expect(ids(uno)).toEqual(['strahd', 'tuya-el-molino', 'tuya-el-pantano']);
+        expect(ids(otro)).toEqual(ids(uno));
+        // Cada gremio sabe cómo va la suya.
+        expect(hubCampaignCards({ worlds, hub: uno, imported: [molino] })[1].state).toBe('en-curso');
+        expect(hubCampaignCards({ worlds, hub: otro, imported: [molino] })[1].state).toBe('nueva');
+    });
+
+    test('las que guardaba el gremio salen de él al pasar a tu lista', () => {
+        const hub = withHubCampaign(withHubImported({}, molino), 'strahd', { worldName: 'Strahd · Tessa' });
+        const clean = withoutHubImported(hub);
+        expect(clean.imported).toBeUndefined();
+        expect(clean.campaigns.strahd.worldName).toBe('Strahd · Tessa');
+    });
+
+    test('su archivo tiene un nombre que el servidor admite, junto a los paquetes', () => {
+        expect(HUB_IMPORTED_LIST).toMatch(/^[a-zA-Z0-9_\-.]+\.json$/);
     });
 });
 

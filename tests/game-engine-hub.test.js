@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import {
     readHub, isHubWorld, hubHomeOf, withHubChat, withHubCampaign, hubCampaignCards, hubCampaignWorldName,
     carryEntry, entryFromMember, settleCarried, hubRoster, hireOffers, answersForWorld, hubPartyLine, HUB_KEY, HUB_HOME_KEY,
-    journeyDays, journeySpan, journeyLine,
+    journeyDays, journeySpan, journeyLine, hubDay, HUB_START_GOLD, HUB_NEXT_HERO_GOLD,
 } from '../public/scripts/game-engine/campaign/hub.js';
 import { guestMember, HIRELINGS, MERCENARY_FEE } from '../public/scripts/game-engine/campaign/guests.js';
 import { validatePack } from '../public/scripts/game-engine/campaign/campaign-pack.js';
@@ -33,6 +33,23 @@ describe('el gremio guardado', () => {
             worldName: 'Strahd · Tessa', chat: { file: 'Algo - hoy', avatar: 'a.png' }, finished: true, ending: 'Barovia, libre',
         });
     });
+
+    test('D-J12: el día del gremio suma lo vivido en sus campañas', () => {
+        let hub = withHubCampaign({}, 'strahd', { worldName: 'Strahd · Tessa', day: 12 });
+        hub = withHubCampaign(hub, '1387', { worldName: '1387 · Bram', day: 1 });
+        expect(hub.campaigns.strahd.day).toBe(12);
+        // Ponerla al día sin decir el día no lo borra.
+        expect(withHubCampaign(hub, 'strahd', { finished: true }).campaigns.strahd.day).toBe(12);
+        // Día 3 en el gremio, 11 en Strahd (del 1 al 12) y ninguno en 1387.
+        expect(hubDay({ hub, day: 3 })).toBe(14);
+        expect(hubDay({ hub: null, day: 0 })).toBe(1);
+        expect(readHub({ campaigns: { x: { worldName: 'X', day: 'no' } } }).campaigns.x).not.toHaveProperty('day');
+    });
+
+    test('D-J11: el primero llega con cien de oro; los siguientes, con diez', () => {
+        expect(HUB_START_GOLD).toBe(100);
+        expect(HUB_NEXT_HERO_GOLD).toBe(10);
+    });
 });
 
 describe('el tablón de campañas', () => {
@@ -49,7 +66,7 @@ describe('el tablón de campañas', () => {
     test('dice cómo va cada una y qué botón toca', () => {
         const hub = withHubCampaign({}, '1387', { worldName: '1387 · Tessa' });
         const cards = hubCampaignCards({ worlds, hub, level: 1 });
-        expect(cards[0]).toMatchObject({ state: 'en-curso', action: 'Seguir', levels: 'Para nivel 1 a 4', warn: '' });
+        expect(cards[0]).toMatchObject({ state: 'en-curso', action: 'Seguir', levels: 'Nivel recomendado: 1 a 4', warn: '' });
         expect(cards[1]).toMatchObject({ state: 'nueva', action: 'Empezar' });
         expect(cards[1].warn).toMatch(/nivel 1/);
     });
@@ -57,7 +74,7 @@ describe('el tablón de campañas', () => {
     test('J4.6: avisa si os viene grande o si vais por encima, y qué hacen los enemigos', () => {
         const [small, big] = hubCampaignCards({ worlds, level: 1 });
         expect(small.warn).toBe('');
-        expect(big.warn).toBe('Tu grupo es de nivel 1: te viene grande. Los enemigos aflojan un poco, pero no del todo.');
+        expect(big.warn).toBe('No es para un grupo sin experiencia: empieza en el nivel 2 y tu grupo es de nivel 1. Si vais, los enemigos aflojan un poco, pero no del todo.');
         expect(hubCampaignCards({ worlds, level: 4 }).map(c => c.warn)).toEqual(['', '']);
         expect(hubCampaignCards({ worlds, level: 7 }).map(c => c.warn)).toEqual([
             'Tu grupo es de nivel 7, más de lo que pide: los enemigos aprietan más.',
@@ -66,6 +83,22 @@ describe('el tablón de campañas', () => {
         // Empezada ya no se avisa: eso se dice en la pelea.
         const hub = withHubCampaign({}, '1387', { worldName: '1387 · Tessa' });
         expect(hubCampaignCards({ worlds, hub, level: 7 })[0].warn).toBe('');
+    });
+
+    test('D-J22: el nivel recomendado se ve aparte, y una que empieza en el 10 avisa a un grupo sin experiencia', () => {
+        const high = [{ id: 'dragon', name: 'El Dragón', pack: '/mundos/dragon.pack.json', levels: [10, 14] },
+            { id: 'solo', name: 'Solo', pack: '/mundos/solo.pack.json', levels: [5] },
+            { id: 'sin', name: 'Sin niveles', pack: '/mundos/sin.pack.json' }];
+        const [dragon, solo, sin] = hubCampaignCards({ worlds: high, level: 3 });
+        expect(dragon).toMatchObject({ levels: 'Nivel recomendado: 10 a 14', minLevel: 10, hard: true });
+        expect(dragon.warn).toBe('No es para un grupo sin experiencia: empieza en el nivel 10 y tu grupo es de nivel 3. Si vais, los enemigos aflojan un poco, pero no del todo.');
+        expect(solo).toMatchObject({ levels: 'Nivel recomendado: 5', hard: true });
+        expect(sin).toMatchObject({ levels: '', minLevel: 0, hard: false, warn: '' });
+        // A su nivel, ni aviso ni naranja.
+        expect(hubCampaignCards({ worlds: high, level: 10 })[0]).toMatchObject({ hard: false, warn: '' });
+        // Empezada, el nivel se sigue viendo; el aviso, no: eso se dice en la pelea.
+        const hub = withHubCampaign({}, 'dragon', { worldName: 'El Dragón · Tessa' });
+        expect(hubCampaignCards({ worlds: high, hub, level: 3 })[0]).toMatchObject({ levels: 'Nivel recomendado: 10 a 14', hard: true, warn: '' });
     });
 
     test('el nombre del mundo lleva a quien la juega, y no pisa otro', () => {

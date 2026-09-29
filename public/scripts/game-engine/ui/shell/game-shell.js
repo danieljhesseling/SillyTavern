@@ -19,8 +19,9 @@
 
 import {
     SCENE, SWITCHABLE_SCENES, SCENE_INFO,
-    directScene, isSceneAvailable, describeScene, sceneForShortcut, labelFor,
+    directScene, isSceneAvailable, describeScene, sceneForShortcut, labelFor, continueScene,
 } from './scene-director.js';
+import { cleanNovelCopy, markEngineTags } from './engine-tags.js';
 import { playForScene, stopSceneAudio } from './scene-audio.js';
 import { SHORTCUTS, actionForKey } from './shortcuts.js';
 import { firstArt, isPlainFace, loadPixelManifest, openPack } from '../pixel-art.js';
@@ -83,7 +84,8 @@ import { buildTown, closeTownPlace, countTownPlaces, renderTownScene, renderTown
  * @property {() => void} onObjectives
  * @property {() => import('./clock-widget.js').ClockView} [getClock] El dia y lo que deja hacer.
  * @property {(action: 'slot'|'day'|'short'|'long') => void} [onClock] Pasar el tiempo o descansar.
- * @property {() => import('./action-chips.js').ActionChip[]} [getChips] Lo que se puede hacer sin escribirlo.
+ * @property {(limit?: number) => import('./action-chips.js').ActionChip[]} [getChips] Lo que se puede hacer sin
+ *   escribirlo; con `limit`, cuántas caben (`Infinity`, todas).
  * @property {(chip: import('./action-chips.js').ActionChip) => void} [onChip]
  * @property {(memberId: string) => void} [onCompanion] Abrir la ficha de un companero.
  * @property {() => void} [onNewCampaign] Empezar una partida desde el menu principal.
@@ -199,6 +201,20 @@ let headWatcher = null;
  * @type {'menu'|'load'}
  */
 let titleView = 'menu';
+/**
+ * J18.7 y J18.8: si la partida abierta es sin conexión (el gremio y sus campañas). Entonces no
+ * hay caja de escribir, ni pestañas de escena, ni la X: la escena cambia por lo que se hace y
+ * se sale desde la pausa. Lo dice la situación en cada redibujo.
+ */
+let offline = false;
+/**
+ * Mira el chat mientras el juego está abierto: sin conexión, una línea nueva es algo que leer,
+ * y la pantalla tiene que enterarse aunque quien la cuenta no avise al Modo Juego.
+ * @type {MutationObserver|null}
+ */
+let chatWatcher = null;
+/** @type {ReturnType<typeof setTimeout>|null} */
+let chatRedraw = null;
 
 /** @returns {boolean} */
 export function isShellOpen() {
@@ -289,6 +305,9 @@ function scrollChatDown() {
  */
 function renderSwitcher(bar, situation, current) {
     bar.textContent = '';
+    // J18.8: sin conexión no hay pestañas. Se pasa a otra escena haciendo algo: entrar en un
+    // tablero, empezar una pelea, «Continuar» al acabar de leer.
+    if (offline) return;
     for (const scene of SWITCHABLE_SCENES) {
         const info = SCENE_INFO[scene];
         const button = makeButton('gs-scene-btn');
@@ -442,7 +461,8 @@ function renderSavedGames(menu, games) {
         actions.appendChild(play);
         if (game.canDelete && options?.onDeleteGame) {
             const bin = makeButton('gs-save-delete');
-            bin.title = 'Borrar esta partida';
+            // D-J23: un gremio se borra entero, con sus campañas; la ventana de antes lo dice todo.
+            bin.title = game.kind === 'gremio' ? 'Borrar este gremio, con sus campañas' : 'Borrar esta partida';
             bin.dataset.world = game.id;
             bin.appendChild(el('i', 'fa-solid fa-trash'));
             bin.addEventListener('click', (event) => {
@@ -621,20 +641,41 @@ function toggleManeuvers(footer, maneuvers) {
  * una puerta gasta — puede despertar una sala —, y por eso es un boton; la de hablar solo
  * deja el texto empezado en el chat, porque lo que se diga lo decide quien juega.
  *
+ * Sin conexión (J18.7, J18.8) no sale «Al narrador», que es escribirle al modelo; y en la novela
+ * va delante «Continuar», que lleva a donde se esté al acabar de leer. La misma fila va al pie
+ * del pueblo y del tablero, sin lo que esas pantallas ya tienen a la vista (`skip`).
+ *
  * @param {HTMLElement} row
+ * @param {{next?: SceneName|null, situation?: GameSituation, skip?: (chip: import('./action-chips.js').ActionChip) => boolean}} [place]
+ *   `next`: a dónde lleva «Continuar», si se ofrece.
  */
-function renderActionChips(row) {
+function renderActionChips(row, place = {}) {
     if (!options?.getChips) {
         row.textContent = '';
         return;
     }
 
-    const chips = options.getChips();
+    const chips = options.getChips().filter(chip => !place.skip?.(chip));
     const checks = options?.getChecks?.() ?? [];
-    // «Al narrador», fuera de combate: en combate manda la barra de combate.
-    const narrator = Boolean(options?.onAskNarrator) && options?.canAskNarrator?.() !== false;
+    // «Al narrador», fuera de combate: en combate manda la barra de combate. Sin conexión, nunca.
+    const narrator = !offline && Boolean(options?.onAskNarrator) && options?.canAskNarrator?.() !== false;
+    const next = place.next ?? null;
     row.textContent = '';
-    row.classList.toggle('gs-chips-empty', chips.length === 0 && checks.length === 0 && !narrator);
+    row.classList.toggle('gs-chips-empty', chips.length === 0 && checks.length === 0 && !narrator && !next);
+
+    // J18.8: después de leer, seguir. Lo primero de la fila, en dorado: en el móvil la fila se
+    // desliza y lo del final no se ve.
+    if (next) {
+        const go = makeButton('gs-chip-action gs-chip-motor gs-chip-continue');
+        go.dataset.next = next;
+        const board = String(place.situation?.boardName || '');
+        const here = String(place.situation?.locationName || '');
+        go.title = next === SCENE.COMBAT ? `Volver al tablero${board ? `: ${board}` : ''}` : `Seguir en ${here || 'el mapa'}`;
+        go.appendChild(el('span', 'gs-chip-action-label', 'Continuar'));
+        go.appendChild(el('i', 'fa-solid fa-arrow-right'));
+        go.addEventListener('click', () => setScene(next));
+        row.appendChild(go);
+    }
 
     for (const chip of chips) {
         const button = makeButton(`gs-chip-action gs-chip-${chip.source}`);
@@ -815,6 +856,9 @@ function renderClock(clock) {
     clock.textContent = '';
     clock.appendChild(el('span', 'gs-clock-label', view.label));
 
+    // J18.9: sin conexión, descansar y pasar el tiempo son cosas que se hacen en un sitio (dormir
+    // en la posada, acampar fuera), no botones de la cabecera: el reloj solo dice el día.
+    if (offline) return;
     for (const action of view.actions) {
         const button = makeButton('gs-clock-btn');
         button.title = action.why;
@@ -1076,9 +1120,30 @@ function renderNovel(scene, view, place = '') {
         if (messages[i].getAttribute('is_user') === 'true') break;
         start = i;
     }
-    const said = (/** @type {Element} */ node) => (node.querySelector('.mes_text')?.textContent || '').trim().length > 0;
-    let lines = messages.slice(start).filter(said).slice(-NOVEL_LINES);
-    if (lines.length === 0) lines = messages.filter(m => m.getAttribute('is_user') !== 'true' && said(m)).slice(-1);
+    // J18.10: lo que se lee es la copia del mensaje sin las etiquetas del motor («[HILO] Hecho:
+    // …», «🗣️ [DUELO]»): solo la prosa. Un mensaje que era solo etiqueta no ocupa sitio.
+    /** @type {Map<Element, Element>} */
+    const copies = new Map();
+    const said = (/** @type {Element} */ node) => {
+        const body = node.querySelector('.mes_text');
+        if (!body || !(body.textContent || '').trim()) return false;
+        const copy = /** @type {Element} */ (body.cloneNode(true));
+        if (!cleanNovelCopy(copy)) return false;
+        copies.set(node, copy);
+        return true;
+    };
+    // De atrás adelante, hasta tener las que caben: sin conexión no hay mensajes tuyos, y leer el
+    // chat entero en cada redibujo era copiar cien mensajes para enseñar cuatro.
+    const lastSaid = (/** @type {Element[]} */ list, /** @type {number} */ count) => {
+        /** @type {Element[]} */
+        const found = [];
+        for (let i = list.length - 1; i >= 0 && found.length < count; i--) {
+            if (said(list[i])) found.unshift(list[i]);
+        }
+        return found;
+    };
+    let lines = lastSaid(messages.slice(start), NOVEL_LINES);
+    if (lines.length === 0) lines = lastSaid(messages.filter(m => m.getAttribute('is_user') !== 'true'), 1);
 
     const text = /** @type {HTMLElement} */ (scene.querySelector('.gs-vn-text'));
     text.textContent = '';
@@ -1093,8 +1158,8 @@ function renderNovel(scene, view, place = '') {
         const block = el('div', `gs-vn-line${system ? ' gs-vn-note' : ''}`);
         // Cuando en la caja habla más de uno, cada frase dice de quién es.
         if (!system && who && who !== speakerName) block.appendChild(el('span', 'gs-vn-who', who));
-        const body = line.querySelector('.mes_text');
-        if (body) block.appendChild(body.cloneNode(true));
+        const body = copies.get(line);
+        if (body) block.appendChild(body);
         // Lo nuevo aparece con la velocidad de las opciones (J0.4), una frase tras otra.
         if (!novelShown.has(keyOf(line))) {
             block.classList.add('gs-vn-new');
@@ -1419,6 +1484,103 @@ function exploreCard(className, icon, name, nameClass, notes) {
 }
 
 /**
+ * J18.9: sin conexión, descansar y pasar el tiempo se hacen en un sitio, no desde la cabecera.
+ * En la posada, además de dormir (la sala común o una habitación, que ya ofrecía), «Pasar el
+ * rato»; donde no hay posada, una tarjeta «Descansar» con el descanso corto y, si se puede,
+ * acampar. Son los descansos de siempre (`onClock` y la ficha de acampar): solo cambia dónde
+ * se ofrecen. Con conexión, las tarjetas quedan como estaban.
+ *
+ * @param {Array<{id: string, label: string, icon: string, actions: Array<any>}>} cards
+ * @returns {Array<{id: string, label: string, icon: string, actions: Array<any>}>}
+ */
+function withPlaceRest(cards) {
+    if (!offline) return cards;
+    const clock = options?.getClock?.()?.actions ?? [];
+    /** @param {string} id @param {string} label */
+    const timed = (id, label) => {
+        const action = clock.find(a => a.id === id);
+        return action ? { id: `clock:${id}`, label, detail: action.why, enabled: action.enabled, cost: 0 } : null;
+    };
+    const inn = cards.find(card => card.id === 'posada');
+    if (inn) {
+        const idle = timed('slot', 'Pasar el rato');
+        return idle ? cards.map(card => (card === inn ? { ...card, actions: [...card.actions, idle] } : card)) : cards;
+    }
+    // Fuera, acampar es la noche entera (la ficha de siempre: el fuego, las guardias, la cena).
+    const camp = (options?.getChips?.(Infinity) ?? []).find(chip => chip.id === 'camp');
+    const acts = [
+        timed('short', 'Descanso corto'),
+        camp ? { id: 'chip:camp', label: camp.label, detail: 'El fuego, las guardias y la cena; luego se duerme la noche entera (descanso largo).', enabled: true, cost: 0 } : null,
+    ].filter(Boolean);
+    return acts.length > 0 ? [...cards, { id: 'descanso', label: 'Descansar', icon: 'fa-campground', actions: acts }] : cards;
+}
+
+/**
+ * Lo que hace un botón de un sitio: un servicio, o (J18.9) pasar el tiempo o una ficha.
+ *
+ * @param {string} id
+ */
+function runPlaceAction(id) {
+    if (id.startsWith('clock:')) {
+        options?.onClock?.(/** @type {'slot'|'day'|'short'|'long'} */ (id.slice('clock:'.length)));
+        return;
+    }
+    if (id.startsWith('chip:')) {
+        const chip = (options?.getChips?.(Infinity) ?? []).find(c => c.id === id.slice('chip:'.length));
+        if (chip) options?.onChip?.(chip);
+        return;
+    }
+    options?.onService?.(id);
+}
+
+/**
+ * La fila de fichas al pie del pueblo o del tablero (J18.8): sin pestañas, lo que no tiene su
+ * botón en esa pantalla tiene que poder hacerse desde ella.
+ *
+ * @param {HTMLElement} footer
+ * @param {(chip: import('./action-chips.js').ActionChip) => boolean} skip Lo que esa pantalla ya enseña.
+ */
+function renderFooterChips(footer, skip) {
+    const row = el('div', 'gs-chips gs-chips-foot');
+    footer.appendChild(row);
+    renderActionChips(row, { skip });
+    if (row.classList.contains('gs-chips-empty')) row.remove();
+}
+
+/**
+ * La marca de la última línea que se cuenta, para el director (J18.8): cambia cuando llega
+ * algo nuevo que leer. Las notas pequeñas del motor (un golpe, la comida, el descanso) no
+ * cuentan, ni lo que se dice en una charla, que ya se lee en su ventana.
+ *
+ * @returns {string}
+ */
+function storyMark() {
+    const messages = document.querySelectorAll('#chat .mes:not([is_user="true"])');
+    for (let i = messages.length - 1; i >= 0; i--) {
+        const node = messages[i];
+        if (node.getAttribute('is_system') === 'true' && node.classList.contains('smallSysMes')) continue;
+        const said = (node.querySelector('.mes_text')?.textContent || '').trim();
+        if (!said || /^\S{0,3}\s*\[GENTE\]/u.test(said)) continue;
+        return `${node.getAttribute('mesid')}:${said.slice(0, 48)}`;
+    }
+    return '';
+}
+
+/**
+ * J18.10: en el registro, las etiquetas del motor envueltas para que el Modo Juego las esconda
+ * sin conexión. Solo lo último (lo de antes ya se miró) y solo lo que ha cambiado.
+ */
+function tagLog() {
+    const bodies = [...document.querySelectorAll('#chat .mes .mes_text')].slice(-40);
+    for (const body of bodies) {
+        const size = String((body.textContent || '').length);
+        if (/** @type {HTMLElement} */ (body).dataset.gsTags === size) continue;
+        markEngineTags(body);
+        /** @type {HTMLElement} */ (body).dataset.gsTags = size;
+    }
+}
+
+/**
  * La Exploración, a pantalla entera (Gem director de UX, 2026-09-27): sin el tablero, que
  * aquí no pinta nada, y con lo que se puede hacer en tres columnas en vez de una lista
  * infinita. Arriba el sitio y a qué huele; debajo, lo de aquí mismo (por edificios), los
@@ -1440,7 +1602,7 @@ function renderExploration(panel, view) {
 
     // J3.11: la pantalla del pueblo. Dentro de un sitio (la herrería, la posada), su escena y
     // nada más; fuera, el selector de sitios encima de los tableros y el viaje.
-    const allCards = options?.getServices?.() ?? [];
+    const allCards = withPlaceRest(options?.getServices?.() ?? []);
     const townCtx = {
         here: view.here,
         hero: String(view.party?.[0]?.name ?? ''),
@@ -1448,7 +1610,7 @@ function renderExploration(panel, view) {
         cards: allCards,
         chips: options?.getChips?.() ?? [],
         data: options?.getTown?.() ?? null,
-        onService: (/** @type {string} */ id) => options?.onService?.(id),
+        onService: (/** @type {string} */ id) => runPlaceAction(id),
         onChip: (/** @type {any} */ chip) => options?.onChip?.(chip),
         refresh: () => refreshGameShell(),
     };
@@ -1500,7 +1662,7 @@ function renderExploration(panel, view) {
             if (priced) button.appendChild(el('span', 'gs-btn-cost', `${action.cost} oro`));
             button.title = action.detail;
             button.disabled = !action.enabled;
-            button.addEventListener('click', () => options?.onService?.(action.id));
+            button.addEventListener('click', () => runPlaceAction(action.id));
             list.appendChild(button);
         }
         box.appendChild(list);
@@ -1568,11 +1730,17 @@ export function refreshGameShell() {
     if (!isShellOpen() || !root || !options) return;
 
     const engine = options.getSituation();
+    // J18.7 y J18.8: una partida sin conexión se juega sin caja de escribir y sin pestañas; lo
+    // que se cuenta de nuevo lleva a la novela (`story`).
+    offline = Boolean(engine?.hasChat && engine.offline);
+    root.classList.toggle('gs-offline', offline);
+    const told = offline ? { story: storyMark() } : {};
+    if (offline) tagLog();
     // J3.11: los sitios del pueblo, que el juego no cuenta: con ellos se puede explorar aunque
     // el mundo tenga una sola localización (el gremio). En pelea no hacen falta.
     const situation = engine?.hasChat && !engine.combatActive && engine.locationName
-        ? { ...engine, townPlaces: countTownPlaces(String(engine.locationName), options.getTown?.() ?? null, () => { if (isShellOpen()) refreshGameShell(); }) }
-        : engine;
+        ? { ...engine, ...told, townPlaces: countTownPlaces(String(engine.locationName), options.getTown?.() ?? null, () => { if (isShellOpen()) refreshGameShell(); }) }
+        : { ...engine, ...told };
     // The director decides from what *changed*, not only from what is. What it decides
     // becomes the standing pick, so the screen does not snap back on the next redraw.
     const choice = directScene(lastSituation, situation, manualScene);
@@ -1627,15 +1795,33 @@ export function refreshGameShell() {
 
     renderClock(/** @type {HTMLElement} */ (root.querySelector('.gs-clock')));
     renderFocus(/** @type {HTMLElement} */ (root.querySelector('.gs-focus')), /** @type {HTMLElement|null} */ (root.querySelector('.gs-tools')));
-    renderActionChips(/** @type {HTMLElement} */ (root.querySelector('.gs-chips')));
+    // J18.8: sin conexión, en la novela, «Continuar» lleva a donde se esté al acabar de leer.
+    renderActionChips(/** @type {HTMLElement} */ (root.querySelector('.gs-vn-box > .gs-chips')), {
+        next: offline && scene === SCENE.DIALOGUE ? continueScene(situation) : null,
+        situation,
+    });
+    const log = root.querySelector('.gs-vn-log-btn');
+    if (log instanceof HTMLElement) log.title = offline ? 'Todo lo dicho hasta ahora' : 'Todo lo dicho hasta ahora, y la caja para escribir';
 
     renderSwitcher(/** @type {HTMLElement} */ (root.querySelector('.gs-scenes')), situation, scene);
     const actions = /** @type {HTMLElement} */ (root.querySelector('.gs-actions'));
-    if (scene === SCENE.COMBAT) {
+    if (scene === SCENE.COMBAT && offline && !bar.active) {
+        // J18.8: en el tablero sin pelea, lo que se puede hacer, al pie. Salir y empezar la pelea
+        // tienen su botón en el propio tablero.
+        actions.textContent = '';
+        renderFooterChips(actions, chip => chip.id === 'leave' || chip.id === 'fight-board');
+        if (actions.childElementCount === 0) renderActionBar(actions, bar);
+    } else if (scene === SCENE.COMBAT) {
         renderActionBar(actions, bar);
     } else if (scene === SCENE.EXPLORATION) {
         // De viaje, lo que hace falta abajo es saber como llega el grupo.
         actions.textContent = '';
+        // J18.8: y sin conexión, lo que se puede hacer aquí, menos lo que ya está en pantalla:
+        // entrar en un tablero, viajar y (sin posada) descansar, que tienen sus tarjetas.
+        if (offline) {
+            const inn = (options.getServices?.() ?? []).some(card => card.id === 'posada');
+            renderFooterChips(actions, chip => /^(enter|go):/.test(chip.id) || (!inn && (chip.id === 'camp' || chip.id === 'rest:corto')));
+        }
         const strip = el('div', 'gs-party-strip');
         actions.appendChild(strip);
         renderChips(strip, options.getExploration().party);
@@ -1686,7 +1872,8 @@ function handleKey(event) {
     // Con el menu de pausa delante, las teclas de escena son suyas, no de la partida.
     if (paused) return;
 
-    const scene = sceneForShortcut(event.key);
+    // J18.8: sin conexión, 1, 2 y 3 no saltan de escena: se pasa haciendo algo.
+    const scene = offline ? null : sceneForShortcut(event.key);
     if (scene) {
         event.preventDefault();
         setScene(scene);
@@ -1716,7 +1903,8 @@ function toggleKeySheet() {
     }
     const sheet = el('div', 'gs-keys');
     sheet.appendChild(el('div', 'gs-keys-title', 'Atajos de teclado'));
-    for (const shortcut of SHORTCUTS) {
+    // Sin conexión no hay teclas de escena (J18.8): la chuleta no las promete.
+    for (const shortcut of SHORTCUTS.filter(s => !(offline && s.action.startsWith('scene:')))) {
         const row = el('div', 'gs-keys-row');
         row.appendChild(el('kbd', '', shortcut.key));
         row.appendChild(el('span', '', shortcut.label));
@@ -1843,6 +2031,20 @@ export function openGameShell(shellOptions) {
     options.renderStage();
     scrollChatDown();
 
+    // J18.8: sin conexión, una línea nueva en el chat es algo que leer, y la pantalla se entera
+    // aunque quien la cuenta no avise al Modo Juego. Una vez por tanda de mensajes.
+    const chatList = document.querySelector('#chat');
+    if (chatList && typeof MutationObserver === 'function') {
+        chatWatcher = new MutationObserver(() => {
+            if (!offline || chatRedraw) return;
+            chatRedraw = setTimeout(() => {
+                chatRedraw = null;
+                if (isShellOpen()) refreshGameShell();
+            }, 60);
+        });
+        chatWatcher.observe(chatList, { childList: true });
+    }
+
     keyHandler = handleKey;
     document.addEventListener('keydown', keyHandler);
 
@@ -1861,6 +2063,11 @@ export function closeGameShell() {
 
     setPaused(false);
     stopSceneAudio();
+    chatWatcher?.disconnect();
+    chatWatcher = null;
+    if (chatRedraw) clearTimeout(chatRedraw);
+    chatRedraw = null;
+    offline = false;
     releaseAll();
 
     if (keyHandler) {

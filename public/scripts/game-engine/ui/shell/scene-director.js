@@ -36,6 +36,12 @@ import { holdDuringCombat } from '../../combat/combat-hold.js';
  * @property {number} [townPlaces] Cuántos sitios tiene el pueblo donde está el grupo (la
  *           herrería, la posada, el gremio…): con alguno, aunque no haya a donde viajar, hay
  *           a donde ir (J3.11).
+ * @property {boolean} [offline] J18.8: una partida sin conexión (el gremio y sus campañas). Sin
+ *           pestañas: la escena cambia solo por lo que pasa.
+ * @property {string} [chatId] El chat abierto. Sin conexión, pasar a otro (del gremio a una
+ *           campaña) es abrir partida.
+ * @property {string} [story] La marca de la última línea que se cuenta (no las notas pequeñas
+ *           del motor). Sin conexión, que cambie es que hay algo nuevo que leer.
  */
 
 /**
@@ -227,7 +233,7 @@ export function sceneTransition(before, after) {
  * conversation, because what comes next is the epilogue and the epilogue is narration.
  * So the transitions are named, one by one, instead of derived.
  *
- * @typedef {'game_opened'|'combat_started'|'combat_ended'|'board_opened'|'board_closed'} SceneEvent
+ * @typedef {'game_opened'|'combat_started'|'combat_ended'|'board_opened'|'board_closed'|'story_told'} SceneEvent
  */
 
 /** What each event means, for the tooltip and for the tests. */
@@ -237,6 +243,7 @@ const EVENT_REASONS = {
     combat_ended: 'termina el combate',
     board_opened: 'se ha abierto un tablero',
     board_closed: 'se ha salido del tablero',
+    story_told: 'hay algo nuevo que leer',
 };
 
 /**
@@ -258,9 +265,18 @@ export function detectSceneEvent(before, after) {
     // la película por la mitad (Gem director de UX, 2026-09-27). Cerrarla no es un suceso:
     // sin partida, el título lo decide solo.
     if (!before.hasChat) return 'game_opened';
+    // J18.8: sin conexión, pasar a otro chat (del gremio a una campaña, o de vuelta) también es
+    // abrir partida, aunque entre medias no se haya visto el título.
+    const chatOf = (/** @type {GameSituation} */ s) => String(s.chatId ?? '').trim();
+    if (after.offline && chatOf(before) && chatOf(after) && chatOf(before) !== chatOf(after)) return 'game_opened';
 
     if (!before.combatActive && after.combatActive) return 'combat_started';
     if (before.combatActive && !after.combatActive) return 'combat_ended';
+
+    // J18.8: sin conexión, lo nuevo que se cuenta se lee en la novela, también si llega al entrar
+    // en un tablero o al salir de él: se lee y «Continuar» lleva a donde se esté. En una pelea,
+    // no: la pelea no se deja a medias para leer.
+    if (after.offline && !after.combatActive && after.story && after.story !== before.story) return 'story_told';
 
     const had = Boolean(before.boardName);
     const has = Boolean(after.boardName);
@@ -290,6 +306,7 @@ function sceneForEvent(event, situation) {
         case 'board_opened':
             return SCENE.COMBAT;
         case 'combat_ended':
+        case 'story_told':
             // The epilogue is narration, and narration belongs in the conversation.
             return SCENE.DIALOGUE;
         case 'board_closed':
@@ -331,4 +348,19 @@ export function directScene(previous, situation, manual = null) {
 
     const choice = chooseScene(situation, manual);
     return { ...choice, override: choice.manualHeld ? manual : null, event: null };
+}
+
+/**
+ * J18.8: a dónde lleva «Continuar» después de leer. A donde se está: al tablero si se está en
+ * uno (o hay pelea), y si no, al pueblo o al mapa, si hay a donde ir. Sin nada de eso, la
+ * conversación es la casa y no hay a donde continuar.
+ *
+ * @param {GameSituation} situation
+ * @returns {SceneName|null}
+ */
+export function continueScene(situation) {
+    const state = situation || {};
+    if (!state.hasChat) return null;
+    if (state.combatActive || state.boardName) return SCENE.COMBAT;
+    return isSceneAvailable(SCENE.EXPLORATION, state) ? SCENE.EXPLORATION : null;
 }

@@ -20,8 +20,10 @@
 import {
     DEFAULT_RACES, DEFAULT_CLASSES, GENDERS, validateHero, describeHero, buildHeroPrompt, cleanHeroAbout, classIcon,
     STAT_KEYS, SPREAD_POINTS, SPREAD_MAX, readStatBonus, spreadLeft, rollStatBonus,
+    TEXT_FORMS, needsTextForm, heroGender, textFormLine,
 } from '../campaign/hero.js';
 import { BACKGROUNDS, guessBackground } from '../campaign/backgrounds.js';
+import { heroNameTaken, nameTakenLine } from '../campaign/hub-heroes.js';
 import { resolveGender } from '../campaign/grammar.js';
 import { SKILLS } from '../rules/checks.js';
 import { firstArt, loadPixelManifest } from './pixel-art.js';
@@ -125,6 +127,8 @@ function readOption(value) {
  * @param {() => number} [input.random] Para los dados de las tarjetas.
  * @param {(() => Record<string, number>)|null} [input.rollStats] Tirar los atributos, con la
  *        semilla de la partida (J1.2). Sin esto se tira con `random`.
+ * @param {string[]} [input.takenNames] D-J14: los nombres que ya tiene el gremio. Con uno de
+ *        esos (sin mirar tildes ni mayúsculas) no se entra: se dice y se pide otro.
  * @param {any} input.Popup
  * @param {any} input.POPUP_TYPE
  * @returns {Promise<any|null>}
@@ -132,6 +136,7 @@ function readOption(value) {
 export async function openHeroCreator({
     worldName = '', races = [], classes = [], genre = '', premise = '',
     generate = null, uploadFace = null, rollName = null, preview = null, random = Math.random, rollStats = null,
+    takenNames = [],
     Popup, POPUP_TYPE,
 }) {
     // Los dibujos en pixel: el índice se lee una vez. Sin él, los iconos de siempre.
@@ -149,7 +154,8 @@ export async function openHeroCreator({
         icon: /** @type {any} */ (BACKGROUND_ICONS)[id] ?? 'fa-scroll',
     }));
 
-    const state = { name: '', gender: '', race: '', className: '', background: '', about: '', image: '' };
+    // `textForm`: cómo le habla el texto a quien es no binario, `m` o `f` (D-J15).
+    const state = { name: '', gender: '', textForm: '', race: '', className: '', background: '', about: '', image: '' };
     // J1.2: repartir unos puntos o tirar, a elegir. Lo que se suma a la base.
     /** @type {Record<string, number>} */
     let statBonus = readStatBonus({});
@@ -275,7 +281,7 @@ export async function openHeroCreator({
 
     // J1.4: el guion puede traer «si subes {entero|entera}»; se lee con lo que elijas abajo.
     const premiseText = $('<div class="hc-premise-text"></div>');
-    const showPremise = () => premiseText.text(resolveGender(text(premise), { heroe: state.gender }));
+    const showPremise = () => premiseText.text(resolveGender(text(premise), { heroe: heroGender(state.gender, state.textForm) }));
     if (text(premise)) {
         showPremise();
         left.append($('<div class="hc-premise"></div>')
@@ -309,9 +315,11 @@ export async function openHeroCreator({
 
     const nameInput = $('<input type="text" class="text_pole hc-input hc-name" maxlength="60" />')
         .attr('placeholder', 'Lyra, Brand, la que no dice su nombre…');
+    // D-J14: en un gremio no hay dos con el mismo nombre. Se dice debajo mientras se escribe.
+    const nameTaken = $('<div class="hc-warning hc-name-taken" role="status"></div>').hide();
     idBox.append($('<label class="hc-group"></label>')
         .append($('<span class="hc-card-label"></span>').text('Nombre'))
-        .append(nameInput));
+        .append(nameInput), nameTaken);
 
     // Sugerencias: dos nombres del compendio y un dado que trae otros dos. Quedarse en
     // blanco delante del primer campo es donde mucha gente cierra la ventana.
@@ -336,22 +344,46 @@ export async function openHeroCreator({
         fill();
     }
 
-    // Cómo te presentas: decide si el texto dice «cansado» o «cansada».
+    // Cómo te presentas. D-J15: como en D&D, no cambia ninguna regla; decide cómo te habla el
+    // texto, «cansado» o «cansada». Quien es no binario lo elige justo debajo.
     const genders = $('<div class="hc-genders"></div>');
+    const forms = $('<div class="hc-genders hc-text-forms"></div>');
+    const formGroup = $('<div class="hc-group hc-text-form"></div>')
+        .append($('<span class="hc-card-label"></span>').text('¿Cómo te habla el texto?'))
+        .append(forms)
+        .hide();
+    const noRules = 'Como en D&D, no cambia ninguna regla.';
+    const genderNote = $('<p class="hc-gender-note"></p>').text(`${textFormLine('')} ${noRules}`);
+    const showGender = () => {
+        genders.find('.hc-gender').each(function () { $(this).toggleClass('is-on', $(this).attr('data-value') === state.gender); });
+        forms.find('.hc-gender').each(function () { $(this).toggleClass('is-on', $(this).attr('data-form') === state.textForm); });
+        const asking = needsTextForm(state.gender);
+        formGroup.toggle(asking);
+        genderNote.text(asking && !state.textForm
+            ? `Elige cómo quieres que te hable el texto. ${noRules}`
+            : `${textFormLine(heroGender(state.gender, state.textForm))} ${noRules}`);
+        showPremise();
+        showPortrait();
+    };
     for (const gender of GENDERS) {
         genders.append($('<button type="button" class="hc-gender"></button>').attr('data-value', gender).text(gender)
-            .on('click', function () {
-                const again = state.gender === gender;
-                state.gender = again ? '' : gender;
-                genders.find('.hc-gender').removeClass('is-on');
-                if (!again) $(this).addClass('is-on');
-                showPremise();
-                showPortrait();
+            .on('click', () => {
+                state.gender = state.gender === gender ? '' : gender;
+                if (!needsTextForm(state.gender)) state.textForm = '';
+                showGender();
+            }));
+    }
+    for (const form of TEXT_FORMS) {
+        forms.append($('<button type="button" class="hc-gender"></button>').attr('data-form', form.id).text(form.label)
+            .attr('title', form.example)
+            .on('click', () => {
+                state.textForm = form.id;
+                showGender();
             }));
     }
     idBox.append($('<div class="hc-group"></div>')
         .append($('<span class="hc-card-label"></span>').text('Cómo te presentas'))
-        .append(genders));
+        .append(genders), formGroup, genderNote);
 
     const aboutInput = $('<textarea class="text_pole hc-input hc-about" rows="4" maxlength="600"></textarea>')
         .attr('placeholder', 'De dónde vienes, qué se te da bien, qué callas.');
@@ -374,7 +406,8 @@ export async function openHeroCreator({
     function answers() {
         return {
             name: text(nameInput.val()),
-            gender: state.gender,
+            // D-J15: con cómo le habla el texto detrás, si es no binario.
+            gender: heroGender(state.gender, state.textForm),
             race: state.race,
             className: state.className,
             about: text(aboutInput.val()),
@@ -465,7 +498,9 @@ export async function openHeroCreator({
 
     function refresh() {
         const now = answers();
-        enter.prop('disabled', !(now.name && now.className));
+        const clash = heroNameTaken(now.name, takenNames);
+        nameTaken.text(clash ? nameTakenLine(clash) : '').toggle(Boolean(clash));
+        enter.prop('disabled', !(now.name && now.className) || Boolean(clash));
         showPortrait();
 
         const numbers = (now.className || now.race) && preview ? preview(now) : null;
@@ -521,7 +556,7 @@ export async function openHeroCreator({
         wand.prop('disabled', true).addClass('is-busy');
         try {
             const { systemPrompt, prompt } = buildHeroPrompt({ ...answers(), about: text(aboutInput.val()) },
-                { worldName, genre, premise: resolveGender(premise, { heroe: state.gender }) });
+                { worldName, genre, premise: resolveGender(premise, { heroe: heroGender(state.gender, state.textForm) }) });
             const answer = await generate({ prompt, systemPrompt, responseLength: 300 });
             const written = cleanHeroAbout(String(answer ?? ''));
             if (written) aboutInput.val(written).trigger('change');
@@ -540,6 +575,9 @@ export async function openHeroCreator({
     enter.on('click', () => {
         const problems = validateHero(answers());
         if (!state.className) problems.push('Elige una clase: es lo que sabes hacer.');
+        if (needsTextForm(state.gender) && !state.textForm) problems.push('Elige cómo te habla el texto: en masculino o en femenino.');
+        const clash = heroNameTaken(answers().name, takenNames);
+        if (clash) problems.push(nameTakenLine(clash));
         if (problems.length > 0) {
             warning.text(problems.join(' ')).show();
             return;

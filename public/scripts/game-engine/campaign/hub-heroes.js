@@ -17,9 +17,20 @@
  */
 
 import { classIcon } from './hero.js';
+import { addScar } from './feats.js';
+import { listNames } from './engine-narrator.js';
+import { healInjuries, readInjuries } from '../rules/injuries.js';
+import { planLongRest, getHitDice } from '../rules/rest.js';
+import { readNeeds } from '../rules/needs.js';
 
 /** En los metadatos del mundo del gremio: los tuyos que se quedan en él. */
 export const HUB_HEROES_KEY = 'hubHeroes';
+
+/**
+ * D-J12: cuántas noches de descanso se cuentan como mucho. Con más, ya no queda nada que
+ * curar con dormir: lo que falte es para siempre.
+ */
+const MAX_NIGHTS = 60;
 
 /** La cara que pone SillyTavern a quien no tiene una: esa no se enseña. */
 const DEFAULT_FACE = 'img/user-default.png';
@@ -87,16 +98,140 @@ export function restingUids(raw) {
  * El que se queda entra tal cual está: con su vida, su nivel y lo que lleva. El que ha caído
  * no: los muertos no vuelven.
  *
+ * D-J12: con `day` (el del gremio, `hubDay`), se apunta desde cuándo descansa, para que al
+ * volver al grupo se cure lo que da el tiempo (`wakeFromRest`).
+ *
  * @param {any} raw
- * @param {{add?: any, remove?: string|number}} change
+ * @param {{add?: any, remove?: string|number, day?: number}} change
  * @returns {any[]}
  */
-export function withResting(raw, { add = null, remove = '' } = {}) {
+export function withResting(raw, { add = null, remove = '', day = NaN } = {}) {
     const gone = text(remove);
     const list = readRestingHeroes(raw).filter(hero => !gone || String(hero.id) !== gone);
     if (!isOwnHero(add) || add.dead || add.id == null) return list;
     const kept = clone(add);
+    const since = Math.floor(Number(day));
+    if (Number.isFinite(since) && since >= 0) kept.restDay = since;
     return [...list.filter(hero => String(hero.id) !== String(kept.id)), kept];
+}
+
+/**
+ * D-J12: el que vuelve al grupo después de descansar en el gremio, curado por los días que han
+ * pasado, con las reglas de siempre:
+ *
+ * - **Las heridas** cuentan los días, como en campaña (`healInjuries`): las que curan se van y
+ *   dejan su cicatriz; las permanentes se quedan.
+ * - **Cada noche es un descanso largo** (`planLongRest`): la primera le pone en pie, y le va
+ *   devolviendo los dados de golpe; sus conjuros y habilidades, como tras dormir.
+ * - **Come, bebe y duerme** en el gremio: vuelve sin hambre, sin sed y sin sueño.
+ *
+ * Sin la marca de desde cuándo descansa (un gremio de antes de esto), no se cura nada.
+ *
+ * @param {any} hero Tal cual se quedó en el gremio.
+ * @param {{day: number}} input El día del gremio de ahora (`hubDay`).
+ * @returns {{hero: any, days: number, line: string}} Quien vuelve, los días que descansó y lo
+ *   que se cuenta (vacío si no pasó ninguno).
+ */
+export function wakeFromRest(hero, { day }) {
+    const woke = clone(hero ?? {});
+    const since = Math.floor(Number(woke.restDay));
+    delete woke.restDay;
+    const now = Math.floor(Number(day));
+    const days = Number.isFinite(since) && Number.isFinite(now) ? Math.max(0, now - since) : 0;
+    if (days === 0 || woke.dead) return { hero: woke, days: 0, line: '' };
+
+    /** @type {string[]} */
+    const healed = [];
+    if (readInjuries(woke).length > 0) {
+        const patch = healInjuries(woke, days);
+        woke.injuries = patch.injuries;
+        woke.baseStats = patch.baseStats;
+        Object.assign(woke, patch.stats);
+        for (const injury of patch.healed) {
+            healed.push(text(injury.label).toLowerCase());
+            woke.scars = addScar(woke, injury.label);
+        }
+    }
+
+    const hpBefore = Math.max(0, Number(woke.hp) || 0);
+    for (let night = 0; night < Math.min(days, MAX_NIGHTS); night++) {
+        const [entry] = planLongRest({ party: [woke] }).entries;
+        if (!entry) break;
+        const dice = getHitDice(woke);
+        woke.hp = entry.hpAfter;
+        woke.hitDiceSpent = Math.max(0, dice.spent - entry.diceRegained);
+        if (entry.hpAfter >= (Number(woke.maxHp) || 0) && woke.hitDiceSpent === 0) break;
+    }
+    // Lo que devuelve dormir: `restoreAbilityUses` y `recoverSlots` dejan esto vacío tras un descanso largo.
+    if (woke.abilityUses) woke.abilityUses = {};
+    if (woke.spellCharges) woke.spellCharges = {};
+    if (woke.slotsUsed) woke.slotsUsed = {};
+    if (woke.needs) woke.needs = { ...readNeeds(woke), hunger: 0, thirst: 0, rest: 0 };
+
+    const name = text(woke.name);
+    const full = hpBefore < (Number(woke.maxHp) || 0) && woke.hp >= (Number(woke.maxHp) || 0);
+    const line = [
+        `${name} ha descansado ${days === 1 ? 'un día' : `${days} días`} en el gremio${full ? ': vuelve con la vida entera' : ''}.`,
+        healed.length === 1 ? `Se le ha curado una herida: ${healed[0]}. Le queda la cicatriz.` : '',
+        healed.length > 1 ? `Se le han curado ${healed.length} heridas: ${listNames(healed)}. Le quedan las cicatrices.` : '',
+    ].filter(Boolean).join(' ');
+    return { hero: woke, days, line };
+}
+
+/**
+ * D-J14: un nombre, para compararlo: sin tildes, sin mayúsculas y con los espacios justos.
+ * «Íria» y «iria » son el mismo nombre.
+ *
+ * @param {any} value
+ * @returns {string}
+ */
+export function plainName(value) {
+    return text(value).normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/\s+/g, ' ');
+}
+
+/**
+ * D-J14: los nombres que ya tiene un gremio: las fichas de personaje de su mundo (también las de
+ * quien cayó), el tuyo que va con el grupo y los que se quedan. Los mercenarios no cuentan.
+ *
+ * @param {Object} input
+ * @param {any[]} [input.entries] Las fichas del Lorebook con `dndData.entityType === 'character'`.
+ * @param {any[]} [input.party]
+ * @param {any} [input.resting] Lo guardado en el mundo del gremio (`HUB_HEROES_KEY`).
+ * @returns {string[]} Cada nombre una vez, como se escribe.
+ */
+export function takenHeroNames({ entries = [], party = [], resting = null }) {
+    const names = [
+        ...(Array.isArray(entries) ? entries : []).map(entry => text(entry?.dndData?.name) || text(entry?.comment)),
+        ...(Array.isArray(party) ? party : []).filter(isOwnHero).map(member => text(member.name)),
+        ...readRestingHeroes(resting).map(hero => text(hero.name)),
+    ].filter(Boolean);
+    /** @type {Map<string, string>} */
+    const seen = new Map();
+    for (const name of names) if (!seen.has(plainName(name))) seen.set(plainName(name), name);
+    return [...seen.values()];
+}
+
+/**
+ * D-J14: si un nombre ya está cogido en el gremio.
+ *
+ * @param {any} name
+ * @param {string[]} taken
+ * @returns {string} El que ya lo tiene, como se escribe, o vacío si está libre.
+ */
+export function heroNameTaken(name, taken) {
+    const wanted = plainName(name);
+    if (!wanted) return '';
+    return (Array.isArray(taken) ? taken : []).find(other => plainName(other) === wanted) ?? '';
+}
+
+/**
+ * D-J14: lo que se dice cuando el nombre ya lo tiene otro.
+ *
+ * @param {string} name El que ya lo tiene.
+ * @returns {string}
+ */
+export function nameTakenLine(name) {
+    return `Ya hay un personaje que se llama ${text(name)} en este gremio. Elige otro nombre.`;
 }
 
 /**

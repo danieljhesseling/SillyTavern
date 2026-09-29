@@ -33,8 +33,20 @@ export const HUB_PACK = '/mundos/gremio.pack.json';
 /** El nombre que se propone para el mundo del gremio. */
 export const HUB_WORLD_NAME = 'El Gremio';
 
-/** Con lo que llega quien entra al gremio: para la posada y un mercenario. */
+/** Con lo que llega quien entra al gremio: para la posada y un mercenario. Solo el primero. */
 export const HUB_START_GOLD = 100;
+
+/**
+ * D-J11: con lo que llega cada personaje nuevo después del primero: para la posada, no para
+ * un mercenario. El gremio ya tiene quien se lo gane.
+ */
+export const HUB_NEXT_HERO_GOLD = 10;
+
+/**
+ * D-J19: en los metadatos del chat de una campaña del tablón, cómo se llama en el tablón. Es
+ * el nombre que lleva al salón de la fama, y no el del hilo, que a veces es otro.
+ */
+export const HUB_BOARD_NAME_KEY = 'hubCampaignName';
 
 /** Quien narra el gremio, de `narradores.json`. */
 export const HUB_NARRATOR = 'posadero';
@@ -58,6 +70,12 @@ export const HUB_IMPORTED_DIR = '/user/files/';
  */
 export const HUB_LEVELS_KEY = 'hubLevels';
 
+/**
+ * D-J35: la lista de tus campañas añadidas, entre tus archivos, al lado de sus paquetes. Es
+ * tuya y no de un gremio: sale en el tablón de todos tus gremios.
+ */
+export const HUB_IMPORTED_LIST = 'tablon-campanas.json';
+
 /** @param {any} value @returns {string} */
 const text = (value) => String(value ?? '').trim();
 
@@ -76,6 +94,8 @@ const key = (value) => text(value).toLowerCase();
  * @property {HubChat|null} chat
  * @property {boolean} finished
  * @property {string} ending El título del final, si se llegó a uno.
+ * @property {number} [day] D-J12: el día de su calendario la última vez que se volvió de ella.
+ *   Lo que se vivió allí también pasa para quien descansa en el gremio (`hubDay`).
  */
 
 /**
@@ -108,11 +128,13 @@ export function readHub(raw) {
     for (const [id, value] of Object.entries(raw?.campaigns && typeof raw.campaigns === 'object' ? raw.campaigns : {})) {
         const worldName = text(/** @type {any} */ (value)?.worldName);
         if (!text(id) || !worldName) continue;
+        const day = Math.max(0, Math.floor(Number(/** @type {any} */ (value)?.day) || 0));
         campaigns[text(id)] = {
             worldName,
             chat: readChat(/** @type {any} */ (value)?.chat),
             finished: Boolean(/** @type {any} */ (value)?.finished),
             ending: text(/** @type {any} */ (value)?.ending),
+            ...(day > 0 ? { day } : {}),
         };
     }
     const imported = readImportedRows(raw?.imported);
@@ -171,6 +193,80 @@ export function withHubImported(hub, row) {
 }
 
 /**
+ * D-J35: el gremio, sin las campañas añadidas que guardaba él: desde D-J35 las guarda tu lista
+ * (`HUB_IMPORTED_LIST`), que es de todos tus gremios.
+ *
+ * @param {any} hub
+ * @returns {Hub}
+ */
+export function withoutHubImported(hub) {
+    const now = readHub(hub);
+    delete now.imported;
+    return now;
+}
+
+/**
+ * D-J35: tu lista de campañas añadidas, como se guarda en su archivo (`{version, campaigns}`)
+ * o como una lista suelta. Con forma aunque llegue rota.
+ *
+ * @param {any} raw
+ * @returns {any[]}
+ */
+export function readImportedList(raw) {
+    return readImportedRows(Array.isArray(raw) ? raw : raw?.campaigns);
+}
+
+/**
+ * D-J35: tu lista, lista para guardar en su archivo.
+ *
+ * @param {any[]} rows
+ * @returns {{version: number, campaigns: any[]}}
+ */
+export function importedListFile(rows) {
+    return { version: 1, campaigns: readImportedRows(rows) };
+}
+
+/**
+ * D-J35: tu lista con una campaña más, o puesta al día si ya estaba (en su sitio).
+ *
+ * @param {any} rows
+ * @param {any} row
+ * @returns {any[]}
+ */
+export function withImportedRow(rows, row) {
+    const list = readImportedList(rows);
+    const [clean] = readImportedRows([row]);
+    if (!clean) return list;
+    const at = list.findIndex(r => r.id === clean.id);
+    return at >= 0 ? list.map((r, i) => (i === at ? clean : r)) : [...list, clean];
+}
+
+/**
+ * D-J35: tu lista sin una campaña.
+ *
+ * @param {any} rows
+ * @param {string} id
+ * @returns {any[]}
+ */
+export function withoutImportedRow(rows, id) {
+    return readImportedList(rows).filter(r => r.id !== text(id));
+}
+
+/**
+ * D-J35: las campañas añadidas que ve un gremio: las de tu lista y, detrás, las que guardaba él
+ * antes de D-J35 y aún no han pasado a tu lista.
+ *
+ * @param {any} rows Tu lista.
+ * @param {any} hub El gremio.
+ * @returns {any[]}
+ */
+export function importedForHub(rows, hub) {
+    const list = readImportedList(rows);
+    const known = new Set(list.map(r => r.id));
+    return [...list, ...(readHub(hub).imported ?? []).filter(r => !known.has(r.id))];
+}
+
+/**
  * Si un mundo es un gremio.
  *
  * @param {any} meta Los metadatos del mundo.
@@ -213,6 +309,22 @@ export function withHubCampaign(hub, id, patch) {
     const now = readHub(hub);
     const was = now.campaigns[text(id)] ?? { worldName: '', chat: null, finished: false, ending: '' };
     return readHub({ ...now, campaigns: { ...now.campaigns, [text(id)]: { ...was, ...patch } } });
+}
+
+/**
+ * D-J12: el día del gremio para quien descansa en él. Cada chat lleva su calendario: el del
+ * gremio no corre mientras el grupo está en una campaña. Así que su día es el del gremio más
+ * los que se han vivido en cada campaña empezada desde él (lo apuntado al volver de ella).
+ *
+ * @param {Object} input
+ * @param {any} input.hub El gremio.
+ * @param {number} input.day El día del calendario del chat del gremio.
+ * @returns {number}
+ */
+export function hubDay({ hub, day }) {
+    const away = Object.values(readHub(hub).campaigns)
+        .reduce((sum, campaign) => sum + Math.max(0, (campaign.day ?? 1) - 1), 0);
+    return Math.max(1, Math.floor(Number(day) || 1)) + away;
 }
 
 /** Los números que se escriben con letra: «nueve días» se lee mejor que «9 días». */
@@ -287,24 +399,25 @@ export function journeyLine({ world, home = 'el gremio', back = false }) {
  * Las campañas del tablón, con cómo van para este gremio.
  *
  * Solo las que traen su paquete: una campaña del tablón es una historia escrita entera, no
- * una semilla por la que tirar. Y detrás, las que se han añadido desde un archivo en este
- * gremio (J5.4, `hub.imported`).
+ * una semilla por la que tirar. Y detrás, las que has añadido tú desde un archivo (J5.4): las
+ * de tu lista, que salen en todos tus gremios (D-J35), y las que guardaba este gremio antes.
  *
  * @param {Object} input
  * @param {any[]} input.worlds Los de `mundos.json`.
  * @param {any} [input.hub]
+ * @param {any[]} [input.imported] D-J35: tu lista de campañas añadidas (`readImportedList`).
  * @param {number} [input.level] El del héroe, para decir si le viene grande.
  * @returns {Array<{id: string, name: string, genre: string, note: string, synopsis: string, icon: string,
- *   traits: string[], levels: string, distance: string, state: 'nueva'|'en-curso'|'terminada', action: string,
- *   warn: string, ending: string}>}
+ *   traits: string[], levels: string, minLevel: number, hard: boolean, distance: string, state: 'nueva'|'en-curso'|'terminada',
+ *   action: string, warn: string, ending: string, imported: boolean}>}
  */
-export function hubCampaignCards({ worlds, hub = null, level = 1 }) {
+export function hubCampaignCards({ worlds, hub = null, imported = [], level = 1 }) {
     const record = readHub(hub);
     const lvl = Math.max(1, Math.floor(Number(level) || 1));
     const shipped = Array.isArray(worlds) ? worlds : [];
-    // J5.4: detrás de las del juego, las que has añadido tú en este gremio.
+    // J5.4 y D-J35: detrás de las del juego, las que has añadido tú.
     const known = new Set(shipped.map(world => text(world?.id)));
-    return [...shipped, ...(record.imported ?? []).filter(row => !known.has(row.id))]
+    return [...shipped, ...importedForHub(imported, record).filter(row => !known.has(row.id))]
         .filter(world => text(world?.id) && text(world?.pack))
         .map(world => {
             const id = text(world.id);
@@ -319,7 +432,11 @@ export function hubCampaignCards({ worlds, hub = null, level = 1 }) {
                 synopsis: text(world.synopsis),
                 icon: text(world.icon) || 'fa-scroll',
                 traits: (Array.isArray(world.traits) ? world.traits : []).map(text).filter(Boolean),
-                levels: min > 0 ? (max > min ? `Para nivel ${min} a ${max}` : `Para nivel ${min}`) : '',
+                // D-J22: que se vea bien para qué nivel es: las hay que empiezan en el 10.
+                levels: min > 0 ? `Nivel recomendado: ${max > min ? `${min} a ${max}` : min}` : '',
+                minLevel: Math.max(0, min),
+                // Si tu grupo no llega al nivel con el que empieza.
+                hard: min >= 1 && lvl < min,
                 // Lo lejos que queda del pueblo: cada campaña es otro mundo, pero se llega por el camino.
                 distance: journeyDays(world) > 0 ? `A ${journeySpan(journeyDays(world))} de camino` : '',
                 state,
@@ -327,10 +444,13 @@ export function hubCampaignCards({ worlds, hub = null, level = 1 }) {
                 action: state === 'nueva' ? 'Empezar' : state === 'terminada' ? 'Volver' : 'Seguir',
                 // Solo se avisa: quien quiera meterse con Strahd a nivel 1 puede. J4.6: y lo que
                 // pasa entonces, lo mismo que se dice en la primera pelea (`combat/level-adjust.js`).
+                // D-J22: por debajo, que quede claro que no es para un grupo sin experiencia.
                 warn: state !== 'nueva' || min < 1 ? ''
-                    : lvl < min ? `Tu grupo es de nivel ${lvl}: te viene grande. Los enemigos aflojan un poco, pero no del todo.`
+                    : lvl < min ? `No es para un grupo sin experiencia: empieza en el nivel ${min} y tu grupo es de nivel ${lvl}. Si vais, los enemigos aflojan un poco, pero no del todo.`
                         : lvl > Math.max(min, max) ? `Tu grupo es de nivel ${lvl}, más de lo que pide: los enemigos aprietan más.` : '',
                 ending: started?.ending ?? '',
+                // D-J35: las añadidas por ti se pueden quitar del tablón.
+                imported: Boolean(world.imported),
             };
         });
 }

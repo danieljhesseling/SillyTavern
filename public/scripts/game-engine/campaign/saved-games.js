@@ -103,12 +103,13 @@ export function describeWhen(then, now) {
 
 /**
  * El nombre de una campaña del tablón sin el de quien la empezó: su mundo se llama
- * «La Maldición de Strahd · Tessa» para que dos gremios no se pisen.
+ * «La Maldición de Strahd · Tessa» para que dos gremios no se pisen. El aviso de borrar un
+ * gremio (campaign-delete.js) las nombra igual que esta lista.
  *
  * @param {string} name
  * @returns {string}
  */
-function campaignTitle(name) {
+export function campaignTitle(name) {
     const at = name.lastIndexOf(' · ');
     return at > 0 ? name.slice(0, at) : name;
 }
@@ -199,7 +200,8 @@ export function gameCard(game, now) {
         when: game.unstarted ? '' : describeWhen(playedAt(game.chat), now),
         resume: [place, hero, game.unstarted ? '' : `Día ${summary.day}`].filter(Boolean).join(' · '),
         unstarted: game.unstarted,
-        // Un gremio son varios mundos; borrarlo entero no se ofrece desde aquí todavía.
-        canDelete: !guild,
+        // D-J23: un gremio también se borra, entero: su mundo, sus campañas y todas sus
+        // sesiones. El aviso de antes dice todo lo que se va (campaigns.js, deleteGuild).
+        canDelete: true,
     };
 }

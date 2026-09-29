@@ -2,7 +2,7 @@ import { describe, test, expect } from '@jest/globals';
 import {
     SCENE, SWITCHABLE_SCENES, SCENE_INFO,
     chooseScene, isSceneAvailable, sceneForShortcut, describeScene, sceneTransition,
-    detectSceneEvent, directScene,
+    detectSceneEvent, directScene, continueScene,
 } from '../public/scripts/game-engine/ui/shell/scene-director.js';
 
 /** A campaign open, standing in a location, no fight. */
@@ -256,5 +256,52 @@ describe('directScene', () => {
 
     test('closing the campaign shows the title screen', () => {
         expect(directScene(board, { hasChat: false }, SCENE.COMBAT).scene).toBe(SCENE.TITLE);
+    });
+});
+
+// J18.8 de ROADMAP_SIN_CONEXION: sin conexión no hay pestañas; la escena cambia por lo que pasa.
+describe('offline: scenes change by actions', () => {
+    const town = { hasChat: true, offline: true, chatId: 'gremio', locationName: 'Puerto Alba', townPlaces: 5, story: '3:Llegáis' };
+    const pier = { ...town, boardName: 'El muelle' };
+
+    test('new story text goes to the conversation, from the town or from a board', () => {
+        const told = directScene(town, { ...town, story: '4:Brunilda' }, SCENE.EXPLORATION);
+        expect(told.event).toBe('story_told');
+        expect(told.scene).toBe(SCENE.DIALOGUE);
+        expect(told.override).toBe(SCENE.DIALOGUE);
+        expect(directScene(pier, { ...pier, story: '4:La bodega' }, SCENE.COMBAT).scene).toBe(SCENE.DIALOGUE);
+    });
+
+    test('but not in the middle of a fight', () => {
+        const fight = { ...pier, combatActive: true };
+        expect(detectSceneEvent(fight, { ...fight, story: '9:Tessa golpea' })).toBeNull();
+        expect(directScene(fight, { ...fight, story: '9:Tessa golpea' }, SCENE.COMBAT).scene).toBe(SCENE.COMBAT);
+    });
+
+    test('text read on entering a board comes first; with nothing to read, the board', () => {
+        expect(detectSceneEvent(town, { ...pier, story: '4:El muelle' })).toBe('story_told');
+        expect(detectSceneEvent(town, pier)).toBe('board_opened');
+    });
+
+    test('with a connection, text does not move the screen: the old rules hold', () => {
+        const classic = { hasChat: true, locationName: 'Cripta', hasWorldMap: true, story: '1:a' };
+        expect(detectSceneEvent(classic, { ...classic, story: '2:b' })).toBeNull();
+    });
+
+    test('another chat, offline, is opening a game: from the guild to a campaign', () => {
+        const strahd = { ...pier, chatId: 'strahd', locationName: 'Aldea de Barovia', boardName: 'Taberna' };
+        expect(detectSceneEvent(town, strahd)).toBe('game_opened');
+        expect(directScene(town, strahd, SCENE.EXPLORATION).scene).toBe(SCENE.DIALOGUE);
+        expect(detectSceneEvent({ ...town, offline: false }, { ...strahd, offline: false })).toBe('board_opened');
+    });
+
+    test('«Continuar» goes to where you are: the board, or the town, or nowhere', () => {
+        expect(continueScene(pier)).toBe(SCENE.COMBAT);
+        expect(continueScene({ ...pier, boardName: '', combatActive: true })).toBe(SCENE.COMBAT);
+        expect(continueScene(town)).toBe(SCENE.EXPLORATION);
+        expect(continueScene({ hasChat: true, offline: true })).toBeNull();
+        expect(continueScene({ hasChat: false })).toBeNull();
+        // Y lo que decide se queda: el siguiente redibujo no vuelve a la novela.
+        expect(directScene(town, town, continueScene(town)).scene).toBe(SCENE.EXPLORATION);
     });
 });

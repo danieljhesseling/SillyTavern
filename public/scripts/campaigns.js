@@ -13,16 +13,21 @@ import { buildNewCampaignCta, createCampaign } from './game-engine/ui/campaign-w
 import { openCampaignBuilder, loadDndCatalog, setPartyFromWorldEntries, beginCampaignPlot, adoptVeteranGear, giveStartingGear, applyCampaignRuleset, applyModeExtras, adoptPet, partySnapshot, adoptCarriedParty, giveStartingPurse, plotEndingTitle, postJourney, postHomecoming, recordFinishedCampaign, seatPartyHero, memberFromEntry, getCombatEncounter } from './party.js';
 import { isCampaignWorld, getStartingPoint, uniqueWorldName } from './game-engine/campaign/campaign-worlds.js';
 import {
-    HUB_KEY, HUB_HOME_KEY, HUB_CAMPAIGN_KEY, HUB_PACK, HUB_WORLD_NAME, HUB_START_GOLD, HUB_NARRATOR,
+    HUB_KEY, HUB_HOME_KEY, HUB_CAMPAIGN_KEY, HUB_PACK, HUB_WORLD_NAME, HUB_START_GOLD, HUB_NEXT_HERO_GOLD, HUB_NARRATOR,
     readHub, isHubWorld, hubHomeOf, withHubChat, withHubCampaign, answersForWorld, hubCampaignWorldName, journeyLine,
-    carryEntry, entryFromMember, hubPartyLine, hubCampaignCards, withHubImported, HUB_LEVELS_KEY,
+    carryEntry, entryFromMember, hubPartyLine, hubCampaignCards, HUB_LEVELS_KEY, hubDay, HUB_BOARD_NAME_KEY,
+    HUB_IMPORTED_DIR, HUB_IMPORTED_LIST, readImportedList, importedListFile, withImportedRow, withoutImportedRow,
+    importedForHub, withoutHubImported,
 } from './game-engine/campaign/hub.js';
 import { readCampaignText, importedCampaignId, importedPackFileName, importedCampaignRow } from './game-engine/campaign/campaign-import.js';
-import { HUB_HEROES_KEY, activeHero, hubHeroCards, readRestingHeroes, withResting } from './game-engine/campaign/hub-heroes.js';
+import {
+    HUB_HEROES_KEY, activeHero, hubHeroCards, readRestingHeroes, withResting, wakeFromRest, takenHeroNames,
+} from './game-engine/campaign/hub-heroes.js';
+import { normalizeCalendar } from './game-engine/campaign/calendar.js';
 import { validatePack } from './game-engine/campaign/campaign-pack.js';
 import { homecomingScene } from './game-engine/campaign/campaign-end.js';
 import { buildHeroEntry, describeHero, classIcon, rollStatBonus } from './game-engine/campaign/hero.js';
-import { planCampaignDeletion, describeDeletion } from './game-engine/campaign/campaign-delete.js';
+import { planCampaignDeletion, planGuildDeletion, describeDeletion } from './game-engine/campaign/campaign-delete.js';
 import {
     buildNarratorCard, describeNarrator, VERBOSITY, DEFAULT_VERBOSITY,
 } from './game-engine/campaign/narrator.js';
@@ -301,15 +306,16 @@ export async function continueSavedGame(id) {
 
 /**
  * J0.6: borrar una partida desde «Cargar partida». Pregunta antes, como la papelera de la
- * portada; un gremio no se borra desde aquí.
+ * portada; un gremio (D-J23) se borra entero, con sus campañas.
  *
  * @param {string} id
  * @returns {Promise<void>}
  */
 export async function deleteSavedGame(id) {
     const game = savedGames?.find(g => g.id === id);
-    if (!game || game.kind === 'gremio') return;
-    await deleteCampaign(game.id);
+    if (!game) return;
+    if (game.kind === 'gremio') await deleteGuild(game.id);
+    else await deleteCampaign(game.id);
 }
 
 // ---- Category constants for world preview ----
@@ -1366,7 +1372,7 @@ async function ensureHubEntries(worldName, carried) {
 
 /**
  * J4.9: la entrada del tablón de una campaña, de `mundos.json`. J5.4: o, si la añadiste tú
- * desde un archivo, la de su gremio.
+ * desde un archivo, la de tu lista (D-J35) o la que guardaba su gremio.
  *
  * @param {string} id
  * @param {any} [hub] Lo guardado del gremio (`hub` en sus metadatos).
@@ -1375,8 +1381,99 @@ async function ensureHubEntries(worldName, carried) {
 async function boardWorld(id, hub = null) {
     const worlds = await readMundo('/mundos/mundos.json').then(json => json?.worlds ?? []).catch(() => []);
     return worlds.find((/** @type {any} */ w) => String(w?.id) === String(id))
-        ?? (readHub(hub).imported ?? []).find(w => w.id === String(id))
+        ?? importedForHub(await readImportedCampaigns(), hub).find(w => w.id === String(id))
         ?? null;
+}
+
+/** D-J35: dónde está tu lista de campañas añadidas: entre tus archivos, al lado de sus paquetes. */
+const IMPORTED_LIST_URL = `${HUB_IMPORTED_DIR}${HUB_IMPORTED_LIST}`;
+
+/**
+ * D-J35: tu lista de campañas añadidas. Sin archivo (no has añadido ninguna), vacía.
+ *
+ * @param {boolean} [strict] Para escribir encima: si no se puede leer, falla en vez de dar la
+ *   lista vacía, que al guardarse borraría las que hay.
+ * @returns {Promise<any[]>}
+ */
+async function readImportedCampaigns(strict = false) {
+    try {
+        const response = await fetch(IMPORTED_LIST_URL, { cache: 'no-cache' });
+        if (response.status === 404) return [];
+        if (!response.ok) throw new Error(`el servidor no la da (${response.status})`);
+        return readImportedList(await response.json());
+    } catch (error) {
+        if (strict) throw new Error(`No se pudo leer tu lista de campañas: ${String(error?.message || error)}`);
+        console.error('[gremio] no se pudo leer tu lista de campañas', error);
+        return [];
+    }
+}
+
+/**
+ * D-J35: guardar tu lista de campañas añadidas, con la subida de siempre.
+ *
+ * @param {any[]} rows
+ * @returns {Promise<void>}
+ */
+async function writeImportedCampaigns(rows) {
+    const response = await fetch('/api/files/upload', {
+        method: 'POST',
+        headers: getRequestHeaders(),
+        body: JSON.stringify({ name: HUB_IMPORTED_LIST, data: convertTextToBase64(JSON.stringify(importedListFile(rows), null, 1)) }),
+    });
+    if (!response.ok) throw new Error(`el servidor no ha guardado tu lista (${response.status}: ${await response.text()})`);
+}
+
+/**
+ * D-J35: las campañas añadidas por ti que ve el tablón de un gremio. Las que ese gremio
+ * guardaba antes de D-J35 pasan a tu lista la primera vez, para que salgan en todos.
+ *
+ * @param {string} [worldName] El mundo del gremio.
+ * @returns {Promise<any[]>}
+ */
+export async function loadImportedCampaigns(worldName = '') {
+    const rows = await readImportedCampaigns();
+    const data = worldName ? await loadWorldInfo(worldName).catch(() => null) : null;
+    if (!(readHub(data?.metadata?.[HUB_KEY]).imported ?? []).length) return rows;
+    try {
+        const merged = importedForHub(await readImportedCampaigns(true), data.metadata[HUB_KEY]);
+        await writeImportedCampaigns(merged);
+        await updateWorld(worldName, meta => { meta[HUB_KEY] = withoutHubImported(meta[HUB_KEY]); });
+        return merged;
+    } catch (error) {
+        console.error('[gremio] no se pudieron pasar las campañas del gremio a tu lista', error);
+        return importedForHub(rows, data.metadata[HUB_KEY]);
+    }
+}
+
+/**
+ * D-J35: quitar del tablón una campaña que añadiste. Sale de tu lista (de todos tus gremios) y
+ * se borra su archivo. Las partidas empezadas con ella no se tocan: su mundo ya la lleva dentro.
+ *
+ * @param {string} id
+ * @returns {Promise<{ok: true, name: string}|{ok: false, headline: string}>}
+ */
+export async function removeHubCampaign(id) {
+    try {
+        const homeWorld = String(chat_metadata?.[METADATA_KEY] || '');
+        const home = homeWorld ? await loadWorldInfo(homeWorld).catch(() => null) : null;
+        const list = importedForHub(await readImportedCampaigns(true), home?.metadata?.[HUB_KEY]);
+        const row = list.find(r => r.id === String(id));
+        if (!row) return { ok: false, headline: 'Esa campaña ya no está en el tablón.' };
+        await writeImportedCampaigns(withoutImportedRow(list, row.id));
+        if ((readHub(home?.metadata?.[HUB_KEY]).imported ?? []).length > 0) {
+            await updateWorld(homeWorld, meta => { meta[HUB_KEY] = withoutHubImported(meta[HUB_KEY]); });
+        }
+        // Su archivo: sin fila que lo nombre ya no lo abre nadie. Si ya no estaba, da igual.
+        await fetch('/api/files/delete', {
+            method: 'POST',
+            headers: getRequestHeaders(),
+            body: JSON.stringify({ path: row.pack }),
+        }).catch(error => console.warn('[gremio] no se pudo borrar el archivo de la campaña', error));
+        return { ok: true, name: row.name };
+    } catch (error) {
+        console.error('[gremio] no se pudo quitar la campaña', error);
+        return { ok: false, headline: `No se pudo quitar la campaña: ${String(error?.message || error)}.` };
+    }
 }
 
 /**
@@ -1385,11 +1482,11 @@ async function boardWorld(id, hub = null) {
  *
  * Se comprueba entera antes de guardar nada. El paquete va a tus archivos con la subida de
  * siempre (`/api/files/upload`, en `data/<tú>/user/files/`): pesa como Strahd, cien mil
- * letras, y el mundo del gremio se reescribe entero cada vez que algo cambia en él. En el
- * gremio va solo su fila, pequeña, al lado de las campañas que ha empezado: así el tablón la
- * enseña con las demás. Añadir otra vez la misma campaña la pone al día.
+ * letras, y el mundo del gremio se reescribe entero cada vez que algo cambia en él. Su fila,
+ * pequeña, va a tu lista (D-J35), que también está entre tus archivos: así sale en el tablón de
+ * todos tus gremios. Añadir otra vez la misma campaña la pone al día.
  *
- * @param {string} content El texto del archivo.
+ * @param {string} content El texto del archivo, o el pegado (D-J35).
  * @returns {Promise<{ok: true, card: any, name: string, replaced: boolean, notes: string[]}
  *   |{ok: false, headline: string, problems: Array<{path: string, message: string}>, more: number, notes?: string[]}>}
  */
@@ -1404,6 +1501,8 @@ export async function importHubCampaign(content) {
         if (!read.ok) return { ok: false, headline: read.headline, problems: read.problems, more: read.more, notes: read.notes };
 
         const id = importedCampaignId(read.pack.world?.name);
+        // Antes de guardar nada: si tu lista no se puede leer, guardar encima la borraría.
+        const list = importedForHub(await readImportedCampaigns(true), home.metadata[HUB_KEY]);
         const response = await fetch('/api/files/upload', {
             method: 'POST',
             headers: getRequestHeaders(),
@@ -1413,15 +1512,15 @@ export async function importHubCampaign(content) {
         const saved = await response.json();
         const row = importedCampaignRow(read.pack, { id, packUrl: `/${String(saved?.path ?? '').replace(/^\/+/, '')}` });
 
-        const replaced = (readHub(home.metadata[HUB_KEY]).imported ?? []).some(r => r.id === id);
-        /** @type {any} */
-        let hub = null;
-        await updateWorld(homeWorld, meta => {
-            meta[HUB_KEY] = withHubImported(meta[HUB_KEY], row);
-            hub = meta[HUB_KEY];
-        });
+        const replaced = list.some(r => r.id === id);
+        const rows = withImportedRow(list, row);
+        await writeImportedCampaigns(rows);
+        // Las que guardaba el gremio ya van en tu lista: fuera de él, para que no haya dos.
+        if ((readHub(home.metadata[HUB_KEY]).imported ?? []).length > 0) {
+            await updateWorld(homeWorld, meta => { meta[HUB_KEY] = withoutHubImported(meta[HUB_KEY]); });
+        }
         const level = Number(partySnapshot().find(m => !m.guest)?.level) || 1;
-        const card = hubCampaignCards({ worlds: [], hub, level }).find(c => c.id === id);
+        const card = hubCampaignCards({ worlds: [], hub: withoutHubImported(home.metadata[HUB_KEY]), imported: rows, level }).find(c => c.id === id);
         if (!card) throw new Error('la campaña se ha guardado, pero el tablón no la lee');
         return { ok: true, card, name: row.name, replaced, notes: read.notes };
     } catch (error) {
@@ -1524,14 +1623,15 @@ async function enterHub() {
  * campaña, que la ficha del gremio no vaya por detrás.
  *
  * @param {string} worldName
- * @param {{add?: any, remove?: string}} change
+ * @param {{add?: any, remove?: string, day?: number}} change `day` (D-J12): el del gremio, para
+ *   saber cuánto ha descansado el que se queda cuando vuelva.
  * @returns {Promise<void>}
  */
-async function keepInHub(worldName, { add = null, remove = '' }) {
+async function keepInHub(worldName, { add = null, remove = '', day = NaN }) {
     const data = await loadWorldInfo(worldName);
     if (!data) throw new Error(`No se pudo cargar el mundo "${worldName}".`);
     data.metadata = data.metadata ?? {};
-    data.metadata[HUB_HEROES_KEY] = withResting(data.metadata[HUB_HEROES_KEY], { add, remove });
+    data.metadata[HUB_HEROES_KEY] = withResting(data.metadata[HUB_HEROES_KEY], { add, remove, day });
     const entry = add?.wiUid != null ? data.entries?.[add.wiUid] : null;
     if (entry) Object.assign(entry, carryEntry(entry, add));
     await saveWorldInfo(worldName, data, true);
@@ -1560,22 +1660,26 @@ export async function changeHubHero(choice) {
             return false;
         }
         const before = activeHero(partySnapshot());
+        // D-J12: el día del gremio, con lo vivido en sus campañas: quien descansa en él se cura con él.
+        const today = hubDay({ hub: data.metadata[HUB_KEY], day: normalizeCalendar(chat_metadata?.calendar).day });
 
         if ('create' in choice) {
             const hero = await createStartingHero(worldName, { another: true });
             if (!hero) return false;
-            // Como el primero: quien llega al gremio trae para la posada y un mercenario.
-            giveStartingPurse(HUB_START_GOLD);
-            if (before) await keepInHub(worldName, { add: before });
+            // D-J11: el primero llega con cien de oro, para la posada y un mercenario; los
+            // siguientes, con lo justo para la posada.
+            giveStartingPurse(HUB_NEXT_HERO_GOLD);
+            if (before) await keepInHub(worldName, { add: before, day: today });
             await beginCampaignPlot(hero);
             return true;
         }
 
-        const incoming = readRestingHeroes(data.metadata[HUB_HEROES_KEY]).find(h => String(h.id) === String(choice.hero));
-        if (!incoming) return false;
+        const resting = readRestingHeroes(data.metadata[HUB_HEROES_KEY]).find(h => String(h.id) === String(choice.hero));
+        if (!resting) return false;
+        const { hero: incoming, line: rested } = wakeFromRest(resting, { day: today });
         const { outgoing, line } = seatPartyHero(incoming);
-        await keepInHub(worldName, { add: outgoing, remove: String(incoming.id) });
-        toastr.success(line, 'Tus personajes');
+        await keepInHub(worldName, { add: outgoing, remove: String(incoming.id), day: today });
+        toastr.success([line, rested].filter(Boolean).join(' '), 'Tus personajes');
         return true;
     } catch (error) {
         console.error('[gremio] no se pudo cambiar de personaje', error);
@@ -1619,7 +1723,13 @@ export async function playHubCampaign(id) {
             if (await openHubChat(record.chat, record.worldName)) {
                 const { uids } = await ensureHubEntries(record.worldName, entries);
                 adoptCarriedParty(carried, { worldName: record.worldName, uids });
-                await postJourney(journeyLine({ world: await boardWorld(id, home.metadata[HUB_KEY]), home: hubTownName(home) }));
+                const board = await boardWorld(id, home.metadata[HUB_KEY]);
+                // D-J19: su nombre del tablón, también en las empezadas antes de apuntarlo.
+                if (board?.name) {
+                    chat_metadata[HUB_BOARD_NAME_KEY] = String(board.name);
+                    await saveMetadata();
+                }
+                await postJourney(journeyLine({ world: board, home: hubTownName(home) }));
                 toastr.success('Seguís donde lo dejasteis, con lo que traéis del gremio.', 'De vuelta a la campaña');
                 return;
             }
@@ -1673,6 +1783,9 @@ export async function playHubCampaign(id) {
             narratorAvatar,
         });
         if (!opened) return;
+        // D-J19: cómo se llama en el tablón. Es el nombre con el que entra en el salón de la fama.
+        chat_metadata[HUB_BOARD_NAME_KEY] = String(world.name || id);
+        await saveMetadata();
         await applyCampaignRuleset(created.worldName).catch(error => console.error('[gremio] reglas', error));
         adoptCarriedParty(carried, { worldName: created.worldName, uids, atStart: true });
         await updateWorld(homeWorld, meta => {
@@ -1709,14 +1822,19 @@ export async function returnToHub() {
         const id = String(data?.metadata?.[HUB_CAMPAIGN_KEY] ?? '');
         const carried = partySnapshot();
         const entries = carriedEntries(data, carried);
+        const home = await loadWorldInfo(homeWorld);
+        const hub = readHub(home?.metadata?.[HUB_KEY]);
+        const board = await boardWorld(id, hub);
+        // D-J19: el salón la apunta con su nombre del tablón; una empezada antes no lo tenía apuntado.
+        if (board?.name) chat_metadata[HUB_BOARD_NAME_KEY] = String(board.name);
         const ending = plotEndingTitle();
         // J3.9: una campaña que acabó antes de que existiera el salón entra ahora; si ya está, no se repite.
         const record = ending ? recordFinishedCampaign() : null;
+        // D-J12: el día al que se llegó aquí. Lo vivido en la campaña también pasa en el gremio.
+        const day = normalizeCalendar(chat_metadata?.calendar).day;
         const here = openChat();
         await saveMetadata();
 
-        const home = await loadWorldInfo(homeWorld);
-        const hub = readHub(home?.metadata?.[HUB_KEY]);
         if (!hub.chat) throw new Error('No encuentro la partida del gremio.');
         // J4.5: la vuelta tras el final se cuenta una vez; volver otra vez de pasear por ella, no.
         const firstHomecoming = Boolean(ending) && !hub.campaigns[id]?.finished;
@@ -1726,13 +1844,13 @@ export async function returnToHub() {
                 worldName, chat: here,
                 finished: Boolean(ending) || Boolean(was?.finished),
                 ending: ending || was?.ending || '',
+                day: Math.max(day, was?.day ?? 0),
             });
         });
 
         if (!await openHubChat(hub.chat, homeWorld)) throw new Error('No se pudo abrir la partida del gremio.');
         const { uids } = await ensureHubEntries(homeWorld, entries);
         adoptCarriedParty(carried, { worldName: homeWorld, uids });
-        const board = await boardWorld(id, hub);
         await postJourney(journeyLine({ world: board, home: hubTownName(home), back: true }));
         if (firstHomecoming) {
             await postHomecoming(homecomingScene({
@@ -2201,6 +2319,8 @@ async function createStartingHero(worldName, { another = false } = {}) {
         rollName,
         // J1.2: tirar los atributos con la semilla de la partida; cada tirada, otra.
         rollStats: () => rollStatBonus(createSeededRandom(derive(seed, 'atributos', statRolls++))),
+        // D-J14: en un gremio no hay dos personajes con el mismo nombre.
+        takenNames: takenHeroNames({ entries: existing, party: partySnapshot(), resting: data.metadata?.[HUB_HEROES_KEY] }),
         Popup,
         POPUP_TYPE,
     });
@@ -2462,6 +2582,115 @@ async function deleteCampaign(worldName) {
 
     const grid = document.querySelector('#welcomeCampaignsGrid');
     if (grid instanceof HTMLElement) await renderCampaignCards(grid);
+}
+
+/**
+ * D-J23: borra un gremio entero: su mundo, el de cada campaña que salió de su tablón y todas
+ * las sesiones de todos ellos.
+ *
+ * Como una campaña, en grande: dejar una campaña del gremio viva la sacaría a la lista como
+ * partida suelta, con un «volver al gremio» que ya no lleva a ninguna parte. Así que se va
+ * todo, y el aviso lo nombra parte por parte antes de tocar nada.
+ *
+ * @param {string} guildWorldName
+ * @returns {Promise<void>}
+ */
+async function deleteGuild(guildWorldName) {
+    const allChats = await fetchRecentChatsWithMetadata(500);
+    const chatsOf = (/** @type {string} */ name) => allChats.filter(c => c.chat_metadata?.world_info === name);
+
+    /** @param {string} name @returns {Promise<any>} */
+    const metaOf = async (name) => {
+        try {
+            const data = await loadWorldInfo(name);
+            return data?.metadata ?? {};
+        } catch {
+            return {}; // borrado o ilegible
+        }
+    };
+    const guildMeta = await metaOf(guildWorldName);
+
+    // Sus campañas: los mundos que dicen salir de él, estén en la lista de mundos o solo en
+    // algún chat. Y las que el gremio apunta en su tablón cuyo mundo ya no existe: sus
+    // sesiones son del gremio igual. Un mundo que existe y no dice ser suyo no se toca.
+    const listedWorlds = Array.isArray(world_names) ? world_names : [];
+    const recorded = new Set(Object.values(readHub(guildMeta[HUB_KEY]).campaigns).map(c => c.worldName));
+    const candidates = [...new Set([
+        ...listedWorlds,
+        ...allChats.map(c => String(c.chat_metadata?.world_info || '')),
+        ...recorded,
+    ])].filter(name => name && name !== guildWorldName);
+    const found = await Promise.all(candidates.map(async (name) => {
+        const meta = await metaOf(name);
+        const ours = hubHomeOf(meta) === guildWorldName || (recorded.has(name) && !listedWorlds.includes(name));
+        return ours ? { name, displayName: String(meta.displayName || name), chats: chatsOf(name) } : null;
+    }));
+    // La última jugada primero, como en «Cargar partida»; las que no tienen sesiones, al final.
+    const played = (/** @type {string} */ name) => {
+        const at = allChats.findIndex(c => c.chat_metadata?.world_info === name);
+        return at < 0 ? Number.MAX_SAFE_INTEGER : at;
+    };
+    const campaigns = found.filter(c => c !== null).sort((a, b) => played(a.name) - played(b.name));
+
+    const plan = planGuildDeletion(
+        { name: guildWorldName, displayName: guildMeta.displayName || guildWorldName, chats: chatsOf(guildWorldName) },
+        campaigns,
+        {
+            openWorldName: String(chat_metadata?.[METADATA_KEY] || ''),
+            knownAvatars: characters.map((/** @type {any} */ c) => String(c?.avatar || '')),
+        },
+    );
+
+    // El titulo se interpola como HTML y los nombres los escribe el jugador.
+    const confirmed = await Popup.show.confirm(
+        escapeHtml(plan.title),
+        plan.lines.map(line => escapeHtml(line).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')).join('<br>'),
+        { okButton: 'Borrar', cancelButton: 'Cancelar' },
+    );
+    if (!confirmed) return;
+
+    // Cerrar antes de borrar, como con una campaña. Si no se deja cerrar (el narrador está
+    // escribiendo), no se borra nada: mejor nada que un gremio abierto sin mundo debajo.
+    if (plan.closesOpenCampaign && !(await closeCurrentChat())) return;
+
+    let removed = 0;
+    let failed = plan.orphans.length;
+    for (const session of plan.chats) {
+        const index = characters.findIndex((/** @type {any} */ c) => String(c?.avatar || '') === session.avatar);
+        if (index < 0) {
+            failed++;
+            continue;
+        }
+        try {
+            await deleteCharacterChatByName(String(index), session.file);
+            removed++;
+        } catch (error) {
+            console.error('[campaigns] could not delete session', session.file, error);
+            failed++;
+        }
+    }
+
+    let worldsGone = 0;
+    let worldsLeft = 0;
+    for (const name of plan.worlds) {
+        // Uno que ya no está en la lista no hay que borrarlo: ya no está.
+        if (!(Array.isArray(world_names) && world_names.includes(name))) continue;
+        try {
+            if (await deleteWorldInfo(name)) worldsGone++;
+            else worldsLeft++;
+        } catch (error) {
+            console.error('[campaigns] could not delete world', name, error);
+            worldsLeft++;
+        }
+    }
+
+    const said = describeDeletion({ worlds: worldsGone, worldsFailed: worldsLeft, chats: removed, failed });
+    if (worldsLeft === 0 && failed === 0) toastr.success(said, `Gremio "${plan.displayName}" borrado`);
+    else toastr.warning(said, `Gremio "${plan.displayName}"`);
+
+    // «Cargar partida» lee la lista que deja la portada: sin portada a la vista, se lee igual.
+    const grid = document.querySelector('#welcomeCampaignsGrid');
+    await renderCampaignCards(grid instanceof HTMLElement ? grid : document.createElement('div'));
 }
 
 /**

@@ -158,7 +158,8 @@ export function readHall(raw) {
 /**
  * Entrar en el salón. Arriba del todo; y quien ya está (mismo nombre, mundo y día) no se
  * repite, aunque se recargue la partida y vuelva a caer. Una campaña terminada está una vez
- * por partida y final: apuntarla otra vez (al volver al gremio) la deja como estaba.
+ * por partida y final: apuntarla otra vez (al volver al gremio) la deja como estaba, salvo el
+ * nombre (D-J19): si ahora se sabe cómo se llama en el tablón, se pone ese.
  *
  * @param {any} raw
  * @param {HallEntry} entry
@@ -170,7 +171,9 @@ export function addToHall(raw, entry) {
     if (!clean) return hall;
     if (clean.kind === 'campaign') {
         const known = (/** @type {HallEntry} */ e) => e.kind === 'campaign' && e.world === clean.world && e.ending === clean.ending;
-        return hall.some(known) ? hall : [clean, ...hall].slice(0, HALL_MAX);
+        return hall.some(known)
+            ? hall.map(e => (known(e) ? { ...e, name: clean.name } : e))
+            : [clean, ...hall].slice(0, HALL_MAX);
     }
     const same = (/** @type {HallEntry} */ e) => !e.kind && e.name === clean.name && e.world === clean.world && e.day === clean.day;
     return [clean, ...hall.filter(e => !same(e))].slice(0, HALL_MAX);

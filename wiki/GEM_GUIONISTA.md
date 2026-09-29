@@ -213,6 +213,19 @@ hito:
     - { donde: la-atalaya, tirada: supervivencia }
 ```
 
+### Final
+Cada final dice cómo acaba el valle y, en `epilogos`, **qué fue de cada uno**: una línea por persona o facción que haya pesado en la historia (3 a 5). `quien` es su id; la línea, en pasado o presente, llana y sin acertijos. Sin `epilogos`, el juego las saca de cómo os miran las facciones al acabar.
+```yaml
+final:
+  id: la-marea-quieta
+  titulo: La marea quieta
+  escena: >
+    Lo que ve el grupo al acabar, en 3–5 frases. Si habla de ti, con sus dos formas: «Sales {vivo|viva}».
+  epilogos:
+    - { quien: maren-la-viuda, texto: "Maren vuelve a remendar redes en el muelle, y ya no cierra la puerta por las noches." }
+    - { quien: cofradia-del-muelle, texto: "La Cofradía pierde el muelle: ahora lo reparten entre todos los pescadores." }
+```
+
 ### El presagio
 Tres frases del principio que **avisan de lo que viene**, cada una ligada a un hito. Van en el bloque `mundo:` y se cumplen con su hito; el juego lo dice. Tienen que **entenderse a la primera**: dicen de qué va el peligro sin destripar cómo acaba. Nada de acertijos («el peaje sangrará dos veces» no lo entiende nadie jugando).
 ```yaml
@@ -413,7 +426,7 @@ heroe:
   nombre: Ulrich Brand
   raza: Humano            # como la llama el compendio
   clase: Soldado
-  genero: Hombre          # Mujer | Hombre | No binario
+  genero: Hombre          # Mujer | Hombre | No binario (en masculino) | No binario (en femenino): no cambia ninguna regla, solo cómo le habla el texto
   pasado: soldado         # soldado | criminal | erudito | acolito | forastero | artesano | noble | marinero | charlatan | ermitano
   gancho: "Le deben tres meses"          # una línea para elegirlo
   quien: "Mercenario de una compañía que se quedó al otro lado del paso."

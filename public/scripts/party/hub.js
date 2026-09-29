@@ -13,12 +13,12 @@ import { extension_settings } from '../extensions.js';
 import { getCurrentWorldLocationMaps, loadWorldInfo, METADATA_KEY } from '../world-info.js';
 import { migratePartyMember } from '../dnd-system.js';
 import { escapeHtml } from '../utils.js';
-import { campaignHallEntry } from '../game-engine/campaign/campaign-end.js';
+import { campaignHallEntry, hallCampaignName } from '../game-engine/campaign/campaign-end.js';
 import { readBench, benchMember, callFromBench, whereHired } from '../game-engine/campaign/bench.js';
 import { store, retrieve, readStorage } from '../game-engine/campaign/storage.js';
 import { guestMember, HIRELINGS, MERCENARY_FEE } from '../game-engine/campaign/guests.js';
 import {
-    isHubWorld, hubCampaignCards, hireOffers, hubRoster, hubTrial, HUB_CONTRACT,
+    isHubWorld, hubCampaignCards, hireOffers, hubRoster, hubTrial, HUB_CONTRACT, HUB_BOARD_NAME_KEY,
 } from '../game-engine/campaign/hub.js';
 import { HUB_HEROES_KEY, hubHeroCards, seatHero, swapLine } from '../game-engine/campaign/hub-heroes.js';
 import { isIronRun, modeOf, modeLabel } from '../game-engine/rules/modes.js';
@@ -68,9 +68,8 @@ export function recordFinishedCampaign() {
     const world = String(chat_metadata?.[METADATA_KEY] ?? '');
     const settings = /** @type {any} */ (extension_settings);
     const entry = campaignHallEntry({
-        // Una campaña escrita se llama como su hilo («La Maldición de Strahd»), sin el héroe que
-        // lleva el nombre del mundo; una improvisada, como su mundo.
-        campaign: plot?.source === 'written' && plot.title ? plot.title : world,
+        // D-J19: como en el tablón; si no salió de él, como su hilo escrito o como su mundo.
+        campaign: hallCampaignName({ board: chat_metadata?.[HUB_BOARD_NAME_KEY], plot, world }),
         world,
         ending: title,
         party: partyMembers,
@@ -254,7 +253,10 @@ export async function openHubCampaigns() {
         .then(response => response.json())
         .then(json => (Array.isArray(json?.worlds) ? json.worlds : []))
         .catch(() => []);
-    const cards = hubCampaignCards({ worlds, hub: data?.metadata?.hub, level: Number(partyMembers.find(m => !m.guest)?.level) || 1 });
+    // D-J35: las que has añadido tú salen en todos tus gremios: son de tu lista, no del gremio.
+    const { loadImportedCampaigns } = await import('../campaigns.js');
+    const imported = await loadImportedCampaigns(worldName);
+    const cards = hubCampaignCards({ worlds, hub: data?.metadata?.hub, imported, level: Number(partyMembers.find(m => !m.guest)?.level) || 1 });
     // J1.6: arriba, quién va; tus personajes del gremio, para cambiarlo antes de salir.
     const heroes = hubHeroCards({ party: partyMembers, resting: data?.metadata?.[HUB_HEROES_KEY] });
     const { openHubBoard } = await import('../game-engine/ui/hub-panel.js');

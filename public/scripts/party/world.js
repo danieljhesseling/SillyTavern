@@ -22,7 +22,7 @@ import { mergeWorldRows } from '../game-engine/campaign/world-rows.js';
 import { readFactions } from '../game-engine/campaign/factions.js';
 import { levelPlanOf } from '../game-engine/combat/level-adjust.js';
 import { seasonOf, seasonClimates, openInSeason, readSeason } from '../game-engine/world/seasons.js';
-import { readHub, isHubWorld, hubHomeOf, HUB_CAMPAIGN_KEY } from '../game-engine/campaign/hub.js';
+import { readHub, isHubWorld, hubHomeOf, HUB_CAMPAIGN_KEY, HUB_LEVELS_KEY } from '../game-engine/campaign/hub.js';
 import { markVisited } from '../game-engine/campaign/text-map.js';
 import { readWrittenContracts } from '../game-engine/campaign/written-contracts.js';
 import { readRumors } from '../game-engine/campaign/rumors.js';
@@ -201,7 +201,9 @@ export async function reloadWorldFactions() {
             ? data.metadata.worldRows : null;
         // J4.6: para qué nivel es, si es una campaña del tablón. Lo último, porque espera a
         // leer el tablón: lo de arriba ya está puesto.
-        lastLevelPlan = levelPlanOf(data?.metadata, await campaignLevelsOf(String(data?.metadata?.[HUB_CAMPAIGN_KEY] ?? '')));
+        // D-J22: una añadida por ti lo lleva apuntado en su mundo (J5.4); las del juego, en el tablón.
+        lastLevelPlan = levelPlanOf(data?.metadata, data?.metadata?.[HUB_LEVELS_KEY]
+            ?? await campaignLevelsOf(String(data?.metadata?.[HUB_CAMPAIGN_KEY] ?? '')));
     } catch (error) {
         console.error('[party] no se pudieron leer las facciones', error);
         setCurrentWorldFactions([]);

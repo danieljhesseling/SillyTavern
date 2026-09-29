@@ -107,9 +107,15 @@ describe('el ajuste, con tope', () => {
         }
     });
 
+    test('D-J21: la vida sube como mucho un 35 %', () => {
+        expect(LEVEL_LIMITS.hp.max).toBe(1.35);
+        expect(levelAdjustment(3).hpFactor).toBe(1.35);
+        expect(levelAdjustment(9).hpFactor).toBe(1.35);
+    });
+
     test('la vida que le queda baja o sube en la misma proporción', () => {
         const hurt = adjustEnemy({ name: 'Lobo', maxHp: 20, currentHp: 10 }, levelAdjustment(4));
-        expect(hurt).toMatchObject({ maxHp: 30, currentHp: 15, levelHit: 2, levelDamage: 3, levelSteps: 4 });
+        expect(hurt).toMatchObject({ maxHp: 27, currentHp: 14, levelHit: 2, levelDamage: 3, levelSteps: 4 });
         const weak = adjustEnemy({ name: 'Rata', maxHp: 1, currentHp: 1 }, levelAdjustment(-5));
         expect(weak).toMatchObject({ maxHp: 1, currentHp: 1, levelHit: -2, levelDamage: -2 });
     });
@@ -153,7 +159,8 @@ describe('el mismo tablero, con nivel 1 y con nivel 5', () => {
         for (const e of higher.enemies) {
             expect(e.maxHp).toBeLessThanOrEqual(Math.round(bestiary.find(r => r.name === e.name).hp * LEVEL_LIMITS.hp.max));
         }
-        expect(higher.totalHp).toBe(39 + 4 * 17);
+        // 26 × 1,35 = 35 y 11 × 1,35 = 15 (D-J21: antes, ×1,5).
+        expect(higher.totalHp).toBe(35 + 4 * 15);
     });
 
     test('lo que se ajusta es igual cada vez: el mismo grupo, la misma pelea', () => {
@@ -180,6 +187,37 @@ describe('la cara del tablero no cambia', () => {
         const dining = fightFor('comedor_ravenloft', 8);
         expect(dining.adjustment.minions).toBe(1);
         expect(dining.placements.map(p => p.name)).toEqual(['Engendro Vampírico', 'Engendro Vampírico']);
+    });
+
+    test('D-J21: a quien lleva CA 15 o más no se le copia', () => {
+        // La Entrada a Ravenloft: dos gárgolas de CA 15. Con nivel 9 no sale una tercera.
+        const gate = fightFor('entrada_ravenloft', 9);
+        expect(gate.adjustment.minions).toBeGreaterThan(0);
+        expect(gate.placements.map(p => p.name)).toEqual(['Gárgola', 'Gárgola']);
+        expect(gate.enemies.every(e => e.maxHp <= Math.round(bestiary.find(r => r.name === 'Gárgola').hp * 1.35))).toBe(true);
+        // Con uno acorazado y otro no, se copia al que no lo está, aunque sea más fuerte.
+        const mixed = [
+            { name: 'Caballero de latón', armorClass: 18, hp: 5, cr: 0.125 },
+            { name: 'Lobo gris', armorClass: 13, hp: 11, cr: 0.25 },
+        ];
+        const { placements, added } = adjustPlacements({
+            placements: [{ name: 'Caballero de latón', x: 1, y: 1 }, { name: 'Lobo gris', x: 5, y: 5 }],
+            adjustment: levelAdjustment(4), bestiary: mixed, partyLevel: 9, partySize: 4, band: { low: 1, high: 2 },
+            gridWidth: 12, gridHeight: 12,
+        });
+        expect(added).toEqual(['Lobo gris', 'Lobo gris']);
+        expect(placements.filter(p => p.name === 'Caballero de latón')).toHaveLength(1);
+        // Solo acorazados: nadie de más. Quitar sí se puede.
+        const armoured = adjustPlacements({
+            placements: [{ name: 'Caballero de latón', x: 1, y: 1 }, { name: 'Caballero de latón', x: 2, y: 1 }],
+            adjustment: levelAdjustment(4), bestiary: mixed, partyLevel: 9, partySize: 4, band: { low: 1, high: 2 },
+            gridWidth: 12, gridHeight: 12,
+        });
+        expect(armoured.added).toEqual([]);
+        expect(adjustPlacements({
+            placements: [{ name: 'Caballero de latón', x: 1, y: 1 }, { name: 'Caballero de latón', x: 2, y: 1 }],
+            adjustment: levelAdjustment(-4), bestiary: mixed, partyLevel: 1, partySize: 4, band: { low: 5, high: 6 },
+        }).removed).toEqual(['Caballero de latón']);
     });
 
     test('sin casilla libre al lado, no se pone', () => {

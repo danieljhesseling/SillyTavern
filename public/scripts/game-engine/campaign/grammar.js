@@ -7,18 +7,23 @@
  * sitios «empapado». Aquí se arregla sin barras ni arrobas a la vista: quien escribe las
  * frases pone las dos formas entre llaves y el motor elige la que toca.
  *
+ * D-J15: como en D&D, el género no cambia ninguna regla. Lo que decide es cómo te habla el
+ * texto, en masculino o en femenino. Quien es no binario lo elige al crear su personaje, y
+ * se guarda con su género: «No binario (en femenino)».
+ *
  * Cómo se escribe (en `frases.json`, en los sucesos, en el guion de una campaña):
  *
  * - `{cansado|cansada}`: concuerda con tu héroe.
  * - En plural, `{empapados|empapadas}`: con el grupo. Si son todas mujeres, la segunda; si
  *   no, la primera, como se dice en castellano. Se nota en que las dos formas acaban en -s.
- * - Una tercera forma, si se quiere, para quien es no binario o no dice su género:
- *   `{cansado|cansada|sin fuerzas}`. Sin ella sale la primera.
  * - Para que concuerde con otra persona de la frase, su hueco delante:
  *   `{quien:seguro|segura}`, `{companero:callado|callada}`. Y `heroe:` o `grupo:` para decirlo
  *   a mano cuando el plural engaña: `{heroe:de los nuestros|de las nuestras}`.
  *
- * Nunca se ve una llave: sin saber el género sale la primera forma (o la tercera, si la hay).
+ * Solo dos formas (D-J15). Una tercera, `{cansado|cansada|sin fuerzas}`, era para quien no
+ * decía su género; el contenido ya no la lleva, pero la de una partida vieja se sigue leyendo.
+ *
+ * Nunca se ve una llave: sin saber el género sale la primera forma.
  * Los huecos de siempre (`{sitio}`) no llevan barra y no se tocan.
  *
  * Puro: de un texto y de quién juega, a un texto.
@@ -57,8 +62,10 @@ function plain(value) {
 }
 
 /**
- * El género de alguien, o de lo que se eligió al crearlo: «Mujer» es `f`, «Hombre» es `m`,
- * «No binario» es `n`. «Sin especificar», vacío o algo que no se entiende: vacío.
+ * El género de alguien, o de lo que se eligió al crearlo: «Mujer» es `f`, «Hombre» es `m`.
+ * D-J15: con cómo le habla el texto detrás, eso manda: «No binario (en femenino)» es `f`.
+ * «No binario» a secas (de una partida de antes) es `n`. «Sin especificar», vacío o algo que
+ * no se entiende: vacío.
  *
  * Vale el texto libre de siempre (`femenino`, `ella`, `f`…) y también una ficha con `gender`.
  *
@@ -68,6 +75,8 @@ function plain(value) {
 export function genderOf(value) {
     if (value && typeof value === 'object' && !Array.isArray(value)) return genderOf(value.gender ?? value.genero);
     const said = plain(value);
+    const form = said.match(/\ben (femenino|masculino)\)?$/);
+    if (form) return form[1] === 'femenino' ? GENDER.F : GENDER.M;
     if (/^(f|fem|femenin[oa]|mujer|chica|ella|dama|hembra)$/.test(said)) return GENDER.F;
     if (/^(m|masc|masculin[oa]|hombre|chico|el|varon|macho)$/.test(said)) return GENDER.M;
     if (/^(n|nb|neutr[oae]|no[ -]?binari[oae]|elle)$/.test(said)) return GENDER.N;
@@ -92,7 +101,8 @@ export function groupGender(list) {
 }
 
 /**
- * La forma que toca. Sin género (o no binario) y sin tercera forma, la primera.
+ * La forma que toca. Sin género (o no binario, de antes de D-J15) y sin tercera forma, la
+ * primera.
  *
  * @param {string} gender
  * @param {string} masc
@@ -112,7 +122,7 @@ function formFor(gender, masc, fem, other) {
  * @param {any} person Una ficha o un género.
  * @param {string} masc
  * @param {string} fem
- * @param {string} [other] Para quien es no binario o no lo dice.
+ * @param {string} [other] Para quien no lo dice (o una ficha de antes de D-J15).
  * @returns {string}
  */
 export function gendered(person, masc, fem, other) {
@@ -183,6 +193,18 @@ export function resolveGenderDeep(value, who = {}) {
  */
 export function leftoverMarkers(text) {
     return [...resolveGender(text, {}).matchAll(LEFTOVER)].map(m => m[0]);
+}
+
+/**
+ * D-J15: las marcas con tercera forma (`{cansado|cansada|sin fuerzas}`). El texto ya no habla
+ * a nadie con ella: quien es no binario elige masculino o femenino. Se leen (una partida
+ * vieja las trae), pero el contenido nuevo no las lleva.
+ *
+ * @param {any} text
+ * @returns {string[]}
+ */
+export function thirdForms(text) {
+    return [...String(text ?? '').matchAll(MARK)].filter(m => m[4] !== undefined).map(m => m[0]);
 }
 
 /**

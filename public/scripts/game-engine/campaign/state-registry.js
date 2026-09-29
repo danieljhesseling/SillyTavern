@@ -65,6 +65,7 @@ export const STATE_KEYS = [
     { key: 'debt', kind: 'juego', owner: 'party.js', what: 'La deuda con un patrón' },
     { key: 'guild', kind: 'juego', owner: 'party.js', what: 'El gremio: reputación, edificios y plantilla' },
     { key: 'guildStorage', kind: 'juego', owner: 'party.js', what: 'El almacén del gremio' },
+    { key: 'hubCampaignName', kind: 'juego', owner: 'campaigns.js', what: 'Cómo se llama en el tablón la campaña que se juega (D-J19)' },
     { key: 'contractBoard', kind: 'juego', owner: 'party.js', what: 'El tablón de encargos' },
     { key: 'contractTaken', kind: 'juego', owner: 'party.js', what: 'El encargo aceptado' },
     { key: 'recruitsMet', kind: 'juego', owner: 'party.js', what: 'A quién se ha conocido para reclutar' },

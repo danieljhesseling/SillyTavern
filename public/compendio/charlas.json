@@ -56,7 +56,7 @@
         {
           "text": "¿Por eso silbas cuando te ríes?",
           "mood": 1,
-          "then": "¡Ja! Eso es. Un escudo en toda la boca, y de regalo, un silbato."
+          "then": "¡Ja! Eso es. Algún día te cuento cómo los perdí. No es lo que piensas."
         }
       ]
     },
@@ -606,14 +606,14 @@
       "campaign": "gremio",
       "moment": "pelea",
       "lines": [
-        "Eso ha sido la mitad de mi paga. La otra mitad, cuando volvamos.",
-        "Si volvemos."
+        "Una pelea más, y sigo entero. Otra moneda para la barca.",
+        "Si llego a comprarla."
       ],
       "replies": [
         {
-          "text": "Si no vuelves, me ahorro la mitad.",
+          "text": "Pues a por la siguiente moneda.",
           "mood": 1,
-          "then": "Por fin alguien que me escucha."
+          "then": "Eso. Sin prisa y sin gloria."
         },
         {
           "text": "Volveremos. Y con gloria.",
@@ -634,8 +634,8 @@
       "campaign": "gremio",
       "moment": "llegada",
       "lines": [
-        "Así que esto es {sitio}.",
-        "Algo querrá matarnos aquí. Siempre hay algo. Yo me pongo delante."
+        "Ya estamos en {sitio}. Algo querrá matarnos aquí. Siempre hay algo.",
+        "Yo me pongo delante."
       ],
       "replies": [
         {
@@ -662,24 +662,24 @@
       "campaign": "gremio",
       "moment": "llegada",
       "lines": [
-        "Esta noche, que la primera guardia la haga otro.",
-        "Yo con las guardias de noche no me llevo bien."
+        "Esta noche, la guardia la hago yo. Entera.",
+        "No discutas. Duermo poco, y de día."
       ],
       "replies": [
         {
-          "text": "¿Por qué no?",
+          "text": "¿Por qué siempre tú?",
           "mood": 0,
-          "then": "Porque no. Déjalo ahí."
+          "then": "Porque sí. Déjalo ahí."
         },
         {
-          "text": "La hago yo.",
+          "text": "Vale. Te guardo un sitio junto al fuego.",
           "mood": 1,
           "then": "Te lo agradezco. Más de lo que crees."
         },
         {
-          "text": "Aquí todos hacemos guardia. Tú también.",
+          "text": "Aquí se hacen turnos. Tú también duermes.",
           "mood": -1,
-          "then": "Ya lo sé. No he dicho que no. He dicho que no me gusta."
+          "then": "Ya dormiré en la barca. Esta noche vigilo yo."
         }
       ]
     },
@@ -950,8 +950,8 @@
       "campaign": "gremio",
       "moment": "pueblo",
       "lines": [
-        "¿Buscas espadas de alquiler? Gerd, Nella y Osric están libres.",
-        "Gerd come por dos, Nella apuesta y Osric cobra la mitad por adelantado. Pero los tres vuelven."
+        "¿Conoces a los mercenarios de la casa? Gerd, Nella y Osric.",
+        "Gerd come por dos, Nella se juega hasta las botas y Osric no dice ni pío. Pero los tres vuelven."
       ],
       "replies": [
         {
@@ -965,9 +965,9 @@
           "then": "Barato hay. Barato y que vuelva, no."
         },
         {
-          "text": "Me lo pensaré.",
+          "text": "¿Y cuál me recomiendas?",
           "mood": 0,
-          "then": "Piénsalo rápido. Hay otras compañías mirando."
+          "then": "Depende. ¿Quieres a uno que coma, a una que apueste o a uno que calle?"
         }
       ]
     },
@@ -1081,7 +1081,7 @@
         {
           "text": "No es nada. Se me pasará solo.",
           "mood": -1,
-          "then": "Eso dicen todos antes de caerse. A la capilla."
+          "then": "Eso lo decide Elvira, no tú. A la capilla."
         }
       ]
     },
@@ -1368,12 +1368,12 @@
         {
           "text": "Una mala pelea. Nada más.",
           "mood": 0,
-          "then": "Eso dicen todos. Anda, sube y túmbate."
+          "then": "Para ser nada más, sangras bastante. Anda, sube y túmbate."
         },
         {
           "text": "Siento lo del vaso, Tomás.",
           "mood": 1,
-          "then": "Bah, tengo otro igual. No se lo digas a nadie."
+          "then": "Bah, tengo seis iguales. Pero ese era mi favorito."
         }
       ]
     },
@@ -1505,7 +1505,7 @@
       "moment": "pueblo",
       "mood": "alegre",
       "lines": [
-        "Ramiro me ha pedido clavos, Tomás velas y Brunilda tiza. ¡Tiza! Si aquí la que gasta tiza soy yo.",
+        "Ramiro me ha pedido carbón, Tomás velas y Brunilda tiza. ¡Tiza! Si aquí la que gasta tiza soy yo.",
         "Bueno, ¿y tú qué quieres? Rápido, que se me acumula."
       ],
       "replies": [
@@ -2070,7 +2070,7 @@
         {
           "text": "Estoy bien. No hace falta.",
           "mood": -1,
-          "then": "Eso dicen todos. Ven igual."
+          "then": "Eso lo veré yo, con luz. Ven igual."
         },
         {
           "text": "Vendré esta tarde.",

@@ -10,8 +10,9 @@
  * Qué gasta una franja:
  *
  * - **Lo que eliges hacer con una libre** (`ACTIVITIES`): quedar con alguien, entrenar,
- *   trabajar, ir de compras o descansar. Una franja cada una. Ir de compras es un recado: se
- *   gasta al salir, y solo si se compró algo (entrar a mirar no cuesta).
+ *   trabajar o descansar. Una franja cada una.
+ * - **Comprar no gasta nada** (D-J31): como en *Persona*, comprar dos pociones no te quita la
+ *   tarde. La tienda y la herrería se usan cuando se quiera, mientras estén abiertas.
  * - **Viajar**: un camino de días se come lo que queda de hoy y un día entero por cada día
  *   más (se llega por la mañana, como ya hace el viaje); uno corto, una franja.
  * - **Pelear**: una franja por pelea de tablero, al acabar.
@@ -39,10 +40,6 @@ export const ACTIVITIES = {
     trabajar: {
         label: 'Trabajar', icon: 'fa-hammer', hours: ['morning', 'afternoon'], town: true,
         describe: 'Echas una mano en el pueblo por unas monedas.',
-    },
-    comprar: {
-        label: 'Ir de compras', icon: 'fa-basket-shopping', hours: ['morning', 'afternoon', 'night'], services: ['tienda', 'herreria'],
-        describe: 'La tienda y la herrería, con calma. La franja se gasta al salir, si has comprado algo.',
     },
     descansar: {
         label: 'Descansar', icon: 'fa-bed', hours: ['morning', 'afternoon', 'night'],
@@ -180,21 +177,20 @@ export function canDo(activity, { calendar, services = [], fighting = false, peo
  *
  * @param {Object} input
  * @param {any} input.calendar
- * @param {any} [input.social]
+ * @param {any} [input.social] Ya no hace falta: la franja de ahora siempre está libre.
  * @param {string[]} [input.services]
  * @param {boolean} [input.fighting]
  * @param {number} [input.people]
  * @returns {{slot: {id: string, label: string}, free: boolean, activities: Array<{id: string, label: string, icon: string,
  *   describe: string, enabled: boolean, why: string}>}}
  */
-export function freeTime({ calendar, social = null, services = [], fighting = false, people = 0 }) {
+export function freeTime({ calendar, services = [], fighting = false, people = 0 }) {
     const slot = slotNow(calendar);
-    const state = readSocial(social);
-    const c = normalizeCalendar(calendar);
-    const errand = state.errand && state.errand.day === c.day && state.errand.slot === slot.id ? state.errand : null;
     return {
         slot: { id: slot.id, label: slot.label },
-        free: !errand,
+        // Lo que gasta una franja pasa el reloj en el acto; y comprar no gasta nada (D-J31).
+        // Así que la de ahora siempre está por usar.
+        free: true,
         activities: Object.entries(ACTIVITIES).map(([id, spec]) => ({
             id,
             label: spec.label,
@@ -206,54 +202,12 @@ export function freeTime({ calendar, social = null, services = [], fighting = fa
 }
 
 /**
- * Empezar un recado que gasta la franja al acabar (ir de compras).
- *
- * @param {any} social
- * @param {any} calendar
- * @param {string} [what]
- * @returns {import('./social.js').SocialState}
- */
-export function openErrand(social, calendar, what = 'comprar') {
-    const c = normalizeCalendar(calendar);
-    return { ...readSocial(social), errand: { what: text(what), day: c.day, slot: c.slots[c.slotIndex].id, used: false } };
-}
-
-/**
- * Durante el recado se hizo algo (se compró): al salir, la franja se gasta.
- *
- * @param {any} social
- * @returns {import('./social.js').SocialState}
- */
-export function useErrand(social) {
-    const state = readSocial(social);
-    return state.errand ? { ...state, errand: { ...state.errand, used: true } } : state;
-}
-
-/**
- * Salir del recado: si se hizo algo en esta misma franja, se gasta (y se apunta).
- *
- * @param {any} social
- * @param {any} calendar
- * @returns {{social: import('./social.js').SocialState, slots: number}}
- */
-export function closeErrand(social, calendar) {
-    const state = readSocial(social);
-    const errand = state.errand;
-    const cleared = { ...state, errand: null };
-    if (!errand || !errand.used) return { social: cleared, slots: 0 };
-    const c = normalizeCalendar(calendar);
-    // Si el reloj ya pasó de franja mientras tanto (otra cosa la gastó), no se cobra dos veces.
-    if (errand.day !== c.day || errand.slot !== c.slots[c.slotIndex].id) return { social: cleared, slots: 0 };
-    return { social: noteSpent(cleared, c, errand.what), slots: 1 };
-}
-
-/**
  * Lo que da hacer algo con una franja. Quien llama lo aplica: la experiencia, el oro, el
- * descanso, la tienda o la escena.
+ * descanso o la escena.
  *
  * @param {string} activity
  * @param {{calendar: any, hero?: any, port?: boolean}} input
- * @returns {{kind: 'xp'|'gold'|'rest-short'|'rest-long'|'shop'|'meetup'|'', amount: number, line: string}}
+ * @returns {{kind: 'xp'|'gold'|'rest-short'|'rest-long'|'meetup'|'', amount: number, line: string}}
  */
 export function activityOutcome(activity, { calendar, hero = null, port = false }) {
     const slot = slotNow(calendar);
@@ -274,8 +228,6 @@ export function activityOutcome(activity, { calendar, hero = null, port = false 
             return slot.advancesDay
                 ? { kind: 'rest-long', amount: 0, line: 'A dormir: mañana será otro día.' }
                 : { kind: 'rest-short', amount: 0, line: `Descansáis ${when}.` };
-        case 'comprar':
-            return { kind: 'shop', amount: 0, line: '' };
         case 'quedar':
             return { kind: 'meetup', amount: 0, line: '' };
         default:

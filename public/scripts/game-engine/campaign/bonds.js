@@ -307,7 +307,8 @@ export function suggestBondEvent(characterId, affinityDelta) {
 export const CONTROL_RANK = 5;
 
 /**
- * Si puedes llevar tú a alguien en combate (J7.3).
+ * Si puedes llevar tú a alguien en combate (J7.3). Vale igual en los dos modos de campaña,
+ * «solo» y «grupo» (D-J32): `canControl` de `rules/companions.js` pregunta aquí.
  *
  * - Tu héroe, siempre: el primero del grupo (como en `canControl` de `rules/companions.js`).
  * - Una invocación es de quien la invocó (`casterId`): la llevas tú si puedes llevarle a él,

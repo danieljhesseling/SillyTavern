@@ -5,7 +5,8 @@
  * de manos contra la vigilancia del sitio). Si sale, gratis. Si no, os pillan: se paga una
  * multa del doble, y el sitio os apunta. Cada robo pillado sube lo buscados que estáis
  * allí; con 2 o más, al llegar os paran los guardias: multa o huir (y huir sube más).
- * Se olvida con el tiempo: un punto por semana.
+ * Se olvida con el tiempo: un punto por semana. La nigromancia que daña o levanta muertos,
+ * vista en un sitio con gente, también sube «buscado» (`magicIsCrime`, D-J26).
  *
  * Puro: la tirada que hace falta, lo que cuesta y lo que se apunta.
  */
@@ -98,4 +99,23 @@ export function settleGuards(wanted, place, what) {
  */
 export function coolDown(wanted) {
     return readWanted(Object.fromEntries(Object.entries(readWanted(wanted)).map(([p, n]) => [p, n - 1])));
+}
+
+/**
+ * D-J26: qué magia es un delito si la ven. No toda la nigromancia: solo la que **daña**
+ * (Toque helado, Infligir heridas, Toque vampírico, una maldición sobre alguien) o **levanta
+ * muertos** (Animar a los muertos). Revivir, Estabilizar o Hablar con los muertos tocan la
+ * muerte, pero no hacen daño a nadie: por salvar a alguien no os buscan los guardias.
+ *
+ * @param {any} spell Un conjuro o una habilidad: su `school`, y lo que hace (`damage`,
+ *   `drain`, `condition` sobre un enemigo, `summon`), arriba o en su `ability`.
+ * @returns {boolean}
+ */
+export function magicIsCrime(spell) {
+    const inner = spell?.ability && typeof spell.ability === 'object' ? spell.ability : {};
+    const all = { ...inner, ...(spell ?? {}) };
+    if (text(all.school).toLowerCase() !== 'nigromancia') return false;
+    if (all.summon) return true;
+    if (text(all.damage) || all.drain === true) return true;
+    return text(all.target) === 'enemy' && Boolean(text(all.condition));
 }

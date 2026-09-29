@@ -483,7 +483,11 @@ function buildSectionSchemas() {
                 name: { type: 'string' },
                 race: { type: 'string', description: 'Como la llama el compendio: Humano, Enano, Media elfa…' },
                 className: { type: 'string', description: 'Como la llama el compendio: Guerrero, Pícaro, Soldado…' },
-                gender: { type: 'string', enum: ['Mujer', 'Hombre', 'No binario', 'Sin especificar'] },
+                gender: {
+                    type: 'string',
+                    enum: ['Mujer', 'Hombre', 'No binario (en masculino)', 'No binario (en femenino)'],
+                    description: 'No cambia ninguna regla: dice cómo le habla el texto. Quien es no binario lleva detrás si en masculino o en femenino.',
+                },
                 background: { type: 'string', enum: ['soldado', 'criminal', 'erudito', 'acolito', 'forastero', 'artesano', 'noble', 'marinero', 'charlatan', 'ermitano'] },
                 about: { type: 'string', description: 'Quién es, en dos frases. Es lo que lee el narrador.' },
                 pitch: { type: 'string', description: 'Una línea para elegirlo: lo que le hace distinto.' },
@@ -527,7 +531,7 @@ function buildSectionSchemas() {
             species: { anyOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' } }], description: 'La especie, como la llama el compendio: Enano, Elfo, Humano… Sale como «[Enano] …».' },
             class: { anyOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' } }], description: 'La clase: Clérigo, Soldado, Pícaro… Sale como «[Clérigo] …».' },
             background: { anyOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' } }], description: 'El trasfondo: soldado, criminal, erudito, acolito, forastero, artesano, noble, marinero, charlatan, ermitano.' },
-            gender: { type: 'string', enum: ['Mujer', 'Hombre', 'No binario'], description: 'Cómo se presenta quien juega.' },
+            gender: { type: 'string', enum: ['Mujer', 'Hombre'], description: 'Cómo le habla el texto a quien juega: Mujer, en femenino; Hombre, en masculino (también a quien es no binario y lo eligió así).' },
             said: { type: 'string', description: 'El id de una opción de esta charla que ya se eligió.' },
         },
     };

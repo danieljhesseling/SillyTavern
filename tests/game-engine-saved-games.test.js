@@ -61,7 +61,8 @@ describe('J0.6: partidas, no chats', () => {
             where: 'Ahora en La Maldición de Strahd',
             campaigns: 'Otras campañas: 1387',
             when: 'hace 5 minutos',
-            canDelete: false,
+            // D-J23: un gremio también se borra, entero y con aviso.
+            canDelete: true,
         });
         expect(card.resume).toBe('La Maldición de Strahd, desde El Gremio · Tessa (Guerrero, nivel 2), con Gerd el Mellado · Día 4');
     });

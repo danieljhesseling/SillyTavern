@@ -25,7 +25,7 @@ import {
 import { describeLesson, LESSON } from '../game-engine/campaign/masters.js';
 import { isIndoors } from '../game-engine/world/visibility.js';
 import { fireAt } from '../game-engine/board/living-terrain.js';
-import { WATCH, readWanted } from '../game-engine/campaign/crime.js';
+import { WATCH, readWanted, magicIsCrime } from '../game-engine/campaign/crime.js';
 import { noteDealt } from '../game-engine/combat/tally.js';
 import { hasAction, useAction } from '../game-engine/combat/turn-machine.js';
 import { getActiveRuleset } from '../game-engine/rules/ruleset.js';
@@ -309,7 +309,7 @@ export function payForSpell(caster, ability) {
 }
 
 /**
- * R4: la nigromancia, en un sitio con gente, es un crimen; y a los tuyos les parece lo que
+ * R4: la nigromancia que daña o levanta muertos (D-J26), en un sitio con gente, es un crimen; y a los tuyos les parece lo que
  * les parece (a quien busca tranquilidad, mal).
  *
  * @param {any} ability
@@ -318,7 +318,8 @@ export function payForSpell(caster, ability) {
 export function magicConsequences(ability) {
     /** @type {string[]} */
     const said = [];
-    if (ability?.school !== 'nigromancia') return said;
+    // D-J26: solo la que daña o levanta muertos. Revivir o Hablar con los muertos, no.
+    if (!magicIsCrime(ability)) return said;
     judgeDecision('nigromancia', { quiet: true });
     const here = hereLocation();
     const type = String(here?.locationType ?? here?.type ?? '').toLowerCase();

@@ -174,6 +174,24 @@ export function takeHome({ party, start = null }) {
 }
 
 /**
+ * D-J19: cómo se llama una campaña terminada en el salón de la fama: como en el tablón, que es
+ * como la conoce quien juega. Una que no salió del tablón se llama como su hilo escrito («La
+ * Maldición de Strahd»), sin el héroe que lleva el nombre del mundo; una improvisada, como su
+ * mundo.
+ *
+ * @param {Object} input
+ * @param {string} [input.board] Su nombre en el tablón, si salió de él.
+ * @param {any} [input.plot] El hilo.
+ * @param {string} [input.world] El mundo donde se jugó.
+ * @returns {string}
+ */
+export function hallCampaignName({ board = '', plot = null, world = '' }) {
+    if (text(board)) return text(board);
+    if (plot?.source === 'written' && text(plot.title)) return text(plot.title);
+    return text(world);
+}
+
+/**
  * La entrada de una campaña terminada en el salón de la fama.
  *
  * @param {Object} input

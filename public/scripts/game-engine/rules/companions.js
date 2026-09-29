@@ -23,12 +23,16 @@
 
 import { motiveOf } from './mortality.js';
 import { readInjuries } from './injuries.js';
+import { canPlayerControl, CONTROL_RANK } from '../campaign/bonds.js';
 
-/** Quién lleva a quién. Se elige al crear la campaña. */
+/**
+ * Los modos de una campaña. Se elige al crear la campaña; desde D-J32 no cambian a quién
+ * mueves tú (eso lo dice el vínculo, en `canControl`), y se leen para no perder lo guardado.
+ */
 export const MODES = {
     /** Llevas al tuyo; los demás deciden por su cuenta. */
     SOLO: 'solo',
-    /** Los mueves a todos, como hasta ahora. */
+    /** El de siempre. */
     GROUP: 'group',
 };
 
@@ -215,33 +219,36 @@ export function readMode(rules) {
 /**
  * Si puedes mover a alguien tú mismo.
  *
- * En solo llevas al tuyo y los demás se llevan solos. El primero de la lista es el tuyo:
- * es el que ya manda en el resto del juego —habla por ti, abre las puertas— así que
- * cambiar eso aquí sería inventar un concepto nuevo para nada.
+ * D-J32: **el vínculo 5 manda en los dos modos**, «solo» y «grupo». A tu héroe (el primero de
+ * la lista: el que ya manda en el resto del juego) lo llevas siempre; a un compañero, desde
+ * que sois amigos (`CONTROL_RANK` de `bonds.js`); antes decide él, con su IA. Una invocación
+ * es de quien la invocó. Es la misma regla que `canPlayerControl`, que es quien la dice: aquí
+ * solo se le pone el motivo, que un «no» sin porqué es un error.
  *
  * @param {any} member
  * @param {any[]} party
- * @param {any} [rules]
+ * @param {any} [rules] El modo de la campaña: ya no cambia quién se mueve (D-J32).
+ * @param {import('../campaign/bonds.js').BondState|null} [bonds] Los vínculos de la campaña.
  * @returns {{allowed: boolean, reason: string}}
  */
-export function canControl(member, party, rules = null) {
-    if (readMode(rules) === MODES.GROUP) return { allowed: true, reason: '' };
-
-    const first = (Array.isArray(party) ? party : [])[0];
-    if (first && String(first.id) === String(member?.id)) return { allowed: true, reason: '' };
+export function canControl(member, party, rules = null, bonds = null) {
+    const list = Array.isArray(party) ? party : [];
+    if (canPlayerControl(member, bonds, { party: list })) return { allowed: true, reason: '' };
 
     const name = String(member?.name ?? 'Ese');
-    return { allowed: false, reason: `${name} se lleva solo: en esta campaña cada uno decide lo suyo.` };
+    if (String(member?.casterId ?? '').trim()) {
+        return { allowed: false, reason: `${name} va por su cuenta: lo lleva el juego.` };
+    }
+    return { allowed: false, reason: `${name} se lleva solo hasta que seáis amigos (vínculo ${CONTROL_RANK}): hasta entonces, decide lo suyo.` };
 }
 
 /**
- * El modo, en una línea, para enseñarlo donde se eligió.
+ * El modo, en una línea, para enseñarlo donde se eligió. Desde D-J32 los dos llevan igual a
+ * la gente: el vínculo 5 manda.
  *
  * @param {any} rules
  * @returns {string}
  */
 export function describeMode(rules) {
-    return readMode(rules) === MODES.SOLO
-        ? 'Llevas al tuyo; los demás deciden por su cuenta'
-        : 'Los llevas a todos';
+    return `Llevas al tuyo; a un compañero, desde que sois amigos (vínculo ${CONTROL_RANK}). Hasta entonces, decide él`;
 }

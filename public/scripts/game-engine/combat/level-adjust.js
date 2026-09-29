@@ -12,10 +12,11 @@
  *    tablero sin acto conocido es para todo el tramo.
  * 2. **Cuánto se aparta el grupo**: nada dentro del tramo; fuera, los niveles que le faltan
  *    o le sobran hasta el borde.
- * 3. **El ajuste, con tope**: la vida, la puntería y el daño; y desde dos niveles de
- *    diferencia, un esbirro de más o de menos, solo si cabe en el presupuesto del encuentro
- *    (`board-intent.js`). Los jefes no se quitan nunca, y el tablero no se queda sin ninguno
- *    de los que tenía: solo se quita la copia de uno repetido.
+ * 3. **El ajuste, con tope**: la vida (hasta ×1,35, D-J21), la puntería y el daño; y desde dos
+ *    niveles de diferencia, un esbirro de más o de menos, solo si cabe en el presupuesto del
+ *    encuentro (`board-intent.js`). Los jefes no se quitan nunca, y el tablero no se queda sin
+ *    ninguno de los que tenía: solo se quita la copia de uno repetido. Y no se copia a nadie
+ *    con CA 15 o más (D-J21): con nivel 8, la Entrada a Ravenloft llegó a durar 20 rondas.
  *
  * Puro: quien llama lo aplica y lo dice.
  */
@@ -29,8 +30,8 @@ import { isPassable } from '../board/terrain.js';
  * tiene por qué sudar como en la cripta. Se ajusta, no se reescribe.
  */
 export const LEVEL_LIMITS = {
-    /** Por cuánto se multiplica la vida. */
-    hp: { min: 0.7, max: 1.5 },
+    /** Por cuánto se multiplica la vida (D-J21: hasta ×1,35; con ×1,5 las peleas no acababan). */
+    hp: { min: 0.7, max: 1.35 },
     /** Lo que se suma a la tirada de ataque. */
     hit: { min: -2, max: 2 },
     /** Lo que se suma a cada golpe. */
@@ -41,6 +42,12 @@ export const LEVEL_LIMITS = {
 
 /** Lo que mueve cada nivel de diferencia en la vida. */
 const HP_PER_LEVEL = 0.12;
+
+/**
+ * D-J21: desde esta CA no se añade ninguna copia. Un enemigo acorazado de más no es un
+ * esbirro: es media pelea más, golpe a golpe fallado.
+ */
+export const NO_COPY_AC = 15;
 
 /** Hasta dónde se busca sitio para un esbirro de más, en casillas desde uno de los suyos. */
 const NEAR = 3;
@@ -212,9 +219,10 @@ export function adjustEnemy(enemy, adjustment) {
 /**
  * Los que salen al empezar la pelea, con un esbirro de más o de menos.
  *
- * El esbirro que se añade es copia del más flojo de los que no son jefe, puesto al lado de
- * uno suyo; y solo si cabe en lo que el grupo tiene de más (la diferencia de presupuesto
- * entre su nivel y el del tablero). El que se quita es la última copia del más flojo que
+ * El esbirro que se añade es copia del más flojo de los que no son jefe ni llevan CA 15 o
+ * más (`NO_COPY_AC`), puesto al lado de uno suyo; y solo si cabe en lo que el grupo tiene de
+ * más (la diferencia de presupuesto entre su nivel y el del tablero). Si todos van
+ * acorazados, no se añade nadie. El que se quita es la última copia del más flojo que
  * esté repetido, y solo si su amenaza cabe en lo que al grupo le falta: el tablero sigue
  * teniendo a todos los que tenía, y a sus jefes siempre.
  *
@@ -269,7 +277,12 @@ export function adjustPlacements({
         return { placements: list, added, removed };
     }
 
-    const minion = kinds[0];
+    // D-J21: al acorazado no se le copia. Su CA, en la ficha del mundo o en la plantilla.
+    const armour = (/** @type {string} */ name) => {
+        const row = rows.get(lower(name));
+        return Number(row?.armorClass ?? row?.ac) || 0;
+    };
+    const minion = kinds.find(name => armour(name) < NO_COPY_AC);
     if (!minion) return { placements: list, added, removed };
     const cost = threat(minion);
     const used = new Set([...(Array.isArray(taken) ? taken : []), ...list]
