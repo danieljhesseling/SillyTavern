@@ -8,7 +8,7 @@
 
 export {
     loadDndCatalog, adoptVeteranGear, giveStartingGear, setPartyFromWorldEntries, enterStartingBoard,
-    applyCampaignRuleset, adoptPet, postJourney, postHomecoming, applyModeExtras, notePlot, recordFinishedCampaign,
+    applyCampaignRuleset, postJourney, postHomecoming, applyModeExtras, notePlot, recordFinishedCampaign,
     beginCampaignPlot, routeTyped, openCampaignBuilder, memberFromEntry, partySnapshot, adoptCarriedParty,
     seatPartyHero, giveStartingPurse, plotEndingTitle, refreshBoardView, addPartyMember, removePartyMember,
     updatePartyMemberFromPersona, getActivePartyLeader, getPartyDescription, initPartyPanel,
@@ -18,3 +18,4 @@ export {
     revealLocationsForSimulation, trainMercenariesForSimulation, levelUpForSimulation, getCombatEncounter,
     getPartyMembersSnapshot, getEngineSceneState, getBoardContextSnapshot,
 } from './party/simulation.js';
+export { adoptPet } from './party/pet.js';

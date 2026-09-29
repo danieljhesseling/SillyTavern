@@ -58,10 +58,7 @@ import { areaCells, creaturesIn, isArea, describeArea } from '../game-engine/rul
 import { elementOf, reactTerrain, comboFor, ELEMENT_ICONS } from '../game-engine/rules/tags.js';
 import { travelShortcut, lockBonus, watchBonus, duelTricks, patchUpAfterFight, whoCan } from '../game-engine/rules/field-uses.js';
 // R5 del roadmap de profundidad: la mascota.
-import {
-    readPet, createPet, petComment, afterComment, shouldComment, petAdvice, supportActions, liveTogether, petDoes,
-    petChoicesFor, tamableAs, describePet, petName, SPECIES as PET_SPECIES, CHARACTERS as PET_CHARACTERS,
-} from '../game-engine/campaign/pet.js';
+import { supportActions, petDoes, petName } from '../game-engine/campaign/pet.js';
 // R8 y R9 del roadmap de profundidad: compañeros con arco, y el mundo que responde.
 import { completeArc, homeFavors, favorDiscount, noteGone, whoComesBack, comebackOf, forgetGone } from '../game-engine/campaign/companion-arcs.js';
 import { rumorsFromPlay, chronicleMemory, reactionTo } from '../game-engine/campaign/world-echoes.js';
@@ -80,7 +77,6 @@ import { truceOffered, truceLine, callsForHelp, helpWave } from '../game-engine/
 // T4: la estación y la magia, en los precios.
 import { seasonalMarket, magicStance } from '../game-engine/campaign/season-market.js';
 // T3: la gente del mundo ve a la mascota.
-import { reactionsHere } from '../game-engine/campaign/pet-reception.js';
 // R6: los jefes con fases.
 import { bossPhase } from '../game-engine/combat/boss-phases.js';
 // R6 del roadmap de profundidad: tableros con intención.
@@ -326,12 +322,11 @@ import {
     GRAVES_KEY, GUILD_KEY, HAGGLE_KEY, HERO_FIT_KEY, HINTS_KEY, LEAVE_ON_KEY, LENGTH_KEY, LETTERS_KEY,
     LETTERS_SENT_KEY, LEVEL_SAID_KEY, LOCATION_MAPS_MANUAL_HIDDEN_KEY, MAP_NOTES_KEY, MEMORIES_KEY,
     MODE_HISTORY_KEY, MOUNTS_KEY, NARRATOR_FONT_KEY, NARRATOR_MODE_STORAGE, NARRATOR_RECENT_KEY, NEMESES_KEY,
-    NEWS_KEY, OFFERS_KEY, PENDING_CHECK_KEY, PERSONAL_ASKED_KEY, PET_KEY, PLOT_ANNOUNCED_KEY, PLOT_KEY,
-    PLOT_STATE_KEY, PRISONERS_KEY, PROPOSALS_KEY, RECRUITS_MET_KEY, RELICS_GIVEN_KEY, ROLL_GUARD_KEY,
-    RUMORS_HEARD_KEY, RUMORS_HEARD_ON_KEY, SAFETY_KEY, SAFETY_ON_KEY, SAVER_KEY, SECRETS_KEY, SEED_KEY,
-    SESSION_LOG_KEY, STATS_KEY, STORAGE_KEY, SUCESOS_KEY, SUCESOS_STORAGE, TAKEN_KEY, TIPS_SEEN_KEY, TONE_KEY,
-    VILLAIN_SEEN_KEY, VISITED_KEY, WANTED_KEY, WARNED_KEY, WEATHER_TODAY_KEY, WEEK_TABLE_AUTO_KEY, WEEK_TABLE_KEY,
-    WRITTEN_DONE_KEY, localFlag,
+    NEWS_KEY, OFFERS_KEY, PENDING_CHECK_KEY, PERSONAL_ASKED_KEY, PLOT_ANNOUNCED_KEY, PLOT_KEY, PLOT_STATE_KEY,
+    PRISONERS_KEY, PROPOSALS_KEY, RECRUITS_MET_KEY, RELICS_GIVEN_KEY, ROLL_GUARD_KEY, RUMORS_HEARD_KEY,
+    RUMORS_HEARD_ON_KEY, SAFETY_KEY, SAFETY_ON_KEY, SAVER_KEY, SECRETS_KEY, SEED_KEY, SESSION_LOG_KEY, STATS_KEY,
+    STORAGE_KEY, SUCESOS_KEY, SUCESOS_STORAGE, TAKEN_KEY, TIPS_SEEN_KEY, TONE_KEY, VILLAIN_SEEN_KEY, VISITED_KEY,
+    WANTED_KEY, WARNED_KEY, WEATHER_TODAY_KEY, WEEK_TABLE_AUTO_KEY, WEEK_TABLE_KEY, WRITTEN_DONE_KEY, localFlag,
 } from './keys.js';
 import {
     combatBoardSelection, combatEncounter, combatLogEntries, currentBoardName, currentLocationName,
@@ -343,6 +338,9 @@ import {
 import { openOwnSheet, openPartyMemberModal, syncCurse } from './sheet.js';
 import { restoreCheckpoint, saveCheckpoint } from './checkpoints.js';
 import { canLevelUp, getXpTable, openLevelUpCard, respecMember } from './level-up.js';
+import {
+    currentPet, offerTaming, openPetPanel, petLivesIt, petMeetsTown, petReact, petSupport, petTricks,
+} from './pet.js';
 
 /** @typedef {import('./types.js').PartyMember} PartyMember */
 
@@ -860,7 +858,7 @@ async function ensureWorldData() {
 let lastWorldSeason = '';
 
 /** R5: el género del mundo, para ofrecer la mascota que le pega. */
-let lastWorldGenre = '';
+export let lastWorldGenre = '';
 
 /**
  * J4 de ROADMAP_SIN_CONEXION: si este mundo es un gremio, lo guardado de él; si es una campaña
@@ -1098,7 +1096,7 @@ function getEnemyByInstanceId(instanceId) {
     return combatEncounter.enemies.find(enemy => enemy.instanceId === instanceId) || null;
 }
 
-function getAliveEnemies() {
+export function getAliveEnemies() {
     return combatEncounter.enemies.filter(enemy => (enemy.currentHp || 0) > 0);
 }
 
@@ -1258,7 +1256,7 @@ let activeTerrainBrush = null;
  *
  * @param {any} board
  */
-function persistBoardTerrain(board) {
+export function persistBoardTerrain(board) {
     // En la fila de escrituras del mundo: abrir una puerta mientras llega gente nueva al
     // sitio guardaba dos copias del mundo, y la ultima borraba a la otra.
     return worldWrite(() => persistBoardTerrainNow(board));
@@ -2094,26 +2092,6 @@ function welcomeBack() {
 }
 
 
-/** @returns {import('../game-engine/campaign/pet.js').Pet|null} */
-function currentPet() {
-    return readPet(chat_metadata?.[PET_KEY]);
-}
-
-/**
- * T5: la mascota con la que llega un héroe hecho. Si ya hay una, se queda la que hay.
- *
- * @param {{name?: string, species?: string, character?: string}|null} raw
- * @returns {boolean} Si se ha quedado.
- */
-export function adoptPet(raw) {
-    if (!chat_metadata || !raw || currentPet()) return false;
-    const made = createPet({ name: String(raw.name ?? ''), species: String(raw.species ?? ''), character: String(raw.character ?? 'leal') });
-    if (!made) return false;
-    keepPet(made);
-    postCombatNarration(`🐾 [MASCOTA] ${petName(made)} va con vosotros desde el principio.`);
-    return true;
-}
-
 /**
  * K3: qué ficha centrar en el tablero: la de quien tiene el turno en combate, una vez por turno.
  *
@@ -2126,241 +2104,6 @@ function activeFocus() {
     return { focusTokenId: getPartyMemberByTurnEntry(entry)?.id ?? null, focusKey: `${Number(combatEncounter.round) || 1}:${String(entry.id)}` };
 }
 
-/**
- * T3: la gente con oficio de un sitio ve a la mascota por primera vez: le gusta o no, lo
- * dice (sin llamar al modelo) y su actitud da un paso.
- *
- * @param {string} place
- */
-function petMeetsTown(place) {
-    const pet = currentPet();
-    if (!pet || !chat_metadata) return;
-    const reactions = reactionsHere({
-        pet, npcs: lastWorldNpcs, here: place, met: pet.met,
-        speciesLabel: PET_SPECIES[/** @type {keyof typeof PET_SPECIES} */ (pet.species)]?.label ?? '',
-    });
-    if (reactions.length === 0) return;
-    let attitudes = chat_metadata[ATTITUDES_KEY];
-    for (const reaction of reactions) {
-        const shifted = shiftAttitude(attitudes, { name: reaction.npc, delta: reaction.mood, day: campaignDay() });
-        if (shifted.ok) attitudes = shifted.state;
-        postCombatNarration(`🐾 [MASCOTA] ${reaction.line}`);
-    }
-    chat_metadata[ATTITUDES_KEY] = attitudes;
-    keepPet({ ...pet, met: [...pet.met, ...reactions.map(r => r.npc)] });
-}
-
-/**
- * R5: guardar la mascota.
- *
- * @param {import('../game-engine/campaign/pet.js').Pet|null} pet
- */
-function keepPet(pet) {
-    if (!chat_metadata) return;
-    chat_metadata[PET_KEY] = pet;
-    saveMetadata();
-    // H1: la primera mascota dice qué hace.
-    if (pet) showTip('pet');
-}
-
-/**
- * R5: reaccionar a una línea de la crónica. Nunca a lo suyo, y como mucho una vez cada rato.
- *
- * @param {string} text
- */
-function petReact(text) {
-    const pet = currentPet();
-    if (!pet || !chat_metadata) return;
-    const line = readTaggedLine(text);
-    if (!line || line.tag === 'MASCOTA') return;
-    const now = Array.isArray(chat) ? chat.length : 0;
-    if (!shouldComment({ pet, category: line.category, now, random: Math.random })) return;
-    const said = petComment({ pet, category: line.category, random: Math.random });
-    if (!said) return;
-    keepPet(afterComment(pet, said, now));
-    // Detrás de la línea que comenta, y sin volver a entrar aquí.
-    setTimeout(() => postCombatNarration(said), 0);
-}
-
-/**
- * R5: algo vivido juntos (una pelea ganada, un viaje). Cada cinco, más vínculo.
- */
-function petLivesIt() {
-    const pet = currentPet();
-    if (!pet) return;
-    const step = liveTogether(pet);
-    keepPet(step.pet);
-    if (step.line) postCombatNarration(step.line);
-}
-
-/** Los nombres de siempre de cada especie, para no pedir uno en blanco. */
-const PET_NAMES = /** @type {Record<string, string>} */ ({
-    perro: 'Canela', gato: 'Hollín', zorro: 'Rastro', halcon: 'Brisa', cuervo: 'Graznido', loro: 'Chismes', familiar: 'Chispa', espiritu: 'Susurro',
-});
-
-/**
- * R5: la mascota en un cuadro: tenerla, preguntarle, acariciarla. Sin mascota, se elige una
- * de las tres que le pegan al mundo.
- *
- * @returns {Promise<string>}
- */
-async function openPetPanel() {
-    if (!chat_metadata || partyMembers.length === 0) {
-        toastr.info('Abre una partida con alguien en el grupo antes.', 'La mascota');
-        return '';
-    }
-    const pet = currentPet();
-    const body = $('<div class="jr-root pet-root"></div>');
-    if (!pet) {
-        body.append($('<h3></h3>').text('¿Te acompaña alguien?'));
-        body.append($('<p></p>').text('Una mascota no ocupa plaza ni cobra. Comenta lo que pasa, ayuda sin pelear y crece contigo.'));
-        const choices = petChoicesFor(lastWorldGenre);
-        const picked = await new Popup(body[0], POPUP_TYPE.TEXT, '', {
-            okButton: false, cancelButton: 'Nadie, por ahora',
-            customButtons: choices.map((species, i) => ({
-                text: `${PET_NAMES[species]}, ${PET_SPECIES[/** @type {keyof typeof PET_SPECIES} */ (species)].label}${PET_SPECIES[/** @type {keyof typeof PET_SPECIES} */ (species)].talks ? ' (habla)' : ''}`,
-                result: 60 + i, classes: ['pet-pick'],
-            })),
-        }).show();
-        const index = Number(picked) - 60;
-        const species = choices[index];
-        if (!species) return '';
-        const characters = Object.keys(PET_CHARACTERS);
-        const random = createSeededRandom(derive(String(chat_metadata?.[METADATA_KEY] || ''), 'mascota', species));
-        const made = createPet({ name: PET_NAMES[species], species, character: characters[Math.floor(random() * characters.length) % characters.length] });
-        keepPet(made);
-        if (made) postCombatNarration(`🐾 [MASCOTA] ${petName(made)} se viene contigo (${PET_CHARACTERS[made.character]}).`);
-        if (isShellOpen()) refreshGameShell();
-        return made ? petName(made) : '';
-    }
-    body.append($('<h3></h3>').text(petName(pet)));
-    body.append($('<p class="pet-sheet"></p>').text(describePet(pet)));
-    body.append($('<p></p>').text(PET_SPECIES[pet.species].note));
-    const today = campaignDay();
-    const petted = Number(chat_metadata.petPetted) === today;
-    const picked = await new Popup(body[0], POPUP_TYPE.TEXT, '', {
-        okButton: 'Cerrar',
-        customButtons: [
-            { text: PET_SPECIES[pet.species].talks ? 'Preguntarle' : 'Ver qué hace', result: 71, classes: ['pet-ask'] },
-            ...(petted ? [] : [{ text: 'Acariciarle', result: 72, classes: ['pet-pet'] }]),
-        ],
-    }).show();
-    if (picked === 71) {
-        const next = whatComes(today)[0] ?? null;
-        const urgent = weekAffairsNow()[0] ?? null;
-        const state = readCases(chat_metadata?.[CASES_KEY]);
-        const missing = state.active ? state.active.clues.find(c => !state.found.includes(c.id) && !c.misleading) : null;
-        const clue = missing ? `falta ${missing.how === 'registrar' ? `registrar ${missing.source.name}` : missing.how === 'rumor' ? `oír lo que se dice en ${missing.source.name}` : `hablar con ${missing.source.name}`}` : '';
-        postCombatNarration(petAdvice({ pet, next, urgent: urgent ? { title: urgent.title, in: urgent.in } : null, clue }));
-    } else if (picked === 72) {
-        chat_metadata.petPetted = today;
-        saveMetadata();
-        postCombatNarration(`🐾 [MASCOTA] ${pet.name} se deja hacer, y el grupo se ríe un rato.`);
-        petLivesIt();
-    }
-    return '';
-}
-
-/**
- * R5: los asuntos de la mesa de ahora, para que la mascota sepa qué aprieta.
- *
- * @returns {Array<{title: string, in: number|null}>}
- */
-function weekAffairsNow() {
-    if (!chat_metadata) return [];
-    return keepOn(affairsOf({
-        today: campaignDay(),
-        factions: currentWorldFactions,
-        taken: chat_metadata[TAKEN_KEY] ?? null,
-        board: Array.isArray(chat_metadata[BOARD_KEY]) ? chat_metadata[BOARD_KEY] : [],
-        plot: getPlot(),
-        plotState: chat_metadata[PLOT_STATE_KEY],
-        debt: chat_metadata[DEBT_KEY] ?? null,
-        party: partyMembers,
-        rivals: hasLetter(survivalNow(), 'c'),
-        mystery: readCases(chat_metadata[CASES_KEY]),
-        // T7: el harto, en la mesa.
-        leaving: leavingMembers().map(m => ({ id: m.id, name: String(m.name) })),
-        weekDue: Number(chat_metadata[BILL_DUE_KEY]) || 0,
-    }), survivalNow());
-}
-
-/**
- * R5: domar lo que se ha vencido, si es de las que se dejan. Supervivencia, CD 12.
- *
- * @param {any[]} fallen Los enemigos vencidos (las instancias del combate).
- */
-function offerTaming(fallen) {
-    // T6: se mira su ficha del mundo (el dato `domable`), y solo sin ella, su nombre.
-    const beasts = fallen.map(e => {
-        const template = getCurrentWorldEnemies().find((/** @type {any} */ t) => String(t.id) === String(e.templateId));
-        return { name: String(template?.name ?? e.name), ...(template?.domable !== undefined ? { domable: template.domable } : {}) };
-    });
-    const beast = beasts.find(b => tamableAs(b));
-    if (!beast || !chat_metadata) return;
-    const species = tamableAs(beast);
-    const toast = toastr.info('Una cría de lo que acabáis de vencer se queda mirándoos. ¿Os la lleváis? (Supervivencia, CD 12)', `🐾 ${PET_SPECIES[/** @type {keyof typeof PET_SPECIES} */ (species)].label}`, { timeOut: 15000, extendedTimeOut: 5000, closeButton: true });
-    $(toast).find('.toast-message').append($('<button class="menu_button pet-tame" style="margin-top:6px;"></button>').text('Intentarlo').on('click', () => {
-        const who = partyMembers.filter(m => (Number(m.hp) || 0) > 0).reduce((/** @type {any} */ top, m) => (!top || skillModifier(m, 'survival').modifier > skillModifier(top, 'survival').modifier ? m : top), null);
-        const roll = who ? rollCheck({ member: who, skill: 'survival', rollD20: () => rollDiceDetailed('1d20', 20).total, dc: 12 }) : null;
-        if (roll) postCombatNarration(roll.said);
-        if (!roll?.success || currentPet()) {
-            postCombatNarration('🐾 [MASCOTA] Se escapa entre la maleza. Otra vez será.');
-            return;
-        }
-        const characters = Object.keys(PET_CHARACTERS);
-        const made = createPet({ name: PET_NAMES[species] ?? 'Sin nombre', species, character: characters[Math.floor(Math.random() * characters.length) % characters.length] });
-        keepPet(made);
-        if (made) postCombatNarration(`🐾 [MASCOTA] ${petName(made)} se viene con vosotros.`);
-    }));
-}
-
-/**
- * R5: la carta de la mascota con labia (el cuervo, el loro): roba la atención.
- *
- * @returns {any[]}
- */
-function petTricks() {
-    const pet = currentPet();
-    if (!pet || !petDoes(pet, 'labia')) return [];
-    return [{ id: 'truco:mascota', kind: 'truco', label: `Que ${pet.name} le robe la atención`, as: 'enganar', power: 2 }];
-}
-
-/**
- * R5: la mascota ayuda en combate: una vez por ronda, sin gastar la acción de nadie.
- *
- * @param {string} action
- * @param {any} enemy
- */
-function petSupport(action, enemy) {
-    const pet = currentPet();
-    if (!pet || !combatEncounter.active) return;
-    /** @type {any} */ (combatEncounter).petRound = Number(combatEncounter.round) || 1;
-    if (action === 'avisar') {
-        combatEncounter.maneuvers = recordManeuver(combatEncounter.maneuvers, 'ayudar', 'mascota', String(enemy.instanceId));
-        postCombatNarration(`🐾 [COMBAT] ${pet.name} señala a ${enemy.name}: el siguiente golpe del grupo va con ventaja.`);
-    } else if (action === 'distraer') {
-        applyTimedCondition(enemy, String(enemy.instanceId), 'Distraído', 1);
-        postCombatNarration(`🐾 [COMBAT] ${pet.name} se le mete entre las piernas a ${enemy.name}: su próximo golpe va con desventaja.`);
-    } else if (action === 'rastrear') {
-        const board = getActiveBoardContext().board;
-        const hero = partyMembers[0];
-        const at = boardCellOf(hero);
-        let found = 0;
-        if (board && Array.isArray(board.hazards)) {
-            board.hazards = board.hazards.map((/** @type {any} */ h) => {
-                if (h?.seen || Math.max(Math.abs(Number(h?.x) - at.x), Math.abs(Number(h?.y) - at.y)) > 4) return h;
-                found++;
-                return { ...h, seen: true };
-            });
-            persistBoardTerrain(board);
-        }
-        for (const foe of getAliveEnemies()) combatEncounter.maneuvers = revealHidden(combatEncounter.maneuvers, String(foe.instanceId));
-        postCombatNarration(`🐾 [COMBAT] ${pet.name} olfatea alrededor${found > 0 ? `: ${found} trampa(s) a la vista` : ''}, y quien se escondía, ya no.`);
-    }
-    saveCombatState();
-    renderLocationMapsPreview();
-}
 
 /**
  * Post a line the model must actually read.
@@ -3374,7 +3117,7 @@ function currentSurvival() {
  *
  * @returns {any}
  */
-function survivalNow() {
+export function survivalNow() {
     return getActiveRuleset()?.survival ?? null;
 }
 
@@ -4859,7 +4602,7 @@ let lastRumors = [];
 let lastMix = null;
 /** La gente del mundo: quien es, donde vive y que servicio atiende. */
 /** @type {Array<{name: string, where: string, service: string, secret?: string, language?: string, dead?: boolean}>} */
-let lastWorldNpcs = [];
+export let lastWorldNpcs = [];
 /** Las fichas de los confidentes del mundo, por uid. */
 /** @type {Record<string, any>} */
 let lastConfidantEntries = {};
@@ -6071,7 +5814,7 @@ async function openStateView() {
  * @param {number} today
  * @returns {import('../game-engine/campaign/upcoming.js').Upcoming[]}
  */
-function whatComes(today) {
+export function whatComes(today) {
     const bill = partyMembers.length > 0 ? weeklyBill(partyMembers, { rules: currentUpkeepRules() }) : null;
     // R1: lo apagado no sale.
     return keepOn(upcoming({
@@ -6107,7 +5850,7 @@ function whatComes(today) {
  *
  * @returns {any[]}
  */
-function leavingMembers() {
+export function leavingMembers() {
     if (!chat_metadata?.[LEAVE_ON_KEY]) return [];
     const warned = Array.isArray(chat_metadata[WARNED_KEY]) ? chat_metadata[WARNED_KEY].map(String) : [];
     return partyMembers.filter(m => !m.dead && warned.includes(String(m.id)));
@@ -6121,7 +5864,7 @@ function leavingMembers() {
  *
  * @returns {import('../game-engine/campaign/plot.js').Plot|null}
  */
-function getPlot() {
+export function getPlot() {
     return resolveGenderDeep(readPlot(chat_metadata?.[PLOT_KEY]), whoPlays());
 }
 
@@ -7115,7 +6858,7 @@ function tipOnScreen() {
  *
  * @param {string} situation
  */
-function showTip(situation) {
+export function showTip(situation) {
     const seen = seenTips();
     const plan = planTip({ situation, seen, queue: tipQueue, busy: tipOnScreen() });
     tipQueue = plan.queue;
@@ -9836,7 +9579,7 @@ function scheduleFactionTick() {
 // calendario alrededor de cada una.
 
 /** @returns {number} */
-function campaignDay() {
+export function campaignDay() {
     return Math.max(0, Math.floor(Number(getCampaignCalendar()?.day) || 0));
 }
 
@@ -13800,7 +13543,7 @@ function abilityModifier(creature, ability) {
  * @param {string} condition
  * @param {number} rounds
  */
-function applyTimedCondition(creature, who, condition, rounds) {
+export function applyTimedCondition(creature, who, condition, rounds) {
     creature.activeConditions = Array.isArray(creature.activeConditions) ? creature.activeConditions : [];
     if (!creature.activeConditions.includes(condition)) creature.activeConditions.push(condition);
 
@@ -13914,7 +13657,7 @@ function useAbility(member, ability, target) {
  * @param {any} creature
  * @returns {{x: number, y: number}}
  */
-function boardCellOf(creature) {
+export function boardCellOf(creature) {
     return {
         x: Number(creature?.mapPosition?.gridX ?? creature?.gridX) || 0,
         y: Number(creature?.mapPosition?.gridY ?? creature?.gridY) || 0,
