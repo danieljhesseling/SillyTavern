@@ -1305,6 +1305,7 @@ function getCombatBoardHighlightState(gridWidth, gridHeight) {
     const attackCells = attackable.map(enemy => ({ gridX: enemy.gridX || 0, gridY: enemy.gridY || 0, kind: 'attack' }));
     const movementCells = getReachableCells(
         getActiveBoardTerrain(), pos.gridX || 0, pos.gridY || 0, remainingFeet, gridWidth, gridHeight,
+        { occupied: occupiedCellsFor(member) },
     // La casilla en la que ya estas no es un sitio al que moverte: pulsarla gastaria
     // cero pies, y encendida solo servia para que tu propia ficha se comiera el clic.
     ).filter(cell => cell.gridX !== (pos.gridX || 0) || cell.gridY !== (pos.gridY || 0));
@@ -1316,6 +1317,24 @@ function getCombatBoardHighlightState(gridWidth, gridHeight) {
         highlightedCells: [...movementCells, ...attackCells],
         overlayLegend,
     };
+}
+
+/**
+ * Las casillas que tiene alguien (enemigos en pie y el resto del grupo), para quien se
+ * mueve. Lo encendido, la vista previa y el movimiento de verdad miran lo mismo: antes se
+ * encendían casillas ocupadas que luego no se podían pisar, y `/combat-move` dejaba dos
+ * fichas en la misma casilla.
+ *
+ * @param {any} member
+ * @returns {Set<string>} Claves «x,y».
+ */
+function occupiedCellsFor(member) {
+    return new Set([
+        ...getAliveEnemies().map(e => `${e.gridX || 0},${e.gridY || 0}`),
+        ...partyMembers
+            .filter(m => String(m.id) !== String(member?.id) && (Number(m.hp) || 0) > 0 && !m.dead)
+            .map(m => `${m.mapPosition?.gridX || 0},${m.mapPosition?.gridY || 0}`),
+    ]);
 }
 
 /**
@@ -1574,7 +1593,7 @@ function buildDragHighlightCells(tokenId, tentGX, tentGY, gridW, gridH) {
     const originY = member.mapPosition?.gridY || 0;
     const distanceFeet = getDistanceInFeet(originX, originY, tentGX, tentGY);
     const remainingFromHere = Math.max(0, getRemainingMovementFeet(member) - distanceFeet);
-    const moveCells = getReachableCells(getActiveBoardTerrain(), tentGX, tentGY, remainingFromHere, gridW, gridH);
+    const moveCells = getReachableCells(getActiveBoardTerrain(), tentGX, tentGY, remainingFromHere, gridW, gridH, { occupied: occupiedCellsFor(member) });
     const rangeFeet = getAttackRangeFeet(member);
     /** @type {{gridX:number,gridY:number,kind:'attack'}[]} */
     const attackCells = getAliveEnemies()
@@ -12077,12 +12096,7 @@ function previewMovement(gridX, gridY) {
     const { terrain, gridWidth: w, gridHeight: h } = getActiveBoardContext();
     const path = findPath(terrain, origin.gridX || 0, origin.gridY || 0, gridX, gridY, w, h, {
         // Las casillas ocupadas no se atraviesan, igual que al mover de verdad.
-        occupied: new Set([
-            ...getAliveEnemies().map(e => `${e.gridX || 0},${e.gridY || 0}`),
-            ...partyMembers
-                .filter(m => String(m.id) !== String(member.id))
-                .map(m => `${m.mapPosition?.gridX || 0},${m.mapPosition?.gridY || 0}`),
-        ]),
+        occupied: occupiedCellsFor(member),
     });
     if (!path || path.length === 0) return null;
 
@@ -12191,6 +12205,20 @@ function handlePlayerCombatMove(rawValue) {
     const targetX = Math.max(0, parseInt(match[1], 10) - 1);
     const targetY = Math.max(0, parseInt(match[2], 10) - 1);
     const position = member.mapPosition || { locationName: currentLocationName, gridX: 0, gridY: 0 };
+    // Una casilla con alguien no se pisa, y a una casilla sin camino no se llega.
+    const occupied = occupiedCellsFor(member);
+    if (occupied.has(`${targetX},${targetY}`)) {
+        toastr.warning('Esa casilla ya está ocupada.', 'Ahí no se llega');
+        return '';
+    }
+    if (currentBoardName) {
+        const { terrain, gridWidth: boardW, gridHeight: boardH } = getActiveBoardContext();
+        const way = findPath(terrain, position.gridX || 0, position.gridY || 0, targetX, targetY, boardW, boardH, { occupied });
+        if (!way) {
+            toastr.warning('No hay camino hasta esa casilla.', 'Ahí no se llega');
+            return '';
+        }
+    }
     const distanceFeet = getDistanceInFeet(position.gridX || 0, position.gridY || 0, targetX, targetY);
     const turnState = getCurrentTurnState();
     if (!turnState) return '';
