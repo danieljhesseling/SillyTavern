@@ -29,15 +29,16 @@ import { BENCH_KEY, GRAVES_KEY, GUILD_KEY, MODE_HISTORY_KEY, PLOT_STATE_KEY, STO
 import { combatEncounter, currentLocationName, partyMembers, setPartyMembers } from './state.js';
 import { acceptContract, getGuild, refreshContractBoard } from './contracts.js';
 import {
-    savePartyState, renderPartyMembers, getCurrentWorldFactions, postCombatNarration, postForModel, survivalNow,
-    noteDeed, getPlot, notePlot, countStat, getCampaignCalendar, campaignDay, advanceCampaignDay,
-    markLocationComplete, plotEndingTitle, partyPurse, payFromParty,
+    savePartyState, renderPartyMembers, postCombatNarration, postForModel, survivalNow, noteDeed, getPlot,
+    notePlot, countStat, getCampaignCalendar, campaignDay, advanceCampaignDay, markLocationComplete,
+    plotEndingTitle, partyPurse, payFromParty,
 } from './main.js';
 import { instancesFromPlacements } from './combat-flow.js';
 import { awardEncounterLoot } from './loot.js';
 import { recordBoardWon } from './board.js';
 import { renderLocationMapsPreview } from './board-view.js';
 import { ensureWorldData, lastHub, lastHubHome } from './world.js';
+import { getCurrentWorldFactions } from './factions.js';
 
 /** @typedef {import('./types.js').PartyMember} PartyMember */
 
