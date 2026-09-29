@@ -66,7 +66,8 @@ import {
     recordCampaignBondEvent,
 } from './time.js';
 import { getPlot } from './plot.js';
-import { savePartyState, hearRumor, raiseFame, rumorsLeftHere, partyPurse, payFromParty } from './main.js';
+import { hearRumor, raiseFame, rumorsLeftHere } from './main.js';
+import { savePartyState, partyPurse, payFromParty } from './roster.js';
 
 /**
  * How strictly the engine polices dice the model writes.

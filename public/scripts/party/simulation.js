@@ -18,7 +18,6 @@ import { hubRoster } from '../game-engine/campaign/hub.js';
 import { awakePlacements } from '../game-engine/campaign/campaign-map.js';
 import { planLevelUp, buildLevelUpPatch, validateAbilityPicks, ABILITIES } from '../game-engine/rules/level-up.js';
 import { combatEncounter, currentBoardName, currentLocationName, partyMembers, setPartyMembers } from './state.js';
-import { savePartyState, renderPartyMembers } from './main.js';
 import { getXpTable, getAbilityLevels } from './level-up.js';
 import { getCurrentTurnEntry } from './combat-state.js';
 import { resolveAllyTurnAction } from './combat-flow.js';
@@ -28,6 +27,7 @@ import { getLocationBoards } from './world.js';
 import { campaign } from './time.js';
 import { revealLocations } from './plot.js';
 import { postCombatNarration } from './narration.js';
+import { savePartyState, renderPartyMembers } from './roster.js';
 
 /** @typedef {import('./types.js').PartyMember} PartyMember */
 

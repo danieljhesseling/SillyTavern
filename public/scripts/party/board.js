@@ -44,13 +44,14 @@ import { getAliveEnemies, getCurrentTurnEntry, getPartyMemberByTurnEntry, saveCo
 import { damagePartyMember } from './enemy-turn.js';
 import { applyFall, wakeRoomEnemies } from './combat-flow.js';
 import { openChest } from './loot.js';
-import { savePartyState, partyTabSetter } from './main.js';
+import { partyTabSetter } from './main.js';
 import { renderLocationMapsPreview } from './board-view.js';
 import { saveCurrentLocation, saveCurrentBoard, getLocationBoards, hereLocation, weatherHere } from './world.js';
 import { getCurrentSlotLabel } from './time.js';
 import { getPlot } from './plot.js';
 import { worldWrite } from './world-growth.js';
 import { postCombatNarration, soundCue } from './narration.js';
+import { savePartyState } from './roster.js';
 
 /**
  * Writes terrain and fog back into the world info file that owns the board.

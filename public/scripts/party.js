@@ -6,11 +6,7 @@
  * importaba (script.js, campaigns.js, las pruebas del navegador) lo sigue importando igual.
  */
 
-export {
-    loadDndCatalog, adoptVeteranGear, giveStartingGear, setPartyFromWorldEntries, routeTyped, openCampaignBuilder,
-    memberFromEntry, partySnapshot, adoptCarriedParty, addPartyMember, removePartyMember,
-    updatePartyMemberFromPersona, getActivePartyLeader, getPartyDescription, initPartyPanel,
-} from './party/main.js';
+export { routeTyped, openCampaignBuilder, initPartyPanel } from './party/main.js';
 export {
     playCurrentTurnAlone, restPartyForSimulation, openBoardDoorsForSimulation, grantXpForSimulation,
     revealLocationsForSimulation, trainMercenariesForSimulation, levelUpForSimulation, getCombatEncounter,
@@ -24,3 +20,8 @@ export { applyCampaignRuleset } from './party/world.js';
 export { notePlot, beginCampaignPlot, plotEndingTitle } from './party/plot.js';
 export { applyModeExtras } from './party/modes.js';
 export { postJourney } from './party/narration.js';
+export {
+    loadDndCatalog, adoptVeteranGear, giveStartingGear, setPartyFromWorldEntries, memberFromEntry, partySnapshot,
+    adoptCarriedParty, addPartyMember, removePartyMember, updatePartyMemberFromPersona, getActivePartyLeader,
+    getPartyDescription,
+} from './party/roster.js';
