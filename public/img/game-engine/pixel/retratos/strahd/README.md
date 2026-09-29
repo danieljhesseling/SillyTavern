@@ -70,3 +70,4 @@ El mismo retrato con otro gesto; cara, ropa y pose no cambian. Nombre: `<id>--al
 - `ezmerelda-d-avenir--alegre.png`: Ezmerelda riendo con la boca abierta.
 - `ezmerelda-d-avenir--enfadado.png`: Ezmerelda enfadada, ceño fruncido y labios apretados.
 - `ezmerelda-d-avenir--triste.png`: Ezmerelda triste, con lágrimas.
+- `bogdan-rusu.png` — Bogdan Rusu, herrero de Vallaki: ancho de hombros, delantal de cuero con hollín, barba oscura con canas, mirada cansada.
