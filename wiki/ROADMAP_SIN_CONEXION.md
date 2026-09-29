@@ -61,7 +61,7 @@ Cómo está hecho, en corto (el detalle, en [[EMPEZAR_UNA_CAMPANA]], «Jugar sin
 | **J0** · La puerta | 🟡 | Hecho: el botón en la portada, «Seguir en el gremio», el modo motor, sin la ventana del nombre (J0.2) y las opciones del juego (J0.4). Falta: el narrador sin ficha (J0.3), «Continuar» (J0.5) y la lista de partidas propia (J0.6) |
 | **J1** · Tu personaje | 🟢 | Hecho: tarjetas (J1.1), atributos repartidos o tirados (J1.2), equipo por clase (J1.3), el género del texto (J1.4), el personaje dura (J1.5) y varios personajes tuyos en el gremio (J1.6). Falta: la ficha legible (J1.7) y tu cara sin arte (J1.8) |
 | **J2** · El prólogo | 🟢 | Hecho: la prueba de la bodega como paquete (J2.4), los consejos de la primera vez, uno a uno y cuando toca (J2.2), y saltarla (J2.3). Falta: alargarla a un prólogo de 15 minutos con una charla (J2.1) |
-| **J3** · El gremio, tu base | 🟡 | Hecho: Puerto Alba con posada, tienda, templo y herrería, cada uno con quien lo atiende (J3.10), el tablón (J3.2), los mercenarios y las campañas terminadas en el Salón de la fama (J3.9). Falta: la sala propia (J3.1), el cofre y lo demás |
+| **J3** · El pueblo y el gremio, tu base | 🟡 | Hecho: Puerto Alba con posada, tienda, templo y herrería, cada uno con quien lo atiende (J3.10), el tablón (J3.2), los mercenarios y las campañas terminadas en el Salón de la fama (J3.9). Falta: la sala propia (J3.1), el cofre y lo demás |
 | **J4** · Las campañas | 🟡 | Hecho: empezar desde el tablón (J4.3), volver y retomar (J4.4), terminar con su escena, epílogos y lo que se lleva cada uno (J4.5), varias a la vez (J4.8), 1387 en el tablón (J4.7) y el viaje contado (J4.9). Falta: el ajuste por nivel (J4.6, en marcha) y partir el estado de la partida (J4.2) |
 | **J5** · Tu JSON de campañas | 🟡 | Hecho: el conversor (J5.1) y Strahd en el tablón. Falta: importar desde el gremio (J5.4) |
 | **J6** · Jugar con amigos | ⏸️ | Aparcado |
@@ -72,7 +72,7 @@ Cómo está hecho, en corto (el detalle, en [[EMPEZAR_UNA_CAMPANA]], «Jugar sin
 | **J11** · Decisiones que pesan | ⬜ | Dentro de la campaña y de una campaña a otra |
 | **J12** · Tableros y peleas | ⬜ | Tableros hechos a partir de un mapa de D&D en imagen; peleas que se pueden evitar; trampas fuera de combate |
 | **J13** · El texto del motor | ⬜ | Que todo se lea en prosa, con voz y sin repetirse |
-| **J14** · La vida en el gremio | ⬜ | La taberna, las charlas, los compañeros y, si queréis, romances |
+| **J14** · La gente: charlas y quedadas | ⬜ | Charla corta con los compañeros y dedicar una parte del día a quedar con alguien, como en *Persona*. Sus escenas, sus misiones y, si queréis, romances |
 | **J15** · Sentirse un juego | ⬜ | Primera partida que enseña, guardar sin miedo, menús propios |
 | **J16** · Medir la diversión | ⬜ | Vueltas automáticas, también con dos jugadores |
 | **J17** · Después: la IA como capa | ⏸️ | Aparcado (lo dijiste el 2026-09-29) |
@@ -84,16 +84,15 @@ Cómo está hecho, en corto (el detalle, en [[EMPEZAR_UNA_CAMPANA]], «Jugar sin
 
 ## 🎲 0. El juego, en una página
 
-### 0.1 Cómo se juega
+### 0.1 Cómo se juega (tu descripción, 2026-09-29)
 
-1. **Portada → «Jugar sin conexión» → Partida nueva.** O **«Unirse a una partida»**, si un amigo la ha abierto (J6).
-2. **Tu personaje**: eliges uno que ya tienes o haces uno nuevo, en su propia pantalla: nombre, especie y clase. El resto es opcional o sale solo (J18).
-3. **El prólogo**: una historia corta y jugable (llegas al pueblo, algo pasa, alguien te recomienda el gremio) que enseña lo básico sin muros de texto. **Se cuenta como una novela visual**: quien habla, grande y con su nombre; el texto, en una caja ancha abajo; y lo que puedes hacer, dentro de la caja (J18).
-4. **La base: un pueblo con el gremio** (lo dijiste el 2026-09-29). Una aldea, ciudad o puerto donde está la casa del gremio: aquí se descansa, se guarda, se compra material, se entrena y se sube de nivel. Y en el gremio está **el tablón de campañas**. El mundo semiabierto, alrededor, va más adelante.
-5. **Elegís una campaña** del tablón, por ejemplo *Curse of Strahd*. Tiene su tierra, su gente, su historia, sus misiones y sus peleas.
-6. **Jugáis la campaña**: viajar, hablar, decidir, pelear en tablero. Se puede **volver al gremio** entre medias (según la campaña) y retomarla después.
-7. **Termináis la campaña** con uno de sus finales. Lo ganado vuelve con vosotros al gremio: niveles, objetos, oro, fama y lo que el gremio recuerda de vosotros.
-8. **Otra campaña**, con los mismos personajes, o con gente nueva que se une.
+1. **Empiezas creando un personaje o eligiendo uno que ya tienes** (J18.1, J18.2).
+2. **Empieza una historia estilo novela visual**: quien habla, grande y con su nombre; el texto en una caja ancha abajo, y lo que puedes hacer dentro de la caja (J2, J18).
+3. **La pantalla principal es el pueblo** (aldea, ciudad o puerto). Te mueves por él con **un selector de sitios, como el de localizaciones**: la herrería, la taberna, la tienda, el templo y **el gremio, donde están las misiones** y el tablón de campañas. En cada sitio, quien lo atiende y lo que se puede hacer (J3.11).
+4. **Aceptas una campaña y empieza la campaña.** Tiene **su propia historia**, también como novela visual, que es el hilo conductor entre sus arcos y sus luchas de tablero (J4, J9).
+5. **Mientras estás en una campaña, es un mundo propio**, con su propia taberna y todo lo demás, igual que el pueblo principal y con la misma pantalla (J3.11). Es la **«b con sensación de a»** de D-J3: un mundo aparte, pero se nota que viajas a él desde tu pueblo y que vuelves (J4.9).
+6. **Hablar con la gente es parte del juego.** Con los compañeros hay charla corta (*small talk*) al cruzarte con ellos, y **dedicas una parte del día a quedar** con alguien. Es un evento, como en *Persona*: una escena que os acerca (J14).
+7. **Terminas la campaña** con uno de sus finales, y lo ganado vuelve contigo al pueblo: niveles, objetos, oro, fama y lo que el gremio recuerda (J4.5). Luego, otra campaña.
 
 ### 0.2 Tres capas
 
@@ -207,7 +206,7 @@ Van antes que nada: cada una cambia lo que se construye. Con cada una, lo que te
 | **D-J7** ✅ | **Qué pasa con 1387** | (a) Se queda como mundo aparte. (b) Es la primera campaña del tablón | **Decidido: (b), el 2026-09-29.** 1387 es de las primeras campañas del tablón (ya lo está) |
 | **D-J8** ✅ | **El prólogo** | (a) Uno fijo, escrito una vez. (b) Uno por especie o clase. (c) Nada: se empieza en el gremio | **Decidido: (a) para empezar, el 2026-09-29.** Uno fijo, corto y jugable: la prueba de la bodega del gremio |
 | **D-J9** ⏳ | **El nombre del juego** | La cabecera dice «SillyTavern RPG» | **Pendiente: lo decides tú.** Hasta entonces, «SillyTavern RPG» |
-| **D-J10** ✅ | **La vida en el gremio** (romance, charlas de compañeros) | (a) Parte del plan. (b) Después, opcional | **Decidido: (b), el 2026-09-29.** Primero, que sea jugable; lo social, en J14 |
+| **D-J10** ✅ | **La vida en el gremio** (romance, charlas de compañeros) | (a) Parte del plan. (b) Después, opcional | **Decidido: (b), el 2026-09-29.** Primero, que sea jugable; lo social, en J14. **Matizado el mismo día**: charlar y quedar con los compañeros es parte del juego (M3); lo que va después y es opcional son los romances y las capas de encima (M6) |
 
 ---
 
@@ -293,7 +292,7 @@ Van antes que nada: cada una cambia lo que se construye. Con cada una, lo que te
 
 | ID | Qué | Quién | Esf. | Cómo se comprueba |
 | :--- | :--- | :---: | :---: | :--- |
-| J3.1 | **La sala del gremio**: una pantalla propia con el tablón de campañas, el grupo, el cofre, la barra (la taberna), el entrenamiento y la salida | A | L | Captura para el Gem de UX; e2e: entrar y ver cada parte |
+| J3.1 | **La sala del gremio**, uno de los sitios del pueblo (J3.11): el tablón de campañas, el grupo, el cofre, el entrenamiento y la salida | A | L | Captura para el Gem de UX; e2e: entrar y ver cada parte |
 | J3.2 | **El tablón de campañas**: cada campaña con su tarjeta. Nombre, de qué va en dos líneas, nivel recomendado, cuántos jugadores, lejos o cerca y si ya la jugasteis (y cómo acabó) | A | M | e2e: 1387 aparece en el tablón |
 | J3.3 | **Descansar y guardar** en el gremio: dormir recupera y guarda (J15.2) | A | M | e2e: dormir, cerrar y cargar |
 | J3.4 | **El cofre del gremio**: lo que no lleváis encima se queda. Compartido por el grupo | A | M | Pruebas; con dos jugadores, los dos lo ven |
@@ -302,6 +301,7 @@ Van antes que nada: cada una cambia lo que se construye. Con cada una, lo que te
 | J3.7 | **Rango y renombre del gremio**: terminar campañas lo sube, y abre campañas más difíciles en el tablón | A | M | Terminar 1387 sube el rango y abre una campaña nueva |
 | J3.8 | **Encargos cortos** en el tablón, entre campaña y campaña (los encargos de hoy, `contracts.js`) | A | S | Pruebas |
 | J3.10 | **La base es un pueblo** (2026-09-29): el gremio está en una aldea, ciudad o puerto con su mercado, su herrería, su posada y su templo, cada uno con quien lo atiende. Ahí se compra el material. El mundo semiabierto alrededor, más adelante | A | M | e2e: comprar en la tienda del pueblo y equiparlo antes de la primera campaña |
+| J3.11 | **La pantalla del pueblo** (tu descripción del 2026-09-29): la pantalla principal cuando no hay pelea. Un **selector de sitios, como el de localizaciones**: la herrería, la taberna, la tienda, el templo y el gremio (el tablón de campañas y los encargos). Cada sitio abre su escena de novela visual con quien lo atiende (Ramiro en la herrería, Tomás en la posada) y sus acciones. Se ve quién de tu gente está en cada sitio a esta hora (J14). **La misma pantalla vale para los pueblos de cada campaña** (Vallaki, Krezk…), con sus propios sitios. Hoy Puerto Alba es una sola localización con sus servicios en tarjetas | A | L | e2e: del gremio a la herrería y a la taberna con el selector, comprar y volver; lo mismo en Vallaki. Captura para el Gem de UX |
 | J3.9 | **El Salón de la fama**: las campañas terminadas, los caídos y lo que hicieron (ya existe; que lo alimente cada campaña) | A | S | Tras terminar 1387, sale en el salón |
 
 **Hecho cuando** el gremio es el sitio al que volvéis entre campaña y campaña, y se nota lo que habéis hecho.
@@ -551,24 +551,31 @@ Así no hay que reescribir el motor para el servidor. El riesgo: si el anfitrió
 
 ---
 
-### J14 · La vida en el gremio
+### J14 · La gente: charlas y quedadas, estilo *Persona*
 
-**Para qué.** Lo que hace que el gremio sea más que un menú: la taberna, las charlas y los compañeros con su historia. Con romances, si queréis. Va después del bucle principal (D-J10).
+**Para qué.** Tu descripción del 2026-09-29: el juego necesita un sitio para hablar con la gente. **Charla corta con los compañeros** al cruzarte con ellos, y **dedicar una parte del día a quedar** con alguien: un evento que os acerca, como en *Persona*. Vale en el pueblo principal y en los pueblos de cada campaña.
 
 **Qué hay ya.**
-- Rondas y veintiuno en la posada.
-- Charlas de pareja (`camp-talk.js`, que hoy necesita modelo).
-- Los cinco confidentes de 1387, con cinco escenas escritas cada uno.
-- Vínculo de diez rangos, aprobación, arcos y despedidas.
+- **El día ya tiene partes** (mañana, tarde y noche: `campaign/calendar.js`, `hours.js`), y viajar ya gasta tiempo.
+- **Vínculos de diez rangos**, aprobación, arcos y despedidas (`bonds.js`, `companion-arcs.js`).
+- **Confidentes con escenas escritas**: cinco por persona en 1387 y en Strahd, que hoy se cuentan al subir el vínculo pero no se juegan.
+- Charlas de pareja (`camp-talk.js`, que hoy necesita modelo), y rondas y veintiuno en la posada.
 
 | ID | Qué | Quién | Esf. | Cómo se comprueba |
 | :--- | :--- | :---: | :---: | :--- |
-| J14.1 | **La noche en el gremio**: una escena por noche, si toca. Alguien que llega, una ronda, una charla entre dos compañeros | A | M | La vuelta pasa cinco noches y ve tres cosas distintas |
-| J14.2 | **Escenas de compañero jugables**: las escenas de los confidentes dejan de contarse y se juegan, con respuestas que cambian el vínculo | A | L | La escena de rango 2 de Bran, jugada |
-| J14.3 | **Charlas de pareja sin modelo**, escritas o de plantilla | A | L | Sin conexión, una charla de pareja se lee entera |
-| J14.4 | **Misiones personales** de los compañeros, con dos finales | A | L | Los dos finales de una, jugables |
-| J14.5 | **Romance, opcional**: con compañeros que lo permitan (un campo en el paquete), con señales, citas, escenas escritas y el epílogo. Tono: fundido a negro | P | L | Un romance completo, sin conexión |
-| J14.6 | **Trabajos y ratos libres**: servir mesas, jugar a las cartas, echar una mano en la forja | P | M | Pruebas |
+| J14.1 | **Charla corta**: al cruzarte con un compañero (en el pueblo, en el viaje o tras una pelea), una o dos líneas suyas y una respuesta tuya de tres. No gasta tiempo; mueve un poco la aprobación. Escritas por compañero y momento, sin modelo | A | M | La vuelta oye al menos diez distintas, sin repetir |
+| J14.2 | **El día por partes**: mañana, tarde y noche. Cada parte libre se gasta en algo: quedar con alguien, entrenar, trabajar, comprar o descansar. Viajar, pelear y las misiones también gastan partes. Se ve en la cabecera | A | M | Pruebas; e2e: quedar gasta la tarde y pasa a la noche |
+| J14.3 | **Quedar con alguien** (el evento): eliges a quién y dónde (la taberna, la herrería, el muelle…). Sale su escena, con respuestas que suben el vínculo; si toca, **sube de rango**. Cada rango abre algo: una habilidad de apoyo en combate, un descuento o su misión personal | A | L | e2e: quedar tres veces con Gerd y subir un rango; se ve lo que abre |
+| J14.4 | **Quién está libre y dónde**: la pantalla del pueblo (J3.11) enseña quién de tu gente está en cada sitio a esta hora, y quién quiere quedar contigo (un icono) | A | M | Captura para el Gem de UX |
+| J14.5 | **Las escenas de confidente, jugadas**: las cinco de cada uno dejan de contarse y se juegan como eventos de quedada, con respuestas que cambian el vínculo | A | L | La escena de rango 2 de un confidente de Strahd, jugada entera |
+| J14.6 | **Los compañeros de cada campaña**: los de la campaña (los confidentes de Strahd) quedan contigo en su pueblo; los del gremio, en Puerto Alba | A | M | Pruebas |
+| J14.7 | **La noche**: una escena por noche, si toca. Alguien que llega, una ronda, una charla entre dos compañeros | A | M | La vuelta pasa cinco noches y ve tres cosas distintas |
+| J14.8 | **Charlas de pareja sin modelo**, escritas o de plantilla | A | L | Sin conexión, una charla de pareja se lee entera |
+| J14.9 | **Misiones personales** de los compañeros, con dos finales. Se abren con el vínculo (J14.3) | A | L | Los dos finales de una, jugables |
+| J14.10 | **Romance, opcional**: con los compañeros que lo permitan (un campo en el paquete), con señales, citas (quedadas), escenas escritas y el epílogo. Tono: fundido a negro | P | L | Un romance completo, sin conexión |
+| J14.11 | **Trabajos y ratos libres**: servir mesas, jugar a las cartas, echar una mano en la forja. Son otras formas de gastar una parte del día | P | M | Pruebas |
+
+**Hecho cuando** en una semana de juego hablas con tus compañeros al cruzarte, quedas con dos de ellos en tardes distintas, uno sube de rango y se nota en la siguiente pelea.
 
 ---
 
@@ -721,18 +728,21 @@ Te recomiendo este orden. Cada hito se puede jugar, y puedes pararlo ahí y prob
 | Hito | Qué se puede hacer al llegar | Fases |
 | :--- | :--- | :--- |
 | **M1 · Se entra y se crea el personaje** | «Jugar sin conexión», elegir o crear un personaje en su pantalla, y jugar el prólogo contado como una novela visual | J0, J1 (J1.1 a J1.4), J2, J18 |
-| **M2 · El gremio y la primera campaña** | Llegar al gremio, elegir 1387 en el tablón, jugarla un rato con tus compañeros (moviéndolos tú o el juego), volver y retomarla | J15.1 (partir `party.js`), J3, J4, J7 |
-| **M3 · Tu campaña, con mapas y magia** | *Curse of Strahd* jugable de principio a fin, con tableros hechos de mapas de verdad y la magia de D&D | J5, J12.5, J12.8 a J12.13, J19 |
-| **M4 · Dos amigos en la misma partida** (aparcado) | Tú y un amigo, cada uno en su PC, con turnos en las peleas y votando las decisiones | J6, J12.1 |
-| **M5 · Una campaña entera, bien contada** | 1387 de principio a fin sin conexión, con escenas jugadas, charlas con ramas y decisiones que pesan | J8, J9, J10, J11, J13 |
-| **M6 · La vida en el gremio** | Las noches, los compañeros con su historia y, si queréis, romances | J14 |
+| **M2 · El gremio y la primera campaña** | Llegar al gremio, elegir una campaña en el tablón, jugarla un rato con tus compañeros (moviéndolos tú o el juego), volver y retomarla | J15.1 (partir `party.js`), J3, J4, J7 |
+| **M3 · El pueblo y su gente** | Moverse por el pueblo con el selector de sitios (herrería, taberna, gremio…), también en los pueblos de cada campaña; charlar con los compañeros y quedar con ellos en una parte del día | J3.11, J14.1 a J14.6, J8.1 y J8.4 |
+| **M4 · Tu campaña, con mapas y magia** | *Curse of Strahd* jugable de principio a fin, con tableros hechos de mapas de verdad y la magia de D&D | J5, J12.5, J12.8 a J12.13, J19 |
+| **M5 · Una campaña entera, bien contada** | Una campaña de principio a fin sin conexión, con escenas jugadas, charlas con ramas y decisiones que pesan | J8, J9, J10, J11, J13 |
+| **M6 · Los compañeros a fondo** | Las noches, las charlas de pareja, las misiones personales y, si queréis, romances | J14.7 a J14.11 |
 | **M7 · En el móvil** | Jugar una tarde entera desde el teléfono, con el dedo, contra tu servidor de casa | J20 (J20.1, J20.3 y J20.5 se pueden adelantar: son solo CSS) |
+| **Aparcado · Dos amigos en la misma partida** | Tú y un amigo, cada uno en su PC, con turnos en las peleas y votando las decisiones | J6, J12.1 |
 
 **J13 (el texto) y J16 (medir) van siempre**: cada fase añade sus frases y su vuelta.
 
 **Por qué este orden.**
-- **M2 va antes que M4** porque jugar con amigos necesita saber qué es «la partida» (el gremio) y qué es «la campaña». Construir el multijugador sobre el modelo de hoy (una campaña, una partida) obligaría a hacerlo dos veces.
-- **M3 puede ir antes o después de M4.** Depende de cuándo me pases el JSON.
+- **M2 va primero** porque todo lo demás cuelga de que la partida sea el gremio y las campañas vayan dentro. Y partir `party.js` (J15.1) antes hace que lo demás no se eternice.
+- **M3 (el pueblo y su gente) sube** desde el final, por tu descripción del 2026-09-29: hablar y quedar es parte del juego, no un extra. Lo que queda para M6 son las capas de encima (romances, charlas de pareja).
+- **M4 y M5 pueden cambiar de orden.** Los mapas y la magia (M4) hacen falta para que Strahd se juegue bien; la historia bien contada (M5) es sobre todo texto.
+- **Jugar con amigos sigue aparcado**, y cuando vuelva irá detrás de M2 por la misma razón de siempre.
 
 ---
 
