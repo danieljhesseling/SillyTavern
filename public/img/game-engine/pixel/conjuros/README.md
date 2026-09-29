@@ -1,0 +1,87 @@
+# Iconos de conjuros
+
+Uno por fila de `public/compendio/conjuros.json` (81). PNG 64×64 con fondo transparente, hechos con PixelLab (pixflux) el 2026-09-29.
+Cada escuela tiene su estilo: evocación con estallidos; abjuración con escudos y protecciones; conjuración con portales e invocaciones; nigromancia con calaveras y niebla verde; encantamiento con remolinos rosas; ilusión con espejos y morado; adivinación con ojos y estrellas; transmutación con formas que cambian.
+El color sigue al tipo de daño: fuego naranja, frío azul hielo, radiante dorado, necrótico verde y negro, relámpago violeta.
+
+- `hab-rayo-fuego.png`: Rayo de fuego. Un rayo de fuego que cruza en diagonal.
+- `mag-escarcha.png`: Rayo de escarcha. Copo de nieve de hielo azul.
+- `mag-luz.png`: Luz. Orbe de luz blanca con rayos.
+- `hab-mano-lejana.png`: Mano de mago. Mano azul espectral que sale de un portal.
+- `conj-llama-sagrada.png`: Llama sagrada. Columna de fuego dorado.
+- `conj-orientacion.png`: Orientación. Ojo dorado con una estrella encima.
+- `conj-estabilizar.png`: Estabilizar. Calavera verde sostenida por dos manos.
+- `conj-resistencia.png`: Resistencia. Escudo de cristal azul.
+- `conj-rociada-venenosa.png`: Rociada venenosa. Chorro de veneno verde que sale de un portal.
+- `conj-producir-llama.png`: Producir llama. Llama en la palma de la mano.
+- `conj-druidismo.png`: Druidismo. Flor que brota de la tierra.
+- `conj-reparar.png`: Reparar. Jarra agrietada con las grietas en oro.
+- `conj-burla-danina.png`: Burla dañina. Boca rosa burlona.
+- `conj-ilusion-menor.png`: Ilusión menor. Espejo morado que muestra un cofre.
+- `conj-agarre-electrizante.png`: Agarre electrizante. Mano con chispas de rayo violeta.
+- `conj-toque-helado.png`: Toque helado. Mano esquelética verde.
+- `conj-salpicadura-acido.png`: Salpicadura de ácido. Gota de ácido verde que salpica.
+- `conj-proyectil-magico.png`: Proyectil mágico. Tres dardos de luz azul.
+- `hab-escudo-arcano.png`: Escudo. Escudo de cristal azul con borde dorado.
+- `hab-sueno.png`: Dormir. Luna creciente con cara dormida, en tonos rosa y violeta.
+- `hab-curar.png`: Curar heridas. Dos manos que sostienen un corazón dorado entre hojas.
+- `conj-palabra-curacion.png`: Palabra de curación. Corazón rojo con una llama encima.
+- `hab-bendicion.png`: Bendición. Dos manos bajo un orbe de luz dorada y rosa.
+- `conj-saeta-guia.png`: Saeta guía. Saeta de luz dorada.
+- `conj-escudo-fe.png`: Escudo de fe. Escudo dorado con una cruz.
+- `conj-orden-imperiosa.png`: Orden imperiosa. Mano que apunta, envuelta en magia rosa.
+- `conj-infligir-heridas.png`: Infligir heridas. Mano oscura con fuego verde necrótico.
+- `conj-detectar-magia.png`: Detectar magia. Estrella con un orbe azul y gemas de colores alrededor.
+- `mag-ola-trueno.png`: Onda atronadora. Estallido de energía azul y blanca.
+- `conj-manos-ardientes.png`: Manos ardientes. Dos manos que lanzan llamas.
+- `mag-encanto.png`: Hechizar persona. Corazón rosa con una cara dentro.
+- `conj-fuego-feerico.png`: Fuego feérico. Silueta rodeada de fuego violeta y azul.
+- `hab-espinas.png`: Enredar. Bota atrapada por enredaderas con espinas.
+- `conj-nube-niebla.png`: Nube de niebla. Nube gris y espesa.
+- `conj-bayas-buenas.png`: Bayas buenas. Ramita de bayas rojas.
+- `conj-identificar.png`: Identificar. Ojo con estrellas sobre un anillo y una perla.
+- `conj-alarma.png`: Alarma. Campanilla dentro de un círculo protector azul.
+- `conj-encontrar-familiar.png`: Encontrar familiar. Lechuza azul que sale de un portal.
+- `conj-armadura-mago.png`: Armadura de mago. Coraza de fuerza azul.
+- `conj-retirada-expeditiva.png`: Retirada expeditiva. Bota con alas.
+- `conj-caida-pluma.png`: Caída de pluma. Pluma blanca con destellos.
+- `conj-proteccion-mal-bien.png`: Protección contra el mal y el bien. Escudo redondo oscuro con un sol dorado.
+- `conj-purificar.png`: Purificar comida y bebida. Jarra de madera con bebida y un pan.
+- `conj-comprender-idiomas.png`: Comprender idiomas. Ojo dorado rodeado de estrellas.
+- `conj-rayo-abrasador.png`: Rayo abrasador. Tres rayos de fuego.
+- `conj-inmovilizar-persona.png`: Inmovilizar persona. Hombre encerrado en una campana de cristal rosa.
+- `conj-paso-brumoso.png`: Paso brumoso. Figura encapuchada que sale de una niebla plateada.
+- `conj-telarana.png`: Telaraña. Telaraña redonda.
+- `conj-oscuridad.png`: Oscuridad. Esfera negra con zarcillos violetas.
+- `conj-silencio.png`: Silencio. Figura encapuchada con un dedo en los labios.
+- `mag-invisibilidad.png`: Invisibilidad. Silueta que se desvanece en luz violeta.
+- `conj-restablecimiento-menor.png`: Restablecimiento menor. Escudo verde con enredaderas.
+- `conj-arma-espiritual.png`: Arma espiritual. Maza de luz azul.
+- `mag-oracion.png`: Plegaria de curación. Manos que sostienen una llama dorada.
+- `conj-piel-corteza.png`: Piel de corteza. Brazo con la piel de corteza de árbol.
+- `conj-esfera-llameante.png`: Esfera llameante. Bola de fuego redonda.
+- `conj-rayo-luna.png`: Rayo de luna. Luna creciente con una columna de luz que baja al suelo.
+- `conj-crecimiento-espinoso.png`: Crecimiento espinoso. Pinchos de madera que salen del suelo.
+- `conj-estallar.png`: Estallar. Cristal que se rompe con un rayo.
+- `mag-detectar-mentiras.png`: Zona de verdad. Boca rosa dentro de un círculo mágico.
+- `mag-paso-sin-rastro.png`: Pasar sin rastro. Huellas azules que se desvanecen.
+- `conj-ayuda.png`: Ayuda. Escudo con un corazón rojo.
+- `conj-encontrar-trampas.png`: Encontrar trampas. Cepo de dientes con un orbe mágico encima.
+- `mag-bola-fuego.png`: Bola de fuego. Gran estallido de llamas.
+- `mag-relampago.png`: Relámpago. Rayo violeta.
+- `conj-contraconjuro.png`: Contraconjuro. Mano en alto que deshace un hechizo en chispas azules.
+- `conj-disipar-magia.png`: Disipar magia. Sello mágico roto dentro de un estallido azul.
+- `mag-volver-orilla.png`: Revivir. Calavera con un diamante verde encima.
+- `conj-espiritus-guardianes.png`: Espíritus guardianes. Anillo de llamas doradas.
+- `conj-palabra-curacion-masa.png`: Palabra de curación en masa. Llama dorada rodeada de corazones.
+- `mag-hablar-muertos.png`: Hablar con los muertos. Calavera con ojos verdes y la boca abierta.
+- `conj-animar-muertos.png`: Animar a los muertos. Esqueleto que se alza entre llamas verdes.
+- `conj-conjurar-animales.png`: Conjurar animales. Dos lobos azules dentro de un portal.
+- `conj-patron-hipnotico.png`: Patrón hipnótico. Espiral violeta.
+- `conj-miedo.png`: Miedo. Cara encapuchada y morada en un espejo.
+- `conj-acelerar.png`: Acelerar. Reloj de arena dorado.
+- `conj-nube-apestosa.png`: Nube apestosa. Nube amarilla que gotea verde.
+- `conj-invocar-relampago.png`: Invocar relámpago. Nube de tormenta que suelta un rayo violeta.
+- `conj-luz-dia.png`: Luz del día. Sol radiante.
+- `mag-toque-vampirico.png`: Toque vampírico. Mano con garras que absorbe energía roja.
+- `mag-muro-fuego.png`: Muro de fuego. Hilera de llamas sobre suelo quemado.
