@@ -51,14 +51,11 @@ author: DanielJHesseling / Claude Opus 5.5
 
 **El arte (2026-09-29, con PixelLab):** 442 imágenes en `public/img/game-engine/pixel/`: iconos de clases, especies, objetos, habilidades, estados y conjuros; 75 criaturas; 112 retratos (la gente de Puerto Alba, Strahd y 1387, los mercenarios y héroes de reserva) y 39 escenarios de día y de noche. Se están haciendo retratos por especie y clase, expresiones para la novela visual y losetas para el tablero, y conectándolo todo al juego.
 
-**En marcha ahora (2026-09-29, 15:20).** Varios agentes a la vez, cada uno en lo suyo:
-- **J15.1**, partir `party.js`. Ya van los pasos 0 a 9: la fachada, las claves y el estado, y 25 módulos en `party/` (combate, tablero, mundo, tiempo, hilo, gremio, encargos, magia, la ficha…). `party/main.js` ha bajado de unas 22.000 líneas a unas 7.500. Faltan los pasos 10 a 12: la pantalla, los menús y partir `initPartyPanel`.
-- **J13**, más frases del narrador (de 133 a unas 400), la herramienta de variedad y la guía de estilo.
-- **J10.2 y J10.4**, cada sitio de 1387 y Strahd con algo que hacer, y tres secretos por campaña.
-- **J9.2**, las escenas del hilo jugadas: la gente habla con su retrato y hay una decisión.
-- **Arte**: expresiones para el resto de la gente de Strahd y 1387, y suelos nuevos para el tablero.
-
-Cuando termine J15.1 se enchufa lo que ya funciona en su pantalla: la magia en combate, J7.3, las quedadas, los diálogos, el pueblo sin leer el mundo cada 15 s, los iconos del inventario, las alturas del mapa y el tablero táctil.
+**En marcha ahora (2026-09-29, 18:45).** J15.1 está hecho: `party.js` ya está partido. Ahora, varios agentes a la vez:
+- **Enchufar en el juego** lo que ya funcionaba en su pantalla: la magia en el combate (J19), mover a tus compañeros desde el vínculo 5 (J7.3), las escenas del hilo (J9.2), los diálogos (J8), las charlas y quedadas (J14), «mirar» en cada sitio (J10), las alturas y las salas del mapa (J12.8), el tablero táctil (J20.2) y los iconos de la ficha y el inventario.
+- **Sin chat, escenas por acciones, descansar en su sitio y sin etiquetas** (J18.7 a J18.10).
+- **Tus decisiones D-J11 a D-J38**, cada grupo con su revisor.
+- **El estado de las baterías de pruebas**, sobre el último commit, en una copia aparte.
 
 **Jugar con amigos (J6) está aparcado** hasta nueva orden (lo dijiste el 2026-09-28). Tampoco hay más personajes que los mercenarios sencillos del gremio.
 
@@ -84,7 +81,7 @@ Cómo está hecho, en corto (el detalle, en [[EMPEZAR_UNA_CAMPANA]], «Jugar sin
 | **J12** · Tableros y peleas | 🟡 | Hecho: **un tablero a partir de un mapa de D&D en imagen** (J12.8 a J12.12). En el editor de tableros, «Subir mapa en cuadrícula» encuentra la cuadrícula, lee muros, suelo, puertas y puentes, y deja nombrar las salas y poner alturas; se juega sobre el mapa limpio. Probado con tu mapa. Falta: que las alturas y los nombres de sala cuenten en juego (tras J15.1), tableros grandes (J12.13) y peleas que se pueden evitar |
 | **J13** · El texto del motor | 🟡 | Hecho: el género en todas las frases (J1.4, J13.3), **469 frases del narrador** con al menos ocho por momento (J13.4), sin repetirse en diez llegadas en 200 partidas, medido con `tools/variedad-frases.mjs --check` (J13.2), y la guía de estilo en [[GEM_GUIONISTA]] (J13.6). Falta: las notas del juego en prosa (J13.1, con J18.10), frases por estación y frases de compañeros fuera de combate (J13.5) |
 | **J14** · La gente: charlas y quedadas | 🟡 | Hecho, en el motor y con su pantalla (J14.1 a J14.6): 170 frases de charla corta, el día por partes, quedar con alguien como escena de novela visual con su retrato y su expresión, lo que abre cada rango (el 5, moverlo tú: J7.3), quién está en cada sitio a cada hora, y las 50 escenas de confidentes de Strahd y 1387 convertidas en quedadas jugables. Falta: enchufarlo en el juego (tras J15.1), y las noches, las charlas de pareja, las misiones personales y el romance (J14.7 a J14.11) |
-| **J15** · Sentirse un juego | ⬜ | Primera partida que enseña, guardar sin miedo, menús propios |
+| **J15** · Sentirse un juego | 🟡 | Hecho: **`party.js` partido** (J15.1): una fachada de 29 líneas y 42 módulos en `party/` (combate, tablero, mundo, tiempo, hilo, charla, viaje, pueblo, gremio, encargos, magia, la ficha, los menús, los comandos…), con el mismo orden de eventos, herramientas y comandos, y las pruebas de la fachada. Falta: guardar como un juego (J15.2), comandos a botones (J15.4), teclado y accesibilidad (J15.5) y exportar la partida entera (J15.6) |
 | **J16** · Medir la diversión | ⬜ | Vueltas automáticas, también con dos jugadores |
 | **J17** · Después: la IA como capa | ⏸️ | Aparcado (lo dijiste el 2026-09-29) |
 | **J19** · La magia de D&D | 🟡 | Hecho, en el motor: 81 conjuros como datos, espacios de conjuro de 5e, preparados y conocidos, concentración, invocaciones, zonas, reacciones, rituales y objetos con cargas. Falta: conectarlo al combate, al descanso y a subir de nivel (tras partir `party.js`) |
