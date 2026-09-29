@@ -65,17 +65,18 @@ Cómo está hecho, en corto (el detalle, en [[EMPEZAR_UNA_CAMPANA]], «Jugar sin
 | **J4** · Las campañas | 🟡 | Hecho: empezar desde el tablón (J4.3), volver y retomar (J4.4), terminar con su escena, epílogos y lo que se lleva cada uno (J4.5), varias a la vez (J4.8), 1387 en el tablón (J4.7) y el viaje contado (J4.9). Falta: el ajuste por nivel (J4.6, en marcha) y partir el estado de la partida (J4.2) |
 | **J5** · Tu JSON de campañas | 🟡 | Hecho: el conversor (J5.1) y Strahd en el tablón. Falta: importar desde el gremio (J5.4) |
 | **J6** · Jugar con amigos | ⏸️ | Aparcado |
-| **J7** · El grupo | ⬜ | Personajes de jugadores y compañeros del mundo; quién lleva a quién |
+| **J7** · El grupo | ⬜ | De un solo jugador por ahora: tu personaje y sus compañeros, y a cada uno lo mueves tú o el juego, como elijas |
 | **J8** · Hablar sin IA | ⬜ | Diálogos con ramas, opciones según tu clase y especie, decisiones del grupo |
 | **J9** · La historia de cada campaña | ⬜ | Escenas en vez de avisos, hitos, finales y un Diario que se lee como un libro |
 | **J10** · El mundo de cada campaña | ⬜ | Sitios con cosas que hacer, caminos que se abren, sucesos y secretos |
 | **J11** · Decisiones que pesan | ⬜ | Dentro de la campaña y de una campaña a otra |
-| **J12** · Tableros y peleas | ⬜ | Cada jugador mueve su ficha; peleas que se pueden evitar; trampas fuera de combate |
+| **J12** · Tableros y peleas | ⬜ | Tableros hechos a partir de un mapa de D&D en imagen; peleas que se pueden evitar; trampas fuera de combate |
 | **J13** · El texto del motor | ⬜ | Que todo se lea en prosa, con voz y sin repetirse |
 | **J14** · La vida en el gremio | ⬜ | La taberna, las charlas, los compañeros y, si queréis, romances |
 | **J15** · Sentirse un juego | ⬜ | Primera partida que enseña, guardar sin miedo, menús propios |
 | **J16** · Medir la diversión | ⬜ | Vueltas automáticas, también con dos jugadores |
-| **J17** · Después: la IA como capa | ⬜ | Cómo se enchufa la IA cuando el juego ya divierta |
+| **J17** · Después: la IA como capa | ⏸️ | Aparcado (lo dijiste el 2026-09-29) |
+| **J19** · La magia de D&D | ⬜ | Espacios de conjuro, preparados y conocidos, concentración, invocaciones, zonas de conjuro en el tablero y objetos mágicos. Todo como datos |
 | **J18** · La cara del juego | ✅ | Elegir con quién entras (J18.1), la pantalla de crear personaje (J18.2) y la novela visual con su registro (J18.3 a J18.6) |
 
 ---
@@ -387,21 +388,23 @@ Así no hay que reescribir el motor para el servidor. El riesgo: si el anfitrió
 
 ### J7 · El grupo
 
-**Para qué.** Que el grupo funcione con uno, dos o cuatro jugadores: los huecos los llenan compañeros del mundo.
+**Para qué.** **De momento es de un solo jugador** (lo dijiste el 2026-09-29): tu personaje y sus compañeros. A cada compañero lo mueve la máquina del juego (su IA táctica, sin modelo) o lo mueves tú, **como elijas**. Jugar con amigos vuelve con J6.
 
 **Qué hay ya.**
 - Compañeros reclutables (`recruit.js`, hasta 5 en el grupo), con vínculo, aprobación, arcos y despedidas.
-- Aliados que juega la máquina (`combat/ally-ai.js`) y mascota.
+- Aliados que juega la máquina (`combat/ally-ai.js`), con la postura que les pones en su ficha, y la mascota.
+- «Que actúe solo» en la barra de combate: el turno de quien toque lo juega la máquina.
+- Los mercenarios del gremio y tus personajes guardados (J1.6).
 
 | ID | Qué | Quién | Esf. | Cómo se comprueba |
 | :--- | :--- | :---: | :---: | :--- |
-| J7.1 | **Grupo de jugadores y compañeros**: los personajes de los jugadores y, para llenar, compañeros del gremio o de la campaña | A | M | e2e: un jugador con tres compañeros; dos jugadores con dos |
+| J7.1 | **Tu grupo**: tu personaje y, para llenar, compañeros del gremio (mercenarios, tus otros personajes) o de la campaña | A | M | e2e: un jugador con tres compañeros |
 | J7.2 | **Compañeros del gremio que duran**: los que se unen en una campaña pueden quedarse en el gremio para las siguientes | A | M | Pruebas |
-| J7.3 | **Quién lleva a quién**: un compañero lo lleva el juego o lo lleva un jugador que quiera (para grupos pequeños) | A | M | Pruebas |
+| J7.3 | **Quién mueve a cada uno: tú o el juego.** Un interruptor por compañero, en su ficha y en la barra de combate: «Lo muevo yo» o «Que lo lleve el juego». Se puede cambiar a mitad de pelea, y hay un «Todos solos» / «Todos yo» para el grupo entero | A | M | e2e: la misma pelea, primero moviéndolos tú y luego dejándolos al juego |
 | J7.4 | **Formación y papeles**: quién va delante, quién cura, quién vigila en el viaje (los papeles de viaje ya existen) | A | S | Pruebas |
 | J7.5 | **Opiniones de los compañeros a la vista** al decidir (hoy se apuntan): «A Bran le gusta esto» | A | M | Pruebas |
 
-**Hecho cuando** una campaña se juega igual de bien con un jugador y tres compañeros que con cuatro jugadores.
+**Hecho cuando** una campaña se juega bien con un jugador y tres compañeros, tanto moviéndolos tú como dejándoselos al juego.
 
 ---
 
@@ -502,6 +505,8 @@ Así no hay que reescribir el motor para el servidor. El riesgo: si el anfitrió
 - Hablar en un enfrentamiento; tregua y rendición.
 - Cofres, palancas, barricadas y salidas.
 - El editor de tableros en el taller (el 2026-09-28).
+- Las localizaciones y los tableros ya aceptan una imagen (`url`, con subida en el editor de localizaciones), pero solo como ilustración: el tablero se juega sobre su propio dibujo de casillas.
+- Alturas (`board/heights.js`), puertas, escaleras entre niveles y terreno difícil.
 
 | ID | Qué | Quién | Esf. | Cómo se comprueba |
 | :--- | :--- | :---: | :---: | :--- |
@@ -512,8 +517,14 @@ Así no hay que reescribir el motor para el servidor. El riesgo: si el anfitrió
 | J12.5 | **Tableros de tu JSON**: si la campaña trae mapas de sus sitios, se leen; si no, se generan con la semilla (J5.3) | A | M | Con tu JSON |
 | J12.6 | **Encuentros ajustados al grupo**: más jugadores, más enemigos (hoy ya se reparte un presupuesto de amenaza) | A | S | Pruebas: el mismo tablero con uno y con cuatro |
 | J12.7 | **Peleas de taberna y duelos**: no letales, por honor o por apuesta | P | M | Pruebas |
+| J12.8 | **Un tablero a partir de un mapa en imagen** (lo pediste el 2026-09-29). Subes un mapa de D&D en cuadrícula, como los de mazmorra con sus salas B1 a B9, y se juega **encima del dibujo**. Se ajusta la cuadrícula: el tamaño de la casilla y dónde empieza, marcando una casilla del dibujo o diciendo cuántas casillas tiene de ancho | A | M | Con los mapas de ejemplo: la cuadrícula del juego cae sobre la del dibujo, casilla a casilla |
+| J12.9 | **Muros y suelo leídos de la imagen**, sin IA: el juego mira los píxeles de cada casilla. La trama rayada es roca (muro), la cuadrícula clara es suelo, las piedras sueltas son terreno difícil. Lo que falle se retoca con el pincel del editor | A | L | En el mapa de ejemplo, las salas y los pasillos salen como suelo y la roca como muro, con menos de una casilla de cada veinte por corregir |
+| J12.10 | **Puertas, escaleras, puentes y alturas**: las puertas en los huecos entre salas; los puentes y las escaleras; las cotas del dibujo («+60 ft», «+30 ft», «+0 ft») como alturas (`board/heights.js`), con los acantilados como bordes que no se cruzan andando. Se proponen solos donde se pueda, y se marcan con el pincel | A | M | En el mapa de ejemplo, el risco de A tiene tres alturas y sus dos puentes se cruzan |
+| J12.11 | **Las salas con nombre**: las etiquetas del mapa (B1, B2… A, C) pasan a ser zonas del tablero, con lo que hay en cada una: quién espera, qué se encuentra, el texto de la sala. Se trabaja sobre el mapa **con** etiquetas y se juega sobre el **limpio**, como las dos versiones que me pasaste | A | M | Los dos mapas de ejemplo: con etiquetas para quien lo crea, sin ellas para quien juega |
+| J12.12 | **En el JSON de campaña y en el conversor**: el tablero lleva su imagen y su cuadrícula (`image`, `grid`), y `campana-a-paquete` los acepta. Así los tableros de Strahd pueden usar mapas de verdad | A | S | Un tablero de Strahd con su mapa en imagen, jugado en la simulación |
+| J12.13 | **Tableros grandes**: un mapa entero (el de ejemplo son unas 40 × 28 casillas) se juega por partes, con la cámara siguiendo al grupo y la niebla de guerra (`board/fog-of-war.js`) tapando lo que aún no se ha visto | A | M | e2e: cruzar el mapa de ejemplo de C a B1 |
 
-**Hecho cuando** dos jugadores pelean juntos en 1387, cada uno en su turno, y una pelea escrita se puede resolver hablando.
+**Hecho cuando** subes un mapa de D&D en imagen y en unos minutos lo juegas como tablero, con sus muros, puertas y alturas; y una pelea escrita se puede resolver hablando. (Lo de cada jugador en su turno, J12.1, vuelve con J6.)
 
 ---
 
@@ -597,7 +608,7 @@ Así no hay que reescribir el motor para el servidor. El riesgo: si el anfitrió
 
 ### J17 · Después: la IA como capa
 
-No es para ahora. Queda escrito para que lo de antes no le cierre la puerta:
+**⏸️ Aparcado** (lo dijiste el 2026-09-29). No es para ahora. Queda escrito para que lo de antes no le cierre la puerta:
 
 - **Un narrador de IA en los momentos que importan**: la escena del hito, el final o la llegada a una tierra nueva, sobre los hechos que ya decidió el motor.
 - **Hablar libre** con cualquiera, con su voz.
@@ -642,6 +653,39 @@ La regla no cambia: **el motor decide y la IA cuenta**.
 
 ---
 
+### J19 · La magia de D&D: conjuros, invocaciones y toda esa pesca
+
+**Para qué.** Que un mago, un clérigo o un druida se jueguen como en la mesa: con sus espacios de conjuro, lo que prepara cada día, la concentración, las invocaciones y los conjuros que cambian el tablero. Lo pediste el 2026-09-29.
+
+**Qué hay ya.**
+- **La capa ligera** (D5 de [[POR_HACER]], `rules/abilities.js`): cada habilidad es una fila de datos con qué cuesta, cuántas veces, a quién alcanza y qué hace. Hay 30 en `compendio/habilidades.json`, entre conjuros y técnicas.
+- Un grimorio con círculos y cargas (`rules/grimoire.js`), aprender de pergaminos y usar objetos mágicos.
+- Áreas en radio, línea y cono (`rules/area.js`), elementos que le hacen cosas al tablero (el fuego revienta barriles, el frío hiela el agua) y terreno que se queda donde cae.
+- Componentes que se gastan, y jefes que llaman a otros a mitad de pelea.
+
+**La idea.** La capa ligera no se tira: **las reglas de 5e van encima**. Cada conjuro sigue siendo una fila de datos, ahora con más columnas: nivel, escuela, tiempo de lanzamiento, alcance, duración, si pide concentración, área, salvación y daño por nivel. Añadir un conjuro sigue sin tocar código.
+
+| ID | Qué | Quién | Esf. | Cómo se comprueba |
+| :--- | :--- | :---: | :---: | :--- |
+| J19.1 | **Espacios de conjuro de 5e**: del nivel 1 al 9, según la clase y el nivel (las tablas del SRD). Se recuperan con el descanso largo; el brujo, con el corto | A | M | Pruebas: un mago de nivel 5 tiene 4, 3 y 2 espacios |
+| J19.2 | **Conocidos y preparados**: el mago prepara del grimorio, el clérigo y el druida de toda su lista, el bardo y el hechicero los conocen. Trucos a voluntad. Al subir de nivel se eligen los nuevos, en las tarjetas de nivel | A | M | e2e: preparar tras un descanso largo y lanzar uno preparado |
+| J19.3 | **Lanzar a más nivel**: el mismo conjuro con un espacio mayor hace más (más daño, más objetivos) | A | S | Pruebas |
+| J19.4 | **Concentración**: un solo conjuro así a la vez; recibir daño pide una salvación de Constitución; se ve en la ficha y en el tablero | A | M | Pruebas; e2e: un golpe rompe la concentración |
+| J19.5 | **Invocaciones**: invocar criaturas (un familiar, animales, elementales, no muertos para el nigromante), que salen como fichas del grupo con sus números del bestiario. Las mueves tú o el juego (J7.3), y duran lo que el conjuro o la concentración | A | L | e2e: invocar un lobo, que pelee y que se vaya al acabar el conjuro |
+| J19.6 | **Zonas de conjuro en el tablero**: niebla, telaraña, oscuridad, muro de fuego, silencio. Casillas con su efecto que duran unas rondas | A | M | e2e: una telaraña deja atrapado a quien la cruza |
+| J19.7 | **Reacciones mágicas**: Escudo, Contraconjuro, Retirada expeditiva… con la reacción de cada turno | A | M | Pruebas |
+| J19.8 | **Componentes y rituales**: el foco o la bolsa de componentes; los componentes caros, que se gastan; los rituales, que no gastan espacio pero piden diez minutos fuera de combate | A | S | Pruebas |
+| J19.9 | **Objetos mágicos**: pergaminos, varitas y bastones con cargas, pociones, y la sintonización (tres como mucho) | A | M | Pruebas |
+| J19.10 | **Magia fuera de combate**: Detectar magia, Luz, curar en el viaje, Identificar, Hablar con los muertos para las pistas de un caso… cada una enchufada a lo que ya existe | A | M | La vuelta usa tres fuera de combate |
+| J19.11 | **Los conjuros, como datos**: un lote inicial del SRD, en mis palabras, de unos 60 a 80 conjuros de nivel 0 a 3, repartidos por clase. Se añaden más con una fila, sin código | A | L | La comprobación del compendio: cada clase lanzadora tiene conjuros de cada nivel que alcanza |
+| J19.12 | **Enemigos que lanzan**: los del bestiario con conjuros (la bruja, Strahd) usan los mismos, con su máquina de decidir | A | M | En la simulación, Strahd lanza y se concentra |
+
+**Riesgos.** Es la fase que más toca el combate. Va con la simulación de campaña (`tools/sim-campana.mjs`) para que ningún tablero se vuelva imposible, ni demasiado fácil, con un mago de nivel alto en el grupo.
+
+**Hecho cuando** un mago de nivel 5 prepara sus conjuros al despertar, invoca, se concentra, pierde la concentración con un golpe y recupera sus espacios al descansar, todo sin tocar código para añadir un conjuro.
+
+---
+
 ## 🗺️ 4. El orden, y los hitos
 
 Te recomiendo este orden. Cada hito se puede jugar, y puedes pararlo ahí y probarlo.
@@ -649,9 +693,9 @@ Te recomiendo este orden. Cada hito se puede jugar, y puedes pararlo ahí y prob
 | Hito | Qué se puede hacer al llegar | Fases |
 | :--- | :--- | :--- |
 | **M1 · Se entra y se crea el personaje** | «Jugar sin conexión», elegir o crear un personaje en su pantalla, y jugar el prólogo contado como una novela visual | J0, J1 (J1.1 a J1.4), J2, J18 |
-| **M2 · El gremio y la primera campaña** | Llegar al gremio, elegir 1387 en el tablón, jugarla un rato, volver y retomarla | J15.1 (partir `party.js`), J3, J4 |
-| **M3 · Tu campaña** | Tu JSON de *Curse of Strahd*, convertido, en el tablón y jugable | J5, J12.5 |
-| **M4 · Dos amigos en la misma partida** | Tú y un amigo, cada uno en su PC, con turnos en las peleas y votando las decisiones | J6, J7, J12.1 |
+| **M2 · El gremio y la primera campaña** | Llegar al gremio, elegir 1387 en el tablón, jugarla un rato con tus compañeros (moviéndolos tú o el juego), volver y retomarla | J15.1 (partir `party.js`), J3, J4, J7 |
+| **M3 · Tu campaña, con mapas y magia** | *Curse of Strahd* jugable de principio a fin, con tableros hechos de mapas de verdad y la magia de D&D | J5, J12.5, J12.8 a J12.13, J19 |
+| **M4 · Dos amigos en la misma partida** (aparcado) | Tú y un amigo, cada uno en su PC, con turnos en las peleas y votando las decisiones | J6, J12.1 |
 | **M5 · Una campaña entera, bien contada** | 1387 de principio a fin sin conexión, con escenas jugadas, charlas con ramas y decisiones que pesan | J8, J9, J10, J11, J13 |
 | **M6 · La vida en el gremio** | Las noches, los compañeros con su historia y, si queréis, romances | J14 |
 
