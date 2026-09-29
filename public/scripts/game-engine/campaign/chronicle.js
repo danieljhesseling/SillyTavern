@@ -50,7 +50,7 @@ export const TAG_CATEGORIES = {
     'GREMIO': 'gremio', 'ENCARGO': 'gremio',
     'COMBAT': 'combate', 'BOARD': 'combate', 'TABLERO': 'combate',
     'TIENDA': 'comercio', 'POSADA': 'comercio', 'TABERNA': 'comercio', 'TEMPLO': 'comercio', 'HERRERÍA': 'comercio', 'ROBO': 'comercio',
-    'CAMPAÑA': 'viaje', 'EXPLORAR': 'viaje', 'ATAJO': 'viaje', 'CAMPO': 'viaje',
+    'CAMPAÑA': 'viaje', 'VIAJE': 'viaje', 'EXPLORAR': 'viaje', 'ATAJO': 'viaje', 'CAMPO': 'viaje',
     'CAMPAMENTO': 'campamento', 'CHARLA': 'campamento', 'DESCANSO': 'campamento',
     // Una tirada suelta no es historia: se pliega, y no entra en el resumen del acto.
     'TIRADA': 'dados',

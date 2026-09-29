@@ -41,9 +41,11 @@ author: DanielJHesseling / Claude Opus 5.5
 
 ---
 
-## 📍 Cómo va (2026-09-28, tarde)
+## 📍 Cómo va (2026-09-29)
 
 **La primera vuelta jugable ya está.** Se entra por «Jugar sin conexión», se hace el personaje, se gana la prueba del gremio, se contratan mercenarios y se empieza *La Maldición de Strahd* o *1387* desde el tablón. Se vuelve al gremio con todo lo ganado y se sigue la campaña donde se dejó. Lo comprueba `tools/e2e-gremio.mjs`, de punta a punta en el navegador.
+
+**Lo nuevo del 2026-09-29:** el personaje se crea en su pantalla (J18.2), eligiendo de tarjetas, con los atributos repartidos o tirados (J1.2) y el equipo de su clase puesto (J1.3). La historia se lee en una caja de novela visual (J18.3 a J18.6). El gremio está en un pueblo, **Puerto Alba**, con quien atiende cada servicio (J3.10), y el viaje a cada campaña se cuenta, a la ida y a la vuelta (J4.9). Strahd tiene su libro escrito con mis palabras (`libro.json`): 31 personas, 36 rumores, 15 encargos y 18 tableros, y la simulación los gana todos.
 
 **Jugar con amigos (J6) está aparcado** hasta nueva orden (lo dijiste el 2026-09-28). Tampoco hay más personajes que los mercenarios sencillos del gremio.
 
@@ -55,10 +57,10 @@ Cómo está hecho, en corto (el detalle, en [[EMPEZAR_UNA_CAMPANA]], «Jugar sin
 | Fase | Estado | En una línea |
 | :--- | :---: | :--- |
 | **J0** · La puerta | 🟡 | Hecho: el botón en la portada, «Seguir en el gremio» y el modo motor. Falta: esconder lo de SillyTavern (J0.2, J0.3, J0.4) |
-| **J1** · Tu personaje | 🟡 | Hecho: nombre, especie y clase, y el personaje dura de campaña en campaña (J1.5). Falta: elegir de tarjetas (J1.1) y lo demás |
+| **J1** · Tu personaje | 🟡 | Hecho: tarjetas (J1.1), atributos repartidos o tirados (J1.2), equipo por clase (J1.3) y el personaje dura (J1.5). Falta: el género del texto (J1.4) y lo demás |
 | **J2** · El prólogo | 🟡 | Hecho: la prueba de la bodega y el paso al tablón, como paquete (J2.4). Falta: que enseñe a jugar (J2.2) |
-| **J3** · El gremio, tu base | 🟡 | Hecho: posada, tienda, templo, herrería, el tablón de campañas (J3.2) y los mercenarios. Falta: la sala propia (J3.1), el cofre y lo demás |
-| **J4** · Las campañas | 🟡 | Hecho: empezar desde el tablón (J4.3), volver y retomar (J4.4), varias a la vez (J4.8), y 1387 en el tablón (J4.7). Falta: la escena al terminar (J4.5) y el ajuste por nivel (J4.6) |
+| **J3** · El gremio, tu base | 🟡 | Hecho: Puerto Alba con posada, tienda, templo y herrería, cada uno con quien lo atiende (J3.10), el tablón (J3.2) y los mercenarios. Falta: la sala propia (J3.1), el cofre y lo demás |
+| **J4** · Las campañas | 🟡 | Hecho: empezar desde el tablón (J4.3), volver y retomar (J4.4), varias a la vez (J4.8), 1387 en el tablón (J4.7) y el viaje contado (J4.9). Falta: la escena al terminar (J4.5) y el ajuste por nivel (J4.6) |
 | **J5** · Tu JSON de campañas | 🟡 | Hecho: el conversor (J5.1) y Strahd en el tablón. Falta: importar desde el gremio (J5.4) |
 | **J6** · Jugar con amigos | ⏸️ | Aparcado |
 | **J7** · El grupo | ⬜ | Personajes de jugadores y compañeros del mundo; quién lleva a quién |
@@ -72,7 +74,7 @@ Cómo está hecho, en corto (el detalle, en [[EMPEZAR_UNA_CAMPANA]], «Jugar sin
 | **J15** · Sentirse un juego | ⬜ | Primera partida que enseña, guardar sin miedo, menús propios |
 | **J16** · Medir la diversión | ⬜ | Vueltas automáticas, también con dos jugadores |
 | **J17** · Después: la IA como capa | ⬜ | Cómo se enchufa la IA cuando el juego ya divierta |
-| **J18** · La cara del juego | ⬜ | Elegir personaje al entrar, crearlo en su pantalla y la historia contada como una novela visual (lo pediste el 2026-09-29) |
+| **J18** · La cara del juego | 🟡 | Hecho: la pantalla de crear personaje (J18.2) y la novela visual con su registro (J18.3 a J18.6). Falta: elegir personaje al entrar con varios guardados (J18.1, con J1.6) |
 
 ---
 
