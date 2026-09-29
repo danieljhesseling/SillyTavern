@@ -8,6 +8,9 @@ author: DanielJHesseling / Claude Opus 5.5
 
 # 🧩 El pegamento: un juego, no doscientos
 
+> [!NOTE]
+> **Archivado el 2026-09-29.** U0–U8 están hechas. Lo que quedó abierto está en [[LO_QUE_FALTA]]: los relojes que dicen su plazo (U3 → T7), los registros que leen de la crónica (U4 → T8), los horarios (U3 → T9), más duelos (U6 → T13), el componente común de tarjetas (U6 → H4), las plantillas como paquetes (U7 y DU7 → K8), un solo contrato de autor (U7 → K9), los casos escritos (U8 → T5) y el error 500 al guardar el chat (→ K4). La decisión DU6 (si los horarios impiden hablar con alguien) sigue abierta: es la D11 de [[POR_HACER]]. Tu semana de prueba (U0) es J16.5 de [[ROADMAP_SIN_CONEXION]].
+
 > **Qué es esto.** El plan para que todo lo construido funcione como **un solo juego**: las 200 ideas de *IDEAS_200*, y también lo que vino antes y quedó suelto (los niveles del [[ROADMAP_MAESTRO]], las fases de [[ROADMAP_MUNDOS_VIVOS]], lo que queda en [[POR_HACER]]). Termina en las tres propuestas de [[PROPUESTAS_BUCLE_DE_JUEGO]], porque las tres necesitan este pegamento debajo.
 >
 > **La regla de este plan: juntar antes que añadir.** Ninguna fase trae un sistema nuevo suelto. Cada una **junta** cosas que hoy van por separado, **retira** algo que sobra, y **acaba con algo que se ve jugando**. Si una fase solo refactoriza sin que cambie nada en pantalla, está mal cortada.

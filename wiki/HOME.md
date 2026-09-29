@@ -2,7 +2,7 @@
 title: SillyTavern RPG Engine - Wiki Central & Hub de Conocimiento
 tags: [home, wiki, moc, silleytavern, rpg, dnd, obsidian, ai-agent, index]
 created: 2026-09-20
-updated: 2026-09-26
+updated: 2026-09-29
 author: DanielJHesseling / Antigravity AI / Claude Opus 5.5
 ---
 
@@ -16,16 +16,16 @@ Bienvenido a la **Wiki de SillyTavern & Motor RPG** (`my-silly`, el fork de Dani
 > | Vengo a… | Abre |
 > | :--- | :--- |
 > | **Jugar** | [[EMPEZAR_UNA_CAMPANA]] |
-> | **Saber qué le falta al juego** | **[[LO_QUE_FALTA]]**: el análisis del 2026-09-26, con el orden recomendado |
-> | **Ver el plan de ahora** | **[[ROADMAP_SIN_CONEXION]]**: el juego entero sin IA, con gremio, campañas y amigos (J0–J17) |
-> | **Ver lo último que se construyó** | [[ROADMAP_PROFUNDIDAD]] (R1–R10) y su tabla «Cómo va» |
+> | **Saber qué le falta al juego** | **[[LO_QUE_FALTA]]**: lo que falta fuera del plan, puesto al día el 2026-09-29, con el orden recomendado |
+> | **Ver el plan de ahora** | **[[ROADMAP_SIN_CONEXION]]**: el juego entero sin IA, con gremio, campañas y amigos (J0–J18) |
+> | **Ver lo último que se construyó** | La tabla «Cómo va» de [[ROADMAP_SIN_CONEXION]], y la A17 de [[POR_HACER]] |
 > | **Coger una tarea** | [[POR_HACER]], el marcador |
-> | **Entender por qué el juego es así** | [[ROADMAP_MAESTRO]] (el porqué) y [[ROADMAP]] (el acta de las fases A–H) |
+> | **Entender por qué el juego es así** | [[ROADMAP_MAESTRO]] (el porqué) y [[ROADMAP]] (el acta de las fases A–H), los dos en `archivo/` |
 > | **Escribir un mundo** | [[GEM_GUIONISTA]] y [[GEM_CREAR_CAMPANA]] |
 > | **Mejorar cómo se ve** | [[GEM_DIRECTOR_UX]] |
 > | **Encontrar un archivo** | [[Mapa-Codigo-Archivos]] |
 >
-> **La regla de la casa**: un marcador ([[POR_HACER]]), un plan vivo y un documento de lo que falta. Un plan que se cierra pasa a `archivo/` el mismo día.
+> **La regla de la casa**: un marcador ([[POR_HACER]]), un plan vivo y un documento de lo que falta. Un plan que se cierra pasa a `archivo/` el mismo día, y lo que le quede, a [[LO_QUE_FALTA]].
 
 > [!TIP]
 > **Modo Obsidian**: la wiki usa enlaces `[[...]]`, que se resuelven por nombre aunque el documento esté en `archivo/`. La **Vista de Grafo** enseña cómo se enganchan el backend, el frontend y el motor de rol.
@@ -43,9 +43,7 @@ mindmap
       [[ROADMAP_SIN_CONEXION]]
       [[LO_QUE_FALTA]]
       [[POR_HACER]]
-      [[ROADMAP_PROFUNDIDAD]]
-      [[ROADMAP_PEGAMENTO]]
-    El porqué
+    El porqué en el archivo
       [[ROADMAP_MAESTRO]]
       [[ROADMAP]]
     Escribir mundos
@@ -99,7 +97,7 @@ Capacidades base que sustentan la interacción con modelos de lenguaje:
 - [[Seguridad-Autenticacion]]: Aislamiento multi-usuario, Scrypt, CSRF-Sync, listas blancas de IP y vectores de riesgo identificados.
 
 ### 3. ⚔️ Motor RPG & Campañas (el fork)
-El juego de rol añadido en la rama `my-silly`: **234 módulos en `game-engine/` (unas 50.000 líneas)**, cableados desde `party.js` (19.000 líneas), con 3.267 pruebas unitarias y un recorrido de 73 pasos en navegador.
+El juego de rol añadido en la rama `my-silly`: **255 módulos en `game-engine/` (unas 56.000 líneas)**, cableados desde `party.js` (21.000 líneas), con 3.468 pruebas unitarias y cuatro vueltas en el navegador.
 - [[Sistema-Party]]: Gestión del grupo (`party.js`), líder activo, sincronización de HP/XP/Oro, leveling automático y dados.
 - [[DND-Mecanicas-Items]]: Fórmulas D&D 5e (`dnd-system.js`), modificadores, AC por tipo de armadura, ranuras anatómicas y pesos.
 - [[Dynamic-Context-Manager]]: El prompt por bloques y su presupuesto de tokens.
@@ -109,7 +107,7 @@ El juego de rol añadido en la rama `my-silly`: **234 módulos en `game-engine/`
 - [[Chat-Enhancements]]: Resaltado de términos de Lorebook con tooltips descriptivos y avatares de diálogo en línea.
 
 ### 4. 🧭 Lo que falta, lo que se hace y el porqué
-- **[[LO_QUE_FALTA]]** 🔭 **Lo que le falta al juego (2026-09-26).** El análisis del proyecto entero tras R1–R10: la radiografía en números, lo que ya es fuerte, el diagnóstico en cinco frases, y lo que falta por áreas (terminar lo empezado, el tablero que pide el guion, la IA, el contenido, la primera hora y lo técnico). Termina con el orden recomendado y la lista de lo que descartaste, para que nadie lo vuelva a proponer.
+- **[[LO_QUE_FALTA]]** 🔭 **Lo que falta fuera del plan (puesto al día el 2026-09-29).** La radiografía en números, lo que ya es fuerte, el diagnóstico en cinco frases, y lo que falta por áreas: terminar lo empezado, el tablero que pide el guion, la IA, el contenido, la primera hora y lo técnico. Dice adónde fue lo que les quedaba a los roadmaps archivados, el orden recomendado, lo que descartaste (para que nadie lo vuelva a proponer) y lo hecho desde el análisis.
 - **[[POR_HACER]]** 📋 **El marcador**, dividido por quién tiene que actuar: A (se hace), D (decides tú) y P (propuestas). Con la deuda conocida y una prueba manual de cinco minutos.
 - **[[ROADMAP_SIN_CONEXION]]** 🏰 **Jugar sin conexión: tu gremio, tus campañas, tus amigos (2026-09-28). El plan de ahora.** El juego entero sin IA, desde un botón «Jugar sin conexión» en la portada:
   - creas tu personaje (nombre, especie y clase) y juegas un prólogo;
@@ -117,34 +115,29 @@ El juego de rol añadido en la rama `my-silly`: **234 módulos en `game-engine/`
   - el grupo va de una a otra con lo ganado;
   - se juega **con amigos**, cada uno desde su PC, en tu servidor privado.
 
-  Parte de un repaso del código. Trae diez decisiones para ti (D-J1 a D-J10), dieciocho fases (J0–J17), seis hitos jugables (M1–M6) y un marcador.
-- **[[ROADMAP_SIN_TOKENS]]** 🎲 **Sin tokens: divertido sin modelo, mejor con él (2026-09-27).** Lo que queda de Z4 a Z7 sigue en [[ROADMAP_SIN_CONEXION]]. Parte de un repaso del código. Encontró tres cosas que hoy atascan el juego sin modelo: 1387 se para en el hito 2, solo se puede tirar una vez por partida, y las órdenes al narrador se ven. Encontró también diez momentos en los que el juego se calla. Nueve fases (Z0–Z8), por este orden:
-  - que nada se atasque;
-  - una vuelta de prueba sin modelo;
-  - un narrador del motor con bancos de frases;
-  - hablar con la gente sin modelo;
-  - tiradas con consecuencia y una caja que entiende;
-  - sucesos con decisiones;
-  - el modelo como mejora (modos Motor, Mixto y Modelo, con tope de gasto);
-  - hilos generados con fondo;
-  - el Gem escribiendo frases, charlas y sucesos.
+  Parte de un repaso del código. Desde el 2026-09-29, también **la cara del juego** (J18): elegir personaje, crearlo en su pantalla y la historia contada como una novela visual.
 
-  Con marcador y seis decisiones para ti (DZ1–DZ6).
-- **[[ROADMAP_PROFUNDIDAD]]** 🌳 **Profundidad: más hondo, no más ancho (2026-09-26).** Diez fases, hechas: modos de juego (Relajado, Normal, Supervivencia, a tu medida) y héroes hechos, el taller en pestañas, habilidades con áreas y elementos que tocan el terreno, la magia solo desde el código (un grimorio de 25 conjuros), la mascota, tableros con intención, enemigos con papel y némesis, compañeros con arco y un mundo que responde. Su tabla «Cómo va» dice lo que falta de cada fase.
-- **[[ROADMAP_PEGAMENTO]]** 🧩 **El pegamento: un juego, no doscientos (2026-09-25).** Nueve fases para que lo construido se hable entre sí: un narrador, un estado, un reloj, una crónica, la Mesa de la Semana, el Duelo de Palabras, una forma de mundo, despachos y casos. Con el marcador de números que tienen que bajar.
-- **[[ROADMAP_MAESTRO]]** 🗺️ **El porqué.** La pregunta que ordena todo —**¿por qué querrías jugar mañana?**—, los cuatro relojes y los seis niveles.
-- **[[ROADMAP]]** 📜 `fases A–H cerradas` **El acta de lo construido**, que sigue valiendo por *El Principio que Ordena Todo* y *De Dónde Sale el Gasto*.
+  Trae diez decisiones (D-J1 a D-J10; quedan el nombre del juego y jugar con amigos, aparcado), diecinueve fases (J0–J18), seis hitos jugables (M1–M6) y un marcador.
+- Los planes anteriores (el acta de las fases A–H, el maestro, el pegamento, la profundidad, sin tokens y el compendio) están cerrados y en el archivo (sección 6).
 
 ### 5. ✍️ Escribir mundos
 - **[[GEM_GUIONISTA]]** 🎬 **Las instrucciones del Gem que escribe la biblia de un mundo por rondas.** Sabe de áreas, elementos, terreno, el grimorio y los héroes hechos. `tools/guion-a-paquete.mjs` lo convierte en paquete y avisa de lo que no lee.
 - **[[GEM_DIRECTOR_UX]]** 🎨 **Las instrucciones del Gem director de UX/UI.** Mira capturas del juego, propone cómo mejorar lo que se ve y entrega un mockup en HTML más un «Encargo para Claude» con criterios que se comprueban en el navegador. Conoce la paleta, las clases y las restricciones del juego (sin arte, solo CSS, iconos y emoji).
 - **[[GEM_CREAR_CAMPANA]]** 📦 **Las instrucciones del Gem que escribe campañas**, generadas desde el motor (`node tools/gem-instructions.mjs`): el contrato completo, las reglas que un esquema no puede expresar y una muestra correcta.
-- **[[ROADMAP_COMPENDIO]]** 📚 **La biblioteca de contenido.** Un JSON por dominio en `public/compendio/` —armas, habilidades, bichos, gente, nombres, sitios— del que tiran los generadores con la semilla. Dice qué campos lleva cada fila.
+- **[[ROADMAP_COMPENDIO]]** 📚 *(archivo)* **La biblioteca de contenido.** Un JSON por dominio en `public/compendio/` —armas, habilidades, bichos, gente, nombres, sitios— del que tiran los generadores con la semilla. Dice qué campos lleva cada fila.
 - **[[ALGORITMOS_GENERACION]]** 🎲 **200 ideas para que dos partidas del mismo texto no se parezcan.** Todo sin IA. La regla que las ordena: **la semilla no es el texto**.
-- `guiones/1387/`: las nueve rondas del guion de 1387, el único mundo escrito entero.
+- `guiones/1387/`: las doce rondas del guion de 1387 y sus dudas.
+- `campanas/strahd/`: *La Maldición de Strahd* en tres capas (tu JSON, lo sacado del libro y las mejoras); `node tools/campana-a-paquete.mjs strahd` las junta en un paquete.
+- `maquetas/`: las maquetas del Gem de UX para la cara del juego (J18).
 
 ### 6. 🗄️ Archivo: planes cerrados
-En `wiki/archivo/`. Están hechos o minados, pero el código los cita en sus comentarios como el porqué de lo que existe, así que no se borran:
+En `wiki/archivo/`. Están hechos o minados, pero el código los cita en sus comentarios como el porqué de lo que existe, así que no se borran. Lo que les quedaba pendiente está en [[LO_QUE_FALTA]], sección 10:
+- [[ROADMAP_SIN_TOKENS]]: jugar sin gastar tokens (Z0–Z8, 2026-09-27). Lo que quedaba siguió en [[ROADMAP_SIN_CONEXION]].
+- [[ROADMAP_PROFUNDIDAD]]: modos, taller en pestañas, habilidades, magia en código, mascota, tableros con intención, enemigos, compañeros y mundo (R1–R10, 2026-09-26).
+- [[ROADMAP_PEGAMENTO]]: que lo construido se hable entre sí: un narrador, un estado, un reloj, una crónica, la mesa, el duelo y los casos (U0–U8, 2026-09-25).
+- [[ROADMAP_MAESTRO]]: el porqué. «¿Por qué querrías jugar mañana?», los cuatro relojes y los seis niveles.
+- [[ROADMAP]]: el acta de las fases A–H, con *El Principio que Ordena Todo* y *De Dónde Sale el Gasto*.
+- [[ROADMAP_COMPENDIO]]: las doce baterías del compendio, con los campos de cada fila.
 - [[ROADMAP_MUNDOS_VIVOS]]: las localidades con servicios, los mundos precreados y las ocho baterías de ideas, con su detalle en «Hecho». Aquí se explican los números de idea que citan los comentarios del código.
 - [[ROADMAP_CREACION]]: el taller de campañas en trece pasos (lo retomó R2).
 - [[ROADMAP_INGESTA_CAMPANAS_LIBROS]]: de un libro a una campaña jugable (Fase G).
@@ -166,18 +159,20 @@ Si eres un agente de IA interactuando con este repositorio, sigue estas directri
 
 | Si tu tarea es... | Consulta primero... | Archivo clave en el código |
 | :--- | :--- | :--- |
-| Decidir en qué trabajar a continuación | [[LO_QUE_FALTA]] §11 y [[POR_HACER]] | — |
+| Decidir en qué trabajar a continuación | [[ROADMAP_SIN_CONEXION]] §4 (el orden y los hitos), [[LO_QUE_FALTA]] §12 y [[POR_HACER]] | — |
+| Tocar el gremio y sus campañas | [[ROADMAP_SIN_CONEXION]] y [[EMPEZAR_UNA_CAMPANA]] (1b) | `game-engine/campaign/hub.js` · `campaigns.js` · `node tools/e2e-gremio.mjs` |
+| Convertir una campaña en JSON (como Strahd) | [[ROADMAP_SIN_CONEXION]] J5 | `wiki/campanas/` · `node tools/campana-a-paquete.mjs strahd` |
 | Modificar la ficha de personaje D&D o el inventario | [[Sistema-Party]] y [[DND-Mecanicas-Items]] | `public/scripts/party.js` & `dnd-system.js` |
 | Añadir o cambiar lo que se envía al modelo | [[Dynamic-Context-Manager]] | `dynamic-context-manager.js` · comprueba con `node tools/check-prompt-shape.mjs` |
 | Intervenir en los mapas, cuadrícula o tokens | [[Campanas-Mapas-Tableros]] | `public/scripts/world-map-renderer.js` · `game-engine/board/` |
-| Tocar los tableros generados | [[ROADMAP_PROFUNDIDAD]] R6 | `game-engine/world-builder/board-intent.js` y `dungeon-generator.js` |
-| Añadir un conjuro | [[ROADMAP_PROFUNDIDAD]] R4 | `game-engine/rules/grimoire.js`: **solo en código**; los datos solo ajustan números |
+| Tocar los tableros generados | [[ROADMAP_PROFUNDIDAD]] R6 (archivo) | `game-engine/world-builder/board-intent.js` y `dungeon-generator.js` |
+| Añadir un conjuro | [[ROADMAP_PROFUNDIDAD]] R4 (archivo) | `game-engine/rules/grimoire.js`: **solo en código**; los datos solo ajustan números |
 | Añadir nuevos comandos de barra `/` | [[SlashCommands-Macros]] | `public/scripts/slash-commands.js` |
-| Añadir una clave nueva a la partida | [[ROADMAP_PEGAMENTO]] U2 | `game-engine/campaign/state-registry.js` · `node tools/check-state-keys.mjs` |
-| Añadir tipos de arma, daño o condiciones | [[ROADMAP]] Fase C | **`/rules`** en el chat. El origen está en `game-engine/rules/default-ruleset.js` |
-| Saber qué se envía al modelo y qué cuesta | [[ROADMAP]] §1 y T3 | **`/prompt`** en el chat |
-| Crear un mundo con IA | [[ROADMAP]] Fase F | *Nueva campaña* → *Generar con IA* · `game-engine/world-builder/world-schema.js` |
-| Cambiar cómo se empieza una campaña | [[ROADMAP_PROFUNDIDAD]] R1 y R2 | `game-engine/ui/taller/taller.js`, `game-engine/campaign/taller.js`, `campaigns.js` |
+| Añadir una clave nueva a la partida | [[ROADMAP_PEGAMENTO]] U2 (archivo) | `game-engine/campaign/state-registry.js` · `node tools/check-state-keys.mjs` |
+| Añadir tipos de arma, daño o condiciones | [[ROADMAP]] Fase C (archivo) | **`/rules`** en el chat. El origen está en `game-engine/rules/default-ruleset.js` |
+| Saber qué se envía al modelo y qué cuesta | [[ROADMAP]] §1 y T3 (archivo) | **`/prompt`** en el chat |
+| Crear un mundo con IA | [[ROADMAP]] Fase F (archivo) | *Nueva campaña* → *Generar con IA* · `game-engine/world-builder/world-schema.js` |
+| Cambiar cómo se empieza una campaña | [[ROADMAP_PROFUNDIDAD]] R1 y R2 (archivo) | `game-engine/ui/taller/taller.js`, `game-engine/campaign/taller.js`, `campaigns.js` |
 | Probar el tablero o el combate sin montar una campaña | [[POR_HACER]] *Probarlo a mano* | `/sandbox` → `game-engine/ui/sandbox.js` |
 | **Empezar a jugar, de cero** | **[[EMPEZAR_UNA_CAMPANA]]** | Las tres puertas, el taller, la primera sesión y los comandos |
 | Jugar en Modo Videojuego, a pantalla completa | [[PROPUESTA_FRONTEND_MODO_JUEGO]] (archivo) | **`/modojuego`** en el chat → `game-engine/ui/shell/` |
@@ -186,7 +181,7 @@ Si eres un agente de IA interactuando con este repositorio, sigue estas directri
 | Entender cómo se inyectan los datos al LLM | [[Ciclo-De-Vida-Prompt]] | `public/script.js` |
 | Localizar un archivo en el proyecto | [[Mapa-Codigo-Archivos]] | Índice del repositorio |
 | Saber si algo está conectado al juego o solo probado | [[POR_HACER]] | `node tools/check-engine-wiring.mjs` |
-| Comprobar que el juego sigue jugándose de principio a fin | [[POR_HACER]] *Probarlo a mano* | `node tools/e2e-todo.mjs --rapido` (unos 4 min: tests, empezar en 1387 y una partida sin modelo, a la vez) · `node tools/e2e-todo.mjs` (unos 15 min: además, la vuelta entera en dos mitades a la vez) |
+| Comprobar que el juego sigue jugándose de principio a fin | [[POR_HACER]] *Probarlo a mano* | `node tools/e2e-todo.mjs --rapido` (unos 4 min: tests, empezar en 1387, una partida sin modelo y el gremio, a la vez) · `node tools/e2e-todo.mjs` (unos 15 min: además, la vuelta entera en dos mitades a la vez) |
 
 ---
 

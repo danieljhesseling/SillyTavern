@@ -1,6 +1,6 @@
 # 🎲 Empezar una campaña
 
-*De no tener nada a estar jugando, en unos minutos. Esta guía es para sentarse a jugar; si lo que buscas es el estado del proyecto, eso está en [[ROADMAP]], y lo pendiente en [[POR_HACER]].*
+*De no tener nada a estar jugando, en unos minutos. Esta guía es para sentarse a jugar; si lo que buscas es el estado del proyecto, el plan está en [[ROADMAP_SIN_CONEXION]], lo que falta fuera de él en [[LO_QUE_FALTA]] y lo pendiente del día a día en [[POR_HACER]].*
 
 ---
 
@@ -476,7 +476,7 @@ Para que nadie lo descubra a mitad de una sesión:
 - **El sonido no trae ni una pista.** Las pones tú en `/sonido`: aquí no hay música con licencia de nadie.
 - **Las reglas de encuentro no colocan a nadie por su cuenta** salvo en los tableros importados, que traen sus posiciones dibujadas. En los demás, `/fight` los pone en una casilla libre.
 - **La generación con IA no escribe misiones al crear el mundo.** Se piden aparte, con `/objetivos editar` → *Proponer con IA*.
-- **«Mixto» todavía no llama al modelo por su cuenta** en los momentos que importan (una muerte, el cambio de acto): hoy solo contesta lo que escribes. Y no hay tope de gasto por sesión. Es el resto de la Z6 de [[ROADMAP_SIN_TOKENS]].
+- **«Mixto» todavía no llama al modelo por su cuenta** en los momentos que importan (una muerte, el cambio de acto): hoy solo contesta lo que escribes. Y no hay tope de gasto por sesión. Es lo que queda de la Z6 (I2 e I4 de [[LO_QUE_FALTA]]), y espera a que llegue la IA (J17 de [[ROADMAP_SIN_CONEXION]]).
 - **Los sucesos no salen aún con el reloj de las facciones ni con la reputación**, solo al viajar, llegar, dormir y cambiar de semana. Y el Gem todavía no sabe escribir los suyos (bloque `suceso:`).
 - **En `/campana` no se elige la casilla concreta de un personaje del mundo**, solo en qué localidad está; quien entra al grupo empieza donde empieza el grupo. Y un objeto solo se le puede dar a alguien de tu grupo: un PNJ todavía no tiene mochila que mirar.
 
@@ -501,6 +501,8 @@ Si eso pasa y lo tuyo no, la diferencia está en tus datos o en tu configuració
 ## Enlaces
 
 - [[POR_HACER]] — lo pendiente, y una lista de comprobación manual de cinco minutos.
-- [[ROADMAP]] — qué hay construido, qué está conectado y qué se puede tocar desde la interfaz.
+- [[ROADMAP_SIN_CONEXION]] — el plan de ahora: el gremio, las campañas y lo que viene.
+- [[LO_QUE_FALTA]] — lo que le falta al juego fuera de ese plan.
+- [[ROADMAP]] (archivo) — el acta de las fases A–H: qué se construyó primero y por qué.
 - [[ROADMAP_INGESTA_CAMPANAS_LIBROS]] — el contrato entre tu Gem y el motor, en detalle.
 - [[PROPUESTA_FRONTEND_MODO_JUEGO]] — cómo están hechas las tres pantallas.

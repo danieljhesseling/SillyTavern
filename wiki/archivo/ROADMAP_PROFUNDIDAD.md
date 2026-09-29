@@ -8,6 +8,9 @@ author: DanielJHesseling / Claude Opus 5.5
 
 # 🌳 Profundidad: más hondo, no más ancho
 
+> [!NOTE]
+> **Archivado el 2026-09-29.** R1–R10 están hechas. R7 y R9 se quedaron en 🟡 en la tabla, pero en el código tienen todo lo que pedían (lo último, la tregua, los refuerzos, el tirador en alto y los precios con la estación, el 2026-09-26). Quedan dos cosas, las dos en [[LO_QUE_FALTA]]: la cuerda (R6 → T1) y las piezas y los casos escritos del guion (R10 → T5).
+
 > **Qué es esto.** El plan que sigue a [[ROADMAP_PEGAMENTO]]. El pegamento hizo que lo construido se hablara entre sí; esto le da **fondo**: que cada cosa que ya existe tenga más decisiones dentro, y que lo nuevo (la magia, la mascota, los modos) **se enganche a lo que hay** en vez de colgarse al lado.
 >
 > **De dónde sale.** De tus ideas del 2026-09-26 —tableros mejor generados, habilidades con más oficio, magia que solo se crea en el código, una mascota que comenta la historia, modos de juego para no ahogarse en parámetros, empezar un mundo ya hecho, y el taller en pestañas en vez de en pasos— y de un repaso del código hecho ese día. Lo que es un hecho del código, lo digo con el archivo; lo que es opinión, lo digo como opinión.

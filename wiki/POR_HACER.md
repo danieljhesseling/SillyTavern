@@ -2,22 +2,16 @@
 title: Por Hacer — Estado Real y Pendientes
 tags: [todo, pendientes, estado, roadmap, deuda]
 created: 2026-09-20
-updated: 2026-09-26
+updated: 2026-09-29
 author: DanielJHesseling / Claude Opus 5
 ---
 
 # 📋 Por Hacer
 
 > [!NOTE]
-> **Esto es el marcador, no el plan.** El plan, desde el 2026-09-25, es **[[ROADMAP_PEGAMENTO]]**: juntar lo construido en un solo juego. [[ROADMAP_MAESTRO]] se queda como el porqué y [[ROADMAP_MUNDOS_VIVOS]] como el acta de lo hecho. Aquí van las tareas sueltas: **A** hecho, **D** decidido, **P** propuesto.
+> **Esto es el marcador, no el plan.** El plan, desde el 2026-09-28, es **[[ROADMAP_SIN_CONEXION]]**: el juego entero sin IA, con el gremio y sus campañas. Lo que falta fuera del plan está en **[[LO_QUE_FALTA]]**. Aquí van las tareas sueltas: **A** se hace, **D** decides tú, **P** es una propuesta.
 >
-> **Puesto al día con el código el 2026-09-25** (U0 del pegamento): A14, D7 y D8 se cerraron; A13, P6 y P25 están a medias; P16, P18 y P24 se hicieron por el camino. Cada una dice abajo con qué módulo.
->
-> **Desde el 2026-09-26, la profundidad sigue en [[ROADMAP_PROFUNDIDAD]]** (R1–R10: modos, taller en pestañas, habilidades, magia en código, mascota, tableros con intención, enemigos, compañeros, mundo y herramientas). Lo que falta de cada fase está en su tabla «Cómo va».
->
-> **Desde el 2026-09-27, el plan es [[ROADMAP_SIN_TOKENS]]** (Z0–Z8): un juego divertido sin gastar un token, que mejora con ellos. Sus seis decisiones (DZ1–DZ6) se tomaron con la recomendación; se cambian si dices otra cosa.
->
-> **Y lo que le falta al juego, mirado entero, en [[LO_QUE_FALTA]]** (2026-09-26), con el orden que recomiendo. Ese mismo día se ordenó la wiki: siete documentos borrados y nueve planes cerrados movidos a `wiki/archivo/`.
+> **Puesto al día con el código el 2026-09-29.** Los seis roadmaps anteriores (el acta de las fases A–H, el maestro, el pegamento, la profundidad, sin tokens y el compendio) están en `wiki/archivo/`: lo que les quedaba se repartió entre el plan y [[LO_QUE_FALTA]] (su sección 10 dice adónde fue cada cosa). Aquí: A11 se cerró, A17 dice lo que queda del gremio, la decisión de los horarios pasó al bloque D (D11), la P5 estaba hecha y la segunda P14 es ahora la P26.
 
 Lo que falta, dividido por **quién tiene que actuar**:
 
@@ -27,13 +21,13 @@ Lo que falta, dividido por **quién tiene que actuar**:
 | **[D](#-d--necesita-una-decisión)**        | Cruces de camino: hay dos salidas razonables y elegir mal cuesta    | **Tú**                        |
 | **[P](#-p--propuestas)**                   | Ideas que no están en ningún plan todavía                           | **Tú**, si alguna te convence |
 
-El plan y el porqué están en [[ROADMAP]]; esto es el marcador.
+El plan está en [[ROADMAP_SIN_CONEXION]] y el porqué, en [[ROADMAP_MAESTRO]] (archivo); esto es el marcador.
 
 > [!IMPORTANT]
-> **El patrón a vigilar**: había mucho motor construido y testeado, y menos motor **conectado**. Desde el 2026-09-21 **la orden responde que no falta ninguno, y ya sin salvedades**. Las tareas marcadas 🖥️ son las que convierten trabajo hecho en trabajo jugable, y un módulo que solo ejecutan los tests no cuenta como hecho:
+> **El patrón a vigilar**: había mucho motor construido y testeado, y menos motor **conectado**. El 2026-09-29 responde que el juego carga 253 de 255 módulos: `guion-errors.js` es de las herramientas, y **`hours.js` (T9 de [[LO_QUE_FALTA]]) solo lo cargan las pruebas**: está escrito y sin conectar. Las tareas marcadas 🖥️ son las que convierten trabajo hecho en trabajo jugable, y un módulo que solo ejecutan los tests no cuenta como hecho:
 >
 > ```bash
-> node tools/check-engine-wiring.mjs   # 234 módulos, 233 cargados por el juego (el otro, guion-errors.js, solo en pruebas: K6 de LO_QUE_FALTA)
+> node tools/check-engine-wiring.mjs   # 255 módulos: 253 cargados por el juego, guion-errors.js de las herramientas y hours.js (T9) solo en pruebas
 > ```
 
 ---
@@ -238,7 +232,7 @@ Es una ficha de personaje **normal**: se edita, se exporta y se borra como cualq
 
 ---
 
-### A11 · El desgaste: heridas, muerte y la cuenta 🟡 **En marcha — 2026-09-22**
+### A11 · El desgaste: heridas, muerte y la cuenta ✅ **Hecho — 2026-09-22**
 
 El [[ROADMAP_MAESTRO]], Nivel 2. Lo que hace que quieras jugar mañana.
 
@@ -262,7 +256,7 @@ El [[ROADMAP_MAESTRO]], Nivel 2. Lo que hace que quieras jugar mañana.
 - `nextRandom()` era privado, así que la tabla de heridas se habría saltado la semilla — y dos partidas con la misma semilla habrían dejado de salir iguales, que es lo único que la semilla promete. Exportado.
 - Guardar en el refugio **ya frena a `/punto`**. Sin eso, las heridas permanentes serían decorativas: vuelves atrás y Bruna conserva la pierna.
 
-**Falta**: el tablón de encargos, la plantilla (contratar), y del Nivel 1 el extractor y el selector de grupo.
+**Lo que decía que faltaba**, ya en su sitio (comprobado el 2026-09-29): el tablón de encargos y la plantilla llegaron con la A12 (`campaign/contracts.js`, `campaign/recruit.js`). Del Nivel 1, el extractor es de la IA (J17 de [[ROADMAP_SIN_CONEXION]]) y elegir el grupo en vez de escribirlo es J1.6 y J18.1.
 
 ---
 
@@ -292,7 +286,7 @@ El [[ROADMAP_MAESTRO]], Nivel 2. Lo que hace que quieras jugar mañana.
 
 ### A13 · Desacoplar enemigos de los tableros (Spawning dinámico) 🟡 **A medias, comprobado el 2026-09-25**
 
-> **Lo que ya está:** un encargo construye su sitio **y sus enemigos al aceptarse** (`acceptContract` → `generateBoard`, con el bestiario, el nivel del grupo y ahora la estación), y los tableros escritos traen sus reglas de encuentro (`encounterRules`). Los pueblos tranquilos existen desde la A4. **Lo que no he podido comprobar:** tablas de peligro por bioma y por hora para los tableros sueltos. Se queda abierta por eso.
+> **Lo que ya está:** un encargo construye su sitio **y sus enemigos al aceptarse** (`acceptContract` → `generateBoard`, con el bestiario, el nivel del grupo y ahora la estación), y los tableros escritos traen sus reglas de encuentro (`encounterRules`). Los pueblos tranquilos existen desde la A4. **Lo que no he podido comprobar:** tablas de peligro por bioma y por hora para los tableros sueltos. Se queda abierta por eso. Mirado otra vez el 2026-09-29: esas tablas siguen sin existir.
 
 Los tableros en las plantillas y generadores nacían con enemigos fijos clavados en casillas, lo que volvía las salas estáticas o museos sin rejugabilidad (**ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES* §4.1*).
 - **Geometría pura**: El tablero solo almacena muros `#`, suelo `.`, mesas `c`, coberturas `C`, puertas `D` y puntos de aparición `partyStart`.
@@ -357,17 +351,31 @@ Hoy una localidad sin tablero táctico es solo un cartel de texto. Si el jugador
 >
 > Los mercenarios entrenan: al ir y volver del gremio suben al nivel del héroe. El que cae no vuelve.
 >
+> Hecho después, y comprobado el 2026-09-29 en el navegador (`tools/e2e-gremio.mjs` pasa entera):
+> - **Crear personaje en su pantalla** (J18.2), eligiendo clase, especie y trasfondo en tarjetas (J1.1), con las características a la vista y puntos para repartir (J1.2).
+> - **El equipo inicial por clase** (J1.3, `campaign/starting-kit.js`): el guerrero sale con cota de malla, espada larga y escudo (CA 16).
+> - **Fuera del tablero, la historia va en la caja de la novela visual** (J18.3), con las fichas dentro.
+> - **El tablón dice a cuántos días está cada campaña** («A nueve días de camino», parte de J4.9).
+>
 > Queda:
-> - **El equipo inicial por clase** (J1.3): un guerrero recién hecho tiene CA 10, sin armadura. La prueba de la bodega se llegó a perder así en la simulación; por eso ahora es de dos ratas.
 > - **Si tu héroe muere en una campaña**, vuelve al gremio muerto: falta qué pasa entonces.
 > - **Terminar una campaña** sale en el tablón como «Terminada», pero sin escena de vuelta (J4.5).
-> - **Elegir especie y clase de tarjetas** (J1.1): hoy se escriben, con sugerencias.
+> - Lo demás del gremio, fase a fase, en [[ROADMAP_SIN_CONEXION]].
 
 ---
 
 ## 🟠 D — Necesita una decisión
 
 Cada una es una bifurcación real: las dos salidas son defendibles y la elección cuesta después. Llevan mi recomendación, pero la decisión no es mía.
+
+### D11 · ¿Los horarios deciden cuándo se puede hablar con alguien?
+
+Era la DU6 del pegamento, y se quedó sin decidir. Ahora importa porque `campaign/hours.js` ya está escrito, con sus pruebas: de noche la tienda y la herrería cierran, y quien las lleva está en la posada. **El juego todavía no lo carga** (T9 de [[LO_QUE_FALTA]]; la gente con horario es J10.6 de [[ROADMAP_SIN_CONEXION]]).
+
+- **A**: los horarios mandan. De noche el herrero no está en la fragua, y puede que no haya nadie con quien hablar.
+- **B**: los horarios informan. Cada uno está en un sitio según la hora, pero siempre se le encuentra: de noche no se compra, pero se habla.
+
+**Recomiendo B.** Con A, jugar de noche puede dejarte sin nadie con quien hablar, y eso se nota como un fallo, no como un mundo vivo. `hours.js` ya va por B: cierra la tienda, pero quien la lleva sigue a mano en la posada.
 
 ### D10 · Strahd, ya entero: mira lo que escribí
 
@@ -414,7 +422,7 @@ Hoy es estado de sesión: al recargar empieza vacío, aunque las líneas siguen 
 
 Añadir una a mano exige editar `starter-templates.js`. Convertirlas en datos (`N-12`) era tu requisito de *«sin tocar código»* aplicado al inicio de partida — pero ahora la generación con IA cubre el caso práctico.
 
-**Recomiendo aplazarlo** hasta que quieras una plantilla fija concreta que la IA no te dé.
+**Recomiendo aplazarlo** hasta que quieras una plantilla fija concreta que la IA no te dé. Es la misma pregunta que la DU7 del pegamento y la K8 de [[LO_QUE_FALTA]].
 
 ### D5 · La magia: ¿cuánta, y cuándo? ✅ **Decidido: la ligera, el 2026-09-22** · ✅ **Hecha desde el código en R4, el 2026-09-26**
 
@@ -505,7 +513,7 @@ Ideas que no están en ningún plan. Ninguna es necesaria; algunas son buenas. M
 
 | ID | Propuesta | Por qué |
 | :--- | :--- | :--- |
-| **P5** 💡 | **Panel del estado canónico** | Una vista con todo lo que el motor da por cierto: HP, posiciones, vínculos, misiones, día, banderas. Hoy ese estado existe repartido y solo se ve de refilón. Sería el complemento de `/prompt`: uno muestra lo que se envía, el otro lo que el juego cree |
+| **P5** 💡 | **Panel del estado canónico** ✅ **Hecho en la U2** (`/estado`, `ui/state-panel.js`: lo que el juego da por cierto, clave a clave) | Una vista con todo lo que el motor da por cierto: HP, posiciones, vínculos, misiones, día, banderas. Hoy ese estado existe repartido y solo se ve de refilón. Sería el complemento de `/prompt`: uno muestra lo que se envía, el otro lo que el juego cree |
 | **P6** | **Chequeo de campaña sana** 🟡 **Sin encontrar como tal, 2026-09-25**: `/comprobar-mundo` mide si el mundo llega al listón (181), no si se puede jugar. Sigue abierta | Una orden que revise si un mundo se puede jugar: enemigos con reglas de encuentro, posiciones de inicio transitables, tableros con terreno. **Cada uno de esos tres ha sido un fallo real** — el chequeo los habría cazado a todos |
 | **P7** | **Deshacer en el tablero** → H5 de [[LO_QUE_FALTA]] | Pintar terreno y mover fichas no tiene vuelta atrás. Una pila de deshacer por tablero |
 
@@ -534,19 +542,19 @@ De *DISENO_GENERADOR_MUNDOS_PROFUNDO*. Ordenadas por lo que dan a cambio de lo q
 | :--- | :--- | :--- |
 | **P17** 💡 | **Que la reputación de facción haga algo** · ✅ **en gran parte, a 2026-09-23** | *Ya no es cierto lo de «nada la lee»*: toca el precio del mercado (`economy.js`), abre pasos cerrados a quien os mira bien, y desde el 2026-09-23 **llega al narrador** (bloque de memoria del mundo) y **cobra peaje en el camino** a quien os tiene ganas. Lo que queda de la propuesta original: la escala de −100 a +100 del documento (el motor usa −5 a +5) y el acceso a tiendas. Texto original: El importador **ya guarda** la reputación de cada facción, y **nada la lee**: es un número decorativo. La escala del documento (−100 a +100, con hostilidad, recargo, descuento y acceso) coincide con el rango que ya usa el paquete de reglas. Es la pieza con más juego por menos código de toda la lista |
 | **P18** 💡 | **Rutas de viaje con tiempo y peligro** ✅ **Hecho** (`world/travel.js`: días, pasos cerrados, estaciones y peaje en el camino) | Hoy `/go` te teletransporta gratis. Un grafo de rutas con `distanceDays`, `dangerLevel` y peaje conecta el mapa con **el calendario que ya existe**: viajar gastaría bloques del día, y el día ya significa algo desde los descansos |
-| **P19** | **Horarios de PNJ por franja del día** → T9 de [[LO_QUE_FALTA]] | Que el herrero esté en la fragua por la mañana y en la taberna por la noche. Con el calendario y las localidades puestas, es casi solo datos |
-| **P20** | **Interactuables en el tablero** 🟡 **En parte, R6**: barriles que revientan y cofres que se abren; palancas y barricadas no (T1 de [[LO_QUE_FALTA]]) | Cofres con CD de forzado, palancas que abren puertas, barricadas con PG. El tablero ya sabe de puertas y salas: esto es la misma idea con otro nombre |
+| **P19** | **Horarios de PNJ por franja del día** → T9 de [[LO_QUE_FALTA]] 🟡 (`hours.js`, escrito y sin conectar; espera a D11) | Que el herrero esté en la fragua por la mañana y en la taberna por la noche. Con el calendario y las localidades puestas, es casi solo datos |
+| **P20** | **Interactuables en el tablero** 🟡 **Casi entero**: barriles y cofres (R6), palancas y barricadas (2026-09-26). Falta la cuerda (T1 de [[LO_QUE_FALTA]]) | Cofres con CD de forzado, palancas que abren puertas, barricadas con PG. El tablero ya sabe de puertas y salas: esto es la misma idea con otro nombre |
 | **P21** | **Oleadas de refuerzos** ✅ **Hecho en R6** (al aguantar, entran por oleadas) | *«En la ronda 3 entran dos arqueros por la casilla (12,0)»*. El despertar de salas ya existe; esto es lo mismo disparado por ronda o por evento |
 | **P22** | **Fases de jefe** ✅ **Hecho en R6** (`combat/boss-phases.js`: refuerzos, acorralado o furia, una vez) | Al 50% de PG cambia de perfil táctico o sube la CA. Barato: el perfil ya es un campo, y cambiarlo a mitad de combate es una línea |
-| **P23** | **Terreno nuevo: agua, lava, trampas, elevación** 🟡 **En parte, R3 y R6**: agua, hielo, maleza, barriles y cofres, **en código** (DR7). La elevación no: B1 de [[LO_QUE_FALTA]] | El documento propone `W`, `L`, `T`, `^`. **Prerrequisito**: hoy los tipos de terreno son **código** (`board/terrain.js`), no datos. Sacarlos al paquete de reglas es la mitad del trabajo, y de paso cumple tu requisito de *«sin tocar código»* en un sitio donde aún no se cumple |
+| **P23** | **Terreno nuevo: agua, lava, trampas, elevación** 🟡 **En parte**: agua, hielo, maleza, barriles, cofres, altura, salidas, palancas y barricadas, **en código** (DR7). Lo que queda es B3–B6 de [[LO_QUE_FALTA]] | El documento propone `W`, `L`, `T`, `^`. **Prerrequisito**: hoy los tipos de terreno son **código** (`board/terrain.js`), no datos. Sacarlos al paquete de reglas es la mitad del trabajo, y de paso cumple tu requisito de *«sin tocar código»* en un sitio donde aún no se cumple |
 | **P24** 💡 | **Action Chips de diálogo con tiradas D&D en cliente** ✅ **Hecho** (ideas 137 y 138: `campaign/intents.js` ofrece la tirada al leer lo que escribes, y el narrador puede pedirla) | Rescatar la ficha fuera de combate (**ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES* §3*): botones sugeridos en la escena de diálogo (ej. `[Persuadir CD 12]`, `[Intimidar CD 14]`) que resuelven d20 + bono en JS e inyectan solo el resultado al modelo. 0 tokens adicionales y la ficha importa en el rol social |
-| **P25** 💡 | **Prótesis y roles de campamento para amputaciones** 🟡 **En parte** (`rules/remedies.js`: la pierna de palo y los demás remedios; los roles de campamento para quien no puede pelear, no) | Evitar la frustración de retirar al confidente más querido (**ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES* §3*): prótesis enanas/mágicas que sustituyen penalizadores por mecánicas únicas, o roles pasivos en campamento (intendente, consejero táctico) que dan ventajas a la party |
+| **P25** 💡 | **Prótesis y roles de campamento para amputaciones** 🟡 **En parte** (`rules/remedies.js`: la pierna de palo y los demás remedios; los roles de campamento para quien no puede pelear, no: T10 de [[LO_QUE_FALTA]]) | Evitar la frustración de retirar al confidente más querido (**ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES* §3*): prótesis enanas/mágicas que sustituyen penalizadores por mecánicas únicas, o roles pasivos en campamento (intendente, consejero táctico) que dan ventajas a la party |
 
 ### Campañas publicadas
 
 | ID | Propuesta | Por qué |
 | :--- | :--- | :--- |
-| **P14** 💡 | **La lectura de cartas de Madam Eva, de verdad** | En Strahd, las cartas deciden dónde están el Tomo, el Símbolo y la Espada del Sol, y dónde espera el conde. Hoy va fijada una de las lecturas del libro (D10). Con la semilla de la partida elegiría una de las que el libro permite, y Madam Eva la contaría en su tienda: cada partida sería distinta y seguiría siendo la del libro |
+| **P26** 💡 | **La lectura de cartas de Madam Eva, de verdad** | En Strahd, las cartas deciden dónde están el Tomo, el Símbolo y la Espada del Sol, y dónde espera el conde. Hoy va fijada una de las lecturas del libro (D10). Con la semilla de la partida elegiría una de las que el libro permite, y Madam Eva la contaría en su tienda: cada partida sería distinta y seguiría siendo la del libro |
 
 ### Sobre el propio desarrollo
 
@@ -566,8 +574,8 @@ No es trabajo pendiente, es información: cosas que están así **a propósito**
 | **`party/html.js` duplica `escapeHtml`** | Importar `utils.js` arrastra código que exige `window` y rompería los tests en Node. Hay un test que ancla el contrato. Si algún día `utils.js` expone un módulo hoja, esto se elimina |
 | **`escapeHtmlText` sigue en `world-info.js`** | Es correcta y está en un archivo de upstream. Consolidarla no aporta seguridad y sí coste de merge |
 | **El guardián de tiradas solo mira afirmaciones estructuradas** | `1d20+5 = 23` sí; «saca un 18» no. Reescribir prosa exige entender la frase, y equivocarse es peor que no tocarla. El prompt debe pedir la forma estructurada |
-| **`dynamic-context-manager.js`, `campaigns.js` y `world-content-browser.js` sin tests** | 3.267 pruebas cubren el motor nuevo; estos tres (unas 3.000 líneas) siguen a cero. `MAINT-03` |
-| **Los remedios viven en el código** (`rules/remedies.js`) | El paquete de reglas no tiene sección para ellos, así que no se editan desde `/rules`. `readRemedies` ya acepta una tabla propia; falta la sección, su editor y que viaje al exportar |
+| **`dynamic-context-manager.js`, `campaigns.js` y `world-content-browser.js` sin tests** | 3.468 pruebas cubren el motor nuevo; estos tres (unas 3.000 líneas) siguen a cero. `MAINT-03` |
+| **Los remedios viven en el código** (`rules/remedies.js`) → T11 de [[LO_QUE_FALTA]] | El paquete de reglas no tiene sección para ellos, así que no se editan desde `/rules`. `readRemedies` ya acepta una tabla propia; falta la sección, su editor y que viaje al exportar |
 | **Las tiradas de habilidad usan CD 12 fija y una competencia por clase aproximada** | El motor no guarda qué competencias eligió cada personaje, así que sale de una lista corta por clase (`rules/checks.js`). La CD no la decide nadie en la escena: si la eligiera quien juega, elegiría la fácil; si la eligiera el modelo, volveríamos a D6 |
 | **El bloque de memoria del mundo cuesta tokens en cada turno** | Unas pocas líneas (tres hechos, las facciones que no os son indiferentes, la deuda) y solo si hay algo. Va en el nivel `quest`, detrás de todo lo que cambia menos, así que no rompe la caché del prefijo |
 | **Los enemigos solo usan habilidades si sus datos las declaran** | `abilities: [ids]` en el bicho (bestiario, paquete del Gem, plantillas). De serie las traen el cultista, el ogro, el esqueleto y las plantillas *sagrado* y *jefe* |
@@ -605,15 +613,17 @@ No es trabajo pendiente, es información: cosas que están así **a propósito**
 22. Gana un combate y mira el inventario: el botín está como objetos, no como texto.
 23. `/semilla molino`, juega un combate, y repite: sale igual. `/semilla` sola vuelve al azar.
 24. `/contradicciones`: lo que la narración ha dicho y el motor no confirma.
+25. En la portada, **Jugar sin conexión**: crea tu personaje eligiendo tarjetas, gana la prueba de la bodega, contrata un mercenario y empieza *La Maldición de Strahd* desde el tablón. «Volver al gremio», y el tablón la ofrece para seguir.
 
-Y sin tocar nada, el recorrido completo en un navegador de verdad:
+Y sin tocar nada, las vueltas en un navegador de verdad (con servidor y datos propios; no tocan los tuyos):
 
 ```bash
-node tools/e2e-campaign.mjs            # servidor y datos propios; no toca los tuyos
-node tools/e2e-campaign.mjs --headed   # para verlo
+node tools/e2e-todo.mjs --rapido       # pruebas, e2e rápido, sin modelo y el gremio, a la vez (unos 4 min)
+node tools/e2e-todo.mjs                # lo mismo y la vuelta completa en dos mitades (unos 15 min)
+node tools/e2e-campaign.mjs --headed   # la vuelta completa, para verla
 ```
 
-Lo que **no** se puede probar todavía: calendario, vínculos y escenarios (#6, #7, #8), y la generación con IA contra un proveedor real (#25).
+Lo que **no** se puede probar todavía: la generación con IA contra un proveedor real (I1 de [[LO_QUE_FALTA]]).
 
 ---
 
@@ -975,9 +985,11 @@ ESLINT_USE_FLAT_CONFIG=false npx eslint public/scripts/game-engine public/script
 
 ## 🔗 Enlaces
 
-- [[ROADMAP]]: el plan, el porqué y el orden.
+- [[ROADMAP_SIN_CONEXION]]: el plan de ahora.
+- [[LO_QUE_FALTA]]: lo que falta fuera del plan, y lo que les quedaba a los roadmaps archivados.
+- [[ROADMAP]] y [[ROADMAP_MAESTRO]] (archivo): el acta de las fases A–H y el porqué.
 - [[ROADMAP_INGESTA_CAMPANAS_LIBROS]]: la Fase G — meter un libro de campaña y jugarlo.
-- *PROBLEMAS_TECNICOS*: auditoría original, con el estado de cada hallazgo.
+- *PROBLEMAS_TECNICOS* (borrado el 2026-09-26): la auditoría original; lo que seguía vivo está en [[LO_QUE_FALTA]], sección 9.
 - [[PROPUESTAS_MEJORA]]: catálogo de 200 con el estado de cada propuesta.
 - [[Mapa-Codigo-Archivos]]: qué archivo hace qué, y cuál está conectado.
 - [[Guia-Desarrollo-Flujo]]: la disciplina de fork.

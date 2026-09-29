@@ -2488,6 +2488,17 @@ async function postForModel(text, options = {}) {
 }
 
 /**
+ * J4.9: el viaje entre el gremio y una campaña, contado. Lo lee el modelo y lo ve quien juega.
+ *
+ * @param {string} line La de `journeyLine`; vacía si la campaña no dice lo lejos que queda.
+ * @returns {Promise<void>}
+ */
+export async function postJourney(line) {
+    if (!String(line ?? '').trim()) return;
+    await postForModel(`[VIAJE] ${String(line).trim()} Cuéntalo en una o dos frases. No inventes nada que no esté aquí.`);
+}
+
+/**
  * @param {string} name
  * @param {number} dexterity
  * @param {'ally'|'enemy'} actorType
@@ -3945,6 +3956,55 @@ const CONDITION_WORDS = /** @type {Record<string, string>} */ ({
     Unconscious: 'dormido', Stunned: 'aturdido', Paralyzed: 'paralizado', Incapacitated: 'fuera de sí',
 });
 
+/**
+ * La casilla que pide el tablero y que aún no se ha pisado: la de «llegar», o la salida
+ * de quien se escolta (solo para él).
+ *
+ * @param {any} member
+ * @returns {{x: number, y: number}|null}
+ */
+function objectiveCellFor(member) {
+    const location = getCurrentWorldLocationMaps().find(l => l.name === currentLocationName);
+    const board = getLocationBoards(location).find((/** @type {any} */ b) => b.name === currentBoardName);
+    for (const objective of Array.isArray(board?.objectives) ? board.objectives : []) {
+        const cell = objective?.cell;
+        if (!cell || objective.optional || !Number.isFinite(Number(cell.x))) continue;
+        if (objective.type === 'reach_cell' || (objective.type === 'escort' && String(objective.allyId) === String(member.id))) {
+            return { x: Number(cell.x), y: Number(cell.y) };
+        }
+    }
+    return null;
+}
+
+/**
+ * Andar hacia la casilla del objetivo, por donde se pueda y hasta donde den los pies.
+ *
+ * @param {any} member
+ * @param {{x: number, y: number}} goal
+ * @returns {string}
+ */
+function walkTowardObjective(member, goal) {
+    const { terrain, gridWidth, gridHeight } = getActiveBoardContext();
+    const from = { x: Number(member.mapPosition?.gridX) || 0, y: Number(member.mapPosition?.gridY) || 0 };
+    const said = `[COMBAT] ${member.name}: no queda nadie, así que va a lo que pide el tablero, (${goal.x + 1}, ${goal.y + 1}).`;
+    if (from.x === goal.x && from.y === goal.y) return said;
+    const occupied = new Set(partyMembers
+        .filter(m => Number(m.id) !== Number(member.id) && (Number(m.hp) || 0) > 0)
+        .map(m => `${Number(m.mapPosition?.gridX) || 0},${Number(m.mapPosition?.gridY) || 0}`));
+    const path = findPath(terrain, from.x, from.y, goal.x, goal.y, gridWidth, gridHeight, { occupied });
+    if (!path || path.length < 2) return `[COMBAT] ${member.name} no encuentra por dónde llegar a (${goal.x + 1}, ${goal.y + 1}).`;
+    const feet = getRemainingMovementFeet(member);
+    // Lo más lejos del camino que se alcanza este turno, sin pasarse de pies.
+    let stop = null;
+    for (let i = 1; i < path.length; i++) {
+        if (getPathCost(terrain, path.slice(0, i + 1)) * 5 > feet) break;
+        if (getDistanceInFeet(from.x, from.y, path[i].x, path[i].y) > feet) break;
+        stop = path[i];
+    }
+    if (stop) handlePlayerCombatMove(`${stop.x + 1},${stop.y + 1}`);
+    return said;
+}
+
 function resolveAllyTurnAction(entry) {
     const member = partyMembers.find(m => Number(m.id) === Number(entry.id));
     if (!member) return '';
@@ -3952,7 +4012,13 @@ function resolveAllyTurnAction(entry) {
     if (out && (Number(member.hp) || 0) > 0) return `💤 [COMBAT] ${member.name} no puede actuar (${CONDITION_WORDS[out] ?? out}): pierde el turno.`;
 
     const living = combatEncounter.enemies.filter((/** @type {any} */ e) => (Number(e.currentHp) || 0) > 0);
-    if (living.length === 0) return `[COMBAT] ${member.name} baja el arma: no queda nadie.`;
+    if (living.length === 0) {
+        // Sin nadie en pie, queda lo que pide el tablero: llegar a una casilla, o llevar a
+        // quien se escolta. Antes se quedaba quieto y la pelea no se acababa nunca.
+        const goal = objectiveCellFor(member);
+        if (goal) return walkTowardObjective(member, goal);
+        return `[COMBAT] ${member.name} baja el arma: no queda nadie.`;
+    }
 
     const { terrain, gridWidth, gridHeight } = getActiveBoardContext();
     const cellOf = (/** @type {any} */ m) => ({
@@ -11192,6 +11258,16 @@ export function grantXpForSimulation(xp) {
  */
 export function revealLocationsForSimulation(names) {
     return revealLocations(names);
+}
+
+/**
+ * Para la simulación de campañas: los mercenarios entrenan hasta el nivel del héroe, como
+ * al ir y volver del gremio (`hubRoster`). Sin esto se quedaban a nivel 1 toda la campaña.
+ */
+export function trainMercenariesForSimulation() {
+    partyMembers = hubRoster(partyMembers).map(member => migratePartyMember(member));
+    savePartyState();
+    renderPartyMembers();
 }
 
 export async function levelUpForSimulation() {

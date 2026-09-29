@@ -62,7 +62,8 @@ export async function openHubBoard({ Popup, POPUP_TYPE, cards }) {
             },
         }).attr('data-campaign', one.id);
         tile.append(div('vt-name').text(one.name));
-        tile.append(div('vt-what').text([one.genre, one.levels].filter(Boolean).join(' · ')));
+        // Lo lejos que queda va con el género y los niveles: «Horror gótico · Para nivel 1 a 6 · A nueve días de camino».
+        tile.append(div('vt-what').text([one.genre, one.levels, one.distance].filter(Boolean).join(' · ')));
         tile.append(div(`hb-state hb-${one.state}`).text(one.ending ? `${state}: ${one.ending}` : state));
         if (one.note) tile.append(div('vt-pitch').text(one.note));
         if (one.synopsis) tile.append(div('vt-about').text(one.synopsis));

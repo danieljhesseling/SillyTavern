@@ -8,6 +8,9 @@ author: DanielJHesseling / Claude Opus 5
 
 # 🗺️ El mapa de todos los mapas
 
+> [!NOTE]
+> **Archivado el 2026-09-29.** Se guarda como el porqué: «¿por qué querrías jugar mañana?» y los cuatro relojes. Los niveles 2 a 5 están hechos. Lo que quedaba del 1 y del 6 está ahora en [[ROADMAP_SIN_CONEXION]]: el extractor y los dos perfiles de conexión, en J17 (la IA, después); elegir el grupo en vez de escribirlo, en J1.6, J7 y J18.1; y ver el bucle entero jugado solo, en J16. La sección «La carpeta, ordenada» es del 2026-09-22 y ya no vale: la wiki de hoy es la de [[HOME]].
+
 > **Para qué existe este documento.** Había once planes en esta carpeta y ninguno decía cuál venía después de cuál. Las fases **A a H del [[ROADMAP]] están todas cerradas**: ese documento ya no es un plan, es el acta de lo que se construyó. Esto es lo que sigue, partido en niveles, y **cada nivel es un juego jugable**, no un tramo de obra.
 
 > [!NOTE]

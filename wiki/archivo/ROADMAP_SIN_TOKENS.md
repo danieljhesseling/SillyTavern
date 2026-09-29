@@ -8,6 +8,9 @@ author: DanielJHesseling / Claude Opus 5.5
 
 # 🎲 Sin tokens: divertido sin modelo, mejor con él
 
+> [!NOTE]
+> **Archivado el 2026-09-29.** Z0, Z1, Z2, Z3 y Z8 están hechas, y Z4 y Z6 en lo principal. Lo que quedaba pasó a [[ROADMAP_SIN_CONEXION]]: los sucesos por facción y por reputación (Z4 → J10.3), los hilos con fondo (Z5 → J10.7), las frases sin repetir (Z1 → J13.2), 1387 entero sin modelo (J9.1) y lo que el Gem aprende a escribir (Z7 → J5.5, J8.1 y J13). El resto de Z6 es de la IA y espera a J17; está apuntado en [[LO_QUE_FALTA]] (I2 e I4).
+
 > **Qué es esto.** El plan que sigue a [[ROADMAP_PROFUNDIDAD]]. La meta es tuya, dicha el 2026-09-27: **un juego divertido de jugar sin gastar un solo token, que mejore mucho cuando sí se gastan.** Hoy el motor ya decide casi todo, pero en demasiados momentos **se calla y espera a un narrador** que, sin modelo, no llega. Este plan hace que el motor también cuente, y deja al modelo como lo que debe ser: la mejora, no la llave.
 >
 > **De dónde sale.** De un repaso del código hecho el 2026-09-27 en tres partes: dónde se gastan tokens, qué hace el motor solo, y qué dicen ya tus planes. Lo que es un hecho del código va con su archivo, y los tres atascos de la sección 1.3 están comprobados a mano. Lo que es opinión, lo digo como opinión.

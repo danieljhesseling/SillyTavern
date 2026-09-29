@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import {
     readHub, isHubWorld, hubHomeOf, withHubChat, withHubCampaign, hubCampaignCards, hubCampaignWorldName,
     carryEntry, entryFromMember, settleCarried, hubRoster, hireOffers, answersForWorld, hubPartyLine, HUB_KEY, HUB_HOME_KEY,
+    journeyDays, journeySpan, journeyLine,
 } from '../public/scripts/game-engine/campaign/hub.js';
 import { guestMember, HIRELINGS, MERCENARY_FEE } from '../public/scripts/game-engine/campaign/guests.js';
 import { validatePack } from '../public/scripts/game-engine/campaign/campaign-pack.js';
@@ -64,9 +65,51 @@ describe('el tablón de campañas', () => {
     });
 });
 
+describe('el viaje se cuenta', () => {
+    const strahd = { id: 'strahd', name: 'La Maldición de Strahd', journey: { days: 9, how: 'Vais en carro por el camino del este.' } };
+
+    test('los días van con letra hasta doce', () => {
+        expect(journeySpan(1)).toBe('un día');
+        expect(journeySpan(9)).toBe('nueve días');
+        expect(journeySpan(12)).toBe('doce días');
+        expect(journeySpan(15)).toBe('15 días');
+        expect(journeySpan(0)).toBe('');
+        expect(journeyDays({ journey: { days: '4' } })).toBe(4);
+        expect(journeyDays({})).toBe(0);
+    });
+
+    test('la ida dice de dónde, adónde, cómo y cuánto', () => {
+        expect(journeyLine({ world: strahd, home: 'Puerto Alba' }))
+            .toBe('Salís de Puerto Alba hacia La Maldición de Strahd. Vais en carro por el camino del este. Nueve días de camino.');
+        // Sin «cómo» se salta esa frase; y «el gremio» se contrae.
+        expect(journeyLine({ world: { name: '1387', journey: { days: 1 } } }))
+            .toBe('Salís del gremio hacia 1387. Un día de camino.');
+    });
+
+    test('la vuelta dice cuánto se tardó y adónde se vuelve', () => {
+        expect(journeyLine({ world: strahd, home: 'Puerto Alba', back: true }))
+            .toBe('Nueve días de camino después, volvéis a Puerto Alba con lo ganado.');
+        expect(journeyLine({ world: strahd, back: true }))
+            .toBe('Nueve días de camino después, volvéis al gremio con lo ganado.');
+    });
+
+    test('sin días no hay viaje que contar', () => {
+        expect(journeyLine({ world: { name: 'X' } })).toBe('');
+        expect(journeyLine({ world: { name: 'X', journey: { days: 0, how: 'Algo.' } }, back: true })).toBe('');
+    });
+
+    test('la tarjeta del tablón dice lo lejos que queda', () => {
+        const cards = hubCampaignCards({ worlds: [
+            { ...strahd, pack: '/mundos/strahd.pack.json' },
+            { id: 'cerca', name: 'Cerca', pack: '/mundos/cerca.pack.json' },
+        ] });
+        expect(cards.map(c => c.distance)).toEqual(['A nueve días de camino', '']);
+    });
+});
+
 describe('llevar al grupo de un chat a otro', () => {
-    const hero = { id: 1, name: 'Tessa', wiUid: 4, worldName: 'El Gremio', level: 3, hp: 12, maxHp: 20, gold: 57, items: [{ id: 'i1', name: 'Espada' }], mapPosition: { locationName: 'La Casa del Gremio', gridX: 2, gridY: 2 } };
-    const merc = { id: 2, name: 'Gerd el Mellado', wiUid: null, guest: { kind: 'mercenary', contractId: 'gremio' }, hp: 16, mapPosition: { locationName: 'La Casa del Gremio', gridX: 3, gridY: 2 } };
+    const hero = { id: 1, name: 'Tessa', wiUid: 4, worldName: 'El Gremio', level: 3, hp: 12, maxHp: 20, gold: 57, items: [{ id: 'i1', name: 'Espada' }], mapPosition: { locationName: 'Puerto Alba', gridX: 2, gridY: 2 } };
+    const merc = { id: 2, name: 'Gerd el Mellado', wiUid: null, guest: { kind: 'mercenary', contractId: 'gremio' }, hp: 16, mapPosition: { locationName: 'Puerto Alba', gridX: 3, gridY: 2 } };
 
     test('llega entero, con la ficha del mundo nuevo, donde estaba el primero', () => {
         const here = [{ ...hero, hp: 20, gold: 0, wiUid: 9, mapPosition: { locationName: 'Aldea de Barovia', gridX: 7, gridY: 9 } }];
@@ -128,6 +171,22 @@ describe('los paquetes que se juegan desde el gremio', () => {
         expect(pack.locations[0].services).toEqual(expect.arrayContaining(['posada', 'tienda', 'templo']));
     });
 
+    // J3.10: la base es un pueblo, y el gremio está en su plaza.
+    test('el gremio está en Puerto Alba, con quien atiende cada servicio', () => {
+        const pack = read('../public/mundos/gremio.pack.json');
+        const town = pack.locations[0];
+        expect(town.name).toBe('Puerto Alba');
+        expect(pack.boards.every(b => b.locationName === town.name)).toBe(true);
+        expect(pack.npcs.every(n => n.where === town.name)).toBe(true);
+        for (const service of town.services) {
+            expect(pack.npcs.filter(n => n.service === service)).toHaveLength(1);
+        }
+        expect(pack.rumors.length).toBeGreaterThanOrEqual(4);
+        expect(pack.rumors.every(r => r.where === town.name && ['si', 'no', 'medias'].includes(r.truth))).toBe(true);
+        // El prólogo sigue mandando a la bodega: la prueba de e2e-gremio lo busca.
+        expect(pack.plot.milestones[0].scene).toMatch(/Baja a la bodega/);
+    });
+
     test('Strahd es válido y su hilo llega a un final', () => {
         const pack = read('../public/mundos/strahd.pack.json');
         expect(validatePack(pack).ok).toBe(true);
@@ -144,6 +203,14 @@ describe('los paquetes que se juegan desde el gremio', () => {
     test('en el tablón hay al menos 1387 y Strahd', () => {
         const worlds = read('../public/mundos/mundos.json').worlds;
         expect(hubCampaignCards({ worlds }).map(c => c.id)).toEqual(expect.arrayContaining(['1387', 'strahd']));
+    });
+
+    // J4.9: cada campaña del tablón dice lo lejos que queda del pueblo.
+    test('toda campaña con paquete dice cuántos días de camino hay', () => {
+        const worlds = read('../public/mundos/mundos.json').worlds.filter(w => w.pack);
+        expect(worlds.length).toBeGreaterThan(0);
+        expect(worlds.filter(w => !(Number(w.journey?.days) > 0)).map(w => w.id)).toEqual([]);
+        expect(worlds.filter(w => !String(w.journey?.how ?? '').trim()).map(w => w.id)).toEqual([]);
     });
 });
 

@@ -66,6 +66,8 @@ const CONTRACTS = ONLY_CONTRACTS || process.argv.includes('--encargos');
 // Con --nivel, el héroe empieza en ese nivel (lo que da la experiencia de D&D), para probar
 // un tramo sin jugar lo de antes.
 const START_LEVEL = Math.max(1, Math.min(20, Number(argAfter('--nivel', '1')) || 1));
+// Con --tableros «a,b», solo esos (por el principio de su nombre).
+const ONLY_BOARDS = argAfter('--tableros', '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
 const XP_FOR = [0, 0, 300, 900, 2700, 6500, 14000, 23000, 34000, 48000, 64000];
 const MAX_ROUNDS = 30;
 
@@ -170,6 +172,14 @@ try {
         for (let step = 0; step < 600 && await fighting(); step++) {
             rounds = await page.evaluate(async () => Number((await import('/scripts/party.js')).getCombatEncounter()?.round) || 0);
             if (rounds > MAX_ROUNDS) {
+                // Quién queda en pie y dónde: para ver si es un tablero que no se puede acabar.
+                const left = await page.evaluate(async () => {
+                    const fight = /** @type {any} */ ((await import('/scripts/party.js')).getCombatEncounter());
+                    return [...(fight?.enemies ?? []), ...(fight?.allies ?? [])]
+                        .filter(c => Number(c?.currentHp ?? c?.hp ?? 1) > 0)
+                        .map(c => `${c.name} ${c.currentHp ?? c.hp ?? '?'}pg (${c.x ?? c.position?.x},${c.y ?? c.position?.y})`);
+                });
+                console.log(`  sin acabar tras ${MAX_ROUNDS} rondas; en pie: ${left.join(' · ')}`);
                 await slash('/combat-stop');
                 return { result: 'no acaba', rounds };
             }
@@ -195,6 +205,8 @@ try {
     const restore = async () => {
         const up = await page.evaluate(async () => (await import('/scripts/party.js')).levelUpForSimulation?.() ?? []);
         if (up.length > 0) console.log(`  sube de nivel: ${up.join(', ')}`);
+        // Como quien vuelve al gremio de vez en cuando: los mercenarios entrenan.
+        await page.evaluate(async () => (await import('/scripts/party.js')).trainMercenariesForSimulation?.());
         await page.evaluate(async () => (await import('/scripts/party.js')).restPartyForSimulation());
     };
 
@@ -271,11 +283,13 @@ try {
         return steps.sort((a, b) => a.act - b.act || a.order - b.order);
     }, CONTRACTS);
     if (ONLY_CONTRACTS) plan.splice(0, plan.length, ...plan.filter(step => step.from === 'encargo'));
+    if (ONLY_BOARDS.length > 0) plan.splice(0, plan.length, ...plan.filter(step => ONLY_BOARDS.some(b => step.board.toLowerCase().startsWith(b))));
     if (START_LEVEL > 1) {
         await page.evaluate(async ({ xp, times }) => {
             const party = await import('/scripts/party.js');
             party.grantXpForSimulation(xp);
             for (let i = 0; i < times; i++) await party.levelUpForSimulation();
+            party.trainMercenariesForSimulation();
         }, { xp: XP_FOR[Math.min(START_LEVEL, XP_FOR.length - 1)], times: START_LEVEL - 1 });
         console.log(`  empieza a nivel ${START_LEVEL}: ${await line()}`);
     }

@@ -257,10 +257,22 @@ try {
 
     // 5. El tablón: Strahd.
     await page.waitForTimeout(500);
+    // J18.3: fuera del tablero, la historia se lee como una novela visual.
+    const novel = await page.evaluate(() => ({
+        scene: document.querySelector('#game-shell')?.getAttribute('data-scene') || '',
+        box: (document.querySelector('#game-shell .gs-vn-box')?.getBoundingClientRect().width || 0),
+        text: (document.querySelector('#game-shell .gs-vn-text')?.textContent || '').trim().slice(0, 80),
+        chips: document.querySelectorAll('#game-shell .gs-vn-box .gs-chip-action').length,
+        chat: getComputedStyle(/** @type {Element} */ (document.querySelector('#chat'))).display,
+    }));
+    check('fuera del tablero, la historia va en la caja de la novela visual, con las fichas dentro (J18.3)',
+        novel.scene === 'dialogue' && novel.box > 600 && novel.text.length > 0 && novel.chips > 0 && novel.chat === 'none', JSON.stringify(novel));
+    if (SHOT) await page.screenshot({ path: `${SHOT}.novela.png` });
     check('la ficha del tablón de campañas está', await clickChip(/Tablón de campañas/));
     await page.waitForSelector('.hb-root [data-campaign]', { timeout: 15000 }).catch(() => {});
     const board = await page.evaluate(() => [...document.querySelectorAll('.hb-root [data-campaign]')].map(c => ({ id: c.getAttribute('data-campaign'), text: (c.textContent || '').replace(/\s+/g, ' ').slice(0, 120) })));
     check('en el tablón están 1387 y La Maldición de Strahd, sin empezar', board.some(c => c.id === '1387') && board.some(c => c.id === 'strahd' && /Sin empezar/.test(c.text)), JSON.stringify(board));
+    check('el tablón dice lo lejos que queda cada campaña (J4.9)', board.some(c => c.id === 'strahd' && /A nueve días de camino/.test(c.text)), JSON.stringify(board));
     if (SHOT) await page.screenshot({ path: `${SHOT}.tablon.png` });
     await page.locator('.hb-root [data-campaign="strahd"]').click();
 
@@ -274,6 +286,7 @@ try {
         JSON.stringify(now));
     const scene = await until(() => chatHas(/Bruja Baroviana está acechando/), 20000);
     check('la primera escena de Strahd se cuenta', scene);
+    check('antes, el viaje: de Puerto Alba a Strahd, nueve días (J4.9)', await chatHas(/Salís de Puerto Alba hacia La Maldición de Strahd\..*Nueve días de camino/));
     const campaignChips = await chips();
     check('en la campaña se ofrece volver al gremio', campaignChips.some(c => /Volver al gremio/.test(c)), JSON.stringify(campaignChips));
     const strahdWorld = now.world;
@@ -381,6 +394,7 @@ try {
     await page.waitForTimeout(1000);
     now = await state();
     check('se vuelve al gremio, a su chat, con el grupo entero', home && now.chat === hubChat && now.party.length === 2 && now.party.every(m => m.world === hubWorld), JSON.stringify(now));
+    check('y la vuelta se cuenta (J4.9)', await until(() => chatHas(/Nueve días de camino después, volvéis a Puerto Alba/), 10000));
 
     // 7. Y se sigue la campaña donde se dejó.
     await clickChip(/Tablón de campañas/);

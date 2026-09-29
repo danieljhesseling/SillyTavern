@@ -1,5 +1,8 @@
 # El compendio, batería a batería
 
+> [!NOTE]
+> **Archivado el 2026-09-29.** El cargador, la pantalla y las doce baterías están hechos; hoy `public/compendio/` tiene 18 archivos (también razas, clases, frases y sucesos). A la pantalla solo le falta editar y quitar un libro entero, que necesita una ruta en el servidor: es C6 de [[LO_QUE_FALTA]]. Sigue sirviendo para saber qué campos lleva cada fila.
+
 Una biblioteca de contenido en disco —armas, habilidades, bichos, gente, nombres— de la
 que tiran los generadores con la semilla. **Un archivo por dominio**, para poder llenar uno
 y olvidarte del resto.

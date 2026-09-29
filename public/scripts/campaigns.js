@@ -10,11 +10,11 @@ import {
 } from '../script.js';
 import { Popup, POPUP_TYPE, POPUP_RESULT } from './popup.js';
 import { buildNewCampaignCta, createCampaign } from './game-engine/ui/campaign-wizard.js';
-import { openCampaignBuilder, loadDndCatalog, setPartyFromWorldEntries, beginCampaignPlot, adoptVeteranGear, giveStartingGear, applyCampaignRuleset, applyModeExtras, adoptPet, partySnapshot, adoptCarriedParty, giveStartingPurse, plotEndingTitle } from './party.js';
+import { openCampaignBuilder, loadDndCatalog, setPartyFromWorldEntries, beginCampaignPlot, adoptVeteranGear, giveStartingGear, applyCampaignRuleset, applyModeExtras, adoptPet, partySnapshot, adoptCarriedParty, giveStartingPurse, plotEndingTitle, postJourney } from './party.js';
 import { isCampaignWorld, getStartingPoint, uniqueWorldName } from './game-engine/campaign/campaign-worlds.js';
 import {
     HUB_KEY, HUB_HOME_KEY, HUB_CAMPAIGN_KEY, HUB_PACK, HUB_WORLD_NAME, HUB_START_GOLD, HUB_NARRATOR,
-    readHub, isHubWorld, hubHomeOf, withHubChat, withHubCampaign, answersForWorld, hubCampaignWorldName,
+    readHub, isHubWorld, hubHomeOf, withHubChat, withHubCampaign, answersForWorld, hubCampaignWorldName, journeyLine,
     carryEntry, entryFromMember, hubPartyLine,
 } from './game-engine/campaign/hub.js';
 import { validatePack } from './game-engine/campaign/campaign-pack.js';
@@ -1289,6 +1289,28 @@ async function ensureHubEntries(worldName, carried) {
 }
 
 /**
+ * J4.9: la entrada del tablón de una campaña, de `mundos.json`.
+ *
+ * @param {string} id
+ * @returns {Promise<any>} La entrada, o null.
+ */
+async function boardWorld(id) {
+    const worlds = await readMundo('/mundos/mundos.json').then(json => json?.worlds ?? []).catch(() => []);
+    return worlds.find((/** @type {any} */ w) => String(w?.id) === String(id)) ?? null;
+}
+
+/**
+ * J4.9: cómo se llama el pueblo del gremio (su primera localización). Los gremios de antes
+ * de Puerto Alba se llaman como se llamaban.
+ *
+ * @param {any} data El mundo del gremio.
+ * @returns {string}
+ */
+function hubTownName(data) {
+    return String((data?.metadata?.locationMaps ?? [])[0]?.name ?? '').trim() || 'el gremio';
+}
+
+/**
  * J4: jugar sin conexión, una partida nueva. Se crea el gremio, se abre su chat, se hace el
  * personaje y empieza el hilo: la prueba de la bodega.
  *
@@ -1385,14 +1407,14 @@ export async function playHubCampaign(id) {
             if (await openHubChat(record.chat, record.worldName)) {
                 const { uids } = await ensureHubEntries(record.worldName, entries);
                 adoptCarriedParty(carried, { worldName: record.worldName, uids });
+                await postJourney(journeyLine({ world: await boardWorld(id), home: hubTownName(home) }));
                 toastr.success('Seguís donde lo dejasteis, con lo que traéis del gremio.', 'De vuelta a la campaña');
                 return;
             }
             toastr.warning('No encuentro la partida de esa campaña: se empieza de nuevo.', 'Campañas');
         }
 
-        const worlds = await readMundo('/mundos/mundos.json').then(json => json?.worlds ?? []);
-        const world = worlds.find((/** @type {any} */ w) => String(w?.id) === id);
+        const world = await boardWorld(id);
         if (!world?.pack) throw new Error('Esa campaña no está en el tablón.');
         const pack = await readMundo(String(world.pack));
         const found = validatePack(pack);
@@ -1438,6 +1460,8 @@ export async function playHubCampaign(id) {
         await updateWorld(homeWorld, meta => {
             meta[HUB_KEY] = withHubCampaign(meta[HUB_KEY], id, { worldName: created.worldName, chat: openChat() });
         });
+        // J4.9: el camino hasta allí, antes de la primera escena.
+        await postJourney(journeyLine({ world, home: hubTownName(home) }));
         await beginCampaignPlot('');
     } catch (error) {
         console.error('[gremio] no se pudo abrir la campaña', error);
@@ -1486,6 +1510,7 @@ export async function returnToHub() {
         if (!await openHubChat(hub.chat, homeWorld)) throw new Error('No se pudo abrir la partida del gremio.');
         const { uids } = await ensureHubEntries(homeWorld, entries);
         adoptCarriedParty(carried, { worldName: homeWorld, uids });
+        await postJourney(journeyLine({ world: await boardWorld(id), home: hubTownName(home), back: true }));
         toastr.success(ending
             ? `Volvéis al gremio. La campaña acabó: ${ending}.`
             : 'Volvéis al gremio con todo lo ganado. La campaña queda donde la dejáis.', 'El gremio');

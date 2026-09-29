@@ -144,6 +144,74 @@ export function withHubCampaign(hub, id, patch) {
     return readHub({ ...now, campaigns: { ...now.campaigns, [text(id)]: { ...was, ...patch } } });
 }
 
+/** Los números que se escriben con letra: «nueve días» se lee mejor que «9 días». */
+const NUMBER_WORDS = ['', 'un', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez', 'once', 'doce'];
+
+/** @param {string} value @returns {string} */
+const capital = (value) => value.charAt(0).toUpperCase() + value.slice(1);
+
+/**
+ * «de» y «a» delante de un sitio: «del gremio», «al gremio». Solo con «el» en minúscula:
+ * si el artículo es parte del nombre («El Gremio») se escribe entero, como «de El Salvador».
+ *
+ * @param {'de'|'a'} word
+ * @param {string} place
+ * @returns {string}
+ */
+function toPlace(word, place) {
+    return place.startsWith('el ') ? `${word === 'de' ? 'del' : 'al'} ${place.slice(3)}` : `${word} ${place}`;
+}
+
+/**
+ * Cuántos días hay de camino desde el pueblo hasta una campaña (J4.9 de ROADMAP_SIN_CONEXION).
+ *
+ * Cada campaña es su propio mundo, pero tiene que sentirse que se viaja a ella desde el
+ * pueblo: el tablón dice lo lejos que queda y el viaje de ida y de vuelta se cuenta.
+ *
+ * @param {any} world La entrada de `mundos.json`.
+ * @returns {number} 0 si no dice nada.
+ */
+export function journeyDays(world) {
+    return Math.max(0, Math.floor(Number(world?.journey?.days) || 0));
+}
+
+/**
+ * Los días, con letra hasta doce: «un día», «nueve días», «15 días».
+ *
+ * @param {number} days
+ * @returns {string} Vacío si no hay días.
+ */
+export function journeySpan(days) {
+    const n = Math.max(0, Math.floor(Number(days) || 0));
+    if (n === 0) return '';
+    if (n === 1) return 'un día';
+    return `${NUMBER_WORDS[n] ?? n} días`;
+}
+
+/**
+ * El viaje contado, de ida o de vuelta.
+ *
+ * Ida: «Salís del gremio hacia Strahd. Vais en carro… Nueve días de camino.»
+ * Vuelta: «Nueve días de camino después, volvéis al gremio con lo ganado.»
+ *
+ * @param {Object} input
+ * @param {any} input.world La entrada de `mundos.json`.
+ * @param {string} [input.home] De dónde se sale y adónde se vuelve.
+ * @param {boolean} [input.back] Si es la vuelta.
+ * @returns {string} Vacío si la campaña no dice cuánto queda.
+ */
+export function journeyLine({ world, home = 'el gremio', back = false }) {
+    const span = journeySpan(journeyDays(world));
+    if (!span) return '';
+    const from = text(home) || 'el gremio';
+    if (back) return `${capital(span)} de camino después, volvéis ${toPlace('a', from)} con lo ganado.`;
+    // El «cómo» se escribe como frase, con su punto o sin él: aquí se le pone uno solo.
+    const how = text(world?.journey?.how).replace(/[.\s]+$/, '');
+    const name = text(world?.name) || text(world?.id);
+    return [`Salís ${toPlace('de', from)} hacia ${name}.`, how ? `${how}.` : '', `${capital(span)} de camino.`]
+        .filter(Boolean).join(' ');
+}
+
 /**
  * Las campañas del tablón, con cómo van para este gremio.
  *
@@ -155,7 +223,8 @@ export function withHubCampaign(hub, id, patch) {
  * @param {any} [input.hub]
  * @param {number} [input.level] El del héroe, para decir si le viene grande.
  * @returns {Array<{id: string, name: string, genre: string, note: string, synopsis: string, icon: string,
- *   traits: string[], levels: string, state: 'nueva'|'en-curso'|'terminada', action: string, warn: string, ending: string}>}
+ *   traits: string[], levels: string, distance: string, state: 'nueva'|'en-curso'|'terminada', action: string,
+ *   warn: string, ending: string}>}
  */
 export function hubCampaignCards({ worlds, hub = null, level = 1 }) {
     const record = readHub(hub);
@@ -176,6 +245,8 @@ export function hubCampaignCards({ worlds, hub = null, level = 1 }) {
                 icon: text(world.icon) || 'fa-scroll',
                 traits: (Array.isArray(world.traits) ? world.traits : []).map(text).filter(Boolean),
                 levels: min > 0 ? (max > min ? `Para nivel ${min} a ${max}` : `Para nivel ${min}`) : '',
+                // Lo lejos que queda del pueblo: cada campaña es otro mundo, pero se llega por el camino.
+                distance: journeyDays(world) > 0 ? `A ${journeySpan(journeyDays(world))} de camino` : '',
                 state,
                 action: state === 'nueva' ? 'Empezar' : 'Seguir',
                 // Solo se avisa: quien quiera meterse con Strahd a nivel 1 puede.

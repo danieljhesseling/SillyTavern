@@ -9,6 +9,9 @@ author: DanielJHesseling / Claude Opus 5
 # 🎯 Roadmap — De SillyTavern a un Juego de Rol Táctico Asequible
 
 > [!NOTE]
+> **Archivado el 2026-09-29: a este plan no le queda nada.** Las fases A–H están cerradas, y lo que su tabla del 2026-09-21 daba a medias (los descansos y los objetivos en el tablero) se hizo después. El plan de ahora es [[ROADMAP_SIN_CONEXION]], y lo que falta fuera de él está en [[LO_QUE_FALTA]]. Se guarda porque el código lo cita, y porque *El Principio que Ordena Todo* y *De Dónde Sale el Gasto* siguen valiendo.
+
+> [!NOTE]
 > **Estado (22-09-2026)**: Las fases **A a H están todas cerradas**. Esto ya no es un plan: es el acta de lo que se construyó, y sigue valiendo por el *porqué* — sobre todo **El Principio que Ordena Todo** y **De Dónde Sale el Gasto**. El porqué está en [[ROADMAP_MAESTRO]]; lo último construido, en [[ROADMAP_PROFUNDIDAD]]; y lo que falta, en [[LO_QUE_FALTA]] (2026-09-26).
 
 Plan único de trabajo. Reconcilia tres fuentes: la auditoría de *PROBLEMAS_TECNICOS*, el catálogo de [[PROPUESTAS_MEJORA]], y el diseño de juego de *PROPUESTA_JUEGO_DND_GLOOMHAVEN_PERSONA*. Sustituye a la versión anterior de este documento, que solo cubría higiene de ingeniería.
