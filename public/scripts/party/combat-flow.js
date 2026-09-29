@@ -81,8 +81,8 @@ import { showCombatDiceRoll } from './combat-log.js';
 import { resolveEnemyAttackOn, resolveEnemyTurnAction } from './enemy-turn.js';
 import {
     savePartyState, renderPartyMembers, postCombatNarration, tellMoment, postForModel, currentSurvival,
-    survivalNow, noteDeed, notePlot, raiseFame, countStat, showTip, tellBondScene, rememberTogether, bark,
-    judgeDecision, partyMorale,
+    survivalNow, noteDeed, raiseFame, countStat, showTip, tellBondScene, rememberTogether, bark, judgeDecision,
+    partyMorale,
 } from './main.js';
 import {
     handlePlayerCombatMove, performManeuver, handlePlayerCombatAttack, endPlayerCombatTurn,
@@ -94,6 +94,7 @@ import {
 import { renderLocationMapsPreview } from './board-view.js';
 import { lastLevelPlan, getLocationBoards, hereLocation, lastCompendium } from './world.js';
 import { getCampaignCalendar, getCampaignBonds, saveCampaignState, markLocationComplete } from './time.js';
+import { notePlot } from './plot.js';
 
 /**
  * @param {string} name

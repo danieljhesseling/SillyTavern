@@ -58,10 +58,11 @@ import {
 } from './factions.js';
 import {
     savePartyState, renderPartyMembers, postCombatNarration, playSucesos, tellMoment, favorsHere, welcomeBack,
-    postForModel, currentSurvival, survivalNow, currentMarket, noteDeed, leavingMembers, getPlot, notePlot,
-    showTip, writeLetters, worldFestivals, tellFestival, openMilestones, giveDueHints, tellBondScene, driftPeople,
-    weighDepartures, checkNickname, offerPersonalQuests, partyPurse, payFromParty,
+    postForModel, currentSurvival, survivalNow, currentMarket, noteDeed, leavingMembers, showTip, writeLetters,
+    worldFestivals, tellFestival, tellBondScene, driftPeople, weighDepartures, checkNickname, offerPersonalQuests,
+    partyPurse, payFromParty,
 } from './main.js';
+import { getPlot, notePlot, openMilestones, giveDueHints } from './plot.js';
 
 /**
  * El estado de campana -reloj, vinculos, descansos y mapa- vive en su propio modulo.

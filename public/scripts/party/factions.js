@@ -24,8 +24,9 @@ import {
     currentLocationName, currentWorldFactions, factionDaysDue, setCurrentWorldFactions, setFactionDaysDue,
 } from './state.js';
 import { lastWorldNpcs } from './world.js';
-import { postCombatNarration, postForModel, notePlot, worldWrite, plotPeople, applyFate } from './main.js';
+import { postCombatNarration, postForModel, worldWrite, plotPeople, applyFate } from './main.js';
 import { getCampaignCalendar, campaignDay } from './time.js';
+import { notePlot } from './plot.js';
 
 /** @returns {any[]} */
 export function getCurrentWorldFactions() {
