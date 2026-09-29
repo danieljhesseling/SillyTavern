@@ -21,15 +21,14 @@ import {
     combatEncounter, currentBoardName, currentLocationName, partyMembers, setCombatBoardSelection,
     setCombatEncounter, setCurrentBoardName, setCurrentLocationName, setUsedReactions,
 } from './state.js';
-import {
-    savePartyState, renderPartyMembers, postCombatNarration, worldWrite, refreshWorldMemoryPrompt,
-} from './main.js';
+import { savePartyState, renderPartyMembers, postCombatNarration } from './main.js';
 import { saveCombatState } from './combat-state.js';
 import { renderLocationMapsPreview } from './board-view.js';
 import { saveCurrentLocation, saveCurrentBoard } from './world.js';
 import {
     campaign, getCampaignCalendar, getCampaignBonds, saveCampaignState, getCampaignMap, renderCampaignTab,
 } from './time.js';
+import { worldWrite, refreshWorldMemoryPrompt } from './world-growth.js';
 
 /**
  * Todo lo que el juego da por cierto, listo para guardarlo o devolverlo a su sitio.

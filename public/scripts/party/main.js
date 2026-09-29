@@ -52,7 +52,7 @@ import { petDoes, petName } from '../game-engine/campaign/pet.js';
 import {
     homeFavors, favorDiscount, noteGone, whoComesBack, comebackOf, forgetGone,
 } from '../game-engine/campaign/companion-arcs.js';
-import { rumorsFromPlay, chronicleMemory } from '../game-engine/campaign/world-echoes.js';
+import { rumorsFromPlay } from '../game-engine/campaign/world-echoes.js';
 // R7 del roadmap de profundidad: enemigos con cabeza, y la némesis.
 // H2 de wiki/LO_QUE_FALTA.md: «Cómo se juega», con lo que el motor sabe.
 import { buildHowToPlay } from '../game-engine/campaign/how-to-play.js';
@@ -68,7 +68,7 @@ import { seasonalMarket, magicStance } from '../game-engine/campaign/season-mark
 import { judgeMagicItems } from '../game-engine/rules/magic-items.js';
 // R4 del roadmap de profundidad: la magia, solo la del grimorio.
 import {
-    grimoireAbilities, spellById, spellsForClass, spendCharge, magicLine, knownSpells,
+    grimoireAbilities, spellById, spellsForClass, spendCharge, knownSpells,
 } from '../game-engine/rules/grimoire.js';
 import { stanceOf, STANCES, PREFERENCES, DEFAULT_PREFERENCE } from '../game-engine/combat/ally-ai.js';
 import { judgeManeuvers } from '../game-engine/combat/maneuvers.js';
@@ -91,9 +91,8 @@ import { duePersonalQuests, personalQuestFor, describePersonalAsk } from '../gam
 import { readBench, whereHired } from '../game-engine/campaign/bench.js';
 import { respecCost } from '../game-engine/rules/respec.js';
 import { languageBarrier } from '../game-engine/rules/languages.js';
-import { neighboursOf, driftOf, describeFate } from '../game-engine/world/people-fate.js';
 import { addOffer, takeOffer, resolveOffer, offerChips } from '../game-engine/campaign/item-offers.js';
-import { toneNote, nextTone, describeTone, readTone } from '../game-engine/campaign/scene-tone.js';
+import { nextTone, describeTone, readTone } from '../game-engine/campaign/scene-tone.js';
 import { makeShareCode } from '../game-engine/campaign/share-code.js';
 import { judgeDepartures, describeWarning, describeLeaving } from '../game-engine/campaign/departures.js';
 import { talkPairs, campTalkPrompt, makePeace, roundPrompt, topicHits, TOPICS } from '../game-engine/campaign/camp-talk.js';
@@ -103,7 +102,6 @@ import { settleCarried, hubRoster } from '../game-engine/campaign/hub.js';
 import { HUB_HEROES_KEY, restingUids } from '../game-engine/campaign/hub-heroes.js';
 import { seaLegs, fareFor, sailingDays, describeVoyage } from '../game-engine/world/ships.js';
 import { shiftAttitude, attitudeBonus, describeAttitude, readAttitudes } from '../game-engine/campaign/attitudes.js';
-import { readSummaries } from '../game-engine/campaign/act-summary.js';
 import { previewOf, describePreview } from '../game-engine/campaign/world-preview.js';
 import { readIllustrationSettings, promptFor, buildRequest, imageFrom } from '../game-engine/campaign/illustrations.js';
 import { newPerson, newPlace } from '../game-engine/campaign/director.js';
@@ -135,10 +133,13 @@ import { buildJournal, buildHelp, pendingByPlace, buildRecap } from '../game-eng
 import { splitModelNote } from '../game-engine/campaign/model-note.js';
 import { narrate as narrateMoment, rememberUsed, listNames, daysText } from '../game-engine/campaign/engine-narrator.js';
 import { resolveGender } from '../game-engine/campaign/grammar.js';
-import { talkTopics, topicAnswer, threatAnswer, talkNote, talkPromptNote, sceneAddressee, narratorAskNote, effectiveAttitude, confronts, keepSpeech } from '../game-engine/campaign/talk.js';
+import {
+    talkTopics, topicAnswer, threatAnswer, talkNote, talkPromptNote, sceneAddressee, effectiveAttitude, confronts,
+    keepSpeech,
+} from '../game-engine/campaign/talk.js';
 import { addNotice, unseenCount, glanceRow, MAX_VISIBLE_TOASTS } from '../game-engine/ui/shell/notices.js';
 import { addRequest, takeRequest, readRequests } from '../game-engine/campaign/check-requests.js';
-import { recordDeed, proposeDeed, worldMemoryBlock, roadTrouble } from '../game-engine/campaign/world-memory.js';
+import { roadTrouble } from '../game-engine/campaign/world-memory.js';
 import { readSession, enterScene, noteSent, noteClick, describeSession } from '../game-engine/campaign/session-log.js';
 import { describeUpcoming } from '../game-engine/campaign/upcoming.js';
 import { handFrom, duelOutcome } from '../game-engine/campaign/word-duel.js';
@@ -146,14 +147,11 @@ import { readCases, cluesHere } from '../game-engine/campaign/cases.js';
 import { mapRows, describeRoute, setNote } from '../game-engine/campaign/text-map.js';
 import { readTaggedLine, chronicleOf, chronicleSections, foldPlan, describeFold } from '../game-engine/campaign/chronicle.js';
 import {
-    focusOf, describeFocus, actOf, hasEnded, secretsOf, omensOf, daysLeftOf, cluesOf, closedOf, readPlotState,
+    focusOf, secretsOf, omensOf, daysLeftOf, cluesOf, closedOf, readPlotState,
 } from '../game-engine/campaign/plot.js';
 import { settlesNoFight } from '../game-engine/campaign/written-contracts.js';
 import { nextRumor, describeRumor } from '../game-engine/campaign/rumors.js';
-import { chooseSource } from '../game-engine/campaign/mix.js';
-import {
-    canExplore, discoverPlace, boardForPlace, peopleWanted, readProposals, addProposal, takeProposal,
-} from '../game-engine/world/growth.js';
+import { canExplore, readProposals, addProposal } from '../game-engine/world/growth.js';
 import { ToolManager } from '../tool-calling.js';
 import { servicesOf, serviceActions, SERVICE_INFO } from '../game-engine/campaign/services.js';
 import { chooseBark, opinionOf, wantsOf } from '../game-engine/combat/barks.js';
@@ -172,14 +170,13 @@ import {
     sucesoCount, pickSucesos, sucesoById, optionView, resolveOption, readSucesoState, noteSuceso, dueFollowUp, describeEffect,
 } from '../game-engine/campaign/sucesos.js';
 import { planTip, nextQueuedTip, GLOSSARY, MOMENT_TIPS } from '../game-engine/ui/shell/tips.js';
-import { LENGTHS, lengthNote, nextLength } from '../game-engine/campaign/narration.js';
+import { LENGTHS, nextLength } from '../game-engine/campaign/narration.js';
 import {
     noteFeat, newNickname, traitsOf, desireLine, heroStory, TRAIT_AT, knacksOf, KNACK_AT,
 } from '../game-engine/campaign/feats.js';
 import { forageCheck, forageResult } from '../game-engine/campaign/forage.js';
 import { readRecruits, recruitActions, bondSceneFor, describeMeeting, describeJoin, arrivalLines } from '../game-engine/campaign/recruit.js';
 import { addMemory, memoryLines, lastMemoryWith } from '../game-engine/campaign/memories.js';
-import { bodyLine } from '../game-engine/campaign/body.js';
 import { relieve, readNeeds } from '../game-engine/rules/needs.js';
 import { promptKey } from '../game-engine/cost/prompt-order.js';
 import { STAFF_ROLES } from '../game-engine/campaign/guild.js';
@@ -210,16 +207,15 @@ import { buildCompanionCard, judgeGift } from '../game-engine/ui/shell/companion
 import { buildPackFromWorld, describeExport } from '../game-engine/campaign/campaign-export.js';
 import { normalizePack, validatePack } from '../game-engine/campaign/campaign-pack.js';
 import {
-    ACT_SUMMARIES_KEY, APPROVAL_KEY, ARRIVALS_HEARD_KEY, ART_STORAGE, ATTITUDES_KEY, BENCH_KEY, BOARD_KEY,
-    CASES_KEY, CHECK_REQUESTS_KEY, CLIMATE_KEY, COLORBLIND_KEY, CONTRADICTIONS_KEY, DEBT_KEY, DEEDS_KEY,
-    DICE_GAME_KEY, DICE_LOG_KEY, EXPLORED_KEY, FAME_KEY, FESTIVAL_TOLD_KEY, FIELD_GAINS_KEY,
-    GAME_SHELL_AUTOSTART_KEY, GONE_KEY, GRAVES_KEY, HAGGLE_KEY, HINTS_KEY, LEAVE_ON_KEY, LENGTH_KEY, LETTERS_KEY,
-    LETTERS_SENT_KEY, MAP_NOTES_KEY, MEMORIES_KEY, MODE_HISTORY_KEY, MOUNTS_KEY, NARRATOR_FONT_KEY,
-    NARRATOR_MODE_STORAGE, NARRATOR_RECENT_KEY, NEWS_KEY, OFFERS_KEY, PENDING_CHECK_KEY, PERSONAL_ASKED_KEY,
-    PLOT_KEY, PLOT_STATE_KEY, PRISONERS_KEY, PROPOSALS_KEY, RECRUITS_MET_KEY, ROLL_GUARD_KEY, RUMORS_HEARD_KEY,
-    RUMORS_HEARD_ON_KEY, SAFETY_ON_KEY, SAVER_KEY, SECRETS_KEY, SEED_KEY, SESSION_LOG_KEY, STATS_KEY, SUCESOS_KEY,
-    SUCESOS_STORAGE, TAKEN_KEY, TIPS_SEEN_KEY, TONE_KEY, VISITED_KEY, WANTED_KEY, WARNED_KEY, WEATHER_TODAY_KEY,
-    WEEK_TABLE_AUTO_KEY, localFlag,
+    APPROVAL_KEY, ARRIVALS_HEARD_KEY, ART_STORAGE, ATTITUDES_KEY, BENCH_KEY, BOARD_KEY, CASES_KEY,
+    CHECK_REQUESTS_KEY, COLORBLIND_KEY, CONTRADICTIONS_KEY, DEBT_KEY, DEEDS_KEY, DICE_GAME_KEY, DICE_LOG_KEY,
+    FAME_KEY, FESTIVAL_TOLD_KEY, FIELD_GAINS_KEY, GAME_SHELL_AUTOSTART_KEY, GONE_KEY, GRAVES_KEY, HAGGLE_KEY,
+    HINTS_KEY, LEAVE_ON_KEY, LENGTH_KEY, LETTERS_KEY, LETTERS_SENT_KEY, MAP_NOTES_KEY, MEMORIES_KEY,
+    MODE_HISTORY_KEY, MOUNTS_KEY, NARRATOR_FONT_KEY, NARRATOR_MODE_STORAGE, NARRATOR_RECENT_KEY, NEWS_KEY,
+    OFFERS_KEY, PENDING_CHECK_KEY, PERSONAL_ASKED_KEY, PLOT_KEY, PLOT_STATE_KEY, PRISONERS_KEY, PROPOSALS_KEY,
+    RECRUITS_MET_KEY, ROLL_GUARD_KEY, RUMORS_HEARD_KEY, RUMORS_HEARD_ON_KEY, SAFETY_ON_KEY, SAVER_KEY, SECRETS_KEY,
+    SEED_KEY, SESSION_LOG_KEY, STATS_KEY, SUCESOS_KEY, SUCESOS_STORAGE, TAKEN_KEY, TIPS_SEEN_KEY, TONE_KEY,
+    VISITED_KEY, WANTED_KEY, WARNED_KEY, WEATHER_TODAY_KEY, WEEK_TABLE_AUTO_KEY, localFlag,
 } from './keys.js';
 import {
     combatEncounter, currentBoardName, currentLocationName, narratorTurn, partyMembers, setCurrentBoardName,
@@ -263,9 +259,9 @@ import {
 } from './board-view.js';
 import {
     applyCampaignRuleset, biomeHere, campaignCompendium, currentSeason, enemiesInSeason, ensureWorldData,
-    getLocationBoards, hereLocation, lastCompendium, lastConfidantEntries, lastHub, lastHubHome, lastMix,
-    lastRumors, lastWorldNpcs, lastWorldSeason, loadCurrentLocation, loadedWorldName, reloadWorldFactions,
-    saveCurrentBoard, saveCurrentLocation, seedOfWorld, weatherHere, worldNpc,
+    getLocationBoards, hereLocation, lastCompendium, lastConfidantEntries, lastHub, lastHubHome, lastRumors,
+    lastWorldNpcs, lastWorldSeason, loadCurrentLocation, loadedWorldName, reloadWorldFactions, saveCurrentBoard,
+    saveCurrentLocation, seedOfWorld, weatherHere, worldNpc,
 } from './world.js';
 import {
     bannerOf, friendlyFactions, getCurrentWorldFactions, nudgeRuler, rulerOf, shiftFactionStanding,
@@ -276,6 +272,9 @@ import {
     renderCampaignTab, showWeeklyBill, takeRest, whatComes,
 } from './time.js';
 import { ensurePlot, getPlot, notePlot, openEnding, openMilestones, revealLocations } from './plot.js';
+import {
+    exploreHere, noteDeed, populatePlace, proposeFact, refreshWorldMemoryPrompt, worldWrite,
+} from './world-growth.js';
 
 /** @typedef {import('./types.js').PartyMember} PartyMember */
 
@@ -1381,37 +1380,6 @@ async function openTextMap() {
 }
 
 
-/**
- * Apuntar un hecho, con el dia de hoy.
- *
- * @param {string} text
- */
-export function noteDeed(text) {
-    if (!chat_metadata) return;
-    const today = Math.max(1, Math.floor(Number(getCampaignCalendar()?.day) || 1));
-    chat_metadata[DEEDS_KEY] = recordDeed(chat_metadata[DEEDS_KEY], today, text);
-    saveMetadata();
-}
-
-/**
- * U1 del pegamento: un hecho que propone el narrador. El motor decide si se apunta: una
- * frase, que no esté ya, y una al día. Sustituye a las banderas que ponía por su cuenta.
- *
- * @param {string} proposal
- * @returns {string} Lo que se le contesta al narrador.
- */
-function proposeFact(proposal) {
-    if (!chat_metadata) return 'No hay partida.';
-    const today = Math.max(1, Math.floor(Number(getCampaignCalendar()?.day) || 1));
-    const result = proposeDeed(chat_metadata[DEEDS_KEY], today, proposal);
-    if (!result.ok) return `No se apunta: ${result.reason}`;
-    chat_metadata[DEEDS_KEY] = result.deeds;
-    saveMetadata();
-    refreshWorldMemoryPrompt();
-    postCombatNarration(`📝 [MUNDO] El mundo lo recordará: ${result.deeds[result.deeds.length - 1].text}`);
-    return 'Apuntado. Sigue con la escena.';
-}
-
 /** @type {import('../game-engine/campaign/session-log.js').SessionLog|null} */
 let sessionLog = null;
 
@@ -1597,222 +1565,10 @@ async function hearRumor(by = '') {
 // ================================================================
 
 
-/**
- * De donde sale lo siguiente, segun el acto de la partida (M7).
- *
- * @param {{written?: boolean, chat?: boolean}} have
- * @returns {'written'|'seed'|'chat'}
- */
-export function mixSource(have) {
-    const plot = getPlot();
-    const state = chat_metadata?.[PLOT_STATE_KEY];
-    return chooseSource({
-        act: actOf(plot, state),
-        ended: plot ? hasEnded(plot, state) : false,
-        mix: lastMix,
-        roll: nextRandom(),
-        have,
-    });
-}
-
-/**
- * Escribir en el Lorebook del mundo la gente que falta en un sitio (G3).
- *
- * @param {any} data El mundo, ya leido: se escribe en el y se guarda fuera.
- * @param {string} worldName
- * @param {any} compendium
- * @param {string} placeName
- * @param {number} howMany
- * @param {() => number} random
- * @returns {any[]} Los que se han escrito.
- */
-function writePeopleInto(data, worldName, compendium, placeName, howMany, random) {
-    /** @type {any[]} */
-    const made = [];
-    for (let i = 0; i < howMany; i++) {
-        const person = writePersonFromCompendium({
-            compendium, random, locationName: placeName, banner: bannerOf(placeName, data?.metadata?.factions),
-        });
-        if (!person) break;
-        const entry = createWorldInfoEntry(worldName, data);
-        if (!entry) break;
-        entry.comment = person.name;
-        entry.key = person.keys;
-        entry.content = [person.backstory, person.personality].filter(Boolean).join(' ');
-        entry.group = 'Characters';
-        entry.dndData = {
-            entityType: 'npc',
-            name: person.name,
-            title: person.title,
-            factions: person.factions,
-            mapPosition: { locationName: placeName, gridX: 0, gridY: 0 },
-            generated: true,
-        };
-        made.push(person);
-    }
-    return made;
-}
-
-/**
- * Explorar los alrededores: descubrir un sitio nuevo, con su tablero, sus bichos y su gente.
- *
- * Gasta un bloque del dia. Con nombre, va a buscar lo que propuso el narrador (G6).
- *
- * @param {string} [name]
- * @returns {Promise<string>}
- */
-async function exploreHere(name = '') {
-    await ensureWorldData();
-    if (combatEncounter.active) {
-        toastr.warning('No en mitad de un combate.');
-        return '';
-    }
-    const worldName = String(chat_metadata?.[METADATA_KEY] || '');
-    const data = worldName ? await loadWorldInfo(worldName) : null;
-    if (!data?.metadata || !currentLocationName) {
-        toastr.warning('Primero hay que estar en algún sitio.');
-        return '';
-    }
-    const places = Array.isArray(data.metadata.locationMaps) ? data.metadata.locationMaps : [];
-    const hidden = Array.isArray(data.metadata.hiddenLocations) ? data.metadata.hiddenLocations : [];
-    const { proposal, proposals } = takeProposal(chat_metadata[PROPOSALS_KEY], name);
-    if (name && !proposal) {
-        toastr.warning(`Nadie ha hablado de «${name}».`);
-        return '';
-    }
-    if (!canExplore(places, hidden)) {
-        toastr.info('Por aquí ya no queda nada que no conozcáis.', 'Explorar');
-        return '';
-    }
-
-    const compendium = await campaignCompendium();
-    const count = Math.max(0, Number(chat_metadata[EXPLORED_KEY]) || 0);
-    const random = createSeededRandom(derive(seedOfWorld(data.metadata), 'explorar', currentLocationName, proposal?.name || String(count)));
-    const place = discoverPlace({
-        compendium, locations: [...places, ...hidden], here: currentLocationName, random,
-        name: proposal?.name ?? '', note: proposal?.note ?? '', source: proposal ? 'chat' : 'seed',
-    });
-    if (!place) {
-        toastr.info('No encontráis nada que no conozcáis ya.', 'Explorar');
-        return '';
-    }
-
-    // G4: lo que vive ahi, criado para su bioma y guardado en el bestiario del mundo.
-    const bred = compendium.has('bestiario')
-        ? breedBand({ compendium, howMany: 2, cr: 0.5, biome: place.biome, random, season: currentSeason() })
-        : [];
-    for (const monster of bred) {
-        const entry = createWorldInfoEntry(worldName, data);
-        if (!entry) continue;
-        entry.comment = monster.name;
-        entry.key = [monster.name];
-        entry.content = monster.description || monster.name;
-        entry.group = 'Monsters';
-        entry.dndData = {
-            entityType: 'monster', name: monster.name, hp: monster.hp, maxHp: monster.hp,
-            armorClass: monster.armorClass, cr: monster.cr, speed: monster.speed,
-            profile: monster.profile, attackRangeFeet: monster.attackRangeFeet, abilities: monster.abilities ?? [],
-            ...(monster.domable !== undefined ? { domable: monster.domable } : {}),
-            generated: true,
-        };
-    }
-    const bestiaryNames = bred.length > 0
-        ? bred.map(m => m.name)
-        : getCurrentWorldEnemies().map((/** @type {any} */ e) => String(e?.name || '')).filter(Boolean);
-
-    // G2: su tablero, de su forma.
-    place.boards = [boardForPlace({ place, random, bestiary: bestiaryNames, partySize: partyMembers.length })];
-    // G3: su gente.
-    const people = writePeopleInto(data, worldName, compendium, place.name, 2, random);
-
-    data.metadata.locationMaps = [...places, place];
-    await saveWorldInfo(worldName, data, true);
-    await refreshWorldMapGlobals(worldName);
-
-    chat_metadata[EXPLORED_KEY] = count + 1;
-    chat_metadata[PROPOSALS_KEY] = proposals;
-    saveMetadata();
-    advanceCampaignSlot();
-
-    noteDeed(`Descubristeis ${place.name}.`);
-    const who = people.map(p => `${p.name}${p.title ? `, ${String(p.title).toLowerCase()}` : ''}`).join(' y ');
-    await postForModel(`[EXPLORAR] Explorando los alrededores de ${currentLocationName}, el grupo encuentra ${place.name}. `
-        + `${place.description}${who ? ` Allí viven ${who}.` : ''} `
-        + 'Cuéntalo en un párrafo. No inventes nada que no esté aquí.');
-    toastr.success(place.name, 'Un sitio nuevo en el mapa');
-    if (isShellOpen()) refreshGameShell();
-    return place.name;
-}
-
-/**
- * Al llegar a un sitio con poca gente, se escribe la que falta (G3).
- *
- * En un mundo escrito, la mezcla decide si le toca a lo generado: un sitio que ya tiene a
- * alguien escrito solo se completa en la parte que la curva deja a la semilla. Un sitio
- * vacio se completa siempre, porque llegar tiene que ser llegar a alguna parte.
- *
- * @param {string} placeName
- * @returns {Promise<void>}
- */
-function populatePlace(placeName) {
-    return worldWrite(() => populatePlaceNow(placeName));
-}
-
-/**
- * @param {string} placeName
- * @returns {Promise<void>}
- */
-async function populatePlaceNow(placeName) {
-    const worldName = String(chat_metadata?.[METADATA_KEY] || '');
-    if (!worldName || !placeName) return;
-    try {
-        const data = await loadWorldInfo(worldName);
-        if (!data) return;
-        const here = Object.values(data.entries ?? {}).filter((/** @type {any} */ e) =>
-            e?.dndData?.entityType === 'npc'
-            && String(e.dndData?.mapPosition?.locationName || '').toLowerCase() === placeName.toLowerCase()).length;
-        const wanted = peopleWanted(here);
-        if (wanted === 0) return;
-        if (here > 0 && mixSource({ written: true }) === 'written') return;
-
-        const compendium = await campaignCompendium();
-        const random = createSeededRandom(derive(seedOfWorld(data.metadata), 'gente', placeName));
-        const people = writePeopleInto(data, worldName, compendium, placeName, wanted, random);
-        if (people.length === 0) return;
-        await saveWorldInfo(worldName, data, true);
-        await refreshWorldMapGlobals(worldName);
-        const who = people.map(p => `${p.name}${p.title ? `, ${String(p.title).toLowerCase()}` : ''}`).join(' y ');
-        const plural = people.length > 1;
-        await postForModel(`[GENTE] En ${placeName} vive${plural ? 'n' : ''} ${who}. `
-            + `Que aparezca${plural ? 'n' : ''} con naturalidad cuando toque: el grupo no ${plural ? 'los' : 'lo'} conoce todavía.`);
-    } catch (error) {
-        console.error('[party] no se pudo poblar el sitio', error);
-    }
-}
-
 // ================================================================
 //  Servicios de cada sitio (wiki/archivo/ROADMAP_MUNDOS_VIVOS.md, fase L)
 // ================================================================
 
-
-/** Las escrituras del archivo del mundo, en fila (ver worldWrite). */
-let worldWriteQueue = Promise.resolve();
-
-/**
- * Hacer algo con el archivo del mundo sin pisar a otro que lo este haciendo.
- *
- * Llegar a un sitio dispara a la vez el hilo (revela sitios), la gente (G3) y las
- * reputaciones. Cada uno lee el archivo entero, lo cambia y lo guarda: sin fila, el ultimo
- * en guardar borraba lo de los demas, y la cueva que el hito acababa de revelar no salia.
- *
- * @param {() => Promise<void>} task
- * @returns {Promise<void>}
- */
-export function worldWrite(task) {
-    const run = worldWriteQueue.then(task, task);
-    worldWriteQueue = run.catch(() => undefined);
-    return run;
-}
 
 /** Los avisos del juego, guardados para la bandeja (idea 159). */
 /** @type {import('../game-engine/ui/shell/notices.js').Notice[]} */
@@ -1956,7 +1712,7 @@ function runForage() {
  *
  * @returns {{place: string, lines: string[]}|null}
  */
-function localMemory() {
+export function localMemory() {
     if (!currentLocationName || !chat_metadata) return null;
     const place = currentLocationName.toLowerCase();
     const said = (Array.isArray(chat_metadata[DEEDS_KEY]) ? chat_metadata[DEEDS_KEY] : [])
@@ -1991,7 +1747,7 @@ let askingNarrator = false;
 
 
 /** @returns {boolean} */
-function saverOn() {
+export function saverOn() {
     return localFlag.get(SAVER_KEY) === '1';
 }
 
@@ -3386,71 +3142,6 @@ export function judgeDecision(decision, { verdicts = undefined, quiet = false } 
     }
 }
 
-/**
- * Idea 87: los que el hilo necesita, que ni se mudan ni mueren por azar.
- *
- * @returns {string[]}
- */
-export function plotPeople() {
-    const plot = getPlot();
-    /** @type {string[]} */
-    const names = [];
-    for (const milestone of plot?.milestones ?? []) {
-        const asks = /** @type {any} */ (milestone.asks);
-        for (const ask of [asks, ...(Array.isArray(asks?.options) ? asks.options : [])]) {
-            if (ask?.npc) names.push(String(ask.npc));
-        }
-    }
-    return names;
-}
-
-/**
- * Idea 87: apuntar en el mundo lo que le ha pasado a alguien. Muerto sigue en el mundo
- * (el narrador tiene que saberlo), pero ya no atiende; mudado, vive en otro sitio.
- *
- * @param {any} data
- * @param {import('../game-engine/world/people-fate.js').Fate} fate
- */
-export function applyFate(data, fate) {
-    const entry = Object.values(data?.entries ?? {})
-        .find((/** @type {any} */ e) => e?.dndData?.entityType === 'npc' && String(e.dndData.name || e.comment) === fate.name);
-    if (!entry) return;
-    const npc = lastWorldNpcs.find(n => n.name === fate.name);
-    if (fate.kind === 'muere') {
-        entry.dndData.dead = true;
-        entry.content = `${String(entry.content || '')}\n(Murió en ${fate.from}${fate.why ? ` ${fate.why}` : ''}.)`.trim();
-        if (npc) npc.dead = true;
-    } else {
-        entry.dndData.mapPosition = { ...(entry.dndData.mapPosition ?? {}), locationName: fate.to };
-        if (npc) npc.where = fate.to;
-    }
-}
-
-/**
- * Idea 87: una mudanza sin guerra, una vez a la semana como mucho.
- *
- * @returns {Promise<void>}
- */
-export async function driftPeople() {
-    const worldName = String(chat_metadata?.[METADATA_KEY] || '');
-    if (!worldName) return;
-    const fate = driftOf({
-        npcs: lastWorldNpcs.filter(n => !n.dead),
-        neighbours: neighboursOf(getCurrentWorldLocationMaps()),
-        keep: plotPeople(),
-        random: createSeededRandom(derive(worldName, 'mudanza', String(campaignDay()))),
-    });
-    if (!fate) return;
-    await worldWrite(async () => {
-        const data = await loadWorldInfo(worldName);
-        if (!data) return;
-        applyFate(data, fate);
-        await saveWorldInfo(worldName, data, true);
-    });
-    const line = describeFate(fate);
-    toastr.info(line, 'Se sabe algo', { timeOut: 8000 });
-    void postForModel(`[MUNDO] ${line} Cuéntalo como algo que se comenta, en una frase. No inventes nada más.`);
-}
 
 /**
  * Idea 67: si aquí se puede acampar.
@@ -4058,59 +3749,6 @@ function rumorsLeftHere() {
 
 
 /**
- * El bloque de lo que el mundo sabe del grupo, puesto al dia antes de cada turno.
- *
- * Vacio cuando no hay nada que contar: un bloque vacio no cuesta ni un token.
- */
-export function refreshWorldMemoryPrompt() {
-    const key = promptKey('quest', 'memory', 'ctx');
-    const block = chat_metadata ? worldMemoryBlock({
-        deeds: chat_metadata[DEEDS_KEY],
-        factions: getCurrentWorldFactions(),
-        debt: getDebt(),
-        focus: describeFocus(focusOf(getPlot(), chat_metadata[PLOT_STATE_KEY], campaignDay())),
-        today: Math.max(1, Math.floor(Number(getCampaignCalendar()?.day) || 1)),
-        memories: memoryLines(chat_metadata[MEMORIES_KEY], Math.max(1, Math.floor(Number(getCampaignCalendar()?.day) || 1))),
-        here: localMemory(),
-        // Idea 148: en modo ahorro, lo justo.
-        compact: saverOn(),
-    }) : '';
-    // Idea 149: el largo elegido en la partida manda sobre el de la ficha.
-    setExtensionPrompt(promptKey('rules', 'length', 'ctx'), chat_metadata ? lengthNote(String(chat_metadata[LENGTH_KEY] ?? '')) : '',
-        extension_prompt_types.IN_PROMPT, 0, false, extension_prompt_roles.SYSTEM);
-    // Idea 143: lo que pasó en los actos cerrados. Idea 140: cómo os mira la gente de aquí.
-    const acts = chat_metadata ? readSummaries(chat_metadata[ACT_SUMMARIES_KEY]).map(s => s.text) : [];
-    const moods = chat_metadata ? Object.entries(readAttitudes(chat_metadata[ATTITUDES_KEY]).values)
-        .filter(([name]) => lastWorldNpcs.some(n => n.name === name && n.where.toLowerCase() === String(currentLocationName).toLowerCase()))
-        .map(([name, value]) => `${name} os mira de forma ${describeAttitude(value)}.`) : [];
-    // R4: lo que el grupo sabe lanzar, y que no existe otra magia. Solo si alguien la hace.
-    const magic = magicLine(partyMembers);
-    // R9: lo último que pasó de verdad, de la crónica. En modo ahorro, no.
-    const lately = saverOn() ? '' : chronicleMemory(chronicleOf(Array.isArray(chat) ? chat : []));
-    const full = [block, acts.length > 0 ? `Lo que pasó antes: ${acts.join(' ')}` : '', moods.join(' '), lately, magic].filter(Boolean).join('\n');
-    setExtensionPrompt(key, full, extension_prompt_types.IN_PROMPT, 0, false, extension_prompt_roles.SYSTEM);
-
-    // C1: como esta el grupo. Va con lo que cambia en cada turno, al final del prompt. En
-    // modo ahorro no va: es lo primero que se puede quitar sin que la historia lo note.
-    const body = chat_metadata && !saverOn() ? bodyLine({
-        party: partyMembers,
-        day: Math.max(1, Math.floor(Number(getCampaignCalendar()?.day) || 1)),
-        slot: getCurrentSlotLabel(),
-        climate: String(chat_metadata[CLIMATE_KEY] || ''),
-        place: currentLocationName,
-    }) : '';
-    setExtensionPrompt(promptKey('combat', 'body', 'ctx'), body, extension_prompt_types.IN_PROMPT, 0, false, extension_prompt_roles.SYSTEM);
-
-    // Idea 142: el tono de la escena, una frase con lo que cambia en cada turno. Vacío si no
-    // toca ninguno: un bloque vacío no cuesta nada.
-    const tone = chat_metadata ? toneNote({ chosen: String(chat_metadata[TONE_KEY] || ''), fighting: combatEncounter.active }) : '';
-    // Y con quién se está hablando: que conteste esa persona, no el narrador. Va con lo que
-    // cambia en cada turno, al final.
-    setExtensionPrompt(promptKey('combat', 'tone', 'ctx'), [tone, narratorTurn ? narratorAskNote() : speakingNote()].filter(Boolean).join('\n'),
-        extension_prompt_types.IN_PROMPT, 0, false, extension_prompt_roles.SYSTEM);
-}
-
-/**
  * Con quién se está hablando ahora, si es alguien que puede contestar: alguien de aquí o de
  * tu grupo, y sin pelea en marcha.
  *
@@ -4218,7 +3856,7 @@ function showNarratorAsk() {
  *
  * @returns {string}
  */
-function speakingNote() {
+export function speakingNote() {
     const with_ = speakingWith();
     if (!with_) return '';
     if (!with_.npc) return talkPromptNote({ name: with_.name, companion: true });
