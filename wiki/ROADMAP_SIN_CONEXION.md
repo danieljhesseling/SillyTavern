@@ -78,7 +78,7 @@ Cómo está hecho, en corto (el detalle, en [[EMPEZAR_UNA_CAMPANA]], «Jugar sin
 | **J6** · Jugar con amigos | ⏸️ | Aparcado |
 | **J7** · El grupo | ⬜ | De un solo jugador por ahora: tu personaje y sus compañeros, y a cada uno lo mueves tú o el juego, como elijas |
 | **J8** · Hablar sin IA | 🟡 | Hecho, en el motor y con su ventana (J8.1 a J8.4, J8.6): diálogos con ramas en el paquete, con condiciones, efectos y tiradas, opciones según tu especie y clase («[Enano] …»), opciones bloqueadas que dicen por qué, y sin repetir. Escritos: Brunilda, Giles (1387) e Ismark (Strahd). Falta: enchufarlos en «Hablar» (tras J15.1) y salir de una pelea hablando (J8.5) |
-| **J9** · La historia de cada campaña | ⬜ | Escenas en vez de avisos, hitos, finales y un Diario que se lee como un libro |
+| **J9** · La historia de cada campaña | 🟡 | Hecho, en el motor y con su ventana: **las escenas del hilo, jugadas** (J9.2). En cada hito, la gente habla con su retrato y su expresión, sobre el sitio, y hay una decisión con consecuencia. Escritas: el prólogo de Puerto Alba, los cinco primeros hitos de 1387 y los tres primeros de Strahd. Los finales con epílogos (J4.5). Falta: enchufar las escenas en el juego (tras J15.1), 1387 entero sin conexión (J9.1), capítulos (J9.3), plazos a la vista (J9.5) y el Diario como un libro (J9.6) |
 | **J10** · El mundo de cada campaña | ⬜ | Sitios con cosas que hacer, caminos que se abren, sucesos y secretos |
 | **J11** · Decisiones que pesan | ⬜ | Dentro de la campaña y de una campaña a otra |
 | **J12** · Tableros y peleas | 🟡 | Hecho: **un tablero a partir de un mapa de D&D en imagen** (J12.8 a J12.12). En el editor de tableros, «Subir mapa en cuadrícula» encuentra la cuadrícula, lee muros, suelo, puertas y puentes, y deja nombrar las salas y poner alturas; se juega sobre el mapa limpio. Probado con tu mapa. Falta: que las alturas y los nombres de sala cuenten en juego (tras J15.1), tableros grandes (J12.13) y peleas que se pueden evitar |
@@ -254,6 +254,8 @@ Tus respuestas a D-J11…D-J38. «⏳» significa que está por hacer.
 | **D-J36** | «Hablar» con alguien que tiene diálogo escrito | La ventana de ramas directamente, con «Otras cosas» para sonsacar, convencer y amenazar | ⏳ |
 | **D-J37** | La fuente de 1387 | El paquete | ✅ |
 | **D-J38** | La cabecera en el móvil | Que se vea bien | ⏳ |
+| **D-J39** | ¿Una escena del hilo cumple su propio hito? Por ejemplo, la charla con Karl en «El hambre de los Lobos»: hoy, después de la escena, aún hay que ir a «Hablar con Karl» | Pendiente | Sí, cuando la escena ya es esa charla |
+| **D-J40** | ¿Todos los hitos se abren en la ventana de escena? Los que solo traen texto saldrían como una escena corta del narrador | Pendiente | Sí: sin chat (J18.7), todo lo que se cuenta va a la novela visual |
 
 ---
 
