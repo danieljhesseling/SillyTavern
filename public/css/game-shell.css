@@ -59,6 +59,15 @@ body.game-shell-on {
     --greyCAIbg: var(--gs-bg-dark);
 }
 
+/* J20: en una pantalla de 1000 px o menos (un móvil, una tableta, una ventana estrecha),
+   SillyTavern fija el `body` (mobile-styles.css) y el `html` se queda sin alto. Como el `html`
+   lleva un `translateZ(0)` (style.css), es él la caja de todo lo `fixed`: el juego entero, los
+   dados y los avisos medían 0 px de alto y en el móvil solo se veía el fondo. Con su alto, todo
+   vuelve a su sitio; en una pantalla grande ya lo tenía y no cambia nada. */
+html:has(> body.game-shell-on) {
+    height: 100%;
+}
+
 .gs-root {
     position: fixed;
     inset: 0;
@@ -260,13 +269,15 @@ body.game-shell-on {
     order: 3;
 }
 
-.gs-head > .gs-clock {
+/* El reloj y los botones van en `.gs-head-bar`, que aquí no es una caja (`display: contents`):
+   se colocan en la cabecera como si fueran suyos. En el móvil sí lo es: una fila que se desliza. */
+.gs-head .gs-clock {
     order: 5;
     flex: 1 1 auto;
     min-width: 0;
 }
 
-.gs-head > .gs-tools {
+.gs-head .gs-tools {
     display: flex;
     order: 6;
     flex: 0 0 auto;
@@ -2841,4 +2852,863 @@ body[data-narrator-font="maquina"] #chat .mes:not([is_user="true"]) .mes_text {
 
 .go-advanced:hover {
     color: var(--gs-accent-gold, #e2c27a);
+}
+
+/* ================================================================
+   J20 · Jugar desde el móvil (ROADMAP_SIN_CONEXION). Tres casos:
+
+   - con el dedo (`pointer: coarse`): cada botón, 44 × 44 px como poco (J20.3); sin las
+     teclas pintadas junto a los botones, que no hay teclado; y la pausa con su botón (J20.4);
+   - de pie (≤ 480 px de ancho): la novela a pantalla entera, con el retrato encima de la
+     caja; la cabecera en dos filas cortas, la segunda deslizable; las fichas y la barra de
+     combate en una fila que se desliza; las listas, la pausa y las ventanas, como hojas que
+     suben desde abajo (J20.1, J20.5);
+   - tumbado (≤ 500 px de alto): la cabecera en una fila, y la novela en dos columnas, el
+     retrato a la izquierda y la caja a la derecha.
+
+   En una pantalla grande con ratón no cambia nada: todo va dentro de estas consultas, salvo
+   el botón de pausa, la cruz de las listas y la barra de la cabecera, que allí no se ven.
+   ================================================================ */
+
+/* J20.4: la pausa con su botón, para quien no tiene Esc; y la cruz de las listas, que en el
+   móvil suben desde abajo y tapan el botón que las abrió. Con ratón y teclado no se ven. */
+.gs-pause-open,
+.gs-targets-close {
+    display: none;
+}
+
+.gs-pause-open {
+    order: 3;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border: 1px solid var(--gs-gold-line);
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.35);
+    color: var(--gs-accent-gold);
+    font: inherit;
+    cursor: pointer;
+}
+
+.gs-targets-close {
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 8px;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+}
+
+/* La barra de la cabecera (el reloj y los botones de Diario, Mesa…): con pantalla de sobra no
+   es una caja, y sus dos partes se colocan en la cabecera como siempre. */
+.gs-head-bar {
+    display: contents;
+}
+
+@keyframes gs-sheet-up {
+    from {
+        transform: translateY(24px);
+        opacity: 0;
+    }
+
+    to {
+        transform: none;
+        opacity: 1;
+    }
+}
+
+/* ---------------------------------------------------------------- con el dedo */
+@media (pointer: coarse) {
+    #game-shell button,
+    #game-shell [role="button"],
+    #game-shell .menu_button,
+    body.game-shell-on dialog.popup button,
+    body.game-shell-on dialog.popup [role="button"],
+    body.game-shell-on dialog.popup .menu_button,
+    body.game-shell-on .wm-dice-overlay button,
+    body.game-shell-on .wm-dice-overlay .menu_button {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    /* Las filas de las listas, con el texto en medio de su alto. */
+    #game-shell .gs-target,
+    body.game-shell-on dialog.popup .hp-item {
+        align-items: center;
+    }
+
+    body.game-shell-on dialog.popup .hp-item {
+        justify-content: center;
+    }
+
+    /* La cruz de las ventanas de SillyTavern, del tamaño de un dedo y dentro de la ventana. */
+    body.game-shell-on dialog.popup .popup-button-close {
+        top: 4px;
+        right: 4px;
+        width: 44px;
+        height: 44px;
+        font-size: 26px;
+        text-align: center;
+        line-height: 44px;
+    }
+
+    .gs-pause-open {
+        display: flex;
+    }
+
+    .gs-scene-key,
+    .gs-pause-key {
+        display: none;
+    }
+}
+
+/* ---------------------------------------------------------------- de pie */
+@media (max-width: 480px) {
+    /* La cabecera, en dos filas: arriba lo que tienes entre manos, las escenas y la pausa;
+       abajo el reloj y los botones, en una fila que se desliza. Salir del Modo Juego sigue
+       en la pausa: una cruz junto a la pausa se toca sin querer. */
+    .gs-head {
+        gap: 6px;
+        padding: 6px 8px;
+    }
+
+    .gs-head::after {
+        display: none;
+    }
+
+    .gs-focus {
+        flex: 1 1 0;
+        padding: 0;
+        font-size: 0.85em;
+    }
+
+    .gs-focus-title {
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .gs-focus-hint {
+        display: none;
+    }
+
+    .gs-scenes {
+        gap: 4px;
+    }
+
+    .gs-scene-btn {
+        justify-content: center;
+        padding: 4px 10px;
+    }
+
+    /* Las escenas en su icono; la que se ve, también con su nombre. */
+    .gs-scene-btn:not(.active) .gs-scene-label {
+        display: none;
+    }
+
+    .gs-pause-open {
+        display: flex;
+    }
+
+    .gs-head > .gs-close {
+        display: none;
+    }
+
+    .gs-head-bar {
+        display: flex;
+        order: 5;
+        flex: 1 1 100%;
+        gap: 6px;
+        min-width: 0;
+        overflow-x: auto;
+        overscroll-behavior-x: contain;
+        scrollbar-width: none;
+    }
+
+    .gs-head-bar::-webkit-scrollbar {
+        display: none;
+    }
+
+    .gs-head .gs-clock,
+    .gs-head .gs-tools,
+    .gs-guide {
+        flex: 0 0 auto;
+        flex-wrap: nowrap;
+        margin-left: 0;
+    }
+
+    /* El escenario, casi sin marco: la pantalla es poca. */
+    .gs-stage {
+        padding: 6px;
+    }
+
+    .gs-actions:empty {
+        display: none;
+    }
+
+    /* ---- La novela visual, a pantalla entera: el retrato arriba y la caja abajo ---- */
+    .gs-root[data-scene="dialogue"] .gs-stage > .gs-scene-dialogue {
+        gap: 6px;
+    }
+
+    .gs-root[data-scene="dialogue"] .gs-vn-portrait:not([hidden]) {
+        display: flex;
+        justify-self: center;
+        width: min(72vw, 280px);
+        height: 100%;
+        max-height: 380px;
+        margin: 0;
+    }
+
+    .gs-root[data-scene="dialogue"] .gs-vn-box {
+        gap: 0.6rem;
+        min-height: 0;
+        margin-bottom: 0;
+        padding: 1.5rem 0.8rem 0.7rem;
+    }
+
+    .gs-root[data-scene="dialogue"] .gs-vn-nameplate:not([hidden]) {
+        top: -18px;
+        left: 12px;
+        max-width: calc(100% - 210px);
+        overflow: hidden;
+        padding: 0.3rem 0.9rem;
+        font-size: 1rem;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .gs-root[data-scene="dialogue"] .gs-vn-text {
+        max-height: 30dvh;
+        font-size: calc(1.05rem * var(--gs-text-scale, 1));
+        line-height: 1.5;
+    }
+
+    .gs-root[data-scene="dialogue"] .gs-party-strip {
+        margin-top: 0;
+    }
+
+    /* Mientras se escribe, el teclado se come media pantalla: fuera el retrato y el grupo, y
+       queda lo último que se ha dicho, las fichas y la caja de escribir (J20.4). */
+    .gs-root[data-scene="dialogue"]:has(#send_textarea:focus) .gs-vn-portrait,
+    .gs-root[data-scene="dialogue"]:has(#send_textarea:focus) .gs-party-strip,
+    .gs-root[data-scene="dialogue"]:has(#send_textarea:focus) .gs-head-bar {
+        display: none !important;
+    }
+
+    .gs-root[data-scene="dialogue"]:has(#send_textarea:focus) .gs-vn-text {
+        max-height: 24dvh;
+    }
+
+    /* ---- Las listas (a quién atacar, habilidades, maniobras, tiradas), como hojas ---- */
+    #game-shell .gs-targets {
+        position: fixed;
+        top: auto;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        z-index: 200;
+        min-width: 0;
+        max-height: 62dvh;
+        margin: 0;
+        padding: 6px 10px calc(10px + env(safe-area-inset-bottom, 0px));
+        overflow-y: auto;
+        transform: none;
+        border-width: 1px 0 0;
+        border-color: var(--gs-gold-line);
+        border-radius: 16px 16px 0 0;
+        background: #181410;
+        box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.75);
+        animation: gs-sheet-up 0.18s ease-out;
+    }
+
+    #game-shell .gs-targets-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        font-size: 0.85em;
+    }
+
+    #game-shell .gs-targets-close {
+        display: flex;
+        flex: none;
+    }
+
+    /* ---- La pausa, como una hoja que sube desde abajo ---- */
+    .gs-pause {
+        align-items: flex-end;
+        padding: 0;
+    }
+
+    .gs-pause-card {
+        width: 100%;
+        min-width: 0;
+        max-height: 100%;
+        box-sizing: border-box;
+        padding: 14px 14px calc(14px + env(safe-area-inset-bottom, 0px));
+        border-radius: 16px 16px 0 0;
+        animation: gs-sheet-up 0.18s ease-out;
+    }
+
+    /* ---- Las ventanas del juego: hojas a todo lo ancho, desde abajo ---- */
+    /* Opacas: en un teléfono la hoja tapa casi todo, y lo de detrás se leía entre sus líneas. */
+    body.game-shell-on dialog.popup {
+        width: 100vw;
+        min-width: 0;
+        max-width: 100vw !important;
+        max-height: 94dvh;
+        margin: auto 0 0;
+        border-radius: 16px 16px 0 0;
+        background-color: var(--gs-bg-dark);
+    }
+
+    body.game-shell-on dialog.popup:has(.gs-panel) .popup-content {
+        padding: 16px 14px 4px;
+    }
+
+    body.game-shell-on dialog.popup:has(.gs-panel) .popup-controls {
+        padding: 10px 14px calc(12px + env(safe-area-inset-bottom, 0px));
+    }
+
+    /* Las que son una pantalla (crear personaje, la ficha, el tablón, el selector de clase),
+       a pantalla entera. */
+    body.game-shell-on dialog.popup.large_dialogue_popup,
+    body.game-shell-on dialog.popup:has(.vt-root),
+    body.game-shell-on dialog.popup:has(.hc-picker) {
+        width: 100vw;
+        height: 100dvh !important;
+        max-height: 100dvh;
+        margin: 0;
+        border-radius: 0;
+    }
+
+    body.game-shell-on dialog.popup.large_dialogue_popup .popup-body,
+    body.game-shell-on dialog.popup:has(.vt-root) .popup-body,
+    body.game-shell-on dialog.popup:has(.hc-picker) .popup-body {
+        max-height: none;
+    }
+
+    /* A pantalla entera, opacas: la ficha y el selector (que va encima de crear personaje)
+       dejaban ver lo de debajo, y se leían las dos cosas a la vez. */
+    body.game-shell-on dialog.popup.large_dialogue_popup,
+    body.game-shell-on dialog.popup:has(.hc-picker) {
+        background-color: var(--gs-bg-dark);
+    }
+
+    /* El tablón y los mercenarios: una columna, con menos margen. */
+    .vt-head {
+        padding: 14px 14px 12px;
+        border-radius: 0;
+    }
+
+    .vt-grid,
+    .vt-grid.vt-small {
+        grid-template-columns: minmax(0, 1fr);
+        padding: 12px 14px;
+    }
+
+    .vt-section,
+    .vt-note {
+        margin-right: 14px;
+        margin-left: 14px;
+    }
+
+    .hb-foot {
+        padding: 0 14px calc(14px + env(safe-area-inset-bottom, 0px));
+    }
+
+    /* ---- El título ---- */
+    .gs-root[data-scene="title"] .gs-title {
+        font-size: 1.8em;
+    }
+
+    .gs-root[data-scene="title"] .gs-scene-dialogue:has(> .gs-menu[data-view="menu"]) {
+        align-content: safe center;
+    }
+
+    .gs-menu-btn {
+        width: min(420px, 100%);
+    }
+
+    /* ---- Explorar: una columna ---- */
+    .gs-places {
+        padding: 12px 6px 24px;
+    }
+
+    .gs-here-name {
+        font-size: 1.5em;
+    }
+
+    .gs-explore-dashboard {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 18px;
+    }
+
+    /* ---- El tablero: a lo ancho, con su alto, y el escenario se desplaza ---- */
+    .gs-root[data-scene="combat"] .gs-scene-map {
+        display: block;
+    }
+
+    .gs-root[data-scene="combat"] .gs-scene {
+        height: auto;
+    }
+
+    .gs-root[data-scene="combat"] .gs-scene .gs-adopted,
+    .gs-root[data-scene="combat"] .gs-adopted > .world-map-collection,
+    .gs-root[data-scene="combat"] .gs-adopted .wm-location-shell,
+    .gs-root[data-scene="combat"] .gs-adopted .wm-location-content {
+        height: auto;
+    }
+
+    .gs-adopted .wm-location-content > [data-map-root] > .wm-container {
+        flex: none;
+        height: min(80vw, 54dvh) !important;
+    }
+
+    /* ---- La barra de combate: el turno arriba y los botones en una fila que se desliza ---- */
+    .gs-actions {
+        flex-wrap: wrap;
+        gap: 4px 10px;
+        padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px));
+    }
+
+    .gs-actions-status {
+        flex: 1 1 100%;
+        flex-flow: row wrap;
+        align-items: baseline;
+        gap: 2px 12px;
+        min-width: 0;
+    }
+
+    .gs-intents {
+        flex: 1 1 100%;
+        margin: 0;
+    }
+
+    .gs-actions-buttons {
+        flex: 1 1 100%;
+        flex-wrap: nowrap;
+        gap: 6px;
+        min-width: 0;
+        overflow-x: auto;
+        overscroll-behavior-x: contain;
+        scrollbar-width: none;
+    }
+
+    .gs-actions-buttons > .gs-btn {
+        flex: 0 0 auto;
+        white-space: nowrap;
+    }
+
+    .gs-btn-quiet {
+        margin-left: 0;
+    }
+}
+
+/* ---------------------------------------------------------------- de pie o tumbado */
+@media (max-width: 480px), (orientation: landscape) and (max-height: 500px) and (max-width: 1000px) {
+    /* En pausa vuelve la barra de SillyTavern, y con ella su cajón de la derecha, el del grupo,
+       que el juego abre al entrar en un tablero. En el móvil ese cajón ocupa la pantalla entera
+       y tapaba el menú de pausa. En el juego no hace falta: su tablero ya está en la escena. */
+    body.game-shell-on #right-nav-panel {
+        display: none !important;
+    }
+
+    /* Las fichas de acción, en una sola fila que se desliza con el dedo (J20.1). La lista de
+       tiradas sale como una hoja, fija, así que la fila no la recorta. */
+    #game-shell .gs-chips {
+        flex-wrap: nowrap;
+        justify-content: flex-start;
+        overflow-x: auto;
+        overscroll-behavior-x: contain;
+        scroll-snap-type: x proximity;
+        scrollbar-width: none;
+        padding: 0 0 2px;
+    }
+
+    #game-shell .gs-chips::-webkit-scrollbar {
+        display: none;
+    }
+
+    #game-shell .gs-chip-action {
+        flex: 0 0 auto;
+        scroll-snap-align: start;
+        white-space: nowrap;
+    }
+
+    /* «Registro» y «Ocultar UI», en el borde de arriba de la caja, a la derecha: debajo no
+       hay sitio que perder. */
+    .gs-root[data-scene="dialogue"] .gs-vn-controls {
+        top: -22px;
+        right: 10px;
+        bottom: auto;
+        gap: 6px;
+    }
+
+    .gs-root[data-scene="dialogue"] .gs-vn-control {
+        justify-content: center;
+        padding: 0 12px;
+        border: 1px solid var(--gs-gold-line);
+        border-radius: 999px;
+        background: #181410;
+        font-size: 0.72rem;
+    }
+
+    /* El registro abierto tapa casi toda la escena: en un teléfono, 190 px de hueco son media
+       pantalla. */
+    .gs-root[data-scene="dialogue"].gs-vn-log .gs-chat-slot {
+        height: calc(100% - 30px);
+    }
+
+    /* El grupo, en una fila que se desliza, con las tarjetas más estrechas. */
+    #game-shell .gs-party-strip {
+        flex-wrap: nowrap;
+        gap: 6px;
+        overflow-x: auto;
+        overscroll-behavior-x: contain;
+        scrollbar-width: none;
+    }
+
+    #game-shell .gs-party-strip .gs-chip {
+        flex: 0 0 auto;
+        gap: 8px;
+        min-width: 150px;
+        padding: 5px 8px;
+    }
+
+    #game-shell .gs-party-strip .gs-chip-avatar {
+        width: 34px;
+        height: 34px;
+    }
+
+    /* Las opciones: un valor largo («Normal · Heridas, La cuenta…») en una línea ensanchaba
+       la ventana por la derecha; aquí se parte, a la derecha de su fila. */
+    .go-value {
+        flex-shrink: 1;
+        max-width: 50%;
+        white-space: normal;
+        text-align: right;
+    }
+}
+
+/* ---------------------------------------------------------------- tumbado */
+@media (orientation: landscape) and (max-height: 500px) and (max-width: 1000px) {
+    /* La cabecera, en una fila: lo que tienes entre manos, la barra deslizable, las escenas
+       y la pausa. */
+    .gs-head {
+        flex-wrap: nowrap;
+        gap: 6px;
+        padding: 4px 8px;
+    }
+
+    .gs-head::after {
+        display: none;
+    }
+
+    .gs-focus {
+        flex: 1 1 0;
+        min-width: 110px;
+        padding: 0;
+        font-size: 0.85em;
+    }
+
+    .gs-focus-title {
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .gs-focus-hint {
+        display: none;
+    }
+
+    .gs-head-bar {
+        display: flex;
+        order: 2;
+        flex: 1.4 1 0;
+        gap: 6px;
+        min-width: 0;
+        overflow-x: auto;
+        overscroll-behavior-x: contain;
+        scrollbar-width: none;
+    }
+
+    .gs-head-bar::-webkit-scrollbar {
+        display: none;
+    }
+
+    .gs-head .gs-clock,
+    .gs-head .gs-tools,
+    .gs-guide {
+        flex: 0 0 auto;
+        flex-wrap: nowrap;
+        margin-left: 0;
+    }
+
+    .gs-scenes {
+        order: 3;
+        gap: 4px;
+        margin-left: 0;
+    }
+
+    .gs-scene-btn {
+        justify-content: center;
+        padding: 4px 10px;
+    }
+
+    .gs-scene-btn:not(.active) .gs-scene-label {
+        display: none;
+    }
+
+    .gs-pause-open {
+        display: flex;
+        order: 4;
+    }
+
+    .gs-head > .gs-close {
+        display: none;
+    }
+
+    .gs-stage {
+        padding: 4px 8px;
+    }
+
+    .gs-actions:empty {
+        display: none;
+    }
+
+    /* ---- La novela: el retrato a la izquierda, la caja a la derecha ---- */
+    .gs-root[data-scene="dialogue"] .gs-stage > .gs-scene-dialogue,
+    .gs-root[data-scene="dialogue"] .gs-stage:not(:has(.wm-container)) > .gs-scene-dialogue {
+        grid-template-columns: minmax(0, 28%) minmax(0, 1fr);
+        grid-template-rows: minmax(0, 1fr) auto;
+        grid-template-areas:
+            "stage box"
+            "stage input";
+        gap: 4px 10px;
+    }
+
+    /* Sin nadie a quien pintar, la caja se queda con todo el ancho. La columna del retrato se
+       queda en nada y no se quita: sin su área, lo que va en ella (los botones de rehacer)
+       abría filas nuevas y la caja subía a tapar la cabecera. */
+    .gs-root[data-scene="dialogue"] .gs-stage > .gs-scene-dialogue:has(> .gs-vn-portrait[hidden]) {
+        grid-template-columns: 0 minmax(0, 1fr);
+        column-gap: 0;
+    }
+
+    .gs-root[data-scene="dialogue"] .gs-speaker {
+        min-height: 0;
+    }
+
+    .gs-root[data-scene="dialogue"] .gs-vn-portrait:not([hidden]) {
+        display: flex;
+        justify-self: stretch;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+    }
+
+    .gs-root[data-scene="dialogue"] .gs-party-strip {
+        display: none;
+    }
+
+    .gs-root[data-scene="dialogue"] .gs-vn-box {
+        align-self: end;
+        gap: 0.5rem;
+        min-height: 0;
+        margin: 24px 0 0;
+        padding: 1.3rem 0.9rem 0.6rem;
+    }
+
+    .gs-root[data-scene="dialogue"] .gs-vn-nameplate:not([hidden]) {
+        top: -18px;
+        left: 12px;
+        padding: 0.25rem 0.9rem;
+        font-size: 0.95rem;
+    }
+
+    .gs-root[data-scene="dialogue"] .gs-vn-text {
+        max-height: 30dvh;
+        font-size: calc(1rem * var(--gs-text-scale, 1));
+        line-height: 1.45;
+    }
+
+    /* Con el teclado fuera no queda casi nada de alto: la caja de escribir y lo último dicho. */
+    .gs-root:has(#send_textarea:focus) .gs-head,
+    .gs-root[data-scene="dialogue"]:has(#send_textarea:focus) .gs-vn-portrait,
+    .gs-root[data-scene="dialogue"]:has(#send_textarea:focus) .gs-vn-box > .gs-chips {
+        display: none !important;
+    }
+
+    /* ---- El título: el menú en dos columnas ---- */
+    .gs-root[data-scene="title"] .gs-title {
+        padding: 2px 0;
+        font-size: 1.5em;
+    }
+
+    .gs-root[data-scene="title"] .gs-title::after {
+        margin-top: 8px;
+    }
+
+    .gs-root[data-scene="title"] .gs-scene-dialogue:has(> .gs-menu[data-view="menu"]) {
+        align-content: safe center;
+    }
+
+    .gs-root[data-scene="title"] .gs-menu[data-view="menu"] {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 380px));
+        align-items: stretch;
+        justify-content: center;
+        gap: 8px;
+        padding: 8px 0 4px;
+    }
+
+    .gs-menu[data-view="menu"] > .gs-menu-btn {
+        width: 100%;
+        padding: 6px 12px 6px 8px;
+    }
+
+    .gs-menu[data-view="menu"] > .gs-menu-leave {
+        grid-column: 1 / -1;
+        justify-self: center;
+    }
+
+    /* ---- Explorar y el tablero ---- */
+    .gs-places {
+        padding: 10px 8px 20px;
+    }
+
+    .gs-here.ex-head {
+        margin-bottom: 12px;
+    }
+
+    .gs-explore-dashboard {
+        grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+        gap: 14px;
+    }
+
+    /* El tablero a la izquierda y el turno a la derecha, como en grande; el registro, al pie
+       de la columna de la derecha. Con 390 px de alto no cabe todo: el tablero va con su alto
+       (casi la pantalla) y el escenario se desplaza para ver lo de debajo. */
+    .gs-root[data-scene="combat"] .gs-scene {
+        height: auto;
+    }
+
+    .gs-root[data-scene="combat"] .gs-scene .gs-adopted,
+    .gs-root[data-scene="combat"] .gs-adopted > .world-map-collection,
+    .gs-root[data-scene="combat"] .gs-adopted .wm-location-shell {
+        height: auto;
+    }
+
+    .gs-adopted .wm-location-content {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(200px, 34%);
+        grid-template-rows: auto auto auto;
+        height: auto;
+    }
+
+    .gs-adopted .wm-location-content > [data-map-root] {
+        grid-row: 2 / -1;
+    }
+
+    .gs-adopted .wm-location-content > [data-map-root] > .wm-container {
+        flex: none;
+        height: 64dvh !important;
+    }
+
+    .gs-adopted .wm-location-content > .combat-log-panel {
+        grid-column: 2;
+        grid-row: 3;
+        max-height: 50dvh;
+    }
+
+    /* La barra de combate, en una fila. */
+    .gs-actions {
+        gap: 10px;
+        padding: 4px 8px;
+    }
+
+    .gs-actions-status {
+        flex: 0 0 auto;
+        min-width: 0;
+    }
+
+    .gs-actions-buttons {
+        flex: 1 1 0;
+        flex-wrap: nowrap;
+        gap: 6px;
+        min-width: 0;
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+
+    .gs-actions-buttons > .gs-btn {
+        flex: 0 0 auto;
+        white-space: nowrap;
+    }
+
+    .gs-btn-quiet {
+        margin-left: 0;
+    }
+
+    /* Las listas, como hojas desde abajo, igual que de pie. */
+    #game-shell .gs-targets {
+        position: fixed;
+        top: auto;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        z-index: 200;
+        width: min(560px, 100%);
+        min-width: 0;
+        max-height: 80dvh;
+        margin: 0 auto;
+        padding: 6px 10px 10px;
+        overflow-y: auto;
+        transform: none;
+        border-radius: 16px 16px 0 0;
+        background: #181410;
+        box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.75);
+        animation: gs-sheet-up 0.18s ease-out;
+    }
+
+    #game-shell .gs-targets-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+    }
+
+    #game-shell .gs-targets-close {
+        display: flex;
+        flex: none;
+    }
+
+    /* Las ventanas: todo el alto, y las que son una pantalla, la pantalla entera. */
+    body.game-shell-on dialog.popup {
+        max-width: 100vw !important;
+        max-height: 100dvh;
+        background-color: var(--gs-bg-dark);
+    }
+
+    body.game-shell-on dialog.popup.large_dialogue_popup,
+    body.game-shell-on dialog.popup:has(.vt-root),
+    body.game-shell-on dialog.popup:has(.hc-picker) {
+        width: 100vw;
+        height: 100dvh !important;
+        max-height: 100dvh;
+        margin: 0;
+        border-radius: 0;
+    }
+
+    body.game-shell-on dialog.popup .popup-body {
+        max-height: 100dvh;
+    }
+
+    body.game-shell-on dialog.popup.large_dialogue_popup,
+    body.game-shell-on dialog.popup:has(.hc-picker) {
+        background-color: var(--gs-bg-dark);
+    }
 }

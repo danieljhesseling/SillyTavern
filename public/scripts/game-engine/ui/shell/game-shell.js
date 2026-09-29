@@ -494,6 +494,25 @@ function appendArt(row, art) {
 }
 
 /**
+ * El rótulo de una lista (a quién atacar, habilidades, maniobras, tiradas) y su cruz. La cruz
+ * solo se ve en el móvil (J20.1): allí la lista sube desde abajo como una hoja y tapa el botón
+ * que la abrió, que era la única forma de cerrarla.
+ *
+ * @param {HTMLElement} list
+ * @param {string} text
+ */
+function listTitle(list, text) {
+    const title = el('div', 'gs-targets-title', text);
+    const close = makeButton('gs-targets-close');
+    close.title = 'Cerrar';
+    close.setAttribute('aria-label', 'Cerrar');
+    close.appendChild(el('i', 'fa-solid fa-xmark'));
+    close.addEventListener('click', () => list.remove());
+    title.appendChild(close);
+    list.appendChild(title);
+}
+
+/**
  * La lista de habilidades propias, con el mismo gesto que la de objetivos.
  *
  * Una que necesita aliado pregunta a quien: elegir persona es elegir, y decidirlo por ti
@@ -510,7 +529,7 @@ function toggleAbilities(footer, abilities) {
     }
 
     const list = el('div', 'gs-targets gs-abilities');
-    list.appendChild(el('div', 'gs-targets-title', 'Lo que sabes hacer'));
+    listTitle(list, 'Lo que sabes hacer');
 
     for (const ability of abilities) {
         const row = makeButton('gs-target');
@@ -528,7 +547,7 @@ function toggleAbilities(footer, abilities) {
 
             // Sobre un aliado: la misma lista, un paso mas adentro.
             list.textContent = '';
-            list.appendChild(el('div', 'gs-targets-title', `${ability.label} \u2014 \u00bfsobre quien?`));
+            listTitle(list, `${ability.label} \u2014 \u00bfsobre quien?`);
             for (const ally of ability.allies) {
                 const pick = makeButton('gs-target');
                 pick.appendChild(el('span', 'gs-target-name', ally.name));
@@ -562,7 +581,7 @@ function toggleManeuvers(footer, maneuvers) {
     }
 
     const list = el('div', 'gs-targets gs-maneuvers');
-    list.appendChild(el('div', 'gs-targets-title', 'En vez de pegar'));
+    listTitle(list, 'En vez de pegar');
 
     for (const maneuver of maneuvers) {
         const row = makeButton('gs-target');
@@ -578,7 +597,7 @@ function toggleManeuvers(footer, maneuvers) {
                 return;
             }
             list.textContent = '';
-            list.appendChild(el('div', 'gs-targets-title', `${maneuver.label} — ¿a quien?`));
+            listTitle(list, `${maneuver.label} — ¿a quien?`);
             for (const target of maneuver.targets) {
                 const pick = makeButton('gs-target');
                 pick.appendChild(el('span', 'gs-target-name', target.name));
@@ -665,7 +684,7 @@ function toggleChecks(row, checks) {
     }
 
     const list = el('div', 'gs-targets gs-checks');
-    list.appendChild(el('div', 'gs-targets-title', 'Intentarlo: el dado decide, no la prosa'));
+    listTitle(list, 'Intentarlo: el dado decide, no la prosa');
     for (const check of checks) {
         const pick = makeButton('gs-target');
         pick.dataset.check = check.id;
@@ -927,7 +946,7 @@ function toggleTargets(footer, bar) {
     }
 
     const list = el('div', 'gs-targets');
-    list.appendChild(el('div', 'gs-targets-title', 'A tu alcance'));
+    listTitle(list, 'A tu alcance');
     for (const target of bar.targets) {
         const row = makeButton('gs-target');
         appendArt(row, firstArt('creature', { name: target.name }));
@@ -1750,11 +1769,23 @@ export function openGameShell(shellOptions) {
     const head = el('header', 'gs-head');
     head.appendChild(el('div', 'gs-head-state'));
     head.appendChild(el('div', 'gs-focus'));
-    head.appendChild(el('div', 'gs-clock'));
+    // El reloj y los botones van juntos en una barra. En pantalla grande no es una caja
+    // (`display: contents`) y se colocan como siempre; en el móvil es una fila que se desliza
+    // (J20.1).
+    const bar = el('div', 'gs-head-bar');
+    bar.appendChild(el('div', 'gs-clock'));
     // Diario, Mesa, Mapa, Grupo, avisos, dados y «¿Qué hago?»: abajo a la derecha, junto al
     // reloj, y no en la línea de la misión, que es para leerla (Daniel, 2026-09-27).
-    head.appendChild(el('div', 'gs-tools'));
+    bar.appendChild(el('div', 'gs-tools'));
+    head.appendChild(bar);
     head.appendChild(el('nav', 'gs-scenes'));
+    // J20.4: la pausa, con su botón, para quien juega sin teclado. Con ratón no se ve (Esc).
+    const pause = makeButton('gs-pause-open');
+    pause.title = 'Pausa (Esc)';
+    pause.setAttribute('aria-label', 'Pausa');
+    pause.appendChild(el('i', 'fa-solid fa-bars'));
+    pause.addEventListener('click', () => setPaused(!paused));
+    head.appendChild(pause);
     const close = makeButton('gs-close');
     close.title = 'Salir del Modo Juego (Esc)';
     close.appendChild(el('i', 'fa-solid fa-xmark'));

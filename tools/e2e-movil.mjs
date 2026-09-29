@@ -6,8 +6,9 @@
  *
  *   título → Jugar sin conexión → tu personaje (y el selector de clase) → la novela visual →
  *   la pausa y las opciones con su botón → la ficha → la caja de escribir con el teclado del
- *   móvil fuera → la pelea de la bodega, a toques → explorar (la tienda) → contratar → el
- *   tablón → Strahd → su final → volver al gremio desde él.
+ *   móvil fuera → la primera pelea (el ratero del muelle, J2.1), a toques → hablar con Tomás
+ *   → explorar (la tienda) → contratar → el tablón → Strahd → su final → volver al gremio
+ *   desde él.
  *
  * En cada paso, en vertical (390 × 844) y en horizontal (844 × 390): que nada se salga por los
  * lados (J20.1, J20.5) y que cada botón a la vista mida 44 × 44 px o más (J20.3).
@@ -306,9 +307,8 @@ try {
         return /Gremio/.test(now.world) && now.party[0] === 'Nerea';
     }, 60000);
     check('empieza en el gremio, con Nerea', inHub, JSON.stringify(await state()));
-    await until(() => chatHas(/Baja a la bodega/), 20000);
-    const canFight = await until(async () => (await chips()).some(c => /^Iniciar combate/.test(c)), 20000);
-    check('en la bodega, la fila ofrece pelear', canFight, JSON.stringify(await chips()));
+    const canFight = await until(async () => (await chips()).some(c => /^Iniciar combate/.test(c)), 30000);
+    check('al llegar, la fila ofrece la primera pelea', canFight, JSON.stringify(await chips()));
 
     // 3. La novela visual: a pantalla entera, la caja abajo y las fichas en una fila que se desliza.
     await page.waitForTimeout(800);
@@ -409,8 +409,9 @@ try {
     await page.setViewportSize(PORTRAIT);
     await page.waitForTimeout(600);
 
-    // 7. La pelea de la bodega, a toques: las ratas vienen; se ataca con «Atacar» y su lista,
-    // y se pasa el turno con «Fin de turno».
+    // 7. La primera pelea (el ratero del muelle), a toques: el enemigo viene; se ataca con
+    // «Atacar» y su lista, y se pasa el turno con «Fin de turno». Andar por el tablero a toques
+    // es J20.2, todavía por hacer.
     await noToasts();
     await tapChip(/^Iniciar combate/);
     const fighting = await until(async () => (await state()).fighting, 10000);
@@ -452,7 +453,7 @@ try {
         await page.waitForTimeout(500);
     }
     const wonByTaps = !(await state()).fighting;
-    check('la bodega se gana a toques: «Atacar», su lista y «Fin de turno» (J20.9)', wonByTaps && fight.attacks > 0, JSON.stringify(fight));
+    check('la primera pelea se gana a toques: «Atacar», su lista y «Fin de turno» (J20.9)', wonByTaps && fight.attacks > 0, JSON.stringify(fight));
     if (!wonByTaps) {
         // Para seguir la vuelta: la pelea se acaba como en e2e-gremio.
         await page.evaluate(async () => {
@@ -466,8 +467,28 @@ try {
         }
     }
     await tapDice();
-    const tablonOpen = await until(() => chatHas(/apunta tu nombre en el libro del gremio/), 20000);
-    check('ganada la bodega, el hilo sigue: el tablón', tablonOpen);
+    // La tarjeta de la victoria se cierra tocándola, como quien la ha leído.
+    const victory = page.locator('.vs-card');
+    if (await victory.count() > 0) await victory.first().tap({ timeout: 4000 }).catch(() => {});
+    // La historia sigue: en el muelle, Tomás da las gracias (J2.1); antes era el tablón.
+    const moved = await until(() => chatHas(/Soy Tomás|apunta tu nombre en el libro del gremio/), 20000);
+    check('ganada la primera pelea, la historia sigue', moved && !(await state()).fighting);
+    await noToasts();
+
+    // 7b. Hablar con alguien: la ventana de la charla, con sus temas (J20.5).
+    const talk = (await chips()).find(c => /^Hablar con /.test(c));
+    if (talk) {
+        await tapChip(new RegExp(`^${talk}$`));
+        const talking = await page.waitForSelector('.popup:visible .tk-root', { timeout: 10000 }).then(() => true).catch(() => false);
+        check(`«${talk}» abre la charla`, talking);
+        if (talking) {
+            await page.waitForTimeout(500);
+            await look('charla');
+            await page.locator('.popup:visible:has(.tk-root) .popup-button-ok').first().tap({ timeout: 5000 }).catch(() => {});
+            await page.waitForSelector('.tk-root', { state: 'detached', timeout: 5000 }).catch(() => {});
+            await page.waitForTimeout(500);
+        }
+    }
     await noToasts();
 
     // 8. Explorar: aquí mismo (la tienda), los tableros y viajar, en una columna.

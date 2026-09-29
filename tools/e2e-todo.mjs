@@ -8,7 +8,7 @@
  * dos mitades (`e2e-campaign.mjs --parte a` y `--parte b`), que también corren a la vez.
  *
  * Uso:
- *   node tools/e2e-todo.mjs            # unitarios, rápido, sin modelo, el gremio y la vuelta larga en dos mitades
+ *   node tools/e2e-todo.mjs            # unitarios, rápido, sin modelo, el gremio, el móvil y la vuelta larga en dos mitades
  *   node tools/e2e-todo.mjs --rapido   # sin la vuelta larga: lo de cada cambio
  *
  * Cada prueba escribe su registro entero en una carpeta temporal, que se dice al final; aquí
@@ -42,6 +42,10 @@ const jobs = [
     { name: 'gremio', kind: 'e2e', args: ['tools/e2e-gremio.mjs'] },
     // J2.3: saltar la prueba de la bodega. Corto: el personaje, saltarla y el tablón.
     { name: 'saltar la prueba', kind: 'e2e', args: ['tools/e2e-saltar-prueba.mjs'] },
+    // J5.4: añadir una campaña al tablón desde un archivo, empezarla y volver.
+    { name: 'añadir campaña', kind: 'e2e', args: ['tools/e2e-importar-campana.mjs'] },
+    // J20.9: la vuelta en un móvil, a toques y sin teclado, de pie y tumbado (puerto 8135).
+    { name: 'móvil', kind: 'e2e', args: ['tools/e2e-movil.mjs'] },
     ...(QUICK ? [] : /** @type {Job[]} */ ([
         { name: 'vuelta 1-48', kind: 'e2e', args: ['tools/e2e-campaign.mjs', '--parte', 'a', '--port', '8126'] },
         { name: 'vuelta 49-73', kind: 'e2e', args: ['tools/e2e-campaign.mjs', '--parte', 'b', '--port', '8127'] },

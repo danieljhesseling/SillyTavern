@@ -3639,6 +3639,55 @@ input[type="file"].tl-file {
     white-space: nowrap;
 }
 
+/* J5.4: añadir una campaña desde un archivo. La tarjeta, mientras comprueba, no se pulsa; lo
+   que pasa sale bajo las tarjetas, en dorado si entró y en naranja si no, con sus fallos. */
+.hb-card.hb-add.is-busy {
+    cursor: progress;
+    opacity: 0.6;
+}
+
+.hb-card.is-new {
+    border-color: var(--gs-accent-gold);
+    box-shadow: 0 0 0 1px var(--gs-accent-gold);
+}
+
+.hb-import {
+    margin: 0 26px 14px;
+    padding: 10px 14px;
+    border: 1px solid var(--gs-accent-gold);
+    border-radius: 8px;
+    font-size: 0.88rem;
+    line-height: 1.45;
+}
+
+.hb-import.is-bad {
+    border-color: #e6a15a;
+    background: rgba(230, 161, 90, 0.08);
+}
+
+.hb-import-title {
+    font-weight: bold;
+}
+
+.hb-import.is-ok .hb-import-title {
+    color: var(--gs-accent-gold);
+}
+
+.hb-import.is-bad .hb-import-title {
+    color: #e6a15a;
+}
+
+.hb-import-list {
+    margin: 6px 0;
+    padding-left: 20px;
+}
+
+.hb-import-list code {
+    font-size: 0.78rem;
+    opacity: 0.7;
+    word-break: break-all;
+}
+
 /* J1.6 y J18.1: tus personajes. Su cara, si la tiene, ocupa el sitio del icono; el que va
    ahora con el grupo, con el borde dorado. En el tablón no se pulsa: ya va. */
 .hb-hero .vt-face img {
