@@ -51,18 +51,23 @@ const ITEM_FOLDERS = ['armas', 'armaduras', 'trastos'];
 const SERVICE_PLACES = { posada: 'taberna', herreria: 'herreria', tienda: 'tienda', templo: 'templo', tablon: 'gremio' };
 
 /** Los biomas de las casillas del tablero: cada uno trae su suelo y su muro (`tablero/`). */
-export const BOARD_BIOMES = ['mazmorra', 'madera', 'exterior', 'cueva'];
+export const BOARD_BIOMES = ['mazmorra', 'madera', 'exterior', 'cueva', 'calle', 'nieve', 'pantano', 'cripta'];
 
 /**
  * Las palabras del nombre de un tablero que dicen dónde se pelea. Lo que no dice nada es
- * piedra: una mazmorra, una bodega, un sótano.
+ * piedra: una mazmorra, una bodega, un sótano. Gana la primera lista que acierte, así que
+ * lo más concreto (una cripta, la nieve, un pantano, una calle) va antes que el exterior.
  *
  * @type {Array<[string, string[]]>}
  */
 const BIOME_WORDS = [
+    ['cripta', ['cripta', 'catacumba', 'catacumbas', 'tumba', 'mausoleo', 'panteon', 'osario', 'sepulcro']],
     ['cueva', ['cueva', 'gruta', 'caverna', 'mina', 'guarida', 'cubil', 'madriguera', 'tunel']],
-    ['exterior', ['bosque', 'claro', 'claros', 'camino', 'sendero', 'campo', 'prado', 'plaza', 'calle', 'callejon', 'patio',
-        'jardin', 'lago', 'orilla', 'rio', 'puente', 'colina', 'monte', 'cruce', 'peaje', 'campamento', 'aldea', 'pueblo',
+    ['nieve', ['nieve', 'nevado', 'nevada', 'helado', 'helada', 'hielo', 'glaciar', 'ventisca', 'escarcha']],
+    ['pantano', ['pantano', 'cienaga', 'marisma', 'estanque', 'charca', 'turbera', 'lodazal']],
+    ['calle', ['calle', 'callejon', 'plaza', 'mercado', 'aldea', 'pueblo', 'ciudad', 'barrio', 'arrabal']],
+    ['exterior', ['bosque', 'claro', 'claros', 'camino', 'sendero', 'campo', 'prado', 'patio',
+        'jardin', 'lago', 'orilla', 'rio', 'puente', 'colina', 'monte', 'cruce', 'peaje', 'campamento',
         'puerto', 'muelle', 'playa', 'cementerio', 'huerto', 'granja', 'asedio', 'valle', 'ruinas']],
     ['madera', ['taberna', 'posada', 'casa', 'mansion', 'cuarto', 'habitacion', 'salon', 'comedor', 'tienda', 'molino',
         'cabana', 'establo', 'almacen', 'burdel']],
@@ -91,7 +96,9 @@ export function boardBiome({ biome = '', name = '', type = '' } = {}) {
         if (list.some(word => words.includes(`-${word}-`))) return found;
     }
     const kind = slugify(type);
-    if (/^(wilderness|camp|outdoor|bosque|llanura|pantano|montana|costa|exterior)$/.test(kind)) return 'exterior';
+    if (/^(swamp|marsh|pantano|cienaga)$/.test(kind)) return 'pantano';
+    if (/^(snow|tundra|nieve|glaciar)$/.test(kind)) return 'nieve';
+    if (/^(wilderness|camp|outdoor|bosque|llanura|montana|costa|exterior)$/.test(kind)) return 'exterior';
     if (/^(cave|cueva|mine|mina)$/.test(kind)) return 'cueva';
     return 'mazmorra';
 }
