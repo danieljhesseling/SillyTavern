@@ -263,11 +263,43 @@ try {
         box: (document.querySelector('#game-shell .gs-vn-box')?.getBoundingClientRect().width || 0),
         text: (document.querySelector('#game-shell .gs-vn-text')?.textContent || '').trim().slice(0, 80),
         chips: document.querySelectorAll('#game-shell .gs-vn-box .gs-chip-action').length,
-        chat: getComputedStyle(/** @type {Element} */ (document.querySelector('#chat'))).display,
+        chat: window.getComputedStyle(/** @type {Element} */ (document.querySelector('#chat'))).display,
     }));
     check('fuera del tablero, la historia va en la caja de la novela visual, con las fichas dentro (J18.3)',
         novel.scene === 'dialogue' && novel.box > 600 && novel.text.length > 0 && novel.chips > 0 && novel.chat === 'none', JSON.stringify(novel));
     if (SHOT) await page.screenshot({ path: `${SHOT}.novela.png` });
+
+    // J0.4: las opciones son del juego, con sus palabras; sin conexión, sin panel de la API.
+    await page.evaluate(() => /** @type {HTMLElement|null} */ (document.activeElement)?.blur());
+    await page.keyboard.press('Escape');
+    await page.waitForSelector('#game-shell .gs-pause', { timeout: 5000 }).catch(() => {});
+    await page.locator('#game-shell .gs-pause-btn').filter({ hasText: 'Opciones' }).first().click({ timeout: 5000 }).catch(() => {});
+    await page.waitForSelector('.go-root', { timeout: 8000 }).catch(() => {});
+    const optionRows = () => page.evaluate(() => [...document.querySelectorAll('.go-root .go-row')]
+        .map(r => `${r.getAttribute('data-option')}=${(r.querySelector('.go-value')?.textContent || '').trim()}`));
+    const before = await optionRows();
+    await page.locator('.go-root .go-row[data-option="size"]').click({ timeout: 4000 }).catch(() => {});
+    await page.waitForTimeout(300);
+    const bigger = await page.evaluate(() => ({
+        scale: window.getComputedStyle(document.documentElement).getPropertyValue('--gs-text-scale').trim(),
+        row: (document.querySelector('.go-root .go-row[data-option="size"] .go-value')?.textContent || '').trim(),
+    }));
+    // Y se deja como estaba, para lo que sigue.
+    for (let i = 0; i < 2; i++) await page.locator('.go-root .go-row[data-option="size"]').click({ timeout: 4000 }).catch(() => {});
+    const optionsSeen = {
+        rows: before, bigger,
+        advanced: await page.locator('.go-root .go-advanced').count(),
+        apiOpen: await page.evaluate(() => document.querySelector('#rm_api_block')?.closest('.drawer-content')?.classList.contains('openDrawer') ?? false),
+    };
+    await page.locator('.popup:has(.go-root) .popup-button-ok').click({ timeout: 4000 }).catch(() => {});
+    await page.waitForTimeout(300);
+    if (await page.locator('#game-shell .gs-pause').count() > 0) await page.keyboard.press('Escape');
+    await page.waitForTimeout(300);
+    const wanted = ['narrator', 'sucesos', 'size', 'speed', 'colorblind', 'audio', 'autostart'];
+    check('la pausa abre las opciones del juego: texto, colores, sonido y quién cuenta, sin el panel de la API (J0.4)',
+        wanted.every(id => before.some(r => r.startsWith(`${id}=`))) && bigger.scale === '1.15' && bigger.row === 'Grande'
+        && optionsSeen.advanced === 0 && !optionsSeen.apiOpen && await page.locator('.go-root').count() === 0,
+        JSON.stringify(optionsSeen));
     check('la ficha del tablón de campañas está', await clickChip(/Tablón de campañas/));
     await page.waitForSelector('.hb-root [data-campaign]', { timeout: 15000 }).catch(() => {});
     const board = await page.evaluate(() => [...document.querySelectorAll('.hb-root [data-campaign]')].map(c => ({ id: c.getAttribute('data-campaign'), text: (c.textContent || '').replace(/\s+/g, ' ').slice(0, 120) })));

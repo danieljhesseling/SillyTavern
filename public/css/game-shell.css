@@ -2384,3 +2384,118 @@ body[data-narrator-font="maquina"] #chat .mes:not([is_user="true"]) .mes_text {
         padding: 1.6rem 1rem 1rem;
     }
 }
+
+/* ================================================================
+   J0.4 · Las opciones del juego: el tamaño y la velocidad del texto, y su ventana.
+   ================================================================ */
+.gs-root[data-scene="dialogue"] .gs-vn-text {
+    font-size: calc(1.2rem * var(--gs-text-scale, 1));
+}
+
+.gs-root .gs-chat-slot #chat .mes_text {
+    font-size: calc(1em * var(--gs-text-scale, 1));
+}
+
+.gs-vn-line.gs-vn-new {
+    animation: gs-vn-in var(--gs-text-speed, 0s) ease-out both;
+}
+
+@keyframes gs-vn-in {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+        clip-path: inset(0 100% 0 0);
+    }
+
+    to {
+        opacity: 1;
+        transform: none;
+        clip-path: inset(0 0 0 0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .gs-vn-line.gs-vn-new {
+        animation: none;
+    }
+}
+
+.go-root {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    text-align: left;
+}
+
+.go-title {
+    margin: 0 0 0.4rem;
+    color: var(--gs-accent-gold, #e2c27a);
+    letter-spacing: 1px;
+}
+
+.go-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.go-row {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    width: 100%;
+    padding: 0.6rem 0.8rem;
+    color: inherit;
+    text-align: left;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(214, 180, 106, 0.25);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.go-row:hover {
+    background: rgba(226, 194, 122, 0.1);
+    border-color: var(--gs-accent-gold, #e2c27a);
+}
+
+.go-row > i {
+    color: var(--gs-accent-gold, #e2c27a);
+}
+
+.go-body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.go-hint {
+    font-size: 0.8rem;
+    color: var(--SmartThemeQuoteColor);
+}
+
+.go-value {
+    flex-shrink: 0;
+    font-weight: bold;
+    color: var(--gs-accent-gold, #e2c27a);
+    white-space: nowrap;
+}
+
+.go-advanced {
+    display: inline-flex;
+    align-self: flex-start;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 0.6rem;
+    padding: 0;
+    font-size: 0.8rem;
+    color: var(--SmartThemeQuoteColor);
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+
+.go-advanced:hover {
+    color: var(--gs-accent-gold, #e2c27a);
+}

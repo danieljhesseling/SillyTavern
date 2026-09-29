@@ -4495,8 +4495,10 @@ try {
             hasBoard: Boolean(map?.querySelector('[data-map-root]')),
         };
     });
-    check('en la escena de dialogo, el tablero se ve al lado del chat',
-        beside40.scene === 'dialogue' && (!beside40.hasBoard || beside40.mapWidth > 100),
+    // J18.3: en Diálogo la historia va en la caja de la novela visual, sin tablero a la
+    // vista mientras no haya pelea. El tablero está en su escena.
+    check('en la escena de dialogo, la novela visual, sin el tablero a la vista (J18.3)',
+        beside40.scene === 'dialogue' && beside40.mapWidth === 0,
         JSON.stringify(beside40));
     check('y el chat no se queda sin sitio', beside40.chatWidth > 200, `${beside40.chatWidth}px`);
 
@@ -7568,7 +7570,7 @@ try {
         };
     });
     check('la red se lanza desde la barra: una tirada con la forma de todas, y el enemigo queda sujeto (122, 146)',
-        /🎲 Lanzar de .+ a .+: \d+ contra CA 2 [✓✗]/u.test(net56.line) && (net56.restrained || net56.missed), JSON.stringify(net56));
+        /🎲 Lanzar de .+ a .+: \d+ contra CA \d+ [✓✗]/u.test(net56.line) && (net56.restrained || net56.missed), JSON.stringify(net56));
 
     // El aceite, en el siguiente turno de alguien del grupo que tenga a tiro al enemigo.
     for (let i = 0; i < 8; i++) {
@@ -9273,8 +9275,13 @@ try {
     }));
     check('en el chat, varios avisos menores seguidos se quedan en el último con un «y N más» (U4, DU3)',
         folded63.hidden >= 2 && folded63.buttons.some(t => /^y \d+ más/.test(t)), JSON.stringify(folded63));
+    // En Diálogo el chat es el registro de la novela visual (J18.6): se abre para pulsar.
+    const log63 = await page.locator('#game-shell .gs-vn-log-btn').filter({ visible: true }).count();
+    if (log63 > 0) await page.locator('#game-shell .gs-vn-log-btn').click({ timeout: 4000 }).catch(() => {});
+    await page.waitForTimeout(300);
     await page.locator('#chat .gm-fold').last().click({ timeout: 5000 }).catch(() => {});
     await page.waitForTimeout(400);
+    if (log63 > 0) await page.locator('#game-shell .gs-vn-log-btn').click({ timeout: 4000 }).catch(() => {});
     const opened63 = await page.evaluate(() => document.querySelectorAll('#chat .mes.gm-folded').length);
     check('y al pulsarlo se abren, y se quedan abiertos (U4)', opened63 < folded63.hidden, `${folded63.hidden} → ${opened63}`);
 

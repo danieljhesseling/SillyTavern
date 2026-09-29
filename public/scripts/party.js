@@ -17244,6 +17244,8 @@ function buildShellExploration() {
 function buildShellOptions() {
     installNoticeTray();
     applyColorblind();
+    // J0.4: el tamaño y la velocidad del texto, de este navegador.
+    void import('./game-engine/ui/game-options.js').then(({ applyTextOptions }) => applyTextOptions());
     // El panel podia estar plegado antes de encender el Shell, y apagarlo tiene que
     // dejarlo como estaba: el Shell lo despliega porque es su escenario, no porque el
     // jugador lo pidiera.
@@ -17303,7 +17305,8 @@ function buildShellOptions() {
         },
         // Los paneles de SillyTavern se abren donde estan: en pausa su barra vuelve
         // arriba, por encima de esta capa, y el boton pulsa el mismo icono de siempre.
-        onOptions: () => { $('#ai-config-button .drawer-toggle').trigger('click'); },
+        // J0.4: las opciones del juego. Los ajustes de SillyTavern, al fondo y con conexión.
+        onOptions: () => { void openGameOptionsPanel(); },
         onRules: () => { void openRules(); },
         onCompendium: () => { void openCompendiumLibrary(); },
         // Idea 181: el comprobador de densidad, desde la partida.
@@ -17528,6 +17531,68 @@ function buildShellOptions() {
             );
         },
     };
+}
+
+/**
+ * J0.4 de ROADMAP_SIN_CONEXION: las opciones del juego, en su ventana y con sus palabras.
+ * Lo de este navegador; lo de cada partida (el tono, la red de seguridad…) sigue en la pausa.
+ *
+ * @returns {Promise<void>}
+ */
+async function openGameOptionsPanel() {
+    const { openGameOptions, textOptions, cycleTextOption } = await import('./game-engine/ui/game-options.js');
+    const { loadAudioSettings } = await import('./game-engine/ui/shell/scene-audio.js');
+    // Sin proveedor, o en una partida del gremio (se juega sin conexión aunque lo haya).
+    const offline = () => online_status === 'no_connection' || offlineGame();
+    const yes = (/** @type {boolean} */ on) => (on ? 'Sí' : 'No');
+    const rows = () => {
+        const text = textOptions();
+        return [
+            // El modo es de la partida: solo con una abierta.
+            ...(currentLocationName ? [{ id: 'mode', icon: 'fa-skull', label: 'Modo de juego', value: describeGameMode(survivalNow()), hint: 'Cuánto duele caer, en esta partida' }] : []),
+            {
+                id: 'narrator', icon: 'fa-feather', label: 'Quién cuenta',
+                value: offline() ? 'El juego (sin conexión)' : NARRATOR_LABELS[/** @type {keyof typeof NARRATOR_LABELS} */ (storedNarratorMode())],
+                hint: offline() ? 'Jugando sin conexión, lo cuenta siempre el juego' : 'El juego, el modelo o los dos',
+            },
+            { id: 'sucesos', icon: 'fa-signs-post', label: 'Sucesos con decisión', value: yes(sucesosOn()), hint: 'Cosas que pasan por el camino y piden decidir' },
+            { id: 'size', icon: 'fa-text-height', label: 'Tamaño del texto', value: text.size.label },
+            { id: 'speed', icon: 'fa-gauge', label: 'Velocidad del texto', value: text.speed.label, hint: 'Cómo aparece lo que se cuenta en la caja' },
+            { id: 'colorblind', icon: 'fa-eye-low-vision', label: 'Colores para daltonismo', value: yes(localFlag.get(COLORBLIND_KEY) === '1') },
+            { id: 'audio', icon: 'fa-music', label: 'Sonido', value: loadAudioSettings().enabled ? 'Encendido' : 'Apagado', hint: 'La música de cada escena y los golpes' },
+            { id: 'autostart', icon: 'fa-door-open', label: 'Abrir el juego al entrar', value: yes(shouldAutostartGameShell()) },
+            ...(offline() ? [] : [{ id: 'saver', icon: 'fa-piggy-bank', label: 'Modo ahorro', value: yes(saverOn()), hint: 'Gasta menos del modelo' }]),
+        ];
+    };
+    await openGameOptions({
+        Popup, POPUP_TYPE, rows,
+        onPick: async (id) => {
+            if (id === 'mode') await openGameMode();
+            else if (id === 'audio') await openAudioSettings();
+            else if (id === 'size' || id === 'speed') cycleTextOption(id);
+            else if (id === 'autostart') setGameShellAutostart(!shouldAutostartGameShell());
+            else if (id === 'narrator') {
+                if (offline()) {
+                    toastr.info('Jugando sin conexión cuenta el juego. En una partida con modelo se puede elegir.', 'Quién cuenta');
+                    return;
+                }
+                const next = NARRATOR_MODES[(NARRATOR_MODES.indexOf(storedNarratorMode()) + 1) % NARRATOR_MODES.length];
+                try {
+                    localStorage.setItem(NARRATOR_MODE_STORAGE, next);
+                } catch { /* sin almacenamiento, se queda como estaba */ }
+            } else if (id === 'sucesos') {
+                try {
+                    localStorage.setItem(SUCESOS_STORAGE, sucesosOn() ? 'off' : 'on');
+                } catch { /* sin almacenamiento, se queda como estaba */ }
+            } else if (id === 'colorblind') {
+                localFlag.set(COLORBLIND_KEY, localFlag.get(COLORBLIND_KEY) === '1' ? '' : '1');
+                applyColorblind();
+            } else if (id === 'saver') localFlag.set(SAVER_KEY, saverOn() ? '' : '1');
+            refreshWorldMemoryPrompt();
+        },
+        onAdvanced: offline() ? null : () => { $('#ai-config-button .drawer-toggle').trigger('click'); },
+    });
+    refreshGameShell();
 }
 
 /** @returns {boolean} */

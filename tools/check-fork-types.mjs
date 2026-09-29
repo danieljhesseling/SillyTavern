@@ -210,6 +210,7 @@ const FORK_FILES = [
     'public/scripts/game-engine/campaign/hub.js',
     'public/scripts/game-engine/ui/hub-panel.js',
     'public/scripts/game-engine/campaign/starting-kit.js',
+    'public/scripts/game-engine/ui/game-options.js',
     'public/scripts/game-engine/combat/boss-phases.js',
     'public/scripts/game-engine/ui/world-workshop.js',
     'public/scripts/game-engine/rules/mortality.js',

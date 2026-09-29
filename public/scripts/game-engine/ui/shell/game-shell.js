@@ -366,7 +366,8 @@ function renderTitleMenu(menu) {
         item('Salón de la fama', 'fa-monument', fallen === 1 ? '1 caído' : `${fallen} caídos`,
             () => options?.onHall?.());
     }
-    item('Opciones', 'fa-sliders', 'Los ajustes de SillyTavern, donde siempre',
+    // J0.4: las opciones del juego (texto, colores, sonido, quién cuenta), no las de SillyTavern.
+    item('Opciones', 'fa-sliders', 'Texto, colores, sonido y quién cuenta',
         () => options?.onOptions());
 
     const leave = makeButton('gs-menu-leave');
@@ -877,6 +878,9 @@ function renderDialogue(scene, view) {
 /** Lo que se lee en la caja: los últimos mensajes desde lo último que dijiste, como mucho. */
 const NOVEL_LINES = 4;
 
+/** J0.4: lo que ya salió en la caja, para que al redibujar solo entre lo nuevo. */
+let novelShown = new Set();
+
 /**
  * Los botones que cuelgan de la caja: el registro entero y esconderla para ver la escena.
  *
@@ -933,6 +937,8 @@ function renderNovel(scene, view) {
 
     const text = /** @type {HTMLElement} */ (scene.querySelector('.gs-vn-text'));
     text.textContent = '';
+    const keyOf = (/** @type {Element} */ node) => `${node.getAttribute('mesid')}:${(node.querySelector('.mes_text')?.textContent || '').trim().slice(0, 60)}`;
+    let fresh = 0;
     const people = lines.filter(m => m.getAttribute('is_system') !== 'true');
     const last = people[people.length - 1] ?? null;
     const speakerName = (last?.getAttribute('ch_name') || '').trim();
@@ -944,8 +950,15 @@ function renderNovel(scene, view) {
         if (!system && who && who !== speakerName) block.appendChild(el('span', 'gs-vn-who', who));
         const body = line.querySelector('.mes_text');
         if (body) block.appendChild(body.cloneNode(true));
+        // Lo nuevo aparece con la velocidad de las opciones (J0.4), una frase tras otra.
+        if (!novelShown.has(keyOf(line))) {
+            block.classList.add('gs-vn-new');
+            block.style.animationDelay = `calc(var(--gs-text-speed, 0s) * ${fresh})`;
+            fresh += 1;
+        }
         text.appendChild(block);
     }
+    novelShown = new Set(lines.map(keyOf));
     text.scrollTop = text.scrollHeight;
 
     const plate = /** @type {HTMLElement} */ (scene.querySelector('.gs-vn-nameplate'));

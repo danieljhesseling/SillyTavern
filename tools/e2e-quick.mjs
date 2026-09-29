@@ -704,8 +704,10 @@ try {
             chatWidth: talk ? Math.round(talk.width) : 0,
         };
     });
-    check('se empieza en Diálogo; la columna del mapa solo con algo dibujado; las fichas en dorado al pasar',
-        dialogo.scene === 'dialogue' && dialogo.mapShown === dialogo.drawn
+    // J18.3: en Diálogo la historia se lee como una novela visual, sin tablero a la vista
+    // mientras no haya pelea. El tablero está en su escena.
+    check('se empieza en Diálogo, sin tablero a la vista (J18.3); las fichas en dorado al pasar',
+        dialogo.scene === 'dialogue' && !dialogo.mapShown
         && (dialogo.chipHover === '(sin fichas)' || /226, 194, 122/.test(dialogo.chipHover)), JSON.stringify(dialogo));
     // UX: el tablero se ve (la cuadrícula tiene alto) y nada ensancha la página, a 1400 y a
     // 1920. La cabecera en una fila medía casi 2000 px y sacaba el chat por la derecha; y la
@@ -805,8 +807,9 @@ try {
     await page.waitForTimeout(400);
     await page.keyboard.press('1');
     await page.waitForTimeout(500);
-    check('el tablero se ve, en Diálogo y en el Tablero (la cuadrícula con alto), y nada se sale por la derecha a 1400 ni a 1920',
-        [seen.dialogue, seen.board, seen.wide].every(s => s.grid && s.grid[1] >= 200 && s.pageWidth <= s.viewport)
+    check('el tablero se ve en el Tablero (la cuadrícula con alto), no en Diálogo (J18.3), y nada se sale por la derecha a 1400 ni a 1920',
+        [seen.board, seen.wide].every(s => s.grid && s.grid[1] >= 200 && s.pageWidth <= s.viewport)
+        && seen.dialogue.pageWidth <= seen.dialogue.viewport && !(seen.dialogue.grid?.[1] > 0)
         && seen.board.scene === 'combat', JSON.stringify(seen));
 
     // La Exploración a pantalla entera (Gem director de UX): sin el tablero, en tres
@@ -1277,9 +1280,13 @@ async function depthRound(page) {
     await page.waitForTimeout(800);
     await clearToasts();
     const chestCell = await cellInfo('chest');
+    // Fuera de pelea el cofre se pulsa en el Tablero: en Diálogo no hay tablero (J18.3).
+    await page.locator('#game-shell .gs-scene-btn[data-scene="combat"]').click({ timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(600);
     const clickChest = await page.locator('.wm-terrain-chest').filter({ visible: true }).first().click({ timeout: 6000 }).then(() => 'ok').catch((/** @type {any} */ e) => String(e?.message || e).replace(/\s+/g, ' ').slice(0, 200));
     await page.waitForTimeout(1000);
     const opened = await lastLine(/abre el cofre/);
     check('R6: un cofre al lado del héroe se abre pulsándolo: oro y a veces algo más',
         Boolean(opened), JSON.stringify({ hero, chestAt, chestCell, clickChest, opened: opened.slice(0, 200) }));
+    await page.locator('#game-shell .gs-scene-btn[data-scene="dialogue"]').click({ timeout: 5000 }).catch(() => {});
 }
