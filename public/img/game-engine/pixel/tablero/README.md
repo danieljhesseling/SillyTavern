@@ -42,6 +42,10 @@ El tablero elige un bioma y usa su pareja de suelo y muro:
 - `madera`: tablas de madera cálida (taberna, casa); muro de tablones oscuros.
 - `exterior`: hierba baja apagada; muro de peñascos grises con musgo.
 - `cueva`: tierra y grava malva; muro de roca morada.
+- `calle`: adoquines grises de pueblo; muro de ladrillo de una casa.
+- `nieve`: nieve pisada gris azulada (el valle en invierno de 1387); muro de rocas con nieve encima.
+- `pantano`: barro verde oliva oscuro con matas de musgo (Barovia); muro de árboles muertos retorcidos.
+- `cripta`: losas oscuras agrietadas (el castillo de Ravenloft); muro de osario, calaveras entre piedras.
 
 ## Archivos
 
@@ -53,6 +57,15 @@ El tablero elige un bioma y usa su pareja de suelo y muro:
 - `muro-exterior.png` — peñascos grises apretados con musgo en las grietas.
 - `suelo-cueva.png` — tierra y grava malva oscura.
 - `muro-cueva.png` — roca morada maciza, con grietas.
+- `suelo-calle.png` — adoquines grises redondeados, con barro en las juntas.
+- `muro-calle.png` — pared de ladrillo marrón rojizo con llagas grises.
+- `suelo-nieve.png` — nieve pisada gris azulada, con montoncitos de nieve.
+- `muro-nieve.png` — rocas grises apretadas con capas de nieve encima.
+- `suelo-pantano.png` — barro verde oliva oscuro y encharcado, con matas de musgo y juncos secos.
+- `muro-pantano.png` — troncos muertos retorcidos, grises y sin hojas, muy juntos.
+- `suelo-cripta.png` — losas de piedra gris oscura, agrietadas.
+- `muro-cripta.png` — pared de osario: filas de calaveras en nichos de piedra oscura.
+- `barro.png` — barro marrón oscuro, liso (casilla llena).
 - `agua.png` — agua poco honda verde azulada, con ondas.
 - `hielo.png` — hielo azul claro con escarcha.
 - `maleza.png` — matorral verde oscuro muy tupido.
@@ -76,3 +89,5 @@ El tablero elige un bioma y usa su pareja de suelo y muro:
 ## Costuras
 
 Las casillas llenas se revisaron repitiéndolas 4×4. Las que salían con marco o con un dibujo en medio se arreglaron sin generar otra vez: se cambian los bordes por una copia desplazada media casilla de la misma imagen y la unión va por el camino donde las dos se parecen más. No hay difuminado, así que siguen siendo pixel art. Quedan costuras leves en `suelo-mazmorra` y `suelo-madera` (las juntas de las losas y de las tablas caen en el borde). `abismo` y `muro-exterior` repiten un poco su dibujo.
+
+Los biomas `calle`, `nieve`, `pantano` y `cripta` y el `barro` salen de dibujos de 64×64 (o 96×96): se recorta la ventana de 48×48 cuyos bordes opuestos casan mejor y, si hace falta, se le pasa el mismo arreglo de costuras. Luego se apagaron los colores para que casen con el resto (el suelo del pantano pasó de morado a verde oliva). Quedan costuras leves en `muro-nieve`, `muro-pantano` y `suelo-cripta`, y `muro-cripta` repite su dibujo a propósito (filas de nichos).

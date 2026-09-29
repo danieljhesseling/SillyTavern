@@ -71,3 +71,104 @@ El mismo retrato con otro gesto; cara, ropa y pose no cambian. Nombre: `<id>--al
 - `ezmerelda-d-avenir--enfadado.png`: Ezmerelda enfadada, ceño fruncido y labios apretados.
 - `ezmerelda-d-avenir--triste.png`: Ezmerelda triste, con lágrimas.
 - `bogdan-rusu.png` — Bogdan Rusu, herrero de Vallaki: ancho de hombros, delantal de cuero con hollín, barba oscura con canas, mirada cansada.
+
+## Expresiones de los PNJ
+
+Ahora todos los PNJ tienen sus tres gestos, con el mismo nombre `<id>--alegre|enfadado|triste.png`.
+
+- `donavich--alegre.png`: Donavich sonriendo con la boca abierta.
+- `donavich--enfadado.png`: Donavich furioso, ceño fruncido y dientes apretados.
+- `donavich--triste.png`: Donavich llorando, cejas alzadas.
+- `bildrath-cantemir--alegre.png`: Bildrath riendo bajo el bigote.
+- `bildrath-cantemir--enfadado.png`: Bildrath furioso, enseñando los dientes.
+- `bildrath-cantemir--triste.png`: Bildrath triste, con lágrimas.
+- `parriwimple--alegre.png`: Parriwimple riendo con los brazos cruzados.
+- `parriwimple--enfadado.png`: Parriwimple enfadado, dientes apretados.
+- `parriwimple--triste.png`: Parriwimple triste, con lágrimas.
+- `maria-la-loca--alegre.png`: María la Loca sonriendo, sin lágrimas.
+- `maria-la-loca--enfadado.png`: María la Loca furiosa, dientes apretados.
+- `maria-la-loca--triste.png`: María la Loca sollozando con la boca abierta.
+- `arik-lorensk--alegre.png`: Arik sonriendo abiertamente.
+- `arik-lorensk--enfadado.png`: Arik enfadado, dientes apretados.
+- `arik-lorensk--triste.png`: Arik triste, con lágrimas.
+- `alenka--alegre.png`: Alenka riendo con los ojos cerrados.
+- `alenka--enfadado.png`: Alenka enfadada, ceño fruncido.
+- `alenka--triste.png`: Alenka llorando.
+- `baron-vargas-vallakovich--alegre.png`: El barón Vargas riendo satisfecho.
+- `baron-vargas-vallakovich--enfadado.png`: El barón Vargas gritando de furia.
+- `baron-vargas-vallakovich--triste.png`: El barón Vargas triste, con lágrimas.
+- `izek-strazni--alegre.png`: Izek sonriendo con todos los dientes.
+- `izek-strazni--enfadado.png`: Izek furioso, ceño fruncido y dientes apretados.
+- `izek-strazni--triste.png`: Izek triste, con una lágrima.
+- `victor-vallakovich--alegre.png`: Victor sonriendo con un ojo cerrado.
+- `victor-vallakovich--enfadado.png`: Victor enfadado, dientes apretados.
+- `victor-vallakovich--triste.png`: Victor triste, con una lágrima.
+- `urwin-martikov--alegre.png`: Urwin riendo con un ojo cerrado.
+- `urwin-martikov--enfadado.png`: Urwin enfadado, dientes apretados.
+- `urwin-martikov--triste.png`: Urwin triste, con lágrimas.
+- `davian-martikov--alegre.png`: Davian riendo a carcajadas.
+- `davian-martikov--enfadado.png`: Davian enfadado, dientes apretados.
+- `davian-martikov--triste.png`: Davian triste, con lágrimas.
+- `stanimir--alegre.png`: Stanimir riendo a carcajadas.
+- `stanimir--enfadado.png`: Stanimir furioso, dientes apretados.
+- `stanimir--triste.png`: Stanimir llorando.
+- `luvash--alegre.png`: Luvash riendo a carcajadas.
+- `luvash--enfadado.png`: Luvash furioso, enseñando los dientes.
+- `luvash--triste.png`: Luvash triste, con lágrimas.
+- `fiona-wachter--alegre.png`: Lady Fiona con una sonrisa satisfecha.
+- `fiona-wachter--enfadado.png`: Lady Fiona furiosa, dientes apretados.
+- `fiona-wachter--triste.png`: Lady Fiona triste, con lágrimas.
+- `lucian-petrovich--alegre.png`: El padre Lucian riendo con los ojos cerrados.
+- `lucian-petrovich--enfadado.png`: El padre Lucian enfadado, dientes apretados.
+- `lucian-petrovich--triste.png`: El padre Lucian triste, cejas alzadas.
+- `milivoj--alegre.png`: Milivoj riendo.
+- `milivoj--enfadado.png`: Milivoj furioso, dientes apretados.
+- `milivoj--triste.png`: Milivoj triste, mirada baja.
+- `henrik-van-der-voort--alegre.png`: Henrik sonriendo tras las gafas.
+- `henrik-van-der-voort--enfadado.png`: Henrik enfadado, dientes apretados.
+- `henrik-van-der-voort--triste.png`: Henrik triste, cejas alzadas.
+- `gadof-blinsky--alegre.png`: Gadof riendo a carcajadas.
+- `gadof-blinsky--enfadado.png`: Gadof furioso, dientes apretados.
+- `gadof-blinsky--triste.png`: Gadof llorando.
+- `szoldar-szoldarovich--alegre.png`: Szoldar riendo bajo la capucha.
+- `szoldar-szoldarovich--enfadado.png`: Szoldar enfadado, ceño fruncido.
+- `szoldar-szoldarovich--triste.png`: Szoldar llorando.
+- `gunther-arasek--alegre.png`: Gunther riendo con los ojos cerrados.
+- `gunther-arasek--enfadado.png`: Gunther enfadado, dientes apretados.
+- `gunther-arasek--triste.png`: Gunther triste, con lágrimas.
+- `bogdan-rusu--alegre.png`: Bogdan riendo a carcajadas.
+- `bogdan-rusu--enfadado.png`: Bogdan enfadado, ceño fruncido.
+- `bogdan-rusu--triste.png`: Bogdan triste, con lágrimas.
+- `morgantha--alegre.png`: Morgantha riendo con los ojos cerrados.
+- `morgantha--enfadado.png`: Morgantha furiosa, dientes apretados.
+- `morgantha--triste.png`: Morgantha llorando.
+- `vladimir-horngaard--alegre.png`: Vladimir con una sonrisa cruel.
+- `vladimir-horngaard--enfadado.png`: Vladimir furioso, dientes apretados.
+- `vladimir-horngaard--triste.png`: Vladimir apenado, mirada baja.
+- `godfrey-gwilym--alegre.png`: Sir Godfrey con una sonrisa orgullosa.
+- `godfrey-gwilym--enfadado.png`: Sir Godfrey furioso, dientes apretados.
+- `godfrey-gwilym--triste.png`: Sir Godfrey apenado, cejas alzadas.
+- `dmitri-krezkov--alegre.png`: Dmitri riendo a carcajadas.
+- `dmitri-krezkov--enfadado.png`: Dmitri furioso, dientes apretados.
+- `dmitri-krezkov--triste.png`: Dmitri llorando.
+- `el-abad--alegre.png`: El Abad con una sonrisa serena.
+- `el-abad--enfadado.png`: El Abad furioso, dientes apretados.
+- `el-abad--triste.png`: El Abad triste, con lágrimas.
+- `clovin-belview--alegre.png`: Clovin con las dos cabezas riendo.
+- `clovin-belview--enfadado.png`: Clovin con las dos cabezas furiosas.
+- `clovin-belview--triste.png`: Clovin con las dos cabezas llorando.
+- `zuleika-toranescu--alegre.png`: Zuleika riendo con los ojos cerrados.
+- `zuleika-toranescu--enfadado.png`: Zuleika furiosa, con los colmillos al aire.
+- `zuleika-toranescu--triste.png`: Zuleika llorando.
+- `muriel-vinshaw--alegre.png`: Muriel con una sonrisa pícara y el dedo en los labios.
+- `muriel-vinshaw--enfadado.png`: Muriel enfadada, ceño fruncido.
+- `muriel-vinshaw--triste.png`: Muriel triste, cejas alzadas.
+- `lazlo-ulrich--alegre.png`: Lazlo sonriendo bajo la barba.
+- `lazlo-ulrich--enfadado.png`: Lazlo enfadado, dientes apretados.
+- `lazlo-ulrich--triste.png`: Lazlo triste, cejas alzadas.
+- `rahadin--alegre.png`: Rahadin con una sonrisa fría.
+- `rahadin--enfadado.png`: Rahadin furioso, con la boca cerrada.
+- `rahadin--triste.png`: Rahadin triste, con lágrimas.
+- `cyrus-belview--alegre.png`: Cyrus riendo con todos los dientes.
+- `cyrus-belview--enfadado.png`: Cyrus enfadado, con el ojo verde encendido.
+- `cyrus-belview--triste.png`: Cyrus llorando.
