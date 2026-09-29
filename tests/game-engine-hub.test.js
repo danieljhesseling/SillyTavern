@@ -197,8 +197,8 @@ describe('los paquetes que se juegan desde el gremio', () => {
         }
         expect(pack.rumors.length).toBeGreaterThanOrEqual(4);
         expect(pack.rumors.every(r => r.where === town.name && ['si', 'no', 'medias'].includes(r.truth))).toBe(true);
-        // El prólogo sigue mandando a la bodega: la prueba de e2e-gremio lo busca.
-        expect(pack.plot.milestones[0].scene).toMatch(/Baja a la bodega/);
+        // El prólogo (J2.1) sigue mandando a la bodega: la prueba de e2e-gremio lo busca.
+        expect(pack.plot.milestones.find((/** @type {any} */ m) => m.id === 'la-prueba').scene).toMatch(/Baja a la bodega/);
     });
 
     test('Strahd es válido y su hilo llega a un final', () => {

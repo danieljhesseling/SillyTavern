@@ -318,9 +318,13 @@ export function artFor(kind, query = {}, manifest = loaded) {
             add('retratos/heroes', `${cls}-${other}`);
             break;
         }
-        case 'mercenary':
+        case 'mercenary': {
+            // Con su gesto (`gerd-el-mellado--alegre`), si lo tiene dibujado (J14).
+            const mood = slugify(query.mood);
+            if (mood) add('retratos/mercenarios', slug && `${slug}--${mood}`);
             add('retratos/mercenarios', slug);
             break;
+        }
         case 'portrait': {
             const pack = slugify(query.pack);
             // Con su gesto, si lo tiene dibujado (`brunilda--enfadado`), y si no, el de siempre.
@@ -332,6 +336,7 @@ export function artFor(kind, query = {}, manifest = loaded) {
                     add(folder, base);
                 }
             }
+            if (mood) add('retratos/mercenarios', slug && `${slug}--${mood}`);
             add('retratos/mercenarios', slug);
             break;
         }

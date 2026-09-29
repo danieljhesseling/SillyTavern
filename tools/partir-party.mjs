@@ -693,6 +693,103 @@ function flechas() {
 }
 
 // ---------------------------------------------------------------------------------------
+// Paso 11a: initPartyPanel, en trozos. `setPartyTab` sube a nivel de módulo, y los tres bloques
+// del final (los comandos, lo del modelo y los eventos del chat) pasan a ser funciones de nivel
+// superior de main.js, llamadas en el mismo sitio y en el mismo orden. Después, `--grupo commands`
+// y `--grupo events` los llevan a su módulo con los imports de siempre.
+
+const PANEL_BLOCKS = [
+    {
+        name: 'registerPartyCommands',
+        // Del primer proveedor de nombres al último comando.
+        first: (t) => /^function locationEnumProvider\(/.test(t),
+        last: (t) => /^SlashCommandParser\.addCommandObject/.test(t),
+        doc: `Los comandos del grupo (\`/go\`, \`/fight\`, \`/tirada\`...), con los proveedores de nombres que
+ * los autocompletan. En el orden de siempre: \`initPartyPanel\` los registra al montar el panel.`,
+    },
+    {
+        name: 'registerModelTools',
+        first: (t) => /^eventSource\.on\(event_types\.GENERATE_AFTER_DATA/.test(t),
+        last: (t) => /^ToolManager\.registerFunctionTool/.test(t),
+        doc: `Lo que tiene que ver con el modelo: lo que cuesta cada turno, lo que el mundo sabe del grupo
+ * justo antes de montar el prompt, y las cinco herramientas que puede llamar. El orden de las
+ * herramientas es el del prompt.`,
+    },
+    {
+        name: 'registerChatEvents',
+        first: (t) => /^const chatRoot = /.test(t),
+        last: () => true,
+        doc: `Lo que el panel escucha del chat mientras se juega: plegarlo, el diario de sesión, el hilo,
+ * la caja que lee el motor, lo que se escribe, lo que contesta el modelo y cómo se pinta. Va
+ * después del primer \`CHAT_CHANGED\` (el de \`loadPartyForChat\`), que se registra antes.`,
+    },
+];
+
+function partirPanel() {
+    const file = readText(MAIN);
+    const A = analyse(file.text, MAIN);
+    const text = A.text;
+    const s = A.stmts.find(x => x.names.includes('initPartyPanel'));
+    if (!s) fail('no está initPartyPanel');
+    const body = s.node.body.body;
+    const src = (st) => text.slice(st.start, st.end);
+    // setPartyTab, arriba.
+    const tab = body.find(st => st.type === 'FunctionDeclaration' && st.id.name === 'setPartyTab');
+    if (!tab) fail('no está setPartyTab dentro de initPartyPanel');
+    const tabIndex = body.indexOf(tab);
+    const prevEnd = body[tabIndex - 1].end;
+    const [tabStart, tabEnd] = chunkRange(text, A.comments, tab, prevEnd);
+    const tabText = text.slice(tabStart, tabEnd).split('\n').map(l => l.replace(/^ {4}/, '')).join('\n')
+        .replace(/^function setPartyTab/m, 'export function setPartyTab');
+    // Los tres bloques: cada uno va de donde acaba lo anterior a donde acaba su última sentencia.
+    const cuts = [];
+    let from = null;
+    for (const block of PANEL_BLOCKS) {
+        const firstIndex = body.findIndex(st => block.first(src(st)));
+        if (firstIndex === -1) fail(`no encuentro el principio de ${block.name}`);
+        let lastIndex = firstIndex;
+        for (let i = firstIndex; i < body.length; i++) {
+            const next = PANEL_BLOCKS[PANEL_BLOCKS.indexOf(block) + 1];
+            if (next && next.first(src(body[i]))) break;
+            if (block.last(src(body[i]))) lastIndex = i;
+        }
+        const start = from ?? lineBounds(text, body[firstIndex - 1].start, body[firstIndex - 1].end)[1];
+        const end = lineBounds(text, body[lastIndex].start, body[lastIndex].end)[1];
+        cuts.push({ block, start, end, statements: body.slice(firstIndex, lastIndex + 1) });
+        from = end;
+    }
+    // Nada del bloque puede usar variables de initPartyPanel que se queden fuera, ni hacer `return`.
+    const fnScope = A.sm.acquire(s.node);
+    for (const cut of cuts) {
+        for (const v of fnScope.variables) {
+            const def = v.defs[0]?.node;
+            if (!def || v.name === 'arguments' || v.name === 'setPartyTab') continue;
+            const inside = def.start >= cut.start && def.end <= cut.end;
+            if (inside) continue;
+            if (v.references.some(r => r.identifier.range[0] >= cut.start && r.identifier.range[0] < cut.end)) fail(`${cut.block.name} usa ${v.name}, que es de initPartyPanel`);
+        }
+        if (cut.statements.some(st => st.type === 'ReturnStatement')) fail(`${cut.block.name} tiene un return`);
+    }
+    const lastEnd = cuts[cuts.length - 1].end;
+    const bodyClose = s.node.body.end - 1;
+    if (text.slice(lastEnd, bodyClose).trim() !== '') fail('queda algo tras el último bloque');
+    const functions = cuts.map(({ block, start, end }) => {
+        const inner = text.slice(start, end).replace(/^\s*\n/, '').replace(/\s*$/, '');
+        return `/**\n * ${block.doc}\n */\nexport function ${block.name}() {\n${inner}\n}\n`;
+    });
+    const calls = cuts.map(({ block }) => `    ${block.name}();\n`).join('');
+    // El texto nuevo: setPartyTab y las tres funciones antes de initPartyPanel; initPartyPanel sin ellos.
+    const edits = [
+        { start: cuts[0].start, end: lastEnd, text: `\n${calls}` },
+        { start: tabStart, end: tabEnd, text: '' },
+        { start: s.start, end: s.start, text: `${tabText}\n${functions.join('\n')}\n` },
+    ];
+    writeText(MAIN, tidy(applyEdits(text, edits)), file.crlf);
+    console.log(`setPartyTab arriba; ${cuts.map(c => `${c.block.name} (${c.statements.length} sentencias)`).join(', ')}`);
+    return [MAIN];
+}
+
+// ---------------------------------------------------------------------------------------
 // Informe: quién asigna cada `let` de nivel superior, por módulo.
 
 function escritores() {
@@ -716,6 +813,8 @@ definirGrupos();
 
 if (flag('--mover')) {
     moverPaso1();
+} else if (flag('--panel')) {
+    eslintFix(partirPanel());
 } else if (flag('--flechas')) {
     eslintFix(flechas());
 } else if (flag('--escritores')) {
@@ -932,4 +1031,14 @@ function definirGrupos() {
         runHelpItem openWorkshop illustrate direct shareWorld editBoardEncounters editBoardObjectives openHowToPlay
         openCampaignBuilder writeEntrySpec deliverGifts openAudioSettings exportCampaignPack openHallOfFame checkCurrentWorld
         openCompendiumLibrary sampleJourney samplePlace openRules`);
+
+    // Paso 11: initPartyPanel, en trozos (después de `--panel`).
+    grupo('commands', 'commands.js', `Los comandos de barra del juego: moverse (\`/go\`, \`/enter\`), pelear, descansar, el gremio,
+        los casos, hablar, tirar y los ajustes. Todos se registran en \`registerPartyCommands\`, en el
+        orden de siempre.`,
+    'registerPartyCommands');
+    grupo('events', 'events.js', `Lo que el panel registra en SillyTavern además de los comandos: las herramientas del modelo
+        y lo que escucha del chat. \`initPartyPanel\` llama a \`registerModelTools\` y luego a
+        \`registerChatEvents\`, en el mismo punto donde estaba su código.`,
+    'registerModelTools registerChatEvents lastMeter');
 }

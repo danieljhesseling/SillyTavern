@@ -1,0 +1,4807 @@
+{
+  "version": 1,
+  "domain": "charlas",
+  "about": "La charla corta con tu gente (J14.1 de ROADMAP_SIN_CONEXION): al cruzarte con alguien, una o dos frases suyas (LINES) y tres respuestas tuyas (REPLIES). No gasta tiempo y mueve un poco la aprobación: MOOD 1 le gusta (un punto de vínculo, o de trato si es del pueblo), 0 le da igual, -1 no le gusta. Cada fila es de una persona (WHO, su nombre tal cual) o, si no lleva WHO, de cualquiera que busque lo mismo (WANTS: coin, glory, blood, quiet, knowledge). MOMENT es cuándo sale: pelea (tras una pelea), llegada (al llegar a una localización), viaje (de camino), pueblo (en el pueblo, sin prisa) o herido (cuando tu héroe va mal de vida). WHEN.hora (morning, afternoon, night) la deja solo para esa hora. THEN es lo que contesta a tu respuesta. MOOD de la fila es su cara: alegre, enfadado o triste. Lo que concuerda con tu héroe va entre llaves con las dos formas, la de él y la de ella, separadas por una barra vertical. Huecos: {heroe} (tu nombre) y {sitio} (la localización a la que se llega, solo en llegada). Una frase no se repite hasta que se oyen todas las de esa persona y ese momento.",
+  "rows": [
+    {
+      "id": "gerd-pelea-1",
+      "name": "Gerd · tras una pelea",
+      "who": "Gerd el Mellado",
+      "campaign": "gremio",
+      "moment": "pelea",
+      "mood": "alegre",
+      "lines": [
+        "¡Ja! ¿Has visto cómo ha caído el grande? ¡Como un saco de nabos!",
+        "Así me gustan las peleas: cortas y con algo que rebuscar después."
+      ],
+      "replies": [
+        {
+          "text": "Mira a ver si llevaban monedas.",
+          "mood": 0,
+          "then": "Ya estaba en ello. Tres de cobre y un botón. Menuda fortuna."
+        },
+        {
+          "text": "Buen golpe, Gerd. Te debo una.",
+          "mood": 1,
+          "then": "¡Me debes una cena! Y no pienso olvidarlo."
+        },
+        {
+          "text": "Menos risas. Podía haber salido mal.",
+          "mood": -1,
+          "then": "Pero no ha salido mal. Un poco de alegría, que no cuesta nada."
+        }
+      ]
+    },
+    {
+      "id": "gerd-pelea-2",
+      "name": "Gerd · tras una pelea",
+      "who": "Gerd el Mellado",
+      "campaign": "gremio",
+      "moment": "pelea",
+      "lines": [
+        "¿Sigues {entero|entera}? A ver esas manos.",
+        "Yo, a los diecisiete, perdí dos dientes en mi primera batalla. Tú vas mucho mejor."
+      ],
+      "replies": [
+        {
+          "text": "Estoy bien. ¿Y tú?",
+          "mood": 0,
+          "then": "Con hambre, que es como estoy bien yo."
+        },
+        {
+          "text": "No me agobies, Gerd.",
+          "mood": -1,
+          "then": "Vale, vale. Pero si te duele algo, me lo dices."
+        },
+        {
+          "text": "¿Por eso silbas cuando te ríes?",
+          "mood": 1,
+          "then": "¡Ja! Eso es. Un escudo en toda la boca, y de regalo, un silbato."
+        }
+      ]
+    },
+    {
+      "id": "gerd-llegada-1",
+      "name": "Gerd · al llegar",
+      "who": "Gerd el Mellado",
+      "campaign": "gremio",
+      "moment": "llegada",
+      "lines": [
+        "Así que esto es {sitio}. ¿Aquí dan de comer caliente, o qué?",
+        "Lo digo porque llevo tres días a pan duro y cecina."
+      ],
+      "replies": [
+        {
+          "text": "Buscaremos una olla caliente. Prometido.",
+          "mood": 1,
+          "then": "¡Por fin alguien que me entiende! El pan lo pongo yo."
+        },
+        {
+          "text": "Primero miramos. Luego comemos.",
+          "mood": 0,
+          "then": "Pues miramos rápido. Mi tripa no sabe esperar."
+        },
+        {
+          "text": "Comes demasiado, Gerd.",
+          "mood": -1,
+          "then": "Tomás dice lo mismo, y luego me pone dos platos. Por algo será."
+        }
+      ]
+    },
+    {
+      "id": "gerd-llegada-2",
+      "name": "Gerd · al llegar",
+      "who": "Gerd el Mellado",
+      "campaign": "gremio",
+      "moment": "llegada",
+      "lines": [
+        "Hay un cartel a la entrada. Léemelo tú, que tengo la vista cansada.",
+        "¿Pone algo de posada, o de que aquí cuelgan a los forasteros?"
+      ],
+      "replies": [
+        {
+          "text": "Pone que no se entra con armas a la vista.",
+          "mood": 0,
+          "then": "Pues las tapamos un poco. Tampoco mucho."
+        },
+        {
+          "text": "¿Vista cansada? Si ves un conejo a una legua.",
+          "mood": -1,
+          "then": "Los conejos no tienen letra pequeña. Venga, léelo y ya."
+        },
+        {
+          "text": "Pone que hay posada con guiso. Palabra.",
+          "mood": 1,
+          "then": "¡Esa es la mejor lectura que he oído en mi vida!"
+        }
+      ]
+    },
+    {
+      "id": "gerd-viaje-1",
+      "name": "Gerd · de camino",
+      "who": "Gerd el Mellado",
+      "campaign": "gremio",
+      "moment": "viaje",
+      "lines": [
+        "Cuando cobremos, mando la mitad a Robledo, a mi madre.",
+        "Ella quiere cartas. Yo le mando monedas, que se entienden mejor."
+      ],
+      "replies": [
+        {
+          "text": "Buena costumbre.",
+          "mood": 0,
+          "then": "La única que tengo, según Osric."
+        },
+        {
+          "text": "¿Cómo es Robledo?",
+          "mood": 1,
+          "then": "Frío, pequeño y con las mejores castañas del norte. Algún día te llevo."
+        },
+        {
+          "text": "Mejor guárdalas. Nunca se sabe.",
+          "mood": -1,
+          "then": "Para eso tengo la otra mitad. La de mi madre no se toca."
+        }
+      ]
+    },
+    {
+      "id": "gerd-viaje-2",
+      "name": "Gerd · de camino",
+      "who": "Gerd el Mellado",
+      "campaign": "gremio",
+      "moment": "viaje",
+      "mood": "alegre",
+      "lines": [
+        "Doce, trece, catorce... ¡Catorce de plata! ¿Tú cuántas llevas?",
+        "No me mires así. Si las cuento en voz alta, no se escapan."
+      ],
+      "replies": [
+        {
+          "text": "Calla, que nos van a oír los bandidos.",
+          "mood": -1,
+          "then": "Vale, cuento por dentro. Pero me salen menos."
+        },
+        {
+          "text": "Te ayudo: quince, dieciséis...",
+          "mood": 1,
+          "then": "¡Eh, que esas son tuyas! Aunque suenan de maravilla."
+        },
+        {
+          "text": "Más que tú, seguro.",
+          "mood": 0,
+          "then": "¡Eso ya lo veremos en la próxima posada!"
+        }
+      ]
+    },
+    {
+      "id": "gerd-pueblo-1",
+      "name": "Gerd · en el pueblo",
+      "who": "Gerd el Mellado",
+      "campaign": "gremio",
+      "moment": "pueblo",
+      "mood": "alegre",
+      "lines": [
+        "Hoy he cargado sacos por cuatro monedas y un bollo.",
+        "Ramiro dice que me pagan una miseria. Yo digo que así me gano el hambre para la cena."
+      ],
+      "replies": [
+        {
+          "text": "Pues vamos a gastarlas en la cena.",
+          "mood": 1,
+          "then": "¡Ahora hablas mi idioma! Yo pongo las monedas y tú el apetito."
+        },
+        {
+          "text": "Eso es trabajo de mozo, no de mercenario.",
+          "mood": -1,
+          "then": "El trabajo no tiene nada de malo. Lo malo es mirar a la gente por encima del hombro."
+        },
+        {
+          "text": "Cuatro monedas es poco para tanta espalda.",
+          "mood": 0,
+          "then": "Poco, pero el bollo estaba bueno."
+        }
+      ]
+    },
+    {
+      "id": "gerd-pueblo-2",
+      "name": "Gerd · en el pueblo",
+      "who": "Gerd el Mellado",
+      "campaign": "gremio",
+      "moment": "pueblo",
+      "lines": [
+        "Hay guiso de cordero. Te he guardado un plato, que se enfría.",
+        "Nada peor que la comida fría. Bueno, sí: un discurso largo antes de comer."
+      ],
+      "replies": [
+        {
+          "text": "Ahora no tengo hambre.",
+          "mood": -1,
+          "then": "¿Cómo que no? Me lo como yo, pero que conste que era tuyo."
+        },
+        {
+          "text": "¿Y Nella y Osric?",
+          "mood": 0,
+          "then": "Nella, jugándose las botas a las cartas. Osric, en su rincón, como siempre."
+        },
+        {
+          "text": "Gracias, Gerd. Siéntate conmigo.",
+          "mood": 1,
+          "then": "No hace falta que me lo digas dos veces."
+        }
+      ]
+    },
+    {
+      "id": "gerd-herido-1",
+      "name": "Gerd · te ve herido",
+      "who": "Gerd el Mellado",
+      "campaign": "gremio",
+      "moment": "herido",
+      "mood": "triste",
+      "lines": [
+        "¡Eh, eh! Estás {hecho polvo|hecha polvo}. Siéntate aquí y no discutas.",
+        "Toma pan y un trago. Mi madre dice que con la tripa llena se sangra menos."
+      ],
+      "replies": [
+        {
+          "text": "¿Eso es verdad?",
+          "mood": 0,
+          "then": "Ni idea. Pero a mí siempre me ha funcionado."
+        },
+        {
+          "text": "No es nada. Sigamos.",
+          "mood": -1,
+          "then": "No es nada, dice. Ya lo veremos cuando te caigas de morros."
+        },
+        {
+          "text": "Gracias, Gerd. Solo un momento.",
+          "mood": 1,
+          "then": "Los que hagan falta. Yo vigilo y como algo, que los nervios me dan hambre."
+        }
+      ]
+    },
+    {
+      "id": "gerd-herido-2",
+      "name": "Gerd · te ve herido",
+      "who": "Gerd el Mellado",
+      "campaign": "gremio",
+      "moment": "herido",
+      "lines": [
+        "Así no, que te vas a caer. Apóyate en mí, que para algo soy grande.",
+        "Ya me invitarás a cenar cuando te cures. A cenar mucho."
+      ],
+      "replies": [
+        {
+          "text": "Trato hecho. Cena para dos.",
+          "mood": 1,
+          "then": "Para dos de mi tamaño, que quede claro."
+        },
+        {
+          "text": "Puedo andar {solo|sola}.",
+          "mood": -1,
+          "then": "Sí, claro. Y yo como poco. Venga, apóyate."
+        },
+        {
+          "text": "Vale. Pero despacio.",
+          "mood": 0,
+          "then": "Despacio, como los bueyes de mi pueblo."
+        }
+      ]
+    },
+    {
+      "id": "nella-pelea-1",
+      "name": "Nella · tras una pelea",
+      "who": "Nella Tresflechas",
+      "campaign": "gremio",
+      "moment": "pelea",
+      "mood": "alegre",
+      "lines": [
+        "Tres míos, dos tuyos. Gano yo.",
+        "Lo apunto. Me debes una cerveza."
+      ],
+      "replies": [
+        {
+          "text": "No estamos aquí para jugar.",
+          "mood": -1,
+          "then": "Tú no. Yo sí. Por eso gano."
+        },
+        {
+          "text": "Vale, una cerveza.",
+          "mood": 0,
+          "then": "Fácil. Demasiado fácil. La próxima apuesto más."
+        },
+        {
+          "text": "El último era mío. Empate.",
+          "mood": 1,
+          "then": "Ni hablar. Pero me gusta que discutas. Desempate en la próxima."
+        }
+      ]
+    },
+    {
+      "id": "nella-pelea-2",
+      "name": "Nella · tras una pelea",
+      "who": "Nella Tresflechas",
+      "campaign": "gremio",
+      "moment": "pelea",
+      "mood": "enfadado",
+      "lines": [
+        "Se me ha escapado uno por un palmo. Un palmo.",
+        "No digas nada. Ya lo sé."
+      ],
+      "replies": [
+        {
+          "text": "Ya caerá el próximo.",
+          "mood": 1,
+          "then": "Eso. Y ese no se escapa."
+        },
+        {
+          "text": "Un palmo no es nada.",
+          "mood": 0,
+          "then": "Para ti. Para mí es fallar."
+        },
+        {
+          "text": "Te estás haciendo mayor, Nella.",
+          "mood": -1,
+          "then": "Dímelo otra vez a cincuenta pasos, y verás."
+        }
+      ]
+    },
+    {
+      "id": "nella-llegada-1",
+      "name": "Nella · al llegar",
+      "who": "Nella Tresflechas",
+      "campaign": "gremio",
+      "moment": "llegada",
+      "lines": [
+        "{sitio}. He visto sitios peores. Pocos.",
+        "Te apuesto una plata a que alguien nos mira mal antes de diez pasos."
+      ],
+      "replies": [
+        {
+          "text": "¿Siempre tienes que apostar?",
+          "mood": 0,
+          "then": "Siempre. Así el camino se hace más corto."
+        },
+        {
+          "text": "Acepto. Una plata.",
+          "mood": 1,
+          "then": "Bien. Empieza a contar pasos."
+        },
+        {
+          "text": "No apuesto con lo que no sé.",
+          "mood": -1,
+          "then": "Entonces no apuestas nunca. Qué aburrimiento."
+        }
+      ]
+    },
+    {
+      "id": "nella-llegada-2",
+      "name": "Nella · al llegar",
+      "who": "Nella Tresflechas",
+      "campaign": "gremio",
+      "moment": "llegada",
+      "lines": [
+        "Tú mira lo que haya que mirar. Yo miro por dónde se sale.",
+        "Costumbre. Nunca entro en un sitio sin saber cómo salir."
+      ],
+      "replies": [
+        {
+          "text": "¿De quién huyes, Nella?",
+          "mood": -1,
+          "then": "De la gente que pregunta mucho."
+        },
+        {
+          "text": "Bien pensado. Tú vigila la salida.",
+          "mood": 1,
+          "then": "Hecho. Nadie entra ni sale sin que yo lo vea."
+        },
+        {
+          "text": "Por la puerta, supongo.",
+          "mood": 0,
+          "then": "Supones mal. Siempre hay otra."
+        }
+      ]
+    },
+    {
+      "id": "nella-viaje-1",
+      "name": "Nella · de camino",
+      "who": "Nella Tresflechas",
+      "campaign": "gremio",
+      "moment": "viaje",
+      "mood": "alegre",
+      "lines": [
+        "Por fin, árboles. Aquí se respira.",
+        "Y nadie habla por hablar. Qué gusto."
+      ],
+      "replies": [
+        {
+          "text": "¿Te criaste en un bosque?",
+          "mood": 0,
+          "then": "En el de un barón. Muy suyo, el barón, con sus conejos."
+        },
+        {
+          "text": "A mí el bosque me da mala espina.",
+          "mood": -1,
+          "then": "Porque no lo escuchas. Y porque hablas mucho."
+        },
+        {
+          "text": "Asientes sin decir nada.",
+          "mood": 1,
+          "then": "Eso. Así se camina."
+        }
+      ]
+    },
+    {
+      "id": "nella-viaje-2",
+      "name": "Nella · de camino",
+      "who": "Nella Tresflechas",
+      "campaign": "gremio",
+      "moment": "viaje",
+      "lines": [
+        "¿Ves ese pino torcido? Te echo una carrera hasta allí.",
+        "Quien pierda, carga con la leña esta noche."
+      ],
+      "replies": [
+        {
+          "text": "¡Ya!",
+          "mood": 1,
+          "then": "¡Eh, has salido antes! Da igual, te gano igual."
+        },
+        {
+          "text": "¿Con esta carga? Ni hablar.",
+          "mood": 0,
+          "then": "Excusas. Te lo apunto como derrota."
+        },
+        {
+          "text": "Ya no tenemos edad para carreras.",
+          "mood": -1,
+          "then": "Habla por ti. Yo tengo piernas para rato."
+        }
+      ]
+    },
+    {
+      "id": "nella-pueblo-1",
+      "name": "Nella · en el pueblo",
+      "who": "Nella Tresflechas",
+      "campaign": "gremio",
+      "moment": "pueblo",
+      "lines": [
+        "Toma el arco. Diez flechas a esa diana.",
+        "Si aciertas cinco, pago yo la cena. Si no, la pagas tú."
+      ],
+      "replies": [
+        {
+          "text": "No sé tirar con arco.",
+          "mood": 0,
+          "then": "Pues pagas la cena sin tirar. Más rápido."
+        },
+        {
+          "text": "Trato hecho. Aparta.",
+          "mood": 1,
+          "then": "Así me gusta. Y no cierres un ojo, que se nota."
+        },
+        {
+          "text": "No me apetece jugar.",
+          "mood": -1,
+          "then": "Tú te lo pierdes. Y yo me aburro."
+        }
+      ]
+    },
+    {
+      "id": "nella-pueblo-2",
+      "name": "Nella · en el pueblo",
+      "who": "Nella Tresflechas",
+      "campaign": "gremio",
+      "moment": "pueblo",
+      "lines": [
+        "Marisa me vende plumas y cuerda a mitad de precio. No se lo digas a nadie.",
+        "Si Gerd se entera, querrá que le haga flechas gratis. Y ni siquiera tira con arco."
+      ],
+      "replies": [
+        {
+          "text": "Se lo diré a Gerd, por reírme.",
+          "mood": -1,
+          "then": "Hazlo y esta noche, a las cartas, no te dejo ni las botas."
+        },
+        {
+          "text": "¿Por qué te hace ese precio?",
+          "mood": 0,
+          "then": "Porque le gané una apuesta. Y porque le caigo bien. Sobre todo lo primero."
+        },
+        {
+          "text": "No diré nada. Palabra.",
+          "mood": 1,
+          "then": "Bien. Por eso me caes bien."
+        }
+      ]
+    },
+    {
+      "id": "nella-herido-1",
+      "name": "Nella · te ve herido",
+      "who": "Nella Tresflechas",
+      "campaign": "gremio",
+      "moment": "herido",
+      "lines": [
+        "Te han dado bien. {Quieto|Quieta}, que miro.",
+        "No es tan hondo como parece. Pero hoy no corres más."
+      ],
+      "replies": [
+        {
+          "text": "Gracias, Nella. Tienes buena mano.",
+          "mood": 1,
+          "then": "Práctica. He curado a más perros que a personas, pero es parecido."
+        },
+        {
+          "text": "Déjalo, no es nada.",
+          "mood": -1,
+          "then": "Si no fuera nada, no estarías {blanco|blanca} como la leche."
+        },
+        {
+          "text": "Me pondré bien.",
+          "mood": 0,
+          "then": "Claro. Y luego te gano una carrera, para que no te acostumbres."
+        }
+      ]
+    },
+    {
+      "id": "nella-herido-2",
+      "name": "Nella · te ve herido",
+      "who": "Nella Tresflechas",
+      "campaign": "gremio",
+      "moment": "herido",
+      "mood": "triste",
+      "lines": [
+        "Te apuesto lo que quieras a que no aguantas otra pelea así.",
+        "Y esa apuesta no la quiero ganar. Descansa."
+      ],
+      "replies": [
+        {
+          "text": "Apuesto a que sí.",
+          "mood": -1,
+          "then": "Pues ya has perdido. Siéntate."
+        },
+        {
+          "text": "Tienes razón. Paramos un rato.",
+          "mood": 1,
+          "then": "Bien. Yo vigilo. Y no hables, que descansas peor."
+        },
+        {
+          "text": "¿Y si perdemos el tiempo?",
+          "mood": 0,
+          "then": "Mejor perder tiempo que perderte a ti."
+        }
+      ]
+    },
+    {
+      "id": "osric-pelea-1",
+      "name": "Osric · tras una pelea",
+      "who": "Osric Mediapaga",
+      "campaign": "gremio",
+      "moment": "pelea",
+      "lines": [
+        "Seguimos vivos. Por ahora.",
+        "La próxima vez, que sean menos. O más lentos."
+      ],
+      "replies": [
+        {
+          "text": "¿Estás herido, Osric?",
+          "mood": 0,
+          "then": "Viejo. Que es peor, y no se cura."
+        },
+        {
+          "text": "¡Los hemos barrido! Nadie puede con nosotros.",
+          "mood": -1,
+          "then": "Eso dicen todos. Luego dejan de decirlo."
+        },
+        {
+          "text": "Por ahora, es bastante.",
+          "mood": 1,
+          "then": "Eso. Por ahora es mucho."
+        }
+      ]
+    },
+    {
+      "id": "osric-pelea-2",
+      "name": "Osric · tras una pelea",
+      "who": "Osric Mediapaga",
+      "campaign": "gremio",
+      "moment": "pelea",
+      "lines": [
+        "Eso ha sido la mitad de mi paga. La otra mitad, cuando volvamos.",
+        "Si volvemos."
+      ],
+      "replies": [
+        {
+          "text": "Si no vuelves, me ahorro la mitad.",
+          "mood": 1,
+          "then": "Por fin alguien que me escucha."
+        },
+        {
+          "text": "Volveremos. Y con gloria.",
+          "mood": -1,
+          "then": "Con volver me basta. La gloria, para otros."
+        },
+        {
+          "text": "¿Siempre tan alegre?",
+          "mood": 0,
+          "then": "Esto es estar alegre."
+        }
+      ]
+    },
+    {
+      "id": "osric-llegada-1",
+      "name": "Osric · al llegar",
+      "who": "Osric Mediapaga",
+      "campaign": "gremio",
+      "moment": "llegada",
+      "lines": [
+        "Así que esto es {sitio}.",
+        "Algo querrá matarnos aquí. Siempre hay algo. Yo me pongo delante."
+      ],
+      "replies": [
+        {
+          "text": "Esta vez irá bien, ya verás.",
+          "mood": -1,
+          "then": "Eso dijeron la última vez. Y la anterior."
+        },
+        {
+          "text": "Contigo delante voy más {tranquilo|tranquila}.",
+          "mood": 1,
+          "then": "No te acostumbres. Pero ahí estaré."
+        },
+        {
+          "text": "Pues a mirar con cuidado.",
+          "mood": 0,
+          "then": "Con mucho. Y despacio."
+        }
+      ]
+    },
+    {
+      "id": "osric-llegada-2",
+      "name": "Osric · al llegar",
+      "who": "Osric Mediapaga",
+      "campaign": "gremio",
+      "moment": "llegada",
+      "lines": [
+        "Esta noche, que la primera guardia la haga otro.",
+        "Yo con las guardias de noche no me llevo bien."
+      ],
+      "replies": [
+        {
+          "text": "¿Por qué no?",
+          "mood": 0,
+          "then": "Porque no. Déjalo ahí."
+        },
+        {
+          "text": "La hago yo.",
+          "mood": 1,
+          "then": "Te lo agradezco. Más de lo que crees."
+        },
+        {
+          "text": "Aquí todos hacemos guardia. Tú también.",
+          "mood": -1,
+          "then": "Ya lo sé. No he dicho que no. He dicho que no me gusta."
+        }
+      ]
+    },
+    {
+      "id": "osric-viaje-1",
+      "name": "Osric · de camino",
+      "who": "Osric Mediapaga",
+      "campaign": "gremio",
+      "moment": "viaje",
+      "lines": [
+        "Cuando tenga mi barca, no vuelvo a pisar un camino.",
+        "El mar no te pide nada. Solo que no te caigas."
+      ],
+      "replies": [
+        {
+          "text": "¿Cómo la vas a llamar?",
+          "mood": 1,
+          "then": "Algo sin gloria. Las barcas con nombre de héroe se hunden antes."
+        },
+        {
+          "text": "¿Te falta mucho para comprarla?",
+          "mood": 0,
+          "then": "Unos cuantos trabajos. Si llego."
+        },
+        {
+          "text": "Te aburrirías en una semana.",
+          "mood": -1,
+          "then": "Ojalá. Llevo treinta años esperando aburrirme."
+        }
+      ]
+    },
+    {
+      "id": "osric-viaje-2",
+      "name": "Osric · de camino",
+      "who": "Osric Mediapaga",
+      "campaign": "gremio",
+      "moment": "viaje",
+      "lines": [
+        "Gerd lleva una hora hablando de comida. Nella lleva una hora sin decir nada.",
+        "Yo me quedo con Nella."
+      ],
+      "replies": [
+        {
+          "text": "Gerd nos alegra el camino.",
+          "mood": -1,
+          "then": "A ti. A mí me da hambre."
+        },
+        {
+          "text": "¿Y tú de qué quieres hablar?",
+          "mood": 0,
+          "then": "De nada. Por eso no hablo."
+        },
+        {
+          "text": "Pues callemos un rato.",
+          "mood": 1,
+          "then": "Eso."
+        }
+      ]
+    },
+    {
+      "id": "osric-pueblo-1",
+      "name": "Osric · en el pueblo",
+      "who": "Osric Mediapaga",
+      "campaign": "gremio",
+      "moment": "pueblo",
+      "mood": "triste",
+      "lines": [
+        "Voy a la capilla un rato. A encender una vela.",
+        "No preguntes para quién. Madre Elvira tampoco pregunta."
+      ],
+      "replies": [
+        {
+          "text": "Te espero en la posada.",
+          "mood": 0,
+          "then": "Bien. Pídeme algo que no sea caro."
+        },
+        {
+          "text": "No pregunto. ¿Te acompaño?",
+          "mood": 1,
+          "then": "Si vas {callado|callada}, sí."
+        },
+        {
+          "text": "¿Para quién es?",
+          "mood": -1,
+          "then": "He dicho que no preguntes."
+        }
+      ]
+    },
+    {
+      "id": "osric-pueblo-2",
+      "name": "Osric · en el pueblo",
+      "who": "Osric Mediapaga",
+      "campaign": "gremio",
+      "moment": "pueblo",
+      "lines": [
+        "Gerd dice que hoy estoy de buen humor.",
+        "Será que todavía no se ha muerto nadie. Es pronto."
+      ],
+      "replies": [
+        {
+          "text": "Te invito a una jarra. Sin hablar.",
+          "mood": 1,
+          "then": "Eso sí. Así da gusto."
+        },
+        {
+          "text": "Pues aprovecha el buen humor.",
+          "mood": 0,
+          "then": "Ya lo hago. Por dentro."
+        },
+        {
+          "text": "Hoy no muere nadie. Te lo prometo.",
+          "mood": -1,
+          "then": "No prometas lo que no depende de ti."
+        }
+      ]
+    },
+    {
+      "id": "osric-herido-1",
+      "name": "Osric · te ve herido",
+      "who": "Osric Mediapaga",
+      "campaign": "gremio",
+      "moment": "herido",
+      "mood": "triste",
+      "lines": [
+        "Te he visto caer y he pensado: ya está.",
+        "No me des esos sustos. Soy viejo para esto."
+      ],
+      "replies": [
+        {
+          "text": "Estoy bien. No exageres.",
+          "mood": -1,
+          "then": "Eso dicen los que no se levantan al día siguiente."
+        },
+        {
+          "text": "Ayúdame a levantarme.",
+          "mood": 0,
+          "then": "Despacio. Sin prisa no se cae nadie."
+        },
+        {
+          "text": "Aún no te libras de mí.",
+          "mood": 1,
+          "then": "Por desgracia. Deja que te vende eso."
+        }
+      ]
+    },
+    {
+      "id": "osric-herido-2",
+      "name": "Osric · te ve herido",
+      "who": "Osric Mediapaga",
+      "campaign": "gremio",
+      "moment": "herido",
+      "lines": [
+        "Estás {hecho un cuadro|hecha un cuadro}.",
+        "Hoy no das un paso más. Si hay que pelear, peleo yo."
+      ],
+      "replies": [
+        {
+          "text": "¿Tú solo?",
+          "mood": 0,
+          "then": "Yo solo. Soy lento, pero no me muevo de mi sitio."
+        },
+        {
+          "text": "Puedo seguir.",
+          "mood": -1,
+          "then": "Eso dicen todos. He enterrado a muchos de esos."
+        },
+        {
+          "text": "Gracias, Osric. Descanso un rato.",
+          "mood": 1,
+          "then": "Duerme. Yo vigilo, y no cierro los ojos."
+        }
+      ]
+    },
+    {
+      "id": "brunilda-pueblo-1",
+      "name": "Brunilda · ante el tablón",
+      "who": "Brunilda",
+      "campaign": "gremio",
+      "moment": "pueblo",
+      "lines": [
+        "¿Vienes a mirar el tablón? Lee la hoja entera, no solo la paga.",
+        "Lo importante siempre está al final."
+      ],
+      "replies": [
+        {
+          "text": "¿Cuál me recomiendas?",
+          "mood": 0,
+          "then": "Eso lo decides tú. Pero pregúntame lo que quieras de cualquiera."
+        },
+        {
+          "text": "Gracias. La leeré con calma.",
+          "mood": 1,
+          "then": "Bien. La calma sale barata y salva gente."
+        },
+        {
+          "text": "Yo solo miro la paga.",
+          "mood": -1,
+          "then": "Así vuelven pocos. Lee la hoja."
+        }
+      ]
+    },
+    {
+      "id": "brunilda-pueblo-2",
+      "name": "Brunilda · hojas nuevas (mañana)",
+      "who": "Brunilda",
+      "campaign": "gremio",
+      "moment": "pueblo",
+      "when": {
+        "hora": "morning"
+      },
+      "lines": [
+        "Buenos días. Acaban de llegar dos hojas nuevas para el tablón y aún no las he leído.",
+        "Si quieres ser {el primero|la primera} en saberlo, léelas conmigo."
+      ],
+      "replies": [
+        {
+          "text": "Léelas tú y luego me cuentas.",
+          "mood": -1,
+          "then": "No soy tu secretaria. Ya te enterarás con los demás."
+        },
+        {
+          "text": "Venga, a ver qué traen.",
+          "mood": 1,
+          "then": "Así me gusta. Dos ojos más ven lo que a mí se me escapa."
+        },
+        {
+          "text": "Luego vuelvo, que no he desayunado.",
+          "mood": 0,
+          "then": "Tomás tiene pan. No tardes."
+        }
+      ]
+    },
+    {
+      "id": "brunilda-pueblo-3",
+      "name": "Brunilda · la lista de los que vuelven (noche)",
+      "who": "Brunilda",
+      "campaign": "gremio",
+      "moment": "pueblo",
+      "when": {
+        "hora": "night"
+      },
+      "lines": [
+        "Estoy apuntando quién ha vuelto este mes. Me gusta que la lista sea larga.",
+        "Tú sigues en ella. Procura seguir."
+      ],
+      "replies": [
+        {
+          "text": "¿Cuántos faltan?",
+          "mood": 0,
+          "then": "Tres. Esta noche no me preguntes los nombres."
+        },
+        {
+          "text": "Con menos gente tendrías menos trabajo.",
+          "mood": -1,
+          "then": "No tiene gracia. Vete a dormir."
+        },
+        {
+          "text": "Pienso seguir en ella. Te lo prometo.",
+          "mood": 1,
+          "then": "No quiero promesas. Quiero verte entrar por esa puerta."
+        }
+      ]
+    },
+    {
+      "id": "brunilda-pueblo-4",
+      "name": "Brunilda · espadas de alquiler",
+      "who": "Brunilda",
+      "campaign": "gremio",
+      "moment": "pueblo",
+      "lines": [
+        "¿Buscas espadas de alquiler? Gerd, Nella y Osric están libres.",
+        "Gerd come por dos, Nella apuesta y Osric cobra la mitad por adelantado. Pero los tres vuelven."
+      ],
+      "replies": [
+        {
+          "text": "Que vuelvan es lo que importa.",
+          "mood": 1,
+          "then": "Eso. Y que traigan de vuelta a quien se llevan."
+        },
+        {
+          "text": "¿No tienes a nadie más barato?",
+          "mood": -1,
+          "then": "Barato hay. Barato y que vuelva, no."
+        },
+        {
+          "text": "Me lo pensaré.",
+          "mood": 0,
+          "then": "Piénsalo rápido. Hay otras compañías mirando."
+        }
+      ]
+    },
+    {
+      "id": "brunilda-pueblo-5",
+      "name": "Brunilda · las guardias",
+      "who": "Brunilda",
+      "campaign": "gremio",
+      "moment": "pueblo",
+      "lines": [
+        "¿Quién hace guardia de noche en tu compañía?",
+        "Siempre lo pregunto. Las que me contestan «ya veremos» son las que no vuelven."
+      ],
+      "replies": [
+        {
+          "text": "Ya veremos.",
+          "mood": -1,
+          "then": "Pues eso. Vuelve cuando lo sepas."
+        },
+        {
+          "text": "Por turnos. Nadie se duerme sin despertar al siguiente.",
+          "mood": 1,
+          "then": "Bien. Eso es una compañía, no una excursión."
+        },
+        {
+          "text": "Lo echamos a suertes cada noche.",
+          "mood": 0,
+          "then": "Mejor que nada. Poco mejor."
+        }
+      ]
+    },
+    {
+      "id": "brunilda-llegada-1",
+      "name": "Brunilda · al volver",
+      "who": "Brunilda",
+      "campaign": "gremio",
+      "moment": "llegada",
+      "lines": [
+        "Has vuelto. Bien.",
+        "Siéntate, bebe algo y luego me cuentas. Quiero saber qué había de verdad en lo que ponía la hoja."
+      ],
+      "replies": [
+        {
+          "text": "Antes quiero dormir un poco.",
+          "mood": 0,
+          "then": "Duerme. Pero mañana, a primera hora, me lo cuentas."
+        },
+        {
+          "text": "Te lo cuento todo, con detalle.",
+          "mood": 1,
+          "then": "Con detalle y despacio. ¡Tomás, trae algo de beber!"
+        },
+        {
+          "text": "La hoja mentía. Poco más.",
+          "mood": -1,
+          "then": "Eso no me sirve. Quiero saber en qué mentía."
+        }
+      ]
+    },
+    {
+      "id": "brunilda-llegada-2",
+      "name": "Brunilda · vuelves entero",
+      "who": "Brunilda",
+      "campaign": "gremio",
+      "moment": "llegada",
+      "mood": "alegre",
+      "lines": [
+        "¡Mira quién entra! Vuelves {entero|entera}, que es lo único que cuenta en esta casa.",
+        "Pasa, que fuera hace frío."
+      ],
+      "replies": [
+        {
+          "text": "Lo que cuenta es la paga.",
+          "mood": -1,
+          "then": "La paga va después. Primero, volver."
+        },
+        {
+          "text": "Frío y humedad, como siempre.",
+          "mood": 0,
+          "then": "Otoño en el puerto. No cambia nunca."
+        },
+        {
+          "text": "Yo también me alegro de verte, Brunilda.",
+          "mood": 1,
+          "then": "No se lo digas a nadie, que tengo fama de seca."
+        }
+      ]
+    },
+    {
+      "id": "brunilda-herido-1",
+      "name": "Brunilda · con heridas",
+      "who": "Brunilda",
+      "campaign": "gremio",
+      "moment": "herido",
+      "mood": "enfadado",
+      "lines": [
+        "¿Qué te ha pasado? No, no me lo cuentes todavía.",
+        "A la capilla, ahora. Madre Elvira te cose y luego hablamos."
+      ],
+      "replies": [
+        {
+          "text": "¿Me acompañas?",
+          "mood": 0,
+          "then": "Hasta la puerta. Alguien tiene que abrir el gremio."
+        },
+        {
+          "text": "Voy ahora mismo.",
+          "mood": 1,
+          "then": "Bien. Y sin pararte por el camino."
+        },
+        {
+          "text": "No es nada. Se me pasará solo.",
+          "mood": -1,
+          "then": "Eso dicen todos antes de caerse. A la capilla."
+        }
+      ]
+    },
+    {
+      "id": "brunilda-herido-2",
+      "name": "Brunilda · con mala cara",
+      "who": "Brunilda",
+      "campaign": "gremio",
+      "moment": "herido",
+      "lines": [
+        "Estás {pálido|pálida}. Siéntate antes de que te caigas en mi salón.",
+        "Esa campaña te ha costado más de lo que pagaba."
+      ],
+      "replies": [
+        {
+          "text": "La próxima la cojo más difícil.",
+          "mood": -1,
+          "then": "La próxima no la coges hasta que Elvira te dé permiso."
+        },
+        {
+          "text": "Un poco de agua, por favor.",
+          "mood": 0,
+          "then": "Toma. Y no te levantes hasta que yo te lo diga."
+        },
+        {
+          "text": "Tienes razón. Descansaré antes de la siguiente.",
+          "mood": 1,
+          "then": "Eso quería oír. Y cuándo sales, lo decide Elvira."
+        }
+      ]
+    },
+    {
+      "id": "tomas-pueblo-1",
+      "name": "Tomás · sirviendo la cena (noche)",
+      "who": "Tomás",
+      "campaign": "gremio",
+      "moment": "pueblo",
+      "when": {
+        "hora": "night"
+      },
+      "mood": "alegre",
+      "lines": [
+        "Esta noche hay guiso. Gerd ya va por el segundo plato, así que no te despistes.",
+        "¿Te pongo algo mientras? Este vaso ya está seco, te lo prometo."
+      ],
+      "replies": [
+        {
+          "text": "Guiso, y que Gerd no se lo acabe.",
+          "mood": 1,
+          "then": "Te guardo un plato detrás de la barra. Ni una palabra."
+        },
+        {
+          "text": "Una jarra, de lo de siempre.",
+          "mood": 0,
+          "then": "Marchando. Lo de siempre es lo que más sale."
+        },
+        {
+          "text": "¿Me lo apuntas? Ya pagaré otro día.",
+          "mood": -1,
+          "then": "Otro día... Tengo la pizarra llena de otros días."
+        }
+      ]
+    },
+    {
+      "id": "tomas-pueblo-2",
+      "name": "Tomás · la posada vacía (mañana)",
+      "who": "Tomás",
+      "campaign": "gremio",
+      "moment": "pueblo",
+      "when": {
+        "hora": "morning"
+      },
+      "lines": [
+        "¡Qué pronto! A estas horas solo estamos este vaso y yo.",
+        "Hay pan de ayer y leche de hoy. ¿Qué te pongo?"
+      ],
+      "replies": [
+        {
+          "text": "Pan de ayer. Qué lujo.",
+          "mood": -1,
+          "then": "El de mañana aún no está hecho. Tú verás."
+        },
+        {
+          "text": "Solo leche, gracias.",
+          "mood": 0,
+          "then": "Ahí va, calentita, que el puerto es muy húmedo."
+        },
+        {
+          "text": "Pan y leche. Y siéntate, que no hay nadie.",
+          "mood": 1,
+          "then": "Si me siento, no me levanto. Pero un rato, venga."
+        }
+      ]
+    },
+    {
+      "id": "tomas-pueblo-3",
+      "name": "Tomás · los que no vuelven",
+      "who": "Tomás",
+      "campaign": "gremio",
+      "moment": "pueblo",
+      "mood": "triste",
+      "lines": [
+        "Ayer volvió una compañía del norte. Salieron cinco y han vuelto cuatro.",
+        "Yo llevo la cuenta. Alguien tiene que llevarla."
+      ],
+      "replies": [
+        {
+          "text": "¿Quién es el que falta?",
+          "mood": 0,
+          "then": "Un tal Berto. Le gustaba el guiso con mucha pimienta."
+        },
+        {
+          "text": "Brindemos por él.",
+          "mood": 1,
+          "then": "Por él. Esta ronda la pago yo."
+        },
+        {
+          "text": "Cuatro de cinco no está mal.",
+          "mood": -1,
+          "then": "Díselo a su madre. Yo no me atrevo."
+        }
+      ]
+    },
+    {
+      "id": "tomas-pueblo-4",
+      "name": "Tomás · la mejor cama",
+      "who": "Tomás",
+      "campaign": "gremio",
+      "moment": "pueblo",
+      "lines": [
+        "Oye, la cama del fondo, la que da al muelle, es la mejor de la casa.",
+        "Te la guardo si me pagas la semana por adelantado. Solo lo digo."
+      ],
+      "replies": [
+        {
+          "text": "Ya veré cuánto me quedo.",
+          "mood": 0,
+          "then": "Tú mira, pero no tardes, que la compañía nueva ya ha preguntado."
+        },
+        {
+          "text": "¿No me la dejas gratis, por ser de la casa?",
+          "mood": -1,
+          "then": "De la casa soy yo, y yo pago el pan. Lo siento."
+        },
+        {
+          "text": "Me la quedo. Esta noche te pago.",
+          "mood": 1,
+          "then": "¡Eso me gusta oírlo! Te pongo una manta de más."
+        }
+      ]
+    },
+    {
+      "id": "tomas-pueblo-5",
+      "name": "Tomás · Gerd y Ramiro",
+      "who": "Tomás",
+      "campaign": "gremio",
+      "moment": "pueblo",
+      "mood": "alegre",
+      "lines": [
+        "¿Sabías que Ramiro y Gerd sirvieron juntos? Cuando coinciden aquí, no hay quien los calle.",
+        "Bueno, a Gerd. Ramiro dice tres palabras por noche."
+      ],
+      "replies": [
+        {
+          "text": "Tú hablas más que los dos juntos, Tomás.",
+          "mood": -1,
+          "then": "Ya lo sé, ya. Me lo dice todo el mundo."
+        },
+        {
+          "text": "Algún día les pediré que me cuenten.",
+          "mood": 1,
+          "then": "Pídeselo a Gerd. A Ramiro, ni lo intentes."
+        },
+        {
+          "text": "¿Y qué cuentan?",
+          "mood": 0,
+          "then": "Batallas. Cada vez con más enemigos."
+        }
+      ]
+    },
+    {
+      "id": "tomas-llegada-1",
+      "name": "Tomás · al volver",
+      "who": "Tomás",
+      "campaign": "gremio",
+      "moment": "llegada",
+      "mood": "alegre",
+      "lines": [
+        "¡Ya estás aquí! Te apunto en la lista de los que vuelven.",
+        "Me gusta mucho más esa lista que la otra."
+      ],
+      "replies": [
+        {
+          "text": "¿Queda alguna cama libre?",
+          "mood": 0,
+          "then": "Para ti, siempre. Si la pagas, claro."
+        },
+        {
+          "text": "No hace falta tanta fiesta.",
+          "mood": -1,
+          "then": "Uy. Pues yo me alegro igual, que es gratis."
+        },
+        {
+          "text": "Apúntame con buena letra.",
+          "mood": 1,
+          "then": "Con la mejor que tengo, que no es mucha."
+        }
+      ]
+    },
+    {
+      "id": "tomas-llegada-2",
+      "name": "Tomás · cuéntame",
+      "who": "Tomás",
+      "campaign": "gremio",
+      "moment": "llegada",
+      "lines": [
+        "{Bienvenido|Bienvenida} a casa. ¿Qué tal por ahí fuera?",
+        "Siéntate y cuéntame, que aquí no ha pasado nada desde que te fuiste."
+      ],
+      "replies": [
+        {
+          "text": "Siéntate tú también y te lo cuento.",
+          "mood": 1,
+          "then": "¡Por fin alguien! Espera, que dejo el vaso."
+        },
+        {
+          "text": "Luego. Ahora no me apetece hablar.",
+          "mood": -1,
+          "then": "Claro, claro. Yo seco mi vaso y espero."
+        },
+        {
+          "text": "Mucho camino y poca cama.",
+          "mood": 0,
+          "then": "Eso tiene arreglo. Arriba tienes la tuya."
+        }
+      ]
+    },
+    {
+      "id": "tomas-herido-1",
+      "name": "Tomás · con heridas",
+      "who": "Tomás",
+      "campaign": "gremio",
+      "moment": "herido",
+      "mood": "triste",
+      "lines": [
+        "¡Pero bueno! Siéntate aquí, junto al fuego.",
+        "Mando a alguien a por Madre Elvira ahora mismo."
+      ],
+      "replies": [
+        {
+          "text": "Mejor voy yo a la capilla.",
+          "mood": 0,
+          "then": "¿Así? No llegas ni a la puerta. {Quieto|Quieta} ahí."
+        },
+        {
+          "text": "Gracias, Tomás. No sé qué haría sin ti.",
+          "mood": 1,
+          "then": "Pues mancharme menos el suelo. Siéntate, anda."
+        },
+        {
+          "text": "Tráeme vino, que así se me pasa.",
+          "mood": -1,
+          "then": "Vino no. Agua, y Elvira. Que te conozco."
+        }
+      ]
+    },
+    {
+      "id": "tomas-herido-2",
+      "name": "Tomás · se le cae el vaso",
+      "who": "Tomás",
+      "campaign": "gremio",
+      "moment": "herido",
+      "mood": "triste",
+      "lines": [
+        "Te he visto entrar y se me ha caído el vaso. El de siempre.",
+        "Llevo años sin que se me caiga. ¿Qué te han hecho?"
+      ],
+      "replies": [
+        {
+          "text": "Nada. Tú sigue con tu vaso.",
+          "mood": -1,
+          "then": "El vaso puede esperar. Tú no."
+        },
+        {
+          "text": "Una mala pelea. Nada más.",
+          "mood": 0,
+          "then": "Eso dicen todos. Anda, sube y túmbate."
+        },
+        {
+          "text": "Siento lo del vaso, Tomás.",
+          "mood": 1,
+          "then": "Bah, tengo otro igual. No se lo digas a nadie."
+        }
+      ]
+    },
+    {
+      "id": "marisa-pueblo-1",
+      "name": "Marisa · abriendo el puesto (mañana)",
+      "who": "Marisa",
+      "campaign": "gremio",
+      "moment": "pueblo",
+      "when": {
+        "hora": "morning"
+      },
+      "mood": "alegre",
+      "lines": [
+        "¡Buenos días! Cuerda nueva y antorchas secas, que aquí la humedad no perdona.",
+        "¿Te apunto algo? Dímelo ya, que tengo la tiza en la mano."
+      ],
+      "replies": [
+        {
+          "text": "Dos antorchas y cuerda, que nunca sobra.",
+          "mood": 1,
+          "then": "¡Nunca sobra! Eso digo yo siempre. Apuntado."
+        },
+        {
+          "text": "Húmedas estarán. Déjamelas a mitad de precio.",
+          "mood": -1,
+          "then": "¿Húmedas? ¡Están más secas que el pan de Tomás!"
+        },
+        {
+          "text": "Solo estoy mirando.",
+          "mood": 0,
+          "then": "Mirar es gratis. Pero te apunto igual, por si acaso."
+        }
+      ]
+    },
+    {
+      "id": "marisa-pueblo-2",
+      "name": "Marisa · ha pasado Nella (tarde)",
+      "who": "Marisa",
+      "campaign": "gremio",
+      "moment": "pueblo",
+      "when": {
+        "hora": "afternoon"
+      },
+      "lines": [
+        "Nella acaba de llevarse plumas y cuerda de arco. A ella se las dejo baratas, que me cae bien.",
+        "Eso sí: no apuestes nunca con ella, te lo digo yo."
+      ],
+      "replies": [
+        {
+          "text": "¿Qué más te compra Nella?",
+          "mood": 0,
+          "then": "Poco. Dice que el bosque le da lo demás."
+        },
+        {
+          "text": "¿Por qué a ella sí? Rebájame a mí también.",
+          "mood": -1,
+          "then": "Porque ella no me regatea. Y tú acabas de empezar."
+        },
+        {
+          "text": "Tarde. Ya le debo tres monedas.",
+          "mood": 1,
+          "then": "¡Ja! Te lo apunto aquí, que así no se te olvida."
+        }
+      ]
+    },
+    {
+      "id": "marisa-pueblo-3",
+      "name": "Marisa · lo que hace falta de verdad",
+      "who": "Marisa",
+      "campaign": "gremio",
+      "moment": "pueblo",
+      "lines": [
+        "Las compañías compran espadas y se olvidan de la sal y de las mantas. Luego vuelven con fiebre.",
+        "Tú llévate una manta. Hazme caso."
+      ],
+      "replies": [
+        {
+          "text": "Yo no me pongo {malo|mala} nunca.",
+          "mood": -1,
+          "then": "Eso decía el último que volvió tiritando."
+        },
+        {
+          "text": "Hecho. Una manta, y apúntamela.",
+          "mood": 1,
+          "then": "¡Apuntada! Y te pongo un puñado de sal de regalo."
+        },
+        {
+          "text": "¿Solo una?",
+          "mood": 0,
+          "then": "Una por cabeza. Si sois cuatro, cuatro. Sé contar, ¿eh?"
+        }
+      ]
+    },
+    {
+      "id": "marisa-pueblo-4",
+      "name": "Marisa · te lo guardo",
+      "who": "Marisa",
+      "campaign": "gremio",
+      "moment": "pueblo",
+      "mood": "triste",
+      "lines": [
+        "Si quieres dejarme algo mientras estás fuera, te lo guardo en la trastienda.",
+        "Pero vuelve a por ello, ¿eh? No me gusta guardar cosas que nadie viene a buscar."
+      ],
+      "replies": [
+        {
+          "text": "Viajo con todo encima.",
+          "mood": 0,
+          "then": "Como quieras. Pero lo que pesa te frena, ya verás."
+        },
+        {
+          "text": "Volveré a por ello. Prometido.",
+          "mood": 1,
+          "then": "Te lo apunto: «prometido». Con tiza, pero vale."
+        },
+        {
+          "text": "Y si no vuelvo, lo vendes.",
+          "mood": -1,
+          "then": "No digas eso. Y no, no lo vendería."
+        }
+      ]
+    },
+    {
+      "id": "marisa-pueblo-5",
+      "name": "Marisa · tiza para todos",
+      "who": "Marisa",
+      "campaign": "gremio",
+      "moment": "pueblo",
+      "mood": "alegre",
+      "lines": [
+        "Ramiro me ha pedido clavos, Tomás velas y Brunilda tiza. ¡Tiza! Si aquí la que gasta tiza soy yo.",
+        "Bueno, ¿y tú qué quieres? Rápido, que se me acumula."
+      ],
+      "replies": [
+        {
+          "text": "Nada. Solo venía a charlar un rato.",
+          "mood": -1,
+          "then": "¿A charlar? ¿Con toda la cuerda que tengo por vender?"
+        },
+        {
+          "text": "Antorchas. Tres.",
+          "mood": 0,
+          "then": "Tres antorchas. Apuntado. ¿Algo más? ¿No? Bien."
+        },
+        {
+          "text": "Lo que me haga falta de verdad. Tú sabrás.",
+          "mood": 1,
+          "then": "¡Por fin alguien que pregunta! Cuerda, sal y una manta."
+        }
+      ]
+    },
+    {
+      "id": "marisa-llegada-1",
+      "name": "Marisa · ¿te sirvió la cuerda?",
+      "who": "Marisa",
+      "campaign": "gremio",
+      "moment": "llegada",
+      "lines": [
+        "¡Has vuelto! Te borro de la lista de los que me preocupan.",
+        "Oye, ¿te sirvió la cuerda? Dime que sí."
+      ],
+      "replies": [
+        {
+          "text": "Me salvó la vida, Marisa.",
+          "mood": 1,
+          "then": "¡Lo sabía! Esto lo apunto en grande."
+        },
+        {
+          "text": "No hizo falta usarla.",
+          "mood": 0,
+          "then": "Mejor. La próxima vez sí. Ya verás."
+        },
+        {
+          "text": "Se deshizo a la primera.",
+          "mood": -1,
+          "then": "¿Mi cuerda? Mi cuerda no se deshace. La habrás mojado."
+        }
+      ]
+    },
+    {
+      "id": "marisa-llegada-2",
+      "name": "Marisa · cuerda nueva",
+      "who": "Marisa",
+      "campaign": "gremio",
+      "moment": "llegada",
+      "mood": "alegre",
+      "lines": [
+        "¡Vuelves a {sitio} justo a tiempo! Me ha llegado cuerda nueva y ya se me está mojando.",
+        "Si me compras un rollo, te lo dejo a precio de amiga."
+      ],
+      "replies": [
+        {
+          "text": "Primero quiero descansar.",
+          "mood": 0,
+          "then": "Descansa, descansa. Pero la cuerda no espera."
+        },
+        {
+          "text": "Uno. Y guárdamelo en seco.",
+          "mood": 1,
+          "then": "Seco y a buen recaudo. Apuntado."
+        },
+        {
+          "text": "¿De amiga? Pues rebájalo a la mitad.",
+          "mood": -1,
+          "then": "¿A la mitad? Ni a mi madre se lo dejo a la mitad."
+        }
+      ]
+    },
+    {
+      "id": "marisa-herido-1",
+      "name": "Marisa · vendas limpias",
+      "who": "Marisa",
+      "campaign": "gremio",
+      "moment": "herido",
+      "mood": "triste",
+      "lines": [
+        "¡Madre mía! Siéntate en ese cajón. Tengo vendas limpias, espera.",
+        "Esto no te lo cobro. No lo apunto ni con tiza."
+      ],
+      "replies": [
+        {
+          "text": "Déjalo. Voy antes al tablón.",
+          "mood": -1,
+          "then": "¿Al tablón? ¡A la capilla! Te lo apunto para que no se te olvide."
+        },
+        {
+          "text": "Gracias, Marisa. Te debo una.",
+          "mood": 1,
+          "then": "No me debes nada. Pero no vuelvas así, ¿vale?"
+        },
+        {
+          "text": "Solo un poco de agua.",
+          "mood": 0,
+          "then": "Agua y venda. Y luego a la capilla, que yo no soy Elvira."
+        }
+      ]
+    },
+    {
+      "id": "marisa-herido-2",
+      "name": "Marisa · te dije vendas",
+      "who": "Marisa",
+      "campaign": "gremio",
+      "moment": "herido",
+      "mood": "enfadado",
+      "lines": [
+        "¿Eso es sangre? ¡Te dije que te llevaras vendas!",
+        "Te lo apunté en el mostrador: «vendas». Y ni caso."
+      ],
+      "replies": [
+        {
+          "text": "Las llevaba. No bastaron.",
+          "mood": 0,
+          "then": "Pues llevabas pocas. La próxima vez, el doble."
+        },
+        {
+          "text": "Las vendas son para los que no saben pelear.",
+          "mood": -1,
+          "then": "Pues la sangre es tuya, no mía. Anda, a la capilla."
+        },
+        {
+          "text": "Tenías razón. La próxima vez, vendas.",
+          "mood": 1,
+          "then": "Te las apunto ya. Y te las dejo a buen precio."
+        }
+      ]
+    },
+    {
+      "id": "ramiro-pueblo-1",
+      "name": "Ramiro · encendiendo la fragua (mañana)",
+      "who": "Ramiro",
+      "campaign": "gremio",
+      "moment": "pueblo",
+      "when": {
+        "hora": "morning"
+      },
+      "lines": [
+        "Aún no está caliente.",
+        "Vuelve en un rato."
+      ],
+      "replies": [
+        {
+          "text": "¿Te ayudo con el fuelle?",
+          "mood": 1,
+          "then": "Tira fuerte. Así. No pares."
+        },
+        {
+          "text": "Date prisa, que tengo prisa.",
+          "mood": -1,
+          "then": "El hierro no tiene prisa. Yo tampoco."
+        },
+        {
+          "text": "Espero aquí, si no molesto.",
+          "mood": 0,
+          "then": "No molestas. Pero no toques nada."
+        }
+      ]
+    },
+    {
+      "id": "ramiro-pueblo-2",
+      "name": "Ramiro · el arma mellada",
+      "who": "Ramiro",
+      "campaign": "gremio",
+      "moment": "pueblo",
+      "lines": [
+        "Enséñame el arma.",
+        "Tiene muescas. Tráemela antes de que se parta, no después."
+      ],
+      "replies": [
+        {
+          "text": "Aún aguanta. No hace falta.",
+          "mood": -1,
+          "then": "Eso dijo el último. Volvió con el mango en la mano."
+        },
+        {
+          "text": "Arréglala. Me fío de ti.",
+          "mood": 1,
+          "then": "Bien. Mañana."
+        },
+        {
+          "text": "¿Cuánto me costaría?",
+          "mood": 0,
+          "then": "Menos que una nueva."
+        }
+      ]
+    },
+    {
+      "id": "ramiro-pueblo-3",
+      "name": "Ramiro · Gerd",
+      "who": "Ramiro",
+      "campaign": "gremio",
+      "moment": "pueblo",
+      "lines": [
+        "Gerd y yo servimos en la misma compañía. Hace mucho.",
+        "Él hablaba por los dos. Sigue igual."
+      ],
+      "replies": [
+        {
+          "text": "¿Cómo era de joven?",
+          "mood": 0,
+          "then": "Igual. Con más pelo."
+        },
+        {
+          "text": "Gerd dice que tú eras el lento.",
+          "mood": -1,
+          "then": "Gerd habla demasiado. Y tú le escuchas."
+        },
+        {
+          "text": "Se nota que lo aprecias.",
+          "mood": 1,
+          "then": "Me cubrió la espalda. Eso no se olvida."
+        }
+      ]
+    },
+    {
+      "id": "ramiro-pueblo-4",
+      "name": "Ramiro · los clavos de Osric",
+      "who": "Ramiro",
+      "campaign": "gremio",
+      "moment": "pueblo",
+      "lines": [
+        "Osric me ha encargado clavos de cobre. Para la barca que aún no tiene.",
+        "Hombre previsor."
+      ],
+      "replies": [
+        {
+          "text": "¿Osric de pescador? Qué risa.",
+          "mood": -1,
+          "then": "A mí no me hace gracia. Déjalo en paz."
+        },
+        {
+          "text": "¿Tú saldrías a pescar con él?",
+          "mood": 0,
+          "then": "No. Aquí tengo trabajo de sobra."
+        },
+        {
+          "text": "Ojalá la consiga pronto.",
+          "mood": 1,
+          "then": "Ojalá. Se lo ha ganado."
+        }
+      ]
+    },
+    {
+      "id": "ramiro-pueblo-5",
+      "name": "Ramiro · cerrando (noche)",
+      "who": "Ramiro",
+      "campaign": "gremio",
+      "moment": "pueblo",
+      "when": {
+        "hora": "night"
+      },
+      "lines": [
+        "Cierro ya.",
+        "Si es urgente, dímelo. Si no, mañana."
+      ],
+      "replies": [
+        {
+          "text": "Mañana, entonces.",
+          "mood": 0,
+          "then": "Mañana. Temprano."
+        },
+        {
+          "text": "Nada. Venía a darte las buenas noches.",
+          "mood": 1,
+          "then": "Buenas noches. Cierra la puerta al salir."
+        },
+        {
+          "text": "Es urgente. Para mí todo es urgente.",
+          "mood": -1,
+          "then": "Para mí no. Mañana."
+        }
+      ]
+    },
+    {
+      "id": "ramiro-llegada-1",
+      "name": "Ramiro · al volver",
+      "who": "Ramiro",
+      "campaign": "gremio",
+      "moment": "llegada",
+      "lines": [
+        "Has vuelto.",
+        "Enséñame el acero. Lo que traigas roto, déjalo aquí."
+      ],
+      "replies": [
+        {
+          "text": "Creo que viene todo entero.",
+          "mood": 0,
+          "then": "Eso lo decido yo."
+        },
+        {
+          "text": "Luego. Primero, la taberna.",
+          "mood": -1,
+          "then": "La taberna no arregla espadas."
+        },
+        {
+          "text": "Aquí lo tienes. Míralo con calma.",
+          "mood": 1,
+          "then": "Siempre lo miro con calma."
+        }
+      ]
+    },
+    {
+      "id": "ramiro-llegada-2",
+      "name": "Ramiro · el arma entera",
+      "who": "Ramiro",
+      "campaign": "gremio",
+      "moment": "llegada",
+      "mood": "alegre",
+      "lines": [
+        "Vuelves con el arma entera.",
+        "Me hiciste caso. Bien."
+      ],
+      "replies": [
+        {
+          "text": "Siempre te hago caso, Ramiro.",
+          "mood": 1,
+          "then": "Siempre no. Esta vez, sí."
+        },
+        {
+          "text": "Algo de caso, sí.",
+          "mood": 0,
+          "then": "Algo es algo."
+        },
+        {
+          "text": "Fue suerte. Nada más.",
+          "mood": -1,
+          "then": "La suerte no afila."
+        }
+      ]
+    },
+    {
+      "id": "ramiro-herido-1",
+      "name": "Ramiro · con heridas",
+      "who": "Ramiro",
+      "campaign": "gremio",
+      "moment": "herido",
+      "mood": "enfadado",
+      "lines": [
+        "Eso no te lo arreglo yo. A la capilla. Ya.",
+        "Te acompaño."
+      ],
+      "replies": [
+        {
+          "text": "Puedo ir {solo|sola}.",
+          "mood": 0,
+          "then": "Ya lo sé. Te acompaño igual."
+        },
+        {
+          "text": "Gracias. Apóyame, que me cuesta andar.",
+          "mood": 1,
+          "then": "Agárrate. Despacio."
+        },
+        {
+          "text": "Primero afílame esto.",
+          "mood": -1,
+          "then": "No. Primero te curas. Luego afilo."
+        }
+      ]
+    },
+    {
+      "id": "ramiro-herido-2",
+      "name": "Ramiro · el lado sin cubrir",
+      "who": "Ramiro",
+      "campaign": "gremio",
+      "moment": "herido",
+      "lines": [
+        "Te han dado por el lado que no cubrías.",
+        "Mañana te enseño a cubrirlo. Hoy, a la capilla."
+      ],
+      "replies": [
+        {
+          "text": "Mañana vengo. Temprano.",
+          "mood": 1,
+          "then": "Temprano. Y con el arma."
+        },
+        {
+          "text": "No me hace falta que me enseñes.",
+          "mood": -1,
+          "then": "Ya lo veo."
+        },
+        {
+          "text": "¿Tanto se nota?",
+          "mood": 0,
+          "then": "Se nota. Sangras por ahí."
+        }
+      ]
+    },
+    {
+      "id": "elvira-pueblo-1",
+      "name": "Madre Elvira · la vela de Osric (tarde)",
+      "who": "Madre Elvira",
+      "campaign": "gremio",
+      "moment": "pueblo",
+      "when": {
+        "hora": "afternoon"
+      },
+      "lines": [
+        "Pasa, {hijo|hija}. A estas horas solo viene Osric, a encender su vela.",
+        "No sé por quién es. Nunca se lo he preguntado."
+      ],
+      "replies": [
+        {
+          "text": "¿Puedo encender una yo?",
+          "mood": 0,
+          "then": "Claro. Por quien quieras. No hace falta decirlo."
+        },
+        {
+          "text": "Osric tendrá algo que esconder.",
+          "mood": -1,
+          "then": "Eso es cosa suya, {hijo|hija}. No nuestra."
+        },
+        {
+          "text": "Entonces lo dejaré tranquilo.",
+          "mood": 1,
+          "then": "Gracias. Aquí se viene a eso."
+        }
+      ]
+    },
+    {
+      "id": "elvira-pueblo-2",
+      "name": "Madre Elvira · las tumbas (mañana)",
+      "who": "Madre Elvira",
+      "campaign": "gremio",
+      "moment": "pueblo",
+      "when": {
+        "hora": "morning"
+      },
+      "mood": "triste",
+      "lines": [
+        "Estaba limpiando las tumbas de detrás de la capilla. Me sé todos los nombres.",
+        "Y de qué murió cada uno. No quiero aprenderme el tuyo, {hijo|hija}."
+      ],
+      "replies": [
+        {
+          "text": "No tendrás que aprenderlo. Tendré cuidado.",
+          "mood": 1,
+          "then": "Ellos también me lo dijeron. Pero a ti te creo."
+        },
+        {
+          "text": "¿Cuántas hay?",
+          "mood": 0,
+          "then": "Treinta y dos. Las cuento cada mañana."
+        },
+        {
+          "text": "Alguno moriría de tonto, ¿no?",
+          "mood": -1,
+          "then": "No hables así de ellos. Aquí no."
+        }
+      ]
+    },
+    {
+      "id": "elvira-pueblo-3",
+      "name": "Madre Elvira · antes de salir",
+      "who": "Madre Elvira",
+      "campaign": "gremio",
+      "moment": "pueblo",
+      "lines": [
+        "Antes de que salgas del puerto, déjame verte los brazos y las manos.",
+        "Aquí nadie se va con una herida sin curar. Nadie."
+      ],
+      "replies": [
+        {
+          "text": "No tengo tiempo, Madre.",
+          "mood": -1,
+          "then": "Para una fiebre sí lo tendrás. Trae el brazo."
+        },
+        {
+          "text": "Mira lo que quieras, Madre.",
+          "mood": 1,
+          "then": "Así me gusta. Estás bien. Ve con cuidado."
+        },
+        {
+          "text": "Son rasguños y poco más.",
+          "mood": 0,
+          "then": "Los rasguños también se infectan. Trae."
+        }
+      ]
+    },
+    {
+      "id": "elvira-pueblo-4",
+      "name": "Madre Elvira · el pescador",
+      "who": "Madre Elvira",
+      "campaign": "gremio",
+      "moment": "pueblo",
+      "lines": [
+        "Esta mañana ha venido un pescador con un anzuelo clavado en la mano.",
+        "Ya está curado. Los del puerto también son hijos míos."
+      ],
+      "replies": [
+        {
+          "text": "Un anzuelo. Eso no es una herida.",
+          "mood": -1,
+          "then": "Duele igual. Pregúntaselo a él."
+        },
+        {
+          "text": "¿Y te pagó?",
+          "mood": 0,
+          "then": "Eso queda entre él y yo, {hijo|hija}."
+        },
+        {
+          "text": "Tienes buena mano, Madre.",
+          "mood": 1,
+          "then": "Tengo muchos años, que no es lo mismo. Pero gracias."
+        }
+      ]
+    },
+    {
+      "id": "elvira-pueblo-5",
+      "name": "Madre Elvira · Brunilda (noche)",
+      "who": "Madre Elvira",
+      "campaign": "gremio",
+      "moment": "pueblo",
+      "when": {
+        "hora": "night"
+      },
+      "lines": [
+        "Brunilda viene de noche, cuando cierra el gremio. Se sienta al fondo y no dice nada.",
+        "Le pesa cada compañía que no vuelve, aunque no lo diga."
+      ],
+      "replies": [
+        {
+          "text": "¿Tú te sientas con ella?",
+          "mood": 0,
+          "then": "Le enciendo una vela y la dejo sola."
+        },
+        {
+          "text": "Me alegra que tenga dónde sentarse.",
+          "mood": 1,
+          "then": "Aquí hay sitio para todos, {hijo|hija}."
+        },
+        {
+          "text": "¿Brunilda? No parece de las que sufren.",
+          "mood": -1,
+          "then": "Parecer no es ser. Y baja la voz."
+        }
+      ]
+    },
+    {
+      "id": "elvira-llegada-1",
+      "name": "Madre Elvira · al volver",
+      "who": "Madre Elvira",
+      "campaign": "gremio",
+      "moment": "llegada",
+      "lines": [
+        "Has vuelto, {hijo|hija}. Déjame mirarte bien.",
+        "Ven esta tarde, que quiero verte con luz."
+      ],
+      "replies": [
+        {
+          "text": "Aquí me tienes, Madre. Mira.",
+          "mood": 1,
+          "then": "Estás {flaco|flaca}. Come algo y vuelve esta tarde."
+        },
+        {
+          "text": "Estoy bien. No hace falta.",
+          "mood": -1,
+          "then": "Eso dicen todos. Ven igual."
+        },
+        {
+          "text": "Vendré esta tarde.",
+          "mood": 0,
+          "then": "Te espero. Que no se te olvide."
+        }
+      ]
+    },
+    {
+      "id": "elvira-llegada-2",
+      "name": "Madre Elvira · ninguna lápida",
+      "who": "Madre Elvira",
+      "campaign": "gremio",
+      "moment": "llegada",
+      "mood": "alegre",
+      "lines": [
+        "Vuelves a {sitio}. Hoy no tengo que grabar tu nombre en ninguna lápida.",
+        "Pasa y siéntate un momento."
+      ],
+      "replies": [
+        {
+          "text": "Ya tendrás otros nombres que grabar.",
+          "mood": -1,
+          "then": "No lo digas así. Cada nombre me pesa, {hijo|hija}."
+        },
+        {
+          "text": "Solo un momento. Tengo cosas que hacer.",
+          "mood": 0,
+          "then": "Un momento basta. Siéntate."
+        },
+        {
+          "text": "Ni hoy ni nunca, si puedo evitarlo.",
+          "mood": 1,
+          "then": "Eso quiero oír. Siéntate un poco."
+        }
+      ]
+    },
+    {
+      "id": "elvira-herido-1",
+      "name": "Madre Elvira · con heridas",
+      "who": "Madre Elvira",
+      "campaign": "gremio",
+      "moment": "herido",
+      "mood": "triste",
+      "lines": [
+        "Ay, {hijo|hija}. Túmbate ahí, despacio.",
+        "No hables. Ya me lo contarás cuando deje de sangrar."
+      ],
+      "replies": [
+        {
+          "text": "¿Es grave?",
+          "mood": 0,
+          "then": "Lo sería sin mí. Ahora, {quieto|quieta}."
+        },
+        {
+          "text": "Cóseme rápido, que me esperan.",
+          "mood": -1,
+          "then": "Que esperen. Aquí no se cura a medias."
+        },
+        {
+          "text": "Me pongo en tus manos, Madre.",
+          "mood": 1,
+          "then": "Son buenas manos. Cierra los ojos."
+        }
+      ]
+    },
+    {
+      "id": "elvira-herido-2",
+      "name": "Madre Elvira · te quedas esta noche",
+      "who": "Madre Elvira",
+      "campaign": "gremio",
+      "moment": "herido",
+      "lines": [
+        "Tienes las manos heladas. Has perdido mucha sangre, {hijo|hija}.",
+        "Esta noche duermes aquí. No te lo pregunto, te lo digo."
+      ],
+      "replies": [
+        {
+          "text": "Gracias, Madre. Me quedo.",
+          "mood": 1,
+          "then": "Bien. Te traigo una manta y un caldo."
+        },
+        {
+          "text": "Solo esta noche.",
+          "mood": 0,
+          "then": "Esta noche. Mañana ya veremos."
+        },
+        {
+          "text": "Prefiero mi cama de la posada.",
+          "mood": -1,
+          "then": "Tomás no sabe coser. Yo sí. Te quedas."
+        }
+      ]
+    },
+    {
+      "id": "oro-pelea-1",
+      "name": "Oro · tras una pelea",
+      "wants": "coin",
+      "moment": "pelea",
+      "lines": [
+        "Antes de nada: registrad los cuerpos. Lo que llevan encima ya no les hace falta."
+      ],
+      "replies": [
+        {
+          "text": "Primero curamos a los heridos.",
+          "mood": -1,
+          "then": "Los heridos no se escapan. Las monedas, a veces sí."
+        },
+        {
+          "text": "Tú mira las bolsas; yo, las armas.",
+          "mood": 1,
+          "then": "Así da gusto. El reparto, al final y a partes iguales."
+        },
+        {
+          "text": "No creo que lleven gran cosa.",
+          "mood": 0,
+          "then": "Nunca se sabe. Una vez encontré un anillo dentro de una bota."
+        }
+      ]
+    },
+    {
+      "id": "oro-pelea-2",
+      "name": "Oro · tras una pelea",
+      "wants": "coin",
+      "moment": "pelea",
+      "mood": "alegre",
+      "lines": [
+        "Esa espada vale sus buenas monedas en cualquier herrería.",
+        "Pelear no da de comer. Lo que se recoge después, sí."
+      ],
+      "replies": [
+        {
+          "text": "Quédatela. Te la has ganado.",
+          "mood": 1,
+          "then": "Así se habla. Sé de alguien que paga bien por estas."
+        },
+        {
+          "text": "La repartiremos como todo.",
+          "mood": 0,
+          "then": "Justo. Aunque la vi yo primero."
+        },
+        {
+          "text": "Déjala. No somos saqueadores.",
+          "mood": -1,
+          "then": "Ellos tampoco van a usarla. Es un desperdicio."
+        }
+      ]
+    },
+    {
+      "id": "oro-llegada-1",
+      "name": "Oro · al llegar",
+      "wants": "coin",
+      "moment": "llegada",
+      "lines": [
+        "Lo primero: ¿hay algo de valor en {sitio}, o venimos por amor al arte?"
+      ],
+      "replies": [
+        {
+          "text": "Venimos por el trabajo, no por el oro.",
+          "mood": -1,
+          "then": "El trabajo se hace mejor con el oro delante."
+        },
+        {
+          "text": "Si hay algo, lo encontraremos.",
+          "mood": 1,
+          "then": "Eso quería oír. Ojos abiertos."
+        },
+        {
+          "text": "Ya veremos.",
+          "mood": 0,
+          "then": "Ya veremos, no. Ya contaremos."
+        }
+      ]
+    },
+    {
+      "id": "oro-viaje-1",
+      "name": "Oro · de camino",
+      "wants": "coin",
+      "moment": "viaje",
+      "lines": [
+        "Llevo la cuenta de lo gastado en este viaje. No te va a gustar."
+      ],
+      "replies": [
+        {
+          "text": "Prefiero no saberlo.",
+          "mood": 0,
+          "then": "Como quieras. Pero el dinero se va igual aunque no mires."
+        },
+        {
+          "text": "Deja de contar monedas.",
+          "mood": -1,
+          "then": "Si no las cuento yo, no las cuenta nadie. Y así nos va."
+        },
+        {
+          "text": "Dímelo, ya que estás.",
+          "mood": 1,
+          "then": "Más de lo que hemos ganado. Hay que buscar trabajos mejor pagados."
+        }
+      ]
+    },
+    {
+      "id": "oro-pueblo-1",
+      "name": "Oro · en el pueblo",
+      "wants": "coin",
+      "moment": "pueblo",
+      "mood": "enfadado",
+      "lines": [
+        "He preguntado precios en el mercado. Aquí nos quieren sacar hasta los ojos."
+      ],
+      "replies": [
+        {
+          "text": "Pues regateamos.",
+          "mood": 1,
+          "then": "Eso. Déjame hablar a mí, que tengo cara de pobre."
+        },
+        {
+          "text": "Pagamos lo que pidan. No hay tiempo.",
+          "mood": -1,
+          "then": "Siempre hay tiempo para no tirar el dinero."
+        },
+        {
+          "text": "En todas partes es igual.",
+          "mood": 0,
+          "then": "No. En algunas es peor. Pero aquí es malo."
+        }
+      ]
+    },
+    {
+      "id": "oro-pueblo-2",
+      "name": "Oro · en el pueblo",
+      "wants": "coin",
+      "moment": "pueblo",
+      "lines": [
+        "Me han hablado de un trabajo con buena paga.",
+        "No sé de qué va, pero la cifra me ha gustado mucho."
+      ],
+      "replies": [
+        {
+          "text": "Primero acabamos lo que tenemos.",
+          "mood": 0,
+          "then": "Claro, claro. Pero lo apunto."
+        },
+        {
+          "text": "Si paga bien, lo miramos.",
+          "mood": 1,
+          "then": "Así me gusta. Luego te llevo a hablar con el que paga."
+        },
+        {
+          "text": "No todo es dinero.",
+          "mood": -1,
+          "then": "No. Pero casi todo."
+        }
+      ]
+    },
+    {
+      "id": "oro-herido-1",
+      "name": "Oro · te ve herido",
+      "wants": "coin",
+      "moment": "herido",
+      "lines": [
+        "Si caes tú, aquí no cobra nadie.",
+        "Siéntate y cúrate. Lo digo por los dos: por ti y por la bolsa."
+      ],
+      "replies": [
+        {
+          "text": "Qué detalle por tu parte.",
+          "mood": 0,
+          "then": "De nada. Y no es broma: siéntate."
+        },
+        {
+          "text": "Tienes razón. Paramos.",
+          "mood": 1,
+          "then": "Sabia decisión. Y barata."
+        },
+        {
+          "text": "La paga me da igual ahora.",
+          "mood": -1,
+          "then": "A ti. A mí no. Siéntate."
+        }
+      ]
+    },
+    {
+      "id": "gloria-pelea-1",
+      "name": "Gloria · tras una pelea",
+      "wants": "glory",
+      "moment": "pelea",
+      "mood": "alegre",
+      "lines": [
+        "¿Has visto eso? Esto hay que contarlo en la primera taberna que pisemos."
+      ],
+      "replies": [
+        {
+          "text": "Contado por ti, serán el doble de enemigos.",
+          "mood": 0,
+          "then": "Eso se llama contar bien."
+        },
+        {
+          "text": "Mejor no presumir.",
+          "mood": -1,
+          "then": "Si no lo contamos, es como si no hubiera pasado."
+        },
+        {
+          "text": "¡Y que alguien le haga una canción!",
+          "mood": 1,
+          "then": "¡Eso! Una con nuestros nombres bien alto."
+        }
+      ]
+    },
+    {
+      "id": "gloria-pelea-2",
+      "name": "Gloria · tras una pelea",
+      "wants": "glory",
+      "moment": "pelea",
+      "lines": [
+        "Eran más que nosotros, y aquí seguimos. Esto es lo que se recuerda."
+      ],
+      "replies": [
+        {
+          "text": "Ha sido suerte.",
+          "mood": -1,
+          "then": "La suerte no sujeta una espada."
+        },
+        {
+          "text": "Hoy nos lo hemos ganado.",
+          "mood": 1,
+          "then": "¡Así se habla!"
+        },
+        {
+          "text": "Lo que se recuerda es volver con vida.",
+          "mood": 0,
+          "then": "Eso también. Pero con una buena historia."
+        }
+      ]
+    },
+    {
+      "id": "gloria-llegada-1",
+      "name": "Gloria · al llegar",
+      "wants": "glory",
+      "moment": "llegada",
+      "lines": [
+        "{sitio}. Algún día aquí sabrán nuestros nombres.",
+        "Y si no, se los enseñaremos."
+      ],
+      "replies": [
+        {
+          "text": "Primero, que no nos maten.",
+          "mood": 0,
+          "then": "Detalles."
+        },
+        {
+          "text": "Empecemos hoy mismo.",
+          "mood": 1,
+          "then": "¡Eso! Que nos vean entrar."
+        },
+        {
+          "text": "Prefiero que no sepan quiénes somos.",
+          "mood": -1,
+          "then": "¿Y para qué hacemos todo esto, entonces?"
+        }
+      ]
+    },
+    {
+      "id": "gloria-viaje-1",
+      "name": "Gloria · de camino",
+      "wants": "glory",
+      "moment": "viaje",
+      "lines": [
+        "¿Crees que algún día alguien cantará lo que hacemos?",
+        "Yo ya tengo pensado el estribillo."
+      ],
+      "replies": [
+        {
+          "text": "Cántamelo.",
+          "mood": 1,
+          "then": "Todavía no. Falta la parte en la que salvamos a todo el mundo."
+        },
+        {
+          "text": "Lo dudo mucho.",
+          "mood": -1,
+          "then": "Qué poca fe. Así no se llega a ninguna parte."
+        },
+        {
+          "text": "Con que no sea triste, me vale.",
+          "mood": 0,
+          "then": "Triste no. Épica. Hay diferencia."
+        }
+      ]
+    },
+    {
+      "id": "gloria-pueblo-1",
+      "name": "Gloria · en el pueblo",
+      "wants": "glory",
+      "moment": "pueblo",
+      "lines": [
+        "Un crío me ha preguntado si somos héroes de verdad.",
+        "Le he dicho que sí. No me mires así, que casi lo somos."
+      ],
+      "replies": [
+        {
+          "text": "Casi. Todavía nos falta mucho.",
+          "mood": 0,
+          "then": "Por eso hay que seguir."
+        },
+        {
+          "text": "Has hecho bien.",
+          "mood": 1,
+          "then": "Ya verás cómo mañana nos miran distinto."
+        },
+        {
+          "text": "No le mientas a un crío.",
+          "mood": -1,
+          "then": "No es mentira. Es adelantarse un poco."
+        }
+      ]
+    },
+    {
+      "id": "gloria-pueblo-2",
+      "name": "Gloria · en el pueblo",
+      "wants": "glory",
+      "moment": "pueblo",
+      "lines": [
+        "En la posada hablan de nosotros. Poco, pero hablan.",
+        "Hay que darles algo más grande que contar."
+      ],
+      "replies": [
+        {
+          "text": "Lo tendrán.",
+          "mood": 1,
+          "then": "¡Esa es la actitud!"
+        },
+        {
+          "text": "¿Qué dicen?",
+          "mood": 0,
+          "then": "Que somos forasteros con muchas armas. Es un comienzo."
+        },
+        {
+          "text": "Que hablen de otros.",
+          "mood": -1,
+          "then": "De los que no dan que hablar, nadie se acuerda."
+        }
+      ]
+    },
+    {
+      "id": "gloria-herido-1",
+      "name": "Gloria · te ve herido",
+      "wants": "glory",
+      "moment": "herido",
+      "lines": [
+        "Así no. Si hay que caer, que sea al final y con todo el mundo mirando.",
+        "Ahora, a curarse. Las cicatrices ya se lucirán luego."
+      ],
+      "replies": [
+        {
+          "text": "Solo quiero salir {vivo|viva} de esta.",
+          "mood": -1,
+          "then": "Una cosa no quita la otra. Pero descansa, venga."
+        },
+        {
+          "text": "Qué consuelo.",
+          "mood": 0,
+          "then": "Es lo que hay. Siéntate."
+        },
+        {
+          "text": "Esta cicatriz será de las buenas.",
+          "mood": 1,
+          "then": "¡De las mejores! Ya pienso cómo contarla."
+        }
+      ]
+    },
+    {
+      "id": "sangre-pelea-1",
+      "name": "Sangre · tras una pelea",
+      "wants": "blood",
+      "moment": "pelea",
+      "lines": [
+        "¿Ya está? Si apenas había empezado a calentar."
+      ],
+      "replies": [
+        {
+          "text": "Ya habrá más. Tranquilidad.",
+          "mood": 1,
+          "then": "Eso espero. Siempre hay más."
+        },
+        {
+          "text": "Por hoy es suficiente.",
+          "mood": 0,
+          "then": "Para ti."
+        },
+        {
+          "text": "Ojalá no haya más en todo el día.",
+          "mood": -1,
+          "then": "Qué día más aburrido, entonces."
+        }
+      ]
+    },
+    {
+      "id": "sangre-pelea-2",
+      "name": "Sangre · tras una pelea",
+      "wants": "blood",
+      "moment": "pelea",
+      "lines": [
+        "Uno ha salido corriendo. Si vamos ahora, lo alcanzamos."
+      ],
+      "replies": [
+        {
+          "text": "Déjalo ir. Ya ha tenido bastante.",
+          "mood": -1,
+          "then": "Ese vuelve mañana con diez más. Luego no digas que no avisé."
+        },
+        {
+          "text": "Vamos. Rápido.",
+          "mood": 1,
+          "then": "¡Eso! Por aquí, que va dejando rastro."
+        },
+        {
+          "text": "¿Y si es una trampa?",
+          "mood": 0,
+          "then": "Pues peleamos dentro de la trampa."
+        }
+      ]
+    },
+    {
+      "id": "sangre-llegada-1",
+      "name": "Sangre · al llegar",
+      "wants": "blood",
+      "moment": "llegada",
+      "lines": [
+        "Bueno, ya estamos en {sitio}.",
+        "¿Hay alguien aquí que se merezca un escarmiento?"
+      ],
+      "replies": [
+        {
+          "text": "Nadie, de momento.",
+          "mood": 0,
+          "then": "De momento. Me vale."
+        },
+        {
+          "text": "Ya lo sabremos. Ten el arma a mano.",
+          "mood": 1,
+          "then": "Siempre la tengo a mano."
+        },
+        {
+          "text": "Venimos en paz. Compórtate.",
+          "mood": -1,
+          "then": "En paz. Ya. Como si eso durara."
+        }
+      ]
+    },
+    {
+      "id": "sangre-viaje-1",
+      "name": "Sangre · de camino",
+      "wants": "blood",
+      "moment": "viaje",
+      "lines": [
+        "Tanto caminar y ni un triste bandido. Qué camino más aburrido."
+      ],
+      "replies": [
+        {
+          "text": "Mejor así.",
+          "mood": -1,
+          "then": "Mejor para ti."
+        },
+        {
+          "text": "Paciencia, que ya saldrán.",
+          "mood": 1,
+          "then": "Eso. Y cuando salgan, voy yo primero."
+        },
+        {
+          "text": "¿Siempre tienes ganas de pelea?",
+          "mood": 0,
+          "then": "Casi siempre. Durmiendo, un poco menos."
+        }
+      ]
+    },
+    {
+      "id": "sangre-pueblo-1",
+      "name": "Sangre · en el pueblo",
+      "wants": "blood",
+      "moment": "pueblo",
+      "mood": "enfadado",
+      "lines": [
+        "Uno de la taberna me ha mirado mal. Estoy por salir fuera con él."
+      ],
+      "replies": [
+        {
+          "text": "Déjalo. No quiero problemas aquí.",
+          "mood": -1,
+          "then": "Los problemas los busca él, no yo."
+        },
+        {
+          "text": "Ven, que te invito a otra. Olvídalo.",
+          "mood": 0,
+          "then": "A otra, sí. Olvidarlo, ya veremos."
+        },
+        {
+          "text": "Si vuelve a mirarte, te acompaño.",
+          "mood": 1,
+          "then": "Así me gusta. Dos contra uno es justicia."
+        }
+      ]
+    },
+    {
+      "id": "sangre-pueblo-2",
+      "name": "Sangre · en el pueblo",
+      "wants": "blood",
+      "moment": "pueblo",
+      "lines": [
+        "El herrero de aquí afila bien. Mira qué filo.",
+        "Ahora solo falta alguien con quien probarlo."
+      ],
+      "replies": [
+        {
+          "text": "Pruébalo en el próximo que nos ataque.",
+          "mood": 1,
+          "then": "Trato hecho."
+        },
+        {
+          "text": "Cuidado, que te cortas.",
+          "mood": 0,
+          "then": "Si me corto, es que el herrero ha hecho bien su trabajo."
+        },
+        {
+          "text": "Guarda eso. Aquí asustas a la gente.",
+          "mood": -1,
+          "then": "Que se asusten. Así no molestan."
+        }
+      ]
+    },
+    {
+      "id": "sangre-herido-1",
+      "name": "Sangre · te ve herido",
+      "wants": "blood",
+      "moment": "herido",
+      "mood": "enfadado",
+      "lines": [
+        "¿Quién te ha hecho eso? Dímelo, que lo busco.",
+        "Y luego ya no se lo hace a nadie más."
+      ],
+      "replies": [
+        {
+          "text": "Ya está muerto. Déjalo.",
+          "mood": 0,
+          "then": "Lástima. Me lo habría pedido para mí."
+        },
+        {
+          "text": "Primero cúrame. La venganza, después.",
+          "mood": 1,
+          "then": "Eso. Juntos, y sin prisa."
+        },
+        {
+          "text": "No busques venganza por mí.",
+          "mood": -1,
+          "then": "No es por ti. Es por mí."
+        }
+      ]
+    },
+    {
+      "id": "calma-pelea-1",
+      "name": "Calma · tras una pelea",
+      "wants": "quiet",
+      "moment": "pelea",
+      "lines": [
+        "Ya ha pasado. Respira hondo, que se te ve el pulso en el cuello."
+      ],
+      "replies": [
+        {
+          "text": "Respira tú también.",
+          "mood": 1,
+          "then": "Eso intento. A la vez, que sale mejor."
+        },
+        {
+          "text": "Estoy bien. Sigamos.",
+          "mood": -1,
+          "then": "Un momento no mata a nadie. La prisa, sí."
+        },
+        {
+          "text": "¿Tanto se nota?",
+          "mood": 0,
+          "then": "Un poco. No pasa nada. Nos pasa a todos."
+        }
+      ]
+    },
+    {
+      "id": "calma-pelea-2",
+      "name": "Calma · tras una pelea",
+      "wants": "quiet",
+      "moment": "pelea",
+      "mood": "triste",
+      "lines": [
+        "Otra pelea más. Ojalá fuera la última.",
+        "Nunca me han gustado estas cosas."
+      ],
+      "replies": [
+        {
+          "text": "Ha sido rápida, al menos.",
+          "mood": 0,
+          "then": "Eso sí. Algo es algo."
+        },
+        {
+          "text": "Pues vaya oficio has elegido.",
+          "mood": -1,
+          "then": "No siempre se elige."
+        },
+        {
+          "text": "Algún día lo será.",
+          "mood": 1,
+          "then": "Ese día me siento en una piedra y no me levanto en una semana."
+        }
+      ]
+    },
+    {
+      "id": "calma-llegada-1",
+      "name": "Calma · al llegar",
+      "wants": "quiet",
+      "moment": "llegada",
+      "lines": [
+        "Ojalá {sitio} nos deje en paz un rato.",
+        "Un fuego, un poco de silencio, y con eso me conformo."
+      ],
+      "replies": [
+        {
+          "text": "Primero hay trabajo que hacer.",
+          "mood": -1,
+          "then": "Siempre lo hay. Ese es el problema."
+        },
+        {
+          "text": "Buscaremos un rincón tranquilo.",
+          "mood": 1,
+          "then": "Gracias. Eso vale más que el oro."
+        },
+        {
+          "text": "No cuentes con ello.",
+          "mood": 0,
+          "then": "No cuento. Pero lo deseo."
+        }
+      ]
+    },
+    {
+      "id": "calma-viaje-1",
+      "name": "Calma · de camino",
+      "wants": "quiet",
+      "moment": "viaje",
+      "mood": "alegre",
+      "lines": [
+        "Escucha. Solo el viento y nuestros pasos.",
+        "Así podría andar todo el día."
+      ],
+      "replies": [
+        {
+          "text": "¿Cuánto falta para llegar?",
+          "mood": 0,
+          "then": "Lo que falte. No hay prisa."
+        },
+        {
+          "text": "A mí tanto silencio me pone {nervioso|nerviosa}.",
+          "mood": -1,
+          "then": "Qué pena. Con lo bien que se está."
+        },
+        {
+          "text": "Yo también.",
+          "mood": 1,
+          "then": "Pues sigamos así. Sin prisa."
+        }
+      ]
+    },
+    {
+      "id": "calma-pueblo-1",
+      "name": "Calma · en el pueblo",
+      "wants": "quiet",
+      "moment": "pueblo",
+      "lines": [
+        "He encontrado un banco a la sombra, lejos del ruido del mercado.",
+        "Siéntate un rato. No hace falta hablar."
+      ],
+      "replies": [
+        {
+          "text": "Me siento. Solo un rato.",
+          "mood": 1,
+          "then": "Con un rato basta."
+        },
+        {
+          "text": "Tenemos cosas que hacer.",
+          "mood": -1,
+          "then": "Siempre. Por eso hay que sentarse cuando se puede."
+        },
+        {
+          "text": "¿Quieres contarme algo?",
+          "mood": 0,
+          "then": "No. Ahí está la gracia."
+        }
+      ]
+    },
+    {
+      "id": "calma-pueblo-2",
+      "name": "Calma · en el pueblo",
+      "wants": "quiet",
+      "moment": "pueblo",
+      "mood": "alegre",
+      "lines": [
+        "Hoy he dormido en una cama de verdad. Casi se me había olvidado cómo era."
+      ],
+      "replies": [
+        {
+          "text": "Pues aprovecha, que mañana salimos.",
+          "mood": 0,
+          "then": "Por eso. Lo aprovecho todo."
+        },
+        {
+          "text": "Quedémonos un día más.",
+          "mood": 1,
+          "then": "¿De verdad? Eso sí que es un regalo."
+        },
+        {
+          "text": "No te acostumbres, que esto dura poco.",
+          "mood": -1,
+          "then": "Ya lo sé. Déjame disfrutarlo sin recordármelo."
+        }
+      ]
+    },
+    {
+      "id": "calma-herido-1",
+      "name": "Calma · te ve herido",
+      "wants": "quiet",
+      "moment": "herido",
+      "lines": [
+        "Estás muy {pálido|pálida}. No te muevas, ya me encargo yo.",
+        "Aquí, a la sombra. Nadie nos mete prisa."
+      ],
+      "replies": [
+        {
+          "text": "No hay tiempo para esto.",
+          "mood": -1,
+          "then": "Siempre hay tiempo para no morirse."
+        },
+        {
+          "text": "¿Es grave?",
+          "mood": 0,
+          "then": "No, si descansas. Sí, si no."
+        },
+        {
+          "text": "Gracias. Necesito parar.",
+          "mood": 1,
+          "then": "Lo sé. Cierra los ojos, que yo vigilo."
+        }
+      ]
+    },
+    {
+      "id": "saber-pelea-1",
+      "name": "Saber · tras una pelea",
+      "wants": "knowledge",
+      "moment": "pelea",
+      "lines": [
+        "Fíjate en las marcas de sus armas. No son de por aquí.",
+        "Me pregunto de dónde vienen."
+      ],
+      "replies": [
+        {
+          "text": "Guárdate una. Luego la miramos.",
+          "mood": 1,
+          "then": "Buena idea. Ya le hago hueco en la mochila."
+        },
+        {
+          "text": "Da igual de dónde vengan.",
+          "mood": -1,
+          "then": "Nunca da igual. Lo que no sabemos es lo que luego nos pilla."
+        },
+        {
+          "text": "¿Tú qué crees?",
+          "mood": 0,
+          "then": "Aún no lo sé. Pero lo sabré."
+        }
+      ]
+    },
+    {
+      "id": "saber-pelea-2",
+      "name": "Saber · tras una pelea",
+      "wants": "knowledge",
+      "moment": "pelea",
+      "lines": [
+        "He contado cuántos golpes hacían falta para tumbar a uno así: siete.",
+        "Lo apunto. La próxima vez iremos más rápido."
+      ],
+      "replies": [
+        {
+          "text": "¿Lo has contado en plena pelea?",
+          "mood": 0,
+          "then": "Claro. Contar me calma."
+        },
+        {
+          "text": "Bien pensado. Apúntalo todo.",
+          "mood": 1,
+          "then": "Todo apuntado. Algún día esto será un libro."
+        },
+        {
+          "text": "Menos contar y más pelear.",
+          "mood": -1,
+          "then": "Se pueden hacer las dos cosas. Yo las hago."
+        }
+      ]
+    },
+    {
+      "id": "saber-llegada-1",
+      "name": "Saber · al llegar",
+      "wants": "knowledge",
+      "moment": "llegada",
+      "lines": [
+        "He leído algo sobre {sitio}. Poco, y muy viejo.",
+        "Quiero ver cuánto de lo que decían es verdad."
+      ],
+      "replies": [
+        {
+          "text": "¿Qué decían?",
+          "mood": 1,
+          "then": "Cosas raras. Te las cuento si alguna resulta ser verdad."
+        },
+        {
+          "text": "Los libros no sirven de nada aquí.",
+          "mood": -1,
+          "then": "Los libros sirven en todas partes. Otra cosa es leerlos bien."
+        },
+        {
+          "text": "Ya lo veremos.",
+          "mood": 0,
+          "then": "Eso. Y lo apuntaré."
+        }
+      ]
+    },
+    {
+      "id": "saber-viaje-1",
+      "name": "Saber · de camino",
+      "wants": "knowledge",
+      "moment": "viaje",
+      "lines": [
+        "Esa planta de la cuneta baja la fiebre, si se hierve bien.",
+        "Si se hierve mal, te la sube. Hay que tener cuidado."
+      ],
+      "replies": [
+        {
+          "text": "¿Cómo sabes tanto?",
+          "mood": 0,
+          "then": "Preguntando. Y leyendo lo que otros no leen."
+        },
+        {
+          "text": "No me des la lata con plantas.",
+          "mood": -1,
+          "then": "Luego no me pidas nada cuando tengas fiebre."
+        },
+        {
+          "text": "Cógela, por si acaso.",
+          "mood": 1,
+          "then": "Ya la tengo. Nunca se sabe."
+        }
+      ]
+    },
+    {
+      "id": "saber-pueblo-1",
+      "name": "Saber · en el pueblo",
+      "wants": "knowledge",
+      "moment": "pueblo",
+      "mood": "alegre",
+      "lines": [
+        "El viejo de la plaza sabe historias de este sitio que no están escritas en ninguna parte.",
+        "Llevo un buen rato escuchándolo."
+      ],
+      "replies": [
+        {
+          "text": "Perder el tiempo con viejos no nos ayuda.",
+          "mood": -1,
+          "then": "Los viejos saben cosas que no vienen en ningún mapa."
+        },
+        {
+          "text": "Cuéntame alguna.",
+          "mood": 1,
+          "then": "Luego, con calma. Tengo que ordenarlas primero."
+        },
+        {
+          "text": "Seguro que se inventa la mitad.",
+          "mood": 0,
+          "then": "La mitad. La otra mitad vale oro."
+        }
+      ]
+    },
+    {
+      "id": "saber-pueblo-2",
+      "name": "Saber · en el pueblo",
+      "wants": "knowledge",
+      "moment": "pueblo",
+      "lines": [
+        "He encontrado a alguien que presta libros viejos. Solo tiene doce, pero son doce.",
+        "¿Quieres que te lea algo esta noche?"
+      ],
+      "replies": [
+        {
+          "text": "Si es corto, vale.",
+          "mood": 0,
+          "then": "Corto no hay nada. Pero lo intento."
+        },
+        {
+          "text": "Sí. Algo de historia.",
+          "mood": 1,
+          "then": "Hecho. Tengo uno de reyes que se traicionan entre ellos. Te gustará."
+        },
+        {
+          "text": "Prefiero dormir.",
+          "mood": -1,
+          "then": "Tú te lo pierdes."
+        }
+      ]
+    },
+    {
+      "id": "saber-herido-1",
+      "name": "Saber · te ve herido",
+      "wants": "knowledge",
+      "moment": "herido",
+      "lines": [
+        "Déjame ver. Sé algo de esto: lo leí en un libro de médicos.",
+        "Aprieta aquí. No, más fuerte."
+      ],
+      "replies": [
+        {
+          "text": "Déjalo, ya se cerrará.",
+          "mood": -1,
+          "then": "Las heridas no se cierran por cabezonería. Aprieta."
+        },
+        {
+          "text": "¿Lo leíste? ¿Y nunca lo has hecho?",
+          "mood": 0,
+          "then": "Siempre hay una primera vez. Aprieta."
+        },
+        {
+          "text": "Haz lo que sepas. Me fío de ti.",
+          "mood": 1,
+          "then": "Bien. Y si sale bien, lo apunto."
+        }
+      ]
+    },
+    {
+      "id": "strahd-ismark-pelea-1",
+      "name": "Ismark · tras una pelea",
+      "who": "Ismark Kolyanovich",
+      "campaign": "strahd",
+      "moment": "pelea",
+      "lines": [
+        "Ya está. Ya no se levantan.",
+        "Si llegan a ser unos cuantos más, no lo contamos. Tengo que ser más rápido."
+      ],
+      "replies": [
+        {
+          "text": "Recoge lo que sirva y sigamos.",
+          "mood": 0,
+          "then": "Sí. Aquí no conviene quedarse quieto mucho rato."
+        },
+        {
+          "text": "Has aguantado tu sitio. Es lo que cuenta.",
+          "mood": 1,
+          "then": "Gracias. No me lo dicen a menudo."
+        },
+        {
+          "text": "Has estado lento, sí.",
+          "mood": -1,
+          "then": "Lo sé. No hacía falta decirlo tan alto."
+        }
+      ]
+    },
+    {
+      "id": "strahd-ismark-llegada-1",
+      "name": "Ismark · al llegar",
+      "who": "Ismark Kolyanovich",
+      "campaign": "strahd",
+      "moment": "llegada",
+      "lines": [
+        "Antes de entrar en {sitio}, mira dónde están las salidas.",
+        "Si hay que correr, quiero saber hacia dónde. Sobre todo si viene Ireena."
+      ],
+      "replies": [
+        {
+          "text": "Entremos y salgamos rápido.",
+          "mood": 0,
+          "then": "Eso quiero yo también. Nunca sale así, pero lo intento."
+        },
+        {
+          "text": "Tu hermana sabe cuidarse. Déjala respirar.",
+          "mood": -1,
+          "then": "Tú no has visto lo que yo he visto en mi casa."
+        },
+        {
+          "text": "Mientras estemos juntos, nadie le pondrá la mano encima.",
+          "mood": 1,
+          "then": "Eso quería oír. Aunque no sé si me lo creo del todo."
+        }
+      ]
+    },
+    {
+      "id": "strahd-ismark-viaje-1",
+      "name": "Ismark · de camino",
+      "who": "Ismark Kolyanovich",
+      "campaign": "strahd",
+      "moment": "viaje",
+      "mood": "triste",
+      "lines": [
+        "Desde que murió mi padre casi no duermo.",
+        "Cualquier ruido de noche me parece alguien llamando a la puerta."
+      ],
+      "replies": [
+        {
+          "text": "Duerme tú esta noche. Yo hago la guardia.",
+          "mood": 1,
+          "then": "No debería aceptar. Pero voy a aceptar."
+        },
+        {
+          "text": "En este valle nadie duerme bien.",
+          "mood": 0,
+          "then": "Eso no consuela mucho. Pero es verdad."
+        },
+        {
+          "text": "Pues espabila. Te necesito despierto.",
+          "mood": -1,
+          "then": "Lo estoy. Más de lo que crees."
+        }
+      ]
+    },
+    {
+      "id": "strahd-ismark-pueblo-1",
+      "name": "Ismark · buscando un cerrojo",
+      "who": "Ismark Kolyanovich",
+      "campaign": "strahd",
+      "moment": "pueblo",
+      "lines": [
+        "Estoy buscando un cerrojo bueno para la puerta de Ireena.",
+        "Ya sé que al conde no lo para un cerrojo. Pero ella duerme mejor si lo ve."
+      ],
+      "replies": [
+        {
+          "text": "No sé si merece la pena gastar en eso.",
+          "mood": -1,
+          "then": "Para mí, sí. Es lo único que puedo darle."
+        },
+        {
+          "text": "Buena idea. Te ayudo a elegirlo.",
+          "mood": 1,
+          "then": "Gracias. Seguro que tú sabes de hierro más que yo."
+        },
+        {
+          "text": "Pregunta al herrero, no al tendero.",
+          "mood": 0,
+          "then": "Tienes razón. El herrero por lo menos no me engañará."
+        }
+      ]
+    },
+    {
+      "id": "strahd-ismark-herido-1",
+      "name": "Ismark · al verte sangrar",
+      "who": "Ismark Kolyanovich",
+      "campaign": "strahd",
+      "moment": "herido",
+      "mood": "triste",
+      "lines": [
+        "Estás sangrando mucho. Siéntate y no discutas.",
+        "Mi padre acaba de morir. No pienso perder a nadie más."
+      ],
+      "replies": [
+        {
+          "text": "Es un rasguño. Sigue andando.",
+          "mood": -1,
+          "then": "Un rasguño no mancha tanto. Siéntate."
+        },
+        {
+          "text": "Tráeme agua y un trapo limpio.",
+          "mood": 0,
+          "then": "Voy. No te muevas de ahí."
+        },
+        {
+          "text": "Gracias, Ismark. Me siento un momento.",
+          "mood": 1,
+          "then": "Bien. Por una vez, alguien me hace caso."
+        }
+      ]
+    },
+    {
+      "id": "strahd-ismark-pueblo-2",
+      "name": "Ismark · en la taberna",
+      "who": "Ismark Kolyanovich",
+      "campaign": "strahd",
+      "moment": "pueblo",
+      "lines": [
+        "Siéntate, te invito a un vaso. El vino de aquí es malo, pero calienta.",
+        "Ireena está arriba. Prefiero vigilar la escalera desde aquí."
+      ],
+      "replies": [
+        {
+          "text": "Acepto. Y vigilamos la escalera entre los dos.",
+          "mood": 1,
+          "then": "Así sí. Uno bebe y el otro mira. Luego cambiamos."
+        },
+        {
+          "text": "Un vaso solo. Mañana hay camino.",
+          "mood": 0,
+          "then": "Uno solo. Yo tampoco aguanto más."
+        },
+        {
+          "text": "¿No la dejas nunca en paz?",
+          "mood": -1,
+          "then": "No. Mientras él siga en su castillo, no."
+        }
+      ]
+    },
+    {
+      "id": "strahd-ireena-pelea-1",
+      "name": "Ireena · tras una pelea",
+      "who": "Ireena Kolyana",
+      "campaign": "strahd",
+      "moment": "pelea",
+      "mood": "enfadado",
+      "lines": [
+        "No hace falta que te pongas delante de mí cada vez.",
+        "Sé cuidarme. No quiero que nadie muera por taparme a mí."
+      ],
+      "replies": [
+        {
+          "text": "Me pondré delante siempre que haga falta.",
+          "mood": -1,
+          "then": "Entonces un día te matarán por mí. Y no quiero eso."
+        },
+        {
+          "text": "Está bien. Pero no te separes mucho.",
+          "mood": 0,
+          "then": "Eso sí te lo acepto."
+        },
+        {
+          "text": "Tienes razón. Hoy te has defendido bien.",
+          "mood": 1,
+          "then": "Gracias. Me hacía falta oírlo de alguien."
+        }
+      ]
+    },
+    {
+      "id": "strahd-ireena-llegada-1",
+      "name": "Ireena · al llegar",
+      "who": "Ireena Kolyana",
+      "campaign": "strahd",
+      "moment": "llegada",
+      "lines": [
+        "En {sitio} también tendrá ojos el conde. Los tiene en todas partes.",
+        "Lobos, cuervos, gente. Cualquiera le puede contar dónde estoy."
+      ],
+      "replies": [
+        {
+          "text": "Pues que le cuenten que vas bien acompañada.",
+          "mood": 1,
+          "then": "Eso me gusta más que esconderme."
+        },
+        {
+          "text": "Tápate con la capucha y no te separes.",
+          "mood": 0,
+          "then": "Ya me la tapo. Aunque odio hacerlo."
+        },
+        {
+          "text": "Entonces quizá deberías quedarte atrás.",
+          "mood": -1,
+          "then": "¿Atrás dónde? Me encuentra en cualquier sitio."
+        }
+      ]
+    },
+    {
+      "id": "strahd-ireena-viaje-1",
+      "name": "Ireena · de camino",
+      "who": "Ireena Kolyana",
+      "campaign": "strahd",
+      "moment": "viaje",
+      "lines": [
+        "Tú no tenías por qué meterte en esto. Ni siquiera eres de aquí.",
+        "¿Por qué nos ayudas?"
+      ],
+      "replies": [
+        {
+          "text": "Porque alguien pagará bien por esto.",
+          "mood": -1,
+          "then": "Ah. Por lo menos eres {sincero|sincera}."
+        },
+        {
+          "text": "Porque nadie debería vivir con miedo en su casa.",
+          "mood": 1,
+          "then": "Hacía mucho que nadie decía algo así en este valle."
+        },
+        {
+          "text": "No lo sé. Aquí estoy y ya está.",
+          "mood": 0,
+          "then": "Bueno. De momento me vale."
+        }
+      ]
+    },
+    {
+      "id": "strahd-ireena-pueblo-1",
+      "name": "Ireena · con un pañuelo nuevo",
+      "who": "Ireena Kolyana",
+      "campaign": "strahd",
+      "moment": "pueblo",
+      "lines": [
+        "Me he comprado un pañuelo para el cuello. Así nadie mira.",
+        "¿Me queda bien, o parezco una viuda?"
+      ],
+      "replies": [
+        {
+          "text": "Pareces una viuda, sí.",
+          "mood": -1,
+          "then": "Gracias. Me lo quito ahora mismo."
+        },
+        {
+          "text": "Es un pañuelo. Cumple.",
+          "mood": 0,
+          "then": "Con eso me basta."
+        },
+        {
+          "text": "Te queda bien. Y no tienes nada que esconder.",
+          "mood": 1,
+          "then": "No sé si es verdad, pero gracias por decirlo."
+        }
+      ]
+    },
+    {
+      "id": "strahd-ireena-herido-1",
+      "name": "Ireena · al verte sangrar",
+      "who": "Ireena Kolyana",
+      "campaign": "strahd",
+      "moment": "herido",
+      "mood": "triste",
+      "lines": [
+        "Estás {pálido|pálida}. Ven, siéntate aquí.",
+        "Todos acabáis sangrando por mi culpa. Por lo menos deja que te cure."
+      ],
+      "replies": [
+        {
+          "text": "No es culpa tuya. Venga, cúrame.",
+          "mood": 1,
+          "then": "Estate {quieto|quieta}. Sé hacerlo mejor de lo que crees."
+        },
+        {
+          "text": "Déjalo. Me apaño {solo|sola}.",
+          "mood": -1,
+          "then": "Como quieras. Orgullo tenemos todos."
+        },
+        {
+          "text": "Aprieta fuerte, que no se abra.",
+          "mood": 0,
+          "then": "Aprieto. Si duele, te aguantas."
+        }
+      ]
+    },
+    {
+      "id": "strahd-ireena-pueblo-2",
+      "name": "Ireena · en la plaza",
+      "who": "Ireena Kolyana",
+      "campaign": "strahd",
+      "moment": "pueblo",
+      "mood": "alegre",
+      "lines": [
+        "He salido sin decírselo a Ismark. Necesitaba aire.",
+        "Si le ves, tú no me has visto."
+      ],
+      "replies": [
+        {
+          "text": "Vuelve a casa, es peligroso.",
+          "mood": -1,
+          "then": "¿Tú también? Ya tengo un hermano para eso."
+        },
+        {
+          "text": "No te he visto. Pero me quedo cerca.",
+          "mood": 1,
+          "then": "Trato hecho. Cerca, pero no encima."
+        },
+        {
+          "text": "Ismark se va a enterar igual.",
+          "mood": 0,
+          "then": "Seguramente. Pero dentro de un rato."
+        }
+      ]
+    },
+    {
+      "id": "strahd-eva-pelea-1",
+      "name": "Madam Eva · tras una pelea",
+      "who": "Madam Eva",
+      "campaign": "strahd",
+      "moment": "pelea",
+      "mood": "alegre",
+      "lines": [
+        "Ja. Qué cara de susto traes.",
+        "A mi edad ya no corro. Me siento y espero a que terminéis."
+      ],
+      "replies": [
+        {
+          "text": "Podrías haber ayudado un poco.",
+          "mood": -1,
+          "then": "He ayudado. He estado callada, que ya es mucho."
+        },
+        {
+          "text": "¿Estás bien?",
+          "mood": 0,
+          "then": "Mejor que tú. Mírate las manos: todavía tiemblan."
+        },
+        {
+          "text": "Te guardaba las espaldas. Por si acaso.",
+          "mood": 1,
+          "then": "Qué detalle. Hace cuarenta años me habría enamorado."
+        }
+      ]
+    },
+    {
+      "id": "strahd-eva-llegada-1",
+      "name": "Madam Eva · al llegar",
+      "who": "Madam Eva",
+      "campaign": "strahd",
+      "moment": "llegada",
+      "lines": [
+        "Llegamos a {sitio} y ya me duelen los pies.",
+        "Primero, un fuego. Luego ya salvaremos a quien haga falta."
+      ],
+      "replies": [
+        {
+          "text": "Primero miramos si hay peligro.",
+          "mood": 0,
+          "then": "Si lo hay, ya nos encontrará. Prefiero que me encuentre sentada."
+        },
+        {
+          "text": "Te busco un buen sitio junto al fuego.",
+          "mood": 1,
+          "then": "Así me gusta. Alguien que sabe lo que importa."
+        },
+        {
+          "text": "No hemos venido a descansar.",
+          "mood": -1,
+          "then": "Tú no. Yo sí. Tengo muchos más años que tú."
+        }
+      ]
+    },
+    {
+      "id": "strahd-eva-viaje-1",
+      "name": "Madam Eva · de camino",
+      "who": "Madam Eva",
+      "campaign": "strahd",
+      "moment": "viaje",
+      "mood": "alegre",
+      "lines": [
+        "Los vistani andamos estos caminos desde antes de que naciera tu abuelo.",
+        "Y tú pisas como si el barro fuera a morderte. Afloja las rodillas."
+      ],
+      "replies": [
+        {
+          "text": "Enséñame a andar como vosotros.",
+          "mood": 1,
+          "then": "Primero deja de mirar atrás a cada paso. Luego hablamos."
+        },
+        {
+          "text": "Ando como puedo, gracias.",
+          "mood": 0,
+          "then": "Ya lo veo. Como un pato con botas."
+        },
+        {
+          "text": "Cuida tus rodillas, que las mías van bien.",
+          "mood": -1,
+          "then": "Qué poca gracia. La gente joven ya no sabe reírse."
+        }
+      ]
+    },
+    {
+      "id": "strahd-eva-pueblo-1",
+      "name": "Madam Eva · con la baraja",
+      "who": "Madam Eva",
+      "campaign": "strahd",
+      "moment": "pueblo",
+      "mood": "alegre",
+      "lines": [
+        "Siéntate. No te voy a leer las cartas, {tranquilo|tranquila}.",
+        "Hoy solo juego. Y hago trampas, te aviso."
+      ],
+      "replies": [
+        {
+          "text": "Una mano. Y sin apostar dinero.",
+          "mood": 0,
+          "then": "Sin dinero no tiene gracia. Apostamos pan."
+        },
+        {
+          "text": "Con una tramposa no juego.",
+          "mood": -1,
+          "then": "Pues te pierdes lo mejor del día."
+        },
+        {
+          "text": "Juego igual. Así aprendo tus trampas.",
+          "mood": 1,
+          "then": "Eso no lo aprende nadie. Pero me gusta que lo intentes."
+        }
+      ]
+    },
+    {
+      "id": "strahd-eva-herido-1",
+      "name": "Madam Eva · al verte sangrar",
+      "who": "Madam Eva",
+      "campaign": "strahd",
+      "moment": "herido",
+      "lines": [
+        "Ay, criatura. Mira cómo vienes.",
+        "Estate {quieto|quieta}. Estas manos han curado más heridas de las que tú has visto."
+      ],
+      "replies": [
+        {
+          "text": "¿Va a doler?",
+          "mood": 0,
+          "then": "Mucho. Muerde esto y no me grites al oído."
+        },
+        {
+          "text": "Gracias, Eva. Me pongo en tus manos.",
+          "mood": 1,
+          "then": "Buena elección. Aunque va a doler igual."
+        },
+        {
+          "text": "Mejor espero a un sanador de verdad.",
+          "mood": -1,
+          "then": "Espera, espera. Te vas a desangrar esperando."
+        }
+      ]
+    },
+    {
+      "id": "strahd-eva-pueblo-2",
+      "name": "Madam Eva · con el vino",
+      "who": "Madam Eva",
+      "campaign": "strahd",
+      "moment": "pueblo",
+      "mood": "alegre",
+      "lines": [
+        "¿Vino? Es del bueno, o casi.",
+        "Un vaso al día y la cabeza clara. Dos, y ya me da igual quién mande en este valle."
+      ],
+      "replies": [
+        {
+          "text": "Uno. Y me cuentas algo de los vistani.",
+          "mood": 1,
+          "then": "Uno, y te cuento algo. Con dos, te cuento mentiras."
+        },
+        {
+          "text": "Ahora no. Tengo que estar {despierto|despierta}.",
+          "mood": 0,
+          "then": "Siempre con prisas. Así no se vive, criatura."
+        },
+        {
+          "text": "Beber con vistani trae problemas.",
+          "mood": -1,
+          "then": "No beber con ellos trae más. Tú sabrás."
+        }
+      ]
+    },
+    {
+      "id": "strahd-vanrichten-pelea-1",
+      "name": "Van Richten · tras una pelea",
+      "who": "Rudolph van Richten",
+      "campaign": "strahd",
+      "moment": "pelea",
+      "lines": [
+        "Mirad todos los cuerpos. Si alguno tiene marcas en el cuello, avisadme.",
+        "En este valle, a veces, los muertos se levantan a la noche siguiente."
+      ],
+      "replies": [
+        {
+          "text": "¿Y si tienen marcas?",
+          "mood": 0,
+          "then": "Estaca, cabeza y fuego. Por ese orden."
+        },
+        {
+          "text": "Los miro uno por uno contigo.",
+          "mood": 1,
+          "then": "Bien. Dos pares de ojos fallan menos que uno."
+        },
+        {
+          "text": "Están muertos. Vámonos ya.",
+          "mood": -1,
+          "then": "Eso decía mucha gente que ya no está."
+        }
+      ]
+    },
+    {
+      "id": "strahd-vanrichten-llegada-1",
+      "name": "Van Richten · al llegar",
+      "who": "Rudolph van Richten",
+      "campaign": "strahd",
+      "moment": "llegada",
+      "lines": [
+        "Antes de entrar, dos cosas.",
+        "Aquí me llamo Rictavio. Y tú no le das tu nombre verdadero a nadie."
+      ],
+      "replies": [
+        {
+          "text": "¿Y qué nombre doy?",
+          "mood": 0,
+          "then": "Uno corto y fácil de olvidar."
+        },
+        {
+          "text": "Yo no pienso esconderme como tú.",
+          "mood": -1,
+          "then": "No es esconderse. Es seguir con vida mañana."
+        },
+        {
+          "text": "Entendido, Rictavio.",
+          "mood": 1,
+          "then": "Bien. Aprendes rápido. Eso te mantendrá con vida."
+        }
+      ]
+    },
+    {
+      "id": "strahd-vanrichten-viaje-1",
+      "name": "Van Richten · de camino",
+      "who": "Rudolph van Richten",
+      "campaign": "strahd",
+      "moment": "viaje",
+      "lines": [
+        "Una lección, ya que andamos.",
+        "La plata se lleva a mano, no al fondo del macuto. Cuando haga falta, no habrá tiempo de buscarla."
+      ],
+      "replies": [
+        {
+          "text": "Tienes razón. La cambio de sitio ahora.",
+          "mood": 1,
+          "then": "Bien. Y compruébalo cada mañana antes de salir."
+        },
+        {
+          "text": "Ya sé cuidarme, gracias.",
+          "mood": -1,
+          "then": "Eso dicen todos. He enterrado a muchos que lo decían."
+        },
+        {
+          "text": "No llevo nada de plata.",
+          "mood": 0,
+          "then": "Pues es lo primero que vas a comprar."
+        }
+      ]
+    },
+    {
+      "id": "strahd-vanrichten-pueblo-1",
+      "name": "Van Richten · antes de la función",
+      "who": "Rudolph van Richten",
+      "campaign": "strahd",
+      "moment": "pueblo",
+      "lines": [
+        "Esta noche tengo que contar historias ridículas en la posada. Con el sombrero puesto.",
+        "No te rías. Nadie sospecha de un tonto con sombrero."
+      ],
+      "replies": [
+        {
+          "text": "Ese sombrero no engaña a nadie.",
+          "mood": -1,
+          "then": "Ha engañado a más gente de la que crees. Baja la voz."
+        },
+        {
+          "text": "Suerte con la función.",
+          "mood": 0,
+          "then": "No es suerte. Es trabajo."
+        },
+        {
+          "text": "Iré a escucharte, y aplaudiré fuerte.",
+          "mood": 1,
+          "then": "Con que no te rías, me basta."
+        }
+      ]
+    },
+    {
+      "id": "strahd-vanrichten-herido-1",
+      "name": "Van Richten · al verte sangrar",
+      "who": "Rudolph van Richten",
+      "campaign": "strahd",
+      "moment": "herido",
+      "lines": [
+        "Siéntate. Déjame ver.",
+        "No es muy hondo. Vivirás si no se infecta. Y en este valle todo se infecta."
+      ],
+      "replies": [
+        {
+          "text": "¿Es grave?",
+          "mood": 0,
+          "then": "Lo justo para que mañana te acuerdes de mí."
+        },
+        {
+          "text": "Tú sabes lo que haces. Adelante.",
+          "mood": 1,
+          "then": "Lo sé. Llevo treinta años haciéndolo."
+        },
+        {
+          "text": "Hazlo rápido y sin sermones.",
+          "mood": -1,
+          "then": "Rápido, sí. El sermón te lo llevas gratis."
+        }
+      ]
+    },
+    {
+      "id": "strahd-vanrichten-pueblo-2",
+      "name": "Van Richten · en el mercado",
+      "who": "Rudolph van Richten",
+      "campaign": "strahd",
+      "moment": "pueblo",
+      "lines": [
+        "Estoy comprando ajo. Todo el que tienen.",
+        "El tendero cree que hago sopa. Mejor que siga creyéndolo."
+      ],
+      "replies": [
+        {
+          "text": "Te ayudo a cargarlo.",
+          "mood": 1,
+          "then": "Gracias. Mis rodillas ya no están para sacos."
+        },
+        {
+          "text": "¿De verdad sirve el ajo?",
+          "mood": 0,
+          "then": "Un poco. No lo bastante para confiarse."
+        },
+        {
+          "text": "Vas a apestar a ajo todo el camino.",
+          "mood": -1,
+          "then": "Mejor oler a ajo que a tumba."
+        }
+      ]
+    },
+    {
+      "id": "strahd-ezmerelda-pelea-1",
+      "name": "Ezmerelda · tras una pelea",
+      "who": "Ezmerelda d'Avenir",
+      "campaign": "strahd",
+      "moment": "pelea",
+      "mood": "alegre",
+      "lines": [
+        "¡Ja! ¿Has visto eso? Justo entre los ojos.",
+        "Ahora, fuego a todo. Aquí lo que no se quema, vuelve."
+      ],
+      "replies": [
+        {
+          "text": "Menos presumir, que casi te dan.",
+          "mood": -1,
+          "then": "Casi no cuenta, {listillo|listilla}."
+        },
+        {
+          "text": "¿De verdad hay que quemarlos?",
+          "mood": 0,
+          "then": "De verdad. Así no tengo que matarlos otra vez mañana."
+        },
+        {
+          "text": "Buen tiro. La hoguera la enciendo yo.",
+          "mood": 1,
+          "then": "Eso es. Tú sí que sabes trabajar."
+        }
+      ]
+    },
+    {
+      "id": "strahd-ezmerelda-llegada-1",
+      "name": "Ezmerelda · al llegar",
+      "who": "Ezmerelda d'Avenir",
+      "campaign": "strahd",
+      "moment": "llegada",
+      "lines": [
+        "{sitio}. Bien. Tú mira las puertas, yo miro los tejados.",
+        "Por aquí, lo que ataca suele venir desde arriba."
+      ],
+      "replies": [
+        {
+          "text": "¿Por qué desde arriba?",
+          "mood": 0,
+          "then": "Porque vuela, porque trepa o porque salta. Elige."
+        },
+        {
+          "text": "Hecho. Las puertas son mías.",
+          "mood": 1,
+          "then": "Así me gusta. Sin preguntas tontas."
+        },
+        {
+          "text": "Tú manda menos y mira más.",
+          "mood": -1,
+          "then": "Mando porque sé. Cuando sepas tú, mandas tú."
+        }
+      ]
+    },
+    {
+      "id": "strahd-ezmerelda-viaje-1",
+      "name": "Ezmerelda · de camino",
+      "who": "Ezmerelda d'Avenir",
+      "campaign": "strahd",
+      "moment": "viaje",
+      "mood": "alegre",
+      "lines": [
+        "Tres noches sin cama. Y no la echo de menos.",
+        "En las posadas hay pulgas. En el camino, lobos. Prefiero los lobos."
+      ],
+      "replies": [
+        {
+          "text": "A los lobos, por lo menos, se les puede disparar.",
+          "mood": 1,
+          "then": "¡Exacto! Por fin alguien con sentido común."
+        },
+        {
+          "text": "Qué vida más triste llevas.",
+          "mood": -1,
+          "then": "Triste no. Libre, que no es lo mismo."
+        },
+        {
+          "text": "Yo prefiero las pulgas, la verdad.",
+          "mood": 0,
+          "then": "Eso es que no has dormido en las posadas que yo conozco."
+        }
+      ]
+    },
+    {
+      "id": "strahd-ezmerelda-pueblo-1",
+      "name": "Ezmerelda · en la herrería",
+      "who": "Ezmerelda d'Avenir",
+      "campaign": "strahd",
+      "moment": "pueblo",
+      "mood": "enfadado",
+      "lines": [
+        "El herrero me ha cobrado el doble por diez puntas de plata.",
+        "La próxima vez que algo le entre en casa de noche, que llame a otra."
+      ],
+      "replies": [
+        {
+          "text": "La plata es cara en todas partes.",
+          "mood": 0,
+          "then": "Ya. Pero aquí la cobran como si fuera oro."
+        },
+        {
+          "text": "Pues gasta menos.",
+          "mood": -1,
+          "then": "Gastar en plata es no gastar en ataúdes. Tú verás."
+        },
+        {
+          "text": "¿Quieres que vaya a hablar yo con él?",
+          "mood": 1,
+          "then": "No hace falta. Pero me gusta que te ofrezcas."
+        }
+      ]
+    },
+    {
+      "id": "strahd-ezmerelda-herido-1",
+      "name": "Ezmerelda · al verte sangrar",
+      "who": "Ezmerelda d'Avenir",
+      "campaign": "strahd",
+      "moment": "herido",
+      "lines": [
+        "Eh, eh. Mírame. Estás {blanco|blanca} como la cal.",
+        "Toma, bebe esto. Sabe a rayos, pero funciona."
+      ],
+      "replies": [
+        {
+          "text": "¿Qué es?",
+          "mood": 0,
+          "then": "Si te lo digo, no te lo bebes. Venga."
+        },
+        {
+          "text": "Gracias. Me fío de ti.",
+          "mood": 1,
+          "then": "Haces bien. Aún no he envenenado a nadie. Que yo sepa."
+        },
+        {
+          "text": "No bebo nada si no sé lo que es.",
+          "mood": -1,
+          "then": "Pues quédate con tus principios y con la herida."
+        }
+      ]
+    },
+    {
+      "id": "strahd-ezmerelda-pueblo-2",
+      "name": "Ezmerelda · en la posada",
+      "who": "Ezmerelda d'Avenir",
+      "campaign": "strahd",
+      "moment": "pueblo",
+      "mood": "alegre",
+      "lines": [
+        "¿Jugamos a los dardos? Te doy ventaja: yo tiro con la izquierda.",
+        "El que pierda paga la cena."
+      ],
+      "replies": [
+        {
+          "text": "Acepto. Y yo también tiro con la izquierda.",
+          "mood": 1,
+          "then": "¡Eso es valor! O tontería. Ya veremos."
+        },
+        {
+          "text": "Juego, pero sin apostar.",
+          "mood": 0,
+          "then": "Sin apuesta no es un juego, es practicar. Bueno, vale."
+        },
+        {
+          "text": "No tengo tiempo para juegos.",
+          "mood": -1,
+          "then": "En este valle nadie tiene tiempo. Por eso hay que robarlo."
+        }
+      ]
+    },
+    {
+      "id": "1387-bran-pelea-1",
+      "name": "Bran · tras una pelea",
+      "who": "Bran",
+      "campaign": "1387",
+      "moment": "pelea",
+      "mood": "alegre",
+      "lines": [
+        "Uf. Estos huesos ya no están para correr detrás de nadie.",
+        "Ese último golpe te lo he parado yo. Apúntalo: te cuesta una jarra."
+      ],
+      "replies": [
+        {
+          "text": "Cóbratelo del botín.",
+          "mood": 0,
+          "then": "Del botín ya cobro lo mío. Esto va aparte."
+        },
+        {
+          "text": "Es tu trabajo. Para eso te pago.",
+          "mood": -1,
+          "then": "Me pagas por pelear, no por salvarte el cuello. Eso es extra."
+        },
+        {
+          "text": "Apuntado. Y te la has ganado.",
+          "mood": 1,
+          "then": "Así da gusto. Pocas palabras y cerveza."
+        }
+      ]
+    },
+    {
+      "id": "1387-bran-llegada-1",
+      "name": "Bran · al llegar",
+      "who": "Bran",
+      "campaign": "1387",
+      "moment": "llegada",
+      "lines": [
+        "He estado en cien sitios como {sitio}.",
+        "Ninguno valía lo que me pagaron por ir. Este tampoco, ya verás."
+      ],
+      "replies": [
+        {
+          "text": "Este puede ser distinto.",
+          "mood": -1,
+          "then": "Eso decía yo a tu edad."
+        },
+        {
+          "text": "Entonces pediremos más paga.",
+          "mood": 1,
+          "then": "Eso ya me gusta más. Vas aprendiendo."
+        },
+        {
+          "text": "Ya que estamos, a trabajar.",
+          "mood": 0,
+          "then": "A trabajar. Qué remedio."
+        }
+      ]
+    },
+    {
+      "id": "1387-bran-viaje-1",
+      "name": "Bran · de camino",
+      "who": "Bran",
+      "campaign": "1387",
+      "moment": "viaje",
+      "lines": [
+        "Con este frío deberían pagarnos el doble.",
+        "Cuando cobremos el próximo trabajo, pienso pedir un extra por la nieve."
+      ],
+      "replies": [
+        {
+          "text": "Pide también por mí, a ver si cuela.",
+          "mood": 1,
+          "then": "¡Ja! Así me gusta. Cobrar hasta por respirar."
+        },
+        {
+          "text": "Nadie nos va a pagar el frío.",
+          "mood": 0,
+          "then": "Ya lo sé. Pero quejarse sale gratis."
+        },
+        {
+          "text": "Deja de contar monedas y anda.",
+          "mood": -1,
+          "then": "Cuento monedas porque nadie las cuenta por mí."
+        }
+      ]
+    },
+    {
+      "id": "1387-bran-pueblo-1",
+      "name": "Bran · afilando junto al fuego",
+      "who": "Bran",
+      "campaign": "1387",
+      "moment": "pueblo",
+      "lines": [
+        "Estoy afilando. No molestas, siéntate.",
+        "Si quieres que te afile la tuya, son dos monedas. A ti te lo dejo en una."
+      ],
+      "replies": [
+        {
+          "text": "Ya la afilo yo, gracias.",
+          "mood": 0,
+          "then": "Tú {mismo|misma}. Luego no llores si se mella."
+        },
+        {
+          "text": "Una moneda es justo. Toma.",
+          "mood": 1,
+          "then": "Trato hecho. Te la dejo que corta el aire."
+        },
+        {
+          "text": "¿Hasta por eso cobras?",
+          "mood": -1,
+          "then": "Por eso y por todo. Gratis solo se muere uno."
+        }
+      ]
+    },
+    {
+      "id": "1387-bran-herido-1",
+      "name": "Bran · al verte sangrar",
+      "who": "Bran",
+      "campaign": "1387",
+      "moment": "herido",
+      "mood": "triste",
+      "lines": [
+        "Eso tiene mala pinta. He visto heridas así antes.",
+        "Siéntate. La venda te la regalo. Hoy no cobro."
+      ],
+      "replies": [
+        {
+          "text": "No es nada. Sigamos.",
+          "mood": -1,
+          "then": "Así hablaban muchos que ya no están. Siéntate."
+        },
+        {
+          "text": "Gracias, Bran.",
+          "mood": 0,
+          "then": "Ya. Aprieta los dientes."
+        },
+        {
+          "text": "¿Tú, sin cobrar? Ahora sí que me asusto.",
+          "mood": 1,
+          "then": "No te acostumbres. Mañana vuelvo a ser el de siempre."
+        }
+      ]
+    },
+    {
+      "id": "1387-bran-pueblo-2",
+      "name": "Bran · en la taberna de Giles",
+      "who": "Bran",
+      "campaign": "1387",
+      "moment": "pueblo",
+      "lines": [
+        "La cerveza de Giles está aguada, y aun así la cobra entera.",
+        "¿Me invitas, o invito yo y te lo apunto?"
+      ],
+      "replies": [
+        {
+          "text": "Te invito yo. Sin apuntar nada.",
+          "mood": 1,
+          "then": "Eso no se oye todos los días. Salud."
+        },
+        {
+          "text": "Apúntalo. Ya haremos cuentas.",
+          "mood": 0,
+          "then": "Las cuentas las hago yo, que tú siempre te equivocas a tu favor."
+        },
+        {
+          "text": "No bebo con quien me cobra hasta el saludo.",
+          "mood": -1,
+          "then": "El saludo es gratis. La compañía, no."
+        }
+      ]
+    },
+    {
+      "id": "1387-aldara-pelea-1",
+      "name": "Aldara · tras una pelea",
+      "who": "Aldara",
+      "campaign": "1387",
+      "moment": "pelea",
+      "lines": [
+        "Bien.",
+        "Recoge las flechas que sirvan. Las rotas, déjalas."
+      ],
+      "replies": [
+        {
+          "text": "¡Qué pelea! ¿Has visto cómo le he dado?",
+          "mood": -1,
+          "then": "Hablas mucho."
+        },
+        {
+          "text": "¿Estás herida?",
+          "mood": 0,
+          "then": "No."
+        },
+        {
+          "text": "Ya las recojo yo.",
+          "mood": 1,
+          "then": "Bien. Sin prisa, pero sin pararte."
+        }
+      ]
+    },
+    {
+      "id": "1387-aldara-llegada-1",
+      "name": "Aldara · al llegar",
+      "who": "Aldara",
+      "campaign": "1387",
+      "moment": "llegada",
+      "lines": [
+        "{sitio}. Huele a humo: hay gente cerca.",
+        "No hables alto hasta saber quién es."
+      ],
+      "replies": [
+        {
+          "text": "Entendido. Hablo bajo.",
+          "mood": 1,
+          "then": "Bien."
+        },
+        {
+          "text": "¿Amigos o enemigos?",
+          "mood": 0,
+          "then": "Ya lo veremos. Tú, detrás de mí."
+        },
+        {
+          "text": "Seguro que no es nada.",
+          "mood": -1,
+          "then": "Así piensan los que acaban bajo la nieve."
+        }
+      ]
+    },
+    {
+      "id": "1387-aldara-viaje-1",
+      "name": "Aldara · de camino",
+      "who": "Aldara",
+      "campaign": "1387",
+      "moment": "viaje",
+      "lines": [
+        "Esas huellas son de lobo. De ayer.",
+        "Van hacia donde vamos nosotros."
+      ],
+      "replies": [
+        {
+          "text": "Cambiamos de camino, entonces.",
+          "mood": 0,
+          "then": "No. Perderíamos un día. Vamos despacio."
+        },
+        {
+          "text": "¿Cuántos son?",
+          "mood": 1,
+          "then": "Cuatro. Uno cojea. Bien preguntado."
+        },
+        {
+          "text": "Los lobos no me dan miedo.",
+          "mood": -1,
+          "then": "Pues deberían."
+        }
+      ]
+    },
+    {
+      "id": "1387-aldara-pueblo-1",
+      "name": "Aldara · secando pieles",
+      "who": "Aldara",
+      "campaign": "1387",
+      "moment": "pueblo",
+      "lines": [
+        "Estoy secando pieles.",
+        "Si vas a mirar, mira. Si vas a hablar, vete."
+      ],
+      "replies": [
+        {
+          "text": "¿Cuánto sacas por cada piel?",
+          "mood": 0,
+          "then": "Poco. Menos que tú por matar gente."
+        },
+        {
+          "text": "Vaya recibimiento más frío.",
+          "mood": -1,
+          "then": "Es invierno."
+        },
+        {
+          "text": "Me quedo mirando. En silencio.",
+          "mood": 1,
+          "then": "Bien. Coge ese cuchillo y ayuda."
+        }
+      ]
+    },
+    {
+      "id": "1387-aldara-herido-1",
+      "name": "Aldara · al verte sangrar",
+      "who": "Aldara",
+      "campaign": "1387",
+      "moment": "herido",
+      "lines": [
+        "Estás sangrando en la nieve. Los lobos huelen eso desde lejos.",
+        "Siéntate. Yo te curo."
+      ],
+      "replies": [
+        {
+          "text": "Estoy bien. Sigamos.",
+          "mood": -1,
+          "then": "No. Siéntate."
+        },
+        {
+          "text": "Gracias, Aldara.",
+          "mood": 1,
+          "then": "No me des las gracias. Aprieta los dientes."
+        },
+        {
+          "text": "¿Tú sabes de heridas?",
+          "mood": 0,
+          "then": "De animales. Para el caso, es lo mismo."
+        }
+      ]
+    },
+    {
+      "id": "1387-aldara-pueblo-2",
+      "name": "Aldara · vendiendo caza",
+      "who": "Aldara",
+      "campaign": "1387",
+      "moment": "pueblo",
+      "mood": "enfadado",
+      "lines": [
+        "Mucha gente. Mucho ruido.",
+        "En cuanto venda estos conejos, me vuelvo al bosque."
+      ],
+      "replies": [
+        {
+          "text": "Te acompaño hasta la salida del pueblo.",
+          "mood": 1,
+          "then": "Vale. Pero sin hablar."
+        },
+        {
+          "text": "¿A cuánto los conejos?",
+          "mood": 0,
+          "then": "Dos por una moneda. No regateo."
+        },
+        {
+          "text": "Quédate un rato. Tómate algo conmigo.",
+          "mood": -1,
+          "then": "No."
+        }
+      ]
+    },
+    {
+      "id": "1387-doc-pelea-1",
+      "name": "Doc · tras una pelea",
+      "who": "Arthur «Doc»",
+      "campaign": "1387",
+      "moment": "pelea",
+      "lines": [
+        "¿Alguien sangra? Decidlo ya, que luego me tiemblan más las manos.",
+        "Y si alguien tiene un trago, que no lo esconda."
+      ],
+      "replies": [
+        {
+          "text": "Todos enteros. Guarda la aguja.",
+          "mood": 0,
+          "then": "Bendito sea. Mi aguja y yo lo agradecemos."
+        },
+        {
+          "text": "Toma un trago. Solo uno.",
+          "mood": 1,
+          "then": "Solo uno. Palabra de cirujano. De cirujano expulsado, pero palabra."
+        },
+        {
+          "text": "Tú lo que quieres es beber.",
+          "mood": -1,
+          "then": "También. Pero eso no quita que sepa coser."
+        }
+      ]
+    },
+    {
+      "id": "1387-doc-llegada-1",
+      "name": "Doc · al llegar",
+      "who": "Arthur «Doc»",
+      "campaign": "1387",
+      "moment": "llegada",
+      "lines": [
+        "¿Habrá en {sitio} alguien con dinero y una pierna rota?",
+        "Un cirujano también tiene que comer."
+      ],
+      "replies": [
+        {
+          "text": "Nadie paga a un médico que huele a licor.",
+          "mood": -1,
+          "then": "Por eso me enjuago la boca con nieve antes de cobrar."
+        },
+        {
+          "text": "Primero, a lo nuestro.",
+          "mood": 0,
+          "then": "Claro, lo nuestro. Pero si ves a alguien cojeando, me avisas."
+        },
+        {
+          "text": "Si lo hay, te lo traigo yo.",
+          "mood": 1,
+          "then": "Así me gusta. Tú buscas clientes y yo coso."
+        }
+      ]
+    },
+    {
+      "id": "1387-doc-viaje-1",
+      "name": "Doc · de camino",
+      "who": "Arthur «Doc»",
+      "campaign": "1387",
+      "moment": "viaje",
+      "lines": [
+        "En la capital yo iba en carruaje. Con cojines.",
+        "Ahora voy a pie, con frío y con vosotros. No sé qué es peor."
+      ],
+      "replies": [
+        {
+          "text": "Nosotros, seguro. Pero con nosotros comes.",
+          "mood": 1,
+          "then": "Eso es verdad. Mal, pero como."
+        },
+        {
+          "text": "Anda más deprisa y pasarás menos frío.",
+          "mood": 0,
+          "then": "Mis piernas son de ciudad. No saben ir deprisa."
+        },
+        {
+          "text": "Pues haberte quedado en la capital.",
+          "mood": -1,
+          "then": "Ojalá hubiera podido. No me dejaron."
+        }
+      ]
+    },
+    {
+      "id": "1387-doc-pueblo-1",
+      "name": "Doc · haciendo cuentas",
+      "who": "Arthur «Doc»",
+      "campaign": "1387",
+      "moment": "pueblo",
+      "lines": [
+        "Estoy apuntando lo que me debe medio pueblo.",
+        "Si me pagaran todos, me compraba un caballo. Y una botella. Por ese orden, lo juro."
+      ],
+      "replies": [
+        {
+          "text": "Suerte con eso.",
+          "mood": 0,
+          "then": "La suerte se me acabó en la capital. Me quedan las cuentas."
+        },
+        {
+          "text": "Primero la botella, seguro.",
+          "mood": -1,
+          "then": "Qué mala opinión tienes de mí. Y qué poco te equivocas."
+        },
+        {
+          "text": "¿Quieres que te ayude a cobrar?",
+          "mood": 1,
+          "then": "¿Lo harías? Contigo al lado, pagan antes."
+        }
+      ]
+    },
+    {
+      "id": "1387-doc-herido-1",
+      "name": "Doc · al verte sangrar",
+      "who": "Arthur «Doc»",
+      "campaign": "1387",
+      "moment": "herido",
+      "lines": [
+        "{Quieto|Quieta}. Déjame ver eso.",
+        "No me mires las manos. Tiemblan, pero sé lo que hago."
+      ],
+      "replies": [
+        {
+          "text": "Confío en ti, Doc. Cose.",
+          "mood": 1,
+          "then": "Hacía mucho que nadie me decía eso. Muerde esto."
+        },
+        {
+          "text": "¿Te queda algo para el dolor?",
+          "mood": 0,
+          "then": "Me queda algo, pero es para mí. Muerde el cinturón."
+        },
+        {
+          "text": "Mejor que me cosa otro.",
+          "mood": -1,
+          "then": "¿Otro? Aquí no hay otro, y te estás desangrando."
+        }
+      ]
+    },
+    {
+      "id": "1387-doc-pueblo-2",
+      "name": "Doc · en la taberna de Giles",
+      "who": "Arthur «Doc»",
+      "campaign": "1387",
+      "moment": "pueblo",
+      "mood": "triste",
+      "lines": [
+        "Giles me ha fiado otra jarra. «La última», dice.",
+        "Lo dice todas las noches."
+      ],
+      "replies": [
+        {
+          "text": "Quizá deberías beber menos.",
+          "mood": -1,
+          "then": "Quizá. Y tú deberías sangrar menos. A ver quién lo consigue antes."
+        },
+        {
+          "text": "Hoy pago yo, y saldamos tu cuenta con Giles.",
+          "mood": 1,
+          "then": "¿Toda la cuenta? Me vas a hacer llorar delante de todos."
+        },
+        {
+          "text": "Bebe despacio, por lo menos.",
+          "mood": 0,
+          "then": "Despacio, sí. Así dura más."
+        }
+      ]
+    },
+    {
+      "id": "1387-isolda-pelea-1",
+      "name": "Isolda · tras una pelea",
+      "who": "Isolda",
+      "campaign": "1387",
+      "moment": "pelea",
+      "lines": [
+        "No me mires así. En las cuadras nadie pelea limpio.",
+        "¿Qué pasa? ¿Esperabas que me desmayara?"
+      ],
+      "replies": [
+        {
+          "text": "¿Te han herido?",
+          "mood": 0,
+          "then": "Un rasguño. Nada que no tape la manga."
+        },
+        {
+          "text": "No. Esperaba justo esto.",
+          "mood": 1,
+          "then": "Bien. Por eso voy contigo: eres {el único|la única} que no me trata como si fuera de cristal."
+        },
+        {
+          "text": "Ten cuidado. No eres tan fuerte como crees.",
+          "mood": -1,
+          "then": "Ya salió. Como todos: la pobre niña de cristal."
+        }
+      ]
+    },
+    {
+      "id": "1387-isolda-llegada-1",
+      "name": "Isolda · al llegar",
+      "who": "Isolda",
+      "campaign": "1387",
+      "moment": "llegada",
+      "lines": [
+        "En {sitio} puede haber gente del castillo. Me bajo la gorra.",
+        "Si alguien me llama por mi nombre, tú no lo has oído."
+      ],
+      "replies": [
+        {
+          "text": "¿Por qué te escondes? ¿Qué has hecho?",
+          "mood": -1,
+          "then": "Nacer. No preguntes más."
+        },
+        {
+          "text": "¿Tanto te conocen?",
+          "mood": 0,
+          "then": "Lo justo para que sea un problema."
+        },
+        {
+          "text": "No he oído nada. Ni lo oiré.",
+          "mood": 1,
+          "then": "Así me gusta. Cuanto menos sepas, mejor para los dos."
+        }
+      ]
+    },
+    {
+      "id": "1387-isolda-viaje-1",
+      "name": "Isolda · de camino",
+      "who": "Isolda",
+      "campaign": "1387",
+      "moment": "viaje",
+      "lines": [
+        "Llevas la bolsa muy a la vista. Cualquiera te la quita en un descuido.",
+        "Yo, por ejemplo. No te fíes de nadie."
+      ],
+      "replies": [
+        {
+          "text": "Gracias por el aviso. La guardo mejor.",
+          "mood": 1,
+          "then": "No me des las gracias. Es que me pone nerviosa verlo."
+        },
+        {
+          "text": "Aquí no hay nadie más que nosotros.",
+          "mood": 0,
+          "then": "De momento. En este valle eso dura poco."
+        },
+        {
+          "text": "No seas tan desconfiada.",
+          "mood": -1,
+          "then": "Desconfiar me ha mantenido viva. A ti no te vendría mal."
+        }
+      ]
+    },
+    {
+      "id": "1387-isolda-pueblo-1",
+      "name": "Isolda · en la cuadra",
+      "who": "Isolda",
+      "campaign": "1387",
+      "moment": "pueblo",
+      "lines": [
+        "En la cuadra nadie me pregunta nada. Por eso vengo.",
+        "Los caballos no te miran como si supieran algo de ti."
+      ],
+      "replies": [
+        {
+          "text": "Te dejo tranquila, entonces.",
+          "mood": 0,
+          "then": "Como quieras. Tú por lo menos no preguntas."
+        },
+        {
+          "text": "Yo tampoco pregunto. Te ayudo a cepillarlos.",
+          "mood": 1,
+          "then": "Coge ese cepillo. Y cuidado con el negro, que muerde."
+        },
+        {
+          "text": "¿Y qué es lo que saben de ti?",
+          "mood": -1,
+          "then": "¿Ves? Ya estás preguntando."
+        }
+      ]
+    },
+    {
+      "id": "1387-isolda-herido-1",
+      "name": "Isolda · al verte sangrar",
+      "who": "Isolda",
+      "campaign": "1387",
+      "moment": "herido",
+      "lines": [
+        "Vaya. Así que tú también sangras.",
+        "Siéntate. Sé vendar: me enseñaron las criadas, a escondidas."
+      ],
+      "replies": [
+        {
+          "text": "No es nada. No hace falta.",
+          "mood": -1,
+          "then": "Claro. Y yo soy una dama. Siéntate."
+        },
+        {
+          "text": "Adelante, pero con cuidado.",
+          "mood": 0,
+          "then": "Con cuidado no sé. Rápido, sí."
+        },
+        {
+          "text": "Gracias. Me alegro de tenerte cerca.",
+          "mood": 1,
+          "then": "No te acostumbres. Pero de nada."
+        }
+      ]
+    },
+    {
+      "id": "1387-isolda-pueblo-2",
+      "name": "Isolda · en el mercado",
+      "who": "Isolda",
+      "campaign": "1387",
+      "moment": "pueblo",
+      "mood": "alegre",
+      "lines": [
+        "Esta mañana me han llamado «chaval» tres veces.",
+        "Nadie mira dos veces a un mozo de cuadra. Por eso visto así."
+      ],
+      "replies": [
+        {
+          "text": "El disfraz funciona. Buen trabajo.",
+          "mood": 1,
+          "then": "Lo sé. Pero gracias por darte cuenta."
+        },
+        {
+          "text": "¿No echas de menos los vestidos?",
+          "mood": -1,
+          "then": "¿Los vestidos? Pesan y no dejan correr. No."
+        },
+        {
+          "text": "A mí también me costó reconocerte.",
+          "mood": 0,
+          "then": "Mentira. Pero te lo agradezco igual."
+        }
+      ]
+    },
+    {
+      "id": "1387-grimm-pelea-1",
+      "name": "Grimm · tras una pelea",
+      "who": "Grimm",
+      "campaign": "1387",
+      "moment": "pelea",
+      "lines": [
+        "(Grimm se limpia el hacha en la nieve y te mira de arriba abajo, buscando heridas.)",
+        "¿Mm?"
+      ],
+      "replies": [
+        {
+          "text": "¿Y tú? ¿Todo entero?",
+          "mood": 0,
+          "then": "(Se da dos golpes en el pecho.) Mm."
+        },
+        {
+          "text": "Deja de mirarme y recoge el botín.",
+          "mood": -1,
+          "then": "(Gruñe por lo bajo y se da la vuelta.) Hmf."
+        },
+        {
+          "text": "Estoy bien. Gracias por mirar.",
+          "mood": 1,
+          "then": "(Asiente despacio.) Mm."
+        }
+      ]
+    },
+    {
+      "id": "1387-grimm-llegada-1",
+      "name": "Grimm · al llegar",
+      "who": "Grimm",
+      "campaign": "1387",
+      "moment": "llegada",
+      "lines": [
+        "(Grimm se para, se frota los dedos y señala tu bolsa: toca paga.)",
+        "Mm."
+      ],
+      "replies": [
+        {
+          "text": "Toma tu paga. Para los tuyos.",
+          "mood": 1,
+          "then": "(Guarda las monedas junto al dibujo y asiente.) Mm."
+        },
+        {
+          "text": "Luego te pago. Ahora no.",
+          "mood": 0,
+          "then": "(Levanta un dedo: un día, no más.) Mm."
+        },
+        {
+          "text": "¿Otra vez? Si te pagué hace nada.",
+          "mood": -1,
+          "then": "(Cruza los brazos y no se mueve.) Hmf."
+        }
+      ]
+    },
+    {
+      "id": "1387-grimm-viaje-1",
+      "name": "Grimm · de camino",
+      "who": "Grimm",
+      "campaign": "1387",
+      "moment": "viaje",
+      "lines": [
+        "(Grimm va delante, abriendo camino en la nieve con las piernas. De vez en cuando se vuelve a mirar si le sigues.)"
+      ],
+      "replies": [
+        {
+          "text": "Ve más despacio, que no llego.",
+          "mood": 0,
+          "then": "(Frena un poco, sin darse la vuelta.) Mm."
+        },
+        {
+          "text": "Gracias por abrir camino.",
+          "mood": 1,
+          "then": "(Se encoge de hombros, pero pisa más fuerte.) Mm."
+        },
+        {
+          "text": "Tanto músculo y ni una palabra.",
+          "mood": -1,
+          "then": "(Te mira un momento y sigue andando.) Hmf."
+        }
+      ]
+    },
+    {
+      "id": "1387-grimm-pueblo-1",
+      "name": "Grimm · en la posada",
+      "who": "Grimm",
+      "campaign": "1387",
+      "moment": "pueblo",
+      "mood": "triste",
+      "lines": [
+        "(Grimm está junto al fuego, mirando el dibujo arrugado de una mujer y tres niños.)"
+      ],
+      "replies": [
+        {
+          "text": "Guarda eso, que te lo van a robar.",
+          "mood": -1,
+          "then": "(Lo aprieta contra el pecho y te mira mal.) Hmf."
+        },
+        {
+          "text": "Te sientas a su lado, sin decir nada.",
+          "mood": 1,
+          "then": "(Te acerca un poco su jarra.) Mm."
+        },
+        {
+          "text": "¿Son tu familia?",
+          "mood": 0,
+          "then": "(Asiente una vez y se guarda el dibujo en el pecho.)"
+        }
+      ]
+    },
+    {
+      "id": "1387-grimm-herido-1",
+      "name": "Grimm · al verte sangrar",
+      "who": "Grimm",
+      "campaign": "1387",
+      "moment": "herido",
+      "lines": [
+        "(Grimm ve tu herida, te agarra del brazo sin preguntar y te sienta en una piedra.)",
+        "Mm."
+      ],
+      "replies": [
+        {
+          "text": "¿Sabes curar?",
+          "mood": 0,
+          "then": "(Niega con la cabeza y señala a los demás.) Mm."
+        },
+        {
+          "text": "Suéltame, estoy bien.",
+          "mood": -1,
+          "then": "(No te suelta.) Hmf."
+        },
+        {
+          "text": "Vale, vale. Me siento.",
+          "mood": 1,
+          "then": "(Te echa su capa por los hombros.) Mm."
+        }
+      ]
+    },
+    {
+      "id": "1387-grimm-pueblo-2",
+      "name": "Grimm · contando monedas",
+      "who": "Grimm",
+      "campaign": "1387",
+      "moment": "pueblo",
+      "lines": [
+        "(Grimm cuenta sus monedas dos veces. Le faltan unas pocas para la bolsa que manda al sur.)"
+      ],
+      "replies": [
+        {
+          "text": "Te presto lo que falta. Ya me lo devolverás.",
+          "mood": 1,
+          "then": "(Te da una palmada en la espalda que casi te tumba.) Mm."
+        },
+        {
+          "text": "Espera a la próxima paga.",
+          "mood": 0,
+          "then": "(Suspira y cierra la bolsa.) Mm."
+        },
+        {
+          "text": "Gástatelas en cerveza. Te las has ganado.",
+          "mood": -1,
+          "then": "(Niega con la cabeza, muy serio.) Hmf."
+        }
+      ]
+    }
+  ]
+}

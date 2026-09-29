@@ -1,0 +1,338 @@
+/* ============================================================
+   MAPA EN CUADRÍCULA  (J12.8 a J12.11, game-engine/ui/map-image-editor.js)
+   Un mapa de D&D en imagen convertido en tablero: cuadrícula, casillas, salas y alturas.
+   ============================================================ */
+
+.mie-root {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    text-align: left;
+    min-height: 0;
+}
+
+.mie-root.is-busy {
+    cursor: progress;
+}
+
+.mie-root.is-busy .mie-overlay,
+.mie-root.is-busy .mie-panel {
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+.mie-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 16px;
+}
+
+.mie-title {
+    font-size: 1.15em;
+    font-weight: bold;
+}
+
+.mie-file {
+    opacity: 0.6;
+    font-size: 0.85em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 30ch;
+}
+
+.mie-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-left: auto;
+}
+
+.mie-btn {
+    width: auto;
+    margin: 0;
+    padding: 4px 10px;
+    white-space: nowrap;
+}
+
+.mie-tab.on,
+.mie-brush.on,
+.mie-mode-btn.on,
+.mie-mark.on {
+    background-color: var(--SmartThemeQuoteColor, #e18a24);
+    color: var(--SmartThemeBlurTintColor, #111);
+}
+
+.mie-body {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    min-height: 0;
+}
+
+.mie-side {
+    flex: 0 0 280px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 72vh;
+    overflow-y: auto;
+}
+
+.mie-hint {
+    font-weight: bold;
+}
+
+.mie-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.mie-summary,
+.mie-selected {
+    opacity: 0.9;
+}
+
+.mie-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px;
+    border: 1px solid var(--SmartThemeBorderColor, rgba(255, 255, 255, 0.15));
+    border-radius: 6px;
+}
+
+.mie-group-title {
+    font-size: 0.85em;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    opacity: 0.7;
+}
+
+.mie-field {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.mie-field-label {
+    font-size: 0.85em;
+    opacity: 0.8;
+}
+
+.mie-pair {
+    display: flex;
+    gap: 6px;
+}
+
+.mie-pair .mie-field {
+    flex: 1;
+}
+
+.mie-num {
+    width: 100%;
+    margin: 0;
+}
+
+.mie-zone-name,
+.mie-zone-note {
+    margin: 0;
+}
+
+.mie-palette {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.mie-brush {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.mie-swatch {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    flex: 0 0 auto;
+}
+
+.mie-swatch.is-doubt { border: 2px dashed rgb(255, 215, 0); }
+.mie-swatch.is-door { border: 2px solid rgb(60, 140, 255); }
+.mie-swatch.is-bridge { border: 2px solid rgb(40, 200, 90); }
+.mie-swatch.is-plain { border: 2px dashed rgb(170, 80, 230); }
+.mie-swatch.is-cliff { background: rgb(255, 140, 0); border-color: rgb(255, 140, 0); }
+
+.mie-legend {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 0.9em;
+}
+
+.mie-legend li {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.mie-mode,
+.mie-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.mie-check {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+}
+
+.mie-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.mie-list-item {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.mie-list-pick {
+    flex: 1;
+    text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.mie-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.mie-small {
+    font-size: 0.9em;
+    opacity: 0.85;
+}
+
+.mie-say {
+    min-height: 1.4em;
+    padding: 6px 8px;
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.mie-say:empty {
+    display: none;
+}
+
+.mie-say[data-kind="error"] {
+    background: rgba(200, 40, 40, 0.3);
+}
+
+.mie-say[data-kind="ok"] {
+    background: rgba(40, 160, 80, 0.3);
+}
+
+.mie-warn {
+    font-size: 0.9em;
+    color: rgb(255, 200, 80);
+}
+
+.mie-next {
+    align-self: flex-start;
+    font-weight: bold;
+}
+
+.mie-view-wrap {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.mie-zoom {
+    display: flex;
+    gap: 4px;
+    justify-content: flex-end;
+}
+
+.mie-view {
+    max-height: 68vh;
+    overflow: auto;
+    border: 1px solid var(--SmartThemeBorderColor, rgba(255, 255, 255, 0.15));
+    border-radius: 6px;
+    background: #fff;
+}
+
+.mie-stage {
+    position: relative;
+    width: 100%;
+    line-height: 0;
+    user-select: none;
+}
+
+.mie-img {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-width: none;
+    pointer-events: none;
+}
+
+.mie-overlay {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    cursor: crosshair;
+}
+
+.mie-status {
+    font-size: 0.85em;
+    opacity: 0.8;
+    min-height: 1.3em;
+}
+
+/* El botón del editor de tableros que abre esta pantalla. */
+.wm-map-grid-row .menu_button {
+    width: auto;
+    white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+    .mie-body {
+        flex-direction: column;
+    }
+
+    .mie-side {
+        flex: 0 0 auto;
+        max-height: none;
+        width: 100%;
+    }
+
+    .mie-tabs {
+        margin-left: 0;
+    }
+}

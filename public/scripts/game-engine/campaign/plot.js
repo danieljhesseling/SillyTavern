@@ -27,6 +27,9 @@
  *   camino de los otros, y ya no se abre.
  * - **Investigaciones** (`clues`): reunir N pistas, cada una con una tirada en un sitio.
  *
+ * Y un **prólogo** (J2.1): los hitos marcados `prologue` hasta la prueba, su último tablero.
+ * Ganar la prueba lo da entero por hecho, se haya jugado o no (`prologueOf`).
+ *
  * El hilo va escrito en el paquete del mundo. Un mundo que no trae uno recibe el de su
  * facción más peligrosa (`plotFromFaction`): su meta es lo que pasa si nadie la para, y su
  * reloj la cuenta atrás. Así la partida empieza con un problema aunque nadie lo escribiera.
@@ -66,6 +69,8 @@ const SIMPLE_ASKS = ['arrive', 'win', 'defeat', 'talk', 'check', 'contract'];
  * @property {{reveal: string[], open: string[], standing: Record<string, number>}} late
  *   Lo que pasa si se pasa el plazo.
  * @property {string[]} [backgrounds] Idea 105: solo se abre si el héroe tiene uno de estos trasfondos.
+ * @property {boolean} [prologue] J2.1: es del prólogo. El último que pide ganar un tablero es la
+ *   prueba, y ganarla da el prólogo entero por hecho (`prologueOf`).
  */
 
 /**
@@ -167,6 +172,8 @@ function readMilestone(raw, index) {
         hidden: Boolean(raw.hidden),
         within: Math.max(0, Math.floor(Number(raw.within) || 0)),
         late: { reveal: list(late.reveal), open: list(late.open), standing: standingOf(late.standing) },
+        // J2.1: solo si lo es, para que un hilo de antes se lea igual que siempre.
+        ...(raw.prologue ? { prologue: true } : {}),
     };
 }
 
@@ -307,6 +314,8 @@ function opensWith(opens, event) {
  * @property {Record<string, string>} via Cómo se cumplió cada uno de un `any` (idea 101).
  * @property {Array<{milestone: Milestone, found: number, need: number, clue: {place: string, skill: string}}>} clues
  *   Las pistas que se acaban de encontrar (idea 107).
+ * @property {Milestone[]} skipped J2.1: los del prólogo que se dan por hechos sin contarse, porque
+ *   se ganó la prueba sin haberlos jugado (saltándola, o entrando en su tablero por tu cuenta).
  * @property {{reveal: string[], standing: Record<string, number>, ending: string, endingBy: Record<string, string>}} changes
  */
 
@@ -410,7 +419,55 @@ function complete(plot, state, milestone, step) {
 
 /** @returns {PlotStep} */
 function emptyStep(/** @type {PlotState} */ state) {
-    return { state, opened: [], done: [], missed: [], omens: [], closed: [], via: {}, clues: [], changes: { reveal: [], standing: {}, ending: '', endingBy: {} } };
+    return { state, opened: [], done: [], missed: [], omens: [], closed: [], via: {}, clues: [], skipped: [], changes: { reveal: [], standing: {}, ending: '', endingBy: {} } };
+}
+
+/**
+ * J2.1: el prólogo de un hilo, si lo escribe: sus hitos, en el orden en que están escritos, y
+ * la prueba, que es el último de ellos que pide ganar un tablero (en el gremio, la bodega).
+ *
+ * Vale también con el hilo sin leer: mira `prologue`, `hidden` y `asks` tal y como vengan.
+ *
+ * @param {any} plot
+ * @returns {{milestones: any[], trial: any|null}}
+ */
+export function prologueOf(plot) {
+    const milestones = (Array.isArray(plot?.milestones) ? plot.milestones : []).filter((/** @type {any} */ m) => m && m.prologue && text(m.id));
+    const trial = [...milestones].reverse().find(m => !m.hidden && lower(m.asks?.kind) === 'win' && text(m.asks?.board)) ?? null;
+    return { milestones, trial };
+}
+
+/**
+ * J2.1: ganar la prueba con el prólogo a medias lo cierra entero. Lo que faltaba se da por
+ * hecho sin contarse, y la prueba queda abierta para que el suceso la cumpla como siempre: así
+ * saltarla (J2.3) y bajar a la bodega por tu cuenta acaban igual que jugarlo, y nadie se queda
+ * con un hito que pide ganar un tablero ya ganado.
+ *
+ * @param {Plot} plot
+ * @param {PlotState} state
+ * @param {any} event
+ * @param {PlotStep} step
+ * @returns {Milestone[]} Lo que abren los hitos dados por hechos, fuera del prólogo.
+ */
+function settlePrologue(plot, state, event, step) {
+    const { milestones, trial } = prologueOf(plot);
+    if (!trial || state.open.includes(trial.id) || state.done.includes(trial.id) || state.closed.includes(trial.id)
+        || state.missed.includes(trial.id) || !asksFor(trial.asks, event)) return [];
+    // Solo con el prólogo empezado: antes de empezar, o ya terminado, no hay nada que cerrar.
+    if (!milestones.some(m => state.open.includes(m.id))) return [];
+    const inPrologue = new Set(milestones.map(m => m.id));
+    /** @type {Milestone[]} */
+    const next = [];
+    for (const milestone of milestones) {
+        if (milestone === trial || milestone.hidden || state.done.includes(milestone.id)
+            || state.closed.includes(milestone.id) || state.missed.includes(milestone.id)) continue;
+        next.push(...complete(plot, state, milestone, step));
+        // Hecho, pero sin contarlo: su escena es de un camino que no se ha jugado.
+        step.done = step.done.filter(m => m !== milestone);
+        step.skipped.push(milestone);
+    }
+    if (!state.open.includes(trial.id)) state.open.push(trial.id);
+    return next.filter(m => !inPrologue.has(m.id));
 }
 
 /**
@@ -448,6 +505,8 @@ export function plotEvent(plot, rawState, event, today = 0) {
     const byId = new Map(plot.milestones.map(m => [m.id, m]));
     /** @type {Milestone[]} */
     const next = [];
+    // J2.1: la prueba ganada con el prólogo a medias lo cierra entero, antes de mirar lo abierto.
+    next.push(...settlePrologue(plot, state, event, step));
     for (const id of [...state.open]) {
         const milestone = byId.get(id);
         if (!milestone || !state.open.includes(id)) continue;

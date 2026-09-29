@@ -1,0 +1,381 @@
+/* ================================================================
+   J14 · La gente: la quedada (y la charla corta) como una escena de novela visual, y el
+   selector de con quién y dónde quedar (public/scripts/game-engine/ui/meetup-scene.js).
+   Los colores son los del juego (`--gs-*`, game-shell.css). Todo cuelga de .qd-dialog.
+   ================================================================ */
+.qd-dialog {
+    width: min(1180px, 96vw);
+    max-width: none;
+    height: min(760px, 92vh);
+    max-height: none;
+    margin: auto;
+    padding: 0;
+    color: var(--SmartThemeBodyColor, #e8e0d0);
+    background: var(--gs-bg-dark, #12100e);
+    border: 1px solid var(--gs-gold-line, rgba(214, 180, 106, 0.4));
+    border-radius: 14px;
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.85);
+    overflow: hidden;
+}
+
+.qd-dialog::backdrop {
+    background: rgba(0, 0, 0, 0.72);
+}
+
+.qd-root {
+    position: relative;
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto;
+    grid-template-areas:
+        "stage"
+        "box";
+    height: 100%;
+    padding: 18px 22px 22px;
+    isolation: isolate;
+}
+
+/* Detrás, el sitio donde estáis, en pixel y apagado para que se lea el texto. */
+.qd-backdrop {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image:
+        linear-gradient(to top, rgba(0, 0, 0, 0.92) 0%, rgba(0, 0, 0, 0.55) 45%, rgba(0, 0, 0, 0.3) 100%),
+        var(--qd-backdrop, none);
+    background-size: cover;
+    background-position: center;
+    image-rendering: pixelated;
+    opacity: 0.75;
+}
+
+.qd-backdrop[hidden] {
+    display: none;
+}
+
+/* Quien habla: grande, a la izquierda, de pie sobre la caja. */
+.qd-portrait {
+    grid-area: stage;
+    align-self: end;
+    justify-self: start;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    width: min(320px, 34%);
+    height: min(100%, 440px);
+    margin-left: 4%;
+    background: radial-gradient(ellipse at 50% 100%, rgba(226, 194, 122, 0.18), transparent 70%);
+    pointer-events: none;
+}
+
+.qd-portrait img.qd-pixel {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    object-position: bottom center;
+    image-rendering: pixelated;
+    filter: drop-shadow(0 0 18px rgba(0, 0, 0, 0.9));
+}
+
+.qd-silhouette {
+    font-size: min(12rem, 24vh);
+    padding-bottom: 12px;
+    color: rgba(0, 0, 0, 0.8);
+    text-shadow: 0 0 20px rgba(226, 194, 122, 0.25);
+}
+
+/* La caja: ancha, abajo, con la placa encima y las respuestas dentro. */
+.qd-box {
+    grid-area: box;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    min-height: 190px;
+    padding: 1.8rem 2.2rem 1rem;
+    background: var(--gs-bg-panel, rgba(24, 20, 16, 0.95));
+    border: 1px solid var(--gs-gold-line, rgba(214, 180, 106, 0.4));
+    border-radius: 12px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+.qd-box::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    border-radius: 12px 12px 0 0;
+    background: linear-gradient(90deg, transparent, var(--gs-accent-gold, #e2c27a), transparent);
+    opacity: 0.5;
+}
+
+.qd-nameplate {
+    position: absolute;
+    top: -20px;
+    left: 36px;
+    padding: 0.35rem 1.6rem;
+    font-weight: bold;
+    font-size: 1.05rem;
+    letter-spacing: 1px;
+    color: var(--gs-accent-gold, #e2c27a);
+    background: linear-gradient(135deg, #2a2218, #181410);
+    border: 1px solid var(--gs-accent-gold, #e2c27a);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+}
+
+.qd-nameplate[hidden] {
+    display: none;
+}
+
+.qd-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    font-size: 0.75rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--SmartThemeQuoteColor, #b9a98a);
+}
+
+.qd-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    max-height: 32vh;
+    overflow-y: auto;
+    font-family: Georgia, "Palatino Linotype", serif;
+    font-size: calc(1.15rem * var(--gs-text-scale, 1));
+    line-height: 1.55;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.qd-line {
+    margin: 0;
+    animation: qd-in var(--gs-text-speed, 0.25s) ease-out both;
+}
+
+.qd-note,
+.qd-summary {
+    font-style: italic;
+    color: var(--SmartThemeQuoteColor, #c9b894);
+}
+
+.qd-summary {
+    font-style: normal;
+}
+
+.qd-you {
+    padding-left: 1rem;
+    border-left: 2px solid var(--gs-gold-line, rgba(214, 180, 106, 0.4));
+    color: #d8d2c4;
+}
+
+.qd-who {
+    display: inline-block;
+    margin-right: 0.6rem;
+    font-family: system-ui, sans-serif;
+    font-size: 0.72rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--gs-accent-gold, #e2c27a);
+}
+
+/* Las respuestas, como fichas bajo el texto. */
+.qd-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding-top: 0.75rem;
+    border-top: 1px dashed rgba(214, 180, 106, 0.2);
+}
+
+.qd-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    max-width: 100%;
+    padding: 0.5rem 0.9rem;
+    font-size: 0.95rem;
+    text-align: left;
+    color: var(--SmartThemeBodyColor, #e8e0d0);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--gs-gold-line, rgba(214, 180, 106, 0.4));
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.qd-chip:hover,
+.qd-chip:focus-visible {
+    background: var(--gs-accent-gold-hover, rgba(226, 194, 122, 0.15));
+    border-color: var(--gs-accent-gold, #e2c27a);
+    outline: none;
+}
+
+.qd-chip-next,
+.qd-chip-finish {
+    margin-left: auto;
+}
+
+.qd-key {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.4rem;
+    height: 1.4rem;
+    font-size: 0.72rem;
+    color: var(--gs-accent-gold, #e2c27a);
+    border: 1px solid var(--gs-gold-line, rgba(214, 180, 106, 0.4));
+    border-radius: 4px;
+}
+
+.qd-liked {
+    color: var(--gs-danger-soft, #d08a86);
+}
+
+.qd-foot {
+    display: flex;
+    justify-content: flex-end;
+    min-height: 1rem;
+}
+
+.qd-leave {
+    padding: 0;
+    font-size: 0.75rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--SmartThemeQuoteColor, #b9a98a);
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+
+.qd-leave:hover {
+    color: var(--gs-accent-gold, #e2c27a);
+}
+
+/* El selector: tarjetas con la cara de cada uno y dónde está. */
+.qd-picker {
+    display: block;
+    overflow-y: auto;
+}
+
+.qd-pick-box {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+.qd-pick-title {
+    margin: 0;
+    color: var(--gs-accent-gold, #e2c27a);
+    letter-spacing: 1px;
+}
+
+.qd-pick-sub {
+    margin: 0;
+    color: var(--SmartThemeQuoteColor, #b9a98a);
+}
+
+.qd-pick-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    gap: 0.8rem;
+}
+
+.qd-pick-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.7rem;
+    color: inherit;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--gs-gold-line, rgba(214, 180, 106, 0.4));
+    border-radius: 10px;
+    cursor: pointer;
+}
+
+.qd-pick-card:hover,
+.qd-pick-card:focus-visible {
+    background: var(--gs-accent-gold-hover, rgba(226, 194, 122, 0.15));
+    outline: none;
+}
+
+.qd-pick-card.qd-eager {
+    border-color: var(--gs-accent-gold, #e2c27a);
+    box-shadow: 0 0 0 1px var(--gs-accent-gold, #e2c27a) inset;
+}
+
+.qd-pick-face {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    width: 96px;
+    height: 120px;
+    overflow: hidden;
+    background: radial-gradient(ellipse at 50% 100%, rgba(226, 194, 122, 0.14), rgba(255, 255, 255, 0.03) 70%);
+}
+
+.qd-pick-face img.qd-pixel {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    object-position: bottom center;
+    image-rendering: pixelated;
+}
+
+.qd-pick-face .qd-silhouette {
+    font-size: 4rem;
+}
+
+.qd-pick-name {
+    font-weight: bold;
+    text-align: center;
+}
+
+.qd-pick-where {
+    font-size: 0.8rem;
+    text-align: center;
+    color: var(--SmartThemeQuoteColor, #b9a98a);
+}
+
+.qd-pick-badge {
+    font-size: 0.75rem;
+    color: var(--gs-danger-soft, #d08a86);
+}
+
+.qd-pick-close {
+    align-self: flex-end;
+}
+
+@keyframes qd-in {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .qd-line {
+        animation: none;
+    }
+}
+
+@media (max-width: 900px) {
+    .qd-portrait {
+        display: none;
+    }
+
+    .qd-box {
+        padding: 1.6rem 1rem 1rem;
+    }
+}

@@ -27,9 +27,12 @@
 @import url(css/prompt-preview.css);
 @import url(css/campaign-panel.css);
 @import url(css/game-shell.css);
+@import url(css/town-scene.css);
 @import url(css/objective-editor.css);
 @import url(css/target-card.css);
 @import url(css/combat-cues.css);
+@import url(css/map-image-editor.css);
+@import url(css/quedadas.css);
 
 :root {
     interpolate-size: allow-keywords;

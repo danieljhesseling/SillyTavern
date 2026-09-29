@@ -24,6 +24,7 @@ import {
 import { playForScene, stopSceneAudio } from './scene-audio.js';
 import { SHORTCUTS, actionForKey } from './shortcuts.js';
 import { firstArt, isPlainFace, loadPixelManifest, openPack } from '../pixel-art.js';
+import { buildTown, closeTownPlace, countTownPlaces, renderTownScene, renderTownSelector } from './town-scene.js';
 
 /**
  * @typedef {import('./scene-director.js').SceneName} SceneName
@@ -112,6 +113,8 @@ import { firstArt, isPlainFace, loadPixelManifest, openPack } from '../pixel-art
  * @property {() => Array<{id: string, label: string, icon: string, actions: Array<{id: string, label: string, detail: string, enabled: boolean, cost?: number}>}>} [getServices]
  *   Los servicios de aqui, con lo que se puede hacer en cada uno.
  * @property {(actionId: string) => void} [onService]
+ * @property {() => ({location: any, npcs: any[]}|null)} [getTown] J3.11: la localización de aquí y
+ *   la gente del mundo, para los sitios del pueblo. Sin ella, el Shell las lee del mundo abierto.
  * @property {() => {title: string, hint: string, act: number}|null} [getFocus]
  *   Lo que se tiene entre manos: el hito abierto del hilo.
  * @property {() => void} [onJournal] Abrir el diario (idea 100).
@@ -1416,6 +1419,27 @@ function renderExploration(panel, view) {
     const scroll = panel.scrollTop;
     panel.textContent = '';
 
+    // J3.11: la pantalla del pueblo. Dentro de un sitio (la herrería, la posada), su escena y
+    // nada más; fuera, el selector de sitios encima de los tableros y el viaje.
+    const allCards = options?.getServices?.() ?? [];
+    const townCtx = {
+        here: view.here,
+        hero: String(view.party?.[0]?.name ?? ''),
+        slot: String(options?.getClock?.()?.slot ?? ''),
+        cards: allCards,
+        chips: options?.getChips?.() ?? [],
+        data: options?.getTown?.() ?? null,
+        onService: (/** @type {string} */ id) => options?.onService?.(id),
+        onChip: (/** @type {any} */ chip) => options?.onChip?.(chip),
+        refresh: () => refreshGameShell(),
+    };
+    const town = view.here ? buildTown(townCtx) : null;
+    const inTown = Boolean(town && town.places.length > 0);
+    if (town && inTown && renderTownScene(panel, town, townCtx)) {
+        panel.scrollTop = scroll;
+        return;
+    }
+
     const here = el('header', 'gs-here ex-head');
     const title = el('div', 'ex-title');
     title.appendChild(el('i', 'fa-solid fa-location-dot'));
@@ -1424,13 +1448,15 @@ function renderExploration(panel, view) {
     if (view.description) here.appendChild(el('div', 'gs-here-desc', view.description));
     if (view.fortune) here.appendChild(el('div', 'gs-here-fortune', view.fortune));
     panel.appendChild(here);
+    if (town && inTown) panel.appendChild(renderTownSelector(town, townCtx));
 
     const dashboard = el('div', 'gs-explore-dashboard');
 
     // Aquí mismo: la posada, la herrería, el templo, el tablón. Cada edificio en su
-    // tarjeta, con lo que cuesta dicho antes de pulsar.
+    // tarjeta, con lo que cuesta dicho antes de pulsar. Con sitios en el pueblo, solo lo que
+    // no es de ninguno.
     const local = exploreColumn('fa-building', 'Aquí mismo', 'here');
-    const services = options?.getServices?.() ?? [];
+    const services = town && inTown ? allCards.filter(card => town.rest.includes(card.id)) : allCards;
     const night = /noche/i.test(String(options?.getClock?.()?.slot ?? ''));
     for (const card of services) {
         const box = el('div', 'gs-service');
@@ -1462,7 +1488,7 @@ function renderExploration(panel, view) {
         local.appendChild(box);
     }
     if (services.length === 0) local.appendChild(el('div', 'ex-empty', 'Aquí no hay posada, ni tienda, ni nadie que venda nada.'));
-    dashboard.appendChild(local);
+    if (!inTown || services.length > 0) dashboard.appendChild(local);
 
     // Los tableros de aquí: entrar lleva la pantalla al tablero.
     const boards = exploreColumn('fa-chess-board', 'Tableros de aquí', 'boards');
@@ -1522,7 +1548,12 @@ function renderExploration(panel, view) {
 export function refreshGameShell() {
     if (!isShellOpen() || !root || !options) return;
 
-    const situation = options.getSituation();
+    const engine = options.getSituation();
+    // J3.11: los sitios del pueblo, que el juego no cuenta: con ellos se puede explorar aunque
+    // el mundo tenga una sola localización (el gremio). En pelea no hacen falta.
+    const situation = engine?.hasChat && !engine.combatActive && engine.locationName
+        ? { ...engine, townPlaces: countTownPlaces(String(engine.locationName), options.getTown?.() ?? null, () => { if (isShellOpen()) refreshGameShell(); }) }
+        : engine;
     // The director decides from what *changed*, not only from what is. What it decides
     // becomes the standing pick, so the screen does not snap back on the next redraw.
     const choice = directScene(lastSituation, situation, manualScene);
@@ -1711,6 +1742,7 @@ export function openGameShell(shellOptions) {
     lastSituation = null;
     sceneReason = '';
     titleView = 'menu';
+    closeTownPlace();
 
     root = el('div', 'gs-root');
     root.id = 'game-shell';
@@ -1812,6 +1844,7 @@ export function closeGameShell() {
     manualScene = null;
     lastSituation = null;
     sceneReason = '';
+    closeTownPlace();
     document.body.classList.remove('game-shell-on');
     headWatcher?.disconnect();
     headWatcher = null;

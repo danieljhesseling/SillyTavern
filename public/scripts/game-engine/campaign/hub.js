@@ -16,6 +16,7 @@
 
 import { uniqueWorldName } from './campaign-worlds.js';
 import { mercenaryHp } from './guests.js';
+import { prologueOf } from './plot.js';
 
 /** En los metadatos del mundo del gremio: su chat y las campañas que ha empezado. */
 export const HUB_KEY = 'hub';
@@ -463,21 +464,39 @@ export function hubPartyLine(party) {
 }
 
 /**
- * J2.3: la prueba del gremio, si sigue por hacer. Es el hito con el que empieza el hilo y
- * que pide ganar un tablero: en Puerto Alba, las ratas de la bodega.
+ * J2.3: la prueba del gremio, si sigue por hacer: en Puerto Alba, las ratas de la bodega.
  *
- * Saltarla es darla por ganada con el **mismo suceso** que manda la pelea (`{kind: 'win'}`),
- * así que el hilo sigue igual que si se hubiera peleado: se abre el hito siguiente y se
- * cuenta su escena. Por eso aquí no se decide nada del hilo, solo cuál es la prueba.
+ * Desde J2.1 el gremio empieza antes, con un prólogo (el muelle, una charla, Brunilda), y la
+ * prueba es su último hito, el último que pide ganar un tablero (`prologueOf`). Se puede saltar
+ * mientras quede algo del prólogo por hacer, y saltarla salta el prólogo entero.
+ *
+ * Saltarla es darla por ganada con el **mismo suceso** que manda la pelea (`{kind: 'win'}`):
+ * el hilo da por hecho lo que faltaba del prólogo sin contarlo, abre el hito siguiente y cuenta
+ * su escena. Por eso aquí no se decide nada del hilo, solo cuál es la prueba y qué tableros
+ * del prólogo quedan por ganar (`boards`, con la prueba la última), para dar su botín y
+ * apuntarlos como ganados igual que si se hubieran peleado.
+ *
+ * Un hilo sin prólogo marcado (un gremio de antes de J2.1) tiene por prueba el hito con el que
+ * empieza, si pide ganar un tablero.
  *
  * @param {any} plot El hilo, como lo lee `readPlot`.
  * @param {any} state Por dónde va, como lo lee `readPlotState`.
- * @returns {{id: string, title: string, board: string, place: string}|null}
+ * @returns {{id: string, title: string, board: string, place: string, boards: Array<{board: string, place: string}>}|null}
  */
 export function hubTrial(plot, state) {
     const open = new Set((Array.isArray(state?.open) ? state.open : []).map(text));
+    const over = new Set(['done', 'closed', 'missed'].flatMap(list => (Array.isArray(state?.[list]) ? state[list] : []).map(text)));
+    const boardOf = (/** @type {any} */ m) => ({ board: text(m.asks.board), place: text(m.asks.place) });
+    const { milestones, trial: written } = prologueOf(plot);
+    if (written) {
+        if (over.has(text(written.id)) || !milestones.some(m => open.has(text(m.id)))) return null;
+        const boards = milestones
+            .filter(m => !m.hidden && !over.has(text(m.id)) && key(m.asks?.kind) === 'win' && text(m.asks?.board))
+            .map(boardOf);
+        return { id: text(written.id), title: text(written.title), ...boardOf(written), boards };
+    }
     const trial = (Array.isArray(plot?.milestones) ? plot.milestones : []).find((/** @type {any} */ m) =>
         m && !m.hidden && open.has(text(m.id)) && key(m.opens?.kind) === 'start' && key(m.asks?.kind) === 'win' && text(m.asks?.board));
     if (!trial) return null;
-    return { id: text(trial.id), title: text(trial.title), board: text(trial.asks.board), place: text(trial.asks.place) };
+    return { id: text(trial.id), title: text(trial.title), ...boardOf(trial), boards: [boardOf(trial)] };
 }

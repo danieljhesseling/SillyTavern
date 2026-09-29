@@ -1,7 +1,7 @@
 import { Fuse } from '../lib.js';
 
 import { saveSettings, substituteParams, getRequestHeaders, chat_metadata, this_chid, characters, saveCharacterDebounced, menu_type, eventSource, event_types, getExtensionPromptByName, saveMetadata, getCurrentChatId, extension_prompt_roles, create_save, createOrEditCharacter, name1, getOneCharacter, select_selected_character } from '../script.js';
-import { download, debounce, initScrollHeight, resetScrollHeight, parseJsonFile, extractDataFromPng, getFileBuffer, getCharaFilename, getSortableDelay, escapeRegex, PAGINATION_TEMPLATE, navigation_option, waitUntilCondition, isTrueBoolean, setValueByPath, flashHighlight, select2ModifyOptions, getSelect2OptionId, dynamicSelect2DataViaAjax, highlightRegex, select2ChoiceClickSubscribe, isFalseBoolean, getSanitizedFilename, checkOverwriteExistingData, getStringHash, parseStringArray, cancelDebounce, findChar, onlyUnique, equalsIgnoreCaseAndAccents, uuidv4, normalizeArray, getUniqueName, logSlashCommandWarn, addLongPressEvent, escapeHtml, setInfoBlock, clearInfoBlock } from './utils.js';
+import { download, debounce, initScrollHeight, resetScrollHeight, parseJsonFile, extractDataFromPng, getFileBuffer, getCharaFilename, getSortableDelay, escapeRegex, PAGINATION_TEMPLATE, navigation_option, waitUntilCondition, isTrueBoolean, setValueByPath, flashHighlight, select2ModifyOptions, getSelect2OptionId, dynamicSelect2DataViaAjax, highlightRegex, select2ChoiceClickSubscribe, isFalseBoolean, getSanitizedFilename, checkOverwriteExistingData, getStringHash, parseStringArray, cancelDebounce, findChar, onlyUnique, equalsIgnoreCaseAndAccents, uuidv4, normalizeArray, getUniqueName, logSlashCommandWarn, addLongPressEvent, escapeHtml, setInfoBlock, clearInfoBlock, saveBase64AsFile } from './utils.js';
 import { extension_settings, getContext } from './extensions.js';
 import { NOTE_MODULE_NAME, metadata_keys, shouldWIAddPrompt } from './authors-note.js';
 import { isMobile } from './RossAscends-mods.js';
@@ -3138,6 +3138,26 @@ async function displayWorldEntries(name, data, navigation = navigation_option.no
         async function openBoardEditor(board) {
             const isCombatInitial = !!board.isCombat;
 
+            // J12.8 a J12.11: lo que sale del mapa en cuadrícula (imagen recortada, cuadrícula,
+            // terreno, salas y alturas). Se junta con el tablero al guardar.
+            /** @type {Record<string, any>|null} */
+            let mapPatch = null;
+
+            /**
+             * El mapa de un tablero, dicho corto: «36 × 25 casillas · 6 salas · con alturas».
+             * @param {any} mapBoard
+             * @returns {string}
+             */
+            function describeMapBoard(mapBoard) {
+                const zones = Array.isArray(mapBoard?.zones) ? mapBoard.zones.length : 0;
+                const heights = mapBoard?.elevation && Object.keys(mapBoard.elevation).length > 0;
+                return [
+                    `${mapBoard?.gridWidth ?? '?'} × ${mapBoard?.gridHeight ?? '?'} casillas`,
+                    zones ? `${zones} ${zones === 1 ? 'sala' : 'salas'}` : '',
+                    heights ? 'con alturas' : '',
+                ].filter(Boolean).join(' · ');
+            }
+
             // Dynamically import party functions to avoid circular dependency
             const { getPartyMembersSnapshot } = await import('./party.js');
 
@@ -3255,6 +3275,15 @@ async function displayWorldEntries(name, data, navigation = navigation_option.no
                         <input type="file" class="text_pole" id="wm_be_file" accept="image/*" style="display:none" />
                     </div>
                 </div>
+                <div class="wm-field">
+                    <label class="wm-label"><i class="fa-solid fa-border-all"></i> Mapa en cuadrícula</label>
+                    <div class="wm-upload-row wm-map-grid-row">
+                        <button id="wm_be_map_btn" class="menu_button"><i class="fa-solid fa-upload"></i> Subir mapa en cuadrícula</button>
+                        <button id="wm_be_map_edit" class="menu_button" style="display:${board.grid ? '' : 'none'};"><i class="fa-solid fa-pen"></i> Retocar el mapa</button>
+                        <span id="wm_be_map_info" class="wm-upload-filename">${board.grid ? escapeHtml(describeMapBoard(board)) : 'Un mapa de D&amp;D con cuadrícula: se leen los muros, el suelo y las puertas.'}</span>
+                        <input type="file" id="wm_be_map_file" accept="image/png,image/jpeg,image/webp" style="display:none" />
+                    </div>
+                </div>
                 <div class="wm-row" style="display:flex;gap:8px;margin-top:4px;">
                     <div class="wm-field" style="flex:1;">
                         <label class="wm-label">${t`Grid Width`}</label>
@@ -3321,6 +3350,63 @@ async function displayWorldEntries(name, data, navigation = navigation_option.no
                                 }
                             };
                             reader.readAsDataURL(file);
+                        });
+                    }
+
+                    // J12.8 a J12.11: un mapa de D&D con cuadrícula, leído y retocado en su pantalla.
+                    const mapFileInput = inst.dlg.querySelector('#wm_be_map_file');
+                    const mapBtn = inst.dlg.querySelector('#wm_be_map_btn');
+                    const mapEditBtn = inst.dlg.querySelector('#wm_be_map_edit');
+                    const mapInfo = inst.dlg.querySelector('#wm_be_map_info');
+                    const openMap = async (/** @type {{file?: File, imageUrl?: string}} */ source) => {
+                        try {
+                            const { openMapImageEditor } = await import('./game-engine/ui/map-image-editor.js');
+                            const current = { ...board, ...(mapPatch || {}) };
+                            const patch = await openMapImageEditor({
+                                file: source.file || null,
+                                imageUrl: source.imageUrl || '',
+                                board: current,
+                                Popup,
+                                POPUP_TYPE,
+                                POPUP_RESULT,
+                                // La imagen va a un archivo del mundo, no dentro del mundo como data URL.
+                                saveImage: (base64, extension, fileName) => saveBase64AsFile(base64, name || 'tableros', fileName, extension),
+                            });
+                            if (!patch) return;
+                            mapPatch = patch;
+                            if (urlInput instanceof HTMLInputElement) urlInput.value = patch.url;
+                            if (uploadName instanceof HTMLElement) uploadName.textContent = patch.url;
+                            const gw = inst.dlg.querySelector('#wm_be_gw');
+                            const gh = inst.dlg.querySelector('#wm_be_gh');
+                            if (gw instanceof HTMLInputElement) gw.value = String(patch.gridWidth);
+                            if (gh instanceof HTMLInputElement) gh.value = String(patch.gridHeight);
+                            if (mapInfo instanceof HTMLElement) mapInfo.textContent = describeMapBoard(patch);
+                            if (mapEditBtn instanceof HTMLElement) mapEditBtn.style.display = '';
+                        } catch (error) {
+                            console.error('[mapa en cuadrícula]', error);
+                            toastr.error(error instanceof Error ? error.message : String(error), 'Mapa en cuadrícula');
+                        }
+                    };
+                    if (mapBtn instanceof HTMLElement && mapFileInput instanceof HTMLInputElement) {
+                        mapBtn.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            mapFileInput.click();
+                        });
+                        mapFileInput.addEventListener('change', () => {
+                            const file = mapFileInput.files?.[0];
+                            mapFileInput.value = '';
+                            if (file) void openMap({ file });
+                        });
+                    }
+                    if (mapEditBtn instanceof HTMLElement) {
+                        mapEditBtn.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            const imageUrl = mapPatch?.url || board.url || '';
+                            if (!imageUrl) {
+                                toastr.warning('Este tablero no tiene imagen: sube primero el mapa.', 'Mapa en cuadrícula');
+                                return;
+                            }
+                            void openMap({ imageUrl });
                         });
                     }
 
@@ -3395,16 +3481,25 @@ async function displayWorldEntries(name, data, navigation = navigation_option.no
 
             const gwEl = dlg.querySelector('#wm_be_gw');
             const ghEl = dlg.querySelector('#wm_be_gh');
+            const url = urlEl instanceof HTMLInputElement ? urlEl.value.trim() : '';
 
-            return {
+            // Lo que el tablero ya tenía y aquí no se enseña (terreno, salas, objetivos, dónde
+            // empieza el grupo) se queda. Antes se devolvía un tablero con solo estos campos, y
+            // cambiarle el nombre le borraba el terreno.
+            const updated = {
+                ...board,
+                ...(mapPatch && url === mapPatch.url ? mapPatch : {}),
                 name: nameEl instanceof HTMLInputElement ? nameEl.value.trim() : '',
-                url: urlEl instanceof HTMLInputElement ? urlEl.value.trim() : '',
+                url,
                 gridWidth: gwEl instanceof HTMLInputElement ? (parseInt(gwEl.value, 10) || 50) : 50,
                 gridHeight: ghEl instanceof HTMLInputElement ? (parseInt(ghEl.value, 10) || 50) : 50,
                 isCombat: combatEl instanceof HTMLInputElement ? combatEl.checked : false,
                 encounterRules,
                 npcPlacements,
             };
+            // Una imagen cambiada a mano ya no es la de la cuadrícula guardada.
+            if (url !== (mapPatch?.url ?? board.url ?? '')) delete updated.grid;
+            return updated;
         }
 
         const popup = new Popup(content, POPUP_TYPE.TEXT, '', {

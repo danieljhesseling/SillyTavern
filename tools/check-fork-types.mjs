@@ -272,6 +272,9 @@ const FORK_FILES = [
     // J12.8 a J12.12: tableros a partir de un mapa en imagen.
     'public/scripts/game-engine/board/map-image.js',
     'public/scripts/game-engine/board/zones.js',
+    // Y su pantalla: la cuadrícula, las casillas, las salas y las alturas sobre el dibujo.
+    'public/scripts/game-engine/board/map-edit.js',
+    'public/scripts/game-engine/ui/map-image-editor.js',
     'public/scripts/game-engine/combat/condition-timers.js',
     'public/scripts/game-engine/ui/abilities-panel.js',
     'public/scripts/game-engine/campaign/campaign-export.js',
@@ -301,6 +304,13 @@ const FORK_FILES = [
     'public/scripts/game-engine/campaign/bonds.js',
     'public/scripts/game-engine/campaign/scenarios.js',
     'public/scripts/game-engine/campaign/campaign-map.js',
+    // J14: la gente (charlas, el día por partes, quedadas y quién está dónde).
+    'public/scripts/game-engine/campaign/social.js',
+    'public/scripts/game-engine/campaign/small-talk.js',
+    'public/scripts/game-engine/campaign/day-parts.js',
+    'public/scripts/game-engine/campaign/meetups.js',
+    'public/scripts/game-engine/campaign/whereabouts.js',
+    'public/scripts/game-engine/ui/meetup-scene.js',
     // J15.1: party.js es una fachada; lo suyo vive en party/, un módulo por cosa.
     ...readdirSync(PARTY_DIR).filter(f => f.endsWith('.js')).sort().map(f => `public/scripts/party/${f}`),
     'public/scripts/dnd-system.js',

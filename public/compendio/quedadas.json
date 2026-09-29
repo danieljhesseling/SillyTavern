@@ -1,0 +1,4148 @@
+{
+  "version": 1,
+  "domain": "quedadas",
+  "about": "Quedar con alguien (J14.3 a J14.6 de ROADMAP_SIN_CONEXION): gastas una parte del día con alguien de tu gente y se juega su escena. Tres clases de fila (KIND). GENTE: dónde anda cada uno a cada hora (PLACES: morning, afternoon, night; los sitios son posada, tienda, herreria, templo, tablon, plaza, muelle y gremio), su pueblo (HOME: solo allí se queda con él si no va contigo) y los sitios donde le gusta quedar (LIKES: allí suma un punto más). ESCENA: la escena de cada rango de vínculo (RANK), en dos a cuatro pasos (BEATS); cada paso cuenta lo que pasa (NOTE) y lo que dice (SAY), con su cara (MOOD: alegre, enfadado o triste), y casi todos ofrecen dos o tres respuestas (REPLIES) con lo que acercan (BOND: 1 acerca, 0 nada, -1 aleja), lo que contesta (THEN) y, si cuesta algo, GOLD (negativo). Las escenas de CAMPAIGN strahd y 1387 son las cinco de cada confidente del paquete, pasadas a pasos: RANK y TITLE tienen que ser los del paquete. RANGO: lo que abre llegar a ese rango (UNLOCK): TYPE apoyo (una ventaja de combate de las de vínculo, PERK), descuento (ON: tienda, herreria, posada o templo; AMOUNT: 0.1 es un 10 %) o mision (su misión personal, QUEST, con dos ENDINGS). Lo que concuerda con tu héroe va entre llaves con las dos formas, separadas por una barra vertical.",
+  "rows": [
+    {
+      "id": "gente-gerd",
+      "kind": "gente",
+      "name": "Gerd el Mellado · dónde anda",
+      "who": "Gerd el Mellado",
+      "campaign": "gremio",
+      "home": "Puerto Alba",
+      "places": {
+        "morning": "muelle",
+        "afternoon": "plaza",
+        "night": "posada"
+      },
+      "likes": [
+        "posada",
+        "muelle"
+      ],
+      "gender": "Hombre",
+      "className": "guerrero"
+    },
+    {
+      "id": "gente-nella",
+      "kind": "gente",
+      "name": "Nella Tresflechas · dónde anda",
+      "who": "Nella Tresflechas",
+      "campaign": "gremio",
+      "home": "Puerto Alba",
+      "places": {
+        "morning": "plaza",
+        "afternoon": "tienda",
+        "night": "posada"
+      },
+      "likes": [
+        "plaza",
+        "tienda"
+      ],
+      "gender": "Mujer",
+      "className": "explorador"
+    },
+    {
+      "id": "gente-osric",
+      "kind": "gente",
+      "name": "Osric Mediapaga · dónde anda",
+      "who": "Osric Mediapaga",
+      "campaign": "gremio",
+      "home": "Puerto Alba",
+      "places": {
+        "morning": "muelle",
+        "afternoon": "templo",
+        "night": "posada"
+      },
+      "likes": [
+        "muelle",
+        "templo"
+      ],
+      "gender": "Hombre",
+      "className": "guerrero"
+    },
+    {
+      "id": "gente-brunilda",
+      "kind": "gente",
+      "name": "Brunilda · dónde anda",
+      "who": "Brunilda",
+      "campaign": "gremio",
+      "home": "Puerto Alba",
+      "places": {
+        "morning": "gremio",
+        "afternoon": "gremio",
+        "night": "templo"
+      },
+      "likes": [
+        "gremio"
+      ],
+      "gender": "Mujer"
+    },
+    {
+      "id": "gente-tomas",
+      "kind": "gente",
+      "name": "Tomás · dónde anda",
+      "who": "Tomás",
+      "campaign": "gremio",
+      "home": "Puerto Alba",
+      "places": {
+        "morning": "posada",
+        "afternoon": "posada",
+        "night": "posada"
+      },
+      "likes": [
+        "posada"
+      ],
+      "gender": "Hombre"
+    },
+    {
+      "id": "gente-marisa",
+      "kind": "gente",
+      "name": "Marisa · dónde anda",
+      "who": "Marisa",
+      "campaign": "gremio",
+      "home": "Puerto Alba",
+      "places": {
+        "morning": "tienda",
+        "afternoon": "tienda",
+        "night": "posada"
+      },
+      "likes": [
+        "tienda"
+      ],
+      "gender": "Mujer"
+    },
+    {
+      "id": "gente-ramiro",
+      "kind": "gente",
+      "name": "Ramiro · dónde anda",
+      "who": "Ramiro",
+      "campaign": "gremio",
+      "home": "Puerto Alba",
+      "places": {
+        "morning": "herreria",
+        "afternoon": "herreria",
+        "night": "posada"
+      },
+      "likes": [
+        "herreria"
+      ],
+      "gender": "Hombre"
+    },
+    {
+      "id": "gente-elvira",
+      "kind": "gente",
+      "name": "Madre Elvira · dónde anda",
+      "who": "Madre Elvira",
+      "campaign": "gremio",
+      "home": "Puerto Alba",
+      "places": {
+        "morning": "templo",
+        "afternoon": "templo",
+        "night": "templo"
+      },
+      "likes": [
+        "templo"
+      ],
+      "gender": "Mujer"
+    },
+    {
+      "id": "gente-strahd-ismark",
+      "kind": "gente",
+      "name": "Ismark · dónde anda",
+      "who": "Ismark Kolyanovich",
+      "campaign": "strahd",
+      "home": "Aldea de Barovia",
+      "places": {
+        "morning": "templo",
+        "afternoon": "plaza",
+        "night": "posada"
+      },
+      "likes": [
+        "posada",
+        "plaza"
+      ],
+      "gender": "Hombre",
+      "className": "guerrero"
+    },
+    {
+      "id": "gente-strahd-ireena",
+      "kind": "gente",
+      "name": "Ireena · dónde anda",
+      "who": "Ireena Kolyana",
+      "campaign": "strahd",
+      "home": "Aldea de Barovia",
+      "places": {
+        "morning": "templo",
+        "afternoon": "plaza",
+        "night": "posada"
+      },
+      "likes": [
+        "templo",
+        "plaza"
+      ],
+      "gender": "Mujer",
+      "className": "guerrero"
+    },
+    {
+      "id": "gente-strahd-eva",
+      "kind": "gente",
+      "name": "Madam Eva · dónde anda",
+      "who": "Madam Eva",
+      "campaign": "strahd",
+      "home": "Campamento del Estanque Tser",
+      "places": {
+        "morning": "plaza",
+        "afternoon": "plaza",
+        "night": "plaza"
+      },
+      "likes": [
+        "plaza"
+      ],
+      "gender": "Mujer",
+      "className": "clerigo"
+    },
+    {
+      "id": "gente-strahd-vanrichten",
+      "kind": "gente",
+      "name": "Van Richten · dónde anda",
+      "who": "Rudolph van Richten",
+      "campaign": "strahd",
+      "home": "Ciudad de Vallaki",
+      "places": {
+        "morning": "tienda",
+        "afternoon": "plaza",
+        "night": "posada"
+      },
+      "likes": [
+        "posada",
+        "templo"
+      ],
+      "gender": "Hombre",
+      "className": "clerigo"
+    },
+    {
+      "id": "gente-strahd-ezmerelda",
+      "kind": "gente",
+      "name": "Ezmerelda · dónde anda",
+      "who": "Ezmerelda d'Avenir",
+      "campaign": "strahd",
+      "home": "Aldea de Krezk",
+      "places": {
+        "morning": "plaza",
+        "afternoon": "templo",
+        "night": "posada"
+      },
+      "likes": [
+        "plaza",
+        "posada"
+      ],
+      "gender": "Mujer",
+      "className": "mago"
+    },
+    {
+      "id": "gente-1387-bran",
+      "kind": "gente",
+      "name": "Bran · dónde anda",
+      "who": "Bran",
+      "campaign": "1387",
+      "home": "El Pueblo de Barro",
+      "places": {
+        "morning": "herreria",
+        "afternoon": "tablon",
+        "night": "posada"
+      },
+      "likes": [
+        "posada",
+        "herreria"
+      ],
+      "gender": "Hombre",
+      "className": "guerrero"
+    },
+    {
+      "id": "gente-1387-aldara",
+      "kind": "gente",
+      "name": "Aldara · dónde anda",
+      "who": "Aldara",
+      "campaign": "1387",
+      "home": "El Pueblo de Barro",
+      "places": {
+        "morning": "tienda",
+        "afternoon": "plaza",
+        "night": "posada"
+      },
+      "likes": [
+        "plaza"
+      ],
+      "gender": "Mujer",
+      "className": "explorador"
+    },
+    {
+      "id": "gente-1387-doc",
+      "kind": "gente",
+      "name": "Arthur «Doc» · dónde anda",
+      "who": "Arthur «Doc»",
+      "campaign": "1387",
+      "home": "La Ermita Derruida",
+      "places": {
+        "morning": "templo",
+        "afternoon": "templo",
+        "night": "plaza"
+      },
+      "likes": [
+        "templo"
+      ],
+      "gender": "Hombre",
+      "className": "clerigo"
+    },
+    {
+      "id": "gente-1387-isolda",
+      "kind": "gente",
+      "name": "Isolda · dónde anda",
+      "who": "Isolda",
+      "campaign": "1387",
+      "home": "Castillo de Vane",
+      "places": {
+        "morning": "tienda",
+        "afternoon": "plaza",
+        "night": "plaza"
+      },
+      "likes": [
+        "plaza"
+      ],
+      "gender": "Mujer",
+      "className": "picaro"
+    },
+    {
+      "id": "gente-1387-grimm",
+      "kind": "gente",
+      "name": "Grimm · dónde anda",
+      "who": "Grimm",
+      "campaign": "1387",
+      "home": "El Peaje Norte",
+      "places": {
+        "morning": "tablon",
+        "afternoon": "plaza",
+        "night": "plaza"
+      },
+      "likes": [
+        "tablon"
+      ],
+      "gender": "Hombre",
+      "className": "soldado"
+    },
+    {
+      "id": "rango-gerd-2",
+      "kind": "rango",
+      "name": "Gerd · rango 2",
+      "who": "Gerd el Mellado",
+      "rank": 2,
+      "unlock": {
+        "type": "descuento",
+        "on": "herreria",
+        "amount": 0.1,
+        "label": "Amigo de Ramiro",
+        "describe": "Ramiro le debe a Gerd más de un favor de la guerra: la herrería os cobra un 10 % menos."
+      }
+    },
+    {
+      "id": "rango-gerd-3",
+      "kind": "rango",
+      "name": "Gerd · rango 3",
+      "who": "Gerd el Mellado",
+      "rank": 3,
+      "unlock": {
+        "type": "apoyo",
+        "perk": "follow_up",
+        "label": "Detrás de ti",
+        "describe": "Cuando asestas un golpe crítico, Gerd tiene la mitad de posibilidades de atacar gratis."
+      }
+    },
+    {
+      "id": "rango-gerd-4",
+      "kind": "rango",
+      "name": "Gerd · rango 4",
+      "who": "Gerd el Mellado",
+      "rank": 4,
+      "unlock": {
+        "type": "mision",
+        "label": "La casa de Robledo",
+        "describe": "Su misión personal: ir a Robledo y salvar la casa de su madre.",
+        "quest": {
+          "id": "gerd-robledo",
+          "title": "La casa de Robledo",
+          "where": "Robledo, una semana al norte",
+          "pitch": "El señor de Robledo quiere quedarse con la casa de la madre de Gerd por una renta que Gerd jura que ha pagado. Alguien se ha quedado el dinero por el camino.",
+          "endings": [
+            {
+              "id": "pagar",
+              "title": "Pagar la deuda",
+              "summary": "Pagáis lo que pide el señor. La madre de Gerd conserva la casa, y Gerd se queda con la espina de no saber quién le robaba."
+            },
+            {
+              "id": "plantar-cara",
+              "title": "Plantar cara",
+              "summary": "Descubrís que el mensajero se quedaba el dinero y lo lleváis ante el señor. La casa se salva sin pagar, pero en Robledo ya no os quieren ver."
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "rango-nella-2",
+      "kind": "rango",
+      "name": "Nella · rango 2",
+      "who": "Nella Tresflechas",
+      "rank": 2,
+      "unlock": {
+        "type": "descuento",
+        "on": "tienda",
+        "amount": 0.1,
+        "label": "Clienta de Marisa",
+        "describe": "Marisa le fía a Nella y os hace precio: la tienda os cobra un 10 % menos."
+      }
+    },
+    {
+      "id": "rango-nella-3",
+      "kind": "rango",
+      "name": "Nella · rango 3",
+      "who": "Nella Tresflechas",
+      "rank": 3,
+      "unlock": {
+        "type": "apoyo",
+        "perk": "follow_up",
+        "label": "Flecha de seguimiento",
+        "describe": "Cuando asestas un golpe crítico, Nella tiene la mitad de posibilidades de disparar gratis."
+      }
+    },
+    {
+      "id": "rango-nella-4",
+      "kind": "rango",
+      "name": "Nella · rango 4",
+      "who": "Nella Tresflechas",
+      "rank": 4,
+      "unlock": {
+        "type": "mision",
+        "label": "El bosque del barón",
+        "describe": "Su misión personal: sacar a su hermano Tobías de la cárcel del barón de Hoz.",
+        "quest": {
+          "id": "nella-tobias",
+          "title": "El bosque del barón",
+          "where": "Hoz, en el bosque del barón",
+          "pitch": "A Tobías, el hermano pequeño de Nella, lo han pillado cazando en el bosque del barón de Hoz. En otoño lo mandan a las minas.",
+          "endings": [
+            {
+              "id": "multa",
+              "title": "Pagar la multa",
+              "summary": "Pagáis al barón y Tobías sale libre y sin cuentas pendientes. Pero ahora el barón sabe dónde vive Nella."
+            },
+            {
+              "id": "carcel",
+              "title": "La cárcel de noche",
+              "summary": "Entráis de noche por donde Nella sabe y sacáis a Tobías sin pagar. El barón pone precio también a tu cabeza."
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "rango-osric-2",
+      "kind": "rango",
+      "name": "Osric · rango 2",
+      "who": "Osric Mediapaga",
+      "rank": 2,
+      "unlock": {
+        "type": "descuento",
+        "on": "posada",
+        "amount": 0.2,
+        "label": "La esquina de Osric",
+        "describe": "Tomás aprecia a quien no rompe nada: la posada os cobra un 20 % menos."
+      }
+    },
+    {
+      "id": "rango-osric-3",
+      "kind": "rango",
+      "name": "Osric · rango 3",
+      "who": "Osric Mediapaga",
+      "rank": 3,
+      "unlock": {
+        "type": "apoyo",
+        "perk": "follow_up",
+        "label": "Golpe de cierre",
+        "describe": "Cuando asestas un golpe crítico, Osric tiene la mitad de posibilidades de atacar gratis."
+      }
+    },
+    {
+      "id": "rango-osric-4",
+      "kind": "rango",
+      "name": "Osric · rango 4",
+      "who": "Osric Mediapaga",
+      "rank": 4,
+      "unlock": {
+        "type": "mision",
+        "label": "El anillo de Valdés",
+        "describe": "Su misión personal: devolver el anillo de su señor a la viuda, en Valdés.",
+        "quest": {
+          "id": "osric-anillo",
+          "title": "El anillo de Valdés",
+          "where": "Valdés, a dos días de Puerto Alba",
+          "pitch": "Hace once años, Osric se durmió en su guardia y mataron a su señor. Todavía lleva su anillo. Quiere devolvérselo a la viuda antes de retirarse al mar.",
+          "endings": [
+            {
+              "id": "verdad",
+              "title": "La verdad",
+              "summary": "Osric le cuenta a la viuda que se durmió. Ella le devuelve el anillo y le dice que lo lleve él: ya ha pagado bastante."
+            },
+            {
+              "id": "mentira",
+              "title": "Una mentira piadosa",
+              "summary": "Le decís que su marido murió luchando. Ella llora tranquila y guarda el anillo. Osric vuelve sin el anillo y sin paz."
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "gremio-gerd-1",
+      "kind": "escena",
+      "name": "Gerd · Los dientes",
+      "who": "Gerd el Mellado",
+      "campaign": "gremio",
+      "rank": 1,
+      "title": "Los dientes",
+      "where": "posada",
+      "beats": [
+        {
+          "note": "Gerd se sienta enfrente con dos jarras y un plato de guiso que nadie más ha pedido.",
+          "say": "¿Sabes por qué me llaman el Mellado? Venga, adivina. Todo el mundo falla.",
+          "mood": "alegre",
+          "replies": [
+            {
+              "text": "¿Una pelea de taberna?",
+              "bond": 0,
+              "then": "¡Eso dicen todos! Pues no. Fue algo peor."
+            },
+            {
+              "text": "Cuéntamelo tú, que lo estás deseando.",
+              "bond": 1,
+              "then": "¡Ja! Ya me vas conociendo. Escucha.",
+              "mood": "alegre"
+            },
+            {
+              "text": "Me da igual, la verdad.",
+              "bond": -1,
+              "then": "Vaya. Pues te lo cuento igual, que pago yo.",
+              "mood": "enfadado"
+            }
+          ]
+        },
+        {
+          "say": "Primera batalla, con diecisiete años. Levanté el escudo tan deprisa que me di con él en la boca. Dos dientes al barro, y el enemigo aún no había llegado.",
+          "mood": "alegre",
+          "replies": [
+            {
+              "text": "¿Y ganasteis?",
+              "bond": 0,
+              "then": "Ganamos. Yo escupiendo sangre y gritando como un loco. Creyeron que era valor."
+            },
+            {
+              "text": "Por lo menos el escudo funcionaba.",
+              "bond": 1,
+              "then": "¡Eso mismo dijo mi sargento! Funcionaba demasiado.",
+              "mood": "alegre"
+            },
+            {
+              "text": "Qué torpeza.",
+              "bond": -1,
+              "then": "Diecisiete años, te digo. A esa edad nadie es un sabio."
+            }
+          ]
+        },
+        {
+          "note": "Gerd se ríe hasta que se le escapa un silbido por el hueco de los dientes. Luego empuja la otra jarra hacia ti.",
+          "say": "Desde entonces, escudo arriba, pero no tanto. Bebe, que esta la pago yo. La próxima, tú.",
+          "mood": "alegre"
+        }
+      ]
+    },
+    {
+      "id": "gremio-gerd-2",
+      "kind": "escena",
+      "name": "Gerd · La carta",
+      "who": "Gerd el Mellado",
+      "campaign": "gremio",
+      "rank": 2,
+      "title": "La carta",
+      "where": "plaza",
+      "beats": [
+        {
+          "note": "Gerd te espera en la plaza con un papel doblado en la mano. Lo aprieta tanto que está arrugado.",
+          "say": "Ha llegado carta de Robledo. De mi madre, creo. Léemela tú, que tengo la vista cansada.",
+          "replies": [
+            {
+              "text": "Trae, que te la leo.",
+              "bond": 1,
+              "then": "Eso. Despacito, que es de mi madre."
+            },
+            {
+              "text": "¿Cansada? Si ves un conejo a cien pasos.",
+              "bond": 0,
+              "then": "Los conejos no llevan letra pequeña.",
+              "mood": "triste"
+            },
+            {
+              "text": "Léela tú, hombre.",
+              "bond": -1,
+              "then": "Que no puedo, ¿vale? Que no puedo.",
+              "mood": "enfadado"
+            }
+          ]
+        },
+        {
+          "note": "La carta es corta. Su madre está bien, el invierno ha sido duro y el tejado gotea. Al final le pide que le escriba él alguna vez, de su puño y letra.",
+          "say": "No sé leer. Ni escribir. Nunca aprendí. Le mando dinero porque es lo único que sé mandarle.",
+          "mood": "triste",
+          "replies": [
+            {
+              "text": "No es ninguna vergüenza. Mucha gente no sabe.",
+              "bond": 1,
+              "then": "Ya. Pero mucha gente no tiene cuarenta años."
+            },
+            {
+              "text": "Te puedo enseñar, si quieres.",
+              "bond": 1,
+              "then": "¿Harías eso? ¿Con un viejo como yo?",
+              "mood": "alegre"
+            },
+            {
+              "text": "Pues vaya. Yo aprendí de crío.",
+              "bond": -1,
+              "then": "Qué suerte. Yo de crío cargaba sacos.",
+              "mood": "enfadado"
+            }
+          ]
+        },
+        {
+          "note": "Gerd dobla la carta con cuidado y se la guarda dentro de la camisa.",
+          "say": "No se lo digas a nadie. Bueno, a Ramiro sí, que ya lo sabe: en la guerra me escribía él las cartas."
+        }
+      ]
+    },
+    {
+      "id": "gremio-gerd-3",
+      "kind": "escena",
+      "name": "Gerd · Las letras",
+      "who": "Gerd el Mellado",
+      "campaign": "gremio",
+      "rank": 3,
+      "title": "Las letras",
+      "where": "posada",
+      "beats": [
+        {
+          "note": "Gerd está en una mesa del fondo con un trozo de carbón y una tabla. Ha escrito tres letras torcidas.",
+          "say": "G, E, R… La D se me resiste. Me sale una barriga.",
+          "mood": "alegre",
+          "replies": [
+            {
+              "text": "Una barriga muy bien hecha. Sigue.",
+              "bond": 1,
+              "then": "¡Ja! Las barrigas se me dan de maravilla.",
+              "mood": "alegre"
+            },
+            {
+              "text": "Déjame que te enseñe cómo va.",
+              "bond": 0,
+              "then": "Vale, pero no me cojas la mano, que me pongo nervioso."
+            },
+            {
+              "text": "Vas muy lento.",
+              "bond": -1,
+              "then": "Cuarenta años sin letras. Un poco de paciencia.",
+              "mood": "enfadado"
+            }
+          ]
+        },
+        {
+          "say": "Quiero escribirle a mi madre. Una frase, con mi letra: «Estoy bien, madre». ¿Me ayudas?",
+          "replies": [
+            {
+              "text": "Claro. Empecemos por «madre».",
+              "bond": 1,
+              "then": "Eso. Lo más importante, primero."
+            },
+            {
+              "text": "No es tan fácil como crees.",
+              "bond": -1,
+              "then": "Ya sé que no es fácil. Por eso te lo pido.",
+              "mood": "triste"
+            }
+          ]
+        },
+        {
+          "note": "Tardáis toda la tarde. Al final, en la tabla, pone ESTOY BIEN MADRE, con letras de todos los tamaños.",
+          "say": "La voy a copiar en papel bueno. Y en la próxima pelea voy a estar más atento: ahora tengo algo que contarle.",
+          "mood": "alegre"
+        }
+      ]
+    },
+    {
+      "id": "gremio-gerd-4",
+      "kind": "escena",
+      "name": "Gerd · La casa de Robledo",
+      "who": "Gerd el Mellado",
+      "campaign": "gremio",
+      "rank": 4,
+      "title": "La casa de Robledo",
+      "where": "muelle",
+      "beats": [
+        {
+          "note": "Gerd no está comiendo, y eso ya es raro. Tiene otra carta, y esta vez la ha leído él solo, despacio.",
+          "say": "El señor de Robledo quiere quedarse con la casa de mi madre. Dice que le debe tres años de renta. Mentira: yo le mando el dinero.",
+          "mood": "enfadado",
+          "replies": [
+            {
+              "text": "Alguien se queda tu dinero por el camino.",
+              "bond": 1,
+              "then": "Eso pienso yo. Y sé quién lleva las cartas."
+            },
+            {
+              "text": "¿Seguro que ha llegado todo?",
+              "bond": 0,
+              "then": "Seguro no estoy de nada. Por eso me hierve la sangre."
+            },
+            {
+              "text": "Eso no es asunto nuestro.",
+              "bond": -1,
+              "then": "Es mi madre. Para mí sí es asunto.",
+              "mood": "enfadado"
+            }
+          ]
+        },
+        {
+          "say": "Tengo que ir a Robledo. Pagar lo que pida ese señor, o plantarle cara. No quiero ir solo.",
+          "replies": [
+            {
+              "text": "No vas a ir solo. Vamos contigo.",
+              "bond": 1,
+              "then": "Lo sabía. Lo sabía, y aun así necesitaba oírlo.",
+              "mood": "alegre"
+            },
+            {
+              "text": "Primero acabemos lo que tenemos entre manos.",
+              "bond": 0,
+              "then": "Vale. Pero no se te olvide, que a mí no se me olvida."
+            }
+          ]
+        },
+        {
+          "note": "Gerd te da un abrazo que te deja sin aire y huele a guiso.",
+          "say": "Robledo está a una semana al norte. Cuando quieras, avísame. Yo ya tengo el escudo preparado."
+        }
+      ]
+    },
+    {
+      "id": "gremio-nella-1",
+      "kind": "escena",
+      "name": "Nella · Tres manzanas",
+      "who": "Nella Tresflechas",
+      "campaign": "gremio",
+      "rank": 1,
+      "title": "Tres manzanas",
+      "where": "plaza",
+      "beats": [
+        {
+          "note": "Nella está en la plaza, tirando a una diana de paja. Cada flecha, en el centro.",
+          "say": "¿Sabes por qué me llaman Tresflechas? Una feria: tres manzanas a cincuenta pasos, tres flechas. Nadie más acertó ni una.",
+          "mood": "alegre",
+          "replies": [
+            {
+              "text": "Seguro que las manzanas eran grandes.",
+              "bond": -1,
+              "then": "Eran manzanas normales. Y tú tienes envidia.",
+              "mood": "enfadado"
+            },
+            {
+              "text": "¿Y hoy a cuántos pasos lo harías?",
+              "bond": 1,
+              "then": "A sesenta. A setenta, si no sopla el viento.",
+              "mood": "alegre"
+            },
+            {
+              "text": "Buen nombre.",
+              "bond": 0,
+              "then": "El mejor que he tenido. El de antes era peor."
+            }
+          ]
+        },
+        {
+          "say": "Te propongo una cosa: tiras una. Si le das a la paja, pago yo la cena. Si no, pagas tú.",
+          "replies": [
+            {
+              "text": "Trato hecho.",
+              "bond": 1,
+              "then": "Así me gusta. A ver ese pulso."
+            },
+            {
+              "text": "No apuesto contra una arquera.",
+              "bond": 0,
+              "then": "Qué aburrimiento. Pero qué sensatez."
+            },
+            {
+              "text": "Apostar es de críos.",
+              "bond": -1,
+              "then": "Pues a los críos nos va de maravilla.",
+              "mood": "enfadado"
+            }
+          ]
+        },
+        {
+          "note": "Al final tiras. Tu flecha se clava en el borde de la paja, de milagro. Nella se ríe por primera vez desde que la conoces.",
+          "say": "Vale, cuenta. Hoy pago yo la cena. Pero la próxima vez tira con los ojos abiertos.",
+          "mood": "alegre"
+        }
+      ]
+    },
+    {
+      "id": "gremio-nella-2",
+      "kind": "escena",
+      "name": "Nella · Las cartas",
+      "who": "Nella Tresflechas",
+      "campaign": "gremio",
+      "rank": 2,
+      "title": "Las cartas",
+      "where": "posada",
+      "beats": [
+        {
+          "note": "En la posada, Nella juega a las cartas con un chaval del puerto. Pierde una mano, y luego otra. Nella nunca pierde.",
+          "say": "Mala noche. Las cartas no me quieren.",
+          "replies": [
+            {
+              "text": "Estás perdiendo a propósito.",
+              "bond": 1,
+              "then": "Baja la voz. Su padre lleva una semana sin salir a pescar.",
+              "mood": "triste"
+            },
+            {
+              "text": "Pues deja de jugar.",
+              "bond": 0,
+              "then": "Una mano más. Solo una."
+            },
+            {
+              "text": "Déjame a mí, que le gano yo.",
+              "bond": -1,
+              "then": "Ni se te ocurra. Siéntate y calla.",
+              "mood": "enfadado"
+            }
+          ]
+        },
+        {
+          "note": "El chaval se va corriendo con las monedas en el puño.",
+          "say": "Mi hermano pequeño tenía su edad cuando me fui. No sé si come. No sé nada de él.",
+          "mood": "triste",
+          "replies": [
+            {
+              "text": "¿Cómo se llama?",
+              "bond": 1,
+              "then": "Tobías. Tiene las orejas de soplillo y tira mejor que yo, aunque no lo sepa."
+            },
+            {
+              "text": "Seguro que está bien.",
+              "bond": 0,
+              "then": "Eso me digo todas las noches."
+            },
+            {
+              "text": "Ya no puedes hacer nada por él.",
+              "bond": -1,
+              "then": "Eso ya lo veremos.",
+              "mood": "enfadado"
+            }
+          ]
+        },
+        {
+          "note": "Nella recoge las cartas y se las guarda. Esta vez no te propone ninguna apuesta.",
+          "say": "No se lo cuentes a Gerd, que se pone tierno y me invita a guiso."
+        }
+      ]
+    },
+    {
+      "id": "gremio-nella-3",
+      "kind": "escena",
+      "name": "Nella · El cartel",
+      "who": "Nella Tresflechas",
+      "campaign": "gremio",
+      "rank": 3,
+      "title": "El cartel",
+      "where": "plaza",
+      "beats": [
+        {
+          "note": "En la plaza han clavado un papel nuevo: una cara mal dibujada, pero se la reconoce. «Nella, cazadora furtiva. Veinte monedas. Barón de Hoz.»",
+          "say": "Veinte monedas. Me ofende más el dibujo que el precio.",
+          "replies": [
+            {
+              "text": "¿Qué hiciste?",
+              "bond": 0,
+              "then": "Cazar en su bosque para que comiera mi familia. Tres inviernos."
+            },
+            {
+              "text": "El dibujo es horrible. Sales mucho mejor.",
+              "bond": 1,
+              "then": "Eso ya lo sabía. Pero gracias.",
+              "mood": "alegre"
+            },
+            {
+              "text": "Veinte monedas son veinte monedas.",
+              "bond": -1,
+              "then": "¿Me estás poniendo precio? Dilo claro.",
+              "mood": "enfadado"
+            }
+          ]
+        },
+        {
+          "say": "Si alguien de aquí me reconoce, me llevarán de vuelta. ¿Qué harás si vienen a por mí?",
+          "replies": [
+            {
+              "text": "Tendrán que pasar por encima de mí.",
+              "bond": 1,
+              "then": "No digas eso a la ligera. Aunque me ha gustado oírlo."
+            },
+            {
+              "text": "Pagar la multa, si la hay.",
+              "bond": 1,
+              "then": "Práctico. Me vale."
+            },
+            {
+              "text": "Depende de lo que pase.",
+              "bond": -1,
+              "then": "Ya. Depende. Como todo.",
+              "mood": "triste"
+            }
+          ]
+        },
+        {
+          "note": "Nella arranca el papel, lo dobla y se lo guarda en el carcaj.",
+          "say": "Me lo quedo. Algún día se lo devolveré al barón en persona."
+        }
+      ]
+    },
+    {
+      "id": "gremio-nella-4",
+      "kind": "escena",
+      "name": "Nella · El bosque del barón",
+      "who": "Nella Tresflechas",
+      "campaign": "gremio",
+      "rank": 4,
+      "title": "El bosque del barón",
+      "where": "plaza",
+      "beats": [
+        {
+          "note": "Nella te espera al amanecer con la mochila hecha. Tiene los ojos rojos, de no dormir.",
+          "say": "Ha llegado un buhonero de Hoz. A Tobías lo han pillado cazando. Lo mandan a las minas del barón en otoño.",
+          "mood": "triste",
+          "replies": [
+            {
+              "text": "Pues vamos a buscarlo antes del otoño.",
+              "bond": 1,
+              "then": "¿Así, sin más? ¿Sin preguntar por la paga?",
+              "mood": "alegre"
+            },
+            {
+              "text": "¿Y qué quieres hacer?",
+              "bond": 0,
+              "then": "Sacarlo de ahí. Como sea."
+            },
+            {
+              "text": "Volver es peligroso. Te buscan.",
+              "bond": -1,
+              "then": "Ya lo sé. Por eso no te pido permiso.",
+              "mood": "enfadado"
+            }
+          ]
+        },
+        {
+          "say": "Hay dos maneras: pagar la multa al barón, que es mucho dinero, o entrar de noche en su cárcel. Yo sé por dónde.",
+          "replies": [
+            {
+              "text": "Lo decidimos allí. Pero vamos.",
+              "bond": 1,
+              "then": "Vamos. Gracias. No sé decirlo mejor."
+            },
+            {
+              "text": "La multa. Nada de cárceles.",
+              "bond": 0,
+              "then": "Si llega el dinero. Si no, ya sabes lo que hay."
+            }
+          ]
+        },
+        {
+          "note": "Nella te pone en la mano una de sus flechas, la de las plumas rojas.",
+          "say": "Guárdamela. Cuando Tobías esté fuera, me la devuelves. Hasta entonces, es tuya."
+        }
+      ]
+    },
+    {
+      "id": "gremio-osric-1",
+      "kind": "escena",
+      "name": "Osric · La otra mitad",
+      "who": "Osric Mediapaga",
+      "campaign": "gremio",
+      "rank": 1,
+      "title": "La otra mitad",
+      "where": "posada",
+      "beats": [
+        {
+          "note": "Osric está en su rincón de la posada, con una jarra que le dura toda la noche.",
+          "say": "Cobro la mitad antes y la mitad después. Si no vuelvo, os ahorráis la mitad. Es un buen trato para todos.",
+          "replies": [
+            {
+              "text": "¿Y si vuelves herido?",
+              "bond": 0,
+              "then": "Entonces cobro entera y me quejo el doble."
+            },
+            {
+              "text": "Qué manera más triste de verlo.",
+              "bond": -1,
+              "then": "Triste no. Exacta.",
+              "mood": "enfadado"
+            },
+            {
+              "text": "Para todos menos para ti.",
+              "bond": 1,
+              "then": "Para mí también. Muerto no gasto."
+            }
+          ]
+        },
+        {
+          "say": "Si un día no vuelvo, ¿a quién le darías la otra mitad?",
+          "replies": [
+            {
+              "text": "A quien tú me digas.",
+              "bond": 1,
+              "then": "A Madre Elvira. Ella sabrá a quién le hace falta."
+            },
+            {
+              "text": "Vas a volver, Osric.",
+              "bond": 0,
+              "then": "Eso dicen todos. Hasta que no."
+            },
+            {
+              "text": "Me la quedaría yo.",
+              "bond": -1,
+              "then": "Ja. Por lo menos eres {sincero|sincera}."
+            }
+          ]
+        },
+        {
+          "note": "Osric levanta la jarra un dedo, que en él es un brindis.",
+          "say": "Buenas noches. Mañana, a lo que haya."
+        }
+      ]
+    },
+    {
+      "id": "gremio-osric-2",
+      "kind": "escena",
+      "name": "Osric · La barca",
+      "who": "Osric Mediapaga",
+      "campaign": "gremio",
+      "rank": 2,
+      "title": "La barca",
+      "where": "muelle",
+      "beats": [
+        {
+          "note": "Por la mañana, en el muelle, Osric mira una barca de pesca con un cartel de venta. La pintura está vieja, pero el casco es bueno.",
+          "say": "Esa. La «Gaviota». Treinta monedas de oro y es mía.",
+          "replies": [
+            {
+              "text": "¿Cuánto te falta?",
+              "bond": 1,
+              "then": "Doce. Doce monedas y dos encargos, si no me matan."
+            },
+            {
+              "text": "¿Tú, pescador?",
+              "bond": 0,
+              "then": "Mi padre lo era. Remiendo redes mejor que manejo la espada."
+            },
+            {
+              "text": "Pescar es para quien no vale para otra cosa.",
+              "bond": -1,
+              "then": "Mi padre pescaba. Cuidado con lo que dices.",
+              "mood": "enfadado"
+            }
+          ]
+        },
+        {
+          "say": "El mar no te pide nada. No te pregunta a quién sirves. Sales, pescas, vuelves. ¿Tú qué harías si dejaras esto?",
+          "replies": [
+            {
+              "text": "Algo tranquilo. Como tú.",
+              "bond": 1,
+              "then": "Pues cuando tenga la barca, te llevo a pescar.",
+              "mood": "alegre"
+            },
+            {
+              "text": "No pienso dejarlo.",
+              "bond": 0,
+              "then": "Eso decía yo a tu edad."
+            }
+          ]
+        },
+        {
+          "note": "Osric pasa la mano por el casco de la barca, despacio.",
+          "say": "Doce monedas. Ya casi."
+        }
+      ]
+    },
+    {
+      "id": "gremio-osric-3",
+      "kind": "escena",
+      "name": "Osric · La guardia",
+      "who": "Osric Mediapaga",
+      "campaign": "gremio",
+      "rank": 3,
+      "title": "La guardia",
+      "where": "templo",
+      "beats": [
+        {
+          "note": "Por la tarde encuentras a Osric en la capilla, delante de una vela recién encendida.",
+          "say": "Enciendo una todos los meses. Hoy hace once años.",
+          "mood": "triste",
+          "replies": [
+            {
+              "text": "Me siento contigo un rato.",
+              "bond": 1,
+              "then": "Siéntate. No hace falta hablar."
+            },
+            {
+              "text": "¿Por quién es?",
+              "bond": 0,
+              "then": "Por el señor Aldric de Valdés. Yo era su escolta."
+            },
+            {
+              "text": "Te espero fuera.",
+              "bond": -1,
+              "then": "Como quieras.",
+              "mood": "triste"
+            }
+          ]
+        },
+        {
+          "say": "Nos tendieron una emboscada en el camino. Me tocaba la guardia y me dormí. Cuando abrí los ojos, él ya estaba muerto.",
+          "mood": "triste",
+          "replies": [
+            {
+              "text": "Por eso siempre haces tú la guardia.",
+              "bond": 0,
+              "then": "Por eso. Y porque Gerd ronca."
+            },
+            {
+              "text": "Estabas agotado. No lo traicionaste.",
+              "bond": 1,
+              "then": "Eso me digo. Once años diciéndomelo."
+            },
+            {
+              "text": "Un escolta no se duerme.",
+              "bond": -1,
+              "then": "No. No se duerme. Ya lo sé.",
+              "mood": "enfadado"
+            }
+          ]
+        },
+        {
+          "note": "Osric saca de la bolsa un anillo de plata con una torre grabada, lo mira y lo vuelve a guardar.",
+          "say": "Era suyo. Tenía que devolvérselo a su viuda, y nunca he tenido valor. No se lo cuentes a nadie."
+        }
+      ]
+    },
+    {
+      "id": "gremio-osric-4",
+      "kind": "escena",
+      "name": "Osric · El anillo",
+      "who": "Osric Mediapaga",
+      "campaign": "gremio",
+      "rank": 4,
+      "title": "El anillo",
+      "where": "muelle",
+      "beats": [
+        {
+          "note": "Osric te espera en el muelle, delante de la «Gaviota». Ya no lleva el cartel de venta: la ha comprado.",
+          "say": "Ya es mía. Y antes de subirme a ella para siempre, tengo que cerrar una cosa.",
+          "replies": [
+            {
+              "text": "El anillo.",
+              "bond": 1,
+              "then": "El anillo. Me conoces demasiado."
+            },
+            {
+              "text": "¿Te vas a ir?",
+              "bond": 0,
+              "then": "Todavía no. Primero, lo otro."
+            },
+            {
+              "text": "¿Ahora quieres dejarlo todo?",
+              "bond": -1,
+              "then": "Ahora no. Pero algún día sí. Tengo derecho.",
+              "mood": "enfadado"
+            }
+          ]
+        },
+        {
+          "say": "La viuda vive en Valdés, a dos días de aquí. Quiero devolverle el anillo. Y no sé si contarle la verdad o decirle que murió luchando.",
+          "replies": [
+            {
+              "text": "Te acompaño. Lo que le digas, lo decides allí.",
+              "bond": 1,
+              "then": "Allí. Delante de ella. Sí."
+            },
+            {
+              "text": "La verdad. Siempre la verdad.",
+              "bond": 1,
+              "then": "Eso es lo que me asusta."
+            },
+            {
+              "text": "Una mentira le hará menos daño.",
+              "bond": 0,
+              "then": "A ella, o a mí. No lo sé."
+            }
+          ]
+        },
+        {
+          "note": "Osric mira el mar un buen rato.",
+          "say": "Cuando quieras ir a Valdés, avísame. Esta vez no me voy a dormir."
+        }
+      ]
+    },
+    {
+      "id": "strahd-ismark-2",
+      "kind": "escena",
+      "name": "Ismark · El Menor",
+      "who": "Ismark Kolyanovich",
+      "campaign": "strahd",
+      "rank": 2,
+      "title": "El Menor",
+      "where": "posada",
+      "beats": [
+        {
+          "note": "En la taberna de la aldea, Ismark paga dos vasos de vino y se sienta frente a ti. Tarda un rato en hablar.",
+          "say": "Aquí me llaman «el Menor» desde que era un crío. Mi padre lo hacía todo mejor que yo, y el pueblo no lo olvida.",
+          "mood": "triste",
+          "replies": [
+            {
+              "text": "Tu padre ya no está. Ahora el nombre lo haces tú.",
+              "bond": 1,
+              "then": "Dicho así, casi parece fácil."
+            },
+            {
+              "text": "Los motes se acaban olvidando.",
+              "bond": 0,
+              "then": "En Barovia no se olvida nada. Ni lo bueno ni lo malo."
+            },
+            {
+              "text": "Alguna razón tendrían.",
+              "bond": -1,
+              "mood": "enfadado",
+              "then": "Gracias. Ya lo sabía, pero gracias."
+            }
+          ]
+        },
+        {
+          "say": "¿Y tú? ¿Has cargado alguna vez con un nombre que no elegiste?",
+          "replies": [
+            {
+              "text": "Sí. Un día dejé de contestar cuando me llamaban así.",
+              "bond": 1,
+              "then": "Me gustaría aprender a hacer eso."
+            },
+            {
+              "text": "No. El mío me lo he ganado yo.",
+              "bond": 0,
+              "then": "Entonces tienes suerte. O eres más cabezota que yo."
+            },
+            {
+              "text": "Eso es asunto mío.",
+              "bond": -1,
+              "then": "Claro. Perdona que pregunte."
+            }
+          ]
+        },
+        {
+          "note": "Ismark apura el vaso y, por primera vez en toda la noche, sonríe un poco.",
+          "say": "La próxima ronda la pago yo también. Y no me llames Menor, ¿eh?",
+          "mood": "alegre"
+        }
+      ]
+    },
+    {
+      "id": "strahd-ismark-4",
+      "kind": "escena",
+      "name": "Ismark · El ataúd de madera",
+      "who": "Ismark Kolyanovich",
+      "campaign": "strahd",
+      "rank": 4,
+      "title": "El ataúd de madera",
+      "where": "camino",
+      "beats": [
+        {
+          "note": "Bajáis entre los dos el ataúd de Kolyan por la cuesta embarrada. Las contraventanas siguen cerradas: nadie del pueblo sale a echar una mano.",
+          "say": "Mi padre cuidó de esta gente toda su vida. Y míralos. Ni una puerta abierta.",
+          "mood": "enfadado",
+          "replies": [
+            {
+              "text": "Tienen miedo. No es por tu padre.",
+              "bond": 1,
+              "then": "Lo sé. Pero hoy me cuesta perdonarlos."
+            },
+            {
+              "text": "Da igual. Lo llevamos nosotros.",
+              "bond": 0,
+              "then": "Sí. Nosotros. Como siempre."
+            },
+            {
+              "text": "Vamos, que se nos hace de noche.",
+              "bond": -1,
+              "mood": "triste",
+              "then": "Ya voy. Déjame respirar un momento."
+            }
+          ]
+        },
+        {
+          "note": "A mitad de la cuesta, Ismark deja su lado del ataúd en el suelo y te mira de frente.",
+          "say": "Quiero la verdad, no consuelo. ¿De verdad crees que Ireena estará más segura lejos de casa?",
+          "replies": [
+            {
+              "text": "Sí. Aquí él entra cuando quiere. Fuera, al menos, podemos pelear.",
+              "bond": 1,
+              "then": "Eso pensaba yo. Necesitaba oírselo decir a otro."
+            },
+            {
+              "text": "No lo sé. Nadie lo sabe.",
+              "bond": 0,
+              "then": "Por lo menos no me mientes."
+            },
+            {
+              "text": "Lo más seguro sería entregarla y acabar con esto.",
+              "bond": -1,
+              "mood": "enfadado",
+              "then": "Repite eso y el ataúd lo llevas tú."
+            }
+          ]
+        },
+        {
+          "note": "Ismark vuelve a coger su lado del ataúd. Llegáis al cementerio sin decir nada más, pero él camina más derecho.",
+          "say": "Gracias por cargar con él. Mi padre te habría caído bien."
+        }
+      ]
+    },
+    {
+      "id": "strahd-ismark-6",
+      "kind": "escena",
+      "name": "Ismark · La espada del padre",
+      "who": "Ismark Kolyanovich",
+      "campaign": "strahd",
+      "rank": 6,
+      "title": "La espada del padre",
+      "where": "plaza",
+      "beats": [
+        {
+          "note": "De madrugada oyes golpes detrás de la casa. Ismark lanza tajos contra un poste con la espada de su padre. Falla más de lo que acierta.",
+          "say": "Pesa más de lo que parece. O yo soy más flojo de lo que creía.",
+          "replies": [
+            {
+              "text": "Sujétala más cerca de la guarda. Así, mira.",
+              "bond": 1,
+              "mood": "alegre",
+              "then": "Vaya. Así sí. ¿Por qué nadie me lo había dicho antes?"
+            },
+            {
+              "text": "Es cuestión de práctica.",
+              "bond": 0,
+              "then": "Práctica. Justo lo que no tenemos."
+            },
+            {
+              "text": "Con esa guardia no duras ni un asalto.",
+              "bond": -1,
+              "mood": "enfadado",
+              "then": "Ya lo sé. Por eso estoy aquí, a oscuras."
+            }
+          ]
+        },
+        {
+          "say": "Lo que viene a por mi hermana no sangra como un hombre. Enséñame a pelear contra algo así. Por favor.",
+          "replies": [
+            {
+              "text": "Te enseño. Cada mañana, antes de que salga el sol.",
+              "bond": 1,
+              "mood": "alegre",
+              "then": "Aquí estaré. Aunque tenga que dormir junto al poste."
+            },
+            {
+              "text": "Tu sitio está al lado de Ireena, no en primera fila.",
+              "bond": 0,
+              "then": "Al lado de Ireena... Puede que tengas razón. Aunque me escueza."
+            },
+            {
+              "text": "No hay tiempo para enseñar a nadie.",
+              "bond": -1,
+              "mood": "triste",
+              "then": "Entonces aprenderé solo. Como siempre."
+            }
+          ]
+        },
+        {
+          "note": "El sol asoma por encima de la niebla. Ismark limpia la hoja con la manga, despacio, con mucho cuidado.",
+          "say": "Era de mi padre. Algún día quiero que sea mía de verdad."
+        }
+      ]
+    },
+    {
+      "id": "strahd-ismark-8",
+      "kind": "escena",
+      "name": "Ismark · Burgomaestre",
+      "who": "Ismark Kolyanovich",
+      "campaign": "strahd",
+      "rank": 8,
+      "title": "Burgomaestre",
+      "where": "posada",
+      "beats": [
+        {
+          "note": "Un chico de la aldea llega sin aliento con un recado para Ismark. Él lo lee dos veces y lo arruga en el puño.",
+          "say": "Sin mi padre, alguien tiene que mandar en la aldea. Y quieren que sea yo. El burgomaestre, nada menos.",
+          "replies": [
+            {
+              "text": "¿Y tú qué quieres?",
+              "bond": 1,
+              "then": "Yo quiero ver caer al conde. Lo demás puede esperar."
+            },
+            {
+              "text": "Es buena señal. Confían en ti.",
+              "bond": 0,
+              "then": "Confían en el hijo de Kolyan. No es lo mismo."
+            },
+            {
+              "text": "Enhorabuena, señor burgomaestre.",
+              "bond": -1,
+              "mood": "enfadado",
+              "then": "No tiene gracia."
+            }
+          ]
+        },
+        {
+          "say": "No quiero sellar papeles mientras vosotros subís al castillo. Quiero seguir contigo hasta el final. ¿Qué me dices?",
+          "replies": [
+            {
+              "text": "Vente. Te quiero a mi lado cuando lleguemos.",
+              "bond": 1,
+              "mood": "alegre",
+              "then": "Entonces la aldea tendrá que esperar. Gracias."
+            },
+            {
+              "text": "Tu gente te necesita más que yo. Vuelve.",
+              "bond": 0,
+              "mood": "triste",
+              "then": "Puede que tengas razón. Pero me duele que me lo digas tú."
+            },
+            {
+              "text": "Haz lo que quieras. A mí me da igual.",
+              "bond": -1,
+              "mood": "triste",
+              "then": "Ya veo. Pensaba que te importaba un poco más."
+            }
+          ]
+        },
+        {
+          "note": "Ismark dobla el recado y se lo guarda en el pecho. Se queda un rato mirando hacia el camino de la aldea.",
+          "say": "Mi padre siempre sabía qué hacer. Yo tengo que preguntar. Gracias por contestarme."
+        }
+      ]
+    },
+    {
+      "id": "strahd-ismark-10",
+      "kind": "escena",
+      "name": "Ismark · Ya no es el Menor",
+      "who": "Ismark Kolyanovich",
+      "campaign": "strahd",
+      "rank": 10,
+      "title": "Ya no es el Menor",
+      "where": "camino",
+      "beats": [
+        {
+          "note": "Ante las puertas de Ravenloft, Ismark se ata al cuello la capa de su padre. Le queda algo grande, pero no se la quita.",
+          "say": "Si caigo ahí dentro, que en mi tumba no pongan «el Menor». Solo mi nombre. Con eso me basta.",
+          "replies": [
+            {
+              "text": "Pondrán Ismark Kolyanovich. Me encargo yo.",
+              "bond": 1,
+              "mood": "alegre",
+              "then": "Suena bien. Mejor de lo que creía."
+            },
+            {
+              "text": "No vas a caer.",
+              "bond": 0,
+              "then": "Eso no lo sabes. Pero te lo agradezco."
+            },
+            {
+              "text": "Deja las tumbas para luego.",
+              "bond": -1,
+              "then": "Si no lo digo ahora, puede que luego no haya ocasión."
+            }
+          ]
+        },
+        {
+          "say": "Una cosa más. Si yo no vuelvo, cuida de Ireena. No te pido nada más.",
+          "mood": "triste",
+          "replies": [
+            {
+              "text": "Te lo prometo. Pero vas a volver a cuidarla tú.",
+              "bond": 1,
+              "mood": "alegre",
+              "then": "Entonces ya puedo entrar tranquilo."
+            },
+            {
+              "text": "Ireena sabe cuidarse sola.",
+              "bond": 0,
+              "then": "Lo sé. Pero no quiero que tenga que hacerlo sola."
+            },
+            {
+              "text": "No hago promesas antes de una pelea.",
+              "bond": -1,
+              "mood": "triste",
+              "then": "Lo entiendo. Aunque esperaba otra cosa."
+            }
+          ]
+        },
+        {
+          "note": "Ismark se pone a tu lado con la espada en la mano. Por primera vez, no va un paso por detrás de nadie.",
+          "say": "Vamos. Ya no soy el Menor."
+        }
+      ]
+    },
+    {
+      "id": "strahd-ireena-2",
+      "kind": "escena",
+      "name": "Ireena · Dos mordiscos",
+      "who": "Ireena Kolyana",
+      "campaign": "strahd",
+      "rank": 2,
+      "title": "Dos mordiscos",
+      "where": "posada",
+      "beats": [
+        {
+          "note": "Junto a la chimenea, Ireena se aparta el pelo del cuello. Tiene dos marcas pequeñas y rojas que no terminan de cerrarse.",
+          "say": "Entró en casa dos noches. De lo demás no recuerdo nada. Solo sus ojos, mirándome.",
+          "mood": "triste",
+          "replies": [
+            {
+              "text": "Te acercas a mirarle la herida, con cuidado.",
+              "bond": 1,
+              "then": "Nadie se había acercado tanto. Todos dan un paso atrás."
+            },
+            {
+              "text": "¿Te duele todavía?",
+              "bond": 0,
+              "then": "Cuando anochece, un poco. Arde."
+            },
+            {
+              "text": "Tápate eso. Si lo ven, hablarán.",
+              "bond": -1,
+              "mood": "enfadado",
+              "then": "Ya hablan. Pero tienes razón, no es asunto suyo."
+            }
+          ]
+        },
+        {
+          "say": "Dime la verdad. ¿Te da miedo estar cerca de mí?",
+          "replies": [
+            {
+              "text": "No. Me da miedo él, no tú.",
+              "bond": 1,
+              "mood": "alegre",
+              "then": "Gracias. No sabes cuánto necesitaba oír eso."
+            },
+            {
+              "text": "Un poco. Pero aquí sigo.",
+              "bond": 0,
+              "then": "Me vale. Por lo menos eres {sincero|sincera}."
+            },
+            {
+              "text": "Sí. Por eso duermo con la puerta cerrada.",
+              "bond": -1,
+              "mood": "triste",
+              "then": "Haces bien. Yo también la cerraría."
+            }
+          ]
+        },
+        {
+          "note": "Ireena se vuelve a tapar el cuello con el pelo y se queda mirando el fuego.",
+          "say": "Mi hermano dice que no hable de esto con nadie. Contigo ya me he saltado la regla."
+        }
+      ]
+    },
+    {
+      "id": "strahd-ireena-4",
+      "kind": "escena",
+      "name": "Ireena · Sin recuerdos",
+      "who": "Ireena Kolyana",
+      "campaign": "strahd",
+      "rank": 4,
+      "title": "Sin recuerdos",
+      "where": "camino",
+      "beats": [
+        {
+          "note": "Camináis despacio por el borde del camino. Ireena habla sin mirarte, con las manos metidas en la capa.",
+          "say": "No recuerdo nada de antes de que Kolyan me encontrara. Yo era una niña, sola, al borde del bosque. Me llevó a casa y ya está.",
+          "replies": [
+            {
+              "text": "Kolyan te eligió. Eso también es una familia.",
+              "bond": 1,
+              "mood": "alegre",
+              "then": "Lo sé. Nunca me trató como a una recogida."
+            },
+            {
+              "text": "¿Nunca has intentado averiguar más?",
+              "bond": 0,
+              "then": "Muchas veces. Nadie sabe nada, o nadie quiere decirlo."
+            },
+            {
+              "text": "Mejor no remover el pasado.",
+              "bond": -1,
+              "then": "Para ti es fácil decirlo. Tú tienes uno."
+            }
+          ]
+        },
+        {
+          "say": "A veces sueño con un castillo. Pasillos, escaleras, una ventana muy alta. Nunca he estado allí. ¿Tú has oído algo?",
+          "replies": [
+            {
+              "text": "Le cuentas lo que se dice: en el castillo hay un retrato de una dama igual a ti.",
+              "bond": 1,
+              "mood": "triste",
+              "then": "Así que no son solo sueños. Gracias por no callártelo."
+            },
+            {
+              "text": "Te callas lo del retrato. No quieres asustarla.",
+              "bond": 0,
+              "then": "Te has quedado {callado|callada}. Bueno. Otro día me lo cuentas."
+            },
+            {
+              "text": "Eso es cosa del conde, no mía.",
+              "bond": -1,
+              "mood": "enfadado",
+              "then": "Ya. Como todo en este valle."
+            }
+          ]
+        },
+        {
+          "note": "Ireena se queda un rato en silencio, mirando hacia donde la niebla tapa las torres.",
+          "say": "Sea lo que sea lo que hay en ese castillo, prefiero saberlo por ti que por él."
+        }
+      ]
+    },
+    {
+      "id": "strahd-ireena-6",
+      "kind": "escena",
+      "name": "Ireena · Un nombre que no es el suyo",
+      "who": "Ireena Kolyana",
+      "campaign": "strahd",
+      "rank": 6,
+      "title": "Un nombre que no es el suyo",
+      "where": "camino",
+      "beats": [
+        {
+          "note": "En el camino, un vistani os corta el paso. Mira a Ireena, se quita el sombrero y la saluda con una reverencia: «Tatyana».",
+          "say": "¡No me llamo así! ¡Apártate de mí!",
+          "mood": "enfadado",
+          "replies": [
+            {
+              "text": "Te pones entre ella y el vistani.",
+              "bond": 1,
+              "then": "Gracias. No sé qué me pasa con ese nombre."
+            },
+            {
+              "text": "Se ha confundido. Sigamos.",
+              "bond": 0,
+              "then": "Sí. Sigamos."
+            },
+            {
+              "text": "Le preguntas al vistani por qué la llama así.",
+              "bond": -1,
+              "mood": "enfadado",
+              "then": "¡No le preguntes nada! No quiero oírlo."
+            }
+          ]
+        },
+        {
+          "note": "Ireena no abre la boca en todo el día. Por la noche, junto al fuego, por fin te habla.",
+          "say": "Tatyana. Ese nombre me persigue. ¿Y si soy ella y no lo sé?",
+          "mood": "triste",
+          "replies": [
+            {
+              "text": "Eres Ireena. Lo que hubiera antes no decide quién eres ahora.",
+              "bond": 1,
+              "then": "Ireena. Repítemelo cuando se me olvide."
+            },
+            {
+              "text": "Puede ser. Pero eso no te obliga a nada.",
+              "bond": 0,
+              "then": "No. Supongo que no. Pero me asusta igual."
+            },
+            {
+              "text": "Si lo eres, él nunca te dejará en paz.",
+              "bond": -1,
+              "mood": "enfadado",
+              "then": "Eso ya lo sé. No me ayuda nada."
+            }
+          ]
+        },
+        {
+          "note": "Ireena se envuelve en la manta y se tumba cerca del fuego.",
+          "say": "Me llamo Ireena. Ese nombre me lo puso Kolyan, y me lo quedo."
+        }
+      ]
+    },
+    {
+      "id": "strahd-ireena-8",
+      "kind": "escena",
+      "name": "Ireena · Aprender a pelear",
+      "who": "Ireena Kolyana",
+      "campaign": "strahd",
+      "rank": 8,
+      "title": "Aprender a pelear",
+      "where": "camino",
+      "beats": [
+        {
+          "note": "Ireena te espera en un claro con una espada vieja en la mano. La sujeta mal, pero con fuerza.",
+          "say": "Estoy harta de que me escondan detrás de una puerta o de mi hermano. Enséñame a usar esto.",
+          "mood": "enfadado",
+          "replies": [
+            {
+              "text": "Le colocas bien las manos en la empuñadura. Empezáis ya.",
+              "bond": 1,
+              "mood": "alegre",
+              "then": "Por fin alguien me toma en serio."
+            },
+            {
+              "text": "¿Lo sabe Ismark?",
+              "bond": 0,
+              "then": "Ismark no manda en mis manos."
+            },
+            {
+              "text": "Esto no es para ti.",
+              "bond": -1,
+              "mood": "enfadado",
+              "then": "Eso llevo oyendo toda la vida. Creía que tú eras {distinto|distinta}."
+            }
+          ]
+        },
+        {
+          "note": "Pasan tres tardes de práctica. A la tercera, Ireena para tu golpe con la hoja y ni siquiera retrocede.",
+          "say": "¿Lo has visto? ¡Lo he parado!",
+          "mood": "alegre",
+          "replies": [
+            {
+              "text": "Muy bien. Así se hace.",
+              "bond": 1,
+              "then": "Otra vez. Y esta vez no me lo pongas fácil."
+            },
+            {
+              "text": "Suerte de principiante.",
+              "bond": 0,
+              "then": "Pues vuelve a probar, a ver si es suerte."
+            }
+          ]
+        },
+        {
+          "say": "La próxima vez que haya pelea, no quiero quedarme atrás. ¿Me dejarás ir delante, contigo?",
+          "replies": [
+            {
+              "text": "Sí. Delante, a mi lado.",
+              "bond": 1,
+              "mood": "alegre",
+              "then": "No te vas a arrepentir. Te lo prometo."
+            },
+            {
+              "text": "Todavía no. Unas semanas más de práctica.",
+              "bond": 0,
+              "then": "Semanas... Está bien. Pero no me hagas esperar mucho."
+            },
+            {
+              "text": "No. Tu hermano me mataría.",
+              "bond": -1,
+              "mood": "enfadado",
+              "then": "Siempre mi hermano. ¿Y lo que quiero yo?"
+            }
+          ]
+        },
+        {
+          "note": "Ireena envaina la espada y se la cuelga del cinto. Esa noche no se la quita ni para cenar."
+        }
+      ]
+    },
+    {
+      "id": "strahd-ireena-10",
+      "kind": "escena",
+      "name": "Ireena · Mi decisión",
+      "who": "Ireena Kolyana",
+      "campaign": "strahd",
+      "rank": 10,
+      "title": "Mi decisión",
+      "where": "camino",
+      "beats": [
+        {
+          "note": "Frente al castillo, Ireena se detiene. El viento le aparta el pelo y deja ver las marcas del cuello. Esta vez no se las tapa.",
+          "say": "Se acabó esconderme. Si el conde me quiere, me va a tener delante. Con una espada en la mano.",
+          "replies": [
+            {
+              "text": "Así me gusta. Que te vea llegar.",
+              "bond": 1,
+              "mood": "alegre",
+              "then": "Que me vea. Y que se acuerde."
+            },
+            {
+              "text": "¿Estás segura? Aún puedes volver.",
+              "bond": 0,
+              "then": "Estoy segura. Volver sería esperar otra vez a que entre en casa."
+            },
+            {
+              "text": "Es justo lo que él quiere: que vayas a su casa.",
+              "bond": -1,
+              "mood": "enfadado",
+              "then": "Él me quiere sola y con miedo. No va a tener ninguna de las dos cosas."
+            }
+          ]
+        },
+        {
+          "say": "No te lo pido como un favor. Te lo pregunto porque quiero saberlo. ¿Irás a mi lado?",
+          "replies": [
+            {
+              "text": "A tu lado. Hasta el final.",
+              "bond": 1,
+              "mood": "alegre",
+              "then": "Entonces vamos. Ya no me tiembla la mano."
+            },
+            {
+              "text": "Iré delante, para cubrirte.",
+              "bond": 0,
+              "then": "Delante no. Al lado. Eso es lo que te pido."
+            },
+            {
+              "text": "Yo voy a por el conde. Tú haz lo que quieras.",
+              "bond": -1,
+              "mood": "triste",
+              "then": "Bien. Cada cual con su guerra, entonces."
+            }
+          ]
+        },
+        {
+          "note": "Ireena desenvaina la espada que le enseñaste a usar y empuja la puerta con el hombro.",
+          "say": "Me llamo Ireena Kolyana. Que lo oiga bien."
+        }
+      ]
+    },
+    {
+      "id": "strahd-eva-2",
+      "kind": "escena",
+      "name": "Eva · Las cartas no mienten",
+      "who": "Madam Eva",
+      "campaign": "strahd",
+      "rank": 2,
+      "title": "Las cartas no mienten",
+      "where": "tienda",
+      "beats": [
+        {
+          "note": "En su tienda, Madam Eva baraja las cartas sin mirarte. Antes de que abras la boca, dice tu nombre.",
+          "say": "{heroe}. Siéntate. Y no pongas esa cara, que yo no muerdo. Eso lo hace otro.",
+          "replies": [
+            {
+              "text": "Te sientas frente a ella sin decir nada.",
+              "bond": 1,
+              "then": "Bien. Por fin alguien que no hace preguntas tontas."
+            },
+            {
+              "text": "¿Cómo sabes mi nombre?",
+              "bond": 0,
+              "then": "Lo sé, y ya está. A mi edad no se explican los trucos."
+            },
+            {
+              "text": "Déjate de trucos de feria.",
+              "bond": -1,
+              "mood": "enfadado",
+              "then": "¿Trucos? Muy bien. Escucha esto, entonces."
+            }
+          ]
+        },
+        {
+          "note": "Eva deja una carta sobre la mesa y te cuenta, con todo detalle, algo que hiciste hace años y que no sabe nadie.",
+          "say": "Las cartas no mienten. La gente sí, pero las cartas no. ¿A que tengo razón?",
+          "replies": [
+            {
+              "text": "La tienes. No sé cómo lo haces.",
+              "bond": 1,
+              "mood": "alegre",
+              "then": "Ni falta que hace. Tú escucha."
+            },
+            {
+              "text": "Eso lo habrás oído por ahí.",
+              "bond": 0,
+              "then": "Eso no lo sabe nadie más, y tú lo sabes."
+            }
+          ]
+        },
+        {
+          "say": "Ahora dime tú una cosa, sin cartas. ¿Qué es lo que más miedo te da perder aquí?",
+          "replies": [
+            {
+              "text": "A la gente que viaja conmigo.",
+              "bond": 1,
+              "then": "Buena respuesta. Cuídalos, que aquí se pierde gente muy deprisa."
+            },
+            {
+              "text": "Mi alma. No quiero acabar siendo {suyo|suya}.",
+              "bond": 1,
+              "then": "Entonces no hagas tratos con él. Ni uno, aunque parezca barato."
+            },
+            {
+              "text": "Nada. No tengo nada que perder.",
+              "bond": -1,
+              "then": "Todo el mundo tiene algo. Tú todavía no lo sabes, nada más."
+            }
+          ]
+        },
+        {
+          "note": "Eva recoge las cartas y te sirve un vaso de vino dulce sin preguntarte.",
+          "say": "Vuelve cuando quieras. Aquí siempre hay vino para quien sabe escuchar."
+        }
+      ]
+    },
+    {
+      "id": "strahd-eva-4",
+      "kind": "escena",
+      "name": "Eva · El vino de la hoguera",
+      "who": "Madam Eva",
+      "campaign": "strahd",
+      "rank": 4,
+      "title": "El vino de la hoguera",
+      "where": "camino",
+      "beats": [
+        {
+          "note": "Junto a la hoguera del campamento, los vistani cantan y se pasan una bota de vino. Madam Eva ve tu cara seria y se echa a reír.",
+          "say": "¡Qué cara traes! Toma, bebe. Esta noche aquí no se muere nadie.",
+          "mood": "alegre",
+          "replies": [
+            {
+              "text": "Bebes un trago largo y sonríes.",
+              "bond": 1,
+              "then": "¡Así me gusta! Ya pareces de los nuestros."
+            },
+            {
+              "text": "Solo un poco. Mañana hay camino.",
+              "bond": 0,
+              "then": "Mañana siempre hay camino. Hoy hay vino."
+            },
+            {
+              "text": "No estoy para fiestas.",
+              "bond": -1,
+              "then": "Aquí nunca se está para fiestas. Por eso hay que hacerlas."
+            }
+          ]
+        },
+        {
+          "say": "¿Sabes lo que tenemos los vistani? Que cruzamos la niebla cuando queremos. Entramos y salimos del valle. Los demás no pueden.",
+          "replies": [
+            {
+              "text": "¿Y por qué el conde os lo permite?",
+              "bond": 1,
+              "then": "Porque nos debe algo. Esa historia te la cuento otro día, con menos vino."
+            },
+            {
+              "text": "Entonces sacadnos de aquí.",
+              "bond": 0,
+              "then": "Ojalá fuera tan fácil. La niebla nos deja pasar a nosotros, no a quien queramos."
+            },
+            {
+              "text": "Qué suerte. Mientras, los demás nos pudrimos aquí.",
+              "bond": -1,
+              "mood": "triste",
+              "then": "No elegimos esta suerte, igual que tú no elegiste entrar."
+            }
+          ]
+        },
+        {
+          "note": "Eva te vuelve a llenar el vaso y se pone a cantar con los demás. Desafina muchísimo, y le da igual.",
+          "mood": "alegre"
+        }
+      ]
+    },
+    {
+      "id": "strahd-eva-6",
+      "kind": "escena",
+      "name": "Eva · Una deuda vieja",
+      "who": "Madam Eva",
+      "campaign": "strahd",
+      "rank": 6,
+      "title": "Una deuda vieja",
+      "where": "tienda",
+      "beats": [
+        {
+          "note": "En la tienda, Eva enciende una vela y habla despacio, como quien cuenta algo que ha contado muy pocas veces.",
+          "say": "Hace muchísimo tiempo, el conde era un soldado joven. Cayó herido en una guerra y los míos lo curaron y lo llevaron a casa.",
+          "replies": [
+            {
+              "text": "La escuchas sin interrumpir.",
+              "bond": 1,
+              "then": "Así me gusta. Hay historias que solo se cuentan una vez."
+            },
+            {
+              "text": "¿Los vistani le salvaron la vida?",
+              "bond": 0,
+              "then": "Sí. Y no me mires así. Entonces solo era un chico herido."
+            },
+            {
+              "text": "Mejor habría sido dejarlo morir.",
+              "bond": -1,
+              "mood": "enfadado",
+              "then": "Fácil decirlo ahora. Nadie cura a un herido pensando en lo que será."
+            }
+          ]
+        },
+        {
+          "say": "Desde entonces nos debe algo. Por eso nos deja cruzar la niebla y vivir tranquilos. Dime, ¿crees que las deudas se pagan también después de muerto?",
+          "replies": [
+            {
+              "text": "Sí. Una deuda es una deuda, aunque pase el tiempo.",
+              "bond": 1,
+              "then": "Eso pienso yo. Y eso piensa él, por suerte para nosotros."
+            },
+            {
+              "text": "Un muerto no le debe nada a nadie.",
+              "bond": 0,
+              "then": "Él no está muerto del todo. Por eso sigue pagando."
+            },
+            {
+              "text": "Y vosotros cobráis a costa de todo el valle.",
+              "bond": -1,
+              "mood": "triste",
+              "then": "¿Crees que no lo sé? Lo pienso cada noche."
+            }
+          ]
+        },
+        {
+          "note": "Eva apaga la vela con los dedos.",
+          "say": "No te lo he contado para que me perdones. Te lo he contado para que sepas con quién te sientas."
+        }
+      ]
+    },
+    {
+      "id": "strahd-eva-8",
+      "kind": "escena",
+      "name": "Eva · La criada del castillo",
+      "who": "Madam Eva",
+      "campaign": "strahd",
+      "rank": 8,
+      "title": "La criada del castillo",
+      "where": "tienda",
+      "beats": [
+        {
+          "note": "Es muy tarde. En el campamento solo queda encendida la lámpara de Eva. Te hace una seña para que entres y cierra la tienda.",
+          "say": "Te voy a contar algo que no sabe nadie. Ni siquiera los míos.",
+          "replies": [
+            {
+              "text": "Te sientas y esperas a que hable.",
+              "bond": 1,
+              "then": "Bien. Sin prisas."
+            },
+            {
+              "text": "¿Por qué a mí?",
+              "bond": 0,
+              "then": "Porque vas a subir al castillo. Y porque me fío de ti, no sé muy bien por qué."
+            }
+          ]
+        },
+        {
+          "say": "Yo serví en el castillo. El día de la boda de Sergei, el hermano del conde, yo estaba allí. Vi a la novia correr por los pasillos.",
+          "mood": "triste"
+        },
+        {
+          "note": "Eva se calla de golpe y aprieta los labios. Se queda mirando la llama. Está claro que no piensa decir nada más.",
+          "replies": [
+            {
+              "text": "¿Quién eres de verdad, Eva?",
+              "bond": 1,
+              "then": "Una vieja que ha vivido mucho más de lo que parece. Lo demás, cuando vuelvas del castillo."
+            },
+            {
+              "text": "Le coges la mano y no le preguntas nada.",
+              "bond": 1,
+              "mood": "alegre",
+              "then": "Gracias. Hay cosas que cuesta mucho decir en voz alta."
+            },
+            {
+              "text": "Eso fue hace siglos. Me estás tomando el pelo.",
+              "bond": -1,
+              "mood": "enfadado",
+              "then": "Cree lo que quieras. Yo sé lo que vi."
+            }
+          ]
+        },
+        {
+          "note": "Eva apaga la lámpara de un soplo.",
+          "say": "Vete a dormir. Y de esto, ni una palabra a nadie."
+        }
+      ]
+    },
+    {
+      "id": "strahd-eva-10",
+      "kind": "escena",
+      "name": "Eva · La última carta",
+      "who": "Madam Eva",
+      "campaign": "strahd",
+      "rank": 10,
+      "title": "La última carta",
+      "where": "camino",
+      "beats": [
+        {
+          "note": "Al pie del camino del castillo, Madam Eva saca una sola carta de la baraja. La mira y se la guarda sin enseñártela.",
+          "say": "No, no te la enseño. Lo que tengas que ver, lo verás tú ahí dentro. Mejor sin avisos.",
+          "replies": [
+            {
+              "text": "Está bien. Prefiero no saberlo.",
+              "bond": 1,
+              "mood": "alegre",
+              "then": "Eres más {listo|lista} de lo que pareces."
+            },
+            {
+              "text": "¿Es mala?",
+              "bond": 0,
+              "then": "Es una carta. Lo que pase ahí dentro depende de ti, no de ella."
+            },
+            {
+              "text": "Enséñamela. Tengo derecho a saberlo.",
+              "bond": -1,
+              "mood": "enfadado",
+              "then": "Tienes derecho a muchas cosas. A esta, no."
+            }
+          ]
+        },
+        {
+          "say": "Te pido una cosa. Ahí dentro hay vistani que sirven al conde. Eligieron mal, pero son de mi sangre. No los mates. ¿Me lo prometes?",
+          "mood": "triste",
+          "replies": [
+            {
+              "text": "Te lo prometo.",
+              "bond": 1,
+              "mood": "alegre",
+              "then": "Gracias. Sabía que te lo podía pedir a ti."
+            },
+            {
+              "text": "Lo intentaré, pero no te prometo nada.",
+              "bond": 0,
+              "then": "Es más de lo que me daría cualquier otro."
+            },
+            {
+              "text": "Si me atacan, me defenderé. Sean de tu sangre o no.",
+              "bond": -1,
+              "mood": "triste",
+              "then": "Lo entiendo. Pero me duele oírlo."
+            }
+          ]
+        },
+        {
+          "note": "Eva te da un beso en la frente, como a {un nieto|una nieta}. Luego vuelve hacia el campamento sin mirar atrás."
+        }
+      ]
+    },
+    {
+      "id": "strahd-vanrichten-2",
+      "kind": "escena",
+      "name": "Van Richten · El bardo que no canta",
+      "who": "Rudolph van Richten",
+      "campaign": "strahd",
+      "rank": 2,
+      "title": "El bardo que no canta",
+      "where": "posada",
+      "beats": [
+        {
+          "note": "En la posada, un bardo con un sombrero de colores cuenta que cazó un dragón con una cuchara. Dice llamarse Rictavio. Nadie le cree, y todos se ríen.",
+          "say": "¡Y el dragón, amigos míos, se rindió antes del postre! Otra ronda, que la historia sigue.",
+          "mood": "alegre",
+          "replies": [
+            {
+              "text": "No le quitas el ojo de encima. No está tan borracho como parece.",
+              "bond": 1,
+              "then": "¿Tanto te gusta mi sombrero? Luego hablamos."
+            },
+            {
+              "text": "Te ríes con los demás y pagas otra ronda.",
+              "bond": 0,
+              "gold": -2,
+              "then": "¡Eso es! Un poco de alegría en este valle."
+            },
+            {
+              "text": "Menudo cuentista.",
+              "bond": -1,
+              "then": "Cuentista no: artista. La diferencia está en el precio."
+            }
+          ]
+        },
+        {
+          "note": "Ya de noche, cuando la posada se vacía, Rictavio se sienta a tu mesa y se quita el sombrero. Debajo hay un anciano muy cansado.",
+          "say": "Me llamo Rudolph van Richten y cazo vampiros. Aquí nadie puede saberlo, o no llegaré vivo al castillo. ¿Me guardarás el secreto?",
+          "replies": [
+            {
+              "text": "Le guardas el secreto. Para todos, sigue siendo Rictavio.",
+              "bond": 1,
+              "then": "Gracias. Tengo muchos enemigos y muy pocos amigos."
+            },
+            {
+              "text": "¿Van Richten? ¿El de las historias?",
+              "bond": 0,
+              "then": "El mismo. Y bastante más viejo de lo que cuentan."
+            },
+            {
+              "text": "Un secreto así vale su peso en oro.",
+              "bond": -1,
+              "mood": "enfadado",
+              "then": "Vaya. Me he equivocado de mesa, por lo que veo."
+            }
+          ]
+        },
+        {
+          "note": "Van Richten se vuelve a calar el sombrero de colores. En un momento, vuelve a ser Rictavio.",
+          "say": "¡Y mañana, la historia del gigante que tenía miedo a los gatos! No te la pierdas.",
+          "mood": "alegre"
+        }
+      ]
+    },
+    {
+      "id": "strahd-vanrichten-4",
+      "kind": "escena",
+      "name": "Van Richten · El carro cerrado",
+      "who": "Rudolph van Richten",
+      "campaign": "strahd",
+      "rank": 4,
+      "title": "El carro cerrado",
+      "where": "plaza",
+      "beats": [
+        {
+          "note": "Van Richten te lleva al corral donde guarda su carro de feria. De dentro sale un golpe sordo. Luego otro. Algo grande se mueve ahí.",
+          "say": "No te asustes. Está bien encerrado. Casi siempre.",
+          "replies": [
+            {
+              "text": "Te quedas {quieto|quieta} y esperas a que te lo explique.",
+              "bond": 1,
+              "then": "Gracias. Hay quien ya habría echado a correr."
+            },
+            {
+              "text": "¿Qué llevas ahí dentro?",
+              "bond": 0,
+              "then": "Todavía no te lo puedo decir."
+            },
+            {
+              "text": "Si es peligroso, lo quiero lejos de mí.",
+              "bond": -1,
+              "then": "Es peligroso. Por eso lo tengo yo, y no otro."
+            }
+          ]
+        },
+        {
+          "say": "Te pido dos cosas. No preguntes todavía qué hay dentro. Y no dejes que ningún vistani se acerque a este carro. Ninguno.",
+          "replies": [
+            {
+              "text": "De acuerdo. Ni preguntas ni vistani.",
+              "bond": 1,
+              "then": "Eres una persona sensata. Quedan pocas."
+            },
+            {
+              "text": "¿Por qué los vistani?",
+              "bond": 0,
+              "then": "Tengo mis motivos, y son viejos. Otro día."
+            },
+            {
+              "text": "No pienso vigilar algo sin saber qué es.",
+              "bond": -1,
+              "mood": "enfadado",
+              "then": "Muy bien. Lo vigilaré yo, como siempre."
+            }
+          ]
+        },
+        {
+          "note": "Van Richten echa otra cadena a la puerta y da unas palmadas a la madera, como quien calma a un caballo.",
+          "say": "Tranquilo, tranquilo. Ya queda menos."
+        }
+      ]
+    },
+    {
+      "id": "strahd-vanrichten-6",
+      "kind": "escena",
+      "name": "Van Richten · Erasmus",
+      "who": "Rudolph van Richten",
+      "campaign": "strahd",
+      "rank": 6,
+      "title": "Erasmus",
+      "where": "posada",
+      "beats": [
+        {
+          "note": "Una noche, junto al fuego, van Richten saca un retrato pequeño de un chico y lo mira un buen rato antes de hablar.",
+          "say": "Se llamaba Erasmus. Era mi hijo. Unos vistani se lo llevaron y se lo vendieron a un vampiro.",
+          "mood": "triste",
+          "replies": [
+            {
+              "text": "Lo siento mucho, Rudolph.",
+              "bond": 1,
+              "then": "Gracias. Hacía mucho que nadie me llamaba por mi nombre."
+            },
+            {
+              "text": "Por eso no quieres vistani cerca del carro.",
+              "bond": 0,
+              "then": "Por eso, y por más cosas. Pero sí."
+            },
+            {
+              "text": "Aquí todos hemos perdido a alguien.",
+              "bond": -1,
+              "mood": "enfadado",
+              "then": "Sí. Pero no todos lo hemos matado con nuestras manos."
+            }
+          ]
+        },
+        {
+          "say": "Cuando lo encontré, ya era uno de ellos. Me pidió que le clavara la estaca, y lo hice. ¿Crees que un padre puede perdonarse eso?",
+          "mood": "triste",
+          "replies": [
+            {
+              "text": "Hiciste lo que tu hijo te pidió. Eso no necesita perdón.",
+              "bond": 1,
+              "then": "Me lo he dicho mil veces. Oírselo a otro es distinto."
+            },
+            {
+              "text": "No lo sé. Pero lo que haces ahora salva a otros hijos.",
+              "bond": 0,
+              "then": "Eso me digo cuando no puedo dormir. Casi todas las noches."
+            },
+            {
+              "text": "Hay cosas que no se perdonan.",
+              "bond": -1,
+              "then": "Ya. Eso mismo pienso yo."
+            }
+          ]
+        },
+        {
+          "note": "Van Richten guarda el retrato en el bolsillo del pecho y se queda mirando el fuego.",
+          "say": "Perdona. Un viejo no debería cargar a nadie con esto."
+        }
+      ]
+    },
+    {
+      "id": "strahd-vanrichten-8",
+      "kind": "escena",
+      "name": "Van Richten · La maldición",
+      "who": "Rudolph van Richten",
+      "campaign": "strahd",
+      "rank": 8,
+      "title": "La maldición",
+      "where": "camino",
+      "beats": [
+        {
+          "note": "Van Richten te espera a las afueras con el equipaje hecho. No te mira a la cara.",
+          "say": "Hace años, una vieja vistani me maldijo. Desde entonces, todo el que se me acerca acaba muerto. Todos, sin excepción.",
+          "mood": "triste",
+          "replies": [
+            {
+              "text": "A mí no me ha pasado nada todavía.",
+              "bond": 1,
+              "then": "Todavía. Esa es la palabra que me preocupa."
+            },
+            {
+              "text": "¿Lo crees de verdad?",
+              "bond": 0,
+              "then": "He enterrado a demasiados amigos para no creerlo."
+            },
+            {
+              "text": "Pues gracias por avisar tan tarde.",
+              "bond": -1,
+              "then": "Tienes razón. Debí decírtelo el primer día."
+            }
+          ]
+        },
+        {
+          "say": "Por eso trabajo solo. Te lo pido por tu bien: aléjate de mí mientras puedas. ¿Lo harás?",
+          "replies": [
+            {
+              "text": "Me quedo. Eso lo decido yo, no una maldición.",
+              "bond": 1,
+              "mood": "alegre",
+              "then": "Eres tan {terco|terca} como yo. Qué desgracia."
+            },
+            {
+              "text": "Me quedo, pero no por ti: por el conde.",
+              "bond": 0,
+              "then": "Me vale. El conde es buena razón."
+            },
+            {
+              "text": "Está bien. Cada uno por su lado.",
+              "bond": -1,
+              "mood": "triste",
+              "then": "Es lo mejor. Cuídate mucho."
+            }
+          ]
+        },
+        {
+          "note": "Van Richten se cala el sombrero. Por un momento parece mucho más viejo.",
+          "say": "Pase lo que pase, gracias por escucharme."
+        }
+      ]
+    },
+    {
+      "id": "strahd-vanrichten-10",
+      "kind": "escena",
+      "name": "Van Richten · El último cazador",
+      "who": "Rudolph van Richten",
+      "campaign": "strahd",
+      "rank": 10,
+      "title": "El último cazador",
+      "where": "camino",
+      "beats": [
+        {
+          "note": "Frente al castillo, van Richten abre su maletín de cuero y saca una estaca oscura, pulida por los años. Te la pone en las manos.",
+          "say": "Es la mejor que tengo. Si caigo yo, que esto no quede a medias.",
+          "replies": [
+            {
+              "text": "Te la guardas en el cinto, con cuidado.",
+              "bond": 1,
+              "then": "Bien. Ahí la tendrás a mano cuando haga falta."
+            },
+            {
+              "text": "Quédatela tú. No vas a caer.",
+              "bond": 0,
+              "then": "Eso no depende de mí. Es tuya."
+            },
+            {
+              "text": "Con una estaca no va a bastar.",
+              "bond": -1,
+              "then": "No. Pero sin ella no hay nada que hacer."
+            }
+          ]
+        },
+        {
+          "say": "Treinta años persiguiendo a esta clase de monstruos. Dime la verdad: ¿estás {dispuesto|dispuesta} a terminarlo, aunque cueste lo que cueste?",
+          "replies": [
+            {
+              "text": "Sí. Lo terminaré, contigo o sin ti.",
+              "bond": 1,
+              "mood": "alegre",
+              "then": "Eso es lo que necesitaba oír. Vamos."
+            },
+            {
+              "text": "Haré lo que pueda. No te prometo más.",
+              "bond": 0,
+              "then": "Es una respuesta honrada. La acepto."
+            },
+            {
+              "text": "Si la cosa se pone fea, me retiro.",
+              "bond": -1,
+              "mood": "enfadado",
+              "then": "Entonces devuélveme la estaca. Ahí dentro no hay retirada."
+            }
+          ]
+        },
+        {
+          "note": "Van Richten cierra el maletín, se quita el sombrero de Rictavio y lo deja sobre una piedra.",
+          "say": "Ya no hace falta disfrazarse. Que sepa quién viene a por él."
+        }
+      ]
+    },
+    {
+      "id": "strahd-ezmerelda-2",
+      "kind": "escena",
+      "name": "Ezmerelda · La pierna de madera",
+      "who": "Ezmerelda d'Avenir",
+      "campaign": "strahd",
+      "rank": 2,
+      "title": "La pierna de madera",
+      "where": "camino",
+      "beats": [
+        {
+          "note": "Ezmerelda se sienta en un tronco, se sube la pernera y afloja una correa. De la rodilla para abajo, la pierna es de madera.",
+          "say": "Un hombre lobo se quedó con la de verdad, hace años. Esta la hice yo. Y aguanta mejor que la otra.",
+          "replies": [
+            {
+              "text": "Está muy bien hecha. Al andar no se nota nada.",
+              "bond": 1,
+              "mood": "alegre",
+              "then": "Ese es el truco. Que nadie lo note."
+            },
+            {
+              "text": "¿Te duele?",
+              "bond": 0,
+              "then": "Cuando llueve. O sea, casi siempre en este valle."
+            },
+            {
+              "text": "Con una pierna así, ¿no deberías dejar de cazar?",
+              "bond": -1,
+              "mood": "enfadado",
+              "then": "Con dos piernas cazaba peor. Lo digo en serio."
+            }
+          ]
+        },
+        {
+          "say": "No se lo cuentes a nadie. Si un monstruo sabe dónde tienes el punto débil, va derecho a por él.",
+          "replies": [
+            {
+              "text": "Nadie lo sabrá por mí.",
+              "bond": 1,
+              "then": "Bien. Pero un secreto se paga con otro."
+            },
+            {
+              "text": "Los que viajan contigo deberían saberlo.",
+              "bond": -1,
+              "mood": "enfadado",
+              "then": "Los demás no. Tú, porque lo has visto. Nadie más."
+            }
+          ]
+        },
+        {
+          "say": "Venga, te toca. Yo te he contado lo mío. ¿Qué me cuentas tú a cambio?",
+          "replies": [
+            {
+              "text": "Le hablas de una cicatriz que no has enseñado nunca a nadie.",
+              "bond": 1,
+              "mood": "alegre",
+              "then": "Vaya. Ahora estamos en paz. Y me caes mejor."
+            },
+            {
+              "text": "Le cuentas algo gracioso de cuando eras {pequeño|pequeña}.",
+              "bond": 0,
+              "then": "Eso no vale como secreto. Pero me he reído, así que te lo acepto."
+            },
+            {
+              "text": "Yo no tengo secretos.",
+              "bond": -1,
+              "then": "Todo el mundo tiene. Otra cosa es que no me los quieras contar."
+            }
+          ]
+        },
+        {
+          "note": "Ezmerelda se aprieta la correa, se levanta de un salto y echa a andar como si nada."
+        }
+      ]
+    },
+    {
+      "id": "strahd-ezmerelda-4",
+      "kind": "escena",
+      "name": "Ezmerelda · El maestro",
+      "who": "Ezmerelda d'Avenir",
+      "campaign": "strahd",
+      "rank": 4,
+      "title": "El maestro",
+      "where": "camino",
+      "beats": [
+        {
+          "note": "Ezmerelda te para en el camino y saca un dibujo arrugado: un anciano con barba y cara de pocos amigos.",
+          "say": "¿Has visto a este hombre? Es un cazador de vampiros, ya mayor. Llevo meses buscándolo.",
+          "replies": [
+            {
+              "text": "Miras el dibujo despacio, con atención.",
+              "bond": 1,
+              "then": "Gracias. Casi todos le echan un vistazo y siguen andando."
+            },
+            {
+              "text": "¿Y para qué lo buscas?",
+              "bond": 0,
+              "then": "Eso es cosa mía. Pero te lo cuento, si me escuchas."
+            }
+          ]
+        },
+        {
+          "say": "Fue mi maestro. Me lo enseñó casi todo. Pero nunca se fió de mí del todo, por ser vistana. Eso todavía me escuece.",
+          "mood": "triste",
+          "replies": [
+            {
+              "text": "Pues él se lo pierde.",
+              "bond": 1,
+              "mood": "alegre",
+              "then": "Eso le diría yo, si lo encontrara."
+            },
+            {
+              "text": "Seguro que ahora piensa de otra manera.",
+              "bond": 0,
+              "then": "Ojalá. Para eso tengo que encontrarlo primero."
+            }
+          ]
+        },
+        {
+          "say": "Dime la verdad. ¿Sabes algo de él?",
+          "replies": [
+            {
+              "text": "Le cuentas todo lo que sabes de él, sin guardarte nada.",
+              "bond": 1,
+              "mood": "alegre",
+              "then": "¡Lo sabía! Está cerca. Gracias, de verdad."
+            },
+            {
+              "text": "No sé nada. Lo siento.",
+              "bond": 0,
+              "then": "Bueno. Si lo ves, dile que lo busco. Y que no se esconda."
+            },
+            {
+              "text": "Si él no se fía de ti, ¿por qué iba a fiarme yo?",
+              "bond": -1,
+              "mood": "enfadado",
+              "then": "Buena pregunta. No tengo tiempo para contestarla."
+            }
+          ]
+        },
+        {
+          "note": "Ezmerelda dobla el dibujo con cuidado y se lo guarda.",
+          "say": "Cuando lo encuentre, le voy a gritar un buen rato. Y luego le daré un abrazo."
+        }
+      ]
+    },
+    {
+      "id": "strahd-ezmerelda-6",
+      "kind": "escena",
+      "name": "Ezmerelda · Lo que vio de niña",
+      "who": "Ezmerelda d'Avenir",
+      "campaign": "strahd",
+      "rank": 6,
+      "title": "Lo que vio de niña",
+      "where": "posada",
+      "beats": [
+        {
+          "note": "Esa noche, Ezmerelda bebe más de la cuenta y habla más bajo de lo normal.",
+          "say": "Te voy a contar algo feo. Los que se llevaron al hijo de van Richten eran de mi familia. Yo era una niña, y lo vi todo.",
+          "mood": "triste",
+          "replies": [
+            {
+              "text": "Eras una niña. No pudiste hacer nada.",
+              "bond": 1,
+              "then": "Eso me digo. Pero lo vi, y me callé. Durante años."
+            },
+            {
+              "text": "¿Lo sabe él?",
+              "bond": 0,
+              "then": "Nunca me he atrevido a decírselo. Y tú tampoco se lo digas."
+            },
+            {
+              "text": "¿Y te quedaste mirando?",
+              "bond": -1,
+              "mood": "enfadado",
+              "then": "Era una cría. ¿Qué querías que hiciera?"
+            }
+          ]
+        },
+        {
+          "say": "Por eso cazo. Cada monstruo que mato es un trozo de esa deuda. Dime, ¿crees que las culpas de la familia se heredan?",
+          "replies": [
+            {
+              "text": "No. Cada uno carga con lo suyo, y tú ya cargas de sobra.",
+              "bond": 1,
+              "then": "Gracias. Hacía falta que alguien me lo dijera en voz alta."
+            },
+            {
+              "text": "No se heredan, pero a veces se pagan igual.",
+              "bond": 0,
+              "then": "Puede. Por eso sigo pagando."
+            },
+            {
+              "text": "Sí. Si fue tu familia, algo te toca.",
+              "bond": -1,
+              "mood": "triste",
+              "then": "Lo sé. Por eso duermo tan mal."
+            }
+          ]
+        },
+        {
+          "note": "Ezmerelda aparta la jarra y se queda mirando sus manos, llenas de cicatrices.",
+          "say": "Mañana no me hables de esto. Pero hoy, gracias por escucharme."
+        }
+      ]
+    },
+    {
+      "id": "strahd-ezmerelda-8",
+      "kind": "escena",
+      "name": "Ezmerelda · El carro",
+      "who": "Ezmerelda d'Avenir",
+      "campaign": "strahd",
+      "rank": 8,
+      "title": "El carro",
+      "where": "camino",
+      "beats": [
+        {
+          "note": "Ezmerelda abre la puerta de su carro con mucho cuidado. Dentro hay estacas, ristras de ajos, agua bendita y cien frascos de fuego colgados del techo.",
+          "say": "Si alguien abre esta puerta sin mi permiso, vuela. Él y medio camino. No es broma.",
+          "replies": [
+            {
+              "text": "Silbas de admiración.",
+              "bond": 1,
+              "mood": "alegre",
+              "then": "¿A que sí? Lo he montado yo sola, frasco a frasco."
+            },
+            {
+              "text": "¿Y si un día te equivocas tú al abrir?",
+              "bond": 0,
+              "then": "Entonces no hará falta enterrarme. Por eso no me equivoco."
+            },
+            {
+              "text": "Esto es una locura. Vas a matar a alguien.",
+              "bond": -1,
+              "mood": "enfadado",
+              "then": "Esa es la idea. A alguien que no debería estar aquí."
+            }
+          ]
+        },
+        {
+          "say": "Hay sitio para una persona más, si no te importa dormir entre ajos. ¿Quieres viajar conmigo en el carro?",
+          "replies": [
+            {
+              "text": "Acepto. Y los ajos no me molestan.",
+              "bond": 1,
+              "mood": "alegre",
+              "then": "Perfecto. Ahora te enseño a abrir la puerta sin salir volando."
+            },
+            {
+              "text": "Gracias, pero prefiero ir a pie.",
+              "bond": 0,
+              "then": "Tú te lo pierdes. Aquí dentro no llueve."
+            },
+            {
+              "text": "¿Dormir encima de cien frascos de fuego? Ni {loco|loca}.",
+              "bond": -1,
+              "then": "Cobarde. Pues a andar, entonces."
+            }
+          ]
+        },
+        {
+          "note": "Ezmerelda cierra la puerta, echa el cerrojo y da unas palmadas a la madera.",
+          "say": "Es lo único que tengo. Si te lo enseño, es que me fío de ti."
+        }
+      ]
+    },
+    {
+      "id": "strahd-ezmerelda-10",
+      "kind": "escena",
+      "name": "Ezmerelda · La cazadora",
+      "who": "Ezmerelda d'Avenir",
+      "campaign": "strahd",
+      "rank": 10,
+      "title": "La cazadora",
+      "where": "camino",
+      "beats": [
+        {
+          "note": "En la puerta del castillo, Ezmerelda revisa su equipo dos veces: estacas, frascos de fuego, agua bendita, la correa de la pierna.",
+          "say": "Ya entré ahí una vez, sola. Salí de milagro, y todavía no sé cómo.",
+          "replies": [
+            {
+              "text": "Esta vez no vas sola.",
+              "bond": 1,
+              "then": "Ya. Por eso te lo voy a preguntar."
+            },
+            {
+              "text": "¿Qué te encontraste dentro?",
+              "bond": 0,
+              "then": "Muchas escaleras y demasiados muertos que andan. Ya lo verás."
+            },
+            {
+              "text": "Pues esta vez no cuentes con milagros.",
+              "bond": -1,
+              "mood": "enfadado",
+              "then": "No cuento con ellos. Por eso lo reviso todo dos veces."
+            }
+          ]
+        },
+        {
+          "say": "Esta vez quiero entrar con alguien de confianza. Alguien que no salga corriendo. ¿Eres tú?",
+          "replies": [
+            {
+              "text": "Soy yo. Entramos {juntos|juntas} y salimos {juntos|juntas}.",
+              "bond": 1,
+              "mood": "alegre",
+              "then": "Trato hecho. Y si hay que volar algo, lo vuelo yo."
+            },
+            {
+              "text": "Iré, pero no esperes que te cubra siempre.",
+              "bond": 0,
+              "then": "No lo espero. Solo que no me dejes atrás."
+            },
+            {
+              "text": "Busca a otro. Yo voy a lo mío.",
+              "bond": -1,
+              "mood": "triste",
+              "then": "Entendido. Pensaba otra cosa de ti."
+            }
+          ]
+        },
+        {
+          "note": "Ezmerelda se aprieta la correa de la pierna una última vez y empuja la puerta del castillo.",
+          "say": "Vamos, antes de que me lo piense mejor."
+        }
+      ]
+    },
+    {
+      "id": "1387-bran-2",
+      "kind": "escena",
+      "name": "Bran · El peso del acero",
+      "who": "Bran",
+      "campaign": "1387",
+      "rank": 2,
+      "title": "El peso del acero",
+      "where": "posada",
+      "beats": [
+        {
+          "note": "Bran se sienta junto al fuego de la posada y afila su espada con una piedra, sin prisa. Te hace sitio en el banco.",
+          "say": "Esta hoja no es mía. Era de mi hijo. La cuido más que a mí mismo.",
+          "replies": [
+            {
+              "text": "¿Qué le pasó a tu hijo?",
+              "bond": 1,
+              "then": "Murió en el sur. Un general inútil mandó cargar cuesta arriba contra los arqueros. Mi chico iba en primera fila."
+            },
+            {
+              "text": "Lo siento, Bran.",
+              "bond": 0,
+              "then": "Ya. Todo el mundo lo siente. Murió en el sur, por culpa de un general que no sabía mandar."
+            },
+            {
+              "text": "Buena hoja. ¿Cuánto pedirías por ella?",
+              "bond": -1,
+              "then": "No está en venta. Ni por todo el oro del valle.",
+              "mood": "enfadado"
+            }
+          ]
+        },
+        {
+          "say": "Desde entonces cobro por todo. Si un idiota con galones me va a mandar a morir, que me pague antes.",
+          "replies": [
+            {
+              "text": "Conmigo nadie carga cuesta arriba por capricho.",
+              "bond": 1,
+              "then": "Eso dicen todos al principio. Ya veremos. Pero suena bien."
+            },
+            {
+              "text": "Mientras cumplas, cobrarás.",
+              "bond": 0,
+              "then": "Así nos entendemos."
+            },
+            {
+              "text": "Aquí mando yo, y las órdenes no se discuten.",
+              "bond": -1,
+              "then": "Eso mismo decía el general.",
+              "mood": "enfadado"
+            }
+          ]
+        },
+        {
+          "note": "Bran guarda la piedra, enfunda la espada y te pasa la mitad de su pan.",
+          "say": "La ración de hoy te la cobro, como siempre. La charla, no. Esa va gratis."
+        }
+      ]
+    },
+    {
+      "id": "1387-bran-4",
+      "kind": "escena",
+      "name": "Bran · La rodilla que falla",
+      "who": "Bran",
+      "campaign": "1387",
+      "rank": 4,
+      "title": "La rodilla que falla",
+      "where": "camino",
+      "beats": [
+        {
+          "note": "En plena marcha por la nieve, a Bran le falla la rodilla. Tropieza, cae de lado y no consigue levantarse.",
+          "say": "Seguid sin mí. Un mercenario cojo es carne muerta, y en la nieve más.",
+          "mood": "triste",
+          "replies": [
+            {
+              "text": "En mi escuadra nadie se queda tirado en la nieve.",
+              "bond": 1,
+              "then": "Eso es muy bonito hasta que te toca cargar conmigo."
+            },
+            {
+              "text": "Te pago para luchar, no para morirte aquí.",
+              "bond": 0,
+              "then": "Así que es por la plata. Por lo menos hablas claro."
+            },
+            {
+              "text": "Levanta y deja de quejarte.",
+              "bond": -1,
+              "then": "Me levanto yo solo, no te preocupes.",
+              "mood": "enfadado"
+            }
+          ]
+        },
+        {
+          "note": "Le haces una tablilla con dos ramas y una correa. Bran se apoya en ti para andar, y cada paso le arranca un gruñido.",
+          "say": "¿Por qué haces esto? En mi vieja compañía me habrían dejado atrás sin pensarlo.",
+          "replies": [
+            {
+              "text": "Porque aquí no se abandona a nadie. Ni a ti.",
+              "bond": 1,
+              "then": "Es una norma cara. Pero me gusta."
+            },
+            {
+              "text": "Porque me sales más barato vivo que buscar a otro.",
+              "bond": 0,
+              "then": "Eso lo entiendo. Y me vale."
+            }
+          ]
+        },
+        {
+          "note": "Al anochecer llegáis a un refugio. Bran se deja caer junto al fuego y se frota la rodilla.",
+          "say": "No lo voy a olvidar. Y como se lo cuentes a alguien, lo niego."
+        }
+      ]
+    },
+    {
+      "id": "1387-bran-6",
+      "kind": "escena",
+      "name": "Bran · El estandarte quemado",
+      "who": "Bran",
+      "campaign": "1387",
+      "rank": 6,
+      "title": "El estandarte quemado",
+      "where": "camino",
+      "beats": [
+        {
+          "note": "En el fondo de un barranco encontráis cuerpos congelados bajo la nieve. Bran reconoce el estandarte medio quemado: es su antigua compañía.",
+          "say": "Son los míos. Los de antes. Si los dejamos así, los carroñeros se llevarán hasta los anillos.",
+          "mood": "triste"
+        },
+        {
+          "say": "Quiero quemarlos, como se hace entre soldados. ¿Me echas una mano?",
+          "replies": [
+            {
+              "text": "Claro. Voy a por leña.",
+              "bond": 1,
+              "then": "Gracias. No será rápido, te aviso."
+            },
+            {
+              "text": "Perderemos medio día, pero vale.",
+              "bond": 0,
+              "then": "Medio día por años de marcha juntos. Me parece barato."
+            },
+            {
+              "text": "Los anillos valen dinero. Mejor nos los quedamos.",
+              "bond": -1,
+              "then": "Toca un solo anillo y no vuelvo a marchar contigo. Ayúdame o apártate.",
+              "mood": "enfadado"
+            }
+          ]
+        },
+        {
+          "note": "Apiláis ramas y prendéis la hoguera al caer la tarde. Bran dice sus nombres en voz baja, uno por uno, y mira el fuego hasta que se apaga.",
+          "say": "Gracias, {capitán|capitana}. Desde hoy te llamo así, te guste o no."
+        }
+      ]
+    },
+    {
+      "id": "1387-bran-8",
+      "kind": "escena",
+      "name": "Bran · Una jarra por los caídos",
+      "who": "Bran",
+      "campaign": "1387",
+      "rank": 8,
+      "title": "Una jarra por los caídos",
+      "where": "posada",
+      "beats": [
+        {
+          "note": "En la taberna de Giles, Bran deja su paga entera en la barra y pide la mejor cerveza de la casa. Giles sirve dos jarras tan aguadas como siempre.",
+          "say": "Invito yo. Es la mejor cerveza aguada del valle, que ya es decir.",
+          "mood": "alegre",
+          "replies": [
+            {
+              "text": "Por los caídos.",
+              "bond": 1,
+              "then": "Por los caídos. Y por los que seguimos en pie, que tampoco es poco."
+            },
+            {
+              "text": "¿Tu paga entera? ¿Te encuentras bien?",
+              "bond": 0,
+              "then": "Por una vez no pienso en mañana. No te acostumbres."
+            },
+            {
+              "text": "Gracias, pero no bebo con la tropa.",
+              "bond": -1,
+              "then": "Tú te lo pierdes. Aunque sea agua con espuma.",
+              "mood": "enfadado"
+            }
+          ]
+        },
+        {
+          "say": "Escucha. Habrá semanas en que no puedas pagarme; el valle está como está. Aun así, mi espada te cubrirá la espalda. Te lo juro.",
+          "replies": [
+            {
+              "text": "Y yo te cubriré la tuya.",
+              "bond": 1,
+              "then": "Trato hecho. Sin papeles de por medio."
+            },
+            {
+              "text": "Te pagaré igual, aunque sea tarde.",
+              "bond": 1,
+              "then": "Ya lo sé. Por eso te lo juro."
+            },
+            {
+              "text": "Un mercenario que no cobra es un tonto.",
+              "bond": -1,
+              "then": "Pues llámame tonto. Lo he jurado y no lo retiro."
+            }
+          ]
+        },
+        {
+          "note": "Giles cuenta las monedas dos veces antes de guardárselas. Bran levanta la jarra hacia ti.",
+          "say": "Por los que no están. Y por mi {capitán|capitana}."
+        }
+      ]
+    },
+    {
+      "id": "1387-bran-10",
+      "kind": "escena",
+      "name": "Bran · La última trinchera",
+      "who": "Bran",
+      "campaign": "1387",
+      "rank": 10,
+      "title": "La última trinchera",
+      "where": "camino",
+      "beats": [
+        {
+          "note": "La noche antes de la batalla final, Bran afila por última vez la espada de su hijo. Te sientas a su lado junto al fuego.",
+          "say": "Mañana es el día. O salimos de esta, o nos entierra la nieve.",
+          "replies": [
+            {
+              "text": "Saldremos. Y la espada de tu hijo, con nosotros.",
+              "bond": 1,
+              "then": "Eso espero. Se merece un final mejor que el de su dueño."
+            },
+            {
+              "text": "Si no salimos, al menos habrá valido la pena.",
+              "bond": 0,
+              "then": "Hace un año no habría dicho eso. Hoy, sí."
+            },
+            {
+              "text": "¿Has cobrado ya? Por si acaso.",
+              "bond": -1,
+              "then": "Hoy no me hables de plata, {capitán|capitana}.",
+              "mood": "triste"
+            }
+          ]
+        },
+        {
+          "note": "Bran deja la piedra y te mira a los ojos.",
+          "say": "Hacía años que no luchaba por algo que no fuera oro. Gracias por devolverme la honra.",
+          "replies": [
+            {
+              "text": "La honra te la has ganado tú. Yo solo miraba.",
+              "bond": 1,
+              "then": "Mentira. Pero te lo acepto."
+            },
+            {
+              "text": "Nunca la perdiste, Bran.",
+              "bond": 1,
+              "then": "Sí la perdí. En el sur, con mi hijo. Y la he encontrado aquí."
+            }
+          ]
+        },
+        {
+          "note": "Bran enfunda la espada y se tumba junto al fuego, con la mano en la empuñadura.",
+          "say": "Duerme algo, {capitán|capitana}. Mañana te cubro la espalda."
+        }
+      ]
+    },
+    {
+      "id": "1387-aldara-2",
+      "kind": "escena",
+      "name": "Aldara · Trampas en la nieve",
+      "who": "Aldara",
+      "campaign": "1387",
+      "rank": 2,
+      "title": "Trampas en la nieve",
+      "where": "camino",
+      "beats": [
+        {
+          "note": "Aldara saca un conejo congelado de una de sus trampas. Se sienta en un tronco, saca el cuchillo y te hace un gesto para que mires.",
+          "say": "Un corte aquí y tiras hacia abajo. La piel sale entera, como un guante.",
+          "replies": [
+            {
+              "text": "Déjame probar a mí.",
+              "bond": 1,
+              "then": "Despacio. Si rompes la piel, no vale nada."
+            },
+            {
+              "text": "Prefiero mirar cómo lo haces tú.",
+              "bond": 0,
+              "then": "Hoy, vale. Mañana lo haces tú."
+            },
+            {
+              "text": "Eso es trabajo de criados.",
+              "bond": -1,
+              "then": "Aquí no hay criados. Hay gente que come y gente que no.",
+              "mood": "enfadado"
+            }
+          ]
+        },
+        {
+          "say": "El valle no es cruel. Es indiferente: le da igual que vivas o que te mueras. Quien lo olvida, acaba enterrado aquí.",
+          "replies": [
+            {
+              "text": "Entonces me fijaré en todo lo que haces.",
+              "bond": 1,
+              "then": "Bien. Mira, calla y aprende."
+            },
+            {
+              "text": "He sobrevivido a sitios peores.",
+              "bond": 0,
+              "then": "Todos dicen eso. Luego se duermen en la nieve y no despiertan."
+            }
+          ]
+        },
+        {
+          "note": "Aldara limpia el cuchillo en la nieve y te mira de arriba abajo.",
+          "say": "Espero que no seas como esos nobles estúpidos que se creen inmortales. Ya he enterrado a unos cuantos."
+        }
+      ]
+    },
+    {
+      "id": "1387-aldara-4",
+      "kind": "escena",
+      "name": "Aldara · La cabaña de su padre",
+      "who": "Aldara",
+      "campaign": "1387",
+      "rank": 4,
+      "title": "La cabaña de su padre",
+      "where": "camino",
+      "beats": [
+        {
+          "note": "Aldara te lleva por el bosque hasta unas ruinas cubiertas de nieve: unas vigas negras y un hogar de piedra.",
+          "say": "Era la cabaña de mi padre. Los Montesclaros la quemaron hace diez años, por no pagar un impuesto absurdo.",
+          "replies": [
+            {
+              "text": "Malditos sean.",
+              "bond": 1,
+              "then": "Llevo diez años diciéndolo. No ha servido de nada, pero lo sigo diciendo."
+            },
+            {
+              "text": "Lo siento mucho.",
+              "bond": 0,
+              "then": "No te he traído para que lo sientas. Te he traído para que me ayudes."
+            },
+            {
+              "text": "Diez años. Ya deberías haberlo superado.",
+              "bond": -1,
+              "then": "Y tú deberías callarte.",
+              "mood": "enfadado"
+            }
+          ]
+        },
+        {
+          "say": "De niña escondí aquí un arco de tejo, debajo del hogar. Ayúdame a sacarlo. La tierra está helada.",
+          "replies": [
+            {
+              "text": "Coges una piedra y te pones a cavar a su lado.",
+              "bond": 1,
+              "then": "Por esa esquina. Ahí la tierra está más blanda."
+            },
+            {
+              "text": "Vale, pero que sea rápido.",
+              "bond": 0,
+              "then": "Tardaremos lo que haga falta."
+            },
+            {
+              "text": "¿Un arco viejo? En el pueblo te compro uno nuevo.",
+              "bond": -1,
+              "then": "No quiero uno nuevo. Quiero ese.",
+              "mood": "enfadado"
+            }
+          ]
+        },
+        {
+          "note": "Tras un buen rato cavando, aparece un fardo de cuero podrido. Dentro, el arco sigue entero. Aldara lo tensa con cuidado y se queda callada.",
+          "say": "Aguanta. Mi padre sabía hacer las cosas bien."
+        }
+      ]
+    },
+    {
+      "id": "1387-aldara-6",
+      "kind": "escena",
+      "name": "Aldara · Sangre en el hielo",
+      "who": "Aldara",
+      "campaign": "1387",
+      "rank": 6,
+      "title": "Sangre en el hielo",
+      "where": "camino",
+      "beats": [
+        {
+          "note": "Mientras exploráis, un furtivo sale de entre los árboles, le hace a Aldara un corte feo en el brazo y huye. Ella se aprieta la herida y sigue andando.",
+          "say": "No es nada. Sigamos, que se va la luz.",
+          "replies": [
+            {
+              "text": "Siéntate, por favor. Solo un momento.",
+              "bond": 1,
+              "then": "Por favor, dice. Está bien. Un momento."
+            },
+            {
+              "text": "La coges del brazo sano y la sientas en una roca.",
+              "bond": 0,
+              "then": "¡Suéltame! Vale, vale. Ya estoy sentada.",
+              "mood": "enfadado"
+            },
+            {
+              "text": "Como quieras. Si te desangras, allá tú.",
+              "bond": -1,
+              "then": "Allá yo, sí.",
+              "mood": "enfadado"
+            }
+          ]
+        },
+        {
+          "note": "Al final Aldara se sienta y te deja vendarle el brazo. Aprieta los dientes, pero no se queja.",
+          "say": "Mi padre decía que quien pide ayuda no sabe valerse. Llevo toda la vida sin pedirla.",
+          "replies": [
+            {
+              "text": "Aceptar ayuda no es ser débil. Es llegar viva a mañana.",
+              "bond": 1,
+              "then": "Llegar viva a mañana. Vale. Eso lo entiendo."
+            },
+            {
+              "text": "Tu padre se equivocaba.",
+              "bond": 0,
+              "then": "No hables de mi padre. Aunque en esto puede que tengas razón."
+            },
+            {
+              "text": "Pues la próxima vez, te vendas tú.",
+              "bond": -1,
+              "then": "Eso pensaba hacer.",
+              "mood": "enfadado"
+            }
+          ]
+        },
+        {
+          "note": "Aldara se mira la venda, bien apretada. Coge el arco y, por primera vez, te espera en vez de adelantarse.",
+          "say": "Gracias. No te acostumbres a oírlo."
+        }
+      ]
+    },
+    {
+      "id": "1387-aldara-8",
+      "kind": "escena",
+      "name": "Aldara · La presa grande",
+      "who": "Aldara",
+      "campaign": "1387",
+      "rank": 8,
+      "title": "La presa grande",
+      "where": "plaza",
+      "beats": [
+        {
+          "note": "Tras dos días siguiendo el rastro, cazáis un gran ciervo blanco. Aldara se queda mirándolo, con el arco bajado.",
+          "say": "En el castillo pagarían una fortuna por él. Con esto podría ser rica. ¿Tú qué harías?",
+          "replies": [
+            {
+              "text": "En el pueblo hay gente que se muere de hambre.",
+              "bond": 1,
+              "then": "Lo mismo estaba pensando yo."
+            },
+            {
+              "text": "Es tu presa. Decides tú.",
+              "bond": 0,
+              "then": "Ya lo sé. Solo quería oírte."
+            },
+            {
+              "text": "Venderlo, claro. Una fortuna es una fortuna.",
+              "bond": -1,
+              "then": "La plata no se come. Tengo una idea mejor."
+            }
+          ]
+        },
+        {
+          "note": "Aldara no lo vende. Lo despieza en la plaza de El Pueblo de Barro y reparte la carne entre los que más hambre pasan.",
+          "say": "Ayúdame a cortar. Si lo hago yo sola, no acabamos hasta mañana.",
+          "replies": [
+            {
+              "text": "Te remangas y cortas a su lado.",
+              "bond": 1,
+              "then": "Trozos iguales. Aquí nadie se lleva más que nadie."
+            },
+            {
+              "text": "Vigilas que nadie se cuele.",
+              "bond": 0,
+              "then": "Bien pensado. Siempre hay alguno que viene dos veces."
+            }
+          ]
+        },
+        {
+          "note": "Cuando ya no queda nada, Aldara te da un paquete envuelto en tela: el mejor trozo, guardado aparte. Y sonríe por primera vez desde que la conoces.",
+          "say": "Este es para ti. No se lo digas a nadie.",
+          "mood": "alegre"
+        }
+      ]
+    },
+    {
+      "id": "1387-aldara-10",
+      "kind": "escena",
+      "name": "Aldara · La guía del norte",
+      "who": "Aldara",
+      "campaign": "1387",
+      "rank": 10,
+      "title": "La guía del norte",
+      "where": "camino",
+      "beats": [
+        {
+          "note": "Con el deshielo, la nieve se convierte en barro. Aldara te espera a la salida del pueblo con un rollo de cuero en la mano.",
+          "say": "Toma. Es un mapa. Lo he hecho yo. Marca unos pasos hacia el sur que no conoce casi nadie.",
+          "replies": [
+            {
+              "text": "Lo desenrollas y lo estudias con calma.",
+              "bond": 1,
+              "then": "Las cruces son sitios donde no hay que parar. Hazme caso en eso."
+            },
+            {
+              "text": "¿Por qué me lo das a mí?",
+              "bond": 1,
+              "then": "Porque te lo has ganado."
+            },
+            {
+              "text": "¿Cuánto quieres por él?",
+              "bond": -1,
+              "then": "Nada. No todo se compra.",
+              "mood": "enfadado"
+            }
+          ]
+        },
+        {
+          "say": "Nadie me había seguido el ritmo nunca. Tú sí. Por eso es tuyo.",
+          "replies": [
+            {
+              "text": "Gracias, Aldara. Lo guardaré bien.",
+              "bond": 1,
+              "then": "Más te vale. No pienso dibujar otro."
+            },
+            {
+              "text": "Tampoco era tan difícil.",
+              "bond": 0,
+              "then": "Eso dicen todos. Y luego se quedan atrás a media cuesta."
+            }
+          ]
+        },
+        {
+          "note": "Aldara te da un golpe seco en el hombro y deja la mano ahí un momento. Es lo más parecido a un abrazo que le vas a sacar.",
+          "say": "Eso es todo. No esperes nada más."
+        }
+      ]
+    },
+    {
+      "id": "1387-doc-2",
+      "kind": "escena",
+      "name": "Doc · El temblor en las manos",
+      "who": "Arthur «Doc»",
+      "campaign": "1387",
+      "rank": 2,
+      "title": "El temblor en las manos",
+      "where": "posada",
+      "beats": [
+        {
+          "note": "Arthur te cose una herida del brazo a la luz de una vela. Le tiemblan las manos, huele a licor barato y la aguja entra torcida.",
+          "say": "Quieto. No, no es culpa tuya. Es mía. Estas manos ya no son lo que eran.",
+          "replies": [
+            {
+              "text": "Tómate tu tiempo, Doc.",
+              "bond": 1,
+              "then": "Tiempo me sobra. Lo que me falta es pulso."
+            },
+            {
+              "text": "¿Has bebido?",
+              "bond": 0,
+              "then": "Un poco. Para que no me tiemblen. Ya ves qué bien funciona."
+            },
+            {
+              "text": "Como me dejes una cicatriz fea, no te pago.",
+              "bond": -1,
+              "then": "Justo lo que me faltaba: un paciente exigente.",
+              "mood": "enfadado"
+            }
+          ]
+        },
+        {
+          "say": "¿Sabes por qué no estoy en la capital? Me echaron del gremio de cirujanos. Le corté a un conde la pierna equivocada.",
+          "mood": "triste",
+          "replies": [
+            {
+              "text": "Todo el mundo se equivoca alguna vez.",
+              "bond": 1,
+              "then": "Sí. Pero no todo el mundo tiene a un conde en la mesa cuando se equivoca."
+            },
+            {
+              "text": "¿Y qué fue del conde?",
+              "bond": 0,
+              "then": "Cojo y furioso. Tenía amigos en el gremio. Yo no."
+            },
+            {
+              "text": "Sigue cosiendo, que se me enfría el brazo.",
+              "bond": -1,
+              "then": "Sí, sí. Perdona. Ya me callo."
+            }
+          ]
+        },
+        {
+          "note": "Arthur hace el último nudo, corta el hilo con los dientes y se sube las gafas con el dorso de la mano.",
+          "say": "Listo. No es bonito, pero aguanta. Y lo del conde no se lo cuento a cualquiera, que lo sepas."
+        }
+      ]
+    },
+    {
+      "id": "1387-doc-4",
+      "kind": "escena",
+      "name": "Doc · El matasanos",
+      "who": "Arthur «Doc»",
+      "campaign": "1387",
+      "rank": 4,
+      "title": "El matasanos",
+      "where": "plaza",
+      "beats": [
+        {
+          "note": "En la calle, un campesino reconoce a Arthur. Os escupe a los dos, grita que su mujer murió por culpa de ese matasanos y le da un puñetazo.",
+          "say": "Déjalo. Tiene sus motivos. No pude salvarla.",
+          "mood": "triste"
+        },
+        {
+          "note": "El campesino levanta el puño otra vez. Arthur no se defiende: se queda quieto, con las gafas torcidas, esperando el golpe.",
+          "replies": [
+            {
+              "text": "Te pones en medio y apartas al campesino.",
+              "bond": 1,
+              "then": "No hacía falta. Pero gracias."
+            },
+            {
+              "text": "Dejas que Arthur pague su culpa.",
+              "bond": 0,
+              "then": "Gracias por no meterte. Me lo había ganado.",
+              "mood": "triste"
+            },
+            {
+              "text": "Sacas el cuchillo y le dices que se largue.",
+              "bond": -1,
+              "then": "¡Guarda eso! Ese hombre ya ha perdido bastante.",
+              "mood": "enfadado"
+            }
+          ]
+        },
+        {
+          "note": "El campesino se marcha. Arthur se limpia la sangre del labio con la manga.",
+          "say": "No sé si pude hacer más por ella. Eso es lo peor: que nunca lo sabré.",
+          "replies": [
+            {
+              "text": "Hiciste lo que pudiste.",
+              "bond": 1,
+              "then": "Ojalá. Pero gracias por decirlo."
+            },
+            {
+              "text": "Pues a partir de ahora, no bebas antes de curar.",
+              "bond": 0,
+              "then": "Lo sé. Es más fácil decirlo que hacerlo."
+            }
+          ]
+        },
+        {
+          "note": "Arthur se endereza las gafas, se sacude el abrigo y respira hondo.",
+          "say": "Vamos. Todavía hay gente que me paga por coser."
+        }
+      ]
+    },
+    {
+      "id": "1387-doc-6",
+      "kind": "escena",
+      "name": "Doc · Manuscritos manchados",
+      "who": "Arthur «Doc»",
+      "campaign": "1387",
+      "rank": 6,
+      "title": "Manuscritos manchados",
+      "where": "camino",
+      "beats": [
+        {
+          "note": "Cruzando un lodazal, Arthur resbala y su bolsa de médico cae en un charco de fango. Las hojas de sus libros de anatomía quedan esparcidas por el barro.",
+          "say": "Mis libros... Todos mis apuntes. Es lo único que me traje de la capital.",
+          "mood": "triste",
+          "replies": [
+            {
+              "text": "Te metes en el barro y empiezas a recoger hojas.",
+              "bond": 1,
+              "then": "¿Qué haces? ¡Te vas a hundir! Espera, esa es la del corazón..."
+            },
+            {
+              "text": "Le ayudas a levantarse.",
+              "bond": 0,
+              "then": "Yo estoy bien. Los libros no."
+            },
+            {
+              "text": "Son solo papeles, Doc. Levanta.",
+              "bond": -1,
+              "then": "Para ti, papeles. Para mí, todo lo que sé.",
+              "mood": "enfadado"
+            }
+          ]
+        },
+        {
+          "note": "Pasáis la tarde sacando hojas del fango, una a una. Luego las tendéis junto al fuego, colgadas de una cuerda como si fueran ropa.",
+          "say": "Esta mancha se ha comido el hígado entero. Da igual, me lo sé de memoria.",
+          "replies": [
+            {
+              "text": "¿Qué pone en esta otra?",
+              "bond": 1,
+              "then": "Cómo se cose una arteria. Un día te lo enseño en serio."
+            },
+            {
+              "text": "Mañana hay que madrugar. No te entretengas.",
+              "bond": 0,
+              "then": "Ya voy. Deja que se sequen un poco más."
+            }
+          ]
+        },
+        {
+          "note": "Arthur guarda las hojas secas en la bolsa y te mira por encima de las gafas.",
+          "say": "Para casi todos soy «el curandero», y ya está. Ya veo que para ti no."
+        }
+      ]
+    },
+    {
+      "id": "1387-doc-8",
+      "kind": "escena",
+      "name": "Doc · La operación sin alcohol",
+      "who": "Arthur «Doc»",
+      "campaign": "1387",
+      "rank": 8,
+      "title": "La operación sin alcohol",
+      "where": "camino",
+      "beats": [
+        {
+          "note": "En pleno bosque, a un compañero de la escuadra se le queda una punta de flecha clavada muy hondo. Hay que sacarla ya. Arthur busca su botella: está vacía.",
+          "say": "No queda licor. Sin un trago me tiemblan las manos. No puedo, lo siento. Busca a otro.",
+          "mood": "triste",
+          "replies": [
+            {
+              "text": "No hay nadie más. Sabes hacerlo. Respira.",
+              "bond": 1,
+              "then": "Respira, dice. Vale. Vale."
+            },
+            {
+              "text": "Te sujeto la mano hasta que deje de temblar.",
+              "bond": 0,
+              "then": "No. Si lo hago, lo hago sin ayuda. Si no, no sirve."
+            },
+            {
+              "text": "Si se muere, será culpa tuya.",
+              "bond": -1,
+              "then": "Gracias. Justo lo que necesitaba oír.",
+              "mood": "enfadado"
+            }
+          ]
+        },
+        {
+          "note": "Arthur respira hondo tres veces, coge el bisturí y abre. No le tiembla el pulso. Saca la punta, limpia la herida y cose sin decir una palabra."
+        },
+        {
+          "say": "¿Lo has visto? Ni un temblor. Hacía años que no operaba así.",
+          "mood": "alegre",
+          "replies": [
+            {
+              "text": "Lo he visto. Eres un buen cirujano, Doc.",
+              "bond": 1,
+              "then": "Lo era. Parece que todavía lo soy."
+            },
+            {
+              "text": "Buen trabajo. Ahora, a descansar.",
+              "bond": 0,
+              "then": "Descansar, sí. Y nada de beber para celebrarlo."
+            }
+          ]
+        },
+        {
+          "note": "Arthur se limpia las manos en la nieve y se las mira un buen rato. Siguen quietas. Ha recuperado la confianza."
+        }
+      ]
+    },
+    {
+      "id": "1387-doc-10",
+      "kind": "escena",
+      "name": "Doc · El juramento renovado",
+      "who": "Arthur «Doc»",
+      "campaign": "1387",
+      "rank": 10,
+      "title": "El juramento renovado",
+      "where": "posada",
+      "beats": [
+        {
+          "note": "En la posada, Arthur saca su botella de licor, la mira un momento y la tira al fuego. Las llamas suben de golpe.",
+          "say": "Se acabó. No la voy a necesitar más.",
+          "replies": [
+            {
+              "text": "Bien hecho, Doc.",
+              "bond": 1,
+              "then": "No me felicites todavía. Mañana me va a doler la cabeza."
+            },
+            {
+              "text": "¿Seguro? Luego no habrá dónde comprar otra.",
+              "bond": 0,
+              "then": "Por eso mismo. Así no hay tentación."
+            },
+            {
+              "text": "Qué desperdicio de licor.",
+              "bond": -1,
+              "then": "Para ti, desperdicio. Para mí, un peso menos.",
+              "mood": "enfadado"
+            }
+          ]
+        },
+        {
+          "note": "Se ajusta las gafas y se planta delante de ti, muy serio.",
+          "say": "Te juro que te mantendré con vida hasta que acabe este maldito invierno. Y esta vez lo juro sin haber bebido.",
+          "replies": [
+            {
+              "text": "Te creo.",
+              "bond": 1,
+              "then": "Hacía mucho que nadie me decía eso.",
+              "mood": "alegre"
+            },
+            {
+              "text": "Ya lo veremos.",
+              "bond": 0,
+              "then": "Me parece justo. Tú mira y verás."
+            },
+            {
+              "text": "¿No juraste lo mismo en la capital?",
+              "bond": -1,
+              "then": "Sí. Y fallé. Por eso lo vuelvo a jurar.",
+              "mood": "triste"
+            }
+          ]
+        },
+        {
+          "note": "Arthur se sienta junto al fuego, abre sus libros manchados de barro y se pone a repasar. Esta vez le crees."
+        }
+      ]
+    },
+    {
+      "id": "1387-isolda-2",
+      "kind": "escena",
+      "name": "Isolda · Seda y barro",
+      "who": "Isolda",
+      "campaign": "1387",
+      "rank": 2,
+      "title": "Seda y barro",
+      "where": "posada",
+      "beats": [
+        {
+          "note": "Detrás de la posada, Isolda, vestida de mozo de cuadra, se limpia la sangre de los nudillos en un cubo de agua.",
+          "say": "No me mires así. Empezó él. Bueno, empecé yo, pero se lo merecía.",
+          "replies": [
+            {
+              "text": "¿Te has hecho daño? Déjame ver.",
+              "bond": -1,
+              "then": "No soy de cristal. Aparta.",
+              "mood": "enfadado"
+            },
+            {
+              "text": "Buen golpe, por lo que veo.",
+              "bond": 1,
+              "then": "El mejor de la semana. Por fin alguien que no me riñe."
+            },
+            {
+              "text": "¿Quién era?",
+              "bond": 0,
+              "then": "Un borracho con la mano muy larga. Ahora la tiene más corta."
+            }
+          ]
+        },
+        {
+          "say": "Te lo digo yo antes de que te lo cuente otro: soy la hija bastarda de Lord Vane. Sí, de ese Vane.",
+          "replies": [
+            {
+              "text": "Me da igual de quién seas hija.",
+              "bond": 1,
+              "then": "Eso es justo lo que quería oír."
+            },
+            {
+              "text": "¿Y qué haces aquí, en el barro?",
+              "bond": 0,
+              "then": "Prefiero el barro a la seda. En el barro nadie finge."
+            },
+            {
+              "text": "Eso podría valer mucho dinero.",
+              "bond": -1,
+              "then": "Ya. Por eso no se lo cuento a cualquiera.",
+              "mood": "enfadado"
+            }
+          ]
+        },
+        {
+          "note": "Isolda se seca las manos en el pantalón y te mira fijamente.",
+          "say": "Voy contigo porque eres {el único|la única} que no me trata como si fuera de cristal. Pero no te fíes de mí. Yo no me fío de nadie."
+        }
+      ]
+    },
+    {
+      "id": "1387-isolda-4",
+      "kind": "escena",
+      "name": "Isolda · El anillo robado",
+      "who": "Isolda",
+      "campaign": "1387",
+      "rank": 4,
+      "title": "El anillo robado",
+      "where": "posada",
+      "beats": [
+        {
+          "note": "Al contar la paga, echas en falta unas monedas y un anillo de plata. Encuentras a Isolda en el establo de la posada, con el anillo en la mano.",
+          "say": "Vale, me has pillado. Lo cogí yo. Pero no es para mí.",
+          "replies": [
+            {
+              "text": "Explícate. Y rápido.",
+              "bond": 0,
+              "then": "Ya voy, ya voy."
+            },
+            {
+              "text": "Te escucho.",
+              "bond": 1,
+              "then": "Gracias por no gritar primero."
+            },
+            {
+              "text": "Devuélvelo ahora mismo, ladrona.",
+              "bond": -1,
+              "then": "Lo devuelvo. Pero escúchame antes.",
+              "mood": "enfadado"
+            }
+          ]
+        },
+        {
+          "say": "Hay un mensajero que sale hacia el sur. Si le pago bien, lleva una carta mía. Me faltaba dinero para el soborno.",
+          "replies": [
+            {
+              "text": "Pones tú lo que falta del soborno.",
+              "bond": 1,
+              "gold": -5,
+              "then": "¿En serio? Nadie había hecho algo así por mí.",
+              "mood": "alegre"
+            },
+            {
+              "text": "Lo descuento de tu paga, y en paz.",
+              "bond": 0,
+              "then": "Es justo. La carta tendrá que esperar.",
+              "mood": "triste"
+            },
+            {
+              "text": "Te castigo, y que se entere toda la escuadra.",
+              "bond": -1,
+              "then": "Muy bien. Que se enteren. Ya estoy acostumbrada.",
+              "mood": "enfadado"
+            }
+          ]
+        },
+        {
+          "note": "Isolda te devuelve el anillo.",
+          "say": "No lo volveré a hacer. Por lo menos, a ti no."
+        }
+      ]
+    },
+    {
+      "id": "1387-isolda-6",
+      "kind": "escena",
+      "name": "Isolda · Las sombras de su padre",
+      "who": "Isolda",
+      "campaign": "1387",
+      "rank": 6,
+      "title": "Las sombras de su padre",
+      "where": "camino",
+      "beats": [
+        {
+          "note": "Unos asesinos del castillo os asaltan en el camino. Vienen a por Isolda. Tras un combate corto y sucio, quedan tendidos en la nieve."
+        },
+        {
+          "note": "Isolda registra a uno y encuentra una orden con el sello de su padre. La lee dos veces y cae de rodillas.",
+          "say": "Borrar las pruebas, pone. La prueba soy yo. Mi propio padre me quiere muerta.",
+          "mood": "triste",
+          "replies": [
+            {
+              "text": "Tenemos que irnos. Puede que vengan más.",
+              "bond": 0,
+              "then": "Ya. Dame un momento. Solo uno."
+            },
+            {
+              "text": "Te sientas a su lado en la nieve, sin decir nada.",
+              "bond": 1,
+              "then": "Gracias por no decir nada. De verdad."
+            },
+            {
+              "text": "Ya sabías cómo era tu padre.",
+              "bond": -1,
+              "then": "Saberlo y leerlo no es lo mismo.",
+              "mood": "enfadado"
+            }
+          ]
+        },
+        {
+          "say": "Toda la vida esperando que me mirara. Y cuando por fin se acuerda de mí, es para esto.",
+          "replies": [
+            {
+              "text": "Ahora tienes una compañía que sí te mira.",
+              "bond": 1,
+              "then": "Una compañía de mercenarios. Vaya familia me he buscado."
+            },
+            {
+              "text": "Él se lo pierde.",
+              "bond": 0,
+              "then": "Eso se dice muy fácil."
+            }
+          ]
+        },
+        {
+          "note": "Isolda se seca la cara con la manga, rompe la orden en pedazos y se levanta. Todavía le tiemblan las piernas.",
+          "say": "Vámonos. Y no le cuentes a nadie que me has visto llorar."
+        }
+      ]
+    },
+    {
+      "id": "1387-isolda-8",
+      "kind": "escena",
+      "name": "Isolda · Enseñar a morder",
+      "who": "Isolda",
+      "campaign": "1387",
+      "rank": 8,
+      "title": "Enseñar a morder",
+      "where": "plaza",
+      "beats": [
+        {
+          "note": "Ya de noche, Isolda te busca con dos palos de entrenar en la mano.",
+          "say": "Enséñame el golpe sucio con el que desarmas. El de la muñeca. Te lo he visto hacer tres veces y no lo pillo.",
+          "replies": [
+            {
+              "text": "Vale. Ponte en guardia.",
+              "bond": 1,
+              "then": "Por fin. Y no me trates con cuidado."
+            },
+            {
+              "text": "Es tarde. Mejor mañana.",
+              "bond": 0,
+              "then": "Mañana estaremos igual de cansados. Ahora."
+            },
+            {
+              "text": "Ese golpe no es para ti.",
+              "bond": -1,
+              "then": "¿Por qué no? ¿Porque soy de cristal?",
+              "mood": "enfadado"
+            }
+          ]
+        },
+        {
+          "note": "Pasáis la noche entrenando en el barro. Isolda cae una y otra vez, se levanta cubierta de fango y vuelve a intentarlo.",
+          "say": "Otra vez. Hasta que me salga sin pensar.",
+          "replies": [
+            {
+              "text": "Le dejas ganar una vez para que se anime.",
+              "bond": -1,
+              "then": "Me has dejado ganar. No vuelvas a hacerlo nunca.",
+              "mood": "enfadado"
+            },
+            {
+              "text": "La corriges en cada golpe, sin darle tregua.",
+              "bond": 1,
+              "then": "Así. Así se aprende."
+            },
+            {
+              "text": "Propones un descanso.",
+              "bond": 0,
+              "then": "Descansa tú. Yo sigo."
+            }
+          ]
+        },
+        {
+          "note": "Al amanecer, Isolda te desarma, te tira al suelo de una zancadilla y se echa a reír. Luego te tiende la mano para levantarte.",
+          "say": "A partir de hoy, donde vayas tú, voy yo. Sin trampas.",
+          "mood": "alegre"
+        }
+      ]
+    },
+    {
+      "id": "1387-isolda-10",
+      "kind": "escena",
+      "name": "Isolda · El nombre propio",
+      "who": "Isolda",
+      "campaign": "1387",
+      "rank": 10,
+      "title": "El nombre propio",
+      "where": "camino",
+      "beats": [
+        {
+          "note": "Junto al río, Isolda saca de debajo de la camisa un colgante con el blasón de los Montesclaros. Lo sostiene por la cadena y lo mira un rato.",
+          "say": "Lo he llevado escondido toda la vida. Por si algún día mi padre me reconocía.",
+          "replies": [
+            {
+              "text": "¿Qué vas a hacer con él?",
+              "bond": 0,
+              "then": "Lo que tendría que haber hecho hace mucho."
+            },
+            {
+              "text": "Hagas lo que hagas, te apoyo.",
+              "bond": 1,
+              "then": "Ya lo sé. Por eso estás aquí."
+            },
+            {
+              "text": "Eso vale una buena bolsa de plata.",
+              "bond": -1,
+              "then": "No lo quiero vender. Quiero quitármelo de encima.",
+              "mood": "enfadado"
+            }
+          ]
+        },
+        {
+          "note": "Isolda lanza el colgante al río. Se hunde enseguida.",
+          "say": "Renuncio al apellido y a la herencia. No quiero nada de ese castillo.",
+          "replies": [
+            {
+              "text": "Ese apellido te pesaba demasiado.",
+              "bond": 1,
+              "then": "Más de lo que parecía."
+            },
+            {
+              "text": "¿Y cómo te llamo ahora?",
+              "bond": 1,
+              "then": "Ahora te lo digo."
+            },
+            {
+              "text": "¿Seguro? Ya no hay vuelta atrás.",
+              "bond": 0,
+              "then": "Por eso lo he tirado al río y no a un cajón."
+            }
+          ]
+        },
+        {
+          "note": "Isolda se sacude las manos, como quien acaba un trabajo, y se pone a tu lado.",
+          "say": "Solo Isolda. Y soy de tu compañía.",
+          "mood": "alegre"
+        }
+      ]
+    },
+    {
+      "id": "1387-grimm-2",
+      "kind": "escena",
+      "name": "Grimm · La bolsa al sur",
+      "who": "Grimm",
+      "campaign": "1387",
+      "rank": 2,
+      "title": "La bolsa al sur",
+      "where": "posada",
+      "beats": [
+        {
+          "note": "En la posada ves cómo Grimm le da a un mensajero una bolsa con todo el sueldo de la semana. El mensajero se la guarda y sale hacia el sur."
+        },
+        {
+          "note": "Grimm se da cuenta de que lo has visto. Se saca del pecho un dibujo arrugado: una mujer y tres niños. Te lo enseña y asiente.",
+          "say": "Mm.",
+          "replies": [
+            {
+              "text": "¿Todo el sueldo? ¿Y tú de qué vas a comer?",
+              "bond": 0,
+              "then": "(Se encoge de hombros y se da una palmada en la barriga.)"
+            },
+            {
+              "text": "Es tu familia, ¿verdad?",
+              "bond": 1,
+              "then": "(Grimm asiente despacio y se le escapa media sonrisa.)"
+            },
+            {
+              "text": "Con lo que te pago, no les llegará para mucho.",
+              "bond": -1,
+              "then": "(Grimm se guarda el dibujo y deja de mirarte.)",
+              "mood": "enfadado"
+            }
+          ]
+        },
+        {
+          "note": "Grimm se sienta a tu lado y se queda allí, en silencio, hasta que se apaga la vela."
+        }
+      ]
+    },
+    {
+      "id": "1387-grimm-4",
+      "kind": "escena",
+      "name": "Grimm · La provocación",
+      "who": "Grimm",
+      "campaign": "1387",
+      "rank": 4,
+      "title": "La provocación",
+      "where": "posada",
+      "beats": [
+        {
+          "note": "En la taberna, unos mercenarios borrachos se burlan de Grimm. Uno le quita el dibujo de su familia y escupe encima. Los demás se ríen."
+        },
+        {
+          "note": "Grimm aprieta los puños hasta que le crujen los nudillos, pero no se mueve. Si pelea, acabará preso y no podrá mandar dinero a los suyos.",
+          "say": "Mm.",
+          "mood": "enfadado",
+          "replies": [
+            {
+              "text": "Tumbas al borracho de un puñetazo y le quitas el dibujo.",
+              "bond": 1,
+              "then": "(Grimm te mira con los ojos muy abiertos. Luego asiente, despacio.)"
+            },
+            {
+              "text": "Recuperas el dibujo y sacas a Grimm de allí.",
+              "bond": 1,
+              "then": "(Grimm se deja llevar. En la puerta, te aprieta el hombro.)"
+            },
+            {
+              "text": "Te quedas en tu sitio. No es asunto tuyo.",
+              "bond": -1,
+              "then": "(Grimm recoge el dibujo del suelo y sale sin mirarte.)",
+              "mood": "triste"
+            }
+          ]
+        },
+        {
+          "note": "Ya fuera, en el frío, Grimm limpia el dibujo con la manga hasta que no queda rastro del escupitajo. Luego se lo guarda en el pecho."
+        }
+      ]
+    },
+    {
+      "id": "1387-grimm-6",
+      "kind": "escena",
+      "name": "Grimm · El hachazo salvador",
+      "who": "Grimm",
+      "campaign": "1387",
+      "rank": 6,
+      "title": "El hachazo salvador",
+      "where": "camino",
+      "beats": [
+        {
+          "note": "En una emboscada, alguien te sale por la espalda con el arma en alto. Grimm se pone en medio, se lleva el tajo en el hombro y tumba al atacante de un hachazo."
+        },
+        {
+          "note": "Cuando acaba la pelea, Grimm se aprieta el hombro, que sangra mucho. Señala la herida y te enseña dos dedos: esta semana quiere cobrar el doble.",
+          "say": "Mm.",
+          "replies": [
+            {
+              "text": "Primero te curo. Luego hablamos de dinero.",
+              "bond": 0,
+              "then": "(Se deja vendar, pero no baja los dos dedos.)"
+            },
+            {
+              "text": "Le pagas el doble sin discutir.",
+              "bond": 1,
+              "gold": -5,
+              "then": "(Grimm guarda las monedas y te da una palmada en la espalda que casi te tumba.)"
+            },
+            {
+              "text": "Es tu trabajo. Cobras lo de siempre.",
+              "bond": -1,
+              "then": "(Grimm baja la mano despacio y se da la vuelta.)",
+              "mood": "enfadado"
+            }
+          ]
+        },
+        {
+          "note": "Esa noche, junto al fuego, Grimm te mira de otra manera. No dice nada, pero se le nota el respeto en la cara."
+        }
+      ]
+    },
+    {
+      "id": "1387-grimm-8",
+      "kind": "escena",
+      "name": "Grimm · La primera palabra",
+      "who": "Grimm",
+      "campaign": "1387",
+      "rank": 8,
+      "title": "La primera palabra",
+      "where": "camino",
+      "beats": [
+        {
+          "note": "Junto a la lumbre, le coses a Grimm la herida del hombro. Él no se mueve, pero aprieta la mandíbula a cada puntada.",
+          "say": "Mm.",
+          "replies": [
+            {
+              "text": "Aguanta. Ya casi está.",
+              "bond": 1,
+              "then": "Mm."
+            },
+            {
+              "text": "Tienes el pellejo más duro que una bota.",
+              "bond": 0,
+              "then": "(Grimm resopla. Casi parece una risa.)"
+            },
+            {
+              "text": "Quieto, que no tengo toda la noche.",
+              "bond": -1,
+              "then": "(Grimm se pone rígido y mira al fuego.)",
+              "mood": "enfadado"
+            }
+          ]
+        },
+        {
+          "note": "Das la última puntada y le pasas la bota de vino. Grimm bebe un trago largo, se limpia la boca y te mira. Luego habla, con una voz grave y profunda.",
+          "say": "Gracias, {jefe|jefa}.",
+          "replies": [
+            {
+              "text": "Vaya. Así que sabes hablar.",
+              "bond": 0,
+              "then": "Poco."
+            },
+            {
+              "text": "Cuando quieras, Grimm.",
+              "bond": 1,
+              "then": "(Grimm asiente y te devuelve la bota.)"
+            },
+            {
+              "text": "¿Tanto silencio para esto?",
+              "bond": -1,
+              "then": "(Grimm se encoge de hombros y no vuelve a abrir la boca.)"
+            }
+          ]
+        },
+        {
+          "note": "Es la primera vez que le oyes hablar. Os quedáis junto al fuego hasta tarde, sin decir nada más, y esta vez el silencio es cómodo."
+        }
+      ]
+    },
+    {
+      "id": "1387-grimm-10",
+      "kind": "escena",
+      "name": "Grimm · El muro de hierro",
+      "who": "Grimm",
+      "campaign": "1387",
+      "rank": 10,
+      "title": "El muro de hierro",
+      "where": "camino",
+      "beats": [
+        {
+          "note": "Grimm te pone en la mano una carta arrugada. La carta cuenta que su familia ha llegado a la capital y está a salvo. Ya no necesita tu plata para mantenerlos.",
+          "say": "Mm.",
+          "mood": "alegre",
+          "replies": [
+            {
+              "text": "Me alegro mucho, Grimm.",
+              "bond": 1,
+              "then": "(Grimm sonríe. Es una sonrisa enorme, como él.)"
+            },
+            {
+              "text": "Entonces, ¿te vas con ellos?",
+              "bond": 0,
+              "then": "(Grimm niega con la cabeza.)"
+            },
+            {
+              "text": "Bien. Entonces ya no te hace falta cobrar tanto.",
+              "bond": -1,
+              "then": "(Grimm resopla y te quita la carta de la mano.)",
+              "mood": "enfadado"
+            }
+          ]
+        },
+        {
+          "note": "Grimm dobla la carta, se la guarda en el pecho, junto al dibujo, y se pone a tu lado en la fila.",
+          "say": "Hasta el paso.",
+          "replies": [
+            {
+              "text": "Ya no tienes por qué quedarte.",
+              "bond": 0,
+              "then": "(Grimm no contesta. Tampoco se mueve de tu lado.)"
+            },
+            {
+              "text": "Hasta el paso, Grimm.",
+              "bond": 1,
+              "then": "Mm."
+            }
+          ]
+        },
+        {
+          "note": "Es la frase más larga que le has oído. Hasta que se abra el paso del sur, Grimm no se va a mover de tu lado."
+        }
+      ]
+    }
+  ]
+}

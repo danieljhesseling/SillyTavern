@@ -33,6 +33,7 @@ import { normalizeElevation } from '../board/heights.js';
 import { normalizeBoardGrid } from '../board/map-image.js';
 import { OBJECTIVE_FIELDS } from './campaign-pack-schema.js';
 import { normalizePack } from './campaign-pack.js';
+import { readPlaces } from './town.js';
 import { spellById, magicInData } from '../rules/grimoire.js';
 
 /**
@@ -323,6 +324,7 @@ export function buildImportPlan(raw, options = {}) {
     for (const place of pack.locations) {
         const name = text(place.name);
         if (!name || locations.has(name)) continue;
+        const inside = readPlaces(place.places, pack.npcs ?? []);
         locations.set(name, {
             name,
             description: text(place.description) || text(pack.world.synopsis),
@@ -337,6 +339,9 @@ export function buildImportPlan(raw, options = {}) {
             controllingFaction: text(place.factionName),
             biome: text(place.biome),
             services: (Array.isArray(place.services) ? place.services : []).map(text).filter(Boolean),
+            // J3.11: los sitios de dentro del pueblo, si el paquete los escribe. Quien atiende
+            // cada uno va por nombre: el mundo no guarda los ids de la gente.
+            ...(inside.length > 0 ? { places: inside } : {}),
             // Los caminos, con lo que cuesta andarlos. Es lo que lee el viaje.
             routes: (Array.isArray(place.routes) ? place.routes : [])
                 .filter((/** @type {any} */ route) => text(route?.to))

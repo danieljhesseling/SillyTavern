@@ -33,6 +33,9 @@ import { holdDuringCombat } from '../../combat/combat-hold.js';
  * @property {boolean} [hasWorldMap] Whether the world has a map to explore.
  * @property {number} [placeCount] Cuantas localidades tiene el mundo: con una sola, no hay
  *           a donde viajar y explorar no es una escena, es un cartel.
+ * @property {number} [townPlaces] Cuántos sitios tiene el pueblo donde está el grupo (la
+ *           herrería, la posada, el gremio…): con alguno, aunque no haya a donde viajar, hay
+ *           a donde ir (J3.11).
  */
 
 /**
@@ -96,8 +99,9 @@ export function isSceneAvailable(scene, situation) {
             // mirando. Abandonar sigue teniendo su boton.
             if (state.combatActive) return false;
             // Y explorar pide **a donde ir**. Estar en un sitio no es explorar: con una
-            // sola localidad y sin mapa, esa pestaña abria un mapa de un punto.
-            return Boolean(state.hasWorldMap) || Number(state.placeCount) > 1;
+            // sola localidad y sin mapa, esa pestaña abria un mapa de un punto. Los sitios
+            // del pueblo cuentan (J3.11): en el gremio, la herrería y la posada son a donde ir.
+            return Boolean(state.hasWorldMap) || Number(state.placeCount) > 1 || Number(state.townPlaces) > 0;
         case SCENE.DIALOGUE:
             // The chat is always there to talk to.
             return true;

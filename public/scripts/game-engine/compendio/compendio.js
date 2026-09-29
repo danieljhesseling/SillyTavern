@@ -25,13 +25,15 @@
 
 /**
  * Las baterias, en el orden en que el roadmap las cuenta. Las frases del narrador del motor
- * (Z1 de ROADMAP_SIN_TOKENS) van las ultimas: no las lee ningun generador de mundo.
+ * (Z1 de ROADMAP_SIN_TOKENS) van las ultimas: no las lee ningun generador de mundo. Y detras,
+ * lo que dice tu gente (J14): las charlas cortas y las escenas de quedada.
  */
 export const DOMAINS = [
     'nombres', 'materiales', 'armas', 'armaduras', 'trastos', 'propiedades', 'habilidades',
     'razas', 'clases', 'conjuros',
     'bestiario', 'personas', 'sitios', 'misiones', 'facciones', 'mundo', 'estados',
     'frases', 'sucesos',
+    'charlas', 'quedadas',
 ];
 
 /** Cuantas filas recientes se recuerdan por dominio, para no repetir. */

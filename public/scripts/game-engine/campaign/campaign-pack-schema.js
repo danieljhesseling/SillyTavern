@@ -20,6 +20,7 @@ import { OBJECTIVE_TYPES } from './scenarios.js';
 import { ASCII_TERRAIN } from '../board/terrain.js';
 import { getProfileOptions } from '../combat/enemy-ai.js';
 import { SPECIES as PET_SPECIES } from './pet.js';
+import { PLACE_KINDS } from './town.js';
 
 /** Schema version, so a pack can say which contract it was written against. */
 export const CAMPAIGN_PACK_VERSION = 1;
@@ -311,6 +312,22 @@ function buildSectionSchemas() {
                 region: { type: 'string', description: 'La comarca o zona a la que pertenece.' },
                 factionName: { type: 'string', description: 'La facción que la controla, si alguna.' },
                 hidden: { type: 'boolean', description: 'Si empieza escondida: no se puede ir hasta que un hito del hilo la revela.' },
+                places: {
+                    type: 'array',
+                    description: 'Opcional, para pueblos y ciudades: los sitios de dentro (la herrería, la posada, '
+                        + 'el templo…), en el orden en que se enseñan. Sin la lista salen de sus servicios, cada uno con '
+                        + 'quien tenga ese servicio. Lo que se puede hacer en cada sitio lo pone el juego.',
+                    items: {
+                        type: 'object',
+                        required: ['kind'],
+                        properties: {
+                            kind: { type: 'string', enum: Object.keys(PLACE_KINDS), description: 'Qué clase de sitio es.' },
+                            name: { type: 'string', description: 'Su nombre aquí: «El Agua Azul». Sin él, el de su clase: «La posada».' },
+                            keeper: { type: 'string', description: 'Quién lo atiende: el nombre de alguien de la gente del paquete. Sin él, el primero de aquí con ese servicio.' },
+                            description: { type: 'string', description: 'Una línea, si hace falta.' },
+                        },
+                    },
+                },
             },
         },
     };

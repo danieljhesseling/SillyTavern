@@ -18,6 +18,13 @@
       "description": "Un puerto pequeño, con un muelle de piedra y barcas de pesca. En la plaza está la Casa del Gremio con su tablón de campañas, y alrededor hay un mercado, una herrería y una capilla.",
       "biome": "urbano",
       "services": ["posada", "tienda", "templo", "herreria"],
+      "places": [
+        { "kind": "herreria", "keeper": "ramiro" },
+        { "kind": "posada", "name": "La taberna", "keeper": "tomas" },
+        { "kind": "tienda", "keeper": "marisa" },
+        { "kind": "templo", "name": "La capilla", "keeper": "elvira" },
+        { "kind": "gremio", "name": "La Casa del Gremio", "keeper": "brunilda" }
+      ],
       "routes": []
     }
   ],
@@ -31,7 +38,7 @@
       "knows": "Qué campañas hay en el tablón y qué se sabe de cada una.",
       "secret": "",
       "voice": "Seca y rápida. Te trata de tú desde el primer día.",
-      "service": ""
+      "service": "gremio"
     },
     {
       "id": "tomas",
@@ -81,6 +88,15 @@
   "confidants": [],
   "bestiary": [
     {
+      "name": "Ratero del muelle",
+      "hp": 5,
+      "armorClass": 11,
+      "cr": 0.125,
+      "profile": "aggressive",
+      "attackRangeFeet": 5,
+      "description": "Un ratero del puerto, flaco y rápido, con un cuchillo de pescador. Roba bolsas en el muelle cuando llegan las barcas."
+    },
+    {
       "name": "Rata de bodega",
       "hp": 6,
       "armorClass": 10,
@@ -92,6 +108,25 @@
   ],
   "items": [],
   "boards": [
+    {
+      "id": "muelle_puerto_alba",
+      "name": "El muelle de Puerto Alba",
+      "locationName": "Puerto Alba",
+      "map": [
+        "##############",
+        "#wwwwwwwwwwww#",
+        "#www....wwwww#",
+        "#T....c....Tw#",
+        "#...........T#",
+        "#..c.........#",
+        "#T......c....#",
+        "##############"
+      ],
+      "partyStart": [{ "x": 5, "y": 6 }, { "x": 6, "y": 6 }, { "x": 7, "y": 6 }, { "x": 4, "y": 6 }],
+      "enemies": [
+        { "name": "Ratero del muelle", "x": 5, "y": 2 }
+      ]
+    },
     {
       "id": "bodega_gremio",
       "name": "La bodega del gremio",
@@ -114,6 +149,14 @@
     }
   ],
   "quests": [
+    {
+      "id": "q_ratero_muelle",
+      "name": "El ratero del muelle",
+      "act": 1,
+      "description": "Un ratero le ha quitado la bolsa a Tomás y se ha metido en el embarcadero, sin salida. Hay que pararlo.",
+      "boardId": "muelle_puerto_alba",
+      "objectives": [{ "type": "eliminate_all", "label": "Parar al ratero" }]
+    },
     {
       "id": "q_prueba_gremio",
       "name": "La prueba del gremio",
@@ -177,12 +220,46 @@
     "title": "El gremio de Puerto Alba",
     "milestones": [
       {
+        "id": "el-muelle",
+        "act": 1,
+        "prologue": true,
+        "title": "El ratero del muelle",
+        "hint": "Para al ratero. Pulsa «Iniciar combate»; en tu turno, acércate a él y atácale.",
+        "scene": "La barca del correo te deja en el muelle de Puerto Alba al caer la tarde, {cansado|cansada} del viaje. Huele a sal y a pescado frito. De pronto, un grito: «¡Al ladrón!». Un ratero le ha quitado la bolsa a Tomás, el posadero, y se ha metido en el embarcadero. No tiene por dónde salir, y saca un cuchillo.",
+        "opens": { "kind": "start" },
+        "asks": { "kind": "win", "board": "El muelle de Puerto Alba" },
+        "changes": { "reveal": [], "open": [], "standing": {}, "ending": "", "endingBy": {} }
+      },
+      {
+        "id": "la-charla",
+        "act": 1,
+        "prologue": true,
+        "title": "Una charla con Tomás",
+        "hint": "Pulsa «Hablar con Tomás» y pregúntale qué se cuenta en el puerto.",
+        "scene": "El ratero suelta la bolsa, y dos pescadores se lo llevan a rastras hacia la guardia. Tomás, un hombre redondo con el delantal lleno de manchas, recoge sus monedas del suelo. «¡Gracias! Soy Tomás, el de la posada del gremio. Te debo una. Pregúntame lo que quieras: por mi barra pasa todo el puerto.»",
+        "opens": { "kind": "after", "milestone": "el-muelle" },
+        "asks": { "kind": "talk", "npc": "Tomás" },
+        "changes": { "reveal": [], "open": [], "standing": {}, "ending": "", "endingBy": {} }
+      },
+      {
+        "id": "el-gremio",
+        "act": 1,
+        "prologue": true,
+        "title": "La Casa del Gremio",
+        "hint": "Pulsa «Hablar con Brunilda»: es la maestra del gremio.",
+        "scene": "Mientras habláis, llega una mujer de pelo gris y corto, con una cicatriz en la barbilla: Brunilda, la maestra del gremio. «Así que tú has parado al ratero. Ven conmigo.» Te lleva a la plaza, a la Casa del Gremio: una posada grande con un tablón en el salón. Ahí se apuntan las compañías y se reparten las campañas. Se vuelve con oro, aunque no siempre vuelven todos.",
+        "opens": { "kind": "after", "milestone": "la-charla" },
+        "asks": { "kind": "talk", "npc": "Brunilda" },
+        "changes": { "reveal": [], "open": [], "standing": {}, "ending": "", "endingBy": {} }
+      },
+      {
         "id": "la-prueba",
         "act": 1,
+        "prologue": true,
         "title": "La prueba del gremio",
-        "hint": "Acaba con las ratas de la bodega. Pulsa «Iniciar combate» cuando estés {listo|lista}.",
-        "scene": "Llegas a Puerto Alba con lo puesto y una bolsa de monedas. En la plaza está la Casa del Gremio. Brunilda, la maestra del gremio, te mira de arriba abajo. «¿Quieres entrar? Baja a la bodega: hay ratas entre los barriles. Si subes {entero|entera}, eres de los nuestros.»",
-        "opens": { "kind": "start" },
+        "hint": "Ve a la bodega: «Salir del tablero» y luego «Entrar en La bodega del gremio». Allí, pulsa «Iniciar combate» cuando estés {listo|lista}.",
+        "scene": "Brunilda te mira de arriba abajo, como quien calcula lo que aguanta una cuerda. «Parar a un ratero lo hace cualquiera. ¿Quieres ser de los nuestros? Baja a la bodega: hay ratas entre los barriles. Si subes {entero|entera}, te apunto en el libro.»",
+        "opens": { "kind": "after", "milestone": "el-gremio" },
         "asks": { "kind": "win", "board": "La bodega del gremio" },
         "changes": { "reveal": [], "open": ["el-tablon"], "standing": {}, "ending": "", "endingBy": {} }
       },

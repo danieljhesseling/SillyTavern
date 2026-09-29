@@ -30,6 +30,8 @@ import { findUnreachable, describeReachability } from '../board/reachability.js'
 import { normalizeBoardGrid } from '../board/map-image.js';
 import { validateZones } from '../board/zones.js';
 import { normalizeElevation } from '../board/heights.js';
+import { checkDialogues } from './dialogues.js';
+import { PLACE_KINDS } from './town.js';
 
 /**
  * @typedef {Object} Issue
@@ -182,6 +184,8 @@ export function normalizePack(raw) {
             rumors: list(source.rumors),
             contracts: list(source.contracts),
             abilities: list(source.abilities),
+            // J8.1: las charlas con ramas. Se comprueban abajo, con `checkDialogues`.
+            dialogues: list(source.dialogues),
         },
         repairs,
     };
@@ -427,6 +431,28 @@ export function validatePack(raw) {
                 message: `"${faction}" no esta entre las facciones del paquete.`,
             });
         }
+
+        // J3.11: los sitios de dentro. Uno de una clase que no existe no sale, y quien lo
+        // atiende tiene que ser alguien de la gente del paquete, o no lo atiende nadie.
+        if (location.places !== undefined && !Array.isArray(location.places)) {
+            warnings.push({ path: `locations[${index}].places`, message: 'Tiene que ser una lista; se ignora.' });
+        }
+        (Array.isArray(location.places) ? location.places : []).forEach((/** @type {any} */ place, /** @type {number} */ at) => {
+            const kind = text(place?.kind);
+            if (!(kind in PLACE_KINDS)) {
+                warnings.push({
+                    path: `locations[${index}].places[${at}].kind`,
+                    message: `"${kind}" no es una clase de sitio; no saldrá. Las que hay: ${Object.keys(PLACE_KINDS).join(', ')}.`,
+                });
+            }
+            const keeper = text(place?.keeper);
+            if (keeper && !pack.npcs.some((/** @type {any} */ n) => [text(n?.id), text(n?.name)].some(v => v.toLowerCase() === keeper.toLowerCase()))) {
+                warnings.push({
+                    path: `locations[${index}].places[${at}].keeper`,
+                    message: `"${keeper}" no está en la gente del paquete (\`npcs\`): el sitio saldrá sin nadie que lo atienda.`,
+                });
+            }
+        });
     });
 
     const bestiary = new Set(pack.bestiary.map((/** @type {any} */ e) => text(e.name).toLowerCase()).filter(Boolean));
@@ -602,6 +628,19 @@ export function validatePack(raw) {
         if (!usedBoards.has(id)) {
             warnings.push({ path: `boards.${id}`, message: `Ninguna mision lleva a "${id}": se puede entrar, pero nada te manda.` });
         }
+    }
+
+    // J8.1: las charlas con ramas. Lo que un esquema no ve: a qué nudo lleva cada opción, a
+    // qué nudos no se llega nunca, y si la persona, el hito, el rumor o el objeto existen.
+    if (raw && typeof raw === 'object' && raw.dialogues !== undefined) {
+        const talks = checkDialogues(raw.dialogues, {
+            people: [...pack.npcs, ...pack.confidants].map((/** @type {any} */ p) => text(p?.name)).filter(Boolean),
+            milestones: Array.isArray(pack.plot?.milestones) ? pack.plot.milestones.map((/** @type {any} */ m) => text(m?.id)).filter(Boolean) : null,
+            rumors: pack.rumors.map((/** @type {any} */ r) => text(r?.id)).filter(Boolean),
+            items: pack.items.map((/** @type {any} */ i) => text(i?.name)).filter(Boolean),
+        });
+        errors.push(...talks.errors);
+        warnings.push(...talks.warnings);
     }
 
     // Cuantos sitios tendra el mundo: los declarados, mas los que solo existen porque

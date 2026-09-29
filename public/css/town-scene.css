@@ -1,0 +1,363 @@
+/* ================================================================
+   J3.11 · La pantalla del pueblo (ui/shell/town-scene.js).
+
+   En la Exploración: arriba, un selector de sitios (la herrería, la posada, el gremio…)
+   con el dibujo de cada uno y quien lo atiende; al entrar en uno, su escena como en la
+   novela visual: el sitio de fondo, quien atiende de pie, su frase y lo que se hace ahí.
+   Las variables de color son las de game-shell.css.
+   ================================================================ */
+
+/* ---- El selector de sitios ---- */
+.gs-town {
+    margin-bottom: 26px;
+}
+
+.gs-town-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+    gap: 14px;
+}
+
+.gs-town-place {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.03);
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.gs-town-place:hover,
+.gs-town-place:focus-visible {
+    outline: none;
+    transform: translateY(-2px);
+    border-color: var(--gs-accent-gold);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+/* El sitio en pixel (320×180), con quien lo atiende de pie a la derecha. */
+.gs-town-place-art {
+    position: relative;
+    display: block;
+    height: 124px;
+    background-image:
+        linear-gradient(to top, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0) 55%),
+        var(--gs-town-art, none);
+    background-size: cover;
+    background-position: center;
+    image-rendering: pixelated;
+}
+
+.gs-town-place-bare {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.4em;
+    color: var(--gs-accent-gold);
+    opacity: 0.7;
+    background: rgba(226, 194, 122, 0.06);
+}
+
+.gs-town-place-face {
+    position: absolute;
+    right: 8px;
+    bottom: 0;
+    height: 104px;
+    width: auto;
+    image-rendering: pixelated;
+    filter: drop-shadow(0 0 8px rgba(0, 0, 0, 0.9));
+}
+
+.gs-town-place-face-none {
+    position: absolute;
+    right: 18px;
+    bottom: 10px;
+    font-size: 2.4em;
+    color: rgba(0, 0, 0, 0.75);
+}
+
+.gs-town-place-body {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 10px 12px 12px;
+}
+
+.gs-town-place-name {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: bold;
+}
+
+.gs-town-place-name > i {
+    color: var(--gs-accent-gold);
+}
+
+.gs-town-place-who {
+    font-size: 0.85em;
+    opacity: 0.75;
+}
+
+/* Lo del gremio que no es de ningún sitio: volver a él desde una campaña. */
+.gs-town-extra {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+/* ---- Dentro de un sitio: la escena ---- */
+.gs-town-scene {
+    position: relative;
+    isolation: isolate;
+    display: grid;
+    grid-template-rows: auto minmax(140px, 1fr) auto;
+    min-height: 100%;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 12px 16px 16px;
+    box-sizing: border-box;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.gs-town-backdrop {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background-image:
+        linear-gradient(to top, rgba(0, 0, 0, 0.92) 0%, rgba(0, 0, 0, 0.45) 50%, rgba(0, 0, 0, 0.25) 100%),
+        var(--gs-town-art, none);
+    background-color: var(--gs-bg-dark);
+    background-size: cover;
+    background-position: center;
+    image-rendering: pixelated;
+}
+
+.gs-town-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+
+.gs-town-back,
+.gs-town-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 20px;
+    background: rgba(0, 0, 0, 0.55);
+    color: var(--SmartThemeBodyColor, #ddd);
+    font: inherit;
+    font-size: 0.85em;
+    cursor: pointer;
+}
+
+.gs-town-back {
+    border-color: var(--gs-gold-line);
+    font-weight: bold;
+}
+
+.gs-town-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.gs-town-tab > i {
+    opacity: 0.7;
+}
+
+.gs-town-back:hover,
+.gs-town-back:focus-visible,
+.gs-town-tab:hover,
+.gs-town-tab:focus-visible,
+.gs-town-tab.active {
+    outline: none;
+    border-color: var(--gs-accent-gold);
+    color: var(--gs-accent-gold);
+}
+
+.gs-town-tab.active {
+    background: rgba(226, 194, 122, 0.15);
+}
+
+/* Quien atiende: grande, a la izquierda, de pie sobre la caja (bustos de 128×160). */
+.gs-town-stage {
+    display: flex;
+    align-items: flex-end;
+    min-height: 0;
+    padding-left: 4%;
+}
+
+.gs-town-portrait {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    width: min(300px, 34%);
+    height: min(100%, 380px);
+    min-height: 140px;
+    background: radial-gradient(ellipse at 50% 100%, rgba(226, 194, 122, 0.18), transparent 70%);
+}
+
+.gs-town-portrait-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    object-position: bottom center;
+    image-rendering: pixelated;
+    filter: drop-shadow(0 0 18px rgba(0, 0, 0, 0.9));
+}
+
+.gs-town-portrait-none,
+.gs-town-portrait-img-none {
+    font-size: min(9rem, 20vh);
+    color: rgba(0, 0, 0, 0.8);
+    text-shadow: 0 0 20px rgba(226, 194, 122, 0.2);
+}
+
+/* La caja, como la de la novela visual: ancha, con la placa encima. */
+.gs-town-box {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+    padding: 1.7rem 2rem 1.2rem;
+    background: var(--gs-bg-panel);
+    border: 1px solid var(--gs-gold-line);
+    border-radius: 12px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+.gs-town-plate {
+    position: absolute;
+    top: -20px;
+    left: 36px;
+    padding: 0.35rem 1.6rem;
+    font-weight: bold;
+    font-size: 1.05rem;
+    letter-spacing: 1px;
+    color: var(--gs-accent-gold);
+    background: linear-gradient(135deg, #2a2218, #181410);
+    border: 1px solid var(--gs-accent-gold);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+}
+
+.gs-town-where {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.8em;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    opacity: 0.7;
+}
+
+.gs-town-where > i {
+    color: var(--gs-accent-gold);
+}
+
+.gs-town-line {
+    margin: 0;
+    font-family: Georgia, "Palatino Linotype", serif;
+    font-size: calc(1.15rem * var(--gs-text-scale, 1));
+    line-height: 1.55;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.gs-town-desc {
+    margin: 0;
+    font-size: 0.9em;
+    font-style: italic;
+    opacity: 0.75;
+}
+
+/* Lo que se hace aquí: en dos columnas, y con scroll si es mucho (la tienda). */
+.gs-town-acts {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 6px 10px;
+    max-height: 34vh;
+    overflow-y: auto;
+    padding-top: 0.8rem;
+    border-top: 1px dashed rgba(214, 180, 106, 0.2);
+}
+
+.gs-town-group {
+    grid-column: 1 / -1;
+    margin-top: 4px;
+    font-size: 0.75em;
+    font-weight: bold;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    opacity: 0.6;
+}
+
+.gs-town-act {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.35);
+    color: var(--SmartThemeBodyColor, #ddd);
+    font: inherit;
+    font-size: 0.92em;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.gs-town-extra .gs-town-act {
+    width: auto;
+}
+
+.gs-town-act > i {
+    flex: none;
+    opacity: 0.7;
+}
+
+.gs-town-act > .gs-btn-label {
+    flex: 1 1 auto;
+}
+
+.gs-town-act:hover:not(:disabled),
+.gs-town-act:focus-visible {
+    outline: none;
+    border-color: var(--gs-accent-gold);
+    background: rgba(226, 194, 122, 0.1);
+    color: var(--gs-accent-gold);
+}
+
+.gs-town-act:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
+@media (max-width: 900px) {
+    .gs-town-stage {
+        display: none;
+    }
+
+    .gs-town-scene {
+        grid-template-rows: auto auto;
+        gap: 30px;
+    }
+
+    .gs-town-box {
+        padding: 1.6rem 1rem 1rem;
+    }
+}
