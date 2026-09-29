@@ -84,10 +84,12 @@ import {
     getActiveBoardContext, postCombatNarration, tellMoment, postForModel, currentSurvival, survivalNow,
     collectedHere, explodeBarrels, awardEncounterLoot, noteDeed, notePlot, hereLocation, raiseFame, recordBoardWon,
     countStat, showTip, tellBondScene, rememberTogether, bark, dropBoardKey, judgeDecision, partyMorale,
-    getCampaignCalendar, getCampaignBonds, saveCampaignState, markLocationComplete, handlePlayerCombatMove,
-    boardVisibility, performManeuver, handlePlayerCombatAttack, endPlayerCombatTurn, lastCompendium,
-    renderLocationMapsPreview,
+    getCampaignCalendar, getCampaignBonds, saveCampaignState, markLocationComplete, boardVisibility,
+    lastCompendium, renderLocationMapsPreview,
 } from './main.js';
+import {
+    handlePlayerCombatMove, performManeuver, handlePlayerCombatAttack, endPlayerCombatTurn,
+} from './player-actions.js';
 
 /**
  * @param {string} name
