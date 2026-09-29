@@ -1,0 +1,146 @@
+/* ================================================================
+   J8.4 · La conversación en su ventana (public/scripts/game-engine/ui/dialogue-window.js).
+   El marco es el de la quedada (`qd-*`, quedadas.css): aquí solo lo propio de una charla con
+   ramas. Las opciones, en lista y numeradas; lo que depende de quién eres, con su etiqueta;
+   lo cerrado, apagado y con el porqué; la tirada, con su habilidad y su CD.
+   Los colores son los del juego (`--gs-*`, game-shell.css). Todo cuelga de .dw-dialog.
+   ================================================================ */
+
+/* Las opciones, una debajo de otra: se leen como frases, no como botones. */
+.dw-dialog .dw-options {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.35rem;
+    max-height: 50vh;
+    overflow-y: auto;
+}
+
+/* Las opciones mandan: el retrato de arriba encoge antes que la lista. */
+.dw-dialog .dw-text {
+    max-height: 24vh;
+}
+
+.dw-dialog .dw-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    width: 100%;
+    padding: 0.35rem 0.8rem;
+    border-radius: 8px;
+    line-height: 1.35;
+}
+
+.dw-dialog .dw-option .qd-key {
+    flex: 0 0 auto;
+    margin-top: 0.05rem;
+}
+
+.dw-dialog .dw-option .qd-key:empty {
+    visibility: hidden;
+}
+
+.dw-body {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+}
+
+/* «[Enano]», «[Soldado]»: lo que solo le sale a quien encaja. */
+.dw-tag {
+    margin-right: 0.45rem;
+    font-weight: bold;
+    color: var(--gs-accent-gold, #e2c27a);
+}
+
+/* La tirada: qué habilidad y contra cuánto. */
+.dw-check {
+    flex: 0 0 auto;
+    align-self: center;
+    padding: 0.1rem 0.5rem;
+    font-size: 0.78rem;
+    white-space: nowrap;
+    color: var(--SmartThemeQuoteColor, #c9b894);
+    border: 1px solid var(--gs-gold-line, rgba(214, 180, 106, 0.4));
+    border-radius: 4px;
+}
+
+.dw-ends {
+    flex: 0 0 auto;
+    align-self: center;
+    font-size: 0.8rem;
+    opacity: 0.6;
+}
+
+/* Cerrada: se ve, apagada, y dice qué falta. Pulsarla no hace nada. */
+.dw-dialog .dw-option.dw-locked {
+    cursor: not-allowed;
+    opacity: 0.55;
+    border-style: dashed;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.dw-dialog .dw-option.dw-locked:hover,
+.dw-dialog .dw-option.dw-locked:focus-visible {
+    background: rgba(0, 0, 0, 0.2);
+    border-color: var(--gs-gold-line, rgba(214, 180, 106, 0.4));
+}
+
+.dw-why {
+    font-size: 0.78rem;
+    font-style: italic;
+    color: var(--SmartThemeQuoteColor, #c9b894);
+}
+
+.dw-attitude {
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+/* La tirada en la caja: lo que salió, sin discutirse. */
+.dw-roll {
+    font-family: system-ui, sans-serif;
+    font-size: 0.9rem;
+    color: var(--gs-accent-gold, #e2c27a);
+}
+
+.dw-dialog .dw-note {
+    font-size: 0.95rem;
+}
+
+/* Abajo: lo de fuera de la charla (sonsacar, convencer…) y despedirse. */
+.dw-foot {
+    justify-content: flex-start;
+    align-items: center;
+    gap: 1rem;
+}
+
+.dw-foot .dw-leave {
+    margin-left: auto;
+}
+
+.dw-extra {
+    padding: 0;
+    font-size: 0.75rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--SmartThemeQuoteColor, #b9a98a);
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+
+.dw-extra:hover {
+    color: var(--gs-accent-gold, #e2c27a);
+}
+
+@media (max-width: 700px) {
+    .dw-dialog .qd-portrait {
+        display: none;
+    }
+
+    .dw-check {
+        white-space: normal;
+    }
+}

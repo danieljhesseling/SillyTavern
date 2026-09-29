@@ -64,6 +64,8 @@ const MAX_CHIPS = 7;
  * @param {boolean} [input.stairs] Si alguien está en una escalera que baja (idea 75). Va delante:
  *   es a donde se iba.
  * @param {string[]} [input.thread] Los tableros de aquí que pide la historia ahora: sus fichas van delante.
+ * @param {string} [input.board] El tablero abierto, si se sabe cuál. Con él, el que pide la historia
+ *   se ofrece también desde otro tablero de aquí (J2.1: del muelle a la bodega, sin salir antes).
  * @param {string} [input.fight] Los que esperan en el tablero para pelear, dicho corto («Rata de bodega x3»). La
  *   ficha de empezar va delante: en la escena de diálogo el botón del tablero no se ve.
  * @param {Array<{id: string, label: string, icon: string, command: string}>} [input.hub] El gremio (J4): el tablón de
@@ -74,6 +76,7 @@ export function buildActionChips({
     fighting = false, hasBoard = false, doors = [], companions = [], mentioned = [],
     places = [], boards = [], hurt = false, hitDice = 0, rumors = 0, explore = false, proposals = [], requests = [], forage = false,
     people = [], prisoners = [], limit = MAX_CHIPS, typed = [], replies = [], extras = [], camp = false, stairs = false, hub = [], fight = '', thread = [],
+    board = '',
 } = {}) {
     if (fighting) return [];
 
@@ -110,7 +113,10 @@ export function buildActionChips({
     // al final, como siempre; este, con dos cosas que mirar y un descanso, quedaba escondido
     // tras «+N más» (la Mansión del Burgomaestre, en Strahd).
     const asked = new Set(Array.isArray(thread) ? thread : []);
-    const goals = hasBoard ? [] : boards.filter(b => asked.has(b.name)).slice(0, 2);
+    // J2.1: desde otro tablero también, si se sabe cuál es el abierto: `/enter` cambia de uno a
+    // otro sin salir. Sin saberlo, solo fuera de los tableros, como siempre.
+    const open = String(board ?? '').trim();
+    const goals = hasBoard && !open ? [] : boards.filter(b => asked.has(b.name) && b.name !== open).slice(0, 2);
     for (const goal of goals) {
         chips.push({ id: `enter:${goal.name}`, label: `Entrar en ${goal.name}`, icon: 'fa-chess-board', source: 'motor', command: `/enter ${goal.name}` });
     }

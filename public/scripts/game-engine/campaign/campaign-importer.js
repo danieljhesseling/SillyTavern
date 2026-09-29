@@ -493,6 +493,8 @@ export function buildImportPlan(raw, options = {}) {
                 id: text(r.id), by: text(r.by), where: text(r.where), text: text(r.text),
                 truth: text(r.truth), leadsTo: text(r.leadsTo),
             })),
+            // J8.1: las charlas con ramas, tal cual: se leen al jugarlas (`readDialogues`).
+            ...(pack.dialogues.length > 0 ? { dialogues: pack.dialogues } : {}),
             // Los encargos del tablon que trae el mundo. El tablero de cada uno se guarda
             // por nombre, que es como lo encuentra el juego.
             writtenContracts: (pack.contracts ?? []).filter((/** @type {any} */ c) => text(c?.id) && text(c?.title))

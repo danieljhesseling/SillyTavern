@@ -42,6 +42,22 @@ export const HUB_NARRATOR = 'posadero';
 /** Lo que pone un mercenario del gremio en su ficha: no se va al acabar ningún encargo. */
 export const HUB_CONTRACT = 'gremio';
 
+/**
+ * J5.4: las campañas que añades al tablón desde un archivo. Su id empieza así, para no pisar
+ * a las del juego; su paquete va entre tus archivos (`data/<tú>/user/files/`) y su fila, en
+ * el gremio (`hub.imported`), junto a las campañas que ha empezado.
+ */
+export const HUB_IMPORTED_PREFIX = 'tuya-';
+
+/** Dónde se sirven tus archivos: el paquete de una campaña añadida tiene que estar ahí. */
+export const HUB_IMPORTED_DIR = '/user/files/';
+
+/**
+ * J5.4: en los metadatos de una campaña añadida, para qué nivel es. Las del juego lo dicen en
+ * `mundos.json`; las tuyas, en su fila del gremio, que desde la campaña no se ve.
+ */
+export const HUB_LEVELS_KEY = 'hubLevels';
+
 /** @param {any} value @returns {string} */
 const text = (value) => String(value ?? '').trim();
 
@@ -66,6 +82,8 @@ const key = (value) => text(value).toLowerCase();
  * @typedef {Object} Hub
  * @property {HubChat|null} chat
  * @property {Record<string, HubCampaign>} campaigns
+ * @property {any[]} [imported] J5.4: las campañas añadidas desde un archivo, como filas de
+ *   `mundos.json`. Solo está si hay alguna.
  */
 
 /**
@@ -97,7 +115,59 @@ export function readHub(raw) {
             ending: text(/** @type {any} */ (value)?.ending),
         };
     }
-    return { chat: readChat(raw?.chat), campaigns };
+    const imported = readImportedRows(raw?.imported);
+    return { chat: readChat(raw?.chat), campaigns, ...(imported.length > 0 ? { imported } : {}) };
+}
+
+/**
+ * J5.4: las filas de las campañas añadidas, con forma aunque lleguen rotas. Una sin nombre,
+ * sin el prefijo o con el paquete fuera de tus archivos no se lee; con el mismo id dos veces,
+ * vale la última.
+ *
+ * @param {any} raw
+ * @returns {any[]}
+ */
+export function readImportedRows(raw) {
+    /** @type {Map<string, any>} */
+    const rows = new Map();
+    for (const row of Array.isArray(raw) ? raw : []) {
+        const id = text(row?.id);
+        const name = text(row?.name);
+        const pack = text(row?.pack);
+        if (!id.startsWith(HUB_IMPORTED_PREFIX) || id === HUB_IMPORTED_PREFIX || !name) continue;
+        if (!pack.startsWith(HUB_IMPORTED_DIR) || !/^[A-Za-z0-9_.-]+$/.test(pack.slice(HUB_IMPORTED_DIR.length))) continue;
+        const [min, max] = Array.isArray(row.levels) ? row.levels.map((/** @type {any} */ n) => Math.floor(Number(n) || 0)) : [0, 0];
+        const days = Math.max(0, Math.floor(Number(row?.journey?.days) || 0));
+        rows.delete(id);
+        rows.set(id, {
+            id,
+            name,
+            genre: text(row.genre),
+            note: text(row.note),
+            synopsis: text(row.synopsis),
+            icon: /^fa-[a-z0-9-]+$/.test(text(row.icon)) ? text(row.icon) : 'fa-book-open',
+            seed: text(row.seed) || id,
+            templateId: text(row.templateId) || 'tavern',
+            pack,
+            ...(min >= 1 ? { levels: [min, Math.max(min, max)] } : {}),
+            ...(days > 0 ? { journey: { days, how: text(row?.journey?.how) } } : {}),
+            imported: true,
+        });
+    }
+    return [...rows.values()];
+}
+
+/**
+ * J5.4: el gremio, con una campaña añadida (o puesta al día, si ya estaba).
+ *
+ * @param {Hub} hub
+ * @param {any} row
+ * @returns {Hub}
+ */
+export function withHubImported(hub, row) {
+    const now = readHub(hub);
+    const id = text(row?.id);
+    return readHub({ ...now, imported: [...(now.imported ?? []).filter(r => r.id !== id), row] });
 }
 
 /**
@@ -217,7 +287,8 @@ export function journeyLine({ world, home = 'el gremio', back = false }) {
  * Las campañas del tablón, con cómo van para este gremio.
  *
  * Solo las que traen su paquete: una campaña del tablón es una historia escrita entera, no
- * una semilla por la que tirar.
+ * una semilla por la que tirar. Y detrás, las que se han añadido desde un archivo en este
+ * gremio (J5.4, `hub.imported`).
  *
  * @param {Object} input
  * @param {any[]} input.worlds Los de `mundos.json`.
@@ -230,7 +301,10 @@ export function journeyLine({ world, home = 'el gremio', back = false }) {
 export function hubCampaignCards({ worlds, hub = null, level = 1 }) {
     const record = readHub(hub);
     const lvl = Math.max(1, Math.floor(Number(level) || 1));
-    return (Array.isArray(worlds) ? worlds : [])
+    const shipped = Array.isArray(worlds) ? worlds : [];
+    // J5.4: detrás de las del juego, las que has añadido tú en este gremio.
+    const known = new Set(shipped.map(world => text(world?.id)));
+    return [...shipped, ...(record.imported ?? []).filter(row => !known.has(row.id))]
         .filter(world => text(world?.id) && text(world?.pack))
         .map(world => {
             const id = text(world.id);

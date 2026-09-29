@@ -142,6 +142,11 @@ const RESOLVED = {
         /^\.plot\.milestones\[\d+\]\.(scene|hint)$/,
         /^\.plot\.endings\.[^.]+\.scene$/,
         /^\.confidants\[\d+\]\.scenes\[\d+\]\.scene$/,
+        // J8.1: las charlas con ramas (`dialogues.js` las resuelve con tu héroe antes de enseñarlas).
+        /^\.dialogues\[\d+\]\.nodes\[\d+\]\.(line|again|journal)$/,
+        /^\.dialogues\[\d+\]\.nodes\[\d+\]\.options\[\d+\]\.(text|tag|journal)$/,
+        /^\.dialogues\[\d+\]\.nodes\[\d+\]\.options\[\d+\]\.check\.(success|partial|failure)\.journal$/,
+        /^\.dialogues\[\d+\]\.nodes\[\d+\](\.options\[\d+\](\.check\.(success|partial|failure))?)?\.effects\[\d+\]\.clue$/,
     ],
 };
 

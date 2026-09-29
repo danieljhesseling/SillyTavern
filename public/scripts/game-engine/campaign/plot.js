@@ -492,7 +492,8 @@ export function startPlot(plot, today = 1) {
  *
  * @param {Plot|null} plot
  * @param {any} rawState
- * @param {any} event `{kind: 'arrive'|'win'|'defeat'|'say'|'talk'|'check'|'contract'|'day'|'clock', …}`
+ * @param {any} event `{kind: 'arrive'|'win'|'defeat'|'say'|'talk'|'check'|'contract'|'day'|'clock'|'milestone', …}`
+ *   `milestone` (J8.1): `{kind: 'milestone', id}`, lo que manda una charla escrita: cumple ese hito si está abierto.
  * @param {number} [today] Hoy. Un suceso `day` trae el suyo; sin día, los plazos no se miden.
  * @returns {PlotStep}
  */
@@ -510,6 +511,12 @@ export function plotEvent(plot, rawState, event, today = 0) {
     for (const id of [...state.open]) {
         const milestone = byId.get(id);
         if (!milestone || !state.open.includes(id)) continue;
+        // J8.1: una charla escrita cumple un hito abierto por su id (`{kind: 'milestone', id}`),
+        // pida lo que pida: el de «habla con Giles» se cumple cuando Giles lo cuenta, no al saludar.
+        if (text(event?.kind) === 'milestone') {
+            if (lower(event.id) === lower(id)) next.push(...complete(plot, state, milestone, step));
+            continue;
+        }
         // Idea 107: una pista más, si la tirada es la de una pista de aquí que falta.
         if (milestone.asks.kind === 'clues') {
             if (text(event?.kind) !== 'check' || !event.success) continue;

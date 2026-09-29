@@ -298,3 +298,40 @@ export function suggestBondEvent(characterId, affinityDelta) {
             : 'La conversación tensó el vínculo. ¿Confirmas -1?',
     };
 }
+
+/**
+ * El rango de «amigo» (J7.3, decidido el 2026-09-29): desde aquí puedes llevar tú a un
+ * compañero en combate («Lo muevo yo»). Antes lo mueve el juego, con su IA táctica. Es el
+ * mismo rango que abre el Relevo.
+ */
+export const CONTROL_RANK = 5;
+
+/**
+ * Si puedes llevar tú a alguien en combate (J7.3).
+ *
+ * - Tu héroe, siempre: el primero del grupo (como en `canControl` de `rules/companions.js`).
+ * - Una invocación es de quien la invocó (`casterId`): la llevas tú si puedes llevarle a él,
+ *   salvo que el conjuro diga que va sola (`control: 'engine'`).
+ * - Un compañero, desde el rango de «amigo» (`CONTROL_RANK`) de su vínculo.
+ *
+ * Dice si se puede, no si se quiere: volver a dejárselo al juego es cosa de quien llama.
+ *
+ * @param {any} member Una ficha del grupo o una invocación.
+ * @param {BondState|null} bonds
+ * @param {{party?: any[]}} [options] El grupo, con el héroe primero.
+ * @returns {boolean}
+ */
+export function canPlayerControl(member, bonds, { party = [] } = {}) {
+    if (!member) return false;
+    const list = Array.isArray(party) ? party : [];
+    const hero = list[0];
+    if (member.isHero === true || (hero && String(hero.id) === String(member.id))) return true;
+    const caster = String(member.casterId ?? '').trim();
+    if (caster) {
+        if (member.control === 'engine') return false;
+        const owner = list.find(m => m && String(m.id) === caster && !String(m.casterId ?? '').trim());
+        // Sin saber de quién es, es tuya: las invocaciones del grupo las lanza el grupo.
+        return owner ? canPlayerControl(owner, bonds, { party: list }) : true;
+    }
+    return getRank(bonds, String(member.id ?? '')) >= CONTROL_RANK;
+}

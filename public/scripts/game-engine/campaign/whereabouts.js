@@ -81,13 +81,16 @@ export function placesOf(location, { hub = false, port = false } = {}) {
 }
 
 /**
- * Cómo se llama un sitio aquí: en un campamento, la plaza es el fuego.
+ * Cómo se llama un sitio aquí: el nombre que le da el paquete («La capilla», como en la
+ * pantalla del pueblo) o el de su clase; en un campamento, la plaza es el fuego.
  *
  * @param {string} place
  * @param {any} [location]
  * @returns {string}
  */
 export function placeLabel(place, location = null) {
+    const named = (Array.isArray(location?.places) ? location.places : []).find((/** @type {any} */ p) => text(p?.kind) === place && text(p?.name));
+    if (named) return text(named.name);
     if (place === 'plaza' && text(location?.type || location?.locationType) === 'camp') return 'El fuego del campamento';
     return /** @type {Record<string, {label: string}>} */ (PLACES)[place]?.label ?? text(place);
 }

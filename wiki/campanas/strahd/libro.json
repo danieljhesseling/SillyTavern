@@ -634,6 +634,17 @@
       "service": "tienda"
     },
     {
+      "id": "bogdan-rusu",
+      "name": "Bogdan Rusu",
+      "trade": "propio: Herrero de Vallaki",
+      "where": "Ciudad de Vallaki",
+      "wants": "propio: Que el barón deje de encargarle picas para sus fiestas y le deje forjar rejas para las ventanas.",
+      "knows": "propio: Quién le ha encargado estacas con punta de hierro este mes, aunque le pagaron para que no lo contara.",
+      "secret": "propio: Guarda un juego de herraduras de plata que nadie le ha pagado, por si algún día hacen falta contra lo que anda de noche.",
+      "voice": "propio: Habla poco y mira las manos de la gente, no la cara.",
+      "service": "herreria"
+    },
+    {
       "id": "morgantha",
       "name": "Morgantha",
       "trade": "Vieja de los pasteles",

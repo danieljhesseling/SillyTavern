@@ -133,4 +133,13 @@ describe('el tablero que pide la historia', () => {
         const chips = buildActionChips({ boards, explore: true });
         expect(chips.map(c => c.id)).toEqual(['explore', 'enter:Taberna', 'enter:Mansión']);
     });
+
+    test('J2.1: desde otro tablero de aquí también se ofrece, si se sabe cuál está abierto; el abierto, no', () => {
+        const onPier = buildActionChips({ boards, thread: ['Mansión'], hasBoard: true, board: 'Taberna' });
+        expect(onPier.map(c => c.id)).toEqual(['enter:Mansión', 'leave']);
+        expect(onPier[0].command).toBe('/enter Mansión');
+        expect(buildActionChips({ boards, thread: ['Mansión'], hasBoard: true, board: 'Mansión' }).map(c => c.id)).toEqual(['leave']);
+        // Sin decir cuál, como antes: en un tablero, solo salir.
+        expect(buildActionChips({ boards, thread: ['Mansión'], hasBoard: true }).map(c => c.id)).toEqual(['leave']);
+    });
 });

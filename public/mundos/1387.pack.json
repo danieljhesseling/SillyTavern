@@ -3126,6 +3126,197 @@
       "conditionRounds": 1
     }
   ],
+  "dialogues": [
+    {
+      "id": "giles-lo-que-vio",
+      "speaker": "Giles",
+      "title": "Lo que vio Giles",
+      "start": "inicio",
+      "when": { "milestone": "el-caliz-ensangrentado" },
+      "nodes": [
+        {
+          "id": "inicio",
+          "mood": "neutral",
+          "line": "Cierra esa puerta, que entra el frío. Medio pueblo te busca con antorchas, y tú te metes en mi taberna. O eres {tonto|tonta}, o necesitas algo.",
+          "again": "Tú otra vez. ¿Vas a pedir algo o solo vienes a calentarte?",
+          "options": [
+            { "id": "quien-subio", "text": "Sé que viste quién subió a mi cuarto anoche.", "if": { "milestone": { "id": "el-precio-del-escape", "is": "open" } }, "repeat": true, "next": "precio" },
+            { "id": "guardias", "text": "¿Por qué no llamas a los guardias?", "next": "no-grita" },
+            { "id": "caliz", "text": "Enseñarle el cáliz ensangrentado.", "if": { "item": "Cáliz ensangrentado de Vane" }, "next": "caliz" },
+            { "id": "soldado", "text": "He visto colgar a buenos soldados por menos. Ayúdame.", "if": [{ "background": "soldado" }, { "class": "Soldado" }], "tag": "Soldado", "effects": [{ "attitude": 1 }], "next": "soldado" },
+            { "id": "clerigo", "text": "Juro ante los dioses que no he matado a nadie.", "if": { "class": "Clérigo" }, "effects": [{ "attitude": 1 }], "next": "clerigo" },
+            { "id": "cerveza", "text": "Esta cerveza sabe a agua.", "if": [{ "class": "Pícaro" }, { "background": "criminal" }], "next": "aguada" },
+            { "id": "sangre-alta", "text": "Mi familia pagaría bien a quien me ayude.", "if": { "species": "Sangre alta" }, "next": "sangre-alta" },
+            { "id": "adios", "text": "Me voy antes de que vuelvan.", "end": true, "repeat": true }
+          ]
+        },
+        {
+          "id": "precio",
+          "mood": "neutral",
+          "line": "Ver es gratis. Contarlo, no. Tres monedas y te digo lo que vi. Y date prisa: Torres vuelve a la hora de la cena.",
+          "again": "Ya te lo he dicho: tres monedas.",
+          "options": [
+            { "id": "pagar", "text": "Pagar tres monedas.", "if": { "gold": 3 }, "effects": [{ "gold": -3 }], "next": "cuenta" },
+            { "id": "pagar-dos", "text": "Pagar las dos monedas que dijiste.", "if": [{ "said": "cerveza", "gold": 2 }, { "said": "soldado", "gold": 2 }], "effects": [{ "gold": -2 }], "next": "cuenta" },
+            {
+              "id": "convencer",
+              "text": "Si me cuelgan, la cuenta del soldado muerto no te la paga nadie.",
+              "check": {
+                "skill": "persuasion",
+                "dc": 13,
+                "success": { "next": "cuenta", "effects": [{ "attitude": 1 }] },
+                "partial": { "next": "cuenta-a-medias" },
+                "failure": { "next": "precio-no", "effects": [{ "attitude": -1 }] }
+              }
+            },
+            {
+              "id": "amenazar",
+              "text": "Agarrarle del cuello de la camisa.",
+              "check": {
+                "skill": "intimidation",
+                "dc": 12,
+                "success": { "next": "cuenta", "effects": [{ "attitude": -1 }] },
+                "partial": { "next": "cuenta-a-medias", "effects": [{ "attitude": -1 }] },
+                "failure": { "next": "fuera", "effects": [{ "attitude": -1 }] }
+              }
+            },
+            {
+              "id": "dados",
+              "text": "Echarnos una partida: si gano, me lo cuentas gratis.",
+              "if": { "item": "Dados de hueso limados" },
+              "check": {
+                "skill": "sleight",
+                "dc": 12,
+                "success": { "next": "cuenta" },
+                "partial": { "next": "cuenta-a-medias" },
+                "failure": { "next": "dados-pillado", "effects": [{ "take": "Dados de hueso limados" }, { "attitude": -1 }] }
+              }
+            },
+            { "id": "precio-luego", "text": "Déjalo, de momento.", "repeat": true, "next": "inicio" }
+          ]
+        },
+        {
+          "id": "cuenta",
+          "mood": "neutral",
+          "line": "Anoche subió a tu cuarto uno de los furtivos del bosque, con barro del camino viejo hasta las rodillas. Y la puerta de atrás no la forzó nadie: estaba abierta. La llave solo la tiene el alguacil Torres.",
+          "journal": "Giles vio subir a tu cuarto a un furtivo del bosque, con barro del camino viejo. La puerta de atrás de la posada estaba abierta, y la llave solo la tiene Torres.",
+          "effects": [{ "milestone": "el-precio-del-escape" }, { "rumor": "r-traicion-en-la-puerta" }],
+          "options": [
+            { "id": "furtivos", "text": "¿Dónde encuentro a esos furtivos?", "next": "camino" },
+            { "id": "torres", "text": "¿Torres? ¿El alguacil?", "next": "torres" }
+          ]
+        },
+        {
+          "id": "cuenta-a-medias",
+          "mood": "neutral",
+          "line": "Vale, algo te digo. Anoche subió a tu cuarto alguien que olía a bosque mojado, con barro hasta las rodillas. Más no sé.",
+          "journal": "Giles vio subir a tu cuarto a alguien que olía a bosque, con barro hasta las rodillas.",
+          "effects": [{ "milestone": "el-precio-del-escape" }],
+          "options": [
+            { "id": "barro", "text": "¿Barro de dónde?", "next": "camino" }
+          ]
+        },
+        {
+          "id": "camino",
+          "mood": "neutral",
+          "line": "Barro rojo, del camino viejo. Los furtivos acampan al sur de ese camino, donde la maleza es más espesa. Sal por la puerta de atrás, que da al callejón.",
+          "journal": "Los furtivos acampan al sur del camino viejo, donde la maleza es más espesa.",
+          "options": [
+            { "id": "comida", "text": "¿Tienes algo de comer para el camino?", "if": { "attitude": 1 }, "effects": [{ "give": "Ración de invierno" }], "next": "racion" },
+            { "id": "camino-gracias", "text": "Gracias, Giles.", "end": true }
+          ]
+        },
+        {
+          "id": "racion",
+          "mood": "alegre",
+          "line": "Toma. Cecina y galleta dura. No se lo digas a nadie, que tengo fama de tacaño.",
+          "options": [
+            { "id": "racion-gracias", "text": "Gracias.", "end": true }
+          ]
+        },
+        {
+          "id": "torres",
+          "mood": "enfadado",
+          "line": "El mismo. Grita mucho, pero anoche, cuando mataron al recaudador, no gritó nada. Yo que tú no me cruzaría con él.",
+          "journal": "La noche del asesinato, Torres no dio la voz de alarma. Giles cree que sabe más de lo que dice.",
+          "options": [
+            { "id": "torres-furtivos", "text": "¿Y los furtivos?", "next": "camino" }
+          ]
+        },
+        {
+          "id": "precio-no",
+          "mood": "enfadado",
+          "line": "Bonito discurso. Pero las cuentas no se pagan con discursos.",
+          "options": [
+            { "id": "precio-no-vale", "text": "Vale.", "next": "precio" }
+          ]
+        },
+        {
+          "id": "fuera",
+          "mood": "enfadado",
+          "line": "Suéltame o grito. Fuera de mi taberna, y no vuelvas sin dinero."
+        },
+        {
+          "id": "dados-pillado",
+          "mood": "enfadado",
+          "line": "Estos dados están limados. Me los quedo, y el precio sigue siendo tres monedas.",
+          "options": [
+            { "id": "dados-vale", "text": "Vale.", "next": "precio" }
+          ]
+        },
+        {
+          "id": "no-grita",
+          "mood": "neutral",
+          "line": "Porque el alguacil no me paga las cervezas. Y porque no tienes cara de haber matado a nadie. Todavía.",
+          "options": [
+            { "id": "no-grita-gracias", "text": "Gracias, supongo.", "next": "inicio" }
+          ]
+        },
+        {
+          "id": "caliz",
+          "mood": "enfadado",
+          "line": "Guárdate eso ahora mismo, que si lo ve alguien nos cuelgan a los dos. Ese cáliz es de Lord Vane. Alguien quiere que parezca que lo robaste tú.",
+          "journal": "El cáliz es de Lord Vane: alguien quiere que parezca que lo robaste tú.",
+          "options": [
+            { "id": "caliz-ayuda", "text": "Entonces ayúdame.", "next": "inicio" }
+          ]
+        },
+        {
+          "id": "soldado",
+          "mood": "neutral",
+          "line": "Yo también serví, hace muchos inviernos. Está bien: lo que vi te lo cuento por dos monedas, no por tres.",
+          "options": [
+            { "id": "soldado-gracias", "text": "Te lo agradezco.", "next": "inicio" }
+          ]
+        },
+        {
+          "id": "clerigo",
+          "mood": "neutral",
+          "line": "Los dioses no pagan cuentas. Pero te creo, que es más de lo que hace el alguacil.",
+          "options": [
+            { "id": "clerigo-gracias", "text": "Gracias.", "next": "inicio" }
+          ]
+        },
+        {
+          "id": "aguada",
+          "mood": "enfadado",
+          "line": "Baja la voz. Si eso se sabe, aquí no vuelve a entrar nadie. Mira: lo que vi te lo cuento por dos monedas, y tú no has probado nada.",
+          "journal": "Giles echa agua a la cerveza. Si te callas, te cobra dos monedas en vez de tres.",
+          "options": [
+            { "id": "aguada-trato", "text": "Trato hecho.", "next": "inicio" }
+          ]
+        },
+        {
+          "id": "sangre-alta",
+          "mood": "neutral",
+          "line": "Tu familia está al otro lado de la nieve. Aquí tu apellido no paga cervezas.",
+          "options": [
+            { "id": "sangre-alta-vale", "text": "Ya veo.", "next": "inicio" }
+          ]
+        }
+      ]
+    }
+  ],
   "plot": {
     "title": "El valle de Vane",
     "milestones": [

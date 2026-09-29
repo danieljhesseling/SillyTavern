@@ -50,7 +50,7 @@ y el importador los resuelve al crear las entradas.
 
 1. El usuario te da el material. Si falta algo sin lo que no se puede empezar —el tono,
    la escala, cuántos tableros quiere— preguntas **una vez**, en una sola línea, y sigues.
-2. Produces el paquete por secciones, en este orden: **world → locations → confidants → bestiary → items → boards → quests → heroes**.
+2. Produces el paquete por secciones, en este orden: **world → locations → confidants → bestiary → items → boards → quests → heroes → dialogues**.
    Una sección por respuesta, cada una en un único bloque ```json. Antes del bloque, como
    mucho una línea diciendo qué sección es. Nada después.
 3. Cada sección reutiliza **letra por letra** los nombres de las anteriores: la localidad
@@ -86,7 +86,7 @@ y el importador los resuelve al crear las entradas.
 Versión 1. Generado desde el motor el 2026-09-29.
 
 Devuelve **solo JSON válido** que cumpla este esquema. Una sección por respuesta si el
-libro es largo; el orden recomendado es: world → locations → confidants → bestiary → items → boards → quests → heroes.
+libro es largo; el orden recomendado es: world → locations → confidants → bestiary → items → boards → quests → heroes → dialogues.
 
 ## Esquema
 
@@ -100,6 +100,196 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
     "version",
     "world"
   ],
+  "definitions": {
+    "dialogueCondition": {
+      "type": "object",
+      "description": "Todo lo que se escriba tiene que cumplirse. Una lista de estos objetos: basta con uno. Lo de quién eres (species, class, background, gender), el hito y said, si no se cumplen, esconden la opción; attitude (min), item y gold la enseñan apagada, diciendo qué falta.",
+      "properties": {
+        "attitude": {
+          "description": "Cómo os mira quien habla, de -3 a 3. Un número es «al menos»; o {\"min\": 1} / {\"max\": -1}.",
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "min": {
+                  "type": "integer"
+                },
+                "max": {
+                  "type": "integer"
+                }
+              }
+            }
+          ]
+        },
+        "milestone": {
+          "description": "Un hito del hilo, por su id. Solo el id es «cumplido»; con is: open (abierto), done (cumplido) o not-done.",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "object",
+              "required": [
+                "id"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "is": {
+                  "type": "string",
+                  "enum": [
+                    "open",
+                    "done",
+                    "not-done"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        "item": {
+          "type": "string",
+          "description": "Algo que lleva el grupo, por su nombre en items."
+        },
+        "gold": {
+          "type": "integer",
+          "description": "El oro que hace falta llevar."
+        },
+        "species": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "La especie, como la llama el compendio: Enano, Elfo, Humano… Sale como «[Enano] …»."
+        },
+        "class": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "La clase: Clérigo, Soldado, Pícaro… Sale como «[Clérigo] …»."
+        },
+        "background": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "El trasfondo: soldado, criminal, erudito, acolito, forastero, artesano, noble, marinero, charlatan, ermitano."
+        },
+        "gender": {
+          "type": "string",
+          "enum": [
+            "Mujer",
+            "Hombre",
+            "No binario"
+          ],
+          "description": "Cómo se presenta quien juega."
+        },
+        "said": {
+          "type": "string",
+          "description": "El id de una opción de esta charla que ya se eligió."
+        }
+      }
+    },
+    "dialogueEffect": {
+      "type": "object",
+      "minProperties": 1,
+      "description": "Una cosa por objeto. Los que hay: attitude, clue, rumor, milestone, give, take, bond, gold, time, end.",
+      "properties": {
+        "attitude": {
+          "type": "integer",
+          "description": "+1 o -1: cómo os mira. Sin who, quien habla."
+        },
+        "clue": {
+          "type": "string",
+          "description": "Algo que se aprende: queda en el Diario."
+        },
+        "rumor": {
+          "type": "string",
+          "description": "El id de un rumor de rumors: se da por oído."
+        },
+        "milestone": {
+          "type": "string",
+          "description": "El id de un hito: se cumple."
+        },
+        "give": {
+          "type": "string",
+          "description": "Un objeto que os da, por su nombre."
+        },
+        "take": {
+          "type": "string",
+          "description": "Un objeto que os quita, por su nombre."
+        },
+        "bond": {
+          "type": "integer",
+          "description": "Puntos de vínculo con un compañero. Sin who, quien habla."
+        },
+        "gold": {
+          "type": "integer",
+          "description": "Oro que os da (positivo) o que pagáis (negativo)."
+        },
+        "who": {
+          "type": "string",
+          "description": "Con attitude o bond: con quién, si no es quien habla."
+        },
+        "time": {
+          "type": "boolean",
+          "description": "Se va un rato del día."
+        },
+        "end": {
+          "type": "boolean",
+          "description": "Se acaba la charla."
+        }
+      }
+    },
+    "dialogueBranch": {
+      "type": "object",
+      "properties": {
+        "next": {
+          "type": "string",
+          "description": "El nudo al que lleva."
+        },
+        "effects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/dialogueEffect"
+          }
+        },
+        "journal": {
+          "type": "string",
+          "description": "Lo que queda en el Diario."
+        },
+        "end": {
+          "type": "boolean"
+        }
+      }
+    }
+  },
   "properties": {
     "version": {
       "type": "integer",
@@ -230,6 +420,44 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
           "hidden": {
             "type": "boolean",
             "description": "Si empieza escondida: no se puede ir hasta que un hito del hilo la revela."
+          },
+          "places": {
+            "type": "array",
+            "description": "Opcional, para pueblos y ciudades: los sitios de dentro (la herrería, la posada, el templo…), en el orden en que se enseñan. Sin la lista salen de sus servicios, cada uno con quien tenga ese servicio. Lo que se puede hacer en cada sitio lo pone el juego.",
+            "items": {
+              "type": "object",
+              "required": [
+                "kind"
+              ],
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "gremio",
+                    "posada",
+                    "herreria",
+                    "tienda",
+                    "templo",
+                    "tablon",
+                    "plaza",
+                    "muelle"
+                  ],
+                  "description": "Qué clase de sitio es."
+                },
+                "name": {
+                  "type": "string",
+                  "description": "Su nombre aquí: «El Agua Azul». Sin él, el de su clase: «La posada»."
+                },
+                "keeper": {
+                  "type": "string",
+                  "description": "Quién lo atiende: el nombre de alguien de la gente del paquete. Sin él, el primero de aquí con ese servicio."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "Una línea, si hace falta."
+                }
+              }
+            }
           }
         }
       }
@@ -766,6 +994,194 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
           }
         }
       }
+    },
+    "dialogues": {
+      "type": "array",
+      "description": "Charlas escritas con ramas, para la gente que importa. Se juegan sin modelo: quien habla dice su línea con su gesto, y quien juega elige. Lo ya dicho no vuelve a salir, y lo aprendido queda en el Diario.",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "speaker",
+          "nodes"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Único en el paquete: es lo que la partida recuerda."
+          },
+          "speaker": {
+            "type": "string",
+            "description": "Quién habla: el nombre de alguien de npcs o de confidants."
+          },
+          "title": {
+            "type": "string"
+          },
+          "start": {
+            "type": "string",
+            "description": "El nudo por el que empieza. Sin él, el primero."
+          },
+          "when": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/dialogueCondition"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/dialogueCondition"
+                }
+              }
+            ],
+            "description": "Cuándo se ofrece. Una persona puede tener varias charlas: vale la primera que se cumpla."
+          },
+          "nodes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "line"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "line": {
+                  "type": "string",
+                  "description": "Lo que dice, en una a tres frases llanas. Con {forma|forma} donde se habla a quien juega."
+                },
+                "again": {
+                  "type": "string",
+                  "description": "Lo que dice si ya os lo había dicho: más corto."
+                },
+                "mood": {
+                  "type": "string",
+                  "enum": [
+                    "neutral",
+                    "alegre",
+                    "enfadado",
+                    "triste"
+                  ],
+                  "description": "La cara del retrato."
+                },
+                "journal": {
+                  "type": "string",
+                  "description": "Lo que queda en el Diario al oírlo."
+                },
+                "effects": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/dialogueEffect"
+                  },
+                  "description": "Lo que pasa al oírlo la primera vez, se llegue por donde se llegue (el hito que cumple lo que cuenta)."
+                },
+                "options": {
+                  "type": "array",
+                  "description": "Sin opciones, el nudo acaba la charla.",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "text"
+                    ],
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "description": "Único en la charla. Lo ya elegido no vuelve a salir."
+                      },
+                      "text": {
+                        "type": "string",
+                        "description": "Lo que dice o hace quien juega."
+                      },
+                      "if": {
+                        "anyOf": [
+                          {
+                            "$ref": "#/definitions/dialogueCondition"
+                          },
+                          {
+                            "type": "array",
+                            "items": {
+                              "$ref": "#/definitions/dialogueCondition"
+                            }
+                          }
+                        ]
+                      },
+                      "next": {
+                        "type": "string",
+                        "description": "El nudo al que lleva. Sin él, se queda en este."
+                      },
+                      "effects": {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/definitions/dialogueEffect"
+                        }
+                      },
+                      "end": {
+                        "type": "boolean",
+                        "description": "Acaba la charla."
+                      },
+                      "repeat": {
+                        "type": "boolean",
+                        "description": "Se puede elegir más de una vez («Me voy»)."
+                      },
+                      "hidden": {
+                        "type": "boolean",
+                        "description": "Si no se cumple, no se enseña ni apagada."
+                      },
+                      "tag": {
+                        "type": "string",
+                        "description": "La etiqueta de delante, si no vale la de su condición."
+                      },
+                      "journal": {
+                        "type": "string"
+                      },
+                      "check": {
+                        "type": "object",
+                        "required": [
+                          "skill",
+                          "success",
+                          "failure"
+                        ],
+                        "description": "Una tirada: bien, a medias (sin escribirla, como bien pero pagando) o mal.",
+                        "properties": {
+                          "skill": {
+                            "type": "string",
+                            "enum": [
+                              "persuasion",
+                              "deception",
+                              "intimidation",
+                              "insight",
+                              "perception",
+                              "investigation",
+                              "stealth",
+                              "athletics",
+                              "sleight",
+                              "survival"
+                            ]
+                          },
+                          "dc": {
+                            "type": "integer",
+                            "description": "De 5 a 30; 12 es un intento normal."
+                          },
+                          "success": {
+                            "$ref": "#/definitions/dialogueBranch"
+                          },
+                          "partial": {
+                            "$ref": "#/definitions/dialogueBranch"
+                          },
+                          "failure": {
+                            "$ref": "#/definitions/dialogueBranch"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
 }
@@ -789,6 +1205,8 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
 14. Desde donde empieza el grupo tiene que poderse llegar a toda casilla de suelo, abriendo puertas. Un enemigo en una sala incomunicada es un error; una sala vacía incomunicada, un aviso.
 15. Los nombres de `items` tampoco se repiten, y su `rarity` es una de las cuatro que conocen las tablas de botín: una rareza inventada nunca cae.
 16. Solo un tablero hecho de un mapa dibujado lleva `image` y `grid`, y su `map` mide lo mismo que la cuadrícula (lo escribe `tools/mapa-a-tablero.mjs` a partir de la imagen). Sin imagen, no escribas ninguno de los dos. Las `zones` (las salas con nombre) sí valen en cualquier tablero.
+17. En `dialogues`, el `speaker` de cada charla es alguien de `npcs` o de `confidants`, cada `next` lleva a un nudo que existe, y a todos los nudos se llega desde el de inicio. Un hito, un rumor o un objeto de una condición o de un efecto se nombra como está en el paquete (el hito y el rumor, por su id).
+18. En una charla, lo que depende de quién eres (`species`, `class`, `background`, `gender`) solo le sale a quien encaja, con su etiqueta delante: «[Enano] …». Cada tirada lleva `success` y `failure`; `partial` es opcional. Las líneas son de una a tres frases llanas, sin acertijos, con `{forma|forma}` donde se habla a quien juega.
 
 ## Sobre los mapas
 
@@ -867,6 +1285,130 @@ ejemplo fácil no enseña.
       "damageType": "cortante",
       "slot": "weapon",
       "description": "Sigue oliendo a grano mojado."
+    }
+  ],
+  "dialogues": [
+    {
+      "id": "mira-el-sotano",
+      "speaker": "Mira la Molinera",
+      "start": "puerta",
+      "nodes": [
+        {
+          "id": "puerta",
+          "mood": "triste",
+          "line": "No bajéis al sótano. Mi padre bajó una noche y no volvió a ser el mismo.",
+          "again": "¿Otra vez vosotros? Ya os he dicho lo que sé.",
+          "options": [
+            {
+              "id": "padre",
+              "text": "¿Qué le pasó a tu padre?",
+              "next": "padre"
+            },
+            {
+              "id": "enano",
+              "text": "Los sótanos no me asustan: me crié en uno.",
+              "if": {
+                "species": "Enano"
+              },
+              "effects": [
+                {
+                  "attitude": 1
+                }
+              ],
+              "next": "risa"
+            },
+            {
+              "id": "llave",
+              "text": "Déjanos la llave de la trampilla.",
+              "if": {
+                "attitude": 1
+              },
+              "next": "llave"
+            },
+            {
+              "id": "convencer",
+              "text": "Si no bajamos, los cuervos seguirán aquí.",
+              "check": {
+                "skill": "persuasion",
+                "dc": 12,
+                "success": {
+                  "next": "llave",
+                  "effects": [
+                    {
+                      "attitude": 1
+                    }
+                  ]
+                },
+                "partial": {
+                  "next": "llave",
+                  "effects": [
+                    {
+                      "attitude": -1
+                    }
+                  ]
+                },
+                "failure": {
+                  "next": "no"
+                }
+              }
+            },
+            {
+              "id": "adios",
+              "text": "Ya volveremos.",
+              "end": true,
+              "repeat": true
+            }
+          ]
+        },
+        {
+          "id": "padre",
+          "line": "Subió con los ojos blancos y no habló nunca más de ello.",
+          "journal": "El padre de Mira bajó al sótano y volvió cambiado.",
+          "options": [
+            {
+              "id": "volver",
+              "text": "Lo siento.",
+              "next": "puerta"
+            }
+          ]
+        },
+        {
+          "id": "risa",
+          "mood": "alegre",
+          "line": "Pues bajad {tranquilo|tranquila}, que ya somos dos.",
+          "options": [
+            {
+              "id": "seguir",
+              "text": "Sigamos.",
+              "next": "puerta"
+            }
+          ]
+        },
+        {
+          "id": "llave",
+          "line": "Tomad la llave, y la hoz de mi padre: abajo os hará falta. Cerrad por fuera al salir.",
+          "options": [
+            {
+              "id": "gracias",
+              "text": "Gracias, Mira.",
+              "effects": [
+                {
+                  "give": "Hoz del molino"
+                },
+                {
+                  "bond": 1
+                }
+              ],
+              "end": true
+            }
+          ]
+        },
+        {
+          "id": "no",
+          "mood": "enfadado",
+          "line": "He dicho que no. Idos."
+        }
+      ]
     }
   ],
   "locations": [
@@ -1021,7 +1563,7 @@ ejemplo fácil no enseña.
 | Paso | Tú | El Gem |
 | :--- | :--- | :--- |
 | 1 | Pegas el libro, un resumen largo o una idea, y dices *«Empieza por `world`»* | Devuelve `world` en un bloque JSON. Si le falta algo esencial, una pregunta y sigue |
-| 2 | *«Siguiente»*, sección a sección: `locations` → `confidants` → `bestiary` → `items` → `boards` → `quests` → `heroes` | Una por respuesta, reutilizando los nombres exactos de las anteriores |
+| 2 | *«Siguiente»*, sección a sección: `locations` → `confidants` → `bestiary` → `items` → `boards` → `quests` → `heroes` → `dialogues` | Una por respuesta, reutilizando los nombres exactos de las anteriores |
 | 3 | Lees cada una y corriges lo que no te guste **antes** de seguir: un nombre cambiado tarde arrastra a todo lo que lo usaba | Reescribe la sección entera |
 | 4 | *«Ensambla»* | El paquete completo en **un solo** bloque JSON. Es lo único que el juego acepta |
 | 5 | SillyTavern → **Partida nueva** → **Importar un libro** → pegas → **Comprobar el paquete** | — |
@@ -1174,6 +1716,44 @@ que ya está en el bloque de instrucciones; se ofrecen sueltos porque un libro n
       "hidden": {
         "type": "boolean",
         "description": "Si empieza escondida: no se puede ir hasta que un hito del hilo la revela."
+      },
+      "places": {
+        "type": "array",
+        "description": "Opcional, para pueblos y ciudades: los sitios de dentro (la herrería, la posada, el templo…), en el orden en que se enseñan. Sin la lista salen de sus servicios, cada uno con quien tenga ese servicio. Lo que se puede hacer en cada sitio lo pone el juego.",
+        "items": {
+          "type": "object",
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "gremio",
+                "posada",
+                "herreria",
+                "tienda",
+                "templo",
+                "tablon",
+                "plaza",
+                "muelle"
+              ],
+              "description": "Qué clase de sitio es."
+            },
+            "name": {
+              "type": "string",
+              "description": "Su nombre aquí: «El Agua Azul». Sin él, el de su clase: «La posada»."
+            },
+            "keeper": {
+              "type": "string",
+              "description": "Quién lo atiende: el nombre de alguien de la gente del paquete. Sin él, el primero de aquí con ese servicio."
+            },
+            "description": {
+              "type": "string",
+              "description": "Una línea, si hace falta."
+            }
+          }
+        }
       }
     }
   }
@@ -1735,6 +2315,389 @@ que ya está en el bloque de instrucciones; se ofrecen sueltos porque un libro n
               "miedosa",
               "orgullosa"
             ]
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+### `dialogues`
+
+```json
+{
+  "type": "array",
+  "description": "Charlas escritas con ramas, para la gente que importa. Se juegan sin modelo: quien habla dice su línea con su gesto, y quien juega elige. Lo ya dicho no vuelve a salir, y lo aprendido queda en el Diario.",
+  "definitions": {
+    "dialogueCondition": {
+      "type": "object",
+      "description": "Todo lo que se escriba tiene que cumplirse. Una lista de estos objetos: basta con uno. Lo de quién eres (species, class, background, gender), el hito y said, si no se cumplen, esconden la opción; attitude (min), item y gold la enseñan apagada, diciendo qué falta.",
+      "properties": {
+        "attitude": {
+          "description": "Cómo os mira quien habla, de -3 a 3. Un número es «al menos»; o {\"min\": 1} / {\"max\": -1}.",
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "min": {
+                  "type": "integer"
+                },
+                "max": {
+                  "type": "integer"
+                }
+              }
+            }
+          ]
+        },
+        "milestone": {
+          "description": "Un hito del hilo, por su id. Solo el id es «cumplido»; con is: open (abierto), done (cumplido) o not-done.",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "object",
+              "required": [
+                "id"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "is": {
+                  "type": "string",
+                  "enum": [
+                    "open",
+                    "done",
+                    "not-done"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        "item": {
+          "type": "string",
+          "description": "Algo que lleva el grupo, por su nombre en items."
+        },
+        "gold": {
+          "type": "integer",
+          "description": "El oro que hace falta llevar."
+        },
+        "species": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "La especie, como la llama el compendio: Enano, Elfo, Humano… Sale como «[Enano] …»."
+        },
+        "class": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "La clase: Clérigo, Soldado, Pícaro… Sale como «[Clérigo] …»."
+        },
+        "background": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "El trasfondo: soldado, criminal, erudito, acolito, forastero, artesano, noble, marinero, charlatan, ermitano."
+        },
+        "gender": {
+          "type": "string",
+          "enum": [
+            "Mujer",
+            "Hombre",
+            "No binario"
+          ],
+          "description": "Cómo se presenta quien juega."
+        },
+        "said": {
+          "type": "string",
+          "description": "El id de una opción de esta charla que ya se eligió."
+        }
+      }
+    },
+    "dialogueEffect": {
+      "type": "object",
+      "minProperties": 1,
+      "description": "Una cosa por objeto. Los que hay: attitude, clue, rumor, milestone, give, take, bond, gold, time, end.",
+      "properties": {
+        "attitude": {
+          "type": "integer",
+          "description": "+1 o -1: cómo os mira. Sin who, quien habla."
+        },
+        "clue": {
+          "type": "string",
+          "description": "Algo que se aprende: queda en el Diario."
+        },
+        "rumor": {
+          "type": "string",
+          "description": "El id de un rumor de rumors: se da por oído."
+        },
+        "milestone": {
+          "type": "string",
+          "description": "El id de un hito: se cumple."
+        },
+        "give": {
+          "type": "string",
+          "description": "Un objeto que os da, por su nombre."
+        },
+        "take": {
+          "type": "string",
+          "description": "Un objeto que os quita, por su nombre."
+        },
+        "bond": {
+          "type": "integer",
+          "description": "Puntos de vínculo con un compañero. Sin who, quien habla."
+        },
+        "gold": {
+          "type": "integer",
+          "description": "Oro que os da (positivo) o que pagáis (negativo)."
+        },
+        "who": {
+          "type": "string",
+          "description": "Con attitude o bond: con quién, si no es quien habla."
+        },
+        "time": {
+          "type": "boolean",
+          "description": "Se va un rato del día."
+        },
+        "end": {
+          "type": "boolean",
+          "description": "Se acaba la charla."
+        }
+      }
+    },
+    "dialogueBranch": {
+      "type": "object",
+      "properties": {
+        "next": {
+          "type": "string",
+          "description": "El nudo al que lleva."
+        },
+        "effects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/dialogueEffect"
+          }
+        },
+        "journal": {
+          "type": "string",
+          "description": "Lo que queda en el Diario."
+        },
+        "end": {
+          "type": "boolean"
+        }
+      }
+    }
+  },
+  "items": {
+    "type": "object",
+    "required": [
+      "id",
+      "speaker",
+      "nodes"
+    ],
+    "properties": {
+      "id": {
+        "type": "string",
+        "description": "Único en el paquete: es lo que la partida recuerda."
+      },
+      "speaker": {
+        "type": "string",
+        "description": "Quién habla: el nombre de alguien de npcs o de confidants."
+      },
+      "title": {
+        "type": "string"
+      },
+      "start": {
+        "type": "string",
+        "description": "El nudo por el que empieza. Sin él, el primero."
+      },
+      "when": {
+        "anyOf": [
+          {
+            "$ref": "#/definitions/dialogueCondition"
+          },
+          {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/dialogueCondition"
+            }
+          }
+        ],
+        "description": "Cuándo se ofrece. Una persona puede tener varias charlas: vale la primera que se cumpla."
+      },
+      "nodes": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": [
+            "id",
+            "line"
+          ],
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "line": {
+              "type": "string",
+              "description": "Lo que dice, en una a tres frases llanas. Con {forma|forma} donde se habla a quien juega."
+            },
+            "again": {
+              "type": "string",
+              "description": "Lo que dice si ya os lo había dicho: más corto."
+            },
+            "mood": {
+              "type": "string",
+              "enum": [
+                "neutral",
+                "alegre",
+                "enfadado",
+                "triste"
+              ],
+              "description": "La cara del retrato."
+            },
+            "journal": {
+              "type": "string",
+              "description": "Lo que queda en el Diario al oírlo."
+            },
+            "effects": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/dialogueEffect"
+              },
+              "description": "Lo que pasa al oírlo la primera vez, se llegue por donde se llegue (el hito que cumple lo que cuenta)."
+            },
+            "options": {
+              "type": "array",
+              "description": "Sin opciones, el nudo acaba la charla.",
+              "items": {
+                "type": "object",
+                "required": [
+                  "text"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "description": "Único en la charla. Lo ya elegido no vuelve a salir."
+                  },
+                  "text": {
+                    "type": "string",
+                    "description": "Lo que dice o hace quien juega."
+                  },
+                  "if": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/definitions/dialogueCondition"
+                      },
+                      {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/definitions/dialogueCondition"
+                        }
+                      }
+                    ]
+                  },
+                  "next": {
+                    "type": "string",
+                    "description": "El nudo al que lleva. Sin él, se queda en este."
+                  },
+                  "effects": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/definitions/dialogueEffect"
+                    }
+                  },
+                  "end": {
+                    "type": "boolean",
+                    "description": "Acaba la charla."
+                  },
+                  "repeat": {
+                    "type": "boolean",
+                    "description": "Se puede elegir más de una vez («Me voy»)."
+                  },
+                  "hidden": {
+                    "type": "boolean",
+                    "description": "Si no se cumple, no se enseña ni apagada."
+                  },
+                  "tag": {
+                    "type": "string",
+                    "description": "La etiqueta de delante, si no vale la de su condición."
+                  },
+                  "journal": {
+                    "type": "string"
+                  },
+                  "check": {
+                    "type": "object",
+                    "required": [
+                      "skill",
+                      "success",
+                      "failure"
+                    ],
+                    "description": "Una tirada: bien, a medias (sin escribirla, como bien pero pagando) o mal.",
+                    "properties": {
+                      "skill": {
+                        "type": "string",
+                        "enum": [
+                          "persuasion",
+                          "deception",
+                          "intimidation",
+                          "insight",
+                          "perception",
+                          "investigation",
+                          "stealth",
+                          "athletics",
+                          "sleight",
+                          "survival"
+                        ]
+                      },
+                      "dc": {
+                        "type": "integer",
+                        "description": "De 5 a 30; 12 es un intento normal."
+                      },
+                      "success": {
+                        "$ref": "#/definitions/dialogueBranch"
+                      },
+                      "partial": {
+                        "$ref": "#/definitions/dialogueBranch"
+                      },
+                      "failure": {
+                        "$ref": "#/definitions/dialogueBranch"
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }

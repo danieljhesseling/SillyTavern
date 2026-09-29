@@ -17,7 +17,7 @@
  */
 
 import { firstArt, openPack } from '../pixel-art.js';
-import { townPlaces, townNpcsFromEntries, greetingFor, describeWho, slotOf } from '../../campaign/town.js';
+import { PLACE_KINDS, townPlaces, townNpcsFromEntries, greetingFor, describeWho, slotOf } from '../../campaign/town.js';
 
 /**
  * @typedef {import('../../campaign/town.js').TownPlace} TownPlace
@@ -332,7 +332,9 @@ function placeActs(place, town, ctx) {
                 cost: Number(action.cost) || 0,
                 run: () => ctx.onService(action.id),
             }));
-        if (acts.length > 0) groups.push({ title: card.label, acts });
+        // Lo del propio sitio, con su nombre de aquí («La taberna»), no el del servicio («La posada»).
+        const own = card.id === PLACE_KINDS[place.kind].service;
+        if (acts.length > 0) groups.push({ title: own ? place.name : card.label, acts });
     }
     const people = [...(keeper ? [keeper] : []), ...place.people.map(p => p.name)].slice(0, 5);
     if (people.length > 0) {

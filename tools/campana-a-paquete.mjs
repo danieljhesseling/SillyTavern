@@ -54,43 +54,10 @@ const extra = optional('mejoras.json');
 
 const { validatePack } = await import(pathToFileURL(join(ROOT, 'public/scripts/game-engine/campaign/campaign-pack.js')).href);
 
-/** Quita las marcas del resumidor y la de «texto propio». */
-function clean(value) {
-    if (typeof value === 'string') {
-        return value.replace(/\s*\[cite:[^\]]*\]/g, '').replace(/^propio:\s*/, '').trim();
-    }
-    if (Array.isArray(value)) return value.map(clean);
-    if (value && typeof value === 'object') {
-        return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, clean(v)]));
-    }
-    return value;
-}
-
-/** @param {any[]} base @param {any[]} over @param {string} key */
-function mergeBy(base, over, key) {
-    const out = (Array.isArray(base) ? base : []).map(row => ({ ...row }));
-    for (const row of Array.isArray(over) ? over : []) {
-        const at = out.findIndex(r => String(r?.[key]).toLowerCase() === String(row?.[key]).toLowerCase());
-        if (at >= 0) out[at] = { ...out[at], ...row };
-        else out.push({ ...row });
-    }
-    return out;
-}
-
-/** Cada ruta, también de vuelta. */
-function bothWays(locations) {
-    const byName = new Map(locations.map(l => [String(l.name).toLowerCase(), l]));
-    for (const place of locations) {
-        for (const route of Array.isArray(place.routes) ? place.routes : []) {
-            const other = byName.get(String(route.to).toLowerCase());
-            if (!other) continue;
-            other.routes = Array.isArray(other.routes) ? other.routes : [];
-            if (other.routes.some(r => String(r.to).toLowerCase() === String(place.name).toLowerCase())) continue;
-            other.routes.push({ to: place.name, days: route.days, ...(route.closedUntil ? { closedUntil: route.closedUntil } : {}) });
-        }
-    }
-    return locations;
-}
+// Quitar las marcas del resumidor y la de «texto propio», juntar dos listas por su clave y
+// poner cada ruta también de vuelta: lo mismo que hace el gremio al añadir una campaña
+// desde un archivo (J5.4), así que vive allí y se usa desde aquí.
+const { cleanGemText: clean, mergeBy, bothWays } = await import(pathToFileURL(join(ROOT, 'public/scripts/game-engine/campaign/campaign-import.js')).href);
 
 /**
  * J12.12: un tablero hecho de un mapa dibujado. `mapFrom` apunta (desde la raíz del repo) al
@@ -174,7 +141,8 @@ pack.bestiary = layered('bestiary', 'name');
 pack.items = layered('items', 'name');
 pack.boards = layered('boards', 'id').map(fromDrawnMap);
 pack.quests = layered('quests', 'id');
-for (const [section, key] of [['npcs', 'id'], ['contracts', 'id'], ['rumors', 'id']]) {
+// J8.1: las charlas con ramas van por id, como los encargos y los rumores.
+for (const [section, key] of [['npcs', 'id'], ['contracts', 'id'], ['rumors', 'id'], ['dialogues', 'id']]) {
     const rows = layered(section, key);
     if (rows.length > 0) pack[section] = rows;
 }

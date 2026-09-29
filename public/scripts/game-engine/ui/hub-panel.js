@@ -141,20 +141,115 @@ export async function openHeroChooser({ Popup, POPUP_TYPE, heroes }) {
     return chosen;
 }
 
+/** @typedef {ReturnType<typeof import('../campaign/hub.js').hubCampaignCards>[number]} CampaignCard */
+
+/** @typedef {{ok: true, card: CampaignCard, name: string, replaced: boolean, notes: string[]}} ImportDone */
+/** @typedef {{ok: false, headline: string, problems: Array<{path: string, message: string}>, more: number, notes?: string[]}} ImportRefused */
+/** @typedef {ImportDone|ImportRefused} ImportResult */
+
+/** J5.4: lo más grande que se lee. Strahd, entero, pesa 120 KB. */
+const MAX_CAMPAIGN_FILE = 20 * 1024 * 1024;
+
+/**
+ * La tarjeta de una campaña del tablón.
+ *
+ * @param {CampaignCard} one
+ * @param {() => void} onClick
+ * @returns {JQuery}
+ */
+function campaignTile(one, onClick) {
+    const state = { nueva: 'Sin empezar', 'en-curso': 'En curso', terminada: 'Terminada' }[one.state];
+    const tile = card({ icon: one.icon, label: `${one.action} ${one.name}. ${state}.`, onClick }).attr('data-campaign', one.id);
+    tile.append(div('vt-name').text(one.name));
+    // Lo lejos que queda va con el género y los niveles: «Horror gótico · Para nivel 1 a 6 · A nueve días de camino».
+    tile.append(div('vt-what').text([one.genre, one.levels, one.distance].filter(Boolean).join(' · ')));
+    tile.append(div(`hb-state hb-${one.state}`).text(one.ending ? `${state}: ${one.ending}` : state));
+    if (one.note) tile.append(div('vt-pitch').text(one.note));
+    if (one.synopsis) tile.append(div('vt-about').text(one.synopsis));
+    if (one.warn) tile.append(div('hb-warn').text(one.warn));
+    tile.append(div('vt-go').append(`<i class="fa-solid ${one.state === 'nueva' ? 'fa-play' : 'fa-forward'}"></i>`)
+        .append($('<span></span>').text(`${one.action}: ${one.name}`)));
+    return tile;
+}
+
+/**
+ * J5.4: la tarjeta de añadir una campaña desde un archivo.
+ *
+ * @param {() => void} onClick
+ * @returns {JQuery}
+ */
+function addCampaignTile(onClick) {
+    return $('<button type="button" class="vt-card vt-new hb-card hb-add"></button>')
+        .attr('data-campaign-add', 'true')
+        .attr('aria-label', 'Añadir una campaña desde un archivo JSON: el paquete del juego o lo que te da tu Gem.')
+        .append(div('vt-face').append('<i class="fa-solid fa-file-import"></i>'))
+        .append(div('vt-name').text('Añadir una campaña'))
+        .append(div('vt-about').text('Desde un archivo JSON: el paquete del juego o el que te da tu Gem. Se comprueba antes de guardarla.'))
+        .append(div('vt-go').append('<i class="fa-solid fa-folder-open"></i>').append($('<span></span>').text('Elegir el archivo')))
+        .on('click', onClick);
+}
+
+/**
+ * J5.4: lo que ha pasado al añadir. Bien: cuál, y lo que se puso en limpio. Mal: por qué, con
+ * lo que dice el validador, fallo a fallo, para arreglarlo o pasárselo al Gem.
+ *
+ * @param {JQuery} box
+ * @param {ImportResult} result
+ * @param {string} fileName
+ */
+function showImport(box, result, fileName) {
+    box.empty().removeClass('is-ok is-bad').addClass(result.ok ? 'is-ok' : 'is-bad').show();
+    if (result.ok) {
+        const done = /** @type {ImportDone} */ (result);
+        box.append(div('hb-import-title').text(done.replaced
+            ? `Puesta al día en el tablón: ${done.name}.`
+            : `Añadida al tablón: ${done.name}. Ya se puede empezar.`));
+        for (const note of done.notes ?? []) box.append(div('hb-import-note').text(note));
+        return;
+    }
+    const refused = /** @type {ImportRefused} */ (result);
+    box.append(div('hb-import-title').text(`No se ha podido añadir «${fileName}».`));
+    box.append(div('hb-import-note').text(refused.headline));
+    if (refused.problems.length === 0) return;
+    const list = $('<ul class="hb-import-list"></ul>');
+    for (const problem of refused.problems) {
+        list.append($('<li></li>').text(problem.message).append(' ').append($('<code></code>').text(problem.path)));
+    }
+    if (refused.more > 0) list.append($('<li></li>').text(`… y ${refused.more} más.`));
+    box.append(list);
+    box.append(div('hb-import-note').text('Arréglalos en el archivo, o pásale esta lista a tu Gem: te devuelve la campaña corregida entera. Luego vuelve a añadirla.'));
+}
+
+/**
+ * J5.4: añadir desde el gremio, lo de siempre: `campaigns.js` guarda el paquete y su fila.
+ *
+ * @param {string} content
+ * @returns {Promise<ImportResult>}
+ */
+async function importCampaignFile(content) {
+    const { importHubCampaign } = await import('../../campaigns.js');
+    return /** @type {Promise<ImportResult>} */ (importHubCampaign(content));
+}
+
 /**
  * El tablón de campañas. Devuelve la elegida, o null.
  *
  * J1.6: con `heroes`, arriba va «Quién va»: tus personajes, para cambiar con quién se va a
  * la próxima campaña, y hacer uno más. Elegir uno devuelve `{hero}` o `{create}`, no una campaña.
  *
+ * J5.4: al final, «Añadir una campaña»: se elige un archivo, se comprueba y, si vale, su
+ * tarjeta aparece en el tablón sin cerrarlo. Si no, se dice por qué debajo.
+ *
  * @param {Object} input
  * @param {any} input.Popup
  * @param {any} input.POPUP_TYPE
  * @param {ReturnType<typeof import('../campaign/hub.js').hubCampaignCards>} input.cards
  * @param {import('../campaign/hub-heroes.js').HeroCard[]} [input.heroes]
+ * @param {(content: string) => Promise<ImportResult>} [input.onImport] Guardar una campaña
+ *   leída de un archivo. Sin él, la guarda `campaigns.js` en el gremio abierto.
  * @returns {Promise<string|{hero: string}|{create: true}|null>}
  */
-export async function openHubBoard({ Popup, POPUP_TYPE, cards, heroes = [] }) {
+export async function openHubBoard({ Popup, POPUP_TYPE, cards, heroes = [], onImport = importCampaignFile }) {
     await loadPixelManifest();
     const body = div('vt-root hb-root');
     body.append(div('vt-head')
@@ -187,29 +282,51 @@ export async function openHubBoard({ Popup, POPUP_TYPE, cards, heroes = [] }) {
         body.append(div('vt-section hb-section').text('Las campañas'));
     }
     const grid = div('vt-grid hb-grid');
-    for (const one of cards) {
-        const state = { nueva: 'Sin empezar', 'en-curso': 'En curso', terminada: 'Terminada' }[one.state];
-        const tile = card({
-            icon: one.icon,
-            label: `${one.action} ${one.name}. ${state}.`,
-            onClick: () => {
-                chosen = one.id;
-                void popup?.completeCancelled();
-            },
-        }).attr('data-campaign', one.id);
-        tile.append(div('vt-name').text(one.name));
-        // Lo lejos que queda va con el género y los niveles: «Horror gótico · Para nivel 1 a 6 · A nueve días de camino».
-        tile.append(div('vt-what').text([one.genre, one.levels, one.distance].filter(Boolean).join(' · ')));
-        tile.append(div(`hb-state hb-${one.state}`).text(one.ending ? `${state}: ${one.ending}` : state));
-        if (one.note) tile.append(div('vt-pitch').text(one.note));
-        if (one.synopsis) tile.append(div('vt-about').text(one.synopsis));
-        if (one.warn) tile.append(div('hb-warn').text(one.warn));
-        tile.append(div('vt-go').append(`<i class="fa-solid ${one.state === 'nueva' ? 'fa-play' : 'fa-forward'}"></i>`)
-            .append($('<span></span>').text(`${one.action}: ${one.name}`)));
-        grid.append(tile);
-    }
-    if (cards.length === 0) grid.append($('<p class="vt-note"></p>').text('El tablón está vacío: no hay campañas escritas.'));
-    body.append(grid);
+    /** @param {CampaignCard} one */
+    const pick = (one) => () => {
+        chosen = one.id;
+        void popup?.completeCancelled();
+    };
+    for (const one of cards) grid.append(campaignTile(one, pick(one)));
+    const empty = cards.length === 0
+        ? $('<p class="vt-note"></p>').text('El tablón está vacío: no hay campañas escritas. Puedes añadir la tuya.')
+        : $();
+    grid.append(empty);
+
+    // J5.4: añadir una campaña desde un archivo. Lo que pasa se dice bajo las tarjetas.
+    const report = div('hb-import').attr('role', 'status').hide();
+    const picker = $('<input type="file" accept=".json,application/json" hidden />');
+    const addTile = addCampaignTile(() => { if (!addTile.hasClass('is-busy')) picker.trigger('click'); });
+    picker.on('change', async () => {
+        const file = /** @type {HTMLInputElement} */ (picker[0]).files?.[0];
+        // Vaciado, para que el mismo archivo arreglado se pueda elegir otra vez.
+        picker.val('');
+        if (!file) return;
+        addTile.addClass('is-busy').find('.vt-go span').text('Comprobando…');
+        try {
+            const result = file.size > MAX_CAMPAIGN_FILE
+                ? /** @type {ImportResult} */ ({ ok: false, headline: 'Es demasiado grande para ser una campaña: más de 20 MB.', problems: [], more: 0 })
+                : await onImport(await file.text());
+            showImport(report, result, file.name);
+            if (result.ok) {
+                const tile = campaignTile(result.card, pick(result.card)).addClass('is-new');
+                const was = grid.find(`[data-campaign="${CSS.escape(result.card.id)}"]`);
+                if (was.length > 0) was.replaceWith(tile);
+                else tile.insertBefore(addTile);
+                empty.remove();
+                tile[0].scrollIntoView({ block: 'nearest' });
+            } else {
+                report[0].scrollIntoView({ block: 'nearest' });
+            }
+        } catch (error) {
+            console.error('[gremio] no se pudo leer el archivo', error);
+            showImport(report, { ok: false, headline: `No se pudo leer el archivo: ${String(/** @type {any} */ (error)?.message || error)}.`, problems: [], more: 0 }, file.name);
+        } finally {
+            addTile.removeClass('is-busy').find('.vt-go span').text('Elegir el archivo');
+        }
+    });
+    grid.append(addTile);
+    body.append(grid, report, picker);
     body.append(div('hb-foot').append($('<button type="button" class="menu_button hb-close"></button>')
         .text('Ahora no')
         .on('click', () => { void popup?.completeCancelled(); })));

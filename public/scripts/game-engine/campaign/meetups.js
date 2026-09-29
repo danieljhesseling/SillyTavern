@@ -24,7 +24,7 @@
  * (`ui/meetup-scene.js`), gasta la franja (`day-parts.js`), suma el vínculo y guarda `social`.
  */
 
-import { BOND_EVENTS, BOND_PERKS, MAX_RANK, recordBondEvent, getRankForPoints, normalizeBondState } from './bonds.js';
+import { BOND_EVENTS, BOND_PERKS, CONTROL_RANK, MAX_RANK, recordBondEvent, getRankForPoints, normalizeBondState } from './bonds.js';
 import { resolveGenderDeep } from './grammar.js';
 import { keyOf, readSocial } from './social.js';
 import { pickTalk, talkScene } from './small-talk.js';
@@ -35,8 +35,11 @@ export const FACES = ['alegre', 'enfadado', 'triste'];
 /** Lo que vale cada clase de quedada, como evento de vínculo. */
 export const MEETUP_EVENTS = { escena: 'confidant_scene', rato: 'shared_downtime' };
 
-/** Lo que abre un rango: una ayuda en combate, un descuento o su misión personal. */
-export const UNLOCK_TYPES = ['apoyo', 'descuento', 'mision'];
+/**
+ * Lo que abre un rango: una ayuda en combate, un descuento, su misión personal o, en el rango
+ * de «amigo» (`CONTROL_RANK`, J7.3), que le lleves tú en combate («Lo muevo yo»).
+ */
+export const UNLOCK_TYPES = ['apoyo', 'descuento', 'mision', 'control'];
 
 /** @param {any} value @returns {string} */
 const text = (value) => String(value ?? '').trim();
@@ -90,7 +93,7 @@ const text = (value) => String(value ?? '').trim();
  * @property {string} id
  * @property {string} who
  * @property {number} rank
- * @property {'apoyo'|'descuento'|'mision'} type
+ * @property {'apoyo'|'descuento'|'mision'|'control'} type
  * @property {string} label
  * @property {string} describe
  * @property {string} [perk] La ventaja de combate (`BOND_PERKS`), si es una ayuda.
@@ -568,9 +571,9 @@ export function sceneOutcome({ scene, choices, likedPlace = false }) {
 }
 
 /**
- * Lo que abre alguien al llegar a un rango: lo suyo (`kind: "rango"`) y las ventajas de
- * vínculo de siempre de ese rango. Si lo suyo ya es una de esas ventajas, se dice como lo
- * suyo, una vez.
+ * Lo que abre alguien al llegar a un rango: lo suyo (`kind: "rango"`), las ventajas de
+ * vínculo de siempre de ese rango y, en el de «amigo», llevarle tú en combate (J7.3), que es
+ * para todos. Si lo suyo ya es una de esas cosas, se dice como lo suyo, una vez.
  *
  * @param {{unlocks: Unlock[]}} data
  * @param {any} name
@@ -584,7 +587,14 @@ export function unlocksAt(data, name, rank) {
         .map(p => /** @type {Unlock} */ ({
             id: `vinculo-${p.id}`, who: text(name), rank, type: 'apoyo', label: p.label, describe: p.description, perk: p.id,
         }));
-    return [...own, ...perks];
+    /** @type {Unlock[]} */
+    const control = rank === CONTROL_RANK && !own.some(u => u.type === 'control')
+        ? [{
+            id: 'vinculo-control', who: text(name), rank, type: 'control', label: 'Lo muevo yo',
+            describe: `Ya puedes mover tú a ${text(name) || 'tu compañero'} en combate. Si prefieres, se lo vuelves a dejar al juego.`,
+        }]
+        : [];
+    return [...own, ...control, ...perks];
 }
 
 /**

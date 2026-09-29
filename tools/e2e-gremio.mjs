@@ -3,7 +3,8 @@
  * El recorrido de «Jugar sin conexión» (J4 de ROADMAP_SIN_CONEXION), de punta a punta, contra
  * un servidor propio con un `--dataRoot` temporal, como `e2e-quick.mjs`:
  *
- *   título → Jugar sin conexión → tu personaje → la prueba de la bodega → contratar a un
+ *   título → Jugar sin conexión → tu personaje → el prólogo (J2.1: el ratero del muelle, la
+ *   charla con Tomás y Brunilda) → la prueba de la bodega → contratar a un
  *   mercenario → el tablón → La Maldición de Strahd → volver al gremio → seguir la campaña
  *   → terminarla y volver con lo ganado, y sale en el salón (J4.5, J3.9)
  *   → y el título ofrece «Continuar» y «Cargar partida» lista el gremio como una partida
@@ -296,7 +297,7 @@ try {
     check('repartir un punto sube la Fuerza, y quedan dos (J1.2)',
         Number(spread.str) === Number(numbers.str) + 1 && /quedan 2/.test(spread.left), JSON.stringify(spread));
     const premise = await page.locator('.hc-root .hc-premise-text').textContent().catch(() => '');
-    check('la creación cuenta cómo empieza: el gremio y la bodega', /bodega/i.test(String(premise)), String(premise).slice(0, 160));
+    check('la creación cuenta cómo empieza: la llegada al muelle de Puerto Alba (J2.1)', /muelle de Puerto Alba/i.test(String(premise)), String(premise).slice(0, 160));
     if (SHOT) await page.screenshot({ path: `${SHOT}.personaje.png` });
     await page.locator('.hc-root .hc-enter').click();
 
@@ -305,18 +306,20 @@ try {
         return /Gremio/.test(now.world) && now.party.length === 1 && now.party[0].name === 'Tessa';
     }, 60000);
     let now = await state();
-    check('empieza en el gremio, con Tessa y 100 de oro, en la bodega', inHub && now.party[0]?.gold === 100 && now.board === 'La bodega del gremio', JSON.stringify(now));
-    const prologue = await until(() => chatHas(/Baja a la bodega/), 20000);
-    check('el prólogo se cuenta en el chat', prologue);
+    check('empieza en el gremio, con Tessa y 100 de oro, en el muelle de Puerto Alba (J2.1)', inHub && now.party[0]?.gold === 100 && now.board === 'El muelle de Puerto Alba', JSON.stringify(now));
+    const prologue = await until(() => chatHas(/Al ladrón/), 20000);
+    check('el prólogo se cuenta en el chat: la llegada y el ratero (J2.1)', prologue);
     await page.waitForTimeout(800);
-    // J1.4: con «Mujer», «si subes entera», y ni una marca {…|…} ni un «o/a» a la vista.
-    const genderText = await page.evaluate(() => [
+    /** J1.4: con «Mujer», el texto en femenino, y ni una marca {…|…} ni un «o/a» a la vista. */
+    const genderText = () => page.evaluate(() => [
         ...(window.SillyTavern.getContext().chat || []).map((/** @type {any} */ m) => String(m.extra?.display_text || m.mes || '')),
         document.querySelector('#game-shell .gs-focus')?.textContent || '',
     ].join('\n'));
-    check('el texto concuerda con Tessa: «si subes entera», sin marcas ni «o/a» (J1.4)',
-        /subes entera/.test(genderText) && !/subes entero/.test(genderText) && !/\{[^{}\n]*\|[^{}\n]*\}|[a-záéíóúñ]os?\/as?\b/i.test(genderText),
-        (genderText.match(/.{0,60}(\{[^{}\n]*\||subes enter[oa]|o\/a).{0,40}/i) ?? [''])[0]);
+    const genderOk = (/** @type {string} */ said, /** @type {RegExp} */ good, /** @type {RegExp} */ bad) =>
+        good.test(said) && !bad.test(said) && !/\{[^{}\n]*\|[^{}\n]*\}|[a-záéíóúñ]os?\/as?\b/i.test(said);
+    const arrival = await genderText();
+    check('el texto concuerda con Tessa: «cansada del viaje», sin marcas ni «o/a» (J1.4)', genderOk(arrival, /cansada del viaje/, /cansado del viaje/),
+        (arrival.match(/.{0,60}(\{[^{}\n]*\||cansad[oa] del viaje|o\/a).{0,40}/i) ?? [''])[0]);
     const hubChips = await chips();
     check('las fichas ofrecen el tablón de campañas y contratar', hubChips.some(c => /Tablón de campañas/.test(c)) && hubChips.some(c => /Contratar mercenarios/.test(c)), JSON.stringify(hubChips));
     // Al crear, los avisos son cortos: el equipo y los números ya se vieron en la creación.
@@ -326,6 +329,116 @@ try {
     /** Lo que dice la caja de escribir. */
     const placeholder = () => page.evaluate(() => /** @type {HTMLTextAreaElement|null} */ (document.querySelector('#send_textarea'))?.placeholder || '');
     const beforeFight = await placeholder();
+    /** Lo que se lee en la caja de la novela visual, y lo que toca ahora. */
+    const novelBox = () => page.evaluate(() => ({
+        text: (document.querySelector('#game-shell .gs-vn-text')?.textContent || '').replace(/\s+/g, ' ').trim(),
+        focus: (document.querySelector('#game-shell .gs-focus')?.textContent || '').replace(/\s+/g, ' ').trim(),
+    }));
+    const dropToasts = () => page.evaluate(() => document.querySelectorAll('#toast-container .toast').forEach(t => t.remove()));
+
+    // 2b. J2.1: el prólogo. Se llega al muelle y un ratero le quita la bolsa a Tomás: la primera
+    // pelea, pequeña y con un solo enemigo, enseña a andar y a atacar (J2.2).
+    const canPier = await until(async () => (await chips()).some(c => /^Iniciar combate \(Ratero del muelle\)/.test(c)), 15000);
+    check('en el muelle, la fila ofrece pelear con el ratero, y saltar la prueba para quien ya sabe jugar (J2.1, J2.3)',
+        canPier && (await chips()).some(c => /^Saltar la prueba$/.test(c)), JSON.stringify(await chips()));
+    const pierBox = await novelBox();
+    check('la llegada se lee en la caja de la novela visual, con lo que toca ahora (J2.1)',
+        /Al ladrón/.test(pierBox.text) && /ratero/i.test(pierBox.focus), JSON.stringify(pierBox));
+    if (SHOT) await page.screenshot({ path: `${SHOT}.muelle.png` });
+    if (canPier) {
+        await clickChip(/^Iniciar combate \(Ratero/);
+        await until(async () => (await state()).fighting, 10000);
+        await clearDice();
+        // Las casillas del muelle: hierba y peñascos de exterior, y el agua del puerto.
+        const pierTiles = await page.evaluate(() => ({
+            floor: document.querySelector('.wm-terrain-layer.wm-terrain-tiled-floor')?.getAttribute('data-biome') || '',
+            walls: document.querySelectorAll('.wm-terrain-wall.wm-terrain-tiled').length,
+            water: document.querySelectorAll('.wm-terrain-water.wm-terrain-tiled').length,
+        }));
+        check('el muelle se pinta de exterior, con el agua del puerto (arte en pixel)', pierTiles.floor === 'exterior' && pierTiles.walls > 0 && pierTiles.water > 0,
+            JSON.stringify(pierTiles));
+        // J2.2: la primera pelea enseña, un consejo cada vez: el de pelear y, en tu turno, el de andar.
+        const fightTips = await tipsUntil(/^Te toca/);
+        check('la primera pelea trae su consejo y, en tu turno, el de andar (J2.2)',
+            fightTips.filter(t => /^Empieza la pelea/.test(t)).length === 1 && fightTips.filter(t => /^Te toca/.test(t)).length === 1, JSON.stringify(fightTips));
+        if (SHOT) await page.screenshot({ path: `${SHOT}.muelle-pelea.png` });
+        // El panel del combate y la caja de escribir, en tu turno: en castellano y sin comandos.
+        const inFight = await page.evaluate(() => ({
+            panel: (document.querySelector('.wm-combat-section')?.textContent || '').replace(/\s+/g, ' ').trim(),
+            box: /** @type {HTMLTextAreaElement|null} */ (document.querySelector('#send_textarea'))?.placeholder || '',
+        }));
+        check('en la pelea, el panel dice «En combate», «Enemigos» y «Te toca», sin inglés; la caja, ejemplos en llano',
+            /En combate/.test(inFight.panel) && /Enemigos/.test(inFight.panel) && /Te toca/.test(inFight.panel) && /Fin de turno/.test(inFight.panel)
+            && !/Combat Active|Your turn|Enemies|Action used|End Turn|Movement left/.test(inFight.panel)
+            && /^Te toca/.test(inFight.box) && /«ataco a Ratero del muelle/.test(inFight.box) && !/\/combat/.test(inFight.box), JSON.stringify(inFight));
+        await page.evaluate(async () => {
+            const enc = (await import('/scripts/party.js')).getCombatEncounter();
+            for (const e of enc?.enemies ?? []) e.currentHp = 0;
+        });
+        for (let i = 0; i < 8 && (await state()).fighting; i++) {
+            await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/combat-end'));
+            await page.waitForTimeout(700);
+            await clearDice();
+        }
+    }
+    const thanked = await until(() => chatHas(/Soy Tomás/), 15000);
+    check('ganar en el muelle sigue la historia: Tomás da las gracias (J2.1)', thanked && !(await state()).fighting);
+    // J2.2: al moverse el hilo, el del Diario. Lo que queda por enseñar no se mete en medio.
+    const journalTips = await tipsUntil(/Diario/);
+    check('y al moverse el hilo, el consejo del Diario (J2.2)', journalTips.filter(t => /^Queda apuntado en el Diario/.test(t)).length === 1, JSON.stringify(journalTips));
+
+    // J2.1: la charla con Tomás, en la ventana de hablar: sus temas y lo que se cuenta en el puerto.
+    /** Pulsar «Hablar con…» en la fila y esperar su ventana. */
+    const talkWith = async (/** @type {string} */ name) => {
+        await dropToasts();
+        const offered = await until(async () => (await chips()).some(c => c === `Hablar con ${name}`), 10000);
+        await clickChip(new RegExp(`^Hablar con ${name}$`));
+        const opened = await page.waitForSelector('.popup:visible .tk-root', { timeout: 10000 }).then(() => true).catch(() => false);
+        return offered && opened;
+    };
+    const endTalk = async () => {
+        await dropToasts();
+        await page.locator('.popup:visible:has(.tk-root) .popup-button-ok').first().click({ timeout: 5000 }).catch(() => {});
+        await page.waitForSelector('.tk-root', { state: 'detached', timeout: 5000 }).catch(() => {});
+        await page.waitForTimeout(500);
+    };
+    const withTomas = await talkWith('Tomás');
+    const talkTips = await tipsUntil(/^Pulsa un tema/, 10000);
+    await page.locator('.popup:visible .tk-root .tk-topic[data-topic="rumor"]').first().click({ timeout: 5000 }).catch(() => {});
+    const heard = await until(async () => /Barovia/.test(String(await page.locator('.popup:visible .tk-root .tk-log').textContent({ timeout: 1000 }).catch(() => ''))), 8000);
+    const talkWindow = await page.evaluate(() => ({
+        title: (document.querySelector('.tk-root .gs-popup-title')?.textContent || '').trim(),
+        topics: [...document.querySelectorAll('.tk-root .tk-topic')].map(t => t.getAttribute('data-topic')),
+        log: (document.querySelector('.tk-root .tk-log')?.textContent || '').trim().slice(0, 160),
+    }));
+    check('«Hablar con Tomás» abre la charla: sus temas, lo que se cuenta en el puerto y el consejo de hablar (J2.1, J2.2)',
+        withTomas && heard && talkWindow.title === 'Tomás' && talkWindow.topics.includes('rumor') && talkTips.filter(t => /^Pulsa un tema/.test(t)).length === 1,
+        JSON.stringify({ talkWindow, talkTips }));
+    if (SHOT) await page.screenshot({ path: `${SHOT}.charla.png` });
+    await endTalk();
+    const guildTold = await until(() => chatHas(/Brunilda, la maestra del gremio/), 10000);
+    check('mientras se habla llega Brunilda, que lleva al gremio y dice para qué sirve (J2.1)', guildTold && await chatHas(/se reparten las campañas/));
+
+    // Brunilda: hablar con ella trae la prueba de la bodega.
+    const withBrunilda = await talkWith('Brunilda');
+    await endTalk();
+    const cellarAsked = await until(() => chatHas(/Baja a la bodega/), 10000);
+    await page.waitForTimeout(800);
+    const trialText = await genderText();
+    check('hablar con Brunilda trae la prueba: «Baja a la bodega», y «si subes entera», sin marcas (J2.1, J1.4)',
+        withBrunilda && cellarAsked && genderOk(trialText, /subes entera/, /subes entero/),
+        (trialText.match(/.{0,60}(\{[^{}\n]*\||subes enter[oa]|o\/a).{0,40}/i) ?? [''])[0]);
+    const trialBox = await novelBox();
+    check('la prueba se lee en la caja, y lo que toca dice cómo llegar a la bodega (J2.1)',
+        /Baja a la bodega/.test(trialBox.text) && /bodega/i.test(trialBox.focus), JSON.stringify(trialBox));
+    if (SHOT) await page.screenshot({ path: `${SHOT}.prologo.png` });
+    // Del muelle a la bodega, por la fila: la que pide la historia va delante.
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/leave'));
+    await page.waitForTimeout(700);
+    const toCellar = await until(async () => (await chips()).some(c => /^Entrar en La bodega del gremio$/.test(c)), 10000);
+    check('fuera del muelle, la fila lleva a la bodega, que es lo que pide la historia (J2.1)', toCellar, JSON.stringify(await chips()));
+    await clickChip(/^Entrar en La bodega del gremio$/);
+    await until(async () => (await state()).board === 'La bodega del gremio', 10000);
 
     // 3. La prueba: las ratas de la bodega. La pelea se empieza desde la fila de fichas: en
     // la escena de diálogo el botón del tablero no se ve.
@@ -362,19 +475,7 @@ try {
             ratsDrawn && tokenArt.some(s => /^heroes\/(raza-humano-)?guerrero-mujer\.png$/.test(s)) && tiles.floor === 'mazmorra' && tiles.walls > 0,
             JSON.stringify({ tokenArt, tiles }));
         if (SHOT) await page.screenshot({ path: `${SHOT}.pelea.png` });
-        // J2.2: la primera pelea enseña, un consejo cada vez: el de pelear y, en tu turno, el de andar.
-        const fightTips = await tipsUntil(/^Te toca/);
-        check('la primera pelea trae su consejo y, en tu turno, el de andar (J2.2)',
-            fightTips.filter(t => /^Empieza la pelea/.test(t)).length === 1 && fightTips.filter(t => /^Te toca/.test(t)).length === 1, JSON.stringify(fightTips));
-        // El panel del combate y la caja de escribir, en tu turno: en castellano y sin comandos.
-        const inFight = await page.evaluate(() => ({
-            panel: (document.querySelector('.wm-combat-section')?.textContent || '').replace(/\s+/g, ' ').trim(),
-            box: /** @type {HTMLTextAreaElement|null} */ (document.querySelector('#send_textarea'))?.placeholder || '',
-        }));
-        check('en la pelea, el panel dice «En combate», «Enemigos» y «Te toca», sin inglés; la caja, ejemplos en llano',
-            /En combate/.test(inFight.panel) && /Enemigos/.test(inFight.panel) && /Te toca/.test(inFight.panel) && /Fin de turno/.test(inFight.panel)
-            && !/Combat Active|Your turn|Enemies|Action used|End Turn|Movement left/.test(inFight.panel)
-            && /^Te toca/.test(inFight.box) && /«ataco a Rata de bodega/.test(inFight.box) && !/\/combat/.test(inFight.box), JSON.stringify(inFight));
+        // Los consejos de la primera pelea y el panel en castellano se miran en el muelle (J2.1): aquí ya no salen.
         await page.evaluate(async () => {
             const enc = (await import('/scripts/party.js')).getCombatEncounter();
             for (const e of enc?.enemies ?? []) e.currentHp = 0;
@@ -391,9 +492,6 @@ try {
     const afterFight = await placeholder();
     check('acabada la pelea, la caja vuelve a decir lo mismo que antes, llano y sin los comandos del combate',
         afterFight === 'Escribe lo que hace tu personaje…' && beforeFight === afterFight, JSON.stringify({ beforeFight, afterFight }));
-    // J2.2: al moverse el hilo, el del Diario. Lo que queda por enseñar no se mete en medio.
-    const journalTips = await tipsUntil(/Diario/);
-    check('y al moverse el hilo, el consejo del Diario (J2.2)', journalTips.filter(t => /^Queda apuntado en el Diario/.test(t)).length === 1, JSON.stringify(journalTips));
     await page.evaluate(() => {
         const seen = window.localStorage.getItem('sillytavern_gameTipsSeen') || '';
         window.localStorage.setItem('sillytavern_gameTipsSeen', `${seen},combat,move,attack,roll,talk,journal`);
@@ -404,6 +502,51 @@ try {
     await clearDice();
     await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/leave'));
     await page.waitForTimeout(600);
+
+    // J3.11: fuera del tablero, la pantalla es el pueblo. Con el selector de sitios: la herrería,
+    // con Ramiro; volver; la taberna, con Tomás, y comer ahí. Luego, de vuelta a la novela.
+    const townShown = await until(() => page.evaluate(() => document.querySelector('#game-shell')?.getAttribute('data-scene') === 'exploration'
+        && document.querySelectorAll('#game-shell .gs-town-place').length > 0), 10000);
+    const townPlaces = await page.evaluate(() => [...document.querySelectorAll('#game-shell .gs-town-place')].map(c => c.getAttribute('data-place')));
+    check('fuera del tablero, la pantalla es el pueblo: la herrería, la taberna, la tienda, la capilla y el gremio (J3.11)',
+        townShown && JSON.stringify(townPlaces) === JSON.stringify(['herreria', 'posada', 'tienda', 'templo', 'gremio']), JSON.stringify(townPlaces));
+    if (SHOT) await page.screenshot({ path: `${SHOT}.pueblo.png` });
+    /** Lo que se ve dentro de un sitio del pueblo. */
+    const placeScene = () => page.evaluate(() => {
+        const scene = document.querySelector('#game-shell .gs-town-scene');
+        const face = /** @type {HTMLImageElement|null} */ (scene?.querySelector('.gs-town-portrait img'));
+        return {
+            place: scene?.getAttribute('data-place') || '',
+            plate: (scene?.querySelector('.gs-town-plate')?.textContent || '').trim(),
+            face: face && face.complete && face.naturalWidth > 0 ? String(face.getAttribute('src')) : '',
+            line: (scene?.querySelector('.gs-town-line')?.textContent || '').trim(),
+            acts: [...(scene?.querySelectorAll('.gs-town-act') ?? [])].map(b => (b.textContent || '').replace(/\s+/g, ' ').trim()),
+        };
+    });
+    await page.locator('#game-shell .gs-town-place[data-place="herreria"]').click({ timeout: 5000 }).catch(() => {});
+    let inPlace = await placeScene();
+    await until(async () => /ramiro\.png$/.test((inPlace = await placeScene()).face), 8000);
+    check('en la herrería, Ramiro con su retrato, su saludo y lo que se hace allí (J3.11)',
+        inPlace.place === 'herreria' && inPlace.plate === 'Ramiro' && /retratos\/gremio\/ramiro\.png$/.test(inPlace.face) && /^Ramiro .*«Buen/.test(inPlace.line)
+        && inPlace.acts.some(a => /Hablar con Ramiro/.test(a)) && inPlace.acts.some(a => /capa/i.test(a)), JSON.stringify(inPlace));
+    if (SHOT) await page.screenshot({ path: `${SHOT}.herreria.png` });
+    await page.locator('#game-shell .gs-town-back').click({ timeout: 5000 }).catch(() => {});
+    const backInTown = await until(() => page.evaluate(() => !document.querySelector('#game-shell .gs-town-scene')
+        && document.querySelectorAll('#game-shell .gs-town-place').length > 0), 5000);
+    await page.locator('#game-shell .gs-town-place[data-place="posada"]').click({ timeout: 5000 }).catch(() => {});
+    await until(async () => /tomas\.png$/.test((inPlace = await placeScene()).face), 8000);
+    const goldBeforeMeal = (await state()).party[0]?.gold ?? 0;
+    await page.locator('#game-shell .gs-town-scene .gs-town-act[data-action="inn-meal"]').click({ timeout: 5000 }).catch(() => {});
+    const ate = await until(async () => ((await state()).party[0]?.gold ?? 0) === goldBeforeMeal - 1, 8000);
+    const afterMeal = await placeScene();
+    check('volver al pueblo y entrar en la taberna: Tomás, y comer caliente por 1 de oro sin salir de ella (J3.11)',
+        backInTown && inPlace.place === 'posada' && inPlace.plate === 'Tomás' && /retratos\/gremio\/tomas\.png$/.test(inPlace.face)
+        && inPlace.acts.some(a => /Hablar con Tomás/.test(a)) && ate && afterMeal.place === 'posada', JSON.stringify({ inPlace, goldBeforeMeal, ate }));
+    if (SHOT) await page.screenshot({ path: `${SHOT}.posada.png` });
+    await page.locator('#game-shell .gs-town-back').click({ timeout: 5000 }).catch(() => {});
+    await page.locator('#game-shell .gs-scene-btn[data-scene="dialogue"]').click({ timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(400);
+
     check('fuera del tablón también se ofrece contratar', await clickChip(/Contratar mercenarios/));
     const hire = await page.waitForSelector('.hb-root [data-hireling]', { timeout: 15000 }).then(() => true).catch(() => false);
     const offers = await page.evaluate(() => [...document.querySelectorAll('.hb-root [data-hireling]')].map(c => c.getAttribute('aria-label')));

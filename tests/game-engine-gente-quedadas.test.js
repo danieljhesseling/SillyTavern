@@ -11,7 +11,7 @@ import {
 } from '../public/scripts/game-engine/campaign/meetups.js';
 import { readTalkRows } from '../public/scripts/game-engine/campaign/small-talk.js';
 import { createSocial, bondKeyOf } from '../public/scripts/game-engine/campaign/social.js';
-import { BOND_PERKS, createBondState, getRank } from '../public/scripts/game-engine/campaign/bonds.js';
+import { BOND_PERKS, CONTROL_RANK, canPlayerControl, createBondState, getRank, recordBondEvent } from '../public/scripts/game-engine/campaign/bonds.js';
 import { favorDiscount } from '../public/scripts/game-engine/campaign/companion-arcs.js';
 import { HIRELINGS } from '../public/scripts/game-engine/campaign/guests.js';
 import { validateBattery, DOMAINS } from '../public/scripts/game-engine/compendio/compendio.js';
@@ -58,7 +58,7 @@ describe('el contenido: compendio/quedadas.json', () => {
         expect(DOMAINS).toContain('quedadas');
         expect(validateBattery('quedadas', file)).toEqual([]);
         expect(data.people.length).toBe(18);
-        expect(data.unlocks.length).toBe(9);
+        expect(data.unlocks.length).toBe(22);
         expect(data.scenes.length).toBe(file.rows.filter((/** @type {any} */ r) => r.kind === 'escena').length);
     });
 
@@ -70,7 +70,46 @@ describe('el contenido: compendio/quedadas.json', () => {
             expect(unlocksAt(data, name, 2).map(u => u.type)).toEqual(['descuento']);
             expect(unlocksAt(data, name, 3).map(u => u.type)).toEqual(['apoyo']);
             expect(unlocksAt(data, name, 4).map(u => u.type)).toEqual(['mision']);
+            expect(unlocksAt(data, name, 5).map(u => u.type)).toEqual(['control', 'apoyo']);
         }
+    });
+
+    test('J7.3: el rango 5 («amigo») abre «Lo muevo yo» a todos, mercenarios incluidos, una vez y dicho como suyo', () => {
+        const everyone = [...HIRELINGS.map(h => h.name), ...packs.strahd.confidants.map((/** @type {any} */ c) => c.name), ...packs[1387].confidants.map((/** @type {any} */ c) => c.name)];
+        for (const name of everyone) {
+            const control = unlocksAt(data, name, CONTROL_RANK).filter(u => u.type === 'control');
+            expect([name, control.length, control[0]?.label]).toEqual([name, 1, 'Lo muevo yo']);
+            expect(control[0].id).toMatch(/^rango-/);
+        }
+        expect(unlocksAt(data, 'Nella Tresflechas', 5)[0].describe).toBe('Nella ya es tu amiga: en combate puedes moverla tú. Si prefieres, se lo vuelves a dejar al juego.');
+        // Quien no tiene nada escrito (un compañero de una campaña nueva) lo abre igual.
+        expect(unlocksAt(data, 'Fulano', 5).map(u => [u.id, u.type])).toEqual([['vinculo-control', 'control'], ['vinculo-baton_pass', 'apoyo']]);
+        expect(unlocksAt(data, 'Fulano', 5)[0].describe).toContain('mover tú a Fulano');
+        expect(unlocksAt(data, 'Fulano', 4).some(u => u.type === 'control')).toBe(false);
+    });
+
+    test('J7.3: quién llevas tú en combate: tu héroe siempre; un compañero, desde «amigo»; una invocación, la de quien la lanza', () => {
+        const hero = { id: 1, name: 'Tessa' };
+        const gerd = { id: 2, name: 'Gerd el Mellado' };
+        const nella = { id: 3, name: 'Nella Tresflechas' };
+        const party = [hero, gerd, nella];
+        let bonds = createBondState();
+        for (let i = 0; i < 12; i++) bonds = recordBondEvent(bonds, '2', 'quest_together').state;
+        for (let i = 0; i < 5; i++) bonds = recordBondEvent(bonds, '3', 'quest_together').state;
+        expect([getRank(bonds, '2'), getRank(bonds, '3')]).toEqual([6, 4]);
+        expect(canPlayerControl(hero, bonds, { party })).toBe(true);
+        expect(canPlayerControl(hero, null, { party })).toBe(true);
+        expect(canPlayerControl(gerd, bonds, { party })).toBe(true);
+        expect(canPlayerControl(nella, bonds, { party })).toBe(false);
+        expect(canPlayerControl({ ...nella, isHero: true }, bonds)).toBe(true);
+        // Las invocaciones: del héroe, tuyas; de quien aún no es tu amigo, del juego; si el conjuro dice que va sola, sola.
+        expect(canPlayerControl({ id: 'inv-lobo-1-3-1', casterId: '1', control: 'player' }, bonds, { party })).toBe(true);
+        expect(canPlayerControl({ id: 'inv-lobo-3-3-1', casterId: '3', control: 'player' }, bonds, { party })).toBe(false);
+        expect(canPlayerControl({ id: 'inv-lobo-2-3-1', casterId: '2' }, bonds, { party })).toBe(true);
+        expect(canPlayerControl({ id: 'inv-x', casterId: '1', control: 'engine' }, bonds, { party })).toBe(false);
+        expect(canPlayerControl({ id: 'inv-y', casterId: '99' }, bonds, { party })).toBe(true);
+        expect(canPlayerControl(null, bonds, { party })).toBe(false);
+        expect(CONTROL_RANK).toBe(5);
     });
 
     test('cada escena se juega: de dos a cuatro pasos, dos o tres respuestas con alguna que acerca', () => {
@@ -341,7 +380,7 @@ describe('quedar tres veces con Gerd y subir un rango; se ve lo que abre', () =>
         // Quien no tiene nada escrito abre las de siempre.
         expect(unlocksAt(data, 'Ismark Kolyanovich', 3)).toEqual([expect.objectContaining({ id: 'vinculo-follow_up', label: 'Ataque de seguimiento' })]);
         expect(unlocksAt(data, 'Ismark Kolyanovich', 4)).toEqual([]);
-        expect(unlocksBetween(data, 'Gerd el Mellado', 1, 5).map(u => u.id)).toEqual(['rango-gerd-2', 'rango-gerd-3', 'rango-gerd-4', 'vinculo-baton_pass']);
+        expect(unlocksBetween(data, 'Gerd el Mellado', 1, 5).map(u => u.id)).toEqual(['rango-gerd-2', 'rango-gerd-3', 'rango-gerd-4', 'rango-gerd-5', 'vinculo-baton_pass']);
         expect(unlockedFor(data, 'Gerd el Mellado', 1)).toEqual([]);
     });
 

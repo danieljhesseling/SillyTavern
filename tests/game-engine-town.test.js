@@ -66,8 +66,11 @@ describe('los sitios de un pueblo (J3.11)', () => {
 
     test('el gremio sale en el pueblo del gremio aunque su lista no lo diga', () => {
         const old = { name: 'Puerto Alba', locationType: 'city', services: ['posada'] };
-        const found = townPlaces({ location: old, npcs: [{ name: 'Brunilda', where: 'Puerto Alba', service: '' }], guild: true });
-        expect(found.places.map(p => p.id)).toEqual(['posada', 'gremio', 'plaza']);
+        // Un gremio de antes: Brunilda sin servicio, pero con su oficio.
+        const found = townPlaces({ location: old, npcs: [{ name: 'Brunilda', where: 'Puerto Alba', service: '', trade: 'Maestra del gremio' }], guild: true });
+        expect(found.places.map(p => [p.id, p.keeper?.name ?? ''])).toEqual([['posada', ''], ['gremio', 'Brunilda']]);
+        // Y sin nadie que lo diga, el gremio sale igual: lleva el tablón de campañas.
+        expect(townPlaces({ location: old, guild: true, cards: [] }).places.map(p => p.id)).toEqual(['gremio']);
     });
 
     test('quien ha muerto ya no atiende; y un sitio vacío de un servicio que no hay, sobra', () => {
@@ -161,6 +164,26 @@ describe('los sitios en el paquete', () => {
         const found = validatePack(pack);
         expect(found.ok).toBe(true);
         expect(found.warnings.map(w => w.path)).toEqual(expect.arrayContaining(['locations[0].places[0].kind', 'locations[0].places[1].keeper']));
+    });
+
+    test('Vallaki, de Strahd: sus sitios con quien los lleva, y el resto de la gente en la plaza', () => {
+        const pack = read('../public/mundos/strahd.pack.json');
+        const plan = buildImportPlan(pack);
+        const vallaki = plan.metadata.locationMaps.find((/** @type {any} */ l) => l.name === 'Ciudad de Vallaki');
+        const npcs = pack.npcs.map((/** @type {any} */ n) => ({ name: n.name, where: n.where, service: n.service, trade: n.trade }));
+        const { places } = townPlaces({ location: vallaki, npcs });
+        expect(places.map(p => [p.id, p.name, p.keeper?.name ?? ''])).toEqual([
+            ['posada', 'El Agua Azul', 'Urwin Martikov'],
+            ['tienda', 'El almacén de Arasek', 'Gunther Arasek'],
+            ['herreria', 'La herrería', 'Bogdan Rusu'],
+            ['templo', 'La iglesia de San Andral', 'Padre Lucian Petrovich'],
+            ['tablon', 'El tablón de la plaza', ''],
+            ['plaza', 'La plaza', ''],
+        ]);
+        expect(places[5].people.map(p => p.name)).toContain('Barón Vargas Vallakovich');
+        // Y Krezk, con su abadía.
+        const krezk = plan.metadata.locationMaps.find((/** @type {any} */ l) => l.name === 'Aldea de Krezk');
+        expect(townPlaces({ location: krezk, npcs }).places.map(p => p.keeper?.name ?? '')).toEqual(['Dmitri Krezkov', 'El Abad', '']);
     });
 
     test('el gremio escribe sus sitios, y el importador los deja con quien atiende por nombre', () => {

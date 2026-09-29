@@ -159,8 +159,13 @@ export function townPlaces({ location, npcs = [], cards = null, guild = false })
         seen[spec.kind] = (seen[spec.kind] ?? 0) + 1;
         // Quien nombra el paquete, esté donde esté apuntado; si no, el primero de aquí con su servicio.
         const named = spec.keeper ? living.find(n => same(n.name, spec.keeper)) : null;
+        const free = (/** @type {any} */ n) => !taken.has(text(n.name).toLowerCase());
         const keeper = named ?? (spec.keeper ? null
-            : local.find(n => kind.service && same(n.service, kind.service) && !taken.has(text(n.name).toLowerCase())) ?? null);
+            : local.find(n => kind.service && same(n.service, kind.service) && free(n))
+            // Un gremio de antes de J3.11 no tiene a nadie con el servicio `gremio`: su maestra
+            // lo dice en el oficio.
+            ?? (spec.kind === 'gremio' ? local.find(n => /gremio/i.test(text(n.trade || n.title)) && free(n)) : null)
+            ?? null);
         if (keeper) taken.add(text(keeper.name).toLowerCase());
         return {
             id: seen[spec.kind] > 1 ? `${spec.kind}-${seen[spec.kind]}` : spec.kind,
@@ -213,9 +218,10 @@ export function townPlaces({ location, npcs = [], cards = null, guild = false })
     }
 
     // Un sitio sin nadie y sin nada que hacer sobra. Sin tarjetas (al contar), vale con que
-    // su servicio esté aquí.
+    // su servicio esté aquí. El gremio del pueblo del gremio se queda: lleva el tablón.
     const offered = new Set(services);
     const kept = places.filter(p => p.keeper || p.people.length > 0 || p.cards.length > 0
+        || (p.kind === 'gremio' && guild)
         || (cards === null && offered.has(PLACE_KINDS[p.kind].service)));
     return { places: kept, rest };
 }

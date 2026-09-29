@@ -49,7 +49,10 @@ describe('los sitios de un pueblo', () => {
         expect(placesOf({ name: 'Algún sitio', type: 'village' }, { hub: true })).toEqual(['gremio', 'posada', 'tienda', 'herreria', 'tablon', 'plaza', 'muelle']);
     });
 
-    test('en un campamento, la plaza es el fuego; la tienda y la herrería cierran de noche', () => {
+    test('se llaman como los llama el paquete; en un campamento, la plaza es el fuego; la tienda y la herrería cierran de noche', () => {
+        expect(placeLabel('templo', puertoAlba)).toBe('La capilla');
+        expect(placeLabel('posada', puertoAlba)).toBe('La taberna');
+        expect(placeLabel('muelle', puertoAlba)).toBe('El muelle');
         expect(placeLabel('plaza', { type: 'camp' })).toBe('El fuego del campamento');
         expect(placeOpen('tienda', 'night')).toBe(false);
         expect(placeOpen('herreria', 'morning')).toBe(true);

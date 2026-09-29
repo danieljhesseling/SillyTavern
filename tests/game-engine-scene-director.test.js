@@ -88,6 +88,13 @@ describe('isSceneAvailable', () => {
         expect(isSceneAvailable(SCENE.EXPLORATION, { hasChat: true })).toBe(false);
     });
 
+    // J3.11: en el gremio, de una sola localización, la herrería y la posada son a donde ir.
+    test('the town places count as somewhere to go', () => {
+        expect(isSceneAvailable(SCENE.EXPLORATION, { locationName: 'Puerto Alba', placeCount: 1, townPlaces: 5 })).toBe(true);
+        expect(isSceneAvailable(SCENE.EXPLORATION, { locationName: 'Puerto Alba', placeCount: 1, townPlaces: 0 })).toBe(false);
+        expect(isSceneAvailable(SCENE.EXPLORATION, { combatActive: true, townPlaces: 5 })).toBe(false);
+    });
+
     test('the conversation is always available', () => {
         expect(isSceneAvailable(SCENE.DIALOGUE, {})).toBe(true);
     });

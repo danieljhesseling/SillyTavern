@@ -216,6 +216,190 @@
       "leadsTo": ""
     }
   ],
+  "dialogues": [
+    {
+      "id": "brunilda-la-casa",
+      "speaker": "Brunilda",
+      "title": "Brunilda, la maestra del gremio",
+      "start": "inicio",
+      "nodes": [
+        {
+          "id": "inicio",
+          "mood": "neutral",
+          "line": "Así que tú eres {el nuevo|la nueva}. Aquí se entra de una sola forma: haciendo lo que te pido y volviendo de una pieza. Pregunta rápido, que tengo el libro abierto.",
+          "again": "¿Otra vez tú? Dime, que tengo el libro abierto.",
+          "options": [
+            { "id": "quiero-entrar", "text": "Quiero entrar en el gremio.", "if": { "milestone": { "id": "el-gremio", "is": "open" } }, "next": "prueba" },
+            { "id": "bodega", "text": "¿Qué me espera en la bodega?", "if": { "milestone": { "id": "la-prueba", "is": "open" } }, "next": "bodega" },
+            { "id": "hecho", "text": "Ya he limpiado la bodega.", "if": { "milestone": { "id": "el-tablon", "is": "open" } }, "next": "libro" },
+            { "id": "como-funciona", "text": "¿Cómo funciona esto del gremio?", "next": "gremio" },
+            { "id": "enano", "text": "Esas ratas no saben con quién se meten.", "if": { "species": "Enano" }, "effects": [{ "attitude": 1 }], "next": "enano" },
+            { "id": "semiorco", "text": "En el muelle ya me han mirado raro. ¿Aquí también?", "if": { "species": "Semiorco" }, "effects": [{ "attitude": 1 }], "next": "semiorco" },
+            { "id": "veterana", "text": "Reconozco a una veterana cuando la veo.", "if": [{ "background": "soldado" }, { "class": "Soldado" }], "tag": "Soldado", "effects": [{ "attitude": 1 }], "next": "veterana" },
+            { "id": "clerigo", "text": "Que los dioses cuiden de esta casa.", "if": { "class": "Clérigo" }, "next": "clerigo" },
+            { "id": "picaro", "text": "Bonito libro. ¿Guardas ahí también el oro?", "if": { "class": "Pícaro" }, "next": "picaro" },
+            { "id": "pasado", "text": "¿Por qué dejaste de ser aventurera?", "if": { "attitude": 1 }, "next": "pasado" },
+            {
+              "id": "adelanto",
+              "text": "¿Me adelantas algo de oro para el equipo?",
+              "check": {
+                "skill": "persuasion",
+                "dc": 13,
+                "success": { "next": "adelanto-si", "effects": [{ "gold": 5 }] },
+                "partial": { "next": "adelanto-poco", "effects": [{ "gold": 2 }] },
+                "failure": { "next": "adelanto-no", "effects": [{ "attitude": -1 }] }
+              }
+            },
+            { "id": "adios", "text": "Me voy a lo mío.", "end": true, "repeat": true }
+          ]
+        },
+        {
+          "id": "prueba",
+          "mood": "neutral",
+          "line": "Bien. Primero, la prueba: baja a la bodega. Hay ratas entre los barriles, gordas como gatos. Si subes {entero|entera}, te apunto en el libro.",
+          "journal": "La prueba del gremio: bajar a la bodega y acabar con las ratas.",
+          "effects": [{ "milestone": "el-gremio" }],
+          "options": [
+            { "id": "prueba-consejo", "text": "¿Algún consejo?", "next": "consejo" },
+            { "id": "prueba-voy", "text": "Voy ahora mismo.", "end": true }
+          ]
+        },
+        {
+          "id": "bodega",
+          "mood": "neutral",
+          "line": "Ratas de bodega. Muerden, y si les va mal, huyen. No te pido que las mates con estilo: te pido que subas de una pieza.",
+          "options": [
+            { "id": "bodega-consejo", "text": "¿Algún consejo?", "next": "consejo" },
+            { "id": "bodega-vale", "text": "Entendido.", "next": "inicio" }
+          ]
+        },
+        {
+          "id": "consejo",
+          "mood": "alegre",
+          "line": "Pelea con la pared a la espalda, que no te rodeen. Y si te muerden, no te hagas {el valiente|la valiente}: bebe algo y sigue.",
+          "journal": "Consejo de Brunilda: pelear con la pared a la espalda, para que no te rodeen.",
+          "options": [
+            { "id": "consejo-gracias", "text": "Gracias.", "next": "inicio" }
+          ]
+        },
+        {
+          "id": "libro",
+          "mood": "alegre",
+          "line": "Bien hecho. Ya estás en el libro del gremio. Ahí tienes el tablón: cada papel es una campaña entera. Si vas corto de gente, en el salón hay espadas que se alquilan.",
+          "journal": "Ya eres del gremio. En el tablón están las campañas, y en el salón se alquilan espadas.",
+          "effects": [{ "milestone": "el-tablon" }],
+          "options": [
+            { "id": "recomienda", "text": "¿Qué campaña me recomiendas?", "effects": [{ "rumor": "r-vuelta-de-barovia" }], "next": "recomienda" },
+            { "id": "libro-tablon", "text": "Voy a mirar el tablón.", "end": true }
+          ]
+        },
+        {
+          "id": "recomienda",
+          "mood": "neutral",
+          "line": "Para empezar, nada con niebla: de Barovia volvieron dos de cinco. Lee bien lo que pone cada papel, y si vas al norte, lleva mantas.",
+          "journal": "Brunilda no recomienda Barovia para empezar: de la última compañía volvieron dos de cinco.",
+          "options": [
+            { "id": "recomienda-gracias", "text": "Gracias.", "next": "inicio" }
+          ]
+        },
+        {
+          "id": "gremio",
+          "mood": "neutral",
+          "line": "Es sencillo. Tú haces las campañas del tablón, y el gremio te da cama, te cura y te guarda lo que traes. Lo que ganas es tuyo. La cuenta de la semana, también.",
+          "journal": "El gremio da cama, cura y guarda lo que traes; la cuenta de la semana la pagas tú.",
+          "options": [
+            { "id": "herido", "text": "¿Y si vuelvo {herido|herida}?", "next": "herido" },
+            { "id": "gremio-vale", "text": "Entendido.", "next": "inicio" }
+          ]
+        },
+        {
+          "id": "herido",
+          "mood": "triste",
+          "line": "Entonces vas a la capilla, con Madre Elvira. Cura bien y no hace preguntas. A los que no vuelven no los cura nadie.",
+          "journal": "Si vuelves con heridas, Madre Elvira cura en la capilla.",
+          "options": [
+            { "id": "herido-vale", "text": "Lo tendré en cuenta.", "next": "inicio" }
+          ]
+        },
+        {
+          "id": "enano",
+          "mood": "alegre",
+          "line": "¡Ja! Eso me gusta. Los enanos que han pasado por aquí siempre han vuelto de la bodega. Con algún mordisco, eso sí.",
+          "options": [
+            { "id": "enano-sigue", "text": "Sigamos.", "next": "inicio" }
+          ]
+        },
+        {
+          "id": "semiorco",
+          "mood": "neutral",
+          "line": "Aquí se mira lo que haces, no la cara que traes. Si alguien del gremio te mira raro, me lo dices a mí.",
+          "options": [
+            { "id": "semiorco-gracias", "text": "Gracias.", "next": "inicio" }
+          ]
+        },
+        {
+          "id": "veterana",
+          "mood": "triste",
+          "line": "Tienes buen ojo. Llevé espada veinte años. Ahora llevo el libro, que pesa más.",
+          "journal": "Brunilda fue aventurera veinte años antes de llevar el gremio.",
+          "options": [
+            { "id": "veterana-por-que", "text": "¿Por qué lo dejaste?", "next": "pasado" },
+            { "id": "veterana-vale", "text": "Entiendo.", "next": "inicio" }
+          ]
+        },
+        {
+          "id": "clerigo",
+          "mood": "alegre",
+          "line": "Que cuiden de los que salen de ella, que de la casa ya me ocupo yo. Pásate por la capilla: Madre Elvira se alegrará de tener compañía.",
+          "options": [
+            { "id": "clerigo-vale", "text": "Iré a verla.", "next": "inicio" }
+          ]
+        },
+        {
+          "id": "picaro",
+          "mood": "enfadado",
+          "line": "El oro lo guardo donde no llegan tus dedos. Y el libro también.",
+          "options": [
+            { "id": "picaro-broma", "text": "Era una broma.", "next": "inicio" }
+          ]
+        },
+        {
+          "id": "pasado",
+          "mood": "triste",
+          "line": "Salimos cinco hacia el paso del norte. La nieve nos cerró el camino y volví yo sola. Desde entonces prefiero apuntar nombres que enterrarlos.",
+          "journal": "Brunilda perdió a toda su compañía en el paso del norte. Por eso quiere que las compañías vuelvan vivas.",
+          "options": [
+            { "id": "pasado-siento", "text": "Lo siento.", "next": "inicio" }
+          ]
+        },
+        {
+          "id": "adelanto-si",
+          "mood": "alegre",
+          "line": "Toma cinco monedas. No es un regalo: me las devuelves con la primera campaña.",
+          "journal": "Brunilda te adelantó cinco monedas: se las debes.",
+          "options": [
+            { "id": "adelanto-si-trato", "text": "Trato hecho.", "next": "inicio" }
+          ]
+        },
+        {
+          "id": "adelanto-poco",
+          "mood": "neutral",
+          "line": "Dos monedas, y porque me has pillado de buenas. No me pidas más.",
+          "options": [
+            { "id": "adelanto-poco-vale", "text": "Me valen.", "next": "inicio" }
+          ]
+        },
+        {
+          "id": "adelanto-no",
+          "mood": "enfadado",
+          "line": "Aquí nadie cobra antes de trabajar. Ni tú.",
+          "options": [
+            { "id": "adelanto-no-vale", "text": "Vale, vale.", "next": "inicio" }
+          ]
+        }
+      ]
+    }
+  ],
   "plot": {
     "title": "El gremio de Puerto Alba",
     "milestones": [

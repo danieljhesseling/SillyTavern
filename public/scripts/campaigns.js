@@ -15,8 +15,9 @@ import { isCampaignWorld, getStartingPoint, uniqueWorldName } from './game-engin
 import {
     HUB_KEY, HUB_HOME_KEY, HUB_CAMPAIGN_KEY, HUB_PACK, HUB_WORLD_NAME, HUB_START_GOLD, HUB_NARRATOR,
     readHub, isHubWorld, hubHomeOf, withHubChat, withHubCampaign, answersForWorld, hubCampaignWorldName, journeyLine,
-    carryEntry, entryFromMember, hubPartyLine,
+    carryEntry, entryFromMember, hubPartyLine, hubCampaignCards, withHubImported, HUB_LEVELS_KEY,
 } from './game-engine/campaign/hub.js';
+import { readCampaignText, importedCampaignId, importedPackFileName, importedCampaignRow } from './game-engine/campaign/campaign-import.js';
 import { HUB_HEROES_KEY, activeHero, hubHeroCards, readRestingHeroes, withResting } from './game-engine/campaign/hub-heroes.js';
 import { validatePack } from './game-engine/campaign/campaign-pack.js';
 import { homecomingScene } from './game-engine/campaign/campaign-end.js';
@@ -26,7 +27,7 @@ import {
     buildNarratorCard, describeNarrator, VERBOSITY, DEFAULT_VERBOSITY,
 } from './game-engine/campaign/narrator.js';
 import { generateWorld } from './game-engine/world-builder/world-schema.js';
-import { escapeHtml, saveBase64AsFile } from './utils.js';
+import { escapeHtml, saveBase64AsFile, convertTextToBase64 } from './utils.js';
 import { freshCompendium } from './game-engine/compendio/browser.js';
 import { makeName } from './game-engine/compendio/names.js';
 import { createSeededRandom } from './game-engine/combat/seeded-random.js';
@@ -1364,14 +1365,69 @@ async function ensureHubEntries(worldName, carried) {
 }
 
 /**
- * J4.9: la entrada del tablón de una campaña, de `mundos.json`.
+ * J4.9: la entrada del tablón de una campaña, de `mundos.json`. J5.4: o, si la añadiste tú
+ * desde un archivo, la de su gremio.
  *
  * @param {string} id
+ * @param {any} [hub] Lo guardado del gremio (`hub` en sus metadatos).
  * @returns {Promise<any>} La entrada, o null.
  */
-async function boardWorld(id) {
+async function boardWorld(id, hub = null) {
     const worlds = await readMundo('/mundos/mundos.json').then(json => json?.worlds ?? []).catch(() => []);
-    return worlds.find((/** @type {any} */ w) => String(w?.id) === String(id)) ?? null;
+    return worlds.find((/** @type {any} */ w) => String(w?.id) === String(id))
+        ?? (readHub(hub).imported ?? []).find(w => w.id === String(id))
+        ?? null;
+}
+
+/**
+ * J5.4: añadir una campaña al tablón desde un archivo JSON: el paquete del juego o lo que te
+ * da tu Gem.
+ *
+ * Se comprueba entera antes de guardar nada. El paquete va a tus archivos con la subida de
+ * siempre (`/api/files/upload`, en `data/<tú>/user/files/`): pesa como Strahd, cien mil
+ * letras, y el mundo del gremio se reescribe entero cada vez que algo cambia en él. En el
+ * gremio va solo su fila, pequeña, al lado de las campañas que ha empezado: así el tablón la
+ * enseña con las demás. Añadir otra vez la misma campaña la pone al día.
+ *
+ * @param {string} content El texto del archivo.
+ * @returns {Promise<{ok: true, card: any, name: string, replaced: boolean, notes: string[]}
+ *   |{ok: false, headline: string, problems: Array<{path: string, message: string}>, more: number, notes?: string[]}>}
+ */
+export async function importHubCampaign(content) {
+    try {
+        const homeWorld = String(chat_metadata?.[METADATA_KEY] || '');
+        const home = homeWorld ? await loadWorldInfo(homeWorld) : null;
+        if (!isHubWorld(home?.metadata)) {
+            return { ok: false, headline: 'Las campañas se añaden desde el tablón del gremio.', problems: [], more: 0 };
+        }
+        const read = readCampaignText(content);
+        if (!read.ok) return { ok: false, headline: read.headline, problems: read.problems, more: read.more, notes: read.notes };
+
+        const id = importedCampaignId(read.pack.world?.name);
+        const response = await fetch('/api/files/upload', {
+            method: 'POST',
+            headers: getRequestHeaders(),
+            body: JSON.stringify({ name: importedPackFileName(id), data: convertTextToBase64(JSON.stringify(read.pack)) }),
+        });
+        if (!response.ok) throw new Error(`el servidor no la ha guardado (${response.status}: ${await response.text()})`);
+        const saved = await response.json();
+        const row = importedCampaignRow(read.pack, { id, packUrl: `/${String(saved?.path ?? '').replace(/^\/+/, '')}` });
+
+        const replaced = (readHub(home.metadata[HUB_KEY]).imported ?? []).some(r => r.id === id);
+        /** @type {any} */
+        let hub = null;
+        await updateWorld(homeWorld, meta => {
+            meta[HUB_KEY] = withHubImported(meta[HUB_KEY], row);
+            hub = meta[HUB_KEY];
+        });
+        const level = Number(partySnapshot().find(m => !m.guest)?.level) || 1;
+        const card = hubCampaignCards({ worlds: [], hub, level }).find(c => c.id === id);
+        if (!card) throw new Error('la campaña se ha guardado, pero el tablón no la lee');
+        return { ok: true, card, name: row.name, replaced, notes: read.notes };
+    } catch (error) {
+        console.error('[gremio] no se pudo añadir la campaña', error);
+        return { ok: false, headline: `No se pudo guardar la campaña: ${String(error?.message || error)}.`, problems: [], more: 0 };
+    }
 }
 
 /**
@@ -1563,16 +1619,20 @@ export async function playHubCampaign(id) {
             if (await openHubChat(record.chat, record.worldName)) {
                 const { uids } = await ensureHubEntries(record.worldName, entries);
                 adoptCarriedParty(carried, { worldName: record.worldName, uids });
-                await postJourney(journeyLine({ world: await boardWorld(id), home: hubTownName(home) }));
+                await postJourney(journeyLine({ world: await boardWorld(id, home.metadata[HUB_KEY]), home: hubTownName(home) }));
                 toastr.success('Seguís donde lo dejasteis, con lo que traéis del gremio.', 'De vuelta a la campaña');
                 return;
             }
             toastr.warning('No encuentro la partida de esa campaña: se empieza de nuevo.', 'Campañas');
         }
 
-        const world = await boardWorld(id);
+        const world = await boardWorld(id, home.metadata[HUB_KEY]);
         if (!world?.pack) throw new Error('Esa campaña no está en el tablón.');
-        const pack = await readMundo(String(world.pack));
+        const pack = await readMundo(String(world.pack)).catch(error => {
+            // J5.4: el archivo de una campaña añadida vive entre los tuyos, y se puede borrar.
+            if (world.imported) throw new Error('No encuentro el archivo de esa campaña. Vuelve a añadirla desde el tablón, con «Añadir una campaña»');
+            throw error;
+        });
         const found = validatePack(pack);
         if (!found.ok) throw new Error(`La campaña está rota: ${found.errors?.[0]?.message ?? 'no se puede leer'}.`);
 
@@ -1591,6 +1651,8 @@ export async function playHubCampaign(id) {
         await updateWorld(created.worldName, meta => {
             meta[HUB_HOME_KEY] = homeWorld;
             meta[HUB_CAMPAIGN_KEY] = id;
+            // J5.4: una añadida dice aquí para qué nivel es; las del juego, en `mundos.json`.
+            if (world.imported && Array.isArray(world.levels)) meta[HUB_LEVELS_KEY] = world.levels;
             if (narratorAvatar) meta.narratorAvatar = narratorAvatar;
             // Cuánto duele perder, como la escribió el mundo.
             if (world.survival) {
@@ -1670,7 +1732,7 @@ export async function returnToHub() {
         if (!await openHubChat(hub.chat, homeWorld)) throw new Error('No se pudo abrir la partida del gremio.');
         const { uids } = await ensureHubEntries(homeWorld, entries);
         adoptCarriedParty(carried, { worldName: homeWorld, uids });
-        const board = await boardWorld(id);
+        const board = await boardWorld(id, hub);
         await postJourney(journeyLine({ world: board, home: hubTownName(home), back: true }));
         if (firstHomecoming) {
             await postHomecoming(homecomingScene({

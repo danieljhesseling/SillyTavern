@@ -57,8 +57,8 @@ describe('la guía del servidor privado', () => {
             expect(block.listen).toBe(true);
             expect(block.basicAuthMode).toBe(true);
             expect(Object.keys(block.basicAuthUser).sort()).toEqual(['password', 'username']);
-            if ('whitelist' in block) expect(Array.isArray(block.whitelist)).toBe(true);
         }
+        expect(blocks.filter(b => 'whitelist' in b).every(b => Array.isArray(b.whitelist))).toBe(true);
         // Con la de ejemplo no se abre nada: la guía no la puede usar.
         expect(blocks.every(b => b.basicAuthUser.password !== config.basicAuthUser.password)).toBe(true);
     });
@@ -82,8 +82,9 @@ describe('los lanzadores', () => {
         expect(config.port).toBe(8000);
     });
 
-    test('Jugar.bat va con saltos de línea de Windows', () => {
-        expect(bat.includes('\r\n')).toBe(true);
-        expect(bat.replace(/\r\n/g, '').includes('\n')).toBe(false);
+    test('Jugar.bat no usa etiquetas: con saltos de línea de Linux (git sin autocrlf) sigue yendo', () => {
+        // cmd.exe se lía con `goto` y `call :etiqueta` en archivos con solo LF; sin ellos, da igual.
+        expect(bat).not.toMatch(/^\s*:[A-Za-z]/m);
+        expect(bat).not.toMatch(/\bgoto\b/i);
     });
 });

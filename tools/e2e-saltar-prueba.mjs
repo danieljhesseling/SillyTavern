@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 /**
- * J2.3 de ROADMAP_SIN_CONEXION: la prueba de la bodega se puede saltar. Contra un servidor
- * propio con un `--dataRoot` temporal, como `e2e-gremio.mjs`:
+ * J2.3 de ROADMAP_SIN_CONEXION: la prueba de la bodega se puede saltar, y con ella el prólogo
+ * entero (J2.1: el muelle, la charla con Tomás y Brunilda). Contra un servidor propio con un
+ * `--dataRoot` temporal, como `e2e-gremio.mjs`:
  *
- *   título → Jugar sin conexión → tu personaje (eso no se salta) → «Saltar la prueba» →
- *   «Mejor la juego» no toca nada → «Saltarla» deja la partida como si se hubiera ganado:
- *   el hilo en el tablón, sin ratas que pelear, con el botín de las ratas y el tablón abierto.
+ *   título → Jugar sin conexión → tu personaje (eso no se salta) → en el muelle, «Saltar la
+ *   prueba» → «Mejor la juego» no toca nada → «Saltarla» deja la partida como si se hubiera
+ *   ganado: el prólogo hecho sin contarse, el hilo en el tablón, sin ratas que pelear, con el
+ *   botín de las ratas y el tablón abierto.
  *
  * Uso:
  *   node tools/e2e-saltar-prueba.mjs              # sin ventana
@@ -162,17 +164,19 @@ try {
         const now = await state();
         return /Gremio/.test(now.world) && now.party.length === 1 && now.party[0].name === 'Iria';
     }, 60000);
-    await until(() => chatHas(/Baja a la bodega/), 20000);
+    await until(() => chatHas(/Al ladrón/), 20000);
     await page.waitForTimeout(800);
     let now = await state();
-    check('empieza en el gremio, con Iria y 100 de oro, y la prueba por hacer', inHub && now.party[0]?.gold === 100 && now.open.includes('la-prueba'), JSON.stringify(now));
+    // J2.1: se empieza por el prólogo, en el muelle; la prueba de la bodega viene después.
+    check('empieza en el muelle, con Iria y 100 de oro, y el prólogo por hacer (J2.1)',
+        inHub && now.party[0]?.gold === 100 && now.board === 'El muelle de Puerto Alba' && now.open.includes('el-muelle'), JSON.stringify(now));
 
     // 2. La fila ofrece las dos cosas: pelear o saltarla.
     const offered = await until(async () => {
         const row = await chips();
-        return row.some(c => /^Iniciar combate \(Rata de bodega x2\)/.test(c)) && row.some(c => /^Saltar la prueba$/.test(c));
+        return row.some(c => /^Iniciar combate \(Ratero del muelle\)/.test(c)) && row.some(c => /^Saltar la prueba$/.test(c));
     }, 15000);
-    check('en la bodega, la fila ofrece pelear con las ratas o saltar la prueba', offered, JSON.stringify(await chips()));
+    check('en el muelle, la fila ofrece pelear con el ratero o saltar la prueba', offered, JSON.stringify(await chips()));
     if (SHOT) await page.screenshot({ path: SHOT });
 
     // 3. Pensárselo y no: nada cambia.
@@ -182,7 +186,7 @@ try {
     await page.locator('.popup-button-cancel:visible').first().click({ timeout: 5000 }).catch(() => {});
     await page.waitForTimeout(800);
     now = await state();
-    check('«Mejor la juego» no toca nada: la prueba sigue por hacer', now.open.includes('la-prueba') && !now.done.includes('la-prueba')
+    check('«Mejor la juego» no toca nada: el prólogo y la prueba siguen por hacer', now.open.includes('el-muelle') && now.done.length === 0
         && (await chips()).some(c => /^Saltar la prueba$/.test(c)), JSON.stringify(now));
 
     // 4. Saltarla: como si se hubiera ganado.
@@ -192,13 +196,20 @@ try {
     await page.waitForTimeout(1000);
     now = await state();
     check('saltarla abre el hilo siguiente, con su escena: el tablón', told && now.done.includes('la-prueba') && now.open.includes('el-tablon'), JSON.stringify(now));
+    // J2.1: el prólogo entero queda hecho, y sus escenas no se cuentan: no se han jugado.
+    const untold = !(await chatHas(/Soy Tomás/)) && !(await chatHas(/Mientras habláis/));
+    check('y salta el prólogo entero: el muelle, la charla y Brunilda, hechos sin contarse (J2.1)',
+        ['el-muelle', 'la-charla', 'el-gremio'].every(id => now.done.includes(id)) && untold, JSON.stringify({ done: now.done, untold }));
     check('el tablero queda ganado, sin pelea en marcha', now.won.includes('Puerto Alba::La bodega del gremio') && !now.fighting, JSON.stringify(now));
     // Dos ratas dan 50 de experiencia (25 cada una, por su desafío); el oro, lo que salga al tirar.
+    // Con el enganche de J2.1 en el juego, el ratero del muelle da 25 más.
     check('Iria sigue ahí, con su bolsa y lo que dan las ratas, como si las hubiera ganado',
-        now.party.length === 1 && now.party[0].name === 'Iria' && now.party[0].gold >= 100 && now.party[0].xp === 50 && await chatHas(/Botín/), JSON.stringify(now.party));
+        now.party.length === 1 && now.party[0].name === 'Iria' && now.party[0].gold >= 100 && [50, 75].includes(now.party[0].xp) && await chatHas(/Botín/), JSON.stringify(now.party));
     const after = await chips();
+    // Sin el enganche de J2.1, el grupo sigue en el tablero del muelle y el ratero espera: las
+    // ratas, no. Con él, tampoco el ratero (y esto puede volver a ser `/^Iniciar combate/`).
     check('la fila ya no ofrece ni las ratas ni saltar, y sí el tablón de campañas',
-        !after.some(c => /^Iniciar combate/.test(c)) && !after.some(c => /^Saltar la prueba/.test(c)) && after.some(c => /Tablón de campañas/.test(c)), JSON.stringify(after));
+        !after.some(c => /^Iniciar combate \(Rata/.test(c)) && !after.some(c => /^Saltar la prueba/.test(c)) && after.some(c => /Tablón de campañas/.test(c)), JSON.stringify(after));
     const focus = await page.evaluate(() => (document.querySelector('#game-shell .gs-focus-title')?.textContent || '').trim());
     check('lo que toca ahora es el tablón', /tablón de campañas/i.test(focus), focus);
     if (SHOT) await page.screenshot({ path: `${SHOT}.saltada.png` });

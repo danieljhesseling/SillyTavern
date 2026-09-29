@@ -130,6 +130,7 @@ export const DC_LIMITS = { min: 5, max: 30 };
  * @property {string} again Lo que dice si ya se lo oísteis (J8.6). Vacío: lo mismo.
  * @property {string} mood
  * @property {string} journal Lo que queda en el Diario al oírlo.
+ * @property {DialogueEffect[]} effects Lo que pasa al oírlo la primera vez.
  * @property {DialogueOption[]} options
  */
 
@@ -160,6 +161,8 @@ export const DC_LIMITS = { min: 5, max: 30 };
  * @property {string} node Dónde está la charla; vacío si acabó.
  * @property {boolean} ended
  * @property {boolean} repeated Si lo del nudo actual ya se había oído al entrar.
+ * @property {DialogueEffect[]} pending Lo que hace el nudo al que se acaba de entrar (la primera
+ *   vez). `choose` lo devuelve con lo demás; al empezar, lo aplica quien abre la charla.
  * @property {string[]} heard Los nudos oídos, de antes y de ahora.
  * @property {string[]} chosen Las opciones elegidas, de antes y de ahora.
  * @property {Array<{who: string, text: string, day: number}>} learned Lo aprendido en esta charla.
@@ -260,10 +263,7 @@ function readCondition(raw) {
     const out = {};
     if (!isObject(raw)) return out;
     /** @type {string[]} */
-    const unknown = [];
-    for (const [key, value] of Object.entries(raw)) {
-        if (!CONDITION_KEYS.includes(key)) unknown.push(key);
-    }
+    const unknown = Object.keys(raw).filter(key => !CONDITION_KEYS.includes(key));
     if (unknown.length > 0) out.unknown = unknown;
     if (raw.attitude !== undefined) {
         // `"attitude": 1` es «al menos cordial»; con min y max, un tramo.
@@ -385,6 +385,9 @@ function readNode(raw, index) {
         again: text(source.again),
         mood: MOODS.includes(mood) ? mood : 'neutral',
         journal: text(source.journal),
+        // Lo que pasa al oírlo la primera vez, se llegue por donde se llegue: pagando, con una
+        // buena tirada o por las malas, Giles cuenta lo mismo y el hito se cumple una vez.
+        effects: readEffects(source.effects).filter(e => e.kind !== 'end'),
         options: (Array.isArray(source.options) ? source.options : []).map((option, i) => readOption(option, id, i)),
     };
 }
@@ -572,6 +575,29 @@ export function dialogueFor(dialogues, name, hero, world = {}) {
 }
 
 /**
+ * Los hitos que cumple una charla (sus efectos `milestone`, en opciones, tiradas y nudos).
+ * Con charla, el hito de «habla con Giles» se cumple cuando Giles lo cuenta, no al saludar:
+ * quien abre la charla no manda el suceso `talk` para estos.
+ *
+ * @param {Dialogue} dialogue
+ * @returns {string[]}
+ */
+export function dialogueMilestones(dialogue) {
+    const ids = new Set();
+    const note = (/** @type {DialogueEffect[]} */ effects) => {
+        for (const effect of effects) if (effect.kind === 'milestone' && effect.id) ids.add(effect.id);
+    };
+    for (const node of dialogue?.nodes ?? []) {
+        note(node.effects);
+        for (const option of node.options) {
+            note(option.effects);
+            if (option.check) for (const branch of [option.check.success, option.check.partial, option.check.failure]) if (branch) note(branch.effects);
+        }
+    }
+    return [...ids];
+}
+
+/**
  * Quiénes tienen una charla escrita (para ofrecerles «Hablar»).
  *
  * @param {Dialogue[]} dialogues
@@ -638,19 +664,41 @@ function learn(state, said, day, before = []) {
  */
 function enter(state, id, hero, world, before = []) {
     const node = nodeOf(state.dialogue, id);
-    if (!node) return { ...state, node: '', ended: true };
+    if (!node) return { ...state, node: '', ended: true, pending: [] };
     const repeated = state.heard.includes(node.id);
     const said = repeated && node.again ? node.again : node.line;
     const day = Math.max(0, Math.floor(Number(world.day) || 0));
-    const learned = node.journal ? learn(state, voiced(node.journal, hero, world), day, before) : state.learned;
+    // Lo que hace el nudo, solo la primera vez: volver a oírlo no vuelve a cumplir el hito.
+    const pending = repeated ? [] : resolveEffects(node.effects, state.dialogue.speaker, hero, world);
+    let after = { ...state };
+    if (node.journal) after = { ...after, learned: learn(after, voiced(node.journal, hero, world), day, before) };
+    for (const clue of pending.filter(e => e.kind === 'clue')) after = { ...after, learned: learn(after, clue.text ?? '', day, before) };
     return {
-        ...state,
+        ...after,
         node: node.id,
         repeated,
+        pending,
         heard: repeated ? state.heard : [...state.heard, node.id],
-        learned,
         log: said ? [...state.log, { kind: 'npc', who: state.dialogue.speaker, text: voiced(said, hero, world), mood: node.mood }] : state.log,
     };
+}
+
+/**
+ * Los efectos listos para aplicar: con quién es cada cosa (sin decirlo, quien habla) y las
+ * pistas con el género puesto.
+ *
+ * @param {DialogueEffect[]} effects
+ * @param {string} speaker
+ * @param {any} hero
+ * @param {DialogueWorld} world
+ * @returns {DialogueEffect[]}
+ */
+function resolveEffects(effects, speaker, hero, world) {
+    return effects.map(effect => {
+        if ((effect.kind === 'attitude' || effect.kind === 'bond') && !effect.who) return { ...effect, who: speaker };
+        if (effect.kind === 'clue') return { ...effect, text: voiced(effect.text ?? '', hero, world) };
+        return effect;
+    });
 }
 
 /**
@@ -672,6 +720,7 @@ export function startDialogue(dialogue, { memory = null, hero = null, world = {}
         node: '',
         ended: false,
         repeated: false,
+        pending: [],
         heard: past ? [...past.heard] : [],
         chosen: past ? [...past.chosen] : [],
         learned: [],
@@ -736,6 +785,7 @@ export function optionsFor(state, hero, world = {}) {
  * @property {string} line Lo último que ha dicho, con el género puesto.
  * @property {OptionView[]} options
  * @property {boolean} ended
+ * @property {boolean} final Si el nudo no tiene opciones: lo dicho cierra la charla.
  */
 
 /**
@@ -756,6 +806,7 @@ export function dialogueView(state, hero, world = {}) {
         line: last?.text ?? '',
         options: optionsFor(state, hero, world),
         ended: state.ended,
+        final: !state.ended && Boolean(node) && (node?.options.length ?? 0) === 0,
     };
 }
 
@@ -844,13 +895,12 @@ export function choose(state, optionId, { hero = null, world = {}, rollD20 = () 
     }
 
     // Con quién es cada cosa: sin decirlo, con quien habla.
-    const resolved = effects.map(effect => ((effect.kind === 'attitude' || effect.kind === 'bond') && !effect.who
-        ? { ...effect, who: state.dialogue.speaker } : effect));
+    const resolved = resolveEffects(effects, state.dialogue.speaker, hero, world);
 
     /** @type {DialogueState} */
-    let after = { ...state, log, chosen: state.chosen.includes(option.id) ? state.chosen : [...state.chosen, option.id] };
+    let after = { ...state, log, pending: [], chosen: state.chosen.includes(option.id) ? state.chosen : [...state.chosen, option.id] };
     if (journal) after = { ...after, learned: learn(after, voiced(journal, hero, world), day, before) };
-    for (const clue of resolved.filter(e => e.kind === 'clue')) after = { ...after, learned: learn(after, voiced(clue.text ?? '', hero, world), day, before) };
+    for (const clue of resolved.filter(e => e.kind === 'clue')) after = { ...after, learned: learn(after, clue.text ?? '', day, before) };
 
     if (end) after = { ...after, node: '', ended: true };
     else if (next) after = enter(after, next, hero, world, before);
@@ -862,7 +912,8 @@ export function choose(state, optionId, { hero = null, world = {}, rollD20 = () 
         said: shown.text,
         roll,
         outcome,
-        effects: resolved.map(effect => (effect.kind === 'clue' ? { ...effect, text: voiced(effect.text ?? '', hero, world) } : effect)),
+        // Lo de la opción (y su tirada) y, detrás, lo del nudo al que lleva.
+        effects: [...resolved, ...after.pending],
         ended: after.ended,
         view: after.ended ? null : dialogueView(after, hero, world),
     };
@@ -1104,6 +1155,7 @@ export function checkDialogues(raw, { people = [], milestones = null, rumors = [
             markers(text(node.line), `${nodePath}.line`);
             markers(text(node.again), `${nodePath}.again`);
             markers(text(node.journal), `${nodePath}.journal`);
+            checkEffects(node.effects, `${nodePath}.effects`);
             if (node.mood !== undefined && !MOODS.includes(fold(node.mood))) {
                 warnings.push({ path: `${nodePath}.mood`, message: `"${text(node.mood)}" no es un gesto: se verá neutral. Los que hay: ${MOODS.join(', ')}.` });
             }

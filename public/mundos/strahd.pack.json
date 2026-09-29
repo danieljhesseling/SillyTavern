@@ -147,6 +147,23 @@
         "tienda",
         "templo"
       ],
+      "places": [
+        {
+          "kind": "posada",
+          "name": "Taberna Sangre de la Enredadera",
+          "keeper": "arik-lorensk"
+        },
+        {
+          "kind": "tienda",
+          "name": "La tienda de Bildrath",
+          "keeper": "bildrath-cantemir"
+        },
+        {
+          "kind": "templo",
+          "name": "La iglesia",
+          "keeper": "donavich"
+        }
+      ],
       "routes": [
         {
           "to": "Campamento del Estanque Tser",
@@ -207,6 +224,31 @@
         "templo",
         "herreria",
         "tablon"
+      ],
+      "places": [
+        {
+          "kind": "posada",
+          "name": "El Agua Azul",
+          "keeper": "urwin-martikov"
+        },
+        {
+          "kind": "tienda",
+          "name": "El almacén de Arasek",
+          "keeper": "gunther-arasek"
+        },
+        {
+          "kind": "herreria",
+          "keeper": "bogdan-rusu"
+        },
+        {
+          "kind": "templo",
+          "name": "La iglesia de San Andral",
+          "keeper": "lucian-petrovich"
+        },
+        {
+          "kind": "tablon",
+          "name": "El tablón de la plaza"
+        }
       ],
       "routes": [
         {
@@ -309,6 +351,18 @@
       "services": [
         "posada",
         "templo"
+      ],
+      "places": [
+        {
+          "kind": "posada",
+          "name": "La casa del burgomaestre",
+          "keeper": "dmitri-krezkov"
+        },
+        {
+          "kind": "templo",
+          "name": "La abadía de Santa Markovia",
+          "keeper": "el-abad"
+        }
       ],
       "routes": [
         {
@@ -2613,6 +2667,17 @@
       "service": "tienda"
     },
     {
+      "id": "bogdan-rusu",
+      "name": "Bogdan Rusu",
+      "trade": "Herrero de Vallaki",
+      "where": "Ciudad de Vallaki",
+      "wants": "Que el barón deje de encargarle picas para sus fiestas y le deje forjar rejas para las ventanas.",
+      "knows": "Quién le ha encargado estacas con punta de hierro este mes, aunque le pagaron para que no lo contara.",
+      "secret": "Guarda un juego de herraduras de plata que nadie le ha pagado, por si algún día hacen falta contra lo que anda de noche.",
+      "voice": "Habla poco y mira las manos de la gente, no la cara.",
+      "service": "herreria"
+    },
+    {
       "id": "morgantha",
       "name": "Morgantha",
       "trade": "Vieja de los pasteles",
@@ -3320,6 +3385,407 @@
       "text": "El amo os espera a cenar. Sois sus invitados, y nadie se levanta de la mesa antes de tiempo.",
       "truth": "si",
       "leadsTo": ""
+    }
+  ],
+  "dialogues": [
+    {
+      "id": "ismark-el-menor",
+      "speaker": "Ismark Kolyanovich",
+      "title": "Ismark, el Menor",
+      "start": "inicio",
+      "nodes": [
+        {
+          "id": "inicio",
+          "mood": "triste",
+          "line": "Siéntate, si no te importa beber con un hombre que no ha podido enterrar a su padre. Soy Ismark. En el pueblo me llaman el Menor.",
+          "again": "Otra vez tú. Siéntate, que el vino aquí es malo pero está caliente.",
+          "options": [
+            {
+              "id": "padre",
+              "text": "¿Qué le pasó a tu padre?",
+              "next": "padre"
+            },
+            {
+              "id": "ireena",
+              "text": "¿Por qué te preocupa tanto tu hermana?",
+              "next": "ireena"
+            },
+            {
+              "id": "carta",
+              "text": "Enseñarle la carta de su padre.",
+              "if": {
+                "item": "Carta de Kolyan Indirovich"
+              },
+              "next": "carta"
+            },
+            {
+              "id": "bruja",
+              "text": "Ya nos ocupamos de la bruja de la taberna.",
+              "if": {
+                "milestone": "sangrienta-bienvenida"
+              },
+              "effects": [
+                {
+                  "attitude": 1
+                }
+              ],
+              "next": "bruja"
+            },
+            {
+              "id": "clerigo",
+              "text": "Puedo rezar por tu padre y bendecir su tumba.",
+              "if": {
+                "class": "Clérigo"
+              },
+              "effects": [
+                {
+                  "bond": 1
+                }
+              ],
+              "next": "clerigo"
+            },
+            {
+              "id": "elfo",
+              "text": "Los míos viven siglos. He visto a otros como ese conde.",
+              "if": {
+                "species": [
+                  "Elfo",
+                  "Media elfa"
+                ]
+              },
+              "next": "elfo"
+            },
+            {
+              "id": "espada",
+              "text": "Llevas mal la espada. ¿Quieres que te enseñe?",
+              "if": [
+                {
+                  "class": [
+                    "Guerrero",
+                    "Soldado"
+                  ]
+                },
+                {
+                  "background": "soldado"
+                }
+              ],
+              "effects": [
+                {
+                  "bond": 1
+                }
+              ],
+              "next": "espada"
+            },
+            {
+              "id": "adios",
+              "text": "Tengo que irme.",
+              "end": true,
+              "repeat": true
+            }
+          ]
+        },
+        {
+          "id": "padre",
+          "mood": "triste",
+          "line": "Murió hace tres días. El corazón no le aguantó tantas noches con los lobos arañando la puerta. Y no encuentro a nadie que me ayude a llevar el ataúd a la iglesia.",
+          "journal": "Kolyan, el burgomaestre de la aldea, murió hace tres días. Ismark no encuentra quien le ayude a enterrarlo.",
+          "effects": [
+            {
+              "rumor": "r-el-burgomaestre-muerto"
+            }
+          ],
+          "options": [
+            {
+              "id": "ayudar",
+              "text": "Te ayudo a llevarlo.",
+              "effects": [
+                {
+                  "bond": 1
+                }
+              ],
+              "next": "gracias"
+            },
+            {
+              "id": "nadie",
+              "text": "¿Por qué nadie te ayuda?",
+              "next": "miedo"
+            },
+            {
+              "id": "padre-siento",
+              "text": "Lo siento mucho.",
+              "next": "inicio"
+            }
+          ]
+        },
+        {
+          "id": "miedo",
+          "mood": "enfadado",
+          "line": "Porque tienen miedo. Quien ayuda a la familia del burgomaestre llama la atención del conde. Y aquí nadie quiere que el conde se fije en él.",
+          "options": [
+            {
+              "id": "miedo-ayudo",
+              "text": "Pues te ayudo yo.",
+              "effects": [
+                {
+                  "bond": 1
+                }
+              ],
+              "next": "gracias"
+            },
+            {
+              "id": "miedo-vale",
+              "text": "Entiendo.",
+              "next": "inicio"
+            }
+          ]
+        },
+        {
+          "id": "gracias",
+          "mood": "alegre",
+          "line": "Gracias. De verdad. Mañana al amanecer, en la mansión: tiene que estar bajo tierra antes de que anochezca.",
+          "journal": "Has prometido a Ismark ayudarle a enterrar a su padre, mañana al amanecer.",
+          "options": [
+            {
+              "id": "gracias-alli",
+              "text": "Allí estaré.",
+              "next": "inicio"
+            }
+          ]
+        },
+        {
+          "id": "ireena",
+          "mood": "triste",
+          "line": "Porque el conde la quiere para él. Ya ha entrado dos veces en casa, y ella tiene las marcas en el cuello. Quiero llevarla a Vallaki: allí hay murallas y una iglesia con reliquias.",
+          "journal": "El conde Strahd quiere a Ireena. Ismark quiere llevarla a Vallaki, que tiene murallas.",
+          "options": [
+            {
+              "id": "convencer",
+              "text": "Las murallas no la salvarán. Que venga con nosotros.",
+              "check": {
+                "skill": "persuasion",
+                "dc": 14,
+                "success": {
+                  "next": "acepta",
+                  "effects": [
+                    {
+                      "bond": 1
+                    }
+                  ]
+                },
+                "partial": {
+                  "next": "duda"
+                },
+                "failure": {
+                  "next": "no-acepta",
+                  "effects": [
+                    {
+                      "attitude": -1
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "id": "calar",
+              "text": "Mirarle bien. Tiene cara de no dormir.",
+              "check": {
+                "skill": "insight",
+                "dc": 12,
+                "success": {
+                  "next": "cansado"
+                },
+                "failure": {
+                  "next": "bien"
+                }
+              }
+            },
+            {
+              "id": "ireena-vale",
+              "text": "Entiendo.",
+              "next": "inicio"
+            }
+          ]
+        },
+        {
+          "id": "acepta",
+          "mood": "alegre",
+          "line": "Tienes razón. Con vosotros estará más segura que detrás de cualquier muralla. Pero se lo dices tú, que a mí no me hace caso.",
+          "journal": "Ismark acepta que Ireena viaje con vosotros.",
+          "options": [
+            {
+              "id": "acepta-vale",
+              "text": "Se lo diré.",
+              "next": "inicio"
+            }
+          ]
+        },
+        {
+          "id": "duda",
+          "mood": "neutral",
+          "line": "Puede que tengas razón. Déjame pensarlo esta noche.",
+          "options": [
+            {
+              "id": "duda-vale",
+              "text": "Piénsalo.",
+              "next": "inicio"
+            }
+          ]
+        },
+        {
+          "id": "no-acepta",
+          "mood": "enfadado",
+          "line": "No. Es mi hermana, y la llevo yo a Vallaki. Tú no la conoces.",
+          "options": [
+            {
+              "id": "no-acepta-vale",
+              "text": "Como quieras.",
+              "next": "inicio"
+            }
+          ]
+        },
+        {
+          "id": "cansado",
+          "mood": "triste",
+          "line": "Me has pillado. Llevo tres noches sin dormir, sentado frente a su ventana. Si me duermo, él entra.",
+          "journal": "Ismark lleva tres noches sin dormir, vigilando la ventana de Ireena.",
+          "options": [
+            {
+              "id": "ajos",
+              "text": "Toma: cuelga estos ajos en su ventana.",
+              "if": {
+                "item": "Ristra de ajos"
+              },
+              "effects": [
+                {
+                  "take": "Ristra de ajos"
+                },
+                {
+                  "bond": 1
+                }
+              ],
+              "next": "ajos"
+            },
+            {
+              "id": "vigilo",
+              "text": "Duerme un poco. Esta noche vigilo yo.",
+              "effects": [
+                {
+                  "bond": 1
+                },
+                {
+                  "time": true
+                }
+              ],
+              "next": "vigilo"
+            },
+            {
+              "id": "cansado-vale",
+              "text": "Cuídate.",
+              "next": "inicio"
+            }
+          ]
+        },
+        {
+          "id": "bien",
+          "mood": "neutral",
+          "line": "Estoy bien. No te preocupes por mí.",
+          "options": [
+            {
+              "id": "bien-vale",
+              "text": "Si tú lo dices.",
+              "next": "inicio"
+            }
+          ]
+        },
+        {
+          "id": "ajos",
+          "mood": "alegre",
+          "line": "Ajos. Mi madre decía que funcionan. Gracias: esta noche dormiré un poco.",
+          "options": [
+            {
+              "id": "ajos-vale",
+              "text": "Descansa.",
+              "next": "inicio"
+            }
+          ]
+        },
+        {
+          "id": "vigilo",
+          "mood": "alegre",
+          "line": "¿Harías eso por mí? Eres {el primero|la primera} que se ofrece. Despiértame si ves algo en la ventana, lo que sea.",
+          "journal": "Hiciste guardia en la ventana de Ireena para que Ismark durmiera.",
+          "options": [
+            {
+              "id": "vigilo-vale",
+              "text": "Duerme tranquilo.",
+              "next": "inicio"
+            }
+          ]
+        },
+        {
+          "id": "carta",
+          "mood": "triste",
+          "line": "Es la letra de mi padre. La escribió pidiendo ayuda para Ireena. Llegáis tarde para él, pero no para ella.",
+          "journal": "Kolyan escribió la carta para pedir ayuda para su hija Ireena.",
+          "options": [
+            {
+              "id": "carta-vale",
+              "text": "Haremos lo que podamos.",
+              "next": "inicio"
+            }
+          ]
+        },
+        {
+          "id": "bruja",
+          "mood": "alegre",
+          "line": "¿Fuisteis vosotros? Esa vieja llevaba semanas rondando la taberna. Os debo una.",
+          "options": [
+            {
+              "id": "bruja-vale",
+              "text": "No es nada.",
+              "next": "inicio"
+            }
+          ]
+        },
+        {
+          "id": "clerigo",
+          "mood": "triste",
+          "line": "Nuestro cura, Donavich, no sale de la iglesia desde hace días. Si lo haces tú, mi padre descansará mejor.",
+          "journal": "El padre Donavich no sale de la iglesia desde hace días.",
+          "options": [
+            {
+              "id": "clerigo-vale",
+              "text": "Lo haré.",
+              "next": "inicio"
+            }
+          ]
+        },
+        {
+          "id": "elfo",
+          "mood": "neutral",
+          "line": "¿Siglos? Entonces sabes que esto no se arregla en una noche. Me alegra no ser el único que lo piensa.",
+          "options": [
+            {
+              "id": "elfo-vale",
+              "text": "No estás solo.",
+              "next": "inicio"
+            }
+          ]
+        },
+        {
+          "id": "espada",
+          "mood": "alegre",
+          "line": "¿Tanto se nota? Era de mi padre. Sí, enséñame. Contra lo que viene de noche no basta con agitarla.",
+          "journal": "Le enseñas a Ismark a usar la espada de su padre.",
+          "options": [
+            {
+              "id": "espada-vale",
+              "text": "Mañana empezamos.",
+              "next": "inicio"
+            }
+          ]
+        }
+      ]
     }
   ],
   "abilities": [

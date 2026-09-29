@@ -93,6 +93,8 @@ export const STATE_KEYS = [
     { key: 'npcSecrets', kind: 'juego', owner: 'party.js', what: 'Los secretos ya sonsacados' },
     { key: 'rumorsHeard', kind: 'juego', owner: 'party.js', what: 'Los rumores ya oídos' },
     { key: 'rumorsHeardOn', kind: 'juego', owner: 'party.js', what: 'Qué día se oyó cada rumor' },
+    // J8.6: se lee y se escribe con `readDialogueMemory` y `rememberDialogue` (campaign/dialogues.js).
+    { key: 'dialogues', kind: 'juego', owner: 'party.js', what: 'Las charlas con ramas: lo ya dicho y lo que os contaron' },
     { key: 'newsPending', kind: 'juego', owner: 'party.js', what: 'Las noticias que esperan a que lleguéis' },
     { key: 'arrivalsHeard', kind: 'juego', owner: 'party.js', what: 'Lo que ya se contó al llegar a cada sitio' },
     { key: 'letters', kind: 'juego', owner: 'party.js', what: 'Las cartas que esperan en la posada' },

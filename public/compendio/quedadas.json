@@ -1,7 +1,7 @@
 {
   "version": 1,
   "domain": "quedadas",
-  "about": "Quedar con alguien (J14.3 a J14.6 de ROADMAP_SIN_CONEXION): gastas una parte del día con alguien de tu gente y se juega su escena. Tres clases de fila (KIND). GENTE: dónde anda cada uno a cada hora (PLACES: morning, afternoon, night; los sitios son posada, tienda, herreria, templo, tablon, plaza, muelle y gremio), su pueblo (HOME: solo allí se queda con él si no va contigo) y los sitios donde le gusta quedar (LIKES: allí suma un punto más). ESCENA: la escena de cada rango de vínculo (RANK), en dos a cuatro pasos (BEATS); cada paso cuenta lo que pasa (NOTE) y lo que dice (SAY), con su cara (MOOD: alegre, enfadado o triste), y casi todos ofrecen dos o tres respuestas (REPLIES) con lo que acercan (BOND: 1 acerca, 0 nada, -1 aleja), lo que contesta (THEN) y, si cuesta algo, GOLD (negativo). Las escenas de CAMPAIGN strahd y 1387 son las cinco de cada confidente del paquete, pasadas a pasos: RANK y TITLE tienen que ser los del paquete. RANGO: lo que abre llegar a ese rango (UNLOCK): TYPE apoyo (una ventaja de combate de las de vínculo, PERK), descuento (ON: tienda, herreria, posada o templo; AMOUNT: 0.1 es un 10 %) o mision (su misión personal, QUEST, con dos ENDINGS). Lo que concuerda con tu héroe va entre llaves con las dos formas, separadas por una barra vertical.",
+  "about": "Quedar con alguien (J14.3 a J14.6 de ROADMAP_SIN_CONEXION): gastas una parte del día con alguien de tu gente y se juega su escena. Tres clases de fila (KIND). GENTE: dónde anda cada uno a cada hora (PLACES: morning, afternoon, night; los sitios son posada, tienda, herreria, templo, tablon, plaza, muelle y gremio), su pueblo (HOME: solo allí se queda con él si no va contigo) y los sitios donde le gusta quedar (LIKES: allí suma un punto más). ESCENA: la escena de cada rango de vínculo (RANK), en dos a cuatro pasos (BEATS); cada paso cuenta lo que pasa (NOTE) y lo que dice (SAY), con su cara (MOOD: alegre, enfadado o triste), y casi todos ofrecen dos o tres respuestas (REPLIES) con lo que acercan (BOND: 1 acerca, 0 nada, -1 aleja), lo que contesta (THEN) y, si cuesta algo, GOLD (negativo). Las escenas de CAMPAIGN strahd y 1387 son las cinco de cada confidente del paquete, pasadas a pasos: RANK y TITLE tienen que ser los del paquete. RANGO: lo que abre llegar a ese rango (UNLOCK): TYPE apoyo (una ventaja de combate de las de vínculo, PERK), descuento (ON: tienda, herreria, posada o templo; AMOUNT: 0.1 es un 10 %), mision (su misión personal, QUEST, con dos ENDINGS) o control (en el rango 5, el de «amigo»: desde ahí lo mueves tú en combate; antes lo mueve el juego; es para todos, y aquí solo se escribe cómo se dice de cada uno). Lo que concuerda con tu héroe va entre llaves con las dos formas, separadas por una barra vertical.",
   "rows": [
     {
       "id": "gente-gerd",
@@ -499,6 +499,162 @@
             }
           ]
         }
+      }
+    },
+    {
+      "id": "rango-gerd-5",
+      "kind": "rango",
+      "name": "Gerd · rango 5",
+      "who": "Gerd el Mellado",
+      "rank": 5,
+      "unlock": {
+        "type": "control",
+        "label": "Lo muevo yo",
+        "describe": "Gerd ya es tu amigo: en combate puedes moverle tú. Si prefieres, se lo vuelves a dejar al juego."
+      }
+    },
+    {
+      "id": "rango-nella-5",
+      "kind": "rango",
+      "name": "Nella · rango 5",
+      "who": "Nella Tresflechas",
+      "rank": 5,
+      "unlock": {
+        "type": "control",
+        "label": "Lo muevo yo",
+        "describe": "Nella ya es tu amiga: en combate puedes moverla tú. Si prefieres, se lo vuelves a dejar al juego."
+      }
+    },
+    {
+      "id": "rango-osric-5",
+      "kind": "rango",
+      "name": "Osric · rango 5",
+      "who": "Osric Mediapaga",
+      "rank": 5,
+      "unlock": {
+        "type": "control",
+        "label": "Lo muevo yo",
+        "describe": "Osric ya es tu amigo: en combate puedes moverle tú. Si prefieres, se lo vuelves a dejar al juego."
+      }
+    },
+    {
+      "id": "rango-strahd-ismark-5",
+      "kind": "rango",
+      "name": "Ismark · rango 5",
+      "who": "Ismark Kolyanovich",
+      "rank": 5,
+      "unlock": {
+        "type": "control",
+        "label": "Lo muevo yo",
+        "describe": "Ismark ya es tu amigo: en combate puedes moverle tú. Si prefieres, se lo vuelves a dejar al juego."
+      }
+    },
+    {
+      "id": "rango-strahd-ireena-5",
+      "kind": "rango",
+      "name": "Ireena · rango 5",
+      "who": "Ireena Kolyana",
+      "rank": 5,
+      "unlock": {
+        "type": "control",
+        "label": "Lo muevo yo",
+        "describe": "Ireena ya es tu amiga: en combate puedes moverla tú. Si prefieres, se lo vuelves a dejar al juego."
+      }
+    },
+    {
+      "id": "rango-strahd-eva-5",
+      "kind": "rango",
+      "name": "Madam Eva · rango 5",
+      "who": "Madam Eva",
+      "rank": 5,
+      "unlock": {
+        "type": "control",
+        "label": "Lo muevo yo",
+        "describe": "Madam Eva ya es tu amiga: en combate puedes moverla tú. Si prefieres, se lo vuelves a dejar al juego."
+      }
+    },
+    {
+      "id": "rango-strahd-vanrichten-5",
+      "kind": "rango",
+      "name": "Van Richten · rango 5",
+      "who": "Rudolph van Richten",
+      "rank": 5,
+      "unlock": {
+        "type": "control",
+        "label": "Lo muevo yo",
+        "describe": "Van Richten ya es tu amigo: en combate puedes moverle tú. Si prefieres, se lo vuelves a dejar al juego."
+      }
+    },
+    {
+      "id": "rango-strahd-ezmerelda-5",
+      "kind": "rango",
+      "name": "Ezmerelda · rango 5",
+      "who": "Ezmerelda d'Avenir",
+      "rank": 5,
+      "unlock": {
+        "type": "control",
+        "label": "Lo muevo yo",
+        "describe": "Ezmerelda ya es tu amiga: en combate puedes moverla tú. Si prefieres, se lo vuelves a dejar al juego."
+      }
+    },
+    {
+      "id": "rango-1387-bran-5",
+      "kind": "rango",
+      "name": "Bran · rango 5",
+      "who": "Bran",
+      "rank": 5,
+      "unlock": {
+        "type": "control",
+        "label": "Lo muevo yo",
+        "describe": "Bran ya es tu amigo: en combate puedes moverle tú. Si prefieres, se lo vuelves a dejar al juego."
+      }
+    },
+    {
+      "id": "rango-1387-aldara-5",
+      "kind": "rango",
+      "name": "Aldara · rango 5",
+      "who": "Aldara",
+      "rank": 5,
+      "unlock": {
+        "type": "control",
+        "label": "Lo muevo yo",
+        "describe": "Aldara ya es tu amiga: en combate puedes moverla tú. Si prefieres, se lo vuelves a dejar al juego."
+      }
+    },
+    {
+      "id": "rango-1387-doc-5",
+      "kind": "rango",
+      "name": "Arthur «Doc» · rango 5",
+      "who": "Arthur «Doc»",
+      "rank": 5,
+      "unlock": {
+        "type": "control",
+        "label": "Lo muevo yo",
+        "describe": "Arthur ya es tu amigo: en combate puedes moverle tú. Si prefieres, se lo vuelves a dejar al juego."
+      }
+    },
+    {
+      "id": "rango-1387-isolda-5",
+      "kind": "rango",
+      "name": "Isolda · rango 5",
+      "who": "Isolda",
+      "rank": 5,
+      "unlock": {
+        "type": "control",
+        "label": "Lo muevo yo",
+        "describe": "Isolda ya es tu amiga: en combate puedes moverla tú. Si prefieres, se lo vuelves a dejar al juego."
+      }
+    },
+    {
+      "id": "rango-1387-grimm-5",
+      "kind": "rango",
+      "name": "Grimm · rango 5",
+      "who": "Grimm",
+      "rank": 5,
+      "unlock": {
+        "type": "control",
+        "label": "Lo muevo yo",
+        "describe": "Grimm ya es tu amigo: en combate puedes moverle tú. Si prefieres, se lo vuelves a dejar al juego."
       }
     },
     {

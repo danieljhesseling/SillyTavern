@@ -33,6 +33,7 @@
 @import url(css/combat-cues.css);
 @import url(css/map-image-editor.css);
 @import url(css/quedadas.css);
+@import url(css/dialogos.css);
 
 :root {
     interpolate-size: allow-keywords;
