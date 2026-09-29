@@ -22,10 +22,11 @@ import {
     setCombatEncounter, setCurrentBoardName, setCurrentLocationName, setUsedReactions,
 } from './state.js';
 import {
-    savePartyState, renderPartyMembers, saveCurrentLocation, saveCurrentBoard, saveCombatState,
-    postCombatNarration, campaign, worldWrite, refreshWorldMemoryPrompt, getCampaignCalendar, getCampaignBonds,
-    saveCampaignState, getCampaignMap, renderCampaignTab, renderLocationMapsPreview,
+    savePartyState, renderPartyMembers, saveCurrentLocation, saveCurrentBoard, postCombatNarration, campaign,
+    worldWrite, refreshWorldMemoryPrompt, getCampaignCalendar, getCampaignBonds, saveCampaignState, getCampaignMap,
+    renderCampaignTab, renderLocationMapsPreview,
 } from './main.js';
+import { saveCombatState } from './combat-state.js';
 
 /**
  * Todo lo que el juego da por cierto, listo para guardarlo o devolverlo a su sitio.

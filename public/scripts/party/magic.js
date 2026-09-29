@@ -35,13 +35,16 @@ import { clearDeathSaves } from '../game-engine/rules/death-saves.js';
 import { WANTED_KEY } from './keys.js';
 import { combatEncounter, currentLocationName, partyMembers } from './state.js';
 import {
-    savePartyState, renderPartyMembers, saveCombatState, getCurrentTurnState, getEnemyByInstanceId,
-    getAliveEnemies, getCurrentActingMember, persistBoardTerrain, getActiveBoardContext, applyCampaignRuleset,
-    getTargetArmorClass, postCombatNarration, nudgeRuler, postForModel, damagePartyMember, explodeBarrels,
-    lastWorldRows, noteDeed, hereLocation, worldWrite, showTip, judgeDecision, enemyTokenId, floatOnToken,
-    recordFeat, advanceCampaignDay, judgeCurrentScenario, checkScenarioOutcome, endCombat, boardVisibility,
-    boardCellOf, lastCompendium, renderLocationMapsPreview,
+    savePartyState, renderPartyMembers, persistBoardTerrain, getActiveBoardContext, applyCampaignRuleset,
+    postCombatNarration, nudgeRuler, postForModel, damagePartyMember, explodeBarrels, lastWorldRows, noteDeed,
+    hereLocation, worldWrite, showTip, judgeDecision, floatOnToken, recordFeat, advanceCampaignDay,
+    judgeCurrentScenario, checkScenarioOutcome, endCombat, boardVisibility, lastCompendium,
+    renderLocationMapsPreview,
 } from './main.js';
+import {
+    saveCombatState, getCurrentTurnState, getEnemyByInstanceId, getAliveEnemies, getCurrentActingMember,
+    getTargetArmorClass, enemyTokenId, boardCellOf,
+} from './combat-state.js';
 
 /**
  * R4: usar un pergamino o una varita: el conjuro sale del objeto, sin gastar cargas del
