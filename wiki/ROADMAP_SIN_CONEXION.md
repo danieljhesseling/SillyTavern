@@ -219,6 +219,42 @@ Van antes que nada: cada una cambia lo que se construye. Con cada una, lo que te
 | **D-J9** ⏳ | **El nombre del juego** | La cabecera dice «SillyTavern RPG» | **Pendiente: lo decides tú.** Hasta entonces, «SillyTavern RPG» |
 | **D-J10** ✅ | **La vida en el gremio** (romance, charlas de compañeros) | (a) Parte del plan. (b) Después, opcional | **Decidido: (b), el 2026-09-29.** Primero, que sea jugable; lo social, en J14. **Matizado el mismo día**: charlar y quedar con los compañeros es parte del juego (M3); lo que va después y es opcional son los romances y las capas de encima (M6) |
 
+
+### 2.1 Pendientes de la tanda del 2026-09-29
+
+Mientras no digas nada, se queda como dice la columna «Hoy». Ninguna frena el trabajo.
+
+| # | Qué | Hoy | Recomiendo |
+| :---: | :--- | :--- | :--- |
+| **D-J11** | Oro de cada personaje nuevo del gremio (J1.6) | 100, como el primero: se podrían crear personajes para juntar oro | 25 a partir del segundo |
+| **D-J12** | ¿Se curan los personajes que descansan en el gremio? | No | Sí, con el paso de los días, como cualquier herida |
+| **D-J13** | ¿Varios personajes tuyos en la misma campaña? | Uno, más los mercenarios | Uno por ahora; varios más adelante, con J7 |
+| **D-J14** | Dos personajes con el mismo nombre en un gremio | Se permite, y al volver de una campaña las fichas se buscan por nombre | Impedirlo al crear el personaje |
+| **D-J15** | Personajes no binarios en el texto (J1.4) | Salen en masculino si la frase no trae una tercera forma | Añadir la tercera forma a las frases principales |
+| **D-J16** | Género de los mercenarios | Gerd y Osric, hombre; Nella, mujer | Así |
+| **D-J17** | Frases en masculino que quedan en 1387 y Strahd (sinopsis, fichas de confidentes, un rumor, una misión) | Siguen en masculino | Reescribirlas en neutro |
+| **D-J18** | Epílogos en el formato de tu Gem (J4.5) | 1387 y las campañas del Gem no traen epílogos: salen frases según cómo acaban las facciones | Añadir un campo `epilogos` al formato |
+| **D-J19** | Nombre de la campaña en el Salón de la fama | El título de su historia: 1387 sale como «El valle de Vane» | El nombre del tablón («1387») |
+| **D-J20** | Saltar la prueba de la bodega (J2.3) | Da el botín y la experiencia, como si la hubieras ganado | Así |
+| **D-J21** | Enemigos ajustados por nivel (J4.6): con nivel 8, la Entrada a Ravenloft duró 20 rondas | Vida hasta ×1,5, y se añaden enemigos extra | Tope ×1,35 y no duplicar enemigos de CA 15 o más |
+| **D-J22** | ¿El nivel recomendado va por acto o por toda la campaña? | Por acto | Por acto |
+| **D-J23** | Borrar un gremio desde «Cargar partida» | No se puede | Sí, con una confirmación que diga todo lo que se borra |
+| **D-J24** | El panel derecho vacío en la pausa | Se ve, con sus pestañas | Esconderlo |
+| **D-J25** | Materiales de conjuro que nadie vende (perla, diamante, incienso, agua bendita, bolsa de componentes) | Lanzar sin foco solo avisa | Venderlos en las tiendas y, después, exigirlos |
+| **D-J26** | Nigromancia como delito: en el SRD lo son también Revivir, Estabilizar y Hablar con los muertos | Cualquier nigromancia cuenta como delito | Que solo cuenten las que dañan o levantan muertos |
+| **D-J27** | ¿El erudito lanza conjuros? | No | Solo rituales, sin espacios |
+| **D-J28** | Tablón y mercenarios durante el prólogo | Se ven desde el muelle | Esconderlos hasta que acabe la prueba |
+| **D-J29** | Tienda y herrería de noche (J3.11) | Siguen vendiendo; cambian la imagen y el saludo | Cerrarlas, con quien las atiende en la taberna |
+| **D-J30** | Orden de los sitios de Puerto Alba | Herrería, taberna, tienda, capilla y gremio | El gremio primero |
+| **D-J31** | ¿Comprar gasta una parte del día? (J14.2) | Sí, si compras algo | No, como en *Persona* |
+| **D-J32** | Mover a un compañero (J7.3) frente al modo «grupo» de hoy, en el que ya mueves a todos | Sin decidir | El vínculo 5 manda en los dos modos |
+| **D-J33** | Historias inventadas de los mercenarios: Gerd no sabe leer; Nella fue furtiva del barón de Hoz; Osric se durmió en la guardia y ahorra para una barca, la «Gaviota» | Así | Revísalas tú |
+| **D-J34** | Quedadas con la gente del pueblo (Tomás, Ramiro…) | Solo tienen charla corta | Más adelante, con J14.7 |
+| **D-J35** | Campañas importadas (J5.4) | Son de un gremio; se suben como archivo y no se pueden quitar del tablón | En todos tus gremios; pegar el texto; un botón para quitarlas |
+| **D-J36** | «Hablar» con alguien que tiene diálogo escrito (J8) | Aún no está enchufado | La ventana de ramas directamente, con «Otras cosas» para sonsacar, convencer y amenazar |
+| **D-J37** | ¿Cuál es la fuente de 1387, el paquete o el guion? | El paquete: el guion (`wiki/guiones/1387`) se quedó atrás | El paquete |
+| **D-J38** | La cabecera en el móvil (J20) | Iconos, salvo la escena en la que estás; el resto, en una fila que se desliza | Así |
+
 ---
 
 ## 🧭 3. Las fases
