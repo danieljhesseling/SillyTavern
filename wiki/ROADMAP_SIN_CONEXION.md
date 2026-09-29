@@ -56,7 +56,7 @@ Cómo está hecho, en corto (el detalle, en [[EMPEZAR_UNA_CAMPANA]], «Jugar sin
 
 | Fase | Estado | En una línea |
 | :--- | :---: | :--- |
-| **J0** · La puerta | 🟡 | Hecho: el botón en la portada, «Seguir en el gremio» y el modo motor. Falta: esconder lo de SillyTavern (J0.2, J0.3, J0.4) |
+| **J0** · La puerta | 🟡 | Hecho: el botón en la portada, «Seguir en el gremio», el modo motor, sin la ventana del nombre (J0.2) y las opciones del juego (J0.4). Falta: el narrador sin ficha (J0.3), «Continuar» (J0.5) y la lista de partidas propia (J0.6) |
 | **J1** · Tu personaje | 🟡 | Hecho: tarjetas (J1.1), atributos repartidos o tirados (J1.2), equipo por clase (J1.3) y el personaje dura (J1.5). Falta: el género del texto (J1.4) y lo demás |
 | **J2** · El prólogo | 🟡 | Hecho: la prueba de la bodega y el paso al tablón, como paquete (J2.4). Falta: que enseñe a jugar (J2.2) |
 | **J3** · El gremio, tu base | 🟡 | Hecho: Puerto Alba con posada, tienda, templo y herrería, cada uno con quien lo atiende (J3.10), el tablón (J3.2) y los mercenarios. Falta: la sala propia (J3.1), el cofre y lo demás |
