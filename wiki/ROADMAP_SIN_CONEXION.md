@@ -47,6 +47,8 @@ author: DanielJHesseling / Claude Opus 5.5
 
 **Lo nuevo del 2026-09-29:** el personaje se crea en su pantalla (J18.2), eligiendo de tarjetas, con los atributos repartidos o tirados (J1.2) y el equipo de su clase puesto (J1.3). La historia se lee en una caja de novela visual (J18.3 a J18.6). El gremio está en un pueblo, **Puerto Alba**, con quien atiende cada servicio (J3.10), y el viaje a cada campaña se cuenta, a la ida y a la vuelta (J4.9). Strahd tiene su libro escrito con mis palabras (`libro.json`): 31 personas, 36 rumores, 15 encargos y 18 tableros, y la simulación los gana todos.
 
+**Más tarde, el mismo día, con varios agentes a la vez:** el texto del motor concuerda con el género de tu personaje (J1.4: se escribe `{cansado|cansada}`); el gremio guarda varios personajes tuyos y al entrar eliges con quién (J1.6, J18.1); los consejos de la primera vez salen uno a uno, cuando toca, y la prueba de la bodega se puede saltar (J2.2, J2.3); y terminar una campaña tiene su escena, con epílogos, lo que se lleva cada uno y la vuelta al gremio, que la apunta en el Salón de la fama (J4.5, J3.9).
+
 **Jugar con amigos (J6) está aparcado** hasta nueva orden (lo dijiste el 2026-09-28). Tampoco hay más personajes que los mercenarios sencillos del gremio.
 
 Cómo está hecho, en corto (el detalle, en [[EMPEZAR_UNA_CAMPANA]], «Jugar sin conexión»):
@@ -57,10 +59,10 @@ Cómo está hecho, en corto (el detalle, en [[EMPEZAR_UNA_CAMPANA]], «Jugar sin
 | Fase | Estado | En una línea |
 | :--- | :---: | :--- |
 | **J0** · La puerta | 🟡 | Hecho: el botón en la portada, «Seguir en el gremio», el modo motor, sin la ventana del nombre (J0.2) y las opciones del juego (J0.4). Falta: el narrador sin ficha (J0.3), «Continuar» (J0.5) y la lista de partidas propia (J0.6) |
-| **J1** · Tu personaje | 🟡 | Hecho: tarjetas (J1.1), atributos repartidos o tirados (J1.2), equipo por clase (J1.3) y el personaje dura (J1.5). Falta: el género del texto (J1.4) y lo demás |
-| **J2** · El prólogo | 🟡 | Hecho: la prueba de la bodega y el paso al tablón, como paquete (J2.4). Falta: que enseñe a jugar (J2.2) |
-| **J3** · El gremio, tu base | 🟡 | Hecho: Puerto Alba con posada, tienda, templo y herrería, cada uno con quien lo atiende (J3.10), el tablón (J3.2) y los mercenarios. Falta: la sala propia (J3.1), el cofre y lo demás |
-| **J4** · Las campañas | 🟡 | Hecho: empezar desde el tablón (J4.3), volver y retomar (J4.4), varias a la vez (J4.8), 1387 en el tablón (J4.7) y el viaje contado (J4.9). Falta: la escena al terminar (J4.5) y el ajuste por nivel (J4.6) |
+| **J1** · Tu personaje | 🟢 | Hecho: tarjetas (J1.1), atributos repartidos o tirados (J1.2), equipo por clase (J1.3), el género del texto (J1.4), el personaje dura (J1.5) y varios personajes tuyos en el gremio (J1.6). Falta: la ficha legible (J1.7) y tu cara sin arte (J1.8) |
+| **J2** · El prólogo | 🟢 | Hecho: la prueba de la bodega como paquete (J2.4), los consejos de la primera vez, uno a uno y cuando toca (J2.2), y saltarla (J2.3). Falta: alargarla a un prólogo de 15 minutos con una charla (J2.1) |
+| **J3** · El gremio, tu base | 🟡 | Hecho: Puerto Alba con posada, tienda, templo y herrería, cada uno con quien lo atiende (J3.10), el tablón (J3.2), los mercenarios y las campañas terminadas en el Salón de la fama (J3.9). Falta: la sala propia (J3.1), el cofre y lo demás |
+| **J4** · Las campañas | 🟡 | Hecho: empezar desde el tablón (J4.3), volver y retomar (J4.4), terminar con su escena, epílogos y lo que se lleva cada uno (J4.5), varias a la vez (J4.8), 1387 en el tablón (J4.7) y el viaje contado (J4.9). Falta: el ajuste por nivel (J4.6, en marcha) y partir el estado de la partida (J4.2) |
 | **J5** · Tu JSON de campañas | 🟡 | Hecho: el conversor (J5.1) y Strahd en el tablón. Falta: importar desde el gremio (J5.4) |
 | **J6** · Jugar con amigos | ⏸️ | Aparcado |
 | **J7** · El grupo | ⬜ | Personajes de jugadores y compañeros del mundo; quién lleva a quién |
@@ -74,7 +76,7 @@ Cómo está hecho, en corto (el detalle, en [[EMPEZAR_UNA_CAMPANA]], «Jugar sin
 | **J15** · Sentirse un juego | ⬜ | Primera partida que enseña, guardar sin miedo, menús propios |
 | **J16** · Medir la diversión | ⬜ | Vueltas automáticas, también con dos jugadores |
 | **J17** · Después: la IA como capa | ⬜ | Cómo se enchufa la IA cuando el juego ya divierta |
-| **J18** · La cara del juego | 🟡 | Hecho: la pantalla de crear personaje (J18.2) y la novela visual con su registro (J18.3 a J18.6). Falta: elegir personaje al entrar con varios guardados (J18.1, con J1.6) |
+| **J18** · La cara del juego | ✅ | Elegir con quién entras (J18.1), la pantalla de crear personaje (J18.2) y la novela visual con su registro (J18.3 a J18.6) |
 
 ---
 
