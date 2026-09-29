@@ -21,8 +21,9 @@ import { combatEncounter, currentBoardName, currentLocationName, partyMembers, s
 import {
     savePartyState, renderPartyMembers, getLocationBoards, getActiveBoardContext, postCombatNarration,
     getCurrentTurnEntry, resolveAllyTurnAction, toggleBoardDoor, campaign, revealLocations, isBoardWon,
-    endPlayerCombatTurn, getXpTable, getAbilityLevels,
+    endPlayerCombatTurn,
 } from './main.js';
+import { getXpTable, getAbilityLevels } from './level-up.js';
 
 /** @typedef {import('./types.js').PartyMember} PartyMember */
 
