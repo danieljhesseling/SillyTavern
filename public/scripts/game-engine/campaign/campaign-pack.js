@@ -25,8 +25,11 @@ import { CAMPAIGN_PACK_VERSION, OBJECTIVE_FIELDS, LOCATION_TYPES } from './campa
 import { OBJECTIVE_TYPES } from './scenarios.js';
 import { ASCII_TERRAIN } from '../board/terrain.js';
 import { getProfileOptions, DEFAULT_PROFILE } from '../combat/enemy-ai.js';
-import { terrainFromAsciiMap } from '../board/terrain.js';
+import { terrainFromAsciiMap, parseCellKey } from '../board/terrain.js';
 import { findUnreachable, describeReachability } from '../board/reachability.js';
+import { normalizeBoardGrid } from '../board/map-image.js';
+import { validateZones } from '../board/zones.js';
+import { normalizeElevation } from '../board/heights.js';
 
 /**
  * @typedef {Object} Issue
@@ -191,12 +194,16 @@ export function normalizePack(raw) {
  * the one that looks most like nothing at all: a row one character short shifts every
  * wall after it and the board silently stops making sense.
  *
+ * Un tablero dibujado (con `image`, J12.12) puede tener suelo en el borde: el mapa sigue
+ * fuera del dibujo (el pasillo que sale por arriba), y el borde del tablero ya corta el paso.
+ *
  * @param {string[]} map
  * @param {string} path
  * @param {Issue[]} errors
+ * @param {{openEdges?: boolean}} [options]
  * @returns {{width: number, height: number}}
  */
-function checkMap(map, path, errors) {
+function checkMap(map, path, errors, options = {}) {
     const height = map.length;
     if (height < 3) {
         errors.push({ path, message: 'El mapa necesita al menos tres filas para tener borde y suelo.' });
@@ -219,6 +226,8 @@ function checkMap(map, path, errors) {
             }
         }
     }
+
+    if (options.openEdges) return { width, height };
 
     const edge = [];
     for (let x = 0; x < width; x++) {
@@ -254,6 +263,79 @@ function cellState(map, size, cell) {
         return 'outside';
     }
     return BLOCKING.has(map[y][x]) ? 'blocked' : 'ok';
+}
+
+/**
+ * Lo que trae un tablero dibujado (J12.8 a J12.12): el mapa en imagen, su cuadrícula, las
+ * salas con nombre y las cotas. Todo opcional; lo que venga tiene que cuadrar con `map`.
+ *
+ * - `image`: la ruta del dibujo desde `public/` («mundos/strahd/mapas/sotano.png»).
+ * - `grid`: `{cell, offsetX, offsetY, cols, rows}`, lo que escribe `tools/mapa-a-tablero.mjs`.
+ *   Sus columnas y filas son las del `map`: si no, cada casilla caería sobre otra del dibujo.
+ * - `zones`: las salas, `[{name, rect | cells, note}]` (`board/zones.js`).
+ * - `elevation`: las cotas en pies, `{"x,y": 30}` (`board/heights.js`).
+ *
+ * @param {any} board
+ * @param {string} path
+ * @param {{width: number, height: number}} size
+ * @param {Issue[]} errors
+ * @param {Issue[]} warnings
+ */
+function checkDrawnBoard(board, path, size, errors, warnings) {
+    if (board.image !== undefined) {
+        const image = typeof board.image === 'string' ? board.image.trim() : '';
+        if (!image) {
+            errors.push({ path: `${path}.image`, message: '`image` es la ruta del dibujo desde public/, por ejemplo "mundos/strahd/mapas/sotano.png".' });
+        } else if (/^[a-z]+:\/\//i.test(image)) {
+            warnings.push({ path: `${path}.image`, message: 'Una imagen de internet no se ve sin conexión: mejor copiarla dentro de public/.' });
+        }
+    }
+
+    if (board.grid !== undefined) {
+        const grid = normalizeBoardGrid(board.grid);
+        if (!grid) {
+            errors.push({ path: `${path}.grid`, message: '`grid` necesita `cell` (el lado de la casilla en píxeles) y, si no empieza en la esquina, `offsetX` y `offsetY`.' });
+        } else {
+            if (grid.cols !== undefined && grid.cols !== size.width) {
+                errors.push({ path: `${path}.grid.cols`, message: `La cuadrícula tiene ${grid.cols} columnas y el mapa ${size.width}: cada casilla caería sobre otra del dibujo.` });
+            }
+            if (grid.rows !== undefined && grid.rows !== size.height) {
+                errors.push({ path: `${path}.grid.rows`, message: `La cuadrícula tiene ${grid.rows} filas y el mapa ${size.height}: cada casilla caería sobre otra del dibujo.` });
+            }
+            if (board.image === undefined) {
+                warnings.push({ path: `${path}.grid`, message: 'Hay cuadrícula pero no `image`: no hay dibujo sobre el que caiga.' });
+            }
+        }
+    }
+
+    if (board.zones !== undefined) {
+        const found = validateZones(board.zones, size.width, size.height, {
+            path: `${path}.zones`,
+            terrain: terrainFromAsciiMap(board.map),
+        });
+        errors.push(...found.errors);
+        warnings.push(...found.warnings);
+    }
+
+    if (board.elevation !== undefined) {
+        if (!board.elevation || typeof board.elevation !== 'object' || Array.isArray(board.elevation)) {
+            errors.push({ path: `${path}.elevation`, message: 'Las cotas van como {"x,y": pies}, por ejemplo {"4,2": 30}.' });
+        } else {
+            const kept = normalizeElevation(board.elevation);
+            const odd = Object.entries(board.elevation)
+                .filter(([key, feet]) => !parseCellKey(key) || typeof feet === 'boolean' || !Number.isFinite(Number(feet)));
+            if (odd.length > 0) {
+                errors.push({ path: `${path}.elevation`, message: `${odd.length} cota(s) no se entienden: la casilla va "x,y" y la altura en pies, con un número.` });
+            }
+            const outside = Object.keys(kept).filter(key => {
+                const [x, y] = key.split(',').map(Number);
+                return x < 0 || y < 0 || x >= size.width || y >= size.height;
+            });
+            if (outside.length > 0) {
+                errors.push({ path: `${path}.elevation`, message: `${outside.length} cota(s) caen fuera del mapa, que mide ${size.width}x${size.height}: ${outside.slice(0, 4).join(' ')}.` });
+            }
+        }
+    }
 }
 
 /**
@@ -410,9 +492,10 @@ export function validatePack(raw) {
             });
         }
 
-        const size = checkMap(board.map, `${path}.map`, errors);
+        const size = checkMap(board.map, `${path}.map`, errors, { openEdges: board.image !== undefined });
         boardSizes.set(board.id, { ...size, map: board.map });
         if (size.width === 0) return;
+        checkDrawnBoard(board, path, size, errors, warnings);
 
         if (board.partyStart.length === 0) {
             errors.push({ path: `${path}.partyStart`, message: 'Sin casillas de inicio: el grupo no sabria donde aparecer.' });

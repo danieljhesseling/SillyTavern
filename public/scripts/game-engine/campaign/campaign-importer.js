@@ -28,6 +28,9 @@ import { DEFAULT_PROFILE } from '../combat/enemy-ai.js';
 /** Lo que mide la vista de una localizacion, igual que en una campana nueva. */
 const DEFAULT_LOCATION_GRID = 50;
 import { deriveRooms } from './campaign-map.js';
+import { nameRoomsFromZones, normalizeZones } from '../board/zones.js';
+import { normalizeElevation } from '../board/heights.js';
+import { normalizeBoardGrid } from '../board/map-image.js';
 import { OBJECTIVE_FIELDS } from './campaign-pack-schema.js';
 import { normalizePack } from './campaign-pack.js';
 import { spellById, magicInData } from '../rules/grimoire.js';
@@ -377,11 +380,19 @@ export function buildImportPlan(raw, options = {}) {
 
         const terrain = terrainFromAsciiMap(board.map);
         const partyStart = board.partyStart.map((/** @type {any} */ c) => ({ x: Number(c.x) || 0, y: Number(c.y) || 0 }));
+        // J12.12: el tablero dibujado. La imagen es la del tablero (la que la vista pone
+        // debajo), y la cuadrícula, las salas con nombre y las cotas viajan con él.
+        const grid = normalizeBoardGrid(board.grid);
+        const zones = normalizeZones(board.zones);
+        const elevation = normalizeElevation(board.elevation);
 
         location.boards.push({
             name: board.name,
             description: quests.map((/** @type {any} */ q) => text(q.description)).filter(Boolean).join(' '),
-            url: '',
+            url: text(board.image),
+            ...(grid ? { grid } : {}),
+            ...(zones.length > 0 ? { zones } : {}),
+            ...(Object.keys(elevation).length > 0 ? { elevation } : {}),
             gridWidth: width,
             gridHeight: height,
             isCombat: board.enemies.length > 0,
@@ -392,7 +403,8 @@ export function buildImportPlan(raw, options = {}) {
             // Las salas salen del propio mapa: el libro las dibuja, no las describe. Lo
             // que hay detras de una puerta cerrada no se sabe hasta abrirla, que es como
             // se marca el ritmo de una mazmorra.
-            rooms: deriveRooms(terrain, width, height, { revealFrom: partyStart }),
+            // Con zonas (J12.11), cada sala se llama como la zona que la cubre: «B3».
+            rooms: nameRoomsFromZones(deriveRooms(terrain, width, height, { revealFrom: partyStart }), zones),
             fogEnabled: false,
             npcPlacements: [],
             encounterRules: [],

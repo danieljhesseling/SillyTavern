@@ -2,7 +2,7 @@
 title: Instrucciones para el Gem — el paquete de una campaña
 tags: [gem, gemini, campanas, importar, contrato, seeding]
 created: 2026-09-22
-updated: 2026-09-28
+updated: 2026-09-29
 author: generado por tools/gem-instructions.mjs
 ---
 
@@ -83,7 +83,7 @@ y el importador los resuelve al crear las entradas.
 
 # Contrato del paquete de campaña
 
-Versión 1. Generado desde el motor el 2026-09-28.
+Versión 1. Generado desde el motor el 2026-09-29.
 
 Devuelve **solo JSON válido** que cumpla este esquema. Una sección por respuesta si el
 libro es largo; el orden recomendado es: world → locations → confidants → bestiary → items → boards → quests → heroes.
@@ -301,6 +301,85 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
                   "type": "integer"
                 }
               }
+            }
+          },
+          "image": {
+            "type": "string",
+            "description": "Solo si el tablero se juega encima de un mapa dibujado: la ruta de la imagen desde public/, por ejemplo \"mundos/strahd/mapas/sotano.png\". Sin mapa, no lo escribas. Con imagen, el borde del mapa puede tener suelo."
+          },
+          "grid": {
+            "type": "object",
+            "description": "Dónde cae cada casilla sobre el dibujo: el lado de la casilla en píxeles (cell) y dónde empieza la primera (offsetX, offsetY). cols y rows tienen que ser el ancho y el alto de map.",
+            "required": [
+              "cell"
+            ],
+            "properties": {
+              "cell": {
+                "type": "number"
+              },
+              "offsetX": {
+                "type": "number"
+              },
+              "offsetY": {
+                "type": "number"
+              },
+              "cols": {
+                "type": "integer"
+              },
+              "rows": {
+                "type": "integer"
+              }
+            }
+          },
+          "zones": {
+            "type": "array",
+            "description": "Las salas con nombre del tablero (B1, «La capilla»): su nombre, sus casillas y lo que hay en ellas. Las casillas, con rect (una sala cuadrada) o con cells (\"x,y\").",
+            "items": {
+              "type": "object",
+              "required": [
+                "name"
+              ],
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "Único en el tablero."
+                },
+                "rect": {
+                  "type": "object",
+                  "properties": {
+                    "x": {
+                      "type": "integer"
+                    },
+                    "y": {
+                      "type": "integer"
+                    },
+                    "width": {
+                      "type": "integer"
+                    },
+                    "height": {
+                      "type": "integer"
+                    }
+                  }
+                },
+                "cells": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Casillas \"x,y\"."
+                },
+                "note": {
+                  "type": "string",
+                  "description": "Quién espera, qué se encuentra, el texto de la sala."
+                }
+              }
+            }
+          },
+          "elevation": {
+            "type": "object",
+            "description": "Las cotas en pies de las casillas que no están a ras de suelo, como {\"4,2\": 30}. Entre dos casillas vecinas con 10 pies o más de diferencia hay un acantilado: no se cruza andando, y desde arriba se ataca con ventaja. Los puentes y las rampas llevan su cota.",
+            "additionalProperties": {
+              "type": "number"
             }
           }
         }
@@ -709,6 +788,7 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
 13. Cada tablero mide entre 8×6 y 40×30 casillas. Uno de 14×10 ya da una escena; por encima de 24×18 se juega lento.
 14. Desde donde empieza el grupo tiene que poderse llegar a toda casilla de suelo, abriendo puertas. Un enemigo en una sala incomunicada es un error; una sala vacía incomunicada, un aviso.
 15. Los nombres de `items` tampoco se repiten, y su `rarity` es una de las cuatro que conocen las tablas de botín: una rareza inventada nunca cae.
+16. Solo un tablero hecho de un mapa dibujado lleva `image` y `grid`, y su `map` mide lo mismo que la cuadrícula (lo escribe `tools/mapa-a-tablero.mjs` a partir de la imagen). Sin imagen, no escribas ninguno de los dos. Las `zones` (las salas con nombre) sí valen en cualquier tablero.
 
 ## Sobre los mapas
 
@@ -1370,6 +1450,85 @@ que ya está en el bloque de instrucciones; se ofrecen sueltos porque un libro n
               "type": "integer"
             }
           }
+        }
+      },
+      "image": {
+        "type": "string",
+        "description": "Solo si el tablero se juega encima de un mapa dibujado: la ruta de la imagen desde public/, por ejemplo \"mundos/strahd/mapas/sotano.png\". Sin mapa, no lo escribas. Con imagen, el borde del mapa puede tener suelo."
+      },
+      "grid": {
+        "type": "object",
+        "description": "Dónde cae cada casilla sobre el dibujo: el lado de la casilla en píxeles (cell) y dónde empieza la primera (offsetX, offsetY). cols y rows tienen que ser el ancho y el alto de map.",
+        "required": [
+          "cell"
+        ],
+        "properties": {
+          "cell": {
+            "type": "number"
+          },
+          "offsetX": {
+            "type": "number"
+          },
+          "offsetY": {
+            "type": "number"
+          },
+          "cols": {
+            "type": "integer"
+          },
+          "rows": {
+            "type": "integer"
+          }
+        }
+      },
+      "zones": {
+        "type": "array",
+        "description": "Las salas con nombre del tablero (B1, «La capilla»): su nombre, sus casillas y lo que hay en ellas. Las casillas, con rect (una sala cuadrada) o con cells (\"x,y\").",
+        "items": {
+          "type": "object",
+          "required": [
+            "name"
+          ],
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Único en el tablero."
+            },
+            "rect": {
+              "type": "object",
+              "properties": {
+                "x": {
+                  "type": "integer"
+                },
+                "y": {
+                  "type": "integer"
+                },
+                "width": {
+                  "type": "integer"
+                },
+                "height": {
+                  "type": "integer"
+                }
+              }
+            },
+            "cells": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Casillas \"x,y\"."
+            },
+            "note": {
+              "type": "string",
+              "description": "Quién espera, qué se encuentra, el texto de la sala."
+            }
+          }
+        }
+      },
+      "elevation": {
+        "type": "object",
+        "description": "Las cotas en pies de las casillas que no están a ras de suelo, como {\"4,2\": 30}. Entre dos casillas vecinas con 10 pies o más de diferencia hay un acantilado: no se cruza andando, y desde arriba se ataca con ventaja. Los puentes y las rampas llevan su cota.",
+        "additionalProperties": {
+          "type": "number"
         }
       }
     }

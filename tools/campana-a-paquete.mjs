@@ -23,7 +23,10 @@
  *   por id. Lo de mejoras gana campo a campo;
  * - las rutas, en los dos sentidos: escribir una basta;
  * - lo marcado «propio: » en mejoras es texto escrito aquí, no del original: se quita la
- *   marca y se deja el texto.
+ *   marca y se deja el texto;
+ * - un tablero con `mapFrom` toma su `map` y su `grid` del JSON que escribe
+ *   `tools/mapa-a-tablero.mjs` a partir de un mapa dibujado (J12.12), y su `image`, sus
+ *   `zones` y su `elevation` si no trae los suyos. Todo eso pasa al paquete tal cual.
  *
  * Y lo valida con el mismo `validatePack` que usa el juego al importar.
  */
@@ -89,6 +92,30 @@ function bothWays(locations) {
     return locations;
 }
 
+/**
+ * J12.12: un tablero hecho de un mapa dibujado. `mapFrom` apunta (desde la raíz del repo) al
+ * JSON que escribe `node tools/mapa-a-tablero.mjs mapa.png --salida …`: de él salen `map` y
+ * `grid`, y `image`, `zones` y `elevation` si el tablero no trae los suyos. Lo demás del
+ * tablero (id, nombre, enemigos, inicio) se escribe en mejoras.json como siempre.
+ *
+ * @param {any} board
+ */
+function fromDrawnMap(board) {
+    if (!board?.mapFrom) return board;
+    const fragment = JSON.parse(readFileSync(join(ROOT, board.mapFrom), 'utf8'));
+    const rest = { ...board };
+    delete rest.mapFrom;
+    return {
+        ...rest,
+        map: fragment.map,
+        grid: fragment.grid,
+        image: rest.image || fragment.image,
+        // Las salas y las cotas marcadas con --zona y --altura, si el tablero no trae las suyas.
+        ...(rest.zones || !fragment.zones ? {} : { zones: fragment.zones }),
+        ...(rest.elevation || !fragment.elevation ? {} : { elevation: fragment.elevation }),
+    };
+}
+
 /** Los hitos, sacados de sus misiones. */
 function buildPlot(plot, quests, boards) {
     if (!plot) return undefined;
@@ -145,7 +172,7 @@ pack.locations = bothWays(layered('locations', 'name'));
 pack.confidants = layered('confidants', 'name');
 pack.bestiary = layered('bestiary', 'name');
 pack.items = layered('items', 'name');
-pack.boards = layered('boards', 'id');
+pack.boards = layered('boards', 'id').map(fromDrawnMap);
 pack.quests = layered('quests', 'id');
 for (const [section, key] of [['npcs', 'id'], ['contracts', 'id'], ['rumors', 'id']]) {
     const rows = layered(section, key);
@@ -162,6 +189,13 @@ if (plot) pack.plot = plot;
 const found = validatePack(pack);
 for (const issue of found.errors ?? []) console.error(`ERROR  ${issue.path}: ${issue.message}`);
 for (const issue of found.warnings ?? []) console.warn(`aviso  ${issue.path}: ${issue.message}`);
+// Que la imagen de cada tablero dibujado esté donde dice (desde public/).
+for (const board of pack.boards) {
+    const image = typeof board.image === 'string' ? board.image.trim() : '';
+    if (image && !/^[a-z]+:\/\//i.test(image) && !existsSync(join(ROOT, 'public', image))) {
+        console.warn(`aviso  boards.${board.id}.image: no hay nada en public/${image}.`);
+    }
+}
 
 // Que cada hito que pide ganar un tablero nombre uno que existe, y que los que abre existan.
 const boardNames = new Set(pack.boards.map(b => String(b.name).toLowerCase()));
