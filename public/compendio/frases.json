@@ -139,10 +139,10 @@
     { "id": "llegada-gente-varios-murmuran", "name": "Se dicen algo", "kind": "llegada-gente", "weight": 3, "when": { "gente_n": [2, 99] }, "text": "{gente} os ven llegar y se dicen algo en voz baja." },
     { "id": "llegada-gente-varios-quien", "name": "Quién hay", "kind": "llegada-gente", "weight": 2, "when": { "gente_n": [2, 99] }, "text": "Quién hay por aquí: {gente}." },
 
-    { "id": "llegada-gancho-oye", "name": "Lo que se oye", "kind": "llegada-gancho", "weight": 5, "text": "Por lo que se oye, {gancho}." },
+    { "id": "llegada-gancho-oye", "name": "Hay algo más", "kind": "llegada-gancho", "weight": 5, "text": "Y hay algo más: {gancho}." },
     { "id": "llegada-gancho-aqui", "name": "Lo que hay aquí", "kind": "llegada-gancho", "weight": 4, "text": "No venís en balde: {gancho}." },
     { "id": "llegada-gancho-saber", "name": "Conviene saberlo", "kind": "llegada-gancho", "weight": 4, "text": "Conviene saberlo: {gancho}." },
-    { "id": "llegada-gancho-hacer", "name": "Cosas que hacer", "kind": "llegada-gancho", "weight": 4, "text": "Hay cosas que hacer aquí: {gancho}." },
+    { "id": "llegada-gancho-hacer", "name": "Motivos para quedarse", "kind": "llegada-gancho", "weight": 4, "text": "Hay motivos para quedarse: {gancho}." },
     { "id": "llegada-gancho-espera", "name": "Lo que os espera", "kind": "llegada-gancho", "weight": 4, "text": "Lo que os espera aquí: {gancho}." },
     { "id": "llegada-gancho-primero", "name": "Lo primero que sabéis", "kind": "llegada-gancho", "weight": 3, "text": "Lo primero que sabéis al llegar: {gancho}." },
     { "id": "llegada-gancho-atentos", "name": "Atentos", "kind": "llegada-gancho", "weight": 3, "text": "{atentos|atentas}: {gancho}." },
