@@ -40,9 +40,8 @@ import {
     abilitiesFor, classesOf, nameAndAbility, validateAbilities, asAbility,
 } from '../game-engine/compendio/skills.js';
 import {
-    rollDice, rollDiceDetailed, getRollClassification, getRollClassificationLabel, getDistanceInFeet,
-    getAttackRangeFeet, describeCover, getPlayerDamageFormula, getEnemyDamageFormula, getPlayerAttackModifier,
-    createEmptyCombatEncounter, setRandomSource, nextRandom,
+    rollDice, rollDiceDetailed, getDistanceInFeet, getAttackRangeFeet, describeCover, getPlayerDamageFormula,
+    getEnemyDamageFormula, getPlayerAttackModifier, createEmptyCombatEncounter, setRandomSource, nextRandom,
 } from './combat-rules.js';
 import { bestFor, weaponOf as heldWeapon, weaponBonus } from '../game-engine/rules/equipment.js';
 import { resolveEntryMapPosition } from './positions.js';
@@ -266,8 +265,7 @@ import {
 } from '../game-engine/campaign/bonds.js';
 import { renderCampaignPanel } from '../game-engine/ui/campaign-panel.js';
 import {
-    buildEpiloguePrompt, createCombatLogPanel, renderCombatLog, setRound,
-    rollEntry, lineToEntry, append as appendLogEntry, filterLog, renderLogFilters, logFilterOf,
+    buildEpiloguePrompt, createCombatLogPanel, setRound, lineToEntry, renderLogFilters, logFilterOf,
 } from '../game-engine/ui/combat-log.js';
 import { buildGameMessage, CHANNEL } from '../game-engine/ui/chat-channel.js';
 import { guardRolls, guardImpossibleRolls, describeCorrections } from '../game-engine/combat/roll-guard.js';
@@ -348,6 +346,9 @@ import {
     loadCombatState, occupiedCellsFor, partyCell, partyFlanks, resetCombatTurnState, saveCombatState,
     underYourHand, waitingHere,
 } from './combat-state.js';
+import {
+    floatOnToken, paintCombatLog, pushCombatLogEntry, pushCombatLogLines, showCombatDiceRoll,
+} from './combat-log.js';
 
 /** @typedef {import('./types.js').PartyMember} PartyMember */
 
@@ -355,14 +356,6 @@ import {
 /** @type {boolean} */
 let locationMapsManuallyHidden = false;
 
-
-/** @type {HTMLElement|null} */
-let combatDiceOverlayElement = null;
-
-/** @type {Array<{title: string, subtitle: string, dc: string, total: string, formula: string, classification: 'critical-success'|'success'|'failure'|'critical-failure', detail: string, glyph: string}>} */
-let combatDiceQueue = [];
-
-let combatDiceAnimating = false;
 
 export function savePartyState() {
     // chat_metadata.party is the single source of truth. The party used to be
@@ -1335,38 +1328,11 @@ function buildDragHighlightCells(tokenId, tentGX, tentGY, gridW, gridH) {
 
 
 /** The mounted panel, when the board is on screen. Null when it is not. */
-let combatLogPanel = null;
+export let combatLogPanel = null;
 
 /** Idea 20: el filtro del registro. Vive aquí, porque el panel se repinta entero. */
-let combatLogFilter = { kind: 'all', who: '' };
+export let combatLogFilter = { kind: 'all', who: '' };
 
-/**
- * Pinta el registro con el filtro puesto.
- */
-function paintCombatLog() {
-    if (!combatLogPanel) return;
-    renderCombatLog(combatLogPanel, filterLog(combatLogEntries, combatLogFilter));
-}
-
-/**
- * Adds an entry to the log and repaints it if it is visible.
- * @param {import('../game-engine/ui/combat-log.js').LogEntry|null} item
- */
-function pushCombatLogEntry(item) {
-    if (!item) return;
-    setCombatLogEntries(appendLogEntry(combatLogEntries, item));
-    paintCombatLog();
-}
-
-/**
- * Mirrors a narration line into the log, one entry per line.
- * @param {string} text
- */
-function pushCombatLogLines(text) {
-    for (const line of String(text ?? '').split('\n')) {
-        pushCombatLogEntry(lineToEntry(line));
-    }
-}
 
 /**
  * Installs the rule pack the open campaign asks for.
@@ -2005,133 +1971,6 @@ function rollInitiativeWithPopover(name, dexterity, actorType) {
     return total;
 }
 
-function ensureCombatDiceOverlay() {
-    if (combatDiceOverlayElement) return combatDiceOverlayElement;
-
-    const overlay = document.createElement('div');
-    overlay.className = 'wm-dice-overlay';
-    overlay.innerHTML = `
-        <div class="wm-dice-backdrop"></div>
-        <div class="wm-dice-card">
-            <div class="wm-dice-header">
-                <div>
-                    <div class="wm-dice-title"></div>
-                    <div class="wm-dice-subtitle"></div>
-                </div>
-                <div class="wm-dice-result-badge"></div>
-            </div>
-            <div class="wm-dice-body">
-                <div class="wm-dice-glyph"></div>
-                <div class="wm-dice-metrics">
-                    <div class="wm-dice-metric">
-                        <div class="wm-dice-metric-label">Dificultad</div>
-                        <div class="wm-dice-metric-value" data-field="dc"></div>
-                    </div>
-                    <div class="wm-dice-metric">
-                        <div class="wm-dice-metric-label">Resultado</div>
-                        <div class="wm-dice-metric-value" data-field="total"></div>
-                    </div>
-                    <div class="wm-dice-metric">
-                        <div class="wm-dice-metric-label">Fórmula</div>
-                        <div class="wm-dice-metric-value" data-field="formula"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="wm-dice-result">
-                <div class="wm-dice-detail"></div>
-            </div>
-            <div class="wm-dice-actions">
-                <button class="menu_button wm-dice-next" type="button">Siguiente</button>
-            </div>
-        </div>
-    `;
-
-    document.body.appendChild(overlay);
-    combatDiceOverlayElement = overlay;
-    return overlay;
-}
-
-function flushCombatDiceQueue() {
-    if (combatDiceAnimating || combatDiceQueue.length === 0) return;
-    const overlay = ensureCombatDiceOverlay();
-    const next = combatDiceQueue.shift();
-    if (!next) return;
-
-    combatDiceAnimating = true;
-
-    const titleEl = /** @type {HTMLElement|null} */ (overlay.querySelector('.wm-dice-title'));
-    const subtitleEl = /** @type {HTMLElement|null} */ (overlay.querySelector('.wm-dice-subtitle'));
-    const dcEl = /** @type {HTMLElement|null} */ (overlay.querySelector('[data-field="dc"]'));
-    const totalEl = /** @type {HTMLElement|null} */ (overlay.querySelector('[data-field="total"]'));
-    const formulaEl = /** @type {HTMLElement|null} */ (overlay.querySelector('[data-field="formula"]'));
-    const glyphEl = /** @type {HTMLElement|null} */ (overlay.querySelector('.wm-dice-glyph'));
-    const detailEl = /** @type {HTMLElement|null} */ (overlay.querySelector('.wm-dice-detail'));
-    const badge = /** @type {HTMLElement|null} */ (overlay.querySelector('.wm-dice-result-badge'));
-    const nextBtn = /** @type {HTMLButtonElement|null} */ (overlay.querySelector('.wm-dice-next'));
-    if (!titleEl || !subtitleEl || !dcEl || !totalEl || !formulaEl || !glyphEl || !detailEl || !badge || !nextBtn) return;
-
-    titleEl.textContent = next.title;
-    subtitleEl.textContent = next.subtitle;
-    formulaEl.textContent = next.formula;
-    // La cara del dado: «d20» se lee tal cual; la iniciativa y el daño, con un dibujo.
-    glyphEl.textContent = next.glyph === 'init' ? '⚡' : next.glyph === 'dmg' ? '💥' : next.glyph;
-    detailEl.textContent = next.detail;
-
-    // Sin nada que superar (la iniciativa, el daño), no hay éxito ni fallo que decir.
-    const judged = next.dc !== '--' || next.classification !== 'success';
-    badge.textContent = judged ? getRollClassificationLabel(next.classification) : '';
-    badge.className = `wm-dice-result-badge ${judged ? next.classification : ''}`;
-
-    const finalBtnText = combatDiceQueue.length > 0 ? 'Siguiente' : 'Cerrar';
-    nextBtn.disabled = true;
-    nextBtn.textContent = 'Tirando…';
-    dcEl.classList.add('rolling');
-    totalEl.classList.add('rolling');
-
-    const dcNumeric = /^-?\d+$/.test(next.dc) ? Number(next.dc) : null;
-    const totalNumeric = /^-?\d+$/.test(next.total) ? Number(next.total) : 0;
-    const startedAt = Date.now();
-    const durationMs = 820;
-    const timer = window.setInterval(() => {
-        const elapsed = Date.now() - startedAt;
-        if (dcNumeric == null) {
-            dcEl.textContent = '--';
-        } else {
-            const spread = Math.max(6, Math.abs(dcNumeric) + 6);
-            const randomValue = Math.max(0, dcNumeric + Math.floor((Math.random() * spread) - spread / 2));
-            dcEl.textContent = String(randomValue);
-        }
-
-        const totalSpread = Math.max(8, Math.abs(totalNumeric) + 8);
-        const randomTotal = Math.max(0, totalNumeric + Math.floor((Math.random() * totalSpread) - totalSpread / 2));
-        totalEl.textContent = String(randomTotal);
-
-        if (elapsed >= durationMs) {
-            window.clearInterval(timer);
-            dcEl.textContent = next.dc;
-            totalEl.textContent = next.total;
-            dcEl.classList.remove('rolling');
-            totalEl.classList.remove('rolling');
-            nextBtn.disabled = false;
-            nextBtn.textContent = finalBtnText;
-        }
-    }, 42);
-
-    nextBtn.onclick = () => {
-        if (!combatDiceAnimating) return;
-        window.clearInterval(timer);
-        dcEl.classList.remove('rolling');
-        totalEl.classList.remove('rolling');
-        nextBtn.disabled = false;
-        overlay.classList.remove('active');
-        window.setTimeout(() => {
-            combatDiceAnimating = false;
-            flushCombatDiceQueue();
-        }, 120);
-    };
-
-    overlay.classList.add('active');
-}
 
 /**
  * @param {'victory'|'defeat'|'manual'|'ended'} reason
@@ -2165,49 +2004,6 @@ function buildCombatSummary(reason) {
         `HP aliados: ${partyHp}`,
         `HP enemigos: ${enemyHp}`,
     ].join('\n');
-}
-
-/**
- * @param {{title: string, subtitle: string, dc: string, total: string, formula: string, classification: 'critical-success'|'success'|'failure'|'critical-failure', detail: string, glyph: string}} payload
- */
-function queueCombatDiceRoll(payload) {
-    combatDiceQueue.push(payload);
-    flushCombatDiceQueue();
-}
-
-/**
- * @param {{ title: string, subtitle: string, formula: string, detail: string, total: number, dc?: number|null, natural?: number|null, glyph?: string }} param0
- */
-function showCombatDiceRoll({ title, subtitle, formula, detail, total, dc = null, natural = null, glyph = 'd20' }) {
-    // Idea 168: cada d20, apuntado, para poder contestar a «este dado me odia».
-    if (glyph === 'd20' && chat_metadata && Number(natural) >= 1) {
-        chat_metadata[DICE_LOG_KEY] = addRoll(chat_metadata[DICE_LOG_KEY], { title: String(title), natural: Number(natural), total: Number(total) || 0, dc });
-    }
-    // J2.2: la primera tirada contra un número (un golpe contra una CA, una prueba contra
-    // una CD). La iniciativa no: ahí no hay nada que pasar.
-    if (glyph === 'd20' && dc != null) showTip('roll');
-    const classification = getRollClassification(natural, total, dc);
-
-    // The log gets the breakdown, not the prose: seeing "1d20+5 · 17 · vs 15" is what
-    // lets a player audit a resolver nobody is supervising.
-    pushCombatLogEntry(rollEntry(
-        String(title || ''),
-        { formula: String(formula || ''), rolls: [], total: Number(total) || 0, natural },
-        dc == null ? null : Number(dc),
-        String(subtitle || ''),
-    ));
-
-    queueCombatDiceRoll({
-        title,
-        subtitle,
-        dc: dc == null ? '--' : String(dc),
-        total: String(total),
-        formula,
-        classification,
-        detail,
-        glyph,
-    });
-    return classification;
 }
 
 
@@ -7974,26 +7770,6 @@ function enemyBark(enemy, event) {
     floatOnToken(enemyTokenId(enemy), line, 'bark');
 }
 
-/**
- * Idea 188: algo que sale flotando de una ficha (daño, un grito). Se pinta un poco despues,
- * cuando el tablero ya se ha redibujado con el golpe.
- *
- * @param {number|string} tokenId
- * @param {string} text
- * @param {'damage'|'crit'|'heal'|'bark'} kind
- */
-export function floatOnToken(tokenId, text, kind) {
-    setTimeout(() => {
-        const token = [...document.querySelectorAll('.wm-token')]
-            .find(t => t instanceof HTMLElement && t.dataset.tokenId === String(tokenId) && t.offsetParent);
-        if (!token) return;
-        const node = document.createElement('div');
-        node.className = kind === 'bark' ? 'wm-bark wm-bark-enemy' : `wm-float wm-float-${kind}`;
-        node.textContent = text;
-        token.appendChild(node);
-        setTimeout(() => node.remove(), kind === 'bark' ? 2600 : 1400);
-    }, 250);
-}
 
 /**
  * Ideas 44 y 47: apuntar una hazaña, y contar si trae apodo o rasgo nuevo.
