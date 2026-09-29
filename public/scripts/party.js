@@ -93,6 +93,7 @@ import { reactionsHere } from './game-engine/campaign/pet-reception.js';
 import { bossPhase } from './game-engine/combat/boss-phases.js';
 // R6 del roadmap de profundidad: tableros con intención.
 import { generateIntended, threatOf, budgetFor } from './game-engine/world-builder/board-intent.js';
+import { levelPlanOf, boardBand, partyLevelOf, levelGap, levelAdjustment, adjustEnemy, adjustPlacements, levelNote } from './game-engine/combat/level-adjust.js';
 // R4: pergaminos y varitas.
 import { MAGIC_ITEMS, judgeMagicItems, afterUse, canLearnScroll } from './game-engine/rules/magic-items.js';
 // R4 del roadmap de profundidad: la magia, solo la del grimorio.
@@ -122,6 +123,7 @@ import { MOUNTS, addMount, mountedDays, feedPerWeek, describeMounts } from './ga
 import { assignRoles, rollRoles, describeRoles } from './game-engine/world/travel-roles.js';
 import { isIndoors, carriesLight, combatVisibility, visibilityPenalties, sightFeetFor } from './game-engine/world/visibility.js';
 import { companionEpilogues } from './game-engine/campaign/epilogues.js';
+import { endingEpilogues, partyAtStart, readPartyStart, takeHome, campaignHallEntry } from './game-engine/campaign/campaign-end.js';
 import { canPry, notePry, secretNote, describeSecrets, readSecrets, SECRET_DC, SECRET_SKILL } from './game-engine/campaign/npc-secrets.js';
 import { repliesFor } from './game-engine/ui/shell/replies.js';
 import { checkWorldDensity, gemRequest } from './game-engine/campaign/world-density.js';
@@ -151,7 +153,8 @@ import { rivalOf, rivalsTake, describeRivalTake } from './game-engine/campaign/r
 import { stealDC, stealOutcome, guardsAt, settleGuards, coolDown, WATCH, readWanted } from './game-engine/campaign/crime.js';
 import { store, retrieve, readStorage } from './game-engine/campaign/storage.js';
 import { guestMember, hirelingsHere, guestsLeave, wardLost, exitCell, HIRELINGS, MERCENARY_FEE } from './game-engine/campaign/guests.js';
-import { readHub, isHubWorld, hubHomeOf, hubCampaignCards, hireOffers, settleCarried, hubRoster, HUB_CONTRACT } from './game-engine/campaign/hub.js';
+import { readHub, isHubWorld, hubHomeOf, hubCampaignCards, hireOffers, settleCarried, hubRoster, hubTrial, HUB_CONTRACT, HUB_CAMPAIGN_KEY } from './game-engine/campaign/hub.js';
+import { HUB_HEROES_KEY, hubHeroCards, restingUids, seatHero, swapLine } from './game-engine/campaign/hub-heroes.js';
 import { readVillain, villainScenesDue, villainNote } from './game-engine/campaign/villain.js';
 import { seaLegs, fareFor, sailingDays, describeVoyage } from './game-engine/world/ships.js';
 import { shiftAttitude, attitudeBonus, describeAttitude, readAttitudes } from './game-engine/campaign/attitudes.js';
@@ -191,7 +194,7 @@ import { weeklyBill, settleWeek, describeBill } from './game-engine/rules/upkeep
 import { readRemedies, remediesFor, applyRemedy, shouldOfferRetirement } from './game-engine/rules/remedies.js';
 import { readDebt, offerPatronage, settlesDebt, debtDue, describeDebt, borrow, repay, LOAN } from './game-engine/campaign/patronage.js';
 import { rollLine, damageLine } from './game-engine/rules/roll-line.js';
-import { epitaphFor, heirloomOf, heirOf, addGrave, gravesAt, readGraves, addToHall, readHall, describeHallEntry } from './game-engine/campaign/legacy.js';
+import { epitaphFor, heirloomOf, heirOf, addGrave, gravesAt, readGraves, addToHall, readHall, describeHallEntry, describeHallCount } from './game-engine/campaign/legacy.js';
 import { addFame, fameAt, fameNote, describeFame } from './game-engine/campaign/fame.js';
 import { lootable, relicsFor, describeRelic } from './game-engine/campaign/relics.js';
 import { dressLoot, templeWork, identify, liftCurse, canTakeOff, shownName, curseInjury, TEMPLE_PRICES } from './game-engine/campaign/item-lore.js';
@@ -204,6 +207,7 @@ import { queueNews, deliverNews, clockWarnings } from './game-engine/world/news.
 import { dueHints, buildJournal, buildHelp, pendingByPlace, buildRecap } from './game-engine/campaign/guidance.js';
 import { splitModelNote } from './game-engine/campaign/model-note.js';
 import { narrate as narrateMoment, rememberUsed, listNames, daysText } from './game-engine/campaign/engine-narrator.js';
+import { resolveGender, resolveGenderDeep } from './game-engine/campaign/grammar.js';
 import { talkTopics, topicAnswer, threatAnswer, talkNote, talkPromptNote, sceneAddressee, narratorAskNote, effectiveAttitude, confronts, keepSpeech } from './game-engine/campaign/talk.js';
 import { addNotice, unseenCount, glanceRow, MAX_VISIBLE_TOASTS } from './game-engine/ui/shell/notices.js';
 import { addRequest, takeRequest, readRequests } from './game-engine/campaign/check-requests.js';
@@ -248,7 +252,7 @@ import { outcomeOf as checkOutcome, consequence } from './game-engine/campaign/c
 import {
     sucesoCount, pickSucesos, sucesoById, optionView, resolveOption, readSucesoState, noteSuceso, dueFollowUp, describeEffect,
 } from './game-engine/campaign/sucesos.js';
-import { tipFor, GLOSSARY } from './game-engine/ui/shell/tips.js';
+import { planTip, nextQueuedTip, GLOSSARY, MOMENT_TIPS } from './game-engine/ui/shell/tips.js';
 import { LENGTHS, lengthNote, nextLength } from './game-engine/campaign/narration.js';
 import { noteFeat, newNickname, traitBonus, traitsOf, addScar, desireLine, heroStory, TRAIT_AT, knackBonus, knacksOf, KNACK_AT } from './game-engine/campaign/feats.js';
 import { forageCheck, forageResult } from './game-engine/campaign/forage.js';
@@ -821,6 +825,8 @@ export function setPartyFromWorldEntries(entries, worldName = null) {
             race: d.race || '',
             // Idea 49: el trasfondo, que las tiradas leen.
             background: d.background || '',
+            // J1.4: cómo se presenta, que decide si el texto dice «cansado» o «cansada».
+            gender: d.gender || '',
             factions: parseFactionValues(d.factions || d.faction),
             hp: Number(d.maxHp) || 30,
             maxHp: Number(d.maxHp) || 30,
@@ -998,6 +1004,39 @@ let lastHub = null;
 let lastHubHome = '';
 
 /**
+ * J4.6: para qué nivel es la campaña del tablón y en qué acto va cada tablero. Nulo fuera
+ * de una campaña del tablón, o si su fila no dice para qué nivel es.
+ *
+ * @type {import('./game-engine/combat/level-adjust.js').LevelPlan|null}
+ */
+let lastLevelPlan = null;
+
+/**
+ * J4.6: las filas del tablón (`mundos.json`), leídas una vez por sesión. De ahí sale el
+ * tramo de niveles de cada campaña: escrito en un solo sitio, el mismo que lee su tarjeta.
+ *
+ * @type {Promise<any[]>|null}
+ */
+let boardCampaignRows = null;
+
+/**
+ * @param {string} id La campaña, de `mundos.json`.
+ * @returns {Promise<any>} Su tramo de niveles, tal cual; nada si no lo dice.
+ */
+async function campaignLevelsOf(id) {
+    if (!id) return null;
+    boardCampaignRows = boardCampaignRows ?? fetch('/mundos/mundos.json')
+        .then(response => response.json())
+        .then(json => (Array.isArray(json?.worlds) ? json.worlds : []))
+        .catch(() => {
+            // Sin tablón no se ajusta nada; la próxima vez se vuelve a probar.
+            boardCampaignRows = null;
+            return [];
+        });
+    return (await boardCampaignRows).find(w => String(w?.id) === id)?.levels ?? null;
+}
+
+/**
  * Idea 74: la estación de hoy.
  *
  * @returns {string}
@@ -1028,6 +1067,7 @@ async function reloadWorldFactions() {
         currentWorldFactions = [];
         lastHub = null;
         lastHubHome = '';
+        lastLevelPlan = null;
         return currentWorldFactions;
     }
     try {
@@ -1074,9 +1114,13 @@ async function reloadWorldFactions() {
         // Y lo que escribio o retoco en el taller: su raza, su arma, su bicho.
         lastWorldRows = (data?.metadata?.worldRows && typeof data.metadata.worldRows === 'object')
             ? data.metadata.worldRows : null;
+        // J4.6: para qué nivel es, si es una campaña del tablón. Lo último, porque espera a
+        // leer el tablón: lo de arriba ya está puesto.
+        lastLevelPlan = levelPlanOf(data?.metadata, await campaignLevelsOf(String(data?.metadata?.[HUB_CAMPAIGN_KEY] ?? '')));
     } catch (error) {
         console.error('[party] no se pudieron leer las facciones', error);
         currentWorldFactions = [];
+        lastLevelPlan = null;
     }
     return currentWorldFactions;
 }
@@ -1748,6 +1792,37 @@ function getTargetArmorClass(target, attacker = null) {
 }
 
 /**
+ * J1.4: quién juega, para que el texto concuerde (`campaign/grammar.js`): tu héroe, el
+ * grupo que sigue en pie y, por su hueco, quien del grupo se nombre en la frase
+ * (`{quien}`, `{companero}`…).
+ *
+ * @param {Record<string, any>} [facts] Los huecos de la frase, si los hay.
+ * @returns {Record<string, any>}
+ */
+function whoPlays(facts = {}) {
+    const hero = partyMembers.find(m => !m.guest) ?? partyMembers[0];
+    const standing = partyMembers.filter(m => !m.dead);
+    /** @type {Record<string, any>} */
+    const who = { heroe: hero?.gender ?? '', grupo: (standing.length > 0 ? standing : partyMembers).map(m => m.gender ?? '') };
+    for (const [key, value] of Object.entries(facts ?? {})) {
+        const named = typeof value === 'string' && value.trim() ? partyMembers.find(m => m.name === value.trim()) : null;
+        if (named) who[key] = named.gender ?? '';
+    }
+    return who;
+}
+
+/**
+ * Un texto del motor con cada `{cansado|cansada}` ya concordado con quien juega. Por aquí
+ * pasa todo lo que sale al chat, así que ninguna marca llega a verse.
+ *
+ * @param {string} text
+ * @returns {string}
+ */
+function sayGendered(text) {
+    return resolveGender(text, whoPlays());
+}
+
+/**
  * Send a compact combat narration line to chat, for the player only.
  *
  * System messages are stripped from the prompt, so every line posted here is free. That
@@ -1759,6 +1834,7 @@ function getTargetArmorClass(target, attacker = null) {
  */
 function postCombatNarration(text) {
     if (typeof text !== 'string' || !text.trim()) return;
+    text = sayGendered(text);
     pushCombatLogLines(text);
     sendSystemMessage(system_message_types.GENERIC, text.trim(), {
         isSmallSys: true,
@@ -1813,7 +1889,10 @@ function playSucesos(moment, facts = {}, days = 1) {
         const rows = compendium.find('sucesos', {});
         const state = readSucesoState(chat_metadata?.[SUCESOS_KEY]);
         const companion = partyMembers.slice(1).find(m => !m.dead);
+        /** @type {Record<string, any>} */
         const all = { sitio: currentLocationName, ...(companion ? { companero: String(companion.name) } : {}), ...facts };
+        // J1.4: «{companero} se queda {companero:callado|callada}», con el suyo.
+        all.generos = whoPlays(all);
         const random = createSeededRandom(derive(String(chat_metadata?.[METADATA_KEY] || ''), 'sucesos', moment, String(chat.length), String(campaignDay())));
         /** @type {any[]} */
         const cards = [];
@@ -2019,7 +2098,8 @@ function tellMoment(moment, facts) {
     if (modelNarrates() || !lastCompendium?.has?.('frases')) return '';
     const rows = lastCompendium.find('frases', {});
     const random = createSeededRandom(derive(String(chat_metadata?.[METADATA_KEY] || ''), 'narrador', moment, String(chat.length)));
-    const told = narrateMoment({ rows, moment, facts, random, recent: chat_metadata?.[NARRATOR_RECENT_KEY] });
+    // J1.4: con quién juega, para que «llegáis empapados» sea «empapadas» si toca.
+    const told = narrateMoment({ rows, moment, facts: { ...facts, generos: whoPlays(facts) }, random, recent: chat_metadata?.[NARRATOR_RECENT_KEY] });
     if (chat_metadata && told.used.length > 0) chat_metadata[NARRATOR_RECENT_KEY] = rememberUsed(chat_metadata[NARRATOR_RECENT_KEY], told.used);
     return told.text;
 }
@@ -2035,7 +2115,7 @@ async function postEngineLine(text) {
     if (typeof text !== 'string' || !text.trim()) return;
     const card = /** @type {any} */ (stCharacters)?.[/** @type {any} */ (this_chid)];
     const message = buildGameMessage({
-        text: text.trim(),
+        text: sayGendered(text.trim()),
         channel: CHANNEL.PLAYER,
         name: String(card?.name || chat_metadata?.narrator_name || 'Narrador'),
         avatar: card?.avatar ? getThumbnailUrl('avatar', card.avatar) : system_avatar,
@@ -2465,7 +2545,8 @@ async function postForModel(text, options = {}) {
     if (typeof text !== 'string' || !text.trim()) return;
 
     const message = buildGameMessage({
-        text: substituteParams(text.trim()),
+        // J1.4: el modelo también lee «entera», no «{entero|entera}».
+        text: sayGendered(substituteParams(text.trim())),
         channel: CHANNEL.MODEL,
         name: chat_metadata?.narrator_name || 'Narrador',
         avatar: system_avatar,
@@ -2477,7 +2558,7 @@ async function postForModel(text, options = {}) {
     // como una instrucción colada (ROADMAP_SIN_TOKENS, Z0).
     const { said } = splitModelNote(message.mes);
     // Z1: si cuenta el motor, lo que se ve es su prosa (el modelo sigue leyendo los hechos).
-    const shown = !modelNarrates() && typeof options?.show === 'string' && options.show.trim() ? options.show.trim() : said;
+    const shown = !modelNarrates() && typeof options?.show === 'string' && options.show.trim() ? sayGendered(options.show.trim()) : said;
     if (shown !== message.mes) /** @type {any} */ (message.extra).display_text = shown;
 
     chat.push(message);
@@ -2496,6 +2577,17 @@ async function postForModel(text, options = {}) {
 export async function postJourney(line) {
     if (!String(line ?? '').trim()) return;
     await postForModel(`[VIAJE] ${String(line).trim()} Cuéntalo en una o dos frases. No inventes nada que no esté aquí.`);
+}
+
+/**
+ * J4.5: la vuelta al gremio tras un final, contada. Lo lee el modelo y lo ve quien juega.
+ *
+ * @param {string} scene La de `homecomingScene`.
+ * @returns {Promise<void>}
+ */
+export async function postHomecoming(scene) {
+    if (!String(scene ?? '').trim()) return;
+    await postForModel(`[GREMIO] ${String(scene).trim()} Cuéntalo en dos o tres frases, en el tono de la campaña. No inventes nada que no esté aquí.`);
 }
 
 /**
@@ -2698,6 +2790,9 @@ function showCombatDiceRoll({ title, subtitle, formula, detail, total, dc = null
     if (glyph === 'd20' && chat_metadata && Number(natural) >= 1) {
         chat_metadata[DICE_LOG_KEY] = addRoll(chat_metadata[DICE_LOG_KEY], { title: String(title), natural: Number(natural), total: Number(total) || 0, dc });
     }
+    // J2.2: la primera tirada contra un número (un golpe contra una CA, una prueba contra
+    // una CD). La iniciativa no: ahí no hay nada que pasar.
+    if (glyph === 'd20' && dc != null) showTip('roll');
     const classification = getRollClassification(natural, total, dc);
 
     // The log gets the breakdown, not the prose: seeing "1d20+5 · 17 · vs 15" is what
@@ -2830,8 +2925,9 @@ function resolveEnemyAttackOn(enemy, target) {
     const attackMod = Math.max(
         getAbilityModifier(enemy.strength || 10),
         getAbilityModifier(enemy.dexterity || 10),
-    // R7: con su líder cerca, pega mejor. R6: y un jefe enfurecido, más.
-    ) + (Number(/** @type {any} */ (enemy).rage) || 0) + leaderBonus(
+    // R7: con su líder cerca, pega mejor. R6: y un jefe enfurecido, más. J4.6: y el ajuste
+    // al nivel del grupo, si el tablero es de otro nivel.
+    ) + (Number(/** @type {any} */ (enemy).rage) || 0) + (Number(/** @type {any} */ (enemy).levelHit) || 0) + leaderBonus(
         { id: String(enemy.instanceId), x: Number(enemy.gridX) || 0, y: Number(enemy.gridY) || 0 },
         getAliveEnemies().map(e => ({ id: String(e.instanceId), x: Number(e.gridX) || 0, y: Number(e.gridY) || 0, hp: Number(e.currentHp) || 0, role: String(/** @type {any} */ (e).role ?? '') })),
     );
@@ -2862,7 +2958,9 @@ function resolveEnemyAttackOn(enemy, target) {
     const dmgFormula = getEnemyDamageFormula(enemy.cr || 0);
     const baseDamageRoll = rollDiceDetailed(dmgFormula, 8);
     const baseDamage = baseDamageRoll.total;
-    const strMod = Math.max(0, getAbilityModifier(enemy.strength || 10));
+    // J4.6: el ajuste al nivel del grupo va con el modificador. Puede restar: el golpe que
+    // acierta hace 1 como poco.
+    const strMod = Math.max(0, getAbilityModifier(enemy.strength || 10)) + (Number(/** @type {any} */ (enemy).levelDamage) || 0);
     const critBonusRoll = isCrit ? rollDiceDetailed(dmgFormula, 8) : null;
     const critBonus = critBonusRoll ? critBonusRoll.total : 0;
     const totalDamage = Math.max(1, baseDamage + critBonus + strMod);
@@ -3235,7 +3333,7 @@ function resolveEnemyTurnAction(turnEntry) {
                 currentHp: Number(other.currentHp) || 0, maxHp: Number(other.maxHp) || 0,
             })),
         focusId: plan.focusId,
-        basicAverage: averageOf(getEnemyDamageFormula(enemy.cr || 0)) + Math.max(0, getAbilityModifier(enemy.strength || 10)),
+        basicAverage: averageOf(getEnemyDamageFormula(enemy.cr || 0)) + Math.max(0, getAbilityModifier(enemy.strength || 10)) + (Number(/** @type {any} */ (enemy).levelDamage) || 0),
         basicRangeFeet: Number(enemy.attackRangeFeet ?? enemy.range) || 5,
     });
     if (choice) {
@@ -4121,9 +4219,24 @@ function runCombatTurnLoop(includeCurrent = true) {
 
     if (entry && combatEncounter.active) {
         announceTurnInChat(entry);
+        teachTurn(entry);
     }
 
     return entry;
+}
+
+/**
+ * J2.2: lo que se aprende en tu turno, la primera vez: a andar y, si hay alguien a tu
+ * alcance, a atacar. Solo si el turno lo juegas tú: el de un compañero que va solo no enseña.
+ *
+ * @param {import('./dnd-system.js').TurnEntry|null} entry
+ */
+function teachTurn(entry) {
+    if (!entry || entry.isEnemy || actsOnItsOwn(entry)) return;
+    const member = getPartyMemberByTurnEntry(entry);
+    if (!member) return;
+    showTip('move');
+    if (getAttackableEnemiesForMember(member).length > 0) showTip('attack');
 }
 
 /**
@@ -4207,10 +4320,15 @@ function toggleBoardDoor(board, gx, gy, open, gridW, gridH) {
  */
 function instancesFromPlacements(placements) {
     const templates = getCurrentWorldEnemies();
+    // J4.6: un tablero escrito para otro nivel se ajusta al grupo. Al empezar la pelea, con
+    // un esbirro de más o de menos; lo que llega después (una sala, un refuerzo), solo con
+    // sus números.
+    const level = levelAdjustHere();
+    const drawn = level && !combatEncounter.active ? levelPlacements(placements, level, templates) : placements;
     /** @type {import('./dnd-system.js').EnemyInstance[]} */
     const instances = [];
 
-    for (const placement of placements) {
+    for (const placement of drawn) {
         const template = templates.find(e => String(e.name).toLowerCase() === String(placement.name).toLowerCase());
         if (!template) {
             console.warn('[party] placement with no template', placement);
@@ -4252,7 +4370,64 @@ function instancesFromPlacements(placements) {
         });
     }
 
+    if (level) for (const enemy of instances) Object.assign(enemy, adjustEnemy(enemy, level.adjustment));
     return instances;
+}
+
+/** J4.6: hacia dónde se dijo ya que se ajustan los enemigos (`up` o `down`). */
+const LEVEL_SAID_KEY = 'levelAdjustSaid';
+
+/**
+ * J4.6: cuánto se aparta el grupo de lo que pide el tablero abierto. Solo en los tableros
+ * escritos de una campaña del tablón: los de los encargos ya salen a la medida del grupo
+ * (el presupuesto del R6), y ajustarlos otra vez sería contarlo dos veces.
+ *
+ * @returns {{adjustment: import('./game-engine/combat/level-adjust.js').LevelAdjustment, band: {low: number, high: number}, level: number, size: number}|null}
+ */
+function levelAdjustHere() {
+    const board = getActiveBoardContext().board;
+    if (!lastLevelPlan || !board) return null;
+    const name = String(board.name ?? '');
+    if (!board.packBoardId && !lastLevelPlan.actOf[name.toLowerCase()]) return null;
+    const { level, size } = partyLevelOf(partyMembers);
+    if (size === 0) return null;
+    const band = boardBand(lastLevelPlan, name);
+    const adjustment = levelAdjustment(levelGap(level, band));
+    return adjustment.steps === 0 ? null : { adjustment, band, level, size };
+}
+
+/**
+ * J4.6: los que salen al empezar, con un esbirro de más o de menos. Se dice la primera vez
+ * (y otra si el grupo pasa al otro lado del tramo), y cada vez que sale uno de más o de menos:
+ * si no, el lobo que no estaba en el tablero parecería un error.
+ *
+ * @param {Array<{name: string, x: number, y: number}>} placements
+ * @param {NonNullable<ReturnType<typeof levelAdjustHere>>} level
+ * @param {any[]} templates
+ * @returns {Array<{name: string, x: number, y: number}>}
+ */
+function levelPlacements(placements, level, templates) {
+    const { terrain, gridWidth, gridHeight, board } = getActiveBoardContext();
+    const result = adjustPlacements({
+        placements, adjustment: level.adjustment, bestiary: templates,
+        partyLevel: level.level, partySize: level.size, band: level.band,
+        terrain, gridWidth, gridHeight,
+        // Donde está el grupo y donde espera el resto del tablero.
+        taken: [
+            ...partyMembers.map(m => ({ x: Number(m.mapPosition?.gridX) || 0, y: Number(m.mapPosition?.gridY) || 0 })),
+            ...(Array.isArray(board?.enemyPlacements) ? board.enemyPlacements : []),
+        ],
+    });
+    const side = level.adjustment.steps > 0 ? 'up' : 'down';
+    if (chat_metadata && chat_metadata[LEVEL_SAID_KEY] !== side) {
+        chat_metadata[LEVEL_SAID_KEY] = side;
+        const note = levelNote(level);
+        postCombatNarration(`⚖️ [COMBAT] ${note}`);
+        toastr.info(note, 'El nivel de la campaña', { timeOut: 9000 });
+    }
+    for (const name of result.added) postCombatNarration(`⚖️ [COMBAT] Por vuestro nivel, hay un enemigo más: ${name}.`);
+    for (const name of result.removed) postCombatNarration(`⚖️ [COMBAT] Por vuestro nivel, hay un enemigo menos: ${name}.`);
+    return result.placements;
 }
 
 /**
@@ -4439,6 +4614,8 @@ function beginEncounterWith(newEnemies) {
     const summary = turnEntries.map((t, i) => `${i + 1}. ${t.name} (${t.initiative})${t.isEnemy ? ' ⚔️' : ''}`).join('\n');
 
     postCombatNarration(`⚔️ [COMBAT] ¡Encuentro iniciado!\n\nOrden de iniciativa:\n${summary}`);
+    // J2.2: la primera pelea, con su consejo. Antes que los del turno: es lo primero que pasa.
+    showTip('combat');
     const firstTurn = getCurrentTurnEntry();
     resetCombatTurnState(firstTurn);
     runCombatTurnLoop(true);
@@ -6269,9 +6446,15 @@ const PLOT_STATE_KEY = 'plotState';
 /** Si la mecha ya se ha contado. */
 const PLOT_ANNOUNCED_KEY = 'plotAnnounced';
 
-/** @returns {import('./game-engine/campaign/plot.js').Plot|null} */
+/**
+ * El hilo, con sus escenas y pistas ya concordadas con quien juega (J1.4): el guion escribe
+ * «si subes {entero|entera}» y aquí sale la forma buena. Lo guardado no se toca: el editor
+ * del hilo sigue viendo las dos formas.
+ *
+ * @returns {import('./game-engine/campaign/plot.js').Plot|null}
+ */
 function getPlot() {
-    return readPlot(chat_metadata?.[PLOT_KEY]);
+    return resolveGenderDeep(readPlot(chat_metadata?.[PLOT_KEY]), whoPlays());
 }
 
 /**
@@ -6321,9 +6504,12 @@ async function ensurePlot({ announce = false, heroNote = '' } = {}) {
 /**
  * Lo que un suceso del juego le hace al hilo.
  *
+ * Exportado para las vueltas de prueba: empujan el hilo con el mismo suceso que daría el
+ * juego («ganar en la cripta») sin jugar la campaña entera (J4.5).
+ *
  * @param {any} event
  */
-function notePlot(event) {
+export function notePlot(event) {
     const plot = getPlot();
     if (!plot || !chat_metadata) return;
     // Con el día de hoy: es lo que mide los plazos (idea 106).
@@ -6335,6 +6521,8 @@ function notePlot(event) {
     chat_metadata[PLOT_STATE_KEY] = step.state;
     saveMetadata();
     void applyPlotStep(step);
+    // J2.2: la primera vez que el hilo se mueve, el Diario importa: ahí queda apuntado.
+    showTip('journal');
     // Ideas 115 y 143: si cambia el acto, se resume el anterior; y el villano asoma cuando toca.
     const actAfter = actOf(plot, step.state);
     if (actAfter > actBefore) void closeAct(plot, actBefore, actAfter);
@@ -6483,27 +6671,13 @@ async function applyPlotStep(step, heroNote = '') {
         if (ending?.scene) lines.push(ending.scene);
         noteDeed(`Final: ${ending?.title || endingId}.`);
         toastr.success(ending?.title || endingId, 'Final', { timeOut: 15000 });
-        // Idea 200: la partida en numeros, al cerrar.
-        const numbers = $('<div class="st-root"></div>');
-        numbers.append($('<h3></h3>').text(`Final: ${ending?.title || endingId}`));
-        for (const line of statsLines()) numbers.append($('<div class="jr-item"></div>').text(line));
-        // Idea 111: los secretos encontrados, y cuántos había.
-        const secrets = secretsOf(getPlot(), chat_metadata?.[PLOT_STATE_KEY]);
-        if (secrets.total > 0) numbers.append($('<div class="jr-item"></div>').text(`Secretos de la historia: ${secrets.found.length} de ${secrets.total}`));
-        // Idea 109: qué fue de cada uno.
-        const bondsNow = getCampaignBonds();
-        const epilogues = companionEpilogues({
-            party: partyMembers,
-            ranks: Object.fromEntries(partyMembers.map(m => [String(m.id), getBondProgress(bondsNow, String(m.id)).rank])),
-            ending: String(ending?.title || endingId),
-            graves: readGraves(chat_metadata?.[GRAVES_KEY]),
-        });
-        if (epilogues.length > 0) {
-            numbers.append($('<h4></h4>').text('Qué fue de cada uno'));
-            for (const line of epilogues) numbers.append($('<div class="jr-item ep-line"></div>').text(line));
-            lines.push(`Qué fue de cada uno: ${epilogues.join(' ')}`);
-        }
-        void new Popup(numbers[0], POPUP_TYPE.TEXT, '', { okButton: 'Cerrar', leftAlign: true }).show();
+        // J3.9: la campaña terminada entra en el salón de la fama.
+        recordFinishedCampaign();
+        // J4.5: la escena del final, con qué fue de cada uno y lo que se lleva.
+        const summary = endingSummary();
+        if (summary?.people.length) lines.push(`Qué fue de la gente: ${summary.people.join(' ')}`);
+        if (summary?.companions.length) lines.push(`Qué fue de cada uno: ${summary.companions.join(' ')}`);
+        if (summary) void showEnding(summary);
     }
 
     const focus = focusOf(getPlot(), chat_metadata?.[PLOT_STATE_KEY], campaignDay());
@@ -6515,6 +6689,126 @@ async function applyPlotStep(step, heroNote = '') {
     lines.push('Cuéntalo en uno o dos párrafos, en el tono de la campaña. No inventes nada que no esté aquí.');
     await postForModel(`[HILO] ${lines.join('\n')}`)
         .catch(error => console.error('[party] plot note failed', error));
+}
+
+/** J4.5: cómo empezó el grupo la campaña, para contar al final lo que se lleva cada uno. */
+const CAMPAIGN_START_KEY = 'campaignStart';
+
+/**
+ * J4.5: lo que cuenta el final de la campaña abierta. Null si no ha llegado a ninguno.
+ *
+ * @returns {{title: string, scene: string, people: string[], companions: string[], take: string[], numbers: string[]}|null}
+ */
+function endingSummary() {
+    const endingId = String(chat_metadata?.plotEnding || '');
+    if (!endingId) return null;
+    const ending = getPlot()?.endings?.[endingId];
+    const title = String(ending?.title || endingId);
+    // Idea 109: qué fue de cada compañero.
+    const bondsNow = getCampaignBonds();
+    const companions = companionEpilogues({
+        party: partyMembers,
+        ranks: Object.fromEntries(partyMembers.map(m => [String(m.id), getBondProgress(bondsNow, String(m.id)).rank])),
+        ending: title,
+        graves: readGraves(chat_metadata?.[GRAVES_KEY]),
+        // J4.5: si la campaña sale de un gremio, quien sigue vivo vuelve con vosotros.
+        home: Boolean(lastHubHome),
+    });
+    // Idea 111: los secretos encontrados, y cuántos había.
+    const secrets = secretsOf(getPlot(), chat_metadata?.[PLOT_STATE_KEY]);
+    return {
+        title,
+        scene: String(ending?.scene || ''),
+        people: endingEpilogues({ ending, factions: getCurrentWorldFactions() }),
+        companions,
+        take: takeHome({ party: partyMembers, start: readPartyStart(chat_metadata?.[CAMPAIGN_START_KEY]) }).map(t => t.line),
+        // Idea 200: la partida en números, al cerrar.
+        numbers: [...statsLines(), ...(secrets.total > 0 ? [`Secretos de la historia: ${secrets.found.length} de ${secrets.total}`] : [])],
+    };
+}
+
+/**
+ * J4.5: la escena del final. El título, lo que pasó, qué fue de la gente y de cada
+ * compañero, lo que se lleva cada uno y los números; y, si la campaña sale de un gremio, el
+ * botón para volver a él.
+ *
+ * @param {NonNullable<ReturnType<typeof endingSummary>>} summary
+ * @returns {Promise<void>}
+ */
+async function showEnding(summary) {
+    const card = $('<div class="st-root end-root gs-panel"></div>');
+    card.append($('<h3 class="gs-popup-title"></h3>').text(`Final: ${summary.title}`));
+    if (summary.scene) card.append($('<p class="end-scene"></p>').text(summary.scene));
+    /** @param {string} title @param {string[]} rows @param {string} kind */
+    const section = (title, rows, kind) => {
+        if (rows.length === 0) return;
+        card.append($('<h4 class="end-head"></h4>').text(title));
+        for (const row of rows) card.append($(`<div class="jr-item ${kind}"></div>`).text(row));
+    };
+    section('Lo que dejáis atrás', summary.people, 'end-epilogue');
+    section('Qué fue de cada uno', summary.companions, 'ep-line');
+    section('Lo que se lleva cada uno', summary.take, 'end-take');
+    section('La partida en números', summary.numbers, 'end-number');
+    const home = Boolean(lastHubHome);
+    const HOME = 71;
+    const choice = await new Popup(card[0], POPUP_TYPE.TEXT, '', {
+        okButton: 'Cerrar',
+        leftAlign: true,
+        allowVerticalScrolling: true,
+        customButtons: home ? [{ text: 'Volver al gremio', result: HOME, classes: ['end-home'], icon: 'fa-house-flag' }] : [],
+    }).show();
+    if (choice !== HOME) return;
+    if (combatEncounter.active) {
+        toastr.warning('No mientras peleáis.');
+        return;
+    }
+    const { returnToHub } = await import('./campaigns.js');
+    await returnToHub();
+}
+
+/**
+ * J3.9: la campaña abierta, si ha llegado a su final, entra en el salón de la fama. Apuntarla
+ * otra vez (al volver al gremio) no la repite.
+ *
+ * @returns {import('./game-engine/campaign/legacy.js').HallEntry|null} Lo apuntado: quién fue y quién cayó.
+ */
+export function recordFinishedCampaign() {
+    const title = plotEndingTitle();
+    if (!title || !chat_metadata) return null;
+    const plot = getPlot();
+    const world = String(chat_metadata?.[METADATA_KEY] ?? '');
+    const settings = /** @type {any} */ (extension_settings);
+    const entry = campaignHallEntry({
+        // Una campaña escrita se llama como su hilo («La Maldición de Strahd»), sin el héroe que
+        // lleva el nombre del mundo; una improvisada, como su mundo.
+        campaign: plot?.source === 'written' && plot.title ? plot.title : world,
+        world,
+        ending: title,
+        party: partyMembers,
+        graves: readGraves(chat_metadata?.[GRAVES_KEY]),
+        day: campaignDay(),
+        when: new Date().toISOString(),
+        mode: modeLabel(modeOf(survivalNow())),
+        iron: isIronRun(survivalNow(), chat_metadata?.[MODE_HISTORY_KEY] ?? null),
+    });
+    settings.partyHall = addToHall(settings.partyHall, entry);
+    saveSettingsDebounced();
+    return entry;
+}
+
+/**
+ * J4.5: volver a ver el final de la campaña abierta.
+ *
+ * @returns {Promise<string>}
+ */
+async function openEnding() {
+    const summary = endingSummary();
+    if (!summary) {
+        toastr.info('Esta campaña todavía no ha llegado a su final.', 'El final');
+        return '';
+    }
+    await showEnding(summary);
+    return '';
 }
 
 /**
@@ -7066,6 +7360,20 @@ function isBoardWon(location, board) {
 }
 
 /**
+ * Apuntar que la pelea escrita de un tablero se ganó: peleándola o, la prueba del gremio,
+ * saltándola (J2.3), que cuenta igual.
+ *
+ * @param {string} location
+ * @param {string} board
+ */
+function recordBoardWon(location, board) {
+    if (!chat_metadata || !String(board || '').trim() || isBoardWon(location, board)) return;
+    const won = Array.isArray(chat_metadata[BOARDS_WON_KEY]) ? chat_metadata[BOARDS_WON_KEY] : [];
+    chat_metadata[BOARDS_WON_KEY] = [...won, boardKeyOf(location, board)];
+    saveMetadata();
+}
+
+/**
  * Quien espera en el tablero sin pelear todavía: los enemigos que trae escritos y que el grupo
  * ve. Antes solo salían al empezar el combate, y el texto decía que el alguacil y sus guardias
  * revientan la puerta sobre un tablero donde no había nadie (Daniel, 2026-09-28).
@@ -7203,17 +7511,54 @@ function statsLines() {
     });
 }
 
+/** Lo que dura un consejo a la vista, si nadie lo cierra antes. */
+const TIP_MS = 12000;
+/** J2.2: los consejos que esperan a que se cierre el que está en pantalla. */
+/** @type {string[]} */
+let tipQueue = [];
+/** El aviso del consejo a la vista, para saber si sigue ahí. */
+/** @type {any} */
+let tipToast = null;
+
+/** @returns {string[]} Los consejos ya vistos en este navegador. */
+function seenTips() {
+    return localFlag.get(TIPS_SEEN_KEY).split(',').filter(Boolean);
+}
+
 /**
- * Idea 155: un consejo, la primera vez que aparece cada cosa.
+ * Si hay un consejo a la vista. La bandeja de avisos quita los que sobran sin avisar a nadie
+ * (idea 159): por eso se mira si su aviso sigue en la página, no si se ha cerrado.
+ *
+ * @returns {boolean}
+ */
+function tipOnScreen() {
+    const element = tipToast?.[0];
+    return Boolean(element && element.isConnected && !$(element).is(':hidden'));
+}
+
+/**
+ * Idea 155: un consejo, la primera vez que aparece cada cosa. J2.2: de uno en uno; si ya hay
+ * uno a la vista, este espera a que se cierre (con su ×, pulsándolo o cuando se acaba su tiempo).
  *
  * @param {string} situation
  */
 function showTip(situation) {
-    const seen = localFlag.get(TIPS_SEEN_KEY).split(',').filter(Boolean);
-    const tip = tipFor(situation, seen);
-    if (!tip) return;
-    localFlag.set(TIPS_SEEN_KEY, [...seen, tip.id].join(','));
-    toastr.info(tip.text, 'Consejo', { timeOut: 12000 });
+    const seen = seenTips();
+    const plan = planTip({ situation, seen, queue: tipQueue, busy: tipOnScreen() });
+    tipQueue = plan.queue;
+    if (!plan.show) return;
+    localFlag.set(TIPS_SEEN_KEY, [...seen, plan.show.id].join(','));
+    tipToast = toastr.info(plan.show.text, 'Consejo', { timeOut: TIP_MS, closeButton: true, onHidden: () => showNextTip() });
+    // Si lo quita otra cosa, el siguiente no se queda esperando para siempre.
+    setTimeout(() => showNextTip(), TIP_MS + 1000);
+}
+
+/** J2.2: el siguiente consejo que esperaba, si ya no hay ninguno a la vista. */
+function showNextTip() {
+    if (tipOnScreen()) return;
+    const next = nextQueuedTip(tipQueue, seenTips());
+    tipQueue = next.queue;
+    if (next.id) showTip(next.id);
 }
 
 /**
@@ -8364,7 +8709,7 @@ const lastOpinion = new Map();
 function voiceOpinions(contract) {
     const said = partyMembers.slice(1)
         .filter(m => !m.dead && (Number(m.hp) || 0) > 0)
-        .map(m => ({ member: m, opinion: opinionOf(readReasons(m).wants, contract, { last: lastOpinion.get(String(m.id)) ?? '' }) }))
+        .map(m => ({ member: m, opinion: opinionOf(readReasons(m).wants, contract, { last: lastOpinion.get(String(m.id)) ?? '', gender: m.gender ?? '' }) }))
         .filter(x => x.opinion);
     for (const { member, opinion } of said.slice(0, 2)) {
         if (!opinion) continue;
@@ -8627,7 +8972,11 @@ let lastBark = '';
  */
 function bark(member, event, about = '') {
     if (!member || String(member.id) === String(partyMembers[0]?.id)) return;
-    const line = chooseBark({ event, wants: readReasons(member).wants, about, last: lastBark, random: Math.random });
+    const line = chooseBark({
+        event, wants: readReasons(member).wants, about, last: lastBark, random: Math.random,
+        // J1.4: «estoy segura» si lo dice ella; «cubridla» si es ella la que cae.
+        gender: member.gender ?? '', aboutGender: partyMembers.find(m => m.name === about)?.gender ?? '',
+    });
     if (!line) return;
     lastBark = line;
     postCombatNarration(`💬 ${member.name}: «${line}»`);
@@ -9546,6 +9895,11 @@ function rumorsLeftHere() {
  * @returns {Promise<void>}
  */
 export async function beginCampaignPlot(heroNote = '') {
+    // J4.5: cómo empieza el grupo, para contar al final lo que se lleva cada uno.
+    if (chat_metadata && !chat_metadata[CAMPAIGN_START_KEY]) {
+        chat_metadata[CAMPAIGN_START_KEY] = partyAtStart(partyMembers, Math.max(1, campaignDay()));
+        saveMetadata();
+    }
     await ensurePlot({ announce: true, heroNote });
     // Idea 184: los hitos que no son para este héroe se cierran, en silencio.
     fitPlotToHero();
@@ -10803,11 +11157,7 @@ function endCombat(reason = 'ended') {
         const wonBoard = getActiveBoardContext().board;
         const written = new Set((wonBoard?.enemyPlacements ?? []).map((/** @type {any} */ p) => String(p.name).toLowerCase()));
         const fought = combatEncounter.enemies.some(e => written.has(String(e.name).replace(/\s+\d+$/, '').toLowerCase()));
-        if (currentBoardName && fought && chat_metadata && !isBoardWon(currentLocationName, currentBoardName)) {
-            const won = Array.isArray(chat_metadata[BOARDS_WON_KEY]) ? chat_metadata[BOARDS_WON_KEY] : [];
-            chat_metadata[BOARDS_WON_KEY] = [...won, boardKeyOf(currentLocationName, currentBoardName)];
-            saveMetadata();
-        }
+        if (currentBoardName && fought) recordBoardWon(currentLocationName, currentBoardName);
         // Idea 52: el sitio sabe quién le ha quitado ese peso de encima.
         raiseFame(currentLocationName);
 
@@ -11815,6 +12165,8 @@ function handlePlayerCombatMove(rawValue) {
     offerExit(member, targetX, targetY);
     // H1: la primera vez que alguien sube a lo alto, se dice para qué sirve.
     if (isHigh(getActiveBoardContext().terrain, targetX, targetY)) showTip('high');
+    // J2.2: andando se llega al alcance de alguien, y entonces se enseña a atacar.
+    if (getAttackableEnemiesForMember(member).length > 0) showTip('attack');
 
     renderLocationMapsPreview();
     return `${member.name} -> ${targetX + 1},${targetY + 1}`;
@@ -12937,7 +13289,9 @@ export async function openCampaignBuilder() {
 
         // El grupo se pone al dia sin rehacerse: quien ya jugaba conserva su vida, su oro
         // y su mochila, que no son cosa de este editor.
-        syncPartyWithEntries(data.entries, worldName);
+        // J1.6: los tuyos que se quedan en el gremio tienen ficha, pero no van en el grupo.
+        const resting = restingUids(data.metadata?.[HUB_HEROES_KEY]);
+        syncPartyWithEntries(Object.fromEntries(Object.entries(data.entries).filter(([uid]) => !resting.has(Number(uid)))), worldName);
         deliverGifts(edited.gifts, worldItemCatalogue);
 
         // La localidad abierta puede haberse quedado sin existir: mejor volver al selector
@@ -12970,7 +13324,7 @@ export async function openCampaignBuilder() {
  * @param {string|null} worldName
  * @returns {PartyMember}
  */
-function memberFromEntry(entry, worldName) {
+export function memberFromEntry(entry, worldName) {
     const d = entry?.dndData || {};
     const defaults = getDefaultDndData();
 
@@ -12986,6 +13340,7 @@ function memberFromEntry(entry, worldName) {
         class: d.charClass || 'Adventurer',
         race: d.race || '',
         background: d.background || '',
+        gender: d.gender || '',
         factions: parseFactionValues(d.factions || d.faction),
         hp: Number(d.maxHp) || 30,
         maxHp: Number(d.maxHp) || 30,
@@ -13233,12 +13588,71 @@ function hubChips() {
     if (combatEncounter.active) return [];
     if (lastHub) {
         return [
+            // J2.3: la prueba se puede saltar mientras está por hacer. Va junto a la de pelearla.
+            ...(hubTrial(getPlot(), chat_metadata?.[PLOT_STATE_KEY])
+                ? [{ id: 'hub-skip', label: 'Saltar la prueba', icon: 'fa-forward', command: '/saltar-prueba' }] : []),
             { id: 'hub-board', label: 'Tablón de campañas', icon: 'fa-scroll', command: '/campanas' },
             { id: 'hub-hire', label: 'Contratar mercenarios', icon: 'fa-coins', command: '/contratar' },
+            // J3.9: el salón de la fama, en cuanto hay alguien (o alguna campaña) en él.
+            ...(readHall(/** @type {any} */ (extension_settings).partyHall).length > 0
+                ? [{ id: 'hub-hall', label: 'Salón de la fama', icon: 'fa-monument', command: '/salon' }] : []),
         ];
     }
-    if (lastHubHome) return [{ id: 'hub-home', label: 'Volver al gremio', icon: 'fa-house-flag', command: '/volver-gremio' }];
+    if (lastHubHome) {
+        return [
+            // J4.5: con la campaña terminada, su final se puede volver a ver.
+            ...(chat_metadata?.plotEnding ? [{ id: 'hub-ending', label: 'El final', icon: 'fa-flag-checkered', command: '/final' }] : []),
+            { id: 'hub-home', label: 'Volver al gremio', icon: 'fa-house-flag', command: '/volver-gremio' },
+        ];
+    }
     return [];
+}
+
+/**
+ * J2.3: saltar la prueba del gremio, para quien ya sabe jugar o trae su segundo personaje.
+ *
+ * Cuenta como ganada, por los mismos caminos que la pelea: el botín y la experiencia de los
+ * enemigos que el tablero traía escritos (saltarla no castiga), el tablero ganado (sus ratas
+ * no vuelven a salir), el sitio superado y el hilo, que recibe la victoria, abre el hito
+ * siguiente y cuenta su escena. El personaje ya está hecho: la ficha sale después.
+ *
+ * @returns {Promise<string>} El hito saltado, o vacío.
+ */
+async function skipHubTrial() {
+    const trial = lastHub && partyMembers.length > 0 ? hubTrial(getPlot(), chat_metadata?.[PLOT_STATE_KEY]) : null;
+    if (!trial) {
+        toastr.info('Aquí no hay ninguna prueba que saltar.', 'La prueba');
+        return '';
+    }
+    if (combatEncounter.active) {
+        toastr.warning('No mientras peleáis.');
+        return '';
+    }
+    const go = await Popup.show.confirm('¿Saltar la prueba?',
+        `«${escapeHtml(trial.title)}» se da por hecha, como si hubieras ganado en ${escapeHtml(trial.board)}: sin pelear, y con lo que te habrías llevado. Es para quien ya sabe jugar.`,
+        { okButton: 'Saltarla', cancelButton: 'Mejor la juego' });
+    // Mientras se decidía, la prueba ha podido hacerse (o empezar la pelea).
+    if (!go || combatEncounter.active || !hubTrial(getPlot(), chat_metadata?.[PLOT_STATE_KEY])) return '';
+
+    const same = (/** @type {any} */ a, /** @type {string} */ b) => String(a ?? '').trim().toLowerCase() === b.trim().toLowerCase();
+    const home = getCurrentWorldLocationMaps().find((/** @type {any} */ l) => (l?.boards ?? []).some((/** @type {any} */ b) => same(b?.name, trial.board)));
+    const place = trial.place || String(home?.name ?? '') || currentLocationName;
+    const board = (home?.boards ?? []).find((/** @type {any} */ b) => same(b?.name, trial.board));
+    postCombatNarration(`⏭️ [HILO] Te saltas «${trial.title}»: cuenta como hecha.`);
+    // Lo mismo que deja ganarla: el botín de los que esperaban, el tablero y el sitio.
+    const defeated = instancesFromPlacements(Array.isArray(board?.enemyPlacements) ? board.enemyPlacements : []);
+    const loot = awardEncounterLoot(defeated);
+    if (loot?.gold) countStat('gold', loot.gold);
+    recordBoardWon(place, trial.board);
+    markLocationComplete(place);
+    for (const name of new Set(defeated.map(e => String(e.name).replace(/\s+\d+$/, '')))) {
+        notePlot({ kind: 'defeat', enemy: name });
+    }
+    notePlot({ kind: 'win', place, board: trial.board });
+    renderPartyMembers();
+    renderLocationMapsPreview();
+    if (isShellOpen()) refreshGameShell();
+    return trial.id;
 }
 
 /**
@@ -13262,9 +13676,17 @@ async function openHubCampaigns() {
         .then(json => (Array.isArray(json?.worlds) ? json.worlds : []))
         .catch(() => []);
     const cards = hubCampaignCards({ worlds, hub: data?.metadata?.hub, level: Number(partyMembers.find(m => !m.guest)?.level) || 1 });
+    // J1.6: arriba, quién va; tus personajes del gremio, para cambiarlo antes de salir.
+    const heroes = hubHeroCards({ party: partyMembers, resting: data?.metadata?.[HUB_HEROES_KEY] });
     const { openHubBoard } = await import('./game-engine/ui/hub-panel.js');
-    const picked = await openHubBoard({ Popup, POPUP_TYPE, cards });
+    const picked = await openHubBoard({ Popup, POPUP_TYPE, cards, heroes });
     if (!picked) return '';
+    if (typeof picked !== 'string') {
+        const { changeHubHero } = await import('./campaigns.js');
+        const changed = await changeHubHero(picked);
+        // Con otro al frente, el tablón otra vez: ahora se elige adónde va.
+        return changed && 'hero' in picked ? await openHubCampaigns() : '';
+    }
     const { playHubCampaign } = await import('./campaigns.js');
     await playHubCampaign(picked);
     return '';
@@ -13351,6 +13773,27 @@ export function adoptCarriedParty(carried, { worldName, uids = {}, atStart = fal
     renderLocationMapsPreview();
     if (partyMembers[0]) setUserName(partyMembers[0].name, { toastPersonaNameChange: false });
     if (isShellOpen()) refreshGameShell();
+}
+
+/**
+ * J1.6: otro de tus personajes pasa a ir con el grupo, en el sitio y la casilla del de ahora.
+ * Los mercenarios siguen. El que sale deja el grupo: lo guarda el gremio (`campaigns.js`).
+ *
+ * @param {PartyMember} incoming Tal cual se quedó en el gremio, o recién hecho de su ficha.
+ * @returns {{outgoing: PartyMember|null, line: string}} El que sale, y lo que se ha contado.
+ */
+export function seatPartyHero(incoming) {
+    const { party, outgoing } = seatHero({ party: partyMembers, incoming });
+    partyMembers = hubRoster(party).map(member => migratePartyMember(member));
+    savePartyState();
+    renderPartyMembers();
+    renderLocationMapsPreview();
+    const hero = partyMembers.find(m => String(m.id) === String(incoming?.id)) ?? partyMembers[0];
+    if (hero) setUserName(hero.name, { toastPersonaNameChange: false });
+    const line = swapLine(incoming, outgoing);
+    postCombatNarration(`🏠 [GREMIO] ${line}`);
+    if (isShellOpen()) refreshGameShell();
+    return { outgoing: outgoing ? JSON.parse(JSON.stringify(outgoing)) : null, line };
 }
 
 /**
@@ -14797,6 +15240,7 @@ function openCompanionCard(memberId) {
         hpPct: Math.round(((Number(member.hp) || 0) / Math.max(1, Number(member.maxHp) || 1)) * 100),
         hungry: /hambre|sed/i.test(needs),
         tired: /sueño/i.test(needs),
+        gender: member.gender ?? '',
     });
     if (wants) root.append($('<div class="cc-wants"></div>').text(`Ahora: ${wants}`));
     // Idea 28: lo que le ha parecido lo último que hicisteis.
@@ -16057,7 +16501,11 @@ async function openTalk(name, draft = '', ask = '') {
     if (isShellOpen()) refreshGameShell();
     // Z3: «le pregunto a Giles por los rumores», «amenazo a Torres»: nada más abrir, eso.
     if (ask) setTimeout(() => body.find(`[data-topic="${ask}"], [data-act="${ask}"]`).first().trigger('click'), 80);
-    await popup.show();
+    const talking = popup.show();
+    // J2.2: la primera charla, con la ventana ya abierta (el aviso sale encima de ella). Con
+    // quien os planta cara no: ahí no hay despedida que enseñar.
+    if (!confronting) showTip('talk');
+    await talking;
     // «Despedirse» acaba la conversación; seguirla con tus palabras, no.
     if (!keepTalking && talkingTo === npc.name) {
         talkingTo = '';
@@ -16627,8 +17075,16 @@ function openHallOfFame() {
     const hall = readHall(/** @type {any} */ (extension_settings).partyHall);
     const body = $('<div class="jr-root hall-root"></div>');
     body.append($('<h3></h3>').text('Salón de la fama'));
-    if (hall.length === 0) body.append($('<div class="jr-item"></div>').text('Todavía no ha caído nadie.'));
-    for (const entry of hall) body.append($('<div class="jr-item hall-entry"></div>').text(describeHallEntry(entry)));
+    // J3.9: arriba, las campañas terminadas; debajo, los caídos.
+    const done = hall.filter(entry => entry.kind === 'campaign');
+    const fallen = hall.filter(entry => entry.kind !== 'campaign');
+    if (done.length > 0) {
+        body.append($('<h4 class="hall-head"></h4>').text('Campañas terminadas'));
+        for (const entry of done) body.append($('<div class="jr-item hall-entry hall-campaign"></div>').text(describeHallEntry(entry)));
+        body.append($('<h4 class="hall-head"></h4>').text('Los caídos'));
+    }
+    if (fallen.length === 0) body.append($('<div class="jr-item"></div>').text('Todavía no ha caído nadie.'));
+    for (const entry of fallen) body.append($('<div class="jr-item hall-entry"></div>').text(describeHallEntry(entry)));
     void new Popup(body[0], POPUP_TYPE.TEXT, '', { okButton: 'Cerrar', allowVerticalScrolling: true, leftAlign: true }).show();
 }
 
@@ -17239,11 +17695,24 @@ function buildShellExploration() {
 }
 
 /**
+ * J0.6: campaigns.js, para leer las partidas guardadas sin esperar. Lo trae la portada; se
+ * pide sin import estático, que campaigns.js ya importa de aquí.
+ * @type {typeof import('./campaigns.js')|null}
+ */
+let savedGamesApi = null;
+
+/**
  * @returns {import('./game-engine/ui/shell/game-shell.js').ShellOptions}
  */
 function buildShellOptions() {
     installNoticeTray();
     applyColorblind();
+    if (!savedGamesApi) {
+        void import('./campaigns.js').then(m => {
+            savedGamesApi = m;
+            if (isShellOpen()) refreshGameShell();
+        });
+    }
     // J0.4: el tamaño y la velocidad del texto, de este navegador.
     void import('./game-engine/ui/game-options.js').then(({ applyTextOptions }) => applyTextOptions());
     // El panel podia estar plegado antes de encender el Shell, y apagarlo tiene que
@@ -17313,6 +17782,8 @@ function buildShellOptions() {
         onCheckWorld: () => { void checkCurrentWorld(); },
         // Idea 199: los caídos de todas las partidas.
         countHall: () => readHall(/** @type {any} */ (extension_settings).partyHall).length,
+        // J3.9: «1 campaña terminada · 2 caídos».
+        hallHint: () => describeHallCount(/** @type {any} */ (extension_settings).partyHall),
         onHall: () => { openHallOfFame(); },
         onEditCampaign: () => { void openCampaignBuilder(); },
         // El asistente de campana vive en la pantalla de bienvenida, que viaja dentro del
@@ -17322,18 +17793,17 @@ function buildShellOptions() {
             if (button instanceof HTMLElement) button.click();
             else toastr.info('Abre "Nueva campana" desde la lista de partidas.');
         },
-        countCampaigns: () => document.querySelectorAll(
-            '#game-shell .campaign-card, #game-shell .campaign-card-unstarted').length,
         // J4: jugar sin conexión, con los botones del bloque de la lista de partidas.
         onOffline: () => {
             const button = document.querySelector('#hub-new-game');
             if (button instanceof HTMLElement) button.click();
             else toastr.info('Espera a que cargue la lista de partidas.');
         },
-        hubSaves: () => [...document.querySelectorAll('#game-shell .hub-continue')].map(button => ({
-            line: String(button.getAttribute('data-line') || ''),
-            open: () => { if (button instanceof HTMLElement) button.click(); },
-        })),
+        // J0.5 y J0.6: las partidas guardadas, «Continuar» y «Cargar partida». Las lee
+        // campaigns.js con la lista de la portada; aquí solo se piden.
+        getGames: () => savedGamesApi?.savedGameCards() ?? null,
+        onLoadGame: (id) => { void import('./campaigns.js').then(m => m.continueSavedGame(id)); },
+        onDeleteGame: (id) => { void import('./campaigns.js').then(m => m.deleteSavedGame(id)); },
         getAutostart: () => shouldAutostartGameShell(),
         setAutostart: (value) => {
             setGameShellAutostart(value);
@@ -17358,7 +17828,8 @@ function buildShellOptions() {
         },
         onDice: () => openDiceHistory(),
         onGlossary: () => openGlossary(),
-        onScene: (scene) => showTip(scene),
+        // J2.2: el de la pelea sale al empezar la primera, no al abrir el tablero.
+        onScene: (scene) => { if (!MOMENT_TIPS.includes(scene)) showTip(scene); },
         // U0 del pegamento: el diario de sesión.
         onSceneTime: (scene) => keepSessionLog(enterScene(currentSessionLog(), scene, Date.now())),
         onSession: () => { void openSessionLog(); },
@@ -20386,6 +20857,12 @@ export function initPartyPanel() {
         helpString: '<div>Los mercenarios del gremio: contratar a uno (se paga una vez y va contigo hasta que le despidas) o despedirle.</div>',
         callback: async () => await openHubHire(),
     }));
+    // J2.3: saltar la prueba de la bodega, para quien ya sabe jugar.
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'saltar-prueba',
+        helpString: '<div>Saltar la prueba del gremio: cuenta como ganada, sin pelea y sin botín, y el hilo sigue con el tablón de campañas.</div>',
+        callback: async () => await skipHubTrial(),
+    }));
     // No `/gremio`: ese nombre es del panel de la compañía (el tablón de encargos y los edificios).
     SlashCommandParser.addCommandObject(SlashCommand.fromProps({
         name: 'volver-gremio',
@@ -20401,6 +20878,20 @@ export function initPartyPanel() {
             }
             const { returnToHub } = await import('./campaigns.js');
             await returnToHub();
+            return '';
+        },
+    }));
+    // J4.5 y J3.9: el final de la campaña, otra vez, y el salón de la fama.
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'final',
+        helpString: '<div>Volver a ver el final de la campaña: lo que pasó, qué fue de cada uno y lo que se lleva.</div>',
+        callback: async () => await openEnding(),
+    }));
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'salon',
+        helpString: '<div>El salón de la fama: las campañas terminadas y los caídos de todas las partidas.</div>',
+        callback: () => {
+            openHallOfFame();
             return '';
         },
     }));

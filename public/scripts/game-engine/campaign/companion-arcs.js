@@ -15,6 +15,8 @@
  * Ver wiki/ROADMAP_PROFUNDIDAD.md, R8.
  */
 
+import { gendered } from './grammar.js';
+
 /**
  * El rasgo que deja cumplir lo suyo, por lo que busca. Con los efectos de siempre
  * (`level-perks.js`), así que se nota en los mismos sitios.
@@ -170,7 +172,7 @@ export function comebackOf(gone) {
     return {
         member,
         line: `${gone.name} vuelve. Ha pasado tiempo y algo ha cambiado: se queda, si le dejáis.`,
-        forModel: `[VUELVE] ${gone.name}, que se fue ${gone.why === 'sin cobrar' ? 'porque no cobraba' : 'harto'}, vuelve al grupo semanas después. Cuenta el reencuentro en tres o cuatro frases: qué ha hecho, qué ha cambiado. No inventes nada más.`,
+        forModel: `[VUELVE] ${gone.name}, que se fue ${gone.why === 'sin cobrar' ? 'porque no cobraba' : gendered(gone.sheet, 'harto', 'harta')}, vuelve al grupo semanas después. Cuenta el reencuentro en tres o cuatro frases: qué ha hecho, qué ha cambiado. No inventes nada más.`,
     };
 }
 

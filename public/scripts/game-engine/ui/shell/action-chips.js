@@ -100,8 +100,9 @@ export function buildActionChips({
     // Los que esperan en el tablero: empezar la pelea.
     if (fight) chips.push({ id: 'fight-board', label: `Iniciar combate (${fight})`, icon: 'fa-hand-fist', source: 'motor' });
 
-    // J4: el gremio. Detrás de la conversación en marcha y delante de todo lo demás.
-    for (const chip of hub.slice(0, 2)) {
+    // J4: el gremio. Detrás de la conversación en marcha y delante de todo lo demás. Caben
+    // cuatro: saltar la prueba (J2.3), el tablón, contratar y el salón de la fama (J3.9).
+    for (const chip of hub.slice(0, 4)) {
         chips.push({ id: chip.id, label: chip.label, icon: chip.icon, source: 'motor', command: chip.command });
     }
 

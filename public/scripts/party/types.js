@@ -20,6 +20,7 @@
  * @property {string} class
  * @property {string} race
  * @property {string} [background] El trasfondo (idea 49): da competencias en las tiradas.
+ * @property {string} [gender] Cómo se presenta (J1.4): decide si el texto dice «cansado» o «cansada».
  * @property {string} [nickname] El apodo ganado (idea 44).
  * @property {string[]} [scars] Las cicatrices de heridas ya curadas (idea 56).
  * @property {any} [feats] Las hazañas que lleva: tumbados, criticos, caidas, rescates.

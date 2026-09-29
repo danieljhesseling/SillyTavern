@@ -11,6 +11,8 @@
  * Puro: dice quién avisa y quién se va. Quien llama lo saca del grupo.
  */
 
+import { gendered } from './grammar.js';
+
 /** Donde avisa y donde se va, por la suma de lo que le ha parecido. */
 export const LEAVE = { warn: -2, leave: -4, holdRank: 3 };
 
@@ -47,7 +49,7 @@ export function judgeDepartures({ party, approvalOf, rankOf, warned = [] }) {
  * @returns {string}
  */
 export function describeWarning(member) {
-    return `${text(member?.name)} está harto de cómo se hacen las cosas. Si sigue así, se irá.`;
+    return `${text(member?.name)} está ${gendered(member, 'harto', 'harta')} de cómo se hacen las cosas. Si sigue así, se irá.`;
 }
 
 /**

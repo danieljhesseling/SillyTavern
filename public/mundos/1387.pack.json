@@ -474,7 +474,7 @@
         {
           "rank": 2,
           "title": "Seda y barro",
-          "scene": "Isolda, vestida de mozo de cuadra, se limpia la sangre de los nudillos. Es la hija bastarda de Lord Vane. Dice que va contigo porque eres el único que no la trata como si fuera de cristal, pero que no te fíes de ella."
+          "scene": "Isolda, vestida de mozo de cuadra, se limpia la sangre de los nudillos. Es la hija bastarda de Lord Vane. Dice que va contigo porque eres {el único|la única} que no la trata como si fuera de cristal, pero que no te fíes de ella."
         },
         {
           "rank": 4,
@@ -3133,8 +3133,8 @@
         "id": "el-caliz-ensangrentado",
         "act": 1,
         "title": "El cáliz ensangrentado",
-        "hint": "Te han colado el botín del asesinato. Sal vivo del cuarto: la ventana da al callejón.",
-        "scene": "Viernes por la mañana, en el cuarto más barato de la posada de El Pueblo de Barro. Hoy toca pagar la semana y no tienes un duro. Al calzarte encuentras en el petate un cáliz de oro macizo cubierto de sangre seca. No es tuyo. Abajo hay gritos. El alguacil Torres y sus guardias revientan la puerta: buscan al forastero que anoche mató al recaudador de Montesclaros. Te miran a ti y miran el cáliz. No hay tiempo para juicios: o sales por la ventana, o te abres paso.",
+        "hint": "Te han colado el botín del asesinato. Sal {vivo|viva} del cuarto: la ventana da al callejón.",
+        "scene": "Viernes por la mañana, en el cuarto más barato de la posada de El Pueblo de Barro. Hoy toca pagar la semana y no tienes un duro. Al calzarte encuentras en el petate un cáliz de oro macizo cubierto de sangre seca. No es tuyo. Abajo hay gritos. El alguacil Torres y sus guardias revientan la puerta: buscan {al forastero|a la forastera} que anoche mató al recaudador de Montesclaros. Te miran a ti y miran el cáliz. No hay tiempo para juicios: o sales por la ventana, o te abres paso.",
         "opens": {
           "kind": "start"
         },
@@ -3159,7 +3159,7 @@
         "act": 1,
         "title": "El precio del escape",
         "hint": "Habla con Giles en la taberna: vio quién entró en tu cuarto anoche, pero cobra por contarlo.",
-        "scene": "Has salido vivo del cuarto, pero todo el pueblo te busca. Te cuelas por la puerta trasera de la taberna. Giles está limpiando jarras y no grita al verte. Dice que sabe quién metió el cáliz en tu petate, pero en 1387 nadie regala nada. Tienes que convencerle o pagarle para que te diga por dónde ir antes de que vuelvan los guardias.",
+        "scene": "Has salido {vivo|viva} del cuarto, pero todo el pueblo te busca. Te cuelas por la puerta trasera de la taberna. Giles está limpiando jarras y no grita al verte. Dice que sabe quién metió el cáliz en tu petate, pero en 1387 nadie regala nada. Tienes que convencerle o pagarle para que te diga por dónde ir antes de que vuelvan los guardias.",
         "opens": {
           "kind": "after",
           "milestone": "el-caliz-ensangrentado"
@@ -3211,7 +3211,7 @@
         "act": 1,
         "title": "El invierno cierra el paso",
         "hint": "Lleva el cáliz al castillo de Vane: puede comprarte el perdón y una cama caliente.",
-        "scene": "Recuperas el cáliz, pero el cielo se ha puesto gris plomo y caen los primeros copos, pesados como piedras. La nieve acaba de sepultar el paso de montaña del sur: estás atrapado en el valle hasta la primavera. Llegas a las puertas del castillo de Vane con el cáliz en la mano, y los guardias levantan el rastrillo. Vas a conocer al señor de este agujero.",
+        "scene": "Recuperas el cáliz, pero el cielo se ha puesto gris plomo y caen los primeros copos, pesados como piedras. La nieve acaba de sepultar el paso de montaña del sur: estás {atrapado|atrapada} en el valle hasta la primavera. Llegas a las puertas del castillo de Vane con el cáliz en la mano, y los guardias levantan el rastrillo. Vas a conocer al señor de este agujero.",
         "opens": {
           "kind": "after",
           "milestone": "la-pista-en-el-barro"
@@ -3238,7 +3238,7 @@
         "act": 2,
         "title": "El hambre de los Lobos",
         "hint": "Habla con Karl el Sordo en el Campamento Furtivo: los suyos se mueren de hambre y planean asaltar los graneros del pueblo.",
-        "scene": "Llevas semanas atrapado por el hielo cuando Karl el Sordo te sale al paso en el bosque. Los Lobos del Bosque no tienen comida y esta noche bajarán a saquear los graneros del pueblo: Karl te pide que mires hacia otro lado. Si avisas al alguacil, morirán mujeres y niños en el bosque. Si callas, el pueblo pasará hambre. Tu espada decide quién come esta semana.",
+        "scene": "Llevas semanas {atrapado|atrapada} por el hielo cuando Karl el Sordo te sale al paso en el bosque. Los Lobos del Bosque no tienen comida y esta noche bajarán a saquear los graneros del pueblo: Karl te pide que mires hacia otro lado. Si avisas al alguacil, morirán mujeres y niños en el bosque. Si callas, el pueblo pasará hambre. Tu espada decide quién come esta semana.",
         "opens": {
           "kind": "after",
           "milestone": "el-invierno-cierra-el-paso"
@@ -3590,7 +3590,7 @@
     "endings": {
       "yugo-de-hierro": {
         "title": "El yugo de hierro",
-        "scene": "La bandera negra ondea sobre las ruinas humeantes del castillo de Vane. La Capitana Keller te tira a los pies una bolsa pesada, con más oro del que has visto en tu vida. A tu alrededor, los soldados de Vane cuelgan de las almenas y los campesinos reconstruyen el peaje bajo el látigo. Eres rico y has sobrevivido al invierno. Pero al marcharte, la gente aparta la mirada: eres el mercenario que vendió el valle a los Keller."
+        "scene": "La bandera negra ondea sobre las ruinas humeantes del castillo de Vane. La Capitana Keller te tira a los pies una bolsa pesada, con más oro del que has visto en tu vida. A tu alrededor, los soldados de Vane cuelgan de las almenas y los campesinos reconstruyen el peaje bajo el látigo. Eres {rico|rica} y has sobrevivido al invierno. Pero al marcharte, la gente aparta la mirada: eres {el mercenario|la mercenaria} que vendió el valle a los Keller."
       },
       "status-quo-de-sangre": {
         "title": "El status quo de sangre",

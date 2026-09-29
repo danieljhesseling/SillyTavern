@@ -1,7 +1,7 @@
 {
   "version": 1,
   "domain": "sucesos",
-  "about": "Sucesos con decisiones (Z4 de ROADMAP_SIN_TOKENS): una situación y dos o tres opciones con su precio. WHEN.momento dice cuándo sale: viaje, llegada, descanso, semana o continuacion (solo vuelve si otra opción lo pidió con FOLLOW). También valen tiempo, bioma y tipo, como en las demás baterías. En el TEXT y las opciones, huecos: {sitio}, {destino}, {companero}. Cada opción puede tener COST (oro, horas, dias: se paga antes), CHECK (skill y dc: una tirada), EFFECTS (siempre), SUCCESS y FAIL (lo de la tirada: effects y then), THEN (lo que pasa, dicho) y FOLLOW (id y days: el suceso que vuelve). Los efectos: oro:+1d6, oro:-2, hora, dia, herida:1d4, cura:1d6, comida, fama:+1, faccion:-1, vinculo:+1, rumor, pista.",
+  "about": "Sucesos con decisiones (Z4 de ROADMAP_SIN_TOKENS): una situación y dos o tres opciones con su precio. WHEN.momento dice cuándo sale: viaje, llegada, descanso, semana o continuacion (solo vuelve si otra opción lo pidió con FOLLOW). También valen tiempo, bioma y tipo, como en las demás baterías. En el TEXT y las opciones, huecos: {sitio}, {destino}, {companero}. Cada opción puede tener COST (oro, horas, dias: se paga antes), CHECK (skill y dc: una tirada), EFFECTS (siempre), SUCCESS y FAIL (lo de la tirada: effects y then), THEN (lo que pasa, dicho) y FOLLOW (id y days: el suceso que vuelve). Los efectos: oro:+1d6, oro:-2, hora, dia, herida:1d4, cura:1d6, comida, fama:+1, faccion:-1, vinculo:+1, rumor, pista. GÉNERO: lo que cambia va con sus dos formas entre llaves y una barra: en plural, {secos|secas}, concuerda con el grupo; en singular, {cansado|cansada}, con tu héroe; y {companero:callado|callada}, con el compañero del hueco.",
   "rows": [
     {
       "id": "desertores-pan",
@@ -136,7 +136,7 @@
             "dc": 12
           },
           "success": {
-            "then": "El agua llega al pecho, pero pasáis todos."
+            "then": "El agua llega al pecho, pero pasáis {todos|todas}."
           },
           "fail": {
             "effects": [
@@ -150,7 +150,7 @@
           "cost": {
             "dias": 1
           },
-          "then": "Un día entero de rodeo, pero secos."
+          "then": "Un día entero de rodeo, pero {secos|secas}."
         },
         {
           "label": "Pagar al barquero",
@@ -709,7 +709,7 @@
       "when": {
         "momento": "descanso"
       },
-      "text": "Junto al fuego, {companero} se queda callado mucho rato. Parece que quiere contar algo.",
+      "text": "Junto al fuego, {companero} se queda {companero:callado|callada} mucho rato. Parece que quiere contar algo.",
       "options": [
         {
           "label": "Preguntarle",
@@ -717,11 +717,11 @@
           "effects": [
             "vinculo:+1"
           ],
-          "then": "Habla de antes de todo esto. Se le nota más ligero al acabar."
+          "then": "Habla de antes de todo esto. Se le nota más {companero:ligero|ligera} al acabar."
         },
         {
           "label": "Dejarle en paz",
-          "then": "Se duerme el primero."
+          "then": "Se duerme {companero:el primero|la primera}."
         }
       ],
       "kind": "suceso"
@@ -740,7 +740,7 @@
           "effects": [
             "vinculo:+1"
           ],
-          "then": "Apretados, pero nadie tirita."
+          "then": "{Apretados|Apretadas}, pero nadie tirita."
         },
         {
           "label": "Buscar más leña de noche",

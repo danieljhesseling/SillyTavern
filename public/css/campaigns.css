@@ -3618,6 +3618,38 @@ input[type="file"].tl-file {
     white-space: nowrap;
 }
 
+/* J1.6 y J18.1: tus personajes. Su cara, si la tiene, ocupa el sitio del icono; el que va
+   ahora con el grupo, con el borde dorado. En el tablón no se pulsa: ya va. */
+.hb-hero .vt-face img {
+    width: 52px;
+    height: 52px;
+    border-radius: 8px;
+    object-fit: cover;
+}
+
+.vt-small .hb-hero .vt-face img {
+    width: 36px;
+    height: 36px;
+}
+
+.hb-hero.is-active {
+    border-color: var(--gs-accent-gold);
+}
+
+.hb-heroes.vt-small .hb-hero.is-active {
+    cursor: default;
+}
+
+.hb-heroes.vt-small .hb-hero.is-active:hover {
+    transform: none;
+    box-shadow: none;
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.hb-carry {
+    font-size: 0.8rem;
+}
+
 /* La portada: jugar sin conexión, lo primero de la lista de campañas. */
 .hub-offline {
     grid-column: 1 / -1;

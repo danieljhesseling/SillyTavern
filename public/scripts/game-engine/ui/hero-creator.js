@@ -22,6 +22,7 @@ import {
     STAT_KEYS, SPREAD_POINTS, SPREAD_MAX, readStatBonus, spreadLeft, rollStatBonus,
 } from '../campaign/hero.js';
 import { BACKGROUNDS, guessBackground } from '../campaign/backgrounds.js';
+import { resolveGender } from '../campaign/grammar.js';
 import { SKILLS } from '../rules/checks.js';
 
 /** @param {any} value */
@@ -245,10 +246,14 @@ export async function openHeroCreator({
     stats.append(totals, kitLine, statsHint);
     left.append(stats);
 
+    // J1.4: el guion puede traer «si subes {entero|entera}»; se lee con lo que elijas abajo.
+    const premiseText = $('<div class="hc-premise-text"></div>');
+    const showPremise = () => premiseText.text(resolveGender(text(premise), { heroe: state.gender }));
     if (text(premise)) {
+        showPremise();
         left.append($('<div class="hc-premise"></div>')
             .append($('<span class="hc-card-label"></span>').text('Así empieza tu historia'))
-            .append($('<div class="hc-premise-text"></div>').text(text(premise))));
+            .append(premiseText));
     }
 
     // --- Quién eres ------------------------------------------------------------------
@@ -304,6 +309,7 @@ export async function openHeroCreator({
                 state.gender = again ? '' : gender;
                 genders.find('.hc-gender').removeClass('is-on');
                 if (!again) $(this).addClass('is-on');
+                showPremise();
             }));
     }
     idBox.append($('<div class="hc-group"></div>')
@@ -453,7 +459,8 @@ export async function openHeroCreator({
         if (!generate) return;
         wand.prop('disabled', true).addClass('is-busy');
         try {
-            const { systemPrompt, prompt } = buildHeroPrompt({ ...answers(), about: text(aboutInput.val()) }, { worldName, genre, premise });
+            const { systemPrompt, prompt } = buildHeroPrompt({ ...answers(), about: text(aboutInput.val()) },
+                { worldName, genre, premise: resolveGender(premise, { heroe: state.gender }) });
             const answer = await generate({ prompt, systemPrompt, responseLength: 300 });
             const written = cleanHeroAbout(String(answer ?? ''));
             if (written) aboutInput.val(written).trigger('change');

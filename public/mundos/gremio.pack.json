@@ -118,7 +118,7 @@
       "id": "q_prueba_gremio",
       "name": "La prueba del gremio",
       "act": 1,
-      "description": "Brunilda te manda a la bodega: hay ratas entre los barriles. Si subes entero, eres del gremio.",
+      "description": "Brunilda te manda a la bodega: hay ratas entre los barriles. Si acabas con ellas, eres del gremio.",
       "boardId": "bodega_gremio",
       "objectives": [{ "type": "eliminate_all", "label": "Acabar con las ratas" }]
     }
@@ -180,8 +180,8 @@
         "id": "la-prueba",
         "act": 1,
         "title": "La prueba del gremio",
-        "hint": "Acaba con las ratas de la bodega. Pulsa «Iniciar combate» cuando estés listo.",
-        "scene": "Llegas a Puerto Alba con lo puesto y una bolsa de monedas. En la plaza está la Casa del Gremio. Brunilda, la maestra del gremio, te mira de arriba abajo. «¿Quieres entrar? Baja a la bodega: hay ratas entre los barriles. Si subes entero, eres de los nuestros.»",
+        "hint": "Acaba con las ratas de la bodega. Pulsa «Iniciar combate» cuando estés {listo|lista}.",
+        "scene": "Llegas a Puerto Alba con lo puesto y una bolsa de monedas. En la plaza está la Casa del Gremio. Brunilda, la maestra del gremio, te mira de arriba abajo. «¿Quieres entrar? Baja a la bodega: hay ratas entre los barriles. Si subes {entero|entera}, eres de los nuestros.»",
         "opens": { "kind": "start" },
         "asks": { "kind": "win", "board": "La bodega del gremio" },
         "changes": { "reveal": [], "open": ["el-tablon"], "standing": {}, "ending": "", "endingBy": {} }

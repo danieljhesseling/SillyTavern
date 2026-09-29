@@ -19,11 +19,14 @@ export const MERCENARY_FEE = 40;
 /** @param {any} value @returns {string} */
 const text = (value) => String(value ?? '').trim();
 
-/** Los mercenarios que se ofrecen, con su oficio. En el gremio se ofrecen los tres. */
+/**
+ * Los mercenarios que se ofrecen, con su oficio. En el gremio se ofrecen los tres. Y cómo se
+ * presentan (J1.4): el texto dice «llegáis empapados» o «empapadas» según quién va.
+ */
 export const HIRELINGS = [
-    { name: 'Gerd el Mellado', className: 'guerrero', strength: 15, dexterity: 12 },
-    { name: 'Nella Tresflechas', className: 'explorador', strength: 11, dexterity: 16 },
-    { name: 'Osric Mediapaga', className: 'guerrero', strength: 16, dexterity: 10 },
+    { name: 'Gerd el Mellado', className: 'guerrero', strength: 15, dexterity: 12, gender: 'Hombre' },
+    { name: 'Nella Tresflechas', className: 'explorador', strength: 11, dexterity: 16, gender: 'Mujer' },
+    { name: 'Osric Mediapaga', className: 'guerrero', strength: 16, dexterity: 10, gender: 'Hombre' },
 ];
 
 /**
@@ -46,7 +49,7 @@ export function mercenaryHp(level) {
  * @param {string} input.contractId
  * @param {number} input.level
  * @param {any} [input.base] Lo que se toma de base (el héroe), para que encaje.
- * @param {Partial<{className: string, strength: number, dexterity: number}>} [input.stats]
+ * @param {Partial<{className: string, strength: number, dexterity: number, gender: string}>} [input.stats]
  * @returns {any}
  */
 export function guestMember({ id, name, kind, contractId, level, base = {}, stats = {} }) {
@@ -78,6 +81,8 @@ export function guestMember({ id, name, kind, contractId, level, base = {}, stat
         abilities: [],
         avatar: 'img/user-default.png',
         race: '',
+        // El suyo, no el del héroe (J1.4): quien se escolta, no se sabe.
+        gender: text(stats.gender),
         background: '',
         memories: [],
         relationships: [],

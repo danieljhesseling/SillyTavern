@@ -76,6 +76,7 @@ export const STATE_KEYS = [
     { key: 'plotState', kind: 'juego', owner: 'party.js', what: 'Por dónde va el hilo: hitos abiertos y cumplidos' },
     { key: 'plotAnnounced', kind: 'juego', owner: 'party.js', what: 'Si la mecha ya se contó' },
     { key: 'plotEnding', kind: 'juego', owner: 'party.js', what: 'El final alcanzado' },
+    { key: 'campaignStart', kind: 'juego', owner: 'party.js', what: 'Cómo empezó el grupo la campaña: para contar al final lo que se lleva cada uno' },
     { key: 'omensTold', kind: 'juego', owner: 'party.js', what: 'Si el presagio ya se contó' },
     { key: 'threadHints', kind: 'juego', owner: 'party.js', what: 'Las pistas del hilo ya dadas' },
     { key: 'villainSeen', kind: 'juego', owner: 'party.js', what: 'Las veces que el villano se ha dejado ver' },
@@ -108,6 +109,7 @@ export const STATE_KEYS = [
     { key: 'personalAsked', kind: 'juego', owner: 'party.js', what: 'Quién ha pedido ya su encargo personal' },
     { key: 'departWarned', kind: 'juego', owner: 'party.js', what: 'Quién ha avisado de que está harto' },
     { key: 'safety', kind: 'juego', owner: 'party.js', what: 'Las derrotas seguidas, para la red de seguridad' },
+    { key: 'levelAdjustSaid', kind: 'juego', owner: 'party.js', what: 'Si ya se dijo que los enemigos se ajustan a vuestro nivel, y hacia dónde' },
     // --- Tiradas y dados
 
     { key: 'pendingCheck', kind: 'juego', owner: 'party.js', what: 'La tirada hecha que aún no se ha enviado' },

@@ -13,6 +13,8 @@
  * Puro: devuelve la cuenta nueva; quien llama la guarda en la ficha.
  */
 
+import { gendered } from './grammar.js';
+
 /** Cuántos de lo mismo hacen falta para aprender a pelear contra ello. */
 export const TRAIT_AT = 5;
 
@@ -153,13 +155,14 @@ export function scarBonus(member) {
  * @param {boolean} [input.hungry]
  * @param {boolean} [input.tired]
  * @param {string} [input.mourning] Por quién guarda duelo (idea 43).
+ * @param {string} [input.gender] Cómo se presenta (J1.4): «agotado» o «agotada».
  * @returns {string}
  */
-export function desireLine({ wants, hpPct, hungry = false, tired = false, mourning = '' }) {
+export function desireLine({ wants, hpPct, hungry = false, tired = false, mourning = '', gender = '' }) {
     if (mourning) return `Está de duelo por ${mourning}: pide un día.`;
     if (Number(hpPct) < 40) return 'Necesita curarse antes de volver a pelear.';
     if (hungry) return 'Tiene hambre: una comida caliente le cambiaría la cara.';
-    if (tired) return 'Está agotado: pide una noche bajo techo.';
+    if (tired) return `Está ${gendered(gender, 'agotado', 'agotada')}: pide una noche bajo techo.`;
     switch (String(wants)) {
         case 'coin': return 'Quiere un encargo que pague bien (40 de oro o más).';
         case 'glory': return 'Quiere pelea de verdad: una caza, o aguantar una posición.';

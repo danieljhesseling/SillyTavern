@@ -17,10 +17,14 @@
  *
  * Una parte sin frase que valga se salta: un momento sin nada que decir dice menos, no falla.
  *
+ * J1.4: las palabras que cambian con el género van con sus dos formas, `{empapados|empapadas}`,
+ * y se eligen con `facts.generos` (quién juega: ver `grammar.js`). Sin él, la primera.
+ *
  * Puro: el banco y el azar se inyectan.
  */
 
 import { matches, pickWeighted } from '../compendio/compendio.js';
+import { resolveGender } from './grammar.js';
 
 /** Las partes de cada momento, en el orden en que se cuentan. */
 export const MOMENTS = {
@@ -63,6 +67,9 @@ function text(value) {
 /**
  * Rellenar los huecos de una frase. Si alguno no tiene hecho, la frase no vale: null.
  *
+ * Y el género (J1.4): cada `{cansado|cansada}` con la forma de quien juega, que viene en
+ * `facts.generos`. Después de rellenar, para que valga también dentro de lo que se rellena.
+ *
  * @param {string} template
  * @param {Record<string, any>} facts
  * @returns {string|null}
@@ -75,7 +82,7 @@ export function fill(template, facts) {
         return value;
     });
     if (missing) return null;
-    const clean = out.replace(/\s+/g, ' ').trim();
+    const clean = resolveGender(out, facts?.generos ?? {}).replace(/\s+/g, ' ').trim();
     return clean ? clean[0].toLocaleUpperCase('es') + clean.slice(1) : null;
 }
 

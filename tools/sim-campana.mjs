@@ -106,7 +106,7 @@ try {
     const page = await context.newPage();
     await context.addInitScript(() => {
         try {
-            window.localStorage.setItem('sillytavern_gameTipsSeen', 'dialogue,exploration,combat,travel,prisoners,mesa,high,spell,pet,bill');
+            window.localStorage.setItem('sillytavern_gameTipsSeen', 'dialogue,exploration,combat,travel,prisoners,mesa,high,spell,pet,bill,move,attack,roll,talk,journal');
             window.localStorage.setItem('sillytavern_gameShellAutostart', 'true');
             window.localStorage.setItem('sillytavern_gameSucesos', 'off');
         } catch { /* nada */ }
@@ -153,6 +153,7 @@ try {
      * @returns {Promise<{result: string, rounds: number}>}
      */
     const playFight = async () => {
+        const chatBefore = await page.evaluate(() => (window.SillyTavern.getContext().chat ?? []).length).catch(() => 0);
         const offer = () => until(async () => (await chips()).some(c => /^Iniciar combate/.test(c)), 6000);
         let offered = await offer();
         // Lo que duerme tras una puerta (el engendro del Sótano) se despierta abriéndola,
@@ -168,6 +169,16 @@ try {
             await clickChip(/^Iniciar combate/);
             await until(fighting, 10000);
         }
+        // J4.6: si el tablero se ajusta al nivel del grupo, lo que dice y con qué vida sale cada uno.
+        const adjusted = await page.evaluate(async (from) => {
+            const fight = /** @type {any} */ ((await import('/scripts/party.js')).getCombatEncounter());
+            const said = (window.SillyTavern.getContext().chat ?? []).slice(from).map((/** @type {any} */ m) => String(m?.mes ?? ''))
+                .filter(text => text.includes('⚖️'));
+            const foes = (fight?.enemies ?? []).map((/** @type {any} */ e) => `${e.name} ${e.maxHp}pg${e.levelSteps ? ` (${e.levelSteps > 0 ? '+' : ''}${e.levelSteps})` : ''}`);
+            return { said, foes };
+        }, chatBefore).catch(() => ({ said: [], foes: [] }));
+        for (const line of adjusted.said) console.log(`  ${line}`);
+        if (adjusted.foes.length > 0) console.log(`  enemigos: ${adjusted.foes.join(', ')}`);
         let rounds = 0;
         for (let step = 0; step < 600 && await fighting(); step++) {
             rounds = await page.evaluate(async () => Number((await import('/scripts/party.js')).getCombatEncounter()?.round) || 0);

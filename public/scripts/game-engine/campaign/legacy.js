@@ -9,13 +9,15 @@
  * - **Una tumba** donde cayó. Al volver a ese sitio se ve, y el narrador lo sabe.
  * - **Una herencia**: lo mejor que llevaba pasa a quien más le quería.
  * - **El salón de la fama** (199): los caídos de todas las partidas, en una lista que no es
- *   de ninguna campaña. Las muertes quedan.
+ *   de ninguna campaña. Las muertes quedan. Y desde J3.9, las campañas terminadas: cuál, con
+ *   qué final, quién fue y cuándo.
  *
  * Puro: decide y redacta. Quien llama guarda, mueve el objeto y lo cuenta.
  */
 
 import { readFeats } from './feats.js';
 import { basePrice } from './shop.js';
+import { listNames } from './engine-narrator.js';
 
 /** Cuántos caídos caben en el salón. Los más viejos se van al fondo y luego fuera. */
 export const HALL_MAX = 100;
@@ -123,8 +125,14 @@ export function gravesAt(raw, place) {
 }
 
 /**
- * @typedef {{name: string, world: string, day: number, epitaph: string, when: string, mode?: string, iron?: boolean}} HallEntry
+ * @typedef {{name: string, world: string, day: number, epitaph: string, when: string, mode?: string, iron?: boolean,
+ *   kind?: 'campaign', ending?: string, party?: string[], fallen?: string[]}} HallEntry
+ *   J3.9: una campaña terminada también entra (`kind: 'campaign'`): `name` es la campaña,
+ *   `ending` el final, `party` quién fue y `fallen` quién no volvió. `day`, cuánto duró.
  */
+
+/** @param {any} value @returns {string[]} */
+const names = (value) => (Array.isArray(value) ? [...new Set(value.map(text).filter(Boolean))] : []);
 
 /**
  * El salón de la fama, leído con tolerancia: el más reciente primero.
@@ -141,13 +149,16 @@ export function readHall(raw) {
             // R1: en qué modo se jugaba, y si fue de hierro de principio a fin.
             ...(text(e.mode) ? { mode: text(e.mode) } : {}),
             ...(e.iron === true ? { iron: true } : {}),
+            // J3.9: una campaña terminada, con su final y su gente.
+            ...(e.kind === 'campaign' ? { kind: /** @type {'campaign'} */ ('campaign'), ending: text(e.ending), party: names(e.party), fallen: names(e.fallen) } : {}),
         }))
         .slice(0, HALL_MAX);
 }
 
 /**
  * Entrar en el salón. Arriba del todo; y quien ya está (mismo nombre, mundo y día) no se
- * repite, aunque se recargue la partida y vuelva a caer.
+ * repite, aunque se recargue la partida y vuelva a caer. Una campaña terminada está una vez
+ * por partida y final: apuntarla otra vez (al volver al gremio) la deja como estaba.
  *
  * @param {any} raw
  * @param {HallEntry} entry
@@ -157,7 +168,11 @@ export function addToHall(raw, entry) {
     const hall = readHall(raw);
     const [clean] = readHall([entry]);
     if (!clean) return hall;
-    const same = (/** @type {HallEntry} */ e) => e.name === clean.name && e.world === clean.world && e.day === clean.day;
+    if (clean.kind === 'campaign') {
+        const known = (/** @type {HallEntry} */ e) => e.kind === 'campaign' && e.world === clean.world && e.ending === clean.ending;
+        return hall.some(known) ? hall : [clean, ...hall].slice(0, HALL_MAX);
+    }
+    const same = (/** @type {HallEntry} */ e) => !e.kind && e.name === clean.name && e.world === clean.world && e.day === clean.day;
     return [clean, ...hall.filter(e => !same(e))].slice(0, HALL_MAX);
 }
 
@@ -168,6 +183,35 @@ export function addToHall(raw, entry) {
  * @returns {string}
  */
 export function describeHallEntry(entry) {
+    if (entry.kind === 'campaign') {
+        // «La Maldición de Strahd: terminada con «Barovia, libre». Fueron Tessa y Gerd. (2026-09-29 · 34 días)»
+        const lost = entry.fallen ?? [];
+        const went = entry.party ?? [];
+        const when = [entry.when ? entry.when.slice(0, 10) : '', entry.day > 1 ? `${entry.day} días` : '', entry.iron ? 'de hierro' : '']
+            .filter(Boolean).join(' · ');
+        return [
+            `${entry.name}: terminada${entry.ending ? ` con «${entry.ending}»` : ''}.`,
+            went.length > 0 ? `${went.length === 1 ? 'Fue' : 'Fueron'} ${listNames(went)}.` : '',
+            lost.length > 0 ? `No ${lost.length === 1 ? 'volvió' : 'volvieron'}: ${listNames(lost)}.` : '',
+            when ? `(${when})` : '',
+        ].filter(Boolean).join(' ');
+    }
     const where = [entry.world, entry.when ? entry.when.slice(0, 10) : '', entry.iron ? 'de hierro' : ''].filter(Boolean).join(' · ');
     return `${entry.epitaph || entry.name}${where ? ` (${where})` : ''}`;
+}
+
+/**
+ * Lo que hay en el salón, dicho corto: «1 campaña terminada · 2 caídos». Vacío si no hay nada.
+ *
+ * @param {any} raw
+ * @returns {string}
+ */
+export function describeHallCount(raw) {
+    const hall = readHall(raw);
+    const done = hall.filter(e => e.kind === 'campaign').length;
+    const fallen = hall.length - done;
+    return [
+        done > 0 ? `${done} ${done === 1 ? 'campaña terminada' : 'campañas terminadas'}` : '',
+        fallen > 0 ? `${fallen} ${fallen === 1 ? 'caído' : 'caídos'}` : '',
+    ].filter(Boolean).join(' · ');
 }

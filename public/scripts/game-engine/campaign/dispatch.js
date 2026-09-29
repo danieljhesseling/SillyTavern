@@ -18,6 +18,7 @@
 
 import { familyOf } from '../rules/class-trees.js';
 import { readInjuries } from '../rules/injuries.js';
+import { gendered } from './grammar.js';
 
 /** Los rangos que se pueden despachar: recados y trabajo honrado. */
 export const DISPATCH_RANKS = ['D', 'C'];
@@ -79,7 +80,7 @@ export function dispatchOdds({ members, contract }) {
         const hurt = readInjuries(member).filter(i => !i.permanent && i.daysLeft > 0).length;
         if (hurt > 0) {
             power -= 1;
-            reasons.push(`${text(member.name)} va herido`);
+            reasons.push(`${text(member.name)} va ${gendered(member, 'herido', 'herida')}`);
         }
     }
     const raw = 0.35 + 0.12 * (power - need);
@@ -181,6 +182,6 @@ export function resolveDispatch({ dispatch, random, allowDeath = false }) {
         dead: fallen ? String(fallen.id) : '',
         line: fallen
             ? `${who} ${names.length > 1 ? 'vuelven' : 'vuelve'} de «${title}» sin nada. ${text(fallen.name)} no vuelve.`
-            : `${who} ${names.length > 1 ? 'vuelven' : 'vuelve'} de «${title}» sin nada: salió mal.${hurt ? ` ${text(hurt.name)} viene herido.` : ''}`,
+            : `${who} ${names.length > 1 ? 'vuelven' : 'vuelve'} de «${title}» sin nada: salió mal.${hurt ? ` ${text(hurt.name)} viene ${gendered(hurt, 'herido', 'herida')}.` : ''}`,
     };
 }

@@ -14,19 +14,22 @@
  * Puro: elige una frase y dice si toca. Quien llama la pinta.
  */
 
+import { resolveGender } from '../campaign/grammar.js';
+
 /** Cuándo habla, por suceso: la probabilidad. */
 export const CHANCE = { hit: 0.35, crit: 0.9, kill: 0.6, ally_down: 1, hurt: 0.5, victory: 0.8 };
 
 /**
  * Las frases, por lo que mueve a cada uno y por suceso. `{name}` es el nombre de quien cae
- * (en `ally_down`).
+ * (en `ally_down`). Lo que cambia con el género va con sus dos formas (J1.4, `grammar.js`):
+ * `{seguro|segura}` concuerda con quien habla; `{name:cubridlo|cubridla}`, con quien cae.
  */
 export const BARKS = {
     coin: {
         hit: ['Esto se cobra aparte.', '¡A cuenta!', 'Otro que me debe.'],
         crit: ['¡Eso vale el doble!', '¡Pagado y bien pagado!'],
         kill: ['Uno menos que repartir.', 'Y ese no cobra más.'],
-        ally_down: ['¡{name}! ¡Que alguien la levante, que aún no ha pagado su ronda!', '¡{name}, no te me mueras con deudas!'],
+        ally_down: ['¡{name}! ¡Que alguien {name:lo|la} levante, que aún no ha pagado su ronda!', '¡{name}, no te me mueras con deudas!'],
         hurt: ['Esto no entraba en el precio.', 'Por esta miseria no me dejo matar.'],
         victory: ['¿Cuánto llevaban encima?', 'A ver qué dejan.'],
     },
@@ -58,7 +61,7 @@ export const BARKS = {
         hit: ['Por el costado, como pensaba.', 'Ahí, en la juntura.'],
         crit: ['Exactamente donde tenía que ser.', 'Precioso.'],
         kill: ['Interesante.', 'Ya no.'],
-        ally_down: ['¡{name}! Presión en la herida, ¡ya!', '¡{name} ha caído, cubridla!'],
+        ally_down: ['¡{name}! Presión en la herida, ¡ya!', '¡{name} ha caído, {name:cubridlo|cubridla}!'],
         hurt: ['Anotado.', 'Eso no estaba en los libros.'],
         victory: ['Habrá que estudiar esto.', 'Lo apunto.'],
     },
@@ -78,16 +81,18 @@ function text(value) {
  * @param {string} [input.about] De quién habla (el que cae).
  * @param {string} [input.last]  Lo último que dijo, para no repetirlo.
  * @param {() => number} input.random
+ * @param {string} [input.gender] Cómo se presenta quien habla (J1.4).
+ * @param {string} [input.aboutGender] Y quien cae.
  * @returns {string} La frase, o vacío si no toca.
  */
-export function chooseBark({ event, wants = '', about = '', last = '', random }) {
+export function chooseBark({ event, wants = '', about = '', last = '', random, gender = '', aboutGender = '' }) {
     const chance = CHANCE[/** @type {keyof typeof CHANCE} */ (event)];
     if (chance === undefined || random() >= chance) return '';
     const set = BARKS[/** @type {keyof typeof BARKS} */ (text(wants))] ?? BARKS.glory;
     const lines = (set[/** @type {keyof typeof set} */ (event)] ?? []).filter(line => line !== last);
     if (lines.length === 0) return '';
     const line = lines[Math.floor(random() * lines.length) % lines.length];
-    return line.replaceAll('{name}', text(about) || 'compañero');
+    return resolveGender(line.replaceAll('{name}', text(about) || 'compañero'), { heroe: gender, name: aboutGender });
 }
 
 /**
@@ -124,7 +129,7 @@ export const OPINIONS = {
     },
     knowledge: {
         curious: ['Quiero ver qué hay ahí. De verdad.', 'Esto huele a algo que nadie ha escrito todavía.', 'Por fin una pregunta interesante.',
-            'Llevaré papel. Mucho papel.', 'Hay algo detrás de esto, estoy segura.', 'Me pica la curiosidad. Vamos.'],
+            'Llevaré papel. Mucho papel.', 'Hay algo detrás de esto, estoy {seguro|segura}.', 'Me pica la curiosidad. Vamos.'],
     },
 };
 
@@ -137,10 +142,11 @@ export const OPINIONS = {
  *
  * @param {string} wants
  * @param {{kind?: string, noFight?: boolean, reward?: number, difficulty?: number}} contract
- * @param {{random?: () => number, last?: string}} [options]
+ * @param {{random?: () => number, last?: string, gender?: string}} [options] `gender`: el de
+ *   quien opina (J1.4), para «estoy segura».
  * @returns {{mood: 'like'|'dislike', line: string}|null}
  */
-export function opinionOf(wants, contract, { random = Math.random, last = '' } = {}) {
+export function opinionOf(wants, contract, { random = Math.random, last = '', gender = '' } = {}) {
     const kind = text(contract?.kind);
     const reward = Number(contract?.reward) || 0;
     const fight = !contract?.noFight && Number(contract?.difficulty ?? 1) > 0;
@@ -148,8 +154,9 @@ export function opinionOf(wants, contract, { random = Math.random, last = '' } =
 
     /** @param {'like'|'dislike'} mood @param {string[]} lines */
     const pick = (mood, lines) => {
-        const pool = lines.filter(line => line !== last);
-        const from = pool.length > 0 ? pool : lines;
+        const said = lines.map(line => resolveGender(line, { heroe: gender }));
+        const pool = said.filter(line => line !== last);
+        const from = pool.length > 0 ? pool : said;
         return { mood, line: from[Math.floor(random() * from.length) % from.length] };
     };
 

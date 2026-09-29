@@ -15,6 +15,7 @@
 
 import { readInjuries } from '../rules/injuries.js';
 import { describeNeeds } from '../rules/needs.js';
+import { gendered } from './grammar.js';
 
 /** @param {any} value */
 function text(value) {
@@ -29,14 +30,15 @@ function text(value) {
  */
 export function bodyOf(member) {
     const name = text(member?.name) || 'Alguien';
-    if (member?.dead) return `${name}: muerto.`;
+    // J1.4: «Tessa: herida», no «herido».
+    if (member?.dead) return `${name}: ${gendered(member, 'muerto', 'muerta')}.`;
     const hp = Number(member?.hp) || 0;
     const max = Math.max(1, Number(member?.maxHp) || 1);
     /** @type {string[]} */
     const bits = [];
     if (hp <= 0) bits.push('en el suelo, sin sentido');
-    else if (hp / max < 0.3) bits.push('muy malherido');
-    else if (hp / max < 0.7) bits.push('herido');
+    else if (hp / max < 0.3) bits.push(`muy ${gendered(member, 'malherido', 'malherida')}`);
+    else if (hp / max < 0.7) bits.push(gendered(member, 'herido', 'herida'));
     for (const injury of readInjuries(member)) bits.push(text(injury.label).toLowerCase());
     const needs = describeNeeds(member);
     if (needs) bits.push(needs.toLowerCase().replace(/\.$/, ''));

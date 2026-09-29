@@ -3,17 +3,24 @@
  *
  * - **Consejos**: la primera vez que aparece cada cosa (el combate, la exploración, el diario),
  *   un aviso corto que dice qué hacer con ella. Una vez, y ya: el que se repite molesta.
+ *   Desde J2.2 («Enseña jugando»), también la primera vez que **pasa** algo: te toca andar,
+ *   tienes a alguien al alcance, sale una tirada, hablas con alguien, se apunta algo en el
+ *   Diario. Y de uno en uno: si ya hay uno en pantalla, el siguiente espera a que se cierre.
  * - **Glosario**: las palabras de las reglas, dichas en llano. Se abre con la L o desde
  *   «¿Qué hago?».
  *
- * Puro: qué consejo toca y qué dice cada palabra.
+ * Los vistos se guardan en el navegador, no en el héroe: quien aprende es quien juega, y el
+ * segundo personaje no tiene que volver a leerlos.
+ *
+ * Puro: qué consejo toca, cuál espera y qué dice cada palabra.
  */
 
 /** Un consejo por situación, la primera vez que se ve. */
 export const TIPS = {
-    dialogue: 'Escribe lo que hace tu personaje, o usa las fichas de abajo. Arriba, el diario (D) y «¿Qué hago?» (H).',
+    dialogue: 'Escribe lo que hace tu personaje, o usa las fichas de abajo. El Diario (D) y «¿Qué hago?» (H) están siempre a mano.',
     exploration: 'Aquí están los servicios del sitio y el mapa: pulsa un sitio para viajar. Cada viaje cuesta días y comida.',
-    combat: 'Pulsa un enemigo para ver cuánto le das. La línea de arriba dice a por quién va cada uno. «Maniobras»: esquivar, empujar, agarrar…',
+    // J2.2: al empezar la primera pelea, no al abrir el tablero (sin pelea, el tablero solo se mira).
+    combat: 'Empieza la pelea: cada uno actúa en su turno. La línea de arriba dice a por quién va cada enemigo. «Maniobras»: esquivar, empujar, agarrar…',
     travel: 'El ritmo decide: rápido llega antes pero sin dormir; con cuidado se esquivan contratiempos.',
     prisoners: 'Un prisionero se puede interrogar (da un rumor), entregar donde hay autoridad o soltar.',
     // H1 de wiki/LO_QUE_FALTA.md: lo nuevo, un sistema cada vez, cuando aparece por primera vez.
@@ -21,7 +28,16 @@ export const TIPS = {
     spell: 'Los conjuros gastan cargas por círculo, que vuelven con el descanso largo. /grimorio dice cuántas quedan y qué componente piden los gordos.',
     pet: 'Tu mascota no ocupa plaza ni cobra: comenta lo que pasa y ayuda en el tablero sin pelear en serio. /mascota para verla y acariciarla.',
     bill: 'Ha llegado la cuenta de la semana: comida, sueldos y posada. /cuenta dice qué se paga; quien no cobra acaba yéndose.',
+    // J2.2 («Enseña jugando»): lo que se aprende en el momento en que pasa por primera vez.
+    move: 'Te toca. Para andar, pulsa tu ficha y luego una casilla encendida, o arrástrala. Cuando acabes, «Fin de turno».',
+    attack: 'Tienes un enemigo al alcance: púlsalo para ver cuánto le das, y luego «Atacar».',
+    roll: 'Una tirada: un dado de 20 más lo que se te da bien. Si llega a la Dificultad (la CA de quien recibe el golpe, o la CD), sale.',
+    talk: 'Pulsa un tema para preguntar: cuánto te cuenta depende de cómo te mire. «Despedirse» acaba la charla.',
+    journal: 'Queda apuntado en el Diario (tecla D): lo que habéis hecho y lo que toca ahora.',
 };
+
+/** Los consejos de J2.2, los de un momento: salen cuando pasa la cosa, estés en la escena que estés. */
+export const MOMENT_TIPS = ['combat', 'move', 'attack', 'roll', 'talk', 'journal'];
 
 /**
  * El consejo que toca ahora, si no se ha visto ya.
@@ -34,6 +50,35 @@ export function tipFor(situation, seen) {
     const id = String(situation ?? '');
     if (!(id in TIPS) || (seen || []).includes(id)) return null;
     return { id, text: TIPS[/** @type {keyof typeof TIPS} */ (id)] };
+}
+
+/**
+ * J2.2: un consejo cada vez. Si ya hay uno en pantalla, el nuevo espera detrás, en el orden
+ * en que pasaron las cosas; si ya se vio o ya espera, no se hace nada.
+ *
+ * @param {{situation: string, seen: string[], queue: string[], busy: boolean}} input
+ *   `busy`: si hay un consejo a la vista.
+ * @returns {{show: {id: string, text: string}|null, queue: string[]}}
+ */
+export function planTip({ situation, seen, queue, busy }) {
+    const waiting = (Array.isArray(queue) ? queue : []).filter(id => tipFor(id, seen));
+    const tip = tipFor(situation, seen);
+    if (!tip) return { show: null, queue: waiting };
+    if (busy) return { show: null, queue: waiting.includes(tip.id) ? waiting : [...waiting, tip.id] };
+    return { show: tip, queue: waiting.filter(id => id !== tip.id) };
+}
+
+/**
+ * J2.2: el siguiente que espera y aún no se ha visto. Los que se vieron mientras esperaban
+ * (en otra pestaña, o porque se marcaron a mano) se quitan.
+ *
+ * @param {string[]} queue
+ * @param {string[]} seen
+ * @returns {{id: string, queue: string[]}} `id` vacío si no queda ninguno.
+ */
+export function nextQueuedTip(queue, seen) {
+    const waiting = (Array.isArray(queue) ? queue : []).filter(id => tipFor(id, seen));
+    return { id: waiting[0] ?? '', queue: waiting.slice(1) };
 }
 
 /** Las palabras de las reglas, en llano. */

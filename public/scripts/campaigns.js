@@ -10,14 +10,16 @@ import {
 } from '../script.js';
 import { Popup, POPUP_TYPE, POPUP_RESULT } from './popup.js';
 import { buildNewCampaignCta, createCampaign } from './game-engine/ui/campaign-wizard.js';
-import { openCampaignBuilder, loadDndCatalog, setPartyFromWorldEntries, beginCampaignPlot, adoptVeteranGear, giveStartingGear, applyCampaignRuleset, applyModeExtras, adoptPet, partySnapshot, adoptCarriedParty, giveStartingPurse, plotEndingTitle, postJourney } from './party.js';
+import { openCampaignBuilder, loadDndCatalog, setPartyFromWorldEntries, beginCampaignPlot, adoptVeteranGear, giveStartingGear, applyCampaignRuleset, applyModeExtras, adoptPet, partySnapshot, adoptCarriedParty, giveStartingPurse, plotEndingTitle, postJourney, postHomecoming, recordFinishedCampaign, seatPartyHero, memberFromEntry, getCombatEncounter } from './party.js';
 import { isCampaignWorld, getStartingPoint, uniqueWorldName } from './game-engine/campaign/campaign-worlds.js';
 import {
     HUB_KEY, HUB_HOME_KEY, HUB_CAMPAIGN_KEY, HUB_PACK, HUB_WORLD_NAME, HUB_START_GOLD, HUB_NARRATOR,
     readHub, isHubWorld, hubHomeOf, withHubChat, withHubCampaign, answersForWorld, hubCampaignWorldName, journeyLine,
     carryEntry, entryFromMember, hubPartyLine,
 } from './game-engine/campaign/hub.js';
+import { HUB_HEROES_KEY, activeHero, hubHeroCards, readRestingHeroes, withResting } from './game-engine/campaign/hub-heroes.js';
 import { validatePack } from './game-engine/campaign/campaign-pack.js';
+import { homecomingScene } from './game-engine/campaign/campaign-end.js';
 import { buildHeroEntry, describeHero, classIcon, rollStatBonus } from './game-engine/campaign/hero.js';
 import { planCampaignDeletion, describeDeletion } from './game-engine/campaign/campaign-delete.js';
 import {
@@ -35,6 +37,7 @@ import { kitFor, kitSlots, describeKit } from './game-engine/campaign/starting-k
 import { armourClassOf } from './game-engine/rules/equipment.js';
 import { readPlot, plotFromFaction, startPlot } from './game-engine/campaign/plot.js';
 import { saveSummary, describeSave, describeSaveParty } from './game-engine/campaign/save-card.js';
+import { listSavedGames, gameCard } from './game-engine/campaign/saved-games.js';
 import { listVeterans, veteranHero } from './game-engine/campaign/veterans.js';
 import { readPremadeHeroes, premadeLine, premadeAnswers } from './game-engine/campaign/premade-heroes.js';
 import { spellsForClass, spellById } from './game-engine/rules/grimoire.js';
@@ -78,7 +81,7 @@ export async function renderCampaignCards(container) {
     }
 
     // Build world data for worlds that have chats
-    /** @type {Array<{name: string, displayName: string, coverImage: string, genre: string, chats: any[], unstarted?: boolean, hub?: boolean, fromHub?: boolean}>} */
+    /** @type {Array<{name: string, displayName: string, coverImage: string, genre: string, chats: any[], unstarted?: boolean, hub?: boolean, fromHub?: boolean, home?: string}>} */
     let worlds = [];
     for (const [worldName, chats] of chatsByWorld) {
         let meta = {};
@@ -96,6 +99,7 @@ export async function renderCampaignCards(container) {
             // su tablón, no desde aquí.
             hub: isHubWorld(meta),
             fromHub: Boolean(hubHomeOf(meta)),
+            home: hubHomeOf(meta),
         });
     }
 
@@ -133,6 +137,14 @@ export async function renderCampaignCards(container) {
         const aTime = a.chats[0]?.last_mes || 0;
         const bTime = b.chats[0]?.last_mes || 0;
         return bTime - aTime;
+    });
+
+    // J0.6: las partidas del menú de título (un gremio con sus campañas, o una campaña
+    // suelta), de los mismos chats, en el orden del servidor: el último tocado primero.
+    savedGames = listSavedGames({
+        chats: allChats,
+        worlds: Object.fromEntries(worlds.map(w => [w.name, { name: w.name, displayName: w.displayName, hub: w.hub, home: w.home }])),
+        unstarted: worlds.filter(w => w.unstarted),
     });
 
     // J4: jugar sin conexión, lo primero.
@@ -234,6 +246,60 @@ function refreshTitleMenu() {
     void import('./game-engine/ui/shell/game-shell.js')
         .then(shell => { if (shell.isShellOpen()) shell.refreshGameShell(); })
         .catch(() => { /* sin Modo Juego no hay menú que avisar */ });
+}
+
+/**
+ * J0.6: las partidas guardadas, de la última lectura de la portada; null hasta la primera.
+ * @type {import('./game-engine/campaign/saved-games.js').SavedGame[]|null}
+ */
+let savedGames = null;
+
+/**
+ * J0.6: las tarjetas de «Cargar partida», la última jugada primero.
+ *
+ * @returns {import('./game-engine/campaign/saved-games.js').GameCard[]|null} null mientras no
+ *   se ha leído la lista.
+ */
+export function savedGameCards() {
+    if (!savedGames) return null;
+    const now = Date.now();
+    return savedGames.map(game => gameCard(game, now));
+}
+
+/**
+ * J0.5 y J0.6: seguir una partida donde se quedó. Un gremio se sigue en su último chat,
+ * sea el del gremio o el de la campaña en la que estabais; una sin empezar, se empieza.
+ *
+ * @param {string} id
+ * @returns {Promise<void>}
+ */
+export async function continueSavedGame(id) {
+    const game = savedGames?.find(g => g.id === id);
+    if (!game) return;
+    if (game.unstarted) {
+        await startUnstartedWorld(game.id);
+        return;
+    }
+    const file = String(game.chat?.file_name || '').replace('.jsonl', '');
+    if (!file) return;
+    const index = characters.findIndex((/** @type {any} */ c) => c?.avatar === game.chat?.avatar);
+    if (index >= 0) await selectCharacterById(index);
+    await openCharacterChat(file);
+    // Como «Seguir» en la portada: al entrar en el gremio, con quién.
+    if (game.kind === 'gremio' && game.chatWorld === game.id) await enterHub();
+}
+
+/**
+ * J0.6: borrar una partida desde «Cargar partida». Pregunta antes, como la papelera de la
+ * portada; un gremio no se borra desde aquí.
+ *
+ * @param {string} id
+ * @returns {Promise<void>}
+ */
+export async function deleteSavedGame(id) {
+    const game = savedGames?.find(g => g.id === id);
+    if (!game || game.kind === 'gremio') return;
+    await deleteCampaign(game.id);
 }
 
 // ---- Category constants for world preview ----
@@ -1360,18 +1426,99 @@ export async function startHubGame() {
 }
 
 /**
- * J4: el personaje de un gremio que se quedó sin él.
+ * J18.1: al entrar al gremio desde la portada, con quién. Con alguien tuyo en el gremio, sus
+ * tarjetas y «Nuevo personaje»; sin nadie (se cerró la creación con «Ahora no»), la creación.
  *
  * @returns {Promise<void>}
  */
-async function heroForEmptyHub() {
+async function enterHub() {
     const worldName = String(chat_metadata?.[METADATA_KEY] || '');
     const data = worldName ? await loadWorldInfo(worldName).catch(() => null) : null;
-    if (!isHubWorld(data?.metadata) || partySnapshot().length > 0) return;
-    const hero = await createStartingHero(worldName);
-    if (!hero) return;
-    giveStartingPurse(HUB_START_GOLD);
-    await beginCampaignPlot(hero);
+    if (!isHubWorld(data?.metadata)) return;
+    const party = partySnapshot();
+    const heroes = hubHeroCards({ party, resting: data.metadata[HUB_HEROES_KEY] });
+    if (heroes.length === 0) {
+        if (party.length > 0) return;
+        const hero = await createStartingHero(worldName);
+        if (!hero) return;
+        giveStartingPurse(HUB_START_GOLD);
+        await beginCampaignPlot(hero);
+        return;
+    }
+    // A mitad de una pelea se entra con quien peleaba: cambiarle rompería la pelea.
+    if (getCombatEncounter()?.active) return;
+    const { openHeroChooser } = await import('./game-engine/ui/hub-panel.js');
+    const choice = await openHeroChooser({ Popup, POPUP_TYPE, heroes });
+    if (choice) await changeHubHero(choice);
+}
+
+/**
+ * J1.6: guardar en el gremio al que se queda, y sacar de la lista al que sale de él.
+ *
+ * Su ficha del Lorebook se pone al día con sus números de ahora: si subió de nivel en una
+ * campaña, que la ficha del gremio no vaya por detrás.
+ *
+ * @param {string} worldName
+ * @param {{add?: any, remove?: string}} change
+ * @returns {Promise<void>}
+ */
+async function keepInHub(worldName, { add = null, remove = '' }) {
+    const data = await loadWorldInfo(worldName);
+    if (!data) throw new Error(`No se pudo cargar el mundo "${worldName}".`);
+    data.metadata = data.metadata ?? {};
+    data.metadata[HUB_HEROES_KEY] = withResting(data.metadata[HUB_HEROES_KEY], { add, remove });
+    const entry = add?.wiUid != null ? data.entries?.[add.wiUid] : null;
+    if (entry) Object.assign(entry, carryEntry(entry, add));
+    await saveWorldInfo(worldName, data, true);
+}
+
+/**
+ * J1.6: cambiar quién de los tuyos va con el grupo del gremio, o hacer uno más. El que va
+ * ahora se queda en el gremio con lo suyo: su nivel, su experiencia, su equipo y su oro.
+ *
+ * @param {{hero: string}|{create: true}} choice
+ * @returns {Promise<boolean>} Si cambió.
+ */
+export async function changeHubHero(choice) {
+    if (wizardRunning) return false;
+    wizardRunning = true;
+
+    try {
+        const worldName = String(chat_metadata?.[METADATA_KEY] || '');
+        const data = worldName ? await loadWorldInfo(worldName) : null;
+        if (!isHubWorld(data?.metadata)) {
+            toastr.info('Tus personajes esperan en el gremio.', 'Tus personajes');
+            return false;
+        }
+        if (getCombatEncounter()?.active) {
+            toastr.warning('No mientras peleáis.');
+            return false;
+        }
+        const before = activeHero(partySnapshot());
+
+        if ('create' in choice) {
+            const hero = await createStartingHero(worldName, { another: true });
+            if (!hero) return false;
+            // Como el primero: quien llega al gremio trae para la posada y un mercenario.
+            giveStartingPurse(HUB_START_GOLD);
+            if (before) await keepInHub(worldName, { add: before });
+            await beginCampaignPlot(hero);
+            return true;
+        }
+
+        const incoming = readRestingHeroes(data.metadata[HUB_HEROES_KEY]).find(h => String(h.id) === String(choice.hero));
+        if (!incoming) return false;
+        const { outgoing, line } = seatPartyHero(incoming);
+        await keepInHub(worldName, { add: outgoing, remove: String(incoming.id) });
+        toastr.success(line, 'Tus personajes');
+        return true;
+    } catch (error) {
+        console.error('[gremio] no se pudo cambiar de personaje', error);
+        toastr.error(String(error?.message || error), 'No se pudo cambiar de personaje');
+        return false;
+    } finally {
+        wizardRunning = false;
+    }
 }
 
 /**
@@ -1492,12 +1639,16 @@ export async function returnToHub() {
         const carried = partySnapshot();
         const entries = carriedEntries(data, carried);
         const ending = plotEndingTitle();
+        // J3.9: una campaña que acabó antes de que existiera el salón entra ahora; si ya está, no se repite.
+        const record = ending ? recordFinishedCampaign() : null;
         const here = openChat();
         await saveMetadata();
 
         const home = await loadWorldInfo(homeWorld);
         const hub = readHub(home?.metadata?.[HUB_KEY]);
         if (!hub.chat) throw new Error('No encuentro la partida del gremio.');
+        // J4.5: la vuelta tras el final se cuenta una vez; volver otra vez de pasear por ella, no.
+        const firstHomecoming = Boolean(ending) && !hub.campaigns[id]?.finished;
         await updateWorld(homeWorld, meta => {
             const was = readHub(meta[HUB_KEY]).campaigns[id];
             meta[HUB_KEY] = withHubCampaign(meta[HUB_KEY], id, {
@@ -1510,7 +1661,16 @@ export async function returnToHub() {
         if (!await openHubChat(hub.chat, homeWorld)) throw new Error('No se pudo abrir la partida del gremio.');
         const { uids } = await ensureHubEntries(homeWorld, entries);
         adoptCarriedParty(carried, { worldName: homeWorld, uids });
-        await postJourney(journeyLine({ world: await boardWorld(id), home: hubTownName(home), back: true }));
+        const board = await boardWorld(id);
+        await postJourney(journeyLine({ world: board, home: hubTownName(home), back: true }));
+        if (firstHomecoming) {
+            await postHomecoming(homecomingScene({
+                campaign: String(board?.name || ''),
+                ending,
+                home: hubTownName(home),
+                fallen: record?.fallen ?? [],
+            }));
+        }
         toastr.success(ending
             ? `Volvéis al gremio. La campaña acabó: ${ending}.`
             : 'Volvéis al gremio con todo lo ganado. La campaña queda donde la dejáis.', 'El gremio');
@@ -1623,7 +1783,8 @@ export function initCampaigns() {
         await openCharacterChat(fileName);
         // J4: un gremio sin nadie (se cerró la creación con «Ahora no») pide el personaje
         // al volver; si no, se quedaba en una partida sin nadie con quien jugarla.
-        if ($(this).hasClass('hub-continue')) await heroForEmptyHub();
+        // J18.1: y con alguien guardado, se elige con quién se entra.
+        if ($(this).hasClass('hub-continue')) await enterHub();
     });
 
     // Borrar va antes que abrir: la papelera vive dentro de una tarjeta que, pulsada,
@@ -1823,14 +1984,21 @@ async function adoptVeteran(worldName, data, hero) {
 /** @type {{name: string, species: string, character: string}|null} */
 let startingPet = null;
 
-async function createStartingHero(worldName) {
+/**
+ * @param {string} worldName
+ * @param {{another?: boolean}} [options] `another` (J1.6): uno más en un gremio que ya tiene
+ *   a los suyos. Va derecho a la creación, sin héroes hechos ni veteranos (el veterano de
+ *   este mismo gremio sería él otra vez), y ocupa el sitio del que iba con el grupo.
+ * @returns {Promise<string>}
+ */
+async function createStartingHero(worldName, { another = false } = {}) {
     const data = await loadWorldInfo(worldName);
     if (!data) return '';
 
     // Solo si no hay nadie: una campaña retomada ya tiene su gente.
     const existing = Object.values(data.entries ?? {})
         .filter((/** @type {any} */ e) => String(e?.dndData?.entityType) === 'character');
-    if (existing.length > 0) return '';
+    if (existing.length > 0 && !another) return '';
 
     const catalogue = await loadDndCatalog(worldName).catch(() => null);
     const { openHeroCreator } = await import('./game-engine/ui/hero-creator.js');
@@ -1903,7 +2071,7 @@ async function createStartingHero(worldName) {
         races: razas.map((/** @type {any} */ row) => String(row.name)),
         classes: clases.map((/** @type {any} */ row) => String(row.name)),
     }).heroes;
-    const start = await pickVeteran(worldName, premade);
+    const start = another ? null : await pickVeteran(worldName, premade);
     if (start?.veteran) return await adoptVeteran(worldName, data, start.veteran);
 
     // T5: la mascota del héroe hecho, para cuando la partida ya esté abierta.
@@ -1987,8 +2155,10 @@ async function createStartingHero(worldName) {
 
     await saveWorldInfo(worldName, data, true);
 
-    // Y a la tira del grupo, sin recargar.
-    setPartyFromWorldEntries([entry], worldName);
+    // Y a la tira del grupo, sin recargar. J1.6: si es uno más, en el sitio del que iba, y
+    // con los mercenarios; al que iba lo guarda el gremio (`changeHubHero`).
+    if (another) seatPartyHero(memberFromEntry(entry, worldName));
+    else setPartyFromWorldEntries([entry], worldName);
     // J1.3: con el equipo de su clase puesto.
     const kit = kitOf(classRow);
     if (kit.length > 0) giveStartingGear(kit, kitSlots(kit));

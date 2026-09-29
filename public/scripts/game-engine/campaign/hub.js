@@ -248,9 +248,13 @@ export function hubCampaignCards({ worlds, hub = null, level = 1 }) {
                 // Lo lejos que queda del pueblo: cada campaña es otro mundo, pero se llega por el camino.
                 distance: journeyDays(world) > 0 ? `A ${journeySpan(journeyDays(world))} de camino` : '',
                 state,
-                action: state === 'nueva' ? 'Empezar' : 'Seguir',
-                // Solo se avisa: quien quiera meterse con Strahd a nivel 1 puede.
-                warn: state === 'nueva' && min > 0 && lvl < min ? `Tu grupo es de nivel ${lvl}: te viene grande.` : '',
+                // J4.5: una terminada no se sigue: se vuelve a ella, a pasear por lo ganado.
+                action: state === 'nueva' ? 'Empezar' : state === 'terminada' ? 'Volver' : 'Seguir',
+                // Solo se avisa: quien quiera meterse con Strahd a nivel 1 puede. J4.6: y lo que
+                // pasa entonces, lo mismo que se dice en la primera pelea (`combat/level-adjust.js`).
+                warn: state !== 'nueva' || min < 1 ? ''
+                    : lvl < min ? `Tu grupo es de nivel ${lvl}: te viene grande. Los enemigos aflojan un poco, pero no del todo.`
+                        : lvl > Math.max(min, max) ? `Tu grupo es de nivel ${lvl}, más de lo que pide: los enemigos aprietan más.` : '',
                 ending: started?.ending ?? '',
             };
         });
@@ -456,4 +460,24 @@ export function hubPartyLine(party) {
     const what = [text(hero.class ?? hero.charClass), `nivel ${Math.max(1, Math.floor(Number(hero.level) || 1))}`].filter(Boolean).join(', ');
     const others = list.filter(m => m !== hero).map(m => text(m.name));
     return `${text(hero.name)} (${what})${others.length > 0 ? `, con ${others.join(', ')}` : ''}`;
+}
+
+/**
+ * J2.3: la prueba del gremio, si sigue por hacer. Es el hito con el que empieza el hilo y
+ * que pide ganar un tablero: en Puerto Alba, las ratas de la bodega.
+ *
+ * Saltarla es darla por ganada con el **mismo suceso** que manda la pelea (`{kind: 'win'}`),
+ * así que el hilo sigue igual que si se hubiera peleado: se abre el hito siguiente y se
+ * cuenta su escena. Por eso aquí no se decide nada del hilo, solo cuál es la prueba.
+ *
+ * @param {any} plot El hilo, como lo lee `readPlot`.
+ * @param {any} state Por dónde va, como lo lee `readPlotState`.
+ * @returns {{id: string, title: string, board: string, place: string}|null}
+ */
+export function hubTrial(plot, state) {
+    const open = new Set((Array.isArray(state?.open) ? state.open : []).map(text));
+    const trial = (Array.isArray(plot?.milestones) ? plot.milestones : []).find((/** @type {any} */ m) =>
+        m && !m.hidden && open.has(text(m.id)) && key(m.opens?.kind) === 'start' && key(m.asks?.kind) === 'win' && text(m.asks?.board));
+    if (!trial) return null;
+    return { id: text(trial.id), title: text(trial.title), board: text(trial.asks.board), place: text(trial.asks.place) };
 }

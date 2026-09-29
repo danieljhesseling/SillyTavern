@@ -1016,15 +1016,33 @@
     "endings": {
       "barovia-libre": {
         "title": "Barovia, libre",
-        "scene": "propio: Strahd cae sobre las losas de su cripta y no se levanta. Arriba, por primera vez en siglos, la niebla empieza a abrirse y entra un poco de sol en el valle. La gente de Barovia sale a mirarlo sin creérselo."
+        "scene": "propio: Strahd cae sobre las losas de su cripta y no se levanta. Arriba, por primera vez en siglos, la niebla empieza a abrirse y entra un poco de sol en el valle. La gente de Barovia sale a mirarlo sin creérselo.",
+        "epilogues": [
+          { "who": "Ireena Kolyana", "text": "propio: Ireena vuelve a la Aldea de Barovia con su hermano. Por primera vez en años duerme con la ventana abierta." },
+          { "who": "Ismark Kolyanovich", "text": "propio: Ismark ocupa el sitio de su padre como burgomaestre. Lo primero que manda es enterrar como es debido a los muertos del pueblo." },
+          { "who": "Davian Martikov", "text": "propio: Los Martikov vuelven a hacer vino en El Mago de los Vinos. La primera barrica la mandan al gremio, a vuestro nombre." },
+          { "who": "Rudolph van Richten", "text": "propio: Van Richten cuelga la ballesta en su torre y se pone a escribir lo que pasó en Barovia, para que otros no tengan que aprenderlo como él." }
+        ]
       },
       "la-orden-descansa": {
         "title": "La orden descansa",
-        "scene": "Strahd cae en su cripta. Esa noche, en lo alto de Argynvostholt, se enciende una luz de plata que se ve desde todo el valle. Los caballeros muertos dejan las armas en el patio y por fin se quedan quietos. La niebla se retira de los pasos, y quien quiere, puede irse."
+        "scene": "Strahd cae en su cripta. Esa noche, en lo alto de Argynvostholt, se enciende una luz de plata que se ve desde todo el valle. Los caballeros muertos dejan las armas en el patio y por fin se quedan quietos. La niebla se retira de los pasos, y quien quiere, puede irse.",
+        "epilogues": [
+          { "who": "Vladimir Horngaard", "text": "propio: Vladimir Horngaard deja su espada sobre la tumba del dragón Argynvost y cierra los ojos. Ya no vuelve a levantarse." },
+          { "who": "Sir Godfrey Gwilym", "text": "propio: Sir Godfrey os da las gracias con una reverencia antes de apagarse con los demás caballeros." },
+          { "who": "Ireena Kolyana", "text": "propio: Ireena e Ismark salen del valle por el paso que ha dejado libre la niebla. Dicen que quieren ver el mar." },
+          { "who": "Ezmerelda d'Avenir", "text": "propio: Ezmerelda se queda unos días en Argynvostholt cuidando de las tumbas. Después se va a buscar al siguiente monstruo." }
+        ]
       },
       "la-caravana-se-va": {
         "title": "La caravana se va",
-        "scene": "Strahd cae en su cripta. Antes de que amanezca, los vistani recogen el campamento y se van por el camino del este: saben que la gente del valle no les perdonará haber servido al conde. Madam Eva es la última en subir al carro. La niebla se abre detrás de ellos."
+        "scene": "Strahd cae en su cripta. Antes de que amanezca, los vistani recogen el campamento y se van por el camino del este: saben que la gente del valle no les perdonará haber servido al conde. Madam Eva es la última en subir al carro. La niebla se abre detrás de ellos.",
+        "epilogues": [
+          { "who": "Madam Eva", "text": "propio: Madam Eva se despide solo de vosotros. De la gente del valle, de nadie." },
+          { "who": "Luvash", "text": "propio: Luvash lleva la caravana hacia el este, con su hija Arabelle sentada a su lado en el pescante." },
+          { "who": "Ismark Kolyanovich", "text": "propio: Ismark queda al frente de la Aldea de Barovia. Pone guardia en el camino por si los vistani vuelven, pero no vuelven." },
+          { "who": "Ireena Kolyana", "text": "propio: Ireena se queda con su hermano. Por fin puede salir a la calle de noche sin miedo." }
+        ]
       }
     },
     "omens": [

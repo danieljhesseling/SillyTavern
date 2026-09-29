@@ -184,7 +184,7 @@ try {
     // Los consejos de la primera vez (idea 155) son avisos arriba a la derecha: en el recorrido
     // se dan por vistos para que no tapen clics. El paso 55 los prueba aparte.
     await page.addInitScript(() => {
-        try { window.localStorage.setItem('sillytavern_gameTipsSeen', 'dialogue,exploration,combat,travel,prisoners,mesa,high,spell,pet,bill'); } catch { /* sin almacenamiento */ }
+        try { window.localStorage.setItem('sillytavern_gameTipsSeen', 'dialogue,exploration,combat,travel,prisoners,mesa,high,spell,pet,bill,move,attack,roll,talk,journal'); } catch { /* sin almacenamiento */ }
         // Las tarjetas de sucesos (Z4) las prueba la vuelta sin modelo; aquí taparían clics.
         try { window.localStorage.setItem('sillytavern_gameSucesos', 'off'); } catch { /* sin almacenamiento */ }
     });
@@ -361,7 +361,13 @@ try {
             const el = document.querySelector(`#game-shell .gs-tools .${name}`);
             const r = el?.getBoundingClientRect();
             const hit = r ? document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2) : null;
-            return `${r ? [Math.round(r.x), Math.round(r.y)].join(',') : 'sin botón'} → ${hit ? `${hit.tagName}.${String(hit.className).slice(0, 60)}` : 'nada'}; pausa: ${Boolean(document.querySelector('.gs-pause'))}; ventanas: ${document.querySelectorAll('dialog[open]').length}`;
+            // Qué ventana está abierta (y qué dice) y dónde viven los avisos: un aviso dentro
+            // de una ventana no se coloca como uno suelto.
+            const open = [...document.querySelectorAll('dialog[open]')].map(d => `${String(d.className).slice(0, 30)}${d.hasAttribute('closing') ? ' (cerrándose)' : ''}: ${String(d.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 80)}`);
+            const toasts = document.getElementById('toast-container');
+            const where = toasts ? `${toasts.parentElement === document.body ? 'body' : String(toasts.parentElement?.className || toasts.parentElement?.tagName).slice(0, 30)} ${toasts.className}, arriba ${Math.round(toasts.getBoundingClientRect().top)}` : 'ninguno';
+            const head = document.querySelector('#game-shell .gs-head')?.getBoundingClientRect();
+            return `${r ? [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)].join(',') : 'sin botón'} → ${hit ? `${hit.tagName}.${String(hit.className).slice(0, 60)}` : 'nada'}; cabecera hasta ${Math.round(head?.bottom ?? 0)}; avisos en ${where}; pausa: ${Boolean(document.querySelector('.gs-pause'))}; ventanas: ${open.length}${open.length ? ` [${open.join(' | ')}]` : ''}`;
         }, tool);
         await clearToasts();
         await button.click({ timeout: 4000 }).catch(() => {});
@@ -4724,11 +4730,13 @@ try {
             // B6: arquetipo por plantilla, con los numeros de su desafio.
             banda: breedBand({ compendium, howMany: 4, cr: 1, random: createSeededRandom('manada') })
                 .map(describeMonster),
-            flojo: breedMonster({
+            // Olvidando lo ultimo **antes de los dos**: la memoria de no-repetir aparta lo que
+            // acaba de salir (aqui, los cuatro de la banda), y con memorias distintas la misma
+            // semilla cae en otra fila. Los dos bichos tienen que salir de la misma biblioteca
+            // para ser el mismo, que es lo que se compara.
+            flojo: (compendium.forget(), breedMonster({
                 compendium, cr: 0.25, templates: 0, random: createSeededRandom('cria'),
-            }),
-            // Olvidando lo ultimo: si no, la memoria de no-repetir aparta al que acaba de
-            // salir y los dos bichos no serian el mismo, que es lo que se compara.
+            })),
             duro: (compendium.forget(), breedMonster({
                 compendium, cr: 5, templates: 0, random: createSeededRandom('cria'),
             })),
@@ -4793,7 +4801,7 @@ try {
     check('el mismo arquetipo aguanta mas cuando el desafio es mayor',
         lib42.duro.from.arquetipo === lib42.flojo.from.arquetipo
         && lib42.duro.hp > lib42.flojo.hp,
-        `${lib42.flojo.name} CR0.25 ${lib42.flojo.hp}PG -> CR5 ${lib42.duro.hp}PG`);
+        `${lib42.flojo.name} CR0.25 ${lib42.flojo.hp}PG -> ${lib42.duro.name} CR5 ${lib42.duro.hp}PG`);
     check('y trae su perfil tactico, de los cuatro que el motor mueve',
         ['aggressive', 'skirmisher', 'guardian', 'coward'].includes(lib42.cripta?.profile),
         JSON.stringify({ bicho: lib42.cripta?.name, perfil: lib42.cripta?.profile }));
@@ -7350,7 +7358,7 @@ try {
     // --- 155: un consejo la primera vez --------------------------------------------------------
     await page.keyboard.press('1');
     await page.waitForTimeout(700);
-    await page.evaluate(() => window.localStorage.setItem('sillytavern_gameTipsSeen', 'dialogue,combat,travel,prisoners'));
+    await page.evaluate(() => window.localStorage.setItem('sillytavern_gameTipsSeen', 'dialogue,combat,travel,prisoners,move,attack,roll,talk,journal'));
     await clearToasts();
     await page.keyboard.press('2');
     await page.waitForTimeout(900);

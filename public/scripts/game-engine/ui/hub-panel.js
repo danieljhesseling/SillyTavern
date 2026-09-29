@@ -1,12 +1,12 @@
 /**
- * Las dos ventanas del gremio (J4 de ROADMAP_SIN_CONEXION): el tablón de campañas y los
- * mercenarios.
+ * Las ventanas del gremio (J4 de ROADMAP_SIN_CONEXION): el tablón de campañas y los
+ * mercenarios. Y tus personajes (J1.6 y J18.1): con quién entras, y en el tablón, quién va.
  *
  * Con la misma forma que «¿Quién entra?»: la cabecera arriba y tarjetas que se pulsan, sin
  * botones al pie. Cada tarjeta es su botón y dice al pie lo que pasa al pulsarla.
  *
  * Dibuja y recoge. Qué campañas hay, cómo van y cuánto cobra cada uno lo decide
- * `campaign/hub.js`.
+ * `campaign/hub.js`; quién de los tuyos va y quién se queda, `campaign/hub-heroes.js`.
  */
 
 /** @param {string} value @returns {JQuery} */
@@ -32,15 +32,107 @@ function card({ icon, label, onClick, disabled = false }) {
 }
 
 /**
+ * J1.6 y J18.1: la tarjeta de uno de tus personajes. Su cara si la tiene; si no, el icono de
+ * su clase. Debajo, quién es y lo que lleva.
+ *
+ * @param {import('../campaign/hub-heroes.js').HeroCard} hero
+ * @param {Object} input
+ * @param {string} input.go    Lo que pasa al pulsarla.
+ * @param {string} input.goIcon
+ * @param {(() => void)|null} input.onClick Null: no se pulsa (el que ya va, en el tablón).
+ * @returns {JQuery}
+ */
+function heroTile(hero, { go, goIcon, onClick }) {
+    const tile = $('<button type="button" class="vt-card hb-card hb-hero"></button>')
+        .attr('data-hero', hero.id)
+        .attr('aria-label', `${go}. ${hero.name}, ${hero.what}. ${hero.carry}`)
+        .toggleClass('is-active', hero.active)
+        .on('click', () => { if (onClick) onClick(); });
+    if (!onClick) tile.attr('aria-disabled', 'true');
+    const face = div('vt-face');
+    if (hero.face) face.append($('<img alt="">').attr('src', hero.face));
+    else face.append(`<i class="fa-solid ${hero.icon}"></i>`);
+    tile.append(face);
+    tile.append(div('vt-name').text(hero.name));
+    tile.append(div('vt-what').text(hero.what));
+    tile.append(div(`hb-state ${hero.active ? 'hb-en-curso' : 'hb-nueva'}`).text(hero.active ? 'Va con el grupo' : 'En el gremio'));
+    tile.append(div('vt-about hb-carry').text(hero.carry));
+    tile.append(div('vt-go').append(`<i class="fa-solid ${goIcon}"></i>`).append($('<span></span>').text(go)));
+    return tile;
+}
+
+/**
+ * J1.6: la tarjeta de hacer uno más.
+ *
+ * @param {() => void} onClick
+ * @returns {JQuery}
+ */
+function newHeroTile(onClick) {
+    return $('<button type="button" class="vt-card vt-new hb-card hb-hero"></button>')
+        .attr('data-hero-new', 'true')
+        .attr('aria-label', 'Nuevo personaje. Lo haces tú; el de ahora se queda en el gremio con lo suyo.')
+        .append(div('vt-face').append('<i class="fa-solid fa-user-plus"></i>'))
+        .append(div('vt-name').text('Nuevo personaje'))
+        .append(div('vt-about').text('Lo haces tú. El de ahora se queda en el gremio, con lo suyo.'))
+        .append(div('vt-go').append('<i class="fa-solid fa-pen"></i>').append($('<span></span>').text('Crearlo')))
+        .on('click', onClick);
+}
+
+/**
+ * J18.1: con quién se entra al gremio. Tus personajes en tarjetas, y «Nuevo personaje».
+ *
+ * @param {Object} input
+ * @param {any} input.Popup
+ * @param {any} input.POPUP_TYPE
+ * @param {import('../campaign/hub-heroes.js').HeroCard[]} input.heroes
+ * @returns {Promise<{hero: string}|{create: true}|null>} Null: se sigue con el que iba.
+ */
+export async function openHeroChooser({ Popup, POPUP_TYPE, heroes }) {
+    const body = div('vt-root hb-root');
+    body.append(div('vt-head')
+        .append($('<h3 class="vt-title"></h3>').text('¿Con quién entras?'))
+        .append($('<p class="vt-sub"></p>').text('Tus personajes del gremio. El que no entra se queda aquí, con su nivel y su equipo.')));
+
+    /** @type {any} */
+    let popup = null;
+    /** @type {{hero: string}|{create: true}|null} */
+    let chosen = null;
+    const grid = div('vt-grid hb-grid hb-heroes');
+    for (const hero of heroes) {
+        grid.append(heroTile(hero, {
+            go: hero.active ? `Seguir con ${hero.name}` : `Entrar con ${hero.name}`,
+            goIcon: 'fa-play',
+            onClick: () => {
+                chosen = hero.active ? null : { hero: hero.id };
+                void popup?.completeCancelled();
+            },
+        }));
+    }
+    grid.append(newHeroTile(() => {
+        chosen = { create: true };
+        void popup?.completeCancelled();
+    }));
+    body.append(grid);
+
+    popup = new Popup(body[0], POPUP_TYPE.TEXT, '', { okButton: false, cancelButton: false, wide: true, allowVerticalScrolling: true });
+    await popup.show();
+    return chosen;
+}
+
+/**
  * El tablón de campañas. Devuelve la elegida, o null.
+ *
+ * J1.6: con `heroes`, arriba va «Quién va»: tus personajes, para cambiar con quién se va a
+ * la próxima campaña, y hacer uno más. Elegir uno devuelve `{hero}` o `{create}`, no una campaña.
  *
  * @param {Object} input
  * @param {any} input.Popup
  * @param {any} input.POPUP_TYPE
  * @param {ReturnType<typeof import('../campaign/hub.js').hubCampaignCards>} input.cards
- * @returns {Promise<string|null>}
+ * @param {import('../campaign/hub-heroes.js').HeroCard[]} [input.heroes]
+ * @returns {Promise<string|{hero: string}|{create: true}|null>}
  */
-export async function openHubBoard({ Popup, POPUP_TYPE, cards }) {
+export async function openHubBoard({ Popup, POPUP_TYPE, cards, heroes = [] }) {
     const body = div('vt-root hb-root');
     body.append(div('vt-head')
         .append($('<h3 class="vt-title"></h3>').text('El tablón de campañas'))
@@ -48,8 +140,29 @@ export async function openHubBoard({ Popup, POPUP_TYPE, cards }) {
 
     /** @type {any} */
     let popup = null;
-    /** @type {string|null} */
+    /** @type {string|{hero: string}|{create: true}|null} */
     let chosen = null;
+    if (heroes.length > 0) {
+        body.append(div('vt-section hb-section').text('Quién va'));
+        body.append($('<p class="vt-note"></p>').text('Elige con quién vas. Los demás se quedan en el gremio, con su nivel y su equipo.'));
+        const team = div('vt-grid vt-small hb-heroes');
+        for (const hero of heroes) {
+            team.append(heroTile(hero, {
+                go: hero.active ? 'Va ahora' : `Que vaya ${hero.name}`,
+                goIcon: hero.active ? 'fa-check' : 'fa-right-left',
+                onClick: hero.active ? null : () => {
+                    chosen = { hero: hero.id };
+                    void popup?.completeCancelled();
+                },
+            }));
+        }
+        team.append(newHeroTile(() => {
+            chosen = { create: true };
+            void popup?.completeCancelled();
+        }));
+        body.append(team);
+        body.append(div('vt-section hb-section').text('Las campañas'));
+    }
     const grid = div('vt-grid hb-grid');
     for (const one of cards) {
         const state = { nueva: 'Sin empezar', 'en-curso': 'En curso', terminada: 'Terminada' }[one.state];

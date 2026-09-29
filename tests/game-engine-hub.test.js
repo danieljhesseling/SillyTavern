@@ -54,6 +54,20 @@ describe('el tablón de campañas', () => {
         expect(cards[1].warn).toMatch(/nivel 1/);
     });
 
+    test('J4.6: avisa si os viene grande o si vais por encima, y qué hacen los enemigos', () => {
+        const [small, big] = hubCampaignCards({ worlds, level: 1 });
+        expect(small.warn).toBe('');
+        expect(big.warn).toBe('Tu grupo es de nivel 1: te viene grande. Los enemigos aflojan un poco, pero no del todo.');
+        expect(hubCampaignCards({ worlds, level: 4 }).map(c => c.warn)).toEqual(['', '']);
+        expect(hubCampaignCards({ worlds, level: 7 }).map(c => c.warn)).toEqual([
+            'Tu grupo es de nivel 7, más de lo que pide: los enemigos aprietan más.',
+            'Tu grupo es de nivel 7, más de lo que pide: los enemigos aprietan más.',
+        ]);
+        // Empezada ya no se avisa: eso se dice en la pelea.
+        const hub = withHubCampaign({}, '1387', { worldName: '1387 · Tessa' });
+        expect(hubCampaignCards({ worlds, hub, level: 7 })[0].warn).toBe('');
+    });
+
     test('el nombre del mundo lleva a quien la juega, y no pisa otro', () => {
         expect(hubCampaignWorldName('Strahd', 'Tessa', [])).toBe('Strahd · Tessa');
         expect(hubCampaignWorldName('Strahd', 'Tessa', ['strahd · tessa'])).toBe('Strahd · Tessa (2)');

@@ -73,7 +73,8 @@ const SIMPLE_ASKS = ['arrive', 'win', 'defeat', 'talk', 'check', 'contract'];
  * @property {string} title
  * @property {'written'|'faction'} source
  * @property {Milestone[]} milestones
- * @property {Record<string, {title: string, scene: string}>} endings Lo que se cuenta en cada final.
+ * @property {Record<string, {title: string, scene: string, epilogues?: Array<{who: string, text: string}>}>} endings
+ *   Lo que se cuenta en cada final; `epilogues`, qué fue de la gente (J4.5).
  * @property {Array<{text: string, milestone: string}>} omens Idea 114: el presagio del principio.
  * @property {any} [villain] Idea 115: el villano que se deja ver entre actos.
  */
@@ -181,11 +182,18 @@ export function readPlot(raw) {
         .map(readMilestone)
         .filter(/** @returns {m is Milestone} */ m => m !== null);
     if (milestones.length === 0) return null;
-    /** @type {Record<string, {title: string, scene: string}>} */
+    /** @type {Record<string, {title: string, scene: string, epilogues?: Array<{who: string, text: string}>}>} */
     const endings = {};
     for (const [id, ending] of Object.entries(raw.endings ?? {})) {
         if (text(id) && ending && typeof ending === 'object') {
-            endings[text(id)] = { title: text(/** @type {any} */ (ending).title), scene: text(/** @type {any} */ (ending).scene) };
+            // J4.5: qué fue de la gente con este final, si el paquete lo escribe.
+            const epilogues = (Array.isArray(/** @type {any} */ (ending).epilogues) ? /** @type {any} */ (ending).epilogues : [])
+                .map((/** @type {any} */ e) => (typeof e === 'string' ? { who: '', text: text(e) } : { who: text(e?.who), text: text(e?.text) }))
+                .filter((/** @type {{text: string}} */ e) => e.text);
+            endings[text(id)] = {
+                title: text(/** @type {any} */ (ending).title), scene: text(/** @type {any} */ (ending).scene),
+                ...(epilogues.length > 0 ? { epilogues } : {}),
+            };
         }
     }
     const ids = new Set(milestones.map(m => m.id));

@@ -40,6 +40,8 @@ const jobs = [
     { name: 'e2e rápido', kind: 'e2e', args: ['tools/e2e-quick.mjs'] },
     { name: 'sin modelo', kind: 'e2e', args: ['tools/e2e-sin-modelo.mjs'] },
     { name: 'gremio', kind: 'e2e', args: ['tools/e2e-gremio.mjs'] },
+    // J2.3: saltar la prueba de la bodega. Corto: el personaje, saltarla y el tablón.
+    { name: 'saltar la prueba', kind: 'e2e', args: ['tools/e2e-saltar-prueba.mjs'] },
     ...(QUICK ? [] : /** @type {Job[]} */ ([
         { name: 'vuelta 1-48', kind: 'e2e', args: ['tools/e2e-campaign.mjs', '--parte', 'a', '--port', '8126'] },
         { name: 'vuelta 49-73', kind: 'e2e', args: ['tools/e2e-campaign.mjs', '--parte', 'b', '--port', '8127'] },

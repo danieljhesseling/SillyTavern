@@ -5,7 +5,11 @@
  *
  *   título → Jugar sin conexión → tu personaje → la prueba de la bodega → contratar a un
  *   mercenario → el tablón → La Maldición de Strahd → volver al gremio → seguir la campaña
- *   → y el título ofrece seguir en el gremio.
+ *   → terminarla y volver con lo ganado, y sale en el salón (J4.5, J3.9)
+ *   → y el título ofrece «Continuar» y «Cargar partida» lista el gremio como una partida
+ *   (J0.5, J0.6), sin fichas de SillyTavern a la vista en todo el camino (J0.3)
+ *   → al entrar, con quién (J18.1): uno nuevo en el
+ *   mismo gremio, cambiar quién va en el tablón (J1.6) y volver a entrar con el guardado.
  *
  * Uso:
  *   node tools/e2e-gremio.mjs            # sin ventana
@@ -99,8 +103,23 @@ try {
         if (m.type() === 'error' && !/Failed to load resource.*404/.test(m.text())) problems.push(`ERROR ${m.text().slice(0, 300)}`);
     });
     await context.addInitScript(() => {
+        // J2.2: cada consejo que sale, apuntado, y cuántos ha habido a la vez como mucho.
+        const seenTips = /** @type {any} */ (window);
+        seenTips.__tips = [];
+        seenTips.__tipsAtOnce = 0;
+        const isTip = (/** @type {any} */ n) => n instanceof HTMLElement && n.classList.contains('toast') && /Consejo/.test(n.querySelector('.toast-title')?.textContent || '');
+        new window.MutationObserver(records => {
+            for (const added of records.flatMap(r => [...r.addedNodes]).filter(isTip)) {
+                seenTips.__tips.push((added.querySelector('.toast-message')?.textContent || '').trim());
+                seenTips.__tipsAtOnce = Math.max(seenTips.__tipsAtOnce, [...document.querySelectorAll('.toast')].filter(isTip).length);
+            }
+        }).observe(document, { childList: true, subtree: true });
         try {
-            window.localStorage.setItem('sillytavern_gameTipsSeen', 'dialogue,exploration,combat,travel,prisoners,mesa,high,spell,pet,bill');
+            // Los consejos de J2.2 (la pelea, andar, el Diario…) no se dan por vistos: la vuelta
+            // mira que salen una vez. Y lo visto sigue visto al recargar, como en un navegador.
+            if (window.localStorage.getItem('sillytavern_gameTipsSeen') === null) {
+                window.localStorage.setItem('sillytavern_gameTipsSeen', 'dialogue,exploration,travel,prisoners,mesa,high,spell,pet,bill');
+            }
             window.localStorage.setItem('sillytavern_gameShellAutostart', 'true');
             window.localStorage.setItem('sillytavern_gameSucesos', 'off');
         } catch { /* nada */ }
@@ -147,6 +166,33 @@ try {
         }
         return false;
     };
+    /** J2.2: los consejos que han salido en esta página, en orden. */
+    const tipsShown = () => page.evaluate(() => /** @type {string[]} */ (/** @type {any} */ (window).__tips || []));
+    /** J2.2: cerrar los consejos, como quien los lee, hasta que salga este. Salen de uno en uno. */
+    const tipsUntil = async (/** @type {RegExp} */ pattern, ms = 45000) => {
+        await until(async () => {
+            if ((await tipsShown()).some(t => pattern.test(t))) return true;
+            await page.evaluate(() => [...document.querySelectorAll('#toast-container .toast')]
+                .filter(t => /Consejo/.test(t.querySelector('.toast-title')?.textContent || ''))
+                .forEach(t => /** @type {HTMLElement} */ (t).click()));
+            return false;
+        }, ms);
+        return tipsShown();
+    };
+
+    /**
+     * J0.3: lo que se ve de las fichas de personaje de SillyTavern (el narrador es una): el icono
+     * y el panel de personajes, su editor, su lista, la bienvenida con los chats recientes y el
+     * logo de SillyTavern pintado como retrato. `#right-nav-panel` no entra: es también el
+     * cajón del grupo, que el juego abre; lo que no puede verse son estas piezas de dentro.
+     */
+    const stCharacterUi = () => page.evaluate(() => ['#rightNavDrawerIcon', '#rm_button_selected_ch', '#HotSwapWrapper',
+        '#rm_characters_block', '#rm_ch_create_block', '#avatar_div', '.character_select', '#character_popup',
+        '.welcomePanel', '.recentChat', '.gs-vn-portrait img[src*="five.png"]']
+        .filter(selector => [...document.querySelectorAll(selector)].some(node => {
+            const box = node.getBoundingClientRect();
+            return box.width > 1 && box.height > 1 && window.getComputedStyle(node).visibility !== 'hidden';
+        })));
 
     await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
     const firstRun = page.locator('text=Welcome to SillyTavern!');
@@ -161,6 +207,14 @@ try {
     const order = await page.evaluate(() => [...document.querySelectorAll('#game-shell .gs-menu-btn .gs-menu-label')].map(l => (l.textContent || '').trim()));
     check('el título ofrece «Jugar sin conexión», lo primero', offered && order[0] === 'Jugar sin conexión', JSON.stringify(order));
     if (SHOT) await page.screenshot({ path: SHOT });
+    // J0.3 y J0.6: sin partidas, «Cargar partida» lo dice con sus palabras; la bienvenida de
+    // SillyTavern (su logo, sus chats, su asistente) no asoma.
+    await page.locator('#game-shell .gs-menu-btn').filter({ hasText: 'Cargar partida' }).click({ timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(600);
+    const emptyLoad = { list: await page.locator('#game-shell .gs-saves').textContent({ timeout: 3000 }).catch(() => ''), st: await stCharacterUi() };
+    await page.locator('#game-shell .gs-menu-back').click({ timeout: 5000 }).catch(() => {});
+    check('sin partidas, «Cargar partida» lo dice, sin nada de SillyTavern a la vista (J0.3, J0.6)',
+        /Todavía no hay ninguna partida/.test(String(emptyLoad.list)) && emptyLoad.st.length === 0, JSON.stringify(emptyLoad));
 
     // 2. Tu personaje: nombre, especie y clase.
     await offline.click();
@@ -178,7 +232,11 @@ try {
         shape.cards.join(',') === 'class,race,background' && /Elegir clase/.test(shape.empty) && shape.portrait > 0 && shape.portrait <= 380 && !shape.sideways,
         JSON.stringify(shape));
     check('y no deja entrar sin nombre ni clase', shape.off === true);
+    const inCreator = await stCharacterUi();
+    check('mientras se crea el personaje no asoma la ficha del narrador (J0.3)', inCreator.length === 0, JSON.stringify(inCreator));
     await page.fill('.hc-root .hc-name', 'Tessa');
+    // J1.4: Tessa se presenta como mujer, y el texto tiene que concordar.
+    await page.locator('.hc-root .hc-gender[data-value="Mujer"]').click();
     await pickHeroCard(page, 'race', 'Humano');
     await pickHeroCard(page, 'class', 'Guerrero');
     const numbers = await page.evaluate(() => ({
@@ -211,6 +269,14 @@ try {
     const prologue = await until(() => chatHas(/Baja a la bodega/), 20000);
     check('el prólogo se cuenta en el chat', prologue);
     await page.waitForTimeout(800);
+    // J1.4: con «Mujer», «si subes entera», y ni una marca {…|…} ni un «o/a» a la vista.
+    const seen = await page.evaluate(() => [
+        ...(window.SillyTavern.getContext().chat || []).map((/** @type {any} */ m) => String(m.extra?.display_text || m.mes || '')),
+        document.querySelector('#game-shell .gs-focus')?.textContent || '',
+    ].join('\n'));
+    check('el texto concuerda con Tessa: «si subes entera», sin marcas ni «o/a» (J1.4)',
+        /subes entera/.test(seen) && !/subes entero/.test(seen) && !/\{[^{}\n]*\|[^{}\n]*\}|[a-záéíóúñ]os?\/as?\b/i.test(seen),
+        (seen.match(/.{0,60}(\{[^{}\n]*\||subes enter[oa]|o\/a).{0,40}/i) ?? [''])[0]);
     const hubChips = await chips();
     check('las fichas ofrecen el tablón de campañas y contratar', hubChips.some(c => /Tablón de campañas/.test(c)) && hubChips.some(c => /Contratar mercenarios/.test(c)), JSON.stringify(hubChips));
 
@@ -218,10 +284,15 @@ try {
     // la escena de diálogo el botón del tablero no se ve.
     const canFight = await until(async () => (await chips()).some(c => /^Iniciar combate \(Rata de bodega x2\)/.test(c)), 15000);
     check('en la bodega, la fila ofrece pelear con las dos ratas', canFight, JSON.stringify(await chips()));
+    check('y también saltar la prueba, para quien ya sabe jugar (J2.3)', (await chips()).some(c => /^Saltar la prueba$/.test(c)), JSON.stringify(await chips()));
     if (canFight) {
         await clickChip(/^Iniciar combate/);
         await until(async () => (await state()).fighting, 10000);
         await clearDice();
+        // J2.2: la primera pelea enseña, un consejo cada vez: el de pelear y, en tu turno, el de andar.
+        const fightTips = await tipsUntil(/^Te toca/);
+        check('la primera pelea trae su consejo y, en tu turno, el de andar (J2.2)',
+            fightTips.filter(t => /^Empieza la pelea/.test(t)).length === 1 && fightTips.filter(t => /^Te toca/.test(t)).length === 1, JSON.stringify(fightTips));
         await page.evaluate(async () => {
             const enc = (await import('/scripts/party.js')).getCombatEncounter();
             for (const e of enc?.enemies ?? []) e.currentHp = 0;
@@ -235,6 +306,14 @@ try {
     now = await state();
     const tablon = await until(() => chatHas(/apunta tu nombre en el libro del gremio/), 15000);
     check('ganar la prueba abre el hilo siguiente: el tablón', !now.fighting && tablon, JSON.stringify({ fighting: now.fighting }));
+    // J2.2: al moverse el hilo, el del Diario. Lo que queda por enseñar no se mete en medio.
+    const journalTips = await tipsUntil(/Diario/);
+    check('y al moverse el hilo, el consejo del Diario (J2.2)', journalTips.filter(t => /^Queda apuntado en el Diario/.test(t)).length === 1, JSON.stringify(journalTips));
+    await page.evaluate(() => {
+        const seen = window.localStorage.getItem('sillytavern_gameTipsSeen') || '';
+        window.localStorage.setItem('sillytavern_gameTipsSeen', `${seen},combat,move,attack,roll,talk,journal`);
+        document.querySelectorAll('#toast-container .toast').forEach(t => t.remove());
+    });
 
     // 4. Un mercenario.
     await clearDice();
@@ -268,11 +347,16 @@ try {
     check('fuera del tablero, la historia va en la caja de la novela visual, con las fichas dentro (J18.3)',
         novel.scene === 'dialogue' && novel.box > 600 && novel.text.length > 0 && novel.chips > 0 && novel.chat === 'none', JSON.stringify(novel));
     if (SHOT) await page.screenshot({ path: `${SHOT}.novela.png` });
+    const inHubScene = await stCharacterUi();
+    check('en el gremio no se ve ninguna ficha de SillyTavern, ni su logo como retrato (J0.3)', inHubScene.length === 0, JSON.stringify(inHubScene));
 
     // J0.4: las opciones son del juego, con sus palabras; sin conexión, sin panel de la API.
     await page.evaluate(() => /** @type {HTMLElement|null} */ (document.activeElement)?.blur());
     await page.keyboard.press('Escape');
     await page.waitForSelector('#game-shell .gs-pause', { timeout: 5000 }).catch(() => {});
+    // J0.3: en pausa vuelve la barra de SillyTavern, y el panel del grupo; sus personajes, no.
+    const inPause = await stCharacterUi();
+    check('en pausa vuelve la barra de SillyTavern, pero no la ficha del narrador ni la lista de personajes (J0.3)', inPause.length === 0, JSON.stringify(inPause));
     await page.locator('#game-shell .gs-pause-btn').filter({ hasText: 'Opciones' }).first().click({ timeout: 5000 }).catch(() => {});
     await page.waitForSelector('.go-root', { timeout: 8000 }).catch(() => {});
     const optionRows = () => page.evaluate(() => [...document.querySelectorAll('.go-root .go-row')]
@@ -318,6 +402,8 @@ try {
         JSON.stringify(now));
     const scene = await until(() => chatHas(/Bruja Baroviana está acechando/), 20000);
     check('la primera escena de Strahd se cuenta', scene);
+    const inStrahdScene = await stCharacterUi();
+    check('y en Strahd, que tiene su propio narrador, tampoco se ve su ficha (J0.3)', inStrahdScene.length === 0, JSON.stringify(inStrahdScene));
     check('antes, el viaje: de Puerto Alba a Strahd, nueve días (J4.9)', await chatHas(/Salís de Puerto Alba hacia La Maldición de Strahd\..*Nueve días de camino/));
     const campaignChips = await chips();
     check('en la campaña se ofrece volver al gremio', campaignChips.some(c => /Volver al gremio/.test(c)), JSON.stringify(campaignChips));
@@ -438,17 +524,234 @@ try {
     await page.waitForTimeout(800);
     now = await state();
     check('seguir la abre en su mismo chat, con el grupo', back && now.chat === strahdChat && now.party.length === 2, JSON.stringify(now));
+    // J2.2: la vuelta ve cada consejo una vez, aunque haya habido otra pelea (la Taberna), y nunca dos a la vez.
+    const allTips = await tipsShown();
+    const tipsAtOnce = await page.evaluate(() => Number(/** @type {any} */ (window).__tipsAtOnce) || 0);
+    check('la vuelta ve cada consejo una vez, y de uno en uno (J2.2)', allTips.length >= 3 && new Set(allTips).size === allTips.length && tipsAtOnce === 1,
+        JSON.stringify({ allTips, tipsAtOnce }));
 
-    // 8. El título ofrece seguir en el gremio.
+    // J0.5: al título y de vuelta con «Continuar», que sigue lo último que se jugó: Strahd, que
+    // es del gremio, en su chat.
+    await clearDice();
+    await page.evaluate(() => /** @type {HTMLElement|null} */ (document.activeElement)?.blur());
+    await page.keyboard.press('Escape');
+    await page.locator('#game-shell .gs-pause-btn').filter({ hasText: /Salir al men/i }).first().click({ timeout: 5000 }).catch(() => {});
+    const continueItem = page.locator('#game-shell .gs-menu-btn').filter({ hasText: 'Continuar' });
+    const resumeHint = await until(async () => /Strahd/.test(await continueItem.locator('.gs-menu-hint').textContent({ timeout: 1000 }) || ''), 30000)
+        ? String(await continueItem.locator('.gs-menu-hint').textContent()) : '';
+    await continueItem.click({ timeout: 5000 }).catch(() => {});
+    const resumed = await until(async () => (await state()).chat === strahdChat, 60000);
+    await page.waitForTimeout(800);
+    now = await state();
+    check('en el título, «Continuar» dice qué sigue (Strahd, desde el gremio, con Tessa) y la sigue en su chat, de un clic (J0.5)',
+        /^La Maldición de Strahd, desde .*Gremio · Tessa/.test(resumeHint) && resumed && now.party.length === 2, JSON.stringify({ resumeHint, now }));
+
+    // 7b. J4.5 y J3.9: terminar la campaña. Se abre el último hito y se gana en la cripta con
+    // el mismo suceso que daría el juego; sale el final, se vuelve al gremio desde él, y la
+    // campaña queda terminada en el tablón y en el salón de la fama.
+    const chatCount = (/** @type {RegExp} */ pattern) => page.evaluate((source) => (window.SillyTavern.getContext().chat || [])
+        .filter((/** @type {any} */ m) => new RegExp(source).test(String(m.extra?.display_text || m.mes || ''))).length, pattern.source);
+    await clearDice();
+    await page.evaluate(() => document.querySelectorAll('#toast-container .toast').forEach(t => t.remove()));
+    const started = await page.evaluate(async () => {
+        const meta = window.SillyTavern.getContext().chatMetadata;
+        const plot = meta.plotState || { open: [], done: [] };
+        meta.plotState = { ...plot, open: [...new Set([...(plot.open || []), 'el-senor-de-barovia'])] };
+        (await import('/scripts/party.js')).notePlot({ kind: 'win', place: 'Castillo Ravenloft', board: 'La Cripta de Strahd' });
+        return (meta.campaignStart?.party || []).map((/** @type {any} */ m) => m.name);
+    });
+    const endShown = await page.waitForSelector('.popup:visible .end-root', { timeout: 15000 }).then(() => true).catch(() => false);
+    await page.waitForTimeout(500);
+    const ending = await page.evaluate(() => {
+        const root = document.querySelector('.end-root');
+        const all = (/** @type {string} */ s) => [...(root?.querySelectorAll(s) ?? [])].map(e => (e.textContent || '').trim());
+        return {
+            title: (root?.querySelector('h3')?.textContent || '').trim(),
+            scene: (root?.querySelector('.end-scene')?.textContent || '').trim(),
+            people: all('.end-epilogue'),
+            companions: all('.ep-line'),
+            take: all('.end-take'),
+            home: document.querySelectorAll('.popup:has(.end-root) .end-home').length,
+        };
+    });
+    const endingTitle = ending.title.replace(/^Final: /, '');
+    check('al ganar en la cripta sale el final: su título, lo que pasó, qué fue de la gente y de Gerd, y lo que se lleva cada uno, frente a cómo empezó (J4.5)',
+        endShown && /^Final: (Barovia, libre|La orden descansa|La caravana se va)$/.test(ending.title) && /Strahd cae/.test(ending.scene)
+        && ending.people.length >= 3 && ending.companions.length === 1 && /gremio/.test(ending.companions[0]) && started.includes('Tessa')
+        && ending.take.length === 2 && /^Tessa: nivel \d+/.test(ending.take[0]) && /de experiencia/.test(ending.take[0]) && /^Gerd el Mellado: /.test(ending.take[1])
+        && ending.home === 1, JSON.stringify({ ending, started }));
+    check('con la campaña terminada, la fila ofrece volver a ver el final (J4.5)', (await chips()).some(c => /El final/.test(c)), JSON.stringify(await chips()));
+    if (SHOT) await page.screenshot({ path: `${SHOT}.final.png` });
+    await page.evaluate(() => document.querySelectorAll('#toast-container .toast').forEach(t => t.remove()));
+    await page.locator('.popup:visible .end-home').click({ timeout: 5000 }).catch(() => {});
+    const homeAgain = await until(async () => (await state()).world === hubWorld, 60000);
+    await page.waitForTimeout(1000);
+    now = await state();
+    const told = endingTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const homecoming = await until(() => chatHas(new RegExp(`ya se sabe cómo acabó La Maldición de Strahd: ${told}\\.`)), 10000);
+    // En el chat del gremio: el camino de la primera vuelta (paso 6) y el de esta.
+    const roads = await chatCount(/Nueve días de camino después/);
+    check('«Volver al gremio» desde el final lleva al gremio con el grupo, con el camino y una escena que dice cómo acabó (J4.5)',
+        homeAgain && now.chat === hubChat && now.party.length === 2 && homecoming && roads === 2,
+        JSON.stringify({ now, homecoming, roads }));
+    await clearDice();
+    await clickChip(/Tablón de campañas/);
+    await page.waitForSelector('.hb-root [data-campaign="strahd"]', { timeout: 15000 }).catch(() => {});
+    const finished = await page.evaluate(() => (document.querySelector('.hb-root [data-campaign="strahd"]')?.textContent || '').replace(/\s+/g, ' '));
+    check('en el tablón, Strahd sale terminada, con su final, y se vuelve a ella en vez de seguirla (J4.5)',
+        finished.includes(`Terminada: ${endingTitle}`) && /Volver: La Maldición de Strahd/.test(finished), finished.slice(0, 240));
+    await page.locator('.hb-root .hb-close').click({ timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(500);
+    const hallChip = await clickChip(/Salón de la fama/);
+    await page.waitForSelector('.popup:visible .hall-root', { timeout: 8000 }).catch(() => {});
+    const hall = await page.evaluate(() => [...document.querySelectorAll('.hall-root .hall-campaign')].map(e => (e.textContent || '').trim()));
+    check('y sale en el salón de la fama: cuál, con qué final, quién fue y cuándo (J3.9)',
+        hallChip && hall.length === 1 && hall[0].startsWith(`La Maldición de Strahd: terminada con «${endingTitle}»`)
+        && /Fueron Tessa y Gerd el Mellado/.test(hall[0]) && /\(\d{4}-\d{2}-\d{2}/.test(hall[0]), JSON.stringify({ hallChip, hall }));
+    if (SHOT) await page.screenshot({ path: `${SHOT}.salon.png` });
+    await page.locator('.popup:visible .popup-button-ok').last().click({ timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(400);
+
+    // 8. J0.5: el título ofrece «Continuar», lo primero, y dice qué sigue: el gremio, con quién.
+    // «Seguir en el gremio» ya no sale: era lo mismo para el gremio más reciente.
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.waitForSelector('#game-shell', { timeout: 90000 });
     await page.evaluate(() => document.querySelector('#option_close_chat') instanceof HTMLElement && /** @type {HTMLElement} */ (document.querySelector('#option_close_chat')).click());
-    const cont = page.locator('#game-shell .gs-menu-btn').filter({ hasText: 'Seguir en el gremio' });
+    const cont = page.locator('#game-shell .gs-menu-btn').filter({ hasText: 'Continuar' });
     const resumable = await until(async () => await cont.count() === 1, 30000);
     const contHint = resumable ? await cont.locator('.gs-menu-hint').textContent() : '';
-    check('el título ofrece seguir en el gremio, con quién va', resumable && /Tessa/.test(String(contHint)) && /Gerd/.test(String(contHint)), String(contHint));
-    const listed = await page.evaluate(() => [...document.querySelectorAll('#game-shell .campaign-card .campaign-title')].map(t => t.textContent));
-    check('el gremio y sus campañas no salen sueltos en la lista de partidas', !listed.some(t => /Gremio|Strahd/.test(String(t))), JSON.stringify(listed));
+    const titleItems = await page.evaluate(() => [...document.querySelectorAll('#game-shell .gs-menu-btn .gs-menu-label')].map(l => (l.textContent || '').trim()));
+    check('el título ofrece «Continuar» lo primero: el gremio, con quién va (J0.5)',
+        resumable && titleItems[0] === 'Continuar' && !titleItems.includes('Seguir en el gremio')
+        && /^[^·]*Gremio · Tessa/.test(String(contHint)) && /Gerd/.test(String(contHint)), JSON.stringify({ titleItems, contHint }));
+    // J0.6: «Cargar partida» enseña partidas, no chats: el gremio y sus campañas son una sola, con su tarjeta.
+    await page.locator('#game-shell .gs-menu-btn').filter({ hasText: 'Cargar partida' }).click({ timeout: 5000 }).catch(() => {});
+    await page.waitForSelector('#game-shell .gs-save', { timeout: 15000 }).catch(() => {});
+    const saves = await page.evaluate(() => [...document.querySelectorAll('#game-shell .gs-save')].map(card => ({
+        kind: card.getAttribute('data-kind'),
+        title: card.querySelector('.gs-save-title')?.textContent || '',
+        hero: card.querySelector('.gs-save-hero')?.textContent || '',
+        line: card.querySelector('.gs-save-line')?.textContent || '',
+        when: card.querySelector('.gs-save-when')?.textContent || '',
+        campaigns: card.querySelector('.gs-save-campaigns')?.textContent || '',
+        shown: card.getBoundingClientRect().height > 0,
+    })));
+    const inLoad = await stCharacterUi();
+    check('«Cargar partida» enseña partidas, no chats: el gremio, con Strahd dentro, en una tarjeta con el día, el sitio, Tessa y su nivel, y cuándo se jugó (J0.6)',
+        saves.length === 1 && saves[0].kind === 'gremio' && saves[0].shown && /Gremio/.test(saves[0].title)
+        && /^Tessa \(.*nivel \d+\), con Gerd el Mellado/.test(saves[0].hero) && /^Día \d+ · \S/.test(saves[0].line)
+        && /^Jugada hace/.test(saves[0].when) && /La Maldición de Strahd/.test(saves[0].campaigns) && inLoad.length === 0,
+        JSON.stringify({ saves, inLoad }));
+    if (SHOT) await page.screenshot({ path: `${SHOT}.cargar.png` });
+    await page.locator('#game-shell .gs-menu-back').click({ timeout: 5000 }).catch(() => {});
+    // J3.9: el título también lleva al salón, y dice lo que hay.
+    const hallHint = await page.locator('#game-shell .gs-menu-btn').filter({ hasText: 'Salón de la fama' }).locator('.gs-menu-hint').textContent({ timeout: 3000 }).catch(() => '');
+    check('el título ofrece el salón de la fama, con la campaña terminada (J3.9)', /1 campaña terminada/.test(String(hallHint)), String(hallHint));
+
+    // 9. J1.6 y J18.1: tus personajes. Al entrar se elige con quién; se hace uno más en el
+    // mismo gremio, se cambia quién va desde el tablón, y al volver se entra con el guardado.
+    /** Las tarjetas de tus personajes que hay en pantalla. */
+    const heroCards = () => page.evaluate(() => [...document.querySelectorAll('.hb-root .hb-hero[data-hero]')].map(c => ({
+        id: c.getAttribute('data-hero'), active: c.classList.contains('is-active'), text: (c.textContent || '').replace(/\s+/g, ' ').trim(),
+    })));
+    /** El tuyo que va con el grupo, con lo que lleva, y quién va con él. */
+    const leader = () => page.evaluate(async () => {
+        const party = (await import('/scripts/party.js')).getPartyMembersSnapshot();
+        const hero = party.find((/** @type {any} */ m) => !m.guest);
+        return hero ? {
+            name: String(hero.name), gold: Number(hero.gold) || 0, level: Number(hero.level) || 1, xp: Number(hero.xp) || 0,
+            items: (hero.items ?? []).length, guests: party.filter((/** @type {any} */ m) => m.guest).map((/** @type {any} */ m) => String(m.name)),
+        } : null;
+    });
+    /** Los que se quedan en el gremio, leídos del mundo. */
+    const resting = () => page.evaluate(async (world) => {
+        const data = await (await import('/scripts/world-info.js')).loadWorldInfo(world);
+        return (data?.metadata?.hubHeroes ?? []).map((/** @type {any} */ h) => ({
+            name: String(h.name), gold: Number(h.gold) || 0, level: Number(h.level) || 1, xp: Number(h.xp) || 0, items: (h.items ?? []).length,
+        }));
+    }, hubWorld);
+    const noToasts = () => page.evaluate(() => document.querySelectorAll('#toast-container .toast').forEach(t => t.remove()));
+    /** Entrar desde la portada: «Continuar» (J0.5), o «Seguir en el gremio», que es lo que había antes. */
+    const enterFromTitle = async () => {
+        const entry = page.locator('#game-shell .gs-menu-btn').filter({ hasText: /Continuar|Seguir en el gremio/ }).first();
+        await until(async () => await entry.count() === 1, 30000);
+        await entry.click({ timeout: 10000 });
+    };
+
+    await enterFromTitle();
+    const chooser = await page.waitForSelector('.hb-root .hb-hero[data-hero]', { timeout: 60000 }).then(() => true).catch(() => false);
+    await page.waitForTimeout(500);
+    let seen = await heroCards();
+    const tessaThen = await leader();
+    check('al entrar al gremio se elige con quién: Tessa en su tarjeta, con su nivel y lo que lleva, y «Nuevo personaje» (J18.1)',
+        chooser && seen.length === 1 && seen[0].active && /Tessa/.test(seen[0].text) && /Nivel \d/.test(seen[0].text) && /Lleva:/.test(seen[0].text)
+        && await page.locator('.hb-root [data-hero-new]').count() === 1 && tessaThen?.name === 'Tessa', JSON.stringify({ seen, tessaThen }));
+    if (SHOT) await page.screenshot({ path: `${SHOT}.quien-entra.png` });
+
+    // Entrar con uno nuevo: la creación, y el de antes se queda en el gremio.
+    await noToasts();
+    await page.locator('.hb-root [data-hero-new]').click();
+    const creatorAgain = await page.waitForSelector('.hc-root', { timeout: 30000 }).then(() => true).catch(() => false);
+    await page.fill('.hc-root .hc-name', 'Bram');
+    await pickHeroCard(page, 'race', 'Mediano');
+    await pickHeroCard(page, 'class', 'Picaro');
+    await page.locator('.hc-root .hc-enter').click();
+    await until(async () => (await leader())?.name === 'Bram', 30000);
+    await page.waitForTimeout(800);
+    const bramNow = await leader();
+    let staying = await resting();
+    check('«Nuevo personaje» abre la creación: Bram entra con 100 de oro y con Gerd; Tessa se queda en el gremio, entera (J18.1, J1.6)',
+        creatorAgain && bramNow?.name === 'Bram' && bramNow.gold === 100 && bramNow.items > 0 && bramNow.guests.includes('Gerd el Mellado')
+        && staying.length === 1 && staying[0].name === 'Tessa' && staying[0].gold === tessaThen?.gold && staying[0].level === tessaThen?.level
+        && staying[0].xp === tessaThen?.xp && staying[0].items === tessaThen?.items,
+        JSON.stringify({ tessaThen, bramNow, staying }));
+
+    // Cambiar quién va, desde el tablón.
+    await clearDice();
+    await noToasts();
+    await clickChip(/Tablón de campañas/);
+    await page.waitForSelector('.hb-root .hb-heroes .hb-hero[data-hero]', { timeout: 15000 }).catch(() => {});
+    seen = await heroCards();
+    check('en el tablón, «Quién va»: Bram va ahora y Tessa espera en el gremio (J1.6)',
+        seen.length === 2 && seen[0].active && /Bram/.test(seen[0].text) && !seen[1].active && /Tessa/.test(seen[1].text) && /En el gremio/.test(seen[1].text),
+        JSON.stringify(seen));
+    if (SHOT) await page.screenshot({ path: `${SHOT}.quien-va.png` });
+    await page.locator('.hb-root .hb-heroes .hb-hero[data-hero]').filter({ hasText: 'Tessa' }).click();
+    await until(async () => (await leader())?.name === 'Tessa', 30000);
+    // El tablón se abre otra vez, con ella al frente; se cierra sin elegir campaña.
+    await until(() => page.evaluate(() => document.querySelectorAll('.hb-root').length === 1
+        && /Tessa/.test(document.querySelector('.hb-root .hb-hero.is-active')?.textContent || '')), 15000);
+    const reopened = await heroCards();
+    await page.locator('.hb-root .hb-close').click({ timeout: 5000 }).catch(() => {});
+    const tessaBack = await leader();
+    staying = await resting();
+    check('cambiar en el tablón trae a Tessa con lo suyo y deja a Bram en el gremio; el tablón vuelve con ella al frente (J1.6)',
+        tessaBack?.name === 'Tessa' && tessaBack.gold === tessaThen?.gold && tessaBack.items === tessaThen?.items && tessaBack.guests.includes('Gerd el Mellado')
+        && staying.length === 1 && staying[0].name === 'Bram' && staying[0].gold === 100 && staying[0].items === bramNow?.items
+        && reopened[0]?.active === true && /Tessa/.test(reopened[0]?.text ?? ''),
+        JSON.stringify({ tessaBack, staying, reopened }));
+
+    // Entrar con uno guardado: otra vez desde el título, y se elige entre los dos.
+    await page.waitForTimeout(1500);
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#game-shell', { timeout: 90000 });
+    await page.evaluate(() => document.querySelector('#option_close_chat') instanceof HTMLElement && /** @type {HTMLElement} */ (document.querySelector('#option_close_chat')).click());
+    await enterFromTitle();
+    const twice = await page.waitForSelector('.hb-root .hb-hero[data-hero]', { timeout: 60000 }).then(() => true).catch(() => false);
+    await page.waitForTimeout(500);
+    seen = await heroCards();
+    check('al volver a entrar se elige entre los dos: Tessa, que iba, y Bram (J18.1)',
+        twice && seen.length === 2 && seen.some(c => /Tessa/.test(c.text) && c.active) && seen.some(c => /Bram/.test(c.text) && !c.active), JSON.stringify(seen));
+    await noToasts();
+    await page.locator('.hb-root .hb-hero[data-hero]').filter({ hasText: 'Bram' }).click();
+    await until(async () => (await leader())?.name === 'Bram', 30000);
+    await page.waitForTimeout(500);
+    const bramBack = await leader();
+    staying = await resting();
+    check('entrar con Bram, guardado, lo trae con su oro y su equipo; Tessa se queda en el gremio (J18.1)',
+        bramBack?.name === 'Bram' && bramBack.gold === 100 && bramBack.items === bramNow?.items && bramBack.guests.includes('Gerd el Mellado')
+        && staying.map(h => h.name).join() === 'Tessa' && staying[0]?.gold === tessaThen?.gold,
+        JSON.stringify({ bramBack, staying }));
 
     check('sin errores en la página', problems.length === 0, problems.slice(0, 6).join('\n        '));
 } catch (error) {

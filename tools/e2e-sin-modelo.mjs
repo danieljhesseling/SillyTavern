@@ -85,7 +85,7 @@ try {
     page.on('crash', () => console.log('  [la página se ha caído]'));
     await context.addInitScript(() => {
         try {
-            window.localStorage.setItem('sillytavern_gameTipsSeen', 'dialogue,exploration,combat,travel,prisoners,mesa,high,spell,pet,bill');
+            window.localStorage.setItem('sillytavern_gameTipsSeen', 'dialogue,exploration,combat,travel,prisoners,mesa,high,spell,pet,bill,move,attack,roll,talk,journal');
             window.localStorage.setItem('sillytavern_gameShellAutostart', 'true');
         } catch { /* nada */ }
     });

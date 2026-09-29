@@ -85,10 +85,14 @@ import { SHORTCUTS, actionForKey } from './shortcuts.js';
  * @property {(chip: import('./action-chips.js').ActionChip) => void} [onChip]
  * @property {(memberId: string) => void} [onCompanion] Abrir la ficha de un companero.
  * @property {() => void} [onNewCampaign] Empezar una partida desde el menu principal.
- * @property {() => number} [countCampaigns] Cuantas partidas hay para cargar.
  * @property {() => void} [onOffline] J4: jugar sin conexión, una partida nueva en un gremio.
- * @property {() => Array<{line: string, open: () => void}>} [hubSaves] J4: los gremios que se pueden seguir.
+ * @property {() => import('../../campaign/saved-games.js').GameCard[]|null} [getGames] J0.6: las
+ *   partidas guardadas (un gremio con sus campañas, o una campaña suelta), la última jugada
+ *   primero; null mientras se leen.
+ * @property {(id: string) => void} [onLoadGame] J0.5 y J0.6: seguir una partida donde se quedó.
+ * @property {(id: string) => void} [onDeleteGame] J0.6: borrar una partida (pregunta antes).
  * @property {() => number} [countHall] Cuantos caidos hay en el salon de la fama (idea 199).
+ * @property {() => string} [hallHint] Lo que hay en el salon, dicho corto (J3.9): «1 campaña terminada · 2 caídos».
  * @property {() => void} [onHall] Abrir el salon de la fama.
  * @property {() => boolean} [getAutostart] Si el juego se abre solo al arrancar.
  * @property {(value: boolean) => void} [setAutostart]
@@ -306,6 +310,7 @@ function renderSwitcher(bar, situation, current) {
 function renderTitleMenu(menu) {
     menu.textContent = '';
     menu.dataset.view = titleView;
+    const games = options?.getGames?.() ?? null;
 
     if (titleView === 'load') {
         const back = makeButton('gs-menu-back');
@@ -316,6 +321,7 @@ function renderTitleMenu(menu) {
             refreshGameShell();
         });
         menu.appendChild(back);
+        renderSavedGames(menu, games);
         return;
     }
 
@@ -336,13 +342,16 @@ function renderTitleMenu(menu) {
         menu.appendChild(button);
     };
 
-    const saved = options?.countCampaigns?.() ?? 0;
+    const saved = games?.length ?? 0;
 
-    // J4 de ROADMAP_SIN_CONEXION: jugar sin conexión va lo primero, y seguir en tu gremio
-    // antes que empezar otro.
-    for (const save of options?.hubSaves?.() ?? []) {
-        item('Seguir en el gremio', 'fa-shield-halved', save.line, () => save.open());
+    // J0.5: lo último que se jugó, de un clic, sea un gremio o una campaña suelta; y la línea
+    // dice qué se sigue. Cubre lo que hacía «Seguir en el gremio» con el gremio más reciente;
+    // los demás gremios están en «Cargar partida», como todo lo demás.
+    const last = games?.find(game => !game.unstarted);
+    if (last && options?.onLoadGame) {
+        item('Continuar', 'fa-play', last.resume, () => options?.onLoadGame?.(last.id));
     }
+    // J4 de ROADMAP_SIN_CONEXION: jugar sin conexión, antes que empezar otra.
     if (options?.onOffline) {
         item('Jugar sin conexión', 'fa-dungeon', 'Tu personaje, un gremio y campañas escritas. Sin IA: lo cuenta el juego.',
             () => options?.onOffline?.());
@@ -350,7 +359,7 @@ function renderTitleMenu(menu) {
     item('Partida nueva', 'fa-wand-sparkles', 'Desde cero, un mundo hecho o un libro',
         () => options?.onNewCampaign?.());
     item('Cargar partida', 'fa-folder-open',
-        saved === 1 ? '1 campaña guardada' : `${saved} campañas guardadas`,
+        games === null ? 'Buscando tus partidas…' : saved === 1 ? '1 partida guardada' : `${saved} partidas guardadas`,
         () => {
             titleView = 'load';
             refreshGameShell();
@@ -360,10 +369,11 @@ function renderTitleMenu(menu) {
         item('Compendio', 'fa-book-open', 'Tu biblioteca: armas, bichos, gente, nombres',
             () => options?.onCompendium?.());
     }
-    // Idea 199: los caidos de todas las partidas. Solo si ya ha caido alguien.
+    // Idea 199: los caidos de todas las partidas; y desde J3.9, las campañas terminadas. Solo
+    // si ya hay alguien (o alguna) en el salon.
     const fallen = options?.countHall?.() ?? 0;
     if (fallen > 0 && options?.onHall) {
-        item('Salón de la fama', 'fa-monument', fallen === 1 ? '1 caído' : `${fallen} caídos`,
+        item('Salón de la fama', 'fa-monument', options?.hallHint?.() || (fallen === 1 ? '1 caído' : `${fallen} caídos`),
             () => options?.onHall?.());
     }
     // J0.4: las opciones del juego (texto, colores, sonido, quién cuenta), no las de SillyTavern.
@@ -374,6 +384,75 @@ function renderTitleMenu(menu) {
     leave.textContent = 'Salir al SillyTavern de siempre';
     leave.addEventListener('click', () => closeGameShell());
     menu.appendChild(leave);
+}
+
+/**
+ * J0.6: «Cargar partida» enseña partidas, no chats. Antes se veía la bienvenida de
+ * SillyTavern tal cual —su logo, sus chats recientes con el nombre del narrador, su
+ * asistente—; ahora cada partida es una tarjeta del juego con lo que hace falta para elegir:
+ * dónde se quedó, quién va y a qué nivel, y cuándo se jugó. Pulsarla la sigue.
+ *
+ * @param {HTMLElement} menu
+ * @param {import('../../campaign/saved-games.js').GameCard[]|null} games
+ */
+function renderSavedGames(menu, games) {
+    menu.appendChild(el('div', 'gs-load-title', 'Tus partidas'));
+    const list = el('div', 'gs-saves');
+    if (games === null) {
+        list.appendChild(el('div', 'gs-saves-empty', 'Buscando tus partidas…'));
+    } else if (games.length === 0) {
+        list.appendChild(el('div', 'gs-saves-empty',
+            'Todavía no hay ninguna partida guardada. Empieza una con «Jugar sin conexión» o «Partida nueva».'));
+    }
+    for (const game of games ?? []) {
+        const card = el('div', `gs-save${game.unstarted ? ' gs-save-unstarted' : ''}`);
+        card.dataset.game = game.id;
+        card.dataset.world = game.id;
+        card.dataset.kind = game.kind;
+        card.tabIndex = 0;
+        card.setAttribute('role', 'button');
+        card.title = game.unstarted ? `Empezar «${game.title}»` : `Seguir «${game.title}»`;
+        card.appendChild(el('i', `fa-solid ${game.icon} gs-save-icon`));
+
+        const body = el('div', 'gs-save-body');
+        const top = el('div', 'gs-save-top');
+        top.appendChild(el('span', 'gs-save-title', game.title));
+        if (game.badge) top.appendChild(el('span', 'gs-save-badge', game.badge));
+        if (game.when) top.appendChild(el('span', 'gs-save-when', `Jugada ${game.when}`));
+        body.appendChild(top);
+        for (const [key, value] of /** @type {const} */ ([['hero', game.hero], ['line', game.line], ['where', game.where], ['campaigns', game.campaigns]])) {
+            if (value) body.appendChild(el('div', `gs-save-${key}`, value));
+        }
+        card.appendChild(body);
+
+        const actions = el('div', 'gs-save-actions');
+        const play = makeButton('gs-save-play');
+        play.appendChild(el('i', 'fa-solid fa-play'));
+        play.appendChild(el('span', '', game.unstarted ? ' Empezar' : ' Seguir'));
+        actions.appendChild(play);
+        if (game.canDelete && options?.onDeleteGame) {
+            const bin = makeButton('gs-save-delete');
+            bin.title = 'Borrar esta partida';
+            bin.dataset.world = game.id;
+            bin.appendChild(el('i', 'fa-solid fa-trash'));
+            bin.addEventListener('click', (event) => {
+                event.stopPropagation();
+                options?.onDeleteGame?.(game.id);
+            });
+            actions.appendChild(bin);
+        }
+        card.appendChild(actions);
+
+        // Toda la tarjeta sigue la partida; la papelera no, que para eso para el clic.
+        card.addEventListener('click', () => options?.onLoadGame?.(game.id));
+        card.addEventListener('keydown', (event) => {
+            if (event.target !== card || (event.key !== 'Enter' && event.key !== ' ')) return;
+            event.preventDefault();
+            options?.onLoadGame?.(game.id);
+        });
+        list.appendChild(card);
+    }
+    menu.appendChild(list);
 }
 
 /**
@@ -969,8 +1048,10 @@ function renderNovel(scene, view) {
     portrait.textContent = '';
     const avatar = view.speaker && view.speaker.name === speakerName ? view.speaker.avatar : '';
     const plain = !avatar || /user-default\.png|default_avatar/i.test(avatar);
-    // El narrador no se pinta: cuenta, no está en la escena.
-    const narrator = Boolean(options?.narratorName?.() && speakerName && options.narratorName() === speakerName);
+    // El narrador no se pinta: cuenta, no está en la escena. Tampoco lo que cuenta el juego
+    // con la cara de sistema de SillyTavern, que es su logo (J0.3).
+    const narrator = Boolean(options?.narratorName?.() && speakerName && options.narratorName() === speakerName)
+        || /(^|\/)img\/five\.png$/i.test(avatar);
     portrait.hidden = !speakerName || narrator;
     if (portrait.hidden) return;
     if (!plain) {

@@ -20,6 +20,7 @@
 
 import { matches, pickWeighted } from '../compendio/compendio.js';
 import { fill } from './engine-narrator.js';
+import { resolveGender } from './grammar.js';
 
 /**
  * Cuántas veces sale un suceso en cada momento. El viaje no se sortea: cada viaje trae el
@@ -141,14 +142,17 @@ export function sucesoById(rows, id, facts = {}) {
 
 /**
  * Los huecos de las opciones y de lo que pasa, rellenos; si uno no se puede, se queda el
- * texto con el hueco quitado mejor que con las llaves.
+ * texto con el hueco quitado mejor que con las llaves. El género (J1.4), antes de quitar
+ * nada: `{secos|secas}` es una palabra, no un hueco.
  *
  * @param {SucesoRow} row
  * @param {Record<string, any>} facts
  * @returns {SucesoRow}
  */
 function fillOptions(row, facts) {
-    const put = (/** @type {any} */ value) => (value ? fill(String(value), facts) ?? String(value).replace(/\{[^}]+\}/g, '').trim() : value);
+    const put = (/** @type {any} */ value) => (value
+        ? fill(String(value), facts) ?? resolveGender(String(value), facts?.generos ?? {}).replace(/\{[^}]+\}/g, '').replace(/\s+/g, ' ').trim()
+        : value);
     return {
         ...row,
         options: row.options.map(option => ({
