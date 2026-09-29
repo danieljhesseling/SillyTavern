@@ -34,3 +34,20 @@ Bustos de 128×160 con fondo transparente, tono histórico (sin magia ni razas f
 - `el-nino-soplillo.png`: Pip, Huérfano y mensajero. Niño pecoso con gorra gris y abrigo grande, mirada asustada.
 - `el-desertor-ahorcado.png`: Darek, Ex-soldado. Castaño barbudo con gambesón roto, la soga aún colgando, la mano en el cuello.
 - `el-mercader-atrapado.png`: Valerius, Comerciante. Bigote rizado, abrigo verde con cuello de piel, frotándose las manos.
+## Expresiones (novela visual)
+El mismo retrato con otro gesto; cara, ropa y pose no cambian. Nombre: `<id>--alegre.png`, `<id>--enfadado.png`, `<id>--triste.png`. Solo los confidentes.
+- `bran--alegre.png`: Bran riendo a carcajadas entre la barba gris.
+- `bran--enfadado.png`: Bran furioso, dientes apretados y mirada fiera.
+- `bran--triste.png`: Bran triste y cansado, mirada baja.
+- `aldara--alegre.png`: Aldara riendo, con los ojos entornados.
+- `aldara--enfadado.png`: Aldara enfadada, ceño fruncido y boca apretada.
+- `aldara--triste.png`: Aldara triste, cejas alzadas y mirada baja.
+- `arthur-doc--alegre.png`: Doc riendo con la boca abierta tras las gafas.
+- `arthur-doc--enfadado.png`: Doc enfadado, ceño fruncido tras las gafas.
+- `arthur-doc--triste.png`: Doc triste, cejas alzadas y boca caída.
+- `isolda--alegre.png`: Isolda riendo, con los ojos cerrados.
+- `isolda--enfadado.png`: Isolda furiosa, dientes apretados y ceño fruncido.
+- `isolda--triste.png`: Isolda triste, cejas alzadas y boca hacia abajo.
+- `grimm--alegre.png`: Grimm riendo con una gran sonrisa.
+- `grimm--enfadado.png`: Grimm furioso, ceño fruncido y dientes apretados.
+- `grimm--triste.png`: Grimm triste, cejas alzadas y mirada baja.

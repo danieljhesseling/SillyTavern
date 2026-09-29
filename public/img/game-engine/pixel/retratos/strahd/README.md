@@ -47,3 +47,26 @@ Bustos de 128×160 con fondo transparente, tono gótico de Barovia. El nombre de
 - `lazlo-ulrich.png`: Lazlo Ulrich, Fantasma del último burgomaestre de Berez. Espectro verde de gran barba, cadena de cargo, mirada asustada.
 - `rahadin.png`: Rahadin, Chambelán del castillo. Elfo oscuro de piel gris, pelo negro, uniforme morado de cuello alto, espada a la espalda.
 - `cyrus-belview.png`: Cyrus Belview, Criado del castillo. Mestizo de sonrisa torcida, un ojo verde saltón, levita negra y una llave al cuello.
+
+## Expresiones (novela visual)
+
+El mismo retrato con otro gesto; cara, ropa y pose no cambian. Nombre: `<id>--alegre.png`, `<id>--enfadado.png`, `<id>--triste.png`. Solo Strahd y los confidentes.
+
+- `strahd-von-zarovich--alegre.png`: Strahd con una sonrisa cruel que enseña los colmillos.
+- `strahd-von-zarovich--enfadado.png`: Strahd furioso, gruñendo con los colmillos al aire.
+- `strahd-von-zarovich--triste.png`: Strahd melancólico, cejas alzadas y boca caída.
+- `ismark-kolyanovich--alegre.png`: Ismark riendo con una sonrisa abierta.
+- `ismark-kolyanovich--enfadado.png`: Ismark enfadado, ceño fruncido y boca apretada.
+- `ismark-kolyanovich--triste.png`: Ismark triste y preocupado, cejas alzadas.
+- `ireena-kolyana--alegre.png`: Ireena riendo, con los ojos cerrados.
+- `ireena-kolyana--enfadado.png`: Ireena enfadada, ceño fruncido y labios apretados.
+- `ireena-kolyana--triste.png`: Ireena llorando, cejas alzadas.
+- `madam-eva--alegre.png`: Madam Eva riendo con una sonrisa amplia y los ojos arrugados.
+- `madam-eva--enfadado.png`: Madam Eva severa, mirada fiera y ceño fruncido.
+- `madam-eva--triste.png`: Madam Eva triste, cejas alzadas y mirada caída.
+- `rudolph-van-richten--alegre.png`: Van Richten riendo bajo la barba blanca.
+- `rudolph-van-richten--enfadado.png`: Van Richten furioso, mirada fiera y dientes apretados.
+- `rudolph-van-richten--triste.png`: Van Richten apenado, cejas alzadas y mirada baja.
+- `ezmerelda-d-avenir--alegre.png`: Ezmerelda riendo con la boca abierta.
+- `ezmerelda-d-avenir--enfadado.png`: Ezmerelda enfadada, ceño fruncido y labios apretados.
+- `ezmerelda-d-avenir--triste.png`: Ezmerelda triste, con lágrimas.
