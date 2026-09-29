@@ -91,7 +91,7 @@ Cómo está hecho, en corto (el detalle, en [[EMPEZAR_UNA_CAMPANA]], «Jugar sin
 | **J16** · Medir la diversión | ⬜ | Vueltas automáticas, también con dos jugadores |
 | **J17** · Después: la IA como capa | ⏸️ | Aparcado (lo dijiste el 2026-09-29) |
 | **J19** · La magia de D&D | 🟡 | Hecho, en el motor: 81 conjuros como datos, espacios de conjuro de 5e, preparados y conocidos, concentración, invocaciones, zonas, reacciones, rituales y objetos con cargas. Falta: conectarlo al combate, al descanso y a subir de nivel (tras partir `party.js`) |
-| **J20** · Jugar desde el móvil | ⬜ | La pantalla en vertical y horizontal, el tablero a toques, botones de dedo, sin teclado y como app en la pantalla de inicio |
+| **J20** · Jugar desde el móvil | 🟡 | Hecho: el juego se ve y se juega en el teléfono, en vertical y en horizontal (J20.1). Antes medía 0 px de alto en pantallas pequeñas. También botones de dedo (J20.3), todo sin teclado (J20.4), ventanas que caben (J20.5) y `tools/e2e-movil.mjs` en la batería (J20.9). Falta: el tablero táctil (J20.2, tras J15.1), instalarlo como app (J20.7) y la guía para el móvil (J20.8) |
 | **J18** · La cara del juego | ✅ | Elegir con quién entras (J18.1), la pantalla de crear personaje (J18.2) y la novela visual con su registro (J18.3 a J18.6) |
 
 ---
