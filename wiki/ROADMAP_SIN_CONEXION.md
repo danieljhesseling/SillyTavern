@@ -254,11 +254,11 @@ Tus respuestas a D-J11…D-J38. «⏳» significa que está por hacer.
 | **D-J36** | «Hablar» con alguien que tiene diálogo escrito | La ventana de ramas directamente, con «Otras cosas» para sonsacar, convencer y amenazar | ⏳ |
 | **D-J37** | La fuente de 1387 | El paquete | ✅ |
 | **D-J38** | La cabecera en el móvil | Que se vea bien | ⏳ |
-| **D-J39** | ¿Una escena del hilo cumple su propio hito? Por ejemplo, la charla con Karl en «El hambre de los Lobos»: hoy, después de la escena, aún hay que ir a «Hablar con Karl» | Pendiente | Sí, cuando la escena ya es esa charla |
-| **D-J40** | ¿Todos los hitos se abren en la ventana de escena? Los que solo traen texto saldrían como una escena corta del narrador | Pendiente | Sí: sin chat (J18.7), todo lo que se cuenta va a la novela visual |
-| **D-J41** | ¿La descripción de un sitio cuenta como «algo que mirar»? | No: cada sitio tiene algo concreto que examinar | No, como está |
-| **D-J42** | Sucesos propios de cada campaña: hoy los sucesos son del compendio común y un paquete no puede traer los suyos | Pendiente | Sí, más adelante (J10.3): cambiar el formato, el importador y un enganche |
-| **D-J43** | La actitud más alta («os mira de forma…»): «de los vuestros» no casaba en la frase | «leal» | Así, o dime otra palabra |
+| **D-J39** | ¿Una escena del hilo cumple su propio hito? | Sí, cuando la escena ya es esa charla (como la de Karl) | ⏳ |
+| **D-J40** | ¿Todos los hitos se abren en la ventana de escena? | Sí: también los que solo traen texto, como una escena corta del narrador | ⏳ |
+| **D-J41** | ¿La descripción de un sitio cuenta como «algo que mirar»? | No: cada sitio tiene algo concreto que examinar | ✅ |
+| **D-J42** | Sucesos propios de cada campaña | Más adelante, con J10.3 | ✅ |
+| **D-J43** | La actitud más alta («os mira de forma…») | «leal» | ✅ |
 
 ---
 
