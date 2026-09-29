@@ -351,26 +351,20 @@ import {
     VILLAIN_SEEN_KEY, VISITED_KEY, WANTED_KEY, WARNED_KEY, WEATHER_TODAY_KEY, WEEK_TABLE_AUTO_KEY, WEEK_TABLE_KEY,
     WRITTEN_DONE_KEY, localFlag,
 } from './keys.js';
+import {
+    combatBoardSelection, combatEncounter, combatLogEntries, currentBoardName, currentLocationName,
+    currentWorldFactions, factionDaysDue, narratorTurn, partyMembers, setCombatBoardSelection, setCombatEncounter,
+    setCombatLogEntries, setCurrentBoardName, setCurrentLocationName, setCurrentWorldFactions, setFactionDaysDue,
+    setNarratorTurn, setPartyMembers, setTalkingTo, setTypedIntents, setUsedReactions, setWorldItemCatalogue,
+    talkingTo, typedIntents, usedReactions, worldItemCatalogue,
+} from './state.js';
 
 /** @typedef {import('./types.js').PartyMember} PartyMember */
-/** @type {PartyMember[]} */
-let partyMembers = [];
 
 
 /** @type {boolean} */
 let locationMapsManuallyHidden = false;
 
-/** @type {{ tokenId: number|null, boardName: string, locationName: string }} */
-let combatBoardSelection = { tokenId: null, boardName: '', locationName: '' };
-
-/**
- * Quien ha gastado ya su reaccion en esta ronda.
- *
- * Un ataque de oportunidad cuesta la reaccion, y la reaccion es una por ronda: sin esto,
- * un solo enemigo cobraria peaje a todo el grupo cada vez que alguien se mueve.
- * @type {Set<string>}
- */
-let usedReactions = new Set();
 
 /** @type {HTMLElement|null} */
 let combatDiceOverlayElement = null;
@@ -445,17 +439,17 @@ function getPartyMemberFallbackName(member) {
 function loadPartyForChat() {
     console.log('loadPartyForChat called', { chat_metadata });
     if (chat_metadata?.party && Array.isArray(chat_metadata.party) && chat_metadata.party.length > 0) {
-        partyMembers = chat_metadata.party
+        setPartyMembers(chat_metadata.party
             .filter((member) => member && member.id && member.name)
-            .map((member) => migratePartyMember(member));
-        partyMembers = partyMembers.map((member) => {
+            .map((member) => migratePartyMember(member)));
+        setPartyMembers(partyMembers.map((member) => {
             if (member.name === 'Untitled') {
                 const fallbackName = getPartyMemberFallbackName(member);
                 console.log('Replacing Untitled party member name with fallback', { member, fallbackName });
                 return { ...member, name: fallbackName };
             }
             return member;
-        });
+        }));
         console.log('Loaded party from chat_metadata', { partyMembers });
         // Clear any locked persona when party is active
         if (partyMembers.length > 0 && chat_metadata?.persona) {
@@ -469,7 +463,7 @@ function loadPartyForChat() {
         }
     } else {
         console.log('No party found in chat_metadata');
-        partyMembers = [];
+        setPartyMembers([]);
     }
     loadCurrentLocation();
     loadCombatState();
@@ -804,7 +798,7 @@ export function setPartyFromWorldEntries(entries, worldName = null) {
     console.log('setPartyFromWorldEntries called', { entriesCount: entries?.length, entries, worldName });
     // Auto-detect world name from chat metadata if not provided
     const resolvedWorldName = worldName || (chat_metadata ? chat_metadata[METADATA_KEY] : null) || null;
-    partyMembers = [];
+    setPartyMembers([]);
     const defaults = getDefaultDndData();
     for (const entry of entries) {
         const d = entry.dndData || {};
@@ -929,10 +923,6 @@ function renderPartyMembers() {
 //  WORLD MAP, LOCATION, AND BOARD VIEWS
 // ============================================================
 
-/** Currently selected location name — per-chat, stored in chat_metadata */
-let currentLocationName = '';
-/** Currently selected board name — per-chat, stored in chat_metadata */
-let currentBoardName = '';
 
 function saveCurrentLocation() {
     if (chat_metadata) {
@@ -951,8 +941,8 @@ function saveCurrentBoard() {
 }
 
 function loadCurrentLocation() {
-    currentLocationName = (chat_metadata && chat_metadata['currentLocation']) || '';
-    currentBoardName = (chat_metadata && chat_metadata['currentBoard']) || '';
+    setCurrentLocationName((chat_metadata && chat_metadata['currentLocation']) || '');
+    setCurrentBoardName((chat_metadata && chat_metadata['currentBoard']) || '');
     // Y quien se mueve ahi fuera, que el panel de campana dibuja sin poder esperar.
     void reloadWorldFactions();
 }
@@ -974,15 +964,6 @@ async function ensureWorldData() {
     if (worldName && worldName !== loadedWorldName) await reloadWorldFactions();
 }
 
-/**
- * Las facciones del mundo abierto, ya leidas.
- *
- * Mismo apano que `lastCompendium`: `renderCampaignTab` se dibuja de golpe y no puede ser
- * `async`. Sin facciones escritas esto es una lista vacia y el panel queda como estaba.
- *
- * @type {any[]}
- */
-let currentWorldFactions = [];
 
 /** Idea 74: la estación en la que empezó el mundo; vacía es la de siempre (otoño). */
 let lastWorldSeason = '';
@@ -1062,7 +1043,7 @@ function getCurrentWorldFactions() {
 async function reloadWorldFactions() {
     const worldName = String(chat_metadata?.[METADATA_KEY] || '');
     if (!worldName) {
-        currentWorldFactions = [];
+        setCurrentWorldFactions([]);
         lastHub = null;
         lastHubHome = '';
         lastLevelPlan = null;
@@ -1074,7 +1055,7 @@ async function reloadWorldFactions() {
         // J4: el gremio y sus campañas.
         lastHub = isHubWorld(data?.metadata) ? readHub(data.metadata.hub) : null;
         lastHubHome = hubHomeOf(data?.metadata);
-        currentWorldFactions = readFactions(data?.metadata?.factions);
+        setCurrentWorldFactions(readFactions(data?.metadata?.factions));
         // Y los mandos del tablon, que se leen en el mismo sitio y para lo mismo.
         lastBoardRules = data?.metadata?.boardRules ?? null;
         lastWrittenQuests = Array.isArray(data?.metadata?.writtenQuests)
@@ -1117,7 +1098,7 @@ async function reloadWorldFactions() {
         lastLevelPlan = levelPlanOf(data?.metadata, await campaignLevelsOf(String(data?.metadata?.[HUB_CAMPAIGN_KEY] ?? '')));
     } catch (error) {
         console.error('[party] no se pudieron leer las facciones', error);
-        currentWorldFactions = [];
+        setCurrentWorldFactions([]);
         lastLevelPlan = null;
     }
     return currentWorldFactions;
@@ -1147,16 +1128,6 @@ function getLocationBoards(loc) {
 //  COMBAT ENCOUNTER STATE
 // ============================================================
 
-/**
- * The fight in progress.
- *
- * Typed as the turn machine's own Encounter now that the machine is what runs it: there
- * is one definition of a turn, and this is it. The enemy list stays widened to the game's
- * EnemyInstance, which carries the sheet the machine does not care about.
- *
- * @type {import('../game-engine/combat/turn-machine.js').Encounter & { enemies: import('../dnd-system.js').EnemyInstance[], collectedTreasures?: string[] }}
- */
-let combatEncounter = { active: false, enemies: [], turnOrder: [], currentTurnIndex: 0, round: 0, turnState: null };
 
 function saveCombatState() {
     if (chat_metadata) {
@@ -1168,9 +1139,9 @@ function saveCombatState() {
 function loadCombatState() {
     const saved = chat_metadata?.['combatEncounter'];
     if (saved && saved.active) {
-        combatEncounter = normalizeCombatEncounter(saved);
+        setCombatEncounter(normalizeCombatEncounter(saved));
     } else {
-        combatEncounter = createEmptyCombatEncounter();
+        setCombatEncounter(createEmptyCombatEncounter());
         // Sin pelea, la caja dice lo de siempre, y no la pelea de otro chat.
         restoreChatPlaceholder();
     }
@@ -1540,8 +1511,8 @@ export function enterStartingBoard(locationName, boardName) {
     const board = getLocationBoards(location).find((/** @type {any} */ b) => b.name === boardName);
     if (!board) return false;
 
-    currentLocationName = location.name;
-    currentBoardName = board.name;
+    setCurrentLocationName(location.name);
+    setCurrentBoardName(board.name);
     saveCurrentLocation();
     saveCurrentBoard();
     partyTabSetter?.('location');
@@ -1600,17 +1571,6 @@ function buildDragHighlightCells(tokenId, tentGX, tentGY, gridW, gridH) {
     return [...moveCells, ...attackCells];
 }
 
-/**
- * The combat log shown beside the board.
- *
- * Session state on purpose: the log is a read-out of a fight in progress, and the fight
- * itself already lives in the encounter. Writing 300 entries into the world info on every
- * swing would grow the saved campaign for something nobody reads twice. A reload starts
- * a fresh log, and the chat still holds every line.
- *
- * @type {import('../game-engine/ui/combat-log.js').LogEntry[]}
- */
-let combatLogEntries = [];
 
 /** The mounted panel, when the board is on screen. Null when it is not. */
 let combatLogPanel = null;
@@ -1632,7 +1592,7 @@ function paintCombatLog() {
  */
 function pushCombatLogEntry(item) {
     if (!item) return;
-    combatLogEntries = appendLogEntry(combatLogEntries, item);
+    setCombatLogEntries(appendLogEntry(combatLogEntries, item));
     paintCombatLog();
 }
 
@@ -1664,7 +1624,7 @@ export async function applyCampaignRuleset(worldName) {
     try {
         const data = await loadWorldInfo(worldName);
         worldPack = data?.metadata?.rulesetPack ?? null;
-        worldItemCatalogue = Array.isArray(data?.metadata?.itemCatalogue) ? data.metadata.itemCatalogue : [];
+        setWorldItemCatalogue(Array.isArray(data?.metadata?.itemCatalogue) ? data.metadata.itemCatalogue : []);
     } catch (error) {
         console.error('[party] could not read the campaign rule pack', error);
         return;
@@ -1705,17 +1665,6 @@ export async function applyCampaignRuleset(worldName) {
             .on('click', () => window.location.reload()),
     );
 }
-
-/**
- * Los objetos que la campana abierta tiene escritos.
- *
- * Se guarda aqui porque el botin se reparte en mitad de un combate y leer el mundo del
- * disco en ese momento seria esperar por algo que ya se sabe. Se rellena al abrir la
- * campana y al guardarla desde el editor, que son las dos unicas veces que cambia.
- *
- * @type {any[]}
- */
-let worldItemCatalogue = [];
 
 
 /**
@@ -2218,7 +2167,7 @@ async function nudgeRuler(place, what) {
         data.metadata = data.metadata ?? {};
         data.metadata.factions = moved;
         await saveWorldInfo(worldName, data, true);
-        currentWorldFactions = moved;
+        setCurrentWorldFactions(moved);
     });
     postCombatNarration(`🏛️ [MUNDO] ${ruler.name} ${delta > 0 ? 'lo tiene en cuenta: os mira mejor' : 'se entera: os mira peor'}.`);
 }
@@ -4044,7 +3993,7 @@ function advanceTurnIndex() {
         for (const member of partyMembers) resolveDeathSave(member);
 
         // Ronda nueva, reacciones nuevas.
-        usedReactions = new Set();
+        setUsedReactions(new Set());
         // Idea 23: el tablero cambia mientras se pelea.
         burnRound();
         // R6: los refuerzos del tablero: se oyen una ronda antes, y llegan en la suya.
@@ -4512,7 +4461,7 @@ function wakeRoomEnemies(board, room) {
 function startCombat(template, count, gridWidth = 50, gridHeight = 50) {
     // A new fight starts with an empty log: the last one's blow-by-blow is already in
     // the chat, and leaving it here would read as if it were still happening.
-    combatLogEntries = [];
+    setCombatLogEntries([]);
 
     // Donde los pone el tablero, si los pone. Un libro dibuja a sus monstruos donde
     // quiere — tras la cobertura, al otro lado de la sala — y ese dibujo es la mitad de
@@ -4637,14 +4586,14 @@ function beginEncounterWith(newEnemies) {
     // Sort descending by initiative (ties: non-enemies first)
     turnEntries.sort((a, b) => b.initiative - a.initiative || (a.isEnemy ? 1 : 0) - (b.isEnemy ? 1 : 0));
 
-    combatEncounter = {
+    setCombatEncounter({
         active: true,
         enemies,
         turnOrder: turnEntries,
         currentTurnIndex: 0,
         round: 1,
         turnState: null,
-    };
+    });
 
     saveCombatState();
 
@@ -5049,7 +4998,7 @@ async function settleFactionStakeNow(contract) {
 
         data.metadata.factions = people;
         data.metadata.locationMaps = locations;
-        currentWorldFactions = people;
+        setCurrentWorldFactions(people);
         await saveWorldInfo(worldName, data, true);
         await refreshWorldMapGlobals(worldName);
         if (isShellOpen()) refreshGameShell();
@@ -5372,7 +5321,7 @@ const DAY_HANDLERS = {
     // El mismo dia que cura y da de comer acerca a los otros a lo que quieren. Antes se
     // contaba aparte, midiendo el calendario alrededor de cada forma de pasar el dia.
     facciones: ({ days }) => {
-        factionDaysDue += Math.max(0, Math.floor(Number(days) || 0));
+        setFactionDaysDue(factionDaysDue + Math.max(0, Math.floor(Number(days) || 0)));
         scheduleFactionTick();
     },
     // U8 del pegamento: vuelven los que mandasteis.
@@ -6115,7 +6064,7 @@ function chargeBill() {
         for (const gone of partyMembers.filter(m => loyalty.leaving.includes(String(m.name)))) {
             if (chat_metadata) chat_metadata[GONE_KEY] = noteGone(chat_metadata[GONE_KEY], gone, campaignDay(), 'sin cobrar');
         }
-        partyMembers = partyMembers.filter(m => !loyalty.leaving.includes(String(m.name)));
+        setPartyMembers(partyMembers.filter(m => !loyalty.leaving.includes(String(m.name))));
         renderPartyMembers();
     }
     for (const line of loyalty.lines) postCombatNarration(`🤝 [GREMIO] ${line}`);
@@ -7380,12 +7329,8 @@ function buildBoardIdleEnemyTokens(waiting) {
     });
 }
 
-/** Con quién se está hablando, para las respuestas sugeridas (idea 144). */
-let talkingTo = '';
 /** El botón «Al narrador» está puesto: lo próximo que se escriba es para él (2026-09-28). */
 let askingNarrator = false;
-/** Lo que se acaba de escribir es para el narrador: contesta él, y con su nombre. */
-let narratorTurn = false;
 /** Lo último que gritó un jefe al contestar (idea 24). */
 let lastBossLine = '';
 /** Si alguien acaba de caer al vacío, para dejar ver la caída (idea 189). */
@@ -9512,7 +9457,7 @@ function weighDepartures() {
         const line = describeLeaving(member);
         // R8: se apunta, con su ficha, por si un día vuelve.
         if (chat_metadata) chat_metadata[GONE_KEY] = noteGone(chat_metadata[GONE_KEY], member, campaignDay(), 'harto');
-        partyMembers = partyMembers.filter(m => m !== member);
+        setPartyMembers(partyMembers.filter(m => m !== member));
         noteDeed(line);
         toastr.error(line, `👋 ${member.name}`, { timeOut: 15000 });
         void postForModel(`[SE VA] ${line} Cuenta la despedida en dos frases.`);
@@ -9957,7 +9902,7 @@ function speakingWith() {
  * @returns {'engine'|'model'}
  */
 export function routeTyped(said) {
-    narratorTurn = askingNarrator;
+    setNarratorTurn(askingNarrator);
     askingNarrator = false;
     showNarratorAsk();
     if (narratorTurn) return 'model';
@@ -9972,7 +9917,7 @@ export function routeTyped(said) {
         waiting: waitingHere(),
     });
     if (who) {
-        talkingTo = who;
+        setTalkingTo(who);
         notePlot({ kind: 'talk', npc: who });
         if (isShellOpen()) refreshGameShell();
     }
@@ -10162,7 +10107,7 @@ async function shiftFactionStandingNow(factionId, amount) {
         if (!data?.metadata) return;
         const moved = changeStanding(readFactions(data.metadata.factions), factionId, amount);
         data.metadata.factions = moved;
-        currentWorldFactions = moved;
+        setCurrentWorldFactions(moved);
         await saveWorldInfo(worldName, data, true);
         await refreshWorldMapGlobals(worldName);
         if (isShellOpen()) refreshGameShell();
@@ -10172,27 +10117,24 @@ async function shiftFactionStandingNow(factionId, amount) {
 }
 
 /** @returns {any} */
-const getCampaignCalendar = () => campaign.getCalendar();
+function getCampaignCalendar() {
+    return campaign.getCalendar();
+}
 /** @returns {any} */
-const getCampaignBonds = () => campaign.getBonds();
+function getCampaignBonds() {
+    return campaign.getBonds();
+}
 /** @param {any} calendar @param {any} bonds */
-const saveCampaignState = (calendar, bonds) => campaign.save(calendar, bonds);
+function saveCampaignState(calendar, bonds) {
+    return campaign.save(calendar, bonds);
+}
 // El reloj del Modo Juego lee lo mismo que la pestana de Campana, asi que pasar el
 // tiempo tiene que redibujarlo: sin esto el dia cambiaba y la cabecera no se enteraba.
-const advanceCampaignSlot = () => {
+function advanceCampaignSlot() {
     const result = campaign.advanceSlot();
     if (isShellOpen()) refreshGameShell();
     return result;
-};
-/**
- * Los dias que le deben a las facciones.
- *
- * Se acumulan y se vuelcan de una vez porque escribir el mundo es asincrono: un viaje de
- * cinco dias llama a `advanceCampaignDay` cinco veces seguidas, y cinco escrituras a la
- * vez del mismo archivo es como se pierde una. El `setTimeout(0)` espera a que termine el
- * bucle entero, que es sincrono, y entonces pasa los cinco dias de golpe.
- */
-let factionDaysDue = 0;
+}
 /** @type {any} */
 let factionTickTimer = null;
 
@@ -10200,7 +10142,7 @@ function scheduleFactionTick() {
     if (factionTickTimer) clearTimeout(factionTickTimer);
     factionTickTimer = setTimeout(() => {
         const days = factionDaysDue;
-        factionDaysDue = 0;
+        setFactionDaysDue(0);
         factionTickTimer = null;
         void passFactionDays(days);
     }, 0);
@@ -10216,11 +10158,11 @@ function campaignDay() {
     return Math.max(0, Math.floor(Number(getCampaignCalendar()?.day) || 0));
 }
 
-const advanceCampaignDay = () => {
+function advanceCampaignDay() {
     const result = campaign.advanceDay();
     if (isShellOpen()) refreshGameShell();
     return result;
-};
+}
 /**
  * Los dias de las facciones, con lo que cambien.
  *
@@ -10291,7 +10233,7 @@ async function passFactionDaysNow(days) {
 
         data.metadata.factions = people;
         data.metadata.locationMaps = locations;
-        currentWorldFactions = people;
+        setCurrentWorldFactions(people);
         await saveWorldInfo(worldName, data, true);
         // Guardar escribe el archivo; el viaje va con la copia en memoria. Sin esto, un
         // paso que se cierra hoy se seguiria pudiendo andar hasta reabrir la campana.
@@ -10323,13 +10265,13 @@ async function passFactionDaysNow(days) {
 }
 
 /** @param {string} characterId @param {string} eventType */
-const recordCampaignBondEvent = (characterId, eventType) => {
+function recordCampaignBondEvent(characterId, eventType) {
     const result = campaign.recordBond(characterId, eventType);
     // Idea 30: quien llega a vínculo 3 te pide lo suyo.
     offerPersonalQuests();
     if (isShellOpen()) refreshGameShell();
     return result;
-};
+}
 
 /**
  * Idea 30: quien llega a vínculo 3 te pide lo suyo. Va al tablón, con su nombre, y se le
@@ -10364,9 +10306,11 @@ function offerPersonalQuests() {
     chat_metadata[PERSONAL_ASKED_KEY] = asked;
     saveMetadata();
 }
-const getCurrentSlotLabel = () => campaign.getSlotLabel();
+function getCurrentSlotLabel() {
+    return campaign.getSlotLabel();
+}
 /** @param {'corto'|'largo'} kind @returns {Promise<string>} */
-const takeRest = async (kind) => {
+async function takeRest(kind) {
     const result = await campaign.rest(kind);
     // Z4: de noche pasan cosas.
     if (kind === 'largo') playSucesos('descanso');
@@ -10381,10 +10325,14 @@ const takeRest = async (kind) => {
     }
     if (isShellOpen()) refreshGameShell();
     return result;
-};
-const getCampaignMap = () => campaign.getMap();
+}
+function getCampaignMap() {
+    return campaign.getMap();
+}
 /** @param {string} locationName */
-const markLocationComplete = (locationName) => campaign.markLocationComplete(locationName);
+function markLocationComplete(locationName) {
+    return campaign.markLocationComplete(locationName);
+}
 
 
 /**
@@ -10930,7 +10878,7 @@ function startWaitingFight(awake) {
         toastr.warning('Ninguno de los enemigos del tablero existe en el mundo.');
         return;
     }
-    combatLogEntries = [];
+    setCombatLogEntries([]);
     postCombatNarration(`[COMBAT] Empieza el combate del tablero: ${waitingSummary(awake)}.`);
     beginEncounterWith(enemies);
     showInitiativeBanner(enemies.map(e => e.name));
@@ -11145,8 +11093,8 @@ function endCombat(reason = 'ended') {
         dropBoardKey();
     }
 
-    combatEncounter = createEmptyCombatEncounter();
-    combatBoardSelection = { tokenId: null, boardName: '', locationName: '' };
+    setCombatEncounter(createEmptyCombatEncounter());
+    setCombatBoardSelection({ tokenId: null, boardName: '', locationName: '' });
     saveCombatState();
     restoreChatPlaceholder();
 }
@@ -11530,7 +11478,7 @@ export function revealLocationsForSimulation(names) {
  * al ir y volver del gremio (`hubRoster`). Sin esto se quedaban a nivel 1 toda la campaña.
  */
 export function trainMercenariesForSimulation() {
-    partyMembers = hubRoster(partyMembers).map(member => migratePartyMember(member));
+    setPartyMembers(hubRoster(partyMembers).map(member => migratePartyMember(member)));
     savePartyState();
     renderPartyMembers();
 }
@@ -11999,9 +11947,9 @@ function handleCombatTokenClick(tokenId) {
         && combatBoardSelection.boardName === currentBoardName
         && combatBoardSelection.locationName === currentLocationName;
 
-    combatBoardSelection = alreadySelected
+    setCombatBoardSelection(alreadySelected
         ? { tokenId: null, boardName: '', locationName: '' }
-        : { tokenId, boardName: currentBoardName, locationName: currentLocationName };
+        : { tokenId, boardName: currentBoardName, locationName: currentLocationName });
 
     renderLocationMapsPreview();
 }
@@ -12825,12 +12773,12 @@ function renderWorldMapPreview() {
 
     renderWorldMapView(container, mapUrl, locationMaps, {
         onLocationSelect: (loc) => {
-            currentLocationName = loc.name;
+            setCurrentLocationName(loc.name);
             saveCurrentLocation();
         },
         onLocationNavigate: (loc) => {
             // Switch to Location tab
-            currentLocationName = loc.name;
+            setCurrentLocationName(loc.name);
             saveCurrentLocation();
             $('#rm_tab_location').trigger('click');
         },
@@ -13192,7 +13140,7 @@ export async function openCampaignBuilder() {
         if (!edited) return '';
 
         data.metadata = applyEditorModel(data.metadata ?? {}, edited);
-        worldItemCatalogue = Array.isArray(data.metadata.itemCatalogue) ? data.metadata.itemCatalogue : [];
+        setWorldItemCatalogue(Array.isArray(data.metadata.itemCatalogue) ? data.metadata.itemCatalogue : []);
 
         // Las fichas del Lorebook: lo que se escribe aqui es exactamente lo que escribe el
         // importador de libros, que es la regla que evita tener dos medias campanas.
@@ -13224,8 +13172,8 @@ export async function openCampaignBuilder() {
         // que dejar la pantalla apuntando a un sitio borrado.
         const places = (data.metadata.locationMaps ?? []).map((/** @type {any} */ l) => String(l.name));
         if (currentLocationName && !places.includes(currentLocationName)) {
-            currentLocationName = '';
-            currentBoardName = '';
+            setCurrentLocationName('');
+            setCurrentBoardName('');
             saveCurrentLocation();
             saveCurrentBoard();
         }
@@ -13343,7 +13291,7 @@ function syncPartyWithEntries(entries, worldName) {
     // Quien ha dejado de ser del grupo sale de la tira, pero no se borra del mundo.
     const left = partyMembers.filter(member => member.wiUid != null && !playable.has(Number(member.wiUid)));
     if (left.length > 0) {
-        partyMembers = partyMembers.filter(member => !left.includes(member));
+        setPartyMembers(partyMembers.filter(member => !left.includes(member)));
     }
 
     for (const [uid, entry] of rows) {
@@ -13494,7 +13442,7 @@ function useStorage(stored, retrieved) {
 function dismissGuests(contractId, how) {
     const { leaving, party } = guestsLeave(partyMembers, contractId);
     if (leaving.length === 0) return;
-    partyMembers = party;
+    setPartyMembers(party);
     for (const guest of leaving) {
         const line = guest.guest?.kind === 'mercenary'
             ? `${guest.name} cobró por este encargo${how === 'cumplido' ? ' y se despide' : ', y se va sin mirar atrás'}.`
@@ -13640,7 +13588,7 @@ async function openHubHire() {
     const offer = offers.find(o => o.name === choice.name);
     if (!offer) return '';
     if (choice.action === 'fire') {
-        partyMembers = partyMembers.filter(m => String(m.id) !== offer.id);
+        setPartyMembers(partyMembers.filter(m => String(m.id) !== offer.id));
         savePartyState();
         renderPartyMembers();
         renderLocationMapsPreview();
@@ -13691,8 +13639,8 @@ export function partySnapshot() {
  */
 export function adoptCarriedParty(carried, { worldName, uids = {}, atStart = false }) {
     const lead = partyMembers[0]?.mapPosition ?? { locationName: currentLocationName, gridX: 1, gridY: 1 };
-    partyMembers = hubRoster(settleCarried({ carried, here: partyMembers, worldName, uids, lead }))
-        .map(member => migratePartyMember(member));
+    setPartyMembers(hubRoster(settleCarried({ carried, here: partyMembers, worldName, uids, lead }))
+        .map(member => migratePartyMember(member)));
     if (atStart) placePartyAtStart(getActiveBoardContext().board);
     savePartyState();
     renderPartyMembers();
@@ -13710,7 +13658,7 @@ export function adoptCarriedParty(carried, { worldName, uids = {}, atStart = fal
  */
 export function seatPartyHero(incoming) {
     const { party, outgoing } = seatHero({ party: partyMembers, incoming });
-    partyMembers = hubRoster(party).map(member => migratePartyMember(member));
+    setPartyMembers(hubRoster(party).map(member => migratePartyMember(member)));
     savePartyState();
     renderPartyMembers();
     renderLocationMapsPreview();
@@ -13803,7 +13751,7 @@ function rotateBench(what, id) {
         toastr.warning(result.line);
         return '';
     }
-    partyMembers = result.party;
+    setPartyMembers(result.party);
     chat_metadata[BENCH_KEY] = result.bench;
     if (what === 'call') {
         const back = partyMembers[partyMembers.length - 1];
@@ -14242,7 +14190,7 @@ async function exportCampaignPack() {
  *
  * @returns {import('../game-engine/rules/abilities.js').Ability[]}
  */
-const getAbilityCatalogue = () => {
+function getAbilityCatalogue() {
     // R4: un conjuro del paquete (por su id, o el viejo de fila de datos) solo ajusta los
     // números del grimorio; lo que parezca magia y no esté en el grimorio no entra (DR3).
     /** @type {Map<string, Record<string, any>>} */
@@ -14272,7 +14220,7 @@ const getAbilityCatalogue = () => {
         : [])];
     const magic = grimoireAbilities().map(ability => ({ ...ability, ...(tuned.get(ability.id) ?? {}), aliases: spellById(ability.id)?.aliases ?? [] }));
     return [...pack, ...normalizeAbilities(rows), ...normalizeAbilities(magic)];
-};
+}
 
 /**
  * R4: lo que lleva encima el grupo, por nombre, para los componentes de los conjuros.
@@ -14356,7 +14304,9 @@ function magicConsequences(ability) {
 }
 
 /** Solo las del paquete del mundo: lo que el editor de habilidades escribe. */
-const getPackAbilities = () => normalizeAbilities(getActiveRuleset()?.abilities);
+function getPackAbilities() {
+    return normalizeAbilities(getActiveRuleset()?.abilities);
+}
 
 /**
  * El modificador de una caracteristica, que es la misma cuenta de siempre.
@@ -14864,11 +14814,11 @@ async function restoreCheckpoint(id) {
         partyMembers.push(structuredClone(member));
     }
 
-    combatEncounter = normalizeCombatEncounter(structuredClone(state.combatEncounter ?? null));
-    currentLocationName = String(state.currentLocation ?? '');
-    currentBoardName = String(state.currentBoard ?? '');
-    combatBoardSelection = { tokenId: null, boardName: '', locationName: '' };
-    usedReactions = new Set();
+    setCombatEncounter(normalizeCombatEncounter(structuredClone(state.combatEncounter ?? null)));
+    setCurrentLocationName(String(state.currentLocation ?? ''));
+    setCurrentBoardName(String(state.currentBoard ?? ''));
+    setCombatBoardSelection({ tokenId: null, boardName: '', locationName: '' });
+    setUsedReactions(new Set());
 
     saveCampaignState(structuredClone(state.calendar ?? null), structuredClone(state.bonds ?? null));
     if (state.campaignMap) campaign.saveMap(structuredClone(state.campaignMap));
@@ -14898,10 +14848,14 @@ async function restoreCheckpoint(id) {
 }
 
 /** Los umbrales de nivel del paquete de reglas activo. */
-const getXpTable = () => getActiveRuleset()?.progression?.xpThresholds;
+function getXpTable() {
+    return getActiveRuleset()?.progression?.xpThresholds;
+}
 
 /** Los niveles que dan mejora de caracteristica, del mismo paquete. */
-const getAbilityLevels = () => getActiveRuleset()?.progression?.abilityLevels;
+function getAbilityLevels() {
+    return getActiveRuleset()?.progression?.abilityLevels;
+}
 
 /** @param {any} member */
 function canLevelUp(member) {
@@ -15432,7 +15386,7 @@ function retireMember(member, role) {
     }
 
     chat_metadata[GUILD_KEY] = result.guild;
-    partyMembers = partyMembers.filter(m => String(m.id) !== String(member.id));
+    setPartyMembers(partyMembers.filter(m => String(m.id) !== String(member.id)));
     saveMetadata();
     savePartyState();
     renderPartyMembers();
@@ -15592,7 +15546,7 @@ async function doBoxIntent(intent, context) {
         case 'check': {
             // «Observo a Torres»: la tirada es con él delante.
             const npc = name ? worldNpc(name) : null;
-            if (npc) talkingTo = npc.name;
+            if (npc) setTalkingTo(npc.name);
             runSkillCheck(String(intent.skill), '', String(intent.what ?? ''));
             return;
         }
@@ -15763,7 +15717,7 @@ function runShellChip(chip) {
     // fila se redibuja en el acto, detrás de la frase empezada: si no, las respuestas no
     // salían hasta que pasara otra cosa.
     if (chip.id.startsWith('talk-local:') || chip.id === 'reply-bye') {
-        talkingTo = chip.id === 'reply-bye' ? '' : chip.id.slice('talk-local:'.length);
+        setTalkingTo(chip.id === 'reply-bye' ? '' : chip.id.slice('talk-local:'.length));
         if (isShellOpen()) setTimeout(() => refreshGameShell(), 0);
     }
     // Hablar con alguien cuenta al pulsar, no al enviar: sin modelo no se envía nada, y el
@@ -15787,7 +15741,7 @@ function runShellChip(chip) {
     if (chip.id.startsWith('typed:')) {
         const input = /** @type {HTMLTextAreaElement|null} */ (document.querySelector('#send_textarea'));
         runSkillCheck(chip.id.slice('typed:'.length), String(input?.value ?? ''));
-        typedIntents = [];
+        setTypedIntents([]);
         if (isShellOpen()) refreshGameShell();
         return;
     }
@@ -15965,18 +15919,6 @@ function modelNarrates() {
     return narratorMode() === 'modelo';
 }
 
-/**
- * Intentar algo fuera de combate: el motor tira y el narrador lee el resultado.
- *
- * El resultado viaja **dentro de tu mensaje**, que es lo unico que el modelo lee seguro.
- * Se guarda hasta que lo envias: volver a pulsar da la misma tirada, no otra.
- *
- * @param {string} skill
- * @returns {string}
- */
-/** Lo que pide lo que se esta escribiendo (idea 137). */
-/** @type {string[]} */
-let typedIntents = [];
 
 /** Idea 169: todas las fichas, en una ventana. */
 function openAllChips() {
@@ -16016,6 +15958,11 @@ function listenerBarrier(speaker, skill, name = '') {
 }
 
 /**
+ * Intentar algo fuera de combate: el motor tira y el narrador lee el resultado.
+ *
+ * El resultado viaja **dentro de tu mensaje**, que es lo unico que el modelo lee seguro.
+ * Se guarda hasta que lo envias: volver a pulsar da la misma tirada, no otra.
+ *
  * @param {string} skill
  * @param {string} [keep] Lo que ya estaba escrito: la tirada va delante y lo escrito se queda.
  * @param {string} [what] Z3: lo que se intenta, en infinitivo, para contarlo sin modelo.
@@ -16232,7 +16179,7 @@ function startTalk(name, draft = '', ask = '') {
     // Desde ahora se habla con él: con modelo, contesta él (y no el narrador).
     const known = worldNpc(who)?.name ?? partyMembers.slice(1).find(m => !m.dead && String(m.name).toLowerCase() === who.toLowerCase())?.name;
     if (known) {
-        talkingTo = String(known);
+        setTalkingTo(String(known));
         if (isShellOpen()) setTimeout(() => refreshGameShell(), 0);
     }
     if (modelNarrates()) {
@@ -16289,7 +16236,7 @@ async function openTalk(name, draft = '', ask = '') {
         if (narratorMode() !== 'motor') draftInChat(draft || `Le digo a ${name}: `);
         return;
     }
-    talkingTo = npc.name;
+    setTalkingTo(npc.name);
     // Cómo os mira de verdad ahora: quien os planta cara no os mira neutral (2026-09-28).
     const attitude = () => attitudeTowards(npc.name);
     const confronting = confrontingNow(npc.name);
@@ -16430,7 +16377,7 @@ async function openTalk(name, draft = '', ask = '') {
     await talking;
     // «Despedirse» acaba la conversación; seguirla con tus palabras, no.
     if (!keepTalking && talkingTo === npc.name) {
-        talkingTo = '';
+        setTalkingTo('');
         if (isShellOpen()) refreshGameShell();
     }
 }
@@ -16877,8 +16824,8 @@ async function travelWithTime(name, options = {}) {
 
     // Z4: de dónde se sale, para los sucesos del camino.
     const previousPlace = currentLocationName;
-    currentLocationName = match.name;
-    currentBoardName = '';
+    setCurrentLocationName(match.name);
+    setCurrentBoardName('');
     saveCurrentLocation();
     saveCurrentBoard();
     // El grupo viaja entero. Sin esto, cada uno seguía «estando» en el sitio de antes, y al
@@ -16924,7 +16871,7 @@ async function travelWithTime(name, options = {}) {
         saveMetadata();
     }
     // Idea 144: al irse del sitio se acaba la conversación.
-    talkingTo = '';
+    setTalkingTo('');
     // Idea 71: lo que da la parada, después de los días, para que no lo borren.
     if (stop) trip.push({ day: Math.max(1, total), id: `parada_${stop.id}`, name: stop.name, note: takeRoadStop(stop, random), days: 0, climate: '' });
     // Idea 82: lo que se comenta aqui, de lo que paso lejos. Detras de los dias en la fila,
@@ -17287,7 +17234,7 @@ function enterBoard(name) {
     const match = boards.find((/** @type {any} */ b) => b.name.toLowerCase() === wanted.toLowerCase());
     if (!match) return '';
 
-    currentBoardName = match.name;
+    setCurrentBoardName(match.name);
     saveCurrentBoard();
     placePartyAtStart(match);
     return match.name;
@@ -18128,8 +18075,8 @@ function drawLocationMapsPreview() {
             </div>
         `);
         contentRoot.find('.wm-loc-choose-card').on('click', function () {
-            currentLocationName = String($(this).data('loc'));
-            currentBoardName = '';
+            setCurrentLocationName(String($(this).data('loc')));
+            setCurrentBoardName('');
             saveCurrentLocation();
             saveCurrentBoard();
             renderLocationMapsPreview();
@@ -18159,11 +18106,11 @@ function drawLocationMapsPreview() {
             const allLocs = getCurrentWorldLocationMaps();
             renderWorldMapView(worldPanel, mapUrl, allLocs, {
                 onLocationSelect: (l) => {
-                    currentLocationName = l.name;
+                    setCurrentLocationName(l.name);
                     saveCurrentLocation();
                 },
                 onLocationNavigate: (l) => {
-                    currentLocationName = l.name;
+                    setCurrentLocationName(l.name);
                     saveCurrentLocation();
                     renderLocationMapsPreview();
                 },
@@ -18173,8 +18120,8 @@ function drawLocationMapsPreview() {
 
     const leaveLocBtn = $('<button class="menu_button wm-leave-loc-btn"><i class="fa-solid fa-arrow-left"></i> Salir de la localización</button>');
     leaveLocBtn.on('click', () => {
-        currentLocationName = '';
-        currentBoardName = '';
+        setCurrentLocationName('');
+        setCurrentBoardName('');
         saveCurrentLocation();
         saveCurrentBoard();
         renderLocationMapsPreview();
@@ -18210,8 +18157,8 @@ function drawLocationMapsPreview() {
         backBtn.prop('disabled', Boolean(heldBack));
         backBtn.on('click', () => {
             if (holdDuringCombat(combatEncounter, 'board')) return;
-            currentBoardName = '';
-            combatBoardSelection = { tokenId: null, boardName: '', locationName: '' };
+            setCurrentBoardName('');
+            setCombatBoardSelection({ tokenId: null, boardName: '', locationName: '' });
             saveCurrentBoard();
             renderLocationMapsPreview();
         });
@@ -18432,8 +18379,8 @@ function drawLocationMapsPreview() {
             </div>
         `);
         boardsSection.find('.wm-loc-choose-card').on('click', function () {
-            currentBoardName = String($(this).data('board'));
-            combatBoardSelection = { tokenId: null, boardName: '', locationName: '' };
+            setCurrentBoardName(String($(this).data('board')));
+            setCombatBoardSelection({ tokenId: null, boardName: '', locationName: '' });
             saveCurrentBoard();
             placePartyAtStart(getLocationBoards(loc).find((/** @type {any} */ b) => b.name === currentBoardName));
             renderLocationMapsPreview();
@@ -20038,7 +19985,7 @@ export function addPartyMember(personaIdOrName) {
  * @param {number} memberId
  */
 export function removePartyMember(memberId) {
-    partyMembers = partyMembers.filter((m) => m.id !== memberId);
+    setPartyMembers(partyMembers.filter((m) => m.id !== memberId));
     renderPartyMembers();
     savePartyState();
 }
@@ -20049,7 +19996,7 @@ export function removePartyMember(memberId) {
  */
 export function updatePartyMemberFromPersona(avatarId, newState) {
     let changed = false;
-    partyMembers = partyMembers.map((member) => {
+    setPartyMembers(partyMembers.map((member) => {
         if (member.personaId !== avatarId) {
             return member;
         }
@@ -20076,7 +20023,7 @@ export function updatePartyMemberFromPersona(avatarId, newState) {
             armorClass: newState.armorClass ?? member.armorClass,
             speed: newState.speed ?? member.speed,
         };
-    });
+    }));
 
     if (changed) {
         renderPartyMembers();
@@ -20263,7 +20210,7 @@ export function initPartyPanel() {
         // Idea 195: la letra del narrador es de la campaña.
         applyNarratorFont();
         // Idea 144: en otra partida no se está hablando con nadie.
-        talkingTo = '';
+        setTalkingTo('');
         // Y volver a dibujar donde estabas. `loadPartyForChat` restaura la localidad y el
         // tablero en memoria, pero nadie repintaba el panel: al cargar una partida veias
         // el selector de "¿donde estas?" y habia que volver a entrar a mano en el sitio
@@ -20434,7 +20381,7 @@ export function initPartyPanel() {
 
             if (currentBoardName) {
                 const leftBoard = currentBoardName;
-                currentBoardName = '';
+                setCurrentBoardName('');
                 saveCurrentBoard();
                 setPartyTab('location');
                 toastr.info(`← Sales de ${leftBoard}`);
@@ -20442,8 +20389,8 @@ export function initPartyPanel() {
             }
             if (currentLocationName) {
                 const leftLoc = currentLocationName;
-                currentLocationName = '';
-                currentBoardName = '';
+                setCurrentLocationName('');
+                setCurrentBoardName('');
                 saveCurrentLocation();
                 saveCurrentBoard();
                 setPartyTab('location');
@@ -21682,13 +21629,13 @@ export function initPartyPanel() {
             const said = String(/** @type {HTMLTextAreaElement|null} */ (document.querySelector('#send_textarea'))?.value ?? '');
             const next = /^\[TIRADA/.test(said.trim()) ? [] : intentSkills(said);
             if (next.join() === typedIntents.join()) return;
-            typedIntents = next;
+            setTypedIntents(next);
             if (isShellOpen()) refreshGameShell();
         }, 400);
     });
     eventSource.on(event_types.MESSAGE_SENT, () => {
         if (typedIntents.length === 0) return;
-        typedIntents = [];
+        setTypedIntents([]);
         if (isShellOpen()) refreshGameShell();
     });
 
@@ -21707,7 +21654,7 @@ export function initPartyPanel() {
         const message = chat?.[messageId];
         // Lo que se le preguntó al narrador lo contesta él, con su nombre.
         if (narratorTurn && message && !message.is_user && !message.is_system) {
-            narratorTurn = false;
+            setNarratorTurn(false);
             return;
         }
         const with_ = speakingWith();
@@ -21807,10 +21754,10 @@ export function initPartyPanel() {
         // un sitio de pasada ya no teletransporta a nadie.
         const intent = readBox(message.mes, boxContext());
         if (intent.do === 'talk' && intent.name && worldNpc(String(intent.name))) {
-            talkingTo = String(worldNpc(String(intent.name))?.name);
+            setTalkingTo(String(worldNpc(String(intent.name))?.name));
             notePlot({ kind: 'talk', npc: talkingTo, place: currentLocationName });
         } else if (intent.do === 'enter' && intent.name) {
-            currentBoardName = String(intent.name);
+            setCurrentBoardName(String(intent.name));
             saveCurrentBoard();
             placePartyAtStart(getLocationBoards(hereLocation()).find((/** @type {any} */ b) => b.name === currentBoardName));
             setPartyTab('location');
