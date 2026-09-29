@@ -105,10 +105,14 @@ function declaredNames(st) {
 function chunkRange(text, comments, st, prevEnd) {
     let start = st.start;
     const before = comments.filter(c => c.end <= st.start && c.start >= prevEnd);
+    // Una variable que no es una función no se lleva el JSDoc de una función que se quedó suelto encima.
+    const node = st.type === 'ExportNamedDeclaration' && st.declaration ? st.declaration : st;
+    const plainVar = node.type === 'VariableDeclaration' && !/Function/.test(node.declarations[0]?.init?.type ?? '');
     for (let i = before.length - 1; i >= 0; i--) {
         const c = before[i];
         if (!/^[ \t]*(\n[ \t]*)?$/.test(text.slice(c.end, start))) break;
         if (/@typedef\b/.test(c.value)) break;
+        if (plainVar && /@(param|returns?)\b/.test(c.value)) break;
         start = c.start;
     }
     const lineStart = text.lastIndexOf('\n', start - 1) + 1;
@@ -267,7 +271,9 @@ function importEdits(A, source, addSpecs, removeLocals = new Set()) {
     if (!added && addSpecs.length) {
         const lastImp = A.imports[A.imports.length - 1];
         if (lastImp) {
-            edits.push({ start: lastImp.end, end: lastImp.end, text: `\n${formatImport(source, addSpecs)}` });
+            // Al principio de la línea siguiente: así no pisa el cambio del último import, si lo hay.
+            const at = lineBounds(A.text, lastImp.start, lastImp.end)[1];
+            edits.push({ start: at, end: at, text: `${formatImport(source, addSpecs)}\n` });
         } else {
             // Sin imports: tras el comentario de cabecera.
             const first = A.ast.body[0];
@@ -291,9 +297,15 @@ function grupo(nombre, archivo, descripcion, nombres) {
 
 // ---------------------------------------------------------------------------------------
 
-function header(descripcion) {
+function header(descripcion, archivo) {
     const body = descripcion.trim().split('\n').map(l => (l.trim() ? ` * ${l.trim()}` : ' *')).join('\n');
-    return `/**\n${body}\n *\n * Salió de \`party.js\` en J15.1 (wiki/ROADMAP_SIN_CONEXION.md). La fachada \`party.js\` sigue\n * exportando lo de siempre; lo que se comparte entre módulos vive en \`state.js\` y las claves\n * de los metadatos, en \`keys.js\`.\n */`;
+    const leaf = archivo === 'keys.js' || archivo === 'state.js';
+    const footer = leaf
+        ? ' * Salió de `party.js` en J15.1 (wiki/ROADMAP_SIN_CONEXION.md).'
+        : ' * Salió de `party.js` en J15.1 (wiki/ROADMAP_SIN_CONEXION.md). La fachada `party.js` sigue\n'
+            + ' * exportando lo de siempre; lo que escriben varios módulos vive en `state.js`, y las claves\n'
+            + ' * de lo guardado, en `keys.js`.';
+    return `/**\n${body}\n *\n${footer}\n */`;
 }
 
 /** El tipo de una variable para su setter: el `@type` de su comentario, o el de su valor inicial. */
@@ -449,7 +461,7 @@ function move(names, target, descripcion, options = {}) {
     const targetPath = join(PARTY, target);
     const exists = existsSync(targetPath);
     let T = null;
-    let targetHeader = header(descripcion);
+    let targetHeader = header(descripcion, target);
     let targetBody = '';
     const targetImports = new Map();
     if (exists) {
@@ -567,7 +579,8 @@ function move(names, target, descripcion, options = {}) {
             edits.push({ start: targetImp.start, end: targetImp.end, text: formatImport(`./${target}`, specs) });
         } else {
             const lastImp = S.imports[S.imports.length - 1];
-            edits.push({ start: lastImp.end, end: lastImp.end, text: `\n${formatImport(`./${target}`, add)}` });
+            const at = lineBounds(S.text, lastImp.start, lastImp.end)[1];
+            edits.push({ start: at, end: at, text: `${formatImport(`./${target}`, add)}\n` });
         }
         siblingWrites.push({ path, text: tidy(applyEdits(S.text, edits)) });
     }
@@ -730,4 +743,193 @@ function definirGrupos() {
     grupo('keys', 'keys.js', `Las claves con las que la partida guarda sus cosas: en los metadatos del chat (\`*_KEY\`)
         y en este navegador (\`*_STORAGE\`, y \`localFlag\` para leerlo sin que falle).
         Una hoja: no importa nada, y así cualquier módulo de \`party/\` la puede importar.`, 'localFlag');
+
+    grupo('state', 'state.js', `El estado que escriben varios módulos: el grupo, dónde está, el combate, con quién se habla.
+
+        Cada variable se exporta tal cual (quien la importa ve siempre su valor de ahora) y se
+        cambia solo con su \`set…\`: un módulo no puede asignar lo que importa. Lo que escribe un
+        solo módulo no está aquí: vive en ese módulo. Una hoja: no importa nada.`,
+    `partyMembers combatBoardSelection usedReactions currentLocationName currentBoardName currentWorldFactions
+        combatEncounter combatLogEntries worldItemCatalogue talkingTo narratorTurn factionDaysDue typedIntents`);
+
+    // Paso 4: las hojas.
+    grupo('simulation', 'simulation.js', `Lo que se mira y se toca desde fuera sin pasar por la pantalla: las fotos del grupo, del
+        combate y del tablero para el gestor de contexto, y los atajos de \`tools/sim-campana.mjs\`.`,
+    `playCurrentTurnAlone restPartyForSimulation openBoardDoorsForSimulation grantXpForSimulation
+        revealLocationsForSimulation trainMercenariesForSimulation levelUpForSimulation getCombatEncounter
+        getPartyMembersSnapshot getEngineSceneState getBoardContextSnapshot`);
+    grupo('sheet', 'sheet.js', `La ficha de un personaje: la ventana con sus pestañas (hoja, inventario, progreso,
+        relaciones y recuerdos), la tuya de mirar, los juegos de ropa, dar algo a otro y lo maldito.`,
+    `getMemberWorldName applyClassPresetToMember memberHasLikelyEditedStats syncPartyMemberToWorldInfo
+        openOwnSheet wearSet handItem syncCurse tryUnequip tryEquip openPartyMemberModal buildCharacterSheetTab
+        buildInventoryTab rebuildInventoryPanel showEquipSelector refreshPartyItemFormState buildItemListSection
+        openAddItemForm buildProgressionTab getRelationshipCategory getRelationshipCategoryLabel getNormalRelationshipBand
+        getRelationshipSummary getRelationshipTargetNamesFromLorebook buildRelationshipsTab openRelationshipEditor
+        buildMemoriesTab openMemoryEditor`);
+    grupo('checkpoints', 'checkpoints.js', `Los puntos de retorno: guardar la partida entera (y lo que cambia del mundo) y volver a
+        ella.`,
+    'captureGameState saveCheckpoint attachWorldToCheckpoint forgetWorldFiles restoreWorldFrom restoreCheckpoint');
+    grupo('level-up', 'level-up.js', 'Subir de nivel, con lo que da cada nivel escrito antes de pulsar, y rehacerse en el templo.',
+        'getXpTable getAbilityLevels canLevelUp ABILITY_LABELS openLevelUpCard respecMember');
+
+    // Paso 5: los dominios de K1.
+    grupo('pet', 'pet.js', 'La mascota (R5): tenerla, guardarla, lo que hace en el pueblo y en combate, y domar lo vencido.',
+        `currentPet adoptPet petMeetsTown keepPet petReact petLivesIt PET_NAMES openPetPanel weekAffairsNow offerTaming
+        petTricks petSupport`);
+    grupo('magic', 'magic.js', `Habilidades y conjuros: el catálogo, usarlas (en el tablero, a uno o en área), sus
+        componentes y su precio, los estados con fecha, pergaminos y varitas, el grimorio y aprender
+        con quien enseña.`,
+    `useMagicItem learnFromScroll openGrimoire openAbilitiesEditor getAbilityCatalogue carriedNames
+        neededComponents consumeComponent payForSpell magicConsequences getPackAbilities abilityModifier applyTimedCondition
+        expireTimedConditions useAbility abilityVictims resolveAbilityOnBoard applyAbilityPlan learnAbility`);
+    grupo('contracts', 'contracts.js', `Los encargos: el tablón del gremio, aceptarlos, cumplirlos y cobrarlos; los que se mandan
+        sin el héroe, los mercenarios, los invitados y los rivales que se llevan el mejor.`,
+    `deliverTakenContract finishTakenContract getGuild worldBoardRules expireBoard refreshContractBoard
+        openDispatch returnDispatches finishDispatchedContract currentRival rivalsMove dismissGuests hireMercenary
+        acceptContract`);
+    grupo('hub', 'hub.js', `El gremio de «Jugar sin conexión» (J4): la casa, sus edificios y su almacén, el tablón de
+        campañas, contratar, el banquillo, retirarse, y la vuelta tras un final.`,
+    `postHomecoming recordFinishedCampaign openGuild useStorage hubChips skipHubTrial openHubCampaigns openHubHire
+        seatPartyHero giveStartingPurse rotateBench raiseBuilding retireMember`);
+    grupo('cases', 'cases.js', 'Los casos con verdad (U8) y los duelos de palabras (U6).',
+        `startCase caseRoll revealClue askAboutCase askTheDead searchCaseHere accuseCase openCaseBoard canDuel duelWith
+        DUEL_OUTCOMES playDuel`);
+
+    // Paso 6: el combate.
+    grupo('combat-state', 'combat-state.js', `El combate en curso, preguntado: de quién es el turno, quién sigue en pie, qué casillas
+        ocupa cada uno, cuánto le queda por andar, a quién puede atacar y qué armadura tiene.`,
+    `saveCombatState loadCombatState getCurrentTurnState resetCombatTurnState getEnemyByInstanceId
+        getAliveEnemies getPartyMemberByTurnEntry getCurrentActingMember getRemainingMovementFeet
+        getAttackableEnemiesForMember occupiedCellsFor underYourHand wornArmorClass
+        getTargetArmorClass getCurrentTurnEntry getLivingPartyMembers partyCell heightFor actsOnItsOwn
+        heldInPlace enemyTokenId partyFlanks flankedFrom boardCellOf waitingHere`);
+    grupo('combat-log', 'combat-log.js', `Lo que se ve de cada tirada: los dados que ruedan en pantalla, lo que sale flotando de una
+        ficha y el registro del combate junto al tablero.`,
+    `combatDiceOverlayElement combatDiceQueue combatDiceAnimating paintCombatLog pushCombatLogEntry
+        pushCombatLogLines ensureCombatDiceOverlay flushCombatDiceQueue queueCombatDiceRoll showCombatDiceRoll
+        floatOnToken`);
+    grupo('enemy-turn', 'enemy-turn.js', `El turno de los enemigos: qué hace cada uno, sus golpes y habilidades, los ataques de
+        oportunidad y lo que gritan.`,
+    `resolveEnemyAttackOn damagePartyMember resolveEnemyAbility planFor buildEnemyIntents
+        resolveEnemyTurnAction chargeOpportunityAttacks lastEnemyBark enemyBark`);
+    grupo('combat-flow', 'combat-flow.js', `Cómo va una pelea de principio a fin: empezarla, la iniciativa, los turnos y las rondas, los
+        que se mueven solos, las salvaciones de muerte, los objetivos del tablero, la tregua, la
+        huida y el final con su pantalla de victoria.`,
+    `buildCombatSummary announceTurnInChat CHAT_PLACEHOLDER setChatPlaceholder restoreChatPlaceholder
+        resolveDeathSave buryMember applyFall burnRound bossPhases arriveWaves advanceTurnIndex CONDITION_WORDS
+        objectiveCellFor walkTowardObjective resolveAllyTurnAction runCombatTurnLoop teachTurn instancesFromPlacements
+        levelAdjustHere levelPlacements wakeRoomEnemies startCombat beginEncounterWith showInitiativeBanner waitingSummary
+        startWaitingFight judgeCurrentScenario checkScenarioOutcome endCombat showVictoryScreen offerTruce answerTruce
+        offerExit leaveThroughExit finishEscape retreatFromCombat rollInitiativeWithPopover canTurnEntryAct`);
+    grupo('player-actions', 'player-actions.js', `Lo que hace quien juega en su turno: moverse, atacar, las maniobras, lanzar cosas, el golpe
+        a una y el relevo, y pasar el turno.`,
+    `lastBossLine fellThisTurn shovedInto resolveUltimateStrike resolvePairStrike resolveFollowUpAttack
+        offerBatonPass handleBatonPass showBatonPassOffer handlePlayerCombatMove hideCheck attackLine throwItem throwScenery
+        performManeuver handlePlayerCombatAttack confirmEndTurn endPlayerCombatTurn resolveCombatTargetByName`);
+    grupo('loot', 'loot.js', 'Lo que se gana: el botín de un encuentro, los cofres, las reliquias y la llave del tablero.',
+        'openChest collectedHere lootLore awardEncounterLoot deliverRelics dropBoardKey');
+
+    // Paso 7: el tablero.
+    grupo('board', 'board.js', `El tablero: entrar en uno, el terreno y las puertas, las fichas de cada uno, los tableros ya
+        ganados, lo que se dispara al pisar y lo que se ve.`,
+    `persistBoardTerrain persistBoardTerrainNow getActiveBoardTerrain enterStartingBoard getActiveBoardContext
+        useBoardThing explodeBarrels toggleBoardDoor boardKeyOf isBoardWon recordBoardWon buildBoardIdleEnemyTokens
+        tryUnlock buildEnemyTokens buildBoardNPCTokens handleEnemyTokenMove buildTokens handleTokenMove boardVisibility
+        stairsHere closedDoorsNearParty threadBoardsHere fireHazardsOnEnter enterBoard placePartyAtStart`);
+    grupo('board-view', 'board-view.js', `El tablero en pantalla: el panel de la localización, las casillas encendidas, la paleta del
+        terreno, la tarjeta de un enemigo, los clics y el botón de empezar la pelea.`,
+    `locationMapsManuallyHidden loadLocationMapsVisibility setLocationMapsHidden getCombatBoardHighlightState
+        activeTerrainBrush buildTerrainPalette terrainEditing buildDragHighlightCells combatLogPanel combatLogFilter
+        activeFocus buildStartCombatButton lastWaiting openTargetCard closeTargetCard previewMovement handleBoardCellClick
+        handleCombatTokenClick renderWorldMapPreview buildCombatSection refreshBoardView renderLocationMapsPreview
+        drawLocationMapsPreview getControlledMemberIds`);
+
+    // Paso 8: el núcleo de la campaña.
+    grupo('world', 'world.js', `El mundo abierto, leído: sus datos (facciones, gente, rumores, tablón) guardados una vez por
+        mundo, sus tableros, su compendio y sus reglas, la estación y el tiempo de hoy, y dónde está
+        el grupo.`,
+    `saveCurrentLocation saveCurrentBoard loadCurrentLocation loadedWorldName ensureWorldData lastWorldSeason
+        lastWorldGenre lastHub lastHubHome lastLevelPlan boardCampaignRows campaignLevelsOf currentSeason enemiesInSeason
+        reloadWorldFactions getLocationBoards applyCampaignRuleset campaignCompendium lastBoardRules lastPicks lastWorldRows
+        lastWrittenQuests lastWrittenContracts lastRumors lastMix lastWorldNpcs lastConfidantEntries hereLocation weatherHere
+        worldNpc lastCompendium @preload seedOfWorld biomeHere`);
+    grupo('factions', 'factions.js', `Las facciones: lo que piensan de vosotros, lo que ganan o pierden con cada encargo, quién
+        manda en cada sitio y cómo pasan sus días.`,
+    `getCurrentWorldFactions nudgeRuler describeWorldFactions friendlyFactions bannerOf settleFactionStake
+        settleFactionStakeNow rulerOf shiftFactionStanding shiftFactionStandingNow factionTickTimer scheduleFactionTick
+        passFactionDays passFactionDaysNow`);
+    grupo('time', 'time.js', `El tiempo de la campaña: el reloj y los vínculos (\`campaign-state.js\`), lo que pasa cada día
+        y cada semana, descansar, curarse, comer, la cuenta de la semana, las deudas y la mesa de la
+        semana.`,
+    `campaign currentUpkeepRules onTimePassed reportLateStage DAY_HANDLERS WEEK_HANDLERS startWeekTable weekNumber
+        openWeekTable settleWeeks healByDays passNeeds chargeWeek chargeBill whatComes getDebt takePatronage settleDueDebt
+        getCampaignCalendar getCampaignBonds saveCampaignState advanceCampaignSlot campaignDay advanceCampaignDay
+        recordCampaignBondEvent getCurrentSlotLabel takeRest getCampaignMap markLocationComplete renderCampaignTab
+        showWeeklyBill`);
+    grupo('plot', 'plot.js', `El hilo de la campaña: la mecha, los pasos y los actos, las pistas, el villano, los sitios
+        que se revelan y el final.`,
+    `getPlot ensurePlot notePlot closeAct showVillain applyPlotStep endingSummary showEnding openEnding heroLine
+        revealLocations revealLocationsNow openMilestones giveDueHints beginCampaignPlot fitPlotToHero tellOmens
+        plotEndingTitle`);
+    grupo('world-growth', 'world-growth.js', `El mundo que crece mientras se juega: explorar, la gente que falta, los hechos que se
+        apuntan, lo que le pasa a la gente y lo que el mundo sabe del grupo. Y la fila para escribir
+        el archivo del mundo sin pisarse.`,
+    `noteDeed proposeFact mixSource writePeopleInto exploreHere populatePlace populatePlaceNow worldWriteQueue
+        worldWrite plotPeople applyFate driftPeople refreshWorldMemoryPrompt`);
+    grupo('modes', 'modes.js', 'El modo de la partida (R1): sus interruptores y cambiarlo a mitad de partida.',
+        'currentSurvival survivalNow applyModeExtras openGameMode');
+
+    // Paso 9: la gente y el pueblo.
+    grupo('narration', 'narration.js', `Lo que se cuenta: las líneas del motor y las del modelo, los sucesos, los consejos, quién
+        narra (motor, mixto o modelo), el chat plegado, las caras de quien habla, la guardia de los
+        dados y lo que no cuadra con el motor.`,
+    `getRollGuardMode applyRollGuard whoPlays sayGendered postCombatNarration sucesosOn sucesoQueue playSucesos
+        showSuceso noteRollInWindow applySucesoEffects tellMoment postEngineLine numberWord postForModel postJourney
+        soundCue saverOn TIP_MS tipQueue tipToast seenTips tipOnScreen showTip showNextTip tipStillFits applyColorblind
+        RETRY_NOTES retryLastReply lastIsModelReply unfoldedMessages foldTimer foldChat scheduleFoldChat decorateSpeakers
+        recordContradictions showRecap NARRATOR_MODES NARRATOR_LABELS NARRATOR_HINTS storedNarratorMode narratorMode
+        offlineGame modelNarrates NARRATOR_FONTS applyNarratorFont tellBoard`);
+    grupo('roster', 'roster.js', `El grupo: guardarlo y cargarlo con el chat, hacerlo con las fichas del mundo, pintarlo,
+        añadir y quitar, llevarlo a otra partida y la bolsa común.`,
+    `savePartyState savePartyToMetadata getPartyEntryDisplayName getPartyMemberFallbackName loadPartyForChat
+        getDndEntryName getDndEntryType parseFactionValues extractClassPreset loadDndCatalog
+        showCharacterPicker adoptVeteranGear giveStartingGear setPartyFromWorldEntries renderPartyMembers memberFromEntry
+        abilityIdsOf syncPartyWithEntries partySnapshot adoptCarriedParty partyPurse payFromParty addPartyMember
+        removePartyMember updatePartyMemberFromPersona getActivePartyLeader getPartyDescription`);
+    grupo('companions', 'companions.js', `Los compañeros: sus vínculos y escenas, lo que opinan, lo que dicen en combate, quién se
+        harta y se va, sus hazañas y apodos, los confidentes, los regalos y su tarjeta.`,
+    `favorsHere welcomeBack leavingMembers currentRecruits meetRecruit hireRecruit tellBondScene
+        rememberTogether lastOpinion voiceOpinions lastBark bark judgeDecision changeAttitude weighDepartures partyMorale
+        recordFeat checkNickname offerPersonalQuests giveableItems giveGift closeCompanionCard
+        openCompanionCard setMemberStance`);
+    grupo('talk', 'talk.js', `Hablar y escribir: con quién se habla, qué se hace con lo que se escribe en la caja (el
+        motor o el modelo), las tiradas de habilidad, examinar, sonsacar y lo que ofrece el narrador.`,
+    `offerItem acceptOffer speakingWith routeTyped engineTakesBox askNarrator showNarratorAsk speakingNote
+        confrontingNow namesInLastNarration boxContext readingBox readTheBox doBoxIntent currentReplies pryNpc draftInChat
+        listenerBarrier runSkillCheck tellCheck lookChips lookAt startTalk sayInTalk openTalk askingNarrator fieldGainsToday
+        attitudeTowards`);
+    grupo('travel', 'travel.js', `Viajar: lo que cuesta, lo que sale al paso, los contratiempos, las paradas, acampar,
+        forrajear, los guardias y las noticias al llegar.`,
+    `runForage campHere campNight stopAtGuards tellArrivalNews neighbourPlaces askBeforeTravelling meetOnTheRoad
+        decideSetbacks travelWithTime showTravelTransition takeRoadStop sayArrivals placeFacts`);
+    grupo('town', 'town.js', `El pueblo: sus servicios y tiendas (comprar, vender, regatear, robar), el herrero, los
+        remedios, los rumores, las cartas, las fiestas, la fama, los prisioneros y los dados de la
+        taberna.`,
+    `currentMarket hearRumor localMemory raiseFame sellItems haggle readLetter writeLetters worldFestivals
+        festivalHere tellFestival shopHere handlePrisoner learnShortcut openService shiftPlaceFortune smithHere smithPlaces
+        buildServiceCards craftAtSmith runService stealItem rumorsLeftHere buyRemedy playTavernDice`);
+
+    // Paso 10: el armazón y los menús.
+    grupo('shell', 'shell.js', `El Modo Juego: lo que dibuja cada escena, la fila de fichas, la pausa y sus opciones, la
+        bandeja de avisos y abrirse al arrancar.`,
+    `notices noticesSeenAt installNoticeTray trimToasts openNoticeTray buildShellSituation buildShellCombatBar
+        buildShellDialogue buildShellChips runShellChip openAllChips buildShellExploration savedGamesApi buildShellOptions
+        openGameOptionsPanel shouldAutostartGameShell setGameShellAutostart autostartGameShell toggleGameMode`);
+    grupo('menus', 'menus.js', `Las ventanas que se abren desde la pausa y los comandos: el diario, la ayuda, el glosario,
+        las reglas, el compendio, el salón de la fama, la sesión, el taller y el editor de campaña.`,
+    `openTextMap sessionLog currentSessionLog keepSessionLog openSessionLog openStateView openPartyGlance countStat
+        statsLines openGlossary openDiceHistory openHeroStory openJournalSafely openJournal openHelp showHelpSections
+        runHelpItem openWorkshop illustrate direct shareWorld editBoardEncounters editBoardObjectives openHowToPlay
+        openCampaignBuilder writeEntrySpec deliverGifts openAudioSettings exportCampaignPack openHallOfFame checkCurrentWorld
+        openCompendiumLibrary sampleJourney samplePlace openRules`);
 }

@@ -74,4 +74,16 @@
  * @property {import('../dnd-system.js').MapPosition} mapPosition
  */
 
+/**
+ * Lo que un mundo ofrece para hacer una ficha: razas, clases, facciones, sitios y las
+ * plantillas de cada clase. Lo arma `loadDndCatalog`.
+ *
+ * @typedef {Object} DndCatalog
+ * @property {string[]} races
+ * @property {string[]} classes
+ * @property {string[]} factions
+ * @property {string[]} locations
+ * @property {Map<string, Partial<PartyMember>>} classPresets
+ */
+
 export {};
