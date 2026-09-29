@@ -44,6 +44,9 @@ export const DOMAIN_LABELS = {
     facciones: ['Facciones', 'Quién quiere qué, y contra quién'],
     mundo: ['Mundo', 'Biomas, climas y estaciones'],
     estados: ['Estados', 'Heridas según de qué vengan, y enfermedades con su curso'],
+    // J14: lo que dice tu gente.
+    charlas: ['Charlas', 'Lo que te dice tu gente al cruzarte, y tus tres respuestas'],
+    quedadas: ['Quedadas', 'Dónde anda cada uno, sus escenas por rango y lo que abre cada rango'],
 };
 
 /**

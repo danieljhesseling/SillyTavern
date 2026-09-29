@@ -257,9 +257,16 @@
     color: var(--gs-accent-gold, #e2c27a);
 }
 
-/* El selector: tarjetas con la cara de cada uno y dónde está. */
+/* El selector: tarjetas con la cara de cada uno y dónde está. A la medida de lo que lleva. */
+.qd-dialog.qd-dialog-picker {
+    width: min(900px, 96vw);
+    height: fit-content;
+    max-height: 92vh;
+}
+
 .qd-picker {
     display: block;
+    height: auto;
     overflow-y: auto;
 }
 
@@ -350,6 +357,8 @@
 
 .qd-pick-close {
     align-self: flex-end;
+    padding: 0.4rem 1.2rem;
+    white-space: nowrap;
 }
 
 @keyframes qd-in {

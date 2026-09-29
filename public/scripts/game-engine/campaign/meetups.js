@@ -151,13 +151,14 @@ export function readScene(raw) {
     const who = text(raw?.who);
     if (!who || beats.length === 0) return null;
     const kind = ['escena', 'rato', 'charla'].includes(text(raw?.kind)) ? text(raw.kind) : 'escena';
+    const rank = Math.min(MAX_RANK, Math.max(1, Math.floor(Number(raw?.rank) || 1)));
     return {
-        id: text(raw?.id) || `${keyOf(who)}-${Math.floor(Number(raw?.rank) || 1)}`,
+        id: text(raw?.id) || `${keyOf(who)}-${rank}`,
         kind: /** @type {Scene['kind']} */ (kind),
         who,
         key: keyOf(who),
         campaign: text(raw?.campaign),
-        rank: Math.min(MAX_RANK, Math.max(1, Math.floor(Number(raw?.rank) || 1))),
+        rank,
         title: text(raw?.title),
         where: text(raw?.where),
         beats: /** @type {Beat[]} */ (beats),

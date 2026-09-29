@@ -135,6 +135,9 @@ describe('el género del texto (J1.4 y J13.3)', () => {
 const RESOLVED = {
     'compendio/frases.json': [/^\.rows\[\d+\]\.text$/],
     'compendio/sucesos.json': [/^\.rows\[\d+\]\.text$/, /^\.rows\[\d+\]\.options\[\d+\]\.(label|then|success\.then|fail\.then)$/],
+    // J14: las charlas (`small-talk.js`) y las escenas de quedada (`renderScene` de `meetups.js`).
+    'compendio/charlas.json': [/^\.rows\[\d+\]\.lines\[\d+\]$/, /^\.rows\[\d+\]\.replies\[\d+\]\.(text|then)$/],
+    'compendio/quedadas.json': [/^\.rows\[\d+\]\.beats\[\d+\]\.(note|say)$/, /^\.rows\[\d+\]\.beats\[\d+\]\.replies\[\d+\]\.(text|then)$/],
     pack: [
         /^\.plot\.milestones\[\d+\]\.(scene|hint)$/,
         /^\.plot\.endings\.[^.]+\.scene$/,

@@ -119,10 +119,11 @@ export function pickerCards(people) {
  *
  * @param {string} label
  * @param {HTMLElement|null} [mount]
+ * @param {string} [extra] Una clase más (`qd-dialog-picker`: a la medida de lo que lleva).
  * @returns {HTMLDialogElement}
  */
-function openDialog(label, mount = null) {
-    const dialog = /** @type {HTMLDialogElement} */ (el('dialog', 'qd-dialog'));
+function openDialog(label, mount = null, extra = '') {
+    const dialog = /** @type {HTMLDialogElement} */ (el('dialog', `qd-dialog${extra ? ` ${extra}` : ''}`));
     dialog.setAttribute('aria-label', label);
     (mount ?? document.querySelector('.gs-root') ?? document.body).appendChild(dialog);
     dialog.showModal();
@@ -165,7 +166,7 @@ function drawPortrait(holder, url, alt) {
  * @param {string} [input.place] El sitio (`posada`, `muelle`…), para el fondo.
  * @param {string} [input.town] La localización, si el sitio no tiene dibujo.
  * @param {boolean} [input.night]
- * @param {string} [input.placeLabel] «En la posada», bajo el título.
+ * @param {string} [input.placeLabel] El sitio dicho para el título («La posada»).
  * @param {((choices: Array<{beat: number, reply: number}>) => string[])|null} [input.summarize] Lo que se
  *   cuenta al acabar (`meetupSummary`). Sin él, se cierra al terminar.
  * @param {boolean} [input.canLeave] Si se puede dejar a medias («Dejarlo para otro día»).
@@ -182,7 +183,8 @@ export async function openMeetupScene({
     root.dataset.scene = text(scene?.id);
     const backdrop = el('div', 'qd-backdrop');
     const art = backdropFor({ place, town, pack, night });
-    if (art) backdrop.style.setProperty('--qd-backdrop', `url("${art}")`);
+    // Entera: una URL relativa dentro de una variable se lee desde la hoja que la usa (css/).
+    if (art) backdrop.style.setProperty('--qd-backdrop', `url("${new URL(art, document.baseURI).href}")`);
     backdrop.hidden = !art;
     const portrait = el('div', 'qd-portrait');
     const box = el('div', 'qd-box');
@@ -306,13 +308,13 @@ export async function openMeetupScene({
  *   rankLabel?: string, className?: string, gender?: string}>} input.people
  * @param {(person: any) => Array<{id: string, label: string, liked?: boolean}>} input.placesFor
  * @param {string} [input.pack]
- * @param {string} [input.slotLabel] «Tarde», para el título.
+ * @param {string} [input.slotLabel] La franja, para el título («Tarde»).
  * @param {HTMLElement|null} [input.mount]
  * @returns {Promise<{name: string, key: string, place: string}|null>}
  */
 export async function openMeetupPicker({ people, placesFor, pack = '', slotLabel = '', mount = null }) {
     await loadPixelManifest();
-    const dialog = openDialog('Quedar con alguien', mount);
+    const dialog = openDialog('Quedar con alguien', mount, 'qd-dialog-picker');
     const root = el('div', 'qd-root qd-picker');
     const box = el('div', 'qd-pick-box');
     root.appendChild(box);

@@ -43,6 +43,7 @@ export const STATE_KEYS = [
     { key: 'combatEncounter', kind: 'juego', owner: 'party.js', what: 'El combate en curso' },
     { key: 'calendar', kind: 'juego', owner: 'party/campaign-state.js', what: 'El día, la franja y el tiempo' },
     { key: 'bonds', kind: 'juego', owner: 'party/campaign-state.js', what: 'Los vínculos con los compañeros' },
+    { key: 'social', kind: 'juego', owner: 'campaign/social.js', what: 'Tu gente (J14): las charlas oídas, las quedadas jugadas, lo que ha abierto cada vínculo y en qué se fue cada parte del día' },
     { key: 'campaignMap', kind: 'juego', owner: 'party/campaign-state.js', what: 'El mapa de la campaña y lo explorado' },
     { key: 'mounts', kind: 'juego', owner: 'party.js', what: 'Las monturas del grupo' },
     { key: 'bench', kind: 'juego', owner: 'party.js', what: 'Quién se quedó en el gremio (banquillo)' },
