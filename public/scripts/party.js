@@ -9,10 +9,12 @@
 export {
     loadDndCatalog, adoptVeteranGear, giveStartingGear, setPartyFromWorldEntries, enterStartingBoard,
     applyCampaignRuleset, adoptPet, postJourney, postHomecoming, applyModeExtras, notePlot, recordFinishedCampaign,
-    beginCampaignPlot, routeTyped, playCurrentTurnAlone, restPartyForSimulation, openBoardDoorsForSimulation,
-    grantXpForSimulation, revealLocationsForSimulation, trainMercenariesForSimulation, levelUpForSimulation,
-    getCombatEncounter, getPartyMembersSnapshot, getEngineSceneState, getBoardContextSnapshot, openCampaignBuilder,
-    memberFromEntry, partySnapshot, adoptCarriedParty, seatPartyHero, giveStartingPurse, plotEndingTitle,
-    refreshBoardView, addPartyMember, removePartyMember, updatePartyMemberFromPersona, getActivePartyLeader,
-    getPartyDescription, initPartyPanel,
+    beginCampaignPlot, routeTyped, openCampaignBuilder, memberFromEntry, partySnapshot, adoptCarriedParty,
+    seatPartyHero, giveStartingPurse, plotEndingTitle, refreshBoardView, addPartyMember, removePartyMember,
+    updatePartyMemberFromPersona, getActivePartyLeader, getPartyDescription, initPartyPanel,
 } from './party/main.js';
+export {
+    playCurrentTurnAlone, restPartyForSimulation, openBoardDoorsForSimulation, grantXpForSimulation,
+    revealLocationsForSimulation, trainMercenariesForSimulation, levelUpForSimulation, getCombatEncounter,
+    getPartyMembersSnapshot, getEngineSceneState, getBoardContextSnapshot,
+} from './party/simulation.js';
