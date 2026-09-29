@@ -1,7 +1,7 @@
 {
   "version": 1,
   "domain": "clases",
-  "about": "A qué se dedica alguien, y qué le da. El 'id' de la clase es el que usan las habilidades en su 'when.class': lo que aquí se llama 'picaro' es lo que allí abre el Ataque furtivo, así que elegir clase trae sus habilidades sin escribir nada dos veces. 'hitDie' es el dado de golpe —lo que aguanta— y 'effects' usa la misma forma que los objetos y las razas. Igual que ellas: cada clase quita algo, porque una que solo sume se elige siempre. 'kit' son las formas de armas.json, armaduras.json y trastos.json con las que empieza quien es de esa clase; lo primero de cada sitio va puesto.",
+  "about": "A qué se dedica alguien, y qué le da. El 'id' de la clase es el que usan las habilidades en su 'when.class': lo que aquí se llama 'picaro' es lo que allí abre el Ataque furtivo, así que elegir clase trae sus habilidades sin escribir nada dos veces. 'hitDie' es el dado de golpe —lo que aguanta— y 'effects' usa la misma forma que los objetos y las razas. Igual que ellas: cada clase quita algo, porque una que solo sume se elige siempre. 'kit' son las formas de armas.json, armaduras.json y trastos.json con las que empieza quien es de esa clase; lo primero de cada sitio va puesto. 'casting' (J19) es la magia de 5e, y quien no lo tiene usa la capa ligera de siempre: 'progression' (full, half, third o pact: qué tabla de espacios usa), 'ability' (la característica con la que lanza), 'mode' (spellbook: prepara de su libro; prepared: prepara de toda su lista; known: se los sabe), 'cantrips' y 'known' («desde el nivel N, tantos»: { \"1\": 3, \"4\": 4 }), 'prepares' (level: modificador + nivel; half: + medio nivel), 'spellbook' (cuántos entran gratis en el libro: start y perLevel), 'rituals' (book, prepared o known: de dónde saca los rituales; sin decir, no lanza rituales), 'focus' (Arcane, Divine, Druidic o Instrument: lo que le sirve de foco) y 'list' (la lista de conjuros de otra clase, si no usa la suya). Los conjuros están en conjuros.json.",
   "rows": [
     {
       "id": "guerrero", "name": "Guerrero", "kind": "clase", "weight": 10,
@@ -33,6 +33,7 @@
       "hitDie": "1d8",
       "kit": ["forma-camisa-anillas", "forma-maza", "forma-escudo"],
       "effects": [{ "stat": "wisdom", "modifier": 2 }, { "stat": "dexterity", "modifier": -1 }],
+      "casting": { "progression": "full", "ability": "wisdom", "mode": "prepared", "cantrips": { "1": 3, "4": 4, "10": 5 }, "rituals": "prepared", "focus": "Divine" },
       "note": "Es lo que hace que una herida mala no acabe la campaña."
     },
     {
@@ -41,6 +42,7 @@
       "hitDie": "1d8",
       "kit": ["forma-pieles", "forma-baston", "forma-honda"],
       "effects": [{ "stat": "wisdom", "modifier": 2 }, { "stat": "strength", "modifier": -1 }],
+      "casting": { "progression": "full", "ability": "wisdom", "mode": "prepared", "cantrips": { "1": 2, "4": 3, "10": 4 }, "rituals": "prepared", "focus": "Druidic" },
       "note": "Sabe del campo lo que los demás no saben, y eso en un viaje largo vale más que una espada."
     },
     {
@@ -49,6 +51,7 @@
       "hitDie": "1d6",
       "kit": ["forma-baston", "forma-daga", "forma-farol"],
       "effects": [{ "stat": "intelligence", "modifier": 2 }, { "stat": "constitution", "modifier": -2 }],
+      "casting": { "progression": "full", "ability": "intelligence", "mode": "spellbook", "cantrips": { "1": 3, "4": 4, "10": 5 }, "spellbook": { "start": 6, "perLevel": 2 }, "rituals": "book", "focus": "Arcane" },
       "note": "Decide una pelea desde atrás, si llega vivo a decidirla."
     },
     {
@@ -57,6 +60,7 @@
       "hitDie": "1d8",
       "kit": ["forma-jubon", "forma-estoque", "forma-daga"],
       "effects": [{ "stat": "charisma", "modifier": 2 }, { "stat": "strength", "modifier": -1 }],
+      "casting": { "progression": "full", "ability": "charisma", "mode": "known", "cantrips": { "1": 2, "4": 3, "10": 4 }, "known": { "1": 4, "2": 5, "3": 6, "4": 7, "5": 8, "6": 9, "7": 10, "8": 11, "9": 12, "10": 14, "11": 15, "13": 16, "14": 18, "15": 19, "17": 20, "18": 22 }, "rituals": "known", "focus": "Instrument" },
       "note": "Resuelve fuera del tablero la mitad de lo que otros resuelven dentro."
     },
     {
@@ -65,6 +69,7 @@
       "hitDie": "1d10",
       "kit": ["forma-cuero-tachonado", "forma-arco-largo", "forma-espada-corta", "forma-cuerda"],
       "effects": [{ "stat": "dexterity", "modifier": 2 }, { "stat": "charisma", "modifier": -1 }],
+      "casting": { "progression": "half", "ability": "wisdom", "mode": "known", "known": { "2": 2, "3": 3, "5": 4, "7": 5, "9": 6, "11": 7, "13": 8, "15": 9, "17": 10, "19": 11 }, "focus": "Druidic" },
       "note": "Llega antes, ve primero y dispara desde donde no le ven."
     },
     {

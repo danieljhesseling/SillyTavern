@@ -35,6 +35,7 @@ export const DOMAIN_LABELS = {
     habilidades: ['Habilidades', 'Lo que sabe hacer alguien, y cuánto se gasta'],
     razas: ['Razas', 'De qué está hecha la gente, y qué le da — y qué le quita'],
     clases: ['Clases', 'A qué se dedica, su dado de golpe y en qué es buena'],
+    conjuros: ['Conjuros', 'La magia de D&D: nivel, escuela, espacio y lo que hace'],
     bestiario: ['Bestiario', 'Arquetipos y plantillas que se apilan'],
     personas: ['Personas', 'Qué quiere y qué teme: de ahí salen todas sus decisiones'],
     sitios: ['Sitios', 'Tipos de localización y plantillas de sala'],

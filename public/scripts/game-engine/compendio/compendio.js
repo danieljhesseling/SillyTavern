@@ -29,7 +29,7 @@
  */
 export const DOMAINS = [
     'nombres', 'materiales', 'armas', 'armaduras', 'trastos', 'propiedades', 'habilidades',
-    'razas', 'clases',
+    'razas', 'clases', 'conjuros',
     'bestiario', 'personas', 'sitios', 'misiones', 'facciones', 'mundo', 'estados',
     'frases', 'sucesos',
 ];
