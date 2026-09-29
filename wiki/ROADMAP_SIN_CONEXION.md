@@ -77,6 +77,7 @@ Cómo está hecho, en corto (el detalle, en [[EMPEZAR_UNA_CAMPANA]], «Jugar sin
 | **J16** · Medir la diversión | ⬜ | Vueltas automáticas, también con dos jugadores |
 | **J17** · Después: la IA como capa | ⏸️ | Aparcado (lo dijiste el 2026-09-29) |
 | **J19** · La magia de D&D | ⬜ | Espacios de conjuro, preparados y conocidos, concentración, invocaciones, zonas de conjuro en el tablero y objetos mágicos. Todo como datos |
+| **J20** · Jugar desde el móvil | ⬜ | La pantalla en vertical y horizontal, el tablero a toques, botones de dedo, sin teclado y como app en la pantalla de inicio |
 | **J18** · La cara del juego | ✅ | Elegir con quién entras (J18.1), la pantalla de crear personaje (J18.2) y la novela visual con su registro (J18.3 a J18.6) |
 
 ---
@@ -686,6 +687,33 @@ La regla no cambia: **el motor decide y la IA cuenta**.
 
 ---
 
+### J20 · Jugar desde el móvil: pantallas pequeñas y táctiles
+
+**Para qué.** Que se pueda jugar desde el móvil, con el dedo, contra tu servidor de casa. Lo pediste el 2026-09-29.
+
+**Qué hay ya.**
+- SillyTavern ya se abre en el móvil: tiene la etiqueta `viewport` y un `manifest.json` para instalarlo como app, aunque con su nombre y su icono.
+- El juego tiene algunos ajustes para pantallas de menos de 900 px (`game-shell.css`, `campaigns.css`). En la novela visual, el retrato se esconde y la caja se estrecha.
+- **El tablero no tiene nada táctil**: las fichas se arrastran con el ratón, y las tarjetas y avisos se abren al pasar el ratón por encima. Es lo que más trabajo lleva.
+
+| ID | Qué | Quién | Esf. | Cómo se comprueba |
+| :--- | :--- | :---: | :---: | :--- |
+| J20.1 | **La pantalla del juego en el móvil**, en vertical y en horizontal. La novela visual a pantalla entera, con la caja abajo. Las fichas de acción en una fila que se desliza con el dedo. La cabecera, compacta. Los menús, como hojas que suben desde abajo | A | L | Capturas a 390 × 844 y a 844 × 390 para el Gem de UX; nada se sale por los lados |
+| J20.2 | **El tablero a toques**. Tocar una ficha la elige; tocar una casilla enseña el camino y lo que cuesta, y un segundo toque la mueve. Con dos dedos se amplía y se mueve la cámara. Nada depende de pasar el ratón: las tarjetas de enemigo y las ayudas se abren tocando | A | L | e2e en tamaño móvil y con toques: moverse y atacar en la bodega sin ratón |
+| J20.3 | **Botones de dedo**: 44 × 44 px como poco, con sitio entre ellos. Las fichas de acción, la barra de combate, las casillas del tablero (con zoom automático si no llegan) y los cierres de las ventanas | A | M | Una prueba que mide cada botón visible en tamaño móvil |
+| J20.4 | **Sin teclado**: todo lo que hoy va con teclas (Esc para la pausa; 1, 2 y 3 para las escenas) tiene su botón. Cuando sale el teclado del móvil para escribir, no tapa la escena | A | S | e2e en tamaño móvil sin pulsar ninguna tecla |
+| J20.5 | **Las ventanas caben**: crear personaje en una columna, el selector de clase a pantalla entera, el tablón de campañas, la ficha, la tienda y el final de campaña, con su scroll | A | M | Capturas de cada ventana a 390 × 844 |
+| J20.6 | **Ligero en el móvil**: el tablero dibuja solo lo que se ve, las animaciones son cortas y se respeta «reducir movimiento». Que no caliente el teléfono en una hora de juego | A | M | El tiempo de cada turno, medido con la CPU del móvil simulada |
+| J20.7 | **Como una app**: añadirla a la pantalla de inicio, a pantalla entera, con el nombre y el icono del juego (D-J9), y entrar directo en la portada del juego | A | S | Instalada en un Android y en un iPhone |
+| J20.8 | **Desde el móvil, contra tu servidor de casa**: la guía de J0.9 con el paso del móvil (la misma wifi, o fuera de casa con contraseña) | A | S | La guía, probada con tu móvil |
+| J20.9 | **La prueba de punta a punta en el móvil**: un `tools/e2e-movil.mjs` con el tamaño y los toques de un teléfono. Crea el personaje, gana la bodega a toques, elige campaña en el tablón y vuelve | A | M | En la batería de siempre (`e2e-todo.mjs`) |
+
+**Riesgos.** El tablero y los menús se van a seguir cambiando (J12.8, la magia, J15.3). Lo que es solo CSS (J20.1, J20.3 y J20.5) se puede hacer ya; el tablero táctil (J20.2) conviene hacerlo con `party.js` ya partido (J15.1), porque toca su dibujo del tablero.
+
+**Hecho cuando** juegas una tarde entera desde el móvil, contra tu servidor, sin echar de menos el ratón ni el teclado.
+
+---
+
 ## 🗺️ 4. El orden, y los hitos
 
 Te recomiendo este orden. Cada hito se puede jugar, y puedes pararlo ahí y probarlo.
@@ -698,6 +726,7 @@ Te recomiendo este orden. Cada hito se puede jugar, y puedes pararlo ahí y prob
 | **M4 · Dos amigos en la misma partida** (aparcado) | Tú y un amigo, cada uno en su PC, con turnos en las peleas y votando las decisiones | J6, J12.1 |
 | **M5 · Una campaña entera, bien contada** | 1387 de principio a fin sin conexión, con escenas jugadas, charlas con ramas y decisiones que pesan | J8, J9, J10, J11, J13 |
 | **M6 · La vida en el gremio** | Las noches, los compañeros con su historia y, si queréis, romances | J14 |
+| **M7 · En el móvil** | Jugar una tarde entera desde el teléfono, con el dedo, contra tu servidor de casa | J20 (J20.1, J20.3 y J20.5 se pueden adelantar: son solo CSS) |
 
 **J13 (el texto) y J16 (medir) van siempre**: cada fase añade sus frases y su vuelta.
 
