@@ -51,17 +51,14 @@ author: DanielJHesseling / Claude Opus 5.5
 
 **El arte (2026-09-29, con PixelLab):** 442 imágenes en `public/img/game-engine/pixel/`: iconos de clases, especies, objetos, habilidades, estados y conjuros; 75 criaturas; 112 retratos (la gente de Puerto Alba, Strahd y 1387, los mercenarios y héroes de reserva) y 39 escenarios de día y de noche. Se están haciendo retratos por especie y clase, expresiones para la novela visual y losetas para el tablero, y conectándolo todo al juego.
 
-**En marcha ahora (2026-09-29, tarde).** Varios agentes a la vez, cada uno en lo suyo:
-- **J15.1**, partir `party.js`: ya es una fachada, y el código está en `party/main.js`. Faltan los módulos.
-- **J3.11**, la pantalla del pueblo.
-- **J14**, charlas y quedadas. El contenido ya está escrito: `charlas.json` y `quedadas.json`.
-- **J2.1**, el prólogo largo.
-- **J8**, diálogos con ramas.
-- **J12.8**, el editor de mapas en pantalla.
-- **J20**, el móvil.
-- **J0.9**, el arranque, y **J5.4**, importar campañas.
+**En marcha ahora (2026-09-29, 15:20).** Varios agentes a la vez, cada uno en lo suyo:
+- **J15.1**, partir `party.js`. Ya van los pasos 0 a 9: la fachada, las claves y el estado, y 25 módulos en `party/` (combate, tablero, mundo, tiempo, hilo, gremio, encargos, magia, la ficha…). `party/main.js` ha bajado de unas 22.000 líneas a unas 7.500. Faltan los pasos 10 a 12: la pantalla, los menús y partir `initPartyPanel`.
+- **J13**, más frases del narrador (de 133 a unas 400), la herramienta de variedad y la guía de estilo.
+- **J10.2 y J10.4**, cada sitio de 1387 y Strahd con algo que hacer, y tres secretos por campaña.
+- **J9.2**, las escenas del hilo jugadas: la gente habla con su retrato y hay una decisión.
+- **Arte**: expresiones para el resto de la gente de Strahd y 1387, y suelos nuevos para el tablero.
 
-Lo que se enchufa dentro de `party.js` espera a J15.1: la magia en combate, J7.3, los iconos del inventario y el tablero táctil.
+Cuando termine J15.1 se enchufa lo que ya funciona en su pantalla: la magia en combate, J7.3, las quedadas, los diálogos, el pueblo sin leer el mundo cada 15 s, los iconos del inventario, las alturas del mapa y el tablero táctil.
 
 **Jugar con amigos (J6) está aparcado** hasta nueva orden (lo dijiste el 2026-09-28). Tampoco hay más personajes que los mercenarios sencillos del gremio.
 
