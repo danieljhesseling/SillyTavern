@@ -80,8 +80,8 @@ import {
 import { showCombatDiceRoll } from './combat-log.js';
 import { resolveEnemyAttackOn, resolveEnemyTurnAction } from './enemy-turn.js';
 import {
-    savePartyState, renderPartyMembers, postCombatNarration, tellMoment, postForModel, raiseFame, countStat,
-    showTip, tellBondScene, rememberTogether, bark, judgeDecision, partyMorale,
+    savePartyState, renderPartyMembers, raiseFame, countStat, tellBondScene, rememberTogether, bark, judgeDecision,
+    partyMorale,
 } from './main.js';
 import {
     handlePlayerCombatMove, performManeuver, handlePlayerCombatAttack, endPlayerCombatTurn,
@@ -96,6 +96,7 @@ import { getCampaignCalendar, getCampaignBonds, saveCampaignState, markLocationC
 import { notePlot } from './plot.js';
 import { noteDeed } from './world-growth.js';
 import { currentSurvival, survivalNow } from './modes.js';
+import { postCombatNarration, tellMoment, postForModel, showTip } from './narration.js';
 
 /**
  * @param {string} name

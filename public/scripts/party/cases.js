@@ -31,15 +31,13 @@ import { ATTITUDES_KEY, CASES_KEY, DUELS_KEY } from './keys.js';
 import { currentLocationName, currentWorldFactions, partyMembers } from './state.js';
 import { currentPet, petTricks } from './pet.js';
 import { carriedNames, getAbilityCatalogue, magicConsequences, payForSpell } from './magic.js';
-import {
-    savePartyState, postCombatNarration, postForModel, raiseFame, shiftPlaceFortune, changeAttitude, partyPurse,
-    payFromParty,
-} from './main.js';
+import { savePartyState, raiseFame, shiftPlaceFortune, changeAttitude, partyPurse, payFromParty } from './main.js';
 import { lastWorldNpcs } from './world.js';
 import { nudgeRuler } from './factions.js';
 import { getCampaignBonds, advanceCampaignSlot, campaignDay } from './time.js';
 import { noteDeed, worldWrite, plotPeople, applyFate } from './world-growth.js';
 import { survivalNow } from './modes.js';
+import { postCombatNarration, postForModel } from './narration.js';
 
 /**
  * U8: empezar un caso con la gente y los sitios del mundo. Cada semana, a veces; o cuando

@@ -7,8 +7,8 @@
  */
 
 export {
-    loadDndCatalog, adoptVeteranGear, giveStartingGear, setPartyFromWorldEntries, postJourney, routeTyped,
-    openCampaignBuilder, memberFromEntry, partySnapshot, adoptCarriedParty, addPartyMember, removePartyMember,
+    loadDndCatalog, adoptVeteranGear, giveStartingGear, setPartyFromWorldEntries, routeTyped, openCampaignBuilder,
+    memberFromEntry, partySnapshot, adoptCarriedParty, addPartyMember, removePartyMember,
     updatePartyMemberFromPersona, getActivePartyLeader, getPartyDescription, initPartyPanel,
 } from './party/main.js';
 export {
@@ -23,3 +23,4 @@ export { refreshBoardView } from './party/board-view.js';
 export { applyCampaignRuleset } from './party/world.js';
 export { notePlot, beginCampaignPlot, plotEndingTitle } from './party/plot.js';
 export { applyModeExtras } from './party/modes.js';
+export { postJourney } from './party/narration.js';

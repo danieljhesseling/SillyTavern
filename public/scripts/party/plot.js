@@ -38,10 +38,9 @@ import { deliverRelics } from './loot.js';
 import { ensureWorldData, lastHubHome } from './world.js';
 import { getCurrentWorldFactions, shiftFactionStanding } from './factions.js';
 import { campaignDay, getCampaignBonds, getCampaignCalendar } from './time.js';
-import {
-    whoPlays, postCombatNarration, tellMoment, postForModel, raiseFame, statsLines, showTip, judgeDecision,
-} from './main.js';
+import { raiseFame, statsLines, judgeDecision } from './main.js';
 import { noteDeed, worldWrite, refreshWorldMemoryPrompt } from './world-growth.js';
+import { whoPlays, postCombatNarration, tellMoment, postForModel, showTip } from './narration.js';
 
 /**
  * El hilo, con sus escenas y pistas ya concordadas con quien juega (J1.4): el guion escribe

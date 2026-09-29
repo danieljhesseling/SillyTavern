@@ -17,7 +17,7 @@ import { rememberRuleset, setActiveRuleset, getActiveRuleset } from '../game-eng
 import { LEAVE_ON_KEY, MODE_HISTORY_KEY, SAFETY_ON_KEY } from './keys.js';
 import { campaignDay, renderCampaignTab } from './time.js';
 import { refreshWorldMemoryPrompt } from './world-growth.js';
-import { postCombatNarration } from './main.js';
+import { postCombatNarration } from './narration.js';
 
 /**
  * Lo que queda de alguien que ha fallado su tercera salvacion.

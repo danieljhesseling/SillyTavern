@@ -34,9 +34,7 @@ import { addConditionTimer, expireConditions, clearTimersFor } from '../game-eng
 import { clearDeathSaves } from '../game-engine/rules/death-saves.js';
 import { WANTED_KEY } from './keys.js';
 import { combatEncounter, currentLocationName, partyMembers } from './state.js';
-import {
-    savePartyState, renderPartyMembers, postCombatNarration, postForModel, showTip, judgeDecision, recordFeat,
-} from './main.js';
+import { savePartyState, renderPartyMembers, judgeDecision, recordFeat } from './main.js';
 import {
     saveCombatState, getCurrentTurnState, getEnemyByInstanceId, getAliveEnemies, getCurrentActingMember,
     getTargetArmorClass, enemyTokenId, boardCellOf,
@@ -50,6 +48,7 @@ import { applyCampaignRuleset, lastWorldRows, hereLocation, lastCompendium } fro
 import { nudgeRuler } from './factions.js';
 import { advanceCampaignDay } from './time.js';
 import { noteDeed, worldWrite } from './world-growth.js';
+import { postCombatNarration, postForModel, showTip } from './narration.js';
 
 /**
  * R4: usar un pergamino o una varita: el conjuro sale del objeto, sin gastar cargas del

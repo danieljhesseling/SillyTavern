@@ -52,12 +52,13 @@ import {
 import { floatOnToken, pushCombatLogEntry, showCombatDiceRoll } from './combat-log.js';
 import { chargeOpportunityAttacks, enemyBark, resolveEnemyAttackOn } from './enemy-turn.js';
 import { checkScenarioOutcome, endCombat, judgeCurrentScenario, offerExit, runCombatTurnLoop } from './combat-flow.js';
-import { savePartyState, postCombatNarration, soundCue, showTip, bark, recordFeat } from './main.js';
+import { savePartyState, bark, recordFeat } from './main.js';
 import {
     persistBoardTerrain, getActiveBoardTerrain, getActiveBoardContext, boardVisibility, fireHazardsOnEnter,
 } from './board.js';
 import { renderLocationMapsPreview } from './board-view.js';
 import { getCampaignBonds, saveCampaignState } from './time.js';
+import { postCombatNarration, soundCue, showTip } from './narration.js';
 
 /** @typedef {import('./types.js').PartyMember} PartyMember */
 

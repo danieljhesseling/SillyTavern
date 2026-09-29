@@ -25,12 +25,13 @@ import { RELICS_GIVEN_KEY } from './keys.js';
 import { combatEncounter, currentBoardName, currentLocationName, partyMembers, worldItemCatalogue } from './state.js';
 import { deliverTakenContract } from './contracts.js';
 import { checkScenarioOutcome } from './combat-flow.js';
-import { savePartyState, renderPartyMembers, postCombatNarration, soundCue } from './main.js';
+import { savePartyState, renderPartyMembers } from './main.js';
 import { persistBoardTerrain, getActiveBoardContext } from './board.js';
 import { renderLocationMapsPreview } from './board-view.js';
 import { lastCompendium } from './world.js';
 import { campaignDay } from './time.js';
 import { noteDeed, mixSource } from './world-growth.js';
+import { postCombatNarration, soundCue } from './narration.js';
 
 /**
  * R6: abrir un cofre. Hace falta estar al lado; da oro y, a veces, algo de valor. Se queda
