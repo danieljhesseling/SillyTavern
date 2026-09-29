@@ -24,7 +24,8 @@ import { canControl, readMode, MODES } from '../game-engine/rules/companions.js'
 import { awakePlacements } from '../game-engine/campaign/campaign-map.js';
 import { getActiveRuleset } from '../game-engine/rules/ruleset.js';
 import { combatEncounter, currentBoardName, currentLocationName, partyMembers, setCombatEncounter } from './state.js';
-import { getActiveBoardTerrain, getActiveBoardContext, restoreChatPlaceholder, isBoardWon } from './main.js';
+import { getActiveBoardTerrain, getActiveBoardContext, isBoardWon } from './main.js';
+import { restoreChatPlaceholder } from './combat-flow.js';
 
 /** @typedef {import('./types.js').PartyMember} PartyMember */
 

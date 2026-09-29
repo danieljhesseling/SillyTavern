@@ -49,11 +49,12 @@ import {
 import { currentBoardName, currentLocationName, partyMembers, setPartyMembers } from './state.js';
 import {
     savePartyState, renderPartyMembers, enemiesInSeason, getCurrentWorldFactions, postCombatNarration,
-    postForModel, currentSurvival, survivalNow, buryMember, settleFactionStake, campaignCompendium, lastBoardRules,
+    postForModel, currentSurvival, survivalNow, settleFactionStake, campaignCompendium, lastBoardRules,
     lastWrittenQuests, lastWrittenContracts, lastMix, noteDeed, getPlot, notePlot, raiseFame, deliverRelics,
     countStat, shiftPlaceFortune, voiceOpinions, getDebt, getCampaignCalendar, getCampaignBonds, campaignDay,
     recordCampaignBondEvent, offerPersonalQuests, seedOfWorld, biomeHere, renderLocationMapsPreview,
 } from './main.js';
+import { buryMember } from './combat-flow.js';
 
 /**
  * Entrega el encargo aceptado, si el combate que acaba de ganarse era el suyo.

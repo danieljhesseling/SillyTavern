@@ -20,10 +20,11 @@ import { planLevelUp, buildLevelUpPatch, validateAbilityPicks, ABILITIES } from 
 import { combatEncounter, currentBoardName, currentLocationName, partyMembers, setPartyMembers } from './state.js';
 import {
     savePartyState, renderPartyMembers, getLocationBoards, getActiveBoardContext, postCombatNarration,
-    resolveAllyTurnAction, toggleBoardDoor, campaign, revealLocations, isBoardWon, endPlayerCombatTurn,
+    toggleBoardDoor, campaign, revealLocations, isBoardWon, endPlayerCombatTurn,
 } from './main.js';
 import { getXpTable, getAbilityLevels } from './level-up.js';
 import { getCurrentTurnEntry } from './combat-state.js';
+import { resolveAllyTurnAction } from './combat-flow.js';
 
 /** @typedef {import('./types.js').PartyMember} PartyMember */
 
