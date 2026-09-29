@@ -106,3 +106,4 @@ Criaturas en pixel art para las fichas del tablero y las cartas de enemigo. EstÃ
 | `plantilla-gigante.png` | Gigante: un pie enorme que hunde el suelo |
 | `plantilla-enano.png` | Enano: un bicho diminuto que se cuela por una grieta entre piedras |
 | `plantilla-sagrado.png` | Marcado: una marca dorada con forma de llama, grabada en un escudo de cuero oscuro |
+- `ratero-del-muelle.png` â€” Ratero del muelle (gremio): un ratero flaco del puerto, con chaqueta de pescador remendada y gorro de lana, un cuchillo curvo y una bolsa robada.
