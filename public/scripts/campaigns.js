@@ -2081,6 +2081,8 @@ async function createStartingHero(worldName, { another = false } = {}) {
         what: describeKin(row),
         note: String(row.note ?? ''),
         kit: Array.isArray(row.kit) ? describeKit(kitOf(row)) : '',
+        // Para su dibujo en pixel: los archivos se llaman como la fila.
+        rowId: String(row.id ?? ''),
     });
     // Lo elegido puede venir con su renglon de efectos detras: se busca por como empieza.
     const pickedBy = (/** @type {any[]} */ rows, /** @type {string} */ said) =>

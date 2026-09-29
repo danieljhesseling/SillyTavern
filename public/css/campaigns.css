@@ -1756,6 +1756,7 @@
     display: grid;
     grid-template-columns: 1.4fr 1.2fr 0.6fr 1.6fr 0.9fr;
     gap: 8px;
+    align-items: center;
     padding: 4px 6px;
     border-bottom: 1px solid var(--SmartThemeBorderColor);
 }
@@ -1768,6 +1769,26 @@
 
 .cx-name {
     font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+
+/* El icono en pixel de la fila (64×64 en origen), a la mitad y sin suavizar. */
+.cx-art {
+    flex: 0 0 32px;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.cx-art img {
+    max-width: 32px;
+    max-height: 32px;
+    image-rendering: pixelated;
 }
 
 .cx-when {
@@ -3630,6 +3651,43 @@ input[type="file"].tl-file {
 .vt-small .hb-hero .vt-face img {
     width: 36px;
     height: 36px;
+}
+
+/* El arte en pixel (public/img/game-engine/pixel/): siempre sin suavizar, a su tamaño. Los
+   retratos (bustos de 128×160) ocupan más que un icono y se apoyan en el borde de abajo. */
+.pixel-art {
+    image-rendering: pixelated;
+}
+
+.vt-face.hb-face-bust {
+    height: 96px;
+    align-items: flex-end;
+    overflow: hidden;
+    background: radial-gradient(ellipse at 50% 100%, rgba(226, 194, 122, 0.14), rgba(255, 255, 255, 0.03) 70%);
+}
+
+.vt-small .vt-face.hb-face-bust {
+    height: 64px;
+}
+
+.vt-face img.hb-pixel,
+.hb-hero .vt-face img.hb-pixel,
+.vt-small .hb-hero .vt-face img.hb-pixel {
+    width: auto;
+    height: 100%;
+    border-radius: 0;
+    object-fit: contain;
+    image-rendering: pixelated;
+}
+
+.vt-face.hb-face-icon img.hb-pixel,
+.hb-hero .vt-face.hb-face-icon img.hb-pixel {
+    height: 48px;
+}
+
+.vt-small .vt-face.hb-face-icon img.hb-pixel,
+.vt-small .hb-hero .vt-face.hb-face-icon img.hb-pixel {
+    height: 32px;
 }
 
 .hb-hero.is-active {

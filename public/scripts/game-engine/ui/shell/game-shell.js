@@ -23,6 +23,7 @@ import {
 } from './scene-director.js';
 import { playForScene, stopSceneAudio } from './scene-audio.js';
 import { SHORTCUTS, actionForKey } from './shortcuts.js';
+import { firstArt, isPlainFace, loadPixelManifest, openPack } from '../pixel-art.js';
 
 /**
  * @typedef {import('./scene-director.js').SceneName} SceneName
@@ -462,6 +463,34 @@ function renderSavedGames(menu, games) {
 }
 
 /**
+ * Una imagen para `background-image` desde una variable de CSS. La ruta va entera: dentro de
+ * una variable, `url()` se leería desde la carpeta de la hoja de estilos (`css/img/…`).
+ *
+ * @param {string} art
+ * @returns {string}
+ */
+function cssUrl(art) {
+    return art ? `url("${new URL(art, document.baseURI).href}")` : 'none';
+}
+
+/**
+ * Un dibujo en pixel delante de una fila de lista (el bicho al que se apunta, la habilidad).
+ * Sin dibujo, o si no carga, la fila se queda como estaba.
+ *
+ * @param {HTMLElement} row
+ * @param {string} art
+ */
+function appendArt(row, art) {
+    if (!art) return;
+    const image = document.createElement('img');
+    image.className = 'gs-target-art pixel-art';
+    image.src = art;
+    image.alt = '';
+    image.addEventListener('error', () => image.remove());
+    row.appendChild(image);
+}
+
+/**
  * La lista de habilidades propias, con el mismo gesto que la de objetivos.
  *
  * Una que necesita aliado pregunta a quien: elegir persona es elegir, y decidirlo por ti
@@ -482,6 +511,7 @@ function toggleAbilities(footer, abilities) {
 
     for (const ability of abilities) {
         const row = makeButton('gs-target');
+        appendArt(row, firstArt('ability', { id: ability.id, name: ability.label }));
         row.appendChild(el('span', 'gs-target-name', ability.label));
         row.appendChild(el('span', 'gs-target-detail', ability.detail));
         row.disabled = !ability.enabled;
@@ -897,6 +927,7 @@ function toggleTargets(footer, bar) {
     list.appendChild(el('div', 'gs-targets-title', 'A tu alcance'));
     for (const target of bar.targets) {
         const row = makeButton('gs-target');
+        appendArt(row, firstArt('creature', { name: target.name }));
         row.appendChild(el('span', 'gs-target-name', target.name));
         row.appendChild(el('span', 'gs-target-detail', target.detail));
         row.addEventListener('click', () => {
@@ -1006,10 +1037,17 @@ function buildNovelControls() {
  * Una persona sale con su retrato; si no tiene imagen, con una silueta. Lo que cuenta el
  * juego sale sin retrato, y las notas (la mascota, el combate) sin placa.
  *
+ * La gente del paquete (y los mercenarios) sale con su retrato en pixel, y detrás, apagado,
+ * el escenario del sitio donde se está.
+ *
  * @param {HTMLElement} scene
  * @param {import('./dialogue-scene.js').DialogueView} view
+ * @param {string} [place] La localización abierta, para el escenario de fondo.
  */
-function renderNovel(scene, view) {
+function renderNovel(scene, view, place = '') {
+    // De qué paquete es la partida: se lee una vez por mundo y, al saberse, se redibuja.
+    const pack = openPack(() => { if (isShellOpen()) refreshGameShell(); });
+    renderBackdrop(scene, place, pack);
     const messages = [...document.querySelectorAll('#chat .mes')];
     let start = messages.length;
     for (let i = messages.length - 1; i >= 0; i--) {
@@ -1052,22 +1090,62 @@ function renderNovel(scene, view) {
 
     const portrait = /** @type {HTMLElement} */ (scene.querySelector('.gs-vn-portrait'));
     portrait.textContent = '';
-    const avatar = view.speaker && view.speaker.name === speakerName ? view.speaker.avatar : '';
-    const plain = !avatar || /user-default\.png|default_avatar/i.test(avatar);
+    portrait.classList.remove('gs-vn-drawn');
+    const speaking = view.speaker && view.speaker.name === speakerName ? view.speaker : null;
+    const avatar = speaking ? speaking.avatar : '';
+    const plain = isPlainFace(avatar);
     // El narrador no se pinta: cuenta, no está en la escena. Tampoco lo que cuenta el juego
     // con la cara de sistema de SillyTavern, que es su logo (J0.3).
     const narrator = Boolean(options?.narratorName?.() && speakerName && options.narratorName() === speakerName)
         || /(^|\/)img\/five\.png$/i.test(avatar);
     portrait.hidden = !speakerName || narrator;
     if (portrait.hidden) return;
-    if (!plain) {
-        const image = document.createElement('img');
-        image.src = avatar;
-        image.alt = speakerName;
-        portrait.appendChild(image);
-    } else {
-        portrait.appendChild(el('i', 'fa-solid fa-user-secret gs-vn-silhouette'));
+    const silhouette = () => portrait.appendChild(el('i', 'fa-solid fa-user-secret gs-vn-silhouette'));
+    // La cara propia de alguien del grupo manda. Si no, su retrato en pixel si es alguien del
+    // paquete o un mercenario: antes que la cara que trae el mensaje, que es la de la ficha
+    // que habla por él.
+    const own = speaking?.known && !plain ? avatar : '';
+    // Con su gesto si la frase lo trae (`extra.mood`: alegre, enfadado, triste) y está dibujado.
+    const lastMessage = last ? /** @type {any} */ (globalThis).SillyTavern?.getContext?.()?.chat?.[Number(last.getAttribute('mesid'))] : null;
+    const mood = String(lastMessage?.extra?.mood ?? '');
+    const drawn = own ? '' : firstArt('portrait', { name: speakerName, pack, mood });
+    const shown = own || drawn || (plain ? '' : avatar);
+    if (!shown) {
+        silhouette();
+        return;
     }
+    const image = document.createElement('img');
+    image.src = shown;
+    image.alt = speakerName;
+    if (drawn) {
+        image.className = 'pixel-art gs-vn-pixel';
+        portrait.classList.add('gs-vn-drawn');
+    }
+    image.addEventListener('error', () => {
+        image.remove();
+        portrait.classList.remove('gs-vn-drawn');
+        silhouette();
+    });
+    portrait.appendChild(image);
+}
+
+/**
+ * Detrás de la conversación, el sitio donde se está, en pixel y apagado: el escenario de su
+ * localización en el paquete, de noche si es de noche y lo hay. Sin dibujo, nada.
+ *
+ * @param {HTMLElement} scene
+ * @param {string} place
+ * @param {string} pack
+ */
+function renderBackdrop(scene, place, pack) {
+    const backdrop = /** @type {HTMLElement|null} */ (scene.querySelector('.gs-vn-backdrop'));
+    if (!backdrop) return;
+    const night = /noche/i.test(String(options?.getClock?.()?.slot ?? ''));
+    const art = place ? firstArt('scene', { name: place, pack, night }) : '';
+    if (backdrop.dataset.art === art) return;
+    backdrop.dataset.art = art;
+    backdrop.style.setProperty('--gs-vn-backdrop', cssUrl(art));
+    backdrop.hidden = !art;
 }
 
 /**
@@ -1090,11 +1168,18 @@ function renderChips(strip, chips) {
         card.classList.toggle('fallen', chip.fallen);
         card.classList.toggle('bloodied', chip.bloodied);
 
-        if (chip.avatar) {
+        // Sin cara propia, su retrato en pixel: el suyo si es un mercenario, y si no, el de
+        // relleno de su clase.
+        const drawn = isPlainFace(chip.avatar)
+            ? (chip.mercenary ? firstArt('mercenary', { name: chip.name }) : '')
+                || firstArt('hero', { className: chip.className, gender: chip.gender, name: chip.name, race: chip.race })
+            : '';
+        if (drawn || chip.avatar) {
             const image = document.createElement('img');
-            image.className = 'gs-chip-avatar';
-            image.src = chip.avatar;
+            image.className = drawn ? 'gs-chip-avatar gs-chip-pixel pixel-art' : 'gs-chip-avatar';
+            image.src = drawn || chip.avatar;
             image.alt = chip.name;
+            if (drawn && chip.avatar) image.addEventListener('error', () => { image.className = 'gs-chip-avatar'; image.src = chip.avatar; }, { once: true });
             card.appendChild(image);
         }
 
@@ -1346,10 +1431,17 @@ function renderExploration(panel, view) {
     // tarjeta, con lo que cuesta dicho antes de pulsar.
     const local = exploreColumn('fa-building', 'Aquí mismo', 'here');
     const services = options?.getServices?.() ?? [];
+    const night = /noche/i.test(String(options?.getClock?.()?.slot ?? ''));
     for (const card of services) {
         const box = el('div', 'gs-service');
         box.dataset.service = card.id;
         const head = el('div', 'gs-service-head');
+        // El sitio en pixel detrás de su nombre (la posada, la forja…), de noche si es de noche.
+        const place = firstArt('place', { id: card.id, night });
+        if (place) {
+            head.classList.add('gs-service-drawn');
+            head.style.setProperty('--gs-service-art', cssUrl(place));
+        }
         head.appendChild(el('i', `fa-solid ${card.icon}`));
         head.appendChild(el('span', '', card.label));
         box.appendChild(head);
@@ -1470,7 +1562,7 @@ export function refreshGameShell() {
     head.classList.toggle('gs-head-round', scene === SCENE.COMBAT && Boolean(bar.active));
 
     renderDialogue(/** @type {HTMLElement} */ (root.querySelector('.gs-scene-dialogue')), dialogue);
-    if (scene === SCENE.DIALOGUE) renderNovel(/** @type {HTMLElement} */ (root.querySelector('.gs-scene-dialogue')), dialogue);
+    if (scene === SCENE.DIALOGUE) renderNovel(/** @type {HTMLElement} */ (root.querySelector('.gs-scene-dialogue')), dialogue, String(situation.locationName || ''));
 
     // El menu principal solo existe en el titulo; en cuanto hay partida, estorba.
     if (scene === SCENE.TITLE) {
@@ -1659,6 +1751,10 @@ export function openGameShell(shellOptions) {
     // ancha abajo, con su nombre en una placa y las fichas dentro. Fuera de la escena de
     // diálogo la caja no existe para el diseño (`display: contents`): las fichas siguen
     // donde estaban en las otras escenas.
+    // Detrás de todo, el escenario del sitio en pixel, apagado (solo en la novela).
+    const backdrop = el('div', 'gs-vn-backdrop');
+    backdrop.hidden = true;
+    dialogue.appendChild(backdrop);
     dialogue.appendChild(el('div', 'gs-vn-portrait'));
     dialogue.appendChild(el('div', 'gs-speaker'));
     dialogue.appendChild(el('div', 'gs-chat-slot'));
@@ -1688,6 +1784,8 @@ export function openGameShell(shellOptions) {
     document.addEventListener('keydown', keyHandler);
 
     refreshGameShell();
+    // El arte en pixel: el índice se lee una vez y, al llegar, se redibuja con él.
+    void loadPixelManifest().then(() => { if (isShellOpen()) refreshGameShell(); });
 }
 
 /**

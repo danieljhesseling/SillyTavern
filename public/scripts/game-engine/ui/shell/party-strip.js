@@ -29,6 +29,10 @@ import { describeDeathSaves } from '../../rules/death-saves.js';
  * @property {boolean} canLevel Si tiene experiencia de sobra para subir de nivel.
  * @property {string} dying Como va su cuenta de salvaciones de muerte, si esta a 0 PG.
  * @property {{icon: string, label: string}[]} statuses
+ * @property {string} [className] Su clase, como se escribe: sin cara, sale su retrato de relleno.
+ * @property {string} [race]
+ * @property {string} [gender]
+ * @property {boolean} [mercenary] Si es un mercenario del gremio (tienen retrato propio).
  */
 
 /** Below this share of their hit points, somebody is in trouble and the strip says so. */
@@ -70,6 +74,10 @@ export function buildPartyStrip({ party = [], bonds = null, calendar = null, xpT
             // fallos, y eso es lo que hay que poder mirar sin abrir nada.
             dying: describeDeathSaves(member),
             statuses: statusMarkers(member?.activeConditions ?? member?.conditions),
+            className: String(member?.class ?? member?.charClass ?? ''),
+            race: String(member?.race || ''),
+            gender: String(member?.gender || ''),
+            mercenary: member?.guest?.kind === 'mercenary',
         };
     });
 

@@ -23,6 +23,7 @@
  */
 
 import { DOMAINS } from '../compendio/compendio.js';
+import { firstArt, loadPixelManifest, PIXEL_DOMAINS } from './pixel-art.js';
 
 /** Como se llama cada bateria en pantalla, y que se supone que trae. */
 export const DOMAIN_LABELS = {
@@ -101,6 +102,8 @@ export function countBy(rows, field) {
  * @returns {Promise<void>}
  */
 export async function openCompendiumPanel({ compendium, errors = [], sample = null, Popup, POPUP_TYPE }) {
+    // Los dibujos en pixel de las baterías que los tienen (armas, clases, bestiario…).
+    await loadPixelManifest();
     const root = $('<div class="cx-root"></div>');
 
     const loaded = DOMAINS.filter(domain => compendium?.has?.(domain));
@@ -220,9 +223,19 @@ export async function openCompendiumPanel({ compendium, errors = [], sample = nu
                 return;
             }
 
+            // Las baterías con dibujo llevan su icono delante del nombre; la casilla va aunque
+            // una fila no lo tenga, para que los nombres queden en columna.
+            const drawn = current in PIXEL_DOMAINS;
             for (const row of shown) {
                 const line = $('<div class="cx-row"></div>');
-                line.append($('<span class="cx-name"></span>').text(row.name).attr('title', row.id));
+                const name = $('<span class="cx-name"></span>').attr('title', row.id);
+                if (drawn) {
+                    const slot = $('<span class="cx-art" aria-hidden="true"></span>');
+                    const art = firstArt('compendium', { domain: current, id: row.id, name: row.name });
+                    if (art) slot.append($('<img alt="" class="pixel-art" />').attr('src', art).on('error', () => slot.empty()));
+                    name.append(slot);
+                }
+                line.append(name.append($('<span class="cx-name-text"></span>').text(row.name)));
                 line.append($('<span></span>').text((row.tags ?? []).join(', ')));
                 // Cero no es "poco probable": es "nunca sola, se pide por id".
                 line.append($('<span></span>').text(row.weight === 0 ? '0 (solo por id)' : String(row.weight)));

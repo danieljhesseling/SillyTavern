@@ -639,6 +639,42 @@ textarea.cw-ai-map {
     min-height: 1em;
 }
 
+/* Lo elegido, en dibujo: el icono en pixel de la clase o la especie (64×64), arriba a la
+   derecha; sin dibujo, su icono de Font Awesome. El texto le deja sitio. */
+.hc-card-icon {
+    position: absolute;
+    top: 0.7rem;
+    right: 0.8rem;
+    width: 56px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.hc-card-icon:empty {
+    display: none;
+}
+
+img.hc-card-icon-img {
+    width: 56px;
+    height: 56px;
+    image-rendering: pixelated;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.8));
+}
+
+i.hc-card-icon-img {
+    font-size: 1.8rem;
+    color: var(--gs-accent-gold);
+    opacity: 0.7;
+}
+
+.hc-card-filled .hc-card-value,
+.hc-card-filled .hc-card-what {
+    padding-right: 62px;
+}
+
 .hc-card-actions {
     display: flex;
     gap: 0.5rem;
@@ -873,6 +909,15 @@ textarea.cw-ai-map {
     object-fit: cover;
 }
 
+/* El retrato de relleno de la clase (un busto de 128×160 en pixel), hasta que suba su cara. */
+.hc-face-stand {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    object-position: bottom center;
+    image-rendering: pixelated;
+}
+
 .hc-portrait-placeholder {
     font-size: 7rem;
     color: rgba(226, 194, 122, 0.12);
@@ -1049,6 +1094,14 @@ input[type="file"].hc-face-file {
 
 .hc-option:hover .hc-option-icon {
     color: var(--gs-accent-gold);
+}
+
+/* El icono en pixel de la opción, a su tamaño: 64×64, sin suavizar. */
+img.hc-option-icon {
+    width: 64px;
+    height: 64px;
+    image-rendering: pixelated;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.8));
 }
 
 .hc-option-name {

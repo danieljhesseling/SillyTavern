@@ -9,8 +9,27 @@
  * `campaign/hub.js`; quién de los tuyos va y quién se queda, `campaign/hub-heroes.js`.
  */
 
+import { firstArt, loadPixelManifest } from './pixel-art.js';
+
 /** @param {string} value @returns {JQuery} */
 const div = (value) => $('<div></div>').addClass(value);
+
+/**
+ * La cara de una tarjeta: un dibujo en pixel si lo hay (un retrato o el icono de su clase)
+ * y, si no o si no carga, el icono de Font Awesome.
+ *
+ * @param {string} art   La URL del dibujo, o vacío.
+ * @param {string} icon  El icono de Font Awesome.
+ * @param {boolean} [bust] Si el dibujo es un retrato (128×160) y no un icono (64×64).
+ * @returns {JQuery}
+ */
+function face(art, icon, bust = false) {
+    const box = div('vt-face');
+    const fallback = () => box.removeClass('hb-face-bust hb-face-icon').empty().append(`<i class="fa-solid ${icon}"></i>`);
+    if (!art) return fallback();
+    return box.addClass(bust ? 'hb-face-bust' : 'hb-face-icon')
+        .append($('<img alt="" class="pixel-art hb-pixel" />').attr('src', art).on('error', fallback));
+}
 
 /**
  * Una tarjeta que se pulsa. Lo que dice entero va en su etiqueta, para quien no la ve.
@@ -20,20 +39,21 @@ const div = (value) => $('<div></div>').addClass(value);
  * @param {string} input.label
  * @param {() => void} input.onClick
  * @param {boolean} [input.disabled]
+ * @param {string} [input.art] Un retrato en pixel en vez del icono.
  * @returns {JQuery}
  */
-function card({ icon, label, onClick, disabled = false }) {
+function card({ icon, label, onClick, disabled = false, art = '' }) {
     return $('<button type="button" class="vt-card hb-card"></button>')
         .attr('aria-label', label)
         .prop('disabled', disabled)
         .toggleClass('is-off', disabled)
-        .append(div('vt-face').append(`<i class="fa-solid ${icon}"></i>`))
+        .append(face(art, icon, true))
         .on('click', () => { if (!disabled) onClick(); });
 }
 
 /**
- * J1.6 y J18.1: la tarjeta de uno de tus personajes. Su cara si la tiene; si no, el icono de
- * su clase. Debajo, quién es y lo que lleva.
+ * J1.6 y J18.1: la tarjeta de uno de tus personajes. Su cara si la tiene; si no, el retrato de
+ * relleno de su clase en pixel, o el icono de su clase. Debajo, quién es y lo que lleva.
  *
  * @param {import('../campaign/hub-heroes.js').HeroCard} hero
  * @param {Object} input
@@ -49,10 +69,11 @@ function heroTile(hero, { go, goIcon, onClick }) {
         .toggleClass('is-active', hero.active)
         .on('click', () => { if (onClick) onClick(); });
     if (!onClick) tile.attr('aria-disabled', 'true');
-    const face = div('vt-face');
-    if (hero.face) face.append($('<img alt="">').attr('src', hero.face));
-    else face.append(`<i class="fa-solid ${hero.icon}"></i>`);
-    tile.append(face);
+    if (hero.face) tile.append(div('vt-face').append($('<img alt="">').attr('src', hero.face)));
+    else {
+        const bust = firstArt('hero', { className: hero.className, gender: hero.gender, name: hero.name, race: hero.race });
+        tile.append(bust ? face(bust, hero.icon, true) : face(firstArt('class', { name: hero.className }), hero.icon));
+    }
     tile.append(div('vt-name').text(hero.name));
     tile.append(div('vt-what').text(hero.what));
     tile.append(div(`hb-state ${hero.active ? 'hb-en-curso' : 'hb-nueva'}`).text(hero.active ? 'Va con el grupo' : 'En el gremio'));
@@ -88,6 +109,7 @@ function newHeroTile(onClick) {
  * @returns {Promise<{hero: string}|{create: true}|null>} Null: se sigue con el que iba.
  */
 export async function openHeroChooser({ Popup, POPUP_TYPE, heroes }) {
+    await loadPixelManifest();
     const body = div('vt-root hb-root');
     body.append(div('vt-head')
         .append($('<h3 class="vt-title"></h3>').text('¿Con quién entras?'))
@@ -133,6 +155,7 @@ export async function openHeroChooser({ Popup, POPUP_TYPE, heroes }) {
  * @returns {Promise<string|{hero: string}|{create: true}|null>}
  */
 export async function openHubBoard({ Popup, POPUP_TYPE, cards, heroes = [] }) {
+    await loadPixelManifest();
     const body = div('vt-root hb-root');
     body.append(div('vt-head')
         .append($('<h3 class="vt-title"></h3>').text('El tablón de campañas'))
@@ -207,6 +230,7 @@ export async function openHubBoard({ Popup, POPUP_TYPE, cards, heroes = [] }) {
  * @returns {Promise<{action: 'hire'|'fire', name: string}|null>}
  */
 export async function openHirePanel({ Popup, POPUP_TYPE, offers, purse }) {
+    await loadPixelManifest();
     const body = div('vt-root hb-root');
     body.append(div('vt-head')
         .append($('<h3 class="vt-title"></h3>').text('Espadas de alquiler'))
@@ -221,6 +245,9 @@ export async function openHirePanel({ Popup, POPUP_TYPE, offers, purse }) {
         const short = !offer.hired && purse < offer.fee;
         const tile = card({
             icon: /explor/i.test(offer.className) ? 'fa-crosshairs' : 'fa-shield-halved',
+            // Su retrato; si no lo tiene, el de relleno de su clase.
+            art: firstArt('mercenary', { name: offer.name })
+                || firstArt('hero', { className: offer.className, gender: /** @type {any} */ (offer).gender, name: offer.name }),
             label: offer.hired ? `Despedir a ${offer.name}` : `Contratar a ${offer.name} por ${offer.fee} de oro`,
             disabled: short,
             onClick: () => {

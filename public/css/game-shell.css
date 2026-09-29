@@ -717,6 +717,23 @@ body.game-shell-on {
     white-space: nowrap;
 }
 
+/* El dibujo en pixel del bicho o de la habilidad, delante del nombre y sin suavizar. */
+.gs-target:has(.gs-target-art) {
+    align-items: center;
+}
+
+.gs-target-art {
+    flex: 0 0 auto;
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+    image-rendering: pixelated;
+}
+
+.gs-target-art + .gs-target-name {
+    margin-right: auto;
+}
+
 /* ---------------------------------------------------------------- escena de dialogo */
 
 /* El chat prestado. `#sheld` vive en posicion absoluta bajo la barra superior y con un
@@ -849,6 +866,12 @@ body.game-shell-on {
     background: rgba(255, 255, 255, 0.05);
     object-fit: cover;
     flex: 0 0 auto;
+}
+
+/* Sin cara propia, el retrato de relleno en pixel: la cabeza, sin suavizar. */
+.gs-chip-avatar.gs-chip-pixel {
+    object-position: 50% 12%;
+    image-rendering: pixelated;
 }
 
 .gs-chip-body {
@@ -1631,6 +1654,19 @@ body.game-shell-on #character_popup {
 
 .gs-service-head .fa-solid {
     color: var(--gs-accent-gold);
+}
+
+/* El sitio en pixel (320×180) detrás del nombre del servicio, apagado abajo para leerlo. */
+.gs-service-head.gs-service-drawn {
+    min-height: 84px;
+    align-items: flex-end;
+    background-image:
+        linear-gradient(to top, rgba(0, 0, 0, 0.88) 0%, rgba(0, 0, 0, 0.25) 75%),
+        var(--gs-service-art, none);
+    background-size: cover;
+    background-position: center;
+    image-rendering: pixelated;
+    text-shadow: 0 1px 3px #000;
 }
 
 .gs-service-actions {
@@ -2456,6 +2492,46 @@ body[data-narrator-font="maquina"] #chat .mes:not([is_user="true"]) .mes_text {
     padding-bottom: 12px;
     color: rgba(0, 0, 0, 0.8);
     text-shadow: 0 0 20px rgba(226, 194, 122, 0.2);
+}
+
+/* El retrato en pixel de la gente del paquete (bustos de 128×160): entero, apoyado en la
+   caja y sin suavizar. Sin el fundido de arriba, que le borraba la cabeza: solo abajo. */
+.gs-root[data-scene="dialogue"] .gs-vn-portrait.gs-vn-drawn:not([hidden]) {
+    background: radial-gradient(ellipse at 50% 100%, rgba(226, 194, 122, 0.18), transparent 70%);
+    -webkit-mask-image: linear-gradient(to bottom, black 88%, transparent 100%);
+    mask-image: linear-gradient(to bottom, black 88%, transparent 100%);
+}
+
+.gs-vn-portrait img.gs-vn-pixel {
+    object-fit: contain;
+    object-position: bottom center;
+    image-rendering: pixelated;
+    filter: drop-shadow(0 0 18px rgba(0, 0, 0, 0.9));
+}
+
+/* Detrás de la conversación, el escenario del sitio (320×180 en pixel), apagado para que se
+   lea el texto. Solo en la novela; en las demás escenas no existe. */
+.gs-vn-backdrop {
+    display: none;
+}
+
+.gs-root[data-scene="dialogue"] .gs-stage > .gs-scene-dialogue {
+    isolation: isolate;
+}
+
+.gs-root[data-scene="dialogue"] .gs-vn-backdrop:not([hidden]) {
+    display: block;
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image:
+        linear-gradient(to top, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.55) 45%, rgba(0, 0, 0, 0.35) 100%),
+        var(--gs-vn-backdrop, none);
+    background-size: cover;
+    background-position: center;
+    image-rendering: pixelated;
+    opacity: 0.6;
 }
 
 /* La caja: ancha, abajo, con la placa encima y las fichas dentro. */

@@ -221,6 +221,27 @@ try {
     await page.locator('#game-shell .gs-menu-back').click({ timeout: 5000 }).catch(() => {});
     check('sin partidas, «Cargar partida» lo dice, sin nada de SillyTavern a la vista (J0.3, J0.6)',
         /Todavía no hay ninguna partida/.test(String(emptyLoad.list)) && emptyLoad.st.length === 0, JSON.stringify(emptyLoad));
+    // Arte en pixel: en el compendio, cada arma y cada bicho con su icono.
+    await page.locator('#game-shell .gs-menu-btn').filter({ hasText: 'Compendio' }).click({ timeout: 5000 }).catch(() => {});
+    const drawnRows = async (/** @type {string} */ domain) => {
+        await page.locator(`.cx-root .cx-tab[data-domain="${domain}"]`).click({ timeout: 8000 }).catch(() => {});
+        const count = () => page.evaluate(() => ({
+            rows: document.querySelectorAll('.cx-root .cx-row:not(.cx-head)').length,
+            drawn: [...document.querySelectorAll('.cx-root .cx-art img')].filter(i => /** @type {HTMLImageElement} */ (i).naturalWidth > 0).length,
+        }));
+        await until(async () => {
+            const now = await count();
+            return now.rows > 0 && now.drawn === now.rows;
+        }, 8000);
+        return count();
+    };
+    const compendiumArt = { armas: await drawnRows('armas'), bestiario: await drawnRows('bestiario') };
+    check('en el compendio, cada arma y cada bicho del bestiario con su icono (arte en pixel)',
+        compendiumArt.armas.rows > 0 && compendiumArt.armas.drawn === compendiumArt.armas.rows
+        && compendiumArt.bestiario.rows > 0 && compendiumArt.bestiario.drawn === compendiumArt.bestiario.rows, JSON.stringify(compendiumArt));
+    if (SHOT) await page.screenshot({ path: `${SHOT}.compendio.png` });
+    await page.locator('.popup:has(.cx-root) .popup-button-ok').click({ timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(300);
 
     // 2. Tu personaje: nombre, especie y clase.
     await offline.click();
@@ -245,6 +266,19 @@ try {
     await page.locator('.hc-root .hc-gender[data-value="Mujer"]').click();
     await pickHeroCard(page, 'race', 'Humano');
     await pickHeroCard(page, 'class', 'Guerrero');
+    // Arte en pixel: el icono de la clase en su tarjeta y, sin cara subida, el retrato de relleno.
+    const loaded = (/** @type {string} */ selector) => page.evaluate((s) => {
+        const image = /** @type {HTMLImageElement|null} */ (document.querySelector(s));
+        return image && image.complete && image.naturalWidth > 0 ? String(image.getAttribute('src')) : '';
+    }, selector);
+    const heroArt = { icon: '', stand: '' };
+    await until(async () => {
+        heroArt.icon = await loaded('.hc-root .hc-card[data-pick="class"] .hc-card-icon img');
+        heroArt.stand = await loaded('.hc-root .hc-face-stand');
+        return Boolean(heroArt.icon && heroArt.stand);
+    }, 10000);
+    check('el creador enseña el icono de la clase y, sin cara, el retrato de relleno de una guerrera (arte en pixel)',
+        /clases\/guerrero\.png$/.test(heroArt.icon) && /retratos\/heroes\/(raza-humano-)?guerrero-mujer\.png$/.test(heroArt.stand), JSON.stringify(heroArt));
     const numbers = await page.evaluate(() => ({
         str: document.querySelector('.hc-root .hc-stat[data-stat="strength"] .hc-stat-val')?.textContent || '',
         ac: document.querySelector('.hc-root .hc-total[data-total="ac"] strong')?.textContent || '',
@@ -314,6 +348,20 @@ try {
             /^(Tirando…|Siguiente|Cerrar)$/.test(rolling.button) && /^(Siguiente|Cerrar)$/.test(rolled.button) && /Fórmula/.test(rolled.card)
             && ![rolling, rolled].some(d => /\b(Next|Close|Rolling|Formula|init|dmg)\b/.test(`${d.button} ${d.card}`)), JSON.stringify({ rolling, rolled }));
         await clearDice();
+        // Arte en pixel: en el tablero, las ratas con su dibujo y Tessa, sin cara propia, con su retrato de relleno.
+        const drawnTokens = () => page.evaluate(() => [...document.querySelectorAll('.wm-token img.wm-token-avatar[data-pixel]')]
+            .map(i => (i.getAttribute('src') || '').split('/').slice(-2).join('/')));
+        const ratsDrawn = await until(async () => (await drawnTokens()).filter(s => s === 'bestias/rata-de-bodega.png').length === 2, 10000);
+        const tokenArt = await drawnTokens();
+        // Y las casillas: el suelo de piedra de la bodega debajo, y los muros con su dibujo.
+        const tiles = await page.evaluate(() => ({
+            floor: document.querySelector('.wm-terrain-layer.wm-terrain-tiled-floor')?.getAttribute('data-biome') || '',
+            walls: document.querySelectorAll('.wm-terrain-wall.wm-terrain-tiled').length,
+        }));
+        check('en el tablero, las dos ratas salen con su dibujo, Tessa con su retrato de relleno y las casillas en pixel (arte en pixel)',
+            ratsDrawn && tokenArt.some(s => /^heroes\/(raza-humano-)?guerrero-mujer\.png$/.test(s)) && tiles.floor === 'mazmorra' && tiles.walls > 0,
+            JSON.stringify({ tokenArt, tiles }));
+        if (SHOT) await page.screenshot({ path: `${SHOT}.pelea.png` });
         // J2.2: la primera pelea enseña, un consejo cada vez: el de pelear y, en tu turno, el de andar.
         const fightTips = await tipsUntil(/^Te toca/);
         check('la primera pelea trae su consejo y, en tu turno, el de andar (J2.2)',
@@ -360,6 +408,8 @@ try {
     const hire = await page.waitForSelector('.hb-root [data-hireling]', { timeout: 15000 }).then(() => true).catch(() => false);
     const offers = await page.evaluate(() => [...document.querySelectorAll('.hb-root [data-hireling]')].map(c => c.getAttribute('aria-label')));
     check('se ofrecen los tres mercenarios del gremio con su precio', hire && offers.length === 3 && offers.every(o => /40 de oro/.test(String(o))), JSON.stringify(offers));
+    const hireArt = await page.evaluate(() => [...document.querySelectorAll('.hb-root [data-hireling] img.hb-pixel')].map(i => (i.getAttribute('src') || '').split('/').pop()));
+    check('y cada uno con su retrato (arte en pixel)', hireArt.length === 3 && hireArt.includes('gerd-el-mellado.png'), JSON.stringify(hireArt));
     if (SHOT) await page.screenshot({ path: `${SHOT}.mercenarios.png` });
     const purse = (await state()).party.reduce((sum, m) => sum + m.gold, 0);
     await page.locator('.hb-root [data-hireling="Gerd el Mellado"]').click();
@@ -396,6 +446,34 @@ try {
     await openLog();
     check('en el gremio no se ve ninguna ficha de SillyTavern, ni su logo como retrato, ni caras en el registro (J0.3)',
         inHubScene.length === 0 && inLog.lines > 0 && inLog.faces === 0, JSON.stringify({ inHubScene, inLog }));
+
+    // Arte en pixel: si habla alguien del paquete, sale su retrato en grande; y detrás, apagado,
+    // el escenario del sitio. La frase de Brunilda se quita después, para no tocar lo que sigue.
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/sendas name="Brunilda" Aquí se viene a trabajar, no a mirar.'));
+    const novelArt = () => page.evaluate(async () => {
+        (await import('/scripts/game-engine/ui/shell/game-shell.js')).refreshGameShell();
+        const image = /** @type {HTMLImageElement|null} */ (document.querySelector('#game-shell .gs-vn-portrait:not([hidden]) img.gs-vn-pixel'));
+        const back = document.querySelector('#game-shell .gs-vn-backdrop');
+        const drawn = back instanceof HTMLElement && !back.hidden ? (/url\("([^"]+)"\)/.exec(window.getComputedStyle(back).backgroundImage) ?? [])[1] ?? '' : '';
+        // El fondo tiene que cargar de verdad: una ruta mal resuelta no falla, se queda en negro.
+        const loads = drawn ? await new Promise(done => {
+            const probe = new window.Image();
+            probe.onload = () => done(true);
+            probe.onerror = () => done(false);
+            probe.src = drawn;
+        }) : false;
+        return {
+            portrait: image && image.complete && image.naturalWidth > 0 ? String(image.getAttribute('src')) : '',
+            backdrop: loads ? drawn : '',
+        };
+    });
+    let brunilda = await novelArt();
+    await until(async () => /retratos\/gremio\/brunilda\.png$/.test((brunilda = await novelArt()).portrait) && /puerto-alba/.test(brunilda.backdrop), 10000);
+    check('Brunilda sale con su retrato, y detrás, Puerto Alba (arte en pixel)',
+        /retratos\/gremio\/brunilda\.png$/.test(brunilda.portrait) && /puerto-alba/.test(brunilda.backdrop), JSON.stringify(brunilda));
+    if (SHOT) await page.screenshot({ path: `${SHOT}.brunilda.png` });
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/cut {{lastMessageId}}'));
+    await page.waitForTimeout(400);
 
     // J0.4: las opciones son del juego, con sus palabras; sin conexión, sin panel de la API.
     await page.evaluate(() => /** @type {HTMLElement|null} */ (document.activeElement)?.blur());

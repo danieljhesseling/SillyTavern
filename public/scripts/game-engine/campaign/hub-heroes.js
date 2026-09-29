@@ -162,6 +162,9 @@ export function carryLine(member) {
  * @property {number} level
  * @property {string} icon   El de su clase, si no tiene cara.
  * @property {string} face   Su imagen, o vacío.
+ * @property {string} className Su clase, como se escribe: para el retrato de relleno.
+ * @property {string} race   Su especie, como se escribe.
+ * @property {string} gender Cómo se presenta.
  * @property {string} carry  Lo que lleva y su oro.
  * @property {boolean} active Si es el que va ahora con el grupo.
  */
@@ -184,6 +187,9 @@ function heroCard(member, active) {
         level,
         icon: classIcon(className),
         face: face && face !== DEFAULT_FACE ? face : '',
+        className,
+        race: text(member.race),
+        gender: text(member.gender),
         carry: carryLine(member),
         active,
     };

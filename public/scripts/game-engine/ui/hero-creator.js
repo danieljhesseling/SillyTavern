@@ -24,9 +24,25 @@ import {
 import { BACKGROUNDS, guessBackground } from '../campaign/backgrounds.js';
 import { resolveGender } from '../campaign/grammar.js';
 import { SKILLS } from '../rules/checks.js';
+import { firstArt, loadPixelManifest } from './pixel-art.js';
 
 /** @param {any} value */
 const text = (value) => String(value ?? '').trim();
+
+/**
+ * El icono de una opción: su dibujo en pixel si lo tiene y, si no (o no carga), su icono de
+ * Font Awesome de siempre.
+ *
+ * @param {PickOption} option
+ * @param {string} className
+ * @returns {JQuery}
+ */
+function optionIcon(option, className) {
+    const fallback = $('<i class="fa-solid"></i>').addClass(className).addClass(option.icon || 'fa-user');
+    if (!option.art) return fallback;
+    return $('<img alt="" class="pixel-art" />').addClass(className).attr('src', option.art)
+        .on('error', function () { $(this).replaceWith(fallback); });
+}
 
 /** Las seis, en el orden de la ficha de D&D. */
 const STATS = [
@@ -67,6 +83,8 @@ function raceIcon(name) {
  * @property {string} [note] Una frase de qué es.
  * @property {string} [kit]  Con qué empieza, si es una clase.
  * @property {string} [icon]
+ * @property {string} [rowId] El id de su fila del compendio, para buscar su dibujo.
+ * @property {string} [art]   Su dibujo en pixel, si lo hay.
  */
 
 /**
@@ -81,7 +99,10 @@ function readOption(value) {
         const [name, what = ''] = value.split(' — ');
         return { name: text(name), what: text(what) };
     }
-    return { name: text(value?.name), what: text(value?.what), note: text(value?.note), kit: text(value?.kit), icon: text(value?.icon) };
+    return {
+        name: text(value?.name), what: text(value?.what), note: text(value?.note), kit: text(value?.kit), icon: text(value?.icon),
+        rowId: text(value?.rowId),
+    };
 }
 
 /**
@@ -113,10 +134,12 @@ export async function openHeroCreator({
     generate = null, uploadFace = null, rollName = null, preview = null, random = Math.random, rollStats = null,
     Popup, POPUP_TYPE,
 }) {
+    // Los dibujos en pixel: el índice se lee una vez. Sin él, los iconos de siempre.
+    await loadPixelManifest();
     const raceOptions = (races.length > 0 ? races : DEFAULT_RACES).map(readOption).filter(o => o.name)
-        .map(o => ({ ...o, icon: o.icon || raceIcon(o.name) }));
+        .map(o => ({ ...o, icon: o.icon || raceIcon(o.name), art: firstArt('race', { id: o.rowId, name: o.name }) }));
     const classOptions = (classes.length > 0 ? classes : DEFAULT_CLASSES).map(readOption).filter(o => o.name)
-        .map(o => ({ ...o, icon: o.icon || classIcon(o.name) }));
+        .map(o => ({ ...o, icon: o.icon || classIcon(o.name), art: firstArt('class', { id: o.rowId, name: o.name }) }));
     const skillLabel = (/** @type {string} */ skill) => SKILLS[/** @type {keyof typeof SKILLS} */ (skill)]?.label ?? skill;
     const backgroundOptions = Object.entries(BACKGROUNDS).map(([id, b]) => ({
         id,
@@ -178,12 +201,16 @@ export async function openHeroCreator({
         const choose = $('<button type="button" class="menu_button hc-pick"></button>')
             .append('<i class="fa-solid fa-list-ul"></i>').append($('<span></span>').text('Elegir'));
         const roll = $('<button type="button" class="menu_button hc-roll" title="Al azar"></button>').append('<i class="fa-solid fa-dice"></i>');
-        card.append($('<span class="hc-card-label"></span>').text(label), value, what,
+        // Lo elegido, en dibujo: el de la clase o la especie en pixel, o su icono.
+        const icon = $('<div class="hc-card-icon" aria-hidden="true"></div>');
+        card.append(icon, $('<span class="hc-card-label"></span>').text(label), value, what,
             $('<div class="hc-card-actions"></div>').append(choose, roll));
 
         const show = (/** @type {(PickOption & {id?: string})|null} */ option) => {
             card.toggleClass('hc-card-empty', !option).toggleClass('hc-card-filled', Boolean(option));
             card.attr('data-value', option ? (option.id ?? option.name) : '');
+            icon.empty();
+            if (option) icon.append(optionIcon(option, 'hc-card-icon-img'));
             value.text(option ? option.name : empty);
             // Lo que da. Con qué empieza ya sale debajo de los atributos.
             what.text(option ? text(option.what) : '');
@@ -260,11 +287,20 @@ export async function openHeroCreator({
     const portrait = $('<div class="hc-portrait"></div>');
     const face = $('<img class="hc-face-preview" alt="" />').hide();
     const placeholder = $('<i class="fa-solid fa-user hc-portrait-placeholder"></i>');
+    // Mientras no sube su cara, un retrato de relleno de su clase, en pixel.
+    /** Los retratos de relleno que no cargaron: no se vuelven a pedir. */
+    const brokenStands = new Set();
+    const stand = $('<img class="hc-face-stand pixel-art" alt="" />').hide()
+        .on('error', () => {
+            brokenStands.add(String(stand.attr('src')));
+            stand.hide();
+            placeholder.show();
+        });
     const faceFile = $('<input type="file" class="hc-face-file" accept="image/*" />');
     const faceValue = $('<input type="hidden" class="hc-face" />');
     const faceButton = $('<button type="button" class="menu_button hc-face-btn" title="Buscar una imagen en el disco"></button>')
         .append('<i class="fa-solid fa-folder-open"></i>');
-    portrait.append(face, placeholder, $('<div class="hc-portrait-controls"></div>').append(faceButton), faceFile, faceValue);
+    portrait.append(face, stand, placeholder, $('<div class="hc-portrait-controls"></div>').append(faceButton), faceFile, faceValue);
     if (!uploadFace) faceButton.hide();
     right.append(portrait);
 
@@ -310,6 +346,7 @@ export async function openHeroCreator({
                 genders.find('.hc-gender').removeClass('is-on');
                 if (!again) $(this).addClass('is-on');
                 showPremise();
+                showPortrait();
             }));
     }
     idBox.append($('<div class="hc-group"></div>')
@@ -403,10 +440,33 @@ export async function openHeroCreator({
         refresh();
     });
 
+    /**
+     * El retrato sin cara subida: el de relleno de su clase (con cómo se presenta y su
+     * especie), o el icono de la clase si no hay dibujo. La cara subida manda siempre.
+     */
+    function showPortrait() {
+        const now = answers();
+        placeholder.attr('class', `fa-solid ${now.className ? classIcon(now.className) : 'fa-user'} hc-portrait-placeholder`);
+        if (state.image) {
+            stand.hide();
+            placeholder.hide();
+            return;
+        }
+        const art = now.className ? firstArt('hero', { className: now.className, gender: now.gender, name: now.name, race: now.race }) : '';
+        if (art && !brokenStands.has(art)) {
+            if (stand.attr('src') !== art) stand.attr('src', art);
+            stand.show();
+            placeholder.hide();
+        } else {
+            stand.hide().removeAttr('src');
+            placeholder.show();
+        }
+    }
+
     function refresh() {
         const now = answers();
         enter.prop('disabled', !(now.name && now.className));
-        placeholder.attr('class', `fa-solid ${now.className ? classIcon(now.className) : 'fa-user'} hc-portrait-placeholder`);
+        showPortrait();
 
         const numbers = (now.className || now.race) && preview ? preview(now) : null;
         stats.toggleClass('hc-stats-waiting', !numbers);
@@ -449,6 +509,7 @@ export async function openHeroCreator({
             faceValue.val(path);
             face.attr('src', path).show();
             placeholder.hide();
+            stand.hide();
         } catch (error) {
             console.error('[hero] could not upload the face', error);
             warning.text('No se pudo guardar esa imagen. Puedes seguir sin cara.').show();
@@ -525,7 +586,7 @@ async function openPicker({ title, options, current, Popup, POPUP_TYPE }) {
             .attr('data-value', value)
             .attr('aria-label', [option.name, option.what, option.note].filter(Boolean).join('. '))
             .toggleClass('is-current', value === current)
-            .append($('<i class="fa-solid hc-option-icon"></i>').addClass(option.icon || 'fa-user'))
+            .append(optionIcon(option, 'hc-option-icon'))
             .append($('<div class="hc-option-name"></div>').text(option.name));
         if (option.what) tile.append($('<div class="hc-option-what"></div>').text(option.what));
         if (option.note) tile.append($('<div class="hc-option-note"></div>').text(option.note));

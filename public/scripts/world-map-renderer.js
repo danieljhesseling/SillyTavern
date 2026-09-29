@@ -5,6 +5,49 @@
 
 import { parseCellKey, describeCell } from './game-engine/board/terrain.js';
 import { getCellVisibility } from './game-engine/board/fog-of-war.js';
+import { boardBiome, firstArt, isPlainFace, loadPixelManifest, openPack, pixelManifest, terrainTile } from './game-engine/ui/pixel-art.js';
+
+/** Si cada casilla en pixel carga: la que no, se pinta con los colores de antes. */
+const tileLoads = new Map();
+
+/**
+ * La URL de una casilla en pixel si se puede usar: la que ya se sabe que no carga, no. La
+ * primera vez que se pide se prueba a cargar, y `onBroken` avisa si no llega.
+ *
+ * @param {string} url
+ * @param {() => void} onBroken
+ * @returns {string}
+ */
+function usableTile(url, onBroken) {
+    if (!url) return '';
+    if (!tileLoads.has(url)) {
+        tileLoads.set(url, 'probando');
+        const probe = new Image();
+        probe.onload = () => tileLoads.set(url, 'bien');
+        probe.onerror = () => {
+            tileLoads.set(url, 'rota');
+            onBroken();
+        };
+        probe.src = url;
+    }
+    return tileLoads.get(url) === 'rota' ? '' : url;
+}
+
+/**
+ * El dibujo en pixel de una ficha que no trae cara propia: un enemigo, su bicho (por su
+ * nombre o por su arquetipo); alguien del paquete, su retrato; uno del grupo, el suyo si es
+ * un mercenario o el de relleno de su clase. Se recorta en redondo como cualquier cara.
+ *
+ * @param {TokenData} token
+ * @returns {string} Vacío si trae cara propia o no hay dibujo.
+ */
+function tokenArt(token) {
+    if (!isPlainFace(token.avatar)) return '';
+    if (token.isEnemy) return firstArt('creature', { name: token.name, archetype: token.archetype });
+    if (token.isNPC) return firstArt('portrait', { name: token.name, pack: openPack() });
+    return firstArt('mercenary', { name: token.name })
+        || firstArt('hero', { className: token.className, gender: token.gender, name: token.name, race: token.race });
+}
 
 // ============================================================
 //  ZOOMABLE CONTAINER ENGINE
@@ -466,6 +509,9 @@ export function renderWorldMapView(target, worldMapUrl, locationMaps, callbacks 
  * @property {{id: string, icon: string, label: string}} [role] - Idea 13: como pelea, en un icono.
  * @property {string} [weapon] - Idea 61: lo que lleva en la mano.
  * @property {boolean} [idle] - Un enemigo que está en el tablero y todavía no pelea: se ve, no se mueve.
+ * @property {string} [archetype] - El arquetipo del bestiario (`bestia-lobo`), para su dibujo en pixel.
+ * @property {string} [gender] - Cómo se presenta, para el retrato de relleno de quien no tiene cara.
+ * @property {string} [race] - Su especie, para lo mismo.
  */
 
 /**
@@ -517,6 +563,8 @@ const focusMemory = new Map();
  * @param {string} [options.focusKey] - Qué turno es: se centra una vez por turno, no en cada redibujado.
  * @param {Array<{x: number, y: number, name: string, kind?: string, note?: string}>} [options.hazards] - Lo que ya se ha visto
  *   en el tablero: una trampa descubierta, el aceite que arde (idea 122). Se dibuja, y la casilla lo dice.
+ * @param {string} [options.biome] - El bioma de las casillas en pixel (`mazmorra`, `madera`, `exterior`, `cueva`).
+ *   Sin decirlo, se lee en el nombre del tablero (`boardBiome`).
  */
 export function renderLocationView(target, options) {
     const {
@@ -547,6 +595,7 @@ export function renderLocationView(target, options) {
         hazards = [],
         focusTokenId = null,
         focusKey = '',
+        biome = '',
     } = options;
 
     target.empty();
@@ -666,6 +715,19 @@ export function renderLocationView(target, options) {
         const cellH = imgH / gridHeight;
         terrainLayer.css({ width: imgW + 'px', height: imgH + 'px' });
 
+        // Las casillas en pixel (`tablero/`): el suelo de su bioma debajo de todo, y cada
+        // casilla con su dibujo. Solo sin imagen: un mapa dibujado ya trae suelo y muros. La
+        // que no carga se pinta con los colores de antes.
+        const tiled = !hasImage && Boolean(pixelManifest());
+        const kind = boardBiome({ biome, name });
+        const redraw = () => { if (container.closest('body').length > 0) renderTerrain(); };
+        const tile = (/** @type {string} */ id) => (tiled && id ? usableTile(firstArt('tile', { id }), redraw) : '');
+        const floor = tile(`suelo-${kind}`);
+        terrainLayer.toggleClass('wm-terrain-tiled-floor', Boolean(floor)).attr('data-biome', floor ? kind : null).css({
+            'background-image': floor ? `url("${floor}")` : '',
+            'background-size': floor ? `${cellW}px ${cellH}px` : '',
+        });
+
         for (const [key, cell] of Object.entries(terrain.cells)) {
             const parsed = parseCellKey(key);
             if (!parsed || !cell) continue;
@@ -679,6 +741,10 @@ export function renderLocationView(target, options) {
                     width: cellW + 'px',
                     height: cellH + 'px',
                 });
+            // Lo alto lleva el borde en su última fila: la de debajo ya no es alta.
+            const edge = cell.type === 'high' && terrain.cells[`${parsed.x},${parsed.y + 1}`]?.type !== 'high';
+            const drawn = tile(terrainTile(cell, { biome: kind, edge }));
+            if (drawn) el.addClass('wm-terrain-tiled').css('background-image', `url("${drawn}")`);
 
             // A door is the one piece of terrain that answers to the player. The layer
             // ignores pointer events so it never eats a drag; the door opts back in.
@@ -885,12 +951,23 @@ export function renderLocationView(target, options) {
             el.find('.wm-token-tooltip-hp-fill').css('width', hpPct + '%');
 
             const tokenNameEl = el.find('.wm-token-name').text(token.name ?? '');
-            if (token.avatar) {
-                $('<img>')
+            // Sin cara propia, su dibujo en pixel; si no carga, lo de siempre.
+            const drawn = tokenArt(token);
+            if (drawn || token.avatar) {
+                const image = $('<img>')
                     .addClass('wm-token-avatar')
-                    .attr('src', token.avatar)
+                    .attr('src', drawn || token.avatar)
                     .attr('alt', token.name ?? '')
                     .insertBefore(tokenNameEl);
+                if (drawn) {
+                    image.addClass(`pixel-art ${token.isEnemy ? 'wm-token-creature' : 'wm-token-bust'}`)
+                        .attr('data-pixel', 'true')
+                        .one('error', () => {
+                            image.removeClass('pixel-art wm-token-creature wm-token-bust').removeAttr('data-pixel');
+                            if (token.avatar) image.attr('src', token.avatar);
+                            else image.replaceWith($('<div>').addClass('wm-token-unknown').css('background', token.isEnemy ? '#7f1d1d' : '').text(token.isEnemy ? '☠' : '???'));
+                        });
+                }
             } else if (token.isEnemy) {
                 $('<div>')
                     .addClass('wm-token-unknown')
@@ -1317,6 +1394,16 @@ export function renderLocationView(target, options) {
         if (onTokenMove) onTokenMove(tokenId, gx, gy);
     });
 
+    // El arte en pixel de las casillas y las fichas: si el índice todavía no ha llegado, se
+    // vuelven a poner cuando llegue (sin él salen como siempre).
+    if (!pixelManifest()) {
+        void loadPixelManifest().then(() => {
+            if (container.closest('body').length === 0) return;
+            renderTerrain();
+            placeTokens();
+        });
+    }
+
     // Cleanup
     container.on('remove', () => {
         $(document).off(`.${nsId}`);
@@ -1366,10 +1453,12 @@ function renderCharactersAccordion(target, tokens, onCoordChange) {
             `);
 
             const charNameEl = row.find('.wm-char-name').text(token.name ?? '');
-            if (token.avatar) {
+            const drawn = tokenArt(token);
+            if (drawn || token.avatar) {
                 $('<img>')
                     .addClass('wm-char-avatar')
-                    .attr('src', token.avatar)
+                    .toggleClass('pixel-art wm-char-pixel', Boolean(drawn))
+                    .attr('src', drawn || token.avatar)
                     .attr('alt', token.name ?? '')
                     .insertBefore(charNameEl);
             } else {
