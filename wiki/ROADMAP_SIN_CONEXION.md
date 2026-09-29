@@ -80,7 +80,7 @@ Cómo está hecho, en corto (el detalle, en [[EMPEZAR_UNA_CAMPANA]], «Jugar sin
 | **J5** · Tu JSON de campañas | 🟡 | Hecho: el conversor (J5.1), Strahd en el tablón, e importar desde el gremio con «Añadir una campaña», que acepta el JSON de tu Gem, lo valida y explica los errores en español (J5.4). Falta: `levels` y `journey` en el contrato del Gem (J5.2) |
 | **J6** · Jugar con amigos | ⏸️ | Aparcado |
 | **J7** · El grupo | ⬜ | De un solo jugador por ahora: tu personaje y sus compañeros, y a cada uno lo mueves tú o el juego, como elijas |
-| **J8** · Hablar sin IA | ⬜ | Diálogos con ramas, opciones según tu clase y especie, decisiones del grupo |
+| **J8** · Hablar sin IA | 🟡 | Hecho, en el motor y con su ventana (J8.1 a J8.4, J8.6): diálogos con ramas en el paquete, con condiciones, efectos y tiradas, opciones según tu especie y clase («[Enano] …»), opciones bloqueadas que dicen por qué, y sin repetir. Escritos: Brunilda, Giles (1387) e Ismark (Strahd). Falta: enchufarlos en «Hablar» (tras J15.1) y salir de una pelea hablando (J8.5) |
 | **J9** · La historia de cada campaña | ⬜ | Escenas en vez de avisos, hitos, finales y un Diario que se lee como un libro |
 | **J10** · El mundo de cada campaña | ⬜ | Sitios con cosas que hacer, caminos que se abren, sucesos y secretos |
 | **J11** · Decisiones que pesan | ⬜ | Dentro de la campaña y de una campaña a otra |
