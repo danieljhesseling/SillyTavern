@@ -89,7 +89,7 @@ Cómo está hecho, en corto (el detalle, en [[EMPEZAR_UNA_CAMPANA]], «Jugar sin
 | **J17** · Después: la IA como capa | ⏸️ | Aparcado (lo dijiste el 2026-09-29) |
 | **J19** · La magia de D&D | 🟡 | Hecho, en el motor: 81 conjuros como datos, espacios de conjuro de 5e, preparados y conocidos, concentración, invocaciones, zonas, reacciones, rituales y objetos con cargas. Falta: conectarlo al combate, al descanso y a subir de nivel (tras partir `party.js`) |
 | **J20** · Jugar desde el móvil | 🟡 | Hecho: el juego se ve y se juega en el teléfono, en vertical y en horizontal (J20.1). Antes medía 0 px de alto en pantallas pequeñas. También botones de dedo (J20.3), todo sin teclado (J20.4), ventanas que caben (J20.5) y `tools/e2e-movil.mjs` en la batería (J20.9). Falta: el tablero táctil (J20.2, tras J15.1), instalarlo como app (J20.7) y la guía para el móvil (J20.8) |
-| **J18** · La cara del juego | ✅ | Elegir con quién entras (J18.1), la pantalla de crear personaje (J18.2) y la novela visual con su registro (J18.3 a J18.6) |
+| **J18** · La cara del juego | 🟡 | Hecho: elegir con quién entras (J18.1), la pantalla de crear personaje (J18.2) y la novela visual con su registro (J18.3 a J18.6). En marcha: sin chat (J18.7), escenas que cambian por lo que haces (J18.8), descansar como acción de sitio (J18.9) y sin etiquetas del motor en la caja (J18.10) |
 
 ---
 
@@ -220,40 +220,40 @@ Van antes que nada: cada una cambia lo que se construye. Con cada una, lo que te
 | **D-J10** ✅ | **La vida en el gremio** (romance, charlas de compañeros) | (a) Parte del plan. (b) Después, opcional | **Decidido: (b), el 2026-09-29.** Primero, que sea jugable; lo social, en J14. **Matizado el mismo día**: charlar y quedar con los compañeros es parte del juego (M3); lo que va después y es opcional son los romances y las capas de encima (M6) |
 
 
-### 2.1 Pendientes de la tanda del 2026-09-29
+### 2.1 Decididas el 2026-09-29 por la tarde
 
-Mientras no digas nada, se queda como dice la columna «Hoy». Ninguna frena el trabajo.
+Tus respuestas a D-J11…D-J38. «⏳» significa que está por hacer.
 
-| # | Qué | Hoy | Recomiendo |
-| :---: | :--- | :--- | :--- |
-| **D-J11** | Oro de cada personaje nuevo del gremio (J1.6) | 100, como el primero: se podrían crear personajes para juntar oro | 25 a partir del segundo |
-| **D-J12** | ¿Se curan los personajes que descansan en el gremio? | No | Sí, con el paso de los días, como cualquier herida |
-| **D-J13** | ¿Varios personajes tuyos en la misma campaña? | Uno, más los mercenarios | Uno por ahora; varios más adelante, con J7 |
-| **D-J14** | Dos personajes con el mismo nombre en un gremio | Se permite, y al volver de una campaña las fichas se buscan por nombre | Impedirlo al crear el personaje |
-| **D-J15** | Personajes no binarios en el texto (J1.4) | Salen en masculino si la frase no trae una tercera forma | Añadir la tercera forma a las frases principales |
-| **D-J16** | Género de los mercenarios | Gerd y Osric, hombre; Nella, mujer | Así |
-| **D-J17** | Frases en masculino que quedan en 1387 y Strahd (sinopsis, fichas de confidentes, un rumor, una misión) | Siguen en masculino | Reescribirlas en neutro |
-| **D-J18** | Epílogos en el formato de tu Gem (J4.5) | 1387 y las campañas del Gem no traen epílogos: salen frases según cómo acaban las facciones | Añadir un campo `epilogos` al formato |
-| **D-J19** | Nombre de la campaña en el Salón de la fama | El título de su historia: 1387 sale como «El valle de Vane» | El nombre del tablón («1387») |
-| **D-J20** | Saltar la prueba de la bodega (J2.3) | Da el botín y la experiencia, como si la hubieras ganado | Así |
-| **D-J21** | Enemigos ajustados por nivel (J4.6): con nivel 8, la Entrada a Ravenloft duró 20 rondas | Vida hasta ×1,5, y se añaden enemigos extra | Tope ×1,35 y no duplicar enemigos de CA 15 o más |
-| **D-J22** | ¿El nivel recomendado va por acto o por toda la campaña? | Por acto | Por acto |
-| **D-J23** | Borrar un gremio desde «Cargar partida» | No se puede | Sí, con una confirmación que diga todo lo que se borra |
-| **D-J24** | El panel derecho vacío en la pausa | Se ve, con sus pestañas | Esconderlo |
-| **D-J25** | Materiales de conjuro que nadie vende (perla, diamante, incienso, agua bendita, bolsa de componentes) | Lanzar sin foco solo avisa | Venderlos en las tiendas y, después, exigirlos |
-| **D-J26** | Nigromancia como delito: en el SRD lo son también Revivir, Estabilizar y Hablar con los muertos | Cualquier nigromancia cuenta como delito | Que solo cuenten las que dañan o levantan muertos |
-| **D-J27** | ¿El erudito lanza conjuros? | No | Solo rituales, sin espacios |
-| **D-J28** | Tablón y mercenarios durante el prólogo | Se ven desde el muelle | Esconderlos hasta que acabe la prueba |
-| **D-J29** | Tienda y herrería de noche (J3.11) | Siguen vendiendo; cambian la imagen y el saludo | Cerrarlas, con quien las atiende en la taberna |
-| **D-J30** | Orden de los sitios de Puerto Alba | Herrería, taberna, tienda, capilla y gremio | El gremio primero |
-| **D-J31** | ¿Comprar gasta una parte del día? (J14.2) | Sí, si compras algo | No, como en *Persona* |
-| **D-J32** | Mover a un compañero (J7.3) frente al modo «grupo» de hoy, en el que ya mueves a todos | Sin decidir | El vínculo 5 manda en los dos modos |
-| **D-J33** | Historias inventadas de los mercenarios: Gerd no sabe leer; Nella fue furtiva del barón de Hoz; Osric se durmió en la guardia y ahorra para una barca, la «Gaviota» | Así | Revísalas tú |
-| **D-J34** | Quedadas con la gente del pueblo (Tomás, Ramiro…) | Solo tienen charla corta | Más adelante, con J14.7 |
-| **D-J35** | Campañas importadas (J5.4) | Son de un gremio; se suben como archivo y no se pueden quitar del tablón | En todos tus gremios; pegar el texto; un botón para quitarlas |
-| **D-J36** | «Hablar» con alguien que tiene diálogo escrito (J8) | Aún no está enchufado | La ventana de ramas directamente, con «Otras cosas» para sonsacar, convencer y amenazar |
-| **D-J37** | ¿Cuál es la fuente de 1387, el paquete o el guion? | El paquete: el guion (`wiki/guiones/1387`) se quedó atrás | El paquete |
-| **D-J38** | La cabecera en el móvil (J20) | Iconos, salvo la escena en la que estás; el resto, en una fila que se desliza | Así |
+| # | Qué | Lo que decidiste | |
+| :---: | :--- | :--- | :---: |
+| **D-J11** | Oro de cada personaje nuevo del gremio | 10 de oro a partir del segundo | ⏳ |
+| **D-J12** | Los personajes que descansan en el gremio | Se curan con el paso de los días | ⏳ |
+| **D-J13** | Varios personajes tuyos en la misma campaña | Uno por ahora; varios más adelante, con J7 | ✅ |
+| **D-J14** | Dos personajes con el mismo nombre | No se puede: se avisa al crear el personaje | ⏳ |
+| **D-J15** | Personajes no binarios en el texto | Como en D&D, el género no cambia ninguna regla. Lo que eliges es cómo te habla el texto: en masculino o en femenino. Se quitan las terceras formas | ⏳ |
+| **D-J16** | Género de los mercenarios | Gerd y Osric, hombre; Nella, mujer | ✅ |
+| **D-J17** | Frases en masculino de 1387 y Strahd | Que concuerden con el género de a quien se dirigen (`{…\|…}`), también en la sinopsis, las fichas, los rumores y las misiones | ⏳ |
+| **D-J18** | Epílogos en el formato de tu Gem | Sí: un campo `epilogos` | ⏳ |
+| **D-J19** | Nombre de la campaña en el Salón de la fama | El mismo que en el tablón | ⏳ |
+| **D-J20** | Saltar la prueba | Da el botín y la experiencia, como si la hubieras ganado | ✅ |
+| **D-J21** | Enemigos ajustados por nivel | Tope ×1,35, y no se duplican enemigos de CA 15 o más | ⏳ |
+| **D-J22** | El nivel recomendado | Por acto, y que se vea bien el nivel recomendado de cada campaña: las hay que empiezan en el 10 y no son para gente sin experiencia | ⏳ |
+| **D-J23** | Borrar un gremio desde «Cargar partida» | Sí, con una confirmación que diga todo lo que se borra | ⏳ |
+| **D-J24** | El panel derecho vacío en la pausa | Esconderlo | ⏳ |
+| **D-J25** | Materiales de conjuro | Venderlos en las tiendas y, después, exigirlos | ⏳ |
+| **D-J26** | Nigromancia como delito | Solo las que dañan o levantan muertos | ⏳ |
+| **D-J27** | El erudito | Lanza solo rituales, sin espacios | ⏳ |
+| **D-J28** | Tablón y mercenarios en el prólogo | Escondidos hasta que acabe la prueba | ⏳ |
+| **D-J29** | Horario de las tiendas | Las tiendas tienen horario, y cierran algunos días (fiestas, el día de descanso) | ⏳ |
+| **D-J30** | Orden de los sitios de Puerto Alba | El gremio, primero | ⏳ |
+| **D-J31** | ¿Comprar gasta una parte del día? | No, como en *Persona*: comprar dos pociones no te quita la tarde | ⏳ |
+| **D-J32** | Mover a un compañero frente al modo «grupo» | El vínculo 5 manda en los dos modos | ⏳ |
+| **D-J33** | Historias inventadas de los mercenarios | Las revisa un agente que sepa del tema | ⏳ |
+| **D-J34** | Quedadas con la gente del pueblo | Más adelante, con J14.7 | ✅ |
+| **D-J35** | Campañas importadas | En todos tus gremios; también pegando el texto; y un botón para quitarlas | ⏳ |
+| **D-J36** | «Hablar» con alguien que tiene diálogo escrito | La ventana de ramas directamente, con «Otras cosas» para sonsacar, convencer y amenazar | ⏳ |
+| **D-J37** | La fuente de 1387 | El paquete | ✅ |
+| **D-J38** | La cabecera en el móvil | Que se vea bien | ⏳ |
 
 ---
 
@@ -699,6 +699,10 @@ La regla no cambia: **el motor decide y la IA cuenta**.
 | J18.4 | **Quién habla**: el retrato grande del PNJ, o una silueta con icono si no tiene imagen; el juego cuenta sin retrato; las notas (la mascota) con su etiqueta y en cursiva | A | M | Pruebas: el mismo mensaje sale con retrato si lo dice un PNJ y sin él si lo cuenta el juego |
 | J18.5 | **De la caja al tablero y vuelta**: la pelea se anuncia en la caja («Iniciar combate»), entra el tablero y, al acabar, vuelve la novela | A | M | e2e: la bodega del gremio, de la caja al tablero y de vuelta |
 | J18.6 | **Registro y Ocultar UI**: lo dicho hasta ahora en un panel aparte (con J15.3), y ver la escena sin la caja | A | S | e2e: abrir el registro y volver; ocultar y enseñar la caja |
+| J18.7 | **Sin chat en el juego sin conexión** (lo pediste el 2026-09-29): la caja de escribir desaparece, y con ella lo que pide un modelo («Al narrador»). Todo se hace con botones y fichas. El registro de lo dicho sigue a mano | A | M | e2e: de la portada al final de una campaña sin escribir nada; la caja no aparece |
+| J18.8 | **Las escenas cambian por lo que haces**, no con pestañas: nada de saltar a Exploración o al Tablero en mitad de un texto o de una pelea. Al acabar de leer, «Continuar» lleva al pueblo; entrar en un tablero lleva al tablero; acabar la pelea vuelve. Sin la X de la cabecera: se sale desde la pausa | A | M | e2e: la vuelta del gremio sin pulsar ninguna pestaña de escena |
+| J18.9 | **Descansar y pasar el tiempo, como acciones de sitio**: «Dormir» en la posada, acampar fuera, «Pasar el rato» donde toque (J14.2). Fuera de la cabecera de la novela visual | A | M | e2e: dormir en la taberna de Puerto Alba pasa la noche |
+| J18.10 | **Nada de etiquetas del motor en la caja**: «[HILO] Hecho:», «[DUELO]», «[GREMIO]» no se leen; sale solo la prosa (con J13.1) | A | S | e2e: ninguna línea de la caja empieza por «[» |
 
 **Sin arte**: todo con CSS, iconos y emoji, como siempre; si un PNJ o tu personaje tiene imagen, se usa.
 
