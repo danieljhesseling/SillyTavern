@@ -2138,3 +2138,249 @@ body[data-narrator-font="maquina"] #chat .mes:not([is_user="true"]) .mes_text {
     margin-top: 14px;
     width: auto;
 }
+
+/* ================================================================
+   J18.3 · La historia como una novela visual (maqueta del Gem director de UX,
+   wiki/maquetas/novela-visual.html). Solo en la escena de diálogo: en las demás, la
+   caja no existe para el diseño y las fichas siguen donde estaban.
+   ================================================================ */
+.gs-vn-box {
+    display: contents;
+}
+
+.gs-vn-portrait,
+.gs-vn-nameplate,
+.gs-vn-text,
+.gs-vn-controls {
+    display: none;
+}
+
+.gs-root[data-scene="dialogue"] .gs-stage {
+    display: block;
+}
+
+/* El tablero no se ve mientras no hay pelea: la escena es la conversación. */
+.gs-root[data-scene="dialogue"] .gs-scene-map {
+    display: none;
+}
+
+.gs-root[data-scene="dialogue"] .gs-stage > .gs-scene-dialogue,
+.gs-root[data-scene="dialogue"] .gs-stage:not(:has(.wm-container)) > .gs-scene-dialogue {
+    position: relative;
+    max-width: 1280px;
+    height: 100%;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto auto auto;
+    grid-template-areas:
+        "stage"
+        "box"
+        "input"
+        "party";
+    gap: 10px;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.35) 45%, transparent 100%);
+}
+
+/* Quien habla: grande, a la izquierda, de pie sobre la caja. */
+.gs-root[data-scene="dialogue"] .gs-vn-portrait:not([hidden]) {
+    grid-area: stage;
+    align-self: end;
+    justify-self: start;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    width: min(340px, 34%);
+    height: min(100%, 460px);
+    margin-left: 4%;
+    overflow: hidden;
+    border-radius: 20px 20px 0 0;
+    background: linear-gradient(to top, rgba(226, 194, 122, 0.15), transparent 70%);
+    -webkit-mask-image: linear-gradient(to top, black 55%, transparent 100%);
+    mask-image: linear-gradient(to top, black 55%, transparent 100%);
+    pointer-events: none;
+}
+
+.gs-vn-portrait img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: top center;
+}
+
+.gs-vn-silhouette {
+    font-size: min(13rem, 26vh);
+    padding-bottom: 12px;
+    color: rgba(0, 0, 0, 0.8);
+    text-shadow: 0 0 20px rgba(226, 194, 122, 0.2);
+}
+
+/* La caja: ancha, abajo, con la placa encima y las fichas dentro. */
+.gs-root[data-scene="dialogue"] .gs-vn-box {
+    grid-area: box;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    min-height: 170px;
+    padding: 1.8rem 2.4rem 1.2rem;
+    background: var(--gs-bg-panel);
+    border: 1px solid var(--gs-gold-line);
+    border-radius: 12px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+.gs-root[data-scene="dialogue"] .gs-vn-box::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    border-radius: 12px 12px 0 0;
+    background: linear-gradient(90deg, transparent, var(--gs-accent-gold), transparent);
+    opacity: 0.5;
+}
+
+.gs-root[data-scene="dialogue"] .gs-vn-nameplate:not([hidden]) {
+    display: block;
+    position: absolute;
+    top: -22px;
+    left: 40px;
+    padding: 0.4rem 1.8rem;
+    font-weight: bold;
+    font-size: 1.1rem;
+    letter-spacing: 1px;
+    color: var(--gs-accent-gold);
+    background: linear-gradient(135deg, #2a2218, #181410);
+    border: 1px solid var(--gs-accent-gold);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+}
+
+.gs-root[data-scene="dialogue"] .gs-vn-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+    max-height: 34vh;
+    overflow-y: auto;
+    font-family: Georgia, "Palatino Linotype", serif;
+    font-size: 1.2rem;
+    line-height: 1.6;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.gs-vn-text .mes_text {
+    padding: 0;
+}
+
+.gs-vn-note {
+    font-style: italic;
+    color: var(--SmartThemeQuoteColor);
+}
+
+.gs-vn-who {
+    display: block;
+    font-family: system-ui, sans-serif;
+    font-size: 0.75rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--gs-accent-gold);
+}
+
+/* Las fichas, dentro de la caja, bajo el texto. */
+.gs-root[data-scene="dialogue"] .gs-vn-box > .gs-chips {
+    margin: 0;
+    padding-top: 0.8rem;
+    border-top: 1px dashed rgba(214, 180, 106, 0.2);
+}
+
+.gs-root[data-scene="dialogue"] .gs-vn-controls {
+    display: flex;
+    position: absolute;
+    right: 1.5rem;
+    bottom: -30px;
+    gap: 1rem;
+}
+
+.gs-vn-control {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0;
+    font-size: 0.8rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--SmartThemeQuoteColor);
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: color 0.15s;
+}
+
+.gs-vn-control:hover {
+    color: var(--gs-accent-gold);
+}
+
+/* Lo de siempre de la escena, ordenado alrededor de la caja: el retrato pequeño de antes
+   se va (queda el grande), pero no lo que se rehace con la IA. */
+.gs-root[data-scene="dialogue"] .gs-speaker {
+    grid-area: stage;
+    align-self: start;
+    justify-self: end;
+}
+
+.gs-root[data-scene="dialogue"] .gs-speaker > :not(.gs-retry) {
+    display: none;
+}
+
+/* El chat es el registro: escondido, salvo la caja de escribir, hasta que se abre. */
+.gs-root[data-scene="dialogue"] .gs-chat-slot {
+    grid-area: input;
+    min-height: 0;
+}
+
+.gs-root[data-scene="dialogue"]:not(.gs-vn-log) .gs-chat-slot #chat {
+    display: none;
+}
+
+.gs-root[data-scene="dialogue"].gs-vn-log .gs-chat-slot {
+    position: absolute;
+    inset: 0 0 auto 0;
+    z-index: 5;
+    height: calc(100% - 190px);
+    padding: 0.5rem;
+    background: var(--gs-bg-panel);
+    border: 1px solid var(--gs-gold-line);
+    border-radius: 12px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+}
+
+.gs-root[data-scene="dialogue"] .gs-party-strip {
+    grid-area: party;
+    margin-top: 1.4rem;
+}
+
+/* Ocultar UI: la escena sola. El botón se queda para volver a enseñarla. */
+.gs-root[data-scene="dialogue"].gs-vn-hidden .gs-vn-box {
+    background: none;
+    border-color: transparent;
+    box-shadow: none;
+}
+
+.gs-root[data-scene="dialogue"].gs-vn-hidden .gs-vn-box::before,
+.gs-root[data-scene="dialogue"].gs-vn-hidden .gs-vn-box > :not(.gs-vn-controls),
+.gs-root[data-scene="dialogue"].gs-vn-hidden .gs-party-strip,
+.gs-root[data-scene="dialogue"].gs-vn-hidden .gs-chat-slot {
+    visibility: hidden;
+}
+
+@media (max-width: 900px) {
+    .gs-root[data-scene="dialogue"] .gs-vn-portrait:not([hidden]) {
+        display: none;
+    }
+
+    .gs-root[data-scene="dialogue"] .gs-vn-box {
+        padding: 1.6rem 1rem 1rem;
+    }
+}

@@ -1,0 +1,212 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Paquete de campaña",
+  "description": "Una campaña completa lista para importar: el mundo, sus compañeros, su bestiario, sus tableros y sus misiones.",
+  "version": 1,
+  "world": {
+    "name": "La Maldición de Strahd",
+    "genre": "Horror gótico",
+    "synopsis": "Bajo nubes de tormenta, el conde vampiro Strahd von Zarovich gobierna el valle de Barovia, una prisión de desesperanza envuelta en una niebla mortal[cite: 1]. Los aventureros han sido arrastrados a este dominio de terror para enfrentarse a su oscuro señor, descubrir sus antiguos secretos y explorar el imponente Castillo Ravenloft[cite: 1].",
+    "factions": [
+      {
+        "name": "Los Vistani",
+        "goals": "Viajar libremente en sus carromatos y servir a Strahd cuando lo requiere[cite: 1].",
+        "reputation": 0
+      },
+      {
+        "name": "La Orden del Dragón de Plata",
+        "goals": "Vengar su aniquilación y oponerse a Strahd desde las ruinas de Argynvostholt[cite: 1].",
+        "reputation": 10
+      }
+    ],
+    "loreEntries": [
+      {
+        "key": "Strahd",
+        "content": "El señor de Barovia, un antiguo conquistador que asesinó a su hermano Sergei y se convirtió en vampiro tras hacer un pacto oscuro[cite: 1].",
+        "type": "npc"
+      },
+      {
+        "key": "Barovia",
+        "content": "Un valle montañoso maldito del que nadie puede escapar debido a la niebla venenosa que lo aísla del resto del multiverso[cite: 1].",
+        "type": "location"
+      },
+      {
+        "key": "Ravenloft",
+        "content": "La fortaleza inexpugnable de Strahd, construida sobre un enorme pilar de roca y nombrada en honor a su madre, Ravenovia[cite: 1].",
+        "type": "location"
+      },
+      {
+        "key": "Tatyana",
+        "content": "El antiguo amor no correspondido de Strahd, cuya muerte llevó a la maldición del vampiro y cuya alma reencarna en Ireena Kolyana[cite: 1].",
+        "type": "npc"
+      }
+    ]
+  },
+  "locations": [
+    {
+      "name": "Aldea de Barovia",
+      "type": "village",
+      "description": "El asentamiento más oprimido del valle, cediendo a la desesperanza bajo la sombra del Castillo Ravenloft.",
+      "region": "El Valle Oriental"
+    },
+    {
+      "name": "Castillo Ravenloft",
+      "type": "dungeon",
+      "description": "La imponente y letal fortaleza del vampiro Strahd von Zarovich, construida sobre un enorme pilar de roca.",
+      "region": "El Valle Oriental"
+    },
+    {
+      "name": "Campamento del Estanque Tser",
+      "type": "camp",
+      "description": "Un campamento colorido y ruidoso a orillas de un lago, hogar de la enigmática Madam Eva.",
+      "region": "Río Ivlis",
+      "factionName": "Los Vistani"
+    },
+    {
+      "name": "Ciudad de Vallaki",
+      "type": "city",
+      "description": "Una ciudad amurallada gobernada por un burgomaestre obsesionado con la idea de que los festivales alejan a los monstruos.",
+      "region": "El Valle Central"
+    },
+    {
+      "name": "Viejo Mascahuesos",
+      "type": "ruins",
+      "description": "Un molino de viento decrépito que huele ligeramente a repostería y desesperación.",
+      "region": "El Valle Central"
+    },
+    {
+      "name": "Argynvostholt",
+      "type": "ruins",
+      "description": "La mansión en ruinas de una antigua orden de caballeros que fracasó en su cruzada contra Strahd.",
+      "region": "El Valle Central",
+      "factionName": "La Orden del Dragón de Plata"
+    },
+    {
+      "name": "Bodega El Mago de los Vinos",
+      "type": "outpost",
+      "description": "El único viñedo funcional de Barovia, asediado por criaturas del bosque y cultistas.",
+      "region": "Las Colinas Occidentales"
+    },
+    {
+      "name": "Aldea de Krezk",
+      "type": "village",
+      "description": "Un asentamiento fortificado construido alrededor de la Abadía de Santa Markovia, aislado en los límites de la niebla.",
+      "region": "Las Colinas Occidentales"
+    }
+  ],
+  "confidants": [
+    {
+      "name": "Ismark Kolyanovich",
+      "description": "Conocido como 'El Menor', es un joven guerrero dispuesto a todo para proteger a su hermana adoptiva Ireena del vampiro[cite: 1].",
+      "arcana": "El Carro",
+      "initialBondPoints": 0
+    },
+    {
+      "name": "Ireena Kolyana",
+      "description": "Mujer de fuerte voluntad asediada por Strahd, quien cree que es la reencarnación exacta de su amada Tatyana[cite: 1].",
+      "arcana": "La Emperatriz",
+      "initialBondPoints": 0
+    },
+    {
+      "name": "Madam Eva",
+      "description": "Anciana líder y vidente de los Vistani, capaz de leer los hilos del destino con su baraja de cartas Tarokka[cite: 1].",
+      "arcana": "La Sacerdotisa",
+      "initialBondPoints": 0
+    },
+    {
+      "name": "Rudolph van Richten",
+      "description": "Un legendario cazador de vampiros que viaja de incógnito por Barovia bajo el disfraz del extravagante Rictavio[cite: 1].",
+      "arcana": "El Hierofante",
+      "initialBondPoints": 0
+    },
+    {
+      "name": "Ezmerelda d'Avenir",
+      "description": "Cazadora de monstruos de origen Vistani, viaja sola buscando a su mentor y tratando de arrinconar al vampiro[cite: 1].",
+      "arcana": "La Estrella",
+      "initialBondPoints": 0
+    }
+  ],
+  "bestiary": [
+    { "name": "Strahd von Zarovich", "hp": 144, "armorClass": 16, "cr": 15, "profile": "skirmisher", "attackRangeFeet": 30, "description": "El señor oscuro de Barovia, un vampiro inmortal y mago formidable que juega con sus víctimas antes de aniquilarlas[cite: 1]." },
+    { "name": "Engendro Vampírico", "hp": 82, "armorClass": 15, "cr": 5, "profile": "aggressive", "attackRangeFeet": 5, "description": "Antiguos aventureros derrotados por Strahd, ahora convertidos en monstruos pálidos y sedientos de sangre que trepan por los techos[cite: 1]." },
+    { "name": "Lobo Terrible", "hp": 37, "armorClass": 14, "cr": 1, "profile": "aggressive", "attackRangeFeet": 5, "description": "Un lobo cruel del tamaño de un oso pardo, servidor leal de Strahd que no puede ser asustado ni hechizado[cite: 1]." },
+    { "name": "Zombi de Strahd", "hp": 30, "armorClass": 8, "cr": 1, "profile": "aggressive", "attackRangeFeet": 5, "description": "Antiguos guardias del castillo vestidos con librea harapienta; sus miembros cortados a menudo siguen arrastrándose para atacar[cite: 1]." },
+    { "name": "Bruja Baroviana", "hp": 32, "armorClass": 10, "cr": 1.5, "profile": "skirmisher", "attackRangeFeet": 30, "description": "Mujeres famélicas con túnicas manchadas de hollín que han jurado servicio a Strahd a cambio de oscuros poderes arcanos[cite: 1]." },
+    { "name": "Hombre Lobo", "hp": 58, "armorClass": 11, "cr": 3, "profile": "aggressive", "attackRangeFeet": 5, "description": "Licántropos salvajes que adoran a la Madre Noche y emergen de la niebla para masacrar adultos y secuestrar niños[cite: 1]." },
+    { "name": "Saga Nocturna", "hp": 112, "armorClass": 17, "cr": 5, "profile": "skirmisher", "attackRangeFeet": 30, "description": "Brujas horribles que operan desde el Viejo Mascahuesos, robando niños para hornear sus siniestros pasteles de los sueños[cite: 1]." },
+    { "name": "Gárgola", "hp": 52, "armorClass": 15, "cr": 2, "profile": "guardian", "attackRangeFeet": 5, "description": "Estatuas de piedra encaramadas en las murallas del Castillo Ravenloft que cobran vida para devorar a los intrusos[cite: 1]." },
+    { "name": "Revenant", "hp": 136, "armorClass": 13, "cr": 5, "profile": "guardian", "attackRangeFeet": 5, "description": "Un caballero no-muerto de la Orden del Dragón de Plata, que vaga lleno de odio aniquilando a los siervos del vampiro[cite: 1]." }
+  ],
+  "items": [
+    { "name": "Tomo de Strahd", "type": "gear", "rarity": "Very Rare", "weight": 2, "description": "Un libro antiguo que detalla la historia y los oscuros secretos del mismísimo Strahd von Zarovich, indispensable para entender al enemigo[cite: 1]." },
+    { "name": "Símbolo Sagrado de Ravenkind", "type": "gear", "rarity": "Very Rare", "weight": 1, "slot": "accessory", "description": "Un poderoso artefacto con forma de sol, símbolo de gran esperanza y fuerza protectora contra las fuerzas de la oscuridad[cite: 1]." },
+    { "name": "Espada del Sol", "type": "weapon", "rarity": "Very Rare", "weight": 2, "damageDice": "1d8", "damageType": "radiante", "slot": "weapon", "description": "Un arma de venganza destellante que emite luz solar pura, temida por el señor de Barovia[cite: 1]." },
+    { "name": "Maza de Terror", "type": "weapon", "rarity": "Rare", "weight": 4, "damageDice": "1d6", "damageType": "contundente", "slot": "weapon", "description": "Una maza negra que perteneció al clérigo caído Gustav Herrenghast, hallada junto a su cuerpo en la capilla del castillo[cite: 1]." },
+    { "name": "Escudo +2 del Dragón de Plata", "type": "armor", "rarity": "Rare", "weight": 6, "slot": "shield", "description": "Un escudo blasonado con un dragón de plata que susurra advertencias a su portador, mejorando sus reflejos en combate[cite: 1]." },
+    { "name": "Armadura de Placas +2 de Sergei", "type": "armor", "rarity": "Very Rare", "weight": 65, "slot": "armor", "description": "Una reluciente armadura de placas recuperada del cuerpo embalsamado de Sergei von Zarovich en su solemne tumba[cite: 1]." },
+    { "name": "Hoja de la Suerte", "type": "weapon", "rarity": "Very Rare", "weight": 3, "damageDice": "1d8", "damageType": "cortante", "slot": "weapon", "description": "Espada mágica oculta bajo letal moho marrón en una de las criptas. Aún conserva el poder para conceder un deseo[cite: 1]." },
+    { "name": "Planeador de alas de dragón", "type": "gear", "rarity": "Uncommon", "weight": 15, "slot": "accessory", "description": "Aparato de madera, cuero y metal creado por el rey inventor Katsky, capaz de hacer planear a quien salta desde lugares elevados[cite: 1]." },
+    { "name": "Espada Corta +1 Sentiente", "type": "weapon", "rarity": "Rare", "weight": 2, "damageDice": "1d6", "damageType": "perforante", "slot": "weapon", "description": "Una hoja brillante hallada bajo el agua en las mazmorras. Comunica emociones a su portador y emite luz protectora para combatir el mal[cite: 1]." },
+    { "name": "Poción de curación mayor", "type": "gear", "rarity": "Uncommon", "weight": 0.5, "slot": "consumable", "description": "Un poderoso brebaje sanador encontrado en los cofres ocultos del tesoro secreto de Strahd[cite: 1]." }
+  ],
+  "boards": [
+    {
+      "id": "taberna_sangre_enredadera", "name": "Taberna Sangre de la Enredadera", "locationName": "Aldea de Barovia",
+      "map": ["############", "#..........#", "#.c..C..c..#", "#..........#", "#..~~~~....#", "#..D####...#", "#..#...#...#", "############"],
+      "partyStart": [{ "x": 1, "y": 1 }, { "x": 2, "y": 1 }, { "x": 1, "y": 2 }],
+      "enemies": [{ "name": "Bruja Baroviana", "x": 10, "y": 2 }]
+    },
+    {
+      "id": "mansion_burgomaestre", "name": "Mansión del Burgomaestre", "locationName": "Aldea de Barovia",
+      "map": ["##############", "#............#", "#.c...c...c..#", "#....~~~.....#", "####D####D####", "#...#...#....#", "#...D...#..C.#", "#...#...#....#", "#...#...#....#", "##############"],
+      "partyStart": [{ "x": 1, "y": 7 }, { "x": 2, "y": 7 }, { "x": 1, "y": 8 }],
+      "enemies": [{ "name": "Zombi de Strahd", "x": 2, "y": 2 }, { "name": "Zombi de Strahd", "x": 7, "y": 2 }, { "name": "Zombi de Strahd", "x": 11, "y": 6 }]
+    },
+    {
+      "id": "sotano_iglesia", "name": "Sótano de la Iglesia", "locationName": "Aldea de Barovia",
+      "map": ["##########", "#........#", "#..c..c..#", "#........#", "#...C....#", "#........#", "#........#", "##########"],
+      "partyStart": [{ "x": 1, "y": 6 }, { "x": 2, "y": 6 }, { "x": 8, "y": 6 }],
+      "enemies": [{ "name": "Engendro Vampírico", "x": 4, "y": 2 }]
+    },
+    {
+      "id": "tienda_madam_eva", "name": "Tienda de Madam Eva", "locationName": "Campamento del Estanque Tser",
+      "map": ["##########", "#........#", "#.~~~~~~.#", "#.~....~.#", "#.~.c..~.#", "#.~....~.#", "#.~~~~~~.#", "#........#", "#........#", "##########"],
+      "partyStart": [{ "x": 4, "y": 8 }, { "x": 5, "y": 8 }, { "x": 3, "y": 8 }],
+      "enemies": [{ "name": "Lobo Terrible", "x": 4, "y": 1 }]
+    },
+    {
+      "id": "entrada_ravenloft", "name": "Entrada a Ravenloft", "locationName": "Castillo Ravenloft",
+      "map": ["################", "#..............#", "#..c........c..#", "#......C.......#", "#...~~....~~...#", "#...~~....~~...#", "#..............#", "#..c........c..#", "#......C.......#", "################"],
+      "partyStart": [{ "x": 7, "y": 8 }, { "x": 8, "y": 8 }, { "x": 6, "y": 8 }],
+      "enemies": [{ "name": "Gárgola", "x": 3, "y": 2 }, { "name": "Gárgola", "x": 12, "y": 2 }]
+    },
+    {
+      "id": "comedor_ravenloft", "name": "Comedor del Conde", "locationName": "Castillo Ravenloft",
+      "map": ["################", "#..............#", "#.C.~~~~~~~~.C.#", "#...~~~~~~~~...#", "#...~~~~~~~~...#", "#...~~~~~~~~...#", "#..............#", "#.c..........c.#", "#..............#", "#####D####D#####", "#..............#", "################"],
+      "partyStart": [{ "x": 7, "y": 10 }, { "x": 8, "y": 10 }, { "x": 9, "y": 10 }],
+      "enemies": [{ "name": "Engendro Vampírico", "x": 2, "y": 2 }, { "name": "Engendro Vampírico", "x": 13, "y": 2 }]
+    },
+    {
+      "id": "molino_viejo_mascahuesos", "name": "Planta Baja del Molino", "locationName": "Viejo Mascahuesos",
+      "map": ["############", "###......###", "##...c....##", "#..........#", "#...C......#", "#.....~~...#", "#.....~~...#", "#..........#", "##........##", "###...D..###", "####....####", "############"],
+      "partyStart": [{ "x": 5, "y": 10 }, { "x": 6, "y": 10 }],
+      "enemies": [{ "name": "Saga Nocturna", "x": 5, "y": 2 }, { "name": "Bruja Baroviana", "x": 3, "y": 4 }]
+    },
+    {
+      "id": "plaza_vallaki", "name": "Plaza de Vallaki", "locationName": "Ciudad de Vallaki",
+      "map": ["##################", "#................#", "#..C...####...C..#", "#......#..#......#", "#..~~..D..#..~~..#", "#..~~..####..~~..#", "#................#", "#..c...C..c...C..#", "#................#", "####D######D######", "#................#", "##################"],
+      "partyStart": [{ "x": 8, "y": 10 }, { "x": 9, "y": 10 }, { "x": 7, "y": 10 }],
+      "enemies": [{ "name": "Lobo Terrible", "x": 3, "y": 3 }, { "name": "Lobo Terrible", "x": 14, "y": 3 }]
+    }
+  ],
+  "quests": [
+    { "id": "q_taberna", "name": "Sangrienta Bienvenida", "act": 1, "description": "Una Bruja Baroviana está acechando a los clientes de la taberna Sangre de la Enredadera. Es hora de demostrar de qué estáis hechos[cite: 1].", "boardId": "taberna_sangre_enredadera", "objectives": [{ "type": "eliminate", "label": "Acabar con la bruja", "target": "Bruja Baroviana" }] },
+    { "id": "q_asedio_mansion", "name": "Asedio en la Mansión", "act": 1, "description": "Los no-muertos de Strahd asedian la mansión del burgomaestre. Debéis repeler el ataque y mantener a Ireena a salvo[cite: 1].", "boardId": "mansion_burgomaestre", "objectives": [{ "type": "eliminate_all", "label": "Derrotar a los zombis asediadores" }, { "type": "protect", "label": "Que Ireena sobreviva al asalto", "ally": "Ireena Kolyana" }] },
+    { "id": "q_sotano_iglesia", "name": "El Grito en el Sótano", "act": 1, "description": "El hijo del padre Donavich fue convertido en un vampiro y yace hambriento bajo la iglesia. Hay que poner fin a su sufrimiento[cite: 1].", "boardId": "sotano_iglesia", "objectives": [{ "type": "eliminate", "label": "Destruir al engendro", "target": "Engendro Vampírico" }] },
+    { "id": "q_campamento_vistani", "name": "Lectura Interrumpida", "act": 2, "description": "Mientras buscáis el campamento para que Madam Eva lea vuestro destino, unos lobos acechan desde la espesura[cite: 1].", "boardId": "tienda_madam_eva", "objectives": [{ "type": "eliminate_all", "label": "Proteger el campamento de los lobos" }, { "type": "protect", "label": "Asegurar que Madam Eva esté a salvo", "ally": "Madam Eva" }] },
+    { "id": "q_festival_vallaki", "name": "Pánico en el Festival", "act": 3, "description": "Durante el Festivo del Sol Ardiente en la plaza de Vallaki, las bestias de Strahd atacan para demostrar que la falsa esperanza no sirve de nada[cite: 1].", "boardId": "plaza_vallaki", "objectives": [{ "type": "survive_rounds", "label": "Defender a los civiles hasta que escapen", "rounds": 5 }, { "type": "eliminate_all", "label": "Despejar la plaza", "optional": true }] },
+    { "id": "q_mascahuesos", "name": "Pesadillas de Molino", "act": 3, "description": "Habéis llegado al molino Viejo Mascahuesos. Hay que detener a la oscura presencia que roba niños para sus pasteles de los sueños[cite: 1].", "boardId": "molino_viejo_mascahuesos", "objectives": [{ "type": "eliminate_all", "label": "Erradicar al aquelarre" }] },
+    { "id": "q_puertas_ravenloft", "name": "Las Puertas del Diablo", "act": 4, "description": "Llegáis al imponente Castillo Ravenloft. Las gárgolas de la entrada despiertan para poneros a prueba antes de cruzar el umbral[cite: 1].", "boardId": "entrada_ravenloft", "objectives": [{ "type": "reach_cell", "label": "Llegar a la puerta principal", "cell": { "x": 8, "y": 1 } }, { "type": "eliminate_all", "label": "Destruir a las gárgolas", "optional": true }] },
+    { "id": "q_comedor_trampa", "name": "La Cena Está Servida", "act": 5, "description": "Una ilusión de Strahd os da la bienvenida en el comedor. Cuando desaparece, las puertas se cierran de golpe y sus secuaces atacan. ¡Es la oportunidad de buscar conocimiento antiguo![cite: 1]", "boardId": "comedor_ravenloft", "objectives": [{ "type": "survive_rounds", "label": "Sobrevivir a la emboscada vampírica", "rounds": 6 }, { "type": "loot", "label": "Encontrar la reliquia", "treasures": ["Tomo de Strahd"] }] }
+  ]
+}

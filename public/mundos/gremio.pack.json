@@ -1,0 +1,203 @@
+{
+  "version": 1,
+  "world": {
+    "name": "El Gremio",
+    "genre": "Fantasía",
+    "synopsis": "Puerto Alba es un puerto pequeño, con un muelle de piedra y barcas de pesca. En la plaza está la Casa del Gremio de Aventureros: una posada grande con un tablón de campañas enteras en el salón. Alrededor hay un mercado, una herrería y una capilla. De aquí salen las compañías, y aquí vuelven a curarse, a cobrar y a buscar la siguiente.",
+    "season": "otono",
+    "factions": [],
+    "loreEntries": [
+      { "key": "Puerto Alba", "content": "Un puerto pequeño con una plaza, un mercado, una herrería y una capilla. En la plaza está la Casa del Gremio.", "type": "location" },
+      { "key": "Gremio", "content": "La Casa del Gremio de Aventureros, en la plaza de Puerto Alba. Aquí se apuntan las compañías, se alquilan espadas y se cuelgan las campañas en el tablón.", "type": "location" }
+    ]
+  },
+  "locations": [
+    {
+      "name": "Puerto Alba",
+      "type": "city",
+      "description": "Un puerto pequeño, con un muelle de piedra y barcas de pesca. En la plaza está la Casa del Gremio con su tablón de campañas, y alrededor hay un mercado, una herrería y una capilla.",
+      "biome": "urbano",
+      "services": ["posada", "tienda", "templo", "herreria"],
+      "routes": []
+    }
+  ],
+  "npcs": [
+    {
+      "id": "brunilda",
+      "name": "Brunilda",
+      "trade": "Maestra del gremio",
+      "where": "Puerto Alba",
+      "wants": "Que las compañías que salen de su casa vuelvan vivas.",
+      "knows": "Qué campañas hay en el tablón y qué se sabe de cada una.",
+      "secret": "",
+      "voice": "Seca y rápida. Te trata de tú desde el primer día.",
+      "service": ""
+    },
+    {
+      "id": "tomas",
+      "name": "Tomás",
+      "trade": "Posadero",
+      "where": "Puerto Alba",
+      "wants": "Que le paguen las camas.",
+      "knows": "Quién ha vuelto de cada campaña y quién no.",
+      "secret": "",
+      "voice": "Amable y charlatán. Siempre está secando el mismo vaso.",
+      "service": "posada"
+    },
+    {
+      "id": "marisa",
+      "name": "Marisa",
+      "trade": "Tendera del mercado",
+      "where": "Puerto Alba",
+      "wants": "Vender la cuerda y las antorchas antes de que les coja la humedad del puerto.",
+      "knows": "Qué compra cada compañía antes de salir, y qué le hace falta de verdad.",
+      "secret": "Guarda en la trastienda la mochila de un chico que no volvió, por si algún día vuelve a buscarla.",
+      "voice": "Habla deprisa y lo apunta todo con tiza en el mostrador.",
+      "service": "tienda"
+    },
+    {
+      "id": "ramiro",
+      "name": "Ramiro",
+      "trade": "Herrero",
+      "where": "Puerto Alba",
+      "wants": "Que le traigan las espadas melladas antes de que se partan, no después.",
+      "knows": "Cuánto aguanta cada arma, y qué compañías vuelven con el acero roto.",
+      "secret": "Le da miedo el mar. Vive en un puerto y no ha subido nunca a una barca.",
+      "voice": "Grave y corta. Te contesta con el martillo en la mano.",
+      "service": "herreria"
+    },
+    {
+      "id": "elvira",
+      "name": "Madre Elvira",
+      "trade": "Sacerdotisa de la capilla",
+      "where": "Puerto Alba",
+      "wants": "Que nadie salga del puerto con una herida sin curar.",
+      "knows": "El nombre de cada aventurero enterrado detrás de la capilla, y de qué murió.",
+      "secret": "Cura sin cobrar a los pescadores que no pueden pagar, y lo cubre con la limosna del gremio.",
+      "voice": "Tranquila y baja. Te llama «hijo» o «hija» aunque seas mayor que ella.",
+      "service": "templo"
+    }
+  ],
+  "confidants": [],
+  "bestiary": [
+    {
+      "name": "Rata de bodega",
+      "hp": 6,
+      "armorClass": 10,
+      "cr": 0.125,
+      "profile": "aggressive",
+      "attackRangeFeet": 5,
+      "description": "Una rata gorda como un gato. Muerde y, si le va mal, huye."
+    }
+  ],
+  "items": [],
+  "boards": [
+    {
+      "id": "bodega_gremio",
+      "name": "La bodega del gremio",
+      "locationName": "Puerto Alba",
+      "map": [
+        "##############",
+        "#T.....T....k#",
+        "#....~~......#",
+        "#..c.~~...T..#",
+        "#............#",
+        "#..T......c..#",
+        "#............#",
+        "##############"
+      ],
+      "partyStart": [{ "x": 5, "y": 6 }, { "x": 6, "y": 6 }, { "x": 7, "y": 6 }, { "x": 8, "y": 6 }],
+      "enemies": [
+        { "name": "Rata de bodega", "x": 2, "y": 1 },
+        { "name": "Rata de bodega", "x": 10, "y": 2 }
+      ]
+    }
+  ],
+  "quests": [
+    {
+      "id": "q_prueba_gremio",
+      "name": "La prueba del gremio",
+      "act": 1,
+      "description": "Brunilda te manda a la bodega: hay ratas entre los barriles. Si subes entero, eres del gremio.",
+      "boardId": "bodega_gremio",
+      "objectives": [{ "type": "eliminate_all", "label": "Acabar con las ratas" }]
+    }
+  ],
+  "rumors": [
+    {
+      "id": "r-vuelta-de-barovia",
+      "by": "Tomás",
+      "where": "Puerto Alba",
+      "text": "Hace un mes volvió de Barovia una compañía. Salieron cinco y volvieron dos. Uno de ellos no ha dicho una palabra desde entonces.",
+      "truth": "si",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-la-niebla",
+      "by": "",
+      "where": "Puerto Alba",
+      "text": "Dicen que la niebla de Barovia no deja salir a nadie. Pero Tomás jura que ha visto volver a gente de allí.",
+      "truth": "medias",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-precio-espada",
+      "by": "Ramiro",
+      "where": "Puerto Alba",
+      "text": "Una espada buena cuesta unas dieciocho monedas de oro. Si en el muelle te la ofrecen por cinco, está rota o es robada.",
+      "truth": "si",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-mantas-para-el-norte",
+      "by": "Marisa",
+      "where": "Puerto Alba",
+      "text": "Los que van al valle del norte compran mantas y cuerda antes de salir. Allí la nieve cierra los pasos en cuanto llega el invierno.",
+      "truth": "si",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-brunilda-aventurera",
+      "by": "",
+      "where": "Puerto Alba",
+      "text": "Brunilda fue aventurera antes de llevar el gremio. Dicen que lo dejó el día que perdió a toda su compañía.",
+      "truth": "medias",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-el-tablon",
+      "by": "Brunilda",
+      "where": "Puerto Alba",
+      "text": "Cada papel del tablón es una campaña entera. Nadie te obliga a terminarla: puedes volver al puerto y seguir otro día.",
+      "truth": "si",
+      "leadsTo": ""
+    }
+  ],
+  "plot": {
+    "title": "El gremio de Puerto Alba",
+    "milestones": [
+      {
+        "id": "la-prueba",
+        "act": 1,
+        "title": "La prueba del gremio",
+        "hint": "Acaba con las ratas de la bodega. Pulsa «Iniciar combate» cuando estés listo.",
+        "scene": "Llegas a Puerto Alba con lo puesto y una bolsa de monedas. En la plaza está la Casa del Gremio. Brunilda, la maestra del gremio, te mira de arriba abajo. «¿Quieres entrar? Baja a la bodega: hay ratas entre los barriles. Si subes entero, eres de los nuestros.»",
+        "opens": { "kind": "start" },
+        "asks": { "kind": "win", "board": "La bodega del gremio" },
+        "changes": { "reveal": [], "open": ["el-tablon"], "standing": {}, "ending": "", "endingBy": {} }
+      },
+      {
+        "id": "el-tablon",
+        "act": 1,
+        "title": "El tablón de campañas",
+        "hint": "Habla con Brunilda. Luego mira el «Tablón de campañas» y elige una.",
+        "scene": "Subes de la bodega con la última rata colgando de la mano. Brunilda asiente y apunta tu nombre en el libro del gremio. «Bien. Ahí tienes el tablón: cada papel es una campaña entera. Si vas corto de gente, en el salón hay espadas que se alquilan.»",
+        "opens": { "kind": "after", "milestone": "la-prueba" },
+        "asks": { "kind": "talk", "npc": "Brunilda" },
+        "changes": { "reveal": [], "open": [], "standing": {}, "ending": "", "endingBy": {} }
+      }
+    ],
+    "endings": {},
+    "omens": []
+  }
+}

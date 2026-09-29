@@ -1,0 +1,1045 @@
+{
+  "about": "Lo que se pone encima de original.json para que la campaña se juegue: rutas, servicios, la trama, los tableros arreglados y enemigos para niveles bajos. Lo junta tools/campana-a-paquete.mjs. Los textos de la trama salen de las misiones del original; lo escrito aquí a mano va marcado con «propio».",
+  "world": {
+    "season": "otono"
+  },
+  "abilitiesFrom": {
+    "pack": "public/mundos/1387.pack.json",
+    "ids": [
+      "rayo_de_fuego",
+      "hab-embate",
+      "hab-segundo-aliento",
+      "hab-furia",
+      "hab-esfumarse",
+      "hab-burla",
+      "hab-rastrear",
+      "romper_rodilla",
+      "lanzar_tierra"
+    ]
+  },
+  "locations": [
+    {
+      "name": "Aldea de Barovia",
+      "biome": "bosque",
+      "services": [
+        "posada",
+        "tienda",
+        "templo"
+      ],
+      "routes": [
+        {
+          "to": "Campamento del Estanque Tser",
+          "days": 1
+        },
+        {
+          "to": "Castillo Ravenloft",
+          "days": 1,
+          "closedUntil": "pesadillas-de-molino"
+        }
+      ]
+    },
+    {
+      "name": "Castillo Ravenloft",
+      "biome": "montaña",
+      "services": []
+    },
+    {
+      "name": "Campamento del Estanque Tser",
+      "biome": "bosque",
+      "services": [
+        "tienda"
+      ],
+      "routes": [
+        {
+          "to": "Ciudad de Vallaki",
+          "days": 1
+        }
+      ]
+    },
+    {
+      "name": "Ciudad de Vallaki",
+      "biome": "urbano",
+      "services": [
+        "posada",
+        "tienda",
+        "templo",
+        "herreria",
+        "tablon"
+      ],
+      "routes": [
+        {
+          "to": "Viejo Mascahuesos",
+          "days": 1
+        },
+        {
+          "to": "Argynvostholt",
+          "days": 1,
+          "closedUntil": "panico-en-el-festival"
+        },
+        {
+          "to": "Bodega El Mago de los Vinos",
+          "days": 2,
+          "closedUntil": "panico-en-el-festival"
+        }
+      ]
+    },
+    {
+      "name": "Viejo Mascahuesos",
+      "biome": "bosque",
+      "services": []
+    },
+    {
+      "name": "Argynvostholt",
+      "biome": "montaña",
+      "services": [],
+      "routes": [
+        {
+          "to": "Aldea de Krezk",
+          "days": 1
+        }
+      ]
+    },
+    {
+      "name": "Bodega El Mago de los Vinos",
+      "biome": "rural",
+      "services": [
+        "tienda"
+      ],
+      "routes": [
+        {
+          "to": "Aldea de Krezk",
+          "days": 1
+        }
+      ]
+    },
+    {
+      "name": "Aldea de Krezk",
+      "biome": "montaña",
+      "services": [
+        "posada",
+        "templo"
+      ]
+    }
+  ],
+  "bestiary": [
+    {
+      "name": "Strahd von Zarovich",
+      "hp": 90,
+      "armorClass": 16,
+      "cr": 6,
+      "boss": true,
+      "abilities": [
+        "hab-esfumarse",
+        "hab-burla",
+        "hab-embate"
+      ]
+    },
+    {
+      "name": "Engendro Vampírico",
+      "hp": 40,
+      "armorClass": 14,
+      "cr": 3,
+      "abilities": [
+        "hab-embate"
+      ]
+    },
+    {
+      "name": "Lobo Terrible",
+      "hp": 26,
+      "armorClass": 13,
+      "cr": 1,
+      "abilities": [
+        "romper_rodilla"
+      ]
+    },
+    {
+      "name": "Zombi de Strahd",
+      "hp": 22,
+      "armorClass": 8,
+      "cr": 0.5
+    },
+    {
+      "name": "Bruja Baroviana",
+      "hp": 16,
+      "armorClass": 10,
+      "cr": 0.5,
+      "abilities": [
+        "rayo_de_fuego"
+      ]
+    },
+    {
+      "name": "Hombre Lobo",
+      "hp": 45,
+      "armorClass": 12,
+      "cr": 3,
+      "boss": true,
+      "abilities": [
+        "hab-furia",
+        "hab-embate"
+      ]
+    },
+    {
+      "name": "Saga Nocturna",
+      "hp": 55,
+      "armorClass": 15,
+      "cr": 3,
+      "boss": true,
+      "abilities": [
+        "rayo_de_fuego",
+        "hab-esfumarse"
+      ]
+    },
+    {
+      "name": "Gárgola",
+      "hp": 30,
+      "armorClass": 15,
+      "cr": 2
+    },
+    {
+      "name": "Revenant",
+      "hp": 70,
+      "armorClass": 13,
+      "cr": 4,
+      "boss": true,
+      "abilities": [
+        "hab-embate",
+        "hab-segundo-aliento"
+      ]
+    },
+    {
+      "name": "Lobo gris",
+      "hp": 11,
+      "armorClass": 13,
+      "cr": 0.25,
+      "profile": "aggressive",
+      "attackRangeFeet": 5,
+      "abilities": [
+        "hab-rastrear"
+      ],
+      "description": "propio: Un lobo flaco de los bosques de Barovia. Caza en manada y huye si se queda solo."
+    },
+    {
+      "name": "Engendro hambriento",
+      "hp": 28,
+      "armorClass": 12,
+      "cr": 1,
+      "profile": "aggressive",
+      "attackRangeFeet": 5,
+      "abilities": [
+        "hab-embate"
+      ],
+      "description": "propio: El hijo del padre Donavich, convertido en vampiro y encerrado bajo la iglesia. Tiene hambre."
+    }
+  ],
+  "boards": [
+    {
+      "id": "taberna_sangre_enredadera",
+      "map": [
+        "##################",
+        "#....c.....#.....#",
+        "#.c.....c..#..T..#",
+        "#..........D.....#",
+        "#.c..c.....#..k..#",
+        "#..........#######",
+        "#CCCC..c.........#",
+        "#................#",
+        "#..c.......c...T.#",
+        "#................#",
+        "##################"
+      ],
+      "partyStart": [
+        {
+          "x": 7,
+          "y": 9
+        },
+        {
+          "x": 8,
+          "y": 9
+        },
+        {
+          "x": 9,
+          "y": 9
+        },
+        {
+          "x": 8,
+          "y": 8
+        }
+      ],
+      "enemies": [
+        {
+          "name": "Bruja Baroviana",
+          "x": 4,
+          "y": 2
+        },
+        {
+          "name": "Zombi de Strahd",
+          "x": 14,
+          "y": 2
+        }
+      ]
+    },
+    {
+      "id": "mansion_burgomaestre",
+      "map": [
+        "####################",
+        "#...#..........#...#",
+        "#.k.D...CC.....D.T.#",
+        "#...#..........#...#",
+        "#####....c.....#####",
+        "#...=..........=...#",
+        "#...######o#####...#",
+        "#..b...............#",
+        "#.b.....~~.....b...#",
+        "#.......~~........b#",
+        "#..bb.........b....#",
+        "####################"
+      ],
+      "partyStart": [
+        {
+          "x": 7,
+          "y": 3
+        },
+        {
+          "x": 8,
+          "y": 3
+        },
+        {
+          "x": 11,
+          "y": 3
+        },
+        {
+          "x": 12,
+          "y": 3
+        }
+      ],
+      "enemies": [
+        {
+          "name": "Zombi de Strahd",
+          "x": 2,
+          "y": 8
+        },
+        {
+          "name": "Zombi de Strahd",
+          "x": 10,
+          "y": 9
+        },
+        {
+          "name": "Zombi de Strahd",
+          "x": 17,
+          "y": 7
+        }
+      ]
+    },
+    {
+      "id": "sotano_iglesia",
+      "map": [
+        "##############",
+        "#....#.......#",
+        "#.k..#..c....#",
+        "#....D.......#",
+        "######...C...#",
+        "#....#.......#",
+        "#....L.......#",
+        "#....#...P...#",
+        "#....#.......#",
+        "##############"
+      ],
+      "partyStart": [
+        {
+          "x": 11,
+          "y": 1
+        },
+        {
+          "x": 12,
+          "y": 1
+        },
+        {
+          "x": 11,
+          "y": 2
+        },
+        {
+          "x": 12,
+          "y": 2
+        }
+      ],
+      "enemies": [
+        {
+          "name": "Engendro hambriento",
+          "x": 2,
+          "y": 6
+        }
+      ]
+    },
+    {
+      "id": "tienda_madam_eva",
+      "map": [
+        "####################",
+        "#bbb....www.....bbb#",
+        "#bb....wwwww......b#",
+        "#b......www...C....#",
+        "#...C..........C...#",
+        "#.....####o###.....#",
+        "#.....#......#.....#",
+        "#..C..#..k...#..C..#",
+        "#.....########.....#",
+        "#b.................#",
+        "#bb.....c....c...bb#",
+        "####################"
+      ],
+      "partyStart": [
+        {
+          "x": 9,
+          "y": 9
+        },
+        {
+          "x": 10,
+          "y": 9
+        },
+        {
+          "x": 11,
+          "y": 9
+        },
+        {
+          "x": 10,
+          "y": 10
+        }
+      ],
+      "enemies": [
+        {
+          "name": "Lobo Terrible",
+          "x": 4,
+          "y": 1
+        },
+        {
+          "name": "Lobo gris",
+          "x": 15,
+          "y": 2
+        },
+        {
+          "name": "Lobo gris",
+          "x": 17,
+          "y": 4
+        }
+      ]
+    },
+    {
+      "id": "entrada_ravenloft",
+      "map": [
+        "##################",
+        "#^......x......^.#",
+        "#.^...C....C...^.#",
+        "#................#",
+        "#...T........T...#",
+        "#vvvvvvv..vvvvvvv#",
+        "#vvvvvvv..vvvvvvv#",
+        "#vvvvvvv..vvvvvvv#",
+        "#................#",
+        "#..b..c.....c..b.#",
+        "#bb............bb#",
+        "##################"
+      ],
+      "partyStart": [
+        {
+          "x": 8,
+          "y": 9
+        },
+        {
+          "x": 9,
+          "y": 9
+        },
+        {
+          "x": 7,
+          "y": 8
+        },
+        {
+          "x": 10,
+          "y": 8
+        }
+      ],
+      "enemies": [
+        {
+          "name": "Gárgola",
+          "x": 2,
+          "y": 2
+        },
+        {
+          "name": "Gárgola",
+          "x": 15,
+          "y": 2
+        }
+      ]
+    },
+    {
+      "id": "comedor_ravenloft",
+      "map": [
+        "##################",
+        "#k...T......T...k#",
+        "#................#",
+        "#...cccccccccc...#",
+        "#...cccccccccc...#",
+        "#................#",
+        "#.C............C.#",
+        "#................#",
+        "#...c........c...#",
+        "##################"
+      ],
+      "partyStart": [
+        {
+          "x": 7,
+          "y": 7
+        },
+        {
+          "x": 8,
+          "y": 7
+        },
+        {
+          "x": 9,
+          "y": 7
+        },
+        {
+          "x": 10,
+          "y": 7
+        }
+      ],
+      "enemies": [
+        {
+          "name": "Engendro Vampírico",
+          "x": 2,
+          "y": 2
+        },
+        {
+          "name": "Engendro Vampírico",
+          "x": 15,
+          "y": 2
+        }
+      ]
+    },
+    {
+      "id": "molino_viejo_mascahuesos",
+      "map": [
+        "################",
+        "#####......#####",
+        "###...c..T...###",
+        "##............##",
+        "#...C......k...#",
+        "#.....~~.......#",
+        "#.....~~...C...#",
+        "#..............#",
+        "#..T.......c...#",
+        "##............##",
+        "###..........###",
+        "#####......#####",
+        "################"
+      ],
+      "partyStart": [
+        {
+          "x": 6,
+          "y": 10
+        },
+        {
+          "x": 7,
+          "y": 10
+        },
+        {
+          "x": 8,
+          "y": 10
+        },
+        {
+          "x": 9,
+          "y": 10
+        }
+      ],
+      "enemies": [
+        {
+          "name": "Saga Nocturna",
+          "x": 7,
+          "y": 2
+        },
+        {
+          "name": "Bruja Baroviana",
+          "x": 3,
+          "y": 4
+        }
+      ]
+    },
+    {
+      "id": "plaza_vallaki",
+      "map": [
+        "######################",
+        "#....T.........T.....#",
+        "#..CC....c..c....CC..#",
+        "#.........ww.........#",
+        "#...c.....ww.....c...#",
+        "#....................#",
+        "#..T....^^^^^^....T..#",
+        "#.......^^^^^^.......#",
+        "#..CC............CC..#",
+        "#....c..........c....#",
+        "#....................#",
+        "#..b..............b..#",
+        "######################"
+      ],
+      "partyStart": [
+        {
+          "x": 9,
+          "y": 8
+        },
+        {
+          "x": 10,
+          "y": 8
+        },
+        {
+          "x": 11,
+          "y": 8
+        },
+        {
+          "x": 12,
+          "y": 8
+        }
+      ],
+      "enemies": [
+        {
+          "name": "Lobo Terrible",
+          "x": 2,
+          "y": 1
+        },
+        {
+          "name": "Lobo gris",
+          "x": 19,
+          "y": 1
+        },
+        {
+          "name": "Lobo gris",
+          "x": 10,
+          "y": 11
+        }
+      ]
+    },
+    {
+      "id": "patio_argynvostholt",
+      "name": "Patio de Argynvostholt",
+      "locationName": "Argynvostholt",
+      "map": [
+        "##################",
+        "#...##......##...#",
+        "#.~..#..C...#..~.#",
+        "#....#......#....#",
+        "#..........~.....#",
+        "#.c....^^^^....c.#",
+        "#......^^^^......#",
+        "#~..C........C..~#",
+        "#........~.......#",
+        "#..c..........c..#",
+        "##################"
+      ],
+      "partyStart": [
+        {
+          "x": 7,
+          "y": 9
+        },
+        {
+          "x": 8,
+          "y": 9
+        },
+        {
+          "x": 9,
+          "y": 9
+        },
+        {
+          "x": 10,
+          "y": 9
+        }
+      ],
+      "enemies": [
+        {
+          "name": "Revenant",
+          "x": 9,
+          "y": 2
+        }
+      ]
+    },
+    {
+      "id": "vinedo_bodega",
+      "name": "Viñedo de la Bodega",
+      "locationName": "Bodega El Mago de los Vinos",
+      "map": [
+        "####################",
+        "#..........#TT..T..#",
+        "#.bbbbbbb..#.......#",
+        "#..........D...k...#",
+        "#.bbbbbbb..#.......#",
+        "#..........#########",
+        "#.bbbbbbb..........#",
+        "#..................#",
+        "#.bbbbbbb....c.....#",
+        "#............T.....#",
+        "#.bbbbbbb..........#",
+        "####################"
+      ],
+      "partyStart": [
+        {
+          "x": 15,
+          "y": 8
+        },
+        {
+          "x": 16,
+          "y": 8
+        },
+        {
+          "x": 15,
+          "y": 9
+        },
+        {
+          "x": 16,
+          "y": 9
+        }
+      ],
+      "enemies": [
+        {
+          "name": "Bruja Baroviana",
+          "x": 2,
+          "y": 1
+        },
+        {
+          "name": "Lobo gris",
+          "x": 5,
+          "y": 3
+        },
+        {
+          "name": "Lobo gris",
+          "x": 9,
+          "y": 7
+        },
+        {
+          "name": "Lobo gris",
+          "x": 4,
+          "y": 9
+        }
+      ]
+    },
+    {
+      "id": "puertas_krezk",
+      "name": "Puertas de Krezk",
+      "locationName": "Aldea de Krezk",
+      "map": [
+        "##################",
+        "#^^^^^^....^^^^^^#",
+        "#......c..c......#",
+        "#................#",
+        "#..b..........b..#",
+        "#.bb....~~....bb.#",
+        "#bbb....~~....bbb#",
+        "#bb............bb#",
+        "#b....C....C....b#",
+        "#bb............bb#",
+        "##################"
+      ],
+      "partyStart": [
+        {
+          "x": 8,
+          "y": 2
+        },
+        {
+          "x": 9,
+          "y": 2
+        },
+        {
+          "x": 8,
+          "y": 3
+        },
+        {
+          "x": 9,
+          "y": 3
+        }
+      ],
+      "enemies": [
+        {
+          "name": "Hombre Lobo",
+          "x": 8,
+          "y": 8
+        },
+        {
+          "name": "Lobo gris",
+          "x": 3,
+          "y": 7
+        },
+        {
+          "name": "Lobo gris",
+          "x": 14,
+          "y": 7
+        }
+      ]
+    },
+    {
+      "id": "cripta_strahd",
+      "name": "La Cripta de Strahd",
+      "locationName": "Castillo Ravenloft",
+      "map": [
+        "##################",
+        "#.......^^.......#",
+        "#..C...^^^^...C..#",
+        "#......^^^^......#",
+        "#..#..........#..#",
+        "#................#",
+        "#..C..#....#..C..#",
+        "#................#",
+        "#..#..........#..#",
+        "#.......~~.......#",
+        "#..c..........c..#",
+        "##################"
+      ],
+      "partyStart": [
+        {
+          "x": 7,
+          "y": 10
+        },
+        {
+          "x": 8,
+          "y": 10
+        },
+        {
+          "x": 9,
+          "y": 10
+        },
+        {
+          "x": 10,
+          "y": 10
+        }
+      ],
+      "enemies": [
+        {
+          "name": "Strahd von Zarovich",
+          "x": 8,
+          "y": 2
+        },
+        {
+          "name": "Engendro Vampírico",
+          "x": 3,
+          "y": 5
+        }
+      ]
+    }
+  ],
+  "quests": [
+    {
+      "id": "q_sotano_iglesia",
+      "objectives": [
+        {
+          "type": "eliminate",
+          "label": "Destruir al engendro",
+          "target": "Engendro hambriento"
+        }
+      ]
+    },
+    {
+      "id": "q_argynvostholt",
+      "name": "El Caballero sin Descanso",
+      "act": 3,
+      "boardId": "patio_argynvostholt",
+      "description": "propio: En el patio de Argynvostholt vaga un caballero no-muerto de la Orden del Dragón de Plata. No distingue entre los siervos del vampiro y quien entra sin permiso.",
+      "objectives": [
+        {
+          "type": "eliminate",
+          "label": "Derrotar al Revenant",
+          "target": "Revenant"
+        }
+      ]
+    },
+    {
+      "id": "q_bodega",
+      "name": "El Viñedo Asediado",
+      "act": 3,
+      "boardId": "vinedo_bodega",
+      "description": "propio: Una bruja y su manada de lobos rondan las viñas de la Bodega El Mago de los Vinos. Sin vino, Barovia pierde lo poco que le queda.",
+      "objectives": [
+        {
+          "type": "eliminate_all",
+          "label": "Limpiar el viñedo"
+        }
+      ]
+    },
+    {
+      "id": "q_krezk",
+      "name": "Lobos a las Puertas",
+      "act": 4,
+      "boardId": "puertas_krezk",
+      "description": "propio: Un hombre lobo y su manada salen de la niebla ante las puertas de Krezk. Los de dentro no abren hasta que se vayan.",
+      "objectives": [
+        {
+          "type": "eliminate",
+          "label": "Acabar con el hombre lobo",
+          "target": "Hombre Lobo"
+        }
+      ]
+    },
+    {
+      "id": "q_cripta",
+      "name": "El Señor de Barovia",
+      "act": 5,
+      "boardId": "cripta_strahd",
+      "description": "propio: Bajo el castillo, en su cripta, Strahd os espera junto a su ataúd. O cae él, o caéis vosotros.",
+      "objectives": [
+        {
+          "type": "eliminate",
+          "label": "Derrotar a Strahd",
+          "target": "Strahd von Zarovich"
+        }
+      ]
+    }
+  ],
+  "plot": {
+    "title": "La Maldición de Strahd",
+    "milestones": [
+      {
+        "id": "sangrienta-bienvenida",
+        "quest": "q_taberna",
+        "opens": {
+          "kind": "start"
+        },
+        "open": [
+          "asedio-en-la-mansion",
+          "el-grito-en-el-sotano"
+        ]
+      },
+      {
+        "id": "asedio-en-la-mansion",
+        "quest": "q_asedio_mansion",
+        "after": "sangrienta-bienvenida",
+        "open": [
+          "lectura-interrumpida"
+        ]
+      },
+      {
+        "id": "el-grito-en-el-sotano",
+        "quest": "q_sotano_iglesia",
+        "after": "sangrienta-bienvenida",
+        "open": []
+      },
+      {
+        "id": "lectura-interrumpida",
+        "quest": "q_campamento_vistani",
+        "after": "asedio-en-la-mansion",
+        "open": [
+          "panico-en-el-festival"
+        ],
+        "standing": {
+          "los-vistani": 1
+        }
+      },
+      {
+        "id": "panico-en-el-festival",
+        "quest": "q_festival_vallaki",
+        "after": "lectura-interrumpida",
+        "open": [
+          "pesadillas-de-molino",
+          "el-caballero-sin-descanso",
+          "el-vinedo-asediado"
+        ],
+        "standing": {
+          "la-corte-de-strahd": -1
+        },
+        "reveal": [
+          "Torre de Van Richten",
+          "Guarida de los Hombres Lobo"
+        ]
+      },
+      {
+        "id": "pesadillas-de-molino",
+        "quest": "q_mascahuesos",
+        "after": "panico-en-el-festival",
+        "open": [
+          "las-puertas-del-diablo"
+        ]
+      },
+      {
+        "id": "el-caballero-sin-descanso",
+        "quest": "q_argynvostholt",
+        "after": "panico-en-el-festival",
+        "open": [],
+        "standing": {
+          "la-orden-del-dragon-de-plata": 1
+        }
+      },
+      {
+        "id": "el-vinedo-asediado",
+        "quest": "q_bodega",
+        "after": "panico-en-el-festival",
+        "open": [
+          "lobos-a-las-puertas"
+        ],
+        "standing": {
+          "los-guardianes-de-la-pluma": 1
+        },
+        "reveal": [
+          "Ruinas de Berez",
+          "Colina Yester"
+        ]
+      },
+      {
+        "id": "lobos-a-las-puertas",
+        "quest": "q_krezk",
+        "after": "el-vinedo-asediado",
+        "open": [],
+        "standing": {
+          "los-hijos-de-la-madre-noche": -1
+        }
+      },
+      {
+        "id": "las-puertas-del-diablo",
+        "quest": "q_puertas_ravenloft",
+        "after": "pesadillas-de-molino",
+        "open": [
+          "la-cena-esta-servida"
+        ]
+      },
+      {
+        "id": "la-cena-esta-servida",
+        "quest": "q_comedor_trampa",
+        "after": "las-puertas-del-diablo",
+        "open": [
+          "el-senor-de-barovia"
+        ]
+      },
+      {
+        "id": "el-senor-de-barovia",
+        "quest": "q_cripta",
+        "after": "la-cena-esta-servida",
+        "open": [],
+        "ending": "barovia-libre",
+        "endingBy": {
+          "los-guardianes-de-la-pluma": "barovia-libre",
+          "la-orden-del-dragon-de-plata": "la-orden-descansa",
+          "los-vistani": "la-caravana-se-va"
+        }
+      }
+    ],
+    "endings": {
+      "barovia-libre": {
+        "title": "Barovia, libre",
+        "scene": "propio: Strahd cae sobre las losas de su cripta y no se levanta. Arriba, por primera vez en siglos, la niebla empieza a abrirse y entra un poco de sol en el valle. La gente de Barovia sale a mirarlo sin creérselo."
+      },
+      "la-orden-descansa": {
+        "title": "La orden descansa",
+        "scene": "Strahd cae en su cripta. Esa noche, en lo alto de Argynvostholt, se enciende una luz de plata que se ve desde todo el valle. Los caballeros muertos dejan las armas en el patio y por fin se quedan quietos. La niebla se retira de los pasos, y quien quiere, puede irse."
+      },
+      "la-caravana-se-va": {
+        "title": "La caravana se va",
+        "scene": "Strahd cae en su cripta. Antes de que amanezca, los vistani recogen el campamento y se van por el camino del este: saben que la gente del valle no les perdonará haber servido al conde. Madam Eva es la última en subir al carro. La niebla se abre detrás de ellos."
+      }
+    },
+    "omens": [
+      {
+        "text": "Una adivina os echará las cartas y os dirá dónde buscar las armas contra el conde.",
+        "milestone": "lectura-interrumpida"
+      },
+      {
+        "text": "Vallaki hará una fiesta para no tener miedo, y acabará a gritos.",
+        "milestone": "panico-en-el-festival"
+      },
+      {
+        "text": "El conde os invitará a cenar a su castillo, y no os dejará levantaros de la mesa.",
+        "milestone": "la-cena-esta-servida"
+      }
+    ]
+  }
+}

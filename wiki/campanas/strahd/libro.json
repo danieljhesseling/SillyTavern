@@ -1,0 +1,2078 @@
+{
+  "about": "Lo que sale del libro de Curse of Strahd, contado con palabras propias y en corto: la gente de cada sitio, lo que se oye, los encargos, las facciones, las escenas de los confidentes, los sitios que se descubren y los combates que faltaban. Se pone encima de original.json (el Gem) y debajo de mejoras.json (tableros y equilibrio). Lo marcado «propio:» no está en el libro: lo he puesto yo para que encaje.",
+  "world": {
+    "factions": [
+      {
+        "id": "los-vistani",
+        "name": "Los Vistani",
+        "goals": "Viajar libres en sus carromatos, beber, cantar y contarle al conde todo lo que ven. Son los únicos que pueden cruzar la niebla.",
+        "onSuccess": "Los vistani encuentran la torre donde se escondía el cazador de vampiros y se lo cuentan al conde. Desde su campamento sale un sendero nuevo hasta el lago.",
+        "reputation": 0,
+        "seat": "Campamento del Estanque Tser",
+        "holds": [
+          "Campamento del Estanque Tser"
+        ],
+        "enemies": [
+          "la-orden-del-dragon-de-plata"
+        ],
+        "goal": {
+          "kind": "encontrar",
+          "target": "Torre de Van Richten",
+          "pace": 8
+        },
+        "magia": "comercia"
+      },
+      {
+        "id": "la-orden-del-dragon-de-plata",
+        "name": "La Orden del Dragón de Plata",
+        "goals": "Los caballeros que murieron defendiendo el valle volvieron de la tumba. Ya no quieren salvar a nadie: quieren que el conde sufra para siempre, y matan a todo el que le sirve.",
+        "onSuccess": "Los caballeros muertos bajan de noche al campamento del estanque y no dejan un carromato en pie: para ellos, quien sirve al conde merece morir.",
+        "reputation": 0,
+        "seat": "Argynvostholt",
+        "holds": [
+          "Argynvostholt"
+        ],
+        "enemies": [
+          "la-corte-de-strahd",
+          "los-vistani"
+        ],
+        "goal": {
+          "kind": "destruir",
+          "target": "Campamento del Estanque Tser",
+          "pace": 10
+        },
+        "magia": "tolera"
+      },
+      {
+        "id": "la-corte-de-strahd",
+        "name": "La corte de Strahd",
+        "goals": "El conde, su chambelán Rahadin, sus brujas y sus engendros. Quieren a Ireena como novia del conde, y a los forasteros, para jugar con ellos.",
+        "onSuccess": "La señora Wachter echa al barón y manda en Vallaki en nombre del conde. De noche, las calles son de los engendros.",
+        "reputation": -2,
+        "seat": "Castillo Ravenloft",
+        "holds": [
+          "Castillo Ravenloft",
+          "Aldea de Barovia"
+        ],
+        "enemies": [
+          "la-orden-del-dragon-de-plata",
+          "los-guardianes-de-la-pluma"
+        ],
+        "goal": {
+          "kind": "controlar",
+          "target": "Ciudad de Vallaki",
+          "pace": 9
+        },
+        "magia": "tolera"
+      },
+      {
+        "id": "los-guardianes-de-la-pluma",
+        "name": "Los Guardianes de la Pluma",
+        "goals": "Una sociedad secreta de hombres cuervo. No pueden con el conde solos, así que vigilan a sus siervos y ayudan a quien se le enfrenta.",
+        "onSuccess": "Los hombres cuervo echan a la bruja de Berez y recuperan una de las gemas: la bodega vuelve a dar vino bueno.",
+        "reputation": 0,
+        "seat": "Bodega El Mago de los Vinos",
+        "holds": [
+          "Bodega El Mago de los Vinos"
+        ],
+        "enemies": [
+          "la-corte-de-strahd",
+          "los-hijos-de-la-madre-noche"
+        ],
+        "goal": {
+          "kind": "recuperar",
+          "target": "Ruinas de Berez",
+          "pace": 10
+        },
+        "magia": "tolera"
+      },
+      {
+        "id": "los-hijos-de-la-madre-noche",
+        "name": "Los Hijos de la Madre Noche",
+        "goals": "La manada de hombres lobo de Kiril. Sirven al conde por miedo, roban niños y los convierten en lobos para que la manada no se acabe.",
+        "onSuccess": "Una noche de luna llena la manada salta el muro de Krezk. Por la mañana faltan niños en tres casas.",
+        "reputation": -1,
+        "seat": "Guarida de los Hombres Lobo",
+        "holds": [
+          "Guarida de los Hombres Lobo"
+        ],
+        "enemies": [
+          "los-guardianes-de-la-pluma",
+          "la-orden-del-dragon-de-plata"
+        ],
+        "goal": {
+          "kind": "destruir",
+          "target": "Aldea de Krezk",
+          "pace": 8
+        },
+        "magia": "tolera"
+      }
+    ]
+  },
+  "locations": [
+    {
+      "name": "Torre de Van Richten",
+      "type": "ruins",
+      "hidden": true,
+      "region": "Lago Baratok",
+      "biome": "bosque",
+      "description": "Una torre vieja en un islote del lago Baratok, unida a la orilla por un camino de tierra. La levantó un mago muerto hace siglos y la puerta de hierro no tiene pomo.",
+      "routes": [
+        {
+          "to": "Argynvostholt",
+          "days": 1
+        },
+        {
+          "to": "Aldea de Krezk",
+          "days": 1
+        }
+      ]
+    },
+    {
+      "name": "Guarida de los Hombres Lobo",
+      "type": "dungeon",
+      "hidden": true,
+      "region": "Lago Baratok",
+      "biome": "cueva",
+      "factionName": "Los Hijos de la Madre Noche",
+      "description": "Unas cuevas sobre el lago, con la entrada tallada como la boca de un lobo. Dentro huele a sangre y a humo, y se oyen niños.",
+      "routes": [
+        {
+          "to": "Torre de Van Richten",
+          "days": 1
+        },
+        {
+          "to": "Aldea de Krezk",
+          "days": 1
+        }
+      ]
+    },
+    {
+      "name": "Ruinas de Berez",
+      "type": "ruins",
+      "hidden": true,
+      "region": "Río Luna",
+      "biome": "bosque",
+      "description": "Un pueblo que el río ahogó hace años. Casas hundidas en el barro, nubes de moscas y, en medio, una choza sobre un tocón enorme con raíces como patas.",
+      "routes": [
+        {
+          "to": "Bodega El Mago de los Vinos",
+          "days": 1
+        },
+        {
+          "to": "Argynvostholt",
+          "days": 1
+        }
+      ]
+    },
+    {
+      "name": "Colina Yester",
+      "type": "wilderness",
+      "hidden": true,
+      "region": "Borde de la niebla",
+      "biome": "montaña",
+      "description": "Una colina de tumbas antiguas en el borde del valle. Arriba, dentro de un círculo de piedras negras, los druidas han levantado un muñeco de ramas enorme que se parece al conde.",
+      "routes": [
+        {
+          "to": "Bodega El Mago de los Vinos",
+          "days": 1
+        },
+        {
+          "to": "Aldea de Krezk",
+          "days": 1
+        }
+      ]
+    }
+  ],
+  "confidants": [
+    {
+      "name": "Ismark Kolyanovich",
+      "className": "guerrero",
+      "motive": "bond",
+      "scenes": [
+        {
+          "rank": 2,
+          "title": "El Menor",
+          "scene": "En la taberna, Ismark paga el vino y te cuenta que en el pueblo le llaman «el Menor» desde niño, porque su padre lo hacía todo mejor. Te pregunta si alguna vez has cargado con un nombre que no elegiste."
+        },
+        {
+          "rank": 4,
+          "title": "El ataúd de madera",
+          "scene": "Bajáis juntos el ataúd de su padre por la cuesta y nadie del pueblo sale a ayudar. A mitad de camino, Ismark se para y te pide la verdad: ¿de verdad crees que su hermana estará más segura lejos de casa?"
+        },
+        {
+          "rank": 6,
+          "title": "La espada del padre",
+          "scene": "Ismark entrena de madrugada con la espada de Kolyan y falla más de lo que acierta. Te pide que le enseñes a pelear contra algo que no sangra. ¿Le enseñas, o le dices que se quede con Ireena?"
+        },
+        {
+          "rank": 8,
+          "title": "Burgomaestre",
+          "scene": "Llega un recado de la aldea: sin Kolyan, alguien tiene que mandar, y quieren que sea él. Ismark no quiere el cargo; quiere seguir contigo hasta el castillo. ¿Le empujas a volver o le dejas venir?"
+        },
+        {
+          "rank": 10,
+          "title": "Ya no es el Menor",
+          "scene": "Ante las puertas de Ravenloft, Ismark se ata la capa de su padre. «Si caigo, que en mi tumba no pongan el Menor.» Te pide que cuides de Ireena si él no vuelve."
+        }
+      ],
+      "arrivals": [
+        {
+          "place": "Aldea de Barovia",
+          "line": "Aquí nadie abre la puerta después de anochecer. Ni siquiera a mí."
+        },
+        {
+          "place": "Ciudad de Vallaki",
+          "line": "Dicen que Vallaki tiene murallas. Las murallas no paran lo que llega volando."
+        },
+        {
+          "place": "Castillo Ravenloft",
+          "line": "Mi padre murió mirando estas torres por la ventana."
+        }
+      ]
+    },
+    {
+      "name": "Ireena Kolyana",
+      "className": "guerrera",
+      "motive": "bond",
+      "scenes": [
+        {
+          "rank": 2,
+          "title": "Dos mordiscos",
+          "scene": "Ireena se aparta el pelo del cuello y te enseña dos marcas que no se cierran. De las noches en que él entró en casa solo recuerda sus ojos. Te pregunta si te da miedo estar cerca de ella."
+        },
+        {
+          "rank": 4,
+          "title": "Sin recuerdos",
+          "scene": "Ireena te confiesa que no recuerda nada de antes de que Kolyan la encontrara, de niña, al borde del bosque. A veces sueña con un castillo que nunca ha pisado. ¿Le cuentas lo que se dice de la dama del retrato?"
+        },
+        {
+          "rank": 6,
+          "title": "Un nombre que no es el suyo",
+          "scene": "Un vistani os para en el camino y la llama «Tatyana». Ireena se enfada y luego no dice nada en todo el día. Por la noche te pregunta: «¿Y si soy ella y no lo sé?»"
+        },
+        {
+          "rank": 8,
+          "title": "Aprender a pelear",
+          "scene": "Ireena te pide que le enseñes a usar la espada: está harta de que la escondan. A la tercera tarde ya para un golpe. ¿La dejarás ir delante la próxima vez?"
+        },
+        {
+          "rank": 10,
+          "title": "Mi decisión",
+          "scene": "Frente al castillo, Ireena dice que no va a esconderse más: si el conde la quiere, la tendrá delante con una espada en la mano. Te pregunta si irás a su lado."
+        }
+      ],
+      "arrivals": [
+        {
+          "place": "Aldea de Krezk",
+          "line": "Dicen que aquí hay un estanque bendito. No sé por qué, pero quiero verlo."
+        },
+        {
+          "place": "Castillo Ravenloft",
+          "line": "Conozco este sitio. No sé de qué."
+        },
+        {
+          "place": "Ciudad de Vallaki",
+          "line": "Aquí nadie me conoce. Por primera vez, eso me gusta."
+        }
+      ]
+    },
+    {
+      "name": "Madam Eva",
+      "className": "clériga",
+      "motive": "bond",
+      "spells": [
+        "hab-bendicion",
+        "hab-curar",
+        "mag-hablar-muertos"
+      ],
+      "scenes": [
+        {
+          "rank": 2,
+          "title": "Las cartas no mienten",
+          "scene": "Madam Eva baraja sin mirarte. Dice tu nombre antes de que lo digas y algo que hiciste hace años. Luego te pregunta qué es lo que más miedo te da perder aquí."
+        },
+        {
+          "rank": 4,
+          "title": "El vino de la hoguera",
+          "scene": "Junto al fuego, la vieja bebe con los suyos y se ríe de tu cara seria. Te cuenta que los vistani cruzan la niebla cuando quieren y los demás no. ¿Le preguntas por qué el conde se lo permite?"
+        },
+        {
+          "rank": 6,
+          "title": "Una deuda vieja",
+          "scene": "Madam Eva te cuenta que el conde, de joven, cayó herido en una guerra y los vistani le curaron y le llevaron a casa. Desde entonces les debe algo. Te pregunta si crees que las deudas se pagan también después de muerto."
+        },
+        {
+          "rank": 8,
+          "title": "La criada del castillo",
+          "scene": "Muy tarde, Eva te dice algo que no ha contado a nadie: sirvió en el castillo el día de la boda de Sergei y vio correr a la novia. No dice más. ¿Le preguntas quién es ella de verdad?"
+        },
+        {
+          "rank": 10,
+          "title": "La última carta",
+          "scene": "Antes de que subáis al castillo, Eva saca una sola carta y no te la enseña. «Lo que haya que ver, lo verás dentro.» Te pide que no mates a los vistani que sirven al conde. ¿Se lo prometes?"
+        }
+      ],
+      "arrivals": [
+        {
+          "place": "Campamento del Estanque Tser",
+          "line": "Aquí siempre hay fuego y vino. Es lo único que el conde no nos quita."
+        },
+        {
+          "place": "Castillo Ravenloft",
+          "line": "Estas losas las fregué yo. Hace mucho."
+        }
+      ]
+    },
+    {
+      "name": "Rudolph van Richten",
+      "className": "clérigo",
+      "motive": "bond",
+      "spells": [
+        "hab-curar",
+        "hab-luz-severa",
+        "hab-bendicion"
+      ],
+      "scenes": [
+        {
+          "rank": 2,
+          "title": "El bardo que no canta",
+          "scene": "El bardo del sombrero de colores que se hace llamar Rictavio cuenta historias imposibles en la posada. A solas, se quita el sombrero y es un anciano cansado: Rudolph van Richten, cazador de vampiros. ¿Le guardarás el secreto?"
+        },
+        {
+          "rank": 4,
+          "title": "El carro cerrado",
+          "scene": "Van Richten te lleva al corral donde guarda su carro de feria. Algo grande se mueve dentro. Te pide que no preguntes todavía y que no dejes que se acerque ningún vistani."
+        },
+        {
+          "rank": 6,
+          "title": "Erasmus",
+          "scene": "Una noche te cuenta por qué caza: unos vistani vendieron a su hijo a un vampiro, y él tuvo que clavarle la estaca cuando el chico se lo pidió. Te pregunta si un padre puede perdonarse eso."
+        },
+        {
+          "rank": 8,
+          "title": "La maldición",
+          "scene": "Van Richten está seguro de que una vieja vistani le maldijo: todo el que se le acerca acaba muerto. Por eso trabaja solo, y te pide que te alejes de él. ¿Te quedas?"
+        },
+        {
+          "rank": 10,
+          "title": "El último cazador",
+          "scene": "Antes del castillo te da la mejor estaca de su maletín. «Si caigo yo, que esto no quede a medias.» Te pregunta si estás dispuesto a terminarlo aunque cueste."
+        }
+      ],
+      "arrivals": [
+        {
+          "place": "Ciudad de Vallaki",
+          "line": "Aquí me llaman Rictavio. No lo olvides."
+        },
+        {
+          "place": "Torre de Van Richten",
+          "line": "Mi torre. Bueno, la de un mago muerto. Tiene buenas cerraduras."
+        },
+        {
+          "place": "Castillo Ravenloft",
+          "line": "Treinta años esperando esta puerta."
+        }
+      ]
+    },
+    {
+      "name": "Ezmerelda d'Avenir",
+      "className": "maga",
+      "motive": "bond",
+      "spells": [
+        "hab-rayo-fuego",
+        "hab-escudo-arcano",
+        "mag-relampago"
+      ],
+      "scenes": [
+        {
+          "rank": 2,
+          "title": "La pierna de madera",
+          "scene": "Ezmerelda se sienta a ajustar la correa de su pierna: la de verdad se la arrancó un hombre lobo hace años. Te pide que no lo cuentes. ¿Qué le cuentas tú a cambio?"
+        },
+        {
+          "rank": 4,
+          "title": "El maestro",
+          "scene": "Te pregunta si has visto a un anciano cazador de vampiros: lo busca desde hace meses. Fue su maestro, aunque nunca se fió del todo de ella por ser vistana. ¿Le dices lo que sabes?"
+        },
+        {
+          "rank": 6,
+          "title": "Lo que vio de niña",
+          "scene": "Ezmerelda te confiesa que su familia secuestró al hijo de van Richten, y que ella lo vio todo. Por eso caza: para pagar esa deuda. Te pregunta si las culpas de la familia se heredan."
+        },
+        {
+          "rank": 8,
+          "title": "El carro",
+          "scene": "Te enseña su carro: estacas, ajos, agua bendita y cien frascos de fuego colgados. «Si alguien abre la puerta sin mi permiso, vuela.» Te ofrece viajar en él. ¿Aceptas?"
+        },
+        {
+          "rank": 10,
+          "title": "La cazadora",
+          "scene": "En la puerta del castillo, Ezmerelda revisa su equipo dos veces. Ya entró una vez sola y salió de milagro. Esta vez quiere entrar con alguien de confianza. ¿Eres tú?"
+        }
+      ],
+      "arrivals": [
+        {
+          "place": "Torre de Van Richten",
+          "line": "Mi carro está aquí. Que nadie toque la puerta."
+        },
+        {
+          "place": "Aldea de Krezk",
+          "line": "En la abadía hay algo que no es un abad."
+        }
+      ]
+    }
+  ],
+  "npcs": [
+    {
+      "id": "donavich",
+      "name": "Donavich",
+      "trade": "Cura de la aldea",
+      "where": "Aldea de Barovia",
+      "wants": "Que alguien le diga cómo salvar a su hijo sin tener que matarlo.",
+      "knows": "Que Ireena no es hija de sangre del burgomaestre: Kolyan la encontró de niña al borde del bosque, sin recuerdos.",
+      "secret": "Su hijo Doru volvió del castillo convertido en vampiro, y lo tiene encerrado bajo el suelo de la iglesia sin darle de comer.",
+      "voice": "Ronco de tanto rezar. Se queda callado a media frase cuando oye el grito de abajo.",
+      "service": "templo"
+    },
+    {
+      "id": "bildrath-cantemir",
+      "name": "Bildrath Cantemir",
+      "trade": "Tendero",
+      "where": "Aldea de Barovia",
+      "wants": "Vender caro: diez veces lo que vale fuera. «Si lo quieres de verdad, lo pagarás.»",
+      "knows": "Cuándo pasan las carretas de los vistani y qué traen.",
+      "secret": "Le da miedo que su sobrino Parriwimple se vaya con los forasteros y le deje solo con la tienda.",
+      "voice": "Seco y de números. Nunca regatea.",
+      "service": "tienda"
+    },
+    {
+      "id": "parriwimple",
+      "name": "Parriwimple",
+      "trade": "Mozo de la tienda",
+      "where": "Aldea de Barovia",
+      "wants": "Ser útil a alguien que no sea su tío, aunque sea una vez.",
+      "knows": "Que Ireena es la chica más guapa del pueblo y que el conde también lo sabe.",
+      "secret": "Es mucho más fuerte de lo que parece: levanta un barril lleno con una mano.",
+      "voice": "Lento y amable. Repite la última palabra de lo que le dices.",
+      "service": ""
+    },
+    {
+      "id": "maria-la-loca",
+      "name": "María la Loca",
+      "trade": "Vecina",
+      "where": "Aldea de Barovia",
+      "wants": "Que alguien le devuelva a su hija Gertruda.",
+      "knows": "Que Gertruda se escapó hace una semana mirando hacia el castillo.",
+      "secret": "Tuvo a su hija encerrada en casa toda la vida para que el conde no la viera.",
+      "voice": "Solloza. Solo habla si le hablas muy despacio y con cariño.",
+      "service": ""
+    },
+    {
+      "id": "arik-lorensk",
+      "name": "Arik Lorensk",
+      "trade": "Tabernero de la Sangre de la Enredadera",
+      "where": "Aldea de Barovia",
+      "wants": "Que le pagues: un cobre la copa, un plata la jarra.",
+      "knows": "Que las tres vistani de la mesa de la puerta son las dueñas de la taberna.",
+      "secret": "No tiene alma: nunca ha llorado ni se ha reído.",
+      "voice": "Hueca. Limpia vasos sin parar, aunque estén limpios.",
+      "service": "posada"
+    },
+    {
+      "id": "alenka",
+      "name": "Alenka",
+      "trade": "Vistana, dueña de la taberna",
+      "where": "Aldea de Barovia",
+      "wants": "Que todo el mundo pague su cuenta antes de irse.",
+      "knows": "Que Madam Eva sabía que ibais a venir y os espera en el campamento del estanque.",
+      "secret": "Ella y sus dos hermanas le cuentan al conde quién entra en la aldea.",
+      "voice": "Sonríe con todos los dientes. Os mira las bolsas antes que la cara.",
+      "service": ""
+    },
+    {
+      "id": "stanimir",
+      "name": "Stanimir",
+      "trade": "Viejo vistani",
+      "where": "Campamento del Estanque Tser",
+      "wants": "Llevar forasteros ante Madam Eva, como le mandaron.",
+      "knows": "La historia de un príncipe herido al que los vistani curaron hace siglos, y en qué se convirtió.",
+      "secret": "Sabe hacer que el fuego cambie de color y cuente historias con sombras.",
+      "voice": "Cuenta todo como un cuento. Bebe vino entre frase y frase.",
+      "service": "tienda"
+    },
+    {
+      "id": "luvash",
+      "name": "Luvash",
+      "trade": "Jefe vistani",
+      "where": "Campamento del Estanque Tser",
+      "wants": "Encontrar a su hija Arabelle, que lleva un día desaparecida.",
+      "knows": "Que su hermano Arrigal trabaja para el conde y le lleva recados al castillo.",
+      "secret": "Está tan borracho que no se acuerda de cuándo vio a su hija por última vez.",
+      "voice": "Grita. Da golpes en la mesa. Llora cuando nombra a la niña.",
+      "service": ""
+    },
+    {
+      "id": "baron-vargas-vallakovich",
+      "name": "Barón Vargas Vallakovich",
+      "trade": "Burgomaestre de Vallaki",
+      "where": "Ciudad de Vallaki",
+      "wants": "Que todo el pueblo esté contento. Cree que así el conde no podrá tocar Vallaki.",
+      "knows": "Que dos criados de su casa han desaparecido esta semana.",
+      "secret": "Tiene encadenado en un armario a Udo, el zapatero, por decir que habría que echarle a los lobos.",
+      "voice": "Grita «¡Todo irá bien!» al final de cada frase. No aguanta que le lleven la contraria.",
+      "service": ""
+    },
+    {
+      "id": "izek-strazni",
+      "name": "Izek Strazni",
+      "trade": "Hombre del barón",
+      "where": "Ciudad de Vallaki",
+      "wants": "Encontrar a la chica que ve en sueños.",
+      "knows": "Todo lo que pasa en las calles: él es quien arresta a los que no están contentos.",
+      "secret": "Tiene un brazo de demonio que lanza fuego, y la chica de sus sueños es Ireena. Es su hermana y no lo sabe.",
+      "voice": "Pocas palabras y muy cerca de la cara. Huele a vino.",
+      "service": ""
+    },
+    {
+      "id": "fiona-wachter",
+      "name": "Lady Fiona Wachter",
+      "trade": "Noble de Vallaki",
+      "where": "Ciudad de Vallaki",
+      "wants": "Echar al barón y mandar ella en Vallaki.",
+      "knows": "Que su familia lleva siglos siendo leal al conde, y que el conde recuerda a quien le es leal.",
+      "secret": "Dirige un culto al diablo en el sótano y duerme cada noche junto al cadáver de su marido.",
+      "voice": "Educada y fría. Dice «prefiero servir al diablo que a un loco» como quien comenta el tiempo.",
+      "service": ""
+    },
+    {
+      "id": "urwin-martikov",
+      "name": "Urwin Martikov",
+      "trade": "Posadero de El Agua Azul",
+      "where": "Ciudad de Vallaki",
+      "wants": "Que llegue de una vez el vino de la bodega, que ya va con retraso.",
+      "knows": "Quién duerme en su posada y qué cuenta cada uno cuando bebe.",
+      "secret": "Es un hombre cuervo de los Guardianes de la Pluma. Su padre es el dueño de la bodega y no se hablan.",
+      "voice": "Cálido y cansado. Se ofende si le dices que el vino es malo.",
+      "service": "posada"
+    },
+    {
+      "id": "lucian-petrovich",
+      "name": "Padre Lucian Petrovich",
+      "trade": "Cura de San Andral",
+      "where": "Ciudad de Vallaki",
+      "wants": "Recuperar los huesos del santo, que le robaron de debajo del altar hace unas noches.",
+      "knows": "Que solo se lo contó a un monaguillo, y que el monaguillo se lo contó a alguien.",
+      "secret": "Sospecha del sepulturero, Milivoj, pero le da miedo preguntarle.",
+      "voice": "Suave y preocupado. Siempre ofrece algo de comer.",
+      "service": "templo"
+    },
+    {
+      "id": "milivoj",
+      "name": "Milivoj",
+      "trade": "Sepulturero",
+      "where": "Ciudad de Vallaki",
+      "wants": "Dar de comer a sus hermanos pequeños.",
+      "knows": "Dónde están enterrados todos los del pueblo, y quién no está donde dice su lápida.",
+      "secret": "Robó los huesos del santo y se los vendió al ataudero.",
+      "voice": "Brusco. Siempre lleva la pala y la apoya en el suelo para hablar.",
+      "service": ""
+    },
+    {
+      "id": "henrik-van-der-voort",
+      "name": "Henrik van der Voort",
+      "trade": "Ataudero",
+      "where": "Ciudad de Vallaki",
+      "wants": "Que le dejen en paz. No abre la puerta a nadie.",
+      "knows": "Que un noble llamado Vasili von Holtz le prometió mucho trabajo a cambio de un favor.",
+      "secret": "En el piso de arriba de su taller duermen seis engendros vampíricos, dentro de cajas llenas de tierra.",
+      "voice": "Grita «¡Está cerrado!» desde detrás de la puerta. Si le pillan, suplica.",
+      "service": ""
+    },
+    {
+      "id": "gadof-blinsky",
+      "name": "Gadof Blinsky",
+      "trade": "Juguetero",
+      "where": "Ciudad de Vallaki",
+      "wants": "Que alguien compre sus juguetes y se ría con ellos.",
+      "knows": "Que un gran juguetero hizo un hombre de engranajes que acabó en el castillo del conde.",
+      "secret": "Izek le obliga a fabricarle muñecas con la cara de una chica de pelo castaño, una al mes.",
+      "voice": "Acento cerrado. «¡Si no es divertido, no es Blinsky!»",
+      "service": ""
+    },
+    {
+      "id": "victor-vallakovich",
+      "name": "Victor Vallakovich",
+      "trade": "Hijo del barón",
+      "where": "Ciudad de Vallaki",
+      "wants": "Irse de Barovia y dejar a sus padres atrás.",
+      "knows": "Magia sacada de un libro viejo de la biblioteca de su padre.",
+      "secret": "Probó su círculo para salir del valle con dos criados, y los dos acabaron hechos pedazos.",
+      "voice": "Rara y sin mirar a los ojos. Habla con sus muñecos.",
+      "service": ""
+    },
+    {
+      "id": "szoldar-szoldarovich",
+      "name": "Szoldar Szoldarovich",
+      "trade": "Cazador de lobos",
+      "where": "Ciudad de Vallaki",
+      "wants": "Cobrar: por cinco de oro al día os guía por el bosque, de día.",
+      "knows": "Los caminos del valle y dónde caza cada manada.",
+      "secret": "Tiene una muesca en el arco por cada lobo muerto, y ya no le caben más.",
+      "voice": "Seco. Si no tiene nada que decir, no dice nada.",
+      "service": ""
+    },
+    {
+      "id": "gunther-arasek",
+      "name": "Gunther Arasek",
+      "trade": "Dueño del almacén",
+      "where": "Ciudad de Vallaki",
+      "wants": "Que nadie le pregunte por el carro de feria que guarda en su corral.",
+      "knows": "Que el dueño del carro le da de comer a lo que hay dentro dos veces al día, por un agujero del techo.",
+      "secret": "Le pagaron bien por no decir nada.",
+      "voice": "Rápido y nervioso, de tendero. Cambia de tema en cuanto puede.",
+      "service": "tienda"
+    },
+    {
+      "id": "morgantha",
+      "name": "Morgantha",
+      "trade": "Vieja de los pasteles",
+      "where": "Viejo Mascahuesos",
+      "wants": "Vender sus pasteles de los sueños: un oro cada uno, o lo que tengas.",
+      "knows": "Que el conde manda en el tiempo y que los vistani son sus espías.",
+      "secret": "Es una saga nocturna, y con sus hijas hace los pasteles con huesos de niños molidos.",
+      "voice": "Dulce de abuela. Llama a todo el mundo «cielito».",
+      "service": ""
+    },
+    {
+      "id": "vladimir-horngaard",
+      "name": "Vladimir Horngaard",
+      "trade": "Jefe de la Orden del Dragón de Plata",
+      "where": "Argynvostholt",
+      "wants": "Que el conde sufra para siempre. No quiere que muera: muerto, descansaría.",
+      "knows": "Que el cráneo del dragón Argynvost está en el castillo del conde, como un trofeo.",
+      "secret": "Amaba a Sir Godfrey, y el odio le ha hecho olvidarlo.",
+      "voice": "Frío y lento, desde su trono. No se levanta.",
+      "service": ""
+    },
+    {
+      "id": "godfrey-gwilym",
+      "name": "Sir Godfrey Gwilym",
+      "trade": "Caballero de la Orden",
+      "where": "Argynvostholt",
+      "wants": "Devolver el honor a la Orden antes de que no quede nada de ella.",
+      "knows": "Toda la historia de la Orden y de su fundador, el dragón que vivía disfrazado de noble.",
+      "secret": "Si alguien le convence de que la Orden puede recuperar su honor, se irá con él a pelear contra el conde.",
+      "voice": "Voz rasposa de muerto. Muy educado.",
+      "service": ""
+    },
+    {
+      "id": "davian-martikov",
+      "name": "Davian Martikov",
+      "trade": "Dueño de la bodega",
+      "where": "Bodega El Mago de los Vinos",
+      "wants": "Recuperar las gemas que hacían crecer las viñas.",
+      "knows": "Que la bruja de Berez tiene una gema y los druidas de la colina Yester otra.",
+      "secret": "Culpa de la primera gema perdida a su hijo Urwin, y por eso no se hablan.",
+      "voice": "Gruñón y orgulloso. Llama «cuervos» a sus hijos.",
+      "service": "tienda"
+    },
+    {
+      "id": "dmitri-krezkov",
+      "name": "Dmitri Krezkov",
+      "trade": "Burgomaestre de Krezk",
+      "where": "Aldea de Krezk",
+      "wants": "Vino para su gente y que nadie de fuera traiga problemas.",
+      "knows": "Que el Abad lleva más de cien años sin envejecer.",
+      "secret": "Su último hijo, Ilya, murió hace una semana, y con él se acaba la familia.",
+      "voice": "Serio, de señor. Te deja dormir en su casa si cortas leña.",
+      "service": "posada"
+    },
+    {
+      "id": "el-abad",
+      "name": "El Abad",
+      "trade": "Señor de la abadía de Santa Markovia",
+      "where": "Aldea de Krezk",
+      "wants": "Un vestido de novia digno para la novia que está preparando para el conde.",
+      "knows": "Cómo curar casi cualquier herida, y lo que se esconde en la casa de locos de la abadía.",
+      "secret": "Es un ángel que se volvió loco. Convirtió a una familia entera en mestizos medio bestia y cose novias con trozos de muertas.",
+      "voice": "Tranquilo y hermoso. Habla de sus locuras como de obras de caridad.",
+      "service": "templo"
+    },
+    {
+      "id": "clovin-belview",
+      "name": "Clovin Belview",
+      "trade": "Criado del Abad",
+      "where": "Aldea de Krezk",
+      "wants": "Vino. Mucho vino.",
+      "knows": "Cuándo va a sonar la campana de la abadía y qué hay en cada celda.",
+      "secret": "Tiene dos cabezas y odia a los otros mestizos a los que da de comer.",
+      "voice": "Habla la cabeza grande; la pequeña solo sisea. Toca la viola de maravilla cuando está borracho.",
+      "service": ""
+    },
+    {
+      "id": "zuleika-toranescu",
+      "name": "Zuleika Toranescu",
+      "trade": "Mujer lobo de la manada",
+      "where": "Guarida de los Hombres Lobo",
+      "wants": "Que Kiril muera por entregar a su marido Emil al conde.",
+      "knows": "Dónde duerme Kiril y cuántos de la manada le son leales de verdad.",
+      "secret": "Si Kiril muere, soltará a los niños de las jaulas.",
+      "voice": "Baja y furiosa. Reza a la Madre Noche delante de la estatua.",
+      "service": ""
+    },
+    {
+      "id": "muriel-vinshaw",
+      "name": "Muriel Vinshaw",
+      "trade": "Espía de los Guardianes de la Pluma",
+      "where": "Ruinas de Berez",
+      "wants": "Que nadie se acerque a la bruja sin saber lo que hace.",
+      "knows": "Que la bruja vuela en una calavera de gigante y manda en los espantapájaros del pantano.",
+      "secret": "Es una mujer cuervo de Vallaki.",
+      "voice": "Susurra desde detrás de una piedra. Hace señales con un farol.",
+      "service": ""
+    },
+    {
+      "id": "lazlo-ulrich",
+      "name": "Lazlo Ulrich",
+      "trade": "Fantasma del último burgomaestre de Berez",
+      "where": "Ruinas de Berez",
+      "wants": "Que le dejen en paz en su casa hundida.",
+      "knows": "La historia de Marina, la chica de Berez que se parecía a la novia del conde.",
+      "secret": "Mató a Marina para que el conde no la convirtiera. Solo descansará si ve con sus ojos que ella volvió a nacer.",
+      "voice": "Un gigante destrozado que habla con miedo.",
+      "service": ""
+    },
+    {
+      "id": "rahadin",
+      "name": "Rahadin",
+      "trade": "Chambelán del castillo",
+      "where": "Castillo Ravenloft",
+      "wants": "Servir al conde. Nada más.",
+      "knows": "Cada pasillo del castillo y dónde espera el amo esta noche.",
+      "secret": "Quien se le acerca oye en la cabeza los gritos de los miles que ha matado.",
+      "voice": "Tranquila y sin prisa. «El amo os espera.»",
+      "service": ""
+    },
+    {
+      "id": "cyrus-belview",
+      "name": "Cyrus Belview",
+      "trade": "Criado del castillo",
+      "where": "Castillo Ravenloft",
+      "wants": "Llevar a los invitados a «su habitación de la torre».",
+      "knows": "Dónde está la llave del cofre de la corona, que lleva al cuello.",
+      "secret": "La habitación de la torre se alcanza por un ascensor que llena la cabina de gas de dormir.",
+      "voice": "Se ríe solo. Cuenta chistes malos en el peor momento.",
+      "service": ""
+    }
+  ],
+  "bestiary": [
+    {
+      "name": "Kiril Stoyanovich",
+      "hp": 55,
+      "armorClass": 12,
+      "cr": 4,
+      "boss": true,
+      "profile": "aggressive",
+      "attackRangeFeet": 5,
+      "abilities": [
+        "hab-furia",
+        "hab-embate",
+        "romper_rodilla"
+      ],
+      "description": "El jefe de la manada de hombres lobo: enorme, con la barba llena de sangre seca. Pelea medio hombre, medio lobo.",
+      "weakness": "Se enfada si le desafían delante de la manada, y entonces ataca al que le ha desafiado sin mirar a nadie más."
+    },
+    {
+      "name": "Baba Lysaga",
+      "hp": 55,
+      "armorClass": 13,
+      "cr": 4,
+      "boss": true,
+      "profile": "skirmisher",
+      "attackRangeFeet": 30,
+      "abilities": [
+        "rayo_de_fuego",
+        "lanzar_tierra",
+        "hab-esfumarse"
+      ],
+      "description": "propio: Una vieja flaquísima y durísima, la partera que trajo al conde al mundo. Dice que es su verdadera madre.",
+      "weakness": "Odia a los cuervos. Si oye uno, se distrae buscándolo."
+    },
+    {
+      "name": "Espantapájaros",
+      "hp": 20,
+      "armorClass": 11,
+      "cr": 1,
+      "profile": "aggressive",
+      "attackRangeFeet": 5,
+      "abilities": [
+        "romper_rodilla"
+      ],
+      "description": "Un pelele de saco con cuchillos oxidados en vez de manos y la tripa llena de cuervos muertos.",
+      "weakness": "Es de paja: arde muy bien.",
+      "tamable": ""
+    },
+    {
+      "name": "Enjambre de insectos",
+      "hp": 12,
+      "armorClass": 12,
+      "cr": 0.5,
+      "profile": "aggressive",
+      "attackRangeFeet": 5,
+      "description": "Una nube negra de moscas del pantano que se mete en la boca y en los ojos.",
+      "weakness": "El fuego y el humo lo espantan.",
+      "tamable": ""
+    },
+    {
+      "name": "Druida de Yester",
+      "hp": 22,
+      "armorClass": 11,
+      "cr": 1,
+      "profile": "skirmisher",
+      "attackRangeFeet": 30,
+      "abilities": [
+        "rayo_de_fuego",
+        "lanzar_tierra"
+      ],
+      "description": "Un adorador del conde, descalzo y cubierto de barro gris, que se ríe como un loco.",
+      "weakness": "Si caen todas sus plantas, huye hacia la colina."
+    },
+    {
+      "name": "Plaga de agujas",
+      "hp": 11,
+      "armorClass": 12,
+      "cr": 0.25,
+      "profile": "skirmisher",
+      "attackRangeFeet": 30,
+      "description": "Una figura encorvada de ramas de pino, cubierta de agujas que dispara como flechas.",
+      "weakness": "Es madera seca: el fuego la tumba.",
+      "tamable": ""
+    },
+    {
+      "name": "Enjambre de murciélagos",
+      "hp": 11,
+      "armorClass": 12,
+      "cr": 0.25,
+      "profile": "aggressive",
+      "attackRangeFeet": 5,
+      "description": "Cientos de murciélagos del conde que chillan y muerden todos a la vez.",
+      "weakness": "La luz fuerte los dispersa.",
+      "tamable": ""
+    }
+  ],
+  "items": [
+    {
+      "name": "Símbolo Sagrado de Ravenkind",
+      "boundTo": {
+        "kind": "milestone",
+        "id": "el-caballero-sin-descanso"
+      }
+    },
+    {
+      "name": "Espada del Sol",
+      "boundTo": {
+        "kind": "milestone",
+        "id": "el-vinedo-asediado"
+      }
+    },
+    {
+      "name": "Armadura de Placas +2 de Sergei",
+      "boundTo": {
+        "kind": "milestone",
+        "id": "la-cena-esta-servida"
+      }
+    },
+    {
+      "name": "Icono de Ravenloft",
+      "type": "gear",
+      "rarity": "Very Rare",
+      "weight": 5,
+      "slot": "accessory",
+      "description": "Una estatuilla de plata de un clérigo arrodillado. La regalaron para bendecir el castillo, y a los muertos vivientes no les gusta tenerla cerca.",
+      "boundTo": {
+        "kind": "milestone",
+        "id": "las-puertas-del-diablo"
+      }
+    },
+    {
+      "name": "Muslo de Santa Markovia",
+      "type": "weapon",
+      "rarity": "Rare",
+      "weight": 1,
+      "damageDice": "1d6",
+      "damageType": "contundente",
+      "slot": "weapon",
+      "description": "El hueso del muslo de la santa que plantó cara al conde. Se usa como una maza, y parte a los no muertos.",
+      "boundTo": {
+        "kind": "milestone",
+        "id": "lobos-a-las-puertas"
+      }
+    },
+    {
+      "name": "Bastón Gulthias",
+      "type": "weapon",
+      "rarity": "Rare",
+      "weight": 4,
+      "damageDice": "1d6",
+      "damageType": "contundente",
+      "slot": "weapon",
+      "description": "Una vara negra y esponjosa, cortada de un árbol que bebe sangre. Los animales se ponen nerviosos cerca.",
+      "boundTo": {
+        "kind": "contract",
+        "id": "e-la-colina-de-los-druidas"
+      }
+    },
+    {
+      "name": "Hoja del diario de van Richten",
+      "type": "gear",
+      "rarity": "Uncommon",
+      "weight": 0,
+      "description": "Una página medio quemada. Van Richten cuenta en ella la maldición de una vieja vistani: todo el que se le acerca, muere.",
+      "boundTo": {
+        "kind": "contract",
+        "id": "e-aullidos-en-la-torre"
+      }
+    },
+    {
+      "name": "Anillo de calor",
+      "type": "gear",
+      "rarity": "Rare",
+      "weight": 0,
+      "slot": "accessory",
+      "description": "Un anillo vistani sencillo. Quien lo lleva no pasa frío ni en la nieve del paso.",
+      "boundTo": {
+        "kind": "contract",
+        "id": "e-la-nina-del-lago"
+      }
+    },
+    {
+      "name": "Carta de Kolyan Indirovich",
+      "type": "gear",
+      "rarity": "Common",
+      "weight": 0,
+      "description": "La carta del burgomaestre pidiendo ayuda para su hija. Está escrita con prisa y miedo.",
+      "boundTo": {
+        "kind": "milestone",
+        "id": "sangrienta-bienvenida"
+      }
+    },
+    {
+      "name": "Gema verde de Baba Lysaga",
+      "type": "gear",
+      "rarity": "Rare",
+      "weight": 1,
+      "description": "Una de las tres gemas de la bodega, grande como una piña. Brilla verde por dentro, como una antorcha."
+    },
+    {
+      "name": "Gema verde de la colina Yester",
+      "type": "gear",
+      "rarity": "Rare",
+      "weight": 1,
+      "description": "Otra de las gemas de la bodega. Los druidas la metieron en el pecho del muñeco de ramas para despertarlo."
+    },
+    {
+      "name": "Huesos de San Andral",
+      "type": "gear",
+      "rarity": "Rare",
+      "weight": 3,
+      "description": "Los huesos del santo, en un saco. Bajo el altar de la iglesia de Vallaki, no dejan entrar a los vampiros."
+    },
+    {
+      "name": "Símbolo de Tasha Petrovna",
+      "type": "gear",
+      "rarity": "Uncommon",
+      "weight": 0,
+      "slot": "accessory",
+      "description": "Un sol de metal de una sacerdotisa antigua. Quien lo toca oye una voz que habla de una tumba con rosas en Krezk."
+    },
+    {
+      "name": "Lanza de sangre de Kavan",
+      "type": "weapon",
+      "rarity": "Rare",
+      "weight": 3,
+      "damageDice": "1d6",
+      "damageType": "perforante",
+      "slot": "weapon",
+      "description": "La lanza manchada de un jefe de las montañas muerto hace siglos. Cuando mata, quien la empuña recupera fuerzas."
+    },
+    {
+      "name": "Espada corta plateada",
+      "type": "weapon",
+      "rarity": "Uncommon",
+      "weight": 2,
+      "damageDice": "1d6",
+      "damageType": "perforante",
+      "slot": "weapon",
+      "description": "Una hoja cubierta de plata, de las que usan los cazadores de hombres lobo."
+    },
+    {
+      "name": "Agua bendita",
+      "type": "gear",
+      "rarity": "Common",
+      "weight": 0.5,
+      "slot": "consumable",
+      "description": "Un frasco de agua bendecida. Quema a los no muertos."
+    },
+    {
+      "name": "Estaca de madera",
+      "type": "gear",
+      "rarity": "Common",
+      "weight": 0.5,
+      "description": "Afilada y endurecida al fuego. Para el corazón de un vampiro que duerme."
+    },
+    {
+      "name": "Ristra de ajos",
+      "type": "gear",
+      "rarity": "Common",
+      "weight": 0.5,
+      "description": "Huele fuerte. Los vampiros no se acercan a gusto."
+    },
+    {
+      "name": "Pastelito de los sueños",
+      "type": "gear",
+      "rarity": "Common",
+      "weight": 0,
+      "slot": "consumable",
+      "description": "Un pastelito de carne de la vieja del molino. Quien se lo come se queda dormido horas, soñando con un sitio bonito. Mejor no preguntar con qué está hecho."
+    },
+    {
+      "name": "Muñeca de Blinsky",
+      "type": "gear",
+      "rarity": "Common",
+      "weight": 0.5,
+      "description": "Una muñeca con una sonrisa rara y un vestido de saco. En la etiqueta pone: «Si no es divertido, no es Blinsky»."
+    }
+  ],
+  "boards": [
+    {
+      "id": "taller_ataudero",
+      "name": "El taller del ataudero",
+      "locationName": "Ciudad de Vallaki",
+      "map": [
+        "################",
+        "#k..#.........c#",
+        "#...D..c.......#",
+        "#...#......c...#",
+        "######.........#",
+        "#.....cc.......#",
+        "#..T...........#",
+        "#.......c......#",
+        "################"
+      ],
+      "partyStart": [
+        {
+          "x": 1,
+          "y": 5
+        },
+        {
+          "x": 2,
+          "y": 5
+        },
+        {
+          "x": 1,
+          "y": 6
+        },
+        {
+          "x": 1,
+          "y": 7
+        }
+      ],
+      "enemies": [
+        {
+          "name": "Engendro hambriento",
+          "x": 12,
+          "y": 1
+        },
+        {
+          "name": "Engendro hambriento",
+          "x": 13,
+          "y": 6
+        }
+      ]
+    },
+    {
+      "id": "choza_baba_lysaga",
+      "name": "La choza de Baba Lysaga",
+      "locationName": "Ruinas de Berez",
+      "map": [
+        "####################",
+        "#ww~~.....b....~~ww#",
+        "#w~......#####...~w#",
+        "#~.......#.k.#....~#",
+        "#........#...#.....#",
+        "#..b.....##D##..b..#",
+        "#..................#",
+        "#~....c.......c...~#",
+        "#w~.............~~w#",
+        "#ww~...b....b...~ww#",
+        "####################"
+      ],
+      "partyStart": [
+        {
+          "x": 1,
+          "y": 6
+        },
+        {
+          "x": 2,
+          "y": 6
+        },
+        {
+          "x": 2,
+          "y": 7
+        },
+        {
+          "x": 3,
+          "y": 7
+        }
+      ],
+      "enemies": [
+        {
+          "name": "Baba Lysaga",
+          "x": 12,
+          "y": 4
+        },
+        {
+          "name": "Espantapájaros",
+          "x": 5,
+          "y": 3
+        },
+        {
+          "name": "Espantapájaros",
+          "x": 16,
+          "y": 6
+        },
+        {
+          "name": "Enjambre de insectos",
+          "x": 9,
+          "y": 8
+        }
+      ]
+    },
+    {
+      "id": "cima_yester",
+      "name": "La cima de la colina Yester",
+      "locationName": "Colina Yester",
+      "map": [
+        "####################",
+        "#bb.C....C....C..bb#",
+        "#b....C......C....b#",
+        "#..C.............C.#",
+        "#.........##.......#",
+        "#..C.....###k....C.#",
+        "#.........##.......#",
+        "#..C.............C.#",
+        "#.....C......C.....#",
+        "#bb.C....C....C..bb#",
+        "####################"
+      ],
+      "partyStart": [
+        {
+          "x": 1,
+          "y": 4
+        },
+        {
+          "x": 1,
+          "y": 5
+        },
+        {
+          "x": 2,
+          "y": 5
+        },
+        {
+          "x": 1,
+          "y": 6
+        }
+      ],
+      "enemies": [
+        {
+          "name": "Druida de Yester",
+          "x": 12,
+          "y": 4
+        },
+        {
+          "name": "Druida de Yester",
+          "x": 12,
+          "y": 6
+        },
+        {
+          "name": "Plaga de agujas",
+          "x": 15,
+          "y": 2
+        },
+        {
+          "name": "Plaga de agujas",
+          "x": 16,
+          "y": 8
+        },
+        {
+          "name": "Plaga de agujas",
+          "x": 8,
+          "y": 8
+        }
+      ]
+    },
+    {
+      "id": "islote_torre",
+      "name": "El islote de la torre",
+      "locationName": "Torre de Van Richten",
+      "map": [
+        "####################",
+        "#wwwwwwwwwwwwwwwwww#",
+        "#ww..............ww#",
+        "#w....#######.....w#",
+        "#w....#.....#.....w#",
+        "#.....o.....#.....w#",
+        "#w....#.....#.....w#",
+        "#w....###D###.....w#",
+        "#ww..............ww#",
+        "#wwwwwwww..wwwwwwww#",
+        "#wwwwwwww..wwwwwwww#",
+        "####################"
+      ],
+      "partyStart": [
+        {
+          "x": 8,
+          "y": 5
+        },
+        {
+          "x": 9,
+          "y": 5
+        },
+        {
+          "x": 10,
+          "y": 5
+        },
+        {
+          "x": 9,
+          "y": 4
+        }
+      ],
+      "enemies": [
+        {
+          "name": "Hombre Lobo",
+          "x": 9,
+          "y": 10
+        },
+        {
+          "name": "Lobo gris",
+          "x": 10,
+          "y": 10
+        },
+        {
+          "name": "Lobo gris",
+          "x": 1,
+          "y": 5
+        },
+        {
+          "name": "Enjambre de murciélagos",
+          "x": 16,
+          "y": 2
+        }
+      ]
+    },
+    {
+      "id": "cueva_madre_noche",
+      "name": "La cueva de la Madre Noche",
+      "locationName": "Guarida de los Hombres Lobo",
+      "map": [
+        "####################",
+        "#.....#......#.....#",
+        "#.CC..#......#..CC.#",
+        "#.....#......#.....#",
+        "##.####......####.##",
+        "#..................#",
+        "#....~~......~~....#",
+        "#....~~..^^..~~....#",
+        "#.........^^.......#",
+        "#..................#",
+        "#..................#",
+        "####################"
+      ],
+      "partyStart": [
+        {
+          "x": 8,
+          "y": 10
+        },
+        {
+          "x": 9,
+          "y": 10
+        },
+        {
+          "x": 10,
+          "y": 10
+        },
+        {
+          "x": 11,
+          "y": 10
+        }
+      ],
+      "enemies": [
+        {
+          "name": "Kiril Stoyanovich",
+          "x": 9,
+          "y": 2
+        },
+        {
+          "name": "Lobo gris",
+          "x": 16,
+          "y": 3
+        },
+        {
+          "name": "Lobo gris",
+          "x": 4,
+          "y": 6
+        }
+      ]
+    },
+    {
+      "id": "camino_vino",
+      "name": "El camino de la bodega",
+      "locationName": "Bodega El Mago de los Vinos",
+      "map": [
+        "######################",
+        "#bbbb.bbb..bbbb.bbbbb#",
+        "#b.....b......b....bb#",
+        "#.....~~...c.........#",
+        "#....................#",
+        "#.........c....~~....#",
+        "#b....bb......b.....b#",
+        "#bbbbb.bbbb.bbbbb.bbb#",
+        "######################"
+      ],
+      "partyStart": [
+        {
+          "x": 1,
+          "y": 3
+        },
+        {
+          "x": 1,
+          "y": 4
+        },
+        {
+          "x": 2,
+          "y": 4
+        },
+        {
+          "x": 1,
+          "y": 5
+        }
+      ],
+      "enemies": [
+        {
+          "name": "Lobo gris",
+          "x": 9,
+          "y": 2
+        },
+        {
+          "name": "Lobo gris",
+          "x": 12,
+          "y": 6
+        },
+        {
+          "name": "Lobo gris",
+          "x": 17,
+          "y": 3
+        },
+        {
+          "name": "Plaga de agujas",
+          "x": 16,
+          "y": 2
+        },
+        {
+          "name": "Plaga de agujas",
+          "x": 18,
+          "y": 5
+        }
+      ]
+    }
+  ],
+  "quests": [
+    {
+      "id": "q-enc-taller-ataudero",
+      "name": "El taller del ataudero",
+      "act": 2,
+      "boardId": "taller_ataudero",
+      "description": "Arriba del taller hay cajas llenas de tierra, y dentro duerme lo que el conde mandó a Vallaki. Los huesos del santo están en el cuarto del fondo.",
+      "objectives": [
+        {
+          "type": "loot",
+          "label": "Recuperar los huesos de San Andral",
+          "treasures": [
+            "Huesos de San Andral"
+          ]
+        },
+        {
+          "type": "eliminate_all",
+          "label": "Acabar con los que duermen en las cajas",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "id": "q-enc-choza-baba-lysaga",
+      "name": "La choza de Baba Lysaga",
+      "act": 3,
+      "boardId": "choza_baba_lysaga",
+      "description": "La bruja guarda la gema de la bodega en su choza, en medio del pantano. Sus espantapájaros vigilan el barro.",
+      "objectives": [
+        {
+          "type": "loot",
+          "label": "Sacar la gema de la choza",
+          "treasures": [
+            "Gema verde de Baba Lysaga"
+          ]
+        },
+        {
+          "type": "eliminate",
+          "label": "Acabar con Baba Lysaga",
+          "target": "Baba Lysaga",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "id": "q-enc-cima-yester",
+      "name": "La cima de la colina Yester",
+      "act": 3,
+      "boardId": "cima_yester",
+      "description": "Los druidas cantan junto al muñeco de ramas para despertarlo. La gema está a sus pies.",
+      "objectives": [
+        {
+          "type": "eliminate",
+          "label": "Parar el canto de los druidas",
+          "target": "Druida de Yester"
+        },
+        {
+          "type": "loot",
+          "label": "Sacar la gema del muñeco",
+          "treasures": [
+            "Gema verde de la colina Yester"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q-enc-islote-torre",
+      "name": "El islote de la torre",
+      "act": 3,
+      "boardId": "islote_torre",
+      "description": "La manada cruza el camino de tierra y rodea la torre. Solo hay que aguantar hasta que se canse.",
+      "objectives": [
+        {
+          "type": "survive_rounds",
+          "label": "Aguantar en la torre cinco rondas",
+          "rounds": 5
+        }
+      ]
+    },
+    {
+      "id": "q-enc-cueva-madre-noche",
+      "name": "La cueva de la Madre Noche",
+      "act": 4,
+      "boardId": "cueva_madre_noche",
+      "description": "Kiril espera en el fondo de la cueva, junto a la estatua de la Madre Noche. Los niños están en las jaulas de los lados.",
+      "objectives": [
+        {
+          "type": "eliminate",
+          "label": "Acabar con Kiril",
+          "target": "Kiril Stoyanovich"
+        }
+      ]
+    },
+    {
+      "id": "q-enc-camino-vino",
+      "name": "El camino de la bodega",
+      "act": 3,
+      "boardId": "camino_vino",
+      "description": "propio: El carro del vino sale hacia Krezk y los lobos salen del bosque a por los caballos. Hay que llegar al otro lado del camino.",
+      "objectives": [
+        {
+          "type": "reach_cell",
+          "label": "Llevar el carro al final del camino",
+          "cell": {
+            "x": 20,
+            "y": 4
+          }
+        }
+      ]
+    }
+  ],
+  "contracts": [
+    {
+      "id": "e-el-ataud-del-burgomaestre",
+      "title": "El ataúd del burgomaestre",
+      "verb": "entregar",
+      "chain": {
+        "id": "c-el-funeral",
+        "part": 1,
+        "of": 2
+      },
+      "patron": "Ireena Kolyana",
+      "faction": null,
+      "where": "Aldea de Barovia",
+      "act": 1,
+      "noFight": true,
+      "reward": 10,
+      "rewardText": "10 de oro que Ismark tenía guardados, y la confianza de Ireena",
+      "twist": "Nadie del pueblo quiere ayudar a llevar el ataúd a la iglesia: tienen miedo de que el conde se fije en ellos. Desde la ventana de la taberna, alguien apunta quién lo carga.",
+      "boardId": ""
+    },
+    {
+      "id": "e-la-vela-del-entierro",
+      "title": "La vela del entierro",
+      "verb": "aguantar",
+      "chain": {
+        "id": "c-el-funeral",
+        "part": 2,
+        "of": 2
+      },
+      "patron": "Donavich",
+      "faction": null,
+      "where": "Aldea de Barovia",
+      "act": 1,
+      "noFight": true,
+      "reward": 5,
+      "rewardText": "5 de oro y la bendición del padre Donavich",
+      "twist": "A medianoche, del cementerio sale una fila de fantasmas con espadas que sube hacia el castillo. No atacan: son aventureros que murieron antes que vosotros, y cada noche lo vuelven a intentar.",
+      "boardId": ""
+    },
+    {
+      "id": "e-la-hija-de-maria",
+      "title": "La hija de María la Loca",
+      "verb": "investigar",
+      "chain": null,
+      "patron": "María la Loca",
+      "faction": null,
+      "where": "Aldea de Barovia",
+      "act": 1,
+      "noFight": true,
+      "reward": 0,
+      "rewardText": "Nada: María no tiene nada que dar, solo las gracias",
+      "twist": "Gertruda no se perdió en el bosque: subió sola al castillo, deslumbrada. Está viva en un dormitorio de Ravenloft y cree que vive en un cuento.",
+      "boardId": ""
+    },
+    {
+      "id": "e-los-huesos-que-faltan",
+      "title": "Los huesos que faltan",
+      "verb": "investigar",
+      "chain": {
+        "id": "c-san-andral",
+        "part": 1,
+        "of": 2
+      },
+      "patron": "Padre Lucian Petrovich",
+      "faction": null,
+      "where": "Ciudad de Vallaki",
+      "act": 2,
+      "noFight": true,
+      "reward": 15,
+      "rewardText": "15 de oro del cepillo de la iglesia",
+      "twist": "Los huesos del santo los robó Milivoj, el sepulturero, para vendérselos al ataudero a cambio de comida para sus hermanos. El ataudero no los quería para él.",
+      "boardId": ""
+    },
+    {
+      "id": "e-los-papeles-de-la-senora",
+      "title": "Los papeles de la señora Wachter",
+      "verb": "robar",
+      "chain": null,
+      "patron": "Barón Vargas Vallakovich",
+      "faction": {
+        "id": "la-corte-de-strahd",
+        "against": true
+      },
+      "where": "Ciudad de Vallaki",
+      "act": 2,
+      "noFight": true,
+      "reward": 25,
+      "rewardText": "25 de oro y permiso del barón para ir armados por el pueblo",
+      "twist": "Entre los papeles hay cartas de un tal Vasili von Holtz dando las gracias a los Wachter por siglos de lealtad. La letra es la del conde.",
+      "boardId": ""
+    },
+    {
+      "id": "e-el-taller-del-ataudero",
+      "title": "El taller del ataudero",
+      "verb": "recuperar",
+      "chain": {
+        "id": "c-san-andral",
+        "part": 2,
+        "of": 2
+      },
+      "patron": "Padre Lucian Petrovich",
+      "faction": {
+        "id": "la-corte-de-strahd",
+        "against": true
+      },
+      "where": "Ciudad de Vallaki",
+      "act": 2,
+      "noFight": false,
+      "reward": 30,
+      "rewardText": "30 de oro y agua bendita de la iglesia",
+      "twist": "En el piso de arriba hay cajas llenas de tierra. No están vacías.",
+      "boardId": "taller_ataudero"
+    },
+    {
+      "id": "e-el-zapatero-del-armario",
+      "title": "El zapatero del armario",
+      "verb": "negociar",
+      "chain": null,
+      "patron": "Padre Lucian Petrovich",
+      "faction": null,
+      "where": "Ciudad de Vallaki",
+      "act": 2,
+      "noFight": true,
+      "reward": 10,
+      "rewardText": "10 de oro que junta la madre de Udo, y unas botas nuevas",
+      "twist": "El barón tiene encadenado en un armario de su casa a Udo, el zapatero, por llevar un cartel contra él. Si le soltáis sin permiso, el barón querrá saber quién fue.",
+      "boardId": ""
+    },
+    {
+      "id": "e-la-nina-del-lago",
+      "title": "La niña del lago",
+      "verb": "recuperar",
+      "chain": null,
+      "patron": "Luvash",
+      "faction": {
+        "id": "los-vistani",
+        "against": false
+      },
+      "where": "Ciudad de Vallaki",
+      "act": 2,
+      "noFight": true,
+      "reward": 20,
+      "rewardText": "Luvash os deja elegir una cosa de su carro del tesoro",
+      "twist": "Arabelle no se perdió: Bluto, el borracho del pueblo, la tiene metida en un saco en su barca. Cree que si la echa al lago, el lago le dará peces.",
+      "boardId": ""
+    },
+    {
+      "id": "e-el-vino-que-no-llega",
+      "title": "El vino que no llega",
+      "verb": "investigar",
+      "chain": {
+        "id": "c-las-gemas-de-la-vid",
+        "part": 1,
+        "of": 3
+      },
+      "patron": "Urwin Martikov",
+      "faction": {
+        "id": "los-guardianes-de-la-pluma",
+        "against": false
+      },
+      "where": "Bodega El Mago de los Vinos",
+      "act": 3,
+      "noFight": true,
+      "reward": 20,
+      "rewardText": "Cama y comida gratis en El Agua Azul mientras estéis en Vallaki",
+      "twist": "El viejo Davian, el dueño de la bodega, es el padre de Urwin, y no se hablan desde hace años. Los dos son hombres cuervo.",
+      "boardId": ""
+    },
+    {
+      "id": "e-la-gema-de-la-bruja",
+      "title": "La gema de la bruja",
+      "verb": "recuperar",
+      "chain": {
+        "id": "c-las-gemas-de-la-vid",
+        "part": 2,
+        "of": 3
+      },
+      "patron": "Davian Martikov",
+      "faction": {
+        "id": "los-guardianes-de-la-pluma",
+        "against": false
+      },
+      "where": "Ruinas de Berez",
+      "act": 3,
+      "noFight": false,
+      "reward": 40,
+      "rewardText": "40 de oro y un barril de Dragón Rojo",
+      "twist": "La bruja no robó la gema por gusto: con ella le ha dado vida a su choza, que se levanta sobre las raíces y anda.",
+      "boardId": "choza_baba_lysaga"
+    },
+    {
+      "id": "e-la-colina-de-los-druidas",
+      "title": "La colina de los druidas",
+      "verb": "limpiar",
+      "chain": {
+        "id": "c-las-gemas-de-la-vid",
+        "part": 3,
+        "of": 3
+      },
+      "patron": "Davian Martikov",
+      "faction": {
+        "id": "los-guardianes-de-la-pluma",
+        "against": false
+      },
+      "where": "Colina Yester",
+      "act": 3,
+      "noFight": false,
+      "reward": 45,
+      "rewardText": "45 de oro, y los Martikov os deben un favor",
+      "twist": "Los druidas no quieren la gema para ellos: la han metido en un muñeco de ramas gigante con la cara del conde. Con ella, el muñeco puede despertar.",
+      "boardId": "cima_yester"
+    },
+    {
+      "id": "e-aullidos-en-la-torre",
+      "title": "Aullidos en la torre",
+      "verb": "aguantar",
+      "chain": {
+        "id": "c-la-manada",
+        "part": 1,
+        "of": 2
+      },
+      "patron": "Szoldar Szoldarovich",
+      "faction": {
+        "id": "los-hijos-de-la-madre-noche",
+        "against": true
+      },
+      "where": "Torre de Van Richten",
+      "act": 3,
+      "noFight": false,
+      "reward": 30,
+      "rewardText": "30 de oro, y Szoldar os enseña dónde duerme la manada",
+      "twist": "La manada no busca comida: busca al viejo que vivía en la torre. Alguien le ha dicho al conde que el cazador de vampiros está en Barovia.",
+      "boardId": "islote_torre"
+    },
+    {
+      "id": "e-los-ninos-de-la-cueva",
+      "title": "Los niños de la cueva",
+      "verb": "silenciar",
+      "chain": {
+        "id": "c-la-manada",
+        "part": 2,
+        "of": 2
+      },
+      "patron": "Zuleika Toranescu",
+      "faction": {
+        "id": "los-hijos-de-la-madre-noche",
+        "against": true
+      },
+      "where": "Guarida de los Hombres Lobo",
+      "act": 3,
+      "noFight": false,
+      "reward": 50,
+      "rewardText": "50 de oro de la ofrenda a la Madre Noche, y los niños vuelven a casa",
+      "twist": "Kiril encierra niños robados en jaulas y los hace pelear entre ellos: al que gana lo convierte en lobo. Zuleika quiere que muera porque entregó a su marido al conde.",
+      "boardId": "cueva_madre_noche"
+    },
+    {
+      "id": "e-un-vestido-de-novia",
+      "title": "Un vestido de novia",
+      "verb": "entregar",
+      "chain": null,
+      "patron": "El Abad",
+      "faction": null,
+      "where": "Aldea de Krezk",
+      "act": 3,
+      "noFight": true,
+      "reward": 30,
+      "rewardText": "El Abad cura del todo, una vez, a quien se lo pidáis",
+      "twist": "El vestido es para una novia cosida con trozos de muertas del cementerio de Krezk. El Abad quiere regalársela al conde para que deje de sufrir.",
+      "boardId": ""
+    },
+    {
+      "id": "e-el-vino-de-krezk",
+      "title": "El vino de Krezk",
+      "verb": "escoltar",
+      "chain": null,
+      "patron": "Dmitri Krezkov",
+      "faction": null,
+      "where": "Bodega El Mago de los Vinos",
+      "act": 3,
+      "noFight": false,
+      "reward": 25,
+      "rewardText": "25 de oro y las puertas de Krezk abiertas para vosotros",
+      "twist": "propio: Los lobos no van a por la carga: van a por los caballos. Sin caballos el carro no llega, y en Krezk el vino es lo único que les queda.",
+      "boardId": "camino_vino"
+    }
+  ],
+  "rumors": [
+    {
+      "id": "r-el-conde-y-la-hija",
+      "by": "Alenka",
+      "where": "Aldea de Barovia",
+      "text": "Al conde le gusta la hija del burgomaestre. Ya ha entrado dos veces en esa casa.",
+      "truth": "si",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-el-burgomaestre-muerto",
+      "by": "Parriwimple",
+      "where": "Aldea de Barovia",
+      "text": "El burgomaestre murió hace tres días: el corazón no le aguantó tantas noches de lobos arañando la puerta. Desde que está muerto, no han vuelto.",
+      "truth": "si",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-el-grito-de-la-iglesia",
+      "by": "Bildrath Cantemir",
+      "where": "Aldea de Barovia",
+      "text": "Debajo del suelo de la iglesia hay algo encerrado que grita de hambre. El cura dice que es su hijo.",
+      "truth": "si",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-la-marcha-de-los-muertos",
+      "by": "cualquiera",
+      "where": "Aldea de Barovia",
+      "text": "A medianoche, del cementerio salen fantasmas con espadas y suben al castillo. Todas las noches. No te pongas en medio.",
+      "truth": "si",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-la-adivina",
+      "by": "Alenka",
+      "where": "Aldea de Barovia",
+      "text": "Madam Eva, en el campamento del estanque, sabe quiénes sois antes de que abráis la boca. Os está esperando.",
+      "truth": "si",
+      "leadsTo": "Campamento del Estanque Tser"
+    },
+    {
+      "id": "r-no-invitar",
+      "by": "Donavich",
+      "where": "Aldea de Barovia",
+      "text": "Un vampiro no puede entrar en una casa si nadie le invita. Por eso aquí nadie abre la puerta de noche, ni a su madre.",
+      "truth": "si",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-el-precio-justo",
+      "by": "Bildrath Cantemir",
+      "where": "Aldea de Barovia",
+      "text": "Lo que yo vendo cuesta diez veces más que fuera. Pero fuera no hay nada, así que es buen precio.",
+      "truth": "medias",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-el-mago-de-la-cascada",
+      "by": "Stanimir",
+      "where": "Campamento del Estanque Tser",
+      "text": "Hace un año vino un mago a echar al conde. Pelearon en el castillo y el conde lo tiró por la cascada. Nadie encontró el cuerpo.",
+      "truth": "si",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-las-pociones-de-la-niebla",
+      "by": "Stanimir",
+      "where": "Campamento del Estanque Tser",
+      "text": "Tenemos pociones que dejan cruzar la niebla sin ahogarse. Caras, eso sí.",
+      "truth": "no",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-el-molino",
+      "by": "Luvash",
+      "where": "Campamento del Estanque Tser",
+      "text": "Hay un molino viejo en el camino de Vallaki. No os paréis allí. No lo diré dos veces.",
+      "truth": "si",
+      "leadsTo": "Viejo Mascahuesos"
+    },
+    {
+      "id": "r-la-hija-de-luvash",
+      "by": "Luvash",
+      "where": "Campamento del Estanque Tser",
+      "text": "Mi hija lleva un día sin aparecer. Alguien la vio cerca del lago de Vallaki, con un pescador borracho.",
+      "truth": "si",
+      "leadsTo": "Ciudad de Vallaki"
+    },
+    {
+      "id": "r-los-festivales",
+      "by": "Urwin Martikov",
+      "where": "Ciudad de Vallaki",
+      "text": "El barón hace una fiesta cada semana. Dice que si todos estamos contentos, el conde no puede tocarnos. Nadie está contento.",
+      "truth": "si",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-luces-moradas",
+      "by": "Gunther Arasek",
+      "where": "Ciudad de Vallaki",
+      "text": "De noche salen luces moradas por la ventana del desván del barón.",
+      "truth": "si",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-la-senora-wachter",
+      "by": "Urwin Martikov",
+      "where": "Ciudad de Vallaki",
+      "text": "La señora Wachter dice en voz alta que prefiere servir al diablo que a un loco. Y el barón no le dice nada.",
+      "truth": "si",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-el-forastero-del-carro",
+      "by": "Urwin Martikov",
+      "where": "Ciudad de Vallaki",
+      "text": "En mi posada duerme un forastero de orejas picudas que llegó en un carro de feria. Cuenta historias que no se cree nadie.",
+      "truth": "medias",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-las-munecas-de-izek",
+      "by": "Gadof Blinsky",
+      "where": "Ciudad de Vallaki",
+      "text": "Izek me hace fabricarle muñecas, siempre con la misma cara: una chica de pelo castaño. Dice que la sueña.",
+      "truth": "si",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-la-mansion-del-dragon",
+      "by": "Szoldar Szoldarovich",
+      "where": "Ciudad de Vallaki",
+      "text": "Al oeste hay una mansión en ruinas donde murió un dragón. De noche se ven caballeros con armadura por el patio.",
+      "truth": "si",
+      "leadsTo": "Argynvostholt"
+    },
+    {
+      "id": "r-el-pueblo-ahogado",
+      "by": "Szoldar Szoldarovich",
+      "where": "Ciudad de Vallaki",
+      "text": "Al sur, junto al río, hay un pueblo que se ahogó hace años. Allí vive una vieja que no es una vieja.",
+      "truth": "si",
+      "leadsTo": "Ruinas de Berez"
+    },
+    {
+      "id": "r-la-torre-del-lago",
+      "by": "Gunther Arasek",
+      "where": "Ciudad de Vallaki",
+      "text": "En el lago Baratok hay una torre con un camino de tierra hasta la orilla. El forastero del carro iba y venía de allí.",
+      "truth": "si",
+      "leadsTo": "Torre de Van Richten"
+    },
+    {
+      "id": "r-los-huesos-del-santo",
+      "by": "Padre Lucian Petrovich",
+      "where": "Ciudad de Vallaki",
+      "text": "Mientras los huesos de San Andral estén bajo el altar, ningún vampiro puede entrar en esta iglesia.",
+      "truth": "medias",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-el-ataudero",
+      "by": "Gunther Arasek",
+      "where": "Ciudad de Vallaki",
+      "text": "El ataudero lleva semanas sin abrir, pero de noche se oyen martillos. ¿Quién compra tanto ataúd?",
+      "truth": "si",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-sin-vistani",
+      "by": "cualquiera",
+      "where": "Ciudad de Vallaki",
+      "text": "A los vistani no se les deja entrar en Vallaki. Tienen su campamento fuera, en el bosque.",
+      "truth": "si",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-los-pasteles",
+      "by": "Morgantha",
+      "where": "Viejo Mascahuesos",
+      "text": "Mis pasteles te hacen soñar con sitios bonitos, lejos de aquí. Un oro cada uno. Y si no tienes oro, algo tendrás en casa.",
+      "truth": "si",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-el-craneo-del-dragon",
+      "by": "Sir Godfrey Gwilym",
+      "where": "Argynvostholt",
+      "text": "El cráneo de Argynvost cuelga en el castillo del conde como un trofeo. Mientras no vuelva a su tumba, ninguno de nosotros descansará.",
+      "truth": "si",
+      "leadsTo": "Castillo Ravenloft"
+    },
+    {
+      "id": "r-el-conde-sufre",
+      "by": "Vladimir Horngaard",
+      "where": "Argynvostholt",
+      "text": "El conde ya murió una vez. Si lo matáis, le hacéis un favor: aquí sufre, y quiero que siga sufriendo.",
+      "truth": "medias",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-las-tres-gemas",
+      "by": "Davian Martikov",
+      "where": "Bodega El Mago de los Vinos",
+      "text": "La bodega tenía tres gemas enterradas que hacían crecer las viñas. Una se perdió hace años, otra la tiene la bruja de Berez y la tercera los druidas de la colina Yester.",
+      "truth": "si",
+      "leadsTo": "Colina Yester"
+    },
+    {
+      "id": "r-los-druidas",
+      "by": "Davian Martikov",
+      "where": "Bodega El Mago de los Vinos",
+      "text": "Los druidas de la colina adoran al conde como si mandara en el tiempo. Plantan cosas que luego andan.",
+      "truth": "si",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-el-abad-no-envejece",
+      "by": "Dmitri Krezkov",
+      "where": "Aldea de Krezk",
+      "text": "El Abad llegó hace más de cien años y sigue igual de joven. No le preguntéis nada; si os pide algo, hacedlo.",
+      "truth": "si",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-las-cuevas-del-lago",
+      "by": "Dmitri Krezkov",
+      "where": "Aldea de Krezk",
+      "text": "Los lobos que llegan a nuestras puertas bajan de unas cuevas sobre el lago Baratok. Entre ellos hay más hombres que lobos.",
+      "truth": "si",
+      "leadsTo": "Guarida de los Hombres Lobo"
+    },
+    {
+      "id": "r-la-campana",
+      "by": "Clovin Belview",
+      "where": "Aldea de Krezk",
+      "text": "La campana de la abadía suena cuando el Abad quiere cenar. Arriba, los de la casa de locos gritan de alegría.",
+      "truth": "si",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-el-estanque-bendito",
+      "by": "cualquiera",
+      "where": "Aldea de Krezk",
+      "text": "El estanque del santuario del Sol Blanco nunca se hiela. Quien bebe de él se siente mejor.",
+      "truth": "si",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-la-bruja-y-los-cuervos",
+      "by": "Muriel Vinshaw",
+      "where": "Ruinas de Berez",
+      "text": "La bruja hace espantapájaros para matar cuervos. Odia a los cuervos más que a nada en el mundo.",
+      "truth": "si",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-marina",
+      "by": "Lazlo Ulrich",
+      "where": "Ruinas de Berez",
+      "text": "Maté a Marina para que el conde no la hiciera suya. Él ahogó mi pueblo por eso.",
+      "truth": "si",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-emil-vive",
+      "by": "Zuleika Toranescu",
+      "where": "Guarida de los Hombres Lobo",
+      "text": "Mi marido Emil no está muerto: el conde lo tiene encerrado en las mazmorras de su castillo.",
+      "truth": "si",
+      "leadsTo": "Castillo Ravenloft"
+    },
+    {
+      "id": "r-el-corazon-de-cristal",
+      "by": "Cyrus Belview",
+      "where": "Castillo Ravenloft",
+      "text": "En la torre alta late un corazón de cristal. Mientras late, al amo no le entra ninguna herida.",
+      "truth": "si",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-la-cena",
+      "by": "Rahadin",
+      "where": "Castillo Ravenloft",
+      "text": "El amo os espera a cenar. Sois sus invitados, y nadie se levanta de la mesa antes de tiempo.",
+      "truth": "si",
+      "leadsTo": ""
+    }
+  ]
+}

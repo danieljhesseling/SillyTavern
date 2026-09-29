@@ -34,6 +34,38 @@ Si el servidor llevaba abierto desde antes de un cambio, reinícialo y recarga l
 
 ---
 
+## 1b. Jugar sin conexión: tu gremio y sus campañas
+
+*Desde el 2026-09-28. El plan entero está en [[ROADMAP_SIN_CONEXION]].*
+
+Es el primer botón de la portada. Lo cuenta todo el juego, sin IA, aunque tengas un proveedor conectado.
+
+1. **«Jugar sin conexión»** crea un gremio nuevo y te pide tu personaje: nombre, especie y clase (lo demás es opcional). Llegas con 100 de oro.
+2. **La prueba.** Brunilda, la maestra del gremio, te manda a la bodega a por unas ratas. La ficha «Iniciar combate (Rata de bodega x2)» empieza la pelea. Al ganarla, el hilo te lleva al tablón.
+3. **El gremio.** La Casa del Gremio tiene posada, tienda, templo y herrería, como cualquier pueblo. Y dos fichas propias:
+   - **«Contratar mercenarios»** (`/contratar`): Gerd, Nella y Osric. Se pagan una vez (40 de oro por nivel) y van contigo de campaña en campaña, hasta que los despidas o caigan. No traen oro ni habilidades y no se llevan parte del botín: pegan y aguantan. Al ir y volver del gremio entrenan hasta el nivel de tu héroe.
+   - **«Tablón de campañas»** (`/campanas`): *1387* y *La Maldición de Strahd*, con el nivel para el que son y cómo van (sin empezar, en curso, terminada).
+4. **Empezar una campaña** crea su mundo y te lleva a su primer tablero con **el grupo entero**: vida, oro, equipo, nivel y mercenarios.
+5. **«Volver al gremio»** (`/volver-gremio`), fuera de combate: vuelves con todo lo ganado, y la campaña se queda donde la dejas. En el tablón sale «En curso»; pulsarla la sigue en el mismo sitio.
+6. **Al abrir la página otra vez**, la portada ofrece **«Seguir en el gremio»**, con quién va.
+
+**Qué es cada cosa, por dentro.** El gremio es un mundo pequeño con su chat (`public/mundos/gremio.pack.json`). Cada campaña del tablón es su propio mundo y su propio chat, como las de siempre; en la lista de partidas no salen sueltas, se siguen desde el tablón. Lo que viaja entre chats es el grupo (`campaign/hub.js`).
+
+**Añadir una campaña al tablón.** Basta con una entrada en `public/mundos/mundos.json` con su `pack` (y `levels`, para el aviso de nivel). Si llega en tu formato, como Strahd:
+
+```bash
+node tools/campana-a-paquete.mjs strahd          # junta original.json, libro.json y mejoras.json en public/mundos/strahd.pack.json
+node tools/campana-a-paquete.mjs strahd --check  # falla si el paquete no es lo que sale de los tres
+```
+
+- `wiki/campanas/strahd/original.json` es tu JSON, tal cual; si mandas otra versión, se pisa.
+- `wiki/campanas/strahd/libro.json` es lo que escribí yo a partir del libro, con palabras mías: la gente, los rumores, los encargos, las facciones, las escenas de los confidentes, los sitios que se descubren y seis tableros para los encargos.
+- `wiki/campanas/strahd/mejoras.json` es lo que le puse encima para jugarla: rutas y servicios, los tableros arreglados y cuatro nuevos, enemigos para niveles bajos, la trama (los hitos salen de tus misiones) y el final. Lo escrito por mí va marcado con «propio:».
+
+**Para probar si una campaña se puede ganar:** `node tools/sim-campana.mjs --campana strahd` juega sola cada tablero del hilo, en orden, con un héroe y dos mercenarios que suben de nivel de verdad, y dice cuáles gana. Con Strahd (2026-09-28): gana los 12 tableros, y a Strahd, a nivel 5, en 16 rondas. Tarda media hora.
+
+---
+
 ## 2. Crear la campaña
 
 ### Partida nueva: tres puertas y el taller

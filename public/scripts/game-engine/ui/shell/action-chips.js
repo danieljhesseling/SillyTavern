@@ -63,12 +63,17 @@ const MAX_CHIPS = 7;
  *   forrajear: es otra forma de pasar la noche.
  * @param {boolean} [input.stairs] Si alguien está en una escalera que baja (idea 75). Va delante:
  *   es a donde se iba.
+ * @param {string[]} [input.thread] Los tableros de aquí que pide la historia ahora: sus fichas van delante.
+ * @param {string} [input.fight] Los que esperan en el tablero para pelear, dicho corto («Rata de bodega x3»). La
+ *   ficha de empezar va delante: en la escena de diálogo el botón del tablero no se ve.
+ * @param {Array<{id: string, label: string, icon: string, command: string}>} [input.hub] El gremio (J4): el tablón de
+ *   campañas y los mercenarios, o volver a él desde una campaña. Van delante: es a lo que se viene.
  * @returns {ActionChip[]}
  */
 export function buildActionChips({
     fighting = false, hasBoard = false, doors = [], companions = [], mentioned = [],
     places = [], boards = [], hurt = false, hitDice = 0, rumors = 0, explore = false, proposals = [], requests = [], forage = false,
-    people = [], prisoners = [], limit = MAX_CHIPS, typed = [], replies = [], extras = [], camp = false, stairs = false,
+    people = [], prisoners = [], limit = MAX_CHIPS, typed = [], replies = [], extras = [], camp = false, stairs = false, hub = [], fight = '', thread = [],
 } = {}) {
     if (fighting) return [];
 
@@ -90,6 +95,23 @@ export function buildActionChips({
             ...(reply.draft ? { draft: reply.draft } : {}),
             ...(reply.command ? { command: reply.command } : {}),
         });
+    }
+
+    // Los que esperan en el tablero: empezar la pelea.
+    if (fight) chips.push({ id: 'fight-board', label: `Iniciar combate (${fight})`, icon: 'fa-hand-fist', source: 'motor' });
+
+    // J4: el gremio. Detrás de la conversación en marcha y delante de todo lo demás.
+    for (const chip of hub.slice(0, 2)) {
+        chips.push({ id: chip.id, label: chip.label, icon: chip.icon, source: 'motor', command: chip.command });
+    }
+
+    // El tablero al que manda la historia, si está aquí: va delante. Los demás tableros van
+    // al final, como siempre; este, con dos cosas que mirar y un descanso, quedaba escondido
+    // tras «+N más» (la Mansión del Burgomaestre, en Strahd).
+    const asked = new Set(Array.isArray(thread) ? thread : []);
+    const goals = hasBoard ? [] : boards.filter(b => asked.has(b.name)).slice(0, 2);
+    for (const goal of goals) {
+        chips.push({ id: `enter:${goal.name}`, label: `Entrar en ${goal.name}`, icon: 'fa-chess-board', source: 'motor', command: `/enter ${goal.name}` });
     }
 
     // Lo que se esta escribiendo, antes que nada: es lo que se quiere hacer ahora mismo.
@@ -238,7 +260,7 @@ export function buildActionChips({
             command: '/leave',
         });
     } else {
-        for (const board of boards.slice(0, 2)) {
+        for (const board of boards.filter(b => !goals.includes(b)).slice(0, 2)) {
             chips.push({
                 id: `enter:${board.name}`,
                 label: `Entrar en ${board.name}`,

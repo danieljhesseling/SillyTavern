@@ -53,7 +53,7 @@ export const OBJECTIVE_TYPES = {
     },
     protect: {
         label: 'Proteger',
-        description: 'Que un aliado siga en pie al terminar.',
+        description: 'Que un aliado siga en pie al terminar. Es una condición: si cae, se pierde; si no, se gana con lo demás.',
         fields: ['allyId'],
     },
     loot: {
@@ -79,7 +79,7 @@ export const OBJECTIVE_TYPES = {
 /**
  * @typedef {Object} BoardState
  * @property {number} round
- * @property {Array<{id: string, currentHp: number, gridX: number, gridY: number}>} enemies
+ * @property {Array<{id: string, templateId?: string, currentHp: number, gridX: number, gridY: number}>} enemies
  * @property {Array<{id: string, currentHp: number, gridX: number, gridY: number}>} allies
  * @property {string[]} [collectedTreasures]
  */
@@ -128,8 +128,13 @@ export function evaluateObjective(objective, board) {
         case 'eliminate': {
             const ids = objective.targetIds ?? [];
             if (ids.length === 0) return 'pending';
-            const remaining = enemies.filter(e => ids.includes(e.id) && alive(e));
-            return remaining.length === 0 ? 'complete' : 'pending';
+            // El objetivo nombra al bicho por su ficha (`templateId`), y la pelea lleva
+            // instancias («Revenant 1»). Antes solo se miraba la instancia: nunca coincidía,
+            // no quedaba ninguno «vivo» y «Derrotar al Revenant» se cumplía en la primera
+            // ronda. Y si no está en esta pelea, aquí no se cumple.
+            const targets = enemies.filter(e => ids.includes(e.id) || (e.templateId !== undefined && ids.includes(e.templateId)));
+            if (targets.length === 0) return 'pending';
+            return targets.some(alive) ? 'pending' : 'complete';
         }
 
         case 'eliminate_all':
@@ -181,12 +186,13 @@ export function evaluateObjective(objective, board) {
  *
  * @param {Objective[]} objectives
  * @param {BoardState} board
- * @returns {{status: QuestStatus, results: Array<{id: string, status: ObjectiveStatus, optional: boolean}>, bonusEarned: number}}
+ * @returns {{status: QuestStatus, results: Array<{id: string, type: string, status: ObjectiveStatus, optional: boolean}>, bonusEarned: number}}
  */
 export function evaluateScenario(objectives, board) {
     const list = normalizeObjectives(objectives);
     const results = list.map(o => ({
         id: o.id,
+        type: o.type,
         status: evaluateObjective(o, board),
         optional: Boolean(o.optional),
     }));
@@ -197,11 +203,38 @@ export function evaluateScenario(objectives, board) {
     if (required.some(r => r.status === 'failed')) {
         return { status: 'failed', results, bonusEarned };
     }
-    if (required.length > 0 && required.every(r => r.status === 'complete')) {
+    // «Proteger» es una condición, no una meta: mientras siga en pie no falla, pero tampoco
+    // se «cumple» nunca por sí solo. Se gana cuando está hecho **lo demás**. Antes contaba
+    // como meta pendiente para siempre y una misión con «que Ireena sobreviva» no se podía
+    // ganar.
+    const goals = required.filter(r => r.type !== 'protect');
+    if (goals.length > 0 && goals.every(r => r.status === 'complete')) {
         return { status: 'complete', results, bonusEarned };
     }
 
     return { status: 'active', results, bonusEarned };
+}
+
+/**
+ * Lo que guarda un cofre de un tablero con un objetivo «saquear»: el primer tesoro que la
+ * misión pide y aún no se ha recogido. Vacío si no pide ninguno, y el cofre da lo de
+ * siempre.
+ *
+ * Sin esto, «Encontrar la reliquia» no se podía cumplir: nada del tablero daba los tesoros
+ * que la misión nombraba.
+ *
+ * @param {any[]} objectives
+ * @param {string[]} [collected]
+ * @returns {string}
+ */
+export function treasureInChest(objectives, collected = []) {
+    const have = new Set((Array.isArray(collected) ? collected : []).map(String));
+    for (const objective of normalizeObjectives(objectives)) {
+        if (objective.type !== 'loot') continue;
+        const missing = (objective.treasureIds ?? []).find(id => !have.has(String(id)));
+        if (missing) return String(missing);
+    }
+    return '';
 }
 
 /**

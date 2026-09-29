@@ -8,7 +8,7 @@
  * dos mitades (`e2e-campaign.mjs --parte a` y `--parte b`), que también corren a la vez.
  *
  * Uso:
- *   node tools/e2e-todo.mjs            # unitarios, rápido, sin modelo y la vuelta larga en dos mitades
+ *   node tools/e2e-todo.mjs            # unitarios, rápido, sin modelo, el gremio y la vuelta larga en dos mitades
  *   node tools/e2e-todo.mjs --rapido   # sin la vuelta larga: lo de cada cambio
  *
  * Cada prueba escribe su registro entero en una carpeta temporal, que se dice al final; aquí
@@ -39,6 +39,7 @@ const jobs = [
         args: ['--experimental-vm-modules', 'node_modules/jest/bin/jest.js', '--config', 'jest.config.json', '--maxWorkers=4'] },
     { name: 'e2e rápido', kind: 'e2e', args: ['tools/e2e-quick.mjs'] },
     { name: 'sin modelo', kind: 'e2e', args: ['tools/e2e-sin-modelo.mjs'] },
+    { name: 'gremio', kind: 'e2e', args: ['tools/e2e-gremio.mjs'] },
     ...(QUICK ? [] : /** @type {Job[]} */ ([
         { name: 'vuelta 1-48', kind: 'e2e', args: ['tools/e2e-campaign.mjs', '--parte', 'a', '--port', '8126'] },
         { name: 'vuelta 49-73', kind: 'e2e', args: ['tools/e2e-campaign.mjs', '--parte', 'b', '--port', '8127'] },

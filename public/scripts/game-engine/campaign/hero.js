@@ -37,6 +37,79 @@ export const DEFAULT_CLASSES = [
 export const GENDERS = ['Mujer', 'Hombre', 'No binario', 'Sin especificar'];
 
 /**
+ * El icono de un oficio, para las tarjetas y el retrato sin cara. Sin arte: Font Awesome.
+ *
+ * @param {string} className
+ * @returns {string}
+ */
+export function classIcon(className) {
+    const kind = String(className ?? '').toLowerCase();
+    if (/soldad|guerr|mercen|caballer/.test(kind)) return 'fa-shield-halved';
+    if (/erudit|mag[oa]|sabi|escrib/.test(kind)) return 'fa-book-open';
+    if (/cl[eé]rig|monj|frail|sacerd/.test(kind)) return 'fa-hands-praying';
+    if (/p[ií]car|ladr/.test(kind)) return 'fa-mask';
+    if (/explor|cazad|arquer/.test(kind)) return 'fa-compass';
+    if (/bard|jugl/.test(kind)) return 'fa-music';
+    if (/b[aá]rbar/.test(kind)) return 'fa-hand-fist';
+    if (/druid/.test(kind)) return 'fa-leaf';
+    return 'fa-user';
+}
+
+/** Los seis atributos, en el orden de la ficha de D&D. */
+export const STAT_KEYS = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'];
+
+/**
+ * J1.2: los puntos que se reparten al crear, y lo más que puede subir uno.
+ *
+ * Pocos a propósito: los enemigos de las campañas están medidos contra héroes de base 10
+ * con lo que da su clase y su especie. Tres puntos se notan sin romper ese equilibrio.
+ */
+export const SPREAD_POINTS = 3;
+export const SPREAD_MAX = 2;
+
+/**
+ * Lo repartido o tirado, limpio: enteros entre -2 y +2, solo de los seis atributos.
+ *
+ * @param {any} raw
+ * @returns {Record<string, number>}
+ */
+export function readStatBonus(raw) {
+    /** @type {Record<string, number>} */
+    const out = {};
+    for (const key of STAT_KEYS) {
+        const value = Math.round(Number(raw?.[key]) || 0);
+        out[key] = Math.max(-SPREAD_MAX, Math.min(SPREAD_MAX, value));
+    }
+    return out;
+}
+
+/**
+ * Cuántos puntos quedan por repartir.
+ *
+ * @param {Record<string, number>} bonus
+ * @returns {number}
+ */
+export function spreadLeft(bonus) {
+    const used = STAT_KEYS.reduce((sum, key) => sum + Math.max(0, Number(bonus?.[key]) || 0), 0);
+    return Math.max(0, SPREAD_POINTS - used);
+}
+
+/**
+ * Tirar los atributos: cada uno, tres dados de seis alrededor de la media, entre -2 y +2.
+ * De media no se gana nada; la gracia es la sorpresa. Con la misma tirada, lo mismo.
+ *
+ * @param {() => number} random
+ * @returns {Record<string, number>}
+ */
+export function rollStatBonus(random) {
+    const d6 = () => 1 + Math.floor(random() * 6) % 6;
+    /** @type {Record<string, number>} */
+    const out = {};
+    for (const key of STAT_KEYS) out[key] = Math.round((d6() + d6() + d6() - 10.5) / 3);
+    return readStatBonus(out);
+}
+
+/**
  * @typedef {Object} HeroAnswers
  * @property {string} name
  * @property {string} gender
@@ -44,6 +117,7 @@ export const GENDERS = ['Mujer', 'Hombre', 'No binario', 'Sin especificar'];
  * @property {string} className
  * @property {string} about   Una línea sobre quién es. Es lo que lee el modelo.
  * @property {string} [background] El trasfondo (idea 49): da competencias y un contacto.
+ * @property {Record<string, number>} [statBonus] J1.2: lo repartido o tirado encima de la base.
  * @property {string} image
  */
 
@@ -132,6 +206,10 @@ export function buildHeroEntry(answers, where = {}) {
         // la mitad de vida de la que tienen medidos los enemigos de las plantillas.
         maxHp: num(preset.maxHp ?? preset.hp, 30),
     };
+
+    // J1.2: lo repartido o tirado al crearlo, encima de la base.
+    const bonus = readStatBonus(answers?.statBonus);
+    for (const key of STAT_KEYS) /** @type {any} */ (base)[key] += bonus[key];
 
     // Y lo que la raza y la clase le suman y le quitan. Hasta que existieron las baterias,
     // elegir «enano» era escribir una palabra en la ficha: ni un punto de mas ni uno de

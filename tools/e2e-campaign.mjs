@@ -34,6 +34,30 @@ import { mkdtempSync, rmSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+
+/**
+ * Elegir en una tarjeta de «Crear personaje», como quien juega: abrir su selector y pulsar
+ * la opción que más se parece a lo pedido (sin acentos ni mayúsculas), o la primera.
+ *
+ * @param {any} page
+ * @param {string} pick class | race | background
+ * @param {string} [wanted]
+ * @returns {Promise<string>} Lo elegido.
+ */
+async function pickHeroCard(page, pick, wanted = '') {
+    await page.locator(`.hc-root .hc-card[data-pick="${pick}"] .hc-pick`).click();
+    await page.waitForSelector('.hc-picker .hc-option', { timeout: 15000 });
+    const plain = (/** @type {string} */ v) => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const values = await page.evaluate(() => [...document.querySelectorAll('.hc-picker .hc-option')].map(o => o.getAttribute('data-value') || ''));
+    // Igual, o que lo contenga, o que empiece igual («Picara» es la Pícaro del compendio), o la primera.
+    const chosen = values.find(v => plain(v) === plain(wanted)) ?? values.find(v => wanted && plain(v).includes(plain(wanted)))
+        ?? values.find(v => wanted.length >= 4 && plain(v).startsWith(plain(wanted).slice(0, 4))) ?? values[0];
+    await page.locator(`.hc-picker .hc-option[data-value="${chosen}"]`).first().click();
+    await page.waitForSelector('.hc-picker', { state: 'detached', timeout: 15000 }).catch(() => {});
+    await page.waitForTimeout(200);
+    return chosen;
+}
+
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^[/]([A-Za-z]:)/, '$1');
 /** `--port N`: dos vueltas a la vez necesitan cada una el suyo. */
 const PORT = Number(process.argv[process.argv.indexOf('--port') + 1]) > 0 && process.argv.includes('--port')
@@ -248,32 +272,38 @@ try {
         await reachHeroCreator();
 
         const seen = await page.evaluate(() => ({
+            // Los avisos que hay al abrirse: el de «campaña creada» sale mientras se elige.
+            toasts: [...document.querySelectorAll('#toast-container .toast')].map(t => (t.textContent || '').replace(/\s+/g, ' ')),
             wand: document.querySelectorAll('.hc-wand').length,
             wandOff: document.querySelector('.hc-wand')?.disabled ?? null,
             face: document.querySelector('.hc-face-file')?.getAttribute('type') || '',
             wandTitle: document.querySelector('.hc-wand')?.getAttribute('title') || '',
             dice: document.querySelectorAll('.hc-dice').length,
             typed: document.querySelectorAll('.hc-root input[type="text"].hc-face').length,
-            labels: [...document.querySelectorAll('.hc-root .hc-label')]
+            labels: [...document.querySelectorAll('.hc-root .hc-card-label')]
                 .map(l => (l.textContent || '').trim()),
         }));
 
         // El dado saca un nombre del compendio. Se pulsa dos veces a proposito: lo que
         // importa no es que salga uno, es que salga **otro**.
+        // Ahora el dado trae dos nombres nuevos, y se pulsa uno: sale otro distinto.
         if (extra.dice && seen.dice > 0) {
-            await page.locator('.hc-dice').click();
+            await page.locator('.hc-root .hc-suggested').first().click();
             await page.waitForTimeout(300);
             seen.rolled = [await page.inputValue('.hc-root .hc-name')];
-            await page.locator('.hc-dice').click();
+            await page.locator('.hc-root .hc-dice').click();
+            await page.waitForTimeout(300);
+            await page.locator('.hc-root .hc-suggested').first().click();
             await page.waitForTimeout(300);
             seen.rolled.push(await page.inputValue('.hc-root .hc-name'));
         }
 
         await page.fill('.hc-root .hc-name', name);
-        if (extra.race) await page.fill('.hc-root .hc-race', extra.race);
-        if (extra.className) await page.fill('.hc-root .hc-class', extra.className);
+        if (extra.race) await pickHeroCard(page, 'race', extra.race);
+        // Sin clase no se entra (J18.2): la pedida, o la primera.
+        await pickHeroCard(page, 'class', extra.className ?? '');
 
-        await page.locator('.popup-button-ok').last().click();
+        await page.locator('.hc-root .hc-enter').click();
         await page.waitForSelector('.hc-root', { state: 'detached', timeout: 30000 });
         await page.waitForTimeout(1200);
         return seen;
@@ -630,8 +660,10 @@ try {
         `varita=${heroBox.wand} apagada=${heroBox.wandOff} pista="${heroBox.wandTitle}"`);
 
     const toast = page.locator('#toast-container .toast', { hasText: 'creada' });
-    await toast.first().waitFor({ state: 'visible', timeout: 60000 }).catch(() => {});
-    const toastText = ((await toast.count()) ? await toast.first().innerText() : 'NO TOAST').replace(/\s+/g, ' ');
+    await toast.first().waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
+    // Elegir en tarjetas lleva un rato: el aviso puede haberse ido ya, y entonces vale el
+    // que había al abrirse la pantalla de crear personaje.
+    const toastText = ((await toast.count()) ? await toast.first().innerText() : (heroBox.toasts ?? []).find(t => /creada/.test(t)) ?? 'NO TOAST').replace(/\s+/g, ' ');
     check('the campaign is created and the toast says where you are', /Estás en/.test(toastText), toastText);
 
     // The three failures the unit tests could not see, one check each.
@@ -2899,8 +2931,11 @@ try {
         card.name.length > 0 && /PG .* CA .* ft/.test(card.stats), JSON.stringify(card.stats));
     check('un clic no gasta la accion del turno: esa es la regla',
         card.spent === actionBefore, JSON.stringify({ antes: actionBefore, despues: card.spent }));
+    // Con su clase de verdad (desde que se elige en tarjetas), trae también sus
+    // habilidades de combate entre el definitivo y cerrar.
     check('y la tarjeta ofrece atacar, el definitivo y cerrar',
-        card.buttons.length === 3 && card.buttons[0].text === 'Atacar',
+        card.buttons[0]?.text === 'Atacar' && card.buttons.some(b => b.text === 'Golpe definitivo')
+        && card.buttons[card.buttons.length - 1]?.text === 'Cerrar',
         JSON.stringify(card.buttons));
 
     // El boton si gasta: aqui es donde se ataca. Que el enemigo este a tiro depende de
@@ -4064,12 +4099,13 @@ try {
     }));
 
     check('al arrancar, el juego se abre solo y ensena su menu',
-        onTitle.scene === 'title' && onTitle.buttons.length === 4, JSON.stringify(onTitle));
+        onTitle.scene === 'title' && onTitle.buttons.length === 5, JSON.stringify(onTitle));
     // Eran tres; el compendio hace cuatro, y va antes que los ajustes porque es
     // contenido y no una preferencia. (La partida rápida de R1 se quitó el 2026-09-27:
-    // «Partida nueva» con un mundo hecho es lo mismo.)
-    check('con las cuatro cosas que se pueden hacer al abrirlo',
-        onTitle.buttons.join(' | ') === 'Partida nueva | Cargar partida | Compendio | Opciones',
+    // «Partida nueva» con un mundo hecho es lo mismo.) Y desde el 2026-09-28, lo primero,
+    // jugar sin conexión (J0); sin gremios guardados no sale «Seguir en el gremio».
+    check('con las cinco cosas que se pueden hacer al abrirlo',
+        onTitle.buttons.join(' | ') === 'Jugar sin conexión | Partida nueva | Cargar partida | Compendio | Opciones',
         onTitle.buttons.join(' | '));
     check('y dice cuantas partidas hay guardadas, sin entrar',
         onTitle.hints.some(h => /campaña/.test(h)), JSON.stringify(onTitle.hints));
@@ -4093,7 +4129,7 @@ try {
 
     await page.locator('.gs-menu-back').click();
     await page.waitForTimeout(700);
-    check('volver deja el menu como estaba', await page.locator('.gs-menu-btn').count() === 4);
+    check('volver deja el menu como estaba', await page.locator('.gs-menu-btn').count() === 5);
 
     // El interruptor de la pausa, y la prueba de que la puerta de salida es de verdad.
     await openPause();
@@ -4621,7 +4657,8 @@ try {
         face41.stored === 'img/user-default.png' && face41.shown === 'img/user-default.png',
         JSON.stringify(face41));
 
-    await page.locator('.popup-button-ok').last().click();
+    await pickHeroCard(page, 'class', 'Pícara');
+    await page.locator('.hc-root .hc-enter').click();
     await page.waitForTimeout(800);
     const kept41 = await page.evaluate(() => window.__wand.answers);
     check('y lo que sale del cuadro es la ficha entera, con su cara puesta',
@@ -5734,12 +5771,16 @@ try {
     await page.locator('.tl-next').click();
     // El creador de personaje respeta lo que el mundo deja entrar, y dice cómo empieza.
     await reachHeroCreator();
+    // Las especies, del selector de su tarjeta; y se cierra sin elegir.
+    await page.locator('.hc-root .hc-card[data-pick="race"] .hc-pick').click();
+    await page.waitForSelector('.hc-picker .hc-option', { timeout: 15000 });
     const hero49 = await page.evaluate(() => ({
-        races: [...document.querySelectorAll('.hc-root datalist')].map(list => [...list.querySelectorAll('option')]
-            .map(o => String(o.getAttribute('value') || '').split(' — ')[0])),
+        races: [...document.querySelectorAll('.hc-picker .hc-option')].map(o => o.getAttribute('data-value') || ''),
         premise: document.querySelector('.hc-premise-text')?.textContent || '',
     }));
-    const race49 = hero49.races.find(list => list.some(v => /Humano/i.test(v))) ?? [];
+    await page.locator('.popup:visible .popup-button-cancel').last().click();
+    await page.waitForSelector('.hc-picker', { state: 'detached', timeout: 15000 }).catch(() => {});
+    const race49 = hero49.races;
     check('el creador de personaje solo ofrece las razas del mundo',
         race49.length > 0 && race49.every(v => /Humano|Sangre alta/i.test(v)), JSON.stringify(race49));
     check('y dice cómo empieza la historia, para que el pasado encaje', /cáliz/i.test(hero49.premise), hero49.premise.slice(0, 120));
@@ -5747,8 +5788,8 @@ try {
     await page.fill('.hc-root .hc-about', 'Un militar jubilado que ya no duerme bien.');
     await page.waitForTimeout(300);
     const background49 = await page.evaluate(() => ({
-        value: /** @type {HTMLSelectElement|null} */ (document.querySelector('.hc-root .hc-background'))?.value || '',
-        hint: document.querySelector('.hc-root .hc-background-hint')?.textContent || '',
+        value: document.querySelector('.hc-root .hc-card[data-pick="background"]')?.getAttribute('data-value') || '',
+        hint: document.querySelector('.hc-root .hc-card[data-pick="background"] .hc-card-what')?.textContent || '',
     }));
     check('escribir «militar jubilado» propone el trasfondo de soldado, y dice lo que da (49)',
         background49.value === 'soldado' && /Atletismo y Intimidación/.test(background49.hint), JSON.stringify(background49));
@@ -5887,7 +5928,14 @@ try {
         return (data?.metadata?.locationMaps ?? []).map((/** @type {any} */ l) => l.name);
     });
 
-    const explore50 = page.locator('#game-shell .gs-chip-action', { hasText: 'Explorar los alrededores' }).first();
+    // Desde el 2026-09-28 el tablero que pide la historia va delante, y explorar puede quedar
+    // en «+N más»: se busca en la fila y, si no, dentro, como haría quien juega.
+    let explore50 = page.locator('#game-shell .gs-chip-action', { hasText: 'Explorar los alrededores' }).first();
+    if (await explore50.count() === 0) {
+        await page.locator('#game-shell .gs-chip-action', { hasText: /^\+\d+ más$/ }).first().click({ timeout: 4000 }).catch(() => {});
+        await page.waitForTimeout(600);
+        explore50 = page.locator('.popup:visible .hp-item[data-chip="explore"]').first();
+    }
     check('fuera del tablero, la fila de fichas ofrece explorar los alrededores', await explore50.count() === 1, '');
     if (await explore50.count() === 1) {
         await explore50.click();

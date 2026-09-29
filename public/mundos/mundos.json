@@ -231,6 +231,10 @@
       "seed": "yunque-hiel-catorce",
       "templateId": "tavern",
       "pack": "/mundos/1387.pack.json",
+      "journey": {
+        "days": 4,
+        "how": "Subís por el camino del norte hasta un valle de montaña, antes de que la nieve cierre los pasos."
+      },
       "icon": "fa-scroll",
       "traits": [
         "Sin magia",
@@ -294,7 +298,40 @@
             "character": "cinica"
           }
         }
+      ],
+      "levels": [
+        1,
+        4
       ]
+    },
+    {
+      "id": "strahd",
+      "name": "La Maldición de Strahd",
+      "genre": "Horror gótico",
+      "note": "Un valle cerrado por la niebla y el vampiro que lo gobierna.",
+      "synopsis": "Bajo nubes de tormenta, el conde vampiro Strahd von Zarovich gobierna el valle de Barovia, una prisión de desesperanza envuelta en una niebla mortal. Los aventureros han sido arrastrados a este dominio de terror para enfrentarse a su oscuro señor, descubrir sus antiguos secretos y explorar el imponente Castillo Ravenloft.",
+      "seed": "niebla-cuervo-siete",
+      "templateId": "tavern",
+      "pack": "/mundos/strahd.pack.json",
+      "journey": {
+        "days": 9,
+        "how": "Vais en carro por el camino del este, hasta que la niebla se cierra detrás de vosotros."
+      },
+      "icon": "fa-ghost",
+      "levels": [
+        1,
+        6
+      ],
+      "traits": [
+        "Terror gótico",
+        "Nadie sale del valle",
+        "Doce tableros, de la taberna a la cripta"
+      ],
+      "narrator": "sombra",
+      "board": {
+        "factionShare": 3,
+        "theme": "general"
+      }
     }
   ]
 }

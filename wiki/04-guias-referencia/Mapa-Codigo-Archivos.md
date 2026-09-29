@@ -176,6 +176,7 @@ Módulos puros: sin DOM, sin estado global, sin lecturas del chat. Por eso se pr
 | `guild.js` | 351 | El gremio: la capa que convierte un grupo en una compañía. |
 | `guion-errors.js` ⬜ | 108 | Los errores del guion, dichos para quien lo escribe (idea 174). |
 | `hero-fit.js` | 59 | El mundo se adapta al héroe: hitos opcionales según el trasfondo (idea 184). |
+| `hub.js` | 365 | Jugar sin conexión (J4): el gremio desde el que se empiezan las campañas, y el grupo que viaja entero de un chat a otro. |
 | `hero.js` | 245 | Quién eres tú: el personaje con el que empiezas a jugar. |
 | `illustrations.js` | 76 | Ilustraciones de sitios y gente con PixelLab, opcional (idea 183). |
 | `intents.js` | 39 | Leer la intención mientras se escribe (idea 137). |
@@ -301,6 +302,7 @@ Módulos puros: sin DOM, sin estado global, sin lecturas del chat. Por eso se pr
 | `encounter-editor.js` | 119 | The panel that says which enemies a board can field. |
 | `guild-panel.js` | 248 | El panel del gremio: el tablón, la reputación y lo que hay levantado. |
 | `hero-creator.js` | 266 | «¿Quién eres?», preguntado al entrar y no al rellenar el formulario del mundo. |
+| `hub-panel.js` | 133 | Las ventanas del gremio: el tablón de campañas y los mercenarios, en tarjetas que se pulsan. |
 | `mode-panel.js` | 133 | Elegir el modo: tres con nombre y las seis letras sueltas (R1 del roadmap de profundidad). |
 | `objective-editor.js` | 203 | The panel that lets a board be *about* something, without opening World Info. |
 | `prompt-preview.js` | 233 | The prompt preview: what this turn is about to send, and what the session has cost. |
@@ -393,7 +395,10 @@ Cada uno cuesta en cada merge. La lista no debería crecer.
 | `check-world-density.mjs` | Mide si un mundo llega al listón: sitios, gente, héroes hechos, bestias domables y magia en los datos |
 | `gem-instructions.mjs` | Genera `wiki/GEM_CREAR_CAMPANA.md` desde el contrato; con `--check` falla si se quedó viejo |
 | `guion-a-paquete.mjs` | Convierte el guion del Gem guionista en un paquete, y avisa de cada campo que no lee |
-| `e2e-todo.mjs` | Lanza todas las pruebas a la vez, cada una con su servidor: `--rapido` (tests, rápida y sin modelo, unos 4 minutos) o todo (unos 15 minutos) |
+| `e2e-todo.mjs` | Lanza todas las pruebas a la vez, cada una con su servidor: `--rapido` (tests, rápida, sin modelo y el gremio, unos 4 minutos) o todo (unos 15 minutos) |
+| `e2e-gremio.mjs` | «Jugar sin conexión» de punta a punta: el héroe, la bodega, un mercenario, Strahd desde el tablón, volver y seguir (puerto 8128) |
+| `campana-a-paquete.mjs` | Junta una campaña que llega en JSON (`wiki/campanas/<id>/original.json`) con lo escrito a partir del libro (`libro.json`) y lo que se le pone encima para jugarla (`mejoras.json`), la valida y escribe `public/mundos/<id>.pack.json`; `--check` avisa si no están al día |
+| `sim-campana.mjs` | ¿Se puede ganar? Juega sola cada tablero del hilo de una campaña, con el grupo subiendo de nivel, y dice cuáles gana |
 | `e2e-campaign.mjs` | Recorre el juego en un navegador real, con servidor y datos propios: 73 pasos, unos 30 minutos. `--parte a` / `--parte b` son sus dos mitades (pasos 1–48 y 49–73), y `--port` le da otro puerto |
 | `e2e-quick.mjs` | La partida rápida en 1387 y la tanda de profundidad (altura, salidas, palanca, barricada, tregua): unos 3 minutos |
 | `e2e-sin-modelo.mjs` | Una partida de 1387 entera sin modelo: que el motor lo cuente todo y el hilo avance. Unos 4 minutos |

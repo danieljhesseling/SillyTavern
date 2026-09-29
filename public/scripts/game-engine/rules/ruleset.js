@@ -462,3 +462,26 @@ export function planRulesetChange(worldPack, rememberedPack) {
 // Applied at import time, which is the whole point: see RULESET_STORAGE_KEY. In Node
 // there is no localStorage, so tests always start from the built-in rules.
 restoreRememberedRuleset();
+
+/** Las reglas con las que arrancó la página: las que `dnd-system.js` ha congelado. */
+const frozenAtLoad = activeRuleset;
+
+/** Lo que `dnd-system.js` lee una vez al cargar. Lo demás se lee al usarse. */
+const FROZEN_SECTIONS = ['character', 'items', 'relationships', 'slotInfo', 'slots'];
+
+/**
+ * Si cambiar a estas reglas pide recargar la página.
+ *
+ * Solo si cambia algo que `dnd-system.js` congeló al cargar. Las habilidades, la supervivencia
+ * o el progreso se leen al usarse, así que ponerlas no pide nada: ir del gremio a una campaña
+ * que trae sus propias habilidades sacaba el aviso de «recarga» cada vez.
+ *
+ * @param {any} worldPack
+ * @param {any} [frozen] Lo que se congeló; por defecto, lo de esta página.
+ * @returns {boolean}
+ */
+export function needsReload(worldPack, frozen = frozenAtLoad) {
+    const next = resolveRuleset(worldPack).ruleset;
+    return FROZEN_SECTIONS.some(key => JSON.stringify(/** @type {any} */ (next)?.[key] ?? null)
+        !== JSON.stringify(/** @type {any} */ (frozen)?.[key] ?? null));
+}

@@ -338,11 +338,55 @@ Hoy una localidad sin tablero táctico es solo un cartel de texto. Si el jugador
 >
 > El código está en `campaign/board-draft.js` y `ui/taller/board-paint.js`.
 
+### A17 · Jugar sin conexión: el gremio y sus campañas 🟡 **La primera vuelta, hecha el 2026-09-28**
+
+> Hecho: «Jugar sin conexión» en la portada, tu personaje, la prueba de la bodega, los mercenarios del gremio, el tablón con 1387 y Strahd, volver al gremio y seguir. Cómo se juega, en [[EMPEZAR_UNA_CAMPANA]] (1b); el plan, en [[ROADMAP_SIN_CONEXION]].
+>
+> Arreglado de paso, porque bloqueaba Strahd:
+> - Un objetivo «proteger» no dejaba ganar nunca: ahora es una condición (si cae, se pierde; si no, se gana con lo demás).
+> - «Saquear» no se podía cumplir: nada daba los tesoros. Ahora el primer cofre que se abre da el que pide la misión.
+> - Los mercenarios llegaban con el oro del héroe (el grupo lo tenía dos veces) y con sus habilidades.
+> - Ir de una campaña a otra pedía «Recarga la página» aunque solo cambiaran las habilidades.
+> - En la escena de diálogo no había cómo empezar la pelea que espera en el tablero: ahora hay una ficha «Iniciar combate».
+> - Las fichas de «Entrar en…» quedaban detrás de «+N más».
+> - **«Derrotar a X» se cumplía solo, en la primera ronda**, con X entero: el objetivo buscaba al bicho por un número que la pelea no usa. Pasaba también en 1387. Lo destapó la simulación.
+> - **La palanca abría la reja, pero la sala seguía a oscuras** y lo de dentro no despertaba nunca.
+> - **Los mercenarios se llevaban su parte del botín** (oro y experiencia) aunque ya se les pagó: con dos, el héroe subía de nivel a un tercio de ritmo.
+>
+> **¿Se puede ganar Strahd?** Sí. `tools/sim-campana.mjs` juega sola los 12 tableros del hilo, en orden, con un guerrero y dos mercenarios que suben de nivel de verdad. Gana los 12: el Viñedo al segundo intento, y a Strahd, a nivel 5, en 16 rondas.
+>
+> Los mercenarios entrenan: al ir y volver del gremio suben al nivel del héroe. El que cae no vuelve.
+>
+> Queda:
+> - **El equipo inicial por clase** (J1.3): un guerrero recién hecho tiene CA 10, sin armadura. La prueba de la bodega se llegó a perder así en la simulación; por eso ahora es de dos ratas.
+> - **Si tu héroe muere en una campaña**, vuelve al gremio muerto: falta qué pasa entonces.
+> - **Terminar una campaña** sale en el tablón como «Terminada», pero sin escena de vuelta (J4.5).
+> - **Elegir especie y clase de tarjetas** (J1.1): hoy se escriben, con sugerencias.
+
 ---
 
 ## 🟠 D — Necesita una decisión
 
 Cada una es una bifurcación real: las dos salidas son defendibles y la elección cuesta después. Llevan mi recomendación, pero la decisión no es mía.
+
+### D10 · Strahd, ya entero: mira lo que escribí
+
+Con el libro que me pasaste escribí lo que le faltaba a tu JSON, con palabras mías y en corto (no está copiado el texto del libro, y el libro no está en el repo). Va en `wiki/campanas/strahd/libro.json`, entre tu JSON y `mejoras.json`. Ahora llega al listón del medidor (`node tools/check-world-density.mjs public/mundos/strahd.pack.json`), igual que 1387:
+- **31 PNJ** en sus sitios, cada uno con lo que quiere, lo que sabe y un secreto: Donavich, Bildrath, María la Loca, el barón, Izek, la señora Wachter, Urwin, el padre Lucian, Milivoj, el ataudero, Blinsky, Morgantha, Vladimir, Godfrey, Davian, Dmitri, el Abad, Rahadin…
+- **36 rumores**, cuatro de ellos llevan a los sitios que se descubren.
+- **15 encargos** en 4 cadenas (el funeral, los huesos de San Andral, las gemas de la bodega y la manada), 9 sin pelear.
+- **5 facciones con meta**: vistani, la Orden, la corte del conde, los Guardianes de la Pluma y la manada.
+- **5 escenas de vínculo** por confidente, y lo que dicen al llegar a sus sitios.
+- **4 localizaciones que se descubren**: la Torre de Van Richten y la Guarida de los Hombres Lobo (tras la fiesta de Vallaki), las Ruinas de Berez y la Colina Yester (tras salvar el viñedo).
+- **6 tableros nuevos** para los encargos, y 7 bichos (Kiril y Baba Lysaga de jefes).
+- **3 finales**, según con quién os llevéis mejor: los Guardianes, la Orden o los vistani. Y 3 presagios.
+
+Lo que tienes que decidir o mirar:
+- **La lectura de cartas.** En el libro, Madam Eva decide con las cartas dónde están el Tomo, el Símbolo y la Espada del Sol. Yo fijé una de las lecturas que da el libro: el Símbolo en Argynvostholt, la Espada del Sol en la bodega (el Tomo ya estaba en el comedor del castillo). Si quieres que cambie en cada partida, es la propuesta P de abajo.
+- **Lo marcado «propio:»**, que no sale del libro: Baba Lysaga como jefa del pantano, el encargo del vino de Krezk y su tablero, que el Muslo de Santa Markovia llegue al salvar Krezk, y los mapas de los tableros.
+- **Van Richten** es confidente y no un PNJ: en Vallaki se presenta como el bardo Rictavio en su primera escena.
+
+**Recomiendo**: jugarlo un rato y decirme qué texto no te suena a Barovia.
 
 ### D9 · Lo que no cuadra en el guion de 1387 ✅ **Decidido: las recomendaciones, el 2026-09-28** ([[ronda-12-claude-decisiones]])
 
@@ -497,6 +541,12 @@ De *DISENO_GENERADOR_MUNDOS_PROFUNDO*. Ordenadas por lo que dan a cambio de lo q
 | **P23** | **Terreno nuevo: agua, lava, trampas, elevación** 🟡 **En parte, R3 y R6**: agua, hielo, maleza, barriles y cofres, **en código** (DR7). La elevación no: B1 de [[LO_QUE_FALTA]] | El documento propone `W`, `L`, `T`, `^`. **Prerrequisito**: hoy los tipos de terreno son **código** (`board/terrain.js`), no datos. Sacarlos al paquete de reglas es la mitad del trabajo, y de paso cumple tu requisito de *«sin tocar código»* en un sitio donde aún no se cumple |
 | **P24** 💡 | **Action Chips de diálogo con tiradas D&D en cliente** ✅ **Hecho** (ideas 137 y 138: `campaign/intents.js` ofrece la tirada al leer lo que escribes, y el narrador puede pedirla) | Rescatar la ficha fuera de combate (**ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES* §3*): botones sugeridos en la escena de diálogo (ej. `[Persuadir CD 12]`, `[Intimidar CD 14]`) que resuelven d20 + bono en JS e inyectan solo el resultado al modelo. 0 tokens adicionales y la ficha importa en el rol social |
 | **P25** 💡 | **Prótesis y roles de campamento para amputaciones** 🟡 **En parte** (`rules/remedies.js`: la pierna de palo y los demás remedios; los roles de campamento para quien no puede pelear, no) | Evitar la frustración de retirar al confidente más querido (**ANALISIS_FALLAS_JUGABLES_Y_SOLUCIONES* §3*): prótesis enanas/mágicas que sustituyen penalizadores por mecánicas únicas, o roles pasivos en campamento (intendente, consejero táctico) que dan ventajas a la party |
+
+### Campañas publicadas
+
+| ID | Propuesta | Por qué |
+| :--- | :--- | :--- |
+| **P14** 💡 | **La lectura de cartas de Madam Eva, de verdad** | En Strahd, las cartas deciden dónde están el Tomo, el Símbolo y la Espada del Sol, y dónde espera el conde. Hoy va fijada una de las lecturas del libro (D10). Con la semilla de la partida elegiría una de las que el libro permite, y Madam Eva la contaría en su tienda: cada partida sería distinta y seguiría siendo la del libro |
 
 ### Sobre el propio desarrollo
 

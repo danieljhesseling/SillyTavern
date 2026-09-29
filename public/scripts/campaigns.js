@@ -6,13 +6,19 @@ import {
 import {
     characters, getRequestHeaders, openCharacterChat, chat_metadata, saveMetadata, selectCharacterById,
     doNewChat, this_chid, generateRaw, online_status, deleteCharacterChatByName, closeCurrentChat,
-    getCharacters,
+    getCharacters, getCurrentChatId, setUserName,
 } from '../script.js';
 import { Popup, POPUP_TYPE, POPUP_RESULT } from './popup.js';
 import { buildNewCampaignCta, createCampaign } from './game-engine/ui/campaign-wizard.js';
-import { openCampaignBuilder, loadDndCatalog, setPartyFromWorldEntries, beginCampaignPlot, adoptVeteranGear, applyCampaignRuleset, applyModeExtras, adoptPet } from './party.js';
-import { isCampaignWorld, getStartingPoint } from './game-engine/campaign/campaign-worlds.js';
-import { buildHeroEntry, describeHero } from './game-engine/campaign/hero.js';
+import { openCampaignBuilder, loadDndCatalog, setPartyFromWorldEntries, beginCampaignPlot, adoptVeteranGear, giveStartingGear, applyCampaignRuleset, applyModeExtras, adoptPet, partySnapshot, adoptCarriedParty, giveStartingPurse, plotEndingTitle } from './party.js';
+import { isCampaignWorld, getStartingPoint, uniqueWorldName } from './game-engine/campaign/campaign-worlds.js';
+import {
+    HUB_KEY, HUB_HOME_KEY, HUB_CAMPAIGN_KEY, HUB_PACK, HUB_WORLD_NAME, HUB_START_GOLD, HUB_NARRATOR,
+    readHub, isHubWorld, hubHomeOf, withHubChat, withHubCampaign, answersForWorld, hubCampaignWorldName,
+    carryEntry, entryFromMember, hubPartyLine,
+} from './game-engine/campaign/hub.js';
+import { validatePack } from './game-engine/campaign/campaign-pack.js';
+import { buildHeroEntry, describeHero, classIcon, rollStatBonus } from './game-engine/campaign/hero.js';
 import { planCampaignDeletion, describeDeletion } from './game-engine/campaign/campaign-delete.js';
 import {
     buildNarratorCard, describeNarrator, VERBOSITY, DEFAULT_VERBOSITY,
@@ -25,6 +31,8 @@ import { createSeededRandom } from './game-engine/combat/seeded-random.js';
 import { seedOf, derive } from './game-engine/campaign/seed.js';
 import { abilitiesFor, nameAndAbility } from './game-engine/compendio/skills.js';
 import { racesOf, kindsOf, describeKin } from './game-engine/compendio/kin.js';
+import { kitFor, kitSlots, describeKit } from './game-engine/campaign/starting-kit.js';
+import { armourClassOf } from './game-engine/rules/equipment.js';
 import { readPlot, plotFromFaction, startPlot } from './game-engine/campaign/plot.js';
 import { saveSummary, describeSave, describeSaveParty } from './game-engine/campaign/save-card.js';
 import { listVeterans, veteranHero } from './game-engine/campaign/veterans.js';
@@ -70,8 +78,8 @@ export async function renderCampaignCards(container) {
     }
 
     // Build world data for worlds that have chats
-    /** @type {Array<{name: string, displayName: string, coverImage: string, genre: string, chats: any[], unstarted?: boolean}>} */
-    const worlds = [];
+    /** @type {Array<{name: string, displayName: string, coverImage: string, genre: string, chats: any[], unstarted?: boolean, hub?: boolean, fromHub?: boolean}>} */
+    let worlds = [];
     for (const [worldName, chats] of chatsByWorld) {
         let meta = {};
         try {
@@ -84,6 +92,10 @@ export async function renderCampaignCards(container) {
             coverImage: meta.coverImage || '',
             genre: meta.genre || '',
             chats: chats.sort((a, b) => (b.last_mes || 0) - (a.last_mes || 0)),
+            // J4: los gremios van arriba, en «Jugar sin conexión»; sus campañas se siguen desde
+            // su tablón, no desde aquí.
+            hub: isHubWorld(meta),
+            fromHub: Boolean(hubHomeOf(meta)),
         });
     }
 
@@ -98,7 +110,7 @@ export async function renderCampaignCards(container) {
                 try {
                     const data = await loadWorldInfo(name);
                     const meta = data?.metadata ?? {};
-                    return isCampaignWorld(meta) ? { name, meta } : null;
+                    return isCampaignWorld(meta) && !isHubWorld(meta) && !hubHomeOf(meta) ? { name, meta } : null;
                 } catch {
                     return null; // deleted or unreadable: nothing to offer
                 }
@@ -123,15 +135,20 @@ export async function renderCampaignCards(container) {
         return bTime - aTime;
     });
 
+    // J4: jugar sin conexión, lo primero.
+    const offline = buildOfflineBlock(worlds.filter(w => w.hub && w.chats.length > 0));
+    worlds = worlds.filter(w => !w.hub && !w.fromHub);
+
     if (worlds.length === 0) {
         // The old empty state was an instruction disguised as a placeholder: it told you to
         // "start a new chat and pick a world", which silently did nothing when no world
         // existed yet. Now it offers the thing it was describing.
-        container.innerHTML = buildNewCampaignCta(false);
+        container.innerHTML = offline + buildNewCampaignCta(false);
+        refreshTitleMenu();
         return;
     }
 
-    let html = buildNewCampaignCta(true);
+    let html = offline + buildNewCampaignCta(true);
     for (const world of worlds) {
         const coverStyle = world.coverImage
             ? `background-image: url('${world.coverImage.replace(/'/g, '\\\'')}'); background-size: cover; background-position: center;`
@@ -206,6 +223,17 @@ export async function renderCampaignCards(container) {
     }
 
     container.innerHTML = html;
+    refreshTitleMenu();
+}
+
+/**
+ * J4: el menú de título lee de esta lista si hay gremios que seguir; como la lista llega
+ * después, se le avisa al acabar.
+ */
+function refreshTitleMenu() {
+    void import('./game-engine/ui/shell/game-shell.js')
+        .then(shell => { if (shell.isShellOpen()) shell.refreshGameShell(); })
+        .catch(() => { /* sin Modo Juego no hay menú que avisar */ });
 }
 
 // ---- Category constants for world preview ----
@@ -1143,6 +1171,360 @@ async function startCampaignWizard() {
 }
 
 /**
+ * J4 de ROADMAP_SIN_CONEXION: un JSON de `/mundos`.
+ *
+ * @param {string} url
+ * @returns {Promise<any>}
+ */
+async function readMundo(url) {
+    const response = await fetch(url, { cache: 'no-cache' });
+    if (!response.ok) throw new Error(`No se pudo leer ${url} (HTTP ${response.status}).`);
+    return await response.json();
+}
+
+/**
+ * J4: crea el narrador de una partida del gremio con una voz de `narradores.json`.
+ *
+ * @param {string} voiceId
+ * @param {{worldName: string, genre: string, synopsis: string}} world
+ * @returns {Promise<string>} Su avatar, o vacío si no se pudo (se abre con el de siempre).
+ */
+async function hubNarrator(voiceId, world) {
+    const voices = await readMundo('/mundos/narradores.json').then(json => json?.narrators ?? []).catch(() => []);
+    const voice = voices.find((/** @type {any} */ v) => String(v?.id) === String(voiceId));
+    if (!voice) return '';
+    const made = await createNarratorCharacter({
+        name: String(voice.name ?? ''),
+        personality: String(voice.personality ?? ''),
+        description: String(voice.description ?? ''),
+        greeting: String(voice.greeting ?? ''),
+        verbosity: String(voice.verbosity ?? '') || DEFAULT_VERBOSITY,
+        image: String(voice.image ?? ''),
+    }, world);
+    return made?.avatar ?? '';
+}
+
+/**
+ * J4: cambiar los metadatos de un mundo y guardarlo.
+ *
+ * @param {string} worldName
+ * @param {(metadata: any) => void} change
+ * @returns {Promise<void>}
+ */
+async function updateWorld(worldName, change) {
+    const data = await loadWorldInfo(worldName);
+    if (!data) throw new Error(`No se pudo cargar el mundo "${worldName}".`);
+    data.metadata = data.metadata ?? {};
+    change(data.metadata);
+    await saveWorldInfo(worldName, data, true);
+}
+
+/** J4: el chat abierto, para volver a él. @returns {{file: string, avatar: string}} */
+function openChat() {
+    return { file: String(getCurrentChatId() ?? ''), avatar: String(characters[Number(this_chid)]?.avatar ?? '') };
+}
+
+/**
+ * J4: abrir el chat de una partida del gremio y comprobar que es del mundo que toca.
+ *
+ * @param {{file: string, avatar: string}} chat
+ * @param {string} worldName
+ * @returns {Promise<boolean>}
+ */
+async function openHubChat(chat, worldName) {
+    const index = characters.findIndex((/** @type {any} */ c) => c?.avatar === chat.avatar);
+    if (index === -1) return false;
+    try {
+        await selectCharacterById(index);
+        await openCharacterChat(chat.file);
+    } catch (error) {
+        console.warn('[gremio] no se pudo abrir el chat', chat, error);
+        return false;
+    }
+    return String(chat_metadata?.[METADATA_KEY] || '') === worldName;
+}
+
+/**
+ * J4: las fichas de quien viaja, sacadas del mundo de donde sale. Los invitados no tienen.
+ *
+ * @param {any} data El mundo de salida.
+ * @param {any[]} carried
+ * @returns {Array<{name: string, entry: any}>}
+ */
+function carriedEntries(data, carried) {
+    return carried
+        .filter(member => !member.guest && member.wiUid != null)
+        .map(member => {
+            const entry = data?.entries?.[member.wiUid];
+            return { name: String(member.name), entry: entry ? carryEntry(entry, member) : entryFromMember(member) };
+        });
+}
+
+/**
+ * J4: que cada uno de los que llegan tenga su ficha en el mundo de llegada. Si ya la tenía
+ * (vuelve a una campaña), se pone al día; si no, se copia.
+ *
+ * @param {string} worldName
+ * @param {Array<{name: string, entry: any}>} carried
+ * @returns {Promise<{uids: Record<string, number>, entries: any[]}>}
+ */
+async function ensureHubEntries(worldName, carried) {
+    const data = await loadWorldInfo(worldName);
+    if (!data) throw new Error(`No se pudo cargar el mundo "${worldName}".`);
+    /** @type {Record<string, number>} */
+    const uids = {};
+    const entries = [];
+    for (const { name, entry } of carried) {
+        const found = Object.values(data.entries ?? {})
+            .find((/** @type {any} */ e) => String(e?.dndData?.entityType) === 'character'
+                && String(e?.comment ?? '').trim().toLowerCase() === name.trim().toLowerCase());
+        const target = /** @type {any} */ (found ?? createWorldInfoEntry(worldName, data));
+        if (!target) continue;
+        Object.assign(target, entry);
+        uids[name.trim().toLowerCase()] = Number(target.uid);
+        entries.push(target);
+    }
+    await saveWorldInfo(worldName, data, true);
+    return { uids, entries };
+}
+
+/**
+ * J4: jugar sin conexión, una partida nueva. Se crea el gremio, se abre su chat, se hace el
+ * personaje y empieza el hilo: la prueba de la bodega.
+ *
+ * @returns {Promise<void>}
+ */
+export async function startHubGame() {
+    if (wizardRunning) return;
+    wizardRunning = true;
+
+    try {
+        const pack = await readMundo(HUB_PACK);
+        const created = await createCampaign({
+            answers: {
+                templateId: 'imported', importedPack: pack, party: [], board: null,
+                worldName: uniqueWorldName(HUB_WORLD_NAME, Array.isArray(world_names) ? world_names : []),
+                genre: String(pack.world?.genre ?? ''), description: String(pack.world?.synopsis ?? ''),
+            },
+            createWorld: (name) => createNewWorldInfo(name, { interactive: false }),
+            loadWorld: loadWorldInfo,
+            saveWorld: (name, data) => saveWorldInfo(name, data, true),
+            createEntry: createWorldInfoEntry,
+        });
+
+        const narratorAvatar = await hubNarrator(HUB_NARRATOR, {
+            worldName: created.worldName, genre: String(pack.world?.genre ?? ''), synopsis: String(pack.world?.synopsis ?? ''),
+        });
+        await updateWorld(created.worldName, meta => {
+            meta[HUB_KEY] = readHub(null);
+            if (narratorAvatar) meta.narratorAvatar = narratorAvatar;
+        });
+
+        const opened = await openCampaignChat({ ...created, verb: 'creada', narratorAvatar });
+        if (!opened) return;
+        await applyCampaignRuleset(created.worldName).catch(error => console.error('[gremio] reglas', error));
+        // Dónde vive el gremio: para volver a él desde una campaña.
+        await updateWorld(created.worldName, meta => { meta[HUB_KEY] = withHubChat(meta[HUB_KEY], openChat()); });
+
+        const hero = await createStartingHero(created.worldName);
+        if (hero) giveStartingPurse(HUB_START_GOLD);
+        await beginCampaignPlot(hero || '');
+    } catch (error) {
+        console.error('[gremio] no se pudo crear la partida', error);
+        toastr.error(String(error?.message || error), 'No se pudo crear la partida');
+    } finally {
+        wizardRunning = false;
+    }
+}
+
+/**
+ * J4: el personaje de un gremio que se quedó sin él.
+ *
+ * @returns {Promise<void>}
+ */
+async function heroForEmptyHub() {
+    const worldName = String(chat_metadata?.[METADATA_KEY] || '');
+    const data = worldName ? await loadWorldInfo(worldName).catch(() => null) : null;
+    if (!isHubWorld(data?.metadata) || partySnapshot().length > 0) return;
+    const hero = await createStartingHero(worldName);
+    if (!hero) return;
+    giveStartingPurse(HUB_START_GOLD);
+    await beginCampaignPlot(hero);
+}
+
+/**
+ * J4: empezar una campaña del tablón, o seguirla si ya se empezó. El grupo va entero.
+ *
+ * @param {string} id La campaña, de `mundos.json`.
+ * @returns {Promise<void>}
+ */
+export async function playHubCampaign(id) {
+    if (wizardRunning) return;
+    wizardRunning = true;
+
+    try {
+        const homeWorld = String(chat_metadata?.[METADATA_KEY] || '');
+        const home = homeWorld ? await loadWorldInfo(homeWorld) : null;
+        if (!isHubWorld(home?.metadata)) {
+            toastr.info('Las campañas se empiezan desde el gremio.', 'Campañas');
+            return;
+        }
+        const carried = partySnapshot();
+        if (carried.length === 0) {
+            toastr.warning('Sin personaje no se sale del gremio.', 'Campañas');
+            return;
+        }
+        const entries = carriedEntries(home, carried);
+        await saveMetadata();
+        // El gremio sabe siempre dónde está su chat: es por donde se vuelve.
+        await updateWorld(homeWorld, meta => { meta[HUB_KEY] = withHubChat(meta[HUB_KEY], openChat()); });
+
+        // Ya empezada: se vuelve a su chat, donde se dejó.
+        const record = readHub(home.metadata[HUB_KEY]).campaigns[id];
+        if (record?.chat) {
+            if (await openHubChat(record.chat, record.worldName)) {
+                const { uids } = await ensureHubEntries(record.worldName, entries);
+                adoptCarriedParty(carried, { worldName: record.worldName, uids });
+                toastr.success('Seguís donde lo dejasteis, con lo que traéis del gremio.', 'De vuelta a la campaña');
+                return;
+            }
+            toastr.warning('No encuentro la partida de esa campaña: se empieza de nuevo.', 'Campañas');
+        }
+
+        const worlds = await readMundo('/mundos/mundos.json').then(json => json?.worlds ?? []);
+        const world = worlds.find((/** @type {any} */ w) => String(w?.id) === id);
+        if (!world?.pack) throw new Error('Esa campaña no está en el tablón.');
+        const pack = await readMundo(String(world.pack));
+        const found = validatePack(pack);
+        if (!found.ok) throw new Error(`La campaña está rota: ${found.errors?.[0]?.message ?? 'no se puede leer'}.`);
+
+        const hero = carried.find(m => !m.guest) ?? carried[0];
+        const worldName = hubCampaignWorldName(String(world.name ?? id), String(hero?.name ?? ''), Array.isArray(world_names) ? world_names : []);
+        const created = await createCampaign({
+            answers: answersForWorld({ world, pack, worldName }),
+            createWorld: (name) => createNewWorldInfo(name, { interactive: false }),
+            loadWorld: loadWorldInfo,
+            saveWorld: (name, data) => saveWorldInfo(name, data, true),
+            createEntry: createWorldInfoEntry,
+        });
+        const narratorAvatar = await hubNarrator(String(world.narrator ?? ''), {
+            worldName: created.worldName, genre: String(world.genre ?? ''), synopsis: String(world.synopsis ?? ''),
+        });
+        await updateWorld(created.worldName, meta => {
+            meta[HUB_HOME_KEY] = homeWorld;
+            meta[HUB_CAMPAIGN_KEY] = id;
+            if (narratorAvatar) meta.narratorAvatar = narratorAvatar;
+            // Cuánto duele perder, como la escribió el mundo.
+            if (world.survival) {
+                const rules = meta.rulesetPack ?? { id: 'campaign', name: created.worldName };
+                rules.survival = world.survival;
+                meta.rulesetPack = rules;
+            }
+        });
+        const { uids, entries: partyEntries } = await ensureHubEntries(created.worldName, entries);
+
+        const opened = await openCampaignChat({
+            worldName: created.worldName,
+            party: partyEntries.map(e => String(e.comment)),
+            partyEntries,
+            locationName: created.locationName,
+            boardName: created.boardName,
+            verb: 'empezada',
+            narratorAvatar,
+        });
+        if (!opened) return;
+        await applyCampaignRuleset(created.worldName).catch(error => console.error('[gremio] reglas', error));
+        adoptCarriedParty(carried, { worldName: created.worldName, uids, atStart: true });
+        await updateWorld(homeWorld, meta => {
+            meta[HUB_KEY] = withHubCampaign(meta[HUB_KEY], id, { worldName: created.worldName, chat: openChat() });
+        });
+        await beginCampaignPlot('');
+    } catch (error) {
+        console.error('[gremio] no se pudo abrir la campaña', error);
+        toastr.error(String(error?.message || error), 'No se pudo abrir la campaña');
+    } finally {
+        wizardRunning = false;
+    }
+}
+
+/**
+ * J4: volver al gremio desde una campaña, con todo lo ganado. La campaña queda donde se deja.
+ *
+ * @returns {Promise<void>}
+ */
+export async function returnToHub() {
+    if (wizardRunning) return;
+    wizardRunning = true;
+
+    try {
+        const worldName = String(chat_metadata?.[METADATA_KEY] || '');
+        const data = worldName ? await loadWorldInfo(worldName) : null;
+        const homeWorld = hubHomeOf(data?.metadata);
+        if (!homeWorld) {
+            toastr.info('Esta campaña no sale de ningún gremio.', 'El gremio');
+            return;
+        }
+        const id = String(data?.metadata?.[HUB_CAMPAIGN_KEY] ?? '');
+        const carried = partySnapshot();
+        const entries = carriedEntries(data, carried);
+        const ending = plotEndingTitle();
+        const here = openChat();
+        await saveMetadata();
+
+        const home = await loadWorldInfo(homeWorld);
+        const hub = readHub(home?.metadata?.[HUB_KEY]);
+        if (!hub.chat) throw new Error('No encuentro la partida del gremio.');
+        await updateWorld(homeWorld, meta => {
+            const was = readHub(meta[HUB_KEY]).campaigns[id];
+            meta[HUB_KEY] = withHubCampaign(meta[HUB_KEY], id, {
+                worldName, chat: here,
+                finished: Boolean(ending) || Boolean(was?.finished),
+                ending: ending || was?.ending || '',
+            });
+        });
+
+        if (!await openHubChat(hub.chat, homeWorld)) throw new Error('No se pudo abrir la partida del gremio.');
+        const { uids } = await ensureHubEntries(homeWorld, entries);
+        adoptCarriedParty(carried, { worldName: homeWorld, uids });
+        toastr.success(ending
+            ? `Volvéis al gremio. La campaña acabó: ${ending}.`
+            : 'Volvéis al gremio con todo lo ganado. La campaña queda donde la dejáis.', 'El gremio');
+    } catch (error) {
+        console.error('[gremio] no se pudo volver', error);
+        toastr.error(String(error?.message || error), 'No se pudo volver al gremio');
+    } finally {
+        wizardRunning = false;
+    }
+}
+
+/**
+ * J4: el bloque de la portada para jugar sin conexión: seguir en cada gremio, o una partida
+ * nueva.
+ *
+ * @param {Array<{displayName: string, chats: any[]}>} hubs
+ * @returns {string}
+ */
+function buildOfflineBlock(hubs) {
+    const buttons = hubs.slice(0, 3).map(hub => {
+        const last = hub.chats[0];
+        const line = hubPartyLine(last?.chat_metadata?.party ?? []) || hub.displayName;
+        return `<button class="campaign-continue menu_button hub-continue" data-line="${escapeHtml(line)}" data-avatar="${escapeHtml(last?.avatar || '')}" data-chat="${escapeHtml(last?.file_name || '')}">`
+            + `<i class="fa-solid fa-play"></i><span>Seguir: ${escapeHtml(line)}</span></button>`;
+    }).join('');
+    return `
+        <div class="hub-offline">
+            <div class="hub-offline-text">
+                <div class="hub-offline-title"><i class="fa-solid fa-shield-halved"></i>Jugar sin conexión</div>
+                <p class="hub-offline-sub">Tu personaje, un gremio y campañas escritas. Sin IA: lo cuenta el juego.</p>
+            </div>
+            <div class="hub-offline-actions">
+                ${buttons}
+                <button id="hub-new-game" class="menu_button hub-new"><i class="fa-solid fa-plus"></i> Nueva partida</button>
+            </div>
+        </div>`;
+}
+
+/**
  * Starts a campaign in a world that exists but has never been played: no chat points at it,
  * so it was visible in World Info and nowhere in the campaign list.
  *
@@ -1192,6 +1574,12 @@ export function initCampaigns() {
         await startCampaignWizard();
     });
 
+    // J4: jugar sin conexión, una partida nueva.
+    $(document).on('click', '#hub-new-game', async function (e) {
+        e.stopPropagation();
+        await startHubGame();
+    });
+
     // Continue most recent chat for a world (welcome panel)
     $(document).on('click', '.campaign-continue', async function (e) {
         e.stopPropagation();
@@ -1208,6 +1596,9 @@ export function initCampaigns() {
         }
         const fileName = String(chatFile).replace('.jsonl', '');
         await openCharacterChat(fileName);
+        // J4: un gremio sin nadie (se cerró la creación con «Ahora no») pide el personaje
+        // al volver; si no, se quedaba en una partida sin nadie con quien jugarla.
+        if ($(this).hasClass('hub-continue')) await heroForEmptyHub();
     });
 
     // Borrar va antes que abrir: la papelera vive dentro de una tarjeta que, pulsada,
@@ -1327,7 +1718,7 @@ async function pickVeteran(worldName, premade = []) {
 
     const grid = $('<div class="vt-grid"></div>');
     premade.forEach((hero, i) => {
-        const one = card('vt-premade', 70 + i, premadeLine(hero), heroIcon(hero.className));
+        const one = card('vt-premade', 70 + i, premadeLine(hero), classIcon(hero.className));
         one.append($('<div class="vt-name"></div>').text(hero.name));
         const what = [hero.race, hero.className].filter(Boolean).join(' · ');
         if (what) one.append($('<div class="vt-what"></div>').text(what));
@@ -1368,24 +1759,6 @@ async function pickVeteran(worldName, premade = []) {
     return index >= 0 && veterans[index] ? { veteran: veterans[index].hero } : null;
 }
 
-/**
- * El icono de un oficio, para la tarjeta del héroe hecho. Sin arte: Font Awesome.
- *
- * @param {string} className
- * @returns {string}
- */
-function heroIcon(className) {
-    const kind = String(className ?? '').toLowerCase();
-    if (/soldad|guerr|mercen|caballer/.test(kind)) return 'fa-shield-halved';
-    if (/erudit|mag[oa]|sabi|escrib/.test(kind)) return 'fa-book-open';
-    if (/cl[eé]rig|monj|frail|sacerd/.test(kind)) return 'fa-hands-praying';
-    if (/p[ií]car|ladr/.test(kind)) return 'fa-mask';
-    if (/explor|cazad|arquer/.test(kind)) return 'fa-compass';
-    if (/bard|jugl/.test(kind)) return 'fa-music';
-    if (/b[aá]rbar/.test(kind)) return 'fa-hand-fist';
-    if (/druid/.test(kind)) return 'fa-leaf';
-    return 'fa-user';
-}
 
 /**
  * Idea 179: escribir al veterano en este mundo, con lo suyo.
@@ -1447,6 +1820,7 @@ async function createStartingHero(worldName) {
     // alguien abra su editor.
     const seed = seedOf(data.metadata) || worldName;
     let rolls = 0;
+    let statRolls = 0;
     const rollName = compendium.has('nombres')
         // Con la semilla de la campaña y el número de tirada: el mismo mundo propone los
         // mismos nombres en el mismo orden, y cada pulsación da uno distinto.
@@ -1473,8 +1847,22 @@ async function createStartingHero(worldName) {
     const razas = allowed(racesOf(compendium), 'razas');
     const clases = allowed(kindsOf(compendium), 'clases');
     const limited = Array.isArray(picks.razas) || Array.isArray(picks.clases);
-    const conEfectos = (/** @type {any[]} */ rows) => rows
-        .map(row => `${row.name} — ${describeKin(row)}`);
+
+    // J1.3: con qué empieza cada clase, sacado de las formas del compendio.
+    const forms = ['armas', 'armaduras', 'trastos']
+        .filter(domain => compendium.has?.(domain))
+        .flatMap(domain => compendium.find(domain, { kind: 'forma' }));
+    const kitOf = (/** @type {any} */ classRow) => kitFor({ classRow, forms });
+    // Cada opción de las tarjetas, con lo que da y, si es una clase, con qué empieza.
+    const optionOf = (/** @type {any} */ row) => ({
+        name: String(row.name),
+        what: describeKin(row),
+        note: String(row.note ?? ''),
+        kit: Array.isArray(row.kit) ? describeKit(kitOf(row)) : '',
+    });
+    // Lo elegido puede venir con su renglon de efectos detras: se busca por como empieza.
+    const pickedBy = (/** @type {any[]} */ rows, /** @type {string} */ said) =>
+        rows.find(row => String(said || '').startsWith(String(row.name))) ?? null;
 
     // Como empieza la partida, para que el pasado que se escriba pueda llegar ahi.
     const opening = (() => {
@@ -1497,14 +1885,36 @@ async function createStartingHero(worldName) {
     startingPet = start?.premade?.pet ?? null;
     const answers = start?.premade ? premadeAnswers(start.premade) : await openHeroCreator({
         worldName,
-        races: [...conEfectos(razas), ...(limited ? [] : (catalogue?.races ?? []))],
-        classes: [...conEfectos(clases), ...(limited ? [] : (catalogue?.classes ?? []))],
+        races: [...razas.map(optionOf), ...(limited ? [] : (catalogue?.races ?? []))],
+        classes: [...clases.map(optionOf), ...(limited ? [] : (catalogue?.classes ?? []))],
+        // Los números que saldrían: los atributos con la especie y la clase sumadas, la vida
+        // y la armadura con el equipo de la clase puesto.
+        preview: (/** @type {any} */ picked) => {
+            const classRow = pickedBy(clases, picked.className);
+            const spec = buildHeroEntry(picked, {
+                raceRow: pickedBy(razas, picked.race),
+                classRow,
+                preset: catalogue?.classPresets?.get?.(picked.className) ?? null,
+            }).dndData;
+            const pieces = kitOf(classRow);
+            const items = pieces.map((piece, i) => ({ ...piece, id: `k${i}` }));
+            const equippedItems = Object.fromEntries(Object.entries(kitSlots(pieces)).map(([slot, i]) => [slot, `k${i}`]));
+            const worn = armourClassOf({ member: { items, equippedItems }, dexModifier: Math.floor((Number(spec.dex) - 10) / 2) });
+            return {
+                stats: { strength: spec.str, dexterity: spec.dex, constitution: spec.con, intelligence: spec.int, wisdom: spec.wis, charisma: spec.cha },
+                maxHp: spec.maxHp,
+                armorClass: worn.worn ? worn.armorClass : spec.ac,
+                kit: describeKit(pieces),
+            };
+        },
         genre: String(data.metadata?.genre || ''),
         premise: opening,
         // Sin proveedor conectado no hay varita, y el boton lo dice en vez de fallar.
         generate: online_status !== 'no_connection' ? (params) => generateRaw(params) : null,
         uploadFace: (file) => uploadHeroFace(file, worldName),
         rollName,
+        // J1.2: tirar los atributos con la semilla de la partida; cada tirada, otra.
+        rollStats: () => rollStatBonus(createSeededRandom(derive(seed, 'atributos', statRolls++))),
         Popup,
         POPUP_TYPE,
     });
@@ -1522,9 +1932,6 @@ async function createStartingHero(worldName) {
     // R4: y los conjuros de su clase, del grimorio: la magia no está en el compendio.
     const spells = spellsForClass({ className: answers.className, level: 1 });
 
-    // Lo elegido puede venir con su renglon de efectos detras: se busca por como empieza.
-    const pickedBy = (/** @type {any[]} */ rows, /** @type {string} */ said) =>
-        rows.find(row => String(said || '').startsWith(String(row.name))) ?? null;
     const raceRow = pickedBy(razas, answers.race);
     const classRow = pickedBy(clases, answers.className);
 
@@ -1557,8 +1964,13 @@ async function createStartingHero(worldName) {
 
     // Y a la tira del grupo, sin recargar.
     setPartyFromWorldEntries([entry], worldName);
+    // J1.3: con el equipo de su clase puesto.
+    const kit = kitOf(classRow);
+    if (kit.length > 0) giveStartingGear(kit, kitSlots(kit));
+    // J0.2: tu nombre es el de tu personaje; nadie te lo ha preguntado antes.
+    setUserName(answers.name, { toastPersonaNameChange: false });
 
-    toastr.success(describeHero(answers), 'Tu personaje');
+    toastr.success([describeHero(answers), describeKit(kit)].filter(Boolean).join(' '), 'Tu personaje');
     if (known.length > 0 || spells.length > 0) {
         const magic = spells.map(id => spellById(id)?.name ?? id);
         toastr.info([...known.map(nameAndAbility), ...(magic.length > 0 ? [`Conjuros: ${magic.join(', ')}`] : [])].join('. '), 'Lo que sabes hacer', { timeOut: 9000 });

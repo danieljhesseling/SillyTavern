@@ -11,6 +11,7 @@ import {
     getEditableSections,
     toPortablePack,
     planRulesetChange,
+    needsReload,
     rememberRuleset,
     readRememberedRuleset,
     restoreRememberedRuleset,
@@ -327,6 +328,21 @@ describe('planRulesetChange', () => {
         for (const [world, remembered] of [[pack, null], [null, pack], [pack, pack], [{ version: 'x' }, null]]) {
             expect(planRulesetChange(world, remembered).reason.length).toBeGreaterThan(10);
         }
+    });
+});
+
+describe('needsReload', () => {
+    // Going from the guild to a campaign that only brings its own abilities used to ask for
+    // a reload every time, and abilities are read when used, not frozen at load.
+    test('abilities alone never ask for a reload', () => {
+        expect(needsReload({ id: 'c', name: 'Strahd', abilities: [] }, DEFAULT_RULESET)).toBe(false);
+        expect(needsReload(null, DEFAULT_RULESET)).toBe(false);
+    });
+
+    test('what dnd-system froze at load does', () => {
+        const pack = { id: 'mi', name: 'Mi campaña', version: 1, items: { damageTypes: [['void', 'Vacío']] } };
+        expect(needsReload(pack, DEFAULT_RULESET)).toBe(true);
+        expect(needsReload(pack, resolveRuleset(pack).ruleset)).toBe(false);
     });
 });
 

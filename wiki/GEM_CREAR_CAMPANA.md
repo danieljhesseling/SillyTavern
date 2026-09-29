@@ -2,7 +2,7 @@
 title: Instrucciones para el Gem — el paquete de una campaña
 tags: [gem, gemini, campanas, importar, contrato, seeding]
 created: 2026-09-22
-updated: 2026-09-26
+updated: 2026-09-28
 author: generado por tools/gem-instructions.mjs
 ---
 
@@ -83,7 +83,7 @@ y el importador los resuelve al crear las entradas.
 
 # Contrato del paquete de campaña
 
-Versión 1. Generado desde el motor el 2026-09-26.
+Versión 1. Generado desde el motor el 2026-09-28.
 
 Devuelve **solo JSON válido** que cumpla este esquema. Una sección por respuesta si el
 libro es largo; el orden recomendado es: world → locations → confidants → bestiary → items → boards → quests → heroes.
@@ -427,7 +427,7 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
                     "protect",
                     "loot"
                   ],
-                  "description": "eliminate: Derrota a los objetivos indicados. | eliminate_all: Derrota a todos los enemigos. | survive_rounds: Aguanta un número de rondas. | reach_cell: Lleva a alguien del grupo a una casilla. | escort: Lleva a un aliado concreto a una casilla, vivo. | protect: Que un aliado siga en pie al terminar. | loot: Recoge los tesoros marcados."
+                  "description": "eliminate: Derrota a los objetivos indicados. | eliminate_all: Derrota a todos los enemigos. | survive_rounds: Aguanta un número de rondas. | reach_cell: Lleva a alguien del grupo a una casilla. | escort: Lleva a un aliado concreto a una casilla, vivo. | protect: Que un aliado siga en pie al terminar. Es una condición: si cae, se pierde; si no, se gana con lo demás. | loot: Recoge los tesoros marcados."
                 },
                 "label": {
                   "type": "string",
@@ -1426,7 +1426,7 @@ que ya está en el bloque de instrucciones; se ofrecen sueltos porque un libro n
                 "protect",
                 "loot"
               ],
-              "description": "eliminate: Derrota a los objetivos indicados. | eliminate_all: Derrota a todos los enemigos. | survive_rounds: Aguanta un número de rondas. | reach_cell: Lleva a alguien del grupo a una casilla. | escort: Lleva a un aliado concreto a una casilla, vivo. | protect: Que un aliado siga en pie al terminar. | loot: Recoge los tesoros marcados."
+              "description": "eliminate: Derrota a los objetivos indicados. | eliminate_all: Derrota a todos los enemigos. | survive_rounds: Aguanta un número de rondas. | reach_cell: Lleva a alguien del grupo a una casilla. | escort: Lleva a un aliado concreto a una casilla, vivo. | protect: Que un aliado siga en pie al terminar. Es una condición: si cae, se pierde; si no, se gana con lo demás. | loot: Recoge los tesoros marcados."
             },
             "label": {
               "type": "string",

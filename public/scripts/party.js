@@ -2,7 +2,7 @@ import { t } from './i18n.js';
 import { power_user } from './power-user.js';
 import { POPUP_TYPE, POPUP_RESULT, Popup } from './popup.js';
 import { sendSystemMessage, system_message_types } from './system-messages.js';
-import { getThumbnailUrl, chat, chat_metadata, saveMetadata, eventSource, event_types, setUserName, addOneMessage, saveChatConditional, substituteParams, system_avatar, generateRaw, online_status, setExtensionPrompt, extension_prompt_types, extension_prompt_roles, saveSettingsDebounced, characters as stCharacters, this_chid, sendMessageAsUser, updateMessageBlock } from '../script.js';
+import { getThumbnailUrl, chat, chat_metadata, saveMetadata, eventSource, event_types, setUserName, addOneMessage, saveChatConditional, substituteParams, system_avatar, generateRaw, online_status, setExtensionPrompt, extension_prompt_types, extension_prompt_roles, saveSettingsDebounced, characters as stCharacters, this_chid, sendMessageAsUser, updateMessageBlock, name2 } from '../script.js';
 import { extension_settings } from './extensions.js';
 import { getMessageTimeStamp, shouldSendOnEnter } from './RossAscends-mods.js';
 import { getCurrentWorldMapUrl, getCurrentWorldLocationMaps, getCurrentWorldBoards, getCurrentWorldEnemies, getCurrentWorldNPCs, loadWorldInfo, saveWorldInfo, createWorldInfoEntry, refreshWorldMapGlobals, METADATA_KEY } from './world-info.js';
@@ -150,7 +150,8 @@ import { talkPairs, campTalkPrompt, makePeace, roundPrompt, topicHits, TOPICS } 
 import { rivalOf, rivalsTake, describeRivalTake } from './game-engine/campaign/rivals.js';
 import { stealDC, stealOutcome, guardsAt, settleGuards, coolDown, WATCH, readWanted } from './game-engine/campaign/crime.js';
 import { store, retrieve, readStorage } from './game-engine/campaign/storage.js';
-import { guestMember, hirelingsHere, guestsLeave, wardLost, exitCell } from './game-engine/campaign/guests.js';
+import { guestMember, hirelingsHere, guestsLeave, wardLost, exitCell, HIRELINGS, MERCENARY_FEE } from './game-engine/campaign/guests.js';
+import { readHub, isHubWorld, hubHomeOf, hubCampaignCards, hireOffers, settleCarried, hubRoster, HUB_CONTRACT } from './game-engine/campaign/hub.js';
 import { readVillain, villainScenesDue, villainNote } from './game-engine/campaign/villain.js';
 import { seaLegs, fareFor, sailingDays, describeVoyage } from './game-engine/world/ships.js';
 import { shiftAttitude, attitudeBonus, describeAttitude, readAttitudes } from './game-engine/campaign/attitudes.js';
@@ -279,6 +280,7 @@ import {
 import {
     buildBoardState, judgeScenario, hasScenario,
 } from './game-engine/combat/scenario-board.js';
+import { treasureInChest } from './game-engine/campaign/scenarios.js';
 import {
     formatCalendar,
 } from './game-engine/campaign/calendar.js';
@@ -296,7 +298,7 @@ import {
     findContradictions, appendContradictions, summariseContradictions,
 } from './game-engine/ui/contradiction-log.js';
 import {
-    planRulesetChange, readRememberedRuleset, rememberRuleset, setActiveRuleset,
+    planRulesetChange, readRememberedRuleset, rememberRuleset, setActiveRuleset, needsReload,
     getActiveRuleset,
 } from './game-engine/rules/ruleset.js';
 import {
@@ -777,6 +779,25 @@ export function adoptVeteranGear(gear) {
     renderPartyMembers();
 }
 
+/**
+ * J1.3: el equipo con el que empieza el héroe nuevo, puesto.
+ *
+ * @param {any[]} pieces Las piezas del kit (`campaign/starting-kit.js`).
+ * @param {Record<string, number>} slots Dónde va cada una, por su índice.
+ */
+export function giveStartingGear(pieces, slots) {
+    const hero = partyMembers.find(m => !m.guest);
+    if (!hero || !Array.isArray(pieces) || pieces.length === 0) return;
+    const items = pieces.map(piece => createItem(/** @type {any} */ (piece)));
+    hero.items = [...(Array.isArray(hero.items) ? hero.items : []), ...items];
+    hero.equippedItems = { ...(hero.equippedItems ?? {}) };
+    for (const [slot, index] of Object.entries(slots ?? {})) {
+        if (items[index]) hero.equippedItems[slot] = items[index].id;
+    }
+    savePartyState();
+    renderPartyMembers();
+}
+
 export function setPartyFromWorldEntries(entries, worldName = null) {
     console.log('setPartyFromWorldEntries called', { entriesCount: entries?.length, entries, worldName });
     // Auto-detect world name from chat metadata if not provided
@@ -966,6 +987,17 @@ let lastWorldSeason = '';
 let lastWorldGenre = '';
 
 /**
+ * J4 de ROADMAP_SIN_CONEXION: si este mundo es un gremio, lo guardado de él; si es una campaña
+ * empezada desde uno, de cuál. Las dos cosas hacen que la partida sea sin conexión.
+ *
+ * @type {import('./game-engine/campaign/hub.js').Hub|null}
+ */
+let lastHub = null;
+
+/** @type {string} */
+let lastHubHome = '';
+
+/**
  * Idea 74: la estación de hoy.
  *
  * @returns {string}
@@ -994,11 +1026,16 @@ async function reloadWorldFactions() {
     const worldName = String(chat_metadata?.[METADATA_KEY] || '');
     if (!worldName) {
         currentWorldFactions = [];
+        lastHub = null;
+        lastHubHome = '';
         return currentWorldFactions;
     }
     try {
         const data = await loadWorldInfo(worldName);
         loadedWorldName = worldName;
+        // J4: el gremio y sus campañas.
+        lastHub = isHubWorld(data?.metadata) ? readHub(data.metadata.hub) : null;
+        lastHubHome = hubHomeOf(data?.metadata);
         currentWorldFactions = readFactions(data?.metadata?.factions);
         // Y los mandos del tablon, que se leen en el mismo sitio y para lo mismo.
         lastBoardRules = data?.metadata?.boardRules ?? null;
@@ -1332,6 +1369,8 @@ async function persistBoardTerrainNow(board) {
         if (Array.isArray(board.hazards)) stored.hazards = board.hazards;
         // R6: y los refuerzos que ya llegaron, para que no vuelvan a llegar.
         if (Array.isArray(board.waves)) stored.waves = board.waves;
+        // Y los tesoros de la misión ya sacados de sus cofres.
+        if (Array.isArray(board.collectedTreasures)) stored.collectedTreasures = board.collectedTreasures;
         // Que salas se han revelado es parte del estado del tablero: sin esto, una
         // mazmorra se volveria a cerrar sola al recargar.
         if (board.rooms) stored.rooms = board.rooms;
@@ -1588,6 +1627,9 @@ export async function applyCampaignRuleset(worldName) {
     // Applied now so anything reading the ruleset directly is already correct; the reload
     // is for the tables dnd-system froze at load.
     setActiveRuleset(plan.action === 'install' ? worldPack : null);
+    // Si lo que cambia se lee al usarse (las habilidades de una campaña), no hay nada que
+    // recargar: ir y volver del gremio no puede pedir recargar cada vez.
+    if (!needsReload(plan.action === 'install' ? worldPack : null)) return;
 
     const toast = toastr.info(
         `${plan.reason} Recarga la página para aplicarlas.`,
@@ -3628,16 +3670,40 @@ function openChest(board, gx, gy) {
     }
     const gold = 5 + Math.floor(nextRandom() * 10) * 3;
     opener.gold = (Number(opener.gold) || 0) + gold;
+    // Si la misión del tablero pide un tesoro, está en el cofre: es lo que hace que
+    // «Encontrar la reliquia» se pueda cumplir.
+    const wanted = treasureInChest(board?.objectives, collectedHere(board));
     const rare = nextRandom() < 0.4;
     const pool = DEFAULT_LOOT_RULES.itemsByRarity[rare ? 'Uncommon' : 'Common'] ?? [];
-    const name = pool.length > 0 && nextRandom() < 0.6 ? pool[Math.floor(nextRandom() * pool.length) % pool.length] : '';
-    if (name) addItemToInventory(/** @type {any} */ (opener), createItem(/** @type {any} */ (describeLootItem(name, rare ? 'Uncommon' : 'Common', worldItemCatalogue))));
+    const name = wanted || (pool.length > 0 && nextRandom() < 0.6 ? pool[Math.floor(nextRandom() * pool.length) % pool.length] : '');
+    if (name) addItemToInventory(/** @type {any} */ (opener), createItem(/** @type {any} */ (describeLootItem(name, wanted ? '' : rare ? 'Uncommon' : 'Common', worldItemCatalogue))));
+    if (wanted) {
+        board.collectedTreasures = [...collectedHere(board), wanted];
+        if (combatEncounter.active) combatEncounter.collectedTreasures = board.collectedTreasures;
+    }
     board.terrain = setTerrainCell(normalizeTerrain(board.terrain), gx, gy, 'floor');
     persistBoardTerrain(board);
     savePartyState();
     renderPartyMembers();
     renderLocationMapsPreview();
     postCombatNarration(`🧰 [TABLERO] ${opener.name} abre el cofre: ${gold} de oro${name ? ` y ${name}` : ''}.`);
+    if (wanted) {
+        toastr.success(`${opener.name} encuentra ${wanted}.`, 'Lo que buscabais');
+        if (combatEncounter.active) checkScenarioOutcome();
+    }
+}
+
+/**
+ * Los tesoros de la misión que ya se han sacado de este tablero, con o sin pelea.
+ *
+ * @param {any} board
+ * @returns {string[]}
+ */
+function collectedHere(board) {
+    return [...new Set([
+        ...(Array.isArray(board?.collectedTreasures) ? board.collectedTreasures : []),
+        ...(combatEncounter.active && Array.isArray(combatEncounter.collectedTreasures) ? combatEncounter.collectedTreasures : []),
+    ].map(String))];
 }
 
 /**
@@ -3672,6 +3738,11 @@ function useBoardThing(board, gx, gy, kind) {
         board.terrain = pulled.terrain;
         postCombatNarration(`🕹️ [TABLERO] ${who.name} tira de la palanca. ${pulled.line}`);
         if (pulled.opened.length > 0) soundCue('door');
+        // Lo que había tras las rejas se ve, y lo que dormía despierta: abrir con la palanca
+        // es abrir. Antes la reja se abría y la sala seguía a oscuras, con lo de dentro
+        // dormido para siempre (el engendro del Sótano de la Iglesia, en Strahd).
+        const { gridWidth, gridHeight } = getActiveBoardContext();
+        for (const door of pulled.opened) toggleBoardDoor(board, door.x, door.y, true, gridWidth, gridHeight);
     } else {
         // Fuera de combate se rompe con calma, de una vez; en combate, con el daño del arma.
         const damage = combatEncounter.active ? Math.max(1, rollDiceDetailed(getPlayerDamageFormula(who, 5), 8).total) : 99;
@@ -4399,7 +4470,12 @@ function tryEquip(member, itemId, slot) {
  * @returns {{gold: number, xp: number, items: Array<any>}|null}
  */
 function awardEncounterLoot(defeated) {
-    const survivors = partyMembers.filter(m => (m.hp || 0) > 0);
+    const standing = partyMembers.filter(m => (m.hp || 0) > 0);
+    // Los invitados (el mercenario, el escoltado) no van a partes: al mercenario ya se le
+    // pagó al contratarle. Antes se llevaba su parte del oro y de la experiencia, y con dos
+    // mercenarios el héroe subía de nivel a un tercio de lo que debía.
+    const own = standing.filter(m => !m.guest);
+    const survivors = own.length > 0 ? own : standing;
     if (survivors.length === 0 || defeated.length === 0) return null;
 
     // Lo que el autor de la campana haya escrito cae tambien, con la rareza que le puso.
@@ -10482,37 +10558,60 @@ function showInitiativeBanner(names) {
  * @returns {JQuery<HTMLElement>}
  */
 function buildStartCombatButton(board, awake) {
+    const row = $('<div class="sc-row"></div>');
+    row.append($('<div class="sc-what"></div>').text(`En el tablero: ${waitingSummary(awake)}`));
+
+    const button = $('<button class="menu_button sc-btn" type="button"></button>');
+    button.append('<i class="fa-solid fa-swords"></i>');
+    button.append($('<span></span>').text(' Iniciar combate'));
+    button.on('click', () => startWaitingFight(awake));
+    row.append(button);
+    return row;
+}
+
+/**
+ * Lo que espera en el tablero, dicho corto: «Rata de bodega x3».
+ *
+ * @param {Array<{name: string}>} awake
+ * @returns {string}
+ */
+function waitingSummary(awake) {
     const counts = new Map();
     for (const placement of awake) {
         const name = String(placement.name);
         counts.set(name, (counts.get(name) || 0) + 1);
     }
-    const summary = [...counts.entries()]
-        .map(([name, count]) => (count > 1 ? `${name} x${count}` : name))
-        .join(', ');
-
-    const row = $('<div class="sc-row"></div>');
-    row.append($('<div class="sc-what"></div>').text(`En el tablero: ${summary}`));
-
-    const button = $('<button class="menu_button sc-btn" type="button"></button>');
-    button.append('<i class="fa-solid fa-swords"></i>');
-    button.append($('<span></span>').text(' Iniciar combate'));
-    button.on('click', () => {
-        if (combatEncounter.active) return;
-        const enemies = instancesFromPlacements(awake);
-        if (enemies.length === 0) {
-            toastr.warning('Ninguno de los enemigos del tablero existe en el mundo.');
-            return;
-        }
-        combatLogEntries = [];
-        postCombatNarration(`[COMBAT] Empieza el combate del tablero: ${summary}.`);
-        beginEncounterWith(enemies);
-        showInitiativeBanner(enemies.map(e => e.name));
-        renderLocationMapsPreview();
-    });
-    row.append(button);
-    return row;
+    return [...counts.entries()].map(([name, count]) => (count > 1 ? `${name} x${count}` : name)).join(', ');
 }
+
+/**
+ * Empezar la pelea con los que esperan en el tablero: el botón del tablero y la ficha.
+ *
+ * @param {Array<{name: string, x: number, y: number}>} awake
+ */
+function startWaitingFight(awake) {
+    if (combatEncounter.active) return;
+    const enemies = instancesFromPlacements(awake);
+    if (enemies.length === 0) {
+        toastr.warning('Ninguno de los enemigos del tablero existe en el mundo.');
+        return;
+    }
+    combatLogEntries = [];
+    postCombatNarration(`[COMBAT] Empieza el combate del tablero: ${waitingSummary(awake)}.`);
+    beginEncounterWith(enemies);
+    showInitiativeBanner(enemies.map(e => e.name));
+    renderLocationMapsPreview();
+}
+
+/**
+ * Los que el grupo ve esperando en el tablero abierto, tal y como los dibujó el último
+ * repintado (con niebla y salas ya contadas). La ficha de «Iniciar combate» sale de aquí:
+ * en la escena de diálogo el botón del tablero no se ve, y quien empezaba en la bodega del
+ * gremio no tenía cómo pelear.
+ *
+ * @type {{board: string, placements: Array<{name: string, x: number, y: number}>}}
+ */
+let lastWaiting = { board: '', placements: [] };
 
 /**
  * Judges the scenario the current board carries, if it carries one.
@@ -10534,7 +10633,8 @@ function judgeCurrentScenario() {
         round: combatEncounter.round,
         enemies: combatEncounter.enemies,
         party: partyMembers,
-        collectedTreasures: combatEncounter.collectedTreasures,
+        // Lo abierto antes de la pelea también cuenta.
+        collectedTreasures: collectedHere(board),
     }));
 }
 
@@ -11014,6 +11114,110 @@ function handleEnemyTokenMove(tokenId, gridX, gridY) {
 }
 
 /** Export combat state for external access (e.g., script.js AI injection) */
+/**
+ * Para la simulación de campañas (`tools/sim-campana.mjs`): quien tiene el turno lo juega
+ * solo, sea el héroe o un compañero, como con «Que actúe solo».
+ *
+ * @returns {boolean} Si había un turno del grupo que jugar.
+ */
+export function playCurrentTurnAlone() {
+    const entry = getCurrentTurnEntry();
+    if (!entry || entry.isEnemy || !combatEncounter.active) return false;
+    postCombatNarration(resolveAllyTurnAction(entry));
+    if (combatEncounter.active) endPlayerCombatTurn();
+    return true;
+}
+
+/**
+ * Para la simulación de campañas: el descanso largo sin esperar al día, y quien cayó se
+ * levanta. Lo que se mide son las peleas, no la mala suerte de la anterior.
+ */
+export function restPartyForSimulation() {
+    for (const member of partyMembers) {
+        member.dead = false;
+        member.hp = Number(member.maxHp) || Number(member.hp) || 1;
+        member.activeConditions = [];
+    }
+    savePartyState();
+    renderPartyMembers();
+}
+
+/**
+ * Para la simulación de campañas: abrir todas las puertas del tablero, con llave o sin
+ * ella, como haría quien juega yendo a por lo que hay detrás.
+ *
+ * @returns {number} Cuántas se abrieron.
+ */
+export function openBoardDoorsForSimulation() {
+    const context = getActiveBoardContext();
+    if (!context.board || combatEncounter.active) return 0;
+    const closed = [];
+    for (let y = 0; y < context.gridHeight; y++) {
+        for (let x = 0; x < context.gridWidth; x++) {
+            const cell = getCell(normalizeTerrain(context.board.terrain), x, y);
+            if (cell.type === 'door' && !cell.open) closed.push({ x, y });
+        }
+    }
+    for (const door of closed) {
+        if (combatEncounter.active) break;
+        context.board.terrain = unlockDoor(normalizeTerrain(context.board.terrain), door.x, door.y);
+        toggleBoardDoor(context.board, door.x, door.y, true, context.gridWidth, context.gridHeight);
+    }
+    return closed.length;
+}
+
+/**
+ * Para la simulación de campañas: subir de nivel a quien pueda, como lo haría quien juega
+ * desde la ficha, con lo de por defecto (los puntos, a lo más alto; la primera mejora).
+ *
+ * @returns {Promise<string[]>} Quién subió, y a qué nivel.
+ */
+/**
+ * Para la simulación de campañas: la experiencia que haría falta para empezar en un nivel,
+ * a quien no es invitado. Luego `levelUpForSimulation` sube, un nivel por llamada.
+ *
+ * @param {number} xp
+ */
+export function grantXpForSimulation(xp) {
+    for (const member of partyMembers.filter(m => !m.guest)) member.xp = (Number(member.xp) || 0) + Math.max(0, Number(xp) || 0);
+    savePartyState();
+}
+
+/**
+ * Para la simulación de campañas: poner en el mapa un sitio escondido, como haría el hilo o
+ * un rumor, para poder jugar su tablero sin jugar antes lo que lo revela.
+ *
+ * @param {string[]} names
+ * @returns {Promise<void>}
+ */
+export function revealLocationsForSimulation(names) {
+    return revealLocations(names);
+}
+
+export async function levelUpForSimulation() {
+    const hitDieByClass = await campaign.getHitDiceByClass();
+    /** @type {string[]} */
+    const said = [];
+    for (const member of partyMembers.filter(m => !m.dead && !m.guest)) {
+        const plan = planLevelUp({ member, table: getXpTable(), abilityLevels: getAbilityLevels(), hitDieByClass });
+        if (!plan.canLevel) continue;
+        const best = [...ABILITIES].sort((a, b) => (Number(member[b]) || 10) - (Number(member[a]) || 10))[0];
+        const picks = plan.pointsToSpend > 0 ? { [best]: plan.pointsToSpend } : {};
+        if (!validateAbilityPicks(picks, plan, member).ok) continue;
+        Object.assign(member, buildLevelUpPatch(member, plan, picks));
+        const offered = perkChoices({
+            member,
+            random: createSeededRandom(derive(String(chat_metadata?.[METADATA_KEY] || ''), 'mejora', String(member.id), String(plan.to))),
+        });
+        const perkPatch = offered.length > 0 ? takePerk(member, offered[0].id) : null;
+        if (perkPatch) Object.assign(member, perkPatch);
+        said.push(`${member.name} ${plan.to}`);
+    }
+    savePartyState();
+    renderPartyMembers();
+    return said;
+}
+
 export function getCombatEncounter() {
     return combatEncounter;
 }
@@ -12945,6 +13149,158 @@ function dismissGuests(contractId, how) {
 }
 
 /**
+ * J4: lo que el gremio ofrece en la fila de fichas. En combate, nada.
+ *
+ * @returns {Array<{id: string, label: string, icon: string, command: string}>}
+ */
+function hubChips() {
+    if (combatEncounter.active) return [];
+    if (lastHub) {
+        return [
+            { id: 'hub-board', label: 'Tablón de campañas', icon: 'fa-scroll', command: '/campanas' },
+            { id: 'hub-hire', label: 'Contratar mercenarios', icon: 'fa-coins', command: '/contratar' },
+        ];
+    }
+    if (lastHubHome) return [{ id: 'hub-home', label: 'Volver al gremio', icon: 'fa-house-flag', command: '/volver-gremio' }];
+    return [];
+}
+
+/**
+ * J4: el tablón de campañas del gremio. Elegir una la empieza o la sigue.
+ *
+ * @returns {Promise<string>}
+ */
+async function openHubCampaigns() {
+    const worldName = String(chat_metadata?.[METADATA_KEY] || '');
+    const data = worldName ? await loadWorldInfo(worldName).catch(() => null) : null;
+    if (!isHubWorld(data?.metadata)) {
+        toastr.info('El tablón de campañas está en el gremio.', 'Campañas');
+        return '';
+    }
+    if (combatEncounter.active) {
+        toastr.warning('No mientras peleáis.');
+        return '';
+    }
+    const worlds = await fetch('/mundos/mundos.json', { cache: 'no-cache' })
+        .then(response => response.json())
+        .then(json => (Array.isArray(json?.worlds) ? json.worlds : []))
+        .catch(() => []);
+    const cards = hubCampaignCards({ worlds, hub: data?.metadata?.hub, level: Number(partyMembers.find(m => !m.guest)?.level) || 1 });
+    const { openHubBoard } = await import('./game-engine/ui/hub-panel.js');
+    const picked = await openHubBoard({ Popup, POPUP_TYPE, cards });
+    if (!picked) return '';
+    const { playHubCampaign } = await import('./campaigns.js');
+    await playHubCampaign(picked);
+    return '';
+}
+
+/**
+ * J4: contratar o despedir a los mercenarios del gremio. Se quedan hasta que los despides o
+ * caen; no se van al acabar un encargo.
+ *
+ * @returns {Promise<string>}
+ */
+async function openHubHire() {
+    if (!lastHub) {
+        toastr.info('Los mercenarios se contratan en el gremio.', 'Contratar');
+        return '';
+    }
+    if (combatEncounter.active) {
+        toastr.warning('No mientras peleáis.');
+        return '';
+    }
+    const { openHirePanel } = await import('./game-engine/ui/hub-panel.js');
+    const offers = hireOffers({ hirelings: HIRELINGS, party: partyMembers, fee: MERCENARY_FEE });
+    const choice = await openHirePanel({ Popup, POPUP_TYPE, offers, purse: partyPurse() });
+    if (!choice) return '';
+    const offer = offers.find(o => o.name === choice.name);
+    if (!offer) return '';
+    if (choice.action === 'fire') {
+        partyMembers = partyMembers.filter(m => String(m.id) !== offer.id);
+        savePartyState();
+        renderPartyMembers();
+        renderLocationMapsPreview();
+        const line = `${offer.name} se despide y se queda en el gremio.`;
+        postCombatNarration(`🗡️ [GREMIO] ${line}`);
+        toastr.info(line, 'Despedido');
+        if (isShellOpen()) refreshGameShell();
+        return line;
+    }
+    if (!payFromParty(offer.fee)) {
+        toastr.warning(`No llega el oro: cuesta ${offer.fee}.`, 'Contratar');
+        return '';
+    }
+    const hero = partyMembers.find(m => !m.guest) ?? partyMembers[0];
+    const merc = guestMember({
+        id: Date.now(), name: offer.name, kind: 'mercenary', contractId: HUB_CONTRACT, level: Number(hero?.level) || 1,
+        base: hero, stats: offer,
+    });
+    const at = hero?.mapPosition ?? { locationName: currentLocationName, gridX: 1, gridY: 1 };
+    merc.mapPosition = { ...at, gridX: (Number(at.gridX) || 0) + partyMembers.length };
+    partyMembers.push(merc);
+    savePartyState();
+    renderPartyMembers();
+    renderLocationMapsPreview();
+    const line = `${merc.name} (${offer.className}) se une al grupo por ${offer.fee} de oro. Va contigo hasta que le despidas.`;
+    postCombatNarration(`🗡️ [GREMIO] ${line}`);
+    toastr.success(line, 'Mercenario');
+    if (isShellOpen()) refreshGameShell();
+    return line;
+}
+
+/**
+ * J4: el grupo tal cual está, para llevarlo a otro chat.
+ *
+ * @returns {PartyMember[]}
+ */
+export function partySnapshot() {
+    return JSON.parse(JSON.stringify(partyMembers));
+}
+
+/**
+ * J4: el grupo que llega de otro chat (del gremio a una campaña, o de vuelta). Llega entero;
+ * de lo que había aquí solo se queda dónde estaba cada uno.
+ *
+ * @param {PartyMember[]} carried
+ * @param {{worldName: string, uids?: Record<string, number>, atStart?: boolean}} where
+ *   `atStart`: en una campaña recién empezada, cada uno a su casilla de salida.
+ */
+export function adoptCarriedParty(carried, { worldName, uids = {}, atStart = false }) {
+    const lead = partyMembers[0]?.mapPosition ?? { locationName: currentLocationName, gridX: 1, gridY: 1 };
+    partyMembers = hubRoster(settleCarried({ carried, here: partyMembers, worldName, uids, lead }))
+        .map(member => migratePartyMember(member));
+    if (atStart) placePartyAtStart(getActiveBoardContext().board);
+    savePartyState();
+    renderPartyMembers();
+    renderLocationMapsPreview();
+    if (partyMembers[0]) setUserName(partyMembers[0].name, { toastPersonaNameChange: false });
+    if (isShellOpen()) refreshGameShell();
+}
+
+/**
+ * J4: la bolsa con la que se llega al gremio.
+ *
+ * @param {number} amount
+ */
+export function giveStartingPurse(amount) {
+    const hero = partyMembers[0];
+    if (!hero) return;
+    hero.gold = (Number(hero.gold) || 0) + Math.max(0, Math.floor(Number(amount) || 0));
+    savePartyState();
+    renderPartyMembers();
+}
+
+/**
+ * J4: el final al que ha llegado la campaña abierta, si ha llegado a alguno.
+ *
+ * @returns {string}
+ */
+export function plotEndingTitle() {
+    const id = String(chat_metadata?.plotEnding || '');
+    return id ? String(getPlot()?.endings?.[id]?.title || id) : '';
+}
+
+/**
  * Idea 131: pagar a alguien para el encargo de ahora.
  *
  * @param {string} name
@@ -14856,6 +15212,24 @@ function neighbourPlaces() {
 }
 
 /**
+ * Los tableros de este sitio que la historia pide ganar ahora.
+ *
+ * @param {any} location
+ * @returns {string[]}
+ */
+function threadBoardsHere(location) {
+    const plot = getPlot();
+    if (!plot || !location) return [];
+    const open = new Set(readPlotState(chat_metadata?.[PLOT_STATE_KEY]).open);
+    const here = new Set(getLocationBoards(location).map((/** @type {any} */ b) => String(b.name)));
+    return [...new Set(plot.milestones
+        .filter(m => open.has(m.id) && m.asks?.kind === 'win' && here.has(String(m.asks.board ?? ''))
+            && (!m.asks.place || String(m.asks.place).toLowerCase() === String(currentLocationName).toLowerCase())
+            && !isBoardWon(currentLocationName, String(m.asks.board)))
+        .map(m => String(m.asks.board)))];
+}
+
+/**
  * @param {number} [limit] Cuantas caben; sin decir, las de la fila.
  * @returns {import('./game-engine/ui/shell/action-chips.js').ActionChip[]}
  */
@@ -14879,7 +15253,14 @@ function buildShellChips(limit = undefined) {
         mentioned: namesInLastNarration(),
         // Se viaja a los vecinos: una ficha a la otra punta del mapa sería un salto.
         places: neighbourPlaces().map(name => ({ name })),
-        boards: getLocationBoards(location).map((/** @type {any} */ b) => ({ name: b.name })),
+        // Los tableros de aquí que pide la historia: sus fichas van delante.
+        thread: threadBoardsHere(location),
+        // Los que quedan por ganar, delante: caben dos, y un tablero ya ganado escondía el
+        // siguiente (en Barovia, el Sótano detrás de la Taberna).
+        boards: getLocationBoards(location)
+            .map((/** @type {any} */ b) => ({ name: String(b.name), won: isBoardWon(currentLocationName, String(b.name)) }))
+            .sort((a, b) => Number(a.won) - Number(b.won))
+            .map(b => ({ name: b.name })),
         hurt: partyMembers.some(m => !m.dead && (Number(m.hp) || 0) < (Number(m.maxHp) || 0)),
         // Cuantos dados quedan sale del nivel y de los ya gastados; las caras las
         // lee el descanso, que puede esperar al Lorebook porque es asincrono.
@@ -14910,6 +15291,12 @@ function buildShellChips(limit = undefined) {
         typed: typedIntents.map(skill => ({ skill, label: SKILLS[/** @type {keyof typeof SKILLS} */ (skill)]?.label ?? skill })),
         // Idea 144: lo que se le puede decir a quien se está hablando.
         replies: currentReplies(),
+        // J4: el tablón de campañas y los mercenarios en el gremio; volver, en una campaña.
+        hub: hubChips(),
+        // Los que esperan en el tablero: la pelea se empieza también desde la fila.
+        fight: !combatEncounter.active && lastWaiting.board === currentBoardName && lastWaiting.placements.length > 0
+            && !isBoardWon(currentLocationName, currentBoardName)
+            ? waitingSummary(lastWaiting.placements) : '',
         requests: readRequests(chat_metadata?.[CHECK_REQUESTS_KEY], SKILLS).map(r => ({
             skill: r.skill, label: SKILLS[/** @type {keyof typeof SKILLS} */ (r.skill)].label, reason: r.reason, dc: r.dc,
         })),
@@ -14944,6 +15331,10 @@ function runShellChip(chip) {
     // Idea 169: las que no cabian en la fila.
     if (chip.id === 'more') {
         openAllChips();
+        return;
+    }
+    if (chip.id === 'fight-board') {
+        if (lastWaiting.board === currentBoardName) startWaitingFight(lastWaiting.placements);
         return;
     }
     // Idea 137: tirar por lo que se esta escribiendo, sin borrarlo.
@@ -15108,7 +15499,17 @@ function storedNarratorMode() {
  * @returns {string}
  */
 function narratorMode() {
-    return online_status === 'no_connection' ? 'motor' : storedNarratorMode();
+    return online_status === 'no_connection' || offlineGame() ? 'motor' : storedNarratorMode();
+}
+
+/**
+ * J4: una partida del gremio (el gremio o una campaña empezada desde él) se juega sin
+ * conexión: la cuenta el motor aunque haya un proveedor conectado.
+ *
+ * @returns {boolean}
+ */
+function offlineGame() {
+    return Boolean(lastHub) || Boolean(lastHubHome);
 }
 
 /**
@@ -16775,6 +17176,8 @@ function buildShellOptions() {
         getSituation: buildShellSituation,
         getCombatBar: buildShellCombatBar,
         getDialogue: buildShellDialogue,
+        // J18.4: el narrador cuenta, no se pinta en la novela visual.
+        narratorName: () => String(name2 || ''),
         getExploration: buildShellExploration,
         // El reloj: el mismo calendario y los mismos descansos que la pestana de
         // Campana, pero dentro de la partida. Ver ROADMAP_JUEGO_SIN_COMANDOS.md, K3.
@@ -16842,6 +17245,16 @@ function buildShellOptions() {
         },
         countCampaigns: () => document.querySelectorAll(
             '#game-shell .campaign-card, #game-shell .campaign-card-unstarted').length,
+        // J4: jugar sin conexión, con los botones del bloque de la lista de partidas.
+        onOffline: () => {
+            const button = document.querySelector('#hub-new-game');
+            if (button instanceof HTMLElement) button.click();
+            else toastr.info('Espera a que cargue la lista de partidas.');
+        },
+        hubSaves: () => [...document.querySelectorAll('#game-shell .hub-continue')].map(button => ({
+            line: String(button.getAttribute('data-line') || ''),
+            open: () => { if (button instanceof HTMLElement) button.click(); },
+        })),
         getAutostart: () => shouldAutostartGameShell(),
         setAutostart: (value) => {
             setGameShellAutostart(value);
@@ -17311,6 +17724,13 @@ function drawLocationMapsPreview() {
             .filter((/** @type {any} */ p) => !fogOn
                 || fogState.visible.has(cellKey(Number(p.x) || 0, Number(p.y) || 0)));
         allBoardTokens.push(...buildBoardIdleEnemyTokens(waiting));
+        const waitingKey = (/** @type {typeof lastWaiting} */ w) => `${w.board}|${w.placements.map(p => `${p.name}@${p.x},${p.y}`).join(';')}`;
+        const nowWaiting = { board: String(selectedBoard.name), placements: waiting };
+        if (waitingKey(nowWaiting) !== waitingKey(lastWaiting)) {
+            lastWaiting = nowWaiting;
+            // La fila de fichas se hizo antes que el tablero: se rehace una vez con lo nuevo.
+            if (isShellOpen()) setTimeout(() => refreshGameShell(), 0);
+        }
 
         renderLocationView(boardPanel, {
             name: selectedBoard.name,
@@ -19810,6 +20230,36 @@ export function initPartyPanel() {
         helpString: '<div>El mapa en texto: los sitios y sus caminos, lo no visitado en gris, y tus notas.</div>',
         callback: async () => {
             await openTextMap();
+            return '';
+        },
+    }));
+
+    // J4 de ROADMAP_SIN_CONEXION: el gremio.
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'campanas',
+        helpString: '<div>El tablón de campañas del gremio: empezar una o seguir la que dejaste. Tu grupo va entero.</div>',
+        callback: async () => await openHubCampaigns(),
+    }));
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'contratar',
+        helpString: '<div>Los mercenarios del gremio: contratar a uno (se paga una vez y va contigo hasta que le despidas) o despedirle.</div>',
+        callback: async () => await openHubHire(),
+    }));
+    // No `/gremio`: ese nombre es del panel de la compañía (el tablón de encargos y los edificios).
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'volver-gremio',
+        helpString: '<div>Volver al gremio desde una campaña, con todo lo ganado. La campaña queda donde la dejas.</div>',
+        callback: async () => {
+            if (combatEncounter.active) {
+                toastr.warning('No mientras peleáis.');
+                return '';
+            }
+            if (!lastHubHome) {
+                toastr.info('Esta campaña no sale de ningún gremio.', 'El gremio');
+                return '';
+            }
+            const { returnToHub } = await import('./campaigns.js');
+            await returnToHub();
             return '';
         },
     }));

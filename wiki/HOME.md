@@ -17,6 +17,7 @@ Bienvenido a la **Wiki de SillyTavern & Motor RPG** (`my-silly`, el fork de Dani
 > | :--- | :--- |
 > | **Jugar** | [[EMPEZAR_UNA_CAMPANA]] |
 > | **Saber qué le falta al juego** | **[[LO_QUE_FALTA]]**: el análisis del 2026-09-26, con el orden recomendado |
+> | **Ver el plan de ahora** | **[[ROADMAP_SIN_CONEXION]]**: el juego entero sin IA, con gremio, campañas y amigos (J0–J17) |
 > | **Ver lo último que se construyó** | [[ROADMAP_PROFUNDIDAD]] (R1–R10) y su tabla «Cómo va» |
 > | **Coger una tarea** | [[POR_HACER]], el marcador |
 > | **Entender por qué el juego es así** | [[ROADMAP_MAESTRO]] (el porqué) y [[ROADMAP]] (el acta de las fases A–H) |
@@ -39,6 +40,7 @@ mindmap
     Jugar
       [[EMPEZAR_UNA_CAMPANA]]
     Lo que falta y lo que se hace
+      [[ROADMAP_SIN_CONEXION]]
       [[LO_QUE_FALTA]]
       [[POR_HACER]]
       [[ROADMAP_PROFUNDIDAD]]
@@ -109,7 +111,14 @@ El juego de rol añadido en la rama `my-silly`: **234 módulos en `game-engine/`
 ### 4. 🧭 Lo que falta, lo que se hace y el porqué
 - **[[LO_QUE_FALTA]]** 🔭 **Lo que le falta al juego (2026-09-26).** El análisis del proyecto entero tras R1–R10: la radiografía en números, lo que ya es fuerte, el diagnóstico en cinco frases, y lo que falta por áreas (terminar lo empezado, el tablero que pide el guion, la IA, el contenido, la primera hora y lo técnico). Termina con el orden recomendado y la lista de lo que descartaste, para que nadie lo vuelva a proponer.
 - **[[POR_HACER]]** 📋 **El marcador**, dividido por quién tiene que actuar: A (se hace), D (decides tú) y P (propuestas). Con la deuda conocida y una prueba manual de cinco minutos.
-- **[[ROADMAP_SIN_TOKENS]]** 🎲 **Sin tokens: divertido sin modelo, mejor con él (2026-09-27). El plan de ahora.** Parte de un repaso del código. Encontró tres cosas que hoy atascan el juego sin modelo: 1387 se para en el hito 2, solo se puede tirar una vez por partida, y las órdenes al narrador se ven. Encontró también diez momentos en los que el juego se calla. Nueve fases (Z0–Z8), por este orden:
+- **[[ROADMAP_SIN_CONEXION]]** 🏰 **Jugar sin conexión: tu gremio, tus campañas, tus amigos (2026-09-28). El plan de ahora.** El juego entero sin IA, desde un botón «Jugar sin conexión» en la portada:
+  - creas tu personaje (nombre, especie y clase) y juegas un prólogo;
+  - el gremio es vuestra base, y desde su tablón se empiezan **campañas** que llegan en un JSON (como *Curse of Strahd*);
+  - el grupo va de una a otra con lo ganado;
+  - se juega **con amigos**, cada uno desde su PC, en tu servidor privado.
+
+  Parte de un repaso del código. Trae diez decisiones para ti (D-J1 a D-J10), dieciocho fases (J0–J17), seis hitos jugables (M1–M6) y un marcador.
+- **[[ROADMAP_SIN_TOKENS]]** 🎲 **Sin tokens: divertido sin modelo, mejor con él (2026-09-27).** Lo que queda de Z4 a Z7 sigue en [[ROADMAP_SIN_CONEXION]]. Parte de un repaso del código. Encontró tres cosas que hoy atascan el juego sin modelo: 1387 se para en el hito 2, solo se puede tirar una vez por partida, y las órdenes al narrador se ven. Encontró también diez momentos en los que el juego se calla. Nueve fases (Z0–Z8), por este orden:
   - que nada se atasque;
   - una vuelta de prueba sin modelo;
   - un narrador del motor con bancos de frases;

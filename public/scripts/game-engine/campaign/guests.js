@@ -19,12 +19,22 @@ export const MERCENARY_FEE = 40;
 /** @param {any} value @returns {string} */
 const text = (value) => String(value ?? '').trim();
 
-/** Los mercenarios que se ofrecen, con su oficio. */
-const HIRELINGS = [
+/** Los mercenarios que se ofrecen, con su oficio. En el gremio se ofrecen los tres. */
+export const HIRELINGS = [
     { name: 'Gerd el Mellado', className: 'guerrero', strength: 15, dexterity: 12 },
     { name: 'Nella Tresflechas', className: 'explorador', strength: 11, dexterity: 16 },
     { name: 'Osric Mediapaga', className: 'guerrero', strength: 16, dexterity: 10 },
 ];
+
+/**
+ * La vida de un mercenario de ese nivel.
+ *
+ * @param {number} level
+ * @returns {number}
+ */
+export function mercenaryHp(level) {
+    return 10 + Math.max(1, Math.floor(Number(level) || 1)) * 6;
+}
 
 /**
  * La ficha de un invitado, con lo justo para pelear.
@@ -42,7 +52,7 @@ const HIRELINGS = [
 export function guestMember({ id, name, kind, contractId, level, base = {}, stats = {} }) {
     const lvl = Math.max(1, Math.floor(Number(level) || 1));
     const ward = kind === 'ward';
-    const hp = ward ? 8 + lvl * 2 : 10 + lvl * 6;
+    const hp = ward ? 8 + lvl * 2 : mercenaryHp(lvl);
     return {
         ...JSON.parse(JSON.stringify(base ?? {})),
         id,
@@ -59,6 +69,18 @@ export function guestMember({ id, name, kind, contractId, level, base = {}, stat
         items: [],
         equippedItems: {},
         perks: [],
+        // De la ficha del héroe se toma la forma, no lo suyo: antes el mercenario llegaba con
+        // el oro del héroe (y el grupo se lo gastaba dos veces), su cara y sus habilidades.
+        gold: 0,
+        silver: 0,
+        copper: 0,
+        xp: 0,
+        abilities: [],
+        avatar: 'img/user-default.png',
+        race: '',
+        background: '',
+        memories: [],
+        relationships: [],
         injuries: [],
         activeConditions: [],
         needs: {},

@@ -33,6 +33,8 @@ export function buildBoardState({ round, enemies, party, collectedTreasures = []
         round: Number(round) || 1,
         enemies: (Array.isArray(enemies) ? enemies : []).map(e => ({
             id: String(e?.instanceId ?? e?.id ?? ''),
+            // La ficha de la que sale: es a lo que apunta «derrotar a X».
+            ...(e?.templateId !== undefined && e?.templateId !== null ? { templateId: String(e.templateId) } : {}),
             currentHp: Number(e?.currentHp) || 0,
             gridX: Number(e?.gridX) || 0,
             gridY: Number(e?.gridY) || 0,

@@ -485,138 +485,595 @@ textarea.cw-ai-map {
     opacity: 0.6;
 }
 
-/* ---------------------------------------------------------------- quién eres */
+/* ---------------------------------------------------------------- crear personaje */
 
-/* Su propia pantalla, al entrar: hacerse un personaje es lo primero que uno espera de un
-   juego de rol, y era una caja de texto entre el género del mundo y el narrador. */
+/* J18.2: su propia pantalla, en dos columnas (maqueta del Gem director de UX,
+   wiki/maquetas/crear-personaje.html). A la izquierda lo de las reglas; a la derecha,
+   quién eres. Los colores son los del juego (`--gs-*`, en game-shell.css). */
+/* Las ventanas de SillyTavern miden 500 px, y `large` solo les da alto: esta es una
+   pantalla, así que casi todo el ancho. */
+.popup.large_dialogue_popup:has(.hc-root) {
+    width: min(1280px, 96vw);
+    max-width: 96vw !important;
+    background: radial-gradient(circle at center, #1a1510 0%, #050402 100%);
+}
+
 .hc-root {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 1.2rem;
     text-align: left;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0.5rem 0.75rem 1rem;
+    box-sizing: border-box;
+    color: var(--SmartThemeBodyColor);
+}
+
+.hc-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 1rem;
+    flex-wrap: wrap;
+    border-bottom: 1px solid var(--gs-gold-line);
+    padding-bottom: 0.8rem;
+}
+
+.hc-kicker {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--SmartThemeQuoteColor);
 }
 
 .hc-title {
-    font-size: 1.1rem;
+    margin: 0.1rem 0 0;
+    font-family: Georgia, "Palatino Linotype", serif;
+    font-weight: normal;
+    font-size: 2rem;
+    letter-spacing: 1px;
+    color: var(--gs-accent-gold);
+}
+
+.hc-head-actions {
+    display: flex;
+    gap: 0.8rem;
+}
+
+.hc-head-actions .menu_button,
+.hc-card-actions .menu_button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    white-space: nowrap;
+}
+
+.hc-head-actions .menu_button {
+    margin: 0;
+    padding: 0.5rem 1.1rem;
+    border-color: var(--gs-gold-line);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: bold;
+    transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+}
+
+.hc-head-actions .hc-enter {
+    color: var(--gs-accent-gold);
+    border-color: var(--gs-accent-gold);
+    background: var(--gs-accent-gold-hover);
+}
+
+.hc-root .menu_button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.hc-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 380px);
+    gap: 1.5rem;
+    align-items: start;
+}
+
+.hc-left,
+.hc-right {
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+    min-width: 0;
+}
+
+/* Las tres tarjetas: vacías dicen «Elegir…» en gris; elegidas, lo elegido y lo que da. */
+.hc-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+}
+
+.hc-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1rem 1.1rem;
+    background: var(--gs-bg-panel);
+    border: 1px solid var(--gs-gold-line);
+    border-left: 4px solid var(--gs-gold-line);
+    border-radius: 8px;
+    transition: border-color 0.15s;
+}
+
+.hc-card:hover {
+    border-color: var(--gs-accent-gold);
+}
+
+.hc-card-filled {
+    border-left-color: var(--gs-accent-gold);
+}
+
+.hc-card-label {
+    font-size: 0.75rem;
+    font-weight: bold;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--SmartThemeQuoteColor);
+}
+
+.hc-card-value {
+    margin: 0;
+    font-family: Georgia, "Palatino Linotype", serif;
+    font-size: 1.5rem;
+    line-height: 1.15;
+}
+
+.hc-card-empty .hc-card-value {
+    font-style: italic;
+    opacity: 0.45;
+}
+
+.hc-card-what {
+    font-size: 0.8rem;
+    opacity: 0.8;
+    min-height: 1em;
+}
+
+.hc-card-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: auto;
+}
+
+.hc-card-actions .menu_button {
+    margin: 0;
+    padding: 0.35rem 0.7rem;
+    font-size: 0.8rem;
+}
+
+.hc-pick {
+    flex: 1;
+}
+
+/* Los atributos: se llenan al elegir clase y especie. */
+.hc-stats {
+    padding: 1.2rem;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(214, 180, 106, 0.2);
+    border-radius: 8px;
+    transition: opacity 0.2s;
+}
+
+.hc-stats-waiting {
+    opacity: 0.5;
+}
+
+.hc-section-title {
+    margin: 0 0 0.8rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px dashed rgba(214, 180, 106, 0.3);
+    font-size: 1.05rem;
+    color: var(--gs-accent-gold);
+}
+
+/* Repartir o tirar (J1.2). */
+.hc-stat-modes {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.8rem;
+}
+
+.hc-mode {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.7rem;
+    font-size: 0.8rem;
+    color: inherit;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(214, 180, 106, 0.3);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.hc-mode:hover,
+.hc-mode.is-on {
+    background: var(--gs-accent-gold-hover);
+    border-color: var(--gs-accent-gold);
+}
+
+.hc-mode:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.hc-mode-note {
+    font-size: 0.8rem;
+    color: var(--SmartThemeQuoteColor);
+}
+
+.hc-stat-adjust {
+    display: none;
+    justify-content: center;
+    gap: 0.3rem;
+}
+
+.hc-spreading .hc-stat-adjust {
+    display: flex;
+}
+
+.hc-adjust {
+    width: 1.6rem;
+    height: 1.4rem;
+    padding: 0;
+    line-height: 1;
+    color: inherit;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(214, 180, 106, 0.3);
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.hc-adjust:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.hc-stat.hc-stat-up {
+    border-color: var(--gs-accent-gold);
+}
+
+.hc-stat.hc-stat-down {
+    border-color: var(--gs-danger-soft);
+}
+
+.hc-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 0.5rem;
+}
+
+.hc-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    padding: 0.6rem 0.3rem;
+    text-align: center;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid var(--gs-gold-line);
+    border-radius: 6px;
+}
+
+.hc-stat-name {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    color: var(--SmartThemeQuoteColor);
+}
+
+.hc-stat-val {
+    font-family: monospace;
+    font-size: 1.35rem;
     font-weight: bold;
 }
 
-.hc-intro {
+.hc-stat-mod {
     font-size: 0.8rem;
-    opacity: 0.65;
+    color: var(--gs-success-green);
 }
 
-/* Como empieza la historia: lo que el pasado tiene que poder alcanzar. */
+.hc-stat-mod.hc-mod-zero {
+    color: var(--SmartThemeQuoteColor);
+}
+
+.hc-stat-mod.hc-mod-down {
+    color: var(--gs-danger-soft);
+}
+
+.hc-totals {
+    display: flex;
+    gap: 1rem;
+    margin-top: 0.9rem;
+    padding-top: 0.8rem;
+    border-top: 1px dashed rgba(214, 180, 106, 0.2);
+}
+
+.hc-total {
+    flex: 1;
+    text-align: center;
+}
+
+.hc-total-name {
+    display: block;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    color: var(--SmartThemeQuoteColor);
+}
+
+.hc-total strong {
+    font-size: 1.15rem;
+}
+
+.hc-kit {
+    margin-top: 0.6rem;
+    font-size: 0.85rem;
+    text-align: center;
+    opacity: 0.85;
+}
+
+.hc-kit:empty {
+    display: none;
+}
+
+.hc-stats-hint {
+    margin: 0.8rem 0 0;
+    font-size: 0.8rem;
+    text-align: center;
+    color: var(--SmartThemeQuoteColor);
+}
+
+/* Cómo empieza la historia: lo que el pasado tiene que poder alcanzar. */
 .hc-premise {
     display: flex;
     flex-direction: column;
-    gap: 3px;
-    padding: 6px 10px;
-    border-left: 3px solid var(--SmartThemeQuoteColor, #e0b050);
+    gap: 4px;
+    padding: 0.7rem 1rem;
+    border-left: 3px solid var(--gs-accent-gold);
     background: rgba(255, 255, 255, 0.04);
     border-radius: 4px;
 }
 
 .hc-premise-text {
-    font-size: 0.85rem;
+    font-size: 0.9rem;
     font-style: italic;
     opacity: 0.85;
 }
 
-.hc-field {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    font-size: 0.76rem;
-    opacity: 0.85;
-}
-
-.hc-label {
-    opacity: 0.7;
-}
-
-.hc-input {
+/* El retrato, en su pedestal: la cara de quien juega es lo que más importa de la historia. */
+.hc-portrait {
+    position: relative;
     width: 100%;
-    opacity: 1;
-}
-
-.hc-row {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 8px;
-}
-
-/* La etiqueta y la varita en la misma linea: el boton pertenece al campo, no al formulario. */
-.hc-label-row {
+    aspect-ratio: 3 / 4;
+    max-height: 46vh;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-}
-
-/* El dado, junto al nombre. Cuadrado y pequeno: es un gesto, no una decision. */
-.hc-dice {
-    font-size: 0.8rem;
-    padding: 2px 8px;
-    margin: 0;
-    line-height: 1.6;
-}
-
-.hc-dice:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-}
-
-.hc-wand {
-    font-size: 0.72rem;
-    padding: 2px 8px;
-    margin: 0;
-    line-height: 1.6;
-    white-space: nowrap;
-}
-
-.hc-wand:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-}
-
-/* El archivo y lo que se ve de el, uno al lado del otro: elegir una cara y no verla
-   es elegirla a ciegas. */
-.hc-face-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-/* Igual que arriba: la regla global `input[type=file] { display: none }` pesa mas que una
-   clase, asi que hay que nombrar el tipo para ganarle. */
-input[type="file"].hc-face-file {
-    display: inline-block;
-    flex: 1;
-    font-size: 0.74rem;
-    min-width: 0;
+    justify-content: center;
+    overflow: hidden;
+    border: 2px solid var(--gs-accent-gold);
+    border-radius: 12px 12px 0 0;
+    background: linear-gradient(to bottom, #2a2218, #110e0a);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), inset 0 0 20px rgba(0, 0, 0, 0.9);
 }
 
 .hc-face-preview {
-    width: 42px;
-    height: 42px;
+    width: 100%;
+    height: 100%;
     object-fit: cover;
-    border-radius: 6px;
-    border: 1px solid var(--SmartThemeBorderColor);
-    flex-shrink: 0;
+}
+
+.hc-portrait-placeholder {
+    font-size: 7rem;
+    color: rgba(226, 194, 122, 0.12);
+}
+
+.hc-portrait-controls {
+    position: absolute;
+    right: 10px;
+    bottom: 10px;
+}
+
+.hc-face-btn.menu_button {
+    margin: 0;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(10, 8, 6, 0.8);
+}
+
+.hc-face-btn.menu_button:hover {
+    background: var(--gs-accent-gold);
+    color: #000;
+}
+
+input[type="file"].hc-face-file {
+    display: none;
+}
+
+.hc-idbox {
+    position: relative;
+    z-index: 1;
+    margin-top: -1.2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+    padding: 1.2rem;
+    background: var(--gs-bg-panel);
+    border: 1px solid var(--gs-gold-line);
+    border-top: none;
+    border-radius: 0 0 12px 12px;
+}
+
+.hc-group {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.hc-root input.hc-input,
+.hc-root textarea.hc-input {
+    width: 100%;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0.6rem 0.7rem;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid var(--gs-gold-line);
+    border-radius: 4px;
+    font-size: 1rem;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.hc-root .hc-input:focus {
+    border-color: var(--gs-accent-gold);
+    box-shadow: inset 0 0 0 1px var(--gs-accent-gold);
+    outline: none;
+}
+
+.hc-suggestions,
+.hc-genders {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.hc-suggestion,
+.hc-gender {
+    padding: 0.25rem 0.6rem;
+    font-size: 0.8rem;
+    color: inherit;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(214, 180, 106, 0.3);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.hc-suggestion:hover,
+.hc-gender:hover,
+.hc-gender.is-on {
+    background: var(--gs-accent-gold-hover);
+    border-color: var(--gs-accent-gold);
+}
+
+/* La varita, dentro del campo y sin pisar lo que se escribe. */
+.hc-has-wand textarea.hc-input {
+    padding-right: 2.4rem;
+}
+
+.hc-wand {
+    position: absolute;
+    right: 0.6rem;
+    top: 1.9rem;
+    padding: 0.2rem;
+    font-size: 1rem;
+    color: var(--SmartThemeQuoteColor);
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: color 0.15s;
+}
+
+.hc-wand:hover {
+    color: var(--gs-accent-gold);
+}
+
+.hc-wand.is-busy {
+    opacity: 0.5;
+    cursor: wait;
 }
 
 .hc-warning {
-    font-size: 0.78rem;
+    font-size: 0.8rem;
     color: #ffb4b4;
     background: rgba(142, 32, 32, 0.25);
     border-radius: 6px;
     padding: 6px 8px;
 }
 
-/* Idea 49: lo que da el trasfondo, dicho debajo. */
-.hc-background-hint {
-    margin-top: 4px;
-    font-size: 0.85em;
-    opacity: 0.8;
+/* El selector de una tarjeta: una rejilla de opciones que dicen lo que dan. */
+.hc-picker {
+    text-align: left;
+}
+
+.hc-picker-title {
+    margin: 0 0 1rem;
+    color: var(--gs-accent-gold);
+}
+
+.hc-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 0.8rem;
+}
+
+.hc-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 1rem 0.8rem;
+    text-align: center;
+    color: inherit;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.hc-option:hover,
+.hc-option.is-current {
+    border-color: var(--gs-accent-gold);
+    background: rgba(226, 194, 122, 0.05);
+}
+
+.hc-option-icon {
+    font-size: 1.8rem;
+    color: var(--SmartThemeQuoteColor);
+}
+
+.hc-option:hover .hc-option-icon {
+    color: var(--gs-accent-gold);
+}
+
+.hc-option-name {
+    font-weight: bold;
+    font-size: 1.05rem;
+}
+
+.hc-option-what,
+.hc-option-kit {
+    font-size: 0.78rem;
+    opacity: 0.85;
+}
+
+.hc-option-note {
+    font-size: 0.78rem;
+    color: var(--SmartThemeQuoteColor);
+    line-height: 1.3;
+}
+
+@media (max-width: 800px) {
+    .hc-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .hc-stat-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
 }

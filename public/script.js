@@ -8018,6 +8018,15 @@ export function setUserName(value, { toastPersonaNameChange = true } = {}) {
     saveSettingsDebounced();
 }
 
+/** Si el Modo Juego se abre solo al cargar (lo normal): entonces manda el juego. */
+function gameStartsFirst() {
+    try {
+        return window.localStorage.getItem('sillytavern_gameShellAutostart') !== 'false';
+    } catch {
+        return true;
+    }
+}
+
 async function doOnboarding(avatarId) {
     const template = $('#onboarding_template .onboarding');
     let userName = await callGenericPopup(template, POPUP_TYPE.INPUT, currentUser?.name || name1, { wider: true, cancelButton: false });
@@ -8174,7 +8183,10 @@ export async function getSettings(initLoaderHandle = null) {
 
         if (firstRun) {
             await initLoaderHandle?.hide();
-            await doOnboarding(user_avatar);
+            // El juego (J0.2 de wiki/ROADMAP_SIN_CONEXION.md): si arranca solo, no se pregunta
+            // el nombre de SillyTavern. Tu nombre será el de tu personaje, al crearlo. La
+            // clave es la de `party.js`, GAME_SHELL_AUTOSTART_KEY.
+            if (!gameStartsFirst()) await doOnboarding(user_avatar);
             firstRun = false;
         }
     }

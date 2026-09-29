@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<!-- Maqueta del Gem director de UX (2026-09-29): la historia contada como una novela visual. Referencia de J18.3 a J18.5 en ROADMAP_SIN_CONEXION.md.
+     OJO: llegó cortada en el mensaje, a mitad del script que cambia de estado (habla un PNJ, narra el motor, aviso de combate). El estilo y la escena de «habla un PNJ» están enteros; los botones de arriba a la derecha no hacen nada. -->
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SillyTavern RPG - Visual Novel UI</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --SmartThemeBodyColor: #eee4d2;
+            --SmartThemeBorderColor: rgba(214, 180, 106, 0.4);
+            --SmartThemeQuoteColor: #a58d60;
+            --SmartThemeEmColor: #e2c27a;
+            --SmartThemeBlurTintColor: rgba(24, 20, 16, 0.92);
+            --gs-color-danger: #d08a86;
+            --gs-color-info: #6a8caf;
+            --gs-color-success: #6f9e5d;
+            --gs-color-overlay: rgba(10, 8, 6, 0.85);
+            --gs-font-ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+            --gs-font-story: Georgia, 'Palatino Linotype', serif;
+        }
+        body { margin: 0; padding: 0; background: #000; font-family: var(--gs-font-ui); color: var(--SmartThemeBodyColor); overflow: hidden; height: 100vh; display: flex; align-items: flex-end; justify-content: center; }
+        .mock-background { position: absolute; inset: 0; background: radial-gradient(circle at center, #2a2015 0%, #0a0805 100%); z-index: 0; }
+        .mock-background::after { content: ''; position: absolute; inset: 0; background-image: repeating-linear-gradient(45deg, rgba(255,255,255,0.02) 0px, rgba(255,255,255,0.02) 2px, transparent 2px, transparent 4px); opacity: 0.5; }
+        .gs-vn-container { position: relative; z-index: 10; width: 100%; max-width: 1280px; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; padding: 2rem; box-sizing: border-box; background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 40%, transparent 100%); }
+        .gs-vn-portrait-wrapper { position: absolute; bottom: 240px; left: 5%; width: 350px; height: 500px; display: flex; align-items: flex-end; justify-content: center; opacity: 1; transform: translateY(0); transition: opacity 0.4s ease, transform 0.4s ease; }
+        .gs-vn-portrait-wrapper.hidden { opacity: 0; transform: translateY(20px); pointer-events: none; }
+        .gs-vn-silhouette { width: 100%; height: 100%; background: linear-gradient(to top, rgba(226, 194, 122, 0.15), transparent 70%); border-radius: 20px 20px 0 0; mask-image: linear-gradient(to top, black 50%, transparent 100%); -webkit-mask-image: linear-gradient(to top, black 30%, transparent 100%); display: flex; align-items: flex-end; justify-content: center; padding-bottom: 20px; }
+        .gs-vn-silhouette i { font-size: 14rem; color: rgba(0,0,0,0.8); text-shadow: 0 0 20px rgba(226, 194, 122, 0.2); }
+        .gs-vn-dialogue-box { position: relative; width: 100%; min-height: 200px; background: var(--SmartThemeBlurTintColor); border: 1px solid var(--SmartThemeBorderColor); border-radius: 12px; padding: 2rem 3rem 1.5rem 3rem; box-sizing: border-box; box-shadow: 0 20px 50px rgba(0,0,0,0.8), inset 0 0 0 1px rgba(255,255,255,0.05); display: flex; flex-direction: column; gap: 1rem; }
+        .gs-vn-dialogue-box::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, transparent, var(--SmartThemeEmColor), transparent); opacity: 0.5; border-radius: 12px 12px 0 0; }
+        .gs-vn-nameplate { position: absolute; top: -24px; left: 40px; background: linear-gradient(135deg, #2a2218, #181410); border: 1px solid var(--SmartThemeEmColor); color: var(--SmartThemeEmColor); padding: 0.5rem 2rem; border-radius: 6px; font-weight: bold; font-size: 1.2rem; letter-spacing: 1px; box-shadow: 0 4px 12px rgba(0,0,0,0.6); transition: opacity 0.3s ease; }
+        .gs-vn-nameplate.hidden { display: none; }
+        .gs-vn-text { font-family: var(--gs-font-story); font-size: 1.35rem; line-height: 1.6; color: var(--SmartThemeBodyColor); flex-grow: 1; text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
+        .gs-tag { font-family: var(--gs-font-ui); font-size: 0.75em; text-transform: uppercase; letter-spacing: 1px; padding: 2px 8px; border-radius: 4px; margin-right: 8px; vertical-align: middle; font-weight: bold; }
+        .gs-tag-combat { background: rgba(208, 138, 134, 0.2); color: var(--gs-color-danger); border: 1px solid rgba(208, 138, 134, 0.4); }
+        .gs-tag-system { background: rgba(106, 140, 175, 0.2); color: var(--gs-color-info); border: 1px solid rgba(106, 140, 175, 0.4); }
+        .gs-vn-narrator-text { font-style: italic; color: var(--SmartThemeQuoteColor); }
+        .gs-vn-chips { display: flex; gap: 0.8rem; flex-wrap: wrap; margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed rgba(214, 180, 106, 0.2); }
+        .gs-vn-chip { background: rgba(255, 255, 255, 0.05); border: 1px solid var(--SmartThemeBorderColor); color: var(--SmartThemeBodyColor); padding: 0.6rem 1.2rem; border-radius: 8px; font-size: 0.95rem; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; gap: 0.5rem; }
+        .gs-vn-chip:hover { background: rgba(226, 194, 122, 0.15); border-color: var(--SmartThemeEmColor); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
+        .gs-vn-chip:active { transform: translateY(0); }
+        .gs-vn-chip.danger { border-color: rgba(208, 138, 134, 0.4); }
+        .gs-vn-chip.danger:hover { background: rgba(208, 138, 134, 0.15); border-color: var(--gs-color-danger); color: #fff; }
+        .gs-vn-chip i { opacity: 0.7; }
+        .gs-vn-controls { position: absolute; right: 1.5rem; bottom: -35px; display: flex; gap: 1rem; }
+        .gs-vn-control-btn { background: none; border: none; color: var(--SmartThemeQuoteColor); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; cursor: pointer; display: flex; align-items: center; gap: 0.4rem; transition: color 0.2s; }
+        .gs-vn-control-btn:hover { color: var(--SmartThemeEmColor); }
+        .mock-controls { position: absolute; top: 20px; right: 20px; background: rgba(0,0,0,0.8); border: 1px solid var(--SmartThemeBorderColor); padding: 15px; border-radius: 8px; z-index: 100; display: flex; flex-direction: column; gap: 10px; }
+        .mock-controls button { background: #222; color: #eee; border: 1px solid #555; padding: 8px 12px; cursor: pointer; border-radius: 4px; }
+        .mock-controls button:hover { background: #444; }
+    </style>
+</head>
+<body>
+    <div class="mock-background"></div>
+
+    <div class="mock-controls">
+        <span style="font-size: 0.8rem; color: #aaa; text-transform: uppercase;">Simular vista</span>
+        <button>Hablando con NPC</button>
+        <button>Motor / Narrador (Sin retrato)</button>
+        <button>Aviso de Combate</button>
+    </div>
+
+    <div class="gs-vn-container">
+        <div class="gs-vn-portrait-wrapper" id="portrait">
+            <div class="gs-vn-silhouette">
+                <i class="fa-solid fa-user-secret"></i>
+            </div>
+        </div>
+
+        <div class="gs-vn-dialogue-box">
+            <div class="gs-vn-nameplate" id="nameplate">Brunilda</div>
+            <div class="gs-vn-text" id="dialogue-text">
+                Llegas a la Casa del Gremio con lo puesto y una bolsa de monedas. Brunilda, la maestra del gremio, te mira de arriba abajo. <br><br>
+                «¿Quieres entrar? Baja a la bodega: hay ratas entre los barriles. Si subes entero, eres de los nuestros.»
+            </div>
+            <div class="gs-vn-chips" id="action-chips">
+                <div class="gs-vn-chip"><i class="fa-solid fa-person-walking-arrow-right"></i> Bajar a la bodega</div>
+                <div class="gs-vn-chip"><i class="fa-solid fa-comment-dots"></i> Hablar con Brunilda</div>
+                <div class="gs-vn-chip"><i class="fa-solid fa-comment-dots"></i> Hablar con Tomás</div>
+                <div class="gs-vn-chip danger"><i class="fa-solid fa-arrow-right-from-bracket"></i> Salir de la Casa</div>
+            </div>
+            <div class="gs-vn-controls">
+                <button class="gs-vn-control-btn"><i class="fa-solid fa-clock-rotate-left"></i> Registro</button>
+                <button class="gs-vn-control-btn"><i class="fa-solid fa-eye-slash"></i> Ocultar UI</button>
+            </div>
+        </div>
+    </div>
+    <!-- Aquí iba el script con setState('dialogue' | 'narrator' | 'combat-start'); llegó cortado. -->
+</body>
+</html>

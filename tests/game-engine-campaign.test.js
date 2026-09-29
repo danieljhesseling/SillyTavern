@@ -9,7 +9,7 @@ import {
     suggestBondEvent, BOND_PERKS, MAX_RANK,
 } from '../public/scripts/game-engine/campaign/bonds.js';
 import {
-    normalizeObjectives, evaluateObjective, evaluateScenario, describeObjectives,
+    normalizeObjectives, evaluateObjective, evaluateScenario, describeObjectives, treasureInChest,
     createQuestState, getQuestStatus, setQuestStatus, getActiveQuestIds,
 } from '../public/scripts/game-engine/campaign/scenarios.js';
 import {
@@ -223,6 +223,25 @@ describe('scenario objectives', () => {
         }))).toBe('complete');
     });
 
+    // Un paquete nombra al bicho por su ficha, y la pelea lleva instancias. Antes nunca
+    // coincidían y «Derrotar al Revenant» se cumplía en la primera ronda, con él entero.
+    test('eliminate finds the target by the entry it comes from', () => {
+        const objective = { id: 'o1', type: 'eliminate', targetIds: ['13'] };
+        expect(evaluateObjective(objective, board({
+            enemies: [{ id: 'enemy-abc', templateId: '13', currentHp: 70, gridX: 1, gridY: 1 }],
+        }))).toBe('pending');
+        expect(evaluateObjective(objective, board({
+            enemies: [{ id: 'enemy-abc', templateId: '13', currentHp: 0, gridX: 1, gridY: 1 }],
+        }))).toBe('complete');
+    });
+
+    test('a target who is not in this fight is not done here', () => {
+        const objective = { id: 'o1', type: 'eliminate', targetIds: ['13'] };
+        expect(evaluateObjective(objective, board({
+            enemies: [{ id: 'enemy-x', templateId: '4', currentHp: 0, gridX: 1, gridY: 1 }],
+        }))).toBe('pending');
+    });
+
     test('clearing the board ignores who they were', () => {
         const objective = { id: 'o1', type: 'eliminate_all' };
         expect(evaluateObjective(objective, board())).toBe('pending');
@@ -296,6 +315,29 @@ describe('evaluateScenario', () => {
         expect(result.status).toBe('failed');
     });
 
+    // Protect is a condition, not a goal: a living ward never finished the fight on its own,
+    // so «que Ireena sobreviva» made a mission impossible to win.
+    test('a ward still standing lets the other goals win', () => {
+        const result = evaluateScenario([
+            { id: 'o1', type: 'eliminate_all' },
+            { id: 'o2', type: 'protect', allyId: 'ward' },
+        ], board({ allies: [{ id: 'ward', currentHp: 5, gridX: 0, gridY: 0 }] }));
+        expect(result.status).toBe('complete');
+    });
+
+    test('a ward who is not on the board does not block the win', () => {
+        const result = evaluateScenario([
+            { id: 'o1', type: 'eliminate_all' },
+            { id: 'o2', type: 'protect', allyId: 'ausente' },
+        ], board());
+        expect(result.status).toBe('complete');
+    });
+
+    test('protect alone never wins by itself', () => {
+        const result = evaluateScenario([{ id: 'o1', type: 'protect', allyId: 'lyra' }], board());
+        expect(result.status).toBe('active');
+    });
+
     // Optional means optional: it pays, it does not gate.
     test('an unfinished optional objective does not block victory', () => {
         const result = evaluateScenario([
@@ -320,6 +362,14 @@ describe('evaluateScenario', () => {
             { id: 'o2', type: 'protect', allyId: 'ward', optional: true },
         ], board({ allies: [{ id: 'ward', currentHp: 0, gridX: 0, gridY: 0 }] }));
         expect(result.status).toBe('complete');
+    });
+
+    test('a chest holds the next treasure the mission asks for', () => {
+        const objectives = [{ id: 'o1', type: 'loot', treasureIds: ['Tomo', 'Anillo'] }];
+        expect(treasureInChest(objectives, [])).toBe('Tomo');
+        expect(treasureInChest(objectives, ['Tomo'])).toBe('Anillo');
+        expect(treasureInChest(objectives, ['Tomo', 'Anillo'])).toBe('');
+        expect(treasureInChest([{ id: 'o1', type: 'eliminate_all' }], [])).toBe('');
     });
 
     test('summarises for the log', () => {

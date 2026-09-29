@@ -17,9 +17,11 @@ describe('T5: el héroe hecho llega con su mascota', () => {
         expect(createPet(/** @type {any} */ (heroes[0].pet))).toMatchObject({ name: 'Salmo', species: 'cuervo', character: 'cinica' });
     });
 
-    test('en los mundos para elegir, el tercer héroe de cada uno llega con una mascota que existe', () => {
+    // Strahd no trae héroes hechos: se juega con el tuyo, desde el gremio.
+    test('en los mundos para elegir que traen héroes, el tercero llega con una mascota que existe', () => {
         const data = JSON.parse(fs.readFileSync(new URL('../public/mundos/mundos.json', import.meta.url), 'utf8'));
-        const worlds = Array.isArray(data) ? data : data.worlds;
+        const worlds = (Array.isArray(data) ? data : data.worlds).filter((/** @type {any} */ w) => Array.isArray(w.heroes));
+        expect(worlds.length).toBeGreaterThanOrEqual(4);
         for (const world of worlds) {
             const { heroes } = readPremadeHeroes(world.heroes);
             expect(heroes[0].pet).toBeUndefined();

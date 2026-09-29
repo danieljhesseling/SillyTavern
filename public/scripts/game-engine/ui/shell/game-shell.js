@@ -60,6 +60,7 @@ import { SHORTCUTS, actionForKey } from './shortcuts.js';
  * @property {() => GameSituation} getSituation
  * @property {() => CombatBar} getCombatBar
  * @property {() => import('./dialogue-scene.js').DialogueView} getDialogue
+ * @property {() => string} [narratorName] Quien narra la partida: en la novela visual cuenta, no sale pintado.
  * @property {() => import('./exploration-scene.js').ExplorationView} getExploration
  * @property {(boardName: string) => void} onEnterBoard
  * @property {(locationName: string) => void} onTravel
@@ -85,6 +86,8 @@ import { SHORTCUTS, actionForKey } from './shortcuts.js';
  * @property {(memberId: string) => void} [onCompanion] Abrir la ficha de un companero.
  * @property {() => void} [onNewCampaign] Empezar una partida desde el menu principal.
  * @property {() => number} [countCampaigns] Cuantas partidas hay para cargar.
+ * @property {() => void} [onOffline] J4: jugar sin conexión, una partida nueva en un gremio.
+ * @property {() => Array<{line: string, open: () => void}>} [hubSaves] J4: los gremios que se pueden seguir.
  * @property {() => number} [countHall] Cuantos caidos hay en el salon de la fama (idea 199).
  * @property {() => void} [onHall] Abrir el salon de la fama.
  * @property {() => boolean} [getAutostart] Si el juego se abre solo al arrancar.
@@ -335,6 +338,15 @@ function renderTitleMenu(menu) {
 
     const saved = options?.countCampaigns?.() ?? 0;
 
+    // J4 de ROADMAP_SIN_CONEXION: jugar sin conexión va lo primero, y seguir en tu gremio
+    // antes que empezar otro.
+    for (const save of options?.hubSaves?.() ?? []) {
+        item('Seguir en el gremio', 'fa-shield-halved', save.line, () => save.open());
+    }
+    if (options?.onOffline) {
+        item('Jugar sin conexión', 'fa-dungeon', 'Tu personaje, un gremio y campañas escritas. Sin IA: lo cuenta el juego.',
+            () => options?.onOffline?.());
+    }
     item('Partida nueva', 'fa-wand-sparkles', 'Desde cero, un mundo hecho o un libro',
         () => options?.onNewCampaign?.());
     item('Cargar partida', 'fa-folder-open',
@@ -862,6 +874,102 @@ function renderDialogue(scene, view) {
     renderChips(/** @type {HTMLElement} */ (scene.querySelector('.gs-party-strip')), view.party);
 }
 
+/** Lo que se lee en la caja: los últimos mensajes desde lo último que dijiste, como mucho. */
+const NOVEL_LINES = 4;
+
+/**
+ * Los botones que cuelgan de la caja: el registro entero y esconderla para ver la escena.
+ *
+ * @returns {HTMLElement}
+ */
+function buildNovelControls() {
+    const controls = el('div', 'gs-vn-controls');
+    const log = makeButton('gs-vn-control gs-vn-log-btn');
+    log.appendChild(el('i', 'fa-solid fa-clock-rotate-left'));
+    log.appendChild(el('span', '', 'Registro'));
+    log.title = 'Todo lo dicho hasta ahora, y la caja para escribir';
+    log.addEventListener('click', () => {
+        const open = !root?.classList.contains('gs-vn-log');
+        root?.classList.toggle('gs-vn-log', open);
+        log.querySelector('span').textContent = open ? 'Cerrar registro' : 'Registro';
+        if (open) scrollChatDown();
+    });
+    const hide = makeButton('gs-vn-control gs-vn-hide-btn');
+    hide.appendChild(el('i', 'fa-solid fa-eye-slash'));
+    hide.appendChild(el('span', '', 'Ocultar UI'));
+    hide.title = 'Ver la escena sin la caja';
+    hide.addEventListener('click', () => {
+        const hidden = !root?.classList.contains('gs-vn-hidden');
+        root?.classList.toggle('gs-vn-hidden', hidden);
+        hide.querySelector('span').textContent = hidden ? 'Mostrar' : 'Ocultar UI';
+        hide.querySelector('i').className = `fa-solid ${hidden ? 'fa-eye' : 'fa-eye-slash'}`;
+    });
+    controls.appendChild(log);
+    controls.appendChild(hide);
+    return controls;
+}
+
+/**
+ * La novela visual (J18.3, J18.4): quien habla en grande, su nombre en la placa y lo último
+ * que se ha dicho en la caja. Se lee del chat, que sigue siendo el registro: aquí no se
+ * escribe nada que el chat no tenga.
+ *
+ * Una persona sale con su retrato; si no tiene imagen, con una silueta. Lo que cuenta el
+ * juego sale sin retrato, y las notas (la mascota, el combate) sin placa.
+ *
+ * @param {HTMLElement} scene
+ * @param {import('./dialogue-scene.js').DialogueView} view
+ */
+function renderNovel(scene, view) {
+    const messages = [...document.querySelectorAll('#chat .mes')];
+    let start = messages.length;
+    for (let i = messages.length - 1; i >= 0; i--) {
+        if (messages[i].getAttribute('is_user') === 'true') break;
+        start = i;
+    }
+    const said = (/** @type {Element} */ node) => (node.querySelector('.mes_text')?.textContent || '').trim().length > 0;
+    let lines = messages.slice(start).filter(said).slice(-NOVEL_LINES);
+    if (lines.length === 0) lines = messages.filter(m => m.getAttribute('is_user') !== 'true' && said(m)).slice(-1);
+
+    const text = /** @type {HTMLElement} */ (scene.querySelector('.gs-vn-text'));
+    text.textContent = '';
+    const people = lines.filter(m => m.getAttribute('is_system') !== 'true');
+    const last = people[people.length - 1] ?? null;
+    const speakerName = (last?.getAttribute('ch_name') || '').trim();
+    for (const line of lines) {
+        const system = line.getAttribute('is_system') === 'true';
+        const who = (line.getAttribute('ch_name') || '').trim();
+        const block = el('div', `gs-vn-line${system ? ' gs-vn-note' : ''}`);
+        // Cuando en la caja habla más de uno, cada frase dice de quién es.
+        if (!system && who && who !== speakerName) block.appendChild(el('span', 'gs-vn-who', who));
+        const body = line.querySelector('.mes_text');
+        if (body) block.appendChild(body.cloneNode(true));
+        text.appendChild(block);
+    }
+    text.scrollTop = text.scrollHeight;
+
+    const plate = /** @type {HTMLElement} */ (scene.querySelector('.gs-vn-nameplate'));
+    plate.textContent = speakerName;
+    plate.hidden = !speakerName;
+
+    const portrait = /** @type {HTMLElement} */ (scene.querySelector('.gs-vn-portrait'));
+    portrait.textContent = '';
+    const avatar = view.speaker && view.speaker.name === speakerName ? view.speaker.avatar : '';
+    const plain = !avatar || /user-default\.png|default_avatar/i.test(avatar);
+    // El narrador no se pinta: cuenta, no está en la escena.
+    const narrator = Boolean(options?.narratorName?.() && speakerName && options.narratorName() === speakerName);
+    portrait.hidden = !speakerName || narrator;
+    if (portrait.hidden) return;
+    if (!plain) {
+        const image = document.createElement('img');
+        image.src = avatar;
+        image.alt = speakerName;
+        portrait.appendChild(image);
+    } else {
+        portrait.appendChild(el('i', 'fa-solid fa-user-secret gs-vn-silhouette'));
+    }
+}
+
 /**
  * The party as a row of chips, under whichever scene asked for it.
  *
@@ -1262,6 +1370,7 @@ export function refreshGameShell() {
     head.classList.toggle('gs-head-round', scene === SCENE.COMBAT && Boolean(bar.active));
 
     renderDialogue(/** @type {HTMLElement} */ (root.querySelector('.gs-scene-dialogue')), dialogue);
+    if (scene === SCENE.DIALOGUE) renderNovel(/** @type {HTMLElement} */ (root.querySelector('.gs-scene-dialogue')), dialogue);
 
     // El menu principal solo existe en el titulo; en cuanto hay partida, estorba.
     if (scene === SCENE.TITLE) {
@@ -1427,9 +1536,19 @@ export function openGameShell(shellOptions) {
     // ensenar la misma seccion con otro rotulo y sin el ruido de una conversacion.
     dialogue.appendChild(el('div', 'gs-title', 'SillyTavern RPG'));
     dialogue.appendChild(el('div', 'gs-menu'));
+    // J18.3: la historia como una novela visual. Quien habla, grande; el texto, en una caja
+    // ancha abajo, con su nombre en una placa y las fichas dentro. Fuera de la escena de
+    // diálogo la caja no existe para el diseño (`display: contents`): las fichas siguen
+    // donde estaban en las otras escenas.
+    dialogue.appendChild(el('div', 'gs-vn-portrait'));
     dialogue.appendChild(el('div', 'gs-speaker'));
     dialogue.appendChild(el('div', 'gs-chat-slot'));
-    dialogue.appendChild(el('div', 'gs-chips'));
+    const box = el('div', 'gs-vn-box');
+    box.appendChild(el('div', 'gs-vn-nameplate'));
+    box.appendChild(el('div', 'gs-vn-text'));
+    box.appendChild(el('div', 'gs-chips'));
+    box.appendChild(buildNovelControls());
+    dialogue.appendChild(box);
     dialogue.appendChild(el('div', 'gs-party-strip'));
     stage.appendChild(map);
     stage.appendChild(dialogue);

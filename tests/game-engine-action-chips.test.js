@@ -103,3 +103,34 @@ describe('la fila se lee de un vistazo', () => {
         expect(describeChips(chips)).toBe('Hablar con Lyra · Descanso corto');
     });
 });
+
+describe('el gremio y la pelea que espera', () => {
+    // En la escena de diálogo el botón del tablero no se ve: la pelea se empieza desde la fila.
+    test('los que esperan en el tablero dan una ficha para empezar, delante del gremio', () => {
+        const chips = buildActionChips({
+            fight: 'Rata de bodega x3',
+            hub: [{ id: 'hub-board', label: 'Tablón de campañas', icon: 'fa-scroll', command: '/campanas' }],
+            hasBoard: true,
+        });
+        expect(chips.map(c => c.id)).toEqual(['fight-board', 'hub-board', 'leave']);
+        expect(chips[0].label).toBe('Iniciar combate (Rata de bodega x3)');
+    });
+
+    test('en combate no hay ni pelea que empezar ni gremio', () => {
+        expect(buildActionChips({ fighting: true, fight: 'Lobo', hub: [{ id: 'hub-home', label: 'Volver al gremio', icon: 'x', command: '/volver-gremio' }] })).toEqual([]);
+    });
+});
+
+describe('el tablero que pide la historia', () => {
+    const boards = [{ name: 'Taberna' }, { name: 'Mansión' }, { name: 'Sótano' }];
+
+    test('sus fichas van delante; los demás, al final, como siempre', () => {
+        const chips = buildActionChips({ boards, thread: ['Mansión', 'Sótano'], explore: true, companions: [{ name: 'Gerd' }] });
+        expect(chips.map(c => c.id)).toEqual(['enter:Mansión', 'enter:Sótano', 'talk:Gerd', 'explore', 'enter:Taberna']);
+    });
+
+    test('sin historia que lo pida, el orden de siempre', () => {
+        const chips = buildActionChips({ boards, explore: true });
+        expect(chips.map(c => c.id)).toEqual(['explore', 'enter:Taberna', 'enter:Mansión']);
+    });
+});

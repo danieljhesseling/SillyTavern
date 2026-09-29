@@ -3560,3 +3560,115 @@ input[type="file"].tl-file {
     color: var(--gs-accent-gold);
     opacity: 1;
 }
+
+/* J4 de ROADMAP_SIN_CONEXION: el gremio. Las ventanas usan las tarjetas de «¿Quién entra?»;
+   aquí solo va lo suyo: en qué estado está cada campaña, el aviso y el pie. */
+.popup:has(.hb-root) {
+    width: min(1100px, 94dvw);
+    max-width: min(1100px, 94dvw) !important;
+}
+
+.hb-state {
+    align-self: flex-start;
+    padding: 2px 8px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: bold;
+}
+
+.hb-state.hb-en-curso {
+    border-color: var(--gs-accent-gold);
+    color: var(--gs-accent-gold);
+}
+
+.hb-state.hb-terminada {
+    opacity: 0.7;
+}
+
+.hb-warn {
+    color: #e6a15a;
+    font-size: 0.82rem;
+}
+
+.hb-card.is-off {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.hb-card.is-off:hover {
+    transform: none;
+    box-shadow: none;
+    background: rgba(0, 0, 0, 0.3);
+    border-color: var(--SmartThemeBorderColor, #444);
+}
+
+.hb-card.is-hired {
+    border-color: var(--gs-gold-line, rgba(214, 180, 106, 0.5));
+}
+
+.hb-foot {
+    display: flex;
+    justify-content: flex-end;
+    padding: 0 26px 18px;
+}
+
+.hb-foot .hb-close {
+    width: auto;
+    white-space: nowrap;
+}
+
+/* La portada: jugar sin conexión, lo primero de la lista de campañas. */
+.hub-offline {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 14px;
+    padding: 14px 16px;
+    border: 1px solid var(--gs-accent-gold);
+    border-radius: 10px;
+    background: rgba(226, 194, 122, 0.07);
+}
+
+.hub-offline-text {
+    flex: 1 1 240px;
+    min-width: 0;
+}
+
+.hub-offline-title {
+    color: var(--gs-accent-gold);
+    font-size: 1.1rem;
+    font-weight: bold;
+}
+
+.hub-offline-title i {
+    margin-right: 6px;
+}
+
+.hub-offline-sub {
+    margin: 2px 0 0;
+    font-size: 0.85rem;
+    opacity: 0.75;
+}
+
+.hub-offline-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.hub-offline-actions .menu_button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    white-space: normal;
+    text-align: left;
+}
+
+.hub-offline-actions .hub-new {
+    border-color: var(--gs-accent-gold);
+    color: var(--gs-accent-gold);
+    font-weight: bold;
+}
