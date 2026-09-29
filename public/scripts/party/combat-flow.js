@@ -80,16 +80,18 @@ import {
 import { showCombatDiceRoll } from './combat-log.js';
 import { resolveEnemyAttackOn, resolveEnemyTurnAction } from './enemy-turn.js';
 import {
-    savePartyState, renderPartyMembers, lastLevelPlan, getLocationBoards, persistBoardTerrain,
-    getActiveBoardContext, postCombatNarration, tellMoment, postForModel, currentSurvival, survivalNow,
-    explodeBarrels, noteDeed, notePlot, hereLocation, raiseFame, recordBoardWon, countStat, showTip, tellBondScene,
-    rememberTogether, bark, judgeDecision, partyMorale, getCampaignCalendar, getCampaignBonds, saveCampaignState,
-    markLocationComplete, boardVisibility, lastCompendium, renderLocationMapsPreview,
+    savePartyState, renderPartyMembers, lastLevelPlan, getLocationBoards, postCombatNarration, tellMoment,
+    postForModel, currentSurvival, survivalNow, noteDeed, notePlot, hereLocation, raiseFame, countStat, showTip,
+    tellBondScene, rememberTogether, bark, judgeDecision, partyMorale, getCampaignCalendar, getCampaignBonds,
+    saveCampaignState, markLocationComplete, lastCompendium, renderLocationMapsPreview,
 } from './main.js';
 import {
     handlePlayerCombatMove, performManeuver, handlePlayerCombatAttack, endPlayerCombatTurn,
 } from './player-actions.js';
 import { collectedHere, awardEncounterLoot, dropBoardKey } from './loot.js';
+import {
+    persistBoardTerrain, getActiveBoardContext, explodeBarrels, recordBoardWon, boardVisibility,
+} from './board.js';
 
 /**
  * @param {string} name

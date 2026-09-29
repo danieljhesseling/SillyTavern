@@ -53,10 +53,12 @@ import { floatOnToken, pushCombatLogEntry, showCombatDiceRoll } from './combat-l
 import { chargeOpportunityAttacks, enemyBark, resolveEnemyAttackOn } from './enemy-turn.js';
 import { checkScenarioOutcome, endCombat, judgeCurrentScenario, offerExit, runCombatTurnLoop } from './combat-flow.js';
 import {
-    savePartyState, persistBoardTerrain, getActiveBoardTerrain, getActiveBoardContext, postCombatNarration,
-    soundCue, showTip, bark, recordFeat, getCampaignBonds, saveCampaignState, boardVisibility, fireHazardsOnEnter,
+    savePartyState, postCombatNarration, soundCue, showTip, bark, recordFeat, getCampaignBonds, saveCampaignState,
     renderLocationMapsPreview,
 } from './main.js';
+import {
+    persistBoardTerrain, getActiveBoardTerrain, getActiveBoardContext, boardVisibility, fireHazardsOnEnter,
+} from './board.js';
 
 /** @typedef {import('./types.js').PartyMember} PartyMember */
 

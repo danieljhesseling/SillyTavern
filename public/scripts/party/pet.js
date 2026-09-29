@@ -30,11 +30,12 @@ import {
 } from './keys.js';
 import { combatEncounter, currentWorldFactions, partyMembers } from './state.js';
 import {
-    lastWorldGenre, persistBoardTerrain, getActiveBoardContext, postCombatNarration, survivalNow, lastWorldNpcs,
-    whatComes, leavingMembers, getPlot, showTip, campaignDay, renderLocationMapsPreview,
+    lastWorldGenre, postCombatNarration, survivalNow, lastWorldNpcs, whatComes, leavingMembers, getPlot, showTip,
+    campaignDay, renderLocationMapsPreview,
 } from './main.js';
 import { applyTimedCondition } from './magic.js';
 import { saveCombatState, getAliveEnemies, boardCellOf } from './combat-state.js';
+import { persistBoardTerrain, getActiveBoardContext } from './board.js';
 
 /** @returns {import('../game-engine/campaign/pet.js').Pet|null} */
 export function currentPet() {

@@ -26,9 +26,10 @@ import { combatEncounter, currentBoardName, currentLocationName, partyMembers, w
 import { deliverTakenContract } from './contracts.js';
 import { checkScenarioOutcome } from './combat-flow.js';
 import {
-    savePartyState, renderPartyMembers, persistBoardTerrain, getActiveBoardContext, postCombatNarration, soundCue,
-    noteDeed, mixSource, campaignDay, lastCompendium, renderLocationMapsPreview,
+    savePartyState, renderPartyMembers, postCombatNarration, soundCue, noteDeed, mixSource, campaignDay,
+    lastCompendium, renderLocationMapsPreview,
 } from './main.js';
+import { persistBoardTerrain, getActiveBoardContext } from './board.js';
 
 /**
  * R6: abrir un cofre. Hace falta estar al lado; da oro y, a veces, algo de valor. Se queda

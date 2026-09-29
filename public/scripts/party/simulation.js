@@ -19,13 +19,13 @@ import { awakePlacements } from '../game-engine/campaign/campaign-map.js';
 import { planLevelUp, buildLevelUpPatch, validateAbilityPicks, ABILITIES } from '../game-engine/rules/level-up.js';
 import { combatEncounter, currentBoardName, currentLocationName, partyMembers, setPartyMembers } from './state.js';
 import {
-    savePartyState, renderPartyMembers, getLocationBoards, getActiveBoardContext, postCombatNarration,
-    toggleBoardDoor, campaign, revealLocations, isBoardWon,
+    savePartyState, renderPartyMembers, getLocationBoards, postCombatNarration, campaign, revealLocations,
 } from './main.js';
 import { getXpTable, getAbilityLevels } from './level-up.js';
 import { getCurrentTurnEntry } from './combat-state.js';
 import { resolveAllyTurnAction } from './combat-flow.js';
 import { endPlayerCombatTurn } from './player-actions.js';
+import { getActiveBoardContext, toggleBoardDoor, isBoardWon } from './board.js';
 
 /** @typedef {import('./types.js').PartyMember} PartyMember */
 

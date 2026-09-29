@@ -7,11 +7,10 @@
  */
 
 export {
-    loadDndCatalog, adoptVeteranGear, giveStartingGear, setPartyFromWorldEntries, enterStartingBoard,
-    applyCampaignRuleset, postJourney, applyModeExtras, notePlot, beginCampaignPlot, routeTyped,
-    openCampaignBuilder, memberFromEntry, partySnapshot, adoptCarriedParty, plotEndingTitle, refreshBoardView,
-    addPartyMember, removePartyMember, updatePartyMemberFromPersona, getActivePartyLeader, getPartyDescription,
-    initPartyPanel,
+    loadDndCatalog, adoptVeteranGear, giveStartingGear, setPartyFromWorldEntries, applyCampaignRuleset,
+    postJourney, applyModeExtras, notePlot, beginCampaignPlot, routeTyped, openCampaignBuilder, memberFromEntry,
+    partySnapshot, adoptCarriedParty, plotEndingTitle, refreshBoardView, addPartyMember, removePartyMember,
+    updatePartyMemberFromPersona, getActivePartyLeader, getPartyDescription, initPartyPanel,
 } from './party/main.js';
 export {
     playCurrentTurnAlone, restPartyForSimulation, openBoardDoorsForSimulation, grantXpForSimulation,
@@ -20,3 +19,4 @@ export {
 } from './party/simulation.js';
 export { adoptPet } from './party/pet.js';
 export { postHomecoming, recordFinishedCampaign, seatPartyHero, giveStartingPurse } from './party/hub.js';
+export { enterStartingBoard } from './party/board.js';

@@ -40,11 +40,12 @@ import {
 } from './combat-state.js';
 import { floatOnToken, showCombatDiceRoll } from './combat-log.js';
 import {
-    savePartyState, renderPartyMembers, persistBoardTerrain, getActiveBoardContext, postCombatNarration,
-    rememberTogether, bark, recordFeat, getCampaignBonds, saveCampaignState, campaignDay, boardVisibility,
+    savePartyState, renderPartyMembers, postCombatNarration, rememberTogether, bark, recordFeat, getCampaignBonds,
+    saveCampaignState, campaignDay,
 } from './main.js';
 import { CONDITION_WORDS, judgeCurrentScenario, checkScenarioOutcome, endCombat, offerTruce } from './combat-flow.js';
 import { resolveFollowUpAttack, attackLine } from './player-actions.js';
+import { persistBoardTerrain, getActiveBoardContext, boardVisibility } from './board.js';
 
 /**
  * Resolve enemy action: attack roll, damage and possible status effects.
