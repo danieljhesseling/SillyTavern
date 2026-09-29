@@ -58,7 +58,7 @@ Cómo está hecho, en corto (el detalle, en [[EMPEZAR_UNA_CAMPANA]], «Jugar sin
 
 | Fase | Estado | En una línea |
 | :--- | :---: | :--- |
-| **J0** · La puerta | 🟡 | Hecho: el botón en la portada, «Seguir en el gremio», el modo motor, sin la ventana del nombre (J0.2) y las opciones del juego (J0.4). Falta: el narrador sin ficha (J0.3), «Continuar» (J0.5) y la lista de partidas propia (J0.6) |
+| **J0** · La puerta | 🟢 | Hecho: el botón en la portada, el modo motor, sin la ventana del nombre (J0.2), el narrador sin ficha a la vista (J0.3), las opciones del juego (J0.4), «Continuar» a la última partida (J0.5) y «Cargar partida» con partidas y no chats (J0.6). Falta: arrancar con doble clic y la guía del servidor (J0.9) |
 | **J1** · Tu personaje | 🟢 | Hecho: tarjetas (J1.1), atributos repartidos o tirados (J1.2), equipo por clase (J1.3), el género del texto (J1.4), el personaje dura (J1.5) y varios personajes tuyos en el gremio (J1.6). Falta: la ficha legible (J1.7) y tu cara sin arte (J1.8) |
 | **J2** · El prólogo | 🟢 | Hecho: la prueba de la bodega como paquete (J2.4), los consejos de la primera vez, uno a uno y cuando toca (J2.2), y saltarla (J2.3). Falta: alargarla a un prólogo de 15 minutos con una charla (J2.1) |
 | **J3** · El pueblo y el gremio, tu base | 🟡 | Hecho: Puerto Alba con posada, tienda, templo y herrería, cada uno con quien lo atiende (J3.10), el tablón (J3.2), los mercenarios y las campañas terminadas en el Salón de la fama (J3.9). Falta: la sala propia (J3.1), el cofre y lo demás |
