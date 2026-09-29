@@ -56,15 +56,15 @@ import { lastWorldSeason, weatherHere } from './world.js';
 import {
     describeWorldFactions, getCurrentWorldFactions, scheduleFactionTick, shiftFactionStanding,
 } from './factions.js';
-import {
-    favorsHere, welcomeBack, currentMarket, leavingMembers, writeLetters, worldFestivals, tellFestival,
-    tellBondScene, weighDepartures, checkNickname, offerPersonalQuests,
-} from './main.js';
+import { currentMarket, writeLetters, worldFestivals, tellFestival } from './main.js';
 import { getPlot, notePlot, openMilestones, giveDueHints } from './plot.js';
 import { noteDeed, driftPeople } from './world-growth.js';
 import { currentSurvival, survivalNow } from './modes.js';
 import { postCombatNarration, playSucesos, tellMoment, postForModel, showTip } from './narration.js';
 import { savePartyState, renderPartyMembers, partyPurse, payFromParty } from './roster.js';
+import {
+    favorsHere, welcomeBack, leavingMembers, tellBondScene, weighDepartures, checkNickname, offerPersonalQuests,
+} from './companions.js';
 
 /**
  * El estado de campana -reloj, vinculos, descansos y mapa- vive en su propio modulo.

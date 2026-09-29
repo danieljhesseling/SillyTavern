@@ -52,7 +52,6 @@ import {
 import { floatOnToken, pushCombatLogEntry, showCombatDiceRoll } from './combat-log.js';
 import { chargeOpportunityAttacks, enemyBark, resolveEnemyAttackOn } from './enemy-turn.js';
 import { checkScenarioOutcome, endCombat, judgeCurrentScenario, offerExit, runCombatTurnLoop } from './combat-flow.js';
-import { bark, recordFeat } from './main.js';
 import {
     persistBoardTerrain, getActiveBoardTerrain, getActiveBoardContext, boardVisibility, fireHazardsOnEnter,
 } from './board.js';
@@ -60,6 +59,7 @@ import { renderLocationMapsPreview } from './board-view.js';
 import { getCampaignBonds, saveCampaignState } from './time.js';
 import { postCombatNarration, soundCue, showTip } from './narration.js';
 import { savePartyState } from './roster.js';
+import { bark, recordFeat } from './companions.js';
 
 /** @typedef {import('./types.js').PartyMember} PartyMember */
 

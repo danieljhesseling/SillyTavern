@@ -79,7 +79,7 @@ import {
 } from './combat-state.js';
 import { showCombatDiceRoll } from './combat-log.js';
 import { resolveEnemyAttackOn, resolveEnemyTurnAction } from './enemy-turn.js';
-import { raiseFame, countStat, tellBondScene, rememberTogether, bark, judgeDecision, partyMorale } from './main.js';
+import { raiseFame, countStat } from './main.js';
 import {
     handlePlayerCombatMove, performManeuver, handlePlayerCombatAttack, endPlayerCombatTurn,
 } from './player-actions.js';
@@ -95,6 +95,7 @@ import { noteDeed } from './world-growth.js';
 import { currentSurvival, survivalNow } from './modes.js';
 import { postCombatNarration, tellMoment, postForModel, showTip } from './narration.js';
 import { savePartyState, renderPartyMembers } from './roster.js';
+import { tellBondScene, rememberTogether, bark, judgeDecision, partyMorale } from './companions.js';
 
 /**
  * @param {string} name

@@ -39,13 +39,13 @@ import {
     heightFor, heldInPlace, partyCell, saveCombatState,
 } from './combat-state.js';
 import { floatOnToken, showCombatDiceRoll } from './combat-log.js';
-import { rememberTogether, bark, recordFeat } from './main.js';
 import { CONDITION_WORDS, judgeCurrentScenario, checkScenarioOutcome, endCombat, offerTruce } from './combat-flow.js';
 import { resolveFollowUpAttack, attackLine } from './player-actions.js';
 import { persistBoardTerrain, getActiveBoardContext, boardVisibility } from './board.js';
 import { getCampaignBonds, saveCampaignState, campaignDay } from './time.js';
 import { postCombatNarration } from './narration.js';
 import { savePartyState, renderPartyMembers } from './roster.js';
+import { rememberTogether, bark, recordFeat } from './companions.js';
 
 /**
  * Resolve enemy action: attack roll, damage and possible status effects.
