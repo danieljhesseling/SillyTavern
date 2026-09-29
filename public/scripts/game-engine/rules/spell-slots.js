@@ -115,6 +115,8 @@ function levelOf(value) {
  * @property {'level'|'half'} prepares Cuántos prepara: modificador + nivel, o + medio nivel.
  * @property {{start: number, perLevel: number}} spellbook Lo que entra gratis en el libro.
  * @property {''|'book'|'prepared'|'known'} rituals De dónde saca los rituales.
+ * @property {boolean} ritualsOnly D-J27: solo lanza rituales, sin espacios (el erudito). Su
+ *   progresión dice hasta qué nivel de ritual llega, no cuántos espacios tiene.
  * @property {string} focus El tipo de foco que le sirve: Arcane, Divine o Druidic.
  */
 
@@ -175,7 +177,10 @@ export function casterOf(classRow) {
     const progression = /** @type {Casting['progression']} */ (PROGRESSIONS.includes(text(raw.progression)) ? text(raw.progression) : '');
     if (!progression) return null;
     const mode = /** @type {Casting['mode']} */ (CASTING_MODES.includes(text(raw.mode)) ? text(raw.mode) : 'known');
-    const rituals = /** @type {Casting['rituals']} */ (['book', 'prepared', 'known'].includes(text(raw.rituals)) ? text(raw.rituals) : '');
+    const ritualsOnly = raw.ritualsOnly === true;
+    // Quien solo lanza rituales los saca de donde guarda sus conjuros, aunque no lo diga.
+    const own = /** @type {Casting['rituals']} */ (mode === 'spellbook' ? 'book' : mode);
+    const rituals = /** @type {Casting['rituals']} */ (['book', 'prepared', 'known'].includes(text(raw.rituals)) ? text(raw.rituals) : ritualsOnly ? own : '');
     return {
         progression,
         ability: text(raw.ability) || 'intelligence',
@@ -189,6 +194,7 @@ export function casterOf(classRow) {
             perLevel: Math.max(0, Math.floor(Number(raw.spellbook?.perLevel ?? 2) || 0)),
         },
         rituals,
+        ritualsOnly,
         focus: text(raw.focus),
     };
 }
@@ -220,7 +226,8 @@ export function classRowFor(className, classRows) {
  * @property {Record<number, number>} slots Los espacios normales, por nivel de espacio.
  * @property {{count: number, level: number}|null} pact Los de pacto, si los hay.
  * @property {number[]} arcanum Los niveles de conjuro de sus arcanos.
- * @property {number} maxLevel El nivel de conjuro más alto que puede lanzar con espacio.
+ * @property {number} maxLevel El nivel de conjuro más alto que puede lanzar con espacio; o,
+ *   si solo lanza rituales (D-J27), el del ritual más alto que ya sabe hacer.
  */
 
 /**
@@ -240,13 +247,15 @@ export function slotsFor(classRow, level) {
         const arcanum = Object.entries(PACT_ARCANUM)
             .filter(([from]) => Number(from) <= at)
             .map(([, spellLevel]) => spellLevel);
+        if (casting.ritualsOnly) return { progression: 'pact', slots: {}, pact: null, arcanum: [], maxLevel: pact.level };
         return { progression: 'pact', slots: {}, pact: { ...pact }, arcanum, maxLevel: pact.level };
     }
 
     const row = TABLES[casting.progression][at - 1] ?? [];
     /** @type {Record<number, number>} */
     const slots = {};
-    row.forEach((count, index) => { if (count > 0) slots[index + 1] = count; });
+    // D-J27: sin espacios; la tabla solo dice hasta qué nivel de ritual llega.
+    if (!casting.ritualsOnly) row.forEach((count, index) => { if (count > 0) slots[index + 1] = count; });
     return { progression: casting.progression, slots, pact: null, arcanum: [], maxLevel: row.length };
 }
 
@@ -324,6 +333,7 @@ export function spendSlot(member, classRow, level) {
     const wanted = Math.floor(Number(level) || 0);
     const table = slotsFor(classRow, member?.level);
     if (!table.progression) return { ok: false, reason: 'Su clase no tiene espacios de conjuro.', slotLevel: 0, slotsUsed: used };
+    if (casterOf(classRow)?.ritualsOnly) return { ok: false, reason: 'Solo lanza rituales: no tiene espacios de conjuro.', slotLevel: 0, slotsUsed: used };
     if (wanted < 1 || wanted > 9) return { ok: false, reason: 'Un espacio es de nivel 1 a 9.', slotLevel: 0, slotsUsed: used };
 
     if (table.pact) {
@@ -390,6 +400,7 @@ export function spellcastingStats(member, classRow) {
 export function describeSlots(member, classRow) {
     const table = slotsFor(classRow, member?.level);
     const left = slotsLeft(member, classRow);
+    if (casterOf(classRow)?.ritualsOnly && table.maxLevel > 0) return `Solo rituales, sin espacios: hasta los de ${SLOT_LABELS[/** @type {1} */ (table.maxLevel)]}`;
     if (table.pact) return `Espacios de pacto (${table.pact.level}.º): ${left.pact}/${table.pact.count}`;
     const parts = Object.entries(table.slots).map(([level, max]) => `${level}.º ${left.slots[Number(level)] ?? 0}/${max}`);
     return parts.length > 0 ? `Espacios: ${parts.join(' · ')}` : '';

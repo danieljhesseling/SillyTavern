@@ -273,6 +273,40 @@
       "kg": 5,
       "slot": "",
       "pattern": "{forma} de {material}"
+    },
+    {
+      "id": "forma-laud",
+      "name": "Laúd",
+      "gender": "m",
+      "kind": "forma",
+      "itemType": "gear",
+      "category": "oficio",
+      "tags": [
+        "musica",
+        "foco"
+      ],
+      "weight": 0,
+      "kg": 1,
+      "slot": "",
+      "pattern": "{forma}",
+      "note": "El instrumento del bardo: le sirve de foco para sus conjuros (D-J25). Peso 0: no sale de botín, sale en el kit y en la tienda."
+    },
+    {
+      "id": "forma-bolsa-componentes",
+      "name": "Bolsa de componentes",
+      "gender": "f",
+      "kind": "forma",
+      "itemType": "gear",
+      "category": "oficio",
+      "tags": [
+        "magia",
+        "foco"
+      ],
+      "weight": 0,
+      "kg": 1,
+      "slot": "",
+      "pattern": "{forma}",
+      "note": "Hierbas, polvos y cachivaches: a cualquiera que lance conjuros le sirve de foco (D-J25). Peso 0: no sale de botín, sale en el kit y en la tienda."
     }
   ]
 }

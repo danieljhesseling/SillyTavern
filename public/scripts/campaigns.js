@@ -2320,7 +2320,7 @@ async function createStartingHero(worldName, { another = false } = {}) {
         // J1.2: tirar los atributos con la semilla de la partida; cada tirada, otra.
         rollStats: () => rollStatBonus(createSeededRandom(derive(seed, 'atributos', statRolls++))),
         // D-J14: en un gremio no hay dos personajes con el mismo nombre.
-        takenNames: takenHeroNames({ entries: existing, party: partySnapshot(), resting: data.metadata?.[HUB_HEROES_KEY] }),
+        takenNames: takenHeroNames({ entries: existing, party: another ? partySnapshot() : [], resting: data.metadata?.[HUB_HEROES_KEY] }),
         Popup,
         POPUP_TYPE,
     });

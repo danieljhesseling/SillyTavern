@@ -2398,7 +2398,7 @@
       "id": "r-la-cena",
       "by": "Rahadin",
       "where": "Castillo Ravenloft",
-      "text": "El amo os espera a cenar. Sois sus invitados, y nadie se levanta de la mesa antes de tiempo.",
+      "text": "El amo os espera a cenar. Sois sus {invitados|invitadas}, y nadie se levanta de la mesa antes de tiempo.",
       "truth": "si",
       "leadsTo": ""
     },

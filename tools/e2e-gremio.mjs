@@ -326,9 +326,42 @@ try {
     const heroToasts = await page.evaluate(() => /** @type {string[]} */ (/** @type {any} */ (window).__heroToasts || []));
     check('al crear, «Tu personaje» es un aviso corto, sin repetir el equipo',
         heroToasts.length >= 1 && heroToasts[0].startsWith('Tessa · ') && heroToasts.every(t => t.length <= 120 && !/Llevas:/.test(t)), JSON.stringify(heroToasts));
-    /** Lo que dice la caja de escribir. */
-    const placeholder = () => page.evaluate(() => /** @type {HTMLTextAreaElement|null} */ (document.querySelector('#send_textarea'))?.placeholder || '');
-    const beforeFight = await placeholder();
+    /**
+     * J18.7 a J18.9: lo que no puede verse sin conexión: la caja de escribir (con su menú y su
+     * varita), las pestañas de escena, la X, los botones de descanso de la cabecera y «Al narrador».
+     */
+    const offlineChrome = () => page.evaluate(() => {
+        const seen = (/** @type {string} */ s) => [...document.querySelectorAll(s)].some(n => {
+            const box = n.getBoundingClientRect();
+            return box.width > 1 && box.height > 1 && window.getComputedStyle(n).visibility !== 'hidden';
+        });
+        return {
+            box: seen('#send_form') || seen('#send_textarea') || seen('#extensionsMenuButton'),
+            tabs: seen('#game-shell .gs-scene-btn'),
+            close: seen('#game-shell .gs-close'),
+            rest: seen('#game-shell .gs-clock-btn'),
+            narrator: seen('#game-shell .gs-chip-narrator'),
+            pause: seen('#game-shell .gs-pause-open'),
+            clock: (document.querySelector('#game-shell .gs-clock-label')?.textContent || '').trim(),
+        };
+    });
+    const offlineOk = (/** @type {any} */ c) => !c.box && !c.tabs && !c.close && !c.rest && !c.narrator && c.pause;
+    /** La escena que se ve. */
+    const sceneNow = () => page.evaluate(() => document.querySelector('#game-shell')?.getAttribute('data-scene') || '');
+    /** J18.8: «Continuar», al acabar de leer, si se está leyendo; y esperar a la escena que toca. */
+    const carryOn = async (/** @type {string} */ wanted) => {
+        await until(async () => {
+            if (await sceneNow() === wanted) return true;
+            await page.evaluate(() => /** @type {HTMLElement|null} */ (document.querySelector('#game-shell .gs-vn-box .gs-chip-continue'))?.click());
+            return false;
+        }, 10000);
+        return sceneNow();
+    };
+    /** J18.10: las líneas de la caja de la novela, como se leen. */
+    const boxLines = () => page.evaluate(() => ({
+        lines: [...document.querySelectorAll('#game-shell .gs-vn-text .gs-vn-line')].map(l => (l.textContent || '').replace(/\s+/g, ' ').trim()),
+        quotes: [...document.querySelectorAll('#game-shell .gs-vn-text q')].map(q => window.getComputedStyle(q, '::before').content).filter(c => c !== 'none' && c !== 'normal'),
+    }));
     /** Lo que se lee en la caja de la novela visual, y lo que toca ahora. */
     const novelBox = () => page.evaluate(() => ({
         text: (document.querySelector('#game-shell .gs-vn-text')?.textContent || '').replace(/\s+/g, ' ').trim(),
@@ -344,6 +377,15 @@ try {
     const pierBox = await novelBox();
     check('la llegada se lee en la caja de la novela visual, con lo que toca ahora (J2.1)',
         /Al ladrón/.test(pierBox.text) && /ratero/i.test(pierBox.focus), JSON.stringify(pierBox));
+    const pierChrome = await offlineChrome();
+    check('sin conexión no hay caja de escribir, ni pestañas de escena, ni la X, ni descansos en la cabecera, ni «Al narrador»; sí la pausa y el día (J18.7 a J18.9)',
+        offlineOk(pierChrome) && /^Día 1/.test(pierChrome.clock), JSON.stringify(pierChrome));
+    // J18.8: las teclas 1, 2 y 3 ya no saltan de escena.
+    await page.evaluate(() => /** @type {HTMLElement|null} */ (document.activeElement)?.blur());
+    const beforeKeys = await sceneNow();
+    for (const key of ['2', '3', '1']) await page.keyboard.press(key);
+    await page.waitForTimeout(300);
+    check('las teclas 1, 2 y 3 no cambian de escena sin conexión (J18.8)', beforeKeys === 'dialogue' && await sceneNow() === 'dialogue', beforeKeys);
     if (SHOT) await page.screenshot({ path: `${SHOT}.muelle.png` });
     if (canPier) {
         await clickChip(/^Iniciar combate \(Ratero/);
@@ -362,15 +404,18 @@ try {
         check('la primera pelea trae su consejo y, en tu turno, el de andar (J2.2)',
             fightTips.filter(t => /^Empieza la pelea/.test(t)).length === 1 && fightTips.filter(t => /^Te toca/.test(t)).length === 1, JSON.stringify(fightTips));
         if (SHOT) await page.screenshot({ path: `${SHOT}.muelle-pelea.png` });
-        // El panel del combate y la caja de escribir, en tu turno: en castellano y sin comandos.
+        // El panel del combate, en tu turno: en castellano y sin comandos. Y sin caja de escribir:
+        // la pelea se juega con la barra de abajo (J18.7).
         const inFight = await page.evaluate(() => ({
             panel: (document.querySelector('.wm-combat-section')?.textContent || '').replace(/\s+/g, ' ').trim(),
-            box: /** @type {HTMLTextAreaElement|null} */ (document.querySelector('#send_textarea'))?.placeholder || '',
+            scene: document.querySelector('#game-shell')?.getAttribute('data-scene') || '',
+            bar: [...document.querySelectorAll('#game-shell .gs-actions .gs-btn')].map(b => (b.textContent || '').trim()),
         }));
-        check('en la pelea, el panel dice «En combate», «Enemigos» y «Te toca», sin inglés; la caja, ejemplos en llano',
+        const fightChrome = await offlineChrome();
+        check('en la pelea, el panel dice «En combate», «Enemigos» y «Te toca», sin inglés; se juega con la barra, sin caja de escribir (J18.7)',
             /En combate/.test(inFight.panel) && /Enemigos/.test(inFight.panel) && /Te toca/.test(inFight.panel) && /Fin de turno/.test(inFight.panel)
             && !/Combat Active|Your turn|Enemies|Action used|End Turn|Movement left/.test(inFight.panel)
-            && /^Te toca/.test(inFight.box) && /«ataco a Ratero del muelle/.test(inFight.box) && !/\/combat/.test(inFight.box), JSON.stringify(inFight));
+            && inFight.scene === 'combat' && inFight.bar.some(b => /Atacar/.test(b)) && offlineOk(fightChrome), JSON.stringify({ inFight, fightChrome }));
         await page.evaluate(async () => {
             const enc = (await import('/scripts/party.js')).getCombatEncounter();
             for (const e of enc?.enemies ?? []) e.currentHp = 0;
@@ -431,6 +476,11 @@ try {
     const trialBox = await novelBox();
     check('la prueba se lee en la caja, y lo que toca dice cómo llegar a la bodega (J2.1)',
         /Baja a la bodega/.test(trialBox.text) && /bodega/i.test(trialBox.focus), JSON.stringify(trialBox));
+    // J18.10: en la caja, solo la prosa: ni «[HILO] Hecho: …», ni «[RUMOR]», ni comillas dobles “«…»”.
+    const prose = await boxLines();
+    check('en la caja no hay etiquetas del motor: ninguna línea empieza por «[», ni «Hecho:», ni comillas dobles (J18.10)',
+        prose.lines.length > 0 && prose.lines.every(l => !/^\S{0,3}\s*\[/.test(l) && !/^Hecho:/.test(l) && !/“«|»”/.test(l)) && prose.quotes.length === 0,
+        JSON.stringify(prose));
     if (SHOT) await page.screenshot({ path: `${SHOT}.prologo.png` });
     // Del muelle a la bodega, por la fila: la que pide la historia va delante.
     await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/leave'));
@@ -489,27 +539,41 @@ try {
     now = await state();
     const tablon = await until(() => chatHas(/apunta tu nombre en el libro del gremio/), 15000);
     check('ganar la prueba abre el hilo siguiente: el tablón', !now.fighting && tablon, JSON.stringify({ fighting: now.fighting }));
-    const afterFight = await placeholder();
-    check('acabada la pelea, la caja vuelve a decir lo mismo que antes, llano y sin los comandos del combate',
-        afterFight === 'Escribe lo que hace tu personaje…' && beforeFight === afterFight, JSON.stringify({ beforeFight, afterFight }));
+    // J18.8: acabada la pelea se vuelve a la novela, a leer el final; «Continuar» lleva al tablero
+    // (seguís en la bodega), y de él se sale con su botón, al pueblo. Sin tocar ninguna pestaña.
+    const afterFight = { scene: await sceneNow(), chrome: await offlineChrome(),
+        next: await page.evaluate(() => document.querySelector('#game-shell .gs-vn-box .gs-chip-continue')?.getAttribute('data-next') || '') };
+    check('acabada la pelea, se lee el final en la novela, sin caja de escribir, y «Continuar» lleva al tablero (J18.7, J18.8)',
+        afterFight.scene === 'dialogue' && offlineOk(afterFight.chrome) && afterFight.next === 'combat', JSON.stringify(afterFight));
+    const onBoard = await carryOn('combat');
+    const boardFoot = await page.evaluate(() => ({
+        chips: [...document.querySelectorAll('#game-shell .gs-actions .gs-chip-action')].map(c => (c.textContent || '').trim()),
+        leave: (document.querySelector('#game-shell .gs-scene-map .wm-leave-loc-btn')?.textContent || '').trim(),
+    }));
+    check('«Continuar» lleva al tablero, sin pelea: lo que se puede hacer va al pie, y el tablero tiene su botón para salir (J18.8)',
+        onBoard === 'combat' && boardFoot.chips.length > 0 && /Volver a Puerto Alba/.test(boardFoot.leave), JSON.stringify({ onBoard, boardFoot }));
+    if (SHOT) await page.screenshot({ path: `${SHOT}.tablero.png` });
     await page.evaluate(() => {
         const seen = window.localStorage.getItem('sillytavern_gameTipsSeen') || '';
         window.localStorage.setItem('sillytavern_gameTipsSeen', `${seen},combat,move,attack,roll,talk,journal`);
         document.querySelectorAll('#toast-container .toast').forEach(t => t.remove());
     });
 
-    // 4. Un mercenario.
+    // 4. Un mercenario. Se sale de la bodega con el botón del tablero, y se lee si hay algo que leer.
     await clearDice();
-    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/leave'));
+    await page.locator('#game-shell .gs-scene-map .wm-leave-loc-btn').first().click({ timeout: 5000 })
+        .catch(() => page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/leave')));
     await page.waitForTimeout(600);
+    await carryOn('exploration');
 
     // J3.11: fuera del tablero, la pantalla es el pueblo. Con el selector de sitios: la herrería,
     // con Ramiro; volver; la taberna, con Tomás, y comer ahí. Luego, de vuelta a la novela.
     const townShown = await until(() => page.evaluate(() => document.querySelector('#game-shell')?.getAttribute('data-scene') === 'exploration'
         && document.querySelectorAll('#game-shell .gs-town-place').length > 0), 10000);
     const townPlaces = await page.evaluate(() => [...document.querySelectorAll('#game-shell .gs-town-place')].map(c => c.getAttribute('data-place')));
-    check('fuera del tablero, la pantalla es el pueblo: la herrería, la taberna, la tienda, la capilla y el gremio (J3.11)',
-        townShown && JSON.stringify(townPlaces) === JSON.stringify(['herreria', 'posada', 'tienda', 'templo', 'gremio']), JSON.stringify(townPlaces));
+    // El gremio va primero desde el 2026-09-29: es a lo que se viene.
+    check('fuera del tablero, la pantalla es el pueblo: el gremio, la herrería, la taberna, la tienda y la capilla (J3.11)',
+        townShown && JSON.stringify(townPlaces) === JSON.stringify(['gremio', 'herreria', 'posada', 'tienda', 'templo']), JSON.stringify(townPlaces));
     if (SHOT) await page.screenshot({ path: `${SHOT}.pueblo.png` });
     /** Lo que se ve dentro de un sitio del pueblo. */
     const placeScene = () => page.evaluate(() => {
@@ -543,8 +607,22 @@ try {
         backInTown && inPlace.place === 'posada' && inPlace.plate === 'Tomás' && /retratos\/gremio\/tomas\.png$/.test(inPlace.face)
         && inPlace.acts.some(a => /Hablar con Tomás/.test(a)) && ate && afterMeal.place === 'posada', JSON.stringify({ inPlace, goldBeforeMeal, ate }));
     if (SHOT) await page.screenshot({ path: `${SHOT}.posada.png` });
+    // J18.9: en la taberna se pasa el rato y se duerme; en la cabecera, solo el día.
+    const clockNow = async () => (await offlineChrome()).clock;
+    const dayBefore = await clockNow();
+    await page.locator('#game-shell .gs-town-scene .gs-town-act[data-action="clock:slot"]').click({ timeout: 5000 }).catch(() => {});
+    const idled = await until(async () => (await clockNow()) !== dayBefore, 8000);
+    const dayIdle = await clockNow();
+    await page.locator('#game-shell .gs-town-scene .gs-town-act[data-action="inn-room"]').click({ timeout: 5000 }).catch(() => {});
+    const slept = await until(async () => /^Día 2/.test(await clockNow()), 10000);
+    await page.evaluate(() => document.querySelectorAll('.popup:not([closing]) .popup-button-ok').forEach(b => /** @type {HTMLElement} */ (b).click()));
+    await carryOn('exploration');
+    const afterSleep = { clock: await clockNow(), place: (await placeScene()).place, acts: (await placeScene()).acts, chrome: await offlineChrome() };
+    check('en la taberna, «Pasar el rato» pasa una parte del día y «Dormir en una habitación» pasa la noche; la cabecera no tiene botones de descanso (J18.9)',
+        /^Día 1/.test(dayBefore) && idled && dayIdle !== dayBefore && slept && afterSleep.place === 'posada'
+        && inPlace.acts.some(a => /Pasar el rato/.test(a)) && inPlace.acts.some(a => /Dormir en una habitación/.test(a)) && !afterSleep.chrome.rest,
+        JSON.stringify({ dayBefore, dayIdle, afterSleep, acts: inPlace.acts }));
     await page.locator('#game-shell .gs-town-back').click({ timeout: 5000 }).catch(() => {});
-    await page.locator('#game-shell .gs-scene-btn[data-scene="dialogue"]').click({ timeout: 5000 }).catch(() => {});
     await page.waitForTimeout(400);
 
     check('fuera del tablón también se ofrece contratar', await clickChip(/Contratar mercenarios/));
@@ -566,33 +644,33 @@ try {
 
     // 5. El tablón: Strahd.
     await page.waitForTimeout(500);
-    // J18.3: fuera del tablero, la historia se lee como una novela visual.
+    // J18.8: contratar no cuenta nada nuevo que leer: se sigue en el pueblo, con lo que se puede
+    // hacer al pie (y sin la fila de entrar en tableros ni de viajar, que tienen sus tarjetas).
+    const stayed = await page.evaluate(() => ({
+        scene: document.querySelector('#game-shell')?.getAttribute('data-scene') || '',
+        foot: [...document.querySelectorAll('#game-shell .gs-actions .gs-chips-foot .gs-chip-action')].map(c => (c.textContent || '').trim()),
+    }));
+    check('contratar deja en el pueblo, con lo que se puede hacer al pie: el tablón y contratar, sin «Entrar en…» (J18.8)',
+        stayed.scene === 'exploration' && stayed.foot.some(c => /Tablón de campañas/.test(c)) && !stayed.foot.some(c => /^Entrar en /.test(c)), JSON.stringify(stayed));
+    if (SHOT) await page.screenshot({ path: `${SHOT}.pueblo-pie.png` });
+    // Arte en pixel: si habla alguien del paquete, sale su retrato en grande; y detrás, apagado,
+    // el escenario del sitio. La frase de Brunilda se quita después, para no tocar lo que sigue.
+    // Y (J18.8) lo nuevo que se cuenta lleva solo a la novela, sin pestañas.
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/sendas name="Brunilda" Aquí se viene a trabajar, no a mirar.'));
+    await until(async () => await sceneNow() === 'dialogue', 8000);
+    // J18.3: la historia se lee como una novela visual.
     const novel = await page.evaluate(() => ({
         scene: document.querySelector('#game-shell')?.getAttribute('data-scene') || '',
         box: (document.querySelector('#game-shell .gs-vn-box')?.getBoundingClientRect().width || 0),
         text: (document.querySelector('#game-shell .gs-vn-text')?.textContent || '').trim().slice(0, 80),
         chips: document.querySelectorAll('#game-shell .gs-vn-box .gs-chip-action').length,
+        next: document.querySelector('#game-shell .gs-vn-box .gs-chip-continue')?.getAttribute('data-next') || '',
         chat: window.getComputedStyle(/** @type {Element} */ (document.querySelector('#chat'))).display,
     }));
-    check('fuera del tablero, la historia va en la caja de la novela visual, con las fichas dentro (J18.3)',
-        novel.scene === 'dialogue' && novel.box > 600 && novel.text.length > 0 && novel.chips > 0 && novel.chat === 'none', JSON.stringify(novel));
+    check('lo nuevo que se cuenta lleva a la novela: la caja, con las fichas dentro y «Continuar» al pueblo (J18.3, J18.8)',
+        novel.scene === 'dialogue' && novel.box > 600 && novel.text.length > 0 && novel.chips > 0 && novel.next === 'exploration' && novel.chat === 'none',
+        JSON.stringify(novel));
     if (SHOT) await page.screenshot({ path: `${SHOT}.novela.png` });
-    const inHubScene = await stCharacterUi();
-    // Y en el registro, el chat entero, las frases van sin la cara de la ficha del narrador.
-    const openLog = () => page.evaluate(() => /** @type {HTMLElement|null} */ (document.querySelector('#game-shell .gs-vn-log-btn'))?.click());
-    await openLog();
-    await page.waitForTimeout(400);
-    const inLog = await page.evaluate(() => ({
-        lines: [...document.querySelectorAll('#game-shell #chat .mes')].filter(m => m.getBoundingClientRect().height > 1).length,
-        faces: [...document.querySelectorAll('#game-shell #chat .mes:not([is_user="true"]) .avatar img')].filter(i => i.getBoundingClientRect().width > 1).length,
-    }));
-    await openLog();
-    check('en el gremio no se ve ninguna ficha de SillyTavern, ni su logo como retrato, ni caras en el registro (J0.3)',
-        inHubScene.length === 0 && inLog.lines > 0 && inLog.faces === 0, JSON.stringify({ inHubScene, inLog }));
-
-    // Arte en pixel: si habla alguien del paquete, sale su retrato en grande; y detrás, apagado,
-    // el escenario del sitio. La frase de Brunilda se quita después, para no tocar lo que sigue.
-    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/sendas name="Brunilda" Aquí se viene a trabajar, no a mirar.'));
     const novelArt = () => page.evaluate(async () => {
         (await import('/scripts/game-engine/ui/shell/game-shell.js')).refreshGameShell();
         const image = /** @type {HTMLImageElement|null} */ (document.querySelector('#game-shell .gs-vn-portrait:not([hidden]) img.gs-vn-pixel'));
@@ -617,6 +695,25 @@ try {
     if (SHOT) await page.screenshot({ path: `${SHOT}.brunilda.png` });
     await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/cut {{lastMessageId}}'));
     await page.waitForTimeout(400);
+    const inHubScene = await stCharacterUi();
+    // Y en el registro, el chat entero, las frases van sin la cara de la ficha del narrador, y
+    // sin las etiquetas del motor (J18.10).
+    const openLog = () => page.evaluate(() => /** @type {HTMLElement|null} */ (document.querySelector('#game-shell .gs-vn-log-btn'))?.click());
+    await openLog();
+    await page.waitForTimeout(400);
+    const inLog = await page.evaluate(() => {
+        const shown = [...document.querySelectorAll('#game-shell #chat .mes')].filter(m => m.getBoundingClientRect().height > 1);
+        return {
+            lines: shown.length,
+            faces: [...document.querySelectorAll('#game-shell #chat .mes:not([is_user="true"]) .avatar img')].filter(i => i.getBoundingClientRect().width > 1).length,
+            tagged: shown.map(m => (/** @type {HTMLElement|null} */ (m.querySelector('.mes_text'))?.innerText || '').trim())
+                .filter(t => /^\S{0,3}\s*\[[A-ZÁÉÍÓÚÑ ]{2,}\]/u.test(t)).slice(0, 3),
+        };
+    });
+    if (SHOT) await page.screenshot({ path: `${SHOT}.registro.png` });
+    await openLog();
+    check('en el gremio no se ve ninguna ficha de SillyTavern, ni su logo como retrato, ni caras ni etiquetas en el registro (J0.3, J18.10)',
+        inHubScene.length === 0 && inLog.lines > 0 && inLog.faces === 0 && inLog.tagged.length === 0, JSON.stringify({ inHubScene, inLog }));
 
     // J0.4: las opciones son del juego, con sus palabras; sin conexión, sin panel de la API.
     await page.evaluate(() => /** @type {HTMLElement|null} */ (document.activeElement)?.blur());
@@ -675,6 +772,12 @@ try {
     check('antes, el viaje: de Puerto Alba a Strahd, nueve días (J4.9)', await chatHas(/Salís de Puerto Alba hacia La Maldición de Strahd\..*Nueve días de camino/));
     const campaignChips = await chips();
     check('en la campaña se ofrece volver al gremio', campaignChips.some(c => /Volver al gremio/.test(c)), JSON.stringify(campaignChips));
+    // J18.7 a J18.10: una campaña del gremio también es sin conexión: se empieza leyendo, sin caja
+    // de escribir ni pestañas, y el viaje y el presagio sin «[VIAJE]» ni «[HILO]».
+    const strahdOpen = { scene: await sceneNow(), chrome: await offlineChrome(), box: await boxLines() };
+    check('Strahd empieza en la novela, sin caja ni pestañas, y su caja sin etiquetas del motor (J18.7, J18.8, J18.10)',
+        strahdOpen.scene === 'dialogue' && offlineOk(strahdOpen.chrome) && strahdOpen.box.lines.length > 0
+        && strahdOpen.box.lines.every(l => !/^\S{0,3}\s*\[/.test(l)), JSON.stringify(strahdOpen));
     const strahdWorld = now.world;
     const strahdChat = now.chat;
 
@@ -750,11 +853,17 @@ try {
         return { board: board.name, at, asleep: (board.enemyPlacements || []).map((/** @type {any} */ p) => p.name) };
     });
     await page.waitForTimeout(800);
-    // La palanca se pulsa en el tablero: en la escena de diálogo el tablero solo se mira.
-    await page.locator('#game-shell .gs-scene-btn[data-scene="combat"]').click({ timeout: 5000 }).catch(() => {});
+    // La palanca se pulsa en el tablero. Entrar en él es una acción (la ficha): se lee lo que se
+    // cuente al entrar y «Continuar» lleva al tablero (J18.8), sin pestañas.
+    const inCellar = await carryOn('combat');
+    check('entrar en el Sótano desde la fila lleva a su tablero, tras leer lo que se cuenta al entrar (J18.8)',
+        inCellar === 'combat' && (await state()).board === 'Sótano de la Iglesia' && offlineOk(await offlineChrome()), inCellar);
     await page.waitForTimeout(800);
     await clearDice();
     await page.evaluate(() => document.querySelectorAll('#toast-container .toast').forEach(t => t.remove()));
+    // La tarjeta de la victoria de la Taberna, si sigue ahí, se cierra como quien la ha leído: cae
+    // encima de la palanca.
+    await page.locator('.vs-card').filter({ visible: true }).first().click({ timeout: 2000 }).catch(() => {});
     const over = await page.evaluate(() => {
         const el = [...document.querySelectorAll('.wm-terrain-lever')].find(e => /** @type {HTMLElement} */ (e).offsetParent !== null);
         const r = el?.getBoundingClientRect();
@@ -769,7 +878,9 @@ try {
     await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/combat-stop'));
     await page.waitForTimeout(800);
     await clearDice();
-    await page.locator('#game-shell .gs-scene-btn[data-scene="dialogue"]').click({ timeout: 5000 }).catch(() => {});
+    // Acabar la pelea vuelve solo a la novela (J18.8).
+    const stopped = await until(async () => await sceneNow() === 'dialogue', 8000);
+    check('acabar la pelea vuelve sola a la novela (J18.8)', stopped, await sceneNow());
     await page.waitForTimeout(500);
     const rulesToast = await page.evaluate(() => [...document.querySelectorAll('#toast-container .toast')].some(t => /Recarga la página/.test(t.textContent || '')));
     check('cambiar de campaña no pide recargar la página', !rulesToast);
@@ -983,8 +1094,8 @@ try {
     await page.waitForTimeout(800);
     const bramNow = await leader();
     let staying = await resting();
-    check('«Nuevo personaje» abre la creación: Bram entra con 100 de oro y con Gerd; Tessa se queda en el gremio, entera (J18.1, J1.6)',
-        creatorAgain && bramNow?.name === 'Bram' && bramNow.gold === 100 && bramNow.items > 0 && bramNow.guests.includes('Gerd el Mellado')
+    check('«Nuevo personaje» abre la creación: Bram entra con 10 de oro (D-J11) y con Gerd; Tessa se queda en el gremio, entera (J18.1, J1.6)',
+        creatorAgain && bramNow?.name === 'Bram' && bramNow.gold === 10 && bramNow.items > 0 && bramNow.guests.includes('Gerd el Mellado')
         && staying.length === 1 && staying[0].name === 'Tessa' && staying[0].gold === tessaThen?.gold && staying[0].level === tessaThen?.level
         && staying[0].xp === tessaThen?.xp && staying[0].items === tessaThen?.items,
         JSON.stringify({ tessaThen, bramNow, staying }));
@@ -1010,7 +1121,7 @@ try {
     staying = await resting();
     check('cambiar en el tablón trae a Tessa con lo suyo y deja a Bram en el gremio; el tablón vuelve con ella al frente (J1.6)',
         tessaBack?.name === 'Tessa' && tessaBack.gold === tessaThen?.gold && tessaBack.items === tessaThen?.items && tessaBack.guests.includes('Gerd el Mellado')
-        && staying.length === 1 && staying[0].name === 'Bram' && staying[0].gold === 100 && staying[0].items === bramNow?.items
+        && staying.length === 1 && staying[0].name === 'Bram' && staying[0].gold === 10 && staying[0].items === bramNow?.items
         && reopened[0]?.active === true && /Tessa/.test(reopened[0]?.text ?? ''),
         JSON.stringify({ tessaBack, staying, reopened }));
 
@@ -1032,9 +1143,35 @@ try {
     const bramBack = await leader();
     staying = await resting();
     check('entrar con Bram, guardado, lo trae con su oro y su equipo; Tessa se queda en el gremio (J18.1)',
-        bramBack?.name === 'Bram' && bramBack.gold === 100 && bramBack.items === bramNow?.items && bramBack.guests.includes('Gerd el Mellado')
+        bramBack?.name === 'Bram' && bramBack.gold === 10 && bramBack.items === bramNow?.items && bramBack.guests.includes('Gerd el Mellado')
         && staying.map(h => h.name).join() === 'Tessa' && staying[0]?.gold === tessaThen?.gold,
         JSON.stringify({ bramBack, staying }));
+
+    // 10. D-J23: borrar el gremio desde «Cargar partida», con sus campañas, y una ventana que dice
+    // todo lo que se va antes de borrarlo.
+    await page.waitForTimeout(1500);
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#game-shell', { timeout: 90000 });
+    await page.evaluate(() => document.querySelector('#option_close_chat') instanceof HTMLElement && /** @type {HTMLElement} */ (document.querySelector('#option_close_chat')).click());
+    const loadItem = page.locator('#game-shell .gs-menu-btn').filter({ hasText: 'Cargar partida' });
+    await until(async () => await loadItem.count() === 1, 30000);
+    await loadItem.click({ timeout: 10000 }).catch(() => {});
+    const guildBin = page.locator('#game-shell .gs-save[data-kind="gremio"] .gs-save-delete');
+    const binShown = await guildBin.waitFor({ state: 'visible', timeout: 30000 }).then(() => true).catch(() => false);
+    const binTitle = binShown ? await guildBin.getAttribute('title') : '';
+    await guildBin.click({ timeout: 5000 }).catch(() => {});
+    const asked = await page.waitForSelector('.popup:visible .popup-button-ok', { timeout: 15000 }).then(() => true).catch(() => false);
+    const warning = asked ? (await page.locator('.popup:visible').last().textContent() || '').replace(/\s+/g, ' ').trim() : '';
+    if (SHOT) await page.screenshot({ path: `${SHOT}.borrar-gremio.png` });
+    await page.locator('.popup:visible .popup-button-ok').last().click({ timeout: 5000 }).catch(() => {});
+    const emptied = await until(async () => /Todavía no hay ninguna partida/.test(String(await page.locator('#game-shell .gs-saves').textContent({ timeout: 1000 }).catch(() => ''))), 45000);
+    const worldsLeft = await page.evaluate(async (names) => {
+        const wi = await import('/scripts/world-info.js');
+        return names.filter(name => (wi.world_names ?? []).includes(name));
+    }, [hubWorld, strahdWorld]);
+    check('«Cargar partida» borra el gremio entero: avisa de todo (el gremio, Strahd, las sesiones, que no se deshace) y se lleva sus mundos y sus chats (D-J23)',
+        binShown && /gremio/i.test(String(binTitle)) && /La Maldición de Strahd/.test(warning) && /sesion/.test(warning) && /no se puede deshacer/.test(warning)
+        && emptied && worldsLeft.length === 0, JSON.stringify({ binTitle, warning: warning.slice(0, 500), emptied, worldsLeft }));
 
     check('sin errores en la página', problems.length === 0, problems.slice(0, 6).join('\n        '));
 } catch (error) {

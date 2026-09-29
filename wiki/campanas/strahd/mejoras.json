@@ -838,6 +838,10 @@
   ],
   "quests": [
     {
+      "id": "q_taberna",
+      "description": "Una Bruja Baroviana está acechando a los clientes de la taberna Sangre de la Enredadera. Es hora de demostrar de qué estáis {hechos|hechas}."
+    },
+    {
       "id": "q_sotano_iglesia",
       "objectives": [
         {
@@ -893,7 +897,7 @@
       "name": "El Señor de Barovia",
       "act": 5,
       "boardId": "cripta_strahd",
-      "description": "propio: Bajo el castillo, en su cripta, Strahd os espera junto a su ataúd. O cae él, o caéis vosotros.",
+      "description": "propio: Bajo el castillo, en su cripta, Strahd os espera junto a su ataúd. O cae él, o caéis {vosotros|vosotras}.",
       "objectives": [
         {
           "type": "eliminate",
@@ -989,8 +993,8 @@
         {
           "id": "acepta",
           "mood": "alegre",
-          "line": "propio: Tienes razón. Con vosotros estará más segura que detrás de cualquier muralla. Pero se lo dices tú, que a mí no me hace caso.",
-          "journal": "propio: Ismark acepta que Ireena viaje con vosotros.",
+          "line": "propio: Tienes razón. Con {vosotros|vosotras} estará más segura que detrás de cualquier muralla. Pero se lo dices tú, que a mí no me hace caso.",
+          "journal": "propio: Ismark acepta que Ireena viaje con {vosotros|vosotras}.",
           "options": [
             { "id": "acepta-vale", "text": "propio: Se lo diré.", "next": "inicio" }
           ]
@@ -1059,7 +1063,7 @@
         {
           "id": "bruja",
           "mood": "alegre",
-          "line": "propio: ¿Fuisteis vosotros? Esa vieja llevaba semanas rondando la taberna. Os debo una.",
+          "line": "propio: ¿Fuisteis {vosotros|vosotras}? Esa vieja llevaba semanas rondando la taberna. Os debo una.",
           "options": [
             { "id": "bruja-vale", "text": "propio: No es nada.", "next": "inicio" }
           ]
@@ -1188,7 +1192,7 @@
           {
             "who": "Ireena Kolyana",
             "mood": "neutral",
-            "text": "propio: Esta casa es mía, y la defiendo yo. ¿Qué vais a hacer vosotros?",
+            "text": "propio: Esta casa es mía, y la defiendo yo. ¿Qué vais a hacer {vosotros|vosotras}?",
             "options": [
               {
                 "id": "a-tu-lado",
@@ -1430,7 +1434,7 @@
         "title": "La caravana se va",
         "scene": "Strahd cae en su cripta. Antes de que amanezca, los vistani recogen el campamento y se van por el camino del este: saben que la gente del valle no les perdonará haber servido al conde. Madam Eva es la última en subir al carro. La niebla se abre detrás de ellos.",
         "epilogues": [
-          { "who": "Madam Eva", "text": "propio: Madam Eva se despide solo de vosotros. De la gente del valle, de nadie." },
+          { "who": "Madam Eva", "text": "propio: Madam Eva se despide solo de {vosotros|vosotras}. De la gente del valle, de nadie." },
           { "who": "Luvash", "text": "propio: Luvash lleva la caravana hacia el este, con su hija Arabelle sentada a su lado en el pescante." },
           { "who": "Ismark Kolyanovich", "text": "propio: Ismark queda al frente de la Aldea de Barovia. Pone guardia en el camino por si los vistani vuelven, pero no vuelven." },
           { "who": "Ireena Kolyana", "text": "propio: Ireena se queda con su hermano. Por fin puede salir a la calle de noche sin miedo." }

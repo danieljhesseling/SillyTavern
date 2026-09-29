@@ -19,6 +19,7 @@ import { normalizeCampaignMap, refreshAvailability, explainLock } from '../../ca
 import { getBondProgress } from '../../campaign/bonds.js';
 import { buildPartyStrip } from './party-strip.js';
 import { reachFrom } from '../../world/travel.js';
+import { resolveGender } from '../../campaign/grammar.js';
 
 /**
  * @typedef {Object} PlaceView
@@ -188,14 +189,22 @@ export function buildExplorationView({
     const here = (Array.isArray(locationMaps) ? locationMaps : [])
         .find(l => l && String(l.name) === String(currentLocation)) || null;
 
+    // D-J17: lo que trae el paquete puede hablaros con sus dos formas («de qué estáis
+    // {hechos|hechas}»): concuerda con tu héroe y con el grupo.
+    const members = (Array.isArray(party) ? party : []).filter(Boolean);
+    const hero = members.find(m => !m.guest) ?? members[0];
+    const standing = members.filter(m => !m.dead);
+    const who = { heroe: hero?.gender ?? '', grupo: (standing.length > 0 ? standing : members).map(m => m.gender ?? '') };
+    const say = (/** @type {any} */ value) => resolveGender(String(value || ''), who).trim();
+
     return {
         moment,
         here: here ? String(here.name) : '',
-        description: String(here?.description || ''),
+        description: say(here?.description),
         boards: boardsOf(here).map(b => ({
             name: String(b?.name || ''),
             current: String(b?.name || '') === String(currentBoard),
-            note: String(b?.description || b?.objectives?.[0]?.label || '').trim(),
+            note: say(b?.description || b?.objectives?.[0]?.label),
             icon: boardIcon(String(b?.name || '')),
         })),
         places,

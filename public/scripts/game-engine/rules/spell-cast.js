@@ -9,7 +9,9 @@
  * - **Componentes** (J19.8): V son palabras (en un silencio no se pueden decir), S gestos y
  *   M un material. El material corriente lo cubre un **foco** (un bastón, un amuleto, un
  *   instrumento) o una **bolsa de componentes**; el que tiene precio (`material.costGp`) hay
- *   que llevarlo, y si dice `consumed`, se gasta.
+ *   que llevarlo, y si dice `consumed`, se gasta. Desde D-J25 las tiendas venden la perla, el
+ *   diamante, el incienso, el agua bendita, la bolsa y el laúd, así que el foco **se exige**
+ *   (`strict`, encendido si no se dice otra cosa).
  * - **Rituales** (J19.8): un conjuro con `ritual` se puede lanzar **sin gastar espacio**,
  *   tardando diez minutos más, y nunca peleando.
  *
@@ -36,6 +38,14 @@ export const FOCUS_WORDS = {
 
 /** Lo que sirve a cualquiera en vez de foco. */
 export const COMPONENT_POUCH = 'Bolsa de componentes';
+
+/** Cómo se dice cada tipo de foco cuando falta: con ejemplos, que «foco arcano» no dice nada. */
+export const FOCUS_SAID = {
+    Arcane: 'un bastón, una varita o un orbe',
+    Divine: 'un símbolo sagrado, un amuleto o el escudo con el emblema',
+    Druidic: 'un bastón, una vara o una rama de muérdago',
+    Instrument: 'un instrumento, como un laúd',
+};
 
 /** Los minutos que un ritual añade a lo que tarda el conjuro. */
 export const RITUAL_EXTRA_MINUTES = 10;
@@ -255,19 +265,19 @@ export function hasFocus(carried, focus) {
 /**
  * Lo que piden sus componentes, y si se tiene.
  *
- * Sin foco ni bolsa, con `strict` apagado, se lanza igual y se avisa: el compendio de hoy no
- * da foco a todas las clases, y bloquear la magia por eso sería un castigo por algo que el
- * juego no enseña. Lo caro y lo que se gasta sí se exige siempre: es lo que lo hace caro.
+ * Lo caro y lo que se gasta se exige siempre: es lo que lo hace caro. El foco (o la bolsa de
+ * componentes), desde D-J25, también: ya se venden en las tiendas. Con `strict` apagado (un
+ * modo más suave, si alguna vez se quiere) se lanza igual y se avisa.
  *
  * @param {import('./spell-catalogue.js').Spell} spell
  * @param {Object} [input]
  * @param {any[]} [input.carried]
  * @param {string} [input.focus]
  * @param {boolean} [input.silenced] Si está en un silencio (o amordazado).
- * @param {boolean} [input.strict]
+ * @param {boolean} [input.strict] Si el foco se exige (sí, si no se dice).
  * @returns {{ok: boolean, reason: string, warnings: string[], consumes: string[]}}
  */
-export function componentsCheck(spell, { carried = [], focus = '', silenced = false, strict = false } = {}) {
+export function componentsCheck(spell, { carried = [], focus = '', silenced = false, strict = true } = {}) {
     /** @type {string[]} */
     const warnings = [];
     if (spell.components.includes('V') && silenced) {
@@ -279,14 +289,17 @@ export function componentsCheck(spell, { carried = [], focus = '', silenced = fa
     if (material && (material.costGp > 0 || material.consumed)) {
         const names = (Array.isArray(carried) ? carried : []).map(item => plain(typeof item === 'string' ? item : item?.name));
         if (!names.some(name => name === plain(material.name) || name.startsWith(`${plain(material.name)} `))) {
-            const price = material.costGp > 0 ? ` (vale ${material.costGp} monedas de oro)` : '';
-            return { ok: false, reason: `Hace falta ${material.name}${price}.`, warnings, consumes: [] };
+            const price = material.costGp > 0 ? ` (${material.costGp} de oro)` : '';
+            const spent = material.consumed ? ', que se gasta al lanzarlo' : '';
+            return { ok: false, reason: `Para ${spell.name} hace falta: ${material.name.toLowerCase()}${price}${spent}. Se compra en las tiendas.`, warnings, consumes: [] };
         }
         return { ok: true, reason: '', warnings, consumes: material.consumed ? [material.name] : [] };
     }
 
     if (!hasFocus(carried, focus)) {
-        if (strict) return { ok: false, reason: `Le falta un foco o una ${COMPONENT_POUCH.toLowerCase()}.`, warnings, consumes: [] };
+        const example = /** @type {Record<string, string>} */ (FOCUS_SAID)[text(focus)];
+        const what = example ? `un foco (${example})` : 'un foco';
+        if (strict) return { ok: false, reason: `Para ${spell.name} hace falta ${what} o una ${COMPONENT_POUCH.toLowerCase()}. Se compran en las tiendas.`, warnings, consumes: [] };
         warnings.push(`Sin foco ni ${COMPONENT_POUCH.toLowerCase()}: se lanza igual, a pulso.`);
     }
     return { ok: true, reason: '', warnings, consumes: [] };
@@ -345,19 +358,25 @@ export function ritualCheck({ member, classRow, spell, inCombat = false }) {
  * @param {boolean} [input.hasReaction]
  * @param {any[]} [input.carried]
  * @param {boolean} [input.silenced]
- * @param {boolean} [input.strictComponents]
+ * @param {boolean} [input.strictComponents] Si el foco se exige (D-J25: sí, si no se dice).
  * @param {boolean} [input.asRitual]
  * @returns {CastVerdict}
  */
 export function canCastSpell({
     member, classRow, spell, slotLevel, inCombat = true, hasAction = true, hasBonus = true, hasReaction = true,
-    carried = [], silenced = false, strictComponents = false, asRitual = false,
+    carried = [], silenced = false, strictComponents = true, asRitual = false,
 }) {
     /** @type {(reason: string) => CastVerdict} */
     const no = (reason) => ({ ok: false, reason, slotLevel: 0, ritual: asRitual, minutes: 0, consumes: [], warnings: [] });
     if (!spell) return no('Ese conjuro no existe.');
     const casting = casterOf(classRow);
     if (!casting) return no('Su clase no lanza conjuros de nivel.');
+    // D-J27: quien solo lanza rituales (el erudito) no tiene espacios: como ritual, o nada.
+    if (casting.ritualsOnly && !asRitual) {
+        return no(spell.ritual
+            ? `Solo lanza rituales, sin espacios: ${spell.name} se lanza como ritual (diez minutos más, y no peleando).`
+            : `Solo lanza rituales, sin espacios: ${spell.name} no es un ritual.`);
+    }
 
     let minutes = /** @type {Record<string, number>} */ (CASTING_MINUTES)[spell.castingTime] ?? 0;
     if (asRitual) {

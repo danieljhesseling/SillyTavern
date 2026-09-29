@@ -10,6 +10,7 @@
  */
 
 import { firstArt, loadPixelManifest } from './pixel-art.js';
+import { resolveGender } from '../campaign/grammar.js';
 import { HUB_NEXT_HERO_GOLD } from '../campaign/hub.js';
 
 /** @param {string} value @returns {JQuery} */
@@ -162,9 +163,11 @@ const MAX_CAMPAIGN_FILE = 20 * 1024 * 1024;
  * @param {CampaignCard} one
  * @param {() => void} onClick
  * @param {(() => void)|null} [onRemove] Quitarla del tablón. Sin él, no se ofrece.
+ * @param {any} [who] D-J17: quién va, para que la sinopsis le hable como toca («Eres una
+ *   mercenaria…»). Sin él, la primera forma.
  * @returns {JQuery}
  */
-function campaignTile(one, onClick, onRemove = null) {
+function campaignTile(one, onClick, onRemove = null, who = {}) {
     const state = { nueva: 'Sin empezar', 'en-curso': 'En curso', terminada: 'Terminada' }[one.state];
     const tile = card({ icon: one.icon, label: [`${one.action} ${one.name}. ${state}.`, one.levels ? `${one.levels}.` : ''].filter(Boolean).join(' '), onClick })
         .attr('data-campaign', one.id);
@@ -179,7 +182,7 @@ function campaignTile(one, onClick, onRemove = null) {
     }
     tile.append(div(`hb-state hb-${one.state}`).text(one.ending ? `${state}: ${one.ending}` : state));
     if (one.note) tile.append(div('vt-pitch').text(one.note));
-    if (one.synopsis) tile.append(div('vt-about').text(one.synopsis));
+    if (one.synopsis) tile.append(div('vt-about').text(resolveGender(one.synopsis, who)));
     if (one.warn) tile.append(div('hb-warn').text(one.warn));
     tile.append(div('vt-go').append(`<i class="fa-solid ${one.state === 'nueva' ? 'fa-play' : 'fa-forward'}"></i>`)
         .append($('<span></span>').text(`${one.action}: ${one.name}`)));
@@ -352,8 +355,11 @@ export async function openHubBoard({ Popup, POPUP_TYPE, cards, heroes = [], onIm
                 : /** @type {{headline: string}} */ (result).headline));
         if (result.ok) grid.find(`[data-campaign-tile="${CSS.escape(one.id)}"]`).remove();
     };
+    // D-J17: la sinopsis le habla a quien va ahora.
+    const goes = heroes.find(hero => hero.active);
+    const who = goes ? { heroe: goes.gender } : {};
     /** @param {CampaignCard} one */
-    const tileOf = (one) => campaignTile(one, pick(one), unpin(one));
+    const tileOf = (one) => campaignTile(one, pick(one), unpin(one), who);
     for (const one of cards) grid.append(tileOf(one));
     const empty = cards.length === 0
         ? $('<p class="vt-note"></p>').text('El tablón está vacío: no hay campañas escritas. Puedes añadir la tuya.')

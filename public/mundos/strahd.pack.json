@@ -2410,7 +2410,7 @@
       "id": "q_taberna",
       "name": "Sangrienta Bienvenida",
       "act": 1,
-      "description": "Una Bruja Baroviana está acechando a los clientes de la taberna Sangre de la Enredadera. Es hora de demostrar de qué estáis hechos.",
+      "description": "Una Bruja Baroviana está acechando a los clientes de la taberna Sangre de la Enredadera. Es hora de demostrar de qué estáis {hechos|hechas}.",
       "boardId": "taberna_sangre_enredadera",
       "objectives": [
         {
@@ -2700,7 +2700,7 @@
       "name": "El Señor de Barovia",
       "act": 5,
       "boardId": "cripta_strahd",
-      "description": "Bajo el castillo, en su cripta, Strahd os espera junto a su ataúd. O cae él, o caéis vosotros.",
+      "description": "Bajo el castillo, en su cripta, Strahd os espera junto a su ataúd. O cae él, o caéis {vosotros|vosotras}.",
       "objectives": [
         {
           "type": "eliminate",
@@ -3688,7 +3688,7 @@
       "id": "r-la-cena",
       "by": "Rahadin",
       "where": "Castillo Ravenloft",
-      "text": "El amo os espera a cenar. Sois sus invitados, y nadie se levanta de la mesa antes de tiempo.",
+      "text": "El amo os espera a cenar. Sois sus {invitados|invitadas}, y nadie se levanta de la mesa antes de tiempo.",
       "truth": "si",
       "leadsTo": ""
     },
@@ -3947,8 +3947,8 @@
         {
           "id": "acepta",
           "mood": "alegre",
-          "line": "Tienes razón. Con vosotros estará más segura que detrás de cualquier muralla. Pero se lo dices tú, que a mí no me hace caso.",
-          "journal": "Ismark acepta que Ireena viaje con vosotros.",
+          "line": "Tienes razón. Con {vosotros|vosotras} estará más segura que detrás de cualquier muralla. Pero se lo dices tú, que a mí no me hace caso.",
+          "journal": "Ismark acepta que Ireena viaje con {vosotros|vosotras}.",
           "options": [
             {
               "id": "acepta-vale",
@@ -4076,7 +4076,7 @@
         {
           "id": "bruja",
           "mood": "alegre",
-          "line": "¿Fuisteis vosotros? Esa vieja llevaba semanas rondando la taberna. Os debo una.",
+          "line": "¿Fuisteis {vosotros|vosotras}? Esa vieja llevaba semanas rondando la taberna. Os debo una.",
           "options": [
             {
               "id": "bruja-vale",
@@ -4348,7 +4348,7 @@
           {
             "who": "Ireena Kolyana",
             "mood": "neutral",
-            "text": "Esta casa es mía, y la defiendo yo. ¿Qué vais a hacer vosotros?",
+            "text": "Esta casa es mía, y la defiendo yo. ¿Qué vais a hacer {vosotros|vosotras}?",
             "options": [
               {
                 "id": "a-tu-lado",
@@ -4687,7 +4687,7 @@
         "act": 5,
         "title": "El Señor de Barovia",
         "hint": "Derrotar a Strahd. Está en La Cripta de Strahd (Castillo Ravenloft).",
-        "scene": "Bajo el castillo, en su cripta, Strahd os espera junto a su ataúd. O cae él, o caéis vosotros.",
+        "scene": "Bajo el castillo, en su cripta, Strahd os espera junto a su ataúd. O cae él, o caéis {vosotros|vosotras}.",
         "opens": {
           "kind": "after",
           "milestone": "la-cena-esta-servida"
@@ -4788,7 +4788,7 @@
         "epilogues": [
           {
             "who": "Madam Eva",
-            "text": "Madam Eva se despide solo de vosotros. De la gente del valle, de nadie."
+            "text": "Madam Eva se despide solo de {vosotros|vosotras}. De la gente del valle, de nadie."
           },
           {
             "who": "Luvash",

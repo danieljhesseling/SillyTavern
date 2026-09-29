@@ -227,7 +227,7 @@
       "name": "1387",
       "genre": "Histórico",
       "note": "Sin magia. Una compañía libre, un invierno y una paga que no llega.",
-      "synopsis": "No hay dragones ni hechizos: hay una compañía de doce que cobra tarde, un señor que promete y un camino que se cierra con la nieve. Una herida mal cerrada te deja cojo el resto de la campaña y el viernes hay que pagar igual. Lo que se decide aquí es a quién se le paga primero.",
+      "synopsis": "No hay dragones ni hechizos: hay una compañía de doce que cobra tarde, un señor que promete y un camino que se cierra con la nieve. Una herida mal cerrada te deja {cojo|coja} el resto de la campaña y el viernes hay que pagar igual. Lo que se decide aquí es a quién se le paga primero.",
       "seed": "yunque-hiel-catorce",
       "templateId": "tavern",
       "pack": "/mundos/1387.pack.json",

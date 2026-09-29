@@ -12,6 +12,8 @@
  * Puro: decide el texto. Quien llama lo ensena y lo cuenta.
  */
 
+import { resolveGender } from './grammar.js';
+
 /** Los dias sin avanzar que hacen falta para cada pista: la que apunta y la clara. */
 export const STALL_DAYS = [3, 6];
 
@@ -111,9 +113,12 @@ export function dueHints({ open, openedDay = {}, given = {}, today, skillLabel }
  * @param {Array<{text: string, by?: string, where?: string, leadsTo?: string, day?: number}>} [input.heard]
  * @param {string[]} [input.memories] Lo que el grupo recuerda.
  * @param {Array<{day: number, text: string}>} [input.deeds] Lo que ha pasado: la crónica (idea 95).
+ * @param {any} [input.who] D-J17: quién juega (`{heroe, grupo}`, como `resolveGender`). Un rumor
+ *   puede hablar de ti con sus dos formas («{Al mercenario forastero|A la mercenaria forastera}…»); sin
+ *   esto sale la primera, nunca las llaves.
  * @returns {JournalSection[]}
  */
-export function buildJournal({ open, clues = {}, taken = null, today = 1, heard = [], memories = [], deeds = [] }) {
+export function buildJournal({ open, clues = {}, taken = null, today = 1, heard = [], memories = [], deeds = [], who = {} }) {
     /** @type {JournalSection[]} */
     const sections = [];
     const threads = (open || []).map(m => {
@@ -133,7 +138,7 @@ export function buildJournal({ open, clues = {}, taken = null, today = 1, heard 
     if (heard.length > 0) {
         sections.push({
             title: 'Lo que se oye',
-            items: heard.slice(-8).map(r => `«${text(r.text)}»${r.by ? ` (${text(r.by)}` : ''}${r.where ? `${r.by ? ', ' : ' ('}${text(r.where)})` : (r.by ? ')' : '')}`
+            items: heard.slice(-8).map(r => `«${resolveGender(text(r.text), who)}»${r.by ? ` (${text(r.by)}` : ''}${r.where ? `${r.by ? ', ' : ' ('}${text(r.where)})` : (r.by ? ')' : '')}`
                 + `${r.leadsTo ? ` → lleva a ${text(r.leadsTo)}` : ''}`
                 // Idea 91: lo que se oyó hace mucho puede no ser verdad ya.
                 + (Number.isFinite(Number(r.day)) && Number(r.day) > 0

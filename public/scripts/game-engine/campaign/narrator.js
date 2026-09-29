@@ -23,6 +23,8 @@
  * Ver wiki/POR_HACER.md · wiki/EMPEZAR_UNA_CAMPANA.md.
  */
 
+import { resolveGender } from './grammar.js';
+
 /**
  * @typedef {Object} NarratorAnswers
  * @property {string} name        Cómo se llama quien narra.
@@ -123,7 +125,10 @@ function text(value) {
  * La ficha de personaje de un narrador, lista para crearla.
  *
  * @param {Partial<NarratorAnswers>} answers Lo que el jugador escribió.
- * @param {{worldName?: string, genre?: string, synopsis?: string}} [world] La campaña que va a narrar.
+ * @param {{worldName?: string, genre?: string, synopsis?: string, heroGender?: string}} [world] La
+ *   campaña que va a narrar. D-J17: la sinopsis puede hablar a quien juega con sus dos formas
+ *   («Eres {un mercenario|una mercenaria}»); con `heroGender` concuerda, y sin él sale la
+ *   primera. Llaves, nunca.
  * @returns {NarratorCard}
  */
 export function buildNarratorCard(answers, world = {}) {
@@ -136,7 +141,7 @@ export function buildNarratorCard(answers, world = {}) {
     const setting = [
         worldName ? `Narras "${worldName}".` : '',
         genre ? `Es ${genre.toLowerCase()}.` : '',
-        text(world.synopsis),
+        resolveGender(text(world.synopsis), { heroe: text(world.heroGender) }),
     ].filter(Boolean).join(' ');
 
     // El largo va **con el oficio**, no al final: es una regla de como se narra, y lo

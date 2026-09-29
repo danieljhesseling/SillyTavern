@@ -371,7 +371,7 @@
           "id": "gerd-robledo",
           "title": "La casa de Robledo",
           "where": "Robledo, una semana al norte",
-          "pitch": "El señor de Robledo quiere quitarle la casa a la madre de Gerd por tres años de renta sin pagar. Gerd mandaba el dinero cada mes con un mensajero. Ahora que sabe leer, ha visto que los recibos que le traía eran listas de la compra.",
+          "pitch": "El señor de Robledo quiere quitarle la casa a la madre de Gerd por tres años de renta sin pagar. Gerd le mandaba la renta cada mes con un mensajero. Ahora que sabe leer, ha visto que los recibos que le traía eran listas de la compra.",
           "endings": [
             {
               "id": "pagar",
@@ -433,12 +433,12 @@
             {
               "id": "multa",
               "title": "Pagar la multa",
-              "summary": "Pagáis al barón y Tobías sale libre, sin deudas. Es mucho oro, y el cartel de Nella sigue colgado: a ella el barón no la perdona."
+              "summary": "Pagáis al barón y Tobías sale libre, sin deudas. Le devuelves a Nella su flecha de plumas rojas. Es mucho oro, y en Hoz su cartel sigue en la pared: a ella el barón no la perdona."
             },
             {
               "id": "carcel",
               "title": "La cárcel de noche",
-              "summary": "Entráis de noche por donde Nella sabe y sacáis a Tobías sin pagar. Nella deja su cartel clavado en la puerta del barón. Desde entonces, el barón pone precio también a tu cabeza."
+              "summary": "Entráis de noche por donde Nella sabe y sacáis a Tobías sin pagar. Le devuelves su flecha de plumas rojas, y Nella la usa para clavar su cartel en la puerta del barón. Desde entonces, el barón pone precio también a tu cabeza."
             }
           ]
         }
@@ -490,12 +490,12 @@
             {
               "id": "verdad",
               "title": "La verdad",
-              "summary": "Osric le cuenta a la viuda que se durmió. Ella le escucha hasta el final y le devuelve el anillo: «Quédatelo. Ya has pagado bastante». Esa noche, por primera vez en once años, Osric deja que otro haga la guardia."
+              "summary": "Osric le cuenta a la viuda que se durmió. Ella le escucha hasta el final y le devuelve el anillo: «Quédatelo. Ya has pagado bastante». Esa noche, por primera vez en once años, Osric deja que otro haga la guardia. Al volver compra la «Gaviota», y sale a pescar los días que no hay encargo."
             },
             {
               "id": "mentira",
               "title": "Una mentira piadosa",
-              "summary": "Le decís que su marido murió luchando. Ella llora tranquila y se queda el anillo. Osric vuelve sin el anillo, pero sigue encendiendo su vela cada tarde."
+              "summary": "Le decís que su marido murió luchando. Ella llora tranquila y se queda el anillo. Osric vuelve sin el anillo, pero sigue encendiendo su vela cada tarde. La «Gaviota» sigue en venta: todavía no se ve con derecho a subirse a ella."
             }
           ]
         }
@@ -755,7 +755,7 @@
         },
         {
           "note": "La carta la ha escrito el cura de Robledo, de parte de su madre: ella está bien, el invierno ha sido duro y el tejado gotea. Al final le pide una cosa: una línea escrita por él, aunque sea torcida.",
-          "say": "No sé leer. Ni escribir. Nunca aprendí. Le mando dinero porque es lo único que sé mandarle.",
+          "say": "No sé leer. Ni escribir. Nunca aprendí. Le pago la renta de la casa porque es lo único que sé mandarle.",
           "mood": "triste",
           "replies": [
             {
@@ -834,7 +834,7 @@
           ]
         },
         {
-          "note": "Tardáis toda la tarde. Al final, en la tabla, pone ESTOY BIEN MADRE, con letras de todos los tamaños.",
+          "note": "Tardáis horas. Al final, en la tabla, pone ESTOY BIEN MADRE, con letras de todos los tamaños.",
           "say": "La voy a copiar en papel bueno. Y en la próxima pelea voy a estar más atento: ahora tengo algo que contarle.",
           "mood": "alegre"
         }
@@ -852,7 +852,7 @@
       "beats": [
         {
           "note": "Gerd no está comiendo, y eso ya es raro. Tiene otra carta del cura, y esta vez la ha leído él solo, despacio.",
-          "say": "El señor de Robledo quiere quitarle la casa a mi madre. Dice que le debe tres años de renta. ¡Mentira! Yo mando el dinero cada mes, con el mensajero.",
+          "say": "El señor de Robledo quiere quitarle la casa a mi madre. Dice que le debe tres años de renta. ¡Mentira! Yo le mando la renta cada mes, con un mensajero.",
           "mood": "enfadado",
           "replies": [
             {
@@ -1060,7 +1060,7 @@
             {
               "text": "¿Qué hiciste?",
               "bond": 0,
-              "then": "Cazar en su bosque para que comiéramos en casa. Tres inviernos."
+              "then": "Cazar en su bosque para que comiéramos en casa. Tres inviernos, hasta que casi me pillan. Esa misma noche me fui de Hoz."
             },
             {
               "text": "El dibujo es horrible. Sales mucho mejor.",
@@ -1251,12 +1251,12 @@
       "beats": [
         {
           "note": "Por la mañana, en el muelle, Osric mira una barca de pesca con un cartel de venta. La pintura está vieja, pero el casco es bueno.",
-          "say": "Esa. La «Gaviota». Treinta monedas de oro y es mía. Para eso son los ahorros.",
+          "say": "Esa. La «Gaviota». Trescientas monedas de oro y es mía. Para eso son los ahorros.",
           "replies": [
             {
               "text": "¿Cuánto te falta?",
               "bond": 1,
-              "then": "Doce. Doce monedas y dos encargos, si no me matan."
+              "then": "Ochenta. Dos encargos más, si no me matan."
             },
             {
               "text": "¿Tú, pescador?",
@@ -1289,7 +1289,7 @@
         },
         {
           "note": "Osric pasa la mano por el casco de la barca, despacio.",
-          "say": "Doce monedas. Ya casi."
+          "say": "Ochenta monedas. Ya casi."
         }
       ]
     },
@@ -1349,7 +1349,7 @@
           ]
         },
         {
-          "say": "Su mayordomo me pagó medio año y me echó: «Media paga, para medio escolta». Así me quedó el mote.",
+          "say": "Su mayordomo me pagó medio año y me echó: «Media paga, para medio escolta». Yo había vuelto sin un rasguño, y mi señor no. Así me quedó el mote.",
           "mood": "triste",
           "replies": [
             {
@@ -1372,7 +1372,7 @@
         },
         {
           "note": "Osric saca de la bolsa un anillo de plata con una torre grabada, lo mira y lo vuelve a guardar.",
-          "say": "Era suyo. Se lo quité del dedo para llevárselo a su viuda, y nunca he tenido valor. Nadie sabe que me dormí. Ahora lo sabes tú."
+          "say": "Era suyo. Se lo quité del dedo para llevárselo a su viuda, y nunca he tenido valor. Todos creen que no pude con los bandidos. Nadie sabe que me dormí. Ahora lo sabes tú."
         }
       ]
     },
@@ -1387,7 +1387,7 @@
       "where": "muelle",
       "beats": [
         {
-          "note": "Osric te espera en el muelle, delante de la «Gaviota». Lleva al cinto una bolsa llena: ya tiene las treinta monedas.",
+          "note": "Osric te espera en el muelle, delante de la «Gaviota». Lleva al cinto una bolsa llena: ya tiene las trescientas monedas.",
           "say": "Ya tengo el dinero. Mañana podría comprarla. Pero antes de subirme a ella, tengo que cerrar una cosa.",
           "replies": [
             {

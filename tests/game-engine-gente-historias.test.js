@@ -7,7 +7,7 @@ import { describe, test, expect } from '@jest/globals';
 import { readFileSync } from 'node:fs';
 import { readMeetupRows, scenesFor, unlocksAt, renderScene, personOf } from '../public/scripts/game-engine/campaign/meetups.js';
 import { readTalkRows } from '../public/scripts/game-engine/campaign/small-talk.js';
-import { HIRELINGS } from '../public/scripts/game-engine/campaign/guests.js';
+import { HIRELINGS, MERCENARY_FEE } from '../public/scripts/game-engine/campaign/guests.js';
 
 const read = (/** @type {string} */ path) => JSON.parse(readFileSync(new URL(`../public/${path}`, import.meta.url), 'utf8'));
 const data = readMeetupRows(read('compendio/quedadas.json'));
@@ -96,6 +96,28 @@ describe('D-J33: las historias de los mercenarios', () => {
         expect(ending('Osric Mediapaga', 'verdad')).toMatch(/guardia/);
         expect(ending('Osric Mediapaga', 'mentira')).toMatch(/vela/);
         expect(ending('Gerd el Mellado', 'plantar-cara')).toMatch(/recibos/);
+        // La flecha que Nella te deja en el rango 4 vuelve en los dos finales, y la barca de Osric
+        // depende de cómo acabe lo del anillo.
+        expect(scenesOf('Nella Tresflechas').find(s => s.rank === 4)?.text).toMatch(/plumas rojas/);
+        for (const id of ['multa', 'carcel']) expect(ending('Nella Tresflechas', id)).toMatch(/flecha de plumas rojas/);
+        expect(ending('Osric Mediapaga', 'verdad')).toMatch(/compra la «Gaviota»/);
+        expect(ending('Osric Mediapaga', 'mentira')).toMatch(/«Gaviota» sigue en venta/);
+    });
+
+    test('las cuentas cuadran con el juego: la barca vale más que un encargo, y Gerd paga la renta al señor', () => {
+        // Un mercenario cobra MERCENARY_FEE por encargo (y nivel): una barca de treinta monedas se
+        // compraría con un solo encargo, y no haría falta ahorrar.
+        const osric = scenesOf('Osric Mediapaga').map(s => s.text).join(' ');
+        const price = /(\S+) monedas de oro y es mía/.exec(osric)?.[1];
+        expect(price).toBe('Trescientas');
+        expect(300).toBeGreaterThan(MERCENARY_FEE * 3);
+        // Lo que Gerd manda a Robledo es la renta, que lleva un mensajero al señor: si fuera dinero
+        // para su madre, ella habría notado en tres años que no llegaba.
+        const gerd = [...talkOf('Gerd el Mellado'), ...scenesOf('Gerd el Mellado').map(s => s.text)].join(' ');
+        expect(gerd).not.toMatch(/mando la mitad a Robledo, a mi madre|Le mando dinero/);
+        expect(gerd).toMatch(/renta de la casa/);
+        // Nadie sabe que Osric se durmió: el mayordomo le echó porque volvió entero y su señor no.
+        expect(osric).toMatch(/Todos creen que no pude con los bandidos/);
     });
 
     test('nada promete una segunda paga: al mercenario se le paga una vez, al contratarlo', () => {

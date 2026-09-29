@@ -4548,15 +4548,33 @@
     "endings": {
       "yugo-de-hierro": {
         "title": "El yugo de hierro",
-        "scene": "La bandera negra ondea sobre las ruinas humeantes del castillo de Vane. La Capitana Keller te tira a los pies una bolsa pesada, con más oro del que has visto en tu vida. A tu alrededor, los soldados de Vane cuelgan de las almenas y los campesinos reconstruyen el peaje bajo el látigo. Eres {rico|rica} y has sobrevivido al invierno. Pero al marcharte, la gente aparta la mirada: eres {el mercenario|la mercenaria} que vendió el valle a los Keller."
+        "scene": "La bandera negra ondea sobre las ruinas humeantes del castillo de Vane. La Capitana Keller te tira a los pies una bolsa pesada, con más oro del que has visto en tu vida. A tu alrededor, los soldados de Vane cuelgan de las almenas y los campesinos reconstruyen el peaje bajo el látigo. Eres {rico|rica} y has sobrevivido al invierno. Pero al marcharte, la gente aparta la mirada: eres {el mercenario|la mercenaria} que vendió el valle a los Keller.",
+        "epilogues": [
+          { "who": "La Casa Keller", "text": "La Casa Keller se queda con el valle. Cobra el peaje el doble y a eso lo llama orden." },
+          { "who": "Lord Edmund Vane", "text": "Lord Vane no llega a la primavera: los Keller lo cuelgan de su propia muralla." },
+          { "who": "Los Lobos del Bosque", "text": "Los Lobos del Bosque se esconden más adentro que nunca. En el pueblo nadie dice su nombre en voz alta." },
+          { "who": "Giles", "text": "Giles sigue sirviendo cerveza, ahora a soldados de negro que nunca pagan la cuenta." }
+        ]
       },
       "status-quo-de-sangre": {
         "title": "El status quo de sangre",
-        "scene": "Lord Vane tose sangre sobre sus alfombras, pero respira. Los Keller han vuelto a las montañas y los Lobos han caído en el bosque. Tu paga llega en un cofre de plata fina. El valle sigue siendo de los Montesclaros, aunque los campos estén yermos y apenas quede quien los trabaje. Has cumplido como {un profesional|una profesional}. Te marchas por el paso del sur y dejas atrás un cementerio gobernado por un noble endeudado."
+        "scene": "Lord Vane tose sangre sobre sus alfombras, pero respira. Los Keller han vuelto a las montañas y los Lobos han caído en el bosque. Tu paga llega en un cofre de plata fina. El valle sigue siendo de los Montesclaros, aunque los campos estén yermos y apenas quede quien los trabaje. Has cumplido como {un profesional|una profesional}. Te marchas por el paso del sur y dejas atrás un cementerio gobernado por un noble endeudado.",
+        "epilogues": [
+          { "who": "Leales de Montesclaros", "text": "Los Montesclaros conservan el valle, pero con las arcas vacías y los campos sin nadie que los trabaje." },
+          { "who": "Lord Edmund Vane", "text": "Lord Vane sube otra vez los impuestos para pagar la guerra. Nadie se atreve a quejarse." },
+          { "who": "Karl", "text": "A Karl el Sordo lo entierran los suyos en el bosque, en un sitio que no le dicen a nadie." },
+          { "who": "La Casa Keller", "text": "La Casa Keller vuelve a las montañas. Dicen que el Duque ya prepara la próxima campaña." }
+        ]
       },
       "anarquia-del-barro": {
         "title": "La anarquía del barro",
-        "scene": "Ya no hay señores en el valle de Vane. Karl el Sordo y los suyos han pasado a cuchillo a los nobles y han echado a los invasores. El castillo es una ruina saqueada donde los campesinos se reparten el grano de los señores. Para ti no hay bolsa de oro: solo un abrazo tosco, una buena armadura arrancada a un oficial de Keller y un caballo para cruzar el paso. Dejas atrás un lugar sin ley, libre pero hambriento, y una leyenda: la {del lobo solitario|de la loba solitaria} que derribó a los Montesclaros."
+        "scene": "Ya no hay señores en el valle de Vane. Karl el Sordo y los suyos han pasado a cuchillo a los nobles y han echado a los invasores. El castillo es una ruina saqueada donde los campesinos se reparten el grano de los señores. Para ti no hay bolsa de oro: solo un abrazo tosco, una buena armadura arrancada a un oficial de Keller y un caballo para cruzar el paso. Dejas atrás un lugar sin ley, libre pero hambriento, y una leyenda: la {del lobo solitario|de la loba solitaria} que derribó a los Montesclaros.",
+        "epilogues": [
+          { "who": "Karl", "text": "Karl el Sordo reparte el grano del castillo en la plaza, y no deja que nadie le llame señor." },
+          { "who": "Los Lobos del Bosque", "text": "Los Lobos del Bosque bajan a vivir al pueblo. Los primeros meses hay más peleas que pan." },
+          { "who": "Lord Edmund Vane", "text": "Lord Vane muere en su salón. Su escudo arde en la misma hoguera que sus libros de cuentas." },
+          { "who": "Torres", "text": "El alguacil Torres desaparece la primera noche, y nadie sale a buscarlo." }
+        ]
       }
     },
     "omens": [

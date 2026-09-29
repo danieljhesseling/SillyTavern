@@ -123,8 +123,8 @@
       "campaign": "gremio",
       "moment": "viaje",
       "lines": [
-        "Cuando cobremos, mando la mitad a Robledo, a mi madre.",
-        "Ella quiere cartas. Yo le mando monedas, que se entienden mejor."
+        "De lo que cobro, la mitad va a Robledo: la renta de la casa de mi madre.",
+        "Ella quiere cartas. Yo le pago el techo, que eso sí sé hacerlo."
       ],
       "replies": [
         {
@@ -695,9 +695,9 @@
       ],
       "replies": [
         {
-          "text": "¿Cómo la vas a llamar?",
+          "text": "¿Cómo se llama la barca?",
           "mood": 1,
-          "then": "Algo sin gloria. Las barcas con nombre de héroe se hunden antes."
+          "then": "«Gaviota». Un nombre sin gloria. Las barcas con nombre de héroe se hunden antes."
         },
         {
           "text": "¿Te falta mucho para comprarla?",
@@ -867,7 +867,7 @@
         {
           "text": "¿Cuál me recomiendas?",
           "mood": 0,
-          "then": "Eso lo decides tú. Pero pregúntame lo que quieras de cualquiera."
+          "then": "Eso lo decides tú. Pero pregúntame lo que quieras de cualquiera de ellas."
         },
         {
           "text": "Gracias. La leeré con calma.",
@@ -1047,12 +1047,12 @@
         {
           "text": "Frío y humedad, como siempre.",
           "mood": 0,
-          "then": "Otoño en el puerto. No cambia nunca."
+          "then": "Así es el puerto. Aquí eso no cambia nunca."
         },
         {
           "text": "Yo también me alegro de verte, Brunilda.",
           "mood": 1,
-          "then": "No se lo digas a nadie, que tengo fama de seca."
+          "then": "Tú calla, que tengo fama de seca."
         }
       ]
     },
@@ -1651,7 +1651,7 @@
         "hora": "morning"
       },
       "lines": [
-        "Aún no está caliente.",
+        "La fragua aún no está caliente.",
         "Vuelve en un rato."
       ],
       "replies": [

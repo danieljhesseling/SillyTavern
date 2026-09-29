@@ -15,6 +15,10 @@
  * y nunca menos de uno. Los trucos se saben aparte, se lanzan a voluntad y pegan más a los
  * niveles 5, 11 y 17.
  *
+ * Y quien **solo lanza rituales** (`ritualsOnly`, el erudito: D-J27) no tiene espacios ni
+ * prepara nada: su lista son los rituales de la suya, y los lanza de su libro, con los diez
+ * minutos de más y nunca peleando.
+ *
  * En la ficha: `cantrips` (trucos), `spellsKnown` (los que sabe, si es `known`),
  * `spellbook` (el libro, si es `spellbook`) y `prepared` (los de hoy).
  *
@@ -83,7 +87,7 @@ export function spellsKnownCount(classRow, level) {
  */
 export function preparedLimit(classRow, member) {
     const casting = casterOf(classRow);
-    if (!casting || casting.mode === 'known') return 0;
+    if (!casting || casting.mode === 'known' || casting.ritualsOnly) return 0;
     const level = levelOf(member?.level);
     const { modifier } = spellcastingStats(member, classRow);
     return Math.max(1, modifier + (casting.prepares === 'half' ? Math.floor(level / 2) : level));
@@ -140,7 +144,8 @@ export function scaleCantrip(formula, level) {
 }
 
 /**
- * Los conjuros de la lista de su clase, normalizados.
+ * Los conjuros de la lista de su clase, normalizados. Para quien solo lanza rituales, solo
+ * los rituales.
  *
  * @param {any} classRow
  * @param {any[]} catalogue Filas de `conjuros.json` (crudas o normalizadas).
@@ -149,7 +154,8 @@ export function scaleCantrip(formula, level) {
 export function classSpellList(classRow, catalogue) {
     const casting = casterOf(classRow);
     if (!casting) return [];
-    return spellsOfClass((Array.isArray(catalogue) ? catalogue : []).map(normalizeSpell), casting.list);
+    const list = spellsOfClass((Array.isArray(catalogue) ? catalogue : []).map(normalizeSpell), casting.list);
+    return casting.ritualsOnly ? list.filter(spell => spell.ritual) : list;
 }
 
 /**
@@ -164,6 +170,8 @@ export function classSpellList(classRow, catalogue) {
 export function isCastableBy(member, classRow, spell) {
     const casting = casterOf(classRow);
     if (!casting || !spell || !spell.classes.includes(casting.list)) return false;
+    // D-J27: sin espacios, nada se lanza así; sus rituales van por `ritualSpells`.
+    if (casting.ritualsOnly) return false;
     const has = (/** @type {string[]} */ list) => list.includes(spell.id) || spell.aliases.some(alias => list.includes(alias));
     if (spell.level === 0) return has(ids(member?.cantrips));
     if (spell.level > maxSpellLevel(classRow, member?.level)) return false;
@@ -220,6 +228,9 @@ export function checkPreparation({ member, classRow, catalogue, chosen }) {
     const wanted = [...new Set(ids(chosen))];
     if (!casting || casting.mode === 'known') {
         return { ok: false, errors: ['Esta clase no prepara: se sabe sus conjuros.'], prepared: [], limit: 0 };
+    }
+    if (casting.ritualsOnly) {
+        return { ok: false, errors: ['Esta clase no prepara: lanza sus rituales del libro, sin espacios.'], prepared: [], limit: 0 };
     }
     const limit = preparedLimit(classRow, member);
     const max = maxSpellLevel(classRow, member?.level);
@@ -303,10 +314,12 @@ export function spellChoicesAtLevel({ classRow, level, catalogue, member = {} })
         lines: /** @type {string[]} */ ([]),
     };
 
-    if (choices.newSpellLevel) choices.lines.push(`Ya lanza conjuros de ${SLOT_LABELS[/** @type {1} */ (max)]}.`);
+    // D-J27: quien solo lanza rituales lo oye con esa palabra, que no hay espacios que esperar.
+    const what = casting.ritualsOnly ? { one: 'ritual', some: 'rituales' } : { one: 'conjuro', some: 'conjuros' };
+    if (choices.newSpellLevel) choices.lines.push(`Ya lanza ${what.some} de ${SLOT_LABELS[/** @type {1} */ (max)]}.`);
     if (newCantrips > 0) choices.lines.push(`Aprende ${newCantrips === 1 ? 'un truco nuevo' : `${newCantrips} trucos nuevos`}.`);
-    if (casting.mode === 'known' && newSpells > 0) choices.lines.push(`Aprende ${newSpells === 1 ? 'un conjuro nuevo' : `${newSpells} conjuros nuevos`}.`);
-    if (casting.mode === 'spellbook' && newSpells > 0) choices.lines.push(`Copia ${newSpells} conjuros en su libro.`);
+    if (casting.mode === 'known' && newSpells > 0) choices.lines.push(`Aprende ${newSpells === 1 ? `un ${what.one} nuevo` : `${newSpells} ${what.some} nuevos`}.`);
+    if (casting.mode === 'spellbook' && newSpells > 0) choices.lines.push(`Copia ${newSpells === 1 ? `un ${what.one}` : `${newSpells} ${what.some}`} en su libro.`);
     if (canSwap) choices.lines.push('Puede cambiar uno que sabía por otro.');
     if (limit > 0) choices.lines.push(`Prepara ${limit} cada mañana.`);
     return choices;
@@ -336,6 +349,11 @@ export function coverageGaps({ classRows, catalogue, levels = [1, 2, 3, 4, 5] })
         const name = text(row?.name) || text(row?.id);
         for (const level of levels) {
             const max = maxSpellLevel(row, level);
+            // D-J27: a quien solo lanza rituales le basta con alguno a su alcance.
+            if (casting.ritualsOnly) {
+                if (!list.some(s => s.level >= 1 && s.level <= max)) gaps.push(`${name}, nivel ${level}: no tiene ningún ritual a su alcance.`);
+                continue;
+            }
             for (let spellLevel = 1; spellLevel <= max; spellLevel++) {
                 if (!list.some(s => s.level === spellLevel)) gaps.push(`${name}, nivel ${level}: no tiene conjuros de ${SLOT_LABELS[/** @type {1} */ (spellLevel)]}.`);
             }

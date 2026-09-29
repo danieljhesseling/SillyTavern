@@ -7,8 +7,13 @@
  *   «Añadir una campaña» con un archivo que no es JSON: dice dónde falla →
  *   con un paquete sin tableros: dice lo que dice el validador →
  *   con lo que da el Gem (el paquete de ejemplo, con cabecera y marcas [cite]): la tarjeta
- *   sale en el tablón, con sus niveles y su distancia → cerrar y abrir: sigue ahí →
- *   empezarla: el grupo viaja y la campaña empieza → volver al gremio: «En curso».
+ *   sale en el tablón, con su nivel recomendado y su distancia, en tu lista (D-J35) → pegar el
+ *   texto de otra que empieza en el nivel 10: avisa (D-J22) → quitarla del tablón (D-J35) →
+ *   cerrar y abrir: la primera sigue ahí → empezarla: el grupo viaja y la campaña empieza →
+ *   volver al gremio: «En curso» → acabarla: el salón la llama como el tablón (D-J19) →
+ *   un segundo personaje: el nombre no se repite (D-J14) y llega con 10 de oro (D-J11); Iria,
+ *   herida, descansa cuatro días y vuelve curada (D-J12) → otro gremio: tu campaña también
+ *   está en su tablón (D-J35).
  *
  * Uso:
  *   node tools/e2e-importar-campana.mjs              # sin ventana
@@ -335,6 +340,8 @@ try {
         return { campaign: data?.metadata?.hubCampaign ?? '', levels: data?.metadata?.hubLevels ?? null, places: (data?.metadata?.locationMaps ?? []).map((/** @type {any} */ l) => l.name) };
     });
     check('la campaña sabe de dónde sale y para qué nivel es', meta.campaign === ID && JSON.stringify(meta.levels) === '[1,2]' && meta.places.includes('El Molino de los Cuervos'), JSON.stringify(meta));
+    const boardName = await page.evaluate(() => String(window.SillyTavern.getContext().chatMetadata?.hubCampaignName ?? ''));
+    check('y cómo se llama en el tablón, para el salón de la fama (D-J19)', boardName === NAME, boardName);
     if (SHOT) await page.screenshot({ path: `${SHOT}.campana.png` });
 
     // 8. Volver al gremio: la vuelta se cuenta y en el tablón va «En curso».
@@ -348,6 +355,127 @@ try {
     await openBoard();
     tiles = await boardTiles();
     check('en el tablón, la tuya va «En curso»', /En curso/.test(tiles.find(t => t.id === ID)?.text ?? ''), JSON.stringify(tiles.find(t => t.id === ID)));
+
+    // 8b. D-J19: seguirla, acabarla y volver: en el salón de la fama se llama como en el tablón,
+    // no como su mundo («El Molino de prueba · Iria»).
+    await page.locator(`.hb-root [data-campaign="${ID}"]`).click();
+    const resumed = await until(async () => (await state()).world.includes(NAME), 60000);
+    await page.waitForTimeout(1500);
+    await page.evaluate(async () => {
+        const ctx = window.SillyTavern.getContext();
+        ctx.chatMetadata.plotEnding = 'El molino, libre';
+        await ctx.saveMetadata();
+    });
+    await dropToasts();
+    await until(async () => (await chips()).some(c => /Volver al gremio/.test(c)), 20000);
+    await clickChip(/Volver al gremio/);
+    await page.locator('.popup-button-ok:visible').first().click({ timeout: 3000 }).catch(() => {});
+    const backAgain = await until(async () => (await state()).world === hubWorld, 60000);
+    await page.waitForTimeout(1000);
+    await dropToasts();
+    const hallChip = await until(() => clickChip(/Salón de la fama/), 15000);
+    await page.waitForSelector('.popup:visible .hall-root', { timeout: 8000 }).catch(() => {});
+    const hall = await page.evaluate(() => [...document.querySelectorAll('.hall-root .hall-campaign')].map(e => (e.textContent || '').trim()));
+    check('acabada, entra en el salón de la fama con su nombre del tablón (D-J19)',
+        resumed && backAgain && hallChip && hall.length === 1 && hall[0].startsWith(`${NAME}: terminada con «El molino, libre»`), JSON.stringify({ resumed, backAgain, hallChip, hall }));
+    if (SHOT) await page.screenshot({ path: `${SHOT}.salon.png` });
+    await page.locator('.popup:visible .popup-button-ok').last().click({ timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(400);
+
+    // 9. Tus personajes: el nombre no se repite (D-J14), el segundo llega con 10 de oro (D-J11) y
+    // quien descansa en el gremio se cura con los días (D-J12).
+    /** El tuyo que va con el grupo. */
+    const leader = () => page.evaluate(async () => {
+        const party = (await import('/scripts/party.js')).getPartyMembersSnapshot();
+        const hero = party.find((/** @type {any} */ m) => !m.guest);
+        return hero ? { name: String(hero.name), gold: Number(hero.gold) || 0, hp: Number(hero.hp) || 0, maxHp: Number(hero.maxHp) || 0 } : null;
+    });
+    const toastText = () => page.evaluate(() => [...document.querySelectorAll('#toast-container .toast')].map(t => (t.textContent || '').trim()).join(' | '));
+    await openBoard();
+    await dropToasts();
+    await page.locator('.hb-root [data-hero-new]').click();
+    await page.waitForSelector('.hc-root', { timeout: 30000 });
+    await pickHeroCard(page, 'race', 'Humano');
+    await pickHeroCard(page, 'class', 'Guerrero');
+    await page.fill('.hc-root .hc-name', 'ÍRIA ');
+    await page.waitForTimeout(300);
+    const clash = await page.evaluate(() => ({
+        said: (document.querySelector('.hc-root .hc-name-taken') instanceof HTMLElement
+            && /** @type {HTMLElement} */ (document.querySelector('.hc-root .hc-name-taken')).offsetParent !== null)
+            ? (document.querySelector('.hc-root .hc-name-taken')?.textContent || '') : '',
+        off: /** @type {HTMLButtonElement|null} */ (document.querySelector('.hc-root .hc-enter'))?.disabled ?? null,
+    }));
+    check('«ÍRIA» no vale en el gremio de Iria: se dice llano y no se puede entrar (D-J14)',
+        clash.said === 'Ya hay un personaje que se llama Iria en este gremio. Elige otro nombre.' && clash.off === true, JSON.stringify(clash));
+    if (SHOT) await page.screenshot({ path: `${SHOT}.nombre.png` });
+    await page.fill('.hc-root .hc-name', 'Nuno');
+    await page.waitForTimeout(300);
+    const freed = await page.evaluate(() => ({
+        hidden: !(document.querySelector('.hc-root .hc-name-taken') instanceof HTMLElement
+            && /** @type {HTMLElement} */ (document.querySelector('.hc-root .hc-name-taken')).offsetParent !== null),
+        on: /** @type {HTMLButtonElement|null} */ (document.querySelector('.hc-root .hc-enter'))?.disabled === false,
+    }));
+    await page.locator('.hc-root .hc-enter').click();
+    const nuno = await until(async () => (await leader())?.name === 'Nuno', 30000);
+    await page.waitForTimeout(800);
+    const nunoNow = await leader();
+    check('con otro nombre sí, y el segundo llega con 10 de oro, no con 100 (D-J11)',
+        freed.hidden && freed.on && nuno && nunoNow?.gold === 10, JSON.stringify({ freed, nunoNow }));
+
+    // Iria se queda herida en el gremio y pasan cuatro días.
+    const rested = await page.evaluate(async (world) => {
+        const wi = await import('/scripts/world-info.js');
+        const data = await wi.loadWorldInfo(world);
+        data.metadata.hubHeroes = (data.metadata.hubHeroes ?? []).map((/** @type {any} */ h) => (h.name === 'Iria' ? { ...h, hp: 3 } : h));
+        await wi.saveWorldInfo(world, data, true);
+        const ctx = window.SillyTavern.getContext();
+        const calendar = ctx.chatMetadata.calendar ?? {};
+        ctx.chatMetadata.calendar = { ...calendar, day: (Number(calendar.day) || 1) + 4 };
+        await ctx.saveMetadata();
+        return (data.metadata.hubHeroes ?? []).map((/** @type {any} */ h) => ({ name: h.name, hp: h.hp, restDay: h.restDay }));
+    }, hubWorld);
+    await dropToasts();
+    await openBoard();
+    await page.locator('.hb-root .hb-heroes .hb-hero[data-hero]').filter({ hasText: 'Iria' }).click();
+    const iriaBack = await until(async () => (await leader())?.name === 'Iria', 30000);
+    let told = '';
+    await until(async () => /ha descansado/.test(told = await toastText()), 10000);
+    const iriaNow = await leader();
+    check('Iria vuelve del gremio curada por los cuatro días, y se dice (D-J12)',
+        iriaBack && iriaNow?.hp === iriaNow?.maxHp && /Iria ha descansado 4 días en el gremio: vuelve con la vida entera\./.test(told),
+        JSON.stringify({ rested, iriaNow, told }));
+    await page.locator('.hb-root .hb-close').click({ timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(500);
+
+    // 10. D-J35: en otro gremio tuyo, tu campaña también está. Y allí «Iria» sí vale (D-J14).
+    await dropToasts();
+    await page.evaluate(() => { void import('/scripts/campaigns.js').then(m => m.startHubGame()); });
+    // Con personajes en otro gremio, antes se ofrece traer a uno de ellos: aquí, uno nuevo.
+    await page.waitForSelector('.hc-root, .vt-root .vt-card.vt-new', { timeout: 120000 });
+    if (await page.locator('.vt-root .vt-card.vt-new').count() > 0) await page.locator('.vt-root .vt-card.vt-new').click();
+    await page.waitForSelector('.hc-root', { timeout: 60000 });
+    await pickHeroCard(page, 'race', 'Humano');
+    await pickHeroCard(page, 'class', 'Guerrero');
+    await page.fill('.hc-root .hc-name', 'Iria');
+    await page.waitForTimeout(300);
+    const otherOk = await page.evaluate(() => /** @type {HTMLButtonElement|null} */ (document.querySelector('.hc-root .hc-enter'))?.disabled === false);
+    await page.locator('.hc-root .hc-enter').click();
+    const inOther = await until(async () => {
+        const now = await state();
+        return /Gremio/.test(now.world) && now.world !== hubWorld && now.party.length === 1;
+    }, 60000);
+    await until(async () => (await chips()).some(c => /^Saltar la prueba$/.test(c)), 20000);
+    await clickChip(/^Saltar la prueba$/);
+    await page.waitForSelector('.popup:has-text("¿Saltar la prueba?")', { timeout: 10000 }).catch(() => {});
+    await page.locator('.popup-button-ok:visible').first().click({ timeout: 5000 }).catch(() => {});
+    await until(() => chatHas(/apunta tu nombre en el libro del gremio/), 15000);
+    const otherBoard = await openBoard();
+    tiles = await boardTiles();
+    const there = tiles.find(t => t.id === ID);
+    check('en un gremio nuevo, «Iria» vale otra vez, y tu campaña está en su tablón, sin empezar (D-J35, D-J14)',
+        otherOk && inOther && otherBoard && /Sin empezar/.test(there?.text ?? '') && !tiles.some(t => t.id === HIGH_ID),
+        JSON.stringify({ otherOk, inOther, ids: tiles.map(t => t.id), there }));
+    if (SHOT) await page.screenshot({ path: `${SHOT}.otro-gremio.png` });
     await page.locator('.hb-root .hb-close').click({ timeout: 5000 }).catch(() => {});
 
     check('sin errores en la página', problems.length === 0, problems.slice(0, 6).join('\n        '));
