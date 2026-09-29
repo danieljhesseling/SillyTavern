@@ -36,6 +36,7 @@ import { normalizePack } from './campaign-pack.js';
 import { readPlaces } from './town.js';
 import { readSights } from './sights.js';
 import { spellById, magicInData } from '../rules/grimoire.js';
+import { resolveGender } from './grammar.js';
 
 /**
  * @typedef {Object} EntrySpec
@@ -331,7 +332,8 @@ export function buildImportPlan(raw, options = {}) {
             .map(s => ({ id: s.id, verbo: s.verbo, text: s.text, skill: s.skill, ...(s.found ? { found: s.found } : {}) }));
         locations.set(name, {
             name,
-            description: text(place.description) || text(pack.world.synopsis),
+            // D-J17: la sinopsis puede traer `{forma|forma}`; de relleno, sin llaves.
+            description: text(place.description) || resolveGender(text(pack.world.synopsis)),
             url: '',
             // A cero: si la localidad acaba teniendo tableros, la vista crece con el mas
             // grande, como siempre. Las que se queden sin ninguno toman el tamano de una
@@ -376,7 +378,7 @@ export function buildImportPlan(raw, options = {}) {
         if (!locations.has(locationName)) {
             locations.set(locationName, {
                 name: locationName,
-                description: text(pack.world.synopsis),
+                description: resolveGender(text(pack.world.synopsis)),
                 url: '',
                 gridWidth: width,
                 gridHeight: height,

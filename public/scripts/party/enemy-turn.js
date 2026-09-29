@@ -20,7 +20,6 @@ import { planEnemyTurn } from '../game-engine/combat/enemy-ai.js';
 import { chooseEnemyAbility, longestReach, averageOf } from '../game-engine/combat/enemy-abilities.js';
 import { attackEdge, rollWithEdge, describeEdge, readManeuvers, cannotAct } from '../game-engine/combat/maneuvers.js';
 import { dropReadied, readiedAgainst } from '../game-engine/combat/readied.js';
-import { visibilityPenalties } from '../game-engine/world/visibility.js';
 import { describeIntents } from '../game-engine/combat/forecast.js';
 import { noteTaken } from '../game-engine/combat/tally.js';
 import { damageLine } from '../game-engine/rules/roll-line.js';
@@ -29,11 +28,14 @@ import { breaksMorale } from '../game-engine/combat/crits.js';
 import { planEndure } from '../game-engine/combat/bond-perks.js';
 import { spendPerk } from '../game-engine/campaign/bonds.js';
 import { knownAbilities, spendAbilityUse } from '../game-engine/rules/abilities.js';
+import { readCasterBlock, spendEnemySlot, enemySpellAbilities } from '../game-engine/combat/enemy-spells.js';
+import { readConcentration } from '../game-engine/rules/concentration.js';
+import { zoneFlagsAt } from '../game-engine/board/spell-zones.js';
 import { takeHitWhileDown, clearDeathSaves } from '../game-engine/rules/death-saves.js';
 import { findOpportunityAttacks, describeOpportunity } from '../game-engine/combat/opportunity.js';
 import { NEMESES_KEY } from './keys.js';
 import { combatEncounter, currentBoardName, currentLocationName, partyMembers, usedReactions } from './state.js';
-import { getAbilityCatalogue, resolveAbilityOnBoard } from './magic.js';
+import { getAbilityCatalogue, resolveAbilityOnBoard, spellRows } from './magic.js';
 import {
     enemyTokenId, flankedFrom, getAliveEnemies, getEnemyByInstanceId, getLivingPartyMembers, getTargetArmorClass,
     heightFor, heldInPlace, partyCell, saveCombatState,
@@ -41,11 +43,14 @@ import {
 import { floatOnToken, showCombatDiceRoll } from './combat-log.js';
 import { CONDITION_WORDS, judgeCurrentScenario, checkScenarioOutcome, endCombat, offerTruce } from './combat-flow.js';
 import { resolveFollowUpAttack, attackLine } from './player-actions.js';
-import { persistBoardTerrain, getActiveBoardContext, boardVisibility } from './board.js';
+import { persistBoardTerrain, getActiveBoardContext, attackHindrance } from './board.js';
 import { getCampaignBonds, saveCampaignState, campaignDay } from './time.js';
 import { postCombatNarration } from './narration.js';
 import { savePartyState, renderPartyMembers } from './roster.js';
 import { rememberTogether, bark, recordFeat } from './companions.js';
+import {
+    concentrationAfterHurt, counterAgainst, enemyWalksZones, hurtSummon, livingSummons, shieldAgainst,
+} from './spell-turn.js';
 
 /**
  * Resolve enemy action: attack roll, damage and possible status effects.
@@ -76,7 +81,8 @@ export function resolveEnemyAttackOn(enemy, target) {
         targetConditions: target.activeConditions ?? [],
         attackerConditions: enemy.activeConditions ?? [],
         // Ideas 73 y 90: la niebla y la noche estorban a los dos bandos.
-        hindered: visibilityPenalties(boardVisibility(), enemyFeet),
+        // J19.6: y una zona que no deja ver (niebla, oscuridad) entre los dos, también.
+        hindered: attackHindrance({ x: Number(enemy.gridX) || 0, y: Number(enemy.gridY) || 0 }, partyCell(target), enemyFeet),
         distanceFeet: enemyFeet,
         // B1: desde arriba, mejor.
         height: heightFor({ x: Number(enemy.gridX) || 0, y: Number(enemy.gridY) || 0 }, partyCell(target)),
@@ -87,6 +93,8 @@ export function resolveEnemyAttackOn(enemy, target) {
             { x: Number(target.mapPosition?.gridX) || 0, y: Number(target.mapPosition?.gridY) || 0 },
             getAliveEnemies().filter(e => e !== enemy).map(e => ({ x: Number(e.gridX) || 0, y: Number(e.gridY) || 0 })),
         ),
+        // J19: Protección contra el mal y el bien estorba a los muertos, los demonios…
+        attackerKind: enemyKind(enemy),
     });
     const edged = rollWithEdge(() => rollDiceDetailed('1d20', 20).total, edge.mode);
     const attackRoll = { total: edged.natural, natural: edged.natural };
@@ -103,7 +111,10 @@ export function resolveEnemyAttackOn(enemy, target) {
     const attackTotal = d20 + attackMod;
     const { ac: targetAc, cover: targetCover } = getTargetArmorClass(target, enemy);
     const isCrit = d20 === 20;
-    const isHit = isCrit || attackTotal >= targetAc;
+    const wouldHit = isCrit || attackTotal >= targetAc;
+    // J19.7: quien sabe Escudo lo levanta si con él el golpe ya no entra (un crítico entra igual).
+    const shield = wouldHit && !isCrit ? shieldAgainst(target, { attackTotal, targetAc }) : { blocked: false, lines: [] };
+    const isHit = wouldHit && !shield.blocked;
 
     showCombatDiceRoll({
         title: `${enemy.name} ataca`,
@@ -117,10 +128,15 @@ export function resolveEnemyAttackOn(enemy, target) {
     });
 
     lines.push(`👹 ${enemy.name} ataca a ${target.name}.`);
-    lines.push(attackLine({ who: enemy.name, at: target.name, total: attackTotal, ac: targetAc, hit: isHit, natural: d20, modifier: attackMod, cover: targetCover, edge: describeEdge(edged, edge.mode, edge.reasons) }));
+    lines.push(attackLine({ who: enemy.name, at: target.name, total: attackTotal, ac: targetAc, hit: wouldHit, natural: d20, modifier: attackMod, cover: targetCover, edge: describeEdge(edged, edge.mode, edge.reasons) }));
+    lines.push(...shield.lines);
 
     if (!isHit) {
         lines.push('❌ Resultado: fallo.');
+        if (shield.blocked) {
+            savePartyState();
+            saveCombatState();
+        }
         return lines.join('\n');
     }
 
@@ -179,6 +195,9 @@ export function resolveEnemyAttackOn(enemy, target) {
  * @returns {string[]}
  */
 export function damagePartyMember(target, totalDamage, isCrit = false) {
+    // J19.5: una invocación no se desangra ni tira salvaciones: a cero, se desvanece.
+    if (target?.summon) return hurtSummon(target, totalDamage);
+
     /** @type {string[]} */
     const lines = [];
 
@@ -239,6 +258,9 @@ export function damagePartyMember(target, totalDamage, isCrit = false) {
         bark(target, 'hurt');
     }
 
+    // J19.4: quien se concentra y recibe un golpe, aguanta o lo pierde (y si cae, lo pierde).
+    lines.push(...concentrationAfterHurt(target, before - (Number(target.hp) || 0)));
+
     return lines;
 }
 
@@ -259,16 +281,61 @@ function resolveEnemyAbility(enemy, choice) {
         : (choice.side === 'self' ? enemy : getEnemyByInstanceId(choice.targetId));
     if (!target) return '';
 
-    enemy.abilityUses = spendAbilityUse(enemy, ability);
+    // J19.12: un conjuro de su bloque `spellcasting` gasta su espacio; lo innato y lo demás,
+    // su uso. Contarlo en los dos sitios lo gastaría dos veces.
+    const block = readCasterBlock(enemy.spellcasting);
+    const fromSlot = Boolean(block) && Number(ability.spellLevel) > 0 && !ability.innate;
+    if (fromSlot && block) enemy.slotsUsed = spendEnemySlot(enemy, block, Number(ability.slotLevel) || Number(ability.spellLevel));
+    else enemy.abilityUses = spendAbilityUse(enemy, ability);
     // R4: un cultista también gasta las cargas de su círculo.
     if (typeof ability.circle === 'number' && ability.circle > 0) enemy.spellCharges = spendCharge(enemy, ability.circle);
+    // J19.7: alguien del grupo con Contraconjuro, a su alcance, lo corta antes de que salga.
+    const counter = typeof ability.spellLevel === 'number' ? counterAgainst(enemy, ability) : { countered: false, lines: [] };
+    if (counter.countered) {
+        savePartyState();
+        saveCombatState();
+        renderPartyMembers();
+        return [`🪄 ${enemy.name} lanza ${ability.name}.`, ...counter.lines].join('\n');
+    }
     // R3: el mismo camino que el grupo: con área, alcanza también a los suyos si están ahí.
-    const lines = resolveAbilityOnBoard({ actor: enemy, side: 'enemy', ability, subject: target });
+    const lines = [...counter.lines, ...resolveAbilityOnBoard({ actor: enemy, side: 'enemy', ability, subject: target })];
 
     savePartyState();
     saveCombatState();
     renderPartyMembers();
     return lines.join('\n');
+}
+
+/**
+ * J19.12: lo que sabe usar un enemigo: sus habilidades y, si trae bloque `spellcasting`, sus
+ * conjuros de `conjuros.json` con los espacios que le quedan. Si ya se concentra en algo, no
+ * suelta su conjuro por otro (`enemySpellAbilities`); dentro de un silencio no dice ninguno.
+ *
+ * @param {any} enemy
+ * @returns {any[]}
+ */
+export function enemyAbilities(enemy) {
+    const known = knownAbilities(enemy, getAbilityCatalogue());
+    const block = readCasterBlock(enemy?.spellcasting);
+    if (!block) return known;
+    const zones = Array.isArray(combatEncounter.spellZones) ? combatEncounter.spellZones : [];
+    if (zoneFlagsAt(zones, { x: Number(enemy.gridX) || 0, y: Number(enemy.gridY) || 0 }).silence) return known;
+    const spells = enemySpellAbilities({ enemy, block, catalogue: spellRows(), concentrating: Boolean(readConcentration(enemy.concentration)) });
+    const own = new Set(spells.map(ability => ability.id));
+    return [...spells, ...known.filter(ability => !own.has(ability.id))];
+}
+
+/**
+ * Qué es un enemigo, en palabras, para lo que distingue a los muertos, los demonios o las
+ * bestias (Protección contra el mal y el bien): sus etiquetas, su nombre y su arquetipo.
+ *
+ * @param {any} enemy
+ * @returns {string}
+ */
+function enemyKind(enemy) {
+    const template = getCurrentWorldEnemies().find((/** @type {any} */ t) => String(t.id) === String(enemy?.templateId));
+    return [enemy?.name, template?.name, enemy?.archetype, template?.archetype, ...(Array.isArray(template?.tags) ? template.tags : [])]
+        .filter(Boolean).map(String).join(' ');
 }
 
 /**
@@ -284,9 +351,10 @@ function resolveEnemyAbility(enemy, choice) {
 export function planFor(enemy) {
     const enemyX = Number.isFinite(Number(enemy.gridX)) ? Number(enemy.gridX) : 0;
     const enemyY = Number.isFinite(Number(enemy.gridY)) ? Number(enemy.gridY) : 0;
-    const livingParty = getLivingPartyMembers();
+    // J19.5: las invocaciones del grupo también se ponen en medio, y se les pega.
+    const livingParty = [...getLivingPartyMembers(), ...livingSummons()];
     const { terrain, gridWidth, gridHeight } = getActiveBoardContext();
-    const known = knownAbilities(enemy, getAbilityCatalogue());
+    const known = enemyAbilities(enemy);
 
     /** @param {any} member */
     const memberCell = (member) => ({
@@ -343,7 +411,7 @@ export function planFor(enemy) {
  */
 export function buildEnemyIntents() {
     if (!combatEncounter.active) return [];
-    const names = Object.fromEntries(partyMembers.map(m => [String(m.id), String(m.name)]));
+    const names = Object.fromEntries([...partyMembers, ...livingSummons()].map(m => [String(m.id), String(m.name)]));
     return describeIntents(
         getAliveEnemies().map(enemy => ({ name: String(enemy.name), plan: planFor(enemy) })),
         names,
@@ -440,7 +508,10 @@ export function resolveEnemyTurnAction(turnEntry) {
         return fled;
     }
 
-    const known = knownAbilities(enemy, getAbilityCatalogue());
+    // J19.12: con sus conjuros, si los tiene (`spellcasting`).
+    const known = enemyAbilities(enemy);
+    // J19.5: a quien puede pegar: el grupo y sus invocaciones.
+    const targetsNow = [...livingParty, ...livingSummons()];
 
     /** @param {any} member */
     const memberCell = (member) => ({
@@ -455,9 +526,27 @@ export function resolveEnemyTurnAction(turnEntry) {
 
     if (movedThisTurn) {
         const leftFrom = { x: Number(enemy.gridX) || 0, y: Number(enemy.gridY) || 0 };
-        enemy.gridX = plan.destination.x;
-        enemy.gridY = plan.destination.y;
-        lines.push(`🚶 ${enemy.name} avanza a (${plan.destination.x + 1}, ${plan.destination.y + 1}). ${plan.rationale} (${plan.movementCostFeet} ft)`);
+        // J19.6: las zonas que cruza le hacen lo suyo, y donde queda atrapado, se queda.
+        const steps = (Array.isArray(plan.path) ? plan.path : []).slice(1);
+        const walk = enemyWalksZones(enemy, steps.length > 0 ? steps : [plan.destination]);
+        const stop = (steps.length > 0 ? steps[walk.stopAt] : null) ?? plan.destination;
+        enemy.gridX = stop.x;
+        enemy.gridY = stop.y;
+        const cut = stop.x !== plan.destination.x || stop.y !== plan.destination.y;
+        lines.push(cut
+            ? `🚶 ${enemy.name} avanza hasta (${stop.x + 1}, ${stop.y + 1}) y se queda a medio camino.`
+            : `🚶 ${enemy.name} avanza a (${plan.destination.x + 1}, ${plan.destination.y + 1}). ${plan.rationale} (${plan.movementCostFeet} ft)`);
+        lines.push(...walk.lines);
+        if ((Number(enemy.currentHp) || 0) <= 0) {
+            saveCombatState();
+            if (!checkScenarioOutcome() && getAliveEnemies().length === 0 && !judgeCurrentScenario()) {
+                postCombatNarration(`[COMBAT] ${lines.join('\n')}`);
+                postCombatNarration('🏆 [COMBAT] Todos los enemigos han sido derrotados.');
+                endCombat('victory');
+                return '';
+            }
+            return lines.join('\n');
+        }
         // Idea 4: quien le esperaba con el golpe preparado, se lo da antes de que haga nada.
         const ambusher = readiedAgainst({
             readied: combatEncounter.readied,
@@ -515,7 +604,7 @@ export function resolveEnemyTurnAction(turnEntry) {
     // El plan se hizo con el alcance de sus habilidades; si no ha usado ninguna, su golpe
     // tiene que llegar de verdad.
     const basicReach = Number(enemy.attackRangeFeet ?? enemy.range) || 5;
-    const struck = plan.targetId ? livingParty.find(member => String(member.id) === plan.targetId) : null;
+    const struck = plan.targetId ? targetsNow.find(member => String(member.id) === plan.targetId) : null;
     const struckCell = struck ? memberCell(struck) : null;
     const outOfReach = struckCell
         && getDistanceInFeet(Number(enemy.gridX) || 0, Number(enemy.gridY) || 0, struckCell.x, struckCell.y) > basicReach;
@@ -526,7 +615,7 @@ export function resolveEnemyTurnAction(turnEntry) {
         return lines.join('\n');
     }
 
-    const target = livingParty.find(member => String(member.id) === plan.targetId);
+    const target = targetsNow.find(member => String(member.id) === plan.targetId);
     if (!target) {
         return `[COMBAT] ${enemy.name} no encuentra un objetivo valido.`;
     }

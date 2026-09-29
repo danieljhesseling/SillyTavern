@@ -95,6 +95,7 @@ import { currentSurvival, survivalNow } from './modes.js';
 import { postCombatNarration, tellMoment, postForModel, showTip } from './narration.js';
 import { savePartyState, renderPartyMembers } from './roster.js';
 import { tellBondScene, rememberTogether, bark, judgeDecision, partyMorale } from './companions.js';
+import { afterFight } from './social.js';
 import { raiseFame } from './town.js';
 import { countStat } from './menus.js';
 
@@ -796,6 +797,10 @@ export function instancesFromPlacements(placements) {
             templateId: template.id,
             name: already > 0 ? `${template.name} ${already + 1}` : template.name,
             avatar: template.avatar,
+            // Idea 24: el jefe que marca el bestiario del paquete (o la casilla del tablero) lo
+            // es también aquí; antes solo lo era si se llamaba con `/fight`, y un tablero escrito
+            // perdía sus fases de jefe y su contestar una vez por ronda.
+            boss: Boolean(/** @type {any} */ (placement).boss || /** @type {any} */ (template).boss),
             currentHp: Math.round(template.maxHp * (back?.hpFactor ?? 1)),
             maxHp: Math.round(template.maxHp * (back?.hpFactor ?? 1)),
             armorClass: template.armorClass,
@@ -1330,6 +1335,9 @@ export function endCombat(reason = 'ended') {
     setCombatBoardSelection({ tokenId: null, boardName: '', locationName: '' });
     saveCombatState();
     restoreChatPlaceholder();
+    // J14.1 y J14.2: la pelea de tablero se lleva su parte del día, y tras ganarla, a veces
+    // alguien del grupo tiene algo que decir.
+    afterFight(reason, { board: currentBoardName });
 }
 
 /**

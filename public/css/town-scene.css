@@ -105,6 +105,17 @@
     opacity: 0.75;
 }
 
+/* D-J29: la tienda o la herrería cerradas: el cartel se lee, y el sitio se apaga un poco. */
+.gs-town-place.gs-town-closed .gs-town-place-art {
+    filter: grayscale(0.6) brightness(0.7);
+}
+
+.gs-town-place.gs-town-closed .gs-town-place-who {
+    opacity: 1;
+    font-weight: bold;
+    color: var(--gs-accent-gold);
+}
+
 /* Lo del gremio que no es de ningún sitio: volver a él desde una campaña. */
 .gs-town-extra {
     display: flex;

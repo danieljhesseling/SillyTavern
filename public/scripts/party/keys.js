@@ -100,6 +100,18 @@ export const PLOT_KEY = 'plot';
 export const PLOT_STATE_KEY = 'plotState';
 /** Si la mecha ya se ha contado. */
 export const PLOT_ANNOUNCED_KEY = 'plotAnnounced';
+/** J9.2: los hitos cuya escena ya se jugó en su ventana (no se juega dos veces). */
+export const PLOT_SCENES_PLAYED_KEY = 'plotScenesPlayed';
+/** J9.6: lo que se decidió en las escenas del hilo, y lo que se apuntó en ellas, para el Diario. */
+export const PLOT_DECISIONS_KEY = 'plotDecisions';
+/** J8.6: lo que se recuerda de las charlas con ramas (`readDialogueMemory`). */
+export const DIALOGUE_MEMORY_KEY = 'dialogues';
+/**
+ * J9.2 y J8: las escenas y las charlas escritas se abren en su ventana. Se pueden apagar (las
+ * vueltas de prueba que no miran eso lo hacen, como con los sucesos): entonces se cuentan en
+ * el chat, como antes.
+ */
+export const STORY_WINDOWS_STORAGE = 'sillytavern_gameStoryWindows';
 
 /** J4.5: cómo empezó el grupo la campaña, para contar al final lo que se lleva cada uno. */
 export const CAMPAIGN_START_KEY = 'campaignStart';

@@ -20,7 +20,7 @@ import {
 } from '../game-engine/board/terrain.js';
 import { isHigh } from '../game-engine/board/heights.js';
 import { pairLine } from '../game-engine/rules/pair-moves.js';
-import { findPath } from '../game-engine/board/pathfinding.js';
+import { findPath, getPathCost } from '../game-engine/board/pathfinding.js';
 import { getCoverAlongLine } from '../game-engine/board/line-of-sight.js';
 import {
     MANEUVERS, recordManeuver, attackEdge, consumeHelp, rollWithEdge, describeEdge, resolveShove, noteKnockdown,
@@ -30,7 +30,6 @@ import { THROWABLES, throwablesOf, burningPuddle, SCENERY, sceneryNear } from '.
 import { readyAttack } from '../game-engine/combat/readied.js';
 import { canReact, markReacted, bossLine } from '../game-engine/combat/boss-reaction.js';
 import { perkBonus } from '../game-engine/rules/level-perks.js';
-import { visibilityPenalties } from '../game-engine/world/visibility.js';
 import { noteDealt } from '../game-engine/combat/tally.js';
 import { enterCell, describeHazard, hazardsAt } from '../game-engine/board/hazards.js';
 import { spendMovement, hasAction, useAction } from '../game-engine/combat/turn-machine.js';
@@ -54,6 +53,7 @@ import { chargeOpportunityAttacks, enemyBark, resolveEnemyAttackOn } from './ene
 import { checkScenarioOutcome, endCombat, judgeCurrentScenario, offerExit, runCombatTurnLoop } from './combat-flow.js';
 import {
     persistBoardTerrain, getActiveBoardTerrain, getActiveBoardContext, boardVisibility, fireHazardsOnEnter,
+    attackHindrance, noteZoneEntry, walkThroughSpellZones,
 } from './board.js';
 import { renderLocationMapsPreview } from './board-view.js';
 import { getCampaignBonds, saveCampaignState } from './time.js';
@@ -268,7 +268,7 @@ function offerBatonPass(actor) {
 
     const names = candidates.map(c => c.name).join(', ');
     postCombatNarration(
-        `🔄 [COMBAT] ${actor.name} puede ceder ${remainingFeet} ft de movimiento a: ${names}.`,
+        `🔄 [COMBAT] ${actor.name} puede ceder ${remainingFeet} pies de movimiento a: ${names}.`,
     );
 
     // Y con un boton, porque decirle a alguien que escriba un comando en mitad de un
@@ -342,7 +342,7 @@ function showBatonPassOffer(actor, candidates, remainingFeet) {
 
     const root = $('<div class="bp-offer"></div>');
     root.append($('<div class="bp-title"></div>').text(
-        `${actor.name} puede ceder ${remainingFeet} ft`));
+        `${actor.name} puede ceder ${remainingFeet} pies`));
 
     for (const candidate of candidates) {
         const button = $('<button class="menu_button bp-btn" type="button"></button>');
@@ -390,8 +390,8 @@ export function handlePlayerCombatMove(rawValue) {
         return '';
     }
 
-    const targetX = Math.max(0, parseInt(match[1], 10) - 1);
-    const targetY = Math.max(0, parseInt(match[2], 10) - 1);
+    let targetX = Math.max(0, parseInt(match[1], 10) - 1);
+    let targetY = Math.max(0, parseInt(match[2], 10) - 1);
     const position = member.mapPosition || { locationName: currentLocationName, gridX: 0, gridY: 0 };
     // Una casilla con alguien no se pisa, y a una casilla sin camino no se llega.
     const occupied = occupiedCellsFor(member);
@@ -399,25 +399,41 @@ export function handlePlayerCombatMove(rawValue) {
         toastr.warning('Esa casilla ya está ocupada.', 'Ahí no se llega');
         return '';
     }
+    /** @type {Array<{x: number, y: number}>|null} */
+    let way = null;
+    let distanceFeet = getDistanceInFeet(position.gridX || 0, position.gridY || 0, targetX, targetY);
     if (currentBoardName) {
+        // El terreno del tablero abierto trae encima sus acantilados (J12.10) y las zonas que
+        // cuestan el doble (J19.6): el camino los rodea y el precio los cuenta.
         const { terrain, gridWidth: boardW, gridHeight: boardH } = getActiveBoardContext();
-        const way = findPath(terrain, position.gridX || 0, position.gridY || 0, targetX, targetY, boardW, boardH, { occupied });
+        way = findPath(terrain, position.gridX || 0, position.gridY || 0, targetX, targetY, boardW, boardH, { occupied });
         if (!way) {
             toastr.warning('No hay camino hasta esa casilla.', 'Ahí no se llega');
             return '';
         }
+        // Lo que cuesta de verdad, el mismo número que la ruta enseña antes de pulsar: rodear un
+        // muro o cruzar lo difícil cuesta más que la distancia en línea recta.
+        distanceFeet = getPathCost(terrain, way) * 5;
     }
-    const distanceFeet = getDistanceInFeet(position.gridX || 0, position.gridY || 0, targetX, targetY);
     const turnState = getCurrentTurnState();
     if (!turnState) return '';
     const remainingFeet = getRemainingMovementFeet(member);
 
     if (distanceFeet > remainingFeet) {
-        toastr.warning(`Movimiento insuficiente. Necesitas ${distanceFeet} ft y te quedan ${remainingFeet} ft.`);
+        toastr.warning(`Movimiento insuficiente. Necesitas ${distanceFeet} pies y te quedan ${remainingFeet}.`);
         return '';
     }
 
     const leftFrom = { x: position.gridX || 0, y: position.gridY || 0 };
+    // J19.6: las zonas de conjuro del camino saltan al entrar en ellas, y quien queda atrapado
+    // (una telaraña) se para ahí, pagando solo lo andado.
+    const zoneWalk = way ? walkThroughSpellZones(member, way.slice(1)) : { stopAt: -1, lines: [] };
+    if (way && zoneWalk.stopAt >= 0 && zoneWalk.stopAt < way.length - 2) {
+        const stop = way[zoneWalk.stopAt + 1];
+        targetX = stop.x;
+        targetY = stop.y;
+        distanceFeet = getPathCost(getActiveBoardContext().terrain, way.slice(0, zoneWalk.stopAt + 2)) * 5;
+    }
     member.mapPosition = {
         locationName: currentLocationName,
         gridX: targetX,
@@ -435,7 +451,10 @@ export function handlePlayerCombatMove(rawValue) {
     // de moverse, como en la mesa: primero te vas, luego te alcanzan.
     chargeOpportunityAttacks(member, leftFrom, { x: targetX, y: targetY });
 
-    postCombatNarration(`🚶 [COMBAT] ${member.name} se mueve a (${targetX + 1}, ${targetY + 1}) y gasta ${distanceFeet} ft. Restante: ${getRemainingMovementFeet(member)} ft.`);
+    postCombatNarration(`🚶 [COMBAT] ${member.name} se mueve a (${targetX + 1}, ${targetY + 1}) y gasta ${distanceFeet} pies. Le quedan ${getRemainingMovementFeet(member)}.`);
+    if (zoneWalk.lines.length > 0) postCombatNarration(`[COMBAT] ${zoneWalk.lines.join('\n')}`);
+    // J12.11: si ha entrado en una sala con nombre, lo que se ve en ella.
+    noteZoneEntry(member, leftFrom, { x: targetX, y: targetY });
 
     // Hay objetivos que se ganan **andando** — «alcanza la salida», «llega al altar»— y
     // esto no se miraba al moverse: solo al atacar y al empezar ronda. Con el bicho ya
@@ -534,7 +553,7 @@ export function throwItem(kind, targetId) {
         maneuvers: combatEncounter.maneuvers,
         byParty: true,
         attackerId: String(member.id),
-        hindered: visibilityPenalties(boardVisibility(), distanceFeet),
+        hindered: attackHindrance(partyCell(member), { x: Number(target.gridX) || 0, y: Number(target.gridY) || 0 }, distanceFeet),
     });
     if (edge.usesHidden) combatEncounter.maneuvers = revealHidden(combatEncounter.maneuvers, String(member.id));
     const edged = rollWithEdge(() => rollDiceDetailed('1d20', 20).total, edge.mode);
@@ -648,7 +667,7 @@ export function throwScenery(targetId) {
         maneuvers: combatEncounter.maneuvers,
         byParty: true,
         attackerId: String(member.id),
-        hindered: visibilityPenalties(boardVisibility(), distanceFeet),
+        hindered: attackHindrance(partyCell(member), { x: Number(target.gridX) || 0, y: Number(target.gridY) || 0 }, distanceFeet),
     });
     if (edge.usesHidden) combatEncounter.maneuvers = revealHidden(combatEncounter.maneuvers, String(member.id));
     const edged = rollWithEdge(() => rollDiceDetailed('1d20', 20).total, edge.mode);
@@ -927,7 +946,7 @@ export function handlePlayerCombatAttack(rawTargetName) {
     const rangeFeet = getAttackRangeFeet(member);
     const distanceFeet = getDistanceInFeet(origin.gridX || 0, origin.gridY || 0, target.gridX || 0, target.gridY || 0);
     if (distanceFeet > rangeFeet) {
-        toastr.warning(`${target.name} esta fuera de rango. Distancia ${distanceFeet} ft, rango ${rangeFeet} ft.`);
+        toastr.warning(`${target.name} está fuera de alcance: a ${distanceFeet} pies, y llegas a ${rangeFeet}.`);
         return '';
     }
 
@@ -944,7 +963,7 @@ export function handlePlayerCombatAttack(rawTargetName) {
         byParty: true,
         flanked: partyFlanks(member, target),
         attackerId: String(member.id),
-        hindered: visibilityPenalties(boardVisibility(), distanceFeet),
+        hindered: attackHindrance(partyCell(member), { x: Number(target.gridX) || 0, y: Number(target.gridY) || 0 }, distanceFeet),
     });
     const edged = rollWithEdge(() => rollDiceDetailed('1d20', 20).total, edge.mode);
     const attackRoll = { total: edged.natural, natural: edged.natural };

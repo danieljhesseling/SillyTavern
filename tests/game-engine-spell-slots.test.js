@@ -235,5 +235,47 @@ describe('conocidos y preparados (J19.2)', () => {
             'Hueca, nivel 3: no tiene conjuros de 2.º nivel.',
             'Hueca, nivel 3: sabe 2 trucos y su lista tiene 0.',
         ]);
+        // Quien solo lanza rituales, con que tenga alguno a su alcance le basta.
+        const sinRituales = { id: 'sorda', name: 'Sorda', casting: { progression: 'full', mode: 'spellbook', ritualsOnly: true, list: 'guerrero' } };
+        expect(coverageGaps({ classRows: [sinRituales], catalogue, levels: [1] })).toEqual(['Sorda, nivel 1: no tiene ningún ritual a su alcance.']);
+    });
+});
+
+describe('el erudito: solo rituales, sin espacios (D-J27)', () => {
+    const erudito = cls('erudito');
+    const tomas = { level: 3, intelligence: 16, spellbook: ['conj-detectar-magia', 'conj-comprender-idiomas', 'conj-identificar'] };
+
+    test('lanza de 5e, con la lista del mago, pero sin un solo espacio ni truco', () => {
+        expect(casterOf(erudito)).toMatchObject({ mode: 'spellbook', list: 'mago', rituals: 'book', ritualsOnly: true, focus: 'Arcane' });
+        expect(slotsFor(erudito, 3)).toMatchObject({ slots: {}, maxLevel: 2 });
+        expect(slotsLeft(tomas, erudito).slots).toEqual({});
+        expect(lowestFreeSlot(tomas, erudito, 1)).toBe(0);
+        expect(spendSlot(tomas, erudito, 1)).toMatchObject({ ok: false, reason: 'Solo lanza rituales: no tiene espacios de conjuro.' });
+        expect(describeSlots(tomas, erudito)).toBe('Solo rituales, sin espacios: hasta los de 2.º nivel');
+        expect(cantripsKnown(erudito, 5)).toBe(0);
+        expect(preparedLimit(erudito, tomas)).toBe(0);
+    });
+
+    test('su lista son los rituales del mago; y los lanza de su libro', () => {
+        const list = classSpellList(erudito, catalogue);
+        expect(list.length).toBeGreaterThan(0);
+        expect(list.every(s => s.ritual && s.classes.includes('mago'))).toBe(true);
+        expect(list.map(s => s.id)).toEqual(expect.arrayContaining(['conj-detectar-magia', 'conj-identificar', 'conj-alarma']));
+        expect(list.some(s => s.id === 'mag-bola-fuego')).toBe(false);
+        expect(ritualSpells(tomas, erudito, catalogue).map(s => s.id).sort()).toEqual(['conj-comprender-idiomas', 'conj-detectar-magia', 'conj-identificar']);
+        // Nada se lanza con espacio, y no prepara.
+        expect(isCastableBy(tomas, erudito, spell('conj-detectar-magia'))).toBe(false);
+        expect(castableSpells(tomas, erudito, catalogue)).toEqual({ cantrips: [], spells: [] });
+        expect(checkPreparation({ member: tomas, classRow: erudito, catalogue, chosen: ['conj-detectar-magia'] }).errors)
+            .toEqual(['Esta clase no prepara: lanza sus rituales del libro, sin espacios.']);
+    });
+
+    test('al subir de nivel copia rituales en su libro, y se dice así', () => {
+        const first = spellChoicesAtLevel({ classRow: erudito, level: 1, catalogue });
+        expect(first).toMatchObject({ newCantrips: 0, newSpells: 2, preparedLimit: 0 });
+        expect(first.spellOptions.every(s => s.ritual)).toBe(true);
+        expect(first.lines).toEqual(['Ya lanza rituales de 1.er nivel.', 'Copia 2 rituales en su libro.']);
+        const second = spellChoicesAtLevel({ classRow: erudito, level: 2, catalogue, member: { spellbook: ['conj-detectar-magia', 'conj-alarma'] } });
+        expect(second.lines).toEqual(['Copia un ritual en su libro.']);
     });
 });

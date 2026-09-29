@@ -1447,7 +1447,8 @@ export async function loadImportedCampaigns(worldName = '') {
 
 /**
  * D-J35: quitar del tablón una campaña que añadiste. Sale de tu lista (de todos tus gremios) y
- * se borra su archivo. Las partidas empezadas con ella no se tocan: su mundo ya la lleva dentro.
+ * se borra su archivo. Las partidas empezadas con ella no se tocan: su mundo ya la lleva dentro,
+ * y su tarjeta se queda en el tablón del gremio donde se empezó, para volver a ella.
  *
  * @param {string} id
  * @returns {Promise<{ok: true, name: string}|{ok: false, headline: string}>}
@@ -1460,8 +1461,14 @@ export async function removeHubCampaign(id) {
         const row = list.find(r => r.id === String(id));
         if (!row) return { ok: false, headline: 'Esa campaña ya no está en el tablón.' };
         await writeImportedCampaigns(withoutImportedRow(list, row.id));
-        if ((readHub(home?.metadata?.[HUB_KEY]).imported ?? []).length > 0) {
-            await updateWorld(homeWorld, meta => { meta[HUB_KEY] = withoutHubImported(meta[HUB_KEY]); });
+        const was = readHub(home?.metadata?.[HUB_KEY]);
+        // Empezada aquí, su tarjeta se queda en este tablón (`hubCampaignCards`): con su nombre.
+        const keepName = Boolean(was.campaigns[row.id]) && !was.campaigns[row.id].name;
+        if ((was.imported ?? []).length > 0 || keepName) {
+            await updateWorld(homeWorld, meta => {
+                meta[HUB_KEY] = withoutHubImported(meta[HUB_KEY]);
+                if (keepName) meta[HUB_KEY] = withHubCampaign(meta[HUB_KEY], row.id, { name: row.name });
+            });
         }
         // Su archivo: sin fila que lo nombre ya no lo abre nadie. Si ya no estaba, da igual.
         await fetch('/api/files/delete', {
@@ -1789,7 +1796,8 @@ export async function playHubCampaign(id) {
         await applyCampaignRuleset(created.worldName).catch(error => console.error('[gremio] reglas', error));
         adoptCarriedParty(carried, { worldName: created.worldName, uids, atStart: true });
         await updateWorld(homeWorld, meta => {
-            meta[HUB_KEY] = withHubCampaign(meta[HUB_KEY], id, { worldName: created.worldName, chat: openChat() });
+            // D-J35: con su nombre del tablón, por si la quitas de él: su tarjeta se queda aquí.
+            meta[HUB_KEY] = withHubCampaign(meta[HUB_KEY], id, { worldName: created.worldName, chat: openChat(), name: String(world.name || id) });
         });
         // J4.9: el camino hasta allí, antes de la primera escena.
         await postJourney(journeyLine({ world, home: hubTownName(home) }));
@@ -1845,6 +1853,8 @@ export async function returnToHub() {
                 finished: Boolean(ending) || Boolean(was?.finished),
                 ending: ending || was?.ending || '',
                 day: Math.max(day, was?.day ?? 0),
+                // D-J35: su nombre del tablón, también en las empezadas antes de apuntarlo.
+                ...(board?.name ? { name: String(board.name) } : {}),
             });
         });
 

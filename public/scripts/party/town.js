@@ -53,7 +53,8 @@ import { nextRumor, describeRumor } from '../game-engine/campaign/rumors.js';
 import { servicesOf, serviceActions, SERVICE_INFO } from '../game-engine/campaign/services.js';
 import { dealWith, BOUNTY } from '../game-engine/campaign/prisoners.js';
 import { findShortcut, applyShortcut } from '../game-engine/world/road.js';
-import { basePrice, weeklyStock, priceToday, sellPrice, canSell, junkOf } from '../game-engine/campaign/shop.js';
+import { basePrice, weeklyStock, priceToday, sellPrice, canSell, junkOf, SPELL_SUPPLIES } from '../game-engine/campaign/shop.js';
+import { closeShopCards } from '../game-engine/campaign/hours.js';
 import { festivalsOf, festivalToday } from '../game-engine/world/festivals.js';
 import { readLetters, newLetters } from '../game-engine/campaign/letters.js';
 import { recruitActions } from '../game-engine/campaign/recruit.js';
@@ -80,12 +81,13 @@ import {
 } from './world.js';
 import { getCurrentWorldFactions, nudgeRuler, rulerOf, shiftFactionStanding } from './factions.js';
 import {
-    advanceCampaignSlot, campaignDay, currentUpkeepRules, getCampaignBonds, getCampaignCalendar, getDebt,
+    campaignDay, currentUpkeepRules, getCampaignBonds, getCampaignCalendar, getDebt, spendDayPart,
     recordCampaignBondEvent, takeRest,
 } from './time.js';
 import { revealLocations } from './plot.js';
 import { noteDeed, worldWrite } from './world-growth.js';
-import { postCombatNarration, postEngineLine, postForModel, tellMoment } from './narration.js';
+import { postCombatNarration, postEngineLine, postForModel, tellMoment, whoPlays } from './narration.js';
+import { resolveGender } from '../game-engine/campaign/grammar.js';
 import { partyPurse, payFromParty, renderPartyMembers, savePartyState } from './roster.js';
 import { currentRecruits, favorsHere, hireRecruit, judgeDecision, meetRecruit } from './companions.js';
 import { startTalk } from './talk.js';
@@ -147,7 +149,8 @@ export async function hearRumor(by = '') {
     // Idea 72: a veces, de paso, alguien menciona un camino de pastores.
     await learnShortcut(String(rumor.id));
     if (isShellOpen()) refreshGameShell();
-    return rumor.text;
+    // D-J17: lo que se enseña (la charla, `/rumor`) concuerda con quien juega, sin llaves.
+    return resolveGender(rumor.text, whoPlays());
 }
 
 /**
@@ -289,7 +292,7 @@ export function worldFestivals() {
 }
 
 /** @returns {{day: number, name: string}|null} La fiesta de hoy aqui. */
-function festivalHere() {
+export function festivalHere() {
     return festivalToday(worldFestivals(), currentLocationName, Math.max(1, Math.floor(Number(getCampaignCalendar()?.day) || 1)));
 }
 
@@ -302,9 +305,23 @@ export function tellFestival() {
     if (chat_metadata[FESTIVAL_TOLD_KEY] === stamp) return;
     chat_metadata[FESTIVAL_TOLD_KEY] = stamp;
     saveMetadata();
-    const line = `Hoy es ${festival.name} en ${currentLocationName}: la comida de la posada corre a cuenta del pueblo y en la tienda rebajan.`;
+    // D-J29: en fiestas, la tienda y la herrería cierran.
+    const line = `Hoy es ${festival.name} en ${currentLocationName}: la comida de la posada corre a cuenta del pueblo, y la tienda y la herrería cierran.`;
     toastr.success(line, '¡Fiesta!', { timeOut: 9000 });
     void postForModel(`[FIESTA] ${line} Que se note en la calle: música, gente, puestos. No inventes nada más.`);
+}
+
+/**
+ * R8 y J14.3: un precio con lo que rebaja quien os aprecia en ese servicio: la gente de aquí
+ * (su actitud) o tu gente, por lo que ha abierto su vínculo (Gerd en la forja, Osric en la posada).
+ *
+ * @param {number} cost
+ * @param {'tienda'|'herreria'|'posada'} on
+ * @returns {number}
+ */
+function withFavor(cost, on) {
+    const off = favorDiscount(favorsHere(), on).discount;
+    return off > 0 ? Math.max(0, Math.round((Number(cost) || 0) * (1 - off))) : Number(cost) || 0;
 }
 
 /**
@@ -329,7 +346,8 @@ function shopHere() {
         random: createSeededRandom(derive(worldName, 'tienda', currentLocationName, String(week))),
         reputation: Number(ruler?.reputation) || 0,
         // Idea 122: el aceite y la red, siempre. R4: y lo que gastan los conjuros que sabéis.
-        always: [...Object.values(THROWABLES).map(t => t.name), ...neededComponents()],
+        // D-J25: y lo que piden los conjuros de 5e, con la bolsa y el laúd.
+        always: [...Object.values(THROWABLES).map(t => t.name), ...neededComponents(), ...SPELL_SUPPLIES],
     });
     // Idea 84: con una guerra en marcha, el acero se paga caro.
     const war = warPressure({ here: currentLocationName, factions: getCurrentWorldFactions() });
@@ -394,7 +412,7 @@ export async function handlePrisoner(what, id) {
         if (rumor.leadsTo) await revealLocations([rumor.leadsTo]);
         await postForModel(`[INTERROGATORIO] ${prisoner.name} acaba contando lo que sabe: ${rumor.text} `
             + 'Cuéntalo en su voz, a regañadientes. No inventes nada más.');
-        return rumor.text;
+        return resolveGender(rumor.text, whoPlays());
     }
     if (kind === 'give') {
         const holder = partyMembers.find(m => (m.hp || 0) > 0) ?? partyMembers[0];
@@ -511,7 +529,7 @@ export function buildServiceCards() {
     const purse = partyPurse();
     const table = readRemedies();
     const remedies = partyMembers.flatMap(m => remediesFor(m, purse, table)
-        .map(option => ({ id: option.injuryId, name: String(m.name), label: option.remedy.label, cost: option.remedy.cost })));
+        .map(option => ({ id: option.injuryId, name: String(m.name), label: option.remedy.label, cost: withFavor(option.remedy.cost, 'herreria') })));
     const price = Number(currentUpkeepRules().healingPerDay) || 5;
     const cure = partyMembers.reduce((total, m) => {
         const cost = treatmentCost(m, price);
@@ -541,6 +559,20 @@ export function buildServiceCards() {
     const innCard = cards.find(card => card.id === 'posada');
     const meal = innCard?.actions.find(a => a.id === 'inn-meal');
     if (feast && meal) Object.assign(meal, { cost: 0, enabled: !combatEncounter.active, label: 'Comer caliente (gratis: es fiesta)', detail: `Hoy es ${feast.name}.` });
+    // J14.3: la posada, más barata si quien os aprecia os la rebaja (Osric, con su vínculo).
+    const innOff = favorDiscount(favorsHere(), 'posada');
+    for (const action of innOff.discount > 0 ? innCard?.actions ?? [] : []) {
+        if (!/^inn-(common|room|meal|round:)/.test(action.id) || !(action.cost > 0)) continue;
+        const cost = withFavor(action.cost, 'posada');
+        const afford = purse >= cost;
+        const said = /^No (llega|mientras)/.test(action.detail) ? '' : action.detail.replace(/\s*\d+ de oro\.$/, '');
+        Object.assign(action, {
+            cost,
+            enabled: !combatEncounter.active && afford,
+            detail: combatEncounter.active ? 'No mientras peleáis.'
+                : afford ? `${said} ${cost} de oro: ${innOff.who} os lo deja más barato.`.trim() : `No llega el oro: cuesta ${cost}.`,
+        });
+    }
     // Idea 129: el establo de la posada. Idea 128: los dados.
     if (innCard) {
         for (const [id, mount] of Object.entries(MOUNTS)) {
@@ -625,7 +657,7 @@ export function buildServiceCards() {
     if (smithy) {
         const cloak = canCraft({ recipe: 'capa', party: partyMembers, purse });
         smithy.actions.push({
-            id: 'craft:capa', label: `${RECIPES.capa.label} (${RECIPES.capa.gold} de oro y dos pieles)`,
+            id: 'craft:capa', label: `${RECIPES.capa.label} (${withFavor(RECIPES.capa.gold, 'herreria')} de oro y dos pieles)`,
             detail: cloak.reason || RECIPES.capa.note, enabled: !combatEncounter.active && cloak.ok, cost: 0,
         });
         for (const member of partyMembers.filter(m => !m.dead)) {
@@ -634,7 +666,7 @@ export function buildServiceCards() {
             const upgrade = canCraft({ recipe: 'mejora', party: partyMembers, purse, weapon });
             smithy.actions.push({
                 id: `craft:mejora:${member.id}`,
-                label: `Mejorar ${weapon.name} de ${member.name} (+1: ${RECIPES.mejora.gold} de oro y algo duro)`,
+                label: `Mejorar ${weapon.name} de ${member.name} (+1: ${withFavor(RECIPES.mejora.gold, 'herreria')} de oro y algo duro)`,
                 detail: upgrade.reason || RECIPES.mejora.note, enabled: !combatEncounter.active && upgrade.ok, cost: 0, target: String(member.id),
             });
         }
@@ -746,7 +778,14 @@ export function buildServiceCards() {
             fighting: combatEncounter.active, purse, partySize: partyMembers.length,
         }));
     }
-    return cards;
+    // D-J29: la tienda y la herrería cierran de noche, el día de descanso y en fiestas; quien
+    // las lleva está entonces en la posada.
+    return closeShopCards(cards, {
+        calendar: getCampaignCalendar(),
+        festival: festivalHere()?.name ?? '',
+        keepers: lastWorldNpcs.filter(n => n.where.toLowerCase() === String(currentLocationName).toLowerCase()),
+        innHere: servicesOf(location).includes('posada'),
+    });
 }
 
 /**
@@ -763,8 +802,10 @@ function craftAtSmith(actionId) {
         toastr.warning(plan.reason || 'No se puede.', 'La herrería');
         return;
     }
-    if (!payFromParty(plan.gold)) {
-        toastr.warning(`No llega el oro: cuesta ${plan.gold}.`);
+    // J14.3: con Gerd a vínculo 2, la forja os lo deja más barato.
+    const gold = withFavor(plan.gold, 'herreria');
+    if (!payFromParty(gold)) {
+        toastr.warning(`No llega el oro: cuesta ${gold}.`);
         return;
     }
     for (const used of plan.use) {
@@ -775,10 +816,10 @@ function craftAtSmith(actionId) {
     let line = '';
     if (recipe === 'capa') {
         addItemToInventory(/** @type {any} */ (member), createItem(/** @type {any} */ (cloakItem())));
-        line = `El herrero cose una capa de pieles para ${member.name} (${plan.gold} de oro, ${spent}).`;
+        line = `El herrero cose una capa de pieles para ${member.name} (${gold} de oro, ${spent}).`;
     } else if (weapon) {
         Object.assign(weapon, upgradedWeapon(weapon));
-        line = `El herrero mejora el arma de ${member.name}: ahora es ${weapon.name} (${plan.gold} de oro, ${spent}).`;
+        line = `El herrero mejora el arma de ${member.name}: ahora es ${weapon.name} (${gold} de oro, ${spent}).`;
     }
     savePartyState();
     renderPartyMembers();
@@ -828,7 +869,8 @@ export async function runService(actionId) {
             const topic = ids[Number(picked) - 70] ?? 'pasado';
             const hits = topicHits(topic, readReasons(member).wants);
             recordCampaignBondEvent(String(member.id), hits ? 'confidant_scene' : 'shared_downtime');
-            advanceCampaignSlot();
+            // J14.2: una ronda con alguien es quedar con él: se va la parte del día.
+            spendDayPart('quedar', { who: String(member.name) });
             if (hits) toastr.success(`Le toca de cerca: ${member.name} se abre.`, 'La ronda');
             const shared = lastMemoryWith(chat_metadata?.[MEMORIES_KEY], String(member.name));
             await postForModel(roundPrompt({ member, topic, place: currentLocationName, shared }));
@@ -1004,8 +1046,10 @@ export function buyRemedy(member, injuryId) {
         toastr.warning('Esa herida no tiene remedio, o ya no la tiene.');
         return '';
     }
-    if (!payFromParty(remedy.cost)) {
-        toastr.warning(`No llega el oro: cuesta ${remedy.cost}.`);
+    // J14.3: lo que rebaja quien os aprecia en la forja.
+    const cost = withFavor(remedy.cost, 'herreria');
+    if (!payFromParty(cost)) {
+        toastr.warning(`No llega el oro: cuesta ${cost}.`);
         return '';
     }
 
@@ -1016,8 +1060,8 @@ export function buyRemedy(member, injuryId) {
     renderPartyMembers();
 
     const line = remedy.becomes
-        ? `${member.name} estrena ${remedy.label.toLowerCase()} (${remedy.cost} de oro). Ahora: ${String(remedy.becomes.label).toLowerCase()}.`
-        : `${member.name}: ${remedy.label.toLowerCase()} (${remedy.cost} de oro). La herida se cierra del todo.`;
+        ? `${member.name} estrena ${remedy.label.toLowerCase()} (${cost} de oro). Ahora: ${String(remedy.becomes.label).toLowerCase()}.`
+        : `${member.name}: ${remedy.label.toLowerCase()} (${cost} de oro). La herida se cierra del todo.`;
     // Al narrador, que es quien tiene que saber que Bruna ahora lleva pierna de palo.
     void postForModel(`🦿 [CAMPAÑA] ${line}`);
     toastr.success(line, 'Remedio');

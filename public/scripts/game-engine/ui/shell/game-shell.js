@@ -673,7 +673,12 @@ function renderActionChips(row, place = {}) {
         go.title = next === SCENE.COMBAT ? `Volver al tablero${board ? `: ${board}` : ''}` : `Seguir en ${here || 'el mapa'}`;
         go.appendChild(el('span', 'gs-chip-action-label', 'Continuar'));
         go.appendChild(el('i', 'fa-solid fa-arrow-right'));
-        go.addEventListener('click', () => setScene(next));
+        go.addEventListener('click', () => {
+            // Leído el final de la pelea, su tarjeta de victoria sobra: en el tablero tapaba su
+            // botón de salir, sobre todo en el móvil.
+            document.querySelectorAll('.vs-card').forEach(card => card.remove());
+            setScene(next);
+        });
         row.appendChild(go);
     }
 
@@ -854,7 +859,14 @@ function renderClock(clock) {
 
     const view = options.getClock();
     clock.textContent = '';
-    clock.appendChild(el('span', 'gs-clock-label', view.label));
+    // El día y la parte del día, y aparte la estación: en el móvil solo cabe lo primero (D-J38).
+    const main = [`Día ${view.day}`, view.slot].filter(Boolean).join(' · ');
+    const label = el('span', 'gs-clock-label', view.label.startsWith(main) ? main : view.label);
+    if (view.label.startsWith(main) && view.label.length > main.length) {
+        label.appendChild(el('span', 'gs-clock-season', view.label.slice(main.length)));
+    }
+    label.title = view.label;
+    clock.appendChild(label);
 
     // J18.9: sin conexión, descansar y pasar el tiempo son cosas que se hacen en un sitio (dormir
     // en la posada, acampar fuera), no botones de la cabecera: el reloj solo dice el día.
@@ -1508,9 +1520,12 @@ function withPlaceRest(cards) {
     }
     // Fuera, acampar es la noche entera (la ficha de siempre: el fuego, las guardias, la cena).
     const camp = (options?.getChips?.(Infinity) ?? []).find(chip => chip.id === 'camp');
+    // Donde no se puede acampar (un sitio con techo pero sin posada), el descanso largo, tal cual:
+    // que la noche entera no se quede sin sitio donde pasarla.
     const acts = [
         timed('short', 'Descanso corto'),
-        camp ? { id: 'chip:camp', label: camp.label, detail: 'El fuego, las guardias y la cena; luego se duerme la noche entera (descanso largo).', enabled: true, cost: 0 } : null,
+        camp ? { id: 'chip:camp', label: camp.label, detail: 'El fuego, las guardias y la cena; luego se duerme la noche entera (descanso largo).', enabled: true, cost: 0 }
+            : timed('long', 'Descanso largo'),
     ].filter(Boolean);
     return acts.length > 0 ? [...cards, { id: 'descanso', label: 'Descansar', icon: 'fa-campground', actions: acts }] : cards;
 }
@@ -1559,8 +1574,11 @@ function storyMark() {
     for (let i = messages.length - 1; i >= 0; i--) {
         const node = messages[i];
         if (node.getAttribute('is_system') === 'true' && node.classList.contains('smallSysMes')) continue;
-        const said = (node.querySelector('.mes_text')?.textContent || '').trim();
-        if (!said || /^\S{0,3}\s*\[GENTE\]/u.test(said)) continue;
+        const body = node.querySelector('.mes_text');
+        const said = (body?.textContent || '').trim();
+        if (!body || !said || /^\S{0,3}\s*\[GENTE\]/u.test(said)) continue;
+        // Lo que en la caja no se leería (solo la etiqueta y un «Hecho:») tampoco lleva a ella.
+        if (!cleanNovelCopy(/** @type {Element} */ (body.cloneNode(true)))) continue;
         return `${node.getAttribute('mesid')}:${said.slice(0, 48)}`;
     }
     return '';
@@ -1651,6 +1669,13 @@ function renderExploration(panel, view) {
         }
         head.appendChild(el('i', `fa-solid ${card.icon}`));
         head.appendChild(el('span', '', card.label));
+        // D-J29: la tienda o la herrería cerradas lo dicen en su cabecera («Cerrado: es de noche»).
+        const shut = /** @type {any} */ (card).closed;
+        if (shut?.sign) {
+            box.classList.add('gs-service-closed');
+            box.title = String(shut.line || shut.sign);
+            head.appendChild(el('span', 'gs-service-closed-sign', String(shut.sign)));
+        }
         box.appendChild(head);
         const list = el('div', 'gs-service-actions');
         for (const action of card.actions) {
@@ -1796,9 +1821,12 @@ export function refreshGameShell() {
     renderClock(/** @type {HTMLElement} */ (root.querySelector('.gs-clock')));
     renderFocus(/** @type {HTMLElement} */ (root.querySelector('.gs-focus')), /** @type {HTMLElement|null} */ (root.querySelector('.gs-tools')));
     // J18.8: sin conexión, en la novela, «Continuar» lleva a donde se esté al acabar de leer.
+    // J18.9: y descansar no se ofrece mientras se lee: es cosa del sitio (la posada, acampar fuera).
+    const next = offline && scene === SCENE.DIALOGUE ? continueScene(situation) : null;
     renderActionChips(/** @type {HTMLElement} */ (root.querySelector('.gs-vn-box > .gs-chips')), {
-        next: offline && scene === SCENE.DIALOGUE ? continueScene(situation) : null,
+        next,
         situation,
+        ...(next ? { skip: (/** @type {import('./action-chips.js').ActionChip} */ chip) => chip.id === 'camp' || chip.id === 'rest:corto' } : {}),
     });
     const log = root.querySelector('.gs-vn-log-btn');
     if (log instanceof HTMLElement) log.title = offline ? 'Todo lo dicho hasta ahora' : 'Todo lo dicho hasta ahora, y la caja para escribir';
@@ -1817,11 +1845,9 @@ export function refreshGameShell() {
         // De viaje, lo que hace falta abajo es saber como llega el grupo.
         actions.textContent = '';
         // J18.8: y sin conexión, lo que se puede hacer aquí, menos lo que ya está en pantalla:
-        // entrar en un tablero, viajar y (sin posada) descansar, que tienen sus tarjetas.
-        if (offline) {
-            const inn = (options.getServices?.() ?? []).some(card => card.id === 'posada');
-            renderFooterChips(actions, chip => /^(enter|go):/.test(chip.id) || (!inn && (chip.id === 'camp' || chip.id === 'rest:corto')));
-        }
+        // entrar en un tablero y viajar, que tienen sus tarjetas; y descansar, que es cosa del
+        // sitio (J18.9): la posada, o la tarjeta «Descansar» donde no la hay.
+        if (offline) renderFooterChips(actions, chip => /^(enter|go):/.test(chip.id) || chip.id === 'camp' || chip.id === 'rest:corto');
         const strip = el('div', 'gs-party-strip');
         actions.appendChild(strip);
         renderChips(strip, options.getExploration().party);

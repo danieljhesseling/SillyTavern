@@ -55,8 +55,12 @@ describe('conjuros.json, la comprobación del compendio (J19.11)', () => {
     test('cada clase que lanza tiene conjuros de cada nivel al que llega, del 1 al 5', () => {
         expect(coverageGaps({ classRows: classes, catalogue, levels: [1, 2, 3, 4, 5] })).toEqual([]);
         const casters = classes.filter((/** @type {any} */ c) => casterOf(c));
-        expect(casters.map((/** @type {any} */ c) => c.id).sort()).toEqual(['bardo', 'clerigo', 'druida', 'explorador', 'mago']);
-        for (const kind of casters) {
+        expect(casters.map((/** @type {any} */ c) => c.id).sort()).toEqual(['bardo', 'clerigo', 'druida', 'erudito', 'explorador', 'mago']);
+        // D-J27: el erudito solo lanza rituales de la lista del mago; tiene que haber alguno.
+        const ritualists = casters.filter((/** @type {any} */ c) => casterOf(c)?.ritualsOnly);
+        expect(ritualists.map((/** @type {any} */ c) => c.id)).toEqual(['erudito']);
+        expect(spellsOfClass(spells, casterOf(ritualists[0])?.list ?? '').filter(s => s.ritual && s.level === 1).length).toBeGreaterThan(0);
+        for (const kind of casters.filter((/** @type {any} */ c) => !casterOf(c)?.ritualsOnly)) {
             for (let level = 1; level <= 5; level++) {
                 for (let spellLevel = 1; spellLevel <= maxSpellLevel(kind, level); spellLevel++) {
                     expect(spellsOfClass(spells, kind.id, { level: spellLevel }).length).toBeGreaterThan(0);

@@ -23,7 +23,7 @@
  */
 
 import { knownAbilities, usesLeft } from '../../rules/abilities.js';
-import { describeInjuries } from '../../rules/injuries.js';
+import { describeInjuries, readInjuries } from '../../rules/injuries.js';
 import { describeNeeds } from '../../rules/needs.js';
 import { readDeathSaves, isDying } from '../../rules/death-saves.js';
 import { levelForXp } from '../../rules/level-up.js';
@@ -60,27 +60,62 @@ export function modifierOf(score) {
 }
 
 /**
+ * Las ranuras, en castellano. El paquete de reglas de serie las trae en inglés («Head»,
+ * «Body»…): se traducen esas; un paquete que ponga las suyas manda.
+ */
+export const SLOT_NAMES = {
+    head: 'Cabeza', body: 'Cuerpo', hands: 'Manos', weapon: 'Arma', shield: 'Escudo', ring: 'Anillo', feet: 'Pies',
+};
+
+/** Las etiquetas de serie, en inglés, que se cambian por las de `SLOT_NAMES`. */
+const ENGLISH_SLOTS = ['head', 'body', 'hands', 'weapon', 'shield', 'ring', 'feet'];
+
+/**
+ * Cómo se llama una ranura en la ficha.
+ *
+ * @param {string} slot
+ * @param {{label?: string}} [info]
+ * @returns {string}
+ */
+export function slotName(slot, info) {
+    const said = String(info?.label ?? '').trim();
+    const spanish = /** @type {Record<string, string>} */ (SLOT_NAMES)[slot];
+    if (spanish && (!said || ENGLISH_SLOTS.includes(said.toLowerCase()))) return spanish;
+    return said || spanish || slot;
+}
+
+/**
  * Lo que lleva puesto, ranura por ranura, incluidas las vacías.
  *
  * Las vacías se enseñan a propósito: un hueco es información — es donde puedes mejorar, y
  * esconderlo hace que una armadura que falta parezca una que no existe.
  *
+ * La ficha guarda en cada ranura **el id** del objeto (`equipItem`): se busca en lo que lleva
+ * para enseñar su nombre. Antes salía el id tal cual («item_1790…»).
+ *
  * @param {any} member
  * @param {Record<string, {label: string, icon: string}>} slotInfo
- * @returns {Array<{slot: string, label: string, icon: string, item: string, empty: boolean}>}
+ * @returns {Array<{slot: string, label: string, icon: string, item: string, itemId: string, empty: boolean}>}
  */
 export function equipmentOf(member, slotInfo) {
     const worn = (member?.equippedItems && typeof member.equippedItems === 'object')
         ? member.equippedItems : {};
+    const items = Array.isArray(member?.items) ? member.items : [];
 
     return Object.entries(slotInfo ?? {}).map(([slot, info]) => {
         const held = worn[slot];
-        const name = typeof held === 'string' ? held : String(held?.name ?? '');
+        const entry = typeof held === 'string' || typeof held === 'number'
+            ? items.find((/** @type {any} */ i) => String(i?.id) === String(held)) ?? null
+            : (held && typeof held === 'object' ? held : null);
+        // Un nombre escrito a mano (fichas viejas) se enseña; un id que ya no está, no.
+        const name = entry ? shownName(entry)
+            : (typeof held === 'string' && held && !/^item_/.test(held) ? held : '');
         return {
             slot,
-            label: String(info?.label ?? slot),
+            label: slotName(slot, info),
             icon: String(info?.icon ?? 'fa-circle'),
             item: name,
+            itemId: entry ? String(entry.id ?? '') : '',
             empty: !name,
         };
     });
@@ -95,12 +130,14 @@ export function equipmentOf(member, slotInfo) {
  * @param {any[]} [input.abilities] El catálogo de habilidades del mundo.
  * @param {any} [input.xpTable]    La tabla de experiencia, para el nivel siguiente.
  * @param {number} [input.bondRank]
+ * @param {any[]|null} [input.known] J19: lo que sabe, ya elegido (con sus conjuros de 5e), si
+ *   quien llama lo sabe mejor que la lista `abilities` de la ficha.
  * @returns {any}
  */
-export function buildCharacterSheet({ member, slotInfo = {}, abilities = [], xpTable = null, bondRank = 0 }) {
+export function buildCharacterSheet({ member, slotInfo = {}, abilities = [], xpTable = null, bondRank = 0, known: given = null }) {
     const hp = Math.max(0, number(member?.hp));
     const maxHp = Math.max(1, number(member?.maxHp, 1));
-    const known = knownAbilities(member, abilities);
+    const known = Array.isArray(given) ? given : knownAbilities(member, abilities);
 
     const xp = Math.max(0, number(member?.xp));
     const level = Math.max(1, number(member?.level, 1));
@@ -157,22 +194,31 @@ export function buildCharacterSheet({ member, slotInfo = {}, abilities = [], xpT
             type: String(item?.type ?? ''),
             weight: number(item?.weight),
             equipped: Boolean(item?.equipped),
+            // J19.9: lo que pide sintonía, y si ya la tiene.
+            attunement: Boolean(item?.attunement),
+            attuned: Boolean(item?.attunement && item?.attuned),
         })),
 
         abilities: known.map(ability => {
             const left = usesLeft(member, ability);
+            // J19: un conjuro de 5e no tiene usos: dice su nivel (o que es un truco).
+            const spellLevel = typeof ability.spellLevel === 'number' ? ability.spellLevel : null;
             return {
                 id: ability.id,
                 name: ability.name,
                 cost: ability.cost,
                 left: left === Infinity ? null : left,
-                spent: left === 0,
+                spent: left === 0 || Boolean(ability.blocked),
+                spellLevel,
+                blocked: String(ability.blocked ?? ''),
             };
         }),
 
         // Lo que te pasa ahora mismo, junto y no repartido por tres pantallas.
         conditions: (Array.isArray(member?.activeConditions) ? member.activeConditions : []).map(String),
         injuries: describeInjuries(member),
+        // Las mismas, con su id y su nombre, para ponerles su icono.
+        injuryRows: readInjuries(member).map((injury, index) => ({ id: injury.id, label: injury.label, text: describeInjuries(member)[index] ?? injury.label })),
         needs: describeNeeds(member),
 
         progress: {

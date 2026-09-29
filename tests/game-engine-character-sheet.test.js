@@ -111,8 +111,33 @@ describe('lo que lleva puesto', () => {
     test('lo que carga, con su peso', () => {
         expect(sheet().inventory).toEqual([
             // Con su id, para poder dárselo a otro (idea 163); sin id en la ficha, vacío.
-            { id: '', name: 'Cuerda de seda', type: 'gear', weight: 2.5, equipped: false },
+            { id: '', name: 'Cuerda de seda', type: 'gear', weight: 2.5, equipped: false, attunement: false, attuned: false },
         ]);
+    });
+
+    // La ficha guarda el id en la ranura (`equipItem`): se enseñaba «item_1790…».
+    test('lo equipado por su id sale con su nombre, no con el id', () => {
+        const member = {
+            items: [{ id: 'item_1790', name: 'Espada larga' }, { id: 'item_1791', name: 'Cota de malla' }],
+            equippedItems: { weapon: 'item_1790', body: 'item_1791', head: 'item_9999' },
+        };
+        const worn = equipmentOf(member, SLOTS);
+        expect(worn.find(s => s.slot === 'weapon')).toMatchObject({ item: 'Espada larga', itemId: 'item_1790', empty: false });
+        expect(worn.find(s => s.slot === 'body').item).toBe('Cota de malla');
+        // Un id que ya no está en la mochila es un hueco, no un texto raro.
+        expect(worn.find(s => s.slot === 'head')).toMatchObject({ item: '', empty: true });
+    });
+
+    test('y las ranuras de serie, en castellano', () => {
+        const english = { head: { label: 'Head', icon: 'fa-hat-wizard' }, hands: { label: 'Hands', icon: 'fa-hand' }, feet: { label: 'Feet', icon: 'x' } };
+        expect(equipmentOf({}, english).map(s => s.label)).toEqual(['Cabeza', 'Manos', 'Pies']);
+        // Las de un paquete con nombre propio se respetan.
+        expect(equipmentOf({}, { head: { label: 'Yelmo', icon: 'x' } })[0].label).toBe('Yelmo');
+    });
+
+    test('J19.9: lo que pide sintonía lo dice, y si ya la tiene', () => {
+        const card = sheet({ items: [{ id: 'b1', name: 'Bastón de las llamas', attunement: true, attuned: true }, { id: 'b2', name: 'Anillo', attunement: true }] });
+        expect(card.inventory.map(i => [i.attunement, i.attuned])).toEqual([[true, true], [true, false]]);
     });
 });
 

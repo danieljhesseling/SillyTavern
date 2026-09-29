@@ -67,6 +67,7 @@ import {
     openCampaignBuilder, openHallOfFame, openHowToPlay, openRules, openStateView, openTextMap,
 } from './menus.js';
 import { setPartyTab } from './main.js';
+import { registerSocialCommands } from './social.js';
 
 /**
  * Los comandos del grupo (`/go`, `/fight`, `/tirada`...), con los proveedores de nombres que
@@ -1226,4 +1227,7 @@ export function registerPartyCommands() {
             return mode;
         },
     }));
+
+    // J14: `/quedar` y `/charlar`, con tu gente.
+    registerSocialCommands();
 }

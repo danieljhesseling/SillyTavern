@@ -14,8 +14,10 @@
  *   servicio. Los demás con ese servicio, con ella. Quien no atiende nada, en la plaza.
  * - **Qué se hace**: las tarjetas de servicios que ya existen (`serviceActions` y lo que añade
  *   party.js), repartidas por sitio. Lo que no es de ningún sitio va a la plaza.
- * - **La hora**: de noche, el dibujo de noche y el saludo de noche. Cerrar la tienda de noche es
- *   `hours.js`, y espera a la decisión D11: aquí solo se dice, no se cierra.
+ * - **La hora**: de noche, el dibujo de noche y el saludo de noche. La tienda y la herrería
+ *   cierran de noche, el día de descanso y en fiestas (D-J29, `hours.js`): su tarjeta llega con
+ *   `closed`, el sitio lo dice en su cartel («Cerrado: es de noche») y quien lo lleva se va a
+ *   la posada, si la hay.
  *
  * Puro: con la localización, la gente y las tarjetas, dice qué sitios hay y qué lleva cada uno.
  */
@@ -57,6 +59,8 @@ const SQUARE_TYPES = new Set(['city', 'village']);
  * @property {TownPerson|null} keeper Quien lo atiende, si hay alguien.
  * @property {TownPerson[]} people Los demás que están ahí.
  * @property {string[]} cards Las tarjetas de servicios de aquí que son de este sitio, por id.
+ * @property {string} [closed] D-J29: el cartel, si está cerrado: «Cerrado: es de noche».
+ * @property {string} [closedLine] Y la frase entera, con dónde está quien lo lleva.
  */
 
 /**
@@ -128,7 +132,8 @@ export function townNpcsFromEntries(entries) {
  * @param {Object} input
  * @param {any} input.location La localización (de `locationMaps`), con `services` y quizá `places`.
  * @param {Array<{name: string, where?: string, service?: string, trade?: string, title?: string, dead?: boolean}>} [input.npcs]
- * @param {Array<{id: string}>|null} [input.cards] Las tarjetas de servicios de aquí. Sin ellas
+ * @param {Array<{id: string, closed?: {sign?: string, line?: string}}>|null} [input.cards] Las tarjetas
+ *   de servicios de aquí (con `closed` si no abre ahora: `closeShopCards` de `hours.js`). Sin ellas
  *   (para contar sitios), un sitio de un servicio que hay aquí cuenta aunque no se sepa aún qué ofrece.
  * @param {boolean} [input.guild] Si es el pueblo del gremio: tenga o no lista, sale el gremio.
  * @returns {{places: TownPlace[], rest: string[]}} Los sitios, y las tarjetas que no caben en ninguno.
@@ -220,6 +225,19 @@ export function townPlaces({ location, npcs = [], cards = null, guild = false })
         else rest.push(id);
     }
 
+    // D-J29: lo cerrado lo dice su cartel, y quien lo lleva está en la posada (o en su casa).
+    for (const card of cards ?? []) {
+        if (!card?.closed) continue;
+        const shut = places.find(p => same(PLACE_KINDS[p.kind].service, card.id));
+        if (!shut) continue;
+        shut.closed = text(card.closed.sign) || 'Cerrado';
+        shut.closedLine = text(card.closed.line) || shut.closed;
+        if (shut.keeper) {
+            places.find(p => p.kind === 'posada')?.people.push(shut.keeper);
+            shut.keeper = null;
+        }
+    }
+
     // Un sitio sin nadie y sin nada que hacer sobra. Sin tarjetas (al contar), vale con que
     // su servicio esté aquí. El gremio del pueblo del gremio se queda: lleva el tablón.
     const offered = new Set(services);
@@ -281,6 +299,8 @@ const EMPTY_LINES = {
  * @returns {string}
  */
 export function greetingFor({ place, town = '', slot = '', hero = '' }) {
+    // D-J29: cerrado, no saluda nadie: se dice por qué y dónde está quien lo lleva.
+    if (place?.closed) return text(place.closedLine) || text(place.closed);
     const when = slotOf(slot);
     const hi = `${HELLO[when]}${text(hero) ? `, ${text(hero)}` : ''}`;
     const who = text(place?.keeper?.name);
@@ -303,6 +323,7 @@ export function greetingFor({ place, town = '', slot = '', hero = '' }) {
  * @returns {string}
  */
 export function describeWho(place) {
+    if (place?.closed) return place.closed;
     const keeper = place?.keeper;
     const others = place?.people?.length ?? 0;
     if (keeper) {

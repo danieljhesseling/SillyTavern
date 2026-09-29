@@ -1115,7 +1115,7 @@
           {
             "who": "Ismark Kolyanovich",
             "mood": "triste",
-            "text": "propio: Forasteros. Hacía tiempo que la niebla no dejaba pasar a nadie. Soy Ismark; aquí me llaman el Menor."
+            "text": "propio: {Forasteros|Forasteras}. Hacía tiempo que la niebla no dejaba pasar a nadie. Soy Ismark; aquí me llaman el Menor."
           },
           {
             "text": "propio: En el rincón, una vieja encorvada no deja de mirar a los clientes. Tiene las uñas negras y sonríe con demasiados dientes."

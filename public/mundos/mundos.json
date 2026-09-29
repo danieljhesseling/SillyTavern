@@ -315,7 +315,7 @@
       "pack": "/mundos/strahd.pack.json",
       "journey": {
         "days": 9,
-        "how": "Vais en carro por el camino del este, hasta que la niebla se cierra detrás de vosotros."
+        "how": "Vais en carro por el camino del este, hasta que la niebla se cierra detrás de {vosotros|vosotras}."
       },
       "icon": "fa-ghost",
       "levels": [

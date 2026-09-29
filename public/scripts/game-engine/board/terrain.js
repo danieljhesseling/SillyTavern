@@ -209,7 +209,34 @@ export const TERRAIN_SCHEMA_VERSION = 1;
  * @typedef {Object} BoardTerrain
  * @property {number} version
  * @property {Record<string, TerrainCell>} cells  Keyed by "x,y".
+ * @property {Record<string, number>} [elevation] Solo en el tablero abierto (`withOverlay`): las cotas (J12.10).
+ * @property {Set<string>} [slowCells] Solo en el tablero abierto: casillas que cuestan el doble por una zona (J19.6).
+ * @property {Set<string>} [blindCells] Solo en el tablero abierto: casillas que no dejan ver por una zona (J19.6).
  */
+
+/**
+ * Lo que va encima del terreno mientras se juega, sin guardarse: las cotas del tablero (J12.10)
+ * y las zonas de conjuro que cuestan el doble o no dejan ver (J19.6). Se cuelga del terreno del
+ * tablero abierto como propiedades **no enumerables**: quien busca camino, mira o cuenta el
+ * precio de una casilla lo ve; quien guarda el terreno (`JSON.stringify`, `normalizeTerrain`,
+ * `setCell`) no, así que una telaraña no acaba escrita en el mapa.
+ *
+ * @param {BoardTerrain} terrain
+ * @param {{elevation?: Record<string, number>|null, slowCells?: Iterable<string>|null, blindCells?: Iterable<string>|null}} overlay
+ * @returns {BoardTerrain} El mismo objeto.
+ */
+export function withOverlay(terrain, { elevation = null, slowCells = null, blindCells = null } = {}) {
+    if (!terrain || typeof terrain !== 'object') return terrain;
+    const hide = (/** @type {string} */ name, /** @type {any} */ value) => Object.defineProperty(terrain, name, {
+        value, enumerable: false, configurable: true, writable: true,
+    });
+    if (elevation && Object.keys(elevation).length > 0) hide('elevation', elevation);
+    const slow = new Set(slowCells ?? []);
+    if (slow.size > 0) hide('slowCells', slow);
+    const blind = new Set(blindCells ?? []);
+    if (blind.size > 0) hide('blindCells', blind);
+    return terrain;
+}
 
 /**
  * Builds the sparse-map key for a cell.
@@ -391,6 +418,8 @@ export function isPassable(terrain, x, y, gridWidth, gridHeight) {
  * @returns {boolean}
  */
 export function blocksSight(terrain, x, y) {
+    // J19.6: la niebla o la oscuridad de un conjuro, encima (`withOverlay`).
+    if (terrain?.blindCells?.has(cellKey(x, y))) return true;
     return getCellDefinition(terrain, x, y).blocksSight;
 }
 
@@ -402,7 +431,11 @@ export function blocksSight(terrain, x, y) {
  * @returns {number}
  */
 export function getMovementCost(terrain, x, y) {
-    return getCellDefinition(terrain, x, y).movementCost;
+    const cost = getCellDefinition(terrain, x, y).movementCost;
+    // J19.6: una telaraña o unas raíces encima cuestan como el terreno difícil. No se suman:
+    // lo difícil ya lo era.
+    if (Number.isFinite(cost) && terrain?.slowCells?.has(cellKey(x, y))) return Math.max(cost, 2);
+    return cost;
 }
 
 /**

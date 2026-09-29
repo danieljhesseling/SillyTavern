@@ -107,11 +107,15 @@ export function restingUids(raw) {
  */
 export function withResting(raw, { add = null, remove = '', day = NaN } = {}) {
     const gone = text(remove);
-    const list = readRestingHeroes(raw).filter(hero => !gone || String(hero.id) !== gone);
+    const since = Math.floor(Number(day));
+    const dated = Number.isFinite(since) && since >= 0;
+    // Quien ya descansaba antes de apuntarse el día (un gremio de antes de D-J12) empieza a
+    // contar desde hoy: si no, no se curaría nunca.
+    const list = readRestingHeroes(raw).filter(hero => !gone || String(hero.id) !== gone)
+        .map(hero => (dated && !Number.isFinite(Number(hero.restDay)) ? { ...hero, restDay: since } : hero));
     if (!isOwnHero(add) || add.dead || add.id == null) return list;
     const kept = clone(add);
-    const since = Math.floor(Number(day));
-    if (Number.isFinite(since) && since >= 0) kept.restDay = since;
+    if (dated) kept.restDay = since;
     return [...list.filter(hero => String(hero.id) !== String(kept.id)), kept];
 }
 

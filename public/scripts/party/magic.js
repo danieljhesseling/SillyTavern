@@ -29,9 +29,21 @@ import { WATCH, readWanted, magicIsCrime } from '../game-engine/campaign/crime.j
 import { noteDealt } from '../game-engine/combat/tally.js';
 import { hasAction, useAction } from '../game-engine/combat/turn-machine.js';
 import { getActiveRuleset } from '../game-engine/rules/ruleset.js';
-import { normalizeAbilities, canUseAbility, planAbilityUse, spendAbilityUse } from '../game-engine/rules/abilities.js';
+import { normalizeAbilities, canUseAbility, planAbilityUse, spendAbilityUse, knownAbilities } from '../game-engine/rules/abilities.js';
 import { addConditionTimer, expireConditions, clearTimersFor } from '../game-engine/combat/condition-timers.js';
 import { clearDeathSaves } from '../game-engine/rules/death-saves.js';
+import {
+    casterOf, classRowFor, spendSlot, recoverSlots, spellcastingStats, describeSlots, SLOT_LABELS,
+} from '../game-engine/rules/spell-slots.js';
+import { castableSpells, checkPreparation, classSpellList, preparedLimit, maxSpellLevel, ritualSpells } from '../game-engine/rules/spell-prep.js';
+import { canCastSpell, componentsCheck, spellToAbility, upcastSpell, hpPoolTargets, describeSpell5e } from '../game-engine/rules/spell-cast.js';
+import { normalizeSpell, findSpell } from '../game-engine/rules/spell-catalogue.js';
+import { startingSpells, hasSpellLists, defaultPrepared } from '../game-engine/rules/spell-picks.js';
+import { startConcentration, readConcentration, linkedTo, describeConcentration, endConcentration } from '../game-engine/rules/concentration.js';
+import { zoneFromSpell, placeZone, zoneFlagsAt, resolveZoneEffect, clearZones, endZones, kindOf, ZONE_KINDS } from '../game-engine/board/spell-zones.js';
+import { planSummon, dismissSummons } from '../game-engine/rules/summons.js';
+import { itemSpellSpec, spendItemCharges, itemWorks, scrollCheck, setAttunement, rechargeItems, ATTUNEMENT_MAX, attunedItems } from '../game-engine/rules/magic-items.js';
+import { firstArt, loadPixelManifest } from '../game-engine/ui/pixel-art.js';
 import { WANTED_KEY } from './keys.js';
 import { combatEncounter, currentLocationName, partyMembers } from './state.js';
 import {
@@ -63,19 +75,62 @@ export function useMagicItem(itemId, targetId) {
     const member = getCurrentActingMember();
     if (!member || !combatEncounter.active) return '';
     const item = (Array.isArray(member.items) ? member.items : []).find((/** @type {any} */ i) => String(i.id) === String(itemId));
-    const spec = item ? MAGIC_ITEMS[String(item.name)] : null;
-    const ability = spec ? getAbilityCatalogue().find(a => a.id === spec.spell) : null;
+    const legacy = item ? MAGIC_ITEMS[String(item.name)] : null;
+    // J19.9: o un objeto de 5e, con su conjuro en la ficha (`linkedSpell`), sus cargas y su CD.
+    const spec = item && !legacy ? itemSpellSpec(item) : null;
+    const spell = spec ? spellFor(spec.spell) : null;
+    const ability = legacy ? getAbilityCatalogue().find(a => a.id === legacy.spell)
+        : spell && spec ? normalizeAbilities([spellToAbility(spell, {
+            slotLevel: spec.slotLevel || spell.level,
+            casterLevel: Number(member.level) || 1,
+            saveDc: spec.saveDc || 13,
+            attackBonus: spec.attackBonus || 5,
+        })])[0] : null;
     if (!item || !ability || !hasAction(combatEncounter, 'action')) return '';
+    if (!itemWorks(item)) {
+        toastr.warning(`${item.name} pide sintonía: sintonízate en la ficha, fuera de combate.`, 'Sintonía');
+        return '';
+    }
     const subject = ability.target === 'self' ? member
         : ability.target === 'ally' ? partyMembers.find(m => String(m.id) === String(targetId))
             : getEnemyByInstanceId(String(targetId));
     if (!subject) return '';
+    // J19.9: un pergamino de 5e lo lee quien lanza de esa lista; si es de un nivel que aún no
+    // lanza, con una prueba, y si la falla se pierde.
+    /** @type {string[]} */
+    const tried = [];
+    let lost = false;
+    if (spell && spec?.kind === 'scroll') {
+        const classRow = classRowOf(member);
+        const casting = casterOf(classRow);
+        const check = casting ? scrollCheck({
+            spell, classList: casting.list, maxLevel: maxSpellLevel(classRow, member.level),
+            roll: (formula) => rollDiceDetailed(formula, 20), modifier: spellcastingStats(member, classRow).modifier,
+        }) : { ok: false, reason: `${item.name} solo lo sabe leer quien lanza conjuros.`, success: false, lines: [] };
+        if (!check.ok) {
+            toastr.warning(check.reason, 'Pergamino');
+            return '';
+        }
+        tried.push(...check.lines);
+        lost = !check.success;
+    }
     Object.assign(combatEncounter, useAction(combatEncounter, 'action'));
-    const lines = [`📜 ${member.name} usa ${item.name}.`, ...resolveAbilityOnBoard({ actor: member, side: 'party', ability, subject })];
-    const after = afterUse(item);
-    if (after.remove) removeItemFromInventory(/** @type {any} */ (member), String(item.id));
-    else /** @type {any} */ (item).charges = after.charges;
-    lines.push(after.line, ...magicConsequences(ability));
+    const lines = [`📜 ${member.name} usa ${item.name}.`, ...tried, ...(lost ? [] : resolveAbilityOnBoard({ actor: member, side: 'party', ability, subject }))];
+    if (legacy) {
+        const after = afterUse(item);
+        if (after.remove) removeItemFromInventory(/** @type {any} */ (member), String(item.id));
+        else /** @type {any} */ (item).charges = after.charges;
+        lines.push(after.line);
+    } else if (spec?.kind === 'scroll') {
+        removeItemFromInventory(/** @type {any} */ (member), String(item.id));
+        lines.push(`${item.name} se deshace en ceniza.`);
+    } else {
+        const spent = spendItemCharges(item, 1);
+        if (spent.remove) removeItemFromInventory(/** @type {any} */ (member), String(item.id));
+        else /** @type {any} */ (item).uses = spent.uses;
+        lines.push(spent.line);
+    }
+    lines.push(...magicConsequences(ability));
     saveCombatState();
     savePartyState();
     postCombatNarration(lines.join('\n'));
@@ -132,8 +187,23 @@ export async function openGrimoire(all = false) {
         await new Popup(body[0], POPUP_TYPE.TEXT, '', { okButton: 'Cerrar', allowVerticalScrolling: true, leftAlign: true }).show();
         return;
     }
-    const casters = partyMembers.filter(m => !m.dead && knownSpells(m).length > 0);
-    if (casters.length === 0) {
+    // J19: quien lanza con espacios, primero: sus espacios, lo que prepara y lo que sabe,
+    // con sus botones de preparar y de elegir.
+    await loadPixelManifest();
+    const fifth = partyMembers.filter(m => !m.dead && castsLikeFifth(m));
+    /** @type {null|(() => Promise<any>)} */
+    let next = null;
+    /** @type {any} */
+    let popup = null;
+    for (const member of fifth) {
+        if (ensureSpellsOf(member)) savePartyState();
+        body.append(grimoireSection(member, (action) => {
+            next = action;
+            void popup?.completeAffirmative();
+        }));
+    }
+    const casters = partyMembers.filter(m => !m.dead && !castsLikeFifth(m) && knownSpells(m).length > 0);
+    if (casters.length === 0 && fifth.length === 0) {
         body.append($('<div class="jr-item"></div>').text('Nadie del grupo hace magia. En este mundo, la única que existe es la del grimorio.'));
     }
     const carried = carriedNames().map(n => n.toLowerCase());
@@ -144,9 +214,271 @@ export async function openGrimoire(all = false) {
             body.append($('<div class="jr-item gr-spell"></div>').attr('data-spell', spell.id).attr('title', spell.note).text(`${describeSpell(spell)}${missing}`));
         }
     }
-    const schools = Object.values(SCHOOLS).map(s => `${s.label}: ${s.note}`).join(' · ');
-    body.append($('<div class="jr-item gr-schools"></div>').text(schools));
-    await new Popup(body[0], POPUP_TYPE.TEXT, '', { okButton: 'Cerrar', allowVerticalScrolling: true, leftAlign: true }).show();
+    if (casters.length > 0) {
+        const schools = Object.values(SCHOOLS).map(s => `${s.label}: ${s.note}`).join(' · ');
+        body.append($('<div class="jr-item gr-schools"></div>').text(schools));
+    }
+    popup = new Popup(body[0], POPUP_TYPE.TEXT, '', { okButton: 'Cerrar', allowVerticalScrolling: true, leftAlign: true, wide: true });
+    await popup.show();
+    // Lo que se pidió desde dentro (preparar, elegir) se abre ya cerrado el grimorio: dos
+    // cuadros uno encima de otro no se dejan pulsar bien.
+    if (next) await /** @type {() => Promise<any>} */ (next)();
+}
+
+/**
+ * J19: un lanzador de 5e en el grimorio: sus espacios, su concentración, sus trucos y lo
+ * que tiene preparado (o sabe), con su dibujo; y sus botones.
+ *
+ * @param {any} member
+ * @param {(action: () => Promise<any>) => void} go Cierra el grimorio y hace eso.
+ * @returns {JQuery}
+ */
+function grimoireSection(member, go) {
+    const classRow = classRowOf(member);
+    const casting = casterOf(classRow);
+    const box = $('<div class="gr-fifth"></div>').attr('data-member', String(member.id));
+    const art = firstArt('class', { name: String(member.class ?? '') });
+    const title = $('<div class="jr-title gr-who"></div>');
+    if (art) title.append($('<img alt="" class="gr-class-art pixel-art">').attr('src', art));
+    title.append($('<span></span>').text(`${member.name} · nivel ${Number(member.level) || 1}`));
+    box.append(title);
+    for (const line of magicSummaryOf(member)?.lines ?? []) box.append($('<div class="jr-item gr-line"></div>').text(line));
+
+    const rows = spellRows();
+    const list = classSpellList(classRow, rows);
+    const has = (/** @type {any} */ value, /** @type {any} */ spell) => (Array.isArray(value) ? value : []).map(String).some(id => id === spell.id || spell.aliases.includes(id));
+    const groups = [
+        { label: 'Trucos (a voluntad)', spells: list.filter(s => s.level === 0 && has(member.cantrips, s)) },
+        casting?.mode === 'known'
+            ? { label: 'Los que se sabe', spells: list.filter(s => s.level > 0 && has(member.spellsKnown, s)) }
+            : { label: 'Preparados hoy', spells: list.filter(s => s.level > 0 && has(member.prepared, s)) },
+        ...(casting?.mode === 'spellbook' ? [{ label: 'En su libro', spells: list.filter(s => has(member.spellbook, s) && !has(member.prepared, s)) }] : []),
+        ...(casting?.rituals ? [{ label: 'Rituales (sin espacio, diez minutos, no peleando)', spells: ritualSpells(member, classRow, rows) }] : []),
+    ];
+    for (const group of groups) {
+        if (group.spells.length === 0) continue;
+        box.append($('<div class="gr-group"></div>').text(group.label));
+        const grid = $('<div class="gr-spells"></div>');
+        for (const spell of group.spells) {
+            const row = $('<div class="gr-spell gr-spell5e"></div>').attr('data-spell', spell.id).attr('title', spell.note);
+            const icon = firstArt('spell', { id: spell.id, name: spell.name });
+            if (icon) row.append($('<img alt="" class="gr-spell-art pixel-art">').attr('src', icon));
+            row.append($('<span class="gr-spell-text"></span>').text(describeSpell5e(spell)));
+            grid.append(row);
+        }
+        box.append(grid);
+    }
+
+    const buttons = $('<div class="gr-actions"></div>');
+    if (casting && casting.mode !== 'known' && !casting.ritualsOnly) {
+        const may = mayPrepare(member);
+        const prepare = $('<button type="button" class="menu_button gr-prepare"></button>')
+            .text('Preparar conjuros').prop('disabled', !may)
+            .attr('title', may ? 'Elegir los que tendrá a mano hasta el próximo descanso largo.' : 'Se preparan al despertar, después de un descanso largo.');
+        prepare.on('click', () => go(() => openSpellPreparation(member)));
+        buttons.append(prepare);
+    }
+    // Lo de empezar lo eligió el juego: se puede cambiar una vez, hasta que se elija a mano.
+    if (member.spellsChosenBy === 'juego') {
+        const start = $('<button type="button" class="menu_button gr-start"></button>').text('Elegir mis conjuros de inicio');
+        start.attr('title', 'El juego te dio unos para empezar; puedes cambiarlos por los que quieras de tu lista.');
+        start.on('click', () => go(() => openStartingSpells(member)));
+        buttons.append(start);
+    }
+    if (buttons.children().length > 0) box.append(buttons);
+    return box;
+}
+
+/**
+ * J19: su magia en frases, para la ficha y el grimorio. `null` si no lanza con espacios.
+ *
+ * @param {any} member
+ * @returns {{lines: string[]}|null}
+ */
+export function magicSummaryOf(member) {
+    const classRow = classRowOf(member);
+    const casting = casterOf(classRow);
+    if (!casting) return null;
+    if (ensureSpellsOf(member)) savePartyState();
+    const stats = spellcastingStats(member, classRow);
+    /** @type {string[]} */
+    const lines = [];
+    const slots = describeSlots(member, classRow);
+    if (slots) lines.push(slots.replace(/(\d)\.º (\d+)\/(\d+)/g, 'de nivel $1: $2 de $3'));
+    else if (!casting.ritualsOnly) lines.push('Todavía no tiene espacios de conjuro: llegan al subir de nivel.');
+    if (casting.mode === 'known') lines.push(`Se sabe ${(member.spellsKnown ?? []).length} conjuros y ${(member.cantrips ?? []).length} trucos.`);
+    else if (!casting.ritualsOnly) lines.push(`Tiene ${(member.prepared ?? []).length} de ${preparedLimit(classRow, member)} conjuros preparados y ${(member.cantrips ?? []).length} trucos.`);
+    lines.push(`CD de sus conjuros: ${stats.saveDc} · ataque de conjuro: ${stats.attackBonus >= 0 ? '+' : ''}${stats.attackBonus}.`);
+    const focus = describeConcentration(member.concentration, Number(combatEncounter.round) || 0);
+    if (focus) lines.push(focus);
+    return { lines };
+}
+
+/**
+ * J19.2: si puede preparar ahora: al despertar de un descanso largo, o si nunca ha
+ * preparado nada. Lo de siempre en la mesa: se prepara por la mañana.
+ *
+ * @param {any} member
+ * @returns {boolean}
+ */
+export function mayPrepare(member) {
+    return !combatEncounter.active && (Boolean(member?.mayPrepare) || !Array.isArray(member?.prepared) || member.prepared.length === 0);
+}
+
+/**
+ * J19.2: preparar conjuros, en su cuadro: del libro (mago) o de toda su lista (clérigo,
+ * druida), de los niveles que ya lanza, hasta lo que le cabe.
+ *
+ * @param {any} member
+ * @returns {Promise<boolean>}
+ */
+export async function openSpellPreparation(member) {
+    const classRow = classRowOf(member);
+    const casting = casterOf(classRow);
+    if (!casting || casting.mode === 'known' || casting.ritualsOnly) return false;
+    if (!mayPrepare(member)) {
+        toastr.info('Los conjuros se preparan al despertar, después de un descanso largo.', 'Preparar');
+        return false;
+    }
+    await loadPixelManifest();
+    const rows = spellRows();
+    const max = maxSpellLevel(classRow, member.level);
+    const book = (Array.isArray(member.spellbook) ? member.spellbook : []).map(String);
+    const options = classSpellList(classRow, rows).filter(spell => spell.level > 0 && spell.level <= max
+        && (casting.mode !== 'spellbook' || book.includes(spell.id) || spell.aliases.some(a => book.includes(a))));
+    const limit = preparedLimit(classRow, member);
+    const { openPreparePanel } = await import('../game-engine/ui/spell-picker.js');
+    const chosen = await openPreparePanel({
+        who: String(member.name),
+        options,
+        limit,
+        chosen: (Array.isArray(member.prepared) ? member.prepared : []).map(String),
+        note: casting.mode === 'spellbook'
+            ? `Del libro, los ${limit} que tendrá a mano hasta el próximo descanso largo. Los trucos no cuentan.`
+            : `De toda la lista de su clase, los ${limit} que tendrá a mano hasta el próximo descanso largo. Los trucos no cuentan.`,
+        check: (ids) => checkPreparation({ member, classRow, catalogue: rows, chosen: ids }),
+        Popup,
+        POPUP_TYPE,
+    });
+    if (!chosen) return false;
+    member.prepared = chosen;
+    member.mayPrepare = false;
+    savePartyState();
+    renderPartyMembers();
+    const names = chosen.map(id => spellFor(id)?.name ?? id);
+    const line = `${member.name} prepara: ${names.join(', ')}.`;
+    postCombatNarration(`📖 [MAGIA] ${line}`);
+    toastr.success(line, 'Conjuros preparados');
+    return true;
+}
+
+/**
+ * J19.2: cambiar los conjuros que el juego dio al empezar por los que uno quiera, con la
+ * misma tarjeta que al subir de nivel (de nada a su nivel).
+ *
+ * @param {any} member
+ * @returns {Promise<boolean>}
+ */
+export async function openStartingSpells(member) {
+    const { openSpellChoiceCard } = await import('./level-up.js');
+    const classRow = classRowOf(member);
+    if (!casterOf(classRow)) return false;
+    const blank = { ...member, cantrips: [], spellsKnown: [], spellbook: [], prepared: [] };
+    const patch = await openSpellChoiceCard({ member: blank, classRow, from: 0, to: Number(member.level) || 1, title: `${member.name}: tus conjuros de inicio` });
+    if (!patch) return false;
+    for (const key of ['cantrips', 'spellsKnown', 'spellbook', 'prepared']) {
+        if (Array.isArray(patch[key])) member[key] = patch[key];
+    }
+    member.spellsChosenBy = 'jugador';
+    savePartyState();
+    renderPartyMembers();
+    toastr.success(`${member.name} ya tiene los conjuros que has elegido.`, 'Conjuros');
+    return true;
+}
+
+/**
+ * J19.9: sintonizarse con un objeto, o dejarlo. Tres como mucho, y fuera de combate.
+ *
+ * @param {any} member
+ * @param {string} itemId
+ * @param {boolean} on
+ * @returns {boolean}
+ */
+export function attuneItem(member, itemId, on) {
+    const done = setAttunement(member, itemId, on, { inCombat: Boolean(combatEncounter.active) });
+    if (!done.ok) {
+        toastr.warning(done.reason, 'Sintonía');
+        return false;
+    }
+    member.items = done.items;
+    savePartyState();
+    renderPartyMembers();
+    const item = done.items.find((/** @type {any} */ i) => String(i?.id) === String(itemId));
+    const line = on
+        ? `${member.name} pasa una hora tranquila con ${item?.name ?? 'el objeto'}: ya funciona en sus manos.`
+        : `${member.name} deja la sintonía con ${item?.name ?? 'el objeto'}.`;
+    toastr.success(line, 'Sintonía');
+    if (on) postCombatNarration(`✨ [MAGIA] ${line}`);
+    return true;
+}
+
+/**
+ * J19.9: cuántos objetos lleva alguien en sintonía, de cuántos.
+ *
+ * @param {any} member
+ * @returns {string}
+ */
+export function attuneNoteOf(member) {
+    return `En sintonía: ${attunedItems(member).length} de ${ATTUNEMENT_MAX}. Se hace fuera de combate, y solo funciona lo sintonizado.`;
+}
+
+/** Para no hacerlo dos veces si el descanso llama dos veces seguidas. */
+let lastRestMagic = { kind: '', at: 0 };
+
+/**
+ * J19.1, J19.2 y J19.9: lo que devuelve un descanso a la magia. Los espacios (el largo,
+ * todos; el corto, los de pacto), las cargas de los objetos, y con el largo se acaba lo que
+ * duraba horas (la concentración, la Armadura de mago, la vida de Ayuda) y se puede volver
+ * a preparar. Si tu personaje prepara, se le abre el cuadro al despertar.
+ *
+ * Lo llama `takeRest` (`party/time.js`).
+ *
+ * @param {'corto'|'largo'} kind
+ * @returns {string[]} Lo que se dice.
+ */
+export function afterRestMagic(kind) {
+    const now = Date.now();
+    if (lastRestMagic.kind === kind && now - lastRestMagic.at < 1500) return [];
+    lastRestMagic = { kind, at: now };
+    /** @type {string[]} */
+    const lines = [];
+    for (const member of partyMembers.filter(m => !m.dead)) {
+        if (castsLikeFifth(member)) member.slotsUsed = recoverSlots(member, kind);
+        if (Array.isArray(member.items) && member.items.length > 0) {
+            const recharged = rechargeItems(member.items, kind, (formula) => rollDiceDetailed(formula, 6));
+            member.items = recharged.items;
+            lines.push(...recharged.lines);
+        }
+        if (kind !== 'largo') continue;
+        member.concentration = null;
+        delete member.spellAc;
+        if (member.spellHp) {
+            const bonus = Math.max(0, Number(member.spellHp.bonus) || 0);
+            member.maxHp = Math.max(1, (Number(member.maxHp) || 1) - bonus);
+            member.hp = Math.min(Number(member.hp) || 0, member.maxHp);
+            delete member.spellHp;
+        }
+        const casting = casterOf(classRowOf(member));
+        if (casting && casting.mode !== 'known' && !casting.ritualsOnly) member.mayPrepare = true;
+    }
+    savePartyState();
+    const hero = partyMembers.find(m => !m.dead && !m.guest) ?? null;
+    const heroCasting = hero ? casterOf(classRowOf(hero)) : null;
+    if (kind === 'largo' && hero && heroCasting && heroCasting.mode !== 'known' && !heroCasting.ritualsOnly) {
+        // Al despertar, después de lo que cuenta el descanso.
+        setTimeout(() => { void openSpellPreparation(hero); }, 600);
+    }
+    return lines;
 }
 
 /**
@@ -250,7 +582,251 @@ export function getAbilityCatalogue() {
             .filter((/** @type {any} */ a) => !have.has(String(a.id)) && !magicInData(a))
         : [])];
     const magic = grimoireAbilities().map(ability => ({ ...ability, ...(tuned.get(ability.id) ?? {}), aliases: spellById(ability.id)?.aliases ?? [] }));
-    return [...pack, ...normalizeAbilities(rows), ...normalizeAbilities(magic)];
+    // J19: y debajo, los conjuros de 5e que el grimorio no tiene, con los números de serie
+    // (los de cada lanzador salen en `spellAbilitiesOf`). Los piden los objetos que llevan
+    // un conjuro dentro y los enemigos que lanzan.
+    const grimoire = new Set(magic.map(ability => ability.id));
+    const fifth = spellCatalogue().filter(spell => !grimoire.has(spell.id) && !have.has(spell.id)).map(spell => spellToAbility(spell));
+    return [...pack, ...normalizeAbilities(rows), ...normalizeAbilities(magic), ...normalizeAbilities(fifth)];
+}
+
+// --- J19: la magia de 5e en juego ---------------------------------------------------------
+//
+// Quien es de una clase con la columna `casting` (clases.json) lanza con espacios, prepara y
+// se concentra; los demás siguen con la capa ligera de siempre. Lo que sabe vive en su ficha:
+// `cantrips`, `spellsKnown`, `spellbook`, `prepared`, `slotsUsed` y `concentration`.
+
+/** @type {{from: any, rows: any[], spells: import('../game-engine/rules/spell-catalogue.js').Spell[]}} */
+const spellCache = { from: null, rows: [], spells: [] };
+
+/**
+ * Las filas de `conjuros.json`, tal cual, y ya normalizadas. Se leen una vez por compendio.
+ *
+ * @returns {any[]}
+ */
+export function spellRows() {
+    if (spellCache.from !== lastCompendium) {
+        const rows = lastCompendium?.has?.('conjuros') ? lastCompendium.find('conjuros') : [];
+        spellCache.from = rows.length > 0 ? lastCompendium : null;
+        spellCache.rows = rows;
+        spellCache.spells = rows.map(normalizeSpell);
+    }
+    return spellCache.rows;
+}
+
+/** @returns {import('../game-engine/rules/spell-catalogue.js').Spell[]} */
+export function spellCatalogue() {
+    spellRows();
+    return spellCache.spells;
+}
+
+/**
+ * Un conjuro de 5e por su id o un alias.
+ *
+ * @param {string} id
+ * @returns {import('../game-engine/rules/spell-catalogue.js').Spell|null}
+ */
+export function spellFor(id) {
+    return findSpell(spellCatalogue(), String(id ?? ''));
+}
+
+/**
+ * La fila de clase de alguien («Maga» es la de `mago`).
+ *
+ * @param {any} member
+ * @returns {any|null}
+ */
+export function classRowOf(member) {
+    const rows = lastCompendium?.has?.('clases') ? lastCompendium.find('clases') : [];
+    return classRowFor(String(member?.class ?? member?.charClass ?? ''), rows);
+}
+
+/**
+ * Si hace magia de 5e (su clase trae `casting`).
+ *
+ * @param {any} member
+ * @returns {boolean}
+ */
+export function castsLikeFifth(member) {
+    return Boolean(casterOf(classRowOf(member)));
+}
+
+/**
+ * Lo de empezar, para quien hace magia de 5e y aún no tiene ninguna lista: lo de su nivel,
+ * lo que ya sabía primero. Se puede cambiar en el grimorio.
+ *
+ * @param {any} member
+ * @returns {boolean} Si ha cambiado algo.
+ */
+export function ensureSpellsOf(member) {
+    if (!member || hasSpellLists(member) || spellRows().length === 0) return false;
+    const classRow = classRowOf(member);
+    const patch = startingSpells({ member, classRow, catalogue: spellRows() });
+    if (!patch) return false;
+    Object.assign(member, patch);
+    member.spellsChosenBy = 'juego';
+    return true;
+}
+
+/**
+ * Si está dentro de un silencio (J19.6): no puede decir las palabras.
+ *
+ * @param {any} member
+ * @returns {boolean}
+ */
+function silencedHere(member) {
+    if (!combatEncounter.active || !Array.isArray(combatEncounter.spellZones)) return false;
+    return zoneFlagsAt(combatEncounter.spellZones, boardCellOf(member)).silence;
+}
+
+/**
+ * Los conjuros que alguien puede lanzar ahora, como habilidades con sus números (su CD, su
+ * ataque, su nivel para los trucos) y el espacio más bajo que le sirve. Lo que no puede, con
+ * el porqué en `blocked`. Las reacciones no: saltan solas.
+ *
+ * @param {any} member
+ * @returns {Array<Record<string, any>>}
+ */
+export function spellAbilitiesOf(member) {
+    const classRow = classRowOf(member);
+    if (!casterOf(classRow)) return [];
+    if (ensureSpellsOf(member)) savePartyState();
+    const { cantrips, spells } = castableSpells(member, classRow, spellRows());
+    const stats = spellcastingStats(member, classRow);
+    const silenced = silencedHere(member);
+    return [...cantrips, ...spells].filter(spell => spell.castingTime !== 'reaction').map(spell => {
+        const verdict = canCastSpell({ member, classRow, spell, inCombat: true, carried: Array.isArray(member.items) ? member.items : [], silenced });
+        const ability = spellToAbility(spell, {
+            slotLevel: verdict.ok && verdict.slotLevel > 0 ? verdict.slotLevel : spell.level,
+            casterLevel: Number(member.level) || 1,
+            modifier: stats.modifier,
+            saveDc: stats.saveDc,
+            attackBonus: stats.attackBonus,
+        });
+        if (!verdict.ok) ability.blocked = verdict.reason;
+        return ability;
+    });
+}
+
+/**
+ * Lo que alguien sabe usar: sus conjuros de 5e (si los hace) y sus habilidades de siempre.
+ * A quien lanza con espacios no le salen además los del grimorio de la capa ligera: los
+ * mismos conjuros, contados dos veces.
+ *
+ * @param {any} member
+ * @returns {import('../game-engine/rules/abilities.js').Ability[]}
+ */
+export function knownAbilitiesOf(member) {
+    const spells = normalizeAbilities(spellAbilitiesOf(member));
+    const fifth = spells.length > 0 || castsLikeFifth(member);
+    const own = new Set(spells.map(ability => ability.id));
+    const rest = knownAbilities(member, getAbilityCatalogue())
+        .filter(ability => !own.has(ability.id) && !(fifth && (typeof ability.circle === 'number' || typeof ability.spellLevel === 'number')));
+    return [...spells, ...rest];
+}
+
+/**
+ * Una habilidad de alguien por su id: la suya (con sus números) o, si no, la del catálogo.
+ *
+ * @param {any} member
+ * @param {string} id
+ * @returns {import('../game-engine/rules/abilities.js').Ability|null}
+ */
+export function abilityOf(member, id) {
+    return knownAbilitiesOf(member).find(ability => ability.id === id)
+        ?? getAbilityCatalogue().find(ability => ability.id === id) ?? null;
+}
+
+/**
+ * El id con el que el encuentro conoce a alguien.
+ *
+ * @param {any} creature
+ * @returns {string}
+ */
+function combatIdOf(creature) {
+    return partyMembers.includes(creature) ? String(creature?.id ?? '') : String(creature?.instanceId ?? creature?.id ?? '');
+}
+
+/**
+ * Lo que dependía de una concentración que se acaba: sus zonas, sus invocaciones, la
+ * armadura que daba y los estados que había puesto.
+ *
+ * @param {any} ended
+ * @returns {string[]}
+ */
+function endLinked(ended) {
+    const current = readConcentration(ended);
+    if (!current) return [];
+    /** @type {string[]} */
+    const lines = [];
+    const zones = endZones(combatEncounter.spellZones ?? [], { casterId: current.casterId, spellId: current.spellId });
+    if (zones.gone.length > 0) {
+        combatEncounter.spellZones = zones.kept;
+        lines.push(...zones.lines);
+    }
+    const summons = dismissSummons(combatEncounter.summons ?? [], { casterId: current.casterId, spellId: current.spellId });
+    if (summons.gone.length > 0) {
+        combatEncounter.summons = summons.kept;
+        lines.push(...summons.lines);
+    }
+    for (const creature of [...partyMembers, ...(combatEncounter.enemies ?? [])]) {
+        if (creature?.spellAc && String(creature.spellAc.casterId) === current.casterId && String(creature.spellAc.spellId) === current.spellId) {
+            delete creature.spellAc;
+            lines.push(`🛡️ A ${creature.name} se le acaba ${current.name}.`);
+        }
+        const marks = Array.isArray(creature?.spellMarks) ? creature.spellMarks : [];
+        const { linked, rest } = linkedTo(current, marks);
+        if (linked.length === 0) continue;
+        creature.spellMarks = rest;
+        const gone = new Set(linked.map((/** @type {any} */ m) => String(m.condition)));
+        creature.activeConditions = (Array.isArray(creature.activeConditions) ? creature.activeConditions : []).filter((/** @type {string} */ c) => !gone.has(c));
+        combatEncounter.conditionTimers = (combatEncounter.conditionTimers ?? []).filter((/** @type {any} */ t) => !(String(t.who) === combatIdOf(creature) && gone.has(String(t.condition))));
+        lines.push(`✨ ${creature.name} se libra de ${[...gone].join(', ')}.`);
+    }
+    return lines;
+}
+
+/**
+ * J19.4: dejar de concentrarse (a propósito, al caer o al perder la salvación), con todo
+ * lo que dependía de ello.
+ *
+ * @param {any} creature
+ * @param {string} [why]
+ * @returns {string[]}
+ */
+export function dropConcentration(creature, why = '') {
+    const ended = endConcentration(creature?.concentration, why);
+    if (!ended.ended) return [];
+    creature.concentration = null;
+    return [...ended.lines, ...endLinked(ended.ended)];
+}
+
+/**
+ * Pagar un conjuro de 5e: el espacio y el material que se gasta.
+ *
+ * @param {any} caster
+ * @param {any} ability Con `spellLevel` y `slotLevel`.
+ * @returns {string[]}
+ */
+function paySpellSlot(caster, ability) {
+    /** @type {string[]} */
+    const said = [];
+    const spell = spellFor(ability.id);
+    const classRow = classRowOf(caster);
+    if (!spell || !casterOf(classRow)) return said;
+    if (spell.level > 0) {
+        const spent = spendSlot(caster, classRow, Math.max(spell.level, Number(ability.slotLevel) || spell.level));
+        if (spent.ok) {
+            caster.slotsUsed = spent.slotsUsed;
+            said.push(`🔮 ${caster.name} gasta un espacio de ${SLOT_LABELS[/** @type {1} */ (spent.slotLevel)]}.`);
+        }
+    }
+    const parts = componentsCheck(spell, { carried: Array.isArray(caster.items) ? caster.items : [], focus: casterOf(classRow)?.focus ?? '' });
+    for (const name of parts.consumes) {
+        if (consumeComponent(name)) said.push(`🧪 Se gasta ${String(name).toLowerCase()}.`);
+    }
+    if (partyMembers.includes(caster)) showTip('spell');
+    return said;
 }
 
 /**
@@ -298,6 +874,8 @@ function consumeComponent(name) {
 export function payForSpell(caster, ability) {
     /** @type {string[]} */
     const said = [];
+    // J19: un conjuro de 5e gasta su espacio y su material, no las cargas del círculo.
+    if (typeof ability?.spellLevel === 'number') return paySpellSlot(caster, ability);
     if (typeof ability?.circle !== 'number') return said;
     if (ability.circle > 0) caster.spellCharges = spendCharge(caster, ability.circle);
     // H1: el primer conjuro del grupo dice cómo va lo de las cargas.
@@ -412,6 +990,10 @@ export function useAbility(member, ability, target) {
         toastr.warning('No hay un turno de jugador activo.');
         return '';
     }
+    // J19: un conjuro de 5e, con los números de quien lo lanza (su CD, su ataque, su espacio),
+    // aunque el botón lo haya buscado en el catálogo de serie.
+    // Y un id que el grimorio también tiene (Curar heridas) es el suyo de 5e, no el de círculos.
+    if (castsLikeFifth(member)) ability = knownAbilitiesOf(member).find(a => a.id === ability.id) ?? ability;
 
     const isSelf = ability.target === 'self';
     const subject = isSelf ? member : target;
@@ -444,6 +1026,23 @@ export function useAbility(member, ability, target) {
     if (!verdict.ok) {
         toastr.warning(verdict.reason);
         return '';
+    }
+    // J19: y lo suyo de 5e con la acción de verdad: preparado, espacio, foco, silencio.
+    const spell = typeof ability.spellLevel === 'number' ? spellFor(ability.id) : null;
+    if (spell && castsLikeFifth(member)) {
+        const cast = canCastSpell({
+            member, classRow: classRowOf(member), spell,
+            slotLevel: Number(ability.slotLevel) > 0 ? Number(ability.slotLevel) : undefined,
+            inCombat: true,
+            hasAction: hasAction(combatEncounter, 'action'),
+            hasBonus: hasAction(combatEncounter, 'bonus'),
+            carried: Array.isArray(member.items) ? member.items : [],
+            silenced: silencedHere(member),
+        });
+        if (!cast.ok) {
+            toastr.warning(cast.reason);
+            return '';
+        }
     }
 
     // El coste se paga aunque falle: lanzar y errar tambien gasta el turno.
@@ -485,7 +1084,24 @@ export function abilityVictims(actor, side, ability, subject) {
     const aim = boardCellOf(subject);
     if (!isArea(ability.area)) {
         const kind = partyMembers.includes(subject) ? 'party' : 'enemy';
-        return { cells: [aim], victims: [{ kind, ref: subject, ...aim }] };
+        /** @type {Array<{kind: 'party'|'enemy', ref: any, x: number, y: number}>} */
+        const victims = [{ kind, ref: subject, ...aim }];
+        // J19: un conjuro para varios (Bendición, Ayuda, Inmovilizar a más nivel): los más
+        // cercanos al elegido, del mismo bando y a su alcance.
+        const more = Math.max(1, Math.floor(Number(ability.targets) || 1)) - 1;
+        if (more > 0) {
+            const from = boardCellOf(actor);
+            const same = kind === 'party'
+                ? partyMembers.filter(m => m !== subject && !m.dead && (Number(m.hp) || 0) > 0)
+                : getAliveEnemies().filter(e => e !== subject);
+            const near = same
+                .map(ref => ({ ref, ...boardCellOf(ref) }))
+                .filter(c => getDistanceInFeet(from.x, from.y, c.x, c.y) <= Math.max(5, Number(ability.rangeFeet) || 5))
+                .sort((a, b) => getDistanceInFeet(aim.x, aim.y, a.x, a.y) - getDistanceInFeet(aim.x, aim.y, b.x, b.y))
+                .slice(0, more);
+            victims.push(...near.map(c => ({ kind, ref: c.ref, x: c.x, y: c.y })));
+        }
+        return { cells: [aim], victims };
     }
     const context = getActiveBoardContext();
     const cells = areaCells({
@@ -532,29 +1148,47 @@ export function resolveAbilityOnBoard({ actor, side, ability, subject }) {
     const element = elementOf(ability);
     const outdoors = context.board ? !isIndoors(context.board, hereLocation()) : true;
     const wet = Boolean(boardVisibility().wet);
+    // J19: lo de 5e que va antes de tirar (la concentración, la zona, las invocaciones, lo
+    // que duerme por puntos de vida). Si eso ya ha hecho lo suyo, no se tira uno a uno.
+    const spell = typeof ability.spellLevel === 'number' ? spellFor(ability.id) : null;
+    const fifth = spell ? castSpellExtras({ actor, side, ability, spell, cells, victims, aim: boardCellOf(subject) }) : null;
+    if (fifth) lines.push(...fifth.lines);
+    // J19: los rayos separados (Proyectil mágico, Rayo abrasador), todos al elegido.
+    const rays = spell && !area ? Math.max(1, Math.floor(Number(ability.rays) || 1)) : 1;
     // R4: lo que se quita con un conjuro que roba vida.
     let drained = 0;
-    for (const victim of victims) {
+    for (const victim of fifth?.done ? [] : victims) {
         const target = victim.ref;
-        const plan = planAbilityUse({
-            actor,
-            target,
-            ability,
-            roll: (/** @type {string} */ formula) => rollDiceDetailed(formula, 8),
-            attackModifier: side === 'party'
-                ? getPlayerAttackModifier(actor, ability.rangeFeet)
-                : Math.max(getAbilityModifier(actor.strength || 10), getAbilityModifier(actor.dexterity || 10)),
-            targetAc: friendly || target === actor ? 10 : getTargetArmorClass(target, actor).ac,
-            saveModifier: abilityModifier(target, ability.saveAbility),
-        });
-        if (area) {
-            lines.push(`➤ ${target.name}:`);
-            lines.push(...plan.lines.slice(1));
-        } else {
-            lines.push(...plan.lines);
+        /** @type {any} */
+        let last = null;
+        for (let ray = 0; ray < rays; ray++) {
+            if (ray > 0 && (Number(target.currentHp ?? target.hp) || 0) <= 0) break;
+            const plan = planAbilityUse({
+                actor,
+                target,
+                ability,
+                roll: (/** @type {string} */ formula) => rollDiceDetailed(formula, 8),
+                // J19: un conjuro de 5e ataca con su bono de conjuro, no con el del arma.
+                attackModifier: spell && typeof ability.attackBonus === 'number' && side === 'party'
+                    ? ability.attackBonus
+                    : side === 'party'
+                        ? getPlayerAttackModifier(actor, ability.rangeFeet)
+                        : Math.max(getAbilityModifier(actor.strength || 10), getAbilityModifier(actor.dexterity || 10)),
+                targetAc: friendly || target === actor ? 10 : getTargetArmorClass(target, actor).ac,
+                saveModifier: abilityModifier(target, ability.saveAbility),
+            });
+            if (area || ray > 0) {
+                lines.push(rays > 1 ? `➤ Rayo ${ray + 1}:` : `➤ ${target.name}:`);
+                lines.push(...plan.lines.slice(1));
+            } else {
+                lines.push(...plan.lines);
+            }
+            lines.push(...applyAbilityPlan({ actor, side, victim, plan }));
+            if (ability.drain && victim.kind !== side) drained += plan.damage;
+            if (spell) lines.push(...spellAfterEffects({ actor, side, spell, ability, victim, plan }));
+            last = plan;
         }
-        lines.push(...applyAbilityPlan({ actor, side, victim, plan }));
-        if (ability.drain && victim.kind !== side) drained += plan.damage;
+        const plan = last ?? { hit: false, saved: true };
 
         // El elemento y dónde está, o cómo está: en el agua, el frío hiela.
         if (element && plan.hit && !plan.saved && (Number(target.currentHp ?? target.hp) || 0) > 0) {
@@ -675,6 +1309,225 @@ function applyAbilityPlan({ actor, side, victim, plan }) {
     }
     if (plan.condition) {
         applyTimedCondition(target, victim.kind === 'enemy' ? String(target.instanceId) : String(target.id), plan.condition, plan.conditionRounds);
+    }
+    return lines;
+}
+
+/** Las casillas por las que un empujón puede arrastrar a alguien. */
+const PUSHABLE = ['floor', 'difficult', 'water', 'ice', 'brush', 'stairs', 'exit', 'cover_half'];
+
+/**
+ * J19: empujar a alguien lejos de quien lanza (Ola de trueno), casilla a casilla, hasta
+ * donde deje el tablero: un muro, una puerta cerrada u otro cuerpo paran el empujón.
+ *
+ * @param {any} actor
+ * @param {{ref: any}} victim
+ * @param {number} feet
+ * @returns {string}
+ */
+function pushAway(actor, victim, feet) {
+    const from = boardCellOf(actor);
+    const context = getActiveBoardContext();
+    let { x, y } = boardCellOf(victim.ref);
+    const dx = Math.sign(x - from.x);
+    const dy = Math.sign(y - from.y);
+    if (dx === 0 && dy === 0) return '';
+    const taken = new Set([
+        ...partyMembers.filter(m => !m.dead && m !== victim.ref),
+        ...getAliveEnemies().filter(e => e !== victim.ref),
+    ].map(c => `${boardCellOf(c).x},${boardCellOf(c).y}`));
+    let moved = 0;
+    for (let step = 0; step < Math.floor(Number(feet) / 5); step++) {
+        const nx = x + dx;
+        const ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= context.gridWidth || ny >= context.gridHeight) break;
+        const cell = context.terrain ? getCell(context.terrain, nx, ny) : { type: 'floor' };
+        const open = PUSHABLE.includes(String(cell.type)) || (cell.type === 'door' && /** @type {any} */ (cell).open);
+        if (!open || taken.has(`${nx},${ny}`)) break;
+        x = nx;
+        y = ny;
+        moved++;
+    }
+    if (moved === 0) return '';
+    if (victim.ref.mapPosition) Object.assign(victim.ref.mapPosition, { gridX: x, gridY: y });
+    else Object.assign(victim.ref, { gridX: x, gridY: y });
+    return `💨 ${victim.ref.name} sale despedido ${moved * 5} pies.`;
+}
+
+/**
+ * J19: lo que hace un conjuro de 5e antes de tirar por nadie, y si con eso ya está hecho:
+ *
+ * - la concentración (J19.4): la de antes se acaba, con lo que dependía de ella;
+ * - lo que deshace zonas (la luz del día, Disipar magia);
+ * - la zona (J19.6), que se queda en `combatEncounter.spellZones`, y lo que le hace ya a
+ *   quien está dentro al aparecer (el resto de turnos, al entrar o al empezar, lo lleva el
+ *   combate);
+ * - las invocaciones (J19.5), que van a `combatEncounter.summons`;
+ * - lo que duerme por puntos de vida (Dormir), de menos vida a más.
+ *
+ * @param {Object} input
+ * @param {any} input.actor
+ * @param {'party'|'enemy'} input.side
+ * @param {any} input.ability
+ * @param {import('../game-engine/rules/spell-catalogue.js').Spell} input.spell
+ * @param {Array<{x: number, y: number}>} input.cells
+ * @param {Array<{kind: 'party'|'enemy', ref: any, x: number, y: number}>} input.victims
+ * @param {{x: number, y: number}} input.aim
+ * @returns {{lines: string[], done: boolean}}
+ */
+function castSpellExtras({ actor, side, ability, spell, cells, victims, aim }) {
+    /** @type {string[]} */
+    const lines = [];
+    const round = Number(combatEncounter.round) || 1;
+    const casterId = combatIdOf(actor);
+    const up = upcastSpell(spell, Number(ability.slotLevel) || spell.level);
+    const roll = (/** @type {string} */ formula) => rollDiceDetailed(formula, 8);
+    let done = false;
+
+    if (spell.concentration) {
+        const started = startConcentration({ current: actor.concentration, spell, casterId, round });
+        lines.push(...started.lines);
+        if (started.ended) lines.push(...endLinked(started.ended));
+        actor.concentration = started.concentration;
+        lines.push(`🧠 ${actor.name} se concentra en ${spell.name}: si le hieren, puede perderlo.`);
+    }
+
+    if (spell.clearsZones.length > 0 || spell.dispels) {
+        const cleared = clearZones({ zones: combatEncounter.spellZones ?? [], kinds: spell.dispels ? Object.keys(ZONE_KINDS) : spell.clearsZones, cells });
+        combatEncounter.spellZones = cleared.zones;
+        lines.push(...cleared.lines);
+    }
+    if (spell.dispels) {
+        for (const victim of victims) {
+            if (victim.ref.concentration) lines.push(...dropConcentration(victim.ref, 'se la deshace la magia'));
+            if (victim.ref.spellAc) {
+                delete victim.ref.spellAc;
+                lines.push(`✨ A ${victim.ref.name} se le deshace la magia que le protegía.`);
+            }
+        }
+        done = !spell.damage;
+    }
+
+    if (spell.zone) {
+        const zone = zoneFromSpell({ spell, cells, center: aim, casterId, round, saveDc: Number(ability.saveDc) || 13, damage: up.damage });
+        if (zone) {
+            const placed = placeZone(combatEncounter.spellZones ?? [], zone);
+            combatEncounter.spellZones = placed.zones;
+            const kind = kindOf(zone.kind);
+            const lasts = zone.until ? ` durante ${zone.until - round} ronda(s)` : '';
+            lines.push(`${kind.icon} ${zone.name} cubre ${zone.cells.length} casilla(s)${lasts}. ${kind.tell}`.trim(), ...placed.lines);
+            if (zone.effect && zone.triggers.length > 0) {
+                // Lo que va con quien lo lanza (los espíritus) no toca a los suyos.
+                for (const victim of victims.filter(v => !(kind.follows && v.kind === side))) {
+                    const target = victim.ref;
+                    const hit = resolveZoneEffect({ effect: { ...zone.effect, name: zone.name }, roll, saveModifier: abilityModifier(target, zone.effect.save), targetName: target.name });
+                    lines.push(...hit.lines);
+                    lines.push(...applyAbilityPlan({ actor, side, victim, plan: { damage: hit.damage, healing: 0, crit: false, condition: hit.condition, conditionRounds: hit.conditionRounds } }));
+                    if (hit.condition && spell.concentration) {
+                        target.spellMarks = [...(Array.isArray(target.spellMarks) ? target.spellMarks : []), { casterId, spellId: spell.id, condition: hit.condition }];
+                    }
+                }
+            }
+            done = true;
+        }
+    }
+
+    if (spell.summon) {
+        const context = getActiveBoardContext();
+        const occupied = [
+            ...partyMembers.filter(m => !m.dead).map(m => boardCellOf(m)),
+            ...getAliveEnemies().map(e => boardCellOf(e)),
+            ...(Array.isArray(combatEncounter.summons) ? combatEncounter.summons : []).map((/** @type {any} */ t) => ({ x: Number(t.x) || 0, y: Number(t.y) || 0 })),
+        ];
+        const summoned = planSummon({
+            spell,
+            caster: { id: casterId, name: String(actor.name ?? ''), ...boardCellOf(actor) },
+            round,
+            count: up.count,
+            bestiary: lastCompendium?.has?.('bestiario') ? lastCompendium.find('bestiario') : [],
+            occupied,
+            terrain: context.terrain,
+            width: context.gridWidth,
+            height: context.gridHeight,
+        });
+        combatEncounter.summons = [...(Array.isArray(combatEncounter.summons) ? combatEncounter.summons : []), ...summoned.tokens];
+        lines.push(...summoned.lines);
+        done = true;
+    }
+
+    if (spell.hpPool) {
+        const pool = Math.max(0, Number(roll(up.hpPool).total) || 0);
+        const fallen = hpPoolTargets(victims.map(v => v.ref), pool);
+        lines.push(`🎲 ${spell.name}: ${up.hpPool} = ${pool} puntos de vida que tumbar.`);
+        const condition = spell.condition || 'Unconscious';
+        for (const victim of victims.filter(v => fallen.includes(v.ref))) {
+            applyTimedCondition(victim.ref, combatIdOf(victim.ref), condition, spell.conditionRounds);
+            lines.push(`💤 ${victim.ref.name} cae redondo.`);
+        }
+        if (fallen.length === 0) lines.push('Nadie cae: aguantan más de lo que da.');
+        done = true;
+    }
+    return { lines, done };
+}
+
+/**
+ * J19: lo que deja un conjuro de 5e en quien alcanza, después de la tirada: quitar estados,
+ * estabilizar, devolver a la vida, más vida máxima, armadura, empujar; y apuntar el estado
+ * que depende de una concentración, para quitarlo cuando se acabe.
+ *
+ * @param {Object} input
+ * @param {any} input.actor
+ * @param {'party'|'enemy'} input.side
+ * @param {import('../game-engine/rules/spell-catalogue.js').Spell} input.spell
+ * @param {any} input.ability
+ * @param {{kind: 'party'|'enemy', ref: any}} input.victim
+ * @param {any} input.plan
+ * @returns {string[]}
+ */
+function spellAfterEffects({ actor, side, spell, ability, victim, plan }) {
+    /** @type {string[]} */
+    const lines = [];
+    const target = victim.ref;
+    const casterId = combatIdOf(actor);
+    if (spell.concentration && plan.condition) {
+        target.spellMarks = [...(Array.isArray(target.spellMarks) ? target.spellMarks : []), { casterId, spellId: spell.id, condition: plan.condition }];
+    }
+    if (!plan.hit || plan.saved) return lines;
+    if (spell.removes.length > 0) {
+        const had = Array.isArray(target.activeConditions) ? target.activeConditions : [];
+        const gone = had.filter((/** @type {string} */ c) => spell.removes.includes(c));
+        if (gone.length > 0) {
+            target.activeConditions = had.filter((/** @type {string} */ c) => !gone.includes(c));
+            combatEncounter.conditionTimers = (combatEncounter.conditionTimers ?? []).filter((/** @type {any} */ t) => !(String(t.who) === combatIdOf(target) && gone.includes(String(t.condition))));
+            lines.push(`✨ A ${target.name} se le pasa: ${gone.join(', ')}.`);
+        }
+    }
+    if (spell.stabilizes && victim.kind === 'party' && (Number(target.hp) || 0) <= 0 && !target.dead) {
+        target.deathSaves = { ...clearDeathSaves(), stable: true };
+        lines.push(`🩹 ${target.name} deja de desangrarse: estabilizado.`);
+    }
+    if (spell.revives && victim.kind === 'party' && (target.dead || target.deathSaves?.dead)) {
+        target.dead = false;
+        target.hp = Math.max(1, spell.revives.hp);
+        target.deathSaves = clearDeathSaves();
+        lines.push(`🕯️ ${target.name} vuelve de la orilla con ${target.hp} PG.`);
+    }
+    const bonus = upcastSpell(spell, Number(ability.slotLevel) || spell.level).maxHpBonus;
+    if (bonus > 0 && victim.kind === 'party' && !target.spellHp) {
+        target.spellHp = { bonus, spellId: spell.id, name: spell.name };
+        target.maxHp = (Number(target.maxHp) || 0) + bonus;
+        target.hp = (Number(target.hp) || 0) + bonus;
+        lines.push(`💪 ${target.name} tiene ${bonus} PG más, también de máximo (${spell.name}).`);
+    }
+    if (spell.ac) {
+        const before = getTargetArmorClass(target).ac;
+        target.spellAc = { ...spell.ac, spellId: spell.id, casterId, name: spell.name };
+        const after = getTargetArmorClass(target).ac;
+        lines.push(`🛡️ ${target.name}: ${spell.name}, CA ${before} → ${after}.`);
+    }
+    if (spell.pushFeet > 0 && victim.kind !== side) {
+        const pushed = pushAway(actor, victim, spell.pushFeet);
+        if (pushed) lines.push(pushed);
     }
     return lines;
 }

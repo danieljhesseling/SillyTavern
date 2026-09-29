@@ -162,8 +162,7 @@ describe('los modos', () => {
         // Bruna llega a amiga (rango 5): 36 puntos.
         for (let i = 0; i < 18; i++) bonds = recordBondEvent(bonds, '2', 'combat_together').state;
         expect(getRank(bonds, '2')).toBe(CONTROL_RANK);
-        for (const mode of [MODES.GROUP, MODES.SOLO, undefined]) {
-            const rules = mode ? { mode } : null;
+        for (const rules of [{ mode: MODES.GROUP }, { mode: MODES.SOLO }, null]) {
             expect(canControl(party[0], party, rules, bonds).allowed).toBe(true);
             expect(canControl(party[1], party, rules, bonds).allowed).toBe(true);
             const nella = canControl(party[2], party, rules, bonds);

@@ -259,6 +259,12 @@ export function cannotAct(conditions) {
 }
 
 /**
+ * Lo que Protección contra el mal y el bien (J19, estado «Protegido») estorba: muertos,
+ * demonios, espíritus, celestiales, elementales y feéricos (5e), por su nombre o sus etiquetas.
+ */
+export const PROTECTED_FROM = /no ?muert|nomuerto|zombi|esqueleto|vampir|engendro|espectr|fantasm|esp[ií]ritu|aparici|revenant|momia|necr[oó]fago|demoni|diabl|infernal|celestial|[aá]ngel|elemental|fe[eé]ric|hada|strahd/i;
+
+/**
  * Si un ataque va con ventaja, con desventaja o normal, y por qué.
  *
  * Las reglas de 5e: una de cada anula una de la otra, y varias de lo mismo no se suman.
@@ -275,9 +281,11 @@ export function cannotAct(conditions) {
  * @param {string[]} [input.hindered] Lo que estorba desde fuera: la niebla, la noche, el viento
  *   (ideas 73 y 90, `visibilityPenalties`). Cada cosa es una razón de desventaja.
  * @param {'above'|'below'|'level'|string} [input.height] B1: desde arriba se ataca con ventaja (`heights.js`).
+ * @param {string} [input.attackerKind] Qué es quien ataca, en palabras (su nombre, su arquetipo,
+ *   sus etiquetas): a quien está Protegido le pegan peor los muertos, los demonios y los espíritus.
  * @returns {{mode: 'advantage'|'disadvantage'|'normal', reasons: string[], usesHelp: boolean, usesHidden: boolean}}
  */
-export function attackEdge({ targetId, targetConditions = [], attackerConditions = [], distanceFeet, maneuvers = null, byParty = false, flanked = false, attackerId = '', hindered = [], height = '' }) {
+export function attackEdge({ targetId, targetConditions = [], attackerConditions = [], distanceFeet, maneuvers = null, byParty = false, flanked = false, attackerId = '', hindered = [], height = '', attackerKind = '' }) {
     const state = readManeuvers(maneuvers);
     const id = String(targetId);
     const has = (/** @type {string[]} */ list, /** @type {string} */ name) =>
@@ -308,7 +316,12 @@ export function attackEdge({ targetId, targetConditions = [], attackerConditions
     if (has(targetConditions, 'Escudado')) down.push('tiene un escudo arcano delante');
     if (INCAPACITATED.some(c => has(targetConditions, c))) up.push('no puede defenderse');
     if (has(attackerConditions, 'Invisible')) up.push('no se le ve');
-    if (has(targetConditions, 'Invisible')) down.push('no se le ve bien');
+    // J19: los estados que dejan los conjuros (`SPELL_CONDITIONS`). Quien brilla por Fuego
+    // feérico o Saeta guía se ve de lejos, aunque sea invisible.
+    const outlined = has(targetConditions, 'Perfilado');
+    if (outlined) up.push('brilla: se le ve bien');
+    if (has(targetConditions, 'Invisible') && !outlined) down.push('no se le ve bien');
+    if (has(targetConditions, 'Protegido') && PROTECTED_FROM.test(String(attackerKind))) down.push('le protege un conjuro contra lo que es');
     const usesHelp = byParty && state.helped.some(h => h.targetId === id);
     if (usesHelp) up.push('le han abierto la guardia');
     if (flanked && Number(distanceFeet) <= MELEE_FEET) up.push('lo tenéis flanqueado');

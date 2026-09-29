@@ -63,12 +63,16 @@ export const DEFAULT_LOOT_RULES = {
             'Aceite afilador', 'Botas silenciosas',
             // R4: los pergaminos pequeños.
             'Pergamino de Curar heridas', 'Pergamino de Sueño pesado',
+            // J19.9: la varita que se recarga al alba.
+            'Varita de proyectiles mágicos',
         ],
         'Rare': [
             'Espada rúnica', 'Anillo de resistencia', 'Varita de destellos',
             'Armadura de escamas verdes',
             // R4: los gordos, y la varita de escarcha.
             'Pergamino de Bola de fuego', 'Pergamino de Relámpago', 'Varita de escarcha',
+            // J19.9: lo que pide sintonía.
+            'Bastón de las llamas',
         ],
         'Very Rare': [
             'Capa de sombras', 'Hoja del alba', 'Talismán del corazón firme',

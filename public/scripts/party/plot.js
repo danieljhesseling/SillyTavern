@@ -27,19 +27,34 @@ import {
 } from '../game-engine/campaign/plot.js';
 import { withJob } from '../game-engine/campaign/company.js';
 import { getBondProgress } from '../game-engine/campaign/bonds.js';
-import { isShellOpen, refreshGameShell } from '../game-engine/ui/shell/game-shell.js';
+import { attitudeBonus } from '../game-engine/campaign/attitudes.js';
 import {
-    ACT_STARTS_KEY, ACT_SUMMARIES_KEY, CAMPAIGN_START_KEY, GRAVES_KEY, HERO_FIT_KEY, HINTS_KEY, PLOT_ANNOUNCED_KEY,
-    PLOT_KEY, PLOT_STATE_KEY, VILLAIN_SEEN_KEY,
+    stepScenes, rememberScene, sceneTranscript, sceneDecisions, applySceneEffects,
+} from '../game-engine/campaign/plot-scenes.js';
+import { dialogueMilestones } from '../game-engine/campaign/dialogues.js';
+import { describeLootItem } from '../game-engine/combat/loot-items.js';
+import { openPlotScene } from '../game-engine/ui/plot-scene.js';
+import { isShellOpen, refreshGameShell } from '../game-engine/ui/shell/game-shell.js';
+import { addItemToInventory, createItem, removeItemFromInventory } from '../dnd-system.js';
+import { rollDiceDetailed } from './combat-rules.js';
+import {
+    ACT_STARTS_KEY, ACT_SUMMARIES_KEY, ATTITUDES_KEY, CAMPAIGN_START_KEY, DIALOGUE_MEMORY_KEY, GRAVES_KEY, HERO_FIT_KEY,
+    HINTS_KEY, PLOT_ANNOUNCED_KEY, PLOT_DECISIONS_KEY, PLOT_KEY, PLOT_SCENES_PLAYED_KEY, PLOT_STATE_KEY, RUMORS_HEARD_KEY,
+    RUMORS_HEARD_ON_KEY, VILLAIN_SEEN_KEY,
 } from './keys.js';
-import { combatEncounter, currentLocationName, partyMembers } from './state.js';
+import { combatEncounter, currentLocationName, partyMembers, worldItemCatalogue } from './state.js';
 import { recordFinishedCampaign } from './hub.js';
 import { deliverRelics } from './loot.js';
-import { ensureWorldData, lastHubHome } from './world.js';
+import { ensureWorldData, lastDialogues, lastHubHome, lastPack, lastRumors } from './world.js';
 import { getCurrentWorldFactions, shiftFactionStanding } from './factions.js';
-import { campaignDay, getCampaignBonds, getCampaignCalendar } from './time.js';
+import {
+    advanceCampaignSlot, campaignDay, getCampaignBonds, getCampaignCalendar, getCurrentSlotLabel, recordCampaignBondEvent,
+} from './time.js';
 import { noteDeed, worldWrite, refreshWorldMemoryPrompt } from './world-growth.js';
-import { whoPlays, postCombatNarration, tellMoment, postForModel, showTip } from './narration.js';
+import {
+    whoPlays, postCombatNarration, tellMoment, postForModel, showTip, noteRollInWindow, storyWindowsOn,
+} from './narration.js';
+import { partyPurse, payFromParty, savePartyState } from './roster.js';
 import { judgeDecision } from './companions.js';
 import { raiseFame } from './town.js';
 import { statsLines } from './menus.js';
@@ -207,6 +222,13 @@ async function applyPlotStep(step, heroNote = '') {
         void shiftFactionStanding(faction, amount);
     }
 
+    // J9.2 y D-J40: lo que se abre (y los secretos que se encuentran) se juega en la ventana de
+    // escena, también lo que solo trae texto. Su texto ya no va en la nota: al acabar la escena,
+    // el narrador lee lo que pasó en ella.
+    const scenes = storyWindowsOn() ? stepScenes(step, sceneInput()) : [];
+    const inWindow = new Set(scenes.map(entry => String(entry.milestone?.id)));
+    queuePlotScenes(scenes);
+
     /** @type {string[]} */
     const lines = [];
     // Idea 101: cómo se cumplió, cuando había varias formas.
@@ -225,7 +247,7 @@ async function applyPlotStep(step, heroNote = '') {
         if (milestone.hidden) {
             // Idea 111: un secreto de la historia. Su escena se cuenta ahora, al encontrarlo.
             lines.push(`Un secreto de la historia: ${milestone.title}.`);
-            if (milestone.scene) lines.push(milestone.scene);
+            if (milestone.scene && !inWindow.has(String(milestone.id))) lines.push(milestone.scene);
             toastr.success(milestone.title, '🏅 Un secreto de la historia', { timeOut: 12000 });
         } else if (milestone.asks.kind !== 'none') {
             // Los que se cumplen solos son escenas: se cuentan al abrirse, no dos veces.
@@ -238,7 +260,7 @@ async function applyPlotStep(step, heroNote = '') {
     }
     for (const milestone of step.opened) {
         // Lo oculto no se cuenta al abrirse: sería decirlo.
-        if (milestone.scene && !milestone.hidden) lines.push(milestone.scene);
+        if (milestone.scene && !milestone.hidden && !inWindow.has(String(milestone.id))) lines.push(milestone.scene);
     }
     // Idea 102: los caminos que se cierran por lo que se ha elegido.
     for (const milestone of step.closed ?? []) {
@@ -287,6 +309,259 @@ async function applyPlotStep(step, heroNote = '') {
     lines.push('Cuéntalo en uno o dos párrafos, en el tono de la campaña. No inventes nada que no esté aquí.');
     await postForModel(`[HILO] ${lines.join('\n')}`)
         .catch(error => console.error('[party] plot note failed', error));
+}
+
+/** @param {any} value @returns {string} */
+const fold = (value) => String(value ?? '').trim().toLocaleLowerCase('es').normalize('NFD').replace(/[̀-ͯ]/g, '');
+
+/**
+ * Quien juega: el héroe (no un invitado), que es quien decide en las escenas y tira en ellas.
+ *
+ * @returns {any}
+ */
+export function storyHero() {
+    return partyMembers.find(m => !m.guest && !m.dead) ?? partyMembers.find(m => !m.dead) ?? partyMembers[0] ?? null;
+}
+
+/**
+ * Lo que una escena necesita para leerse: las charlas del paquete, las ya jugadas y quién juega.
+ *
+ * @returns {{dialogues: any[], played: string[], hero: any, party: any[]}}
+ */
+function sceneInput() {
+    return {
+        dialogues: lastDialogues,
+        played: Array.isArray(chat_metadata?.[PLOT_SCENES_PLAYED_KEY]) ? chat_metadata[PLOT_SCENES_PLAYED_KEY].map(String) : [],
+        hero: storyHero(),
+        party: partyMembers.filter(m => !m.dead),
+    };
+}
+
+/**
+ * Cómo está la partida para las condiciones de una escena o una charla (J8): cómo os mira
+ * `who`, los hitos, lo que lleváis, el oro, el grupo y el día.
+ *
+ * @param {string} [who]
+ * @param {number} [attitude] Si ya se sabe (quien os planta cara no os mira neutral).
+ * @returns {import('../game-engine/campaign/dialogues.js').DialogueWorld}
+ */
+export function storyWorld(who = '', attitude = undefined) {
+    const state = readPlotState(chat_metadata?.[PLOT_STATE_KEY]);
+    return {
+        ...(who ? { attitude: attitude ?? attitudeBonus(chat_metadata?.[ATTITUDES_KEY], who) } : {}),
+        open: state.open,
+        done: state.done,
+        items: partyMembers.flatMap(m => (Array.isArray(m.items) ? m.items : []).map((/** @type {any} */ i) => String(i?.name ?? ''))).filter(Boolean),
+        gold: partyPurse(),
+        party: partyMembers.filter(m => !m.dead),
+        day: Math.max(1, campaignDay()),
+    };
+}
+
+/** @returns {boolean} Si es de noche, para el escenario de noche. */
+export function storyNight() {
+    return /noche/i.test(String(getCurrentSlotLabel() || ''));
+}
+
+/**
+ * J9.2 y J8: lo que cambia una decisión de una escena o de una charla, aplicado a la partida:
+ * cómo os mira la gente, los rumores (y el sitio al que llevan), el oro, lo que se da y se
+ * quita, los vínculos, el rato que se va y los hitos. Devuelve cómo decirlo en la ventana.
+ *
+ * @param {import('../game-engine/campaign/dialogues.js').DialogueEffect[]} effects
+ * @param {Object} [options]
+ * @param {any} [options.roll] La tirada de ese paso, para el registro de dados.
+ * @param {any} [options.hero] Quien decide (recibe lo que se da y el oro).
+ * @param {string[]|null} [options.defer] Dónde dejar los hitos para cumplirlos después (al
+ *   cerrarse la escena); sin él, se cumplen ya.
+ * @param {string[]|null} [options.clues] Dónde dejar lo que se apunta (las pistas).
+ * @returns {Promise<string[]>}
+ */
+export async function applySceneEffectsToGame(effects, { roll = null, hero = null, defer = null, clues = null } = {}) {
+    if (!chat_metadata) return [];
+    const who = hero ?? storyHero();
+    if (roll && who) noteRollInWindow(who, roll);
+    const list = Array.isArray(effects) ? effects : [];
+    if (list.length === 0) return [];
+    const out = applySceneEffects(list, {
+        attitudes: chat_metadata[ATTITUDES_KEY],
+        rumorsHeard: chat_metadata[RUMORS_HEARD_KEY],
+        rumorsHeardOn: chat_metadata[RUMORS_HEARD_ON_KEY],
+        rumors: lastRumors,
+        day: Math.max(1, campaignDay()),
+        gold: partyPurse(),
+        items: storyWorld().items,
+        who: whoPlays(),
+    });
+    chat_metadata[ATTITUDES_KEY] = out.attitudes;
+    chat_metadata[RUMORS_HEARD_KEY] = out.rumorsHeard;
+    chat_metadata[RUMORS_HEARD_ON_KEY] = out.rumorsHeardOn;
+    const holder = who ?? partyMembers[0];
+    if (out.goldChange > 0 && holder) holder.gold = (Number(holder.gold) || 0) + out.goldChange;
+    else if (out.goldChange < 0) payFromParty(Math.min(partyPurse(), -out.goldChange));
+    for (const name of out.give) {
+        if (holder) addItemToInventory(/** @type {any} */ (holder), createItem(/** @type {any} */ (describeLootItem(name, '', worldItemCatalogue))));
+    }
+    for (const name of out.take) {
+        const owner = partyMembers.find(m => (m.items ?? []).some((/** @type {any} */ i) => fold(i?.name) === fold(name)));
+        const item = owner?.items?.find((/** @type {any} */ i) => fold(i?.name) === fold(name));
+        if (owner && item) removeItemFromInventory(/** @type {any} */ (owner), String(item.id));
+    }
+    for (const bond of out.bonds) {
+        const member = partyMembers.find(m => fold(m.name) === fold(bond.who));
+        if (member) recordCampaignBondEvent(String(member.id), bond.amount > 0 ? 'confidant_scene' : 'disapproved');
+    }
+    for (let i = 0; i < out.time; i++) advanceCampaignSlot();
+    if (out.reveal.length > 0) await revealLocations(out.reveal);
+    if (Array.isArray(clues)) clues.push(...out.clues);
+    saveMetadata();
+    savePartyState();
+    if (Object.keys(out.attitudes.changed).length > 0) refreshWorldMemoryPrompt();
+    for (const id of out.milestones) {
+        if (Array.isArray(defer)) defer.push(id);
+        else notePlot({ kind: 'milestone', id });
+    }
+    if (isShellOpen()) refreshGameShell();
+    return out.notes;
+}
+
+/**
+ * D-J40: lo que solo trae texto, como una escena corta del narrador: un párrafo por pantalla.
+ *
+ * @param {import('../game-engine/campaign/plot-scenes.js').PlotScene} scene
+ * @returns {import('../game-engine/campaign/plot-scenes.js').PlotScene}
+ */
+export function narratorScene(scene) {
+    if (scene.kind === 'scene') return scene;
+    const parts = String(scene.text || '').split(/\n\s*\n/).map(part => part.trim()).filter(Boolean);
+    return { ...scene, kind: 'scene', beats: parts.map(text => ({ who: '', mood: 'neutral', text, decision: null })), dialogue: null };
+}
+
+/**
+ * D-J39: si la escena de un hito de «habla con X» ya es esa charla (como la de Karl, o la de
+ * Tomás en el muelle): habla X en ella y ninguna charla escrita cumple el hito por su cuenta.
+ * Con una charla que lo cumple (Giles, Brunilda), lo cumple ella, cuando se cuenta lo que importa.
+ *
+ * @param {any} milestone
+ * @param {import('../game-engine/campaign/plot-scenes.js').PlotScene} scene
+ * @returns {boolean}
+ */
+export function sceneIsTheTalk(milestone, scene) {
+    if (milestone?.asks?.kind !== 'talk') return false;
+    const npc = fold(milestone.asks.npc);
+    if (!npc) return false;
+    const speaks = (scene?.beats ?? []).some(beat => fold(beat.who) === npc) || fold(scene?.dialogue?.speaker) === npc;
+    if (!speaks) return false;
+    return !lastDialogues.some(dialogue => dialogueMilestones(dialogue).includes(String(milestone.id)));
+}
+
+/** Las escenas, de una en una: dos hitos que se abren a la vez no se tapan. */
+let sceneQueue = Promise.resolve();
+
+/** Cuántas escenas esperan o se están jugando ahora (para quien necesite saberlo, como las pruebas). */
+export let scenesPending = 0;
+
+/**
+ * Esperar a que se pueda abrir una escena: sin pelea, sin el panel de victoria delante (se abre
+ * cuando se cierra) y sin otra ventana de historia abierta.
+ *
+ * @param {any} owner Los metadatos de la partida que la pidió: si se cambia de partida, no se abre.
+ * @returns {Promise<boolean>} Si se puede abrir.
+ */
+async function sceneStage(owner) {
+    await new Promise(resolve => setTimeout(resolve, 0));
+    for (;;) {
+        if (chat_metadata !== owner) return false;
+        const busy = combatEncounter.active || document.querySelector('.vs-card') || document.querySelector('dialog.qd-dialog[open]');
+        if (!busy) return true;
+        await new Promise(resolve => setTimeout(resolve, 300));
+    }
+}
+
+/**
+ * J9.2: poner en cola las escenas de un paso del hilo. No espera a que se jueguen: quien lo
+ * llama (crear la partida, ganar una pelea) sigue, y la escena sale en cuanto se puede.
+ *
+ * @param {Array<{milestone: any, scene: import('../game-engine/campaign/plot-scenes.js').PlotScene}>} entries
+ * @returns {Promise<void>}
+ */
+function queuePlotScenes(entries) {
+    if (!Array.isArray(entries) || entries.length === 0) return sceneQueue;
+    const owner = chat_metadata;
+    scenesPending += entries.length;
+    sceneQueue = sceneQueue.then(async () => {
+        for (const entry of entries) {
+            try {
+                if (await sceneStage(owner)) await playPlotScene(entry.milestone, entry.scene);
+            } catch (error) {
+                console.error('[party] la escena del hilo falló', error);
+            } finally {
+                scenesPending = Math.max(0, scenesPending - 1);
+            }
+        }
+    });
+    return sceneQueue;
+}
+
+/**
+ * Jugar la escena de un hito en su ventana y dejar lo que pasó: la escena, apuntada como
+ * jugada; lo decidido, en el Diario; lo que pasó, en el registro para el narrador («no la
+ * repitas»); y los hitos que cumplió (los suyos y, con D-J39, el propio).
+ *
+ * @param {any} milestone
+ * @param {import('../game-engine/campaign/plot-scenes.js').PlotScene} scene
+ * @returns {Promise<void>}
+ */
+async function playPlotScene(milestone, scene) {
+    const shown = narratorScene(scene);
+    if (shown.beats.length === 0 && !shown.dialogue) return;
+    const hero = storyHero();
+    /** @type {string[]} */
+    const pending = [];
+    /** @type {string[]} */
+    const clues = [];
+    const result = await openPlotScene({
+        scene: shown,
+        hero,
+        getWorld: (who) => storyWorld(who),
+        rollD20: () => rollDiceDetailed('1d20', 20).total,
+        applyEffects: (effects, context) => applySceneEffectsToGame(effects, { roll: context.roll, hero, defer: pending, clues }),
+        memory: chat_metadata?.[DIALOGUE_MEMORY_KEY] ?? null,
+        onMemory: (memory) => {
+            if (!chat_metadata) return;
+            chat_metadata[DIALOGUE_MEMORY_KEY] = memory;
+            saveMetadata();
+        },
+        pack: lastPack,
+        town: currentLocationName,
+        night: storyNight(),
+    });
+    if (!chat_metadata) return;
+    chat_metadata[PLOT_SCENES_PLAYED_KEY] = rememberScene(chat_metadata[PLOT_SCENES_PLAYED_KEY], String(shown.id));
+    // J9.6: lo que se decidió, con lo que la opción deja apuntado, y las pistas de la escena.
+    const noted = (result.choices ?? []).map(choice => String(shown.beats[choice.beat]?.decision?.dialogue?.nodes?.[0]?.options
+        ?.find(option => option.id === choice.option)?.journal ?? '').trim()).filter(Boolean);
+    const decided = [...sceneDecisions(shown, result.choices), ...noted, ...clues];
+    if (decided.length > 0) {
+        const day = Math.max(1, campaignDay());
+        const before = Array.isArray(chat_metadata[PLOT_DECISIONS_KEY]) ? chat_metadata[PLOT_DECISIONS_KEY] : [];
+        chat_metadata[PLOT_DECISIONS_KEY] = [...before, ...decided.map(text => ({ day, text }))];
+    }
+    saveMetadata();
+    // Lo que pasó, línea a línea, y la charla del final si la hubo.
+    const talk = (result.dialogue?.state?.log ?? [])
+        .filter((/** @type {any} */ line) => line.kind === 'npc' || line.kind === 'hero')
+        .map((/** @type {any} */ line) => (line.kind === 'npc' ? `${line.who}: «${line.text}»` : `Tú: «${line.text}»`));
+    const transcript = [...(result.transcript ?? sceneTranscript(shown, result.choices)), ...talk];
+    if (transcript.length > 0) {
+        await postForModel(`[HILO] Esta escena ya se ha jugado en pantalla («${shown.title}»):\n${transcript.join('\n')}\nNo digas otra vez lo que ya se ha jugado: la escena no se repite, se sigue desde aquí.`,
+            { show: `📜 [HILO] ${transcript.join('\n')}` })
+            .catch(error => console.error('[party] scene note failed', error));
+    }
+    // D-J39: la escena que ya es la charla del hito lo cumple; y los hitos que cumplió lo que se eligió.
+    if (sceneIsTheTalk(milestone, shown) && !pending.includes(String(milestone.id))) pending.push(String(milestone.id));
+    for (const id of pending) notePlot({ kind: 'milestone', id });
+    if (isShellOpen()) refreshGameShell();
 }
 
 /**
@@ -477,7 +752,11 @@ export async function beginCampaignPlot(heroNote = '') {
         chat_metadata[PLOT_ANNOUNCED_KEY] = true;
         saveMetadata();
         const opening = startPlot(plot, Math.max(1, campaignDay()));
-        const lines = opening.opened.filter(m => !m.hidden).map(m => m.scene).filter(Boolean);
+        // J9.2: la apertura también se juega en su ventana; lo que no, se cuenta como antes.
+        const scenes = storyWindowsOn() ? stepScenes(opening, sceneInput()) : [];
+        const inWindow = new Set(scenes.map(entry => String(entry.milestone?.id)));
+        queuePlotScenes(scenes);
+        const lines = opening.opened.filter(m => !m.hidden && !inWindow.has(String(m.id))).map(m => m.scene).filter(Boolean);
         if (lines.length > 0 && heroNote) lines.push(heroLine(heroNote));
         if (lines.length > 0) {
             lines.push('Cuéntalo en uno o dos párrafos, en el tono de la campaña. No inventes nada que no esté aquí.');

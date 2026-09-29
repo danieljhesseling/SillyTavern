@@ -7,7 +7,7 @@ import {
 import {
     readHub, withHubChat, withHubCampaign, withHubImported, readImportedRows, hubCampaignCards, journeyLine,
     readImportedList, importedListFile, withImportedRow, withoutImportedRow, importedForHub, withoutHubImported, HUB_IMPORTED_LIST,
-    HUB_IMPORTED_PREFIX,
+    HUB_IMPORTED_PREFIX, HUB_KEPT_NOTE,
 } from '../public/scripts/game-engine/campaign/hub.js';
 import { buildExamplePack } from '../public/scripts/game-engine/campaign/campaign-pack-schema.js';
 
@@ -58,6 +58,23 @@ describe('leer el archivo de una campaña (J5.4)', () => {
     test('el bloque ```json del chat del Gem se lee igual', () => {
         const fenced = `\`\`\`json\n${JSON.stringify(buildExamplePack())}\n\`\`\``;
         expect(readCampaignText(fenced).ok).toBe(true);
+        expect(readCampaignText(fenced).notes).toEqual([]);
+    });
+
+    test('D-J35: pegado con lo que dice el Gem alrededor, se queda con la campaña y lo dice', () => {
+        const json = JSON.stringify(buildExamplePack(), null, 2);
+        const around = 'Aquí tienes tu campaña:';
+        for (const pasted of [
+            `${around}\n\n\`\`\`json\n${json}\n\`\`\`\n\nSi quieres cambiar algo, dímelo.`,
+            `${around}\n${json}\nQue la disfrutes.`,
+            `${json}\n\nEspero que te guste.`,
+        ]) {
+            const found = readCampaignText(pasted);
+            expect(found.ok).toBe(true);
+            expect(found.notes).toEqual(['Traía texto antes o después de la campaña: se ha quitado.']);
+        }
+        // Si ni así se lee, el fallo es el de siempre.
+        expect(readCampaignText(`${around}\n{"world": {"name": "El valle"`).headline).toMatch(/^No es un JSON válido/);
     });
 
     test('lo que no es JSON se dice en castellano, con la línea', () => {
@@ -164,7 +181,7 @@ describe('las campañas añadidas, en el gremio', () => {
         expect(cards.map(c => c.id)).toEqual(['strahd', 'tuya-el-molino']);
         expect(cards[1]).toMatchObject({
             name: 'El Molino de los Cuervos', levels: 'Nivel recomendado: 1 a 2', distance: 'A cinco días de camino',
-            state: 'nueva', action: 'Empezar', note: 'Añadida por ti, desde un archivo.', imported: true,
+            state: 'nueva', action: 'Empezar', note: 'Añadida por ti.', imported: true,
         });
         expect(cards[0].imported).toBe(false);
         // Y empezada, sigue como las demás.
@@ -216,6 +233,24 @@ describe('D-J35: tus campañas añadidas, en todos tus gremios', () => {
         // Cada gremio sabe cómo va la suya.
         expect(hubCampaignCards({ worlds, hub: uno, imported: [molino] })[1].state).toBe('en-curso');
         expect(hubCampaignCards({ worlds, hub: otro, imported: [molino] })[1].state).toBe('nueva');
+    });
+
+    test('quitada del tablón, sigue en el gremio donde se empezó, sin «Quitar»; en los demás, no', () => {
+        const uno = withHubCampaign({}, 'tuya-el-molino', { worldName: 'El Molino · Tessa', name: 'El Molino de los Cuervos', finished: true, ending: 'Libre' });
+        const cards = hubCampaignCards({ worlds, hub: uno, imported: [pantano] });
+        expect(cards.map(c => c.id)).toEqual(['strahd', 'tuya-el-pantano', 'tuya-el-molino']);
+        expect(cards[2]).toMatchObject({
+            name: 'El Molino de los Cuervos', state: 'terminada', action: 'Volver', ending: 'Libre', imported: false,
+            note: HUB_KEPT_NOTE, levels: '', warn: '',
+        });
+        // Sin nombre apuntado (empezada antes de D-J35), con el de su mundo.
+        const viejo = withHubCampaign({}, 'tuya-el-molino', { worldName: 'El Molino · Tessa' });
+        expect(hubCampaignCards({ worlds, hub: viejo, imported: [] }).find(c => c.id === 'tuya-el-molino')).toMatchObject({ name: 'El Molino · Tessa', state: 'en-curso' });
+        // Las del juego no se quedan así: solo las añadidas por ti.
+        const conStrahd = withHubCampaign({}, 'strahd', { worldName: 'Strahd · Tessa' });
+        expect(hubCampaignCards({ worlds: [], hub: conStrahd, imported: [] })).toEqual([]);
+        // Y el nombre se guarda con el gremio.
+        expect(readHub(uno).campaigns['tuya-el-molino'].name).toBe('El Molino de los Cuervos');
     });
 
     test('las que guardaba el gremio salen de él al pasar a tu lista', () => {

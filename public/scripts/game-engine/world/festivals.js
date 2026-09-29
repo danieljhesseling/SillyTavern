@@ -2,8 +2,8 @@
  * Las fiestas de cada sitio (idea 89): un calendario con vida.
  *
  * Cada pueblo y cada ciudad tiene su día de fiesta en el mes, sacado de la semilla del mundo
- * (el mismo mundo, las mismas fiestas). Ese día, en la posada comer sale gratis, la tienda
- * rebaja un 10 % y se cuenta más de lo normal.
+ * (el mismo mundo, las mismas fiestas). Ese día, en la posada comer sale gratis y se cuenta más
+ * de lo normal; y la tienda y la herrería cierran (D-J29, `campaign/hours.js`).
  *
  * Puro: qué fiesta hay dónde y cuándo.
  */

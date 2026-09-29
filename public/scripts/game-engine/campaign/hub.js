@@ -76,6 +76,12 @@ export const HUB_LEVELS_KEY = 'hubLevels';
  */
 export const HUB_IMPORTED_LIST = 'tablon-campanas.json';
 
+/**
+ * D-J35: lo que dice la tarjeta de una añadida que quitaste del tablón y sigue en el gremio
+ * donde la empezaste.
+ */
+export const HUB_KEPT_NOTE = 'La quitaste del tablón. Sigue aquí porque la empezaste en este gremio.';
+
 /** @param {any} value @returns {string} */
 const text = (value) => String(value ?? '').trim();
 
@@ -96,6 +102,8 @@ const key = (value) => text(value).toLowerCase();
  * @property {string} ending El título del final, si se llegó a uno.
  * @property {number} [day] D-J12: el día de su calendario la última vez que se volvió de ella.
  *   Lo que se vivió allí también pasa para quien descansa en el gremio (`hubDay`).
+ * @property {string} [name] D-J35: cómo se llamaba en el tablón. Si la quitas del tablón (una
+ *   añadida por ti), su tarjeta sigue en este gremio con este nombre, para seguirla.
  */
 
 /**
@@ -129,12 +137,14 @@ export function readHub(raw) {
         const worldName = text(/** @type {any} */ (value)?.worldName);
         if (!text(id) || !worldName) continue;
         const day = Math.max(0, Math.floor(Number(/** @type {any} */ (value)?.day) || 0));
+        const name = text(/** @type {any} */ (value)?.name);
         campaigns[text(id)] = {
             worldName,
             chat: readChat(/** @type {any} */ (value)?.chat),
             finished: Boolean(/** @type {any} */ (value)?.finished),
             ending: text(/** @type {any} */ (value)?.ending),
             ...(day > 0 ? { day } : {}),
+            ...(name ? { name } : {}),
         };
     }
     const imported = readImportedRows(raw?.imported);
@@ -401,6 +411,7 @@ export function journeyLine({ world, home = 'el gremio', back = false }) {
  * Solo las que traen su paquete: una campaña del tablón es una historia escrita entera, no
  * una semilla por la que tirar. Y detrás, las que has añadido tú desde un archivo (J5.4): las
  * de tu lista, que salen en todos tus gremios (D-J35), y las que guardaba este gremio antes.
+ * Una añadida que quitaste del tablón sigue en el gremio donde la empezaste, sin «Quitar».
  *
  * @param {Object} input
  * @param {any[]} input.worlds Los de `mundos.json`.
@@ -417,8 +428,20 @@ export function hubCampaignCards({ worlds, hub = null, imported = [], level = 1 
     const shipped = Array.isArray(worlds) ? worlds : [];
     // J5.4 y D-J35: detrás de las del juego, las que has añadido tú.
     const known = new Set(shipped.map(world => text(world?.id)));
-    return [...shipped, ...importedForHub(imported, record).filter(row => !known.has(row.id))]
-        .filter(world => text(world?.id) && text(world?.pack))
+    const listed = [...shipped, ...importedForHub(imported, record).filter(row => !known.has(row.id))]
+        .filter(world => text(world?.id) && text(world?.pack));
+    // D-J35: una añadida por ti que quitaste del tablón, pero que este gremio tiene empezada o
+    // terminada: su tarjeta se queda aquí, para volver a ella. Su mundo ya lo lleva todo dentro.
+    const shown = new Set(listed.map(world => text(world.id)));
+    const kept = Object.entries(record.campaigns)
+        .filter(([id]) => id.startsWith(HUB_IMPORTED_PREFIX) && !shown.has(id))
+        .map(([id, started]) => ({
+            id,
+            name: started.name || started.worldName,
+            note: HUB_KEPT_NOTE,
+            icon: 'fa-book-open',
+        }));
+    return [...listed, ...kept]
         .map(world => {
             const id = text(world.id);
             const started = record.campaigns[id];

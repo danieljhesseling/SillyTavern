@@ -43,7 +43,16 @@ const text = (value) => String(value ?? '').trim();
 export function magicItemsOf(member) {
     return (Array.isArray(member?.items) ? member.items : []).flatMap((/** @type {any} */ item) => {
         const spec = MAGIC_ITEMS[text(item?.name)];
-        if (!spec || !spellById(spec.spell)) return [];
+        if (!spec) {
+            // J19.9: los de 5e, con su conjuro en la ficha (`linkedSpell`); solo si funcionan
+            // (lo que pide sintonía, sintonizado) y les quedan cargas.
+            const five = itemSpellSpec(item);
+            if (!five || !itemWorks(item)) return [];
+            const kind = /** @type {'scroll'|'wand'} */ (five.kind === 'scroll' ? 'scroll' : 'wand');
+            const left = kind === 'scroll' ? 1 : itemCharges(item).left;
+            return left > 0 ? [{ itemId: text(item?.id), name: text(item?.name), spell: five.spell, kind, left }] : [];
+        }
+        if (!spellById(spec.spell)) return [];
         const left = spec.kind === 'wand'
             ? Math.max(0, Math.floor(Number(item?.charges ?? spec.charges) || 0))
             : 1;

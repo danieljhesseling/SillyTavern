@@ -47,12 +47,14 @@ import { canLevelUp, openLevelUpCard } from './level-up.js';
 import { retireMember } from './hub.js';
 import { lastConfidantEntries, lastWorldNpcs } from './world.js';
 import {
-    advanceCampaignSlot, campaignDay, getCampaignBonds, getCampaignCalendar, recordCampaignBondEvent,
+    campaignDay, getCampaignBonds, getCampaignCalendar, recordCampaignBondEvent, spendDayPart,
 } from './time.js';
+import { keyOf } from '../game-engine/campaign/social.js';
 import { noteDeed, refreshWorldMemoryPrompt, worldWrite } from './world-growth.js';
-import { postCombatNarration, postForModel } from './narration.js';
+import { offlineGame, postCombatNarration, postForModel } from './narration.js';
 import { getActivePartyLeader, memberFromEntry, partyPurse, renderPartyMembers, savePartyState } from './roster.js';
 import { smithHere, smithPlaces, buyRemedy } from './town.js';
+import { bondFavors, carryBondOf, meetSomeone, peopleHere, wantsToMeetAt } from './social.js';
 
 /**
  * R8: los favores de la gente de aquí que os aprecia (actitud +2 o más).
@@ -60,7 +62,11 @@ import { smithHere, smithPlaces, buyRemedy } from './town.js';
  * @returns {ReturnType<typeof homeFavors>}
  */
 export function favorsHere() {
-    return homeFavors({ npcs: lastWorldNpcs, attitudes: readAttitudes(chat_metadata?.[ATTITUDES_KEY]), here: currentLocationName });
+    return [
+        ...homeFavors({ npcs: lastWorldNpcs, attitudes: readAttitudes(chat_metadata?.[ATTITUDES_KEY]), here: currentLocationName }),
+        // J14.3: y lo que ha abierto tu gente con su vínculo (la forja de Gerd, la posada de Osric).
+        ...bondFavors(),
+    ];
 }
 
 /**
@@ -171,6 +177,8 @@ export async function hireRecruit(uid) {
         delete lastConfidantEntries[uid];
     });
     if (!joined) return;
+    // J14: lo que ya había entre vosotros (las quedadas antes de unirse) pasa a su ficha.
+    carryBondOf(joined, 'join');
     renderPartyMembers();
     noteDeed(`${recruit.name} se unió al grupo en ${currentLocationName}.`);
     rememberTogether(`${recruit.name} se unió al grupo en ${currentLocationName}.`, [String(partyMembers[0]?.name ?? ''), recruit.name]);
@@ -186,6 +194,15 @@ export async function hireRecruit(uid) {
  * @param {number} rank
  */
 export function tellBondScene(member, rank) {
+    // J14.3: la escena de cada rango se juega quedando con él. Al subir, se avisa de que quiere
+    // quedar contigo; sin conexión no hay narrador a quien contársela.
+    if (wantsToMeetAt(member, rank)) {
+        const line = `${member.name} quiere quedar contigo: tiene algo que contarte. Búscale en el pueblo.`;
+        postCombatNarration(`💞 [VÍNCULO] ${line}`);
+        toastr.info(line, `💞 ${member.name}`, { timeOut: 10000 });
+        return;
+    }
+    if (offlineGame()) return;
     const scene = bondSceneFor(member, rank);
     if (!scene) return;
     void postForModel(`[ESCENA DE VÍNCULO · ${member.name}, rango ${rank}${scene.title ? `: ${scene.title}` : ''}] `
@@ -670,8 +687,14 @@ export function openCompanionCard(memberId) {
 
             if (action.id === 'downtime') {
                 closeCompanionCard();
+                // J14.3: en un pueblo, pasar tiempo con alguien es quedar: su escena, y la parte
+                // del día. Fuera (en el camino, en una cueva), un rato juntos como siempre.
+                if (peopleHere().people.some(p => p.canMeet && p.key === keyOf(member.name))) {
+                    void meetSomeone(String(member.name));
+                    return;
+                }
                 recordCampaignBondEvent(String(member.id), 'shared_downtime');
-                advanceCampaignSlot();
+                spendDayPart('quedar', { who: String(member.name) });
                 return;
             }
             if (action.id === 'gift') {

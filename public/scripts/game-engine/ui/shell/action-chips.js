@@ -70,13 +70,15 @@ const MAX_CHIPS = 7;
  *   ficha de empezar va delante: en la escena de diálogo el botón del tablero no se ve.
  * @param {Array<{id: string, label: string, icon: string, command: string}>} [input.hub] El gremio (J4): el tablón de
  *   campañas y los mercenarios, o volver a él desde una campaña. Van delante: es a lo que se viene.
+ * @param {Array<{id: string, label: string, icon: string, command: string}>} [input.social] Tu gente (J14): la charla
+ *   que espera, quedar con alguien y charlar. Van al final: la pantalla del pueblo ya los enseña por sitio.
  * @returns {ActionChip[]}
  */
 export function buildActionChips({
     fighting = false, hasBoard = false, doors = [], companions = [], mentioned = [],
     places = [], boards = [], hurt = false, hitDice = 0, rumors = 0, explore = false, proposals = [], requests = [], forage = false,
     people = [], prisoners = [], limit = MAX_CHIPS, typed = [], replies = [], extras = [], camp = false, stairs = false, hub = [], fight = '', thread = [],
-    board = '',
+    board = '', social = [],
 } = {}) {
     if (fighting) return [];
 
@@ -285,6 +287,11 @@ export function buildActionChips({
                 command: `/go ${place.name}`,
             });
         }
+    }
+
+    // J14: tu gente, al final, para no echar de la fila lo que pide la historia.
+    for (const chip of social.slice(0, 3)) {
+        chips.push({ id: chip.id, label: chip.label, icon: chip.icon, source: 'motor', command: chip.command });
     }
 
     // Idea 169: si no caben, la ultima dice cuantas quedan y las abre todas. Antes se

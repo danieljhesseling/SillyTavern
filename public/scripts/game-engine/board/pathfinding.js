@@ -13,12 +13,14 @@
  * the corner is not legal. Allowing it lets creatures slip through sealed diagonal walls,
  * which players read as a bug.
  *
- * Pure module. Depends only on the terrain leaf.
+ * Pure module. Depends on the terrain leaf, and on `heights.js` for the cliffs of a board
+ * with elevations (J12.10), which travel on the terrain itself (`withOverlay`).
  *
  * See wiki/ROADMAP.md, Fase A (A4).
  */
 
 import { cellKey, getMovementCost, isPassable } from './terrain.js';
+import { canStepBetween, isCliff } from './heights.js';
 
 /** The eight directions, straight first so equal-cost ties resolve to tidier paths. */
 const DIRECTIONS = [
@@ -100,6 +102,15 @@ function chebyshev(ax, ay, bx, by) {
 function canStep(terrain, fromX, fromY, toX, toY, gridWidth, gridHeight, options) {
     if (!isPassable(terrain, toX, toY, gridWidth, gridHeight)) return false;
     if (options.occupied?.has(cellKey(toX, toY))) return false;
+
+    // J12.10: el tablero con cotas (`withOverlay`) no deja cruzar un acantilado andando. La
+    // regla es la de `heights.js`, la misma con la que el editor comprueba los puentes.
+    const elevation = terrain?.elevation;
+    if (elevation) {
+        const from = { x: fromX, y: fromY };
+        const to = { x: toX, y: toY };
+        if (options.allowCornerCutting ? isCliff(elevation, from, to) : !canStepBetween(terrain, elevation, from, to, gridWidth, gridHeight)) return false;
+    }
 
     const isDiagonal = fromX !== toX && fromY !== toY;
     if (!isDiagonal || options.allowCornerCutting) return true;

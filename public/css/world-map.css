@@ -2104,3 +2104,108 @@ body.game-colorblind .pg-down .pg-fill {
     background: repeating-linear-gradient(0deg, rgba(200, 180, 140, 0.55) 0 3px, rgba(60, 50, 40, 0.8) 3px 6px);
     border: 1px solid rgba(220, 200, 150, 0.7);
 }
+
+/* ---- J12.10: las cotas. Lo alto, algo más claro; el acantilado, una raya que no se cruza. ---- */
+.wm-elevated {
+    position: absolute;
+    box-sizing: border-box;
+    background: rgba(255, 244, 214, 0.16);
+    pointer-events: none;
+}
+
+.wm-cliff {
+    position: absolute;
+    box-sizing: border-box;
+    background: #1b120a;
+    pointer-events: none;
+    box-shadow: 0 0 3px rgba(0, 0, 0, 0.8);
+}
+
+/* El lado alto lleva la luz: se lee hacia dónde se cae. */
+.wm-cliff-v.wm-cliff-high-first { border-left: 2px solid rgba(255, 226, 160, 0.85); }
+.wm-cliff-v.wm-cliff-high-second { border-right: 2px solid rgba(255, 226, 160, 0.85); }
+.wm-cliff-h.wm-cliff-high-first { border-top: 2px solid rgba(255, 226, 160, 0.85); }
+.wm-cliff-h.wm-cliff-high-second { border-bottom: 2px solid rgba(255, 226, 160, 0.85); }
+
+/* ---- J19.6: las zonas de conjuro, cada una con el color de lo que es. ---- */
+.wm-spell-zone {
+    position: absolute;
+    box-sizing: border-box;
+    pointer-events: none;
+    background: rgba(170, 140, 255, 0.22);
+    box-shadow: inset 0 0 0 1px rgba(200, 180, 255, 0.35);
+}
+
+.wm-spell-zone[data-kind="niebla"] { background: rgba(215, 222, 230, 0.55); }
+.wm-spell-zone[data-kind="nube_apestosa"] { background: rgba(196, 204, 90, 0.5); }
+.wm-spell-zone[data-kind="oscuridad"] { background: rgba(5, 5, 12, 0.82); }
+.wm-spell-zone[data-kind="telarana"] {
+    background:
+        repeating-linear-gradient(45deg, rgba(240, 240, 240, 0.45) 0 1px, transparent 1px 7px),
+        repeating-linear-gradient(-45deg, rgba(240, 240, 240, 0.45) 0 1px, transparent 1px 7px),
+        rgba(220, 220, 220, 0.12);
+}
+.wm-spell-zone[data-kind="enredadera"],
+.wm-spell-zone[data-kind="espinas"] { background: rgba(70, 150, 60, 0.35); }
+.wm-spell-zone[data-kind="fuego"] { background: radial-gradient(circle, rgba(255, 150, 40, 0.55), rgba(200, 40, 0, 0.3)); }
+.wm-spell-zone[data-kind="silencio"] { background: rgba(90, 120, 200, 0.25); }
+.wm-spell-zone[data-kind="luz_de_luna"],
+.wm-spell-zone[data-kind="luz"] { background: rgba(255, 250, 200, 0.35); }
+.wm-spell-zone[data-kind="espiritus"] { background: rgba(160, 220, 255, 0.3); }
+
+.wm-spell-zone-icon {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 16px;
+    line-height: 1;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8));
+}
+
+/* ---- J19.5: una invocación, del lado del grupo pero que se note que no es de él. ---- */
+.wm-token-summon .wm-token-avatar,
+.wm-token-summon .wm-token-unknown {
+    border-color: #b48cff;
+    box-shadow: 0 0 8px 2px rgba(180, 140, 255, 0.45);
+}
+
+.wm-token-summon .wm-token-name { color: #d9c7ff; }
+
+.wm-token-role.wm-token-summon-mark {
+    color: #d9c7ff;
+    border-color: rgba(180, 140, 255, 0.7);
+}
+
+/* ---- J20.2: el tablero a toques ---- */
+/* El dedo mueve la cámara y amplía con dos dedos: la página no se desliza por debajo. */
+.wm-container.wm-touch-board {
+    touch-action: none;
+}
+
+/* Lo que el ratón enseña al pasar por encima de una ficha, al tocarla. */
+.wm-token.wm-token-tip .wm-token-tooltip {
+    display: block;
+}
+
+/* La casilla que ya enseña su ruta: otro toque en ella, y se va. */
+.wm-highlight-move.wm-highlight-armed {
+    background: rgba(126, 224, 129, 0.42);
+    box-shadow: inset 0 0 0 2px rgba(126, 224, 129, 0.95);
+}
+
+.wm-path-cost.wm-path-armed {
+    padding: 2px 8px;
+    font-size: 12px;
+    border: 1px solid rgba(126, 224, 129, 0.8);
+    z-index: 3;
+}
+
+/* Las caras en pixel de la fila de iniciativa y de las tarjetas de enemigo: sin suavizar. */
+.wm-init-face.pixel-art,
+.wm-combat-enemy-avatar img.pixel-art,
+.tc-face.pixel-art {
+    image-rendering: pixelated;
+    object-fit: contain;
+    background: radial-gradient(circle, #2a1414 0%, #0a0e14 75%);
+}

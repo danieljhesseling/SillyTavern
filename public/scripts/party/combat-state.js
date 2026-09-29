@@ -18,13 +18,12 @@ import { heightBetween } from '../game-engine/board/heights.js';
 import { readLeft } from '../game-engine/board/exits.js';
 import { getCoverAlongLine } from '../game-engine/board/line-of-sight.js';
 import { perkBonus } from '../game-engine/rules/level-perks.js';
+import { armorWithSpell } from '../game-engine/rules/spell-cast.js';
 import { createTurnState, getRemainingMovement } from '../game-engine/combat/turn-machine.js';
 import { isFlanked } from '../game-engine/combat/crits.js';
-import { canControl } from '../game-engine/rules/companions.js';
-import { getCampaignBonds } from './time.js';
 import { awakePlacements } from '../game-engine/campaign/campaign-map.js';
-import { getActiveRuleset } from '../game-engine/rules/ruleset.js';
 import { combatEncounter, currentBoardName, currentLocationName, partyMembers, setCombatEncounter } from './state.js';
+import { controlOf, livingSummons, shieldBonus, summonById } from './spell-turn.js';
 import { restoreChatPlaceholder } from './combat-flow.js';
 import { getActiveBoardTerrain, getActiveBoardContext, isBoardWon } from './board.js';
 
@@ -89,7 +88,8 @@ export function getAliveEnemies() {
  */
 export function getPartyMemberByTurnEntry(entry) {
     if (!entry || entry.isEnemy) return null;
-    return partyMembers.find(member => String(member.id) === String(entry.id)) || null;
+    // J19.5: una invocación también tiene su turno del lado del grupo, y se juega igual.
+    return partyMembers.find(member => String(member.id) === String(entry.id)) || summonById(entry.id);
 }
 
 export function getCurrentActingMember() {
@@ -102,10 +102,28 @@ export function getCurrentActingMember() {
 export function getRemainingMovementFeet(member) {
     if (!member) return 0;
     const turnState = getCurrentTurnState();
-    const speed = Number(member?.speed) || 30;
+    const speed = speedOf(member);
     // Somebody who is not the current actor has their whole move ahead of them.
     if (!turnState || turnState.actorId !== String(member.id)) return speed;
     return getRemainingMovement(combatEncounter, speed);
+}
+
+/**
+ * Lo que anda alguien en un turno, con lo que le han echado encima (J19, `SPELL_CONDITIONS`):
+ * Acelerado, el doble; A la carrera (Retirada expeditiva), otra vez lo suyo con la acción
+ * adicional; Ralentizado (Rayo de escarcha), 10 pies menos.
+ *
+ * @param {any} member
+ * @returns {number}
+ */
+export function speedOf(member) {
+    const base = Number(member?.speed) || 30;
+    const has = (/** @type {string} */ name) => (Array.isArray(member?.activeConditions) ? member.activeConditions : []).includes(name);
+    let speed = base;
+    if (has('Acelerado')) speed += base;
+    if (has('A la carrera')) speed += base;
+    if (has('Ralentizado')) speed -= 10;
+    return Math.max(0, speed);
 }
 
 /**
@@ -136,7 +154,8 @@ export function getAttackableEnemiesForMember(member) {
 export function occupiedCellsFor(member) {
     return new Set([
         ...getAliveEnemies().map(e => `${e.gridX || 0},${e.gridY || 0}`),
-        ...partyMembers
+        // J19.5: las invocaciones también ocupan su casilla.
+        ...[...partyMembers, ...(combatEncounter.active ? livingSummons() : [])]
             .filter(m => String(m.id) !== String(member?.id) && (Number(m.hp) || 0) > 0 && !m.dead)
             .map(m => `${m.mapPosition?.gridX || 0},${m.mapPosition?.gridY || 0}`),
     ]);
@@ -158,12 +177,11 @@ export function occupiedCellsFor(member) {
  * @returns {number[]}
  */
 export function underYourHand(ids) {
-    const rules = getActiveRuleset()?.companions ?? null;
-    // D-J32: el vínculo 5 manda en los dos modos; en «grupo» tampoco se mueve a todos.
-    const bonds = getCampaignBonds();
+    // D-J32: el vínculo 5 manda en los dos modos; en «grupo» tampoco se mueve a todos. J7.3:
+    // y a quien ya es amigo se le puede devolver al juego («Que lo lleve el juego»).
     return ids.filter((id) => {
         const member = partyMembers.find(m => Number(m.id) === Number(id));
-        return member ? canControl(member, partyMembers, rules, bonds).allowed : false;
+        return member ? controlOf(member) === 'player' : false;
     });
 }
 
@@ -200,7 +218,11 @@ export function getTargetArmorClass(target, attacker = null) {
     // una armadura equipada es un hecho, y el numero escrito a mano era una promesa. Sin
     // nada con clase de armadura encima, todo sigue exactamente como estaba.
     // Idea 46: la «piel dura» de quien la eligió al subir de nivel.
-    const base = (wornArmorClass(target) || Number(target?.armorClass) || 10) + perkBonus(target, 'armorClass');
+    // J19: y la que da un conjuro (Armadura de mago, Escudo de fe), si lo tiene encima.
+    const base = armorWithSpell((wornArmorClass(target) || Number(target?.armorClass) || 10) + perkBonus(target, 'armorClass'), target)
+        // J19.7: el Escudo levantado, hasta su turno; y Acelerado, +2.
+        + shieldBonus(target)
+        + ((Array.isArray(target?.activeConditions) ? target.activeConditions : []).includes('Acelerado') ? 2 : 0);
     const x = Number(target?.gridX ?? target?.mapPosition?.gridX);
     const y = Number(target?.gridY ?? target?.mapPosition?.gridY);
 
@@ -255,7 +277,9 @@ export function partyCell(member) {
  * @returns {'above'|'below'|'level'}
  */
 export function heightFor(from, to) {
-    return heightBetween(getActiveBoardContext().terrain, from, to);
+    // J12.10: con las cotas del tablero, quien está en lo alto de un risco ataca desde arriba.
+    const { terrain, board } = getActiveBoardContext();
+    return heightBetween(terrain, from, to, board?.elevation);
 }
 
 /**
@@ -269,9 +293,11 @@ export function heightFor(from, to) {
  */
 export function actsOnItsOwn(entry) {
     if (!entry || entry.isEnemy) return false;
-    const member = partyMembers.find(m => Number(m.id) === Number(entry.id));
+    // J7.3: el compañero que aún no es amigo, el que le has devuelto al juego, y la invocación
+    // que va sola (J19.5) deciden por su cuenta.
+    const member = getPartyMemberByTurnEntry(entry);
     if (!member) return false;
-    return !canControl(member, partyMembers, getActiveRuleset()?.companions ?? null, getCampaignBonds()).allowed;
+    return controlOf(member) === 'engine';
 }
 
 /**

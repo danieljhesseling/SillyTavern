@@ -7,8 +7,12 @@
  * de lo guardado, en `keys.js`.
  */
 
-import { getCurrentWorldMapUrl, getCurrentWorldLocationMaps } from '../world-info.js';
-import { renderWorldMapView, renderLocationView } from '../world-map-renderer.js';
+import { getCurrentWorldMapUrl, getCurrentWorldLocationMaps, getCurrentWorldEnemies } from '../world-info.js';
+import { renderWorldMapView, renderLocationView, tokenArt } from '../world-map-renderer.js';
+import { zoneOverlay } from '../game-engine/board/spell-zones.js';
+import { isPlainFace } from '../game-engine/ui/pixel-art.js';
+import { normalizeElevation } from '../game-engine/board/heights.js';
+import { normalizeZones } from '../game-engine/board/zones.js';
 import { escapeHtml } from '../utils.js';
 import {
     getDistanceInFeet, getAttackRangeFeet, getPlayerDamageFormula, getPlayerAttackModifier,
@@ -24,9 +28,9 @@ import { getReachableCells, findPath, getPathCost } from '../game-engine/board/p
 import { createEmptyFog, normalizeFog, updateFog } from '../game-engine/board/fog-of-war.js';
 import { attackEdge, readManeuvers } from '../game-engine/combat/maneuvers.js';
 import { perkBonus } from '../game-engine/rules/level-perks.js';
-import { visibilityPenalties, sightFeetFor } from '../game-engine/world/visibility.js';
+import { sightFeetFor } from '../game-engine/world/visibility.js';
 import { describeForecast } from '../game-engine/combat/forecast.js';
-import { canWalk } from '../game-engine/board/walk.js';
+import { canWalk, strideOf } from '../game-engine/board/walk.js';
 import { visibleHazards } from '../game-engine/board/hazards.js';
 import { buildTracker, describeTurn } from '../game-engine/combat/initiative-tracker.js';
 import { hasAction } from '../game-engine/combat/turn-machine.js';
@@ -37,7 +41,7 @@ import { awakePlacements } from '../game-engine/campaign/campaign-map.js';
 import { planUltimate } from '../game-engine/combat/bond-perks.js';
 import { getBondProgress } from '../game-engine/campaign/bonds.js';
 import { createCombatLogPanel, setRound, renderLogFilters, logFilterOf } from '../game-engine/ui/combat-log.js';
-import { knownAbilities, usesLeft, canUseAbility, describeAbility } from '../game-engine/rules/abilities.js';
+import { usesLeft, canUseAbility, describeAbility } from '../game-engine/rules/abilities.js';
 import { findOpportunityAttacks } from '../game-engine/combat/opportunity.js';
 import { isShellOpen, refreshGameShell } from '../game-engine/ui/shell/game-shell.js';
 import { LOCATION_MAPS_MANUAL_HIDDEN_KEY } from './keys.js';
@@ -46,7 +50,7 @@ import {
     setCombatBoardSelection, setCurrentBoardName, setCurrentLocationName, usedReactions,
 } from './state.js';
 import { currentPet, petSupport } from './pet.js';
-import { abilityVictims, carriedNames, getAbilityCatalogue, useAbility } from './magic.js';
+import { abilityVictims, carriedNames, getAbilityCatalogue, knownAbilitiesOf, useAbility } from './magic.js';
 import {
     boardCellOf, getAliveEnemies, getAttackableEnemiesForMember, getCurrentActingMember, getCurrentTurnEntry,
     getCurrentTurnState, getPartyMemberByTurnEntry, getRemainingMovementFeet, getTargetArmorClass, heightFor,
@@ -62,7 +66,8 @@ import {
 import {
     boardVisibility, buildBoardIdleEnemyTokens, buildBoardNPCTokens, buildEnemyTokens, buildTokens,
     getActiveBoardContext, getActiveBoardTerrain, handleEnemyTokenMove, handleTokenMove, isBoardWon,
-    persistBoardTerrain, placePartyAtStart, toggleBoardDoor,
+    persistBoardTerrain, placePartyAtStart, toggleBoardDoor, buildSummonTokens, activeSpellZones, attackHindrance,
+    archetypeOf,
 } from './board.js';
 import { saveCurrentLocation, saveCurrentBoard, getLocationBoards } from './world.js';
 import { getCampaignBonds } from './time.js';
@@ -103,6 +108,23 @@ export function setLocationMapsHidden(hidden) {
  * @param {number} gridHeight
  */
 function getCombatBoardHighlightState(gridWidth, gridHeight) {
+    // J20.2 (y J12.4): fuera de combate también se elige una ficha y se ve hasta dónde anda de
+    // una vez; a toques es la única forma de moverla, porque con el dedo no se arrastra.
+    const walker = combatEncounter.active ? null : selectedWalker();
+    if (walker) {
+        const pos = walker.mapPosition || { gridX: 0, gridY: 0, locationName: '' };
+        const stride = strideOf(walker);
+        const occupied = new Set(partyMembers
+            .filter(m => Number(m.id) !== Number(walker.id) && !m.dead)
+            .map(m => `${Number(m.mapPosition?.gridX) || 0},${Number(m.mapPosition?.gridY) || 0}`));
+        return {
+            selectedTokenId: walker.id,
+            highlightedTokenIds: [],
+            highlightedCells: getReachableCells(getActiveBoardTerrain(), pos.gridX || 0, pos.gridY || 0, stride, gridWidth, gridHeight, { occupied })
+                .filter(cell => cell.gridX !== (pos.gridX || 0) || cell.gridY !== (pos.gridY || 0)),
+            overlayLegend: `${walker.name} · Anda hasta ${stride} pies de una vez · Pulsa una casilla encendida para ir`,
+        };
+    }
     const entry = getCurrentTurnEntry();
     const member = getCurrentActingMember();
     if (!combatEncounter.active || !entry || entry.isEnemy || !member) {
@@ -125,7 +147,7 @@ function getCombatBoardHighlightState(gridWidth, gridHeight) {
     // La casilla en la que ya estas no es un sitio al que moverte: pulsarla gastaria
     // cero pies, y encendida solo servia para que tu propia ficha se comiera el clic.
     ).filter(cell => cell.gridX !== (pos.gridX || 0) || cell.gridY !== (pos.gridY || 0));
-    const overlayLegend = `${member.name} · Movimiento restante ${remainingFeet} ft · Rango ${getAttackRangeFeet(member)} ft${attackable.length ? ` · Objetivos: ${attackable.map(enemy => enemy.name).join(', ')}` : ' · Sin objetivos en rango'}`;
+    const overlayLegend = `${member.name} · Te quedan ${remainingFeet} pies · Alcance ${getAttackRangeFeet(member)} pies${attackable.length ? ` · Objetivos: ${attackable.map(enemy => enemy.name).join(', ')}` : ' · Nadie al alcance'}`;
 
     return {
         selectedTokenId: member.id,
@@ -133,6 +155,19 @@ function getCombatBoardHighlightState(gridWidth, gridHeight) {
         highlightedCells: [...movementCells, ...attackCells],
         overlayLegend,
     };
+}
+
+/**
+ * Fuera de combate, la ficha elegida en este tablero, si es de las que llevas tú y puede andar.
+ *
+ * @returns {import('./types.js').PartyMember|null}
+ */
+function selectedWalker() {
+    if (!currentBoardName || combatBoardSelection.boardName !== currentBoardName
+        || combatBoardSelection.locationName !== currentLocationName) return null;
+    const id = combatBoardSelection.tokenId;
+    if (id === null || !getControlledMemberIds().some(own => Number(own) === Number(id))) return null;
+    return partyMembers.find(m => Number(m.id) === Number(id)) ?? null;
 }
 
 function getControlledMemberIds() {
@@ -322,7 +357,7 @@ function openTargetCard(member, enemy) {
         byParty: true,
         flanked: partyFlanks(member, enemy),
         attackerId: String(member.id),
-        hindered: visibilityPenalties(boardVisibility(), distanceFeet),
+        hindered: attackHindrance(partyCell(member), { x: Number(enemy.gridX) || 0, y: Number(enemy.gridY) || 0 }, distanceFeet),
     });
     const forecast = describeForecast({
         attackMod: getPlayerAttackModifier(member, forecastRange) + traitBonus(member, enemy.name) + perkBonus(member, 'attack') + weaponBonus(member),
@@ -338,7 +373,8 @@ function openTargetCard(member, enemy) {
 
     // Las que este personaje se sabe y van sobre un enemigo, cada una con su veredicto:
     // un conjuro de 120 ft no esta "fuera de alcance" porque la espada llegue a 5.
-    const usable = knownAbilities(member, getAbilityCatalogue())
+    // J19: con sus conjuros de 5e, si lanza con espacios.
+    const usable = knownAbilitiesOf(member)
         .filter(ability => ability.target === 'enemy' && ability.combat !== false)
         .map(ability => {
             const verdict = canUseAbility({
@@ -376,12 +412,16 @@ function openTargetCard(member, enemy) {
     });
 
     const root = $('<div class="tc-card"></div>');
-    root.append($('<div class="tc-name"></div>').text(card.name));
+    // Su cara, la misma que en el tablero: su dibujo en pixel si no trae una propia.
+    const face = faceFor({ isEnemy: true, name: String(enemy.name), avatar: String(enemy.avatar ?? ''), archetype: enemyArchetype(enemy) });
+    const nameRow = $('<div class="tc-name"></div>');
+    if (face) nameRow.append($('<img class="tc-face" alt="">').attr('src', face).toggleClass('pixel-art', face !== enemy.avatar));
+    root.append(nameRow.append($('<span></span>').text(card.name)));
     root.append($('<div class="tc-stats"></div>').text(describeTargetCard(card)));
     if (card.inRange) root.append($('<div class="tc-forecast"></div>').text(forecast.text));
     if (intentTarget) root.append($('<div class="tc-intent"></div>').text(`Va a por ${intentTarget.name}.`));
     // R3: lo que alcanzaría cada habilidad de área, antes de usarla. Colocarse importa.
-    for (const ability of knownAbilities(member, getAbilityCatalogue()).filter(a => a.target === 'enemy' && isArea(a.area))) {
+    for (const ability of knownAbilitiesOf(member).filter(a => a.target === 'enemy' && isArea(a.area))) {
         const { victims } = abilityVictims(member, 'party', ability, enemy);
         const own = victims.filter(v => v.kind === 'party');
         root.append($('<div class="tc-area"></div>').toggleClass('tc-area-risk', own.length > 0).text(
@@ -453,10 +493,11 @@ function openTargetCard(member, enemy) {
     actions.append(close);
     root.append(actions);
 
-    // Lo que impide actuar se dice, no se deja adivinar.
-    const blocked = card.actions.filter(a => !a.enabled).map(a => a.reason);
-    if (blocked.length === card.actions.length) {
-        root.append($('<div class="tc-why"></div>').text(blocked[0]));
+    // Lo que impide actuar se dice, no se deja adivinar. Escrito, no en el aviso de pasar el
+    // ratón por encima del botón: con el dedo, ese aviso no sale nunca (J20.2).
+    const blocked = [...new Set(card.actions.filter(a => !a.enabled).map(a => String(a.reason || '')).filter(Boolean))];
+    for (const reason of blocked.slice(0, 3)) {
+        root.append($('<div class="tc-why"></div>').text(reason));
     }
 
     $('body').append($('<div class="tc-overlay"></div>').on('click', () => closeTargetCard()).append(root));
@@ -465,6 +506,48 @@ function openTargetCard(member, enemy) {
 /** Cierra la tarjeta, si hay alguna. */
 function closeTargetCard() {
     $('.tc-overlay').remove();
+}
+
+/**
+ * La cara de alguien del combate para la fila de iniciativa y las tarjetas: la suya si la
+ * trae; si no, su dibujo en pixel (el bicho del enemigo, el retrato de relleno del héroe), el
+ * mismo que en su ficha del tablero. Vacío si no hay ninguna.
+ *
+ * @param {Partial<import('../world-map-renderer.js').TokenData>} who
+ * @returns {string}
+ */
+function faceFor(who) {
+    const drawn = tokenArt(who);
+    if (drawn) return drawn;
+    return isPlainFace(who.avatar) ? '' : String(who.avatar);
+}
+
+/**
+ * El arquetipo de un enemigo del combate, por su plantilla del mundo.
+ *
+ * @param {any} enemy
+ * @returns {string}
+ */
+function enemyArchetype(enemy) {
+    return archetypeOf(enemy?.archetype ? enemy : getCurrentWorldEnemies().find(t => String(t.id) === String(enemy?.templateId)));
+}
+
+/**
+ * La cara de una fila de la iniciativa: la del enemigo o la del personaje que es.
+ *
+ * @param {{id: string, isEnemy: boolean, name: string, avatar: string}} entry
+ * @returns {string}
+ */
+function initiativeFace(entry) {
+    if (entry.isEnemy) {
+        const enemy = combatEncounter.enemies.find(e => String(e.instanceId) === String(entry.id));
+        return faceFor({ isEnemy: true, name: entry.name, avatar: String(enemy?.avatar ?? entry.avatar ?? ''), archetype: enemyArchetype(enemy) });
+    }
+    const member = partyMembers.find(m => String(m.id) === String(entry.id));
+    return faceFor({
+        name: entry.name, avatar: String(member?.avatar ?? entry.avatar ?? ''),
+        className: member?.class, gender: member?.gender, race: member?.race,
+    });
 }
 
 /**
@@ -478,6 +561,19 @@ function closeTargetCard() {
  * @returns {{cells: Array<{gridX: number, gridY: number}>, feet: number, ok: boolean, provokes: string[]}|null}
  */
 function previewMovement(gridX, gridY) {
+    // Fuera de combate, la ficha elegida: el mismo camino que andará y lo que anda de una vez.
+    const walker = combatEncounter.active ? null : selectedWalker();
+    if (walker) {
+        const { terrain, gridWidth: w, gridHeight: h } = getActiveBoardContext();
+        const origin = walker.mapPosition || { gridX: 0, gridY: 0 };
+        const occupied = new Set(partyMembers
+            .filter(m => Number(m.id) !== Number(walker.id) && !m.dead)
+            .map(m => `${Number(m.mapPosition?.gridX) || 0},${Number(m.mapPosition?.gridY) || 0}`));
+        const path = findPath(terrain, origin.gridX || 0, origin.gridY || 0, gridX, gridY, w, h, { occupied });
+        if (!path || path.length === 0) return null;
+        const feet = getPathCost(terrain, path) * 5;
+        return { cells: path.slice(1).map(cell => ({ gridX: cell.x, gridY: cell.y })), feet, ok: feet <= strideOf(walker), provokes: [] };
+    }
     const member = getCurrentActingMember();
     if (!combatEncounter.active || !member) return null;
 
@@ -521,6 +617,14 @@ function previewMovement(gridX, gridY) {
  * @param {string} kind
  */
 function handleBoardCellClick(gridX, gridY, kind) {
+    // Fuera de combate: la ficha elegida anda hasta ahí, por la misma puerta que al arrastrarla
+    // (hace falta camino y un tirón), y sigue elegida para el paso siguiente.
+    const walker = combatEncounter.active ? null : selectedWalker();
+    if (walker) {
+        handleTokenMove(walker.id, gridX, gridY, currentLocationName);
+        renderLocationMapsPreview();
+        return;
+    }
     const member = getCurrentActingMember();
     if (!member) return;
 
@@ -540,6 +644,19 @@ function handleBoardCellClick(gridX, gridY, kind) {
  * @param {number} tokenId
  */
 function handleCombatTokenClick(tokenId) {
+    // Fuera de combate, pulsar una ficha tuya la elige (y otra vez, la suelta): se encienden
+    // las casillas a las que llega de una vez.
+    if (!combatEncounter.active) {
+        if (!currentBoardName || tokenId < 0 || !getControlledMemberIds().some(own => Number(own) === Number(tokenId))) return;
+        const chosen = combatBoardSelection.tokenId === tokenId
+            && combatBoardSelection.boardName === currentBoardName
+            && combatBoardSelection.locationName === currentLocationName;
+        setCombatBoardSelection(chosen
+            ? { tokenId: null, boardName: '', locationName: '' }
+            : { tokenId, boardName: currentBoardName, locationName: currentLocationName });
+        renderLocationMapsPreview();
+        return;
+    }
     const entry = getCurrentTurnEntry();
     const member = getCurrentActingMember();
     if (!combatEncounter.active || !entry || entry.isEnemy || !member) return;
@@ -658,8 +775,10 @@ function buildCombatSection(board) {
 
             row.append($('<span class="wm-init-score"></span>').text(String(entry.initiative)));
             // Idea 5: la cara, o la inicial si no la tiene. Se reconoce antes que un nombre.
-            row.append(entry.avatar
-                ? $('<img class="wm-init-face" alt="">').attr('src', entry.avatar)
+            // Sin cara propia, su dibujo en pixel: el bicho o el retrato de su clase.
+            const face = initiativeFace(entry);
+            row.append(face
+                ? $('<img class="wm-init-face" alt="">').attr('src', face).toggleClass('pixel-art', face !== entry.avatar)
                 : $('<span class="wm-init-face wm-init-initial"></span>').text(entry.name.charAt(0).toUpperCase()));
 
             const body = $('<div class="wm-init-body"></div>');
@@ -700,8 +819,10 @@ function buildCombatSection(board) {
         for (const enemy of combatEncounter.enemies) {
             const hpPct = enemy.maxHp > 0 ? Math.min(100, (enemy.currentHp / enemy.maxHp) * 100) : 0;
             const isDead = enemy.currentHp <= 0;
-            const avatarHtml = enemy.avatar
-                ? `<img src="${escapeHtml(enemy.avatar)}" alt="" />`
+            // Su dibujo, el mismo que en el tablero; la calavera, solo si no hay ninguno.
+            const face = faceFor({ isEnemy: true, name: String(enemy.name), avatar: String(enemy.avatar ?? ''), archetype: enemyArchetype(enemy) });
+            const avatarHtml = face
+                ? `<img src="${escapeHtml(face)}" alt=""${face !== enemy.avatar ? ' class="pixel-art" data-pixel="true"' : ''} />`
                 : '<i class="fa-solid fa-skull fa-2x"></i>';
             enemyGrid.append(`
                 <div class="wm-combat-enemy-card${isDead ? ' wm-combat-enemy-dead' : ''}">
@@ -948,8 +1069,14 @@ function drawLocationMapsPreview() {
         // Merge enemy tokens if combat is active on this board
         const enemyTokens = combatEncounter.active ? buildEnemyTokens() : [];
         const npcTokens = buildBoardNPCTokens(selectedBoard);
-        const allBoardTokens = [...boardTokens, ...enemyTokens, ...npcTokens];
-        const tacticalState = getCombatBoardHighlightState(loc.gridWidth || 50, loc.gridHeight || 50);
+        // J19.5: las invocaciones, del lado del grupo.
+        const allBoardTokens = [...boardTokens, ...enemyTokens, ...buildSummonTokens(), ...npcTokens];
+        // El tamaño del propio tablero (un mapa en imagen mide su cuadrícula, J12.8) y su terreno
+        // con lo que lleva encima: cotas y zonas de conjuro, que tapan la vista en la niebla.
+        const boardContext = getActiveBoardContext();
+        const boardGridW = boardContext.gridWidth;
+        const boardGridH = boardContext.gridHeight;
+        const tacticalState = getCombatBoardHighlightState(boardGridW, boardGridH);
 
         // Determine which tokens can be dragged
         let boardDraggableIds;
@@ -959,11 +1086,9 @@ function drawLocationMapsPreview() {
         } else {
             boardDraggableIds = getControlledMemberIds();
         }
-        const boardGridW = loc.gridWidth || 50;
-        const boardGridH = loc.gridHeight || 50;
 
         // Terrain, fog and the paint palette (wiki/ROADMAP.md, Fase A6).
-        const boardTerrain = normalizeTerrain(selectedBoard.terrain);
+        const boardTerrain = boardContext.board === selectedBoard ? boardContext.terrain : normalizeTerrain(selectedBoard.terrain);
         const fogOn = Boolean(selectedBoard.fogEnabled);
         const boardFog = normalizeFog(selectedBoard.fog);
         const sightNow = fogOn ? boardVisibility() : null;
@@ -1020,6 +1145,13 @@ function drawLocationMapsPreview() {
             ...activeFocus(),
             // Lo ya visto del tablero, a la vista (idea 122: el aceite que arde).
             hazards: visibleHazards(selectedBoard).map((/** @type {any} */ h) => ({ x: h.x, y: h.y, name: h.name, kind: h.kind, note: h.tell })),
+            // J19.6: las zonas de conjuro del combate, a la vista, con lo que hacen.
+            spellZones: zoneOverlay(activeSpellZones()),
+            // J12.10 y J12.11: los acantilados se dibujan, y la casilla dice su sala y su altura.
+            elevation: normalizeElevation(selectedBoard.elevation),
+            zones: normalizeZones(selectedBoard.zones),
+            // El bioma de las casillas en pixel, por el tipo del sitio si el nombre no lo dice.
+            locationType: String(loc.type ?? ''),
             tokens: allBoardTokens,
             onTokenClick: (tokenId) => handleCombatTokenClick(tokenId),
             // Clic en una casilla encendida: mover. Solo las encendidas responden.

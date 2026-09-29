@@ -26,13 +26,15 @@ import { readGraves, addToHall, readHall } from '../game-engine/campaign/legacy.
 import { retireTo, upgradeCost, describeGuild } from '../game-engine/campaign/guild.js';
 import { isShellOpen, refreshGameShell } from '../game-engine/ui/shell/game-shell.js';
 import { BENCH_KEY, GRAVES_KEY, GUILD_KEY, MODE_HISTORY_KEY, PLOT_STATE_KEY, STORAGE_KEY } from './keys.js';
-import { combatEncounter, currentLocationName, partyMembers, setPartyMembers } from './state.js';
+import {
+    combatEncounter, currentBoardName, currentLocationName, partyMembers, setCurrentBoardName, setPartyMembers,
+} from './state.js';
 import { acceptContract, getGuild, refreshContractBoard } from './contracts.js';
 import { instancesFromPlacements } from './combat-flow.js';
 import { awardEncounterLoot } from './loot.js';
 import { recordBoardWon } from './board.js';
 import { renderLocationMapsPreview } from './board-view.js';
-import { ensureWorldData, lastHub, lastHubHome } from './world.js';
+import { ensureWorldData, lastHub, lastHubHome, saveCurrentBoard } from './world.js';
 import { getCurrentWorldFactions } from './factions.js';
 import { getCampaignCalendar, campaignDay, advanceCampaignDay, markLocationComplete } from './time.js';
 import { getPlot, notePlot, plotEndingTitle } from './plot.js';
@@ -41,6 +43,7 @@ import { survivalNow } from './modes.js';
 import { postCombatNarration, postForModel } from './narration.js';
 import { savePartyState, renderPartyMembers, partyPurse, payFromParty } from './roster.js';
 import { countStat } from './menus.js';
+import { carryBondOf } from './social.js';
 
 /** @typedef {import('./types.js').PartyMember} PartyMember */
 
@@ -165,12 +168,16 @@ function useStorage(stored, retrieved) {
 export function hubChips() {
     if (combatEncounter.active) return [];
     if (lastHub) {
+        const trial = hubTrial(getPlot(), chat_metadata?.[PLOT_STATE_KEY]);
         return [
             // J2.3: la prueba se puede saltar mientras está por hacer. Va junto a la de pelearla.
-            ...(hubTrial(getPlot(), chat_metadata?.[PLOT_STATE_KEY])
-                ? [{ id: 'hub-skip', label: 'Saltar la prueba', icon: 'fa-forward', command: '/saltar-prueba' }] : []),
-            { id: 'hub-board', label: 'Tablón de campañas', icon: 'fa-scroll', command: '/campanas' },
-            { id: 'hub-hire', label: 'Contratar mercenarios', icon: 'fa-coins', command: '/contratar' },
+            ...(trial ? [{ id: 'hub-skip', label: 'Saltar la prueba', icon: 'fa-forward', command: '/saltar-prueba' }] : []),
+            // D-J28: el tablón y los mercenarios, escondidos hasta que acabe la prueba: primero
+            // se llega, se conoce a Brunilda y se baja a la bodega.
+            ...(trial ? [] : [
+                { id: 'hub-board', label: 'Tablón de campañas', icon: 'fa-scroll', command: '/campanas' },
+                { id: 'hub-hire', label: 'Contratar mercenarios', icon: 'fa-coins', command: '/contratar' },
+            ]),
             // J3.9: el salón de la fama, en cuanto hay alguien (o alguna campaña) en él.
             ...(readHall(/** @type {any} */ (extension_settings).partyHall).length > 0
                 ? [{ id: 'hub-hall', label: 'Salón de la fama', icon: 'fa-monument', command: '/salon' }] : []),
@@ -213,18 +220,34 @@ export async function skipHubTrial() {
     if (!go || combatEncounter.active || !hubTrial(getPlot(), chat_metadata?.[PLOT_STATE_KEY])) return '';
 
     const same = (/** @type {any} */ a, /** @type {string} */ b) => String(a ?? '').trim().toLowerCase() === b.trim().toLowerCase();
-    const home = getCurrentWorldLocationMaps().find((/** @type {any} */ l) => (l?.boards ?? []).some((/** @type {any} */ b) => same(b?.name, trial.board)));
-    const place = trial.place || String(home?.name ?? '') || currentLocationName;
-    const board = (home?.boards ?? []).find((/** @type {any} */ b) => same(b?.name, trial.board));
+    const locations = getCurrentWorldLocationMaps();
+    /** @param {string} name @returns {any} La localización que tiene ese tablero. */
+    const homeOf = (name) => locations.find((/** @type {any} */ l) => (l?.boards ?? []).some((/** @type {any} */ b) => same(b?.name, name)));
+    const place = trial.place || String(homeOf(trial.board)?.name ?? '') || currentLocationName;
     postCombatNarration(`⏭️ [HILO] Te saltas «${trial.title}»: cuenta como hecha.`);
-    // Lo mismo que deja ganarla: el botín de los que esperaban, el tablero y el sitio.
-    const defeated = instancesFromPlacements(Array.isArray(board?.enemyPlacements) ? board.enemyPlacements : []);
+    // J2.1: lo mismo que deja ganar cada pelea de la prueba (el muelle y la bodega): el botín de
+    // los que esperaban, en uno, cada tablero ganado y sus enemigos, vencidos para el hilo.
+    const boards = trial.boards?.length > 0 ? trial.boards : [{ board: trial.board, place }];
+    /** @type {any[]} */
+    const defeated = [];
+    for (const step of boards) {
+        const home = homeOf(step.board);
+        const where = step.place || String(home?.name ?? '') || place;
+        const board = (home?.boards ?? []).find((/** @type {any} */ b) => same(b?.name, step.board));
+        const fallen = instancesFromPlacements(Array.isArray(board?.enemyPlacements) ? board.enemyPlacements : []);
+        defeated.push(...fallen);
+        recordBoardWon(where, step.board);
+        for (const name of new Set(fallen.map(e => String(e.name).replace(/\s+\d+$/, '')))) {
+            notePlot({ kind: 'defeat', enemy: name });
+        }
+    }
     const loot = awardEncounterLoot(defeated);
     if (loot?.gold) countStat('gold', loot.gold);
-    recordBoardWon(place, trial.board);
     markLocationComplete(place);
-    for (const name of new Set(defeated.map(e => String(e.name).replace(/\s+\d+$/, '')))) {
-        notePlot({ kind: 'defeat', enemy: name });
+    // Si se estaba en uno de sus tableros (el muelle), se sale: ya no queda nadie a quien pegar.
+    if (currentBoardName) {
+        setCurrentBoardName('');
+        saveCurrentBoard();
     }
     notePlot({ kind: 'win', place, board: trial.board });
     renderPartyMembers();
@@ -295,6 +318,8 @@ export async function openHubHire() {
     const offer = offers.find(o => o.name === choice.name);
     if (!offer) return '';
     if (choice.action === 'fire') {
+        // J14: lo que habíais vivido no se pierde: vuelve a ser suyo, de la gente del gremio.
+        carryBondOf(partyMembers.find(m => String(m.id) === offer.id), 'leave');
         setPartyMembers(partyMembers.filter(m => String(m.id) !== offer.id));
         savePartyState();
         renderPartyMembers();
@@ -317,6 +342,8 @@ export async function openHubHire() {
     const at = hero?.mapPosition ?? { locationName: currentLocationName, gridX: 1, gridY: 1 };
     merc.mapPosition = { ...at, gridX: (Number(at.gridX) || 0) + partyMembers.length };
     partyMembers.push(merc);
+    // J14: si ya habíais quedado antes de contratarle, eso pasa a su ficha.
+    carryBondOf(merc, 'join');
     savePartyState();
     renderPartyMembers();
     renderLocationMapsPreview();

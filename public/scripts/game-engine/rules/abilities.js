@@ -72,6 +72,15 @@ export const ABILITY_LABELS = {
  * @property {boolean} [drain] R4: quien lo lanza se cura la mitad del daño.
  * @property {boolean} [combat] R4: `false` si solo sirve fuera del combate.
  * @property {string[]} [aliases] R4: los ids que tenía cuando era una fila de datos.
+ * @property {number} [spellLevel] J19: si es un conjuro de 5e (`spellToAbility`), su nivel (0 = truco).
+ * @property {number} [slotLevel] J19: el espacio con el que sale.
+ * @property {boolean} [concentration] J19: si pide concentración.
+ * @property {'half'|'none'} [onSave] J19: lo que hace una salvación superada con el daño.
+ * @property {number} [attackBonus] J19: su bono de ataque de conjuro.
+ * @property {number} [targets] J19: a cuántos alcanza como mucho.
+ * @property {number} [rays] J19: cuántos golpes separados (Proyectil mágico).
+ * @property {boolean} [point] J19: se apunta a una casilla, no a alguien.
+ * @property {string} [blocked] J19: por qué no se puede lanzar ahora (sin espacios, sin foco…).
  */
 
 /**
@@ -152,6 +161,19 @@ export function normalizeAbility(raw, index = 0) {
         ...(source.drain ? { drain: true } : {}),
         ...(source.combat === false ? { combat: false } : {}),
         ...(Array.isArray(source.aliases) && source.aliases.length > 0 ? { aliases: source.aliases.map(text).filter(Boolean) } : {}),
+        // J19: lo de 5e que trae `spellToAbility`. Antes se perdía aquí, y un Proyectil
+        // mágico salía con un solo dardo y un truco salvado hacía la mitad.
+        ...(Number.isFinite(Number(source.spellLevel)) && source.spellLevel !== null && source.spellLevel !== '' ? {
+            spellLevel: Math.max(0, Math.floor(Number(source.spellLevel))),
+            slotLevel: Math.max(0, Math.floor(Number(source.slotLevel) || 0)),
+            concentration: Boolean(source.concentration),
+            onSave: source.onSave === 'none' ? 'none' : 'half',
+            attackBonus: Math.floor(Number(source.attackBonus) || 0),
+            targets: Math.max(1, Math.floor(Number(source.targets) || 1)),
+            rays: Math.max(0, Math.floor(Number(source.rays) || 0)),
+            point: Boolean(source.point),
+        } : {}),
+        ...(text(source.blocked) ? { blocked: text(source.blocked) } : {}),
     };
 }
 
@@ -224,6 +246,8 @@ export function canUseAbility({
     // R4: un conjuro pide su nivel, una carga de su círculo y lo que gaste. Y los que solo
     // sirven fuera del combate no se lanzan peleando.
     if (ability.combat === false) return { ok: false, reason: 'Esto no se usa peleando.' };
+    // J19: lo que ya sabe quien lo arma (sin espacios, sin foco, sin el material).
+    if (ability.blocked) return { ok: false, reason: String(ability.blocked) };
     if (typeof ability.circle === 'number') {
         const cast = canCast({ member, spell: ability, carried });
         if (!cast.ok) return cast;
@@ -302,11 +326,15 @@ export function planAbilityUse({
         const extra = crit ? roll(ability.damage) : null;
         damage = Math.max(0, (Number(first.total) || 0) + (Number(extra?.total) || 0));
         // Una salvación superada no anula el golpe, lo parte por la mitad: es lo que hace
-        // que tirar valga la pena aunque el otro acierte.
-        if (saved) damage = Math.floor(damage / 2);
+        // que tirar valga la pena aunque el otro acierte. J19: salvo lo que dice que no
+        // (`onSave: 'none'`, los trucos de 5e): salvarse es librarse del todo.
+        const dodged = saved && ability.onSave === 'none';
+        if (saved) damage = dodged ? 0 : Math.floor(damage / 2);
         if (damage > 0) {
             lines.push(`💥 Daño${ability.damageType ? ` ${ability.damageType.toLowerCase()}` : ''}: `
                 + `${ability.damage}${crit ? ' x2 (crítico)' : ''}${saved ? ' a la mitad (salva)' : ''} = ${damage}`);
+        } else if (dodged) {
+            lines.push(`🛡️ ${targetName} se libra del todo.`);
         }
     }
 
@@ -383,6 +411,8 @@ export function describeAbility(ability) {
 
     // R4: un conjuro dice su círculo en vez de sus usos.
     if (typeof ability.circle === 'number') parts.push(ability.circle === 0 ? 'truco, a voluntad' : CIRCLE_LABELS[/** @type {1|2|3} */ (ability.circle)]);
+    // J19: un conjuro de 5e dice el espacio que gasta.
+    else if (typeof ability.spellLevel === 'number') parts.push(ability.spellLevel === 0 ? 'truco, a voluntad' : `gasta un espacio de ${ability.slotLevel || ability.spellLevel}.º nivel`);
     else if (ability.resource === 'at_will') parts.push('a voluntad');
     else parts.push(`${ability.usesPerRest}x por descanso ${ability.resource === 'short_rest' ? 'corto' : 'largo'}`);
 
@@ -393,8 +423,10 @@ export function describeAbility(ability) {
     const element = describeElement(ability);
     if (element) parts.push(element);
 
-    if (ability.damage) parts.push(`${ability.damage} de daño`);
+    if (ability.damage) parts.push(`${(ability.rays ?? 0) > 1 ? `${ability.rays} × ` : ''}${ability.damage} de daño`);
     if (ability.healing) parts.push(`cura ${ability.healing}`);
+    if ((ability.targets ?? 1) > 1) parts.push(`hasta ${ability.targets}`);
+    if (ability.concentration) parts.push('concentración');
     // La condición con su nombre en castellano («deja derribado»), no la clave de 5e («Prone»).
     if (ability.condition) parts.push(`deja ${(statusMarkers([ability.condition])[0]?.label ?? ability.condition).toLowerCase()}`);
     if (ability.resolution === 'save') parts.push(`salvación CD ${ability.saveDc}`);

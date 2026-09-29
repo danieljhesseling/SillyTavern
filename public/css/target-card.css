@@ -31,6 +31,18 @@
 .tc-name {
     font-size: 1.1em;
     font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Su cara, la misma que en el tablero (su dibujo en pixel si no trae una propia). */
+.tc-face {
+    width: 40px;
+    height: 40px;
+    flex: 0 0 40px;
+    border-radius: 6px;
+    object-fit: cover;
 }
 
 .tc-stats {

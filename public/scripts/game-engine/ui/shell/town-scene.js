@@ -257,7 +257,9 @@ export function renderTownSelector(town, ctx) {
     for (const place of town.places) {
         const card = button('gs-town-place');
         card.dataset.place = place.id;
-        card.title = `Entrar en ${place.name}`;
+        card.title = place.closed ? `${place.name}: ${place.closedLine || place.closed}` : `Entrar en ${place.name}`;
+        // D-J29: cerrado se ve en la tarjeta, con su cartel; entrar se puede, comprar no.
+        card.classList.toggle('gs-town-closed', Boolean(place.closed));
         const art = placeArt(place, town.here, night, pack);
         const scene = el('span', `gs-town-place-art${art ? '' : ' gs-town-place-bare'}`);
         if (art) scene.style.setProperty('--gs-town-art', cssUrl(art));

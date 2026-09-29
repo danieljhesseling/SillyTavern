@@ -36,6 +36,7 @@ import { getMapLegend } from '../game-engine/campaign/campaign-pack-schema.js';
 import { knownSpells } from '../game-engine/rules/grimoire.js';
 import { describeMounts } from '../game-engine/world/mounts.js';
 import { describeSecrets } from '../game-engine/campaign/npc-secrets.js';
+import { dialogueJournal } from '../game-engine/campaign/dialogues.js';
 import { checkWorldDensity, gemRequest } from '../game-engine/campaign/world-density.js';
 import { makeShareCode } from '../game-engine/campaign/share-code.js';
 import { HUB_HEROES_KEY, restingUids } from '../game-engine/campaign/hub-heroes.js';
@@ -69,9 +70,9 @@ import { isShellOpen, refreshGameShell } from '../game-engine/ui/shell/game-shel
 import { buildPackFromWorld, describeExport } from '../game-engine/campaign/campaign-export.js';
 import { normalizePack, validatePack } from '../game-engine/campaign/campaign-pack.js';
 import {
-    ART_STORAGE, DEEDS_KEY, DICE_LOG_KEY, FAME_KEY, GRAVES_KEY, HINTS_KEY, MAP_NOTES_KEY, MEMORIES_KEY, MOUNTS_KEY,
-    PLOT_KEY, PLOT_STATE_KEY, RUMORS_HEARD_KEY, RUMORS_HEARD_ON_KEY, SECRETS_KEY, SESSION_LOG_KEY, STATS_KEY,
-    TAKEN_KEY, VISITED_KEY,
+    ART_STORAGE, DEEDS_KEY, DIALOGUE_MEMORY_KEY, DICE_LOG_KEY, FAME_KEY, GRAVES_KEY, HINTS_KEY, MAP_NOTES_KEY, MEMORIES_KEY,
+    MOUNTS_KEY, PLOT_DECISIONS_KEY, PLOT_KEY, PLOT_STATE_KEY, RUMORS_HEARD_KEY, RUMORS_HEARD_ON_KEY, SECRETS_KEY,
+    SESSION_LOG_KEY, STATS_KEY, TAKEN_KEY, VISITED_KEY,
 } from './keys.js';
 import {
     combatEncounter, currentBoardName, currentLocationName, partyMembers, setCurrentBoardName,
@@ -89,7 +90,7 @@ import { campaignDay, getCampaignBonds, getCampaignCalendar, whatComes } from '.
 import { getPlot, openMilestones } from './plot.js';
 import { worldWrite } from './world-growth.js';
 import { survivalNow } from './modes.js';
-import { narratorMode, postCombatNarration } from './narration.js';
+import { narratorMode, postCombatNarration, whoPlays } from './narration.js';
 import { savePartyState, syncPartyWithEntries } from './roster.js';
 import { partyMorale } from './companions.js';
 import { neighbourPlaces } from './travel.js';
@@ -315,6 +316,8 @@ function openJournal() {
         taken: chat_metadata?.[TAKEN_KEY] ?? null,
         today,
         heard,
+        // D-J17: lo oído concuerda con quien juega.
+        who: whoPlays(),
         memories: memoryLines(chat_metadata?.[MEMORIES_KEY], today),
         deeds: Array.isArray(chat_metadata?.[DEEDS_KEY]) ? chat_metadata[DEEDS_KEY] : [],
     });
@@ -339,6 +342,14 @@ function openJournal() {
     // Idea 102: los caminos que se cerraron.
     const closed = closedOf(getPlot(), chat_metadata?.[PLOT_STATE_KEY]);
     if (closed.length > 0) sections.push({ title: 'Caminos cerrados', items: closed });
+    // J9.6: lo que decidisteis en las escenas del hilo, y lo que quedó apuntado en ellas.
+    const decided = (Array.isArray(chat_metadata?.[PLOT_DECISIONS_KEY]) ? chat_metadata[PLOT_DECISIONS_KEY] : [])
+        .map((/** @type {any} */ entry) => (Number(entry?.day) > 0 ? `Día ${Number(entry.day)}: ${String(entry?.text ?? '')}` : String(entry?.text ?? entry ?? '')))
+        .filter(Boolean);
+    if (decided.length > 0) sections.push({ title: 'Lo que decidisteis', items: decided });
+    // J8.6: lo que os han contado en las charlas escritas.
+    const told8 = dialogueJournal(chat_metadata?.[DIALOGUE_MEMORY_KEY]);
+    if (told8.length > 0) sections.push({ title: 'Lo que os han contado', items: told8 });
     // Idea 110: lo que sabéis de la gente.
     const pried = describeSecrets(chat_metadata?.[SECRETS_KEY]);
     if (pried.length > 0) sections.push({ title: 'Lo que sabéis de la gente', items: pried });

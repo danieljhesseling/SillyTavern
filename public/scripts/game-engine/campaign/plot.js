@@ -43,6 +43,7 @@
  */
 
 import { readFactions, clockOf, saysWith } from './factions.js';
+import { epiloguesOf } from './campaign-end.js';
 
 /** Lo que puede abrir un hito. */
 export const OPENS = ['start', 'arrive', 'after', 'contract', 'day', 'clock'];
@@ -204,10 +205,9 @@ export function readPlot(raw) {
     const endings = {};
     for (const [id, ending] of Object.entries(raw.endings ?? {})) {
         if (text(id) && ending && typeof ending === 'object') {
-            // J4.5: qué fue de la gente con este final, si el paquete lo escribe.
-            const epilogues = (Array.isArray(/** @type {any} */ (ending).epilogues) ? /** @type {any} */ (ending).epilogues : [])
-                .map((/** @type {any} */ e) => (typeof e === 'string' ? { who: '', text: text(e) } : { who: text(e?.who), text: text(e?.text) }))
-                .filter((/** @type {{text: string}} */ e) => e.text);
+            // J4.5: qué fue de la gente con este final, si el paquete lo escribe (D-J18: también
+            // como `epilogos`, con `quien` y `texto`).
+            const epilogues = epiloguesOf(ending);
             endings[text(id)] = {
                 title: text(/** @type {any} */ (ending).title), scene: text(/** @type {any} */ (ending).scene),
                 ...(epilogues.length > 0 ? { epilogues } : {}),

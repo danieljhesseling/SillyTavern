@@ -23,7 +23,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^[/]([A-Za-z]:)/, '$1');
-const PORT = 8124;
+// Con --port, otro: para correr a la vez que otras vueltas.
+const PORT = Number(process.argv.includes('--port') ? process.argv[process.argv.indexOf('--port') + 1] : '') || 8124;
 const BASE = `http://127.0.0.1:${PORT}`;
 const HEADED = process.argv.includes('--headed');
 
@@ -77,6 +78,8 @@ try {
             window.localStorage.setItem('sillytavern_gameShellAutostart', 'true');
             // Las tarjetas de sucesos (Z4) las prueba la vuelta sin modelo; aquí taparían clics.
             window.localStorage.setItem('sillytavern_gameSucesos', 'off');
+            // Las escenas del hilo y las charlas escritas (J9.2, J8) las mira e2e-historia; aquí taparían clics.
+            window.localStorage.setItem('sillytavern_gameStoryWindows', 'off');
         } catch { /* nada */ }
     });
     await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });

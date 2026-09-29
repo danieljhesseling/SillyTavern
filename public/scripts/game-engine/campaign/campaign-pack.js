@@ -346,6 +346,73 @@ function checkDrawnBoard(board, path, size, errors, warnings) {
 }
 
 /**
+ * D-J18: los finales del hilo y sus epílogos.
+ *
+ * - Cada final lleva `title` y `scene`: sin escena, el final no cuenta nada.
+ * - Un hito que lleva a un final (`changes.ending`, `changes.endingBy`) nombra uno que existe.
+ * - `epilogues` (o `epilogos`, como lo escribe un Gem en castellano) es una lista: una línea por
+ *   persona o facción, `{who, text}`. `who` es alguien de la gente o una facción del paquete;
+ *   si no, se enseña igual, pero casi siempre es una errata.
+ *
+ * Todo son avisos salvo la forma de `endings`: un final mal escrito no impide jugar el resto.
+ *
+ * @param {any} pack Normalizado.
+ * @param {Issue[]} errors
+ * @param {Issue[]} warnings
+ */
+function checkEndings(pack, errors, warnings) {
+    const endings = pack.plot.endings;
+    if (!endings || typeof endings !== 'object' || Array.isArray(endings)) {
+        errors.push({ path: 'plot.endings', message: 'Los finales van por su id: {"id-del-final": {"title": "…", "scene": "…"}}.' });
+        return;
+    }
+    const known = new Set([
+        ...[...pack.npcs, ...pack.confidants].map((/** @type {any} */ p) => text(p?.name)),
+        ...pack.world.factions.map((/** @type {any} */ f) => text(f?.name)),
+    ].map(name => name.toLowerCase()).filter(Boolean));
+    for (const [id, ending] of Object.entries(endings)) {
+        const path = `plot.endings.${id}`;
+        if (!ending || typeof ending !== 'object' || Array.isArray(ending)) {
+            errors.push({ path, message: 'Un final es un objeto con `title` y `scene`.' });
+            continue;
+        }
+        if (!text(ending.title) || !text(ending.scene)) {
+            warnings.push({ path, message: 'Un final necesita `title` y `scene`: sin escena, al llegar no se cuenta nada.' });
+        }
+        const field = ending.epilogues !== undefined ? 'epilogues' : ending.epilogos !== undefined ? 'epilogos' : '';
+        if (!field) continue;
+        const lines = ending[field];
+        if (!Array.isArray(lines)) {
+            warnings.push({ path: `${path}.${field}`, message: 'Los epílogos van en una lista: [{"who": "…", "text": "…"}]. Se ignoran.' });
+            continue;
+        }
+        lines.forEach((/** @type {any} */ line, /** @type {number} */ at) => {
+            const said = typeof line === 'string' ? line : line?.text ?? line?.texto;
+            if (!text(said)) {
+                warnings.push({ path: `${path}.${field}[${at}]`, message: 'Un epílogo sin `text` no dice nada: no saldrá.' });
+                return;
+            }
+            const who = typeof line === 'string' ? '' : text(line?.who ?? line?.quien);
+            if (who && known.size > 0 && !known.has(who.toLowerCase())) {
+                warnings.push({
+                    path: `${path}.${field}[${at}].who`,
+                    message: `"${who}" no está entre la gente (\`npcs\`, \`confidants\`) ni las facciones del paquete: se enseña igual, pero puede ser una errata.`,
+                });
+            }
+        });
+    }
+    const ids = new Set(Object.keys(endings));
+    (Array.isArray(pack.plot.milestones) ? pack.plot.milestones : []).forEach((/** @type {any} */ milestone, /** @type {number} */ at) => {
+        const leads = [text(milestone?.changes?.ending), ...Object.values(milestone?.changes?.endingBy ?? {}).map(text)].filter(Boolean);
+        for (const id of new Set(leads)) {
+            if (!ids.has(id)) {
+                warnings.push({ path: `plot.milestones[${at}].changes`, message: `Lleva al final "${id}", que no está en \`plot.endings\`: la campaña no acabaría.` });
+            }
+        }
+    });
+}
+
+/**
  * Check a pack from end to end.
  *
  * The order of the checks follows the order a reader would notice them: the world, then
@@ -678,6 +745,9 @@ export function validatePack(raw) {
         errors.push(...scenes.errors);
         warnings.push(...scenes.warnings);
     }
+
+    // D-J18: los finales y lo que fue de la gente en cada uno.
+    if (pack.plot && pack.plot.endings !== undefined) checkEndings(pack, errors, warnings);
 
     // Cuantos sitios tendra el mundo: los declarados, mas los que solo existen porque
     // algun tablero los nombra.

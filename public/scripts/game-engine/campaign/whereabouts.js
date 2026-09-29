@@ -11,8 +11,8 @@
  * - **Tu grupo** va contigo: cada uno está a cada hora donde diga su ficha
  *   (`compendio/quedadas.json`, `kind: "gente"`, `places`) o, si no dice nada, donde le lleva
  *   lo que busca. Quien va mal de vida está en el templo, si lo hay.
- * - **La gente del pueblo** (Tomás, Ramiro…) está en su sitio mientras abre; cerrado, en la
- *   posada con una jarra, como ya cuenta `hours.js`.
+ * - **La gente del pueblo** (Tomás, Ramiro…) está en su sitio mientras abre; cerrado (de noche,
+ *   el día de descanso o en fiestas: D-J29), en la posada con una jarra, como ya cuenta `hours.js`.
  * - **Los compañeros de cada campaña** que aún no van contigo (J14.6) están en **su pueblo**
  *   (`home`), y solo allí se queda con ellos; los del gremio (los mercenarios sin contratar),
  *   en Puerto Alba.
@@ -20,7 +20,7 @@
  * Puro: con el pueblo, la hora y la gente, dice quién está dónde. Quien llama lo pinta.
  */
 
-import { isOpen } from './hours.js';
+import { closedReason } from './hours.js';
 import { servicesOf } from './services.js';
 import { keyOf } from './social.js';
 import { PLACE_KINDS } from './town.js';
@@ -97,14 +97,21 @@ export function placeLabel(place, location = null) {
 }
 
 /**
- * Si un sitio está abierto a esa hora.
+ * @typedef {Object} When El día, para lo que cierra días enteros (D-J29).
+ * @property {number} [day] El día de la campaña: el de descanso (el 7, el 14…) cierra la tienda.
+ * @property {string} [festival] La fiesta de hoy en el pueblo, si la hay.
+ */
+
+/**
+ * Si un sitio está abierto a esa hora (y ese día: D-J29).
  *
  * @param {string} place
  * @param {string} slot
+ * @param {When} [when]
  * @returns {boolean}
  */
-export function placeOpen(place, slot) {
-    return ALWAYS_OPEN.includes(place) || isOpen(place, slot);
+export function placeOpen(place, slot, when = {}) {
+    return ALWAYS_OPEN.includes(place) || !closedReason({ service: place, slot, day: when?.day, festival: when?.festival });
 }
 
 /**
@@ -113,10 +120,11 @@ export function placeOpen(place, slot) {
  * @param {string[]} wanted
  * @param {string[]} places
  * @param {string} slot
+ * @param {When} [when]
  * @returns {string}
  */
-function firstOpen(wanted, places, slot) {
-    return wanted.find(p => p && places.includes(p) && placeOpen(p, slot)) ?? '';
+function firstOpen(wanted, places, slot, when = {}) {
+    return wanted.find(p => p && places.includes(p) && placeOpen(p, slot, when)) ?? '';
 }
 
 /**
@@ -128,15 +136,16 @@ function firstOpen(wanted, places, slot) {
  * @param {string[]} input.places
  * @param {string} input.slot
  * @param {string} [input.wants]
+ * @param {When} [input.when]
  * @returns {string}
  */
-export function companionPlace({ member, person = null, places, slot, wants = '' }) {
+export function companionPlace({ member, person = null, places, slot, wants = '', when = {} }) {
     const max = Number(member?.maxHp) || 0;
     const hurt = max > 0 && (Number(member?.hp) || 0) / max < HEALING_AT;
     const own = text(person?.places?.[slot]);
     const byWants = text(/** @type {Record<string, Record<string, string>>} */ (SCHEDULE_BY_WANTS)[text(wants)]?.[slot]);
-    return firstOpen([hurt ? 'templo' : '', own, byWants, slot === 'night' ? 'posada' : 'plaza', 'plaza', 'posada'], places, slot)
-        || places.find(p => placeOpen(p, slot)) || '';
+    return firstOpen([hurt ? 'templo' : '', own, byWants, slot === 'night' ? 'posada' : 'plaza', 'plaza', 'posada'], places, slot, when)
+        || places.find(p => placeOpen(p, slot, when)) || '';
 }
 
 /**
@@ -148,14 +157,15 @@ export function companionPlace({ member, person = null, places, slot, wants = ''
  * @param {any} [input.person]
  * @param {string[]} input.places
  * @param {string} input.slot
+ * @param {When} [input.when] D-J29: el día de descanso y las fiestas también mandan a la posada.
  * @returns {string}
  */
-export function townsfolkPlace({ npc, person = null, places, slot }) {
+export function townsfolkPlace({ npc, person = null, places, slot, when = {} }) {
     const own = text(person?.places?.[slot]);
-    if (own) return firstOpen([own], places, slot);
+    if (own) return firstOpen([own], places, slot, when);
     const service = text(npc?.service);
-    if (service) return firstOpen([service, 'posada'], places, slot);
-    return firstOpen(['gremio', 'plaza'], places, slot);
+    if (service) return firstOpen([service, 'posada'], places, slot, when);
+    return firstOpen(['gremio', 'plaza'], places, slot, when);
 }
 
 /**
@@ -202,12 +212,15 @@ export function homeOf(person, confidant = null) {
  * @param {{people: any[]}} [input.data] `readMeetupRows` de `quedadas.json`.
  * @param {(member: any) => string} [input.wantsOf]
  * @param {(here: Here) => {wants: boolean, why?: string}|boolean} [input.wants] Si quiere quedar.
+ * @param {number} [input.day] D-J29: el día de la campaña (el de descanso cierra la tienda).
+ * @param {string} [input.festival] D-J29: la fiesta de hoy aquí, si la hay.
  * @returns {{places: Array<{id: string, label: string, icon: string, open: boolean, people: Here[]}>, people: Here[]}}
  */
 export function whoIsWhere({
     town, location = null, slot, places = [], hub = false, party = [], townsfolk = [], confidants = [], hirelings = [],
-    data = { people: [] }, wantsOf = (m) => text(m?.reasons?.wants), wants = () => false,
+    data = { people: [] }, wantsOf = (m) => text(m?.reasons?.wants), wants = () => false, day = 0, festival = '',
 }) {
+    const when = { day, festival };
     // Los de la pantalla del pueblo (ids o sitios de `town.js`, por su clase), o los de aquí.
     const given = [...new Set((Array.isArray(places) ? places : [])
         .map((/** @type {any} */ p) => text(typeof p === 'string' ? p.replace(/-\d+$/, '') : p?.kind))
@@ -230,12 +243,12 @@ export function whoIsWhere({
 
     for (const member of (Array.isArray(party) ? party : []).slice(1)) {
         if (!member || member.dead || member.guest?.kind === 'ward') continue;
-        const place = companionPlace({ member, person: personOf(member.name), places: here, slot, wants: wantsOf(member) });
+        const place = companionPlace({ member, person: personOf(member.name), places: here, slot, wants: wantsOf(member), when });
         add({ name: text(member.name), kind: member.guest ? 'mercenario' : 'grupo', place, inParty: true, canMeet: true, source: member });
     }
     for (const npc of Array.isArray(townsfolk) ? townsfolk : []) {
         if (!npc || npc.dead || !sameTown(npc.where)) continue;
-        add({ name: text(npc.name), kind: 'pueblo', place: townsfolkPlace({ npc, person: personOf(npc.name), places: here, slot }), inParty: false, canMeet: false, source: npc });
+        add({ name: text(npc.name), kind: 'pueblo', place: townsfolkPlace({ npc, person: personOf(npc.name), places: here, slot, when }), inParty: false, canMeet: false, source: npc });
     }
     for (const one of [...(Array.isArray(confidants) ? confidants : []), ...(Array.isArray(hirelings) ? hirelings : [])]) {
         const person = personOf(one?.name);
@@ -244,7 +257,7 @@ export function whoIsWhere({
         add({
             name: text(one.name),
             kind: mercenary ? 'mercenario' : 'confidente',
-            place: companionPlace({ member: one, person, places: here, slot }),
+            place: companionPlace({ member: one, person, places: here, slot, when }),
             inParty: false,
             canMeet: true,
             source: one,
@@ -257,7 +270,7 @@ export function whoIsWhere({
             id,
             label: placeLabel(id, location),
             icon: /** @type {Record<string, {icon: string}>} */ (PLACES)[id]?.icon ?? 'fa-location-dot',
-            open: placeOpen(id, slot),
+            open: placeOpen(id, slot, when),
             people: people.filter(p => p.place === id),
         })),
     };
@@ -273,11 +286,13 @@ export function whoIsWhere({
  * @param {string} [input.current] Donde está ahora.
  * @param {any} [input.person] Su ficha J14 (`likes`).
  * @param {any} [input.location]
+ * @param {number} [input.day] D-J29: el día (el de descanso, la tienda cerrada).
+ * @param {string} [input.festival] D-J29: la fiesta de hoy aquí.
  * @returns {Array<{id: string, label: string, icon: string, liked: boolean}>}
  */
-export function meetPlaces({ places, slot, current = '', person = null, location = null }) {
+export function meetPlaces({ places, slot, current = '', person = null, location = null, day = 0, festival = '' }) {
     const likes = new Set((Array.isArray(person?.likes) ? person.likes : []).map(text));
-    const open = (Array.isArray(places) ? places : []).filter(p => placeOpen(p, slot));
+    const open = (Array.isArray(places) ? places : []).filter(p => placeOpen(p, slot, { day, festival }));
     const ordered = current && open.includes(current) ? [current, ...open.filter(p => p !== current)] : open;
     return ordered.map(id => ({
         id,

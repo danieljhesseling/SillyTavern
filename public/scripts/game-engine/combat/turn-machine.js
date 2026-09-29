@@ -57,6 +57,9 @@ import { normalizeTimers } from './condition-timers.js';
  * @property {import('./tally.js').Tally} [tally]
  *   La cuenta del combate, para la pantalla de victoria.
  * @property {string[]} [left] B2: quién ha salido ya por una salida del tablero.
+ * @property {any[]} [summons] J19.5: las invocaciones del grupo, como fichas.
+ * @property {import('../board/spell-zones.js').Zone[]} [spellZones] J19.6: las zonas de conjuro.
+ * @property {string[]} [shielded] J19.7: quien tiene el Escudo levantado hasta su turno.
  */
 
 /** The three things a combatant may spend besides movement. */
@@ -110,6 +113,12 @@ export function normalizeEncounter(raw) {
         tally: readTally(raw.tally),
         // B2: quién salió por una salida. Sin esto, recargar le devolvía a la pelea.
         left: Array.isArray(raw.left) ? raw.left.map(String) : [],
+        // J19.5 y J19.6: las invocaciones del grupo y las zonas de conjuro del tablero. Sin
+        // esto, recargar a mitad de pelea se llevaba el lobo invocado y la telaraña.
+        summons: Array.isArray(raw.summons) ? raw.summons.filter((/** @type {any} */ s) => s && s.id != null) : [],
+        spellZones: Array.isArray(raw.spellZones) ? raw.spellZones.filter((/** @type {any} */ z) => z && Array.isArray(z.cells)) : [],
+        // J19.7: quien tiene el Escudo levantado hasta su turno.
+        shielded: Array.isArray(raw.shielded) ? raw.shielded.map(String) : [],
     };
 }
 

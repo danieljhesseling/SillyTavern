@@ -63,9 +63,10 @@ import {
 } from './world.js';
 import { friendlyFactions, getCurrentWorldFactions, rulerOf } from './factions.js';
 import {
-    advanceCampaignDay, advanceCampaignSlot, campaignDay, getCampaignCalendar, getCurrentSlotLabel,
-    recordCampaignBondEvent, takeRest,
+    advanceCampaignDay, campaignDay, getCampaignCalendar, getCurrentSlotLabel, recordCampaignBondEvent, spendDayPart,
+    takeRest,
 } from './time.js';
+import { afterArrival } from './social.js';
 import { notePlot, openMilestones } from './plot.js';
 import { noteDeed, populatePlace, worldWrite } from './world-growth.js';
 import { numberWord, playSucesos, postCombatNarration, postForModel, showTip, tellMoment } from './narration.js';
@@ -137,7 +138,8 @@ export function runForage() {
         if (result.drank) member.needs = relieve(member, 'drank');
     }
     savePartyState();
-    advanceCampaignSlot();
+    // J14.2: la cabecera dice en qué se fue la parte del día.
+    spendDayPart('forrajear', { label: 'Cazar y forrajear' });
     if (roll) postCombatNarration(roll.said);
     postCombatNarration(`🌿 [CAMPO] ${result.line}`);
     toastr.info(result.line, 'Cazar y forrajear', { timeOut: 7000 });
@@ -796,6 +798,8 @@ export async function travelWithTime(name, options = {}) {
     // Z4: lo que hubo que decidir por el camino, y lo que espera al llegar (o lo que vuelve).
     playSucesos('viaje', { destino: match.name, sitio: previousPlace || match.name, tiempo: String(weather[weather.length - 1] ?? ''), bioma: biome }, total);
     playSucesos('llegada', { sitio: match.name });
+    // J14.1: al llegar (o de lo que pasó por el camino), a veces alguien del grupo tiene algo que decir.
+    afterArrival();
 
     return { to: match.name, reason: '' };
 }

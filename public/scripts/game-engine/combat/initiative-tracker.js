@@ -39,6 +39,14 @@ export const STATUS_ICONS = {
     unconscious: { icon: 'fa-bed', label: 'Inconsciente', effect: 'en el suelo, tirando salvaciones de muerte' },
     exhaustion: { icon: 'fa-battery-quarter', label: 'Agotado', effect: 'cansado: todo le cuesta más' },
     bleeding: { icon: 'fa-droplet', label: 'Sangrando', effect: 'pierde vida hasta que alguien le cure' },
+    // J19: los que dejan los conjuros (`SPELL_CONDITIONS` de `rules/spell-catalogue.js`).
+    guiado: { icon: 'fa-compass', label: 'Guiado', effect: 'suma 1d4 a su próxima prueba' },
+    resguardado: { icon: 'fa-shield-heart', label: 'Resguardado', effect: 'suma 1d4 a su próxima salvación' },
+    protegido: { icon: 'fa-shield-halved', label: 'Protegido', effect: 'los muertos, los demonios y los espíritus le pegan peor' },
+    perfilado: { icon: 'fa-wand-sparkles', label: 'Perfilado', effect: 'brilla: se le acierta mejor y no puede volverse invisible' },
+    ralentizado: { icon: 'fa-snowflake', label: 'Ralentizado', effect: 'se mueve 10 pies menos' },
+    acelerado: { icon: 'fa-forward-fast', label: 'Acelerado', effect: 'el doble de rápido y +2 a la CA' },
+    'a la carrera': { icon: 'fa-person-running', label: 'A la carrera', effect: 'anda el doble este turno' },
 };
 
 /** Shown for a condition the rule pack has but this table does not. */

@@ -50,7 +50,7 @@ import { isShellOpen, refreshGameShell } from '../game-engine/ui/shell/game-shel
 import {
     CASES_KEY, COLORBLIND_KEY, CONTRADICTIONS_KEY, DEEDS_KEY, DICE_LOG_KEY, GRAVES_KEY, MEMORIES_KEY,
     NARRATOR_FONT_KEY, NARRATOR_MODE_STORAGE, NARRATOR_RECENT_KEY, PLOT_STATE_KEY, ROLL_GUARD_KEY, SAVER_KEY,
-    SUCESOS_KEY, SUCESOS_STORAGE, TAKEN_KEY, TIPS_SEEN_KEY, localFlag,
+    STORY_WINDOWS_STORAGE, SUCESOS_KEY, SUCESOS_STORAGE, TAKEN_KEY, TIPS_SEEN_KEY, localFlag,
 } from './keys.js';
 import { combatEncounter, currentLocationName, partyMembers } from './state.js';
 import { petReact } from './pet.js';
@@ -59,7 +59,7 @@ import {
     actsOnItsOwn, getAttackableEnemiesForMember, getCurrentActingMember, getCurrentTurnEntry,
 } from './combat-state.js';
 import { pushCombatLogEntry, pushCombatLogLines } from './combat-log.js';
-import { getLocationBoards, lastCompendium, lastHub, lastHubHome, lastWorldNpcs } from './world.js';
+import { currentSeason, getLocationBoards, lastCompendium, lastHub, lastHubHome, lastWorldNpcs } from './world.js';
 import { rulerOf, shiftFactionStanding } from './factions.js';
 import {
     advanceCampaignDay, advanceCampaignSlot, campaignDay, getCampaignCalendar, getCurrentSlotLabel,
@@ -163,6 +163,21 @@ export function postCombatNarration(text) {
 export function sucesosOn() {
     try {
         return localStorage.getItem(SUCESOS_STORAGE) !== 'off';
+    } catch {
+        return true;
+    }
+}
+
+/**
+ * J9.2 y J8: si las escenas del hilo y las charlas escritas se abren en su ventana. Siempre,
+ * salvo que se apaguen (las vueltas de prueba que no miran eso): entonces se cuentan en el
+ * chat, como antes.
+ *
+ * @returns {boolean}
+ */
+export function storyWindowsOn() {
+    try {
+        return localStorage.getItem(STORY_WINDOWS_STORAGE) !== 'off';
     } catch {
         return true;
     }
@@ -384,8 +399,10 @@ export function tellMoment(moment, facts) {
     if (modelNarrates() || !lastCompendium?.has?.('frases')) return '';
     const rows = lastCompendium.find('frases', {});
     const random = createSeededRandom(derive(String(chat_metadata?.[METADATA_KEY] || ''), 'narrador', moment, String(chat.length)));
-    // J1.4: con quién juega, para que «llegáis empapados» sea «empapadas» si toca.
-    const told = narrateMoment({ rows, moment, facts: { ...facts, generos: whoPlays(facts) }, random, recent: chat_metadata?.[NARRATOR_RECENT_KEY] });
+    // J1.4: con quién juega, para que «llegáis empapados» sea «empapadas» si toca. J13: y la
+    // estación de hoy, en todos los momentos (la llegada, el viaje, el descanso…): una frase
+    // escrita para el invierno (`when: {estacion: 'invierno'}`) solo sale en invierno.
+    const told = narrateMoment({ rows, moment, facts: { estacion: currentSeason(), ...facts, generos: whoPlays(facts) }, random, recent: chat_metadata?.[NARRATOR_RECENT_KEY] });
     if (chat_metadata && told.used.length > 0) chat_metadata[NARRATOR_RECENT_KEY] = rememberUsed(chat_metadata[NARRATOR_RECENT_KEY], told.used);
     return told.text;
 }
@@ -460,21 +477,28 @@ export function tellBoard(boardName) {
  * the player's next turn, so a finished combat still costs nothing by itself.
  *
  * @param {string} text
- * @param {{show?: string}} [options] `show`: lo que se ve si cuenta el motor (Z1).
+ * @param {{show?: string, speaker?: string, mood?: string}} [options] `show`: lo que se ve si
+ *   cuenta el motor (Z1). `speaker`: quien lo dice, si es alguien del mundo (la novela sale con
+ *   su cara y su nombre en la placa, no con la del narrador); `mood`: con qué gesto (`alegre`,
+ *   `enfadado`, `triste`), para la cara que toca.
  * @returns {Promise<void>}
  */
 export async function postForModel(text, options = {}) {
     if (typeof text !== 'string' || !text.trim()) return;
 
+    const speaker = String(options?.speaker ?? '').trim();
     const message = buildGameMessage({
         // J1.4: el modelo también lee «entera», no «{entero|entera}».
         text: sayGendered(substituteParams(text.trim())),
         channel: CHANNEL.MODEL,
-        name: chat_metadata?.narrator_name || 'Narrador',
+        name: speaker || chat_metadata?.narrator_name || 'Narrador',
         avatar: system_avatar,
         timestamp: getMessageTimeStamp(),
         compact: true,
     });
+    // La cara de quien habla en la novela: `extra.mood` la elige (game-shell.js, `renderNovel`).
+    const mood = String(options?.mood ?? '').trim();
+    if (speaker && mood && mood !== 'neutral') /** @type {any} */ (message.extra).mood = mood;
     // El modelo lee la nota entera; en pantalla sale solo lo que pasó, sin la orden al
     // narrador («Cuéntalo en un párrafo…»), que sin modelo se leía como un error y con él
     // como una instrucción colada (ROADMAP_SIN_TOKENS, Z0).

@@ -13,7 +13,8 @@
  *   volver al gremio: «En curso» → acabarla: el salón la llama como el tablón (D-J19) →
  *   un segundo personaje: el nombre no se repite (D-J14) y llega con 10 de oro (D-J11); Iria,
  *   herida, descansa cuatro días y vuelve curada (D-J12) → otro gremio: tu campaña también
- *   está en su tablón (D-J35).
+ *   está en su tablón (D-J35) → quitarla desde allí: en el gremio de Iria, donde está
+ *   terminada, su tarjeta se queda (D-J35).
  *
  * Uso:
  *   node tools/e2e-importar-campana.mjs              # sin ventana
@@ -134,6 +135,8 @@ try {
             window.localStorage.setItem('sillytavern_gameTipsSeen', 'dialogue,exploration,combat,travel,prisoners,mesa,high,spell,pet,bill,move,attack,roll,talk,journal');
             window.localStorage.setItem('sillytavern_gameShellAutostart', 'true');
             window.localStorage.setItem('sillytavern_gameSucesos', 'off');
+            // Las escenas del hilo y las charlas escritas (J9.2, J8) las mira e2e-historia; aquí taparían clics.
+            window.localStorage.setItem('sillytavern_gameStoryWindows', 'off');
         } catch { /* nada */ }
     });
 
@@ -476,6 +479,24 @@ try {
         otherOk && inOther && otherBoard && /Sin empezar/.test(there?.text ?? '') && !tiles.some(t => t.id === HIGH_ID),
         JSON.stringify({ otherOk, inOther, ids: tiles.map(t => t.id), there }));
     if (SHOT) await page.screenshot({ path: `${SHOT}.otro-gremio.png` });
+
+    // 11. D-J35: quitarla desde este gremio, donde está sin empezar: sale del tablón y de tu
+    // lista. En el gremio de Iria, donde está terminada, su tarjeta se queda para volver a ella.
+    await page.locator(`.hb-root [data-campaign-remove="${ID}"]`).click();
+    await page.waitForSelector('.popup:has-text("del tablón?")', { timeout: 10000 }).catch(() => {});
+    await page.locator('.popup:has-text("del tablón?") .popup-button-ok').click({ timeout: 5000 }).catch(() => {});
+    const goneHere = await until(() => page.evaluate((id) => !document.querySelector(`.hb-root [data-campaign="${id}"]`), ID), 15000);
+    const keptThere = await page.evaluate(async ({ world, id }) => {
+        const hub = await import('/scripts/game-engine/campaign/hub.js');
+        const data = await (await import('/scripts/world-info.js')).loadWorldInfo(world);
+        const list = await fetch('/user/files/tablon-campanas.json', { cache: 'no-cache' }).then(r => r.json()).catch(() => null);
+        const card = hub.hubCampaignCards({ worlds: [], hub: data?.metadata?.hub, imported: hub.readImportedList(list) }).find(c => c.id === id);
+        return { ids: (list?.campaigns ?? []).map((/** @type {any} */ r) => r.id), card: card ? { name: card.name, state: card.state, imported: card.imported, note: card.note } : null };
+    }, { world: hubWorld, id: ID });
+    check('quitada desde otro gremio: sale de tu lista, y en el de Iria se queda terminada, sin «Quitar» (D-J35)',
+        goneHere && keptThere.ids.length === 0 && keptThere.card?.name === NAME && keptThere.card?.state === 'terminada'
+        && keptThere.card?.imported === false && /Sigue aquí porque la empezaste en este gremio/.test(keptThere.card?.note ?? ''),
+        JSON.stringify({ goneHere, keptThere }));
     await page.locator('.hb-root .hb-close').click({ timeout: 5000 }).catch(() => {});
 
     check('sin errores en la página', problems.length === 0, problems.slice(0, 6).join('\n        '));

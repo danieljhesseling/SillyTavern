@@ -103,6 +103,8 @@ try {
     page.on('console', m => {
         if (m.type() === 'error' && !/Failed to load resource.*404/.test(m.text())) problems.push(`ERROR ${m.text().slice(0, 300)}`);
     });
+    // Un 500 en la consola no dice de dónde; esto sí.
+    page.on('response', r => { if (r.status() >= 500) problems.push(`HTTP ${r.status()} ${r.request().method()} ${r.url()}`); });
     await context.addInitScript(() => {
         // J2.2: cada consejo que sale, apuntado, y cuántos ha habido a la vez como mucho.
         const seenTips = /** @type {any} */ (window);
@@ -263,8 +265,25 @@ try {
     const inCreator = await stCharacterUi();
     check('mientras se crea el personaje no asoma la ficha del narrador (J0.3)', inCreator.length === 0, JSON.stringify(inCreator));
     await page.fill('.hc-root .hc-name', 'Tessa');
-    // J1.4: Tessa se presenta como mujer, y el texto tiene que concordar.
+    // D-J15: quien es no binario elige cómo le habla el texto, y el comienzo ya le habla así.
+    const genderView = () => page.evaluate(() => ({
+        asks: Boolean(/** @type {HTMLElement|null} */ (document.querySelector('.hc-root .hc-text-form'))?.offsetParent),
+        note: document.querySelector('.hc-root .hc-gender-note')?.textContent || '',
+        premise: document.querySelector('.hc-root .hc-premise-text')?.textContent || '',
+    }));
+    await page.locator('.hc-root .hc-gender[data-value="No binario"]').click();
+    const genderAsked = await genderView();
+    await page.locator('.hc-root .hc-text-form .hc-gender[data-form="f"]').click();
+    const genderTold = await genderView();
+    if (SHOT) await page.screenshot({ path: `${SHOT}.genero.png` });
+    check('D-J15: con «No binario» pregunta cómo te habla el texto, y en femenino el comienzo dice «cansada»',
+        genderAsked.asks && /Elige cómo quieres que te hable el texto/.test(genderAsked.note)
+        && genderTold.asks && /en femenino/.test(genderTold.note) && (!genderTold.premise || /cansada/.test(genderTold.premise)),
+        JSON.stringify({ genderAsked, genderTold }));
+    // J1.4: Tessa se presenta como mujer, y el texto tiene que concordar. Ya no se pregunta la forma.
     await page.locator('.hc-root .hc-gender[data-value="Mujer"]').click();
+    const genderWoman = await genderView();
+    check('y con «Mujer» la pregunta se va: el texto le habla en femenino', !genderWoman.asks && /en femenino/.test(genderWoman.note), JSON.stringify(genderWoman));
     await pickHeroCard(page, 'race', 'Humano');
     await pickHeroCard(page, 'class', 'Guerrero');
     // Arte en pixel: el icono de la clase en su tarjeta y, sin cara subida, el retrato de relleno.
@@ -722,6 +741,14 @@ try {
     // J0.3: en pausa vuelve la barra de SillyTavern, y el panel del grupo; sus personajes, no.
     const inPause = await stCharacterUi();
     check('en pausa vuelve la barra de SillyTavern, pero no la ficha del narrador ni la lista de personajes (J0.3)', inPause.length === 0, JSON.stringify(inPause));
+    // D-J24: ni su cajón de la derecha (Party, World Map, Location, Campaña), que salía vacío.
+    const rightPanel = await page.evaluate(() => {
+        const panel = document.querySelector('#right-nav-panel');
+        const box = panel?.getBoundingClientRect();
+        return Boolean(panel && box && box.width > 1 && box.height > 1 && window.getComputedStyle(panel).visibility !== 'hidden');
+    });
+    if (SHOT) await page.screenshot({ path: `${SHOT}.pausa.png` });
+    check('en pausa no sale el cajón vacío de la derecha (D-J24)', !rightPanel);
     await page.locator('#game-shell .gs-pause-btn').filter({ hasText: 'Opciones' }).first().click({ timeout: 5000 }).catch(() => {});
     await page.waitForSelector('.go-root', { timeout: 8000 }).catch(() => {});
     const optionRows = () => page.evaluate(() => [...document.querySelectorAll('.go-root .go-row')]

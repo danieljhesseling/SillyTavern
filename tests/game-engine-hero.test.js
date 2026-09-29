@@ -25,7 +25,8 @@ describe('lo que hay que rellenar', () => {
     test('hay razas, clases y géneros que ofrecer sin inventar nada', () => {
         expect(DEFAULT_RACES.length).toBeGreaterThan(4);
         expect(DEFAULT_CLASSES.length).toBeGreaterThan(4);
-        expect(GENDERS).toContain('Sin especificar');
+        // D-J15: mujer, hombre o no binario; quien es no binario elige cómo le habla el texto.
+        expect(GENDERS).toEqual(['Mujer', 'Hombre', 'No binario']);
     });
 });
 

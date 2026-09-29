@@ -26,6 +26,14 @@ export const PRICE_BY_KIND = {
     component: 20,
 };
 
+/**
+ * D-J25: lo que piden los conjuros de 5e, y lo que sirve de foco. Está en todas las tiendas,
+ * siempre, con su precio (`price` en `combat/loot-items.js`): perla 100, diamante 300, incienso
+ * y hierbas 10, agua bendita 25, bolsa de componentes 25 y un laúd para el bardo. Donde quien
+ * manda persigue la magia, lo que es componente no se vende (`season-market.js`).
+ */
+export const SPELL_SUPPLIES = ['Bolsa de componentes', 'Laúd', 'Incienso y hierbas', 'Agua bendita', 'Perla', 'Diamante'];
+
 /** Cuánto multiplica la rareza. */
 const RARITY = { common: 1, comun: 1, uncommon: 2, 'poco común': 2, rare: 5, raro: 5, 'very rare': 12, legendary: 30 };
 
@@ -39,12 +47,14 @@ export const HAGGLE_DISCOUNT = 0.15;
 const text = (value) => String(value ?? '').trim().toLowerCase();
 
 /**
- * Lo que vale una cosa, sin tienda ni regateo.
+ * Lo que vale una cosa, sin tienda ni regateo. Si trae su precio (`price`: una perla vale
+ * 100), ese; si no, el de su clase de cosa por su rareza.
  *
- * @param {{category?: string, subcategory?: string, rarity?: string, name?: string}} item
+ * @param {{category?: string, subcategory?: string, rarity?: string, name?: string, price?: number}} item
  * @returns {number}
  */
 export function basePrice(item) {
+    if (Number(item?.price) > 0) return Math.max(1, Math.round(Number(item?.price)));
     const sub = text(item?.subcategory);
     const cat = text(item?.category);
     const base = PRICE_BY_KIND[/** @type {keyof typeof PRICE_BY_KIND} */ (sub)]
@@ -152,6 +162,17 @@ export function canSell(item, member) {
 }
 
 /**
+ * Si algo es de lo que piden los conjuros (D-J25): por su nombre, o porque es componente.
+ *
+ * @param {any} item
+ * @returns {boolean}
+ */
+export function isSpellSupply(item) {
+    const name = text(item?.name);
+    return text(item?.subcategory) === 'component' || SPELL_SUPPLIES.some(supply => text(supply) === name);
+}
+
+/**
  * La chatarra de todo el grupo (idea 118): lo común que no lleva nadie puesto.
  *
  * @param {any[]} party
@@ -162,6 +183,8 @@ export function junkOf(party) {
         .filter((/** @type {any} */ item) => canSell(item, member) && text(item.category) !== 'magic'
             && !['rare', 'raro', 'very rare', 'legendary'].includes(text(item.rarity))
             // Lo que se gasta (el aceite, la red) no es chatarra, y una reliquia (idea 132) tampoco.
-            && !item.consumable && !item.relic)
+            && !item.consumable && !item.relic
+            // D-J25: ni lo que piden los conjuros, ni el foco: el laúd del bardo no es chatarra.
+            && !isSpellSupply(item))
         .map((/** @type {any} */ item) => ({ memberId: String(member.id), itemId: String(item.id), name: String(item.name), price: sellPrice(item) })));
 }

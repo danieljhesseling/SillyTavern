@@ -11,7 +11,7 @@
 
 import { firstArt, loadPixelManifest } from './pixel-art.js';
 import { resolveGender } from '../campaign/grammar.js';
-import { HUB_NEXT_HERO_GOLD } from '../campaign/hub.js';
+import { HUB_NEXT_HERO_GOLD, HUB_KEPT_NOTE } from '../campaign/hub.js';
 
 /** @param {string} value @returns {JQuery} */
 const div = (value) => $('<div></div>').addClass(value);
@@ -343,9 +343,9 @@ export async function openHubBoard({ Popup, POPUP_TYPE, cards, heroes = [], onIm
      */
     const unpin = (one) => async () => {
         const where = one.state === 'nueva' ? ''
-            : ` En este gremio la tienes ${one.state === 'terminada' ? 'terminada' : 'empezada'}: para volver a ella desde el tablón, tendrás que añadirla otra vez.`;
+            : ` En este gremio la tienes ${one.state === 'terminada' ? 'terminada' : 'empezada'}: su tarjeta se queda aquí, para volver a ella.`;
         const sure = await Popup.show.confirm(`¿Quitar «${asHtml(one.name)}» del tablón?`,
-            asHtml(`Deja de salir en el tablón de todos tus gremios, y se borra su archivo. Las partidas que ya empezaste con ella no se borran.${where}`),
+            asHtml(`Deja de salir en el tablón de todos tus gremios, y se borra su archivo: ya no se podrá empezar. Las partidas que ya empezaste con ella no se borran, y siguen en el tablón del gremio donde las empezaste.${where}`),
             { okButton: 'Quitarla', cancelButton: 'Dejarla' });
         if (!sure) return;
         const result = await onRemove(one.id);
@@ -353,7 +353,17 @@ export async function openHubBoard({ Popup, POPUP_TYPE, cards, heroes = [], onIm
             .append(div('hb-import-title').text(result.ok
                 ? `Quitada del tablón: ${/** @type {{name: string}} */ (result).name}.`
                 : /** @type {{headline: string}} */ (result).headline));
-        if (result.ok) grid.find(`[data-campaign-tile="${CSS.escape(one.id)}"]`).remove();
+        if (!result.ok) return;
+        const box = grid.find(`[data-campaign-tile="${CSS.escape(one.id)}"]`);
+        if (one.state === 'nueva') {
+            box.remove();
+            return;
+        }
+        // Empezada aquí: se queda, como la dejará `hubCampaignCards` la próxima vez.
+        box.find('.hb-remove').remove();
+        const pitch = box.find('.vt-pitch');
+        if (pitch.length > 0) pitch.text(HUB_KEPT_NOTE);
+        else box.find('.hb-state').after(div('vt-pitch').text(HUB_KEPT_NOTE));
     };
     // D-J17: la sinopsis le habla a quien va ahora.
     const goes = heroes.find(hero => hero.active);

@@ -4,11 +4,11 @@
  * propio con un `--dataRoot` temporal, como `e2e-gremio.mjs`. Pantalla de teléfono (390 × 844),
  * con toques y sin pulsar ninguna tecla:
  *
- *   título → Jugar sin conexión → tu personaje (y el selector de clase) → la novela visual →
- *   la pausa y las opciones con su botón → la ficha → la caja de escribir con el teclado del
- *   móvil fuera → la primera pelea (el ratero del muelle, J2.1), a toques → hablar con Tomás
- *   → explorar (la tienda) → contratar → el tablón → Strahd → su final → volver al gremio
- *   desde él.
+ *   título → Jugar sin conexión → tu personaje (y el selector de clase) → la novela visual,
+ *   sin caja de escribir ni pestañas (J18.7, J18.8) → la pausa y las opciones con su botón →
+ *   la ficha → el registro → la primera pelea (el ratero del muelle, J2.1), a toques → hablar
+ *   con Tomás → «Continuar» al tablero y su botón al pueblo → contratar → el tablón → Strahd →
+ *   su final → volver al gremio desde él.
  *
  * En cada paso, en vertical (390 × 844) y en horizontal (844 × 390): que nada se salga por los
  * lados (J20.1, J20.5) y que cada botón a la vista mida 44 × 44 px o más (J20.3).
@@ -19,7 +19,7 @@
  *   node tools/e2e-movil.mjs --port 8155 --captura movil   # y una captura por paso: movil.01-titulo.png…
  */
 
-/* global window, document, HTMLElement */
+/* global window, document */
 
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
@@ -165,6 +165,8 @@ try {
             window.localStorage.setItem('sillytavern_gameTipsSeen', 'dialogue,exploration,combat,travel,prisoners,mesa,high,spell,pet,bill,move,attack,roll,talk,journal');
             window.localStorage.setItem('sillytavern_gameShellAutostart', 'true');
             window.localStorage.setItem('sillytavern_gameSucesos', 'off');
+            // Las escenas del hilo y las charlas escritas (J9.2, J8) las mira e2e-historia; aquí taparían clics.
+            window.localStorage.setItem('sillytavern_gameStoryWindows', 'off');
         } catch { /* nada */ }
     });
 
@@ -180,9 +182,24 @@ try {
         };
     });
     const chips = () => page.evaluate(() => [...document.querySelectorAll('#game-shell .gs-chip-action')].map(c => (c.textContent || '').trim()));
-    /** Tocar una ficha de acción, como con el dedo: la fila se desliza hasta ella si hace falta. */
-    const tapChip = (/** @type {RegExp} */ pattern) => page.locator('#game-shell .gs-chip-action').filter({ hasText: pattern }).first()
+    /**
+     * Tocar una ficha de acción, como con el dedo: la fila se desliza hasta ella si hace falta. La
+     * que se ve: sin conexión la fila está en la novela y al pie del pueblo y del tablero (J18.8).
+     */
+    const tapChip = (/** @type {RegExp} */ pattern) => page.locator('#game-shell .gs-chip-action').filter({ hasText: pattern }).filter({ visible: true }).first()
         .tap({ timeout: 8000 }).then(() => true).catch(() => false);
+    /** La escena que se ve. */
+    const sceneNow = () => page.evaluate(() => document.querySelector('#game-shell')?.getAttribute('data-scene') || '');
+    /** J18.8: tocar «Continuar» mientras se lee, hasta llegar a la escena que toca. */
+    const carryOn = async (/** @type {string} */ wanted) => {
+        await until(async () => {
+            if (await sceneNow() === wanted) return true;
+            const next = page.locator('#game-shell .gs-vn-box .gs-chip-continue').filter({ visible: true });
+            if (await next.count() > 0) await next.first().tap({ timeout: 3000 }).catch(() => {});
+            return false;
+        }, 10000);
+        return sceneNow();
+    };
     const chatHas = (/** @type {RegExp} */ pattern) => page.evaluate((source) => (window.SillyTavern.getContext().chat || [])
         .some((/** @type {any} */ m) => new RegExp(source).test(String(m.extra?.display_text || m.mes || ''))), pattern.source);
     /** Espera a que se cumpla algo, sin dormir de más. */
@@ -342,10 +359,17 @@ try {
     await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/cut {{lastMessageId}}'));
     await page.waitForTimeout(400);
 
-    // 4. J20.4: lo que va con teclas tiene su botón. Las escenas (1, 2 y 3) y la pausa (Esc).
-    const scenes = await page.evaluate(() => ['dialogue', 'exploration', 'combat']
-        .map(scene => Boolean(document.querySelector(`#game-shell .gs-scene-btn[data-scene="${scene}"]`)?.getBoundingClientRect().width)));
-    check('las tres escenas (las teclas 1, 2 y 3) tienen su botón a la vista (J20.4)', scenes.every(Boolean), JSON.stringify(scenes));
+    // 4. J20.4: lo que va con teclas tiene su botón: la pausa (Esc). Sin conexión (J18.7, J18.8) no
+    // hay pestañas de escena, ni la X, ni caja de escribir: la escena cambia por lo que se hace.
+    const bare = await page.evaluate(() => {
+        const seen = (/** @type {string} */ s) => [...document.querySelectorAll(s)].some(n => {
+            const r = n.getBoundingClientRect();
+            return r.width > 1 && r.height > 1 && window.getComputedStyle(n).visibility !== 'hidden';
+        });
+        return { tabs: seen('#game-shell .gs-scene-btn'), close: seen('#game-shell .gs-close'), box: seen('#send_form') || seen('#send_textarea'), rest: seen('#game-shell .gs-clock-btn') };
+    });
+    check('sin conexión, en el teléfono: ni pestañas de escena, ni la X, ni caja de escribir, ni descansos en la cabecera (J18.7 a J18.9)',
+        !bare.tabs && !bare.close && !bare.box && !bare.rest, JSON.stringify(bare));
     const pauseButton = page.locator('#game-shell .gs-pause-open');
     const hasPause = await pauseButton.count() > 0 && await pauseButton.first().isVisible();
     check('la pausa (Esc) tiene su botón a la vista (J20.4)', hasPause);
@@ -384,28 +408,30 @@ try {
         check('la tira del grupo se ve, para abrir tu ficha', false);
     }
 
-    // 6. Escribir: el teclado del móvil encoge la página (`interactive-widget=resizes-content`),
-    // y la caja de escribir y lo último que se ha dicho siguen a la vista.
-    const box = page.locator('#send_textarea');
-    await box.tap({ timeout: 5000 }).catch(() => {});
+    // 6. J18.7: sin caja de escribir, lo dicho se lee en el «Registro», que se abre y se cierra
+    // tocando; y en una pantalla baja (el teclado de otra app, un teléfono pequeño) la caja de la
+    // novela sigue a la vista.
+    const logButton = page.locator('#game-shell .gs-vn-log-btn');
+    await logButton.tap({ timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(500);
+    const log = await page.evaluate(() => ({
+        open: document.querySelector('#game-shell')?.classList.contains('gs-vn-log') ?? false,
+        lines: [...document.querySelectorAll('#game-shell #chat .mes')].filter(m => m.getBoundingClientRect().height > 1).length,
+        box: [...document.querySelectorAll('#send_form, #send_textarea')].some(n => n.getBoundingClientRect().height > 1),
+    }));
+    await look('registro', { landscape: false });
+    check('el «Registro» se abre tocando, con lo dicho, y sin caja de escribir (J18.7)', log.open && log.lines > 0 && !log.box, JSON.stringify(log));
+    await logButton.tap({ timeout: 5000 }).catch(() => {});
     await page.setViewportSize(WITH_KEYBOARD);
     await page.waitForTimeout(700);
-    const typing = await page.evaluate(() => {
+    const low = await page.evaluate(() => {
         const vh = window.innerHeight;
-        const area = document.querySelector('#send_textarea')?.getBoundingClientRect();
         const text = document.querySelector('#game-shell .gs-vn-text')?.getBoundingClientRect();
         const visible = text ? Math.max(0, Math.min(text.bottom, vh) - Math.max(text.top, 0)) : 0;
-        return {
-            focused: document.activeElement?.id === 'send_textarea',
-            area: area ? [Math.round(area.top), Math.round(area.bottom)] : null,
-            text: Math.round(visible),
-            height: vh,
-        };
+        return { text: Math.round(visible), height: vh, log: document.querySelector('#game-shell')?.classList.contains('gs-vn-log') ?? true };
     });
-    if (SHOT) await page.screenshot({ path: `${SHOT}.teclado.png` });
-    check('con el teclado fuera, la caja de escribir y lo último dicho siguen a la vista (J20.4)',
-        typing.focused && Boolean(typing.area && typing.area[0] >= 0 && typing.area[1] <= typing.height) && typing.text >= 60, JSON.stringify(typing));
-    await page.evaluate(() => /** @type {HTMLElement|null} */ (document.activeElement)?.blur());
+    if (SHOT) await page.screenshot({ path: `${SHOT}.bajo.png` });
+    check('en una pantalla baja, lo último dicho sigue a la vista (J20.4)', !low.log && low.text >= 60, JSON.stringify(low));
     await page.setViewportSize(PORTRAIT);
     await page.waitForTimeout(600);
 
@@ -491,12 +517,16 @@ try {
     }
     await noToasts();
 
-    // 8. Explorar: aquí mismo (la tienda), los tableros y viajar, en una columna.
-    await page.locator('#game-shell .gs-scene-btn[data-scene="exploration"]').tap({ timeout: 5000 }).catch(() => {});
+    // 8. J18.8: sin pestañas. «Continuar» lleva al tablero (seguís en el muelle), con lo que se
+    // puede hacer al pie; su botón lleva al pueblo: los sitios, los tableros y viajar, en una columna.
+    const toBoard = await carryOn('combat');
+    check('«Continuar», tocado, lleva al tablero del muelle (J18.8)', toBoard === 'combat', toBoard);
+    await look('tablero');
+    await page.locator('#game-shell .gs-scene-map .wm-leave-loc-btn').filter({ visible: true }).first().tap({ timeout: 5000 }).catch(() => {});
     await page.waitForTimeout(800);
+    const toTown = await carryOn('exploration');
+    check('el botón del tablero lleva al pueblo, sin pestañas (J18.8)', toTown === 'exploration', toTown);
     await look('explorar');
-    await page.locator('#game-shell .gs-scene-btn[data-scene="dialogue"]').tap({ timeout: 5000 }).catch(() => {});
-    await page.waitForTimeout(800);
 
     // 9. Contratar, si la fila lo ofrece aquí.
     if ((await chips()).some(c => /Contratar mercenarios/.test(c))) {

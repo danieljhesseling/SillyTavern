@@ -781,7 +781,18 @@ function buildSectionSchemas() {
                     properties: {
                         title: { type: 'string' },
                         scene: { type: 'string' },
-                        epilogues: { type: 'array', items: { type: 'object', properties: { who: { type: 'string' }, text: { type: 'string' } } }, description: 'Qué fue de la gente con este final.' },
+                        epilogues: {
+                            type: 'array',
+                            items: {
+                                type: 'object',
+                                required: ['who', 'text'],
+                                properties: {
+                                    who: { type: 'string', description: 'De quién: alguien de npcs o de confidants, o una facción de world.factions, por su nombre.' },
+                                    text: { type: 'string', description: 'Una o dos frases llanas: qué fue de él, de ella o de la facción con este final.' },
+                                },
+                            },
+                            description: 'Qué fue de la gente con este final: una línea por persona o facción que haya pesado en la historia (3 a 5). Sin ellos, el juego los saca de cómo os miran las facciones al acabar.',
+                        },
                     },
                 },
             },
@@ -891,6 +902,10 @@ export function getPackRules() {
         // J5.2 y J9.2: el hilo y sus escenas.
         'En `plot`, cada `opens.milestone`, `changes.open` y `changes.close` nombra un hito del hilo por su id, cada `asks.board` un tablero por su `name`, y cada `changes.ending` un final de `endings`. El primer hito se abre con `start`: es la mecha de la campaña.',
         'Los hitos importantes traen su escena en `beats`: de 3 a 8 líneas, cada una de alguien de `npcs` o `confidants` (sin `who`, del narrador), y una o dos decisiones que cambien algo: cómo os mira alguien, un rumor, un objeto o un hito. `scene` sigue haciendo falta: es lo que lee el narrador. `sceneDialogue` nombra una charla de `dialogues` por su id.',
+        // D-J18: los epílogos.
+        'Cada final de `plot.endings` trae sus `epilogues`: qué fue de 3 a 5 personas o facciones que pesaron en la historia, una línea cada una. El `who` de cada uno es un nombre de `npcs`, `confidants` o `world.factions`, letra por letra.',
+        // D-J15 y D-J17: el género.
+        'Donde se le habla a quien juega —la sinopsis, la `description` de un compañero y sus escenas, las del hilo y sus finales, los epílogos, las charlas, los rumores, las misiones y el `twist` de un encargo—, lo que concuerda con su género lleva sus dos formas entre llaves: «Eres {un mercenario|una mercenaria}»; al grupo, en plural: «estáis {hechos|hechas}». Solo dos formas: quien es no binario elige si el texto le habla en masculino o en femenino. En los demás campos (la gente, los objetos, el resto de un encargo), escribe sin nada que concuerde con quien juega. Nunca «cansado/a».',
     ];
 }
 

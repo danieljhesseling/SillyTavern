@@ -9,7 +9,7 @@
 
 import { power_user } from '../power-user.js';
 import { POPUP_TYPE, POPUP_RESULT, Popup } from '../popup.js';
-import { getThumbnailUrl, chat_metadata, saveMetadata, setUserName } from '../../script.js';
+import { getThumbnailUrl, chat_metadata, saveMetadata, setUserName, getCurrentChatId } from '../../script.js';
 import { loadWorldInfo, METADATA_KEY } from '../world-info.js';
 import { getDefaultDndData, migratePartyMember, createItem, normalizeDndEntityType } from '../dnd-system.js';
 import { escapeHtml } from '../utils.js';
@@ -22,6 +22,7 @@ import { loadCombatState } from './combat-state.js';
 import { getActiveBoardContext, placePartyAtStart } from './board.js';
 import { renderLocationMapsPreview } from './board-view.js';
 import { loadCurrentLocation } from './world.js';
+import { packPeople, unpackPeople } from './social.js';
 
 /** @typedef {import('./types.js').PartyMember} PartyMember */
 /** @typedef {import('./types.js').DndCatalog} DndCatalog */
@@ -607,11 +608,21 @@ export function syncPartyWithEntries(entries, worldName) {
 }
 
 /**
+ * Lo de tu gente del último `partySnapshot`, y de qué chat salió.
+ *
+ * @type {{chat: string, people: ReturnType<typeof packPeople>}|null}
+ */
+let carriedPeople = null;
+
+/**
  * J4: el grupo tal cual está, para llevarlo a otro chat.
  *
  * @returns {PartyMember[]}
  */
 export function partySnapshot() {
+    // J14.6: con el grupo salen sus vínculos y lo de su gente; `adoptCarriedParty` los deja en
+    // el chat de llegada. Hasta ahora los vínculos se quedaban en el chat de donde se salía.
+    carriedPeople = { chat: String(getCurrentChatId() ?? ''), people: packPeople(partyMembers) };
     return JSON.parse(JSON.stringify(partyMembers));
 }
 
@@ -627,6 +638,9 @@ export function adoptCarriedParty(carried, { worldName, uids = {}, atStart = fal
     const lead = partyMembers[0]?.mapPosition ?? { locationName: currentLocationName, gridX: 1, gridY: 1 };
     setPartyMembers(hubRoster(settleCarried({ carried, here: partyMembers, worldName, uids, lead }))
         .map(member => migratePartyMember(member)));
+    // J14.6: los vínculos y lo social llegan con el grupo, si viene de otro chat.
+    if (carriedPeople && carriedPeople.chat !== String(getCurrentChatId() ?? '')) unpackPeople(carriedPeople.people);
+    carriedPeople = null;
     if (atStart) placePartyAtStart(getActiveBoardContext().board);
     savePartyState();
     renderPartyMembers();

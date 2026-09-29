@@ -428,6 +428,7 @@ export function chooseInScene(scene, index, optionId, { hero = null, world = {},
  * @property {number} [day]
  * @property {number} [gold] El oro del grupo.
  * @property {string[]} [items] Lo que lleva el grupo, por nombre.
+ * @property {any} [who] D-J17: quién juega (`{heroe, grupo}`), para que un rumor oído concuerde.
  */
 
 /**
@@ -535,9 +536,11 @@ export function applySceneEffects(effects, game = {}) {
                 rumorsHeard = [...rumorsHeard, id];
                 rumorsHeardOn = { ...rumorsHeardOn, [id]: Math.max(1, day) };
                 if (rumor) {
-                    out.heard.push({ id, text: rumor.text, by: rumor.by });
+                    // D-J17: el rumor puede traer `{forma|forma}`; en la ventana, ya concordado.
+                    const said = resolveGender(rumor.text, game.who ?? {});
+                    out.heard.push({ id, text: said, by: rumor.by });
                     if (rumor.leadsTo && !out.reveal.includes(rumor.leadsTo)) out.reveal.push(rumor.leadsTo);
-                    note(`Apuntado en el Diario: «${rumor.text}»`);
+                    note(`Apuntado en el Diario: «${said}»`);
                 } else {
                     note(describeDialogueEffect({ kind: 'rumor', id }));
                 }

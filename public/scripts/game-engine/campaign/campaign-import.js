@@ -238,10 +238,24 @@ export function readCampaignText(content) {
 
     /** @type {any} */
     let parsed = null;
+    // D-J35: pegado del chat del Gem, puede traer lo que dice alrededor («Aquí tienes tu
+    // campaña:…»). Si tal cual no se lee, se prueba con su bloque ```json o con lo que va de la
+    // primera llave a la última.
+    let around = false;
     try {
         parsed = JSON.parse(body);
     } catch {
-        return refused(`No es un JSON válido: ${jsonProblem(body)}`);
+        const block = raw.match(/```(?:json)?[ \t]*\r?\n([\s\S]*?)\r?\n?```/i)?.[1]?.trim() ?? '';
+        const first = body.indexOf('{');
+        const last = body.lastIndexOf('}');
+        const inner = block.startsWith('{') ? block : (first >= 0 && last > first ? body.slice(first, last + 1) : '');
+        try {
+            if (!inner || inner === body) throw new Error('igual');
+            parsed = JSON.parse(inner);
+            around = true;
+        } catch {
+            return refused(`No es un JSON válido: ${jsonProblem(body)}`);
+        }
     }
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
         return refused('Esto no es una campaña: el archivo tiene que ser un solo objeto JSON, con su mundo y sus tableros.');
@@ -253,7 +267,7 @@ export function readCampaignText(content) {
     const kind = isGemJson(parsed) ? 'gem' : 'pack';
     const pack = kind === 'gem' ? packFromGemJson(parsed) : parsed;
     /** @type {string[]} */
-    const notes = [];
+    const notes = around ? ['Traía texto antes o después de la campaña: se ha quitado.'] : [];
     if (kind === 'gem') {
         const cites = (JSON.stringify(parsed).match(/\[cite:[^\]]*\]/g) ?? []).length;
         const marks = cites === 1 ? 'se ha quitado una marca [cite]' : `se han quitado ${cites} marcas [cite]`;
@@ -359,7 +373,8 @@ export function importedCampaignRow(pack, { id, packUrl }) {
         id: text(id),
         name: text(pack?.world?.name) || text(id),
         genre: text(pack?.world?.genre),
-        note: 'Añadida por ti, desde un archivo.',
+        // D-J35: también se añade pegando el texto: no se dice de dónde vino.
+        note: 'Añadida por ti.',
         synopsis: text(pack?.world?.synopsis),
         icon: 'fa-book-open',
         seed: text(id),

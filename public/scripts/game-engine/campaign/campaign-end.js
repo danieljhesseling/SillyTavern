@@ -5,7 +5,8 @@
  * partida y qué fue de cada compañero. Faltaba lo que se espera al cerrar una historia:
  *
  * - **Qué fue de la gente**: los epílogos del final. El paquete los trae escritos en cada
- *   final (`epilogues`); si no trae, se sacan de cómo os miran las facciones al acabar.
+ *   final (`epilogues`, o `epilogos` si lo escribió un Gem en castellano: D-J18); si no trae,
+ *   se sacan de cómo os miran las facciones al acabar.
  * - **Lo que se lleva cada uno**: nivel, experiencia, oro y lo que vale la pena nombrar,
  *   frente a cómo empezó la campaña (`partyAtStart`, que se apunta al empezarla).
  * - **La vuelta al gremio**: una escena corta que dice cómo acabó.
@@ -30,15 +31,27 @@ const ITEMS_NAMED = 4;
 
 /**
  * Los epílogos que el paquete escribe en un final, leídos con tolerancia: una frase suelta
- * o `{who, text}`.
+ * o `{who, text}`. D-J18: también como los escribe un guion o un Gem en castellano,
+ * `{quien, texto}`.
  *
  * @param {any} raw
  * @returns {Array<{who: string, text: string}>}
  */
 export function readEpilogues(raw) {
     return (Array.isArray(raw) ? raw : [])
-        .map(e => (typeof e === 'string' ? { who: '', text: text(e) } : { who: text(e?.who), text: text(e?.text) }))
+        .map(e => (typeof e === 'string' ? { who: '', text: text(e) } : { who: text(e?.who ?? e?.quien), text: text(e?.text ?? e?.texto) }))
         .filter(e => e.text);
+}
+
+/**
+ * D-J18: los epílogos de un final del paquete, se llamen `epilogues` o `epilogos`.
+ *
+ * @param {any} ending
+ * @returns {Array<{who: string, text: string}>}
+ */
+export function epiloguesOf(ending) {
+    const written = readEpilogues(ending?.epilogues);
+    return written.length > 0 ? written : readEpilogues(ending?.epilogos);
 }
 
 /**
@@ -62,15 +75,16 @@ export function factionEpilogues(factions) {
 }
 
 /**
- * Los epílogos de un final: los escritos, o los de las facciones si no hay.
+ * Los epílogos de un final: los que trae escritos el paquete (D-J18), o los de las facciones
+ * si no hay.
  *
  * @param {Object} input
- * @param {any} input.ending El final del hilo, con su `epilogues` si lo trae.
+ * @param {any} input.ending El final del hilo, con su `epilogues` (o `epilogos`) si lo trae.
  * @param {any[]} [input.factions]
  * @returns {string[]}
  */
 export function endingEpilogues({ ending, factions = [] }) {
-    const written = readEpilogues(ending?.epilogues).map(e => e.text);
+    const written = epiloguesOf(ending).map(e => e.text);
     return written.length > 0 ? written : factionEpilogues(factions);
 }
 

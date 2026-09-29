@@ -78,6 +78,18 @@ describe('D-J12: descansar en el gremio cura con los días', () => {
         expect(withResting([], { add: tessa })[0]).not.toHaveProperty('restDay');
     });
 
+    test('quien ya descansaba sin día apuntado (un gremio de antes) empieza a contar desde el cambio', () => {
+        const old = [{ ...hurt, id: 7, name: 'Vieja' }];
+        const list = withResting(old, { add: tessa, day: 12 });
+        expect(list.find(h => h.name === 'Vieja').restDay).toBe(12);
+        // Quien ya tenía su día no se toca.
+        const again = withResting(list, { add: bram, remove: tessa.id, day: 20 });
+        expect(again.find(h => h.name === 'Vieja').restDay).toBe(12);
+        expect(wakeFromRest(again.find(h => h.name === 'Vieja'), { day: 16 }).hero.hp).toBe(hurt.maxHp);
+        // Sin día, nada se apunta.
+        expect(withResting(old, { add: tessa })[0]).not.toHaveProperty('restDay');
+    });
+
     test('vuelve con la vida entera, los dados de golpe, sin hambre, y la herida curada si le dio tiempo', () => {
         const [kept] = withResting([], { add: hurt, day: 5 });
         const { hero, days, line } = wakeFromRest(kept, { day: 9 });

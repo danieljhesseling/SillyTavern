@@ -36,6 +36,10 @@ import { addScar } from '../game-engine/campaign/feats.js';
 import { upkeepWithBuildings, settleLoyalty, trainingFor } from '../game-engine/campaign/guild.js';
 import { describeMode } from '../game-engine/rules/companions.js';
 import { getBondProgress } from '../game-engine/campaign/bonds.js';
+import { spend, noteSpent } from '../game-engine/campaign/day-parts.js';
+import { SOCIAL_KEY } from '../game-engine/campaign/social.js';
+import { recoverSlots } from '../game-engine/rules/spell-slots.js';
+import { rechargeItems } from '../game-engine/rules/magic-items.js';
 import { renderCampaignPanel } from '../game-engine/ui/campaign-panel.js';
 import { getActiveRuleset } from '../game-engine/rules/ruleset.js';
 import { isShellOpen, refreshGameShell } from '../game-engine/ui/shell/game-shell.js';
@@ -626,6 +630,38 @@ export function advanceCampaignSlot() {
     return result;
 }
 
+/**
+ * J14.2: apuntar en qué se fue la parte del día que marca `calendar` (la de antes de pasar el
+ * reloj), para la tira de la cabecera. No pasa el reloj.
+ *
+ * @param {string} what Una actividad o un gasto de `day-parts.js` (`quedar`, `pelea`…), u otra cosa con su `label`.
+ * @param {any} calendar
+ * @param {{who?: string, label?: string}} [extra]
+ */
+export function noteDayPart(what, calendar, extra = {}) {
+    if (!chat_metadata) return;
+    chat_metadata[SOCIAL_KEY] = noteSpent(chat_metadata[SOCIAL_KEY], calendar, what, extra);
+    saveMetadata();
+}
+
+/**
+ * J14.2: gastar la parte del día de ahora en algo: se apunta en qué (la cabecera lo enseña) y
+ * el reloj pasa, con lo que cura, cobra y narra `advanceCampaignSlot`. Comprar no llega aquí
+ * (D-J31: comprar dos pociones no te quita la tarde).
+ *
+ * @param {string} what `quedar`, `pelea`, `mision`, `entrenar`…, u otra cosa con su `label`.
+ * @param {{who?: string, label?: string}} [extra]
+ */
+export function spendDayPart(what, extra = {}) {
+    const calendar = getCampaignCalendar();
+    const spent = spend({ social: chat_metadata?.[SOCIAL_KEY], calendar, what, who: extra.who ?? '' });
+    if (chat_metadata) {
+        chat_metadata[SOCIAL_KEY] = spent.slots > 0 && !extra.label ? spent.social : noteSpent(chat_metadata[SOCIAL_KEY], calendar, what, extra);
+        saveMetadata();
+    }
+    for (let slot = 0; slot < Math.max(1, spent.slots); slot++) advanceCampaignSlot();
+}
+
 /** @returns {number} */
 export function campaignDay() {
     return Math.max(0, Math.floor(Number(getCampaignCalendar()?.day) || 0));
@@ -651,7 +687,25 @@ export function getCurrentSlotLabel() {
 }
 /** @param {'corto'|'largo'} kind @returns {Promise<string>} */
 export async function takeRest(kind) {
+    const before = getCampaignCalendar();
     const result = await campaign.rest(kind);
+    if (result) {
+        // J14.2: el corto se lleva la parte del día, y la cabecera dice en qué.
+        if (kind === 'corto') noteDayPart('descansar', before, { label: 'Descanso corto' });
+        // J19: los espacios de conjuro vuelven (el largo, todos; el corto, los de pacto) y los
+        // objetos con cargas se recargan.
+        /** @type {string[]} */
+        const charged = [];
+        for (const member of partyMembers) {
+            member.slotsUsed = recoverSlots(member, kind);
+            if (!Array.isArray(member.items)) continue;
+            const recharge = rechargeItems(member.items, kind, (formula) => rollDiceDetailed(formula, 6));
+            member.items = recharge.items;
+            charged.push(...recharge.lines);
+        }
+        savePartyState();
+        if (charged.length > 0) postCombatNarration(charged.join('\n'));
+    }
     // Z4: de noche pasan cosas.
     if (kind === 'largo') playSucesos('descanso');
     // Idea 41: con un sanador en el grupo, un descanso corto cura algo mas.

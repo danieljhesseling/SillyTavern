@@ -33,10 +33,14 @@ import { servicesOf } from '../game-engine/campaign/services.js';
 import { readBox, boxExamples, explainMiss } from '../game-engine/campaign/read-box.js';
 import { outcomeOf as checkOutcome, consequence } from '../game-engine/campaign/consequences.js';
 import { describeLootItem, declaredLootNames } from '../game-engine/combat/loot-items.js';
+import { sightsOf, pickLooks, findLook, lookLabel, lookFound } from '../game-engine/campaign/sights.js';
+import { dialogueFor, dialogueMilestones } from '../game-engine/campaign/dialogues.js';
+import { PLACE_KINDS } from '../game-engine/campaign/town.js';
+import { openDialogueWindow } from '../game-engine/ui/dialogue-window.js';
 import { isShellOpen, refreshGameShell } from '../game-engine/ui/shell/game-shell.js';
 import {
-    ATTITUDES_KEY, CASES_KEY, CHECK_REQUESTS_KEY, FIELD_GAINS_KEY, OFFERS_KEY, PENDING_CHECK_KEY, RUMORS_HEARD_KEY,
-    SECRETS_KEY, TAKEN_KEY,
+    ATTITUDES_KEY, CASES_KEY, CHECK_REQUESTS_KEY, DIALOGUE_MEMORY_KEY, FIELD_GAINS_KEY, OFFERS_KEY, PENDING_CHECK_KEY,
+    RUMORS_HEARD_KEY, SECRETS_KEY, TAKEN_KEY,
 } from './keys.js';
 import {
     combatEncounter, currentBoardName, currentLocationName, narratorTurn, partyMembers, setNarratorTurn,
@@ -49,13 +53,16 @@ import { showCombatDiceRoll } from './combat-log.js';
 import { endPlayerCombatTurn, handlePlayerCombatAttack, handlePlayerCombatMove } from './player-actions.js';
 import { renderLocationMapsPreview } from './board-view.js';
 import {
-    ensureWorldData, getLocationBoards, hereLocation, lastCompendium, lastRumors, lastWorldNpcs, worldNpc,
+    ensureWorldData, getLocationBoards, hereLocation, lastCompendium, lastDialogues, lastPack, lastRumors, lastWorldNpcs,
+    worldNpc,
 } from './world.js';
 import { advanceCampaignSlot, campaignDay, getCampaignCalendar, getCurrentSlotLabel } from './time.js';
-import { notePlot, openMilestones } from './plot.js';
+import {
+    applySceneEffectsToGame, notePlot, openMilestones, storyHero, storyNight, storyWorld,
+} from './plot.js';
 import { noteDeed, refreshWorldMemoryPrompt, worldWrite } from './world-growth.js';
 import {
-    modelNarrates, narratorMode, noteRollInWindow, postCombatNarration, postForModel, showTip, tellMoment,
+    modelNarrates, narratorMode, noteRollInWindow, postCombatNarration, postForModel, showTip, storyWindowsOn, tellMoment,
 } from './narration.js';
 import { payFromParty, savePartyState } from './roster.js';
 import { changeAttitude } from './companions.js';
@@ -554,11 +561,25 @@ function listenerBarrier(speaker, skill, name = '') {
  * @returns {string}
  */
 export function runSkillCheck(skill, keep = '', what = '') {
+    return rollSkillCheck(skill, keep, what).line;
+}
+
+/**
+ * Lo mismo que `runSkillCheck`, diciendo además si salió (J10: examinar algo del sitio enseña
+ * lo que hay solo si sale bien). `success` es null si no se llegó a tirar.
+ *
+ * @param {string} skill
+ * @param {string} [keep]
+ * @param {string} [what]
+ * @returns {{line: string, success: boolean|null}}
+ */
+export function rollSkillCheck(skill, keep = '', what = '') {
+    const none = { line: '', success: null };
     // Idea 138: si la pidio el narrador, con su dificultad, y la peticion se gasta.
     const asked = takeRequest(chat_metadata?.[CHECK_REQUESTS_KEY], skill, SKILLS);
     if (combatEncounter.active) {
         toastr.warning('En combate se pelea con la barra de abajo.');
-        return '';
+        return none;
     }
     // Quién cuenta la tirada: el modelo si narra él; en «Mixto», también si la pidió él (idea
     // 138) o si hay algo escrito en la caja (lo vas a enviar, y la tirada va delante para que
@@ -568,7 +589,7 @@ export function runSkillCheck(skill, keep = '', what = '') {
     if (pending?.draft && toModel) {
         toastr.info('Ya has tirado. Envia el mensaje antes de intentar otra cosa.');
         draftInChat(String(pending.draft));
-        return String(pending.line || '');
+        return { line: String(pending.line || ''), success: null };
     }
     // Sin modelo no hay mensaje que la gaste: una pendiente de antes no bloquea nada (y una
     // partida que se quedó así, tras recargar, se desatasca aquí).
@@ -577,7 +598,7 @@ export function runSkillCheck(skill, keep = '', what = '') {
     const member = partyMembers[0];
     if (!member) {
         toastr.warning('No hay nadie en el grupo que pueda intentarlo.');
-        return '';
+        return none;
     }
     // Idea 59: si se habla con alguien de aquí que habla otra lengua.
     const barrier = listenerBarrier(member, skill);
@@ -591,7 +612,7 @@ export function runSkillCheck(skill, keep = '', what = '') {
     if (result && asked.request && chat_metadata) chat_metadata[CHECK_REQUESTS_KEY] = asked.requests;
     if (!result) {
         toastr.warning(`No conozco esa tirada. Hay: ${Object.keys(SKILLS).join(', ')}.`);
-        return '';
+        return none;
     }
 
     // Z3: sin modelo, fallar por poco sale a medias: se consigue, pero se paga.
@@ -619,7 +640,7 @@ export function runSkillCheck(skill, keep = '', what = '') {
     saveMetadata();
     if (toModel) draftInChat(String(keep).trim() ? `${result.line}\n${String(keep).trim()}` : result.draft);
     if (isShellOpen()) refreshGameShell();
-    return result.line;
+    return { line: result.line, success: Boolean(result.success) };
 }
 
 /**
@@ -704,30 +725,41 @@ function tellCheck(member, result, what = '') {
  * @returns {Array<{id: string, label: string, icon: string, command: string}>}
  */
 export function lookChips() {
-    if (!currentLocationName || currentBoardName || combatEncounter.active || !lastCompendium?.has?.('frases')) return [];
+    if (!currentLocationName || currentBoardName || combatEncounter.active) return [];
     const place = hereLocation();
-    const tipo = String(place?.locationType || place?.type || '');
-    const rows = lastCompendium.find('frases', { kind: 'mirar', ...(tipo ? { tipo } : {}) });
-    const own = rows.filter((/** @type {any} */ r) => r.when?.tipo);
-    const pool = own.length > 0 ? own : rows;
+    // J10.2: primero lo que el paquete escribe para este sitio (`sights`); luego, lo del compendio.
+    const sights = sightsOf(place);
+    const rows = compendiumLooks(place);
+    if (sights.length === 0 && rows.length === 0) return [];
     const random = createSeededRandom(derive(String(chat_metadata?.[METADATA_KEY] || ''), 'mirar', currentLocationName, String(campaignDay())));
-    const looked = fieldGainsToday().looked;
-    return pool.map((/** @type {any} */ row) => ({ row, at: random() }))
-        .sort((a, b) => a.at - b.at)
-        .slice(0, 2)
-        .map(({ row }) => row)
-        .filter((/** @type {any} */ row) => !looked.includes(`${currentLocationName}|${row.id}`))
+    return pickLooks({ sights, rows, random, looked: fieldGainsToday().looked, here: currentLocationName })
         .map((/** @type {any} */ row) => ({
             id: `look:${row.id}`,
-            label: `${String(row.verbo).charAt(0).toLocaleUpperCase('es')}${String(row.verbo).slice(1)} ${row.text}`,
+            label: lookLabel(row),
             icon: SKILLS[/** @type {keyof typeof SKILLS} */ (row.skill)]?.icon ?? 'fa-eye',
             command: `/examinar ${row.id}`,
         }));
 }
 
 /**
+ * Las cosas que mirar del compendio que valen aquí: las de su tipo de sitio si las hay; si no,
+ * todas. Vacío sin frases.
+ *
+ * @param {any} place
+ * @returns {any[]}
+ */
+function compendiumLooks(place) {
+    if (!lastCompendium?.has?.('frases')) return [];
+    const tipo = String(place?.locationType || place?.type || '');
+    const rows = lastCompendium.find('frases', { kind: 'mirar', ...(tipo ? { tipo } : {}) });
+    const own = rows.filter((/** @type {any} */ r) => r.when?.tipo);
+    return own.length > 0 ? own : rows;
+}
+
+/**
  * Z3: examinar algo de aquí. Una de las cosas del sitio (por su id) o lo que se escriba:
- * «/examinar la cerradura del baúl».
+ * «/examinar la cerradura del baúl». J10.2: si es algo que el paquete escribe para este sitio
+ * y la tirada sale bien, se ve lo que hay (`found`).
  *
  * @param {string} value
  * @returns {Promise<void>}
@@ -735,12 +767,21 @@ export function lookChips() {
 export async function lookAt(value) {
     const wanted = String(value ?? '').trim();
     if (!wanted) return;
-    const row = lastCompendium?.has?.('frases')
-        ? lastCompendium.find('frases', { kind: 'mirar' }).find((/** @type {any} */ r) => r.id === wanted) : null;
+    const row = findLook(wanted, {
+        sights: sightsOf(hereLocation()),
+        rows: lastCompendium?.has?.('frases') ? lastCompendium.find('frases', { kind: 'mirar' }) : [],
+    });
     if (row) {
         const gains = fieldGainsToday();
         if (chat_metadata) chat_metadata[FIELD_GAINS_KEY] = { ...gains, looked: [...gains.looked, `${currentLocationName}|${row.id}`] };
-        runSkillCheck(String(row.skill), '', `${row.verbo} ${row.text}`);
+        const check = rollSkillCheck(String(row.skill), '', `${row.verbo} ${row.text}`);
+        const found = lookFound(row, check.success === true);
+        if (found) {
+            noteDeed(`${lookLabel(row)}, en ${currentLocationName}: ${found}`);
+            await postForModel(`[MIRAR] ${lookLabel(row)}, en ${currentLocationName}. Lo que se ve: ${found} Cuéntalo tal cual, sin añadir nada.`,
+                { show: `🔍 [CAMPAÑA] ${found}` })
+                .catch(error => console.error('[party] look note failed', error));
+        }
     } else {
         const intent = readBox(`examino ${wanted}`, boxContext());
         runSkillCheck(String(intent.skill || 'investigation'), '', intent.what || `examinar ${wanted}`);
@@ -760,9 +801,16 @@ export async function lookAt(value) {
 export function startTalk(name, draft = '', ask = '') {
     const who = String(name ?? '').trim();
     if (!who) return;
-    notePlot({ kind: 'talk', npc: who, place: currentLocationName });
+    // D-J36: con alguien que tiene una charla escrita, «Hablar» la abre directamente (salvo que se
+    // pida algo concreto, como amenazarle: eso va a la charla de siempre).
+    const npc = worldNpc(who);
+    const written = npc && !npc.dead && !ask && !modelNarrates() && storyWindowsOn()
+        ? dialogueFor(lastDialogues, npc.name, storyHero(), storyWorld(npc.name, attitudeTowards(npc.name))) : null;
+    // Con charla, el hito de «habla con…» lo cumple la charla cuando se cuenta lo que importa, no el saludo.
+    const theirs = written ? openMilestones().find(m => m?.asks?.kind === 'talk' && String(m.asks.npc).toLowerCase() === npc.name.toLowerCase()) : null;
+    if (!(theirs && dialogueMilestones(written).includes(String(theirs.id)))) notePlot({ kind: 'talk', npc: who, place: currentLocationName });
     // Desde ahora se habla con él: con modelo, contesta él (y no el narrador).
-    const known = worldNpc(who)?.name ?? partyMembers.slice(1).find(m => !m.dead && String(m.name).toLowerCase() === who.toLowerCase())?.name;
+    const known = npc?.name ?? partyMembers.slice(1).find(m => !m.dead && String(m.name).toLowerCase() === who.toLowerCase())?.name;
     if (known) {
         setTalkingTo(String(known));
         if (isShellOpen()) setTimeout(() => refreshGameShell(), 0);
@@ -771,13 +819,87 @@ export function startTalk(name, draft = '', ask = '') {
         draftInChat(draft || `Le digo a ${who}: `);
         return;
     }
+    if (written && npc) {
+        void openWrittenTalk(npc, written, draft);
+        return;
+    }
     // Z2: la charla, con temas y respuestas del motor.
     void openTalk(who, draft, ask);
 }
 
 /**
+ * J8 y D-J36: una charla escrita, en su ventana (la cara de quien habla, su línea y las
+ * opciones). Lo que cambia se aplica con `applySceneEffectsToGame`; lo dicho queda recordado
+ * (J8.6) y, al acabar, en el registro. «Otras cosas» lleva a la charla de siempre: sonsacar,
+ * convencer, amenazar.
+ *
+ * @param {any} npc
+ * @param {import('../game-engine/campaign/dialogues.js').Dialogue} dialogue
+ * @param {string} [draft]
+ * @returns {Promise<void>}
+ */
+async function openWrittenTalk(npc, dialogue, draft = '') {
+    setTalkingTo(npc.name);
+    const hero = storyHero();
+    const service = String(npc.service || '').toLowerCase();
+    const result = await openDialogueWindow({
+        dialogue,
+        hero,
+        getWorld: () => storyWorld(npc.name, attitudeTowards(npc.name)),
+        memory: chat_metadata?.[DIALOGUE_MEMORY_KEY] ?? null,
+        rollD20: () => rollDiceDetailed('1d20', 20).total,
+        applyEffects: (effects, context) => applySceneEffectsToGame(effects, { roll: context.roll, hero }),
+        onMemory: (memory) => {
+            if (!chat_metadata) return;
+            chat_metadata[DIALOGUE_MEMORY_KEY] = memory;
+            saveMetadata();
+        },
+        extras: [{ id: 'otras', label: 'Otras cosas', icon: 'fa-ellipsis', title: 'Sonsacar, convencer, amenazar…' }],
+        pack: lastPack,
+        place: service in PLACE_KINDS ? service : '',
+        town: currentLocationName,
+        night: storyNight(),
+    });
+    // Lo que se dijo, para el registro y para el narrador, que no lo repetirá.
+    const log = (result?.state?.log ?? []).filter((/** @type {any} */ line) => line.kind === 'npc' || line.kind === 'hero');
+    const lines = log.map((/** @type {any} */ line) => (line.kind === 'npc' ? `${npc.name}: «${line.text}»` : `Tú: «${line.text}»`));
+    const face = [...log].reverse().find((/** @type {any} */ line) => line.kind === 'npc')?.mood ?? '';
+    if (lines.length > 0) {
+        await postForModel(`[CHARLA] Quien juega habla con ${npc.name}:\n${lines.join('\n')}\nNo digas otra vez lo que ya se ha dicho: esta charla ya ha pasado.`,
+            { show: `🗣️ [GENTE] ${lines.join('\n')}`, speaker: npc.name, mood: face })
+            .catch(error => console.error('[party] talk note failed', error));
+    }
+    if (result?.extra === 'otras') {
+        await openTalk(npc.name, draft);
+        return;
+    }
+    if (talkingTo === npc.name) {
+        setTalkingTo('');
+        if (isShellOpen()) refreshGameShell();
+    }
+}
+
+/**
+ * La cara de alguien al decir algo en la charla (la novela la enseña con `extra.mood`): cómo os
+ * mira, y lo que acaba de pasar (amenazado y cediendo, invitado a una ronda).
+ *
+ * @param {string} name
+ * @param {string} [moment] El de la frase (`charla-amenaza-bien`…).
+ * @returns {string}
+ */
+export function talkMood(name, moment = '') {
+    if (moment === 'charla-amenaza-bien') return 'triste';
+    if (moment === 'charla-amenaza-mal' || moment === 'charla-no') return 'enfadado';
+    if (moment === 'charla-ronda') return 'alegre';
+    if (confrontingNow(name)) return 'enfadado';
+    const attitude = attitudeTowards(name);
+    return attitude >= 1 ? 'alegre' : attitude <= -2 ? 'enfadado' : 'neutral';
+}
+
+/**
  * Lo que dice alguien en una charla: la frase del banco (o, si no hay, el dato tal cual),
- * en la ventana y en el chat, con los hechos para el modelo si lo hay.
+ * en la ventana y en el chat, con los hechos para el modelo si lo hay. En la novela sale con
+ * su cara y el gesto que toca.
  *
  * @param {any} npc
  * @param {{moment: string, facts: Record<string, any>}|null} plan
@@ -786,7 +908,7 @@ export function startTalk(name, draft = '', ask = '') {
  */
 function sayInTalk(npc, plan, fallback) {
     const line = (plan ? tellMoment(plan.moment, plan.facts) : '') || fallback;
-    if (line) void postForModel(talkNote(npc, line), { show: `🗣️ [GENTE] ${line}` });
+    if (line) void postForModel(talkNote(npc, line), { show: `🗣️ [GENTE] ${line}`, speaker: String(npc?.name || ''), mood: talkMood(String(npc?.name || ''), plan?.moment) });
     return line;
 }
 

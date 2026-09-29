@@ -29,9 +29,13 @@ import { giveItem } from '../game-engine/rules/give-item.js';
 import { setInjury } from '../game-engine/rules/injuries.js';
 import { canTakeOff, shownName, curseInjury } from '../game-engine/campaign/item-lore.js';
 import { getActiveRuleset } from '../game-engine/rules/ruleset.js';
+import { firstArt, loadPixelManifest } from '../game-engine/ui/pixel-art.js';
+import { slotName } from '../game-engine/ui/shell/character-sheet.js';
 import { combatEncounter, partyMembers } from './state.js';
 import { canLevelUp, openLevelUpCard } from './level-up.js';
-import { getAbilityCatalogue } from './magic.js';
+import {
+    getAbilityCatalogue, knownAbilitiesOf, magicSummaryOf, castsLikeFifth, openGrimoire, attuneItem, attuneNoteOf,
+} from './magic.js';
 import { getCurrentWorldFactions } from './factions.js';
 import { getCampaignBonds } from './time.js';
 import { postCombatNarration } from './narration.js';
@@ -39,6 +43,17 @@ import { savePartyState, getPartyEntryDisplayName, loadDndCatalog, renderPartyMe
 
 /** @typedef {import('./types.js').PartyMember} PartyMember */
 /** @typedef {import('./types.js').DndCatalog} DndCatalog */
+
+/**
+ * El dibujo de un objeto: el suyo si lo trae, y si no, el del compendio en pixel (`armas/`,
+ * `armaduras/`, `trastos/` o los propios de un paquete). Vacío si no hay ninguno.
+ *
+ * @param {any} item
+ * @returns {string}
+ */
+function itemImage(item) {
+    return String(item?.image || '') || firstArt('item', { name: String(item?.name ?? '') });
+}
 
 /**
  * @param {PartyMember} member
@@ -154,6 +169,15 @@ export async function openOwnSheet(member) {
             member,
             slotInfo: rules?.slotInfo ?? {},
             abilities: getAbilityCatalogue(),
+            // J19: lo que sabe, con sus conjuros de 5e (los preparados y sus trucos).
+            known: knownAbilitiesOf(member),
+            magic: magicSummaryOf(member),
+            onGrimoire: castsLikeFifth(member) ? () => { void openGrimoire(false); } : null,
+            // Subir de nivel desde tu ficha, cuando toca.
+            onLevelUp: canLevelUp(member) ? () => { void openLevelUpCard(member); } : null,
+            // J19.9: sintonizarse con lo que lo pide.
+            onAttune: (itemId, on) => attuneItem(member, itemId, on),
+            attuneNote: attuneNoteOf(member),
             xpTable: rules?.progression?.xpThresholds ?? null,
             bondRank: Number(getCampaignBonds()?.[String(member.id)]?.rank) || 0,
             onEdit: () => { void openPartyMemberModal(member); },
@@ -318,6 +342,8 @@ export async function openPartyMemberModal(member) {
 
     const popupContent = $('<div class="dnd-modal"></div>');
     const dndCatalog = await loadDndCatalog(getMemberWorldName(member));
+    // Los dibujos de los objetos necesitan el índice del arte en pixel.
+    await loadPixelManifest();
 
     // ---- Tab bar ----
     const tabs = ['Character Sheet', 'Inventory', 'Progression', 'Relationships', 'Memories'];
@@ -660,18 +686,21 @@ function buildInventoryTab(member) {
         for (const slotKey of row) {
             const info = SLOT_INFO[slotKey];
             const equippedItem = getEquippedItem(member, slotKey);
-            const slotEl = $(`<div class="dnd-equipment-slot ${equippedItem ? 'occupied' : ''}" data-slot="${slotKey}" title="${info.label}"></div>`);
+            const label = slotName(slotKey, info);
+            const slotEl = $(`<div class="dnd-equipment-slot ${equippedItem ? 'occupied' : ''}" data-slot="${slotKey}" title="${escapeHtml(label)}"></div>`);
+            // El dibujo del objeto: el suyo, o el del compendio en pixel.
+            const art = equippedItem ? itemImage(equippedItem) : '';
 
-            if (equippedItem && equippedItem.image) {
-                slotEl.append(`<img class="dnd-equipment-slot-img" src="${equippedItem.image}" alt="${equippedItem.name}" />`);
+            if (equippedItem && art) {
+                slotEl.append(`<img class="dnd-equipment-slot-img pixel-art" src="${escapeHtml(art)}" alt="${escapeHtml(shownName(equippedItem))}" />`);
             } else if (equippedItem) {
                 slotEl.append(`<i class="dnd-equipment-slot-icon fa-solid ${info.icon}"></i>`);
-                slotEl.append(`<span style="font-size:0.6rem;color:#2dd4bf;margin-top:2px;">${equippedItem.name}</span>`);
+                slotEl.append(`<span style="font-size:0.6rem;color:#2dd4bf;margin-top:2px;">${escapeHtml(shownName(equippedItem))}</span>`);
             } else {
                 slotEl.append(`<i class="dnd-equipment-slot-icon fa-solid ${info.icon}"></i>`);
             }
 
-            slotEl.append(`<span class="dnd-equipment-slot-label">${info.label}</span>`);
+            slotEl.append(`<span class="dnd-equipment-slot-label">${escapeHtml(label)}</span>`);
 
             slotEl.on('click', function () {
                 if (equippedItem) {
@@ -797,7 +826,7 @@ function showEquipSelector(panel, member, slot) {
 
     const html = eligibleItems.map(item => `
         <div class="dnd-item-card" data-item-id="${item.id}" style="cursor:pointer;">
-            ${item.image ? `<img class="dnd-item-img" src="${item.image}" />` : '<div class="dnd-item-img-placeholder"><i class="fa-solid fa-box"></i></div>'}
+            ${itemImage(item) ? `<img class="dnd-item-img pixel-art" src="${escapeHtml(itemImage(item))}" />` : '<div class="dnd-item-img-placeholder"><i class="fa-solid fa-box"></i></div>'}
             <div class="dnd-item-info">
                 <div class="dnd-item-name">${shownName(item)}</div>
                 <div class="dnd-item-meta">${item.type} · ${item.weight} lbs</div>
@@ -805,7 +834,7 @@ function showEquipSelector(panel, member, slot) {
         </div>
     `).join('');
 
-    const popupEl = $(`<div style="max-width:400px"><div class="dnd-section-title">Select item for ${SLOT_INFO[slot]?.label || slot}</div><div class="dnd-item-list">${html}</div></div>`);
+    const popupEl = $(`<div style="max-width:400px"><div class="dnd-section-title">Qué ponerse en: ${escapeHtml(slotName(slot, SLOT_INFO[slot]))}</div><div class="dnd-item-list">${html}</div></div>`);
 
     const selectorPopup = new Popup(popupEl, POPUP_TYPE.TEXT, '', {
         okButton: t`Cancel`,
@@ -993,7 +1022,7 @@ function buildItemListSection(panel, member) {
             const metaText = buildItemMetaSummary(item).join(' · ');
             const card = $(`
                 <div class="dnd-item-card ${isEquipped ? 'equipped' : ''}" data-item-id="${item.id}">
-                    ${item.image ? `<img class="dnd-item-img" src="${item.image}" />` : '<div class="dnd-item-img-placeholder"><i class="fa-solid fa-box"></i></div>'}
+                    ${itemImage(item) ? `<img class="dnd-item-img pixel-art" src="${escapeHtml(itemImage(item))}" />` : '<div class="dnd-item-img-placeholder"><i class="fa-solid fa-box"></i></div>'}
                     <div class="dnd-item-info">
                         <div class="dnd-item-name">${shownName(item)}${isEquipped ? ' <span style="color:#2dd4bf;font-size:0.7rem;">(equipped)</span>' : ''}</div>
                         <div class="dnd-item-meta">${metaText}${effectsText ? ' · ' + effectsText : ''}</div>

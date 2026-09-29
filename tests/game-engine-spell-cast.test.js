@@ -112,18 +112,27 @@ describe('componentes y rituales (J19.8)', () => {
     test('en un silencio no se dicen palabras; lo caro hay que llevarlo; lo que se gasta, se gasta', () => {
         expect(componentsCheck(spell('mag-bola-fuego'), { silenced: true }).reason).toMatch(/no se oye nada/);
         expect(componentsCheck(spell('conj-contraconjuro'), { silenced: true }).ok).toBe(true);
-        expect(componentsCheck(spell('conj-identificar'), { carried: ['Bastón'] }).reason).toBe('Hace falta Perla (vale 100 monedas de oro).');
+        expect(componentsCheck(spell('conj-identificar'), { carried: ['Bastón'] }).reason)
+            .toBe('Para Identificar hace falta: perla (100 de oro). Se compra en las tiendas.');
         expect(componentsCheck(spell('conj-identificar'), { carried: ['Perla'] })).toMatchObject({ ok: true, consumes: [] });
         expect(componentsCheck(spell('conj-encontrar-familiar'), { carried: ['Incienso y hierbas'] }).consumes).toEqual(['Incienso y hierbas']);
-        expect(componentsCheck(spell('conj-proteccion-mal-bien'), { carried: [] }).reason).toBe('Hace falta Agua bendita.');
+        expect(componentsCheck(spell('conj-proteccion-mal-bien'), { carried: [] }).reason)
+            .toBe('Para Protección contra el mal y el bien hace falta: agua bendita, que se gasta al lanzarlo. Se compra en las tiendas.');
+        expect(componentsCheck(spell('mag-volver-orilla'), { carried: ['Amuleto'] }).reason)
+            .toBe('Para Revivir hace falta: diamante (300 de oro), que se gasta al lanzarlo. Se compra en las tiendas.');
     });
 
-    test('sin foco se lanza igual con aviso, salvo que las reglas lo pidan', () => {
-        const lenient = componentsCheck(spell('mag-bola-fuego'), { carried: ['Daga'], focus: 'Arcane' });
+    // D-J25: ya se venden la bolsa y el laúd, así que el foco se exige si no se dice otra cosa.
+    test('sin foco ni bolsa no se lanza, y se dice qué falta; con el modo suave, se lanza con aviso', () => {
+        const strict = componentsCheck(spell('mag-bola-fuego'), { carried: ['Daga'], focus: 'Arcane' });
+        expect(strict).toMatchObject({ ok: false, reason: 'Para Bola de fuego hace falta un foco (un bastón, una varita o un orbe) o una bolsa de componentes. Se compran en las tiendas.' });
+        expect(componentsCheck(spell('mag-bola-fuego'), { carried: ['Bastón'], focus: 'Arcane' }).ok).toBe(true);
+        expect(componentsCheck(spell('mag-bola-fuego'), { carried: ['Bolsa de componentes'], focus: 'Arcane' }).ok).toBe(true);
+        const lenient = componentsCheck(spell('mag-bola-fuego'), { carried: ['Daga'], focus: 'Arcane', strict: false });
         expect(lenient.ok).toBe(true);
         expect(lenient.warnings[0]).toMatch(/a pulso/);
-        expect(componentsCheck(spell('mag-bola-fuego'), { carried: ['Daga'], focus: 'Arcane', strict: true }).ok).toBe(false);
-        expect(componentsCheck(spell('mag-bola-fuego'), { carried: ['Bastón'], focus: 'Arcane', strict: true }).ok).toBe(true);
+        // El laúd le sirve de foco al bardo.
+        expect(hasFocus(['Laúd'], 'Instrument')).toBe(true);
     });
 
     test('un ritual: sin espacio, diez minutos más y nunca peleando', () => {
@@ -141,7 +150,9 @@ describe('si se puede lanzar ahora', () => {
     const mago = { level: 5, intelligence: 16, spellbook: ['mag-bola-fuego', 'conj-detectar-magia'], prepared: ['mag-bola-fuego'], cantrips: ['hab-rayo-fuego'], items: [] };
 
     test('con el espacio más bajo que sirva, o con el que se elija', () => {
-        expect(canCastSpell({ member: mago, classRow: cls('mago'), spell: spell('mag-bola-fuego') })).toMatchObject({ ok: true, slotLevel: 3 });
+        expect(canCastSpell({ member: mago, classRow: cls('mago'), spell: spell('mag-bola-fuego'), carried: ['Bastón'] })).toMatchObject({ ok: true, slotLevel: 3 });
+        // D-J25: sin su bastón (ni bolsa), no.
+        expect(canCastSpell({ member: mago, classRow: cls('mago'), spell: spell('mag-bola-fuego') }).reason).toMatch(/hace falta un foco/);
         expect(canCastSpell({ member: mago, classRow: cls('mago'), spell: spell('mag-bola-fuego'), slotLevel: 2 }).reason).toMatch(/no cabe en un espacio menor/);
         expect(canCastSpell({ member: { ...mago, slotsUsed: { 3: 2 } }, classRow: cls('mago'), spell: spell('mag-bola-fuego') }).reason).toMatch(/Sin espacios de 3\.er nivel/);
         expect(canCastSpell({ member: mago, classRow: cls('mago'), spell: spell('hab-rayo-fuego') })).toMatchObject({ ok: true, slotLevel: 0 });
@@ -156,6 +167,20 @@ describe('si se puede lanzar ahora', () => {
         expect(canCastSpell({ member: clerigo, classRow: cls('clerigo'), spell: spell('conj-palabra-curacion'), hasBonus: false }).reason).toMatch(/adicional/);
         expect(canCastSpell({ member: clerigo, classRow: cls('clerigo'), spell: spell('conj-palabra-curacion'), hasAction: false }).ok).toBe(true);
         expect(canCastSpell({ member: mago, classRow: cls('guerrero'), spell: spell('mag-bola-fuego') }).ok).toBe(false);
+    });
+
+    test('D-J27: el erudito solo lanza rituales, de su libro y sin espacios', () => {
+        const erudito = { level: 3, intelligence: 16, spellbook: ['conj-detectar-magia', 'conj-identificar'] };
+        expect(canCastSpell({ member: erudito, classRow: cls('erudito'), spell: spell('conj-detectar-magia'), asRitual: true, inCombat: false }))
+            .toMatchObject({ ok: true, slotLevel: 0, ritual: true, minutes: 10 });
+        expect(canCastSpell({ member: erudito, classRow: cls('erudito'), spell: spell('conj-detectar-magia'), inCombat: false }).reason)
+            .toBe('Solo lanza rituales, sin espacios: Detectar magia se lanza como ritual (diez minutos más, y no peleando).');
+        expect(canCastSpell({ member: erudito, classRow: cls('erudito'), spell: spell('mag-bola-fuego') }).reason)
+            .toBe('Solo lanza rituales, sin espacios: Bola de fuego no es un ritual.');
+        expect(canCastSpell({ member: erudito, classRow: cls('erudito'), spell: spell('conj-detectar-magia'), asRitual: true, inCombat: true }).reason).toMatch(/peleando/);
+        // Identificar pide su perla, como a cualquiera.
+        expect(canCastSpell({ member: erudito, classRow: cls('erudito'), spell: spell('conj-identificar'), asRitual: true, inCombat: false }).reason).toMatch(/perla/);
+        expect(canCastSpell({ member: erudito, classRow: cls('erudito'), spell: spell('conj-identificar'), asRitual: true, inCombat: false, carried: ['Perla'] }).ok).toBe(true);
     });
 
     test('como ritual no gasta espacio; en silencio no se lanza lo que pide palabras', () => {

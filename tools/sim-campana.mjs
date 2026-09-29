@@ -109,6 +109,8 @@ try {
             window.localStorage.setItem('sillytavern_gameTipsSeen', 'dialogue,exploration,combat,travel,prisoners,mesa,high,spell,pet,bill,move,attack,roll,talk,journal');
             window.localStorage.setItem('sillytavern_gameShellAutostart', 'true');
             window.localStorage.setItem('sillytavern_gameSucesos', 'off');
+            // Las escenas del hilo y las charlas escritas (J9.2, J8) las mira e2e-historia; aquí taparían clics.
+            window.localStorage.setItem('sillytavern_gameStoryWindows', 'off');
         } catch { /* nada */ }
     });
 

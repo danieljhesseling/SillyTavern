@@ -1854,7 +1854,7 @@
       "noFight": true,
       "reward": 5,
       "rewardText": "5 de oro y la bendición del padre Donavich",
-      "twist": "A medianoche, del cementerio sale una fila de fantasmas con espadas que sube hacia el castillo. No atacan: son aventureros que murieron antes que vosotros, y cada noche lo vuelven a intentar.",
+      "twist": "A medianoche, del cementerio sale una fila de fantasmas con espadas que sube hacia el castillo. No atacan: son aventureros que murieron antes que {vosotros|vosotras}, y cada noche lo vuelven a intentar.",
       "boardId": ""
     },
     {

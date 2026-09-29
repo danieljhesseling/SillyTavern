@@ -12,6 +12,31 @@
  */
 
 import { buildCharacterSheet, describeSheet } from './shell/character-sheet.js';
+import { firstArt, loadPixelManifest } from './pixel-art.js';
+
+/**
+ * Un icono en pixel, o nada: quien llama pone el suyo de siempre si no hay dibujo.
+ *
+ * @param {string} url
+ * @param {string} className
+ * @returns {JQuery|null}
+ */
+function pixel(url, className) {
+    if (!url) return null;
+    return $('<img alt="" class="pixel-art">').addClass(className).attr('src', url);
+}
+
+/**
+ * Lo que dice una habilidad de lo que le queda: sus usos, «a voluntad», o, si es un
+ * conjuro de 5e, su nivel.
+ *
+ * @param {{left: number|null, spellLevel?: number|null}} ability
+ * @returns {string}
+ */
+function abilityLeft(ability) {
+    if (typeof ability.spellLevel === 'number') return ability.spellLevel === 0 ? 'truco' : `${ability.spellLevel}.º nivel`;
+    return ability.left === null ? 'a voluntad' : `${ability.left} uso(s)`;
+}
 
 /**
  * @param {string} label
@@ -43,6 +68,12 @@ function box(label, value, hint = '') {
  * @param {((itemId: string, toId: string) => boolean)|null} [input.onGive]
  * @param {((name: string) => boolean)|null} [input.onSaveSet]
  * @param {((name: string) => boolean)|null} [input.onApplySet]
+ * @param {any[]|null} [input.known] J19: lo que sabe, con sus conjuros de 5e ya puestos.
+ * @param {{lines: string[]}|null} [input.magic] J19: sus espacios y su concentración, en frases.
+ * @param {(() => void)|null} [input.onGrimoire] J19: abrir su grimorio (preparar, elegir).
+ * @param {(() => void)|null} [input.onLevelUp] Subir de nivel: solo se pasa cuando toca.
+ * @param {((itemId: string, on: boolean) => boolean)|null} [input.onAttune] J19.9: sintonizarse o dejarlo.
+ * @param {string} [input.attuneNote] J19.9: cuántos lleva en sintonía, de cuántos.
  * @param {any} input.Popup
  * @param {any} input.POPUP_TYPE
  * @returns {Promise<string>} `changed` si se ha tocado algo, para volver a abrirla al día.
@@ -50,9 +81,12 @@ function box(label, value, hint = '') {
 export async function openCharacterPanel({
     member, slotInfo = {}, abilities = [], xpTable = null, bondRank = 0,
     onEdit = null, languages = [], sets = [], mates = [], onGive = null, onSaveSet = null, onApplySet = null,
+    known = null, magic = null, onGrimoire = null, onLevelUp = null, onAttune = null, attuneNote = '',
     Popup, POPUP_TYPE,
 }) {
-    const sheet = buildCharacterSheet({ member, slotInfo, abilities, xpTable, bondRank });
+    // Los iconos en pixel necesitan el índice; sin él, cada fila sale con su icono de siempre.
+    await loadPixelManifest();
+    const sheet = buildCharacterSheet({ member, slotInfo, abilities, xpTable, bondRank, known });
     const root = $('<div class="ch-root"></div>');
     let changed = '';
     /** @param {boolean} done */
@@ -96,12 +130,20 @@ export async function openCharacterPanel({
     // ---- Lo que le pasa ahora mismo ---------------------------------------
     // Antes que las estadísticas: si cojeas, eso pesa más que tu carisma.
     const wrong = [
-        ...sheet.injuries,
         ...(sheet.needs ? [sheet.needs] : []),
         ...sheet.conditions,
     ];
-    if (wrong.length > 0) {
+    if (wrong.length > 0 || sheet.injuryRows.length > 0) {
         const list = $('<div class="ch-wrong"></div>');
+        // Las heridas y las enfermedades, con su dibujo (`estados/`), que se reconocen antes
+        // que la frase.
+        for (const injury of sheet.injuryRows) {
+            const tag = $('<span class="ch-tag ch-injury"></span>').attr('data-injury', injury.id);
+            const art = pixel(firstArt('condition', { id: injury.id, name: injury.label }), 'ch-tag-art');
+            if (art) tag.append(art);
+            tag.append($('<span></span>').text(injury.text));
+            list.append(tag);
+        }
         for (const line of wrong) list.append($('<span class="ch-tag"></span>').text(line));
         root.append(list);
     }
@@ -126,9 +168,11 @@ export async function openCharacterPanel({
     root.append($('<div class="ch-title-row"></div>').text('Equipo'));
     const worn = $('<div class="ch-gear"></div>');
     for (const slot of sheet.equipment) {
-        const row = $('<div class="ch-slot"></div>').toggleClass('empty', slot.empty);
+        const row = $('<div class="ch-slot"></div>').toggleClass('empty', slot.empty).attr('data-slot', slot.slot);
         row.append(`<i class="fa-solid ${slot.icon}"></i>`);
         row.append($('<span class="ch-slot-label"></span>').text(slot.label));
+        const art = slot.empty ? null : pixel(firstArt('item', { name: slot.item }), 'ch-item-art');
+        if (art) row.append(art);
         row.append($('<span class="ch-slot-item"></span>').text(slot.empty ? '—' : slot.item));
         worn.append(row);
     }
@@ -151,15 +195,35 @@ export async function openCharacterPanel({
         root.append(outfits);
     }
 
+    // ---- J19: su magia, si lanza con espacios -----------------------------
+    if (magic || onGrimoire) {
+        root.append($('<div class="ch-title-row"></div>').text('Magia'));
+        const box = $('<div class="ch-magic"></div>');
+        for (const line of magic?.lines ?? []) box.append($('<div class="ch-magic-line"></div>').text(line));
+        if (onGrimoire) {
+            const open = $('<button class="menu_button ch-grimoire" type="button"></button>')
+                .append('<i class="fa-solid fa-book-open"></i>')
+                .append($('<span></span>').text(' Grimorio: preparar y elegir conjuros'));
+            open.on('click', () => {
+                popup.completeAffirmative();
+                onGrimoire();
+            });
+            box.append(open);
+        }
+        root.append(box);
+    }
+
     // ---- Lo que sabe hacer -------------------------------------------------
     if (sheet.abilities.length > 0) {
         root.append($('<div class="ch-title-row"></div>').text('Habilidades'));
         const list = $('<div class="ch-abilities"></div>');
         for (const ability of sheet.abilities) {
-            const row = $('<div class="ch-ability"></div>').toggleClass('spent', ability.spent);
+            const row = $('<div class="ch-ability"></div>').toggleClass('spent', ability.spent).attr('data-ability', ability.id);
+            if (ability.blocked) row.attr('title', ability.blocked);
+            const art = pixel(firstArt('ability', { id: ability.id, name: ability.name }), 'ch-ability-art');
+            if (art) row.append(art);
             row.append($('<span class="ch-ability-name"></span>').text(ability.name));
-            row.append($('<span class="ch-ability-left"></span>').text(
-                ability.left === null ? 'a voluntad' : `${ability.left} uso(s)`));
+            row.append($('<span class="ch-ability-left"></span>').text(abilityLeft(ability)));
             list.append(row);
         }
         root.append(list);
@@ -194,10 +258,25 @@ export async function openCharacterPanel({
         }
         root.append(faces);
     }
+    // J19.9: lo que pide sintonía, y cuántos se pueden llevar así.
+    if (onAttune && sheet.inventory.some(item => item.attunement)) {
+        root.append($('<div class="ch-attune-note"></div>').text(attuneNote || 'Sintonía: tres objetos como mucho, y se hace fuera de combate.'));
+    }
     for (const item of sheet.inventory) {
         const row = $('<div class="ch-item"></div>').attr('data-item', item.id);
+        const art = pixel(firstArt('item', { name: item.name }), 'ch-item-art');
+        if (art) row.append(art);
         row.append($('<span class="ch-item-name"></span>').text(item.name));
         if (item.weight > 0) row.append($('<span class="ch-item-weight"></span>').text(`${item.weight} kg`));
+        if (onAttune && item.attunement && item.id) {
+            const tune = $('<button class="menu_button ch-attune" type="button"></button>')
+                .attr('data-item', item.id)
+                .toggleClass('is-on', item.attuned)
+                .text(item.attuned ? 'Dejar la sintonía' : 'Sintonizar');
+            tune.attr('title', item.attuned ? 'Deja de funcionar hasta que vuelvas a sintonizarte.' : 'Una hora tranquila con él: después funciona.');
+            tune.on('click', () => after(Boolean(onAttune(item.id, !item.attuned))));
+            row.append(tune);
+        }
         if (onGive && mates.length > 0 && item.id) {
             row.attr('draggable', 'true');
             row.on('dragstart', (event) => {
@@ -223,6 +302,18 @@ export async function openCharacterPanel({
             : `Nivel ${sheet.progress.level} · ${sheet.progress.xp} de experiencia`,
     ));
     root.append(progress);
+    // Subir de nivel, desde tu ficha: antes solo se llegaba por el editor a fondo. Quien
+    // llama solo lo pasa cuando toca.
+    if (onLevelUp) {
+        const up = $('<button class="menu_button ch-levelup" type="button"></button>')
+            .append('<i class="fa-solid fa-star"></i>')
+            .append($('<span></span>').text(' Subir de nivel'));
+        up.on('click', () => {
+            popup.completeAffirmative();
+            onLevelUp();
+        });
+        progress.append(up);
+    }
 
     root.append($('<div class="ch-note"></div>').text(describeSheet(sheet)));
 

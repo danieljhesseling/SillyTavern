@@ -13,13 +13,24 @@
  * el guionista se queda como lo escribió.
  *
  * Uso:
- *   node tools/guion-a-paquete.mjs wiki/guiones/1387            # escribe public/mundos/1387.pack.json
- *   node tools/guion-a-paquete.mjs wiki/guiones/1387 --check    # solo comprueba
+ *   node tools/guion-a-paquete.mjs wiki/guiones/<mundo>           # escribe public/mundos/<id>.pack.json si no existe
+ *   node tools/guion-a-paquete.mjs wiki/guiones/1387 --check      # solo comprueba
+ *   node tools/guion-a-paquete.mjs wiki/guiones/1387 --forzar     # pisa el paquete que ya hay
+ *   node tools/guion-a-paquete.mjs wiki/guiones/1387 --salida x.json   # lo escribe aparte, para comparar
+ *
+ * D-J37: la fuente de 1387 es su paquete, `public/mundos/1387.pack.json`, que se corrige a mano;
+ * las rondas de `wiki/guiones/1387` son la historia de cómo se escribió. Por eso un paquete que
+ * ya existe no se pisa sin `--forzar`: lo que sale del guion no trae las correcciones.
+ *
+ * D-J18: un `final` puede traer `epilogos`, qué fue de cada uno: `{quien: <id>, texto: …}`,
+ * con `quien` el id de alguien del guion o de una facción. Van al paquete como `epilogues`.
  *
  * Ver wiki/archivo/ROADMAP_MUNDOS_VIVOS.md, fase M.
  */
 
-import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { isAbsolute } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import yaml from 'js-yaml';
 
 const ROOT = new URL('..', import.meta.url);
@@ -525,7 +536,23 @@ function buildPack(g, catalogue) {
         }
         return [{ text: text(p.frase), milestone: text(p.se_cumple) }];
     });
-    const endings = Object.fromEntries(all('final').map(f => [text(f.id), { title: text(f.titulo), scene: text(f.escena) }]));
+    // D-J18: qué fue de cada uno con este final. `quien` es el id de alguien del guion o de
+    // una facción; la línea, `texto`. Una frase suelta también vale.
+    /** @param {any} id @param {string} ending */
+    const whoOf = (id, ending) => {
+        const key = text(id);
+        if (!key) return '';
+        if (g.pnj.has(key) || g.confidente.has(key)) return npcName(key);
+        if (g.faccion.has(key)) return nameOf('faccion', key);
+        notes.push(`final «${ending}»: el epílogo de «${key}», que no es nadie del guion ni una facción`);
+        return key;
+    };
+    const endings = Object.fromEntries(all('final').map(f => {
+        const epilogues = (Array.isArray(f.epilogos) ? f.epilogos : [])
+            .map((/** @type {any} */ e) => (typeof e === 'string' ? { who: '', text: text(e) } : { who: whoOf(e?.quien, text(f.id)), text: text(e?.texto) }))
+            .filter((/** @type {{text: string}} */ e) => e.text);
+        return [text(f.id), { title: text(f.titulo), scene: text(f.escena), ...(epilogues.length > 0 ? { epilogues } : {}) }];
+    }));
 
     const pack = {
         version: 1,
@@ -567,10 +594,13 @@ function buildPack(g, catalogue) {
 // ---------------------------------------------------------------- run
 const [dirArg, ...flags] = process.argv.slice(2);
 if (!dirArg) {
-    console.error('Uso: node tools/guion-a-paquete.mjs <carpeta de guiones> [--check]');
+    console.error('Uso: node tools/guion-a-paquete.mjs <carpeta de guiones> [--check] [--forzar] [--salida <archivo>]');
     process.exit(2);
 }
-const dir = new URL(dirArg.replace(/\\/g, '/').replace(/\/?$/, '/'), ROOT);
+// Desde la raíz del repositorio, o una ruta entera (`C:\…`, `/tmp/…`).
+const dir = isAbsolute(dirArg)
+    ? new URL(`${pathToFileURL(dirArg).href.replace(/\/?$/, '/')}`)
+    : new URL(dirArg.replace(/\\/g, '/').replace(/\/?$/, '/'), ROOT);
 const { files, byKind, index } = readGuion(dir);
 if (yamlProblems.length > 0) {
     for (const problem of yamlProblems) console.log(problem);
@@ -625,8 +655,23 @@ if (found.errors.length > 0) {
         + 'el arreglo puede ir ahí mismo o en una ronda nueva con el mismo id (se mezcla encima).');
 }
 
-if (!flags.includes('--check')) {
+// `--salida <archivo>`: escribirlo en otro sitio, para compararlo con el paquete sin tocarlo.
+const aside = flags.includes('--salida') ? flags[flags.indexOf('--salida') + 1] : '';
+if (aside) {
+    writeFileSync(aside, `${JSON.stringify(pack, null, 2)}\n`);
+    console.log(`Escrito ${aside} (el paquete de public/mundos no se toca)`);
+} else if (!flags.includes('--check')) {
     const out = new URL(`public/mundos/${text(world.id)}.pack.json`, ROOT);
+    // D-J37: un paquete que ya existe es la fuente (el de 1387 se corrige a mano), y lo que sale
+    // del guion no trae esas correcciones. No se pisa sin pedirlo.
+    if (existsSync(out) && !flags.includes('--forzar')) {
+        console.log(`\nNO se escribe public/mundos/${text(world.id)}.pack.json: ya existe, y el paquete es la fuente`
+            + ' (D-J37: se corrige a mano, no desde el guion).');
+        console.log('       Lo que sale de estas rondas pisaría esas correcciones. Para comprobar sin escribir: --check;');
+        console.log('       para verlo al lado y compararlo: --salida <archivo>.');
+        console.log('       Si de verdad quieres pisarlo con lo del guion: --forzar (y mira el diff antes de guardarlo).');
+        process.exit(1);
+    }
     writeFileSync(out, `${JSON.stringify(pack, null, 2)}\n`);
     console.log(`Escrito ${out.pathname}`);
 }

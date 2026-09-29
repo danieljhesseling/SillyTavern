@@ -30,6 +30,7 @@
  * @property {boolean} [consumable] Se gasta al usarse (idea 122: lo que se lanza).
  * @property {number} [uses]
  * @property {number} [charges] R4: las cargas de una varita.
+ * @property {number} [price] D-J25: lo que vale, cuando no es lo de su clase de cosa (una perla, 100).
  */
 
 /** What each thing the loot tables can drop is made of. */
@@ -69,6 +70,20 @@ const CATALOGUE = {
     'Azufre': { type: 'gear', category: 'gear', subcategory: 'component', weight: 0.2, consumable: true, uses: 1, description: 'Se gasta en la Bola de fuego y en el Muro de fuego.' },
     'Polvo de hueso': { type: 'gear', category: 'gear', subcategory: 'component', weight: 0.1, consumable: true, uses: 1, description: 'Se gasta al Hablar con los muertos.' },
     'Plumas negras': { type: 'gear', category: 'gear', subcategory: 'component', weight: 0.1, consumable: true, uses: 1, description: 'Se gastan en la Invisibilidad.' },
+    // D-J25: los materiales de los conjuros de 5e, con su precio, y lo que sirve de foco. Se
+    // venden en todas las tiendas (`SPELL_SUPPLIES` de `campaign/shop.js`).
+    'Bolsa de componentes': { type: 'gear', category: 'gear', subcategory: 'component', weight: 1, price: 25, description: 'Hierbas, polvos y cachivaches: a cualquiera que lance conjuros le sirve de foco.' },
+    'Laúd': { type: 'gear', category: 'gear', subcategory: 'instrument', weight: 1, price: 35, description: 'Un instrumento: al bardo le sirve de foco para sus conjuros.' },
+    // Lo que el conjuro gasta lo quita el conjuro (`consumes` de `rules/spell-cast.js`): no
+    // llevan `consumable`, que pondría un «Usar» en la ficha que tiraría un diamante a la basura.
+    'Incienso y hierbas': { type: 'gear', category: 'gear', subcategory: 'component', weight: 0.2, price: 10, description: 'Se quema al lanzar Encontrar familiar.' },
+    'Agua bendita': { type: 'gear', category: 'gear', subcategory: 'generic', weight: 0.5, price: 25, description: 'Se gasta en Protección contra el mal y el bien.' },
+    'Perla': { type: 'gear', category: 'gear', subcategory: 'trade_good', weight: 0, price: 100, description: 'Una perla de las buenas: la pide Identificar, y no se gasta.' },
+    'Diamante': { type: 'gear', category: 'gear', subcategory: 'trade_good', weight: 0, price: 300, description: 'Se gasta en Revivir: sin él, no hay vuelta.' },
+    // J19.9: objetos mágicos de 5e, con su conjuro (`linkedSpell`), sus cargas, cuándo vuelven
+    // y si piden sintonía (`rules/magic-items.js`). Se usan en combate como los pergaminos.
+    'Varita de proyectiles mágicos': { type: 'gear', category: 'magic', subcategory: 'ring_wand_staff', weight: 0.5, linkedSpell: 'conj-proyectil-magico', spellLevel: 1, uses: 7, maxUses: 7, recharge: 'At Dawn', rechargeDice: '1d6+1', description: 'Lanza Proyectil mágico. Siete cargas; al alba recupera unas cuantas.' },
+    'Bastón de las llamas': { type: 'gear', category: 'magic', subcategory: 'ring_wand_staff', weight: 2, attunement: true, linkedSpell: 'conj-manos-ardientes', spellLevel: 1, saveDC: 13, uses: 5, maxUses: 5, recharge: 'At Dawn', rechargeDice: '1d4+1', description: 'Lanza Manos ardientes. Pide sintonía: sin ella, es un palo. Cinco cargas; al alba recupera algunas.' },
 };
 
 /** What anything undeclared becomes: a real item, of the most ordinary kind. */

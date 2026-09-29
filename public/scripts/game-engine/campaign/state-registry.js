@@ -77,6 +77,9 @@ export const STATE_KEYS = [
     { key: 'plot', kind: 'juego', owner: 'party.js', what: 'El hilo de la campaña' },
     { key: 'plotState', kind: 'juego', owner: 'party.js', what: 'Por dónde va el hilo: hitos abiertos y cumplidos' },
     { key: 'plotAnnounced', kind: 'juego', owner: 'party.js', what: 'Si la mecha ya se contó' },
+    // J9.2: se escribe con `rememberScene` (campaign/plot-scenes.js).
+    { key: 'plotScenesPlayed', kind: 'juego', owner: 'party.js', what: 'Las escenas del hilo que ya se jugaron' },
+    { key: 'plotDecisions', kind: 'juego', owner: 'party.js', what: 'Lo que decidisteis en las escenas del hilo' },
     { key: 'plotEnding', kind: 'juego', owner: 'party.js', what: 'El final alcanzado' },
     { key: 'campaignStart', kind: 'juego', owner: 'party.js', what: 'Cómo empezó el grupo la campaña: para contar al final lo que se lleva cada uno' },
     { key: 'omensTold', kind: 'juego', owner: 'party.js', what: 'Si el presagio ya se contó' },

@@ -26,6 +26,8 @@ import { readHub, isHubWorld, hubHomeOf, HUB_CAMPAIGN_KEY, HUB_LEVELS_KEY } from
 import { markVisited } from '../game-engine/campaign/text-map.js';
 import { readWrittenContracts } from '../game-engine/campaign/written-contracts.js';
 import { readRumors } from '../game-engine/campaign/rumors.js';
+import { readDialogues } from '../game-engine/campaign/dialogues.js';
+import { packOfWorld } from '../game-engine/ui/pixel-art.js';
 import {
     planRulesetChange, readRememberedRuleset, rememberRuleset, setActiveRuleset, needsReload,
 } from '../game-engine/rules/ruleset.js';
@@ -153,6 +155,8 @@ export async function reloadWorldFactions() {
         lastHub = null;
         lastHubHome = '';
         lastLevelPlan = null;
+        lastDialogues = [];
+        lastPack = '';
         return currentWorldFactions;
     }
     try {
@@ -169,6 +173,9 @@ export async function reloadWorldFactions() {
         // Lo que trae un mundo escrito entero: sus encargos, sus rumores y su mezcla.
         lastWrittenContracts = readWrittenContracts(data?.metadata?.writtenContracts);
         lastRumors = readRumors(data?.metadata?.rumors);
+        // J8 y J9.2: las charlas con ramas que trae el paquete, y de qué paquete es (para las caras).
+        lastDialogues = readDialogues(data?.metadata?.dialogues);
+        lastPack = packOfWorld(data?.metadata);
         lastWorldSeason = readSeason(data?.metadata?.season);
         lastWorldGenre = String(data?.metadata?.genre ?? '');
         lastWorldNpcs = Object.values(data?.entries ?? {})
@@ -321,6 +328,11 @@ export let lastWrittenQuests = [];
 export let lastWrittenContracts = [];
 /** @type {import('../game-engine/campaign/rumors.js').Rumor[]} */
 export let lastRumors = [];
+/** J8: las charlas con ramas del mundo abierto, ya leídas (`readDialogues`). */
+/** @type {import('../game-engine/campaign/dialogues.js').Dialogue[]} */
+export let lastDialogues = [];
+/** El paquete del mundo abierto (`gremio`, `1387`…), para los retratos y los escenarios; vacío si no es de ninguno. */
+export let lastPack = '';
 /** @type {any} */
 export let lastMix = null;
 /** La gente del mundo: quien es, donde vive y que servicio atiende. */

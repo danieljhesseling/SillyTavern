@@ -3715,6 +3715,9 @@ input[type="file"].tl-file {
 }
 
 .hb-remove {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     align-self: flex-end;
     width: auto;
     margin: 0;
@@ -3731,6 +3734,13 @@ input[type="file"].tl-file {
 /* D-J35: pegar el texto de una campaña, bajo las tarjetas. */
 .hb-paste {
     margin: -6px 26px 14px;
+}
+
+.hb-paste-open,
+.hb-paste-add {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
 }
 
 .hb-paste-open {

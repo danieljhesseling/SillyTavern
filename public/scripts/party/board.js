@@ -17,14 +17,20 @@ import { rollWith } from '../game-engine/combat/seeded-random.js';
 import { rollDiceDetailed, getDistanceInFeet, getPlayerDamageFormula, nextRandom } from './combat-rules.js';
 import { weaponOf as heldWeapon } from '../game-engine/rules/equipment.js';
 import {
-    normalizeTerrain, setDoorOpen, parseCellKey, getCell, isLocked, unlockDoor, breakDoor,
+    normalizeTerrain, setDoorOpen, parseCellKey, getCell, isLocked, unlockDoor, breakDoor, withOverlay, cellKey,
 } from '../game-engine/board/terrain.js';
+import { normalizeElevation } from '../game-engine/board/heights.js';
+import { zoneAt, nameRoomsFromZones } from '../game-engine/board/zones.js';
+import { zoneFlagsAt, zonesAt, zoneEffects, resolveZoneEffect, kindOf } from '../game-engine/board/spell-zones.js';
+import { getRayCells } from '../game-engine/board/line-of-sight.js';
+import { visibilityPenalties } from '../game-engine/world/visibility.js';
+import { getAbilityModifier } from '../dnd-system.js';
 import { lockBonus } from '../game-engine/rules/field-uses.js';
 import { hasLeft } from '../game-engine/board/exits.js';
 import { hitBarricade, pullLever } from '../game-engine/board/interactables.js';
 import { isIndoors, carriesLight, combatVisibility } from '../game-engine/world/visibility.js';
 import { stairsReached, nextLevel } from '../game-engine/board/dungeon-levels.js';
-import { planWalk } from '../game-engine/board/walk.js';
+import { planWalk, canWalk } from '../game-engine/board/walk.js';
 import { enterCell, describeHazard, passiveSpot } from '../game-engine/board/hazards.js';
 import { statusMarkers, sizeToCells } from '../game-engine/combat/initiative-tracker.js';
 import { hasAction, useAction } from '../game-engine/combat/turn-machine.js';
@@ -43,6 +49,7 @@ import { revealClue } from './cases.js';
 import { getAliveEnemies, getCurrentTurnEntry, getPartyMemberByTurnEntry, saveCombatState } from './combat-state.js';
 import { damagePartyMember } from './enemy-turn.js';
 import { applyFall, wakeRoomEnemies } from './combat-flow.js';
+import { applyTimedCondition } from './magic.js';
 import { openChest } from './loot.js';
 import { partyTabSetter } from './main.js';
 import { renderLocationMapsPreview } from './board-view.js';
@@ -102,6 +109,8 @@ async function persistBoardTerrainNow(board) {
         // Que salas se han revelado es parte del estado del tablero: sin esto, una
         // mazmorra se volveria a cerrar sola al recargar.
         if (board.rooms) stored.rooms = board.rooms;
+        // J12.11: las salas cuya nota ya se leyó al entrar, para no leerla cada vez.
+        if (Array.isArray(board.zonesSeen)) stored.zonesSeen = board.zonesSeen;
         await saveWorldInfo(worldName, data);
     } catch (e) {
         console.warn('[party] could not persist board terrain', e);
@@ -175,12 +184,152 @@ export function getActiveBoardContext() {
         ? getLocationBoards(location).find((/** @type {any} */ b) => b.name === currentBoardName)
         : null;
 
+    const terrain = normalizeTerrain(board?.terrain);
     return {
-        terrain: normalizeTerrain(board?.terrain),
-        gridWidth: Number(location?.gridWidth) || 50,
-        gridHeight: Number(location?.gridHeight) || 50,
+        // Con lo que va encima mientras se juega: las cotas (J12.10) y las zonas de conjuro
+        // (J19.6). Quien busca camino, mira o cuenta lo que cuesta una casilla lo ve solo.
+        terrain: board ? overlayOf(terrain, board) : terrain,
+        // El tamaño del tablero manda sobre el de su localización: un mapa en imagen (J12.8)
+        // mide lo que mide su cuadrícula, y con los 50 × 50 del sitio sus casillas no caían
+        // sobre las del dibujo.
+        gridWidth: Number(board?.gridWidth) || Number(location?.gridWidth) || 50,
+        gridHeight: Number(board?.gridHeight) || Number(location?.gridHeight) || 50,
         board: board ?? null,
     };
+}
+
+/**
+ * J19.6: las zonas de conjuro del combate en marcha (niebla, telaraña, fuego…). Las pone quien
+ * lanza el conjuro, en `combatEncounter.spellZones`; sin combate no hay ninguna.
+ *
+ * @returns {import('../game-engine/board/spell-zones.js').Zone[]}
+ */
+export function activeSpellZones() {
+    const zones = /** @type {any} */ (combatEncounter).spellZones;
+    return combatEncounter.active && Array.isArray(zones) ? zones : [];
+}
+
+/**
+ * J19.5: las invocaciones del combate en marcha, en `combatEncounter.summons` (las fichas de
+ * `planSummon`).
+ *
+ * @returns {import('../game-engine/rules/summons.js').SummonToken[]}
+ */
+export function activeSummons() {
+    const summons = /** @type {any} */ (combatEncounter).summons;
+    return combatEncounter.active && Array.isArray(summons) ? summons : [];
+}
+
+/**
+ * Lo que va encima del terreno del tablero abierto (`withOverlay`): sus cotas y, en combate,
+ * las casillas de zona que cuestan el doble o no dejan ver (`zoneFlagsAt`).
+ *
+ * @param {import('../game-engine/board/terrain.js').BoardTerrain} terrain
+ * @param {any} board
+ */
+function overlayOf(terrain, board) {
+    const zones = activeSpellZones();
+    /** @type {string[]} */
+    const slowCells = [];
+    /** @type {string[]} */
+    const blindCells = [];
+    const seen = new Set();
+    for (const zone of zones) {
+        for (const cell of Array.isArray(zone?.cells) ? zone.cells : []) {
+            const key = cellKey(cell.x, cell.y);
+            if (seen.has(key)) continue;
+            seen.add(key);
+            const flags = zoneFlagsAt(zones, cell);
+            if (flags.difficult) slowCells.push(key);
+            if (flags.blocksSight) blindCells.push(key);
+        }
+    }
+    return withOverlay(terrain, { elevation: normalizeElevation(board?.elevation), slowCells, blindCells });
+}
+
+/**
+ * Lo que estorba un ataque de una casilla a otra: la niebla, la noche o el viento del sitio
+ * (ideas 73 y 90) y, J19.6, una zona que no deja ver (niebla, oscuridad) donde está quien
+ * ataca, donde está a quien ataca o en medio. Cada cosa es una desventaja con su motivo.
+ *
+ * @param {{x: number, y: number}} from
+ * @param {{x: number, y: number}} to
+ * @param {number} distanceFeet
+ * @returns {string[]}
+ */
+export function attackHindrance(from, to, distanceFeet) {
+    const out = visibilityPenalties(boardVisibility(), distanceFeet);
+    const zones = activeSpellZones();
+    if (zones.length === 0) return out;
+    const line = [from, ...getRayCells(from.x, from.y, to.x, to.y), to];
+    for (const cell of line) {
+        const blind = zonesAt(zones, cell).find(zone => kindOf(zone.kind).blocksSight);
+        if (blind) return [...out, `no se ve: ${String(blind.name).toLowerCase()}`];
+    }
+    return out;
+}
+
+/**
+ * J12.11: al entrar en una sala con nombre, lo que el tablero cuenta de ella. La primera vez
+ * se lee su nota (quién espera, qué hay); después, nada: la nota ya está en el registro.
+ *
+ * @param {any} member
+ * @param {{x: number, y: number}|null} from
+ * @param {{x: number, y: number}} to
+ * @returns {string} El nombre de la sala en la que ha entrado por primera vez, o vacío.
+ */
+export function noteZoneEntry(member, from, to) {
+    const board = getActiveBoardContext().board;
+    if (!board || !Array.isArray(board.zones) || board.zones.length === 0) return '';
+    const here = zoneAt(board, to.x, to.y);
+    if (!here?.name) return '';
+    const before = from ? zoneAt(board, from.x, from.y) : null;
+    if (before?.name === here.name) return '';
+    const seen = Array.isArray(board.zonesSeen) ? board.zonesSeen : [];
+    if (seen.includes(here.name)) return '';
+    board.zonesSeen = [...seen, here.name];
+    persistBoardTerrain(board);
+    const who = String(member?.name ?? 'El grupo');
+    postCombatNarration(`🚪 [TABLERO] ${who} entra en ${here.name}.${here.note ? ` ${here.note}` : ''}`);
+    toastr.info(here.note || `${who} entra en ${here.name}.`, here.name, { timeOut: 9000, extendedTimeOut: 4000 });
+    return here.name;
+}
+
+/**
+ * J19.6: lo que le hacen las zonas de conjuro a quien las cruza, casilla a casilla (al entrar;
+ * una vez por zona y turno). Se para en la casilla donde queda atrapado o cae.
+ *
+ * @param {any} member
+ * @param {Array<{x: number, y: number}>} steps Las casillas que pisa, sin la de salida.
+ * @returns {{stopAt: number, lines: string[]}} `stopAt`: el índice en `steps` donde se queda (el último si pasa entero).
+ */
+export function walkThroughSpellZones(member, steps) {
+    const zones = activeSpellZones();
+    /** @type {string[]} */
+    const lines = [];
+    if (zones.length === 0 || steps.length === 0) return { stopAt: steps.length - 1, lines };
+    const turn = `${Number(combatEncounter.round) || 1}:${String(getCurrentTurnEntry()?.id ?? member?.id)}`;
+    const memory = /** @type {any} */ (combatEncounter).zoneHits;
+    const already = memory?.turn === turn && Array.isArray(memory.keys) ? [...memory.keys] : [];
+    for (let index = 0; index < steps.length; index++) {
+        const hits = zoneEffects({ zones, cell: steps[index], trigger: 'enter', who: String(member.id), alreadyThisTurn: already });
+        for (const effect of hits) {
+            already.push(effect.key);
+            const result = resolveZoneEffect({
+                effect,
+                roll: (formula) => rollWith(formula, nextRandom),
+                saveModifier: effect.save ? getAbilityModifier(Number(member?.[effect.save]) || 10) : 0,
+                targetName: String(member.name),
+            });
+            lines.push(...result.lines);
+            if (result.damage > 0) lines.push(...damagePartyMember(member, result.damage, false));
+            if (result.condition) applyTimedCondition(member, String(member.id), result.condition, result.conditionRounds);
+        }
+        /** @type {any} */ (combatEncounter).zoneHits = { turn, keys: already };
+        // Lo mismo que no deja andar fuera de combate (`walk.js`): atrapado, se queda ahí.
+        if (hits.length > 0 && !canWalk(member).allowed) return { stopAt: index, lines };
+    }
+    return { stopAt: steps.length - 1, lines };
 }
 
 /**
@@ -305,21 +454,24 @@ export function toggleBoardDoor(board, gx, gy, open, gridW, gridH) {
         return;
     }
 
-    const rooms = normalizeRooms(board.rooms).length > 0
+    // J12.11: las salas llevan el nombre de su zona (B1, «La capilla»), también las de un
+    // tablero guardado antes de tener zonas.
+    const rooms = nameRoomsFromZones(normalizeRooms(board.rooms).length > 0
         ? board.rooms
         : deriveRooms(normalizeTerrain(board.terrain), gridW, gridH, {
             revealFrom: partyMembers.map(m => ({
                 x: Number(m.mapPosition?.gridX) || 0,
                 y: Number(m.mapPosition?.gridY) || 0,
             })),
-        });
+        }), board.zones);
 
     const result = openDoor(normalizeTerrain(board.terrain), rooms, gx, gy);
     board.terrain = result.terrain;
     board.rooms = result.rooms;
     persistBoardTerrain(board);
     soundCue('door');
-    postCombatNarration(`[BOARD] La puerta de (${gx + 1}, ${gy + 1}) queda abierta.`);
+    const beyond = result.revealedRoom?.name ?? '';
+    postCombatNarration(`[BOARD] La puerta de (${gx + 1}, ${gy + 1}) queda abierta${beyond ? `: da a ${beyond}` : ''}.`);
 
     if (result.revealedRoom) {
         wakeRoomEnemies(board, result.revealedRoom);
@@ -384,8 +536,43 @@ export function buildBoardIdleEnemyTokens(waiting) {
             maxHp: Number(template?.maxHp) || undefined,
             isEnemy: true,
             idle: true,
+            // Su dibujo en pixel, también por su arquetipo del bestiario.
+            archetype: archetypeOf(template),
         };
     });
+}
+
+/**
+ * El arquetipo del bestiario de una plantilla de enemigo (`bestia-lobo`), si lo dice: para
+ * su dibujo en pixel cuando su nombre no lo encuentra.
+ *
+ * @param {any} template
+ * @returns {string}
+ */
+export function archetypeOf(template) {
+    return String(template?.archetype ?? template?.from?.arquetipo ?? '').trim();
+}
+
+/**
+ * J19.5: las invocaciones, como fichas del lado del grupo. Llevan ids de ficha propios (de
+ * -3000 hacia abajo) para no pisar a los enemigos ni a la gente del tablero.
+ *
+ * @returns {import('../world-map-renderer.js').TokenData[]}
+ */
+export function buildSummonTokens() {
+    return activeSummons()
+        .filter(summon => (Number(summon?.hp) || 0) > 0)
+        .map((summon, index) => ({
+            id: -(3000 + index),
+            name: String(summon.name),
+            avatar: '',
+            gridX: Number(summon.x) || 0,
+            gridY: Number(summon.y) || 0,
+            hp: Number(summon.hp) || 0,
+            maxHp: Number(summon.maxHp) || Number(summon.hp) || 0,
+            isSummon: true,
+            summoner: partyMembers.find(m => String(m.id) === String(summon.casterId))?.name ?? '',
+        }));
 }
 
 /**
@@ -448,6 +635,7 @@ export function buildEnemyTokens() {
     if (!combatEncounter.active) return [];
     /** @type {import('../world-map-renderer.js').TokenData[]} */
     const result = [];
+    const templates = getCurrentWorldEnemies();
     combatEncounter.enemies.forEach((e, idx) => {
         result.push({
             id: -(idx + 1),
@@ -462,6 +650,8 @@ export function buildEnemyTokens() {
             role: roleOf(e),
             statuses: statusMarkers(e.activeConditions),
             sizeCells: sizeToCells(e.size),
+            // Su dibujo en pixel: por su nombre o por el arquetipo de su plantilla.
+            archetype: archetypeOf(/** @type {any} */ (e).archetype ? e : templates.find(t => String(t.id) === String(e.templateId))),
         });
     });
     return result;
@@ -530,6 +720,9 @@ export function buildTokens(locationFilter) {
             gridY: pos.gridY || 0,
             level: m.level,
             className: m.class,
+            // Para su retrato de relleno cuando no trae cara: el de su especie, clase y género.
+            gender: String(m.gender ?? ''),
+            race: String(m.race ?? ''),
             weapon: String(heldWeapon(m)?.name ?? ''),
             hp: m.hp,
             maxHp: m.maxHp,
@@ -577,10 +770,13 @@ export function handleTokenMove(tokenId, gridX, gridY, locationName) {
     }
 
     member.mapPosition = member.mapPosition || { locationName: '', gridX: 0, gridY: 0 };
+    const from = { x: Number(member.mapPosition.gridX) || 0, y: Number(member.mapPosition.gridY) || 0 };
     member.mapPosition.gridX = gridX;
     member.mapPosition.gridY = gridY;
     if (locationName) member.mapPosition.locationName = locationName;
     savePartyState();
+    // J12.11: si ha entrado en una sala con nombre, lo que se ve en ella.
+    if (currentBoardName) noteZoneEntry(member, from, { x: gridX, y: gridY });
 }
 
 /**
@@ -787,4 +983,7 @@ export function placePartyAtStart(board) {
         member.mapPosition = { locationName: currentLocationName, gridX: Number(cell?.x) || 0, gridY: Number(cell?.y) || 0 };
     });
     savePartyState();
+    // J12.11: si se empieza dentro de una sala con nombre, su nota, como al entrar andando.
+    const leader = partyMembers.find(m => !m.dead);
+    if (leader && board?.name === currentBoardName) noteZoneEntry(leader, null, { x: Number(leader.mapPosition?.gridX) || 0, y: Number(leader.mapPosition?.gridY) || 0 });
 }

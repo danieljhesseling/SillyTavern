@@ -246,6 +246,27 @@ export function spellToAbility(spell, { slotLevel = spell.level, casterLevel = 1
 }
 
 /**
+ * La armadura que da un conjuro (Armadura de mago, Escudo de fe, Piel de corteza) sobre la
+ * que ya se tiene. En la ficha va como `spellAc`: la columna `ac` del conjuro, con quién lo
+ * lanzó, para quitarla cuando se acabe su concentración.
+ *
+ * @param {number} ac La que tiene sin el conjuro.
+ * @param {any} creature Con su Destreza y, si lo lleva, su `spellAc`.
+ * @returns {number}
+ */
+export function armorWithSpell(ac, creature) {
+    const spellAc = creature?.spellAc;
+    const now = Number(ac) || 10;
+    if (!spellAc || typeof spellAc !== 'object') return now;
+    const dex = Math.floor(((Number(creature?.dexterity) || 10) - 10) / 2);
+    let out = now;
+    if (Number(spellAc.base) > 0) out = Math.max(out, Number(spellAc.base) + (spellAc.addDex ? dex : 0));
+    if (Number(spellAc.min) > 0) out = Math.max(out, Number(spellAc.min));
+    if (Number(spellAc.bonus) > 0) out += Number(spellAc.bonus);
+    return out;
+}
+
+/**
  * Si alguien lleva un foco que le sirve, o la bolsa de componentes.
  *
  * @param {any[]} carried Nombres u objetos (con `name` y, si es un objeto del juego, `focusType`).

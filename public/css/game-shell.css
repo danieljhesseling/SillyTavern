@@ -1667,6 +1667,13 @@ body.game-shell-on #character_popup {
     color: var(--gs-accent-gold);
 }
 
+/* D-J29: el cartel de «Cerrado», a la derecha del nombre. */
+.gs-service-closed-sign {
+    margin-left: auto;
+    font-size: 0.85em;
+    color: var(--gs-accent-gold);
+}
+
 /* El sitio en pixel (320×180) detrás del nombre del servicio, apagado abajo para leerlo. */
 .gs-service-head.gs-service-drawn {
     min-height: 84px;
@@ -3778,7 +3785,82 @@ body[data-narrator-font="maquina"] #chat .mes:not([is_user="true"]) .mes_text {
 }
 
 /* D-J24: en pausa vuelve la barra de SillyTavern, y con ella su cajón de la derecha (Party,
-   World Map, Location, Campaña), vacío: su tablero está en la escena del juego. */
-body.game-shell-on #right-nav-panel {
+   World Map, Location, Campaña), vacío: su tablero está en la escena del juego. Sin conexión no
+   se abre; con conexión sigue donde siempre, que es donde vive la pestaña de Campaña. */
+body.game-shell-on:has(> #game-shell.gs-offline) #right-nav-panel {
     display: none !important;
+}
+
+/* ================================================================
+   D-J38 · La cabecera en el móvil. De pie ocupaba dos filas altas y la segunda no cabía: el
+   reloj entero («Día 1 · Mañana · Otoño · quedan 56 días») se comía el ancho y los botones
+   salían cortados por la derecha. Ahora:
+   - arriba, lo que tienes entre manos, el día (sin la estación) y la pausa;
+   - abajo, los botones (Diario, Mesa, Mapa, Grupo, avisos, dados, ¿Qué hago?) solo con su
+     icono, repartidos a lo ancho: caben los siete sin deslizar.
+   Tumbado sigue en una fila, con los botones también en icono.
+   ================================================================ */
+@media (max-width: 480px), (orientation: landscape) and (max-height: 500px) and (max-width: 1000px) {
+    .gs-clock-season {
+        display: none;
+    }
+
+    #game-shell .gs-guide-btn > span:not(.gs-tray-count) {
+        display: none;
+    }
+
+    #game-shell .gs-guide-btn {
+        justify-content: center;
+        padding: 0 10px;
+    }
+}
+
+/* De pie y sin conexión (sin pestañas en la primera fila, hay sitio para el día). Con conexión,
+   las pestañas llenan la primera fila y el reloj sigue en la segunda, que se desliza. */
+@media (max-width: 480px) {
+    .gs-root.gs-offline .gs-head {
+        flex-wrap: wrap;
+        row-gap: 4px;
+    }
+
+    /* La barra deja de ser una caja: el reloj sube a la primera fila y los botones bajan a la
+       segunda, entera. */
+    .gs-root.gs-offline .gs-head-bar {
+        display: contents;
+    }
+
+    .gs-root.gs-offline .gs-head .gs-clock {
+        order: 1;
+        flex: 0 0 auto;
+    }
+
+    .gs-root.gs-offline .gs-head .gs-clock-label {
+        margin: 0;
+        font-size: 0.8em;
+        opacity: 0.75;
+    }
+
+    .gs-root.gs-offline .gs-head > .gs-pause-open {
+        order: 3;
+        margin-left: 0;
+    }
+
+    .gs-root.gs-offline .gs-head .gs-tools {
+        order: 5;
+        flex: 1 1 100%;
+        min-width: 0;
+        margin-left: 0;
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+
+    .gs-root.gs-offline .gs-head .gs-tools::-webkit-scrollbar {
+        display: none;
+    }
+
+    .gs-root.gs-offline .gs-head .gs-guide {
+        flex: 1 1 auto;
+        justify-content: space-between;
+        gap: 4px;
+    }
 }

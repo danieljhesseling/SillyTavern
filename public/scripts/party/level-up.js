@@ -19,7 +19,12 @@ import {
     planLevelUp, buildLevelUpPatch, describeLevelUp, validateAbilityPicks, ABILITIES, levelForXp,
 } from '../game-engine/rules/level-up.js';
 import { isShellOpen, refreshGameShell } from '../game-engine/ui/shell/game-shell.js';
+import { firstArt, loadPixelManifest } from '../game-engine/ui/pixel-art.js';
+import { buildSpellPicker, buildSpellSwap } from '../game-engine/ui/spell-picker.js';
+import { choicesBetween, applySpellPicks } from '../game-engine/rules/spell-picks.js';
+import { casterOf } from '../game-engine/rules/spell-slots.js';
 import { partyMembers } from './state.js';
+import { classRowOf, spellRows, spellFor, ensureSpellsOf } from './magic.js';
 import { renderLocationMapsPreview } from './board-view.js';
 import { campaign } from './time.js';
 import { postCombatNarration } from './narration.js';
@@ -81,6 +86,119 @@ export function canLevelUp(member) {
     return levelForXp(member?.xp, getXpTable()) > Math.max(1, Math.floor(Number(member?.level) || 1));
 }
 
+/** El icono de cada mejora, por lo que mejora: se reconoce antes que la frase. */
+const PERK_ICONS = {
+    maxHp: 'fa-heart', initiative: 'fa-bolt', speed: 'fa-shoe-prints', attack: 'fa-crosshairs', armorClass: 'fa-shield-halved',
+    perception: 'fa-eye', persuasion: 'fa-comments', stealth: 'fa-user-ninja', intimidation: 'fa-face-angry',
+    insight: 'fa-magnifying-glass', athletics: 'fa-dumbbell', sleight: 'fa-hand-sparkles',
+};
+
+/**
+ * El icono de una mejora de `level-perks.js`.
+ *
+ * @param {{effect?: Record<string, any>}} perk
+ * @returns {string}
+ */
+function perkIcon(perk) {
+    const effect = perk?.effect ?? {};
+    const key = effect.skill ? String(effect.skill) : Object.keys(effect)[0] ?? '';
+    return /** @type {Record<string, string>} */ (PERK_ICONS)[key] ?? 'fa-star';
+}
+
+/**
+ * J19.2: los conjuros que se eligen al pasar de un nivel a otro, en una sección de tarjeta:
+ * las frases de lo que trae, los trucos y conjuros nuevos (con su dibujo) y el cambio. Vacía
+ * (`empty`) si su clase no hace magia de 5e o no trae nada que elegir.
+ *
+ * @param {Object} input
+ * @param {any} input.member
+ * @param {any} input.classRow
+ * @param {number} input.from
+ * @param {number} input.to
+ * @param {() => void} input.onChange
+ * @returns {{root: JQuery, empty: boolean, ready: () => boolean, pick: () => ReturnType<typeof applySpellPicks>}}
+ */
+function spellChoiceSection({ member, classRow, from, to, onChange }) {
+    const catalogue = spellRows();
+    const card = choicesBetween({ classRow, from, to, catalogue, member });
+    const root = $('<div class="lu-spells"></div>');
+    const empty = !casterOf(classRow) || (card.lines.length === 0 && card.newCantrips === 0 && card.newSpells === 0 && !card.canSwap);
+    const none = { root, empty: true, ready: () => true, pick: () => applySpellPicks({ member, classRow, catalogue, card }) };
+    if (empty) return none;
+    root.append($('<div class="lu-subtitle"></div>').text('Conjuros'));
+    for (const line of card.lines) root.append($('<div class="lu-spell-line"></div>').text(line));
+    const cantrips = card.newCantrips > 0
+        ? buildSpellPicker({ name: 'trucos', title: 'Trucos nuevos', options: card.cantripOptions, count: card.newCantrips, onChange })
+        : null;
+    const spells = card.newSpells > 0
+        ? buildSpellPicker({
+            name: 'conjuros',
+            title: card.mode === 'spellbook' ? 'Al libro' : 'Conjuros nuevos',
+            options: card.spellOptions,
+            count: card.newSpells,
+            hint: card.mode === 'spellbook' ? 'Lo que copies entra en tu libro; cada mañana preparas de ahí.' : '',
+            onChange,
+        })
+        : null;
+    const swap = card.canSwap && card.swapOut.length > 0 ? buildSpellSwap({ known: card.swapOut, options: card.spellOptions, onChange }) : null;
+    if (cantrips) root.append(cantrips.root);
+    if (spells) root.append(spells.root);
+    if (swap) root.append(swap.root);
+    return {
+        root,
+        empty: false,
+        ready: () => (!cantrips || cantrips.full()) && (!spells || spells.full()),
+        pick: () => applySpellPicks({
+            member, classRow, catalogue, card,
+            cantrips: cantrips?.value() ?? [], spells: spells?.value() ?? [], swap: swap?.value() ?? null,
+        }),
+    };
+}
+
+/**
+ * J19.2: elegir conjuros sin subir de nivel (los de empezar, que el juego eligió por ti), con
+ * la misma sección que la tarjeta de nivel.
+ *
+ * @param {Object} input
+ * @param {any} input.member Con lo que ya sabe (vacío, para elegir desde cero).
+ * @param {any} input.classRow
+ * @param {number} input.from
+ * @param {number} input.to
+ * @param {string} input.title
+ * @returns {Promise<Record<string, string[]>|null>} El parche, o null si se deja.
+ */
+export async function openSpellChoiceCard({ member, classRow, from, to, title }) {
+    await loadPixelManifest();
+    const root = $('<div class="lu-card lu-spell-card"></div>');
+    const art = firstArt('class', { name: String(member.class ?? '') });
+    const head = $('<div class="lu-title"></div>');
+    if (art) head.append($('<img alt="" class="lu-class-art pixel-art">').attr('src', art));
+    head.append($('<span></span>').text(title));
+    root.append(head);
+    const confirm = $('<button class="menu_button lu-btn lu-confirm" type="button"></button>').text('Quedarme con estos');
+    const section = spellChoiceSection({ member, classRow, from, to, onChange: () => confirm.prop('disabled', !section.ready()) });
+    if (section.empty) {
+        toastr.info('No hay nada que elegir.', String(member.name ?? ''));
+        return null;
+    }
+    root.append(section.root, $('<div class="lu-actions"></div>').append(confirm));
+    confirm.prop('disabled', !section.ready());
+    /** @type {Record<string, string[]>|null} */
+    let patch = null;
+    const popup = new Popup(root, POPUP_TYPE.TEXT, null, { okButton: 'Ahora no', wide: true, allowVerticalScrolling: true });
+    confirm.on('click', () => {
+        const picked = section.pick();
+        if (!picked.ok) {
+            toastr.warning(picked.errors.join(' '), 'Conjuros');
+            return;
+        }
+        patch = picked.patch;
+        void popup.complete(POPUP_RESULT.AFFIRMATIVE);
+    });
+    await popup.show();
+    return patch;
+}
+
 /** Como se llaman las seis en la ficha. */
 const ABILITY_LABELS = {
     strength: 'Fuerza',
@@ -117,8 +235,14 @@ export async function openLevelUpCard(member) {
         return;
     }
 
+    await loadPixelManifest();
     const root = $('<div class="lu-card"></div>');
-    root.append($('<div class="lu-title"></div>').text(`${member.name}: nivel ${plan.from} → ${plan.to}`));
+    // El icono de su clase, que dice de un vistazo quién sube.
+    const classArt = firstArt('class', { name: String(member.class ?? '') });
+    const title = $('<div class="lu-title"></div>');
+    if (classArt) title.append($('<img alt="" class="lu-class-art pixel-art">').attr('src', classArt));
+    title.append($('<span></span>').text(`${member.name}: nivel ${plan.from} → ${plan.to}`));
+    root.append(title);
     root.append($('<div class="lu-gains"></div>').text(
         `+${plan.hpGained} PG · +${plan.hitDiceGained} dado(s) de golpe`));
 
@@ -176,6 +300,7 @@ export async function openLevelUpCard(member) {
         const perksBox = $('<div class="lu-perks"></div>');
         for (const perk of offered) {
             const button = $('<button type="button" class="menu_button lu-perk"></button>').attr('data-perk', perk.id);
+            button.append($('<i class="fa-solid lu-perk-icon"></i>').addClass(perkIcon(perk)));
             button.append($('<span class="lu-perk-name"></span>').text(perk.label));
             button.append($('<span class="lu-perk-desc"></span>').text(perk.describe));
             button.on('click', () => {
@@ -189,6 +314,12 @@ export async function openLevelUpCard(member) {
         root.append(perksBox);
     }
 
+    // J19.2: quien lanza con espacios elige aquí sus trucos y conjuros nuevos.
+    const classRow = classRowOf(member);
+    if (ensureSpellsOf(member)) savePartyState();
+    const spellSection = spellChoiceSection({ member, classRow, from: plan.from, to: plan.to, onChange: () => refresh() });
+    if (!spellSection.empty) root.append(spellSection.root);
+
     const actions = $('<div class="lu-actions"></div>');
     const confirm = $('<button class="menu_button lu-btn lu-confirm" type="button"></button>').text('Subir de nivel');
 
@@ -196,7 +327,9 @@ export async function openLevelUpCard(member) {
         const picked = validateAbilityPicks(picks, plan, member);
         const verdict = picked.ok && offered.length > 0 && !chosenPerk
             ? { ok: false, error: 'Falta elegir una mejora.' }
-            : picked;
+            : picked.ok && !spellSection.ready()
+                ? { ok: false, error: 'Faltan conjuros por elegir.' }
+                : picked;
         confirm.prop('disabled', !verdict.ok);
         confirm.attr('title', verdict.ok ? 'Escribe el nivel en la ficha' : verdict.error);
         const spent = Object.values(picks).reduce((total, value) => total + value, 0);
@@ -211,18 +344,31 @@ export async function openLevelUpCard(member) {
     // Un popup y no una capa propia: esto se abre desde dentro de la ficha del personaje,
     // que es un `<dialog>` nativo, y un `<dialog>` pinta por encima de cualquier z-index.
     // La tarjeta quedaba detras de la ficha y no se podia pulsar — lo cazó el recorrido.
-    const popup = new Popup(root, POPUP_TYPE.TEXT, null, { okButton: 'Ahora no' });
+    const popup = new Popup(root, POPUP_TYPE.TEXT, null, { okButton: 'Ahora no', wide: !spellSection.empty, allowVerticalScrolling: true });
 
     confirm.on('click', () => {
         if (!validateAbilityPicks(picks, plan, member).ok) return;
         if (offered.length > 0 && !chosenPerk) return;
+        // J19.2: los conjuros, comprobados antes de tocar la ficha.
+        const spellPick = spellSection.empty ? null : spellSection.pick();
+        if (spellPick && !spellPick.ok) {
+            toastr.warning(spellPick.errors.join(' '), 'Conjuros');
+            return;
+        }
         Object.assign(member, buildLevelUpPatch(member, plan, picks));
         // Idea 46: lo elegido, que se nota jugando.
         const perkPatch = chosenPerk ? takePerk(member, chosenPerk) : null;
         if (perkPatch) Object.assign(member, perkPatch);
-        // R4: quien hace magia aprende los conjuros de su clase del círculo que se le abre.
+        if (spellPick) {
+            Object.assign(member, spellPick.patch);
+            if (spellPick.learned.length > 0) {
+                postCombatNarration(`📖 [NIVEL] ${member.name} aprende: ${spellPick.learned.map(id => spellFor(id)?.name ?? id).join(', ')}.`);
+            }
+        }
+        // R4: quien hace magia con la capa ligera aprende los conjuros de su clase del círculo
+        // que se le abre. Quien lanza con espacios ya los ha elegido arriba.
         const before = new Set((Array.isArray(member.abilities) ? member.abilities : []).map(String));
-        const learned = spellsForClass({ className: String(member.class ?? ''), level: Number(member.level) || 1 }).filter(id => !before.has(id));
+        const learned = casterOf(classRow) ? [] : spellsForClass({ className: String(member.class ?? ''), level: Number(member.level) || 1 }).filter(id => !before.has(id));
         if (learned.length > 0) {
             member.abilities = [...before, ...learned];
             postCombatNarration(`📖 [NIVEL] ${member.name} aprende: ${learned.map(id => spellById(id)?.name ?? id).join(', ')}.`);

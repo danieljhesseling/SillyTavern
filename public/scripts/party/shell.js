@@ -36,7 +36,7 @@ import { daysUntil } from '../game-engine/world/festivals.js';
 import { MOMENT_TIPS } from '../game-engine/ui/shell/tips.js';
 import { LENGTHS, nextLength } from '../game-engine/campaign/narration.js';
 import { forageCheck } from '../game-engine/campaign/forage.js';
-import { knownAbilities, usesLeft, canUseAbility, describeAbility } from '../game-engine/rules/abilities.js';
+import { usesLeft, canUseAbility, describeAbility } from '../game-engine/rules/abilities.js';
 import { isShellOpen, toggleGameShell, refreshGameShell, closeGameShell } from '../game-engine/ui/shell/game-shell.js';
 import { buildDialogueView } from '../game-engine/ui/shell/dialogue-scene.js';
 import { buildExplorationView } from '../game-engine/ui/shell/exploration-scene.js';
@@ -54,7 +54,7 @@ import {
 } from './state.js';
 import { getXpTable } from './level-up.js';
 import { currentPet, openPetPanel } from './pet.js';
-import { carriedNames, getAbilityCatalogue, useAbility, useMagicItem } from './magic.js';
+import { carriedNames, getAbilityCatalogue, knownAbilitiesOf, useAbility, useMagicItem } from './magic.js';
 import { hubChips } from './hub.js';
 import {
     getAliveEnemies, getAttackableEnemiesForMember, getCurrentActingMember, getCurrentTurnEntry,
@@ -81,8 +81,8 @@ import {
 } from './world.js';
 import { friendlyFactions } from './factions.js';
 import {
-    advanceCampaignDay, advanceCampaignSlot, campaignDay, getCampaignBonds, getCampaignCalendar, getCampaignMap,
-    getCurrentSlotLabel, openWeekTable, takeRest,
+    advanceCampaignDay, campaignDay, getCampaignBonds, getCampaignCalendar, getCampaignMap,
+    getCurrentSlotLabel, openWeekTable, spendDayPart, takeRest,
 } from './time.js';
 import { getPlot, openMilestones } from './plot.js';
 import { refreshWorldMemoryPrompt } from './world-growth.js';
@@ -105,6 +105,7 @@ import {
     exportCampaignPack, openHallOfFame, checkCurrentWorld, openCompendiumLibrary, openRules,
 } from './menus.js';
 import { lastMeter } from './events.js';
+import { dayStripNow, peopleChips, townNow } from './social.js';
 
 /** Los avisos del juego, guardados para la bandeja (idea 159). */
 /** @type {import('../game-engine/ui/shell/notices.js').Notice[]} */
@@ -312,6 +313,11 @@ export function buildShellChips(limit = undefined) {
         requests: readRequests(chat_metadata?.[CHECK_REQUESTS_KEY], SKILLS).map(r => ({
             skill: r.skill, label: SKILLS[/** @type {keyof typeof SKILLS} */ (r.skill)].label, reason: r.reason, dc: r.dc,
         })),
+        // J2.1: el tablero abierto, para que el que pide la historia salga también desde otro
+        // de aquí (del muelle a la bodega, sin salir antes).
+        board: currentBoardName || '',
+        // J14: la charla que espera, quedar con alguien y charlar con quien está aquí.
+        social: peopleChips(),
     });
 }
 
@@ -489,7 +495,12 @@ function buildShellOptions() {
             party: partyMembers,
             // Idea 74: la estación, y lo que le queda.
             season: chat_metadata?.[METADATA_KEY] ? describeSeason(Math.max(1, campaignDay()), lastWorldSeason || undefined) : '',
+            // J14.2: las partes del día, con lo que se hizo en cada una.
+            strip: chat_metadata?.[METADATA_KEY] ? dayStripNow() : [],
         }),
+        // J3.11: la localización de aquí y su gente, sin leer el mundo cada 15 s; y J14.4, quién
+        // de tu gente está en cada sitio.
+        getTown: () => townNow(),
         getChips: buildShellChips,
         onChip: runShellChip,
         getChecks: () => (combatEncounter.active || !partyMembers[0]
@@ -512,7 +523,8 @@ function buildShellOptions() {
         onService: (actionId) => { void runService(actionId); },
         onCompanion: (memberId) => openCompanionCard(memberId),
         onClock: (action) => {
-            if (action === 'slot') advanceCampaignSlot();
+            // J14.2: pasar el rato también se apunta en la cabecera.
+            if (action === 'slot') spendDayPart('rato', { label: 'Pasar el rato' });
             else if (action === 'day') advanceCampaignDay();
             else void takeRest(action === 'short' ? 'corto' : 'largo');
         },
@@ -676,7 +688,8 @@ function buildShellOptions() {
         getAbilities: () => {
             const member = getCurrentActingMember();
             if (!member || !combatEncounter.active) return [];
-            return knownAbilities(member, getAbilityCatalogue())
+            // J19: con sus conjuros de 5e, si lanza con espacios.
+            return knownAbilitiesOf(member)
                 .filter(ability => ability.target !== 'enemy' && ability.combat !== false)
                 .map(ability => {
                     const verdict = canUseAbility({

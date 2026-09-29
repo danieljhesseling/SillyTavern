@@ -5,6 +5,8 @@
 
 import { parseCellKey, describeCell } from './game-engine/board/terrain.js';
 import { getCellVisibility } from './game-engine/board/fog-of-war.js';
+import { cliffEdges, elevationAt } from './game-engine/board/heights.js';
+import { zoneAt } from './game-engine/board/zones.js';
 import { boardBiome, firstArt, isPlainFace, loadPixelManifest, openPack, pixelManifest, terrainTile } from './game-engine/ui/pixel-art.js';
 
 /** Si cada casilla en pixel carga: la que no, se pinta con los colores de antes. */
@@ -38,12 +40,16 @@ function usableTile(url, onBroken) {
  * nombre o por su arquetipo); alguien del paquete, su retrato; uno del grupo, el suyo si es
  * un mercenario o el de relleno de su clase. Se recorta en redondo como cualquier cara.
  *
- * @param {TokenData} token
+ * También la usan la fila de iniciativa y las tarjetas de enemigo (`party/board-view.js`), para
+ * que un bicho se vea igual en el tablero y en su tarjeta.
+ *
+ * @param {Partial<TokenData>} token
  * @returns {string} Vacío si trae cara propia o no hay dibujo.
  */
-function tokenArt(token) {
+export function tokenArt(token) {
     if (!isPlainFace(token.avatar)) return '';
-    if (token.isEnemy) return firstArt('creature', { name: token.name, archetype: token.archetype });
+    // J19.5: una invocación es un bicho, del lado del grupo.
+    if (token.isEnemy || token.isSummon) return firstArt('creature', { name: token.name, archetype: token.archetype });
     if (token.isNPC) return firstArt('portrait', { name: token.name, pack: openPack() });
     return firstArt('mercenary', { name: token.name })
         || firstArt('hero', { className: token.className, gender: token.gender, name: token.name, race: token.race });
@@ -52,6 +58,9 @@ function tokenArt(token) {
 // ============================================================
 //  ZOOMABLE CONTAINER ENGINE
 // ============================================================
+
+/** Cuenta los mapas creados, para darle a cada uno su espacio de nombres en el documento. */
+let zoomSequence = 0;
 
 /**
  * @typedef {Object} ZoomableState
@@ -171,7 +180,11 @@ export function createZoomableContainer(options = {}) {
         content.addClass('grabbing');
     });
 
-    $(document).on('mousemove.wmZoom', function (e) {
+    // Con su propio espacio de nombres, y fuera al quitar el mapa: antes cada tablero dibujado
+    // dejaba dos oyentes más en el documento para siempre, y el tablero se redibuja en cada
+    // paso de un combate (J20.6: que no caliente el teléfono).
+    const zoomNs = `wmZoom_${++zoomSequence}`;
+    $(document).on(`mousemove.${zoomNs}`, function (e) {
         if (!state.isDragging) return;
         state.offsetX += e.pageX - state.lastX;
         state.offsetY += e.pageY - state.lastY;
@@ -180,11 +193,12 @@ export function createZoomableContainer(options = {}) {
         applyTransform();
     });
 
-    $(document).on('mouseup.wmZoom', function () {
+    $(document).on(`mouseup.${zoomNs}`, function () {
         if (!state.isDragging) return;
         state.isDragging = false;
         content.removeClass('grabbing');
     });
+    container.on('remove', () => $(document).off(`.${zoomNs}`));
 
     // Double-click reset
     container.on('dblclick', function (e) {
@@ -512,6 +526,8 @@ export function renderWorldMapView(target, worldMapUrl, locationMaps, callbacks 
  * @property {string} [archetype] - El arquetipo del bestiario (`bestia-lobo`), para su dibujo en pixel.
  * @property {string} [gender] - Cómo se presenta, para el retrato de relleno de quien no tiene cara.
  * @property {string} [race] - Su especie, para lo mismo.
+ * @property {boolean} [isSummon] - J19.5: una invocación, del lado del grupo.
+ * @property {string} [summoner] - Quién la invocó, para su ayuda.
  */
 
 /**
@@ -565,6 +581,13 @@ const focusMemory = new Map();
  *   en el tablero: una trampa descubierta, el aceite que arde (idea 122). Se dibuja, y la casilla lo dice.
  * @param {string} [options.biome] - El bioma de las casillas en pixel (`mazmorra`, `madera`, `exterior`, `cueva`).
  *   Sin decirlo, se lee en el nombre del tablero (`boardBiome`).
+ * @param {string} [options.locationType] - El tipo de su localización (`cave`, `wilderness`…), para el bioma
+ *   cuando el nombre no lo dice.
+ * @param {Record<string, number>|null} [options.elevation] - J12.10: las cotas del tablero; los acantilados se dibujan.
+ * @param {Array<{name: string, cells?: string[], rect?: any, note?: string}>} [options.zones] - J12.11: las salas con
+ *   nombre, para decir en cuál está una casilla.
+ * @param {Array<{x: number, y: number, zoneId: string, kind: string, icon: string, label: string, tell: string}>} [options.spellZones] -
+ *   J19.6: las zonas de conjuro, como las da `zoneOverlay`.
  */
 export function renderLocationView(target, options) {
     const {
@@ -596,6 +619,10 @@ export function renderLocationView(target, options) {
         focusTokenId = null,
         focusKey = '',
         biome = '',
+        locationType = '',
+        elevation = null,
+        zones = [],
+        spellZones = [],
     } = options;
 
     target.empty();
@@ -638,6 +665,17 @@ export function renderLocationView(target, options) {
     let imgH = 0;
     /** Si alguien ha movido la vista a mano: mientras no, el tablero se encuadra solo. */
     let userMoved = false;
+    /**
+     * J20.2: con qué se pulsó lo último (`mouse`, `touch`, `pen`). A toques no hay «pasar por
+     * encima», así que lo que el ratón enseña al pasar, el dedo lo enseña con el primer toque.
+     */
+    let lastPointer = '';
+    /** J20.2: la casilla encendida que ya enseña su ruta; un segundo toque en ella mueve. */
+    let armedCell = '';
+    /** J20.2: cuándo acabó el último arrastre con el dedo: el toque que lo cierra no es un clic. */
+    let panEndedAt = 0;
+    const touchy = () => lastPointer === 'touch' || lastPointer === 'pen';
+    const justPanned = () => Date.now() - panEndedAt < 400;
     const derivedViewStateKey = String(viewStateKey || `${name}::${imageUrl}::${gridWidth}x${gridHeight}`);
 
     function persistViewState() {
@@ -670,19 +708,46 @@ export function renderLocationView(target, options) {
 
     // Idea 164: lo que es la casilla bajo el raton, dicho en una esquina del tablero. Solo
     // en tableros con terreno: en un mapa de localidad no hay casillas que explicar.
+    /** La casilla bajo un punto de la pantalla, o nada si cae fuera del tablero. */
+    const cellUnder = (/** @type {number} */ clientX, /** @type {number} */ clientY) => {
+        const box = content[0].getBoundingClientRect();
+        if (!imgW || !box.width) return null;
+        const gx = Math.floor(((clientX - box.left) / box.width) * gridWidth);
+        const gy = Math.floor(((clientY - box.top) / box.height) * gridHeight);
+        return gx < 0 || gy < 0 || gx >= gridWidth || gy >= gridHeight ? null : { gx, gy };
+    };
+    /** @type {JQuery|null} */
+    let cellInfo = null;
+    /**
+     * Lo que se sabe de una casilla: su terreno, la sala en la que cae (J12.11), su altura
+     * (J12.10), lo que se ha visto en ella y las zonas de conjuro que la cubren (J19.6).
+     *
+     * @param {number} gx
+     * @param {number} gy
+     * @returns {string}
+     */
+    const describeAt = (gx, gy) => {
+        const parts = [describeCell(terrain, gx, gy)];
+        const room = Array.isArray(zones) && zones.length > 0 ? zoneAt(zones, gx, gy) : null;
+        if (room?.name) parts.push(room.name);
+        const feet = elevation ? elevationAt(elevation, gx, gy) : 0;
+        if (feet) parts.push(`${feet > 0 ? '+' : ''}${feet} pies de alto`);
+        const there = [
+            ...(hazards || []).filter(h => h.x === gx && h.y === gy).map(h => h.name),
+            ...[...new Set((spellZones || []).filter(z => z.x === gx && z.y === gy).map(z => `${z.label}: ${z.tell}`))],
+        ];
+        return [...parts, ...there].join(' · ');
+    };
     if (terrain) {
-        const cellInfo = $('<div class="wm-cell-info"></div>').hide();
+        cellInfo = $('<div class="wm-cell-info"></div>').hide();
         container.append(cellInfo);
+        const info = cellInfo;
         content.on('mousemove', (event) => {
-            const box = content[0].getBoundingClientRect();
-            if (!imgW || !box.width) return;
-            const gx = Math.floor(((event.clientX - box.left) / box.width) * gridWidth);
-            const gy = Math.floor(((event.clientY - box.top) / box.height) * gridHeight);
-            if (gx < 0 || gy < 0 || gx >= gridWidth || gy >= gridHeight) return cellInfo.hide();
-            const there = (hazards || []).filter(h => h.x === gx && h.y === gy).map(h => h.name);
-            cellInfo.text(`${describeCell(terrain, gx, gy)}${there.length > 0 ? ` · ${there.join(', ')}` : ''}`).show();
+            const at = cellUnder(event.clientX, event.clientY);
+            if (!at) return info.hide();
+            info.text(describeAt(at.gx, at.gy)).show();
         });
-        content.on('mouseleave', () => cellInfo.hide());
+        content.on('mouseleave', () => info.hide());
     }
 
     // Grid overlay (drawn via CSS background-image)
@@ -719,7 +784,7 @@ export function renderLocationView(target, options) {
         // casilla con su dibujo. Solo sin imagen: un mapa dibujado ya trae suelo y muros. La
         // que no carga se pinta con los colores de antes.
         const tiled = !hasImage && Boolean(pixelManifest());
-        const kind = boardBiome({ biome, name });
+        const kind = boardBiome({ biome, name, type: locationType });
         const redraw = () => { if (container.closest('body').length > 0) renderTerrain(); };
         const tile = (/** @type {string} */ id) => (tiled && id ? usableTile(firstArt('tile', { id }), redraw) : '');
         const floor = tile(`suelo-${kind}`);
@@ -784,6 +849,49 @@ export function renderLocationView(target, options) {
                     width: cellW + 'px',
                     height: cellH + 'px',
                 }));
+        }
+
+        // J19.6: las zonas de conjuro, junto a lo demás que se ve en el suelo: cada casilla con
+        // el color de su tipo, y el icono una vez por zona. Lo que hacen lo dice la casilla.
+        const iconed = new Set();
+        for (const cell of spellZones || []) {
+            if (!(cell.x >= 0 && cell.y >= 0 && cell.x < gridWidth && cell.y < gridHeight)) continue;
+            const el = $('<div class="wm-spell-zone"></div>')
+                .attr('data-kind', cell.kind)
+                .attr('data-zone', cell.zoneId)
+                .attr('title', `${cell.label}: ${cell.tell}`)
+                .css({ left: cell.x * cellW + 'px', top: cell.y * cellH + 'px', width: cellW + 'px', height: cellH + 'px' });
+            if (!iconed.has(cell.zoneId)) {
+                iconed.add(cell.zoneId);
+                el.append($('<span class="wm-spell-zone-icon"></span>').text(cell.icon));
+            }
+            terrainLayer.append(el);
+        }
+
+        // J12.10: lo alto de un mapa con cotas, un poco más claro cuanto más alto, y los
+        // acantilados como una raya gruesa en el borde que no se cruza andando.
+        if (elevation) {
+            for (const [key, feet] of Object.entries(elevation)) {
+                const at = parseCellKey(key);
+                if (!at || !(Number(feet) > 0) || at.x >= gridWidth || at.y >= gridHeight) continue;
+                terrainLayer.append($('<div class="wm-elevated"></div>')
+                    .css({
+                        left: at.x * cellW + 'px', top: at.y * cellH + 'px', width: cellW + 'px', height: cellH + 'px',
+                        opacity: Math.min(0.9, 0.3 + Number(feet) / 100),
+                    }));
+            }
+            for (const edge of cliffEdges(elevation, gridWidth, gridHeight)) {
+                const right = edge.side === 'right';
+                // El lado alto lleva la luz: se ve hacia dónde se cae.
+                const highFirst = edge.drop > 0;
+                terrainLayer.append($('<div class="wm-cliff"></div>')
+                    .addClass(right ? 'wm-cliff-v' : 'wm-cliff-h')
+                    .addClass(highFirst ? 'wm-cliff-high-first' : 'wm-cliff-high-second')
+                    .attr('title', `Acantilado: ${Math.abs(edge.drop)} pies. No se cruza andando.`)
+                    .css(right
+                        ? { left: (edge.x + 1) * cellW - 2 + 'px', top: edge.y * cellH + 'px', width: '4px', height: cellH + 'px' }
+                        : { left: edge.x * cellW + 'px', top: (edge.y + 1) * cellH - 2 + 'px', width: cellW + 'px', height: '4px' }));
+            }
         }
     }
 
@@ -852,6 +960,19 @@ export function renderLocationView(target, options) {
                 node.attr('data-y', String(cell.gridY));
                 node.on('click', (event) => {
                     event.stopPropagation();
+                    if (justPanned()) return;
+                    // J20.2: con el dedo, el primer toque en una casilla de andar enseña la ruta
+                    // y lo que cuesta; el segundo, en la misma, mueve. Con el ratón eso ya lo
+                    // hace pasar por encima, y un clic mueve como siempre.
+                    const key = `${cell.gridX},${cell.gridY}`;
+                    if (kind === 'move' && typeof onCellHover === 'function' && touchy() && armedCell !== key) {
+                        armedCell = key;
+                        highlightsLayer.find('.wm-highlight-armed').removeClass('wm-highlight-armed');
+                        node.addClass('wm-highlight-armed');
+                        drawTrajectory(cell.gridX, cell.gridY, cellW, cellH, true);
+                        return;
+                    }
+                    armedCell = '';
                     onCellClick(cell.gridX, cell.gridY, kind);
                 });
 
@@ -882,9 +1003,11 @@ export function renderLocationView(target, options) {
      * @param {number} gridY
      * @param {number} cellW
      * @param {number} cellH
+     * @param {boolean} [armed] J20.2: enseñada con un toque; el siguiente, en la misma casilla, mueve.
      */
-    function drawTrajectory(gridX, gridY, cellW, cellH) {
+    function drawTrajectory(gridX, gridY, cellW, cellH, armed = false) {
         clearTrajectory();
+        if (typeof onCellHover !== 'function') return;
 
         const plan = onCellHover(gridX, gridY);
         if (!plan || !Array.isArray(plan.cells) || plan.cells.length === 0) return;
@@ -900,10 +1023,14 @@ export function renderLocationView(target, options) {
         // Idea 1: quien te golpearia al salir de su alcance, dicho antes de pulsar.
         const provokes = Array.isArray(plan.provokes) ? plan.provokes : [];
         if (provokes.length > 0) highlightsLayer.find('.wm-path-step').addClass('wm-path-provoke');
+        const said = [`${plan.feet} pies`];
+        if (provokes.length > 0) said.push(`te golpea ${provokes.join(', ')}`);
+        if (armed) said.push(plan.ok ? 'toca otra vez para ir' : 'no llegas');
         const cost = $('<div class="wm-path-cost"></div>')
-            .text(provokes.length > 0 ? `${plan.feet} ft · te golpea ${provokes.join(', ')}` : `${plan.feet} ft`)
+            .text(said.join(' · '))
             .toggleClass('wm-path-far', !plan.ok)
             .toggleClass('wm-path-provoke', provokes.length > 0)
+            .toggleClass('wm-path-armed', armed)
             .css({ left: `${(last.gridX + 0.5) * cellW}px`, top: `${last.gridY * cellH}px` });
         highlightsLayer.append(cost);
     }
@@ -921,10 +1048,12 @@ export function renderLocationView(target, options) {
             const py = (token.gridY + 0.5) * cellH;
             const hpPct = (token.maxHp && token.maxHp > 0) ? Math.min(100, ((token.hp || 0) / token.maxHp) * 100) : 100;
 
-            const enemyClass = token.isEnemy ? ` wm-token-enemy${token.idle ? ' wm-token-idle' : ''}` : '';
+            const enemyClass = token.isEnemy ? ` wm-token-enemy${token.idle ? ' wm-token-idle' : ''}` : (token.isSummon ? ' wm-token-summon' : '');
             const metaText = token.isEnemy
                 ? (token.idle ? 'Aquí, sin pelear todavía' : `${token.role ? `${token.role.label} · ` : ''}CA ${token.level || 10}`)
-                : `${token.className || 'Aventurero'} de nivel ${token.level || 1}${token.weapon ? ` · ${token.weapon}` : ''}`;
+                : token.isSummon
+                    ? `Invocación${token.summoner ? ` de ${token.summoner}` : ''}`
+                    : `${token.className || 'Aventurero'} de nivel ${token.level || 1}${token.weapon ? ` · ${token.weapon}` : ''}`;
             const selectedClass = selectedTokenId === token.id ? ' wm-token-selected' : '';
             const inRangeClass = Array.isArray(highlightedTokenIds) && highlightedTokenIds.includes(token.id) ? ' wm-token-in-range' : '';
 
@@ -960,7 +1089,7 @@ export function renderLocationView(target, options) {
                     .attr('alt', token.name ?? '')
                     .insertBefore(tokenNameEl);
                 if (drawn) {
-                    image.addClass(`pixel-art ${token.isEnemy ? 'wm-token-creature' : 'wm-token-bust'}`)
+                    image.addClass(`pixel-art ${token.isEnemy || token.isSummon ? 'wm-token-creature' : 'wm-token-bust'}`)
                         .attr('data-pixel', 'true')
                         .one('error', () => {
                             image.removeClass('pixel-art wm-token-creature wm-token-bust').removeAttr('data-pixel');
@@ -1000,6 +1129,11 @@ export function renderLocationView(target, options) {
                     .attr('title', String(token.role.label))
                     .attr('data-role', String(token.role.id)));
             }
+            // J19.5: la invocación lleva su marca, para no confundirla con un enemigo.
+            if (token.isSummon) {
+                el.append($('<i class="wm-token-role wm-token-summon-mark fa-solid fa-paw"></i>')
+                    .attr('title', metaText));
+            }
 
             // Drag token
             setupTokenDrag(el, token, cellW, cellH);
@@ -1023,6 +1157,8 @@ export function renderLocationView(target, options) {
             // Non-draggable tokens: only respond to clicks (selection, tooltip)
             el.on('click', function (e) {
                 e.stopPropagation();
+                if (justPanned()) return;
+                if (touchy()) showTokenTip(el);
                 if (onTokenClick) onTokenClick(token.id);
             });
             return;
@@ -1116,9 +1252,22 @@ export function renderLocationView(target, options) {
 
         el.on('click', function (e) {
             e.stopPropagation();
-            if (el.data('wmMoved')) return;
+            if (el.data('wmMoved') || justPanned()) return;
+            if (touchy()) showTokenTip(el);
             if (onTokenClick) onTokenClick(token.id);
         });
+    }
+
+    /**
+     * J20.2: a toques, lo que el ratón enseña al pasar por encima de una ficha (quién es, su
+     * vida, su arma) sale al tocarla, un rato.
+     *
+     * @param {JQuery} el
+     */
+    function showTokenTip(el) {
+        tokensLayer.find('.wm-token-tip').removeClass('wm-token-tip');
+        el.addClass('wm-token-tip');
+        window.setTimeout(() => el.removeClass('wm-token-tip'), 3500);
     }
 
     // Axes for grid (numbered 1..gridWidth / 1..gridHeight)
@@ -1211,6 +1360,102 @@ export function renderLocationView(target, options) {
         state.isDragging = false;
         content.removeClass('grabbing');
     });
+
+    // ---- J20.2: el tablero a toques ----
+    // Un dedo que se arrastra mueve la cámara; dos dedos la acercan o la alejan, y la mueven
+    // con ellos. Un toque sin arrastrar es un toque: elige una ficha, enseña una ruta o dice
+    // qué hay en la casilla. El ratón sigue con lo suyo (la rueda, arrastrar el fondo).
+    container.addClass('wm-touch-board');
+    /** @type {Map<number, {x: number, y: number}>} */
+    const fingers = new Map();
+    /** @type {{x: number, y: number, ox: number, oy: number, moved: boolean}|null} */
+    let pan = null;
+    /** @type {{distance: number, scale: number, cx: number, cy: number}|null} */
+    let pinch = null;
+    let pinched = false;
+    /** @type {number} */
+    let infoTimer = 0;
+    const local = (/** @type {{x: number, y: number}} */ p) => {
+        const rect = container[0].getBoundingClientRect();
+        return { x: p.x - rect.left, y: p.y - rect.top };
+    };
+    const startPinch = () => {
+        const [a, b] = [...fingers.values()];
+        const mid = local({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+        pinch = {
+            distance: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)),
+            scale: state.scale,
+            // El punto del tablero que queda entre los dos dedos, para que se quede ahí.
+            cx: (mid.x - state.offsetX) / state.scale,
+            cy: (mid.y - state.offsetY) / state.scale,
+        };
+        pinched = true;
+    };
+    container[0].addEventListener('pointerdown', (event) => {
+        lastPointer = event.pointerType;
+        if (event.pointerType === 'mouse') return;
+        fingers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+        if (fingers.size === 1) {
+            pinched = false;
+            pan = { x: event.clientX, y: event.clientY, ox: state.offsetX, oy: state.offsetY, moved: false };
+        } else if (fingers.size === 2) {
+            pan = null;
+            startPinch();
+        }
+    }, true);
+    container[0].addEventListener('pointermove', (event) => {
+        if (event.pointerType === 'mouse' || !fingers.has(event.pointerId)) return;
+        fingers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+        if (pinch && fingers.size >= 2) {
+            const [a, b] = [...fingers.values()];
+            const mid = local({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+            state.scale = Math.min(6, Math.max(0.5, pinch.scale * Math.hypot(a.x - b.x, a.y - b.y) / pinch.distance));
+            state.offsetX = mid.x - pinch.cx * state.scale;
+            state.offsetY = mid.y - pinch.cy * state.scale;
+            userMoved = true;
+            fullUpdate();
+            return;
+        }
+        if (!pan) return;
+        const dx = event.clientX - pan.x;
+        const dy = event.clientY - pan.y;
+        // Un dedo tiembla: hasta unos píxeles, sigue siendo un toque.
+        if (!pan.moved && Math.hypot(dx, dy) < 10) return;
+        pan.moved = true;
+        state.offsetX = pan.ox + dx;
+        state.offsetY = pan.oy + dy;
+        userMoved = true;
+        fullUpdate();
+    });
+    const liftFinger = (/** @type {PointerEvent} */ event) => {
+        if (event.pointerType === 'mouse' || !fingers.has(event.pointerId)) return;
+        fingers.delete(event.pointerId);
+        const wasPan = Boolean(pan?.moved) || pinched;
+        if (wasPan) panEndedAt = Date.now();
+        if (fingers.size === 1) {
+            // Queda un dedo tras pellizcar: sigue moviendo la cámara desde donde está.
+            const [rest] = [...fingers.values()];
+            pinch = null;
+            pan = { x: rest.x, y: rest.y, ox: state.offsetX, oy: state.offsetY, moved: true };
+            return;
+        }
+        if (fingers.size > 0) return;
+        pan = null;
+        pinch = null;
+        // Un toque quieto en el tablero dice qué hay en la casilla, como el ratón al pasar.
+        const onButton = Boolean(/** @type {HTMLElement} */ (event.target).closest?.('.wm-zoom-controls'));
+        if (!wasPan && event.type === 'pointerup' && cellInfo && !onButton) {
+            const at = cellUnder(event.clientX, event.clientY);
+            if (at) {
+                cellInfo.text(describeAt(at.gx, at.gy)).show();
+                window.clearTimeout(infoTimer);
+                const info = cellInfo;
+                infoTimer = window.setTimeout(() => info.hide(), 4000);
+            }
+        }
+    };
+    container[0].addEventListener('pointerup', liftFinger);
+    container[0].addEventListener('pointercancel', liftFinger);
 
     // Doble clic: volver a encuadrar, y que se encuadre solo otra vez. (Antes llevaba la
     // vista a la esquina con el zoom a 1, que no servía para nada.)
