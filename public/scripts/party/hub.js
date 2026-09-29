@@ -28,7 +28,6 @@ import { isShellOpen, refreshGameShell } from '../game-engine/ui/shell/game-shel
 import { BENCH_KEY, GRAVES_KEY, GUILD_KEY, MODE_HISTORY_KEY, PLOT_STATE_KEY, STORAGE_KEY } from './keys.js';
 import { combatEncounter, currentLocationName, partyMembers, setPartyMembers } from './state.js';
 import { acceptContract, getGuild, refreshContractBoard } from './contracts.js';
-import { countStat } from './main.js';
 import { instancesFromPlacements } from './combat-flow.js';
 import { awardEncounterLoot } from './loot.js';
 import { recordBoardWon } from './board.js';
@@ -41,6 +40,7 @@ import { noteDeed } from './world-growth.js';
 import { survivalNow } from './modes.js';
 import { postCombatNarration, postForModel } from './narration.js';
 import { savePartyState, renderPartyMembers, partyPurse, payFromParty } from './roster.js';
+import { countStat } from './menus.js';
 
 /** @typedef {import('./types.js').PartyMember} PartyMember */
 

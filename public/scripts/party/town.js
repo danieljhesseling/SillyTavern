@@ -89,7 +89,7 @@ import { postCombatNarration, postEngineLine, postForModel, tellMoment } from '.
 import { partyPurse, payFromParty, renderPartyMembers, savePartyState } from './roster.js';
 import { currentRecruits, favorsHere, hireRecruit, judgeDecision, meetRecruit } from './companions.js';
 import { startTalk } from './talk.js';
-import { countStat, showHelpSections } from './main.js';
+import { countStat, showHelpSections } from './menus.js';
 
 /**
  * Como esta el mercado donde esta el grupo.

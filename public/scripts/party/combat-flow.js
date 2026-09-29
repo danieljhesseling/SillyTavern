@@ -79,7 +79,6 @@ import {
 } from './combat-state.js';
 import { showCombatDiceRoll } from './combat-log.js';
 import { resolveEnemyAttackOn, resolveEnemyTurnAction } from './enemy-turn.js';
-import { countStat } from './main.js';
 import {
     handlePlayerCombatMove, performManeuver, handlePlayerCombatAttack, endPlayerCombatTurn,
 } from './player-actions.js';
@@ -97,6 +96,7 @@ import { postCombatNarration, tellMoment, postForModel, showTip } from './narrat
 import { savePartyState, renderPartyMembers } from './roster.js';
 import { tellBondScene, rememberTogether, bark, judgeDecision, partyMorale } from './companions.js';
 import { raiseFame } from './town.js';
+import { countStat } from './menus.js';
 
 /**
  * @param {string} name

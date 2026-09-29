@@ -71,7 +71,7 @@ import { noteDeed, populatePlace, worldWrite } from './world-growth.js';
 import { numberWord, playSucesos, postCombatNarration, postForModel, showTip, tellMoment } from './narration.js';
 import { partyPurse, payFromParty, savePartyState } from './roster.js';
 import { judgeDecision } from './companions.js';
-import { countStat } from './main.js';
+import { countStat } from './menus.js';
 
 /**
  * Lo que el narrador del motor sabe de un sitio al llegar: cómo es, a qué hora, con qué

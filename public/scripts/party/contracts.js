@@ -47,7 +47,6 @@ import {
     WRITTEN_DONE_KEY,
 } from './keys.js';
 import { currentBoardName, currentLocationName, partyMembers, setPartyMembers } from './state.js';
-import { countStat } from './main.js';
 import { buryMember } from './combat-flow.js';
 import { deliverRelics } from './loot.js';
 import { renderLocationMapsPreview } from './board-view.js';
@@ -64,6 +63,7 @@ import { postCombatNarration, postForModel } from './narration.js';
 import { savePartyState, renderPartyMembers } from './roster.js';
 import { voiceOpinions, offerPersonalQuests } from './companions.js';
 import { raiseFame, shiftPlaceFortune } from './town.js';
+import { countStat } from './menus.js';
 
 /**
  * Entrega el encargo aceptado, si el combate que acaba de ganarse era el suyo.
