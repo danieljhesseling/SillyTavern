@@ -72,12 +72,12 @@ Cómo está hecho, en corto (el detalle, en [[EMPEZAR_UNA_CAMPANA]], «Jugar sin
 
 | Fase | Estado | En una línea |
 | :--- | :---: | :--- |
-| **J0** · La puerta | 🟢 | Hecho: el botón en la portada, el modo motor, sin la ventana del nombre (J0.2), el narrador sin ficha a la vista (J0.3), las opciones del juego (J0.4), «Continuar» a la última partida (J0.5) y «Cargar partida» con partidas y no chats (J0.6). Falta: arrancar con doble clic y la guía del servidor (J0.9) |
+| **J0** · La puerta | ✅ | El botón en la portada, el modo motor, sin la ventana del nombre (J0.2), el narrador sin ficha (J0.3), las opciones del juego (J0.4), «Continuar» (J0.5), «Cargar partida» con partidas (J0.6), y arrancar con doble clic, `Jugar.bat`, con la guía del servidor privado, `wiki/SERVIDOR_PRIVADO.md` (J0.9) |
 | **J1** · Tu personaje | 🟢 | Hecho: tarjetas (J1.1), atributos repartidos o tirados (J1.2), equipo por clase (J1.3), el género del texto (J1.4), el personaje dura (J1.5) y varios personajes tuyos en el gremio (J1.6). Falta: la ficha legible (J1.7) y tu cara sin arte (J1.8) |
 | **J2** · El prólogo | ✅ | El prólogo entero, como paquete (J2.1, J2.4): llegas al muelle de Puerto Alba, un ratero, una pelea pequeña, la charla con Tomás, Brunilda y la prueba de la bodega. Los consejos de la primera vez, uno a uno (J2.2), y saltarlo entero (J2.3; falta un enganche para que el salto no deje la pelea del muelle a la vista) |
 | **J3** · El pueblo y el gremio, tu base | 🟡 | Hecho: Puerto Alba con su **pantalla del pueblo** (J3.11): un selector de sitios (herrería, taberna, tienda, capilla y gremio), cada uno con su fondo de día o de noche y quien lo atiende, que te saluda y te ofrece lo suyo; también en Vallaki y Krezk. El tablón (J3.2), los mercenarios y el Salón de la fama (J3.9). Falta: la sala propia (J3.1), el cofre y lo demás |
 | **J4** · Las campañas | 🟡 | Hecho: empezar desde el tablón (J4.3), volver y retomar (J4.4), terminar con su escena, epílogos y lo que se lleva cada uno (J4.5), varias a la vez (J4.8), 1387 en el tablón (J4.7) y el viaje contado (J4.9). Falta: el ajuste por nivel (J4.6, en marcha) y partir el estado de la partida (J4.2) |
-| **J5** · Tu JSON de campañas | 🟡 | Hecho: el conversor (J5.1) y Strahd en el tablón. Falta: importar desde el gremio (J5.4) |
+| **J5** · Tu JSON de campañas | 🟡 | Hecho: el conversor (J5.1), Strahd en el tablón, e importar desde el gremio con «Añadir una campaña», que acepta el JSON de tu Gem, lo valida y explica los errores en español (J5.4). Falta: `levels` y `journey` en el contrato del Gem (J5.2) |
 | **J6** · Jugar con amigos | ⏸️ | Aparcado |
 | **J7** · El grupo | ⬜ | De un solo jugador por ahora: tu personaje y sus compañeros, y a cada uno lo mueves tú o el juego, como elijas |
 | **J8** · Hablar sin IA | ⬜ | Diálogos con ramas, opciones según tu clase y especie, decisiones del grupo |
