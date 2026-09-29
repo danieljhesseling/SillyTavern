@@ -29,14 +29,12 @@ import {
     ATTITUDES_KEY, BILL_DUE_KEY, BOARD_KEY, CASES_KEY, DEBT_KEY, PET_KEY, PLOT_STATE_KEY, TAKEN_KEY,
 } from './keys.js';
 import { combatEncounter, currentWorldFactions, partyMembers } from './state.js';
-import {
-    lastWorldGenre, postCombatNarration, survivalNow, lastWorldNpcs, whatComes, leavingMembers, getPlot, showTip,
-    campaignDay,
-} from './main.js';
+import { postCombatNarration, survivalNow, whatComes, leavingMembers, getPlot, showTip, campaignDay } from './main.js';
 import { applyTimedCondition } from './magic.js';
 import { saveCombatState, getAliveEnemies, boardCellOf } from './combat-state.js';
 import { persistBoardTerrain, getActiveBoardContext } from './board.js';
 import { renderLocationMapsPreview } from './board-view.js';
+import { lastWorldGenre, lastWorldNpcs } from './world.js';
 
 /** @returns {import('../game-engine/campaign/pet.js').Pet|null} */
 export function currentPet() {

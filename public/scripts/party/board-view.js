@@ -64,7 +64,8 @@ import {
     getActiveBoardContext, getActiveBoardTerrain, handleEnemyTokenMove, handleTokenMove, isBoardWon,
     persistBoardTerrain, placePartyAtStart, toggleBoardDoor,
 } from './board.js';
-import { saveCurrentLocation, saveCurrentBoard, getLocationBoards, getCampaignBonds } from './main.js';
+import { getCampaignBonds } from './main.js';
+import { saveCurrentLocation, saveCurrentBoard, getLocationBoards } from './world.js';
 
 /** @type {boolean} */
 export let locationMapsManuallyHidden = false;
