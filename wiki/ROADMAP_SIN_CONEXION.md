@@ -62,7 +62,7 @@ author: DanielJHesseling / Claude Opus 5.5
 - las frases de camino, las noches de acampada, las opiniones de los compañeros y sus misiones personales;
 - la magia fuera de combate y la formación, que solo van con comando y todavía no tienen botón.
 
-**Jugar en el móvil sin servidor:** un plan aparte, [ROADMAP_PWA_SIN_SERVIDOR.md](ROADMAP_PWA_SIN_SERVIDOR.md). La web se instala como app, guarda en el propio teléfono y funciona sin conexión. Amplía J20.7 y J20.8, y va de la mano de J15.6 (exportar la partida).
+**Jugar en el móvil sin servidor:** un plan aparte, [ROADMAP_PWA_SIN_SERVIDOR.md](ROADMAP_PWA_SIN_SERVIDOR.md). La web se instala como app, guarda en el propio teléfono y funciona sin conexión. Amplía J20.7 y J20.8, y va de la mano de J15.6 (exportar la partida). El repositorio sigue privado, así que nada de GitHub Pages. Decidido: **un APK de Android**, cuando el juego esté a punto.
 
 **La primera vuelta jugable ya está.** Se entra por «Jugar sin conexión», se hace el personaje, se gana la prueba del gremio, se contratan mercenarios y se empieza *La Maldición de Strahd* o *1387* desde el tablón. Se vuelve al gremio con todo lo ganado y se sigue la campaña donde se dejó. Lo comprueba `tools/e2e-gremio.mjs`, de punta a punta en el navegador.
 
@@ -72,26 +72,30 @@ author: DanielJHesseling / Claude Opus 5.5
 
 **El arte (2026-09-29, con PixelLab):** 442 imágenes en `public/img/game-engine/pixel/`: iconos de clases, especies, objetos, habilidades, estados y conjuros; 75 criaturas; 112 retratos (la gente de Puerto Alba, Strahd y 1387, los mercenarios y héroes de reserva) y 39 escenarios de día y de noche. Se están haciendo retratos por especie y clase, expresiones para la novela visual y losetas para el tablero, y conectándolo todo al juego.
 
-**En marcha ahora (2026-09-30, mañana).** Unos 25 agentes a la vez, cada frente con su revisor:
-- **Enchufar en el juego lo ya construido** (5 frentes):
-  - combate: la magia en cada turno, las invocaciones, enemigos que lanzan y J7.3;
-  - magia y ficha: conjuros, subir de nivel, objetos y los iconos del inventario;
-  - tablero: alturas y salas del mapa, zonas de conjuro, sprites y el tablero táctil;
-  - historia: escenas del hilo, diálogos, «mirar», estaciones y expresiones;
-  - gente y pueblo: charlas, quedadas, partes del día, descuentos, D-J28 y saltar el prólogo.
-- **Sin chat, escenas por acciones, descansar en su sitio y sin etiquetas** (J18.7 a J18.10), más D-J23, D-J24 y D-J38.
-- **Tus decisiones de reglas y datos**: D-J21, D-J25 a D-J27 y D-J29 a D-J32.
-- **Diez frentes nuevos**:
-  - el gremio crece (J3.1, J3.4 a J3.8);
-  - guardar como un juego (J15.2, J3.3, J15.6);
-  - la historia como un libro (J9.3, J9.5, J9.6, J11.5);
-  - decisiones que pesan (J11.1 a J11.4);
-  - peleas que se pueden evitar (J12.2, J8.5, J12.4, J7.4);
-  - campañas del Gem completas (J5.3, J5.5, J5.6, J12.5);
-  - el mundo vivo (J10.1, J10.3, J10.5, J19.10);
-  - la gente, segunda parte (J14.7 a J14.9, J7.2, J7.5, J13.5);
-  - el móvil como una app (J20.6 a J20.8);
-  - arte para la gente nueva y el icono de la app.
+**En marcha ahora (2026-09-30, mediodía).** Primero, que se pueda jugar lo que ya está hecho. Van cuatro frentes, cada uno con su revisor, que lo prueba desde la portada como un jugador, sin escribir nada:
+- **La gente y el viaje:**
+  - las noches de acampada y las charlas de pareja (J14.7, J14.8);
+  - las frases de los compañeros por el camino (J13.5);
+  - sus misiones personales (J14.9);
+  - un botón para la formación (J7.4);
+  - los compañeros que se quedan en el gremio (J7.2).
+- **La historia y los diálogos:**
+  - las opiniones de los compañeros junto a cada opción (J7.5);
+  - «Hablar» abre el diálogo (D-J36);
+  - las escenas del hilo (D-J39, D-J40);
+  - lo que no tiene vuelta atrás y las consecuencias días después (J11.1 a J11.4);
+  - «mirar», las estaciones y el Diario como un libro.
+- **La magia y la ficha:**
+  - un botón para la magia fuera de combate (J19.10), que hoy solo va con comando;
+  - preparar conjuros, subir de nivel y los objetos mágicos;
+  - la ficha legible (J1.7, J1.8).
+- **El gremio, el pueblo y guardar:**
+  - cada sala del gremio, probada a mano (J3.1, J3.4 a J3.8);
+  - dormir y guardar, y exportar la partida (J3.3, J15.2, J15.6);
+  - cada comando que haga falta, con su botón (J15.4);
+  - la gente del pueblo a cada hora.
+
+Después van el combate (la magia en cada turno, las invocaciones, J7.3), el tablero (alturas, zonas, el tablero táctil) y las campañas del Gem y el mundo vivo. Las tandas anteriores se cortaron por el límite de uso; lo que llevaban ya está en los commits.
 
 **Jugar con amigos (J6) está aparcado** hasta nueva orden (lo dijiste el 2026-09-28). Tampoco hay más personajes que los mercenarios sencillos del gremio.
 
