@@ -41,35 +41,35 @@ author: DanielJHesseling / Claude Opus 5.5
 
 ---
 
-## 📍 Cómo va (2026-09-30, tarde)
+## 📍 Cómo va (2026-09-30, noche)
 
-**Avance, contando las 143 filas activas** (sin lo aparcado ni las decisiones), recontado fila a fila tras la tanda 6:
-- **70 % jugable** (100 filas): se puede usar en el juego sin escribir nada.
-- **91 % construido** (130 filas): el motor o su pantalla existen, aunque el jugador aún no llegue a todo.
-- **9 % sin empezar** (13 filas): partir el estado de la partida (J4.2), ampliar el contrato del Gem (J5.2), los sucesos por facción y el mapa dibujado (J10.3, J10.5), los tableros grandes (J12.13), el teclado (J15.5), las vueltas automáticas (J16) y las propuestas (J10.7, J12.7, J14.10, J14.11).
+**Avance, contando las 143 filas activas** (sin lo aparcado ni las decisiones), recontado fila a fila tras la tanda 7:
+- **85 % jugable** (122 filas): se puede usar en el juego sin escribir nada.
+- **93 % construido** (133 filas).
+- **7 % sin empezar** (10 filas):
+  - partir el estado de la partida (J4.2);
+  - ampliar el contrato del Gem (J5.2);
+  - el teclado (J15.5);
+  - las vueltas automáticas (J16.1, J16.2, J16.4);
+  - las cuatro propuestas (J10.7, J12.7, J14.10, J14.11), que esperan a que digas si se hacen.
 
 | Hito | Jugable | Construido |
 | :--- | :---: | :---: |
 | M1 · Entrar y crear el personaje | 96 % | 100 % |
-| M2 · El gremio y la primera campaña | 84 % | 96 % |
+| M2 · El gremio y la primera campaña | 96 % | 96 % |
 | M3 · El pueblo y su gente | 100 % | 100 % |
-| M4 · Strahd con mapas y magia | 44 % | 92 % |
-| M5 · Una campaña bien contada | 70 % | 90 % |
-| M6 · Los compañeros a fondo | 20 % | 60 % |
-| M7 · En el móvil | 67 % | 100 % |
+| M4 · Strahd con mapas y magia | 76 % | 96 % |
+| M5 · Una campaña bien contada | 87 % | 97 % |
+| M6 · Los compañeros a fondo | 60 % | 60 % |
+| M7 · En el móvil | 78 % | 100 % |
 
-Esta mañana era un 43 % jugable y un 63 % construido. El salto viene de tu cableado del gremio y de la tanda 6, que enchufaron lo ya construido.
-
-Lo construido que el jugador aún no alcanza es sobre todo:
-- la magia en cada turno de combate: concentración, invocaciones, zonas, reacciones y enemigos que lanzan;
-- las alturas y las salas del tablero, al jugar;
-- salir de una pelea hablando;
-- mover tú a un compañero amigo (J7.3);
-- las noches y las charlas de pareja.
-
-Casi todo eso está en la tanda 7. Si sale bien, el avance jugable pasará del 85 %.
-
-Algunas filas cuentan como jugables con fallos por arreglar: la formación que no viaja con el grupo y un error al guardar el chat. Los arregla la tanda 7.
+Esta mañana era un 43 % jugable. Lo construido que el jugador aún no alcanza:
+- los huecos que rellena el motor en una campaña del Gem y el informe antes de jugarla (J5.3, J5.5, J5.6, J12.5);
+- 1387 de punta a punta (J9.1);
+- las notas en prosa (J13.1, J18.10);
+- lanzar a más nivel (J19.3);
+- el móvil ligero y su guía (J20.6, J20.8);
+- los plazos, apagados por tu decisión D-J46.
 
 **Jugar en el móvil sin servidor:** un plan aparte, [ROADMAP_PWA_SIN_SERVIDOR.md](ROADMAP_PWA_SIN_SERVIDOR.md). La web se instala como app, guarda en el propio teléfono y funciona sin conexión. Amplía J20.7 y J20.8, y va de la mano de J15.6 (exportar la partida). El repositorio sigue privado, así que nada de GitHub Pages. Decidido: **un APK de Android**, cuando el juego esté a punto.
 
@@ -81,54 +81,48 @@ Algunas filas cuentan como jugables con fallos por arreglar: la formación que n
 
 **El arte (2026-09-29, con PixelLab):** 442 imágenes en `public/img/game-engine/pixel/`: iconos de clases, especies, objetos, habilidades, estados y conjuros; 75 criaturas; 112 retratos (la gente de Puerto Alba, Strahd y 1387, los mercenarios y héroes de reserva) y 39 escenarios de día y de noche. Se están haciendo retratos por especie y clase, expresiones para la novela visual y losetas para el tablero, y conectándolo todo al juego.
 
-**Lo último que ha entrado (tanda 6, commit a2c951d18).** Lo que ya estaba hecho y el jugador no alcanzaba:
-- **La historia:**
-  - junto a cada opción, lo que opina cada compañero (J7.5);
-  - «Hablar» abre el diálogo (D-J36);
-  - el Diario como un libro, con capítulos, plazos y crónica (J9.3, J9.5, J9.6, J11.5);
-  - el aviso de lo que no tiene vuelta atrás (J11.1) y las consecuencias días después (J11.2);
-  - el pueblo recuerda un robo (J11.3) y el gremio, cómo acabó una campaña (J11.4).
-- **La magia:**
-  - el botón «Magia» fuera de combate, con Luz, curar en el viaje, Identificar, Detectar magia y Hablar con los muertos (J19.10);
-  - la ficha legible y tu cara sin arte (J1.7, J1.8).
-- **La gente:**
-  - las noches y las charlas de pareja (J14.7, J14.8);
-  - las frases de camino (J13.5) y las misiones personales (J14.9);
-  - la formación (J7.4) y los compañeros que se quedan en el gremio (J7.2).
-- **El gremio:**
-  - guardar con ranuras, dormir para guardar, exportar e importar (J15.2, J3.3, J15.6);
-  - la forja, la biblioteca, los dormitorios y el establo (J3.6);
-  - el rango (J3.7) y los encargos (J3.8);
-  - los comandos, con su botón (J15.4).
-
-**En marcha ahora (2026-09-30, tarde): la tanda 7, con siete agentes.** Cada uno prueba solo lo que cambia:
-- **Cerrar la tanda 6:**
-  - un error 500 al guardar el chat;
-  - el grupo que no viaja entero a 1387;
-  - la formación desde «Tu gente».
+**Lo último que ha entrado (tanda 7 y D-J46 a D-J53, commit 3b97eb4be):**
 - **El combate con magia:**
-  - la magia en cada turno, las invocaciones y los enemigos que lanzan;
-  - mover tú a un compañero amigo (J7.3);
-  - «Continuar» tras una pelea sigue el hilo (D-J45).
+  - la concentración se rompe con el daño y los estados;
+  - Escudo y Contraconjuro;
+  - las invocaciones entran en la iniciativa;
+  - la bruja y Strahd lanzan conjuros;
+  - «Lo muevo yo» con vínculo 5 (J7.3);
+  - «Continuar» sigue el hilo (D-J45).
 - **Peleas que se pueden evitar:**
   - hablar, pagar, huir o esconderse (J12.2);
   - salir de una pelea hablando (J8.5);
-  - encuentros ajustados al grupo y a su nivel (J12.6, J4.6).
+  - enemigos ajustados al grupo y a su nivel (J12.6, J4.6).
 - **El tablero:**
-  - las alturas y las salas de un mapa en imagen cuentan al jugar (J12.8 a J12.11);
-  - los tableros grandes, con cámara y niebla (J12.13);
-  - las trampas (J12.3) y el tablero táctil (J20.2).
-- **Las campañas de tu Gem:**
-  - el contrato ampliado (J5.2) y los huecos que rellena el motor (J5.3);
-  - las dos formas de escribirlas (J5.5);
-  - comprobarlas antes de jugar (J5.6);
-  - sus tableros (J12.5).
+  - un mapa en imagen se juega con sus alturas y sus salas (J12.10, J12.11);
+  - tableros grandes con cámara y niebla (J12.13);
+  - trampas y búsqueda (J12.3);
+  - el tablero a toques (J20.2).
 - **El mundo vivo:**
-  - caminos que abre la reputación o una llave (J10.1);
-  - sucesos por facción (J10.3, D-J42);
+  - caminos por reputación o llave, como la barca de Nikolai (J10.1);
+  - sucesos por facción (J10.3);
   - el mapa dibujado (J10.5);
-  - más cosas que el mundo recuerda (J11.3).
-- **Vueltas automáticas:** 1387 hasta un final y la vuelta del gremio, con sus números (J16.1, J16.2, J16.4, base de J9.1).
+  - multas y huidas (J11.3).
+- **Arreglos:**
+  - el error 500 al guardar el chat, que hacía perder lo jugado;
+  - los mercenarios que morían de hambre en las misiones personales;
+  - la formación que ahora sí viaja con el grupo.
+- **Tus decisiones D-J46 a D-J53.**
+
+**En marcha ahora (2026-09-30, noche): la tanda 9, con once agentes a la vez.**
+- **Siguen donde se cortaron:**
+  - las campañas del Gem (J5.2, J5.3, J5.5, J5.6, J12.5, y las trampas en el contrato);
+  - las vueltas automáticas (J16);
+  - el calabozo (D-J47) y sus flecos;
+  - las notas en prosa (J13.1, J18.10);
+  - el teclado (J15.5).
+- **Nuevos:**
+  - el móvil ligero y su guía (J20.6, J20.8);
+  - la partida es el gremio (J4.2);
+  - 1387 de punta a punta (J9.1);
+  - Strahd de punta a punta (M4);
+  - el contenido que falta: salidas habladas en más peleas, cosas que mirar en Puerto Alba y trampas en las mazmorras;
+  - arte nuevo con PixelLab: jefes, el calabozo, la torre de Van Richten, la granja quemada.
 
 **Jugar con amigos (J6) está aparcado** hasta nueva orden (lo dijiste el 2026-09-28). Tampoco hay más personajes que los mercenarios sencillos del gremio.
 
