@@ -494,6 +494,10 @@ try {
     }
     await page.waitForSelector('#game-shell', { timeout: 90000 });
     await page.locator('#game-shell .gs-menu-btn').filter({ hasText: 'Jugar sin conexión' }).click({ timeout: 30000 });
+    // El mismo servidor guarda al héroe de la primera parte (1387), así que «¿Quién entra?»
+    // pregunta antes si viene un veterano (idea 179). Aquí se hace una nueva: «Uno nuevo».
+    await page.waitForSelector('.hc-root, dialog[open] .vt-card.vt-new', { timeout: 120000 });
+    if (await page.locator('dialog[open] .vt-card.vt-new').count() > 0) await page.locator('dialog[open] .vt-card.vt-new').first().click();
     await page.waitForSelector('.hc-root', { timeout: 120000 });
     await page.fill('.hc-root .hc-name', 'Tessa');
     await page.locator('.hc-root .hc-gender[data-value="Mujer"]').click();

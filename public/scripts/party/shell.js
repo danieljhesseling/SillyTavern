@@ -55,7 +55,10 @@ import {
 import { getXpTable } from './level-up.js';
 import { currentPet, openPetPanel } from './pet.js';
 import { carriedNames, getAbilityCatalogue, knownAbilitiesOf, useAbility, useMagicItem } from './magic.js';
-import { hubChips } from './hub.js';
+import {
+    hubChips, openGuildChest, openGuildHouse, openGuildTraining, openGuildErrands,
+    openHubHeroes, openMemoryView, openHubCampaigns, openHubHire, skipHubTrial, noteRankSeen,
+} from './hub.js';
 import {
     getAliveEnemies, getAttackableEnemiesForMember, getCurrentActingMember, getCurrentTurnEntry,
     getRemainingMovementFeet,
@@ -84,7 +87,7 @@ import {
     advanceCampaignDay, campaignDay, getCampaignBonds, getCampaignCalendar, getCampaignMap,
     getCurrentSlotLabel, openWeekTable, spendDayPart, takeRest,
 } from './time.js';
-import { getPlot, openMilestones } from './plot.js';
+import { getPlot, openMilestones, openEnding } from './plot.js';
 import { refreshWorldMemoryPrompt } from './world-growth.js';
 import { openGameMode, survivalNow } from './modes.js';
 import {
@@ -141,7 +144,10 @@ function installNoticeTray() {
 function trimToasts() {
     const shown = $('#toast-container .toast');
     if (shown.length <= MAX_VISIBLE_TOASTS) return;
-    const newestOnTop = Boolean(/** @type {any} */ (toastr).options?.newestOnTop);
+    // toastr pone los nuevos arriba si no se dice lo contrario (su valor por defecto), y
+    // `toastr.options` de SillyTavern no lo dice: leerlo como `false` quitaba los MÁS NUEVOS
+    // (la charla de después de ganar, con su «Escuchar», desaparecía al salir).
+    const newestOnTop = /** @type {any} */ (toastr).options?.newestOnTop !== false;
     (newestOnTop ? shown.slice(MAX_VISIBLE_TOASTS) : shown.slice(0, shown.length - MAX_VISIBLE_TOASTS)).remove();
 }
 
@@ -367,6 +373,38 @@ export function runShellChip(chip) {
         const context = getActiveBoardContext();
         if (!context.board) return;
         toggleBoardDoor(context.board, chip.cell.x, chip.cell.y, true, context.gridWidth, context.gridHeight);
+        return;
+    }
+
+    // J3.7: la noticia del rango, arriba en la sala, ya se ha visto en cuanto se usa algo de ella.
+    if (chip.id.startsWith('hub-')) noteRankSeen();
+    // J3.1 / J15.4: Las fichas del gremio abren su ventana o acción directamente, sin pasar por texto.
+    switch (chip.id) {
+        case 'hub-chest': void openGuildChest(); return;
+        case 'hub-house': void openGuildHouse(); return;
+        case 'hub-train': void openGuildTraining(); return;
+        case 'hub-errands': void openGuildErrands(); return;
+        case 'hub-heroes': void openHubHeroes(); return;
+        case 'hub-memory': void openMemoryView(); return;
+        case 'hub-board': void openHubCampaigns(); return;
+        case 'hub-hire': void openHubHire(); return;
+        case 'hub-skip': void skipHubTrial(); return;
+        case 'hub-hall': openHallOfFame(); return;
+        case 'hub-ending': void openEnding(); return;
+        case 'hub-home':
+            // Las mismas guardas que `/volver-gremio`: no en plena pelea (`returnToHub` ya mira si
+            // la campaña sale de un gremio).
+            if (combatEncounter.active) {
+                toastr.warning('No mientras peleáis.');
+                return;
+            }
+            void import('../campaigns.js').then(m => m.returnToHub());
+            return;
+    }
+    // «Seguir …» en la salida de la sala: la campaña del tablón, por su id, como si se eligiera
+    // en el tablón (`continueSavedGame` busca partidas guardadas, no campañas, y no la encontraba).
+    if (chip.id.startsWith('hub-continue:')) {
+        void import('../campaigns.js').then(m => m.playHubCampaign(chip.id.slice('hub-continue:'.length)));
         return;
     }
 

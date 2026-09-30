@@ -108,6 +108,12 @@ const check = (name, ok, detail = '') => {
  * comprobado nada, dice qué ventanas hay abiertas y pulsa Escape, que las cierra y deja seguir.
  * Un paso largo que sigue comprobando cosas no lo despierta.
  */
+/**
+ * Los errores de la consola, fuera del `try`: si la vuelta se rompe a medias, el `catch`
+ * los dice junto con las ventanas que se quedaron abiertas, que es lo que explica el fallo.
+ * @type {Set<string>}
+ */
+const thrownProblems = new Set();
 /** @type {any} */
 let watchPage = null;
 /** @type {any} */
@@ -191,7 +197,7 @@ try {
         try { window.localStorage.setItem('sillytavern_gameStoryWindows', 'off'); } catch { /* sin almacenamiento */ }
     });
 
-    const problems = new Set();
+    const problems = thrownProblems;
     page.on('pageerror', e => problems.add(`PAGEERROR ${e.message}`));
     page.on('console', m => {
         // El navegador tambien grita por cada bateria del compendio que no esta, y no
@@ -242,7 +248,15 @@ try {
     if (await firstRun.waitFor({ state: 'visible', timeout: 20000 }).then(() => true).catch(() => false)) {
         await page.click('.popup-button-ok');
     }
-    await page.waitForSelector('#cw-new-campaign', { timeout: 90000 });
+    // Con la máquina cargada (varias vueltas a la vez), esa ventana puede salir pasados los
+    // 20 s: se quedaba abierta tapando el menú y la vuelta moría antes del paso 1. Se cierra
+    // en cuanto aparezca, mientras se espera al menú.
+    const menuBy = Date.now() + 90000;
+    while (Date.now() < menuBy && !(await page.locator('#cw-new-campaign').isVisible().catch(() => false))) {
+        if (await firstRun.isVisible().catch(() => false)) await page.click('.popup-button-ok').catch(() => {});
+        await page.waitForTimeout(1000);
+    }
+    await page.waitForSelector('#cw-new-campaign', { timeout: 5000 });
 
     // Las funciones de ayuda de toda la vuelta, antes del primer paso: las dos mitades las usan.
 
@@ -5869,8 +5883,10 @@ try {
             focus: ctx.chatMetadata.plotState?.open ?? [],
         };
     });
-    check('1387 nace entero: siete sitios, cuatro escondidos, tres facciones vivas',
-        world49.places === 7 && world49.hidden === 4 && world49.factions === 3, JSON.stringify(world49));
+    // Siete escondidos desde 8f9aa7c59 (29-9): Los Baños Viejos, El Roble de los Recados y La
+    // Choza de Brígida se sumaron a los cuatro de antes.
+    check('1387 nace entero: siete sitios, siete escondidos, tres facciones vivas',
+        world49.places === 7 && world49.hidden === 7 && world49.factions === 3, JSON.stringify(world49));
     check('con sus rumores, sus encargos y sus habilidades de trinchera',
         world49.rumors >= 25 && world49.contracts >= 14 && world49.abilities >= 9, JSON.stringify(world49));
     check('y con lo suyo de siempre: su semilla y su dureza',
@@ -6047,20 +6063,27 @@ try {
     await page.waitForTimeout(1000);
     await clearToasts();
 
-    const services51 = await page.evaluate(() => [...document.querySelectorAll('#game-shell .gs-service')].map(box => ({
-        id: box.getAttribute('data-service'),
-        actions: [...box.querySelectorAll('.gs-service-btn')].map(b => b.getAttribute('data-action')),
-    })));
+    // J3.11: el pueblo se enseña por sitios (la posada, el tablón…) y lo de cada uno se hace
+    // dentro: se entra en la posada, como quien juega. Las tarjetas sueltas (`.gs-service`) son
+    // solo lo que no es de ningún sitio.
+    const places51 = await page.evaluate(() => [...document.querySelectorAll('#game-shell .gs-town-place')].map(c => c.getAttribute('data-place') || ''));
+    const loose51 = await page.evaluate(() => [...document.querySelectorAll('#game-shell .gs-service')].map(box => box.getAttribute('data-service') || ''));
+    await page.locator('#game-shell .gs-town-place[data-place="posada"]').click({ timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(600);
+    await clearToasts();
+    const inn51 = await page.evaluate(() => [...document.querySelectorAll('#game-shell .gs-town-scene .gs-town-act')].map(b => b.getAttribute('data-action') || ''));
+    const services51 = { places: places51, loose: loose51, inn: inn51 };
     check('en la exploración, el pueblo enseña sus servicios con lo que se puede hacer',
-        services51.some(s => s.id === 'posada' && s.actions.includes('inn-meal') && s.actions.includes('inn-room'))
-        && services51.some(s => s.id === 'tablon'),
+        inn51.includes('inn-meal') && inn51.includes('inn-room') && (places51.includes('tablon') || loose51.includes('tablon')),
         JSON.stringify(services51));
+    // Con alguien detrás de la barra, «Hablar con Giles» sustituye al «Hablar» de la tarjeta.
+    const innTalk51 = '#game-shell .gs-town-scene .gs-town-act[data-action^="talk-local:"], #game-shell .gs-town-scene .gs-town-act[data-action="inn-talk"]';
     check('y en la posada se puede hablar con quien la atiende',
-        services51.some(s => s.id === 'posada' && s.actions.includes('inn-talk')), JSON.stringify(services51));
+        inn51.some(a => a === 'inn-talk' || a.startsWith('talk-local:')), JSON.stringify(services51));
 
     const goldBefore51 = await page.evaluate(async () => (await import('/scripts/party.js')).getPartyMembersSnapshot()
         .reduce((/** @type {number} */ s, /** @type {any} */ m) => s + (Number(m.gold) || 0), 0));
-    await page.locator('#game-shell .gs-service-btn[data-action="inn-meal"]').click();
+    await page.locator('#game-shell .gs-town-scene .gs-town-act[data-action="inn-meal"]').click();
     await page.waitForTimeout(1200);
     const meal51 = await page.evaluate(async () => {
         const members = (await import('/scripts/party.js')).getPartyMembersSnapshot();
@@ -6075,7 +6098,7 @@ try {
 
     await clearToasts();
     // En «Mixto» (el de serie), hablar abre la charla del motor (ROADMAP_SIN_TOKENS, Z2).
-    await page.locator('#game-shell .gs-service-btn[data-action="inn-talk"]').click();
+    await page.locator(innTalk51).first().click();
     const talkWindow51 = await page.waitForSelector('.popup:not([closing]) .tk-root', { timeout: 6000 }).then(() => true).catch(() => false);
     const topics51 = await page.locator('.popup:not([closing]) .tk-topic').count();
     check('hablar con quien atiende abre la charla, con de qué hablar', talkWindow51 && topics51 >= 1, JSON.stringify({ talkWindow51, topics51 }));
@@ -6083,12 +6106,15 @@ try {
     await page.waitForTimeout(500);
     // Con el narrador en «Modelo», deja la frase empezada para quien juega.
     await page.evaluate(() => window.localStorage.setItem('sillytavern_gameNarrator', 'modelo'));
-    await page.locator('#game-shell .gs-service-btn[data-action="inn-talk"]').click();
+    await page.locator(innTalk51).first().click();
     await page.waitForTimeout(600);
     const talk51 = await page.evaluate(() => /** @type {HTMLTextAreaElement} */ (document.querySelector('#send_textarea'))?.value || '');
     check('y con el narrador en «Modelo», deja la frase empezada', /^Le digo a Giles: /.test(talk51), talk51);
     await page.evaluate(() => { const i = /** @type {HTMLTextAreaElement} */ (document.querySelector('#send_textarea')); if (i) i.value = ''; });
     await page.evaluate(() => window.localStorage.removeItem('sillytavern_gameNarrator'));
+    // Fuera de la posada otra vez, a los sitios del pueblo, como estaba antes de entrar.
+    await page.locator('#game-shell .gs-town-back').click({ timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(400);
 
     // C1: lo que el narrador sabe del cuerpo del grupo, antes de cada turno.
     const body51 = await page.evaluate(async () => {
@@ -10034,6 +10060,13 @@ try {
 } catch (error) {
     failures++;
     console.log(`FAIL  the run threw: ${error?.message || error}`);
+    // Qué había en pantalla al romperse: una ventana que tapa un clic, o una página que no
+    // llegó a arrancar, se ven aquí y no en el mensaje de Playwright.
+    const open = watchPage ? await watchPage.evaluate(() => [...document.querySelectorAll('dialog[open]')]
+        .map(d => (d.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 300))).catch(() => []) : [];
+    const screen = watchPage ? await watchPage.evaluate(() => (document.body?.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 300)).catch(() => '') : '';
+    console.log(`        -> paso: ${currentStep}; ventanas abiertas: ${JSON.stringify(open)}; en pantalla: «${screen}»`);
+    console.log(thrownProblems.size ? `        -> errores de consola:\n${[...thrownProblems].join('\n')}` : '        -> errores de consola: (ninguno)');
 } finally {
     if (browser) await browser.close().catch(() => {});
     if (server) {

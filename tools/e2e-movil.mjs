@@ -546,10 +546,15 @@ try {
                 const now = await heroCell();
                 return now.x === cell.gx && now.y === cell.gy;
             }, 5000);
+            // Si el ratero ya estaba pegado, salir de su alcance le da un golpe gratis (el aviso
+            // «te golpea …» de la ronda 9): sus dados tapan el tablero hasta pasarlos.
+            await page.waitForTimeout(400);
+            await tapDice();
+            await noToasts();
         }
     }
     check('a toques, en tu turno: tocar tu ficha enciende casillas; tocar una enseña el camino y lo que cuesta sin moverte; tocarla otra vez mueve (J20.2)',
-        walk.lit > 0 && /Te quedan \d+ pies/.test(walk.hud) && /\d+ pies · toca otra vez para ir/.test(walk.cost) && walk.stayed && walk.moved, JSON.stringify(walk));
+        walk.lit > 0 && /Te quedan \d+ pies/.test(walk.hud) && /\d+ pies( · [^·]+)* · toca otra vez para ir/.test(walk.cost) && walk.stayed && walk.moved, JSON.stringify(walk));
     // Lo que el ratón enseña al pasar por encima, a toques: tocar una casilla dice qué hay en ella.
     await noToasts();
     const emptyCell = await page.evaluate(() => {
@@ -636,7 +641,10 @@ try {
                     fight.sheet = true;
                     await look('objetivos', { landscape: false });
                 }
-                await target.first().tap({ timeout: 4000 }).then(() => { fight.attacks++; }).catch(() => {});
+                // Con la CPU de un móvil (J20.6) la hoja acaba de deslizarse y el toque tarda en
+                // llegar: 4 s se quedaban cortos a veces. Si aun así falla, se apunta por qué.
+                await target.first().tap({ timeout: 12000 }).then(() => { fight.attacks++; })
+                    .catch((/** @type {any} */ e) => { /** @type {any} */ (fight).tapError = String(e?.message || e).split('\n').filter(l => /Timeout|intercept|outside|not stable|detached/.test(l)).slice(0, 3).join(' | '); });
             }
             await page.waitForTimeout(700);
             continue;

@@ -97,7 +97,7 @@ export function stayScene({ member, verdict, land = '', cards = [] }) {
     const where = text(land) ? ` de ${text(land)}` : '';
     const ask = {
         note: `La campaña ha terminado. Antes de que emprendáis el camino de vuelta, ${short} se acerca a ti.`,
-        say: `¿Y ahora qué? Vosotros volvéis a vuestro gremio. Yo…`,
+        say: '¿Y ahora qué? Vosotros volvéis a vuestro gremio. Yo…',
         mood: '',
         replies: verdict.willing
             ? [

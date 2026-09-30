@@ -96,7 +96,8 @@ describe('J3.6: la forja mejora armas y armaduras', () => {
 
 describe('J3.6: la biblioteca enseña conjuros', () => {
     const maga = { id: 5, name: 'Ada', class: 'Maga', level: 3, spellbook: ['conj-proyectil-magico'], cantrips: [] };
-    const bardo = { id: 6, name: 'Lio', class: 'Bardo', level: 1, spellsKnown: ['conj-curar-heridas'] };
+    // «Curar heridas» es `hab-curar` en conjuros.json.
+    const bardo = { id: 6, name: 'Lio', class: 'Bardo', level: 1, spellsKnown: ['hab-curar'] };
     const clériga = { id: 7, name: 'Sor Ana', class: 'Clériga', level: 3 };
 
     test('sin biblioteca no hay de dónde aprender', () => {
@@ -127,9 +128,9 @@ describe('J3.6: la biblioteca enseña conjuros', () => {
     test('el bardo cambia uno que sabe por otro', () => {
         const reader = libraryOffers({ guild: { buildings: { library: 1 } }, party: [bardo], classRowOf, catalogue }).readers[0];
         expect(reader.mode).toBe('swap');
-        expect(reader.known.map(k => k.id)).toEqual(['conj-curar-heridas']);
+        expect(reader.known.map(k => k.id)).toEqual(['hab-curar']);
         const other = reader.options[0];
-        const done = learnSpell({ member: bardo, guild: { buildings: { library: 1 } }, classRowOf, catalogue, spellId: other.id, forget: 'conj-curar-heridas', purse: 999 });
+        const done = learnSpell({ member: bardo, guild: { buildings: { library: 1 } }, classRowOf, catalogue, spellId: other.id, forget: 'hab-curar', purse: 999 });
         expect(done.ok).toBe(true);
         expect(done.patch.spellsKnown).toEqual([other.id]);
         expect(learnSpell({ member: bardo, guild: { buildings: { library: 1 } }, classRowOf, catalogue, spellId: other.id, purse: 999 }).reason).toBe('Di qué conjuro deja de saber.');

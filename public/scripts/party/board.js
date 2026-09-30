@@ -31,6 +31,8 @@ import { hitBarricade, pullLever } from '../game-engine/board/interactables.js';
 import { isIndoors, carriesLight, combatVisibility } from '../game-engine/world/visibility.js';
 import { stairsReached, nextLevel } from '../game-engine/board/dungeon-levels.js';
 import { planWalk, canWalk } from '../game-engine/board/walk.js';
+import { planGroupMove, describeGroupMove } from '../game-engine/board/group-move.js';
+export { walkFrames, hoverOf } from '../game-engine/board/group-move.js';
 import { enterCell, describeHazard, passiveSpot } from '../game-engine/board/hazards.js';
 import { statusMarkers, sizeToCells } from '../game-engine/combat/initiative-tracker.js';
 import { hasAction, useAction } from '../game-engine/combat/turn-machine.js';
@@ -59,6 +61,7 @@ import { getPlot } from './plot.js';
 import { worldWrite } from './world-growth.js';
 import { postCombatNarration, soundCue } from './narration.js';
 import { savePartyState } from './roster.js';
+import { getPartyFormation } from './companions.js';
 
 /**
  * Writes terrain and fog back into the world info file that owns the board.
@@ -465,7 +468,8 @@ export function toggleBoardDoor(board, gx, gy, open, gridW, gridH) {
             })),
         }), board.zones);
 
-    const result = openDoor(normalizeTerrain(board.terrain), rooms, gx, gy);
+    // `board.rooms` es `any`: sin decirlo, `nameRoomsFromZones` devuelve salas sin sus puertas.
+    const result = openDoor(normalizeTerrain(board.terrain), /** @type {import('../game-engine/campaign/campaign-map.js').Room[]} */ (rooms), gx, gy);
     board.terrain = result.terrain;
     board.rooms = result.rooms;
     persistBoardTerrain(board);
@@ -789,6 +793,74 @@ export function handleTokenMove(tokenId, gridX, gridY, locationName) {
     // J12.11: si ha entrado en una sala con nombre, lo que se ve en ella.
     if (currentBoardName) noteZoneEntry(member, from, { x: gridX, y: gridY });
 }
+
+/**
+ * Mover al grupo entero fuera de combate a una casilla objetivo (J12.4).
+ * Quien abre la marcha según la formación va a la casilla elegida por el camino más corto,
+ * y los demás le siguen y se colocan a su alrededor detrás de él.
+ *
+ * @param {number} gridX
+ * @param {number} gridY
+ * @returns {import('../game-engine/board/group-move.js').GroupPlan|null}
+ */
+export function groupMoveTo(gridX, gridY) {
+    if (!currentBoardName) {
+        toastr.warning('No estás en un tablero de exploración.', 'Sin tablero');
+        return null;
+    }
+    if (combatEncounter.active) {
+        toastr.warning('En combate cada uno mueve en su turno.', 'En combate');
+        return null;
+    }
+    const { terrain, gridWidth, gridHeight } = getActiveBoardContext();
+    const members = partyMembers.filter(m => !m.dead).map(m => ({
+        id: String(m.id),
+        name: m.name,
+        x: Number(m.mapPosition?.gridX) || 0,
+        y: Number(m.mapPosition?.gridY) || 0,
+        hp: m.hp,
+        activeConditions: m.activeConditions || [],
+    }));
+    if (members.length === 0) return null;
+
+    const enemies = getAliveEnemies().map(e => ({ x: Number(e.gridX) || 0, y: Number(e.gridY) || 0 }));
+    const formation = getPartyFormation();
+    const order = formation?.order || [];
+
+    const plan = planGroupMove({
+        members,
+        to: { x: gridX, y: gridY },
+        terrain,
+        gridWidth,
+        gridHeight,
+        order,
+        blocked: enemies,
+    });
+
+    if (!plan.allowed) {
+        toastr.warning(plan.reason, 'Marcha impedida');
+        return plan;
+    }
+
+    for (const move of plan.moves) {
+        const member = partyMembers.find(m => String(m.id) === String(move.id));
+        if (member) {
+            member.mapPosition = member.mapPosition || { locationName: '', gridX: 0, gridY: 0 };
+            const from = { x: Number(member.mapPosition.gridX) || 0, y: Number(member.mapPosition.gridY) || 0 };
+            member.mapPosition.gridX = move.to.x;
+            member.mapPosition.gridY = move.to.y;
+            if (currentLocationName) member.mapPosition.locationName = currentLocationName;
+            noteZoneEntry(member, from, move.to);
+        }
+    }
+
+    savePartyState();
+    const desc = describeGroupMove(plan);
+    if (desc) toastr.info(desc, 'Marcha del grupo');
+    renderLocationMapsPreview();
+    return plan;
+}
+
 
 /**
  * Ideas 73 y 90: cómo se ve en el tablero ahora: el tiempo, la hora y si hay luz.

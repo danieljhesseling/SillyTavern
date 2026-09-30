@@ -35,19 +35,22 @@ const RANK_LABELS = Object.fromEntries(RANKS.map(rank => [rank.id, rank.label]))
  * @param {boolean} [input.fighting]
  * @param {any[]} [input.storage] Idea 124: lo que hay en el almacén.
  * @param {Array<{memberId: string, memberName: string, itemId: string, name: string}>} [input.carried] Lo que se puede dejar.
- * @returns {Promise<{accepted: string, built: string, benched: string, called: string, stored: string, retrieved: string}|null>}
+ * @param {boolean} [input.rooms] J3.1: si se está en la sala del gremio, con sus partes (el cofre,
+ *   el patio, los edificios…). En el tablón de otro pueblo no están: sin la barra de accesos.
+ * @returns {Promise<{accepted?: string, built?: string, benched?: string, called?: string, stored?: string, retrieved?: string, room?: string}|null>}
  */
 export async function openGuildPanel({
     guild, board, day, purse, roster, Popup, POPUP_TYPE, factionNames = {}, bench = [], partyFull = false, fighting = false,
-    storage = [], carried = [],
+    storage = [], carried = [], rooms: inHall = false,
 }) {
-    /** Lo único que sale de aquí: qué encargo se acepta, qué se construye y a quién se rota. */
+    /** Lo único que sale de aquí: qué encargo se acepta, qué se construye, a quién se rota o qué sala se visita. */
     let accepted = '';
     let built = '';
     let benched = '';
     let called = '';
     let stored = '';
     let retrieved = '';
+    let room = '';
 
     const root = $('<div class="gd-root"></div>');
 
@@ -56,6 +59,27 @@ export async function openGuildPanel({
     head.append($('<div class="gd-name"></div>').text(describeGuild(guild)));
     head.append($('<div class="gd-purse"></div>').text(`${purse} de oro`));
     root.append(head);
+
+    // ---- Accesos directos a las salas del gremio (J3.1 / J15.4) ----------
+    const nav = $('<div class="gd-nav" style="display:flex; flex-wrap:wrap; gap:6px; margin:10px 0 16px;"></div>');
+    const rooms = [
+        { id: 'chest', label: 'Cofre', icon: 'fa-box-archive' },
+        { id: 'training', label: 'Entrenar', icon: 'fa-dumbbell' },
+        { id: 'house', label: 'Edificios', icon: 'fa-house-chimney' },
+        { id: 'errands', label: 'Encargos', icon: 'fa-clipboard-list' },
+        { id: 'heroes', label: 'Personajes', icon: 'fa-users' },
+        { id: 'memory', label: 'Memoria', icon: 'fa-book-skull' },
+    ];
+    for (const r of rooms) {
+        const btn = $('<button class="menu_button gd-room-btn" type="button"></button>')
+            .html(`<i class="fa-solid ${r.icon}"></i> ${r.label}`);
+        btn.on('click', () => {
+            room = r.id;
+            popup.completeAffirmative();
+        });
+        nav.append(btn);
+    }
+    if (inHall && !fighting) root.append(nav);
 
     // ---- El tablón --------------------------------------------------------
     root.append($('<div class="gd-title"></div>').text('Tablón de encargos'));
@@ -244,5 +268,7 @@ export async function openGuildPanel({
     });
 
     await popup.show();
-    return (accepted || built || benched || called || stored || retrieved) ? { accepted, built, benched, called, stored, retrieved } : null;
+    return (accepted || built || benched || called || stored || retrieved || room)
+        ? { accepted, built, benched, called, stored, retrieved, room }
+        : null;
 }

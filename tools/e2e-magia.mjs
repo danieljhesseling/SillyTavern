@@ -283,9 +283,10 @@ try {
     await page.locator('dialog.popup[open]:has(.sp-prepare) .popup-button-ok').click();
     await page.waitForTimeout(700);
     lia = await hero();
-    check('al preparar, cambia lo que tiene a mano', Boolean(into) && (lia?.prepared ?? []).includes(String(into)) && !(lia?.prepared ?? []).includes(String(out))
-        && (lia?.prepared ?? []).some((/** @type {string} */ id) => /proyectil/.test(id)),
-        JSON.stringify({ out, into, prepared: lia?.prepared }));
+    const preparedNow = lia?.prepared ?? [];
+    const swapped = Boolean(into) && preparedNow.includes(String(into)) && !preparedNow.includes(String(out))
+        && preparedNow.some((/** @type {string} */ id) => /proyectil/.test(id));
+    check('al preparar, cambia lo que tiene a mano', swapped, JSON.stringify({ out, into, prepared: lia?.prepared }));
 
     // 6. La pelea del muelle: un conjuro de nivel 1 desde la tarjeta del enemigo.
     await dropToasts();

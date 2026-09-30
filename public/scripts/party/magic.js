@@ -47,6 +47,8 @@ import { zoneFromSpell, placeZone, zoneFlagsAt, resolveZoneEffect, clearZones, e
 import { planSummon, dismissSummons } from '../game-engine/rules/summons.js';
 import { itemSpellSpec, spendItemCharges, itemWorks, scrollCheck, setAttunement, ATTUNEMENT_MAX, attunedItems } from '../game-engine/rules/magic-items.js';
 import { firstArt, loadPixelManifest } from '../game-engine/ui/pixel-art.js';
+import { fieldChoices, castField } from '../game-engine/rules/field-magic.js';
+import { openFieldMagic } from '../game-engine/ui/field-magic-panel.js';
 import { WANTED_KEY } from './keys.js';
 import { combatEncounter, currentLocationName, partyMembers } from './state.js';
 import {
@@ -60,7 +62,7 @@ import { persistBoardTerrain, getActiveBoardContext, explodeBarrels, boardVisibi
 import { renderLocationMapsPreview } from './board-view.js';
 import { applyCampaignRuleset, lastWorldRows, hereLocation, lastCompendium } from './world.js';
 import { nudgeRuler } from './factions.js';
-import { advanceCampaignDay } from './time.js';
+import { advanceCampaignDay, getCampaignCalendar } from './time.js';
 import { noteDeed, worldWrite } from './world-growth.js';
 import { postCombatNarration, postForModel, showTip } from './narration.js';
 import { savePartyState, renderPartyMembers } from './roster.js';
@@ -211,6 +213,17 @@ export async function openGrimoire(all = false) {
     let next = null;
     /** @type {any} */
     let popup = null;
+    // J19.10: la magia fuera de combate (curar, luz, detectar, los rituales), con un botón y no
+    // solo con `/magia`. En plena pelea, no: se lanza en tu turno.
+    if (fifth.length > 0 && !combatEncounter.active) {
+        body.append($('<button type="button" class="menu_button gr-field"></button>')
+            .append('<i class="fa-solid fa-wand-sparkles"></i>')
+            .append($('<span></span>').text(' Lanzar fuera de combate: curar, luz, rituales…'))
+            .on('click', () => {
+                next = openFieldMagicModal;
+                void popup?.completeAffirmative();
+            }));
+    }
     for (const member of fifth) {
         if (ensureSpellsOf(member)) savePartyState();
         body.append(grimoireSection(member, (action) => {
@@ -239,6 +252,74 @@ export async function openGrimoire(all = false) {
     // Lo que se pidió desde dentro (preparar, elegir) se abre ya cerrado el grimorio: dos
     // cuadros uno encima de otro no se dejan pulsar bien.
     if (next) await /** @type {() => Promise<any>} */ (next)();
+}
+
+/**
+ * J19.10: Abrir la ventana de magia fuera de combate. Los rituales los lanza `rituals.js`
+ * (como el botón del grimorio); los trucos y lo que gasta espacio, `castField`, y aquí se
+ * aplica lo que devuelve: el espacio gastado, lo curado, lo identificado y el material.
+ *
+ * @returns {Promise<string>}
+ */
+export async function openFieldMagicModal() {
+    if (combatEncounter.active) {
+        toastr.warning('En plena pelea, la magia se lanza en tu turno.', 'Magia');
+        return '';
+    }
+    const context = () => ({ party: partyMembers, calendar: getCampaignCalendar() });
+    await openFieldMagic({
+        getCasters: () => partyMembers.filter(m => !m.dead && (Number(m.hp) || 0) > 0).map(member => ({
+            member,
+            choices: fieldChoices({
+                member,
+                classRow: classRowOf(member),
+                catalogue: spellRows(),
+                carried: Array.isArray(member.items) ? member.items : [],
+                context: context(),
+            }),
+        })).filter(c => c.choices.length > 0),
+        onCast: async (member, choice) => {
+            if (choice.how === 'ritual') {
+                const said = (await import('./rituals.js')).castRitual(member, choice.id);
+                return said ? [said] : [];
+            }
+            const spell = spellRows().find((/** @type {any} */ row) => String(row?.id) === String(choice.id));
+            const res = castField({
+                member,
+                classRow: classRowOf(member),
+                spell,
+                carried: Array.isArray(member.items) ? member.items : [],
+                context: context(),
+                rollDice: (formula) => rollDiceDetailed(formula, 8).total,
+            });
+            if (!res.ok) return [res.reason];
+            if (res.slotsUsed) member.slotsUsed = res.slotsUsed;
+            for (const healed of res.effects.heal ?? []) {
+                const who = partyMembers.find(m => String(m.id) === healed.memberId);
+                if (who) who.hp = healed.hp;
+            }
+            for (const change of res.effects.identify ?? []) {
+                const owner = partyMembers.find(m => String(m.id) === change.memberId);
+                const items = Array.isArray(owner?.items) ? owner.items : [];
+                const index = items.findIndex((/** @type {any} */ i) => String(i?.id) === change.itemId);
+                if (index >= 0) items[index] = change.item;
+            }
+            if (res.effects.alarm) /** @type {any} */ (member).ritualAlarm = res.effects.alarm;
+            const lines = [...res.lines];
+            for (const name of res.consumes) {
+                const item = (Array.isArray(member.items) ? member.items : [])
+                    .find((/** @type {any} */ i) => String(i?.name ?? '').trim().toLowerCase() === String(name).trim().toLowerCase());
+                if (!item) continue;
+                removeItemFromInventory(/** @type {any} */ (member), String(item.id));
+                lines.push(`Se gasta ${String(name).toLowerCase()}.`);
+            }
+            savePartyState();
+            renderPartyMembers();
+            postCombatNarration(`✨ [MAGIA] ${lines.join(' ')}`);
+            return lines;
+        },
+    });
+    return '';
 }
 
 /**
@@ -1163,6 +1244,7 @@ export function useAbility(member, ability, target) {
 export function abilityVictims(actor, side, ability, subject) {
     const aim = boardCellOf(subject);
     if (!isArea(ability.area)) {
+        /** @type {'party'|'enemy'} */
         const kind = partyMembers.includes(subject) ? 'party' : 'enemy';
         /** @type {Array<{kind: 'party'|'enemy', ref: any, x: number, y: number}>} */
         const victims = [{ kind, ref: subject, ...aim }];

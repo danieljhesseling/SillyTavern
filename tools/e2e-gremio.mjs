@@ -641,6 +641,42 @@ try {
             acts: [...(scene?.querySelectorAll('.gs-town-act') ?? [])].map(b => (b.textContent || '').replace(/\s+/g, ' ').trim()),
         };
     });
+    // J3.1: «La Casa del Gremio» por dentro: la sala por partes (el tablón, tu gente, la casa, la
+    // memoria y, la última, la salida), el rango arriba y, en el botón del cofre, cómo está.
+    await page.locator('#game-shell .gs-town-place[data-place="gremio"]').click({ timeout: 5000 }).catch(() => {});
+    await until(async () => (await placeScene()).place === 'gremio', 8000);
+    const hallRoom = await page.evaluate(() => {
+        const scene = document.querySelector('#game-shell .gs-town-scene');
+        return {
+            rank: (scene?.querySelector('.gs-town-hall-rank')?.textContent || '').trim(),
+            groups: [...(scene?.querySelectorAll('.gs-town-group') ?? [])].map(g => (g.textContent || '').trim()),
+            chest: (scene?.querySelector('.gs-town-act[data-action="hub-chest"] .gs-btn-detail')?.textContent || '').trim(),
+        };
+    });
+    const hallOrder = ['El tablón', 'Tu gente', 'La casa', 'La memoria del gremio'].map(title => hallRoom.groups.indexOf(title));
+    check('en «La Casa del Gremio», la sala por partes: el tablón, tu gente, la casa, la memoria y, al final, la salida; el rango arriba y cómo está el cofre (J3.1)',
+        hallOrder.every((at, i) => at >= 0 && (i === 0 || at > hallOrder[i - 1])) && hallRoom.groups.at(-1) === 'La salida'
+        && /^Rango [DCBAS] /.test(hallRoom.rank) && /^(Vacío|\d+ cosas? de \d+)/.test(hallRoom.chest), JSON.stringify(hallRoom));
+    if (SHOT) await page.screenshot({ path: `${SHOT}.casa-gremio.png` });
+    // J15.4: y cada parte de la sala abre su ventana con un clic, sin escribir nada: el cofre, el
+    // patio, los edificios, los encargos y lo que se recuerda. Se abre, se mira y se cierra.
+    /** @type {Record<string, boolean>} */
+    const hallWindows = {};
+    for (const [id, title] of /** @type {Array<[string, RegExp]>} */ ([['hub-chest', /El cofre del gremio/], ['hub-train', /Patio de entrenamiento/],
+        ['hub-house', /La casa del gremio/], ['hub-errands', /Encargos del tablón/], ['hub-memory', /Lo que se recuerda de vosotros/]])) {
+        await page.locator(`#game-shell .gs-town-scene .gs-town-act[data-action="${id}"]`).click({ timeout: 5000 }).catch(() => {});
+        hallWindows[id] = await until(() => page.evaluate((source) => [...document.querySelectorAll('dialog[open]:not([closing])')]
+            .some(d => new RegExp(source).test(d.textContent || '')), title.source), 8000);
+        if (SHOT && id === 'hub-chest') await page.screenshot({ path: `${SHOT}.cofre.png` });
+        // Con el ratón, como quien juega: su «Cerrar» (el del pie de la ventana, o el del popup).
+        await page.locator('dialog[open]:not([closing]) :is(.hb-close, .mm-close, .popup-button-ok):visible').first().click({ timeout: 5000 }).catch(() => {});
+        await until(() => page.evaluate(() => document.querySelectorAll('dialog[open]:not([closing])').length === 0), 5000);
+    }
+    check('cada parte de la sala abre su ventana con un clic: el cofre, el patio, los edificios, los encargos y lo que se recuerda (J3.1, J15.4)',
+        Object.values(hallWindows).length === 5 && Object.values(hallWindows).every(Boolean), JSON.stringify(hallWindows));
+    await page.locator('#game-shell .gs-town-back').click({ timeout: 5000 }).catch(() => {});
+    await until(() => page.evaluate(() => !document.querySelector('#game-shell .gs-town-scene')
+        && document.querySelectorAll('#game-shell .gs-town-place').length > 0), 5000);
     await page.locator('#game-shell .gs-town-place[data-place="herreria"]').click({ timeout: 5000 }).catch(() => {});
     let inPlace = await placeScene();
     await until(async () => /ramiro\.png$/.test((inPlace = await placeScene()).face), 8000);

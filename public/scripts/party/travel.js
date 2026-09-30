@@ -49,6 +49,8 @@ import { arrivalLines } from '../game-engine/campaign/recruit.js';
 import { readReasons } from '../game-engine/rules/companions.js';
 import { describeLootItem, declaredLootNames } from '../game-engine/combat/loot-items.js';
 import { isShellOpen, refreshGameShell } from '../game-engine/ui/shell/game-shell.js';
+export { roadLine, readLineRows } from '../game-engine/campaign/companion-lines.js';
+export { nightFor, recordNight, NIGHTS_KEY } from '../game-engine/campaign/nights.js';
 import {
     APPROVAL_KEY, ARRIVALS_HEARD_KEY, BOARD_KEY, GRAVES_KEY, MOUNTS_KEY, NEWS_KEY, PLOT_STATE_KEY,
     RUMORS_HEARD_KEY, TAKEN_KEY, VISITED_KEY, WANTED_KEY, WEATHER_TODAY_KEY,

@@ -39,7 +39,7 @@ export const HALL_SECTIONS = [
     { id: 'tablon', title: 'El tablón', chips: ['hub-skip', 'hub-board', 'hub-errands'] },
     { id: 'gente', title: 'Tu gente', chips: ['hub-heroes', 'hub-hire'] },
     { id: 'casa', title: 'La casa', chips: ['hub-chest', 'hub-train', 'hub-house'] },
-    { id: 'memoria', title: 'La memoria del gremio', chips: ['hub-hall'] },
+    { id: 'memoria', title: 'La memoria del gremio', chips: ['hub-hall', 'hub-memory'] },
 ];
 
 /**

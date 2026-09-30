@@ -294,7 +294,9 @@ function dcFor(way, parley, shift) {
  */
 export function parleyChips({ enemies, party, gold = 0, parley = null, tried = [], speakerId = null, hero = null }) {
     const able = (Array.isArray(party) ? party : []).filter(m => m && !m.dead && (Number(m.hp ?? 1) || 0) > 0);
-    const who = { heroe: hero ?? able[0] ?? null, grupo: able };
+    // Para el género del texto: el héroe y el grupo. No se llama `who`: ese nombre es el de
+    // «Habla Bran (+5)» de cada forma, y lo tapaba.
+    const people = { heroe: hero ?? able[0] ?? null, grupo: able };
     const read = parley && isObject(parley) && 'ways' in parley ? /** @type {Parley} */ (parley) : readParley(parley);
     const standing = standingFoes(enemies);
     const { chief, leader } = leadersOf(read, enemies);
@@ -328,7 +330,7 @@ export function parleyChips({ enemies, party, gold = 0, parley = null, tried = [
             id: way,
             label: spec.label,
             icon: spec.icon,
-            text: resolveGender(written?.text || DEFAULT_TEXT[way], who),
+            text: resolveGender(written?.text || DEFAULT_TEXT[way], people),
             check: skill ? `${SKILLS[/** @type {keyof typeof SKILLS} */ (skill)]?.label ?? skill} · CD ${dc}` : '',
             who,
             cost: way === 'sobornar' ? `Piden ${price} de oro`

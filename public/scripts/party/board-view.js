@@ -68,7 +68,7 @@ import {
 } from './player-actions.js';
 import {
     boardVisibility, buildBoardIdleEnemyTokens, buildBoardNPCTokens, buildEnemyTokens, buildTokens,
-    getActiveBoardContext, getActiveBoardTerrain, handleEnemyTokenMove, handleTokenMove, isBoardWon,
+    getActiveBoardContext, getActiveBoardTerrain, groupMoveTo, handleEnemyTokenMove, handleTokenMove, isBoardWon,
     persistBoardTerrain, placePartyAtStart, toggleBoardDoor, buildSummonTokens, activeSpellZones, attackHindrance,
     archetypeOf, activeSummons,
 } from './board.js';
@@ -626,6 +626,15 @@ function handleBoardCellClick(gridX, gridY, kind) {
     // Fuera de combate: la ficha elegida anda hasta ahí, por la misma puerta que al arrastrarla
     // (hace falta camino y un tirón), y sigue elegida para el paso siguiente.
     const walker = combatEncounter.active ? null : selectedWalker();
+    // J12.4: con quien abre el grupo elegido, un clic lleva al grupo entero (los demás le siguen
+    // y se ponen detrás, `group-move.js`); con otro elegido, solo anda ese, para colocarlo.
+    const lead = partyMembers.find(m => !m.dead) ?? null;
+    const followers = partyMembers.some(m => m !== lead && !m.dead
+        && (!m.mapPosition?.locationName || m.mapPosition.locationName === currentLocationName));
+    if (walker && walker === lead && followers) {
+        groupMoveTo(gridX, gridY);
+        return;
+    }
     if (walker) {
         handleTokenMove(walker.id, gridX, gridY, currentLocationName);
         renderLocationMapsPreview();

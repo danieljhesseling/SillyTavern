@@ -122,7 +122,6 @@ try {
             seen: meta.social?.seen ?? {},
         };
     });
-    const chips = () => page.evaluate(() => [...document.querySelectorAll('#game-shell .gs-chip-action')].map(c => (c.textContent || '').trim()));
     /** Todas las fichas de ahora, también las que no caben en la fila («+N más»). */
     const allChips = () => page.evaluate(async () => (await import('/scripts/party/shell.js')).buildShellChips(Infinity).map((/** @type {any} */ c) => c.label));
     const clickChip = (/** @type {RegExp} */ pattern) => page.evaluate((source) => {

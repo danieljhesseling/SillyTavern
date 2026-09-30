@@ -110,14 +110,16 @@ function newHeroTile(onClick) {
  * @param {any} input.Popup
  * @param {any} input.POPUP_TYPE
  * @param {import('../campaign/hub-heroes.js').HeroCard[]} input.heroes
+ * @param {string} [input.title] J3.1: desde la sala del gremio («Tus personajes»), no al entrar.
+ * @param {string} [input.sub]
  * @returns {Promise<{hero: string}|{create: true}|null>} Null: se sigue con el que iba.
  */
-export async function openHeroChooser({ Popup, POPUP_TYPE, heroes }) {
+export async function openHeroChooser({ Popup, POPUP_TYPE, heroes, title = '¿Con quién entras?', sub = 'Tus personajes del gremio. El que no entra se queda aquí, con su nivel y su equipo.' }) {
     await loadPixelManifest();
     const body = div('vt-root hb-root');
     body.append(div('vt-head')
-        .append($('<h3 class="vt-title"></h3>').text('¿Con quién entras?'))
-        .append($('<p class="vt-sub"></p>').text('Tus personajes del gremio. El que no entra se queda aquí, con su nivel y su equipo.')));
+        .append($('<h3 class="vt-title"></h3>').text(title))
+        .append($('<p class="vt-sub"></p>').text(sub)));
 
     /** @type {any} */
     let popup = null;

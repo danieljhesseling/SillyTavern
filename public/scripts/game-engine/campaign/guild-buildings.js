@@ -111,7 +111,7 @@ export function buildingOpens(key) {
             ];
         case 'stable':
             return [
-                `Mulas para todo el grupo: el camino a cada campaña, una cuarta parte más corto, y dentro de ella se va en mula. Sin comprarlas.`,
+                'Mulas para todo el grupo: el camino a cada campaña, una cuarta parte más corto, y dentro de ella se va en mula. Sin comprarlas.',
                 'Caballos para todo el grupo: el camino, a la mitad.',
             ];
         case 'bunks':

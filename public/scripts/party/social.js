@@ -44,6 +44,7 @@ import { isShellOpen, refreshGameShell } from '../game-engine/ui/shell/game-shel
 import { APPROVAL_KEY, PLOT_STATE_KEY } from './keys.js';
 import { combatEncounter, currentBoardName, currentLocationName, partyMembers } from './state.js';
 import { hereLocation, lastCompendium, lastConfidantEntries, lastHub, lastWorldNpcs } from './world.js';
+import { buildHallData, hubChips } from './hub.js';
 import {
     campaignDay, getCampaignBonds, getCampaignCalendar, recordCampaignBondEvent, saveCampaignState, spendDayPart,
 } from './time.js';
@@ -561,7 +562,8 @@ export function townPeople() {
  * J3.11: la localización de aquí y su gente, para la pantalla del pueblo, sin que lea el mundo
  * cada quince segundos (así las muertes se ven al momento). Y J14.4: quién de tu gente está dónde.
  *
- * @returns {{location: any, npcs: any[], people: TownPerson[]}|null}
+ * @returns {{location: any, npcs: any[], people: TownPerson[], hall?: import('../game-engine/campaign/guild-hall.js').HallData|null,
+ *   hubChips?: Array<{id: string, label: string, icon: string, command: string}>}|null}
  */
 export function townNow() {
     const location = hereLocation();
@@ -572,6 +574,10 @@ export function townNow() {
         // Los confidentes son para reclutar, no gente del pueblo (como `townNpcsFromEntries`).
         npcs: lastWorldNpcs.filter(n => !confidants.has(keyOf(n.name))),
         people: townPeople(),
+        hall: lastHub ? buildHallData() : null,
+        // J3.1: todas las fichas del gremio, para la sala: la fila de abajo solo lleva las cuatro
+        // primeras, y sin las demás no salían el cofre, el patio, los edificios ni la memoria.
+        hubChips: hubChips(),
     };
 }
 

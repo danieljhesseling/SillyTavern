@@ -34,13 +34,15 @@ import {
 import { dialogueMilestones } from '../game-engine/campaign/dialogues.js';
 import { describeLootItem } from '../game-engine/combat/loot-items.js';
 import { openPlotScene } from '../game-engine/ui/plot-scene.js';
+import { sceneFollows, dialogueFollow, scheduleFollows, laterRows, checkLaters } from '../game-engine/campaign/aftermath.js';
+import { readSucesoState } from '../game-engine/campaign/sucesos.js';
 import { isShellOpen, refreshGameShell } from '../game-engine/ui/shell/game-shell.js';
 import { addItemToInventory, createItem, removeItemFromInventory } from '../dnd-system.js';
 import { rollDiceDetailed } from './combat-rules.js';
 import {
     ACT_STARTS_KEY, ACT_SUMMARIES_KEY, ATTITUDES_KEY, CAMPAIGN_START_KEY, DIALOGUE_MEMORY_KEY, GRAVES_KEY, HERO_FIT_KEY,
     HINTS_KEY, PLOT_ANNOUNCED_KEY, PLOT_DECISIONS_KEY, PLOT_KEY, PLOT_SCENES_PLAYED_KEY, PLOT_STATE_KEY, RUMORS_HEARD_KEY,
-    RUMORS_HEARD_ON_KEY, VILLAIN_SEEN_KEY,
+    RUMORS_HEARD_ON_KEY, SUCESOS_KEY, VILLAIN_SEEN_KEY,
 } from './keys.js';
 import { combatEncounter, currentLocationName, partyMembers, worldItemCatalogue } from './state.js';
 import { recordFinishedCampaign } from './hub.js';
@@ -547,6 +549,14 @@ async function playPlotScene(milestone, scene) {
         const before = Array.isArray(chat_metadata[PLOT_DECISIONS_KEY]) ? chat_metadata[PLOT_DECISIONS_KEY] : [];
         chat_metadata[PLOT_DECISIONS_KEY] = [...before, ...decided.map(text => ({ day, text }))];
     }
+    // J11.2: consecuencias diferidas de lo que se decidió en la escena (aftermath.js). Sin sitio:
+    // vuelven donde estéis ese día, como dice el motor, y no solo si se vuelve aquí.
+    const follows = sceneFollows(milestone, result.choices);
+    if (follows.length > 0) {
+        const day = Math.max(1, campaignDay());
+        const sucesoState = readSucesoState(chat_metadata[SUCESOS_KEY]);
+        chat_metadata[SUCESOS_KEY] = scheduleFollows(sucesoState, { follows, day });
+    }
     saveMetadata();
     // Lo que pasó, línea a línea, y la charla del final si la hubo.
     const talk = (result.dialogue?.state?.log ?? [])
@@ -809,3 +819,44 @@ export function plotEndingTitle() {
     const id = String(chat_metadata?.plotEnding || '');
     return id ? String(getPlot()?.endings?.[id]?.title || id) : '';
 }
+
+/**
+ * Consecuencias diferidas que vuelven de una decisión en una charla escrita (J11.2).
+ *
+ * @param {any} dialogue
+ * @param {string} optionId
+ * @param {'bien'|'medias'|'mal'|null} [outcome]
+ */
+export function recordDialogueAftermath(dialogue, optionId, outcome = null) {
+    if (!chat_metadata) return;
+    // `later` va en la charla como se escribió: la leída (`dialogueFor`) ya no lo lleva.
+    const id = String(dialogue?.id ?? '').trim();
+    const raw = (Array.isArray(lastDialogues) ? lastDialogues : []).find((/** @type {any} */ d) => String(d?.id ?? '').trim() === id) ?? dialogue;
+    const follow = dialogueFollow(raw, optionId, outcome);
+    if (follow) {
+        const day = Math.max(1, campaignDay());
+        const sucesoState = readSucesoState(chat_metadata[SUCESOS_KEY]);
+        // Sin sitio: vuelve donde estéis ese día.
+        chat_metadata[SUCESOS_KEY] = scheduleFollows(sucesoState, { follows: follow, day });
+        saveMetadata();
+    }
+}
+
+/**
+ * Las tarjetas de consecuencias diferidas del hilo y de las charlas para sumar a los sucesos.
+ * @returns {any[]}
+ */
+export function getPlotAftermathRows() {
+    const plot = getPlot();
+    return laterRows(plot, { dialogues: lastDialogues });
+}
+
+/**
+ * Comprueba que las consecuencias diferidas de un paquete estén bien escritas.
+ * @param {any} pack
+ * @returns {{errors: Array<{path: string, message: string}>, warnings: Array<{path: string, message: string}>, count: number}}
+ */
+export function validatePackAftermath(pack) {
+    return checkLaters(pack);
+}
+

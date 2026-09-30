@@ -47,6 +47,8 @@ export const STATE_KEYS = [
     { key: 'campaignMap', kind: 'juego', owner: 'party/campaign-state.js', what: 'El mapa de la campaña y lo explorado' },
     { key: 'mounts', kind: 'juego', owner: 'party.js', what: 'Las monturas del grupo' },
     { key: 'bench', kind: 'juego', owner: 'party.js', what: 'Quién se quedó en el gremio (banquillo)' },
+    // J7.4: se lee con `readFormation` (campaign/formation.js); la guarda `party/companions.js`.
+    { key: 'party_formation', kind: 'juego', owner: 'party/companions.js', what: 'El orden de marcha y quién cura, habla, guía, vigila y caza' },
     { key: 'dispatches', kind: 'juego', owner: 'party.js', what: 'Quién está fuera haciendo un encargo sin el héroe' },
     { key: 'cases', kind: 'juego', owner: 'party.js', what: 'El caso abierto, sus pistas encontradas y los ya cerrados' },
     { key: 'duels', kind: 'juego', owner: 'party.js', what: 'Con quién se habló ya hoy (un duelo de palabras por persona y día)' },
@@ -90,6 +92,8 @@ export const STATE_KEYS = [
     { key: 'heroFit', kind: 'juego', owner: 'party.js', what: 'Qué hitos son para este héroe' },
     // --- El mundo, visto desde la partida
     { key: 'deeds', kind: 'juego', owner: 'party.js', what: 'Lo que el mundo recuerda que hicisteis' },
+    // J11.3: se lee con `readMarks` y se escribe con `addMark` (campaign/world-marks.js).
+    { key: 'worldMarks', kind: 'juego', owner: 'campaign/world-marks.js', what: 'Las huellas que habéis dejado en cada pueblo: qué hicisteis, dónde y cuándo' },
     { key: 'sharedMemories', kind: 'juego', owner: 'party.js', what: 'Lo que el grupo recuerda haber vivido junto' },
     { key: 'fame', kind: 'juego', owner: 'party.js', what: 'La fama del grupo, sitio a sitio' },
     { key: 'wanted', kind: 'juego', owner: 'party.js', what: 'Dónde os buscan' },

@@ -169,6 +169,8 @@ const RESOLVED = {
     // J14: las charlas (`small-talk.js`) y las escenas de quedada (`renderScene` de `meetups.js`).
     'compendio/charlas.json': [/^\.rows\[\d+\]\.lines\[\d+\]$/, /^\.rows\[\d+\]\.replies\[\d+\]\.(text|then)$/],
     'compendio/quedadas.json': [/^\.rows\[\d+\]\.beats\[\d+\]\.(note|say)$/, /^\.rows\[\d+\]\.beats\[\d+\]\.replies\[\d+\]\.(text|then)$/],
+    // Las noches en el camino: sus escenas se montan con `bindCast` (cast-scenes.js), que las resuelve.
+    'compendio/noches.json': [/^\.rows\[\d+\]\.beats\[\d+\]\.(note|say)$/, /^\.rows\[\d+\]\.beats\[\d+\]\.replies\[\d+\]\.(text|then)$/],
     // D-J17: la sinopsis de la tarjeta del tablón (`hub-panel.js`, con quien va).
     // Y el camino hasta la campaña (`journeyLine`, que sale por `postForModel`).
     'mundos/mundos.json': [/^\.worlds\[\d+\]\.synopsis$/, /^\.worlds\[\d+\]\.journey\.how$/],
@@ -199,6 +201,10 @@ const RESOLVED = {
         /^\.plot\.milestones\[\d+\]\.beats\[\d+\]\.options\[\d+\]\.(text|tag|journal)$/,
         /^\.plot\.milestones\[\d+\]\.beats\[\d+\]\.options\[\d+\](\.check\.(success|partial|failure))?\.reply(\[\d+\])?(\.text)?$/,
         /^\.plot\.milestones\[\d+\]\.beats\[\d+\]\.options\[\d+\](\.check\.(success|partial|failure))?\.(journal|effects\[\d+\]\.clue)$/,
+        // J11.2: lo que vuelve días después (`later`) sale como un suceso, y `sucesoById` resuelve
+        // su texto y sus opciones como los de sucesos.json. El título no.
+        /^\.plot\.milestones\[\d+\]\.beats\[\d+\]\.options\[\d+\]\.later\.(text|options\[\d+\]\.(label|then|success\.then|fail\.then))$/,
+        /^\.dialogues\[\d+\]\.nodes\[\d+\]\.options\[\d+\]\.later\.(text|options\[\d+\]\.(label|then|success\.then|fail\.then))$/,
     ],
 };
 

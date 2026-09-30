@@ -51,7 +51,7 @@ export const FILL_KINDS = {
     sitio: ['localización que la historia nombra', 'localizaciones que la historia nombra'],
     tipo: ['localización sin tipo, por su nombre', 'localizaciones sin tipo, por su nombre'],
     camino: ['camino a una localización suelta', 'caminos a localizaciones sueltas'],
-    texto:['texto del narrador del motor', 'textos del narrador del motor'],
+    texto: ['texto del narrador del motor', 'textos del narrador del motor'],
     hilo: ['hito completado', 'hitos completados'],
     final: ['final', 'finales'],
     aliado: ['compañero que una misión pide proteger', 'compañeros que una misión pide proteger'],
@@ -544,7 +544,10 @@ export function fillPackGaps(raw, { compendium = null, seed = '' } = {}) {
                     kept.push(creatureByName.get(low(monster.name)));
                     continue;
                 }
-                const { from, speed, ...row } = monster;
+                // La criatura nueva, sin lo que solo servía para criarla (de dónde sale y su paso).
+                const row = /** @type {any} */ ({ ...monster });
+                delete row.from;
+                delete row.speed;
                 pending.set(low(row.name), row);
                 kept.push(row);
             }

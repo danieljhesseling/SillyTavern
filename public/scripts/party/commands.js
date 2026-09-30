@@ -13,7 +13,7 @@ import { chat_metadata, saveMetadata } from '../../script.js';
 import { getCurrentWorldLocationMaps, getCurrentWorldBoards, getCurrentWorldEnemies } from '../world-info.js';
 import { SlashCommandParser } from '../slash-commands/SlashCommandParser.js';
 import { SlashCommand } from '../slash-commands/SlashCommand.js';
-import { ARGUMENT_TYPE, SlashCommandArgument } from '../slash-commands/SlashCommandArgument.js';
+import { ARGUMENT_TYPE, SlashCommandArgument, SlashCommandNamedArgument } from '../slash-commands/SlashCommandArgument.js';
 import { SlashCommandEnumValue } from '../slash-commands/SlashCommandEnumValue.js';
 import { createSeededRandom, seedFrom } from '../game-engine/combat/seeded-random.js';
 import { getDistanceInFeet, setRandomSource } from './combat-rules.js';
@@ -33,8 +33,11 @@ import {
 } from './state.js';
 import { restoreCheckpoint, saveCheckpoint } from './checkpoints.js';
 import { openPetPanel } from './pet.js';
-import { learnFromScroll, openAbilitiesEditor, openGrimoire } from './magic.js';
-import { openGuild, openHubCampaigns, openHubHire, skipHubTrial } from './hub.js';
+import { learnFromScroll, openAbilitiesEditor, openGrimoire, openFieldMagicModal } from './magic.js';
+import {
+    openGuild, openHubCampaigns, openHubHire, skipHubTrial,
+    openGuildChest, openGuildHouse, openGuildTraining, openGuildErrands, openHubHeroes, openMemoryView,
+} from './hub.js';
 import { askAboutCase, askTheDead, duelWith, openCaseBoard, searchCaseHere, startCase } from './cases.js';
 import {
     getAttackableEnemiesForMember, getCurrentActingMember, getCurrentTurnEntry, getPartyMemberByTurnEntry,
@@ -45,7 +48,7 @@ import {
     endPlayerCombatTurn, handleBatonPass, handlePlayerCombatAttack, handlePlayerCombatMove, performManeuver,
     resolveUltimateStrike, throwItem, throwScenery,
 } from './player-actions.js';
-import { enterBoard, stairsHere } from './board.js';
+import { enterBoard, stairsHere, groupMoveTo } from './board.js';
 import { renderLocationMapsPreview } from './board-view.js';
 import { getLocationBoards, lastHubHome, saveCurrentBoard, saveCurrentLocation, worldNpc } from './world.js';
 import {
@@ -202,6 +205,44 @@ export function registerPartyCommands() {
         callback: async () => {
             const { openSandbox } = await import('../game-engine/ui/sandbox.js');
             await openSandbox({ Popup, POPUP_TYPE });
+            return '';
+        },
+    }));
+
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'marcha',
+        aliases: ['mover-grupo'],
+        helpString: '<div>Mueve al grupo entero a una casilla del tablero (J12.4). Quien abre la marcha según la formación va delante y los demás le siguen en fila. Uso: <code>/marcha 10 5</code> o <code>/marcha x=10 y=5</code></div>',
+        unnamedArgumentList: [
+            SlashCommandArgument.fromProps({
+                description: 'La casilla: X e Y, separadas por un espacio',
+                typeList: [ARGUMENT_TYPE.STRING],
+            }),
+        ],
+        namedArgumentList: [
+            SlashCommandNamedArgument.fromProps({
+                name: 'x',
+                description: 'Coordenada X',
+                typeList: [ARGUMENT_TYPE.NUMBER],
+            }),
+            SlashCommandNamedArgument.fromProps({
+                name: 'y',
+                description: 'Coordenada Y',
+                typeList: [ARGUMENT_TYPE.NUMBER],
+            }),
+        ],
+        callback: (args, value) => {
+            // El valor sin nombre llega entero («10 5»): se parte aquí.
+            const [ux, uy] = String(value ?? '').trim().split(/[\s,]+/);
+            const rawX = String(args?.x ?? '').trim() || ux || '';
+            const rawY = String(args?.y ?? '').trim() || uy || '';
+            const x = Number(rawX);
+            const y = Number(rawY);
+            if (rawX !== '' && rawY !== '' && Number.isFinite(x) && Number.isFinite(y)) {
+                groupMoveTo(x, y);
+            } else {
+                toastr.warning('Indica las coordenadas X e Y: /marcha 10 5', 'Marcha');
+            }
             return '';
         },
     }));
@@ -571,6 +612,44 @@ export function registerPartyCommands() {
         name: 'saltar-prueba',
         helpString: '<div>Saltar la prueba del gremio: cuenta como ganada, sin pelea y sin botín, y el hilo sigue con el tablón de campañas.</div>',
         callback: async () => await skipHubTrial(),
+    }));
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'cofre',
+        helpString: '<div>Abre el cofre y el arca del gremio: saca y guarda objetos y oro.</div>',
+        callback: async () => await openGuildChest(),
+    }));
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'casa-gremio',
+        helpString: '<div>La casa del gremio: mejora los edificios (forja, biblioteca, establo).</div>',
+        callback: async () => await openGuildHouse(),
+    }));
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'entrenar-gremio',
+        helpString: '<div>Entrena en el patio del gremio con tus compañeros para ganar experiencia y subir de nivel.</div>',
+        callback: async () => await openGuildTraining(),
+    }));
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'encargos-gremio',
+        helpString: '<div>Muestra los encargos cortos del tablón del gremio en Puerto Alba.</div>',
+        callback: async () => await openGuildErrands(),
+    }));
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'personajes',
+        helpString: '<div>Tus personajes en el gremio: cambia quién va al frente o crea uno nuevo.</div>',
+        callback: async () => await openHubHeroes(),
+    }));
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'memoria',
+        helpString: '<div>Lo que se recuerda de vosotros en este pueblo y lo que el gremio recuerda de vuestras campañas.</div>',
+        callback: async () => {
+            await openMemoryView();
+            return '';
+        },
+    }));
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'magia',
+        helpString: '<div>Abre la magia fuera de combate: curar heridas, luz, detectar magia, hablar con los muertos…</div>',
+        callback: async () => await openFieldMagicModal(),
     }));
     // No `/gremio`: ese nombre es del panel de la compañía (el tablón de encargos y los edificios).
     SlashCommandParser.addCommandObject(SlashCommand.fromProps({

@@ -18,6 +18,7 @@
 
 import { firstArt, openPack } from '../pixel-art.js';
 import { PLACE_KINDS, townPlaces, townNpcsFromEntries, greetingFor, describeWho, slotOf } from '../../campaign/town.js';
+import { hallSections, hallHeader } from '../../campaign/guild-hall.js';
 
 /**
  * @typedef {import('../../campaign/town.js').TownPlace} TownPlace
@@ -35,7 +36,8 @@ import { PLACE_KINDS, townPlaces, townNpcsFromEntries, greetingFor, describeWho,
  * @property {string} slot La franja del reloj, como la dice: «Noche».
  * @property {ServiceCard[]} cards Las tarjetas de servicios de aquí.
  * @property {ActionChip[]} chips La fila de fichas: de ahí salen el gremio y las charlas.
- * @property {{location: any, npcs: any[], people?: YourPerson[]}|null} [data] Lo que da `getTown`, si lo da.
+ * @property {{location: any, npcs: any[], people?: YourPerson[], hall?: import('../../campaign/guild-hall.js').HallData|null, hubChips?: ActionChip[]}|null} [data]
+ *   Lo que da `getTown`, si lo da. `hubChips`: todas las fichas del gremio (la fila solo lleva cuatro).
  * @property {(actionId: string) => void} onService
  * @property {(chip: ActionChip) => void} onChip
  * @property {() => void} refresh Redibujar el Shell.
@@ -50,6 +52,7 @@ import { PLACE_KINDS, townPlaces, townNpcsFromEntries, greetingFor, describeWho,
  * @property {string[]} rest Las tarjetas que se quedan fuera de los sitios.
  * @property {boolean} guild Si es el pueblo del gremio.
  * @property {ActionChip[]} hubChips Las fichas del gremio: el tablón, contratar, volver…
+ * @property {import('../../campaign/guild-hall.js').HallData|null} [hall] J3.1: el estado de la sala del gremio.
  * @property {Record<string, YourPerson[]>} yours J14.4: tu gente en cada sitio, por el id del sitio.
  * @property {YourPerson[]} loose Tu gente en un sitio que la pantalla no enseña (el muelle sin nada).
  */
@@ -158,11 +161,20 @@ export function countTownPlaces(here, data = null, onReady = null) {
 export function buildTown(ctx) {
     const source = sourceFor(ctx.here, ctx.data, ctx.refresh);
     if (!source) return null;
-    const hubChips = (ctx.chips ?? []).filter(c => String(c?.id ?? '').startsWith('hub-'));
-    const guild = hubChips.some(c => c.id === 'hub-board' || c.id === 'hub-hire');
+    // J3.1: las fichas del gremio, todas si las da `getTown`; la fila de abajo se queda en cuatro.
+    const hubChips = (ctx.data?.hubChips ?? ctx.chips ?? []).filter(c => String(c?.id ?? '').startsWith('hub-'));
+    const guild = hubChips.some(c => c.id === 'hub-board' || c.id === 'hub-hire' || c.id === 'hub-skip');
     const { places, rest } = townPlaces({ location: source.location, npcs: source.npcs, cards: ctx.cards ?? [], guild });
     if (open.town !== ctx.here || !places.some(p => p.id === open.id)) open = { town: '', id: '' };
-    return { here: ctx.here, places, rest, guild, hubChips, ...spreadPeople(places, ctx.data?.people ?? []) };
+    return {
+        here: ctx.here,
+        places,
+        rest,
+        guild,
+        hubChips,
+        hall: ctx.data?.hall ?? null,
+        ...spreadPeople(places, ctx.data?.people ?? []),
+    };
 }
 
 /**
@@ -426,13 +438,35 @@ function placeActs(place, town, ctx) {
     /** @type {ReturnType<typeof placeActs>} */
     const groups = [];
     const keeper = place.keeper?.name ?? '';
+    // J3.1: la salida de la sala va la última, detrás de hablar y de lo demás del sitio.
+    /** @type {ReturnType<typeof placeActs>} */
+    const hallExit = [];
     if (place.kind === 'gremio' && town.guild && town.hubChips.length > 0) {
-        groups.push({
-            title: 'El gremio',
-            acts: town.hubChips.map(chip => ({
-                id: chip.id, label: chip.label, icon: chip.icon, detail: '', enabled: true, cost: 0, run: () => ctx.onChip(chip),
-            })),
-        });
+        const sections = hallSections({ chips: town.hubChips, hall: town.hall ?? {}, town: town.here });
+        for (const sec of sections) {
+            (sec.id === 'salida' ? hallExit : groups).push({
+                title: sec.title,
+                acts: sec.acts.map(act => ({
+                    id: act.id,
+                    label: act.label,
+                    icon: act.icon,
+                    detail: act.detail,
+                    enabled: true,
+                    cost: 0,
+                    run: () => {
+                        if (act.exit) {
+                            open = { town: '', id: '' };
+                            ctx.refresh();
+                        } else if (act.campaign) {
+                            // `hub-continue:<id>`: la fila lo sigue por su id (`runShellChip`), sin comando.
+                            ctx.onChip({ id: act.id, label: act.label, icon: act.icon, source: 'motor' });
+                        } else if (act.chip) {
+                            ctx.onChip(act.chip);
+                        }
+                    },
+                })),
+            });
+        }
     }
     // Tu gente va delante de lo que se compra: quien está aquí es a lo que se viene.
     const peopleAt = groups.length;
@@ -476,7 +510,10 @@ function placeActs(place, town, ctx) {
                 });
             }
         }
-        if (acts.length > 0) groups.splice(peopleAt, 0, { title: 'Tu gente', acts });
+        // En la sala del gremio ya hay una parte «Tu gente»: van ahí, no en otra con el mismo nombre.
+        const hallPeople = groups.find(group => group.title === 'Tu gente');
+        if (acts.length > 0 && hallPeople) hallPeople.acts.push(...acts);
+        else if (acts.length > 0) groups.splice(peopleAt, 0, { title: 'Tu gente', acts });
     }
     const people = [...(keeper ? [keeper] : []), ...place.people.map(p => p.name)].slice(0, 5);
     if (people.length > 0) {
@@ -488,6 +525,7 @@ function placeActs(place, town, ctx) {
             }),
         });
     }
+    groups.push(...hallExit);
     return groups;
 }
 
@@ -563,6 +601,23 @@ export function renderTownScene(panel, town, ctx) {
     box.appendChild(el('p', 'gs-town-line', greetingFor({ place, town: town.here, slot: ctx.slot, hero: ctx.hero })));
     if (place.description) box.appendChild(el('p', 'gs-town-desc', place.description));
 
+    // J3.1: En la sala del gremio, el rango y las noticias si ha subido.
+    if (place.kind === 'gremio' && town.hall) {
+        const header = hallHeader(town.hall);
+        if (header.news) {
+            const newsEl = el('div', 'gs-town-hall-news');
+            newsEl.appendChild(el('i', 'fa-solid fa-bullhorn'));
+            newsEl.appendChild(el('span', '', header.news));
+            box.appendChild(newsEl);
+        }
+        if (header.line) {
+            const rankEl = el('div', 'gs-town-hall-rank');
+            rankEl.appendChild(el('i', 'fa-solid fa-shield-halved'));
+            rankEl.appendChild(el('span', '', header.line));
+            box.appendChild(rankEl);
+        }
+    }
+
     const groups = placeActs(place, town, ctx);
     const acts = el('div', 'gs-town-acts');
     for (const group of groups) {
@@ -571,7 +626,14 @@ export function renderTownScene(panel, town, ctx) {
             const go = button('gs-town-act');
             go.dataset.action = act.id;
             go.appendChild(el('i', `fa-solid ${act.icon}`));
-            go.appendChild(el('span', 'gs-btn-label', act.label));
+            if (act.detail) {
+                const stack = el('span', 'gs-btn-stack');
+                stack.appendChild(el('span', 'gs-btn-label', act.label));
+                stack.appendChild(el('span', 'gs-btn-detail', act.detail));
+                go.appendChild(stack);
+            } else {
+                go.appendChild(el('span', 'gs-btn-label', act.label));
+            }
             if (act.cost > 0) go.appendChild(el('span', 'gs-btn-cost', `${act.cost} oro`));
             if (act.detail) go.title = act.detail;
             go.disabled = !act.enabled;

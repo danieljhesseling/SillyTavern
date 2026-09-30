@@ -142,11 +142,14 @@ function strahdBook(page) {
             state,
             today: 11,
             decisions,
-            dialogueMemory: { ismark: { learned: [{ who: 'Ismark', text: 'Mi padre murió defendiendo a Ireena.', day: 3 }] } },
+            // El día 2: el 3 ya es del capítulo 2 (ese día se abrió «Lectura Interrumpida», y el día en
+            // que empieza un capítulo, lo que pasa ya es suyo).
+            dialogueMemory: { ismark: { learned: [{ who: 'Ismark', text: 'Mi padre murió defendiendo a Ireena.', day: 2 }] } },
             memories: [{ day: 7, text: 'Cantasteis con Ismark junto al fuego del campamento.', who: ['Ismark'] }],
             deeds: [{ day: 9, text: 'Salvasteis a los niños de la plaza de Vallaki.' }],
             chat,
-            actStarts: { 2: 5, 3: 9 },
+            // Acto → su primer mensaje: la niebla, Strahd en la muralla y la fiesta son de Vallaki.
+            actStarts: { 2: 5, 3: 6 },
             factions: data.world.factions,
             boardPlaces: Object.fromEntries(data.boards.map((/** @type {any} */ b) => [String(b.name).toLowerCase(), b.locationName])),
             who: { heroe: 'Mujer', grupo: ['Mujer', 'Mujer'] },
@@ -256,7 +259,7 @@ try {
     check('Los que no han empezado no dicen su nombre (no se destripa)', chapterTabs.slice(3).every(t => t.off && t.name.startsWith('Capítulo') && t.note === 'En blanco')
         && !JSON.stringify(seen.tabs).includes('Ravenloft'), JSON.stringify(chapterTabs.slice(3)));
     check('El de ahora dice «Aquí estáis»', chapterTabs[2].note === 'Aquí estáis' && chapterTabs[2].on, JSON.stringify(chapterTabs[2]));
-    check('Detrás de los capítulos: lo decidido y los apuntes', seen.tabs.some(t => t.view === 'decided' && t.note === '6') && seen.tabs.some(t => t.view === 'notes'), JSON.stringify(seen.tabs.slice(5)));
+    check('Detrás de los capítulos: lo decidido y los apuntes', seen.tabs.some(t => t.view === 'decided' && t.note === '7') && seen.tabs.some(t => t.view === 'notes'), JSON.stringify(seen.tabs.slice(5)));
     check('La página: su título y su entrada', seen.chapter === 'Vallaki y sus alrededores' && /ciudad amurallada/.test(seen.epigraph), `${seen.chapter} | ${seen.epigraph}`);
     const open3 = seen.entries.filter(e => e.state === 'abierto');
     check('Lo abierto del capítulo 3, con «Lo que toca»', open3.length === 3 && open3.every(e => /^Lo que toca:/.test(e.hint) && e.tag === 'Entre manos'), JSON.stringify(open3));
@@ -302,11 +305,11 @@ try {
     // --- J11.5: lo decidido, con su buscador.
     await tab(page, 'decided');
     seen = await readBook(page);
-    check('Lo que decidisteis: todo, por capítulos', seen.count === '6 decisiones' && seen.groups.length === 3 && seen.decided.length === 6, JSON.stringify({ count: seen.count, groups: seen.groups }));
+    check('Lo que decidisteis: todo, por capítulos', seen.count === '7 decisiones' && seen.groups.length === 3 && seen.decided.length === 7, JSON.stringify({ count: seen.count, groups: seen.groups }));
     await page.locator('.lb-dialog .lb-search').fill('ireena');
     await page.waitForTimeout(150);
     seen = await readBook(page);
-    check('Buscar «ireena»: lo de la mansión (sin mirar mayúsculas)', seen.count === '1 de 6' && /Ireena viene/.test(seen.decided[0] ?? ''), JSON.stringify(seen.decided));
+    check('Buscar «ireena»: lo de la mansión (sin mirar mayúsculas)', seen.count === '1 de 7' && /Ireena viene/.test(seen.decided[0] ?? ''), JSON.stringify(seen.decided));
     await page.locator('.lb-dialog .lb-search').fill('linterna');
     await page.waitForTimeout(150);
     seen = await readBook(page);
@@ -418,7 +421,7 @@ try {
     await page.waitForSelector('dialog.lb-dialog[open]', { timeout: 10000 });
     await page.waitForTimeout(250);
     seen = await readBook(page);
-    check('La crónica se abre encima del tablón, por lo decidido', seen.kicker === 'La crónica' && seen.view === 'decided' && seen.decided.length === 6, JSON.stringify({ kicker: seen.kicker, view: seen.view, n: seen.decided.length }));
+    check('La crónica se abre encima del tablón, por lo decidido', seen.kicker === 'La crónica' && seen.view === 'decided' && seen.decided.length === 7, JSON.stringify({ kicker: seen.kicker, view: seen.view, n: seen.decided.length }));
     check('Sin relojes en el gremio: allí no corren', seen.clocks.length === 0);
     await shoot(page, 'la crónica, desde el tablón');
     await tab(page, 'chapter:1');

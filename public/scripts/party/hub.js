@@ -20,12 +20,32 @@ import { guestMember, HIRELINGS, MERCENARY_FEE } from '../game-engine/campaign/g
 import {
     isHubWorld, hubCampaignCards, hireOffers, hubRoster, hubTrial, HUB_CONTRACT, HUB_BOARD_NAME_KEY,
 } from '../game-engine/campaign/hub.js';
-import { HUB_HEROES_KEY, hubHeroCards, seatHero, swapLine } from '../game-engine/campaign/hub-heroes.js';
+import { HUB_HEROES_KEY, hubHeroCards, readRestingHeroes, seatHero, swapLine } from '../game-engine/campaign/hub-heroes.js';
 import { isIronRun, modeOf, modeLabel } from '../game-engine/rules/modes.js';
 import { readGraves, addToHall, readHall } from '../game-engine/campaign/legacy.js';
 import { retireTo, upgradeCost, describeGuild } from '../game-engine/campaign/guild.js';
 import { isShellOpen, refreshGameShell } from '../game-engine/ui/shell/game-shell.js';
-import { BENCH_KEY, GRAVES_KEY, GUILD_KEY, MODE_HISTORY_KEY, PLOT_STATE_KEY, STORAGE_KEY } from './keys.js';
+import { HALL_CHIPS } from '../game-engine/campaign/guild-hall.js';
+export { HALL_SECTIONS, hallDetail } from '../game-engine/campaign/guild-hall.js';
+import { chestView, takeFromChest, putInChest, depositGold, withdrawGold } from '../game-engine/campaign/guild-chest.js';
+export { putInChest, depositGold, withdrawGold, payPlan, spendFromChest } from '../game-engine/campaign/guild-chest.js';
+import { houseView, buildInGuild } from '../game-engine/campaign/guild-buildings.js';
+export { buildingOpens, forgeOffers, forgeItem, libraryOffers, learnSpell } from '../game-engine/campaign/guild-buildings.js';
+import { trainSession, trainingView } from '../game-engine/campaign/guild-training.js';
+export { trainees, GUILD_TRAINING_FACTOR } from '../game-engine/campaign/guild-training.js';
+import { errandCards } from '../game-engine/campaign/guild-errands.js';
+export { routeDays } from '../game-engine/campaign/guild-errands.js';
+import { guildRank, hubRenown, rankNews } from '../game-engine/campaign/guild-rank.js';
+export { GUILD_RANKS } from '../game-engine/campaign/guild-rank.js';
+export { campaignCompanions, stayVerdict, stayScene } from '../game-engine/campaign/guild-companions.js';
+import { GUILD_MEMORY_KEY } from '../game-engine/campaign/guild-memory.js';
+export { describeGuildMemory, guildMemoryOf, guildTitle } from '../game-engine/campaign/guild-memory.js';
+import { WORLD_MARKS_KEY } from '../game-engine/campaign/world-marks.js';
+export { describeMarks } from '../game-engine/campaign/world-marks.js';
+import { openMemoryPanel } from '../game-engine/ui/memory-panel.js';
+export { memoryPanelModel } from '../game-engine/ui/memory-panel.js';
+import { getCompendium } from '../game-engine/compendio/browser.js';
+import { BENCH_KEY, BOARD_KEY, GRAVES_KEY, GUILD_KEY, MODE_HISTORY_KEY, PLOT_STATE_KEY, STORAGE_KEY, TAKEN_KEY } from './keys.js';
 import {
     combatEncounter, currentBoardName, currentLocationName, partyMembers, setCurrentBoardName, setPartyMembers,
 } from './state.js';
@@ -36,13 +56,14 @@ import { recordBoardWon } from './board.js';
 import { renderLocationMapsPreview } from './board-view.js';
 import { ensureWorldData, lastHub, lastHubHome, saveCurrentBoard } from './world.js';
 import { getCurrentWorldFactions } from './factions.js';
-import { getCampaignCalendar, campaignDay, advanceCampaignDay, markLocationComplete } from './time.js';
+import { getCampaignCalendar, campaignDay, advanceCampaignDay, markLocationComplete, spendDayPart } from './time.js';
 import { getPlot, notePlot, plotEndingTitle } from './plot.js';
 import { noteDeed } from './world-growth.js';
 import { survivalNow } from './modes.js';
 import { postCombatNarration, postForModel } from './narration.js';
 import { savePartyState, renderPartyMembers, partyPurse, payFromParty } from './roster.js';
 import { countStat } from './menus.js';
+import { getXpTable, openLevelUpCard } from './level-up.js';
 import { carryBondOf } from './social.js';
 
 /** @typedef {import('./types.js').PartyMember} PartyMember */
@@ -118,6 +139,8 @@ export async function openGuild() {
             .filter((/** @type {any} */ i) => !Object.values(m.equippedItems ?? {}).includes(i.id) && !i.cursed)
             .map((/** @type {any} */ i) => ({ memberId: String(m.id), memberName: String(m.name), itemId: String(i.id), name: String(i.name) }))),
         fighting: combatEncounter.active,
+        // J3.1: la barra de las partes de la sala, solo en el gremio (en otro pueblo no están).
+        rooms: Boolean(lastHub),
         // Para que el tablon pueda decir a quien ayudas o a quien paras por su nombre.
         factionNames: Object.fromEntries(
             getCurrentWorldFactions().map((/** @type {any} */ f) => [f.id, f.name]),
@@ -130,6 +153,17 @@ export async function openGuild() {
     if (choice.benched) return rotateBench('bench', choice.benched);
     if (choice.called) return rotateBench('call', choice.called);
     if (choice.stored || choice.retrieved) return useStorage(choice.stored, choice.retrieved);
+    if (choice.room) {
+        if (choice.room === 'chest') return await openGuildChest();
+        if (choice.room === 'training') return await openGuildTraining();
+        if (choice.room === 'house') return await openGuildHouse();
+        if (choice.room === 'errands') return await openGuildErrands();
+        if (choice.room === 'heroes') return await openHubHeroes();
+        if (choice.room === 'memory') {
+            await openMemoryView();
+            return '';
+        }
+    }
     return '';
 }
 
@@ -181,6 +215,14 @@ export function hubChips() {
             // J3.9: el salón de la fama, en cuanto hay alguien (o alguna campaña) en él.
             ...(readHall(/** @type {any} */ (extension_settings).partyHall).length > 0
                 ? [{ id: 'hub-hall', label: 'Salón de la fama', icon: 'fa-monument', command: '/salon' }] : []),
+            // J3.1: las partes de la sala (encargos, tus personajes, el cofre, el patio, los
+            // edificios) y J11.4, lo que recuerda el gremio. Detrás de las de siempre: la fila de
+            // abajo solo lleva las cuatro primeras, y el salón no debe quedarse fuera. En el
+            // prólogo, nada de esto (D-J28): solo «Saltar la prueba».
+            ...(trial ? [] : [
+                ...HALL_CHIPS,
+                { id: 'hub-memory', label: 'Memoria del gremio', icon: 'fa-book-skull', command: '/memoria' },
+            ]),
         ];
     }
     if (lastHubHome) {
@@ -188,6 +230,7 @@ export function hubChips() {
             // J4.5: con la campaña terminada, su final se puede volver a ver.
             ...(chat_metadata?.plotEnding ? [{ id: 'hub-ending', label: 'El final', icon: 'fa-flag-checkered', command: '/final' }] : []),
             { id: 'hub-home', label: 'Volver al gremio', icon: 'fa-house-flag', command: '/volver-gremio' },
+            { id: 'hub-memory', label: 'Lo que se recuerda', icon: 'fa-book-skull', command: '/memoria' },
         ];
     }
     return [];
@@ -499,4 +542,444 @@ export function retireMember(member, role) {
     void postForModel(`🏠 [GREMIO] ${result.line}`);
     toastr.success(result.line, 'Se queda en casa', { timeOut: 12000 });
     return result.line;
+}
+
+/**
+ * Una ventana de la sala del gremio, con su «Cerrar» al pie. Las ventanas `vt-root` esconden los
+ * botones del popup (campaigns.css: «cada tarjeta es su botón»), y sin este no había con qué
+ * cerrarla más que con Esc. Como las de `hub-panel.js`.
+ *
+ * @param {JQuery<HTMLElement>} body
+ * @param {{wide?: boolean}} [options]
+ * @returns {Popup}
+ */
+function hallWindow(body, { wide = true } = {}) {
+    const popup = new Popup(body[0], POPUP_TYPE.TEXT, '', { okButton: false, cancelButton: false, wide, allowVerticalScrolling: true });
+    body.append($('<div class="hb-foot"></div>').append($('<button type="button" class="menu_button hb-close"></button>')
+        .text('Cerrar')
+        .on('click', () => { void popup.completeCancelled(); })));
+    return popup;
+}
+
+/**
+ * J3.4: Abrir el cofre del gremio.
+ */
+export async function openGuildChest() {
+    if (!lastHub) {
+        toastr.info('El cofre está en la sala del gremio.', 'El cofre');
+        return '';
+    }
+    if (combatEncounter.active) {
+        toastr.warning('No mientras peleáis.', 'El cofre');
+        return '';
+    }
+    const body = $('<div class="vt-root hb-root"></div>');
+    const inside = $('<div class="hb-chest"></div>');
+    body.append(inside);
+    /** Quién saca y quién deja: el que se elija (J3.4), no siempre el primero del grupo. */
+    let whoId = String(partyMembers.find(m => !m.dead)?.id ?? '');
+    const rowStyle = 'display:flex; justify-content:space-between; align-items:center; gap:8px; margin:4px 0;';
+
+    /** Lo que se mueve de una ficha al cofre o al revés: se guarda y se vuelve a dibujar. */
+    const moved = (/** @type {any} */ member, /** @type {{ok: boolean, reason: string, items: any[], storage: any[], line: string}} */ res) => {
+        if (!res.ok) {
+            toastr.warning(res.reason, 'El cofre');
+            return;
+        }
+        chat_metadata[STORAGE_KEY] = res.storage;
+        member.items = res.items;
+        saveMetadata();
+        savePartyState();
+        renderPartyMembers();
+        postCombatNarration(`📦 [GREMIO] ${res.line}`);
+        toastr.success(res.line, 'El cofre');
+        draw();
+    };
+    /** El oro que entra o sale del arca. */
+    const paid = (/** @type {any} */ member, /** @type {{ok: boolean, reason: string, gold: number, guild: any, line: string}} */ res) => {
+        if (!res.ok) {
+            toastr.warning(res.reason, 'El arca');
+            return;
+        }
+        member.gold = res.gold;
+        chat_metadata[GUILD_KEY] = res.guild;
+        saveMetadata();
+        savePartyState();
+        renderPartyMembers();
+        toastr.success(res.line, 'El arca');
+        draw();
+    };
+
+    const draw = () => {
+        const guild = getGuild();
+        const view = chestView({ storage: chat_metadata?.[STORAGE_KEY], guild, party: partyMembers });
+        const who = view.carried.find(c => c.memberId === whoId) ?? view.carried[0] ?? null;
+        whoId = who?.memberId ?? '';
+        const member = partyMembers.find(m => String(m.id) === whoId) ?? null;
+        inside.empty();
+        inside.append($('<div class="vt-head"></div>')
+            .append($('<h3 class="vt-title"></h3>').text('El cofre del gremio'))
+            .append($('<p class="vt-sub"></p>').text(`${view.used} de ${view.slots} huecos ocupados · ${view.gold} de oro en el arca.`)));
+
+        if (view.carried.length > 1) {
+            const select = $('<select class="text_pole hb-chest-who"></select>');
+            for (const c of view.carried) select.append($('<option></option>').val(c.memberId).text(`${c.name} (${c.gold} de oro)`));
+            select.val(whoId).on('change', () => {
+                whoId = String(select.val() ?? '');
+                draw();
+            });
+            inside.append($(`<label style="${rowStyle}"></label>`).append($('<span></span>').text('Quién saca y quién deja:'), select));
+        }
+
+        inside.append($('<div class="vt-section hb-section"></div>').text('En el cofre'));
+        if (view.stored.length === 0) inside.append($('<p class="hb-empty"></p>').text('El cofre está vacío.'));
+        for (const g of view.stored) {
+            const row = $(`<div class="hb-chest-row" style="${rowStyle}"></div>`);
+            row.append($('<span></span>').text(`${g.name}${g.count > 1 ? ` ×${g.count}` : ''}${g.note ? ` (${g.note})` : ''}`));
+            row.append($('<button type="button" class="menu_button"></button>')
+                .text(who ? `Sacar para ${who.name}` : 'Sacar')
+                .prop('disabled', !member)
+                .on('click', () => { if (member) moved(member, takeFromChest(member, chat_metadata?.[STORAGE_KEY], g.ids[0])); }));
+            inside.append(row);
+        }
+
+        if (who && member) {
+            inside.append($('<div class="vt-section hb-section"></div>').text(`Lo que lleva ${who.name}`));
+            if (who.items.length === 0) inside.append($('<p class="hb-empty"></p>').text('No lleva nada que dejar.'));
+            for (const item of who.items) {
+                const row = $(`<div class="hb-chest-row" style="${rowStyle}"></div>`);
+                row.append($('<span></span>').text(`${item.name}${item.note ? ` (${item.note})` : ''}`));
+                const leave = $('<button type="button" class="menu_button"></button>').text('Dejar en el cofre')
+                    .prop('disabled', !item.canStore)
+                    .on('click', () => moved(member, putInChest(member, chat_metadata?.[STORAGE_KEY], item.id)));
+                if (item.why) leave.attr('title', item.why);
+                row.append(leave);
+                if (item.why) row.append($('<small class="hb-warn"></small>').text(item.why));
+                inside.append(row);
+            }
+
+            inside.append($('<div class="vt-section hb-section"></div>').text('El arca'));
+            inside.append($('<p class="hb-state"></p>').text(`${who.name} lleva ${who.gold} de oro. En el arca hay ${view.gold}. Lo que se deja en el arca lo puede sacar cualquiera de los tuyos.`));
+            const amount = $('<input type="number" class="text_pole hb-chest-amount" min="1" step="1" style="max-width:8em;">').val(String(Math.min(10, Math.max(1, who.gold || view.gold || 1))));
+            const howMuch = () => Math.max(0, Math.floor(Number(amount.val()) || 0));
+            inside.append($(`<div class="hb-chest-gold" style="${rowStyle} justify-content:flex-start;"></div>`).append(
+                amount,
+                $('<button type="button" class="menu_button"></button>').text('Dejar oro').prop('disabled', who.gold <= 0)
+                    .on('click', () => paid(member, depositGold(member, getGuild(), howMuch()))),
+                $('<button type="button" class="menu_button"></button>').text('Sacar oro').prop('disabled', view.gold <= 0)
+                    .on('click', () => paid(member, withdrawGold(member, getGuild(), howMuch()))),
+            ));
+        }
+    };
+    draw();
+
+    await hallWindow(body).show();
+    // La sala dice cuántas cosas hay en el cofre: que lo diga ya.
+    if (isShellOpen()) refreshGameShell();
+    return '';
+}
+
+/**
+ * J3.6: La casa del gremio y sus edificios.
+ */
+export async function openGuildHouse() {
+    if (!lastHub) {
+        toastr.info('Los edificios se mejoran en el gremio.', 'La casa');
+        return '';
+    }
+    const body = $('<div class="vt-root hb-root"></div>');
+    const inside = $('<div class="hb-house"></div>');
+    body.append(inside);
+
+    /** Se dibuja otra vez tras cada obra: con el gremio y las bolsas de ahora, no los de antes. */
+    const draw = () => {
+        const guild = getGuild();
+        const purse = partyPurse();
+        const rows = houseView({ guild, purse, fighting: combatEncounter.active });
+        inside.empty();
+        inside.append($('<div class="vt-head"></div>')
+            .append($('<h3 class="vt-title"></h3>').text('La casa del gremio'))
+            .append($('<p class="vt-sub"></p>').text(`Mejora los edificios con el oro del arca y de vuestras bolsas. En el arca hay ${Math.max(0, Number(guild.gold) || 0)} de oro; lleváis ${purse}.`)));
+
+        const grid = $('<div class="vt-grid hb-grid"></div>');
+        for (const r of rows) {
+            const card = $('<div class="vt-card hb-card"></div>');
+            card.append($('<div class="vt-name"></div>').text(`${r.label} (nivel ${r.level} de ${r.max})`));
+            if (r.next) {
+                card.append($('<div class="vt-what"></div>').text(`Siguiente: ${r.next.opens}`));
+                card.append($('<div class="hb-state"></div>').text(`Cuesta ${r.next.cost} de oro. ${r.next.pay}`));
+                if (r.next.ok) {
+                    card.append($('<button type="button" class="menu_button"></button>').text('Mejorar').on('click', function () {
+                        $(this).prop('disabled', true);
+                        const now = getGuild();
+                        const done = buildInGuild({ guild: now, key: r.key, purse: partyPurse() });
+                        // Lo que falta del arca sale de las bolsas: si no llega, no se levanta nada.
+                        if (!done.ok || (done.fromPurse > 0 && !payFromParty(done.fromPurse))) {
+                            toastr.warning(done.reason || 'No llega el oro para eso.', 'La casa');
+                            draw();
+                            return;
+                        }
+                        chat_metadata[GUILD_KEY] = done.guild;
+                        saveMetadata();
+                        savePartyState();
+                        renderPartyMembers();
+                        postCombatNarration(`🏛️ [GREMIO] ${done.line}`);
+                        toastr.success(done.line, 'La casa crece');
+                        draw();
+                    }));
+                } else {
+                    card.append($('<div class="hb-warn"></div>').text(r.next.why || 'Ahora no se puede.'));
+                }
+            } else {
+                card.append($('<div class="hb-state"></div>').text('Ya está al máximo.'));
+            }
+            grid.append(card);
+        }
+        inside.append(grid);
+    };
+    draw();
+
+    await hallWindow(body).show();
+    if (isShellOpen()) refreshGameShell();
+    return '';
+}
+
+/**
+ * J3.5: Entrenar en el gremio.
+ */
+export async function openGuildTraining() {
+    if (!lastHub) {
+        toastr.info('El patio de entrenamiento está en el gremio.', 'Entrenamiento');
+        return '';
+    }
+    // Los tuyos que descansan en el gremio cuentan para «va por detrás: aprende el doble».
+    const worldName = String(chat_metadata?.[METADATA_KEY] || '');
+    const data = worldName ? await loadWorldInfo(worldName).catch(() => null) : null;
+    const resting = readRestingHeroes(data?.metadata?.[HUB_HEROES_KEY]);
+    const body = $('<div class="vt-root hb-root"></div>');
+    const inside = $('<div class="hb-training"></div>');
+    body.append(inside);
+    /** @type {Popup|null} */
+    let popup = null;
+
+    const draw = () => {
+        const guild = getGuild();
+        const view = trainingView({ party: partyMembers, resting, guild, calendar: getCampaignCalendar(), xpTable: getXpTable(), fighting: combatEncounter.active });
+        inside.empty();
+        inside.append($('<div class="vt-head"></div>')
+            .append($('<h3 class="vt-title"></h3>').text('Patio de entrenamiento'))
+            .append($('<p class="vt-sub"></p>').text(view.can.enabled
+                ? `Todo el grupo se ejercita en el patio con las armas y los maestros. Gasta la ${String(view.slot).toLowerCase() || 'mañana'}.`
+                : view.can.why)));
+        for (const row of view.rows) {
+            const line = $('<div class="hb-state" style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin:4px 0;"></div>')
+                .append($('<span></span>').text(`${row.name}: ${row.note}${view.can.enabled && row.gain > 0 && row.nextAt !== null ? ` Entrenando gana ${row.gain}.` : ''}`));
+            if (row.canLevel) {
+                // J3.5: quien ya tiene la experiencia sube aquí mismo, con su tarjeta de subir de nivel.
+                line.append($('<button type="button" class="menu_button"></button>').text('Subir de nivel').on('click', async () => {
+                    const member = partyMembers.find(m => String(m.id) === row.id);
+                    if (!member) return;
+                    await popup?.completeCancelled();
+                    await openLevelUpCard(member);
+                }));
+            }
+            inside.append(line);
+        }
+        for (const hero of view.resting) inside.append($('<p class="hb-state"></p>').text(`${hero.name}: ${hero.note}`));
+
+        if (view.can.enabled && view.rows.length > 0) {
+            inside.append($('<button type="button" class="menu_button"></button>').text('Entrenar').on('click', function () {
+                $(this).prop('disabled', true);
+                const res = trainSession({ party: partyMembers, resting, guild: getGuild(), calendar: getCampaignCalendar(), xpTable: getXpTable(), fighting: combatEncounter.active });
+                if (!res.ok) {
+                    toastr.warning(res.reason, 'Entrenamiento');
+                    draw();
+                    return;
+                }
+                for (const gain of res.gains) {
+                    const m = partyMembers.find(p => String(p.id) === String(gain.id));
+                    if (m) m.xp = (Number(m.xp) || 0) + gain.xp;
+                }
+                savePartyState();
+                renderPartyMembers();
+                // Entrenar gasta la parte del día (mañana o tarde), no el día entero: la
+                // siguiente sesión ya es en otra parte del día, o mañana.
+                spendDayPart('entrenar');
+                postCombatNarration(`🏋️ [GREMIO] ${res.line}`);
+                toastr.success(res.line, 'Entrenamiento');
+                draw();
+            }));
+        }
+    };
+    draw();
+
+    popup = hallWindow(body, { wide: false });
+    await popup.show();
+    if (isShellOpen()) refreshGameShell();
+    return '';
+}
+
+/**
+ * J3.8: Encargos del tablón del gremio.
+ */
+export async function openGuildErrands() {
+    if (!lastHub) {
+        toastr.info('Los encargos del gremio se miran en el tablón.', 'Encargos');
+        return '';
+    }
+    const worldName = String(chat_metadata?.[METADATA_KEY] || '');
+    const data = worldName ? await loadWorldInfo(worldName).catch(() => null) : null;
+    const view = errandCards({
+        board: refreshContractBoard(),
+        taken: chat_metadata?.[TAKEN_KEY],
+        day: Math.max(1, campaignDay()),
+        here: currentLocationName,
+        locations: getCurrentWorldLocationMaps(),
+        hidden: data?.metadata?.hiddenLocations ?? [],
+        fighting: combatEncounter.active,
+    });
+    const body = $('<div class="vt-root hb-root"></div>');
+    body.append($('<div class="vt-head"></div>')
+        .append($('<h3 class="vt-title"></h3>').text('Encargos del tablón'))
+        .append($('<p class="vt-sub"></p>').text(view.taken ? view.taken.line : 'Recados y trabajos cortos de la gente de Puerto Alba.')));
+
+    /** El encargo elegido: se acepta al cerrar, como en el panel del gremio. */
+    let chosen = '';
+    /** @type {Popup|null} */
+    let popup = null;
+    const list = $('<div class="vt-grid hb-grid"></div>');
+    if (view.offers.length === 0) list.append($('<p class="hb-empty"></p>').text('El tablón está vacío por ahora.'));
+    for (const e of view.offers) {
+        const card = $('<div class="vt-card hb-card"></div>');
+        card.append($('<div class="vt-name"></div>').text(e.title));
+        card.append($('<div class="vt-what"></div>').text([e.patron, e.where, e.how].filter(Boolean).join(' ')));
+        card.append($('<div class="hb-state"></div>').text(`${e.pay} · ${e.due}`));
+        if (e.enabled) {
+            card.append($('<button type="button" class="menu_button"></button>').text('Aceptar').on('click', () => {
+                chosen = e.id;
+                void popup?.completeAffirmative();
+            }));
+        } else {
+            card.append($('<div class="hb-warn"></div>').text(e.why));
+        }
+        list.append(card);
+    }
+    body.append(list);
+    // El «Cerrar» va debajo de los encargos: la ventana se hace cuando ya están.
+    popup = hallWindow(body);
+    await popup.show();
+    return chosen ? await acceptContract(chosen) : '';
+}
+
+/**
+ * J1.6: Tus personajes en el gremio.
+ */
+export async function openHubHeroes() {
+    if (!lastHub) {
+        toastr.info('Tus personajes esperan en el gremio.', 'Tus personajes');
+        return '';
+    }
+    if (combatEncounter.active) {
+        toastr.warning('No mientras peleáis.', 'Tus personajes');
+        return '';
+    }
+    const worldName = String(chat_metadata?.[METADATA_KEY] || '');
+    const data = worldName ? await loadWorldInfo(worldName).catch(() => null) : null;
+    const heroes = hubHeroCards({ party: partyMembers, resting: data?.metadata?.[HUB_HEROES_KEY] });
+    // La misma ventana que al entrar en el gremio: quién va, o hacer otro (J1.6).
+    const { openHeroChooser } = await import('../game-engine/ui/hub-panel.js');
+    const picked = await openHeroChooser({
+        Popup, POPUP_TYPE, heroes,
+        title: 'Tus personajes',
+        sub: 'Quién va con el grupo. El que se queda descansa aquí, con su nivel, su equipo y su oro.',
+    });
+    if (picked) {
+        const { changeHubHero } = await import('../campaigns.js');
+        await changeHubHero(picked);
+    }
+    return '';
+}
+
+/**
+ * J11.4: La memoria del gremio y las huellas del mundo.
+ */
+export async function openMemoryView() {
+    // Lo que recuerda el gremio está en el mundo del gremio: en él, el de ahora; en una campaña
+    // que salió de él, el de casa (`lastHubHome`). Si no, en la campaña solo saldrían las huellas.
+    const worldName = lastHub ? String(chat_metadata?.[METADATA_KEY] || '') : String(lastHubHome || '');
+    const data = worldName ? await loadWorldInfo(worldName).catch(() => null) : null;
+    // Las huellas (J11.3) se leen con las filas de `ecos.json`: sin ellas no se dice ninguna.
+    const { compendium } = await getCompendium();
+    await openMemoryPanel({
+        town: currentLocationName,
+        marks: chat_metadata?.[WORLD_MARKS_KEY],
+        rows: compendium?.has?.('ecos') ? compendium.find('ecos', {}) : [],
+        // Lo que recuerda el gremio se guarda en su mundo, no en la partida (`guild-memory.js`).
+        memory: data?.metadata?.[GUILD_MEMORY_KEY],
+        hub: data?.metadata?.hub,
+        today: campaignDay(),
+    });
+}
+
+/**
+ * J3.7: la noticia de que el gremio ha subido de rango se cuenta una vez. Sale arriba en la sala
+ * (`buildHallData`) hasta que se usa algo de ella; entonces se apunta como contada (`rankSeen`).
+ *
+ * @returns {void}
+ */
+export function noteRankSeen() {
+    if (!lastHub || !chat_metadata) return;
+    const guild = getGuild();
+    const { renown } = hubRenown({ guild, hub: lastHub });
+    const news = rankNews({ guild, renown, hub: lastHub });
+    if (!news) return;
+    chat_metadata[GUILD_KEY] = { ...guild, rankSeen: news.rank };
+    saveMetadata();
+}
+
+/**
+ * J3.1: Los datos del estado de la sala del gremio para la pantalla del pueblo y el panel.
+ *
+ * Solo lee: se llama cada vez que se dibuja el pueblo. Lo que no se sabe sin leer el mundo
+ * (quién descansa en el gremio, cuántas campañas hay en el tablón) no se pone: mejor sin línea
+ * que con un número inventado.
+ *
+ * @returns {import('../game-engine/campaign/guild-hall.js').HallData|null}
+ */
+export function buildHallData() {
+    try {
+        const guild = getGuild();
+        const purse = partyPurse();
+        const calendar = getCampaignCalendar();
+        const chest = chestView({ storage: chat_metadata?.[STORAGE_KEY], party: partyMembers, guild });
+        const training = trainingView({ party: partyMembers, guild, calendar, xpTable: getXpTable(), fighting: combatEncounter.active });
+        const houseRows = houseView({ guild, purse });
+        const built = houseRows.reduce((sum, r) => sum + r.level, 0);
+        const total = houseRows.reduce((sum, r) => sum + r.max, 0);
+        const { renown } = hubRenown({ guild, hub: lastHub });
+        const taken = chat_metadata?.[TAKEN_KEY];
+        const board = Array.isArray(chat_metadata?.[BOARD_KEY]) ? chat_metadata[BOARD_KEY] : [];
+        // La salida de la sala: las campañas empezadas y sin terminar, para seguirlas (J3.1). Eso
+        // sí se sabe sin leer el mundo: el gremio lo apunta (`lastHub`). Las por empezar, no.
+        const inProgress = Object.entries(lastHub?.campaigns ?? {})
+            .filter(([, c]) => c && !c.finished && c.chat)
+            .map(([id, c]) => ({ id, name: String(c.name || c.worldName || id) }));
+        return {
+            ...(inProgress.length > 0 ? { campaigns: { open: 0, locked: 0, inProgress } } : {}),
+            rank: guildRank(renown),
+            news: rankNews({ guild, renown, hub: lastHub }),
+            chest: { used: chest.used, slots: chest.slots, gold: chest.gold },
+            training: {
+                ready: training.rows.filter(r => r.canLevel).map(r => r.name),
+                can: training.can.enabled,
+                why: training.can.why,
+            },
+            house: { built, total },
+            // Un tablón que aún no se ha llenado no está vacío: sin línea hasta que se mire.
+            ...(board.length > 0 || taken ? { errands: { offers: board.length, taken: taken ? String(taken.title || '') : '' } } : {}),
+        };
+    } catch (error) {
+        console.warn('[gremio] buildHallData', error);
+        return null;
+    }
 }

@@ -420,6 +420,46 @@
     flex: 1 1 auto;
 }
 
+.gs-btn-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.gs-btn-detail {
+    font-size: 0.82em;
+    opacity: 0.72;
+    color: var(--SmartThemeBodyColor, #bbb);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.gs-town-hall-rank {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.88em;
+    color: var(--gs-accent-gold, #e2c27a);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    padding: 2px 0;
+}
+
+.gs-town-hall-news {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background: rgba(226, 194, 122, 0.12);
+    border: 1px solid var(--gs-accent-gold, #e2c27a);
+    border-radius: 6px;
+    font-size: 0.9em;
+    color: var(--SmartThemeBodyColor, #eee);
+}
+
 .gs-town-act:hover:not(:disabled),
 .gs-town-act:focus-visible {
     outline: none;

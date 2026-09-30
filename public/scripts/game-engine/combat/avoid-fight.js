@@ -494,7 +494,9 @@ export function rollerFor(party, skill, { speakerId = null, lowest = false } = {
 export function avoidChips({ options, party, gold = 0, tried = [], speakerId = null, hero = null }) {
     const done = new Set((tried ?? []).map(String));
     const able = ableOf(party);
-    const who = { heroe: hero ?? able[0] ?? null, grupo: able };
+    // Para el género del texto: el héroe y el grupo. No se llama `who`: ese nombre es el de
+    // «Tira Bran (+5)» de cada opción, y lo tapaba.
+    const people = { heroe: hero ?? able[0] ?? null, grupo: able };
     return (options ?? []).map(option => {
         const spec = AVOID_KINDS[option.kind];
         const skillLabel = option.skill ? SKILLS[/** @type {keyof typeof SKILLS} */ (option.skill)]?.label ?? option.skill : '';
@@ -521,7 +523,7 @@ export function avoidChips({ options, party, gold = 0, tried = [], speakerId = n
             kind: option.kind,
             label: spec.label,
             icon: spec.icon,
-            text: resolveGender(option.text, who),
+            text: resolveGender(option.text, people),
             check: skillLabel ? `${skillLabel} · CD ${option.dc}` : '',
             who,
             cost: option.kind === 'pagar' ? `Cuesta ${option.gold} de oro` : '',

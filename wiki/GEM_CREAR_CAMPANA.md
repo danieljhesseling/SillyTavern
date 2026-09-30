@@ -288,6 +288,133 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
         }
       }
     },
+    "laterCard": {
+      "type": "object",
+      "description": "Lo que vuelve días después por haber elegido esto: una tarjeta con una situación y dos o tres opciones, como un suceso. Sale en el siguiente sitio al que se llegue, donde se descanse o en la semana. En vez de escribirla, suceso nombra uno de sucesos.json.",
+      "properties": {
+        "days": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30,
+          "description": "Cuántos días después."
+        },
+        "on": {
+          "type": "string",
+          "enum": [
+            "siempre",
+            "bien",
+            "mal"
+          ],
+          "description": "Si la opción lleva tirada: con qué resultado vuelve. Sin él, siempre."
+        },
+        "name": {
+          "type": "string",
+          "description": "El título de la tarjeta: «Los graneros vacíos»."
+        },
+        "text": {
+          "type": "string",
+          "description": "Lo que pasa, en una o dos frases llanas. Sin huecos como {sitio}: puede salir en cualquier sitio."
+        },
+        "suceso": {
+          "type": "string"
+        },
+        "options": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "required": [
+              "label"
+            ],
+            "properties": {
+              "label": {
+                "type": "string",
+                "description": "Lo que se hace."
+              },
+              "cost": {
+                "type": "object",
+                "properties": {
+                  "oro": {
+                    "type": "integer"
+                  },
+                  "horas": {
+                    "type": "integer"
+                  },
+                  "dias": {
+                    "type": "integer"
+                  }
+                },
+                "description": "Lo que se paga antes."
+              },
+              "effects": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Los de los sucesos: oro:+N, oro:-N, oro:+1d6, hora, dia, herida:1d4, cura:1d6, comida, fama:+1, fama:-1, faccion:+1, faccion:-1, vinculo:+1, rumor, pista."
+              },
+              "then": {
+                "type": "string",
+                "description": "Lo que pasa, dicho."
+              },
+              "check": {
+                "type": "object",
+                "properties": {
+                  "skill": {
+                    "type": "string",
+                    "enum": [
+                      "persuasion",
+                      "deception",
+                      "intimidation",
+                      "insight",
+                      "perception",
+                      "investigation",
+                      "stealth",
+                      "athletics",
+                      "sleight",
+                      "survival"
+                    ]
+                  },
+                  "dc": {
+                    "type": "integer"
+                  }
+                }
+              },
+              "success": {
+                "type": "object",
+                "properties": {
+                  "effects": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Los de los sucesos: oro:+N, oro:-N, oro:+1d6, hora, dia, herida:1d4, cura:1d6, comida, fama:+1, fama:-1, faccion:+1, faccion:-1, vinculo:+1, rumor, pista."
+                  },
+                  "then": {
+                    "type": "string"
+                  }
+                }
+              },
+              "fail": {
+                "type": "object",
+                "properties": {
+                  "effects": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Los de los sucesos: oro:+N, oro:-N, oro:+1d6, hora, dia, herida:1d4, cura:1d6, comida, fama:+1, fama:-1, faccion:+1, faccion:-1, vinculo:+1, rumor, pista."
+                  },
+                  "then": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "sceneLine": {
       "type": "object",
       "required": [
@@ -1715,6 +1842,20 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
                       "journal": {
                         "type": "string"
                       },
+                      "irreversible": {
+                        "anyOf": [
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "string"
+                          }
+                        ],
+                        "description": "Si pesa: true avisa con «Esto no tiene vuelta atrás» antes de elegirla, y se elige pulsando dos veces. Con texto, ese aviso (corto, y sin contar qué se pierde). Solo en las decisiones gordas."
+                      },
+                      "later": {
+                        "$ref": "#/definitions/laterCard"
+                      },
                       "check": {
                         "type": "object",
                         "required": [
@@ -1891,6 +2032,20 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
                           },
                           "journal": {
                             "type": "string"
+                          },
+                          "irreversible": {
+                            "anyOf": [
+                              {
+                                "type": "boolean"
+                              },
+                              {
+                                "type": "string"
+                              }
+                            ],
+                            "description": "Si pesa: true avisa con «Esto no tiene vuelta atrás» antes de elegirla, y se elige pulsando dos veces. Con texto, ese aviso (corto, y sin contar qué se pierde). Solo en las decisiones gordas."
+                          },
+                          "later": {
+                            "$ref": "#/definitions/laterCard"
                           },
                           "check": {
                             "type": "object",
@@ -4160,6 +4315,133 @@ que ya está en el bloque de instrucciones; se ofrecen sueltos porque un libro n
           "type": "boolean"
         }
       }
+    },
+    "laterCard": {
+      "type": "object",
+      "description": "Lo que vuelve días después por haber elegido esto: una tarjeta con una situación y dos o tres opciones, como un suceso. Sale en el siguiente sitio al que se llegue, donde se descanse o en la semana. En vez de escribirla, suceso nombra uno de sucesos.json.",
+      "properties": {
+        "days": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30,
+          "description": "Cuántos días después."
+        },
+        "on": {
+          "type": "string",
+          "enum": [
+            "siempre",
+            "bien",
+            "mal"
+          ],
+          "description": "Si la opción lleva tirada: con qué resultado vuelve. Sin él, siempre."
+        },
+        "name": {
+          "type": "string",
+          "description": "El título de la tarjeta: «Los graneros vacíos»."
+        },
+        "text": {
+          "type": "string",
+          "description": "Lo que pasa, en una o dos frases llanas. Sin huecos como {sitio}: puede salir en cualquier sitio."
+        },
+        "suceso": {
+          "type": "string"
+        },
+        "options": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "required": [
+              "label"
+            ],
+            "properties": {
+              "label": {
+                "type": "string",
+                "description": "Lo que se hace."
+              },
+              "cost": {
+                "type": "object",
+                "properties": {
+                  "oro": {
+                    "type": "integer"
+                  },
+                  "horas": {
+                    "type": "integer"
+                  },
+                  "dias": {
+                    "type": "integer"
+                  }
+                },
+                "description": "Lo que se paga antes."
+              },
+              "effects": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Los de los sucesos: oro:+N, oro:-N, oro:+1d6, hora, dia, herida:1d4, cura:1d6, comida, fama:+1, fama:-1, faccion:+1, faccion:-1, vinculo:+1, rumor, pista."
+              },
+              "then": {
+                "type": "string",
+                "description": "Lo que pasa, dicho."
+              },
+              "check": {
+                "type": "object",
+                "properties": {
+                  "skill": {
+                    "type": "string",
+                    "enum": [
+                      "persuasion",
+                      "deception",
+                      "intimidation",
+                      "insight",
+                      "perception",
+                      "investigation",
+                      "stealth",
+                      "athletics",
+                      "sleight",
+                      "survival"
+                    ]
+                  },
+                  "dc": {
+                    "type": "integer"
+                  }
+                }
+              },
+              "success": {
+                "type": "object",
+                "properties": {
+                  "effects": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Los de los sucesos: oro:+N, oro:-N, oro:+1d6, hora, dia, herida:1d4, cura:1d6, comida, fama:+1, fama:-1, faccion:+1, faccion:-1, vinculo:+1, rumor, pista."
+                  },
+                  "then": {
+                    "type": "string"
+                  }
+                }
+              },
+              "fail": {
+                "type": "object",
+                "properties": {
+                  "effects": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Los de los sucesos: oro:+N, oro:-N, oro:+1d6, hora, dia, herida:1d4, cura:1d6, comida, fama:+1, fama:-1, faccion:+1, faccion:-1, vinculo:+1, rumor, pista."
+                  },
+                  "then": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "items": {
@@ -4298,6 +4580,20 @@ que ya está en el bloque de instrucciones; se ofrecen sueltos porque un libro n
                   },
                   "journal": {
                     "type": "string"
+                  },
+                  "irreversible": {
+                    "anyOf": [
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "string"
+                      }
+                    ],
+                    "description": "Si pesa: true avisa con «Esto no tiene vuelta atrás» antes de elegirla, y se elige pulsando dos veces. Con texto, ese aviso (corto, y sin contar qué se pierde). Solo en las decisiones gordas."
+                  },
+                  "later": {
+                    "$ref": "#/definitions/laterCard"
                   },
                   "check": {
                     "type": "object",
@@ -4578,6 +4874,133 @@ que ya está en el bloque de instrucciones; se ofrecen sueltos porque un libro n
           "description": "Lo que se oye si sale así."
         }
       }
+    },
+    "laterCard": {
+      "type": "object",
+      "description": "Lo que vuelve días después por haber elegido esto: una tarjeta con una situación y dos o tres opciones, como un suceso. Sale en el siguiente sitio al que se llegue, donde se descanse o en la semana. En vez de escribirla, suceso nombra uno de sucesos.json.",
+      "properties": {
+        "days": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30,
+          "description": "Cuántos días después."
+        },
+        "on": {
+          "type": "string",
+          "enum": [
+            "siempre",
+            "bien",
+            "mal"
+          ],
+          "description": "Si la opción lleva tirada: con qué resultado vuelve. Sin él, siempre."
+        },
+        "name": {
+          "type": "string",
+          "description": "El título de la tarjeta: «Los graneros vacíos»."
+        },
+        "text": {
+          "type": "string",
+          "description": "Lo que pasa, en una o dos frases llanas. Sin huecos como {sitio}: puede salir en cualquier sitio."
+        },
+        "suceso": {
+          "type": "string"
+        },
+        "options": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "required": [
+              "label"
+            ],
+            "properties": {
+              "label": {
+                "type": "string",
+                "description": "Lo que se hace."
+              },
+              "cost": {
+                "type": "object",
+                "properties": {
+                  "oro": {
+                    "type": "integer"
+                  },
+                  "horas": {
+                    "type": "integer"
+                  },
+                  "dias": {
+                    "type": "integer"
+                  }
+                },
+                "description": "Lo que se paga antes."
+              },
+              "effects": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Los de los sucesos: oro:+N, oro:-N, oro:+1d6, hora, dia, herida:1d4, cura:1d6, comida, fama:+1, fama:-1, faccion:+1, faccion:-1, vinculo:+1, rumor, pista."
+              },
+              "then": {
+                "type": "string",
+                "description": "Lo que pasa, dicho."
+              },
+              "check": {
+                "type": "object",
+                "properties": {
+                  "skill": {
+                    "type": "string",
+                    "enum": [
+                      "persuasion",
+                      "deception",
+                      "intimidation",
+                      "insight",
+                      "perception",
+                      "investigation",
+                      "stealth",
+                      "athletics",
+                      "sleight",
+                      "survival"
+                    ]
+                  },
+                  "dc": {
+                    "type": "integer"
+                  }
+                }
+              },
+              "success": {
+                "type": "object",
+                "properties": {
+                  "effects": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Los de los sucesos: oro:+N, oro:-N, oro:+1d6, hora, dia, herida:1d4, cura:1d6, comida, fama:+1, fama:-1, faccion:+1, faccion:-1, vinculo:+1, rumor, pista."
+                  },
+                  "then": {
+                    "type": "string"
+                  }
+                }
+              },
+              "fail": {
+                "type": "object",
+                "properties": {
+                  "effects": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Los de los sucesos: oro:+N, oro:-N, oro:+1d6, hora, dia, herida:1d4, cura:1d6, comida, fama:+1, fama:-1, faccion:+1, faccion:-1, vinculo:+1, rumor, pista."
+                  },
+                  "then": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "properties": {
@@ -4702,6 +5125,20 @@ que ya está en el bloque de instrucciones; se ofrecen sueltos porque un libro n
                       },
                       "journal": {
                         "type": "string"
+                      },
+                      "irreversible": {
+                        "anyOf": [
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "string"
+                          }
+                        ],
+                        "description": "Si pesa: true avisa con «Esto no tiene vuelta atrás» antes de elegirla, y se elige pulsando dos veces. Con texto, ese aviso (corto, y sin contar qué se pierde). Solo en las decisiones gordas."
+                      },
+                      "later": {
+                        "$ref": "#/definitions/laterCard"
                       },
                       "check": {
                         "type": "object",

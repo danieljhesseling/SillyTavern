@@ -33,6 +33,13 @@
  * @property {number} xpNext
  * @property {string[]} [abilities] Los ids del catalogo que este personaje se sabe.
  * @property {Record<string, number>} [spellCharges] R4: las cargas gastadas de cada círculo.
+ * @property {Record<string, number>} [slotsUsed] J19: los espacios de conjuro gastados de cada nivel.
+ * @property {boolean} [mayPrepare] J19: si puede cambiar lo que tiene preparado (tras un descanso largo).
+ * @property {any} [concentration] J19: el conjuro que mantiene (`rules/concentration.js`), o null.
+ * @property {number} [concentrationHp] J19: los PG que tenía en la última tirada de concentración, para ver si le han dado desde entonces.
+ * @property {any} [spellAc] J19: la CA que le da un conjuro (escudo de fe, armadura de mago).
+ * @property {{bonus: number, spellId: string, name: string}} [spellHp] J19: los PG de más que le da un conjuro.
+ * @property {Array<{casterId: string, spellId: string, condition: string}>} [spellMarks] J19: los estados que le ha puesto un conjuro con concentración.
  * @property {Record<string, number>} [abilityUses] Cuantas veces ha usado cada una desde el ultimo descanso.
  * @property {{successes: number, failures: number, stable: boolean, dead: boolean}} [deathSaves]
  * @property {boolean} [dead] Se acabo: la campana lo permitia y fallo la tercera.

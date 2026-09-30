@@ -118,6 +118,8 @@ export function stepLines(state, from, notes = []) {
  *   Lo aplica quien abre la ventana, y devuelve cómo decirlo; sin nada, se dice en llano. Con
  *   `roll`, la tirada de ese paso (la de `rollCheck`), para su registro de dados.
  * @param {(memory: any) => void} [input.onMemory] Para guardar lo recordado en cada paso.
+ * @param {(optionId: string, outcome: 'bien'|'medias'|'mal'|null) => void} [input.onChoice] J11.2:
+ *   cada opción elegida, con cómo salió su tirada, para apuntar lo que volverá días después (`later`).
  * @param {Array<{id: string, label: string, icon?: string, title?: string}>} [input.extras] Fichas de
  *   fuera de la charla (sonsacar, convencer…): cierran la ventana y dicen cuál se pulsó.
  * @param {string} [input.pack] El paquete, para el retrato y el escenario.
@@ -129,7 +131,7 @@ export function stepLines(state, from, notes = []) {
  */
 export async function openDialogueWindow({
     dialogue, hero, getWorld = () => ({}), memory = null, rollD20 = () => 1 + Math.floor(Math.random() * 20),
-    applyEffects = () => [], onMemory = () => {}, extras = [], pack = '', place = '', town = '', night = false, mount = null,
+    applyEffects = () => [], onMemory = () => {}, onChoice = () => {}, extras = [], pack = '', place = '', town = '', night = false, mount = null,
 }) {
     await loadPixelManifest();
     const speaker = text(dialogue?.speaker) || 'Alguien';
@@ -303,6 +305,7 @@ export async function openDialogueWindow({
                 const notes = await apply(result.effects, result.roll);
                 remembered = rememberDialogue(remembered, state);
                 onMemory(remembered);
+                onChoice(id, result.outcome ?? null);
                 draw(stepLines(state, from, notes));
             } finally {
                 busy = false;

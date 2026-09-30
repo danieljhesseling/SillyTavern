@@ -58,6 +58,12 @@ author: DanielJHesseling / Claude Opus 5.5
 
 «Construido» cuenta lo que ya existe y está probado en su pantalla, pero que el juego todavía no abre: la magia, los diálogos, las quedadas, las escenas del hilo, el pueblo con gente a cada hora… Lo están enchufando ahora.
 
+**Lo último (30-09, tarde), de Daniel:** el gremio ya se ve en el pueblo por salas, con su rango y sus novedades (J3.1). Sus salas se abren con botones y no con comandos (J15.4). En el tablero, el grupo se mueve junto. Y las decisiones de escenas y charlas dejan consecuencias para días después. Quedan cargadas pero sin usar:
+- las frases de camino, las noches de acampada, las opiniones de los compañeros y sus misiones personales;
+- la magia fuera de combate y la formación, que solo van con comando y todavía no tienen botón.
+
+**Jugar en el móvil sin servidor:** un plan aparte, [ROADMAP_PWA_SIN_SERVIDOR.md](ROADMAP_PWA_SIN_SERVIDOR.md). La web se instala como app, guarda en el propio teléfono y funciona sin conexión. Amplía J20.7 y J20.8, y va de la mano de J15.6 (exportar la partida).
+
 **La primera vuelta jugable ya está.** Se entra por «Jugar sin conexión», se hace el personaje, se gana la prueba del gremio, se contratan mercenarios y se empieza *La Maldición de Strahd* o *1387* desde el tablón. Se vuelve al gremio con todo lo ganado y se sigue la campaña donde se dejó. Lo comprueba `tools/e2e-gremio.mjs`, de punta a punta en el navegador.
 
 **Lo nuevo del 2026-09-29:** el personaje se crea en su pantalla (J18.2), eligiendo de tarjetas, con los atributos repartidos o tirados (J1.2) y el equipo de su clase puesto (J1.3). La historia se lee en una caja de novela visual (J18.3 a J18.6). El gremio está en un pueblo, **Puerto Alba**, con quien atiende cada servicio (J3.10), y el viaje a cada campaña se cuenta, a la ida y a la vuelta (J4.9). Strahd tiene su libro escrito con mis palabras (`libro.json`): 31 personas, 36 rumores, 15 encargos y 18 tableros, y la simulación los gana todos.

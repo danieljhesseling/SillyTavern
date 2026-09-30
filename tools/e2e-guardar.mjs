@@ -109,13 +109,17 @@ try {
         return false;
     };
 
+    /** Hasta que SillyTavern ha arrancado del todo (ajustes leídos, `APP_READY` lanzado). */
+    const appReady = () => until(() => page.evaluate(async () => (await import('/scripts/events.js')).eventSource.autoFireLastArgs.has('app_ready')), 90000);
+
     const boot = async () => {
-        await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
+        await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded', timeout: 90000 });
         const firstRun = page.locator('text=Welcome to SillyTavern!');
         if (await firstRun.waitFor({ state: 'visible', timeout: 15000 }).then(() => true).catch(() => false)) {
             await page.click('.popup-button-ok');
         }
         await page.waitForFunction(() => Boolean(window.SillyTavern?.getContext?.()?.characters), null, { timeout: 90000 });
+        await appReady();
         await page.waitForTimeout(1500);
     };
     await boot();
@@ -306,6 +310,9 @@ try {
     await page.evaluate(async () => { await (await import('/script.js')).closeCurrentChat(); });
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => Boolean(window.SillyTavern?.getContext?.()?.characters), null, { timeout: 90000 });
+    // `characters` existe (vacío) antes de leer los ajustes: con la máquina cargada, las ranuras
+    // (que viven en los ajustes) llegaban después de mirarlas. Se espera a que acabe de arrancar.
+    await appReady();
     await page.waitForTimeout(1500);
     check('cerrado: no hay partida abierta', (await openWorld()) === '', await openWorld());
     await openScreen('title');
@@ -320,7 +327,8 @@ try {
     check('J15.2: cargar la ranura 1 abre el gremio en el día 3', loaded1, JSON.stringify({ world: await openWorld(), day: await day() }));
     const afterLoad = await worlds();
     check('lo que se empezó después de guardarla (La Cripta) ya no está', !afterLoad.includes('La Cripta · Tessa') && afterLoad.includes('La Maldición de Strahd · Tessa'), JSON.stringify(afterLoad));
-    check('la pantalla se cierra al cargar', !(await screen()).open);
+    // Se cierra cuando acaba de abrir el chat, un poco después de que el mundo y el día ya estén.
+    check('la pantalla se cierra al cargar', await until(async () => !(await screen()).open, 15000));
 
     // 8. Y volver: la ranura 2, el día 5 y La Cripta otra vez.
     await openScreen('game');

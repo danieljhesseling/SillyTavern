@@ -686,7 +686,7 @@ function buildSectionSchemas() {
         type: 'array',
         description: 'Charlas escritas con ramas, para la gente que importa. Se juegan sin modelo: quien habla dice su línea '
             + 'con su gesto, y quien juega elige. Lo ya dicho no vuelve a salir, y lo aprendido queda en el Diario.',
-        definitions: { dialogueCondition: condition, dialogueEffect: effect, dialogueBranch: branch },
+        definitions: { dialogueCondition: condition, dialogueEffect: effect, dialogueBranch: branch, laterCard },
         items: {
             type: 'object',
             required: ['id', 'speaker', 'nodes'],
@@ -725,6 +725,8 @@ function buildSectionSchemas() {
                                         hidden: { type: 'boolean', description: 'Si no se cumple, no se enseña ni apagada.' },
                                         tag: { type: 'string', description: 'La etiqueta de delante, si no vale la de su condición.' },
                                         journal: { type: 'string' },
+                                        irreversible,
+                                        later: ref('laterCard'),
                                         check: {
                                             type: 'object',
                                             required: ['skill', 'success', 'failure'],
@@ -790,6 +792,8 @@ function buildSectionSchemas() {
                         tag: { type: 'string' },
                         hidden: { type: 'boolean' },
                         journal: { type: 'string' },
+                        irreversible,
+                        later: ref('laterCard'),
                         check: {
                             type: 'object',
                             required: ['skill', 'success', 'failure'],
@@ -884,7 +888,7 @@ function buildSectionSchemas() {
         type: 'object',
         required: ['milestones'],
         description: 'El hilo de la campaña: lo que tienes entre manos en cada momento, de la primera escena a uno de sus finales.',
-        definitions: { dialogueCondition: condition, dialogueEffect: effect, sceneLine, sceneBranch },
+        definitions: { dialogueCondition: condition, dialogueEffect: effect, sceneLine, sceneBranch, laterCard },
         properties: {
             title: { type: 'string' },
             milestones: { type: 'array', items: milestone },

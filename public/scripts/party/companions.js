@@ -37,6 +37,9 @@ import { readReasons } from '../game-engine/rules/companions.js';
 import { getBondProgress } from '../game-engine/campaign/bonds.js';
 import { isShellOpen, refreshGameShell } from '../game-engine/ui/shell/game-shell.js';
 import { buildCompanionCard, judgeGift } from '../game-engine/ui/shell/companion-card.js';
+import { readFormation, describeFormation } from '../game-engine/campaign/formation.js';
+export { orderOf, inMarchOrder, DUTIES, ROWS } from '../game-engine/campaign/formation.js';
+export { readQuestRows, readQuests, currentStep, startQuest, QUESTS_KEY } from '../game-engine/campaign/companion-quests.js';
 import {
     APPROVAL_KEY, ATTITUDES_KEY, BENCH_KEY, BOARD_KEY, GONE_KEY, LEAVE_ON_KEY, MEMORIES_KEY, PERSONAL_ASKED_KEY,
     RECRUITS_MET_KEY, WARNED_KEY,
@@ -779,3 +782,24 @@ export function setMemberStance(member, stance) {
     toastr.info(`${member.name}: ${label.toLowerCase()}.`);
     return `${member.name}: ${label}`;
 }
+
+/** Clave de guardado para la formación del grupo. */
+export const FORMATION_KEY = 'party_formation';
+
+/**
+ * Lee la formación guardada del grupo.
+ * @returns {import('../game-engine/campaign/formation.js').Formation}
+ */
+export function getPartyFormation() {
+    return readFormation(chat_metadata?.[FORMATION_KEY]);
+}
+
+/**
+ * Describe la formación actual del grupo en una frase.
+ * @returns {string}
+ */
+export function describePartyFormation() {
+    const formation = getPartyFormation();
+    return describeFormation(formation, partyMembers);
+}
+

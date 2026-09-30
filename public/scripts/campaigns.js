@@ -26,6 +26,7 @@ import {
 import { normalizeCalendar } from './game-engine/campaign/calendar.js';
 import { validatePack } from './game-engine/campaign/campaign-pack.js';
 import { homecomingScene } from './game-engine/campaign/campaign-end.js';
+import { GUILD_MEMORY_KEY, endingLegacy, rememberCampaign } from './game-engine/campaign/guild-memory.js';
 import { resolveGender, whoOfParty } from './game-engine/campaign/grammar.js';
 import { buildHeroEntry, describeHero, classIcon, rollStatBonus } from './game-engine/campaign/hero.js';
 import { planCampaignDeletion, planGuildDeletion, describeDeletion } from './game-engine/campaign/campaign-delete.js';
@@ -1864,6 +1865,19 @@ export async function returnToHub() {
                 // D-J35: su nombre del tablón, también en las empezadas antes de apuntarlo.
                 ...(board?.name ? { name: String(board.name) } : {}),
             });
+            // J11.4: lo que el gremio recuerda de este final (su legado, si el paquete lo escribe).
+            // Si ya estaba apuntada, `rememberCampaign` la deja como la primera vez.
+            if (ending) {
+                const legacy = endingLegacy(chat_metadata?.plot, String(chat_metadata?.plotEnding || ending));
+                meta[GUILD_MEMORY_KEY] = rememberCampaign(meta[GUILD_MEMORY_KEY], {
+                    id,
+                    name: String(board?.name || id),
+                    ending: legacy?.ending ?? '',
+                    endingTitle: legacy?.endingTitle || ending,
+                    legacy: legacy?.legacy ?? null,
+                    day,
+                });
+            }
         });
 
         if (!await openHubChat(hub.chat, homeWorld)) throw new Error('No se pudo abrir la partida del gremio.');

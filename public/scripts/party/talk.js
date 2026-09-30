@@ -38,6 +38,7 @@ import { dialogueFor, dialogueMilestones } from '../game-engine/campaign/dialogu
 import { PLACE_KINDS } from '../game-engine/campaign/town.js';
 import { openDialogueWindow } from '../game-engine/ui/dialogue-window.js';
 import { isShellOpen, refreshGameShell } from '../game-engine/ui/shell/game-shell.js';
+export { opinionsOn, optionTraits, opinionBadges } from '../game-engine/campaign/companion-opinions.js';
 import {
     ATTITUDES_KEY, CASES_KEY, CHECK_REQUESTS_KEY, DIALOGUE_MEMORY_KEY, FIELD_GAINS_KEY, OFFERS_KEY, PENDING_CHECK_KEY,
     RUMORS_HEARD_KEY, SECRETS_KEY, TAKEN_KEY,
@@ -58,7 +59,7 @@ import {
 } from './world.js';
 import { advanceCampaignSlot, campaignDay, getCampaignCalendar, getCurrentSlotLabel } from './time.js';
 import {
-    applySceneEffectsToGame, notePlot, openMilestones, storyHero, storyNight, storyWorld,
+    applySceneEffectsToGame, notePlot, openMilestones, recordDialogueAftermath, storyHero, storyNight, storyWorld,
 } from './plot.js';
 import { noteDeed, refreshWorldMemoryPrompt, worldWrite } from './world-growth.js';
 import {
@@ -855,6 +856,8 @@ async function openWrittenTalk(npc, dialogue, draft = '') {
             chat_metadata[DIALOGUE_MEMORY_KEY] = memory;
             saveMetadata();
         },
+        // J11.2: lo que vuelve días después de lo que se dijo (`later` en la opción).
+        onChoice: (optionId, outcome) => recordDialogueAftermath(dialogue, optionId, outcome),
         extras: [{ id: 'otras', label: 'Otras cosas', icon: 'fa-ellipsis', title: 'Sonsacar, convencer, amenazar…' }],
         pack: lastPack,
         place: service in PLACE_KINDS ? service : '',

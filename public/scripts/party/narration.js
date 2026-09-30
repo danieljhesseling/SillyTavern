@@ -39,6 +39,7 @@ import {
     sucesoCount, pickSucesos, sucesoById, optionView, resolveOption, readSucesoState, noteSuceso, dueFollowUp,
     describeEffect,
 } from '../game-engine/campaign/sucesos.js';
+import { laterRows } from '../game-engine/campaign/aftermath.js';
 import { planTip, nextQueuedTip } from '../game-engine/ui/shell/tips.js';
 import { memoryLines } from '../game-engine/campaign/memories.js';
 import { promptKey } from '../game-engine/cost/prompt-order.js';
@@ -50,10 +51,11 @@ import { findContradictions, appendContradictions } from '../game-engine/ui/cont
 import { isShellOpen, refreshGameShell } from '../game-engine/ui/shell/game-shell.js';
 import {
     CASES_KEY, COLORBLIND_KEY, CONTRADICTIONS_KEY, DEEDS_KEY, DICE_LOG_KEY, GRAVES_KEY, MEMORIES_KEY,
-    NARRATOR_FONT_KEY, NARRATOR_MODE_STORAGE, NARRATOR_RECENT_KEY, PLOT_STATE_KEY, ROLL_GUARD_KEY, SAVER_KEY,
+    NARRATOR_FONT_KEY, NARRATOR_MODE_STORAGE, NARRATOR_RECENT_KEY, PLOT_KEY, PLOT_STATE_KEY, ROLL_GUARD_KEY, SAVER_KEY,
     STORY_WINDOWS_STORAGE, SUCESOS_KEY, SUCESOS_STORAGE, TAKEN_KEY, TIPS_SEEN_KEY, localFlag,
 } from './keys.js';
 import { combatEncounter, currentLocationName, partyMembers } from './state.js';
+import { lastDialogues } from './world.js';
 import { petReact } from './pet.js';
 import { revealClue } from './cases.js';
 import {
@@ -202,7 +204,9 @@ export function playSucesos(moment, facts = {}, days = 1) {
     sucesoQueue = sucesoQueue.then(async () => {
         const { compendium } = await getCompendium();
         if (!compendium?.has?.('sucesos')) return;
-        const rows = compendium.find('sucesos', {});
+        // J11.2: con los de `sucesos.json`, las tarjetas que vuelven de lo decidido en el hilo y
+        // en las charlas (`later`): si no, la que se dejó agendada no se encontraría nunca.
+        const rows = [...compendium.find('sucesos', {}), ...laterRows(chat_metadata?.[PLOT_KEY], { dialogues: lastDialogues })];
         const state = readSucesoState(chat_metadata?.[SUCESOS_KEY]);
         const companion = partyMembers.slice(1).find(m => !m.dead);
         /** @type {Record<string, any>} */
@@ -214,6 +218,13 @@ export function playSucesos(moment, facts = {}, days = 1) {
         const cards = [];
         const due = moment === 'viaje' ? '' : dueFollowUp(state, { day: campaignDay(), place: currentLocationName });
         const followed = due ? sucesoById(rows, due, all) : null;
+        // Una continuación que ya no está escrita (el paquete cambió) se olvida: si no, sería
+        // siempre la primera en tocar y taparía las que vienen detrás.
+        // (Una que existe pero hoy no se puede contar, sin compañero para su `{companero}`, espera.)
+        if (due && !followed && chat_metadata && !rows.some(row => String(row?.id ?? '').trim() === due)) {
+            chat_metadata[SUCESOS_KEY] = { ...state, pending: state.pending.filter(p => p.id !== due) };
+            saveMetadata();
+        }
         if (followed) cards.push(followed);
         else cards.push(...pickSucesos({ rows, moment, facts: all, count: sucesoCount({ moment, days, random }), random, seen: state.seen }));
         for (const card of cards) await showSuceso(card, random);
