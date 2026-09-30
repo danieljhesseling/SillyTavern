@@ -72,47 +72,54 @@ author: DanielJHesseling / Claude Opus 5.5
 
 **El arte (2026-09-29, con PixelLab):** 442 imágenes en `public/img/game-engine/pixel/`: iconos de clases, especies, objetos, habilidades, estados y conjuros; 75 criaturas; 112 retratos (la gente de Puerto Alba, Strahd y 1387, los mercenarios y héroes de reserva) y 39 escenarios de día y de noche. Se están haciendo retratos por especie y clase, expresiones para la novela visual y losetas para el tablero, y conectándolo todo al juego.
 
-**En marcha ahora (2026-09-30, mediodía).** Primero, que se pueda jugar lo que ya está hecho. Van cuatro frentes, cada uno con su revisor, que lo prueba desde la portada como un jugador, sin escribir nada:
-- **La gente y el viaje:**
-  - las noches de acampada y las charlas de pareja (J14.7, J14.8);
-  - las frases de los compañeros por el camino (J13.5);
-  - sus misiones personales (J14.9);
-  - un botón para la formación (J7.4);
-  - los compañeros que se quedan en el gremio (J7.2).
-- **La historia y los diálogos:**
-  - las opiniones de los compañeros junto a cada opción (J7.5);
+**Lo último que ha entrado (tanda 6, commit a2c951d18).** Lo que ya estaba hecho y el jugador no alcanzaba:
+- **La historia:**
+  - junto a cada opción, lo que opina cada compañero (J7.5);
   - «Hablar» abre el diálogo (D-J36);
-  - las escenas del hilo (D-J39, D-J40);
-  - lo que no tiene vuelta atrás y las consecuencias días después (J11.1 a J11.4);
-  - «mirar», las estaciones y el Diario como un libro.
-- **La magia y la ficha:**
-  - un botón para la magia fuera de combate (J19.10), que hoy solo va con comando;
-  - preparar conjuros, subir de nivel y los objetos mágicos;
-  - la ficha legible (J1.7, J1.8).
-- **El gremio, el pueblo y guardar:**
-  - cada sala del gremio, probada a mano (J3.1, J3.4 a J3.8);
-  - dormir y guardar, y exportar la partida (J3.3, J15.2, J15.6);
-  - cada comando que haga falta, con su botón (J15.4);
-  - la gente del pueblo a cada hora.
+  - el Diario como un libro, con capítulos, plazos y crónica (J9.3, J9.5, J9.6, J11.5);
+  - el aviso de lo que no tiene vuelta atrás (J11.1) y las consecuencias días después (J11.2);
+  - el pueblo recuerda un robo (J11.3) y el gremio, cómo acabó una campaña (J11.4).
+- **La magia:**
+  - el botón «Magia» fuera de combate, con Luz, curar en el viaje, Identificar, Detectar magia y Hablar con los muertos (J19.10);
+  - la ficha legible y tu cara sin arte (J1.7, J1.8).
+- **La gente:**
+  - las noches y las charlas de pareja (J14.7, J14.8);
+  - las frases de camino (J13.5) y las misiones personales (J14.9);
+  - la formación (J7.4) y los compañeros que se quedan en el gremio (J7.2).
+- **El gremio:**
+  - guardar con ranuras, dormir para guardar, exportar e importar (J15.2, J3.3, J15.6);
+  - la forja, la biblioteca, los dormitorios y el establo (J3.6);
+  - el rango (J3.7) y los encargos (J3.8);
+  - los comandos, con su botón (J15.4).
 
-Después van el combate (la magia en cada turno, las invocaciones, J7.3), el tablero (alturas, zonas, el tablero táctil) y las campañas del Gem y el mundo vivo. Las tandas anteriores se cortaron por el límite de uso; lo que llevaban ya está en los commits.
-
-**Cómo se quedó esta tanda (30-09, 13:30, al acabarse el uso).** El código está en el árbol, sin commit y sin revisar. Cada frente apunta su avance en `progreso.md`, en su carpeta de trabajo, para retomarlo:
-- **La magia y la ficha:** escrito, falta probarlo en el navegador.
-  - salen dos botones en la escena, «Magia» y «Curar con magia»;
-  - Luz ilumina el tablero y el campamento, y da +2 al buscar;
-  - Hablar con los muertos revela la pista;
-  - la ficha lleva un botón de magia.
-- **La historia y los diálogos:** escrito, faltan sus pruebas en el navegador.
-  - las opiniones de los compañeros junto a cada opción;
-  - el Diario como libro, con capítulos y decisiones;
-  - los plazos a la vista;
-  - el pueblo recuerda lo que hiciste: si robas, te saludan distinto y te suben el precio;
-  - el aviso de lo que no tiene vuelta atrás.
-- **La gente y el viaje:** revisado lo que hay. Nadie llamaba a las noches, las frases de camino, las misiones personales, la formación ni los compañeros que se quedan en el gremio. Aún no está enchufado.
-- **El gremio, el pueblo y guardar:** revisado. Nadie abría la pantalla de guardar (`guardar-partida.js`: ranuras, dormir para guardar, exportar e importar); su prueba llamaba a las funciones por dentro. Se estaba enchufando.
-
-Al volver: seguir esta tanda desde cada `progreso.md`, pasarle los revisores, las pruebas y el commit. Después, recontar el avance fila a fila (la estimación es de un 60 a un 65 % jugable).
+**En marcha ahora (2026-09-30, tarde): la tanda 7, con siete agentes.** Cada uno prueba solo lo que cambia:
+- **Cerrar la tanda 6:**
+  - un error 500 al guardar el chat;
+  - el grupo que no viaja entero a 1387;
+  - la formación desde «Tu gente».
+- **El combate con magia:**
+  - la magia en cada turno, las invocaciones y los enemigos que lanzan;
+  - mover tú a un compañero amigo (J7.3);
+  - «Continuar» tras una pelea sigue el hilo (D-J45).
+- **Peleas que se pueden evitar:**
+  - hablar, pagar, huir o esconderse (J12.2);
+  - salir de una pelea hablando (J8.5);
+  - encuentros ajustados al grupo y a su nivel (J12.6, J4.6).
+- **El tablero:**
+  - las alturas y las salas de un mapa en imagen cuentan al jugar (J12.8 a J12.11);
+  - los tableros grandes, con cámara y niebla (J12.13);
+  - las trampas (J12.3) y el tablero táctil (J20.2).
+- **Las campañas de tu Gem:**
+  - el contrato ampliado (J5.2) y los huecos que rellena el motor (J5.3);
+  - las dos formas de escribirlas (J5.5);
+  - comprobarlas antes de jugar (J5.6);
+  - sus tableros (J12.5).
+- **El mundo vivo:**
+  - caminos que abre la reputación o una llave (J10.1);
+  - sucesos por facción (J10.3, D-J42);
+  - el mapa dibujado (J10.5);
+  - más cosas que el mundo recuerda (J11.3).
+- **Vueltas automáticas:** 1387 hasta un final y la vuelta del gremio, con sus números (J16.1, J16.2, J16.4, base de J9.1).
 
 **Jugar con amigos (J6) está aparcado** hasta nueva orden (lo dijiste el 2026-09-28). Tampoco hay más personajes que los mercenarios sencillos del gremio.
 
