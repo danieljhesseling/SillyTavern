@@ -147,6 +147,21 @@ function groupOf(who) {
 }
 
 /**
+ * Quién juega, sacado de un grupo guardado (`chat_metadata.party`): tu héroe es el primero que
+ * no es invitado, y el grupo, los que siguen en pie (o todos, si no queda nadie). Lo mismo que
+ * `whoPlays` de `party/narration.js`, para las pantallas que no están en party.js (D-J17).
+ *
+ * @param {any} members
+ * @returns {Who}
+ */
+export function whoOfParty(members) {
+    const list = (Array.isArray(members) ? members : []).filter(m => m && typeof m === 'object');
+    const hero = list.find(m => !m.guest) ?? list[0];
+    const standing = list.filter(m => !m.dead);
+    return { heroe: hero?.gender ?? '', grupo: (standing.length > 0 ? standing : list).map(m => m.gender ?? '') };
+}
+
+/**
  * Cambiar cada marca por la forma que toca.
  *
  * @param {any} text

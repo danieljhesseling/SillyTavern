@@ -1,0 +1,618 @@
+{
+  "version": 1,
+  "domain": "noches",
+  "about": "La noche y las charlas de pareja (J14.7 y J14.8 de ROADMAP_SIN_CONEXION). Dos clases de fila (KIND). NOCHE: lo que pasa una noche en la posada, si toca; una por noche como mucho. TYPE es llegada (alguien llega) o ronda (una ronda, un juego, una canción). CAMPAIGN la deja para un sitio (gremio es Puerto Alba); sin ella, vale en cualquier posada. NEEDS.WITH pide que esos vayan en el grupo; EXTRAS es gente del sitio que sale, para su retrato. PAREJA: dos de tus compañeros hablan entre ellos. Con PAIR (sus dos nombres) es de esa pareja, y salen en orden (ORDER); con WANTS (lo que busca cada uno: coin, glory, blood, quiet, knowledge, o * para cualquiera) es una plantilla para cualquier pareja que encaje. Las dos se escriben en pasos (BEATS): WHO es quien habla (a y b son los dos compañeros; también vale un nombre, como Tomás), NOTE lo que pasa, SAY lo que dice y MOOD su cara (alegre, enfadado, triste). En REPLIES, lo que contestas: THEN lo que te dicen (WHO, quién lo dice), BONDS a quién acerca (1) o aleja (-1): a, b, un nombre o todos (los del grupo); GOLD lo que cuesta (negativo) o se gana; ATTITUDE cómo os mira alguien del pueblo. Huecos: {a} y {b} son sus nombres; {a:callado|callada} concuerda con a. Lo que concuerda con tu héroe va entre llaves con las dos formas, separadas por una barra vertical.",
+  "rows": [
+    {
+      "id": "gremio-noche-buhonero",
+      "kind": "noche",
+      "name": "Noche · El buhonero empapado",
+      "type": "llegada",
+      "campaign": "gremio",
+      "where": "posada",
+      "title": "El buhonero empapado",
+      "extras": ["Tomás"],
+      "beats": [
+        {
+          "note": "Llueve sobre el puerto. La puerta de la posada se abre de golpe y entra un buhonero chorreando, con un fardo a la espalda."
+        },
+        {
+          "who": "El buhonero",
+          "say": "¡Buenas noches! ¿Hay sitio junto al fuego para uno que viene de lejos? Pago con agujas, con cintas o con noticias."
+        },
+        {
+          "who": "a",
+          "say": "Noticias, dice. Seguro que las trae tan mojadas como las botas.",
+          "mood": "alegre",
+          "replies": [
+            { "text": "Siéntate con nosotros, buen hombre.", "bonds": { "a": 1 }, "who": "El buhonero", "then": "Que los dioses os lo paguen. En el camino del norte han vuelto los lobos, por si vais para allá." },
+            { "text": "Cómprale una cinta.", "gold": -1, "who": "El buhonero", "then": "Roja, para la capa. Da suerte. O eso digo yo, que las vendo." },
+            { "text": "Que se siente lejos. Huele a perro mojado.", "bonds": { "a": -1 }, "who": "a", "then": "Hombre, un poco de caridad, que llueve a cántaros.", "mood": "enfadado" }
+          ]
+        },
+        {
+          "note": "Tomás le trae un cuenco de caldo sin que nadie se lo pida. Al rato, el buhonero ronca junto al fuego con el fardo abrazado."
+        }
+      ]
+    },
+    {
+      "id": "gremio-noche-veterana",
+      "kind": "noche",
+      "name": "Noche · La vieja compañera de Brunilda",
+      "type": "llegada",
+      "campaign": "gremio",
+      "where": "posada",
+      "title": "Una vieja compañera",
+      "extras": ["Brunilda"],
+      "beats": [
+        {
+          "note": "Entra una mujer mayor con una pierna de palo y una espada más vieja que tú. Brunilda baja las escaleras de dos en dos."
+        },
+        {
+          "who": "Brunilda",
+          "say": "¡Rosalía! Pensaba que te habían enterrado en el sur. Sentaos aquí, que esta os interesa: cruzamos la mitad del mapa juntas.",
+          "mood": "alegre"
+        },
+        {
+          "who": "Rosalía",
+          "say": "Brunilda sostenía el escudo y yo cortaba lo que asomaba. ¿Queréis saber cómo perdí la pierna?",
+          "replies": [
+            { "text": "Cuéntalo. Aquí nadie tiene prisa.", "attitude": { "Brunilda": 1 }, "bonds": { "a": 1 }, "who": "Rosalía", "then": "Un oso. Un oso pequeño, además. No se lo digáis a nadie." },
+            { "text": "Mejor cuéntame cómo la conservaste tanto tiempo.", "who": "Rosalía", "then": "Mirando antes de saltar. Algo que tu amiga Brunilda nunca aprendió.", "mood": "alegre" },
+            { "text": "Otra noche. Estoy {cansado|cansada}.", "attitude": { "Brunilda": -1 }, "who": "Brunilda", "then": "Tú te lo pierdes. Historias así no se oyen dos veces." }
+          ]
+        },
+        {
+          "who": "a",
+          "say": "Si llego a su edad con una pierna de menos y tantas ganas de reír, firmo ahora mismo.",
+          "mood": "alegre"
+        }
+      ]
+    },
+    {
+      "id": "gremio-noche-comicos",
+      "kind": "noche",
+      "name": "Noche · Los cómicos de la legua",
+      "type": "llegada",
+      "campaign": "gremio",
+      "where": "posada",
+      "title": "Los cómicos",
+      "extras": ["Tomás"],
+      "beats": [
+        {
+          "note": "Llega una compañía de cómicos: tres hombres, una mujer y un carro con un dragón de trapo. Tomás les deja actuar a cambio de la cena."
+        },
+        {
+          "note": "Hacen la historia de un caballero que mata al dragón con una cuchara. La sala se ríe. Al final, la mujer pasa el sombrero.",
+          "replies": [
+            { "text": "Echas dos monedas en el sombrero.", "gold": -2, "bonds": { "todos": 1 }, "who": "a", "then": "Bien hecho. Lo de la cuchara me ha llegado al alma.", "mood": "alegre" },
+            { "text": "Aplaudes, pero no echas nada.", "who": "a", "then": "Un aplauso no llena la tripa, pero algo es algo." },
+            { "text": "Les dices que el dragón era muy malo.", "bonds": { "a": -1 }, "who": "a", "then": "Es de trapo. ¿Qué querías, que echara fuego de verdad?", "mood": "enfadado" }
+          ]
+        },
+        {
+          "who": "a",
+          "say": "Mañana se van a la costa del sur. Qué vida más rara: siempre de paso, siempre con el carro.",
+          "mood": "triste"
+        }
+      ]
+    },
+    {
+      "id": "gremio-noche-mensajero",
+      "kind": "noche",
+      "name": "Noche · Un mensajero para el gremio",
+      "type": "llegada",
+      "campaign": "gremio",
+      "where": "posada",
+      "title": "Un mensajero",
+      "extras": ["Brunilda"],
+      "beats": [
+        {
+          "note": "Pasada la medianoche llama a la puerta un chico con botas de barro hasta las rodillas. Trae una carta sellada para el gremio."
+        },
+        {
+          "who": "Brunilda",
+          "say": "Otra aldea con problemas, y otra que no puede pagar mucho. Esto va al tablón mañana. ¿Le damos algo al chico?",
+          "replies": [
+            { "text": "Dale cena y cama. Pago yo.", "gold": -2, "attitude": { "Brunilda": 1 }, "bonds": { "a": 1 }, "who": "Brunilda", "then": "Así me gusta. El gremio no deja a nadie en la puerta." },
+            { "text": "Que duerma en el establo. Es gratis.", "who": "Brunilda", "then": "Tampoco es mala cama. Yo he dormido en peores." },
+            { "text": "No es asunto mío.", "attitude": { "Brunilda": -1 }, "bonds": { "a": -1 }, "who": "Brunilda", "then": "En esta casa, todo lo que llega por esa puerta es asunto de todos.", "mood": "enfadado" }
+          ]
+        },
+        {
+          "who": "a",
+          "say": "Mañana miramos esa carta en el tablón. Si hay que ir, vamos.",
+          "mood": "alegre"
+        }
+      ]
+    },
+    {
+      "id": "gremio-noche-cartas",
+      "kind": "noche",
+      "name": "Noche · La baraja de Tomás",
+      "type": "ronda",
+      "campaign": "gremio",
+      "where": "posada",
+      "title": "La baraja de Tomás",
+      "extras": ["Tomás"],
+      "beats": [
+        {
+          "note": "Cerrada la cocina, Tomás saca una baraja sobada y reparte en la mesa grande. Se juega a monedas de cobre."
+        },
+        {
+          "who": "Tomás",
+          "say": "Una mano, que mañana hay que madrugar. Y el que haga trampas, friega los platos una semana.",
+          "mood": "alegre",
+          "replies": [
+            { "text": "Juegas y ganas la mano.", "gold": 3, "attitude": { "Tomás": -1 }, "who": "Tomás", "then": "¡Tres monedas! Juraría que te has guardado un rey en la manga.", "mood": "enfadado" },
+            { "text": "Juegas y pierdes adrede.", "gold": -2, "attitude": { "Tomás": 1 }, "who": "Tomás", "then": "Así da gusto. Esta noche invito yo al vino.", "mood": "alegre" },
+            { "text": "Miras cómo juegan los demás.", "bonds": { "a": 1 }, "who": "a", "then": "Haces bien. Tomás gana siempre, aunque ponga cara de que no." }
+          ]
+        },
+        {
+          "note": "La partida acaba entre risas. Nadie friega los platos: Tomás los deja para mañana, como cada noche."
+        }
+      ]
+    },
+    {
+      "id": "gremio-noche-pulso",
+      "kind": "noche",
+      "name": "Noche · El pulso de Gerd",
+      "type": "ronda",
+      "campaign": "gremio",
+      "where": "posada",
+      "title": "El pulso",
+      "needs": { "with": ["Gerd el Mellado"] },
+      "beats": [
+        {
+          "note": "Gerd ha ganado cuatro pulsos seguidos a los pescadores. Se remanga, pone el codo en la mesa y te mira a ti."
+        },
+        {
+          "who": "Gerd el Mellado",
+          "say": "¿Qué? ¿Te atreves? Si me ganas, pago la cena de mañana. Si pierdes, me la pagas tú.",
+          "mood": "alegre",
+          "replies": [
+            { "text": "Pones el codo en la mesa.", "gold": -2, "bonds": { "Gerd el Mellado": 1 }, "who": "Gerd el Mellado", "then": "¡Ja! Has aguantado más que los pescadores. Pero pagas tú, que así es el trato.", "mood": "alegre" },
+            { "text": "Tú contra mí no tienes nada que hacer.", "bonds": { "Gerd el Mellado": 1 }, "who": "Gerd el Mellado", "then": "¡Eso ya lo veremos! Mañana, con la tripa vacía, te reto otra vez." },
+            { "text": "No me gustan los juegos de taberna.", "bonds": { "Gerd el Mellado": -1 }, "who": "Gerd el Mellado", "then": "Qué poca sangre. Un pulso no ha matado a nadie. Casi a nadie.", "mood": "triste" }
+          ]
+        },
+        {
+          "note": "Al final gana un pescador pelirrojo que nadie había visto, y la sala entera le invita a vino."
+        }
+      ]
+    },
+    {
+      "id": "gremio-noche-dardos",
+      "kind": "noche",
+      "name": "Noche · Los dardos de Nella",
+      "type": "ronda",
+      "campaign": "gremio",
+      "where": "posada",
+      "title": "Los dardos",
+      "needs": { "with": ["Nella Tresflechas"] },
+      "beats": [
+        {
+          "note": "En la pared del fondo hay una diana de corcho. Nella ya ha dejado sin monedas a dos marineros."
+        },
+        {
+          "who": "Nella Tresflechas",
+          "say": "Tres dardos cada uno. Si haces más que yo, te doy dos monedas. Si no, me las das tú.",
+          "mood": "alegre",
+          "replies": [
+            { "text": "Tiras los tres dardos.", "gold": -2, "bonds": { "Nella Tresflechas": 1 }, "who": "Nella Tresflechas", "then": "Dos en la madera y uno en el corcho. Me vale. Pagas, pero me caes bien.", "mood": "alegre" },
+            { "text": "Apuestas por Nella contra los marineros.", "gold": 2, "bonds": { "Nella Tresflechas": 1 }, "who": "Nella Tresflechas", "then": "Así se hace: se apuesta por la que gana." },
+            { "text": "Esto es sacarles el dinero a los borrachos.", "bonds": { "Nella Tresflechas": -1 }, "who": "Nella Tresflechas", "then": "Ellos me retaron. Yo solo sé tirar.", "mood": "enfadado" }
+          ]
+        },
+        {
+          "note": "Al final de la noche, Nella invita a los marineros a una jarra con lo que les ha ganado. Nadie se va enfadado."
+        }
+      ]
+    },
+    {
+      "id": "gremio-noche-guardia",
+      "kind": "noche",
+      "name": "Noche · La guardia de Osric",
+      "type": "ronda",
+      "campaign": "gremio",
+      "where": "posada",
+      "title": "Junto a la puerta",
+      "needs": { "with": ["Osric Mediapaga"] },
+      "beats": [
+        {
+          "note": "Cuando la posada se vacía, Osric arrastra una silla hasta la puerta y se sienta con la espada sobre las rodillas."
+        },
+        {
+          "who": "Osric Mediapaga",
+          "say": "Id a dormir. Yo hago la guardia. No es por nada. Es que duermo poco.",
+          "replies": [
+            { "text": "Te acompaño un rato.", "bonds": { "Osric Mediapaga": 1 }, "who": "Osric Mediapaga", "then": "Como quieras. Pero no hables mucho, que se oye peor la calle." },
+            { "text": "Te traigo algo caliente.", "gold": -1, "bonds": { "Osric Mediapaga": 1 }, "who": "Osric Mediapaga", "then": "Vino con canela. Esto no me lo había hecho nadie en años." },
+            { "text": "En una posada no hace falta guardia.", "bonds": { "Osric Mediapaga": -1 }, "who": "Osric Mediapaga", "then": "Eso pensaba mi señor.", "mood": "triste" }
+          ]
+        },
+        {
+          "note": "Al amanecer, Osric sigue despierto en la silla. Tomás le deja al lado un pan recién hecho, sin decir nada."
+        }
+      ]
+    },
+    {
+      "id": "gremio-noche-ronda",
+      "kind": "noche",
+      "name": "Noche · Una ronda para todos",
+      "type": "ronda",
+      "campaign": "gremio",
+      "where": "posada",
+      "title": "Una ronda para todos",
+      "extras": ["Tomás"],
+      "needs": { "companions": 1 },
+      "beats": [
+        {
+          "note": "La sala está llena: pescadores, dos carreteros y la gente del gremio. Alguien empieza a cantar la del barco que se llevó la niebla."
+        },
+        {
+          "who": "a",
+          "say": "Esta la cantaba mi abuela. Aquí la cantan peor, pero con más ganas.",
+          "mood": "alegre",
+          "replies": [
+            { "text": "¡Tomás, una ronda para toda la sala!", "gold": -4, "attitude": { "Tomás": 1 }, "bonds": { "todos": 1 }, "who": "Tomás", "then": "¡Una ronda de parte de la gente del gremio! Así se hace fama en este puerto.", "mood": "alegre" },
+            { "text": "Cantas con ellos.", "bonds": { "a": 1 }, "who": "a", "then": "¡Desafinas como un gato! Me encanta.", "mood": "alegre" },
+            { "text": "Te retiras pronto a dormir.", "who": "a", "then": "Tú te lo pierdes. Mañana te lo cuento." }
+          ]
+        },
+        {
+          "note": "La canción acaba como siempre: con el barco perdido y la sala gritando el último verso."
+        }
+      ]
+    },
+    {
+      "id": "noche-viajero",
+      "kind": "noche",
+      "name": "Noche · El viajero sin nombre",
+      "type": "llegada",
+      "where": "posada",
+      "title": "El viajero sin nombre",
+      "beats": [
+        {
+          "note": "Tarde ya, entra un viajero con la capucha puesta. Pide sopa, paga por adelantado y se sienta de espaldas a la pared."
+        },
+        {
+          "who": "a",
+          "say": "Ese no quiere que le vean la cara. O le buscan, o busca a alguien.",
+          "replies": [
+            { "text": "Le invitas a una jarra y le preguntas de dónde viene.", "gold": -1, "who": "El viajero", "then": "De donde no se vuelve, amigo. Gracias por la jarra. Esta noche me voy." },
+            { "text": "Lo vigilamos por turnos.", "bonds": { "a": 1 }, "who": "a", "then": "Bien pensado. Yo hago el primer turno." },
+            { "text": "Déjalo en paz. Todos tenemos algo que esconder.", "who": "a", "then": "También es verdad. Tú el primero, seguro." }
+          ]
+        },
+        {
+          "note": "Por la mañana, el viajero ya no está. Ha dejado la cuenta pagada, y también la vuestra."
+        }
+      ]
+    },
+    {
+      "id": "noche-familia",
+      "kind": "noche",
+      "name": "Noche · Una familia que huye del frío",
+      "type": "llegada",
+      "where": "posada",
+      "title": "Una familia en la puerta",
+      "beats": [
+        {
+          "note": "Una mujer con dos críos y un hombre con la mano vendada piden sitio en el establo. Vienen de una aldea que se ha quedado sin comida."
+        },
+        {
+          "who": "a",
+          "say": "Los críos no llevan ni zapatos. Con lo que cuesta una cama…",
+          "mood": "triste",
+          "replies": [
+            { "text": "Pagas una habitación para ellos.", "gold": -3, "bonds": { "todos": 1 }, "who": "a", "then": "Eso es. Esta noche nadie duerme en la paja.", "mood": "alegre" },
+            { "text": "Les das pan de tu mochila.", "bonds": { "a": 1 }, "who": "a", "then": "Algo es algo. Mañana verán las cosas mejor." },
+            { "text": "No podemos ayudar a todo el mundo.", "bonds": { "a": -1 }, "who": "a", "then": "A todo el mundo no. A estos cuatro, sí.", "mood": "enfadado" }
+          ]
+        },
+        {
+          "note": "Los críos se duermen junto al fuego antes de terminarse el caldo."
+        }
+      ]
+    },
+    {
+      "id": "noche-dados",
+      "kind": "noche",
+      "name": "Noche · Una partida de dados",
+      "type": "ronda",
+      "where": "posada",
+      "title": "Una partida de dados",
+      "beats": [
+        {
+          "note": "En una mesa del rincón se juega a los dados. {a} se ha sentado a mirar y ya no se levanta."
+        },
+        {
+          "who": "a",
+          "say": "Llevo tres tiradas adivinando qué sale. ¿Jugamos?",
+          "mood": "alegre",
+          "replies": [
+            { "text": "Juegas una tirada.", "gold": -1, "bonds": { "a": 1 }, "who": "a", "then": "¡Un uno y un dos! Qué mala suerte. Pero qué bien lo pasamos.", "mood": "alegre" },
+            { "text": "Te sientas a mirar con {a}.", "bonds": { "a": 1 }, "who": "a", "then": "Mirar también tiene su gracia. Y no cuesta nada." },
+            { "text": "Los dados son para perder dinero.", "who": "a", "then": "Ya. Por eso no juego yo tampoco. Casi nunca." }
+          ]
+        },
+        {
+          "note": "A medianoche el tabernero apaga las velas de la mesa del rincón. Los jugadores se van contando monedas."
+        }
+      ]
+    },
+    {
+      "id": "noche-cancion",
+      "kind": "noche",
+      "name": "Noche · Una canción triste",
+      "type": "ronda",
+      "where": "posada",
+      "title": "Una canción triste",
+      "beats": [
+        {
+          "note": "El tabernero coge un laúd viejo y canta, sin mirar a nadie, una canción de alguien que se fue a la guerra y no volvió."
+        },
+        {
+          "who": "a",
+          "say": "Esa canción la conozco. La cantaban donde yo me crie, con otra letra.",
+          "mood": "triste",
+          "replies": [
+            { "text": "¿Y quién la cantaba?", "bonds": { "a": 1 }, "who": "a", "then": "Alguien que ya no está. Otro día te lo cuento. Hoy no." },
+            { "text": "Le pides al tabernero una más alegre.", "who": "a", "then": "Mejor. Esta noche no tengo el cuerpo para penas.", "mood": "alegre" },
+            { "text": "Te quedas en silencio a su lado.", "bonds": { "a": 1 }, "who": "a", "then": "Gracias. A veces no hace falta decir nada." }
+          ]
+        },
+        {
+          "note": "Cuando acaba la canción, nadie aplaude. Pero nadie se levanta tampoco."
+        }
+      ]
+    },
+    {
+      "id": "pareja-gerd-nella-1",
+      "kind": "pareja",
+      "name": "Gerd y Nella · La apuesta del guiso",
+      "pair": ["Gerd el Mellado", "Nella Tresflechas"],
+      "order": 1,
+      "title": "La apuesta del guiso",
+      "where": "posada",
+      "beats": [
+        { "who": "b", "say": "Gerd, te apuesto dos monedas a que no te acabas tres cuencos del guiso de Tomás.", "mood": "alegre" },
+        { "who": "a", "say": "¿Tres? Yo me como tres cuencos antes de desayunar. Apuesta aceptada.", "mood": "alegre" },
+        {
+          "note": "Al tercer cuenco, Gerd suda. Nella le mira con los brazos cruzados. Los dos te miran a ti.",
+          "who": "b",
+          "say": "Decide tú. ¿Ha ganado o no ha ganado?",
+          "replies": [
+            { "text": "Ha ganado Gerd. Tres cuencos, limpios.", "bonds": { "a": 1, "b": -1 }, "who": "a", "then": "¡Ja! Paga, Tresflechas. Y dile a Tomás que me ponga otro.", "mood": "alegre" },
+            { "text": "Se ha dejado un trozo de nabo. Gana Nella.", "bonds": { "a": -1, "b": 1 }, "who": "b", "then": "Las normas son las normas. El nabo cuenta.", "mood": "alegre" },
+            { "text": "Empate. Invitáis los dos a la ronda.", "bonds": { "a": 1, "b": 1 }, "who": "a", "then": "Eso es justicia. Y con sed." }
+          ]
+        },
+        { "who": "b", "say": "La próxima apuesta es a quién llega antes al muelle. Y ahí no tienes nada que hacer, Mellado." }
+      ]
+    },
+    {
+      "id": "pareja-gerd-nella-2",
+      "kind": "pareja",
+      "name": "Gerd y Nella · El hermano pequeño",
+      "pair": ["Gerd el Mellado", "Nella Tresflechas"],
+      "order": 2,
+      "title": "El hermano pequeño",
+      "where": "posada",
+      "beats": [
+        { "who": "a", "say": "Nella, estás muy callada esta noche. Y tú callada das más miedo que un oso." },
+        { "who": "b", "say": "Pensaba en los míos. Hace años que no sé nada de ellos.", "mood": "triste" },
+        { "who": "a", "say": "Mira, yo tengo madre en Robledo y le mando lo que puedo. No es mucho, pero la tengo en la cabeza cada día. Eso ya es algo." },
+        {
+          "note": "Nella no contesta. Gerd le acerca su cuenco de guiso, que en él es mucho decir.",
+          "replies": [
+            { "text": "Gerd tiene razón: pensar en ellos también cuenta.", "bonds": { "a": 1 }, "who": "b", "then": "Puede. Pero pensar no les llena el plato." },
+            { "text": "Un día iremos a verlos, Nella.", "bonds": { "b": 1 }, "who": "b", "then": "No lo digas si no lo piensas. Pero gracias.", "mood": "triste" },
+            { "text": "Dejas que lo hablen entre ellos.", "who": "a", "then": "Venga, cómete eso, que se enfría." }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pareja-gerd-osric-1",
+      "kind": "pareja",
+      "name": "Gerd y Osric · Los ronquidos",
+      "pair": ["Gerd el Mellado", "Osric Mediapaga"],
+      "order": 1,
+      "title": "Los ronquidos",
+      "where": "posada",
+      "beats": [
+        { "who": "b", "say": "Gerd. Anoche roncabas tan fuerte que se movían las jarras de la estantería." },
+        { "who": "a", "say": "¿Yo? Yo no ronco. Yo respiro con alegría, que es distinto.", "mood": "alegre" },
+        {
+          "who": "b",
+          "say": "Por eso hago yo las guardias. Para no oírte.",
+          "replies": [
+            { "text": "Es verdad, Gerd. Roncas como un buey.", "bonds": { "a": -1, "b": 1 }, "who": "a", "then": "¡Traición! Te compro unos tapones de cera y en paz.", "mood": "enfadado" },
+            { "text": "Osric, tú hablas en sueños.", "bonds": { "a": 1, "b": -1 }, "who": "b", "then": "Eso es mentira. ¿Qué dije?", "mood": "enfadado" },
+            { "text": "Os turnáis: una noche ronca uno y la otra el otro.", "bonds": { "a": 1, "b": 1 }, "who": "a", "then": "¡Ja! Trato hecho. Osric, esta noche te toca a ti.", "mood": "alegre" }
+          ]
+        },
+        { "who": "b", "say": "Mañana la guardia la hago yo igual. Pero que conste." }
+      ]
+    },
+    {
+      "id": "pareja-gerd-osric-2",
+      "kind": "pareja",
+      "name": "Gerd y Osric · La barca",
+      "pair": ["Gerd el Mellado", "Osric Mediapaga"],
+      "order": 2,
+      "title": "La barca",
+      "where": "muelle",
+      "beats": [
+        { "note": "En el muelle, Gerd y Osric miran las barcas. Gerd tiene un plan, y se le nota." },
+        { "who": "a", "say": "Osric, si compras la barca, yo pongo la mitad. Tú pescas y yo vendo el pescado en la plaza. Socios.", "mood": "alegre" },
+        { "who": "b", "say": "El mar no se comparte, Gerd. Y tú no sabes nadar." },
+        {
+          "who": "a",
+          "say": "¡Pues aprendo! ¿Tú qué dices? ¿No hacemos buena pareja?",
+          "replies": [
+            { "text": "Gerd vendiendo pescado… lo vendería todo en una tarde.", "bonds": { "a": 1 }, "who": "b", "then": "Y se lo comería en otra." },
+            { "text": "Osric tiene razón: esa barca es suya.", "bonds": { "b": 1, "a": -1 }, "who": "a", "then": "Vale, vale. Pero cuando pesques algo grande, me invitas.", "mood": "triste" },
+            { "text": "Yo pondría la otra mitad, si me dejáis.", "bonds": { "a": 1, "b": 1 }, "who": "b", "then": "Ni hablar. La barca es mía. Pero gracias. De verdad." }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pareja-nella-osric-1",
+      "kind": "pareja",
+      "name": "Nella y Osric · Quién habla menos",
+      "pair": ["Nella Tresflechas", "Osric Mediapaga"],
+      "order": 1,
+      "title": "Quién habla menos",
+      "where": "camino",
+      "beats": [
+        { "note": "Llevan una hora sin decir palabra. Nella mira a Osric de reojo. Osric mira el camino." },
+        { "who": "a", "say": "Te apuesto una moneda a que aguanto callada más que tú.", "mood": "alegre" },
+        { "who": "b", "say": "Acabas de perder." },
+        {
+          "who": "a",
+          "say": "Eso no vale. ¿Vale o no vale?",
+          "replies": [
+            { "text": "No vale. Todavía no había empezado la apuesta.", "bonds": { "a": 1 }, "who": "b", "then": "Como quieras. Empezamos ahora." },
+            { "text": "Vale. Paga, Nella.", "bonds": { "b": 1, "a": -1 }, "who": "a", "then": "Qué mala suerte tengo con las apuestas fáciles.", "mood": "enfadado" },
+            { "text": "Os ganáis los dos: yo hablo por todos.", "bonds": { "a": 1, "b": 1 }, "who": "b", "then": "Eso es lo que me temía." }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pareja-nella-osric-2",
+      "kind": "pareja",
+      "name": "Nella y Osric · La sonrisa",
+      "pair": ["Nella Tresflechas", "Osric Mediapaga"],
+      "order": 2,
+      "title": "La sonrisa",
+      "where": "posada",
+      "beats": [
+        { "who": "a", "say": "Osric, llevo un mes intentando hacerte sonreír. Te he contado mis mejores chistes." },
+        { "who": "b", "say": "Los he oído. Eran malos." },
+        { "who": "a", "say": "¡Ves! Nadie se resiste tanto. Apuesto dos monedas a que esta noche sonríes.", "mood": "alegre" },
+        {
+          "note": "Osric no dice nada. Pero en la esquina de la boca se le mueve algo.",
+          "replies": [
+            { "text": "¡Ha sonreído! Lo he visto.", "bonds": { "a": 1, "b": -1 }, "who": "b", "then": "Era un gesto de dolor. Me duele una muela." },
+            { "text": "No ha sonreído. Osric gana.", "bonds": { "b": 1 }, "who": "a", "then": "Pues mañana otra vez. No me rindo." },
+            { "text": "Le cuentas tú un chiste a Osric.", "bonds": { "a": 1, "b": 1 }, "who": "b", "then": "Ese es peor que los de ella. Pero me ha hecho gracia.", "mood": "alegre" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "plantilla-reparto",
+      "kind": "pareja",
+      "name": "Plantilla · El reparto (oro y gloria)",
+      "wants": ["coin", "glory"],
+      "title": "El reparto",
+      "where": "posada",
+      "beats": [
+        { "note": "Esta noche {a} cuenta monedas en la mesa. {b} le mira sin mucha paciencia." },
+        { "who": "a", "say": "Lo justo es que quien más se arriesga, más cobre. Y hoy {a:el que|la que} más se ha arriesgado he sido yo." },
+        { "who": "b", "say": "Lo que importa es que se hable de lo que hicimos, no quién se lleva una moneda más." },
+        {
+          "who": "a",
+          "say": "Decide tú, que para eso mandas.",
+          "replies": [
+            { "text": "Se reparte a partes iguales, como siempre.", "bonds": { "b": 1 }, "who": "a", "then": "A partes iguales… Vale. Pero la próxima vez me pongo delante yo." },
+            { "text": "{a} tiene razón: quien se arriesga, cobra más.", "bonds": { "a": 1, "b": -1 }, "who": "b", "then": "Pues que se quede las monedas. Yo me quedo la historia." },
+            { "text": "Lo que sobre va a una ronda para todos.", "bonds": { "a": 1, "b": 1 }, "who": "b", "then": "Eso ya me gusta más. Y que la paguen con canción." }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "plantilla-despues-pelea",
+      "kind": "pareja",
+      "name": "Plantilla · Después de la pelea (tranquilidad y sangre)",
+      "wants": ["quiet", "blood"],
+      "title": "Después de la pelea",
+      "where": "camino",
+      "beats": [
+        { "note": "Junto al fuego, {b} limpia su arma silbando. {a} no le quita la vista de encima." },
+        { "who": "a", "say": "Hoy parecía que te lo pasabas bien ahí fuera. Demasiado bien.", "mood": "enfadado" },
+        { "who": "b", "say": "Nos querían {muertos|muertas}. Prefiero pasármelo bien a pasármelo mal." },
+        {
+          "who": "a",
+          "say": "¿Tú qué piensas? ¿Hay que disfrutar de algo así?",
+          "replies": [
+            { "text": "Pelear no es para disfrutarlo.", "bonds": { "a": 1, "b": -1 }, "who": "b", "then": "Ya. Cuando os toque a {vosotros|vosotras}, ya me contaréis quién os cubre la espalda.", "mood": "enfadado" },
+            { "text": "Cada uno aguanta el miedo como puede.", "bonds": { "a": 1, "b": 1 }, "who": "a", "then": "Puede ser. Nunca lo había pensado así." },
+            { "text": "Si no fuera por {b}, hoy no lo contábamos.", "bonds": { "b": 1, "a": -1 }, "who": "a", "then": "Ya lo sé. Por eso me preocupa.", "mood": "triste" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "plantilla-preguntas",
+      "kind": "pareja",
+      "name": "Plantilla · Demasiadas preguntas (saber y cualquiera)",
+      "wants": ["knowledge", "*"],
+      "title": "Demasiadas preguntas",
+      "where": "posada",
+      "beats": [
+        { "who": "a", "say": "¿Y de dónde eres? ¿Y por qué te hiciste de esto? ¿Y qué es lo primero que recuerdas?" },
+        { "who": "b", "say": "Una pregunta más y me voy a dormir al establo.", "mood": "enfadado" },
+        { "who": "a", "say": "Es que me interesa. De verdad. Nadie me cuenta nunca nada." },
+        {
+          "note": "Los dos te miran, como si tú tuvieras que decidir quién tiene razón.",
+          "replies": [
+            { "text": "Contesta una, {b}. Solo una.", "bonds": { "a": 1 }, "who": "b", "then": "Una. Lo primero que recuerdo es el olor del pan de mi casa. Ya está." },
+            { "text": "Deja a {b} en paz, {a}.", "bonds": { "b": 1, "a": -1 }, "who": "a", "then": "Vale, vale. Pero algún día me lo cuentas.", "mood": "triste" },
+            { "text": "Te pones a contar tú cosas tuyas.", "bonds": { "a": 1, "b": 1 }, "who": "a", "then": "¡Eso! Y luego te toca a ti, {b}." }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "plantilla-guardia",
+      "kind": "pareja",
+      "name": "Plantilla · La guardia (cualquiera)",
+      "wants": ["*", "*"],
+      "title": "La guardia",
+      "where": "camino",
+      "beats": [
+        { "note": "A {a} y a {b} les toca la guardia juntos. El fuego está bajo y hace frío." },
+        { "who": "a", "say": "¿Tú qué harás cuando esto acabe? Cuando ya no haya que dormir con un ojo abierto." },
+        { "who": "b", "say": "Dormir con los dos cerrados. Una semana entera. Luego ya veré." },
+        {
+          "who": "a",
+          "say": "Pregúntale a quien manda. A lo mejor tiene mejores planes.",
+          "replies": [
+            { "text": "Una casa con chimenea, y nada de guardias.", "bonds": { "a": 1, "b": 1 }, "who": "b", "then": "Con chimenea. Me apunto." },
+            { "text": "Seguir con vosotros. No sé hacer otra cosa.", "bonds": { "a": 1 }, "who": "a", "then": "Pues entonces nos veremos mucho tiempo." },
+            { "text": "No hay un después. Hay que pensar en mañana.", "bonds": { "b": -1 }, "who": "b", "then": "Qué ánimo. Me voy a la cama, que me toca en dos horas.", "mood": "enfadado" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "plantilla-canciones",
+      "kind": "pareja",
+      "name": "Plantilla · Que canten lo nuestro (gloria y tranquilidad)",
+      "wants": ["glory", "quiet"],
+      "title": "Que canten lo nuestro",
+      "where": "posada",
+      "beats": [
+        { "who": "a", "say": "Algún día en esta posada cantarán lo que hicimos. Con nuestros nombres.", "mood": "alegre" },
+        { "who": "b", "say": "Yo prefiero que se olviden de mí. Los que salen en las canciones acaban mal." },
+        {
+          "who": "a",
+          "say": "¿Tú qué prefieres? ¿Que te canten o que te olviden?",
+          "replies": [
+            { "text": "Que me canten. Y bien alto.", "bonds": { "a": 1, "b": -1 }, "who": "a", "then": "¡Eso es! Ya tengo el primer verso.", "mood": "alegre" },
+            { "text": "Que me olviden y me dejen vivir.", "bonds": { "b": 1, "a": -1 }, "who": "b", "then": "Eso. Tranquilidad y seguir con vida." },
+            { "text": "Que canten a los que no volvieron.", "bonds": { "a": 1, "b": 1 }, "who": "b", "then": "Esa canción sí la escucharía.", "mood": "triste" }
+          ]
+        }
+      ]
+    }
+  ]
+}

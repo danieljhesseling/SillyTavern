@@ -11,7 +11,7 @@
 import { POPUP_TYPE, Popup } from '../popup.js';
 import { chat_metadata, saveMetadata } from '../../script.js';
 import { loadWorldInfo, saveWorldInfo, METADATA_KEY } from '../world-info.js';
-import { getAbilityModifier, removeItemFromInventory } from '../dnd-system.js';
+import { getAbilityModifier, removeItemFromInventory, addItemToInventory, createItem } from '../dnd-system.js';
 import { asAbility } from '../game-engine/compendio/skills.js';
 import { rollDiceDetailed, getDistanceInFeet, getPlayerAttackModifier } from './combat-rules.js';
 import { setCell as setTerrainCell, getCell, TERRAIN_TYPES } from '../game-engine/board/terrain.js';
@@ -33,16 +33,19 @@ import { normalizeAbilities, canUseAbility, planAbilityUse, spendAbilityUse, kno
 import { addConditionTimer, expireConditions, clearTimersFor } from '../game-engine/combat/condition-timers.js';
 import { clearDeathSaves } from '../game-engine/rules/death-saves.js';
 import {
-    casterOf, classRowFor, spendSlot, recoverSlots, spellcastingStats, describeSlots, SLOT_LABELS,
+    casterOf, classRowFor, spendSlot, spellcastingStats, describeSlots, SLOT_LABELS,
 } from '../game-engine/rules/spell-slots.js';
 import { castableSpells, checkPreparation, classSpellList, preparedLimit, maxSpellLevel, ritualSpells } from '../game-engine/rules/spell-prep.js';
-import { canCastSpell, componentsCheck, spellToAbility, upcastSpell, hpPoolTargets, describeSpell5e } from '../game-engine/rules/spell-cast.js';
+import {
+    canCastSpell, componentsCheck, spellToAbility, upcastSpell, hpPoolTargets, describeSpell5e, focusGift, supplyHolder,
+} from '../game-engine/rules/spell-cast.js';
+import { describeLootItem } from '../game-engine/combat/loot-items.js';
 import { normalizeSpell, findSpell } from '../game-engine/rules/spell-catalogue.js';
-import { startingSpells, hasSpellLists, defaultPrepared } from '../game-engine/rules/spell-picks.js';
+import { startingSpells, hasSpellLists } from '../game-engine/rules/spell-picks.js';
 import { startConcentration, readConcentration, linkedTo, describeConcentration, endConcentration } from '../game-engine/rules/concentration.js';
 import { zoneFromSpell, placeZone, zoneFlagsAt, resolveZoneEffect, clearZones, endZones, kindOf, ZONE_KINDS } from '../game-engine/board/spell-zones.js';
 import { planSummon, dismissSummons } from '../game-engine/rules/summons.js';
-import { itemSpellSpec, spendItemCharges, itemWorks, scrollCheck, setAttunement, rechargeItems, ATTUNEMENT_MAX, attunedItems } from '../game-engine/rules/magic-items.js';
+import { itemSpellSpec, spendItemCharges, itemWorks, scrollCheck, setAttunement, ATTUNEMENT_MAX, attunedItems } from '../game-engine/rules/magic-items.js';
 import { firstArt, loadPixelManifest } from '../game-engine/ui/pixel-art.js';
 import { WANTED_KEY } from './keys.js';
 import { combatEncounter, currentLocationName, partyMembers } from './state.js';
@@ -176,12 +179,26 @@ export function learnFromScroll(name) {
 export async function openGrimoire(all = false) {
     const body = $('<div class="jr-root gr-root"></div>');
     body.append($('<h3></h3>').text(all ? 'Toda la magia que existe' : 'El grimorio'));
+    // Los dibujos de los conjuros y de las clases necesitan el índice del arte en pixel.
+    await loadPixelManifest();
+    /**
+     * Una fila del grimorio de siempre, con el dibujo del conjuro si lo tiene.
+     *
+     * @param {any} spell
+     * @param {string} said
+     */
+    const lightRow = (spell, said) => {
+        const row = $('<div class="jr-item gr-spell"></div>').attr('data-spell', spell.id).attr('title', spell.note);
+        const icon = firstArt('ability', { id: spell.id, name: spell.name });
+        if (icon) row.append($('<img alt="" class="gr-spell-art pixel-art">').attr('src', icon));
+        return row.append($('<span></span>').text(said));
+    };
     // R10: la lista entera, por círculos: no se crea, se consulta.
     if (all) {
         for (const circle of [0, 1, 2, 3]) {
             body.append($('<div class="jr-title"></div>').text(CIRCLE_LABELS[/** @type {0|1|2|3} */ (circle)].replace(/^./, c => c.toUpperCase())));
             for (const spell of SPELLS.filter(s => s.circle === circle)) {
-                body.append($('<div class="jr-item gr-spell"></div>').attr('data-spell', spell.id).attr('title', spell.note).text(`${describeSpell(spell)} · ${spell.id}`));
+                body.append(lightRow(spell, `${describeSpell(spell)} · ${spell.id}`));
             }
         }
         await new Popup(body[0], POPUP_TYPE.TEXT, '', { okButton: 'Cerrar', allowVerticalScrolling: true, leftAlign: true }).show();
@@ -189,7 +206,6 @@ export async function openGrimoire(all = false) {
     }
     // J19: quien lanza con espacios, primero: sus espacios, lo que prepara y lo que sabe,
     // con sus botones de preparar y de elegir.
-    await loadPixelManifest();
     const fifth = partyMembers.filter(m => !m.dead && castsLikeFifth(m));
     /** @type {null|(() => Promise<any>)} */
     let next = null;
@@ -211,7 +227,7 @@ export async function openGrimoire(all = false) {
         body.append($('<div class="jr-title"></div>').text(`${member.name}${describeCharges(member) ? ` · ${describeCharges(member)}` : ''}`));
         for (const spell of knownSpells(member)) {
             const missing = spell.component && !carried.includes(spell.component.toLowerCase()) ? ` (falta ${spell.component.toLowerCase()})` : '';
-            body.append($('<div class="jr-item gr-spell"></div>').attr('data-spell', spell.id).attr('title', spell.note).text(`${describeSpell(spell)}${missing}`));
+            body.append(lightRow(spell, `${describeSpell(spell)}${missing}`));
         }
     }
     if (casters.length > 0) {
@@ -284,6 +300,14 @@ function grimoireSection(member, go) {
         start.attr('title', 'El juego te dio unos para empezar; puedes cambiarlos por los que quieras de tu lista.');
         start.on('click', () => go(() => openStartingSpells(member)));
         buttons.append(start);
+    }
+    // J19.8 y D-J27: los rituales se lanzan de aquí, fuera de combate (`party/rituals.js`).
+    if (casting?.rituals && ritualSpells(member, classRow, rows).length > 0) {
+        const ritual = $('<button type="button" class="menu_button gr-ritual"></button>').text('Lanzar un ritual')
+            .prop('disabled', Boolean(combatEncounter.active))
+            .attr('title', combatEncounter.active ? 'Un ritual lleva diez minutos: peleando no hay tiempo.' : 'Sin gastar espacio: diez minutos más, fuera de combate.');
+        ritual.on('click', () => go(async () => (await import('./rituals.js')).openRituals(member)));
+        buttons.append(ritual);
     }
     if (buttons.children().length > 0) box.append(buttons);
     return box;
@@ -390,6 +414,8 @@ export async function openStartingSpells(member) {
         if (Array.isArray(patch[key])) member[key] = patch[key];
     }
     member.spellsChosenBy = 'jugador';
+    // Con el libro nuevo, se prepara de él ya: no hay que dormir para empezar.
+    member.mayPrepare = true;
     savePartyState();
     renderPartyMembers();
     toastr.success(`${member.name} ya tiene los conjuros que has elegido.`, 'Conjuros');
@@ -436,10 +462,11 @@ export function attuneNoteOf(member) {
 let lastRestMagic = { kind: '', at: 0 };
 
 /**
- * J19.1, J19.2 y J19.9: lo que devuelve un descanso a la magia. Los espacios (el largo,
- * todos; el corto, los de pacto), las cargas de los objetos, y con el largo se acaba lo que
- * duraba horas (la concentración, la Armadura de mago, la vida de Ayuda) y se puede volver
- * a preparar. Si tu personaje prepara, se le abre el cuadro al despertar.
+ * J19.1, J19.2 y J19.9: lo que devuelve un descanso a la magia, además de los espacios y las
+ * cargas de los objetos (eso lo hace `takeRest`, en `party/time.js`, antes de llamar aquí).
+ * Con el largo se acaba lo que duraba horas (la concentración, la Armadura de mago, la vida
+ * de Ayuda) y se puede volver a preparar. Si tu personaje prepara, se le abre el cuadro al
+ * despertar.
  *
  * Lo llama `takeRest` (`party/time.js`).
  *
@@ -452,14 +479,8 @@ export function afterRestMagic(kind) {
     lastRestMagic = { kind, at: now };
     /** @type {string[]} */
     const lines = [];
+    if (kind !== 'largo') return lines;
     for (const member of partyMembers.filter(m => !m.dead)) {
-        if (castsLikeFifth(member)) member.slotsUsed = recoverSlots(member, kind);
-        if (Array.isArray(member.items) && member.items.length > 0) {
-            const recharged = rechargeItems(member.items, kind, (formula) => rollDiceDetailed(formula, 6));
-            member.items = recharged.items;
-            lines.push(...recharged.lines);
-        }
-        if (kind !== 'largo') continue;
         member.concentration = null;
         delete member.spellAc;
         if (member.spellHp) {
@@ -665,7 +686,62 @@ export function ensureSpellsOf(member) {
     if (!patch) return false;
     Object.assign(member, patch);
     member.spellsChosenBy = 'juego';
+    // Recién llegada a la magia: puede preparar ya lo suyo, sin esperar a dormir.
+    member.mayPrepare = true;
     return true;
+}
+
+/**
+ * D-J25: el compañero que lanza y llegó sin foco (los de un paquete llegan sin nada encima)
+ * trae el suyo, una vez (`focusGift`). Tu héroe no: lo suyo lo compra.
+ *
+ * @param {any} member
+ * @returns {boolean} Si se le ha dado.
+ */
+export function ensureFocusOf(member) {
+    if (!member || spellRows().length === 0) return false;
+    const name = focusGift({ member, classRow: classRowOf(member), isHero: member === partyMembers[0] || member.isHero === true });
+    if (!name) return false;
+    member.items = Array.isArray(member.items) ? member.items : [];
+    addItemToInventory(member, createItem(/** @type {any} */ (describeLootItem(name))));
+    member.focusGiven = true;
+    return true;
+}
+
+/**
+ * D-J25: los demás del grupo, para que lo que le falta a alguien diga quién lo lleva.
+ *
+ * @param {any} member
+ * @returns {Array<{name: string, carried: any[], focus: string}>}
+ */
+export function othersOf(member) {
+    return partyMembers.filter(m => m !== member && !m.dead).map(m => ({
+        name: String(m.name ?? ''),
+        carried: Array.isArray(m.items) ? m.items : [],
+        focus: casterOf(classRowOf(m))?.focus ?? '',
+    }));
+}
+
+/**
+ * D-J25: a quién darle, al comprarlo, algo de lo que piden los conjuros (`supplyHolder`): el
+ * laúd o la bolsa a quien lanza sin foco; la perla o el incienso a quien sabe el conjuro que
+ * lo pide.
+ *
+ * @param {string} name
+ * @returns {any|null} La ficha, o nulo si no le hace falta a nadie.
+ */
+export function supplyTakerFor(name) {
+    const casters = partyMembers.filter(m => !m.dead && m.guest?.kind !== 'ward').flatMap(m => {
+        const casting = casterOf(classRowOf(m));
+        if (!casting) return [];
+        const ids = ['cantrips', 'spellsKnown', 'spellbook', 'prepared'].flatMap(key => (Array.isArray(m[key]) ? m[key] : []).map(String));
+        const needs = [...new Set(ids)].map(id => spellFor(id)?.material)
+            .filter(material => material && (material.costGp > 0 || material.consumed))
+            .map(material => String(material?.name ?? ''));
+        return [{ id: m.id, name: String(m.name ?? ''), focus: casting.focus, carried: Array.isArray(m.items) ? m.items : [], needs }];
+    });
+    const who = supplyHolder({ name, casters });
+    return who ? partyMembers.find(m => m.id === who.id) ?? null : null;
 }
 
 /**
@@ -690,12 +766,15 @@ function silencedHere(member) {
 export function spellAbilitiesOf(member) {
     const classRow = classRowOf(member);
     if (!casterOf(classRow)) return [];
-    if (ensureSpellsOf(member)) savePartyState();
+    // D-J25: el compañero que llegó sin foco trae el suyo.
+    const gotFocus = ensureFocusOf(member);
+    if (ensureSpellsOf(member) || gotFocus) savePartyState();
     const { cantrips, spells } = castableSpells(member, classRow, spellRows());
     const stats = spellcastingStats(member, classRow);
     const silenced = silencedHere(member);
+    const others = othersOf(member);
     return [...cantrips, ...spells].filter(spell => spell.castingTime !== 'reaction').map(spell => {
-        const verdict = canCastSpell({ member, classRow, spell, inCombat: true, carried: Array.isArray(member.items) ? member.items : [], silenced });
+        const verdict = canCastSpell({ member, classRow, spell, inCombat: true, carried: Array.isArray(member.items) ? member.items : [], silenced, others });
         const ability = spellToAbility(spell, {
             slotLevel: verdict.ok && verdict.slotLevel > 0 ? verdict.slotLevel : spell.level,
             casterLevel: Number(member.level) || 1,
@@ -1038,6 +1117,7 @@ export function useAbility(member, ability, target) {
             hasBonus: hasAction(combatEncounter, 'bonus'),
             carried: Array.isArray(member.items) ? member.items : [],
             silenced: silencedHere(member),
+            others: othersOf(member),
         });
         if (!cast.ok) {
             toastr.warning(cast.reason);

@@ -79,6 +79,8 @@ const SIMPLE_ASKS = ['arrive', 'win', 'defeat', 'talk', 'check', 'contract'];
  *   (`plot-scenes.js`). Sin ella, se cuenta `scene`.
  * @property {string} [sceneDialogue] J9.2: la charla del paquete que se abre al acabar la escena.
  * @property {string} [backdrop] J9.2: dónde pasa la escena, para el fondo.
+ * @property {boolean|string} [irreversible] J11.1: se avisa antes de cumplirlo, aunque no cierre
+ *   nada: «Esto no tiene vuelta atrás» (o el aviso escrito).
  */
 
 /**
@@ -86,11 +88,46 @@ const SIMPLE_ASKS = ['arrive', 'win', 'defeat', 'talk', 'check', 'contract'];
  * @property {string} title
  * @property {'written'|'faction'} source
  * @property {Milestone[]} milestones
- * @property {Record<string, {title: string, scene: string, epilogues?: Array<{who: string, text: string}>}>} endings
+ * @property {Record<string, {title: string, scene: string, epilogues?: Array<{who: string, text: string}>, legacy?: any}>} endings
  *   Lo que se cuenta en cada final; `epilogues`, qué fue de la gente (J4.5).
  * @property {Array<{text: string, milestone: string}>} omens Idea 114: el presagio del principio.
  * @property {any} [villain] Idea 115: el villano que se deja ver entre actos.
+ * @property {Chapter[]} [chapters] J9.3: el nombre de cada acto, si el hilo los trae. Con ellos,
+ *   el hilo puede tener más de tres actos (hasta `MAX_ACTS`), uno por capítulo.
  */
+
+/**
+ * @typedef {Object} Chapter J9.3: un capítulo (un acto) con su nombre.
+ * @property {number} act
+ * @property {string} title
+ * @property {string} summary De qué va, en una o dos frases, para el Diario. Puede ir vacío.
+ */
+
+/** J9.3: sin capítulos, un hilo tiene tres actos; con ellos, tantos como traiga, hasta aquí. */
+export const MAX_ACTS = 9;
+
+/**
+ * J9.3: los capítulos de un hilo, leídos con tolerancia: `chapters` (`act`, `title`, `summary`)
+ * o, como los escribe un Gem en español, `capitulos` (`acto`, `titulo`, `resumen`). Uno por
+ * acto (vale el primero), en orden; sin título, no cuenta.
+ *
+ * @param {any} raw El hilo, o su lista de capítulos.
+ * @returns {Chapter[]}
+ */
+export function readChapters(raw) {
+    const list = Array.isArray(raw) ? raw
+        : Array.isArray(raw?.chapters) ? raw.chapters
+            : Array.isArray(raw?.capitulos) ? raw.capitulos : [];
+    /** @type {Map<number, Chapter>} */
+    const byAct = new Map();
+    for (const row of list) {
+        const act = Math.floor(Number(row?.act ?? row?.acto) || 0);
+        const title = text(row?.title ?? row?.titulo);
+        if (act < 1 || act > MAX_ACTS || !title || byAct.has(act)) continue;
+        byAct.set(act, { act, title, summary: text(row?.summary ?? row?.resumen) });
+    }
+    return [...byAct.values()].sort((a, b) => a.act - b.act);
+}
 
 /**
  * @typedef {{open: string[], done: string[], missed: string[], since: Record<string, number>, closed: string[], clues: Record<string, number[]>}} PlotState
@@ -114,9 +151,10 @@ function lower(value) {
  *
  * @param {any} raw
  * @param {number} index
+ * @param {number} [ceiling] J9.3: el acto más alto que vale; tres, salvo que el hilo traiga más capítulos.
  * @returns {Milestone|null}
  */
-function readMilestone(raw, index) {
+function readMilestone(raw, index, ceiling = 3) {
     if (!raw || typeof raw !== 'object') return null;
     const title = text(raw.title);
     const id = text(raw.id) || (title ? `hito_${index + 1}` : '');
@@ -165,7 +203,7 @@ function readMilestone(raw, index) {
 
     return {
         id,
-        act: Math.max(1, Math.min(3, Math.floor(Number(raw.act) || 1))),
+        act: Math.max(1, Math.min(ceiling, Math.floor(Number(raw.act) || 1))),
         title,
         hint: text(raw.hint),
         scene: text(raw.scene),
@@ -182,6 +220,9 @@ function readMilestone(raw, index) {
         late: { reveal: list(late.reveal), open: list(late.open), standing: standingOf(late.standing) },
         // J2.1: solo si lo es, para que un hilo de antes se lea igual que siempre.
         ...(raw.prologue ? { prologue: true } : {}),
+        // J11.1: pesa aunque no cierre nada ni acabe la campaña: se avisa antes (`weighty.js`).
+        ...(raw.irreversible === true || (typeof raw.irreversible === 'string' && text(raw.irreversible))
+            ? { irreversible: raw.irreversible === true ? true : text(raw.irreversible) } : {}),
         // J9.2: la escena jugada, si la trae. Se guarda tal cual; la lee `plot-scenes.js`.
         ...(Array.isArray(raw.beats) && raw.beats.length > 0 ? { beats: raw.beats } : {}),
         ...(text(raw.sceneDialogue) ? { sceneDialogue: text(raw.sceneDialogue) } : {}),
@@ -197,20 +238,27 @@ function readMilestone(raw, index) {
  */
 export function readPlot(raw) {
     if (!raw || typeof raw !== 'object') return null;
+    // J9.3: con capítulos, el hilo tiene tantos actos como capítulos; sin ellos, tres.
+    const chapters = readChapters(raw);
+    const ceiling = Math.max(3, ...chapters.map(c => c.act));
     const milestones = (Array.isArray(raw.milestones) ? raw.milestones : [])
-        .map(readMilestone)
+        .map((/** @type {any} */ m, /** @type {number} */ i) => readMilestone(m, i, ceiling))
         .filter(/** @returns {m is Milestone} */ m => m !== null);
     if (milestones.length === 0) return null;
-    /** @type {Record<string, {title: string, scene: string, epilogues?: Array<{who: string, text: string}>}>} */
+    /** @type {Record<string, {title: string, scene: string, epilogues?: Array<{who: string, text: string}>, legacy?: any}>} */
     const endings = {};
     for (const [id, ending] of Object.entries(raw.endings ?? {})) {
         if (text(id) && ending && typeof ending === 'object') {
             // J4.5: qué fue de la gente con este final, si el paquete lo escribe (D-J18: también
             // como `epilogos`, con `quien` y `texto`).
             const epilogues = epiloguesOf(ending);
+            // J11.4: lo que el gremio recordará de este final (`legacy`, o `legado`), tal cual:
+            // lo lee `guild-memory.js`.
+            const legacy = /** @type {any} */ (ending).legacy ?? /** @type {any} */ (ending).legado;
             endings[text(id)] = {
                 title: text(/** @type {any} */ (ending).title), scene: text(/** @type {any} */ (ending).scene),
                 ...(epilogues.length > 0 ? { epilogues } : {}),
+                ...(legacy && typeof legacy === 'object' && !Array.isArray(legacy) ? { legacy } : {}),
             };
         }
     }
@@ -227,6 +275,8 @@ export function readPlot(raw) {
         omens,
         // Idea 115: el villano y cuándo asoma. Lo lee `villain.js`.
         villain: raw.villain && typeof raw.villain === 'object' ? raw.villain : null,
+        // J9.3: solo si los trae, para que un hilo de antes se lea igual que siempre.
+        ...(chapters.length > 0 ? { chapters } : {}),
     };
 }
 
@@ -689,6 +739,9 @@ export function omensOf(plot, rawState) {
 /**
  * En qué acto va la partida: el más alto que se ha tocado.
  *
+ * Los secretos (idea 111) no cuentan: se abren al empezar para poder encontrarse en cualquier
+ * momento, y el de Strahd, del acto 3, ponía la partida en el acto 3 desde el primer día (J9.3).
+ *
  * @param {Plot|null} plot
  * @param {any} rawState
  * @returns {number}
@@ -696,7 +749,7 @@ export function omensOf(plot, rawState) {
 export function actOf(plot, rawState) {
     if (!plot) return 1;
     const state = readPlotState(rawState);
-    const touched = plot.milestones.filter(m => state.open.includes(m.id) || state.done.includes(m.id));
+    const touched = plot.milestones.filter(m => !m.hidden && (state.open.includes(m.id) || state.done.includes(m.id)));
     return touched.reduce((max, m) => Math.max(max, m.act), 1);
 }
 

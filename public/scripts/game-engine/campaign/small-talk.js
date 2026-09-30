@@ -110,6 +110,8 @@ function moodOf(value) {
 export function readTalkRows(raw) {
     const rows = Array.isArray(raw) ? raw : Array.isArray(raw?.rows) ? raw.rows : [];
     return rows.flatMap((/** @type {any} */ row) => {
+        // J13.5: las frases sueltas (`kind: "frase"`) viven en el mismo archivo; las lee `companion-lines.js`.
+        if (text(row?.kind) && text(row.kind) !== 'charla') return [];
         const moment = text(row?.moment);
         const lines = (Array.isArray(row?.lines) ? row.lines : []).map(text).filter(Boolean).slice(0, 2);
         const replies = (Array.isArray(row?.replies) ? row.replies : [])

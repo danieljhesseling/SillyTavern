@@ -115,6 +115,44 @@ export function getMapLegend() {
     return legend;
 }
 
+/**
+ * J12.2 y J8.5: lo que pasa con una salida de una pelea. Un texto, o el texto con sus efectos
+ * (los de las charlas y unos de pelea; `combat/avoid-fight.js`).
+ *
+ * @param {string} description
+ */
+function exitBranch(description) {
+    return {
+        description: `${description} Un texto llano, o { "text": "…", "effects": [...] }. Efectos: {"gold": -5}, `
+            + '{"attitude": -1, "who": "Nombre"}, {"rumor": "id"}, {"clue": "texto"}, {"give": "objeto"}, {"take": "objeto"}, '
+            + '"time", {"milestone": "id"}, {"standing": "Facción", "amount": -1}, {"fame": -1}, {"hurt": "1d4"}, {"days": 1}, '
+            + '{"grudge": "Nombre"} (alguien que os la guardará).',
+        oneOf: [
+            { type: 'string' },
+            {
+                type: 'object',
+                properties: { text: { type: 'string' }, effects: { type: 'array', items: {} } },
+            },
+        ],
+    };
+}
+
+/** J8.5: una forma de salir hablando, escrita para un tablero. */
+function parleyWay() {
+    return {
+        type: 'object',
+        properties: {
+            text: { type: 'string', description: 'Lo que se dice o se hace.' },
+            dc: { type: 'integer', description: 'La CD con la pelea igualada; cómo va la pelea la sube o la baja.' },
+            gold: { type: 'integer', description: 'Solo sobornar: lo que piden.' },
+            resolves: { type: 'boolean', description: 'Si salir así cuenta como pasar el tablero para la historia.' },
+            success: exitBranch('Si sale (entregarse siempre «sale»).'),
+            partial: exitBranch('Opcional: a medias.'),
+            failure: exitBranch('Si no sale.'),
+        },
+    };
+}
+
 /** The objective schema, built from the seven types the engine actually judges. */
 function buildObjectiveSchema() {
     const properties = {
@@ -315,6 +353,42 @@ function buildSectionSchemas() {
                         + 'Entre dos casillas vecinas con 10 pies o más de diferencia hay un acantilado: no se cruza '
                         + 'andando, y desde arriba se ataca con ventaja. Los puentes y las rampas llevan su cota.',
                     additionalProperties: { type: 'number' },
+                },
+                // J12.2: toda pelea escrita tiene otra salida (`combat/avoid-fight.js`).
+                avoid: {
+                    type: 'array',
+                    description: 'Si el tablero tiene enemigos: las formas de no pelear, antes de que empiece. '
+                        + 'Una a tres, que encajen con quién espera y por qué. Tira quien mejor lo hace '
+                        + '(esconderse, todo el grupo). Sin nada, el juego pone las de siempre.',
+                    items: {
+                        type: 'object',
+                        required: ['kind', 'text'],
+                        properties: {
+                            kind: { type: 'string', enum: ['hablar', 'pagar', 'huir', 'esconderse'] },
+                            text: { type: 'string', description: 'Lo que se hace, visto desde quien juega: «Enseñarle el sello del prior».' },
+                            skill: { type: 'string', enum: Object.keys(SKILLS), description: 'Con qué se tira. Sin ella: hablar, persuasion; huir, athletics; esconderse, stealth; pagar, sin tirada.' },
+                            dc: { type: 'integer', description: 'De 5 a 30. Sin ella, según quién espera.' },
+                            gold: { type: 'integer', description: 'Solo pagar: lo que cuesta.' },
+                            resolves: { type: 'boolean', description: 'Si salir bien cuenta como pasar el tablero para la historia. Sin decirlo: sí, salvo huir.' },
+                            success: exitBranch('Lo que pasa si sale bien.'),
+                            partial: exitBranch('Opcional: si sale a medias (se falla por poco). Sin ella, sale pagando un precio.'),
+                            failure: exitBranch('Lo que pasa si sale mal: empieza la pelea (huyendo o escondiéndose, ellos atacan primero).'),
+                        },
+                    },
+                },
+                // J8.5: salir de la pelea hablando, a mitad de ella (`combat/parley.js`).
+                parley: {
+                    type: 'object',
+                    description: 'Opcional: cómo se sale de esta pelea hablando, a mitad de ella (entregarse, sobornar, '
+                        + 'convencer, engañar). Sin nada, sale lo de siempre; lo escrito cambia el texto y lo que pasa.',
+                    properties: {
+                        leader: { type: 'string', description: 'Quién manda: el nombre de un enemigo del tablero.' },
+                        entregarse: parleyWay(),
+                        sobornar: parleyWay(),
+                        convencer: parleyWay(),
+                        engañar: parleyWay(),
+                        no: { type: 'array', items: { type: 'string' }, description: 'Las formas que aquí no valen.' },
+                    },
                 },
             },
         },
@@ -566,6 +640,48 @@ function buildSectionSchemas() {
             end: { type: 'boolean' },
         },
     };
+    // J11.1: lo que no tiene vuelta atrás se avisa antes, sin decir qué se pierde.
+    const irreversible = {
+        anyOf: [{ type: 'boolean' }, { type: 'string' }],
+        description: 'Si pesa: true avisa con «Esto no tiene vuelta atrás» antes de elegirla, y se elige pulsando dos veces. '
+            + 'Con texto, ese aviso (corto, y sin contar qué se pierde). Solo en las decisiones gordas.',
+    };
+    // J11.2: lo que vuelve días después por haber elegido una opción: una tarjeta como un suceso.
+    const sucesoEffects = {
+        type: 'array',
+        items: { type: 'string' },
+        description: 'Los de los sucesos: oro:+N, oro:-N, oro:+1d6, hora, dia, herida:1d4, cura:1d6, comida, fama:+1, fama:-1, faccion:+1, faccion:-1, vinculo:+1, rumor, pista.',
+    };
+    const laterCard = {
+        type: 'object',
+        description: 'Lo que vuelve días después por haber elegido esto: una tarjeta con una situación y dos o tres opciones, '
+            + 'como un suceso. Sale en el siguiente sitio al que se llegue, donde se descanse o en la semana. '
+            + 'En vez de escribirla, suceso nombra uno de sucesos.json.',
+        properties: {
+            days: { type: 'integer', minimum: 1, maximum: 30, description: 'Cuántos días después.' },
+            on: { type: 'string', enum: ['siempre', 'bien', 'mal'], description: 'Si la opción lleva tirada: con qué resultado vuelve. Sin él, siempre.' },
+            name: { type: 'string', description: 'El título de la tarjeta: «Los graneros vacíos».' },
+            text: { type: 'string', description: 'Lo que pasa, en una o dos frases llanas. Sin huecos como {sitio}: puede salir en cualquier sitio.' },
+            suceso: { type: 'string' },
+            options: {
+                type: 'array',
+                minItems: 2,
+                items: {
+                    type: 'object',
+                    required: ['label'],
+                    properties: {
+                        label: { type: 'string', description: 'Lo que se hace.' },
+                        cost: { type: 'object', properties: { oro: { type: 'integer' }, horas: { type: 'integer' }, dias: { type: 'integer' } }, description: 'Lo que se paga antes.' },
+                        effects: sucesoEffects,
+                        then: { type: 'string', description: 'Lo que pasa, dicho.' },
+                        check: { type: 'object', properties: { skill: { type: 'string', enum: Object.keys(SKILLS) }, dc: { type: 'integer' } } },
+                        success: { type: 'object', properties: { effects: sucesoEffects, then: { type: 'string' } } },
+                        fail: { type: 'object', properties: { effects: sucesoEffects, then: { type: 'string' } } },
+                    },
+                },
+            },
+        },
+    };
     const dialogues = {
         type: 'array',
         description: 'Charlas escritas con ramas, para la gente que importa. Se juegan sin modelo: quien habla dice su línea '
@@ -697,7 +813,7 @@ function buildSectionSchemas() {
         required: ['id', 'title', 'hint', 'scene', 'opens', 'asks'],
         properties: {
             id: { type: 'string', description: 'Único en el hilo: es a lo que apuntan opens, changes y las charlas.' },
-            act: { type: 'integer', minimum: 1, maximum: 3 },
+            act: { type: 'integer', minimum: 1, maximum: 9, description: 'El acto: del 1 al 3. Si el hilo trae chapters, el capítulo, hasta el último que traiga.' },
             title: { type: 'string' },
             hint: { type: 'string', description: 'Lo que se ve en pantalla mientras está abierto: qué hacer y dónde, en una frase.' },
             scene: { type: 'string', description: 'Lo que pasa al abrirse, en dos a cuatro frases. Hace falta aunque traiga beats: es lo que lee el narrador.' },
@@ -772,6 +888,21 @@ function buildSectionSchemas() {
         properties: {
             title: { type: 'string' },
             milestones: { type: 'array', items: milestone },
+            chapters: {
+                type: 'array',
+                maxItems: 9,
+                description: 'Los capítulos, si la campaña los tiene: uno por acto, con su nombre. El Diario se lee por capítulos y el tablón '
+                    + 'del gremio dice por cuál vais. Con ellos, el act de cada hito va del 1 al último capítulo. Sin ellos, tres actos sin nombre.',
+                items: {
+                    type: 'object',
+                    required: ['act', 'title'],
+                    properties: {
+                        act: { type: 'integer', minimum: 1, maximum: 9 },
+                        title: { type: 'string', description: 'Corto, sin destripar: «El campamento vistani», no «La traición de la adivina».' },
+                        summary: { type: 'string', description: 'De qué va, en una o dos frases, contado a quien juega. Sale al abrir el capítulo en el Diario.' },
+                    },
+                },
+            },
             endings: {
                 type: 'object',
                 description: 'Los finales, por su id.',
@@ -896,6 +1027,8 @@ export function getPackRules() {
         'Los nombres de `items` tampoco se repiten, y su `rarity` es una de las cuatro que conocen las tablas de botín: una rareza inventada nunca cae.',
         // J12.8 a J12.12: los tableros hechos de un mapa dibujado.
         'Solo un tablero hecho de un mapa dibujado lleva `image` y `grid`, y su `map` mide lo mismo que la cuadrícula (lo escribe `tools/mapa-a-tablero.mjs` a partir de la imagen). Sin imagen, no escribas ninguno de los dos. Las `zones` (las salas con nombre) sí valen en cualquier tablero.',
+        // J12.2: toda pelea escrita tiene otra salida.
+        'Cada tablero con enemigos trae en `avoid` una a tres formas de no pelear que encajen con quién espera: `hablar` con la gente (convencer, engañar o espantar a una bestia con `intimidation`), `pagar` a quien se deja comprar, `huir` o `esconderse`. A los muertos y a las cosas sin mente no se les habla ni se les paga. Si salir de otra forma sigue la historia de otra manera, dilo en `success` con sus efectos; lo que pasa después del tablero tiene que seguir cuadrando.',
         // J8.1: las charlas con ramas.
         'En `dialogues`, el `speaker` de cada charla es alguien de `npcs` o de `confidants`, cada `next` lleva a un nudo que existe, y a todos los nudos se llega desde el de inicio. Un hito, un rumor o un objeto de una condición o de un efecto se nombra como está en el paquete (el hito y el rumor, por su id).',
         'En una charla, lo que depende de quién eres (`species`, `class`, `background`, `gender`) solo le sale a quien encaja, con su etiqueta delante: «[Enano] …». Cada tirada lleva `success` y `failure`; `partial` es opcional. Las líneas son de una a tres frases llanas, sin acertijos, con `{forma|forma}` donde se habla a quien juega.',
@@ -1065,6 +1198,15 @@ export function buildExamplePack() {
                 ],
                 partyStart: [{ x: 2, y: 7 }, { x: 3, y: 7 }],
                 enemies: [{ name: 'Cuervo grande', x: 9, y: 2 }],
+                // J12.2: la otra salida de la pelea, antes de que empiece.
+                avoid: [
+                    {
+                        kind: 'hablar', text: 'Espantar al cuervo agitando la capa y gritando', skill: 'intimidation', dc: 11,
+                        success: 'El cuervo grazna, se sacude y sale volando por un hueco del tejado.',
+                        failure: 'El cuervo no se asusta: baja en picado a por tus ojos.',
+                    },
+                    { kind: 'esconderse', text: 'Pasar pegados a la pared, por debajo de la viga donde duerme', dc: 12 },
+                ],
             },
             {
                 id: 'molino_sotano',

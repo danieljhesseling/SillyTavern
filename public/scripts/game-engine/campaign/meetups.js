@@ -510,26 +510,31 @@ export function sceneStep(scene, state, action) {
  * Lo que se ve en un paso: lo que pasa, lo que dice, su cara, lo que contestaste y lo que te
  * contesta, y qué toca pulsar (`reply`, `continue` o `finish`).
  *
+ * J14.7 y J14.8: en una escena con varios (`cast-scenes.js`), cada paso dice quién habla (`who`),
+ * y una respuesta puede traer quién la contesta: eso es `speaker` y `answer.who`.
+ *
  * @param {Scene} scene
  * @param {PlayState} state
- * @returns {{who: string, title: string, step: number, steps: number, note: string, say: string, face: string,
- *   answer: {text: string, then: string, gold: number}|null, replies: Array<{index: number, text: string, gold: number}>,
+ * @returns {{who: string, speaker: string, title: string, step: number, steps: number, note: string, say: string, face: string,
+ *   answer: {text: string, then: string, gold: number, who: string}|null, replies: Array<{index: number, text: string, gold: number}>,
  *   next: 'reply'|'continue'|'finish'|'done'}}
  */
 export function sceneView(scene, state) {
     const steps = scene?.beats?.length ?? 0;
     const base = { who: text(scene?.who), title: text(scene?.title), step: Math.min(state.beat + 1, steps), steps };
-    if (!scene || state.done) return { ...base, note: '', say: '', face: '', answer: null, replies: [], next: 'done' };
+    if (!scene || state.done) return { ...base, speaker: base.who, note: '', say: '', face: '', answer: null, replies: [], next: 'done' };
     const beat = scene.beats[state.beat];
     const last = state.beat >= steps - 1;
     const reply = state.answered !== null ? beat.replies[state.answered] : null;
     const waiting = beat.replies.length > 0 && !reply;
+    const speaker = text(/** @type {any} */ (beat).who) || base.who;
     return {
         ...base,
+        speaker: (reply && reply.then && text(/** @type {any} */ (reply).who)) || speaker,
         note: beat.note,
         say: beat.say,
         face: reply?.mood || beat.mood,
-        answer: reply ? { text: reply.text, then: reply.then, gold: reply.gold } : null,
+        answer: reply ? { text: reply.text, then: reply.then, gold: reply.gold, who: text(/** @type {any} */ (reply).who) || speaker } : null,
         replies: waiting ? beat.replies.map((r, index) => ({ index, text: r.text, gold: r.gold })) : [],
         next: waiting ? 'reply' : last ? 'finish' : 'continue',
     };

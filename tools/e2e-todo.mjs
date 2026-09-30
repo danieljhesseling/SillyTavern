@@ -42,6 +42,8 @@ const jobs = [
     { name: 'gremio', kind: 'e2e', args: ['tools/e2e-gremio.mjs'] },
     // J2.3: saltar la prueba de la bodega. Corto: el personaje, saltarla y el tablón.
     { name: 'saltar la prueba', kind: 'e2e', args: ['tools/e2e-saltar-prueba.mjs'] },
+    // J14: tu gente en el pueblo del gremio: quedar, charlar, la cabecera por partes (puerto 8164).
+    { name: 'gente', kind: 'e2e', args: ['tools/e2e-gente.mjs'] },
     // J5.4: añadir una campaña al tablón desde un archivo, empezarla y volver.
     { name: 'añadir campaña', kind: 'e2e', args: ['tools/e2e-importar-campana.mjs'] },
     // J20.9: la vuelta en un móvil, a toques y sin teclado, de pie y tumbado (puerto 8135).

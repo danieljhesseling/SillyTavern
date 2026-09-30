@@ -179,6 +179,8 @@ try {
         return row.some(c => /^Iniciar combate \(Ratero del muelle\)/.test(c)) && row.some(c => /^Saltar la prueba$/.test(c));
     }, 15000);
     check('en el muelle, la fila ofrece pelear con el ratero o saltar la prueba', offered, JSON.stringify(await chips()));
+    // D-J28: el tablón y los mercenarios, escondidos hasta que acabe la prueba.
+    check('y todavía no el tablón de campañas ni contratar (D-J28)', !(await chips()).some(c => /Tablón de campañas|Contratar mercenarios/.test(c)), JSON.stringify(await chips()));
     if (SHOT) await page.screenshot({ path: SHOT });
 
     // 3. Pensárselo y no: nada cambia.
@@ -203,15 +205,14 @@ try {
     check('y salta el prólogo entero: el muelle, la charla y Brunilda, hechos sin contarse (J2.1)',
         ['el-muelle', 'la-charla', 'el-gremio'].every(id => now.done.includes(id)) && untold, JSON.stringify({ done: now.done, untold }));
     check('el tablero queda ganado, sin pelea en marcha', now.won.includes('Puerto Alba::La bodega del gremio') && !now.fighting, JSON.stringify(now));
-    // Dos ratas dan 50 de experiencia (25 cada una, por su desafío); el oro, lo que salga al tirar.
-    // Con el enganche de J2.1 en el juego, el ratero del muelle da 25 más.
-    check('Iria sigue ahí, con su bolsa y lo que dan las ratas, como si las hubiera ganado',
-        now.party.length === 1 && now.party[0].name === 'Iria' && now.party[0].gold >= 100 && [50, 75].includes(now.party[0].xp) && await chatHas(/Botín/), JSON.stringify(now.party));
+    // Dos ratas dan 50 de experiencia (25 cada una, por su desafío) y el ratero del muelle 25 más
+    // (J2.1: se recorren los dos tableros de la prueba); el oro, lo que salga al tirar.
+    check('Iria sigue ahí, con su bolsa y lo que dan el ratero y las ratas (75 PX), como si los hubiera ganado (J2.1)',
+        now.party.length === 1 && now.party[0].name === 'Iria' && now.party[0].gold >= 100 && now.party[0].xp === 75 && await chatHas(/Botín/), JSON.stringify(now.party));
     const after = await chips();
-    // Sin el enganche de J2.1, el grupo sigue en el tablero del muelle y el ratero espera: las
-    // ratas, no. Con él, tampoco el ratero (y esto puede volver a ser `/^Iniciar combate/`).
-    check('la fila ya no ofrece ni las ratas ni saltar, y sí el tablón de campañas',
-        !after.some(c => /^Iniciar combate \(Rata/.test(c)) && !after.some(c => /^Saltar la prueba/.test(c)) && after.some(c => /Tablón de campañas/.test(c)), JSON.stringify(after));
+    // J2.1: se sale del tablero del muelle, y no queda nadie con quien pelear: ni el ratero ni las ratas.
+    check('fuera del muelle, la fila ya no ofrece ninguna pelea ni saltar, y sí el tablón de campañas (J2.1)',
+        now.board === '' && !after.some(c => /^Iniciar combate/.test(c)) && !after.some(c => /^Saltar la prueba/.test(c)) && after.some(c => /Tablón de campañas/.test(c)), JSON.stringify({ board: now.board, after }));
     const focus = await page.evaluate(() => (document.querySelector('#game-shell .gs-focus-title')?.textContent || '').trim());
     check('lo que toca ahora es el tablón', /tablón de campañas/i.test(focus), focus);
     if (SHOT) await page.screenshot({ path: `${SHOT}.saltada.png` });

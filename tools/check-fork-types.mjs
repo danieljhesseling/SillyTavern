@@ -128,6 +128,12 @@ const FORK_FILES = [
     'public/scripts/game-engine/ui/shell/replies.js',
     'public/scripts/game-engine/campaign/save-card.js',
     'public/scripts/game-engine/campaign/saved-games.js',
+    // J15.2, J3.3 y J15.6: guardar como un juego y la partida entera en un archivo.
+    'public/scripts/game-engine/campaign/save-slots.js',
+    'public/scripts/game-engine/campaign/game-archive.js',
+    'public/scripts/game-engine/campaign/game-saves.js',
+    'public/scripts/game-engine/ui/save-screen.js',
+    'public/scripts/guardar-partida.js',
     'public/scripts/game-engine/campaign/world-density.js',
     'public/scripts/game-engine/campaign/sights.js',
     // Batería 7.
@@ -216,6 +222,9 @@ const FORK_FILES = [
     // J9.2: las escenas del hilo, jugadas, y su ventana.
     'public/scripts/game-engine/campaign/plot-scenes.js',
     'public/scripts/game-engine/ui/plot-scene.js',
+    // J9.3, J9.5, J9.6 y J11.5: la historia como un libro, y su ventana.
+    'public/scripts/game-engine/campaign/story-book.js',
+    'public/scripts/game-engine/ui/story-book.js',
     'public/scripts/game-engine/campaign/read-box.js',
     'public/scripts/game-engine/campaign/consequences.js',
     'public/scripts/game-engine/campaign/sucesos.js',
@@ -307,6 +316,7 @@ const FORK_FILES = [
     'public/scripts/game-engine/rules/spell-prep.js',
     'public/scripts/game-engine/rules/spell-catalogue.js',
     'public/scripts/game-engine/rules/spell-cast.js',
+    'public/scripts/game-engine/rules/rituals.js',
     'public/scripts/game-engine/rules/spell-reactions.js',
     'public/scripts/game-engine/rules/concentration.js',
     'public/scripts/game-engine/rules/summons.js',
@@ -323,6 +333,10 @@ const FORK_FILES = [
     'public/scripts/game-engine/campaign/meetups.js',
     'public/scripts/game-engine/campaign/whereabouts.js',
     'public/scripts/game-engine/ui/meetup-scene.js',
+    // J20.6 y J20.7: el móvil como una app (el manifiesto, las animaciones y el tablero ligero).
+    'public/scripts/game-engine/ui/app-mode.js',
+    'public/scripts/game-engine/ui/motion.js',
+    'public/scripts/game-engine/board/draw-light.js',
     // J15.1: party.js es una fachada; lo suyo vive en party/, un módulo por cosa.
     ...readdirSync(PARTY_DIR).filter(f => f.endsWith('.js')).sort().map(f => `public/scripts/party/${f}`),
     'public/scripts/dnd-system.js',

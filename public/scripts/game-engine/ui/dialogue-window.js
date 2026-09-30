@@ -23,6 +23,7 @@ import {
 import { describeAttitude } from '../campaign/attitudes.js';
 import { loadPixelManifest } from './pixel-art.js';
 import { portraitFor, backdropFor } from './meetup-scene.js';
+import { noReturnBadge, noReturnGuard } from './decision-warning.js';
 
 /** @param {any} value @returns {string} */
 const text = (value) => String(value ?? '').trim();
@@ -49,6 +50,7 @@ function el(tag, className = '', content = '') {
  * @property {string} check «Persuasión · CD 13», o vacío.
  * @property {string} locked Por qué no se puede, o vacío.
  * @property {boolean} ends Si acaba la charla.
+ * @property {string} warn J11.1: «Esto no tiene vuelta atrás», o vacío. Se decide pulsando dos veces.
  */
 
 /**
@@ -68,6 +70,7 @@ export function optionChips(view) {
         check: option.check ? `${option.check.label} · CD ${option.check.dc}` : '',
         locked: option.locked,
         ends: option.ends,
+        warn: option.locked ? '' : text(option.warn),
     }));
 }
 
@@ -160,6 +163,8 @@ export async function openDialogueWindow({
     let state = startDialogue(dialogue, { memory, hero, world: getWorld() });
     let remembered = rememberDialogue(memory, state);
     let busy = false;
+    // J11.1: lo que no tiene vuelta atrás se decide a la segunda pulsación.
+    const guard = noReturnGuard(chips);
 
     return new Promise(resolve => {
         const close = (/** @type {boolean} */ ended, /** @type {string} */ extra = '') => {
@@ -237,9 +242,10 @@ export async function openDialogueWindow({
                 return;
             }
             root.classList.remove('dw-ended');
+            guard.reset();
             for (const option of optionChips(view)) {
-                const button = chip(`qd-chip dw-option${option.locked ? ' dw-locked' : ''}${option.check ? ' dw-has-check' : ''}`, () => {
-                    if (!option.locked) void pick(option.id);
+                const button = chip(`qd-chip dw-option${option.locked ? ' dw-locked' : ''}${option.check ? ' dw-has-check' : ''}${option.warn ? ' nr-weighty' : ''}`, () => {
+                    if (!option.locked && guard.request(option.id, option.warn)) void pick(option.id);
                 });
                 button.dataset.option = option.id;
                 if (option.locked) {
@@ -258,6 +264,7 @@ export async function openDialogueWindow({
                     why.appendChild(document.createTextNode(` ${option.locked}`));
                     body.appendChild(why);
                 }
+                if (option.warn) body.appendChild(noReturnBadge(option.warn));
                 button.appendChild(body);
                 if (option.check) {
                     const check = el('span', 'dw-check');
@@ -313,7 +320,7 @@ export async function openDialogueWindow({
                 const option = optionChips(dialogueView(state, hero, getWorld())).find(o => o.key === event.key);
                 if (option) {
                     event.preventDefault();
-                    void pick(option.id);
+                    if (guard.request(option.id, option.warn)) void pick(option.id);
                 }
             } else if ((event.key === 'Enter' || event.key === ' ') && root.classList.contains('dw-ended') && !(event.target instanceof HTMLButtonElement)) {
                 event.preventDefault();

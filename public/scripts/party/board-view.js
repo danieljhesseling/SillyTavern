@@ -58,7 +58,10 @@ import {
 } from './combat-state.js';
 import { paintCombatLog } from './combat-log.js';
 import { planFor } from './enemy-turn.js';
-import { judgeCurrentScenario, restoreChatPlaceholder, startWaitingFight, waitingSummary } from './combat-flow.js';
+import {
+    judgeCurrentScenario, restoreChatPlaceholder, startWaitingFight, waitingSummary, controlChoices, chooseControlOf,
+} from './combat-flow.js';
+import { CONTROL_LABELS } from './spell-turn.js';
 import {
     endPlayerCombatTurn, handlePlayerCombatAttack, handlePlayerCombatMove, resolvePairStrike,
     resolveUltimateStrike,
@@ -67,7 +70,7 @@ import {
     boardVisibility, buildBoardIdleEnemyTokens, buildBoardNPCTokens, buildEnemyTokens, buildTokens,
     getActiveBoardContext, getActiveBoardTerrain, handleEnemyTokenMove, handleTokenMove, isBoardWon,
     persistBoardTerrain, placePartyAtStart, toggleBoardDoor, buildSummonTokens, activeSpellZones, attackHindrance,
-    archetypeOf,
+    archetypeOf, activeSummons,
 } from './board.js';
 import { saveCurrentLocation, saveCurrentBoard, getLocationBoards } from './world.js';
 import { getCampaignBonds } from './time.js';
@@ -544,6 +547,9 @@ function initiativeFace(entry) {
         return faceFor({ isEnemy: true, name: entry.name, avatar: String(enemy?.avatar ?? entry.avatar ?? ''), archetype: enemyArchetype(enemy) });
     }
     const member = partyMembers.find(m => String(m.id) === String(entry.id));
+    // J19.5: una invocación, su bicho, como en el tablero.
+    const summon = member ? null : /** @type {any} */ (getPartyMemberByTurnEntry(/** @type {any} */ (entry)));
+    if (summon?.summon) return faceFor({ isSummon: true, name: entry.name, avatar: '', archetype: String(summon.archetype ?? '') });
     return faceFor({
         name: entry.name, avatar: String(member?.avatar ?? entry.avatar ?? ''),
         className: member?.class, gender: member?.gender, race: member?.race,
@@ -752,7 +758,8 @@ function buildCombatSection(board) {
         turnOrder: combatEncounter.turnOrder,
         currentTurnIndex: combatEncounter.currentTurnIndex,
         round: combatEncounter.round,
-        party: partyMembers,
+        // J19.5: las invocaciones tienen su fila, con su vida y lo que llevan encima.
+        party: [...partyMembers, ...activeSummons()],
         enemies: combatEncounter.enemies,
     });
 
@@ -874,6 +881,25 @@ function buildCombatSection(board) {
                 <div class="wm-combat-button-note">Con comandos: /combat-attack &lt;objetivo&gt;, /combat-move &lt;x&gt; &lt;y&gt;, /combat-end</div>
             </div>
         `);
+    }
+
+    // J7.3 y D-J32: quién mueve a las invocaciones y a los compañeros que ya son amigos. Un
+    // botón por cada uno, que pasa de «Lo muevo yo» a «Que lo lleve el juego» y vuelta.
+    const choices = controlChoices();
+    if (choices.length > 0) {
+        const controlRow = $('<div class="wm-combat-control"></div>');
+        controlRow.append($('<span class="wm-combat-control-title"></span>').text('Quién le mueve'));
+        for (const choice of choices) {
+            const next = choice.control === 'player' ? 'engine' : 'player';
+            const button = $('<button class="menu_button wm-combat-control-btn" type="button"></button>')
+                .attr('data-control-id', choice.id)
+                .attr('data-control', choice.control)
+                .attr('title', `Pulsa para cambiarlo a «${CONTROL_LABELS[next]}»`)
+                .text(`${choice.summon ? '🐾 ' : ''}${choice.name}: ${CONTROL_LABELS[choice.control]}`);
+            button.on('click', () => { chooseControlOf(choice.id, next); });
+            controlRow.append(button);
+        }
+        section.append(controlRow);
     }
 
     // Action buttons
@@ -1173,7 +1199,8 @@ function drawLocationMapsPreview() {
                 if (combatEncounter.active) {
                     const entry = getCurrentTurnEntry();
                     if (entry && !entry.isEnemy && String(entry.id) === String(tokenId)) {
-                        const member = partyMembers.find(m => m.id === tokenId);
+                        // J19.5: también una invocación en su turno, que no es del grupo.
+                        const member = getPartyMemberByTurnEntry(entry);
                         if (member) {
                             // Arrastrar la ficha **es** moverse igual que escribirlo, y
                             // hasta ahora eso era un comentario y no un hecho: esta rama

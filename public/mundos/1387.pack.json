@@ -3689,6 +3689,23 @@
   ],
   "plot": {
     "title": "El valle de Vane",
+    "chapters": [
+      {
+        "act": 1,
+        "title": "El invierno en El Pueblo de Barro",
+        "summary": "Te acusan de un asesinato que no has cometido. Tienes que limpiar tu nombre antes de que la nieve cierre el valle."
+      },
+      {
+        "act": 2,
+        "title": "La guerra bajo la nieve",
+        "summary": "La nieve ha cerrado el valle. Los Lobos del Bosque pasan hambre, Lord Vane paga por cabezas y la Casa Keller baja del norte."
+      },
+      {
+        "act": 3,
+        "title": "El deshielo",
+        "summary": "Con el barro vuelve la guerra abierta. Los tres bandos quieren tu espada: elige a quién se la vendes y acaba con esto."
+      }
+    ],
     "milestones": [
       {
         "id": "el-caliz-ensangrentado",
@@ -4021,6 +4038,24 @@
                   "who": "Garret",
                   "mood": "alegre",
                   "text": "Se cuenta mucho, y nada bueno. Yo no te he dicho nada, ¿eh?"
+                },
+                "later": {
+                  "days": 5,
+                  "name": "Garret no olvida",
+                  "text": "Garret, el guardia del rastrillo, te sale al paso con la capucha calada. Por las dos monedas de la otra vez, te trae algo que no debería contarte.",
+                  "options": [
+                    {
+                      "label": "Escucharle",
+                      "effects": ["rumor"],
+                      "then": "Te cuenta quién entra y quién sale del castillo de noche, y a qué hora cambian la guardia."
+                    },
+                    {
+                      "label": "Darle otras dos monedas",
+                      "cost": { "oro": 2 },
+                      "effects": ["rumor", "fama:+1"],
+                      "then": "Se le suelta la lengua del todo. En el cuartel ya dicen que eres de fiar."
+                    }
+                  ]
                 }
               }
             ]
@@ -4091,10 +4126,29 @@
                   }
                 ],
                 "journal": "Le prometiste a Karl mirar hacia otro lado la noche del asalto a los graneros.",
+                "irreversible": true,
                 "reply": {
                   "who": "Karl",
                   "mood": "alegre",
                   "text": "¡Eso quería oír! Los Lobos no olvidan a quien les deja comer."
+                },
+                "later": {
+                  "days": 3,
+                  "name": "Los graneros vacíos",
+                  "text": "Llegan noticias del pueblo: los graneros están medio vacíos y la cola del pan da la vuelta a la plaza. Hay quien dice que aquella noche tú viste algo y callaste.",
+                  "options": [
+                    {
+                      "label": "Mandar al pueblo lo que podáis",
+                      "cost": { "oro": 4 },
+                      "effects": ["fama:+1"],
+                      "then": "No llega para todos, pero esa noche algunos niños cenan caliente."
+                    },
+                    {
+                      "label": "Callar y seguir con lo vuestro",
+                      "effects": ["fama:-1"],
+                      "then": "Un viejo escupe al suelo cuando pasáis. En el pueblo ya no os saludan igual."
+                    }
+                  ]
                 }
               },
               {
@@ -4106,10 +4160,28 @@
                   }
                 ],
                 "journal": "Le dijiste a Karl que defenderías los graneros del pueblo.",
+                "irreversible": true,
                 "reply": {
                   "who": "Karl",
                   "mood": "enfadado",
                   "text": "Entonces esta noche nos veremos las caras. Piénsatelo bien."
+                },
+                "later": {
+                  "days": 4,
+                  "name": "La flecha en la puerta",
+                  "text": "Una flecha se clava en la puerta, a un palmo de tu cara. Lleva atado un trapo con una marca de garra: los Lobos no olvidan a quien les cerró los graneros.",
+                  "options": [
+                    {
+                      "label": "Leer lo que dice el trapo",
+                      "effects": ["rumor"],
+                      "then": "Debajo de la garra hay algo escrito con carbón: dónde os esperan. Ya sabéis por dónde no ir."
+                    },
+                    {
+                      "label": "Vigilar toda la noche",
+                      "cost": { "horas": 2 },
+                      "then": "No viene nadie. Por la mañana estáis {cansados|cansadas}, pero {enteros|enteras}."
+                    }
+                  ]
                 }
               },
               {
@@ -4554,7 +4626,26 @@
           { "who": "Lord Edmund Vane", "text": "Lord Vane no llega a la primavera: los Keller lo cuelgan de su propia muralla." },
           { "who": "Los Lobos del Bosque", "text": "Los Lobos del Bosque se esconden más adentro que nunca. En el pueblo nadie dice su nombre en voz alta." },
           { "who": "Giles", "text": "Giles sigue sirviendo cerveza, ahora a soldados de negro que nunca pagan la cuenta." }
-        ]
+        ],
+        "legacy": {
+          "tone": "sombra",
+          "title": "quienes vendieron el valle de Vane a los Keller",
+          "greeting": "{hola}. La noticia del valle de Vane ha llegado antes que tú: dicen que los Keller pagan muy bien. Aquí también se paga bien, pero no a cualquier precio. Tenlo en cuenta.",
+          "rumor": "En el puerto se cuenta que alguien del gremio ayudó a los Keller a quedarse con un valle entero, y que volvió con una bolsa que no le cabía en el carro.",
+          "tags": ["mano-dura"],
+          "visitor": {
+            "days": 3,
+            "name": "Un enviado de los Keller",
+            "text": "Un hombre con el escudo negro de los Keller os espera en la taberna. Dice que el Duque no olvida a quien le sirve bien, y deja una bolsa sobre la mesa.",
+            "options": [
+              { "label": "Aceptar la bolsa", "effects": ["oro:+2d6", "fama:-1"], "then": "Os la guardáis. En la mesa de al lado, alguien escupe al suelo." },
+              { "label": "Devolvérsela", "effects": ["fama:+1"], "then": "Se encoge de hombros y se va. Al salir, dice que el Duque tiene buena memoria." }
+            ]
+          },
+          "offers": [
+            { "campaign": "strahd", "line": "Brunilda: «Para Barovia no hace falta buen corazón, hace falta estómago. Y eso ya lo has demostrado en el valle de Vane.»" }
+          ]
+        }
       },
       "status-quo-de-sangre": {
         "title": "El status quo de sangre",
@@ -4564,7 +4655,31 @@
           { "who": "Lord Edmund Vane", "text": "Lord Vane sube otra vez los impuestos para pagar la guerra. Nadie se atreve a quejarse." },
           { "who": "Karl", "text": "A Karl el Sordo lo entierran los suyos en el bosque, en un sitio que no le dicen a nadie." },
           { "who": "La Casa Keller", "text": "La Casa Keller vuelve a las montañas. Dicen que el Duque ya prepara la próxima campaña." }
-        ]
+        ],
+        "legacy": {
+          "tone": "gris",
+          "title": "quienes sostuvieron a Lord Vane hasta el final",
+          "greeting": "{hola}. Me han contado lo del valle de Vane: cumpliste el contrato hasta el final, aunque no quedara nadie para dar las gracias. Eso, aquí dentro, se respeta.",
+          "rumor": "Dicen que un noble de las montañas paga ahora en plata fina a los del gremio. Dicen también que su valle es un cementerio.",
+          "tags": ["cumplidores"],
+          "visitor": {
+            "days": 4,
+            "name": "Una mujer del bosque",
+            "text": "Una mujer con una capa de piel de lobo pregunta por ti en el muelle. Su hermano cayó en el bosque de Vane, y quiere saber quién dio la orden.",
+            "options": [
+              { "label": "Contarle la verdad", "effects": ["fama:+1"], "then": "Te escucha sin llorar. Se va sin decir nada, pero no saca el cuchillo." },
+              {
+                "label": "Decirle que no sabes nada",
+                "check": { "skill": "deception", "dc": 12 },
+                "success": { "then": "Se lo cree, o hace como que se lo cree, y se pierde entre la gente del muelle." },
+                "fail": { "effects": ["herida:1d4"], "then": "No se lo cree. Antes de irse te deja un corte en el brazo, para que te acuerdes." }
+              }
+            ]
+          },
+          "offers": [
+            { "campaign": "strahd", "line": "Brunilda: «En Barovia también hay un señor que no suelta su tierra. Tú ya sabes trabajar con esa gente… y contra ella.»" }
+          ]
+        }
       },
       "anarquia-del-barro": {
         "title": "La anarquía del barro",
@@ -4574,7 +4689,26 @@
           { "who": "Los Lobos del Bosque", "text": "Los Lobos del Bosque bajan a vivir al pueblo. Los primeros meses hay más peleas que pan." },
           { "who": "Lord Edmund Vane", "text": "Lord Vane muere en su salón. Su escudo arde en la misma hoguera que sus libros de cuentas." },
           { "who": "Torres", "text": "El alguacil Torres desaparece la primera noche, y nadie sale a buscarlo." }
-        ]
+        ],
+        "legacy": {
+          "tone": "gris",
+          "title": "quienes echaron a los señores del valle de Vane",
+          "greeting": "{hola}. Del valle de Vane llegan historias de un castillo en ruinas y de campesinos repartiéndose el grano. En todas sales tú. Aquí dentro, ni una hoguera, ¿entendido?",
+          "rumor": "En el puerto se cuenta que en un valle de las montañas ya no quedan señores, y que fue cosa de alguien de este gremio.",
+          "tags": ["libertadores"],
+          "visitor": {
+            "days": 3,
+            "name": "Un recado de Karl",
+            "text": "Un chaval flaco que huele a bosque os busca en el muelle. Trae un saco de parte de Karl el Sordo: pieles, carne seca y un recado. «Si algún día necesitáis arcos, el bosque os debe una.»",
+            "options": [
+              { "label": "Aceptar el saco", "effects": ["comida", "oro:+1d6"], "then": "Las pieles se venden bien en el puerto, y la carne da para varios días." },
+              { "label": "Decirle que se lo quede", "effects": ["fama:+1"], "then": "El chaval sonríe: «Karl ya dijo que diríais eso.» Y se va silbando." }
+            ]
+          },
+          "offers": [
+            { "campaign": "strahd", "line": "Brunilda: «Dicen que en Barovia la gente vive con miedo de su señor. Tú ya sabes lo que se hace con esos.»" }
+          ]
+        }
       }
     },
     "omens": [

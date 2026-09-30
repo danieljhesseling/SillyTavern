@@ -103,7 +103,8 @@ function buildPlot(plot, quests, boards) {
             scene: m.scene ?? quest?.description ?? '',
             // J9.2: la escena jugada, y lo demás que el hilo sabe leer y el contrato publica
             // (J5.2). Solo si lo trae: un hito sin nada de esto sale igual que siempre.
-            ...Object.fromEntries(['backdrop', 'beats', 'sceneDialogue', 'prologue', 'hidden', 'within', 'late', 'backgrounds']
+            // J11.1: `irreversible`, si el hito pesa aunque no cierre nada ni acabe la campaña.
+            ...Object.fromEntries(['backdrop', 'beats', 'sceneDialogue', 'prologue', 'hidden', 'within', 'late', 'backgrounds', 'irreversible']
                 .filter(key => m[key] !== undefined).map(key => [key, m[key]])),
             opens: m.opens ?? { kind: 'after', milestone: m.after },
             asks: m.asks ?? (board ? { kind: 'win', board: board.name } : { kind: 'none' }),
@@ -117,7 +118,8 @@ function buildPlot(plot, quests, boards) {
             },
         };
     });
-    return { title: plot.title, milestones, endings: plot.endings ?? {}, omens: plot.omens ?? [] };
+    // J9.3: los capítulos, si los trae, pasan tal cual: el Diario los sigue y el tablón dice por cuál vais.
+    return { title: plot.title, milestones, endings: plot.endings ?? {}, omens: plot.omens ?? [], ...(plot.chapters ? { chapters: plot.chapters } : {}) };
 }
 
 const base = clean(original);
@@ -147,7 +149,8 @@ pack.items = layered('items', 'name');
 pack.boards = layered('boards', 'id').map(fromDrawnMap);
 pack.quests = layered('quests', 'id');
 // J8.1: las charlas con ramas van por id, como los encargos y los rumores.
-for (const [section, key] of [['npcs', 'id'], ['contracts', 'id'], ['rumors', 'id'], ['dialogues', 'id']]) {
+// J10.3 y D-J42: los sucesos propios de la campaña, también por id.
+for (const [section, key] of [['npcs', 'id'], ['contracts', 'id'], ['rumors', 'id'], ['dialogues', 'id'], ['sucesos', 'id']]) {
     const rows = layered(section, key);
     if (rows.length > 0) pack[section] = rows;
 }

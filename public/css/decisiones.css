@@ -1,0 +1,235 @@
+/* ================================================================
+   J11 · Decisiones que pesan.
+   - «Esto no tiene vuelta atrás» en las fichas de una charla o de una escena, y la ventana
+     que pregunta antes de una acción que pesa (public/scripts/game-engine/ui/decision-warning.js).
+   - Lo que se recuerda de vosotros: en el pueblo y en el gremio
+     (public/scripts/game-engine/ui/memory-panel.js).
+   Los colores son los del juego (`--gs-*`, game-shell.css).
+   ================================================================ */
+
+/* ---- J11.1: el aviso en una ficha ---------------------------------------------------- */
+
+/* Una ficha que pesa lleva una raya a la izquierda: se ve antes de leerla. */
+.dw-option.nr-weighty {
+    border-left: 3px solid var(--gs-danger-soft, #d08a86);
+}
+
+.nr-badge {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: bold;
+    color: var(--gs-danger-soft, #d08a86);
+}
+
+.nr-badge .fa-solid {
+    margin-right: 0.15rem;
+}
+
+/* Pulsada una vez: espera la segunda. */
+.dw-option.nr-armed {
+    background: rgba(208, 138, 134, 0.16);
+    border-color: var(--gs-danger-soft, #d08a86);
+    box-shadow: 0 0 0 2px rgba(208, 138, 134, 0.35);
+}
+
+.nr-hint {
+    display: block;
+    font-size: 0.8rem;
+    font-style: italic;
+    color: var(--SmartThemeBodyColor, #e8e0d0);
+    opacity: 0.85;
+}
+
+/* ---- J11.1: preguntar antes de una acción que pesa -------------------------------------- */
+
+.nr-dialog,
+.mm-dialog {
+    max-width: min(520px, calc(100vw - 32px));
+    margin: auto;
+    padding: 0;
+    color: var(--SmartThemeBodyColor, #e8e0d0);
+    background: var(--gs-bg-dark, #12100e);
+    border: 1px solid var(--gs-gold-line, rgba(214, 180, 106, 0.4));
+    border-radius: 12px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.85);
+}
+
+.nr-dialog {
+    border-color: var(--gs-danger-soft, #d08a86);
+}
+
+.nr-dialog::backdrop,
+.mm-dialog::backdrop {
+    background: rgba(0, 0, 0, 0.7);
+}
+
+.nr-box,
+.mm-box {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1.1rem 1.25rem;
+}
+
+.nr-title,
+.mm-head {
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: var(--gs-accent-gold, #e2c27a);
+}
+
+.nr-title {
+    color: var(--gs-danger-soft, #d08a86);
+}
+
+.nr-text {
+    margin: 0;
+    line-height: 1.45;
+}
+
+.nr-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+.nr-buttons button,
+.mm-close {
+    min-height: 44px;
+    padding: 0.4rem 1rem;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+    background: transparent;
+    border: 1px solid var(--gs-gold-line, rgba(214, 180, 106, 0.4));
+    border-radius: 8px;
+}
+
+.nr-buttons .nr-ok {
+    color: var(--gs-danger-soft, #d08a86);
+    border-color: var(--gs-danger-soft, #d08a86);
+}
+
+.nr-buttons button:hover,
+.nr-buttons button:focus-visible,
+.mm-close:hover,
+.mm-close:focus-visible {
+    background: var(--gs-accent-gold-hover, rgba(226, 194, 122, 0.15));
+    outline: none;
+}
+
+/* ---- J11.3 y J11.4: lo que se recuerda de vosotros ------------------------------------- */
+
+.mm-dialog {
+    max-width: min(620px, calc(100vw - 32px));
+    max-height: min(86vh, 760px);
+}
+
+.mm-box {
+    max-height: min(86vh, 760px);
+    overflow-y: auto;
+}
+
+.mm-title {
+    margin: 0;
+    font-style: italic;
+}
+
+.mm-title strong {
+    font-style: normal;
+    color: var(--gs-accent-gold, #e2c27a);
+}
+
+.mm-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.mm-subtitle {
+    margin: 0.3rem 0 0;
+    font-size: 0.95rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--SmartThemeQuoteColor, #c9b894);
+    border-bottom: 1px solid var(--gs-gold-line, rgba(214, 180, 106, 0.4));
+}
+
+.mm-empty {
+    margin: 0;
+    opacity: 0.75;
+}
+
+.mm-row {
+    margin: 0;
+    line-height: 1.4;
+}
+
+.mm-row .fa-solid {
+    width: 1.2rem;
+    text-align: center;
+}
+
+.mm-mal .fa-solid {
+    color: var(--gs-danger-soft, #d08a86);
+}
+
+.mm-bien .fa-solid {
+    color: #9fc48a;
+}
+
+.mm-campaign {
+    padding: 0.45rem 0.7rem;
+    border-left: 3px solid var(--gs-gold-line, rgba(214, 180, 106, 0.4));
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.mm-campaign-name {
+    font-weight: bold;
+}
+
+.mm-campaign-line {
+    line-height: 1.4;
+    opacity: 0.92;
+}
+
+.mm-tone-luz {
+    border-left-color: var(--gs-accent-gold, #e2c27a);
+}
+
+.mm-tone-luz .fa-solid {
+    color: var(--gs-accent-gold, #e2c27a);
+}
+
+.mm-tone-sombra {
+    border-left-color: var(--gs-danger-soft, #d08a86);
+}
+
+.mm-tone-sombra .fa-solid {
+    color: var(--gs-danger-soft, #d08a86);
+}
+
+.mm-tone-gris .fa-solid {
+    color: #a9a39a;
+}
+
+.mm-close {
+    align-self: flex-end;
+}
+
+/* El porqué de una campaña del tablón que os ofrecen por lo que hicisteis en otra (J11.4). */
+.hb-because {
+    margin: 0.2rem 0;
+    font-size: 0.85rem;
+    font-style: italic;
+    color: var(--gs-accent-gold, #e2c27a);
+}
+
+@media (max-width: 600px) {
+    .nr-box,
+    .mm-box {
+        padding: 0.9rem 1rem;
+    }
+}

@@ -1064,6 +1064,9 @@ export async function checkCurrentWorld() {
             where: String(e.dndData.mapPosition?.locationName || ''),
             wants: String(e.dndData.wants || ''),
             knows: String(e.dndData.knows || ''),
+            // J10: lo que esconde (un secreto del sitio) y lo que atiende (gente o servicios).
+            secret: String(e.dndData.secret || ''),
+            service: String(e.dndData.service || ''),
         }));
     const report = checkWorldDensity({
         ...pack,

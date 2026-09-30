@@ -247,6 +247,71 @@ html:has(> body.game-shell-on) {
     cursor: not-allowed;
 }
 
+/* J14.2: las partes del día, junto al reloj. La que ya se fue, apagada y con lo que se hizo;
+ * la de ahora, dorada; las que quedan, a la espera. En el móvil, solo tres marcas. */
+.gs-day-strip {
+    display: inline-flex;
+    align-items: stretch;
+    gap: 3px;
+    min-width: 0;
+}
+
+.gs-day-part {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 4px;
+    max-width: 150px;
+    padding: 1px 7px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 999px;
+    font-size: 0.72em;
+    line-height: 1.5;
+    white-space: nowrap;
+    overflow: hidden;
+    opacity: 0.55;
+}
+
+.gs-day-part.gs-day-ahora {
+    border-color: var(--gs-accent-gold);
+    color: var(--gs-accent-gold);
+    background: rgba(226, 194, 122, 0.1);
+    opacity: 1;
+}
+
+.gs-day-part.gs-day-hecho {
+    opacity: 0.75;
+    border-style: dashed;
+}
+
+.gs-day-part.gs-day-hecho .gs-day-part-name::before {
+    content: '✓ ';
+}
+
+.gs-day-part-what {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    opacity: 0.85;
+    font-style: italic;
+}
+
+@media (max-width: 900px) {
+    .gs-day-part {
+        width: 9px;
+        height: 9px;
+        padding: 0;
+        align-self: center;
+        border-width: 2px;
+    }
+
+    .gs-day-part > span {
+        display: none;
+    }
+
+    .gs-day-part.gs-day-hecho {
+        background: currentColor;
+    }
+}
+
 /* En una pantalla estrecha el reloj se queda en los iconos: el dia importa mas que los
  * rotulos, y cuatro palabras completas empujarian al selector de escena fuera. */
 @media (max-width: 900px) {

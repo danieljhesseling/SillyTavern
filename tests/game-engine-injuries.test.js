@@ -175,7 +175,7 @@ describe('contado para leerlo', () => {
 
         const [line] = describeInjuries(member);
         expect(line).toMatch(/Pierna rota/);
-        expect(line).toMatch(/speed -10/);
+        expect(line).toMatch(/velocidad -10/);
         expect(line).toMatch(/14 día\(s\)/);
     });
 

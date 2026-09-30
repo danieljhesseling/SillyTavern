@@ -131,6 +131,9 @@ try {
             }
             window.localStorage.setItem('sillytavern_gameShellAutostart', 'true');
             window.localStorage.setItem('sillytavern_gameSucesos', 'off');
+            // Las escenas del hilo y las charlas escritas (J9.2, J8) las mira e2e-historia; aquí
+            // el prólogo se lee en la novela, como en las otras vueltas.
+            window.localStorage.setItem('sillytavern_gameStoryWindows', 'off');
         } catch { /* nada */ }
     });
 
@@ -340,7 +343,9 @@ try {
     check('el texto concuerda con Tessa: «cansada del viaje», sin marcas ni «o/a» (J1.4)', genderOk(arrival, /cansada del viaje/, /cansado del viaje/),
         (arrival.match(/.{0,60}(\{[^{}\n]*\||cansad[oa] del viaje|o\/a).{0,40}/i) ?? [''])[0]);
     const hubChips = await chips();
-    check('las fichas ofrecen el tablón de campañas y contratar', hubChips.some(c => /Tablón de campañas/.test(c)) && hubChips.some(c => /Contratar mercenarios/.test(c)), JSON.stringify(hubChips));
+    // D-J28: el tablón y los mercenarios, escondidos hasta que acabe la prueba; saltarla, sí.
+    check('al llegar, la fila ofrece saltar la prueba, y todavía no el tablón ni contratar (D-J28)',
+        hubChips.some(c => /^Saltar la prueba$/.test(c)) && !hubChips.some(c => /Tablón de campañas|Contratar mercenarios/.test(c)), JSON.stringify(hubChips));
     // Al crear, los avisos son cortos: el equipo y los números ya se vieron en la creación.
     const heroToasts = await page.evaluate(() => /** @type {string[]} */ (/** @type {any} */ (window).__heroToasts || []));
     check('al crear, «Tu personaje» es un aviso corto, sin repetir el equipo',
@@ -543,6 +548,36 @@ try {
         check('en el tablero, las dos ratas salen con su dibujo, Tessa con su retrato de relleno y las casillas en pixel (arte en pixel)',
             ratsDrawn && tokenArt.some(s => /^heroes\/(raza-humano-)?guerrero-mujer\.png$/.test(s)) && tiles.floor === 'mazmorra' && tiles.walls > 0,
             JSON.stringify({ tokenArt, tiles }));
+        // Las mismas caras fuera del tablero: en la fila de la iniciativa y en las tarjetas de
+        // «Enemigos», el dibujo de la rata y el retrato de Tessa; ni iniciales ni calaveras.
+        const faces = await page.evaluate(() => ({
+            init: [...document.querySelectorAll('.wm-init-row img.wm-init-face')].map(i => (i.getAttribute('src') || '').split('/').slice(-2).join('/')),
+            initials: document.querySelectorAll('.wm-init-row .wm-init-initial').length,
+            cards: [...document.querySelectorAll('.wm-combat-enemy-card img')].map(i => (i.getAttribute('src') || '').split('/').slice(-2).join('/')),
+            skulls: document.querySelectorAll('.wm-combat-enemy-card .fa-skull').length,
+        }));
+        check('la iniciativa y las tarjetas de enemigo llevan el dibujo de la rata y el retrato de Tessa, sin iniciales ni calaveras (arte en pixel)',
+            faces.init.filter(s => s === 'bestias/rata-de-bodega.png').length === 2 && faces.init.some(s => /^heroes\//.test(s)) && faces.initials === 0
+            && faces.cards.filter(s => s === 'bestias/rata-de-bodega.png').length === 2 && faces.skulls === 0, JSON.stringify(faces));
+        // Y la tarjeta de una rata, al pulsarla en tu turno: su dibujo junto al nombre.
+        const tessaTurn = await until(async () => {
+            await clearDice();
+            return page.evaluate(async () => {
+                const enc = (await import('/scripts/party.js')).getCombatEncounter();
+                const entry = enc?.active ? enc.turnOrder?.[enc.currentTurnIndex] : null;
+                return Boolean(entry && !entry.isEnemy);
+            });
+        }, 20000);
+        await dropToasts();
+        await page.locator('.wm-token.wm-token-enemy:not(.wm-token-idle)').first().click({ timeout: 4000 }).catch(() => {});
+        const ratCard = await until(() => page.evaluate(() => Boolean(document.querySelector('.tc-card'))), 4000).then(() => page.evaluate(() => ({
+            name: (document.querySelector('.tc-card .tc-name')?.textContent || '').trim(),
+            face: (document.querySelector('.tc-card .tc-face')?.getAttribute('src') || '').split('/').slice(-2).join('/'),
+        })));
+        check('en tu turno, la tarjeta de una rata sale con su dibujo (arte en pixel)', tessaTurn && /^Rata de bodega/.test(ratCard.name) && ratCard.face === 'bestias/rata-de-bodega.png',
+            JSON.stringify({ tessaTurn, ratCard }));
+        await page.locator('.tc-card .tc-close').click({ timeout: 3000 }).catch(() => {});
+        await page.waitForSelector('.tc-overlay', { state: 'detached', timeout: 3000 }).catch(() => {});
         if (SHOT) await page.screenshot({ path: `${SHOT}.pelea.png` });
         // Los consejos de la primera pelea y el panel en castellano se miran en el muelle (J2.1): aquí ya no salen.
         await page.evaluate(async () => {
@@ -776,6 +811,16 @@ try {
         wanted.every(id => before.some(r => r.startsWith(`${id}=`))) && bigger.scale === '1.15' && bigger.row === 'Grande'
         && optionsSeen.advanced === 0 && !optionsSeen.apiOpen && await page.locator('.go-root').count() === 0,
         JSON.stringify(optionsSeen));
+    // J14.6: lo vivido con Gerd (cuatro puntos de vínculo, puestos a mano: sin chat que leer)
+    // tiene que viajar con el grupo a la campaña.
+    const gerdPoints = await page.evaluate(async () => {
+        const gerdHere = (await import('/scripts/party.js')).getPartyMembersSnapshot().find((/** @type {any} */ m) => m.name === 'Gerd el Mellado');
+        const time = await import('/scripts/party/time.js');
+        if (!gerdHere) return 0;
+        const bonds = time.getCampaignBonds();
+        time.saveCampaignState(null, { ...bonds, bonds: { ...bonds.bonds, [String(gerdHere.id)]: { characterId: String(gerdHere.id), points: 4, usedOncePerDay: [] } } });
+        return Number(time.getCampaignBonds().bonds?.[String(gerdHere.id)]?.points) || 0;
+    });
     check('la ficha del tablón de campañas está', await clickChip(/Tablón de campañas/));
     await page.waitForSelector('.hb-root [data-campaign]', { timeout: 15000 }).catch(() => {});
     const board = await page.evaluate(() => [...document.querySelectorAll('.hb-root [data-campaign]')].map(c => ({ id: c.getAttribute('data-campaign'), text: (c.textContent || '').replace(/\s+/g, ' ').slice(0, 120) })));
@@ -792,6 +837,12 @@ try {
         inStrahd && now.board === 'Taberna Sangre de la Enredadera' && now.party.length === 2 && tessa?.gold === gold
         && now.party.every(m => m.world === now.world) && tessa?.wiUid !== null,
         JSON.stringify(now));
+    const carriedBond = await page.evaluate(async () => {
+        const gerdThere = (await import('/scripts/party.js')).getPartyMembersSnapshot().find((/** @type {any} */ m) => m.name === 'Gerd el Mellado');
+        const bonds = (await import('/scripts/party/time.js')).getCampaignBonds().bonds ?? {};
+        return Number(bonds[String(gerdThere?.id)]?.points) || 0;
+    });
+    check('el vínculo con Gerd viaja con el grupo del gremio a la campaña (J14.6, carryBonds)', gerdPoints === 4 && carriedBond === 4, JSON.stringify({ gerdPoints, carriedBond }));
     const scene = await until(() => chatHas(/Bruja Baroviana está acechando/), 20000);
     check('la primera escena de Strahd se cuenta', scene);
     const inStrahdScene = await stCharacterUi();

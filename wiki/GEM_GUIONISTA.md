@@ -493,7 +493,7 @@ Solo estas condiciones: `tiempo` (despejado, lluvia, tormenta, niebla, viento, n
 
 ### El género
 
-Lo que cambia con el género va con sus dos formas: `{cansado|cansada}` concuerda con tu héroe; en plural, `{empapados|empapadas}`, `{vosotros|vosotras}` o `{unos a otros|unas a otras}`, con el grupo; `{grupo:cada uno|cada una}` cuando no acaba en -s; y `{quien:seguro|segura}` con quien tira o quien muere. En las charlas, `{quien}` es alguien de fuera y el motor no sabe su género: escribe sin adjetivos que concuerden con esa persona («se encoge de hombros», no «está nervioso»). Nunca «cansado/a» ni «tod@s».
+Lo que cambia con el género va con sus dos formas: `{cansado|cansada}` concuerda con tu héroe; en plural, `{empapados|empapadas}`, `{vosotros|vosotras}` o `{unos a otros|unas a otras}`, con el grupo; `{grupo:cada uno|cada una}` cuando no acaba en -s; y `{quien:seguro|segura}` con quien tira o quien muere. En las charlas, `{quien}` es alguien de fuera y el motor no sabe su género: escribe sin adjetivos que concuerden con esa persona («se encoge de hombros», no «está nervioso»). Solo dos formas, nunca tres: como en D&D, el género no cambia ninguna regla, y quien es no binario elige al crear su personaje si el texto le habla en masculino o en femenino. Nunca «cansado/a» ni «tod@s».
 
 ### Cuántas
 

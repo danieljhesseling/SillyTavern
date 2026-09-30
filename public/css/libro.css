@@ -1,0 +1,689 @@
+/* ================================================================
+   J9.6 · El Diario como un libro (public/scripts/game-engine/ui/story-book.js), con los plazos
+   a la vista (J9.5) y lo que decidisteis (J11.5).
+   A la izquierda el índice, a la derecha la página: letra de libro, la viñeta del sitio y cada
+   hito como un párrafo. En el móvil, el índice sube a una tira que se desliza.
+   Los colores son los del juego (`--gs-*`, game-shell.css). Todo cuelga de .lb-dialog, salvo
+   el reloj (`.lb-badge`), que también va en la cabecera del juego.
+   ================================================================ */
+
+/* J9.5: el reloj de un hito. Ámbar si aprieta, rojo el último día. */
+.lb-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 10px;
+    border: 1px solid var(--gs-gold-line, rgba(214, 180, 106, 0.4));
+    border-radius: 999px;
+    background: rgba(226, 194, 122, 0.08);
+    color: var(--gs-accent-gold, #e2c27a);
+    font-family: system-ui, sans-serif;
+    font-size: 0.85rem;
+    font-style: normal;
+    line-height: 1.5;
+    white-space: nowrap;
+}
+
+.lb-badge[data-urgency="pronto"] {
+    border-color: rgba(226, 150, 60, 0.7);
+    background: rgba(226, 150, 60, 0.14);
+    color: #f0b268;
+}
+
+.lb-badge[data-urgency="hoy"] {
+    border-color: var(--gs-danger-red, #a5534f);
+    background: var(--gs-danger-bg, rgba(69, 10, 10, 0.6));
+    color: #ffb4b4;
+    animation: lb-urgent 1.6s ease-in-out infinite;
+}
+
+@keyframes lb-urgent {
+    50% {
+        box-shadow: 0 0 0 3px rgba(165, 83, 79, 0.25);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .lb-badge[data-urgency="hoy"] {
+        animation: none;
+    }
+}
+
+/* J9.3 y J11.5, en el tablón del gremio: por qué capítulo ibais, y «La crónica» bajo la tarjeta. */
+.hb-chapter {
+    display: flex;
+    align-items: baseline;
+    gap: 7px;
+    color: #d8c9a6;
+    font-size: 0.86rem;
+}
+
+.hb-chapter i {
+    color: var(--gs-accent-gold, #e2c27a);
+}
+
+.hb-tile-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px;
+}
+
+.hb-tile-actions:empty {
+    display: none;
+}
+
+.hb-chronicle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    width: auto;
+    min-height: 2.2rem;
+    margin: 0;
+    font-size: 0.8rem;
+    white-space: nowrap;
+}
+
+.hb-chronicle i {
+    color: var(--gs-accent-gold, #e2c27a);
+}
+
+/* ---------------------------------------------------------------- La ventana */
+.lb-dialog {
+    width: min(1120px, 96vw);
+    max-width: none;
+    height: min(820px, 94vh);
+    max-height: none;
+    margin: auto;
+    padding: 0;
+    color: #e8dcc4;
+    background:
+        radial-gradient(ellipse at top left, rgba(120, 80, 40, 0.18), transparent 60%),
+        var(--gs-bg-dark, #12100e);
+    border: 1px solid var(--gs-gold-line, rgba(214, 180, 106, 0.4));
+    border-radius: 14px;
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.85);
+    overflow: hidden;
+}
+
+.lb-dialog::backdrop {
+    background: rgba(0, 0, 0, 0.72);
+}
+
+.lb-dialog .lb-root {
+    display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr);
+    height: 100%;
+}
+
+/* ---------------------------------------------------------------- La cabecera */
+.lb-dialog .lb-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px 22px 12px;
+    border-bottom: 1px solid rgba(214, 180, 106, 0.22);
+}
+
+.lb-dialog .lb-kicker {
+    color: rgba(226, 194, 122, 0.75);
+    font-family: system-ui, sans-serif;
+    font-size: 0.75rem;
+    font-weight: bold;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+}
+
+.lb-dialog .lb-title {
+    margin: 2px 0 4px;
+    color: var(--gs-accent-gold, #e2c27a);
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: calc(1.55rem * var(--gs-text-scale, 1));
+    line-height: 1.2;
+}
+
+.lb-dialog .lb-now {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin: 0;
+    color: #d8c9a6;
+    font-size: calc(0.95rem * var(--gs-text-scale, 1));
+}
+
+.lb-dialog .lb-now i {
+    color: var(--gs-accent-gold, #e2c27a);
+}
+
+.lb-dialog .lb-close {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    width: auto;
+    min-height: 2.4rem;
+    padding: 6px 14px;
+    border: 1px solid rgba(165, 83, 79, 0.5);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--gs-danger-soft, #d08a86);
+    font-weight: bold;
+}
+
+.lb-dialog .lb-close:hover,
+.lb-dialog .lb-close:focus-visible {
+    border-color: var(--gs-danger-red, #a5534f);
+    background: rgba(165, 83, 79, 0.15);
+    color: #ffb4b4;
+}
+
+.lb-dialog .lb-clocks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 22px;
+    border-bottom: 1px solid rgba(214, 180, 106, 0.14);
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.lb-dialog .lb-clocks .lb-badge {
+    white-space: normal;
+}
+
+/* ---------------------------------------------------------------- El índice */
+.lb-dialog .lb-body {
+    display: grid;
+    grid-template-columns: 260px minmax(0, 1fr);
+    min-height: 0;
+}
+
+.lb-dialog .lb-toc {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 14px 10px;
+    overflow-y: auto;
+    border-right: 1px solid rgba(214, 180, 106, 0.18);
+    background: rgba(0, 0, 0, 0.28);
+}
+
+.lb-dialog .lb-tab {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    min-height: 3rem;
+    padding: 6px 10px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: transparent;
+    color: #e8dcc4;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.lb-dialog .lb-tab:hover,
+.lb-dialog .lb-tab:focus-visible {
+    border-color: var(--gs-gold-line, rgba(214, 180, 106, 0.4));
+    background: var(--gs-accent-gold-hover, rgba(226, 194, 122, 0.15));
+    outline: none;
+}
+
+.lb-dialog .lb-tab.lb-tab-on {
+    border-color: var(--gs-accent-gold, #e2c27a);
+    background: rgba(226, 194, 122, 0.14);
+}
+
+.lb-dialog .lb-tab[aria-disabled="true"] {
+    opacity: 0.45;
+    cursor: default;
+}
+
+.lb-dialog .lb-tab[aria-disabled="true"]:hover {
+    border-color: transparent;
+    background: transparent;
+}
+
+.lb-dialog .lb-tab[data-state="extra"] {
+    margin-top: 2px;
+}
+
+.lb-dialog .lb-tab[data-view="decided"] {
+    margin-top: 10px;
+    border-top-color: rgba(214, 180, 106, 0.18);
+}
+
+.lb-dialog .lb-tab-mark {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border: 1px solid var(--gs-gold-line, rgba(214, 180, 106, 0.4));
+    border-radius: 50%;
+    color: var(--gs-accent-gold, #e2c27a);
+    font-family: Georgia, 'Times New Roman', serif;
+    font-weight: bold;
+}
+
+.lb-dialog .lb-tab[data-state="ahora"] .lb-tab-mark {
+    background: var(--gs-accent-gold, #e2c27a);
+    color: #1a140f;
+    box-shadow: 0 0 10px rgba(226, 194, 122, 0.35);
+}
+
+.lb-dialog .lb-tab[data-state="en-blanco"] .lb-tab-mark {
+    border-style: dashed;
+    color: rgba(226, 194, 122, 0.6);
+}
+
+.lb-dialog .lb-tab-words {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.lb-dialog .lb-tab-name {
+    overflow: hidden;
+    font-weight: bold;
+    text-overflow: ellipsis;
+}
+
+.lb-dialog .lb-tab-note {
+    color: rgba(232, 220, 196, 0.62);
+    font-size: 0.8rem;
+}
+
+.lb-dialog .lb-tab[data-state="ahora"] .lb-tab-note {
+    color: var(--gs-accent-gold, #e2c27a);
+}
+
+/* ---------------------------------------------------------------- La página */
+.lb-dialog .lb-page {
+    position: relative;
+    min-height: 0;
+    padding: 22px 36px 18px;
+    overflow-y: auto;
+    background:
+        linear-gradient(90deg, rgba(0, 0, 0, 0.45) 0, rgba(0, 0, 0, 0) 26px),
+        linear-gradient(180deg, #251d15 0%, #1d1711 100%);
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: calc(1.02rem * var(--gs-text-scale, 1));
+    line-height: 1.62;
+    outline: none;
+}
+
+.lb-dialog .lb-vignette {
+    height: 150px;
+    margin: -6px 0 16px;
+    overflow: hidden;
+    border: 1px solid rgba(214, 180, 106, 0.22);
+    border-radius: 8px;
+    -webkit-mask-image: linear-gradient(180deg, #000 55%, transparent 100%);
+    mask-image: linear-gradient(180deg, #000 55%, transparent 100%);
+}
+
+.lb-dialog .lb-vignette img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    image-rendering: pixelated;
+    opacity: 0.85;
+}
+
+.lb-dialog .lb-chapter-name {
+    color: rgba(226, 194, 122, 0.72);
+    font-family: system-ui, sans-serif;
+    font-size: 0.78rem;
+    font-weight: bold;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+}
+
+.lb-dialog .lb-chapter-title {
+    margin: 2px 0 10px;
+    color: var(--gs-accent-gold, #e2c27a);
+    font-size: calc(1.6rem * var(--gs-text-scale, 1));
+    line-height: 1.2;
+}
+
+.lb-dialog .lb-epigraph {
+    margin: 0 0 18px;
+    padding-left: 12px;
+    border-left: 2px solid var(--gs-gold-line, rgba(214, 180, 106, 0.4));
+    color: #cbbd9f;
+    font-style: italic;
+}
+
+.lb-dialog .lb-blank {
+    margin: 32px 0;
+    color: rgba(232, 220, 196, 0.55);
+    font-style: italic;
+    text-align: center;
+}
+
+.lb-dialog .lb-entry {
+    margin: 0 0 18px;
+    padding: 0 0 14px;
+    border-bottom: 1px dashed rgba(214, 180, 106, 0.18);
+}
+
+.lb-dialog .lb-entry[data-state="abierto"] {
+    padding-left: 12px;
+    border-left: 3px solid var(--gs-accent-gold, #e2c27a);
+}
+
+.lb-dialog .lb-entry[data-state="cerrado"],
+.lb-dialog .lb-entry[data-state="perdido"] {
+    opacity: 0.78;
+}
+
+.lb-dialog .lb-entry-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 10px;
+}
+
+.lb-dialog .lb-entry-title {
+    margin: 0;
+    color: #f0e4c8;
+    font-size: calc(1.14rem * var(--gs-text-scale, 1));
+}
+
+.lb-dialog .lb-tag {
+    padding: 0 8px;
+    border: 1px solid rgba(111, 158, 93, 0.6);
+    border-radius: 999px;
+    color: #a7c998;
+    font-family: system-ui, sans-serif;
+    font-size: 0.72rem;
+    font-weight: bold;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+}
+
+.lb-dialog .lb-entry[data-state="abierto"] .lb-tag {
+    border-color: var(--gs-gold-line, rgba(214, 180, 106, 0.4));
+    color: var(--gs-accent-gold, #e2c27a);
+}
+
+.lb-dialog .lb-entry[data-state="perdido"] .lb-tag {
+    border-color: rgba(165, 83, 79, 0.6);
+    color: var(--gs-danger-soft, #d08a86);
+}
+
+.lb-dialog .lb-entry[data-state="cerrado"] .lb-tag {
+    border-color: rgba(232, 220, 196, 0.3);
+    color: rgba(232, 220, 196, 0.65);
+}
+
+.lb-dialog .lb-entry[data-secret="true"] .lb-tag {
+    border-color: rgba(106, 140, 175, 0.7);
+    color: #a9c3de;
+}
+
+.lb-dialog .lb-entry-text {
+    margin: 6px 0 8px;
+}
+
+/* La primera letra del capítulo, grande: es un libro. */
+.lb-dialog .lb-entries > .lb-entry:first-child .lb-entry-text::first-letter {
+    float: left;
+    margin: 4px 8px 0 0;
+    color: var(--gs-accent-gold, #e2c27a);
+    font-size: 3.1em;
+    line-height: 0.82;
+}
+
+.lb-dialog .lb-entry-hint {
+    margin: 6px 0;
+    padding: 6px 10px;
+    border-radius: 6px;
+    background: rgba(226, 194, 122, 0.08);
+    font-family: system-ui, sans-serif;
+    font-size: 0.9rem;
+}
+
+.lb-dialog .lb-entry-hint strong {
+    color: var(--gs-accent-gold, #e2c27a);
+}
+
+.lb-dialog .lb-entry-clock {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+    margin: 6px 0;
+    font-family: system-ui, sans-serif;
+    font-size: 0.85rem;
+}
+
+.lb-dialog .lb-late {
+    color: rgba(232, 220, 196, 0.7);
+}
+
+/* Lo decidido y lo que salió de ello. */
+.lb-dialog .lb-list {
+    margin: 10px 0;
+}
+
+.lb-dialog .lb-list-title {
+    margin: 12px 0 4px;
+    color: rgba(226, 194, 122, 0.8);
+    font-family: system-ui, sans-serif;
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.lb-dialog .lb-list-items {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.lb-dialog .lb-list-items li {
+    margin: 2px 0;
+}
+
+.lb-dialog .lb-decision-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.lb-dialog .lb-decision {
+    margin: 6px 0;
+    padding: 4px 0 4px 12px;
+    border-left: 2px solid var(--gs-gold-line, rgba(214, 180, 106, 0.4));
+}
+
+.lb-dialog .lb-said {
+    display: block;
+    color: #f0e4c8;
+}
+
+.lb-dialog .lb-where {
+    display: block;
+    color: rgba(232, 220, 196, 0.55);
+    font-family: system-ui, sans-serif;
+    font-size: 0.78rem;
+}
+
+.lb-dialog .lb-came {
+    margin: 2px 0 0;
+    padding: 0;
+    list-style: none;
+    color: #cdbf9f;
+    font-size: 0.93em;
+}
+
+.lb-dialog .lb-came li::before,
+.lb-dialog .lb-outcome li::marker {
+    content: '→ ';
+    color: var(--gs-accent-gold, #e2c27a);
+}
+
+.lb-dialog .lb-outcome .lb-list-items {
+    padding-left: 18px;
+    color: #cdbf9f;
+}
+
+.lb-dialog .lb-closing {
+    margin: 24px 0 6px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(214, 180, 106, 0.2);
+    color: rgba(226, 194, 122, 0.85);
+    font-style: italic;
+    text-align: center;
+}
+
+/* J11.5: lo decidido, con su buscador. */
+.lb-dialog .lb-search {
+    width: 100%;
+    min-height: 2.6rem;
+    margin: 4px 0 6px;
+    font-family: system-ui, sans-serif;
+}
+
+.lb-dialog .lb-count {
+    margin: 0 0 8px;
+    color: rgba(232, 220, 196, 0.62);
+    font-family: system-ui, sans-serif;
+    font-size: 0.85rem;
+}
+
+.lb-dialog .lb-decided-where,
+.lb-dialog .lb-notes-head {
+    margin: 16px 0 4px;
+    color: var(--gs-accent-gold, #e2c27a);
+    font-size: 1.02rem;
+}
+
+.lb-dialog .lb-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 6px 0 10px;
+}
+
+.lb-dialog .lb-filter {
+    width: auto;
+    margin: 0;
+    padding: 4px 10px;
+    font-family: system-ui, sans-serif;
+    font-size: 0.8rem;
+}
+
+.lb-dialog .lb-filter.lb-filter-on {
+    border-color: var(--gs-accent-gold, #e2c27a);
+    color: var(--gs-accent-gold, #e2c27a);
+}
+
+.lb-dialog .lb-chron[hidden] {
+    display: none;
+}
+
+/* Las flechas del pie. */
+.lb-dialog .lb-turn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 26px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(214, 180, 106, 0.2);
+    font-family: system-ui, sans-serif;
+}
+
+.lb-dialog .lb-turn .menu_button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    width: auto;
+    min-height: 2.6rem;
+    margin: 0;
+    padding: 6px 14px;
+}
+
+.lb-dialog .lb-turn .menu_button:disabled {
+    opacity: 0.35;
+    cursor: default;
+}
+
+.lb-dialog .lb-folio {
+    color: rgba(232, 220, 196, 0.5);
+    font-size: 0.8rem;
+}
+
+/* ---------------------------------------------------------------- En el móvil */
+@media (max-width: 700px) {
+    .lb-dialog {
+        width: 100vw;
+        height: 100dvh;
+        max-height: 100dvh;
+        border: 0;
+        border-radius: 0;
+    }
+
+    .lb-dialog .lb-head {
+        padding: 10px 14px 8px;
+    }
+
+    .lb-dialog .lb-title {
+        font-size: calc(1.2rem * var(--gs-text-scale, 1));
+    }
+
+    .lb-dialog .lb-close span {
+        display: none;
+    }
+
+    .lb-dialog .lb-close {
+        min-width: 2.75rem;
+        min-height: 2.75rem;
+        justify-content: center;
+    }
+
+    .lb-dialog .lb-clocks {
+        padding: 8px 14px;
+    }
+
+    .lb-dialog .lb-body {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: auto minmax(0, 1fr);
+    }
+
+    .lb-dialog .lb-toc {
+        flex-direction: row;
+        gap: 6px;
+        padding: 8px 10px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        border-right: 0;
+        border-bottom: 1px solid rgba(214, 180, 106, 0.18);
+        scrollbar-width: thin;
+    }
+
+    .lb-dialog .lb-tab {
+        flex: 0 0 auto;
+        width: auto;
+        max-width: 210px;
+        min-height: 2.75rem;
+    }
+
+    .lb-dialog .lb-tab[data-view="decided"] {
+        margin-top: 0;
+    }
+
+    .lb-dialog .lb-page {
+        padding: 16px 16px 14px;
+        background: linear-gradient(180deg, #251d15 0%, #1d1711 100%);
+    }
+
+    .lb-dialog .lb-vignette {
+        height: 110px;
+    }
+}

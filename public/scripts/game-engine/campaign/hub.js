@@ -104,6 +104,8 @@ const key = (value) => text(value).toLowerCase();
  *   Lo que se vivió allí también pasa para quien descansa en el gremio (`hubDay`).
  * @property {string} [name] D-J35: cómo se llamaba en el tablón. Si la quitas del tablón (una
  *   añadida por ti), su tarjeta sigue en este gremio con este nombre, para seguirla.
+ * @property {string} [chapter] J9.3: por qué capítulo ibais al volver de ella («Capítulo 2 de 5:
+ *   El campamento vistani», de `guildChapterLine`). Lo dice su tarjeta del tablón.
  */
 
 /**
@@ -138,6 +140,7 @@ export function readHub(raw) {
         if (!text(id) || !worldName) continue;
         const day = Math.max(0, Math.floor(Number(/** @type {any} */ (value)?.day) || 0));
         const name = text(/** @type {any} */ (value)?.name);
+        const chapter = text(/** @type {any} */ (value)?.chapter).slice(0, 140);
         campaigns[text(id)] = {
             worldName,
             chat: readChat(/** @type {any} */ (value)?.chat),
@@ -145,6 +148,7 @@ export function readHub(raw) {
             ending: text(/** @type {any} */ (value)?.ending),
             ...(day > 0 ? { day } : {}),
             ...(name ? { name } : {}),
+            ...(chapter ? { chapter } : {}),
         };
     }
     const imported = readImportedRows(raw?.imported);
@@ -420,7 +424,7 @@ export function journeyLine({ world, home = 'el gremio', back = false }) {
  * @param {number} [input.level] El del héroe, para decir si le viene grande.
  * @returns {Array<{id: string, name: string, genre: string, note: string, synopsis: string, icon: string,
  *   traits: string[], levels: string, minLevel: number, hard: boolean, distance: string, state: 'nueva'|'en-curso'|'terminada',
- *   action: string, warn: string, ending: string, imported: boolean}>}
+ *   action: string, warn: string, ending: string, chapter: string, imported: boolean}>}
  */
 export function hubCampaignCards({ worlds, hub = null, imported = [], level = 1 }) {
     const record = readHub(hub);
@@ -472,6 +476,8 @@ export function hubCampaignCards({ worlds, hub = null, imported = [], level = 1 
                     : lvl < min ? `No es para un grupo sin experiencia: empieza en el nivel ${min} y tu grupo es de nivel ${lvl}. Si vais, los enemigos aflojan un poco, pero no del todo.`
                         : lvl > Math.max(min, max) ? `Tu grupo es de nivel ${lvl}, más de lo que pide: los enemigos aprietan más.` : '',
                 ending: started?.ending ?? '',
+                // J9.3: por qué capítulo ibais, en una empezada; en una terminada ya lo dice el final.
+                chapter: state === 'en-curso' ? (started?.chapter ?? '') : '',
                 // D-J35: las añadidas por ti se pueden quitar del tablón.
                 imported: Boolean(world.imported),
             };

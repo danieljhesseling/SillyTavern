@@ -225,6 +225,9 @@ export function buildPackEntries(pack) {
                 ...(Array.isArray(enemy.seasons) && enemy.seasons.length > 0 ? { seasons: enemy.seasons.map(text).filter(Boolean) } : {}),
                 // T6: si se doma, y en qué.
                 ...(enemy.domable !== undefined ? { domable: text(enemy.domable) } : {}),
+                // J19.12: la bruja o el nigromante que lanzan conjuros de 5e, con sus espacios.
+                ...(enemy.spellcasting && typeof enemy.spellcasting === 'object' && !Array.isArray(enemy.spellcasting)
+                    ? { spellcasting: enemy.spellcasting } : {}),
             },
         });
     }
@@ -361,7 +364,13 @@ export function buildImportPlan(raw, options = {}) {
                     ...(route.sea ? { sea: true } : {}),
                     // U7 del pegamento: se abre al cumplirse ese hito (`cerrado_hasta`).
                     ...(text(route.closedUntil) ? { closedUntil: text(route.closedUntil) } : {}),
+                    // J10.1: se abre por reputación, fama o llaves (`route-gates.js`), y por qué no.
+                    ...(Array.isArray(route.opensWith) && route.opensWith.length > 0 ? { opensWith: route.opensWith } : {}),
+                    ...(text(route.gateNote) ? { gateNote: text(route.gateNote) } : {}),
                 })),
+            // J10.5: dónde se dibuja en el mapa de la campaña (de 0 a 100), si el paquete lo dice.
+            ...(Number.isFinite(Number(place.map?.x)) && Number.isFinite(Number(place.map?.y))
+                ? { map: { x: Number(place.map.x), y: Number(place.map.y) } } : {}),
             boards: [],
         });
     }
@@ -427,6 +436,9 @@ export function buildImportPlan(raw, options = {}) {
             })),
             partyStart,
             packBoardId: board.id,
+            // J12.2 y J8.5: las otras salidas de su pelea, tal cual; las lee `combat/avoid-fight.js`.
+            ...(Array.isArray(board.avoid) && board.avoid.length > 0 ? { avoid: board.avoid } : {}),
+            ...(board.parley && typeof board.parley === 'object' ? { parley: board.parley } : {}),
         });
     }
 
@@ -502,6 +514,9 @@ export function buildImportPlan(raw, options = {}) {
             })),
             // J8.1: las charlas con ramas, tal cual: se leen al jugarlas (`readDialogues`).
             ...(pack.dialogues.length > 0 ? { dialogues: pack.dialogues } : {}),
+            // J10.3 y D-J42: los sucesos propios de la campaña, con sus disparadores de facción
+            // y de reputación. Se juntan con los del compendio al sortear (`suceso-triggers.js`).
+            ...(Array.isArray(pack.sucesos) && pack.sucesos.length > 0 ? { sucesos: pack.sucesos } : {}),
             // Los encargos del tablon que trae el mundo. El tablero de cada uno se guarda
             // por nombre, que es como lo encuentra el juego.
             writtenContracts: (pack.contracts ?? []).filter((/** @type {any} */ c) => text(c?.id) && text(c?.title))

@@ -72,7 +72,7 @@ import { combatEncounter, currentLocationName, partyMembers, worldItemCatalogue 
 import { syncCurse } from './sheet.js';
 import { respecMember } from './level-up.js';
 import { petTricks } from './pet.js';
-import { learnAbility, neededComponents } from './magic.js';
+import { learnAbility, neededComponents, supplyTakerFor } from './magic.js';
 import { hireMercenary } from './contracts.js';
 import { openGuild } from './hub.js';
 import { playDuel, searchCaseHere } from './cases.js';
@@ -656,9 +656,12 @@ export function buildServiceCards() {
     const smithy = cardOf('herreria');
     if (smithy) {
         const cloak = canCraft({ recipe: 'capa', party: partyMembers, purse });
+        // J14.3: si alguien os consigue precio (Gerd, amigo de Ramiro), se dice quién.
+        const forgeFavor = favorDiscount(favorsHere(), 'herreria');
+        const cheaper = forgeFavor.discount > 0 ? ` Más barato: ${forgeFavor.who} os consigue precio.` : '';
         smithy.actions.push({
             id: 'craft:capa', label: `${RECIPES.capa.label} (${withFavor(RECIPES.capa.gold, 'herreria')} de oro y dos pieles)`,
-            detail: cloak.reason || RECIPES.capa.note, enabled: !combatEncounter.active && cloak.ok, cost: 0,
+            detail: `${cloak.reason || RECIPES.capa.note}${cheaper}`, enabled: !combatEncounter.active && cloak.ok, cost: 0,
         });
         for (const member of partyMembers.filter(m => !m.dead)) {
             const weapon = heldWeapon(member);
@@ -667,7 +670,7 @@ export function buildServiceCards() {
             smithy.actions.push({
                 id: `craft:mejora:${member.id}`,
                 label: `Mejorar ${weapon.name} de ${member.name} (+1: ${withFavor(RECIPES.mejora.gold, 'herreria')} de oro y algo duro)`,
-                detail: upgrade.reason || RECIPES.mejora.note, enabled: !combatEncounter.active && upgrade.ok, cost: 0, target: String(member.id),
+                detail: `${upgrade.reason || RECIPES.mejora.note}${cheaper}`, enabled: !combatEncounter.active && upgrade.ok, cost: 0, target: String(member.id),
             });
         }
     }
@@ -878,11 +881,14 @@ export async function runService(actionId) {
     } else if (actionId.startsWith('inn-letter:')) await readLetter(String(action.target));
     else if (actionId.startsWith('shop-buy:')) {
         const hero = partyMembers[0];
-        if (hero) {
-            hero.items = hero.items ?? [];
-            addItemToInventory(/** @type {any} */ (hero), createItem(/** @type {any} */ (describeLootItem(String(action.target)))));
+        // D-J25: lo que piden los conjuros va a quien lo necesita (el laúd, al bardo).
+        const taker = supplyTakerFor(String(action.target)) ?? hero;
+        if (taker) {
+            taker.items = taker.items ?? [];
+            addItemToInventory(/** @type {any} */ (taker), createItem(/** @type {any} */ (describeLootItem(String(action.target)))));
             savePartyState();
-            postCombatNarration(`🛒 [TIENDA] ${hero.name} compra ${action.target} por ${action.cost} de oro.`);
+            const handed = taker === hero ? '' : ` Se lo da a ${taker.name}, que lo necesita para sus conjuros.`;
+            postCombatNarration(`🛒 [TIENDA] ${hero?.name ?? taker.name} compra ${action.target} por ${action.cost} de oro.${handed}`);
         }
     } else if (actionId === 'shop-junk') sellItems(junkOf(partyMembers));
     else if (actionId.startsWith('shop-steal:')) stealItem(actionId.slice('shop-steal:'.length), Number(action.target) || 0);

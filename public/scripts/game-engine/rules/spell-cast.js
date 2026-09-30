@@ -296,23 +296,29 @@ export function hasFocus(carried, focus) {
  * @param {string} [input.focus]
  * @param {boolean} [input.silenced] Si está en un silencio (o amordazado).
  * @param {boolean} [input.strict] Si el foco se exige (sí, si no se dice).
+ * @param {Array<{name: string, carried: any[], focus?: string}>} [input.others] Los demás del grupo:
+ *   si lo que falta lo lleva otro, se dice quién, que «se compra en las tiendas» no ayuda si ya
+ *   lo tenéis. Un foco solo se ofrece de quien no lanza (`focus` vacío): al que lanza le hace falta.
  * @returns {{ok: boolean, reason: string, warnings: string[], consumes: string[]}}
  */
-export function componentsCheck(spell, { carried = [], focus = '', silenced = false, strict = true } = {}) {
+export function componentsCheck(spell, { carried = [], focus = '', silenced = false, strict = true, others = [] } = {}) {
     /** @type {string[]} */
     const warnings = [];
     if (spell.components.includes('V') && silenced) {
         return { ok: false, reason: 'Aquí no se oye nada: no puede decir las palabras del conjuro.', warnings, consumes: [] };
     }
     if (!spell.components.includes('M')) return { ok: true, reason: '', warnings, consumes: [] };
+    const mates = (Array.isArray(others) ? others : []).filter(o => o && text(o.name));
+    const handOver = (/** @type {string} */ who) => `Lo lleva ${who}: pásaselo desde su ficha («Dar a…»).`;
 
     const material = spell.material;
     if (material && (material.costGp > 0 || material.consumed)) {
-        const names = (Array.isArray(carried) ? carried : []).map(item => plain(typeof item === 'string' ? item : item?.name));
-        if (!names.some(name => name === plain(material.name) || name.startsWith(`${plain(material.name)} `))) {
+        if (!carries(carried, material.name)) {
             const price = material.costGp > 0 ? ` (${material.costGp} de oro)` : '';
             const spent = material.consumed ? ', que se gasta al lanzarlo' : '';
-            return { ok: false, reason: `Para ${spell.name} hace falta: ${material.name.toLowerCase()}${price}${spent}. Se compra en las tiendas.`, warnings, consumes: [] };
+            const holder = mates.find(o => carries(o.carried, material.name));
+            const where = holder ? handOver(text(holder.name)) : 'Se compra en las tiendas.';
+            return { ok: false, reason: `Para ${spell.name} hace falta: ${material.name.toLowerCase()}${price}${spent}. ${where}`, warnings, consumes: [] };
         }
         return { ok: true, reason: '', warnings, consumes: material.consumed ? [material.name] : [] };
     }
@@ -320,10 +326,76 @@ export function componentsCheck(spell, { carried = [], focus = '', silenced = fa
     if (!hasFocus(carried, focus)) {
         const example = /** @type {Record<string, string>} */ (FOCUS_SAID)[text(focus)];
         const what = example ? `un foco (${example})` : 'un foco';
-        if (strict) return { ok: false, reason: `Para ${spell.name} hace falta ${what} o una ${COMPONENT_POUCH.toLowerCase()}. Se compran en las tiendas.`, warnings, consumes: [] };
+        const holder = mates.find(o => !text(o.focus) && hasFocus(o.carried, focus));
+        const where = holder ? handOver(text(holder.name)) : 'Se compran en las tiendas.';
+        if (strict) return { ok: false, reason: `Para ${spell.name} hace falta ${what} o una ${COMPONENT_POUCH.toLowerCase()}. ${where}`, warnings, consumes: [] };
         warnings.push(`Sin foco ni ${COMPONENT_POUCH.toLowerCase()}: se lanza igual, a pulso.`);
     }
     return { ok: true, reason: '', warnings, consumes: [] };
+}
+
+/**
+ * Si alguien lleva un material por su nombre («Perla», o «Perla negra» si empieza igual).
+ *
+ * @param {any[]} carried Nombres u objetos con `name`.
+ * @param {string} name
+ * @returns {boolean}
+ */
+export function carries(carried, name) {
+    const wanted = plain(name);
+    if (!wanted) return false;
+    return (Array.isArray(carried) ? carried : [])
+        .map(item => plain(typeof item === 'string' ? item : item?.name))
+        .some(have => have === wanted || have.startsWith(`${wanted} `));
+}
+
+/**
+ * El foco que se le da a quien lanza y llega sin nada: el laúd a quien toca, y a los demás la
+ * bolsa de componentes, que sirve a cualquiera. Los dos se venden en las tiendas (D-J25).
+ *
+ * @param {string} focus El tipo de foco de su clase.
+ * @returns {string}
+ */
+export function focusItemFor(focus) {
+    return text(focus) === 'Instrument' ? 'Laúd' : COMPONENT_POUCH;
+}
+
+/**
+ * D-J25: el compañero que lanza y llega sin foco (los de un paquete llegan sin nada encima)
+ * trae el suyo: un clérigo no sale de casa sin su símbolo. Una sola vez (`focusGiven`): si
+ * se lo quitas o lo vende, ya no vuelve. A tu héroe no: él empieza con lo de su clase
+ * (`kit`), y lo que le falte lo compra.
+ *
+ * @param {Object} input
+ * @param {any} input.member
+ * @param {any} input.classRow
+ * @param {boolean} [input.isHero]
+ * @returns {string} El nombre de lo que se le da, o vacío.
+ */
+export function focusGift({ member, classRow, isHero = false }) {
+    const casting = casterOf(classRow);
+    if (!member || !casting || isHero || member.focusGiven || member.guest?.kind === 'ward') return '';
+    if (hasFocus(Array.isArray(member.items) ? member.items : [], casting.focus)) return '';
+    return focusItemFor(casting.focus);
+}
+
+/**
+ * D-J25: a quién del grupo le sirve algo de lo que piden los conjuros, al comprarlo: el laúd
+ * o la bolsa, a quien lanza sin foco; la perla, el diamante o el incienso, a quien sabe un
+ * conjuro que lo pide y no lo lleva. Nulo si no le hace falta a nadie (se lo queda el héroe).
+ *
+ * @param {Object} input
+ * @param {string} input.name Lo que se compra.
+ * @param {Array<{id: any, name: string, focus: string, carried: any[], needs: string[]}>} input.casters
+ *   Los que lanzan, en el orden del grupo; `needs`, los materiales de sus conjuros.
+ * @returns {{id: any, name: string, why: 'focus'|'material'}|null}
+ */
+export function supplyHolder({ name, casters }) {
+    const list = (Array.isArray(casters) ? casters : []).filter(Boolean);
+    const lacksFocus = list.find(c => text(c.focus) && hasFocus([name], c.focus) && !hasFocus(c.carried, c.focus));
+    if (lacksFocus) return { id: lacksFocus.id, name: text(lacksFocus.name), why: 'focus' };
+    const wants = list.find(c => (Array.isArray(c.needs) ? c.needs : []).some(need => plain(need) === plain(name)) && !carries(c.carried, name));
+    return wants ? { id: wants.id, name: text(wants.name), why: 'material' } : null;
 }
 
 /**
@@ -380,12 +452,13 @@ export function ritualCheck({ member, classRow, spell, inCombat = false }) {
  * @param {any[]} [input.carried]
  * @param {boolean} [input.silenced]
  * @param {boolean} [input.strictComponents] Si el foco se exige (D-J25: sí, si no se dice).
+ * @param {Array<{name: string, carried: any[], focus?: string}>} [input.others] Los demás del grupo, para decir quién lleva lo que falta.
  * @param {boolean} [input.asRitual]
  * @returns {CastVerdict}
  */
 export function canCastSpell({
     member, classRow, spell, slotLevel, inCombat = true, hasAction = true, hasBonus = true, hasReaction = true,
-    carried = [], silenced = false, strictComponents = true, asRitual = false,
+    carried = [], silenced = false, strictComponents = true, others = [], asRitual = false,
 }) {
     /** @type {(reason: string) => CastVerdict} */
     const no = (reason) => ({ ok: false, reason, slotLevel: 0, ritual: asRitual, minutes: 0, consumes: [], warnings: [] });
@@ -425,7 +498,7 @@ export function canCastSpell({
         slot = left.pactLevel > 0 ? left.pactLevel : wanted;
     }
 
-    const parts = componentsCheck(spell, { carried, focus: casting.focus, silenced, strict: strictComponents });
+    const parts = componentsCheck(spell, { carried, focus: casting.focus, silenced, strict: strictComponents, others });
     if (!parts.ok) return no(parts.reason);
 
     return { ok: true, reason: '', slotLevel: slot, ritual: asRitual, minutes, consumes: parts.consumes, warnings: parts.warnings };

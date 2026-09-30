@@ -34,6 +34,11 @@ export const DOMAINS = [
     'bestiario', 'personas', 'sitios', 'misiones', 'facciones', 'mundo', 'estados',
     'frases', 'sucesos',
     'charlas', 'quedadas',
+    // J11.3: cómo reacciona la gente de un pueblo a lo que hicisteis allí.
+    'ecos',
+    // J7.2, J7.5, J14.7 a J14.9: cómo es cada compañero, las noches y las charlas de pareja, y
+    // las misiones personales.
+    'companeros', 'noches', 'personales',
 ];
 
 /** Cuantas filas recientes se recuerdan por dominio, para no repetir. */

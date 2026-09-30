@@ -34,6 +34,9 @@ Bustos de 128×160 con fondo transparente, tono histórico (sin magia ni razas f
 - `el-nino-soplillo.png`: Pip, Huérfano y mensajero. Niño pecoso con gorra gris y abrigo grande, mirada asustada.
 - `el-desertor-ahorcado.png`: Darek, Ex-soldado. Castaño barbudo con gambesón roto, la soga aún colgando, la mano en el cuello.
 - `el-mercader-atrapado.png`: Valerius, Comerciante. Bigote rizado, abrigo verde con cuello de piel, frotándose las manos.
+- `mirlo.png`: Mirlo, Chaval de los recados. Niño flaco de pelo negro, gorra de lana y capa parda con nieve en los hombros, una carta en las manos.
+- `brigida.png`: Brígida, Partera y curandera. Mujer de pelo gris con toca de lino, delantal pardo y un manojo de hierbas en las manos.
+- `otilia.png`: Otilia, Refugiada. Mujer joven y morena, chal gris muy gastado, brazos cruzados y mirada desconfiada.
 ## Expresiones (novela visual)
 El mismo retrato con otro gesto; cara, ropa y pose no cambian. Nombre: `<id>--alegre.png`, `<id>--enfadado.png`, `<id>--triste.png`. Solo los confidentes.
 - `bran--alegre.png`: Bran riendo a carcajadas entre la barba gris.
@@ -122,3 +125,12 @@ Ahora todos los PNJ tienen sus tres gestos, con el mismo nombre `<id>--alegre|en
 - `el-nino-soplillo--alegre.png`: Pip riendo con los ojos cerrados.
 - `el-nino-soplillo--enfadado.png`: Pip enfadado, con morros.
 - `el-nino-soplillo--triste.png`: Pip llorando.
+- `mirlo--alegre.png`: Mirlo sonriendo de oreja a oreja.
+- `mirlo--enfadado.png`: Mirlo enfadado, apretando los dientes.
+- `mirlo--triste.png`: Mirlo llorando.
+- `brigida--alegre.png`: Brígida sonriendo con calma.
+- `brigida--enfadado.png`: Brígida seria y molesta, con el ceño fruncido.
+- `brigida--triste.png`: Brígida triste, con una lágrima.
+- `otilia--alegre.png`: Otilia sonriendo, por fin tranquila.
+- `otilia--enfadado.png`: Otilia furiosa, enseñando los dientes.
+- `otilia--triste.png`: Otilia llorando.

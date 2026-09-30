@@ -116,6 +116,81 @@
     color: var(--gs-accent-gold);
 }
 
+/* J14.4: tu gente en cada sitio a esta hora: su cara pequeña y su nombre, con un corazón si
+   quiere quedar contigo. La tarjeta de ese sitio lleva un borde dorado. */
+.gs-town-yours {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 4px;
+}
+
+.gs-town-you {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 1px 7px 1px 2px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.25);
+    font-size: 0.78em;
+    line-height: 1.6;
+    white-space: nowrap;
+}
+
+.gs-town-you-face {
+    width: 18px;
+    height: 18px;
+    object-fit: cover;
+    object-position: top;
+    border-radius: 50%;
+    image-rendering: pixelated;
+}
+
+.gs-town-you-face-none,
+.gs-town-you-initial {
+    display: inline-grid;
+    place-items: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.12);
+    font-size: 0.8em;
+    font-weight: bold;
+}
+
+.gs-town-you.gs-town-wants {
+    border-color: var(--gs-accent-gold);
+    color: var(--gs-accent-gold);
+}
+
+.gs-town-you-heart {
+    font-size: 0.85em;
+    color: #e0708a;
+}
+
+.gs-town-you-more {
+    align-self: center;
+    font-size: 0.75em;
+    opacity: 0.7;
+}
+
+.gs-town-place.gs-town-place-wants {
+    border-color: var(--gs-accent-gold);
+}
+
+.gs-town-loose-title {
+    align-self: center;
+    font-size: 0.85em;
+    opacity: 0.75;
+}
+
+.gs-town-act.gs-town-wants > i,
+.gs-town-act > i.fa-heart {
+    color: #e0708a;
+    opacity: 1;
+}
+
 /* Lo del gremio que no es de ningún sitio: volver a él desde una campaña. */
 .gs-town-extra {
     display: flex;

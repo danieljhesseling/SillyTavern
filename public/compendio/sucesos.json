@@ -110,7 +110,11 @@
             "effects": [
               "fama:-1"
             ],
-            "then": "Os ve. Lo contará en el primer pueblo que pise."
+            "then": "Os ve. Lo contará en el primer pueblo que pise.",
+            "follow": {
+              "id": "mulero-os-reconoce",
+              "days": 3
+            }
           }
         },
         {
@@ -182,7 +186,11 @@
               "fama:+1",
               "rumor"
             ],
-            "then": "Aguanta sin gritar. Os cuenta quién le disparó."
+            "then": "Aguanta sin gritar. Os cuenta quién le disparó.",
+            "follow": {
+              "id": "herido-cazador",
+              "days": 4
+            }
           },
           "fail": {
             "effects": [
@@ -272,7 +280,11 @@
             "effects": [
               "fama:+1"
             ],
-            "then": "Se miran entre ellos y apartan el tronco."
+            "then": "Se miran entre ellos y apartan el tronco.",
+            "follow": {
+              "id": "garrotes-vuelven",
+              "days": 3
+            }
           },
           "fail": {
             "effects": [
@@ -322,7 +334,11 @@
             "oro:+1d4",
             "rumor"
           ],
-          "then": "Va despacio, pero paga, y no calla en todo el camino."
+          "then": "Va despacio, pero paga, y no calla en todo el camino.",
+          "follow": {
+            "id": "buhonero-puesto",
+            "days": 5
+          }
         },
         {
           "label": "Decirle que no",
@@ -391,7 +407,11 @@
               "oro:+1d4",
               "rumor"
             ],
-            "then": "En el forro del jubón, unas monedas y una carta a medio escribir."
+            "then": "En el forro del jubón, unas monedas y una carta a medio escribir.",
+            "follow": {
+              "id": "cadaver-carta",
+              "days": 4
+            }
           },
           "fail": {
             "effects": [
@@ -409,7 +429,11 @@
             "vinculo:+1",
             "fama:+1"
           ],
-          "then": "Una tumba poco honda y una piedra encima. A los tuyos les parece bien."
+          "then": "Una tumba poco honda y una piedra encima. A los tuyos les parece bien.",
+          "follow": {
+            "id": "cadaver-hermana",
+            "days": 5
+          }
         },
         {
           "label": "Pasar de largo",
@@ -441,7 +465,11 @@
             "dc": 12
           },
           "success": {
-            "then": "Se lo creen, y hasta os desean buen viaje."
+            "then": "Se lo creen, y hasta os desean buen viaje.",
+            "follow": {
+              "id": "patrulla-se-entera",
+              "days": 5
+            }
           },
           "fail": {
             "effects": [
@@ -584,7 +612,11 @@
             "effects": [
               "fama:+1"
             ],
-            "then": "Uno en cada mano. Os invitan a la primera ronda."
+            "then": "Uno en cada mano. Os invitan a la primera ronda.",
+            "follow": {
+              "id": "borracho-agradecido",
+              "days": 2
+            }
           },
           "fail": {
             "effects": [
@@ -620,7 +652,11 @@
           "effects": [
             "rumor"
           ],
-          "then": "Se guarda la moneda y habla en voz muy baja."
+          "then": "Se guarda la moneda y habla en voz muy baja.",
+          "follow": {
+            "id": "mendigo-aviso",
+            "days": 4
+          }
         },
         {
           "label": "Soltarse",
@@ -790,7 +826,11 @@
             "effects": [
               "faccion:-1"
             ],
-            "then": "Se van sin cobrar, pero lo apuntan."
+            "then": "Se van sin cobrar, pero lo apuntan.",
+            "follow": {
+              "id": "cobrador-vuelve",
+              "days": 7
+            }
           },
           "fail": {
             "effects": [
@@ -897,6 +937,146 @@
           ],
           "then": "Se va llorando otra vez. Esto se va a saber."
         }
+      ],
+      "kind": "suceso"
+    },
+    {
+      "id": "herido-cazador",
+      "name": "El herido del camino",
+      "weight": 1,
+      "when": { "momento": "continuacion" },
+      "text": "El hombre al que sacasteis la flecha del hombro os encuentra aquí. Es cazador, todavía cojea, y trae algo al hombro.",
+      "options": [
+        { "label": "Aceptar lo que trae", "effects": ["comida", "rumor"], "then": "Carne seca para varios días, y lo que vio desde el bosque: quién puso la emboscada." },
+        { "label": "Decirle que no hacía falta", "effects": ["fama:+1"], "then": "Insiste en invitaros a una ronda. Esa noche, en la posada, se habla bien de vosotros." }
+      ],
+      "kind": "suceso"
+    },
+    {
+      "id": "buhonero-puesto",
+      "name": "El buhonero, otra vez",
+      "weight": 1,
+      "when": { "momento": "continuacion" },
+      "text": "El buhonero al que acompañasteis ha montado su puesto aquí. Os reconoce de lejos y os hace señas para que os acerquéis.",
+      "options": [
+        { "label": "Dejar que os invite", "effects": ["comida", "rumor"], "then": "Pan, queso y lo que se oye por los caminos, que es mucho." },
+        { "label": "Comprarle un amuleto", "cost": { "oro": 3 }, "effects": ["cura:1d6"], "then": "Dice que es contra la fiebre. Algo hace: quien lo lleva se encuentra mejor." }
+      ],
+      "kind": "suceso"
+    },
+    {
+      "id": "garrotes-vuelven",
+      "name": "Los del garrote vuelven",
+      "weight": 1,
+      "when": { "momento": "continuacion" },
+      "text": "Los del peaje del tronco os han seguido hasta aquí. Esta vez son seis, y uno lleva una ballesta.",
+      "options": [
+        { "label": "Pagar lo de la otra vez", "cost": { "oro": 6 }, "then": "Cuentan las monedas despacio y se van sin prisa." },
+        {
+          "label": "Plantarles cara otra vez",
+          "check": { "skill": "intimidation", "dc": 14 },
+          "success": { "effects": ["fama:+1"], "then": "Se acuerdan de cómo acabó la otra vez, y se van." },
+          "fail": { "effects": ["herida:1d6", "oro:-3"], "then": "Esta vez no se asustan. Salís con golpes y con menos oro." }
+        }
+      ],
+      "kind": "suceso"
+    },
+    {
+      "id": "cadaver-carta",
+      "name": "La carta del muerto",
+      "weight": 1,
+      "when": { "momento": "continuacion" },
+      "text": "Un mensajero pregunta en voz alta por una carta que no llegó a su destino. Es la que encontrasteis en el jubón del muerto del camino.",
+      "options": [
+        { "label": "Dársela", "effects": ["oro:+1d6", "fama:+1"], "then": "Paga bien por ella, y no pregunta cómo la tenéis." },
+        {
+          "label": "Decir que no sabéis nada",
+          "check": { "skill": "deception", "dc": 12 },
+          "success": { "effects": ["pista"], "then": "Se va. La carta sigue en vuestro petate, y ahora sabéis que vale algo." },
+          "fail": { "effects": ["fama:-1"], "then": "No se lo cree. Se va diciendo en voz alta que robáis a los muertos." }
+        }
+      ],
+      "kind": "suceso"
+    },
+    {
+      "id": "cadaver-hermana",
+      "name": "La hermana del muerto",
+      "weight": 1,
+      "when": { "momento": "continuacion" },
+      "text": "Una mujer con cara de no dormir pregunta por quienes enterraron a un hombre en el camino. Era su hermano, y lleva días buscándolo.",
+      "options": [
+        { "label": "Llevarla a la tumba", "cost": { "horas": 1 }, "effects": ["fama:+1", "vinculo:+1"], "then": "Llora un rato junto a la piedra. Al volver, os da las gracias con un apretón de manos que no se olvida." },
+        { "label": "Decirle dónde está", "effects": ["rumor"], "then": "Os da las gracias y os cuenta quién iba detrás de su hermano." }
+      ],
+      "kind": "suceso"
+    },
+    {
+      "id": "patrulla-se-entera",
+      "name": "El sargento se ha enterado",
+      "weight": 1,
+      "when": { "momento": "continuacion" },
+      "text": "El sargento de la patrulla del camino os encuentra aquí. Ya sabe que lo que le contasteis era mentira.",
+      "options": [
+        { "label": "Pagarle para que lo olvide", "cost": { "oro": 4 }, "then": "Se guarda las monedas. «Aquí no ha pasado nada», dice." },
+        {
+          "label": "Decirle la verdad ahora",
+          "check": { "skill": "persuasion", "dc": 13 },
+          "success": { "effects": ["faccion:+1"], "then": "Os escucha hasta el final, y se va con un «la próxima vez, a la primera»." },
+          "fail": { "effects": ["faccion:-1", "oro:-3"], "then": "Multa, y ahora os tienen bien apuntados." }
+        }
+      ],
+      "kind": "suceso"
+    },
+    {
+      "id": "mulero-os-reconoce",
+      "name": "El mulero os reconoce",
+      "weight": 1,
+      "when": { "momento": "continuacion" },
+      "text": "El mulero del carro volcado está aquí, con el brazo en cabestrillo. Os señala a gritos delante de todo el mundo: sois los que le registrasteis la carga.",
+      "options": [
+        { "label": "Devolverle lo suyo", "cost": { "oro": 5 }, "effects": ["fama:+1"], "then": "Se calla. La gente vuelve a lo suyo, aunque alguno se queda mirando." },
+        { "label": "Irse de aquí", "effects": ["fama:-1", "hora"], "then": "Os vais con la gente cuchicheando a vuestra espalda." }
+      ],
+      "kind": "suceso"
+    },
+    {
+      "id": "mendigo-aviso",
+      "name": "El aviso del mendigo",
+      "weight": 1,
+      "when": { "momento": "continuacion" },
+      "text": "El mendigo ciego os coge otra vez de la manga. Esta vez no pide nada: «Alguien ha preguntado por vosotros. No me gustó su voz.»",
+      "options": [
+        { "label": "Preguntarle quién", "effects": ["rumor", "pista"], "then": "Os describe una voz, un olor y una bota que cojea. Es más de lo que parece." },
+        { "label": "Darle otra moneda y seguir", "cost": { "oro": 1 }, "effects": ["fama:+1"], "then": "Sonríe y os bendice. En este pueblo se acaba sabiendo todo." }
+      ],
+      "kind": "suceso"
+    },
+    {
+      "id": "cobrador-vuelve",
+      "name": "El cobrador vuelve",
+      "weight": 1,
+      "when": { "momento": "continuacion" },
+      "text": "El cobrador al que echasteis ha vuelto. Trae cuatro guardias y el libro abierto por vuestra página.",
+      "options": [
+        { "label": "Pagar con recargo", "cost": { "oro": 6 }, "effects": ["faccion:+1"], "then": "Cierra el libro. Por esta vez, estáis en paz." },
+        {
+          "label": "Negarse otra vez",
+          "check": { "skill": "intimidation", "dc": 15 },
+          "success": { "effects": ["faccion:-1", "fama:+1"], "then": "Se van, pero los guardias ya os miran como a enemigos." },
+          "fail": { "effects": ["oro:-8", "faccion:-1", "herida:1d4"], "then": "Os cobran a golpes, y con recargo." }
+        }
+      ],
+      "kind": "suceso"
+    },
+    {
+      "id": "borracho-agradecido",
+      "name": "El borracho de la puerta",
+      "weight": 1,
+      "when": { "momento": "continuacion" },
+      "text": "Uno de los dos borrachos que separasteis os reconoce. Sobrio parece otra persona, y quiere pagaros algo.",
+      "options": [
+        { "label": "Aceptar la ronda", "effects": ["rumor"], "then": "Entre trago y trago, os cuenta lo que se mueve por aquí." },
+        { "label": "Decirle que se ahorre el dinero", "effects": ["fama:+1"], "then": "Se va contando a todo el mundo que le salvasteis de una paliza." }
       ],
       "kind": "suceso"
     }

@@ -52,7 +52,7 @@ import {
     combatEncounter, currentBoardName, currentLocationName, currentWorldFactions, factionDaysDue, partyMembers,
     setFactionDaysDue, setPartyMembers,
 } from './state.js';
-import { getAbilityCatalogue } from './magic.js';
+import { afterRestMagic, getAbilityCatalogue } from './magic.js';
 import { expireBoard, getGuild, openDispatch, returnDispatches, rivalsMove } from './contracts.js';
 import { openCaseBoard, startCase } from './cases.js';
 import { applyFall } from './combat-flow.js';
@@ -705,6 +705,9 @@ export async function takeRest(kind) {
         }
         savePartyState();
         if (charged.length > 0) postCombatNarration(charged.join('\n'));
+        // J19.2: con el largo se acaba lo que duraba horas y se vuelve a preparar (se abre
+        // el cuadro de preparar al despertar).
+        afterRestMagic(kind);
     }
     // Z4: de noche pasan cosas.
     if (kind === 'largo') playSucesos('descanso');

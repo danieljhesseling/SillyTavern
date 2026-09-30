@@ -366,22 +366,22 @@
       "unlock": {
         "type": "mision",
         "label": "La casa de Robledo",
-        "describe": "Su misión personal: ir a Robledo y salvar la casa de su madre.",
+        "describe": "Su misión personal: ir a Robledo, salvar la casa de su madre y decidir qué hacer con Lope, el arriero que le robaba.",
         "quest": {
           "id": "gerd-robledo",
           "title": "La casa de Robledo",
           "where": "Robledo, una semana al norte",
-          "pitch": "El señor de Robledo quiere quitarle la casa a la madre de Gerd por tres años de renta sin pagar. Gerd le mandaba la renta cada mes con un mensajero. Ahora que sabe leer, ha visto que los recibos que le traía eran listas de la compra.",
+          "pitch": "El señor de Robledo va a quitarle la casa a la madre de Gerd por tres años de renta sin pagar. Gerd mandaba la renta cada mes con Lope, el arriero, y ahora que sabe leer ha visto que los recibos que le traía eran listas de la compra. A su madre, Lope le decía que Gerd no mandaba nada.",
           "endings": [
             {
               "id": "pagar",
-              "title": "Pagar la deuda",
-              "summary": "Pagáis los tres años al señor. La madre de Gerd conserva la casa, pero el mensajero se queda con lo robado y Gerd, con la espina clavada."
+              "title": "Pagar y dejarlo ir",
+              "summary": "Pagáis los tres años al señor y dejáis ir a Lope. Es mucho oro, y lo robado no vuelve. Pero la madre de Gerd ya no friega suelos ajenos, y cada invierno llega a la posada, de parte de Lope, un saco de castañas de Robledo."
             },
             {
               "id": "plantar-cara",
-              "title": "Plantar cara",
-              "summary": "Encontráis al mensajero y lo lleváis ante el señor con sus recibos falsos. La casa se salva sin pagar, pero el mensajero es sobrino del señor, y en Robledo ya no os quieren ver."
+              "title": "Llevarlo ante el señor",
+              "summary": "Lleváis a Lope ante el señor con sus recibos falsos. La casa se salva sin pagar una moneda: el señor se cobra la deuda con el carro y la mula de Lope, y a él lo cuelgan en la plaza a la mañana siguiente. Gerd lo mira hasta el final, sin apartar la vista. Esa noche no cena."
             }
           ]
         }
@@ -428,17 +428,17 @@
           "id": "nella-tobias",
           "title": "El bosque del barón",
           "where": "Hoz, en el bosque del barón",
-          "pitch": "A Tobías, el hermano pequeño de Nella, lo han pillado cazando en el bosque del barón de Hoz, como cazaba ella antes de irse. Dentro de un mes lo mandan a las minas.",
+          "pitch": "A Tobías, el hermano pequeño de Nella, lo han pillado cazando en el bosque del barón de Hoz, como cazaba ella antes de irse. Dentro de un mes lo mandan a las minas. El barón lo usa de cebo: sabe que Nella irá a buscarlo.",
           "endings": [
             {
               "id": "multa",
               "title": "Pagar la multa",
-              "summary": "Pagáis al barón y Tobías sale libre, sin deudas. Le devuelves a Nella su flecha de plumas rojas. Es mucho oro, y en Hoz su cartel sigue en la pared: a ella el barón no la perdona."
+              "summary": "Nella espera escondida en el bosque mientras pagáis la multa al barón. Tobías sale libre, sin deudas, y vuelve a casa. Le devuelves a Nella su flecha de plumas rojas. Es mucho oro, y el barón se queda con las ganas: el cartel de Nella sigue en todas las plazas de la costa."
             },
             {
               "id": "carcel",
               "title": "La cárcel de noche",
-              "summary": "Entráis de noche por donde Nella sabe y sacáis a Tobías sin pagar. Le devuelves su flecha de plumas rojas, y Nella la usa para clavar su cartel en la puerta del barón. Desde entonces, el barón pone precio también a tu cabeza."
+              "summary": "Entráis de noche por donde Nella sabe, sin que ladre un perro, y sacáis a Tobías sin pagar. Le devuelves su flecha de plumas rojas, y Nella la usa para clavar su cartel en la puerta del barón: ya no le hace falta, tiene a Tobías al lado. Tobías ya no puede volver a Hoz y se queda en Puerto Alba. Desde entonces, el barón pone precio también a tu cabeza."
             }
           ]
         }
@@ -454,8 +454,8 @@
         "type": "descuento",
         "on": "posada",
         "amount": 0.2,
-        "label": "La esquina de Osric",
-        "describe": "Tomás aprecia a quien no rompe nada: la posada os cobra un 20 % menos."
+        "label": "La guardia de la posada",
+        "describe": "Osric hace la guardia de noche en la posada, sin cobrar. Tomás se lo agradece a sus amigos: la posada os cobra un 20 % menos."
       }
     },
     {
@@ -485,7 +485,7 @@
           "id": "osric-anillo",
           "title": "El anillo de Valdés",
           "where": "Valdés, a dos días de Puerto Alba",
-          "pitch": "Hace once años, Osric se durmió en su guardia y unos bandidos mataron a su señor. Todavía lleva su anillo. Quiere devolvérselo a la viuda antes de comprarse la barca.",
+          "pitch": "Hace once años, Osric se durmió en su guardia y unos bandidos mataron a su señor. Todavía lleva su anillo. Quiere devolvérselo a la viuda antes de comprarse la barca, y no sabe si contarle la verdad.",
           "endings": [
             {
               "id": "verdad",
@@ -495,7 +495,7 @@
             {
               "id": "mentira",
               "title": "Una mentira piadosa",
-              "summary": "Le decís que su marido murió luchando. Ella llora tranquila y se queda el anillo. Osric vuelve sin el anillo, pero sigue encendiendo su vela cada tarde. La «Gaviota» sigue en venta: todavía no se ve con derecho a subirse a ella."
+              "summary": "Le decís que su marido murió luchando. Ella llora, pero en paz, y se queda el anillo. Osric vuelve sin el anillo, pero sigue encendiendo su vela cada tarde. La «Gaviota» sigue en venta: todavía no se ve con derecho a subirse a ella."
             }
           ]
         }
@@ -761,7 +761,7 @@
             {
               "text": "No es ninguna vergüenza. Mucha gente no sabe.",
               "bond": 1,
-              "then": "Ya. Pero mucha gente no tiene cuarenta años."
+              "then": "Ya. Pero no a los cuarenta años."
             },
             {
               "text": "Te puedo enseñar, si quieres.",
@@ -835,7 +835,7 @@
         },
         {
           "note": "Tardáis horas. Al final, en la tabla, pone ESTOY BIEN MADRE, con letras de todos los tamaños.",
-          "say": "La voy a copiar en papel bueno. Y en la próxima pelea voy a estar más atento: ahora tengo algo que contarle.",
+          "say": "La voy a copiar en papel bueno y se la mando con Lope, el arriero, que sube a Robledo cada mes. La primera carta de mi vida, con mi letra.",
           "mood": "alegre"
         }
       ]
@@ -851,8 +851,8 @@
       "where": "muelle",
       "beats": [
         {
-          "note": "Gerd no está comiendo, y eso ya es raro. Tiene otra carta del cura, y esta vez la ha leído él solo, despacio.",
-          "say": "El señor de Robledo quiere quitarle la casa a mi madre. Dice que le debe tres años de renta. ¡Mentira! Yo le mando la renta cada mes, con un mensajero.",
+          "note": "Gerd no está comiendo, y eso ya es raro. Tiene en la mano la respuesta del cura de Robledo. Se la ha traído Lope, el arriero, que no sabe leer y ya va de vuelta a Robledo. Esta vez Gerd la ha leído él solo, despacio.",
+          "say": "Mi madre lloró con mi carta. Pero el cura me cuenta algo más: el señor de Robledo le va a quitar la casa. Dice que le debe tres años de renta. ¡Mentira! Yo mando la renta cada mes, con Lope, el arriero.",
           "mood": "enfadado",
           "replies": [
             {
@@ -875,13 +875,13 @@
         },
         {
           "note": "Gerd saca de la camisa un montón de papeles viejos, doblados en cuatro.",
-          "say": "Cada vez, el mensajero me traía un recibo firmado. Tres años guardándolos. Ahora que sé leer, mira lo que pone: «dos sacos de nabos», «una mula coja». ¡Son listas de la compra!",
+          "say": "Cada mes, Lope me traía un recibo firmado. Tres años guardándolos. Ahora que sé leer, mira lo que pone: «dos sacos de nabos», «una mula coja». ¡Son listas de la compra!",
           "mood": "enfadado",
           "replies": [
             {
               "text": "Aprender a leer te ha salido a cuenta.",
               "bond": 1,
-              "then": "¡Ja! Pues sí. Y ahora ese mensajero me va a oír.",
+              "then": "¡Ja! Pues sí. Y ahora Lope me va a oír.",
               "mood": "alegre"
             },
             {
@@ -892,13 +892,15 @@
             {
               "text": "Te fiabas de papeles que no sabías leer.",
               "bond": -1,
-              "then": "Ya lo sé. No hace falta que me lo restriegues.",
+              "then": "Ya lo sé. Me daba vergüenza pedirle a nadie que me los leyera.",
               "mood": "triste"
             }
           ]
         },
         {
-          "say": "Tengo que ir a Robledo. Pagar otra vez lo que pide ese señor, o buscar al mensajero y plantarle cara. No quiero ir solo.",
+          "note": "Gerd baja la voz. El enfado se le ha ido de golpe.",
+          "say": "Y hay más. Lope le decía a mi madre que a mí me iba mal y que no mandaba nada. Y ella, para no pedirme, lleva tres años fregando suelos en casa del señor para pagarle lo que puede. Tengo que ir a Robledo, y no quiero ir solo.",
+          "mood": "triste",
           "replies": [
             {
               "text": "No vas a ir solo. Vamos contigo.",
@@ -914,8 +916,8 @@
           ]
         },
         {
-          "note": "Gerd te da un abrazo que te deja sin aire. Huele a guiso.",
-          "say": "Robledo está a una semana al norte. Cuando quieras, avísame. Yo ya tengo el escudo preparado."
+          "note": "Gerd te da un abrazo que te deja sin aire. Huele a guiso. Luego se queda callado un rato, y eso en él es mucho.",
+          "say": "Lo que no sé es qué haré con Lope. Si lo llevo ante el señor, lo cuelgan en la plaza, y tiene cinco críos. Robledo está a una semana al norte. Cuando quieras, avísame."
         }
       ]
     },
@@ -1038,8 +1040,8 @@
           ]
         },
         {
-          "note": "Nella recoge las cartas y se las guarda. Esta vez no te propone ninguna apuesta.",
-          "say": "No se lo cuentes a Gerd, que se pone tierno y me invita a guiso."
+          "note": "Nella recoge las cartas. Luego saca del carcaj una flecha torcida, de plumas rojas, y le da vueltas entre los dedos. Esta vez no te propone ninguna apuesta.",
+          "say": "Me la hizo Tobías el día que me fui. Vuela fatal, así que no la tiro nunca. Y no se lo cuentes a Gerd, que se pone tierno y me invita a guiso."
         }
       ]
     },
@@ -1115,7 +1117,7 @@
       "beats": [
         {
           "note": "Nella te espera al amanecer con la mochila hecha. Tiene los ojos rojos, de no dormir.",
-          "say": "Ha llegado un buhonero de Hoz. A Tobías lo han pillado cazando en el bosque del barón. Dentro de un mes lo mandan a las minas.",
+          "say": "Ha llegado un buhonero de Hoz. A Tobías lo han pillado cazando en el bosque del barón, y dentro de un mes lo mandan a las minas. Por eso ha salido ahora mi cartel: a Tobías le habrán hecho decir dónde estoy. Y el barón sabe que iré a buscarlo.",
           "mood": "triste",
           "replies": [
             {
@@ -1161,7 +1163,7 @@
           ]
         },
         {
-          "say": "Hay dos maneras de sacarlo: pagar la multa al barón, que es mucho oro, o entrar de noche en su cárcel. Yo sé por dónde.",
+          "say": "Hay dos maneras de sacarlo: pagar la multa al barón, que es mucho oro, o entrar de noche en su cárcel. Yo sé por dónde, y los perros del barón todavía me conocen: les daba de comer para que no ladraran.",
           "replies": [
             {
               "text": "Lo decidimos allí. Pero vamos.",
@@ -1176,7 +1178,7 @@
           ]
         },
         {
-          "note": "Nella te pone en la mano una de sus flechas, la de las plumas rojas.",
+          "note": "Nella saca la flecha torcida de Tobías, la de las plumas rojas, y te la pone en la mano.",
           "say": "Guárdamela. Cuando Tobías esté fuera, me la devuelves. Hasta entonces, es tuya."
         }
       ]
@@ -1203,7 +1205,7 @@
             {
               "text": "Pues vaya mote más triste.",
               "bond": -1,
-              "then": "Triste no. Exacto.",
+              "then": "No es triste. Es exacto.",
               "mood": "enfadado"
             },
             {
@@ -1224,7 +1226,7 @@
             {
               "text": "Vas a volver, Osric.",
               "bond": 0,
-              "then": "Eso dicen todos. Hasta que no."
+              "then": "Eso dicen todos, hasta el día que no vuelven."
             },
             {
               "text": "Me los quedaría yo.",
@@ -1327,7 +1329,7 @@
           ]
         },
         {
-          "say": "Yo era el escolta del señor Aldric de Valdés. Una noche, de camino, me tocaba la guardia y me dormí. Cuando abrí los ojos, los bandidos ya se iban y mi señor estaba muerto.",
+          "say": "Yo era el escolta del señor Aldric de Valdés. Una noche, de camino, me tocaba la guardia. Me senté lejos del fuego y me dormí. Los bandidos ni me vieron. Cuando abrí los ojos, ya se iban, y mi señor estaba muerto.",
           "mood": "triste",
           "replies": [
             {
@@ -1372,7 +1374,7 @@
         },
         {
           "note": "Osric saca de la bolsa un anillo de plata con una torre grabada, lo mira y lo vuelve a guardar.",
-          "say": "Era suyo. Se lo quité del dedo para llevárselo a su viuda, y nunca he tenido valor. Todos creen que no pude con los bandidos. Nadie sabe que me dormí. Ahora lo sabes tú."
+          "say": "Era suyo. Lo llevaba colgado del cuello, y los bandidos no lo vieron. Se lo quité para llevárselo a su viuda, y nunca he tenido valor. Todos creen que no pude con los bandidos. Nadie sabe que me dormí. Ahora lo sabes tú."
         }
       ]
     },

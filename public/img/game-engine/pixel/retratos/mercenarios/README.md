@@ -2,7 +2,7 @@
 
 Bustos de 128×160 con fondo transparente. El nombre del archivo es el slug del `name` en `HIRELINGS` (`public/scripts/game-engine/campaign/guests.js`).
 
-- `gerd-el-mellado.png`: Gerd el Mellado (guerrero, hombre). Veterano canoso de nariz rota y dientes mellados, cota de malla, sonrisa bruta.
+- `gerd-el-mellado.png`: Gerd el Mellado (guerrero, hombre). Veterano canoso de nariz rota y dientes mellados, jubón de cuero tachonado, sonrisa bruta.
 - `nella-tresflechas.png`: Nella Tresflechas (exploradora, mujer). Joven pelirroja de pelo corto, capa verde con capucha, carcaj al hombro.
 - `osric-mediapaga.png`: Osric Mediapaga (guerrero, hombre). Calvo corpulento de barba negra, peto abollado, enseñando una moneda.
 
@@ -10,9 +10,9 @@ Bustos de 128×160 con fondo transparente. El nombre del archivo es el slug del 
 
 Sus historias están en `public/compendio/quedadas.json` (escenas de rango 1 a 4 y su misión) y en `public/compendio/charlas.json`. Lo que conviene que se vea si se dibuja algo más de ellos:
 
-- **Gerd**, unos cuarenta años, de Robledo (una semana al norte). Veterano de la guerra con Ramiro. No sabía leer; aprende con un carbón y una tabla. Objetos suyos: la tabla con «ESTOY BIEN MADRE», un fajo de recibos falsos, el escudo.
-- **Nella**, joven, de Hoz. Cazaba a escondidas en el bosque del barón para dar de comer a su familia. Objetos suyos: la flecha de plumas rojas, el cartel de «se busca» doblado en el carcaj, una baraja.
-- **Osric**, pasados los cuarenta y cinco, de Puerto Alba (su padre pescaba en el muelle). Fue escolta del señor Aldric de Valdés y se durmió en la guardia la noche que lo mataron. Objetos suyos: el anillo de plata con una torre, la vela de la capilla, la barca «Gaviota».
+- **Gerd**, unos cuarenta años, de Robledo (una semana al norte). Veterano de la guerra con Ramiro. No sabía leer; aprende con un carbón y una tabla. Manda la renta de la casa de su madre con Lope, el arriero que sube el pescado salado, y Lope se la roba. Objetos suyos: la tabla con «ESTOY BIEN MADRE», un fajo de recibos falsos, el escudo.
+- **Nella**, joven, de Hoz. Cazaba a escondidas en el bosque del barón para dar de comer a su familia, y daba de comer a los perros del barón para que no ladraran. Objetos suyos: la flecha torcida de plumas rojas que le hizo su hermano Tobías (no la tira nunca), el cartel de «se busca» doblado en el carcaj, una baraja.
+- **Osric**, pasados los cuarenta y cinco, de Puerto Alba (su padre pescaba en el muelle). Fue escolta del señor Aldric de Valdés y se durmió en la guardia la noche que lo mataron. Objetos suyos: el anillo de plata con una torre (el señor lo llevaba colgado del cuello), la vela de la capilla, la barca «Gaviota», una moneda en la mano.
 
 ## Expresiones (novela visual)
 

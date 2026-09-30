@@ -36,7 +36,8 @@ describe('el contenido: compendio/charlas.json', () => {
     test('es una batería del compendio que se carga sin errores', () => {
         expect(DOMAINS).toContain('charlas');
         expect(validateBattery('charlas', file)).toEqual([]);
-        expect(rows.length).toBe(file.rows.length);
+        // J13.5: las frases sueltas (`kind: "frase"`) son de `companion-lines.js`.
+        expect(rows.length).toBe(file.rows.filter((/** @type {any} */ r) => !r.kind || r.kind === 'charla').length);
     });
 
     test('cada fila tiene una o dos frases y tres respuestas: una que gusta, una que no y una neutra', () => {

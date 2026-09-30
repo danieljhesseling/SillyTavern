@@ -40,6 +40,12 @@ export const INJURABLE_STATS = [
     'intelligence', 'wisdom', 'charisma', 'maxHp',
 ];
 
+/** Cómo se lee cada número en una herida, en la ficha: «velocidad -10», no «speed -10». */
+const STAT_SAID = /** @type {Record<string, string>} */ ({
+    speed: 'velocidad', armorClass: 'CA', strength: 'Fuerza', dexterity: 'Destreza', constitution: 'Constitución',
+    intelligence: 'Inteligencia', wisdom: 'Sabiduría', charisma: 'Carisma', maxHp: 'PG máximos',
+});
+
 /**
  * La tabla por defecto: de rasguño a mutilación.
  *
@@ -303,7 +309,7 @@ export function treatmentCost(member, goldPerDay = 5) {
 export function describeInjuries(member) {
     return readInjuries(member).map((injury) => {
         const effects = Object.entries(injury.modifiers)
-            .map(([stat, amount]) => `${stat} ${amount > 0 ? '+' : ''}${amount}`)
+            .map(([stat, amount]) => `${STAT_SAID[stat] ?? stat} ${amount > 0 ? '+' : ''}${amount}`)
             .join(', ');
         const when = injury.permanent ? 'para siempre' : `${injury.daysLeft} día(s)`;
         return `${injury.label} — ${effects} · ${when}`;

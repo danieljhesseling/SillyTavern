@@ -19,7 +19,7 @@
 import { classIcon } from './hero.js';
 import { addScar } from './feats.js';
 import { listNames } from './engine-narrator.js';
-import { healInjuries, readInjuries } from '../rules/injuries.js';
+import { healInjuries, readInjuries, setInjury } from '../rules/injuries.js';
 import { planLongRest, getHitDice } from '../rules/rest.js';
 import { readNeeds } from '../rules/needs.js';
 
@@ -170,7 +170,15 @@ export function wakeFromRest(hero, { day }) {
     if (woke.abilityUses) woke.abilityUses = {};
     if (woke.spellCharges) woke.spellCharges = {};
     if (woke.slotsUsed) woke.slotsUsed = {};
-    if (woke.needs) woke.needs = { ...readNeeds(woke), hunger: 0, thirst: 0, rest: 0 };
+    if (woke.needs) woke.needs = { ...readNeeds(woke), hunger: 0, thirst: 0, rest: 0, exposure: 0 };
+    // El agotamiento va como una herida que no cuenta días (`exhaustionInjury`): se va comiendo,
+    // bebiendo y durmiendo, no con el tiempo. En el gremio ha hecho las tres cosas.
+    if (readInjuries(woke).some(injury => injury.id === 'exhaustion')) {
+        const patch = setInjury(woke, null, 'exhaustion');
+        woke.injuries = patch.injuries;
+        woke.baseStats = patch.baseStats;
+        Object.assign(woke, patch.stats);
+    }
 
     const name = text(woke.name);
     const full = hpBefore < (Number(woke.maxHp) || 0) && woke.hp >= (Number(woke.maxHp) || 0);

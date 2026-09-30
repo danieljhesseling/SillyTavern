@@ -47,6 +47,10 @@ Bustos de 128×160 con fondo transparente, tono gótico de Barovia. El nombre de
 - `lazlo-ulrich.png`: Lazlo Ulrich, Fantasma del último burgomaestre de Berez. Espectro verde de gran barba, cadena de cargo, mirada asustada.
 - `rahadin.png`: Rahadin, Chambelán del castillo. Elfo oscuro de piel gris, pelo negro, uniforme morado de cuello alto, espada a la espalda.
 - `cyrus-belview.png`: Cyrus Belview, Criado del castillo. Mestizo de sonrisa torcida, un ojo verde saltón, levita negra y una llave al cuello.
+- `nikolai-barquero.png`: Nikolai, Barquero del lago Baratok. Barba negra, gorra de pescador, abrigo encerado y un remo al hombro, cara de pocos amigos.
+- `gavril-druida.png`: Gavril, Druida joven. Pelo castaño revuelto, ojeras, túnica verde musgo y collar de cuentas, mirada culpable.
+- `ermitano-cascada.png`: El ermitaño de la cascada, Mago que ha perdido la memoria. Viejo de pelo y barba blancos, túnica azul gastada y bastón torcido.
+- `dragomir-nido.png`: Dragomir, Guardián del nido de los cuervos. Canoso de barba corta, capa negra de plumas y un cuervo en el hombro.
 
 ## Expresiones (novela visual)
 
@@ -172,3 +176,15 @@ Ahora todos los PNJ tienen sus tres gestos, con el mismo nombre `<id>--alegre|en
 - `cyrus-belview--alegre.png`: Cyrus riendo con todos los dientes.
 - `cyrus-belview--enfadado.png`: Cyrus enfadado, con el ojo verde encendido.
 - `cyrus-belview--triste.png`: Cyrus llorando.
+- `nikolai-barquero--alegre.png`: Nikolai riendo a carcajadas.
+- `nikolai-barquero--enfadado.png`: Nikolai gritando, furioso.
+- `nikolai-barquero--triste.png`: Nikolai triste, con una lágrima.
+- `gavril-druida--alegre.png`: Gavril con una sonrisa tímida.
+- `gavril-druida--enfadado.png`: Gavril enfadado, apretando los dientes.
+- `gavril-druida--triste.png`: Gavril llorando.
+- `ermitano-cascada--alegre.png`: El ermitaño riendo a carcajadas.
+- `ermitano-cascada--enfadado.png`: El ermitaño gritando, furioso.
+- `ermitano-cascada--triste.png`: El ermitaño triste, con una lágrima.
+- `dragomir-nido--alegre.png`: Dragomir con media sonrisa.
+- `dragomir-nido--enfadado.png`: Dragomir enfadado, con mirada dura.
+- `dragomir-nido--triste.png`: Dragomir triste, con una lágrima.

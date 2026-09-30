@@ -152,8 +152,10 @@ export function routesOf(location, friendly = [], season = '', done = []) {
                 : waiting(route)
                     ? [text(route?.note), 'Cerrado por ahora: se abrirá más adelante en la historia'].filter(Boolean).join('. ')
                     : text(route?.note),
-            // Un paso cerrado sigue en la lista: se ve que existe y que ahora no se puede.
-            closed: (Boolean(route?.closed) && !opensForYou(route)) || outOfSeason(route) || waiting(route),
+            // Un paso cerrado sigue en la lista: se ve que existe y que ahora no se puede. Uno
+            // cerrado por su puerta (J10.1, `route-gates.js`) no lo abre caerle bien a quien lo
+            // nombre la nota: se abre con lo que pide la puerta.
+            closed: (Boolean(route?.closed) && (Boolean(route?.gated) || !opensForYou(route))) || outOfSeason(route) || waiting(route),
             // Y una ruta vale para ir y volver salvo que diga lo contrario. Sin esto el
             // campo existia en el archivo y no hacia nada, que es peor que no existir.
             oneWay: Boolean(route?.oneWay),

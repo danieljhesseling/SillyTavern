@@ -16,8 +16,8 @@ const HERO = { name: 'Tessa', gender: 'Mujer' };
 
 /** De dónde es la misión de cada uno, y lo que se siembra antes y se paga después. */
 const STORIES = {
-    'Gerd el Mellado': { place: 'Robledo', seeds: [[2, /No sé leer/], [3, /ESTOY BIEN MADRE/], [4, /Ahora que sé leer/]] },
-    'Nella Tresflechas': { place: 'Hoz', seeds: [[1, /El de antes era peor/], [2, /Tobías/], [3, /la Ratera/], [4, /Tobías/]] },
+    'Gerd el Mellado': { place: 'Robledo', seeds: [[2, /No sé leer/], [3, /ESTOY BIEN MADRE/], [3, /Lope, el arriero/], [4, /Ahora que sé leer/], [4, /Lope/]] },
+    'Nella Tresflechas': { place: 'Hoz', seeds: [[1, /El de antes era peor/], [2, /Tobías/], [2, /plumas rojas/], [3, /la Ratera/], [4, /Tobías/], [4, /cartel/]] },
     'Osric Mediapaga': { place: 'Valdés', seeds: [[1, /me pagaron la mitad/], [2, /«Gaviota»/], [3, /Media paga/], [3, /anillo/], [4, /«Gaviota»/]] },
 };
 
@@ -111,8 +111,8 @@ describe('D-J33: las historias de los mercenarios', () => {
         const price = /(\S+) monedas de oro y es mía/.exec(osric)?.[1];
         expect(price).toBe('Trescientas');
         expect(300).toBeGreaterThan(MERCENARY_FEE * 3);
-        // Lo que Gerd manda a Robledo es la renta, que lleva un mensajero al señor: si fuera dinero
-        // para su madre, ella habría notado en tres años que no llegaba.
+        // Lo que Gerd manda a Robledo es la renta, que lleva Lope, el arriero, al señor: si fuera
+        // dinero para su madre, ella habría notado en tres años que no llegaba.
         const gerd = [...talkOf('Gerd el Mellado'), ...scenesOf('Gerd el Mellado').map(s => s.text)].join(' ');
         expect(gerd).not.toMatch(/mando la mitad a Robledo, a mi madre|Le mando dinero/);
         expect(gerd).toMatch(/renta de la casa/);
@@ -142,5 +142,51 @@ describe('D-J33: las historias de los mercenarios', () => {
         }
         // El escudo en la boca es el remate de «Los dientes»: la charla de después de una pelea solo lo anuncia.
         expect(talkOf('Gerd el Mellado').join(' ')).not.toMatch(/escudo en toda la boca/);
+    });
+
+    test('D-J33, segunda vuelta: tres dilemas distintos, sin agujeros', () => {
+        // Gerd y Nella no pueden ser la misma misión («paga al señor o plántale cara»): la de Gerd
+        // es qué hacer con quien le robaba; la de Nella, oro o riesgo; la de Osric, verdad o mentira.
+        const titles = Object.keys(STORIES).flatMap(name => unlocksAt(data, name, 4)
+            .filter(u => u.type === 'mision').flatMap(u => u.quest.endings.map((/** @type {any} */ e) => e.title)));
+        expect(new Set(titles).size).toBe(6);
+        expect(ending('Gerd el Mellado', 'plantar-cara')).toMatch(/Lope/);
+        expect(ending('Gerd el Mellado', 'pagar')).toMatch(/dejáis ir a Lope/);
+        // Robledo, en una charla, es «las mejores castañas del norte»; el final de perdonar lo recoge.
+        expect(talkOf('Gerd el Mellado').join(' ')).toMatch(/castañas/);
+        expect(ending('Gerd el Mellado', 'pagar')).toMatch(/castañas/);
+        // Tres años sin renta y el señor sin enterarse no se sostiene: el arriero mentía a los dos.
+        const gerd4 = scenesOf('Gerd el Mellado').find(s => s.rank === 4)?.text;
+        expect(gerd4).toMatch(/Lope le decía a mi madre/);
+        expect(gerd4).toMatch(/lo cuelgan/);
+        // El cartel de Nella sale justo antes de que pillen a su hermano: es un cebo, y se dice.
+        expect(scenesOf('Nella Tresflechas').find(s => s.rank === 4)?.text).toMatch(/Por eso ha salido ahora mi cartel/);
+        // Los perros de las charlas de Nella («he curado a más perros que a personas») son los del barón.
+        expect(talkOf('Nella Tresflechas').join(' ')).toMatch(/perros/);
+        expect(scenesOf('Nella Tresflechas').find(s => s.rank === 4)?.text).toMatch(/perros del barón/);
+        // Unos bandidos no dejan un anillo de plata en el dedo de un muerto: lo llevaba colgado del cuello.
+        const osric3 = scenesOf('Osric Mediapaga').find(s => s.rank === 3)?.text;
+        expect(osric3).not.toMatch(/del dedo/);
+        expect(osric3).toMatch(/colgado del cuello/);
+        // La rebaja de la posada sale de la guardia de Osric, no de un favor sin motivo.
+        const [inn] = unlocksAt(data, 'Osric Mediapaga', 2);
+        expect(inn.describe).toMatch(/guardia/);
+    });
+
+    test('D-J33, tercera vuelta: los huecos que quedaban', () => {
+        // Si Lope trae la carta que le delata, es porque no sabe leer; y el señor esperó tres años
+        // porque la madre le iba pagando lo que podía fregando suelos.
+        const gerd4 = scenesOf('Gerd el Mellado').find(s => s.rank === 4)?.text;
+        expect(gerd4).toMatch(/Lope, el arriero, que no sabe leer/);
+        expect(gerd4).toMatch(/para pagarle lo que puede/);
+        // Si no pagáis, la deuda no se esfuma: el señor se la cobra a Lope.
+        expect(ending('Gerd el Mellado', 'plantar-cara')).toMatch(/se cobra la deuda con el carro y la mula de Lope/);
+        // Las charlas salen en cualquier momento, también después de la misión: ninguna nombra a
+        // Lope, que en un final acaba en la horca.
+        expect(talkOf('Gerd el Mellado').join(' ')).not.toMatch(/Lope/);
+        // Con su cartel colgado, Nella no entra a pagar al barón: espera en el bosque.
+        expect(ending('Nella Tresflechas', 'multa')).toMatch(/Nella espera escondida en el bosque/);
+        // El cartel sale porque a Tobías le han sacado dónde está ella.
+        expect(scenesOf('Nella Tresflechas').find(s => s.rank === 4)?.text).toMatch(/a Tobías le habrán hecho decir dónde estoy/);
     });
 });

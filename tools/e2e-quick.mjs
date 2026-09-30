@@ -839,6 +839,9 @@ try {
             titleColor: window.getComputedStyle(document.querySelector('#game-shell .gs-here-name') ?? document.body).color,
             columns,
             services: document.querySelectorAll('#game-shell .ex-column[data-col="here"] .gs-service').length,
+            // J3.11: en un pueblo con sitios (la posada de Giles, la fragua de Dunstan), sus
+            // servicios van en su sitio y la columna «Aquí mismo» solo lleva lo que sobra.
+            town: document.querySelectorAll('#game-shell .gs-town-place').length,
             boards: document.querySelectorAll('#game-shell .ex-column[data-col="boards"] .gs-board').length,
             cards,
             pageWidth: document.documentElement.scrollWidth,
@@ -851,9 +854,11 @@ try {
     const openCards = explore.cards.filter(c => c.open).map(c => c.name);
     check('Exploración: sin tablero, el sitio en dorado arriba y tres columnas lado a lado (aquí mismo, tableros, viajar)',
         explore.scene === 'exploration' && explore.mapHeight === 0 && explore.gridHeight === 0
-        && explore.columns.length === 3 && new Set(explore.columns.map(c => c.top)).size === 1
-        && explore.columns.map(c => c.col).join() === 'here,boards,travel'
-        && /226, 194, 122/.test(explore.titleColor) && explore.services >= 1 && explore.boards >= 1
+        && new Set(explore.columns.map(c => c.top)).size === 1
+        && (explore.town > 0
+            ? /^(here,)?boards,travel$/.test(explore.columns.map(c => c.col).join())
+            : explore.columns.map(c => c.col).join() === 'here,boards,travel' && explore.services >= 1)
+        && /226, 194, 122/.test(explore.titleColor) && explore.boards >= 1
         && explore.pageWidth <= explore.viewport, JSON.stringify({ ...explore, cards: undefined }));
     check('Exploración: solo se viaja a los vecinos; lo de más lejos se ve, apagado, con por dónde se pasa',
         explore.here !== 'El Pueblo de Barro'

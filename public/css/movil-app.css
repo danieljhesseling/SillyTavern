@@ -1,0 +1,191 @@
+/*
+ * El móvil como una app (J20.6 y J20.7 de ROADMAP_SIN_CONEXION).
+ *
+ * 1. Abierto desde el icono, a pantalla entera: la cabecera del juego no se mete debajo de la
+ *    muesca ni de la barra del teléfono.
+ * 2. Sin el «tirar hacia abajo para recargar» mientras se juega: un dedo que baja la novela
+ *    no debe recargar la partida.
+ * 3. Las animaciones: ninguna si se pide «reducir movimiento», y cortas en un teléfono. Quien
+ *    decide es `scripts/game-engine/ui/motion.js`, que pone `html[data-gs-motion]`; mientras
+ *    no lo ponga, se miran las mismas preguntas con `@media`.
+ * 4. Ligero en el teléfono: sin el desenfoque detrás de las ventanas del tablero y de los
+ *    dados. Esas ventanas ya son casi opacas, así que no se nota; al teléfono sí le cuesta.
+ *
+ * Todo cuelga del juego (`.gs-root`, `body.game-shell-on` o sus piezas): SillyTavern no cambia.
+ */
+
+/* ---------------------------------------------------------------- 1. Como una app */
+
+@media (display-mode: standalone), (display-mode: fullscreen) {
+    .gs-root {
+        padding-top: env(safe-area-inset-top, 0px);
+        padding-left: env(safe-area-inset-left, 0px);
+        padding-right: env(safe-area-inset-right, 0px);
+    }
+}
+
+html.gs-app .gs-root {
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+}
+
+/* ---------------------------------------------------------------- 2. Sin recargar sin querer */
+
+html:has(> body.game-shell-on),
+body.game-shell-on {
+    overscroll-behavior: none;
+}
+
+/* ---------------------------------------------------------------- 3a. Ninguna animación */
+
+/* Elegido en las opciones del juego, o «según el aparato» con «reducir movimiento» pedido. */
+:root[data-gs-motion="none"] body.game-shell-on *,
+:root[data-gs-motion="none"] body.game-shell-on *::before,
+:root[data-gs-motion="none"] body.game-shell-on *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+    scroll-behavior: auto !important;
+}
+
+/* Lo que se anima para desaparecer se queda quieto y a la vista hasta que el juego lo quita:
+   el daño sobre la ficha, lo que grita un enemigo y el camino de un viaje. Sin esto, con la
+   animación en un instante, desaparecían antes de verse. */
+:root[data-gs-motion="none"] body.game-shell-on .wm-float,
+:root[data-gs-motion="none"] body.game-shell-on .wm-bark,
+:root[data-gs-motion="none"] body.game-shell-on .tr-transition {
+    animation: none !important;
+}
+
+:root[data-gs-motion="none"] body.game-shell-on .tr-transition-day {
+    animation: none !important;
+    opacity: 1 !important;
+}
+
+/* Lo mismo, sin que nadie haya puesto el nivel: el ajuste de SillyTavern… */
+:root:not([data-gs-motion]) body.reduced-motion.game-shell-on *,
+:root:not([data-gs-motion]) body.reduced-motion.game-shell-on *::before,
+:root:not([data-gs-motion]) body.reduced-motion.game-shell-on *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+    scroll-behavior: auto !important;
+}
+
+:root:not([data-gs-motion]) body.reduced-motion.game-shell-on .wm-float,
+:root:not([data-gs-motion]) body.reduced-motion.game-shell-on .wm-bark,
+:root:not([data-gs-motion]) body.reduced-motion.game-shell-on .tr-transition {
+    animation: none !important;
+}
+
+:root:not([data-gs-motion]) body.reduced-motion.game-shell-on .tr-transition-day {
+    animation: none !important;
+    opacity: 1 !important;
+}
+
+/* …y el del teléfono. */
+@media (prefers-reduced-motion: reduce) {
+    :root:not([data-gs-motion]) body.game-shell-on *,
+    :root:not([data-gs-motion]) body.game-shell-on *::before,
+    :root:not([data-gs-motion]) body.game-shell-on *::after {
+        animation-duration: 0.01ms !important;
+        animation-delay: 0s !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        transition-delay: 0s !important;
+        scroll-behavior: auto !important;
+    }
+
+    :root:not([data-gs-motion]) body.game-shell-on .wm-float,
+    :root:not([data-gs-motion]) body.game-shell-on .wm-bark,
+    :root:not([data-gs-motion]) body.game-shell-on .tr-transition {
+        animation: none !important;
+    }
+
+    :root:not([data-gs-motion]) body.game-shell-on .tr-transition-day {
+        animation: none !important;
+        opacity: 1 !important;
+    }
+}
+
+/* ---------------------------------------------------------------- 3b. Animaciones cortas */
+
+/* Las largas, a la mitad más o menos. Las que ya son cortas (las hojas que suben, 0,18 s) y
+   las que dan tiempo a leer (lo que grita un enemigo) se quedan como están. */
+:root[data-gs-motion="short"] .tr-transition {
+    animation-duration: 1.1s;
+}
+
+:root[data-gs-motion="short"] .tr-transition-day {
+    animation-duration: 0.2s;
+}
+
+:root[data-gs-motion="short"] .wm-dice-glyph {
+    animation-duration: 0.35s;
+}
+
+:root[data-gs-motion="short"] .wm-float {
+    animation-duration: 0.9s;
+}
+
+:root[data-gs-motion="short"] .wm-token.wm-token-falling {
+    animation-duration: 0.45s;
+}
+
+:root[data-gs-motion="short"] .ib-banner {
+    transition-duration: 0.3s;
+}
+
+:root[data-gs-motion="short"] .rc-card {
+    transition-duration: 0.5s;
+}
+
+/* Lo mismo en un teléfono, sin que nadie haya puesto el nivel. */
+@media (pointer: coarse) and (prefers-reduced-motion: no-preference) {
+    :root:not([data-gs-motion]) .tr-transition {
+        animation-duration: 1.1s;
+    }
+
+    :root:not([data-gs-motion]) .tr-transition-day {
+        animation-duration: 0.2s;
+    }
+
+    :root:not([data-gs-motion]) .wm-dice-glyph {
+        animation-duration: 0.35s;
+    }
+
+    :root:not([data-gs-motion]) .wm-float {
+        animation-duration: 0.9s;
+    }
+
+    :root:not([data-gs-motion]) .wm-token.wm-token-falling {
+        animation-duration: 0.45s;
+    }
+
+    :root:not([data-gs-motion]) .ib-banner {
+        transition-duration: 0.3s;
+    }
+
+    :root:not([data-gs-motion]) .rc-card {
+        transition-duration: 0.5s;
+    }
+}
+
+/* ---------------------------------------------------------------- 4. Ligero en el teléfono */
+
+@media (pointer: coarse) {
+    body .wm-dice-backdrop,
+    body .gs-pause,
+    body .wm-info-card-badge,
+    body .wm-info-card-coords,
+    body .wm-token-tooltip,
+    body .wm-zoom-btn {
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+    }
+}

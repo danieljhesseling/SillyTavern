@@ -309,7 +309,7 @@
       "name": "La Maldición de Strahd",
       "genre": "Horror gótico",
       "note": "Un valle cerrado por la niebla y el vampiro que lo gobierna.",
-      "synopsis": "Bajo nubes de tormenta, el conde vampiro Strahd von Zarovich gobierna el valle de Barovia, una prisión de desesperanza envuelta en una niebla mortal. Los aventureros han sido arrastrados a este dominio de terror para enfrentarse a su oscuro señor, descubrir sus antiguos secretos y explorar el imponente Castillo Ravenloft.",
+      "synopsis": "Bajo nubes de tormenta, el conde vampiro Strahd von Zarovich gobierna el valle de Barovia, una prisión envuelta en una niebla mortal. La niebla te ha traído hasta aquí y ya no te deja salir: estás {atrapado|atrapada} en su dominio. Para salir, tendrás que enfrentarte a su oscuro señor, descubrir sus antiguos secretos y entrar en el Castillo Ravenloft.",
       "seed": "niebla-cuervo-siete",
       "templateId": "tavern",
       "pack": "/mundos/strahd.pack.json",

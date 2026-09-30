@@ -35,7 +35,7 @@ import { PLACE_KINDS, townPlaces, townNpcsFromEntries, greetingFor, describeWho,
  * @property {string} slot La franja del reloj, como la dice: «Noche».
  * @property {ServiceCard[]} cards Las tarjetas de servicios de aquí.
  * @property {ActionChip[]} chips La fila de fichas: de ahí salen el gremio y las charlas.
- * @property {{location: any, npcs: any[]}|null} [data] Lo que da `getTown`, si lo da.
+ * @property {{location: any, npcs: any[], people?: YourPerson[]}|null} [data] Lo que da `getTown`, si lo da.
  * @property {(actionId: string) => void} onService
  * @property {(chip: ActionChip) => void} onChip
  * @property {() => void} refresh Redibujar el Shell.
@@ -50,6 +50,27 @@ import { PLACE_KINDS, townPlaces, townNpcsFromEntries, greetingFor, describeWho,
  * @property {string[]} rest Las tarjetas que se quedan fuera de los sitios.
  * @property {boolean} guild Si es el pueblo del gremio.
  * @property {ActionChip[]} hubChips Las fichas del gremio: el tablón, contratar, volver…
+ * @property {Record<string, YourPerson[]>} yours J14.4: tu gente en cada sitio, por el id del sitio.
+ * @property {YourPerson[]} loose Tu gente en un sitio que la pantalla no enseña (el muelle sin nada).
+ */
+
+/**
+ * J14.4: alguien de tu gente (o del pueblo) y dónde está a esta hora, como lo da `getTown`
+ * (`townPeople` de `party/social.js`, con `whoIsWhere`).
+ *
+ * @typedef {Object} YourPerson
+ * @property {string} key
+ * @property {string} name
+ * @property {string} kind `grupo`, `mercenario`, `confidente` o `pueblo`.
+ * @property {string} place La clase del sitio (`posada`, `herreria`…).
+ * @property {string} placeLabel
+ * @property {boolean} canMeet
+ * @property {boolean} wantsToMeet «Quiere quedar contigo».
+ * @property {string} [why]
+ * @property {boolean} canTalk
+ * @property {boolean} [waiting] Tiene algo que decirte ya.
+ * @property {string} talk La orden de charlar con él.
+ * @property {string} meet La orden de quedar con él.
  */
 
 /** Cada cuánto se vuelve a leer el mundo: la gente cambia poco, y leerlo copia el mundo entero. */
@@ -141,7 +162,75 @@ export function buildTown(ctx) {
     const guild = hubChips.some(c => c.id === 'hub-board' || c.id === 'hub-hire');
     const { places, rest } = townPlaces({ location: source.location, npcs: source.npcs, cards: ctx.cards ?? [], guild });
     if (open.town !== ctx.here || !places.some(p => p.id === open.id)) open = { town: '', id: '' };
-    return { here: ctx.here, places, rest, guild, hubChips };
+    return { here: ctx.here, places, rest, guild, hubChips, ...spreadPeople(places, ctx.data?.people ?? []) };
+}
+
+/**
+ * J14.4: tu gente, repartida por los sitios de la pantalla: cada uno en el primero de su clase
+ * (la posada, la herrería). La gente del pueblo ya sale en su sitio (quien atiende y los
+ * demás); aquí va quien se puede charlar o quedar con él.
+ *
+ * @param {TownPlace[]} places
+ * @param {YourPerson[]} people
+ * @returns {{yours: Record<string, YourPerson[]>, loose: YourPerson[]}}
+ */
+function spreadPeople(places, people) {
+    /** @type {Record<string, YourPerson[]>} */
+    const yours = {};
+    /** @type {YourPerson[]} */
+    const loose = [];
+    for (const person of Array.isArray(people) ? people : []) {
+        if (!person || person.kind === 'pueblo' || !(person.canMeet || person.canTalk)) continue;
+        const place = places.find(p => p.kind === person.place) ?? null;
+        if (place) (yours[place.id] ??= []).push(person);
+        else loose.push(person);
+    }
+    return { yours, loose };
+}
+
+/** @param {string} name @returns {string} El primer nombre: «Gerd», no «Gerd el Mellado». */
+const firstName = (name) => text(name).split(' ')[0] || text(name);
+
+/**
+ * Las fichas de charlar y quedar con alguien, con la orden que ya hace la fila (`/charlar`,
+ * `/quedar`).
+ *
+ * @param {YourPerson} person
+ * @returns {{meet: ActionChip|null, talk: ActionChip|null}}
+ */
+function personChips(person) {
+    const who = firstName(person.name);
+    return {
+        meet: person.canMeet ? { id: `quedar:${person.key}`, label: `Quedar con ${who}`, icon: 'fa-mug-hot', source: 'motor', command: person.meet } : null,
+        talk: person.canTalk ? {
+            id: `charlar:${person.key}`, label: person.waiting ? `${who} quiere decirte algo` : `Charlar con ${who}`, icon: 'fa-comments', source: 'motor', command: person.talk,
+        } : null,
+    };
+}
+
+/**
+ * Las caras de tu gente en la tarjeta de un sitio: su retrato (o su inicial) y un corazón si
+ * quiere quedar contigo.
+ *
+ * @param {YourPerson[]} people
+ * @param {string} pack
+ * @returns {HTMLElement}
+ */
+function peopleBadges(people, pack) {
+    const row = el('span', 'gs-town-yours');
+    for (const person of people.slice(0, 4)) {
+        const badge = el('span', `gs-town-you${person.wantsToMeet ? ' gs-town-wants' : ''}`);
+        badge.dataset.person = person.key;
+        badge.title = person.wantsToMeet ? `${person.name}: quiere quedar contigo` : `${person.name}, aquí ahora`;
+        const face = faceOf(person.name, pack);
+        if (face) badge.appendChild(pixelImage(face, 'gs-town-you-face', person.name));
+        else badge.appendChild(el('span', 'gs-town-you-initial', firstName(person.name).slice(0, 1)));
+        badge.appendChild(el('span', 'gs-town-you-name', firstName(person.name)));
+        if (person.wantsToMeet) badge.appendChild(el('i', 'fa-solid fa-heart gs-town-you-heart'));
+        row.appendChild(badge);
+    }
+    if (people.length > 4) row.appendChild(el('span', 'gs-town-you-more', `+${people.length - 4}`));
+    return row;
 }
 
 /** Cerrar el sitio abierto: al abrir o cerrar el Shell se vuelve a la plaza. */
@@ -273,6 +362,12 @@ export function renderTownSelector(town, ctx) {
         name.appendChild(el('span', '', place.name));
         body.appendChild(name);
         body.appendChild(el('span', 'gs-town-place-who', describeWho(place)));
+        // J14.4: quién de tu gente está aquí a esta hora, y quién quiere quedar contigo.
+        const yours = town.yours?.[place.id] ?? [];
+        if (yours.length > 0) {
+            body.appendChild(peopleBadges(yours, pack));
+            if (yours.some(p => p.wantsToMeet)) card.classList.add('gs-town-place-wants');
+        }
         card.appendChild(body);
         card.addEventListener('click', () => {
             open = { town: town.here, id: place.id };
@@ -281,6 +376,26 @@ export function renderTownSelector(town, ctx) {
         grid.appendChild(card);
     }
     section.appendChild(grid);
+
+    // J14.4: quien anda por un sitio que no tiene tarjeta (el muelle, sin nada que hacer en él):
+    // también se le ve, con dónde está, y se queda o se charla con él desde aquí.
+    if ((town.loose ?? []).length > 0) {
+        const row = el('div', 'gs-town-extra gs-town-loose');
+        row.appendChild(el('span', 'gs-town-loose-title', 'Por el pueblo:'));
+        for (const person of town.loose) {
+            const { meet, talk } = personChips(person);
+            const chip = (person.wantsToMeet ? meet : null) ?? talk ?? meet;
+            if (!chip) continue;
+            const go = button(`gs-town-act gs-town-extra-btn${person.wantsToMeet ? ' gs-town-wants' : ''}`);
+            go.dataset.chip = chip.id;
+            go.title = person.wantsToMeet ? `${person.name} quiere quedar contigo` : `${person.name}, en ${person.placeLabel.toLowerCase()}`;
+            go.appendChild(el('i', `fa-solid ${person.wantsToMeet ? 'fa-heart' : chip.icon}`));
+            go.appendChild(el('span', 'gs-btn-label', `${chip.label} (${person.placeLabel.toLowerCase()})`));
+            go.addEventListener('click', () => ctx.onChip(chip));
+            row.appendChild(go);
+        }
+        section.appendChild(row);
+    }
 
     // Lo del gremio que no es de ningún sitio de aquí: volver a él desde una campaña, su final.
     const loose = town.guild ? [] : town.hubChips;
@@ -319,6 +434,8 @@ function placeActs(place, town, ctx) {
             })),
         });
     }
+    // Tu gente va delante de lo que se compra: quien está aquí es a lo que se viene.
+    const peopleAt = groups.length;
     for (const id of place.cards) {
         const card = (ctx.cards ?? []).find(c => c.id === id);
         if (!card) continue;
@@ -337,6 +454,29 @@ function placeActs(place, town, ctx) {
         // Lo del propio sitio, con su nombre de aquí («La taberna»), no el del servicio («La posada»).
         const own = card.id === PLACE_KINDS[place.kind].service;
         if (acts.length > 0) groups.push({ title: own ? place.name : card.label, acts });
+    }
+    // J14.3 y J14.4: tu gente de aquí: quedar con ella (gasta la parte del día) o charlar.
+    const yours = town.yours?.[place.id] ?? [];
+    if (yours.length > 0) {
+        /** @type {ReturnType<typeof placeActs>[number]['acts']} */
+        const acts = [];
+        for (const person of yours) {
+            const { meet, talk } = personChips(person);
+            if (meet) {
+                acts.push({
+                    id: meet.id, label: meet.label, icon: person.wantsToMeet ? 'fa-heart' : meet.icon,
+                    detail: person.wantsToMeet ? `${person.name} quiere quedar contigo: tiene algo que contarte. Gasta esta parte del día.`
+                        : `Pasas esta parte del día con ${person.name}. El vínculo sube.`,
+                    enabled: true, cost: 0, run: () => ctx.onChip(meet),
+                });
+            }
+            if (talk) {
+                acts.push({
+                    id: talk.id, label: talk.label, icon: talk.icon, detail: 'Un momento, sin gastar tiempo.', enabled: true, cost: 0, run: () => ctx.onChip(talk),
+                });
+            }
+        }
+        if (acts.length > 0) groups.splice(peopleAt, 0, { title: 'Tu gente', acts });
     }
     const people = [...(keeper ? [keeper] : []), ...place.people.map(p => p.name)].slice(0, 5);
     if (people.length > 0) {

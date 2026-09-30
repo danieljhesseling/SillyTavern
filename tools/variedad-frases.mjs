@@ -49,7 +49,9 @@ const GOAL = 400;
 
 const bank = JSON.parse(readFileSync(new URL('public/compendio/frases.json', ROOT), 'utf8'));
 const allRows = /** @type {any[]} */ (bank.rows);
-const rows = allRows.filter(row => row.kind !== 'mirar');
+// «mirar» es lo que se examina, y «relleno-*» lo que se escribe en una campaña que no lo trae
+// (J5.3): ninguna de las dos es una frase del narrador.
+const rows = allRows.filter(row => row.kind !== 'mirar' && !String(row.kind).startsWith('relleno-'));
 const byId = new Map(rows.map(row => [String(row.id), row]));
 
 /** Una frase con palabras suyas, no solo huecos. */
@@ -270,7 +272,7 @@ for (let game = 0; game < GAMES; game++) {
 
 // --- El informe ------------------------------------------------------------------------
 
-console.log(`Frases del narrador del motor: ${rows.length} (y ${allRows.length - rows.length} de «mirar»; ${allRows.length} filas en total, la meta de J13.4 es unas ${GOAL}).`);
+console.log(`Frases del narrador del motor: ${rows.length} (y ${allRows.length - rows.length} de «mirar» y de relleno;${allRows.length} filas en total, la meta de J13.4 es unas ${GOAL}).`);
 console.log(`Partidas simuladas: ${GAMES}, cada una con ${LEGS} viajes y su llegada, y lo de entre medias.\n`);
 console.log('Los momentos y sus partes (MOMENTS de engine-narrator.js):');
 for (const [moment, list] of Object.entries(MOMENTS)) console.log(`  ${moment}: ${list.join(' → ')}`);

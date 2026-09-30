@@ -17,9 +17,13 @@
  *   node tools/e2e-movil.mjs                       # sin ventana
  *   node tools/e2e-movil.mjs --headed              # mirándolo
  *   node tools/e2e-movil.mjs --port 8155 --captura movil   # y una captura por paso: movil.01-titulo.png…
+ *   node tools/e2e-movil.mjs --cpu 6               # la pelea con la CPU 6 veces más lenta (4 si no se dice)
+ *
+ * J20.6: la pelea a toques se juega con la CPU de un teléfono simulada (`Emulation.setCPUThrottlingRate`),
+ * y se mide cuánto tarda en volver tu turno tras «Fin de turno» y cuánto trabaja el teléfono.
  */
 
-/* global window, document */
+/* global window, document, HTMLElement, PointerEvent, MouseEvent */
 
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
@@ -41,6 +45,14 @@ const LANDSCAPE = { width: 844, height: 390 };
 const WITH_KEYBOARD = { width: 390, height: 500 };
 /** Lo mínimo para un dedo (J20.3). Medio píxel de margen por el redondeo. */
 const FINGER = 44;
+/**
+ * J20.6: la pelea se juega con la CPU de un teléfono corriente, simulada: `--cpu 4` es cuatro
+ * veces más lenta que la de este ordenador (lo que usa Chrome para «móvil de gama media»).
+ * `--cpu 1` la deja como está.
+ */
+const CPU_SLOWDOWN = Math.max(1, Number(argAfter('--cpu')) || 4);
+/** J20.6: lo más que puede tardar, de mediana, en volver tu turno tras «Fin de turno», dados incluidos. */
+const TURN_BUDGET_MS = 8000;
 
 const require = createRequire(join(ROOT, 'tests/package.json'));
 const { chromium } = require('@playwright/test');
@@ -230,6 +242,53 @@ try {
         const r = node.getBoundingClientRect();
         return r.width > 1 && r.height > 1 && r.bottom > 0 && r.top < window.innerHeight && window.getComputedStyle(node).visibility !== 'hidden';
     }), selector);
+
+    /**
+     * J20.2: el centro en pantalla de lo primero que case y se pueda tocar ahí mismo (sin nada
+     * encima), con su casilla si la dice. Nada si no hay ninguno.
+     */
+    const tapPoint = (/** @type {string} */ selector) => page.evaluate((s) => {
+        for (const node of document.querySelectorAll(s)) {
+            const r = node.getBoundingClientRect();
+            if (r.width < 2 || r.height < 2) continue;
+            const x = r.left + r.width / 2;
+            const y = r.top + r.height / 2;
+            if (x < 0 || y < 0 || x >= window.innerWidth || y >= window.innerHeight) continue;
+            const top = document.elementFromPoint(x, y);
+            if (top && (top === node || node.contains(top))) {
+                return { x, y, gx: Number(node.getAttribute('data-x')), gy: Number(node.getAttribute('data-y')) };
+            }
+        }
+        return null;
+    }, selector);
+    /** Dónde está el héroe en el tablero. */
+    const heroCell = () => page.evaluate(async () => {
+        const hero = (await import('/scripts/party.js')).getPartyMembersSnapshot()[0];
+        return { id: Number(hero?.id), x: Number(hero?.mapPosition?.gridX) || 0, y: Number(hero?.mapPosition?.gridY) || 0 };
+    });
+    /** Cómo está la cámara del tablero: su `transform`. */
+    const cameraNow = () => page.evaluate(() => {
+        const content = document.querySelector('#game-shell .gs-scene-map .wm-container .wm-content');
+        return content instanceof HTMLElement ? content.style.transform : '';
+    });
+    /**
+     * J20.2: arrastrar el dedo (o dos, pellizcando) por el tablero. Los toques de Playwright
+     * solo tocan: el arrastre se hace con los mismos eventos de puntero que manda el teléfono.
+     *
+     * @param {Array<Array<[number, number]>>} tracks Por cada dedo, sus puntos de pantalla.
+     */
+    const dragFingers = (tracks) => page.evaluate((all) => {
+        const board = document.querySelector('#game-shell .gs-scene-map .wm-container');
+        if (!board) return false;
+        const fire = (/** @type {string} */ type, /** @type {number} */ finger, /** @type {[number, number]} */ at) => board.dispatchEvent(new PointerEvent(type, {
+            pointerId: 40 + finger, pointerType: 'touch', isPrimary: finger === 0, clientX: at[0], clientY: at[1], bubbles: true, cancelable: true,
+        }));
+        all.forEach((track, finger) => fire('pointerdown', finger, track[0]));
+        const steps = Math.max(...all.map(t => t.length));
+        for (let i = 1; i < steps; i++) all.forEach((track, finger) => fire('pointermove', finger, track[Math.min(i, track.length - 1)]));
+        all.forEach((track, finger) => fire('pointerup', finger, track[track.length - 1]));
+        return true;
+    }, tracks);
 
     let step = 0;
     /**
@@ -451,14 +510,125 @@ try {
     });
     check('el tablero cabe a lo ancho, con alto para verlo (J20.1)',
         Boolean(board && board.left >= -1 && board.right <= board.screen + 1 && board.height >= 200), JSON.stringify(board));
+
+    // J20.2: el tablero a toques, sin nada que dependa de pasar el ratón por encima. En tu turno,
+    // tocar tu ficha enciende hasta dónde llegas; tocar una casilla encendida enseña el camino y
+    // lo que cuesta, sin moverte; tocarla otra vez, mueve. Tocar al enemigo abre su tarjeta.
+    const myTurn = await until(async () => {
+        await tapDice();
+        return page.evaluate(async () => {
+            const enc = (await import('/scripts/party.js')).getCombatEncounter();
+            const entry = enc?.active ? enc.turnOrder?.[enc.currentTurnIndex] : null;
+            return Boolean(entry && !entry.isEnemy);
+        });
+    }, 30000);
+    await noToasts();
+    const walk = { myTurn, lit: 0, hud: '', cost: '', stayed: false, moved: false, to: /** @type {any} */ (null) };
+    const start = await heroCell();
+    const mine = await tapPoint(`#game-shell .gs-scene-map .wm-token[data-token-id="${start.id}"]`);
+    if (myTurn && mine) {
+        await page.touchscreen.tap(mine.x, mine.y);
+        await until(async () => (await page.locator('#game-shell .gs-scene-map .wm-highlight-move.wm-highlight-clickable').count()) > 0, 5000);
+        walk.lit = await page.locator('#game-shell .gs-scene-map .wm-highlight-move.wm-highlight-clickable').count();
+        // Encima del tablero, lo que le queda por andar y hasta dónde llega: escrito, no al pasar el ratón.
+        walk.hud = String(await page.locator('#game-shell .gs-scene-map .wm-tactical-hud').first().textContent({ timeout: 1500 }).catch(() => ''));
+        const cell = await tapPoint('#game-shell .gs-scene-map .wm-highlight-move.wm-highlight-clickable');
+        if (cell) {
+            walk.to = cell;
+            await page.touchscreen.tap(cell.x, cell.y);
+            await page.waitForTimeout(400);
+            walk.cost = String(await page.locator('#game-shell .gs-scene-map .wm-path-cost.wm-path-armed').first().textContent({ timeout: 2000 }).catch(() => ''));
+            const still = await heroCell();
+            walk.stayed = still.x === start.x && still.y === start.y;
+            if (SHOT) await page.screenshot({ path: `${SHOT}.tablero-toque-ruta.png` });
+            await page.touchscreen.tap(cell.x, cell.y);
+            walk.moved = await until(async () => {
+                const now = await heroCell();
+                return now.x === cell.gx && now.y === cell.gy;
+            }, 5000);
+        }
+    }
+    check('a toques, en tu turno: tocar tu ficha enciende casillas; tocar una enseña el camino y lo que cuesta sin moverte; tocarla otra vez mueve (J20.2)',
+        walk.lit > 0 && /Te quedan \d+ pies/.test(walk.hud) && /\d+ pies · toca otra vez para ir/.test(walk.cost) && walk.stayed && walk.moved, JSON.stringify(walk));
+    // Lo que el ratón enseña al pasar por encima, a toques: tocar una casilla dice qué hay en ella.
+    await noToasts();
+    const emptyCell = await page.evaluate(() => {
+        const layer = document.querySelector('#game-shell .gs-scene-map .wm-container');
+        const r = layer?.getBoundingClientRect();
+        return r ? { x: r.left + r.width * 0.5, y: r.top + r.height * 0.15 } : null;
+    });
+    let told = '';
+    if (emptyCell) {
+        await page.touchscreen.tap(emptyCell.x, emptyCell.y);
+        await page.waitForTimeout(300);
+        told = await page.evaluate(() => {
+            const info = document.querySelector('#game-shell .gs-scene-map .wm-cell-info');
+            return info instanceof HTMLElement && info.style.display !== 'none' ? (info.textContent || '').trim() : '';
+        });
+    }
+    check('a toques, tocar una casilla dice qué es, sin pasar el ratón (J20.2)', told.length > 0, told);
+    // Tocar al enemigo: su tarjeta, con su cara, su vida y qué se puede hacer, y un botón para cerrarla.
+    const foe = await tapPoint('#game-shell .gs-scene-map .wm-token.wm-token-enemy:not(.wm-token-idle)');
+    let foeCard = { open: false, face: '', text: '' };
+    if (foe) {
+        await page.touchscreen.tap(foe.x, foe.y);
+        foeCard = await until(() => page.evaluate(() => Boolean(document.querySelector('.tc-overlay .tc-card'))), 4000).then(() => page.evaluate(() => ({
+            open: Boolean(document.querySelector('.tc-overlay .tc-card')),
+            face: (document.querySelector('.tc-card .tc-face')?.getAttribute('src') || '').split('/').slice(-2).join('/'),
+            text: (document.querySelector('.tc-card')?.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 160),
+        })));
+        if (SHOT) await page.screenshot({ path: `${SHOT}.tablero-toque-enemigo.png` });
+        await page.locator('.tc-card .tc-close').tap({ timeout: 3000 }).catch(() => {});
+        await page.waitForSelector('.tc-overlay', { state: 'detached', timeout: 3000 }).catch(() => {});
+    }
+    check('a toques, tocar al ratero abre su tarjeta, con su dibujo y su vida escritos (J20.2, arte en pixel)',
+        foeCard.open && /^bestias\//.test(foeCard.face) && /Ratero/.test(foeCard.text), JSON.stringify(foeCard));
+    // La cámara: un dedo que se arrastra la mueve; dos que se separan la acercan.
+    const box = await page.evaluate(() => {
+        const r = document.querySelector('#game-shell .gs-scene-map .wm-container')?.getBoundingClientRect();
+        return r ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null;
+    });
+    const camera = { before: await cameraNow(), panned: '', pinched: '' };
+    if (box) {
+        await dragFingers([[[box.x, box.y], [box.x + 20, box.y + 10], [box.x + 60, box.y + 30]]]);
+        camera.panned = await cameraNow();
+        await dragFingers([[[box.x - 20, box.y], [box.x - 50, box.y], [box.x - 90, box.y]], [[box.x + 20, box.y], [box.x + 50, box.y], [box.x + 90, box.y]]]);
+        camera.pinched = await cameraNow();
+    }
+    // El navegador lo escribe «scale(0.58, 0.58)».
+    const scaleOf = (/** @type {string} */ t) => Number(/scale\(([\d.]+)/.exec(t)?.[1] ?? 0);
+    check('a toques, un dedo arrastra la cámara y dos, al separarse, la acercan (J20.2)',
+        camera.panned !== camera.before && scaleOf(camera.pinched) > scaleOf(camera.panned), JSON.stringify(camera));
+    // Doble toque: la cámara vuelve a encuadrar el tablero, para seguir la pelea.
+    await page.evaluate(() => document.querySelector('#game-shell .gs-scene-map .wm-container')?.dispatchEvent(new MouseEvent('dblclick', { bubbles: true })));
+    await page.waitForTimeout(300);
+
+    // J20.6: el resto de la pelea, con la CPU de un teléfono corriente: cuánto tarda en volver tu
+    // turno tras «Fin de turno» y cuánto trabaja el teléfono (las tareas largas, de más de 50 ms).
+    const cdp = CPU_SLOWDOWN > 1 ? await context.newCDPSession(page) : null;
+    if (cdp) await cdp.send('Emulation.setCPUThrottlingRate', { rate: CPU_SLOWDOWN });
+    await page.evaluate(() => {
+        const seen = /** @type {any} */ (window);
+        seen.__busy = 0;
+        try {
+            new PerformanceObserver((list) => { for (const entry of list.getEntries()) seen.__busy += entry.duration; }).observe({ type: 'longtask' });
+        } catch { /* sin «longtask», solo se mide el tiempo */ }
+    });
+    /** @type {number[]} */
+    const turnTimes = [];
+    let turnFrom = 0;
     const fight = { attacks: 0, turns: 0, sheet: false };
-    const fightEnd = Date.now() + 150000;
+    const fightEnd = Date.now() + 150000 * Math.min(CPU_SLOWDOWN, 2);
     while (Date.now() < fightEnd && (await state()).fighting) {
         if (await tapDice()) continue;
         await noToasts();
         const attack = page.locator('#game-shell .gs-actions .gs-btn-attack');
         const endTurn = page.locator('#game-shell .gs-actions .gs-btn').filter({ hasText: 'Fin de turno' });
         if (await attack.count() > 0 && await attack.isEnabled().catch(() => false)) {
+            if (turnFrom) {
+                turnTimes.push(Date.now() - turnFrom);
+                turnFrom = 0;
+            }
             await attack.tap({ timeout: 4000 }).catch(() => {});
             const target = page.locator('#game-shell .gs-targets .gs-target');
             if (await target.first().waitFor({ state: 'visible', timeout: 3000 }).then(() => true).catch(() => false)) {
@@ -472,12 +642,23 @@ try {
             continue;
         }
         if (await endTurn.count() > 0 && await endTurn.isEnabled().catch(() => false)) {
-            await endTurn.tap({ timeout: 4000 }).then(() => { fight.turns++; }).catch(() => {});
+            await endTurn.tap({ timeout: 4000 }).then(() => {
+                fight.turns++;
+                turnFrom = Date.now();
+            }).catch(() => {});
             await page.waitForTimeout(900);
             continue;
         }
         await page.waitForTimeout(500);
     }
+    if (cdp) await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
+    const busy = await page.evaluate(() => Math.round(/** @type {any} */ (window).__busy || 0));
+    const sortedTurns = [...turnTimes].sort((a, b) => a - b);
+    const medianTurn = sortedTurns.length ? sortedTurns[Math.floor(sortedTurns.length / 2)] : 0;
+    console.log(`      J20.6, con la CPU ${CPU_SLOWDOWN} veces más lenta: ${turnTimes.length} vuelta(s) de turno, ${turnTimes.map(t => `${(t / 1000).toFixed(1)} s`).join(', ') || '—'};`
+        + ` el teléfono, ocupado ${(busy / 1000).toFixed(1)} s en tareas largas (${fight.attacks} ataque(s), ${fight.turns} fin(es) de turno).`);
+    check(`J20.6: con la CPU de un móvil (${CPU_SLOWDOWN}×), tu turno vuelve en menos de ${TURN_BUDGET_MS / 1000} s tras «Fin de turno», de mediana`,
+        medianTurn <= TURN_BUDGET_MS, JSON.stringify({ turnTimes, medianTurn, busy }));
     const wonByTaps = !(await state()).fighting;
     check('la primera pelea se gana a toques: «Atacar», su lista y «Fin de turno» (J20.9)', wonByTaps && fight.attacks > 0, JSON.stringify(fight));
     if (!wonByTaps) {
@@ -522,11 +703,49 @@ try {
     const toBoard = await carryOn('combat');
     check('«Continuar», tocado, lleva al tablero del muelle (J18.8)', toBoard === 'combat', toBoard);
     await look('tablero');
+    // J20.2: sin pelea también se anda a toques (con el dedo no se arrastra): tocar tu ficha la
+    // elige y enciende hasta dónde anda de una vez; una casilla encendida, dos toques, y va.
+    await noToasts();
+    const stroll = { lit: 0, legend: '', cost: '', moved: false };
+    const from = await heroCell();
+    const me = await tapPoint(`#game-shell .gs-scene-map .wm-token[data-token-id="${from.id}"]`);
+    if (me) {
+        await page.touchscreen.tap(me.x, me.y);
+        await until(async () => (await page.locator('#game-shell .gs-scene-map .wm-highlight-move.wm-highlight-clickable').count()) > 0, 5000);
+        stroll.lit = await page.locator('#game-shell .gs-scene-map .wm-highlight-move.wm-highlight-clickable').count();
+        stroll.legend = String(await page.locator('#game-shell .gs-scene-map .wm-tactical-hud').first().textContent({ timeout: 1500 }).catch(() => ''));
+        const spot = await tapPoint('#game-shell .gs-scene-map .wm-highlight-move.wm-highlight-clickable');
+        if (spot) {
+            await page.touchscreen.tap(spot.x, spot.y);
+            await page.waitForTimeout(400);
+            stroll.cost = String(await page.locator('#game-shell .gs-scene-map .wm-path-cost.wm-path-armed').first().textContent({ timeout: 2000 }).catch(() => ''));
+            await page.touchscreen.tap(spot.x, spot.y);
+            stroll.moved = await until(async () => {
+                const now = await heroCell();
+                return now.x === spot.gx && now.y === spot.gy;
+            }, 5000);
+        }
+    }
+    check('sin pelea, a toques: tocar tu ficha enciende hasta dónde anda, y dos toques en una casilla la llevan allí (J20.2)',
+        stroll.lit > 0 && /Pulsa una casilla encendida para ir/.test(stroll.legend) && /toca otra vez para ir/.test(stroll.cost) && stroll.moved, JSON.stringify(stroll));
     await page.locator('#game-shell .gs-scene-map .wm-leave-loc-btn').filter({ visible: true }).first().tap({ timeout: 5000 }).catch(() => {});
     await page.waitForTimeout(800);
     const toTown = await carryOn('exploration');
     check('el botón del tablero lleva al pueblo, sin pestañas (J18.8)', toTown === 'exploration', toTown);
     await look('explorar');
+
+    // 8b. D-J28: el tablón y los mercenarios salen al acabar la prueba de la bodega. Aquí se salta
+    // (J2.3), tocando su ficha y «Saltarla»: la bodega a toques ya la cubren la pelea del muelle.
+    await noToasts();
+    if (await tapChip(/^Saltar la prueba$/)) {
+        const skip = page.locator('.popup:visible .popup-button-ok').first();
+        if (await skip.waitFor({ state: 'visible', timeout: 8000 }).then(() => true).catch(() => false)) await skip.tap({ timeout: 5000 }).catch(() => {});
+        await until(() => chatHas(/apunta tu nombre en el libro del gremio/), 15000);
+        await page.waitForTimeout(800);
+        await tapDice();
+    }
+    const boardOffered = await until(async () => (await chips()).some(c => /Tablón de campañas/.test(c)), 15000);
+    check('saltada la prueba, se ofrecen el tablón y contratar (D-J28, J2.3)', boardOffered, JSON.stringify(await chips()));
 
     // 9. Contratar, si la fila lo ofrece aquí.
     if ((await chips()).some(c => /Contratar mercenarios/.test(c))) {

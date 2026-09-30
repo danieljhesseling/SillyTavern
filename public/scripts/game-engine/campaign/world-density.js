@@ -504,6 +504,29 @@ export function checkWorldDensity(pack) {
         }
     }
 
+    // J5.6: el hilo tiene que poder acabar, y cada hito a la vista, llevar a algo. Un secreto
+    // (`hidden`) puede ser un callejón: se encuentra por gusto.
+    const leadsToEnding = (/** @type {any} */ m) => Boolean(endings[text(m.changes?.ending)])
+        || Object.values(m.changes?.endingBy ?? {}).some(e => Boolean(endings[text(e)]));
+    if (milestones.length > 0 && !milestones.some(m => openable.has(text(m.id)) && leadsToEnding(m))) {
+        errors.push('Ningún hito que se pueda abrir lleva a un final: la campaña no se puede acabar');
+    }
+    const followed = new Set([
+        ...milestones.filter(m => m.opens?.kind === 'after').map(m => text(m.opens.milestone)),
+        ...milestones.flatMap(m => [...list(m.changes?.open), ...list(m.late?.open)].map(text)),
+    ]);
+    for (const m of milestones) {
+        if (m.hidden || followed.has(text(m.id)) || leadsToEnding(m)) continue;
+        warnings.push(`Hito ${m.id} no lleva a nada: ni abre otro hito ni acaba la campaña`);
+    }
+
+    // J5.6: cada misión, con su tablero.
+    for (const q of quests) {
+        const name = text(q.name) || text(q.id);
+        if (!text(q.boardId)) errors.push(`Misión ${name}: no dice en qué tablero se juega`);
+        else if (!boardIds.has(text(q.boardId))) errors.push(`Misión ${name}: su tablero «${q.boardId}» no existe`);
+    }
+
     // ------------------------------------------------------------ se puede llegar a todo
     const start = low(locations[0]?.name);
     const graph = new Map(locations.map(l => [low(l.name), new Set()]));
@@ -541,7 +564,8 @@ export function checkWorldDensity(pack) {
     for (const l of locations) {
         const who = npcs.filter(p => low(p.where) === low(l.name)).length;
         const said = rumors.filter(r => low(r.where) === low(l.name)).length;
-        const services = list(l.services).length;
+        // Los servicios escritos o, sin ellos, los de su tipo: una aldea tiene posada aunque no lo diga.
+        const services = servicesOf(l).length;
         const hasBoard = boards.some(b => low(b.locationName) === low(l.name));
         if (who + said + services === 0 && !hasBoard) errors.push(`En «${l.name}» no hay nada que hacer: ni gente, ni rumores, ni servicios, ni tablero`);
         else if (who === 0 && said === 0) warnings.push(`«${l.name}»: nadie con quien hablar y nada que oír`);

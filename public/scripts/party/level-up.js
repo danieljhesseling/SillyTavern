@@ -15,6 +15,7 @@ import { spellById, spellsForClass } from '../game-engine/rules/grimoire.js';
 import { perkChoices, takePerk, PERKS, perksOf } from '../game-engine/rules/level-perks.js';
 import { respecCost, redoPerks } from '../game-engine/rules/respec.js';
 import { getActiveRuleset } from '../game-engine/rules/ruleset.js';
+import { INJURABLE_STATS } from '../game-engine/rules/injuries.js';
 import {
     planLevelUp, buildLevelUpPatch, describeLevelUp, validateAbilityPicks, ABILITIES, levelForXp,
 } from '../game-engine/rules/level-up.js';
@@ -199,6 +200,25 @@ export async function openSpellChoiceCard({ member, classRow, from, to, title })
     return patch;
 }
 
+/**
+ * Lo que sube al subir de nivel (la vida máxima, una característica, la CA de una mejora),
+ * sumado también a `baseStats`, que guarda los números de antes de la primera herida. Las
+ * heridas se vuelven a aplicar desde ahí (`rules/injuries.js`): sin esto, subir de nivel
+ * herido se deshacía al curarse.
+ *
+ * @param {any} member
+ * @param {Record<string, number>} before Los números de antes de subir.
+ */
+function keepGainsUnderInjuries(member, before) {
+    if (!member?.baseStats || typeof member.baseStats !== 'object') return;
+    const base = { ...member.baseStats };
+    for (const stat of INJURABLE_STATS) {
+        const gained = (Number(member[stat]) || 0) - (Number(before[stat]) || 0);
+        if (gained !== 0 && stat in base) base[stat] = (Number(base[stat]) || 0) + gained;
+    }
+    member.baseStats = base;
+}
+
 /** Como se llaman las seis en la ficha. */
 const ABILITY_LABELS = {
     strength: 'Fuerza',
@@ -355,10 +375,14 @@ export async function openLevelUpCard(member) {
             toastr.warning(spellPick.errors.join(' '), 'Conjuros');
             return;
         }
+        const beforeStats = Object.fromEntries(INJURABLE_STATS.map(stat => [stat, Number(member[stat]) || 0]));
         Object.assign(member, buildLevelUpPatch(member, plan, picks));
         // Idea 46: lo elegido, que se nota jugando.
         const perkPatch = chosenPerk ? takePerk(member, chosenPerk) : null;
         if (perkPatch) Object.assign(member, perkPatch);
+        // Con una herida encima, lo ganado va también a sus números de antes de la herida:
+        // si no, al curarse (o al pasar el día) volvería el máximo de vida del nivel anterior.
+        keepGainsUnderInjuries(member, beforeStats);
         if (spellPick) {
             Object.assign(member, spellPick.patch);
             if (spellPick.learned.length > 0) {

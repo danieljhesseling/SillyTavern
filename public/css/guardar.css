@@ -1,0 +1,406 @@
+/* ================================================================
+   J15.2 y J15.6 · Guardar y cargar (public/scripts/game-engine/ui/save-screen.js).
+   Las ranuras como las de un juego: el dibujo del sitio, el día, dónde, quién va y cuándo.
+   Arriba las que se llenan solas; luego las tuyas; debajo, los puntos de hoy; al pie,
+   exportar e importar la partida entera.
+   Los colores son los del juego (`--gs-*`, game-shell.css). Todo cuelga de .sv-dialog.
+   ================================================================ */
+
+.sv-dialog {
+    width: min(860px, 96vw);
+    max-width: none;
+    max-height: 92vh;
+    margin: auto;
+    padding: 0;
+    color: var(--SmartThemeBodyColor, #e8e0d0);
+    background: var(--gs-bg-dark, #12100e);
+    border: 1px solid var(--gs-gold-line, rgba(214, 180, 106, 0.4));
+    border-radius: 14px;
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.85);
+    overflow: hidden;
+}
+
+.sv-dialog::backdrop {
+    background: rgba(0, 0, 0, 0.72);
+}
+
+.sv-root {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    max-height: 92vh;
+}
+
+.sv-root.sv-busy {
+    cursor: progress;
+}
+
+/* ---- La cabecera ---- */
+.sv-head {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 0.9rem 1.1rem 0.7rem;
+    border-bottom: 1px solid var(--gs-gold-line, rgba(214, 180, 106, 0.4));
+    background: linear-gradient(180deg, rgba(226, 194, 122, 0.08), transparent);
+}
+
+.sv-head-icon {
+    font-size: 1.4rem;
+    color: var(--gs-accent-gold, #e2c27a);
+}
+
+.sv-titles {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.sv-title {
+    margin: 0;
+    font-size: 1.25rem;
+    color: var(--gs-accent-gold, #e2c27a);
+}
+
+.sv-sub {
+    font-size: 0.9rem;
+    opacity: 0.8;
+}
+
+.sv-close {
+    flex: 0 0 auto;
+    width: 2.4rem;
+    height: 2.4rem;
+    color: inherit;
+    background: transparent;
+    border: 1px solid var(--gs-gold-line, rgba(214, 180, 106, 0.4));
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.sv-close:hover,
+.sv-close:focus-visible {
+    background: var(--gs-accent-gold-hover, rgba(226, 194, 122, 0.15));
+}
+
+/* ---- La línea de estado: guardando, guardada, no se pudo ---- */
+.sv-status:empty {
+    display: none;
+}
+
+.sv-status {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem 0.6rem;
+    padding: 0.55rem 1.1rem;
+    font-size: 0.95rem;
+    border-bottom: 1px solid rgba(214, 180, 106, 0.2);
+}
+
+.sv-status[data-tone="ok"] {
+    background: rgba(111, 158, 93, 0.16);
+}
+
+.sv-status[data-tone="bad"] {
+    background: var(--gs-danger-bg, rgba(69, 10, 10, 0.6));
+    color: var(--gs-danger-soft, #d08a86);
+}
+
+.sv-status[data-tone="busy"] {
+    background: rgba(106, 140, 175, 0.14);
+}
+
+.sv-status-line {
+    flex: 1 1 auto;
+}
+
+.sv-status-more {
+    flex: 1 1 100%;
+    font-size: 0.88rem;
+    opacity: 0.9;
+}
+
+/* ---- El cuerpo, con scroll propio ---- */
+.sv-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 0.9rem 1.1rem 1.1rem;
+}
+
+.sv-slots {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+/* ---- Una ranura ---- */
+.sv-slot {
+    display: grid;
+    grid-template-columns: 112px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.9rem;
+    padding: 0.55rem 0.7rem;
+    background: var(--gs-bg-panel, rgba(24, 20, 16, 0.95));
+    border: 1px solid var(--gs-gold-line, rgba(214, 180, 106, 0.4));
+    border-radius: 10px;
+}
+
+.sv-slot.sv-auto {
+    border-style: dashed;
+}
+
+.sv-slot.sv-empty {
+    opacity: 0.8;
+}
+
+.sv-thumb {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 112px;
+    height: 70px;
+    overflow: hidden;
+    color: var(--gs-accent-gold, #e2c27a);
+    background: rgba(0, 0, 0, 0.35);
+    border-radius: 6px;
+    font-size: 1.6rem;
+}
+
+.sv-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    image-rendering: pixelated;
+}
+
+.sv-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.12rem;
+    min-width: 0;
+}
+
+.sv-name {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-weight: bold;
+    color: var(--gs-accent-gold, #e2c27a);
+}
+
+.sv-name i {
+    font-size: 0.85rem;
+    opacity: 0.8;
+}
+
+.sv-hint,
+.sv-when {
+    font-size: 0.82rem;
+    opacity: 0.7;
+}
+
+.sv-line {
+    font-size: 0.98rem;
+}
+
+.sv-where,
+.sv-hero {
+    font-size: 0.88rem;
+    opacity: 0.9;
+}
+
+.sv-why {
+    font-size: 0.82rem;
+    color: var(--gs-danger-soft, #d08a86);
+}
+
+.sv-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.sv-dialog .sv-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    min-height: 2.4rem;
+    margin: 0;
+    padding: 0.3rem 0.8rem;
+    white-space: nowrap;
+}
+
+.sv-dialog .sv-btn[disabled] {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+/* ---- La pregunta de antes: una franja abajo, dentro de la ventana ---- */
+.sv-confirm {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    padding: 0.9rem 1.1rem;
+    background: rgba(40, 30, 18, 0.98);
+    border-top: 2px solid var(--gs-accent-gold, #e2c27a);
+}
+
+.sv-confirm[hidden] {
+    display: none;
+}
+
+.sv-confirm-text {
+    font-size: 1rem;
+    line-height: 1.4;
+}
+
+.sv-confirm-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.sv-dialog .sv-confirm-yes {
+    border-color: var(--gs-accent-gold, #e2c27a);
+}
+
+/* ---- Los puntos de hoy ---- */
+.sv-points {
+    margin-top: 1.1rem;
+    padding-top: 0.8rem;
+    border-top: 1px solid rgba(214, 180, 106, 0.25);
+}
+
+.sv-points[hidden] {
+    display: none;
+}
+
+.sv-points-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.sv-points-title {
+    margin: 0;
+    font-size: 1.05rem;
+    color: var(--gs-accent-gold, #e2c27a);
+}
+
+.sv-points-note,
+.sv-points-empty,
+.sv-foot-note {
+    margin: 0.35rem 0;
+    font-size: 0.85rem;
+    opacity: 0.75;
+}
+
+.sv-point-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    margin: 0.3rem 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.sv-point {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem 0.7rem;
+    padding: 0.3rem 0.6rem;
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 6px;
+}
+
+.sv-point-label {
+    flex: 1 1 12rem;
+    min-width: 0;
+}
+
+.sv-point-time,
+.sv-point-auto {
+    font-size: 0.8rem;
+    opacity: 0.7;
+}
+
+.sv-earlier {
+    margin-top: 0.4rem;
+}
+
+.sv-earlier summary {
+    cursor: pointer;
+    font-size: 0.88rem;
+    opacity: 0.8;
+}
+
+/* ---- Al pie: sacar y meter la partida entera ---- */
+.sv-foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 1.1rem;
+    padding-top: 0.8rem;
+    border-top: 1px solid rgba(214, 180, 106, 0.25);
+}
+
+.sv-foot:empty {
+    display: none;
+}
+
+.sv-foot-note {
+    flex: 1 1 100%;
+}
+
+/* ---- En el móvil: todo en una columna, y los botones de dedo ---- */
+@media (max-width: 640px) {
+    .sv-dialog {
+        width: 100vw;
+        max-height: 100dvh;
+        border-radius: 0;
+    }
+
+    .sv-root {
+        max-height: 100dvh;
+    }
+
+    .sv-slot {
+        grid-template-columns: 72px minmax(0, 1fr);
+        grid-template-areas:
+            "thumb info"
+            "actions actions";
+    }
+
+    .sv-thumb {
+        grid-area: thumb;
+        width: 72px;
+        height: 48px;
+        font-size: 1.2rem;
+    }
+
+    .sv-info {
+        grid-area: info;
+    }
+
+    .sv-actions {
+        grid-area: actions;
+        flex-direction: row;
+    }
+
+    .sv-actions .sv-btn {
+        flex: 1 1 0;
+        min-height: 44px;
+    }
+
+    .sv-foot .sv-btn,
+    .sv-confirm-row .sv-btn {
+        flex: 1 1 100%;
+        min-height: 44px;
+    }
+}

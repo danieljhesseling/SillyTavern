@@ -44,6 +44,7 @@ import { memoryLines } from '../game-engine/campaign/memories.js';
 import { promptKey } from '../game-engine/cost/prompt-order.js';
 import { lineToEntry } from '../game-engine/ui/combat-log.js';
 import { buildGameMessage, CHANNEL } from '../game-engine/ui/chat-channel.js';
+import { firstArt } from '../game-engine/ui/pixel-art.js';
 import { guardRolls, guardImpossibleRolls, describeCorrections } from '../game-engine/combat/roll-guard.js';
 import { findContradictions, appendContradictions } from '../game-engine/ui/contradiction-log.js';
 import { isShellOpen, refreshGameShell } from '../game-engine/ui/shell/game-shell.js';
@@ -59,7 +60,7 @@ import {
     actsOnItsOwn, getAttackableEnemiesForMember, getCurrentActingMember, getCurrentTurnEntry,
 } from './combat-state.js';
 import { pushCombatLogEntry, pushCombatLogLines } from './combat-log.js';
-import { currentSeason, getLocationBoards, lastCompendium, lastHub, lastHubHome, lastWorldNpcs } from './world.js';
+import { currentSeason, getLocationBoards, lastCompendium, lastHub, lastHubHome, lastPack, lastWorldNpcs } from './world.js';
 import { rulerOf, shiftFactionStanding } from './factions.js';
 import {
     advanceCampaignDay, advanceCampaignSlot, campaignDay, getCampaignCalendar, getCurrentSlotLabel,
@@ -487,12 +488,15 @@ export async function postForModel(text, options = {}) {
     if (typeof text !== 'string' || !text.trim()) return;
 
     const speaker = String(options?.speaker ?? '').trim();
+    // Quien habla, con su retrato en pixel si lo tiene: con la cara del sistema, la novela lo
+    // tomaría por el narrador y no le pondría cara.
+    const face = speaker ? firstArt('portrait', { name: speaker, pack: lastPack }) : '';
     const message = buildGameMessage({
         // J1.4: el modelo también lee «entera», no «{entero|entera}».
         text: sayGendered(substituteParams(text.trim())),
         channel: CHANNEL.MODEL,
         name: speaker || chat_metadata?.narrator_name || 'Narrador',
-        avatar: system_avatar,
+        avatar: face || system_avatar,
         timestamp: getMessageTimeStamp(),
         compact: true,
     });

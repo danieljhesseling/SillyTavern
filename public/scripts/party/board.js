@@ -554,25 +554,36 @@ export function archetypeOf(template) {
 }
 
 /**
- * J19.5: las invocaciones, como fichas del lado del grupo. Llevan ids de ficha propios (de
- * -3000 hacia abajo) para no pisar a los enemigos ni a la gente del tablero.
+ * J19.5: las invocaciones, como fichas del lado del grupo. Con el id de ficha que les da su
+ * turno (`spell-turn.js`): así se eligen, se arrastran y se encienden como cualquiera del
+ * grupo cuando les toca. La que aún no tiene turno, uno propio de -3000 hacia abajo, que no
+ * pisa a los enemigos ni a la gente del tablero.
  *
  * @returns {import('../world-map-renderer.js').TokenData[]}
  */
 export function buildSummonTokens() {
     return activeSummons()
         .filter(summon => (Number(summon?.hp) || 0) > 0)
-        .map((summon, index) => ({
-            id: -(3000 + index),
-            name: String(summon.name),
-            avatar: '',
-            gridX: Number(summon.x) || 0,
-            gridY: Number(summon.y) || 0,
-            hp: Number(summon.hp) || 0,
-            maxHp: Number(summon.maxHp) || Number(summon.hp) || 0,
-            isSummon: true,
-            summoner: partyMembers.find(m => String(m.id) === String(summon.casterId))?.name ?? '',
-        }));
+        .map((summon, index) => {
+            const own = /** @type {any} */ (summon);
+            const turnId = own.summon && Number.isFinite(Number(own.id)) ? Number(own.id) : null;
+            // Lo que se ha movido lo dice su casilla de grupo; la recién llegada, su `x`/`y`.
+            const at = own.mapPosition ?? { gridX: summon.x, gridY: summon.y };
+            return {
+                id: turnId ?? -(3000 + index),
+                name: String(summon.name),
+                avatar: '',
+                gridX: Number(at.gridX) || 0,
+                gridY: Number(at.gridY) || 0,
+                hp: Number(summon.hp) || 0,
+                maxHp: Number(summon.maxHp) || Number(summon.hp) || 0,
+                isSummon: true,
+                // Su dibujo: el bicho del bestiario que es (el lobo de Conjurar animales).
+                archetype: String(own.archetype ?? ''),
+                statuses: statusMarkers(own.activeConditions),
+                summoner: partyMembers.find(m => String(m.id) === String(summon.casterId))?.name ?? '',
+            };
+        });
 }
 
 /**

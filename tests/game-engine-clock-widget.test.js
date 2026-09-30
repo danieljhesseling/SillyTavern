@@ -83,3 +83,22 @@ describe('el reloj contado en una linea', () => {
         expect(describeClock(view)).toBe('Día 1 · Noche. No se puede pasar el tiempo ahora.');
     });
 });
+
+describe('J14.2: las partes del día en la cabecera', () => {
+    test('la tira viaja con el reloj, dicha en una línea para el title', () => {
+        const strip = [
+            { id: 'morning', label: 'Mañana', state: /** @type {const} */ ('hecho'), what: 'Con Gerd' },
+            { id: 'afternoon', label: 'Tarde', state: /** @type {const} */ ('ahora'), what: '' },
+            { id: 'night', label: 'Noche', state: /** @type {const} */ ('libre'), what: '' },
+        ];
+        const view = buildClockView({ day: 2, slotLabel: 'Tarde', strip });
+        expect(view.strip.map(p => p.state)).toEqual(['hecho', 'ahora', 'libre']);
+        expect(view.stripLine).toBe('Mañana: Con Gerd · Tarde: ahora · Noche: libre');
+    });
+
+    test('sin tira (fuera de una partida), nada que enseñar', () => {
+        const view = buildClockView({ day: 1, slotLabel: 'Mañana' });
+        expect(view.strip).toEqual([]);
+        expect(view.stripLine).toBe('');
+    });
+});

@@ -546,7 +546,8 @@ function listenerBarrier(speaker, skill, name = '') {
         ? lastWorldNpcs.find(n => n.name.toLowerCase() === who.toLowerCase() && n.where.toLowerCase() === String(currentLocationName).toLowerCase())
         : null;
     if (!listener?.language) return { edge: '', by: '', note: '' };
-    return languageBarrier({ speaker, party: partyMembers, language: listener.language, skill, listener: listener.name });
+    // D-J27: con el calendario, para quien lanzó Comprender idiomas en esta parte del día.
+    return languageBarrier({ speaker, party: partyMembers, language: listener.language, skill, listener: listener.name, now: getCampaignCalendar() });
 }
 
 /**

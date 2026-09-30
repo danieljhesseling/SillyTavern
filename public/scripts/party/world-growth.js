@@ -44,7 +44,7 @@ import {
 import { combatEncounter, currentLocationName, narratorTurn, partyMembers } from './state.js';
 import { campaignCompendium, currentSeason, ensureWorldData, lastMix, lastWorldNpcs, seedOfWorld } from './world.js';
 import { bannerOf, getCurrentWorldFactions } from './factions.js';
-import { advanceCampaignSlot, campaignDay, getCampaignCalendar, getCurrentSlotLabel, getDebt } from './time.js';
+import { campaignDay, getCampaignCalendar, getCurrentSlotLabel, getDebt, spendDayPart } from './time.js';
 import { getPlot } from './plot.js';
 import { postCombatNarration, postForModel, saverOn } from './narration.js';
 import { speakingNote } from './talk.js';
@@ -216,7 +216,8 @@ export async function exploreHere(name = '') {
     chat_metadata[EXPLORED_KEY] = count + 1;
     chat_metadata[PROPOSALS_KEY] = proposals;
     saveMetadata();
-    advanceCampaignSlot();
+    // J14.2: explorar es un paso de misión: se lleva la parte del día, dicha en la cabecera.
+    spendDayPart('mision', { label: 'Explorar' });
 
     noteDeed(`Descubristeis ${place.name}.`);
     const who = people.map(p => `${p.name}${p.title ? `, ${String(p.title).toLowerCase()}` : ''}`).join(' y ');

@@ -23,13 +23,22 @@ import { createTurnState, getRemainingMovement } from '../game-engine/combat/tur
 import { isFlanked } from '../game-engine/combat/crits.js';
 import { awakePlacements } from '../game-engine/campaign/campaign-map.js';
 import { combatEncounter, currentBoardName, currentLocationName, partyMembers, setCombatEncounter } from './state.js';
-import { controlOf, livingSummons, shieldBonus, summonById } from './spell-turn.js';
+import { controlOf, livingSummons, pruneSummonTurns, shieldBonus, summonById, summonsNow } from './spell-turn.js';
 import { restoreChatPlaceholder } from './combat-flow.js';
 import { getActiveBoardTerrain, getActiveBoardContext, isBoardWon } from './board.js';
 
 /** @typedef {import('./types.js').PartyMember} PartyMember */
 
 export function saveCombatState() {
+    // J19.5: lo que acaba de invocar un conjuro se hace luchador aquí, antes de guardar: con su
+    // turno detrás de quien lo llamó y su ficha con id propio. Todo lo que cambia la pelea pasa
+    // por aquí, así que la invocación ya sale en la iniciativa y en el tablero al redibujar.
+    // Y las que se han ido (su tiempo, la concentración que las sostenía, su invocador caído)
+    // dejan también su fila de la iniciativa.
+    if (combatEncounter.active) {
+        if (Array.isArray(combatEncounter.summons) && combatEncounter.summons.length > 0) summonsNow();
+        pruneSummonTurns();
+    }
     if (chat_metadata) {
         chat_metadata['combatEncounter'] = JSON.parse(JSON.stringify(combatEncounter));
         saveMetadata();
@@ -131,6 +140,8 @@ export function speedOf(member) {
  */
 export function getAttackableEnemiesForMember(member) {
     if (!member) return [];
+    // J19.5: lo que no pega (un familiar) no tiene a quién atacar.
+    if (/** @type {any} */ (member).summon && /** @type {any} */ (member).attacks === false) return [];
     const origin = member.mapPosition || { gridX: 0, gridY: 0, locationName: '' };
     const originX = Number.isFinite(Number(origin.gridX)) ? Number(origin.gridX) : 0;
     const originY = Number.isFinite(Number(origin.gridY)) ? Number(origin.gridY) : 0;

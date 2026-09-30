@@ -12,6 +12,7 @@
  */
 
 import { getHitDice } from '../../rules/rest.js';
+import { describeDay } from '../../campaign/day-parts.js';
 
 /**
  * @typedef {Object} ClockAction
@@ -28,6 +29,18 @@ import { getHitDice } from '../../rules/rest.js';
  * @property {string} slot
  * @property {string} label Lo que se lee en la cabecera.
  * @property {ClockAction[]} actions
+ * @property {DayPart[]} strip J14.2: las partes del día, con lo que se hizo en cada una.
+ * @property {string} stripLine La tira dicha en una línea («Mañana: Con Gerd · Tarde: ahora»).
+ */
+
+/**
+ * Una parte del día en la cabecera (J14.2): `dayStrip` de `campaign/day-parts.js`.
+ *
+ * @typedef {Object} DayPart
+ * @property {string} id
+ * @property {string} label
+ * @property {'hecho'|'ahora'|'libre'} state
+ * @property {string} what En qué se fue, si ya pasó.
  */
 
 /** @type {Array<{id: ClockAction['id'], label: string, icon: string, why: string}>} */
@@ -65,9 +78,10 @@ export function availableHitDice(party, hitDieByClass = {}) {
  * @param {Array<any>} [input.party]
  * @param {Record<string, string>} [input.hitDieByClass]
  * @param {string} [input.season] Idea 74: la estación, dicha.
+ * @param {DayPart[]} [input.strip] J14.2: las partes del día (`dayStrip`), para la cabecera.
  * @returns {ClockView}
  */
-export function buildClockView({ day = 1, slotLabel = '', fighting = false, party = [], hitDieByClass = {}, season = '' } = {}) {
+export function buildClockView({ day = 1, slotLabel = '', fighting = false, party = [], hitDieByClass = {}, season = '', strip = [] } = {}) {
     const dice = availableHitDice(party, hitDieByClass);
 
     const actions = ACTIONS.map(action => {
@@ -82,12 +96,16 @@ export function buildClockView({ day = 1, slotLabel = '', fighting = false, part
 
     const safeDay = Math.max(1, Math.floor(Number(day) || 1));
     const slot = String(slotLabel || '').trim();
+    const parts = (Array.isArray(strip) ? strip : []).filter(part => part && String(part.label ?? '').trim());
 
     return {
         day: safeDay,
         slot,
         label: [`Día ${safeDay}`, slot, String(season || '').trim()].filter(Boolean).join(' · '),
         actions,
+        strip: parts,
+        // Para el `title` de la cabecera: en qué se fue cada parte, cuál es ahora y cuáles quedan.
+        stripLine: describeDay(parts),
     };
 }
 

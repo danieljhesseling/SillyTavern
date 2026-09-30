@@ -1,7 +1,7 @@
 {
   "version": 1,
   "domain": "charlas",
-  "about": "La charla corta con tu gente (J14.1 de ROADMAP_SIN_CONEXION): al cruzarte con alguien, una o dos frases suyas (LINES) y tres respuestas tuyas (REPLIES). No gasta tiempo y mueve un poco la aprobación: MOOD 1 le gusta (un punto de vínculo, o de trato si es del pueblo), 0 le da igual, -1 no le gusta. Cada fila es de una persona (WHO, su nombre tal cual) o, si no lleva WHO, de cualquiera que busque lo mismo (WANTS: coin, glory, blood, quiet, knowledge). MOMENT es cuándo sale: pelea (tras una pelea), llegada (al llegar a una localización), viaje (de camino), pueblo (en el pueblo, sin prisa) o herido (cuando tu héroe va mal de vida). WHEN.hora (morning, afternoon, night) la deja solo para esa hora. THEN es lo que contesta a tu respuesta. MOOD de la fila es su cara: alegre, enfadado o triste. Lo que concuerda con tu héroe va entre llaves con las dos formas, la de él y la de ella, separadas por una barra vertical. Huecos: {heroe} (tu nombre) y {sitio} (la localización a la que se llega, solo en llegada). Una frase no se repite hasta que se oyen todas las de esa persona y ese momento.",
+  "about": "La charla corta con tu gente (J14.1 de ROADMAP_SIN_CONEXION): al cruzarte con alguien, una o dos frases suyas (LINES) y tres respuestas tuyas (REPLIES). No gasta tiempo y mueve un poco la aprobación: MOOD 1 le gusta (un punto de vínculo, o de trato si es del pueblo), 0 le da igual, -1 no le gusta. Cada fila es de una persona (WHO, su nombre tal cual) o, si no lleva WHO, de cualquiera que busque lo mismo (WANTS: coin, glory, blood, quiet, knowledge). MOMENT es cuándo sale: pelea (tras una pelea), llegada (al llegar a una localización), viaje (de camino), pueblo (en el pueblo, sin prisa) o herido (cuando tu héroe va mal de vida). WHEN.hora (morning, afternoon, night) la deja solo para esa hora. THEN es lo que contesta a tu respuesta. MOOD de la fila es su cara: alegre, enfadado o triste. Lo que concuerda con tu héroe va entre llaves con las dos formas, la de él y la de ella, separadas por una barra vertical. Huecos: {heroe} (tu nombre) y {sitio} (la localización a la que se llega, solo en llegada). Una frase no se repite hasta que se oyen todas las de esa persona y ese momento. Las filas de KIND frase (J13.5) son distintas: una línea suelta, sin respuestas, que un compañero dice fuera de combate. MOMENT es viaje (de camino), llegada (al llegar) o decision (ante lo que decidís: ABOUT es lo que se hizo, con las palabras de companeros.json o las decisiones del juego, o * para cualquier cosa; FEEL 1 si le gusta y -1 si no). LINES son las frases que puede decir, y se usan todas antes de repetir ninguna.",
   "rows": [
     {
       "id": "gerd-pelea-1",
@@ -914,7 +914,7 @@
     },
     {
       "id": "brunilda-pueblo-3",
-      "name": "Brunilda · la lista de los que vuelven (noche)",
+      "name": "Brunilda · en la capilla (noche)",
       "who": "Brunilda",
       "campaign": "gremio",
       "moment": "pueblo",
@@ -922,24 +922,24 @@
         "hora": "night"
       },
       "lines": [
-        "Estoy apuntando quién ha vuelto este mes. Me gusta que la lista sea larga.",
-        "Tú sigues en ella. Procura seguir."
+        "Cuando cierro el gremio, vengo un rato a la capilla. Aquí no hablo del tablón.",
+        "Este mes no han vuelto tres. No quiero que se me olviden sus caras."
       ],
       "replies": [
         {
-          "text": "¿Cuántos faltan?",
+          "text": "¿Quiénes eran?",
           "mood": 0,
-          "then": "Tres. Esta noche no me preguntes los nombres."
+          "then": "Esta noche no me preguntes los nombres. Mañana, quizá."
         },
         {
-          "text": "Con menos gente tendrías menos trabajo.",
+          "text": "Venía a preguntarte por una campaña.",
           "mood": -1,
-          "then": "No tiene gracia. Vete a dormir."
+          "then": "He dicho que aquí no. Mañana, en el gremio."
         },
         {
-          "text": "Pienso seguir en ella. Te lo prometo.",
+          "text": "Me siento contigo, sin hablar.",
           "mood": 1,
-          "then": "No quiero promesas. Quiero verte entrar por esa puerta."
+          "then": "Bien. Así sí. Y tú vuelve siempre, que no quiero venir aquí a acordarme de ti."
         }
       ]
     },
@@ -979,7 +979,7 @@
       "moment": "pueblo",
       "lines": [
         "¿Quién hace guardia de noche en tu compañía?",
-        "Siempre lo pregunto. Las que me contestan «ya veremos» son las que no vuelven."
+        "Siempre lo pregunto. Las compañías que me contestan «ya veremos» son las que no vuelven."
       ],
       "replies": [
         {
@@ -4802,6 +4802,82 @@
           "then": "(Niega con la cabeza, muy serio.) Hmf."
         }
       ]
-    }
+    },
+    { "id": "frase-gerd-viaje-1", "kind": "frase", "name": "Gerd · frase de camino", "who": "Gerd el Mellado", "campaign": "gremio", "moment": "viaje", "lines": ["Si alguien ve una venta, que avise. Tengo un hambre que no veo.", "Este camino lo hice hace años con Ramiro. Entonces tenía más dientes y menos tripa."] },
+    { "id": "frase-gerd-viaje-2", "kind": "frase", "name": "Gerd · frase de camino", "who": "Gerd el Mellado", "campaign": "gremio", "moment": "viaje", "lines": ["¿Qué pone en ese cartel? Léemelo tú, que con este sol no veo bien.", "Cantaría algo, pero la última vez Osric me amenazó con tirarme al río."] },
+    { "id": "frase-gerd-llegada-1", "kind": "frase", "name": "Gerd · frase al llegar", "who": "Gerd el Mellado", "campaign": "gremio", "moment": "llegada", "lines": ["{sitio}. A ver si aquí guisan como Tomás. Lo dudo, pero a ver.", "Mirad qué sitio. Lo primero, la posada. Lo segundo, también."] },
+    { "id": "frase-gerd-llegada-2", "kind": "frase", "name": "Gerd · frase al llegar", "who": "Gerd el Mellado", "campaign": "gremio", "moment": "llegada", "lines": ["Llegamos a {sitio} {enteros|enteras}. Eso ya es un buen día."] },
+    { "id": "frase-gerd-decision-pagar", "kind": "frase", "name": "Gerd · no le gusta pagar", "who": "Gerd el Mellado", "campaign": "gremio", "moment": "decision", "about": "pagar", "feel": -1, "lines": ["Con eso comía mi madre un mes. Pero bueno, tú mandas.", "Otra bolsa que se va. Y luego el pobre soy yo."] },
+    { "id": "frase-gerd-decision-amable", "kind": "frase", "name": "Gerd · le gusta que trates bien a la gente", "who": "Gerd el Mellado", "campaign": "gremio", "moment": "decision", "about": "amable", "feel": 1, "mood": "alegre", "lines": ["Así se trata a la gente. Con eso se gana más que con la espada."] },
+    { "id": "frase-gerd-decision-ayudar", "kind": "frase", "name": "Gerd · le gusta echar una mano", "who": "Gerd el Mellado", "campaign": "gremio", "moment": "decision", "about": "ayudar", "feel": 1, "mood": "alegre", "lines": ["Eso es. Una mano a tiempo vale más que diez espadas."] },
+    { "id": "frase-gerd-decision-desairar", "kind": "frase", "name": "Gerd · no le gusta que trates mal a la gente", "who": "Gerd el Mellado", "campaign": "gremio", "moment": "decision", "about": "desairar", "feel": -1, "mood": "enfadado", "lines": ["Eh, sin faltar. Que esa gente no te ha hecho nada."] },
+    { "id": "frase-gerd-decision-pelear", "kind": "frase", "name": "Gerd · le gusta pelear", "who": "Gerd el Mellado", "campaign": "gremio", "moment": "decision", "about": "pelear", "feel": 1, "mood": "alegre", "lines": ["¡Así me gusta! Rápido y sin tanto hablar."] },
+    { "id": "frase-gerd-decision-bien", "kind": "frase", "name": "Gerd · le gusta lo que has hecho", "who": "Gerd el Mellado", "campaign": "gremio", "moment": "decision", "about": "*", "feel": 1, "mood": "alegre", "lines": ["Bien hecho. Eso lo habría hecho yo.", "¡Ja! Me gusta cómo lo has resuelto."] },
+    { "id": "frase-gerd-decision-mal", "kind": "frase", "name": "Gerd · no le gusta lo que has hecho", "who": "Gerd el Mellado", "campaign": "gremio", "moment": "decision", "about": "*", "feel": -1, "lines": ["No sé yo… A mí no me convence.", "Mmm. Yo lo habría hecho de otra manera."] },
+    { "id": "frase-nella-viaje-1", "kind": "frase", "name": "Nella · frase de camino", "who": "Nella Tresflechas", "campaign": "gremio", "moment": "viaje", "lines": ["Aquí fuera se respira. En el pueblo me ahogo.", "Te apuesto una moneda a que llego antes a ese árbol. ¿No? Qué aburrimiento."] },
+    { "id": "frase-nella-viaje-2", "kind": "frase", "name": "Nella · frase de camino", "who": "Nella Tresflechas", "campaign": "gremio", "moment": "viaje", "lines": ["Huellas de ciervo. Frescas. Si no tuviéramos prisa…", "Callad un momento. ¿Lo oís? Nada. Así me gusta el camino."] },
+    { "id": "frase-nella-llegada-1", "kind": "frase", "name": "Nella · frase al llegar", "who": "Nella Tresflechas", "campaign": "gremio", "moment": "llegada", "lines": ["{sitio}. Mucha pared y mucha gente. Esta noche duermo en el establo.", "¿Hay diana en la posada de {sitio}? Pregunto por nada."] },
+    { "id": "frase-nella-llegada-2", "kind": "frase", "name": "Nella · frase al llegar", "who": "Nella Tresflechas", "campaign": "gremio", "moment": "llegada", "lines": ["Ya estamos. Yo me quedo cerca de la puerta, por si acaso."] },
+    { "id": "frase-nella-decision-apostar", "kind": "frase", "name": "Nella · le gusta apostar", "who": "Nella Tresflechas", "campaign": "gremio", "moment": "decision", "about": "apostar", "feel": 1, "mood": "alegre", "lines": ["¡Eso! Sin apuesta no tiene gracia."] },
+    { "id": "frase-nella-decision-sigilo", "kind": "frase", "name": "Nella · le gusta ir sin ruido", "who": "Nella Tresflechas", "campaign": "gremio", "moment": "decision", "about": "sigilo", "feel": 1, "lines": ["Sin ruido. Así se hacen bien las cosas."] },
+    { "id": "frase-nella-decision-pagar", "kind": "frase", "name": "Nella · no le gusta pagar", "who": "Nella Tresflechas", "campaign": "gremio", "moment": "decision", "about": "pagar", "feel": -1, "mood": "enfadado", "lines": ["¿Pagar? Con lo que cuesta ganarlo… Qué desperdicio."] },
+    { "id": "frase-nella-decision-huir", "kind": "frase", "name": "Nella · no le gusta echarse atrás", "who": "Nella Tresflechas", "campaign": "gremio", "moment": "decision", "about": "huir", "feel": -1, "lines": ["¿Nos vamos? Pues vale. Pero que conste que no me gusta."] },
+    { "id": "frase-nella-decision-bien", "kind": "frase", "name": "Nella · le gusta lo que has hecho", "who": "Nella Tresflechas", "campaign": "gremio", "moment": "decision", "about": "*", "feel": 1, "mood": "alegre", "lines": ["Buena jugada. Te lo reconozco.", "Eso ha estado bien. Casi tan bien como lo habría hecho yo."] },
+    { "id": "frase-nella-decision-mal", "kind": "frase", "name": "Nella · no le gusta lo que has hecho", "who": "Nella Tresflechas", "campaign": "gremio", "moment": "decision", "about": "*", "feel": -1, "lines": ["Mala jugada. Yo no habría apostado por eso.", "Ya. Lo que tú digas."] },
+    { "id": "frase-osric-viaje-1", "kind": "frase", "name": "Osric · frase de camino", "who": "Osric Mediapaga", "campaign": "gremio", "moment": "viaje", "lines": ["Buen tiempo. Mañana lloverá. Siempre llueve después de un buen día.", "Este camino es bueno para una emboscada. No digo que la vaya a haber. Digo que es bueno."] },
+    { "id": "frase-osric-viaje-2", "kind": "frase", "name": "Osric · frase de camino", "who": "Osric Mediapaga", "campaign": "gremio", "moment": "viaje", "lines": ["El mar huele desde aquí. Me gusta saber que está ahí.", "Andad más juntos. Si pasa algo, que no nos pillen de uno en uno."] },
+    { "id": "frase-osric-llegada-1", "kind": "frase", "name": "Osric · frase al llegar", "who": "Osric Mediapaga", "campaign": "gremio", "moment": "llegada", "lines": ["{sitio}. Buscad la salida antes que la posada.", "Hemos llegado. De momento, nadie nos quiere matar. De momento."] },
+    { "id": "frase-osric-llegada-2", "kind": "frase", "name": "Osric · frase al llegar", "who": "Osric Mediapaga", "campaign": "gremio", "moment": "llegada", "lines": ["Yo me siento de cara a la puerta. Vosotros haced lo que queráis."] },
+    { "id": "frase-osric-decision-convencer", "kind": "frase", "name": "Osric · le gusta que se hable", "who": "Osric Mediapaga", "campaign": "gremio", "moment": "decision", "about": "convencer", "feel": 1, "lines": ["Bien. Hablando no sangra nadie."] },
+    { "id": "frase-osric-decision-observar", "kind": "frase", "name": "Osric · le gusta mirar antes", "who": "Osric Mediapaga", "campaign": "gremio", "moment": "decision", "about": "observar", "feel": 1, "lines": ["Mirar antes de saltar. Eso me gusta."] },
+    { "id": "frase-osric-decision-amenazar", "kind": "frase", "name": "Osric · no le gustan las amenazas", "who": "Osric Mediapaga", "campaign": "gremio", "moment": "decision", "about": "amenazar", "feel": -1, "lines": ["Las amenazas se pagan luego. Siempre."] },
+    { "id": "frase-osric-decision-apostar", "kind": "frase", "name": "Osric · no le gustan las apuestas", "who": "Osric Mediapaga", "campaign": "gremio", "moment": "decision", "about": "apostar", "feel": -1, "lines": ["No me gustan las apuestas. Siempre pierde alguien, y suele ser quien no debe."] },
+    { "id": "frase-osric-decision-bien", "kind": "frase", "name": "Osric · le gusta lo que has hecho", "who": "Osric Mediapaga", "campaign": "gremio", "moment": "decision", "about": "*", "feel": 1, "lines": ["Bien hecho. No lo digo a menudo.", "Me vale."] },
+    { "id": "frase-osric-decision-mal", "kind": "frase", "name": "Osric · no le gusta lo que has hecho", "who": "Osric Mediapaga", "campaign": "gremio", "moment": "decision", "about": "*", "feel": -1, "lines": ["Esto nos va a traer problemas.", "No me gusta. Pero vamos."] },
+    { "id": "frase-oro-viaje-1", "kind": "frase", "name": "Oro · frase de camino", "wants": "coin", "moment": "viaje", "lines": ["Cada día de camino es un día sin cobrar. Que conste.", "¿Alguien lleva la cuenta de lo que llevamos gastado? Yo sí."] },
+    { "id": "frase-oro-llegada-1", "kind": "frase", "name": "Oro · frase al llegar", "wants": "coin", "moment": "llegada", "lines": ["{sitio}. A ver qué se compra y qué se vende por aquí.", "Aquí hay dinero. Se nota en las botas de la gente."] },
+    { "id": "frase-oro-decision-pagar", "kind": "frase", "name": "Oro · no le gusta pagar", "wants": "coin", "moment": "decision", "about": "pagar", "feel": -1, "lines": ["Eso salía de nuestro bolsillo.", "Cada moneda que se va, no vuelve."] },
+    { "id": "frase-oro-decision-cobrar", "kind": "frase", "name": "Oro · le gusta cobrar", "wants": "coin", "moment": "decision", "about": "cobrar", "feel": 1, "lines": ["Eso es. Que paguen, que para eso trabajamos."] },
+    { "id": "frase-oro-decision-apostar", "kind": "frase", "name": "Oro · le gusta apostar", "wants": "coin", "moment": "decision", "about": "apostar", "feel": 1, "lines": ["Una apuesta. Me gusta cuando las cuentas salen a favor."] },
+    { "id": "frase-oro-decision-robar", "kind": "frase", "name": "Oro · le gusta el robo", "wants": "coin", "moment": "decision", "about": "robar", "feel": 1, "lines": ["No lo diré en voz alta, pero bien hecho."] },
+    { "id": "frase-oro-decision-bien", "kind": "frase", "name": "Oro · le gusta lo que has hecho", "wants": "coin", "moment": "decision", "about": "*", "feel": 1, "lines": ["Eso sale a cuenta.", "Buen negocio."] },
+    { "id": "frase-oro-decision-mal", "kind": "frase", "name": "Oro · no le gusta lo que has hecho", "wants": "coin", "moment": "decision", "about": "*", "feel": -1, "lines": ["Eso no sale a cuenta.", "Mal negocio, te lo digo yo."] },
+    { "id": "frase-gloria-viaje-1", "kind": "frase", "name": "Gloria · frase de camino", "wants": "glory", "moment": "viaje", "lines": ["Algún día cantarán este camino. Espero que con mi nombre.", "Mucho andar y poca gloria. Ya llegará."] },
+    { "id": "frase-gloria-llegada-1", "kind": "frase", "name": "Gloria · frase al llegar", "wants": "glory", "moment": "llegada", "lines": ["{sitio}. Que se enteren de quién ha llegado.", "Sitio nuevo, gente nueva que todavía no sabe quiénes somos."] },
+    { "id": "frase-gloria-decision-pelear", "kind": "frase", "name": "Gloria · le gusta pelear", "wants": "glory", "moment": "decision", "about": "pelear", "feel": 1, "lines": ["¡Eso! De frente.", "Así se gana un nombre."] },
+    { "id": "frase-gloria-decision-amenazar", "kind": "frase", "name": "Gloria · le gusta plantarse", "wants": "glory", "moment": "decision", "about": "amenazar", "feel": 1, "lines": ["Bien dicho. Que sepan con quién hablan."] },
+    { "id": "frase-gloria-decision-huir", "kind": "frase", "name": "Gloria · no le gusta echarse atrás", "wants": "glory", "moment": "decision", "about": "huir", "feel": -1, "lines": ["¿Echarnos atrás? Eso no sale en las canciones."] },
+    { "id": "frase-gloria-decision-enganar", "kind": "frase", "name": "Gloria · no le gusta mentir", "wants": "glory", "moment": "decision", "about": "enganar", "feel": -1, "lines": ["Mentir no tiene mérito. Ganar sí."] },
+    { "id": "frase-gloria-decision-sigilo", "kind": "frase", "name": "Gloria · no le gusta esconderse", "wants": "glory", "moment": "decision", "about": "sigilo", "feel": -1, "lines": ["A escondidas… Nadie cantará esto."] },
+    { "id": "frase-gloria-decision-retirada", "kind": "frase", "name": "Gloria · no le gusta retirarse", "wants": "glory", "moment": "decision", "about": "retirada", "feel": -1, "lines": ["Una retirada. Que no se entere nadie."] },
+    { "id": "frase-gloria-decision-bien", "kind": "frase", "name": "Gloria · le gusta lo que has hecho", "wants": "glory", "moment": "decision", "about": "*", "feel": 1, "lines": ["Eso ha tenido su mérito.", "Así sí."] },
+    { "id": "frase-gloria-decision-mal", "kind": "frase", "name": "Gloria · no le gusta lo que has hecho", "wants": "glory", "moment": "decision", "about": "*", "feel": -1, "lines": ["Nadie contará esto en la posada.", "Poca gloria hay en eso."] },
+    { "id": "frase-sangre-viaje-1", "kind": "frase", "name": "Sangre · frase de camino", "wants": "blood", "moment": "viaje", "lines": ["Tanto camino y ni un bandido. Qué aburrimiento.", "Afilo el cuchillo cada noche. Por si acaso."] },
+    { "id": "frase-sangre-llegada-1", "kind": "frase", "name": "Sangre · frase al llegar", "wants": "blood", "moment": "llegada", "lines": ["{sitio}. Ya veremos quién da problemas aquí.", "Ese de la esquina nos mira mal. Me gusta tenerlo a la vista."] },
+    { "id": "frase-sangre-decision-pelear", "kind": "frase", "name": "Sangre · le gusta pelear", "wants": "blood", "moment": "decision", "about": "pelear", "feel": 1, "lines": ["Por fin.", "Eso es lo que quería oír."] },
+    { "id": "frase-sangre-decision-amenazar", "kind": "frase", "name": "Sangre · le gustan las amenazas", "wants": "blood", "moment": "decision", "about": "amenazar", "feel": 1, "lines": ["Que tiemble. Me gusta."] },
+    { "id": "frase-sangre-decision-pagar", "kind": "frase", "name": "Sangre · no le gusta pagar", "wants": "blood", "moment": "decision", "about": "pagar", "feel": -1, "lines": ["¿Pagar? Yo lo habría arreglado de otra manera."] },
+    { "id": "frase-sangre-decision-soltar", "kind": "frase", "name": "Sangre · no le gusta soltar a un prisionero", "wants": "blood", "moment": "decision", "about": "soltar-prisionero", "feel": -1, "lines": ["¿Soltarlo? Volverá, y con amigos."] },
+    { "id": "frase-sangre-decision-tregua", "kind": "frase", "name": "Sangre · no le gustan las treguas", "wants": "blood", "moment": "decision", "about": "tregua", "feel": -1, "lines": ["¿Tregua? El que se rinde hoy te apuñala mañana."] },
+    { "id": "frase-sangre-decision-bien", "kind": "frase", "name": "Sangre · le gusta lo que has hecho", "wants": "blood", "moment": "decision", "about": "*", "feel": 1, "lines": ["Bien. Sin blanduras.", "Así me gusta."] },
+    { "id": "frase-sangre-decision-mal", "kind": "frase", "name": "Sangre · no le gusta lo que has hecho", "wants": "blood", "moment": "decision", "about": "*", "feel": -1, "lines": ["Demasiado blando.", "Eso se arreglaba antes con acero."] },
+    { "id": "frase-calma-viaje-1", "kind": "frase", "name": "Calma · frase de camino", "wants": "quiet", "moment": "viaje", "lines": ["Qué tranquilo está el camino. Ojalá durara.", "Me gusta andar sin prisa. Se piensa mejor."] },
+    { "id": "frase-calma-llegada-1", "kind": "frase", "name": "Calma · frase al llegar", "wants": "quiet", "moment": "llegada", "lines": ["{sitio}. Que haya paz aquí, por lo menos una noche.", "Ya hemos llegado, y sin heridos. Eso cuenta."] },
+    { "id": "frase-calma-decision-convencer", "kind": "frase", "name": "Calma · le gusta que se hable", "wants": "quiet", "moment": "decision", "about": "convencer", "feel": 1, "lines": ["Hablando. Así da gusto.", "Mejor así. Sin sangre."] },
+    { "id": "frase-calma-decision-amable", "kind": "frase", "name": "Calma · le gusta que trates bien a la gente", "wants": "quiet", "moment": "decision", "about": "amable", "feel": 1, "lines": ["Gracias por tratarle bien. No cuesta nada."] },
+    { "id": "frase-calma-decision-amenazar", "kind": "frase", "name": "Calma · no le gustan las amenazas", "wants": "quiet", "moment": "decision", "about": "amenazar", "feel": -1, "lines": ["No hacía falta amenazar a nadie.", "Eso ha sobrado."] },
+    { "id": "frase-calma-decision-pelear", "kind": "frase", "name": "Calma · no le gusta pelear", "wants": "quiet", "moment": "decision", "about": "pelear", "feel": -1, "lines": ["Otra pelea… ¿No había otra forma?"] },
+    { "id": "frase-calma-decision-robar", "kind": "frase", "name": "Calma · no le gusta el robo", "wants": "quiet", "moment": "decision", "about": "robar", "feel": -1, "lines": ["Eso no está bien, y lo sabes."] },
+    { "id": "frase-calma-decision-tregua", "kind": "frase", "name": "Calma · le gusta la tregua", "wants": "quiet", "moment": "decision", "about": "tregua", "feel": 1, "lines": ["Dejarle ir ha estado bien. De verdad."] },
+    { "id": "frase-calma-decision-bien", "kind": "frase", "name": "Calma · le gusta lo que has hecho", "wants": "quiet", "moment": "decision", "about": "*", "feel": 1, "lines": ["Bien hecho.", "Así se hacen las cosas."] },
+    { "id": "frase-calma-decision-mal", "kind": "frase", "name": "Calma · no le gusta lo que has hecho", "wants": "quiet", "moment": "decision", "about": "*", "feel": -1, "lines": ["Eso no me ha gustado.", "No sé si ha sido buena idea."] },
+    { "id": "frase-saber-viaje-1", "kind": "frase", "name": "Saber · frase de camino", "wants": "knowledge", "moment": "viaje", "lines": ["¿Sabéis cómo se llama esa planta? Yo tampoco. Lo apunto.", "Cada camino tiene su historia. Me gustaría conocer la de este."] },
+    { "id": "frase-saber-llegada-1", "kind": "frase", "name": "Saber · frase al llegar", "wants": "knowledge", "moment": "llegada", "lines": ["{sitio}. Seguro que aquí alguien sabe cosas que nosotros no.", "Sitio nuevo. Preguntad a los viejos: son los que más saben."] },
+    { "id": "frase-saber-decision-preguntar", "kind": "frase", "name": "Saber · le gusta preguntar", "wants": "knowledge", "moment": "decision", "about": "preguntar", "feel": 1, "lines": ["Buena pregunta. Yo iba a hacer la misma.", "Eso es: saber antes de actuar."] },
+    { "id": "frase-saber-decision-observar", "kind": "frase", "name": "Saber · le gusta fijarse", "wants": "knowledge", "moment": "decision", "about": "observar", "feel": 1, "lines": ["Bien visto. A mí se me había escapado."] },
+    { "id": "frase-saber-decision-interrogar", "kind": "frase", "name": "Saber · le gusta interrogar", "wants": "knowledge", "moment": "decision", "about": "interrogar", "feel": 1, "lines": ["Por fin alguien que pregunta antes de matar."] },
+    { "id": "frase-saber-decision-nigromancia", "kind": "frase", "name": "Saber · le interesa la nigromancia", "wants": "knowledge", "moment": "decision", "about": "nigromancia", "feel": 1, "lines": ["Fascinante. Horrible, pero fascinante."] },
+    { "id": "frase-saber-decision-bien", "kind": "frase", "name": "Saber · le gusta lo que has hecho", "wants": "knowledge", "moment": "decision", "about": "*", "feel": 1, "lines": ["Interesante.", "Eso tiene sentido."] },
+    { "id": "frase-saber-decision-mal", "kind": "frase", "name": "Saber · no le gusta lo que has hecho", "wants": "knowledge", "moment": "decision", "about": "*", "feel": -1, "lines": ["No lo entiendo. Y eso me molesta.", "Habría preferido saber más antes."] }
   ]
 }

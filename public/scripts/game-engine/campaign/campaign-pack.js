@@ -31,10 +31,14 @@ import { normalizeBoardGrid } from '../board/map-image.js';
 import { validateZones } from '../board/zones.js';
 import { normalizeElevation } from '../board/heights.js';
 import { checkDialogues } from './dialogues.js';
+import { checkAvoid } from '../combat/avoid-fight.js';
+import { checkParley } from '../combat/parley.js';
 import { checkPlotScenes } from './plot-scenes.js';
 import { PLACE_KINDS } from './town.js';
 import { SKILLS } from '../rules/checks.js';
 import { DEFAULT_SIGHT_SKILL } from './sights.js';
+import { checkCampaignSucesos } from './suceso-triggers.js';
+import { gateWarnings } from '../world/route-gates.js';
 
 /**
  * @typedef {Object} Issue
@@ -189,6 +193,8 @@ export function normalizePack(raw) {
             abilities: list(source.abilities),
             // J8.1: las charlas con ramas. Se comprueban abajo, con `checkDialogues`.
             dialogues: list(source.dialogues),
+            // J10.3 y D-J42: los sucesos propios de la campaña (`suceso-triggers.js`).
+            sucesos: list(source.sucesos),
         },
         repairs,
     };
@@ -611,6 +617,14 @@ export function validatePack(raw) {
         boardSizes.set(board.id, { ...size, map: board.map });
         if (size.width === 0) return;
         checkDrawnBoard(board, path, size, errors, warnings);
+        // J12.2 y J8.5: las otras salidas de su pelea, si las trae.
+        for (const found of [
+            checkAvoid(board.avoid, { path: `${path}.avoid`, rumors: new Set(pack.rumors.map((/** @type {any} */ r) => text(r?.id))) }),
+            checkParley(board.parley, { path: `${path}.parley` }),
+        ]) {
+            errors.push(...found.errors);
+            warnings.push(...found.warnings);
+        }
 
         if (board.partyStart.length === 0) {
             errors.push({ path: `${path}.partyStart`, message: 'Sin casillas de inicio: el grupo no sabria donde aparecer.' });
@@ -748,6 +762,14 @@ export function validatePack(raw) {
 
     // D-J18: los finales y lo que fue de la gente en cada uno.
     if (pack.plot && pack.plot.endings !== undefined) checkEndings(pack, errors, warnings);
+
+    // J10.1: los caminos que se abren por reputación, fama o llaves. J10.3: los sucesos propios,
+    // con sus disparadores. Lo que está mal no para la importación: ese camino o ese suceso,
+    // simplemente, no se abre o no sale.
+    warnings.push(...gateWarnings(pack));
+    if (raw && typeof raw === 'object' && raw.sucesos !== undefined) {
+        warnings.push(...checkCampaignSucesos(raw.sucesos, { factions: pack.world.factions, skills: Object.keys(SKILLS) }));
+    }
 
     // Cuantos sitios tendra el mundo: los declarados, mas los que solo existen porque
     // algun tablero los nombra.

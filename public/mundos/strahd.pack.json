@@ -3,7 +3,7 @@
   "world": {
     "name": "La Maldición de Strahd",
     "genre": "Horror gótico",
-    "synopsis": "Bajo nubes de tormenta, el conde vampiro Strahd von Zarovich gobierna el valle de Barovia, una prisión de desesperanza envuelta en una niebla mortal. Los aventureros han sido arrastrados a este dominio de terror para enfrentarse a su oscuro señor, descubrir sus antiguos secretos y explorar el imponente Castillo Ravenloft.",
+    "synopsis": "Bajo nubes de tormenta, el conde vampiro Strahd von Zarovich gobierna el valle de Barovia, una prisión envuelta en una niebla mortal. La niebla te ha traído hasta aquí y ya no te deja salir: estás {atrapado|atrapada} en su dominio. Para salir, tendrás que enfrentarte a su oscuro señor, descubrir sus antiguos secretos y entrar en el Castillo Ravenloft.",
     "factions": [
       {
         "name": "Los Vistani",
@@ -1021,7 +1021,20 @@
       "description": "Mujeres famélicas con túnicas manchadas de hollín que han jurado servicio a Strahd a cambio de oscuros poderes arcanos.",
       "abilities": [
         "rayo_de_fuego"
-      ]
+      ],
+      "spellcasting": {
+        "ability": "intelligence",
+        "saveDc": 11,
+        "attackBonus": 3,
+        "casterLevel": 1,
+        "slots": {
+          "1": 1
+        },
+        "spells": [
+          "mag-escarcha",
+          "conj-proyectil-magico"
+        ]
+      }
     },
     {
       "name": "Hombre Lobo",
@@ -3390,7 +3403,7 @@
       "act": 3,
       "noFight": false,
       "reward": 25,
-      "rewardText": "25 de oro y las puertas de Krezk abiertas para vosotros",
+      "rewardText": "25 de oro, y Krezk os abre sus puertas",
       "twist": "Los lobos no van a por la carga: van a por los caballos. Sin caballos el carro no llega, y en Krezk el vino es lo único que les queda.",
       "boardId": "camino_vino"
     }
@@ -4429,6 +4442,7 @@
               {
                 "id": "rapido",
                 "text": "Lo haremos rápido, padre. No sufrirá.",
+                "irreversible": true,
                 "effects": [
                   {
                     "give": "Estaca de madera"
@@ -4452,6 +4466,28 @@
                   "who": "Donavich",
                   "mood": "alegre",
                   "text": "Que Dios os oiga. Pero si os muerde, no dudéis."
+                },
+                "later": {
+                  "days": 4,
+                  "name": "Donavich, antes del alba",
+                  "text": "Donavich llama a vuestra puerta antes de que amanezca. Tiene los ojos rojos de no dormir: «Doru no para de gritar. ¿Habéis encontrado esa otra forma?»",
+                  "options": [
+                    {
+                      "label": "Decirle que seguís buscando",
+                      "effects": [
+                        "comida",
+                        "fama:+1"
+                      ],
+                      "then": "Asiente despacio. Os da de comer antes de que salgáis, aunque en la iglesia no sobra nada."
+                    },
+                    {
+                      "label": "Decirle que no la hay",
+                      "effects": [
+                        "rumor"
+                      ],
+                      "then": "Se sienta en el escalón y se tapa la cara. Después os cuenta todo lo que sabe de lo que le pasó a su hijo en el castillo."
+                    }
+                  ]
                 }
               }
             ]
@@ -4758,7 +4794,43 @@
             "who": "Rudolph van Richten",
             "text": "Van Richten cuelga la ballesta en su torre y se pone a escribir lo que pasó en Barovia, para que otros no tengan que aprenderlo como él."
           }
-        ]
+        ],
+        "legacy": {
+          "tone": "luz",
+          "title": "quienes trajeron el sol a Barovia",
+          "greeting": "{hola}. ¿Es verdad lo que cuentan, que en Barovia ha vuelto a salir el sol? Hoy, en este gremio, nadie paga su cerveza. Ni tú.",
+          "rumor": "Ha llegado al puerto una barrica de vino de Barovia, a nombre del gremio. Con ella viene la historia de un conde que ya no se levanta de su tumba.",
+          "tags": [
+            "salvadores"
+          ],
+          "visitor": {
+            "days": 4,
+            "name": "Una carta de Ismark",
+            "text": "Un mensajero cubierto de barro trae una carta con el sello de la Aldea de Barovia. La firma Ismark, el nuevo burgomaestre.",
+            "options": [
+              {
+                "label": "Leerla en voz alta en la taberna",
+                "effects": [
+                  "fama:+1"
+                ],
+                "then": "Ismark os da las gracias y dice que en Barovia siempre tendréis casa. En la taberna brindan por vosotros."
+              },
+              {
+                "label": "Leerla a solas con los tuyos",
+                "effects": [
+                  "vinculo:+1"
+                ],
+                "then": "Al final de la carta, Ireena ha añadido una línea con su letra: que ya duerme con la ventana abierta."
+              }
+            ]
+          },
+          "offers": [
+            {
+              "campaign": "1387",
+              "line": "Brunilda: «Después de Barovia, un valle de barro y nieve no te va a asustar. Y allí también hace falta alguien que no se venda.»"
+            }
+          ]
+        }
       },
       "la-orden-descansa": {
         "title": "La orden descansa",
@@ -4780,7 +4852,46 @@
             "who": "Ezmerelda d'Avenir",
             "text": "Ezmerelda se queda unos días en Argynvostholt cuidando de las tumbas. Después se va a buscar al siguiente monstruo."
           }
-        ]
+        ],
+        "legacy": {
+          "tone": "luz",
+          "title": "quienes dieron descanso a los caballeros de Argynvostholt",
+          "greeting": "{hola}. Dicen que en Barovia se ve una luz de plata en lo alto de un castillo, y que sus muertos por fin descansan. Siéntate y cuéntamelo tú, que de ti me fío más que de los peregrinos.",
+          "rumor": "Unos peregrinos cuentan que en un valle lejano unos caballeros muertos dejaron las armas, y que alguien de este gremio se lo pidió.",
+          "tags": [
+            "salvadores"
+          ],
+          "visitor": {
+            "days": 5,
+            "name": "Ezmerelda pasa por el puerto",
+            "text": "Ezmerelda d'Avenir entra en la taberna con la capa llena de polvo del camino. Va detrás de otro monstruo, y ha venido a veros antes de seguir.",
+            "options": [
+              {
+                "label": "Escuchar lo que busca",
+                "effects": [
+                  "rumor"
+                ],
+                "then": "Os habla de algo que ataca a los pastores en otra tierra, y os deja dicho dónde encontrarla si un día queréis ayudar."
+              },
+              {
+                "label": "Invitarla a cenar",
+                "cost": {
+                  "oro": 2
+                },
+                "effects": [
+                  "fama:+1"
+                ],
+                "then": "Come como quien lleva semanas en el camino. Al irse, deja pagada vuestra cena."
+              }
+            ]
+          },
+          "offers": [
+            {
+              "campaign": "1387",
+              "line": "Brunilda: «Quien da descanso a los muertos sabrá qué hacer con los vivos de ese valle. Allí nadie se fía de nadie.»"
+            }
+          ]
+        }
       },
       "la-caravana-se-va": {
         "title": "La caravana se va",
@@ -4802,7 +4913,43 @@
             "who": "Ireena Kolyana",
             "text": "Ireena se queda con su hermano. Por fin puede salir a la calle de noche sin miedo."
           }
-        ]
+        ],
+        "legacy": {
+          "tone": "gris",
+          "title": "quienes echaron a Strahd de la mano de los vistani",
+          "greeting": "{hola}. Me han contado que en Barovia los vistani se fueron antes de que amaneciera, y que tú estuviste con ellos hasta el final. Aquí no se pregunta con quién se pacta. Solo si se vuelve.",
+          "rumor": "En el puerto dicen que una caravana de carros pintados pasó por la costa, y que preguntaban por alguien del gremio.",
+          "tags": [
+            "amigos-de-los-vistani"
+          ],
+          "visitor": {
+            "days": 3,
+            "name": "Una carta de la baraja",
+            "text": "Una mujer vieja con un pañuelo de colores os espera en el muelle. Saca una carta de una baraja gastada y os la tiende sin decir nada.",
+            "options": [
+              {
+                "label": "Coger la carta",
+                "effects": [
+                  "rumor"
+                ],
+                "then": "En la carta hay una torre dibujada. Detrás, alguien ha escrito el nombre de un pueblo de la costa donde piden ayuda."
+              },
+              {
+                "label": "No cogerla",
+                "effects": [
+                  "fama:+1"
+                ],
+                "then": "Sonríe como quien ya sabía la respuesta y se va hacia los carros. En el muelle se habla de ello toda la tarde."
+              }
+            ]
+          },
+          "offers": [
+            {
+              "campaign": "1387",
+              "line": "Brunilda: «Tú sabes tratar con gente que vive en el bosque y no se fía de los señores. En ese valle te hará falta.»"
+            }
+          ]
+        }
       }
     },
     "omens": [
@@ -4817,6 +4964,33 @@
       {
         "text": "El conde os invitará a cenar a su castillo, y no os dejará levantaros de la mesa.",
         "milestone": "la-cena-esta-servida"
+      }
+    ],
+    "chapters": [
+      {
+        "act": 1,
+        "title": "La aldea de Barovia",
+        "summary": "La niebla os ha dejado en un valle sin salida. En la primera aldea, las casas están cerradas a cal y canto, y alguien pide ayuda a gritos."
+      },
+      {
+        "act": 2,
+        "title": "El campamento vistani",
+        "summary": "Una adivina vistani puede deciros dónde buscar las armas contra el conde. Su campamento está junto al estanque, y los lobos rondan cerca."
+      },
+      {
+        "act": 3,
+        "title": "Vallaki y sus alrededores",
+        "summary": "Vallaki es una ciudad amurallada que celebra fiestas para no tener miedo. Alrededor quedan un molino, una bodega y una fortaleza en ruinas, cada uno con su problema."
+      },
+      {
+        "act": 4,
+        "title": "Camino del castillo",
+        "summary": "Krezk es la última aldea antes de las montañas. Desde allí sale el camino al castillo del conde."
+      },
+      {
+        "act": 5,
+        "title": "El castillo Ravenloft",
+        "summary": "Estáis en la casa del conde. Aquí se acaba la historia: para él, o para {vosotros|vosotras}."
       }
     ]
   }

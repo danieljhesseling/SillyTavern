@@ -165,9 +165,11 @@ const MAX_CAMPAIGN_FILE = 20 * 1024 * 1024;
  * @param {(() => void)|null} [onRemove] Quitarla del tablón. Sin él, no se ofrece.
  * @param {any} [who] D-J17: quién va, para que la sinopsis le hable como toca («Eres una
  *   mercenaria…»). Sin él, la primera forma.
+ * @param {(() => void)|null} [onChronicle] J11.5: leer su crónica (lo que decidisteis y lo que
+ *   salió de ello). Sin él, no se ofrece.
  * @returns {JQuery}
  */
-function campaignTile(one, onClick, onRemove = null, who = {}) {
+function campaignTile(one, onClick, onRemove = null, who = {}, onChronicle = null) {
     const state = { nueva: 'Sin empezar', 'en-curso': 'En curso', terminada: 'Terminada' }[one.state];
     const tile = card({ icon: one.icon, label: [`${one.action} ${one.name}. ${state}.`, one.levels ? `${one.levels}.` : ''].filter(Boolean).join(' '), onClick })
         .attr('data-campaign', one.id);
@@ -178,21 +180,39 @@ function campaignTile(one, onClick, onRemove = null, who = {}) {
     // naranja si tu grupo no llega.
     if (one.levels) {
         tile.append(div('hb-levels').toggleClass('is-hard', Boolean(one.hard))
-            .append('<i class="fa-solid fa-signal"></i>').append($('<span></span>').text(one.levels)));
+            .append(`<i class="fa-solid ${one.hard ? 'fa-triangle-exclamation' : 'fa-signal'}"></i>`).append($('<span></span>').text(one.levels)));
     }
+    // El aviso, justo debajo del nivel: es de lo que habla, y así no se pierde tras la sinopsis.
+    if (one.warn) tile.append(div('hb-warn').text(one.warn));
     tile.append(div(`hb-state hb-${one.state}`).text(one.ending ? `${state}: ${one.ending}` : state));
+    // J9.3: por qué capítulo ibais al volver al gremio.
+    if (one.chapter) tile.append(div('hb-chapter').append('<i class="fa-solid fa-bookmark"></i>').append($('<span></span>').text(one.chapter)));
+    // J11.4: por qué os la ofrecen a vosotros, por cómo acabó otra (`offeredCampaigns`).
+    const because = String(/** @type {any} */ (one).because ?? '').trim();
+    if (because) tile.append(div('hb-because').text(because));
     if (one.note) tile.append(div('vt-pitch').text(one.note));
     if (one.synopsis) tile.append(div('vt-about').text(resolveGender(one.synopsis, who)));
-    if (one.warn) tile.append(div('hb-warn').text(one.warn));
     tile.append(div('vt-go').append(`<i class="fa-solid ${one.state === 'nueva' ? 'fa-play' : 'fa-forward'}"></i>`)
         .append($('<span></span>').text(`${one.action}: ${one.name}`)));
-    if (!one.imported || !onRemove) return tile;
-    const remove = $('<button type="button" class="menu_button hb-remove"></button>')
-        .attr('data-campaign-remove', one.id)
-        .attr('aria-label', `Quitar ${one.name} del tablón`)
-        .append('<i class="fa-solid fa-trash-can"></i>').append($('<span></span>').text('Quitar del tablón'))
-        .on('click', onRemove);
-    return div('hb-tile').attr('data-campaign-tile', one.id).append(tile, remove);
+    const removable = Boolean(one.imported && onRemove);
+    if (!removable && !onChronicle) return tile;
+    // Debajo, fuera de la tarjeta: J11.5, leer su crónica; D-J35, quitarla del tablón.
+    const actions = div('hb-tile-actions');
+    if (onChronicle) {
+        actions.append($('<button type="button" class="menu_button hb-chronicle"></button>')
+            .attr('data-campaign-chronicle', one.id)
+            .attr('aria-label', `La crónica de ${one.name}: lo que decidisteis y lo que salió de ello`)
+            .append('<i class="fa-solid fa-book-open"></i>').append($('<span></span>').text('La crónica'))
+            .on('click', onChronicle));
+    }
+    if (removable && onRemove) {
+        actions.append($('<button type="button" class="menu_button hb-remove"></button>')
+            .attr('data-campaign-remove', one.id)
+            .attr('aria-label', `Quitar ${one.name} del tablón`)
+            .append('<i class="fa-solid fa-trash-can"></i>').append($('<span></span>').text('Quitar del tablón'))
+            .on('click', onRemove));
+    }
+    return div('hb-tile').attr('data-campaign-tile', one.id).append(tile, actions);
 }
 
 /**
@@ -294,9 +314,12 @@ const asHtml = (value) => $('<div></div>').text(value).html();
  *   leída de un archivo o pegada. Sin él, la guarda `campaigns.js` en tu lista.
  * @param {(id: string) => Promise<RemoveResult>} [input.onRemove] Quitar una añadida del
  *   tablón. Sin él, la quita `campaigns.js`.
+ * @param {Record<string, import('../campaign/story-book.js').StoryBook>} [input.chronicles] J11.5: la
+ *   crónica de cada campaña empezada, por su id (`readChronicles`). La que tiene una lleva debajo
+ *   «La crónica», que la abre como un libro encima del tablón.
  * @returns {Promise<string|{hero: string}|{create: true}|null>}
  */
-export async function openHubBoard({ Popup, POPUP_TYPE, cards, heroes = [], onImport = importCampaignFile, onRemove = removeCampaign }) {
+export async function openHubBoard({ Popup, POPUP_TYPE, cards, heroes = [], onImport = importCampaignFile, onRemove = removeCampaign, chronicles = {} }) {
     await loadPixelManifest();
     const body = div('vt-root hb-root');
     body.append(div('vt-head')
@@ -368,8 +391,22 @@ export async function openHubBoard({ Popup, POPUP_TYPE, cards, heroes = [], onIm
     // D-J17: la sinopsis le habla a quien va ahora.
     const goes = heroes.find(hero => hero.active);
     const who = goes ? { heroe: goes.gender } : {};
+    /**
+     * J11.5: su crónica, como un libro, encima del tablón; al cerrarla se sigue en el tablón.
+     *
+     * @param {CampaignCard} one
+     */
+    const readChronicle = (one) => {
+        const book = chronicles?.[one.id];
+        if (!book || one.state === 'nueva') return null;
+        return async () => {
+            const { openStoryBook } = await import('./story-book.js');
+            // Por lo decidido, si lo hay: es a lo que se viene; si no, por el capítulo al que se llegó.
+            await openStoryBook({ book, pack: one.id, kicker: 'La crónica', view: book.decided.length > 0 ? 'decided' : '', mount: document.body });
+        };
+    };
     /** @param {CampaignCard} one */
-    const tileOf = (one) => campaignTile(one, pick(one), unpin(one), who);
+    const tileOf = (one) => campaignTile(one, pick(one), unpin(one), who, readChronicle(one));
     for (const one of cards) grid.append(tileOf(one));
     const empty = cards.length === 0
         ? $('<p class="vt-note"></p>').text('El tablón está vacío: no hay campañas escritas. Puedes añadir la tuya.')

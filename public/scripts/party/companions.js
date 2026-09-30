@@ -55,6 +55,8 @@ import { offlineGame, postCombatNarration, postForModel } from './narration.js';
 import { getActivePartyLeader, memberFromEntry, partyPurse, renderPartyMembers, savePartyState } from './roster.js';
 import { smithHere, smithPlaces, buyRemedy } from './town.js';
 import { bondFavors, carryBondOf, meetSomeone, peopleHere, wantsToMeetAt } from './social.js';
+import { canChooseControl, controlOf, CONTROL_LABELS } from './spell-turn.js';
+import { chooseControl } from './combat-flow.js';
 
 /**
  * R8: los favores de la gente de aquí que os aprecia (actitud +2 o más).
@@ -623,6 +625,28 @@ export function openCompanionCard(memberId) {
         stanceRow.append(pick);
     }
     root.append(stanceRow);
+
+    // J7.3 y D-J32: desde el vínculo de amigo (5), en los dos modos de campaña, eliges quién le
+    // mueve en combate. Antes solo sale su postura: le mueve el juego. Vale a mitad de pelea.
+    if (canChooseControl(member)) {
+        const controlRow = $('<div class="cc-stance cc-control"></div>');
+        controlRow.append($('<div class="cc-stance-title"></div>').text('Quién le mueve'));
+        for (const side of /** @type {Array<'player'|'engine'>} */ (['player', 'engine'])) {
+            const pick = $('<button class="menu_button cc-stance-btn cc-control-btn" type="button"></button>')
+                .attr('data-control', side)
+                .attr('title', side === 'player' ? 'En su turno le mueves tú, como a tu personaje.' : 'En su turno decide solo, con la postura de arriba.')
+                .toggleClass('active', controlOf(member) === side)
+                .append(`<i class="fa-solid ${side === 'player' ? 'fa-hand-pointer' : 'fa-robot'}"></i>`)
+                .append($('<span></span>').text(` ${CONTROL_LABELS[side]}`));
+            pick.on('click', () => {
+                chooseControl(member, side);
+                controlRow.find('.cc-control-btn').removeClass('active');
+                controlRow.find(`.cc-control-btn[data-control="${controlOf(member)}"]`).addClass('active');
+            });
+            controlRow.append(pick);
+        }
+        root.append(controlRow);
+    }
 
     // Lo que no cura. Un remedio cuesta oro; quedarse en casa cuesta tenerle a tu lado.
     const table = readRemedies();

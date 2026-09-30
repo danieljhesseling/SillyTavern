@@ -98,11 +98,22 @@ describe('leer el archivo de una campaña (J5.4)', () => {
 
     test('un paquete roto trae los fallos del validador, como mucho ocho, y cuántos más hay', () => {
         const pack = buildExamplePack();
-        pack.boards = [];
+        pack.boards[0].map[2] = '#.c..D';
         const found = readCampaignText(JSON.stringify(pack));
         expect(found.ok).toBe(false);
         expect(found.pack).toBeNull();
-        expect(found.problems).toContainEqual({ path: 'boards', message: 'Un paquete sin tableros no se puede jugar.' });
+        expect(found.problems).toContainEqual({ path: 'boards[0].map[2]', message: expect.stringMatching(/no miden lo mismo/) });
+        // J5.6: y el informe de antes de jugarla dice lo mismo, en su grupo.
+        expect(found.check?.verdict).toBe('rota');
+        expect(found.check?.groups[0]).toMatchObject({ key: 'rota', title: 'Lo que impide jugarla' });
+
+        // J5.3: sin tableros ya no se rechaza: el juego dibuja los que piden sus misiones.
+        const bare = buildExamplePack();
+        bare.boards = [];
+        const drawn = readCampaignText(JSON.stringify(bare));
+        expect(drawn.ok).toBe(true);
+        expect(drawn.pack.boards.map((/** @type {any} */ b) => b.id)).toEqual(['molino_planta_baja', 'molino_sotano']);
+        expect(drawn.notes).toContain('Lo que faltaba lo ha puesto el juego: 2 tableros, y lo demás que se cuenta abajo.');
 
         const many = buildExamplePack();
         many.bestiary = Array.from({ length: 12 }, () => ({ name: 'Cuervo', hp: 5, armorClass: 10, cr: 0.25 }));

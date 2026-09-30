@@ -44,6 +44,7 @@ import { outcomeOf, consequence } from './consequences.js';
 import { resolveGender, genderOf, leftoverMarkers } from './grammar.js';
 import { BACKGROUNDS } from './backgrounds.js';
 import { describeAttitude, ATTITUDE } from './attitudes.js';
+import { readNoReturn, optionNoReturn } from './weighty.js';
 
 /** Los gestos del retrato. `neutral` es la cara de siempre. */
 export const MOODS = ['neutral', 'alegre', 'enfadado', 'triste'];
@@ -121,6 +122,7 @@ export const DC_LIMITS = { min: 5, max: 30 };
  * @property {DialogueEffect[]} effects
  * @property {DialogueCheck|null} check
  * @property {string} journal Lo que queda en el Diario al elegirla.
+ * @property {string} [noReturn] J11.1: su aviso, si se escribe `irreversible` («Esto no tiene vuelta atrás»).
  */
 
 /**
@@ -153,6 +155,8 @@ export const DC_LIMITS = { min: 5, max: 30 };
  * @property {number} [gold] El oro del grupo.
  * @property {any[]} [party] El grupo, para los plurales de género.
  * @property {number} [day] Hoy, para lo que se apunta.
+ * @property {Record<string, string>} [weighty] J11.1: los hitos que pesan (`weightyMilestones`): una
+ *   opción que cumple uno avisa de que no tiene vuelta atrás.
  */
 
 /**
@@ -367,6 +371,9 @@ function readOption(raw, node, index) {
         effects: effects.filter(e => e.kind !== 'end'),
         check: readCheck(source.check),
         journal: text(source.journal),
+        // J11.1: solo si se escribe, para que una opción de antes se lea igual que siempre. Una
+        // ya leída trae el suyo en `noReturn`.
+        ...(readNoReturn(source) || text(source.noReturn) ? { noReturn: readNoReturn(source) || text(source.noReturn) } : {}),
     };
 }
 
@@ -737,6 +744,7 @@ export function startDialogue(dialogue, { memory = null, hero = null, world = {}
  * @property {string} locked Vacío si se puede elegir; si no, por qué no.
  * @property {{skill: string, label: string, dc: number}|null} check
  * @property {boolean} ends Si acaba la charla.
+ * @property {string} [warn] J11.1: «Esto no tiene vuelta atrás», si pesa; sin decir por qué.
  */
 
 /**
@@ -762,6 +770,8 @@ export function optionsFor(state, hero, world = {}) {
         const found = checkConditions(option.when, hero, world, { speaker: state.dialogue.speaker, chosen: state.chosen });
         if (!found.ok && (found.hidden || option.hidden)) continue;
         const tag = option.tag === null ? found.tag : option.tag;
+        // J11.1: lo que pesa se avisa antes de elegirlo, sin decir qué se pierde.
+        const warn = optionNoReturn(option, { weighty: world.weighty });
         out.push({
             id: option.id,
             text: voiced(option.text, hero, world),
@@ -773,6 +783,7 @@ export function optionsFor(state, hero, world = {}) {
                 dc: checkDc(option.check, world),
             } : null,
             ends: option.end,
+            ...(warn ? { warn } : {}),
         });
     }
     return out;

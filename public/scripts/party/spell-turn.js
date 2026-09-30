@@ -23,12 +23,12 @@ import {
     readConcentration, concentrationCheck, concentrationAfterConditions, expireConcentration, constitutionSave,
 } from '../game-engine/rules/concentration.js';
 import { zoneEffects, resolveZoneEffect, expireZones, followCaster, kindOf } from '../game-engine/board/spell-zones.js';
-import { normalizeSummon, expireSummons, setSummonControl, SUMMON_CONTROL_LABELS } from '../game-engine/rules/summons.js';
+import { normalizeSummon, expireSummons, setSummonControl } from '../game-engine/rules/summons.js';
 import { reactionOptions, resolveReaction } from '../game-engine/rules/spell-reactions.js';
 import { castableSpells } from '../game-engine/rules/spell-prep.js';
 import { lowestFreeSlot, spendSlot, spellcastingStats, SLOT_LABELS } from '../game-engine/rules/spell-slots.js';
 import { clearTimersFor } from '../game-engine/combat/condition-timers.js';
-import { canPlayerControl, CONTROL_RANK } from '../game-engine/campaign/bonds.js';
+import { canPlayerControl } from '../game-engine/campaign/bonds.js';
 import { combatEncounter, currentLocationName, partyMembers, usedReactions } from './state.js';
 import { boardCellOf, enemyTokenId } from './combat-state.js';
 import { floatOnToken } from './combat-log.js';
@@ -285,11 +285,10 @@ export function setControl(member, control) {
     return true;
 }
 
-/** Cómo se dice cada lado del interruptor. */
-export const CONTROL_LABELS = SUMMON_CONTROL_LABELS;
-
-/** El vínculo desde el que se puede elegir. */
-export const CONTROL_FROM_RANK = CONTROL_RANK;
+// Cómo se dice cada lado del interruptor, y el vínculo desde el que se puede elegir. Se
+// reexportan sin leerlos: un módulo de party/ no lee nada importado al cargarse (J15.1).
+export { SUMMON_CONTROL_LABELS as CONTROL_LABELS } from '../game-engine/rules/summons.js';
+export { CONTROL_RANK as CONTROL_FROM_RANK } from '../game-engine/campaign/bonds.js';
 
 // ---------------------------------------------------------------------------------------
 // La concentración (J19.4)

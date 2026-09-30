@@ -33,7 +33,7 @@ import { currentPet, petTricks } from './pet.js';
 import { carriedNames, getAbilityCatalogue, magicConsequences, payForSpell } from './magic.js';
 import { lastWorldNpcs } from './world.js';
 import { nudgeRuler } from './factions.js';
-import { getCampaignBonds, advanceCampaignSlot, campaignDay } from './time.js';
+import { getCampaignBonds, spendDayPart, campaignDay } from './time.js';
 import { noteDeed, worldWrite, plotPeople, applyFate } from './world-growth.js';
 import { survivalNow } from './modes.js';
 import { postCombatNarration, postForModel } from './narration.js';
@@ -178,7 +178,8 @@ export function askTheDead() {
 export async function searchCaseHere() {
     const state = readCases(chat_metadata?.[CASES_KEY]);
     const clues = cluesHere(state, { place: currentLocationName });
-    advanceCampaignSlot();
+    // J14.2: un paso de una misión gasta la parte del día, y la cabecera dice en qué.
+    spendDayPart('mision', { label: 'Buscar pistas' });
     let got = 0;
     for (const clue of clues) {
         // R5: el perro olfatea lo que otro tendría que registrar.

@@ -115,8 +115,9 @@ import { buildTown, closeTownPlace, countTownPlaces, renderTownScene, renderTown
  * @property {() => Array<{id: string, label: string, icon: string, actions: Array<{id: string, label: string, detail: string, enabled: boolean, cost?: number}>}>} [getServices]
  *   Los servicios de aqui, con lo que se puede hacer en cada uno.
  * @property {(actionId: string) => void} [onService]
- * @property {() => ({location: any, npcs: any[]}|null)} [getTown] J3.11: la localización de aquí y
- *   la gente del mundo, para los sitios del pueblo. Sin ella, el Shell las lee del mundo abierto.
+ * @property {() => ({location: any, npcs: any[], people?: import('./town-scene.js').YourPerson[]}|null)} [getTown] J3.11: la
+ *   localización de aquí y la gente del mundo, para los sitios del pueblo. Sin ella, el Shell las lee
+ *   del mundo abierto. J14.4: y quién de tu gente está en cada sitio (`people`).
  * @property {() => {title: string, hint: string, act: number}|null} [getFocus]
  *   Lo que se tiene entre manos: el hito abierto del hilo.
  * @property {() => void} [onJournal] Abrir el diario (idea 100).
@@ -867,6 +868,23 @@ function renderClock(clock) {
     }
     label.title = view.label;
     clock.appendChild(label);
+
+    // J14.2: las partes del día, una marca por parte: la que ya se fue (y en qué), la de ahora
+    // y las que quedan libres. Lo que se hizo, al pasar el ratón y en el móvil al tocar.
+    if (view.strip?.length > 0) {
+        const strip = el('span', 'gs-day-strip');
+        strip.title = view.stripLine;
+        strip.setAttribute('aria-label', view.stripLine);
+        for (const part of view.strip) {
+            const mark = el('span', `gs-day-part gs-day-${part.state}`);
+            mark.dataset.part = part.id;
+            mark.title = part.state === 'hecho' ? `${part.label}: ${part.what || 'pasada'}` : `${part.label}: ${part.state === 'ahora' ? 'ahora' : 'libre'}`;
+            mark.appendChild(el('span', 'gs-day-part-name', part.label));
+            if (part.state === 'hecho' && part.what) mark.appendChild(el('span', 'gs-day-part-what', part.what));
+            strip.appendChild(mark);
+        }
+        clock.appendChild(strip);
+    }
 
     // J18.9: sin conexión, descansar y pasar el tiempo son cosas que se hacen en un sitio (dormir
     // en la posada, acampar fuera), no botones de la cabecera: el reloj solo dice el día.

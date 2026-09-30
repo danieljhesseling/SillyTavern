@@ -35,6 +35,12 @@
 @import url(css/quedadas.css);
 @import url(css/dialogos.css);
 @import url(css/escenas.css);
+@import url(css/mundo-vivo.css);
+@import url(css/decisiones.css);
+@import url(css/movil-app.css);
+@import url(css/libro.css);
+@import url(css/guardar.css);
+@import url(css/magia.css);
 
 :root {
     interpolate-size: allow-keywords;

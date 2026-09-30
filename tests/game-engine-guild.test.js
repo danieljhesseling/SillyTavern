@@ -56,7 +56,8 @@ describe('lo que hacen los edificios', () => {
     test('cada uno toca un número que la cuenta ya lee, o trae trabajo', () => {
         for (const [key, building] of Object.entries(BUILDINGS)) {
             const touches = Object.keys(building.effect);
-            const bringsWork = key === 'library' || key === 'forge';
+            // J3.6: el establo no abarata la semana: lleva al grupo montado (`guild-buildings.js`).
+            const bringsWork = key === 'library' || key === 'forge' || key === 'stable';
             expect(touches.length > 0 || bringsWork).toBe(true);
             for (const field of touches) expect(DEFAULT_UPKEEP).toHaveProperty(field);
         }

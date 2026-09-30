@@ -2100,7 +2100,7 @@
       "act": 3,
       "noFight": false,
       "reward": 25,
-      "rewardText": "25 de oro y las puertas de Krezk abiertas para vosotros",
+      "rewardText": "25 de oro, y Krezk os abre sus puertas",
       "twist": "propio: Los lobos no van a por la carga: van a por los caballos. Sin caballos el carro no llega, y en Krezk el vino es lo único que les queda.",
       "boardId": "camino_vino"
     }

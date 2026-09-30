@@ -223,7 +223,11 @@ describe('los paquetes que se juegan desde el gremio', () => {
         const pack = read('../public/mundos/gremio.pack.json');
         const town = pack.locations[0];
         expect(town.name).toBe('Puerto Alba');
-        expect(pack.boards.every(b => b.locationName === town.name)).toBe(true);
+        // J3.8: los tableros son de Puerto Alba o de los sitios de sus encargos, que empiezan
+        // escondidos y a un día de camino.
+        const errandSpots = pack.locations.filter(l => l.hidden).map(l => l.name);
+        expect(pack.boards.every(b => b.locationName === town.name || errandSpots.includes(b.locationName))).toBe(true);
+        expect(pack.locations.filter(l => l.hidden).every(l => l.routes.some(r => r.to === town.name))).toBe(true);
         expect(pack.npcs.every(n => n.where === town.name)).toBe(true);
         for (const service of town.services) {
             expect(pack.npcs.filter(n => n.service === service)).toHaveLength(1);

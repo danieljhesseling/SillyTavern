@@ -1,0 +1,719 @@
+{
+  "version": 1,
+  "domain": "personales",
+  "about": "Las misiones personales de tus compañeros, jugables (J14.9 de ROADMAP_SIN_CONEXION). Se abren con su vínculo: el título, de qué va y sus dos finales están en quedadas.json (lo que abre el rango 4, QUEST); aquí se escribe cómo se juega. Una fila por misión (KIND mision, WHO de quién es, QUEST el id de su misión en quedadas.json). START es el primer paso, y STEPS los pasos. Cada paso tiene su ID y su KIND. VIAJE: los días de camino (DAYS) hasta un sitio (TO), con lo que se cuenta (TEXT); luego NEXT. ESCENA: se juega como las escenas del hilo: BEATS con WHO (quien habla; sin él, el narrador), MOOD (alegre, enfadado, triste) y TEXT; una línea con OPTIONS es una decisión, con las opciones de una charla (IF para las condiciones, como el oro, CHECK para una tirada, REPLY para lo que se oye después). ROUTES dice adónde lleva cada opción, por su id, o por cómo sale su tirada (bien, medias, mal); sin ruta, NEXT. TABLERO: una pelea, con su tablero (BOARD, como los de un paquete) y sus enemigos (BESTIARY); WIN, LOSE y FLEE dicen adónde se va según acabe. FINAL: uno de los dos finales de quedadas.json (ENDING, por su id), con lo que cambia (EFFECTS: GOLD lo que cuesta, BONDS cuántas veces cuenta como misión juntos, FAME el renombre del gremio, FLAGS lo que el mundo recuerda, MEMORY lo que él recuerda) y BACK, los días de vuelta. Lo que concuerda con tu héroe va entre llaves con las dos formas, separadas por una barra vertical.",
+  "rows": [
+    {
+      "id": "gerd-robledo",
+      "kind": "mision",
+      "name": "Gerd · La casa de Robledo",
+      "who": "Gerd el Mellado",
+      "quest": "gerd-robledo",
+      "start": "ida",
+      "steps": [
+        {
+          "id": "ida",
+          "kind": "viaje",
+          "to": "Robledo",
+          "days": 6,
+          "text": "Salís hacia el norte con Gerd. Seis días de caminos de barro y de posadas pequeñas, con Gerd hablando de su madre a todas horas.",
+          "next": "casa"
+        },
+        {
+          "id": "casa",
+          "kind": "escena",
+          "title": "Robledo",
+          "backdrop": "plaza",
+          "beats": [
+            {
+              "text": "Robledo son veinte casas de piedra, un molino y, en lo alto, la casa grande del señor. En su puerta, una mujer mayor friega los escalones de rodillas."
+            },
+            {
+              "who": "Gerd el Mellado",
+              "mood": "triste",
+              "text": "Madre…"
+            },
+            {
+              "text": "La mujer levanta la cabeza. Tarda un momento en reconocerle. Luego suelta el cepillo y abraza a Gerd como si fuera un crío."
+            },
+            {
+              "who": "Aurelia",
+              "mood": "triste",
+              "text": "El administrador dice que el domingo me echa. Tres años de renta, hijo: noventa monedas. Yo creía que a ti te iba mal."
+            },
+            {
+              "who": "El administrador",
+              "text": "Noventa monedas antes del domingo, o la casa vuelve al señor. No es nada personal: son las cuentas."
+            },
+            {
+              "who": "Gerd el Mellado",
+              "mood": "enfadado",
+              "text": "Antes de pagar nada, quiero ver a Lope. Suele parar en la venta del cruce. Que me mire a la cara."
+            }
+          ],
+          "next": "lope"
+        },
+        {
+          "id": "lope",
+          "kind": "escena",
+          "title": "La venta del cruce",
+          "backdrop": "posada",
+          "beats": [
+            {
+              "text": "Lope está en la venta del cruce, cargando sacos en sus mulas. Cuando ve a Gerd se le cae uno al suelo."
+            },
+            {
+              "who": "Lope",
+              "mood": "triste",
+              "text": "Gerd… Te lo iba a devolver. Todo. Tengo cinco críos, y un invierno se me murieron los terneros…"
+            },
+            {
+              "who": "Gerd el Mellado",
+              "mood": "enfadado",
+              "text": "Tres años. Mi madre fregando suelos ajenos, y tú diciéndole que yo no mandaba nada."
+            },
+            {
+              "who": "Gerd el Mellado",
+              "mood": "triste",
+              "text": "Tú dirás. Si lo llevamos ante el señor, lo cuelgan. Si no, la casa la pagamos nosotros y aquí no ha pasado nada.",
+              "options": [
+                {
+                  "id": "ante-el-senor",
+                  "text": "Lo llevamos ante el señor, con sus recibos.",
+                  "check": {
+                    "skill": "intimidation",
+                    "dc": 13,
+                    "success": {
+                      "reply": {
+                        "text": "Los cuñados de Lope se levantan de la mesa, te miran y se vuelven a sentar. Lope sale de la venta sin que nadie le defienda."
+                      }
+                    },
+                    "failure": {
+                      "reply": {
+                        "text": "Tres mozos del molino se levantan de la mesa, con los puños cerrados y un garrote. Son los cuñados de Lope."
+                      }
+                    }
+                  }
+                },
+                {
+                  "id": "pagar-dejarlo",
+                  "text": "Pagamos nosotros las noventa monedas y dejamos que se vaya.",
+                  "if": {
+                    "gold": 90
+                  },
+                  "reply": {
+                    "who": "Lope",
+                    "mood": "triste",
+                    "text": "Que los dioses os lo paguen. Yo no podré."
+                  }
+                },
+                {
+                  "id": "ahorros",
+                  "text": "Lo dejamos ir. Gerd, ¿te alcanza con tus ahorros?",
+                  "reply": {
+                    "who": "Gerd el Mellado",
+                    "mood": "triste",
+                    "text": "Eran para mi vejez. Mi madre es más importante que mi vejez."
+                  }
+                }
+              ]
+            }
+          ],
+          "routes": {
+            "ante-el-senor": {
+              "bien": "fin-senor",
+              "mal": "pelea"
+            },
+            "pagar-dejarlo": "fin-pagar",
+            "ahorros": "fin-pagar-ahorros"
+          },
+          "next": "fin-pagar-ahorros"
+        },
+        {
+          "id": "pelea",
+          "kind": "tablero",
+          "text": "Los cuñados de Lope no van a dejar que se lo lleven. Pelea en el patio de la venta.",
+          "board": {
+            "id": "venta_del_cruce",
+            "name": "La venta del cruce",
+            "locationName": "Puerto Alba",
+            "map": [
+              "##############",
+              "#T....c.....T#",
+              "#..c.....c...#",
+              "#......T.....#",
+              "#.c.......c..#",
+              "#............#",
+              "#T....x.....T#",
+              "##############"
+            ],
+            "partyStart": [
+              {
+                "x": 4,
+                "y": 6
+              },
+              {
+                "x": 5,
+                "y": 6
+              },
+              {
+                "x": 7,
+                "y": 6
+              },
+              {
+                "x": 8,
+                "y": 6
+              }
+            ],
+            "enemies": [
+              {
+                "name": "Cuñado de Lope",
+                "x": 4,
+                "y": 1
+              },
+              {
+                "name": "Cuñado de Lope",
+                "x": 8,
+                "y": 2
+              },
+              {
+                "name": "Cuñado de Lope",
+                "x": 10,
+                "y": 1
+              }
+            ]
+          },
+          "bestiary": [
+            {
+              "name": "Cuñado de Lope",
+              "hp": 9,
+              "armorClass": 11,
+              "cr": 0.125,
+              "profile": "aggressive",
+              "attackRangeFeet": 5,
+              "description": "Un mozo del molino, ancho de hombros, con un garrote. Defiende a Lope porque es de la familia, no porque tenga razón."
+            }
+          ],
+          "win": "fin-senor",
+          "lose": "fin-pagar-ahorros",
+          "flee": "fin-pagar-ahorros"
+        },
+        {
+          "id": "fin-senor",
+          "kind": "final",
+          "ending": "plantar-cara",
+          "back": 6,
+          "effects": {
+            "gold": 0,
+            "bonds": 2,
+            "fame": 1,
+            "flags": [
+              "robledo-lope-ante-el-senor"
+            ],
+            "memory": "Fuiste con Gerd a Robledo y llevasteis a Lope ante el señor. La casa de su madre sigue siendo suya."
+          }
+        },
+        {
+          "id": "fin-pagar",
+          "kind": "final",
+          "ending": "pagar",
+          "back": 6,
+          "effects": {
+            "gold": -90,
+            "bonds": 2,
+            "fame": 1,
+            "flags": [
+              "robledo-castanas"
+            ],
+            "memory": "Fuiste con Gerd a Robledo, pagasteis la casa de su madre y dejasteis ir a Lope."
+          }
+        },
+        {
+          "id": "fin-pagar-ahorros",
+          "kind": "final",
+          "ending": "pagar",
+          "back": 6,
+          "effects": {
+            "gold": 0,
+            "bonds": 1,
+            "fame": 0,
+            "flags": [
+              "robledo-castanas",
+              "gerd-sin-ahorros"
+            ],
+            "memory": "Fuiste con Gerd a Robledo. Pagó la casa de su madre con sus ahorros, y Lope se fue."
+          }
+        }
+      ]
+    },
+    {
+      "id": "nella-tobias",
+      "kind": "mision",
+      "name": "Nella · El bosque del barón",
+      "who": "Nella Tresflechas",
+      "quest": "nella-tobias",
+      "start": "ida",
+      "steps": [
+        {
+          "id": "ida",
+          "kind": "viaje",
+          "to": "Hoz",
+          "days": 3,
+          "text": "Tres días tierra adentro, por bosques cada vez más espesos. Nella camina delante, sin hablar, y cada poco se para a escuchar.",
+          "next": "hoz"
+        },
+        {
+          "id": "hoz",
+          "kind": "escena",
+          "title": "Hoz",
+          "backdrop": "plaza",
+          "beats": [
+            {
+              "text": "Hoz es un pueblo de leñadores a la sombra del bosque del barón. En cada pared hay un cartel con la cara de Nella, peor dibujada todavía que el del puerto."
+            },
+            {
+              "who": "Nella Tresflechas",
+              "mood": "enfadado",
+              "text": "Aquí me ha puesto bizca. Eso ya es personal."
+            },
+            {
+              "text": "Al fondo de la plaza está la cárcel del barón: una torre baja con una sola ventana con rejas. Por la ventana asoma un chico de orejas de soplillo."
+            },
+            {
+              "who": "El alguacil",
+              "text": "La multa por cazar en el bosque del barón son ciento cincuenta monedas. Si no se paga, a las minas, dentro de un mes."
+            },
+            {
+              "who": "Nella Tresflechas",
+              "mood": "triste",
+              "text": "Ciento cincuenta. Es más de lo que he tenido junto en mi vida. Tú decides: pagamos, o esta noche entramos.",
+              "options": [
+                {
+                  "id": "multa",
+                  "text": "Pagamos la multa. Mañana Tobías sale por la puerta.",
+                  "if": {
+                    "gold": 150
+                  },
+                  "reply": {
+                    "who": "Nella Tresflechas",
+                    "text": "Por la puerta. Como la gente honrada. Qué raro se me hace."
+                  }
+                },
+                {
+                  "id": "noche",
+                  "text": "Esta noche entramos. Tú sabes por dónde.",
+                  "reply": {
+                    "who": "Nella Tresflechas",
+                    "mood": "alegre",
+                    "text": "Por detrás, donde duermen los perros. Todavía me conocen."
+                  }
+                }
+              ]
+            }
+          ],
+          "routes": {
+            "multa": "fin-multa",
+            "noche": "noche"
+          },
+          "next": "noche"
+        },
+        {
+          "id": "noche",
+          "kind": "escena",
+          "title": "La cárcel de noche",
+          "beats": [
+            {
+              "text": "Es noche cerrada. Nella silba bajito y los dos perros del barón se acercan moviendo la cola. Ni un ladrido."
+            },
+            {
+              "who": "Nella Tresflechas",
+              "text": "Buenos chicos. Ahora, la puerta de atrás. Dentro hay un guarda, y a estas horas suele dormir."
+            },
+            {
+              "text": "La puerta de atrás es vieja y tiene los goznes oxidados.",
+              "options": [
+                {
+                  "id": "colarse",
+                  "text": "Abres la puerta muy despacio.",
+                  "check": {
+                    "skill": "stealth",
+                    "dc": 13,
+                    "success": {
+                      "reply": {
+                        "text": "La puerta ni cruje. Tobías se despierta y Nella le tapa la boca antes de que grite su nombre."
+                      }
+                    },
+                    "failure": {
+                      "reply": {
+                        "text": "Un gozne chirría. Dentro, alguien grita: «¡Guardias!»"
+                      }
+                    }
+                  }
+                },
+                {
+                  "id": "forzar",
+                  "text": "Rompes la cerradura de una patada.",
+                  "reply": {
+                    "text": "El golpe despierta a medio pueblo. Se encienden luces en la torre."
+                  }
+                }
+              ]
+            }
+          ],
+          "routes": {
+            "colarse": {
+              "bien": "fin-carcel",
+              "mal": "guardas"
+            },
+            "forzar": "guardas"
+          },
+          "next": "guardas"
+        },
+        {
+          "id": "guardas",
+          "kind": "tablero",
+          "text": "Los guardas del barón bajan de la torre con antorchas. Hay que sacar a Tobías como sea.",
+          "board": {
+            "id": "carcel_del_baron",
+            "name": "La cárcel del barón",
+            "locationName": "Puerto Alba",
+            "map": [
+              "##############",
+              "#..c...#k...##",
+              "#......D....##",
+              "#..c...#..c..#",
+              "####.#####.###",
+              "#b..........b#",
+              "#bb.......x.b#",
+              "##############"
+            ],
+            "partyStart": [
+              {
+                "x": 3,
+                "y": 6
+              },
+              {
+                "x": 4,
+                "y": 6
+              },
+              {
+                "x": 5,
+                "y": 6
+              },
+              {
+                "x": 6,
+                "y": 6
+              }
+            ],
+            "enemies": [
+              {
+                "name": "Guarda del barón",
+                "x": 2,
+                "y": 2
+              },
+              {
+                "name": "Guarda del barón",
+                "x": 5,
+                "y": 1
+              },
+              {
+                "name": "Guarda del barón",
+                "x": 9,
+                "y": 3
+              }
+            ]
+          },
+          "bestiary": [
+            {
+              "name": "Guarda del barón",
+              "hp": 11,
+              "armorClass": 13,
+              "cr": 0.25,
+              "profile": "aggressive",
+              "attackRangeFeet": 5,
+              "description": "Un guarda del barón de Hoz, con cota de cuero y lanza corta. Cobra poco y duerme mal."
+            }
+          ],
+          "win": "fin-carcel",
+          "lose": "fin-multa-pillados",
+          "flee": "fin-multa-pillados"
+        },
+        {
+          "id": "fin-carcel",
+          "kind": "final",
+          "ending": "carcel",
+          "back": 3,
+          "effects": {
+            "gold": 0,
+            "bonds": 2,
+            "fame": 1,
+            "flags": [
+              "hoz-buscados"
+            ],
+            "memory": "Entraste con Nella de noche en la cárcel del barón y sacasteis a Tobías."
+          }
+        },
+        {
+          "id": "fin-multa",
+          "kind": "final",
+          "ending": "multa",
+          "back": 3,
+          "effects": {
+            "gold": -150,
+            "bonds": 2,
+            "fame": 1,
+            "flags": [
+              "hoz-multa-pagada"
+            ],
+            "memory": "Pagaste la multa de Tobías, el hermano de Nella, en Hoz."
+          }
+        },
+        {
+          "id": "fin-multa-pillados",
+          "kind": "final",
+          "ending": "multa",
+          "back": 3,
+          "effects": {
+            "gold": -150,
+            "bonds": 1,
+            "fame": 0,
+            "flags": [
+              "hoz-multa-pagada"
+            ],
+            "memory": "Os pillaron en la cárcel de Hoz, y al final hubo que pagar la multa de Tobías."
+          }
+        }
+      ]
+    },
+    {
+      "id": "osric-anillo",
+      "kind": "mision",
+      "name": "Osric · El anillo de Valdés",
+      "who": "Osric Mediapaga",
+      "quest": "osric-anillo",
+      "start": "ida",
+      "steps": [
+        {
+          "id": "ida",
+          "kind": "viaje",
+          "to": "Valdés",
+          "days": 1,
+          "text": "Salís por el camino de la costa, hacia Valdés. Osric apenas habla. Cada poco toca la bolsa del anillo, como para comprobar que sigue ahí.",
+          "next": "guardia"
+        },
+        {
+          "id": "guardia",
+          "kind": "escena",
+          "title": "La guardia",
+          "beats": [
+            {
+              "text": "La primera noche acampáis junto a unas rocas. Osric no se tumba: se sienta con la espalda contra una piedra y la espada sobre las rodillas."
+            },
+            {
+              "who": "Osric Mediapaga",
+              "text": "Dormid. Esta noche la guardia la hago yo. Entera."
+            },
+            {
+              "text": "Pasada la medianoche, Osric te toca el hombro. Entre los árboles se mueven sombras: cuatro, quizá cinco."
+            },
+            {
+              "who": "Osric Mediapaga",
+              "mood": "enfadado",
+              "text": "Bandidos. Como aquella noche. Pero esta vez estoy despierto.",
+              "options": [
+                {
+                  "id": "esperar",
+                  "text": "Despiertas a los demás y los esperáis con las armas en la mano.",
+                  "reply": {
+                    "who": "Osric Mediapaga",
+                    "text": "Bien. Que vengan."
+                  }
+                },
+                {
+                  "id": "espantar",
+                  "text": "Avivas el fuego y gritáis los dos, para que vean que hay gente despierta.",
+                  "check": {
+                    "skill": "intimidation",
+                    "dc": 12,
+                    "success": {
+                      "reply": {
+                        "text": "Las sombras se paran. Luego se van por donde han venido. Osric no suelta la espada hasta el amanecer."
+                      }
+                    },
+                    "failure": {
+                      "reply": {
+                        "text": "Las sombras no se van. Vienen."
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          ],
+          "routes": {
+            "esperar": "campamento",
+            "espantar": {
+              "bien": "llegada",
+              "mal": "campamento"
+            }
+          },
+          "next": "campamento"
+        },
+        {
+          "id": "campamento",
+          "kind": "tablero",
+          "text": "Los bandidos salen de entre los árboles. Esta vez, Osric está despierto.",
+          "board": {
+            "id": "rocas_del_camino",
+            "name": "Las rocas del camino",
+            "locationName": "Puerto Alba",
+            "map": [
+              "##############",
+              "#bb..^^...bbb#",
+              "#b....^.....b#",
+              "#.....c......#",
+              "#..c.......c.#",
+              "#............#",
+              "#b..........b#",
+              "##############"
+            ],
+            "partyStart": [
+              {
+                "x": 5,
+                "y": 5
+              },
+              {
+                "x": 6,
+                "y": 5
+              },
+              {
+                "x": 7,
+                "y": 5
+              },
+              {
+                "x": 8,
+                "y": 5
+              }
+            ],
+            "enemies": [
+              {
+                "name": "Bandido del camino",
+                "x": 4,
+                "y": 1
+              },
+              {
+                "name": "Bandido del camino",
+                "x": 8,
+                "y": 1
+              },
+              {
+                "name": "Bandido del camino",
+                "x": 11,
+                "y": 2
+              }
+            ]
+          },
+          "bestiary": [
+            {
+              "name": "Bandido del camino",
+              "hp": 11,
+              "armorClass": 12,
+              "cr": 0.125,
+              "profile": "aggressive",
+              "attackRangeFeet": 5,
+              "description": "Un salteador de la costa, con un cuchillo largo y una capa hecha de sacos. Ataca a los que duermen."
+            }
+          ],
+          "win": "llegada",
+          "lose": "llegada",
+          "flee": "llegada"
+        },
+        {
+          "id": "llegada",
+          "kind": "viaje",
+          "to": "Valdés",
+          "days": 1,
+          "text": "Al día siguiente llegáis a Valdés: un pueblo blanco sobre un acantilado. La casa de la viuda tiene una torre pequeña, la misma que lleva grabada el anillo.",
+          "next": "viuda"
+        },
+        {
+          "id": "viuda",
+          "kind": "escena",
+          "title": "La viuda",
+          "beats": [
+            {
+              "text": "Os abre una mujer de pelo blanco, muy derecha. Mira a Osric y le reconoce al momento."
+            },
+            {
+              "who": "Doña Leonor",
+              "text": "Tú eras el escolta de mi marido. Once años sin saber de ti."
+            },
+            {
+              "text": "Osric saca el anillo de plata con la torre y se lo pone en la mano. Luego te mira a ti. No le salen las palabras."
+            },
+            {
+              "who": "Osric Mediapaga",
+              "mood": "triste",
+              "text": "Ayúdame a decírselo.",
+              "options": [
+                {
+                  "id": "verdad",
+                  "text": "Cuéntale la verdad, Osric. Toda.",
+                  "reply": {
+                    "who": "Osric Mediapaga",
+                    "mood": "triste",
+                    "text": "Señora. Aquella noche me tocaba la guardia. Me dormí."
+                  }
+                },
+                {
+                  "id": "mentira",
+                  "text": "Le dices que su marido murió luchando, con Osric a su lado.",
+                  "reply": {
+                    "who": "Doña Leonor",
+                    "mood": "triste",
+                    "text": "Luchando. Sí. Él era así."
+                  }
+                }
+              ]
+            }
+          ],
+          "routes": {
+            "verdad": "fin-verdad",
+            "mentira": "fin-mentira"
+          },
+          "next": "fin-verdad"
+        },
+        {
+          "id": "fin-verdad",
+          "kind": "final",
+          "ending": "verdad",
+          "back": 2,
+          "effects": {
+            "gold": 0,
+            "bonds": 2,
+            "fame": 1,
+            "flags": [
+              "osric-gaviota"
+            ],
+            "memory": "Fuiste con Osric a Valdés, y le ayudaste a contarle la verdad a la viuda de su señor."
+          }
+        },
+        {
+          "id": "fin-mentira",
+          "kind": "final",
+          "ending": "mentira",
+          "back": 2,
+          "effects": {
+            "gold": 0,
+            "bonds": 1,
+            "fame": 1,
+            "flags": [
+              "osric-sin-anillo"
+            ],
+            "memory": "Fuiste con Osric a Valdés, y le dijisteis a la viuda que su señor murió luchando."
+          }
+        }
+      ]
+    }
+  ]
+}

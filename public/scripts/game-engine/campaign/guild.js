@@ -25,6 +25,8 @@
  * @property {number} renown     Lo que se ha ganado a pulso. Abre rangos del tablón.
  * @property {Record<string, number>} buildings Qué hay construido, y a qué nivel.
  * @property {Array<{name: string, role: string}>} staff Quien se ha quedado en casa, y haciendo qué.
+ * @property {number} [gold] J3.4: el oro que se deja en el arca del gremio, de todos los tuyos.
+ * @property {string} [rankSeen] J3.7: el último rango que se contó en la sala del gremio.
  */
 
 /**
@@ -37,7 +39,7 @@
 export const BUILDINGS = {
     bunks: {
         label: 'Dormitorios',
-        describe: 'Dormir en casa sale más barato que la posada.',
+        describe: 'Dormir en casa sale más barato que la posada. Y con más camas, se quedan más espadas de alquiler.',
         cost: [120, 260, 500],
         effect: { lodgingPerWeek: -3 },
     },
@@ -55,14 +57,22 @@ export const BUILDINGS = {
     },
     forge: {
         label: 'Forja',
-        describe: 'Reparar en casa. Y el equipo aguanta más.',
+        describe: 'Mejorar en casa las armas y las armaduras: cuanto mejor la forja, más se mejoran.',
         cost: [180, 380, 700],
         effect: {},
     },
     library: {
         label: 'Biblioteca',
-        describe: 'Se sabe antes dónde pagan mejor: el tablón trae más trabajo.',
+        describe: 'Se sabe antes dónde pagan mejor: el tablón trae más trabajo. Y enseña conjuros.',
         cost: [200, 420, 800],
+        effect: {},
+    },
+    // J3.6: no abarata nada de la semana: lleva al grupo montado a cada campaña
+    // (`guild-buildings.js`).
+    stable: {
+        label: 'Establo',
+        describe: 'Mulas, y luego caballos, para todo el grupo: se llega antes a cada campaña y se viaja montado dentro de ella.',
+        cost: [150, 350],
         effect: {},
     },
 };
@@ -167,6 +177,10 @@ export function readGuild(raw) {
         if (level > 0) buildings[key] = Math.min(BUILDINGS[key].cost.length, level);
     }
 
+    // J3.4 y J3.7: el arca y el último rango contado, solo si los hay: un gremio de antes se lee igual.
+    const gold = Math.max(0, Math.floor(number(source.gold)));
+    const rankSeen = String(source.rankSeen ?? '').trim().toUpperCase();
+
     return {
         name: String(source.name ?? '').trim(),
         theme: String(source.theme ?? 'general'),
@@ -176,6 +190,8 @@ export function readGuild(raw) {
             .filter((/** @type {any} */ s) => s && String(s.role) in STAFF_ROLES && String(s.name ?? '').trim())
             .slice(0, MAX_STAFF)
             .map((/** @type {any} */ s) => ({ name: String(s.name).trim(), role: String(s.role) })),
+        ...(gold > 0 ? { gold } : {}),
+        ...(/^[DCBAS]$/.test(rankSeen) ? { rankSeen } : {}),
     };
 }
 
@@ -325,7 +341,8 @@ export function completeContract(guild, contract) {
     return {
         renown,
         gold,
-        line: `Encargo de rango ${contract?.rank ?? '?'} entregado: ${gold} de oro y ${gained} de reputación.`,
+        // J3.7: «renombre», como en la sala del gremio, donde se ve el rango que abre.
+        line: `Encargo de rango ${contract?.rank ?? '?'} entregado: ${gold} de oro y ${gained} de renombre para el gremio.`,
     };
 }
 

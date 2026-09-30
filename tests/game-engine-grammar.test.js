@@ -1,7 +1,7 @@
 import { describe, test, expect } from '@jest/globals';
 import { readFileSync, readdirSync } from 'node:fs';
 import {
-    genderOf, groupGender, gendered, resolveGender, resolveGenderDeep, leftoverMarkers, genderHacks, thirdForms, GENDER,
+    genderOf, groupGender, gendered, resolveGender, resolveGenderDeep, leftoverMarkers, genderHacks, thirdForms, GENDER, whoOfParty,
 } from '../public/scripts/game-engine/campaign/grammar.js';
 import {
     GENDERS, TEXT_FORMS, buildHeroEntry, heroGender, needsTextForm, textFormLine, heroContent,
@@ -185,6 +185,8 @@ const RESOLVED = {
         /^\.rumors\[\d+\]\.text$/,
         /^\.quests\[\d+\]\.description$/,
         /^\.plot\.endings\.[^.]+\.epilogues\[\d+\]\.text$/,
+        // D-J22: los capítulos del hilo, en el libro de la historia (`story-book.js` los resuelve).
+        /^\.plot\.chapters\[\d+\]\.(title|summary)$/,
         // Lo que se descubre al cumplir un encargo escrito: va al chat (`postForModel`).
         /^\.contracts\[\d+\]\.twist$/,
         // J8.1: las charlas con ramas (`dialogues.js` las resuelve con tu héroe antes de enseñarlas).
@@ -333,6 +335,37 @@ describe('D-J17: 1387 y Strahd hablan a quien juega, también fuera del hilo', (
         // Sin decir quién juega: la primera forma, nunca las llaves.
         const plain = applySceneEffects([{ kind: 'rumor', id: 'r-el-pago-del-asesino' }], { rumors });
         expect(plain.notes[0]).not.toMatch(/[{}|]/);
+    });
+
+    test('Barovia también le habla a quien juega: la sinopsis, en el paquete y en la tarjeta', () => {
+        const card = worlds.find((/** @type {any} */ w) => w.id === 'strahd');
+        for (const synopsis of [strahd.world.synopsis, card.synopsis]) {
+            // En singular, como la de 1387: se lee al crear el personaje y en el tablón, con quien va.
+            expect(resolveGender(synopsis, her)).toMatch(/estás atrapada en su dominio\./);
+            expect(resolveGender(synopsis, { heroe: 'No binario (en masculino)', grupo: ['Mujer'] })).toMatch(/estás atrapado en su dominio\./);
+            // Ya no «Los aventureros han sido arrastrados»: se le habla a quien juega.
+            expect(synopsis).not.toMatch(/aventureros/);
+        }
+        // Lo que no pasa por el motor se escribe sin nada que concuerde con quien juega.
+        const krezk = strahd.contracts.find((/** @type {any} */ c) => /Krezk os abre/.test(c.rewardText ?? ''));
+        expect(krezk.rewardText).toBe('25 de oro, y Krezk os abre sus puertas');
+        expect(strahd.contracts.map((/** @type {any} */ c) => c.rewardText).join(' ')).not.toMatch(/vosotros/);
+    });
+
+    test('las pantallas fuera de party.js saben quién juega por el grupo guardado', () => {
+        // Como `whoPlays`: tu héroe es el primero que no es invitado; el grupo, los que siguen en pie.
+        const party = [
+            { name: 'Gerd', gender: 'Hombre', guest: true },
+            { name: 'Tessa', gender: 'No binario (en femenino)' },
+            { name: 'Nella', gender: 'Mujer' },
+            { name: 'Osric', gender: 'Hombre', dead: true },
+        ];
+        expect(whoOfParty(party)).toEqual({ heroe: 'No binario (en femenino)', grupo: ['Hombre', 'No binario (en femenino)', 'Mujer'] });
+        expect(resolveGender('Eres {el único|la única}.', whoOfParty(party))).toBe('Eres la única.');
+        // Sin grupo guardado (la ventana de antes de empezar), la primera forma y nunca las llaves.
+        expect(whoOfParty(undefined)).toEqual({ heroe: '', grupo: [] });
+        expect(resolveGender(strahd.world.synopsis, whoOfParty(null))).toMatch(/estás atrapado/);
+        expect(resolveGender(strahd.world.synopsis, whoOfParty(null))).not.toMatch(/[{}|]/);
     });
 
     test('Ismark saluda al grupo que llega, y el camino a Barovia también concuerda', () => {

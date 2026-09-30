@@ -47,6 +47,12 @@ export const DOMAIN_LABELS = {
     // J14: lo que dice tu gente.
     charlas: ['Charlas', 'Lo que te dice tu gente al cruzarte, y tus tres respuestas'],
     quedadas: ['Quedadas', 'Dónde anda cada uno, sus escenas por rango y lo que abre cada rango'],
+    // J11.3: el mundo se acuerda.
+    ecos: ['Ecos', 'Lo que hicisteis en un pueblo, y cómo os tratan allí por ello: precios, saludos y rumores'],
+    // J7.2, J7.5 y J14.7 a J14.9: tu gente, segunda parte.
+    companeros: ['Compañeros', 'Cómo es cada uno: qué busca, qué le gusta y si se viene al gremio'],
+    noches: ['Noches', 'Lo que pasa de noche en la posada, y lo que hablan dos compañeros entre ellos'],
+    personales: ['Misiones personales', 'Cómo se juega la misión de cada compañero, paso a paso, hasta sus dos finales'],
 };
 
 /**

@@ -12,7 +12,11 @@
  *   dice sale en la novela con su cara y su gesto → viajar abre las escenas de los hitos 3 y 4 →
  *   la de Karl ya es la charla y cumple su hito (D-J39) → el hito siguiente, que solo trae
  *   texto, se abre como una escena corta del narrador (D-J40) → el Diario apunta lo decidido y
- *   lo que os han contado.
+ *   lo que os han contado → la estación de hoy llega al narrador (J13).
+ *
+ *   Y en otra pestaña, el prólogo del gremio: la escena del muelle → ganar al ratero → la
+ *   escena de Tomás cumple su hito (D-J39) → la de Brunilda no, porque lo cumple su charla
+ *   escrita, que «Hablar con Brunilda» abre directamente (D-J36) → la escena de la prueba.
  *
  * Uso:
  *   node tools/e2e-historia.mjs                                   # sin ventana
@@ -71,21 +75,26 @@ function startServer() {
 try {
     await startServer();
     browser = await chromium.launch({ channel: 'msedge', headless: !HEADED });
-    const context = await browser.newContext({ viewport: { width: 1400, height: 950 } });
-    const page = await context.newPage();
     /** @type {string[]} */
     const problems = [];
-    page.on('pageerror', e => problems.push(`PAGEERROR ${e.message}`));
-    page.on('console', m => {
-        if (m.type() === 'error' && !/Failed to load resource.*404/.test(m.text())) problems.push(`ERROR ${m.text().slice(0, 300)}`);
-    });
-    await context.addInitScript(() => {
-        try {
-            window.localStorage.setItem('sillytavern_gameTipsSeen', 'dialogue,exploration,combat,travel,prisoners,mesa,high,spell,pet,bill,move,attack,roll,talk,journal');
-            window.localStorage.setItem('sillytavern_gameShellAutostart', 'true');
-            window.localStorage.setItem('sillytavern_gameSucesos', 'off');
-        } catch { /* nada */ }
-    });
+    /** Una pestaña nueva, con su almacenamiento limpio (la segunda parte, el gremio, usa otra). */
+    const newPage = async () => {
+        const context = await browser.newContext({ viewport: { width: 1400, height: 950 } });
+        const opened = await context.newPage();
+        opened.on('pageerror', e => problems.push(`PAGEERROR ${e.message}`));
+        opened.on('console', m => {
+            if (m.type() === 'error' && !/Failed to load resource.*404/.test(m.text())) problems.push(`ERROR ${m.text().slice(0, 300)}`);
+        });
+        await context.addInitScript(() => {
+            try {
+                window.localStorage.setItem('sillytavern_gameTipsSeen', 'dialogue,exploration,combat,travel,prisoners,mesa,high,spell,pet,bill,move,attack,roll,talk,journal');
+                window.localStorage.setItem('sillytavern_gameShellAutostart', 'true');
+                window.localStorage.setItem('sillytavern_gameSucesos', 'off');
+            } catch { /* nada */ }
+        });
+        return opened;
+    };
+    let page = await newPage();
 
     let shots = 0;
     const shoot = async (/** @type {string} */ what) => {
@@ -168,6 +177,8 @@ try {
         for (let i = 0; i < 60; i++) {
             const now = await story();
             if (!now || now.kind !== 'scene') break;
+            // La siguiente escena puede abrirse enseguida: esa ya no es de esta jugada.
+            if (frames.length > 0 && now.id !== frames[0].id) break;
             frames.push(now);
             const free = now.options.filter((/** @type {any} */ o) => !o.locked);
             if (free.length > 0) {
@@ -254,7 +265,10 @@ try {
         now.played.includes('el-caliz-ensangrentado') && now.decisions.some(d => /^El cáliz ensangrentado: «Gritas/.test(d))
         && Number(now.attitudes.Giles) >= 1 && /📜 \[HILO\][\s\S]*Torres: «¡Abrid en nombre de Lord Vane/.test(told),
         JSON.stringify({ played: now.played, decisions: now.decisions, attitudes: now.attitudes }));
-    check('J9.2: el texto de la escena ya jugada no se vuelve a contar como nota del hilo', !(await chatTexts()).some(t => /^\S{0,3}\s*\[HILO\] Viernes por la mañana/.test(t)));
+    // Lo que queda es el registro de la escena (con Torres); su texto no sale otra vez como nota suelta.
+    const openingNotes = (await chatTexts()).filter(t => /\[HILO\][\s\S]*Viernes por la mañana/.test(t));
+    check('J9.2: el texto de la escena ya jugada no se vuelve a contar como nota del hilo',
+        openingNotes.length === 1 && /Torres: «/.test(openingNotes[0]), JSON.stringify(openingNotes.map(t => t.slice(0, 80))));
 
     // --- Ganar en el cuarto de la posada: la escena siguiente espera al panel de victoria ----
     await dropToasts();
@@ -266,10 +280,33 @@ try {
         const enc = (await import('/scripts/party.js')).getCombatEncounter();
         for (const e of enc?.enemies ?? []) e.currentHp = 0;
     });
+    // El tablero no se gana matando a todos: el encargo es salir por la ventana (7,9). En el
+    // turno de quien juega, al pie de la ventana, y a salir (como e2e-sin-modelo).
     for (let i = 0; i < 8; i++) {
-        const active = await page.evaluate(async () => Boolean((await import('/scripts/party.js')).getCombatEncounter()?.active));
-        if (!active) break;
-        await slash('/combat-end');
+        const turn = await page.evaluate(async () => {
+            const party = await import('/scripts/party.js');
+            const enc = party.getCombatEncounter();
+            if (!enc?.active) return 'over';
+            const entry = enc.turnOrder?.[enc.currentTurnIndex];
+            return entry?.type === 'enemy' || entry?.isEnemy ? 'enemy' : 'player';
+        });
+        if (turn === 'over') break;
+        if (turn === 'enemy') {
+            await slash('/combat-end');
+            await clearDice();
+            continue;
+        }
+        await page.evaluate(async () => {
+            // El de verdad (`getPartyMembersSnapshot` es una copia).
+            const me = (await import('/scripts/party/state.js')).partyMembers[0];
+            if (me?.mapPosition) {
+                me.mapPosition.gridX = 7;
+                me.mapPosition.gridY = 7;
+            }
+        });
+        // `/combat-move` cuenta desde 1; el objetivo del paquete (7,9), desde 0.
+        await slash('/combat-move 8 10');
+        await page.waitForTimeout(1200);
         await clearDice();
     }
     const card = await until(async () => await page.locator('.vs-card').count() > 0, 8000);
@@ -352,8 +389,11 @@ try {
         .map((/** @type {any} */ m) => ({ name: m.name, mood: m.extra?.mood ?? '', text: String(m.extra?.display_text ?? m.mes).slice(0, 120) })), beforeTopic);
     await page.locator('.popup:not([closing]):has(.tk-root) .popup-button-ok').first().click({ timeout: 4000 }).catch(() => {});
     await page.waitForTimeout(800);
+    // La novela es la escena «Diálogo»; en «Exploración» (el pueblo) no se pinta.
     const novelFace = await page.evaluate(async () => {
-        (await import('/scripts/game-engine/ui/shell/game-shell.js')).refreshGameShell();
+        const shell = await import('/scripts/game-engine/ui/shell/game-shell.js');
+        shell.setScene('dialogue');
+        shell.refreshGameShell();
         await new Promise(resolve => setTimeout(resolve, 600));
         const image = /** @type {HTMLImageElement|null} */ (document.querySelector('#game-shell .gs-vn-portrait:not([hidden]) img'));
         return { plate: (document.querySelector('#game-shell .gs-vn-nameplate')?.textContent || '').trim(), src: image?.getAttribute('src') || '' };
@@ -415,6 +455,120 @@ try {
         JSON.stringify(diary['Lo que decidisteis'] ?? Object.keys(diary)));
     check('J8.6: el Diario apunta lo que os han contado en las charlas (Giles)',
         (diary['Lo que os han contado'] ?? []).some(l => /^Giles: Giles vio subir a tu cuarto/.test(l)), JSON.stringify(diary['Lo que os han contado'] ?? Object.keys(diary)));
+
+    // --- J13: la estación de hoy llega al narrador (el descanso, el viaje, la llegada) -------
+    const season = await page.evaluate(async () => {
+        const world = await import('/scripts/party/world.js');
+        const narration = await import('/scripts/party/narration.js');
+        const now = world.currentSeason();
+        const rows = world.lastCompendium.find('frases', { kind: 'descanso' });
+        // Solo quedan las de alguna estación: si la estación no llegara, no saldría ninguna.
+        const muted = rows.filter((/** @type {any} */ r) => !r.when?.estacion);
+        const saved = muted.map((/** @type {any} */ r) => r.weight);
+        muted.forEach((/** @type {any} */ r) => { r.weight = 0; });
+        let told = '';
+        try {
+            told = narration.tellMoment('descanso', { largo: 'sí', dia: 9, tiempo: 'despejado' });
+        } finally {
+            muted.forEach((/** @type {any} */ r, /** @type {number} */ i) => { r.weight = saved[i]; });
+        }
+        const all = world.lastCompendium.find('frases', {}).filter((/** @type {any} */ r) => r.when?.estacion);
+        const pieceOf = (/** @type {any} */ r) => String(r.text).split(/\{[^}]+\}/).sort((a, b) => b.length - a.length)[0].trim();
+        return {
+            now, told,
+            mine: all.filter((/** @type {any} */ r) => r.when.estacion === now && r.kind === 'descanso').map(pieceOf),
+            others: all.filter((/** @type {any} */ r) => r.when.estacion !== now).map(pieceOf),
+        };
+    });
+    const heardSeasons = (await chatTexts()).join('\n');
+    check(`J13: la estación de hoy (${season.now}) llega al narrador: el descanso dice una frase de ${season.now}, y en toda la partida no sale ninguna de otra estación`,
+        Boolean(season.told) && season.mine.some((/** @type {string} */ piece) => season.told.includes(piece))
+        && !season.others.some((/** @type {string} */ piece) => heardSeasons.includes(piece)), JSON.stringify({ now: season.now, told: season.told }));
+
+    // === El prólogo del gremio, con sus escenas en la ventana (D-J39, D-J40, D-J36) ============
+    // Otra pestaña, limpia: «Jugar sin conexión», Tessa, y el muelle de Puerto Alba.
+    page = await newPage();
+    await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
+    if (await page.locator('text=Welcome to SillyTavern!').waitFor({ state: 'visible', timeout: 15000 }).then(() => true).catch(() => false)) {
+        await page.click('.popup-button-ok');
+    }
+    await page.waitForSelector('#game-shell', { timeout: 90000 });
+    await page.locator('#game-shell .gs-menu-btn').filter({ hasText: 'Jugar sin conexión' }).click({ timeout: 30000 });
+    await page.waitForSelector('.hc-root', { timeout: 120000 });
+    await page.fill('.hc-root .hc-name', 'Tessa');
+    await page.locator('.hc-root .hc-gender[data-value="Mujer"]').click();
+    for (const pick of ['race', 'class']) {
+        await page.locator(`.hc-root .hc-card[data-pick="${pick}"] .hc-pick`).click();
+        await page.waitForSelector('.hc-picker .hc-option', { timeout: 15000 });
+        await page.locator('.hc-picker .hc-option').first().click();
+        await page.waitForTimeout(400);
+    }
+    await page.locator('.hc-root .hc-enter').click();
+    const pier = await until(async () => (await story())?.id === 'el-muelle', 90000);
+    const pierFirst = await story();
+    check('Gremio: el prólogo empieza con la escena del muelle en su ventana, contada por el narrador, en femenino',
+        pier && Boolean(pierFirst?.narrator) && /cansada del viaje/.test(String(pierFirst?.text)), JSON.stringify(pierFirst));
+    await shoot('gremio-muelle');
+    const pierFrames = await playScene(['yo-me-encargo']);
+    await page.waitForTimeout(1000);
+    now = await meta();
+    check('Gremio: Tomás grita con su cara; «Yo me encargo» hace que os mire mejor, y la escena queda jugada',
+        pierFrames.some(f => f.plate === 'Tomás' && /retratos\/gremio\/tomas--/.test(f.face)) && now.played.includes('el-muelle') && Number(now.attitudes['Tomás']) >= 1,
+        JSON.stringify({ plates: pierFrames.map(f => `${f.plate}:${f.mood}`), played: now.played, attitudes: now.attitudes }));
+
+    // La pelea del muelle: ganarla abre la escena de la charla con Tomás, tras el panel de victoria.
+    await dropToasts();
+    const pierFight = await until(async () => (await chips()).some(c => /^Iniciar combate \(Ratero/.test(c)), 15000);
+    await clickChip(/^Iniciar combate \(Ratero/);
+    await until(() => page.evaluate(async () => Boolean((await import('/scripts/party.js')).getCombatEncounter()?.active)), 10000);
+    await clearDice();
+    await page.evaluate(async () => {
+        const enc = (await import('/scripts/party.js')).getCombatEncounter();
+        for (const e of enc?.enemies ?? []) e.currentHp = 0;
+    });
+    for (let i = 0; i < 8; i++) {
+        if (!await page.evaluate(async () => Boolean((await import('/scripts/party.js')).getCombatEncounter()?.active))) break;
+        await slash('/combat-end');
+        await clearDice();
+    }
+    const pierCard = await until(async () => await page.locator('.vs-card').count() > 0, 8000);
+    check('Gremio: se gana en el muelle y sale el panel de victoria, sin escena encima', pierFight && pierCard && (await story()) === null, JSON.stringify({ pierFight, pierCard }));
+    await page.locator('.vs-card').first().click({ timeout: 4000 }).catch(() => {});
+    const charla = await until(async () => (await story())?.id === 'la-charla', 15000);
+    check('Gremio: al cerrar el panel se abre la escena de la charla con Tomás', charla, JSON.stringify(await story()));
+    await shoot('gremio-tomas');
+    const charlaFrames = await playScene(['una-cerveza']);
+    await page.waitForTimeout(1200);
+    now = await meta();
+    check('D-J39: la escena de Tomás ya es la charla del hito: lo cumple sin tener que «Hablar con Tomás»',
+        charlaFrames.some(f => f.plate === 'Tomás') && now.done.includes('la-charla'), JSON.stringify({ done: now.done, plates: charlaFrames.map(f => f.plate) }));
+
+    // La escena de Brunilda no cumple su hito: lo cumple su charla escrita, al pedir entrar.
+    const brunildaScene = await until(async () => (await story())?.id === 'el-gremio', 15000);
+    await shoot('gremio-brunilda-escena');
+    const gremioFrames = await playScene(['trabajo']);
+    await page.waitForTimeout(1200);
+    now = await meta();
+    check('Gremio: sigue la escena de Brunilda; como ella tiene charla escrita que cumple el hito, la escena no lo cumple',
+        brunildaScene && gremioFrames.some(f => f.plate === 'Brunilda') && !now.done.includes('el-gremio') && now.open.includes('el-gremio'),
+        JSON.stringify({ done: now.done, open: now.open }));
+    await dropToasts();
+    const talkChip = await until(async () => (await chips()).some(c => /^Hablar con Brunilda/.test(c)), 10000);
+    await clickChip(/^Hablar con Brunilda/);
+    const brunildaTalk = await until(async () => (await story())?.id === 'brunilda-la-casa', 10000);
+    const brunildaOpen = await story();
+    check('D-J36: «Hablar con Brunilda» abre directamente su charla escrita, con su cara y «Otras cosas»',
+        talkChip && brunildaTalk && brunildaOpen?.plate === 'Brunilda' && /retratos\/gremio\/brunilda/.test(String(brunildaOpen?.face)) && Boolean(brunildaOpen?.extras.includes('otras'))
+        && Boolean(brunildaOpen?.options.some((/** @type {any} */ o) => o.id === 'quiero-entrar')), JSON.stringify(brunildaOpen));
+    await shoot('gremio-brunilda-charla');
+    await playTalk(['quiero-entrar', 'prueba-voy']);
+    await page.waitForTimeout(1200);
+    now = await meta();
+    const trial = await until(async () => (await story())?.id === 'la-prueba', 15000);
+    check('Gremio: «Quiero entrar» cumple el hito de Brunilda, y se abre la escena de la prueba',
+        now.done.includes('el-gremio') && trial, JSON.stringify({ done: now.done, story: await story() }));
+    await shoot('gremio-prueba');
+    await playScene(['voy-ya']);
 
     console.log('\n--- problemas ---');
     console.log(problems.length ? problems.join('\n') : '(ninguno)');

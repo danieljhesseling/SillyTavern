@@ -1289,13 +1289,14 @@ export function renderLocationView(target, options) {
         const axesX = $('<div class="wm-axes-x"></div>');
         const axesY = $('<div class="wm-axes-y"></div>');
 
-        for (let i = 0; i <= gridWidth; i += stepX) {
+        // Una etiqueta por columna, de 1 a su ancho: con `<=` salía una de más, fuera del tablero.
+        for (let i = 0; i < gridWidth; i += stepX) {
             const px = state.offsetX + (i + 0.5) * cellW * state.scale;
             if (px < -20 || px > cw + 20) continue;
             axesX.append(`<span class="wm-axis-label" style="left:${px}px;top:2px;">${i + 1}</span>`);
         }
 
-        for (let j = 0; j <= gridHeight; j += stepY) {
+        for (let j = 0; j < gridHeight; j += stepY) {
             const py = state.offsetY + (j + 0.5) * cellH * state.scale;
             if (py < -15 || py > ch + 15) continue;
             axesY.append(`<span class="wm-axis-label" style="top:${py}px;left:2px;">${j + 1}</span>`);
@@ -1309,11 +1310,9 @@ export function renderLocationView(target, options) {
     // Sits above the board rather than floating over a corner of it: as an overlay it
     // covered the coordinate axes, and it is information about the selected token, not
     // about any particular part of the map.
-    const tacticalHud = $('<div class="wm-tactical-hud"></div>');
-    if (overlayLegend) {
-        tacticalHud.text(overlayLegend);
-        container.before(tacticalHud);
-    }
+    // Se pone encima del tablero al meterlo en la página (abajo): aquí el tablero todavía no
+    // está en ella, y `before` sobre algo suelto no hace nada. Por eso no salía nunca.
+    const tacticalHud = overlayLegend ? $('<div class="wm-tactical-hud"></div>').text(overlayLegend) : null;
 
     function fullUpdate() {
         content.css('transform', `translate(${state.offsetX}px, ${state.offsetY}px) scale(${state.scale})`);
@@ -1623,6 +1622,9 @@ export function renderLocationView(target, options) {
     });
     container.append(zoomControls);
 
+    // Lo que dice la ficha elegida (lo que le queda por andar, su alcance, o que se pulse una
+    // casilla encendida para ir), justo encima del tablero.
+    if (tacticalHud) target.append(tacticalHud);
     target.append(container);
     // K3: con el tablero ya en la página, la ficha a la que le toca, a la vista.
     requestAnimationFrame(() => focusActiveToken());

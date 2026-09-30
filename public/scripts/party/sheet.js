@@ -29,7 +29,7 @@ import { giveItem } from '../game-engine/rules/give-item.js';
 import { setInjury } from '../game-engine/rules/injuries.js';
 import { canTakeOff, shownName, curseInjury } from '../game-engine/campaign/item-lore.js';
 import { getActiveRuleset } from '../game-engine/rules/ruleset.js';
-import { firstArt, loadPixelManifest } from '../game-engine/ui/pixel-art.js';
+import { firstArt, isPlainFace, loadPixelManifest } from '../game-engine/ui/pixel-art.js';
 import { slotName } from '../game-engine/ui/shell/character-sheet.js';
 import { combatEncounter, partyMembers } from './state.js';
 import { canLevelUp, openLevelUpCard } from './level-up.js';
@@ -406,12 +406,16 @@ export async function openPartyMemberModal(member) {
 function buildCharacterSheetTab(member, dndCatalog) {
     const panel = $('<div class="dnd-tab-panel" data-panel="character_sheet"></div>');
     const sheet = $('<div class="dnd-sheet"></div>');
+    // Sin cara subida, el retrato en pixel de su clase, como en la tira del grupo.
+    const drawnFace = isPlainFace(member.avatar)
+        ? firstArt('hero', { className: String(member.class ?? ''), gender: String(/** @type {any} */ (member).gender ?? ''), race: String(member.race ?? ''), name: String(member.name ?? '') })
+        : '';
 
     // Header (editable name + clickable avatar)
     const header = $(`
         <div class="dnd-sheet-header">
             <div class="dnd-avatar-wrapper" title="Click to change avatar">
-                <img class="dnd-sheet-avatar" src="${member.avatar}" alt="${member.name}" />
+                <img class="dnd-sheet-avatar${drawnFace ? ' pixel-art' : ''}" src="${escapeHtml(drawnFace || member.avatar)}" alt="${escapeHtml(member.name)}" />
                 <div class="dnd-avatar-overlay"><i class="fa-solid fa-camera"></i></div>
                 <input type="file" class="dnd-avatar-input" accept="image/*" style="display:none" />
             </div>

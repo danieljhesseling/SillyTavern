@@ -26,6 +26,7 @@ import {
 import { normalizeCalendar } from './game-engine/campaign/calendar.js';
 import { validatePack } from './game-engine/campaign/campaign-pack.js';
 import { homecomingScene } from './game-engine/campaign/campaign-end.js';
+import { resolveGender, whoOfParty } from './game-engine/campaign/grammar.js';
 import { buildHeroEntry, describeHero, classIcon, rollStatBonus } from './game-engine/campaign/hero.js';
 import { planCampaignDeletion, planGuildDeletion, describeDeletion } from './game-engine/campaign/campaign-delete.js';
 import {
@@ -47,6 +48,9 @@ import { listSavedGames, gameCard } from './game-engine/campaign/saved-games.js'
 import { listVeterans, veteranHero } from './game-engine/campaign/veterans.js';
 import { readPremadeHeroes, premadeLine, premadeAnswers } from './game-engine/campaign/premade-heroes.js';
 import { spellsForClass, spellById } from './game-engine/rules/grimoire.js';
+import { startingSpells } from './game-engine/rules/spell-picks.js';
+import { casterOf } from './game-engine/rules/spell-slots.js';
+import { normalizeSpell, findSpell } from './game-engine/rules/spell-catalogue.js';
 
 /**
  * Fetches recent chats with metadata from the cross-character API.
@@ -361,7 +365,8 @@ async function showWorldPreviewPopup(worldName, worldMeta) {
     const displayName = meta.displayName || worldName;
     const coverImage = meta.coverImage || '';
     const genre = meta.genre || '';
-    const worldDescription = meta.description || '';
+    // D-J17: la sinopsis de un paquete trae `{forma|forma}`; nunca se ve una llave.
+    const worldDescription = resolveGender(meta.description || '', whoOfParty(chat_metadata?.party));
     const locationMaps = Array.isArray(meta.locationMaps) ? meta.locationMaps : [];
     // Collect boards from locations (per-location model), fallback to top-level meta.boards
     const locBoards = [];
@@ -801,7 +806,8 @@ async function faceAsFile(url) {
  * separa a un narrador de un personaje con voz grave.
  *
  * @param {any} answers Lo que el asistente recogio en el paso 4.
- * @param {{worldName: string, genre: string, synopsis: string}} world
+ * @param {{worldName: string, genre: string, synopsis: string, heroGender?: string}} world
+ *   `heroGender`: con quién concuerda la sinopsis (D-J17).
  * @returns {Promise<{avatar: string, card: any}|null>} El avatar creado, o null si no pudo.
  */
 async function createNarratorCharacter(answers, world) {
@@ -1268,7 +1274,7 @@ async function readMundo(url) {
  * J4: crea el narrador de una partida del gremio con una voz de `narradores.json`.
  *
  * @param {string} voiceId
- * @param {{worldName: string, genre: string, synopsis: string}} world
+ * @param {{worldName: string, genre: string, synopsis: string, heroGender?: string}} world
  * @returns {Promise<string>} Su avatar, o vacío si no se pudo (se abre con el de siempre).
  */
 async function hubNarrator(voiceId, world) {
@@ -1762,8 +1768,10 @@ export async function playHubCampaign(id) {
             saveWorld: (name, data) => saveWorldInfo(name, data, true),
             createEntry: createWorldInfoEntry,
         });
+        // D-J17: la sinopsis que lee el narrador («Eres {un mercenario|una mercenaria}»), con quien va.
         const narratorAvatar = await hubNarrator(String(world.narrator ?? ''), {
             worldName: created.worldName, genre: String(world.genre ?? ''), synopsis: String(world.synopsis ?? ''),
+            heroGender: String(hero?.gender ?? ''),
         });
         await updateWorld(created.worldName, meta => {
             meta[HUB_HOME_KEY] = homeWorld;
@@ -2392,9 +2400,28 @@ async function createStartingHero(worldName, { another = false } = {}) {
     // explicación, está en su ficha. Antes eran dos párrafos que seguían tapando los botones
     // de la pregunta que se abría justo después.
     const said = [toastr.success(`${describeHero(answers)}.`, 'Tu personaje', { timeOut: 5000 })];
+    // J19: quien lanza con espacios (su clase trae `casting`) no usa los conjuros del grimorio
+    // ligero: empieza con los de 5e que el juego le da (los mismos que `ensureSpellsOf`, de
+    // `party/magic.js`, con lo que ya sabía primero). Se dicen esos, que son los que tendrá.
+    const fifth = casterOf(classRow) && compendium.has?.('conjuros') ? startingSpells({
+        member: {
+            level: 1,
+            abilities: entry.dndData.abilities?.map((/** @type {any} */ a) => String(typeof a === 'string' ? a : a?.id ?? '')) ?? [],
+            strength: Number(spec.dndData.str), dexterity: Number(spec.dndData.dex), constitution: Number(spec.dndData.con),
+            intelligence: Number(spec.dndData.int), wisdom: Number(spec.dndData.wis), charisma: Number(spec.dndData.cha),
+        },
+        classRow,
+        catalogue: compendium.find('conjuros'),
+    }) : null;
     if (known.length > 0 || spells.length > 0) {
-        const names = [...known.map((/** @type {any} */ ability) => String(ability?.name || '')), ...spells.map(id => spellById(id)?.name ?? id)];
-        said.push(toastr.info(`${names.filter(Boolean).join(', ')}.`, 'Lo que sabes hacer', { timeOut: 6000 }));
+        const spellRows = fifth ? compendium.find('conjuros').map(normalizeSpell) : [];
+        const fifthNames = fifth ? [...fifth.cantrips, ...(fifth.spellsKnown ?? fifth.prepared ?? [])].map(id => findSpell(spellRows, id)?.name ?? id) : [];
+        const names = [
+            ...known.map((/** @type {any} */ ability) => String(ability?.name || '')),
+            ...(fifth ? [] : spells.map(id => spellById(id)?.name ?? id)),
+        ].filter(Boolean);
+        const told = fifth ? `${names.join(', ')}${names.length > 0 ? '. ' : ''}Conjuros: ${fifthNames.join(', ')}.` : `${names.join(', ')}.`;
+        said.push(toastr.info(told, 'Lo que sabes hacer', { timeOut: 6000 }));
     }
     clearOnNextPopup(said);
     const who = [answers.race, answers.className, backgroundOf(answers.background)?.label].filter(Boolean).join(', ');
@@ -2475,6 +2502,8 @@ export async function changeNarratorPace() {
         worldName,
         genre: String(data?.metadata?.genre || ''),
         synopsis: String(data?.metadata?.description || ''),
+        // D-J17: la sinopsis, con quien juega en esta partida.
+        heroGender: String(whoOfParty(chat_metadata?.party).heroe ?? ''),
     });
 
     // `/edit` **reconstruye la ficha entera** con lo que se le manda: lo que no viaje en

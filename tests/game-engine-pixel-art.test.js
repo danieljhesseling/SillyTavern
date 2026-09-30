@@ -68,6 +68,25 @@ function lostPortraits(manifest, pack) {
     return people.filter(p => drawn(p) && !firstArt('portrait', { name: p.name, pack }, manifest)).map(p => `${pack}: ${p.name}`);
 }
 
+/**
+ * La gente de un paquete con retrato a la que le falta un gesto (o no se le encuentra por su nombre).
+ *
+ * @param {import('../public/scripts/game-engine/ui/pixel-art.js').PixelManifest} manifest
+ * @param {string} pack
+ * @returns {string[]}
+ */
+function missingMoods(manifest, pack) {
+    const data = JSON.parse(readFileSync(new URL(`../public/mundos/${pack}.pack.json`, import.meta.url), 'utf8'));
+    const people = [...(data.npcs ?? []), ...(data.confidants ?? [])];
+    return people.flatMap(p => {
+        const base = [slugify(p.id), slugify(p.name)].find(b => b && manifest.files.has(`retratos/${pack}/${b}.png`));
+        if (!base) return [];
+        return ['alegre', 'enfadado', 'triste']
+            .filter(mood => firstArt('portrait', { name: p.name, pack, mood }, manifest) !== `${PIXEL_BASE}retratos/${pack}/${base}--${mood}.png`)
+            .map(mood => `${pack}: ${p.name} (${mood})`);
+    });
+}
+
 afterEach(() => setPixelManifest(null));
 
 describe('el nombre de un archivo', () => {
@@ -245,6 +264,23 @@ describe('el índice', () => {
     test('cada persona de los paquetes con retrato se encuentra por su nombre', () => {
         const manifest = readManifest(JSON.parse(readFileSync(join(PIXEL_DIR, 'manifest.json'), 'utf8')));
         expect(manifest.packs.flatMap(pack => lostPortraits(manifest, pack))).toEqual([]);
+    });
+
+    test('quien tiene retrato en un paquete tiene también sus tres gestos, y se encuentran por su nombre', () => {
+        const manifest = readManifest(JSON.parse(readFileSync(join(PIXEL_DIR, 'manifest.json'), 'utf8')));
+        expect(manifest.packs.flatMap(pack => missingMoods(manifest, pack))).toEqual([]);
+    });
+
+    test('la gente nueva de 1387 y Strahd ya tiene cara, con su gesto', () => {
+        const manifest = readManifest(JSON.parse(readFileSync(join(PIXEL_DIR, 'manifest.json'), 'utf8')));
+        expect(firstArt('portrait', { name: 'Brígida', pack: '1387', mood: 'enfadado' }, manifest)).toBe(url('retratos/1387/brigida--enfadado.png'));
+        expect(firstArt('portrait', { name: 'El ermitaño de la cascada', pack: 'strahd' }, manifest)).toBe(url('retratos/strahd/ermitano-cascada.png'));
+        expect(firstArt('portrait', { name: 'Dragomir', mood: 'triste' }, manifest)).toBe(url('retratos/strahd/dragomir-nido--triste.png'));
+    });
+
+    test('el icono de la app está en su sitio, en los tres tamaños y el «maskable»', () => {
+        const manifest = readManifest(JSON.parse(readFileSync(join(PIXEL_DIR, 'manifest.json'), 'utf8')));
+        for (const size of ['192', '400', '512', 'maskable-512']) expect(manifest.files.has(`app/icono-${size}.png`)).toBe(true);
     });
 });
 

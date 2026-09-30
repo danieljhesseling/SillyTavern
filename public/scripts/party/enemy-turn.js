@@ -38,7 +38,7 @@ import { combatEncounter, currentBoardName, currentLocationName, partyMembers, u
 import { getAbilityCatalogue, resolveAbilityOnBoard, spellRows } from './magic.js';
 import {
     enemyTokenId, flankedFrom, getAliveEnemies, getEnemyByInstanceId, getLivingPartyMembers, getTargetArmorClass,
-    heightFor, heldInPlace, partyCell, saveCombatState,
+    heightFor, heldInPlace, partyCell, saveCombatState, speedOf,
 } from './combat-state.js';
 import { floatOnToken, showCombatDiceRoll } from './combat-log.js';
 import { CONDITION_WORDS, judgeCurrentScenario, checkScenarioOutcome, endCombat, offerTruce } from './combat-flow.js';
@@ -284,7 +284,7 @@ function resolveEnemyAbility(enemy, choice) {
     // J19.12: un conjuro de su bloque `spellcasting` gasta su espacio; lo innato y lo demás,
     // su uso. Contarlo en los dos sitios lo gastaría dos veces.
     const block = readCasterBlock(enemy.spellcasting);
-    const fromSlot = Boolean(block) && Number(ability.spellLevel) > 0 && !ability.innate;
+    const fromSlot = Boolean(block) && Number(ability.spellLevel) > 0 && !(/** @type {any} */ (ability).innate);
     if (fromSlot && block) enemy.slotsUsed = spendEnemySlot(enemy, block, Number(ability.slotLevel) || Number(ability.spellLevel));
     else enemy.abilityUses = spendAbilityUse(enemy, ability);
     // R4: un cultista también gasta las cargas de su círculo.
@@ -370,7 +370,8 @@ export function planFor(enemy) {
             currentHp: Number(enemy.currentHp) || 0,
             maxHp: Number(enemy.maxHp) || 0,
             // Agarrado o apresado no anda: pega a quien tenga al lado, si tiene a alguien.
-            speedFeet: heldInPlace(enemy) ? 0 : Number(enemy.speed) || 30,
+            // J19: y lo que le han echado encima (Ralentizado por el Rayo de escarcha, Acelerado).
+            speedFeet: heldInPlace(enemy) ? 0 : speedOf(enemy),
             // Un cultista con un rayo de 120 ft se queda a su distancia, no se acerca a dar
             // punetazos. Sin habilidades, su alcance de siempre.
             attackRangeFeet: Math.max(Number(enemy.attackRangeFeet ?? enemy.range) || 5, longestReach(enemy, known)),

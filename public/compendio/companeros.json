@@ -1,0 +1,230 @@
+{
+  "version": 1,
+  "domain": "companeros",
+  "about": "Cómo es cada compañero (J7.2 y J7.5 de ROADMAP_SIN_CONEXION). Una fila por persona (KIND companero, WHO su nombre tal cual). SHORT: cómo se le llama en corto en las etiquetas («A Gerd le gusta esto»). WANTS: lo que busca (coin oro, glory gloria, blood sangre, quiet tranquilidad, knowledge saber): decide lo que le gusta de siempre. LIKES y DISLIKES: lo que le gusta o no además de eso, y manda sobre lo de siempre. Palabras que valen: pagar, cobrar (pedir dinero), amable (tratar bien a quien tienes delante), desairar (tratarle mal), ayudar, preguntar, observar (fijarse bien), convencer, amenazar, enganar (mentir), sigilo, apostar, pelear, huir; y las decisiones del juego (plantar-cara, soltar-prisionero, retirada, robar, nigromancia, tregua, sin-cuartel…). GUILD, solo para los compañeros de una campaña: si al acabarla se viene al gremio. RANK es el vínculo que hace falta; NEVER, por qué no se viene nunca (déjalo vacío si puede venirse); YES, lo que dice si se viene; NO, lo que dice si se queda; PLACES, dónde anda en Puerto Alba por la mañana, la tarde y la noche (posada, tienda, herreria, templo, tablon, plaza, muelle, gremio); LIKES, los sitios de Puerto Alba donde le gusta quedar.",
+  "rows": [
+    {
+      "id": "gerd",
+      "kind": "companero",
+      "name": "Gerd el Mellado · cómo es",
+      "who": "Gerd el Mellado",
+      "short": "Gerd",
+      "campaign": "gremio",
+      "wants": "coin",
+      "likes": ["ayudar", "amable", "pelear"],
+      "dislikes": ["desairar"]
+    },
+    {
+      "id": "nella",
+      "kind": "companero",
+      "name": "Nella Tresflechas · cómo es",
+      "who": "Nella Tresflechas",
+      "short": "Nella",
+      "campaign": "gremio",
+      "wants": "glory",
+      "likes": ["apostar", "sigilo"],
+      "dislikes": ["pagar", "huir"]
+    },
+    {
+      "id": "osric",
+      "kind": "companero",
+      "name": "Osric Mediapaga · cómo es",
+      "who": "Osric Mediapaga",
+      "short": "Osric",
+      "campaign": "gremio",
+      "wants": "quiet",
+      "likes": ["convencer", "observar"],
+      "dislikes": ["amenazar", "apostar"]
+    },
+    {
+      "id": "strahd-ismark",
+      "kind": "companero",
+      "name": "Ismark · cómo es",
+      "who": "Ismark Kolyanovich",
+      "short": "Ismark",
+      "campaign": "strahd",
+      "wants": "glory",
+      "likes": ["ayudar", "amable"],
+      "dislikes": ["huir", "enganar"],
+      "guild": {
+        "rank": 5,
+        "never": "",
+        "yes": "Mi padre nunca salió de este valle. Yo quiero ver qué hay al otro lado de la niebla. Voy con vosotros.",
+        "no": "Alguien tiene que mandar en la aldea ahora que mi padre no está. Si volvéis, aquí tenéis una casa.",
+        "places": { "morning": "plaza", "afternoon": "tablon", "night": "posada" },
+        "likes": ["posada", "plaza"]
+      }
+    },
+    {
+      "id": "strahd-ireena",
+      "kind": "companero",
+      "name": "Ireena · cómo es",
+      "who": "Ireena Kolyana",
+      "short": "Ireena",
+      "campaign": "strahd",
+      "wants": "quiet",
+      "likes": ["amable", "ayudar", "pelear"],
+      "dislikes": ["desairar", "huir"],
+      "guild": {
+        "rank": 4,
+        "never": "",
+        "yes": "Toda mi vida me han escondido en una casa. Quiero ver el mar. Voy con vosotros.",
+        "no": "Mi hermano me necesita aquí. Pero no me olvidéis: yo no os olvidaré.",
+        "places": { "morning": "muelle", "afternoon": "templo", "night": "posada" },
+        "likes": ["muelle", "templo"]
+      }
+    },
+    {
+      "id": "strahd-eva",
+      "kind": "companero",
+      "name": "Madam Eva · cómo es",
+      "who": "Madam Eva",
+      "short": "Madam Eva",
+      "campaign": "strahd",
+      "wants": "knowledge",
+      "likes": ["preguntar", "observar"],
+      "dislikes": ["enganar", "amenazar"],
+      "guild": {
+        "rank": 0,
+        "never": "Los vistani no se quedan en ningún sitio, y yo menos en un puerto. Mi gente me espera junto al fuego.",
+        "yes": "",
+        "no": "Las cartas ya me dijeron que os iríais. Id tranquilos. Lo que teníais que hacer aquí, está hecho.",
+        "places": {},
+        "likes": []
+      }
+    },
+    {
+      "id": "strahd-vanrichten",
+      "kind": "companero",
+      "name": "Van Richten · cómo es",
+      "who": "Rudolph van Richten",
+      "short": "Van Richten",
+      "campaign": "strahd",
+      "wants": "knowledge",
+      "likes": ["observar", "preguntar", "pelear"],
+      "dislikes": ["apostar", "huir"],
+      "guild": {
+        "rank": 4,
+        "never": "",
+        "yes": "Me quedan pocos años y muchos monstruos. Si vuestro gremio los caza, os sirvo mejor allí que aquí.",
+        "no": "Tengo cuentas pendientes en otras tierras. Pero apuntad mi nombre: sé encontrar a quien me busca.",
+        "places": { "morning": "templo", "afternoon": "tienda", "night": "posada" },
+        "likes": ["templo", "posada"]
+      }
+    },
+    {
+      "id": "strahd-ezmerelda",
+      "kind": "companero",
+      "name": "Ezmerelda · cómo es",
+      "who": "Ezmerelda d'Avenir",
+      "short": "Ezmerelda",
+      "campaign": "strahd",
+      "wants": "glory",
+      "likes": ["pelear", "sigilo", "amenazar"],
+      "dislikes": ["huir", "pagar"],
+      "guild": {
+        "rank": 3,
+        "never": "",
+        "yes": "¿Un gremio de cazadores con techo y cena caliente? Me he pasado la vida en un carro. Voy.",
+        "no": "Mi carro se queda aquí, y yo con él. Pero si oís hablar de un monstruo, avisadme.",
+        "places": { "morning": "herreria", "afternoon": "plaza", "night": "posada" },
+        "likes": ["herreria", "plaza"]
+      }
+    },
+    {
+      "id": "1387-bran",
+      "kind": "companero",
+      "name": "Bran · cómo es",
+      "who": "Bran",
+      "short": "Bran",
+      "campaign": "1387",
+      "wants": "coin",
+      "likes": ["cobrar", "pelear"],
+      "dislikes": ["pagar", "huir"],
+      "guild": {
+        "rank": 2,
+        "never": "",
+        "yes": "Un gremio que paga cada semana y no me manda a morir por un general. Me vale. Voy.",
+        "no": "Me quedo en el valle. Aquí conozco los caminos, y a los que pagan.",
+        "places": { "morning": "herreria", "afternoon": "tablon", "night": "posada" },
+        "likes": ["posada", "herreria"]
+      }
+    },
+    {
+      "id": "1387-aldara",
+      "kind": "companero",
+      "name": "Aldara · cómo es",
+      "who": "Aldara",
+      "short": "Aldara",
+      "campaign": "1387",
+      "wants": "quiet",
+      "likes": ["sigilo", "observar"],
+      "dislikes": ["amenazar", "cobrar"],
+      "guild": {
+        "rank": 6,
+        "never": "",
+        "yes": "El valle ya no me necesita. Y nadie me había seguido el ritmo nunca. Voy con vosotros.",
+        "no": "El valle es mi casa. Si alguna vez volvéis, os enseño los pasos del norte.",
+        "places": { "morning": "muelle", "afternoon": "plaza", "night": "posada" },
+        "likes": ["muelle", "plaza"]
+      }
+    },
+    {
+      "id": "1387-doc",
+      "kind": "companero",
+      "name": "Arthur «Doc» · cómo es",
+      "who": "Arthur «Doc»",
+      "short": "Doc",
+      "campaign": "1387",
+      "wants": "coin",
+      "likes": ["ayudar", "observar"],
+      "dislikes": ["desairar", "pelear"],
+      "guild": {
+        "rank": 2,
+        "never": "",
+        "yes": "En un gremio de aventureros siempre hay alguien a quien coser. Y pagan. Voy.",
+        "no": "Aquí me necesitan más. En el valle no queda nadie que sepa coser una herida.",
+        "places": { "morning": "templo", "afternoon": "templo", "night": "posada" },
+        "likes": ["templo"]
+      }
+    },
+    {
+      "id": "1387-isolda",
+      "kind": "companero",
+      "name": "Isolda · cómo es",
+      "who": "Isolda",
+      "short": "Isolda",
+      "campaign": "1387",
+      "wants": "blood",
+      "likes": ["sigilo", "enganar", "pelear"],
+      "dislikes": ["pagar", "amable"],
+      "guild": {
+        "rank": 3,
+        "never": "",
+        "yes": "Aquí solo soy la bastarda de un señor. Allí seré Isolda, de vuestra compañía. Voy.",
+        "no": "Tengo cuentas que ajustar con mi familia. Cuando acabe, a lo mejor os busco.",
+        "places": { "morning": "tienda", "afternoon": "muelle", "night": "posada" },
+        "likes": ["muelle", "posada"]
+      }
+    },
+    {
+      "id": "1387-grimm",
+      "kind": "companero",
+      "name": "Grimm · cómo es",
+      "who": "Grimm",
+      "short": "Grimm",
+      "campaign": "1387",
+      "wants": "coin",
+      "likes": ["cobrar", "ayudar"],
+      "dislikes": ["pagar", "desairar"],
+      "guild": {
+        "rank": 5,
+        "never": "",
+        "yes": "Voy.",
+        "no": "Mi familia. Al sur.",
+        "places": { "morning": "muelle", "afternoon": "herreria", "night": "posada" },
+        "likes": ["muelle"]
+      }
+    }
+  ]
+}

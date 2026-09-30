@@ -82,6 +82,22 @@ export function speaks(member, language) {
 }
 
 /**
+ * Si alguien entiende cualquier lengua ahora: el ritual Comprender idiomas (`tongues` en su
+ * ficha: el día y la parte del día en que se lanzó) dura hasta que acaba esa parte del día.
+ * Entender no es hablar: solo sirve para calar a alguien, no para convencerle.
+ *
+ * @param {any} member
+ * @param {any} now El calendario de la campaña (`day` y `slotIndex`).
+ * @returns {boolean}
+ */
+export function understandsAll(member, now) {
+    const spell = member?.tongues;
+    if (!spell || !now) return false;
+    return Math.floor(Number(spell.day) || 0) === Math.floor(Number(now.day) || 0)
+        && Math.floor(Number(spell.slotIndex) || 0) === Math.floor(Number(now.slotIndex) || 0);
+}
+
+/**
  * Cómo va una tirada de trato con alguien que habla otra lengua.
  *
  * @param {Object} input
@@ -90,16 +106,19 @@ export function speaks(member, language) {
  * @param {string} input.language La de la persona con la que se habla.
  * @param {string} input.skill
  * @param {string} [input.listener] Cómo se llama esa persona.
+ * @param {any} [input.now] El calendario, para Comprender idiomas (`understandsAll`).
  * @returns {{edge: ''|'disadvantage', by: string, note: string}}
  */
-export function languageBarrier({ speaker, party, language, skill, listener = '' }) {
+export function languageBarrier({ speaker, party, language, skill, listener = '', now = null }) {
     const lang = readLanguage(language);
-    if (!SOCIAL_SKILLS.includes(text(skill)) || lang === readLanguage(COMMON) || speaks(speaker, language)) {
+    // Para calar basta con entender lo que dice; para lo demás, hay que hablarla.
+    const gets = (/** @type {any} */ m) => speaks(m, language) || (text(skill) === 'insight' && understandsAll(m, now));
+    if (!SOCIAL_SKILLS.includes(text(skill)) || lang === readLanguage(COMMON) || gets(speaker)) {
         return { edge: '', by: '', note: '' };
     }
     const who = text(listener) || 'Esa persona';
     const helper = (Array.isArray(party) ? party : [])
-        .find(m => m && m !== speaker && !m.dead && (Number(m.hp) || 0) > 0 && speaks(m, language));
+        .find(m => m && m !== speaker && !m.dead && (Number(m.hp) || 0) > 0 && gets(m));
     if (helper) {
         return { edge: '', by: text(helper.name), note: `${who} habla ${text(language)}: ${text(helper.name)} traduce.` };
     }

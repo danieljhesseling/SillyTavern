@@ -1280,6 +1280,29 @@
     margin-top: 10px;
 }
 
+/* J7.3: quién mueve a las invocaciones y a los amigos, uno por botón. */
+.wm-combat-control {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.wm-combat-control-title {
+    font-size: 0.8rem;
+    opacity: 0.8;
+}
+
+.wm-combat-control-btn {
+    font-size: 0.8rem;
+    padding: 2px 8px;
+}
+
+.wm-combat-control-btn[data-control="engine"] {
+    opacity: 0.8;
+}
+
 /* ---- Enemy mini-cards in board editor ---- */
 .wm-enemy-mini .wm-card-meta {
     font-size: 0.65rem;

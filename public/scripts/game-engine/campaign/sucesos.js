@@ -21,6 +21,7 @@
 import { matches, pickWeighted } from '../compendio/compendio.js';
 import { fill } from './engine-narrator.js';
 import { resolveGender } from './grammar.js';
+import { passesTriggers, triggerFacts, withoutTriggers, describeWorldEffect } from './suceso-triggers.js';
 
 /**
  * Cuántas veces sale un suceso en cada momento. El viaje no se sortea: cada viaje trae el
@@ -35,6 +36,7 @@ export const SEEN_MEMORY = 12;
  * @typedef {Object} SucesoOutcome
  * @property {string[]} [effects]
  * @property {string} [then] Lo que pasa, dicho.
+ * @property {{id: string, days: number}} [follow] J11.2: lo que vuelve si sale así (también si sale mal).
  */
 
 /**
@@ -103,14 +105,20 @@ export function sucesoCount({ moment, days = 1, random }) {
  * @param {number} [input.count]
  * @param {() => number} input.random
  * @param {string[]} [input.seen]
+ * @param {import('./suceso-triggers.js').SucesoWorld|null} [input.world] J10.3: cómo está el
+ *   mundo con vosotros aquí (`sucesoWorld`). Sin él, los que tienen disparador de facción, de
+ *   reputación o de fama no salen.
  * @returns {SucesoRow[]}
  */
-export function pickSucesos({ rows, moment, facts = {}, count = 1, random, seen = [] }) {
+export function pickSucesos({ rows, moment, facts = {}, count = 1, random, seen = [], world = null }) {
     const skip = new Set(seen.map(text));
+    const plainFacts = withoutTriggers(facts);
+    const factsOf = (/** @type {any} */ row) => ({ ...plainFacts, ...triggerFacts(row, world) });
     const usable = (Array.isArray(rows) ? rows : [])
         .filter(row => text(row?.id) && Array.isArray(row?.options) && row.options.length > 0)
-        .filter(row => matches(row, { ...facts, momento: moment }) && [row.when?.momento ?? []].flat().map(text).includes(moment))
-        .map(row => ({ row, said: fill(text(row.text), facts) }))
+        .filter(row => matches(row, { ...plainFacts, momento: moment }) && [row.when?.momento ?? []].flat().map(text).includes(moment))
+        .filter(row => passesTriggers(row, world))
+        .map(row => ({ row, said: fill(text(row.text), factsOf(row)) }))
         .filter(option => option.said !== null);
     const fresh = usable.filter(option => !skip.has(text(option.row.id)));
     let pool = (fresh.length > 0 ? fresh : usable).map(option => ({ ...option.row, text: String(option.said), weight: Math.max(0, Number(option.row.weight ?? 1)) }));
@@ -119,7 +127,7 @@ export function pickSucesos({ rows, moment, facts = {}, count = 1, random, seen 
     for (let i = 0; i < count && pool.length > 0; i++) {
         const chosen = pickWeighted(pool, random);
         if (!chosen) break;
-        out.push(fillOptions(chosen, facts));
+        out.push(fillOptions(chosen, factsOf(chosen)));
         pool = pool.filter(row => row.id !== chosen.id);
     }
     return out;
@@ -131,13 +139,16 @@ export function pickSucesos({ rows, moment, facts = {}, count = 1, random, seen 
  * @param {SucesoRow[]} rows
  * @param {string} id
  * @param {Record<string, any>} [facts]
+ * @param {import('./suceso-triggers.js').SucesoWorld|null} [world] Para el `{bando}` de su texto.
+ *   Una continuación sale aunque el disparador ya no se cumpla: ya se eligió volver.
  * @returns {SucesoRow|null}
  */
-export function sucesoById(rows, id, facts = {}) {
+export function sucesoById(rows, id, facts = {}, world = null) {
     const row = (Array.isArray(rows) ? rows : []).find(r => text(r?.id) === text(id));
     if (!row) return null;
-    const said = fill(text(row.text), facts);
-    return said === null ? null : fillOptions({ ...row, text: said }, facts);
+    const all = { ...withoutTriggers(facts), ...triggerFacts(row, world) };
+    const said = fill(text(row.text), all);
+    return said === null ? null : fillOptions({ ...row, text: said }, all);
 }
 
 /**
@@ -207,7 +218,10 @@ export function resolveOption(option, { success = true } = {}) {
     const branch = option.check ? (success ? option.success : option.fail) : null;
     if (branch) effects.push(...(branch.effects ?? []).map(text).filter(Boolean));
     const then = [text(option.then), text(branch?.then)].filter(Boolean).join(' ');
-    const follow = option.follow && (!option.check || success) ? { id: text(option.follow.id), days: Math.max(1, Number(option.follow.days) || 1) } : null;
+    // J11.2: la rama de la tirada puede traer su continuación (el mulero que os vio robar); si no,
+    // la de la opción, que con tirada solo vuelve si sale bien.
+    const back = branch?.follow ?? (!option.check || success ? option.follow : null);
+    const follow = back && text(back.id) ? { id: text(back.id), days: Math.max(1, Number(back.days) || 1) } : null;
     return { effects, then, follow };
 }
 
@@ -263,9 +277,14 @@ export function dueFollowUp(state, { day, place }) {
  * Un efecto, dicho para quien juega: `oro:-2` es «−2 de oro».
  *
  * @param {string} effect
+ * @param {Record<string, string>} [names] J10.3: el nombre de cada facción, por id, para
+ *   `faccion:<id>:+1` y `reloj:<id>:-1`.
  * @returns {string}
  */
-export function describeEffect(effect) {
+export function describeEffect(effect, names = {}) {
+    // J10.3 y J10.1: los que nombran una facción, y las llaves y los guías.
+    const world = describeWorldEffect(effect, names);
+    if (world) return world;
     const [kind, amount = ''] = text(effect).split(':');
     const sign = amount.startsWith('-') ? '−' : '+';
     const n = amount.replace(/^[+-]/, '');

@@ -26,6 +26,61 @@
         { "kind": "templo", "name": "La capilla", "keeper": "elvira" }
       ],
       "routes": []
+    },
+    {
+      "name": "La cala del norte",
+      "type": "wilderness",
+      "description": "Una cala de arena gris al norte del puerto, donde no llega la vista de la guardia. Con la marea alta entran barcas sin luces.",
+      "biome": "costa",
+      "hidden": true,
+      "sights": [
+        { "verbo": "mirar", "text": "las marcas de quilla en la arena", "skill": "perception", "found": "Aquí han varado tres barcas esta semana, siempre de noche. Una llevaba algo muy pesado." }
+      ],
+      "routes": [{ "to": "Puerto Alba", "days": 1 }]
+    },
+    {
+      "name": "El faro viejo",
+      "type": "ruins",
+      "description": "El faro de piedra en la punta de las rocas, a un paseo largo del puerto. Lleva dos noches apagado y nadie ha visto bajar al farero.",
+      "biome": "costa",
+      "hidden": true,
+      "sights": [
+        { "verbo": "examinar", "text": "la puerta del faro", "skill": "investigation", "found": "La puerta está cerrada por dentro, con la tranca puesta. Lo que haya ahí dentro no ha entrado por aquí." }
+      ],
+      "routes": [{ "to": "Puerto Alba", "days": 1 }]
+    },
+    {
+      "name": "El camino de la costa",
+      "type": "wilderness",
+      "description": "El camino de carros que baja por la costa desde las carboneras del monte hasta Puerto Alba. Entre las rocas y la maleza cabe una emboscada.",
+      "biome": "costa",
+      "hidden": true,
+      "sights": [
+        { "verbo": "mirar", "text": "las rodadas del carro", "skill": "survival", "found": "El carro de Ramiro se salió del camino aquí. Las rodadas siguen hacia el acantilado, hacia el cementerio." }
+      ],
+      "routes": [{ "to": "Puerto Alba", "days": 1 }]
+    },
+    {
+      "name": "El cementerio de los ahogados",
+      "type": "ruins",
+      "description": "Un cementerio en lo alto del acantilado, con las tumbas de los marineros que devolvió el mar. Las cruces miran al agua.",
+      "biome": "costa",
+      "hidden": true,
+      "sights": [
+        { "verbo": "examinar", "text": "las tumbas abiertas", "skill": "investigation", "found": "Alguien ha cavado de noche, con pala de carbonero. A los muertos les faltan las monedas que se les ponen en los ojos." }
+      ],
+      "routes": [{ "to": "Puerto Alba", "days": 1 }]
+    },
+    {
+      "name": "Las salinas de levante",
+      "type": "outpost",
+      "description": "Las balsas de sal al este del puerto. Los salineros trabajan de sol a sol y duermen en chozas de caña, con el fuego encendido toda la noche.",
+      "biome": "costa",
+      "hidden": true,
+      "sights": [
+        { "verbo": "mirar", "text": "los huesos junto a las chozas", "skill": "perception", "found": "Son de cordero, y están limpios. Alguien deja carne aquí cada noche, y los lobos lo saben." }
+      ],
+      "routes": [{ "to": "Puerto Alba", "days": 1 }]
     }
   ],
   "npcs": [
@@ -104,6 +159,69 @@
       "profile": "aggressive",
       "attackRangeFeet": 5,
       "description": "Una rata gorda como un gato. Muerde y, si le va mal, huye."
+    },
+    {
+      "name": "Bandido contrabandista",
+      "hp": 11,
+      "armorClass": 12,
+      "cr": 0.125,
+      "profile": "aggressive",
+      "attackRangeFeet": 5,
+      "description": "Un contrabandista de la cala, con un garfio de estibador y ganas de volver a la barca."
+    },
+    {
+      "name": "Arquero contrabandista",
+      "hp": 9,
+      "armorClass": 12,
+      "cr": 0.125,
+      "profile": "skirmisher",
+      "attackRangeFeet": 60,
+      "description": "Dispara desde las rocas con un arco corto de pescador. Si os acercáis, se aparta."
+    },
+    {
+      "name": "Araña del faro",
+      "hp": 11,
+      "armorClass": 13,
+      "cr": 0.25,
+      "profile": "aggressive",
+      "attackRangeFeet": 5,
+      "description": "Una araña grande como un perro, de patas rayadas. Teje en la escalera del faro y baja sin hacer ruido."
+    },
+    {
+      "name": "Bandido del camino",
+      "hp": 11,
+      "armorClass": 12,
+      "cr": 0.125,
+      "profile": "aggressive",
+      "attackRangeFeet": 5,
+      "description": "Un salteador de la costa, con una espada corta mellada y la cara tapada con un trapo."
+    },
+    {
+      "name": "Arquero del camino",
+      "hp": 9,
+      "armorClass": 12,
+      "cr": 0.125,
+      "profile": "skirmisher",
+      "attackRangeFeet": 60,
+      "description": "Espera entre la maleza con el arco tenso. Tira a quien va delante."
+    },
+    {
+      "name": "Zombi ahogado",
+      "hp": 15,
+      "armorClass": 8,
+      "cr": 0.25,
+      "profile": "aggressive",
+      "attackRangeFeet": 5,
+      "description": "Un marinero muerto que ha salido de su tumba, hinchado de agua de mar. Anda despacio y no se para."
+    },
+    {
+      "name": "Lobo de las salinas",
+      "hp": 9,
+      "armorClass": 12,
+      "cr": 0.125,
+      "profile": "aggressive",
+      "attackRangeFeet": 5,
+      "description": "Un lobo flaco, blanco de sal hasta las rodillas. Caza en manada y busca al que se queda atrás."
     }
   ],
   "items": [],
@@ -146,6 +264,114 @@
         { "name": "Rata de bodega", "x": 2, "y": 1 },
         { "name": "Rata de bodega", "x": 10, "y": 2 }
       ]
+    },
+    {
+      "id": "cala_contrabandistas",
+      "name": "La playa de la cala",
+      "locationName": "La cala del norte",
+      "map": [
+        "################",
+        "#wwwwwwwwwwwwww#",
+        "#wwww....wwwwww#",
+        "#w.....c.....ww#",
+        "#...T......c..w#",
+        "#..c....bb.....#",
+        "#.......bb..T..#",
+        "#..............#",
+        "################"
+      ],
+      "partyStart": [{ "x": 6, "y": 7 }, { "x": 7, "y": 7 }, { "x": 8, "y": 7 }, { "x": 5, "y": 7 }],
+      "enemies": [
+        { "name": "Bandido contrabandista", "x": 4, "y": 3 },
+        { "name": "Bandido contrabandista", "x": 10, "y": 4 },
+        { "name": "Arquero contrabandista", "x": 7, "y": 2 }
+      ]
+    },
+    {
+      "id": "faro_viejo",
+      "name": "El faro viejo",
+      "locationName": "El faro viejo",
+      "map": [
+        "############",
+        "###......###",
+        "##..c.....##",
+        "#....~~....#",
+        "#...~~~~..T#",
+        "#....~~....#",
+        "#T.........#",
+        "##.......c##",
+        "###......###",
+        "############"
+      ],
+      "partyStart": [{ "x": 4, "y": 8 }, { "x": 5, "y": 8 }, { "x": 6, "y": 8 }, { "x": 7, "y": 8 }],
+      "enemies": [
+        { "name": "Araña del faro", "x": 3, "y": 2 },
+        { "name": "Araña del faro", "x": 8, "y": 3 }
+      ]
+    },
+    {
+      "id": "camino_costa",
+      "name": "El camino de la costa",
+      "locationName": "El camino de la costa",
+      "map": [
+        "##################",
+        "#bbb..........bbb#",
+        "#b....c....T....b#",
+        "#................#",
+        "#......====......#",
+        "#................#",
+        "#bb....c......bbb#",
+        "##################"
+      ],
+      "partyStart": [{ "x": 1, "y": 3 }, { "x": 2, "y": 3 }, { "x": 1, "y": 4 }, { "x": 2, "y": 4 }],
+      "enemies": [
+        { "name": "Bandido del camino", "x": 12, "y": 3 },
+        { "name": "Bandido del camino", "x": 13, "y": 5 },
+        { "name": "Arquero del camino", "x": 15, "y": 2 }
+      ]
+    },
+    {
+      "id": "cementerio_ahogados",
+      "name": "El cementerio de los ahogados",
+      "locationName": "El cementerio de los ahogados",
+      "map": [
+        "################",
+        "#..c...c...c...#",
+        "#..............#",
+        "#.c...c...c..~~#",
+        "#............~~#",
+        "#.c...c...c....#",
+        "#..............#",
+        "#..............#",
+        "################"
+      ],
+      "partyStart": [{ "x": 6, "y": 7 }, { "x": 7, "y": 7 }, { "x": 8, "y": 7 }, { "x": 9, "y": 7 }],
+      "enemies": [
+        { "name": "Zombi ahogado", "x": 4, "y": 2 },
+        { "name": "Zombi ahogado", "x": 9, "y": 1 },
+        { "name": "Zombi ahogado", "x": 12, "y": 4 }
+      ]
+    },
+    {
+      "id": "salinas_levante",
+      "name": "Las salinas",
+      "locationName": "Las salinas de levante",
+      "map": [
+        "################",
+        "#wwww..wwww..ww#",
+        "#wwww..wwww..ww#",
+        "#..............#",
+        "#..T.......c...#",
+        "#..............#",
+        "#bb..........bb#",
+        "################"
+      ],
+      "partyStart": [{ "x": 6, "y": 6 }, { "x": 7, "y": 6 }, { "x": 8, "y": 6 }, { "x": 9, "y": 6 }],
+      "enemies": [
+        { "name": "Lobo de las salinas", "x": 5, "y": 2 },
+        { "name": "Lobo de las salinas", "x": 11, "y": 1 },
+        { "name": "Lobo de las salinas", "x": 12, "y": 3 }
+      ]
     }
   ],
   "quests": [
@@ -164,6 +390,138 @@
       "description": "Brunilda te manda a la bodega: hay ratas entre los barriles. Si acabas con ellas, eres del gremio.",
       "boardId": "bodega_gremio",
       "objectives": [{ "type": "eliminate_all", "label": "Acabar con las ratas" }]
+    },
+    {
+      "id": "q_cala",
+      "name": "Contrabandistas en la cala",
+      "act": 1,
+      "description": "Tres contrabandistas descargan en la playa de la cala. Hay que echarlos de ahí.",
+      "boardId": "cala_contrabandistas",
+      "objectives": [{ "type": "eliminate_all", "label": "Echar a los contrabandistas" }]
+    },
+    {
+      "id": "q_faro",
+      "name": "Lo que anida en el faro",
+      "act": 1,
+      "description": "Dentro del faro hay algo que teje. Hay que limpiar la escalera y subir a por el farero.",
+      "boardId": "faro_viejo",
+      "objectives": [{ "type": "eliminate_all", "label": "Acabar con lo que anida en el faro" }]
+    },
+    {
+      "id": "q_camino",
+      "name": "El carbón de Ramiro",
+      "act": 1,
+      "description": "Los salteadores que asaltaron el carro de Ramiro siguen en el camino. Hay que quitarlos de en medio.",
+      "boardId": "camino_costa",
+      "objectives": [{ "type": "eliminate_all", "label": "Quitar de en medio a los salteadores" }]
+    },
+    {
+      "id": "q_cementerio",
+      "name": "Lo que sale del cementerio",
+      "act": 1,
+      "description": "Los ahogados han salido de sus tumbas. Hay que devolverlos a la tierra.",
+      "boardId": "cementerio_ahogados",
+      "objectives": [{ "type": "eliminate_all", "label": "Devolver a los ahogados a la tierra" }]
+    },
+    {
+      "id": "q_salinas",
+      "name": "Los lobos de las salinas",
+      "act": 1,
+      "description": "Una manada de lobos baja cada noche a las chozas de los salineros. Hay que acabar con ella.",
+      "boardId": "salinas_levante",
+      "objectives": [{ "type": "eliminate_all", "label": "Acabar con la manada" }]
+    }
+  ],
+  "contracts": [
+    {
+      "id": "gremio-la-cala",
+      "title": "Contrabandistas en la cala",
+      "verb": "limpiar",
+      "chain": null,
+      "patron": "Marisa",
+      "faction": null,
+      "where": "La cala del norte",
+      "act": 1,
+      "noFight": false,
+      "reward": 25,
+      "rewardText": "25 de oro",
+      "twist": "Descargaban sal de las salinas de levante, robada. Alguien del puerto les avisaba de cuándo pasaba la guardia.",
+      "boardId": "cala_contrabandistas"
+    },
+    {
+      "id": "gremio-el-faro",
+      "title": "Lo que anida en el faro",
+      "verb": "limpiar",
+      "chain": null,
+      "patron": "Tomás",
+      "faction": null,
+      "where": "El faro viejo",
+      "act": 1,
+      "noFight": false,
+      "reward": 30,
+      "rewardText": "30 de oro y una cena en la taberna",
+      "twist": "El farero está vivo, envuelto en tela en lo alto de la escalera. Dice que las arañas llegaron en un barco que nadie vino a reclamar.",
+      "boardId": "faro_viejo"
+    },
+    {
+      "id": "gremio-el-carbon",
+      "title": "El carbón de Ramiro",
+      "verb": "recuperar",
+      "chain": { "id": "gremio-costa", "part": 1, "of": 2 },
+      "patron": "Ramiro",
+      "faction": null,
+      "where": "El camino de la costa",
+      "act": 1,
+      "noFight": false,
+      "reward": 20,
+      "rewardText": "20 de oro",
+      "twist": "A los salteadores no les importaba el carbón: querían el carro. Lo usaban para subir algo al cementerio de los ahogados.",
+      "boardId": "camino_costa"
+    },
+    {
+      "id": "gremio-el-cementerio",
+      "title": "Lo que sale del cementerio",
+      "verb": "limpiar",
+      "chain": { "id": "gremio-costa", "part": 2, "of": 2 },
+      "patron": "Madre Elvira",
+      "faction": null,
+      "where": "El cementerio de los ahogados",
+      "act": 1,
+      "noFight": false,
+      "reward": 35,
+      "rewardText": "35 de oro",
+      "twist": "Alguien abría las tumbas de los marineros para quitarles las monedas de los ojos. Los muertos no se lo han perdonado.",
+      "boardId": "cementerio_ahogados"
+    },
+    {
+      "id": "gremio-las-salinas",
+      "title": "Los lobos de las salinas",
+      "verb": "cazar",
+      "chain": null,
+      "patron": "Brunilda",
+      "faction": null,
+      "where": "Las salinas de levante",
+      "act": 1,
+      "noFight": false,
+      "reward": 25,
+      "rewardText": "25 de oro, de los salineros",
+      "twist": "Los lobos bajaban porque alguien les dejaba carne en las salinas cada noche. Quien lo hacía quería a los salineros lejos de sus balsas.",
+      "boardId": "salinas_levante"
+    },
+    {
+      "id": "gremio-la-deuda",
+      "title": "La deuda de Anselmo",
+      "verb": "negociar",
+      "chain": null,
+      "patron": "Tomás",
+      "faction": null,
+      "where": "Puerto Alba",
+      "act": 1,
+      "noFight": true,
+      "reward": 15,
+      "rewardText": "15 de oro",
+      "twist": "Anselmo no paga porque le robaron la barca, y sin barca no pesca. La tiene un contrabandista de la cala.",
+      "boardId": ""
     }
   ],
   "rumors": [
@@ -420,9 +778,27 @@
             "who": "Tomás", "mood": "triste", "text": "¡Ahí dentro va la paga de toda la semana! ¡Sin ella no pago ni al panadero!",
             "options": [
               { "id": "yo-me-encargo", "text": "Quédate atrás, Tomás. Yo me encargo.", "effects": [{ "attitude": 1 }],
-                "reply": { "who": "Tomás", "mood": "alegre", "text": "¡Que los dioses te lo paguen! Cuidado con ese cuchillo." } },
+                "reply": { "who": "Tomás", "mood": "alegre", "text": "¡Que los dioses te lo paguen! Cuidado con ese cuchillo." },
+                "later": {
+                  "days": 3,
+                  "name": "Un regalo de Tomás",
+                  "text": "Tomás te espera en la puerta de la taberna con un paquete envuelto en tela: «Para el camino. Es lo menos, después de lo del muelle.»",
+                  "options": [
+                    { "label": "Aceptarlo", "effects": ["comida", "cura:1d6"], "then": "Pan, queso curado y un frasco de licor de hierbas que cura de verdad." },
+                    { "label": "Pedirle que te cuente lo que sabe", "effects": ["rumor"], "then": "Se sienta contigo y te cuenta lo que se dice del gremio y de sus campañas." }
+                  ]
+                } },
               { "id": "cuanto-pagas", "text": "¿Y cuánto me das si te la devuelvo?", "effects": [{ "gold": 3 }, { "attitude": -1 }],
-                "reply": { "who": "Tomás", "mood": "enfadado", "text": "¿Encima me cobras? Toma, tres monedas. ¡Pero corre!" } }
+                "reply": { "who": "Tomás", "mood": "enfadado", "text": "¿Encima me cobras? Toma, tres monedas. ¡Pero corre!" },
+                "later": {
+                  "days": 2,
+                  "name": "Lo que cuenta Tomás",
+                  "text": "En la taberna, Tomás cuenta a quien quiera oírle que le cobraste por devolverle su propia bolsa. Algunos se ríen. Otros te miran de reojo.",
+                  "options": [
+                    { "label": "Invitar a una ronda para arreglarlo", "cost": { "oro": 2 }, "effects": ["fama:+1"], "then": "Tomás acepta la jarra y cambia de tema. De lo del muelle ya no se habla." },
+                    { "label": "Dejar que hable", "effects": ["fama:-1"], "then": "Mañana lo sabrá medio puerto." }
+                  ]
+                } }
             ]
           },
           { "text": "El ratero mira el agua, te mira a ti y aprieta el cuchillo. No va a soltar la bolsa por las buenas." }

@@ -13,6 +13,7 @@ import {
 import { chat_metadata } from '../script.js';
 import { showCategoryPopup, initWcpHandlers } from './world-content-popups.js';
 import { escapeHtml } from './utils.js';
+import { resolveGender, whoOfParty } from './game-engine/campaign/grammar.js';
 
 // Initialize popup event handlers once
 initWcpHandlers();
@@ -422,7 +423,8 @@ export async function openWorldContentPopup(worldName, initialCategory) {
     const displayName = meta.displayName || worldName;
     const coverImage = meta.coverImage || '';
     const genre = meta.genre || '';
-    const worldDescription = meta.description || '';
+    // D-J17: la sinopsis de un paquete trae `{forma|forma}`: con quien juega, sin llaves.
+    const worldDescription = resolveGender(meta.description || '', whoOfParty(chat_metadata?.party));
     const locationMaps = Array.isArray(meta.locationMaps) ? meta.locationMaps : [];
     // Collect boards from locations (per-location model), fallback to top-level meta.boards
     const locBoards = [];

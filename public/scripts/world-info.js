@@ -226,6 +226,8 @@ function extractWorldMonsterTemplates(data) {
                 .map((/** @type {any} */ s) => String(s).trim()).filter(Boolean),
             // T6: si se doma, y en qué. Sin el campo, lo decide su nombre.
             ...(d.domable !== undefined && d.domable !== null ? { domable: String(d.domable) } : {}),
+            // J19.12: si lanza conjuros de 5e, su bloque (`combat/enemy-spells.js`).
+            ...(d.spellcasting && typeof d.spellcasting === 'object' ? { spellcasting: d.spellcasting } : {}),
         });
     }
 

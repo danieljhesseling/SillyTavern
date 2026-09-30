@@ -12,7 +12,7 @@
  */
 
 import { buildCharacterSheet, describeSheet } from './shell/character-sheet.js';
-import { firstArt, loadPixelManifest } from './pixel-art.js';
+import { firstArt, isPlainFace, loadPixelManifest } from './pixel-art.js';
 
 /**
  * Un icono en pixel, o nada: quien llama pone el suyo de siempre si no hay dibujo.
@@ -98,7 +98,13 @@ export async function openCharacterPanel({
 
     // ---- Quién es, y cómo está -------------------------------------------
     const head = $('<div class="ch-head"></div>');
-    if (sheet.avatar) head.append($('<img class="ch-avatar">').attr('src', sheet.avatar).attr('alt', ''));
+    // Sin cara subida, el retrato en pixel de su clase (el mismo que en la tira del grupo),
+    // y no la silueta de SillyTavern.
+    const drawn = isPlainFace(sheet.avatar)
+        ? firstArt('hero', { className: String(member?.class ?? ''), gender: String(member?.gender ?? ''), race: String(member?.race ?? ''), name: sheet.name })
+        : '';
+    const face = drawn || sheet.avatar;
+    if (face) head.append($('<img class="ch-avatar">').toggleClass('pixel-art', Boolean(drawn)).attr('src', face).attr('alt', ''));
 
     const who = $('<div class="ch-who"></div>');
     who.append($('<div class="ch-name"></div>').text(sheet.name));

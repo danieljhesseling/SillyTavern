@@ -2,7 +2,7 @@
 title: Instrucciones para el Gem — el paquete de una campaña
 tags: [gem, gemini, campanas, importar, contrato, seeding]
 created: 2026-09-22
-updated: 2026-09-29
+updated: 2026-09-30
 author: generado por tools/gem-instructions.mjs
 ---
 
@@ -83,7 +83,7 @@ y el importador los resuelve al crear las entradas.
 
 # Contrato del paquete de campaña
 
-Versión 1. Generado desde el motor el 2026-09-29.
+Versión 1. Generado desde el motor el 2026-09-30.
 
 Devuelve **solo JSON válido** que cumpla este esquema. Una sección por respuesta si el
 libro es largo; el orden recomendado es: world → locations → confidants → bestiary → items → boards → quests → heroes → dialogues → plot.
@@ -733,6 +733,461 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
             "additionalProperties": {
               "type": "number"
             }
+          },
+          "avoid": {
+            "type": "array",
+            "description": "Si el tablero tiene enemigos: las formas de no pelear, antes de que empiece. Una a tres, que encajen con quién espera y por qué. Tira quien mejor lo hace (esconderse, todo el grupo). Sin nada, el juego pone las de siempre.",
+            "items": {
+              "type": "object",
+              "required": [
+                "kind",
+                "text"
+              ],
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "hablar",
+                    "pagar",
+                    "huir",
+                    "esconderse"
+                  ]
+                },
+                "text": {
+                  "type": "string",
+                  "description": "Lo que se hace, visto desde quien juega: «Enseñarle el sello del prior»."
+                },
+                "skill": {
+                  "type": "string",
+                  "enum": [
+                    "persuasion",
+                    "deception",
+                    "intimidation",
+                    "insight",
+                    "perception",
+                    "investigation",
+                    "stealth",
+                    "athletics",
+                    "sleight",
+                    "survival"
+                  ],
+                  "description": "Con qué se tira. Sin ella: hablar, persuasion; huir, athletics; esconderse, stealth; pagar, sin tirada."
+                },
+                "dc": {
+                  "type": "integer",
+                  "description": "De 5 a 30. Sin ella, según quién espera."
+                },
+                "gold": {
+                  "type": "integer",
+                  "description": "Solo pagar: lo que cuesta."
+                },
+                "resolves": {
+                  "type": "boolean",
+                  "description": "Si salir bien cuenta como pasar el tablero para la historia. Sin decirlo: sí, salvo huir."
+                },
+                "success": {
+                  "description": "Lo que pasa si sale bien. Un texto llano, o { \"text\": \"…\", \"effects\": [...] }. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
+                  "oneOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "text": {
+                          "type": "string"
+                        },
+                        "effects": {
+                          "type": "array",
+                          "items": {}
+                        }
+                      }
+                    }
+                  ]
+                },
+                "partial": {
+                  "description": "Opcional: si sale a medias (se falla por poco). Sin ella, sale pagando un precio. Un texto llano, o { \"text\": \"…\", \"effects\": [...] }. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
+                  "oneOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "text": {
+                          "type": "string"
+                        },
+                        "effects": {
+                          "type": "array",
+                          "items": {}
+                        }
+                      }
+                    }
+                  ]
+                },
+                "failure": {
+                  "description": "Lo que pasa si sale mal: empieza la pelea (huyendo o escondiéndose, ellos atacan primero). Un texto llano, o { \"text\": \"…\", \"effects\": [...] }. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
+                  "oneOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "text": {
+                          "type": "string"
+                        },
+                        "effects": {
+                          "type": "array",
+                          "items": {}
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "parley": {
+            "type": "object",
+            "description": "Opcional: cómo se sale de esta pelea hablando, a mitad de ella (entregarse, sobornar, convencer, engañar). Sin nada, sale lo de siempre; lo escrito cambia el texto y lo que pasa.",
+            "properties": {
+              "leader": {
+                "type": "string",
+                "description": "Quién manda: el nombre de un enemigo del tablero."
+              },
+              "entregarse": {
+                "type": "object",
+                "properties": {
+                  "text": {
+                    "type": "string",
+                    "description": "Lo que se dice o se hace."
+                  },
+                  "dc": {
+                    "type": "integer",
+                    "description": "La CD con la pelea igualada; cómo va la pelea la sube o la baja."
+                  },
+                  "gold": {
+                    "type": "integer",
+                    "description": "Solo sobornar: lo que piden."
+                  },
+                  "resolves": {
+                    "type": "boolean",
+                    "description": "Si salir así cuenta como pasar el tablero para la historia."
+                  },
+                  "success": {
+                    "description": "Si sale (entregarse siempre «sale»). Un texto llano, o { \"text\": \"…\", \"effects\": [...] }. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "text": {
+                            "type": "string"
+                          },
+                          "effects": {
+                            "type": "array",
+                            "items": {}
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  "partial": {
+                    "description": "Opcional: a medias. Un texto llano, o { \"text\": \"…\", \"effects\": [...] }. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "text": {
+                            "type": "string"
+                          },
+                          "effects": {
+                            "type": "array",
+                            "items": {}
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  "failure": {
+                    "description": "Si no sale. Un texto llano, o { \"text\": \"…\", \"effects\": [...] }. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "text": {
+                            "type": "string"
+                          },
+                          "effects": {
+                            "type": "array",
+                            "items": {}
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              },
+              "sobornar": {
+                "type": "object",
+                "properties": {
+                  "text": {
+                    "type": "string",
+                    "description": "Lo que se dice o se hace."
+                  },
+                  "dc": {
+                    "type": "integer",
+                    "description": "La CD con la pelea igualada; cómo va la pelea la sube o la baja."
+                  },
+                  "gold": {
+                    "type": "integer",
+                    "description": "Solo sobornar: lo que piden."
+                  },
+                  "resolves": {
+                    "type": "boolean",
+                    "description": "Si salir así cuenta como pasar el tablero para la historia."
+                  },
+                  "success": {
+                    "description": "Si sale (entregarse siempre «sale»). Un texto llano, o { \"text\": \"…\", \"effects\": [...] }. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "text": {
+                            "type": "string"
+                          },
+                          "effects": {
+                            "type": "array",
+                            "items": {}
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  "partial": {
+                    "description": "Opcional: a medias. Un texto llano, o { \"text\": \"…\", \"effects\": [...] }. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "text": {
+                            "type": "string"
+                          },
+                          "effects": {
+                            "type": "array",
+                            "items": {}
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  "failure": {
+                    "description": "Si no sale. Un texto llano, o { \"text\": \"…\", \"effects\": [...] }. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "text": {
+                            "type": "string"
+                          },
+                          "effects": {
+                            "type": "array",
+                            "items": {}
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              },
+              "convencer": {
+                "type": "object",
+                "properties": {
+                  "text": {
+                    "type": "string",
+                    "description": "Lo que se dice o se hace."
+                  },
+                  "dc": {
+                    "type": "integer",
+                    "description": "La CD con la pelea igualada; cómo va la pelea la sube o la baja."
+                  },
+                  "gold": {
+                    "type": "integer",
+                    "description": "Solo sobornar: lo que piden."
+                  },
+                  "resolves": {
+                    "type": "boolean",
+                    "description": "Si salir así cuenta como pasar el tablero para la historia."
+                  },
+                  "success": {
+                    "description": "Si sale (entregarse siempre «sale»). Un texto llano, o { \"text\": \"…\", \"effects\": [...] }. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "text": {
+                            "type": "string"
+                          },
+                          "effects": {
+                            "type": "array",
+                            "items": {}
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  "partial": {
+                    "description": "Opcional: a medias. Un texto llano, o { \"text\": \"…\", \"effects\": [...] }. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "text": {
+                            "type": "string"
+                          },
+                          "effects": {
+                            "type": "array",
+                            "items": {}
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  "failure": {
+                    "description": "Si no sale. Un texto llano, o { \"text\": \"…\", \"effects\": [...] }. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "text": {
+                            "type": "string"
+                          },
+                          "effects": {
+                            "type": "array",
+                            "items": {}
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              },
+              "engañar": {
+                "type": "object",
+                "properties": {
+                  "text": {
+                    "type": "string",
+                    "description": "Lo que se dice o se hace."
+                  },
+                  "dc": {
+                    "type": "integer",
+                    "description": "La CD con la pelea igualada; cómo va la pelea la sube o la baja."
+                  },
+                  "gold": {
+                    "type": "integer",
+                    "description": "Solo sobornar: lo que piden."
+                  },
+                  "resolves": {
+                    "type": "boolean",
+                    "description": "Si salir así cuenta como pasar el tablero para la historia."
+                  },
+                  "success": {
+                    "description": "Si sale (entregarse siempre «sale»). Un texto llano, o { \"text\": \"…\", \"effects\": [...] }. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "text": {
+                            "type": "string"
+                          },
+                          "effects": {
+                            "type": "array",
+                            "items": {}
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  "partial": {
+                    "description": "Opcional: a medias. Un texto llano, o { \"text\": \"…\", \"effects\": [...] }. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "text": {
+                            "type": "string"
+                          },
+                          "effects": {
+                            "type": "array",
+                            "items": {}
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  "failure": {
+                    "description": "Si no sale. Un texto llano, o { \"text\": \"…\", \"effects\": [...] }. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "text": {
+                            "type": "string"
+                          },
+                          "effects": {
+                            "type": "array",
+                            "items": {}
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              },
+              "no": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Las formas que aquí no valen."
+              }
+            }
           }
         }
       }
@@ -1338,7 +1793,8 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
               "act": {
                 "type": "integer",
                 "minimum": 1,
-                "maximum": 3
+                "maximum": 9,
+                "description": "El acto: del 1 al 3. Si el hilo trae chapters, el capítulo, hasta el último que traiga."
               },
               "title": {
                 "type": "string"
@@ -1736,6 +2192,33 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
             }
           }
         },
+        "chapters": {
+          "type": "array",
+          "maxItems": 9,
+          "description": "Los capítulos, si la campaña los tiene: uno por acto, con su nombre. El Diario se lee por capítulos y el tablón del gremio dice por cuál vais. Con ellos, el act de cada hito va del 1 al último capítulo. Sin ellos, tres actos sin nombre.",
+          "items": {
+            "type": "object",
+            "required": [
+              "act",
+              "title"
+            ],
+            "properties": {
+              "act": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9
+              },
+              "title": {
+                "type": "string",
+                "description": "Corto, sin destripar: «El campamento vistani», no «La traición de la adivina»."
+              },
+              "summary": {
+                "type": "string",
+                "description": "De qué va, en una o dos frases, contado a quien juega. Sale al abrir el capítulo en el Diario."
+              }
+            }
+          }
+        },
         "endings": {
           "type": "object",
           "description": "Los finales, por su id.",
@@ -1820,12 +2303,13 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
 14. Desde donde empieza el grupo tiene que poderse llegar a toda casilla de suelo, abriendo puertas. Un enemigo en una sala incomunicada es un error; una sala vacía incomunicada, un aviso.
 15. Los nombres de `items` tampoco se repiten, y su `rarity` es una de las cuatro que conocen las tablas de botín: una rareza inventada nunca cae.
 16. Solo un tablero hecho de un mapa dibujado lleva `image` y `grid`, y su `map` mide lo mismo que la cuadrícula (lo escribe `tools/mapa-a-tablero.mjs` a partir de la imagen). Sin imagen, no escribas ninguno de los dos. Las `zones` (las salas con nombre) sí valen en cualquier tablero.
-17. En `dialogues`, el `speaker` de cada charla es alguien de `npcs` o de `confidants`, cada `next` lleva a un nudo que existe, y a todos los nudos se llega desde el de inicio. Un hito, un rumor o un objeto de una condición o de un efecto se nombra como está en el paquete (el hito y el rumor, por su id).
-18. En una charla, lo que depende de quién eres (`species`, `class`, `background`, `gender`) solo le sale a quien encaja, con su etiqueta delante: «[Enano] …». Cada tirada lleva `success` y `failure`; `partial` es opcional. Las líneas son de una a tres frases llanas, sin acertijos, con `{forma|forma}` donde se habla a quien juega.
-19. En `plot`, cada `opens.milestone`, `changes.open` y `changes.close` nombra un hito del hilo por su id, cada `asks.board` un tablero por su `name`, y cada `changes.ending` un final de `endings`. El primer hito se abre con `start`: es la mecha de la campaña.
-20. Los hitos importantes traen su escena en `beats`: de 3 a 8 líneas, cada una de alguien de `npcs` o `confidants` (sin `who`, del narrador), y una o dos decisiones que cambien algo: cómo os mira alguien, un rumor, un objeto o un hito. `scene` sigue haciendo falta: es lo que lee el narrador. `sceneDialogue` nombra una charla de `dialogues` por su id.
-21. Cada final de `plot.endings` trae sus `epilogues`: qué fue de 3 a 5 personas o facciones que pesaron en la historia, una línea cada una. El `who` de cada uno es un nombre de `npcs`, `confidants` o `world.factions`, letra por letra.
-22. Donde se le habla a quien juega —la sinopsis, la `description` de un compañero y sus escenas, las del hilo y sus finales, los epílogos, las charlas, los rumores, las misiones y el `twist` de un encargo—, lo que concuerda con su género lleva sus dos formas entre llaves: «Eres {un mercenario|una mercenaria}»; al grupo, en plural: «estáis {hechos|hechas}». Solo dos formas: quien es no binario elige si el texto le habla en masculino o en femenino. En los demás campos (la gente, los objetos, el resto de un encargo), escribe sin nada que concuerde con quien juega. Nunca «cansado/a».
+17. Cada tablero con enemigos trae en `avoid` una a tres formas de no pelear que encajen con quién espera: `hablar` con la gente (convencer, engañar o espantar a una bestia con `intimidation`), `pagar` a quien se deja comprar, `huir` o `esconderse`. A los muertos y a las cosas sin mente no se les habla ni se les paga. Si salir de otra forma sigue la historia de otra manera, dilo en `success` con sus efectos; lo que pasa después del tablero tiene que seguir cuadrando.
+18. En `dialogues`, el `speaker` de cada charla es alguien de `npcs` o de `confidants`, cada `next` lleva a un nudo que existe, y a todos los nudos se llega desde el de inicio. Un hito, un rumor o un objeto de una condición o de un efecto se nombra como está en el paquete (el hito y el rumor, por su id).
+19. En una charla, lo que depende de quién eres (`species`, `class`, `background`, `gender`) solo le sale a quien encaja, con su etiqueta delante: «[Enano] …». Cada tirada lleva `success` y `failure`; `partial` es opcional. Las líneas son de una a tres frases llanas, sin acertijos, con `{forma|forma}` donde se habla a quien juega.
+20. En `plot`, cada `opens.milestone`, `changes.open` y `changes.close` nombra un hito del hilo por su id, cada `asks.board` un tablero por su `name`, y cada `changes.ending` un final de `endings`. El primer hito se abre con `start`: es la mecha de la campaña.
+21. Los hitos importantes traen su escena en `beats`: de 3 a 8 líneas, cada una de alguien de `npcs` o `confidants` (sin `who`, del narrador), y una o dos decisiones que cambien algo: cómo os mira alguien, un rumor, un objeto o un hito. `scene` sigue haciendo falta: es lo que lee el narrador. `sceneDialogue` nombra una charla de `dialogues` por su id.
+22. Cada final de `plot.endings` trae sus `epilogues`: qué fue de 3 a 5 personas o facciones que pesaron en la historia, una línea cada una. El `who` de cada uno es un nombre de `npcs`, `confidants` o `world.factions`, letra por letra.
+23. Donde se le habla a quien juega —la sinopsis, la `description` de un compañero y sus escenas, las del hilo y sus finales, los epílogos, las charlas, los rumores, las misiones y el `twist` de un encargo—, lo que concuerda con su género lleva sus dos formas entre llaves: «Eres {un mercenario|una mercenaria}»; al grupo, en plural: «estáis {hechos|hechas}». Solo dos formas: quien es no binario elige si el texto le habla en masculino o en femenino. En los demás campos (la gente, los objetos, el resto de un encargo), escribe sin nada que concuerde con quien juega. Nunca «cansado/a».
 
 ## Sobre los mapas
 
@@ -2094,6 +2578,21 @@ ejemplo fácil no enseña.
           "name": "Cuervo grande",
           "x": 9,
           "y": 2
+        }
+      ],
+      "avoid": [
+        {
+          "kind": "hablar",
+          "text": "Espantar al cuervo agitando la capa y gritando",
+          "skill": "intimidation",
+          "dc": 11,
+          "success": "El cuervo grazna, se sacude y sale volando por un hueco del tejado.",
+          "failure": "El cuervo no se asusta: baja en picado a por tus ojos."
+        },
+        {
+          "kind": "esconderse",
+          "text": "Pasar pegados a la pared, por debajo de la viga donde duerme",
+          "dc": 12
         }
       ]
     },
@@ -2798,6 +3297,461 @@ que ya está en el bloque de instrucciones; se ofrecen sueltos porque un libro n
         "description": "Las cotas en pies de las casillas que no están a ras de suelo, como {\"4,2\": 30}. Entre dos casillas vecinas con 10 pies o más de diferencia hay un acantilado: no se cruza andando, y desde arriba se ataca con ventaja. Los puentes y las rampas llevan su cota.",
         "additionalProperties": {
           "type": "number"
+        }
+      },
+      "avoid": {
+        "type": "array",
+        "description": "Si el tablero tiene enemigos: las formas de no pelear, antes de que empiece. Una a tres, que encajen con quién espera y por qué. Tira quien mejor lo hace (esconderse, todo el grupo). Sin nada, el juego pone las de siempre.",
+        "items": {
+          "type": "object",
+          "required": [
+            "kind",
+            "text"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "hablar",
+                "pagar",
+                "huir",
+                "esconderse"
+              ]
+            },
+            "text": {
+              "type": "string",
+              "description": "Lo que se hace, visto desde quien juega: «Enseñarle el sello del prior»."
+            },
+            "skill": {
+              "type": "string",
+              "enum": [
+                "persuasion",
+                "deception",
+                "intimidation",
+                "insight",
+                "perception",
+                "investigation",
+                "stealth",
+                "athletics",
+                "sleight",
+                "survival"
+              ],
+              "description": "Con qué se tira. Sin ella: hablar, persuasion; huir, athletics; esconderse, stealth; pagar, sin tirada."
+            },
+            "dc": {
+              "type": "integer",
+              "description": "De 5 a 30. Sin ella, según quién espera."
+            },
+            "gold": {
+              "type": "integer",
+              "description": "Solo pagar: lo que cuesta."
+            },
+            "resolves": {
+              "type": "boolean",
+              "description": "Si salir bien cuenta como pasar el tablero para la historia. Sin decirlo: sí, salvo huir."
+            },
+            "success": {
+              "description": "Lo que pasa si sale bien. Un texto llano, o { \"text\": \"…\", \"effects\": [...] }. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "text": {
+                      "type": "string"
+                    },
+                    "effects": {
+                      "type": "array",
+                      "items": {}
+                    }
+                  }
+                }
+              ]
+            },
+            "partial": {
+              "description": "Opcional: si sale a medias (se falla por poco). Sin ella, sale pagando un precio. Un texto llano, o { \"text\": \"…\", \"effects\": [...] }. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "text": {
+                      "type": "string"
+                    },
+                    "effects": {
+                      "type": "array",
+                      "items": {}
+                    }
+                  }
+                }
+              ]
+            },
+            "failure": {
+              "description": "Lo que pasa si sale mal: empieza la pelea (huyendo o escondiéndose, ellos atacan primero). Un texto llano, o { \"text\": \"…\", \"effects\": [...] }. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "text": {
+                      "type": "string"
+                    },
+                    "effects": {
+                      "type": "array",
+                      "items": {}
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      "parley": {
+        "type": "object",
+        "description": "Opcional: cómo se sale de esta pelea hablando, a mitad de ella (entregarse, sobornar, convencer, engañar). Sin nada, sale lo de siempre; lo escrito cambia el texto y lo que pasa.",
+        "properties": {
+          "leader": {
+            "type": "string",
+            "description": "Quién manda: el nombre de un enemigo del tablero."
+          },
+          "entregarse": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string",
+                "description": "Lo que se dice o se hace."
+              },
+              "dc": {
+                "type": "integer",
+                "description": "La CD con la pelea igualada; cómo va la pelea la sube o la baja."
+              },
+              "gold": {
+                "type": "integer",
+                "description": "Solo sobornar: lo que piden."
+              },
+              "resolves": {
+                "type": "boolean",
+                "description": "Si salir así cuenta como pasar el tablero para la historia."
+              },
+              "success": {
+                "description": "Si sale (entregarse siempre «sale»). Un texto llano, o { \"text\": \"…\", \"effects\": [...] }. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "text": {
+                        "type": "string"
+                      },
+                      "effects": {
+                        "type": "array",
+                        "items": {}
+                      }
+                    }
+                  }
+                ]
+              },
+              "partial": {
+                "description": "Opcional: a medias. Un texto llano, o { \"text\": \"…\", \"effects\": [...] }. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "text": {
+                        "type": "string"
+                      },
+                      "effects": {
+                        "type": "array",
+                        "items": {}
+                      }
+                    }
+                  }
+                ]
+              },
+              "failure": {
+                "description": "Si no sale. Un texto llano, o { \"text\": \"…\", \"effects\": [...] }. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "text": {
+                        "type": "string"
+                      },
+                      "effects": {
+                        "type": "array",
+                        "items": {}
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "sobornar": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string",
+                "description": "Lo que se dice o se hace."
+              },
+              "dc": {
+                "type": "integer",
+                "description": "La CD con la pelea igualada; cómo va la pelea la sube o la baja."
+              },
+              "gold": {
+                "type": "integer",
+                "description": "Solo sobornar: lo que piden."
+              },
+              "resolves": {
+                "type": "boolean",
+                "description": "Si salir así cuenta como pasar el tablero para la historia."
+              },
+              "success": {
+                "description": "Si sale (entregarse siempre «sale»). Un texto llano, o { \"text\": \"…\", \"effects\": [...] }. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "text": {
+                        "type": "string"
+                      },
+                      "effects": {
+                        "type": "array",
+                        "items": {}
+                      }
+                    }
+                  }
+                ]
+              },
+              "partial": {
+                "description": "Opcional: a medias. Un texto llano, o { \"text\": \"…\", \"effects\": [...] }. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "text": {
+                        "type": "string"
+                      },
+                      "effects": {
+                        "type": "array",
+                        "items": {}
+                      }
+                    }
+                  }
+                ]
+              },
+              "failure": {
+                "description": "Si no sale. Un texto llano, o { \"text\": \"…\", \"effects\": [...] }. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "text": {
+                        "type": "string"
+                      },
+                      "effects": {
+                        "type": "array",
+                        "items": {}
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "convencer": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string",
+                "description": "Lo que se dice o se hace."
+              },
+              "dc": {
+                "type": "integer",
+                "description": "La CD con la pelea igualada; cómo va la pelea la sube o la baja."
+              },
+              "gold": {
+                "type": "integer",
+                "description": "Solo sobornar: lo que piden."
+              },
+              "resolves": {
+                "type": "boolean",
+                "description": "Si salir así cuenta como pasar el tablero para la historia."
+              },
+              "success": {
+                "description": "Si sale (entregarse siempre «sale»). Un texto llano, o { \"text\": \"…\", \"effects\": [...] }. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "text": {
+                        "type": "string"
+                      },
+                      "effects": {
+                        "type": "array",
+                        "items": {}
+                      }
+                    }
+                  }
+                ]
+              },
+              "partial": {
+                "description": "Opcional: a medias. Un texto llano, o { \"text\": \"…\", \"effects\": [...] }. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "text": {
+                        "type": "string"
+                      },
+                      "effects": {
+                        "type": "array",
+                        "items": {}
+                      }
+                    }
+                  }
+                ]
+              },
+              "failure": {
+                "description": "Si no sale. Un texto llano, o { \"text\": \"…\", \"effects\": [...] }. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "text": {
+                        "type": "string"
+                      },
+                      "effects": {
+                        "type": "array",
+                        "items": {}
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "engañar": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string",
+                "description": "Lo que se dice o se hace."
+              },
+              "dc": {
+                "type": "integer",
+                "description": "La CD con la pelea igualada; cómo va la pelea la sube o la baja."
+              },
+              "gold": {
+                "type": "integer",
+                "description": "Solo sobornar: lo que piden."
+              },
+              "resolves": {
+                "type": "boolean",
+                "description": "Si salir así cuenta como pasar el tablero para la historia."
+              },
+              "success": {
+                "description": "Si sale (entregarse siempre «sale»). Un texto llano, o { \"text\": \"…\", \"effects\": [...] }. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "text": {
+                        "type": "string"
+                      },
+                      "effects": {
+                        "type": "array",
+                        "items": {}
+                      }
+                    }
+                  }
+                ]
+              },
+              "partial": {
+                "description": "Opcional: a medias. Un texto llano, o { \"text\": \"…\", \"effects\": [...] }. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "text": {
+                        "type": "string"
+                      },
+                      "effects": {
+                        "type": "array",
+                        "items": {}
+                      }
+                    }
+                  }
+                ]
+              },
+              "failure": {
+                "description": "Si no sale. Un texto llano, o { \"text\": \"…\", \"effects\": [...] }. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "text": {
+                        "type": "string"
+                      },
+                      "effects": {
+                        "type": "array",
+                        "items": {}
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "no": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Las formas que aquí no valen."
+          }
         }
       }
     }
@@ -3650,7 +4604,8 @@ que ya está en el bloque de instrucciones; se ofrecen sueltos porque un libro n
           "act": {
             "type": "integer",
             "minimum": 1,
-            "maximum": 3
+            "maximum": 9,
+            "description": "El acto: del 1 al 3. Si el hilo trae chapters, el capítulo, hasta el último que traiga."
           },
           "title": {
             "type": "string"
@@ -4044,6 +4999,33 @@ que ya está en el bloque de instrucciones; se ofrecen sueltos porque un libro n
                 "description": "El final según con quién os hayáis aliado: {\"id-de-faccion\": \"id-de-final\"}; decide la que mejor os mire."
               }
             }
+          }
+        }
+      }
+    },
+    "chapters": {
+      "type": "array",
+      "maxItems": 9,
+      "description": "Los capítulos, si la campaña los tiene: uno por acto, con su nombre. El Diario se lee por capítulos y el tablón del gremio dice por cuál vais. Con ellos, el act de cada hito va del 1 al último capítulo. Sin ellos, tres actos sin nombre.",
+      "items": {
+        "type": "object",
+        "required": [
+          "act",
+          "title"
+        ],
+        "properties": {
+          "act": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9
+          },
+          "title": {
+            "type": "string",
+            "description": "Corto, sin destripar: «El campamento vistani», no «La traición de la adivina»."
+          },
+          "summary": {
+            "type": "string",
+            "description": "De qué va, en una o dos frases, contado a quien juega. Sale al abrir el capítulo en el Diario."
           }
         }
       }

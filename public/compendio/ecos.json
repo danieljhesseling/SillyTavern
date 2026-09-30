@@ -1,0 +1,158 @@
+{
+    "version": 1,
+    "domain": "ecos",
+    "about": "El mundo se acuerda (J11.3 de ROADMAP_SIN_CONEXION): lo que hicisteis en un pueblo cambia cómo os tratan allí. Cada fila es una reacción. WHEN.hecho es lo que se hizo (robo, robo-oculto, multa, huida, nigromancia, caso-resuelto, caso-fallido); WHEN.sitio, quién reacciona (tienda, posada, herreria, templo, gremio, plaza, o * para cualquiera del pueblo); WHEN.en, dónde se hizo (sin él, en cualquier sitio del pueblo). VECES: cuántas veces tiene que haber pasado (sin él, una). DURA: los días que se acuerdan desde la última vez. Lo que cambia: PRECIO (1.3 es un 30 % más caro; 0.9, un 10 % más barato) con su MOTIVO, que se lee en la tienda; NIEGA: quien atiende no os atiende, y dice esto; SALUDO: lo que os dice al entrar (se elige uno por día); RUMOR: lo que se cuenta en el pueblo; TRATO: cómo os mira quien atiende donde pasó (-1 o +1, una vez). Huecos: {quien} es quien atiende, {pueblo} el pueblo y {hola} el saludo de la hora con tu nombre. GÉNERO: lo que te dicen a ti va con sus dos formas, {listo|lista}.",
+    "rows": [
+        {
+            "id": "robo-tienda-otra-vez",
+            "name": "Os pillaron robando en la tienda dos veces",
+            "kind": "eco",
+            "when": { "hecho": "robo", "sitio": "tienda", "en": "tienda" },
+            "veces": 2,
+            "dura": 28,
+            "niega": "{quien} no se mueve de detrás del mostrador: «Dos veces ya. Aquí no se te vende nada. Sal antes de que llame a la guardia.»",
+            "saludo": [
+                "{quien} pone las dos manos sobre el mostrador al verte: «Ni un paso más. A ti ya no te vendo.»"
+            ],
+            "rumor": [
+                "En la tienda de {pueblo} ya no le venden a cierta gente de fuera: la pillaron robando dos veces."
+            ]
+        },
+        {
+            "id": "robo-tienda",
+            "name": "Os pillaron robando en la tienda",
+            "kind": "eco",
+            "when": { "hecho": "robo", "sitio": "tienda", "en": "tienda" },
+            "dura": 28,
+            "precio": 1.3,
+            "motivo": "os pillaron robando aquí",
+            "trato": -1,
+            "saludo": [
+                "{quien} no aparta la vista de tus manos: «{hola}. Mira lo que quieras, pero desde ahí. Y desde lo del otro día, aquí todo te sale más caro.»",
+                "{quien} deja la mano sobre la caja del dinero: «Tú otra vez. Primero se paga y luego se toca. Y a precio de quien ya me robó una vez.»"
+            ],
+            "rumor": [
+                "En {pueblo} se cuenta que en la tienda pillaron a gente de fuera llevándose género sin pagar."
+            ]
+        },
+        {
+            "id": "robo-oculto-tienda",
+            "name": "A la tienda le falta género desde vuestra visita",
+            "kind": "eco",
+            "when": { "hecho": "robo-oculto", "sitio": "tienda", "en": "tienda" },
+            "dura": 10,
+            "precio": 1.1,
+            "motivo": "desde tu última visita a la tienda le falta género",
+            "saludo": [
+                "{quien} cuenta lo que hay en el estante mientras entras: «{hola}. Desde la última vez que pasaste me faltan cosas. No acuso a nadie, pero no te quito el ojo de encima.»",
+                "{quien} te sigue con la mirada de estante en estante: «{hola}. Ahora cobro un poco más. Me han robado, ¿sabes? Y alguien lo tiene que pagar.»"
+            ],
+            "rumor": [
+                "Dicen que a la tienda de {pueblo} le falta género, y nadie sabe quién se lo llevó."
+            ]
+        },
+        {
+            "id": "robo-posada",
+            "name": "En la posada saben lo de la tienda",
+            "kind": "eco",
+            "when": { "hecho": "robo", "sitio": "posada" },
+            "dura": 21,
+            "precio": 1.1,
+            "motivo": "en la posada saben lo de la tienda",
+            "saludo": [
+                "{quien} te pone la jarra delante sin sonreír: «{hola}. Ya me han contado lo de la tienda. Aquí se paga antes de beber.»"
+            ]
+        },
+        {
+            "id": "robo-gremio",
+            "name": "En el gremio saben lo de la tienda",
+            "kind": "eco",
+            "when": { "hecho": "robo", "sitio": "gremio" },
+            "dura": 21,
+            "saludo": [
+                "{quien} cierra el libro del gremio al verte: «{hola}. Me han contado lo de la tienda. Lo que hagas fuera es cosa tuya, pero aquí dentro no se roba ni una vela.»"
+            ]
+        },
+        {
+            "id": "huida-guardia",
+            "name": "Huisteis de la guardia",
+            "kind": "eco",
+            "when": { "hecho": "huida", "sitio": "*" },
+            "dura": 21,
+            "precio": 1.2,
+            "motivo": "saben que huiste de la guardia",
+            "saludo": [
+                "{quien} baja la voz: «{hola}. La guardia ha preguntado por ti. Yo no te he visto, pero eso te va a salir caro.»"
+            ],
+            "rumor": [
+                "En {pueblo} la guardia busca a gente que salió corriendo en vez de pagar su multa."
+            ]
+        },
+        {
+            "id": "multa-pagada",
+            "name": "Pagasteis la multa de la guardia",
+            "kind": "eco",
+            "when": { "hecho": "multa", "sitio": "*" },
+            "dura": 7,
+            "saludo": [
+                "{quien} te mira de arriba abajo: «{hola}. Pagaste la multa, así que estamos en paz. Pero aquí no queremos más líos.»"
+            ]
+        },
+        {
+            "id": "nigromancia-templo",
+            "name": "En la capilla saben que usáis artes de muertos",
+            "kind": "eco",
+            "when": { "hecho": "nigromancia", "sitio": "templo" },
+            "dura": 28,
+            "niega": "{quien} se pone entre el altar y la puerta: «Aquí no se cura a quien levanta muertos. Vete, y no vuelvas hasta que dejes esas artes.»",
+            "saludo": [
+                "{quien} traza un círculo en el aire al verte entrar: «Aquí no. Con eso que llevas en las manos, aquí no.»"
+            ],
+            "rumor": [
+                "Dicen que alguien anduvo por {pueblo} con artes de muertos. En la capilla rezan el doble."
+            ]
+        },
+        {
+            "id": "nigromancia",
+            "name": "Os vieron usar artes de muertos",
+            "kind": "eco",
+            "when": { "hecho": "nigromancia", "sitio": "*" },
+            "dura": 21,
+            "precio": 1.25,
+            "motivo": "os vieron usar artes de muertos",
+            "saludo": [
+                "{quien} hace la señal contra el mal de ojo al verte: «{hola}… Di lo que quieres, y vete pronto.»"
+            ]
+        },
+        {
+            "id": "caso-resuelto",
+            "name": "Resolvisteis un caso en el pueblo",
+            "kind": "eco",
+            "when": { "hecho": "caso-resuelto", "sitio": "*" },
+            "dura": 21,
+            "precio": 0.9,
+            "motivo": "resolvisteis el caso de aquí",
+            "saludo": [
+                "{quien} te sonríe al verte: «{hola}. Tú eres quien aclaró lo del caso, ¿verdad? Aquí eso no se olvida. Para ti, un poco más barato.»"
+            ],
+            "rumor": [
+                "En {pueblo} se habla bien de la gente que resolvió el último caso."
+            ]
+        },
+        {
+            "id": "caso-fallido",
+            "name": "Acusasteis a quien no era",
+            "kind": "eco",
+            "when": { "hecho": "caso-fallido", "sitio": "*" },
+            "dura": 14,
+            "precio": 1.1,
+            "motivo": "acusasteis a quien no era",
+            "saludo": [
+                "{quien} no te devuelve el saludo: «{hola}. Tú eres quien señaló a quien no era. Aquí todavía hay quien llora por eso.»"
+            ],
+            "rumor": [
+                "Dicen que acusaron a quien no era, y que en {pueblo} alguien lo pagó caro."
+            ]
+        }
+    ]
+}

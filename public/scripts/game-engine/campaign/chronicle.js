@@ -45,12 +45,18 @@ export const TAG_CATEGORIES = {
     'HILO': 'hilo', 'PISTA': 'hilo', 'PRESAGIO': 'hilo', 'SECRETO': 'hilo', 'INTERROGATORIO': 'hilo', 'VILLANO': 'hilo', 'RESUMEN': 'hilo', 'CASO': 'hilo',
     'GRUPO': 'grupo', 'VINCULO': 'grupo', 'ROCE': 'grupo', 'SE VA': 'grupo', 'HARTO': 'grupo', 'MUERTE': 'grupo', 'NIVEL': 'grupo',
     'RELIQUIA': 'grupo', 'APRENDIZAJE': 'grupo', 'ENCARGO PERSONAL': 'grupo', 'MASCOTA': 'grupo',
+    // J19: lo que se prepara al despertar y la sintonía con un objeto.
+    'MAGIA': 'grupo',
+    // J14: lo que deja quedar con alguien (y el aviso de que quiere quedar), con su tilde.
+    'VÍNCULO': 'grupo',
     'MUNDO': 'mundo', 'EL MUNDO CAMBIA': 'mundo', 'RIVALES': 'mundo', 'NOTICIAS': 'mundo', 'RUMOR': 'mundo', 'GENTE': 'mundo',
     'FIESTA': 'mundo', 'CARTA': 'mundo', 'SUCESO': 'mundo', 'GUARDIAS': 'mundo', 'DIRECTOR': 'mundo', 'DUELO': 'mundo', 'NEMESIS': 'mundo',
     'GREMIO': 'gremio', 'ENCARGO': 'gremio',
     'COMBAT': 'combate', 'BOARD': 'combate', 'TABLERO': 'combate',
     'TIENDA': 'comercio', 'POSADA': 'comercio', 'TABERNA': 'comercio', 'TEMPLO': 'comercio', 'HERRERÍA': 'comercio', 'ROBO': 'comercio',
     'CAMPAÑA': 'viaje', 'VIAJE': 'viaje', 'EXPLORAR': 'viaje', 'ATAJO': 'viaje', 'CAMPO': 'viaje',
+    // J10.2: lo que se ve al examinar algo del sitio.
+    'MIRAR': 'viaje',
     'CAMPAMENTO': 'campamento', 'CHARLA': 'campamento', 'DESCANSO': 'campamento',
     // Una tirada suelta no es historia: se pliega, y no entra en el resumen del acto.
     'TIRADA': 'dados',

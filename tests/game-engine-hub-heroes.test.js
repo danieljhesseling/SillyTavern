@@ -106,6 +106,18 @@ describe('D-J12: descansar en el gremio cura con los días', () => {
         expect(line).toBe('Tessa ha descansado 4 días en el gremio: vuelve con la vida entera. Se le ha curado una herida: pierna rota. Le queda la cicatriz.');
     });
 
+    test('el agotamiento no cuenta días, pero en el gremio se come, se bebe y se duerme: se va', () => {
+        const tired = {
+            ...tessa, restDay: 3, strength: 12, baseStats: { strength: 14 }, needs: { hunger: 50, thirst: 10, rest: 60, exposure: 5 },
+            injuries: [{ id: 'exhaustion', label: 'Muy cansada (agotamiento 2)', modifiers: { strength: -2 }, days: 0 }],
+        };
+        const { hero } = wakeFromRest(tired, { day: 4 });
+        expect(hero.injuries).toEqual([]);
+        expect(hero.strength).toBe(14);
+        expect(hero.needs).toEqual({ hunger: 0, thirst: 0, rest: 0, exposure: 0 });
+        expect(hero.scars ?? []).toEqual([]);
+    });
+
     test('un solo día: se pone en pie, pero la herida sigue contando', () => {
         const [kept] = withResting([], { add: { ...hurt, hp: 0 }, day: 5 });
         const { hero, line } = wakeFromRest(kept, { day: 6 });

@@ -23,6 +23,8 @@
 import { validatePack } from './campaign-pack.js';
 import { readLevelRange } from '../combat/level-adjust.js';
 import { HUB_IMPORTED_PREFIX } from './hub.js';
+import { fillPackGaps } from './pack-fill.js';
+import { checkCampaign } from './campaign-check.js';
 
 /** A cuántos días queda una campaña que no lo dice. */
 export const DEFAULT_JOURNEY_DAYS = 5;
@@ -213,13 +215,16 @@ function jsonProblem(body) {
  * @property {Array<{path: string, message: string}>} problems Lo que hay que arreglar.
  * @property {number} more Los fallos que no caben en la lista.
  * @property {string[]} notes Lo que se ha puesto en limpio al leerlo.
+ * @property {import('./campaign-check.js').CampaignCheck|null} check J5.6: la campaña,
+ *   comprobada antes de jugarla. Null si ni siquiera es una campaña.
+ * @property {import('./pack-fill.js').FillNote[]} filled J5.3: lo que ha puesto el motor.
  */
 
 /**
  * @param {string} headline
  * @returns {CampaignFileReport}
  */
-const refused = (headline) => ({ ok: false, kind: '', pack: null, headline, problems: [], more: 0, notes: [] });
+const refused = (headline) => ({ ok: false, kind: '', pack: null, headline, problems: [], more: 0, notes: [], check: null, filled: [] });
 
 /**
  * Leer el archivo de una campaña: comprobar que es JSON, ponerlo en limpio si viene del Gem y
@@ -228,10 +233,16 @@ const refused = (headline) => ({ ok: false, kind: '', pack: null, headline, prob
  * Acepta también el JSON dentro de un bloque ```json, como lo copia quien lo saca del chat
  * del Gem.
  *
+ * J5.3: antes de validar, el motor rellena lo que falte (tableros, bichos, textos, el final),
+ * y lo dice. J5.6: después, la campaña se comprueba entera (`check`), haya entrado o no.
+ *
  * @param {string} content El texto del archivo.
+ * @param {Object} [options]
+ * @param {any} [options.compendium] El compendio del juego, para sacar de él bichos y frases.
+ *   Sin él, los bichos salen con los números de su desafío y los textos se quedan como están.
  * @returns {CampaignFileReport}
  */
-export function readCampaignText(content) {
+export function readCampaignText(content, { compendium = null } = {}) {
     const raw = String(content ?? '').trim();
     const body = (raw.match(/^```(?:json)?[ \t]*\r?\n([\s\S]*?)\r?\n?```$/i)?.[1] ?? raw).trim();
     if (!body) return refused('El archivo está vacío.');
@@ -265,7 +276,7 @@ export function readCampaignText(content) {
     }
 
     const kind = isGemJson(parsed) ? 'gem' : 'pack';
-    const pack = kind === 'gem' ? packFromGemJson(parsed) : parsed;
+    const clean = kind === 'gem' ? packFromGemJson(parsed) : parsed;
     /** @type {string[]} */
     const notes = around ? ['Traía texto antes o después de la campaña: se ha quitado.'] : [];
     if (kind === 'gem') {
@@ -276,7 +287,22 @@ export function readCampaignText(content) {
             : 'Venía de tu Gem: se ha quitado la cabecera del esquema.');
     }
 
+    // J5.3: lo que falta, lo pone el motor, con la semilla de la campaña.
+    const { pack, filled } = fillPackGaps(clean, { compendium });
+    const boards = new Set(filled.filter(f => f.kind === 'tablero').map(f => f.name)).size;
+    const creatures = new Set(filled.filter(f => f.kind === 'criatura').map(f => f.name)).size;
+    if (filled.length > 0) {
+        const said = [
+            boards > 0 ? `${boards} ${boards === 1 ? 'tablero' : 'tableros'}` : '',
+            creatures > 0 ? `${creatures} ${creatures === 1 ? 'criatura' : 'criaturas'}` : '',
+        ].filter(Boolean);
+        notes.push(said.length > 0
+            ? `Lo que faltaba lo ha puesto el juego: ${said.join(' y ')}, y lo demás que se cuenta abajo.`
+            : 'Lo que faltaba lo ha puesto el juego: se cuenta abajo.');
+    }
+
     const report = validatePack(pack);
+    const check = checkCampaign(pack, { filled, validation: report });
     if (!report.ok) {
         const count = report.errors.length;
         return {
@@ -287,6 +313,8 @@ export function readCampaignText(content) {
             problems: report.errors.slice(0, MAX_PROBLEMS).map(issue => ({ path: text(issue.path), message: text(issue.message) })),
             more: Math.max(0, count - MAX_PROBLEMS),
             notes,
+            check,
+            filled,
         };
     }
     const c = report.counts;
@@ -298,6 +326,8 @@ export function readCampaignText(content) {
         problems: [],
         more: 0,
         notes,
+        check,
+        filled,
     };
 }
 

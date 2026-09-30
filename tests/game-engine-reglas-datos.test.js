@@ -4,6 +4,7 @@
  * - D-J25: los materiales de conjuro, en las tiendas, con su precio; y el foco, exigido.
  * - D-J26: la nigromancia es delito solo si daña o levanta muertos.
  * - D-J29: la tienda y la herrería tienen horario, y cierran el día de descanso y en fiestas.
+ * - D-J27 (y J19.8): los rituales se lanzan fuera de combate, y cada uno hace algo.
  *
  * (D-J21, D-J27, D-J30, D-J31 y D-J32 van con los tests de su módulo.)
  */
@@ -24,6 +25,12 @@ import {
 import { townPlaces, greetingFor, describeWho } from '../public/scripts/game-engine/campaign/town.js';
 import { whoIsWhere, townsfolkPlace, placeOpen, meetPlaces } from '../public/scripts/game-engine/campaign/whereabouts.js';
 import { createCalendar } from '../public/scripts/game-engine/campaign/calendar.js';
+import { focusItemFor, focusGift, supplyHolder, carries, canCastSpell } from '../public/scripts/game-engine/rules/spell-cast.js';
+import {
+    ritualKind, ritualChoices, isMagical, detectMagic, identifyAll, purifyAll, summonFamiliar, setAlarm, alarmActive,
+    understandTongues, ALARM_WATCH_BONUS,
+} from '../public/scripts/game-engine/rules/rituals.js';
+import { languageBarrier, understandsAll } from '../public/scripts/game-engine/rules/languages.js';
 
 const read = (/** @type {string} */ path) => JSON.parse(readFileSync(new URL(`../public/${path}`, import.meta.url), 'utf8'));
 const catalogue = read('compendio/conjuros.json').rows;
@@ -80,6 +87,47 @@ describe('D-J25: los materiales de conjuro se venden, y después se exigen', () 
             .toBe('Para Identificar hace falta: perla (100 de oro). Se compra en las tiendas.');
         expect(componentsCheck(spell('conj-encontrar-familiar'), { carried: [] }).reason)
             .toBe('Para Encontrar familiar hace falta: incienso y hierbas (10 de oro), que se gasta al lanzarlo. Se compra en las tiendas.');
+    });
+
+    test('si lo lleva otro del grupo, se dice quién, no que se compra', () => {
+        const others = [{ name: 'Tessa', carried: [{ name: 'Perla' }, { name: 'Bolsa de componentes' }], focus: '' }];
+        expect(componentsCheck(spell('conj-identificar'), { carried: ['Bolsa de componentes'], focus: 'Arcane', others }).reason)
+            .toBe('Para Identificar hace falta: perla (100 de oro). Lo lleva Tessa: pásaselo desde su ficha («Dar a…»).');
+        expect(componentsCheck(spell('mag-bola-fuego'), { carried: [], focus: 'Arcane', others }).reason)
+            .toBe('Para Bola de fuego hace falta un foco (un bastón, una varita o un orbe) o una bolsa de componentes. Lo lleva Tessa: pásaselo desde su ficha («Dar a…»).');
+        // El foco de quien también lanza no se ofrece: le hace falta a él.
+        const cleric = [{ name: 'Doc', carried: [{ name: 'Bolsa de componentes' }], focus: 'Divine' }];
+        expect(componentsCheck(spell('mag-bola-fuego'), { carried: [], focus: 'Arcane', others: cleric }).reason).toMatch(/Se compran en las tiendas\.$/);
+        expect(carries(['Perla negra'], 'Perla')).toBe(true);
+        expect(carries(['Perlas'], 'Perla')).toBe(false);
+    });
+
+    test('el compañero que lanza llega con su foco, una vez; tu héroe, no', () => {
+        expect(focusItemFor('Instrument')).toBe('Laúd');
+        expect(focusItemFor('Divine')).toBe('Bolsa de componentes');
+        const doc = { name: 'Doc', class: 'clerigo', items: [] };
+        expect(focusGift({ member: doc, classRow: cls('clerigo') })).toBe('Bolsa de componentes');
+        expect(focusGift({ member: { ...doc, class: 'bardo' }, classRow: cls('bardo') })).toBe('Laúd');
+        expect(focusGift({ member: doc, classRow: cls('clerigo'), isHero: true })).toBe('');
+        expect(focusGift({ member: { ...doc, focusGiven: true }, classRow: cls('clerigo') })).toBe('');
+        expect(focusGift({ member: { ...doc, items: [{ name: 'Escudo' }] }, classRow: cls('clerigo') })).toBe('');
+        expect(focusGift({ member: { ...doc, guest: { kind: 'ward' } }, classRow: cls('clerigo') })).toBe('');
+        expect(focusGift({ member: { name: 'Bran', items: [] }, classRow: cls('guerrero') })).toBe('');
+    });
+
+    test('lo que se compra va a quien lo necesita: el laúd al bardo, la perla a quien sabe Identificar', () => {
+        const casters = [
+            { id: 1, name: 'Tessa', focus: 'Arcane', carried: [{ name: 'Bastón' }], needs: ['Perla'] },
+            { id: 2, name: 'Lira', focus: 'Instrument', carried: [], needs: [] },
+            { id: 3, name: 'Doc', focus: 'Divine', carried: [], needs: ['Diamante'] },
+        ];
+        expect(supplyHolder({ name: 'Laúd', casters })).toEqual({ id: 2, name: 'Lira', why: 'focus' });
+        expect(supplyHolder({ name: 'Bolsa de componentes', casters })).toEqual({ id: 2, name: 'Lira', why: 'focus' });
+        expect(supplyHolder({ name: 'Perla', casters })).toEqual({ id: 1, name: 'Tessa', why: 'material' });
+        expect(supplyHolder({ name: 'Diamante', casters })).toEqual({ id: 3, name: 'Doc', why: 'material' });
+        // Si ya lo lleva, o no le hace falta a nadie, se lo queda el héroe.
+        expect(supplyHolder({ name: 'Perla', casters: [{ ...casters[0], carried: [{ name: 'Perla' }] }] })).toBeNull();
+        expect(supplyHolder({ name: 'Red', casters })).toBeNull();
     });
 });
 
@@ -202,5 +250,97 @@ describe('D-J29: la tienda y la herrería tienen horario, y cierran algunos día
         const seen = whoIsWhere({ town: 'Puerto Alba', slot: 'morning', places, day: 7, townsfolk: [{ name: 'Marisa', where: 'Puerto Alba', service: 'tienda' }] });
         expect(seen.people.find(p => p.name === 'Marisa')?.place).toBe('posada');
         expect(seen.places.find(p => p.id === 'tienda')?.open).toBe(false);
+    });
+});
+
+describe('D-J27: los rituales se lanzan fuera de combate, y cada uno hace algo', () => {
+    const erudito = cls('erudito');
+    const book = ['conj-detectar-magia', 'conj-comprender-idiomas', 'conj-identificar', 'conj-encontrar-familiar', 'conj-alarma'];
+    const tomas = { id: 7, name: 'Tomás', level: 3, intelligence: 16, class: 'erudito', spellbook: book, items: [{ id: 'b', name: 'Bolsa de componentes' }] };
+    /** @param {any[]} extra @param {any} [state] @param {boolean} [inCombat] */
+    const choices = (extra = [], state = {}, inCombat = false) =>
+        ritualChoices({ member: tomas, classRow: erudito, catalogue, carried: [...tomas.items, ...extra], state, inCombat });
+    /** @param {any[]} list @param {string} id */
+    const pick = (list, id) => list.find(c => c.id === id);
+
+    test('los de su libro, cada uno con lo que hace; lo que falta, dicho llano', () => {
+        const list = choices();
+        expect(list.map(c => c.id).sort()).toEqual([...book].sort());
+        expect(pick(list, 'conj-detectar-magia')).toMatchObject({ kind: 'detect', ok: true, reason: '', minutes: 10 });
+        expect(pick(list, 'conj-comprender-idiomas')).toMatchObject({ kind: 'tongues', ok: true });
+        expect(pick(list, 'conj-alarma')).toMatchObject({ kind: 'alarm', ok: true, minutes: 11 });
+        expect(pick(list, 'conj-identificar')).toMatchObject({ ok: false, reason: 'Para Identificar hace falta: perla (100 de oro). Se compra en las tiendas.' });
+        expect(pick(list, 'conj-encontrar-familiar').reason)
+            .toBe('Para Encontrar familiar hace falta: incienso y hierbas (10 de oro), que se gasta al lanzarlo. Se compra en las tiendas.');
+        // Con lo que piden, sí; y el incienso se gasta, la perla no.
+        const stocked = choices([{ name: 'Perla' }, { name: 'Incienso y hierbas' }], { unknownItems: 2 });
+        expect(pick(stocked, 'conj-identificar')).toMatchObject({ ok: true, consumes: [] });
+        expect(pick(stocked, 'conj-encontrar-familiar')).toMatchObject({ ok: true, consumes: ['Incienso y hierbas'], minutes: 70 });
+    });
+
+    test('no se lanza lo que no serviría de nada, ni peleando', () => {
+        const state = { unknownItems: 0, pet: 'Graznido, el cuervo', alarmSet: true };
+        const list = choices([{ name: 'Perla' }, { name: 'Incienso y hierbas' }], state);
+        expect(pick(list, 'conj-identificar').reason).toBe('No lleváis nada sin identificar.');
+        expect(pick(list, 'conj-encontrar-familiar').reason).toBe('Ya os acompaña Graznido, el cuervo: un familiar no se queda donde ya hay mascota.');
+        expect(pick(list, 'conj-alarma').reason).toBe('La alarma ya está puesta para esta noche.');
+        expect(choices([], {}, true).every(c => !c.ok && c.reason === 'Un ritual lleva diez minutos: peleando no hay tiempo.')).toBe(true);
+        // Silencio solo sirve peleando.
+        expect(ritualKind(spell('conj-silencio'))).toBe('');
+        const lira = { id: 8, name: 'Lira', level: 3, charisma: 16, spellsKnown: ['conj-silencio'], items: [{ name: 'Laúd' }] };
+        expect(ritualChoices({ member: lira, classRow: cls('bardo'), catalogue, carried: lira.items })[0])
+            .toMatchObject({ ok: false, reason: 'Silencio solo sirve peleando, y un ritual no se lanza peleando.' });
+        // Y, sin ritual, el erudito no lanza nada: sin espacios.
+        expect(canCastSpell({ member: tomas, classRow: erudito, spell: spell('conj-detectar-magia'), inCombat: false, carried: tomas.items }).ok).toBe(false);
+    });
+
+    const party = [
+        { id: 7, name: 'Tomás', items: [{ id: 'v', name: 'Varita de escarcha' }, { id: 'd', name: 'Daga' }] },
+        { id: 8, name: 'Bran', items: [
+            { id: 'a', name: 'Anillo de plata', rarity: 'uncommon', identified: false, cursed: true, curse: { label: 'Maldición de la torpeza', note: 'Las manos no obedecen.' } },
+            { id: 'e', name: 'Espada larga +1' },
+        ], needs: { hunger: 3, thirst: 2, rest: 1 } },
+    ];
+
+    test('Detectar magia dice qué tiene magia, y avisa de lo maldito que aún no se sabía', () => {
+        expect(isMagical({ name: 'Daga' })).toBe(false);
+        expect(isMagical({ name: 'Espada larga +1' })).toBe(true);
+        expect(detectMagic({ caster: 'Tomás', party })).toEqual([
+            'Tomás cierra los ojos y nota la magia que hay a su alrededor.',
+            'Tiene magia: Varita de escarcha (lo lleva Tomás), Anillo de plata (lo lleva Bran), Espada larga +1 (lo lleva Bran).',
+            'Cuidado con Anillo de plata (lo lleva Bran): está maldito. No os lo pongáis; en un templo se quita.',
+        ]);
+        expect(detectMagic({ caster: 'Tomás', party: [{ name: 'Bran', items: [{ name: 'Daga' }] }] })[1]).toBe('Nada de lo que lleváis tiene magia.');
+    });
+
+    test('Identificar hace lo del templo; Purificar quita el hambre y la sed', () => {
+        const seen = identifyAll({ caster: 'Tomás', party });
+        expect(seen.changes).toEqual([{ memberId: '8', itemId: 'a', item: expect.objectContaining({ identified: true, cursed: true }) }]);
+        expect(seen.lines).toEqual(['Tomás estudia lo que lleváis, con la perla en la mano.', 'Anillo de plata: Maldición de la torpeza. Las manos no obedecen.']);
+        const clean = purifyAll({ caster: 'Tomás', party });
+        expect(clean.changes.find(c => c.memberId === '8')?.needs).toMatchObject({ hunger: 0, thirst: 0, rest: 1 });
+        expect(clean.lines[0]).toBe('Tomás limpia la comida y el agua que lleváis: nadie del grupo pasa hambre ni sed por ahora.');
+    });
+
+    test('Encontrar familiar trae una mascota; Alarma vale esa noche; Comprender idiomas, esa parte del día', () => {
+        const familiar = summonFamiliar({ caster: 'Tomás', random: () => 0 });
+        expect(familiar.pet).toMatchObject({ name: 'Ceniza', species: 'familiar', character: 'curiosa' });
+        expect(familiar.lines[0]).toBe('Entre el humo del incienso aparece Ceniza, su familiar, y se queda con Tomás. Ve y oye por vosotros, y hace guardia de noche.');
+
+        const calendar = { ...createCalendar(), day: 4, slotIndex: 1 };
+        const alarm = setAlarm({ caster: 'Tomás', calendar });
+        expect(alarm.lines[0]).toBe(`Tomás pone una alarma alrededor de donde dormiréis: esta noche, si alguien se acerca, sonará una campanilla (+${ALARM_WATCH_BONUS} a la guardia).`);
+        expect(alarmActive(alarm.alarm, { ...calendar, slotIndex: 2 })).toBe(true);
+        expect(alarmActive(alarm.alarm, { ...calendar, day: 5 })).toBe(false);
+
+        const tongues = understandTongues({ caster: 'Tomás', calendar });
+        expect(tongues.lines[0]).toBe('Hasta que acabe la tarde, Tomás entiende cualquier lengua que oiga o lea: al calar a alguien que habla otra, no va con desventaja.');
+        const reader = { name: 'Tomás', hp: 10, tongues: tongues.tongues };
+        expect(understandsAll(reader, calendar)).toBe(true);
+        expect(understandsAll(reader, { ...calendar, slotIndex: 2 })).toBe(false);
+        // Calar, sí; convencer, no: entender no es hablar.
+        expect(languageBarrier({ speaker: reader, party: [reader], language: 'enano', skill: 'insight', now: calendar }).edge).toBe('');
+        expect(languageBarrier({ speaker: reader, party: [reader], language: 'enano', skill: 'persuasion', now: calendar }).edge).toBe('disadvantage');
+        expect(languageBarrier({ speaker: reader, party: [reader], language: 'enano', skill: 'insight', now: { ...calendar, day: 5 } }).edge).toBe('disadvantage');
     });
 });

@@ -49,6 +49,7 @@ import { resolveFall } from '../game-engine/rules/mortality.js';
 import { isIronRun, modeOf, modeLabel } from '../game-engine/rules/modes.js';
 import { epitaphFor, heirloomOf, heirOf, addGrave, addToHall } from '../game-engine/campaign/legacy.js';
 import { listNames } from '../game-engine/campaign/engine-narrator.js';
+import { gendered, groupGender } from '../game-engine/campaign/grammar.js';
 import { withJob, whoMourns } from '../game-engine/campaign/company.js';
 import { takePrisoners } from '../game-engine/campaign/prisoners.js';
 import { boxExamples } from '../game-engine/campaign/read-box.js';
@@ -75,8 +76,12 @@ import { dismissGuests } from './contracts.js';
 import {
     actsOnItsOwn, getAliveEnemies, getAttackableEnemiesForMember, getCurrentTurnEntry, getEnemyByInstanceId,
     getLivingPartyMembers, getPartyMemberByTurnEntry, getRemainingMovementFeet, partyCell, resetCombatTurnState,
-    saveCombatState,
+    saveCombatState, speedOf,
 } from './combat-state.js';
+import {
+    turnStartMagic, turnEndMagic, roundMagic, endOfFightMagic, livingSummons, canChooseControl, controlOf, setControl,
+    CONTROL_LABELS,
+} from './spell-turn.js';
 import { showCombatDiceRoll } from './combat-log.js';
 import { resolveEnemyAttackOn, resolveEnemyTurnAction } from './enemy-turn.js';
 import {
@@ -502,7 +507,42 @@ function arriveWaves() {
     renderLocationMapsPreview();
 }
 
-function advanceTurnIndex() {
+/**
+ * J19: contar lo que ha hecho la magia al cambiar de turno o de ronda (una zona que quema, una
+ * concentración que se pierde, una invocación que se va) y mirar si con eso se ha acabado la
+ * pelea: una zona también tumba al último enemigo, o al último de los tuyos.
+ *
+ * @param {string[]} lines
+ * @returns {boolean} Si la pelea se ha acabado aquí.
+ */
+function tellMagic(lines) {
+    if (lines.length === 0) return false;
+    postCombatNarration(`[COMBAT] ${lines.join('\n')}`);
+    savePartyState();
+    saveCombatState();
+    renderPartyMembers();
+    if (!combatEncounter.active || checkScenarioOutcome()) return true;
+    if (getAliveEnemies().length === 0 && !judgeCurrentScenario()) {
+        postCombatNarration('🏆 [COMBAT] Todos los enemigos han sido derrotados.');
+        endCombat('victory');
+        return true;
+    }
+    if (getLivingPartyMembers().length === 0) {
+        if (everyoneOut(partyMembers.filter(m => !m.dead), combatEncounter.left)) {
+            finishEscape('Los que quedaban dentro han caído; los que salieron, se salvan.');
+            return true;
+        }
+        postCombatNarration('💀 [COMBAT] Todos los miembros del grupo han caido. Fin del combate.');
+        endCombat('defeat');
+        return true;
+    }
+    return false;
+}
+
+/**
+ * @param {number} [depth] Cuántos turnos se han saltado ya porque la zona tumbó a quien empezaba.
+ */
+function advanceTurnIndex(depth = 0) {
     if (!combatEncounter.active || combatEncounter.turnOrder.length === 0) return null;
 
     // T2: si acaba el turno de alguien del grupo con una tregua pedida, ya la ha visto: sin
@@ -511,6 +551,9 @@ function advanceTurnIndex() {
     if (ending && !ending.isEnemy && /** @type {any} */ (combatEncounter).truce === 'pending') {
         /** @type {any} */ (combatEncounter).truceSeen = true;
     }
+    // J19.6: al acabar su turno, lo que le hacen las zonas en las que se queda (la esfera
+    // llameante quema al final del turno de quien está dentro).
+    if (ending && tellMagic(turnEndMagic(ending))) return null;
 
     // The machine owns the walk: it skips the fallen, wraps the order and counts the
     // round. This used to be a second implementation of the same thing, right here.
@@ -533,6 +576,9 @@ function advanceTurnIndex() {
         // Lo que una habilidad puso con duracion se va aqui, que es el unico sitio donde
         // el combate cuenta rondas.
         for (const line of expireTimedConditions()) postCombatNarration(line);
+        // J19: y lo que caduca con la ronda: las zonas, las invocaciones y las concentraciones
+        // que han llegado a su fin (y lo que dependía de ellas).
+        if (tellMagic(roundMagic())) return null;
 
         // Y aqui tiran los que estan en el suelo. En 5e se tira "al empezar tu turno",
         // pero la maquina de turnos salta a quien no puede actuar, asi que el turno de un
@@ -549,6 +595,16 @@ function advanceTurnIndex() {
         bossPhases();
         // A scenario won by the clock has no other moment to notice.
         if (checkScenarioOutcome()) return null;
+    }
+
+    // J19.4, J19.6 y J19.7: al empezar su turno se le baja el Escudo, le saltan las zonas en
+    // las que está, y quien se concentraba y ha caído, está incapacitado o recibió un golpe
+    // (los enemigos) aguanta o lo pierde.
+    const startingNow = getCurrentTurnEntry();
+    if (startingNow && tellMagic(turnStartMagic(startingNow))) return null;
+    // Si la zona le ha tumbado al empezar, su turno pasa al siguiente.
+    if (startingNow && !canTurnEntryAct(startingNow) && depth < combatEncounter.turnOrder.length) {
+        return advanceTurnIndex(depth + 1);
     }
 
     return getCurrentTurnEntry();
@@ -621,7 +677,8 @@ function walkTowardObjective(member, goal) {
  * @returns {string}
  */
 export function resolveAllyTurnAction(entry) {
-    const member = partyMembers.find(m => Number(m.id) === Number(entry.id));
+    // J19.5: también la invocación que va sola (o que le has dejado al juego, J7.3).
+    const member = getPartyMemberByTurnEntry(entry);
     if (!member) return '';
     const out = cannotAct(member.activeConditions);
     if (out && (Number(member.hp) || 0) > 0) return `💤 [COMBAT] ${member.name} no puede actuar (${CONDITION_WORDS[out] ?? out}): pierde el turno.`;
@@ -644,7 +701,9 @@ export function resolveAllyTurnAction(entry) {
     // Su postura la eliges tu, en su ficha. Sin elegir, se queda a tu lado: el valor
     // por defecto de antes era cargar, y eso no lo habia decidido nadie.
     const stance = stanceOf(member);
-    const yours = partyMembers[0];
+    // Una invocación se queda al lado de quien la llamó; los demás, al tuyo.
+    const caster = member.summon ? partyMembers.find(m => String(m.id) === String(member.casterId)) : null;
+    const yours = caster ?? partyMembers[0];
     const leader = yours && String(yours.id) !== String(member.id) && (Number(yours.hp) || 0) > 0
         ? cellOf(yours) : null;
 
@@ -655,7 +714,8 @@ export function resolveAllyTurnAction(entry) {
             ...cellOf(member),
             currentHp: Number(member.hp) || 0,
             maxHp: Number(member.maxHp) || 1,
-            speedFeet: Number(member.speed) || 30,
+            // J19: con lo que le han echado encima (Acelerado, Ralentizado…).
+            speedFeet: speedOf(member),
             // Su arma de verdad: un arquero que se queda atras tiene que poder disparar.
             attackRangeFeet: getAttackRangeFeet(member),
         },
@@ -669,7 +729,7 @@ export function resolveAllyTurnAction(entry) {
             reachFeet: Number(e.attackRangeFeet) || 5,
             boss: Boolean(e.boss),
         })),
-        allies: partyMembers
+        allies: [...partyMembers, ...livingSummons()]
             .filter(m => Number(m.id) !== Number(member.id) && (Number(m.hp) || 0) > 0)
             .map(m => ({ id: String(m.id), ...cellOf(m) })),
         stance,
@@ -695,12 +755,68 @@ export function resolveAllyTurnAction(entry) {
 
     if (plan.action === 'dodge') performManeuver('esquivar');
 
-    if (plan.action === 'attack' && plan.targetId != null) {
+    // Lo que no pega (un familiar), no pega: se queda al lado de quien lo llamó.
+    if (plan.action === 'attack' && plan.targetId != null && !(member.summon && member.attacks === false)) {
         const target = living.find((/** @type {any} */ e) => String(e.instanceId) === String(plan.targetId));
         if (target) handlePlayerCombatAttack(String(target.name));
     }
 
     return lines.join('\n');
+}
+
+/**
+ * J7.3 y D-J32: quién mueve a alguien en combate, «Lo muevo yo» o «Que lo lleve el juego».
+ * Un compañero, desde el vínculo de amigo (5), en los dos modos de campaña; una invocación, si
+ * puedes llevar a quien la llamó. Vale también a mitad de pelea: si le toca ahora y se lo
+ * devuelves al juego, juega su turno solo en ese momento.
+ *
+ * @param {any} member Del grupo, o una invocación.
+ * @param {'player'|'engine'} control
+ * @returns {boolean} Si ha cambiado.
+ */
+export function chooseControl(member, control) {
+    if (!member || !canChooseControl(member)) return false;
+    if (controlOf(member) === control) return false;
+    if (!setControl(member, control)) return false;
+    savePartyState();
+    if (combatEncounter.active) saveCombatState();
+    const label = CONTROL_LABELS[control];
+    toastr.info(control === 'player' ? `${member.name}: lo mueves tú en combate.` : `${member.name}: lo lleva el juego en combate.`, label);
+    const entry = getCurrentTurnEntry();
+    if (combatEncounter.active && entry && !entry.isEnemy && String(entry.id) === String(member.id) && control === 'engine') {
+        setCombatBoardSelection({ tokenId: null, boardName: '', locationName: '' });
+        runCombatTurnLoop(true);
+    }
+    renderPartyMembers();
+    renderLocationMapsPreview();
+    return true;
+}
+
+/**
+ * `chooseControl` por el id de ficha: del grupo o una invocación en pie.
+ *
+ * @param {string|number} id
+ * @param {'player'|'engine'} control
+ * @returns {boolean}
+ */
+export function chooseControlOf(id, control) {
+    const member = partyMembers.find(m => String(m.id) === String(id))
+        ?? (combatEncounter.active ? livingSummons().find(s => String(s.id) === String(id)) : null);
+    return member ? chooseControl(member, control) : false;
+}
+
+/**
+ * Quién se puede elegir que lo muevas tú o el juego ahora mismo: los compañeros que ya son
+ * amigos y las invocaciones en pie que se dejan llevar. Con su lado de ahora.
+ *
+ * @returns {Array<{id: string, name: string, summon: boolean, control: 'player'|'engine'}>}
+ */
+export function controlChoices() {
+    const people = partyMembers.slice(1).filter(m => !m.dead);
+    const summons = combatEncounter.active ? livingSummons() : [];
+    return [...people, ...summons]
+        .filter(m => canChooseControl(m))
+        .map(m => ({ id: String(m.id), name: String(m.name), summon: Boolean(m.summon), control: controlOf(m) }));
 }
 
 export function runCombatTurnLoop(includeCurrent = true) {
@@ -817,6 +933,8 @@ export function instancesFromPlacements(placements) {
             profile: /** @type {any} */ (template).profile,
             attackRangeFeet: /** @type {any} */ (template).attackRangeFeet,
             abilities: /** @type {any} */ (template).abilities,
+            // J19.12: la bruja que lanza conjuros de verdad, con sus espacios (`enemy-spells.js`).
+            ...(/** @type {any} */ (template).spellcasting ? { spellcasting: /** @type {any} */ (template).spellcasting } : {}),
             gridX: placement.x,
             gridY: placement.y,
         });
@@ -979,6 +1097,8 @@ export function startCombat(template, count, gridWidth = 50, gridHeight = 50) {
             profile: /** @type {any} */ (template).profile,
             attackRangeFeet: /** @type {any} */ (template).attackRangeFeet,
             abilities: /** @type {any} */ (template).abilities,
+            // J19.12: sus conjuros, si los lanza.
+            ...(/** @type {any} */ (template).spellcasting ? { spellcasting: /** @type {any} */ (template).spellcasting } : {}),
             gridX: spawnCells[i]?.x ?? 0,
             gridY: spawnCells[i]?.y ?? 0,
         });
@@ -1190,6 +1310,10 @@ export function checkScenarioOutcome() {
  */
 export function endCombat(reason = 'ended') {
     postCombatNarration('🏁 [COMBAT] El combate termina.');
+    // J19: lo que dura un minuto no pasa a la escena siguiente: las invocaciones se van, las
+    // zonas se deshacen y las concentraciones de la pelea se acaban.
+    const magicEnds = endOfFightMagic();
+    if (magicEnds.length > 0) postCombatNarration(`[COMBAT] ${magicEnds.join('\n')}`);
     // T2: la ayuda que no llegó a entrar no espera a la pelea siguiente.
     const helpBoard = getActiveBoardContext().board;
     if (helpBoard && Array.isArray(helpBoard.waves) && helpBoard.waves.some((/** @type {any} */ w) => w?.help && !w.done)) {
@@ -1290,12 +1414,17 @@ export function endCombat(reason = 'ended') {
         defeated: combatEncounter.enemies.filter(e => (e.currentHp || 0) <= 0).map(e => e.name),
     });
     // Z1: si cuenta el motor, el final de la pelea en prosa.
-    const wounded = partyMembers.filter(m => (m.hp || 0) > 0 && (m.hp || 0) <= (Number(m.maxHp) || 1) / 2).map(m => m.name);
+    const woundedMembers = partyMembers.filter(m => (m.hp || 0) > 0 && (m.hp || 0) <= (Number(m.maxHp) || 1) / 2);
+    const wounded = woundedMembers.map(m => m.name);
     const fallenFoes = [...new Set(combatEncounter.enemies.filter(e => (e.currentHp || 0) <= 0).map(e => String(e.name).replace(/\s+\d+$/, '')))];
     const ending = tellMoment('fin-combate', {
         ganado: reason === 'victory' ? 'sí' : (reason === 'manual' || reason === 'fled' ? 'huida' : 'no'),
         caidos: listNames(fallenFoes),
-        heridos: wounded.length === 0 ? '' : `${listNames(wounded)} ${wounded.length === 1 ? 'sale malherido' : 'salen malheridos'}.`,
+        // J13.3: con el género de quien sale herido; de varios, el del grupo (todas mujeres,
+        // «malheridas»).
+        heridos: wounded.length === 0 ? '' : `${listNames(wounded)} ${wounded.length === 1
+            ? `sale ${gendered(woundedMembers[0], 'malherido', 'malherida')}`
+            : `salen ${gendered(groupGender(woundedMembers), 'malheridos', 'malheridas')}`}.`,
         botin: listNames((loot?.items ?? []).map((/** @type {any} */ item) => String(item?.name || '')).filter(Boolean).slice(0, 3)),
     });
     postForModel(epilogue, { show: ending }).catch(error => console.error('[party] could not post the combat epilogue', error));

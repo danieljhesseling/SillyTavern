@@ -73,6 +73,7 @@ import { numberWord, playSucesos, postCombatNarration, postForModel, showTip, te
 import { partyPurse, payFromParty, savePartyState } from './roster.js';
 import { judgeDecision } from './companions.js';
 import { countStat } from './menus.js';
+import { alarmBonus } from './rituals.js';
 
 /**
  * Lo que el narrador del motor sabe de un sitio al llegar: cómo es, a qué hora, con qué
@@ -268,8 +269,8 @@ export async function campNight() {
         random,
         rollD20: () => rollDiceDetailed('1d20', 20).total,
         // R3: quien sabe dar la voz hace mejor guardia.
-        // R5: la mascota también vigila.
-        perceptionOf: (/** @type {any} */ m) => perception(m) + watchBonus(living).amount + (petDoes(currentPet(), 'guardia') ? 2 : 0),
+        // R5: la mascota también vigila. J19.8: y el ritual Alarma, si se puso para esta noche.
+        perceptionOf: (/** @type {any} */ m) => perception(m) + watchBonus(living).amount + (petDoes(currentPet(), 'guardia') ? 2 : 0) + alarmBonus(),
         purse: partyPurse(),
         intruder: beasts.length > 0 ? beasts[Math.floor(random() * beasts.length) % beasts.length] : '',
     });

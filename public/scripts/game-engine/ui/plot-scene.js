@@ -19,6 +19,7 @@ import { describeDialogueEffect } from '../campaign/dialogues.js';
 import { loadPixelManifest } from './pixel-art.js';
 import { portraitFor, backdropFor } from './meetup-scene.js';
 import { optionChips, openDialogueWindow } from './dialogue-window.js';
+import { noReturnBadge, noReturnGuard } from './decision-warning.js';
 
 /** @param {any} value @returns {string} */
 const text = (value) => String(value ?? '').trim();
@@ -167,6 +168,8 @@ export async function openPlotScene({
     let busy = false;
     /** @type {Set<number>} */
     const decided = new Set();
+    // J11.1: lo que no tiene vuelta atrás se decide a la segunda pulsación.
+    const guard = noReturnGuard(chips);
     const total = scene.beats.length;
 
     return new Promise(resolve => {
@@ -249,9 +252,10 @@ export async function openPlotScene({
             root.classList.toggle('ps-asking', asking());
 
             if (asking()) {
+                guard.reset();
                 for (const option of optionChips({ speaker: frame.who, mood: frame.mood, line: '', options: optionsNow(), ended: false, final: false })) {
-                    const button = chip(`qd-chip dw-option ps-option${option.locked ? ' dw-locked' : ''}${option.check ? ' dw-has-check' : ''}`, () => {
-                        if (!option.locked) void pick(option.id);
+                    const button = chip(`qd-chip dw-option ps-option${option.locked ? ' dw-locked' : ''}${option.check ? ' dw-has-check' : ''}${option.warn ? ' nr-weighty' : ''}`, () => {
+                        if (!option.locked && guard.request(option.id, option.warn)) void pick(option.id);
                     });
                     button.dataset.option = option.id;
                     if (option.locked) {
@@ -270,6 +274,7 @@ export async function openPlotScene({
                         why.appendChild(document.createTextNode(` ${option.locked}`));
                         body.appendChild(why);
                     }
+                    if (option.warn) body.appendChild(noReturnBadge(option.warn));
                     button.appendChild(body);
                     if (option.check) {
                         const check = el('span', 'dw-check');
@@ -370,7 +375,7 @@ export async function openPlotScene({
                     .find(o => o.key === event.key);
                 if (option) {
                     event.preventDefault();
-                    void pick(option.id);
+                    if (guard.request(option.id, option.warn)) void pick(option.id);
                 }
             } else if ((event.key === 'Enter' || event.key === ' ') && !(event.target instanceof HTMLButtonElement)) {
                 event.preventDefault();
