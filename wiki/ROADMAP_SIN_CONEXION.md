@@ -41,7 +41,22 @@ author: DanielJHesseling / Claude Opus 5.5
 
 ---
 
-## 📍 Cómo va (2026-09-29)
+## 📍 Cómo va (2026-09-30)
+
+**Avance, contando las 143 filas activas** (sin lo aparcado ni las decisiones):
+- **43 % jugable**: se puede usar en el juego.
+- **63 % construido**: el motor o su pantalla existen y se están enchufando.
+
+| Hito | Jugable | Construido |
+| :--- | :---: | :---: |
+| M1 · Entrar y crear el personaje | 86 % | 86 % |
+| M2 · El gremio y la primera campaña | 56 % | 60 % |
+| M3 · El pueblo y su gente | 0 % | 65 % |
+| M4 · Strahd con mapas y magia | 22 % | 65 % |
+| M5 · Una campaña bien contada | 27 % | 44 % |
+| M7 · En el móvil | 67 % | 67 % |
+
+«Construido» cuenta lo que ya existe y está probado en su pantalla, pero que el juego todavía no abre: la magia, los diálogos, las quedadas, las escenas del hilo, el pueblo con gente a cada hora… Lo están enchufando ahora.
 
 **La primera vuelta jugable ya está.** Se entra por «Jugar sin conexión», se hace el personaje, se gana la prueba del gremio, se contratan mercenarios y se empieza *La Maldición de Strahd* o *1387* desde el tablón. Se vuelve al gremio con todo lo ganado y se sigue la campaña donde se dejó. Lo comprueba `tools/e2e-gremio.mjs`, de punta a punta en el navegador.
 
