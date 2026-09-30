@@ -1521,6 +1521,29 @@ export function tryWriteFileSync(filePath, data) {
 }
 
 /**
+ * Same as {@link tryWriteFileSync}, but survives the moment on Windows when another request is
+ * reading the same file (a save slot copying the game, the recent chats list): replacing an open
+ * file fails there with EPERM/EBUSY/EACCES for a few milliseconds. Without the retry the save
+ * answered 500 and the player's progress since the last save was lost.
+ * @param {string} filePath
+ * @param {string} data
+ * @param {number} [attempts=10] How many times to try before giving up.
+ * @returns {Promise<void>}
+ */
+export async function tryWriteFileWithRetry(filePath, data, attempts = 10) {
+    for (let attempt = 1; ; attempt++) {
+        try {
+            tryWriteFileSync(filePath, data);
+            return;
+        } catch (error) {
+            const busy = process.platform === 'win32' && ['EPERM', 'EBUSY', 'EACCES'].includes(error?.code);
+            if (!busy || attempt >= attempts) throw error;
+            await delay(20 * attempt);
+        }
+    }
+}
+
+/**
 * Attempts to read a file as utf8.
 * @param {string} filePath
 * @returns {string|null}

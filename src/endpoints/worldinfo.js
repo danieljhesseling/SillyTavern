@@ -5,7 +5,7 @@ import express from 'express';
 import sanitize from 'sanitize-filename';
 import _ from 'lodash';
 import { sync as writeFileAtomicSync } from 'write-file-atomic';
-import { tryParse } from '../util.js';
+import { tryParse, tryWriteFileWithRetry } from '../util.js';
 
 /**
  * Reads a World Info file and returns its contents
@@ -131,7 +131,7 @@ router.post('/import', (request, response) => {
     return response.send({ name: worldName });
 });
 
-router.post('/edit', (request, response) => {
+router.post('/edit', async (request, response) => {
     if (!request.body) {
         return response.sendStatus(400);
     }
@@ -151,7 +151,13 @@ router.post('/edit', (request, response) => {
     const filename = sanitize(`${request.body.name}.json`);
     const pathToFile = path.join(request.user.directories.worlds, filename);
 
-    writeFileAtomicSync(pathToFile, JSON.stringify(request.body.data, null, 4));
+    // A save slot may be reading this world right now (Windows refuses to replace an open file).
+    try {
+        await tryWriteFileWithRetry(pathToFile, JSON.stringify(request.body.data, null, 4));
+    } catch (error) {
+        console.error(error);
+        return response.sendStatus(500);
+    }
 
     return response.send({ ok: true });
 });

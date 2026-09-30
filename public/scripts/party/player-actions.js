@@ -53,7 +53,7 @@ import { chargeOpportunityAttacks, enemyBark, resolveEnemyAttackOn } from './ene
 import { checkScenarioOutcome, endCombat, judgeCurrentScenario, offerExit, runCombatTurnLoop } from './combat-flow.js';
 import {
     persistBoardTerrain, getActiveBoardTerrain, getActiveBoardContext, boardVisibility, fireHazardsOnEnter,
-    attackHindrance, noteZoneEntry, walkThroughSpellZones,
+    attackHindrance, noteZoneEntry, walkThroughSpellZones, walkTraps, knownTrapsHere,
 } from './board.js';
 import { renderLocationMapsPreview } from './board-view.js';
 import { getCampaignBonds, saveCampaignState } from './time.js';
@@ -399,6 +399,13 @@ export function handlePlayerCombatMove(rawValue) {
         toastr.warning('Esa casilla ya está ocupada.', 'Ahí no se llega');
         return '';
     }
+    // J12.3: una trampa ya vista no se pisa a sabiendas: el camino la rodea.
+    const traps = knownTrapsHere();
+    if (traps.has(`${targetX},${targetY}`)) {
+        toastr.warning('Ahí hay una trampa a la vista.', 'Ahí no');
+        return '';
+    }
+    for (const key of traps) occupied.add(key);
     /** @type {Array<{x: number, y: number}>|null} */
     let way = null;
     let distanceFeet = getDistanceInFeet(position.gridX || 0, position.gridY || 0, targetX, targetY);
@@ -429,10 +436,17 @@ export function handlePlayerCombatMove(rawValue) {
     // (una telaraña) se para ahí, pagando solo lo andado.
     const zoneWalk = way ? walkThroughSpellZones(member, way.slice(1)) : { stopAt: -1, lines: [] };
     if (way && zoneWalk.stopAt >= 0 && zoneWalk.stopAt < way.length - 2) {
-        const stop = way[zoneWalk.stopAt + 1];
-        targetX = stop.x;
-        targetY = stop.y;
-        distanceFeet = getPathCost(getActiveBoardContext().terrain, way.slice(0, zoneWalk.stopAt + 2)) * 5;
+        way = way.slice(0, zoneWalk.stopAt + 2);
+    }
+    // J12.3: y las trampas del camino, casilla a casilla, no solo la de llegada: la que no se ha
+    // visto salta al pisarla y ahí se queda; la que ve de camino, le para.
+    if (way) {
+        const stop = walkTraps(member, way);
+        if (stop < way.length - 1) way = way.slice(0, stop + 1);
+        const end = way[way.length - 1];
+        targetX = end.x;
+        targetY = end.y;
+        distanceFeet = getPathCost(getActiveBoardContext().terrain, way) * 5;
     }
     member.mapPosition = {
         locationName: currentLocationName,
@@ -441,8 +455,9 @@ export function handlePlayerCombatMove(rawValue) {
     };
 
     // Lo que hubiera puesto en esa casilla. Se resuelve **despues** de mover: una trampa
-    // salta porque has llegado, no para impedir que llegues.
-    fireHazardsOnEnter(member, targetX, targetY);
+    // salta porque has llegado, no para impedir que llegues. Con camino, ya lo ha visto
+    // `walkTraps` paso a paso.
+    if (!way) fireHazardsOnEnter(member, targetX, targetY);
     Object.assign(combatEncounter, spendMovement(combatEncounter, distanceFeet, Number(member.speed) || 30));
     savePartyState();
     saveCombatState();

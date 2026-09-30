@@ -772,6 +772,61 @@ export function checkAvoid(raw, { path = 'avoid', rumors = undefined, milestones
     return { errors, warnings };
 }
 
+/** Los números que se dicen con letra, para «Alguacil Torres y dos más». */
+const NUMBER_WORDS = ['cero', 'uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez'];
+
+/**
+ * La primera línea de la elección, antes de pelear: quién espera y cómo, en llano.
+ *
+ * - Gente: «Alguacil Torres y dos más os cierran el paso.»
+ * - Bestias: «Os han olido: Lobo famélico ×3.»
+ * - Muertos o cosas: «Algo se mueve delante: Zombi de Strahd ×3.»
+ *
+ * @param {FoeInfo[]} foes
+ * @returns {string}
+ */
+export function avoidIntro(foes) {
+    const list = (Array.isArray(foes) ? foes : []).filter(f => text(f?.name));
+    if (list.length === 0) return '';
+    const minds = new Set(list.map(mindOf));
+    if (minds.has('gente')) {
+        const leader = leaderOf(list);
+        const others = list.length - 1;
+        if (others === 0) return `${leader} os cierra el paso.`;
+        return `${leader} y ${NUMBER_WORDS[others] ?? others} más os cierran el paso.`;
+    }
+    if (minds.has('bestia')) return `Os han olido: ${foesLine(list)}.`;
+    return `Algo se mueve delante: ${foesLine(list)}.`;
+}
+
+/**
+ * @typedef {Object} ExitPlan Lo que hace el juego tras una salida, sin pensarlo dos veces.
+ * @property {boolean} fight Si empieza la pelea.
+ * @property {boolean} enemiesFirst Si empiezan ellos (os han pillado huyendo o escondidos).
+ * @property {boolean} passed Si el tablero queda pasado: ya no espera nadie, y la historia sigue
+ *   como si se hubiera ganado (sin botín).
+ * @property {boolean} leave Si el grupo sale del tablero y la pelea se queda ahí, esperando.
+ */
+
+/**
+ * Lo que hay que hacer con lo que salió de una salida (`resolveAvoid`). Una salida que sale
+ * bien pero no cuenta como pasar el tablero (`resolves: false`) os saca de él: si no, el hito
+ * que pide ganarlo no se podría cumplir nunca.
+ *
+ * @param {Pick<AvoidResult, 'ends'|'resolves'|'enemiesFirst'>} result
+ * @returns {ExitPlan}
+ */
+export function exitPlan(result) {
+    const fight = result?.ends === 'fight';
+    const passed = result?.ends === 'avoided' && Boolean(result.resolves);
+    return {
+        fight,
+        enemiesFirst: fight && Boolean(result.enemiesFirst),
+        passed,
+        leave: !fight && !passed,
+    };
+}
+
 /**
  * Los tableros con pelea que no traen ninguna salida escrita (J12.2: toda pelea escrita tiene
  * otra salida). Con las de siempre se juega igual, pero lo escrito se lee mejor.

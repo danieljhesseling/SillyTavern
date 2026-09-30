@@ -27,6 +27,8 @@ import { heroNameTaken, nameTakenLine } from '../campaign/hub-heroes.js';
 import { resolveGender } from '../campaign/grammar.js';
 import { SKILLS } from '../rules/checks.js';
 import { firstArt, loadPixelManifest } from './pixel-art.js';
+import { faceChooser } from './face-picker.js';
+import { faceElement } from './hero-face.js';
 
 /** @param {any} value */
 const text = (value) => String(value ?? '').trim();
@@ -154,8 +156,10 @@ export async function openHeroCreator({
         icon: /** @type {any} */ (BACKGROUND_ICONS)[id] ?? 'fa-scroll',
     }));
 
-    // `textForm`: cómo le habla el texto a quien es no binario, `m` o `f` (D-J15).
-    const state = { name: '', gender: '', textForm: '', race: '', className: '', background: '', about: '', image: '' };
+    // `textForm`: cómo le habla el texto a quien es no binario, `m` o `f` (D-J15). `face`: la
+    // cara sin arte que elige (D-J52); null, el retrato de su clase.
+    /** @type {{name: string, gender: string, textForm: string, race: string, className: string, background: string, about: string, image: string, face: any}} */
+    const state = { name: '', gender: '', textForm: '', race: '', className: '', background: '', about: '', image: '', face: null };
     // J1.2: repartir unos puntos o tirar, a elegir. Lo que se suma a la base.
     /** @type {Record<string, number>} */
     let statBonus = readStatBonus({});
@@ -306,12 +310,27 @@ export async function openHeroCreator({
     const faceValue = $('<input type="hidden" class="hc-face" />');
     const faceButton = $('<button type="button" class="menu_button hc-face-btn" title="Buscar una imagen en el disco"></button>')
         .append('<i class="fa-solid fa-folder-open"></i>');
-    portrait.append(face, stand, placeholder, $('<div class="hc-portrait-controls"></div>').append(faceButton), faceFile, faceValue);
+    // D-J52: la cara que elige sin imagen (iniciales, icono o emoji), en grande.
+    const chosen = $('<div class="hc-face-chosen"></div>').hide();
+    portrait.append(face, stand, chosen, placeholder, $('<div class="hc-portrait-controls"></div>').append(faceButton), faceFile, faceValue);
     if (!uploadFace) faceButton.hide();
     right.append(portrait);
 
     const idBox = $('<div class="hc-idbox"></div>');
     right.append(idBox);
+
+    // D-J52: sin imagen propia, cómo se ve tu cara: el retrato de tu clase, tus iniciales en un
+    // color, un icono o un emoji. Va debajo de cómo te presentas: el nombre, lo primero.
+    const faceGroup = $('<div class="hc-group hc-face-group"></div>')
+        .append($('<span class="hc-card-label"></span>').text('Tu cara'))
+        .append(faceChooser({
+            value: null,
+            who: () => ({ name: text(nameInput.val()), classIcon: state.className ? classIcon(state.className) : '' }),
+            onChange: (picked) => {
+                state.face = picked;
+                showPortrait();
+            },
+        }));
 
     const nameInput = $('<input type="text" class="text_pole hc-input hc-name" maxlength="60" />')
         .attr('placeholder', 'Lyra, Brand, la que no dice su nombre…');
@@ -383,7 +402,7 @@ export async function openHeroCreator({
     }
     idBox.append($('<div class="hc-group"></div>')
         .append($('<span class="hc-card-label"></span>').text('Cómo te presentas'))
-        .append(genders), formGroup, genderNote);
+        .append(genders), formGroup, genderNote, faceGroup);
 
     const aboutInput = $('<textarea class="text_pole hc-input hc-about" rows="4" maxlength="600"></textarea>')
         .attr('placeholder', 'De dónde vienes, qué se te da bien, qué callas.');
@@ -412,6 +431,8 @@ export async function openHeroCreator({
             className: state.className,
             about: text(aboutInput.val()),
             image: state.image,
+            // D-J52: la cara sin arte que eligió (null: la de su clase).
+            face: state.face,
             background: state.background,
             statBonus: { ...statBonus },
         };
@@ -480,7 +501,15 @@ export async function openHeroCreator({
     function showPortrait() {
         const now = answers();
         placeholder.attr('class', `fa-solid ${now.className ? classIcon(now.className) : 'fa-user'} hc-portrait-placeholder`);
+        chosen.hide().empty();
         if (state.image) {
+            stand.hide();
+            placeholder.hide();
+            return;
+        }
+        // D-J52: la cara que eligió, en grande, en vez del retrato de relleno.
+        if (state.face) {
+            chosen.append(faceElement({ name: now.name || '?', face: state.face }, { badgeClass: 'hc-face-badge' })).show();
             stand.hide();
             placeholder.hide();
             return;
@@ -545,6 +574,7 @@ export async function openHeroCreator({
             face.attr('src', path).show();
             placeholder.hide();
             stand.hide();
+            chosen.hide();
         } catch (error) {
             console.error('[hero] could not upload the face', error);
             warning.text('No se pudo guardar esa imagen. Puedes seguir sin cara.').show();

@@ -36,7 +36,7 @@ import { describeLootItem } from '../game-engine/combat/loot-items.js';
 import { openPlotScene } from '../game-engine/ui/plot-scene.js';
 import { sceneFollows, dialogueFollow, scheduleFollows, laterRows, checkLaters } from '../game-engine/campaign/aftermath.js';
 import { readSucesoState } from '../game-engine/campaign/sucesos.js';
-import { opinionsOn, opinionBadges, opinionNotes, verdictsOf } from '../game-engine/campaign/companion-opinions.js';
+import { opinionsOn, opinionBadges, opinionNotes, verdictsOf, importantOption } from '../game-engine/campaign/companion-opinions.js';
 import { readCompanionCards } from '../game-engine/campaign/companion-cards.js';
 import { weightyMilestones, actionNoReturn, noReturnConfirm } from '../game-engine/campaign/weighty.js';
 import {
@@ -401,13 +401,21 @@ function companionCards() {
 }
 
 /**
+ * @typedef {{scene?: boolean, dialogue?: any}} OpinionContext D-J48: de dónde es la opción: de
+ *   una escena del hilo (`scene`) o de una charla escrita (`dialogue`, para ver adónde lleva).
+ */
+
+/**
  * J7.5: lo que opina cada compañero del grupo de una opción escrita (de una charla o de una
- * escena del hilo). Quien juega no opina de sí mismo.
+ * escena del hilo). Quien juega no opina de sí mismo. D-J48: solo de las importantes
+ * (`importantOption`): en lo demás, nadie opina.
  *
  * @param {any} option
+ * @param {OpinionContext} [context]
  * @returns {import('../game-engine/campaign/companion-opinions.js').Opinion[]}
  */
-export function optionOpinions(option) {
+export function optionOpinions(option, context = {}) {
+    if (!importantOption(option, context)) return [];
     const hero = storyHero();
     const party = [hero, ...partyMembers.filter(m => m !== hero)].filter(Boolean);
     return opinionsOn({ option, party, cards: companionCards() });
@@ -417,10 +425,11 @@ export function optionOpinions(option) {
  * J7.5: lo que se ve en la opción antes de elegirla: «A Gerd le gusta esto».
  *
  * @param {any} option
+ * @param {OpinionContext} [context]
  * @returns {import('../game-engine/campaign/companion-opinions.js').OpinionBadge[]}
  */
-export function optionOpinionTags(option) {
-    return opinionBadges(optionOpinions(option));
+export function optionOpinionTags(option, context = {}) {
+    return opinionBadges(optionOpinions(option, context));
 }
 
 /**
@@ -428,10 +437,11 @@ export function optionOpinionTags(option) {
  * ventana lo dice) y se devuelve dicho para la ventana: «A Gerd le ha gustado.».
  *
  * @param {any} option
+ * @param {OpinionContext} [context]
  * @returns {string[]}
  */
-export function judgeOption(option) {
-    const opinions = optionOpinions(option);
+export function judgeOption(option, context = {}) {
+    const opinions = optionOpinions(option, context);
     if (opinions.length === 0) return [];
     judgeDecision('', { verdicts: verdictsOf(opinions), quiet: true });
     return opinionNotes(opinions);
@@ -576,6 +586,8 @@ function queuePlotScenes(entries) {
                 console.error('[party] la escena del hilo falló', error);
             } finally {
                 scenesPending = Math.max(0, scenesPending - 1);
+                // D-J45: acabada la escena, «Continuar» ya no lleva a ella: la fila se redibuja.
+                if (isShellOpen()) refreshGameShell();
             }
         }
     });
@@ -611,12 +623,13 @@ async function playPlotScene(milestone, scene) {
         getWorld: (who) => storyWorld(who),
         rollD20: () => rollDiceDetailed('1d20', 20).total,
         applyEffects: async (effects, context) => cameOf(context.beat, await applySceneEffectsToGame(effects, { roll: context.roll, hero, defer: pending, clues })),
-        // J7.5: lo que opina el grupo de cada opción, y al elegir, su aprobación.
-        opinionsFor: optionOpinionTags,
+        // J7.5: lo que opina el grupo de cada opción, y al elegir, su aprobación. D-J48: una escena
+        // del hilo es de las charlas importantes, toda ella.
+        opinionsFor: (option) => optionOpinionTags(option, { scene: true }),
         onChoice: (optionId, context) => {
             // J11.2: la charla del final de la escena también deja lo que vuelve días después.
             if (context.beat < 0 && shown.dialogue) recordDialogueAftermath(shown.dialogue, optionId, context.outcome);
-            return cameOf(context.beat, judgeOption(context.option));
+            return cameOf(context.beat, judgeOption(context.option, { scene: true }));
         },
         memory: chat_metadata?.[DIALOGUE_MEMORY_KEY] ?? null,
         onMemory: (memory) => {

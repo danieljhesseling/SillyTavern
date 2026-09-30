@@ -7,13 +7,17 @@
  * y os cobraba lo mismo. Aquí cada cosa que se hace en un sitio deja una **huella**: qué fue,
  * dónde y cuándo. Y la gente del pueblo reacciona según `compendio/ecos.json`:
  *
- * - **Precios**: la tienda os cobra un 30 % más durante cuatro semanas, y dice por qué.
- * - **Trato**: a la segunda, no os vende nada; en la capilla no curan a quien levanta muertos.
- *   Y quien lo vio os mira peor una vez (`trato`, con `attitudes.js`).
+ * - **Precios**: la tienda os cobra un 30 % más durante una semana, y dice por qué.
+ * - **Trato**: en la capilla no curan a quien levanta muertos. Y quien lo vio os mira peor una
+ *   vez (`trato`, con `attitudes.js`).
+ * - **El calabozo** (D-J47): a la segunda vez que os pillan robando en la misma tienda, mientras
+ *   se acuerdan de la primera, la guardia os lleva un par de días (`calabozo`, con `jailFor`).
+ *   Antes, la tienda dejaba de venderos cuatro semanas; era mucho.
  * - **Saludos**: quien atiende os recibe sabiendo lo que hicisteis.
  * - **Rumores**: en la posada se cuenta.
  *
- * Todo se olvida con el tiempo (`dura`, días desde la última vez), como «buscado».
+ * Todo se olvida con el tiempo (`dura`, días desde la última vez), como «buscado». Lo que se
+ * hace otra vez mientras se acuerdan lo refresca todo; lo de antes de un olvido ya no cuenta.
  *
  * Las huellas se guardan en la partida (`WORLD_MARKS_KEY`): `{deed, town, place, who, day}`.
  * Lo que se hizo (`deed`) es uno de `DEEDS`; dónde, el pueblo (`town`, una localización) y el
@@ -31,7 +35,7 @@ export const WORLD_MARKS_KEY = 'worldMarks';
 export const MARKS_MAX = 40;
 
 /** Lo que deja huella. */
-export const DEEDS = ['robo', 'robo-oculto', 'multa', 'huida', 'nigromancia', 'caso-resuelto', 'caso-fallido'];
+export const DEEDS = ['robo', 'robo-oculto', 'multa', 'huida', 'calabozo', 'nigromancia', 'caso-resuelto', 'caso-fallido'];
 
 /** Cuánto dura una reacción que no dice cuánto. */
 export const DEFAULT_DURATION = 14;
@@ -107,6 +111,7 @@ export function addMark(raw, mark) {
  * @property {string[]} greetings
  * @property {string[]} rumors
  * @property {number} attitude
+ * @property {number} jail Los días de calabozo al encenderse (D-J47); 0, ninguno.
  */
 
 /**
@@ -135,10 +140,11 @@ export function readEchoes(rows) {
                 greetings: listOf(row.saludo),
                 rumors: listOf(row.rumor),
                 attitude: Math.sign(Math.round(Number(row.trato) || 0)),
+                jail: Math.max(0, Math.min(7, Math.floor(Number(row.calabozo) || 0))),
             };
         })
         .filter(echo => echo.id && DEEDS.includes(echo.deed)
-            && (echo.price !== 1 || echo.refuse || echo.greetings.length > 0 || echo.rumors.length > 0 || echo.attitude !== 0));
+            && (echo.price !== 1 || echo.refuse || echo.greetings.length > 0 || echo.rumors.length > 0 || echo.attitude !== 0 || echo.jail > 0));
 }
 
 /**
@@ -152,11 +158,15 @@ export function readEchoes(rows) {
  */
 function marksFor(echo, marks, { town, today }) {
     const here = fold(town);
-    const same = marks.filter(m => m.deed === echo.deed && fold(m.town) === here && (!echo.at || m.place === echo.at));
-    // Se olvida desde la última vez: robar otra vez lo refresca todo.
-    const last = Math.max(0, ...same.map(m => m.day));
-    if (same.length === 0 || today - last >= echo.lasts) return [];
-    return same;
+    const same = marks.filter(m => m.deed === echo.deed && fold(m.town) === here && (!echo.at || m.place === echo.at))
+        .sort((a, b) => a.day - b.day);
+    // Se olvida desde la última vez: robar otra vez, mientras se acuerdan, lo refresca todo.
+    if (same.length === 0 || today - same[same.length - 1].day >= echo.lasts) return [];
+    // D-J47: lo de antes de un olvido ya no cuenta. Pillados hoy, y la otra vez hace tres meses,
+    // es la primera vez otra vez: la cuenta va desde el último hueco más largo de lo que dura.
+    let start = same.length - 1;
+    while (start > 0 && same[start].day - same[start - 1].day < echo.lasts) start--;
+    return same.slice(start);
 }
 
 /**
@@ -311,6 +321,39 @@ export function markAttitude({ marks, rows, mark }) {
     const found = reactionsAt({ marks, rows, town: mark.town, place: mark.place ?? '', today: mark.day })
         .find(r => r.echo.deed === text(mark.deed) && r.echo.attitude !== 0);
     return found ? { who, delta: found.echo.attitude } : null;
+}
+
+/**
+ * D-J47: si lo que se acaba de hacer os lleva al calabozo: la reacción con `calabozo` que se
+ * enciende con esta huella (a la segunda vez que os pillan robando en la tienda, mientras se
+ * acuerdan de la primera). Nulo si no.
+ *
+ * @param {Object} input
+ * @param {any} input.marks Las huellas, ya con la nueva.
+ * @param {any} input.rows
+ * @param {{deed: string, town: string, place?: string, day: number}} input.mark La nueva.
+ * @returns {{days: number, echo: Echo, times: number}|null} Los días, la fila y cuántas van.
+ */
+export function jailFor({ marks, rows, mark }) {
+    if (!mark || !text(mark.town)) return null;
+    const found = reactionsAt({ marks, rows, town: mark.town, place: mark.place ?? '', today: mark.day })
+        .find(r => r.echo.deed === text(mark.deed) && r.echo.jail > 0
+            && r.marks.some(m => m.day === Math.max(1, Math.floor(Number(mark.day) || 1))));
+    return found ? { days: found.echo.jail, echo: found.echo, times: found.marks.length } : null;
+}
+
+/**
+ * D-J47: si os pillaran ahora haciendo esto aquí, si iríais al calabozo. Para avisarlo antes
+ * de intentarlo («Ya os pillaron aquí una vez…»).
+ *
+ * @param {Object} input
+ * @param {any} input.marks Las de ahora, sin la que se haría.
+ * @param {any} input.rows
+ * @param {{deed: string, town: string, place?: string, day: number}} input.mark La que se haría.
+ * @returns {number} Los días de calabozo; 0 si no.
+ */
+export function jailRisk({ marks, rows, mark }) {
+    return jailFor({ marks: addMark(marks, mark), rows, mark })?.days ?? 0;
 }
 
 /**

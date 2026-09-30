@@ -46,6 +46,8 @@ const jobs = [
     { name: 'sala del gremio', kind: 'e2e', args: ['tools/e2e-sala-gremio.mjs'] },
     // J14: tu gente en el pueblo del gremio: quedar, charlar, la cabecera por partes (puerto 8164).
     { name: 'gente', kind: 'e2e', args: ['tools/e2e-gente.mjs'] },
+    // J15.2, J3.3 y J15.6: las ranuras, cargar, exportar e importar (puerto 8201).
+    { name: 'guardar', kind: 'e2e', args: ['tools/e2e-guardar.mjs'] },
     // J5.4: añadir una campaña al tablón desde un archivo, empezarla y volver.
     { name: 'añadir campaña', kind: 'e2e', args: ['tools/e2e-importar-campana.mjs'] },
     // J20.9: la vuelta en un móvil, a toques y sin teclado, de pie y tumbado (puerto 8135).
@@ -53,7 +55,17 @@ const jobs = [
     ...(QUICK ? [] : /** @type {Job[]} */ ([
         // J19 y J19.10: la magia y la ficha, y la magia fuera de combate (puertos 8137 y 8139).
         { name: 'magia', kind: 'e2e', args: ['tools/e2e-magia.mjs'] },
+        // J14.7, J14.8, J7.4, J13.5, J14.9 y J7.2: noches, formación, misiones y el camino (puerto 8166).
+        { name: 'compañeros', kind: 'e2e', args: ['tools/e2e-companeros.mjs'] },
         { name: 'magia fuera de combate', kind: 'e2e', args: ['tools/e2e-magia-campo.mjs'] },
+        // J12.3, J12.8 a J12.13 y J20.2: cruzar a toques un mapa grande en imagen, con trampas (puerto 8171).
+        { name: 'tablero grande', kind: 'e2e', args: ['tools/e2e-tablero-grande.mjs'] },
+        // J12.2, J8.5, J12.6 y J4.6: evitar la pelea y salir de ella hablando, en la posada de 1387 (puerto 8190).
+        { name: 'peleas evitables', kind: 'e2e', args: ['tools/e2e-peleas.mjs'] },
+        // J16.1, J16.2 y J16.4: las vueltas a clics, como quien juega: 1387 hasta un final y la del
+        // gremio (prólogo, 1387, volver y Strahd). Sus números salen al final (puertos 8246 y 8247).
+        { name: 'vuelta 1387 a clics', kind: 'e2e', args: ['tools/vuelta-1387.mjs'] },
+        { name: 'vuelta del gremio a clics', kind: 'e2e', args: ['tools/vuelta-gremio.mjs'] },
         { name: 'vuelta 1-48', kind: 'e2e', args: ['tools/e2e-campaign.mjs', '--parte', 'a', '--port', '8126'] },
         { name: 'vuelta 49-73', kind: 'e2e', args: ['tools/e2e-campaign.mjs', '--parte', 'b', '--port', '8127'] },
     ])),
@@ -70,7 +82,7 @@ const clock = (ms) => `${Math.floor(ms / 60000)}:${String(Math.round((ms % 60000
  *
  * @param {Job} job
  * @param {string} text
- * @returns {{ok: number, bad: number, failed: string[]}}
+ * @returns {{ok: number, bad: number, failed: string[], numbers?: string[]}}
  */
 function readLog(job, text) {
     if (job.kind === 'jest') {
@@ -89,7 +101,9 @@ function readLog(job, text) {
         failed.push(`${line.slice(4).trim()}${detail}`.slice(0, 400));
     });
     for (const line of lines) if (line.startsWith('WAIT')) failed.push(line.slice(4).trim().slice(0, 300));
-    return { ok, bad: failed.length, failed };
+    // J16.4: los números que importan (sección 6 del plan), los que saca cada vuelta.
+    const numbers = lines.filter(l => l.startsWith('NUM')).map(l => l.slice(3).trim());
+    return { ok, bad: failed.length, failed, numbers };
 }
 
 /**
@@ -125,6 +139,11 @@ for (const r of results) {
     console.log(`\n--- ${r.job.name}: lo que falló ---`);
     if (r.failed.length === 0) console.log(`  (salió con código ${r.code} sin decir qué: mira el registro)`);
     for (const line of r.failed) console.log(`  ${line}`);
+}
+for (const r of results) {
+    if (!r.numbers?.length) continue;
+    console.log(`\n--- ${r.job.name}: los números (sección 6) ---`);
+    for (const line of r.numbers) console.log(`  ${line}`);
 }
 console.log(`\nRegistros: ${logs}`);
 const allFine = results.every(r => r.fine);

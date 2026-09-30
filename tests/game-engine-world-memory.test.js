@@ -63,6 +63,26 @@ test('un nombre en plural corta el paso sin «Los de»', () => {
     expect(roadTrouble({ factions: [cuervos], places: ['Torre'], purse: 100 })?.name).toBe('Los Cuervos os cortan el paso');
 });
 
+test('cada nombre de facción se lee bien al cortar el paso, con artículo o sin él', () => {
+    const say = (/** @type {string} */ name) => roadTrouble({
+        factions: [{ id: 'x', name, seat: 'Torre', holds: [], reputation: -3, enemies: [] }], places: ['Torre'], purse: 100,
+    })?.name;
+    // Los de 1387 y los de Strahd, tal como vienen en sus paquetes.
+    expect(say('Leales de Montesclaros')).toBe('Los Leales de Montesclaros os cortan el paso');
+    expect(say('Los Lobos del Bosque')).toBe('Los Lobos del Bosque os cortan el paso');
+    expect(say('La Casa Keller')).toBe('Los de la Casa Keller os cortan el paso');
+    expect(say('La Orden del Dragón de Plata')).toBe('Los de la Orden del Dragón de Plata os cortan el paso');
+    expect(say('La corte de Strahd')).toBe('Los de la corte de Strahd os cortan el paso');
+    expect(say('Los Hijos de la Madre Noche')).toBe('Los Hijos de la Madre Noche os cortan el paso');
+    // Y los que podría escribir un Gem.
+    expect(say('El Gremio de Mercaderes')).toBe('Los del Gremio de Mercaderes os cortan el paso');
+    expect(say('Hermanas de la Luz')).toBe('Las Hermanas de la Luz os cortan el paso');
+    expect(say('Casa Vallakovich')).toBe('Los de la Casa Vallakovich os cortan el paso');
+    expect(say('Consejo de Vallaki')).toBe('Los del Consejo de Vallaki os cortan el paso');
+    expect(say('Vane')).toBe('Los de Vane os cortan el paso');
+    expect(say('las Espadas Negras')).toBe('Las Espadas Negras os cortan el paso');
+});
+
 describe('roadTrouble', () => {
     test('quien os tiene ganas y manda por donde pasáis os para', () => {
         const trouble = roadTrouble({ factions: [casa, cuervos], places: ['Paso Alto', 'Vado'], purse: 100 });

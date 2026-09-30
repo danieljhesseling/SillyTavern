@@ -47,14 +47,15 @@ import { zoneFromSpell, placeZone, zoneFlagsAt, resolveZoneEffect, clearZones, e
 import { planSummon, dismissSummons } from '../game-engine/rules/summons.js';
 import { itemSpellSpec, spendItemCharges, itemWorks, scrollCheck, setAttunement, ATTUNEMENT_MAX, attunedItems } from '../game-engine/rules/magic-items.js';
 import { firstArt, loadPixelManifest, boardBiome } from '../game-engine/ui/pixel-art.js';
-import { fieldChoices, castField, darkHere, lightActive, lightLookBonus, roadHeal } from '../game-engine/rules/field-magic.js';
+import { fieldChoices, castField, darkHere, lightActive, lightLookBonus, roadHeal, arrivalHealAsk } from '../game-engine/rules/field-magic.js';
 import { openFieldMagic } from '../game-engine/ui/field-magic-panel.js';
 import { readCases } from '../game-engine/campaign/cases.js';
 import { templeWork } from '../game-engine/campaign/item-lore.js';
 import { petName } from '../game-engine/campaign/pet.js';
 import { alarmActive } from '../game-engine/rules/rituals.js';
 import { isShellOpen, refreshGameShell } from '../game-engine/ui/shell/game-shell.js';
-import { CASES_KEY, FIELD_LIGHT_KEY, WANTED_KEY } from './keys.js';
+import { currentTownPlace } from '../game-engine/ui/shell/town-scene.js';
+import { CASES_KEY, FIELD_LIGHT_KEY, SPOKEN_DEAD_KEY, WANTED_KEY } from './keys.js';
 import { combatEncounter, currentBoardName, currentLocationName, partyMembers } from './state.js';
 import {
     saveCombatState, getCurrentTurnState, getEnemyByInstanceId, getAliveEnemies, getCurrentActingMember,
@@ -62,15 +63,16 @@ import {
 } from './combat-state.js';
 import { floatOnToken } from './combat-log.js';
 import { damagePartyMember } from './enemy-turn.js';
+import { shieldAgainst } from './spell-turn.js';
 import { judgeCurrentScenario, checkScenarioOutcome, endCombat } from './combat-flow.js';
 import { persistBoardTerrain, getActiveBoardContext, explodeBarrels, boardVisibility } from './board.js';
 import { renderLocationMapsPreview } from './board-view.js';
-import { applyCampaignRuleset, lastWorldRows, hereLocation, lastCompendium, getLocationBoards, leaveMark } from './world.js';
+import { applyCampaignRuleset, lastWorldRows, hereLocation, lastCompendium, getLocationBoards, leaveMark, lastPack } from './world.js';
 import { nudgeRuler } from './factions.js';
 import { advanceCampaignDay, getCampaignCalendar, getCurrentSlotLabel } from './time.js';
 import { currentPet } from './pet.js';
 import { noteDeed, worldWrite } from './world-growth.js';
-import { postCombatNarration, postForModel, showTip } from './narration.js';
+import { postCombatNarration, postForModel, showTip, narratorMode } from './narration.js';
 import { savePartyState, renderPartyMembers } from './roster.js';
 import { judgeDecision, recordFeat } from './companions.js';
 
@@ -261,21 +263,24 @@ export async function openGrimoire(all = false) {
 }
 
 /**
- * J19.10: si aquí no se ve sin luz: de noche, o en un tablero de piedra, una cueva o una
- * cripta (el mismo bioma con el que se dibuja el tablero), o en una localización de mazmorra.
+ * J19.10: si aquí no se ve sin luz: en un tablero de piedra, una cueva o una cripta (el mismo
+ * bioma con el que se dibuja el tablero), o en una localización de mazmorra; y de noche al raso.
+ * D-J51: bajo techo con luz (la posada, la tienda, el templo, la herrería, el gremio, o un tablero
+ * de madera) no está oscuro, ni de noche: ahí la Luz no se ofrece.
  *
  * @param {boolean} night
  * @returns {boolean}
  */
 function darkNow(night) {
-    if (night) return true;
     const place = hereLocation();
     const type = String(place?.locationType ?? place?.type ?? '');
     // Solo el nombre y el bioma del tablero: sin armar su terreno, que esto se mira cada vez que
     // se dibuja la fila de la escena.
     const board = currentBoardName ? getLocationBoards(place).find((/** @type {any} */ b) => b?.name === currentBoardName) ?? null : null;
     const biome = board ? boardBiome({ biome: String(board.biome ?? ''), name: String(board.name ?? ''), type }) : String(place?.biome ?? '');
-    return darkHere({ night, biome, type });
+    // El sitio del pueblo en el que se ha entrado; en un tablero manda el tablero.
+    const inside = board ? '' : currentTownPlace();
+    return darkHere({ night, biome, type, place: inside });
 }
 
 /**
@@ -296,6 +301,8 @@ export function fieldContext() {
         calendar,
         light: chat_metadata?.[FIELD_LIGHT_KEY] ?? null,
         cases: readCases(chat_metadata?.[CASES_KEY]),
+        // D-J50: a qué muerto se le preguntó, y qué día.
+        spokenDead: chat_metadata?.[SPOKEN_DEAD_KEY] ?? {},
         unknownItems: templeWork(partyMembers).unknown.length,
         alarmSet: partyMembers.some(m => !m.dead && alarmActive(/** @type {any} */ (m).ritualAlarm, calendar)),
         pet: pet ? petName(pet) : '',
@@ -330,6 +337,16 @@ export function fieldCasters() {
     }).filter(c => c.choices.length > 0);
 }
 
+/**
+ * D-J49: si alguien del grupo lanza conjuros de 5e fuera de combate (con los conjuros del
+ * compendio a mano). Con él, tu ficha lleva el botón «Magia fuera de combate», lances tú o no.
+ *
+ * @returns {boolean}
+ */
+export function partyCastsOutside() {
+    return spellRows().length > 0 && partyMembers.some(m => !m.dead && castsLikeFifth(m));
+}
+
 /** Lo que, si se puede y sirve de algo aquí, saca la ficha «Magia» a la fila de la escena. */
 const FIELD_CHIP_KINDS = ['luz', 'identify', 'muertos'];
 
@@ -344,7 +361,11 @@ const FIELD_CHIP_KINDS = ['luz', 'identify', 'muertos'];
 export function fieldMagicNow() {
     if (combatEncounter.active || !chat_metadata) return [];
     const night = isNight(getCurrentSlotLabel());
-    const useful = fieldCasters().flatMap(c => c.choices)
+    const casters = fieldCasters();
+    // D-J49: la ficha «Magia» de la escena sale solo cuando sirve; lo demás está en la ficha. La
+    // primera vez que el grupo tiene a alguien que lanza, un consejo dice dónde.
+    if (casters.length > 0 && narratorMode() === 'motor') showTip('fieldMagic');
+    const useful = casters.flatMap(c => c.choices)
         .filter(choice => choice.ok && (FIELD_CHIP_KINDS.includes(choice.kind) || (choice.kind === 'alarm' && night)));
     return [...new Set(useful.map(choice => choice.name))];
 }
@@ -376,6 +397,65 @@ export async function healWithMagic() {
     const said = lines.join(' ');
     if (said) toastr.success(said, pick.choice.name);
     return said;
+}
+
+/**
+ * D-J53: esperar a que no haya ninguna ventana abierta (un suceso del camino, la noche, una
+ * charla): la pregunta de al llegar sale detrás, no encima. Da un respiro al principio, para
+ * que lo que se acaba de poner en cola se abra antes.
+ *
+ * @param {number} [limit] Cuánto esperar como mucho, en milisegundos.
+ * @returns {Promise<boolean>} Si se quedó libre a tiempo.
+ */
+async function untilNoWindow(limit = 120000) {
+    const wait = (/** @type {number} */ ms) => new Promise(resolve => setTimeout(resolve, ms));
+    await wait(900);
+    const until = Date.now() + limit;
+    let calm = 0;
+    while (Date.now() < until) {
+        calm = document.querySelector('dialog[open]') ? 0 : calm + 1;
+        // Dos veces seguidas sin nada: lo que venía detrás ya habría salido.
+        if (calm >= 2) return true;
+        await wait(350);
+    }
+    return false;
+}
+
+/**
+ * D-J53: al llegar de un viaje, si alguien está herido y alguien puede curarle con magia, se
+ * pregunta en la novela: «¿Curar a Bran con magia? (gasta un espacio de nivel 1)», con Sí y No.
+ * La ficha «Curar con magia» de la escena sigue ahí, para quien diga que no y cambie de idea.
+ * Solo sin conexión, cuando cuenta el motor (D-J44).
+ *
+ * @returns {Promise<boolean>} Si se curó.
+ */
+export async function askHealOnArrival() {
+    if (narratorMode() !== 'motor' || combatEncounter.active || !chat_metadata) return false;
+    const owner = chat_metadata;
+    const place = currentLocationName;
+    if (!fieldHealNow()) return false;
+    if (!(await untilNoWindow())) return false;
+    // Mientras se esperaba, se puede haber cambiado de partida, de sitio o empezado una pelea.
+    if (chat_metadata !== owner || currentLocationName !== place || combatEncounter.active) return false;
+    const pick = fieldHealNow();
+    const ask = arrivalHealAsk(pick, partyMembers);
+    if (!pick || !ask) return false;
+    const { askInScene } = await import('../game-engine/ui/vn-question.js');
+    const yes = await askInScene({
+        title: `Al llegar a ${place}`,
+        who: pick.member,
+        notes: ask.notes,
+        question: ask.question,
+        kind: 'curar',
+        pack: lastPack,
+        town: place,
+        night: isNight(getCurrentSlotLabel()),
+    });
+    if (!yes) return false;
+    const lines = await castFieldChoice(pick.member, pick.choice);
+    const said = lines.join(' ');
+    if (said) toastr.success(said, pick.choice.name);
+    return true;
 }
 
 /**
@@ -443,6 +523,11 @@ export async function castFieldChoice(member, choice) {
     // campamento (cuenta como un fuego) y examinar aquí (+2 si está oscuro).
     if (res.effects.light && chat_metadata) {
         chat_metadata[FIELD_LIGHT_KEY] = res.effects.light;
+        saveMetadata();
+    }
+    // D-J50: el día en que contestó este muerto; hasta siete días después no vuelve a hacerlo.
+    if (res.effects.spokeDead?.key && chat_metadata) {
+        chat_metadata[SPOKEN_DEAD_KEY] = { ...(chat_metadata[SPOKEN_DEAD_KEY] ?? {}), [res.effects.spokeDead.key]: res.effects.spokeDead.day };
         saveMetadata();
     }
     const lines = [...res.lines];
@@ -1503,6 +1588,12 @@ export function resolveAbilityOnBoard({ actor, side, ability, subject }) {
                 targetAc: friendly || target === actor ? 10 : getTargetArmorClass(target, actor).ac,
                 saveModifier: abilityModifier(target, ability.saveAbility),
             });
+            // J19.7: a quien del grupo le acierta el conjuro de ataque de un enemigo, Escudo, si
+            // lo sabe y con él ya no entra (un crítico entra igual).
+            if (side === 'enemy' && victim.kind === 'party' && ability.resolution === 'attack' && plan.hit && !plan.crit) {
+                const shield = shieldAgainst(target, { attackTotal: plan.attackTotal, targetAc: getTargetArmorClass(target, actor).ac });
+                if (shield.blocked) Object.assign(plan, { hit: false, damage: 0, condition: '', conditionRounds: 0, lines: [...plan.lines.slice(0, 2), ...shield.lines, '❌ Falla.'] });
+            }
             if (area || ray > 0) {
                 lines.push(rays > 1 ? `➤ Rayo ${ray + 1}:` : `➤ ${target.name}:`);
                 lines.push(...plan.lines.slice(1));

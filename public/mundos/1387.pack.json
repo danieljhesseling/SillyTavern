@@ -116,7 +116,12 @@
         },
         {
           "to": "La Granja Quemada",
-          "days": 1
+          "days": 1,
+          "opensWith": [
+            { "standing": "leales-de-montesclaros", "min": 1 },
+            { "fame": 5, "at": "El Pueblo de Barro" }
+          ],
+          "gateNote": "Desde el incendio, los hombres de Vane vigilan el sendero de la granja y no dejan pasar a forasteros"
         },
         {
           "to": "El Cruce de Caminos",
@@ -292,7 +297,12 @@
         },
         {
           "to": "El Lago Helado",
-          "days": 1
+          "days": 1,
+          "opensWith": [
+            { "guide": "Finn" },
+            { "fame": 2, "at": "El Lago Helado" }
+          ],
+          "gateNote": "Por el lado de la ermita, el hielo del lago está podrido y cruje a cada paso: sin alguien que sepa dónde aguanta, no se cruza"
         },
         {
           "to": "La Choza de Brígida",
@@ -1538,6 +1548,99 @@
     {
       "id": "enc-huida-posada",
       "name": "El cuarto de la posada",
+      "avoid": [
+        {
+          "kind": "hablar",
+          "text": "Hablarles a los guardias, no a Torres: la sangre del cáliz está seca de días, y llegaste anoche",
+          "skill": "persuasion",
+          "dc": 15,
+          "success": {
+            "text": "Los guardias se miran y bajan las lanzas. Torres grita, pero nadie le sigue. Aprovechas el momento, saltas por la ventana y caes en la paja del establo.",
+            "effects": [
+              {
+                "rumor": "r-traicion-en-la-puerta"
+              },
+              {
+                "attitude": -1,
+                "who": "Alguacil Torres"
+              }
+            ]
+          },
+          "failure": "Torres no deja hablar a nadie: «¡Prendedle!». Los guardias levantan las lanzas."
+        },
+        {
+          "kind": "pagar",
+          "text": "Meterle unas monedas en la mano al guardia joven de la puerta",
+          "gold": 5,
+          "success": "El chico cierra el puño y mira hacia el pasillo justo lo que tardas en llegar a la ventana. Cuando Torres se da la vuelta, ya estás en el tejado del establo."
+        },
+        {
+          "kind": "huir",
+          "text": "Saltar por la ventana al tejado del establo",
+          "skill": "athletics",
+          "dc": 13,
+          "resolves": true,
+          "success": "Rompes el cristal con el codo, ruedas por las tejas y caes sobre la paja. Cuando Torres se asoma, ya estás en el callejón.",
+          "partial": {
+            "text": "Saltas, pero el marco roto de la ventana te abre el brazo.",
+            "effects": [
+              {
+                "hurt": "1d4"
+              }
+            ]
+          },
+          "failure": "El marco está clavado desde fuera. Torres te agarra por el cuello de la camisa."
+        }
+      ],
+      "parley": {
+        "leader": "Alguacil Torres",
+        "entregarse": {
+          "text": "Soltar el arma y levantar las manos",
+          "resolves": true,
+          "success": {
+            "text": "Torres te ata las manos y te baja a la bodega de la posada, a pan y agua. De madrugada alguien descorre el cerrojo sin decir nada: por la rendija de la cocina, Giles te hace una seña para que salgas.",
+            "effects": [
+              {
+                "gold": -5
+              },
+              "time",
+              {
+                "attitude": -1,
+                "who": "Alguacil Torres"
+              },
+              {
+                "fame": -1
+              }
+            ]
+          }
+        },
+        "sobornar": {
+          "text": "Ofrecerle a Torres lo que llevas para que mire a otro lado",
+          "gold": 8,
+          "success": "Torres cuenta las monedas sin dejar de sudar. «Por la ventana. Y que no te vuelva a ver.»",
+          "failure": "Torres tira las monedas al suelo: «¿Me tomas por un ladrón?»."
+        },
+        "convencer": {
+          "text": "Gritar a los guardias que miren la sangre del cáliz: está seca de días",
+          "dc": 14,
+          "success": {
+            "text": "Los guardias dudan y bajan las lanzas. Torres se queda solo y sale por la puerta, maldiciendo entre dientes.",
+            "effects": [
+              {
+                "rumor": "r-traicion-en-la-puerta"
+              }
+            ]
+          },
+          "partial": "Los guardias se miran entre ellos. Esta ronda, nadie ataca.",
+          "failure": "Torres grita más fuerte que tú: «¡No le escuchéis!»."
+        },
+        "engañar": {
+          "text": "Señalar la ventana: «¡El que buscáis acaba de saltar al tejado!»",
+          "dc": 13,
+          "success": "Los guardias corren a asomarse. Cuando se dan la vuelta, el cuarto está vacío.",
+          "failure": "Torres ni se gira. «Buen intento.»"
+        }
+      },
       "mapId": "habitacion-de-la-posada",
       "locationName": "El Pueblo de Barro",
       "map": [
@@ -1588,6 +1691,39 @@
     {
       "id": "enc-emboscada-bosque",
       "name": "Los claros del Camino Viejo",
+      "avoid": [
+        {
+          "kind": "hablar",
+          "text": "Decirles que no vienes a por los Lobos, sino a por quien metió el cáliz en tu petate",
+          "skill": "persuasion",
+          "dc": 13,
+          "success": {
+            "text": "El más viejo de los furtivos escupe en la nieve y hace una seña. Se van entre los árboles; al darse la vuelta, a uno se le cae un trozo de cuero doblado.",
+            "effects": [
+              {
+                "give": "Mapa de la calzada imperial"
+              },
+              {
+                "standing": "Los Lobos del Bosque",
+                "amount": 1
+              }
+            ]
+          },
+          "failure": "«Eso dicen todos», gruñe el furtivo, y tensa el arco."
+        },
+        {
+          "kind": "pagar",
+          "text": "Dejarles a los campesinos unas monedas para pan",
+          "gold": 6,
+          "success": "Los campesinos cogen las monedas y se van sin mirar atrás. Los furtivos, solos, no se arriesgan."
+        },
+        {
+          "kind": "esconderse",
+          "text": "Rodear los claros por la maleza, lejos del camino",
+          "dc": 13,
+          "success": "Pasáis entre los helechos helados sin que cruja una rama. Desde lejos veis a los campesinos tiritando junto a una hoguera sin leña."
+        }
+      ],
       "mapId": "emboscada-en-el-bosque",
       "locationName": "El Camino Viejo",
       "map": [
@@ -1651,6 +1787,34 @@
     {
       "id": "enc-los-falsos-desertores",
       "name": "La granja quemada",
+      "avoid": [
+        {
+          "kind": "hablar",
+          "text": "Enseñar las manos vacías: no vienes a por su leña",
+          "skill": "persuasion",
+          "dc": 11,
+          "success": {
+            "text": "El mayor baja la horca. «Entonces sigue tu camino antes de que cambie de idea.»",
+            "effects": [
+              {
+                "fame": 1
+              }
+            ]
+          },
+          "failure": "«¡Todos decís lo mismo!» Levantan las horcas."
+        },
+        {
+          "kind": "pagar",
+          "text": "Darles unas monedas para que pasen el invierno",
+          "gold": 4,
+          "success": "Las cogen como quien coge un insulto, pero se apartan de la puerta."
+        },
+        {
+          "kind": "huir",
+          "text": "Dar media vuelta antes de que salgan todos",
+          "dc": 10
+        }
+      ],
       "mapId": "los-campos-yermos",
       "locationName": "La Granja Quemada",
       "map": [
@@ -1709,6 +1873,30 @@
     {
       "id": "enc-emboscada-por-el-hierro",
       "name": "El hierro en el bosque",
+      "avoid": [
+        {
+          "kind": "hablar",
+          "text": "Proponerles un trato: la mitad del hierro para ellos si os dejan llevar el resto",
+          "skill": "persuasion",
+          "dc": 14,
+          "success": {
+            "text": "Los furtivos se miran, silban a los lobos y cargan con su parte. «No nos has visto.»",
+            "effects": [
+              {
+                "standing": "Los Lobos del Bosque",
+                "amount": 1
+              }
+            ]
+          },
+          "failure": "«¿La mitad? Nos lo llevamos todo.» Los lobos enseñan los dientes."
+        },
+        {
+          "kind": "esconderse",
+          "text": "Llegar a la carga por detrás, con el viento de cara para que los lobos no os huelan",
+          "dc": 14,
+          "success": "Los lobos levantan el hocico, pero el viento va hacia vosotros. Llegáis a la carga sin que nadie grite."
+        }
+      ],
       "mapId": "emboscada-en-el-bosque",
       "locationName": "El Camino Viejo",
       "map": [
@@ -1767,6 +1955,35 @@
     {
       "id": "enc-pelea-callejon",
       "name": "El callejón inundado",
+      "avoid": [
+        {
+          "kind": "pagar",
+          "text": "Pagarle a Garth la deuda vieja, con intereses",
+          "gold": 15,
+          "success": "Garth muerde una moneda, se ríe y hace una seña a los suyos. «Ahora estamos en paz. Hasta la próxima.»"
+        },
+        {
+          "kind": "hablar",
+          "text": "Recordarle a Garth que los dos cobrasteis de la misma bolsa y salisteis del mismo barro",
+          "skill": "persuasion",
+          "dc": 15,
+          "success": {
+            "text": "Garth escupe al agua sucia. «Por los viejos tiempos. Pero la próxima vez, pagas.»",
+            "effects": [
+              {
+                "grudge": "Garth el Sanguinario"
+              }
+            ]
+          },
+          "failure": "«Los viejos tiempos no me dan de comer.» Garth levanta el hacha."
+        },
+        {
+          "kind": "huir",
+          "text": "Correr por el agua hasta la calle mayor",
+          "skill": "athletics",
+          "dc": 12
+        }
+      ],
       "mapId": "callejon-del-barro",
       "locationName": "El Pueblo de Barro",
       "map": [
@@ -1813,6 +2030,22 @@
     {
       "id": "enc-asedio-a-la-granja",
       "name": "El asedio de la granja",
+      "avoid": [
+        {
+          "kind": "hablar",
+          "text": "Gritarles que en la granja no queda nada que valga su sangre: ni grano ni leña",
+          "skill": "persuasion",
+          "dc": 16,
+          "success": "Un sargento de Keller se asoma al granero vacío, maldice y ordena seguir hacia el sur.",
+          "failure": "«¡Quemadla igual!» Las antorchas vuelan contra el tejado."
+        },
+        {
+          "kind": "esconderse",
+          "text": "Salir por la trampilla del sótano y dejarles la granja vacía",
+          "dc": 14,
+          "success": "Cuando los de Keller revientan la puerta, dentro solo hay ceniza fría. Se van antes de que caiga la noche."
+        }
+      ],
       "mapId": "los-campos-yermos",
       "locationName": "La Granja Quemada",
       "map": [
@@ -1876,6 +2109,24 @@
     {
       "id": "enc-escolta-quebradiza",
       "name": "El monje sobre el hielo",
+      "avoid": [
+        {
+          "kind": "hablar",
+          "text": "Espantarlos con antorchas y golpes en el hielo",
+          "skill": "intimidation",
+          "dc": 13,
+          "success": "Los lobos retroceden gruñendo, con el rabo entre las patas. El monje cruza el lago sin mirar atrás.",
+          "failure": "Tienen demasiada hambre para tener miedo. Se lanzan a por el monje."
+        },
+        {
+          "kind": "hablar",
+          "text": "Tirarles la carne de las raciones lejos del monje",
+          "skill": "survival",
+          "dc": 12,
+          "success": "La manada se lanza a por la carne y se pelea por ella en la orilla. Para cuando acaban, el monje ya está al otro lado.",
+          "failure": "Uno coge la carne; los otros cuatro siguen mirando al monje."
+        }
+      ],
       "mapId": "el-hielo-quebradisimo",
       "locationName": "El Lago Helado",
       "map": [
@@ -1935,6 +2186,21 @@
     {
       "id": "enc-patrullas-en-la-nieve",
       "name": "Las empalizadas del peaje",
+      "avoid": [
+        {
+          "kind": "hablar",
+          "text": "Hacerte pasar por un cazador que trae noticias del castillo",
+          "skill": "deception",
+          "dc": 14,
+          "success": "Los furtivos te escuchan, se miran y bajan de las empalizadas para llevar las noticias a su campamento.",
+          "failure": "«Tú no eres de aquí.» Te apuntan desde lo alto."
+        },
+        {
+          "kind": "esconderse",
+          "text": "Cruzar entre las empalizadas mientras cambian la guardia",
+          "dc": 13
+        }
+      ],
       "mapId": "barricadas-del-norte",
       "locationName": "El Peaje Norte",
       "map": [
@@ -1984,6 +2250,27 @@
     {
       "id": "enc-carreta-en-el-hielo",
       "name": "La carreta hundida",
+      "avoid": [
+        {
+          "kind": "pagar",
+          "text": "Pagarles por las hierbas: que se queden con la carreta",
+          "gold": 12,
+          "success": "Los del Cuervo cuentan las monedas en el hielo y se apartan. «Coge tus hierbas y lárgate.»"
+        },
+        {
+          "kind": "hablar",
+          "text": "Proponerles repartir: las hierbas para ti, la carreta y la mula para ellos",
+          "skill": "persuasion",
+          "dc": 14,
+          "success": "Se lo piensan, y a ninguno le apetece mojarse. «Trato hecho, pero date prisa.»",
+          "failure": "«Nos lo quedamos todo, y tu bolsa también.»"
+        },
+        {
+          "kind": "esconderse",
+          "text": "Arrastrarte por el hielo hasta el centro mientras discuten",
+          "dc": 15
+        }
+      ],
       "mapId": "el-hielo-quebradisimo",
       "locationName": "El Lago Helado",
       "map": [
@@ -2033,6 +2320,29 @@
     {
       "id": "enc-espia-mina",
       "name": "Los túneles de la mina",
+      "avoid": [
+        {
+          "kind": "hablar",
+          "text": "Cerrarle la salida a Sombra y decirle que sus matones ya le han vendido",
+          "skill": "intimidation",
+          "dc": 15,
+          "resolves": false,
+          "success": {
+            "text": "Sombra mira a los suyos, que ya retroceden hacia los túneles. Tira las dagas al suelo y se queda solo, con el plano apretado en el puño.",
+            "effects": [
+              {
+                "milestone": "la-nieve-manchada"
+              }
+            ]
+          },
+          "failure": "Sombra se ríe con una tos seca. «Mátalos», les dice a los suyos."
+        },
+        {
+          "kind": "huir",
+          "text": "Salir de la mina antes de que os vean",
+          "dc": 11
+        }
+      ],
       "mapId": "galeria-de-contrabando",
       "locationName": "La Mina Abandonada",
       "map": [
@@ -2079,6 +2389,21 @@
     {
       "id": "enc-asalto-peaje",
       "name": "El asalto de las empalizadas",
+      "avoid": [
+        {
+          "kind": "hablar",
+          "text": "Subir a la torre y hacer sonar el cuerno de retirada de Keller",
+          "skill": "deception",
+          "dc": 16,
+          "success": "La infantería duda, mira atrás y retrocede hacia el barro. Los rompehielos, solos, no se arriesgan a cruzar.",
+          "failure": "Los rompehielos conocen su propio cuerno: ese no es. Cargan contra la empalizada."
+        },
+        {
+          "kind": "huir",
+          "text": "Retirarte de las empalizadas antes de que las rompan",
+          "dc": 13
+        }
+      ],
       "mapId": "barricadas-del-norte",
       "locationName": "El Peaje Norte",
       "map": [
@@ -2138,6 +2463,30 @@
     {
       "id": "enc-frenar-la-carreta",
       "name": "El cruce inundado",
+      "avoid": [
+        {
+          "kind": "hablar",
+          "text": "Avisarles de que el fango del cruce se traga a los caballos: que crucen más arriba",
+          "skill": "persuasion",
+          "dc": 14,
+          "success": {
+            "text": "Los furtivos miran el barro, luego te miran a ti, y se van río arriba.",
+            "effects": [
+              {
+                "standing": "Los Lobos del Bosque",
+                "amount": 1
+              }
+            ]
+          },
+          "failure": "«¿Y por qué íbamos a fiarnos de ti?» Siguen avanzando."
+        },
+        {
+          "kind": "pagar",
+          "text": "Pagarles el paso del cruce, como si fuera suyo",
+          "gold": 10,
+          "success": "Cogen el dinero y se quedan en la otra orilla, riéndose de ti."
+        }
+      ],
       "mapId": "el-barrizal-final",
       "locationName": "El Cruce de Caminos",
       "map": [
@@ -2192,6 +2541,29 @@
     {
       "id": "enc-asalto-keller",
       "name": "La tienda de mando",
+      "avoid": [
+        {
+          "kind": "hablar",
+          "text": "Ofrecerle a Keller retirarse con honor: el valle no vale su ejército",
+          "skill": "persuasion",
+          "dc": 18,
+          "success": {
+            "text": "La Capitana Keller te mira un largo rato sin decir nada. Luego ordena desmontar la tienda. «Volveremos en primavera. O no.»",
+            "effects": [
+              {
+                "standing": "La Casa Keller",
+                "amount": 1
+              }
+            ]
+          },
+          "failure": "Keller sonríe por primera vez. «Tú no negocias en nombre de nadie.»"
+        },
+        {
+          "kind": "huir",
+          "text": "Salir del campamento antes de que den la alarma",
+          "dc": 14
+        }
+      ],
       "mapId": "tienda-de-mando-keller",
       "locationName": "Campamento Keller",
       "map": [
@@ -2241,6 +2613,21 @@
     {
       "id": "enc-defensa-vane",
       "name": "Las puertas del castillo",
+      "avoid": [
+        {
+          "kind": "hablar",
+          "text": "Pedirle a Vane que abra las puertas: el valle ya ha decidido",
+          "skill": "persuasion",
+          "dc": 17,
+          "success": "Vane tose sangre en el pañuelo y se ríe. «Que así sea.» Deja caer la ropera, y los alabarderos se apartan de las puertas.",
+          "failure": "«Mientras me quede aliento, esta es mi casa.» Los alabarderos cierran filas."
+        },
+        {
+          "kind": "huir",
+          "text": "Retroceder por el barro antes de que carguen",
+          "dc": 13
+        }
+      ],
       "mapId": "las-puertas-del-castillo",
       "locationName": "Castillo de Vane",
       "map": [
@@ -2299,6 +2686,40 @@
     {
       "id": "enc-emboscada-lobos-alfa",
       "name": "Lobos en el pueblo",
+      "avoid": [
+        {
+          "kind": "hablar",
+          "text": "Hacer ruido con cacerolas y antorchas para espantarlos hacia el bosque",
+          "skill": "intimidation",
+          "dc": 15,
+          "success": {
+            "text": "Los lobos grandes aguantan un momento y luego se dan la vuelta. La manada los sigue calle abajo.",
+            "effects": [
+              {
+                "attitude": 1,
+                "who": "Giles"
+              }
+            ]
+          },
+          "failure": "El lobo alfa ni se inmuta: los demás no comen hasta que él come, y tiene hambre."
+        },
+        {
+          "kind": "esconderse",
+          "text": "Meter a Giles en la bodega y atrancar la puerta",
+          "skill": "athletics",
+          "dc": 12,
+          "success": {
+            "text": "Los lobos arañan la puerta hasta el amanecer y se van con la primera luz.",
+            "effects": [
+              "time",
+              {
+                "attitude": 1,
+                "who": "Giles"
+              }
+            ]
+          }
+        }
+      ],
       "mapId": "callejon-del-barro",
       "locationName": "El Pueblo de Barro",
       "map": [
@@ -2355,6 +2776,29 @@
     {
       "id": "enc-vanguardia-peaje",
       "name": "La vanguardia en el peaje",
+      "avoid": [
+        {
+          "kind": "hablar",
+          "text": "Gritar desde el camino que Vane viene detrás con cien hombres",
+          "skill": "deception",
+          "dc": 15,
+          "success": {
+            "text": "La vanguardia se repliega a las torres del norte, y de ahí al paso. El peaje vuelve a ser vuestro sin sangre.",
+            "effects": [
+              {
+                "standing": "La Casa Keller",
+                "amount": -1
+              }
+            ]
+          },
+          "failure": "Desde las torres se ve el camino entero, y está vacío. «¡A por ellos!»"
+        },
+        {
+          "kind": "huir",
+          "text": "Volver por el cauce helado antes de que os vean",
+          "dc": 12
+        }
+      ],
       "mapId": "el-peaje-norte",
       "locationName": "El Peaje Norte",
       "map": [
@@ -3683,6 +4127,106 @@
           "options": [
             { "id": "sangre-alta-vale", "text": "Ya veo.", "next": "inicio" }
           ]
+        }
+      ]
+    }
+  ],
+  "sucesos": [
+    {
+      "id": "finn-conoce-el-hielo",
+      "name": "Finn conoce el hielo",
+      "weight": 8,
+      "when": { "momento": "llegada", "sitio": "El Lago Helado" },
+      "text": "Finn, el pescador del lago, recoge los sedales al veros llegar. Dice que conoce el hielo mejor que su propia barca: por dónde aguanta un caballo y por dónde se abre bajo una bota.",
+      "options": [
+        {
+          "label": "Pagarle para que os guíe cuando haga falta",
+          "cost": { "oro": 3 },
+          "effects": ["guia:Finn"],
+          "then": "Finn se guarda las monedas. «Cuando queráis cruzar hacia la ermita, venid a buscarme. Pisad donde yo pise y no os pasará nada.»"
+        },
+        {
+          "label": "Preguntarle qué hay bajo el hielo",
+          "check": { "skill": "insight", "dc": 12 },
+          "success": { "effects": ["rumor"], "then": "Baja la voz y os cuenta lo que ha visto en el fondo, hacia el centro del lago." },
+          "fail": { "effects": ["hora"], "then": "Se pone a hablar de peces y de inviernos de antes, y se os va la tarde." }
+        },
+        {
+          "label": "Seguir a lo vuestro",
+          "then": "Finn vuelve a sus agujeros de pesca sin decir nada más."
+        }
+      ]
+    },
+    {
+      "id": "leales-cobran-el-paso",
+      "name": "Los hombres de Vane os paran",
+      "weight": 5,
+      "when": { "momento": "llegada", "faccion": "leales-de-montesclaros", "reputacionAqui": [-1, -1] },
+      "text": "Tres hombres con el emblema de {bando} os cortan el paso a la entrada. Dicen que el invierno es largo y que los forasteros pagan su parte.",
+      "options": [
+        {
+          "label": "Pagar lo que piden",
+          "cost": { "oro": 4 },
+          "effects": ["faccion:leales-de-montesclaros:+1"],
+          "then": "Cuentan las monedas dos veces y os dejan pasar. Uno hasta os saluda al iros."
+        },
+        {
+          "label": "Negarse a pagar",
+          "check": { "skill": "persuasion", "dc": 13 },
+          "success": { "then": "Os miran de arriba abajo, se encogen de hombros y os dejan pasar sin cobrar." },
+          "fail": { "effects": ["faccion:leales-de-montesclaros:-1", "herida:1d4"], "then": "Hay empujones antes de que os dejen ir. Se acordarán de vuestra cara." }
+        },
+        {
+          "label": "Dar un rodeo por el barro",
+          "effects": ["hora"],
+          "then": "Os cuesta la tarde entera, pero no les dais ni una moneda."
+        }
+      ]
+    },
+    {
+      "id": "lobos-piden-un-carro",
+      "name": "Los Lobos os piden ayuda",
+      "weight": 5,
+      "when": { "momento": "viaje", "reputacion": { "los-lobos-del-bosque": [1, 5] } },
+      "text": "Camino de {destino}, un muchacho de {bando} sale de entre los pinos. Tienen a un herido que no llegará vivo al campamento a pie, y los hombres de Vane vigilan el camino.",
+      "options": [
+        {
+          "label": "Llevar al herido con vosotros",
+          "effects": ["dia", "faccion:los-lobos-del-bosque:+1", "faccion:leales-de-montesclaros:-1"],
+          "then": "Lo dejáis a la entrada del bosque, donde esperan los suyos. Os lo agradecen con un gesto; en el castillo lo sabrán pronto."
+        },
+        {
+          "label": "Darles vendas y seguir",
+          "cost": { "oro": 2 },
+          "effects": ["faccion:los-lobos-del-bosque:+1"],
+          "then": "El muchacho coge las vendas sin dar las gracias y desaparece entre los árboles."
+        },
+        {
+          "label": "No meterse",
+          "then": "El muchacho escupe al suelo y se vuelve por donde vino."
+        }
+      ]
+    },
+    {
+      "id": "avanzadas-de-keller",
+      "name": "Las avanzadas de Keller",
+      "weight": 4,
+      "when": { "momento": "semana", "reloj": { "la-casa-keller": [2, 99] } },
+      "text": "Llegan noticias del norte: {bando} ha movido sus avanzadas más cerca del paso. Un leñador dice que sabe dónde acampan.",
+      "options": [
+        {
+          "label": "Avisar a los hombres de Vane",
+          "effects": ["reloj:la-casa-keller:-1", "faccion:leales-de-montesclaros:+1", "faccion:la-casa-keller:-1"],
+          "then": "Vane manda una patrulla y las avanzadas se retiran. En el norte ya saben quién dio el aviso."
+        },
+        {
+          "label": "Venderle el dato a Keller",
+          "effects": ["oro:+1d6", "faccion:la-casa-keller:+1"],
+          "then": "Un jinete de Keller os paga en plata buena, sin preguntar nada."
+        },
+        {
+          "label": "Callar",
+          "then": "Mejor no meterse en lo que se avecina."
         }
       ]
     }

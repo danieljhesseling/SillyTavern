@@ -2,7 +2,7 @@ import { describe, test, expect } from '@jest/globals';
 import fs from 'node:fs';
 import {
     LEVEL_LIMITS, readLevelRange, levelPlanOf, boardBand, partyLevelOf, levelGap, levelAdjustment,
-    adjustEnemy, adjustPlacements, levelNote,
+    adjustEnemy, adjustPlacements, levelNote, adjustForSize, sizeNotes, adjustmentNotes, WRITTEN_PARTY_SIZE, SIZE_LIMITS,
 } from '../public/scripts/game-engine/combat/level-adjust.js';
 import { buildImportPlan } from '../public/scripts/game-engine/campaign/campaign-importer.js';
 import { terrainFromAsciiMap } from '../public/scripts/game-engine/board/terrain.js';
@@ -238,5 +238,86 @@ describe('se dice llano', () => {
         expect(levelNote({ adjustment: levelAdjustment(-4), band: { low: 5, high: 5 }, level: 1 }))
             .toBe('Vais por debajo de lo que pide la campaña: los enemigos aflojan un poco, pero no del todo. Este tablero es para nivel 5 y vuestro grupo es de nivel 1.');
         expect(levelNote({ adjustment: levelAdjustment(0), band: { low: 1, high: 2 }, level: 2 })).toBe('');
+    });
+});
+
+describe('J12.6: el mismo tablero con uno y con cuatro', () => {
+    /**
+     * La pelea de un tablero de Strahd para un grupo de ese tamaño, a su nivel.
+     *
+     * @param {string} id
+     * @param {number} size
+     * @param {number} [level]
+     */
+    const forSize = (id, size, level = 2) => {
+        const board = boardOf(id);
+        return adjustForSize({
+            placements: board.enemies, partySize: size, partyLevel: level, bestiary,
+            terrain: terrainFromAsciiMap(board.map), gridWidth: board.map[0].length, gridHeight: board.map.length,
+            taken: board.partyStart,
+        });
+    };
+
+    test('para tres, como se escribió; con uno, menos; con cuatro, más', () => {
+        expect(WRITTEN_PARTY_SIZE).toBe(3);
+        // La mansión del burgomaestre: tres zombis.
+        expect(forSize('mansion_burgomaestre', 3).placements).toEqual(boardOf('mansion_burgomaestre').enemies);
+        const alone = forSize('mansion_burgomaestre', 1);
+        expect(alone.placements.map(p => p.name)).toEqual(['Zombi de Strahd']);
+        expect(alone.removed).toEqual(['Zombi de Strahd', 'Zombi de Strahd']);
+        const four = forSize('mansion_burgomaestre', 4);
+        expect(four.placements.map(p => p.name)).toEqual(['Zombi de Strahd', 'Zombi de Strahd', 'Zombi de Strahd', 'Zombi de Strahd']);
+        expect(four.added).toEqual(['Zombi de Strahd']);
+    });
+
+    test('más gente, más enemigos: nunca menos que con uno menos', () => {
+        for (const id of ['cima_yester', 'islote_torre', 'camino_vino', 'plaza_vallaki']) {
+            const counts = [1, 2, 3, 4, 5].map(size => forSize(id, size).placements.length);
+            for (let i = 1; i < counts.length; i++) expect(counts[i]).toBeGreaterThanOrEqual(counts[i - 1]);
+            expect(counts[0]).toBeLessThan(counts[3]);
+        }
+    });
+
+    test('con uno, a nadie se le deja sin los suyos; al jefe no se le quita ni se le copia', () => {
+        const hill = forSize('cima_yester', 1);
+        expect(new Set(hill.placements.map(p => p.name))).toEqual(new Set(['Druida de Yester', 'Plaga de agujas']));
+        expect(hill.removed.length).toBeLessThanOrEqual(-SIZE_LIMITS.min);
+        const crypt = forSize('cripta_strahd', 1);
+        expect(crypt.placements.map(p => p.name)).toEqual(['Strahd von Zarovich', 'Engendro Vampírico']);
+        expect(forSize('cripta_strahd', 6).placements.filter(p => p.name === 'Strahd von Zarovich')).toHaveLength(1);
+    });
+
+    test('los de más caen en casillas libres, junto a los suyos, y siempre en las mismas', () => {
+        const big = forSize('cima_yester', 5);
+        expect(big.added.length).toBeLessThanOrEqual(SIZE_LIMITS.max);
+        const map = boardOf('cima_yester').map;
+        for (const p of big.placements.slice(5)) expect(map[p.y][p.x]).not.toBe('#');
+        const cells = big.placements.map(p => `${p.x},${p.y}`);
+        expect(new Set(cells).size).toBe(cells.length);
+        expect(forSize('cima_yester', 5)).toEqual(big);
+    });
+
+    test('D-J21: tampoco por ser muchos se copia a quien lleva CA 15 o más', () => {
+        expect(forSize('entrada_ravenloft', 6).placements.map(p => p.name)).toEqual(['Gárgola', 'Gárgola']);
+    });
+
+    test('se dice llano', () => {
+        expect(sizeNotes({ partySize: 1, removed: ['Zombi de Strahd'] }))
+            .toEqual(['Este tablero está pensado para un grupo de 3 y el vuestro es de 1: hay un enemigo menos (Zombi de Strahd).']);
+        expect(sizeNotes({ partySize: 4, added: ['Lobo gris'] }))
+            .toEqual(['Este tablero está pensado para un grupo de 3 y el vuestro es de 4: hay un enemigo más (Lobo gris).']);
+        expect(sizeNotes({ partySize: 3 })).toEqual([]);
+    });
+
+    test('por el nivel y por cuántos sois a la vez: se dice lo que queda, una vez', () => {
+        // Uno más por el nivel y dos menos por ir solo: uno menos.
+        expect(adjustmentNotes({ level: { added: ['Guardia'] }, size: { removed: ['Guardia', 'Guardia'] }, partySize: 1 }))
+            .toEqual(['Por vuestro nivel y por cuántos sois, hay un enemigo menos: Guardia.']);
+        // Se anulan: nada que decir.
+        expect(adjustmentNotes({ level: { added: ['Lobo gris'] }, size: { removed: ['Lobo gris'] }, partySize: 2 })).toEqual([]);
+        // Solo el nivel, como siempre; solo el tamaño, con el tamaño.
+        expect(adjustmentNotes({ level: { removed: ['Lobo gris'] }, partySize: 3 })).toEqual(['Por vuestro nivel, hay un enemigo menos: Lobo gris.']);
+        expect(adjustmentNotes({ size: { added: ['Lobo gris'] }, partySize: 4 }))
+            .toEqual(['Este tablero está pensado para un grupo de 3 y el vuestro es de 4: hay un enemigo más (Lobo gris).']);
     });
 });

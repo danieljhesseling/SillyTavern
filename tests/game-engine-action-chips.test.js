@@ -143,3 +143,21 @@ describe('el tablero que pide la historia', () => {
         expect(buildActionChips({ boards, thread: ['Mansión'], hasBoard: true }).map(c => c.id)).toEqual(['leave']);
     });
 });
+
+describe('J12.3: las trampas del tablero', () => {
+    const traps = [
+        { id: 'trap-disarm:losa', label: 'Desarmar: losa hundida', icon: 'fa-screwdriver-wrench', urgent: true },
+        { id: 'trap-search', label: 'Buscar trampas', icon: 'fa-magnifying-glass' },
+    ];
+
+    test('desarmar la de al lado va con las puertas; buscar, al final, detrás de salir', () => {
+        const chips = buildActionChips({ hasBoard: true, doors: [{ x: 1, y: 2, distance: 5 }], traps, companions: [{ name: 'Gerd' }] });
+        expect(chips.map(c => c.id)).toEqual(['door:1,2', 'trap-disarm:losa', 'talk:Gerd', 'leave', 'trap-search']);
+        // Sin comando: se resuelven al pulsarlas (`runTrapChip`), no escribiendo nada.
+        expect(chips.filter(c => c.id.startsWith('trap-')).every(c => !c.command)).toBe(true);
+    });
+
+    test('en combate, nada', () => {
+        expect(buildActionChips({ fighting: true, hasBoard: true, traps })).toEqual([]);
+    });
+});

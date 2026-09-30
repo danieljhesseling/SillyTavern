@@ -78,8 +78,10 @@ import { openGuild } from './hub.js';
 import { playDuel, searchCaseHere } from './cases.js';
 import {
     currentSeason, ensureWorldData, hereLocation, lastCompendium, lastRumors, lastWorldNpcs, seedOfWorld,
-    leaveMark, markedPrice, markedRumors, guildMemoryRumors, refusedHere,
+    leaveMark, markedPrice, markedRumors, guildMemoryRumors, refusedHere, announceOpenedRoads, jailHere, jailRiskHere,
 } from './world.js';
+import { markStolen } from '../game-engine/campaign/jail.js';
+import { goToJail } from './jail.js';
 import { getCurrentWorldFactions, nudgeRuler, rulerOf, shiftFactionStanding } from './factions.js';
 import {
     campaignDay, currentUpkeepRules, getCampaignBonds, getCampaignCalendar, getDebt, spendDayPart,
@@ -188,6 +190,8 @@ export function raiseFame(place, amount = 1) {
     chat_metadata[FAME_KEY] = out.fame;
     saveMetadata();
     if (out.rose) toastr.success(`En ${place} ${out.label}.`, '🌟 Fama', { timeOut: 8000 });
+    // J10.1: ser conocidos en un sitio puede abrir un camino (`opensWith` con `fame`).
+    announceOpenedRoads();
 }
 
 /**
@@ -745,12 +749,17 @@ export function buildServiceCards() {
                 detail: `Lo lleva ${sale.member.name}.`, enabled: !combatEncounter.active, cost: 0,
             });
         }
-        // Idea 96: llevarse lo más barato sin pagar, si se atreve alguien.
+        // Idea 96: llevarse lo más barato sin pagar, si se atreve alguien. D-J47: si ya os
+        // pillaron aquí y se acuerdan, la próxima es el calabozo, y se dice antes.
         const cheapest = [...shop.stock].sort((a, b) => a.price - b.price)[0];
         if (cheapest) {
+            const jail = jailRiskHere('robo', 'tienda');
             shopActions.push({
                 id: `shop-steal:${cheapest.name}`, label: `Llevarse ${cheapest.name} sin pagar (Juego de manos, CD ${stealDC(String(location?.locationType ?? location?.type ?? ''))})`,
-                detail: 'Si os pillan, multa del doble, y aquí os apuntan.', enabled: !combatEncounter.active, cost: 0, target: String(cheapest.price),
+                detail: jail > 0
+                    ? `Ya os pillaron aquí una vez: si os pillan otra, la guardia os lleva al calabozo ${jail === 1 ? 'un día' : `${jail} días`}.`
+                    : 'Si os pillan, multa del doble y aquí se acuerdan. Si os vuelven a pillar, al calabozo.',
+                enabled: !combatEncounter.active, cost: 0, target: String(cheapest.price),
             });
         }
         if (!shop.triedToday) {
@@ -796,7 +805,8 @@ export function buildServiceCards() {
         keepers: lastWorldNpcs.filter(n => n.where.toLowerCase() === String(currentLocationName).toLowerCase()),
         innHere: servicesOf(location).includes('posada'),
     });
-    // J11.3: a la segunda vez que os pillan robando, en la tienda no os atienden, y lo dicen.
+    // J11.3: quien no os atiende por lo que hicisteis (en la capilla, a quien levanta muertos),
+    // y lo dice. Robar ya no cierra la tienda: a la segunda, el calabozo (D-J47).
     return shut.map(card => {
         const refused = card.closed ? '' : refusedHere(String(card.id), partyMembers.find(m => !m.guest) ?? null);
         return refused ? { ...card, actions: card.actions.map(action => ({ ...action, enabled: false, detail: refused })) } : card;
@@ -903,7 +913,7 @@ export async function runService(actionId) {
             postCombatNarration(`🛒 [TIENDA] ${hero?.name ?? taker.name} compra ${action.target} por ${action.cost} de oro.${handed}`);
         }
     } else if (actionId === 'shop-junk') sellItems(junkOf(partyMembers));
-    else if (actionId.startsWith('shop-steal:')) stealItem(actionId.slice('shop-steal:'.length), Number(action.target) || 0);
+    else if (actionId.startsWith('shop-steal:')) await stealItem(actionId.slice('shop-steal:'.length), Number(action.target) || 0);
     else if (actionId.startsWith('inn-merc:')) hireMercenary(String(action.target));
     else if (actionId.startsWith('shop-sell:')) {
         const [, memberId, itemId] = actionId.split(':');
@@ -999,13 +1009,15 @@ export async function runService(actionId) {
 
 /**
  * Idea 96: intentar llevarse algo de la tienda sin pagar. Juego de manos contra la
- * vigilancia del sitio; si os pillan, multa y os apuntan.
+ * vigilancia del sitio; si os pillan, multa y os apuntan. D-J47: si os pillan otra vez
+ * mientras la tienda se acuerda de la primera, la guardia se lleva a quien robó al calabozo
+ * (`goToJail`, de `jail.js`).
  *
  * @param {string} name
  * @param {number} price
- * @returns {string}
+ * @returns {Promise<string>}
  */
-function stealItem(name, price) {
+async function stealItem(name, price) {
     if (!chat_metadata) return '';
     const here = hereLocation();
     const thief = partyMembers.filter(m => !m.dead && (Number(m.hp) || 0) > 0)
@@ -1018,20 +1030,28 @@ function stealItem(name, price) {
     chat_metadata[WANTED_KEY] = outcome.wanted;
     // J11.3: la tienda se acuerda: si os pillan, el saludo, el precio y lo que se cuenta cambian.
     leaveMark(outcome.free ? 'robo-oculto' : 'robo', { place: 'tienda' });
+    // D-J47: pillados otra vez mientras se acuerdan: el calabozo, en vez de la multa del doble.
+    const jailDays = outcome.free ? 0 : jailHere('robo', 'tienda');
     // R9: si os pillan, quien manda aquí lo sabe.
     if (!outcome.free) void nudgeRuler(currentLocationName, 'crimen');
     if (outcome.free) {
-        addItemToInventory(/** @type {any} */ (thief), createItem(/** @type {any} */ (describeLootItem(name, '', worldItemCatalogue))));
-    } else if (!payFromParty(outcome.fine)) {
+        // Lo que sale sin pagar lleva de dónde es: si un día la guardia os lleva, se lo queda.
+        const item = markStolen(/** @type {any} */ (describeLootItem(name, '', worldItemCatalogue)), currentLocationName);
+        addItemToInventory(/** @type {any} */ (thief), createItem(/** @type {any} */ (item)));
+    } else if (!jailDays && !payFromParty(outcome.fine)) {
         for (const member of partyMembers) member.gold = 0;
     }
     savePartyState();
     saveMetadata();
+    // Idea 28: y a los tuyos les parece lo que sea.
+    judgeDecision('robar');
+    if (jailDays > 0) {
+        postCombatNarration(`🫳 [TIENDA] ${thief.name} intenta llevarse ${name}. Os pillan otra vez.`);
+        return await goToJail({ thief, attempted: name, price, days: jailDays });
+    }
     postCombatNarration(`🫳 [TIENDA] ${thief.name} intenta llevarse ${name}. ${outcome.line}`);
     toastr[outcome.free ? 'success' : 'error'](outcome.line, 'Robar');
     void postForModel(`[ROBO] ${thief.name} intenta llevarse ${name} de la tienda de ${currentLocationName}. ${outcome.line} Cuéntalo en dos frases.`);
-    // Idea 28: y a los tuyos les parece lo que sea.
-    judgeDecision('robar');
     if (isShellOpen()) refreshGameShell();
     return outcome.line;
 }

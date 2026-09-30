@@ -2224,6 +2224,62 @@ body.game-colorblind .pg-down .pg-fill {
     z-index: 3;
 }
 
+/* J12.8: sobre un mapa dibujado, el terreno marca sin tapar: el muro ya está en el dibujo. */
+.wm-terrain-layer.wm-terrain-over-image .wm-terrain-wall {
+    background: rgba(8, 8, 12, 0.18);
+    border: none;
+    box-shadow: none;
+}
+
+.wm-terrain-layer.wm-terrain-over-image .wm-terrain-door {
+    background: rgba(107, 74, 36, 0.55);
+}
+
+.wm-terrain-layer.wm-terrain-over-image .wm-terrain-chasm {
+    background: rgba(0, 0, 0, 0.45);
+}
+
+/* Un jefe: su cerco dorado y su corona, que se ven desde lejos (también esperando, con el cerco a rayas). */
+.wm-token.wm-token-enemy.wm-token-boss .wm-token-avatar,
+.wm-token.wm-token-enemy.wm-token-boss .wm-token-unknown {
+    border-color: #ffd27a;
+    box-shadow: 0 0 10px 3px rgba(255, 210, 122, 0.5);
+}
+
+.wm-token-boss-mark {
+    position: absolute;
+    top: -13px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #ffd27a;
+    font-size: 12px;
+    text-shadow: 0 0 3px #000, 0 0 2px #000;
+    pointer-events: none;
+    z-index: 6;
+}
+
+/* J20.2: lo que le pasa a una ficha, escrito en su ayuda (a toques no hay ratón encima). */
+.wm-token-tooltip-statuses {
+    margin-top: 2px;
+    font-size: 0.66rem;
+    color: #fca5a5;
+}
+
+/* Y en la fila de iniciativa: con ratón bastan los iconos (dicen su nombre al pasar); a toques,
+   el nombre va escrito debajo. */
+.wm-init-status-text {
+    display: none;
+    font-size: 0.66rem;
+    color: #fca5a5;
+    line-height: 1.2;
+}
+
+@media (hover: none) {
+    .wm-init-status-text {
+        display: block;
+    }
+}
+
 /* Las caras en pixel de la fila de iniciativa y de las tarjetas de enemigo: sin suavizar. */
 .wm-init-face.pixel-art,
 .wm-combat-enemy-avatar img.pixel-art,

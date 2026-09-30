@@ -202,6 +202,13 @@ try {
         }
         await page.waitForTimeout(800);
         await closePopups();
+        // J19.12: lo que han lanzado los enemigos, y en qué se han concentrado.
+        const cast = await page.evaluate(async ({ from, names }) => {
+            const lines = (window.SillyTavern.getContext().chat ?? []).slice(from).flatMap((/** @type {any} */ m) => String(m?.mes ?? '').split('\n'));
+            const foe = (/** @type {string} */ l) => names.some((/** @type {string} */ n) => l.includes(n));
+            return [...new Set(lines.filter(l => foe(l) && /\blanza\b|se concentra en/.test(l)).map(l => l.replace(/^[^\p{L}]+/u, '').slice(0, 90)))].slice(0, 6);
+        }, { from: chatBefore, names: adjusted.foes.map(f => f.replace(/\s+\d+pg.*$/, '').replace(/\s+\d+$/, '')) }).catch(() => []);
+        if (cast.length > 0) console.log(`  conjuros: ${cast.join(' · ')}`);
         // Ganada es ganada en el juego: el tablero queda apuntado como ganado. Leer el chat
         // confundía la victoria de la pelea anterior con esta.
         const won = await page.evaluate(() => {

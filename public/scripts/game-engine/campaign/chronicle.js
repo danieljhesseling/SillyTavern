@@ -51,6 +51,8 @@ export const TAG_CATEGORIES = {
     'VÍNCULO': 'grupo',
     'MUNDO': 'mundo', 'EL MUNDO CAMBIA': 'mundo', 'RIVALES': 'mundo', 'NOTICIAS': 'mundo', 'RUMOR': 'mundo', 'GENTE': 'mundo',
     'FIESTA': 'mundo', 'CARTA': 'mundo', 'SUCESO': 'mundo', 'GUARDIAS': 'mundo', 'DIRECTOR': 'mundo', 'DUELO': 'mundo', 'NEMESIS': 'mundo',
+    // J10.1: un camino que se abre por la reputación, la fama, una llave o un guía.
+    'CAMINO': 'mundo',
     'GREMIO': 'gremio', 'ENCARGO': 'gremio',
     'COMBAT': 'combate', 'BOARD': 'combate', 'TABLERO': 'combate',
     'TIENDA': 'comercio', 'POSADA': 'comercio', 'TABERNA': 'comercio', 'TEMPLO': 'comercio', 'HERRERÍA': 'comercio', 'ROBO': 'comercio',

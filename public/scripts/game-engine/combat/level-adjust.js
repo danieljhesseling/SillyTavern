@@ -18,6 +18,9 @@
  *    ninguno de los que tenía: solo se quita la copia de uno repetido. Y no se copia a nadie
  *    con CA 15 o más (D-J21): con nivel 8, la Entrada a Ravenloft llegó a durar 20 rondas.
  *
+ * 4. **El tamaño del grupo** (J12.6): el tablero está escrito para tres (`WRITTEN_PARTY_SIZE`);
+ *    con más gente, algún esbirro de más, y con menos, de menos (`adjustForSize`).
+ *
  * Puro: quien llama lo aplica y lo dice.
  */
 
@@ -340,4 +343,149 @@ export function levelNote({ adjustment, band, level }) {
     return steps > 0
         ? `Vais por encima de lo que pide la campaña: los enemigos aprietan más. ${why}`
         : `Vais por debajo de lo que pide la campaña: los enemigos aflojan un poco, pero no del todo. ${why}`;
+}
+
+/**
+ * J12.6: para cuántos está escrito un tablero de campaña. Los de 1387 y Strahd se probaron
+ * con tu personaje y dos mercenarios (`tools/sim-campana.mjs`), así que a ese grupo le sale
+ * tal cual; con más gente, más enemigos, y con menos, menos.
+ */
+export const WRITTEN_PARTY_SIZE = 3;
+
+/** J12.6: los enemigos de más (o de menos, en negativo) que puede poner o quitar el tamaño del grupo. */
+export const SIZE_LIMITS = { min: -3, max: 2 };
+
+/**
+ * J12.6: el mismo tablero para un grupo de otro tamaño. Se mide en el presupuesto de amenaza
+ * (`board-intent.js`), con el nivel del grupo a los dos lados: lo que tiene de más o de menos
+ * un grupo de `partySize` frente a uno de `writtenSize`.
+ *
+ * - **Menos gente**: se quita la última copia del más flojo que esté repetido, mientras su
+ *   amenaza quepa en lo que falta. Nunca un jefe, y nunca el último de los suyos: el tablero
+ *   sigue teniendo a todos los que tenía.
+ * - **Más gente**: una copia del más flojo que no sea jefe ni lleve CA 15 o más (D-J21),
+ *   puesta al lado de uno suyo, mientras quepa en lo que sobra.
+ *
+ * Puro: con el mismo grupo y el mismo tablero, la misma pelea.
+ *
+ * @param {Object} input
+ * @param {Array<{name: string, x: number, y: number}>} input.placements
+ * @param {number} input.partySize
+ * @param {number} input.partyLevel
+ * @param {number} [input.writtenSize]
+ * @param {any[]} input.bestiary
+ * @param {any} [input.terrain]
+ * @param {number} [input.gridWidth]
+ * @param {number} [input.gridHeight]
+ * @param {Array<{x: number, y: number}>} [input.taken]
+ * @returns {{placements: Array<{name: string, x: number, y: number}>, added: string[], removed: string[]}}
+ */
+export function adjustForSize({
+    placements, partySize, partyLevel, writtenSize = WRITTEN_PARTY_SIZE, bestiary,
+    terrain = null, gridWidth = 50, gridHeight = 50, taken = [],
+}) {
+    const list = (Array.isArray(placements) ? placements : []).filter(p => p && p.name).map(p => ({ ...p }));
+    /** @type {string[]} */
+    const added = [];
+    /** @type {string[]} */
+    const removed = [];
+    const size = Math.max(1, Math.floor(Number(partySize) || 1));
+    const written = Math.max(1, Math.floor(Number(writtenSize) || WRITTEN_PARTY_SIZE));
+    if (size === written || list.length === 0) return { placements: list, added, removed };
+
+    const rows = new Map((Array.isArray(bestiary) ? bestiary : []).map(row => [lower(row?.name), row]));
+    const isBoss = (/** @type {string} */ name) => {
+        const row = rows.get(lower(name));
+        const tags = (Array.isArray(row?.tags) ? row.tags : []).map(lower);
+        return Boolean(row?.boss) || tags.some(t => /jefe|alfa|lider/.test(t));
+    };
+    const threat = (/** @type {string} */ name) => threatOf(rows.get(lower(name)) ?? {});
+    const kinds = [...new Set(list.map(p => p.name))].filter(name => !isBoss(name))
+        .sort((a, b) => threat(a) - threat(b));
+    let slack = budgetFor({ partyLevel, partySize: size }) - budgetFor({ partyLevel, partySize: written });
+
+    if (slack < 0) {
+        while (removed.length < -SIZE_LIMITS.min) {
+            const repeated = kinds.find(name => list.filter(p => p.name === name).length > 1 && threat(name) <= -slack);
+            if (!repeated) break;
+            list.splice(list.map(p => p.name).lastIndexOf(repeated), 1);
+            removed.push(repeated);
+            slack += threat(repeated);
+        }
+        return { placements: list, added, removed };
+    }
+
+    const armour = (/** @type {string} */ name) => {
+        const row = rows.get(lower(name));
+        return Number(row?.armorClass ?? row?.ac) || 0;
+    };
+    const minion = kinds.find(name => armour(name) < NO_COPY_AC);
+    if (!minion) return { placements: list, added, removed };
+    const cost = threat(minion);
+    const used = new Set([...(Array.isArray(taken) ? taken : []), ...list]
+        .filter(Boolean).map(c => `${Number(c.x) || 0},${Number(c.y) || 0}`));
+    const free = (/** @type {number} */ x, /** @type {number} */ y) =>
+        !used.has(`${x},${y}`) && (terrain ? isPassable(terrain, x, y, gridWidth, gridHeight) : (x >= 0 && y >= 0 && x < gridWidth && y < gridHeight));
+    while (added.length < SIZE_LIMITS.max && cost <= slack) {
+        const cell = cellNear(list.filter(p => p.name === minion), free);
+        if (!cell) break;
+        list.push({ name: minion, x: cell.x, y: cell.y });
+        used.add(`${cell.x},${cell.y}`);
+        added.push(minion);
+        slack -= cost;
+    }
+    return { placements: list, added, removed };
+}
+
+/**
+ * J12.6: lo que se le dice al jugador cuando el tamaño del grupo cambia la pelea, llano.
+ *
+ * @param {{partySize: number, writtenSize?: number, added?: string[], removed?: string[]}} input
+ * @returns {string[]} Una línea por enemigo de más o de menos.
+ */
+export function sizeNotes({ partySize, writtenSize = WRITTEN_PARTY_SIZE, added = [], removed = [] }) {
+    const size = Math.max(1, Math.floor(Number(partySize) || 1));
+    const why = `Este tablero está pensado para un grupo de ${writtenSize} y el vuestro es de ${size}`;
+    return [
+        ...removed.map(name => `${why}: hay un enemigo menos (${name}).`),
+        ...added.map(name => `${why}: hay un enemigo más (${name}).`),
+    ];
+}
+
+/**
+ * J4.6 y J12.6: lo que se dice de los enemigos de más o de menos, por el nivel y por el tamaño
+ * del grupo. Si solo cuenta uno, lo suyo de siempre; si cuentan los dos, lo que queda al final,
+ * una vez: «uno más por el nivel y dos menos por ser uno» es «uno menos», no tres líneas.
+ *
+ * @param {Object} input
+ * @param {{added?: string[], removed?: string[]}} [input.level]
+ * @param {{added?: string[], removed?: string[]}} [input.size]
+ * @param {number} input.partySize
+ * @param {number} [input.writtenSize]
+ * @returns {string[]}
+ */
+export function adjustmentNotes({ level = {}, size = {}, partySize, writtenSize = WRITTEN_PARTY_SIZE }) {
+    const byLevel = (level.added?.length ?? 0) + (level.removed?.length ?? 0) > 0;
+    const bySize = (size.added?.length ?? 0) + (size.removed?.length ?? 0) > 0;
+    const levelLines = [
+        ...(level.added ?? []).map(name => `Por vuestro nivel, hay un enemigo más: ${name}.`),
+        ...(level.removed ?? []).map(name => `Por vuestro nivel, hay un enemigo menos: ${name}.`),
+    ];
+    if (!bySize) return levelLines;
+    if (!byLevel) return sizeNotes({ partySize, writtenSize, added: size.added, removed: size.removed });
+    /** @type {Map<string, number>} */
+    const net = new Map();
+    const bump = (/** @type {string[]|undefined} */ list, /** @type {number} */ by) => {
+        for (const name of list ?? []) net.set(name, (net.get(name) ?? 0) + by);
+    };
+    bump(level.added, 1);
+    bump(level.removed, -1);
+    bump(size.added, 1);
+    bump(size.removed, -1);
+    /** @type {string[]} */
+    const out = [];
+    for (const [name, n] of net) {
+        for (let i = 0; i < Math.abs(n); i++) out.push(`Por vuestro nivel y por cuántos sois, hay un enemigo ${n > 0 ? 'más' : 'menos'}: ${name}.`);
+    }
+    return out;
 }

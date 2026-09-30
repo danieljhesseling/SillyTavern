@@ -402,6 +402,8 @@ export function setPartyFromWorldEntries(entries, worldName = null) {
             mapPosition: resolveEntryMapPosition(d),
             // R3: lo que la ficha del mundo dice que sabe hacer (se escribía y no se leía).
             abilities: abilityIdsOf(d),
+            // D-J52: la cara sin arte que eligió al crearse.
+            ...(d.face && typeof d.face === 'object' ? { face: d.face } : {}),
         };
         partyMembers.push(member);
     }
@@ -528,6 +530,8 @@ export function memberFromEntry(entry, worldName) {
         memories: [],
         mapPosition: resolveEntryMapPosition(d),
         abilities: abilityIdsOf(d),
+        // D-J52: la cara sin arte que eligió al crearse.
+        ...(d.face && typeof d.face === 'object' ? { face: d.face } : {}),
     };
 }
 

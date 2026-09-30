@@ -27,6 +27,8 @@ export const TIPS = {
     high: 'Estás en alto: desde aquí se ataca con ventaja a quien está abajo. Subir cuesta el doble.',
     // J15.4: cada consejo nombra el botón, no el comando: sin conexión no hay dónde escribirlo.
     spell: 'Los conjuros gastan cargas por círculo, que vuelven con el descanso largo. La ficha de quien lanza (pulsa su retrato) dice cuántas quedan y qué componente piden los gordos.',
+    // D-J49: la ficha «Magia» de la escena solo sale cuando algo sirve ahí; lo demás, en la ficha.
+    fieldMagic: 'Para curar, alumbrar o hacer rituales sin pelear: pulsa tu retrato, abajo, y «Magia fuera de combate». En la escena solo sale cuando sirve ahí mismo.',
     pet: 'Tu mascota no ocupa plaza ni cobra: comenta lo que pasa y ayuda en el tablero sin pelear en serio. En la pausa, «Mascota», para verla y acariciarla.',
     bill: 'Ha llegado la cuenta de la semana: comida, sueldos y posada. La «Mesa», arriba, dice qué se paga; quien no cobra acaba yéndose.',
     // J2.2 («Enseña jugando»): lo que se aprende en el momento en que pasa por primera vez.

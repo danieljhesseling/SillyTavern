@@ -21,6 +21,7 @@ import { lootable, relicsFor, describeRelic } from '../game-engine/campaign/reli
 import { dressLoot } from '../game-engine/campaign/item-lore.js';
 import { describeLootItem } from '../game-engine/combat/loot-items.js';
 import { treasureInChest } from '../game-engine/campaign/scenarios.js';
+import { chestItemsAt } from '../game-engine/campaign/chests.js';
 import { RELICS_GIVEN_KEY } from './keys.js';
 import { combatEncounter, currentBoardName, currentLocationName, partyMembers, worldItemCatalogue } from './state.js';
 import { deliverTakenContract } from './contracts.js';
@@ -56,8 +57,13 @@ export function openChest(board, gx, gy) {
     const wanted = treasureInChest(board?.objectives, collectedHere(board));
     const rare = nextRandom() < 0.4;
     const pool = DEFAULT_LOOT_RULES.itemsByRarity[rare ? 'Uncommon' : 'Common'] ?? [];
-    const name = wanted || (pool.length > 0 && nextRandom() < 0.6 ? pool[Math.floor(nextRandom() * pool.length) % pool.length] : '');
+    // J5.2: lo que el paquete guarda en este cofre (el tesoro de una sala o de un sitio): sale
+    // eso, y no algo de las tablas.
+    const packed = chestItemsAt(board, gx, gy);
+    const name = wanted || (packed.length === 0 && pool.length > 0 && nextRandom() < 0.6 ? pool[Math.floor(nextRandom() * pool.length) % pool.length] : '');
     if (name) addItemToInventory(/** @type {any} */ (opener), createItem(/** @type {any} */ (describeLootItem(name, wanted ? '' : rare ? 'Uncommon' : 'Common', worldItemCatalogue))));
+    for (const item of packed) addItemToInventory(/** @type {any} */ (opener), createItem(/** @type {any} */ (describeLootItem(item, '', worldItemCatalogue))));
+    const found = [name, ...packed].filter(Boolean);
     if (wanted) {
         board.collectedTreasures = [...collectedHere(board), wanted];
         if (combatEncounter.active) combatEncounter.collectedTreasures = board.collectedTreasures;
@@ -67,7 +73,7 @@ export function openChest(board, gx, gy) {
     savePartyState();
     renderPartyMembers();
     renderLocationMapsPreview();
-    postCombatNarration(`🧰 [TABLERO] ${opener.name} abre el cofre: ${gold} de oro${name ? ` y ${name}` : ''}.`);
+    postCombatNarration(`🧰 [TABLERO] ${opener.name} abre el cofre: ${gold} de oro${found.length > 0 ? ` y ${found.join(', ')}` : ''}.`);
     if (wanted) {
         toastr.success(`${opener.name} encuentra ${wanted}.`, 'Lo que buscabais');
         if (combatEncounter.active) checkScenarioOutcome();

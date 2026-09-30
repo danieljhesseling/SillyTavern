@@ -297,6 +297,18 @@ function resolveEnemyAbility(enemy, choice) {
         renderPartyMembers();
         return [`🪄 ${enemy.name} lanza ${ability.name}.`, ...counter.lines].join('\n');
     }
+    // J19.7: los dardos que no fallan (Proyectil mágico) se deshacen contra Escudo, si quien
+    // los recibe lo sabe.
+    const darts = typeof ability.spellLevel === 'number' && ability.resolution === 'auto' && Number(ability.rays) > 1 && Boolean(ability.damage);
+    if (darts && choice.side === 'enemy' && partyMembers.includes(target)) {
+        const shield = shieldAgainst(target, { attackTotal: 0, targetAc: 0, magicMissile: true });
+        if (shield.blocked) {
+            savePartyState();
+            saveCombatState();
+            renderPartyMembers();
+            return [...counter.lines, `🪄 ${enemy.name} lanza ${ability.name} sobre ${target.name}.`, ...shield.lines].join('\n');
+        }
+    }
     // R3: el mismo camino que el grupo: con área, alcanza también a los suyos si están ahí.
     const lines = [...counter.lines, ...resolveAbilityOnBoard({ actor: enemy, side: 'enemy', ability, subject: target })];
 
@@ -427,6 +439,11 @@ export function resolveEnemyTurnAction(turnEntry) {
     // R3: dormido, aturdido o paralizado, pierde el turno. Antes era una etiqueta.
     const out = cannotAct(enemy.activeConditions);
     if (out) return `💤 [COMBAT] ${enemy.name} no puede actuar (${CONDITION_WORDS[out] ?? out}): pierde el turno.`;
+    // J8.5: dudan por lo que se les ha dicho (`party/avoid.js`): este turno no atacan.
+    if (Number(/** @type {any} */ (enemy).parleyLull) > 0) {
+        /** @type {any} */ (enemy).parleyLull -= 1;
+        return `🤔 [COMBAT] ${enemy.name} duda y baja el arma: este turno no ataca.`;
+    }
 
     const livingParty = getLivingPartyMembers();
     if (!livingParty.length) {

@@ -18,13 +18,14 @@
  * Uso:
  *   node tools/e2e-companeros.mjs --port 8300 --captura C:/tmp/comp.png
  *   (las capturas salen como comp.png.noche.png, comp.png.formacion.png…)
+ *   node tools/e2e-companeros.mjs --port 8300 --log C:/tmp/comp.log   # lo que dice el servidor, y la página en comp.log.pagina.txt
  */
 
 /* global window, document, HTMLElement */
 
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { createWriteStream, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -69,6 +70,12 @@ function startServer() {
         };
         child.stdout.on('data', watch);
         child.stderr.on('data', watch);
+        // `--log fichero`: lo que dice el servidor (un 500 se explica ahí).
+        if (argAfter('--log')) {
+            const out = createWriteStream(argAfter('--log'));
+            child.stdout.pipe(out);
+            child.stderr.pipe(out);
+        }
         child.on('exit', (/** @type {number} */ code) => reject(new Error(`the server exited with code ${code}`)));
     });
 }
@@ -101,6 +108,9 @@ try {
         if (m.type() === 'error' && !/Failed to load resource.*404/.test(m.text())) problems.push(`ERROR ${m.text().slice(0, 300)}`);
         if (m.type() === 'warning' && /\[gremio\]/.test(m.text())) console.log(`        (aviso de la página: ${m.text().slice(0, 300)})`);
     });
+    // Con `--log fichero`, también lo que dice la página (en `fichero.pagina.txt`).
+    const pageLog = argAfter('--log') ? createWriteStream(`${argAfter('--log')}.pagina.txt`) : null;
+    if (pageLog) page.on('console', (/** @type {any} */ m) => pageLog.write(`${m.type()} ${m.text().slice(0, 600)}\n`));
     await context.addInitScript(() => {
         try {
             window.localStorage.setItem('sillytavern_gameTipsSeen', 'dialogue,exploration,combat,travel,prisoners,mesa,high,spell,pet,bill,move,attack,roll,talk,journal');
@@ -215,6 +225,14 @@ try {
     /** El pueblo, y dentro de un sitio. */
     const enterPlace = async (/** @type {string} */ id) => {
         await carryOn('exploration');
+        const inside = await page.evaluate(() => document.querySelector('#game-shell .gs-town-scene')?.getAttribute('data-place') ?? null);
+        if (inside === id) return;
+        // Ya dentro de otro sitio (la posada tras la última noche): a este, por su pestaña.
+        if (inside !== null) {
+            await page.locator(`#game-shell .gs-town-tab[data-place="${id}"]`).click({ timeout: 5000 }).catch(() => {});
+            await until(async () => await page.evaluate(() => document.querySelector('#game-shell .gs-town-scene')?.getAttribute('data-place') ?? '') === id, 8000);
+            return;
+        }
         await until(async () => await page.locator(`#game-shell .gs-town-place[data-place="${id}"]`).count() > 0, 10000);
         await page.locator(`#game-shell .gs-town-place[data-place="${id}"]`).click({ timeout: 5000 }).catch(() => {});
         await page.waitForSelector('#game-shell .gs-town-scene', { timeout: 8000 }).catch(() => {});
@@ -457,7 +475,13 @@ try {
         const inHall = await hallAct.count() === 1;
         if (inHall) await hallAct.click();
         const opened = await page.waitForSelector('.popup[open] .fm-root', { timeout: 6000 }).then(() => true).catch(() => false);
-        check('J7.4: en el gremio, «Tu gente» → «Formación y papeles» abre lo mismo', inHall && opened);
+        if (SHOT && !(inHall && opened)) await page.screenshot({ path: `${SHOT}.gremio-formacion.png` });
+        check('J7.4: en el gremio, «Tu gente» → «Formación y papeles» abre lo mismo', inHall && opened, inHall && opened ? '' : JSON.stringify(await page.evaluate(() => ({
+            scene: document.querySelector('#game-shell')?.getAttribute('data-scene') || '',
+            place: document.querySelector('#game-shell .gs-town-scene')?.getAttribute('data-place') || '',
+            acts: [...document.querySelectorAll('#game-shell .gs-town-act')].map(b => b.getAttribute('data-action')),
+            popups: [...document.querySelectorAll('dialog[open]:not([closing])')].map(d => (d.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 80)),
+        }))));
         await popupButton(/Hecho/);
         await leavePlace();
     }
@@ -557,6 +581,14 @@ try {
         await dropToasts();
         await clearPopups();
         await carryOn('exploration');
+        // Los días de las misiones se come (lo dice su ventana): antes, dos seguidas mataban de
+        // hambre a los mercenarios y a 1387 llegaba el héroe solo.
+        const alive = await page.evaluate(async () => (await import('/scripts/party.js')).getPartyMembersSnapshot()
+            .map((/** @type {any} */ m) => ({ name: String(m.name), hp: `${m.hp}/${m.maxHp}`, dead: Boolean(m.dead), hunger: Number(m.needs?.hunger) || 0 })));
+        if (wants('mision')) {
+            check('J14.9: tras los días de las misiones, nadie del grupo ha caído de hambre por el camino',
+                alive.length === 4 && alive.every(m => !m.dead && m.hunger < 72), JSON.stringify(alive));
+        }
         await clickChip(/Tablón de campañas/);
         await page.waitForSelector('.hb-root [data-campaign="1387"]', { timeout: 15000 });
         await page.locator('.hb-root [data-campaign="1387"]').click();
@@ -583,6 +615,11 @@ try {
         const smallTalk = [];
         /** Viajar a un sitio vecino desde la columna «Viajar», a paso normal, y lo que salga. */
         const travelTo = async (/** @type {string} */ to) => {
+            // Lo que saliera al llegar (un suceso del camino con su tirada y su «Seguir»), cerrado
+            // antes, como quien lo lee: si no, tapa la columna «Viajar».
+            await clearPopups();
+            await clearDice();
+            await clearPopups();
             await carryOn('exploration');
             await page.locator('#game-shell .gs-place', { hasText: to }).first().click({ timeout: 8000 });
             await page.waitForSelector('.popup:visible .tr-pace-normal', { timeout: 8000 });
@@ -592,6 +629,7 @@ try {
                 if (await page.locator('.popup:visible .tr-detour').count() > 0) await page.locator('.popup:visible .tr-detour').first().click();
                 else if (await page.locator('.popup:visible .rd-pass, .popup:visible .rd-face').count() > 0) await page.locator('.popup:visible .rd-pass, .popup:visible .rd-face').first().click();
                 else if (await page.locator('.popup:visible .gd-flee, .popup:visible .gd-pay').count() > 0) await page.locator('.popup:visible .gd-pay, .popup:visible .gd-flee').first().click();
+                else if (await page.locator('.popup:visible .su-go, .popup:visible .su-option:not([disabled])').count() > 0) await clearPopups();
                 else if ((await state()).place === to) break;
             }
             await page.waitForTimeout(1200);
@@ -606,6 +644,10 @@ try {
         /** @type {string[]} */
         let novel = [];
         const places = ['El Camino Viejo', 'El Pueblo de Barro'];
+        // Sin sucesos en estos viajes: la caja de la novela lleva las cuatro últimas, y un cruce de
+        // caminos, un mendigo y el rumor que cuenta sacaban de ella la frase recién dicha. Los
+        // sucesos del camino los miran sus pruebas; aquí se mira la frase.
+        await page.evaluate(() => window.localStorage.setItem('sillytavern_gameSucesos', 'off'));
         for (let trip = 0; trip < 6 && lines.length === 0; trip++) {
             await travelTo(places[trip % 2]);
             lines = await chatMes(/^\[FRASE\] [^,]+, (por el camino|al llegar a )/);
@@ -627,13 +669,15 @@ try {
         console.log(`        (J14.1, charla que sale sola al llegar: ${smallTalk.length > 0 ? smallTalk[0] : 'esta vez no'})`);
         const reacted = await chatMes(/^\[FRASE\] [^,]+, ante lo que habéis decidido/);
         if (reacted.length > 0) console.log(`        (y ante una decisión: ${reacted[0].name}: ${reacted[0].shown})`);
-        // Acampar en el Camino Viejo, con Gerd y Nella charlando junto al fuego.
+        // Acampar en el Camino Viejo, con Gerd y Nella charlando junto al fuego (las noches van con
+        // los sucesos: otra vez encendidos).
         if ((await state()).place !== 'El Camino Viejo') await travelTo('El Camino Viejo');
+        await page.evaluate(() => window.localStorage.setItem('sillytavern_gameSucesos', 'on'));
         await carryOn('exploration');
         // «Acampar aquí», en la fila o en «+N más».
         let camp = await clickChip(/^Acampar aquí$/);
         if (!camp) {
-            await clickChip(/más$/);
+            await clickChip(/\+\d+ más$/);
             camp = await page.locator('.popup[open] .hp-item[data-chip="camp"]').click({ timeout: 5000 }).then(() => true).catch(() => false);
         }
         const campOpen = await page.waitForSelector('.popup:visible .cp-root', { timeout: 8000 }).then(() => true).catch(() => false);
@@ -697,7 +741,7 @@ try {
         await carryOn('exploration');
         let home = await clickChip(/^Volver al gremio$/);
         if (!home) {
-            await clickChip(/más$/);
+            await clickChip(/\+\d+ más$/);
             home = await page.locator('.popup[open] .hp-item[data-chip="hub-home"]').click({ timeout: 5000 }).then(() => true).catch(() => false);
         }
         const farewell = await page.waitForSelector('.qd-dialog[open] .qd-root.qd-despedida', { timeout: 20000 }).then(() => true).catch(() => false);
@@ -713,7 +757,9 @@ try {
             await page.waitForTimeout(300);
         }
         const inHub = await until(async () => /Gremio/.test((await state()).world), 60000);
-        await page.waitForTimeout(1500);
+        // El grupo llega un momento después del chat (se copian sus fichas al mundo del gremio).
+        await until(async () => (await state()).party.some(m => m.name === 'Bran'), 20000);
+        await page.waitForTimeout(500);
         const guildBran = await page.evaluate(async () => {
             const bran = (await import('/scripts/party.js')).getPartyMembersSnapshot().find((/** @type {any} */ m) => m.name === 'Bran');
             return bran ? { guild: bran.guild === true, from: bran.from ?? null } : null;
@@ -724,6 +770,15 @@ try {
             inHub && guildBran?.guild === true && guildBran?.from?.campaign === '1387', JSON.stringify({ inHub, guildBran }));
     }
 
+    // Cuánto pesa la partida y cuánto tarda en guardarse, para verlo crecer.
+    const saveCost = await page.evaluate(async () => {
+        const st = await import('/script.js');
+        const size = JSON.stringify(st.chat_metadata).length + JSON.stringify(st.chat).length;
+        const started = performance.now();
+        await st.saveChatConditional();
+        return { size, ms: Math.round(performance.now() - started), messages: st.chat.length };
+    }).catch(() => null);
+    if (saveCost) console.log(`        (guardar el chat: ${saveCost.messages} mensajes, ${saveCost.size} caracteres, ${saveCost.ms} ms)`);
     const mine = problems.filter(p => /night|noche|pareja|cast|meetup|qd-|formation|formaci|quest|misi|frase|companion/i.test(p));
     check('sin errores de lo mío en la página', mine.length === 0, mine.slice(0, 6).join('\n        '));
     if (problems.length > mine.length) console.log(`(otros avisos de la página: ${problems.length - mine.length})\n        ${problems.filter(p => !mine.includes(p)).slice(0, 4).join('\n        ')}`);

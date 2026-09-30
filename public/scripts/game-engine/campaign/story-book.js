@@ -23,7 +23,7 @@
  * Puro: de lo guardado a lo que se lee. Lo dibuja `ui/story-book.js`.
  */
 
-import { readPlot, readPlotState, readChapters, MAX_ACTS } from './plot.js';
+import { readPlot, readPlotState, readChapters, MAX_ACTS, hasDeadline } from './plot.js';
 import { resolveGender } from './grammar.js';
 import { chronicleOf } from './chronicle.js';
 import { readDialogueMemory } from './dialogues.js';
@@ -236,8 +236,9 @@ export function deadlinesOf(plot, rawState, today) {
     const now = whole(today);
     if (!read || now < 1) return [];
     const state = readPlotState(rawState);
+    // D-J46: con los plazos apagados (`STORY_DEADLINES` en plot.js) no hay ninguno que contar.
     return read.milestones
-        .filter((/** @type {any} */ m) => !m.hidden && m.within > 0 && state.open.includes(m.id) && state.since[m.id])
+        .filter((/** @type {any} */ m) => !m.hidden && hasDeadline(m) && state.open.includes(m.id) && state.since[m.id])
         .map((/** @type {any} */ m) => {
             const left = Math.max(0, state.since[m.id] + m.within - now);
             const urgency = /** @type {BookClock['urgency']} */ (left === 0 ? 'hoy' : left <= Math.max(1, Math.ceil(m.within / 3)) ? 'pronto' : 'holgado');

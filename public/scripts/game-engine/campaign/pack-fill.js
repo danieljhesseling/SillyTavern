@@ -9,6 +9,8 @@
  *   encargo con pelea, una mazmorra vacía o un tablero escrito sin mapa se dibujan con la
  *   semilla (`dungeon-generator.js` y `board-intent.js`, como los encargos del tablón). Un
  *   tablero con mapa pero sin dónde empezar, o con enemigos sin casilla, se completa (J12.5).
+ *   Uno con una sala cerrada, con alguien dentro y sin puerta por la que entrar (la Mansión
+ *   del Burgomaestre de tu JSON de Strahd), recibe una puerta en la pared que la separa.
  * - **Bichos**: el que una misión nombra y el bestiario no trae sale del bestiario del juego
  *   (`compendio/bestiario.json`) si se llama igual; si no, con los números de su desafío.
  *   Un tablero dibujado sin nadie que poner saca a los suyos del bestiario del juego, por el
@@ -18,7 +20,16 @@
  *   (`compendio/frases.json`, las filas `relleno-*`).
  * - **El hilo**: un hito que dice de qué misión es (`quest`) toma de ella su título, su escena y
  *   lo que pide; uno sin `opens` va detrás del anterior; y si nada lleva a un final, el último
- *   lleva a uno.
+ *   lleva a uno. Una campaña sin hilo y con sus misiones repartidas en actos (tu JSON de Strahd
+ *   solo trae misiones, del acto 1 al 5) lo saca de ellas: un hito por misión, acto a acto.
+ * - **Salas y tesoros** (J5.2): el encuentro de cada sala (`zones[].enemies`) se pone en sus
+ *   casillas; el tesoro de una sala (`zones[].treasure`) o de un sitio (`locations[].treasure`),
+ *   en un cofre que no corta el paso (`chests`, que abre `party/loot.js`). Un sitio con tesoro y
+ *   sin tablero recibe uno pequeño, sin pelea.
+ * - **Quién lo cuenta** (J5.2): un hito con `pov` (o de un capítulo con `pov`) y sin escena
+ *   jugada sale en boca de esa persona, con su retrato.
+ * - **Un dibujo sin mapa** (J12.5): un tablero con `image` que no trae `map` (y que
+ *   `pack-maps.js` no ha podido leer) se dibuja con la semilla, sin el dibujo, que no casaría.
  *
  * Todo con la semilla de la campaña: la misma campaña da siempre los mismos tableros. Lo que
  * se rellena se dice, cosa a cosa (`FillNote`): un paquete reescrito en silencio es un paquete
@@ -36,10 +47,13 @@ import { baselineFor, breedBand, PROFILES } from '../compendio/bestiary.js';
 import { pickWeighted } from '../compendio/compendio.js';
 import { derive, cleanSeed } from './seed.js';
 import { walkable } from './board-draft.js';
+import { zoneCells } from '../board/zones.js';
+import { terrainFromAsciiMap } from '../board/terrain.js';
+import { floodFrom } from '../board/reachability.js';
 
 /**
  * @typedef {Object} FillNote Una cosa que ha puesto el motor.
- * @property {'tablero'|'criatura'|'sitio'|'tipo'|'camino'|'texto'|'hilo'|'final'|'aliado'} kind
+ * @property {'tablero'|'criatura'|'sitio'|'tipo'|'camino'|'texto'|'hilo'|'historia'|'final'|'aliado'|'sala'|'cofre'|'objeto'|'voz'|'mapa'|'puerta'} kind
  * @property {string} name Lo que se ha puesto: el tablero, el bicho, el sitio.
  * @property {string} detail Para qué, en una frase corta: «para la misión «Los lobos»».
  */
@@ -53,8 +67,18 @@ export const FILL_KINDS = {
     camino: ['camino a una localización suelta', 'caminos a localizaciones sueltas'],
     texto: ['texto del narrador del motor', 'textos del narrador del motor'],
     hilo: ['hito completado', 'hitos completados'],
+    historia: ['hilo sacado de las misiones', 'hilos sacados de las misiones'],
     final: ['final', 'finales'],
     aliado: ['compañero que una misión pide proteger', 'compañeros que una misión pide proteger'],
+    // J5.2: lo que un módulo cuenta sala a sala y sitio a sitio, y quién cuenta cada trozo.
+    sala: ['sala con su encuentro puesto', 'salas con su encuentro puesto'],
+    cofre: ['cofre con su tesoro', 'cofres con su tesoro'],
+    objeto: ['objeto de un tesoro, hecho sencillo', 'objetos de un tesoro, hechos sencillos'],
+    voz: ['escena contada por quien la vive', 'escenas contadas por quien las vive'],
+    // J12.5: un tablero con su dibujo y sin mapa, leído del dibujo (`pack-maps.js`).
+    mapa: ['tablero leído de su dibujo', 'tableros leídos de su dibujo'],
+    // J5.3: una sala cerrada con alguien dentro, con una puerta para llegar.
+    puerta: ['puerta para entrar en una sala cerrada', 'puertas para entrar en salas cerradas'],
 };
 
 /** Qué clase de sitio es, por las palabras de su nombre. En orden: la primera que encaja. */
@@ -375,6 +399,7 @@ export function fillPackGaps(raw, { compendium = null, seed = '' } = {}) {
     const boards = list(pack.boards);
     const bestiary = list(pack.bestiary);
     const confidants = list(pack.confidants);
+    const items = list(pack.items);
     const questKey = (/** @type {any} */ q, /** @type {number} */ i) => text(q?.id) || slug(q?.name) || `mision-${i + 1}`;
     const questById = new Map(quests.map((q, i) => [questKey(q, i), q]));
 
@@ -475,6 +500,10 @@ export function fillPackGaps(raw, { compendium = null, seed = '' } = {}) {
     });
     for (const b of boards) {
         for (const e of list(b?.enemies)) ensureCreature(typeof e === 'string' ? e : e?.name, 1, false, `está en el tablero «${text(b?.name) || text(b?.id)}»`);
+        // J5.2: el encuentro de cada sala.
+        for (const z of list(b?.zones)) {
+            for (const e of list(z?.enemies)) ensureCreature(typeof e === 'string' ? e : e?.name, 1, false, `espera en la sala «${text(z?.name)}» de «${text(b?.name) || text(b?.id)}»`);
+        }
     }
     for (const m of milestones) {
         for (const asks of [m?.asks, ...list(m?.asks?.options)]) {
@@ -491,7 +520,7 @@ export function fillPackGaps(raw, { compendium = null, seed = '' } = {}) {
         if (!key || !text(place)) return;
         tiedTo.set(key, new Set([...(tiedTo.get(key) ?? []), low(place)]));
     };
-    for (const b of boards) for (const e of list(b?.enemies)) tie(e, b?.locationName);
+    for (const b of boards) for (const e of [...list(b?.enemies), ...list(b?.zones).flatMap(z => list(z?.enemies))]) tie(e, b?.locationName);
     for (const q of quests) for (const e of list(q?.enemies)) tie(e, q?.locationName ?? q?.where);
 
     /** @type {Map<string, any[]>} Los bichos de relleno de cada bioma y acto, para no criarlos dos veces. */
@@ -636,6 +665,164 @@ export function fillPackGaps(raw, { compendium = null, seed = '' } = {}) {
         return { board, target: drawn.target ?? far[0] ?? null };
     };
 
+    // ------------------------------------------------------------ los tesoros (J5.2)
+    /** @type {Map<string, any>} */
+    const itemByName = new Map(items.filter(i => text(i?.name)).map(i => [low(i.name), i]));
+    /**
+     * Que exista en `items` un objeto que un tesoro nombra: si no, sencillo, para que se pueda
+     * llevar.
+     *
+     * @param {string} name
+     * @param {string} why
+     */
+    const ensureItem = (name, why) => {
+        if (!name || itemByName.has(low(name))) return;
+        const item = { name, type: 'gear', rarity: 'Uncommon' };
+        items.push(item);
+        itemByName.set(low(name), item);
+        note('objeto', name, why);
+    };
+    /**
+     * Un cofre con su tesoro en un tablero con mapa: en una casilla de suelo de `cells` (la sala
+     * o, sin ella, todo el tablero), pegada a una pared si se puede, y que no corte el paso a
+     * ninguna parte (un cofre no se pisa). Si ahí ya hay un cofre dibujado sin dueño, ese.
+     *
+     * @param {any} board
+     * @param {string[]|null} cells Casillas `"x,y"`, o null para todo el tablero.
+     * @param {any[]} things Los objetos, por su nombre.
+     * @param {string} why
+     * @returns {boolean} Si el tesoro está en un cofre (ya lo estaba, o se ha puesto).
+     */
+    const placeChest = (board, cells, things, why) => {
+        const wanted = [...new Set(list(things).map(t => text(typeof t === 'string' ? t : t?.name)).filter(Boolean))];
+        if (wanted.length === 0 || !readableMap(board?.map)) return false;
+        const chests = list(board.chests);
+        // Rellenar lo relleno no pone otro cofre.
+        if (chests.some(c => wanted.every(w => list(c?.items).map(low).includes(low(w))))) return true;
+        const starts = list(board.partyStart).filter(c => Number.isInteger(c?.x) && Number.isInteger(c?.y));
+        if (starts.length === 0) return false;
+        const map = board.map.map(String);
+        const inside = cells ? new Set(cells) : null;
+        const fits = (/** @type {number} */ x, /** @type {number} */ y) => !inside || inside.has(`${x},${y}`);
+        const enemies = list(board.enemies).filter(e => typeof e === 'object' && Number.isInteger(e?.x) && Number.isInteger(e?.y));
+        const used = new Set([...starts, ...enemies, ...chests].map(c => `${c.x},${c.y}`));
+        /** @type {{x: number, y: number}|null} */
+        let spot = null;
+        for (let y = 0; y < map.length && !spot; y++) {
+            for (let x = 0; x < map[y].length && !spot; x++) {
+                if (map[y][x] === 'k' && fits(x, y) && !used.has(`${x},${y}`)) spot = { x, y };
+            }
+        }
+        if (!spot) {
+            const reach = stepsFrom(map, starts[0]);
+            const wall = (/** @type {number} */ x, /** @type {number} */ y) => [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => map[y + dy]?.[x + dx] === '#');
+            const candidates = [...reach.entries()]
+                .map(([key, d]) => ({ x: Number(key.split(',')[0]), y: Number(key.split(',')[1]), d }))
+                .filter(c => map[c.y][c.x] === '.' && fits(c.x, c.y) && !used.has(`${c.x},${c.y}`))
+                .sort((a, b) => Number(wall(b.x, b.y)) - Number(wall(a.x, a.y)) || b.d - a.d || a.y - b.y || a.x - b.x);
+            for (const c of candidates.slice(0, 60)) {
+                const trial = map.map((row, y) => (y === c.y ? `${row.slice(0, c.x)}k${row.slice(c.x + 1)}` : row));
+                const after = stepsFrom(trial, starts[0]);
+                // Todo lo que se alcanzaba se sigue alcanzando, salvo la casilla del cofre.
+                if (after.size === reach.size - 1 && enemies.every(e => !reach.has(`${e.x},${e.y}`) || after.has(`${e.x},${e.y}`))) {
+                    spot = { x: c.x, y: c.y };
+                    board.map = trial;
+                    break;
+                }
+            }
+        }
+        if (!spot) return false;
+        for (const thing of wanted) ensureItem(thing, why);
+        board.chests = [...chests, { x: spot.x, y: spot.y, items: wanted }];
+        note('cofre', text(board.name) || text(board.id), `${why}: ${sayList(wanted)}`);
+        return true;
+    };
+    /**
+     * J5.2: el encuentro y el tesoro de cada sala de un tablero con mapa. Quien la sala pide y
+     * todavía no está en ella se pone en sus casillas libres; su tesoro, en un cofre dentro.
+     *
+     * @param {any} board
+     * @param {string} id
+     */
+    const fillRooms = (board, id) => {
+        for (const zone of list(board.zones)) {
+            const cells = zoneCells(zone);
+            if (cells.length === 0) continue;
+            const inZone = new Set(cells);
+            const want = list(zone?.enemies).map(e => text(typeof e === 'string' ? e : e?.name)).filter(Boolean);
+            if (want.length > 0 && readableMap(board.map)) {
+                const map = board.map.map(String);
+                const current = list(board.enemies);
+                const placed = current.filter(e => typeof e === 'object' && Number.isInteger(e?.x) && inZone.has(`${e.x},${e.y}`));
+                const pool = placed.map(e => low(e.name));
+                const missing = want.filter(name => {
+                    const at = pool.indexOf(low(name));
+                    if (at < 0) return true;
+                    pool.splice(at, 1);
+                    return false;
+                });
+                const taken = new Set([...list(board.partyStart), ...current.filter(e => typeof e === 'object'), ...list(board.chests)].map(c => `${c?.x},${c?.y}`));
+                const random = randomOf('sala', id, text(zone.name));
+                const free = cells.map(key => ({ x: Number(key.split(',')[0]), y: Number(key.split(',')[1]) }))
+                    .filter(c => standable(map, c.x, c.y) && !taken.has(`${c.x},${c.y}`))
+                    .map(c => ({ c, at: random() })).sort((a, b) => a.at - b.at).map(({ c }) => c);
+                /** @type {Array<{name: string, x: number, y: number}>} */
+                const added = [];
+                missing.forEach((name, i) => { if (free[i]) added.push({ name, ...free[i] }); });
+                if (added.length > 0) {
+                    board.enemies = [...current, ...added];
+                    note('sala', `${text(zone.name)} (${text(board.name) || id})`, `quien espera en ella: ${sayList(added.map(e => e.name))}`);
+                }
+            }
+            placeChest(board, cells, list(zone?.treasure), `el tesoro de la sala «${text(zone.name)}»`);
+        }
+    };
+
+    /**
+     * J5.3: una sala cerrada. Si alguien espera donde no se llega desde donde empieza el grupo
+     * (una sala sin puerta, o con la puerta dibujada contra otra pared), se abre una puerta en
+     * una casilla de muro que tenga a un lado lo que se alcanza y al otro su sala: la más cerca
+     * de quien espera. Lo mismo que mira el validador (`reachability.js`: las puertas se abren,
+     * y se va en diagonal). El mapa sigue siendo el suyo: solo cambia esa casilla, y se dice.
+     * Una pared de dos casillas de grueso no se abre: eso lo avisa el validador.
+     *
+     * @param {any} board
+     * @param {string} id
+     */
+    const openWalledRooms = (board, id) => {
+        if (!readableMap(board?.map)) return;
+        const starts = list(board.partyStart).filter(c => Number.isInteger(c?.x) && Number.isInteger(c?.y));
+        const waiting = list(board.enemies).filter(e => typeof e === 'object' && Number.isInteger(e?.x) && Number.isInteger(e?.y));
+        if (starts.length === 0 || waiting.length === 0) return;
+        for (let round = 0; round < 8; round++) {
+            const map = board.map.map(String);
+            const size = { gridWidth: map[0].length, gridHeight: map.length };
+            const terrain = terrainFromAsciiMap(map);
+            const reached = floodFrom({ terrain, ...size, starts });
+            const stuck = waiting.find(e => !reached.has(`${e.x},${e.y}`));
+            if (!stuck) return;
+            const room = floodFrom({ terrain, ...size, starts: [stuck] });
+            /** @type {{x: number, y: number, d: number}|null} */
+            let best = null;
+            for (let y = 1; y < map.length - 1; y++) {
+                for (let x = 1; x < map[y].length - 1; x++) {
+                    if (map[y][x] !== '#') continue;
+                    const joins = [[1, 0], [0, 1]].some(([dx, dy]) => {
+                        const a = `${x - dx},${y - dy}`;
+                        const b = `${x + dx},${y + dy}`;
+                        return (reached.has(a) && room.has(b)) || (reached.has(b) && room.has(a));
+                    });
+                    const d = Math.abs(x - stuck.x) + Math.abs(y - stuck.y);
+                    if (joins && (!best || d < best.d)) best = { x, y, d };
+                }
+            }
+            if (!best) return;
+            const at = best;
+            board.map = map.map((row, y) => (y === at.y ? `${row.slice(0, at.x)}D${row.slice(at.x + 1)}` : row));
+            note('puerta', text(board.name) || id, `para llegar a ${text(stuck.name) || 'quien espera'}, en la casilla (${at.x + 1}, ${at.y + 1})`);
+        }
+    };
+
     // J12.5: los tableros que la campaña trae. Sin mapa, se dibujan con la semilla; con mapa,
     // se completa lo que les falte: dónde empieza el grupo y dónde espera cada enemigo.
     for (let i = 0; i < boards.length; i++) {
@@ -643,7 +830,11 @@ export function fillPackGaps(raw, { compendium = null, seed = '' } = {}) {
         if (!board || typeof board !== 'object' || board.seeded) continue;
         const id = text(board.id) || freeId(board.name || `tablero-${i + 1}`);
         if (!Array.isArray(board.map) || board.map.length === 0) {
-            const named = list(board.enemies).map(e => text(typeof e === 'string' ? e : e?.name)).filter(Boolean);
+            // J5.2: quien espera en sus salas va también, y su tesoro, en un cofre: las salas se
+            // escribieron sobre otro mapa y aquí no casan.
+            const rooms = list(board.zones);
+            const named = [...list(board.enemies), ...rooms.flatMap(z => list(z?.enemies))].map(e => text(typeof e === 'string' ? e : e?.name)).filter(Boolean);
+            const loot = rooms.flatMap(z => list(z?.treasure));
             const uses = quests.filter(q => text(q?.boardId) === id);
             const objectives = uses.flatMap(q => list(q?.objectives)).map(o => text(o?.type));
             const purpose = PURPOSE_OF_OBJECTIVE[objectives.find(t => PURPOSE_OF_OBJECTIVE[t]) ?? ''] ?? 'cull';
@@ -655,14 +846,18 @@ export function fillPackGaps(raw, { compendium = null, seed = '' } = {}) {
                 id, name: text(board.name) || freeName(place, ''), place, purpose, forced: named, crowd: named.length === 0,
                 act: uses[0]?.act ?? 1, size: text(board.size), shape: text(board.shape),
             });
-            // Lo demás que traía (su descripción, sus salas), tal cual; el dibujo, del motor.
+            // Lo demás que traía (su descripción), tal cual; el dibujo, del motor. J12.5: el dibujo,
+            // su cuadrícula, sus salas y sus alturas eran de otro mapa: fuera, y se dice.
             const rest = { ...board };
-            for (const key of ['map', 'partyStart', 'enemies', 'size', 'shape']) delete rest[key];
+            for (const key of ['map', 'partyStart', 'enemies', 'size', 'shape', 'image', 'grid', 'zones', 'elevation']) delete rest[key];
             const merged = { ...rest, ...drawn };
             boards.splice(boards.indexOf(drawn), 1);
             boards.splice(i, 0, merged);
             boardsByName.set(low(merged.name), merged);
-            note('tablero', merged.name, 'venía sin mapa');
+            note('tablero', merged.name, text(board.image)
+                ? 'traía su dibujo pero no su mapa, y el dibujo no se ha podido leer: se ha dibujado con la semilla, sin él'
+                : 'venía sin mapa');
+            placeChest(merged, null, loot, `el tesoro de «${merged.name}»`);
             continue;
         }
         if (!readableMap(board.map)) continue;
@@ -686,6 +881,8 @@ export function fillPackGaps(raw, { compendium = null, seed = '' } = {}) {
             changed = true;
         }
         if (changed) note('tablero', text(board.name) || id, 'traía mapa: se ha puesto dónde empieza el grupo y dónde espera cada uno');
+        fillRooms(board, id);
+        openWalledRooms(board, id);
     }
 
     /**
@@ -752,6 +949,36 @@ export function fillPackGaps(raw, { compendium = null, seed = '' } = {}) {
     });
 
     // ------------------------------------------------------------ el hilo
+    // J5.3: una campaña sin hilo, solo con misiones repartidas en actos (como tu JSON de Strahd,
+    // del acto 1 al 5): el hilo sale de ellas, un hito por misión, acto a acto y, en cada acto, en
+    // el orden en que vienen. Lo demás de cada hito (título, escena, qué pide, detrás de cuál va y
+    // el final) lo pone lo de abajo, como a cualquier hito que dice de qué misión es. Con todas en
+    // el mismo acto no hay orden que seguir: se juegan sueltas, como hasta ahora.
+    const madeThread = milestones.length === 0 && list(pack.plot?.milestones).length === 0
+        && new Set(quests.map(q => Number(q?.act) || 1)).size > 1;
+    if (madeThread) {
+        const order = quests.map((q, i) => ({ key: questKey(q, i), act: Number(q?.act) || 1, i }))
+            .sort((a, b) => a.act - b.act || a.i - b.i);
+        for (const { key } of order) milestones.push({ id: key, quest: key });
+        const plot = pack.plot && typeof pack.plot === 'object' && !Array.isArray(pack.plot) ? pack.plot : {};
+        pack.plot = { ...plot, milestones };
+        note('historia', `${milestones.length} ${milestones.length === 1 ? 'misión' : 'misiones'}`, 'la campaña no traía hilo');
+        // Una misión en un sitio escondido: lo descubre la de antes al acabarse. Sin ninguna
+        // antes, el sitio no puede empezar escondido.
+        milestones.forEach((m, i) => {
+            const quest = questById.get(m.quest);
+            const where = text(boards.find(b => text(b?.id) === text(quest?.boardId))?.locationName) || text(quest?.locationName);
+            const place = placeByName.get(low(where));
+            if (!place?.hidden) return;
+            if (i === 0) {
+                delete place.hidden;
+                note('sitio', text(place.name), 'la primera misión se juega allí: ya no empieza escondida');
+                return;
+            }
+            const before = milestones[i - 1];
+            before.reveal = [...new Set([...list(before.reveal), text(place.name)])];
+        });
+    }
     const random = randomOf('frases');
     let touched = 0;
     milestones.forEach((m, i) => {
@@ -798,7 +1025,19 @@ export function fillPackGaps(raw, { compendium = null, seed = '' } = {}) {
         set('scene', text(quest?.description) || fillerLine(compendium, 'relleno-hito', { titulo: text(m.title) }, random));
         if (changed) touched++;
     });
-    if (touched > 0) note('hilo', `${touched} ${touched === 1 ? 'hito' : 'hitos'}`, 'con lo que dicen sus misiones, o detrás del anterior');
+    if (touched > 0 && !madeThread) note('hilo', `${touched} ${touched === 1 ? 'hito' : 'hitos'}`, 'con lo que dicen sus misiones, o detrás del anterior');
+
+    // J5.2: el punto de vista. Un hito que dice quién lo cuenta (`pov`, o el de su capítulo) y no
+    // trae escena jugada sale en boca de esa persona, con su retrato. Si no es de la gente del
+    // paquete, lo cuenta el narrador (y el validador lo avisa).
+    const people = new Map([...list(pack.npcs), ...confidants].filter(p => text(p?.name)).map(p => [low(p.name), text(p.name)]));
+    const chapterPov = new Map(list(pack.plot?.chapters).filter(c => text(c?.pov)).map(c => [Number(c.act) || 1, text(c.pov)]));
+    for (const m of milestones) {
+        const who = people.get(low(text(m?.pov) || chapterPov.get(Number(m?.act) || 1)));
+        if (!who || list(m?.beats).length > 0 || !text(m?.scene)) continue;
+        m.beats = [{ who, text: text(m.scene) }];
+        note('voz', who, `cuenta «${text(m.title) || text(m.id)}»`);
+    }
 
     // Cada hito que pide ganar un tablero o derrotar a alguien, con su tablero.
     for (const m of milestones) {
@@ -832,7 +1071,22 @@ export function fillPackGaps(raw, { compendium = null, seed = '' } = {}) {
         const { board } = drawBoard({ id: freeId(place.name), name: freeName(place.name, ''), place: text(place.name) });
         note('tablero', board.name, 'una mazmorra sin tablero no se juega');
     }
-    // Sin ningún tablero no hay dónde poner al grupo: uno tranquilo, en el primer sitio.
+    // J5.2: el tesoro de cada sitio, en un cofre de uno de sus tableros; si no tiene ninguno, en
+    // uno pequeño y sin pelea, para ir a buscarlo.
+    for (const place of locations) {
+        const things = list(place?.treasure);
+        if (!text(place?.name) || things.length === 0) continue;
+        let board = boards.find(b => low(b?.locationName) === low(place.name) && readableMap(b?.map));
+        if (!board) {
+            ({ board } = drawBoard({ id: freeId(`${place.name}-tesoro`), name: freeName(place.name, 'el tesoro'), place: text(place.name), purpose: 'recover', crowd: false }));
+            note('tablero', board.name, `para buscar el tesoro de ${text(place.name)}`);
+        }
+        placeChest(board, null, things, `el tesoro de ${text(place.name)}`);
+    }
+
+    // Sin ningún tablero no hay dónde poner al grupo: uno tranquilo, en el primer sitio. Con
+    // alguno, la campaña empieza en su primera localización aunque no tenga tablero: el grupo
+    // llega a ella y ve el sitio, como en el pueblo del gremio (`enterStartingLocation`).
     if (boards.length === 0 && (text(locations[0]?.name) || text(world.name))) {
         const place = text(locations[0]?.name) || text(world.name);
         const { board } = drawBoard({ id: freeId(place), name: place, place, crowd: false });
@@ -907,6 +1161,7 @@ export function fillPackGaps(raw, { compendium = null, seed = '' } = {}) {
     if (boards.length > 0 || Array.isArray(pack.boards)) pack.boards = boards;
     if (bestiary.length > 0 || Array.isArray(pack.bestiary)) pack.bestiary = bestiary;
     if (confidants.length > 0 || Array.isArray(pack.confidants)) pack.confidants = confidants;
+    if (items.length > 0 || Array.isArray(pack.items)) pack.items = items;
     return { pack, filled };
 }
 
@@ -915,6 +1170,10 @@ export function fillPackGaps(raw, { compendium = null, seed = '' } = {}) {
  * sus sitios (uno sin tipo ni descripción), tres misiones sin tablero y el hilo que las cuenta.
  * Ni tableros, ni bestiario, ni finales: los pone el juego (`fillPackGaps`). Es la muestra de
  * [[GEM_CREAR_CAMPANA]] y la de las pruebas.
+ *
+ * J5.2: lleva también lo que un Gem puede traer sin dibujar: a cuántos días queda y para qué
+ * nivel es, los capítulos, una persona que cuenta la primera escena (`pov`) y el tesoro de un
+ * sitio, que el juego pone en un cofre.
  *
  * @returns {any}
  */
@@ -926,6 +1185,7 @@ export function buildShortExamplePack() {
             genre: 'Fantasía oscura',
             synopsis: 'En la aldea de Brezo los pozos se secan y los perros aúllan de noche. La ermita del monte lleva años cerrada, y alguien ha vuelto a encender sus velas.',
             levels: [1, 3],
+            journey: { days: 3, how: 'Subís por la costa y, al tercer día, os metéis tierra adentro, hasta los montes de Brezo.' },
         },
         locations: [
             {
@@ -936,7 +1196,17 @@ export function buildShortExamplePack() {
             },
             { name: 'El camino del monte', routes: [{ to: 'La ermita', days: 1 }] },
             { name: 'La ermita', type: 'sanctuary' },
-            { name: 'La cripta de la ermita', type: 'dungeon', hidden: true },
+            { name: 'La cripta de la ermita', type: 'dungeon', hidden: true, treasure: ['Cáliz de la Dama'] },
+        ],
+        npcs: [
+            {
+                name: 'Tobías el molinero',
+                where: 'Aldea de Brezo',
+                trade: 'Molinero',
+                wants: 'Que el agua vuelva a mover la rueda del molino.',
+                knows: 'Que las velas de la ermita se encendieron la misma noche en que se secó el primer pozo.',
+                voice: 'Habla bajo y mira a la puerta cada poco.',
+            },
         ],
         quests: [
             {
@@ -972,14 +1242,55 @@ export function buildShortExamplePack() {
                 {
                     id: 'llegada',
                     title: 'Los pozos secos',
-                    scene: 'Brezo os recibe con las puertas cerradas. Solo el molinero se atreve a hablar: los lobos bajan del monte, y arriba, en la ermita, hay luz cada noche.',
+                    pov: 'Tobías el molinero',
+                    scene: 'Aquí nadie os va a abrir la puerta. Los lobos bajan del monte cada noche, y arriba, en la ermita, vuelve a haber luz. Si queréis ayudar, empezad por el camino.',
                     asks: { kind: 'none' },
                 },
                 { id: 'camino', quest: 'lobos' },
                 { id: 'ermita', quest: 'velas', reveal: ['La cripta de la ermita'] },
                 { id: 'fondo', quest: 'cripta' },
             ],
+            chapters: [
+                { act: 1, title: 'Los pozos secos', summary: 'Brezo se queda sin agua y los lobos bajan del monte.' },
+                { act: 2, title: 'Las velas de la ermita', summary: 'Alguien ha vuelto a encender las velas de la ermita cerrada.' },
+                { act: 3, title: 'Lo que duerme debajo', summary: 'Bajo el altar, una escalera baja al agua que le falta a Brezo.' },
+            ],
         },
+    };
+}
+
+/**
+ * J5.2: un tablero escrito como lo cuenta un módulo, sala a sala: quién espera en cada una
+ * (`zones[].enemies`) y qué tesoro guarda (`zones[].treasure`). El juego pone a cada uno en su
+ * sala y el tesoro en un cofre. Es la muestra de [[GEM_CREAR_CAMPANA]] y la de las pruebas.
+ *
+ * @returns {any}
+ */
+export function buildRoomsExampleBoard() {
+    return {
+        id: 'cripta_capilla',
+        name: 'La capilla de la cripta',
+        locationName: 'La cripta',
+        map: [
+            '##############',
+            '#....#.......#',
+            '#....#.......#',
+            '#....D.......#',
+            '#....#.......#',
+            '#....#.......#',
+            '##############',
+        ],
+        partyStart: [{ x: 1, y: 5 }, { x: 2, y: 5 }],
+        zones: [
+            { name: 'B1 · La escalera', rect: { x: 1, y: 1, width: 4, height: 5 }, note: 'Una escalera de piedra mojada baja hasta aquí.' },
+            {
+                name: 'B2 · La capilla',
+                rect: { x: 6, y: 1, width: 7, height: 5 },
+                note: 'Un altar partido y velas negras que alguien ha encendido hace poco.',
+                enemies: ['Esqueleto', 'Esqueleto'],
+                treasure: ['Cáliz de plata'],
+            },
+        ],
     };
 }
 
@@ -1000,6 +1311,7 @@ export function describeFill(filled, names = 4) {
     return [...byKind.entries()].map(([kind, rows]) => {
         const [one, many] = FILL_KINDS[/** @type {keyof typeof FILL_KINDS} */ (kind)] ?? [kind, kind];
         if (kind === 'hilo') return `El hilo: ${rows.map(r => r.name).join(', ')} ${rows.length === 1 && /^1 /.test(rows[0].name) ? 'completado' : 'completados'} con sus misiones.`;
+        if (kind === 'historia') return `La historia: no traía hilo, y sale de sus ${rows[0].name}, una detrás de otra, acto a acto.`;
         const shown = [...new Set(rows.map(r => r.name))];
         const head = shown.length <= names ? sayList(shown) : `${shown.slice(0, names).join(', ')} y ${shown.length - names} más`;
         return `${shown.length} ${shown.length === 1 ? one : many}: ${head}.`;

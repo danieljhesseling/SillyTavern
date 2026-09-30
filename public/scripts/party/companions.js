@@ -681,8 +681,10 @@ async function questWindow({ title, sub = '', text, detail = '', ok, cancel = fa
 }
 
 /**
- * Pasar los días de camino de la misión: cada uno cura, da hambre y acerca la cuenta, como un
- * viaje; por el camino se duerme y se bebe de la cantimplora.
+ * Pasar los días de camino de la misión: cada uno cura y acerca la cuenta, como un viaje; por
+ * el camino se duerme, se bebe de la cantimplora y se come (lo dice la ventana: «Por el camino
+ * se come»). Sin comer, dos misiones seguidas mataban de hambre a los mercenarios sin avisar:
+ * ocho días sin probar bocado es el agotamiento del que no se vuelve.
  *
  * @param {number} days
  */
@@ -692,6 +694,7 @@ function passQuestDays(days) {
         for (const member of partyMembers.filter(m => !m.dead)) {
             member.needs = relieve(member, 'slept');
             member.needs = relieve(member, 'drank');
+            member.needs = relieve(member, 'ate');
         }
     }
     savePartyState();

@@ -550,6 +550,8 @@ try {
     // === 9. J9.5: el plazo de lo que tenéis entre manos, en la cabecera =============================
     // Preparado a mano: Strahd no tiene plazos al empezar (1387 sí, en su segundo capítulo), así que
     // al hito que tenéis entre manos se le ponen dos días desde hoy. Lo que se mira es que la cabecera lo diga.
+    // D-J46: los plazos están apagados por ahora. Primero se mira que la cabecera no diga nada; luego
+    // se encienden solo para esta prueba, para ver que el día que Daniel los encienda se ven.
     const clockShown = await page.evaluate(async () => {
         const meta = window.SillyTavern.getContext().chatMetadata;
         const id = String(meta.plotState?.open?.[0] ?? '');
@@ -558,12 +560,24 @@ try {
         // Dos días de plazo, abierto hoy: quedan dos.
         if (found) found.within = 2;
         meta.plotState = { ...meta.plotState, since: { ...(meta.plotState?.since ?? {}), [id]: day } };
-        (await import('/scripts/game-engine/ui/shell/game-shell.js')).refreshGameShell();
-        await new Promise(resolve => setTimeout(resolve, 500));
-        const badge = document.querySelector('#game-shell .gs-focus .lb-badge');
-        return { id, text: (badge?.textContent || '').trim(), urgency: /** @type {HTMLElement|null} */ (badge)?.dataset.urgency ?? '' };
+        const shell = await import('/scripts/game-engine/ui/shell/game-shell.js');
+        const switchOf = (await import('/scripts/game-engine/campaign/plot.js')).STORY_DEADLINES;
+        const read = async () => {
+            shell.refreshGameShell();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            const badge = document.querySelector('#game-shell .gs-focus .lb-badge');
+            return { text: (badge?.textContent || '').trim(), urgency: /** @type {HTMLElement|null} */ (badge)?.dataset.urgency ?? '' };
+        };
+        const off = await read();
+        switchOf.on = true;
+        const on = await read();
+        switchOf.on = false;
+        if (found) found.within = 0;
+        await read();
+        return { id, off, ...on };
     });
-    check('J9.5: la cabecera dice cuánto queda de lo que tenéis entre manos', clockShown.text === 'Quedan 2 días', JSON.stringify(clockShown));
+    check('D-J46: con los plazos apagados, la cabecera no dice ningún plazo', clockShown.off.text === '', JSON.stringify(clockShown));
+    check('J9.5: encendidos, la cabecera dice cuánto queda de lo que tenéis entre manos', clockShown.text === 'Quedan 2 días', JSON.stringify(clockShown));
     await shoot('plazo');
 
     // === 10. J11.5 y J9.3: volver al gremio, y en el tablón su capítulo y su crónica =================

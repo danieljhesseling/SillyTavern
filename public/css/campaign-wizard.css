@@ -949,6 +949,138 @@ input[type="file"].hc-face-file {
     display: none;
 }
 
+/* D-J52: la cara sin arte que eliges (iniciales, icono o emoji), en grande en el retrato. */
+.hc-face-chosen {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.hc-face-chosen .hero-initials.hc-face-badge {
+    width: 58%;
+    aspect-ratio: 1;
+    border-width: 4px;
+    border-radius: 24px;
+    font-size: clamp(3rem, 9vh, 6rem);
+}
+
+/* El selector de la cara: las cuatro formas, y debajo lo de la elegida. */
+.fc-root {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.fc-kinds {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.fc-kind {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.7rem;
+    border: 1px solid rgba(226, 194, 122, 0.35);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.04);
+    color: inherit;
+    font: inherit;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+.fc-kind.is-on {
+    border-color: var(--gs-accent-gold, #e2c27a);
+    background: rgba(226, 194, 122, 0.2);
+}
+
+.fc-detail {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+
+.fc-colors,
+.fc-icons,
+.fc-emojis {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.fc-color,
+.fc-icon,
+.fc-emoji {
+    width: 36px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 2px solid rgba(255, 255, 255, 0.18);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    color: #f4ead5;
+    font-size: 1.1rem;
+    cursor: pointer;
+}
+
+.fc-color.is-on,
+.fc-icon.is-on,
+.fc-emoji.is-on {
+    outline: 3px solid var(--gs-accent-gold, #e2c27a);
+    outline-offset: 1px;
+}
+
+.fc-note {
+    margin: 0;
+    font-size: 0.85rem;
+    opacity: 0.8;
+}
+
+.fc-window {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+    text-align: left;
+}
+
+.fc-window .fc-root {
+    align-self: stretch;
+}
+
+.fc-preview .fc-preview-face {
+    width: 96px;
+    height: 96px;
+    border-radius: 16px;
+    object-fit: contain;
+    font-size: 2.6rem;
+}
+
+.fc-preview img.fc-preview-face.pixel-art {
+    image-rendering: pixelated;
+}
+
+.fc-said {
+    margin: 0;
+    font-size: 0.9rem;
+    opacity: 0.85;
+}
+
+@media (max-width: 480px) {
+    .fc-color,
+    .fc-icon,
+    .fc-emoji {
+        width: 40px;
+        height: 40px;
+    }
+}
+
 .hc-idbox {
     position: relative;
     z-index: 1;

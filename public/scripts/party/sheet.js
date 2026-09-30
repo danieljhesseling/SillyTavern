@@ -31,6 +31,7 @@ import { canTakeOff, shownName, curseInjury } from '../game-engine/campaign/item
 import { getActiveRuleset } from '../game-engine/rules/ruleset.js';
 import { firstArt, isPlainFace, loadPixelManifest } from '../game-engine/ui/pixel-art.js';
 import { slotName, campaignRows } from '../game-engine/ui/shell/character-sheet.js';
+import { isShellOpen, refreshGameShell } from '../game-engine/ui/shell/game-shell.js';
 import { extension_settings } from '../extensions.js';
 import { readHall } from '../game-engine/campaign/legacy.js';
 import { hallCampaignName } from '../game-engine/campaign/campaign-end.js';
@@ -41,11 +42,11 @@ import { getPlot } from './plot.js';
 import { canLevelUp, openLevelUpCard } from './level-up.js';
 import {
     getAbilityCatalogue, knownAbilitiesOf, magicSummaryOf, castsLikeFifth, openGrimoire, attuneItem, attuneNoteOf,
-    openFieldMagicModal,
+    openFieldMagicModal, partyCastsOutside,
 } from './magic.js';
 import { getCurrentWorldFactions } from './factions.js';
 import { getCampaignBonds } from './time.js';
-import { postCombatNarration } from './narration.js';
+import { postCombatNarration, narratorMode } from './narration.js';
 import { savePartyState, getPartyEntryDisplayName, loadDndCatalog, renderPartyMembers } from './roster.js';
 
 /** @typedef {import('./types.js').PartyMember} PartyMember */
@@ -231,7 +232,10 @@ export async function openOwnSheet(member) {
             magic: magicSummaryOf(member),
             onGrimoire: castsLikeFifth(member) ? () => { void openGrimoire(false); } : null,
             // J19.10: la magia fuera de combate, desde la ficha (en plena pelea, no: va en tu turno).
-            onFieldMagic: castsLikeFifth(member) && !combatEncounter.active ? () => { void openFieldMagicModal(); } : null,
+            // D-J49: sin conexión, en tu ficha aunque quien lance sea un compañero: es donde está
+            // siempre (la ficha «Magia» de la escena solo sale cuando algo sirve ahí mismo).
+            onFieldMagic: (castsLikeFifth(member) || (narratorMode() === 'motor' && partyCastsOutside())) && !combatEncounter.active
+                ? () => { void openFieldMagicModal(); } : null,
             // Subir de nivel desde tu ficha, cuando toca.
             onLevelUp: canLevelUp(member) ? () => { void openLevelUpCard(member); } : null,
             // J19.9: sintonizarse con lo que lo pide.
@@ -252,7 +256,11 @@ export async function openOwnSheet(member) {
                     id: String(m.id), name: String(m.name), avatar: String(m.avatar || ''),
                     className: String(m.class ?? ''), gender: String(/** @type {any} */ (m).gender ?? ''), race: String(m.race ?? ''),
                     mercenary: /** @type {any} */ (m).guest?.kind === 'mercenary',
+                    // D-J52: con la cara sin arte que eligió.
+                    face: /** @type {any} */ (m).face ?? null,
                 })),
+            // D-J52: sin conexión, cambiar tu cara sin arte (iniciales, icono o emoji).
+            onFace: narratorMode() === 'motor' && member === partyMembers[0] ? () => { void changeFace(member); } : null,
             // J1.7: en qué campañas ha estado (en el juego del gremio: en el gremio o en una campaña suya).
             campaigns: lastHub || lastHubHome ? campaignLinesOf(member) : null,
             onGive: (itemId, toId) => handItem(member, itemId, toId),
@@ -261,6 +269,28 @@ export async function openOwnSheet(member) {
         });
         if (result !== 'changed') break;
     }
+}
+
+/**
+ * D-J52: cambiar tu cara sin arte desde la ficha: iniciales en un color, un icono o un emoji (o
+ * volver al retrato de tu clase). Se guarda en tu ficha y sale en la tira, el tablero y la
+ * novela; al cerrar, la ficha se vuelve a abrir con la cara nueva.
+ *
+ * @param {any} member
+ * @returns {Promise<void>}
+ */
+async function changeFace(member) {
+    const { openFacePicker } = await import('../game-engine/ui/face-picker.js');
+    const { classIcon } = await import('../game-engine/campaign/hero.js');
+    const picked = await openFacePicker({ member, classIcon: classIcon(String(member?.class ?? '')), Popup, POPUP_TYPE });
+    if (picked !== undefined) {
+        if (picked) member.face = picked;
+        else delete member.face;
+        savePartyState();
+        renderPartyMembers();
+        if (isShellOpen()) refreshGameShell();
+    }
+    await openOwnSheet(member);
 }
 
 /**

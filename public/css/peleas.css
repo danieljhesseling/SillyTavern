@@ -1,0 +1,45 @@
+/* ================================================================
+   J12.2 y J8.5 · Otra salida: la elección antes de una pelea escrita y hablar en mitad de
+   ella (public/scripts/game-engine/ui/avoid-scene.js). El marco es el de las escenas del hilo
+   (`qd-*`, `dw-*`, `ps-*`): aquí solo lo propio. Todo cuelga de .ev-dialog.
+   ================================================================ */
+
+/* La etiqueta de cada salida, con su icono: «Hablar», «Pagar», «Pelear». */
+.ev-dialog .ev-tag {
+    margin-right: 0.45em;
+    white-space: nowrap;
+}
+
+.ev-dialog .ev-tag i {
+    margin-right: 0.2em;
+}
+
+/* Quién tira, lo que cuesta y lo que se gana, en una línea pequeña debajo. */
+.ev-dialog .ev-detail {
+    display: block;
+    margin-top: 0.15rem;
+    font-size: calc(0.82rem * var(--gs-text-scale, 1));
+    opacity: 0.78;
+}
+
+/* Pelear va primero y se distingue: no es una salida, es lo de siempre. */
+.ev-dialog .ev-option[data-exit="pelear"] .ev-tag,
+.ev-dialog .ev-option[data-exit="seguir"] .ev-tag {
+    color: var(--gs-danger-soft, #d08a86);
+}
+
+/* Lo que ha cambiado, tras lo que ha pasado. */
+.ev-dialog .ev-change {
+    font-style: normal;
+    opacity: 0.85;
+}
+
+.ev-dialog .ev-close {
+    margin-left: auto;
+}
+
+@media (max-width: 700px) {
+    .ev-dialog .ev-detail {
+        font-size: calc(0.78rem * var(--gs-text-scale, 1));
+    }
+}

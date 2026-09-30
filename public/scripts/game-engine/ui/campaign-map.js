@@ -81,7 +81,7 @@ function openedBy(by) {
  * @property {string} [pack] El paquete (`1387`, `strahd`…), para los dibujos de cada sitio.
  * @property {boolean} [night]
  * @property {(place: string, note: string) => void} [onNote] Guardar tu nota (vacía: borrarla).
- * @property {(place: string) => void} [onTravel] «Viajar aquí».
+ * @property {(place: string) => void} [onTravel] Al pulsar «Viajar aquí».
  * @property {string} [selected] El sitio que sale elegido al abrir; sin él, donde estáis.
  */
 

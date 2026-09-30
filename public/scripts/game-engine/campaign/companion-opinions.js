@@ -17,6 +17,8 @@
  *   nota, dichas en llano.
  * - **Y cuenta**: al elegir, las mismas opiniones son la aprobación de `approval.js`
  *   (`verdictsOf`): un punto de vínculo arriba o abajo, como siempre.
+ * - **Solo en lo importante** (D-J48, `importantOption`): las escenas del hilo y las opciones de
+ *   una charla que deciden algo. Charlar de cualquier cosa no sube ni baja a nadie.
  *
  * Puro: de una opción y un grupo, quién opina qué. Quien llama lo pinta y lo apunta.
  */
@@ -245,6 +247,74 @@ export function verdictsOf(opinions, what = '') {
     return (Array.isArray(opinions) ? opinions : [])
         .filter(o => o.id)
         .map(o => ({ id: o.id, name: o.name, want: o.want, mood: o.mood, what: text(what) || o.what }));
+}
+
+// ---------------------------------------------------------------------------------------------
+// D-J48: solo en las charlas importantes
+// ---------------------------------------------------------------------------------------------
+
+/** Lo que una opción puede escribir para decir que pesa, aunque no cambie nada a la vista. */
+const WEIGHTY_FLAGS = ['decision', 'noReturn', 'irreversible', 'sinVuelta', 'weighty', 'important', 'importante'];
+
+/** Lo que hace que un efecto sea una consecuencia: cómo os miran, una facción o el hilo. */
+const WEIGHTY_EFFECTS = ['attitude', 'milestone', 'standing', 'faction', 'reputation', 'plot'];
+
+/**
+ * Si un efecto (leído, `{kind, amount}`, o como se escribe, `{"attitude": 1}`) es una
+ * consecuencia de las que cuentan: cambiar cómo os mira alguien, una facción o el hilo.
+ *
+ * @param {any} effect
+ * @returns {boolean}
+ */
+function weightyEffect(effect) {
+    if (!effect || typeof effect !== 'object') return false;
+    const kind = text(effect.kind) || Object.keys(effect).find(k => WEIGHTY_EFFECTS.includes(k)) || '';
+    if (!WEIGHTY_EFFECTS.includes(kind)) return false;
+    if (kind === 'attitude') return (Number(effect.amount ?? effect.attitude) || 0) !== 0;
+    if (kind === 'milestone') return Boolean(text(effect.id ?? effect.milestone));
+    return true;
+}
+
+/** @param {any} list @returns {any[]} */
+const effectsOf = (list) => (Array.isArray(list) ? list : list == null ? [] : [list]);
+
+/**
+ * D-J48: si una opción es de las importantes, las únicas en las que el grupo opina (la etiqueta
+ * «A Gerd le gusta esto») y en las que eso cuenta para el vínculo. Charlar de cualquier cosa no
+ * sube ni baja a nadie.
+ *
+ * Importante es:
+ * - todo lo de una **escena del hilo** (`scene`): es la historia;
+ * - una opción **marcada** por quien la escribe: `decision` (lo que es), `irreversible` o
+ *   `sinVuelta` (J11.1), `weighty` o `importante`;
+ * - una opción con **consecuencias**: que cambia cómo os mira alguien, una facción o el hilo
+ *   (cumple un hito), ella misma, su tirada (salga como salga) o el nudo al que lleva (con la
+ *   charla, `dialogue`: «Quiero entrar en el gremio» lleva a donde se cumple el hito).
+ *
+ * Preguntar, pagar una ronda, oír un rumor o despedirse no lo son.
+ *
+ * @param {any} option Una opción de charla o de escena, leída o como se escribe.
+ * @param {Object} [context]
+ * @param {boolean} [context.scene] Si es de una escena del hilo.
+ * @param {any} [context.dialogue] La charla de la opción (leída), para mirar adónde lleva.
+ * @returns {boolean}
+ */
+export function importantOption(option, { scene = false, dialogue = null } = {}) {
+    if (scene) return true;
+    if (!option || typeof option !== 'object') return false;
+    for (const flag of WEIGHTY_FLAGS) {
+        const value = option[flag];
+        if (value === true || (typeof value === 'string' && text(value)) || (Array.isArray(value) && value.some(v => text(v)))) return true;
+    }
+    const check = option.check && typeof option.check === 'object' ? option.check : null;
+    // Una rama de la tirada es un nudo (`"success": "si"`) o un nudo con efectos.
+    const branches = check ? ['success', 'partial', 'failure'].map(k => check[k]).filter(b => (b && typeof b === 'object') || typeof b === 'string') : [];
+    if ([option.effects, ...branches.map(b => (typeof b === 'string' ? null : b.effects))].some(list => effectsOf(list).some(weightyEffect))) return true;
+    // Adónde lleva: el nudo que se oye al elegirla (o al tirar) hace lo que hace la opción.
+    const nodes = Array.isArray(dialogue?.nodes) ? dialogue.nodes : [];
+    if (nodes.length === 0) return false;
+    const next = [option.next, ...branches.map(b => (typeof b === 'string' ? b : b.next))].map(text).filter(Boolean);
+    return nodes.some((/** @type {any} */ node) => next.includes(text(node?.id)) && effectsOf(node.effects).some(weightyEffect));
 }
 
 /**

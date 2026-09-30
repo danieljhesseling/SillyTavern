@@ -43,6 +43,7 @@
 @import url(css/sala-gremio.css);
 @import url(css/magia.css);
 @import url(css/companeros.css);
+@import url(css/peleas.css);
 
 :root {
     interpolate-size: allow-keywords;

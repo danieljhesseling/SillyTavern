@@ -13,7 +13,8 @@
  * - **Para que dure como las del juego**: el listón de un mundo largo (M6). No hace falta para
  *   jugarla: es lo que tienen Strahd y 1387.
  *
- * El mismo informe sale en «Añadir una campaña» del gremio y en `tools/comprobar-campana.mjs`.
+ * El mismo informe sale en «Añadir una campaña» del gremio y en `tools/check-world-density.mjs`
+ * con el JSON de tu Gem.
  *
  * Puro: recibe el paquete (ya relleno) y lo que se rellenó.
  */
@@ -90,6 +91,40 @@ const sentence = (line) => {
     return /[.!?…:]$/.test(first) ? first : `${first}.`;
 };
 
+/** Los tipos de objetivo, dichos como se juegan. */
+const OBJECTIVE_WORDS = /** @type {Record<string, string>} */ ({
+    eliminate: 'derrotar a alguien',
+    eliminate_all: 'limpiar el tablero',
+    survive_rounds: 'aguantar',
+    reach_cell: 'llegar a un sitio',
+    escort: 'escoltar',
+    protect: 'proteger',
+    loot: 'recoger un tesoro',
+});
+
+/**
+ * Una línea del medidor, dicha para quien juega: los hitos y los encargos por su título y no
+ * por su id, «gente» y no «PNJ», y los tipos de objetivo en palabras.
+ *
+ * @param {string} line
+ * @param {any} pack
+ * @returns {string}
+ */
+export function plainLine(line, pack) {
+    const titleOf = (/** @type {any[]} */ rows, /** @type {string} */ id, /** @type {string} */ field) => {
+        const row = (Array.isArray(rows) ? rows : []).find(r => text(r?.id) === id);
+        return text(row?.[field]) || id;
+    };
+    return text(line)
+        .replace(/^El hilo no tiene mecha: /, 'La historia no arranca: ')
+        .replace(/^Hito (\S+?)(:?) /, (all, id, colon) => `El hito «${titleOf(pack?.plot?.milestones, id, 'title')}»${colon} `)
+        .replace(/^Encargo (\S+?):/, (all, id) => `El encargo «${titleOf(pack?.contracts, id, 'title')}»:`)
+        .replace(/^PNJ con nombre:/, 'Gente con nombre:')
+        .replace(/^PNJ (.+) no quiere nada: es decorado$/, '$1 no quiere nada: no tiene nada que pediros')
+        .replace(/^PNJ (.+) no sabe nada que interese$/, '$1 no sabe nada que interese')
+        .replace(/^(Tipos de objetivo en los combates: )(.*?)(, y |$)/, (all, head, ids, tail) => `${head}${ids.split(/,\s*/).map((/** @type {string} */ id) => OBJECTIVE_WORDS[id] ?? id).join(', ')}${tail}`);
+}
+
 /**
  * Comprobar una campaña.
  *
@@ -112,6 +147,9 @@ export function checkCampaign(pack, { filled = [], validation = null } = {}) {
     const items = { rota: [], huecos: [], relleno: [], avisos: [], liston: [] };
 
     for (const issue of report.errors) items.rota.push({ text: sentence(issue.message), where: text(issue.path) });
+    // Los tableros que el juego dibujó por su cuenta (un tesoro, un sitio sin ninguno) no los
+    // pide ninguna misión, y está bien: no es una cosa rara.
+    const seeded = new Set((Array.isArray(pack?.boards) ? pack.boards : []).filter((/** @type {any} */ b) => b?.seeded).map((/** @type {any} */ b) => `boards.${text(b.id)}`));
 
     /** @type {string[]} */
     const thin = [];
@@ -124,18 +162,21 @@ export function checkCampaign(pack, { filled = [], validation = null } = {}) {
             continue;
         }
         if (LISTON.some(pattern => pattern.test(line))) {
-            items.liston.push({ text: sentence(line) });
+            items.liston.push({ text: sentence(plainLine(line, pack)) });
             continue;
         }
-        items.huecos.push({ text: sentence(line) });
+        items.huecos.push({ text: sentence(plainLine(line, pack)) });
     }
     for (const line of density.warnings) {
-        (HOLE_WARNINGS.some(pattern => pattern.test(line)) ? items.huecos : items.avisos).push({ text: sentence(line) });
+        (HOLE_WARNINGS.some(pattern => pattern.test(line)) ? items.huecos : items.avisos).push({ text: sentence(plainLine(line, pack)) });
     }
-    for (const issue of report.warnings) items.avisos.push({ text: sentence(issue.message), where: text(issue.path) });
+    for (const issue of report.warnings) {
+        if (seeded.has(text(issue.path)) && /^Ninguna misi[oó]n lleva/.test(text(issue.message))) continue;
+        items.avisos.push({ text: sentence(issue.message), where: text(issue.path) });
+    }
 
     for (const q of density.short) {
-        items.liston.unshift({ text: `${q.label}: ${q.shown}, y las del juego tienen ${Number.isInteger(q.min) ? q.min : `un ${Math.round(q.min * 100)} %`}.` });
+        items.liston.unshift({ text: plainLine(`${q.label}: ${q.shown}, y las del juego tienen ${Number.isInteger(q.min) ? q.min : `un ${Math.round(q.min * 100)} %`}.`, pack) });
     }
     if (thin.length > 0) {
         const names = thin.length <= 3 ? thin.join(', ') : `${thin.slice(0, 3).join(', ')} y ${thin.length - 3} más`;

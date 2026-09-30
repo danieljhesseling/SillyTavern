@@ -5,7 +5,8 @@
 
 import { parseCellKey, describeCell } from './game-engine/board/terrain.js';
 import { getCellVisibility } from './game-engine/board/fog-of-war.js';
-import { cliffEdges, elevationAt } from './game-engine/board/heights.js';
+import { cliffEdges, elevationAt, isCliff } from './game-engine/board/heights.js';
+import { centerOn, isInView, isLargeBoard, readableScale } from './game-engine/board/board-camera.js';
 import { zoneAt } from './game-engine/board/zones.js';
 import { boardBiome, firstArt, isPlainFace, loadPixelManifest, openPack, pixelManifest, terrainTile } from './game-engine/ui/pixel-art.js';
 import { initialsFor } from './game-engine/ui/hero-face.js';
@@ -527,8 +528,10 @@ export function renderWorldMapView(target, worldMapUrl, locationMaps, callbacks 
  * @property {string} [archetype] - El arquetipo del bestiario (`bestia-lobo`), para su dibujo en pixel.
  * @property {string} [gender] - Cómo se presenta, para el retrato de relleno de quien no tiene cara.
  * @property {string} [race] - Su especie, para lo mismo.
+ * @property {any} [face] - D-J52: la cara sin arte que eligió uno del grupo (iniciales, icono o emoji).
  * @property {boolean} [isSummon] - J19.5: una invocación, del lado del grupo.
  * @property {string} [summoner] - Quién la invocó, para su ayuda.
+ * @property {boolean} [boss] - Un jefe: lleva su corona y un cerco que se ve desde lejos.
  */
 
 /**
@@ -543,6 +546,9 @@ const locationViewStateMemory = new Map();
 
 /** K3: el último turno que se centró en cada tablero, para centrar una vez por turno y no más. */
 const focusMemory = new Map();
+
+/** J12.13: dónde estaba la última vez la ficha que sigue la cámara, por tablero. */
+const followMemory = new Map();
 
 /**
  * Render an interactive location or board view with grid and character tokens.
@@ -589,6 +595,10 @@ const focusMemory = new Map();
  *   nombre, para decir en cuál está una casilla.
  * @param {Array<{x: number, y: number, zoneId: string, kind: string, icon: string, label: string, tell: string}>} [options.spellZones] -
  *   J19.6: las zonas de conjuro, como las da `zoneOverlay`.
+ * @param {number|string|null} [options.followTokenId] - J12.13: la ficha que sigue la cámara (quien abre la marcha,
+ *   o a quien le toca). En un tablero grande, que no cabe entero con casillas que se lean, la vista se acerca y,
+ *   cada vez que esa ficha cambia de sitio (`followKey`), si se acerca al borde, se centra en ella.
+ * @param {string} [options.followKey] - Dónde está esa ficha ahora: cuando cambia, la cámara mira si seguirla.
  */
 export function renderLocationView(target, options) {
     const {
@@ -624,6 +634,8 @@ export function renderLocationView(target, options) {
         elevation = null,
         zones = [],
         spellZones = [],
+        followTokenId = null,
+        followKey = '',
     } = options;
 
     target.empty();
@@ -632,6 +644,8 @@ export function renderLocationView(target, options) {
     // dimensions, not a picture. Refusing to render without one made every gridded map
     // depend on somebody having uploaded an image first.
     const hasImage = Boolean(imageUrl);
+    // J12.13: un tablero (con terreno) grande se juega por partes; un mapa de localización, no.
+    const bigBoard = Boolean(terrain) && isLargeBoard(gridWidth, gridHeight);
 
     // Location header. Built as nodes rather than interpolated, like the rest of this file:
     // name and description come from world info, which is user- and AI-authored.
@@ -698,9 +712,56 @@ export function renderLocationView(target, options) {
         const cw = container.width() || 300;
         const ch = container.height() || 420;
         const fitScale = Math.min(cw / imgW, ch / imgH, hasImage ? 1 : 2);
-        state.scale = fitScale;
+        // J12.13: un tablero grande, entero, tiene las casillas demasiado pequeñas: se acerca
+        // hasta que se leen, y se mira donde está el grupo. El resto se ve moviendo la cámara.
+        const readable = bigBoard
+            ? readableScale({ fitScale, cellPx: Math.min(imgW / gridWidth, imgH / gridHeight) })
+            : { scale: fitScale, partial: false };
+        state.scale = readable.scale;
+        if (readable.partial) {
+            const at = followCell() ?? { x: (gridWidth - 1) / 2, y: (gridHeight - 1) / 2 };
+            Object.assign(state, centerOn({
+                cell: at, cellW: imgW / gridWidth, cellH: imgH / gridHeight, scale: state.scale,
+                viewW: cw, viewH: ch, boardW: imgW, boardH: imgH,
+            }));
+            return;
+        }
         state.offsetX = (cw - imgW * fitScale) / 2;
         state.offsetY = (ch - imgH * fitScale) / 2;
+    }
+
+    /**
+     * J12.13: la casilla de la ficha que sigue la cámara; si no está, la de a quien le toca o la
+     * primera del grupo.
+     *
+     * @returns {{x: number, y: number}|null}
+     */
+    function followCell() {
+        const wanted = [followTokenId, focusTokenId].filter(id => id !== null && id !== undefined);
+        const token = wanted.map(id => tokens.find(t => String(t.id) === String(id))).find(Boolean)
+            ?? tokens.find(t => !t.isEnemy && !t.isNPC);
+        return token ? { x: Number(token.gridX) || 0, y: Number(token.gridY) || 0 } : null;
+    }
+
+    /**
+     * J12.13: la cámara sigue al grupo. Cada vez que la ficha que se sigue cambia de sitio, si se
+     * ha ido cerca del borde de la vista (o fuera), la vista se centra en ella; si se ve bien, no
+     * se toca: quien ha movido la cámara a mano no se la encuentra movida sin motivo.
+     */
+    function followParty() {
+        if (!bigBoard || !followKey || !imgW || !imgH) return;
+        if (!document.body.contains(container[0]) || !container.width()) return;
+        if (followMemory.get(derivedViewStateKey) === followKey) return;
+        followMemory.set(derivedViewStateKey, followKey);
+        const cell = followCell();
+        if (!cell) return;
+        const view = {
+            cellW: imgW / gridWidth, cellH: imgH / gridHeight, scale: state.scale,
+            viewW: container.width() || 300, viewH: container.height() || 420,
+        };
+        if (isInView({ ...view, cell, offsetX: state.offsetX, offsetY: state.offsetY })) return;
+        Object.assign(state, centerOn({ ...view, cell, boardW: imgW, boardH: imgH }));
+        fullUpdate();
     }
 
     // Terrain sits under everything: it is the board itself, not an overlay on it.
@@ -733,8 +794,13 @@ export function renderLocationView(target, options) {
         if (room?.name) parts.push(room.name);
         const feet = elevation ? elevationAt(elevation, gx, gy) : 0;
         if (feet) parts.push(`${feet > 0 ? '+' : ''}${feet} pies de alto`);
+        // J20.2: el acantilado se dice también tocando, no solo con el ratón encima de su raya.
+        if (elevation && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => isCliff(elevation, { x: gx, y: gy }, { x: gx + dx, y: gy + dy })
+            && gx + dx >= 0 && gy + dy >= 0 && gx + dx < gridWidth && gy + dy < gridHeight)) {
+            parts.push('al borde de un acantilado: no se baja andando');
+        }
         const there = [
-            ...(hazards || []).filter(h => h.x === gx && h.y === gy).map(h => h.name),
+            ...(hazards || []).filter(h => h.x === gx && h.y === gy).map(h => (h.note ? `${h.name}: ${h.note}` : h.name)),
             ...[...new Set((spellZones || []).filter(z => z.x === gx && z.y === gy).map(z => `${z.label}: ${z.tell}`))],
         ];
         return [...parts, ...there].join(' · ');
@@ -785,6 +851,9 @@ export function renderLocationView(target, options) {
         // casilla con su dibujo. Solo sin imagen: un mapa dibujado ya trae suelo y muros. La
         // que no carga se pinta con los colores de antes.
         const tiled = !hasImage && Boolean(pixelManifest());
+        // J12.8: sobre un mapa dibujado, el terreno se marca sin taparlo: el muro ya está en el
+        // dibujo, y lo que se ve es el dibujo limpio con las puertas y lo difícil señalados.
+        terrainLayer.toggleClass('wm-terrain-over-image', hasImage);
         const kind = boardBiome({ biome, name, type: locationType });
         const redraw = () => { if (container.closest('body').length > 0) renderTerrain(); };
         const tile = (/** @type {string} */ id) => (tiled && id ? usableTile(firstArt('tile', { id }), redraw) : '');
@@ -979,9 +1048,13 @@ export function renderLocationView(target, options) {
 
                 // Ensenar la ruta y lo que cuesta **antes** de pulsar. Mover sin esto es
                 // contar casillas a ojo y descubrir el precio cuando ya lo has pagado.
+                // J20.2: a toques no hay «pasar por encima». El navegador manda sus eventos de
+                // ratón de mentira tras cada toque, y uno de salida (al moverse algo en la página)
+                // borraba la ruta que el toque acababa de enseñar: con el dedo, la ruta la ponen y
+                // la quitan los toques.
                 if (typeof onCellHover === 'function' && kind === 'move') {
-                    node.on('mouseenter', () => drawTrajectory(cell.gridX, cell.gridY, cellW, cellH));
-                    node.on('mouseleave', () => clearTrajectory());
+                    node.on('mouseenter', () => { if (!touchy()) drawTrajectory(cell.gridX, cell.gridY, cellW, cellH); });
+                    node.on('mouseleave', () => { if (!touchy()) clearTrajectory(); });
                 }
             }
 
@@ -1049,9 +1122,9 @@ export function renderLocationView(target, options) {
             const py = (token.gridY + 0.5) * cellH;
             const hpPct = (token.maxHp && token.maxHp > 0) ? Math.min(100, ((token.hp || 0) / token.maxHp) * 100) : 100;
 
-            const enemyClass = token.isEnemy ? ` wm-token-enemy${token.idle ? ' wm-token-idle' : ''}` : (token.isSummon ? ' wm-token-summon' : '');
+            const enemyClass = token.isEnemy ? ` wm-token-enemy${token.idle ? ' wm-token-idle' : ''}${token.boss ? ' wm-token-boss' : ''}` : (token.isSummon ? ' wm-token-summon' : '');
             const metaText = token.isEnemy
-                ? (token.idle ? 'Aquí, sin pelear todavía' : `${token.role ? `${token.role.label} · ` : ''}CA ${token.level || 10}`)
+                ? `${token.boss && !token.role ? 'Jefe · ' : ''}${token.idle ? 'Aquí, sin pelear todavía' : `${token.role ? `${token.role.label} · ` : ''}CA ${token.level || 10}`}`
                 : token.isSummon
                     ? `Invocación${token.summoner ? ` de ${token.summoner}` : ''}`
                     : `${token.className || 'Aventurero'} de nivel ${token.level || 1}${token.weapon ? ` · ${token.weapon}` : ''}`;
@@ -1079,15 +1152,21 @@ export function renderLocationView(target, options) {
             el.find('.wm-token-tooltip-name').text(token.name ?? '');
             el.find('.wm-token-tooltip-meta').text(metaText);
             el.find('.wm-token-tooltip-hp-fill').css('width', hpPct + '%');
+            // J20.2: lo que le pasa, escrito: los iconos de estado solo lo dicen con el ratón encima.
+            const said = (Array.isArray(token.statuses) ? token.statuses : []).map(s => String(s?.label || '')).filter(Boolean);
+            if (said.length > 0) el.find('.wm-token-tooltip-meta').after($('<div class="wm-token-tooltip-statuses"></div>').text(said.join(' · ')));
 
             const tokenNameEl = el.find('.wm-token-name').text(token.name ?? '');
             // Sin cara propia, su dibujo en pixel; si no carga, lo de siempre. J1.8: uno del grupo
             // sin cara ni retrato (o con una imagen que ya no está) lleva sus iniciales en su
             // color, como en su ficha y en la tira del grupo; no «???» ni la silueta gris.
-            const drawn = tokenArt(token);
             const ours = !token.isEnemy && !token.isNPC && !token.isSummon;
+            // D-J52: uno del grupo que eligió su cara sin arte (iniciales, icono o emoji) sale con
+            // ella, en vez del retrato de relleno de su clase. Una cara subida manda igual.
+            const chosenFace = ours && token.face ? token.face : null;
+            const drawn = chosenFace ? '' : tokenArt(token);
             const ownFace = token.avatar && !(ours && isPlainFace(token.avatar)) ? token.avatar : '';
-            const initials = () => $(initialsFor(String(token.name ?? ''), 'wm-token-unknown wm-token-initials'));
+            const initials = () => $(initialsFor(String(token.name ?? ''), 'wm-token-unknown wm-token-initials', chosenFace));
             if (drawn || ownFace) {
                 const image = $('<img>')
                     .addClass('wm-token-avatar')
@@ -1138,6 +1217,10 @@ export function renderLocationView(target, options) {
                     .addClass(String(token.role.icon))
                     .attr('title', String(token.role.label))
                     .attr('data-role', String(token.role.id)));
+            }
+            // Un jefe lleva su corona encima, también antes de pelear (en la pelea ya la lleva su papel).
+            if (token.isEnemy && token.boss && !token.role) {
+                el.append($('<i class="wm-token-boss-mark fa-solid fa-crown"></i>').attr('title', 'Jefe'));
             }
             // J19.5: la invocación lleva su marca, para no confundirla con un enemigo.
             if (token.isSummon) {
@@ -1413,7 +1496,14 @@ export function renderLocationView(target, options) {
         }
     }, true);
     container[0].addEventListener('pointermove', (event) => {
-        if (event.pointerType === 'mouse' || !fingers.has(event.pointerId)) return;
+        // Un ratón de verdad que se mueve (en un portátil con pantalla táctil, tras un toque)
+        // vuelve a enseñar la ruta al pasar por encima. Los eventos de ratón que el navegador
+        // inventa tras un toque no son de puntero: no llegan aquí.
+        if (event.pointerType === 'mouse') {
+            lastPointer = 'mouse';
+            return;
+        }
+        if (!fingers.has(event.pointerId)) return;
         fingers.set(event.pointerId, { x: event.clientX, y: event.clientY });
         if (pinch && fingers.size >= 2) {
             const [a, b] = [...fingers.values()];
@@ -1531,6 +1621,7 @@ export function renderLocationView(target, options) {
         fullUpdate();
         gridOverlay.toggleClass('hidden', !gridVisible);
         focusActiveToken();
+        followParty();
     }
 
     /**
@@ -1636,8 +1727,12 @@ export function renderLocationView(target, options) {
     // casilla encendida para ir), justo encima del tablero.
     if (tacticalHud) target.append(tacticalHud);
     target.append(container);
-    // K3: con el tablero ya en la página, la ficha a la que le toca, a la vista.
-    requestAnimationFrame(() => focusActiveToken());
+    // K3: con el tablero ya en la página, la ficha a la que le toca, a la vista; y J12.13, en un
+    // tablero grande, el grupo.
+    requestAnimationFrame(() => {
+        focusActiveToken();
+        followParty();
+    });
 
     // Characters accordion
     renderCharactersAccordion(target, tokens, (tokenId, gx, gy) => {

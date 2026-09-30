@@ -233,7 +233,7 @@ const DEFAULT_RESULT = {
     enganar: {
         success: '{leader} mira detrás de vosotros, duda y da la orden: se van a toda prisa.',
         partial: 'Se giran a mirar. Esta ronda, no atacan.',
-        failure: '{leader} no se lo traga y se enfada: ahora van a por quien ha mentido.',
+        failure: '{leader} no se lo traga y se enfada: ahora atacan sin cuidarse.',
     },
 };
 
@@ -353,7 +353,7 @@ export function parleyChips({ enemies, party, gold = 0, parley = null, tried = [
  * @property {import('./avoid-fight.js').ExitRoll[]} rolls
  * @property {'ended'|'captured'|'lull'|'continue'|'enraged'} ends
  *   `ended`: se van y ganáis sin botín; `captured`: os rendís; `lull`: esta ronda no atacan;
- *   `continue`: no pasa nada (se pierde la acción); `enraged`: van a por quien mintió.
+ *   `continue`: no pasa nada (se pierde la acción); `enraged`: se enfadan y atacan sin cuidarse.
  * @property {boolean} resolves Si el tablero cuenta como pasado para la historia.
  * @property {boolean} costsAction Si gasta la acción de quien habla.
  * @property {import('./avoid-fight.js').ExitEffect[]} effects
@@ -447,6 +447,36 @@ export function resolveParley({ way: rawWay, enemies, party, gold = 0, parley = 
     return {
         way, outcome, rolls, ends, resolves, costsAction: true, effects,
         lines: [...rolls.map(r => r.said), say(line)], judge: ends === 'ended' ? spec.judge : '', speaker, leader,
+    };
+}
+
+/**
+ * @typedef {Object} ParleyPlan Lo que hace el juego tras hablar en mitad de la pelea.
+ * @property {''|'victory'|'manual'} end Cómo se acaba la pelea (vacío: sigue). `victory`: se
+ *   van y el tablero es vuestro, sin botín de los que se van; `manual`: se acaba sin ganar.
+ * @property {boolean} theyLeave Si los que quedan en pie se van (sin botín).
+ * @property {boolean} passed Si el tablero cuenta como pasado para la historia.
+ * @property {boolean} spendAction Si quien habló gasta su acción.
+ * @property {boolean} lull Si los que quedan dudan: pierden su próximo turno.
+ * @property {boolean} enraged Si se enfadan: atacan sin cuidarse.
+ */
+
+/**
+ * Lo que hay que hacer con lo que salió de hablar (`resolveParley`).
+ *
+ * @param {Pick<ParleyResult, 'ends'|'resolves'|'costsAction'>} result
+ * @returns {ParleyPlan}
+ */
+export function parleyPlan(result) {
+    const ends = result?.ends;
+    const resolves = Boolean(result?.resolves);
+    return {
+        end: ends === 'ended' ? (resolves ? 'victory' : 'manual') : ends === 'captured' ? 'manual' : '',
+        theyLeave: ends === 'ended',
+        passed: (ends === 'ended' || ends === 'captured') && resolves,
+        spendAction: Boolean(result?.costsAction) && ends !== 'ended' && ends !== 'captured',
+        lull: ends === 'lull',
+        enraged: ends === 'enraged',
     };
 }
 

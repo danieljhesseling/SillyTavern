@@ -3688,6 +3688,66 @@ input[type="file"].tl-file {
     word-break: break-all;
 }
 
+/* J5.6: la campaña comprobada antes de jugarla. El veredicto arriba; cada parte, plegable: lo
+   que impide jugarla y lo que se quedaría a medias, abiertos; lo demás, cerrado. */
+.hb-check {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.hb-check-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: bold;
+}
+
+.hb-check[data-verdict="lista"] .hb-check-head { color: var(--gs-accent-gold); }
+.hb-check[data-verdict="huecos"] .hb-check-head,
+.hb-check[data-verdict="rota"] .hb-check-head { color: #e6a15a; }
+
+.hb-check-group {
+    margin-top: 6px;
+}
+
+.hb-check-group > summary {
+    cursor: pointer;
+    font-weight: bold;
+    min-height: 32px;
+    display: list-item;
+    padding: 4px 0;
+}
+
+.hb-check-note {
+    opacity: 0.8;
+    font-size: 0.82rem;
+}
+
+.hb-check-list {
+    margin: 6px 0;
+    padding-left: 20px;
+}
+
+.hb-check-list code {
+    font-size: 0.78rem;
+    opacity: 0.7;
+    word-break: break-all;
+}
+
+.hb-check-copy {
+    margin-top: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.hb-check-text {
+    width: 100%;
+    margin-top: 6px;
+    font-size: 0.8rem;
+}
+
 /* D-J22: el nivel recomendado, a la vista, en su propia línea. En naranja si tu grupo no llega. */
 .hb-levels {
     display: flex;

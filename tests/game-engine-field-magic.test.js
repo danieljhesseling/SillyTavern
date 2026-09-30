@@ -7,9 +7,11 @@ import { describe, test, expect } from '@jest/globals';
 import { readFileSync } from 'node:fs';
 import {
     fieldKind, darkHere, lightActive, lightLookBonus, fieldChoices, castField, roadHeal, describeCost, LIGHT_LOOK_BONUS,
+    deadKey, speakDeadWait, SPEAK_DEAD_DAYS, litIndoors, arrivalHealAsk,
 } from '../public/scripts/game-engine/rules/field-magic.js';
 import { buildActionChips } from '../public/scripts/game-engine/ui/shell/action-chips.js';
 import { rollCheck } from '../public/scripts/game-engine/rules/checks.js';
+import { tipFor, TIPS } from '../public/scripts/game-engine/ui/shell/tips.js';
 
 const read = (/** @type {string} */ path) => JSON.parse(readFileSync(new URL(`../public/${path}`, import.meta.url), 'utf8'));
 const classes = read('compendio/clases.json').rows;
@@ -175,5 +177,99 @@ describe('la fila de la escena y la tirada', () => {
         expect(lit?.modifier).toBe(Number(plain?.modifier) + 2);
         expect(lit?.said).toMatch(/\+2 por la Luz/);
         expect(plain?.said).not.toMatch(/Luz/);
+    });
+});
+
+describe('D-J50: al mismo muerto, una vez cada siete días', () => {
+    const withId = { ...murder, active: { ...murder.active, id: 'caso-vasili' } };
+    const castOn = (/** @type {any} */ member, /** @type {any} */ context) => castField({ member, classRow: cls('clerigo'), spell: row('mag-hablar-muertos'), carried: member.items, context });
+
+    test('al preguntarle se apunta el día, por su caso y su nombre', () => {
+        const done = castOn(cleric(), { party: [cleric()], cases: withId, calendar: { day: 10, slotIndex: 1 } });
+        expect(done.ok).toBe(true);
+        expect(done.effects.spokeDead).toEqual({ key: deadKey(withId.active), day: 10 });
+        expect(deadKey(withId.active)).toBe('caso-vasili|vasili');
+        expect(SPEAK_DEAD_DAYS).toBe(7);
+    });
+
+    test('antes de siete días dice cuándo se podrá, y no gasta el espacio', () => {
+        const spokenDead = { [deadKey(withId.active)]: 10 };
+        expect(speakDeadWait(withId, spokenDead, 13)).toBe(4);
+        const before = cleric();
+        const tried = castOn(before, { party: [before], cases: withId, calendar: { day: 13 }, spokenDead });
+        expect(tried).toMatchObject({ ok: false, slotsUsed: null, reason: 'Vasili ya contestó hace poco. Se le puede volver a preguntar dentro de 4 días.' });
+        expect(before.slotsUsed).toEqual({});
+        const choice = pick(choicesOf(cleric(), { party: [cleric()], cases: withId, calendar: { day: 16 }, spokenDead }), 'mag-hablar-muertos');
+        expect(choice).toMatchObject({ ok: false, reason: 'Vasili ya contestó hace poco. Se le puede volver a preguntar mañana.' });
+    });
+
+    test('a los siete días vuelve a contestar; otro muerto, cuando sea', () => {
+        const spokenDead = { [deadKey(withId.active)]: 10 };
+        expect(speakDeadWait(withId, spokenDead, 17)).toBe(0);
+        expect(castOn(cleric(), { party: [cleric()], cases: withId, calendar: { day: 17 }, spokenDead }).ok).toBe(true);
+        const other = { ...withId, active: { ...withId.active, id: 'caso-otro', victim: 'Ireena' } };
+        expect(castOn(cleric(), { party: [cleric()], cases: other, calendar: { day: 11 }, spokenDead }).ok).toBe(true);
+    });
+});
+
+describe('D-J51: la Luz no se ofrece bajo techo con luz', () => {
+    test('bajo techo con luz, ni de noche; al raso, de noche; en cuevas, criptas y mazmorras, siempre', () => {
+        for (const place of ['posada', 'posada-2', 'tienda', 'templo', 'herreria', 'gremio']) {
+            expect([place, litIndoors(place), darkHere({ night: true, place, biome: 'urbano', type: 'city' })]).toEqual([place, true, false]);
+        }
+        expect(darkHere({ night: true, place: 'plaza', type: 'city' })).toBe(true);
+        expect(darkHere({ night: true, place: 'muelle' })).toBe(true);
+        expect(darkHere({ night: true, type: 'camp', biome: 'bosque' })).toBe(true);
+        expect(darkHere({ night: false, type: 'camp', biome: 'bosque' })).toBe(false);
+        // Un tablero de madera (una taberna) tiene luz; la bodega de piedra, no.
+        expect(darkHere({ night: true, biome: 'madera' })).toBe(false);
+        expect(darkHere({ night: false, biome: 'mazmorra' })).toBe(true);
+        expect(darkHere({ night: false, biome: 'cueva', place: 'posada' })).toBe(true);
+        expect(darkHere({ night: false, biome: 'cripta' })).toBe(true);
+    });
+
+    test('en la posada de noche, la Luz dice que no hace falta; en el camino de noche, se ofrece', () => {
+        const inside = pick(choicesOf(cleric(), { night: true, dark: darkHere({ night: true, place: 'posada' }), party: [cleric()] }), 'mag-luz');
+        expect(inside).toMatchObject({ ok: false, reason: 'Aquí dentro ya hay luz: no hace falta.' });
+        const road = pick(choicesOf(cleric(), { night: true, dark: darkHere({ night: true, type: 'wilderness' }), party: [cleric()] }), 'mag-luz');
+        expect(road.ok).toBe(true);
+    });
+});
+
+describe('D-J49: la magia fuera de combate se encuentra siempre en la ficha', () => {
+    test('un consejo, la primera vez, dice dónde está el botón', () => {
+        expect(tipFor('fieldMagic', [])?.text).toMatch(/pulsa tu retrato.*«Magia fuera de combate»/);
+        expect(TIPS.fieldMagic.length).toBeLessThanOrEqual(160);
+        expect(tipFor('fieldMagic', ['fieldMagic'])).toBeNull();
+    });
+});
+
+describe('D-J53: al llegar, se pregunta si curar', () => {
+    const hurtBran = { id: 'b1', name: 'Bran', gender: 'Hombre', hp: 5, maxHp: 20 };
+    const hurtLia = { id: 'l1', name: 'Lía', gender: 'Mujer', hp: 12, maxHp: 14 };
+
+    test('la pregunta dice a quién, con qué y lo que gasta', () => {
+        const irena = cleric();
+        const party = [irena, hurtBran];
+        const casters = [{ member: irena, choices: choicesOf(irena, { party }) }];
+        const ask = arrivalHealAsk(roadHeal(casters), party);
+        expect(ask?.question).toBe('¿Curar a Bran con magia? (gasta un espacio de nivel 1)');
+        expect(ask?.notes).toEqual(['Bran llega herido: le quedan 5 de 20 de vida.', 'Puedes curar con Curar heridas.']);
+        expect(ask?.yours).toBe(true);
+    });
+
+    test('si cura un compañero, lo dice él; y a ella, «herida»', () => {
+        const hero = { id: 'h', name: 'Tessa', hp: 10, maxHp: 10 };
+        const irena = cleric();
+        const party = [hero, irena, hurtLia];
+        const ask = arrivalHealAsk(roadHeal([{ member: irena, choices: choicesOf(irena, { party }) }]), party);
+        expect(ask?.notes).toEqual(['Lía llega herida: le quedan 12 de 14 de vida.', 'Irena puede curar con Curar heridas.']);
+        expect(ask?.question).toBe('¿Curar a Lía con magia? (gasta un espacio de nivel 1)');
+    });
+
+    test('sin heridos, o sin nadie que cure, no se pregunta nada', () => {
+        const irena = cleric();
+        expect(arrivalHealAsk(roadHeal([{ member: irena, choices: choicesOf(irena, { party: [irena] }) }]), [irena])).toBeNull();
+        expect(arrivalHealAsk(null, [irena, hurtBran])).toBeNull();
     });
 });

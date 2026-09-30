@@ -23,7 +23,7 @@ import { NEWS_KEY } from './keys.js';
 import {
     currentLocationName, currentWorldFactions, factionDaysDue, setCurrentWorldFactions, setFactionDaysDue,
 } from './state.js';
-import { lastWorldNpcs } from './world.js';
+import { announceOpenedRoads, lastWorldNpcs } from './world.js';
 import { getCampaignCalendar, campaignDay } from './time.js';
 import { notePlot } from './plot.js';
 import { worldWrite, plotPeople, applyFate } from './world-growth.js';
@@ -57,6 +57,8 @@ export async function nudgeRuler(place, what) {
         setCurrentWorldFactions(moved);
     });
     postCombatNarration(`🏛️ [MUNDO] ${ruler.name} ${delta > 0 ? 'lo tiene en cuenta: os mira mejor' : 'se entera: os mira peor'}.`);
+    // J10.1: y con eso se puede abrir (o no) el paso que guarda.
+    announceOpenedRoads();
 }
 
 /**
@@ -239,9 +241,65 @@ async function shiftFactionStandingNow(factionId, amount) {
         setCurrentWorldFactions(moved);
         await saveWorldInfo(worldName, data, true);
         await refreshWorldMapGlobals(worldName);
+        // J10.1: caerle bien a alguien puede abrir su camino; y se dice una vez.
+        announceOpenedRoads();
         if (isShellOpen()) refreshGameShell();
     } catch (error) {
         console.error('[party] no se pudo mover la reputacion', error);
+    }
+}
+
+/**
+ * J10.3: retrasar (o adelantar) el plan de una facción, por lo que se eligió en un suceso
+ * (`reloj:<id>:-1`). Llegar al final cumple la meta, como con el tiempo o con un encargo.
+ *
+ * @param {string} factionId
+ * @param {number} segments
+ * @returns {Promise<void>}
+ */
+export function pushFactionClock(factionId, segments) {
+    return worldWrite(() => pushFactionClockNow(factionId, segments));
+}
+
+/**
+ * @param {string} factionId
+ * @param {number} segments
+ * @returns {Promise<void>}
+ */
+async function pushFactionClockNow(factionId, segments) {
+    const worldName = String(chat_metadata?.[METADATA_KEY] || '');
+    if (!worldName || !Math.trunc(Number(segments) || 0)) return;
+    try {
+        const data = await loadWorldInfo(worldName);
+        const before = readFactions(data?.metadata?.factions);
+        if (before.length === 0) return;
+        const { factions, event } = pushFaction(before, String(factionId), Math.trunc(Number(segments)));
+        if (!event) return;
+        let locations = Array.isArray(data.metadata.locationMaps) ? data.metadata.locationMaps : [];
+        let people = factions;
+        /** @type {string[]} */
+        const changed = [];
+        if (event.kind === 'cumple') {
+            notePlot({ kind: 'clock', faction: String(event.faction) });
+            const who = people.find(f => f.id === event.faction);
+            if (who) {
+                const applied = applyOutcome({ locations, factions: people, outcome: outcomeOf(who) });
+                locations = applied.locations;
+                people = applied.factions;
+                changed.push(...applied.changed);
+            }
+        }
+        data.metadata.factions = people;
+        data.metadata.locationMaps = locations;
+        setCurrentWorldFactions(people);
+        await saveWorldInfo(worldName, data, true);
+        await refreshWorldMapGlobals(worldName);
+        announceOpenedRoads();
+        if (isShellOpen()) refreshGameShell();
+        const told = [event.note, ...changed].filter(Boolean);
+        if (told.length > 0) postCombatNarration(`🏛️ [MUNDO] ${told.join(' ')}`);
+    } catch (error) {
+        console.error('[party] no se pudo mover el reloj de la facción', error);
     }
 }
 

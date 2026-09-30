@@ -31,6 +31,7 @@ import { truceLine } from '../game-engine/combat/morale-options.js';
 import { bossPhase } from '../game-engine/combat/boss-phases.js';
 import {
     boardBand, partyLevelOf, levelGap, levelAdjustment, adjustEnemy, adjustPlacements, levelNote,
+    adjustForSize, adjustmentNotes, WRITTEN_PARTY_SIZE,
 } from '../game-engine/combat/level-adjust.js';
 import { findPath, getPathCost } from '../game-engine/board/pathfinding.js';
 import { planAllyTurn, stanceOf, STANCES, DEFAULT_PREFERENCE } from '../game-engine/combat/ally-ai.js';
@@ -42,6 +43,10 @@ import { spreadFire } from '../game-engine/board/living-terrain.js';
 import { noteOutcome, shouldSoften, softenEnemy, SOFTEN_NOTE } from '../game-engine/campaign/safety-net.js';
 import { wardLost } from '../game-engine/campaign/guests.js';
 import { buildVictoryReport } from '../game-engine/combat/tally.js';
+import { afterFightStep, whereItAsks } from '../game-engine/combat/after-fight.js';
+import { focusOf } from '../game-engine/campaign/plot.js';
+import { continueScene } from '../game-engine/ui/shell/scene-director.js';
+import { isShellOpen, refreshGameShell } from '../game-engine/ui/shell/game-shell.js';
 import { planRetreat } from '../game-engine/combat/retreat.js';
 import { advanceTurn } from '../game-engine/combat/turn-machine.js';
 import { applyInjury, describeInjuries } from '../game-engine/rules/injuries.js';
@@ -63,11 +68,11 @@ import { getActiveRuleset } from '../game-engine/rules/ruleset.js';
 import { knownAbilities } from '../game-engine/rules/abilities.js';
 import { isDying, rollDeathSave, clearDeathSaves } from '../game-engine/rules/death-saves.js';
 import {
-    GRAVES_KEY, LEVEL_SAID_KEY, MODE_HISTORY_KEY, NEMESES_KEY, PRISONERS_KEY, SAFETY_KEY, SAFETY_ON_KEY, TAKEN_KEY,
+    GRAVES_KEY, LEVEL_SAID_KEY, MODE_HISTORY_KEY, NEMESES_KEY, PLOT_STATE_KEY, PRISONERS_KEY, SAFETY_KEY, SAFETY_ON_KEY, TAKEN_KEY,
 } from './keys.js';
 import {
     combatEncounter, currentBoardName, currentLocationName, partyMembers, setCombatBoardSelection,
-    setCombatEncounter, setCombatLogEntries, setUsedReactions,
+    setCombatEncounter, setCombatLogEntries, setCurrentBoardName, setUsedReactions,
 } from './state.js';
 import { saveCheckpoint } from './checkpoints.js';
 import { currentPet, offerTaming, petLivesIt } from './pet.js';
@@ -92,9 +97,9 @@ import {
     persistBoardTerrain, getActiveBoardContext, explodeBarrels, recordBoardWon, boardVisibility,
 } from './board.js';
 import { renderLocationMapsPreview } from './board-view.js';
-import { lastLevelPlan, getLocationBoards, hereLocation, lastCompendium } from './world.js';
+import { lastLevelPlan, getLocationBoards, hereLocation, lastCompendium, saveCurrentBoard, lastHub } from './world.js';
 import { getCampaignCalendar, getCampaignBonds, saveCampaignState, markLocationComplete } from './time.js';
-import { notePlot } from './plot.js';
+import { notePlot, getPlot, scenesPending } from './plot.js';
 import { noteDeed } from './world-growth.js';
 import { currentSurvival, survivalNow } from './modes.js';
 import { postCombatNarration, tellMoment, postForModel, showTip } from './narration.js';
@@ -134,9 +139,10 @@ function rollInitiativeWithPopover(name, dexterity, actorType) {
 
 /**
  * @param {'victory'|'defeat'|'manual'|'ended'} reason
+ * @param {string} [said] J8.5: el resultado dicho de otra forma («os habéis rendido»).
  * @returns {string}
  */
-function buildCombatSummary(reason) {
+function buildCombatSummary(reason, said = '') {
     const enemyTotal = combatEncounter.enemies.length;
     const enemyAlive = combatEncounter.enemies.filter(enemy => (enemy.currentHp || 0) > 0).length;
     const enemyDefeated = Math.max(0, enemyTotal - enemyAlive);
@@ -148,6 +154,7 @@ function buildCombatSummary(reason) {
     if (reason === 'victory') outcome = 'Resultado: victoria del grupo.';
     if (reason === 'defeat') outcome = 'Resultado: derrota del grupo.';
     if (reason === 'manual') outcome = 'Resultado: combate terminado manualmente.';
+    if (said) outcome = `Resultado: ${said}`;
 
     const partyHp = partyMembers.length
         ? partyMembers.map(member => `${member.name} ${member.hp || 0}/${member.maxHp || 0}`).join(' | ')
@@ -963,7 +970,8 @@ function levelAdjustHere() {
     if (size === 0) return null;
     const band = boardBand(lastLevelPlan, name);
     const adjustment = levelAdjustment(levelGap(level, band));
-    return adjustment.steps === 0 ? null : { adjustment, band, level, size };
+    // J12.6: también cuando el nivel cuadra pero el grupo no es de los que pide el tablero.
+    return adjustment.steps === 0 && size === WRITTEN_PARTY_SIZE ? null : { adjustment, band, level, size };
 }
 
 /**
@@ -989,15 +997,24 @@ function levelPlacements(placements, level, templates) {
         ],
     });
     const side = level.adjustment.steps > 0 ? 'up' : 'down';
-    if (chat_metadata && chat_metadata[LEVEL_SAID_KEY] !== side) {
+    if (level.adjustment.steps !== 0 && chat_metadata && chat_metadata[LEVEL_SAID_KEY] !== side) {
         chat_metadata[LEVEL_SAID_KEY] = side;
         const note = levelNote(level);
         postCombatNarration(`⚖️ [COMBAT] ${note}`);
         toastr.info(note, 'El nivel de la campaña', { timeOut: 9000 });
     }
-    for (const name of result.added) postCombatNarration(`⚖️ [COMBAT] Por vuestro nivel, hay un enemigo más: ${name}.`);
-    for (const name of result.removed) postCombatNarration(`⚖️ [COMBAT] Por vuestro nivel, hay un enemigo menos: ${name}.`);
-    return result.placements;
+    // J12.6: y por cuántos sois: el tablero está escrito para tres. Lo de más o de menos se
+    // dice una vez, con lo que queda al final (`adjustmentNotes`).
+    const sized = adjustForSize({
+        placements: result.placements, partySize: level.size, partyLevel: level.level, bestiary: templates,
+        terrain, gridWidth, gridHeight,
+        taken: [
+            ...partyMembers.map(m => ({ x: Number(m.mapPosition?.gridX) || 0, y: Number(m.mapPosition?.gridY) || 0 })),
+            ...(Array.isArray(board?.enemyPlacements) ? board.enemyPlacements : []),
+        ],
+    });
+    for (const note of adjustmentNotes({ level: result, size: sized, partySize: level.size })) postCombatNarration(`⚖️ [COMBAT] ${note}`);
+    return sized.placements;
 }
 
 /**
@@ -1118,9 +1135,11 @@ export function startCombat(template, count, gridWidth = 50, gridHeight = 50) {
  * turno: existian en el encuentro y no actuaban nunca.
  *
  * @param {import('../dnd-system.js').EnemyInstance[]} newEnemies
+ * @param {{enemiesFirst?: boolean}} [options] J12.2: os han pillado huyendo o escondidos, y
+ *   empiezan ellos, tire lo que tire cada uno.
  * @returns {string} El orden de iniciativa, ya escrito.
  */
-function beginEncounterWith(newEnemies) {
+function beginEncounterWith(newEnemies, { enemiesFirst = false } = {}) {
     // Idea 200: la pelea se cuenta aquí, por donde pasan todas (el botón y la ficha del
     // tablero, una sala que se abre, `/fight`). Contada solo en `startCombat`, la bodega
     // salía en el final como «0 combates: 1 ganados».
@@ -1173,6 +1192,11 @@ function beginEncounterWith(newEnemies) {
 
     // Sort descending by initiative (ties: non-enemies first)
     turnEntries.sort((a, b) => b.initiative - a.initiative || (a.isEnemy ? 1 : 0) - (b.isEnemy ? 1 : 0));
+    // J12.2: si os han pillado, ellos primero; entre ellos y entre los vuestros, por iniciativa.
+    if (enemiesFirst) {
+        turnEntries.sort((a, b) => (b.isEnemy ? 1 : 0) - (a.isEnemy ? 1 : 0) || b.initiative - a.initiative);
+        postCombatNarration('⚠️ [COMBAT] Os han pillado: ellos atacan primero.');
+    }
 
     setCombatEncounter({
         active: true,
@@ -1241,8 +1265,9 @@ export function waitingSummary(awake) {
  * Empezar la pelea con los que esperan en el tablero: el botón del tablero y la ficha.
  *
  * @param {Array<{name: string, x: number, y: number}>} awake
+ * @param {{enemiesFirst?: boolean}} [options] J12.2: si os pillaron al evitarla, empiezan ellos.
  */
-export function startWaitingFight(awake) {
+export function startWaitingFight(awake, { enemiesFirst = false } = {}) {
     if (combatEncounter.active) return;
     const enemies = instancesFromPlacements(awake);
     if (enemies.length === 0) {
@@ -1251,7 +1276,7 @@ export function startWaitingFight(awake) {
     }
     setCombatLogEntries([]);
     postCombatNarration(`[COMBAT] Empieza el combate del tablero: ${waitingSummary(awake)}.`);
-    beginEncounterWith(enemies);
+    beginEncounterWith(enemies, { enemiesFirst });
     showInitiativeBanner(enemies.map(e => e.name));
     renderLocationMapsPreview();
 }
@@ -1310,8 +1335,13 @@ export function checkScenarioOutcome() {
 
 /**
  * End the current combat encounter.
+ *
+ * @param {string} [reason]
+ * @param {{said?: string, told?: string}} [options] J8.5: cuando se acaba hablando, el resultado
+ *   dicho a su manera («os habéis rendido») y lo que se lee en la novela en vez del final de
+ *   siempre (que diría «os retiráis a tiempo» a quien se ha entregado).
  */
-export function endCombat(reason = 'ended') {
+export function endCombat(reason = 'ended', { said = '', told = '' } = {}) {
     postCombatNarration('🏁 [COMBAT] El combate termina.');
     // J19: lo que dura un minuto no pasa a la escena siguiente: las invocaciones se van, las
     // zonas se deshacen y las concentraciones de la pelea se acaban.
@@ -1334,7 +1364,7 @@ export function endCombat(reason = 'ended') {
         postCombatNarration(`💀 [GREMIO] ${escorted.name} ha caído: el encargo «${lost.title}» se pierde.`);
         dismissGuests(String(lost.id), 'perdido');
     }
-    postCombatNarration(buildCombatSummary(/** @type {'victory'|'defeat'|'manual'|'ended'} */ (reason === 'fled' ? 'manual' : reason)));
+    postCombatNarration(buildCombatSummary(/** @type {'victory'|'defeat'|'manual'|'ended'} */ (reason === 'fled' ? 'manual' : reason), said));
 
     // Winning has to be worth something, or the tactical engine underneath is doing
     // careful work for nothing.
@@ -1431,7 +1461,7 @@ export function endCombat(reason = 'ended') {
             : `salen ${gendered(groupGender(woundedMembers), 'malheridos', 'malheridas')}`}.`,
         botin: listNames((loot?.items ?? []).map((/** @type {any} */ item) => String(item?.name || '')).filter(Boolean).slice(0, 3)),
     });
-    postForModel(epilogue, { show: ending }).catch(error => console.error('[party] could not post the combat epilogue', error));
+    postForModel(epilogue, { show: told || ending }).catch(error => console.error('[party] could not post the combat epilogue', error));
 
     // Idea 191: ganar se celebra, con la cuenta delante.
     if (reason === 'victory') {
@@ -1468,11 +1498,95 @@ export function endCombat(reason = 'ended') {
     setCombatBoardSelection({ tokenId: null, boardName: '', locationName: '' });
     saveCombatState();
     restoreChatPlaceholder();
+    // D-J45: ganada en un tablero, «Continuar» sigue el hilo desde aquí (`afterFightNow`).
+    lastWin = reason === 'victory' && currentBoardName
+        ? { owner: chat_metadata, place: currentLocationName, board: currentBoardName }
+        : null;
     // J14.1 y J14.2: la pelea de tablero se lleva su parte del día, y tras ganarla, a veces
     // alguien del grupo tiene algo que decir.
     afterFight(reason, { board: currentBoardName });
     // J14.9: si era la pelea de una misión personal, la misión sigue por donde diga el final.
-    void questAfterFight(reason, currentBoardName);
+    // Mientras sigue, es lo que toca tras la pelea (D-J45).
+    questFollowUps += 1;
+    void questAfterFight(reason, currentBoardName).finally(() => {
+        questFollowUps = Math.max(0, questFollowUps - 1);
+        if (isShellOpen()) refreshGameShell();
+    });
+}
+
+/**
+ * D-J45: la última pelea ganada en un tablero, mientras no se haya seguido con «Continuar».
+ *
+ * @type {{owner: any, place: string, board: string}|null}
+ */
+let lastWin = null;
+
+/** Los pasos de misión personal que siguen solos tras una pelea y aún no han acabado. */
+let questFollowUps = 0;
+
+/**
+ * Lo que tenéis entre manos en la campaña (el hito de la cabecera), con dónde está.
+ *
+ * @returns {{title: string, place: string, board: string}|null}
+ */
+function campaignNextStep() {
+    const plot = getPlot();
+    if (!plot || !chat_metadata) return null;
+    const focus = focusOf(plot, chat_metadata[PLOT_STATE_KEY]);
+    if (!focus) return null;
+    const milestone = plot.milestones.find((/** @type {any} */ m) => String(m.id) === String(focus.id));
+    return { title: String(focus.title || ''), ...whereItAsks(milestone?.asks) };
+}
+
+/**
+ * D-J45: a dónde lleva «Continuar» ahora, si se acaba de ganar una pelea en este tablero. Nada
+ * si no: entonces «Continuar» es el de siempre (J18.8), que vuelve al tablero.
+ *
+ * @returns {import('../game-engine/combat/after-fight.js').AfterFightStep|null}
+ */
+export function afterFightNow() {
+    if (!lastWin || combatEncounter.active) return null;
+    if (lastWin.owner !== chat_metadata || lastWin.board !== currentBoardName || lastWin.place !== currentLocationName) {
+        lastWin = null;
+        return null;
+    }
+    // Una escena del hilo en cola, la tarjeta de un suceso o el paso de una misión personal.
+    const story = scenesPending > 0 || questFollowUps > 0 || Boolean(document.querySelector('.su-root'));
+    // En el gremio no hay «lo siguiente de la campaña»: no es una campaña.
+    const inCampaign = !lastHub;
+    return afterFightStep({
+        story,
+        inCampaign,
+        next: inCampaign ? campaignNextStep() : null,
+        here: { place: currentLocationName, board: currentBoardName },
+    });
+}
+
+/**
+ * D-J45: pulsar «Continuar» tras ganar. Con una escena, solo se aparta el panel de victoria (la
+ * escena sale encima de la novela y, al acabar, «Continuar» sigue). Con lo siguiente de la
+ * campaña en otro sitio, se sale del tablero al sitio; si no, se vuelve al tablero.
+ *
+ * Se decide con lo de ahora, no con lo que decía el botón al dibujarse: la escena puede haber
+ * acabado entre medias.
+ *
+ * @param {import('../game-engine/ui/shell/scene-director.js').SceneName} next La escena que decía el botón.
+ * @param {import('../game-engine/ui/shell/scene-director.js').GameSituation|null} [situation] La de ahora.
+ * @returns {import('../game-engine/ui/shell/scene-director.js').SceneName} A dónde va la pantalla.
+ */
+export function followAfterFight(next, situation = null) {
+    const step = afterFightNow();
+    if (!step) return next;
+    if (step.kind === 'story') return 'dialogue';
+    const scene = (situation ? continueScene({ ...situation, afterFight: step }) : null) ?? next;
+    lastWin = null;
+    if ((step.kind === 'next' || step.kind === 'place') && scene === 'exploration' && currentBoardName) {
+        setCurrentBoardName('');
+        saveCurrentBoard();
+        renderLocationMapsPreview();
+        if (step.kind === 'next') toastr.info(step.title.replace(/^Lo siguiente: /, ''), 'Lo siguiente', { timeOut: 6000 });
+    }
+    return scene;
 }
 
 /**

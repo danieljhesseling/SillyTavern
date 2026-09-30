@@ -1,4 +1,4 @@
-import { describe, test, expect } from '@jest/globals';
+import { describe, test, expect, beforeAll, afterAll } from '@jest/globals';
 import { readFileSync } from 'node:fs';
 import {
     BOOK_KEYS, HUB_CHRONICLES_KEY, BOOK_LIMITS, listOf, chapterFrames, chapterNow, guildChapterLine, daysLeftLabel,
@@ -6,7 +6,7 @@ import {
     buildStoryBook, searchDecided, bookInputFromMetadata, readStoryBook, bookSnapshot, readChronicles, withChronicle,
     chronicleOfCampaign,
 } from '../public/scripts/game-engine/campaign/story-book.js';
-import { readPlot, readChapters, startPlot, plotEvent, actOf, MAX_ACTS } from '../public/scripts/game-engine/campaign/plot.js';
+import { readPlot, readChapters, startPlot, plotEvent, actOf, MAX_ACTS, STORY_DEADLINES } from '../public/scripts/game-engine/campaign/plot.js';
 import { readHub, withHubCampaign, hubCampaignCards } from '../public/scripts/game-engine/campaign/hub.js';
 import { validatePack } from '../public/scripts/game-engine/campaign/campaign-pack.js';
 import { getSectionSchema } from '../public/scripts/game-engine/campaign/campaign-pack-schema.js';
@@ -143,7 +143,34 @@ describe('J9.3: los capítulos', () => {
     });
 });
 
-describe('J9.5: los plazos a la vista', () => {
+describe('D-J46: los plazos, apagados por ahora', () => {
+    test('apagados, ningún hito tiene reloj: ni arriba del libro, ni en su página, ni junto a lo que tenéis entre manos', () => {
+        expect(STORY_DEADLINES.on).toBe(false);
+        const state = midway();
+        expect(deadlinesOf(valle, state, 5)).toEqual([]);
+        expect(focusClock(valle, state, 5, 'la-nieve')).toBeNull();
+        const read = buildStoryBook({ plot: valle, state, today: 5 });
+        expect(read.clocks).toEqual([]);
+        expect(read.chapters[1].pages[2].clock).toBeNull();
+        const plot = readPlot(pack('1387').plot);
+        expect(deadlinesOf(plot, { open: ['la-nieve-manchada'], since: { 'la-nieve-manchada': 20 } }, 21)).toEqual([]);
+    });
+
+    test('apagados, pasar los días no pierde nada, y lo escrito y lo guardado siguen ahí', () => {
+        const state = midway();
+        const step = plotEvent(valle, state, { kind: 'day', day: 30 });
+        expect(step.missed).toEqual([]);
+        expect(step.state.open).toContain('la-nieve');
+        expect(step.state.since['la-nieve']).toBe(4);
+        expect(valle?.milestones.find(m => m.id === 'la-nieve')?.within).toBe(3);
+    });
+});
+
+describe('J9.5: los plazos a la vista (encendidos dentro de la prueba)', () => {
+    // D-J46: están apagados; aquí se encienden para probar cómo funcionan cuando Daniel los encienda.
+    beforeAll(() => { STORY_DEADLINES.on = true; });
+    afterAll(() => { STORY_DEADLINES.on = false; });
+
     test('cuánto queda, en llano', () => {
         expect([daysLeftLabel(0), daysLeftLabel(1), daysLeftLabel(4)]).toEqual(['Hoy es el último día', 'Queda 1 día', 'Quedan 4 días']);
     });
@@ -295,11 +322,16 @@ describe('J9.6: el Diario como un libro', () => {
         expect(second.pages[1]).toMatchObject({ text: '', came: ['Se cerró al cumplir «Con los lobos».'] });
     });
 
-    test('lo abierto dice lo que toca y su reloj', () => {
-        const open = book().chapters[1].pages[2];
-        expect(open).toMatchObject({ hint: 'Atrapa al espía.', came: [] });
-        expect(open.clock).toMatchObject({ left: 2, label: 'Quedan 2 días' });
-        expect(book().clocks.map(c => c.id)).toEqual(['la-nieve']);
+    test('lo abierto dice lo que toca y su reloj (con los plazos encendidos, D-J46)', () => {
+        STORY_DEADLINES.on = true;
+        try {
+            const open = book().chapters[1].pages[2];
+            expect(open).toMatchObject({ hint: 'Atrapa al espía.', came: [] });
+            expect(open.clock).toMatchObject({ left: 2, label: 'Quedan 2 días' });
+            expect(book().clocks.map(c => c.id)).toEqual(['la-nieve']);
+        } finally {
+            STORY_DEADLINES.on = false;
+        }
     });
 
     test('lo decidido va a su página, o a su capítulo por el día; los sucesos, por dónde empezó el acto', () => {

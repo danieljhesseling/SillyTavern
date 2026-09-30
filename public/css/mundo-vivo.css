@@ -430,6 +430,11 @@
     margin-top: 6px;
     font-weight: bold;
     border-color: var(--gs-accent-gold, #e2c27a);
+    /* Todo el ancho del panel: estrecho, «Viajar aquí (1 día)» se partía en cuatro líneas. */
+    width: 100%;
+    justify-content: center;
+    gap: 6px;
+    white-space: nowrap;
 }
 
 /* --- La leyenda --------------------------------------------------- */

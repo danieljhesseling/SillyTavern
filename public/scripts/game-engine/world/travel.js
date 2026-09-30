@@ -358,8 +358,13 @@ export function reachFrom({ from, locations, friendly = [], season = '', done = 
         if (name === start || out[name]) continue;
         const plan = planTravel({ from: start, to: name, locations: all, friendly, season, done, directOnly: true });
         if (plan.ok) out[name] = { reach: 'near', days: plan.days, via: '', reason: '' };
-        else if (plan.via) out[name] = { reach: 'far', days: plan.days, via: plan.via, reason: plan.reason };
-        else {
+        else if (plan.via) {
+            // J10.1: si hay rodeo pero el paso directo está cerrado por su puerta, también se
+            // dice por qué y qué lo abre: ese es el atajo que se gana.
+            const gated = all.filter((/** @type {any} */ l) => text(l?.name) === start)
+                .flatMap((/** @type {any} */ l) => routesOf(l, friendly, season, done)).find(r => r.to === name && r.closed && r.note);
+            out[name] = { reach: 'far', days: plan.days, via: plan.via, reason: gated ? `${plan.reason} El paso directo está cerrado: ${gated.note.replace(/\.$/, '')}.` : plan.reason };
+        } else {
             // Un paso directo cerrado es un vecino con la puerta echada; si no, no se llega.
             const shut = [...all.filter((/** @type {any} */ l) => text(l?.name) === start)
                 .flatMap((/** @type {any} */ l) => routesOf(l, friendly, season, done)).filter(r => r.to === name),

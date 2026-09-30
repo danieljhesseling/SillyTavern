@@ -289,7 +289,7 @@ export function canUseAbility({
  * @returns {{
  *   ok: boolean, hit: boolean, saved: boolean, crit: boolean,
  *   damage: number, healing: number, condition: string, conditionRounds: number,
- *   lines: string[],
+ *   attackTotal: number, lines: string[],
  * }}
  */
 export function planAbilityUse({
@@ -302,16 +302,19 @@ export function planAbilityUse({
     let hit = true;
     let saved = false;
     let crit = false;
+    // J19.7: lo que ha sacado el ataque, para que Escudo sepa si con él ya no entra.
+    let attackTotal = 0;
 
     if (ability.resolution === 'attack') {
         const attack = roll('1d20');
         const total = (Number(attack.total) || 0) + attackModifier;
+        attackTotal = total;
         crit = attack.natural === 20;
         hit = crit || total >= targetAc;
         lines.push(`🎲 Ataque: d20(${attack.total}) ${attackModifier >= 0 ? '+' : ''}${attackModifier} = ${total} vs CA ${targetAc}`);
         if (!hit) {
             lines.push('❌ Falla.');
-            return { ok: true, hit, saved, crit, damage: 0, healing: 0, condition: '', conditionRounds: 0, lines };
+            return { ok: true, hit, saved, crit, damage: 0, healing: 0, condition: '', conditionRounds: 0, attackTotal, lines };
         }
     } else if (ability.resolution === 'save') {
         const save = roll('1d20');
@@ -360,6 +363,7 @@ export function planAbilityUse({
         healing,
         condition: applies ? ability.condition : '',
         conditionRounds: applies ? ability.conditionRounds : 0,
+        attackTotal,
         lines,
     };
 }

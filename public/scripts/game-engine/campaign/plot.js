@@ -45,6 +45,27 @@
 import { readFactions, clockOf, saysWith } from './factions.js';
 import { epiloguesOf } from './campaign-end.js';
 
+/**
+ * D-J46: el interruptor de los plazos del hilo (idea 106, J9.5). **Apagados por ahora**: Daniel
+ * los encenderá más adelante, poniendo `on: true` aquí y en ningún otro sitio.
+ *
+ * Apagados, un hito con `within` es un hito sin plazo: no se dice cuánto queda (ni en la
+ * cabecera, ni en el libro, ni en el diario, ni en la mesa de la semana) y no se pierde por
+ * llegar tarde. Lo escrito en el paquete (`within`, `late`) y lo guardado (`since`) se quedan
+ * como están, para cuando se enciendan. Las pruebas lo encienden dentro de la prueba.
+ */
+export const STORY_DEADLINES = { on: false };
+
+/**
+ * Si un hito tiene plazo que cuente ahora: con los plazos encendidos (D-J46) y `within` > 0.
+ *
+ * @param {any} milestone
+ * @returns {boolean}
+ */
+export function hasDeadline(milestone) {
+    return STORY_DEADLINES.on === true && Math.floor(Number(milestone?.within) || 0) > 0;
+}
+
 /** Lo que puede abrir un hito. */
 export const OPENS = ['start', 'arrive', 'after', 'contract', 'day', 'clock'];
 
@@ -602,11 +623,12 @@ export function plotEvent(plot, rawState, event, today = 0) {
         }
     }
     // Idea 106: lo que tenía plazo y no se hizo a tiempo se pierde, y pasa lo que diga.
+    // D-J46: con los plazos apagados no se pierde nada.
     if (text(event?.kind) === 'day' && now > 0) {
         for (const id of [...state.open]) {
             const milestone = byId.get(id);
             const opened = state.since[id];
-            if (!milestone || milestone.within <= 0 || !opened || now <= opened + milestone.within) continue;
+            if (!milestone || !hasDeadline(milestone) || !opened || now <= opened + milestone.within) continue;
             state.open = state.open.filter(open => open !== id);
             if (!state.missed.includes(id)) state.missed.push(id);
             step.missed.push(milestone);
@@ -655,7 +677,8 @@ export function focusOf(plot, rawState, today = 0) {
 export function daysLeftOf(plot, rawState, id, today) {
     const milestone = plot?.milestones.find(m => m.id === id);
     const opened = readPlotState(rawState).since[id];
-    if (!milestone || milestone.within <= 0 || !opened || !(Number(today) > 0)) return null;
+    // D-J46: con los plazos apagados, ninguno tiene.
+    if (!milestone || !hasDeadline(milestone) || !opened || !(Number(today) > 0)) return null;
     return Math.max(0, opened + milestone.within - Math.floor(Number(today)));
 }
 

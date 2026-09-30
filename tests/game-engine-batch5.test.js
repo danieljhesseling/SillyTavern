@@ -9,7 +9,7 @@ import { addFame, fameAt, fameNote, describeFame } from '../public/scripts/game-
 import { priceToday, weeklyStock, junkOf } from '../public/scripts/game-engine/campaign/shop.js';
 import { roadStop, ROAD_CHANCE, STOPS } from '../public/scripts/game-engine/world/road.js';
 import { warPressure, WAR_PRICE } from '../public/scripts/game-engine/campaign/economy.js';
-import { readPlot, startPlot, plotEvent, focusOf, describeFocus, visibleOpen, secretsOf, omensOf } from '../public/scripts/game-engine/campaign/plot.js';
+import { readPlot, startPlot, plotEvent, focusOf, describeFocus, visibleOpen, secretsOf, omensOf, STORY_DEADLINES } from '../public/scripts/game-engine/campaign/plot.js';
 import { boundOf, lootable, relicsFor, describeRelic } from '../public/scripts/game-engine/campaign/relics.js';
 import { dressLoot, curseInjury, identify, liftCurse, canTakeOff, templeWork, shownName, LOOT_ODDS } from '../public/scripts/game-engine/campaign/item-lore.js';
 import { borrow, repay, LOAN } from '../public/scripts/game-engine/campaign/patronage.js';
@@ -217,19 +217,39 @@ describe('el hilo', () => {
         expect(omensOf(plot, step.state)).toEqual([{ text: 'El hierro bajará.', fulfilled: true }]);
     });
 
-    test('106: el plazo se dice, y si pasa, se pierde y abre lo siguiente', () => {
+    test('106: el plazo se dice, y si pasa, se pierde y abre lo siguiente (con los plazos encendidos, D-J46)', () => {
+        STORY_DEADLINES.on = true;
+        try {
+            const start = startPlot(/** @type {any} */ (plot), 1);
+            const opened = plotEvent(plot, start.state, { kind: 'arrive', place: 'Castillo' }, 4);
+            expect(opened.state.since.espia).toBe(4);
+            const focus = focusOf(plot, opened.state, 5);
+            expect(focus?.daysLeft).toBe(2);
+            expect(describeFocus(focus)).toBe('El espía — No debe escapar. · quedan 2 día(s)');
+            expect(plotEvent(plot, opened.state, { kind: 'day', day: 7 }).missed).toEqual([]);
+            const late = plotEvent(plot, opened.state, { kind: 'day', day: 8 });
+            expect(late.missed.map(m => m.id)).toEqual(['espia']);
+            expect(late.state.open).toContain('b');
+            expect(late.state.missed).toEqual(['espia']);
+            expect(late.changes.standing).toEqual({ vane: -2 });
+        } finally {
+            STORY_DEADLINES.on = false;
+        }
+    });
+
+    test('D-J46: con los plazos apagados, el hito no dice cuánto queda ni se pierde', () => {
+        expect(STORY_DEADLINES.on).toBe(false);
         const start = startPlot(/** @type {any} */ (plot), 1);
         const opened = plotEvent(plot, start.state, { kind: 'arrive', place: 'Castillo' }, 4);
+        // Se apunta desde cuándo está abierto, para cuando se enciendan.
         expect(opened.state.since.espia).toBe(4);
         const focus = focusOf(plot, opened.state, 5);
-        expect(focus?.daysLeft).toBe(2);
-        expect(describeFocus(focus)).toBe('El espía — No debe escapar. · quedan 2 día(s)');
-        expect(plotEvent(plot, opened.state, { kind: 'day', day: 7 }).missed).toEqual([]);
-        const late = plotEvent(plot, opened.state, { kind: 'day', day: 8 });
-        expect(late.missed.map(m => m.id)).toEqual(['espia']);
-        expect(late.state.open).toContain('b');
-        expect(late.state.missed).toEqual(['espia']);
-        expect(late.changes.standing).toEqual({ vane: -2 });
+        expect(focus?.daysLeft).toBeNull();
+        expect(describeFocus(focus)).toBe('El espía — No debe escapar.');
+        const late = plotEvent(plot, opened.state, { kind: 'day', day: 40 });
+        expect(late.missed).toEqual([]);
+        expect(late.state.open).toContain('espia');
+        expect(late.state.open).not.toContain('b');
     });
 });
 

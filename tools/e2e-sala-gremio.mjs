@@ -16,13 +16,14 @@
  *   node tools/e2e-sala-gremio.mjs                 # sin ventana
  *   node tools/e2e-sala-gremio.mjs --headed
  *   node tools/e2e-sala-gremio.mjs --port 8303 --captura sala.png   # sala.png.cofre.png, …
+ *   node tools/e2e-sala-gremio.mjs --port 8303 --log sala.log       # y lo que dice el servidor (un 500 se explica ahí)
  */
 
 /* global window, document, HTMLElement */
 
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { mkdtempSync, rmSync, readFileSync } from 'node:fs';
+import { createWriteStream, mkdtempSync, rmSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -65,6 +66,12 @@ function startServer() {
         };
         child.stdout.on('data', watch);
         child.stderr.on('data', watch);
+        // `--log fichero`: lo que dice el servidor (un 500 se explica ahí).
+        if (argAfter('--log')) {
+            const out = createWriteStream(argAfter('--log'));
+            child.stdout.pipe(out);
+            child.stderr.pipe(out);
+        }
         child.on('exit', (/** @type {number} */ code) => reject(new Error(`the server exited with code ${code}`)));
     });
 }
@@ -268,7 +275,11 @@ try {
     check('empieza en el muelle de Puerto Alba, con la prueba por hacer', now.board === 'El muelle de Puerto Alba' && now.party[0]?.name === 'Mara', JSON.stringify(now));
 
     // 2. D-J28: en la prueba, la sala solo deja saltarla. Se sale del muelle, se entra en la sala y se vuelve.
-    await clickChip(/^Salir del tablero$/);
+    // «Salir del tablero», en la fila o, si no cabe (con «Evitar la pelea» y las trampas), en «+N más».
+    if (!(await clickChip(/^Salir del tablero$/))) {
+        await clickChip(/\+\d+ más$/);
+        await page.locator('.popup[open] .hp-item[data-chip="leave"]').click({ timeout: 5000 }).catch(() => {});
+    }
     await page.waitForTimeout(600);
     const inHallTrial = await enterPlace('gremio');
     const trialHall = await placeScene();

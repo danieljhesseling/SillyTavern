@@ -455,3 +455,18 @@
         min-width: 0;
     }
 }
+
+/* D-J53: la pregunta de al llegar («¿Curar a Bran con magia?»), en la novela. La cara de quien
+   cura, si es de los tuyos y no tiene retrato: su cara elegida o sus iniciales, en grande. */
+.qd-portrait .hero-initials.vq-face {
+    width: min(70%, 12rem);
+    aspect-ratio: 1;
+    margin-bottom: 18px;
+    border-width: 3px;
+    border-radius: 22px;
+    font-size: min(4.5rem, 9vh);
+}
+
+.vq-question {
+    font-weight: 600;
+}

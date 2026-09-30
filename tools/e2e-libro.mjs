@@ -334,9 +334,20 @@ try {
     await page.waitForTimeout(200);
     check('Escape cierra el libro', !(await readBook(page)).open && await page.evaluate(() => window.bookClosed === true));
 
-    // --- 1387: la nieve manchada, a un día.
+    // --- D-J46: los plazos están apagados por ahora: la nieve manchada no tiene reloj.
+    const offClocks = await page.evaluate(async () => {
+        const { book, plot } = window.harness;
+        const data = await (await fetch('mundos/1387.pack.json')).json();
+        const read = plot.readPlot(data.plot);
+        const state = { open: ['la-nieve-manchada'], since: { 'la-nieve-manchada': 20 } };
+        return { on: plot.STORY_DEADLINES.on, clocks: book.deadlinesOf(read, state, 22).length, focus: book.focusClock(read, state, 22, 'la-nieve-manchada') };
+    });
+    check('D-J46: los plazos están apagados: ni reloj en la cabecera ni en el libro', offClocks.on === false && offClocks.clocks === 0 && offClocks.focus === null, JSON.stringify(offClocks));
+
+    // --- 1387: la nieve manchada, a un día (con los plazos encendidos solo para esta prueba).
     const valley = await page.evaluate(async () => {
         const { book, plot } = window.harness;
+        plot.STORY_DEADLINES.on = true;
         const data = await (await fetch('mundos/1387.pack.json')).json();
         const read = plot.readPlot(data.plot);
         const done = ['el-caliz-ensangrentado', 'el-precio-del-escape', 'la-pista-en-el-barro', 'el-invierno-cierra-el-paso', 'el-hambre-de-los-lobos', 'la-oferta-del-castillo', 'la-vanguardia-de-keller', 'el-paso-de-los-contrabandistas'];
@@ -363,6 +374,7 @@ try {
     await shoot(page, '1387, con plazo');
     await page.locator('.lb-dialog .lb-close').click();
     await page.waitForTimeout(150);
+    await page.evaluate(() => { window.harness.plot.STORY_DEADLINES.on = false; });
 
     // --- El móvil.
     await page.setViewportSize({ width: 390, height: 844 });

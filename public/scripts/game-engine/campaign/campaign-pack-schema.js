@@ -75,7 +75,7 @@ export const OBJECTIVE_FIELDS = {
 };
 
 /**
- * Qué clase de sitio es una localidad.
+ * Qué clase de sitio es una localización.
  *
  * Solo es sabor — el motor no cambia ninguna regla por el tipo — pero decirle a un libro
  * cuáles hay evita que cada paquete invente el suyo.
@@ -274,7 +274,8 @@ function buildSectionSchemas() {
         description: 'Tableros tácticos. El mapa se recorre por casillas, no es una ilustración.',
         items: {
             type: 'object',
-            required: ['id', 'name', 'map'],
+            // J5.3 y J12.5: sin `map`, el juego lo lee del dibujo (`image`) o lo dibuja con la semilla.
+            required: ['id', 'name'],
             properties: {
                 id: { type: 'string', description: 'Identificador propio del paquete, al que apuntan las misiones.' },
                 name: { type: 'string' },
@@ -284,7 +285,7 @@ function buildSectionSchemas() {
                     items: { type: 'string' },
                     description: `Filas de la misma longitud, entre ${BOARD_LIMITS.minWidth} y ${BOARD_LIMITS.maxWidth} columnas `
                         + `y entre ${BOARD_LIMITS.minHeight} y ${BOARD_LIMITS.maxHeight} filas. Borde exterior siempre de muro. `
-                        + `Solo estos caracteres: ${legendText}.`,
+                        + `Solo estos caracteres: ${legendText}. Sin map, el juego lo lee del dibujo si hay image, o dibuja uno con la semilla.`,
                 },
                 partyStart: {
                     type: 'array',
@@ -344,6 +345,20 @@ function buildSectionSchemas() {
                             },
                             cells: { type: 'array', items: { type: 'string' }, description: 'Casillas "x,y".' },
                             note: { type: 'string', description: 'Quién espera, qué se encuentra, el texto de la sala.' },
+                            // J5.2: los encuentros y el tesoro de cada sala, como los cuenta un módulo.
+                            enemies: {
+                                type: 'array',
+                                items: { type: 'string' },
+                                description: 'El encuentro de la sala: quién espera en ella, uno por bicho y por su nombre del '
+                                    + 'bestiario (["Lobo", "Lobo"]). El juego los pone en casillas de la sala; tras una puerta '
+                                    + 'cerrada, duermen hasta que se abre. No hace falta repetirlos en enemies.',
+                            },
+                            treasure: {
+                                type: 'array',
+                                items: { type: 'string' },
+                                description: 'El tesoro de la sala: objetos por su nombre en items (si no está, el juego lo crea). '
+                                    + 'El juego pone un cofre en la sala con ellos dentro.',
+                            },
                         },
                     },
                 },
@@ -396,9 +411,9 @@ function buildSectionSchemas() {
 
     const locations = {
         type: 'array',
-        description: 'Los sitios del mundo. Una localidad puede tener 0 tableros (una aldea donde '
+        description: 'Los sitios del mundo. Una localización puede tener 0 tableros (una aldea donde '
             + 'solo se habla y se comercia), 1 o varios. Opcional: las que no se declaren se '
-            + 'deducen de los tableros que las nombren.',
+            + 'deducen de los tableros que las nombren. La primera es donde empieza la campaña.',
         items: {
             type: 'object',
             required: ['name'],
@@ -440,6 +455,14 @@ function buildSectionSchemas() {
                             found: { type: 'string', description: 'Lo que se ve si la tirada sale bien: una o dos frases llanas.' },
                         },
                     },
+                },
+                // J5.2: el tesoro de un sitio, como lo cuenta un módulo («en la cripta hay…»).
+                treasure: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    description: 'El tesoro del sitio: objetos que se encuentran aquí, por su nombre en items (si no está, '
+                        + 'el juego lo crea). Van en un cofre de un tablero del sitio; si el sitio no tiene tablero, el juego '
+                        + 'dibuja uno pequeño, sin pelea, para ir a buscarlo.',
                 },
             },
         },
@@ -540,6 +563,28 @@ function buildSectionSchemas() {
                         properties: { place: { type: 'string' }, line: { type: 'string' } },
                     },
                 },
+            },
+        },
+    };
+
+    // J5.2: la gente del mundo. Las charlas, las escenas, los epílogos y el punto de vista ya la
+    // nombraban («alguien de npcs»), pero el contrato no decía cómo se escribe.
+    const npcs = {
+        type: 'array',
+        description: 'La gente del mundo que no va con vosotros: quien atiende la posada, el alcalde, quien sabe algo. '
+            + 'Cada persona vive en una localización y sale allí para hablar con ella.',
+        items: {
+            type: 'object',
+            required: ['name', 'where'],
+            properties: {
+                name: { type: 'string', description: 'Único en el paquete, y distinto de los compañeros y del bestiario.' },
+                where: { type: 'string', description: 'La localización donde vive, con su nombre exacto.' },
+                trade: { type: 'string', description: 'Su oficio, corto: «Molinero», «Posadera».' },
+                wants: { type: 'string', description: 'Lo que quiere, en una frase.' },
+                knows: { type: 'string', description: 'Lo que sabe y puede contar, en una frase.' },
+                secret: { type: 'string', description: 'Lo que calla: solo sale si se descubre.' },
+                voice: { type: 'string', description: 'Cómo habla, en pocas palabras.' },
+                service: { type: 'string', enum: Object.values(PLACE_KINDS).map(kind => kind.service).filter(Boolean), description: 'Si atiende un servicio del sitio: la posada, la tienda, la herrería, el templo.' },
             },
         },
     };
@@ -830,6 +875,13 @@ function buildSectionSchemas() {
                     + '"effects": [{"attitude": 1}], "reply": {"who": "Tomás", "mood": "alegre", "text": "¡Gracias!"}}]}].',
             },
             sceneDialogue: { type: 'string', description: 'El id de una charla de dialogues que se abre al acabar la escena.' },
+            // J5.2: el punto de vista, como en una novela: quién cuenta este trozo de la historia.
+            pov: {
+                type: 'string',
+                description: 'Punto de vista: quién cuenta esta escena, alguien de npcs o de confidants con su nombre exacto. '
+                    + 'Si el hito no trae beats, su scene sale en boca de esa persona, con su retrato; escríbela entonces '
+                    + 'como la diría ella. Sin pov, la cuenta el narrador (o el del capítulo, si lo tiene).',
+            },
             backdrop: { type: 'string', description: `Dónde pasa la escena, para el fondo: ${Object.keys(PLACE_KINDS).join(', ')}, o el nombre de una localización.` },
             prologue: {
                 type: 'boolean',
@@ -904,6 +956,7 @@ function buildSectionSchemas() {
                         act: { type: 'integer', minimum: 1, maximum: 9 },
                         title: { type: 'string', description: 'Corto, sin destripar: «El campamento vistani», no «La traición de la adivina».' },
                         summary: { type: 'string', description: 'De qué va, en una o dos frases, contado a quien juega. Sale al abrir el capítulo en el Diario.' },
+                        pov: { type: 'string', description: 'Opcional: quién cuenta el capítulo (alguien de npcs o de confidants). Vale para sus hitos que no digan otro pov.' },
                     },
                 },
             },
@@ -940,11 +993,11 @@ function buildSectionSchemas() {
         },
     };
 
-    return { world, locations, boards, bestiary, quests, confidants, items, heroes, dialogues, plot };
+    return { world, locations, boards, bestiary, quests, confidants, npcs, items, heroes, dialogues, plot };
 }
 
 /** The order the sections are best generated in, and what each one needs first. */
-export const SECTION_ORDER = ['world', 'locations', 'confidants', 'bestiary', 'items', 'boards', 'quests', 'heroes', 'dialogues', 'plot'];
+export const SECTION_ORDER = ['world', 'locations', 'confidants', 'npcs', 'bestiary', 'items', 'boards', 'quests', 'heroes', 'dialogues', 'plot'];
 
 /**
  * Las rarezas que las tablas de botín conocen.
@@ -1022,15 +1075,17 @@ export function getPackRules() {
         'Las coordenadas cuentan desde 0, y la primera fila del mapa es y=0.',
         'Usa `optional: true` para los objetivos que pagan pero no bloquean. No existe `required`.',
         'Escribe **nombres**, nunca identificadores internos: el importador los resuelve al crear las entradas.',
-        'Una localidad puede tener **0 tableros**: una aldea donde solo se habla y se comercia es tan valida como una cripta. Declarala en `locations` aunque no tenga ninguno.',
-        'El `locationName` de un tablero deberia coincidir con el nombre de una localidad de `locations`. Si no esta declarada, se crea a partir del tablero.',
+        'Una localización puede tener **0 tableros**: una aldea donde solo se habla y se comercia es tan válida como una cripta. Declárala en `locations` aunque no tenga ninguno. La primera de `locations` es donde empieza la campaña.',
+        'El `locationName` de un tablero debería coincidir con el nombre de una localización de `locations`. Si no está declarada, se crea a partir del tablero.',
+        // J5.2: lo que un módulo cuenta sala a sala y sitio a sitio, y quién cuenta cada trozo.
+        'Cada nombre de `zones[].enemies` es un enemigo del bestiario, y cada objeto de `zones[].treasure` o de `locations[].treasure`, uno de `items` (si no está, el juego lo crea sencillo). El `where` de cada persona de `npcs` es una localización de `locations`, y el `pov` de un hito o de un capítulo, alguien de `npcs` o de `confidants`.',
         // Las tres que el validador ya aplicaba y las instrucciones callaban: un Gem que no
         // las sabe las rompe, y se entera dos libros mas tarde.
         `Cada tablero mide entre ${BOARD_LIMITS.minWidth}×${BOARD_LIMITS.minHeight} y ${BOARD_LIMITS.maxWidth}×${BOARD_LIMITS.maxHeight} casillas. Uno de 14×10 ya da una escena; por encima de 24×18 se juega lento.`,
         'Desde donde empieza el grupo tiene que poderse llegar a toda casilla de suelo, abriendo puertas. Un enemigo en una sala incomunicada es un error; una sala vacía incomunicada, un aviso.',
         'Los nombres de `items` tampoco se repiten, y su `rarity` es una de las cuatro que conocen las tablas de botín: una rareza inventada nunca cae.',
         // J12.8 a J12.12: los tableros hechos de un mapa dibujado.
-        'Solo un tablero hecho de un mapa dibujado lleva `image` y `grid`, y su `map` mide lo mismo que la cuadrícula (lo escribe `tools/mapa-a-tablero.mjs` a partir de la imagen). Sin imagen, no escribas ninguno de los dos. Las `zones` (las salas con nombre) sí valen en cualquier tablero.',
+        'Solo un tablero hecho de un mapa dibujado lleva `image` y `grid`. Si tienes su `map` (lo escribe `tools/mapa-a-tablero.mjs` a partir de la imagen), mide lo mismo que la cuadrícula; si no, déjalo fuera y el juego lo lee del dibujo al añadir la campaña. Sin imagen, no escribas ninguno de los dos. Las `zones` (las salas con nombre) sí valen en cualquier tablero.',
         // J12.2: toda pelea escrita tiene otra salida.
         'Cada tablero con enemigos trae en `avoid` una a tres formas de no pelear que encajen con quién espera: `hablar` con la gente (convencer, engañar o espantar a una bestia con `intimidation`), `pagar` a quien se deja comprar, `huir` o `esconderse`. A los muertos y a las cosas sin mente no se les habla ni se les paga. Si salir de otra forma sigue la historia de otra manera, dilo en `success` con sus efectos; lo que pasa después del tablero tiene que seguir cuadrando.',
         // J8.1: las charlas con ramas.

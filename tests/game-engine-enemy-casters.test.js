@@ -36,4 +36,16 @@ describe('J19.12: el enemigo que lanza, de la ficha del paquete a la pelea', () 
         const spent = enemySpellAbilities({ enemy: { name: witch.name, slotsUsed: { 1: 1 } }, block: /** @type {any} */ (read5e), catalogue });
         expect(spent.map(s => s.id)).toEqual(['mag-escarcha']);
     });
+
+    test('Strahd lanza y se concentra: Toque vampírico pide concentración, y concentrado no lo suelta por otro', () => {
+        const pack = read('mundos/strahd.pack.json');
+        const strahd = pack.bestiary.find((/** @type {any} */ e) => e.name === 'Strahd von Zarovich');
+        expect(validateCasterBlock(strahd?.spellcasting, catalogue, strahd?.name)).toEqual([]);
+        const block = /** @type {any} */ (readCasterBlock(strahd.spellcasting));
+        const fresh = enemySpellAbilities({ enemy: { name: strahd.name }, block, catalogue });
+        expect(fresh.map(s => s.id).sort()).toEqual(['mag-escarcha', 'mag-toque-vampirico']);
+        expect(fresh.filter(s => s.concentration).map(s => s.id)).toEqual(['mag-toque-vampirico']);
+        const holding = enemySpellAbilities({ enemy: { name: strahd.name }, block, catalogue, concentrating: true });
+        expect(holding.map(s => s.id)).toEqual(['mag-escarcha']);
+    });
 });

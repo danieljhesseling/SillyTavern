@@ -234,7 +234,7 @@ function checkMap(map, path, errors, options = {}) {
         }
         for (let x = 0; x < width; x++) {
             if (!LEGAL_CHARS.has(map[y][x])) {
-                errors.push({ path: `${path}[${y}]`, message: `Caracter "${map[y][x]}" en x=${x}: no esta en la leyenda.` });
+                errors.push({ path: `${path}[${y}]`, message: `Carácter "${map[y][x]}" en x=${x}: no está en la leyenda.` });
                 return { width: 0, height };
             }
         }
@@ -419,6 +419,41 @@ function checkEndings(pack, errors, warnings) {
 }
 
 /**
+ * J5.2: la gente que el paquete nombra fuera de su lista. Son avisos: no impiden jugar.
+ *
+ * - `pov` de un hito o de un capítulo: alguien de `npcs` o de `confidants`; si no, la escena la
+ *   cuenta el narrador, como si no lo dijera.
+ * - `where` de una persona de `npcs`: una localización del paquete (declarada o de un tablero).
+ *
+ * @param {any} pack Normalizado.
+ * @returns {Issue[]}
+ */
+function peopleWarnings(pack) {
+    /** @type {Issue[]} */
+    const out = [];
+    const people = new Set([...pack.npcs, ...pack.confidants].map((/** @type {any} */ p) => text(p?.name).toLowerCase()).filter(Boolean));
+    const plot = pack.plot && typeof pack.plot === 'object' ? pack.plot : {};
+    /** @param {any} pov @param {string} path */
+    const say = (pov, path) => {
+        const who = text(pov);
+        if (who && !people.has(who.toLowerCase())) {
+            out.push({ path, message: `"${who}" cuenta esta parte (\`pov\`), pero no está entre la gente (\`npcs\`, \`confidants\`): la contará el narrador.` });
+        }
+    };
+    (Array.isArray(plot.chapters) ? plot.chapters : []).forEach((/** @type {any} */ c, /** @type {number} */ at) => say(c?.pov, `plot.chapters[${at}].pov`));
+    (Array.isArray(plot.milestones) ? plot.milestones : []).forEach((/** @type {any} */ m, /** @type {number} */ at) => say(m?.pov, `plot.milestones[${at}].pov`));
+    const places = new Set([...pack.locations.map((/** @type {any} */ l) => text(l?.name)), ...pack.boards.map((/** @type {any} */ b) => text(b?.locationName))]
+        .map(name => name.toLowerCase()).filter(Boolean));
+    pack.npcs.forEach((/** @type {any} */ person, /** @type {number} */ at) => {
+        const where = text(person?.where);
+        if (where && places.size > 0 && !places.has(where.toLowerCase())) {
+            out.push({ path: `npcs[${at}].where`, message: `"${where}" no es una localización del paquete: ${text(person?.name) || 'esta persona'} no saldrá en ningún sitio.` });
+        }
+    });
+    return out;
+}
+
+/**
  * Check a pack from end to end.
  *
  * The order of the checks follows the order a reader would notice them: the world, then
@@ -459,7 +494,7 @@ export function validatePack(raw) {
                 return;
             }
             if (names.has(name.toLowerCase())) {
-                errors.push({ path: `${group}[${index}]`, message: `"${name}" esta repetido: el segundo borraria al primero.` });
+                errors.push({ path: `${group}[${index}]`, message: `"${name}" está repetido: el segundo borraría al primero.` });
                 return;
             }
             names.add(name.toLowerCase());
@@ -495,7 +530,7 @@ export function validatePack(raw) {
             return;
         }
         if (declaredPlaces.has(name.toLowerCase())) {
-            errors.push({ path: `locations[${index}]`, message: `"${name}" esta repetida: la segunda borraria a la primera.` });
+            errors.push({ path: `locations[${index}]`, message: `"${name}" está repetida: la segunda borraría a la primera.` });
             return;
         }
         declaredPlaces.add(name.toLowerCase());
@@ -504,7 +539,7 @@ export function validatePack(raw) {
         if (faction && !factionNames.has(faction.toLowerCase())) {
             warnings.push({
                 path: `locations[${index}].factionName`,
-                message: `"${faction}" no esta entre las facciones del paquete.`,
+                message: `"${faction}" no está entre las facciones del paquete.`,
             });
         }
 
@@ -599,7 +634,7 @@ export function validatePack(raw) {
         const path = `boards[${index}]`;
         const errorsBefore = errors.length;
         if (boardIds.has(board.id)) {
-            errors.push({ path: `${path}.id`, message: `El id "${board.id}" esta repetido.` });
+            errors.push({ path: `${path}.id`, message: `El id "${board.id}" está repetido.` });
         }
         boardIds.add(board.id);
 
@@ -609,7 +644,7 @@ export function validatePack(raw) {
         if (declaredPlaces.size > 0 && place && !declaredPlaces.has(place.toLowerCase())) {
             warnings.push({
                 path: `${path}.locationName`,
-                message: `"${place}" no esta en \`locations\`; se creara a partir de este tablero.`,
+                message: `"${place}" no está en \`locations\`; se creará a partir de este tablero.`,
             });
         }
 
@@ -627,21 +662,21 @@ export function validatePack(raw) {
         }
 
         if (board.partyStart.length === 0) {
-            errors.push({ path: `${path}.partyStart`, message: 'Sin casillas de inicio: el grupo no sabria donde aparecer.' });
+            errors.push({ path: `${path}.partyStart`, message: 'Sin casillas de inicio: el grupo no sabría dónde aparecer.' });
         }
         board.partyStart.forEach((/** @type {any} */ cell, /** @type {number} */ i) => {
             const state = cellState(board.map, size, cell);
             if (state === 'outside') {
                 errors.push({ path: `${path}.partyStart[${i}]`, message: `(${cell?.x},${cell?.y}) cae fuera del mapa, que mide ${size.width}x${size.height}.` });
             } else if (state === 'blocked') {
-                errors.push({ path: `${path}.partyStart[${i}]`, message: `(${cell.x},${cell.y}) cae sobre un muro: el grupo empezaria dentro de la pared.` });
+                errors.push({ path: `${path}.partyStart[${i}]`, message: `(${cell.x},${cell.y}) cae sobre un muro: el grupo empezaría dentro de la pared.` });
             }
         });
 
         board.enemies.forEach((/** @type {any} */ enemy, /** @type {number} */ i) => {
             const name = text(enemy.name);
             if (!bestiary.has(name.toLowerCase())) {
-                errors.push({ path: `${path}.enemies[${i}]`, message: `"${name}" no esta en el bestiario.` });
+                errors.push({ path: `${path}.enemies[${i}]`, message: `"${name}" no está en el bestiario.` });
             }
             const state = cellState(board.map, size, enemy);
             if (state === 'outside') {
@@ -665,7 +700,7 @@ export function validatePack(raw) {
         const boardId = text(quest.boardId);
 
         if (!boardId) {
-            errors.push({ path: `${path}.boardId`, message: 'La mision no dice en que tablero se juega.' });
+            errors.push({ path: `${path}.boardId`, message: 'La misión no dice en qué tablero se juega.' });
         } else if (!boardIds.has(boardId)) {
             errors.push({ path: `${path}.boardId`, message: `El tablero "${boardId}" no existe entre los tableros del paquete.` });
         } else {
@@ -674,7 +709,7 @@ export function validatePack(raw) {
 
         const size = boardSizes.get(boardId);
         if (quest.objectives.length === 0) {
-            warnings.push({ path: `${path}.objectives`, message: 'Una mision sin objetivos se gana limpiando el tablero.' });
+            warnings.push({ path: `${path}.objectives`, message: 'Una misión sin objetivos se gana limpiando el tablero.' });
         }
 
         quest.objectives.forEach((/** @type {any} */ objective, /** @type {number} */ i) => {
@@ -706,13 +741,13 @@ export function validatePack(raw) {
                         errors.push({
                             path: `${oPath}.${field.writes}`,
                             message: elsewhere
-                                ? `"${name}" no esta en ${where}: esta en \`${elsewhere}\`.`
-                                : `"${name}" no esta en ${where}.`,
+                                ? `"${name}" no está en ${where}: está en \`${elsewhere}\`.`
+                                : `"${name}" no está en ${where}.`,
                         });
                     }
                 } else if (field.kind === 'number') {
                     if (!Number.isFinite(Number(value)) || Number(value) <= 0) {
-                        errors.push({ path: `${oPath}.${field.writes}`, message: `\`${field.writes}\` tiene que ser un numero mayor que cero.` });
+                        errors.push({ path: `${oPath}.${field.writes}`, message: `\`${field.writes}\` tiene que ser un número mayor que cero.` });
                     }
                 } else if (field.kind === 'cell') {
                     if (!size || size.width === 0) continue;
@@ -720,7 +755,7 @@ export function validatePack(raw) {
                     if (state === 'outside') {
                         errors.push({ path: `${oPath}.${field.writes}`, message: `(${value?.x},${value?.y}) cae fuera del tablero "${boardId}".` });
                     } else if (state === 'blocked') {
-                        errors.push({ path: `${oPath}.${field.writes}`, message: `(${value.x},${value.y}) cae sobre un muro: nadie puede llegar ahi.` });
+                        errors.push({ path: `${oPath}.${field.writes}`, message: `(${value.x},${value.y}) cae sobre un muro: nadie puede llegar ahí.` });
                     }
                 }
             }
@@ -729,7 +764,7 @@ export function validatePack(raw) {
 
     for (const id of boardIds) {
         if (!usedBoards.has(id)) {
-            warnings.push({ path: `boards.${id}`, message: `Ninguna mision lleva a "${id}": se puede entrar, pero nada te manda.` });
+            warnings.push({ path: `boards.${id}`, message: `Ninguna misión lleva a "${id}": se puede entrar, pero nada te manda.` });
         }
     }
 
@@ -762,6 +797,8 @@ export function validatePack(raw) {
 
     // D-J18: los finales y lo que fue de la gente en cada uno.
     if (pack.plot && pack.plot.endings !== undefined) checkEndings(pack, errors, warnings);
+    // J5.2: quién cuenta cada trozo del hilo, y dónde vive cada persona.
+    warnings.push(...peopleWarnings(pack));
 
     // J10.1: los caminos que se abren por reputación, fama o llaves. J10.3: los sucesos propios,
     // con sus disparadores. Lo que está mal no para la importación: ese camino o ese suceso,

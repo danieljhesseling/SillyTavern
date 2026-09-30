@@ -1,7 +1,7 @@
 import { describe, test, expect } from '@jest/globals';
 import { readFileSync } from 'node:fs';
 import {
-    optionTraits, opinionsOn, opinionBadges, opinionNotes, verdictsOf, findOption,
+    optionTraits, opinionsOn, opinionBadges, opinionNotes, verdictsOf, findOption, importantOption,
 } from '../public/scripts/game-engine/campaign/companion-opinions.js';
 import { readCompanionCards } from '../public/scripts/game-engine/campaign/companion-cards.js';
 import { readDialogue } from '../public/scripts/game-engine/campaign/dialogues.js';
@@ -158,5 +158,59 @@ describe('J11.4: de una campaña a otra, lo que el gremio recuerda', () => {
         expect(guildGreeting({ memory, place, today: 22, slot: 'Mañana', hero: { name: 'Tessa', gender: 'Mujer' } })).toMatch(/^Brunilda deja lo que estaba haciendo al verte: «Buenos días, Tessa\./);
         expect(guildGreeting({ memory, place, today: 60 })).toBe('');
         expect(guildGreeting({ memory, place: { kind: 'tienda', keeper: { name: 'Marisa' } }, today: 22 })).toBe('');
+    });
+});
+
+describe('D-J48: el grupo solo opina en las charlas importantes', () => {
+    const gremio = readDialogue(json('mundos/gremio.pack.json').dialogues[0]);
+    const option = (/** @type {string} */ id) => findOption(gremio, id);
+
+    test('toda una escena del hilo es importante', () => {
+        expect(importantOption({ text: '¿Qué tal?' }, { scene: true })).toBe(true);
+        expect(importantOption(read({ effects: [{ rumor: 'x' }] }), { scene: true })).toBe(true);
+    });
+
+    test('lo que marca quien escribe: lo que es, sin vuelta atrás o importante', () => {
+        expect(importantOption(read({ decision: 'amenazar' }))).toBe(true);
+        expect(importantOption(read({ irreversible: true }))).toBe(true);
+        expect(importantOption({ sinVuelta: 'No se deshace' })).toBe(true);
+        expect(importantOption({ weighty: true })).toBe(true);
+        expect(importantOption({ importante: true })).toBe(true);
+    });
+
+    test('lo que cambia cómo os miran, una facción o el hilo, en la opción o en su tirada', () => {
+        expect(importantOption(read({ effects: [{ attitude: -1 }] }))).toBe(true);
+        expect(importantOption(read({ effects: [{ milestone: 'la-prueba' }] }))).toBe(true);
+        expect(importantOption({ effects: [{ standing: { vane: 1 } }] })).toBe(true);
+        expect(importantOption(read({ check: { skill: 'persuasion', dc: 12, success: { effects: [{ gold: 5 }] }, failure: { effects: [{ attitude: -1 }] } } }))).toBe(true);
+    });
+
+    test('charlar de cualquier cosa no: preguntar, pagar, un rumor, una pista, despedirse', () => {
+        expect(importantOption(read({}))).toBe(false);
+        expect(importantOption(read({ effects: [{ rumor: 'r' }] }))).toBe(false);
+        expect(importantOption(read({ effects: [{ gold: -3 }] }))).toBe(false);
+        expect(importantOption(read({ effects: [{ clue: 'Algo' }, { time: true }] }))).toBe(false);
+        expect(importantOption(read({ check: { skill: 'insight', dc: 10, success: { effects: [{ clue: 'x' }] }, failure: 'a' } }))).toBe(false);
+        expect(importantOption(null)).toBe(false);
+    });
+
+    test('con la charla, lo que hace el nudo al que lleva: Brunilda', () => {
+        // Llevan a donde se cumple un hito, o cambian cómo os mira: importantes.
+        expect(importantOption(option('quiero-entrar'), { dialogue: gremio })).toBe(true);
+        expect(importantOption(option('hecho'), { dialogue: gremio })).toBe(true);
+        expect(importantOption(option('veterana'), { dialogue: gremio })).toBe(true);
+        expect(importantOption(option('adelanto'), { dialogue: gremio })).toBe(true);
+        // Preguntar por la bodega, el gremio o despedirse: no.
+        for (const id of ['bodega', 'como-funciona', 'recomienda', 'adios', 'consejo-gracias']) {
+            expect([id, importantOption(option(id), { dialogue: gremio })]).toEqual([id, false]);
+        }
+        // Sin la charla no se sabe adónde lleva: «Quiero entrar» por sí sola no cambia nada.
+        expect(importantOption(option('quiero-entrar'))).toBe(false);
+    });
+
+    test('lo importante lleva opinión; lo demás, nadie opina', () => {
+        // A Gerd le gusta tratar bien (amable): la opción con «attitude» es importante y opina.
+        const kind = read({ effects: [{ attitude: 1 }] });
+        expect(importantOption(kind) && opinionsOn({ option: kind, party, cards }).length > 0).toBe(true);
     });
 });

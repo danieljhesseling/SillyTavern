@@ -100,6 +100,9 @@ export const STATE_KEYS = [
     { key: 'worldMarks', kind: 'juego', owner: 'campaign/world-marks.js', what: 'Las huellas que habéis dejado en cada pueblo: qué hicisteis, dónde y cuándo' },
     { key: 'sharedMemories', kind: 'juego', owner: 'party.js', what: 'Lo que el grupo recuerda haber vivido junto' },
     { key: 'fame', kind: 'juego', owner: 'party.js', what: 'La fama del grupo, sitio a sitio' },
+    // J10.1: se leen con `route-gates.js` (`keyringOf`, `newlyOpened`).
+    { key: 'worldKeys', kind: 'juego', owner: 'party/world.js', what: 'Lo que abre caminos sin ser un objeto: una barca, un guía que se ha ofrecido' },
+    { key: 'gatesOpen', kind: 'juego', owner: 'party/world.js', what: 'Los caminos con puerta que ya se habían abierto, para avisar una vez del que se abre' },
     { key: 'wanted', kind: 'juego', owner: 'party.js', what: 'Dónde os buscan' },
     { key: 'attitudes', kind: 'juego', owner: 'party.js', what: 'Cómo os mira cada persona' },
     { key: 'npcSecrets', kind: 'juego', owner: 'party.js', what: 'Los secretos ya sonsacados' },
@@ -120,6 +123,7 @@ export const STATE_KEYS = [
     { key: 'fieldGains', kind: 'juego', owner: 'party.js', what: 'Lo que ya se sacó hoy con tiradas en cada sitio, y lo que ya se examinó' },
     // J19.10: la guarda `party/magic.js` al lanzar Luz fuera de combate.
     { key: 'fieldLight', kind: 'juego', owner: 'party/magic.js', what: 'La Luz encendida con magia: el día y la parte del día en que se lanzó, y quién' },
+    { key: 'spokenDead', kind: 'juego', owner: 'party/magic.js', what: 'El día en que se le preguntó a cada muerto con Hablar con los muertos' },
     { key: 'sucesos', kind: 'juego', owner: 'party.js', what: 'Los últimos sucesos con decisión que salieron, y los que volverán días después' },
     // --- Los compañeros por dentro
     { key: 'approval', kind: 'juego', owner: 'party.js', what: 'Lo que les ha parecido a los compañeros lo que hacéis' },

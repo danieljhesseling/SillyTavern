@@ -304,4 +304,19 @@ describe('offline: scenes change by actions', () => {
         // Y lo que decide se queda: el siguiente redibujo no vuelve a la novela.
         expect(directScene(town, town, continueScene(town)).scene).toBe(SCENE.EXPLORATION);
     });
+
+    test('D-J45: after a won fight «Continuar» follows the thread', () => {
+        const won = { ...pier, hasWorldMap: true };
+        // Una escena o un suceso: se queda en la novela, que es donde salen.
+        expect(continueScene({ ...won, afterFight: { kind: 'story', title: '' } })).toBe(SCENE.DIALOGUE);
+        // Lo siguiente de la campaña, o el sitio: fuera del tablero, si hay a donde ir.
+        expect(continueScene({ ...won, afterFight: { kind: 'next', title: '' } })).toBe(SCENE.EXPLORATION);
+        expect(continueScene({ ...won, afterFight: { kind: 'place', title: '' } })).toBe(SCENE.EXPLORATION);
+        // Sin a donde ir, el tablero sigue siendo donde se está.
+        expect(continueScene({ hasChat: true, offline: true, boardName: 'Bodega', afterFight: { kind: 'place', title: '' } })).toBe(SCENE.COMBAT);
+        // Al tablero, al tablero.
+        expect(continueScene({ ...won, afterFight: { kind: 'board', title: '' } })).toBe(SCENE.COMBAT);
+        // Nada ganado: lo de siempre.
+        expect(continueScene({ ...won, afterFight: null })).toBe(SCENE.COMBAT);
+    });
 });

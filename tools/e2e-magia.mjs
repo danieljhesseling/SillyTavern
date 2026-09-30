@@ -541,9 +541,17 @@ try {
         await dropToasts();
     }
     const night = await slotNow();
+    // D-J51: bajo techo, en la posada, ya hay luz: de noche tampoco se ofrece.
+    const innChips = await allChips();
+    check('D-J51: de noche en la posada (bajo techo, con luz), la fila no ofrece la Luz',
+        /noche|madrugada/i.test(night) && !innChips.some(c => c.id === 'field-magic' && /Luz/.test(c.label)), JSON.stringify({ night, chips: innChips.map(c => c.label) }));
+    if (shot('11a-posada-noche')) await page.screenshot({ path: shot('11a-posada-noche') });
+    // Fuera, a la calle: «Volver a Puerto Alba».
+    await page.locator('#game-shell .gs-town-back').click({ timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(700);
     const nightChips = await allChips();
     const lightChip = nightChips.find(c => c.id === 'field-magic');
-    check('de noche, la escena ofrece «Magia: Luz» (J19.10)', /noche|madrugada/i.test(night) && Boolean(lightChip) && /Luz/.test(String(lightChip?.label)),
+    check('de noche, al raso (en la plaza), la escena ofrece «Magia: Luz» (J19.10, D-J51)', /noche|madrugada/i.test(night) && Boolean(lightChip) && /Luz/.test(String(lightChip?.label)),
         JSON.stringify({ night, chips: nightChips.map(c => c.label) }));
     const pressed = await pressChip(/^Magia: /, 'field-magic');
     const opened = await page.waitForSelector('.fm-dialog[open] .fm-spell[data-spell="mag-luz"]', { timeout: 10000 }).then(() => true).catch(() => false);
@@ -575,6 +583,104 @@ try {
     await dropToasts();
     // Lo que cuenta la tirada se lee en la caja; «Continuar» vuelve al pueblo.
     await carryOn('exploration');
+
+    // 8c. D-J53 y D-J50: con una clériga en el grupo. Lía, herida, llega a un sitio: la novela
+    // pregunta si curarla con magia. Y un asesinato abierto: el muerto contesta una vez, y hasta
+    // dentro de siete días no vuelve a hacerlo (se dice cuándo, y no se gasta el espacio).
+    await dropToasts();
+    await page.evaluate(async () => {
+        const { partyMembers } = await import('/scripts/party/state.js');
+        const { savePartyState, renderPartyMembers } = await import('/scripts/party/roster.js');
+        partyMembers.push(/** @type {any} */ ({
+            id: 9901, name: 'Irena', class: 'Clérigo', level: 5, wisdom: 16, hp: 30, maxHp: 30, gender: 'Mujer',
+            cantrips: ['mag-luz'], prepared: ['hab-curar', 'mag-hablar-muertos'], slotsUsed: {},
+            items: [{ id: 'irena-simbolo', name: 'Símbolo sagrado' }, { id: 'irena-polvo', name: 'Polvo de hueso' }],
+            equippedItems: {}, guest: { kind: 'hireling' }, mapPosition: { ...(partyMembers[0].mapPosition || {}) },
+        }));
+        partyMembers[0].hp = Math.max(1, Number(partyMembers[0].maxHp) - 8);
+        const meta = window.SillyTavern.getContext().chatMetadata;
+        meta.cases = {
+            active: {
+                id: 'caso-e2e', kind: 'asesinato', title: 'El muerto del muelle', victim: 'Vasili', suspects: ['Ana', 'Berto'],
+                clues: [
+                    { id: 'k1', fact: 'Olía a brea.', misleading: false, about: 'Ana', points: 'culpable', source: { kind: 'sitio', name: 'El muelle' } },
+                    { id: 'k2', fact: 'Llevaba una capa roja.', misleading: false, about: 'Ana', points: 'culpable', source: { kind: 'sitio', name: 'El muelle' } },
+                ],
+                truth: { culprit: 'Ana' }, secrets: {},
+            },
+            found: [], closed: [],
+        };
+        savePartyState();
+        renderPartyMembers();
+        // Lo que hace el viaje al llegar: sin esperar, la pregunta sale en cuanto no hay otra ventana.
+        window.__healAsked = import('/scripts/party/magic.js').then(m => m.askHealOnArrival());
+    });
+    const asked = await page.waitForSelector('dialog.vq-dialog[open] .vq-question', { timeout: 15000 }).then(() => true).catch(() => false);
+    const question = await page.evaluate(() => ({
+        text: (document.querySelector('dialog.vq-dialog[open] .qd-text')?.textContent || '').replace(/\s+/g, ' ').trim(),
+        plate: (document.querySelector('dialog.vq-dialog[open] .qd-nameplate')?.textContent || '').trim(),
+        answers: [...document.querySelectorAll('dialog.vq-dialog[open] .qd-chip')].map(b => (b.textContent || '').trim()),
+    }));
+    check('D-J53: al llegar con alguien herido, la novela pregunta «¿Curar a Lía con magia? (gasta un espacio de nivel 1)», con Sí y No',
+        asked && /¿Curar a Lía con magia\? \(gasta un espacio de nivel 1\)/.test(question.text) && /Lía llega herida/.test(question.text)
+        && question.plate === 'Irena' && question.answers.some(a => /Sí/.test(a)) && question.answers.some(a => /No/.test(a)), JSON.stringify(question));
+    if (shot('11b-curar-al-llegar')) await page.screenshot({ path: shot('11b-curar-al-llegar') });
+    const hpBefore = Number((await hero())?.hp);
+    await page.locator('dialog.vq-dialog[open] .vq-yes').click({ timeout: 4000 }).catch(() => {});
+    const healed = await page.evaluate(async () => {
+        const done = await window.__healAsked;
+        const { partyMembers } = await import('/scripts/party/state.js');
+        const irena = partyMembers.find(m => m.name === 'Irena');
+        return { done, slots: irena?.slotsUsed ?? {} };
+    });
+    const hpAfter = Number((await hero())?.hp);
+    check('D-J53: al decir que sí, Irena la cura y gasta su espacio; la ficha «Curar con magia» sigue para quien diga que no',
+        healed.done === true && hpAfter > hpBefore && Object.values(healed.slots).some(v => Number(v) > 0), JSON.stringify({ healed, hpBefore, hpAfter }));
+    await dropToasts();
+    const speak = await page.evaluate(async () => {
+        const magic = await import('/scripts/party/magic.js');
+        const { partyMembers } = await import('/scripts/party/state.js');
+        const irena = partyMembers.find(m => m.name === 'Irena');
+        const choiceOf = () => magic.fieldCasters().find(c => c.member === irena)?.choices.find(c => c.kind === 'muertos');
+        const first = await magic.castFieldChoice(irena, /** @type {any} */ (choiceOf()));
+        const slotsAfterFirst = JSON.stringify(irena?.slotsUsed ?? {});
+        const again = choiceOf();
+        const second = await magic.castFieldChoice(irena, /** @type {any} */ (again));
+        return {
+            first: first.join(' '), again: { ok: again?.ok, reason: again?.reason }, second: second.join(' '),
+            spent: slotsAfterFirst === JSON.stringify(irena?.slotsUsed ?? {}),
+            stored: window.SillyTavern.getContext().chatMetadata?.spokenDead ?? null,
+        };
+    });
+    check('D-J50: Vasili contesta una vez (una pista); al volver a intentarlo, dice cuándo se podrá y no gasta el espacio',
+        /Pista:/.test(speak.first) && speak.again.ok === false && /Vasili ya contestó hace poco\. Se le puede volver a preguntar dentro de 7 días\./.test(String(speak.again.reason))
+        && speak.second === speak.again.reason && speak.spent && Boolean(speak.stored?.['caso-e2e|vasili']), JSON.stringify(speak));
+    // Y en la ventana de la magia, la fila lo dice en llano.
+    await dropToasts();
+    await openSheet();
+    await page.locator('.ch-root .ch-field-magic').click({ timeout: 5000 }).catch(() => {});
+    await page.waitForSelector('.fm-dialog[open] .fm-spell', { timeout: 10000 }).catch(() => {});
+    const deadRow = await page.evaluate(() => {
+        const row = document.querySelector('.fm-dialog[open] .fm-spell[data-spell="mag-hablar-muertos"]');
+        return { ok: row?.getAttribute('data-ok') ?? '', why: (row?.querySelector('.fm-why')?.textContent || '').trim() };
+    });
+    check('D-J50: en «Magia fuera de combate», Hablar con los muertos sale apagado con el porqué: dentro de 7 días',
+        deadRow.ok === 'false' && /dentro de 7 días/.test(deadRow.why), JSON.stringify(deadRow));
+    if (shot('11c-muerto')) await page.screenshot({ path: shot('11c-muerto') });
+    await page.locator('.fm-dialog[open] .fm-close').click().catch(() => {});
+    await page.waitForTimeout(400);
+    const tipSeen = await page.evaluate(() => (window.localStorage.getItem('sillytavern_gameTipsSeen') || '').split(','));
+    check('D-J49: la primera vez con alguien que lanza, un consejo dice dónde está «Magia fuera de combate»', tipSeen.includes('fieldMagic'), JSON.stringify(tipSeen));
+    // Irena se va: lo que sigue es de Lía sola.
+    await page.evaluate(async () => {
+        const { partyMembers } = await import('/scripts/party/state.js');
+        const { savePartyState, renderPartyMembers } = await import('/scripts/party/roster.js');
+        const index = partyMembers.findIndex(m => m.name === 'Irena');
+        if (index >= 0) partyMembers.splice(index, 1);
+        savePartyState();
+        renderPartyMembers();
+    });
+    await dropToasts();
 
     // 9. Dormir en la posada: vuelven los espacios y se abre el cuadro de preparar.
     await page.evaluate(async () => {

@@ -43,6 +43,12 @@ export const TRIGGER_KEYS = ['faccion', 'reputacion', 'reputacionAqui', 'fama', 
 export const SUCESO_MOMENTS = ['viaje', 'llegada', 'descanso', 'semana'];
 
 /**
+ * Y el de lo que vuelve: un suceso con `continuacion` no se sortea, solo sale cuando otro lo pide
+ * con su `follow` (J11.2). Sin él, la continuación de un suceso de la campaña no se encontraría.
+ */
+export const FOLLOW_MOMENT = 'continuacion';
+
+/**
  * @typedef {Object} SucesoWorld
  * @property {string} here
  * @property {{id: string, name: string}|null} ruler Quien manda aquí.
@@ -242,7 +248,7 @@ export function describeWorldEffect(effect, names = {}) {
 export function readCampaignSucesos(raw) {
     return (Array.isArray(raw) ? raw : [])
         .filter(row => row && typeof row === 'object' && text(row.id) && text(row.text) && Array.isArray(row.options) && row.options.length >= 2)
-        .filter(row => [row.when?.momento ?? []].flat().map(text).some(moment => SUCESO_MOMENTS.includes(moment)))
+        .filter(row => [row.when?.momento ?? []].flat().map(text).some(moment => SUCESO_MOMENTS.includes(moment) || moment === FOLLOW_MOMENT))
         .map(row => ({ ...row, kind: 'suceso', id: text(row.id), name: text(row.name) || text(row.id), weight: Number.isFinite(Number(row.weight)) ? Number(row.weight) : 1 }));
 }
 
@@ -288,8 +294,8 @@ export function checkCampaignSucesos(raw, { factions = [], skills = [] } = {}) {
             return;
         }
         const moments = [row.when?.momento ?? []].flat().map(text);
-        if (!moments.some(m => SUCESO_MOMENTS.includes(m))) {
-            out.push({ path: `${path}.when.momento`, message: `Sin momento: tiene que ser uno de ${SUCESO_MOMENTS.join(', ')}. No saldrá.` });
+        if (!moments.some(m => SUCESO_MOMENTS.includes(m) || m === FOLLOW_MOMENT)) {
+            out.push({ path: `${path}.when.momento`, message: `Sin momento: tiene que ser uno de ${[...SUCESO_MOMENTS, FOLLOW_MOMENT].join(', ')}. No saldrá.` });
         }
         if (!Array.isArray(row.options) || row.options.length < 2) {
             out.push({ path: `${path}.options`, message: 'Hacen falta al menos dos opciones: sin elegir no es un suceso. No saldrá.' });

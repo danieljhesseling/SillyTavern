@@ -42,6 +42,8 @@ import { holdDuringCombat } from '../../combat/combat-hold.js';
  *           campaña) es abrir partida.
  * @property {string} [story] La marca de la última línea que se cuenta (no las notas pequeñas
  *           del motor). Sin conexión, que cambie es que hay algo nuevo que leer.
+ * @property {{kind: 'story'|'next'|'board'|'place', title: string}|null} [afterFight] D-J45: recién
+ *           ganada una pelea en un tablero, a dónde sigue el hilo (`game-engine/combat/after-fight.js`).
  */
 
 /**
@@ -361,6 +363,12 @@ export function directScene(previous, situation, manual = null) {
 export function continueScene(situation) {
     const state = situation || {};
     if (!state.hasChat) return null;
-    if (state.combatActive || state.boardName) return SCENE.COMBAT;
+    if (state.combatActive) return SCENE.COMBAT;
+    // D-J45: recién ganada una pelea, el hilo manda. Una escena o un suceso se quedan en la
+    // novela (salen encima); lo siguiente de la campaña, o el sitio, fuera del tablero.
+    const after = state.afterFight?.kind;
+    if (after === 'story') return SCENE.DIALOGUE;
+    if ((after === 'next' || after === 'place') && isSceneAvailable(SCENE.EXPLORATION, state)) return SCENE.EXPLORATION;
+    if (state.boardName) return SCENE.COMBAT;
     return isSceneAvailable(SCENE.EXPLORATION, state) ? SCENE.EXPLORATION : null;
 }

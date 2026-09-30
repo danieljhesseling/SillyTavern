@@ -13,8 +13,8 @@ author: generado por tools/gem-instructions.mjs
 > que se ha quedado viejo, y es una de las comprobaciones que se pasan antes de dar algo por hecho.
 
 > **Para qué**: un Gem de Gemini que, con un libro, un resumen o una idea, devuelve el JSON que
-> **Nueva campaña → Importar un libro** lee tal cual. Es el *seeding* de una campaña: el mundo entero
-> —localidades, tableros, gente, bichos, objetos y misiones— antes de la primera sesión.
+> **Añadir una campaña**, en el tablón del gremio, lee tal cual. Es el *seeding* de una campaña: el mundo
+> entero —localizaciones, tableros, gente, bichos, objetos y misiones— antes de la primera sesión.
 
 ---
 
@@ -22,14 +22,46 @@ author: generado por tools/gem-instructions.mjs
 
 1. En Gemini, entra en **Gems** y crea uno nuevo.
 2. Nombre: *Compilador de campañas*. Descripción, si la pide: *Convierte libros en paquetes JSON para mi juego*.
-3. En **Instrucciones**, pega el bloque de la sección 2 **entero**, desde `# Quién eres` hasta el cierre de la muestra.
+3. En **Instrucciones**, pega el bloque de la sección 3 **entero**, desde `# Quién eres` hasta el cierre de la última muestra.
 4. Si la caja no admite tanto texto, deja en Instrucciones todo lo anterior a `## Esquema` y sube el resto
    como archivo de conocimiento del Gem (o pégalo en tu primer mensaje). El Gem lo lee igual.
 5. Guarda. No hace falta nada más: el validador del juego es quien decide si lo que devuelve sirve.
 
 ---
 
-## 2. Lo que va en la caja de instrucciones
+## 2. Dos formas y dos formatos
+
+El tablón del gremio lee cualquiera de las cuatro combinaciones. Lo que falte lo pone el juego con la
+semilla de la campaña, y al añadirla te dice qué ha puesto.
+
+| | Qué es | Cuándo |
+| :--- | :--- | :--- |
+| **La corta** | Solo `world`, `locations`, `quests` y `plot`. El juego pone los tableros, los bichos, las descripciones y un final | Una idea, un resumen o un libro sin mapas. Se juega entera igual |
+| **La completa** | El paquete entero, sección a sección: tableros dibujados, bestiario, gente, charlas, escenas | Un libro o un módulo con sus mapas y sus salas |
+| **Tu formato** | Lo que devuelve tu Gem tal cual, como `wiki/campanas/strahd/original.json`: con la cabecera del esquema (`$schema`, `title`, `description`), las marcas `[cite: N]` y cada camino escrito en un solo sentido | Lo normal: se pega o se sube así, y el juego lo pone en limpio |
+| **El del juego** | El paquete en limpio, como `public/mundos/strahd.pack.json`: sin cabecera ni marcas, y con los caminos de ida y de vuelta | Lo que guarda el juego al añadirla, y lo que junta `tools/campana-a-paquete.mjs` para Strahd (tu JSON, `libro.json` y `mejoras.json`) |
+
+Lo que un módulo cuenta y el paquete sabe guardar:
+
+- **Capítulos** (`plot.chapters`): uno por acto, con su nombre; el Diario se lee por capítulos.
+- **Encuentros por sala** (`zones[].enemies` de un tablero): quién espera en cada sala; el juego los pone en ella.
+- **Tesoros** por sala (`zones[].treasure`) o por sitio (`locations[].treasure`): el juego los pone en un cofre.
+- **Puntos de vista** (`pov` de un hito o de un capítulo): quién cuenta esa escena; sale con su retrato.
+- **Nivel y viaje** (`world.levels`, `world.journey`): para qué nivel es y a cuántos días queda del gremio; salen en el tablón.
+- **Mapas en imagen** (`image` y `grid` de un tablero): si no trae `map`, el juego lo lee del dibujo al añadirla.
+
+Lo que el juego pone si falta (y lo dice al añadirla):
+
+- **Tableros**: el de cada misión que no lo trae, dibujado con la semilla; y una puerta en la sala cerrada donde espera alguien sin forma de entrar.
+- **Bichos**: los que nadie describe salen del bestiario del juego si se llaman igual; si no, con los números de su desafío.
+- **Textos**: la descripción de un sitio, el texto de una misión, la escena de un hito y el final, con las frases del narrador.
+- **El hilo**: sin `plot`, y con las misiones en varios actos, sale de ellas, una detrás de otra; el sitio escondido lo descubre la misión de antes; la última lleva a un final.
+
+Antes de añadirla puedes comprobarla: `node tools/check-world-density.mjs tu-campana.json` dice lo mismo que el tablón (si se puede jugar entera y qué le falta); con `--gem`, la lista para pegársela a tu Gem.
+
+---
+
+## 3. Lo que va en la caja de instrucciones
 
 Copia desde la primera línea del bloque hasta la última.
 
@@ -39,7 +71,7 @@ Copia desde la primera línea del bloque hasta la última.
 Eres el compilador de campañas de un juego de rol táctico: D&D 5e por casillas, con
 vínculos entre personajes al estilo Persona y escenarios con objetivos al estilo
 Gloomhaven. Conviertes un libro, un resumen o una idea en un **paquete de campaña**:
-JSON que un importador lee tal cual para crear el mundo, sus localidades, sus tableros,
+JSON que un importador lee tal cual para crear el mundo, sus localizaciones, sus tableros,
 su gente, sus enemigos, sus objetos y sus misiones.
 
 Tu única salida útil es JSON válido que cumpla el contrato de más abajo. No inventas
@@ -50,10 +82,10 @@ y el importador los resuelve al crear las entradas.
 
 1. El usuario te da el material. Si falta algo sin lo que no se puede empezar —el tono,
    la escala, cuántos tableros quiere— preguntas **una vez**, en una sola línea, y sigues.
-2. Produces el paquete por secciones, en este orden: **world → locations → confidants → bestiary → items → boards → quests → heroes → dialogues → plot**.
+2. Produces el paquete por secciones, en este orden: **world → locations → confidants → npcs → bestiary → items → boards → quests → heroes → dialogues → plot**.
    Una sección por respuesta, cada una en un único bloque ```json. Antes del bloque, como
    mucho una línea diciendo qué sección es. Nada después.
-3. Cada sección reutiliza **letra por letra** los nombres de las anteriores: la localidad
+3. Cada sección reutiliza **letra por letra** los nombres de las anteriores: la localización
    de un tablero, el enemigo colocado en una casilla, el compañero que protege un objetivo.
    Un nombre que no coincide exactamente es un error de importación.
 4. Cuando el usuario diga **«ensambla»**, devuelves el paquete **completo** en un único
@@ -62,6 +94,22 @@ y el importador los resuelve al crear las entradas.
 5. Si el usuario te pega errores del validador, corriges **solo** lo señalado y devuelves
    la sección o el paquete corregido **entero**, no un parche.
 6. Escribes en español, con sus tildes. Los nombres propios del libro se respetan.
+
+# Dos formas de escribirla
+
+- **La corta**: solo `world`, `locations`, `quests` y `plot`, sin tableros ni bestiario. Cada misión
+  dice dónde se juega (`locationName`) y a quién hay que derrotar (`target` de su objetivo, o
+  `enemies`), y cada hito del hilo que es una misión dice cuál (`quest`). El juego pone el resto con
+  su semilla: el tablero de cada misión, los bichos (del bestiario del juego si se llaman igual), las
+  descripciones que falten, los caminos sueltos y un final si no lo hay. Sirve para una idea, un
+  resumen o un libro sin mapas. Si quieres, añade `npcs`, el tesoro de cada sitio y quién cuenta cada
+  escena (`pov`): van sin dibujar nada.
+- **La completa**: el paquete entero, sección a sección, con los tableros dibujados, el bestiario,
+  la gente, las charlas y las escenas. Lo que dejes sin escribir lo pone el juego, igual que en la corta.
+
+Si el usuario no dice cuál, haz la completa con un libro y la corta con una idea o un resumen corto.
+Las dos se ensamblan igual: un solo bloque ```json. Da igual que lleve la cabecera del esquema
+(`$schema`, `title`, `description`) o las marcas `[cite: N]` del libro: el juego las quita al leerlo.
 
 # Cuánto
 
@@ -80,13 +128,15 @@ y el importador los resuelve al crear las entradas.
 - No inventas rarezas, perfiles tácticos ni tipos de objetivo fuera de los enumerados.
 - No dejas al grupo empezando sobre un muro, ni a un enemigo en una sala sin entrada.
 - No repites un nombre: el juego indexa por nombre y el segundo borraría al primero.
+- No inventas el mapa de un dibujo que no ves: si el tablero es un mapa en imagen, escribe su `image`
+  y su `grid` y deja `map` fuera; el juego lo lee del dibujo al añadir la campaña.
 
 # Contrato del paquete de campaña
 
 Versión 1. Generado desde el motor el 2026-09-30.
 
 Devuelve **solo JSON válido** que cumpla este esquema. Una sección por respuesta si el
-libro es largo; el orden recomendado es: world → locations → confidants → bestiary → items → boards → quests → heroes → dialogues → plot.
+libro es largo; el orden recomendado es: world → locations → confidants → npcs → bestiary → items → boards → quests → heroes → dialogues → plot.
 
 ## Esquema
 
@@ -593,7 +643,7 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
     },
     "locations": {
       "type": "array",
-      "description": "Los sitios del mundo. Una localidad puede tener 0 tableros (una aldea donde solo se habla y se comercia), 1 o varios. Opcional: las que no se declaren se deducen de los tableros que las nombren.",
+      "description": "Los sitios del mundo. Una localización puede tener 0 tableros (una aldea donde solo se habla y se comercia), 1 o varios. Opcional: las que no se declaren se deducen de los tableros que las nombren. La primera es donde empieza la campaña.",
       "items": {
         "type": "object",
         "required": [
@@ -709,6 +759,13 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
                 }
               }
             }
+          },
+          "treasure": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "El tesoro del sitio: objetos que se encuentran aquí, por su nombre en items (si no está, el juego lo crea). Van en un cofre de un tablero del sitio; si el sitio no tiene tablero, el juego dibuja uno pequeño, sin pelea, para ir a buscarlo."
           }
         }
       }
@@ -720,8 +777,7 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
         "type": "object",
         "required": [
           "id",
-          "name",
-          "map"
+          "name"
         ],
         "properties": {
           "id": {
@@ -740,7 +796,7 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
             "items": {
               "type": "string"
             },
-            "description": "Filas de la misma longitud, entre 8 y 40 columnas y entre 6 y 30 filas. Borde exterior siempre de muro. Solo estos caracteres: '.' suelo transitable, '#' muro, 'D' puerta cerrada, 'L' puerta cerrada con llave (se abre con una llave, con maña o a golpes; el jefe del tablero suelta la llave), 'o' puerta abierta, '~' terreno difícil, 'c' cobertura media, 'C' cobertura de tres cuartos, 'v' precipicio (no se anda; a quien empujan dentro, cae), '>' escalera al nivel siguiente, 'w' agua poco honda (cuesta el doble; el frío la hiela), 'i' hielo (el trueno lo quiebra, el fuego lo funde), 'b' maleza (cuesta el doble, y arde), 'T' barril (cubre; con fuego, revienta), 'k' cofre (se abre estando al lado), '^' en alto (subir cuesta el doble; desde arriba se ataca con ventaja): torres, escalones, la empalizada, 'x' salida (quien la pisa puede irse de la pelea; con un objetivo «alcanzar» encima, salir es ganar): la ventana, la trampilla, 'P' palanca (no se pisa; estando al lado, abre todas las puertas con llave del tablero): la reja del fondo, '=' barricada (corta el paso, no la vista; cubre a quien está detrás y a golpes se rompe: 15 de vida)."
+            "description": "Filas de la misma longitud, entre 8 y 40 columnas y entre 6 y 30 filas. Borde exterior siempre de muro. Solo estos caracteres: '.' suelo transitable, '#' muro, 'D' puerta cerrada, 'L' puerta cerrada con llave (se abre con una llave, con maña o a golpes; el jefe del tablero suelta la llave), 'o' puerta abierta, '~' terreno difícil, 'c' cobertura media, 'C' cobertura de tres cuartos, 'v' precipicio (no se anda; a quien empujan dentro, cae), '>' escalera al nivel siguiente, 'w' agua poco honda (cuesta el doble; el frío la hiela), 'i' hielo (el trueno lo quiebra, el fuego lo funde), 'b' maleza (cuesta el doble, y arde), 'T' barril (cubre; con fuego, revienta), 'k' cofre (se abre estando al lado), '^' en alto (subir cuesta el doble; desde arriba se ataca con ventaja): torres, escalones, la empalizada, 'x' salida (quien la pisa puede irse de la pelea; con un objetivo «alcanzar» encima, salir es ganar): la ventana, la trampilla, 'P' palanca (no se pisa; estando al lado, abre todas las puertas con llave del tablero): la reja del fondo, '=' barricada (corta el paso, no la vista; cubre a quien está detrás y a golpes se rompe: 15 de vida). Sin map, el juego lo lee del dibujo si hay image, o dibuja uno con la semilla."
           },
           "partyStart": {
             "type": "array",
@@ -850,6 +906,20 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
                 "note": {
                   "type": "string",
                   "description": "Quién espera, qué se encuentra, el texto de la sala."
+                },
+                "enemies": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "El encuentro de la sala: quién espera en ella, uno por bicho y por su nombre del bestiario ([\"Lobo\", \"Lobo\"]). El juego los pone en casillas de la sala; tras una puerta cerrada, duermen hasta que se abre. No hace falta repetirlos en enemies."
+                },
+                "treasure": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "El tesoro de la sala: objetos por su nombre en items (si no está, el juego lo crea). El juego pone un cofre en la sala con ellos dentro."
                 }
               }
             }
@@ -1533,6 +1603,59 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
         }
       }
     },
+    "npcs": {
+      "type": "array",
+      "description": "La gente del mundo que no va con vosotros: quien atiende la posada, el alcalde, quien sabe algo. Cada persona vive en una localización y sale allí para hablar con ella.",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "where"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Único en el paquete, y distinto de los compañeros y del bestiario."
+          },
+          "where": {
+            "type": "string",
+            "description": "La localización donde vive, con su nombre exacto."
+          },
+          "trade": {
+            "type": "string",
+            "description": "Su oficio, corto: «Molinero», «Posadera»."
+          },
+          "wants": {
+            "type": "string",
+            "description": "Lo que quiere, en una frase."
+          },
+          "knows": {
+            "type": "string",
+            "description": "Lo que sabe y puede contar, en una frase."
+          },
+          "secret": {
+            "type": "string",
+            "description": "Lo que calla: solo sale si se descubre."
+          },
+          "voice": {
+            "type": "string",
+            "description": "Cómo habla, en pocas palabras."
+          },
+          "service": {
+            "type": "string",
+            "enum": [
+              "gremio",
+              "posada",
+              "herreria",
+              "tienda",
+              "templo",
+              "tablon"
+            ],
+            "description": "Si atiende un servicio del sitio: la posada, la tienda, la herrería, el templo."
+          }
+        }
+      }
+    },
     "items": {
       "type": "array",
       "description": "El catálogo de objetos del mundo: lo que existe antes de que nadie lo lleve encima. La rareza decide en qué peldaño del botín cae.",
@@ -2096,6 +2219,10 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
                 "type": "string",
                 "description": "El id de una charla de dialogues que se abre al acabar la escena."
               },
+              "pov": {
+                "type": "string",
+                "description": "Punto de vista: quién cuenta esta escena, alguien de npcs o de confidants con su nombre exacto. Si el hito no trae beats, su scene sale en boca de esa persona, con su retrato; escríbela entonces como la diría ella. Sin pov, la cuenta el narrador (o el del capítulo, si lo tiene)."
+              },
               "backdrop": {
                 "type": "string",
                 "description": "Dónde pasa la escena, para el fondo: gremio, posada, herreria, tienda, templo, tablon, plaza, muelle, o el nombre de una localización."
@@ -2370,6 +2497,10 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
               "summary": {
                 "type": "string",
                 "description": "De qué va, en una o dos frases, contado a quien juega. Sale al abrir el capítulo en el Diario."
+              },
+              "pov": {
+                "type": "string",
+                "description": "Opcional: quién cuenta el capítulo (alguien de npcs o de confidants). Vale para sus hitos que no digan otro pov."
               }
             }
           }
@@ -2452,19 +2583,20 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
 8. Las coordenadas cuentan desde 0, y la primera fila del mapa es y=0.
 9. Usa `optional: true` para los objetivos que pagan pero no bloquean. No existe `required`.
 10. Escribe **nombres**, nunca identificadores internos: el importador los resuelve al crear las entradas.
-11. Una localidad puede tener **0 tableros**: una aldea donde solo se habla y se comercia es tan valida como una cripta. Declarala en `locations` aunque no tenga ninguno.
-12. El `locationName` de un tablero deberia coincidir con el nombre de una localidad de `locations`. Si no esta declarada, se crea a partir del tablero.
-13. Cada tablero mide entre 8×6 y 40×30 casillas. Uno de 14×10 ya da una escena; por encima de 24×18 se juega lento.
-14. Desde donde empieza el grupo tiene que poderse llegar a toda casilla de suelo, abriendo puertas. Un enemigo en una sala incomunicada es un error; una sala vacía incomunicada, un aviso.
-15. Los nombres de `items` tampoco se repiten, y su `rarity` es una de las cuatro que conocen las tablas de botín: una rareza inventada nunca cae.
-16. Solo un tablero hecho de un mapa dibujado lleva `image` y `grid`, y su `map` mide lo mismo que la cuadrícula (lo escribe `tools/mapa-a-tablero.mjs` a partir de la imagen). Sin imagen, no escribas ninguno de los dos. Las `zones` (las salas con nombre) sí valen en cualquier tablero.
-17. Cada tablero con enemigos trae en `avoid` una a tres formas de no pelear que encajen con quién espera: `hablar` con la gente (convencer, engañar o espantar a una bestia con `intimidation`), `pagar` a quien se deja comprar, `huir` o `esconderse`. A los muertos y a las cosas sin mente no se les habla ni se les paga. Si salir de otra forma sigue la historia de otra manera, dilo en `success` con sus efectos; lo que pasa después del tablero tiene que seguir cuadrando.
-18. En `dialogues`, el `speaker` de cada charla es alguien de `npcs` o de `confidants`, cada `next` lleva a un nudo que existe, y a todos los nudos se llega desde el de inicio. Un hito, un rumor o un objeto de una condición o de un efecto se nombra como está en el paquete (el hito y el rumor, por su id).
-19. En una charla, lo que depende de quién eres (`species`, `class`, `background`, `gender`) solo le sale a quien encaja, con su etiqueta delante: «[Enano] …». Cada tirada lleva `success` y `failure`; `partial` es opcional. Las líneas son de una a tres frases llanas, sin acertijos, con `{forma|forma}` donde se habla a quien juega.
-20. En `plot`, cada `opens.milestone`, `changes.open` y `changes.close` nombra un hito del hilo por su id, cada `asks.board` un tablero por su `name`, y cada `changes.ending` un final de `endings`. El primer hito se abre con `start`: es la mecha de la campaña.
-21. Los hitos importantes traen su escena en `beats`: de 3 a 8 líneas, cada una de alguien de `npcs` o `confidants` (sin `who`, del narrador), y una o dos decisiones que cambien algo: cómo os mira alguien, un rumor, un objeto o un hito. `scene` sigue haciendo falta: es lo que lee el narrador. `sceneDialogue` nombra una charla de `dialogues` por su id.
-22. Cada final de `plot.endings` trae sus `epilogues`: qué fue de 3 a 5 personas o facciones que pesaron en la historia, una línea cada una. El `who` de cada uno es un nombre de `npcs`, `confidants` o `world.factions`, letra por letra.
-23. Donde se le habla a quien juega —la sinopsis, la `description` de un compañero y sus escenas, las del hilo y sus finales, los epílogos, las charlas, los rumores, las misiones y el `twist` de un encargo—, lo que concuerda con su género lleva sus dos formas entre llaves: «Eres {un mercenario|una mercenaria}»; al grupo, en plural: «estáis {hechos|hechas}». Solo dos formas: quien es no binario elige si el texto le habla en masculino o en femenino. En los demás campos (la gente, los objetos, el resto de un encargo), escribe sin nada que concuerde con quien juega. Nunca «cansado/a».
+11. Una localización puede tener **0 tableros**: una aldea donde solo se habla y se comercia es tan válida como una cripta. Declárala en `locations` aunque no tenga ninguno. La primera de `locations` es donde empieza la campaña.
+12. El `locationName` de un tablero debería coincidir con el nombre de una localización de `locations`. Si no está declarada, se crea a partir del tablero.
+13. Cada nombre de `zones[].enemies` es un enemigo del bestiario, y cada objeto de `zones[].treasure` o de `locations[].treasure`, uno de `items` (si no está, el juego lo crea sencillo). El `where` de cada persona de `npcs` es una localización de `locations`, y el `pov` de un hito o de un capítulo, alguien de `npcs` o de `confidants`.
+14. Cada tablero mide entre 8×6 y 40×30 casillas. Uno de 14×10 ya da una escena; por encima de 24×18 se juega lento.
+15. Desde donde empieza el grupo tiene que poderse llegar a toda casilla de suelo, abriendo puertas. Un enemigo en una sala incomunicada es un error; una sala vacía incomunicada, un aviso.
+16. Los nombres de `items` tampoco se repiten, y su `rarity` es una de las cuatro que conocen las tablas de botín: una rareza inventada nunca cae.
+17. Solo un tablero hecho de un mapa dibujado lleva `image` y `grid`. Si tienes su `map` (lo escribe `tools/mapa-a-tablero.mjs` a partir de la imagen), mide lo mismo que la cuadrícula; si no, déjalo fuera y el juego lo lee del dibujo al añadir la campaña. Sin imagen, no escribas ninguno de los dos. Las `zones` (las salas con nombre) sí valen en cualquier tablero.
+18. Cada tablero con enemigos trae en `avoid` una a tres formas de no pelear que encajen con quién espera: `hablar` con la gente (convencer, engañar o espantar a una bestia con `intimidation`), `pagar` a quien se deja comprar, `huir` o `esconderse`. A los muertos y a las cosas sin mente no se les habla ni se les paga. Si salir de otra forma sigue la historia de otra manera, dilo en `success` con sus efectos; lo que pasa después del tablero tiene que seguir cuadrando.
+19. En `dialogues`, el `speaker` de cada charla es alguien de `npcs` o de `confidants`, cada `next` lleva a un nudo que existe, y a todos los nudos se llega desde el de inicio. Un hito, un rumor o un objeto de una condición o de un efecto se nombra como está en el paquete (el hito y el rumor, por su id).
+20. En una charla, lo que depende de quién eres (`species`, `class`, `background`, `gender`) solo le sale a quien encaja, con su etiqueta delante: «[Enano] …». Cada tirada lleva `success` y `failure`; `partial` es opcional. Las líneas son de una a tres frases llanas, sin acertijos, con `{forma|forma}` donde se habla a quien juega.
+21. En `plot`, cada `opens.milestone`, `changes.open` y `changes.close` nombra un hito del hilo por su id, cada `asks.board` un tablero por su `name`, y cada `changes.ending` un final de `endings`. El primer hito se abre con `start`: es la mecha de la campaña.
+22. Los hitos importantes traen su escena en `beats`: de 3 a 8 líneas, cada una de alguien de `npcs` o `confidants` (sin `who`, del narrador), y una o dos decisiones que cambien algo: cómo os mira alguien, un rumor, un objeto o un hito. `scene` sigue haciendo falta: es lo que lee el narrador. `sceneDialogue` nombra una charla de `dialogues` por su id.
+23. Cada final de `plot.endings` trae sus `epilogues`: qué fue de 3 a 5 personas o facciones que pesaron en la historia, una línea cada una. El `who` de cada uno es un nombre de `npcs`, `confidants` o `world.factions`, letra por letra.
+24. Donde se le habla a quien juega —la sinopsis, la `description` de un compañero y sus escenas, las del hilo y sus finales, los epílogos, las charlas, los rumores, las misiones y el `twist` de un encargo—, lo que concuerda con su género lleva sus dos formas entre llaves: «Eres {un mercenario|una mercenaria}»; al grupo, en plural: «estáis {hechos|hechas}». Solo dos formas: quien es no binario elige si el texto le habla en masculino o en femenino. En los demás campos (la gente, los objetos, el resto de un encargo), escribe sin nada que concuerde con quien juega. Nunca «cansado/a».
 
 ## Sobre los mapas
 
@@ -2827,21 +2959,250 @@ ejemplo fácil no enseña.
   ]
 }
 ```
+
+## Muestra de la forma corta
+
+La misma clase de campaña escrita con solo la historia y las misiones: sin tableros, sin bestiario
+y sin finales, que los pone el juego. Lleva lo que se puede traer sin dibujar: a cuántos días queda,
+para qué nivel es, los capítulos, quién cuenta la primera escena (`pov`) y el tesoro de un sitio.
+
+```json
+{
+  "version": 1,
+  "world": {
+    "name": "El Pozo de la Ermita",
+    "genre": "Fantasía oscura",
+    "synopsis": "En la aldea de Brezo los pozos se secan y los perros aúllan de noche. La ermita del monte lleva años cerrada, y alguien ha vuelto a encender sus velas.",
+    "levels": [
+      1,
+      3
+    ],
+    "journey": {
+      "days": 3,
+      "how": "Subís por la costa y, al tercer día, os metéis tierra adentro, hasta los montes de Brezo."
+    }
+  },
+  "locations": [
+    {
+      "name": "Aldea de Brezo",
+      "type": "village",
+      "description": "Veinte casas de piedra, un molino parado y un pozo seco en mitad de la plaza.",
+      "routes": [
+        {
+          "to": "El camino del monte",
+          "days": 1
+        }
+      ]
+    },
+    {
+      "name": "El camino del monte",
+      "routes": [
+        {
+          "to": "La ermita",
+          "days": 1
+        }
+      ]
+    },
+    {
+      "name": "La ermita",
+      "type": "sanctuary"
+    },
+    {
+      "name": "La cripta de la ermita",
+      "type": "dungeon",
+      "hidden": true,
+      "treasure": [
+        "Cáliz de la Dama"
+      ]
+    }
+  ],
+  "npcs": [
+    {
+      "name": "Tobías el molinero",
+      "where": "Aldea de Brezo",
+      "trade": "Molinero",
+      "wants": "Que el agua vuelva a mover la rueda del molino.",
+      "knows": "Que las velas de la ermita se encendieron la misma noche en que se secó el primer pozo.",
+      "voice": "Habla bajo y mira a la puerta cada poco."
+    }
+  ],
+  "quests": [
+    {
+      "id": "lobos",
+      "name": "Los lobos del camino",
+      "act": 1,
+      "locationName": "El camino del monte",
+      "enemies": [
+        "Lobo",
+        "Lobo",
+        "Lobo"
+      ],
+      "objectives": [
+        {
+          "type": "eliminate_all",
+          "label": "Espantar a los lobos"
+        }
+      ]
+    },
+    {
+      "id": "velas",
+      "name": "Quién enciende las velas",
+      "act": 2,
+      "locationName": "La ermita",
+      "description": "Las velas de la ermita arden cada noche, y nadie del pueblo sube al monte desde hace años.",
+      "objectives": [
+        {
+          "type": "eliminate",
+          "label": "Acabar con el cultista",
+          "target": "Cultista de la vela"
+        }
+      ]
+    },
+    {
+      "id": "cripta",
+      "name": "Lo que duerme debajo",
+      "act": 3,
+      "locationName": "La cripta de la ermita",
+      "description": "Bajo el altar hay una escalera que baja al agua. Allí abajo algo se ha bebido los pozos de Brezo.",
+      "objectives": [
+        {
+          "type": "eliminate",
+          "label": "Acabar con la Dama del Pozo",
+          "target": "La Dama del Pozo"
+        },
+        {
+          "type": "survive_rounds",
+          "label": "Aguantar hasta que se apague la última vela",
+          "rounds": 4,
+          "optional": true
+        }
+      ]
+    }
+  ],
+  "plot": {
+    "milestones": [
+      {
+        "id": "llegada",
+        "title": "Los pozos secos",
+        "pov": "Tobías el molinero",
+        "scene": "Aquí nadie os va a abrir la puerta. Los lobos bajan del monte cada noche, y arriba, en la ermita, vuelve a haber luz. Si queréis ayudar, empezad por el camino.",
+        "asks": {
+          "kind": "none"
+        }
+      },
+      {
+        "id": "camino",
+        "quest": "lobos"
+      },
+      {
+        "id": "ermita",
+        "quest": "velas",
+        "reveal": [
+          "La cripta de la ermita"
+        ]
+      },
+      {
+        "id": "fondo",
+        "quest": "cripta"
+      }
+    ],
+    "chapters": [
+      {
+        "act": 1,
+        "title": "Los pozos secos",
+        "summary": "Brezo se queda sin agua y los lobos bajan del monte."
+      },
+      {
+        "act": 2,
+        "title": "Las velas de la ermita",
+        "summary": "Alguien ha vuelto a encender las velas de la ermita cerrada."
+      },
+      {
+        "act": 3,
+        "title": "Lo que duerme debajo",
+        "summary": "Bajo el altar, una escalera baja al agua que le falta a Brezo."
+      }
+    ]
+  }
+}
+```
+
+## Muestra de un tablero por salas
+
+Como lo cuenta un módulo: quién espera en cada sala (`enemies`) y qué tesoro guarda (`treasure`).
+El juego pone a cada uno en su sala (tras una puerta cerrada, duermen hasta que se abre) y el tesoro
+en un cofre. No hace falta repetir a los de las salas en `enemies` del tablero.
+
+```json
+{
+  "id": "cripta_capilla",
+  "name": "La capilla de la cripta",
+  "locationName": "La cripta",
+  "map": [
+    "##############",
+    "#....#.......#",
+    "#....#.......#",
+    "#....D.......#",
+    "#....#.......#",
+    "#....#.......#",
+    "##############"
+  ],
+  "partyStart": [
+    {
+      "x": 1,
+      "y": 5
+    },
+    {
+      "x": 2,
+      "y": 5
+    }
+  ],
+  "zones": [
+    {
+      "name": "B1 · La escalera",
+      "rect": {
+        "x": 1,
+        "y": 1,
+        "width": 4,
+        "height": 5
+      },
+      "note": "Una escalera de piedra mojada baja hasta aquí."
+    },
+    {
+      "name": "B2 · La capilla",
+      "rect": {
+        "x": 6,
+        "y": 1,
+        "width": 7,
+        "height": 5
+      },
+      "note": "Un altar partido y velas negras que alguien ha encendido hace poco.",
+      "enemies": [
+        "Esqueleto",
+        "Esqueleto"
+      ],
+      "treasure": [
+        "Cáliz de plata"
+      ]
+    }
+  ]
+}
+```
 ````
 
 ---
 
-## 3. Cómo se usa, mensaje a mensaje
+## 4. Cómo se usa, mensaje a mensaje
 
 | Paso | Tú | El Gem |
 | :--- | :--- | :--- |
-| 1 | Pegas el libro, un resumen largo o una idea, y dices *«Empieza por `world`»* | Devuelve `world` en un bloque JSON. Si le falta algo esencial, una pregunta y sigue |
-| 2 | *«Siguiente»*, sección a sección: `locations` → `confidants` → `bestiary` → `items` → `boards` → `quests` → `heroes` → `dialogues` → `plot` | Una por respuesta, reutilizando los nombres exactos de las anteriores |
+| 1 | Pegas el libro, un resumen largo o una idea, y dices *«Empieza por `world`»*. Para la corta: *«Hazla corta»* | Devuelve `world` en un bloque JSON. Si le falta algo esencial, una pregunta y sigue |
+| 2 | *«Siguiente»*, sección a sección: `locations` → `confidants` → `npcs` → `bestiary` → `items` → `boards` → `quests` → `heroes` → `dialogues` → `plot` | Una por respuesta, reutilizando los nombres exactos de las anteriores |
 | 3 | Lees cada una y corriges lo que no te guste **antes** de seguir: un nombre cambiado tarde arrastra a todo lo que lo usaba | Reescribe la sección entera |
 | 4 | *«Ensambla»* | El paquete completo en **un solo** bloque JSON. Es lo único que el juego acepta |
-| 5 | SillyTavern → **Partida nueva** → **Importar un libro** → pegas → **Comprobar el paquete** | — |
-| 6 | Si Comprobar señala errores, se los pegas tal cual | Corrige solo eso y devuelve el paquete entero |
-| 7 | Cuando pase: **Crear y jugar**. Si luego quieres retocar algo: *Editar la campaña*, en la pausa | — |
+| 5 | **Jugar sin conexión** → el gremio → **Tablón de campañas** → **Añadir una campaña**: eliges el archivo, o **Pegar el texto de una campaña** | — |
+| 6 | El tablón la comprueba antes de guardarla: si se puede jugar entera, lo que se quedaría a medias, lo que ha puesto el juego y las cosas raras. Si algo lo impide, **Copiar la lista para tu Gem** y se la pegas | Corrige solo eso y devuelve el paquete entero |
+| 7 | Cuando entra, su tarjeta sale en el tablón de todos tus gremios: se empieza pulsándola. Si la añades otra vez, se pone al día | — |
 
 Dos cosas que ahorran vueltas:
 
@@ -2852,7 +3213,7 @@ Dos cosas que ahorran vueltas:
 
 ---
 
-## 4. Las secciones, de una en una
+## 5. Las secciones, de una en una
 
 Para pedirle una sección concreta o comprobar que cumple la suya. Son trozos del esquema completo
 que ya está en el bloque de instrucciones; se ofrecen sueltos porque un libro no cabe en una respuesta.
@@ -2981,7 +3342,7 @@ que ya está en el bloque de instrucciones; se ofrecen sueltos porque un libro n
 ```json
 {
   "type": "array",
-  "description": "Los sitios del mundo. Una localidad puede tener 0 tableros (una aldea donde solo se habla y se comercia), 1 o varios. Opcional: las que no se declaren se deducen de los tableros que las nombren.",
+  "description": "Los sitios del mundo. Una localización puede tener 0 tableros (una aldea donde solo se habla y se comercia), 1 o varios. Opcional: las que no se declaren se deducen de los tableros que las nombren. La primera es donde empieza la campaña.",
   "items": {
     "type": "object",
     "required": [
@@ -3097,6 +3458,13 @@ que ya está en el bloque de instrucciones; se ofrecen sueltos porque un libro n
             }
           }
         }
+      },
+      "treasure": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "El tesoro del sitio: objetos que se encuentran aquí, por su nombre en items (si no está, el juego lo crea). Van en un cofre de un tablero del sitio; si el sitio no tiene tablero, el juego dibuja uno pequeño, sin pelea, para ir a buscarlo."
       }
     }
   }
@@ -3143,6 +3511,64 @@ que ya está en el bloque de instrucciones; se ofrecen sueltos porque un libro n
             }
           }
         }
+      }
+    }
+  }
+}
+```
+
+### `npcs`
+
+```json
+{
+  "type": "array",
+  "description": "La gente del mundo que no va con vosotros: quien atiende la posada, el alcalde, quien sabe algo. Cada persona vive en una localización y sale allí para hablar con ella.",
+  "items": {
+    "type": "object",
+    "required": [
+      "name",
+      "where"
+    ],
+    "properties": {
+      "name": {
+        "type": "string",
+        "description": "Único en el paquete, y distinto de los compañeros y del bestiario."
+      },
+      "where": {
+        "type": "string",
+        "description": "La localización donde vive, con su nombre exacto."
+      },
+      "trade": {
+        "type": "string",
+        "description": "Su oficio, corto: «Molinero», «Posadera»."
+      },
+      "wants": {
+        "type": "string",
+        "description": "Lo que quiere, en una frase."
+      },
+      "knows": {
+        "type": "string",
+        "description": "Lo que sabe y puede contar, en una frase."
+      },
+      "secret": {
+        "type": "string",
+        "description": "Lo que calla: solo sale si se descubre."
+      },
+      "voice": {
+        "type": "string",
+        "description": "Cómo habla, en pocas palabras."
+      },
+      "service": {
+        "type": "string",
+        "enum": [
+          "gremio",
+          "posada",
+          "herreria",
+          "tienda",
+          "templo",
+          "tablon"
+        ],
+        "description": "Si atiende un servicio del sitio: la posada, la tienda, la herrería, el templo."
       }
     }
   }
@@ -3313,8 +3739,7 @@ que ya está en el bloque de instrucciones; se ofrecen sueltos porque un libro n
     "type": "object",
     "required": [
       "id",
-      "name",
-      "map"
+      "name"
     ],
     "properties": {
       "id": {
@@ -3333,7 +3758,7 @@ que ya está en el bloque de instrucciones; se ofrecen sueltos porque un libro n
         "items": {
           "type": "string"
         },
-        "description": "Filas de la misma longitud, entre 8 y 40 columnas y entre 6 y 30 filas. Borde exterior siempre de muro. Solo estos caracteres: '.' suelo transitable, '#' muro, 'D' puerta cerrada, 'L' puerta cerrada con llave (se abre con una llave, con maña o a golpes; el jefe del tablero suelta la llave), 'o' puerta abierta, '~' terreno difícil, 'c' cobertura media, 'C' cobertura de tres cuartos, 'v' precipicio (no se anda; a quien empujan dentro, cae), '>' escalera al nivel siguiente, 'w' agua poco honda (cuesta el doble; el frío la hiela), 'i' hielo (el trueno lo quiebra, el fuego lo funde), 'b' maleza (cuesta el doble, y arde), 'T' barril (cubre; con fuego, revienta), 'k' cofre (se abre estando al lado), '^' en alto (subir cuesta el doble; desde arriba se ataca con ventaja): torres, escalones, la empalizada, 'x' salida (quien la pisa puede irse de la pelea; con un objetivo «alcanzar» encima, salir es ganar): la ventana, la trampilla, 'P' palanca (no se pisa; estando al lado, abre todas las puertas con llave del tablero): la reja del fondo, '=' barricada (corta el paso, no la vista; cubre a quien está detrás y a golpes se rompe: 15 de vida)."
+        "description": "Filas de la misma longitud, entre 8 y 40 columnas y entre 6 y 30 filas. Borde exterior siempre de muro. Solo estos caracteres: '.' suelo transitable, '#' muro, 'D' puerta cerrada, 'L' puerta cerrada con llave (se abre con una llave, con maña o a golpes; el jefe del tablero suelta la llave), 'o' puerta abierta, '~' terreno difícil, 'c' cobertura media, 'C' cobertura de tres cuartos, 'v' precipicio (no se anda; a quien empujan dentro, cae), '>' escalera al nivel siguiente, 'w' agua poco honda (cuesta el doble; el frío la hiela), 'i' hielo (el trueno lo quiebra, el fuego lo funde), 'b' maleza (cuesta el doble, y arde), 'T' barril (cubre; con fuego, revienta), 'k' cofre (se abre estando al lado), '^' en alto (subir cuesta el doble; desde arriba se ataca con ventaja): torres, escalones, la empalizada, 'x' salida (quien la pisa puede irse de la pelea; con un objetivo «alcanzar» encima, salir es ganar): la ventana, la trampilla, 'P' palanca (no se pisa; estando al lado, abre todas las puertas con llave del tablero): la reja del fondo, '=' barricada (corta el paso, no la vista; cubre a quien está detrás y a golpes se rompe: 15 de vida). Sin map, el juego lo lee del dibujo si hay image, o dibuja uno con la semilla."
       },
       "partyStart": {
         "type": "array",
@@ -3443,6 +3868,20 @@ que ya está en el bloque de instrucciones; se ofrecen sueltos porque un libro n
             "note": {
               "type": "string",
               "description": "Quién espera, qué se encuentra, el texto de la sala."
+            },
+            "enemies": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "El encuentro de la sala: quién espera en ella, uno por bicho y por su nombre del bestiario ([\"Lobo\", \"Lobo\"]). El juego los pone en casillas de la sala; tras una puerta cerrada, duermen hasta que se abre. No hace falta repetirlos en enemies."
+            },
+            "treasure": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "El tesoro de la sala: objetos por su nombre en items (si no está, el juego lo crea). El juego pone un cofre en la sala con ellos dentro."
             }
           }
         }
@@ -5189,6 +5628,10 @@ que ya está en el bloque de instrucciones; se ofrecen sueltos porque un libro n
             "type": "string",
             "description": "El id de una charla de dialogues que se abre al acabar la escena."
           },
+          "pov": {
+            "type": "string",
+            "description": "Punto de vista: quién cuenta esta escena, alguien de npcs o de confidants con su nombre exacto. Si el hito no trae beats, su scene sale en boca de esa persona, con su retrato; escríbela entonces como la diría ella. Sin pov, la cuenta el narrador (o el del capítulo, si lo tiene)."
+          },
           "backdrop": {
             "type": "string",
             "description": "Dónde pasa la escena, para el fondo: gremio, posada, herreria, tienda, templo, tablon, plaza, muelle, o el nombre de una localización."
@@ -5463,6 +5906,10 @@ que ya está en el bloque de instrucciones; se ofrecen sueltos porque un libro n
           "summary": {
             "type": "string",
             "description": "De qué va, en una o dos frases, contado a quien juega. Sale al abrir el capítulo en el Diario."
+          },
+          "pov": {
+            "type": "string",
+            "description": "Opcional: quién cuenta el capítulo (alguien de npcs o de confidants). Vale para sus hitos que no digan otro pov."
           }
         }
       }
@@ -5537,5 +5984,6 @@ que ya está en el bloque de instrucciones; se ofrecen sueltos porque un libro n
 
 - [[ROADMAP_INGESTA_CAMPANAS_LIBROS]] — por qué el contrato es como es: nombres dentro, ids fuera.
 - [[EMPEZAR_UNA_CAMPANA]] — dónde se pega lo que el Gem devuelve.
+- [[ROADMAP_SIN_CONEXION]] — J5: tu JSON de campañas, y lo que el juego rellena.
 - [[PLAN_CREAR_CAMPANA]] — el editor con el que se retoca después lo importado.
 - `/esquema-campana`, dentro del juego: las mismas vistas, siempre al día.

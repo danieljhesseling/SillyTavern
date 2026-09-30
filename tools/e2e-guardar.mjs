@@ -337,12 +337,19 @@ try {
     const loaded2 = await until(async () => (await openWorld()) === 'El Gremio' && (await day()) === 5, 30000);
     check('J15.2: y volver a la 2: el día 5', loaded2, JSON.stringify({ world: await openWorld(), day: await day() }));
     check('con La Cripta de vuelta', (await worlds()).includes('La Cripta · Tessa'));
+    // La pantalla se cierra cuando acaba de cargar (abre el chat un poco después de que el mundo y
+    // el día ya estén). Antes se abría otra encima de la que seguía cargando, con los botones
+    // quietos, y «Exportar» esperaba 30 s sin poder pulsarse: el «Timeout … "download"».
+    check('y se cierra al acabar de cargar', await until(async () => !(await screen()).open, 30000));
 
     // 9. J15.6: exportar la partida entera.
     await openScreen('game');
-    const downloading = page.waitForEvent('download', { timeout: 30000 });
+    /** @type {Promise<any>} */
+    const downloading = page.waitForEvent('download', { timeout: 30000 }).catch((/** @type {any} */ error) => error);
     await page.locator('.sv-dialog .sv-export').click();
     const download = await downloading;
+    // Si no llega, que se sepa qué dijo la pantalla.
+    if (download instanceof Error) throw new Error(`no llegó la descarga; la pantalla dice «${(await screen()).status}». ${problems.slice(-4).join(' | ')} (${download.message})`);
     const exportedPath = join(work, download.suggestedFilename());
     await download.saveAs(exportedPath);
     const exported = JSON.parse(readFileSync(exportedPath, 'utf8'));

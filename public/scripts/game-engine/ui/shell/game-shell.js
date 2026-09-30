@@ -28,6 +28,10 @@ import { firstArt, isPlainFace, loadPixelManifest, openPack } from '../pixel-art
 import { faceElement } from '../hero-face.js';
 import { buildTown, closeTownPlace, countTownPlaces, renderTownScene, renderTownSelector } from './town-scene.js';
 import { deadlineBadge } from '../story-book.js';
+// J15.5: el juego con el teclado solo (flechas, Tab en círculo, el foco que vuelve) y J20.6: las
+// animaciones que pide el aparato.
+import { captureFocus, closeTopOverlay, holdFocus, installKeyboard, restoreFocus, topDialog } from '../keyboard-nav.js';
+import { applyMotion, watchMotion } from '../motion.js';
 
 /**
  * @typedef {import('./scene-director.js').SceneName} SceneName
@@ -83,12 +87,17 @@ import { deadlineBadge } from '../story-book.js';
  * @property {(name: string) => void} onAttack
  * @property {() => void} onEndTurn
  * @property {() => void} onFlee
+ * @property {() => void} [onParley] J8.5: salir de la pelea hablando (entregarse, sobornar, convencer o engañar).
+ * @property {() => boolean} [canParley] Si ahora se puede: en el turno de uno de los tuyos.
  * @property {() => void} onObjectives
  * @property {() => import('./clock-widget.js').ClockView} [getClock] El dia y lo que deja hacer.
  * @property {(action: 'slot'|'day'|'short'|'long') => void} [onClock] Pasar el tiempo o descansar.
  * @property {(limit?: number) => import('./action-chips.js').ActionChip[]} [getChips] Lo que se puede hacer sin
  *   escribirlo; con `limit`, cuántas caben (`Infinity`, todas).
  * @property {(chip: import('./action-chips.js').ActionChip) => void} [onChip]
+ * @property {(next: SceneName) => (SceneName|null|void)} [onContinue] D-J45: «Continuar» tras ganar
+ *   una pelea sigue el hilo; lo que haga falta antes (salir del tablero) lo hace el juego, que
+ *   dice a qué escena se va (sin decirlo, a `next`).
  * @property {(memberId: string) => void} [onCompanion] Abrir la ficha de un companero.
  * @property {() => void} [onNewCampaign] Empezar una partida desde el menu principal.
  * @property {() => void} [onOffline] J4: jugar sin conexión, una partida nueva en un gremio.
@@ -195,6 +204,12 @@ let lastSituation = null;
 let sceneReason = '';
 /** @type {((event: KeyboardEvent) => void)|null} */
 let keyHandler = null;
+/** J15.5: para quitar el teclado del juego y el vigía de «reducir movimiento» al cerrar. @type {(() => void)|null} */
+let keyboardOff = null;
+/** @type {(() => void)|null} */
+let motionOff = null;
+/** J15.5: al quitar la pausa, el foco vuelve a lo que la abrió. @type {(() => void)|null} */
+let pauseReturn = null;
 /**
  * Mide la cabecera para que los avisos flotantes caigan justo debajo (`--gs-head-bottom` en
  * game-shell.css). Su alto cambia con lo que lleva: la misión, el reloj, cuántos botones.
@@ -703,14 +718,18 @@ function renderActionChips(row, place = {}) {
         go.dataset.next = next;
         const board = String(place.situation?.boardName || '');
         const here = String(place.situation?.locationName || '');
-        go.title = next === SCENE.COMBAT ? `Volver al tablero${board ? `: ${board}` : ''}` : `Seguir en ${here || 'el mapa'}`;
+        // D-J45: tras ganar, a dónde sigue el hilo (una escena, lo siguiente de la campaña…).
+        go.title = place.situation?.afterFight?.title
+            || (next === SCENE.COMBAT ? `Volver al tablero${board ? `: ${board}` : ''}` : `Seguir en ${here || 'el mapa'}`);
+        if (place.situation?.afterFight?.kind) go.dataset.after = place.situation.afterFight.kind;
         go.appendChild(el('span', 'gs-chip-action-label', 'Continuar'));
         go.appendChild(el('i', 'fa-solid fa-arrow-right'));
         go.addEventListener('click', () => {
             // Leído el final de la pelea, su tarjeta de victoria sobra: en el tablero tapaba su
             // botón de salir, sobre todo en el móvil.
             document.querySelectorAll('.vs-card').forEach(card => card.remove());
-            setScene(next);
+            // D-J45: el juego decide con lo de ahora (la escena de después puede haber acabado).
+            setScene(options?.onContinue?.(next) || next);
         });
         row.appendChild(go);
     }
@@ -1035,6 +1054,18 @@ function renderActionBar(footer, bar) {
     objectives.addEventListener('click', () => options?.onObjectives());
     buttons.appendChild(objectives);
 
+    // J8.5: salir de la pelea hablando, con su ventana.
+    if (options?.onParley) {
+        const talk = makeButton('gs-btn gs-btn-parley');
+        talk.appendChild(el('i', 'fa-solid fa-comments'));
+        talk.appendChild(el('span', '', ' Hablar'));
+        const can = options?.canParley?.() ?? bar.isPlayerTurn;
+        talk.disabled = !can;
+        talk.title = can ? 'Entregarse, sobornar, convencer o engañar' : 'No es tu turno';
+        talk.addEventListener('click', () => options?.onParley?.());
+        buttons.appendChild(talk);
+    }
+
     const flee = makeButton('gs-btn gs-btn-quiet');
     flee.appendChild(el('i', 'fa-solid fa-person-running'));
     flee.appendChild(el('span', '', ' Abandonar'));
@@ -1266,6 +1297,15 @@ function renderNovel(scene, view, place = '') {
     const drawn = own ? '' : firstArt('portrait', { name: speakerName, pack, mood });
     const shown = own || drawn || (plain ? '' : avatar);
     if (!shown) {
+        // D-J52: uno del grupo sin retrato sale con su cara (la que eligió, el retrato de relleno
+        // de su clase o sus iniciales), como en la tira; no con la silueta.
+        const mate = (view.party ?? []).find(chip => chip.name === speakerName);
+        if (mate) {
+            const face = faceElement(mate, { imageClass: 'gs-vn-pixel', pixelClass: 'pixel-art', badgeClass: 'gs-vn-face' });
+            if (face.tagName === 'IMG') portrait.classList.add('gs-vn-drawn');
+            portrait.appendChild(face);
+            return;
+        }
         silhouette();
         return;
     }
@@ -1375,12 +1415,23 @@ function setPaused(next) {
 
     const existing = root.querySelector('.gs-pause');
     if (!paused) {
+        // J15.5: lo que tenía el foco se lo lleva la pausa al irse; se devuelve a lo que la abrió.
+        const hadFocus = Boolean(existing?.contains(document.activeElement));
         existing?.remove();
+        const back = pauseReturn;
+        pauseReturn = null;
+        if (hadFocus) back?.();
         return;
     }
     if (existing) return;
 
+    // J15.5: la pausa es una ventana: se anuncia como tal, el foco entra en «Continuar» y Tab no
+    // sale de ella (`data-trap`, keyboard-nav.js) hasta cerrarla.
     const overlay = el('div', 'gs-pause');
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.setAttribute('aria-label', 'Pausa');
+    overlay.dataset.trap = '';
     const card = el('div', 'gs-pause-card');
     card.appendChild(el('div', 'gs-pause-title', 'Pausa'));
 
@@ -1475,6 +1526,8 @@ function setPaused(next) {
                 options?.onToggle?.(toggle.id);
                 setPaused(false);
                 setPaused(true);
+                // J15.5: redibujada la pausa, el foco sigue en el mismo interruptor.
+                /** @type {HTMLElement|null} */ (root?.querySelector(`.gs-pause-toggle[data-toggle="${CSS.escape(toggle.id)}"]`) ?? null)?.focus();
             });
             row.appendChild(button);
         }
@@ -1506,6 +1559,7 @@ function setPaused(next) {
         if (event.target === overlay) setPaused(false);
     });
     root.appendChild(overlay);
+    pauseReturn = holdFocus(card, /** @type {HTMLElement|null} */ (card.querySelector('.gs-pause-btn')));
 }
 
 /**
@@ -1808,6 +1862,9 @@ function renderExploration(panel, view) {
  */
 export function refreshGameShell() {
     if (!isShellOpen() || !root || !options) return;
+    // J15.5: dónde está el foco antes de redibujar: los botones se hacen de nuevo cada vez, y el
+    // que se acaba de pulsar con Intro desaparecía con el foco dentro.
+    const kept = captureFocus(root);
 
     const engine = options.getSituation();
     // J18.7 y J18.8: una partida sin conexión se juega sin caja de escribir y sin pestañas; lo
@@ -1892,7 +1949,7 @@ export function refreshGameShell() {
         // J18.8: en el tablero sin pelea, lo que se puede hacer, al pie. Salir y empezar la pelea
         // tienen su botón en el propio tablero.
         actions.textContent = '';
-        renderFooterChips(actions, chip => chip.id === 'leave' || chip.id === 'fight-board');
+        renderFooterChips(actions, chip => chip.id === 'leave' || chip.id === 'fight-board' || chip.id === 'avoid-board');
         if (actions.childElementCount === 0) renderActionBar(actions, bar);
     } else if (scene === SCENE.COMBAT) {
         renderActionBar(actions, bar);
@@ -1911,6 +1968,8 @@ export function refreshGameShell() {
         // it would only be a row of disabled buttons.
         actions.textContent = '';
     }
+    // J15.5: redibujado todo, el foco al mismo botón (o a lo principal, si ese ya no está).
+    restoreFocus(root, kept);
 }
 
 /**
@@ -1945,7 +2004,12 @@ function handleKey(event) {
     }
 
     if (event.key === 'Escape') {
+        // J15.5: Esc cierra primero lo de delante. Una ventana (`<dialog>`) se cierra sola con su
+        // Esc: si aquí se paraba la tecla, la ventana se quedaba abierta y la pausa salía detrás.
+        if (event.defaultPrevented || topDialog()) return;
         event.preventDefault();
+        // Los dados, la tarjeta de un enemigo, una lista de la barra de combate, la chuleta.
+        if (closeTopOverlay()) return;
         setPaused(!paused);
         return;
     }
@@ -1982,7 +2046,11 @@ function toggleKeySheet() {
         open.remove();
         return;
     }
+    // J15.5: la chuleta es una ventana pequeña: se lee, y se cierra con «?», con Esc o pulsándola.
     const sheet = el('div', 'gs-keys');
+    sheet.setAttribute('role', 'dialog');
+    sheet.setAttribute('aria-label', 'Atajos de teclado');
+    sheet.tabIndex = -1;
     sheet.appendChild(el('div', 'gs-keys-title', 'Atajos de teclado'));
     // Sin conexión no hay teclas de escena (J18.8): la chuleta no las promete.
     for (const shortcut of SHORTCUTS.filter(s => !(offline && s.action.startsWith('scene:')))) {
@@ -1993,6 +2061,7 @@ function toggleKeySheet() {
     }
     sheet.addEventListener('click', () => sheet.remove());
     document.body.appendChild(sheet);
+    sheet.focus({ preventScroll: true });
 }
 
 /**

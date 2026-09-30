@@ -33,6 +33,7 @@ import { describeDeathSaves } from '../../rules/death-saves.js';
  * @property {string} [race]
  * @property {string} [gender]
  * @property {boolean} [mercenary] Si es un mercenario del gremio (tienen retrato propio).
+ * @property {any} [face] D-J52: la cara sin arte que eligió (`campaign/face-choice.js`).
  */
 
 /** Below this share of their hit points, somebody is in trouble and the strip says so. */
@@ -78,6 +79,8 @@ export function buildPartyStrip({ party = [], bonds = null, calendar = null, xpT
             race: String(member?.race || ''),
             gender: String(member?.gender || ''),
             mercenary: member?.guest?.kind === 'mercenary',
+            // D-J52: la cara sin arte que eligió (iniciales, icono o emoji).
+            face: member?.face ?? null,
         };
     });
 

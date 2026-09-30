@@ -229,6 +229,24 @@
     {
       "id": "muelle_puerto_alba",
       "name": "El muelle de Puerto Alba",
+      "avoid": [
+        {
+          "kind": "hablar",
+          "text": "Plantarte delante y decirle que suelte la bolsa",
+          "skill": "intimidation",
+          "dc": 10,
+          "success": "El ratero mira tu arma, suelta la bolsa de Tomás y sale corriendo por las tablas del embarcadero.",
+          "failure": "El ratero saca el cuchillo de pescador: «¡Apártate!»."
+        },
+        {
+          "kind": "hablar",
+          "text": "Ofrecerle que se vaya sin que nadie le persiga si devuelve la bolsa",
+          "skill": "persuasion",
+          "dc": 11,
+          "success": "El chico duda, tira la bolsa a tus pies y desaparece entre las barcas.",
+          "failure": "«¿Y quién me lo asegura?» Aprieta el cuchillo."
+        }
+      ],
       "locationName": "Puerto Alba",
       "map": [
         "##############",
@@ -248,6 +266,16 @@
     {
       "id": "bodega_gremio",
       "name": "La bodega del gremio",
+      "avoid": [
+        {
+          "kind": "hablar",
+          "text": "Espantarlas con la antorcha y un par de golpes en los barriles",
+          "skill": "intimidation",
+          "dc": 12,
+          "success": "Las ratas chillan y se meten por un agujero de la pared. La bodega queda limpia, y Brunilda lo oye desde arriba.",
+          "failure": "Las ratas están acorraladas entre los barriles: saltan a por ti."
+        }
+      ],
       "locationName": "Puerto Alba",
       "map": [
         "##############",
@@ -268,6 +296,22 @@
     {
       "id": "cala_contrabandistas",
       "name": "La playa de la cala",
+      "avoid": [
+        {
+          "kind": "hablar",
+          "text": "Decirles que la guardia del puerto viene detrás de vosotros",
+          "skill": "deception",
+          "dc": 12,
+          "success": "Cargan los fardos a toda prisa y reman mar adentro. La cala queda vacía.",
+          "failure": "El del arco se ríe desde las rocas: «Aquí no viene la guardia ni de día»."
+        },
+        {
+          "kind": "pagar",
+          "text": "Comprarles la carga a mitad de precio, a cambio de que se vayan",
+          "gold": 8,
+          "success": "Se llevan el oro, empujan la barca al agua y no vuelven."
+        }
+      ],
       "locationName": "La cala del norte",
       "map": [
         "################",
@@ -290,6 +334,22 @@
     {
       "id": "faro_viejo",
       "name": "El faro viejo",
+      "avoid": [
+        {
+          "kind": "hablar",
+          "text": "Quemar las telarañas de la escalera con una antorcha",
+          "skill": "intimidation",
+          "dc": 12,
+          "success": "Las arañas huyen hacia lo alto y se meten por las grietas del tejado. El farero está atado en su cuarto, vivo.",
+          "failure": "Las telarañas arden, pero las arañas bajan por la pared, directas a por ti."
+        },
+        {
+          "kind": "esconderse",
+          "text": "Subir pegados a la pared, sin tocar los hilos",
+          "dc": 13,
+          "success": "Llegáis arriba sin que tiemble un hilo. El farero está atado en su cuarto, vivo, y bajáis con él igual de despacio."
+        }
+      ],
       "locationName": "El faro viejo",
       "map": [
         "############",
@@ -312,6 +372,22 @@
     {
       "id": "camino_costa",
       "name": "El camino de la costa",
+      "avoid": [
+        {
+          "kind": "hablar",
+          "text": "Decirles que se larguen con lo que ya han robado antes de que llegue la guardia",
+          "skill": "persuasion",
+          "dc": 12,
+          "success": "Los salteadores se miran, recogen lo que pueden y se pierden por los acantilados.",
+          "failure": "«¿Y si nos quedamos también con lo tuyo?»"
+        },
+        {
+          "kind": "pagar",
+          "text": "Pagarles para que se vayan a otro camino",
+          "gold": 6,
+          "success": "Cogen las monedas y se van hacia el interior. El carro de Ramiro podrá pasar."
+        }
+      ],
       "locationName": "El camino de la costa",
       "map": [
         "##################",
@@ -333,6 +409,26 @@
     {
       "id": "cementerio_ahogados",
       "name": "El cementerio de los ahogados",
+      "avoid": [
+        {
+          "kind": "esconderse",
+          "text": "Esperar escondidos tras el muro hasta que salga el sol",
+          "dc": 11,
+          "success": {
+            "text": "Os agazapáis tras el muro. Con la primera luz, los ahogados vuelven arrastrándose a sus tumbas y la tierra se cierra sobre ellos.",
+            "effects": [
+              "time",
+              "time"
+            ]
+          },
+          "failure": "Uno de los ahogados se para, huele el aire y se da la vuelta hacia el muro."
+        },
+        {
+          "kind": "huir",
+          "text": "Salir del cementerio antes de que os rodeen",
+          "dc": 10
+        }
+      ],
       "locationName": "El cementerio de los ahogados",
       "map": [
         "################",
@@ -355,6 +451,21 @@
     {
       "id": "salinas_levante",
       "name": "Las salinas",
+      "avoid": [
+        {
+          "kind": "hablar",
+          "text": "Espantarlos con fuego y ruido hasta el monte",
+          "skill": "intimidation",
+          "dc": 12,
+          "success": "La manada huye hacia el monte, blanca de sal, y no vuelve a bajar a las chozas.",
+          "failure": "Los lobos rodean el fuego buscando al que se queda atrás."
+        },
+        {
+          "kind": "huir",
+          "text": "Volver a las chozas antes de que os rodeen",
+          "dc": 10
+        }
+      ],
       "locationName": "Las salinas de levante",
       "map": [
         "################",

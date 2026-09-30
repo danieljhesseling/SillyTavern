@@ -31,18 +31,23 @@ import {
     GUILD_MEMORY_KEY, guildGreeting, guildRumors, readGuildMemory, visitorRows,
 } from '../game-engine/campaign/guild-memory.js';
 import {
-    WORLD_MARKS_KEY, addMark, markRumors, reactionsAt, refusal, rememberedGreeting, rememberedPrice,
+    WORLD_MARKS_KEY, addMark, jailFor, jailRisk, markRumors, reactionsAt, refusal, rememberedGreeting, rememberedPrice,
 } from '../game-engine/campaign/world-marks.js';
 import { packOfWorld } from '../game-engine/ui/pixel-art.js';
 import {
+    addWorldKey, describeOpened, gateRoutes, gateStatus, keyringOf, newlyOpened,
+} from '../game-engine/world/route-gates.js';
+import { readCampaignSucesos } from '../game-engine/campaign/suceso-triggers.js';
+import {
     planRulesetChange, readRememberedRuleset, rememberRuleset, setActiveRuleset, needsReload,
 } from '../game-engine/rules/ruleset.js';
-import { VISITED_KEY, WEATHER_TODAY_KEY } from './keys.js';
+import { FAME_KEY, GATES_OPEN_KEY, VISITED_KEY, WEATHER_TODAY_KEY, WORLD_KEYS_KEY } from './keys.js';
 import {
-    currentBoardName, currentLocationName, currentWorldFactions, setCurrentBoardName, setCurrentLocationName,
+    currentBoardName, currentLocationName, currentWorldFactions, partyMembers, setCurrentBoardName, setCurrentLocationName,
     setCurrentWorldFactions, setWorldItemCatalogue,
 } from './state.js';
 import { campaignDay } from './time.js';
+import { postCombatNarration } from './narration.js';
 
 export function saveCurrentLocation() {
     if (chat_metadata) {
@@ -50,6 +55,8 @@ export function saveCurrentLocation() {
         // Idea 69: el mapa sabe dónde habéis estado.
         if (currentLocationName) chat_metadata[VISITED_KEY] = markVisited(chat_metadata[VISITED_KEY], currentLocationName);
         saveMetadata();
+        // J10.1: lo ganado por el camino (fama, lo que os dieron) puede haber abierto un paso.
+        announceOpenedRoads();
     }
 }
 
@@ -163,6 +170,7 @@ export async function reloadWorldFactions() {
         lastGuildMemory = null;
         lastLevelPlan = null;
         lastDialogues = [];
+        lastCampaignSucesos = [];
         lastPack = '';
         return currentWorldFactions;
     }
@@ -184,6 +192,8 @@ export async function reloadWorldFactions() {
         lastRumors = readRumors(data?.metadata?.rumors);
         // J8 y J9.2: las charlas con ramas que trae el paquete, y de qué paquete es (para las caras).
         lastDialogues = readDialogues(data?.metadata?.dialogues);
+        // J10.3 y D-J42: los sucesos propios de la campaña, que se sortean con los del compendio.
+        lastCampaignSucesos = readCampaignSucesos(data?.metadata?.sucesos);
         lastPack = packOfWorld(data?.metadata);
         lastWorldSeason = readSeason(data?.metadata?.season);
         lastWorldGenre = String(data?.metadata?.genre ?? '');
@@ -340,6 +350,9 @@ export let lastRumors = [];
 /** J8: las charlas con ramas del mundo abierto, ya leídas (`readDialogues`). */
 /** @type {import('../game-engine/campaign/dialogues.js').Dialogue[]} */
 export let lastDialogues = [];
+/** J10.3 y D-J42: los sucesos propios de la campaña abierta, ya leídos (`readCampaignSucesos`). */
+/** @type {any[]} */
+export let lastCampaignSucesos = [];
 /** El paquete del mundo abierto (`gremio`, `1387`…), para los retratos y los escenarios; vacío si no es de ninguno. */
 export let lastPack = '';
 /** @type {any} */
@@ -357,6 +370,90 @@ export let lastConfidantEntries = {};
 /** @returns {any|null} La localidad donde esta el grupo. */
 export function hereLocation() {
     return getCurrentWorldLocationMaps().find((/** @type {any} */ l) => l?.name === currentLocationName) ?? null;
+}
+
+// ---------------------------------------------------------------------------------------
+// J10.1: los caminos que se abren por reputación y por llaves (`world/route-gates.js`).
+
+/**
+ * Lo que miran las puertas de los caminos: dónde estáis (de ahí siempre se puede salir), lo
+ * que piensa cada facción, la fama por sitio y lo que tenéis (lo que lleva cada uno, quién va
+ * en el grupo y lo que os dieron sin ser un objeto: una barca, un guía).
+ *
+ * @returns {import('../game-engine/world/route-gates.js').GateContext}
+ */
+export function gateContext() {
+    return {
+        here: currentLocationName,
+        factions: currentWorldFactions,
+        fame: chat_metadata?.[FAME_KEY] ?? {},
+        keys: keyringOf({ party: partyMembers, worldKeys: chat_metadata?.[WORLD_KEYS_KEY] ?? [] }),
+    };
+}
+
+/**
+ * Los sitios del mundo con sus caminos pasados por sus puertas: los que piden algo que no
+ * tenéis, cerrados y con su motivo («Se abre si…»). Es lo que leen el viaje, la columna
+ * «Viajar» y el mapa; lo guardado no cambia.
+ *
+ * @returns {any[]}
+ */
+export function travelLocations() {
+    return gateRoutes(getCurrentWorldLocationMaps(), gateContext());
+}
+
+/**
+ * Todas las puertas del mundo que se ve, abiertas o no, con lo que piden: para el mapa.
+ *
+ * @returns {import('../game-engine/world/route-gates.js').GateInfo[]}
+ */
+export function worldGates() {
+    return gateStatus(getCurrentWorldLocationMaps(), gateContext());
+}
+
+/**
+ * Apuntar algo que abre caminos sin ser un objeto (`llave:` y `guia:` de un suceso): una barca,
+ * un guía que se ofrece. Una vez; y si con eso se abre un paso, se dice.
+ *
+ * @param {string} name
+ * @returns {boolean} Si era nuevo.
+ */
+export function giveWorldKey(name) {
+    const clean = String(name ?? '').trim();
+    if (!chat_metadata || !clean) return false;
+    const before = Array.isArray(chat_metadata[WORLD_KEYS_KEY]) ? chat_metadata[WORLD_KEYS_KEY] : [];
+    const after = addWorldKey(before, clean);
+    if (after.length === before.length) return false;
+    chat_metadata[WORLD_KEYS_KEY] = after;
+    saveMetadata();
+    announceOpenedRoads();
+    return true;
+}
+
+/**
+ * Decir, una vez, los caminos con puerta que se acaban de abrir (por la reputación, la fama,
+ * una llave o un guía). La primera vez que se mira en una partida solo se apunta lo que ya
+ * estaba abierto: eso no es una novedad.
+ *
+ * @returns {import('../game-engine/world/route-gates.js').GateInfo[]} Los que se abrieron.
+ */
+export function announceOpenedRoads() {
+    if (!chat_metadata?.[METADATA_KEY]) return [];
+    const status = worldGates();
+    const previous = chat_metadata[GATES_OPEN_KEY];
+    if (status.length === 0 && !Array.isArray(previous)) return [];
+    const { opened, open } = newlyOpened(previous, status);
+    const same = Array.isArray(previous) && previous.length === open.length && open.every(key => previous.includes(key));
+    if (!same) {
+        chat_metadata[GATES_OPEN_KEY] = open;
+        saveMetadata();
+    }
+    for (const info of opened) {
+        const line = describeOpened(info);
+        postCombatNarration(`🗝️ [CAMINO] ${line}`);
+        toastr.success(line, 'Un camino se abre', { timeOut: 9000 });
+    }
+    return opened;
 }
 
 /**
@@ -472,8 +569,35 @@ export function markedPrice(place) {
 }
 
 /**
- * J11.3: si quien lleva un servicio de aquí no os atiende por lo que hicisteis (a la segunda
- * vez que os pillan robando en la tienda), lo que dice; vacío si os atiende.
+ * D-J47: si lo que se acaba de apuntar aquí (`leaveMark`) os lleva al calabozo: a la segunda vez
+ * que os pillan robando en la tienda, mientras se acuerdan de la primera. Los días; 0 si no.
+ *
+ * @param {string} deed
+ * @param {string} place El sitio de dentro (`tienda`).
+ * @returns {number}
+ */
+export function jailHere(deed, place) {
+    const mark = { deed, town: String(currentLocationName || ''), place, day: Math.max(1, campaignDay()) };
+    return jailFor({ marks: chat_metadata?.[WORLD_MARKS_KEY], rows: echoRows(), mark })?.days ?? 0;
+}
+
+/**
+ * D-J47: si os pillaran ahora haciendo esto aquí, los días de calabozo (0 si no): para avisarlo
+ * antes de intentarlo.
+ *
+ * @param {string} deed
+ * @param {string} place
+ * @returns {number}
+ */
+export function jailRiskHere(deed, place) {
+    const mark = { deed, town: String(currentLocationName || ''), place, day: Math.max(1, campaignDay()) };
+    return jailRisk({ marks: chat_metadata?.[WORLD_MARKS_KEY], rows: echoRows(), mark });
+}
+
+/**
+ * J11.3: si quien lleva un servicio de aquí no os atiende por lo que hicisteis (en la capilla,
+ * a quien levanta muertos), lo que dice; vacío si os atiende. Robar ya no cierra la tienda:
+ * a la segunda, la guardia os lleva al calabozo (D-J47, `jailHere`).
  *
  * @param {string} service El servicio (`tienda`, `templo`…).
  * @param {any} [hero] Quien juega, para el género.

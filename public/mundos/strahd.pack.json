@@ -255,11 +255,22 @@
           "days": 1
         },
         {
-          "to": "Aldea de Barovia",
-          "days": 1
+          "to": "La Cascada del Tser",
+          "days": 1,
+          "opensWith": [
+            {
+              "standing": "los-vistani",
+              "min": 1
+            },
+            {
+              "fame": 2,
+              "at": "Campamento del Estanque Tser"
+            }
+          ],
+          "gateNote": "El sendero de la cascada pasa entre los carros vistani, y a los extraños no los dejan seguir"
         },
         {
-          "to": "La Cascada del Tser",
+          "to": "Aldea de Barovia",
           "days": 1
         }
       ]
@@ -403,13 +414,20 @@
           "days": 1
         },
         {
+          "to": "Torre de Van Richten",
+          "days": 1,
+          "opensWith": [
+            {
+              "key": "La barca de Nikolai",
+              "label": "la barca de Nikolai"
+            }
+          ],
+          "gateNote": "La torre está en un islote del lago, y solo se llega en barca"
+        },
+        {
           "to": "Ciudad de Vallaki",
           "days": 1,
           "closedUntil": "panico-en-el-festival"
-        },
-        {
-          "to": "Torre de Van Richten",
-          "days": 1
         },
         {
           "to": "Ruinas de Berez",
@@ -498,15 +516,26 @@
       ],
       "routes": [
         {
+          "to": "Torre de Van Richten",
+          "days": 1,
+          "opensWith": [
+            {
+              "key": "La barca de Nikolai",
+              "label": "la barca de Nikolai"
+            },
+            {
+              "fame": 2,
+              "at": "Aldea de Krezk"
+            }
+          ],
+          "gateNote": "La torre está en un islote del lago, y solo se llega en barca"
+        },
+        {
           "to": "Argynvostholt",
           "days": 1
         },
         {
           "to": "Bodega El Mago de los Vinos",
-          "days": 1
-        },
-        {
-          "to": "Torre de Van Richten",
           "days": 1
         },
         {
@@ -579,7 +608,14 @@
       "routes": [
         {
           "to": "Torre de Van Richten",
-          "days": 1
+          "days": 1,
+          "opensWith": [
+            {
+              "key": "La barca de Nikolai",
+              "label": "la barca de Nikolai"
+            }
+          ],
+          "gateNote": "La torre está en un islote del lago, y solo se llega en barca"
         },
         {
           "to": "Aldea de Krezk",
@@ -976,7 +1012,20 @@
         "hab-esfumarse",
         "hab-burla",
         "hab-embate"
-      ]
+      ],
+      "spellcasting": {
+        "ability": "intelligence",
+        "saveDc": 14,
+        "attackBonus": 6,
+        "casterLevel": 5,
+        "slots": {
+          "3": 1
+        },
+        "spells": [
+          "mag-escarcha",
+          "mag-toque-vampirico"
+        ]
+      }
     },
     {
       "name": "Engendro Vampírico",
@@ -1524,6 +1573,21 @@
           "x": 14,
           "y": 2
         }
+      ],
+      "avoid": [
+        {
+          "kind": "hablar",
+          "text": "Plantarle cara a la bruja delante de todos: que salga de la taberna",
+          "skill": "intimidation",
+          "dc": 13,
+          "success": "La bruja sisea, recoge sus harapos y se escurre por la puerta de atrás; el muerto la sigue arrastrando los pies. Los parroquianos vuelven a respirar.",
+          "failure": "La bruja se ríe con la boca negra y levanta las manos."
+        },
+        {
+          "kind": "huir",
+          "text": "Salir a la calle antes de que empiece",
+          "dc": 10
+        }
       ]
     },
     {
@@ -1578,6 +1642,26 @@
           "x": 17,
           "y": 7
         }
+      ],
+      "avoid": [
+        {
+          "kind": "esconderse",
+          "text": "Atrancar puertas y ventanas y apagar las velas: que pasen de largo",
+          "dc": 12,
+          "success": {
+            "text": "Los muertos arañan la puerta hasta el alba y luego vuelven a la niebla. Ireena no ha pegado ojo, pero está viva.",
+            "effects": [
+              "time",
+              "time"
+            ]
+          },
+          "failure": "Una ventana cede. Las manos grises entran por el hueco."
+        },
+        {
+          "kind": "huir",
+          "text": "Salir por la puerta de atrás mientras rodean la casa",
+          "dc": 11
+        }
       ]
     },
     {
@@ -1620,7 +1704,34 @@
           "x": 2,
           "y": 6
         }
-      ]
+      ],
+      "avoid": [
+        {
+          "kind": "hablar",
+          "text": "Hablarle de su padre, que reza por él cada noche ahí arriba",
+          "skill": "persuasion",
+          "dc": 15,
+          "success": "Por un momento el hambre se le apaga en los ojos. Se encoge en el rincón de la celda y no se mueve mientras salís.",
+          "failure": "Solo oye el latido de vuestros cuellos."
+        },
+        {
+          "kind": "huir",
+          "text": "Subir las escaleras y cerrar la trampilla",
+          "dc": 10
+        }
+      ],
+      "parley": {
+        "convencer": {
+          "text": "Recordarle el nombre de su padre y la luz de la iglesia",
+          "dc": 15,
+          "success": "El engendro se tapa la cara con las manos y retrocede hasta el fondo de la celda. Ya no ataca.",
+          "partial": "Duda, con la boca abierta. Esta ronda, no ataca."
+        },
+        "no": [
+          "sobornar",
+          "entregarse"
+        ]
+      }
     },
     {
       "id": "tienda_madam_eva",
@@ -1674,6 +1785,21 @@
           "x": 17,
           "y": 4
         }
+      ],
+      "avoid": [
+        {
+          "kind": "hablar",
+          "text": "Tirarles la carne del zurrón lejos del camino",
+          "skill": "survival",
+          "dc": 13,
+          "success": "Los lobos grises se lanzan a por la carne. El grande duda, gruñe y los sigue entre los árboles.",
+          "failure": "El lobo grande ni mira la carne: os mira a vosotros."
+        },
+        {
+          "kind": "esconderse",
+          "text": "Seguir el arroyo, con el agua tapando vuestro olor",
+          "dc": 13
+        }
       ]
     },
     {
@@ -1723,6 +1849,19 @@
           "x": 15,
           "y": 2
         }
+      ],
+      "avoid": [
+        {
+          "kind": "esconderse",
+          "text": "Cruzar el puente pegados a la sombra de la muralla, sin mirar arriba",
+          "dc": 15,
+          "success": "Las gárgolas siguen quietas en sus almenas. Cruzáis el umbral y la puerta se cierra sola a vuestra espalda."
+        },
+        {
+          "kind": "huir",
+          "text": "Volver al camino antes de que bajen",
+          "dc": 12
+        }
       ]
     },
     {
@@ -1769,6 +1908,21 @@
           "name": "Engendro Vampírico",
           "x": 15,
           "y": 2
+        }
+      ],
+      "avoid": [
+        {
+          "kind": "hablar",
+          "text": "Brindar en voz alta por el conde, como si fuerais sus invitados",
+          "skill": "deception",
+          "dc": 16,
+          "success": "Los engendros se detienen, se miran y se retiran a las sombras del techo: nadie toca a un invitado del conde.",
+          "failure": "Los engendros sonríen con demasiados dientes. «El conde no invita a nadie.»"
+        },
+        {
+          "kind": "huir",
+          "text": "Salir por la puerta de servicio antes de que se cierre",
+          "dc": 13
         }
       ]
     },
@@ -1819,6 +1973,28 @@
           "name": "Bruja Baroviana",
           "x": 3,
           "y": 4
+        }
+      ],
+      "avoid": [
+        {
+          "kind": "hablar",
+          "text": "Hacerte pasar por cliente y pedirle una docena de pasteles",
+          "skill": "deception",
+          "dc": 16,
+          "success": {
+            "text": "La saga se relame y se da la vuelta hacia el horno. Os basta ese momento para abrir la trampilla y sacar a los niños.",
+            "effects": [
+              {
+                "fame": 1
+              }
+            ]
+          },
+          "failure": "La saga huele el miedo bajo tu sonrisa. «Tú no vienes a comprar.»"
+        },
+        {
+          "kind": "huir",
+          "text": "Bajar la escalera del molino antes de que cierre la puerta",
+          "dc": 12
         }
       ]
     },
@@ -1875,6 +2051,34 @@
           "x": 10,
           "y": 11
         }
+      ],
+      "avoid": [
+        {
+          "kind": "hablar",
+          "text": "Prender la hoguera del festival y espantarlos con antorchas",
+          "skill": "intimidation",
+          "dc": 14,
+          "success": {
+            "text": "Los lobos grises huyen entre los puestos; el grande se queda solo y acaba yéndose con ellos. La gente os aplaude desde las ventanas.",
+            "effects": [
+              {
+                "fame": 1
+              }
+            ]
+          },
+          "failure": "El lobo grande no le teme al fuego. Salta por encima de la hoguera."
+        },
+        {
+          "kind": "esconderse",
+          "text": "Meter a la gente en las casas y atrancar las puertas",
+          "dc": 12,
+          "success": {
+            "text": "Los lobos rondan la plaza vacía y se van con el amanecer.",
+            "effects": [
+              "time"
+            ]
+          }
+        }
       ]
     },
     {
@@ -1920,6 +2124,19 @@
           "name": "Engendro hambriento",
           "x": 13,
           "y": 6
+        }
+      ],
+      "avoid": [
+        {
+          "kind": "esconderse",
+          "text": "Pasar de puntillas entre las cajas hasta el cuarto del fondo",
+          "dc": 13,
+          "success": "Nada se mueve dentro de las cajas. Salís con los huesos del santo envueltos en una manta."
+        },
+        {
+          "kind": "huir",
+          "text": "Salir a la calle antes de que se abran las tapas",
+          "dc": 10
         }
       ]
     },
@@ -1978,6 +2195,19 @@
           "name": "Enjambre de insectos",
           "x": 9,
           "y": 8
+        }
+      ],
+      "avoid": [
+        {
+          "kind": "esconderse",
+          "text": "Cruzar el barro cuando la bruja entre en la choza y sacar la gema por la ventana",
+          "dc": 15,
+          "success": "Los espantapájaros siguen mirando al camino. La gema sale por la ventana envuelta en un trapo, y vosotros detrás."
+        },
+        {
+          "kind": "huir",
+          "text": "Volver por el pantano antes de que os vean",
+          "dc": 12
         }
       ]
     },
@@ -2042,6 +2272,21 @@
           "x": 8,
           "y": 8
         }
+      ],
+      "avoid": [
+        {
+          "kind": "hablar",
+          "text": "Unirte al canto como uno más y acercarte a la gema",
+          "skill": "deception",
+          "dc": 15,
+          "success": "Los druidas, en trance, ni os miran. Cogéis la gema de los pies del muñeco de ramas y bajáis la colina sin correr.",
+          "failure": "Uno de los druidas deja de cantar y os señala con el dedo lleno de barro."
+        },
+        {
+          "kind": "huir",
+          "text": "Bajar la colina antes de que acabe el canto",
+          "dc": 12
+        }
       ]
     },
     {
@@ -2101,6 +2346,26 @@
           "x": 16,
           "y": 2
         }
+      ],
+      "avoid": [
+        {
+          "kind": "esconderse",
+          "text": "Encerraros en la torre y no hacer ruido hasta el alba",
+          "dc": 13,
+          "success": {
+            "text": "La manada da vueltas al islote toda la noche. Con la primera luz se cansa y se va.",
+            "effects": [
+              "time",
+              "time"
+            ]
+          },
+          "failure": "Los murciélagos entran por una aspillera, chillando. Os han encontrado."
+        },
+        {
+          "kind": "huir",
+          "text": "Cruzar el camino de tierra antes de que os corten el paso",
+          "dc": 13
+        }
       ]
     },
     {
@@ -2154,6 +2419,27 @@
           "name": "Lobo gris",
           "x": 4,
           "y": 6
+        }
+      ],
+      "avoid": [
+        {
+          "kind": "esconderse",
+          "text": "Abrir las jaulas de los niños mientras Kiril reza a la estatua",
+          "dc": 16,
+          "success": {
+            "text": "Sacáis a los niños uno a uno, tapándoles la boca con la mano. Kiril no se da la vuelta.",
+            "effects": [
+              {
+                "fame": 1
+              }
+            ]
+          },
+          "failure": "Un niño llora. Kiril se gira despacio, ya medio lobo."
+        },
+        {
+          "kind": "huir",
+          "text": "Salir de la cueva antes de que os huelan",
+          "dc": 13
         }
       ]
     },
@@ -2211,6 +2497,22 @@
           "x": 18,
           "y": 5
         }
+      ],
+      "avoid": [
+        {
+          "kind": "esconderse",
+          "text": "Tapar a los caballos con mantas y cruzar despacio, contra el viento",
+          "dc": 13,
+          "success": "Los lobos husmean hacia otro lado. El carro del vino llega al otro lado del camino sin un rasguño."
+        },
+        {
+          "kind": "hablar",
+          "text": "Tirarles la carne del carro lejos del camino",
+          "skill": "survival",
+          "dc": 13,
+          "success": "Los lobos se lanzan a por la carne entre los árboles. Las figuras de ramas se quedan quietas, sin nadie a quien seguir.",
+          "failure": "Los lobos prefieren los caballos."
+        }
       ]
     },
     {
@@ -2253,6 +2555,29 @@
           "name": "Revenant",
           "x": 9,
           "y": 2
+        }
+      ],
+      "avoid": [
+        {
+          "kind": "hablar",
+          "text": "Decirle al caballero que venís a acabar con el vampiro, como su orden",
+          "skill": "persuasion",
+          "dc": 14,
+          "success": {
+            "text": "El caballero baja la espada. «Entonces id. Y no volváis hasta que esté hecho.»",
+            "effects": [
+              {
+                "standing": "La Orden del Dragón de Plata",
+                "amount": 1
+              }
+            ]
+          },
+          "failure": "«Eso dijeron los últimos.» Levanta la espada."
+        },
+        {
+          "kind": "huir",
+          "text": "Salir del patio antes de que os alcance",
+          "dc": 12
         }
       ]
     },
@@ -2313,6 +2638,21 @@
           "x": 4,
           "y": 9
         }
+      ],
+      "avoid": [
+        {
+          "kind": "hablar",
+          "text": "Plantarle cara a la bruja: sin ella, los lobos no se quedan",
+          "skill": "intimidation",
+          "dc": 14,
+          "success": "La bruja maldice, se sube la capucha y se pierde entre las viñas. Los lobos la siguen.",
+          "failure": "La bruja silba, y los lobos salen de entre las cepas."
+        },
+        {
+          "kind": "huir",
+          "text": "Volver a la bodega y atrancar la puerta",
+          "dc": 11
+        }
       ]
     },
     {
@@ -2366,6 +2706,21 @@
           "x": 14,
           "y": 7
         }
+      ],
+      "avoid": [
+        {
+          "kind": "hablar",
+          "text": "Hacer sonar la campana de la puerta y encender antorchas en la muralla",
+          "skill": "intimidation",
+          "dc": 16,
+          "success": "El hombre lobo aúlla, mira las antorchas y se lleva a su manada a la niebla. Las puertas se abren.",
+          "failure": "El hombre lobo se ríe con una boca que ya no es humana."
+        },
+        {
+          "kind": "huir",
+          "text": "Retirarse al bosque hasta que se vayan",
+          "dc": 13
+        }
       ]
     },
     {
@@ -2414,6 +2769,14 @@
           "name": "Engendro Vampírico",
           "x": 3,
           "y": 5
+        }
+      ],
+      "avoid": [
+        {
+          "kind": "huir",
+          "text": "Correr escaleras arriba antes de que se cierre la cripta",
+          "dc": 16,
+          "failure": "La reja de la cripta baja sola a vuestra espalda. Strahd sonríe."
         }
       ]
     }
@@ -4135,6 +4498,128 @@
               "next": "inicio"
             }
           ]
+        }
+      ]
+    }
+  ],
+  "sucesos": [
+    {
+      "id": "la-barca-de-nikolai",
+      "name": "La barca de Nikolai",
+      "weight": 8,
+      "when": {
+        "momento": "llegada",
+        "sitio": [
+          "Aldea de Krezk",
+          "Argynvostholt"
+        ]
+      },
+      "text": "Un barquero de manos agrietadas, Nikolai, vende pescado ahumado junto al camino. Cuenta que el viejo de la torre del lago se fue sin pagarle, y que su barca es la única que llega al islote.",
+      "options": [
+        {
+          "label": "Pagarle lo que le deben",
+          "cost": {
+            "oro": 8
+          },
+          "effects": [
+            "llave:La barca de Nikolai"
+          ],
+          "then": "Nikolai cuenta las monedas y os da la mano. «Cuando queráis ir a la torre, la barca es vuestra. Remad despacio: los lobos rondan la orilla.»"
+        },
+        {
+          "label": "Convencerle de que os la preste",
+          "check": {
+            "skill": "persuasion",
+            "dc": 14
+          },
+          "success": {
+            "effects": [
+              "llave:La barca de Nikolai"
+            ],
+            "then": "Se rasca la barba y acaba diciendo que sí: si alguien tiene que ir a esa torre, mejor gente como vosotros."
+          },
+          "fail": {
+            "then": "Nikolai niega con la cabeza. Sin paga, no hay barca."
+          }
+        },
+        {
+          "label": "Dejarlo estar",
+          "then": "Nikolai vuelve a su pescado sin insistir."
+        }
+      ]
+    },
+    {
+      "id": "murcielagos-del-conde",
+      "name": "Los murciélagos del conde",
+      "weight": 4,
+      "when": {
+        "momento": "viaje",
+        "reputacion": {
+          "la-corte-de-strahd": [
+            -5,
+            -2
+          ]
+        }
+      },
+      "text": "Camino de {destino}, una nube de murciélagos os sigue a plena luz, demasiado baja y demasiado callada. {bando} sabe por dónde vais.",
+      "options": [
+        {
+          "label": "Esconderse bajo los árboles hasta que se vayan",
+          "effects": [
+            "hora"
+          ],
+          "then": "Esperáis quietos, con el corazón en la boca, hasta que la nube se aleja hacia el castillo."
+        },
+        {
+          "label": "Espantarlos con fuego",
+          "check": {
+            "skill": "survival",
+            "dc": 12
+          },
+          "success": {
+            "effects": [
+              "reloj:la-corte-de-strahd:-1"
+            ],
+            "then": "Se dispersan chillando. Esta vez el conde no sabrá dónde dormís."
+          },
+          "fail": {
+            "effects": [
+              "herida:1d4"
+            ],
+            "then": "Os caen encima un momento y dejan mordiscos antes de irse."
+          }
+        }
+      ]
+    },
+    {
+      "id": "te-en-el-campamento-vistani",
+      "name": "Té en el campamento vistani",
+      "weight": 5,
+      "when": {
+        "momento": "llegada",
+        "faccion": "los-vistani",
+        "reputacionAqui": [
+          1,
+          5
+        ]
+      },
+      "text": "Desde lo de la tienda de Madam Eva, {bando} os tratan como a gente de la casa. Una mujer os sirve té dulce junto al fuego y os habla de los senderos del valle.",
+      "options": [
+        {
+          "label": "Sentarse con ellos un rato",
+          "effects": [
+            "hora",
+            "comida",
+            "faccion:los-vistani:+1"
+          ],
+          "then": "Hay música, pan y risas. Por un rato, Barovia parece menos gris."
+        },
+        {
+          "label": "Preguntar por los senderos",
+          "effects": [
+            "rumor"
+          ],
+          "then": "Os cuenta por dónde no pasan los lobos, y dónde es mejor no dormir."
         }
       ]
     }

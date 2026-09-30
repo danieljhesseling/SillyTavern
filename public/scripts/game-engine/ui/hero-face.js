@@ -8,10 +8,14 @@
  * SillyTavern, ni «???».
  *
  * Lo usan la ficha, la tira del grupo y el tablero, para que tu cara sea la misma en los tres.
+ *
+ * D-J52: sin imagen propia, la cara que eligió quien juega (`face`: iniciales en un color, un
+ * icono o un emoji, `campaign/face-choice.js`) va antes que el retrato de relleno de su clase.
  */
 
 import { firstArt, isPlainFace } from './pixel-art.js';
 import { initialsOf, hueOf } from './shell/speakers.js';
+import { readFaceChoice, faceHue } from '../campaign/face-choice.js';
 
 /**
  * @typedef {Object} FaceQuery
@@ -21,15 +25,21 @@ import { initialsOf, hueOf } from './shell/speakers.js';
  * @property {string} [gender]
  * @property {string} [race]
  * @property {boolean} [mercenary] Un mercenario tiene su propio retrato.
+ * @property {any} [face] D-J52: la cara que eligió sin arte (`readFaceChoice`).
  */
 
 /**
  * @typedef {Object} Face
- * @property {'own'|'pixel'|'initials'} kind
+ * @property {'own'|'pixel'|'initials'|'icon'|'emoji'} kind
  * @property {string} src La imagen (vacía si son iniciales).
  * @property {string} initials «LÍ», «GM».
  * @property {number} hue Su color, de 0 a 359.
+ * @property {string} [icon] D-J52: el icono elegido (clase de Font Awesome).
+ * @property {string} [emoji] D-J52: el emoji elegido.
  */
+
+/** Las caras que se dibujan sin imagen: un cuadro con su color. */
+const BADGE_KINDS = ['initials', 'icon', 'emoji'];
 
 /** @param {any} value @returns {string} */
 const text = (value) => String(value ?? '').trim();
@@ -46,6 +56,11 @@ export function faceOf(who) {
     const hue = hueOf(name);
     const avatar = text(who?.avatar);
     if (!isPlainFace(avatar)) return { kind: 'own', src: avatar, initials, hue };
+    // D-J52: la que eligió, antes que el retrato de relleno de su clase.
+    const choice = readFaceChoice(who?.face);
+    if (choice) {
+        return { kind: choice.kind, src: '', initials, hue: faceHue(choice.color) ?? hue, icon: choice.icon ?? '', emoji: choice.emoji ?? '' };
+    }
     const drawn = (who?.mercenary ? firstArt('mercenary', { name }) : '')
         || firstArt('hero', { className: text(who?.className), gender: text(who?.gender), race: text(who?.race), name });
     return drawn ? { kind: 'pixel', src: drawn, initials, hue } : { kind: 'initials', src: '', initials, hue };
@@ -63,33 +78,50 @@ export function initialsColors(hue) {
 }
 
 /**
- * Las iniciales, como elemento: un cuadro con su color y sus letras.
+ * Las iniciales, como elemento: un cuadro con su color y sus letras. D-J52: o el icono o el
+ * emoji que eligió, en el mismo cuadro.
  *
- * @param {{initials: string, hue: number}} face
+ * @param {{initials: string, hue: number, kind?: string, icon?: string, emoji?: string}} face
  * @param {string} [className]
  * @returns {HTMLElement}
  */
 export function initialsBadge(face, className = '') {
     const badge = document.createElement('span');
     badge.className = `hero-initials ${className}`.trim();
-    badge.textContent = text(face.initials) || '?';
+    if (face.kind === 'icon' && text(face.icon)) {
+        badge.classList.add('hero-face-icon');
+        const icon = document.createElement('i');
+        icon.className = `fa-solid ${text(face.icon)}`;
+        badge.appendChild(icon);
+    } else if (face.kind === 'emoji' && text(face.emoji)) {
+        badge.classList.add('hero-face-emoji');
+        badge.textContent = text(face.emoji);
+    } else {
+        badge.textContent = text(face.initials) || '?';
+    }
     const colors = initialsColors(face.hue);
     badge.style.background = colors.background;
     badge.style.borderColor = colors.border;
+    // El tono, legible (el navegador pasa el color a rgb): para las pruebas y el estilo.
+    badge.dataset.hue = String(Math.floor(Number(face.hue) || 0));
     badge.setAttribute('aria-hidden', 'true');
     return badge;
 }
 
 /**
  * Las iniciales de alguien por su nombre, ya como elemento (para el tablero, que elige la
- * imagen por su cuenta y solo necesita el último recurso).
+ * imagen por su cuenta y solo necesita el último recurso). D-J52: con la cara que eligió, esa.
  *
  * @param {string} name
  * @param {string} [className]
+ * @param {any} [face] La cara elegida (`face` del héroe), si la hay.
  * @returns {HTMLElement}
  */
-export function initialsFor(name, className = '') {
-    return initialsBadge({ initials: initialsOf(text(name)), hue: hueOf(text(name)) }, className);
+export function initialsFor(name, className = '', face = null) {
+    const choice = readFaceChoice(face);
+    const initials = initialsOf(text(name));
+    if (choice) return initialsBadge({ kind: choice.kind, initials, hue: faceHue(choice.color) ?? hueOf(text(name)), icon: choice.icon, emoji: choice.emoji }, className);
+    return initialsBadge({ initials, hue: hueOf(text(name)) }, className);
 }
 
 /**
@@ -104,7 +136,7 @@ export function initialsFor(name, className = '') {
  */
 export function faceElement(who, { imageClass = '', pixelClass = 'pixel-art', badgeClass = '' } = {}) {
     const face = faceOf(who);
-    if (face.kind === 'initials') return initialsBadge(face, badgeClass);
+    if (BADGE_KINDS.includes(face.kind)) return initialsBadge(face, badgeClass);
     const image = document.createElement('img');
     image.alt = '';
     /** @param {Face} shown */
@@ -114,7 +146,7 @@ export function faceElement(who, { imageClass = '', pixelClass = 'pixel-art', ba
     };
     show(face);
     // Lo que se prueba si falla: su retrato en pixel (si lo que fallaba era su cara) y, al final,
-    // las iniciales.
+    // las iniciales (o la cara que eligió, D-J52).
     const next = face.kind === 'own' ? faceOf({ ...who, avatar: '' }) : null;
     let tried = false;
     image.addEventListener('error', () => {
@@ -123,7 +155,8 @@ export function faceElement(who, { imageClass = '', pixelClass = 'pixel-art', ba
             show(next);
             return;
         }
-        image.replaceWith(initialsBadge(face, badgeClass));
+        // D-J52: la que eligió, si la hay; si no, las iniciales.
+        image.replaceWith(initialsBadge(next && BADGE_KINDS.includes(next.kind) ? next : face, badgeClass));
     });
     return image;
 }

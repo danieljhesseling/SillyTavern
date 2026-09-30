@@ -873,12 +873,13 @@ async function openWrittenTalk(npc, dialogue, draft = '') {
             saveMetadata();
         },
         // J11.2: lo que vuelve días después de lo que se dijo (`later` en la opción). J7.5: y lo
-        // que opina el grupo, que cuenta al elegir y se dice en la ventana.
+        // que opina el grupo, que cuenta al elegir y se dice en la ventana. D-J48: solo en las
+        // opciones que deciden algo (con la charla, para ver adónde lleva cada una).
         onChoice: (optionId, outcome, option) => {
             recordDialogueAftermath(dialogue, optionId, outcome);
-            return judgeOption(option);
+            return judgeOption(option, { dialogue });
         },
-        opinionsFor: optionOpinionTags,
+        opinionsFor: (option) => optionOpinionTags(option, { dialogue }),
         extras: [{ id: 'otras', label: 'Otras cosas', icon: 'fa-ellipsis', title: 'Sonsacar, convencer, amenazar…' }],
         pack: lastPack,
         place: service in PLACE_KINDS ? service : '',

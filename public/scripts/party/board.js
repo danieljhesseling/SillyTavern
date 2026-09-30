@@ -34,6 +34,9 @@ import { planWalk, canWalk } from '../game-engine/board/walk.js';
 import { planGroupMove, describeGroupMove } from '../game-engine/board/group-move.js';
 export { walkFrames, hoverOf } from '../game-engine/board/group-move.js';
 import { enterCell, describeHazard, passiveSpot } from '../game-engine/board/hazards.js';
+import {
+    walkPath, searchAround, canSearchAround, disarmable, tryDisarm, knownTrapCells,
+} from '../game-engine/board/trap-actions.js';
 import { statusMarkers, sizeToCells } from '../game-engine/combat/initiative-tracker.js';
 import { hasAction, useAction } from '../game-engine/combat/turn-machine.js';
 import { holdDuringCombat } from '../game-engine/combat/combat-hold.js';
@@ -115,6 +118,8 @@ async function persistBoardTerrainNow(board) {
         if (board.rooms) stored.rooms = board.rooms;
         // J12.11: las salas cuya nota ya se leyó al entrar, para no leerla cada vez.
         if (Array.isArray(board.zonesSeen)) stored.zonesSeen = board.zonesSeen;
+        // J12.3: dónde ya se han buscado trampas, para no buscar dos veces lo mismo.
+        if (Array.isArray(board.searchedCells)) stored.searchedCells = board.searchedCells;
         await saveWorldInfo(worldName, data);
     } catch (e) {
         console.warn('[party] could not persist board terrain', e);
@@ -169,6 +174,28 @@ export function enterStartingBoard(locationName, boardName) {
     // toggles, so pressing it when the view is already showing is harmless. Opening the
     // panel by hand (#rightNavDrawerIcon) shows the wrong view.
     $('#partyDrawerIcon').trigger('click');
+    return true;
+}
+
+/**
+ * J5.3: empezar una campaña en una localización sin tablero: la aldea de una campaña corta de tu
+ * Gem, donde solo se habla y se comercia. El grupo está allí, sin tablero, y lo que se ve es el
+ * sitio, con lo que se puede hacer y sus caminos, como en el pueblo del gremio.
+ *
+ * @param {string} locationName
+ * @returns {boolean} Si existe esa localización.
+ */
+export function enterStartingLocation(locationName) {
+    const location = getCurrentWorldLocationMaps().find(l => l.name === locationName);
+    if (!location) return false;
+    setCurrentLocationName(location.name);
+    setCurrentBoardName('');
+    saveCurrentLocation();
+    saveCurrentBoard();
+    for (const member of partyMembers.filter(m => !m.dead)) {
+        member.mapPosition = { ...(member.mapPosition ?? { gridX: 0, gridY: 0 }), locationName: location.name };
+    }
+    savePartyState();
     return true;
 }
 
@@ -543,6 +570,8 @@ export function buildBoardIdleEnemyTokens(waiting) {
             idle: true,
             // Su dibujo en pixel, también por su arquetipo del bestiario.
             archetype: archetypeOf(template),
+            // El jefe se ve antes de pelear: su corona.
+            boss: Boolean(/** @type {any} */ (placement).boss || /** @type {any} */ (template)?.boss),
         };
     });
 }
@@ -664,6 +693,7 @@ export function buildEnemyTokens() {
             isEnemy: true,
             // Idea 13: que se lea el tablero de un vistazo.
             role: roleOf(e),
+            boss: Boolean(/** @type {any} */ (e).boss),
             statuses: statusMarkers(e.activeConditions),
             sizeCells: sizeToCells(e.size),
             // Su dibujo en pixel: por su nombre o por el arquetipo de su plantilla.
@@ -739,6 +769,8 @@ export function buildTokens(locationFilter) {
             // Para su retrato de relleno cuando no trae cara: el de su especie, clase y género.
             gender: String(m.gender ?? ''),
             race: String(m.race ?? ''),
+            // D-J52: o la cara sin arte que eligió.
+            ...(m.face ? { face: m.face } : {}),
             weapon: String(heldWeapon(m)?.name ?? ''),
             hp: m.hp,
             maxHp: m.maxHp,
@@ -767,21 +799,38 @@ export function handleTokenMove(tokenId, gridX, gridY, locationName) {
     // rejilla de combate— colocarse sigue siendo libre.
     if (currentBoardName) {
         const { terrain, gridWidth, gridHeight } = getActiveBoardContext();
+        // J12.3: una trampa ya vista no se pisa a sabiendas; el camino la rodea.
+        const traps = knownTrapsHere();
+        if (traps.has(cellKey(gridX, gridY))) {
+            toastr.warning('Ahí hay una trampa a la vista. Desarmadla antes, o id a otra casilla.', 'Ahí no');
+            renderLocationMapsPreview();
+            return;
+        }
         const plan = planWalk({
             member,
             to: { x: gridX, y: gridY },
             terrain,
             gridWidth,
             gridHeight,
-            occupied: partyMembers
-                .filter(m => Number(m.id) !== Number(member.id))
-                .map(m => ({ x: Number(m.mapPosition?.gridX) || 0, y: Number(m.mapPosition?.gridY) || 0 })),
+            occupied: [
+                ...partyMembers
+                    .filter(m => Number(m.id) !== Number(member.id))
+                    .map(m => ({ x: Number(m.mapPosition?.gridX) || 0, y: Number(m.mapPosition?.gridY) || 0 })),
+                ...[...traps].map(key => parseCellKey(key)).filter(cell => cell !== null),
+            ],
         });
 
         if (!plan.allowed) {
             toastr.warning(plan.reason, 'Ahi no se llega');
             renderLocationMapsPreview();
             return;
+        }
+        // J12.3: por el camino, sus trampas. Quien pisa una o ve una se queda ahí.
+        const stop = walkTraps(member, plan.path);
+        const at = plan.path[stop];
+        if (at && stop < plan.path.length - 1) {
+            gridX = at.x;
+            gridY = at.y;
         }
     }
 
@@ -827,15 +876,23 @@ export function groupMoveTo(gridX, gridY) {
     const enemies = getAliveEnemies().map(e => ({ x: Number(e.gridX) || 0, y: Number(e.gridY) || 0 }));
     const formation = getPartyFormation();
     const order = formation?.order || [];
+    // J12.3: las trampas ya vistas no se pisan: la marcha las rodea, como a quien estorba.
+    /** @type {Array<{x: number, y: number}>} */
+    const traps = [];
+    for (const key of knownTrapsHere()) {
+        const cell = parseCellKey(key);
+        if (cell) traps.push(cell);
+    }
+    const blocked = [...enemies, ...traps];
 
-    const plan = planGroupMove({
+    let plan = planGroupMove({
         members,
         to: { x: gridX, y: gridY },
         terrain,
         gridWidth,
         gridHeight,
         order,
-        blocked: enemies,
+        blocked,
     });
 
     if (!plan.allowed) {
@@ -843,16 +900,44 @@ export function groupMoveTo(gridX, gridY) {
         return plan;
     }
 
+    // J12.3: quien abre la marcha anda su camino con sus trampas. Si pisa una o ve una, la marcha
+    // se para donde se ha quedado él, y los demás se ponen detrás (o no se mueven, si no ha
+    // llegado a dar un paso).
+    const leadMove = plan.moves.find(move => move.id === plan.leader) ?? null;
+    const leadMember = leadMove ? partyMembers.find(m => String(m.id) === String(leadMove.id)) : null;
+    /** @type {{x: number, y: number}|null} */
+    let leadStop = null;
+    if (leadMove && leadMember) {
+        const stop = walkTraps(leadMember, leadMove.path);
+        if (stop < leadMove.path.length - 1) {
+            leadStop = leadMove.path[stop];
+            const stayed = stop === 0;
+            const halted = stayed ? null : planGroupMove({ members, to: leadStop, terrain, gridWidth, gridHeight, order, blocked });
+            plan = halted?.allowed
+                ? { ...halted, moves: halted.moves.filter(move => move.id !== plan.leader), stopped: 'La marcha se para.' }
+                : { ...plan, moves: [], stopped: 'La marcha se para.' };
+        }
+    }
+
+    /**
+     * @param {any} member
+     * @param {{x: number, y: number}} to
+     */
+    const place = (member, to) => {
+        member.mapPosition = member.mapPosition || { locationName: '', gridX: 0, gridY: 0 };
+        const from = { x: Number(member.mapPosition.gridX) || 0, y: Number(member.mapPosition.gridY) || 0 };
+        member.mapPosition.gridX = to.x;
+        member.mapPosition.gridY = to.y;
+        if (currentLocationName) member.mapPosition.locationName = currentLocationName;
+        noteZoneEntry(member, from, to);
+    };
+    if (leadMember && leadStop) place(leadMember, leadStop);
     for (const move of plan.moves) {
         const member = partyMembers.find(m => String(m.id) === String(move.id));
-        if (member) {
-            member.mapPosition = member.mapPosition || { locationName: '', gridX: 0, gridY: 0 };
-            const from = { x: Number(member.mapPosition.gridX) || 0, y: Number(member.mapPosition.gridY) || 0 };
-            member.mapPosition.gridX = move.to.x;
-            member.mapPosition.gridY = move.to.y;
-            if (currentLocationName) member.mapPosition.locationName = currentLocationName;
-            noteZoneEntry(member, from, move.to);
-        }
+        if (!member) continue;
+        // Los demás andan su propio camino: también pueden pisar una que nadie ha visto.
+        const stop = move.id === String(leadMember?.id) ? move.path.length - 1 : walkTraps(member, move.path);
+        place(member, move.path[stop] ?? move.to);
     }
 
     savePartyState();
@@ -979,39 +1064,275 @@ export function fireHazardsOnEnter(member, x, y) {
         return;
     }
 
-    for (const hazard of fired) {
-        // R6: una pista del caso, puesta en el tablero: pisarla es encontrarla.
-        if (hazard.kind === 'pista') {
-            const state = readCases(chat_metadata?.[CASES_KEY]);
-            const clue = state.active?.clues.find(c => `caso:${c.id}` === String(hazard.note));
-            if (clue) revealClue(clue);
-            continue;
-        }
-        if (hazard.effect === 'damage' && hazard.damageDice) {
-            const roll = rollWith(hazard.damageDice, nextRandom);
-            member.hp = Math.max(0, (Number(member.hp) || 0) - roll.total);
-            postCombatNarration(
-                `[TABLERO] ${hazard.name} salta bajo ${member.name}: ${roll.total} de daño.`,
-            );
-            // A cero manda la misma puerta de siempre: una sola forma de caer.
-            // Lo que salta en el tablero dice de que es: fuego es fuego.
-            if (member.hp === 0) applyFall(member, String(hazard.cause || ''));
-        } else if (hazard.effect === 'condition' && hazard.condition) {
-            member.activeConditions = Array.isArray(member.activeConditions)
-                ? member.activeConditions : [];
-            if (!member.activeConditions.includes(hazard.condition)) {
-                member.activeConditions.push(hazard.condition);
-            }
-            postCombatNarration(
-                `[TABLERO] ${hazard.name} deja a ${member.name}: ${hazard.condition}.`,
-            );
-        } else {
-            postCombatNarration(`[TABLERO] ${describeHazard(hazard)}.`);
-        }
-    }
+    for (const hazard of fired) applyHazardHit(member, hazard);
 
     savePartyState();
     renderLocationMapsPreview();
+}
+
+/**
+ * Lo que le hace a alguien lo que acaba de saltar: el daño, el estado o, si no hace nada, que se
+ * cuente. Una pista del caso (R6) no hace daño: pisarla es encontrarla.
+ *
+ * El motor decide y el narrador lo cuenta; y el aviso se ve también sin mirar el registro, que
+ * fuera de combate nadie lo tiene abierto (J12.3).
+ *
+ * @param {any} member
+ * @param {any} hazard
+ */
+function applyHazardHit(member, hazard) {
+    if (hazard.kind === 'pista') {
+        const state = readCases(chat_metadata?.[CASES_KEY]);
+        const clue = state.active?.clues.find(c => `caso:${c.id}` === String(hazard.note));
+        if (clue) revealClue(clue);
+        return;
+    }
+    if (hazard.effect === 'damage' && hazard.damageDice) {
+        const roll = rollWith(hazard.damageDice, nextRandom);
+        member.hp = Math.max(0, (Number(member.hp) || 0) - roll.total);
+        postCombatNarration(
+            `[TABLERO] ${hazard.name} salta bajo ${member.name}: ${roll.total} de daño.`,
+        );
+        toastr.error(`${member.name} pisa ${String(hazard.name).toLowerCase()}: ${roll.total} de daño.`, '¡Una trampa!', { timeOut: 9000 });
+        // A cero manda la misma puerta de siempre: una sola forma de caer.
+        // Lo que salta en el tablero dice de que es: fuego es fuego.
+        if (member.hp === 0) applyFall(member, String(hazard.cause || ''));
+    } else if (hazard.effect === 'condition' && hazard.condition) {
+        member.activeConditions = Array.isArray(member.activeConditions)
+            ? member.activeConditions : [];
+        if (!member.activeConditions.includes(hazard.condition)) {
+            member.activeConditions.push(hazard.condition);
+        }
+        postCombatNarration(
+            `[TABLERO] ${hazard.name} deja a ${member.name}: ${hazard.condition}.`,
+        );
+        toastr.error(`${hazard.name} deja a ${member.name}: ${hazard.condition}.`, '¡Una trampa!', { timeOut: 9000 });
+    } else {
+        postCombatNarration(`[TABLERO] ${describeHazard(hazard)}.`);
+    }
+}
+
+/**
+ * La Percepción pasiva de alguien: lo que ve sin buscar (idea 78).
+ *
+ * @param {any} member
+ * @returns {number}
+ */
+function passiveOf(member) {
+    return 10 + skillModifier(member, 'perception').modifier;
+}
+
+/**
+ * J12.3: las casillas con una trampa ya vista del tablero abierto. Quien anda las rodea: no se
+ * pisa a sabiendas lo que se ha encontrado.
+ *
+ * @returns {Set<string>}
+ */
+export function knownTrapsHere() {
+    const board = getActiveBoardContext().board;
+    return board ? knownTrapCells(board) : new Set();
+}
+
+/**
+ * J12.3: andar por un camino del tablero abierto, con sus trampas: la que no se ha visto salta al
+ * pisarla (y quien anda se queda en ella); si de camino ve una, se para para decidir; ante una ya
+ * vista, se para antes. Fuera de combate y en él: una trampa no sabe si hay pelea.
+ *
+ * @param {any} member
+ * @param {Array<{x: number, y: number}>} path Con la casilla de salida.
+ * @returns {number} El índice del camino donde se queda.
+ */
+export function walkTraps(member, path) {
+    const steps = Array.isArray(path) ? path : [];
+    const last = Math.max(0, steps.length - 1);
+    const board = getActiveBoardContext().board;
+    if (!board || steps.length < 2 || !Array.isArray(board.hazards) || board.hazards.length === 0) return last;
+    const walk = walkPath({ board, path: steps, passive: passiveOf(member) });
+    board.hazards = walk.hazards;
+    for (const clue of walk.clues) applyHazardHit(member, clue);
+    for (const hazard of walk.spotted) {
+        const line = `${member.name} se fija: ${hazard.tell || describeHazard(hazard)} en (${hazard.x + 1}, ${hazard.y + 1}), y se para.`;
+        postCombatNarration(`👁️ [TABLERO] ${line}`);
+        toastr.warning(`${line} Se puede desarmar desde al lado, o dar un rodeo.`, 'Cuidado', { timeOut: 9000 });
+    }
+    if (walk.blockedBy) {
+        toastr.info(`${member.name} se para: delante está ${String(walk.blockedBy.name).toLowerCase()}. Desarmadla o dad un rodeo.`, 'Una trampa a la vista');
+    }
+    for (const hazard of walk.fired) applyHazardHit(member, hazard);
+    if (walk.fired.length > 0 || walk.spotted.length > 0 || walk.clues.length > 0) persistBoardTerrain(board);
+    if (walk.fired.length > 0) {
+        soundCue('hit');
+        savePartyState();
+    }
+    return walk.stopAt;
+}
+
+/**
+ * Quién del grupo está en el tablero abierto, vivo, con su casilla.
+ *
+ * @returns {Array<{member: any, x: number, y: number}>}
+ */
+function partyHere() {
+    return partyMembers
+        .filter(m => !m.dead && (Number(m.hp) || 0) > 0
+            && (!m.mapPosition?.locationName || m.mapPosition.locationName === currentLocationName))
+        .map(m => ({ member: m, x: Number(m.mapPosition?.gridX) || 0, y: Number(m.mapPosition?.gridY) || 0 }));
+}
+
+/**
+ * El que mejor lo haría de una lista, por su habilidad.
+ *
+ * @param {any[]} members
+ * @param {string} skill
+ * @returns {any|null}
+ */
+function bestAt(members, skill) {
+    return members.reduce((/** @type {any} */ top, m) => (!top || skillModifier(m, skill).modifier > skillModifier(top, skill).modifier ? m : top), null);
+}
+
+/**
+ * J12.3: buscar trampas alrededor del grupo, fuera de combate. Tira quien mejor mira
+ * (Percepción), una vez por todos, y mira dos casillas alrededor de cada uno. Lo buscado se queda
+ * buscado: para buscar más, hay que moverse.
+ *
+ * @returns {{found: number, fresh: boolean}|null} Nada si no hay tablero o hay pelea.
+ */
+export function searchForTraps() {
+    const { board, gridWidth, gridHeight } = getActiveBoardContext();
+    if (!board || !currentBoardName || combatEncounter.active) return null;
+    const here = partyHere();
+    const searcher = bestAt(here.map(h => h.member), 'perception');
+    if (!searcher) return null;
+    const total = rollDiceDetailed('1d20', 20).total + skillModifier(searcher, 'perception').modifier;
+    /** @type {any} */
+    let state = { hazards: board.hazards, searchedCells: board.searchedCells };
+    /** @type {any[]} */
+    const found = [];
+    let missed = 0;
+    let fresh = false;
+    for (const spot of here) {
+        const result = searchAround({ board: state, center: spot, roll: total, cols: gridWidth, rows: gridHeight });
+        fresh ||= result.fresh;
+        found.push(...result.found);
+        missed += result.missed.length;
+        state = { hazards: result.hazards, searchedCells: result.searched };
+    }
+    if (!fresh) {
+        toastr.info('Aquí ya habéis buscado. Para buscar más, moveos a otra parte.', 'Buscar trampas');
+        return { found: 0, fresh: false };
+    }
+    board.hazards = state.hazards;
+    board.searchedCells = state.searchedCells;
+    const where = (/** @type {any} */ h) => `${String(h.name).toLowerCase()} en (${h.x + 1}, ${h.y + 1})`;
+    const said = found.length > 0
+        ? `Encuentra ${found.map(where).join(' y ')}.`
+        : missed > 0 ? 'Algo no encaja por aquí, pero no da con ello.' : 'No encuentra nada raro.';
+    postCombatNarration(`🔍 [TABLERO] ${searcher.name} busca trampas alrededor (Percepción: ${total}). ${said}`);
+    if (found.length > 0) {
+        toastr.warning(found.map(h => `${h.name} (${h.x + 1}, ${h.y + 1}): ${h.tell || describeHazard(h)}`).join(' · '), `${searcher.name} encuentra ${found.length === 1 ? 'una trampa' : `${found.length} trampas`}`, { timeOut: 10000 });
+    } else {
+        toastr.info(said, `${searcher.name} busca trampas`);
+    }
+    persistBoardTerrain(board);
+    renderLocationMapsPreview();
+    return { found: found.length, fresh: true };
+}
+
+/**
+ * J12.3: desarmar una trampa ya vista que alguien tiene al lado. Lo intenta el más mañoso de los
+ * que están pegados a ella (Juego de manos, más sus herramientas si las lleva). Fallar por cinco o
+ * más la hace saltar en quien la toca.
+ *
+ * @param {string} id
+ * @returns {boolean} Si se desarmó.
+ */
+export function disarmTrap(id) {
+    const { board } = getActiveBoardContext();
+    if (!board || combatEncounter.active) return false;
+    const here = partyHere();
+    const choice = disarmable(board, here).find(c => c.hazard.id === String(id));
+    if (!choice) {
+        toastr.info('Hay que estar al lado de la trampa, y haberla visto.', 'Desarmar');
+        return false;
+    }
+    const hazard = choice.hazard;
+    const next = here.filter(h => Math.max(Math.abs(h.x - hazard.x), Math.abs(h.y - hazard.y)) <= 1).map(h => h.member);
+    const who = bestAt(next, 'sleight');
+    if (!who) return false;
+    const tools = lockBonus(who);
+    const roll = rollCheck({
+        member: who, skill: 'sleight', rollD20: () => rollDiceDetailed('1d20', 20).total, dc: hazard.disarmDC,
+        bonus: tools, bonusWhy: 'sus herramientas',
+    });
+    if (!roll) return false;
+    const result = tryDisarm(board, hazard.id, roll.total);
+    board.hazards = result.hazards;
+    postCombatNarration(`🛠️ [TABLERO] ${roll.said}. ${result.reason}`);
+    if (result.ok) {
+        toastr.success(result.reason, `${who.name} desarma la trampa`);
+    } else if (result.sprung) {
+        applyHazardHit(who, hazard);
+        savePartyState();
+    } else {
+        toastr.info(`${result.reason} Se puede volver a intentar.`, `${who.name} no puede con ella`);
+    }
+    persistBoardTerrain(board);
+    renderLocationMapsPreview();
+    return result.ok;
+}
+
+/**
+ * J12.3: las fichas de las trampas para la fila de acciones, fuera de combate: desarmar la que
+ * alguien tiene al lado y buscar alrededor (si queda algo sin buscar).
+ *
+ * @returns {Array<{id: string, label: string, icon: string, urgent?: boolean}>}
+ */
+export function boardTrapChips() {
+    if (!currentBoardName || combatEncounter.active) return [];
+    const { board, gridWidth, gridHeight } = getActiveBoardContext();
+    if (!board) return [];
+    const here = partyHere();
+    if (here.length === 0) return [];
+    /** @type {Array<{id: string, label: string, icon: string, urgent?: boolean}>} */
+    const chips = disarmable(board, here).slice(0, 2).map(({ hazard }) => ({
+        id: `trap-disarm:${hazard.id}`, label: `Desarmar: ${String(hazard.name).toLowerCase()}`, icon: 'fa-screwdriver-wrench', urgent: true,
+    }));
+    if (here.some(spot => canSearchAround({ board, center: spot, cols: gridWidth, rows: gridHeight }))) {
+        chips.push({ id: 'trap-search', label: 'Buscar trampas', icon: 'fa-magnifying-glass' });
+    }
+    return chips;
+}
+
+/**
+ * Lo que hace pulsar una ficha de trampas (`boardTrapChips`).
+ *
+ * @param {string} id
+ * @returns {boolean} Si era de las suyas.
+ */
+export function runTrapChip(id) {
+    const chip = String(id ?? '');
+    if (chip === 'trap-search') {
+        searchForTraps();
+        return true;
+    }
+    if (chip.startsWith('trap-disarm:')) {
+        disarmTrap(chip.slice('trap-disarm:'.length));
+        return true;
+    }
+    return false;
+}
+
+/**
+ * J12.11: la sala con nombre en la que está alguien, con su nota, o nada.
+ *
+ * @param {any} member
+ * @returns {{name: string, note: string}|null}
+ */
+export function roomOf(member) {
+    const board = getActiveBoardContext().board;
+    if (!board || !member || !Array.isArray(board.zones) || board.zones.length === 0) return null;
+    const here = zoneAt(board, Number(member.mapPosition?.gridX) || 0, Number(member.mapPosition?.gridY) || 0);
+    return here?.name ? { name: String(here.name), note: String(here.note ?? '') } : null;
 }
 
 /**

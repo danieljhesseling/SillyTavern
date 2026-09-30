@@ -155,6 +155,54 @@ export function worldMemoryBlock({ deeds = [], factions = [], debt = null, focus
 }
 
 /**
+ * Las palabras de delante de un nombre de cosa que es una institución («la Casa Keller», «el
+ * Gremio de Mercaderes»): con ellas, «los de la Casa Keller». Un nombre propio suelto («Vane»)
+ * no lleva artículo: «los de Vane».
+ */
+const INSTITUTIONS = new Set([
+    'casa', 'orden', 'corte', 'gremio', 'hermandad', 'cofradia', 'compania', 'guardia', 'legion', 'iglesia',
+    'templo', 'circulo', 'consejo', 'liga', 'banda', 'clan', 'familia', 'ejercito', 'sociedad', 'culto',
+    'secta', 'tribu', 'manada', 'jauria', 'flota', 'mano', 'guarnicion', 'milicia', 'camarilla', 'logia',
+    'academia', 'escuela', 'alianza', 'senado', 'sindicato', 'hueste', 'estirpe', 'dinastia', 'caravana',
+]);
+
+/** @param {string} word @returns {string} */
+const bare = (word) => String(word ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+/**
+ * Quiénes son los de una facción, dicho como sujeto de una frase: «Los Lobos del Bosque», «Los
+ * Leales de Montesclaros», «Los de la Casa Keller», «Los de Vane».
+ *
+ * - Con artículo en plural («Los Lobos…», «Las Hijas…»), tal cual.
+ * - En plural sin artículo («Leales de Montesclaros»), con el suyo: «Los Leales…», «Las Hermanas…».
+ * - Con artículo en singular («La Casa Keller», «El Gremio…»), «los de la…» y «los del…».
+ * - Una institución sin artículo («Casa Keller»), con el que le toca; un nombre propio, sin él.
+ *
+ * @param {any} name
+ * @returns {string}
+ */
+export function peopleOf(name) {
+    const clean = String(name ?? '').replace(/\s+/g, ' ').trim();
+    if (!clean) return 'Los de fuera';
+    if (speaksPlural(clean)) return clean.charAt(0).toUpperCase() + clean.slice(1);
+    const [first = '', ...rest] = clean.split(' ');
+    const lower = bare(first);
+    const tail = rest.join(' ');
+    if (lower === 'el') return `Los del ${tail}`.trim();
+    if (lower === 'la') return `Los de la ${tail}`.trim();
+    if (/^(un|una)$/.test(lower)) return `Los de ${clean.charAt(0).toLowerCase()}${clean.slice(1)}`;
+    // Un plural sin artículo: la primera palabra acaba en -s y no es corta («Leales», «Hijos»).
+    if (lower.length > 3 && lower.endsWith('s') && !INSTITUTIONS.has(lower)) {
+        return `${/as$/.test(lower) ? 'Las' : 'Los'} ${clean}`;
+    }
+    if (INSTITUTIONS.has(lower)) {
+        const feminine = /(a|dad|cion|sion|tud|umbre|ie)$/.test(lower) || ['mano', 'orden', 'corte', 'legion', 'hueste', 'estirpe', 'tribu'].includes(lower);
+        return feminine ? `Los de la ${clean}` : `Los del ${clean}`;
+    }
+    return `Los de ${clean}`;
+}
+
+/**
  * Si alguien os corta el paso en el camino, y qué cuesta.
  *
  * Una facción que os tiene ganas y manda en algún sitio por el que pasáis os para. Quiere
@@ -179,8 +227,8 @@ export function roadTrouble({ factions, places, purse }) {
     const pays = Number(purse) >= toll;
     return {
         faction: worst.id,
-        // «Los de Los Cuervos» no lo dice nadie: un nombre en plural va solo.
-        name: `${speaksPlural(worst.name) ? worst.name : `Los de ${worst.name}`} os cortan el paso`,
+        // «Los de Los Cuervos» o «Los de Leales de…» no lo dice nadie: `peopleOf` pone lo que toca.
+        name: `${peopleOf(worst.name)} os cortan el paso`,
         note: pays
             ? `Se acuerdan de vosotros. Pagáis ${toll} de oro por pasar.`
             : `Se acuerdan de vosotros, y no lleváis los ${toll} de oro que piden: rodeo por el monte, un día más.`,

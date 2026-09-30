@@ -11,9 +11,11 @@
  *   ficha en el tablero y su botón de quién los mueve (J19.5) → uno se le deja al juego y juega
  *   solo; el otro lo mueves tú → la bruja lanza y Gerd, mago, se lo corta con Contraconjuro
  *   (J19.7) → el Rayo de luna acaba con los lobos (la concentración cambia) y quema a la bruja
- *   al empezar su turno (J19.6) → un golpe a quien se concentra pide la salvación (J19.4) →
+ *   al empezar su turno (J19.6) → un golpe a quien se concentra pide la salvación, y con un 1
+ *   la rompe (J19.4) → Escudo para un golpe a Gerd (J19.7) → a Gerd lo mueves tú (J7.3) →
  *   Gerd, devuelto al juego, juega solo (J7.3) → ganar: el panel de victoria, «Iria sale
- *   malherida» (J13.3), alguien quiere decirte algo (J14.1) y ni lobos ni zonas se quedan.
+ *   malherida» (J13.3), alguien quiere decirte algo (J14.1) y ni lobos ni zonas se quedan →
+ *   «Continuar» sigue el hilo: de la Taberna a la Aldea, camino de la Mansión (D-J45).
  *
  * Lo que se prepara a mano (el nivel, los conjuros, el vínculo, la vida de la bruja) se dice
  * en cada paso; lo que se prueba se hace con el ratón, como quien juega.
@@ -291,13 +293,16 @@ try {
 
     // 4. La mesa, puesta a mano: Iria de nivel 5 con su rama de muérdago y sus conjuros de
     // druida; Gerd, mago de nivel 5, con Contraconjuro y Escudo. Y la bruja trae lo suyo del paquete.
+    // Iria, con Constitución 30: los dardos de la bruja le piden tres salvaciones de
+    // concentración, y perderla antes de tiempo se llevaba a los lobos antes del Rayo de luna.
+    // Romperla se mira aparte, con el dado puesto (paso 12).
     const setup = await page.evaluate(async () => {
         const party = /** @type {any[]} */ ((await import('/scripts/party/state.js')).partyMembers);
         const dnd = await import('/scripts/dnd-system.js');
         const roster = await import('/scripts/party/roster.js');
         const [iria, gerd] = party;
         Object.assign(iria, {
-            level: 5, class: 'Druida', wisdom: 18, constitution: 14, hp: 44, maxHp: 44, slotsUsed: {}, concentration: null,
+            level: 5, class: 'Druida', wisdom: 18, constitution: 30, hp: 44, maxHp: 44, slotsUsed: {}, concentration: null,
             cantrips: ['conj-producir-llama', 'conj-rociada-venenosa'],
             prepared: ['conj-conjurar-animales', 'conj-rayo-luna', 'hab-espinas', 'conj-fuego-feerico'],
         });
@@ -481,6 +486,87 @@ try {
     check('J19.4: un golpe a Iria, que se concentra, pide aguantar la concentración',
         hurtLines.some((/** @type {string} */ l) => /aguanta la concentración en Rayo de luna/.test(l)), hurtLines.join(' | '));
 
+    // 12b. J19.4: y un golpe la rompe. Con su Constitución de verdad (14) y el dado puesto a 1,
+    // la salvación no llega: se acaba el Rayo de luna, y su zona se va con él.
+    const broken = await page.evaluate(async () => {
+        const party = /** @type {any[]} */ ((await import('/scripts/party/state.js')).partyMembers);
+        const rules = await import('/scripts/party/combat-rules.js');
+        party[0].constitution = 14;
+        rules.setRandomSource(() => 0);
+        const lines = (await import('/scripts/party/enemy-turn.js')).damagePartyMember(party[0], 6, false);
+        rules.setRandomSource(null);
+        const enc = /** @type {any} */ ((await import('/scripts/party.js')).getCombatEncounter());
+        return { lines, concentration: party[0].concentration ?? null, zones: (enc.spellZones ?? []).map((/** @type {any} */ z) => z.kind) };
+    });
+    check('J19.4: con un 1 en el dado, el golpe rompe la concentración de Iria y el Rayo de luna se apaga',
+        broken.lines.some((/** @type {string} */ l) => /La pierde: se acaba Rayo de luna/.test(l)) && broken.concentration === null && !broken.zones.includes('luz_de_luna'),
+        JSON.stringify(broken));
+
+    // 12c. J19.7: Escudo. Una bruja le pega a Gerd con el dado puesto: el primer número con el que
+    // el golpe entraría (por poco) lo para su Escudo, que gasta un espacio de 1.er nivel y le deja
+    // +5 a la CA hasta su turno. Su reacción de esta ronda, libre (la del Contraconjuro fue otra).
+    const shielded = await page.evaluate(async () => {
+        const party = /** @type {any[]} */ ((await import('/scripts/party/state.js')).partyMembers);
+        const state = await import('/scripts/party/state.js');
+        const rules = await import('/scripts/party/combat-rules.js');
+        const turn = await import('/scripts/party/enemy-turn.js');
+        const enc = /** @type {any} */ ((await import('/scripts/party.js')).getCombatEncounter());
+        const gerd = party[1];
+        const witch = enc.enemies.find((/** @type {any} */ e) => /Bruja/.test(e.name) && Number(e.currentHp) > 0);
+        state.usedReactions.delete(`party:${gerd.id}`);
+        const before = { hp: gerd.hp, first: Number(gerd.slotsUsed?.[1]) || 0 };
+        let said = '';
+        let natural = 0;
+        for (let k = 2; k <= 19 && witch; k++) {
+            rules.setRandomSource(() => (k - 1) / 20 + 0.001);
+            said = turn.resolveEnemyAttackOn(witch, gerd);
+            natural = k;
+            if (!/Resultado: fallo/.test(said) || /Escudo/.test(said)) break;
+        }
+        rules.setRandomSource(null);
+        return { said, natural, before, hp: gerd.hp, first: Number(gerd.slotsUsed?.[1]) || 0, shielded: (enc.shielded ?? []).map(String), gerd: String(gerd.id) };
+    });
+    await clearDice();
+    check('J19.7: un golpe que entraba por poco en Gerd lo para su Escudo, que gasta un espacio de 1.er nivel y le sube la CA hasta su turno',
+        /reacciona: Escudo/.test(shielded.said) && /el golpe ya no entra/.test(shielded.said) && shielded.hp === shielded.before.hp
+        && shielded.first === shielded.before.first + 1 && shielded.shielded.includes(shielded.gerd),
+        JSON.stringify({ ...shielded, said: shielded.said.split('\n').slice(0, 5).join(' | ') }));
+
+    // 12d. J7.3: a Gerd, amigo, lo mueves tú: en su turno, pulsar su ficha enciende hasta dónde
+    // anda, y pulsar una casilla lo lleva allí.
+    const gerdTurn = await toTurnOf(turn => /Gerd/.test(turn.name), 16);
+    await clearDice();
+    await dropToasts();
+    const gerdIdNow = String((await state()).party[1].id);
+    await page.locator(`#game-shell .wm-token[data-token-id="${gerdIdNow}"]`).click({ timeout: 4000 }).catch(() => {});
+    await page.waitForTimeout(500);
+    const gerdCell = await page.evaluate(async () => {
+        const party = /** @type {any[]} */ ((await import('/scripts/party/state.js')).partyMembers);
+        const enc = /** @type {any} */ ((await import('/scripts/party.js')).getCombatEncounter());
+        const taken = new Set([
+            ...party.map(m => `${m.mapPosition?.gridX},${m.mapPosition?.gridY}`),
+            ...(enc.enemies ?? []).map((/** @type {any} */ e) => `${e.gridX},${e.gridY}`),
+        ]);
+        const free = [...document.querySelectorAll('#game-shell .wm-highlight-move.wm-highlight-clickable')]
+            .map(node => ({ x: Number(/** @type {HTMLElement} */ (node).dataset.x), y: Number(/** @type {HTMLElement} */ (node).dataset.y) }))
+            .filter(cell => !taken.has(`${cell.x},${cell.y}`));
+        return { from: { x: party[1].mapPosition?.gridX, y: party[1].mapPosition?.gridY }, to: free[free.length - 1] ?? null, lit: free.length };
+    });
+    if (gerdCell.to) {
+        await page.locator(`#game-shell .wm-highlight-move.wm-highlight-clickable[data-x="${gerdCell.to.x}"][data-y="${gerdCell.to.y}"]`).first().click({ timeout: 4000 }).catch(() => {});
+        await page.waitForTimeout(1000);
+        await clearDice();
+    }
+    const gerdAt = await page.evaluate(async () => {
+        const party = /** @type {any[]} */ ((await import('/scripts/party/state.js')).partyMembers);
+        return { x: party[1].mapPosition?.gridX, y: party[1].mapPosition?.gridY };
+    });
+    check('J7.3: en su turno, a Gerd lo mueves tú: su ficha enciende hasta dónde anda y una casilla pulsada lo lleva allí',
+        gerdTurn && gerdCell.lit > 0 && Boolean(gerdCell.to) && gerdAt.x === gerdCell.to?.x && gerdAt.y === gerdCell.to?.y,
+        JSON.stringify({ gerdTurn, gerdCell, gerdAt }));
+    await shoot('Gerd, movido a mano');
+    await toTurnOf(turn => turn.name === 'Iria', 16);
+
     // 13. J7.3: Gerd, devuelto al juego desde el panel, juega solo su turno.
     await dropToasts();
     const gerdId = (await state()).party[1].id;
@@ -494,8 +580,10 @@ try {
     check('J7.3: Gerd, devuelto al juego con su botón, decide solo en su turno',
         gerdEngine && /Gerd el Mellado[^\n]*decide por su cuenta/.test(gerdLog), gerdLog.split('\n').filter(l => /Gerd/.test(l)).slice(0, 4).join(' | '));
 
-    // 14. Ganar: Iria herida y Gerd entero; con la charla de después segura.
+    // 14. Ganar: Iria herida y Gerd entero; con la charla de después segura. Y las ventanas de
+    // historia, encendidas: ganar la Taberna abre el Asedio en la Mansión, con su escena (D-J45).
     await page.evaluate(async () => {
+        window.localStorage.setItem('sillytavern_gameStoryWindows', 'on');
         const party = /** @type {any[]} */ ((await import('/scripts/party/state.js')).partyMembers);
         party[0].hp = Math.floor(party[0].maxHp * 0.3);
         party[1].hp = party[1].maxHp;
@@ -532,6 +620,49 @@ try {
     const talkOpen = await until(() => page.evaluate(() => Boolean(document.querySelector('dialog[open]'))), 8000);
     check('J14.1: «Escuchar» abre lo que tiene que decir', talkOpen);
     await shoot('la charla después de ganar');
+
+    // 15. D-J45: tras ganar, «Continuar» sigue el hilo. Primero, la escena que ha abierto la
+    // victoria (el Asedio en la Mansión). Luego, lo que toca en la campaña, que está en otro
+    // tablero: «Continuar» saca de la Taberna y enseña la Aldea, desde donde se va.
+    // (Si la tarjeta de victoria se ha cerrado sola, la escena ya ha salido: es lo mismo.)
+    await page.evaluate(() => document.querySelectorAll('dialog[open]:not(.ps-dialog)').forEach(d => /** @type {HTMLDialogElement} */ (d).close()));
+    await dropToasts();
+    const continueChip = () => page.evaluate(() => {
+        const chip = document.querySelector('#game-shell .gs-vn-box .gs-chip-continue');
+        return {
+            scene: document.querySelector('#game-shell')?.getAttribute('data-scene') || '',
+            after: chip?.getAttribute('data-after') || '', next: chip?.getAttribute('data-next') || '', title: chip?.getAttribute('title') || '',
+            victory: Boolean(document.querySelector('.vs-card')),
+        };
+    });
+    const sceneOpen = () => page.evaluate(() => Boolean(document.querySelector('dialog.ps-dialog[open]')));
+    await until(async () => await sceneOpen() || (await continueChip()).after !== '', 8000);
+    const storyFirst = { ...(await continueChip()), already: await sceneOpen() };
+    if (!storyFirst.already) await page.locator('#game-shell .gs-vn-box .gs-chip-continue').first().click({ timeout: 5000 }).catch(() => {});
+    const sceneShown = await until(sceneOpen, 8000);
+    const sceneId = await page.evaluate(() => document.querySelector('dialog.ps-dialog[open] .ps-root')?.getAttribute('data-scene') || '');
+    await shoot('«Continuar» tras ganar: primero, la escena del Asedio');
+    check('D-J45: tras ganar, si la victoria abre una escena, «Continuar» lleva a ella: la del Asedio en la Mansión',
+        (storyFirst.already || (storyFirst.after === 'story' && storyFirst.victory)) && sceneShown && /asedio/i.test(sceneId),
+        JSON.stringify({ storyFirst, sceneShown, sceneId }));
+    // La escena, jugada entera: la primera opción que se pueda y seguir.
+    for (let i = 0; i < 40 && await sceneOpen(); i++) {
+        const option = page.locator('dialog.ps-dialog[open] .dw-option:not(.dw-locked)').first();
+        if (await option.count() > 0) await option.click({ timeout: 3000 }).catch(() => {});
+        else await page.locator('dialog.ps-dialog[open] .ps-next, dialog.ps-dialog[open] .ps-finish').first().click({ timeout: 3000 }).catch(() => {});
+        await page.waitForTimeout(250);
+    }
+    await clearDice();
+    await dropToasts();
+    await until(async () => (await continueChip()).after === 'next', 8000);
+    const onward = await continueChip();
+    await page.locator('#game-shell .gs-vn-box .gs-chip-continue').first().click({ timeout: 5000 }).catch(() => {});
+    const leftTavern = await until(async () => (await state()).board === ''
+        && await page.evaluate(() => document.querySelector('#game-shell')?.getAttribute('data-scene') === 'exploration'), 8000);
+    await shoot('«Continuar» tras ganar: la Aldea, camino de la Mansión');
+    check('D-J45: tras ganar, «Continuar» lleva a lo siguiente de la campaña: sale de la Taberna a la Aldea, camino del Asedio en la Mansión',
+        onward.scene === 'dialogue' && onward.after === 'next' && onward.next === 'exploration' && /^Lo siguiente: Asedio en la Mansión/.test(onward.title) && leftTavern,
+        JSON.stringify({ onward, now: await state(), scene: await page.evaluate(() => document.querySelector('#game-shell')?.getAttribute('data-scene')) }));
 
     check('sin errores en la página', problems.length === 0, problems.slice(0, 6).join('\n        '));
 } catch (error) {

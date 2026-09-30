@@ -35,6 +35,12 @@ export const FIELD_GAINS_KEY = 'fieldGains';
  */
 export const FIELD_LIGHT_KEY = 'fieldLight';
 
+/**
+ * D-J50: el día en que se le preguntó a cada muerto con Hablar con los muertos (por su caso y su
+ * nombre, `deadKey`). Hasta siete días después no se le vuelve a preguntar.
+ */
+export const SPOKEN_DEAD_KEY = 'spokenDead';
+
 /** Z4: los sucesos que salieron, y los que volverán. */
 export const SUCESOS_KEY = 'sucesos';
 
@@ -83,6 +89,10 @@ export const DUELS_KEY = 'duels';
 /** Ideas 69 y 70: dónde se ha estado, y las notas del mapa. */
 export const VISITED_KEY = 'visited';
 export const MAP_NOTES_KEY = 'mapNotes';
+/** J10.1: lo que abre caminos sin ser un objeto (una barca, un guía que se ofrece). */
+export const WORLD_KEYS_KEY = 'worldKeys';
+/** J10.1: los caminos con puerta que ya estaban abiertos, para decir una vez cuándo se abre uno. */
+export const GATES_OPEN_KEY = 'gatesOpen';
 
 /** U5 del pegamento: la mesa de la semana. */
 export const WEEK_TABLE_KEY = 'weekTable';

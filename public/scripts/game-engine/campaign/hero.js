@@ -22,6 +22,7 @@
 import { applyKin } from '../compendio/kin.js';
 import { describeBackground } from './backgrounds.js';
 import { genderOf } from './grammar.js';
+import { readFaceChoice } from './face-choice.js';
 import { SKILLS } from '../rules/checks.js';
 
 /** Lo que se ofrece cuando el mundo no trae razas propias. */
@@ -171,6 +172,7 @@ export function rollStatBonus(random) {
  * @property {string} [background] El trasfondo (idea 49): da competencias y un contacto.
  * @property {Record<string, number>} [statBonus] J1.2: lo repartido o tirado encima de la base.
  * @property {string} image
+ * @property {any} [face] D-J52: la cara sin arte que eligió (`face-choice.js`).
  */
 
 /**
@@ -282,6 +284,8 @@ export function buildHeroEntry(answers, where = {}) {
             background: text(answers?.background),
             level: 1,
             image: text(answers?.image),
+            // D-J52: la cara sin arte que eligió (iniciales, icono o emoji), si eligió una.
+            ...(readFaceChoice(answers?.face) ? { face: readFaceChoice(answers?.face) } : {}),
             str: stats.strength,
             dex: stats.dexterity,
             con: stats.constitution,

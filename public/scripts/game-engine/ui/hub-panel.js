@@ -154,8 +154,9 @@ export async function openHeroChooser({ Popup, POPUP_TYPE, heroes, title = '¿Co
 
 /** @typedef {ReturnType<typeof import('../campaign/hub.js').hubCampaignCards>[number]} CampaignCard */
 
-/** @typedef {{ok: true, card: CampaignCard, name: string, replaced: boolean, notes: string[]}} ImportDone */
-/** @typedef {{ok: false, headline: string, problems: Array<{path: string, message: string}>, more: number, notes?: string[]}} ImportRefused */
+/** @typedef {import('../campaign/campaign-check.js').CampaignCheck} CampaignCheck */
+/** @typedef {{ok: true, card: CampaignCard, name: string, replaced: boolean, notes: string[], check?: CampaignCheck|null}} ImportDone */
+/** @typedef {{ok: false, headline: string, problems: Array<{path: string, message: string}>, more: number, notes?: string[], check?: CampaignCheck|null}} ImportRefused */
 /** @typedef {ImportDone|ImportRefused} ImportResult */
 
 /** J5.4: lo más grande que se lee. Strahd, entero, pesa 120 KB. */
@@ -244,6 +245,67 @@ function addCampaignTile(onClick) {
         .on('click', onClick);
 }
 
+/** J5.6: cuántas cosas se enseñan de cada parte del informe; las demás, contadas. */
+const CHECK_SHOWN = 12;
+
+/** J5.6: el icono de cada veredicto. */
+const VERDICT_ICONS = { lista: 'fa-circle-check', huecos: 'fa-triangle-exclamation', rota: 'fa-circle-xmark' };
+
+/**
+ * J5.6: la campaña, comprobada antes de jugarla (`campaign-check.js`), dicha en llano: si se
+ * puede jugar entera y, por partes, lo que lo impide, lo que se quedaría a medias, lo que ha
+ * puesto el juego, las cosas raras y lo que le falta para durar como las del juego. Lo que
+ * importa, abierto; lo demás, plegado. Si hay algo que arreglar, se puede copiar la lista para
+ * pegársela a tu Gem.
+ *
+ * @param {CampaignCheck} check
+ * @returns {JQuery}
+ */
+function checkReport(check) {
+    const root = div('hb-check').attr('data-verdict', check.verdict);
+    root.append(div('hb-check-head')
+        .append(`<i class="fa-solid ${VERDICT_ICONS[check.verdict] ?? 'fa-circle-info'}"></i>`)
+        .append($('<span></span>').text(`Comprobada: ${check.headline}`)));
+    for (const group of check.groups) {
+        const part = $('<details class="hb-check-group"></details>').attr('data-group', group.key).prop('open', group.open);
+        part.append($('<summary></summary>').text(`${group.title} (${group.items.length})`));
+        part.append(div('hb-check-note').text(group.note));
+        // Los fallos, como antes: la frase y, en pequeño, dónde está en el archivo.
+        const list = $('<ul></ul>').addClass(group.key === 'rota' ? 'hb-import-list' : 'hb-check-list');
+        for (const item of group.items.slice(0, CHECK_SHOWN)) {
+            const line = $('<li></li>').text(item.text);
+            if (item.where) line.append(' ').append($('<code></code>').text(item.where));
+            list.append(line);
+        }
+        const hidden = Math.max(0, group.items.length - CHECK_SHOWN);
+        if (hidden > 0) list.append($('<li></li>').text(`… y ${hidden} más.`));
+        part.append(list);
+        root.append(part);
+    }
+    if (!check.groups.some(group => group.key === 'rota' || group.key === 'huecos')) return root;
+    if (check.verdict === 'rota') {
+        root.append(div('hb-import-note').text('Arréglalos en el archivo, o pásale esta lista a tu Gem: te devuelve la campaña corregida entera. Luego vuelve a añadirla.'));
+    }
+    // Lo que hay que arreglar, listo para pegar en el chat del Gem.
+    const copied = $('<textarea class="text_pole hb-check-text" rows="6" readonly></textarea>').hide();
+    const copy = $('<button type="button" class="menu_button hb-check-copy"></button>')
+        .append('<i class="fa-solid fa-copy"></i>').append($('<span></span>').text('Copiar la lista para tu Gem'))
+        .on('click', async () => {
+            const { checkText } = await import('../campaign/campaign-check.js');
+            const said = checkText(check);
+            copied.val(said).show();
+            try {
+                await navigator.clipboard.writeText(said);
+                copy.find('span').text('Copiada: pégasela a tu Gem');
+            } catch {
+                // Sin portapapeles (un navegador que no deja), el texto queda a la vista para copiarlo a mano.
+                copied.trigger('focus').trigger('select');
+                copy.find('span').text('Cópiala de aquí debajo');
+            }
+        });
+    return root.append(copy, copied);
+}
+
 /**
  * J5.4: lo que ha pasado al añadir. Bien: cuál, y lo que se puso en limpio. Mal: por qué, con
  * lo que dice el validador, fallo a fallo, para arreglarlo o pasárselo al Gem.
@@ -261,11 +323,17 @@ function showImport(box, result, source, locked = '') {
             ? `Puesta al día en el tablón: ${done.name}.`
             : `Añadida al tablón: ${done.name}. ${locked || 'Ya se puede empezar.'}`));
         for (const note of done.notes ?? []) box.append(div('hb-import-note').text(note));
+        if (done.check) box.append(checkReport(done.check));
         return;
     }
     const refused = /** @type {ImportRefused} */ (result);
     box.append(div('hb-import-title').text(`No se ha podido añadir ${source}.`));
     box.append(div('hb-import-note').text(refused.headline));
+    // J5.6: con el informe, los fallos van en él, con lo que se quedaría a medias y lo que puso el juego.
+    if (refused.check && refused.check.groups.length > 0) {
+        box.append(checkReport(refused.check));
+        return;
+    }
     if (refused.problems.length === 0) return;
     const list = $('<ul class="hb-import-list"></ul>');
     for (const problem of refused.problems) {

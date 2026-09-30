@@ -70,6 +70,7 @@ import {
 import { buildEnemyIntents } from './enemy-turn.js';
 import {
     judgeCurrentScenario, resolveAllyTurnAction, retreatFromCombat, startWaitingFight, waitingSummary,
+    afterFightNow, followAfterFight,
 } from './combat-flow.js';
 import {
     confirmEndTurn, endPlayerCombatTurn, handlePlayerCombatAttack, hideCheck, performManeuver, throwItem,
@@ -77,14 +78,14 @@ import {
 } from './player-actions.js';
 import {
     closedDoorsNearParty, enterBoard, getActiveBoardContext, isBoardWon, stairsHere, threadBoardsHere,
-    toggleBoardDoor,
+    toggleBoardDoor, boardTrapChips, runTrapChip,
 } from './board.js';
 import {
     lastWaiting, locationMapsManuallyHidden, renderLocationMapsPreview, setLocationMapsHidden,
 } from './board-view.js';
 import {
     currentSeason, ensureWorldData, getLocationBoards, hereLocation, lastRumors, lastWorldNpcs, lastWorldSeason,
-    loadedWorldName,
+    loadedWorldName, travelLocations,
 } from './world.js';
 import { friendlyFactions } from './factions.js';
 import {
@@ -105,6 +106,7 @@ import {
     startTalk,
 } from './talk.js';
 import { askBeforeTravelling, campHere, neighbourPlaces, travelWithTime } from './travel.js';
+import { openWorldMap } from './world-map.js';
 import { buildServiceCards, rumorsLeftHere, runService, worldFestivals } from './town.js';
 import {
     openTextMap, currentSessionLog, keepSessionLog, openSessionLog, openPartyGlance, openGlossary, openDiceHistory,
@@ -113,6 +115,7 @@ import {
 } from './menus.js';
 import { lastMeter } from './events.js';
 import { chatWith, dayStripNow, meetSomeone, peopleChips, townNow } from './social.js';
+import { canAvoidHere, canParleyNow, openAvoidChoice, openParleyChoice } from './avoid.js';
 
 /** Los avisos del juego, guardados para la bandeja (idea 159). */
 /** @type {import('../game-engine/ui/shell/notices.js').Notice[]} */
@@ -196,6 +199,8 @@ function buildShellSituation() {
         // cambia por lo que se hace. Y pasar a otro chat (a una campaña) es abrir partida.
         offline: offlineGame(),
         chatId: String(getCurrentChatId() ?? ''),
+        // D-J45: recién ganada una pelea en un tablero, a dónde sigue «Continuar».
+        afterFight: offlineGame() ? afterFightNow() : null,
     };
 }
 
@@ -331,6 +336,10 @@ export function buildShellChips(limit = undefined) {
         // J19.10: la magia fuera de combate, cuando sirve aquí, y curar a los heridos de un toque.
         magic: fieldMagicNow(),
         heal: fieldHealNow()?.choice.name ?? '',
+        // J12.2: junto a «Iniciar combate», otra salida.
+        avoid: canAvoidHere(),
+        // J12.3: buscar trampas y desarmar la que se tiene al lado.
+        traps: boardTrapChips(),
     });
 }
 
@@ -366,6 +375,16 @@ export function runShellChip(chip) {
     }
     if (chip.id === 'fight-board') {
         if (lastWaiting.board === currentBoardName) startWaitingFight(lastWaiting.placements);
+        return;
+    }
+    // J12.2: hablar, pagar, huir o esconderse, en su ventana.
+    if (chip.id === 'avoid-board') {
+        void openAvoidChoice();
+        return;
+    }
+    // J12.3: buscar trampas, o desarmar la de al lado.
+    if (chip.id.startsWith('trap-') && runTrapChip(chip.id)) {
+        if (isShellOpen()) refreshGameShell();
         return;
     }
     // Idea 137: tirar por lo que se esta escribiendo, sin borrarlo.
@@ -479,7 +498,8 @@ function openAllChips() {
  */
 function buildShellExploration() {
     const view = buildExplorationView({
-        locationMaps: getCurrentWorldLocationMaps(),
+        // J10.1: los caminos con puerta, cerrados si no tenéis lo que piden, y con qué se abren.
+        locationMaps: travelLocations(),
         campaignMap: getCampaignMap(),
         currentLocation: currentLocationName,
         currentBoard: currentBoardName,
@@ -603,6 +623,8 @@ function buildShellOptions() {
         getTown: () => townNow(),
         getChips: buildShellChips,
         onChip: runShellChip,
+        // D-J45: «Continuar» tras ganar sigue el hilo (sale del tablero si lo siguiente es fuera).
+        onContinue: (next) => followAfterFight(next, buildShellSituation()),
         getChecks: () => (combatEncounter.active || !partyMembers[0]
             ? []
             : checkOptions(partyMembers[0], { locked: Boolean(chat_metadata?.[PENDING_CHECK_KEY]) })),
@@ -729,8 +751,18 @@ function buildShellOptions() {
         onHowToPlay: () => { void openHowToPlay(); },
         // U5 del pegamento: la semana en una mesa.
         onWeekTable: () => { void openWeekTable(); },
-        // Ideas 69 y 70: el mapa en texto.
-        onTextMap: () => { void openTextMap(); },
+        // Ideas 69 y 70, y J10.5: sin conexión, el mapa dibujado (D-J44: lo nuevo, solo ahí); el
+        // de texto con conexión, o si no se puede dibujar.
+        onTextMap: () => {
+            if (!offlineGame()) {
+                void openTextMap();
+                return;
+            }
+            void openWorldMap().catch(error => {
+                console.error('[mapa] no se pudo dibujar', error);
+                void openTextMap();
+            });
+        },
         // Idea 187: en un sitio sin tablero, la música del pueblo.
         audioSceneFor: (scene) => (scene === 'exploration' && !currentBoardName && !combatEncounter.active ? 'town' : scene),
         getToggles: () => [
@@ -810,6 +842,9 @@ function buildShellOptions() {
         onRetry: (mode) => { void retryLastReply(mode); },
         canRetry: () => narratorMode() !== 'motor',
         onFlee: () => { void retreatFromCombat(); },
+        // J8.5: salir de la pelea hablando.
+        onParley: () => { void openParleyChoice(); },
+        canParley: () => canParleyNow(),
         onClose: () => setLocationMapsHidden(wasHidden),
         getAbilities: () => {
             const member = getCurrentActingMember();

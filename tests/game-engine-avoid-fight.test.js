@@ -1,10 +1,13 @@
 import { describe, test, expect } from '@jest/globals';
+import fs from 'node:fs';
 import {
     AVOID_KINDS, mindOf, leaderOf, foesLine, defaultDc, defaultPrice, readAvoid, defaultAvoid, avoidFor,
     avoidChips, resolveAvoid, describeExitEffect, checkAvoid, readExitEffect, rollFormula, kindOf, fightsWithoutWay,
+    avoidIntro, exitPlan,
 } from '../public/scripts/game-engine/combat/avoid-fight.js';
 import {
     PARLEY_WAYS, readParley, moraleOf, bribePrice, parleyChips, resolveParley, checkParley, wayOf, standingFoes,
+    parleyPlan,
 } from '../public/scripts/game-engine/combat/parley.js';
 
 const bran = { id: 1, name: 'Bran', class: 'Guerrero', level: 1, hp: 12, maxHp: 12, strength: 16, dexterity: 12, charisma: 8, wisdom: 10 };
@@ -381,6 +384,97 @@ describe('J8.5: salir de una pelea hablando', () => {
         expect(checkParley({ convencer: { dc: 12 }, no: ['entregarse'] })).toEqual({ errors: [], warnings: [] });
         expect(checkParley({ gritar: {}, no: ['bailar'], convencer: { skill: 'magia', success: { effects: [{ volar: 1 }] } } }).errors).toHaveLength(4);
         expect(checkParley([]).errors).toHaveLength(1);
+    });
+});
+
+describe('lo que hace el juego con cada salida', () => {
+    test('la primera línea: quién espera, en llano', () => {
+        expect(avoidIntro(guards)).toBe('Alguacil Torres y dos más os cierran el paso.');
+        expect(avoidIntro([{ name: 'Ratero del muelle', cr: 0.125 }])).toBe('Ratero del muelle os cierra el paso.');
+        expect(avoidIntro(wolves)).toBe('Os han olido: Lobo famélico ×2, Lobo alfa.');
+        expect(avoidIntro(dead)).toBe('Algo se mueve delante: Zombi de Strahd ×2.');
+        expect(avoidIntro([])).toBe('');
+    });
+
+    test('antes de pelear: pasar, salir o pelear (y quién empieza)', () => {
+        expect(exitPlan({ ends: 'avoided', resolves: true, enemiesFirst: false })).toEqual({ fight: false, enemiesFirst: false, passed: true, leave: false });
+        expect(exitPlan({ ends: 'fled', resolves: false, enemiesFirst: false })).toEqual({ fight: false, enemiesFirst: false, passed: false, leave: true });
+        expect(exitPlan({ ends: 'fight', resolves: false, enemiesFirst: true })).toEqual({ fight: true, enemiesFirst: true, passed: false, leave: false });
+        // Sale bien, pero lo escrito dice que no cuenta: se sale, y el tablero sigue esperando.
+        expect(exitPlan({ ends: 'avoided', resolves: false, enemiesFirst: false })).toMatchObject({ passed: false, leave: true });
+    });
+
+    test('con una tirada de verdad: huir mal os deja pelear con ellos primero', () => {
+        const flee = defaultAvoid(guards).find(o => o.kind === 'huir');
+        expect(exitPlan(resolveAvoid({ option: flee, party, rollD20: dice(1) }))).toMatchObject({ fight: true, enemiesFirst: true });
+        expect(exitPlan(resolveAvoid({ option: flee, party, rollD20: dice(20) }))).toMatchObject({ fight: false, leave: true });
+    });
+
+    test('en mitad de la pelea: cada forma de hablar, con lo suyo', () => {
+        expect(parleyPlan({ ends: 'ended', resolves: true, costsAction: true }))
+            .toEqual({ end: 'victory', theyLeave: true, passed: true, spendAction: false, lull: false, enraged: false });
+        expect(parleyPlan({ ends: 'captured', resolves: false, costsAction: false }))
+            .toEqual({ end: 'manual', theyLeave: false, passed: false, spendAction: false, lull: false, enraged: false });
+        expect(parleyPlan({ ends: 'captured', resolves: true, costsAction: false })).toMatchObject({ end: 'manual', passed: true });
+        expect(parleyPlan({ ends: 'lull', resolves: false, costsAction: true })).toMatchObject({ end: '', lull: true, spendAction: true });
+        expect(parleyPlan({ ends: 'continue', resolves: false, costsAction: true })).toMatchObject({ end: '', spendAction: true, lull: false });
+        expect(parleyPlan({ ends: 'enraged', resolves: false, costsAction: true })).toMatchObject({ end: '', enraged: true, spendAction: true });
+    });
+});
+
+describe('J12.2: las peleas escritas de 1387, Strahd y el gremio', () => {
+    const packs = ['1387', 'strahd', 'gremio'].map(id => [id, JSON.parse(fs.readFileSync(new URL(`../public/mundos/${id}.pack.json`, import.meta.url), 'utf8'))]);
+
+    test('cada tablero con pelea trae al menos una salida escrita, y se entiende', () => {
+        for (const [id, pack] of packs) {
+            expect([id, fightsWithoutWay(pack)]).toEqual([id, []]);
+            for (const board of pack.boards.filter(b => b.enemies?.length > 0)) {
+                const checked = checkAvoid(board.avoid, { path: `${id}.${board.id}.avoid` });
+                expect(checked.errors).toEqual([]);
+                expect(readAvoid(board.avoid).length).toBeGreaterThan(0);
+                expect(checkParley(board.parley).errors).toEqual([]);
+            }
+        }
+    });
+
+    test('en la posada de 1387, las cuatro salidas funcionan (J8.5)', () => {
+        const pack = packs.find(([id]) => id === '1387')[1];
+        const inn = pack.boards.find(b => b.id === 'enc-huida-posada');
+        const row = (name) => pack.bestiary.find(r => r.name === name);
+        const enemies = () => inn.enemies.map((e, i) => ({
+            name: `${e.name} ${i + 1}`, cr: Number(row(e.name).cr), boss: Boolean(row(e.name).boss), currentHp: Number(row(e.name).hp), maxHp: Number(row(e.name).hp),
+        }));
+        const parley = readParley(inn.parley);
+        const view = parleyChips({ enemies: enemies(), party, gold: 20, parley });
+        expect(view.leader).toBe('Alguacil Torres');
+        // Torres es jefe, pero lo escrito deja rendirse: las cuatro, abiertas.
+        expect(view.chips.map(c => [c.id, c.locked])).toEqual([['entregarse', ''], ['sobornar', ''], ['convencer', ''], ['enganar', '']]);
+
+        const given = resolveParley({ way: 'entregarse', enemies: enemies(), party, gold: 20, parley, rollD20: dice(1) });
+        expect(parleyPlan(given)).toMatchObject({ end: 'manual', passed: true });
+        expect(given.effects.map(e => e.kind)).toEqual(['gold', 'time', 'attitude', 'fame']);
+
+        const bribe = resolveParley({ way: 'sobornar', enemies: enemies(), party, gold: 20, parley, rollD20: dice(20) });
+        expect(bribe).toMatchObject({ ends: 'ended', resolves: true });
+        expect(bribe.effects[0]).toEqual({ kind: 'gold', amount: -8 });
+
+        const talk = resolveParley({ way: 'convencer', enemies: enemies(), party, gold: 20, parley, rollD20: dice(20) });
+        expect(parleyPlan(talk)).toMatchObject({ end: 'victory', theyLeave: true, passed: true });
+        expect(talk.effects).toContainEqual({ kind: 'rumor', id: 'r-traicion-en-la-puerta' });
+
+        const lie = resolveParley({ way: 'engañar', enemies: enemies(), party, gold: 20, parley, rollD20: dice(20) });
+        expect(lie.ends).toBe('ended');
+        expect(lie.effects).toContainEqual({ kind: 'grudge', who: 'Alguacil Torres' });
+        expect(lie.lines.at(-1)).toMatch(/el cuarto está vacío/);
+    });
+
+    test('antes de pelear en la posada: hablar, pagar o saltar por la ventana, que sigue la historia', () => {
+        const pack = packs.find(([id]) => id === '1387')[1];
+        const inn = pack.boards.find(b => b.id === 'enc-huida-posada');
+        const options = avoidFor(inn, inn.enemies.map(e => ({ name: e.name })));
+        expect(options.map(o => o.kind)).toEqual(['hablar', 'pagar', 'huir']);
+        const window = options.find(o => o.kind === 'huir');
+        expect(exitPlan(resolveAvoid({ option: window, party, rollD20: dice(20) }))).toMatchObject({ passed: true, leave: false });
     });
 });
 

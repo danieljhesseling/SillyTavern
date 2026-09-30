@@ -320,6 +320,36 @@ try {
         Number(spread.str) === Number(numbers.str) + 1 && /quedan 2/.test(spread.left), JSON.stringify(spread));
     const premise = await page.locator('.hc-root .hc-premise-text').textContent().catch(() => '');
     check('la creación cuenta cómo empieza: la llegada al muelle de Puerto Alba (J2.1)', /muelle de Puerto Alba/i.test(String(premise)), String(premise).slice(0, 160));
+    // D-J52: «Tu cara»: sin imagen, se elige cómo se ve: iniciales en un color, un icono o un emoji.
+    const facePreview = () => page.evaluate(() => {
+        const chosen = /** @type {HTMLElement|null} */ (document.querySelector('.hc-root .hc-face-chosen'));
+        const badge = /** @type {HTMLElement|null} */ (chosen?.querySelector('.hero-initials'));
+        return {
+            shown: Boolean(chosen && chosen.style.display !== 'none' && badge),
+            text: (badge?.textContent || '').trim(),
+            icon: badge?.querySelector('i')?.className || '',
+            hue: badge?.dataset.hue || '',
+            stand: /** @type {HTMLElement|null} */ (document.querySelector('.hc-root .hc-face-stand'))?.style.display !== 'none',
+            kinds: [...document.querySelectorAll('.hc-root .fc-kind')].map(k => k.getAttribute('data-kind')),
+        };
+    });
+    await page.locator('.hc-root .fc-kind[data-kind="initials"]').click({ timeout: 5000 }).catch(() => {});
+    await page.locator('.hc-root .fc-color[data-color="azul"]').click({ timeout: 5000 }).catch(() => {});
+    const byInitials = await facePreview();
+    await page.locator('.hc-root .fc-kind[data-kind="icon"]').click({ timeout: 5000 }).catch(() => {});
+    await page.locator('.hc-root .fc-icon[data-icon="fa-dragon"]').click({ timeout: 5000 }).catch(() => {});
+    const byIcon = await facePreview();
+    await page.locator('.hc-root .fc-kind[data-kind="emoji"]').click({ timeout: 5000 }).catch(() => {});
+    await page.locator('.hc-root .fc-emoji[data-emoji="🐺"]').click({ timeout: 5000 }).catch(() => {});
+    const byEmoji = await facePreview();
+    if (SHOT) await page.screenshot({ path: `${SHOT}.cara.png` });
+    check('D-J52: «Tu cara» deja elegir, y el retrato lo enseña: iniciales en azul, un icono (el dragón) o un emoji (🐺)',
+        byInitials.kinds.join(',') === 'auto,initials,icon,emoji' && byInitials.shown && byInitials.text === 'T' && byInitials.hue === '215' && !byInitials.stand
+        && byIcon.shown && /fa-dragon/.test(byIcon.icon) && byEmoji.shown && byEmoji.text === '🐺', JSON.stringify({ byInitials, byIcon, byEmoji }));
+    // Y se vuelve al retrato de la clase: lo que sigue mira a Tessa con su retrato de guerrera.
+    await page.locator('.hc-root .fc-kind[data-kind="auto"]').click({ timeout: 5000 }).catch(() => {});
+    const byClass = await facePreview();
+    check('D-J52: con «Retrato», vuelve el retrato de relleno de su clase', !byClass.shown && byClass.stand, JSON.stringify(byClass));
     if (SHOT) await page.screenshot({ path: `${SHOT}.personaje.png` });
     await page.locator('.hc-root .hc-enter').click();
 
@@ -1278,6 +1308,32 @@ try {
         bramBack?.name === 'Bram' && bramBack.gold === 10 && bramBack.items === bramNow?.items && bramBack.guests.includes('Gerd el Mellado')
         && staying.map(h => h.name).join() === 'Tessa' && staying[0]?.gold === tessaThen?.gold,
         JSON.stringify({ bramBack, staying }));
+
+    // 9b. D-J52: cambiar tu cara sin arte desde tu ficha: «Cambiar cara», un emoji, «Guardar». Sale
+    // en tu ficha y en la tira del grupo, y se guarda en Bram.
+    await dropToasts();
+    await page.locator('#game-shell .gs-party-strip .gs-chip-clickable').filter({ visible: true }).first().click({ timeout: 8000 }).catch(() => {});
+    await page.waitForSelector('.ch-root', { timeout: 10000 }).catch(() => {});
+    const changeFace = page.locator('.ch-root .ch-face-change');
+    const faceOffered = await changeFace.isVisible().catch(() => false);
+    await changeFace.click({ timeout: 5000 }).catch(() => {});
+    await page.waitForSelector('.fc-window', { timeout: 10000 }).catch(() => {});
+    await page.locator('.fc-window .fc-kind[data-kind="emoji"]').click({ timeout: 5000 }).catch(() => {});
+    await page.locator('.fc-window .fc-emoji[data-emoji="🦊"]').click({ timeout: 5000 }).catch(() => {});
+    const faceSaid = (await page.locator('.fc-window .fc-said').textContent().catch(() => '') || '').trim();
+    if (SHOT) await page.screenshot({ path: `${SHOT}.cambiar-cara.png` });
+    await page.locator('dialog.popup[open]:has(.fc-window) .popup-button-ok').click({ timeout: 5000 }).catch(() => {});
+    await page.waitForSelector('.ch-root', { timeout: 10000 }).catch(() => {});
+    await page.waitForTimeout(600);
+    const newFace = await page.evaluate(async () => ({
+        stored: JSON.parse(JSON.stringify((await import('/scripts/party/state.js')).partyMembers[0]?.face ?? null)),
+        sheet: (document.querySelector('.ch-root .ch-head .hero-initials')?.textContent || '').trim(),
+        strip: (document.querySelector('#game-shell .gs-party-strip .gs-chip-initials')?.textContent || '').trim(),
+    }));
+    check('D-J52: desde tu ficha, «Cambiar cara» → un emoji: sale en la ficha y en la tira del grupo, y se guarda',
+        faceOffered && faceSaid === 'Emoji 🦊' && newFace.stored?.emoji === '🦊' && newFace.sheet === '🦊' && newFace.strip === '🦊', JSON.stringify({ faceOffered, faceSaid, newFace }));
+    await page.locator('dialog.popup[open] .popup-button-ok').last().click({ timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(400);
 
     // 10. D-J23: borrar el gremio desde «Cargar partida», con sus campañas, y una ventana que dice
     // todo lo que se va antes de borrarlo.

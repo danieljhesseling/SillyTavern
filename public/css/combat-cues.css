@@ -913,8 +913,37 @@
     user-select: none;
 }
 
+/* D-J52: la cara que eligió quien juega: un icono o un emoji, en el mismo cuadro. */
+.hero-initials.hero-face-emoji {
+    font-weight: 400;
+    letter-spacing: 0;
+    text-shadow: none;
+}
+
+.hero-initials.hero-face-icon i {
+    font-size: 0.95em;
+}
+
+/* D-J52: en la novela, la cara sin arte de uno del grupo, en grande, de pie sobre la caja. */
+.gs-vn-portrait .hero-initials.gs-vn-face {
+    width: min(70%, 13rem);
+    aspect-ratio: 1;
+    margin-bottom: 18px;
+    border-width: 3px;
+    border-radius: 22px;
+    font-size: min(5rem, 10vh);
+}
+
 .ch-avatar.hero-initials {
     font-size: 1.5rem;
+}
+
+/* D-J52: «Cambiar cara», pequeño, debajo de lo que eres. */
+.ch-face-change.menu_button {
+    width: fit-content;
+    margin: 0.3rem 0 0;
+    padding: 0.2rem 0.6rem;
+    font-size: 0.8rem;
 }
 
 .ch-mate-face {

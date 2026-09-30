@@ -19,7 +19,7 @@ import {
     HUB_IMPORTED_DIR, HUB_IMPORTED_LIST, readImportedList, importedListFile, withImportedRow, withoutImportedRow,
     importedForHub, withoutHubImported,
 } from './game-engine/campaign/hub.js';
-import { readCampaignText, importedCampaignId, importedPackFileName, importedCampaignRow } from './game-engine/campaign/campaign-import.js';
+import { readCampaignFile, importedCampaignId, importedPackFileName, importedCampaignRow } from './game-engine/campaign/campaign-import.js';
 import {
     HUB_HEROES_KEY, activeHero, hubHeroCards, readRestingHeroes, withResting, wakeFromRest, takenHeroNames,
 } from './game-engine/campaign/hub-heroes.js';
@@ -950,6 +950,11 @@ async function openCampaignChat({ worldName, party, partyEntries, locationName, 
         message = enterStartingBoard(locationName, boardName)
             ? `Estás en "${boardName}", en "${locationName}".`
             : 'Usa /go y /enter para llegar al primer tablero.';
+    } else if (locationName) {
+        // J5.3: una campaña que empieza en una localización sin tablero (la aldea de una campaña
+        // corta de tu Gem): el grupo llega a ella, sin tablero, como al pueblo del gremio.
+        const { enterStartingLocation } = await import('./party.js');
+        if (enterStartingLocation(locationName)) message = `Estás en "${locationName}".`;
     }
 
     toastr.success(message, `Campaña "${worldName}" ${verb}`);
@@ -1504,8 +1509,10 @@ export async function removeHubCampaign(id) {
  * todos tus gremios. Añadir otra vez la misma campaña la pone al día.
  *
  * @param {string} content El texto del archivo, o el pegado (D-J35).
- * @returns {Promise<{ok: true, card: any, name: string, replaced: boolean, notes: string[]}
- *   |{ok: false, headline: string, problems: Array<{path: string, message: string}>, more: number, notes?: string[]}>}
+ * J5.6: con el informe de la campaña comprobada (`check`), haya entrado o no.
+ *
+ * @returns {Promise<{ok: true, card: any, name: string, replaced: boolean, notes: string[], check?: any}
+ *   |{ok: false, headline: string, problems: Array<{path: string, message: string}>, more: number, notes?: string[], check?: any}>}
  */
 export async function importHubCampaign(content) {
     try {
@@ -1514,8 +1521,15 @@ export async function importHubCampaign(content) {
         if (!isHubWorld(home?.metadata)) {
             return { ok: false, headline: 'Las campañas se añaden desde el tablón del gremio.', problems: [], more: 0 };
         }
-        const read = readCampaignText(content);
-        if (!read.ok) return { ok: false, headline: read.headline, problems: read.problems, more: read.more, notes: read.notes };
+        // J5.3: lo que falta lo pone el motor con el compendio del juego (los bichos del bestiario
+        // y las frases del narrador); uno recién abierto, para que la misma campaña dé siempre lo mismo.
+        const compendium = await freshCompendium().catch(() => null);
+        // J12.5: un tablero que trae su dibujo (`image`) y no su mapa se lee del dibujo, como en
+        // el editor de tableros.
+        const loadPixels = async (/** @type {string} */ src) => (await (await import('./game-engine/ui/map-image-editor.js')).loadPicture(src)).pixels;
+        const read = await readCampaignFile(content, { compendium, loadPixels });
+        // J5.6: la campaña, comprobada, haya entrado o no: el tablón enseña el informe.
+        if (!read.ok) return { ok: false, headline: read.headline, problems: read.problems, more: read.more, notes: read.notes, check: read.check };
 
         const id = importedCampaignId(read.pack.world?.name);
         // Antes de guardar nada: si tu lista no se puede leer, guardar encima la borraría.
@@ -1539,7 +1553,7 @@ export async function importHubCampaign(content) {
         const level = Number(partySnapshot().find(m => !m.guest)?.level) || 1;
         const card = hubCampaignCards({ worlds: [], hub: withoutHubImported(home.metadata[HUB_KEY]), imported: rows, level }).find(c => c.id === id);
         if (!card) throw new Error('la campaña se ha guardado, pero el tablón no la lee');
-        return { ok: true, card, name: row.name, replaced, notes: read.notes };
+        return { ok: true, card, name: row.name, replaced, notes: read.notes, check: read.check };
     } catch (error) {
         console.error('[gremio] no se pudo añadir la campaña', error);
         return { ok: false, headline: `No se pudo guardar la campaña: ${String(error?.message || error)}.`, problems: [], more: 0 };
@@ -2228,6 +2242,8 @@ async function adoptVeteran(worldName, data, hero) {
     const spec = buildHeroEntry({
         name: vet.name, race: vet.race, className: String(vet.class ?? vet.charClass ?? ''), gender: vet.gender,
         background: vet.background, about: String(vet.description ?? vet.about ?? ''), image: vet.avatar,
+        // D-J52: con la cara sin arte que eligió.
+        face: vet.face,
     }, { raceRow: null, classRow: null, locationName: String(place?.name || ''), cell, preset: null });
     const entry = /** @type {any} */ (createWorldInfoEntry(worldName, data));
     if (!entry) return '';

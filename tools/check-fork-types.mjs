@@ -55,6 +55,8 @@ const FORK_FILES = [
     'public/scripts/game-engine/ui/taller/board-paint.js',
     'public/scripts/game-engine/world/travel.js',
     'public/scripts/game-engine/board/hazards.js',
+    'public/scripts/game-engine/board/trap-actions.js',
+    'public/scripts/game-engine/board/board-camera.js',
     'public/scripts/game-engine/world-builder/shapes.js',
     'public/scripts/game-engine/compendio/compendio.js',
     'public/scripts/game-engine/compendio/names.js',
@@ -69,6 +71,10 @@ const FORK_FILES = [
     'public/scripts/game-engine/ui/pixel-art.js',
     // J1.8: tu cara sin arte (las iniciales en tu color). J19.10: la magia fuera de combate.
     'public/scripts/game-engine/ui/hero-face.js',
+    // D-J52: elegir tu cara sin arte. D-J53: la pregunta de al llegar, en la novela.
+    'public/scripts/game-engine/campaign/face-choice.js',
+    'public/scripts/game-engine/ui/face-picker.js',
+    'public/scripts/game-engine/ui/vn-question.js',
     'public/scripts/game-engine/rules/field-magic.js',
     'public/scripts/game-engine/ui/field-magic-panel.js',
     'public/scripts/game-engine/rules/injuries.js',
@@ -87,6 +93,7 @@ const FORK_FILES = [
     'public/scripts/game-engine/combat/barks.js',
     'public/scripts/game-engine/combat/forecast.js',
     'public/scripts/game-engine/combat/tally.js',
+    'public/scripts/game-engine/combat/after-fight.js',
     'public/scripts/game-engine/combat/retreat.js',
     'public/scripts/game-engine/campaign/recruit.js',
     'public/scripts/game-engine/campaign/memories.js',
@@ -226,6 +233,10 @@ const FORK_FILES = [
     // J9.2: las escenas del hilo, jugadas, y su ventana.
     'public/scripts/game-engine/campaign/plot-scenes.js',
     'public/scripts/game-engine/ui/plot-scene.js',
+    // J12.2 y J8.5: otra salida antes de pelear y hablar en mitad de la pelea, y su ventana.
+    'public/scripts/game-engine/combat/avoid-fight.js',
+    'public/scripts/game-engine/combat/parley.js',
+    'public/scripts/game-engine/ui/avoid-scene.js',
     // J9.3, J9.5, J9.6 y J11.5: la historia como un libro, y su ventana.
     'public/scripts/game-engine/campaign/story-book.js',
     'public/scripts/game-engine/ui/story-book.js',
@@ -238,6 +249,11 @@ const FORK_FILES = [
     'public/scripts/game-engine/campaign/hub.js',
     'public/scripts/game-engine/campaign/hub-heroes.js',
     'public/scripts/game-engine/campaign/campaign-import.js',
+    // J5.2, J5.3, J5.6 y J12.5: las campañas de tu Gem, rellenas, comprobadas y con sus cofres.
+    'public/scripts/game-engine/campaign/pack-fill.js',
+    'public/scripts/game-engine/campaign/campaign-check.js',
+    'public/scripts/game-engine/campaign/chests.js',
+    'public/scripts/game-engine/campaign/pack-maps.js',
     'public/scripts/game-engine/campaign/campaign-end.js',
     'public/scripts/game-engine/ui/hub-panel.js',
     'public/scripts/game-engine/campaign/starting-kit.js',
@@ -341,6 +357,12 @@ const FORK_FILES = [
     'public/scripts/game-engine/ui/app-mode.js',
     'public/scripts/game-engine/ui/motion.js',
     'public/scripts/game-engine/board/draw-light.js',
+    // J10 y J11.3: el mundo vivo (caminos con puerta, el mapa dibujado, sucesos por facción y huellas).
+    'public/scripts/game-engine/world/route-gates.js',
+    'public/scripts/game-engine/world/map-layout.js',
+    'public/scripts/game-engine/ui/campaign-map.js',
+    'public/scripts/game-engine/campaign/suceso-triggers.js',
+    'public/scripts/game-engine/campaign/world-marks.js',
     // J15.1: party.js es una fachada; lo suyo vive en party/, un módulo por cosa.
     ...readdirSync(PARTY_DIR).filter(f => f.endsWith('.js')).sort().map(f => `public/scripts/party/${f}`),
     'public/scripts/dnd-system.js',

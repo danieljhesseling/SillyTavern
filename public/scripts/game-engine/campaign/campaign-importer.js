@@ -31,6 +31,8 @@ import { deriveRooms } from './campaign-map.js';
 import { nameRoomsFromZones, normalizeZones } from '../board/zones.js';
 import { normalizeElevation } from '../board/heights.js';
 import { normalizeBoardGrid } from '../board/map-image.js';
+import { isLargeBoard } from '../board/board-camera.js';
+import { trapsFromPack } from '../board/trap-actions.js';
 import { OBJECTIVE_FIELDS } from './campaign-pack-schema.js';
 import { normalizePack } from './campaign-pack.js';
 import { readPlaces } from './town.js';
@@ -426,7 +428,10 @@ export function buildImportPlan(raw, options = {}) {
             // se marca el ritmo de una mazmorra.
             // Con zonas (J12.11), cada sala se llama como la zona que la cubre: «B3».
             rooms: nameRoomsFromZones(deriveRooms(terrain, width, height, { revealFrom: partyStart }), zones),
-            fogEnabled: false,
+            // J12.13: un mapa grande se juega por partes, con niebla; los demás, a la vista.
+            fogEnabled: isLargeBoard(width, height),
+            // J12.3: las trampas del tablero, sin ver y armadas, con su aviso.
+            ...(Array.isArray(board.traps) && board.traps.length > 0 ? { hazards: trapsFromPack(board.traps) } : {}),
             npcPlacements: [],
             encounterRules: [],
             // Where the pack says each creature stands. Kept as written so the fight can
@@ -439,6 +444,8 @@ export function buildImportPlan(raw, options = {}) {
             // J12.2 y J8.5: las otras salidas de su pelea, tal cual; las lee `combat/avoid-fight.js`.
             ...(Array.isArray(board.avoid) && board.avoid.length > 0 ? { avoid: board.avoid } : {}),
             ...(board.parley && typeof board.parley === 'object' ? { parley: board.parley } : {}),
+            // J5.2: lo que guarda cada cofre (el tesoro de una sala o de un sitio); lo abre `party/loot.js`.
+            ...(Array.isArray(board.chests) && board.chests.length > 0 ? { chests: board.chests } : {}),
         });
     }
 
@@ -468,7 +475,8 @@ export function buildImportPlan(raw, options = {}) {
             dndData: {
                 entityType: 'character',
                 name,
-                mapPosition: { locationName: first ? locationNameOf(locations, first) : '', gridX: start.x, gridY: start.y },
+                // J5.3: sin tablero en el primer sitio, el grupo empieza en él igual (sin casilla).
+                mapPosition: { locationName: first ? locationNameOf(locations, first) : text([...locations.values()][0]?.name), gridX: start.x, gridY: start.y },
             },
         });
     });

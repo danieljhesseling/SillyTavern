@@ -27,7 +27,8 @@ import {
 } from '../game-engine/campaign/cases.js';
 import { getBondProgress } from '../game-engine/campaign/bonds.js';
 import { isShellOpen, refreshGameShell } from '../game-engine/ui/shell/game-shell.js';
-import { ATTITUDES_KEY, CASES_KEY, DUELS_KEY } from './keys.js';
+import { ATTITUDES_KEY, CASES_KEY, DUELS_KEY, SPOKEN_DEAD_KEY } from './keys.js';
+import { deadKey, speakDeadWait } from '../game-engine/rules/field-magic.js';
 import { currentLocationName, currentWorldFactions, partyMembers } from './state.js';
 import { currentPet, petTricks } from './pet.js';
 import { carriedNames, getAbilityCatalogue, magicConsequences, payForSpell } from './magic.js';
@@ -162,6 +163,17 @@ export function askTheDead() {
     if (ability.component && !carriedNames().map(n => n.toLowerCase()).includes(String(ability.component).toLowerCase())) {
         toastr.info(`Hace falta ${ability.component} (${COMPONENTS[/** @type {keyof typeof COMPONENTS} */ (ability.component)]?.from ?? 'se compra'}).`, 'Hablar con los muertos');
         return '';
+    }
+    // D-J50: al mismo muerto, una vez cada siete días; antes, se dice cuándo y no se gasta nada.
+    const today = Math.max(1, campaignDay());
+    const wait = speakDeadWait(state, chat_metadata?.[SPOKEN_DEAD_KEY], today);
+    if (wait > 0) {
+        toastr.info(`${state.active.victim} ya contestó hace poco. Se le puede volver a preguntar ${wait === 1 ? 'mañana' : `dentro de ${wait} días`}.`, 'Hablar con los muertos');
+        return '';
+    }
+    if (chat_metadata) {
+        chat_metadata[SPOKEN_DEAD_KEY] = { ...(chat_metadata[SPOKEN_DEAD_KEY] ?? {}), [deadKey(state.active)]: today };
+        saveMetadata();
     }
     const clue = state.active.clues.find(c => !c.misleading && !state.found.includes(c.id));
     const paid = payForSpell(caster.who, ability);

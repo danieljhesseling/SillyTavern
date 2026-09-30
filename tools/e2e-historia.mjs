@@ -528,8 +528,17 @@ try {
         await page.locator('.hc-picker .hc-option').first().click();
         await page.waitForTimeout(400);
     }
+    // D-J52: Tessa elige su cara sin arte al crearse: un lobo.
+    await page.locator('.hc-root .fc-kind[data-kind="emoji"]').click({ timeout: 5000 }).catch(() => {});
+    await page.locator('.hc-root .fc-emoji[data-emoji="🐺"]').click({ timeout: 5000 }).catch(() => {});
     await page.locator('.hc-root .hc-enter').click();
     const pier = await until(async () => (await story())?.id === 'el-muelle', 90000);
+    const tessaFace = await page.evaluate(async () => ({
+        stored: JSON.parse(JSON.stringify((await import('/scripts/party/state.js')).partyMembers[0]?.face ?? null)),
+        strip: (document.querySelector('#game-shell .gs-party-strip .gs-chip-initials')?.textContent || '').trim(),
+    }));
+    check('D-J52: la cara elegida al crearse (🐺) se guarda en Tessa y sale en la tira del grupo',
+        tessaFace.stored?.kind === 'emoji' && tessaFace.stored?.emoji === '🐺' && tessaFace.strip === '🐺', JSON.stringify(tessaFace));
     const pierFirst = await story();
     check('Gremio: el prólogo empieza con la escena del muelle en su ventana, contada por el narrador, en femenino',
         pier && Boolean(pierFirst?.narrator) && /cansada del viaje/.test(String(pierFirst?.text)), JSON.stringify(pierFirst));
@@ -586,6 +595,24 @@ try {
     check('D-J36: «Hablar con Brunilda» abre directamente su charla escrita, con su cara y «Otras cosas»',
         talkChip && brunildaTalk && brunildaOpen?.plate === 'Brunilda' && /retratos\/gremio\/brunilda/.test(String(brunildaOpen?.face)) && Boolean(brunildaOpen?.extras.includes('otras'))
         && Boolean(brunildaOpen?.options.some((/** @type {any} */ o) => o.id === 'quiero-entrar')), JSON.stringify(brunildaOpen));
+    // D-J48: el grupo solo opina en lo importante. Con Gerd en el grupo (le gusta tratar bien a
+    // la gente): tratar bien a Brunilda de pasada (un punto de vínculo, sin más) no lleva opinión;
+    // lo mismo, si cambia cómo os mira o es de una escena del hilo, sí.
+    const opinions = await page.evaluate(async () => {
+        const { partyMembers } = await import('/scripts/party/state.js');
+        const plot = await import('/scripts/party/plot.js');
+        const added = !partyMembers.some(m => /^Gerd/.test(String(m.name)));
+        if (added) partyMembers.push(/** @type {any} */ ({ id: 9902, name: 'Gerd el Mellado', hp: 12, maxHp: 12, guest: { kind: 'hireling' } }));
+        const dialogue = { id: 'x', nodes: [{ id: 'a', effects: [], options: [] }] };
+        const small = { id: 's', text: 'Qué buen día.', effects: [{ kind: 'bond', amount: 1 }], next: '' };
+        const kind = { id: 'k', text: 'Reconozco a una veterana.', effects: [{ kind: 'attitude', amount: 1 }], next: '' };
+        const tags = (/** @type {any} */ option, /** @type {any} */ context) => plot.optionOpinionTags(option, context).map((/** @type {any} */ t) => t.text);
+        const out = { small: tags(small, { dialogue }), kind: tags(kind, { dialogue }), scene: tags(small, { scene: true }) };
+        if (added) partyMembers.splice(partyMembers.findIndex(m => m.id === 9902), 1);
+        return out;
+    });
+    check('D-J48: charlar de pasada no lleva la opinión del grupo; lo que cambia cómo os miran, o una escena del hilo, sí («A Gerd le gusta esto»)',
+        opinions.small.length === 0 && opinions.kind.includes('A Gerd le gusta esto') && opinions.scene.includes('A Gerd le gusta esto'), JSON.stringify(opinions));
     await shoot('gremio-brunilda-charla');
     await playTalk(['quiero-entrar', 'prueba-voy']);
     await page.waitForTimeout(1200);

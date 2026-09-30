@@ -68,6 +68,7 @@ const MAX_CHIPS = 7;
  *   se ofrece también desde otro tablero de aquí (J2.1: del muelle a la bodega, sin salir antes).
  * @param {string} [input.fight] Los que esperan en el tablero para pelear, dicho corto («Rata de bodega x3»). La
  *   ficha de empezar va delante: en la escena de diálogo el botón del tablero no se ve.
+ * @param {boolean} [input.avoid] J12.2: con `fight`, la ficha «Evitar la pelea» va a su lado.
  * @param {Array<{id: string, label: string, icon: string, command: string}>} [input.hub] El gremio (J4): el tablón de
  *   campañas y los mercenarios, o volver a él desde una campaña. Van delante: es a lo que se viene.
  * @param {Array<{id: string, label: string, icon: string, command: string}>} [input.social] Tu gente (J14): la charla
@@ -76,13 +77,16 @@ const MAX_CHIPS = 7;
  *   oscuras, Identificar, preguntar al muerto de un caso). Con alguno, la ficha «Magia» abre su ventana.
  * @param {string} [input.heal] J19.10, «curar en el viaje»: el conjuro con que se curaría a los heridos ahora, de
  *   un toque. Vacío si nadie está herido o nadie puede.
+ * @param {Array<{id: string, label: string, icon: string, urgent?: boolean}>} [input.traps] J12.3: las trampas del
+ *   tablero. Desarmar la que alguien tiene al lado (`urgent`) va con las puertas; buscar, al final, para no echar
+ *   de la fila lo demás.
  * @returns {ActionChip[]}
  */
 export function buildActionChips({
     fighting = false, hasBoard = false, doors = [], companions = [], mentioned = [],
     places = [], boards = [], hurt = false, hitDice = 0, rumors = 0, explore = false, proposals = [], requests = [], forage = false,
     people = [], prisoners = [], limit = MAX_CHIPS, typed = [], replies = [], extras = [], camp = false, stairs = false, hub = [], fight = '', thread = [],
-    board = '', social = [], magic = [], heal = '',
+    board = '', social = [], magic = [], heal = '', avoid = false, traps = [],
 } = {}) {
     if (fighting) return [];
 
@@ -108,6 +112,8 @@ export function buildActionChips({
 
     // Los que esperan en el tablero: empezar la pelea.
     if (fight) chips.push({ id: 'fight-board', label: `Iniciar combate (${fight})`, icon: 'fa-hand-fist', source: 'motor' });
+    // J12.2: y al lado, otra salida: hablar, pagar, huir o esconderse (su ventana lo ofrece).
+    if (fight && avoid) chips.push({ id: 'avoid-board', label: 'Evitar la pelea', icon: 'fa-comments', source: 'motor' });
 
     // J4: el gremio. Detrás de la conversación en marcha y delante de todo lo demás. Caben
     // cuatro: saltar la prueba (J2.3), el tablón, contratar y el salón de la fama (J3.9).
@@ -162,6 +168,12 @@ export function buildActionChips({
             source: 'motor',
             cell: { x: door.x, y: door.y },
         });
+    }
+
+    // J12.3: la trampa que alguien tiene al lado, ya vista: desarmarla, con las puertas.
+    const trapChips = Array.isArray(traps) ? traps : [];
+    for (const trap of trapChips.filter(t => t.urgent).slice(0, 2)) {
+        chips.push({ id: trap.id, label: trap.label, icon: trap.icon, source: 'motor' });
     }
 
     // Idea 139: lo que el narrador ofrece coger.
@@ -304,6 +316,11 @@ export function buildActionChips({
     // J14: tu gente, al final, para no echar de la fila lo que pide la historia.
     for (const chip of social.slice(0, 3)) {
         chips.push({ id: chip.id, label: chip.label, icon: chip.icon, source: 'motor', command: chip.command });
+    }
+
+    // J12.3: buscar trampas alrededor, lo último: se puede siempre, y no corre prisa.
+    for (const trap of trapChips.filter(t => !t.urgent).slice(0, 1)) {
+        chips.push({ id: trap.id, label: trap.label, icon: trap.icon, source: 'motor' });
     }
 
     // Idea 169: si no caben, la ultima dice cuantas quedan y las abre todas. Antes se

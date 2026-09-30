@@ -2252,7 +2252,7 @@ try {
         bad.errors.length >= 4
         && bad.errors.some(e => /borde exterior/.test(e))
         && bad.errors.some(e => /sobre un muro/.test(e))
-        && bad.errors.some(e => /no esta en el bestiario/.test(e))
+        && bad.errors.some(e => /no está en el bestiario/.test(e))
         && bad.errors.some(e => /no existe entre los tableros/.test(e)),
         JSON.stringify(bad.errors));
 
@@ -7796,6 +7796,8 @@ try {
         JSON.stringify({ temple56, seen56: seen56.slice(0, 120), ring56 }));
 
     // --- 106 y 37: un plazo que se pasa, y el maestro de armas que entrena ---------------------
+    // D-J46: los plazos están apagados por ahora; se encienden solo para esta prueba.
+    await page.evaluate(async () => { (await import('/scripts/game-engine/campaign/plot.js')).STORY_DEADLINES.on = true; });
     await patchParty56(() => {
         const meta = window.SillyTavern.getContext().chatMetadata;
         const today = Math.max(1, Math.floor(Number(meta.calendar?.day) || 1));
@@ -7831,6 +7833,7 @@ try {
     });
     check('si el plazo pasa, el hito se pierde, se dice, y la historia sigue peor parada (106)',
         late56.missed.includes('la-nieve-manchada') && late56.open.includes('el-asalto-al-peaje') && late56.deed, JSON.stringify(late56));
+    await page.evaluate(async () => { (await import('/scripts/game-engine/campaign/plot.js')).STORY_DEADLINES.on = false; });
     const trained56 = await page.evaluate(async () => ({
         said: (window.SillyTavern.getContext().chat || []).some((/** @type {any} */ m) => String(m.mes || '').includes('El maestro de armas os entrena')),
         xp: Number((await import('/scripts/party.js')).getPartyMembersSnapshot()

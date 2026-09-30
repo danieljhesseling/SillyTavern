@@ -25,6 +25,7 @@ import { readLevelRange } from '../combat/level-adjust.js';
 import { HUB_IMPORTED_PREFIX } from './hub.js';
 import { fillPackGaps } from './pack-fill.js';
 import { checkCampaign } from './campaign-check.js';
+import { readPackMaps } from './pack-maps.js';
 
 /** A cuántos días queda una campaña que no lo dice. */
 export const DEFAULT_JOURNEY_DAYS = 5;
@@ -227,25 +228,23 @@ function jsonProblem(body) {
 const refused = (headline) => ({ ok: false, kind: '', pack: null, headline, problems: [], more: 0, notes: [], check: null, filled: [] });
 
 /**
- * Leer el archivo de una campaña: comprobar que es JSON, ponerlo en limpio si viene del Gem y
- * validarlo como el paquete que es.
- *
- * Acepta también el JSON dentro de un bloque ```json, como lo copia quien lo saca del chat
- * del Gem.
- *
- * J5.3: antes de validar, el motor rellena lo que falte (tableros, bichos, textos, el final),
- * y lo dice. J5.6: después, la campaña se comprueba entera (`check`), haya entrado o no.
- *
- * @param {string} content El texto del archivo.
- * @param {Object} [options]
- * @param {any} [options.compendium] El compendio del juego, para sacar de él bichos y frases.
- *   Sin él, los bichos salen con los números de su desafío y los textos se quedan como están.
- * @returns {CampaignFileReport}
+ * @typedef {Object} ParsedCampaign Un JSON de campaña leído y puesto en limpio, aún sin rellenar.
+ * @property {'pack'|'gem'} kind
+ * @property {any} clean
+ * @property {string[]} notes
  */
-export function readCampaignText(content, { compendium = null } = {}) {
+
+/**
+ * La primera mitad de leer una campaña: que sea JSON, que sea una campaña y, si viene del Gem,
+ * en limpio. Lo que no pasa de aquí vuelve ya como informe.
+ *
+ * @param {string} content
+ * @returns {{refused: CampaignFileReport}|ParsedCampaign}
+ */
+function parseCampaignText(content) {
     const raw = String(content ?? '').trim();
     const body = (raw.match(/^```(?:json)?[ \t]*\r?\n([\s\S]*?)\r?\n?```$/i)?.[1] ?? raw).trim();
-    if (!body) return refused('El archivo está vacío.');
+    if (!body) return { refused: refused('El archivo está vacío.') };
 
     /** @type {any} */
     let parsed = null;
@@ -265,14 +264,14 @@ export function readCampaignText(content, { compendium = null } = {}) {
             parsed = JSON.parse(inner);
             around = true;
         } catch {
-            return refused(`No es un JSON válido: ${jsonProblem(body)}`);
+            return { refused: refused(`No es un JSON válido: ${jsonProblem(body)}`) };
         }
     }
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-        return refused('Esto no es una campaña: el archivo tiene que ser un solo objeto JSON, con su mundo y sus tableros.');
+        return { refused: refused('Esto no es una campaña: el archivo tiene que ser un solo objeto JSON, con su mundo y sus tableros.') };
     }
     if (!parsed.world && !parsed.boards) {
-        return refused('Esto no es una campaña: no trae ni el mundo («world») ni los tableros («boards»).');
+        return { refused: refused('Esto no es una campaña: no trae ni el mundo («world») ni los tableros («boards»).') };
     }
 
     const kind = isGemJson(parsed) ? 'gem' : 'pack';
@@ -286,12 +285,29 @@ export function readCampaignText(content, { compendium = null } = {}) {
             ? `Venía de tu Gem: ${marks} y la cabecera del esquema.`
             : 'Venía de tu Gem: se ha quitado la cabecera del esquema.');
     }
+    return { kind, clean, notes };
+}
 
+/**
+ * La segunda mitad: el motor rellena lo que falte (J5.3), se valida y se comprueba (J5.6).
+ *
+ * @param {ParsedCampaign} parsed
+ * @param {Object} options
+ * @param {any} [options.compendium]
+ * @param {import('./pack-fill.js').FillNote[]} [options.before] Lo ya puesto antes (J12.5: los
+ *   mapas leídos de su dibujo).
+ * @returns {CampaignFileReport}
+ */
+function finishCampaignRead({ kind, clean, notes }, { compendium = null, before = [] }) {
     // J5.3: lo que falta, lo pone el motor, con la semilla de la campaña.
-    const { pack, filled } = fillPackGaps(clean, { compendium });
+    const fill = fillPackGaps(clean, { compendium });
+    const pack = fill.pack;
+    const filled = [...before, ...fill.filled];
     const boards = new Set(filled.filter(f => f.kind === 'tablero').map(f => f.name)).size;
     const creatures = new Set(filled.filter(f => f.kind === 'criatura').map(f => f.name)).size;
-    if (filled.length > 0) {
+    const drawn = new Set(filled.filter(f => f.kind === 'mapa').map(f => f.name)).size;
+    if (drawn > 0) notes.push(`${drawn === 1 ? 'Un tablero traía su dibujo sin su mapa: se ha leído' : `${drawn} tableros traían su dibujo sin su mapa: se han leído`} del dibujo.`);
+    if (filled.some(f => f.kind !== 'mapa')) {
         const said = [
             boards > 0 ? `${boards} ${boards === 1 ? 'tablero' : 'tableros'}` : '',
             creatures > 0 ? `${creatures} ${creatures === 1 ? 'criatura' : 'criaturas'}` : '',
@@ -329,6 +345,47 @@ export function readCampaignText(content, { compendium = null } = {}) {
         check,
         filled,
     };
+}
+
+/**
+ * Leer el archivo de una campaña: comprobar que es JSON, ponerlo en limpio si viene del Gem y
+ * validarlo como el paquete que es.
+ *
+ * Acepta también el JSON dentro de un bloque ```json, como lo copia quien lo saca del chat
+ * del Gem.
+ *
+ * J5.3: antes de validar, el motor rellena lo que falte (tableros, bichos, textos, el final),
+ * y lo dice. J5.6: después, la campaña se comprueba entera (`check`), haya entrado o no.
+ *
+ * @param {string} content El texto del archivo.
+ * @param {Object} [options]
+ * @param {any} [options.compendium] El compendio del juego, para sacar de él bichos y frases.
+ *   Sin él, los bichos salen con los números de su desafío y los textos se quedan como están.
+ * @returns {CampaignFileReport}
+ */
+export function readCampaignText(content, { compendium = null } = {}) {
+    const parsed = parseCampaignText(content);
+    return 'refused' in parsed ? parsed.refused : finishCampaignRead(parsed, { compendium });
+}
+
+/**
+ * Lo mismo que `readCampaignText` y, antes de rellenar, J12.5: el mapa de cada tablero que trae
+ * su dibujo (`image`) y no su mapa se lee del dibujo (`pack-maps.js`). Es lo que usa el tablón
+ * del gremio, que puede abrir imágenes.
+ *
+ * @param {string} content
+ * @param {Object} [options]
+ * @param {any} [options.compendium]
+ * @param {((src: string) => Promise<import('../board/map-image.js').MapPixels>)|null} [options.loadPixels]
+ *   Abre una imagen y da sus píxeles. Sin él, como `readCampaignText`.
+ * @returns {Promise<CampaignFileReport>}
+ */
+export async function readCampaignFile(content, { compendium = null, loadPixels = null } = {}) {
+    const parsed = parseCampaignText(content);
+    if ('refused' in parsed) return parsed.refused;
+    if (!loadPixels) return finishCampaignRead(parsed, { compendium });
+    const drawn = await readPackMaps(parsed.clean, { loadPixels });
+    return finishCampaignRead({ ...parsed, clean: drawn.pack }, { compendium, before: drawn.filled });
 }
 
 /**

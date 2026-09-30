@@ -67,7 +67,7 @@ import {
 import { currentPet, petMeetsTown } from './pet.js';
 import {
     campaignCompendium, currentSeason, enemiesInSeason, hereLocation, lastCompendium, lastConfidantEntries, lastHub, lastPack,
-    lastRumors, lastWorldNpcs, leaveMark, saveCurrentBoard, saveCurrentLocation, weatherHere,
+    lastRumors, lastWorldNpcs, leaveMark, saveCurrentBoard, saveCurrentLocation, travelLocations, weatherHere,
 } from './world.js';
 import { friendlyFactions, getCurrentWorldFactions, rulerOf } from './factions.js';
 import {
@@ -84,7 +84,7 @@ import { partyPurse, payFromParty, savePartyState } from './roster.js';
 import { changeAttitude, companionCards, getPartyFormation, judgeDecision, sayRoadLine } from './companions.js';
 import { countStat } from './menus.js';
 import { alarmBonus } from './rituals.js';
-import { fieldLightOn } from './magic.js';
+import { fieldLightOn, askHealOnArrival } from './magic.js';
 
 /**
  * Lo que el narrador del motor sabe de un sitio al llegar: cómo es, a qué hora, con qué
@@ -450,7 +450,9 @@ async function stopAtGuards(place, ask) {
         }).show();
         pay = picked === 61;
     }
-    if (pay && payFromParty(stop.fine)) {
+    // Lo que de verdad pasó: querer pagar sin llegar el oro es salir corriendo.
+    pay = pay && payFromParty(stop.fine);
+    if (pay) {
         chat_metadata[WANTED_KEY] = settleGuards(chat_metadata[WANTED_KEY], place, 'pay');
         postCombatNarration(`🛡️ [CAMPAÑA] Los guardias de ${place} os paran: pagáis ${stop.fine} de oro y queda saldado.`);
     } else {
@@ -470,8 +472,9 @@ async function stopAtGuards(place, ask) {
  * @returns {string[]}
  */
 export function neighbourPlaces() {
+    // J10.1: con los caminos pasados por sus puertas (reputación, fama, llaves y guías).
     const reach = reachFrom({
-        from: currentLocationName, locations: getCurrentWorldLocationMaps(),
+        from: currentLocationName, locations: travelLocations(),
         friendly: friendlyFactions(), season: currentSeason(), done: readPlotState(chat_metadata?.[PLOT_STATE_KEY]).done,
     });
     return Object.entries(reach).filter(([, way]) => way.reach === 'near').map(([name]) => name);
@@ -671,7 +674,8 @@ export async function travelWithTime(name, options = {}) {
     const held = holdDuringCombat(combatEncounter, 'travel');
     if (held) return { to: '', reason: held };
 
-    const locations = getCurrentWorldLocationMaps();
+    // J10.1: un camino que pide algo que no tenéis está cerrado, y dice qué lo abre.
+    const locations = travelLocations();
     const wanted = String(name || '').trim();
     const match = locations.find(l => String(l.name).toLowerCase() === wanted.toLowerCase());
     if (!match) {
@@ -921,6 +925,9 @@ export async function travelWithTime(name, options = {}) {
     playSucesos('llegada', { sitio: match.name });
     // J14.1: al llegar (o de lo que pasó por el camino), a veces alguien del grupo tiene algo que decir.
     afterArrival();
+    // D-J53: con alguien herido y alguien que cura con magia, se pregunta en la novela si curarle
+    // (detrás de lo que se haya abierto al llegar). No se espera: el viaje ya ha acabado.
+    void askHealOnArrival().catch(error => console.error('[party] heal on arrival failed', error));
 
     return { to: match.name, reason: '' };
 }

@@ -79,6 +79,7 @@ function box(label, value, hint = '') {
  * @param {(() => void)|null} [input.onLevelUp] Subir de nivel: solo se pasa cuando toca.
  * @param {((itemId: string, on: boolean) => boolean)|null} [input.onAttune] J19.9: sintonizarse o dejarlo.
  * @param {string} [input.attuneNote] J19.9: cuántos lleva en sintonía, de cuántos.
+ * @param {(() => void)|null} [input.onFace] D-J52: cambiar su cara sin arte (iniciales, icono o emoji).
  * @param {any} input.Popup
  * @param {any} input.POPUP_TYPE
  * @returns {Promise<string>} `changed` si se ha tocado algo, para volver a abrirla al día.
@@ -87,7 +88,7 @@ export async function openCharacterPanel({
     member, slotInfo = {}, abilities = [], xpTable = null, bondRank = 0,
     onEdit = null, languages = [], sets = [], mates = [], campaigns = null, onGive = null, onSaveSet = null, onApplySet = null,
     known = null, magic = null, onGrimoire = null, onFieldMagic = null, onLevelUp = null, onAttune = null, attuneNote = '',
-    Popup, POPUP_TYPE,
+    onFace = null, Popup, POPUP_TYPE,
 }) {
     // Los iconos en pixel necesitan el índice; sin él, cada fila sale con su icono de siempre.
     await loadPixelManifest();
@@ -109,6 +110,8 @@ export async function openCharacterPanel({
     head.append(faceElement({
         name: sheet.name, avatar: sheet.avatar, className: String(member?.class ?? ''),
         gender: String(member?.gender ?? ''), race: String(member?.race ?? ''), mercenary: member?.guest?.kind === 'mercenary',
+        // D-J52: la cara sin arte que eligió.
+        face: member?.face ?? null,
     }, { imageClass: 'ch-avatar', badgeClass: 'ch-avatar ch-avatar-initials' }));
 
     const who = $('<div class="ch-who"></div>');
@@ -121,6 +124,18 @@ export async function openCharacterPanel({
     who.append(title);
     if (sheet.bondRank > 0) {
         who.append($('<div class="ch-bond"></div>').text(`Vínculo de rango ${sheet.bondRank}`));
+    }
+    // D-J52: cambiar cómo se ve tu cara sin arte.
+    if (onFace) {
+        const change = $('<button class="menu_button ch-face-change" type="button"></button>')
+            .append('<i class="fa-solid fa-palette"></i>')
+            .append($('<span></span>').text(' Cambiar cara'))
+            .attr('title', 'Tus iniciales en un color, un icono o un emoji');
+        change.on('click', () => {
+            popup.completeAffirmative();
+            onFace();
+        });
+        who.append(change);
     }
     head.append(who);
     root.append(head);
@@ -212,7 +227,8 @@ export async function openCharacterPanel({
     }
 
     // ---- J19: su magia, si lanza con espacios -----------------------------
-    if (magic || onGrimoire) {
+    // D-J49: y aunque no lance, si alguien del grupo lo hace: la magia fuera de combate está aquí.
+    if (magic || onGrimoire || onFieldMagic) {
         root.append($('<div class="ch-title-row"></div>').text('Magia'));
         const box = $('<div class="ch-magic"></div>');
         for (const line of magic?.lines ?? []) box.append($('<div class="ch-magic-line"></div>').text(line));

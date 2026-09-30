@@ -6,7 +6,7 @@
  * | :--- | :--- | :--- |
  * | Luz, Luz del día | Alumbra esta parte del día | La noche en el campamento cuenta como con fuego; en un sitio oscuro, +2 a examinar |
  * | Curar heridas, Palabra de curación, Plegaria de curación… | Cura a los heridos | La vida de la ficha, entre pelea y pelea o al llegar de un viaje |
- * | Hablar con los muertos | La víctima de un asesinato contesta | Una pista de las buenas del caso abierto (`cases.js`) |
+ * | Hablar con los muertos | La víctima de un asesinato contesta, una vez cada siete días (D-J50) | Una pista de las buenas del caso abierto (`cases.js`) |
  * | Detectar magia, Identificar, Alarma | Lo mismo que como ritual | Para quien no los lanza como ritual (el explorador): con un espacio |
  *
  * Los rituales (sin espacio, diez minutos) los decide `rituals.js`, y aquí solo se listan
@@ -26,6 +26,7 @@ import { castableSpells, ritualSpells } from './spell-prep.js';
 import { spendSlot, spellcastingStats, SLOT_LABELS } from './spell-slots.js';
 import { normalizeSpell } from './spell-catalogue.js';
 import { ritualChoices, ritualKind, detectMagic, identifyAll, setAlarm, ALARM_WATCH_BONUS } from './rituals.js';
+import { gendered } from '../campaign/grammar.js';
 
 /** Los conjuros que no se deducen de sus columnas. */
 export const FIELD_SPELL_IDS = { 'mag-hablar-muertos': 'muertos' };
@@ -35,6 +36,12 @@ const SLOT_RITUAL_KINDS = ['detect', 'identify', 'alarm'];
 
 /** Lo que suma la Luz a examinar en un sitio oscuro. */
 export const LIGHT_LOOK_BONUS = 2;
+
+/**
+ * D-J50: cada cuántos días se le puede volver a preguntar al mismo muerto con Hablar con los
+ * muertos. En la mesa son diez; Daniel lo dejó en siete.
+ */
+export const SPEAK_DEAD_DAYS = 7;
 
 /** Los biomas y tipos de sitio donde no se ve sin luz. */
 const DARK_BIOMES = ['cueva', 'cripta', 'mazmorra', 'mina', 'tunel'];
@@ -51,6 +58,8 @@ const DARK_BIOMES = ['cueva', 'cripta', 'mazmorra', 'mina', 'tunel'];
  * @property {string} [pet] La mascota que ya os acompaña (para el ritual del familiar).
  * @property {any[]} [party] El grupo, para saber quién está herido.
  * @property {Array<{name: string, carried: any[], focus?: string}>} [others] Lo que llevan los demás.
+ * @property {Record<string, number>} [spokenDead] D-J50: el día en que se le preguntó a cada muerto
+ *   (`deadKey`), para no volver a preguntarle hasta que pasen `SPEAK_DEAD_DAYS`.
  */
 
 /**
@@ -66,6 +75,7 @@ const DARK_BIOMES = ['cueva', 'cripta', 'mazmorra', 'mina', 'tunel'];
  * @property {boolean} ok
  * @property {string} reason Por qué no, si no.
  * @property {string} does Lo que hará aquí, en una frase.
+ * @property {number} [targets] Si cura, a cuántos de los tuyos (D-J53).
  */
 
 /** @param {any} value @returns {string} */
@@ -89,13 +99,39 @@ export function fieldKind(spell) {
 }
 
 /**
- * Si aquí no se ve sin luz: de noche, o en una cueva, una cripta o una mazmorra.
+ * D-J51: los sitios del pueblo bajo techo que ya tienen luz (velas, un fuego, la fragua): ahí la
+ * Luz no se ofrece, ni de noche. La plaza, el tablón y el muelle son al raso.
+ */
+export const LIT_PLACES = ['gremio', 'posada', 'taberna', 'tienda', 'templo', 'herreria'];
+
+/** D-J51: los tableros bajo techo con luz: el interior de madera (una taberna, una casa). */
+const LIT_BIOMES = ['madera'];
+
+/**
+ * D-J51: si un sitio del pueblo (`posada`, `posada-2`, `herreria`…) está bajo techo y con luz.
  *
- * @param {{night?: boolean, biome?: string, type?: string}} where
+ * @param {string} place El id del sitio abierto del pueblo (`currentTownPlace`), o vacío.
  * @returns {boolean}
  */
-export function darkHere({ night = false, biome = '', type = '' } = {}) {
-    return Boolean(night) || DARK_BIOMES.includes(text(biome).toLowerCase()) || text(type) === 'dungeon';
+export function litIndoors(place) {
+    const kind = text(place).toLowerCase().replace(/-\d+$/, '');
+    return LIT_PLACES.includes(kind);
+}
+
+/**
+ * Si aquí no se ve sin luz. D-J51: en una cueva, una cripta o una mazmorra, siempre; bajo techo
+ * con luz (la posada, la tienda, el templo, la herrería, el gremio, un tablero de madera), nunca;
+ * y al raso (el camino, la plaza, el campamento), de noche.
+ *
+ * @param {{night?: boolean, biome?: string, type?: string, place?: string}} where `place`: el sitio
+ *   del pueblo en el que se está (`litIndoors`); `biome`: el del tablero o el de la localización.
+ * @returns {boolean}
+ */
+export function darkHere({ night = false, biome = '', type = '', place = '' } = {}) {
+    const said = text(biome).toLowerCase();
+    if (DARK_BIOMES.includes(said)) return true;
+    if (litIndoors(place) || LIT_BIOMES.includes(said)) return false;
+    return Boolean(night) || text(type) === 'dungeon';
 }
 
 /**
@@ -149,6 +185,34 @@ function deadClue(cases) {
 }
 
 /**
+ * D-J50: cómo se apunta a un muerto: su caso y su nombre. El mismo muerto de otro caso es otro.
+ *
+ * @param {any} active El caso abierto.
+ * @returns {string}
+ */
+export function deadKey(active) {
+    return `${text(active?.id)}|${text(active?.victim)}`.toLowerCase();
+}
+
+/**
+ * D-J50: cuántos días faltan para poder volver a preguntarle al muerto del caso abierto. 0: ya
+ * se puede (o nunca se le preguntó).
+ *
+ * @param {any} cases Los casos (`readCases`).
+ * @param {Record<string, number>|null|undefined} spokenDead Lo apuntado (`FieldContext.spokenDead`).
+ * @param {number} today
+ * @returns {number}
+ */
+export function speakDeadWait(cases, spokenDead, today) {
+    const active = cases?.active;
+    if (!active) return 0;
+    const asked = Math.floor(Number(spokenDead?.[deadKey(active)]) || 0);
+    const now = Math.floor(Number(today) || 0);
+    if (asked <= 0 || now <= 0) return 0;
+    return Math.max(0, asked + SPEAK_DEAD_DAYS - now);
+}
+
+/**
  * Por qué no serviría ahora de nada. Vacío si sirve.
  *
  * @param {string} kind
@@ -157,15 +221,25 @@ function deadClue(cases) {
  */
 function uselessNow(kind, context) {
     switch (kind) {
-        case 'luz':
+        case 'luz': {
             if (lightActive(context.light, context.calendar)) return 'Ya hay una Luz encendida.';
-            return context.night || context.dark ? '' : 'Aquí se ve bien: ahora no hace falta.';
+            // D-J51: quien dice si está oscuro es `dark` (`darkHere`: de noche solo al raso). Sin
+            // él, la noche, como antes.
+            const dark = typeof context.dark === 'boolean' ? context.dark : Boolean(context.night);
+            if (dark) return '';
+            return context.night ? 'Aquí dentro ya hay luz: no hace falta.' : 'Aquí se ve bien: ahora no hace falta.';
+        }
         case 'curar':
             return woundedOf(context.party ?? []).length > 0 ? '' : 'Nadie está herido.';
         case 'muertos': {
             const active = context.cases?.active;
             if (!active || active.kind !== 'asesinato') return 'No hay ningún muerto a quien preguntar.';
-            return deadClue(context.cases) ? '' : `${text(active.victim) || 'El muerto'} ya no tiene nada más que decir.`;
+            if (!deadClue(context.cases)) return `${text(active.victim) || 'El muerto'} ya no tiene nada más que decir.`;
+            // D-J50: al mismo muerto, una vez cada siete días. Se dice cuándo, y no se gasta nada.
+            const wait = speakDeadWait(context.cases, context.spokenDead, context.calendar?.day);
+            if (wait <= 0) return '';
+            const who = text(active.victim) || 'Este muerto';
+            return `${who} ya contestó hace poco. Se le puede volver a preguntar ${wait === 1 ? 'mañana' : `dentro de ${wait} días`}.`;
         }
         case 'identify':
             return Number(context.unknownItems) > 0 ? '' : 'No lleváis nada sin identificar.';
@@ -287,6 +361,8 @@ export function fieldChoices({ member, classRow, catalogue, carried = [], contex
             ok: verdict.ok && !useless,
             reason: verdict.ok ? useless : verdict.reason,
             does: doesHere(kind, spell, slotLevel, member, classRow, context),
+            // D-J53: a cuántos cura, para decir a quién en la pregunta de al llegar.
+            ...(kind === 'curar' ? { targets: Math.max(1, upcastSpell(spell, (how === 'truco' ? 0 : slotLevel) || spell.level).targets || 1) } : {}),
         });
     }
     return [...cast, ...rituals];
@@ -306,6 +382,7 @@ export function fieldChoices({ member, classRow, catalogue, carried = [], contex
  *   light?: {day: number, slotIndex: number, by: string},
  *   heal?: Array<{memberId: string, name: string, amount: number, hp: number}>,
  *   clue?: any,
+ *   spokeDead?: {key: string, day: number},
  *   identify?: Array<{memberId: string, itemId: string, item: any}>,
  *   alarm?: {day: number},
  * }} effects Lo que cambia; lo aplica quien llama.
@@ -379,6 +456,8 @@ export function castField({ member, classRow, spell: raw, carried = [], context 
         case 'muertos': {
             const clue = deadClue(context.cases);
             out.effects.clue = clue;
+            // D-J50: se apunta el día, para no volver a preguntarle hasta dentro de siete.
+            out.effects.spokeDead = { key: deadKey(context.cases?.active), day: Math.max(0, Math.floor(Number(context.calendar?.day) || 0)) };
             out.lines.push(`${caster} se arrodilla junto a ${text(context.cases?.active?.victim) || 'el muerto'} y le hace sus preguntas. Contesta con lo que sabía en vida.`);
             break;
         }
@@ -415,6 +494,37 @@ export function roadHeal(casters) {
         .flatMap(({ member, choices }) => (choices ?? []).filter(c => c.kind === 'curar' && c.ok).map(choice => ({ member, choice })))
         .sort((a, b) => a.choice.slotLevel - b.choice.slotLevel || b.choice.level - a.choice.level);
     return options[0] ?? null;
+}
+
+/**
+ * @typedef {Object} ArrivalHealAsk D-J53: la pregunta de «curar al llegar», en llano.
+ * @property {string} healer Quien lo lanza.
+ * @property {boolean} yours Si lo lanza tu héroe.
+ * @property {string[]} names A quién cura, del más herido al menos.
+ * @property {string[]} notes Cómo llega cada uno y quién puede curarle: «Bran llega herido: le quedan 5 de 20.».
+ * @property {string} question «¿Curar a Bran con magia? (gasta un espacio de nivel 1)».
+ */
+
+/**
+ * D-J53: al llegar de un viaje con alguien herido y alguien que cura con magia, lo que se
+ * pregunta. Nada si nadie está herido o nadie puede (`roadHeal`).
+ *
+ * @param {{member: any, choice: FieldChoice}|null} pick Lo que curaría (`roadHeal`).
+ * @param {any[]} party El grupo, con tu héroe primero.
+ * @returns {ArrivalHealAsk|null}
+ */
+export function arrivalHealAsk(pick, party) {
+    if (!pick?.choice || pick.choice.kind !== 'curar' || !pick.choice.ok) return null;
+    const hurt = woundedOf(party).slice(0, Math.max(1, Number(pick.choice.targets) || 1));
+    if (hurt.length === 0) return null;
+    const names = hurt.map(m => text(m.name) || 'Alguien');
+    const list = names.length === 1 ? `a ${names[0]}` : `${names.slice(0, -1).map(n => `a ${n}`).join(', ')} y a ${names[names.length - 1]}`;
+    const cost = pick.choice.how === 'truco' ? 'es un truco: no gasta nada' : `gasta un espacio de nivel ${Math.max(1, Number(pick.choice.slotLevel) || 1)}`;
+    const healer = text(pick.member?.name) || 'Alguien';
+    const yours = Array.isArray(party) && party[0] === pick.member;
+    const notes = hurt.map(m => `${text(m.name) || 'Alguien'} llega ${gendered(m, 'herido', 'herida', 'herido')}: le quedan ${Math.max(0, Number(m.hp) || 0)} de ${Math.max(0, Number(m.maxHp) || 0)} de vida.`);
+    notes.push(yours ? `Puedes curar con ${pick.choice.name}.` : `${healer} puede curar con ${pick.choice.name}.`);
+    return { healer, yours, names, notes, question: `¿Curar ${list} con magia? (${cost})` };
 }
 
 /**

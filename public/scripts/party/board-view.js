@@ -26,6 +26,7 @@ import { supportActions } from '../game-engine/campaign/pet.js';
 import { pairOptions } from '../game-engine/rules/pair-moves.js';
 import { getReachableCells, findPath, getPathCost } from '../game-engine/board/pathfinding.js';
 import { createEmptyFog, normalizeFog, updateFog } from '../game-engine/board/fog-of-war.js';
+import { fogOnFor } from '../game-engine/board/board-camera.js';
 import { attackEdge, readManeuvers } from '../game-engine/combat/maneuvers.js';
 import { perkBonus } from '../game-engine/rules/level-perks.js';
 import { sightFeetFor } from '../game-engine/world/visibility.js';
@@ -70,10 +71,11 @@ import {
     boardVisibility, buildBoardIdleEnemyTokens, buildBoardNPCTokens, buildEnemyTokens, buildTokens,
     getActiveBoardContext, getActiveBoardTerrain, groupMoveTo, handleEnemyTokenMove, handleTokenMove, isBoardWon,
     persistBoardTerrain, placePartyAtStart, toggleBoardDoor, buildSummonTokens, activeSpellZones, attackHindrance,
-    archetypeOf, activeSummons,
+    archetypeOf, activeSummons, knownTrapsHere, roomOf,
 } from './board.js';
 import { saveCurrentLocation, saveCurrentBoard, getLocationBoards } from './world.js';
 import { getCampaignBonds } from './time.js';
+import { canAvoidHere, openAvoidChoice } from './avoid.js';
 
 /** @type {boolean} */
 export let locationMapsManuallyHidden = false;
@@ -120,6 +122,8 @@ function getCombatBoardHighlightState(gridWidth, gridHeight) {
         const occupied = new Set(partyMembers
             .filter(m => Number(m.id) !== Number(walker.id) && !m.dead)
             .map(m => `${Number(m.mapPosition?.gridX) || 0},${Number(m.mapPosition?.gridY) || 0}`));
+        // J12.3: las trampas ya vistas no se encienden: el camino las rodea.
+        for (const key of knownTrapsHere()) occupied.add(key);
         return {
             selectedTokenId: walker.id,
             highlightedTokenIds: [],
@@ -146,7 +150,7 @@ function getCombatBoardHighlightState(gridWidth, gridHeight) {
     const attackCells = attackable.map(enemy => ({ gridX: enemy.gridX || 0, gridY: enemy.gridY || 0, kind: 'attack' }));
     const movementCells = getReachableCells(
         getActiveBoardTerrain(), pos.gridX || 0, pos.gridY || 0, remainingFeet, gridWidth, gridHeight,
-        { occupied: occupiedCellsFor(member) },
+        { occupied: new Set([...occupiedCellsFor(member), ...knownTrapsHere()]) },
     // La casilla en la que ya estas no es un sitio al que moverte: pulsarla gastaria
     // cero pies, y encendida solo servia para que tu propia ficha se comiera el clic.
     ).filter(cell => cell.gridX !== (pos.gridX || 0) || cell.gridY !== (pos.gridY || 0));
@@ -196,9 +200,10 @@ let activeTerrainBrush = null;
  * The brush palette shown under a board while terrain editing is on.
  * @param {any} board
  * @param {() => void} onChange
+ * @param {boolean} fogOn Si la niebla está puesta ahora (J12.13: en los grandes, sin decirlo, sí).
  * @returns {JQuery}
  */
-function buildTerrainPalette(board, onChange) {
+function buildTerrainPalette(board, onChange, fogOn) {
     const palette = $('<div class="wm-terrain-palette"></div>');
 
     const chips = {
@@ -223,11 +228,11 @@ function buildTerrainPalette(board, onChange) {
     }
 
     const fogToggle = $('<div class="wm-terrain-swatch"></div>')
-        .toggleClass('active', Boolean(board?.fogEnabled));
+        .toggleClass('active', fogOn);
     fogToggle.append('<i class="fa-solid fa-cloud"></i>');
     fogToggle.append($('<span></span>').text('Niebla'));
     fogToggle.on('click', () => {
-        board.fogEnabled = !board.fogEnabled;
+        board.fogEnabled = !fogOn;
         if (!board.fogEnabled) board.fog = createEmptyFog();
         persistBoardTerrain(board);
         onChange();
@@ -316,6 +321,15 @@ function buildStartCombatButton(board, awake) {
     button.append($('<span></span>').text(' Iniciar combate'));
     button.on('click', () => startWaitingFight(awake));
     row.append(button);
+    // J12.2: al lado, otra salida: hablar, pagar, huir o esconderse, en su ventana.
+    if (canAvoidHere()) {
+        const other = $('<button class="menu_button sc-btn sc-avoid" type="button"></button>');
+        other.append('<i class="fa-solid fa-comments"></i>');
+        other.append($('<span></span>').text(' Evitar la pelea'));
+        other.attr('title', 'Hablar, pagar, huir o esconderse: cada cosa con su tirada');
+        other.on('click', () => { void openAvoidChoice(); });
+        row.append(other);
+    }
     return row;
 }
 
@@ -575,6 +589,7 @@ function previewMovement(gridX, gridY) {
         const occupied = new Set(partyMembers
             .filter(m => Number(m.id) !== Number(walker.id) && !m.dead)
             .map(m => `${Number(m.mapPosition?.gridX) || 0},${Number(m.mapPosition?.gridY) || 0}`));
+        for (const key of knownTrapsHere()) occupied.add(key);
         const path = findPath(terrain, origin.gridX || 0, origin.gridY || 0, gridX, gridY, w, h, { occupied });
         if (!path || path.length === 0) return null;
         const feet = getPathCost(terrain, path) * 5;
@@ -586,8 +601,8 @@ function previewMovement(gridX, gridY) {
     const origin = member.mapPosition || { gridX: 0, gridY: 0 };
     const { terrain, gridWidth: w, gridHeight: h } = getActiveBoardContext();
     const path = findPath(terrain, origin.gridX || 0, origin.gridY || 0, gridX, gridY, w, h, {
-        // Las casillas ocupadas no se atraviesan, igual que al mover de verdad.
-        occupied: occupiedCellsFor(member),
+        // Las casillas ocupadas no se atraviesan, igual que al mover de verdad; ni las trampas vistas.
+        occupied: new Set([...occupiedCellsFor(member), ...knownTrapsHere()]),
     });
     if (!path || path.length === 0) return null;
 
@@ -811,6 +826,11 @@ function buildCombatSection(board) {
                 );
             }
             body.append(nameLine);
+            // J20.2: en una pantalla táctil los iconos no dicen nada sin ratón encima: sus nombres,
+            // escritos (el CSS solo los enseña donde no se puede pasar el ratón).
+            if (entry.statuses.length > 0) {
+                body.append($('<div class="wm-init-status-text"></div>').text(entry.statuses.map(s => String(s.label)).join(' · ')));
+            }
 
             if (entry.maxHp > 0) {
                 body.append($('<div class="wm-init-hp"></div>').append(
@@ -1124,7 +1144,8 @@ function drawLocationMapsPreview() {
 
         // Terrain, fog and the paint palette (wiki/ROADMAP.md, Fase A6).
         const boardTerrain = boardContext.board === selectedBoard ? boardContext.terrain : normalizeTerrain(selectedBoard.terrain);
-        const fogOn = Boolean(selectedBoard.fogEnabled);
+        // J12.13: lo que diga el tablero; sin decirlo, los grandes llevan niebla y los demás no.
+        const fogOn = fogOnFor(selectedBoard, boardGridW, boardGridH);
         const boardFog = normalizeFog(selectedBoard.fog);
         const sightNow = fogOn ? boardVisibility() : null;
         const partySight = allBoardTokens
@@ -1155,10 +1176,20 @@ function drawLocationMapsPreview() {
             if (isShellOpen()) setTimeout(() => refreshGameShell(), 0);
         }
 
+        // J12.11 y J12.13: a quién sigue la cámara (a quien le toca, o quien abre la marcha) y la
+        // sala con nombre en la que está, con su nota, en la cabecera del tablero: se sabe dónde se
+        // está sin mirar el registro.
+        const followed = combatEncounter.active
+            ? getCurrentActingMember()
+            : (selectedWalker() ?? partyMembers.find(m => !m.dead
+                && (!m.mapPosition?.locationName || m.mapPosition.locationName === currentLocationName)) ?? null);
+        const room = followed ? roomOf(followed) : null;
         renderLocationView(boardPanel, {
-            name: selectedBoard.name,
+            name: room ? `${selectedBoard.name} · ${room.name}` : selectedBoard.name,
             imageUrl: selectedBoard.url,
-            description: '',
+            description: room?.note ?? '',
+            followTokenId: followed?.id ?? null,
+            followKey: followed ? `${followed.id}@${Number(followed.mapPosition?.gridX) || 0},${Number(followed.mapPosition?.gridY) || 0}` : '',
             gridWidth: boardGridW,
             gridHeight: boardGridH,
             viewStateKey: `board::${currentLocationName}::${selectedBoard.name}`,
@@ -1243,7 +1274,7 @@ function drawLocationMapsPreview() {
             lockedBtn.append($('<span></span>').text(' Terreno'));
             boardPanel.append(lockedBtn);
         } else if (terrainEditing) {
-            boardPanel.append(buildTerrainPalette(selectedBoard, () => renderLocationMapsPreview()));
+            boardPanel.append(buildTerrainPalette(selectedBoard, () => renderLocationMapsPreview(), fogOn));
         } else {
             const editButton = $('<button class="wm-terrain-edit-btn menu_button" title="Pintar muros, cobertura y puertas"></button>');
             editButton.append('<i class="fa-solid fa-draw-polygon"></i>');

@@ -75,7 +75,7 @@ describe('the cross-references the schema cannot see', () => {
     test('an enemy on the board that is not in the bestiary', () => {
         const pack = good();
         pack.boards[0].enemies[0].name = 'Lobo';
-        expect(validatePack(pack).errors[0].message).toMatch(/"Lobo" no esta en el bestiario/);
+        expect(validatePack(pack).errors[0].message).toMatch(/"Lobo" no está en el bestiario/);
     });
 
     test('an eliminate objective naming somebody outside the bestiary', () => {
@@ -88,13 +88,13 @@ describe('the cross-references the schema cannot see', () => {
     test('and says which list the name is actually in', () => {
         const pack = good();
         pack.quests[0].objectives[0].target = 'Mira';
-        expect(validatePack(pack).errors[0].message).toMatch(/esta en `confidants`/);
+        expect(validatePack(pack).errors[0].message).toMatch(/está en `confidants`/);
     });
 
     test('a protect objective naming somebody who is not a companion', () => {
         const pack = good();
         pack.quests[0].objectives = [{ type: 'protect', label: 'Cuidar', ally: 'Cuervo' }];
-        expect(validatePack(pack).errors[0].message).toMatch(/no esta en confidants: esta en `bestiary`/);
+        expect(validatePack(pack).errors[0].message).toMatch(/no está en confidants: está en `bestiary`/);
     });
 
     test('two companions with the same name, which the Lorebook would merge', () => {
@@ -114,7 +114,7 @@ describe('the cross-references the schema cannot see', () => {
         pack.boards.push({ ...pack.boards[0], id: 'otra', name: 'Otra' });
         const report = validatePack(pack);
         expect(report.ok).toBe(true);
-        expect(report.warnings[0].message).toMatch(/Ninguna mision lleva a "otra"/);
+        expect(report.warnings[0].message).toMatch(/Ninguna misión lleva a "otra"/);
     });
 });
 
@@ -136,7 +136,7 @@ describe('the maps', () => {
     test('a character that is not in the legend', () => {
         const pack = good();
         pack.boards[0].map = ['#####', '#.X.#', '#...#', '#####'];
-        expect(validatePack(pack).errors[0].message).toMatch(/Caracter "X"/);
+        expect(validatePack(pack).errors[0].message).toMatch(/Carácter "X"/);
     });
 
     test('a map too small to have an inside', () => {
@@ -182,7 +182,7 @@ describe('where things stand on the board', () => {
     test('a reach_cell objective pointing into a wall', () => {
         const pack = good();
         pack.quests[0].objectives = [{ type: 'reach_cell', label: 'Llegar', cell: { x: 0, y: 0 } }];
-        expect(validatePack(pack).errors[0].message).toMatch(/nadie puede llegar ahi/);
+        expect(validatePack(pack).errors[0].message).toMatch(/nadie puede llegar ahí/);
     });
 });
 
@@ -196,7 +196,7 @@ describe('the objectives', () => {
     test('survive_rounds without a number of rounds', () => {
         const pack = good();
         pack.quests[0].objectives = [{ type: 'survive_rounds', label: 'Aguantar' }];
-        expect(validatePack(pack).errors[0].message).toMatch(/numero mayor que cero/);
+        expect(validatePack(pack).errors[0].message).toMatch(/número mayor que cero/);
         pack.quests[0].objectives = [{ type: 'survive_rounds', label: 'Aguantar', rounds: 0 }];
         expect(validatePack(pack).ok).toBe(false);
     });

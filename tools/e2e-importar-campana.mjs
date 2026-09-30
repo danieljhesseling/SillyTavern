@@ -5,7 +5,8 @@
  *
  *   título → Jugar sin conexión → tu personaje → saltar la prueba → el tablón →
  *   «Añadir una campaña» con un archivo que no es JSON: dice dónde falla →
- *   con un paquete sin tableros: dice lo que dice el validador →
+ *   con un paquete con un mapa torcido (J5.3: sin tableros ya entra, los dibuja el juego): dice
+ *   lo que dice el validador →
  *   con lo que da el Gem (el paquete de ejemplo, con cabecera y marcas [cite]): la tarjeta
  *   sale en el tablón, con su nivel recomendado y su distancia, en tu lista (D-J35) → pegar el
  *   texto de otra que empieza en el nivel 10: avisa (D-J22) → quitarla del tablón (D-J35) →
@@ -62,10 +63,13 @@ const highPack = (() => {
     pack.world.levels = [10, 12];
     return pack;
 })();
-const noBoards = (() => {
+// J5.3: un paquete sin tableros ya entra (los dibuja el juego con la semilla). Lo que no se
+// arregla solo es un mapa escrito mal: una fila más corta que las demás.
+const crooked = (() => {
     const pack = buildExamplePack();
-    pack.world.name = 'Sin tableros';
-    pack.boards = [];
+    pack.world.name = 'Mapa torcido';
+    pack.boards[0].map = [...pack.boards[0].map];
+    pack.boards[0].map[1] = pack.boards[0].map[1].slice(0, -1);
     return pack;
 })();
 
@@ -253,10 +257,10 @@ try {
     check('y no se añade nada al tablón', !tiles.some(t => /Roto/.test(t.text)), JSON.stringify(tiles.map(t => t.id)));
 
     // 4. Un paquete que el validador no deja pasar: sus fallos, uno a uno.
-    const invalid = await addFile('sin-tableros.json', JSON.stringify(noBoards));
-    check('un paquete sin tableros: lo que dice el validador, en la lista',
+    const invalid = await addFile('mapa-torcido.json', JSON.stringify(crooked));
+    check('un mapa torcido: lo que dice el validador, en la lista',
         invalid.bad && /La campaña tiene \d+ fallos? que arreglar/.test(invalid.text)
-        && invalid.items.some(i => /Un paquete sin tableros no se puede jugar\. boards$/.test(i)) && /pásale esta lista a tu Gem/.test(invalid.text),
+        && invalid.items.some(i => /^Las filas no miden lo mismo: .* El mapa tiene que ser rectangular\. boards\[0\]\.map\[1\]$/.test(i)) && /pásale esta lista a tu Gem/.test(invalid.text),
         JSON.stringify(invalid));
     if (SHOT) await page.screenshot({ path: `${SHOT}.error.png` });
 

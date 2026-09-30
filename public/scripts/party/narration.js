@@ -24,6 +24,7 @@ import { rollDice, rollDiceDetailed } from './combat-rules.js';
 import { playCue } from '../game-engine/ui/shell/action-sounds.js';
 import { loadAudioSettings } from '../game-engine/ui/shell/scene-audio.js';
 import { speakerOf, initialsOf, hueOf } from '../game-engine/ui/shell/speakers.js';
+import { readFaceChoice, faceHue } from '../game-engine/campaign/face-choice.js';
 import { relieve } from '../game-engine/rules/needs.js';
 import { readGraves } from '../game-engine/campaign/legacy.js';
 import { SKILLS, rollCheck, DEFAULT_DC } from '../game-engine/rules/checks.js';
@@ -39,6 +40,7 @@ import {
     sucesoCount, pickSucesos, sucesoById, optionView, resolveOption, readSucesoState, noteSuceso, dueFollowUp,
     describeEffect,
 } from '../game-engine/campaign/sucesos.js';
+import { mergeSucesoRows, sucesoWorld, readSucesoEffect, describeWorldEffect } from '../game-engine/campaign/suceso-triggers.js';
 import { laterRows, scheduleFollows } from '../game-engine/campaign/aftermath.js';
 import { visitorFollow } from '../game-engine/campaign/guild-memory.js';
 import { planTip, nextQueuedTip } from '../game-engine/ui/shell/tips.js';
@@ -51,11 +53,13 @@ import { guardRolls, guardImpossibleRolls, describeCorrections } from '../game-e
 import { findContradictions, appendContradictions } from '../game-engine/ui/contradiction-log.js';
 import { isShellOpen, refreshGameShell } from '../game-engine/ui/shell/game-shell.js';
 import {
-    CASES_KEY, COLORBLIND_KEY, CONTRADICTIONS_KEY, DEEDS_KEY, DICE_LOG_KEY, GRAVES_KEY, MEMORIES_KEY,
+    CASES_KEY, COLORBLIND_KEY, CONTRADICTIONS_KEY, DEEDS_KEY, DICE_LOG_KEY, FAME_KEY, GRAVES_KEY, MEMORIES_KEY,
     NARRATOR_FONT_KEY, NARRATOR_MODE_STORAGE, NARRATOR_RECENT_KEY, PLOT_KEY, PLOT_STATE_KEY, ROLL_GUARD_KEY, SAVER_KEY,
     STORY_WINDOWS_STORAGE, SUCESOS_KEY, SUCESOS_STORAGE, TAKEN_KEY, TIPS_SEEN_KEY, localFlag,
 } from './keys.js';
-import { combatEncounter, currentLocationName, partyMembers } from './state.js';
+import { combatEncounter, currentLocationName, currentWorldFactions, partyMembers, worldItemCatalogue } from './state.js';
+import { addItemToInventory, createItem } from '../dnd-system.js';
+import { describeLootItem } from '../game-engine/combat/loot-items.js';
 import { lastDialogues } from './world.js';
 import { petReact } from './pet.js';
 import { revealClue } from './cases.js';
@@ -64,9 +68,10 @@ import {
 } from './combat-state.js';
 import { pushCombatLogEntry, pushCombatLogLines } from './combat-log.js';
 import {
-    currentSeason, getLocationBoards, guildVisitorRows, lastCompendium, lastHub, lastHubHome, lastPack, lastWorldNpcs,
+    announceOpenedRoads, currentSeason, getLocationBoards, giveWorldKey, guildVisitorRows, lastCampaignSucesos, lastCompendium,
+    lastHub, lastHubHome, lastPack, lastWorldNpcs,
 } from './world.js';
-import { rulerOf, shiftFactionStanding } from './factions.js';
+import { pushFactionClock, rulerOf, shiftFactionStanding } from './factions.js';
 import {
     advanceCampaignDay, advanceCampaignSlot, campaignDay, getCampaignCalendar, getCurrentSlotLabel,
     recordCampaignBondEvent,
@@ -226,7 +231,13 @@ export function playSucesos(moment, facts = {}, days = 1) {
         // J11.2: con los de `sucesos.json`, las tarjetas que vuelven de lo decidido en el hilo y
         // en las charlas (`later`): si no, la que se dejó agendada no se encontraría nunca.
         // J11.4: y, en el gremio, quien viene a buscaros por cómo acabó una campaña.
-        const rows = [...compendium.find('sucesos', {}), ...laterRows(chat_metadata?.[PLOT_KEY], { dialogues: lastDialogues }), ...guildVisitorRows()];
+        // J10.3 y D-J42: y los propios de la campaña, que sustituyen a los del compendio con su id.
+        const rows = [
+            ...mergeSucesoRows(compendium.find('sucesos', {}), lastCampaignSucesos),
+            ...laterRows(chat_metadata?.[PLOT_KEY], { dialogues: lastDialogues }), ...guildVisitorRows(),
+        ];
+        // J10.3: cómo está el mundo con vosotros aquí, para los que salen por facción, reputación o fama.
+        const world = sucesoWorld({ factions: currentWorldFactions, here: currentLocationName, fame: chat_metadata?.[FAME_KEY] ?? {} });
         const state = readSucesoState(chat_metadata?.[SUCESOS_KEY]);
         const companion = partyMembers.slice(1).find(m => !m.dead);
         /** @type {Record<string, any>} */
@@ -237,7 +248,7 @@ export function playSucesos(moment, facts = {}, days = 1) {
         /** @type {any[]} */
         const cards = [];
         const due = moment === 'viaje' ? '' : dueFollowUp(state, { day: campaignDay(), place: currentLocationName });
-        const followed = due ? sucesoById(rows, due, all) : null;
+        const followed = due ? sucesoById(rows, due, all, world) : null;
         // Una continuación que ya no está escrita (el paquete cambió) se olvida: si no, sería
         // siempre la primera en tocar y taparía las que vienen detrás.
         // (Una que existe pero hoy no se puede contar, sin compañero para su `{companero}`, espera.)
@@ -246,8 +257,8 @@ export function playSucesos(moment, facts = {}, days = 1) {
             saveMetadata();
         }
         if (followed) cards.push(followed);
-        else cards.push(...pickSucesos({ rows, moment, facts: all, count: sucesoCount({ moment, days, random }), random, seen: state.seen }));
-        for (const card of cards) await showSuceso(card, random);
+        else cards.push(...pickSucesos({ rows, moment, facts: all, count: sucesoCount({ moment, days, random }), random, seen: state.seen, world }));
+        for (const card of cards) await showSuceso(card, random, world.names);
     }).catch(error => console.error('[party] suceso failed', error));
 }
 
@@ -257,9 +268,10 @@ export function playSucesos(moment, facts = {}, days = 1) {
  *
  * @param {any} card
  * @param {() => number} random
+ * @param {Record<string, string>} [names] J10.3: el nombre de cada facción, por id, para decir sus efectos.
  * @returns {Promise<void>}
  */
-async function showSuceso(card, random) {
+async function showSuceso(card, random, names = {}) {
     const body = $('<div class="su-root gs-panel"></div>').attr('data-suceso', card.id);
     body.append($('<h3 class="gs-popup-title"></h3>').text(card.name));
     body.append($('<div class="su-text"></div>').text(card.text));
@@ -290,7 +302,7 @@ async function showSuceso(card, random) {
                 }
             }
             const done = resolveOption(option, { success });
-            const said = applySucesoEffects(done.effects, random);
+            const said = applySucesoEffects(done.effects, random, names);
             result.empty();
             if (rolled) result.append($('<div class="su-roll"></div>').text(rolled));
             result.append($('<div></div>').text(done.then || 'Hecho.'));
@@ -344,16 +356,41 @@ export function noteRollInWindow(member, roll) {
  *
  * @param {string[]} effects
  * @param {() => number} random
+ * @param {Record<string, string>} [names] J10.3: el nombre de cada facción, por id.
  * @returns {string[]}
  */
-function applySucesoEffects(effects, random) {
+function applySucesoEffects(effects, random, names = {}) {
     /** @type {string[]} */
     const said = [];
     const alive = partyMembers.filter(m => !m.dead && (Number(m.hp) || 0) > 0);
     const someone = () => alive[Math.floor(random() * alive.length)] ?? partyMembers[0];
     const amountOf = (/** @type {string} */ value) => (/d/.test(value) ? rollDiceDetailed(value.replace(/^[+-]/, ''), 6).total : Math.abs(Number(value) || 0));
+    let opens = false;
     for (const effect of effects) {
         const [kind, amount = ''] = String(effect).split(':');
+        // J10.3: lo que mueve a una facción por su id, y lo que abre caminos (J10.1).
+        const world = readSucesoEffect(String(effect));
+        if ((world.kind === 'faccion' || world.kind === 'reloj') && world.target) {
+            const who = currentWorldFactions.find(f => String(f?.id) === world.target);
+            if (!who || !world.amount) continue;
+            if (world.kind === 'faccion') void shiftFactionStanding(world.target, Math.sign(world.amount));
+            else void pushFactionClock(world.target, world.amount);
+            said.push(describeWorldEffect(String(effect), { ...names, [world.target]: String(who.name ?? world.target) }));
+            opens = true;
+            continue;
+        }
+        if (world.kind === 'llave' || world.kind === 'guia') {
+            if (!world.target) continue;
+            const written = world.kind === 'llave'
+                ? worldItemCatalogue.find((/** @type {any} */ i) => String(i?.name ?? '').trim().toLowerCase() === world.target.toLowerCase()) : null;
+            const holder = partyMembers.find(m => !m.dead) ?? partyMembers[0];
+            // Un objeto del paquete va a la mochila; lo demás (una barca, un guía) se apunta.
+            if (written && holder) addItemToInventory(/** @type {any} */ (holder), createItem(/** @type {any} */ (describeLootItem(String(written.name), '', worldItemCatalogue))));
+            else giveWorldKey(world.target);
+            said.push(describeWorldEffect(String(effect), names));
+            opens = true;
+            continue;
+        }
         if (kind === 'oro') {
             const n = amountOf(amount);
             if (amount.startsWith('-')) {
@@ -416,7 +453,9 @@ function applySucesoEffects(effects, random) {
             }
         }
     }
-    return said;
+    // J10.1: un objeto que abre un paso se nota ya; lo de las facciones, al moverse (`factions.js`).
+    if (opens) announceOpenedRoads();
+    return said.filter(Boolean);
 }
 
 /**
@@ -774,8 +813,17 @@ export function decorateSpeakers(messageId) {
             img.alt = '';
             badge.appendChild(img);
         } else {
-            badge.textContent = initialsOf(who);
-            badge.style.setProperty('--sp-hue', String(hueOf(who)));
+            // D-J52: la cara sin arte que eligió uno del grupo: sus iniciales en su color, un
+            // icono o un emoji.
+            const choice = readFaceChoice(partyMembers.find(m => String(m?.name) === who)?.face);
+            if (choice?.kind === 'icon') {
+                const icon = document.createElement('i');
+                icon.className = `fa-solid ${choice.icon}`;
+                badge.appendChild(icon);
+            } else {
+                badge.textContent = choice?.kind === 'emoji' ? String(choice.emoji) : initialsOf(who);
+            }
+            badge.style.setProperty('--sp-hue', String(faceHue(choice?.color) ?? hueOf(who)));
         }
         paragraph.prepend(badge);
     }

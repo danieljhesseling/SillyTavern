@@ -9562,7 +9562,11 @@ export async function saveChatConditional() {
     try {
         await waitUntilCondition(() => !isChatSaving, DEFAULT_SAVE_EDIT_TIMEOUT, 100);
     } catch {
-        console.warn('Timeout waiting for chat to save');
+        // Fork: a save still in flight after a second (a long chat, a slot copying the game)
+        // used to drop this one, and whatever changed meanwhile was lost if nothing saved later.
+        // Now it is retried once the other has finished.
+        console.warn('Timeout waiting for chat to save; saving again shortly');
+        saveChatDebounced();
         return;
     }
 

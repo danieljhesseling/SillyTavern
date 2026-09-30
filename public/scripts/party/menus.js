@@ -85,6 +85,7 @@ import { renderLocationMapsPreview } from './board-view.js';
 import {
     applyCampaignRuleset, biomeHere, campaignCompendium, currentSeason, getLocationBoards, hereLocation,
     lastPack, lastRumors, lastWorldNpcs, reloadWorldFactions, saveCurrentBoard, saveCurrentLocation, seedOfWorld,
+    travelLocations,
 } from './world.js';
 import { bannerOf, friendlyFactions } from './factions.js';
 import { campaignDay, getCampaignBonds, getCampaignCalendar, whatComes } from './time.js';
@@ -102,7 +103,8 @@ import { buildShellChips, runShellChip } from './shell.js';
 export async function openTextMap() {
     if (!chat_metadata) return;
     const rows = mapRows({
-        locations: getCurrentWorldLocationMaps(),
+        // J10.1: con sus puertas, como el viaje.
+        locations: travelLocations(),
         here: currentLocationName,
         visited: chat_metadata[VISITED_KEY] ?? [],
         notes: chat_metadata[MAP_NOTES_KEY] ?? {},

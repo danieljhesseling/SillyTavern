@@ -265,3 +265,23 @@ describe('the rooms a board draws for itself', () => {
         expect(enemiesInRoom(shut, sotano.enemyPlacements).map(p => p.name)).toEqual(['Guardián del grano']);
     });
 });
+
+describe('J12.3 y J12.13: las trampas y la niebla de un tablero del paquete', () => {
+    test('las trampas llegan sin ver, armadas, con su id y su daño; sin trampas, nada', () => {
+        const pack = example();
+        pack.boards[0].traps = [{ name: 'Losa hundida', x: 3, y: 5, tell: 'Una losa más baja.', damage: '1d6', spotDC: 14 }];
+        const [board, other] = buildImportPlan(pack).metadata.locationMaps[0].boards;
+        expect(board.hazards).toEqual([expect.objectContaining({
+            id: 'trampa-0-3-5', name: 'Losa hundida', trigger: 'enter', effect: 'damage', damageDice: '1d6', seen: false, armed: true, spotDC: 14,
+        })]);
+        expect(other.hazards).toBeUndefined();
+    });
+
+    test('un tablero grande llega con niebla; uno pequeño, sin ella', () => {
+        const pack = example();
+        pack.boards[0].map = Array.from({ length: 28 }, (_, y) => (y === 0 || y === 27 ? '#'.repeat(40) : `#${'.'.repeat(38)}#`));
+        const [big, small] = buildImportPlan(pack).metadata.locationMaps[0].boards;
+        expect(big.fogEnabled).toBe(true);
+        expect(small.fogEnabled).toBe(false);
+    });
+});

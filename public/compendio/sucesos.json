@@ -701,6 +701,119 @@
       "kind": "suceso"
     },
     {
+      "id": "guardias-con-ganas",
+      "name": "Los guardias os tienen ganas",
+      "weight": 4,
+      "when": {
+        "momento": "llegada",
+        "faccion": "*",
+        "reputacionAqui": [-5, -3]
+      },
+      "text": "A la entrada de {sitio}, unos guardias de {bando} os reconocen y se os plantan delante. Buscan una excusa para complicaros el día.",
+      "options": [
+        {
+          "label": "Pagarles para que os dejen en paz",
+          "cost": {
+            "oro": 5
+          },
+          "then": "Se reparten las monedas y se apartan sin mirar atrás."
+        },
+        {
+          "label": "Aguantarles la mirada",
+          "check": {
+            "skill": "intimidation",
+            "dc": 13
+          },
+          "success": {
+            "then": "Se lo piensan mejor y os dejan pasar."
+          },
+          "fail": {
+            "effects": [
+              "herida:1d4",
+              "faccion:-1"
+            ],
+            "then": "Acaba a golpes. Os dejan pasar, pero magullados, y ahora os tienen más ganas."
+          }
+        },
+        {
+          "label": "Pedirles perdón por lo que sea",
+          "check": {
+            "skill": "persuasion",
+            "dc": 12
+          },
+          "success": {
+            "effects": [
+              "faccion:+1"
+            ],
+            "then": "Os miran de otra forma: al menos sabéis hablar."
+          },
+          "fail": {
+            "effects": [
+              "hora"
+            ],
+            "then": "Os tienen de pie una hora larga antes de dejaros ir."
+          }
+        }
+      ],
+      "kind": "suceso"
+    },
+    {
+      "id": "recado-de-quien-manda",
+      "name": "Un recado de quien manda aquí",
+      "weight": 4,
+      "when": {
+        "momento": "llegada",
+        "faccion": "*",
+        "reputacionAqui": [2, 5]
+      },
+      "text": "Nada más llegar a {sitio}, alguien de {bando} os busca: os tienen por gente de fiar y quieren pediros un recado.",
+      "options": [
+        {
+          "label": "Hacerles el recado",
+          "effects": [
+            "hora",
+            "oro:+1d6",
+            "faccion:+1"
+          ],
+          "then": "Un paquete cerrado de una punta a otra, y la paga en la mano. Quedan contentos."
+        },
+        {
+          "label": "Decirles que ahora no",
+          "then": "Lo entienden. No os lo tienen en cuenta."
+        }
+      ],
+      "kind": "suceso"
+    },
+    {
+      "id": "cena-de-los-vecinos",
+      "name": "La cena de los vecinos",
+      "weight": 3,
+      "when": {
+        "momento": "descanso",
+        "fama": [5, 99]
+      },
+      "text": "Esa noche, en {sitio}, alguien llama a la puerta con una olla humeante. En el pueblo se habla de lo que hicisteis, y quieren daros las gracias.",
+      "options": [
+        {
+          "label": "Aceptarla con gusto",
+          "effects": [
+            "comida",
+            "cura:1d6"
+          ],
+          "then": "Guiso de verdad, con carne. Se duerme mejor con la tripa llena."
+        },
+        {
+          "label": "Invitarle a quedarse",
+          "effects": [
+            "comida",
+            "rumor"
+          ],
+          "then": "Se sienta con vosotros y, entre cucharada y cucharada, os cuenta lo que se dice por aquí."
+        }
+      ],
+      "kind": "suceso"
+    },
+    {
       "id": "ruido-noche",
       "name": "Un ruido en la noche",
       "weight": 4,

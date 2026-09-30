@@ -45,14 +45,30 @@ describe('leer el archivo de una campaña (J5.4)', () => {
         expect(b.routes).toEqual([{ to: a.name, days: 2 }]);
     });
 
-    test('el JSON de Strahd tal cual llegó se lee como del Gem, y el validador dice qué le falla', () => {
+    test('el JSON de Strahd tal cual llegó se lee como del Gem, y se puede jugar: el motor pone lo que le falta (J5.3)', () => {
         const found = readCampaignText(read('../wiki/campanas/strahd/original.json'));
         expect(found.kind).toBe('gem');
         expect(found.notes[0]).toMatch(/se han quitado \d+ marcas \[cite\]/);
-        // Los zombis de la mansión, en casillas a las que no se llega: lo arregla mejoras.json.
-        expect(found.ok).toBe(false);
-        expect(found.headline).toBe('La campaña tiene 3 fallos que arreglar antes de jugarla.');
-        expect(found.problems[0]).toEqual({ path: 'boards[1].enemies', message: expect.stringMatching(/no se puede llegar/) });
+        // Los zombis de la mansión esperaban en salas sin puerta por la que entrar (lo arreglaba
+        // mejoras.json): el motor abre una, y lo dice. Y el hilo, que no traía, sale de sus misiones.
+        expect(found.ok).toBe(true);
+        expect(found.problems).toEqual([]);
+        expect(found.filled).toEqual(expect.arrayContaining([
+            expect.objectContaining({ kind: 'puerta', name: 'Mansión del Burgomaestre' }),
+            expect.objectContaining({ kind: 'historia', name: '8 misiones' }),
+        ]));
+        const mansion = found.pack.boards.find((/** @type {any} */ b) => b.id === 'mansion_burgomaestre');
+        expect(mansion.map.join('').split('D').length - 1).toBeGreaterThan(3);
+        // El hilo, acto a acto: empieza en la taberna y acaba en el comedor de Ravenloft, con su final.
+        const milestones = found.pack.plot.milestones;
+        expect(milestones.map((/** @type {any} */ m) => m.quest)).toEqual(['q_taberna', 'q_asedio_mansion', 'q_sotano_iglesia', 'q_campamento_vistani', 'q_festival_vallaki', 'q_mascahuesos', 'q_puertas_ravenloft', 'q_comedor_trampa']);
+        expect(milestones[0].opens).toEqual({ kind: 'start' });
+        expect(milestones[7].changes.ending).toBe('final');
+        // J5.6: lo que se queda a medias se dice, sin que impida jugarla.
+        expect(found.check?.verdict).toBe('huecos');
+        expect(found.check?.groups.find(g => g.key === 'huecos')?.items.map(i => i.text)).toEqual([
+            'En «Argynvostholt» no hay nada que hacer: ni gente, ni rumores, ni servicios, ni tablero.',
+        ]);
     });
 
     test('el bloque ```json del chat del Gem se lee igual', () => {
