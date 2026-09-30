@@ -32,6 +32,7 @@ import { campaignDay } from './time.js';
 import { noteDeed, mixSource } from './world-growth.js';
 import { postCombatNarration, soundCue } from './narration.js';
 import { savePartyState, renderPartyMembers } from './roster.js';
+import { noteCampaignOf } from './sheet.js';
 
 /**
  * R6: abrir un cofre. Hace falta estar al lado; da oro y, a veces, algo de valor. Se queda
@@ -137,6 +138,8 @@ export function awardEncounterLoot(defeated) {
         member.gold = (Number(member.gold) || 0) + loot.goldEach;
         member.xp = (Number(member.xp) || 0) + loot.xpEach;
     }
+    // J1.7: quien pelea en una campaña ha estado en ella; su ficha lo dirá (se guarda abajo).
+    noteCampaignOf(survivors);
 
     // Objetos de verdad, no texto. Una pocion que no se puede beber y una espada que no
     // se puede equipar son ambientacion con pasos de mas: lo que cae entra en el

@@ -51,7 +51,7 @@ import { revealClue } from './cases.js';
 import { getAliveEnemies, getCurrentTurnEntry, getPartyMemberByTurnEntry, saveCombatState } from './combat-state.js';
 import { damagePartyMember } from './enemy-turn.js';
 import { applyFall, wakeRoomEnemies } from './combat-flow.js';
-import { applyTimedCondition } from './magic.js';
+import { applyTimedCondition, fieldLightOn } from './magic.js';
 import { openChest } from './loot.js';
 import { partyTabSetter } from './main.js';
 import { renderLocationMapsPreview } from './board-view.js';
@@ -62,6 +62,7 @@ import { worldWrite } from './world-growth.js';
 import { postCombatNarration, soundCue } from './narration.js';
 import { savePartyState } from './roster.js';
 import { getPartyFormation } from './companions.js';
+import { inMarchOrder } from '../game-engine/campaign/formation.js';
 
 /**
  * Writes terrain and fog back into the world info file that owns the board.
@@ -873,7 +874,8 @@ export function boardVisibility() {
         weather: weatherHere(),
         slot: getCurrentSlotLabel(),
         indoors: isIndoors(board, hereLocation()),
-        lit: carriesLight(partyMembers),
+        // J19.10: una Luz lanzada fuera de combate alumbra como un farol mientras dura.
+        lit: carriesLight(partyMembers) || fieldLightOn(),
     });
 }
 
@@ -1061,7 +1063,10 @@ export function enterBoard(name) {
 export function placePartyAtStart(board) {
     const starts = Array.isArray(board?.partyStart) ? board.partyStart : [];
     if (starts.length === 0 || combatEncounter.active) return;
-    partyMembers.filter(m => !m.dead).forEach((member, index) => {
+    // J7.4: si se eligió el orden de marcha, el de delante en la primera casilla.
+    const formation = getPartyFormation();
+    const alive = partyMembers.filter(m => !m.dead);
+    (formation.order.length > 0 ? inMarchOrder(formation, alive) : alive).forEach((member, index) => {
         const cell = starts[index] ?? starts[0];
         member.mapPosition = { locationName: currentLocationName, gridX: Number(cell?.x) || 0, gridY: Number(cell?.y) || 0 };
     });

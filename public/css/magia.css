@@ -64,10 +64,13 @@
 .ch-grimoire,
 .ch-attune,
 .gr-actions .menu_button,
-.lu-spell-card .lu-confirm {
+.lu-spell-card .lu-confirm,
+.lu-actions .lu-confirm,
+.ch-field-magic {
     width: auto;
     white-space: nowrap;
     padding: 4px 10px;
+    gap: 0.4em;
 }
 
 .ch-attune-note {
@@ -410,6 +413,9 @@
     opacity: 0.85;
 }
 
+/* Con el padre delante: `.menu_button` y la regla vieja de combat-cues.css ganaban y cada mejora
+   salía en una columna estrecha («Escudo / de / voluntad»). */
+.lu-perks > .lu-perk,
 .lu-perk {
     display: grid;
     grid-template-columns: auto 1fr;

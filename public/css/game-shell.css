@@ -944,6 +944,11 @@ html:has(> body.game-shell-on) {
     flex: 0 0 auto;
 }
 
+/* J1.8: sin cara ni retrato, las iniciales en su color (`hero-face.js`). */
+.gs-chip-avatar.hero-initials {
+    font-size: 0.95rem;
+}
+
 /* Sin cara propia, el retrato de relleno en pixel: la cabeza, sin suavizar. */
 .gs-chip-avatar.gs-chip-pixel {
     object-position: 50% 12%;

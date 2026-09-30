@@ -404,3 +404,34 @@
         min-height: 44px;
     }
 }
+
+/* ================================================================
+   J15.2 y J15.6 · Desde «Cargar partida» (game-shell.js): cuántas ranuras tiene cada
+   partida, su botón «Ranuras» junto a «Seguir», e «Importar una partida» al pie.
+   ================================================================ */
+
+.gs-save-load {
+    padding: 7px 12px;
+    border: 1px solid var(--gs-gold-line, rgba(214, 180, 106, 0.4));
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.3);
+    color: var(--SmartThemeBodyColor, #ddd);
+    font: inherit;
+    font-size: 0.85em;
+    cursor: pointer;
+}
+
+.gs-save-load:hover,
+.gs-save-load:focus-visible {
+    background: var(--gs-accent-gold-hover, rgba(214, 180, 106, 0.15));
+}
+
+.gs-save-slots {
+    font-size: 0.82em;
+    color: var(--gs-accent-gold, #d6b46a);
+    opacity: 0.85;
+}
+
+.gs-save-import {
+    margin: 14px auto 0;
+}

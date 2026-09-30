@@ -23,6 +23,7 @@ import { getActiveBoardContext, placePartyAtStart } from './board.js';
 import { renderLocationMapsPreview } from './board-view.js';
 import { loadCurrentLocation } from './world.js';
 import { packPeople, unpackPeople } from './social.js';
+import { packFormation, unpackFormation } from './companions.js';
 
 /** @typedef {import('./types.js').PartyMember} PartyMember */
 /** @typedef {import('./types.js').DndCatalog} DndCatalog */
@@ -608,9 +609,9 @@ export function syncPartyWithEntries(entries, worldName) {
 }
 
 /**
- * Lo de tu gente del último `partySnapshot`, y de qué chat salió.
+ * Lo de tu gente del último `partySnapshot`, y de qué chat salió. J7.4: y la formación.
  *
- * @type {{chat: string, people: ReturnType<typeof packPeople>}|null}
+ * @type {{chat: string, people: ReturnType<typeof packPeople>, formation?: ReturnType<typeof packFormation>}|null}
  */
 let carriedPeople = null;
 
@@ -622,7 +623,7 @@ let carriedPeople = null;
 export function partySnapshot() {
     // J14.6: con el grupo salen sus vínculos y lo de su gente; `adoptCarriedParty` los deja en
     // el chat de llegada. Hasta ahora los vínculos se quedaban en el chat de donde se salía.
-    carriedPeople = { chat: String(getCurrentChatId() ?? ''), people: packPeople(partyMembers) };
+    carriedPeople = { chat: String(getCurrentChatId() ?? ''), people: packPeople(partyMembers), formation: packFormation() };
     return JSON.parse(JSON.stringify(partyMembers));
 }
 
@@ -639,7 +640,11 @@ export function adoptCarriedParty(carried, { worldName, uids = {}, atStart = fal
     setPartyMembers(hubRoster(settleCarried({ carried, here: partyMembers, worldName, uids, lead }))
         .map(member => migratePartyMember(member)));
     // J14.6: los vínculos y lo social llegan con el grupo, si viene de otro chat.
-    if (carriedPeople && carriedPeople.chat !== String(getCurrentChatId() ?? '')) unpackPeople(carriedPeople.people);
+    if (carriedPeople && carriedPeople.chat !== String(getCurrentChatId() ?? '')) {
+        unpackPeople(carriedPeople.people);
+        // J7.4: la formación, con los ids de aquí (antes de ponerlos en sus casillas).
+        unpackFormation(carriedPeople.formation ?? null);
+    }
     carriedPeople = null;
     if (atStart) placePartyAtStart(getActiveBoardContext().board);
     savePartyState();

@@ -191,8 +191,11 @@ function doesHere(kind, spell, slotLevel, member, classRow, context) {
     switch (kind) {
         case 'luz':
             return context.night
-                ? 'Alumbra el campamento esta noche: cuenta como un fuego, y la noche da menos miedo.'
-                : `Alumbra este sitio oscuro: +${LIGHT_LOOK_BONUS} a examinar aquí mientras dure.`;
+                ? `Alumbra la noche: +${LIGHT_LOOK_BONUS} a examinar mientras dure, y si acampáis cuenta como un fuego.`
+                : context.dark
+                    ? `Alumbra este sitio oscuro: +${LIGHT_LOOK_BONUS} a examinar aquí mientras dure.`
+                    // De día y con luz, no decir «este sitio oscuro» junto a «aquí se ve bien».
+                    : `Alumbra un sitio oscuro (de noche, una cueva, una cripta): +${LIGHT_LOOK_BONUS} a examinar allí mientras dure.`;
         case 'curar': {
             const up = upcastSpell(spell, slotLevel || spell.level);
             const mod = spell.addModifier ? spellcastingStats(member, classRow).modifier : 0;
@@ -230,8 +233,9 @@ export function describeCost(how, slotLevel) {
 /**
  * Lo que alguien puede lanzar fuera de combate, cada cosa con si se puede ahora y por qué no.
  * Primero los trucos y lo que gasta espacio (lo de esta tabla); luego sus rituales. Si un
- * conjuro sale como ritual y se puede, no sale además con espacio: nadie gasta un espacio en
- * lo que puede hacer gratis.
+ * conjuro sale como ritual, no sale además con espacio: fuera de combate nadie gasta un
+ * espacio en lo que puede hacer gratis, y lo que impide el ritual (el material, que no haya
+ * nada que identificar) impide igual el otro. Salía dos veces, y confundía.
  *
  * @param {Object} input
  * @param {any} input.member
@@ -259,7 +263,7 @@ export function fieldChoices({ member, classRow, catalogue, carried = [], contex
         reason: choice.reason,
         does: choice.note,
     }));
-    const freeRituals = new Set(rituals.filter(r => r.ok).map(r => r.id));
+    const freeRituals = new Set(rituals.map(r => r.id));
 
     const { cantrips, spells } = castableSpells(member, classRow, catalogue);
     /** @type {FieldChoice[]} */
@@ -352,7 +356,7 @@ export function castField({ member, classRow, spell: raw, carried = [], context 
             const slotIndex = Math.max(0, Math.floor(Number(context.calendar?.slotIndex) || 0));
             out.effects.light = { day, slotIndex, by: caster };
             out.lines.push(context.night
-                ? `${caster} lanza ${spell.name}: una luz blanca que no parpadea. Esta noche el campamento está alumbrado, como con fuego.`
+                ? `${caster} lanza ${spell.name}: una luz blanca que no parpadea, y todo queda alumbrado. Esta noche se examina mejor (+${LIGHT_LOOK_BONUS}) y, si acampáis, cuenta como un fuego.`
                 : `${caster} lanza ${spell.name}: lo que estaba a oscuras se ve. Mientras dure, examinar aquí es más fácil (+${LIGHT_LOOK_BONUS}).`);
             break;
         }

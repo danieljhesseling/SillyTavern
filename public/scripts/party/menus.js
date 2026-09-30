@@ -67,6 +67,7 @@ import { generateBoard } from '../game-engine/world-builder/dungeon-generator.js
 import { describeLootItem } from '../game-engine/combat/loot-items.js';
 import { getBondProgress } from '../game-engine/campaign/bonds.js';
 import { isShellOpen, refreshGameShell } from '../game-engine/ui/shell/game-shell.js';
+import { openStoryBook } from '../game-engine/ui/story-book.js';
 import { buildPackFromWorld, describeExport } from '../game-engine/campaign/campaign-export.js';
 import { normalizePack, validatePack } from '../game-engine/campaign/campaign-pack.js';
 import {
@@ -83,16 +84,16 @@ import { enterBoard } from './board.js';
 import { renderLocationMapsPreview } from './board-view.js';
 import {
     applyCampaignRuleset, biomeHere, campaignCompendium, currentSeason, getLocationBoards, hereLocation,
-    lastRumors, lastWorldNpcs, reloadWorldFactions, saveCurrentBoard, saveCurrentLocation, seedOfWorld,
+    lastPack, lastRumors, lastWorldNpcs, reloadWorldFactions, saveCurrentBoard, saveCurrentLocation, seedOfWorld,
 } from './world.js';
 import { bannerOf, friendlyFactions } from './factions.js';
 import { campaignDay, getCampaignBonds, getCampaignCalendar, whatComes } from './time.js';
-import { getPlot, openMilestones } from './plot.js';
+import { campaignBook, getPlot, openMilestones } from './plot.js';
 import { worldWrite } from './world-growth.js';
 import { survivalNow } from './modes.js';
-import { narratorMode, postCombatNarration, whoPlays } from './narration.js';
+import { narratorMode, offlineGame, postCombatNarration, whoPlays } from './narration.js';
 import { savePartyState, syncPartyWithEntries } from './roster.js';
-import { partyMorale } from './companions.js';
+import { openFormationPanel, partyMorale, personalQuestJournal } from './companions.js';
 import { neighbourPlaces } from './travel.js';
 import { buildServiceCards, runService } from './town.js';
 import { buildShellChips, runShellChip } from './shell.js';
@@ -210,7 +211,19 @@ export function openPartyGlance() {
     body.append($('<div class="pg-total"></div>').text(`Oro del grupo: ${gold}`));
     // Idea 39: la moral, con lo que da.
     body.append($('<div class="pg-morale"></div>').text(`Moral: ${partyMorale().label}`));
-    void new Popup(body[0], POPUP_TYPE.TEXT, '', { okButton: 'Cerrar', allowVerticalScrolling: true, leftAlign: true }).show();
+    // J7.4: quién va delante y quién cura, guía, vigila y caza.
+    /** @type {Popup|null} */
+    let glance = null;
+    const formation = $('<button type="button" class="menu_button pg-formation"></button>')
+        .append('<i class="fa-solid fa-people-line"></i>')
+        .append($('<span></span>').text(' Formación y papeles'));
+    formation.on('click', async () => {
+        await glance?.completeCancelled();
+        await openFormationPanel();
+    });
+    body.append(formation);
+    glance = new Popup(body[0], POPUP_TYPE.TEXT, '', { okButton: 'Cerrar', allowVerticalScrolling: true, leftAlign: true });
+    void glance.show();
 }
 
 /**
@@ -362,6 +375,9 @@ function openJournal() {
     // Idea 36: quien se quedó por el camino.
     const graves = readGraves(chat_metadata?.[GRAVES_KEY]);
     if (graves.length > 0) sections.push({ title: 'Los que se quedaron', items: graves.map(g => g.epitaph) });
+    // J14.9: las misiones personales de tu gente: cómo van y cómo acabaron.
+    const personal = personalQuestJournal();
+    if (personal.length > 0) sections.push({ title: 'Misiones de tu gente', items: personal });
     // Idea 200: mientras se juega, la partida en numeros tambien esta en el diario.
     sections.push({ title: 'La partida en números', items: statsLines() });
     // U4 del pegamento: lo que el mundo recuerda son los hechos; la crónica es todo lo que
@@ -369,6 +385,32 @@ function openJournal() {
     const remembered = sections.find(s => s.title === 'Crónica');
     if (remembered) remembered.title = 'Lo que el mundo recuerda';
     const told = chronicleSections(chronicleOf(chat), { limit: 8 });
+    // J9.6: sin conexión, el Diario es un libro: capítulos (J9.3), plazos (J9.5), lo decidido y lo
+    // que salió de ello (J11.5). Lo de siempre va en sus «Apuntes». Si no se puede montar, la lista.
+    if (offlineGame()) {
+        try {
+            const book = campaignBook();
+            void openStoryBook({ book, pack: lastPack, notes: sections, chronicle: told })
+                .catch(error => {
+                    console.error('[party] el libro del diario no se pudo abrir', error);
+                    showJournalList(sections, told);
+                });
+            return;
+        } catch (error) {
+            console.error('[party] el libro del diario no se pudo montar', error);
+        }
+    }
+    showJournalList(sections, told);
+}
+
+/**
+ * El Diario de siempre: una lista por secciones, con la crónica y su filtro.
+ *
+ * @param {Array<{title: string, items: string[]}>} sections
+ * @param {Array<{category: string, title: string, items: string[]}>} told
+ * @returns {void}
+ */
+function showJournalList(sections, told) {
     const body = $('<div class="jr-root gs-panel"></div>');
     body.append($('<h3 class="gs-popup-title"></h3>').text('Diario'));
     for (const section of sections) {
@@ -764,6 +806,8 @@ export async function openHowToPlay() {
         legend: getMapLegend(),
         pet: Boolean(currentPet()),
         magic: partyMembers.some(m => !m.dead && knownSpells(m).length > 0),
+        // J15.4: sin conexión, cada cosa con su botón y no con su comando.
+        offline: offlineGame(),
     });
     const body = $('<div class="jr-root hp-root"></div>');
     body.append($('<h3></h3>').text('Cómo se juega'));

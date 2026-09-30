@@ -1,0 +1,115 @@
+/* ================================================================
+   J3.1 a J3.8 · Las ventanas de la sala del gremio (public/scripts/party/hub.js): el cofre y
+   el arca, el patio, la casa con su forja y su biblioteca, y el tablón de campañas con las
+   que el rango aún no abre (J3.7).
+   Las tarjetas y las cabeceras son las de siempre (`vt-*` y `hb-*`, campaigns.css); aquí solo
+   va lo de dentro: las filas con su botón, que no se partían, y el texto a la altura del título.
+   ================================================================ */
+
+/* Lo de dentro de cada ventana, al margen de la cabecera. */
+.hb-chest,
+.hb-training {
+    padding-bottom: 8px;
+}
+
+.hb-chest > :not(.vt-head, .vt-section),
+.hb-training > :not(.vt-head, .vt-section),
+.hb-forge > :not(.vt-section),
+.hb-library > :not(.vt-section) {
+    margin-left: 26px !important;
+    margin-right: 26px !important;
+}
+
+/* Una línea de estado es texto, no la píldora de «En curso» del tablón. */
+.hb-chest .hb-state,
+.hb-training .hb-state,
+.hb-house .hb-state,
+.hb-library .hb-state {
+    align-self: auto;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    font-size: 0.9rem;
+    font-weight: normal;
+}
+
+/* Cada fila: lo que es, a la izquierda y sin cortar; el botón, entero a la derecha. */
+.hb-chest-row > span:first-child {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.hb-chest-row .menu_button,
+.hb-chest-gold .menu_button,
+.hb-training .menu_button {
+    flex: none;
+    width: auto;
+    white-space: nowrap;
+}
+
+.hb-chest-row .hb-warn {
+    flex: 0 1 40%;
+    text-align: right;
+}
+
+.hb-chest-who,
+.hb-library-forget {
+    width: auto;
+    max-width: 100%;
+}
+
+/* J3.6: lo que ya abre cada edificio, y la forja y la biblioteca debajo de las tarjetas. */
+.hb-opened {
+    color: var(--gs-accent-gold, #d6b46a);
+    font-size: 0.82rem;
+}
+
+.hb-forge,
+.hb-library {
+    padding-bottom: 12px;
+}
+
+/* J3.7: una campaña que el rango aún no abre: se ve, con lo que falta, pero no se pulsa. */
+.hb-lock {
+    display: flex;
+    align-items: baseline;
+    gap: 7px;
+    color: #e6a15a;
+    font-size: 0.85rem;
+}
+
+@media (max-width: 600px) {
+    .hb-chest > :not(.vt-head, .vt-section),
+    .hb-training > :not(.vt-head, .vt-section),
+    .hb-forge > :not(.vt-section),
+    .hb-library > :not(.vt-section) {
+        margin-left: 12px !important;
+        margin-right: 12px !important;
+    }
+
+    .hb-chest-row {
+        flex-wrap: wrap;
+    }
+
+    .hb-chest-row .menu_button,
+    .hb-chest-gold .menu_button,
+    .hb-training .menu_button,
+    .hb-house .menu_button,
+    .hb-foot .hb-close {
+        min-height: 44px;
+    }
+
+    .hb-chest-gold {
+        flex-wrap: wrap;
+    }
+}
+
+/* J15.4: «Parte a parte», en la mesa de la semana: lo que hacía la orden de la cuenta. */
+.wt-bill .wt-bill-detail {
+    display: inline-flex;
+    width: auto;
+    margin: 0 0 0 8px;
+    padding: 2px 10px;
+    font-size: 0.85em;
+    vertical-align: baseline;
+}

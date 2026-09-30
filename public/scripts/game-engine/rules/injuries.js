@@ -311,7 +311,8 @@ export function describeInjuries(member) {
         const effects = Object.entries(injury.modifiers)
             .map(([stat, amount]) => `${STAT_SAID[stat] ?? stat} ${amount > 0 ? '+' : ''}${amount}`)
             .join(', ');
-        const when = injury.permanent ? 'para siempre' : `${injury.daysLeft} día(s)`;
-        return `${injury.label} — ${effects} · ${when}`;
+        const when = injury.permanent ? 'para siempre' : `${injury.daysLeft} ${injury.daysLeft === 1 ? 'día' : 'días'}`;
+        // Una enfermedad sin números («con fiebre») no deja un «— ·» colgando en la ficha (J1.7).
+        return effects ? `${injury.label} — ${effects} · ${when}` : `${injury.label} · ${when}`;
     });
 }

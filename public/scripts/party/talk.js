@@ -59,14 +59,17 @@ import {
 } from './world.js';
 import { advanceCampaignSlot, campaignDay, getCampaignCalendar, getCurrentSlotLabel } from './time.js';
 import {
-    applySceneEffectsToGame, notePlot, openMilestones, recordDialogueAftermath, storyHero, storyNight, storyWorld,
+    applySceneEffectsToGame, judgeOption, notePlot, openMilestones, optionOpinionTags, recordDialogueAftermath, storyHero,
+    storyNight, storyWorld,
 } from './plot.js';
 import { noteDeed, refreshWorldMemoryPrompt, worldWrite } from './world-growth.js';
 import {
-    modelNarrates, narratorMode, noteRollInWindow, postCombatNarration, postForModel, showTip, storyWindowsOn, tellMoment,
+    modelNarrates, narratorMode, noteRollInWindow, offlineGame, postCombatNarration, postForModel, showTip, storyWindowsOn,
+    tellMoment,
 } from './narration.js';
 import { payFromParty, savePartyState } from './roster.js';
 import { changeAttitude } from './companions.js';
+import { fieldLookBonus } from './magic.js';
 import { neighbourPlaces, askBeforeTravelling, travelWithTime } from './travel.js';
 import { hearRumor, openService, buildServiceCards, runService, rumorsLeftHere } from './town.js';
 import { openJournalSafely, openHelp } from './menus.js';
@@ -573,9 +576,11 @@ export function runSkillCheck(skill, keep = '', what = '') {
  * @param {string} skill
  * @param {string} [keep]
  * @param {string} [what]
+ * @param {{story?: boolean}} [how] `story`: sin modelo, la tirada se cuenta como lo que pasa (se lee
+ *   en la novela) y no como nota pequeña del motor (J10: mirar algo del sitio, sin conexión).
  * @returns {{line: string, success: boolean|null}}
  */
-export function rollSkillCheck(skill, keep = '', what = '') {
+export function rollSkillCheck(skill, keep = '', what = '', { story = false } = {}) {
     const none = { line: '', success: null };
     // Idea 138: si la pidio el narrador, con su dificultad, y la peticion se gasta.
     const asked = takeRequest(chat_metadata?.[CHECK_REQUESTS_KEY], skill, SKILLS);
@@ -609,6 +614,9 @@ export function rollSkillCheck(skill, keep = '', what = '') {
         member, skill, rollD20: () => rollDiceDetailed('1d20', 20).total,
         // Idea 140: la actitud de con quien se habla baja o sube lo que hace falta.
         dc: (asked.request ? asked.request.dc : DEFAULT_DC) - (SOCIAL_SKILLS.includes(skill) && talkingTo ? attitudeTowards(talkingTo) : 0),
+        // J19.10: la Luz encendida con magia, en un sitio oscuro, ayuda a examinar (+2).
+        bonus: fieldLookBonus(skill),
+        bonusWhy: 'la Luz',
         ...(barrier.edge ? { edge: barrier.edge, why: 'no habla su lengua' } : {}),
     });
     if (result && asked.request && chat_metadata) chat_metadata[CHECK_REQUESTS_KEY] = asked.requests;
@@ -633,7 +641,7 @@ export function rollSkillCheck(skill, keep = '', what = '') {
     // Con modelo, la consecuencia la cuenta él con el mensaje que se envíe; sin modelo, la
     // tirada se cuenta aquí, y hace algo (Z3): no hay mensaje que esperar.
     if (toModel) chat_metadata[PENDING_CHECK_KEY] = { line: result.line, draft: result.draft };
-    else tellCheck(member, result, what);
+    else tellCheck(member, result, what, story);
     // Idea 107: con el sitio, que es donde está la pista.
     notePlot({ kind: 'check', skill, success: result.success, place: currentLocationName });
     // Un encargo que se resuelve sin pelear se da por hecho con una tirada buena en su sitio.
@@ -654,9 +662,10 @@ export function rollSkillCheck(skill, keep = '', what = '') {
  * @param {any} member Quien lo intenta.
  * @param {{skill: string, success: boolean, total: number, dc: number, natural: number, said: string}} result
  * @param {string} [what] Lo que se intentaba, en infinitivo.
+ * @param {boolean} [story] Contarla como lo que pasa, para la novela, y no como nota pequeña.
  * @returns {void}
  */
-function tellCheck(member, result, what = '') {
+function tellCheck(member, result, what = '', story = false) {
     const outcome = checkOutcome(result);
     const gains = fieldGainsToday();
     const key = `${currentLocationName}|${result.skill}`;
@@ -714,7 +723,13 @@ function tellCheck(member, result, what = '') {
     }
     if (outcome !== 'mal' && effects.length === 0 && !fresh) notes.push('Aquí ya no queda nada más que sacar hoy.');
     if (gained && chat_metadata) chat_metadata[FIELD_GAINS_KEY] = { ...gains, keys: [...gains.keys, key] };
-    postCombatNarration(`🎲 [TIRADA] ${[`${said}.`, prose, ...notes].filter(Boolean).join(' ')}`);
+    const told = [`${said}.`, prose, ...notes].filter(Boolean).join(' ');
+    if (story) {
+        void postForModel(`[TIRADA] ${told} Cuéntalo tal cual, sin añadir nada.`, { show: `🎲 [TIRADA] ${told}` })
+            .catch(error => console.error('[party] check note failed', error));
+    } else {
+        postCombatNarration(`🎲 [TIRADA] ${told}`);
+    }
     for (const run of after) run();
     savePartyState();
 }
@@ -776,7 +791,8 @@ export async function lookAt(value) {
     if (row) {
         const gains = fieldGainsToday();
         if (chat_metadata) chat_metadata[FIELD_GAINS_KEY] = { ...gains, looked: [...gains.looked, `${currentLocationName}|${row.id}`] };
-        const check = rollSkillCheck(String(row.skill), '', `${row.verbo} ${row.text}`);
+        // J10: sin conexión, cómo fue y lo que se saca se lee en la novela, no solo en el dado.
+        const check = rollSkillCheck(String(row.skill), '', `${row.verbo} ${row.text}`, { story: offlineGame() });
         const found = lookFound(row, check.success === true);
         if (found) {
             noteDeed(`${lookLabel(row)}, en ${currentLocationName}: ${found}`);
@@ -856,8 +872,13 @@ async function openWrittenTalk(npc, dialogue, draft = '') {
             chat_metadata[DIALOGUE_MEMORY_KEY] = memory;
             saveMetadata();
         },
-        // J11.2: lo que vuelve días después de lo que se dijo (`later` en la opción).
-        onChoice: (optionId, outcome) => recordDialogueAftermath(dialogue, optionId, outcome),
+        // J11.2: lo que vuelve días después de lo que se dijo (`later` en la opción). J7.5: y lo
+        // que opina el grupo, que cuenta al elegir y se dice en la ventana.
+        onChoice: (optionId, outcome, option) => {
+            recordDialogueAftermath(dialogue, optionId, outcome);
+            return judgeOption(option);
+        },
+        opinionsFor: optionOpinionTags,
         extras: [{ id: 'otras', label: 'Otras cosas', icon: 'fa-ellipsis', title: 'Sonsacar, convencer, amenazar…' }],
         pack: lastPack,
         place: service in PLACE_KINDS ? service : '',

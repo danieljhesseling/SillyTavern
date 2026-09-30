@@ -25,7 +25,9 @@ import { cleanNovelCopy, markEngineTags } from './engine-tags.js';
 import { playForScene, stopSceneAudio } from './scene-audio.js';
 import { SHORTCUTS, actionForKey } from './shortcuts.js';
 import { firstArt, isPlainFace, loadPixelManifest, openPack } from '../pixel-art.js';
+import { faceElement } from '../hero-face.js';
 import { buildTown, closeTownPlace, countTownPlaces, renderTownScene, renderTownSelector } from './town-scene.js';
+import { deadlineBadge } from '../story-book.js';
 
 /**
  * @typedef {import('./scene-director.js').SceneName} SceneName
@@ -95,6 +97,10 @@ import { buildTown, closeTownPlace, countTownPlaces, renderTownScene, renderTown
  *   primero; null mientras se leen.
  * @property {(id: string) => void} [onLoadGame] J0.5 y J0.6: seguir una partida donde se quedó.
  * @property {(id: string) => void} [onDeleteGame] J0.6: borrar una partida (pregunta antes).
+ * @property {() => void} [onSaveGame] J15.2: la pantalla de guardar y cargar, con la partida abierta (en la pausa).
+ * @property {(id: string) => string} [slotsLine] J15.2: «2 ranuras guardadas» de una partida, o nada.
+ * @property {(id: string) => void} [onGameSlots] J15.2: las ranuras de una partida, desde «Cargar partida».
+ * @property {() => void} [onImportGame] J15.6: meter una partida exportada, desde «Cargar partida».
  * @property {() => number} [countHall] Cuantos caidos hay en el salon de la fama (idea 199).
  * @property {() => string} [hallHint] Lo que hay en el salon, dicho corto (J3.9): «1 campaña terminada · 2 caídos».
  * @property {() => void} [onHall] Abrir el salon de la fama.
@@ -118,7 +124,8 @@ import { buildTown, closeTownPlace, countTownPlaces, renderTownScene, renderTown
  * @property {() => ({location: any, npcs: any[], people?: import('./town-scene.js').YourPerson[]}|null)} [getTown] J3.11: la
  *   localización de aquí y la gente del mundo, para los sitios del pueblo. Sin ella, el Shell las lee
  *   del mundo abierto. J14.4: y quién de tu gente está en cada sitio (`people`).
- * @property {() => {title: string, hint: string, act: number}|null} [getFocus]
+ * @property {() => {title: string, hint: string, act: number, clock?: import('../../campaign/story-book.js').BookClock|null}|null} [getFocus]
+ *   J9.5: con `clock`, el plazo de lo que tenéis entre manos («Queda 1 día»).
  *   Lo que se tiene entre manos: el hito abierto del hilo.
  * @property {() => void} [onJournal] Abrir el diario (idea 100).
  * @property {() => void} [onGlance] El grupo de un vistazo (idea 162).
@@ -450,7 +457,9 @@ function renderSavedGames(menu, games) {
         if (game.badge) top.appendChild(el('span', 'gs-save-badge', game.badge));
         if (game.when) top.appendChild(el('span', 'gs-save-when', `Jugada ${game.when}`));
         body.appendChild(top);
-        for (const [key, value] of /** @type {const} */ ([['hero', game.hero], ['line', game.line], ['where', game.where], ['campaigns', game.campaigns]])) {
+        // J15.2: cuántas ranuras tiene guardadas; se cargan desde su botón.
+        const slots = game.unstarted ? '' : String(options?.slotsLine?.(game.id) ?? '');
+        for (const [key, value] of /** @type {const} */ ([['hero', game.hero], ['line', game.line], ['where', game.where], ['campaigns', game.campaigns], ['slots', slots]])) {
             if (value) body.appendChild(el('div', `gs-save-${key}`, value));
         }
         card.appendChild(body);
@@ -460,6 +469,18 @@ function renderSavedGames(menu, games) {
         play.appendChild(el('i', 'fa-solid fa-play'));
         play.appendChild(el('span', '', game.unstarted ? ' Empezar' : ' Seguir'));
         actions.appendChild(play);
+        if (slots && options?.onGameSlots) {
+            const load = makeButton('gs-save-load');
+            load.title = `Las ranuras de «${game.title}»: cargar una de ellas`;
+            load.dataset.world = game.id;
+            load.appendChild(el('i', 'fa-solid fa-floppy-disk'));
+            load.appendChild(el('span', '', ' Ranuras'));
+            load.addEventListener('click', (event) => {
+                event.stopPropagation();
+                options?.onGameSlots?.(game.id);
+            });
+            actions.appendChild(load);
+        }
         if (game.canDelete && options?.onDeleteGame) {
             const bin = makeButton('gs-save-delete');
             // D-J23: un gremio se borra entero, con sus campañas; la ventana de antes lo dice todo.
@@ -484,6 +505,17 @@ function renderSavedGames(menu, games) {
         list.appendChild(card);
     }
     menu.appendChild(list);
+    // J15.6: una partida exportada (de otro ordenador, o de antes), con todo dentro.
+    if (options?.onImportGame) {
+        const bring = makeButton('gs-menu-btn gs-save-import');
+        bring.appendChild(el('i', 'fa-solid fa-file-import'));
+        const body = el('span', 'gs-menu-body');
+        body.appendChild(el('span', 'gs-menu-label', 'Importar una partida'));
+        body.appendChild(el('span', 'gs-menu-hint', 'Un archivo «.partida.json» exportado desde este juego'));
+        bring.appendChild(body);
+        bring.addEventListener('click', () => options?.onImportGame?.());
+        menu.appendChild(bring);
+    }
 }
 
 /**
@@ -685,9 +717,12 @@ function renderActionChips(row, place = {}) {
 
     for (const chip of chips) {
         const button = makeButton(`gs-chip-action gs-chip-${chip.source}`);
-        button.title = chip.command
+        // De qué ficha es (`look:…`, `talk-local:…`), para las vueltas de prueba.
+        button.dataset.chip = chip.id;
+        // Sin conexión no hay caja ni órdenes: el porqué es la ficha misma (J18.7).
+        button.title = chip.command && !offline
             ? `Ejecuta ${chip.command}`
-            : (chip.draft ? 'Deja la frase empezada en el chat' : chip.label);
+            : (chip.draft && !offline ? 'Deja la frase empezada en el chat' : chip.label);
         button.appendChild(el('i', `fa-solid ${chip.icon}`));
         button.appendChild(el('span', 'gs-chip-action-label', chip.label));
         button.addEventListener('click', () => options?.onChip?.(chip));
@@ -767,6 +802,9 @@ function renderFocus(slot, tools = null) {
         slot.appendChild(el('i', 'fa-solid fa-compass'));
         slot.appendChild(el('span', 'gs-focus-title', focus.title));
         if (focus.hint) slot.appendChild(el('span', 'gs-focus-hint', focus.hint));
+        // J9.5: si tiene plazo, cuánto queda, junto a lo que tenéis entre manos.
+        const clock = focus.clock ? deadlineBadge(focus.clock) : null;
+        if (clock) slot.appendChild(clock);
         slot.title = `Acto ${focus.act}`;
     }
     // Siempre a mano, aunque la fila de fichas este llena: el diario y la ayuda.
@@ -1286,19 +1324,11 @@ function renderChips(strip, chips) {
         card.classList.toggle('bloodied', chip.bloodied);
 
         // Sin cara propia, su retrato en pixel: el suyo si es un mercenario, y si no, el de
-        // relleno de su clase.
-        const drawn = isPlainFace(chip.avatar)
-            ? (chip.mercenary ? firstArt('mercenary', { name: chip.name }) : '')
-                || firstArt('hero', { className: chip.className, gender: chip.gender, name: chip.name, race: chip.race })
-            : '';
-        if (drawn || chip.avatar) {
-            const image = document.createElement('img');
-            image.className = drawn ? 'gs-chip-avatar gs-chip-pixel pixel-art' : 'gs-chip-avatar';
-            image.src = drawn || chip.avatar;
-            image.alt = chip.name;
-            if (drawn && chip.avatar) image.addEventListener('error', () => { image.className = 'gs-chip-avatar'; image.src = chip.avatar; }, { once: true });
-            card.appendChild(image);
-        }
+        // relleno de su clase. J1.8: sin ninguno, o si la imagen no carga, sus iniciales en su
+        // color (`hero-face.js`), y no la silueta de SillyTavern ni una imagen rota.
+        card.appendChild(faceElement(chip, {
+            imageClass: 'gs-chip-avatar', pixelClass: 'gs-chip-pixel pixel-art', badgeClass: 'gs-chip-avatar gs-chip-initials',
+        }));
 
         const body = el('div', 'gs-chip-body');
         const line = el('div', 'gs-chip-line');
@@ -1370,6 +1400,13 @@ function setPaused(next) {
     };
 
     item('Continuar', 'fa-play', () => setPaused(false), 'Esc');
+    // J15.2: guardar y cargar, como en un juego; solo con una partida abierta.
+    if (options.onSaveGame && options.getSituation?.()?.hasChat) {
+        item('Guardar y cargar', 'fa-floppy-disk', () => {
+            setPaused(false);
+            options?.onSaveGame?.();
+        });
+    }
     // H2: cómo se juega, armado con lo que el motor sabe.
     if (options.onHowToPlay) {
         item('Cómo se juega', 'fa-circle-question', () => {
@@ -2040,7 +2077,7 @@ export function openGameShell(shellOptions) {
     // La pantalla de titulo no se construye: ya existe. La bienvenida con las tarjetas de
     // campana se dibuja dentro de `#chat`, que viaja con `#sheld`, asi que basta con
     // ensenar la misma seccion con otro rotulo y sin el ruido de una conversacion.
-    dialogue.appendChild(el('div', 'gs-title', 'SillyTavern RPG'));
+    dialogue.appendChild(el('div', 'gs-title', 'DnD Coin'));
     dialogue.appendChild(el('div', 'gs-menu'));
     // J18.3: la historia como una novela visual. Quien habla, grande; el texto, en una caja
     // ancha abajo, con su nombre en una placa y las fichas dentro. Fuera de la escena de

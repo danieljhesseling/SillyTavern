@@ -22,7 +22,7 @@ import { travelShortcut, watchBonus, whoCan } from '../game-engine/rules/field-u
 import { petDoes } from '../game-engine/campaign/pet.js';
 import { spellById, spendCharge } from '../game-engine/rules/grimoire.js';
 import { mountedDays } from '../game-engine/world/mounts.js';
-import { assignRoles, rollRoles, describeRoles } from '../game-engine/world/travel-roles.js';
+import { rollRoles, describeRoles } from '../game-engine/world/travel-roles.js';
 import { seasonClimates } from '../game-engine/world/seasons.js';
 import {
     canCamp, nightRisk, defaultGuards, resolveNight, campMorning, MAX_GUARDS,
@@ -50,7 +50,13 @@ import { readReasons } from '../game-engine/rules/companions.js';
 import { describeLootItem, declaredLootNames } from '../game-engine/combat/loot-items.js';
 import { isShellOpen, refreshGameShell } from '../game-engine/ui/shell/game-shell.js';
 export { roadLine, readLineRows } from '../game-engine/campaign/companion-lines.js';
+import { nightFor, readNights, recordNight, NIGHTS_KEY } from '../game-engine/campaign/nights.js';
 export { nightFor, recordNight, NIGHTS_KEY } from '../game-engine/campaign/nights.js';
+import { castOutcome } from '../game-engine/campaign/cast-scenes.js';
+import { readApproval } from '../game-engine/campaign/approval.js';
+import { servicesOf } from '../game-engine/campaign/services.js';
+import { travelRolesOf, guardsOf } from '../game-engine/campaign/formation.js';
+import { openMeetupScene } from '../game-engine/ui/meetup-scene.js';
 import {
     APPROVAL_KEY, ARRIVALS_HEARD_KEY, BOARD_KEY, GRAVES_KEY, MOUNTS_KEY, NEWS_KEY, PLOT_STATE_KEY,
     RUMORS_HEARD_KEY, TAKEN_KEY, VISITED_KEY, WANTED_KEY, WEATHER_TODAY_KEY,
@@ -60,8 +66,8 @@ import {
 } from './state.js';
 import { currentPet, petMeetsTown } from './pet.js';
 import {
-    campaignCompendium, currentSeason, enemiesInSeason, hereLocation, lastConfidantEntries, lastRumors,
-    lastWorldNpcs, saveCurrentBoard, saveCurrentLocation, weatherHere,
+    campaignCompendium, currentSeason, enemiesInSeason, hereLocation, lastCompendium, lastConfidantEntries, lastHub, lastPack,
+    lastRumors, lastWorldNpcs, leaveMark, saveCurrentBoard, saveCurrentLocation, weatherHere,
 } from './world.js';
 import { friendlyFactions, getCurrentWorldFactions, rulerOf } from './factions.js';
 import {
@@ -71,11 +77,14 @@ import {
 import { afterArrival } from './social.js';
 import { notePlot, openMilestones } from './plot.js';
 import { noteDeed, populatePlace, worldWrite } from './world-growth.js';
-import { numberWord, playSucesos, postCombatNarration, postForModel, showTip, tellMoment } from './narration.js';
+import {
+    numberWord, playSucesos, postCombatNarration, postForModel, showTip, storyWindowsOn, sucesosOn, tellMoment,
+} from './narration.js';
 import { partyPurse, payFromParty, savePartyState } from './roster.js';
-import { judgeDecision } from './companions.js';
+import { changeAttitude, companionCards, getPartyFormation, judgeDecision, sayRoadLine } from './companions.js';
 import { countStat } from './menus.js';
 import { alarmBonus } from './rituals.js';
+import { fieldLightOn } from './magic.js';
 
 /**
  * Lo que el narrador del motor sabe de un sitio al llegar: cómo es, a qué hora, con qué
@@ -181,6 +190,98 @@ async function tellArrivalNews(place) {
 }
 
 /**
+ * J14.7 y J14.8: lo que pasa esta noche, si pasa algo (`campaign/nights.js`). En la posada (o en
+ * la del gremio), alguien que llega, una ronda o una charla entre dos de tus compañeros; en el
+ * camino y al acampar, solo la charla de pareja junto al fuego. Se juega en la ventana de la
+ * quedada, con el retrato de quien habla en cada paso, y lo que contestas acerca o aleja.
+ *
+ * Una por noche como mucho y sin repetir: lo visto queda en `noches` (`recordNight`). Mirar la
+ * noche y que no pase nada también cuenta: esa noche ya no sale otra. Va con los sucesos y las
+ * ventanas de la historia: si se apagan en las opciones, las noches también.
+ *
+ * @param {Object} [options]
+ * @param {boolean} [options.road] En el camino o acampando: sin posada.
+ * @param {string[]|null} [options.pair] Los dos (sus ids) que el jugador eligió para charlar junto al fuego.
+ * @param {number} [options.day] La noche de qué día (la última del camino, al llegar de un viaje).
+ * @returns {Promise<string>} Lo que se cuenta al acabar; vacío si no pasó nada.
+ */
+export async function playNight({ road = false, pair = null, day = campaignDay() } = {}) {
+    if (!chat_metadata || combatEncounter.active || !partyMembers[0] || !storyWindowsOn() || !sucesosOn()) return '';
+    // Esta noche ya se miró (acampando, antes de dormir): no se vuelve a mirar ni se borra lo que pasó.
+    if (day > 0 && readNights(chat_metadata[NIGHTS_KEY]).last === day) return '';
+    const here = hereLocation();
+    const inn = !road && (Boolean(lastHub) || servicesOf(here).includes('posada'));
+    const places = inn ? ['posada', ...(lastHub ? ['gremio'] : [])] : [];
+    const campaign = String(lastPack || (lastHub ? 'gremio' : ''));
+    const today = readApproval(chat_metadata[APPROVAL_KEY]).frictions.filter(f => f.day === Math.max(1, day));
+    const chosen = Array.isArray(pair) && pair.length === 2 ? [{ a: String(pair[0]), b: String(pair[1]) }] : null;
+    const cards = companionCards();
+    const random = createSeededRandom(derive(String(chat_metadata?.[METADATA_KEY] || ''), 'noche-escena', String(currentLocationName), String(day)));
+    const pick = nightFor({
+        day,
+        slot: 'night',
+        state: chat_metadata[NIGHTS_KEY],
+        party: partyMembers,
+        random,
+        nightRows: lastCompendium.find('noches'),
+        campaign,
+        places,
+        cards,
+        frictions: chosen ?? today,
+        // Si el jugador eligió quién charla junto al fuego, charlan.
+        always: Boolean(chosen),
+    });
+    if (!pick) {
+        chat_metadata[NIGHTS_KEY] = recordNight(chat_metadata[NIGHTS_KEY], { day });
+        saveMetadata();
+        return '';
+    }
+    const scene = pick.scene;
+    const first = scene.cast.find(c => c.name === scene.who) ?? scene.cast[0] ?? { name: scene.who };
+    /** @type {string[]} */
+    let told = [];
+    const result = await openMeetupScene({
+        scene: /** @type {any} */ (scene),
+        person: first,
+        cast: scene.cast,
+        pack: campaign,
+        place: inn ? 'posada' : '',
+        town: String(currentLocationName || ''),
+        night: true,
+        placeLabel: inn ? 'De noche, en la posada' : 'De noche, junto al fuego',
+        summarize: (choices) => {
+            const outcome = castOutcome({ scene, choices, party: partyMembers, cards });
+            for (const bond of outcome.bonds) for (const event of bond.events) recordCampaignBondEvent(bond.id, event);
+            if (outcome.gold < 0) payFromParty(Math.min(-outcome.gold, partyPurse()));
+            else if (outcome.gold > 0 && partyMembers[0]) {
+                partyMembers[0].gold = (Number(partyMembers[0].gold) || 0) + outcome.gold;
+                savePartyState();
+            }
+            for (const attitude of outcome.attitudes) changeAttitude(attitude.who, attitude.amount, 'por lo de anoche');
+            // La charla de dos que chocaron hoy es la de hacer las paces.
+            const [a, b] = Object.values(scene.bound ?? {});
+            const ids = [a, b].map(name => String(partyMembers.find(m => m.name === name)?.id ?? ''));
+            if (pick.type === 'pareja' && ids[0] && ids[1] && today.some(f => ids.includes(f.a) && ids.includes(f.b))) {
+                chat_metadata[APPROVAL_KEY] = makePeace(chat_metadata[APPROVAL_KEY], ids[0], ids[1], campaignDay()).state;
+                outcome.lines.push(`${a} y ${b} hacen las paces.`);
+            }
+            told = outcome.lines;
+            return told;
+        },
+    });
+    chat_metadata[NIGHTS_KEY] = recordNight(chat_metadata[NIGHTS_KEY], { day, pick: result.finished ? pick : null });
+    saveMetadata();
+    if (!result.finished || told.length === 0) {
+        if (isShellOpen()) refreshGameShell();
+        return '';
+    }
+    const said = `${scene.title}. ${told.join(' ')}`;
+    postCombatNarration(`🌙 [NOCHE] ${said}`);
+    if (isShellOpen()) refreshGameShell();
+    return said;
+}
+
+/**
  * Idea 67: si aquí se puede acampar.
  *
  * @returns {{ok: boolean, reason: string}}
@@ -205,7 +306,8 @@ export async function campNight() {
     const here = hereLocation();
     const living = partyMembers.filter(m => !m.dead && (Number(m.hp) || 0) > 0);
     const perception = (/** @type {any} */ m) => skillModifier(m, 'perception').modifier;
-    const suggested = defaultGuards(living, perception);
+    // J7.4: el vigía de la formación hace la primera guardia; los demás, los que mejor ven.
+    const suggested = guardsOf(getPartyFormation(), living, defaultGuards(living, perception), MAX_GUARDS);
     const weather = weatherHere();
 
     const body = $('<div class="cp-root"></div>');
@@ -266,7 +368,7 @@ export async function campNight() {
     const beasts = enemiesInSeason().map((/** @type {any} */ e) => String(e?.name || '')).filter(Boolean);
     const night = resolveNight({
         // R4: una Luz alumbra como un fuego, aunque no lo haya.
-        risk: nightRisk({ locationType: String(here?.locationType ?? here?.type ?? ''), fire: lit || Boolean(whoCan(living, 'campLight')), hostile }),
+        risk: nightRisk({ locationType: String(here?.locationType ?? here?.type ?? ''), fire: lit || Boolean(whoCan(living, 'campLight')) || fieldLightOn(), hostile }),
         guards,
         random,
         rollD20: () => rollDiceDetailed('1d20', 20).total,
@@ -288,12 +390,18 @@ export async function campNight() {
 
     // Idea 31: la charla entre dos, y las paces si chocaron hoy.
     const [pa, pb] = [living.find(m => String(m.id) === chat31[0]), living.find(m => String(m.id) === chat31[1])];
+    const last = pa && pb ? (chat_metadata?.[APPROVAL_KEY]?.frictions ?? []).filter((/** @type {any} */ f) => [f.a, f.b].includes(String(pa.id)) && [f.a, f.b].includes(String(pb.id))).pop() : null;
+    // J14.8: su charla escrita, junto al fuego, con sus dos retratos (y, si no se eligió a nadie,
+    // a veces charlan dos solos). Sin modelo también se lee entera; si no hay ninguna escrita
+    // para ellos, se le pide al narrador como antes.
+    const heard = await playNight({ road: true, pair: pa && pb ? [String(pa.id), String(pb.id)] : null });
     if (pa && pb && chat_metadata) {
-        const last = (chat_metadata[APPROVAL_KEY]?.frictions ?? []).filter((/** @type {any} */ f) => [f.a, f.b].includes(String(pa.id)) && [f.a, f.b].includes(String(pb.id))).pop();
         const peace = makePeace(chat_metadata[APPROVAL_KEY], String(pa.id), String(pb.id), campaignDay());
         chat_metadata[APPROVAL_KEY] = peace.state;
-        lines.push(`${pa.name} y ${pb.name} charlan junto al fuego${peace.mended ? ', y hacen las paces' : ''}.`);
-        void postForModel(campTalkPrompt({ a: pa, b: pb, wantsOf: m => readReasons(m).wants, friction: String(last?.line ?? '') }));
+        if (!heard) {
+            lines.push(`${pa.name} y ${pb.name} charlan junto al fuego${peace.mended ? ', y hacen las paces' : ''}.`);
+            void postForModel(campTalkPrompt({ a: pa, b: pb, wantsOf: m => readReasons(m).wants, friction: String(last?.line ?? '') }));
+        }
     }
 
     // Y se duerme.
@@ -349,6 +457,8 @@ async function stopAtGuards(place, ask) {
         chat_metadata[WANTED_KEY] = settleGuards(chat_metadata[WANTED_KEY], place, 'flee');
         postCombatNarration(`🛡️ [CAMPAÑA] Los guardias de ${place} os paran y salís corriendo: ahora os buscan más.`);
     }
+    // J11.3: y el pueblo se acuerda (compendio/ecos.json): quien pagó, o quien huyó de la guardia.
+    leaveMark(pay ? 'multa' : 'huida', { town: place });
     savePartyState();
     saveMetadata();
     void postForModel(`[GUARDIAS] En ${place} os paran los guardias por lo que robasteis. ${pay ? 'Pagáis la multa.' : 'Huis.'} Cuéntalo en dos frases.`);
@@ -652,7 +762,9 @@ export async function travelWithTime(name, options = {}) {
     // semilla, para no mover el resto del viaje.
     const roleRandom = createSeededRandom(derive(worldName, 'papeles', currentLocationName, match.name, String(campaignDay())));
     const roles = rollRoles({
-        roles: assignRoles({
+        // J7.4: quien se eligió en la formación para guiar, vigilar o cazar; lo demás, el juego.
+        roles: travelRolesOf({
+            formation: getPartyFormation(),
             party: partyMembers.filter(m => !m.dead && (Number(m.hp) || 0) > 0),
             modifierOf: (m, skill) => skillModifier(m, skill).modifier,
         }),
@@ -798,6 +910,12 @@ export async function travelWithTime(name, options = {}) {
     });
     const arrival = tellMoment('llegada', placeFacts(match.name, !visitedBefore.includes(match.name)));
     postForModel(note, { show: [road, arrival].filter(Boolean).join('\n\n') }).catch(error => console.error('[party] travel note failed', error));
+    // J14.7 y J14.8: en un viaje de más de un día se duerme por el camino, y a veces dos de los
+    // tuyos charlan junto al fuego. Es la noche de ayer: la de hoy, aquí, queda libre.
+    if (total >= 2) await playNight({ road: true, day: Math.max(1, campaignDay() - 1) });
+    // J13.5: alguien del grupo dice algo del camino o, si no, de lo que ve al llegar. Una frase
+    // como mucho por viaje, y no siempre.
+    if (!sayRoadLine('viaje')) sayRoadLine('llegada', match.name);
     // Z4: lo que hubo que decidir por el camino, y lo que espera al llegar (o lo que vuelve).
     playSucesos('viaje', { destino: match.name, sitio: previousPlace || match.name, tiempo: String(weather[weather.length - 1] ?? ''), bioma: biome }, total);
     playSucesos('llegada', { sitio: match.name });

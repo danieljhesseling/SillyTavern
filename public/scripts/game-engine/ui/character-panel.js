@@ -12,7 +12,8 @@
  */
 
 import { buildCharacterSheet, describeSheet } from './shell/character-sheet.js';
-import { firstArt, isPlainFace, loadPixelManifest } from './pixel-art.js';
+import { firstArt, loadPixelManifest } from './pixel-art.js';
+import { faceElement } from './hero-face.js';
 
 /**
  * Un icono en pixel, o nada: quien llama pone el suyo de siempre si no hay dibujo.
@@ -64,13 +65,17 @@ function box(label, value, hint = '') {
  * @param {(() => void)|null} [input.onEdit] Abrir el editor de siempre.
  * @param {string[]} [input.languages] Idea 59: lo que habla.
  * @param {Array<{name: string}>} [input.sets] Idea 62: sus juegos de equipo.
- * @param {Array<{id: string, name: string, avatar?: string}>} [input.mates] Idea 163: a quién se le puede dar algo.
+ * @param {Array<{id: string, name: string, avatar?: string, className?: string, gender?: string, race?: string, mercenary?: boolean}>} [input.mates]
+ *   Idea 163: a quién se le puede dar algo, con su cara (J1.8).
+ * @param {string[]|null} [input.campaigns] J1.7: en qué campañas ha estado, en frases. Nulo fuera del
+ *   juego del gremio (un mundo suelto no sale de ningún tablón).
  * @param {((itemId: string, toId: string) => boolean)|null} [input.onGive]
  * @param {((name: string) => boolean)|null} [input.onSaveSet]
  * @param {((name: string) => boolean)|null} [input.onApplySet]
  * @param {any[]|null} [input.known] J19: lo que sabe, con sus conjuros de 5e ya puestos.
  * @param {{lines: string[]}|null} [input.magic] J19: sus espacios y su concentración, en frases.
  * @param {(() => void)|null} [input.onGrimoire] J19: abrir su grimorio (preparar, elegir).
+ * @param {(() => void)|null} [input.onFieldMagic] J19.10: la magia fuera de combate (curar, luz, rituales…).
  * @param {(() => void)|null} [input.onLevelUp] Subir de nivel: solo se pasa cuando toca.
  * @param {((itemId: string, on: boolean) => boolean)|null} [input.onAttune] J19.9: sintonizarse o dejarlo.
  * @param {string} [input.attuneNote] J19.9: cuántos lleva en sintonía, de cuántos.
@@ -80,8 +85,8 @@ function box(label, value, hint = '') {
  */
 export async function openCharacterPanel({
     member, slotInfo = {}, abilities = [], xpTable = null, bondRank = 0,
-    onEdit = null, languages = [], sets = [], mates = [], onGive = null, onSaveSet = null, onApplySet = null,
-    known = null, magic = null, onGrimoire = null, onLevelUp = null, onAttune = null, attuneNote = '',
+    onEdit = null, languages = [], sets = [], mates = [], campaigns = null, onGive = null, onSaveSet = null, onApplySet = null,
+    known = null, magic = null, onGrimoire = null, onFieldMagic = null, onLevelUp = null, onAttune = null, attuneNote = '',
     Popup, POPUP_TYPE,
 }) {
     // Los iconos en pixel necesitan el índice; sin él, cada fila sale con su icono de siempre.
@@ -98,17 +103,22 @@ export async function openCharacterPanel({
 
     // ---- Quién es, y cómo está -------------------------------------------
     const head = $('<div class="ch-head"></div>');
-    // Sin cara subida, el retrato en pixel de su clase (el mismo que en la tira del grupo),
-    // y no la silueta de SillyTavern.
-    const drawn = isPlainFace(sheet.avatar)
-        ? firstArt('hero', { className: String(member?.class ?? ''), gender: String(member?.gender ?? ''), race: String(member?.race ?? ''), name: sheet.name })
-        : '';
-    const face = drawn || sheet.avatar;
-    if (face) head.append($('<img class="ch-avatar">').toggleClass('pixel-art', Boolean(drawn)).attr('src', face).attr('alt', ''));
+    // Sin cara subida, el retrato en pixel de su clase (el mismo que en la tira del grupo), y no
+    // la silueta de SillyTavern. J1.8: sin ninguno (una clase del taller, o la imagen subida ya
+    // no está), sus iniciales en su color; nunca una imagen rota.
+    head.append(faceElement({
+        name: sheet.name, avatar: sheet.avatar, className: String(member?.class ?? ''),
+        gender: String(member?.gender ?? ''), race: String(member?.race ?? ''), mercenary: member?.guest?.kind === 'mercenary',
+    }, { imageClass: 'ch-avatar', badgeClass: 'ch-avatar ch-avatar-initials' }));
 
     const who = $('<div class="ch-who"></div>');
     who.append($('<div class="ch-name"></div>').text(sheet.name));
-    who.append($('<div class="ch-title"></div>').text(sheet.title));
+    // J1.7: el icono de su clase delante de lo que es, como en el grimorio y la tarjeta de nivel.
+    const title = $('<div class="ch-title"></div>');
+    const classArt = pixel(firstArt('class', { name: String(member?.class ?? '') }), 'ch-class-art');
+    if (classArt) title.append(classArt);
+    title.append($('<span></span>').text(sheet.title));
+    who.append(title);
     if (sheet.bondRank > 0) {
         who.append($('<div class="ch-bond"></div>').text(`Vínculo de rango ${sheet.bondRank}`));
     }
@@ -216,6 +226,19 @@ export async function openCharacterPanel({
             });
             box.append(open);
         }
+        // J19.10: lo que se lanza sin pelear, a un toque desde la ficha.
+        if (onFieldMagic) {
+            const field = $('<button class="menu_button ch-field-magic" type="button"></button>')
+                .append('<i class="fa-solid fa-wand-sparkles"></i>')
+                // Sin prometer lo que no tiene: un erudito no cura ni alumbra (D-J27).
+                .append($('<span></span>').text(' Magia fuera de combate'))
+                .attr('title', 'Lo que el grupo puede lanzar ahora sin pelear: rituales, curar, luz…');
+            field.on('click', () => {
+                popup.completeAffirmative();
+                onFieldMagic();
+            });
+            box.append(field);
+        }
         root.append(box);
     }
 
@@ -247,7 +270,8 @@ export async function openCharacterPanel({
         faces.append($('<span class="ch-mates-hint"></span>').text('Arrastra algo a quien se lo quieras dar:'));
         for (const mate of mates) {
             const face = $('<div class="ch-mate"></div>').attr('data-member', mate.id).attr('title', mate.name);
-            if (mate.avatar) face.append($('<img alt="">').attr('src', mate.avatar));
+            // J1.8: su cara, su retrato en pixel o sus iniciales, como en la tira del grupo.
+            face.append(faceElement(mate, { imageClass: 'ch-mate-face', badgeClass: 'ch-mate-face' }));
             face.append($('<span></span>').text(mate.name));
             face.on('dragover', (event) => {
                 event.preventDefault();
@@ -319,6 +343,16 @@ export async function openCharacterPanel({
             onLevelUp();
         });
         progress.append(up);
+    }
+
+    // ---- J1.7: en qué campañas ha estado (en el juego del gremio) -----------
+    if (Array.isArray(campaigns)) {
+        root.append($('<div class="ch-title-row"></div>').text('Campañas'));
+        const tales = $('<div class="ch-campaigns"></div>');
+        const told = campaigns.map(line => String(line ?? '').trim()).filter(Boolean);
+        if (told.length === 0) tales.append($('<div class="ch-empty"></div>').text('Todavía no ha salido a ninguna campaña.'));
+        for (const line of told) tales.append($('<div class="ch-campaign"></div>').text(line));
+        root.append(tales);
     }
 
     root.append($('<div class="ch-note"></div>').text(describeSheet(sheet)));

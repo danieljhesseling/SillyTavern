@@ -109,9 +109,11 @@ export function weeklyStock({ names, describe, random, reputation = 0, always = 
  * @param {{discount: number, label: string}} [input.fame] Lo que os conocen aquí (idea 52).
  * @param {{factor: number, label: string}} [input.memory] J11.3: lo que quien atiende recuerda de
  *   vosotros (`rememberedPrice` de `world-marks.js`): tras robarle, un 30 % más.
+ * @param {{discount: number, who: string}} [input.favor] J14.3: lo que rebaja quien os aprecia en
+ *   la tienda (Nella, con su vínculo; o la gente de aquí): «−10 %: Nella os consigue precio».
  * @returns {{price: number, reasons: string[]}}
  */
-export function priceToday({ base, market = 1, marketReasons = [], standing = 1, ruler = '', haggled = false, festival = false, fame = { discount: 0, label: '' }, memory = { factor: 1, label: '' } }) {
+export function priceToday({ base, market = 1, marketReasons = [], standing = 1, ruler = '', haggled = false, festival = false, fame = { discount: 0, label: '' }, memory = { factor: 1, label: '' }, favor = { discount: 0, who: '' } }) {
     let factor = 1;
     /** @type {string[]} */
     const reasons = [];
@@ -123,6 +125,10 @@ export function priceToday({ base, market = 1, marketReasons = [], standing = 1,
     if (Number(standing) !== 1 && Number(standing) > 0) {
         factor *= Number(standing);
         reasons.push(`${pct(Number(standing))}: ${Number(standing) < 1 ? `${ruler || 'quien manda'} os aprecia` : `${ruler || 'quien manda'} no os quiere aquí`}`);
+    }
+    if (Number(favor?.discount) > 0) {
+        factor *= 1 - Math.min(0.9, Number(favor.discount));
+        reasons.push(`−${Math.round(Math.min(0.9, Number(favor.discount)) * 100)} %: ${String(favor.who ?? '').trim() || 'alguien de los tuyos'} os consigue precio`);
     }
     if (Number(memory?.factor) > 0 && Number(memory?.factor) !== 1) {
         factor *= Number(memory.factor);

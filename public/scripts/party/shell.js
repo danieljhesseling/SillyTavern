@@ -10,7 +10,7 @@
 import { POPUP_TYPE, Popup } from '../popup.js';
 import { chat, chat_metadata, saveMetadata, online_status, name2, getCurrentChatId } from '../../script.js';
 import { extension_settings } from '../extensions.js';
-import { getCurrentWorldMapUrl, getCurrentWorldLocationMaps, METADATA_KEY } from '../world-info.js';
+import { getCurrentWorldMapUrl, getCurrentWorldLocationMaps, METADATA_KEY, world_names } from '../world-info.js';
 import { getDistanceInFeet } from './combat-rules.js';
 import { petName } from '../game-engine/campaign/pet.js';
 import { judgeMagicItems } from '../game-engine/rules/magic-items.js';
@@ -42,6 +42,7 @@ import { buildDialogueView } from '../game-engine/ui/shell/dialogue-scene.js';
 import { buildExplorationView } from '../game-engine/ui/shell/exploration-scene.js';
 import { buildClockView, availableHitDice } from '../game-engine/ui/shell/clock-widget.js';
 import { buildActionChips } from '../game-engine/ui/shell/action-chips.js';
+import { takeHallNews } from '../game-engine/ui/shell/town-scene.js';
 import {
     BOARD_KEY, CHECK_REQUESTS_KEY, COLORBLIND_KEY, GAME_SHELL_AUTOSTART_KEY, LEAVE_ON_KEY, LENGTH_KEY,
     NARRATOR_FONT_KEY, NARRATOR_MODE_STORAGE, OFFERS_KEY, PENDING_CHECK_KEY, PLOT_STATE_KEY, PRISONERS_KEY,
@@ -54,10 +55,13 @@ import {
 } from './state.js';
 import { getXpTable } from './level-up.js';
 import { currentPet, openPetPanel } from './pet.js';
-import { carriedNames, getAbilityCatalogue, knownAbilitiesOf, useAbility, useMagicItem } from './magic.js';
+import {
+    carriedNames, getAbilityCatalogue, knownAbilitiesOf, useAbility, useMagicItem, fieldMagicNow, fieldHealNow,
+    openFieldMagicModal, healWithMagic,
+} from './magic.js';
 import {
     hubChips, openGuildChest, openGuildHouse, openGuildTraining, openGuildErrands,
-    openHubHeroes, openMemoryView, openHubCampaigns, openHubHire, skipHubTrial, noteRankSeen,
+    openHubHeroes, openMemoryView, openHubCampaigns, openHubHire, skipHubTrial, noteRankSeen, sleepInGuild,
 } from './hub.js';
 import {
     getAliveEnemies, getAttackableEnemiesForMember, getCurrentActingMember, getCurrentTurnEntry,
@@ -84,10 +88,10 @@ import {
 } from './world.js';
 import { friendlyFactions } from './factions.js';
 import {
-    advanceCampaignDay, campaignDay, getCampaignBonds, getCampaignCalendar, getCampaignMap,
-    getCurrentSlotLabel, openWeekTable, spendDayPart, takeRest,
+    campaignDay, getCampaignBonds, getCampaignCalendar, getCampaignMap,
+    getCurrentSlotLabel, openWeekTable, sleepTillMorning, spendDayPart, takeRest,
 } from './time.js';
-import { getPlot, openMilestones, openEnding } from './plot.js';
+import { confirmBoardNoReturn, focusDeadline, getPlot, openMilestones, openEnding } from './plot.js';
 import { refreshWorldMemoryPrompt } from './world-growth.js';
 import { openGameMode, survivalNow } from './modes.js';
 import {
@@ -95,7 +99,7 @@ import {
     narratorMode, offlineGame, postCombatNarration, retryLastReply, saverOn, showTip, storedNarratorMode,
     sucesosOn,
 } from './narration.js';
-import { openCompanionCard } from './companions.js';
+import { openCompanionCard, openFormationPanel } from './companions.js';
 import {
     askNarrator, askingNarrator, currentReplies, draftInChat, lookChips, namesInLastNarration, runSkillCheck,
     startTalk,
@@ -108,7 +112,7 @@ import {
     exportCampaignPack, openHallOfFame, checkCurrentWorld, openCompendiumLibrary, openRules,
 } from './menus.js';
 import { lastMeter } from './events.js';
-import { dayStripNow, peopleChips, townNow } from './social.js';
+import { chatWith, dayStripNow, meetSomeone, peopleChips, townNow } from './social.js';
 
 /** Los avisos del juego, guardados para la bandeja (idea 159). */
 /** @type {import('../game-engine/ui/shell/notices.js').Notice[]} */
@@ -324,6 +328,9 @@ export function buildShellChips(limit = undefined) {
         board: currentBoardName || '',
         // J14: la charla que espera, quedar con alguien y charlar con quien está aquí.
         social: peopleChips(),
+        // J19.10: la magia fuera de combate, cuando sirve aquí, y curar a los heridos de un toque.
+        magic: fieldMagicNow(),
+        heal: fieldHealNow()?.choice.name ?? '',
     });
 }
 
@@ -376,8 +383,9 @@ export function runShellChip(chip) {
         return;
     }
 
-    // J3.7: la noticia del rango, arriba en la sala, ya se ha visto en cuanto se usa algo de ella.
-    if (chip.id.startsWith('hub-')) noteRankSeen();
+    // J3.7: la noticia del rango, arriba en la sala, ya se ha visto en cuanto se usa algo de ella;
+    // no antes de haber entrado (el tablón y el salón también se abren desde la fila de abajo).
+    if (chip.id.startsWith('hub-') && takeHallNews()) noteRankSeen();
     // J3.1 / J15.4: Las fichas del gremio abren su ventana o acción directamente, sin pasar por texto.
     switch (chip.id) {
         case 'hub-chest': void openGuildChest(); return;
@@ -385,12 +393,19 @@ export function runShellChip(chip) {
         case 'hub-train': void openGuildTraining(); return;
         case 'hub-errands': void openGuildErrands(); return;
         case 'hub-heroes': void openHubHeroes(); return;
+        // J7.4: la formación y los papeles.
+        case 'hub-formation': void openFormationPanel(); return;
         case 'hub-memory': void openMemoryView(); return;
         case 'hub-board': void openHubCampaigns(); return;
         case 'hub-hire': void openHubHire(); return;
         case 'hub-skip': void skipHubTrial(); return;
         case 'hub-hall': openHallOfFame(); return;
         case 'hub-ending': void openEnding(); return;
+        // J3.3: dormir en el gremio cura, amanece y guarda (J15.2).
+        case 'hub-sleep': void sleepInGuild(); return;
+        // J19.10: la magia fuera de combate, con su ventana; y curar de un toque.
+        case 'field-magic': void openFieldMagicModal(); return;
+        case 'field-heal': void healWithMagic(); return;
         case 'hub-home':
             // Las mismas guardas que `/volver-gremio`: no en plena pelea (`returnToHub` ya mira si
             // la campaña sale de un gremio).
@@ -405,6 +420,23 @@ export function runShellChip(chip) {
     // en el tablón (`continueSavedGame` busca partidas guardadas, no campañas, y no la encontraba).
     if (chip.id.startsWith('hub-continue:')) {
         void import('../campaigns.js').then(m => m.playHubCampaign(chip.id.slice('hub-continue:'.length)));
+        return;
+    }
+    // J11.1: entrar en el tablero que no tiene vuelta atrás pregunta antes (y luego, lo de siempre).
+    if (chip.id.startsWith('enter:') && chip.command) {
+        const command = chip.command;
+        void confirmBoardNoReturn(chip.id.slice('enter:'.length)).then(go => {
+            if (go) void import('../slash-commands.js').then(m => m.executeSlashCommandsWithOptions(command));
+        });
+        return;
+    }
+    // J14 y J15.4: quedar y charlar con tu gente, sin pasar por la orden escrita. El nombre
+    // entero va en su orden («/quedar Gerd el Mellado»); sin nombre, se elige con quién.
+    const social = /^(quedar|charlar|charla-sola)(:|$)/.exec(chip.id);
+    if (social) {
+        const name = String(chip.command ?? '').replace(/^\/(quedar|charlar)\s*/i, '').trim();
+        if (social[1] === 'quedar') void meetSomeone(name);
+        else if (name) void chatWith(name);
         return;
     }
 
@@ -488,6 +520,10 @@ function buildShellExploration() {
             ...p,
             pending: [pending[p.name] ?? '', soon(p.name) ? `Fiesta: ${soon(p.name)}` : ''].filter(Boolean).join(' · '),
         })),
+        // J2.3: un tablero ganado (o saltado, como la prueba del gremio) ya no invita a su pelea:
+        // «Un ratero… Hay que pararlo» se quedaba en la tarjeta del muelle después de saltarla.
+        boards: view.boards.map(b => (!b.current && isBoardWon(currentLocationName, b.name)
+            ? { ...b, note: 'Ganado: aquí ya no queda nadie con quien pelear.' } : b)),
         fortune: fortuneLine(hereLocation()),
     };
 }
@@ -500,6 +536,26 @@ function buildShellExploration() {
 let savedGamesApi = null;
 
 /**
+ * J15.2: guardar-partida.js, para decir sin esperar cuántas ranuras tiene cada partida. Se pide
+ * sin import estático por lo mismo que campaigns.js: trae script.js, que carga este archivo.
+ * @type {typeof import('../guardar-partida.js')|null}
+ */
+let savesApi = null;
+
+/** @returns {Promise<typeof import('../guardar-partida.js')>} */
+const saves = () => import('../guardar-partida.js');
+
+/**
+ * J15.2: tras cerrar la pantalla de guardar, «Cargar partida» y la cabecera, al día.
+ *
+ * @param {Promise<any>} shown
+ */
+function afterSaves(shown) {
+    void shown.catch(error => console.error('[guardar] la pantalla ha fallado', error))
+        .finally(() => { if (isShellOpen()) refreshGameShell(); });
+}
+
+/**
  * @returns {import('../game-engine/ui/shell/game-shell.js').ShellOptions}
  */
 function buildShellOptions() {
@@ -508,6 +564,12 @@ function buildShellOptions() {
     if (!savedGamesApi) {
         void import('../campaigns.js').then(m => {
             savedGamesApi = m;
+            if (isShellOpen()) refreshGameShell();
+        });
+    }
+    if (!savesApi) {
+        void saves().then(m => {
+            savesApi = m;
             if (isShellOpen()) refreshGameShell();
         });
     }
@@ -549,7 +611,11 @@ function buildShellOptions() {
         isAskingNarrator: () => askingNarrator,
         // Sin conexión no hay narrador a quien escribirle (J18.7).
         canAskNarrator: () => !offlineGame() && !combatEncounter.active && Boolean(partyMembers[0]),
-        getFocus: () => focusOf(getPlot(), chat_metadata?.[PLOT_STATE_KEY], campaignDay()),
+        getFocus: () => {
+            const focus = focusOf(getPlot(), chat_metadata?.[PLOT_STATE_KEY], campaignDay());
+            // J9.5: con su plazo, si lo tiene (o el más apurado de lo abierto).
+            return focus ? { ...focus, clock: focusDeadline() } : null;
+        },
         onJournal: () => openJournalSafely(),
         onGlance: () => openPartyGlance(),
         getNoticeCount: () => unseenCount(notices, noticesSeenAt),
@@ -563,10 +629,18 @@ function buildShellOptions() {
         onClock: (action) => {
             // J14.2: pasar el rato también se apunta en la cabecera.
             if (action === 'slot') spendDayPart('rato', { label: 'Pasar el rato' });
-            else if (action === 'day') advanceCampaignDay();
+            // J14.7: dormir hasta mañana también tiene su noche.
+            else if (action === 'day') void sleepTillMorning();
             else void takeRest(action === 'short' ? 'corto' : 'largo');
         },
-        onEnterBoard: (name) => { enterBoard(name); renderLocationMapsPreview(); },
+        // J11.1: el tablero que no tiene vuelta atrás pregunta antes.
+        onEnterBoard: (name) => {
+            void confirmBoardNoReturn(name).then(go => {
+                if (!go) return;
+                enterBoard(name);
+                renderLocationMapsPreview();
+            });
+        },
         // Un clic nunca gasta nada; lo gasta el boton que lo confirma. Y viajar gasta
         // dias, comida y la cuenta de la semana, asi que primero se dice lo que cuesta.
         onTravel: (name) => {
@@ -608,7 +682,21 @@ function buildShellOptions() {
         // campaigns.js con la lista de la portada; aquí solo se piden.
         getGames: () => savedGamesApi?.savedGameCards() ?? null,
         onLoadGame: (id) => { void import('../campaigns.js').then(m => m.continueSavedGame(id)); },
-        onDeleteGame: (id) => { void import('../campaigns.js').then(m => m.deleteSavedGame(id)); },
+        // D-J23: borrar una partida se lleva también sus ranuras (J15.2), si de verdad se borró.
+        onDeleteGame: (id) => {
+            void import('../campaigns.js').then(async m => {
+                await m.deleteSavedGame(id);
+                if (Array.isArray(world_names) && world_names.includes(id)) return;
+                await (await saves()).forgetGameSlots(id);
+                if (isShellOpen()) refreshGameShell();
+            });
+        },
+        // J15.2 y J3.3: guardar y cargar en la pausa; las ranuras de cada partida en «Cargar
+        // partida»; J15.6: importar una exportada, también desde ahí.
+        onSaveGame: () => afterSaves(saves().then(m => m.openSaveGame())),
+        slotsLine: (id) => savesApi?.gameSlotsLine(id) ?? '',
+        onGameSlots: (id) => afterSaves(saves().then(m => m.openGameSlots(id))),
+        onImportGame: () => afterSaves(saves().then(m => m.importGameFile())),
         getAutostart: () => shouldAutostartGameShell(),
         setAutostart: (value) => {
             setGameShellAutostart(value);

@@ -40,7 +40,9 @@
 @import url(css/movil-app.css);
 @import url(css/libro.css);
 @import url(css/guardar.css);
+@import url(css/sala-gremio.css);
 @import url(css/magia.css);
+@import url(css/companeros.css);
 
 :root {
     interpolate-size: allow-keywords;

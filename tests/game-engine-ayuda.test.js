@@ -37,6 +37,15 @@ describe('H2: «Cómo se juega», armado con lo que el motor sabe', () => {
         expect(mine?.lines).toHaveLength(2);
     });
 
+    test('J15.4: sin conexión no se nombra ningún comando: cada cosa, con su botón', () => {
+        const text = howToPlayText(buildHowToPlay({ survival: hard, legend: getMapLegend(), magic: true, pet: true, offline: true }));
+        expect(text).not.toMatch(/`\/[a-z]/);
+        expect(text).not.toMatch(/escribes en el chat/);
+        expect(text).toContain('«Guardar y cargar», en la pausa');
+        expect(text).toContain('La «Mesa», arriba, la dice antes de que venza');
+        expect(text).toContain('«Salir por aquí»');
+    });
+
     test('la crónica cuenta sus categorías de verdad, y todo cabe en texto', () => {
         const chronicle = buildHowToPlay({ survival: relaxed }).find(s => s.id === 'cronica');
         expect(chronicle?.lines[0]).toContain(`en ${Object.keys(CATEGORIES).length} categorías`);

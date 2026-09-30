@@ -170,15 +170,29 @@ function drawPortrait(holder, url, alt) {
  * @param {((choices: Array<{beat: number, reply: number}>) => string[])|null} [input.summarize] Lo que se
  *   cuenta al acabar (`meetupSummary`). Sin él, se cierra al terminar.
  * @param {boolean} [input.canLeave] Si se puede dejar a medias («Dejarlo para otro día»).
+ * @param {Array<{name: string, short?: string, className?: string, gender?: string}>} [input.cast] J14.7 y J14.8:
+ *   en una escena con varios (la noche, una charla de pareja), quién sale. Cada paso pone en la placa
+ *   y en el retrato a quien habla en él (`who` del paso), no siempre al mismo.
  * @param {HTMLElement|null} [input.mount]
  * @returns {Promise<{finished: boolean, choices: Array<{beat: number, reply: number}>}>}
  */
 export async function openMeetupScene({
-    scene, person = {}, pack = '', place = '', town = '', night = false, placeLabel = '', summarize = null, canLeave = true, mount = null,
+    scene, person = {}, pack = '', place = '', town = '', night = false, placeLabel = '', summarize = null, canLeave = true, cast = [], mount = null,
 }) {
     await loadPixelManifest();
     const who = text(person?.name) || text(scene?.who);
-    const dialog = openDialog(`Quedada con ${who}`, mount);
+    const people = (Array.isArray(cast) ? cast : []).filter(p => text(p?.name));
+    /**
+     * Quien habla en un paso, con su ficha para el retrato: de la escena con varios, o el de siempre.
+     *
+     * @param {string} name
+     * @returns {{name: string, short?: string, className?: string, gender?: string, race?: string}}
+     */
+    const speakerOf = (name) => {
+        const found = people.find(p => text(p.name) === text(name) || text(p.short) === text(name));
+        return found ? { ...found, name: text(found.name) } : { ...person, name: who };
+    };
+    const dialog = openDialog(people.length > 1 ? text(scene?.title) || `Con ${who}` : `Quedada con ${who}`, mount);
     const root = el('div', `qd-root qd-${text(scene?.kind) || 'escena'}`);
     root.dataset.scene = text(scene?.id);
     const backdrop = el('div', 'qd-backdrop');
@@ -246,7 +260,11 @@ export async function openMeetupScene({
             const view = sceneView(scene, state);
             plate.hidden = false;
             step.textContent = view.steps > 1 ? `${view.step} / ${view.steps}` : '';
-            drawPortrait(portrait, portraitFor({ ...person, name: who, pack, mood: view.face }), who);
+            // Con varios, la placa y el retrato son de quien habla en este paso.
+            const speaking = people.length > 0 ? speakerOf(text(view.speaker) || who) : /** @type {{name: string, short?: string}} */ ({ ...person, name: who });
+            plate.textContent = text(speaking.short) || speaking.name;
+            root.dataset.speaker = speaking.name;
+            drawPortrait(portrait, portraitFor({ ...speaking, pack, mood: view.face }), speaking.name);
             for (const line of beatLines(view)) {
                 const p = el('p', `qd-line qd-${line.kind}`);
                 if (line.kind === 'you') p.appendChild(el('span', 'qd-who', 'Tú'));

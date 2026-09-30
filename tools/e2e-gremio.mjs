@@ -1119,6 +1119,24 @@ try {
     if (SHOT) await page.screenshot({ path: `${SHOT}.salon.png` });
     await page.locator('.popup:visible .popup-button-ok').last().click({ timeout: 5000 }).catch(() => {});
     await page.waitForTimeout(400);
+    // J3.7: terminar Strahd da renombre y sube el gremio de rango: la sala lo cuenta arriba.
+    await carryOn('exploration');
+    await page.locator('#game-shell .gs-town-back').click({ timeout: 2000 }).catch(() => {});
+    await page.locator('#game-shell .gs-town-place[data-place="gremio"]').click({ timeout: 5000 }).catch(() => {});
+    const rankNews = await until(() => page.evaluate(() => /El gremio sube a rango C/.test(document.querySelector('#game-shell .gs-town-hall-news')?.textContent || '')), 10000);
+    const rankLine = await page.evaluate(() => (document.querySelector('#game-shell .gs-town-hall-rank')?.textContent || '').trim());
+    check('J3.7: terminar Strahd sube el gremio a rango C, y la sala lo cuenta arriba', rankNews && /^Rango C /.test(rankLine), rankLine);
+    if (SHOT) await page.screenshot({ path: `${SHOT}.rango.png` });
+
+    // J1.7: la ficha de Tessa dice en qué campañas ha estado: Strahd, terminada, con su final.
+    await page.locator('#game-shell .gs-party-strip .gs-chip-clickable').filter({ visible: true }).first().click({ timeout: 8000 }).catch(() => {});
+    await page.waitForSelector('.ch-root .ch-campaigns', { timeout: 10000 }).catch(() => {});
+    const tales = await page.evaluate(() => [...document.querySelectorAll('.ch-root .ch-campaign')].map(n => (n.textContent || '').trim()));
+    check('la ficha de Tessa dice en qué campañas ha estado: Strahd, terminada, con su final (J1.7)',
+        tales.includes(`La Maldición de Strahd: terminada, con «${endingTitle}»`), JSON.stringify(tales));
+    if (SHOT) await page.screenshot({ path: `${SHOT}.ficha-campanas.png` });
+    await page.locator('dialog.popup[open] .popup-button-ok').last().click({ timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(400);
 
     // 8. J0.5: el título ofrece «Continuar», lo primero, y dice qué sigue: el gremio, con quién.
     // «Seguir en el gremio» ya no sale: era lo mismo para el gremio más reciente.

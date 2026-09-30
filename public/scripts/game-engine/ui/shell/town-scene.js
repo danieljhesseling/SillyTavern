@@ -36,8 +36,11 @@ import { hallSections, hallHeader } from '../../campaign/guild-hall.js';
  * @property {string} slot La franja del reloj, como la dice: «Noche».
  * @property {ServiceCard[]} cards Las tarjetas de servicios de aquí.
  * @property {ActionChip[]} chips La fila de fichas: de ahí salen el gremio y las charlas.
- * @property {{location: any, npcs: any[], people?: YourPerson[], hall?: import('../../campaign/guild-hall.js').HallData|null, hubChips?: ActionChip[]}|null} [data]
+ * @property {{location: any, npcs: any[], people?: YourPerson[], hall?: import('../../campaign/guild-hall.js').HallData|null, hubChips?: ActionChip[],
+ *   greet?: (place: any, slot?: string) => {text: string, mood: string}}|null} [data]
  *   Lo que da `getTown`, si lo da. `hubChips`: todas las fichas del gremio (la fila solo lleva cuatro).
+ *   `greet`: J11.3 y J11.4, el saludo de quien atiende si recuerda lo que hicisteis (vacío si no),
+ *   con la cara que pone (J13).
  * @property {(actionId: string) => void} onService
  * @property {(chip: ActionChip) => void} onChip
  * @property {() => void} refresh Redibujar el Shell.
@@ -87,6 +90,24 @@ let cache = { world: '', at: 0, sig: '', locations: [], npcs: [], loading: false
 
 /** El sitio abierto, y en qué pueblo: al viajar se cierra solo. */
 let open = { town: '', id: '' };
+
+/**
+ * J3.7: la noticia del rango que ya salió en la sala. Hasta que se ve, usar algo del gremio
+ * desde la fila de abajo (el tablón, el salón) no la da por contada.
+ */
+let newsShown = '';
+
+/**
+ * Si la noticia del rango ya se ha visto en la sala; y deja de estarlo, porque se va a dar por
+ * contada.
+ *
+ * @returns {boolean}
+ */
+export function takeHallNews() {
+    const seen = Boolean(newsShown);
+    newsShown = '';
+    return seen;
+}
 
 /**
  * Los sitios y la gente del mundo abierto, de lo leído la última vez. Si toca, se vuelve a leer
@@ -301,14 +322,15 @@ function placeArt(place, here, night, pack) {
 }
 
 /**
- * El retrato en pixel de alguien del paquete, o vacío.
+ * El retrato en pixel de alguien del paquete, o vacío. Con `mood`, su gesto si está dibujado.
  *
  * @param {string} name
  * @param {string} pack
+ * @param {string} [mood]
  * @returns {string}
  */
-function faceOf(name, pack) {
-    return name ? firstArt('portrait', { name, pack }) : '';
+function faceOf(name, pack, mood = '') {
+    return name ? firstArt('portrait', { name, pack, ...(mood ? { mood } : {}) }) : '';
 }
 
 /**
@@ -578,11 +600,17 @@ export function renderTownScene(panel, town, ctx) {
     bar.appendChild(tabs);
     scene.appendChild(bar);
 
+    // J11.3 y J11.4: si quien atiende recuerda lo que hicisteis, os saluda con eso, y con su cara (J13).
+    const remembered = ctx.data?.greet?.(place, ctx.slot) ?? null;
+    const recalled = String(remembered?.text ?? '').trim();
+    const mood = recalled ? String(remembered?.mood ?? '').trim() : '';
+
     // Quien atiende, grande, de pie sobre la caja.
     const stage = el('div', 'gs-town-stage');
-    const face = faceOf(place.keeper?.name ?? '', pack);
+    const face = (mood ? faceOf(place.keeper?.name ?? '', pack, mood) : '') || faceOf(place.keeper?.name ?? '', pack);
     if (face) {
         const portrait = el('div', 'gs-town-portrait');
+        if (mood) portrait.dataset.mood = mood;
         portrait.appendChild(pixelImage(face, 'gs-town-portrait-img', place.keeper?.name ?? ''));
         stage.appendChild(portrait);
     } else if (place.keeper) {
@@ -598,13 +626,16 @@ export function renderTownScene(panel, town, ctx) {
     heading.appendChild(el('i', `fa-solid ${place.icon}`));
     heading.appendChild(el('span', '', place.keeper ? `${place.name} · ${place.keeper.trade || 'quien atiende'}` : place.name));
     box.appendChild(heading);
-    box.appendChild(el('p', 'gs-town-line', greetingFor({ place, town: town.here, slot: ctx.slot, hero: ctx.hero })));
+    const hello = el('p', 'gs-town-line', recalled || greetingFor({ place, town: town.here, slot: ctx.slot, hero: ctx.hero }));
+    if (recalled) hello.classList.add('gs-town-line-remembered');
+    box.appendChild(hello);
     if (place.description) box.appendChild(el('p', 'gs-town-desc', place.description));
 
     // J3.1: En la sala del gremio, el rango y las noticias si ha subido.
     if (place.kind === 'gremio' && town.hall) {
         const header = hallHeader(town.hall);
         if (header.news) {
+            newsShown = header.news;
             const newsEl = el('div', 'gs-town-hall-news');
             newsEl.appendChild(el('i', 'fa-solid fa-bullhorn'));
             newsEl.appendChild(el('span', '', header.news));

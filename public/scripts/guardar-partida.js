@@ -26,7 +26,7 @@ import { extension_settings } from './extensions.js';
 import {
     world_names, loadWorldInfo, saveWorldInfo, deleteWorldInfo, createNewWorldInfo, METADATA_KEY,
 } from './world-info.js';
-import { convertTextToBase64, download } from './utils.js';
+import { convertTextToBase64 } from './utils.js';
 import { HUB_IMPORTED_DIR, HUB_IMPORTED_LIST, readImportedList, importedListFile, isHubWorld } from './game-engine/campaign/hub.js';
 import { readHall } from './game-engine/campaign/legacy.js';
 import { canCheckpoint } from './game-engine/rules/mortality.js';
@@ -51,6 +51,24 @@ const text = (value) => String(value ?? '').trim();
  * @returns {string}
  */
 const whyNot = (result) => text(result?.reason) || 'No se ha podido.';
+
+/**
+ * J15.6: dar el archivo de la partida para guardarlo. El enlace se suelta un rato después y no en
+ * el acto: con una partida grande (la cara del narrador va dentro), soltarlo enseguida cortaba la
+ * descarga antes de empezar.
+ *
+ * @param {string} content
+ * @param {string} name
+ */
+function saveFile(content, name) {
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(new Blob([content], { type: 'application/json' }));
+    link.download = name;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(link.href), 60000);
+}
 
 /** Tus archivos, como los sirve el servidor. */
 const FILES_DIR = '/user/files/';
@@ -402,7 +420,7 @@ function screenActions(gameId, inGame) {
         onExport: async () => inTurn(async () => {
             const done = await exportGame(adapter, gameId);
             if (!done.ok) return { ok: false, message: whyNot(done) };
-            download(done.content, done.name, 'application/json');
+            saveFile(done.content, done.name);
             return {
                 ok: true,
                 message: `Exportada: ${done.name}.`,
@@ -481,7 +499,7 @@ export async function exportGameFile(gameId = '') {
         toastr.warning(whyNot(done), 'No se ha exportado');
         return false;
     }
-    download(done.content, done.name, 'application/json');
+    saveFile(done.content, done.name);
     toastr.success(done.name, 'Partida exportada');
     return true;
 }

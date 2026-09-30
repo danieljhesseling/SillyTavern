@@ -17,13 +17,14 @@ export { postHomecoming, recordFinishedCampaign, seatPartyHero, giveStartingPurs
 export { enterStartingBoard } from './party/board.js';
 export { refreshBoardView } from './party/board-view.js';
 export { applyCampaignRuleset } from './party/world.js';
-export { notePlot, beginCampaignPlot, plotEndingTitle } from './party/plot.js';
+export { notePlot, beginCampaignPlot, plotEndingTitle, campaignChronicle } from './party/plot.js';
 export { applyModeExtras } from './party/modes.js';
-export { postJourney } from './party/narration.js';
+export { postJourney, scheduleGuildVisitor } from './party/narration.js';
 export {
     loadDndCatalog, adoptVeteranGear, giveStartingGear, setPartyFromWorldEntries, memberFromEntry, partySnapshot,
     adoptCarriedParty, addPartyMember, removePartyMember, updatePartyMemberFromPersona, getActivePartyLeader,
     getPartyDescription,
 } from './party/roster.js';
 export { routeTyped } from './party/talk.js';
+export { settleCampaignCompanions, welcomeGuildCompanions, sayHomecomings } from './party/companions.js';
 export { openCampaignBuilder } from './party/menus.js';

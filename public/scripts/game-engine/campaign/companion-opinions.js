@@ -223,6 +223,17 @@ export function opinionBadges(opinions, { max = MAX_BADGES } = {}) {
 }
 
 /**
+ * Lo que se dice en la ventana al elegir: «A Gerd le ha gustado.», «A Gerd y a Nella no les ha
+ * gustado.». Primero lo que gusta. Vacío si nadie opina.
+ *
+ * @param {Opinion[]} opinions
+ * @returns {string[]}
+ */
+export function opinionNotes(opinions) {
+    return opinionBadges(opinions, { max: 2 }).map(badge => `${badge.text.replace(/ (le|les) gusta esto$/, ' $1 ha gustado')}.`);
+}
+
+/**
  * Las opiniones como aprobación de `approval.js` (`noteApproval`, `judgeDecision`): al elegir la
  * opción, cuentan para el vínculo.
  *

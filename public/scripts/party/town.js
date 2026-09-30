@@ -78,6 +78,7 @@ import { openGuild } from './hub.js';
 import { playDuel, searchCaseHere } from './cases.js';
 import {
     currentSeason, ensureWorldData, hereLocation, lastCompendium, lastRumors, lastWorldNpcs, seedOfWorld,
+    leaveMark, markedPrice, markedRumors, guildMemoryRumors, refusedHere,
 } from './world.js';
 import { getCurrentWorldFactions, nudgeRuler, rulerOf, shiftFactionStanding } from './factions.js';
 import {
@@ -124,8 +125,10 @@ export async function hearRumor(by = '') {
         return '';
     }
     const heard = Array.isArray(chat_metadata?.[RUMORS_HEARD_KEY]) ? chat_metadata[RUMORS_HEARD_KEY] : [];
-    // R9: primero lo que se cuenta de vosotros, luego lo del guion.
-    const played = rumorsFromPlay(chronicleOf(Array.isArray(chat) ? chat : []), { told: heard })
+    // R9: primero lo que se cuenta de vosotros, luego lo del guion. J11.3: y lo que dejasteis
+    // aquí (robar en la tienda), lo primero de todo; J11.4: en el gremio, cómo acabó cada campaña.
+    const played = [...guildMemoryRumors().filter(r => !heard.includes(r.id)), ...markedRumors(heard),
+        ...rumorsFromPlay(chronicleOf(Array.isArray(chat) ? chat : []), { told: heard })]
         .map(r => ({ id: r.id, text: r.text, where: currentLocationName, by: 'Alguien en la taberna', truth: '', leadsTo: '' }));
     // Z2: preguntado a alguien, lo que cuenta él.
     const pool = by ? lastRumors.filter(r => String(r.by || '').toLowerCase() === String(by).toLowerCase()) : [...played, ...lastRumors];
@@ -368,12 +371,16 @@ function shopHere() {
                 base: basePrice(spec),
                 market: Math.round((steel ? food * war.steel : food) * seasonal.factor * 100) / 100,
                 marketReasons: [...(Array.isArray(market?.reasons) ? market.reasons : []), ...(steel ? war.reasons : []), ...seasonal.reasons],
-                // R8: y si quien atiende os aprecia, un poco menos.
-                standing: (ruler ? priceFactor(Number(ruler.reputation) || 0) : 1) * (1 - favorDiscount(favorsHere(), 'tienda').discount),
+                standing: ruler ? priceFactor(Number(ruler.reputation) || 0) : 1,
+                // R8 y J14.3: si quien atiende os aprecia, o alguien de tu gente os consigue precio
+                // (Nella, con su vínculo), un poco menos; y se dice quién.
+                favor: favorDiscount(favorsHere(), 'tienda'),
                 ruler: String(ruler?.name ?? ''),
                 haggled: haggleOff,
                 festival: Boolean(festivalHere()),
                 fame: { discount: fame.discount, label: fame.label },
+                // J11.3: si aquí se acuerdan de lo que hicisteis (os pillaron robando), más caro.
+                memory: markedPrice('tienda'),
             }),
         }];
     });
@@ -783,11 +790,16 @@ export function buildServiceCards() {
     }
     // D-J29: la tienda y la herrería cierran de noche, el día de descanso y en fiestas; quien
     // las lleva está entonces en la posada.
-    return closeShopCards(cards, {
+    const shut = closeShopCards(cards, {
         calendar: getCampaignCalendar(),
         festival: festivalHere()?.name ?? '',
         keepers: lastWorldNpcs.filter(n => n.where.toLowerCase() === String(currentLocationName).toLowerCase()),
         innHere: servicesOf(location).includes('posada'),
+    });
+    // J11.3: a la segunda vez que os pillan robando, en la tienda no os atienden, y lo dicen.
+    return shut.map(card => {
+        const refused = card.closed ? '' : refusedHere(String(card.id), partyMembers.find(m => !m.guest) ?? null);
+        return refused ? { ...card, actions: card.actions.map(action => ({ ...action, enabled: false, detail: refused })) } : card;
     });
 }
 
@@ -1004,6 +1016,8 @@ function stealItem(name, price) {
     postCombatNarration(roll.said);
     const outcome = stealOutcome({ success: roll.success, price, place: currentLocationName, wanted: chat_metadata[WANTED_KEY] });
     chat_metadata[WANTED_KEY] = outcome.wanted;
+    // J11.3: la tienda se acuerda: si os pillan, el saludo, el precio y lo que se cuenta cambian.
+    leaveMark(outcome.free ? 'robo-oculto' : 'robo', { place: 'tienda' });
     // R9: si os pillan, quien manda aquí lo sabe.
     if (!outcome.free) void nudgeRuler(currentLocationName, 'crimen');
     if (outcome.free) {

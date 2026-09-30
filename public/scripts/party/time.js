@@ -44,10 +44,11 @@ import { renderCampaignPanel } from '../game-engine/ui/campaign-panel.js';
 import { getActiveRuleset } from '../game-engine/rules/ruleset.js';
 import { isShellOpen, refreshGameShell } from '../game-engine/ui/shell/game-shell.js';
 import {
-    ATTITUDES_KEY, BILL_DUE_KEY, BOARD_KEY, CASES_KEY, CLIMATE_KEY, DEBT_KEY, DISPATCHES_KEY, FAME_KEY, GONE_KEY,
+    ATTITUDES_KEY, BENCH_KEY, BILL_DUE_KEY, BOARD_KEY, CASES_KEY, CLIMATE_KEY, DEBT_KEY, DISPATCHES_KEY, FAME_KEY, GONE_KEY,
     HINTS_KEY, MOUNTS_KEY, PLOT_STATE_KEY, TAKEN_KEY, TIPS_SEEN_KEY, WANTED_KEY, WEEK_TABLE_AUTO_KEY,
     WEEK_TABLE_KEY, localFlag,
 } from './keys.js';
+import { readBench } from '../game-engine/campaign/bench.js';
 import {
     combatEncounter, currentBoardName, currentLocationName, currentWorldFactions, factionDaysDue, partyMembers,
     setFactionDaysDue, setPartyMembers,
@@ -69,6 +70,7 @@ import {
     favorsHere, welcomeBack, leavingMembers, tellBondScene, weighDepartures, checkNickname, offerPersonalQuests,
 } from './companions.js';
 import { currentMarket, writeLetters, worldFestivals, tellFestival } from './town.js';
+import { playNight } from './travel.js';
 
 /**
  * El estado de campana -reloj, vinculos, descansos y mapa- vive en su propio modulo.
@@ -142,6 +144,10 @@ function onTimePassed(days, calendar) {
     // facciones no avanzan solas).
     const result = runStages(stagesFor(DAY_STAGES, survivalNow()), DAY_HANDLERS, { days, today, calendar }, reportLateStage);
     for (const failed of result.failed) console.error(`[party] la etapa «${failed.id}» del paso del tiempo falló:`, failed.error);
+    // J15.2: al cambiar de día se guarda solo, en «Al empezar el día» (espera un momento por si
+    // es una noche en el gremio, que guarda en la suya).
+    void import('../guardar-partida.js').then(saves => saves.onDayTurned(calendar))
+        .catch(error => console.warn('[guardar] el automático no se ha podido pedir', error));
 }
 
 /** @param {string} id @param {string} error */
@@ -162,7 +168,11 @@ const DAY_HANDLERS = {
     // Ideas 113 y 89: las cartas que se escriben hoy, y la fiesta de hoy.
     cartas: () => writeLetters(),
     fiesta: () => tellFestival(),
-    curar: ({ days }) => healByDays(days),
+    curar: ({ days }) => {
+        healByDays(days);
+        // D-J12: y quien descansa en casa, en el gremio, también se cura con los días.
+        healBench(days);
+    },
     // Comer, beber, dormir y aguantar el clima. Hasta ahora la comida se pagaba y no pasaba
     // nada si no comias: un aviso y a seguir.
     necesidades: ({ days }) => passNeeds(days),
@@ -255,7 +265,10 @@ export async function openWeekTable() {
     if (bill && due > 0 && hasLetter(survivalNow(), 'b')) {
         const short = bill.purse < bill.total;
         body.append($('<p class="wt-bill"></p>').toggleClass('wt-short', short)
-            .text(`La cuenta ${whenText(Math.max(0, due - today))}: debéis ${bill.total}, tenéis ${bill.purse}.`));
+            .text(`La cuenta ${whenText(Math.max(0, due - today))}: debéis ${bill.total}, tenéis ${bill.purse}.`)
+            // J15.4: lo que hacía `/cuenta`, con su botón: la cuenta parte a parte.
+            .append(' ', $('<button type="button" class="menu_button wt-bill-detail"></button>').text('Parte a parte')
+                .on('click', () => { showWeeklyBill(); })));
     }
     const section = (/** @type {string} */ title) => body.append($('<div class="wt-title"></div>').text(title));
     const past = Array.isArray(state.summary) ? state.summary : [];
@@ -378,6 +391,35 @@ function healByDays(days) {
         postCombatNarration(`🩹 [CAMPAÑA] ${mended.join(' ')}`);
         savePartyState();
     }
+}
+
+/**
+ * D-J12: quien espera en casa (el banquillo del gremio, idea 42) descansa de verdad: cada día
+ * cuenta como una noche en su cama, así que recupera la vida, y sus heridas cuentan los días.
+ *
+ * @param {number} days
+ */
+function healBench(days) {
+    if (!chat_metadata || !Array.isArray(chat_metadata[BENCH_KEY]) || chat_metadata[BENCH_KEY].length === 0) return;
+    const bench = readBench(chat_metadata[BENCH_KEY]);
+    let changed = false;
+    for (const member of bench) {
+        if (!member || member.dead) continue;
+        const maxHp = Number(member.maxHp) || 0;
+        if (maxHp > 0 && (Number(member.hp) || 0) < maxHp) {
+            member.hp = maxHp;
+            changed = true;
+        }
+        if (readInjuries(member).length === 0) continue;
+        const patch = healInjuries(member, days);
+        member.injuries = patch.injuries;
+        member.baseStats = patch.baseStats;
+        Object.assign(member, patch.stats);
+        changed = true;
+    }
+    if (!changed) return;
+    chat_metadata[BENCH_KEY] = bench;
+    saveMetadata();
 }
 
 /**
@@ -673,6 +715,16 @@ export function advanceCampaignDay() {
     return result;
 }
 
+/**
+ * «Dormir» del reloj: lo que pase esta noche (J14.7) y, al acabar, el día siguiente.
+ *
+ * @returns {Promise<any>}
+ */
+export async function sleepTillMorning() {
+    if (!combatEncounter.active) await playNight();
+    return advanceCampaignDay();
+}
+
 /** @param {string} characterId @param {string} eventType */
 export function recordCampaignBondEvent(characterId, eventType) {
     const result = campaign.recordBond(characterId, eventType);
@@ -687,6 +739,9 @@ export function getCurrentSlotLabel() {
 }
 /** @param {'corto'|'largo'} kind @returns {Promise<string>} */
 export async function takeRest(kind) {
+    // J14.7: antes de dormir, lo que pase esta noche (en la posada, alguien que llega o una
+    // ronda; con dos de los tuyos, a veces una charla entre ellos). Una por noche como mucho.
+    if (kind === 'largo' && !combatEncounter.active) await playNight();
     const before = getCampaignCalendar();
     const result = await campaign.rest(kind);
     if (result) {

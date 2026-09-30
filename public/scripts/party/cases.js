@@ -31,7 +31,7 @@ import { ATTITUDES_KEY, CASES_KEY, DUELS_KEY } from './keys.js';
 import { currentLocationName, currentWorldFactions, partyMembers } from './state.js';
 import { currentPet, petTricks } from './pet.js';
 import { carriedNames, getAbilityCatalogue, magicConsequences, payForSpell } from './magic.js';
-import { lastWorldNpcs } from './world.js';
+import { lastWorldNpcs, leaveMark } from './world.js';
 import { nudgeRuler } from './factions.js';
 import { getCampaignBonds, spendDayPart, campaignDay } from './time.js';
 import { noteDeed, worldWrite, plotPeople, applyFate } from './world-growth.js';
@@ -215,6 +215,8 @@ async function accuseCase(accusation) {
     }
     // R9: quien manda donde pasó lo nota.
     void nudgeRuler(mystery.place, verdict.verdict === 'error' ? 'caso-fallo' : 'caso-acierto');
+    // J11.3: y la gente de allí se acuerda: os saluda, os cobra y lo cuenta de otra forma.
+    leaveMark(verdict.verdict === 'error' ? 'caso-fallido' : 'caso-resuelto', { town: String(mystery.place ?? '') });
     chat_metadata[CASES_KEY] = { active: null, found: [], closed: [...state.closed, { id: mystery.id, title: mystery.title, verdict: verdict.verdict }] };
     saveMetadata();
     const told = verdict.verdict === 'error' ? `Acusasteis a ${accusation.culprit}, y no fue: quien lo hizo sigue suelto.` : verdict.line;

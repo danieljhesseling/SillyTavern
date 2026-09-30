@@ -18,8 +18,9 @@ import { sceneOptions, chooseInScene, sceneTranscript } from '../campaign/plot-s
 import { describeDialogueEffect } from '../campaign/dialogues.js';
 import { loadPixelManifest } from './pixel-art.js';
 import { portraitFor, backdropFor } from './meetup-scene.js';
-import { optionChips, openDialogueWindow } from './dialogue-window.js';
+import { optionChips, openDialogueWindow, opinionRow, choiceLines } from './dialogue-window.js';
 import { noReturnBadge, noReturnGuard } from './decision-warning.js';
+import { findOption } from '../campaign/companion-opinions.js';
 
 /** @param {any} value @returns {string} */
 const text = (value) => String(value ?? '').trim();
@@ -109,6 +110,11 @@ export function choiceFrames(at, result, notes = []) {
  *   se dice en llano. También recibe los de la charla del final.
  * @param {any} [input.memory] Lo recordado de las charlas, para la del final.
  * @param {(memory: any) => void} [input.onMemory]
+ * @param {(option: any) => import('./dialogue-window.js').OpinionTag[]} [input.opinionsFor] J7.5: lo que
+ *   opina el grupo de cada opción (la escrita), para verlo antes de elegir. También en la charla del final.
+ * @param {(optionId: string, context: {beat: number, outcome: 'bien'|'medias'|'mal'|null, option: any}) => (string[]|void|Promise<string[]|void>)} [input.onChoice]
+ *   Cada opción elegida (J7.5: la aprobación del grupo); lo que devuelva se dice en la ventana.
+ *   En la charla del final llega con `beat` -1.
  * @param {string} [input.pack] El paquete, para los retratos y el escenario.
  * @param {string} [input.place] El sitio del pueblo, si la escena no dice el suyo.
  * @param {string} [input.town] La localización, si la escena no dice la suya.
@@ -118,7 +124,8 @@ export function choiceFrames(at, result, notes = []) {
  */
 export async function openPlotScene({
     scene, hero = null, getWorld = () => ({}), rollD20 = () => 1 + Math.floor(Math.random() * 20),
-    applyEffects = () => [], memory = null, onMemory = () => {}, pack = '', place = '', town = '', night = false, mount = null,
+    applyEffects = () => [], memory = null, onMemory = () => {}, opinionsFor = () => [], onChoice = () => {},
+    pack = '', place = '', town = '', night = false, mount = null,
 }) {
     await loadPixelManifest();
     /** @type {import('../campaign/plot-scenes.js').SceneChoice[]} */
@@ -129,7 +136,8 @@ export async function openPlotScene({
     // Solo la charla: se abre directamente, sin pantalla de líneas vacía.
     const talk = async () => (scene?.dialogue ? openDialogueWindow({
         dialogue: scene.dialogue, hero, getWorld: () => getWorld(scene.dialogue?.speaker ?? ''), rollD20, memory, onMemory, pack,
-        place: where.place, town: where.town, night, mount,
+        place: where.place, town: where.town, night, mount, opinionsFor,
+        onChoice: (id, outcome, option) => onChoice(id, { beat: -1, outcome, option }),
         applyEffects: (effects, context) => applyEffects(effects, { scene, beat: -1, roll: context.roll }),
     }) : null);
     if (frames.length === 0) {
@@ -231,6 +239,19 @@ export async function openPlotScene({
             return sceneOptions(scene, frame.beat, { hero, world: getWorld(frame.who) });
         };
 
+        /** La opción tal como está escrita en la decisión de esa línea. */
+        const writtenOption = (/** @type {number} */ beat, /** @type {string} */ id) => findOption(scene?.beats?.[beat]?.decision?.dialogue, id);
+        /** J7.5: lo que opina el grupo; si falla, nada (la escena sigue). */
+        const safeOpinions = (/** @type {number} */ beat, /** @type {string} */ id) => {
+            try {
+                const option = writtenOption(beat, id);
+                return option ? opinionsFor(option) : [];
+            } catch (error) {
+                console.error('[escena] no se pudo ver qué opina el grupo', error);
+                return [];
+            }
+        };
+
         const draw = () => {
             const frame = frames[at];
             root.dataset.beat = String(frame.beat);
@@ -275,6 +296,11 @@ export async function openPlotScene({
                         body.appendChild(why);
                     }
                     if (option.warn) body.appendChild(noReturnBadge(option.warn));
+                    // J7.5: lo que opinan tus compañeros, antes de elegir.
+                    if (!option.locked) {
+                        const opinions = opinionRow(safeOpinions(frame.beat, option.id));
+                        if (opinions) body.appendChild(opinions);
+                    }
                     button.appendChild(body);
                     if (option.check) {
                         const check = el('span', 'dw-check');
@@ -349,7 +375,15 @@ export async function openPlotScene({
                 decided.add(frame.beat);
                 if (result.choice) choices.push(result.choice);
                 const notes = await apply(result.effects, frame.beat, result.roll);
-                frames.splice(at + 1, 0, ...choiceFrames(frame, result, notes));
+                // J7.5: a quién le ha gustado, detrás de lo que ha pasado.
+                /** @type {string[]} */
+                let liked = [];
+                try {
+                    liked = choiceLines(await onChoice(id, { beat: frame.beat, outcome: result.outcome ?? null, option: writtenOption(frame.beat, id) }));
+                } catch (error) {
+                    console.error('[escena] no se pudo apuntar la elección', error);
+                }
+                frames.splice(at + 1, 0, ...choiceFrames(frame, result, [...notes, ...liked]));
                 at += 1;
                 draw();
             } finally {

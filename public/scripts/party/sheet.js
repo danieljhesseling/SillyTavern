@@ -30,11 +30,18 @@ import { setInjury } from '../game-engine/rules/injuries.js';
 import { canTakeOff, shownName, curseInjury } from '../game-engine/campaign/item-lore.js';
 import { getActiveRuleset } from '../game-engine/rules/ruleset.js';
 import { firstArt, isPlainFace, loadPixelManifest } from '../game-engine/ui/pixel-art.js';
-import { slotName } from '../game-engine/ui/shell/character-sheet.js';
+import { slotName, campaignRows } from '../game-engine/ui/shell/character-sheet.js';
+import { extension_settings } from '../extensions.js';
+import { readHall } from '../game-engine/campaign/legacy.js';
+import { hallCampaignName } from '../game-engine/campaign/campaign-end.js';
+import { HUB_BOARD_NAME_KEY } from '../game-engine/campaign/hub.js';
 import { combatEncounter, partyMembers } from './state.js';
+import { lastHub, lastHubHome } from './world.js';
+import { getPlot } from './plot.js';
 import { canLevelUp, openLevelUpCard } from './level-up.js';
 import {
     getAbilityCatalogue, knownAbilitiesOf, magicSummaryOf, castsLikeFifth, openGrimoire, attuneItem, attuneNoteOf,
+    openFieldMagicModal,
 } from './magic.js';
 import { getCurrentWorldFactions } from './factions.js';
 import { getCampaignBonds } from './time.js';
@@ -153,6 +160,55 @@ async function syncPartyMemberToWorldInfo(member) {
 }
 
 /**
+ * J1.7: la campaña que se está jugando, si esto es una campaña que salió del gremio (y no el
+ * gremio mismo): su nombre como en el tablón y su mundo.
+ *
+ * @returns {{name: string, world: string}|null}
+ */
+function currentCampaign() {
+    const world = String(chat_metadata?.[METADATA_KEY] ?? '').trim();
+    if (!world || lastHub || !lastHubHome) return null;
+    return { name: hallCampaignName({ board: chat_metadata?.[HUB_BOARD_NAME_KEY], plot: getPlot(), world }), world };
+}
+
+/**
+ * J1.7: apuntar en la ficha de cada uno la campaña en que está, para que su ficha diga en qué
+ * campañas ha estado (el gremio no lo sabía: guarda las campañas, no quién fue). Lo llaman la
+ * ficha al abrirse y el botín de cada pelea ganada (`party/loot.js`).
+ *
+ * @param {any[]} members
+ * @returns {boolean} Si se ha apuntado algo.
+ */
+export function noteCampaignOf(members) {
+    const now = currentCampaign();
+    if (!now) return false;
+    let changed = false;
+    for (const member of Array.isArray(members) ? members : []) {
+        if (!member || member.dead) continue;
+        const seen = Array.isArray(member.campaignsSeen) ? member.campaignsSeen : [];
+        if (seen.some((/** @type {any} */ c) => String(c?.world) === now.world)) continue;
+        member.campaignsSeen = [...seen, now];
+        changed = true;
+    }
+    return changed;
+}
+
+/**
+ * J1.7: en qué campañas ha estado, en frases para su ficha.
+ *
+ * @param {any} member
+ * @returns {string[]}
+ */
+export function campaignLinesOf(member) {
+    return campaignRows({
+        name: String(member?.name ?? ''),
+        seen: Array.isArray(member?.campaignsSeen) ? member.campaignsSeen : [],
+        hall: readHall(/** @type {any} */ (extension_settings).partyHall),
+        now: currentCampaign(),
+    }).map(row => row.line);
+}
+
+/**
  * Tu ficha, la de mirar.
  *
  * @param {any} member
@@ -161,6 +217,7 @@ async function syncPartyMemberToWorldInfo(member) {
 export async function openOwnSheet(member) {
     const rules = getActiveRuleset();
     const { openCharacterPanel } = await import('../game-engine/ui/character-panel.js');
+    if (noteCampaignOf([member])) savePartyState();
 
     // Lo que se toca en la ficha (dar algo, ponerse un juego) la cierra; se vuelve a abrir
     // al día, hasta que se cierra sin tocar nada.
@@ -173,6 +230,8 @@ export async function openOwnSheet(member) {
             known: knownAbilitiesOf(member),
             magic: magicSummaryOf(member),
             onGrimoire: castsLikeFifth(member) ? () => { void openGrimoire(false); } : null,
+            // J19.10: la magia fuera de combate, desde la ficha (en plena pelea, no: va en tu turno).
+            onFieldMagic: castsLikeFifth(member) && !combatEncounter.active ? () => { void openFieldMagicModal(); } : null,
             // Subir de nivel desde tu ficha, cuando toca.
             onLevelUp: canLevelUp(member) ? () => { void openLevelUpCard(member); } : null,
             // J19.9: sintonizarse con lo que lo pide.
@@ -187,9 +246,15 @@ export async function openOwnSheet(member) {
             sets: readSets(member),
             onSaveSet: (name) => wearSet(member, name, 'save'),
             onApplySet: (name) => wearSet(member, name, 'apply'),
-            // Idea 163: a quién darle algo.
+            // Idea 163: a quién darle algo. J1.8: con su cara, o sus iniciales si no tiene.
             mates: partyMembers.filter(m => m !== member && !m.dead)
-                .map(m => ({ id: String(m.id), name: String(m.name), avatar: String(m.avatar || '') })),
+                .map(m => ({
+                    id: String(m.id), name: String(m.name), avatar: String(m.avatar || ''),
+                    className: String(m.class ?? ''), gender: String(/** @type {any} */ (m).gender ?? ''), race: String(m.race ?? ''),
+                    mercenary: /** @type {any} */ (m).guest?.kind === 'mercenary',
+                })),
+            // J1.7: en qué campañas ha estado (en el juego del gremio: en el gremio o en una campaña suya).
+            campaigns: lastHub || lastHubHome ? campaignLinesOf(member) : null,
             onGive: (itemId, toId) => handItem(member, itemId, toId),
             Popup,
             POPUP_TYPE,

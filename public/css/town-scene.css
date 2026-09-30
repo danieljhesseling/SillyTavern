@@ -362,6 +362,12 @@
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
 }
 
+/* J11.3 y J11.4: quien atiende se acuerda de lo que hicisteis. */
+.gs-town-line-remembered {
+    padding-left: 0.6rem;
+    border-left: 3px solid var(--gs-accent-gold, #e2c27a);
+}
+
 .gs-town-desc {
     margin: 0;
     font-size: 0.9em;

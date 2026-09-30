@@ -246,3 +246,51 @@ export function describeSheet(sheet) {
     if (sheet.conditions.length > 0) parts.push(sheet.conditions.join(', '));
     return parts.join(' · ');
 }
+
+/** @param {any} value @returns {string} */
+const said = (value) => String(value ?? '').trim();
+
+/**
+ * J1.7: en qué campañas ha estado alguien, para su ficha. La de ahora, primero; luego las que
+ * tiene apuntadas (las que pisó, `campaignsSeen`), cada una terminada (con su final, del salón
+ * de la fama) o a medias; y las del salón en que fue y no tenía apuntadas (partidas de antes).
+ * Una por mundo: dos vueltas a Strahd son dos filas.
+ *
+ * @param {Object} input
+ * @param {string} input.name Quien.
+ * @param {Array<{name: string, world: string}>} [input.seen] Las que tiene apuntadas.
+ * @param {any[]} [input.hall] El salón de la fama, ya leído (`readHall`).
+ * @param {{name: string, world: string}|null} [input.now] La campaña en que está ahora.
+ * @returns {Array<{name: string, world: string, state: 'ahora'|'terminada'|'a medias', ending: string, line: string}>}
+ */
+export function campaignRows({ name, seen = [], hall = [], now = null }) {
+    const who = said(name).toLowerCase();
+    /** @type {Map<string, any>} */
+    const finished = new Map();
+    for (const entry of Array.isArray(hall) ? hall : []) {
+        if (entry?.kind !== 'campaign') continue;
+        if (!(Array.isArray(entry.party) ? entry.party : []).some((/** @type {any} */ p) => said(p).toLowerCase() === who)) continue;
+        const world = said(entry.world) || said(entry.name);
+        if (!finished.has(world)) finished.set(world, entry);
+    }
+    /** @type {Array<{name: string, world: string, state: 'ahora'|'terminada'|'a medias', ending: string, line: string}>} */
+    const rows = [];
+    const done = new Set();
+    /** @param {string} campaign @param {string} world @param {boolean} current */
+    const add = (campaign, world, current) => {
+        const key = said(world) || said(campaign);
+        if (!key || done.has(key)) return;
+        done.add(key);
+        const end = finished.get(key);
+        const title = said(end?.name) || said(campaign) || key;
+        const state = end ? 'terminada' : current ? 'ahora' : 'a medias';
+        const ending = said(end?.ending);
+        const line = state === 'terminada' ? `${title}: terminada${ending ? `, con «${ending}»` : ''}`
+            : state === 'ahora' ? `${title}: ahora mismo` : `${title}: a medias`;
+        rows.push({ name: title, world: key, state, ending, line });
+    };
+    if (now && (said(now.world) || said(now.name))) add(now.name, now.world, true);
+    for (const one of Array.isArray(seen) ? seen : []) add(said(one?.name), said(one?.world), false);
+    for (const [world, entry] of finished) add(said(entry.name), world, false);
+    return rows;
+}

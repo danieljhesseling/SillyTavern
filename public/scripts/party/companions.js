@@ -7,9 +7,10 @@
  * de lo guardado, en `keys.js`.
  */
 
-import { chat_metadata, saveMetadata } from '../../script.js';
+import { chat_metadata, saveChatConditional, saveMetadata } from '../../script.js';
 import {
-    getCurrentWorldLocationMaps, getCurrentWorldEnemies, loadWorldInfo, saveWorldInfo, METADATA_KEY,
+    getCurrentWorldLocationMaps, getCurrentWorldEnemies, loadWorldInfo, saveWorldInfo, createWorldInfoEntry,
+    refreshWorldMapGlobals, METADATA_KEY,
 } from '../world-info.js';
 import { createSeededRandom } from '../game-engine/combat/seeded-random.js';
 import { derive } from '../game-engine/campaign/seed.js';
@@ -23,7 +24,7 @@ import { readBench, whereHired } from '../game-engine/campaign/bench.js';
 import { judgeDepartures, describeWarning, describeLeaving } from '../game-engine/campaign/departures.js';
 import { shiftAttitude, describeAttitude, readAttitudes } from '../game-engine/campaign/attitudes.js';
 import { readInjuries } from '../game-engine/rules/injuries.js';
-import { describeNeeds } from '../game-engine/rules/needs.js';
+import { describeNeeds, relieve } from '../game-engine/rules/needs.js';
 import { readRemedies, remediesFor, shouldOfferRetirement } from '../game-engine/rules/remedies.js';
 import { chooseBark, opinionOf, wantsOf } from '../game-engine/combat/barks.js';
 import { groupMorale, campJobOf, mourningFor } from '../game-engine/campaign/company.js';
@@ -35,31 +36,55 @@ import { addMemory } from '../game-engine/campaign/memories.js';
 import { STAFF_ROLES } from '../game-engine/campaign/guild.js';
 import { readReasons } from '../game-engine/rules/companions.js';
 import { getBondProgress } from '../game-engine/campaign/bonds.js';
-import { isShellOpen, refreshGameShell } from '../game-engine/ui/shell/game-shell.js';
+import { isShellOpen, refreshGameShell, setScene } from '../game-engine/ui/shell/game-shell.js';
 import { buildCompanionCard, judgeGift } from '../game-engine/ui/shell/companion-card.js';
-import { readFormation, describeFormation } from '../game-engine/campaign/formation.js';
+import {
+    readFormation, describeFormation, orderOf, rowOf, moveInOrder, setDuty, dutyHolder, travelRolesOf, DUTIES, ROWS,
+} from '../game-engine/campaign/formation.js';
 export { orderOf, inMarchOrder, DUTIES, ROWS } from '../game-engine/campaign/formation.js';
+import { POPUP_TYPE, Popup } from '../popup.js';
+import { skillModifier } from '../game-engine/rules/checks.js';
+import { readLineRows, roadLine, reactionLines } from '../game-engine/campaign/companion-lines.js';
+import { readCompanionCards, shortOf } from '../game-engine/campaign/companion-cards.js';
+import { SOCIAL_KEY, keyOf, readSocial } from '../game-engine/campaign/social.js';
+import { getElapsedSlots } from '../game-engine/campaign/calendar.js';
 export { readQuestRows, readQuests, currentStep, startQuest, QUESTS_KEY } from '../game-engine/campaign/companion-quests.js';
 import {
-    APPROVAL_KEY, ATTITUDES_KEY, BENCH_KEY, BOARD_KEY, GONE_KEY, LEAVE_ON_KEY, MEMORIES_KEY, PERSONAL_ASKED_KEY,
+    readQuestRows, readQuests, currentStep, startQuest, questInfo, questUnderway, afterTravel, afterScene, afterBoard,
+    stepScene, endingOf, finishQuest, endingLines, questCard, travelOf, fightOf, QUESTS_KEY,
+} from '../game-engine/campaign/companion-quests.js';
+import { unlockedFor } from '../game-engine/campaign/meetups.js';
+import { buildImportPlan, buildPackEntries } from '../game-engine/campaign/campaign-importer.js';
+import { normalizePack } from '../game-engine/campaign/campaign-pack.js';
+import { openPlotScene } from '../game-engine/ui/plot-scene.js';
+import { openMeetupScene } from '../game-engine/ui/meetup-scene.js';
+import {
+    campaignCompanions, stayVerdict, stayScene, stayChoice, settleStays, homecomingLine,
+} from '../game-engine/campaign/guild-companions.js';
+import {
+    APPROVAL_KEY, ATTITUDES_KEY, BENCH_KEY, BOARD_KEY, BOARDS_WON_KEY, GONE_KEY, GUILD_KEY, LEAVE_ON_KEY, MEMORIES_KEY, PERSONAL_ASKED_KEY,
     RECRUITS_MET_KEY, WARNED_KEY,
 } from './keys.js';
-import { combatEncounter, currentLocationName, partyMembers, setPartyMembers } from './state.js';
+import { combatEncounter, currentBoardName, currentLocationName, partyMembers, setCurrentBoardName, setPartyMembers } from './state.js';
 import { openOwnSheet } from './sheet.js';
 import { canLevelUp, openLevelUpCard } from './level-up.js';
 import { retireMember } from './hub.js';
-import { lastConfidantEntries, lastWorldNpcs } from './world.js';
+import { hereLocation, lastCompendium, lastConfidantEntries, lastHub, lastPack, lastWorldNpcs, saveCurrentBoard } from './world.js';
 import {
-    campaignDay, getCampaignBonds, getCampaignCalendar, recordCampaignBondEvent, spendDayPart,
+    advanceCampaignDay, campaignDay, getCampaignBonds, getCampaignCalendar, recordCampaignBondEvent, spendDayPart,
 } from './time.js';
-import { keyOf } from '../game-engine/campaign/social.js';
 import { noteDeed, refreshWorldMemoryPrompt, worldWrite } from './world-growth.js';
 import { offlineGame, postCombatNarration, postForModel } from './narration.js';
 import { getActivePartyLeader, memberFromEntry, partyPurse, renderPartyMembers, savePartyState } from './roster.js';
 import { smithHere, smithPlaces, buyRemedy } from './town.js';
-import { bondFavors, carryBondOf, meetSomeone, peopleHere, wantsToMeetAt } from './social.js';
+import { bondFavors, carryBondOf, meetSomeone, meetupData, peopleHere, wantsToMeetAt } from './social.js';
 import { canChooseControl, controlOf, CONTROL_LABELS } from './spell-turn.js';
-import { chooseControl } from './combat-flow.js';
+import { chooseControl, startWaitingFight } from './combat-flow.js';
+import { applySceneEffectsToGame, storyHero, storyNight, storyWorld } from './plot.js';
+import { enterBoard } from './board.js';
+import { lastWaiting, renderLocationMapsPreview } from './board-view.js';
+import { getGuild } from './contracts.js';
+import { rollDiceDetailed } from './combat-rules.js';
 
 /**
  * R8: los favores de la gente de aquí que os aprecia (actitud +2 o más).
@@ -305,11 +330,109 @@ export function judgeDecision(decision, { verdicts = undefined, quiet = false } 
     chat_metadata[APPROVAL_KEY] = state;
     saveMetadata();
     if (!quiet) toastr.info(describeApproval(judged), `Les parece: ${DECISIONS[decision]?.label ?? judged[0].what}`, { timeOut: 7000 });
+    // J13.5: y alguno lo dice en voz alta, con su cara en la novela.
+    sayReactions(judged, decision);
     if (friction) {
         postCombatNarration(`⚡ [GRUPO] ${friction.line}`);
         toastr.warning(friction.line, '⚡ Roce en el grupo', { timeOut: 9000 });
         void postForModel(`[ROCE] ${friction.line} Cuéntalo en una o dos frases: discuten, y nadie se va.`);
     }
+}
+
+// ---------------------------------------------------------------------------------------
+// J13.5: lo que dicen tus compañeros fuera de combate (`campaign/companion-lines.js`).
+
+/** Las fichas de `companeros.json` y las frases de `charlas.json`, leídas una vez por compendio. */
+let lineData = { from: /** @type {any} */ (null), cards: /** @type {import('../game-engine/campaign/companion-cards.js').CompanionCard[]} */ ([]), lines: /** @type {import('../game-engine/campaign/companion-lines.js').LineRow[]} */ ([]) };
+
+/** @returns {typeof lineData} */
+function lineRows() {
+    if (lineData.from !== lastCompendium) {
+        lineData = { from: lastCompendium, cards: readCompanionCards(lastCompendium.find('companeros')), lines: readLineRows(lastCompendium.find('charlas')) };
+    }
+    return lineData;
+}
+
+/**
+ * J7.2, J13.5 y J14.8: cómo es cada compañero (`compendio/companeros.json`): lo que busca, su
+ * nombre corto y si se viene al gremio.
+ *
+ * @returns {import('../game-engine/campaign/companion-cards.js').CompanionCard[]}
+ */
+export function companionCards() {
+    return lineRows().cards;
+}
+
+/**
+ * Una frase de un compañero, en la caja de la novela con su retrato y su cara, y para el
+ * narrador, que ya no la repite.
+ *
+ * @param {import('../game-engine/campaign/companion-lines.js').SpokenLine} spoken
+ * @param {string} when Cuándo lo dice («por el camino», «al llegar a Vallaki»…), para el narrador.
+ */
+function sayLine(spoken, when) {
+    const mood = spoken.mood || (spoken.feel > 0 ? 'alegre' : spoken.feel < 0 ? 'enfadado' : '');
+    void postForModel(`[FRASE] ${spoken.who}, ${when}: «${spoken.line}». Ya se ha dicho: no lo repitas.`,
+        { show: `💬 [FRASE] ${spoken.line}`, speaker: spoken.who, mood })
+        .catch(error => console.error('[party] companion line failed', error));
+}
+
+/** @param {any} state */
+function saveLineState(state) {
+    if (!chat_metadata) return;
+    chat_metadata[SOCIAL_KEY] = readSocial(state);
+    saveMetadata();
+}
+
+/**
+ * J13.5: por el camino (`viaje`) o al llegar (`llegada`), a veces alguien del grupo dice algo.
+ * No gasta tiempo ni pide respuesta; no repite hasta agotar las suyas.
+ *
+ * @param {'viaje'|'llegada'} moment
+ * @param {string} [place] El sitio, para las frases que lo nombran.
+ * @returns {boolean} Si alguien ha dicho algo.
+ */
+export function sayRoadLine(moment, place = '') {
+    if (!chat_metadata || combatEncounter.active || partyMembers.filter(m => !m.dead).length < 2) return false;
+    const { cards, lines } = lineRows();
+    const random = createSeededRandom(derive(String(chat_metadata[METADATA_KEY] || ''), 'frase', moment, String(campaignDay()), String(place || currentLocationName)));
+    const said = roadLine({ moment, rows: lines, party: partyMembers, social: chat_metadata[SOCIAL_KEY], random, cards, place: String(place || '') });
+    if (!said.line) return false;
+    saveLineState(said.social);
+    sayLine(said.line, moment === 'viaje' ? 'por el camino' : `al llegar a ${place || currentLocationName}`);
+    return true;
+}
+
+/** La parte del día en que alguien dijo algo de lo que decidisteis: una por parte, como mucho. */
+let lastReactionAt = -1;
+
+/**
+ * J13.5: ante lo que decidís, lo dice alguien a quien le parece bien o mal (una frase; dos si a
+ * uno le gusta y a otro no). Una vez por parte del día: si no, cada decisión de una charla
+ * traería su comentario.
+ *
+ * @param {Array<{id: string, name: string, mood: number}>} judged
+ * @param {string} decision
+ */
+function sayReactions(judged, decision) {
+    if (!chat_metadata || combatEncounter.active) return;
+    const now = getElapsedSlots(getCampaignCalendar());
+    if (now === lastReactionAt) return;
+    const { cards, lines } = lineRows();
+    const random = createSeededRandom(derive(String(chat_metadata[METADATA_KEY] || ''), 'reaccion', String(decision), String(now)));
+    const said = reactionLines({
+        opinions: judged.map(v => ({ id: String(v.id), name: String(v.name), mood: /** @type {1|-1} */ (v.mood > 0 ? 1 : -1), trait: String(decision || '') })),
+        about: String(decision || ''),
+        rows: lines,
+        party: partyMembers,
+        social: chat_metadata[SOCIAL_KEY],
+        random,
+        cards,
+    });
+    if (said.lines.length === 0) return;
+    lastReactionAt = now;
+    saveLineState(said.social);
+    for (const spoken of said.lines) sayLine(spoken, 'ante lo que habéis decidido');
 }
 
 /**
@@ -440,8 +563,20 @@ export function offerPersonalQuests() {
     if (!chat_metadata || !chat_metadata[METADATA_KEY]) return;
     const bonds = getCampaignBonds();
     const asked = Array.isArray(chat_metadata[PERSONAL_ASKED_KEY]) ? chat_metadata[PERSONAL_ASKED_KEY].map(String) : [];
-    const due = duePersonalQuests({ party: partyMembers, rankOf: m => getBondProgress(bonds, String(m.id)).rank, asked });
-    if (due.length === 0) return;
+    // J14.9: quien tiene su misión escrita (`personales.json`) la pide él, en su rango, y no
+    // un encargo de tablón hecho al azar.
+    const announced = announceWrittenQuests(asked);
+    const written = new Set(questRows().map(row => row.key));
+    const due = duePersonalQuests({
+        party: partyMembers.filter(m => !written.has(keyOf(m.name))), rankOf: m => getBondProgress(bonds, String(m.id)).rank, asked,
+    });
+    if (due.length === 0) {
+        if (announced) {
+            chat_metadata[PERSONAL_ASKED_KEY] = asked;
+            saveMetadata();
+        }
+        return;
+    }
     const places = getCurrentWorldLocationMaps().map((/** @type {any} */ l) => String(l?.name || '')).filter(Boolean);
     // Sin los sitios del mundo cargados todavía, se espera: un encargo en ninguna parte
     // mandaría al grupo a un sitio inventado.
@@ -464,6 +599,425 @@ export function offerPersonalQuests() {
     chat_metadata[BOARD_KEY] = board;
     chat_metadata[PERSONAL_ASKED_KEY] = asked;
     saveMetadata();
+}
+
+// ---------------------------------------------------------------------------------------
+// J14.9: las misiones personales, jugadas (`campaign/companion-quests.js`).
+
+/** Las misiones de `personales.json`, leídas una vez por compendio. */
+let questData = { from: /** @type {any} */ (null), rows: /** @type {import('../game-engine/campaign/companion-quests.js').QuestRow[]} */ ([]) };
+
+/** @returns {import('../game-engine/campaign/companion-quests.js').QuestRow[]} */
+function questRows() {
+    if (questData.from !== lastCompendium) questData = { from: lastCompendium, rows: readQuestRows(lastCompendium.find('personales')) };
+    return questData.rows;
+}
+
+/** @returns {import('../game-engine/campaign/companion-quests.js').QuestsState} */
+function questState() {
+    return readQuests(chat_metadata?.[QUESTS_KEY]);
+}
+
+/** @param {any} state */
+function saveQuestState(state) {
+    if (!chat_metadata) return;
+    chat_metadata[QUESTS_KEY] = readQuests(state);
+    saveMetadata();
+}
+
+/**
+ * La misión personal de alguien del grupo, si la tiene escrita: cómo va y si su vínculo ya la
+ * ha abierto (lo que abre su rango en `quedadas.json`).
+ *
+ * @param {any} member
+ * @returns {{row: import('../game-engine/campaign/companion-quests.js').QuestRow, info: ReturnType<typeof questInfo>,
+ *   card: ReturnType<typeof questCard>, open: boolean, rank: number}|null}
+ */
+export function personalQuestOf(member) {
+    const row = questRows().find(r => r.key === keyOf(member?.name));
+    if (!row) return null;
+    const data = meetupData();
+    const info = questInfo(data, row.quest);
+    const rank = getBondProgress(getCampaignBonds(), String(member?.id ?? '')).rank;
+    const open = unlockedFor(data, row.who, rank).some(u => u.type === 'mision' && String(u.quest?.id ?? '') === row.quest);
+    return { row, info, card: questCard(row, questState(), info), open, rank: info?.rank || 4 };
+}
+
+/**
+ * Avisar, una vez, de que alguien del grupo ya os pide su misión (su vínculo la ha abierto).
+ *
+ * @param {string[]} asked Lo ya pedido (`PERSONAL_ASKED_KEY`): se le añade `mision:<id>`.
+ * @returns {boolean} Si se ha avisado de alguna.
+ */
+function announceWrittenQuests(asked) {
+    let told = false;
+    for (const member of partyMembers.slice(1).filter(m => !m.dead)) {
+        const quest = personalQuestOf(member);
+        if (!quest?.open || asked.includes(`mision:${quest.row.id}`) || questState().quests[quest.row.id]) continue;
+        asked.push(`mision:${quest.row.id}`);
+        told = true;
+        const title = quest.info?.title || quest.row.id;
+        const line = `${member.name} tiene algo que pedirte: «${title}». Lo cuenta en su ficha (pulsa su retrato)${lastHub ? '' : ', y se hace desde el gremio'}.`;
+        postCombatNarration(`🤝 [GRUPO] ${line}`);
+        toastr.info(line, `🤝 ${member.name}`, { timeOut: 12000 });
+    }
+    return told;
+}
+
+/**
+ * Una ventana de la misión: lo que se cuenta y uno o dos botones.
+ *
+ * @param {{title: string, sub?: string, text: string, detail?: string, ok: string, cancel?: string|false, className?: string}} input
+ * @returns {Promise<boolean>} Si se pulsó el de seguir.
+ */
+async function questWindow({ title, sub = '', text, detail = '', ok, cancel = false, className = '' }) {
+    const body = $('<div class="pq-root gs-panel"></div>').addClass(className);
+    body.append($('<h3 class="gs-popup-title"></h3>').text(title));
+    if (sub) body.append($('<div class="fm-title pq-sub"></div>').text(sub));
+    for (const part of String(text || '').split('\n').filter(Boolean)) body.append($('<p class="pq-text"></p>').text(part));
+    if (detail) body.append($('<p class="pq-detail"></p>').text(detail));
+    const answer = await new Popup(body[0], POPUP_TYPE.CONFIRM, '', { okButton: ok, cancelButton: cancel === false ? false : cancel, allowVerticalScrolling: true, leftAlign: true }).show();
+    return Boolean(answer);
+}
+
+/**
+ * Pasar los días de camino de la misión: cada uno cura, da hambre y acerca la cuenta, como un
+ * viaje; por el camino se duerme y se bebe de la cantimplora.
+ *
+ * @param {number} days
+ */
+function passQuestDays(days) {
+    for (let day = 0; day < Math.max(0, Math.floor(Number(days) || 0)); day++) {
+        advanceCampaignDay();
+        for (const member of partyMembers.filter(m => !m.dead)) {
+            member.needs = relieve(member, 'slept');
+            member.needs = relieve(member, 'drank');
+        }
+    }
+    savePartyState();
+}
+
+/**
+ * Esperar a que no haya nada delante: ni pelea, ni la tarjeta de la victoria, ni otra ventana.
+ *
+ * @returns {Promise<void>}
+ */
+async function questStage() {
+    for (let i = 0; i < 600; i++) {
+        const busy = combatEncounter.active || document.querySelector('.vs-card') || document.querySelector('dialog[open].qd-dialog, dialog[open].ps-dialog, dialog[open].dw-dialog');
+        if (!busy) return;
+        await new Promise(resolve => setTimeout(resolve, 300));
+    }
+}
+
+/**
+ * Jugar la misión personal de alguien desde donde vaya: empezarla (si su vínculo la abrió y no
+ * hay otra a medias) o seguirla. Cada paso a su manera: el camino (sus días), una escena del hilo
+ * en su ventana, una pelea en su tablero (sigue sola al acabar) y el final, con lo que cambia.
+ * Dejar una escena a medias la deja ahí: se sigue desde su ficha.
+ *
+ * @param {string} rowId
+ * @returns {Promise<string>} El final, si se llegó a uno.
+ */
+export async function playPersonalQuest(rowId) {
+    if (!chat_metadata || combatEncounter.active) return '';
+    const row = questRows().find(r => r.id === rowId);
+    if (!row) return '';
+    if (!lastHub) {
+        toastr.info('Las misiones de tu gente del gremio salen de Puerto Alba: se hacen desde el gremio.', 'Misión personal');
+        return '';
+    }
+    const info = questInfo(meetupData(), row.quest);
+    const title = info?.title || row.id;
+    let state = questState();
+    if (!state.quests[row.id]) {
+        const other = questUnderway(state);
+        if (other) {
+            toastr.info(`Primero hay que acabar la misión de ${other.who}.`, 'Misión personal');
+            return '';
+        }
+        const go = await questWindow({
+            title, sub: `La misión de ${row.who}`, text: info?.pitch || '', detail: info?.where ? `Dónde: ${info.where}.` : '',
+            ok: 'Ir con él', cancel: 'Ahora no',
+        });
+        if (!go) return '';
+        state = startQuest(state, row, { day: campaignDay() });
+        saveQuestState(state);
+        noteDeed(`${row.who} os pidió ayuda con lo suyo: ${title}.`);
+    }
+    for (let guard = 0; guard < 24; guard++) {
+        const step = currentStep(row, state);
+        if (!step) break;
+        if (step.kind === 'viaje') {
+            const trip = travelOf(step);
+            const days = Number(trip?.days) || 1;
+            const go = await questWindow({
+                title, sub: step.title || `Camino de ${trip?.to || 'su destino'}`, text: trip?.text || '',
+                detail: `${days === 1 ? 'Un día' : `${days} días`} de camino hasta ${trip?.to || 'su destino'}. Por el camino se come, se cura y corre la semana.`,
+                ok: 'En marcha', cancel: 'Ahora no',
+            });
+            if (!go) return '';
+            passQuestDays(days);
+            state = afterTravel(state, row);
+            saveQuestState(state);
+            continue;
+        }
+        if (step.kind === 'escena') {
+            const hero = storyHero();
+            const scene = stepScene(step, { hero, party: partyMembers, questTitle: title });
+            if (scene.kind !== 'scene') {
+                state = afterScene(state, row, []);
+                saveQuestState(state);
+                continue;
+            }
+            await questStage();
+            const result = await openPlotScene({
+                scene,
+                hero,
+                getWorld: (who) => storyWorld(who),
+                rollD20: () => rollDiceDetailed('1d20', 20).total,
+                applyEffects: (effects, context) => applySceneEffectsToGame(effects, { roll: context.roll, hero }),
+                pack: lastPack,
+                // Pasa lejos de aquí: sin el escenario de Puerto Alba detrás; el suyo, si lo dice el paso.
+                town: '',
+                night: storyNight(),
+            });
+            if (!result.finished) return '';
+            state = afterScene(state, row, result.choices);
+            saveQuestState(state);
+            continue;
+        }
+        if (step.kind === 'tablero') {
+            const fight = fightOf(step);
+            if (!fight) {
+                state = afterBoard(state, row, 'win');
+                saveQuestState(state);
+                continue;
+            }
+            await questWindow({ title, sub: step.title || 'Hay que pelear', text: fight.text, ok: 'A pelear' });
+            const placed = await placeQuestBoard(row, fight);
+            if (!placed) {
+                // Sin tablero no se puede pelear: la misión no se queda colgada.
+                state = afterBoard(state, row, 'win');
+                saveQuestState(state);
+                continue;
+            }
+            enterBoard(placed);
+            renderLocationMapsPreview();
+            if (isShellOpen()) setScene('combat');
+            await new Promise(resolve => setTimeout(resolve, 300));
+            if (lastWaiting.board === placed && lastWaiting.placements.length > 0) startWaitingFight(lastWaiting.placements);
+            // Sigue sola al acabar la pelea (`questAfterFight`).
+            return '';
+        }
+        if (step.kind === 'final') return await finishPersonalQuest(row, step, info, title);
+    }
+    return '';
+}
+
+/**
+ * El final: lo que cuesta, lo que une (cuenta como misión juntos, y una personal pesa el doble),
+ * el renombre del gremio, lo que él recuerda y la vuelta a casa. Queda en el Diario.
+ *
+ * @param {import('../game-engine/campaign/companion-quests.js').QuestRow} row
+ * @param {import('../game-engine/campaign/companion-quests.js').QuestStep} step
+ * @param {ReturnType<typeof questInfo>} info
+ * @param {string} title
+ * @returns {Promise<string>}
+ */
+async function finishPersonalQuest(row, step, info, title) {
+    const ending = endingOf(step, info);
+    if (!ending || !chat_metadata) return '';
+    const member = partyMembers.find(m => keyOf(m.name) === row.key && !m.dead);
+    if (ending.gold < 0) payFromPartyUpTo(-ending.gold);
+    else if (ending.gold > 0 && partyMembers[0]) partyMembers[0].gold = (Number(partyMembers[0].gold) || 0) + ending.gold;
+    if (member) for (let i = 0; i < ending.bonds; i++) recordCampaignBondEvent(String(member.id), 'quest_together');
+    if (ending.fame > 0) {
+        const guild = getGuild();
+        chat_metadata[GUILD_KEY] = { ...guild, renown: (Number(guild.renown) || 0) + ending.fame };
+    }
+    if (ending.memory) rememberTogether(ending.memory, [String(partyMembers[0]?.name ?? ''), row.who]);
+    passQuestDays(ending.back);
+    saveQuestState(finishQuest(questState(), row, ending, { day: campaignDay() }));
+    savePartyState();
+    const lines = endingLines({ who: row.who, ending, short: shortOf(companionCards(), row.who) });
+    noteDeed(`${title}, con ${row.who}: ${ending.title}.`);
+    postCombatNarration(`🤝 [MISIÓN] ${title} · ${ending.title}. ${lines.join(' ')}`);
+    await questWindow({
+        title, sub: `Final: ${ending.title}`, text: lines.join('\n'),
+        detail: ending.back > 0 ? `${ending.back === 1 ? 'Un día' : `${ending.back} días`} de vuelta a Puerto Alba.` : '',
+        ok: 'Volver a Puerto Alba', className: 'pq-ending-window',
+    });
+    if (isShellOpen()) refreshGameShell();
+    return ending.id;
+}
+
+/** @param {number} amount Pagar lo que se pueda, sin quedarse en negativo. */
+function payFromPartyUpTo(amount) {
+    let owed = Math.max(0, Math.floor(Number(amount) || 0));
+    for (const member of [...partyMembers].sort((a, b) => (Number(b.gold) || 0) - (Number(a.gold) || 0))) {
+        if (owed <= 0) break;
+        const has = Math.max(0, Number(member.gold) || 0);
+        const taken = Math.min(has, owed);
+        member.gold = has - taken;
+        owed -= taken;
+    }
+}
+
+/**
+ * El tablero de la pelea de una misión, en el sitio de ahora (Puerto Alba), con sus bichos en
+ * el mundo, como mete los suyos una campaña. Se quita al acabar la pelea.
+ *
+ * @param {import('../game-engine/campaign/companion-quests.js').QuestRow} row
+ * @param {{board: any, bestiary: any[]}} fight
+ * @returns {Promise<string>} El nombre del tablero, o vacío si no se pudo.
+ */
+async function placeQuestBoard(row, fight) {
+    const worldName = String(chat_metadata?.[METADATA_KEY] || '');
+    if (!worldName || !currentLocationName) return '';
+    const pack = { world: { name: worldName }, boards: [{ ...fight.board, locationName: currentLocationName }], bestiary: fight.bestiary };
+    const plan = buildImportPlan(pack);
+    const board = (plan.metadata.locationMaps ?? []).flatMap((/** @type {any} */ l) => l.boards ?? [])[0];
+    if (!board) return '';
+    board.questBoard = row.id;
+    let placed = '';
+    await worldWrite(async () => {
+        const data = await loadWorldInfo(worldName);
+        const place = (data?.metadata?.locationMaps ?? []).find((/** @type {any} */ l) => l?.name === currentLocationName);
+        if (!data || !place) return;
+        place.boards = (Array.isArray(place.boards) ? place.boards : []).filter((/** @type {any} */ b) => b?.name !== board.name);
+        place.boards.push(board);
+        const named = new Set(Object.values(data.entries ?? {}).map((/** @type {any} */ e) => keyOf(e?.dndData?.name || e?.comment)));
+        const { pack: clean } = normalizePack(pack);
+        for (const spec of buildPackEntries(clean).filter(s => s.group === 'Monsters')) {
+            if (named.has(keyOf(spec.title))) continue;
+            const entry = /** @type {any} */ (createWorldInfoEntry(worldName, data));
+            if (!entry) continue;
+            Object.assign(entry, { comment: spec.title, key: spec.keys, content: spec.content, group: spec.group, dndData: spec.dndData });
+            named.add(keyOf(spec.title));
+        }
+        await saveWorldInfo(worldName, data, true);
+        await refreshWorldMapGlobals(worldName);
+        placed = String(board.name);
+    });
+    // Una pelea de misión se pelea cada vez que se llega a ella: no cuenta como ya ganada.
+    const won = Array.isArray(chat_metadata?.[BOARDS_WON_KEY]) ? chat_metadata[BOARDS_WON_KEY] : null;
+    if (placed && won && chat_metadata) {
+        chat_metadata[BOARDS_WON_KEY] = won.filter((/** @type {string} */ k) => k !== `${currentLocationName}::${placed}`);
+        saveMetadata();
+    }
+    return placed;
+}
+
+/**
+ * Quitar del sitio el tablero de una misión, ya peleado.
+ *
+ * @param {string} rowId
+ */
+async function removeQuestBoard(rowId) {
+    const worldName = String(chat_metadata?.[METADATA_KEY] || '');
+    if (!worldName) return;
+    await worldWrite(async () => {
+        const data = await loadWorldInfo(worldName);
+        if (!data?.metadata) return;
+        for (const place of data.metadata.locationMaps ?? []) {
+            if (Array.isArray(place?.boards)) place.boards = place.boards.filter((/** @type {any} */ b) => b?.questBoard !== rowId);
+        }
+        await saveWorldInfo(worldName, data, true);
+        await refreshWorldMapGlobals(worldName);
+    });
+}
+
+/**
+ * Tras una pelea: si era la de una misión personal, sigue por donde diga cómo acabó (ganar,
+ * perder o huir), fuera del tablero, que se quita.
+ *
+ * @param {string} reason Cómo acabó (`victory`, `defeat`, `fled`…).
+ * @param {string} boardName
+ * @returns {Promise<void>}
+ */
+export async function questAfterFight(reason, boardName) {
+    if (!chat_metadata || !lastHub) return;
+    const state = questState();
+    const going = questUnderway(state);
+    const row = going ? questRows().find(r => r.id === going.id) : null;
+    const step = row ? currentStep(row, state) : null;
+    const fight = step?.kind === 'tablero' ? fightOf(step) : null;
+    if (!row || !fight || String(fight.board?.name ?? '') !== String(boardName || '')) return;
+    saveQuestState(afterBoard(state, row, reason === 'defeat' ? 'lose' : reason === 'fled' ? 'flee' : 'win'));
+    await questStage();
+    if (currentBoardName) {
+        setCurrentBoardName('');
+        saveCurrentBoard();
+    }
+    await removeQuestBoard(row.id);
+    renderLocationMapsPreview();
+    if (isShellOpen()) {
+        setScene('exploration');
+        refreshGameShell();
+    }
+    await playPersonalQuest(row.id);
+}
+
+/**
+ * J14.9: las misiones personales, para el Diario: de quién, cómo van y cómo acabaron.
+ *
+ * @returns {string[]}
+ */
+export function personalQuestJournal() {
+    if (!chat_metadata) return [];
+    const state = questState();
+    /** @type {string[]} */
+    const lines = [];
+    for (const row of questRows()) {
+        const one = state.quests[row.id];
+        const member = partyMembers.find(m => keyOf(m.name) === row.key);
+        const quest = member ? personalQuestOf(member) : null;
+        if (!one && !quest?.open) continue;
+        const card = questCard(row, state, questInfo(meetupData(), row.quest));
+        const how = card.done ? `terminada: ${card.ending || 'hecha'}` : one ? card.next.toLowerCase() : 'sin empezar (en su ficha)';
+        lines.push(`${card.title}, con ${row.who}: ${how}.`);
+    }
+    return lines;
+}
+
+/**
+ * Lo que la ficha de un compañero dice de su misión: el título, de qué va, cómo va, y el botón
+ * de empezarla o seguirla. Sin misión escrita, nada.
+ *
+ * @param {any} member
+ * @param {() => void} close Cierra la ficha antes de jugarla.
+ * @returns {JQuery<HTMLElement>|null}
+ */
+function questBox(member, close) {
+    const quest = personalQuestOf(member);
+    if (!quest) return null;
+    const box = $('<div class="cc-quest"></div>').attr('data-quest', quest.row.id);
+    const title = quest.info?.title || quest.row.id;
+    if (!quest.open) {
+        box.append($('<div class="cc-quest-title"></div>').text('Algo le pesa'));
+        box.append($('<div class="cc-quest-line"></div>').text(`Cuando os conozcáis más (vínculo ${quest.rank}), te lo contará.`));
+        return box;
+    }
+    box.append($('<div class="cc-quest-title"></div>').text(`Su misión: ${title}`));
+    if (quest.info?.pitch) box.append($('<div class="cc-quest-line"></div>').text(quest.info.pitch));
+    box.append($('<div class="cc-quest-line cc-quest-state"></div>').text(quest.card.done ? `Terminada: ${quest.card.ending}` : quest.card.next));
+    if (quest.card.done) return box;
+    const other = questUnderway(questState());
+    const busy = Boolean(other && other.id !== quest.row.id);
+    const started = Boolean(questState().quests[quest.row.id]);
+    const go = $('<button type="button" class="menu_button cc-btn cc-quest-go"></button>')
+        .append(`<i class="fa-solid ${started ? 'fa-route' : 'fa-hand-holding-heart'}"></i>`)
+        .append($('<span></span>').text(started ? ' Seguir con su misión' : ' Acompañarle'))
+        .prop('disabled', busy || !lastHub || combatEncounter.active)
+        .attr('title', busy ? `Primero, la misión de ${other?.who}.` : !lastHub ? 'Se hace desde el gremio, en Puerto Alba.' : 'Gasta días de camino.');
+    go.on('click', () => {
+        close();
+        void playPersonalQuest(quest.row.id);
+    });
+    box.append(go);
+    if (!lastHub) box.append($('<div class="cc-quest-line"></div>').text('Se hace desde el gremio, en Puerto Alba.'));
+    return box;
 }
 
 /**
@@ -587,6 +1141,9 @@ export function openCompanionCard(memberId) {
     // Idea 41: lo que hace fuera del combate.
     const job = campJobOf(member);
     if (job) root.append($('<div class="cc-job"></div>').text(`${job.label}: ${job.effect}`));
+    // J14.9: su misión personal, si la tiene escrita: se abre con el vínculo y se juega desde aquí.
+    const quest = questBox(member, () => closeCompanionCard());
+    if (quest) root.append(quest);
     // Idea 35: a quien va primero.
     const preferRow = $('<div class="cc-stance cc-prefer"></div>');
     preferRow.append($('<div class="cc-stance-title"></div>').text('Va primero a'));
@@ -801,5 +1358,223 @@ export function getPartyFormation() {
 export function describePartyFormation() {
     const formation = getPartyFormation();
     return describeFormation(formation, partyMembers);
+}
+
+/**
+ * J7.4: la formación, por nombres, para llevarla con el grupo a otro chat (del gremio a una
+ * campaña y de vuelta): allí cada uno puede tener otro id, pero el mismo nombre.
+ *
+ * @returns {{order: string[], duties: Record<string, string>}}
+ */
+export function packFormation() {
+    const formation = getPartyFormation();
+    const nameOf = (/** @type {string} */ id) => String(partyMembers.find(m => String(m.id) === String(id))?.name ?? '');
+    return {
+        order: formation.order.map(nameOf).filter(Boolean),
+        duties: Object.fromEntries(Object.entries(formation.duties).map(([duty, id]) => [duty, id ? nameOf(id) : ''])),
+    };
+}
+
+/**
+ * Y al llegar: la misma formación con los ids de aquí. Si no se había elegido nada, nada.
+ *
+ * @param {{order?: string[], duties?: Record<string, string>}|null} carried
+ */
+export function unpackFormation(carried) {
+    if (!chat_metadata || !carried) return;
+    const chosen = (carried.order ?? []).length > 0 || Object.values(carried.duties ?? {}).some(Boolean);
+    if (!chosen) return;
+    const idOf = (/** @type {string} */ name) => String(partyMembers.find(m => String(m.name) === String(name))?.id ?? '');
+    chat_metadata[FORMATION_KEY] = readFormation({
+        order: (carried.order ?? []).map(idOf).filter(Boolean),
+        duties: Object.fromEntries(Object.entries(carried.duties ?? {}).map(([duty, name]) => [duty, name ? idOf(name) : ''])),
+    });
+    saveMetadata();
+}
+
+/** Los papeles que se eligen en la ventana: los que el juego ya usa (quién habla, todavía no). */
+const FORMATION_DUTIES = ['cura', 'guia', 'vigia', 'cazador'];
+
+/** Los del camino (`travel-roles.js`): uno por persona. */
+const ROAD_DUTIES = ['guia', 'vigia', 'cazador'];
+
+/**
+ * J7.4: la formación y los papeles, en su ventana (desde «Grupo» o desde «Tu gente» en el gremio).
+ * El orden de la marcha, con flechas: quien va delante abre la marcha en el tablero, entra el
+ * primero y se lleva el primer golpe de una emboscada. Y quién cura al acabar una pelea, quién
+ * guía, quién vigila (también la primera guardia de la noche) y quién caza por el camino. Lo que
+ * se deja en «Lo decide el juego» lo elige el juego, como antes, y se dice a quién.
+ *
+ * @returns {Promise<void>}
+ */
+export async function openFormationPanel() {
+    if (!chat_metadata) return;
+    const members = () => partyMembers.filter(m => !m.dead);
+    const body = $('<div class="fm-root gs-panel"></div>');
+    body.append($('<h3 class="gs-popup-title"></h3>').text('Formación y papeles'));
+    body.append($('<p class="fm-sub"></p>').text('Quién va delante y quién hace cada cosa. Lo que dejes en «Lo decide el juego» lo elige el juego.'));
+    const summary = $('<div class="fm-summary"></div>');
+    const march = $('<div class="fm-march"></div>');
+    const duties = $('<div class="fm-duties"></div>');
+    body.append(summary, $('<div class="fm-title"></div>').text('El orden de marcha'), march, $('<div class="fm-title"></div>').text('Los papeles'),
+        $('<p class="fm-sub"></p>').text('En el camino, cada uno hace un solo papel: guiar, vigilar o cazar.'), duties);
+    if (members().length < 2) body.append($('<p class="fm-alone"></p>').text('Vas sin compañeros: la formación eres tú. Contrata a alguien o busca quien se una.'));
+
+    /** @param {import('../game-engine/campaign/formation.js').Formation} formation */
+    const save = (formation) => {
+        if (!chat_metadata) return;
+        chat_metadata[FORMATION_KEY] = readFormation(formation);
+        saveMetadata();
+        draw();
+    };
+    /** Quién haría un papel si lo decide el juego. */
+    const byGame = (/** @type {string} */ duty, /** @type {any[]} */ list) => {
+        const free = setDuty(getPartyFormation(), duty, '');
+        if (duty === 'cura') return dutyHolder(free, 'cura', list)?.name ?? '';
+        const roles = travelRolesOf({ formation: free, party: list.filter(m => (Number(m.hp) || 0) > 0), modifierOf: (m, skill) => skillModifier(m, skill).modifier });
+        return roles.find(r => r.role === duty)?.name ?? '';
+    };
+    function draw() {
+        const formation = getPartyFormation();
+        const list = members();
+        summary.text(describeFormation(formation, list) || 'Sin nadie en el grupo.');
+        march.empty();
+        const order = orderOf(formation, list);
+        order.forEach((id, index) => {
+            const member = list.find(m => String(m.id) === id);
+            if (!member) return;
+            const row = $('<div class="fm-row"></div>').attr('data-member', id);
+            row.append($('<span class="fm-place"></span>').text(ROWS[rowOf(index, order.length)]));
+            row.append($('<span class="fm-name"></span>').text(String(member.name)));
+            const up = $('<button type="button" class="menu_button fm-up" title="Más adelante"><i class="fa-solid fa-arrow-up"></i></button>').prop('disabled', index === 0);
+            const down = $('<button type="button" class="menu_button fm-down" title="Más atrás"><i class="fa-solid fa-arrow-down"></i></button>').prop('disabled', index === order.length - 1);
+            up.on('click', () => save(moveInOrder(getPartyFormation(), members(), id, -1)));
+            down.on('click', () => save(moveInOrder(getPartyFormation(), members(), id, 1)));
+            row.append(up, down);
+            march.append(row);
+        });
+        duties.empty();
+        for (const duty of FORMATION_DUTIES) {
+            const spec = DUTIES[/** @type {keyof typeof DUTIES} */ (duty)];
+            const row = $('<div class="fm-duty"></div>').attr('data-duty', duty);
+            const words = $('<div class="fm-duty-words"></div>');
+            words.append($('<div class="fm-duty-name"></div>').text(spec.label));
+            words.append($('<div class="fm-duty-does"></div>').text(spec.does));
+            row.append(words);
+            const auto = byGame(duty, list);
+            const pick = $('<select class="fm-pick"></select>')
+                .append($('<option value=""></option>').text(auto ? `Lo decide el juego (ahora, ${shortOf(companionCards(), auto)})` : 'Lo decide el juego'));
+            for (const member of list) pick.append($('<option></option>').attr('value', String(member.id)).text(String(member.name)));
+            pick.val(formation.duties[duty] || '');
+            pick.on('change', () => {
+                const who = String(pick.val() || '');
+                let next = setDuty(getPartyFormation(), duty, who);
+                // En el camino, cada uno hace un solo papel: si ya hacía otro, ese lo decide el juego.
+                if (who && ROAD_DUTIES.includes(duty)) {
+                    for (const other of ROAD_DUTIES) if (other !== duty && next.duties[other] === who) next = setDuty(next, other, '');
+                }
+                save(next);
+            });
+            row.append(pick);
+            duties.append(row);
+        }
+    }
+    draw();
+    await new Popup(body[0], POPUP_TYPE.TEXT, '', { okButton: 'Hecho', allowVerticalScrolling: true, leftAlign: true }).show();
+    if (isShellOpen()) refreshGameShell();
+}
+
+// ---------------------------------------------------------------------------------------
+// J7.2: los compañeros de una campaña que se vienen al gremio (`campaign/guild-companions.js`).
+
+/**
+ * @typedef {Object} CampaignStays Lo que se decidió al acabar la campaña.
+ * @property {any[]} joined Los que se vienen (ya del gremio).
+ * @property {any[]} left Los que se quedan en su tierra.
+ * @property {any[]} bench Los que se vienen pero no caben en el grupo: esperan en casa, en el gremio.
+ * @property {string[]} lines
+ */
+
+/**
+ * Al volver al gremio con la campaña terminada, cada compañero de esa tierra tiene su momento: si
+ * quiere venirse (su vínculo, lo que le ata a su tierra), eliges tú; si no, se despide. Quien se
+ * viene sigue en el grupo como del gremio; quien se queda sale de él. Se llama en el chat de la
+ * campaña, antes de salir de él.
+ *
+ * @param {{campaign: string}} input La campaña que termina (`strahd`, `1387`…).
+ * @returns {Promise<CampaignStays>}
+ */
+export async function settleCampaignCompanions({ campaign }) {
+    /** @type {CampaignStays} */
+    const out = { joined: [], left: [], bench: [], lines: [] };
+    const id = String(campaign ?? '').trim();
+    if (!chat_metadata || !id || combatEncounter.active) return out;
+    const leaving = campaignCompanions(partyMembers, id);
+    if (leaving.length === 0) return out;
+    const cards = companionCards();
+    const bonds = getCampaignBonds();
+    /** @type {Record<string, 'viene'|'queda'>} */
+    const choices = {};
+    for (const member of leaving) {
+        const verdict = stayVerdict({ member, rank: getBondProgress(bonds, String(member.id)).rank, cards });
+        const scene = stayScene({ member, verdict, cards });
+        const result = await openMeetupScene({
+            scene,
+            person: { name: String(member.name), className: String(member.className || member.class || member.charClass || ''), gender: String(member.gender || '') },
+            pack: id,
+            town: String(currentLocationName || ''),
+            placeLabel: verdict.willing ? 'Al acabar la campaña' : 'La despedida',
+            canLeave: false,
+        });
+        choices[String(member.id)] = result.finished ? stayChoice(scene, result.choices) : 'queda';
+    }
+    const land = String(hereLocation()?.region || '');
+    const settled = settleStays({ party: partyMembers, bench: [], choices, campaign: id, land, day: campaignDay() });
+    setPartyMembers(settled.party);
+    savePartyState();
+    renderPartyMembers();
+    for (const line of settled.lines) {
+        postCombatNarration(`🏠 [GRUPO] ${line}`);
+        noteDeed(line);
+    }
+    // Se sale de este chat enseguida: con él guardado, que a medio guardar no deja cambiar de partida.
+    await saveChatConditional();
+    return { joined: settled.joined, left: settled.left, bench: settled.bench, lines: settled.lines };
+}
+
+/**
+ * Y ya en el gremio: quien no cabía en el grupo espera en casa (se le llama desde el gremio), y
+ * se dice quién es ya de los vuestros.
+ *
+ * @param {CampaignStays|null} stays
+ */
+export function welcomeGuildCompanions(stays) {
+    if (!chat_metadata || !stays) return;
+    if (stays.bench.length > 0) {
+        chat_metadata[BENCH_KEY] = [...readBench(chat_metadata[BENCH_KEY]), ...stays.bench];
+        saveMetadata();
+    }
+    const names = stays.joined.map(m => String(m.name));
+    if (names.length > 0) {
+        const line = names.length === 1 ? `${names[0]} ya es del gremio: vive en Puerto Alba y va con vosotros a lo que venga.`
+            : `${names.slice(0, -1).join(', ')} y ${names[names.length - 1]} ya son del gremio: viven en Puerto Alba y van con vosotros a lo que venga.`;
+        toastr.success(line, '🏠 El gremio crece', { timeOut: 10000 });
+    }
+    if (isShellOpen()) refreshGameShell();
+}
+
+/**
+ * Al llegar a una campaña: quien es del gremio pero salió de esta tierra la reconoce (una frase,
+ * sin más).
+ *
+ * @param {string} campaign
+ */
+export function sayHomecomings(campaign) {
+    const id = String(campaign ?? '').trim();
+    if (!id) return;
+    for (const member of partyMembers.slice(1).filter(m => !m.dead)) {
+        const line = homecomingLine(member, id, companionCards());
+        if (line) postCombatNarration(`🏠 [GRUPO] ${line}`);
+    }
 }
 

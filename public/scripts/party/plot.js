@@ -9,7 +9,7 @@
 
 import { POPUP_TYPE, Popup } from '../popup.js';
 import { chat, chat_metadata, saveMetadata } from '../../script.js';
-import { loadWorldInfo, saveWorldInfo, refreshWorldMapGlobals, METADATA_KEY } from '../world-info.js';
+import { loadWorldInfo, saveWorldInfo, refreshWorldMapGlobals, getCurrentWorldLocationMaps, METADATA_KEY } from '../world-info.js';
 import { companionEpilogues } from '../game-engine/campaign/epilogues.js';
 import { endingEpilogues, partyAtStart, readPartyStart, takeHome } from '../game-engine/campaign/campaign-end.js';
 import { readVillain, villainScenesDue, villainNote } from '../game-engine/campaign/villain.js';
@@ -29,13 +29,20 @@ import { withJob } from '../game-engine/campaign/company.js';
 import { getBondProgress } from '../game-engine/campaign/bonds.js';
 import { attitudeBonus } from '../game-engine/campaign/attitudes.js';
 import {
-    stepScenes, rememberScene, sceneTranscript, sceneDecisions, applySceneEffects,
+    stepScenes, rememberScene, sceneTranscript, applySceneEffects,
 } from '../game-engine/campaign/plot-scenes.js';
 import { dialogueMilestones } from '../game-engine/campaign/dialogues.js';
 import { describeLootItem } from '../game-engine/combat/loot-items.js';
 import { openPlotScene } from '../game-engine/ui/plot-scene.js';
 import { sceneFollows, dialogueFollow, scheduleFollows, laterRows, checkLaters } from '../game-engine/campaign/aftermath.js';
 import { readSucesoState } from '../game-engine/campaign/sucesos.js';
+import { opinionsOn, opinionBadges, opinionNotes, verdictsOf } from '../game-engine/campaign/companion-opinions.js';
+import { readCompanionCards } from '../game-engine/campaign/companion-cards.js';
+import { weightyMilestones, actionNoReturn, noReturnConfirm } from '../game-engine/campaign/weighty.js';
+import {
+    recordDecisions, sceneDecisionEntries, buildStoryBook, bookInputFromMetadata, guildChapterLine, focusClock,
+} from '../game-engine/campaign/story-book.js';
+import { HUB_BOARD_NAME_KEY } from '../game-engine/campaign/hub.js';
 import { isShellOpen, refreshGameShell } from '../game-engine/ui/shell/game-shell.js';
 import { addItemToInventory, createItem, removeItemFromInventory } from '../dnd-system.js';
 import { rollDiceDetailed } from './combat-rules.js';
@@ -47,7 +54,7 @@ import {
 import { combatEncounter, currentLocationName, partyMembers, worldItemCatalogue } from './state.js';
 import { recordFinishedCampaign } from './hub.js';
 import { deliverRelics } from './loot.js';
-import { ensureWorldData, lastDialogues, lastHubHome, lastPack, lastRumors } from './world.js';
+import { ensureWorldData, getLocationBoards, lastCompendium, lastDialogues, lastHubHome, lastPack, lastRumors } from './world.js';
 import { getCurrentWorldFactions, shiftFactionStanding } from './factions.js';
 import {
     advanceCampaignSlot, campaignDay, getCampaignBonds, getCampaignCalendar, getCurrentSlotLabel, recordCampaignBondEvent,
@@ -357,7 +364,77 @@ export function storyWorld(who = '', attitude = undefined) {
         gold: partyPurse(),
         party: partyMembers.filter(m => !m.dead),
         day: Math.max(1, campaignDay()),
+        // J11.1: los hitos que pesan, para avisar en la opción que los cumple.
+        weighty: weightyMilestones(getPlot()),
     };
+}
+
+/**
+ * J11.1: antes de entrar en un tablero cuya victoria no tiene vuelta atrás (el que acaba la
+ * campaña, o uno que cierra otros caminos), se pregunta, sin decir qué se pierde. Sin aviso, sí.
+ *
+ * @param {string} boardName
+ * @returns {Promise<boolean>} Si se entra.
+ */
+export async function confirmBoardNoReturn(boardName) {
+    const plot = getPlot();
+    if (!plot || !chat_metadata || !String(boardName ?? '').trim()) return true;
+    const warning = actionNoReturn({
+        plot, state: chat_metadata[PLOT_STATE_KEY], event: { kind: 'win', place: currentLocationName, board: String(boardName) }, today: Math.max(1, campaignDay()),
+    });
+    if (!warning) return true;
+    const ask = noReturnConfirm({ warning, what: `Entrar en ${boardName}` });
+    const body = $('<div class="nr-confirm gs-panel"></div>');
+    body.append($('<h3 class="gs-popup-title"></h3>').text(ask.title));
+    body.append($('<p></p>').text(ask.text));
+    const answer = await new Popup(body[0], POPUP_TYPE.CONFIRM, '', { okButton: ask.ok, cancelButton: ask.cancel }).show();
+    return Boolean(answer);
+}
+
+/**
+ * J7.5: cómo es cada compañero (lo que busca, lo que le gusta y lo que no), del compendio.
+ *
+ * @returns {import('../game-engine/campaign/companion-cards.js').CompanionCard[]}
+ */
+function companionCards() {
+    return lastCompendium?.has?.('companeros') ? readCompanionCards(lastCompendium.find('companeros', {})) : [];
+}
+
+/**
+ * J7.5: lo que opina cada compañero del grupo de una opción escrita (de una charla o de una
+ * escena del hilo). Quien juega no opina de sí mismo.
+ *
+ * @param {any} option
+ * @returns {import('../game-engine/campaign/companion-opinions.js').Opinion[]}
+ */
+export function optionOpinions(option) {
+    const hero = storyHero();
+    const party = [hero, ...partyMembers.filter(m => m !== hero)].filter(Boolean);
+    return opinionsOn({ option, party, cards: companionCards() });
+}
+
+/**
+ * J7.5: lo que se ve en la opción antes de elegirla: «A Gerd le gusta esto».
+ *
+ * @param {any} option
+ * @returns {import('../game-engine/campaign/companion-opinions.js').OpinionBadge[]}
+ */
+export function optionOpinionTags(option) {
+    return opinionBadges(optionOpinions(option));
+}
+
+/**
+ * J7.5: al elegirla, lo que opinan cuenta para el vínculo (`judgeDecision`, sin aviso: la
+ * ventana lo dice) y se devuelve dicho para la ventana: «A Gerd le ha gustado.».
+ *
+ * @param {any} option
+ * @returns {string[]}
+ */
+export function judgeOption(option) {
+    const opinions = optionOpinions(option);
+    if (opinions.length === 0) return [];
+    judgeDecision('', { verdicts: verdictsOf(opinions), quiet: true });
+    return opinionNotes(opinions);
 }
 
 /** @returns {boolean} Si es de noche, para el escenario de noche. */
@@ -522,12 +599,25 @@ async function playPlotScene(milestone, scene) {
     const pending = [];
     /** @type {string[]} */
     const clues = [];
+    /** J9.6: lo que salió de cada decisión, por su línea, para el libro. @type {Record<number, string[]>} */
+    const came = {};
+    const cameOf = (/** @type {number} */ beat, /** @type {string[]} */ lines) => {
+        if (lines.length > 0) came[beat] = [...(came[beat] ?? []), ...lines];
+        return lines;
+    };
     const result = await openPlotScene({
         scene: shown,
         hero,
         getWorld: (who) => storyWorld(who),
         rollD20: () => rollDiceDetailed('1d20', 20).total,
-        applyEffects: (effects, context) => applySceneEffectsToGame(effects, { roll: context.roll, hero, defer: pending, clues }),
+        applyEffects: async (effects, context) => cameOf(context.beat, await applySceneEffectsToGame(effects, { roll: context.roll, hero, defer: pending, clues })),
+        // J7.5: lo que opina el grupo de cada opción, y al elegir, su aprobación.
+        opinionsFor: optionOpinionTags,
+        onChoice: (optionId, context) => {
+            // J11.2: la charla del final de la escena también deja lo que vuelve días después.
+            if (context.beat < 0 && shown.dialogue) recordDialogueAftermath(shown.dialogue, optionId, context.outcome);
+            return cameOf(context.beat, judgeOption(context.option));
+        },
         memory: chat_metadata?.[DIALOGUE_MEMORY_KEY] ?? null,
         onMemory: (memory) => {
             if (!chat_metadata) return;
@@ -540,15 +630,14 @@ async function playPlotScene(milestone, scene) {
     });
     if (!chat_metadata) return;
     chat_metadata[PLOT_SCENES_PLAYED_KEY] = rememberScene(chat_metadata[PLOT_SCENES_PLAYED_KEY], String(shown.id));
-    // J9.6: lo que se decidió, con lo que la opción deja apuntado, y las pistas de la escena.
+    // J9.6: lo que se decidió (con su hito, su capítulo y lo que salió de ello: el libro lo lee
+    // así), con lo que la opción deja apuntado, y las pistas de la escena.
     const noted = (result.choices ?? []).map(choice => String(shown.beats[choice.beat]?.decision?.dialogue?.nodes?.[0]?.options
         ?.find(option => option.id === choice.option)?.journal ?? '').trim()).filter(Boolean);
-    const decided = [...sceneDecisions(shown, result.choices), ...noted, ...clues];
-    if (decided.length > 0) {
-        const day = Math.max(1, campaignDay());
-        const before = Array.isArray(chat_metadata[PLOT_DECISIONS_KEY]) ? chat_metadata[PLOT_DECISIONS_KEY] : [];
-        chat_metadata[PLOT_DECISIONS_KEY] = [...before, ...decided.map(text => ({ day, text }))];
-    }
+    const entries = sceneDecisionEntries({
+        scene: shown, choices: result.choices ?? [], came, milestone, day: Math.max(1, campaignDay()), notes: [...noted, ...clues],
+    });
+    if (entries.length > 0) chat_metadata[PLOT_DECISIONS_KEY] = recordDecisions(chat_metadata[PLOT_DECISIONS_KEY], entries);
     // J11.2: consecuencias diferidas de lo que se decidió en la escena (aftermath.js). Sin sitio:
     // vuelven donde estéis ese día, como dice el motor, y no solo si se vuelve aquí.
     const follows = sceneFollows(milestone, result.choices);
@@ -818,6 +907,59 @@ async function tellOmens(plot) {
 export function plotEndingTitle() {
     const id = String(chat_metadata?.plotEnding || '');
     return id ? String(getPlot()?.endings?.[id]?.title || id) : '';
+}
+
+/**
+ * J9.6: el libro de la campaña abierta: sus capítulos (J9.3), los plazos (J9.5), lo decidido y
+ * lo que salió de ello (J11.5), de lo que la partida guarda.
+ *
+ * @returns {import('../game-engine/campaign/story-book.js').StoryBook}
+ */
+export function campaignBook() {
+    /** @type {Record<string, string>} */
+    const boardPlaces = {};
+    for (const place of getCurrentWorldLocationMaps()) {
+        for (const board of getLocationBoards(place)) {
+            const name = String(board?.name ?? '').trim().toLowerCase();
+            if (name && !boardPlaces[name]) boardPlaces[name] = String(place?.name ?? '');
+        }
+    }
+    return buildStoryBook(bookInputFromMetadata(chat_metadata, {
+        chat: Array.isArray(chat) ? chat : [],
+        today: Math.max(1, campaignDay()),
+        who: whoPlays(),
+        factions: getCurrentWorldFactions(),
+        boardPlaces,
+        title: String(chat_metadata?.[HUB_BOARD_NAME_KEY] ?? ''),
+    }));
+}
+
+/**
+ * J9.3 y J11.5: lo que el gremio se lleva de la campaña al volver: por qué capítulo ibais (para
+ * su tarjeta del tablón) y el libro, para leer su crónica desde allí.
+ *
+ * @returns {{chapter: string, book: import('../game-engine/campaign/story-book.js').StoryBook|null}}
+ */
+export function campaignChronicle() {
+    try {
+        return { chapter: guildChapterLine(chat_metadata?.[PLOT_KEY], chat_metadata?.[PLOT_STATE_KEY]), book: campaignBook() };
+    } catch (error) {
+        console.error('[party] no se pudo montar la crónica de la campaña', error);
+        return { chapter: '', book: null };
+    }
+}
+
+/**
+ * J9.5: el reloj de lo que tenéis entre manos, para la cabecera: el del hito de la pantalla si
+ * tiene plazo; si no, el más apurado. Nada sin plazos.
+ *
+ * @returns {import('../game-engine/campaign/story-book.js').BookClock|null}
+ */
+export function focusDeadline() {
+    const plot = getPlot();
+    if (!plot || !chat_metadata) return null;
+    const focus = focusOf(plot, chat_metadata[PLOT_STATE_KEY], campaignDay());
+    return focusClock(plot, chat_metadata[PLOT_STATE_KEY], Math.max(1, campaignDay()), String(/** @type {any} */ (focus)?.id ?? ''));
 }
 
 /**

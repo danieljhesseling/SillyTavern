@@ -18,8 +18,9 @@ import { readBench, benchMember, callFromBench, whereHired } from '../game-engin
 import { store, retrieve, readStorage } from '../game-engine/campaign/storage.js';
 import { guestMember, HIRELINGS, MERCENARY_FEE } from '../game-engine/campaign/guests.js';
 import {
-    isHubWorld, hubCampaignCards, hireOffers, hubRoster, hubTrial, HUB_CONTRACT, HUB_BOARD_NAME_KEY,
+    isHubWorld, hubCampaignCards, hireOffers, hubRoster, hubTrial, HUB_CONTRACT, HUB_BOARD_NAME_KEY, readHub,
 } from '../game-engine/campaign/hub.js';
+import { HUB_CHRONICLES_KEY, readChronicles } from '../game-engine/campaign/story-book.js';
 import { HUB_HEROES_KEY, hubHeroCards, readRestingHeroes, seatHero, swapLine } from '../game-engine/campaign/hub-heroes.js';
 import { isIronRun, modeOf, modeLabel } from '../game-engine/rules/modes.js';
 import { readGraves, addToHall, readHall } from '../game-engine/campaign/legacy.js';
@@ -27,18 +28,20 @@ import { retireTo, upgradeCost, describeGuild } from '../game-engine/campaign/gu
 import { isShellOpen, refreshGameShell } from '../game-engine/ui/shell/game-shell.js';
 import { HALL_CHIPS } from '../game-engine/campaign/guild-hall.js';
 export { HALL_SECTIONS, hallDetail } from '../game-engine/campaign/guild-hall.js';
-import { chestView, takeFromChest, putInChest, depositGold, withdrawGold } from '../game-engine/campaign/guild-chest.js';
+import { chestView, takeFromChest, putInChest, depositGold, withdrawGold, payPlan, spendFromChest } from '../game-engine/campaign/guild-chest.js';
 export { putInChest, depositGold, withdrawGold, payPlan, spendFromChest } from '../game-engine/campaign/guild-chest.js';
-import { houseView, buildInGuild } from '../game-engine/campaign/guild-buildings.js';
+import {
+    houseView, buildInGuild, forgeOffers, forgeItem, libraryOffers, learnSpell, recruitArrival, guildHirelings, journeyWithStable,
+} from '../game-engine/campaign/guild-buildings.js';
 export { buildingOpens, forgeOffers, forgeItem, libraryOffers, learnSpell } from '../game-engine/campaign/guild-buildings.js';
 import { trainSession, trainingView } from '../game-engine/campaign/guild-training.js';
 export { trainees, GUILD_TRAINING_FACTOR } from '../game-engine/campaign/guild-training.js';
-import { errandCards } from '../game-engine/campaign/guild-errands.js';
+import { errandCards, errandReveal, errandAcceptLine } from '../game-engine/campaign/guild-errands.js';
 export { routeDays } from '../game-engine/campaign/guild-errands.js';
-import { guildRank, hubRenown, rankNews } from '../game-engine/campaign/guild-rank.js';
+import { guildRank, hubRenown, lockCampaignCards, rankNews } from '../game-engine/campaign/guild-rank.js';
 export { GUILD_RANKS } from '../game-engine/campaign/guild-rank.js';
 export { campaignCompanions, stayVerdict, stayScene } from '../game-engine/campaign/guild-companions.js';
-import { GUILD_MEMORY_KEY } from '../game-engine/campaign/guild-memory.js';
+import { GUILD_MEMORY_KEY, guildMemoryOf, offeredCampaigns } from '../game-engine/campaign/guild-memory.js';
 export { describeGuildMemory, guildMemoryOf, guildTitle } from '../game-engine/campaign/guild-memory.js';
 import { WORLD_MARKS_KEY } from '../game-engine/campaign/world-marks.js';
 export { describeMarks } from '../game-engine/campaign/world-marks.js';
@@ -56,8 +59,8 @@ import { recordBoardWon } from './board.js';
 import { renderLocationMapsPreview } from './board-view.js';
 import { ensureWorldData, lastHub, lastHubHome, saveCurrentBoard } from './world.js';
 import { getCurrentWorldFactions } from './factions.js';
-import { getCampaignCalendar, campaignDay, advanceCampaignDay, markLocationComplete, spendDayPart } from './time.js';
-import { getPlot, notePlot, plotEndingTitle } from './plot.js';
+import { getCampaignCalendar, campaignDay, advanceCampaignDay, markLocationComplete, spendDayPart, takeRest } from './time.js';
+import { getPlot, notePlot, plotEndingTitle, revealLocations } from './plot.js';
 import { noteDeed } from './world-growth.js';
 import { survivalNow } from './modes.js';
 import { postCombatNarration, postForModel } from './narration.js';
@@ -65,6 +68,7 @@ import { savePartyState, renderPartyMembers, partyPurse, payFromParty } from './
 import { countStat } from './menus.js';
 import { getXpTable, openLevelUpCard } from './level-up.js';
 import { carryBondOf } from './social.js';
+import { classRowOf, spellRows } from './magic.js';
 
 /** @typedef {import('./types.js').PartyMember} PartyMember */
 
@@ -222,6 +226,8 @@ export function hubChips() {
             ...(trial ? [] : [
                 ...HALL_CHIPS,
                 { id: 'hub-memory', label: 'Memoria del gremio', icon: 'fa-book-skull', command: '/memoria' },
+                // J3.3: dormir en las camas de la casa cura, amanece y guarda la partida (J15.2).
+                { id: 'hub-sleep', label: 'Dormir en el gremio', icon: 'fa-bed', command: '' },
             ]),
         ];
     }
@@ -300,6 +306,54 @@ export async function skipHubTrial() {
 }
 
 /**
+ * J3.7: las campañas del tablón (las de `mundos.json` y las añadidas por ti), leídas la última
+ * vez que se miró: lo que da cada una terminada sale de su nivel, y el rango abre las que piden
+ * más. La sala las usa sin volver a leerlas.
+ *
+ * @type {{world: string, rows: any[]}}
+ */
+let boardRows = { world: '', rows: [] };
+/** Si se están leyendo: la sala se dibuja cada poco y no hay que pedirlas dos veces. */
+let boardRowsLoading = false;
+
+/**
+ * Leer las campañas del tablón de un gremio, y quedárselas para la sala.
+ *
+ * @param {string} worldName
+ * @returns {Promise<{worlds: any[], imported: any[]}>}
+ */
+async function readBoardRows(worldName) {
+    const worlds = await fetch('/mundos/mundos.json', { cache: 'no-cache' })
+        .then(response => response.json())
+        .then(json => (Array.isArray(json?.worlds) ? json.worlds : []))
+        .catch(() => []);
+    const { loadImportedCampaigns } = await import('../campaigns.js');
+    const imported = await loadImportedCampaigns(worldName).catch(() => []);
+    boardRows = { world: worldName, rows: [...worlds, ...imported] };
+    return { worlds, imported };
+}
+
+/**
+ * Las campañas del tablón de este gremio, si ya se leyeron. Si no, se piden y la sala se vuelve
+ * a dibujar al llegar: mientras, sin ellas (el renombre, como el de una campaña sin nivel).
+ *
+ * @returns {any[]}
+ */
+function knownBoardRows() {
+    const world = String(chat_metadata?.[METADATA_KEY] || '');
+    if (world && lastHub && boardRows.world !== world && !boardRowsLoading) {
+        boardRowsLoading = true;
+        void readBoardRows(world)
+            .catch(error => console.warn('[gremio] no se leyó el tablón', error))
+            .finally(() => {
+                boardRowsLoading = false;
+                if (isShellOpen()) refreshGameShell();
+            });
+    }
+    return boardRows.world === world ? boardRows.rows : [];
+}
+
+/**
  * J4: el tablón de campañas del gremio. Elegir una la empieza o la sigue.
  *
  * @returns {Promise<string>}
@@ -315,18 +369,32 @@ export async function openHubCampaigns() {
         toastr.warning('No mientras peleáis.');
         return '';
     }
-    const worlds = await fetch('/mundos/mundos.json', { cache: 'no-cache' })
-        .then(response => response.json())
-        .then(json => (Array.isArray(json?.worlds) ? json.worlds : []))
-        .catch(() => []);
     // D-J35: las que has añadido tú salen en todos tus gremios: son de tu lista, no del gremio.
-    const { loadImportedCampaigns } = await import('../campaigns.js');
-    const imported = await loadImportedCampaigns(worldName);
-    const cards = hubCampaignCards({ worlds, hub: data?.metadata?.hub, imported, level: Number(partyMembers.find(m => !m.guest)?.level) || 1 });
+    const { worlds, imported } = await readBoardRows(worldName);
+    // J3.7: el renombre del gremio, con lo que da cada campaña terminada por su nivel.
+    const { renown } = hubRenown({ guild: getGuild(), hub: data?.metadata?.hub, worlds: boardRows.rows });
+    // J11.4: lo que el gremio recuerda decide qué se ofrece (y por qué, delante). J3.7: y las
+    // que el rango aún no abre salen cerradas, con lo que falta.
+    const cards = lockCampaignCards(offeredCampaigns({
+        // J3.6: con el establo del gremio, «A siete días de camino» en vez de nueve.
+        cards: hubCampaignCards({
+            worlds: worlds.map(row => journeyWithStable(row, getGuild(), partyMembers.length)),
+            hub: data?.metadata?.hub,
+            imported: imported.map(row => journeyWithStable(row, getGuild(), partyMembers.length)),
+            level: Number(partyMembers.find(m => !m.guest)?.level) || 1,
+        }),
+        memory: guildMemoryOf({ memory: data?.metadata?.[GUILD_MEMORY_KEY], hub: readHub(data?.metadata?.hub) }),
+        worlds: [...worlds, ...imported],
+    }), { renown, worlds: boardRows.rows });
     // J1.6: arriba, quién va; tus personajes del gremio, para cambiarlo antes de salir.
     const heroes = hubHeroCards({ party: partyMembers, resting: data?.metadata?.[HUB_HEROES_KEY] });
     const { openHubBoard } = await import('../game-engine/ui/hub-panel.js');
-    const picked = await openHubBoard({ Popup, POPUP_TYPE, cards, heroes });
+    // J11.5: la crónica de cada campaña empezada, guardada al volver de ella.
+    const picked = await openHubBoard({
+        Popup, POPUP_TYPE, cards, heroes, chronicles: readChronicles(data?.metadata?.[HUB_CHRONICLES_KEY]),
+        // J3.7: una añadida ahora mismo, con lo que pide su nivel de entrada.
+        lock: (card) => lockCampaignCards([card], { renown, worlds: [{ id: card.id, levels: [card.minLevel, card.minLevel] }] })[0],
+    });
     if (!picked) return '';
     if (typeof picked !== 'string') {
         const { changeHubHero } = await import('../campaigns.js');
@@ -355,7 +423,8 @@ export async function openHubHire() {
         return '';
     }
     const { openHirePanel } = await import('../game-engine/ui/hub-panel.js');
-    const offers = hireOffers({ hirelings: HIRELINGS, party: partyMembers, fee: MERCENARY_FEE });
+    // J3.6: con camas en los dormitorios se quedan más espadas de alquiler (`guildHirelings`).
+    const offers = hireOffers({ hirelings: guildHirelings(getGuild(), HIRELINGS), party: partyMembers, fee: MERCENARY_FEE });
     const choice = await openHirePanel({ Popup, POPUP_TYPE, offers, purse: partyPurse() });
     if (!choice) return '';
     const offer = offers.find(o => o.name === choice.name);
@@ -680,7 +749,27 @@ export async function openGuildChest() {
 }
 
 /**
- * J3.6: La casa del gremio y sus edificios.
+ * J3.6: cobrar lo de la casa (la forja, la biblioteca): primero del arca y lo que falte, de las
+ * bolsas (`payPlan`). Si no llega, no se cobra nada.
+ *
+ * @param {number} cost
+ * @returns {boolean} Si se ha pagado.
+ */
+function payHouse(cost) {
+    const guild = getGuild();
+    const plan = payPlan({ cost, guild, purse: partyPurse() });
+    if (!plan.ok || (plan.fromPurse > 0 && !payFromParty(plan.fromPurse))) {
+        toastr.warning(plan.line || 'No llega el oro para eso.', 'La casa');
+        return false;
+    }
+    chat_metadata[GUILD_KEY] = spendFromChest(guild, plan.fromChest);
+    saveMetadata();
+    return true;
+}
+
+/**
+ * J3.6: La casa del gremio y sus edificios; y lo que abren, en cuanto están: la forja y la
+ * biblioteca se usan aquí mismo.
  */
 export async function openGuildHouse() {
     if (!lastHub) {
@@ -703,8 +792,10 @@ export async function openGuildHouse() {
 
         const grid = $('<div class="vt-grid hb-grid"></div>');
         for (const r of rows) {
-            const card = $('<div class="vt-card hb-card"></div>');
+            const card = $('<div class="vt-card hb-card"></div>').attr('data-building', r.key);
             card.append($('<div class="vt-name"></div>').text(`${r.label} (nivel ${r.level} de ${r.max})`));
+            // J3.6: lo que ya abre, para que se vea qué se ha ganado con cada nivel.
+            if (r.open.length > 0) card.append($('<div class="hb-opened"></div>').text(`Ya tenéis: ${r.open[r.open.length - 1]}`));
             if (r.next) {
                 card.append($('<div class="vt-what"></div>').text(`Siguiente: ${r.next.opens}`));
                 card.append($('<div class="hb-state"></div>').text(`Cuesta ${r.next.cost} de oro. ${r.next.pay}`));
@@ -723,8 +814,10 @@ export async function openGuildHouse() {
                         saveMetadata();
                         savePartyState();
                         renderPartyMembers();
-                        postCombatNarration(`🏛️ [GREMIO] ${done.line}`);
-                        toastr.success(done.line, 'La casa crece');
+                        // J3.6: con camas nuevas llega alguien que se puede contratar.
+                        const arrival = r.key === 'bunks' ? recruitArrival(r.next?.level ?? 0) : '';
+                        postCombatNarration(`🏛️ [GREMIO] ${[done.line, arrival].filter(Boolean).join(' ')}`);
+                        toastr.success([done.line, arrival].filter(Boolean).join(' '), 'La casa crece');
                         draw();
                     }));
                 } else {
@@ -736,6 +829,97 @@ export async function openGuildHouse() {
             grid.append(card);
         }
         inside.append(grid);
+        drawForge(guild, purse);
+        drawLibrary(guild);
+    };
+
+    /**
+     * J3.6: la forja del gremio, en cuanto hay forja: mejorar armas y reforzar armaduras.
+     *
+     * @param {any} guild
+     * @param {number} purse
+     */
+    const drawForge = (guild, purse) => {
+        const forge = forgeOffers({ guild, party: partyMembers, purse });
+        if (forge.level === 0) return;
+        const box = $('<div class="hb-forge"></div>');
+        box.append($('<div class="vt-section hb-section"></div>').text(`La forja (nivel ${forge.level})`));
+        if (forge.empty) box.append($('<p class="hb-empty"></p>').text(forge.empty));
+        for (const offer of forge.offers) {
+            const row = $('<div class="hb-chest-row hb-forge-row" style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin:4px 0;"></div>');
+            row.append($('<span></span>').text(`${offer.memberName}: ${offer.label}`));
+            row.append($('<button type="button" class="menu_button hb-forge-go"></button>').text(`Mejorar (${offer.cost} de oro)`)
+                .prop('disabled', !offer.ok || combatEncounter.active)
+                .attr('title', offer.why || 'Se paga del arca y, lo que falte, de las bolsas.')
+                .on('click', () => {
+                    const member = partyMembers.find(m => String(m.id) === offer.memberId);
+                    const done = member ? forgeItem({ member, itemId: offer.itemId, guild: getGuild(), purse: partyPurse() }) : null;
+                    if (!member || !done?.ok || !payHouse(done.cost)) {
+                        if (done && !done.ok) toastr.warning(done.reason, 'La forja');
+                        draw();
+                        return;
+                    }
+                    member.items = done.items;
+                    savePartyState();
+                    renderPartyMembers();
+                    postCombatNarration(`🔨 [GREMIO] ${done.line}`);
+                    toastr.success(done.line, 'La forja');
+                    draw();
+                }));
+            if (!offer.ok && offer.why) row.append($('<small class="hb-warn"></small>').text(offer.why));
+            box.append(row);
+        }
+        inside.append(box);
+    };
+
+    /**
+     * J3.6: la biblioteca del gremio, en cuanto hay biblioteca: copiar un conjuro al libro, o
+     * cambiar uno que se sabe por otro.
+     *
+     * @param {any} guild
+     */
+    const drawLibrary = (guild) => {
+        const catalogue = spellRows();
+        const library = libraryOffers({ guild, party: partyMembers, classRowOf, catalogue });
+        if (library.level === 0) return;
+        const box = $('<div class="hb-library"></div>');
+        box.append($('<div class="vt-section hb-section"></div>').text(`La biblioteca (nivel ${library.level})`));
+        if (library.empty) box.append($('<p class="hb-empty"></p>').text(library.empty));
+        for (const reader of library.readers) {
+            box.append($('<p class="hb-state"></p>').text(`${reader.name}: ${reader.note}`));
+            if (reader.mode === 'none') continue;
+            // Quien cambia elige antes qué deja de saber.
+            const forget = reader.mode === 'swap' ? $('<select class="text_pole hb-library-forget"></select>') : null;
+            for (const known of reader.known) forget?.append($('<option></option>').val(known.id).text(`Deja de saber «${known.name}»`));
+            if (forget) box.append(forget);
+            // Lo que puede aprender, todo en una lista (a un mago de nivel 1 le caben decenas), y un botón.
+            const pick = $('<select class="text_pole hb-library-pick"></select>');
+            for (const option of reader.options) pick.append($('<option></option>').val(option.id).text(`«${option.name}» · nivel ${option.level} · ${option.cost} de oro`));
+            const row = $('<div class="hb-chest-row" style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin:4px 0;"></div>');
+            row.append(pick);
+            row.append($('<button type="button" class="menu_button hb-library-go"></button>')
+                .text(reader.mode === 'copy' ? 'Copiarlo en su libro' : 'Aprenderlo')
+                .prop('disabled', combatEncounter.active || reader.options.length === 0)
+                .on('click', () => {
+                    const member = partyMembers.find(m => String(m.id) === reader.memberId);
+                    const done = member ? learnSpell({
+                        member, guild: getGuild(), classRowOf, catalogue, spellId: String(pick.val() ?? ''), forget: String(forget?.val() ?? ''), purse: partyPurse(),
+                    }) : null;
+                    if (!member || !done?.ok || !payHouse(done.cost)) {
+                        if (done && !done.ok) toastr.warning(done.reason, 'La biblioteca');
+                        draw();
+                        return;
+                    }
+                    Object.assign(member, done.patch);
+                    savePartyState();
+                    renderPartyMembers();
+                    postCombatNarration(`📚 [GREMIO] ${done.line}`);
+                    toastr.success(done.line, 'La biblioteca');
+                    draw();
+                }));
+            box.append(row);
+        }
+        inside.append(box);
     };
     draw();
 
@@ -868,7 +1052,20 @@ export async function openGuildErrands() {
     // El «Cerrar» va debajo de los encargos: la ventana se hace cuando ya están.
     popup = hallWindow(body);
     await popup.show();
-    return chosen ? await acceptContract(chosen) : '';
+    if (!chosen) return '';
+    // J3.8: el sitio del encargo, si aún no salía en el mapa, sale ahora: sin él no se llega.
+    const contract = (Array.isArray(chat_metadata?.[BOARD_KEY]) ? chat_metadata[BOARD_KEY] : []).find((/** @type {any} */ c) => String(c?.id) === chosen);
+    const hidden = data?.metadata?.hiddenLocations ?? [];
+    const revealed = contract ? errandReveal(contract, hidden) : [];
+    const said = await acceptContract(chosen);
+    if (!said || revealed.length === 0) return said;
+    await revealLocations(revealed);
+    const line = errandAcceptLine(contract, { revealed, here: currentLocationName, locations: getCurrentWorldLocationMaps(), hidden });
+    postCombatNarration(`🗺️ [GREMIO] ${line}`);
+    toastr.info(line, 'Encargo aceptado', { timeOut: 9000 });
+    renderLocationMapsPreview();
+    if (isShellOpen()) refreshGameShell();
+    return said;
 }
 
 /**
@@ -922,6 +1119,30 @@ export async function openMemoryView() {
 }
 
 /**
+ * J3.3: dormir en el gremio. La noche en las camas de la casa, sin pagar: cura como un descanso
+ * largo, amanece y guarda la partida en su ranura, «Al dormir en el gremio» (J15.2).
+ *
+ * @returns {Promise<string>} Lo que se contó del descanso, o vacío.
+ */
+export async function sleepInGuild() {
+    if (!lastHub) {
+        toastr.info('Se duerme en la casa del gremio.', 'Dormir');
+        return '';
+    }
+    if (combatEncounter.active) {
+        toastr.warning('No mientras peleáis.', 'Dormir');
+        return '';
+    }
+    const said = await takeRest('largo');
+    if (!said) return '';
+    // Guardar va después del descanso: la ranura se queda con la mañana y el grupo curado.
+    const { onGuildSleep } = await import('../guardar-partida.js');
+    await onGuildSleep();
+    if (isShellOpen()) refreshGameShell();
+    return said;
+}
+
+/**
  * J3.7: la noticia de que el gremio ha subido de rango se cuenta una vez. Sale arriba en la sala
  * (`buildHallData`) hasta que se usa algo de ella; entonces se apunta como contada (`rankSeen`).
  *
@@ -930,8 +1151,9 @@ export async function openMemoryView() {
 export function noteRankSeen() {
     if (!lastHub || !chat_metadata) return;
     const guild = getGuild();
-    const { renown } = hubRenown({ guild, hub: lastHub });
-    const news = rankNews({ guild, renown, hub: lastHub });
+    const worlds = knownBoardRows();
+    const { renown } = hubRenown({ guild, hub: lastHub, worlds });
+    const news = rankNews({ guild, renown, hub: lastHub, worlds });
     if (!news) return;
     chat_metadata[GUILD_KEY] = { ...guild, rankSeen: news.rank };
     saveMetadata();
@@ -941,8 +1163,8 @@ export function noteRankSeen() {
  * J3.1: Los datos del estado de la sala del gremio para la pantalla del pueblo y el panel.
  *
  * Solo lee: se llama cada vez que se dibuja el pueblo. Lo que no se sabe sin leer el mundo
- * (quién descansa en el gremio, cuántas campañas hay en el tablón) no se pone: mejor sin línea
- * que con un número inventado.
+ * (quién descansa en el gremio) no se pone: mejor sin línea que con un número inventado. Las
+ * campañas del tablón se leen una vez (`knownBoardRows`) y salen en cuanto llegan (J3.7).
  *
  * @returns {import('../game-engine/campaign/guild-hall.js').HallData|null}
  */
@@ -956,7 +1178,9 @@ export function buildHallData() {
         const houseRows = houseView({ guild, purse });
         const built = houseRows.reduce((sum, r) => sum + r.level, 0);
         const total = houseRows.reduce((sum, r) => sum + r.max, 0);
-        const { renown } = hubRenown({ guild, hub: lastHub });
+        // J3.7: con las campañas del tablón, lo que da cada una terminada y las que abre el rango.
+        const worlds = knownBoardRows();
+        const { renown } = hubRenown({ guild, hub: lastHub, worlds });
         const taken = chat_metadata?.[TAKEN_KEY];
         const board = Array.isArray(chat_metadata?.[BOARD_KEY]) ? chat_metadata[BOARD_KEY] : [];
         // La salida de la sala: las campañas empezadas y sin terminar, para seguirlas (J3.1). Eso
@@ -964,10 +1188,14 @@ export function buildHallData() {
         const inProgress = Object.entries(lastHub?.campaigns ?? {})
             .filter(([, c]) => c && !c.finished && c.chat)
             .map(([id, c]) => ({ id, name: String(c.name || c.worldName || id) }));
+        // Las por empezar y las cerradas, en cuanto se saben las del tablón.
+        const offered = worlds.length > 0 ? lockCampaignCards(hubCampaignCards({ worlds, hub: lastHub }), { renown, worlds }) : [];
+        const open = offered.filter(c => c.state === 'nueva' && !c.locked).length;
+        const locked = offered.filter(c => c.locked).length;
         return {
-            ...(inProgress.length > 0 ? { campaigns: { open: 0, locked: 0, inProgress } } : {}),
+            ...(inProgress.length > 0 || offered.length > 0 ? { campaigns: { open, locked, inProgress } } : {}),
             rank: guildRank(renown),
-            news: rankNews({ guild, renown, hub: lastHub }),
+            news: rankNews({ guild, renown, hub: lastHub, worlds }),
             chest: { used: chest.used, slots: chest.slots, gold: chest.gold },
             training: {
                 ready: training.rows.filter(r => r.canLevel).map(r => r.name),

@@ -8,8 +8,10 @@
  *   su dibujo) → «Elegir mis conjuros de inicio» → «Preparar conjuros» → la pelea del muelle:
  *   lanzar un conjuro de nivel 1 desde la tarjeta del enemigo, que gasta un espacio → un bastón
  *   que pide sintonía: «Sintonizar» en la ficha, y ya sale en las maniobras → subir de nivel:
- *   el icono de la clase y los conjuros nuevos con su dibujo → dormir en la posada: se
- *   recuperan los espacios y se abre el cuadro de preparar.
+ *   el icono de la clase y los conjuros nuevos con su dibujo → J19.10, la magia fuera de
+ *   combate: desde la ficha, Identificar y Detectar magia como rituales; en la posada, pasar el
+ *   rato hasta la noche, y la fila ofrece «Magia: Luz»; la Luz se enciende y examinar suma +2
+ *   → dormir en la posada: se recuperan los espacios y se abre el cuadro de preparar.
  *
  * Uso:
  *   node tools/e2e-magia.mjs --port 8187 --captura C:/tmp/magia.png
@@ -127,6 +129,21 @@ try {
         if (chip instanceof HTMLElement) chip.click();
         return Boolean(chip);
     }, pattern.source);
+    /** Pulsar una ficha de la escena: en la fila, o, si no cabe, en «+N más» (idea 169), como quien juega. */
+    const pressChip = async (/** @type {RegExp} */ label, /** @type {string} */ id) => {
+        if (await clickChip(label)) return 'fila';
+        if (!await clickChip(/^\+\d+ más$/)) return '';
+        const item = page.locator(`.hp-item[data-chip="${id}"]`);
+        if (!await item.waitFor({ state: 'visible', timeout: 5000 }).then(() => true).catch(() => false)) {
+            await page.locator('dialog.popup[open] .popup-button-ok').last().click({ timeout: 3000 }).catch(() => {});
+            return '';
+        }
+        await item.click();
+        return 'más';
+    };
+    /** Las fichas que el juego ofrece ahora, todas (también las de «+N más»). */
+    const allChips = () => page.evaluate(async () => (await import('/scripts/party/shell.js')).buildShellChips(Infinity)
+        .map((/** @type {any} */ c) => ({ id: String(c.id), label: String(c.label), icon: String(c.icon) })));
     const clearDice = async () => {
         for (let i = 0; i < 40; i++) {
             const next = page.locator('.wm-dice-overlay.active .wm-dice-next');
@@ -212,6 +229,18 @@ try {
         sheet.slots.some(s => /^Cabeza=/.test(s)) && sheet.slots.some(s => /^Cuerpo=/.test(s)) && !/item_\d|Head|Body|Hands|Feet/.test(sheet.slots.join(' ')),
         JSON.stringify(sheet.slots));
     check('lo que lleva, con el dibujo de cada objeto que lo tiene (arte en pixel)', itemArt.length >= 1, JSON.stringify(itemArt));
+    // J1.7 y J1.8: quién es, con el icono de su clase y su cara; y en qué campañas ha estado.
+    const who = await page.evaluate(() => ({
+        title: document.querySelector('.ch-root .ch-title')?.textContent || '',
+        campaigns: [...document.querySelectorAll('.ch-root .ch-campaigns > *')].map(n => n.textContent || ''),
+        rawIds: /item_\d{6,}/.test(document.querySelector('.ch-root')?.textContent || ''),
+    }));
+    const classIcon = await drawn('.ch-root .ch-title .ch-class-art');
+    const face = await drawn('.ch-root .ch-head img.ch-avatar.pixel-art');
+    check('la ficha legible: el icono de su clase junto a «Humano · Nivel 1 Mago», su retrato, y ningún id a la vista (J1.7)',
+        classIcon.length === 1 && /Nivel 1 Mag/.test(who.title) && face.length === 1 && !who.rawIds, JSON.stringify({ who, classIcon, face }));
+    check('y sus campañas: en el prólogo, que todavía no ha salido a ninguna (J1.7)',
+        who.campaigns.length === 1 && /Todavía no ha salido a ninguna campaña/.test(who.campaigns[0]), JSON.stringify(who.campaigns));
     if (shot('1-ficha')) await page.screenshot({ path: shot('1-ficha') });
 
     // 3. El grimorio, desde la ficha.
@@ -245,8 +274,12 @@ try {
         JSON.stringify({ startCard, startArt: startArt.length }));
     if (shot('3-inicio')) await page.screenshot({ path: shot('3-inicio') });
     // Se eligen los últimos de cada rejilla, para que no sean los que dio el juego; y en el
-    // libro, Proyectil mágico el primero, para lanzarlo en la pelea.
+    // libro, Proyectil mágico el primero, para lanzarlo en la pelea. J19.10: y Luz, Detectar
+    // magia e Identificar, para la magia fuera de combate de más adelante.
     await page.locator('.lu-spell-card .sp-picker[data-picker="conjuros"] .sp-option[data-spell*="proyectil"]').first().click();
+    for (const [picker, id] of [['trucos', 'mag-luz'], ['conjuros', 'conj-detectar-magia'], ['conjuros', 'conj-identificar']]) {
+        await page.locator(`.lu-spell-card .sp-picker[data-picker="${picker}"] .sp-option[data-spell="${id}"]:not(.chosen)`).first().click({ timeout: 3000 }).catch(() => {});
+    }
     for (const name of ['trucos', 'conjuros']) {
         const options = page.locator(`.lu-spell-card .sp-picker[data-picker="${name}"] .sp-option:not(.chosen):not([disabled])`);
         for (let i = 0; i < 10 && await options.count() > 0; i++) await options.last().click();
@@ -366,6 +399,11 @@ try {
         const { setInjury } = await import('/scripts/game-engine/rules/injuries.js');
         const patch = setInjury(partyMembers[0], { id: 'caida-tobillo', label: 'Tobillo torcido', description: 'Cojea.', days: 3, modifiers: { speed: -10 } }, 'caida-tobillo');
         Object.assign(partyMembers[0], { injuries: patch.injuries, baseStats: patch.baseStats, ...patch.stats });
+        // Y una enfermedad, como la pega el camino (su etapa, en el hueco de las enfermedades).
+        const { stageInjury, DISEASE_SLOT } = await import('/scripts/game-engine/compendio/ailments.js');
+        const fever = { name: 'Fiebre de los pantanos', stages: [{ label: 'destemplado', days: 2, modifiers: {} }, { label: 'con fiebre', days: 4, modifiers: {} }] };
+        const sick = setInjury(partyMembers[0], stageInjury(fever, 1), DISEASE_SLOT);
+        Object.assign(partyMembers[0], { injuries: sick.injuries, baseStats: sick.baseStats, ...sick.stats });
         savePartyState();
     });
     await dropToasts();
@@ -377,7 +415,9 @@ try {
         injuries: [...document.querySelectorAll('.ch-root .ch-injury')].map(t => t.getAttribute('data-injury')),
     }));
     const injuryArt = await drawn('.ch-root .ch-injury .ch-tag-art');
-    check('una herida sale en la ficha con su icono (arte en pixel)', attune.injuries.length > 0 && injuryArt.length > 0, JSON.stringify({ injuries: attune.injuries, injuryArt }));
+    check('una herida y una enfermedad salen en la ficha, cada una con su icono (arte en pixel)',
+        attune.injuries.length === 2 && injuryArt.includes('estados/caida-tobillo.png') && injuryArt.includes('estados/enf-fiebre.png'),
+        JSON.stringify({ injuries: attune.injuries, injuryArt }));
     check('el bastón pide sintonía: la ficha dice cuántos lleva y ofrece «Sintonizar» (J19.9)',
         await staffRow.count() === 1 && /En sintonía: 0 de 3/.test(attune.note) && /^Sintonizar$/.test(attune.button), JSON.stringify(attune));
     if (shot('7-sintonia')) await page.screenshot({ path: shot('7-sintonia') });
@@ -428,15 +468,126 @@ try {
         JSON.stringify({ level: lia?.level, antes: bookBefore, libro: lia?.spellbook }));
     await closeTopPopup();
 
+    // 8b. J19.10: la magia fuera de combate, como quien juega: desde la ficha y desde la fila.
+    // Del botín, un anillo sin identificar; de la tienda, la perla que pide Identificar (D-J25).
+    await page.evaluate(async () => {
+        const { partyMembers } = await import('/scripts/party/state.js');
+        const { describeLootItem } = await import('/scripts/game-engine/combat/loot-items.js');
+        const { addItemToInventory, createItem } = await import('/scripts/dnd-system.js');
+        const { savePartyState } = await import('/scripts/party/roster.js');
+        const ring = createItem(/** @type {any} */ (describeLootItem('Anillo de resistencia', 'Rare', [])));
+        addItemToInventory(/** @type {any} */ (partyMembers[0]), /** @type {any} */ ({ ...ring, identified: false }));
+        addItemToInventory(/** @type {any} */ (partyMembers[0]), createItem(/** @type {any} */ (describeLootItem('Perla', '', []))));
+        savePartyState();
+    });
+    await dropToasts();
+    await openSheet();
+    const beforeField = await page.evaluate(() => ({
+        unknown: [...document.querySelectorAll('.ch-root .ch-item-name')].map(n => n.textContent || '').filter(t => /sin identificar/.test(t)),
+        button: document.querySelector('.ch-root .ch-field-magic')?.textContent?.trim() || '',
+    }));
+    check('la ficha ofrece «Magia fuera de combate», y el anillo del botín sale «sin identificar» (J19.10)',
+        /Magia fuera de combate/.test(beforeField.button) && beforeField.unknown.length === 1, JSON.stringify(beforeField));
+    await page.locator('.ch-root .ch-field-magic').click();
+    await page.waitForSelector('.fm-dialog[open] .fm-spell', { timeout: 10000 });
+    await page.waitForTimeout(400);
+    const fieldRows = () => page.evaluate(() => [...document.querySelectorAll('.fm-dialog[open] .fm-spell')]
+        .map(r => `${r.getAttribute('data-spell')}:${r.getAttribute('data-how')}:${r.getAttribute('data-ok')}`));
+    const byDay = await fieldRows();
+    const slotLine = await page.evaluate(() => document.querySelector('.fm-dialog[open] .fm-slots')?.textContent || '');
+    check('la ventana: Identificar y Detectar magia como rituales, sus espacios, y la Luz, que de día aquí no hace falta',
+        byDay.includes('conj-identificar:ritual:true') && byDay.includes('conj-detectar-magia:ritual:true') && byDay.includes('mag-luz:truco:false') && /de nivel 1/.test(slotLine),
+        JSON.stringify({ byDay, slotLine }));
+    if (shot('10-magia-campo')) await page.screenshot({ path: shot('10-magia-campo') });
+    const castHere = async (/** @type {string} */ id) => {
+        await page.locator(`.fm-dialog[open] .fm-spell[data-spell="${id}"] .fm-cast`).click();
+        await page.waitForFunction(() => {
+            const box = document.querySelector('.fm-dialog[open] .fm-result');
+            return box instanceof HTMLElement && !box.hidden && (box.textContent || '').trim().length > 0;
+        }, null, { timeout: 8000 }).catch(() => {});
+        await page.waitForTimeout(400);
+        return page.evaluate(() => document.querySelector('.fm-dialog[open] .fm-result')?.textContent || '');
+    };
+    const slotsBeforeRitual = JSON.stringify((await hero())?.slotsUsed ?? {});
+    const identified = await castHere('conj-identificar');
+    lia = await hero();
+    const ring = (lia?.items ?? []).find((/** @type {any} */ i) => i.name === 'Anillo de resistencia');
+    check('Identificar, como ritual y sin espacio: dice qué es el anillo, y deja de estar sin identificar',
+        ring?.identified === true && /Anillo de resistencia/.test(identified) && JSON.stringify(lia?.slotsUsed ?? {}) === slotsBeforeRitual,
+        JSON.stringify({ identified, ring: ring?.identified, slotsBefore: slotsBeforeRitual, slotsUsed: lia?.slotsUsed }));
+    const detected = await castHere('conj-detectar-magia');
+    check('Detectar magia, como ritual: dice qué de lo que lleváis tiene magia (el bastón, el anillo)',
+        /Tiene magia: .*Bastón de las llamas/.test(detected) && /Anillo de resistencia/.test(detected), detected);
+    await page.locator('.fm-dialog[open] .fm-close').click();
+    await page.waitForTimeout(500);
+    await dropToasts();
+    await openSheet();
+    const named = await page.evaluate(() => [...document.querySelectorAll('.ch-root .ch-item-name')].map(n => n.textContent || '').filter(t => /Anillo de resistencia/.test(t)));
+    check('y en la ficha, el anillo ya sale con su nombre, sin «sin identificar»', named.length === 1 && !/sin identificar/.test(named[0]), JSON.stringify(named));
+    await closeTopPopup();
+
+    // De día, la Luz no saca la ficha «Magia» a la escena: no hace falta.
+    const dayChips = await allChips();
+    check('de día, en la plaza, la fila no ofrece la Luz', !dayChips.some(c => c.id === 'field-magic' && /Luz/.test(c.label)), JSON.stringify(dayChips.map(c => c.label)));
+    // A la posada, a pasar el rato hasta la noche.
+    const slotNow = () => page.evaluate(async () => (await import('/scripts/party/time.js')).getCurrentSlotLabel());
+    await page.locator('#game-shell .gs-town-place[data-place="posada"]').click({ timeout: 5000 }).catch(() => {});
+    for (let i = 0; i < 4 && !/noche|madrugada/i.test(await slotNow()); i++) {
+        const idle = page.locator('#game-shell .gs-town-scene .gs-town-act[data-action="clock:slot"]');
+        if (!await idle.waitFor({ state: 'visible', timeout: 5000 }).then(() => true).catch(() => false)) break;
+        await idle.click();
+        await page.waitForTimeout(900);
+        await clearDice();
+        await dropToasts();
+    }
+    const night = await slotNow();
+    const nightChips = await allChips();
+    const lightChip = nightChips.find(c => c.id === 'field-magic');
+    check('de noche, la escena ofrece «Magia: Luz» (J19.10)', /noche|madrugada/i.test(night) && Boolean(lightChip) && /Luz/.test(String(lightChip?.label)),
+        JSON.stringify({ night, chips: nightChips.map(c => c.label) }));
+    const pressed = await pressChip(/^Magia: /, 'field-magic');
+    const opened = await page.waitForSelector('.fm-dialog[open] .fm-spell[data-spell="mag-luz"]', { timeout: 10000 }).then(() => true).catch(() => false);
+    const lit = opened ? await castHere('mag-luz') : '';
+    const lightState = await page.evaluate(async () => ({
+        stored: window.SillyTavern.getContext().chatMetadata?.fieldLight ?? null,
+        on: (await import('/scripts/party/magic.js')).fieldLightOn(),
+        bonus: (await import('/scripts/party/magic.js')).fieldLookBonus('investigation'),
+        board: (await import('/scripts/party/board.js')).boardVisibility(),
+    }));
+    check('pulsarla abre la ventana; la Luz alumbra la noche, se guarda, y cuenta como un farol en el tablero',
+        Boolean(pressed) && /alumbrado/.test(lit) && lightState.on === true && lightState.bonus === 2 && lightState.stored?.by === 'Lía',
+        JSON.stringify({ pressed, lit, lightState }));
+    if (shot('11-luz')) await page.screenshot({ path: shot('11-luz') });
+    if (opened) await page.locator('.fm-dialog[open] .fm-close').click().catch(() => {});
+    await page.waitForTimeout(500);
+    const afterChips = await allChips();
+    check('con la Luz ya encendida, la fila deja de ofrecerla', !afterChips.some(c => c.id === 'field-magic' && /Luz/.test(c.label)), JSON.stringify(afterChips.map(c => c.label)));
+    // Examinar algo de aquí, a la luz: la tirada suma +2 y lo dice.
+    const look = afterChips.find(c => /^look:/.test(c.id) && /fa-magnifying-glass|fa-binoculars/.test(c.icon));
+    const logBefore = await page.evaluate(() => (window.SillyTavern.getContext().chat || []).length);
+    if (look) await pressChip(new RegExp(`^${look.label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`), look.id);
+    await page.waitForTimeout(1200);
+    await clearDice();
+    const lookLog = await page.evaluate((from) => (window.SillyTavern.getContext().chat || []).slice(from)
+        .map((/** @type {any} */ m) => String(m.extra?.display_text || m.mes || '')).join('\n'), logBefore);
+    check('examinar a la luz, de noche: la tirada suma «+2 por la Luz»', Boolean(look) && /\+2 por la Luz/.test(lookLog),
+        JSON.stringify({ look, lookLog: lookLog.slice(0, 400) }));
+    await dropToasts();
+    // Lo que cuenta la tirada se lee en la caja; «Continuar» vuelve al pueblo.
+    await carryOn('exploration');
+
     // 9. Dormir en la posada: vuelven los espacios y se abre el cuadro de preparar.
     await page.evaluate(async () => {
         const { partyMembers } = await import('/scripts/party/state.js');
         partyMembers[0].slotsUsed = { 1: 2 };
     });
     await dropToasts();
-    // Como quien juega: la posada del pueblo, «Dormir en una habitación».
-    await page.locator('#game-shell .gs-town-place[data-place="posada"]').click({ timeout: 5000 }).catch(() => {});
+    // Como quien juega: la posada del pueblo, «Dormir en una habitación». Si ya se está en ella
+    // (de pasar el rato), no se vuelve a pulsar: pulsarla otra vez la cierra.
     const room = page.locator('#game-shell .gs-town-scene .gs-town-act[data-action="inn-room"]');
+    if (!await room.isVisible().catch(() => false)) {
+        await page.locator('#game-shell .gs-town-place[data-place="posada"]').click({ timeout: 5000 }).catch(() => {});
+    }
     const canSleep = await room.waitFor({ state: 'visible', timeout: 8000 }).then(() => true).catch(() => false);
     if (canSleep) await room.click();
     const offered = await page.waitForSelector('.sp-prepare', { timeout: 12000 }).then(() => true).catch(() => false);
@@ -457,7 +608,67 @@ try {
         Number(lia?.maxHp) > 30 && Number(lia?.hp) <= Number(lia?.maxHp) && Number(lia?.baseStats?.maxHp) === Number(lia?.maxHp),
         JSON.stringify({ hp: lia?.hp, maxHp: lia?.maxHp, base: lia?.baseStats?.maxHp }));
 
-    const mine = problems.filter(p => /magic|spell|grimo|level-up|sheet|character-panel|attun|sp-|lu-|ch-/i.test(p));
+    // 10. J1.8: tu cara sin arte. La imagen que subió ya no está: sale su retrato en pixel. Y
+    // con una clase del taller, que no tiene retrato: sus iniciales en su color, en la ficha,
+    // en la tira del grupo y en el tablero; nunca una imagen rota ni «???».
+    await closeTopPopup();
+    await dropToasts();
+    await page.evaluate(async () => {
+        const { partyMembers } = await import('/scripts/party/state.js');
+        const { savePartyState, renderPartyMembers } = await import('/scripts/party/roster.js');
+        partyMembers[0].avatar = 'user-avatars/esta-imagen-no-existe.png';
+        savePartyState();
+        renderPartyMembers();
+    });
+    await openSheet();
+    await page.waitForTimeout(800);
+    const brokenFace = await drawn('.ch-root .ch-head img.ch-avatar.pixel-art');
+    check('si la cara subida ya no está, la ficha enseña su retrato en pixel, no una imagen rota (J1.8)', brokenFace.length === 1, JSON.stringify(brokenFace));
+    await closeTopPopup();
+    await page.evaluate(async () => {
+        const { partyMembers } = await import('/scripts/party/state.js');
+        const { savePartyState, renderPartyMembers } = await import('/scripts/party/roster.js');
+        partyMembers[0].class = 'Juglar de feria';
+        savePartyState();
+        renderPartyMembers();
+        const { refreshGameShell } = await import('/scripts/game-engine/ui/shell/game-shell.js');
+        refreshGameShell();
+    });
+    await page.waitForTimeout(800);
+    await openSheet();
+    await page.waitForTimeout(600);
+    const noArt = await page.evaluate(() => {
+        const badge = document.querySelector('.ch-root .ch-head .hero-initials');
+        const strip = document.querySelector('#game-shell .gs-party-strip .gs-chip-initials');
+        return {
+            sheet: badge?.textContent || '',
+            sheetColor: badge instanceof HTMLElement ? badge.style.background : '',
+            broken: [...document.querySelectorAll('.ch-root img, #game-shell .gs-party-strip img')]
+                .filter(i => /** @type {HTMLImageElement} */ (i).complete && /** @type {HTMLImageElement} */ (i).naturalWidth === 0).length,
+            strip: strip?.textContent || '',
+        };
+    });
+    check('sin arte ninguno, la ficha y la tira del grupo enseñan sus iniciales en su color, y ninguna imagen rota (J1.8)',
+        noArt.sheet === 'L' && /hsl|rgb/.test(noArt.sheetColor) && noArt.strip === 'L' && noArt.broken === 0, JSON.stringify(noArt));
+    if (shot('12-iniciales')) await page.screenshot({ path: shot('12-iniciales') });
+    await closeTopPopup();
+    // Y en el tablero: al muelle, su ficha con sus iniciales.
+    const boards = await allChips();
+    const dock = boards.find(c => /^enter:/.test(c.id) && /muelle/i.test(c.label));
+    if (dock) await pressChip(new RegExp(`^${dock.label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`), dock.id);
+    const onBoard = await until(() => page.evaluate(() => Boolean(document.querySelector('.wm-token .wm-token-initials'))), 15000);
+    const token = await page.evaluate(() => ({
+        initials: [...document.querySelectorAll('.wm-token .wm-token-initials')].map(n => n.textContent || ''),
+        unknown: [...document.querySelectorAll('.wm-token .wm-token-unknown')].map(n => n.textContent || '').filter(t => t === '???'),
+    }));
+    check('en el tablero, su ficha también lleva sus iniciales, no «???» (J1.8)', Boolean(dock) && onBoard && token.initials.includes('L') && token.unknown.length === 0,
+        JSON.stringify({ dock, token }));
+    // Lo que se cuenta al entrar se lee en la caja; «Continuar» deja ver el tablero.
+    await carryOn('combat');
+    await page.waitForTimeout(600);
+    if (shot('13-tablero')) await page.screenshot({ path: shot('13-tablero') });
+
+    const mine = problems.filter(p => /magic|spell|grimo|level-up|sheet|character-panel|attun|sp-|lu-|ch-|hero-face/i.test(p));
     check('sin errores de estos módulos en la consola', mine.length === 0, mine.join(' | '));
     if (problems.length > 0) console.log(`(otros avisos de la página: ${problems.length})\n        ${problems.slice(0, 5).join('\n        ')}`);
 } catch (error) {

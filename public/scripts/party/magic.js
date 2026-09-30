@@ -23,7 +23,7 @@ import {
     describeCharges, SCHOOLS, SPELLS, CIRCLE_LABELS,
 } from '../game-engine/rules/grimoire.js';
 import { describeLesson, LESSON } from '../game-engine/campaign/masters.js';
-import { isIndoors } from '../game-engine/world/visibility.js';
+import { isIndoors, isNight } from '../game-engine/world/visibility.js';
 import { fireAt } from '../game-engine/board/living-terrain.js';
 import { WATCH, readWanted, magicIsCrime } from '../game-engine/campaign/crime.js';
 import { noteDealt } from '../game-engine/combat/tally.js';
@@ -46,11 +46,16 @@ import { startConcentration, readConcentration, linkedTo, describeConcentration,
 import { zoneFromSpell, placeZone, zoneFlagsAt, resolveZoneEffect, clearZones, endZones, kindOf, ZONE_KINDS } from '../game-engine/board/spell-zones.js';
 import { planSummon, dismissSummons } from '../game-engine/rules/summons.js';
 import { itemSpellSpec, spendItemCharges, itemWorks, scrollCheck, setAttunement, ATTUNEMENT_MAX, attunedItems } from '../game-engine/rules/magic-items.js';
-import { firstArt, loadPixelManifest } from '../game-engine/ui/pixel-art.js';
-import { fieldChoices, castField } from '../game-engine/rules/field-magic.js';
+import { firstArt, loadPixelManifest, boardBiome } from '../game-engine/ui/pixel-art.js';
+import { fieldChoices, castField, darkHere, lightActive, lightLookBonus, roadHeal } from '../game-engine/rules/field-magic.js';
 import { openFieldMagic } from '../game-engine/ui/field-magic-panel.js';
-import { WANTED_KEY } from './keys.js';
-import { combatEncounter, currentLocationName, partyMembers } from './state.js';
+import { readCases } from '../game-engine/campaign/cases.js';
+import { templeWork } from '../game-engine/campaign/item-lore.js';
+import { petName } from '../game-engine/campaign/pet.js';
+import { alarmActive } from '../game-engine/rules/rituals.js';
+import { isShellOpen, refreshGameShell } from '../game-engine/ui/shell/game-shell.js';
+import { CASES_KEY, FIELD_LIGHT_KEY, WANTED_KEY } from './keys.js';
+import { combatEncounter, currentBoardName, currentLocationName, partyMembers } from './state.js';
 import {
     saveCombatState, getCurrentTurnState, getEnemyByInstanceId, getAliveEnemies, getCurrentActingMember,
     getTargetArmorClass, enemyTokenId, boardCellOf,
@@ -60,9 +65,10 @@ import { damagePartyMember } from './enemy-turn.js';
 import { judgeCurrentScenario, checkScenarioOutcome, endCombat } from './combat-flow.js';
 import { persistBoardTerrain, getActiveBoardContext, explodeBarrels, boardVisibility } from './board.js';
 import { renderLocationMapsPreview } from './board-view.js';
-import { applyCampaignRuleset, lastWorldRows, hereLocation, lastCompendium } from './world.js';
+import { applyCampaignRuleset, lastWorldRows, hereLocation, lastCompendium, getLocationBoards, leaveMark } from './world.js';
 import { nudgeRuler } from './factions.js';
-import { advanceCampaignDay, getCampaignCalendar } from './time.js';
+import { advanceCampaignDay, getCampaignCalendar, getCurrentSlotLabel } from './time.js';
+import { currentPet } from './pet.js';
 import { noteDeed, worldWrite } from './world-growth.js';
 import { postCombatNarration, postForModel, showTip } from './narration.js';
 import { savePartyState, renderPartyMembers } from './roster.js';
@@ -255,9 +261,214 @@ export async function openGrimoire(all = false) {
 }
 
 /**
- * J19.10: Abrir la ventana de magia fuera de combate. Los rituales los lanza `rituals.js`
- * (como el botón del grimorio); los trucos y lo que gasta espacio, `castField`, y aquí se
- * aplica lo que devuelve: el espacio gastado, lo curado, lo identificado y el material.
+ * J19.10: si aquí no se ve sin luz: de noche, o en un tablero de piedra, una cueva o una
+ * cripta (el mismo bioma con el que se dibuja el tablero), o en una localización de mazmorra.
+ *
+ * @param {boolean} night
+ * @returns {boolean}
+ */
+function darkNow(night) {
+    if (night) return true;
+    const place = hereLocation();
+    const type = String(place?.locationType ?? place?.type ?? '');
+    // Solo el nombre y el bioma del tablero: sin armar su terreno, que esto se mira cada vez que
+    // se dibuja la fila de la escena.
+    const board = currentBoardName ? getLocationBoards(place).find((/** @type {any} */ b) => b?.name === currentBoardName) ?? null : null;
+    const biome = board ? boardBiome({ biome: String(board.biome ?? ''), name: String(board.name ?? ''), type }) : String(place?.biome ?? '');
+    return darkHere({ night, biome, type });
+}
+
+/**
+ * J19.10: lo que la magia fuera de combate necesita saber de aquí y ahora: si es de noche o
+ * está oscuro, la Luz que ya arde, el caso abierto, lo que lleváis sin identificar, la alarma
+ * de esta noche, la mascota y el grupo. Sin esto, Luz, Identificar y Hablar con los muertos
+ * decían siempre que no.
+ *
+ * @returns {import('../game-engine/rules/field-magic.js').FieldContext}
+ */
+export function fieldContext() {
+    const calendar = getCampaignCalendar();
+    const night = isNight(getCurrentSlotLabel());
+    const pet = currentPet();
+    return {
+        night,
+        dark: darkNow(night),
+        calendar,
+        light: chat_metadata?.[FIELD_LIGHT_KEY] ?? null,
+        cases: readCases(chat_metadata?.[CASES_KEY]),
+        unknownItems: templeWork(partyMembers).unknown.length,
+        alarmSet: partyMembers.some(m => !m.dead && alarmActive(/** @type {any} */ (m).ritualAlarm, calendar)),
+        pet: pet ? petName(pet) : '',
+        party: partyMembers,
+    };
+}
+
+/**
+ * J19.10: quién del grupo lanza conjuros de 5e y lo que puede hacer ahora sin pelear, con sus
+ * espacios en una línea.
+ *
+ * @returns {import('../game-engine/ui/field-magic-panel.js').FieldCaster[]}
+ */
+export function fieldCasters() {
+    if (spellRows().length === 0) return [];
+    const casters = partyMembers.filter(m => !m.dead && (Number(m.hp) || 0) > 0 && castsLikeFifth(m));
+    if (casters.length === 0) return [];
+    const context = fieldContext();
+    return casters.map(member => {
+        const classRow = classRowOf(member);
+        return {
+            member,
+            slots: describeSlots(member, classRow).replace(/(\d)\.º (\d+)\/(\d+)/g, 'de nivel $1: $2 de $3'),
+            choices: fieldChoices({
+                member,
+                classRow,
+                catalogue: spellRows(),
+                carried: Array.isArray(member.items) ? member.items : [],
+                context: { ...context, others: othersOf(member) },
+            }),
+        };
+    }).filter(c => c.choices.length > 0);
+}
+
+/** Lo que, si se puede y sirve de algo aquí, saca la ficha «Magia» a la fila de la escena. */
+const FIELD_CHIP_KINDS = ['luz', 'identify', 'muertos'];
+
+/**
+ * J19.10: los conjuros que ahora sirven de algo aquí, para la ficha «Magia» de la escena: una
+ * Luz a oscuras, Identificar con algo sin identificar, preguntarle al muerto de un caso y, de
+ * noche, la Alarma. Curar va en su propia ficha (`fieldHealNow`). Detectar magia y lo demás no
+ * la sacan: sirven siempre, y están en la ficha y en el grimorio.
+ *
+ * @returns {string[]} Sus nombres, sin repetir.
+ */
+export function fieldMagicNow() {
+    if (combatEncounter.active || !chat_metadata) return [];
+    const night = isNight(getCurrentSlotLabel());
+    const useful = fieldCasters().flatMap(c => c.choices)
+        .filter(choice => choice.ok && (FIELD_CHIP_KINDS.includes(choice.kind) || (choice.kind === 'alarm' && night)));
+    return [...new Set(useful.map(choice => choice.name))];
+}
+
+/**
+ * J19.10, «curar en el viaje»: si alguien está herido y alguien puede curarle con magia, lo
+ * más barato que haya (`roadHeal`: un truco antes que un espacio, el espacio más bajo).
+ *
+ * @returns {{member: any, choice: import('../game-engine/rules/field-magic.js').FieldChoice}|null}
+ */
+export function fieldHealNow() {
+    if (combatEncounter.active || !chat_metadata) return null;
+    if (!partyMembers.some(m => !m.dead && (Number(m.hp) || 0) > 0 && (Number(m.hp) || 0) < (Number(m.maxHp) || 0))) return null;
+    return roadHeal(fieldCasters());
+}
+
+/**
+ * J19.10: curar a los heridos con magia, de un toque (la ficha «Curar con magia»).
+ *
+ * @returns {Promise<string>} Lo que se ha contado.
+ */
+export async function healWithMagic() {
+    const pick = fieldHealNow();
+    if (!pick) {
+        toastr.info('Nadie puede curar con magia ahora, o nadie está herido.', 'Magia');
+        return '';
+    }
+    const lines = await castFieldChoice(pick.member, pick.choice);
+    const said = lines.join(' ');
+    if (said) toastr.success(said, pick.choice.name);
+    return said;
+}
+
+/**
+ * J19.10: si la Luz lanzada fuera de combate sigue encendida (dura esta parte del día).
+ *
+ * @returns {boolean}
+ */
+export function fieldLightOn() {
+    return lightActive(chat_metadata?.[FIELD_LIGHT_KEY], getCampaignCalendar());
+}
+
+/**
+ * J19.10: lo que suma la Luz a examinar (Investigación y Percepción) aquí, si está encendida y
+ * aquí está oscuro. Lo mira `rollSkillCheck` (`party/talk.js`).
+ *
+ * @param {string} skill
+ * @returns {number}
+ */
+export function fieldLookBonus(skill) {
+    if (!['investigation', 'perception'].includes(String(skill))) return 0;
+    const night = isNight(getCurrentSlotLabel());
+    return lightLookBonus(chat_metadata?.[FIELD_LIGHT_KEY], getCampaignCalendar(), darkNow(night));
+}
+
+/**
+ * J19.10: lanzar una de las cosas de la magia fuera de combate y aplicarla. Los rituales los
+ * lanza `rituals.js` (como el botón del grimorio); los trucos y lo que gasta espacio,
+ * `castField`, y aquí se aplica lo que devuelve: el espacio gastado, lo curado, lo
+ * identificado, la Luz, la pista del muerto, la alarma y el material.
+ *
+ * @param {any} member
+ * @param {import('../game-engine/rules/field-magic.js').FieldChoice} choice
+ * @returns {Promise<string[]>} Lo que se cuenta.
+ */
+export async function castFieldChoice(member, choice) {
+    if (combatEncounter.active) return ['En plena pelea, la magia se lanza en tu turno.'];
+    if (choice.how === 'ritual') {
+        const said = (await import('./rituals.js')).castRitual(member, choice.id, { quiet: true });
+        return said ? [said] : [];
+    }
+    const spell = spellRows().find((/** @type {any} */ row) => String(row?.id) === String(choice.id));
+    const context = fieldContext();
+    const res = castField({
+        member,
+        classRow: classRowOf(member),
+        spell,
+        carried: Array.isArray(member.items) ? member.items : [],
+        context: { ...context, others: othersOf(member) },
+        rollDice: (formula) => rollDiceDetailed(formula, 8).total,
+    });
+    if (!res.ok) return [res.reason];
+    if (res.slotsUsed) member.slotsUsed = res.slotsUsed;
+    for (const healed of res.effects.heal ?? []) {
+        const who = partyMembers.find(m => String(m.id) === healed.memberId);
+        if (who) who.hp = healed.hp;
+    }
+    for (const change of res.effects.identify ?? []) {
+        const owner = partyMembers.find(m => String(m.id) === change.memberId);
+        const items = Array.isArray(owner?.items) ? owner.items : [];
+        const index = items.findIndex((/** @type {any} */ i) => String(i?.id) === change.itemId);
+        if (index >= 0) items[index] = change.item;
+    }
+    if (res.effects.alarm) /** @type {any} */ (member).ritualAlarm = res.effects.alarm;
+    // La Luz se guarda en la partida: la miran el tablero (se ve más lejos), la noche en el
+    // campamento (cuenta como un fuego) y examinar aquí (+2 si está oscuro).
+    if (res.effects.light && chat_metadata) {
+        chat_metadata[FIELD_LIGHT_KEY] = res.effects.light;
+        saveMetadata();
+    }
+    const lines = [...res.lines];
+    for (const name of res.consumes) {
+        const item = (Array.isArray(member.items) ? member.items : [])
+            .find((/** @type {any} */ i) => String(i?.name ?? '').trim().toLowerCase() === String(name).trim().toLowerCase());
+        if (!item) continue;
+        removeItemFromInventory(/** @type {any} */ (member), String(item.id));
+        lines.push(`Se gasta ${String(name).toLowerCase()}.`);
+    }
+    savePartyState();
+    renderPartyMembers();
+    postCombatNarration(`✨ [MAGIA] ${lines.join(' ')}`);
+    // Hablar con los muertos: la pista entra en el caso, como las demás (`revealClue`).
+    if (res.effects.clue) {
+        const { revealClue } = await import('./cases.js');
+        revealClue(res.effects.clue);
+        lines.push(`Pista: ${String(res.effects.clue.fact ?? '')}`);
+    }
+    if (isShellOpen()) refreshGameShell();
+    return lines;
+}
+
+/**
+ * J19.10: Abrir la ventana de magia fuera de combate: quién lanza, lo que puede ahora y por
+ * qué no, y lanzar una cosa detrás de otra (`castFieldChoice`).
  *
  * @returns {Promise<string>}
  */
@@ -266,58 +477,9 @@ export async function openFieldMagicModal() {
         toastr.warning('En plena pelea, la magia se lanza en tu turno.', 'Magia');
         return '';
     }
-    const context = () => ({ party: partyMembers, calendar: getCampaignCalendar() });
     await openFieldMagic({
-        getCasters: () => partyMembers.filter(m => !m.dead && (Number(m.hp) || 0) > 0).map(member => ({
-            member,
-            choices: fieldChoices({
-                member,
-                classRow: classRowOf(member),
-                catalogue: spellRows(),
-                carried: Array.isArray(member.items) ? member.items : [],
-                context: context(),
-            }),
-        })).filter(c => c.choices.length > 0),
-        onCast: async (member, choice) => {
-            if (choice.how === 'ritual') {
-                const said = (await import('./rituals.js')).castRitual(member, choice.id);
-                return said ? [said] : [];
-            }
-            const spell = spellRows().find((/** @type {any} */ row) => String(row?.id) === String(choice.id));
-            const res = castField({
-                member,
-                classRow: classRowOf(member),
-                spell,
-                carried: Array.isArray(member.items) ? member.items : [],
-                context: context(),
-                rollDice: (formula) => rollDiceDetailed(formula, 8).total,
-            });
-            if (!res.ok) return [res.reason];
-            if (res.slotsUsed) member.slotsUsed = res.slotsUsed;
-            for (const healed of res.effects.heal ?? []) {
-                const who = partyMembers.find(m => String(m.id) === healed.memberId);
-                if (who) who.hp = healed.hp;
-            }
-            for (const change of res.effects.identify ?? []) {
-                const owner = partyMembers.find(m => String(m.id) === change.memberId);
-                const items = Array.isArray(owner?.items) ? owner.items : [];
-                const index = items.findIndex((/** @type {any} */ i) => String(i?.id) === change.itemId);
-                if (index >= 0) items[index] = change.item;
-            }
-            if (res.effects.alarm) /** @type {any} */ (member).ritualAlarm = res.effects.alarm;
-            const lines = [...res.lines];
-            for (const name of res.consumes) {
-                const item = (Array.isArray(member.items) ? member.items : [])
-                    .find((/** @type {any} */ i) => String(i?.name ?? '').trim().toLowerCase() === String(name).trim().toLowerCase());
-                if (!item) continue;
-                removeItemFromInventory(/** @type {any} */ (member), String(item.id));
-                lines.push(`Se gasta ${String(name).toLowerCase()}.`);
-            }
-            savePartyState();
-            renderPartyMembers();
-            postCombatNarration(`✨ [MAGIA] ${lines.join(' ')}`);
-            return lines;
-        },
+        getCasters: () => fieldCasters(),
+        onCast: (member, choice) => castFieldChoice(member, choice),
     });
     return '';
 }
@@ -1067,6 +1229,8 @@ export function magicConsequences(ability) {
         chat_metadata[WANTED_KEY] = { ...wanted, [currentLocationName]: level };
         saveMetadata();
         said.push(`👁️ [GUARDIAS] Alguien os ha visto usar nigromancia en ${currentLocationName}: ahora os buscan (buscados: ${level}).`);
+        // J11.3: y el pueblo se acuerda (en la capilla, más).
+        leaveMark('nigromancia');
         // R9: y quien manda aquí lo nota.
         void nudgeRuler(currentLocationName, 'nigromancia');
     }

@@ -58,6 +58,8 @@ export const TAG_CATEGORIES = {
     // J10.2: lo que se ve al examinar algo del sitio.
     'MIRAR': 'viaje',
     'CAMPAMENTO': 'campamento', 'CHARLA': 'campamento', 'DESCANSO': 'campamento',
+    // J14.7, J13.5 y J14.9: la noche con los compañeros, lo que dicen por el camino y sus misiones.
+    'NOCHE': 'campamento', 'FRASE': 'grupo', 'MISIÓN': 'grupo',
     // Una tirada suelta no es historia: se pliega, y no entra en el resumen del acto.
     'TIRADA': 'dados',
     'PARTIDA': 'partida', 'CAMPANA': 'partida', 'MODO': 'partida',

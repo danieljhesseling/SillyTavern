@@ -93,6 +93,31 @@
     color: var(--SmartThemeQuoteColor, #c9b894);
 }
 
+/* J7.5: lo que opinan tus compañeros, debajo de lo que se dice. */
+.dw-opinions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.2rem 0.7rem;
+    font-size: 0.8rem;
+}
+
+.dw-opinion {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.dw-opinion-good {
+    color: var(--gs-good-soft, #9fcf8f);
+}
+
+.dw-opinion-bad {
+    color: var(--gs-danger-soft, #d08a86);
+}
+
+.dw-opinion .fa-solid {
+    margin-right: 0.15rem;
+}
+
 .dw-attitude {
     text-transform: none;
     letter-spacing: 0;

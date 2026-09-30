@@ -141,6 +141,11 @@ export async function openHeroChooser({ Popup, POPUP_TYPE, heroes, title = '¿Co
         void popup?.completeCancelled();
     }));
     body.append(grid);
+    // J3.1: desde la sala se abre para mirar; sin su «Cerrar» solo se salía con Esc (y en el
+    // móvil, sin teclado, pulsando al que ya iba). Cerrar es seguir con el de ahora.
+    body.append(div('hb-foot').append($('<button type="button" class="menu_button hb-close"></button>')
+        .text('Cerrar')
+        .on('click', () => { void popup?.completeCancelled(); })));
 
     popup = new Popup(body[0], POPUP_TYPE.TEXT, '', { okButton: false, cancelButton: false, wide: true, allowVerticalScrolling: true });
     await popup.show();
@@ -173,8 +178,12 @@ const MAX_CAMPAIGN_FILE = 20 * 1024 * 1024;
  */
 function campaignTile(one, onClick, onRemove = null, who = {}, onChronicle = null) {
     const state = { nueva: 'Sin empezar', 'en-curso': 'En curso', terminada: 'Terminada' }[one.state];
-    const tile = card({ icon: one.icon, label: [`${one.action} ${one.name}. ${state}.`, one.levels ? `${one.levels}.` : ''].filter(Boolean).join(' '), onClick })
-        .attr('data-campaign', one.id);
+    // J3.7: una que el rango del gremio aún no abre se ve, con lo que falta, pero no se empieza.
+    const lock = String(/** @type {any} */ (one).lock ?? '').trim();
+    const locked = Boolean(/** @type {any} */ (one).locked);
+    const tile = card({ icon: one.icon, label: [`${one.action} ${one.name}. ${locked ? 'Cerrada' : state}.`, one.levels ? `${one.levels}.` : ''].filter(Boolean).join(' '), onClick, disabled: locked })
+        .attr('data-campaign', one.id)
+        .toggleClass('is-locked', locked);
     tile.append(div('vt-name').text(one.name));
     // Lo lejos que queda va con el género: «Horror gótico · A nueve días de camino».
     tile.append(div('vt-what').text([one.genre, one.distance].filter(Boolean).join(' · ')));
@@ -186,6 +195,7 @@ function campaignTile(one, onClick, onRemove = null, who = {}, onChronicle = nul
     }
     // El aviso, justo debajo del nivel: es de lo que habla, y así no se pierde tras la sinopsis.
     if (one.warn) tile.append(div('hb-warn').text(one.warn));
+    if (locked) tile.append(div('hb-lock').append('<i class="fa-solid fa-lock"></i>').append($('<span></span>').text(lock)));
     tile.append(div(`hb-state hb-${one.state}`).text(one.ending ? `${state}: ${one.ending}` : state));
     // J9.3: por qué capítulo ibais al volver al gremio.
     if (one.chapter) tile.append(div('hb-chapter').append('<i class="fa-solid fa-bookmark"></i>').append($('<span></span>').text(one.chapter)));
@@ -241,14 +251,15 @@ function addCampaignTile(onClick) {
  * @param {JQuery} box
  * @param {ImportResult} result
  * @param {string} source De dónde venía, como se dice: «roto.json» o «el texto pegado».
+ * @param {string} [locked] J3.7: si el rango del gremio aún no la abre, lo que falta (`lockLine`).
  */
-function showImport(box, result, source) {
+function showImport(box, result, source, locked = '') {
     box.empty().removeClass('is-ok is-bad').addClass(result.ok ? 'is-ok' : 'is-bad').show();
     if (result.ok) {
         const done = /** @type {ImportDone} */ (result);
         box.append(div('hb-import-title').text(done.replaced
             ? `Puesta al día en el tablón: ${done.name}.`
-            : `Añadida al tablón: ${done.name}. Ya se puede empezar.`));
+            : `Añadida al tablón: ${done.name}. ${locked || 'Ya se puede empezar.'}`));
         for (const note of done.notes ?? []) box.append(div('hb-import-note').text(note));
         return;
     }
@@ -319,9 +330,11 @@ const asHtml = (value) => $('<div></div>').text(value).html();
  * @param {Record<string, import('../campaign/story-book.js').StoryBook>} [input.chronicles] J11.5: la
  *   crónica de cada campaña empezada, por su id (`readChronicles`). La que tiene una lleva debajo
  *   «La crónica», que la abre como un libro encima del tablón.
+ * @param {((card: CampaignCard) => CampaignCard)|null} [input.lock] J3.7: cómo queda una recién añadida
+ *   con el rango del gremio (cerrada si pide más). Sin él, abierta.
  * @returns {Promise<string|{hero: string}|{create: true}|null>}
  */
-export async function openHubBoard({ Popup, POPUP_TYPE, cards, heroes = [], onImport = importCampaignFile, onRemove = removeCampaign, chronicles = {} }) {
+export async function openHubBoard({ Popup, POPUP_TYPE, cards, heroes = [], onImport = importCampaignFile, onRemove = removeCampaign, chronicles = {}, lock = null }) {
     await loadPixelManifest();
     const body = div('vt-root hb-root');
     body.append(div('vt-head')
@@ -429,9 +442,11 @@ export async function openHubBoard({ Popup, POPUP_TYPE, cards, heroes = [], onIm
         addTile.addClass('is-busy').find('.vt-go span').text('Comprobando…');
         try {
             const result = await read();
-            showImport(report, result, source);
-            if (result.ok) {
-                const tile = tileOf(result.card);
+            // J3.7: la recién añadida, abierta o cerrada según el rango del gremio.
+            const added = result.ok ? (lock ? lock(result.card) : result.card) : null;
+            showImport(report, result, source, /** @type {any} */ (added)?.locked ? String(/** @type {any} */ (added).lock ?? '') : '');
+            if (result.ok && added) {
+                const tile = tileOf(added);
                 tile.find('.vt-card').addBack('.vt-card').addClass('is-new');
                 const was = grid.find(`[data-campaign="${CSS.escape(result.card.id)}"]`);
                 const box = was.closest('.hb-tile');

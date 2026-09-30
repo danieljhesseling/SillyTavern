@@ -25,9 +25,10 @@ export const TIPS = {
     prisoners: 'Un prisionero se puede interrogar (da un rumor), entregar donde hay autoridad o soltar.',
     // H1 de wiki/LO_QUE_FALTA.md: lo nuevo, un sistema cada vez, cuando aparece por primera vez.
     high: 'Estás en alto: desde aquí se ataca con ventaja a quien está abajo. Subir cuesta el doble.',
-    spell: 'Los conjuros gastan cargas por círculo, que vuelven con el descanso largo. /grimorio dice cuántas quedan y qué componente piden los gordos.',
-    pet: 'Tu mascota no ocupa plaza ni cobra: comenta lo que pasa y ayuda en el tablero sin pelear en serio. /mascota para verla y acariciarla.',
-    bill: 'Ha llegado la cuenta de la semana: comida, sueldos y posada. /cuenta dice qué se paga; quien no cobra acaba yéndose.',
+    // J15.4: cada consejo nombra el botón, no el comando: sin conexión no hay dónde escribirlo.
+    spell: 'Los conjuros gastan cargas por círculo, que vuelven con el descanso largo. La ficha de quien lanza (pulsa su retrato) dice cuántas quedan y qué componente piden los gordos.',
+    pet: 'Tu mascota no ocupa plaza ni cobra: comenta lo que pasa y ayuda en el tablero sin pelear en serio. En la pausa, «Mascota», para verla y acariciarla.',
+    bill: 'Ha llegado la cuenta de la semana: comida, sueldos y posada. La «Mesa», arriba, dice qué se paga; quien no cobra acaba yéndose.',
     // J2.2 («Enseña jugando»): lo que se aprende en el momento en que pasa por primera vez.
     move: 'Te toca. Para andar, pulsa tu ficha y luego una casilla encendida, o arrástrala. Cuando acabes, «Fin de turno».',
     attack: 'Tienes un enemigo al alcance: púlsalo para ver cuánto le das, y luego «Atacar».',
@@ -104,7 +105,7 @@ export const GLOSSARY = [
     { term: 'Reputación', means: 'Lo que una facción piensa de vosotros, de −5 a +5. Mueve precios, peajes y cartas.' },
     { term: 'Hito', means: 'Un paso del hilo de la historia. El diario dice cuál tenéis entre manos.' },
     // Lo que llegó con la profundidad (R1–R10) y con B1 y B2.
-    { term: 'Modo', means: 'Cuánto pesa la partida: Relajado, Normal, Supervivencia o a tu medida. Seis letras que encienden heridas, cuenta, mundo, cuerpo, hierro e intemperie. /modo lo cambia.' },
+    { term: 'Modo', means: 'Cuánto pesa la partida: Relajado, Normal, Supervivencia o a tu medida. Seis letras que encienden heridas, cuenta, mundo, cuerpo, hierro e intemperie. Se cambia en la pausa.' },
     { term: 'Carga (de conjuro)', means: 'Cuántos conjuros de cada círculo quedan: tres de primero, dos de segundo, uno de tercero. Vuelven con el descanso largo.' },
     { term: 'Componente', means: 'Lo que gasta un conjuro gordo: polvo de hueso, ámbar, una pluma. Sale de los trofeos de caza y de la tienda.' },
     { term: 'En alto', means: 'Una casilla elevada (torre, escalones, empalizada). Subir cuesta el doble; desde arriba se ataca con ventaja.' },

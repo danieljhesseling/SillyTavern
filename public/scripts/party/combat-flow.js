@@ -99,7 +99,10 @@ import { noteDeed } from './world-growth.js';
 import { currentSurvival, survivalNow } from './modes.js';
 import { postCombatNarration, tellMoment, postForModel, showTip } from './narration.js';
 import { savePartyState, renderPartyMembers } from './roster.js';
-import { tellBondScene, rememberTogether, bark, judgeDecision, partyMorale } from './companions.js';
+import {
+    tellBondScene, rememberTogether, bark, judgeDecision, partyMorale, getPartyFormation, questAfterFight,
+} from './companions.js';
+import { healerFirst } from '../game-engine/campaign/formation.js';
 import { afterFight } from './social.js';
 import { raiseFame } from './town.js';
 import { countStat } from './menus.js';
@@ -1344,8 +1347,9 @@ export function endCombat(reason = 'ended') {
         // puede domar (un aviso con botón: no para la partida).
         if (currentPet()) petLivesIt();
         else offerTaming(combatEncounter.enemies.filter(e => (e.currentHp || 0) <= 0 && !(/** @type {any} */ (e).fled)));
-        // R3: quien sabe primeros auxilios levanta a quien quedó en el suelo.
-        const medic = patchUpAfterFight(partyMembers);
+        // R3: quien sabe primeros auxilios levanta a quien quedó en el suelo. J7.4: primero, quien
+        // cura en la formación.
+        const medic = patchUpAfterFight(healerFirst(getPartyFormation(), partyMembers));
         for (const fallenMember of medic ? partyMembers.filter(m => !m.dead && (Number(m.hp) || 0) <= 0) : []) {
             const healed = Math.max(1, Number(rollDiceDetailed(String(medic?.formula), 4).total) || 1);
             fallenMember.hp = Math.min(Number(fallenMember.maxHp) || healed, healed);
@@ -1467,6 +1471,8 @@ export function endCombat(reason = 'ended') {
     // J14.1 y J14.2: la pelea de tablero se lleva su parte del día, y tras ganarla, a veces
     // alguien del grupo tiene algo que decir.
     afterFight(reason, { board: currentBoardName });
+    // J14.9: si era la pelea de una misión personal, la misión sigue por donde diga el final.
+    void questAfterFight(reason, currentBoardName);
 }
 
 /**

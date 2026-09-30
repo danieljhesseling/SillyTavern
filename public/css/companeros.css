@@ -1,0 +1,134 @@
+/* ================================================================
+   Tus compañeros fuera de la pelea: la formación y los papeles (J7.4, `openFormationPanel` en
+   public/scripts/party/companions.js) y su misión personal (J14.9), en la ficha del compañero y
+   en su ventana. Los colores son los del juego (`--gs-*`, game-shell.css).
+   ================================================================ */
+
+.fm-root {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: min(560px, 90vw);
+}
+
+.fm-sub,
+.fm-alone {
+    margin: 0;
+    opacity: 0.85;
+}
+
+.fm-summary {
+    padding: 8px 10px;
+    border: 1px solid var(--gs-gold-line, rgba(214, 180, 106, 0.4));
+    border-radius: 8px;
+    color: var(--gs-accent-gold, #e2c27a);
+}
+
+.fm-title {
+    margin-top: 6px;
+    font-size: 0.85em;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--gs-accent-gold, #e2c27a);
+}
+
+.fm-row,
+.fm-duty {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.fm-place {
+    flex: 0 0 5.5em;
+    font-size: 0.85em;
+    opacity: 0.75;
+}
+
+.fm-name {
+    flex: 1 1 auto;
+    font-weight: 600;
+}
+
+.fm-row .menu_button {
+    margin: 0;
+    padding: 4px 10px;
+}
+
+.fm-duty-words {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.fm-duty-name {
+    font-weight: 600;
+}
+
+.fm-duty-does {
+    font-size: 0.85em;
+    opacity: 0.75;
+}
+
+.fm-pick {
+    flex: 0 0 auto;
+    max-width: 55%;
+}
+
+.pg-formation {
+    margin-top: 10px;
+}
+
+/* J14.9: la misión personal, en la ficha del compañero y en su ventana. */
+.cc-quest {
+    margin: 8px 0;
+    padding: 8px 10px;
+    border: 1px solid var(--gs-gold-line, rgba(214, 180, 106, 0.4));
+    border-radius: 8px;
+}
+
+.cc-quest-title {
+    font-weight: 600;
+    color: var(--gs-accent-gold, #e2c27a);
+}
+
+.cc-quest-line {
+    font-size: 0.9em;
+    opacity: 0.85;
+}
+
+.pq-root {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: min(560px, 90vw);
+}
+
+.pq-text {
+    margin: 0;
+    line-height: 1.5;
+}
+
+.pq-ending {
+    padding: 8px 10px;
+    border-left: 3px solid var(--gs-accent-gold, #e2c27a);
+    background: rgba(255, 255, 255, 0.04);
+}
+
+@media (max-width: 600px) {
+    .fm-root,
+    .pq-root {
+        min-width: 0;
+    }
+
+    .fm-duty {
+        flex-wrap: wrap;
+    }
+
+    .fm-pick {
+        max-width: 100%;
+        width: 100%;
+    }
+}

@@ -8,6 +8,7 @@ import { getCellVisibility } from './game-engine/board/fog-of-war.js';
 import { cliffEdges, elevationAt } from './game-engine/board/heights.js';
 import { zoneAt } from './game-engine/board/zones.js';
 import { boardBiome, firstArt, isPlainFace, loadPixelManifest, openPack, pixelManifest, terrainTile } from './game-engine/ui/pixel-art.js';
+import { initialsFor } from './game-engine/ui/hero-face.js';
 
 /** Si cada casilla en pixel carga: la que no, se pinta con los colores de antes. */
 const tileLoads = new Map();
@@ -1080,12 +1081,17 @@ export function renderLocationView(target, options) {
             el.find('.wm-token-tooltip-hp-fill').css('width', hpPct + '%');
 
             const tokenNameEl = el.find('.wm-token-name').text(token.name ?? '');
-            // Sin cara propia, su dibujo en pixel; si no carga, lo de siempre.
+            // Sin cara propia, su dibujo en pixel; si no carga, lo de siempre. J1.8: uno del grupo
+            // sin cara ni retrato (o con una imagen que ya no está) lleva sus iniciales en su
+            // color, como en su ficha y en la tira del grupo; no «???» ni la silueta gris.
             const drawn = tokenArt(token);
-            if (drawn || token.avatar) {
+            const ours = !token.isEnemy && !token.isNPC && !token.isSummon;
+            const ownFace = token.avatar && !(ours && isPlainFace(token.avatar)) ? token.avatar : '';
+            const initials = () => $(initialsFor(String(token.name ?? ''), 'wm-token-unknown wm-token-initials'));
+            if (drawn || ownFace) {
                 const image = $('<img>')
                     .addClass('wm-token-avatar')
-                    .attr('src', drawn || token.avatar)
+                    .attr('src', drawn || ownFace)
                     .attr('alt', token.name ?? '')
                     .insertBefore(tokenNameEl);
                 if (drawn) {
@@ -1093,10 +1099,14 @@ export function renderLocationView(target, options) {
                         .attr('data-pixel', 'true')
                         .one('error', () => {
                             image.removeClass('pixel-art wm-token-creature wm-token-bust').removeAttr('data-pixel');
-                            if (token.avatar) image.attr('src', token.avatar);
-                            else image.replaceWith($('<div>').addClass('wm-token-unknown').css('background', token.isEnemy ? '#7f1d1d' : '').text(token.isEnemy ? '☠' : '???'));
+                            if (ownFace) image.attr('src', ownFace);
+                            else image.replaceWith(ours ? initials() : $('<div>').addClass('wm-token-unknown').css('background', token.isEnemy ? '#7f1d1d' : '').text(token.isEnemy ? '☠' : '???'));
                         });
+                } else if (ours) {
+                    image.one('error', () => image.replaceWith(initials()));
                 }
+            } else if (ours) {
+                initials().insertBefore(tokenNameEl);
             } else if (token.isEnemy) {
                 $('<div>')
                     .addClass('wm-token-unknown')

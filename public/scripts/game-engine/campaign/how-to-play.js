@@ -30,17 +30,24 @@ const SKIP_LEGEND = new Set(['.']);
  * @param {Record<string, string>} [input.legend] La leyenda del tablero (`getMapLegend()`).
  * @param {boolean} [input.pet] Si hay mascota en esta partida.
  * @param {boolean} [input.magic] Si alguien del grupo lanza conjuros.
+ * @param {boolean} [input.offline] J15.4 y J18.7: jugando sin conexión no hay caja de escribir:
+ *   cada cosa se dice con el botón que la hace, no con su comando.
  * @returns {HelpSection[]}
  */
-export function buildHowToPlay({ survival, legend = {}, pet = false, magic = false }) {
+export function buildHowToPlay({ survival, legend = {}, pet = false, magic = false, offline = false }) {
     const on = (/** @type {string} */ letter) => hasLetter(survival, letter);
+    /** Lo que se dice con su comando o, sin conexión, con su botón. */
+    const say = (/** @type {string} */ typed, /** @type {string} */ pressed) => (offline ? pressed : typed);
     /** @type {HelpSection[]} */
     const out = [];
 
     out.push({
         id: 'reparto',
         title: 'Quién manda aquí',
-        lines: [
+        lines: offline ? [
+            'El juego decide y lo cuenta. La vida, las tiradas, el día, el dinero y quién está dónde los lleva el motor.',
+            'Todo se hace con botones: la fila de abajo, los sitios del pueblo, la barra del tablero y la pausa (arriba a la derecha). Si algo pide tirada, sale su botón.',
+        ] : [
             'El juego decide y el narrador cuenta. La vida, las tiradas, el día, el dinero y quién está dónde los lleva el motor, y no cuestan nada.',
             'El narrador escribe lo que pasa con eso. Si dice algo que el motor no confirma, manda el motor (`/contradicciones` lo enseña).',
             'Lo que escribes en el chat es lo que tu personaje dice o intenta. Si pide tirada, el juego te la ofrece.',
@@ -52,7 +59,7 @@ export function buildHowToPlay({ survival, legend = {}, pet = false, magic = fal
         title: `Tu modo: ${modeLabel(modeOf(survival))}`,
         lines: [
             ...LETTERS.map(letter => `${on(letter.id) ? '✓' : '·'} ${letter.title}: ${letter.note}`),
-            'Se cambia con `/modo` cuando quieras, y queda escrito en la crónica.',
+            say('Se cambia con `/modo` cuando quieras, y queda escrito en la crónica.', 'Se cambia en la pausa («Modo») cuando quieras, y queda escrito en la crónica.'),
         ],
     });
 
@@ -63,7 +70,8 @@ export function buildHowToPlay({ survival, legend = {}, pet = false, magic = fal
             'Pulsa tu ficha y luego una casilla encendida: el camino dice lo que cuesta, y en rojo si no llegas.',
             'Pulsa a un enemigo: su tarjeta dice lo que pasaría si atacas (la probabilidad, el daño) y lo que puedes usar contra él.',
             'Tu turno tiene movimiento, una acción y, a veces, una acción extra. «Acabar turno» avisa si te queda algo por hacer.',
-            'Huir se puede siempre (con su precio). Si hay una salida en el tablero, quien la pisa se va sin pagar los golpes: `/salir`.',
+            say('Huir se puede siempre (con su precio). Si hay una salida en el tablero, quien la pisa se va sin pagar los golpes: `/salir`.',
+                'Huir se puede siempre («Abandonar», con su precio). Si hay una salida en el tablero, quien la pisa se va sin pagar los golpes: sale «Salir por aquí».'),
         ],
     });
 
@@ -80,9 +88,10 @@ export function buildHowToPlay({ survival, legend = {}, pet = false, magic = fal
         lines: [
             'El tiempo pasa al viajar, descansar y hacer cosas. Cada día se come y se cura lo que cura.',
             on('b')
-                ? 'Cada semana llega la cuenta: sueldos, posada y comida. `/cuenta` la dice antes de que venza.'
+                ? say('Cada semana llega la cuenta: sueldos, posada y comida. `/cuenta` la dice antes de que venza.',
+                    'Cada semana llega la cuenta: sueldos, posada y comida. La «Mesa», arriba, la dice antes de que venza, parte a parte.')
                 : 'En este modo no hay cuenta semanal.',
-            'La mesa (`/mesa`) junta lo que pide atención esta semana, con su plazo y lo que pasa si no se atiende. No cabe todo: elegir es el juego.',
+            `La mesa (${say('`/mesa`', 'el botón «Mesa», arriba')}) junta lo que pide atención esta semana, con su plazo y lo que pasa si no se atiende. No cabe todo: elegir es el juego.`,
             on('c')
                 ? 'El mundo se mueve aunque no mires: facciones, rivales, casos. «Lo que viene» dice lo próximo.'
                 : 'En este modo el mundo espera a que vuelvas.',
@@ -91,8 +100,8 @@ export function buildHowToPlay({ survival, legend = {}, pet = false, magic = fal
 
     /** @type {string[]} */
     const extra = [];
-    if (magic) extra.push('Los conjuros salen del grimorio (`/grimorio`): tres cargas de primer círculo, dos de segundo y una de tercero, que vuelven con el descanso largo. Los gordos gastan un componente.');
-    if (pet) extra.push('Tu mascota comenta lo que pasa y ayuda en el tablero sin pelear en serio: avisar, distraer, rastrear. `/mascota` para verla.');
+    if (magic) extra.push(`Los conjuros salen del grimorio (${say('`/grimorio`', 'en la ficha de cada uno: pulsa su retrato')}): tres cargas de primer círculo, dos de segundo y una de tercero, que vuelven con el descanso largo. Los gordos gastan un componente.`);
+    if (pet) extra.push(`Tu mascota comenta lo que pasa y ayuda en el tablero sin pelear en serio: avisar, distraer, rastrear. ${say('`/mascota` para verla.', 'En la pausa, «Mascota», para verla.')}`);
     if (extra.length > 0) out.push({ id: 'lo-tuyo', title: 'Lo que tienes', lines: extra });
 
     out.push({
@@ -107,11 +116,18 @@ export function buildHowToPlay({ survival, legend = {}, pet = false, magic = fal
     out.push({
         id: 'perdido',
         title: 'Si te pierdes',
-        lines: [
+        lines: offline ? [
+            '«¿Qué hago?» (tecla H) dice lo que se puede hacer aquí; el glosario (tecla L), qué significa cada palabra.',
+            '«Mapa», arriba: los sitios, los caminos y tus notas.',
+            '«Guardar y cargar», en la pausa: tus ranuras, las que se llenan solas (al dormir en el gremio y al empezar el día) y los puntos de retorno de hoy. Desde ahí también se exporta la partida entera.',
+            '«Tu sesión», en la pausa: en qué se te ha ido el rato.',
+            '«Cómo se juega», en la pausa: esta página.',
+        ] : [
             '«¿Qué hago?» (tecla H) dice lo que se puede hacer aquí; el glosario (tecla L), qué significa cada palabra.',
             '`/estado`: todo lo que el juego da por cierto ahora mismo.',
             '`/mapa`: los sitios, los caminos y tus notas.',
             '`/punto`: los puntos de retorno, para volver atrás si el modo lo deja.',
+            '«Guardar y cargar», en la pausa: tus ranuras y los puntos de retorno de hoy.',
             '«Tu sesión», en la pausa: en qué se te ha ido el rato y cuántas llamadas al narrador llevas.',
             '`/ayuda`: esta página.',
         ],

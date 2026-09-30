@@ -117,9 +117,11 @@ export async function openRituals(member) {
  *
  * @param {any} member
  * @param {string} spellId
+ * @param {{quiet?: boolean}} [options] `quiet`: sin su cuadro de texto (la ventana de la magia
+ *   fuera de combate ya cuenta lo que ha pasado, J19.10).
  * @returns {string} Lo que se ha hecho, o vacío.
  */
-export function castRitual(member, spellId) {
+export function castRitual(member, spellId, { quiet = false } = {}) {
     const choice = ritualsFor(member).find(c => c.id === spellId);
     if (!choice) return '';
     if (!choice.ok) {
@@ -189,7 +191,7 @@ export function castRitual(member, spellId) {
     renderPartyMembers();
     const head = `${caster} lanza ${choice.name} como ritual (${choice.minutes} minutos).`;
     postCombatNarration(`📖 [MAGIA] ${[head, ...lines].join(' ')}`);
-    void Popup.show.text(choice.name, [head, ...lines].join('\n'));
+    if (!quiet) void Popup.show.text(choice.name, [head, ...lines].join('\n'));
     if (isShellOpen()) refreshGameShell();
-    return head;
+    return quiet ? [head, ...lines].join(' ') : head;
 }

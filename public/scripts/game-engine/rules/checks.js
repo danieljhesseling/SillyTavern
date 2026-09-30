@@ -163,13 +163,16 @@ export function checkOptions(member, { locked = false } = {}) {
  * @param {''|'advantage'|'disadvantage'} [input.edge] Idea 59: sin la lengua de quien escucha,
  *   con desventaja. Se tiran dos dados y se queda el que toca.
  * @param {string} [input.why] Por qué, para la línea de la tirada.
+ * @param {number} [input.bonus] J19.10: lo que suma algo de fuera (la Luz en un sitio oscuro: +2).
+ * @param {string} [input.bonusWhy] De dónde sale, para la línea de la tirada («la Luz»).
  * @returns {{skill: string, label: string, natural: number, modifier: number, total: number, dc: number, success: boolean, line: string, said: string, draft: string}|null}
  *   `line` es para el modelo, con la orden de no cambiarlo; `said`, la misma tirada para el registro.
  */
-export function rollCheck({ member, skill, rollD20, dc = DEFAULT_DC, edge = '', why = '' }) {
+export function rollCheck({ member, skill, rollD20, dc = DEFAULT_DC, edge = '', why = '', bonus = 0, bonusWhy = '' }) {
     const def = SKILLS[/** @type {keyof typeof SKILLS} */ (skill)];
     if (!def || !member) return null;
-    const { modifier } = skillModifier(member, skill);
+    const extraBonus = Math.trunc(Number(bonus) || 0);
+    const modifier = skillModifier(member, skill).modifier + extraBonus;
     const die = () => Math.max(1, Math.min(20, Math.floor(Number(rollD20()) || 1)));
     const first = die();
     const second = edge ? die() : first;
@@ -181,7 +184,10 @@ export function rollCheck({ member, skill, rollD20, dc = DEFAULT_DC, edge = '', 
 
     // Lo lee el modelo: tiene que ser corto, sin ambigüedad, y decir que no se discute. Con
     // la misma forma que todas las tiradas (idea 146).
-    const extra = edge ? `${edge === 'disadvantage' ? 'desventaja' : 'ventaja'}: ${first} y ${second}${why ? `, ${why}` : ''}` : '';
+    const extra = [
+        edge ? `${edge === 'disadvantage' ? 'desventaja' : 'ventaja'}: ${first} y ${second}${why ? `, ${why}` : ''}` : '',
+        extraBonus ? `${extraBonus > 0 ? '+' : ''}${extraBonus} por ${String(bonusWhy || 'ayuda').trim()}` : '',
+    ].filter(Boolean).join(' · ');
     const said = rollLine({ what: def.label, who: name, total, against: dc, label: 'CD', success, verdict, natural, modifier, ...(extra ? { extra } : {}) });
     const line = `[TIRADA ${said}. El dado ya está tirado: narra la consecuencia, no lo cambies.]`;
 

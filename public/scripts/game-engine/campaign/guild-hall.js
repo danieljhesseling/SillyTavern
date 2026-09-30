@@ -4,8 +4,8 @@
  *
  * - **El tablón**: las campañas (`/campanas`) y los encargos cortos (J3.8).
  * - **Tu gente**: tus personajes del gremio (J1.6) y las espadas de alquiler.
- * - **La casa**: el cofre y el arca (J3.4), el patio donde se entrena y se sube de nivel (J3.5) y
- *   los edificios (J3.6).
+ * - **La casa**: el cofre y el arca (J3.4), el patio donde se entrena y se sube de nivel (J3.5),
+ *   los edificios (J3.6) y las camas, donde dormir guarda la partida (J3.3).
  * - **La memoria**: el Salón de la fama (J3.9).
  * - **La salida**: a la plaza, o de vuelta a la campaña que dejasteis a medias.
  *
@@ -32,13 +32,15 @@ export const HALL_CHIPS = [
     { id: 'hub-chest', label: 'El cofre', icon: 'fa-box-archive', command: '/cofre' },
     { id: 'hub-train', label: 'Entrenar y subir de nivel', icon: 'fa-dumbbell', command: '/entrenar-gremio' },
     { id: 'hub-house', label: 'Los edificios', icon: 'fa-house-chimney', command: '/casa-gremio' },
+    // J7.4: quién va delante y quién cura, guía, vigila y caza. Se abre sin comando (`runShellChip`).
+    { id: 'hub-formation', label: 'Formación y papeles', icon: 'fa-people-line', command: '' },
 ];
 
 /** Las partes de la sala, en orden, con las fichas que van en cada una. */
 export const HALL_SECTIONS = [
     { id: 'tablon', title: 'El tablón', chips: ['hub-skip', 'hub-board', 'hub-errands'] },
-    { id: 'gente', title: 'Tu gente', chips: ['hub-heroes', 'hub-hire'] },
-    { id: 'casa', title: 'La casa', chips: ['hub-chest', 'hub-train', 'hub-house'] },
+    { id: 'gente', title: 'Tu gente', chips: ['hub-heroes', 'hub-hire', 'hub-formation'] },
+    { id: 'casa', title: 'La casa', chips: ['hub-chest', 'hub-train', 'hub-house', 'hub-sleep'] },
     { id: 'memoria', title: 'La memoria del gremio', chips: ['hub-hall', 'hub-memory'] },
 ];
 
@@ -124,6 +126,9 @@ export function hallDetail(id, hall) {
             if (!h) return '';
             return h.built > 0 ? `${count(h.built, 'nivel levantado', 'niveles levantados')} de ${h.total}` : 'Nada levantado todavía';
         }
+        // J3.3: las camas de la casa no se pagan; dormir en ellas guarda la partida (J15.2).
+        case 'hub-sleep':
+            return 'Sin pagar: se cura, amanece y se guarda la partida';
         default:
             return '';
     }

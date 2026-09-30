@@ -42,6 +42,8 @@ const jobs = [
     { name: 'gremio', kind: 'e2e', args: ['tools/e2e-gremio.mjs'] },
     // J2.3: saltar la prueba de la bodega. Corto: el personaje, saltarla y el tablón.
     { name: 'saltar la prueba', kind: 'e2e', args: ['tools/e2e-saltar-prueba.mjs'] },
+    // J3.1 a J3.8, J15.2 y J15.6: la sala del gremio jugada con el ratón, guardar y cargar (puerto 8173).
+    { name: 'sala del gremio', kind: 'e2e', args: ['tools/e2e-sala-gremio.mjs'] },
     // J14: tu gente en el pueblo del gremio: quedar, charlar, la cabecera por partes (puerto 8164).
     { name: 'gente', kind: 'e2e', args: ['tools/e2e-gente.mjs'] },
     // J5.4: añadir una campaña al tablón desde un archivo, empezarla y volver.
@@ -49,6 +51,9 @@ const jobs = [
     // J20.9: la vuelta en un móvil, a toques y sin teclado, de pie y tumbado (puerto 8135).
     { name: 'móvil', kind: 'e2e', args: ['tools/e2e-movil.mjs'] },
     ...(QUICK ? [] : /** @type {Job[]} */ ([
+        // J19 y J19.10: la magia y la ficha, y la magia fuera de combate (puertos 8137 y 8139).
+        { name: 'magia', kind: 'e2e', args: ['tools/e2e-magia.mjs'] },
+        { name: 'magia fuera de combate', kind: 'e2e', args: ['tools/e2e-magia-campo.mjs'] },
         { name: 'vuelta 1-48', kind: 'e2e', args: ['tools/e2e-campaign.mjs', '--parte', 'a', '--port', '8126'] },
         { name: 'vuelta 49-73', kind: 'e2e', args: ['tools/e2e-campaign.mjs', '--parte', 'b', '--port', '8127'] },
     ])),

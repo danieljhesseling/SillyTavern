@@ -421,11 +421,32 @@ try {
     check('J9.2: llegar a Castillo de Vane cumple el hito 4 y abre la escena de Karl', karl && (await meta()).done.includes('el-invierno-cierra-el-paso'),
         JSON.stringify({ story: await story(), done: (await meta()).done }));
     await shoot('karl');
+    // J11.1: lo que no tiene vuelta atrás lo dice en la opción, y se decide a la segunda pulsación.
+    /** @type {string[]} */
+    const karlPlates = [];
+    for (let i = 0; i < 12 && !((await story())?.options.length); i++) {
+        karlPlates.push(String((await story())?.plate ?? ''));
+        await page.locator('dialog.ps-dialog[open] .ps-next').first().click({ timeout: 3000 }).catch(() => {});
+        await page.waitForTimeout(200);
+    }
+    const weighty = await page.evaluate(() => [...document.querySelectorAll('dialog.ps-dialog[open] .dw-option')]
+        .map(o => ({ id: o.getAttribute('data-option') || '', warn: (o.querySelector('.nr-badge')?.textContent || '').trim() })));
+    await page.locator('dialog.ps-dialog[open] .dw-option[data-option="mirar-a-otro-lado"]').click({ timeout: 4000 }).catch(() => {});
+    await page.waitForTimeout(300);
+    const armed = await page.evaluate(() => ({
+        armed: Boolean(document.querySelector('dialog.ps-dialog[open] .dw-option.nr-armed[data-option="mirar-a-otro-lado"]')),
+        still: document.querySelectorAll('dialog.ps-dialog[open] .dw-option').length,
+    }));
+    check('J11.1: las opciones que pesan dicen «Esto no tiene vuelta atrás», y la primera pulsación solo las marca',
+        weighty.some(o => o.id === 'mirar-a-otro-lado' && /no tiene vuelta atrás/.test(o.warn)) && armed.armed && armed.still > 0,
+        JSON.stringify({ weighty, armed }));
+    await shoot('sin-vuelta');
     const karlFrames = await playScene(['mirar-a-otro-lado']);
     await page.waitForTimeout(1200);
     now = await meta();
     check('D-J39: la escena de Karl ya es la charla: cumple su propio hito sin tener que hablar con él',
-        karlFrames.some(f => f.plate === 'Karl') && now.done.includes('el-hambre-de-los-lobos'), JSON.stringify({ done: now.done, plates: karlFrames.map(f => f.plate) }));
+        [...karlPlates, ...karlFrames.map(f => f.plate)].includes('Karl') && now.done.includes('el-hambre-de-los-lobos'),
+        JSON.stringify({ done: now.done, plates: [...karlPlates, ...karlFrames.map(f => f.plate)] }));
     const textOnly = await until(async () => (await story())?.id === 'la-oferta-del-castillo', 15000);
     const offer = await story();
     check('D-J40: el hito siguiente, que solo trae texto, se abre en la ventana como una escena corta del narrador',
@@ -538,7 +559,8 @@ try {
     const pierCard = await until(async () => await page.locator('.vs-card').count() > 0, 8000);
     check('Gremio: se gana en el muelle y sale el panel de victoria, sin escena encima', pierFight && pierCard && (await story()) === null, JSON.stringify({ pierFight, pierCard }));
     await page.locator('.vs-card').first().click({ timeout: 4000 }).catch(() => {});
-    const charla = await until(async () => (await story())?.id === 'la-charla', 15000);
+    // Tras la pelea pueden salir antes otras cosas (lo que dice un compañero, un consejo): se espera más.
+    const charla = await until(async () => (await story())?.id === 'la-charla', 30000);
     check('Gremio: al cerrar el panel se abre la escena de la charla con Tomás', charla, JSON.stringify(await story()));
     await shoot('gremio-tomas');
     const charlaFrames = await playScene(['una-cerveza']);

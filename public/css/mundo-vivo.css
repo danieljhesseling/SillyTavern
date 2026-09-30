@@ -561,6 +561,7 @@
     display: flex;
     align-items: baseline;
     gap: 12px;
+    align-self: stretch;
 }
 
 .fm-title {
@@ -571,6 +572,7 @@
 
 .fm-close {
     margin-left: auto;
+    gap: 0.4em;
 }
 
 .fm-intro {

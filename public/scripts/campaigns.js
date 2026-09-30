@@ -10,7 +10,7 @@ import {
 } from '../script.js';
 import { Popup, POPUP_TYPE, POPUP_RESULT } from './popup.js';
 import { buildNewCampaignCta, createCampaign } from './game-engine/ui/campaign-wizard.js';
-import { openCampaignBuilder, loadDndCatalog, setPartyFromWorldEntries, beginCampaignPlot, adoptVeteranGear, giveStartingGear, applyCampaignRuleset, applyModeExtras, adoptPet, partySnapshot, adoptCarriedParty, giveStartingPurse, plotEndingTitle, postJourney, postHomecoming, recordFinishedCampaign, seatPartyHero, memberFromEntry, getCombatEncounter } from './party.js';
+import { openCampaignBuilder, loadDndCatalog, setPartyFromWorldEntries, beginCampaignPlot, adoptVeteranGear, giveStartingGear, applyCampaignRuleset, applyModeExtras, adoptPet, partySnapshot, adoptCarriedParty, giveStartingPurse, plotEndingTitle, postJourney, postHomecoming, recordFinishedCampaign, seatPartyHero, memberFromEntry, getCombatEncounter, campaignChronicle, scheduleGuildVisitor, settleCampaignCompanions, welcomeGuildCompanions, sayHomecomings } from './party.js';
 import { isCampaignWorld, getStartingPoint, uniqueWorldName } from './game-engine/campaign/campaign-worlds.js';
 import {
     HUB_KEY, HUB_HOME_KEY, HUB_CAMPAIGN_KEY, HUB_PACK, HUB_WORLD_NAME, HUB_START_GOLD, HUB_NEXT_HERO_GOLD, HUB_NARRATOR,
@@ -26,7 +26,8 @@ import {
 import { normalizeCalendar } from './game-engine/campaign/calendar.js';
 import { validatePack } from './game-engine/campaign/campaign-pack.js';
 import { homecomingScene } from './game-engine/campaign/campaign-end.js';
-import { GUILD_MEMORY_KEY, endingLegacy, rememberCampaign } from './game-engine/campaign/guild-memory.js';
+import { GUILD_MEMORY_KEY, endingLegacy, rememberCampaign, homecomingLegacyLine } from './game-engine/campaign/guild-memory.js';
+import { HUB_CHRONICLES_KEY, withChronicle } from './game-engine/campaign/story-book.js';
 import { resolveGender, whoOfParty } from './game-engine/campaign/grammar.js';
 import { buildHeroEntry, describeHero, classIcon, rollStatBonus } from './game-engine/campaign/hero.js';
 import { planCampaignDeletion, planGuildDeletion, describeDeletion } from './game-engine/campaign/campaign-delete.js';
@@ -35,6 +36,8 @@ import {
 } from './game-engine/campaign/narrator.js';
 import { generateWorld } from './game-engine/world-builder/world-schema.js';
 import { escapeHtml, saveBase64AsFile, convertTextToBase64 } from './utils.js';
+import { journeyWithStable, stableMounts } from './game-engine/campaign/guild-buildings.js';
+import { readMounts } from './game-engine/world/mounts.js';
 import { freshCompendium } from './game-engine/compendio/browser.js';
 import { makeName } from './game-engine/compendio/names.js';
 import { createSeededRandom } from './game-engine/combat/seeded-random.js';
@@ -1705,6 +1708,23 @@ export async function changeHubHero(choice) {
 }
 
 /**
+ * J3.6: las monturas del establo del gremio, en el chat de la campaña: dentro de ella se va
+ * montado. Volver a la campaña no las suma otra vez: son las mismas.
+ *
+ * @param {any} guild El del gremio, leído antes de salir de su chat.
+ * @param {number} riders
+ * @returns {Promise<void>}
+ */
+async function rideFromStable(guild, riders) {
+    const ride = stableMounts(guild, riders);
+    if (!chat_metadata || Object.keys(ride).length === 0) return;
+    const now = readMounts(chat_metadata.mounts);
+    for (const [id, count] of Object.entries(ride)) now[id] = Math.max(now[id] ?? 0, count);
+    chat_metadata.mounts = now;
+    await saveMetadata();
+}
+
+/**
  * J4: empezar una campaña del tablón, o seguirla si ya se empezó. El grupo va entero.
  *
  * @param {string} id La campaña, de `mundos.json`.
@@ -1726,6 +1746,10 @@ export async function playHubCampaign(id) {
             toastr.warning('Sin personaje no se sale del gremio.', 'Campañas');
             return;
         }
+        // J3.6: el establo del gremio: se sale montado y se llega antes. Se mira ahora, con el
+        // chat del gremio abierto: en el de la campaña ya no está.
+        const guildNow = chat_metadata?.guild ?? null;
+        const road = (/** @type {any} */ row) => journeyWithStable(row, guildNow, carried.length);
         const entries = carriedEntries(home, carried);
         await saveMetadata();
         // El gremio sabe siempre dónde está su chat: es por donde se vuelve.
@@ -1743,7 +1767,10 @@ export async function playHubCampaign(id) {
                     chat_metadata[HUB_BOARD_NAME_KEY] = String(board.name);
                     await saveMetadata();
                 }
-                await postJourney(journeyLine({ world: board, home: hubTownName(home) }));
+                await rideFromStable(guildNow, carried.length);
+                await postJourney(journeyLine({ world: road(board), home: hubTownName(home) }));
+                // J7.2: quien es del gremio y salió de aquí, vuelve a su tierra.
+                sayHomecomings(id);
                 toastr.success('Seguís donde lo dejasteis, con lo que traéis del gremio.', 'De vuelta a la campaña');
                 return;
             }
@@ -1809,7 +1836,9 @@ export async function playHubCampaign(id) {
             meta[HUB_KEY] = withHubCampaign(meta[HUB_KEY], id, { worldName: created.worldName, chat: openChat(), name: String(world.name || id) });
         });
         // J4.9: el camino hasta allí, antes de la primera escena.
-        await postJourney(journeyLine({ world, home: hubTownName(home) }));
+        await rideFromStable(guildNow, carried.length);
+        await postJourney(journeyLine({ world: road(world), home: hubTownName(home) }));
+        sayHomecomings(id);
         await beginCampaignPlot('');
     } catch (error) {
         console.error('[gremio] no se pudo abrir la campaña', error);
@@ -1837,6 +1866,8 @@ export async function returnToHub() {
             return;
         }
         const id = String(data?.metadata?.[HUB_CAMPAIGN_KEY] ?? '');
+        // J7.2: con la campaña terminada, cada compañero de esta tierra decide si se viene al gremio.
+        const stays = plotEndingTitle() ? await settleCampaignCompanions({ campaign: id }) : null;
         const carried = partySnapshot();
         const entries = carriedEntries(data, carried);
         const home = await loadWorldInfo(homeWorld);
@@ -1855,6 +1886,15 @@ export async function returnToHub() {
         if (!hub.chat) throw new Error('No encuentro la partida del gremio.');
         // J4.5: la vuelta tras el final se cuenta una vez; volver otra vez de pasear por ella, no.
         const firstHomecoming = Boolean(ending) && !hub.campaigns[id]?.finished;
+        // J9.3 y J11.5: por qué capítulo ibais y el libro de la campaña, para leerlo desde el tablón.
+        const chronicle = campaignChronicle();
+        // J11.4: cómo os llaman desde este final, para decirlo en la vuelta.
+        const endingLegacyNow = ending ? endingLegacy(chat_metadata?.plot, String(chat_metadata?.plotEnding || ending))?.legacy ?? null : null;
+        const legacyLine = endingLegacyNow ? homecomingLegacyLine({
+            legacy: endingLegacyNow,
+            home: hubTownName(home),
+            hero: carried.find(m => !m.guest) ?? carried[0] ?? null,
+        }) : '';
         await updateWorld(homeWorld, meta => {
             const was = readHub(meta[HUB_KEY]).campaigns[id];
             meta[HUB_KEY] = withHubCampaign(meta[HUB_KEY], id, {
@@ -1864,7 +1904,9 @@ export async function returnToHub() {
                 day: Math.max(day, was?.day ?? 0),
                 // D-J35: su nombre del tablón, también en las empezadas antes de apuntarlo.
                 ...(board?.name ? { name: String(board.name) } : {}),
+                chapter: chronicle.chapter,
             });
+            if (chronicle.book && !chronicle.book.empty) meta[HUB_CHRONICLES_KEY] = withChronicle(meta[HUB_CHRONICLES_KEY], id, chronicle.book);
             // J11.4: lo que el gremio recuerda de este final (su legado, si el paquete lo escribe).
             // Si ya estaba apuntada, `rememberCampaign` la deja como la primera vez.
             if (ending) {
@@ -1883,14 +1925,18 @@ export async function returnToHub() {
         if (!await openHubChat(hub.chat, homeWorld)) throw new Error('No se pudo abrir la partida del gremio.');
         const { uids } = await ensureHubEntries(homeWorld, entries);
         adoptCarriedParty(carried, { worldName: homeWorld, uids });
-        await postJourney(journeyLine({ world: board, home: hubTownName(home), back: true }));
+        // J7.2: quien se vino y no cabe en el grupo espera en casa; y se dice quién es ya del gremio.
+        welcomeGuildCompanions(stays);
+        await postJourney(journeyLine({ world: journeyWithStable(board, chat_metadata?.guild ?? null, carried.length), home: hubTownName(home), back: true }));
         if (firstHomecoming) {
-            await postHomecoming(homecomingScene({
+            await postHomecoming([homecomingScene({
                 campaign: String(board?.name || ''),
                 ending,
                 home: hubTownName(home),
                 fallen: record?.fallen ?? [],
-            }));
+            }), legacyLine].filter(Boolean).join(' '));
+            // J11.4: y quien vendrá a buscaros por ello, días después.
+            if (endingLegacyNow) scheduleGuildVisitor(endingLegacyNow, id);
         }
         toastr.success(ending
             ? `Volvéis al gremio. La campaña acabó: ${ending}.`
@@ -2694,10 +2740,14 @@ async function deleteGuild(guildWorldName) {
         },
     );
 
+    // J15.2: con el gremio se van sus ranuras de guardar; también se dice.
+    const { gameSlotsLine } = await import('./guardar-partida.js');
+    const slots = gameSlotsLine(guildWorldName);
+    const lines = slots ? [...plan.lines, /^1 /.test(slots) ? 'También se borra su ranura guardada.' : `También se borran sus ${slots}.`] : plan.lines;
     // El titulo se interpola como HTML y los nombres los escribe el jugador.
     const confirmed = await Popup.show.confirm(
         escapeHtml(plan.title),
-        plan.lines.map(line => escapeHtml(line).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')).join('<br>'),
+        lines.map(line => escapeHtml(line).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')).join('<br>'),
         { okButton: 'Borrar', cancelButton: 'Cancelar' },
     );
     if (!confirmed) return;

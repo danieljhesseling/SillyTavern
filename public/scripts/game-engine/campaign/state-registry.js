@@ -49,6 +49,10 @@ export const STATE_KEYS = [
     { key: 'bench', kind: 'juego', owner: 'party.js', what: 'Quién se quedó en el gremio (banquillo)' },
     // J7.4: se lee con `readFormation` (campaign/formation.js); la guarda `party/companions.js`.
     { key: 'party_formation', kind: 'juego', owner: 'party/companions.js', what: 'El orden de marcha y quién cura, habla, guía, vigila y caza' },
+    // J14.7 y J14.8: lo guarda `party/travel.js` con `recordNight` (campaign/nights.js).
+    { key: 'noches', kind: 'juego', owner: 'party/travel.js', what: 'Lo que ya pasó de noche: quién llegó, las rondas y las charlas de pareja ya oídas' },
+    // J14.9: lo guarda `party/companions.js` (campaign/companion-quests.js).
+    { key: 'misionesPersonales', kind: 'juego', owner: 'party/companions.js', what: 'Las misiones personales de tus compañeros: en qué paso van y cómo acabaron' },
     { key: 'dispatches', kind: 'juego', owner: 'party.js', what: 'Quién está fuera haciendo un encargo sin el héroe' },
     { key: 'cases', kind: 'juego', owner: 'party.js', what: 'El caso abierto, sus pistas encontradas y los ya cerrados' },
     { key: 'duels', kind: 'juego', owner: 'party.js', what: 'Con quién se habló ya hoy (un duelo de palabras por persona y día)' },
@@ -114,6 +118,8 @@ export const STATE_KEYS = [
     { key: 'weatherToday', kind: 'juego', owner: 'party.js', what: 'El tiempo de hoy' },
     { key: 'narratorRecent', kind: 'juego', owner: 'party.js', what: 'Las últimas frases del narrador del motor, para no repetirlas' },
     { key: 'fieldGains', kind: 'juego', owner: 'party.js', what: 'Lo que ya se sacó hoy con tiradas en cada sitio, y lo que ya se examinó' },
+    // J19.10: la guarda `party/magic.js` al lanzar Luz fuera de combate.
+    { key: 'fieldLight', kind: 'juego', owner: 'party/magic.js', what: 'La Luz encendida con magia: el día y la parte del día en que se lanzó, y quién' },
     { key: 'sucesos', kind: 'juego', owner: 'party.js', what: 'Los últimos sucesos con decisión que salieron, y los que volverán días después' },
     // --- Los compañeros por dentro
     { key: 'approval', kind: 'juego', owner: 'party.js', what: 'Lo que les ha parecido a los compañeros lo que hacéis' },

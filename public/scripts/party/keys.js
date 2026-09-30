@@ -29,6 +29,12 @@ export const NARRATOR_RECENT_KEY = 'narratorRecent';
  */
 export const FIELD_GAINS_KEY = 'fieldGains';
 
+/**
+ * J19.10: la Luz lanzada fuera de combate (`castField` → `effects.light`): el día y la parte
+ * del día en que se encendió, y quién. Dura lo que queda de esa parte del día.
+ */
+export const FIELD_LIGHT_KEY = 'fieldLight';
+
 /** Z4: los sucesos que salieron, y los que volverán. */
 export const SUCESOS_KEY = 'sucesos';
 

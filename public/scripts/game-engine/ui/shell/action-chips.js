@@ -72,13 +72,17 @@ const MAX_CHIPS = 7;
  *   campañas y los mercenarios, o volver a él desde una campaña. Van delante: es a lo que se viene.
  * @param {Array<{id: string, label: string, icon: string, command: string}>} [input.social] Tu gente (J14): la charla
  *   que espera, quedar con alguien y charlar. Van al final: la pantalla del pueblo ya los enseña por sitio.
+ * @param {string[]} [input.magic] J19.10: los conjuros que ahora sirven de algo aquí fuera de combate (una Luz a
+ *   oscuras, Identificar, preguntar al muerto de un caso). Con alguno, la ficha «Magia» abre su ventana.
+ * @param {string} [input.heal] J19.10, «curar en el viaje»: el conjuro con que se curaría a los heridos ahora, de
+ *   un toque. Vacío si nadie está herido o nadie puede.
  * @returns {ActionChip[]}
  */
 export function buildActionChips({
     fighting = false, hasBoard = false, doors = [], companions = [], mentioned = [],
     places = [], boards = [], hurt = false, hitDice = 0, rumors = 0, explore = false, proposals = [], requests = [], forage = false,
     people = [], prisoners = [], limit = MAX_CHIPS, typed = [], replies = [], extras = [], camp = false, stairs = false, hub = [], fight = '', thread = [],
-    board = '', social = [],
+    board = '', social = [], magic = [], heal = '',
 } = {}) {
     if (fighting) return [];
 
@@ -163,6 +167,14 @@ export function buildActionChips({
     // Idea 139: lo que el narrador ofrece coger.
     for (const extra of extras.slice(0, 3)) {
         chips.push({ id: extra.id, label: extra.label, icon: extra.icon, source: 'motor', command: extra.command });
+    }
+
+    // J19.10: la magia fuera de combate, solo cuando sirve aquí: curar a los heridos de un
+    // toque, y la ventana de la magia con lo que ahora vale. La abre quien pulsa (sin comando).
+    if (heal) chips.push({ id: 'field-heal', label: `Curar con magia (${heal})`, icon: 'fa-hand-holding-medical', source: 'motor' });
+    const spells = (Array.isArray(magic) ? magic : []).map(name => String(name ?? '').trim()).filter(Boolean);
+    if (spells.length > 0) {
+        chips.push({ id: 'field-magic', label: `Magia: ${spells.slice(0, 2).join(', ')}`, icon: 'fa-wand-sparkles', source: 'motor' });
     }
 
     // Lo que el narrador ha propuesto: es de lo que se estaba hablando, y existe solo si se

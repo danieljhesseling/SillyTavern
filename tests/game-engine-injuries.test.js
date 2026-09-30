@@ -176,7 +176,12 @@ describe('contado para leerlo', () => {
         const [line] = describeInjuries(member);
         expect(line).toMatch(/Pierna rota/);
         expect(line).toMatch(/velocidad -10/);
-        expect(line).toMatch(/14 día\(s\)/);
+        expect(line).toMatch(/14 días/);
+    });
+
+    test('lo que no resta nada no deja un «— ·» colgando (J1.7)', () => {
+        const line = describeInjuries({ injuries: [{ id: 'disease', label: 'Fiebre de los pantanos', modifiers: {}, days: 1, daysLeft: 1 }] })[0];
+        expect(line).toBe('Fiebre de los pantanos · 1 día');
     });
 
     test('y lo que no cura lo dice sin rodeos', () => {

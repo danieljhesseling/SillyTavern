@@ -67,6 +67,10 @@ const FORK_FILES = [
     'public/scripts/game-engine/compendio/browser.js',
     'public/scripts/game-engine/ui/hero-creator.js',
     'public/scripts/game-engine/ui/pixel-art.js',
+    // J1.8: tu cara sin arte (las iniciales en tu color). J19.10: la magia fuera de combate.
+    'public/scripts/game-engine/ui/hero-face.js',
+    'public/scripts/game-engine/rules/field-magic.js',
+    'public/scripts/game-engine/ui/field-magic-panel.js',
     'public/scripts/game-engine/rules/injuries.js',
     'public/scripts/game-engine/rules/remedies.js',
     'public/scripts/game-engine/rules/checks.js',

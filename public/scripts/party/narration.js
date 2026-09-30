@@ -39,7 +39,8 @@ import {
     sucesoCount, pickSucesos, sucesoById, optionView, resolveOption, readSucesoState, noteSuceso, dueFollowUp,
     describeEffect,
 } from '../game-engine/campaign/sucesos.js';
-import { laterRows } from '../game-engine/campaign/aftermath.js';
+import { laterRows, scheduleFollows } from '../game-engine/campaign/aftermath.js';
+import { visitorFollow } from '../game-engine/campaign/guild-memory.js';
 import { planTip, nextQueuedTip } from '../game-engine/ui/shell/tips.js';
 import { memoryLines } from '../game-engine/campaign/memories.js';
 import { promptKey } from '../game-engine/cost/prompt-order.js';
@@ -62,7 +63,9 @@ import {
     actsOnItsOwn, getAttackableEnemiesForMember, getCurrentActingMember, getCurrentTurnEntry,
 } from './combat-state.js';
 import { pushCombatLogEntry, pushCombatLogLines } from './combat-log.js';
-import { currentSeason, getLocationBoards, lastCompendium, lastHub, lastHubHome, lastPack, lastWorldNpcs } from './world.js';
+import {
+    currentSeason, getLocationBoards, guildVisitorRows, lastCompendium, lastHub, lastHubHome, lastPack, lastWorldNpcs,
+} from './world.js';
 import { rulerOf, shiftFactionStanding } from './factions.js';
 import {
     advanceCampaignDay, advanceCampaignSlot, campaignDay, getCampaignCalendar, getCurrentSlotLabel,
@@ -186,6 +189,22 @@ export function storyWindowsOn() {
     }
 }
 
+/**
+ * J11.4: al volver al gremio tras el final de una campaña, quien vendrá a buscaros por lo que
+ * hicisteis allí queda esperando: sale días después como una tarjeta, donde estéis (en el gremio).
+ * Se llama con la partida del gremio ya abierta.
+ *
+ * @param {any} legacy El legado del final (`endingLegacy(...).legacy`).
+ * @param {string} campaignId La campaña, por su id del tablón.
+ * @returns {void}
+ */
+export function scheduleGuildVisitor(legacy, campaignId) {
+    const follow = visitorFollow(legacy, campaignId);
+    if (!follow || !chat_metadata) return;
+    chat_metadata[SUCESOS_KEY] = scheduleFollows(readSucesoState(chat_metadata[SUCESOS_KEY]), { follows: follow, day: Math.max(1, campaignDay()) });
+    saveMetadata();
+}
+
 /** Las tarjetas, de una en una: dos que salen a la vez no se tapan. */
 let sucesoQueue = Promise.resolve();
 
@@ -206,7 +225,8 @@ export function playSucesos(moment, facts = {}, days = 1) {
         if (!compendium?.has?.('sucesos')) return;
         // J11.2: con los de `sucesos.json`, las tarjetas que vuelven de lo decidido en el hilo y
         // en las charlas (`later`): si no, la que se dejó agendada no se encontraría nunca.
-        const rows = [...compendium.find('sucesos', {}), ...laterRows(chat_metadata?.[PLOT_KEY], { dialogues: lastDialogues })];
+        // J11.4: y, en el gremio, quien viene a buscaros por cómo acabó una campaña.
+        const rows = [...compendium.find('sucesos', {}), ...laterRows(chat_metadata?.[PLOT_KEY], { dialogues: lastDialogues }), ...guildVisitorRows()];
         const state = readSucesoState(chat_metadata?.[SUCESOS_KEY]);
         const companion = partyMembers.slice(1).find(m => !m.dead);
         /** @type {Record<string, any>} */

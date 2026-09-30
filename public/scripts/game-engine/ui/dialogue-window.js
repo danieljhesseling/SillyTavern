@@ -24,9 +24,50 @@ import { describeAttitude } from '../campaign/attitudes.js';
 import { loadPixelManifest } from './pixel-art.js';
 import { portraitFor, backdropFor } from './meetup-scene.js';
 import { noReturnBadge, noReturnGuard } from './decision-warning.js';
+import { findOption } from '../campaign/companion-opinions.js';
 
 /** @param {any} value @returns {string} */
 const text = (value) => String(value ?? '').trim();
+
+/**
+ * @typedef {Object} OpinionTag J7.5: lo que opina el grupo de una opción, a la vista antes de elegir.
+ * @property {1|-1} mood
+ * @property {string} text «A Gerd le gusta esto».
+ * @property {string} [title] El porqué, para quien pase el ratón.
+ */
+
+/**
+ * J7.5: las etiquetas de lo que opinan tus compañeros, debajo de lo que se dice: «A Gerd le
+ * gusta esto», «A Nella no le gusta esto». Nada si nadie opina.
+ *
+ * @param {OpinionTag[]} tags
+ * @returns {HTMLElement|null}
+ */
+export function opinionRow(tags) {
+    const list = (Array.isArray(tags) ? tags : []).filter(tag => text(tag?.text));
+    if (list.length === 0) return null;
+    const row = el('span', 'dw-opinions');
+    for (const tag of list) {
+        const one = el('span', `dw-opinion ${tag.mood > 0 ? 'dw-opinion-good' : 'dw-opinion-bad'}`);
+        one.dataset.mood = tag.mood > 0 ? 'bien' : 'mal';
+        if (text(tag.title)) one.title = text(tag.title);
+        const mark = el('i', `fa-solid ${tag.mood > 0 ? 'fa-thumbs-up' : 'fa-thumbs-down'}`);
+        mark.setAttribute('aria-hidden', 'true');
+        one.append(mark, document.createTextNode(` ${text(tag.text)}`));
+        row.appendChild(one);
+    }
+    return row;
+}
+
+/**
+ * Lo que devuelve quien apunta una elección, como líneas para la ventana.
+ *
+ * @param {any} value
+ * @returns {string[]}
+ */
+export function choiceLines(value) {
+    return Array.isArray(value) ? value.map(text).filter(Boolean) : [];
+}
 
 /**
  * @param {string} tag
@@ -118,8 +159,11 @@ export function stepLines(state, from, notes = []) {
  *   Lo aplica quien abre la ventana, y devuelve cómo decirlo; sin nada, se dice en llano. Con
  *   `roll`, la tirada de ese paso (la de `rollCheck`), para su registro de dados.
  * @param {(memory: any) => void} [input.onMemory] Para guardar lo recordado en cada paso.
- * @param {(optionId: string, outcome: 'bien'|'medias'|'mal'|null) => void} [input.onChoice] J11.2:
- *   cada opción elegida, con cómo salió su tirada, para apuntar lo que volverá días después (`later`).
+ * @param {(optionId: string, outcome: 'bien'|'medias'|'mal'|null, option: any) => (string[]|void|Promise<string[]|void>)} [input.onChoice] J11.2:
+ *   cada opción elegida, con cómo salió su tirada y la opción tal como está escrita, para apuntar lo
+ *   que volverá días después (`later`). J7.5: lo que devuelva (a quién le ha gustado) se dice en la ventana.
+ * @param {(option: any) => OpinionTag[]} [input.opinionsFor] J7.5: lo que opina el grupo de cada
+ *   opción (la escrita, `findOption`), para verlo antes de elegir.
  * @param {Array<{id: string, label: string, icon?: string, title?: string}>} [input.extras] Fichas de
  *   fuera de la charla (sonsacar, convencer…): cierran la ventana y dicen cuál se pulsó.
  * @param {string} [input.pack] El paquete, para el retrato y el escenario.
@@ -131,7 +175,7 @@ export function stepLines(state, from, notes = []) {
  */
 export async function openDialogueWindow({
     dialogue, hero, getWorld = () => ({}), memory = null, rollD20 = () => 1 + Math.floor(Math.random() * 20),
-    applyEffects = () => [], onMemory = () => {}, onChoice = () => {}, extras = [], pack = '', place = '', town = '', night = false, mount = null,
+    applyEffects = () => [], onMemory = () => {}, onChoice = () => {}, opinionsFor = () => [], extras = [], pack = '', place = '', town = '', night = false, mount = null,
 }) {
     await loadPixelManifest();
     const speaker = text(dialogue?.speaker) || 'Alguien';
@@ -217,6 +261,19 @@ export async function openDialogueWindow({
             return button;
         };
 
+        /** La opción tal como está escrita, en el nudo de ahora. */
+        const writtenOption = (/** @type {string} */ id) => findOption(state.dialogue, id, state.node);
+        /** J7.5: lo que opina el grupo; si falla, nada (la charla sigue). */
+        const safeOpinions = (/** @type {string} */ id) => {
+            try {
+                const option = writtenOption(id);
+                return option ? opinionsFor(option) : [];
+            } catch (error) {
+                console.error('[charla] no se pudo ver qué opina el grupo', error);
+                return [];
+            }
+        };
+
         const draw = (/** @type {Array<{kind: string, text: string}>} */ said) => {
             const world = getWorld();
             const view = dialogueView(state, hero, world);
@@ -267,6 +324,11 @@ export async function openDialogueWindow({
                     body.appendChild(why);
                 }
                 if (option.warn) body.appendChild(noReturnBadge(option.warn));
+                // J7.5: lo que opinan tus compañeros, antes de elegir.
+                if (!option.locked) {
+                    const opinions = opinionRow(safeOpinions(option.id));
+                    if (opinions) body.appendChild(opinions);
+                }
                 button.appendChild(body);
                 if (option.check) {
                     const check = el('span', 'dw-check');
@@ -296,6 +358,8 @@ export async function openDialogueWindow({
             busy = true;
             try {
                 const from = state.log.length;
+                // La escrita, antes de elegir: después la charla ya está en otro nudo.
+                const written = writtenOption(id);
                 const result = choose(state, id, { hero, world: getWorld(), rollD20, memory: remembered });
                 if (!result.ok) {
                     draw([{ kind: 'note', text: result.reason }]);
@@ -305,8 +369,15 @@ export async function openDialogueWindow({
                 const notes = await apply(result.effects, result.roll);
                 remembered = rememberDialogue(remembered, state);
                 onMemory(remembered);
-                onChoice(id, result.outcome ?? null);
-                draw(stepLines(state, from, notes));
+                // J7.5: a quién le ha gustado, dicho en la ventana, detrás de lo que ha pasado.
+                /** @type {string[]} */
+                let said = [];
+                try {
+                    said = choiceLines(await onChoice(id, result.outcome ?? null, written));
+                } catch (error) {
+                    console.error('[charla] no se pudo apuntar la elección', error);
+                }
+                draw(stepLines(state, from, [...notes, ...said]));
             } finally {
                 busy = false;
             }

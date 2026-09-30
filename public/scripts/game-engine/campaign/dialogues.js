@@ -123,6 +123,8 @@ export const DC_LIMITS = { min: 5, max: 30 };
  * @property {DialogueCheck|null} check
  * @property {string} journal Lo que queda en el Diario al elegirla.
  * @property {string} [noReturn] J11.1: su aviso, si se escribe `irreversible` («Esto no tiene vuelta atrás»).
+ * @property {string[]} [decision] J7.5: lo que es, si se escribe (`pagar`, `amenazar`…, de
+ *   `companion-opinions.js`), para lo que opinan tus compañeros.
  */
 
 /**
@@ -374,7 +376,19 @@ function readOption(raw, node, index) {
         // J11.1: solo si se escribe, para que una opción de antes se lea igual que siempre. Una
         // ya leída trae el suyo en `noReturn`.
         ...(readNoReturn(source) || text(source.noReturn) ? { noReturn: readNoReturn(source) || text(source.noReturn) } : {}),
+        // J7.5: lo que es, si se escribe; si no, lo que opinan se saca de lo que hace.
+        ...(readDecision(source.decision).length > 0 ? { decision: readDecision(source.decision) } : {}),
     };
+}
+
+/**
+ * J7.5: lo que dice ser una opción (`"decision": "amenazar"`, o una lista), en palabras sueltas.
+ *
+ * @param {any} raw
+ * @returns {string[]}
+ */
+function readDecision(raw) {
+    return [...new Set((Array.isArray(raw) ? raw : raw == null ? [] : [raw]).map(text).filter(Boolean))];
 }
 
 /**
