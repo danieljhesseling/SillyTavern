@@ -97,6 +97,23 @@ author: DanielJHesseling / Claude Opus 5.5
 
 Después van el combate (la magia en cada turno, las invocaciones, J7.3), el tablero (alturas, zonas, el tablero táctil) y las campañas del Gem y el mundo vivo. Las tandas anteriores se cortaron por el límite de uso; lo que llevaban ya está en los commits.
 
+**Cómo se quedó esta tanda (30-09, 13:30, al acabarse el uso).** El código está en el árbol, sin commit y sin revisar. Cada frente apunta su avance en `progreso.md`, en su carpeta de trabajo, para retomarlo:
+- **La magia y la ficha:** escrito, falta probarlo en el navegador.
+  - salen dos botones en la escena, «Magia» y «Curar con magia»;
+  - Luz ilumina el tablero y el campamento, y da +2 al buscar;
+  - Hablar con los muertos revela la pista;
+  - la ficha lleva un botón de magia.
+- **La historia y los diálogos:** escrito, faltan sus pruebas en el navegador.
+  - las opiniones de los compañeros junto a cada opción;
+  - el Diario como libro, con capítulos y decisiones;
+  - los plazos a la vista;
+  - el pueblo recuerda lo que hiciste: si robas, te saludan distinto y te suben el precio;
+  - el aviso de lo que no tiene vuelta atrás.
+- **La gente y el viaje:** revisado lo que hay. Nadie llamaba a las noches, las frases de camino, las misiones personales, la formación ni los compañeros que se quedan en el gremio. Aún no está enchufado.
+- **El gremio, el pueblo y guardar:** revisado. Nadie abría la pantalla de guardar (`guardar-partida.js`: ranuras, dormir para guardar, exportar e importar); su prueba llamaba a las funciones por dentro. Se estaba enchufando.
+
+Al volver: seguir esta tanda desde cada `progreso.md`, pasarle los revisores, las pruebas y el commit. Después, recontar el avance fila a fila (la estimación es de un 60 a un 65 % jugable).
+
 **Jugar con amigos (J6) está aparcado** hasta nueva orden (lo dijiste el 2026-09-28). Tampoco hay más personajes que los mercenarios sencillos del gremio.
 
 Cómo está hecho, en corto (el detalle, en [[EMPEZAR_UNA_CAMPANA]], «Jugar sin conexión»):
