@@ -41,26 +41,35 @@ author: DanielJHesseling / Claude Opus 5.5
 
 ---
 
-## 📍 Cómo va (2026-09-30)
+## 📍 Cómo va (2026-09-30, tarde)
 
-**Avance, contando las 143 filas activas** (sin lo aparcado ni las decisiones):
-- **43 % jugable**: se puede usar en el juego.
-- **63 % construido**: el motor o su pantalla existen y se están enchufando.
+**Avance, contando las 143 filas activas** (sin lo aparcado ni las decisiones), recontado fila a fila tras la tanda 6:
+- **70 % jugable** (100 filas): se puede usar en el juego sin escribir nada.
+- **91 % construido** (130 filas): el motor o su pantalla existen, aunque el jugador aún no llegue a todo.
+- **9 % sin empezar** (13 filas): partir el estado de la partida (J4.2), ampliar el contrato del Gem (J5.2), los sucesos por facción y el mapa dibujado (J10.3, J10.5), los tableros grandes (J12.13), el teclado (J15.5), las vueltas automáticas (J16) y las propuestas (J10.7, J12.7, J14.10, J14.11).
 
 | Hito | Jugable | Construido |
 | :--- | :---: | :---: |
-| M1 · Entrar y crear el personaje | 86 % | 86 % |
-| M2 · El gremio y la primera campaña | 56 % | 60 % |
-| M3 · El pueblo y su gente | 0 % | 65 % |
-| M4 · Strahd con mapas y magia | 22 % | 65 % |
-| M5 · Una campaña bien contada | 27 % | 44 % |
-| M7 · En el móvil | 67 % | 67 % |
+| M1 · Entrar y crear el personaje | 96 % | 100 % |
+| M2 · El gremio y la primera campaña | 84 % | 96 % |
+| M3 · El pueblo y su gente | 100 % | 100 % |
+| M4 · Strahd con mapas y magia | 44 % | 92 % |
+| M5 · Una campaña bien contada | 70 % | 90 % |
+| M6 · Los compañeros a fondo | 20 % | 60 % |
+| M7 · En el móvil | 67 % | 100 % |
 
-«Construido» cuenta lo que ya existe y está probado en su pantalla, pero que el juego todavía no abre: la magia, los diálogos, las quedadas, las escenas del hilo, el pueblo con gente a cada hora… Lo están enchufando ahora.
+Esta mañana era un 43 % jugable y un 63 % construido. El salto viene de tu cableado del gremio y de la tanda 6, que enchufaron lo ya construido.
 
-**Lo último (30-09, tarde), de Daniel:** el gremio ya se ve en el pueblo por salas, con su rango y sus novedades (J3.1). Sus salas se abren con botones y no con comandos (J15.4). En el tablero, el grupo se mueve junto. Y las decisiones de escenas y charlas dejan consecuencias para días después. Quedan cargadas pero sin usar:
-- las frases de camino, las noches de acampada, las opiniones de los compañeros y sus misiones personales;
-- la magia fuera de combate y la formación, que solo van con comando y todavía no tienen botón.
+Lo construido que el jugador aún no alcanza es sobre todo:
+- la magia en cada turno de combate: concentración, invocaciones, zonas, reacciones y enemigos que lanzan;
+- las alturas y las salas del tablero, al jugar;
+- salir de una pelea hablando;
+- mover tú a un compañero amigo (J7.3);
+- las noches y las charlas de pareja.
+
+Casi todo eso está en la tanda 7. Si sale bien, el avance jugable pasará del 85 %.
+
+Algunas filas cuentan como jugables con fallos por arreglar: la formación que no viaja con el grupo y un error al guardar el chat. Los arregla la tanda 7.
 
 **Jugar en el móvil sin servidor:** un plan aparte, [ROADMAP_PWA_SIN_SERVIDOR.md](ROADMAP_PWA_SIN_SERVIDOR.md). La web se instala como app, guarda en el propio teléfono y funciona sin conexión. Amplía J20.7 y J20.8, y va de la mano de J15.6 (exportar la partida). El repositorio sigue privado, así que nada de GitHub Pages. Decidido: **un APK de Android**, cuando el juego esté a punto.
 
@@ -322,6 +331,14 @@ Tus respuestas a D-J11…D-J38. «⏳» significa que está por hacer.
 | **D-J43** | La actitud más alta («os mira de forma…») | «leal» | ✅ |
 | **D-J44** | ¿Las partidas con conexión cambian como las de sin conexión (sin caja de texto ni pestañas)? | No: nada nuevo para el modo con conexión; es para el futuro y aún no está claro cómo será | ✅ |
 | **D-J45** | Tras ganar una pelea en un tablero, ¿adónde lleva «Continuar»? | Depende de la situación: sigue el hilo, como en el juego normal. Si hay un suceso o una escena, a eso; en una campaña, a lo que toque en ella; si no, al tablero o al sitio donde estabas | ✅ |
+| **D-J46** | Plazos a la vista (J9.5) | Desactivados por ahora; se activarán más adelante | ⏳ |
+| **D-J47** | Robar dos veces en la misma tienda | Cuatro semanas sin venderte era mucho. En su lugar, la guardia te lleva: un par de días en el calabozo y lo robado requisado. Después la tienda vuelve a venderte, algo más cara unos días | ⏳ |
+| **D-J48** | ¿Cuándo cuentan las opiniones de los compañeros? | Solo en las charlas importantes: las escenas del hilo y las decisiones con consecuencia | ⏳ |
+| **D-J49** | La ficha «Magia» en la escena | Lo recomendado: sale cuando un conjuro sirve ahí mismo, y todos están en la ficha del personaje | ✅ |
+| **D-J50** | Hablar con los muertos | Una vez cada 7 días por cadáver | ⏳ |
+| **D-J51** | Luz bajo techo | No se ofrece donde ya hay luz (taberna, tienda, gremio…) | ⏳ |
+| **D-J52** | Tu cara sin arte | Se puede elegir: iniciales con un color, un icono o un emoji | ⏳ |
+| **D-J53** | Curar con magia al llegar de un viaje | El viaje pregunta si curas a quien está herido | ⏳ |
 
 ---
 
