@@ -128,6 +128,9 @@ Esta mañana era un 43 % jugable. Lo construido que el jugador aún no alcanza:
   - trabajos y ratos libres: servir mesas, las cartas, la forja, leer, pescar (J14.11);
   - romance opcional, con dos romances escritos enteros y fundido a negro (J14.10);
   - historias de fondo en tres actos para las campañas sin hilo escrito (J10.7).
+- **Humanizar (lo pediste el 30-09), con dos agentes más:**
+  - solo sabes el nombre de quien se ha presentado (J13.7);
+  - textos y reacciones más humanos en las primeras horas de juego (J13.8).
 
 **Jugar con amigos (J6) está aparcado** hasta nueva orden (lo dijiste el 2026-09-28). Tampoco hay más personajes que los mercenarios sencillos del gremio.
 
@@ -677,6 +680,8 @@ Así no hay que reescribir el motor para el servidor. El riesgo: si el anfitrió
 | J13.4 | **Más frases**: de 133 a unas 400. Cada momento con al menos ocho variantes | A | L | El marcador |
 | J13.5 | **Frases de compañeros fuera de combate**: en el viaje, al llegar y ante vuestras decisiones | A | M | La vuelta oye al menos cinco distintas |
 | J13.6 | **Guía de estilo**: texto que se entiende a la primera, sin acertijos y sin adornos que no dicen nada. Para el Gem y para mí | A | S | La guía, en [[GEM_GUIONISTA]] |
+| J13.7 | **Solo sabes el nombre de quien se ha presentado** (lo pediste el 2026-09-30: al principio le contestabas al posadero por su nombre sin que se hubiera presentado). Hasta que alguien dice su nombre, o te lo dice otro, sale por su oficio: «el posadero», «la maestra del gremio». Eso vale en la placa de la novela, en las fichas, en el pueblo y en el Diario. Las opciones escritas no nombran a quien aún no conoces | A | M | e2e en el prólogo: antes de presentarse, la placa dice «Posadero» y ninguna opción le nombra; después, «Tomás» |
+| J13.8 | **Textos y reacciones más humanos** (lo pediste el 2026-09-30). Cada persona suena a sí misma, según su «voz» del paquete. Reacciona a lo que acabas de decir o hacer, y a quién eres. Te saluda distinto si es la primera vez o si ya te conoce. Nada de frases de formulario. Los criterios quedan en [[GEM_GUIONISTA]] para las campañas nuevas | A | M | Una vuelta por el prólogo y una quedada, con diez ejemplos de antes y después |
 
 **Hecho cuando** una hora de juego sin conexión no enseña ni una línea en crudo, ni una frase repetida, ni una orden al narrador.
 
