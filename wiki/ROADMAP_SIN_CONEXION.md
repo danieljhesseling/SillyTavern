@@ -66,11 +66,26 @@ author: DanielJHesseling / Claude Opus 5.5
 
 **El arte (2026-09-29, con PixelLab):** 442 imágenes en `public/img/game-engine/pixel/`: iconos de clases, especies, objetos, habilidades, estados y conjuros; 75 criaturas; 112 retratos (la gente de Puerto Alba, Strahd y 1387, los mercenarios y héroes de reserva) y 39 escenarios de día y de noche. Se están haciendo retratos por especie y clase, expresiones para la novela visual y losetas para el tablero, y conectándolo todo al juego.
 
-**En marcha ahora (2026-09-29, 18:45).** J15.1 está hecho: `party.js` ya está partido. Ahora, varios agentes a la vez:
-- **Enchufar en el juego** lo que ya funcionaba en su pantalla: la magia en el combate (J19), mover a tus compañeros desde el vínculo 5 (J7.3), las escenas del hilo (J9.2), los diálogos (J8), las charlas y quedadas (J14), «mirar» en cada sitio (J10), las alturas y las salas del mapa (J12.8), el tablero táctil (J20.2) y los iconos de la ficha y el inventario.
-- **Sin chat, escenas por acciones, descansar en su sitio y sin etiquetas** (J18.7 a J18.10).
-- **Tus decisiones D-J11 a D-J38**, cada grupo con su revisor.
-- **El estado de las baterías de pruebas**, sobre el último commit, en una copia aparte.
+**En marcha ahora (2026-09-30, mañana).** Unos 25 agentes a la vez, cada frente con su revisor:
+- **Enchufar en el juego lo ya construido** (5 frentes):
+  - combate: la magia en cada turno, las invocaciones, enemigos que lanzan y J7.3;
+  - magia y ficha: conjuros, subir de nivel, objetos y los iconos del inventario;
+  - tablero: alturas y salas del mapa, zonas de conjuro, sprites y el tablero táctil;
+  - historia: escenas del hilo, diálogos, «mirar», estaciones y expresiones;
+  - gente y pueblo: charlas, quedadas, partes del día, descuentos, D-J28 y saltar el prólogo.
+- **Sin chat, escenas por acciones, descansar en su sitio y sin etiquetas** (J18.7 a J18.10), más D-J23, D-J24 y D-J38.
+- **Tus decisiones de reglas y datos**: D-J21, D-J25 a D-J27 y D-J29 a D-J32.
+- **Diez frentes nuevos**:
+  - el gremio crece (J3.1, J3.4 a J3.8);
+  - guardar como un juego (J15.2, J3.3, J15.6);
+  - la historia como un libro (J9.3, J9.5, J9.6, J11.5);
+  - decisiones que pesan (J11.1 a J11.4);
+  - peleas que se pueden evitar (J12.2, J8.5, J12.4, J7.4);
+  - campañas del Gem completas (J5.3, J5.5, J5.6, J12.5);
+  - el mundo vivo (J10.1, J10.3, J10.5, J19.10);
+  - la gente, segunda parte (J14.7 a J14.9, J7.2, J7.5, J13.5);
+  - el móvil como una app (J20.6 a J20.8);
+  - arte para la gente nueva y el icono de la app.
 
 **Jugar con amigos (J6) está aparcado** hasta nueva orden (lo dijiste el 2026-09-28). Tampoco hay más personajes que los mercenarios sencillos del gremio.
 
