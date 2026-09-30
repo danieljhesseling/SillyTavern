@@ -270,7 +270,7 @@ Van antes que nada: cada una cambia lo que se construye. Con cada una, lo que te
 | **D-J6** ✅ | **El formato de las campañas** | (a) Tu JSON tal cual, con su propio lector. (b) Tu JSON convertido al paquete que el juego ya entiende | **Decidido: (b), el 2026-09-29.** Un conversor por formato; por dentro, un solo formato |
 | **D-J7** ✅ | **Qué pasa con 1387** | (a) Se queda como mundo aparte. (b) Es la primera campaña del tablón | **Decidido: (b), el 2026-09-29.** 1387 es de las primeras campañas del tablón (ya lo está) |
 | **D-J8** ✅ | **El prólogo** | (a) Uno fijo, escrito una vez. (b) Uno por especie o clase. (c) Nada: se empieza en el gremio | **Decidido: (a) para empezar, el 2026-09-29.** Uno fijo, corto y jugable: la prueba de la bodega del gremio |
-| **D-J9** ⏳ | **El nombre del juego** | La cabecera dice «SillyTavern RPG» | **Pendiente: lo decides tú.** Hasta entonces, «SillyTavern RPG» |
+| **D-J9** ✅ | **El nombre del juego** | La cabecera decía «SillyTavern RPG» | **«DnD Coin»**, por ahora (lo dijiste el 2026-09-30) |
 | **D-J10** ✅ | **La vida en el gremio** (romance, charlas de compañeros) | (a) Parte del plan. (b) Después, opcional | **Decidido: (b), el 2026-09-29.** Primero, que sea jugable; lo social, en J14. **Matizado el mismo día**: charlar y quedar con los compañeros es parte del juego (M3); lo que va después y es opcional son los romances y las capas de encima (M6) |
 
 
@@ -313,6 +313,8 @@ Tus respuestas a D-J11…D-J38. «⏳» significa que está por hacer.
 | **D-J41** | ¿La descripción de un sitio cuenta como «algo que mirar»? | No: cada sitio tiene algo concreto que examinar | ✅ |
 | **D-J42** | Sucesos propios de cada campaña | Más adelante, con J10.3 | ✅ |
 | **D-J43** | La actitud más alta («os mira de forma…») | «leal» | ✅ |
+| **D-J44** | ¿Las partidas con conexión cambian como las de sin conexión (sin caja de texto ni pestañas)? | No: nada nuevo para el modo con conexión; es para el futuro y aún no está claro cómo será | ✅ |
+| **D-J45** | Tras ganar una pelea en un tablero, ¿adónde lleva «Continuar»? | Depende de la situación: sigue el hilo, como en el juego normal. Si hay un suceso o una escena, a eso; en una campaña, a lo que toque en ella; si no, al tablero o al sitio donde estabas | ✅ |
 
 ---
 

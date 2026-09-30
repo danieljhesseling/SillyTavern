@@ -28,8 +28,8 @@
 
 /** @type {Readonly<AppInfo>} */
 export const APP_INFO = Object.freeze({
-    // D-J9: hasta que Daniel le ponga nombre, «SillyTavern RPG».
-    name: 'SillyTavern RPG',
+    // D-J9: «DnD Coin», por ahora (Daniel, 2026-09-30).
+    name: 'DnD Coin',
     shortName: 'ST RPG',
     description: 'Un juego de rol de fantasía oscura: tu gremio, tus compañeros y sus campañas. Se juega sin conexión.',
     lang: 'es',
