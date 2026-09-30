@@ -51,7 +51,7 @@ author: DanielJHesseling / Claude Opus 5.5
   - ampliar el contrato del Gem (J5.2);
   - el teclado (J15.5);
   - las vueltas automáticas (J16.1, J16.2, J16.4);
-  - las cuatro propuestas (J10.7, J12.7, J14.10, J14.11), que esperan a que digas si se hacen.
+  - las cuatro propuestas (J10.7, J12.7, J14.10, J14.11), que aprobaste el 30-09 y ya están en marcha.
 
 | Hito | Jugable | Construido |
 | :--- | :---: | :---: |
@@ -123,6 +123,11 @@ Esta mañana era un 43 % jugable. Lo construido que el jugador aún no alcanza:
   - Strahd de punta a punta (M4);
   - el contenido que falta: salidas habladas en más peleas, cosas que mirar en Puerto Alba y trampas en las mazmorras;
   - arte nuevo con PixelLab: jefes, el calabozo, la torre de Van Richten, la granja quemada.
+- **Las cuatro propuestas, aprobadas** («hazlo», 30-09), con cuatro agentes más:
+  - peleas de taberna y duelos, sin muertes, por honor o por apuesta (J12.7);
+  - trabajos y ratos libres: servir mesas, las cartas, la forja, leer, pescar (J14.11);
+  - romance opcional, con dos romances escritos enteros y fundido a negro (J14.10);
+  - historias de fondo en tres actos para las campañas sin hilo escrito (J10.7).
 
 **Jugar con amigos (J6) está aparcado** hasta nueva orden (lo dijiste el 2026-09-28). Tampoco hay más personajes que los mercenarios sencillos del gremio.
 
@@ -597,7 +602,7 @@ Así no hay que reescribir el motor para el servidor. El riesgo: si el anfitrió
 | J10.4 | **Secretos**: sitios y cosas escondidas que se descubren por un rumor, un mapa, una tirada o una persona | A | M | Tres secretos en 1387 |
 | J10.5 | **El mapa de la campaña, dibujado**: sitios y caminos con CSS (sin arte), con lo visitado y tus notas | A | M | Captura para el Gem de UX |
 | J10.6 | **Gente con horario** (T9): cada persona, en un sitio según la hora | A | M | Pruebas |
-| J10.7 | **Hilos con fondo para campañas sin escribir** (Z5): una gramática de actos para las campañas que generes con la semilla | P | L | Una campaña generada tiene tres actos que se juegan |
+| J10.7 | **Hilos con fondo para campañas sin escribir** (Z5): una gramática de actos para las campañas que generes con la semilla | A | L | Una campaña generada tiene tres actos que se juegan |
 
 **Hecho cuando** dentro de 1387 hay al menos tres razones distintas para ir a cada sitio.
 
@@ -643,7 +648,7 @@ Así no hay que reescribir el motor para el servidor. El riesgo: si el anfitrió
 | J12.4 | **Moverse fuera de combate con un clic**, y el grupo junto (hoy se arrastra ficha a ficha) | A | M | e2e |
 | J12.5 | **Tableros de tu JSON**: si la campaña trae mapas de sus sitios, se leen; si no, se generan con la semilla (J5.3) | A | M | Con tu JSON |
 | J12.6 | **Encuentros ajustados al grupo**: más jugadores, más enemigos (hoy ya se reparte un presupuesto de amenaza) | A | S | Pruebas: el mismo tablero con uno y con cuatro |
-| J12.7 | **Peleas de taberna y duelos**: no letales, por honor o por apuesta | P | M | Pruebas |
+| J12.7 | **Peleas de taberna y duelos**: no letales, por honor o por apuesta | A | M | Pruebas |
 | J12.8 | **Un tablero a partir de un mapa en imagen** (lo pediste el 2026-09-29). Subes un mapa de D&D en cuadrícula, como los de mazmorra con sus salas B1 a B9, y se juega **encima del dibujo**. Se ajusta la cuadrícula: el tamaño de la casilla y dónde empieza, marcando una casilla del dibujo o diciendo cuántas casillas tiene de ancho | A | M | Con los mapas de ejemplo: la cuadrícula del juego cae sobre la del dibujo, casilla a casilla |
 | J12.9 | **Muros y suelo leídos de la imagen**, sin IA: el juego mira los píxeles de cada casilla. La trama rayada es roca (muro), la cuadrícula clara es suelo, las piedras sueltas son terreno difícil. Lo que falle se retoca con el pincel del editor | A | L | En el mapa de ejemplo, las salas y los pasillos salen como suelo y la roca como muro, con menos de una casilla de cada veinte por corregir |
 | J12.10 | **Puertas, escaleras, puentes y alturas**: las puertas en los huecos entre salas; los puentes y las escaleras; las cotas del dibujo («+60 ft», «+30 ft», «+0 ft») como alturas (`board/heights.js`), con los acantilados como bordes que no se cruzan andando. Se proponen solos donde se pueda, y se marcan con el pincel | A | M | En el mapa de ejemplo, el risco de A tiene tres alturas y sus dos puentes se cruzan |
@@ -698,8 +703,8 @@ Así no hay que reescribir el motor para el servidor. El riesgo: si el anfitrió
 | J14.7 | **La noche**: una escena por noche, si toca. Alguien que llega, una ronda, una charla entre dos compañeros | A | M | La vuelta pasa cinco noches y ve tres cosas distintas |
 | J14.8 | **Charlas de pareja sin modelo**, escritas o de plantilla | A | L | Sin conexión, una charla de pareja se lee entera |
 | J14.9 | **Misiones personales** de los compañeros, con dos finales. Se abren con el vínculo (J14.3) | A | L | Los dos finales de una, jugables |
-| J14.10 | **Romance, opcional**: con los compañeros que lo permitan (un campo en el paquete), con señales, citas (quedadas), escenas escritas y el epílogo. Tono: fundido a negro | P | L | Un romance completo, sin conexión |
-| J14.11 | **Trabajos y ratos libres**: servir mesas, jugar a las cartas, echar una mano en la forja. Son otras formas de gastar una parte del día | P | M | Pruebas |
+| J14.10 | **Romance, opcional**: con los compañeros que lo permitan (un campo en el paquete), con señales, citas (quedadas), escenas escritas y el epílogo. Tono: fundido a negro | A | L | Un romance completo, sin conexión |
+| J14.11 | **Trabajos y ratos libres**: servir mesas, jugar a las cartas, echar una mano en la forja. Son otras formas de gastar una parte del día | A | M | Pruebas |
 
 **Hecho cuando** en una semana de juego hablas con tus compañeros al cruzarte, quedas con dos de ellos en tardes distintas, uno sube de rango y se nota en la siguiente pelea.
 
