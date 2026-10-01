@@ -1,0 +1,1519 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tablero Táctico Inmersivo D&D 2024 - SillyTavern</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            /* Variables base del tema SillyTavern */
+            --SmartThemeBodyColor: #eee4d2;
+            --SmartThemeBorderColor: rgba(214, 180, 106, 0.4);
+            --SmartThemeQuoteColor: #6a8caf;
+            --SmartThemeEmColor: #e2c27a;
+            --SmartThemeBlurTintColor: rgba(24, 20, 16, 0.92);
+
+            /* Paleta táctica */
+            --gs-danger: #d08a86;
+            --gs-danger-btn: #8c3a36; 
+            --gs-success: #6f9e5d;
+            --gs-info: #6a8caf;
+            --gs-gold-bright: #ffd27a;
+            
+            /* Fondos del HUD e islas flotantes */
+            --gs-hud-bg: rgba(18, 15, 12, 0.88);
+            --gs-menu-bg: rgba(20, 17, 14, 0.97);
+            --gs-hud-border: rgba(214, 180, 106, 0.28);
+            --gs-accent-glow: rgba(226, 194, 122, 0.35);
+
+            /* Cuadrícula táctica y alcances */
+            --wm-grid-color: rgba(255, 255, 255, 0.06);
+            --wm-range-blue: rgba(59, 130, 246, 0.22);
+            --wm-range-border: rgba(96, 165, 250, 0.65);
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: #08090c;
+            color: var(--SmartThemeBodyColor);
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .mockup-window {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .gs-head {
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 20px;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.6) 70%, transparent 100%);
+            z-index: 200;
+            pointer-events: none;
+        }
+        .gs-head-state { 
+            font-weight: bold; 
+            letter-spacing: 0.04em; 
+            color: var(--SmartThemeEmColor); 
+            font-size: 1.05em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .gs-head-title { 
+            opacity: 0.85; 
+            font-size: 0.9em; 
+            color: var(--SmartThemeBodyColor);
+        }
+
+        .wm-container {
+            position: absolute;
+            inset: 0;
+            background-color: #0c0b09;
+            overflow: hidden;
+            z-index: 10;
+            cursor: grab;
+        }
+        .wm-container.grabbing {
+            cursor: grabbing;
+        }
+
+        .wm-world {
+            position: absolute;
+            top: 0; left: 0;
+            width: 2400px;
+            height: 1800px;
+            transform-origin: 0 0;
+            will-change: transform;
+            background-color: #1e3319;
+            background-image: 
+                linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+                radial-gradient(ellipse at 30% 40%, rgba(55, 90, 40, 0.65) 0%, transparent 65%),
+                radial-gradient(ellipse at 75% 65%, rgba(40, 70, 30, 0.75) 0%, transparent 60%),
+                repeating-conic-gradient(from 45deg, #182a14 0% 25%, transparent 25% 50%);
+            background-size: 40px 40px, 40px 40px, 100% 100%, 100% 100%, 80px 80px;
+            box-shadow: inset 0 0 120px rgba(0, 0, 0, 0.85);
+        }
+
+        .wm-layer { 
+            position: absolute; 
+            inset: 0; 
+            pointer-events: none; 
+        }
+
+        .wm-terrain-dirt {
+            position: absolute;
+            background: 
+                radial-gradient(circle at 50% 50%, rgba(85, 65, 42, 0.9) 0%, rgba(68, 50, 32, 0.8) 100%),
+                repeating-linear-gradient(45deg, rgba(0,0,0,0.08) 0px, rgba(0,0,0,0.08) 3px, transparent 3px, transparent 6px);
+            border-left: 2px dashed rgba(120, 95, 60, 0.35);
+            border-right: 2px dashed rgba(120, 95, 60, 0.35);
+        }
+
+        .wm-terrain-water {
+            position: absolute;
+            background: linear-gradient(135deg, rgba(30, 75, 110, 0.8), rgba(18, 50, 75, 0.9));
+            border-top: 1px solid rgba(100, 185, 230, 0.45);
+            border-bottom: 1px solid rgba(100, 185, 230, 0.45);
+            box-shadow: inset 0 0 20px rgba(10, 30, 45, 0.85);
+        }
+
+        .wm-terrain-wall {
+            position: absolute;
+            background: repeating-linear-gradient(45deg, rgba(0, 0, 0, 0.35) 0px, rgba(0, 0, 0, 0.35) 3px, transparent 3px, transparent 6px), #33333b;
+            border: 1px solid #141418;
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08), 0 8px 18px rgba(0,0,0,0.75);
+            border-radius: 3px;
+        }
+
+        .wm-terrain-brush {
+            position: absolute;
+            background: repeating-linear-gradient(60deg, rgba(40, 95, 35, 0.5) 0px, rgba(40, 95, 35, 0.5) 4px, transparent 4px, transparent 8px), rgba(30, 70, 25, 0.45);
+            border: 1px dashed rgba(120, 190, 90, 0.55);
+            border-radius: 6px;
+        }
+
+        .wm-range-layer {
+            opacity: 0;
+            transition: opacity 0.2s ease-in-out;
+            pointer-events: none;
+        }
+        .wm-world:has(.wm-token-selected:hover) .wm-range-layer {
+            opacity: 1;
+        }
+        
+        .wm-range-cell {
+            position: absolute;
+            width: 40px; 
+            height: 40px;
+            background: var(--wm-range-blue);
+            box-sizing: border-box;
+            border: 1px solid var(--wm-range-border);
+            box-shadow: inset 0 0 8px rgba(59, 130, 246, 0.25);
+        }
+        .wm-range-cell.top-left { border-top-left-radius: 8px; }
+        .wm-range-cell.top-right { border-top-right-radius: 8px; }
+        .wm-range-cell.bottom-left { border-bottom-left-radius: 8px; }
+        .wm-range-cell.bottom-right { border-bottom-right-radius: 8px; }
+
+        .wm-token { 
+            position: absolute; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            transform: translate(-50%, -50%); 
+            pointer-events: auto; 
+            cursor: pointer; 
+            z-index: 50; 
+        }
+        .wm-token-avatar { 
+            width: 38px; 
+            height: 38px; 
+            border-radius: 50%; 
+            border: 2px solid var(--SmartThemeQuoteColor); 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.85); 
+            background: #181926; 
+            overflow: hidden;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+        .wm-token-selected .wm-token-avatar { 
+            border-color: var(--SmartThemeEmColor);
+            box-shadow: 0 0 0 2px rgba(226, 194, 122, 0.3), 0 0 16px var(--gs-accent-glow), 0 6px 14px rgba(0,0,0,0.85); 
+        }
+        .wm-token-selected:hover .wm-token-avatar {
+            transform: scale(1.15);
+        }
+        .wm-token-enemy .wm-token-avatar { 
+            border-color: var(--gs-danger); 
+            box-shadow: 0 0 12px rgba(208, 138, 134, 0.4), 0 4px 10px rgba(0,0,0,0.85); 
+        }
+        .wm-token-label {
+            position: absolute; 
+            top: 100%; 
+            margin-top: 3px; 
+            font-size: 0.65rem; 
+            font-weight: bold;
+            color: #fff; 
+            text-shadow: 0 1px 4px #000; 
+            white-space: nowrap; 
+            pointer-events: none;
+            background: rgba(0,0,0,0.7); 
+            padding: 1px 6px; 
+            border-radius: 4px;
+        }
+
+        .gs-hud-layer {
+            position: absolute; 
+            inset: 0; 
+            z-index: 100; 
+            pointer-events: none;
+        }
+        .gs-hud-panel { 
+            pointer-events: auto; 
+        }
+
+        /* Columna superior derecha: Iniciativa y Resumen */
+        .gs-hud-top-right {
+            position: absolute; 
+            top: 50px; 
+            right: 20px; 
+            width: 320px;
+            display: flex; 
+            flex-direction: column; 
+            gap: 10px; 
+            max-height: calc(100vh - 170px);
+        }
+
+        .wm-init {
+            padding: 12px; 
+            background: var(--gs-hud-bg); 
+            border: 1px solid var(--gs-hud-border);
+            border-radius: 12px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.65); 
+            backdrop-filter: blur(12px);
+            flex-shrink: 0;
+        }
+        .wm-init-head {
+            display: flex; 
+            align-items: baseline; 
+            gap: 8px; 
+            margin-bottom: 8px;
+            border-bottom: 1px solid rgba(214, 180, 106, 0.2); 
+            padding-bottom: 6px;
+        }
+        .wm-init-round { 
+            font-weight: bold; 
+            color: var(--SmartThemeEmColor); 
+            font-size: 0.95em; 
+        }
+        .wm-init-turn { 
+            font-size: 0.8em; 
+            opacity: 0.8; 
+        }
+        .wm-init-list { 
+            display: flex; 
+            flex-direction: column; 
+            gap: 4px; 
+        }
+        .wm-init-row { 
+            display: flex; 
+            align-items: center; 
+            gap: 8px; 
+            padding: 5px 8px; 
+            border-radius: 6px; 
+            border-left: 3px solid transparent; 
+            background: rgba(255, 255, 255, 0.03); 
+            transition: background 0.15s; 
+            cursor: pointer;
+        }
+        .wm-init-row:hover { 
+            background: rgba(255, 255, 255, 0.08); 
+        }
+        .wm-init-row.current { 
+            border-left-color: var(--SmartThemeEmColor); 
+            background: rgba(214, 180, 106, 0.16); 
+        }
+        .wm-init-score { 
+            flex: 0 0 20px; 
+            text-align: center; 
+            font-variant-numeric: tabular-nums; 
+            font-size: 0.85em; 
+            opacity: 0.7; 
+        }
+        
+        .wm-init-face {
+            width: 26px; 
+            height: 26px; 
+            border-radius: 50%; 
+            object-fit: cover;
+            border: 1px solid rgba(255, 255, 255, 0.25); 
+            background: #252528;
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-size: 11px; 
+            color: #aaa;
+        }
+        .wm-init-row.enemy .wm-init-face { 
+            border-color: rgba(224, 139, 122, 0.7); 
+            color: #e08b7a; 
+        }
+        .wm-init-row.enemy .wm-init-name { 
+            color: var(--gs-danger); 
+        }
+        .wm-init-body { 
+            flex: 1; 
+            min-width: 0; 
+        }
+        .wm-init-name { 
+            font-size: 0.85em; 
+            font-weight: bold; 
+        }
+        .wm-init-hp { 
+            height: 4px; 
+            margin-top: 3px; 
+            border-radius: 2px; 
+            background: rgba(255, 255, 255, 0.1); 
+        }
+        .wm-init-hp-fill { 
+            height: 100%; 
+            background: var(--gs-success); 
+            border-radius: 2px; 
+        }
+        .wm-init-row.enemy .wm-init-hp-fill { 
+            background: var(--gs-danger); 
+        }
+
+        .wm-combat-summary-panel {
+            background: var(--gs-hud-bg); 
+            border: 1px solid var(--gs-hud-border);
+            border-radius: 12px; 
+            padding: 10px 12px; 
+            backdrop-filter: blur(12px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.6); 
+            display: flex; 
+            flex-direction: column;
+            gap: 6px; 
+            overflow: hidden; 
+            transition: all 0.2s ease;
+        }
+        .wm-summary-head {
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between;
+            font-size: 0.75rem; 
+            text-transform: uppercase; 
+            letter-spacing: 0.05em;
+            color: var(--SmartThemeEmColor); 
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            padding-bottom: 5px; 
+            opacity: 0.9;
+        }
+        .wm-summary-toggle-btn {
+            background: transparent; 
+            border: none; 
+            color: inherit; 
+            cursor: pointer;
+            font-size: 0.8rem; 
+            padding: 2px 4px; 
+            opacity: 0.7; 
+            transition: opacity 0.15s;
+        }
+        .wm-summary-toggle-btn:hover { 
+            opacity: 1; 
+        }
+        .wm-summary-list {
+            display: flex; 
+            flex-direction: column; 
+            gap: 5px; 
+            max-height: 140px;
+            overflow-y: auto; 
+            padding-right: 4px;
+        }
+        .wm-combat-summary-panel.collapsed .wm-summary-list {
+            display: none;
+        }
+        .wm-combat-summary-panel.collapsed {
+            padding: 8px 12px;
+        }
+        .wm-combat-summary-panel.collapsed .wm-summary-head {
+            border-bottom: none; 
+            padding-bottom: 0;
+        }
+        .wm-summary-list::-webkit-scrollbar { width: 4px; }
+        .wm-summary-list::-webkit-scrollbar-thumb { background: rgba(214,180,106,0.3); border-radius: 2px; }
+        .wm-summary-entry {
+            font-size: 0.82em; 
+            line-height: 1.35; 
+            opacity: 0.92;
+            padding: 4px 6px; 
+            border-radius: 4px; 
+            background: rgba(255, 255, 255, 0.03);
+            border-left: 2px solid transparent;
+        }
+        .wm-summary-entry.system { border-left-color: var(--SmartThemeQuoteColor); }
+        .wm-summary-entry.combat { border-left-color: var(--gs-danger); }
+        .wm-summary-entry.tip { border-left-color: var(--SmartThemeEmColor); font-size: 0.78em; opacity: 0.82; }
+        .wm-summary-entry strong { color: var(--SmartThemeEmColor); }
+
+        .wm-minimap-card {
+            position: absolute; 
+            bottom: 24px; 
+            left: 24px; 
+            width: 180px; 
+            height: 135px;
+            background: var(--gs-hud-bg); 
+            border: 1px solid var(--gs-hud-border);
+            border-radius: 10px; 
+            overflow: hidden; 
+            backdrop-filter: blur(12px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8); 
+            z-index: 120;
+            display: flex; 
+            flex-direction: column; 
+            pointer-events: auto;
+        }
+        .wm-minimap-header {
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between;
+            padding: 4px 8px; 
+            background: rgba(0, 0, 0, 0.45); 
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            font-size: 0.68rem; 
+            color: var(--SmartThemeEmColor); 
+            font-weight: bold;
+        }
+        .wm-minimap-canvas {
+            position: relative; 
+            flex: 1; 
+            background: #142211; 
+            cursor: crosshair; 
+            overflow: hidden;
+        }
+        .wm-minimap-water { position: absolute; background: rgba(45, 110, 150, 0.8); }
+        .wm-minimap-dirt { position: absolute; background: rgba(90, 70, 45, 0.85); }
+        .wm-minimap-wall { position: absolute; background: rgba(60, 60, 70, 0.95); }
+        
+        .wm-minimap-blip {
+            position: absolute; 
+            width: 6px; 
+            height: 6px; 
+            border-radius: 50%;
+            transform: translate(-50%, -50%); 
+            pointer-events: none;
+        }
+        .wm-minimap-blip.ally { background: #60a5fa; box-shadow: 0 0 6px #3b82f6; }
+        .wm-minimap-blip.enemy { background: #f87171; box-shadow: 0 0 6px #ef4444; }
+
+        .wm-minimap-viewport {
+            position: absolute; 
+            border: 1.5px solid var(--SmartThemeEmColor);
+            background: rgba(226, 194, 122, 0.15); 
+            box-shadow: 0 0 8px rgba(226, 194, 122, 0.4);
+            pointer-events: none; 
+            transition: all 0.05s ease-out;
+        }
+
+        .wm-camera-controls {
+            position: absolute; 
+            bottom: 168px; 
+            left: 24px;
+            display: flex; 
+            flex-direction: column; 
+            gap: 6px; 
+            z-index: 120;
+            pointer-events: auto;
+        }
+        .wm-cam-btn {
+            width: 34px; 
+            height: 34px; 
+            border-radius: 8px;
+            background: var(--gs-hud-bg); 
+            border: 1px solid var(--gs-hud-border);
+            color: var(--SmartThemeBodyColor); 
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            cursor: pointer; 
+            transition: all 0.15s; 
+            backdrop-filter: blur(8px);
+            font-size: 0.85rem; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+        }
+        .wm-cam-btn:hover { 
+            background: rgba(255, 255, 255, 0.15); 
+            border-color: var(--SmartThemeEmColor); 
+            color: #fff; 
+        }
+        .wm-cam-btn:active { transform: translateY(1px); }
+
+        .wm-edge-marker {
+            position: absolute; 
+            z-index: 150; 
+            pointer-events: auto; 
+            cursor: pointer;
+            display: flex; 
+            align-items: center; 
+            gap: 8px; 
+            padding: 6px 12px;
+            background: rgba(24, 18, 14, 0.94); 
+            border: 1px solid var(--gs-danger);
+            border-radius: 20px; 
+            color: #fca5a5; 
+            font-size: 0.76rem; 
+            font-weight: bold;
+            box-shadow: 0 4px 18px rgba(0,0,0,0.85), 0 0 10px rgba(239, 68, 68, 0.3);
+            backdrop-filter: blur(8px); 
+            transition: transform 0.15s, background 0.15s;
+        }
+        .wm-edge-marker:hover {
+            background: rgba(45, 22, 18, 0.98); 
+            transform: scale(1.05);
+            border-color: #f87171; 
+            color: #fff;
+        }
+        .wm-edge-arrow {
+            font-size: 0.9rem; 
+            animation: pulseEdge 1.2s infinite ease-in-out;
+        }
+        @keyframes pulseEdge {
+            0%, 100% { transform: scale(1); opacity: 0.9; }
+            50% { transform: scale(1.25); opacity: 1; }
+        }
+
+        .gs-hud-bottom-center {
+            position: absolute;
+            bottom: 20px; 
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex; 
+            flex-direction: column; 
+            align-items: center;
+            z-index: 110;
+        }
+
+        .gs-actions-hud {
+            display: flex; 
+            align-items: center; 
+            gap: 16px;
+            padding: 10px 18px; 
+            background: var(--gs-hud-bg);
+            backdrop-filter: blur(14px); 
+            border: 1px solid var(--gs-hud-border);
+            border-radius: 14px; 
+            box-shadow: 0 10px 35px rgba(0,0,0,0.7);
+        }
+
+        .gs-actions-status { 
+            display: flex; 
+            flex-direction: column; 
+            min-width: 175px; 
+            border-right: 1px solid rgba(255,255,255,0.1); 
+            padding-right: 16px; 
+        }
+        .gs-turn-label { 
+            font-weight: bold; 
+            color: var(--SmartThemeEmColor); 
+            font-size: 0.95em; 
+            margin-bottom: 3px; 
+        }
+
+        .gs-budget-pills {
+            display: flex; 
+            gap: 4px; 
+            margin-bottom: 5px;
+        }
+        .gs-pill {
+            font-size: 0.65rem; 
+            padding: 1px 6px; 
+            border-radius: 4px;
+            border: 1px solid rgba(255,255,255,0.15); 
+            background: rgba(255,255,255,0.05);
+            color: rgba(255,255,255,0.85); 
+            font-weight: 600;
+        }
+        .gs-pill.ready { border-color: var(--gs-success); color: #86efac; }
+        .gs-pill.spent { opacity: 0.35; text-decoration: line-through; border-color: transparent; }
+
+        .gs-move-container {
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            gap: 8px;
+        }
+        .gs-move-label { 
+            font-size: 0.8rem; 
+            opacity: 0.85; 
+            white-space: nowrap; 
+        }
+        .gs-prone-toggle {
+            font-size: 0.7rem; 
+            padding: 2px 6px; 
+            border-radius: 4px;
+            border: 1px solid rgba(255,255,255,0.15); 
+            background: rgba(255,255,255,0.05);
+            color: inherit; 
+            cursor: pointer; 
+            transition: all 0.15s;
+        }
+        .gs-prone-toggle:hover { background: rgba(255,255,255,0.12); }
+        .gs-prone-toggle.active {
+            border-color: #f59e0b; 
+            color: #fbbf24; 
+            background: rgba(245, 158, 11, 0.15);
+        }
+
+        .gs-actions-buttons { 
+            display: flex; 
+            gap: 8px; 
+        }
+        .gs-btn { 
+            display: flex; 
+            align-items: center; 
+            gap: 8px; 
+            padding: 8px 14px; 
+            border: 1px solid rgba(255,255,255,0.12); 
+            border-radius: 8px; 
+            background: rgba(255,255,255,0.04); 
+            color: inherit; 
+            cursor: pointer; 
+            transition: all 0.15s; 
+            font-size: 0.88em; 
+            font-weight: 600;
+        }
+        .gs-btn:hover { background: rgba(255,255,255,0.12); }
+        .gs-btn:active { transform: translateY(1px); }
+        .gs-btn.active-menu { 
+            background: rgba(214, 180, 106, 0.18); 
+            border-color: var(--SmartThemeEmColor); 
+            color: #fff;
+        }
+        .gs-btn-attack { border-color: rgba(165, 83, 79, 0.5); }
+        .gs-btn-attack:hover, .gs-btn-attack.active-menu { 
+            border-color: var(--gs-danger); 
+            background: rgba(165, 83, 79, 0.2); 
+        }
+        .gs-btn-attack i { color: #fca5a5; }
+        .gs-btn-bonus { border-color: rgba(59, 130, 246, 0.4); }
+        .gs-btn-bonus:hover, .gs-btn-bonus.active-menu { 
+            border-color: #60a5fa; 
+            background: rgba(59, 130, 246, 0.2); 
+        }
+        .gs-btn-bonus i { color: #93c5fd; }
+        .gs-btn-quiet { opacity: 0.6; border-color: transparent; }
+        .gs-btn-quiet:hover { opacity: 1; background: rgba(255, 255, 255, 0.08); }
+
+        .gs-action-menus-container {
+            position: relative; 
+            width: 100%; 
+            display: flex; 
+            justify-content: center;
+        }
+
+        .gs-action-menu {
+            position: absolute; 
+            bottom: 12px; 
+            background: var(--gs-menu-bg);
+            border: 1px solid var(--SmartThemeBorderColor);
+            border-radius: 12px; 
+            padding: 12px;
+            min-width: 420px; 
+            max-width: 580px;
+            max-height: 440px; 
+            overflow-y: auto;
+            box-shadow: 0 12px 35px rgba(0,0,0,0.85);
+            display: none; 
+            flex-direction: column; 
+            gap: 8px;
+            transform-origin: bottom center;
+        }
+        .gs-action-menu::-webkit-scrollbar { width: 5px; }
+        .gs-action-menu::-webkit-scrollbar-thumb { background: rgba(214,180,106,0.3); border-radius: 3px; }
+
+        .gs-action-menu.active { 
+            display: flex; 
+            animation: popUpGrimoire 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards; 
+        }
+
+        @keyframes popUpGrimoire {
+            from { opacity: 0; transform: translateY(12px) scale(0.97); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .gs-grimoire-head {
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between;
+            padding-bottom: 8px; 
+            border-bottom: 1px solid rgba(214, 180, 106, 0.2);
+            margin-bottom: 4px;
+        }
+        .gs-grimoire-title {
+            font-size: 0.8rem; 
+            text-transform: uppercase; 
+            letter-spacing: 0.06em;
+            color: var(--SmartThemeEmColor); 
+            font-weight: bold;
+            display: flex; 
+            align-items: center; 
+            gap: 6px;
+        }
+        .gs-slot-counter {
+            display: flex; 
+            align-items: center; 
+            gap: 6px; 
+            font-size: 0.72rem; 
+            color: #d1d5db;
+        }
+        .gs-slot-gems { 
+            display: flex; 
+            gap: 3px; 
+            color: #60a5fa; 
+        }
+        .gs-slot-gem-spent { 
+            color: rgba(255,255,255,0.2); 
+        }
+
+        .gs-filter-tabs {
+            display: flex; 
+            gap: 4px; 
+            margin-bottom: 4px;
+        }
+        .gs-filter-pill {
+            font-size: 0.7rem; 
+            padding: 3px 8px; 
+            border-radius: 12px;
+            background: rgba(255,255,255,0.05); 
+            border: 1px solid rgba(255,255,255,0.1);
+            color: inherit; 
+            cursor: pointer; 
+            transition: all 0.15s;
+        }
+        .gs-filter-pill.active, .gs-filter-pill:hover {
+            background: rgba(214, 180, 106, 0.16);
+            border-color: var(--SmartThemeEmColor);
+            color: var(--SmartThemeEmColor);
+        }
+
+        /* Tarjeta de grimorio individual */
+        .gs-spell-card {
+            display: grid;
+            grid-template-columns: 44px 1fr auto;
+            gap: 10px;
+            align-items: center;
+            padding: 8px 10px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            color: inherit;
+            cursor: pointer;
+            transition: all 0.15s;
+            text-align: left;
+        }
+        .gs-spell-card:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: var(--SmartThemeEmColor);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        }
+        .gs-card-glyph {
+            width: 44px; 
+            height: 44px; 
+            border-radius: 6px;
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            font-size: 1.25rem; 
+            background: rgba(0,0,0,0.4);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .gs-card-glyph.fire { color: #f97316; border-color: rgba(249, 115, 22, 0.35); text-shadow: 0 0 8px rgba(249, 115, 22, 0.5); }
+        .gs-card-glyph.abjuration { color: #38bdf8; border-color: rgba(56, 189, 248, 0.35); text-shadow: 0 0 8px rgba(56, 189, 248, 0.5); }
+        .gs-card-glyph.weapon { color: #fca5a5; border-color: rgba(239, 68, 68, 0.35); }
+        .gs-card-glyph.action { color: #e2c27a; border-color: rgba(226, 194, 122, 0.35); }
+
+        .gs-card-body { 
+            display: flex; 
+            flex-direction: column; 
+            gap: 2px; 
+            min-width: 0; 
+        }
+        .gs-card-name { 
+            font-weight: bold; 
+            font-size: 0.88em; 
+            color: #fff; 
+            display: flex; 
+            align-items: center; 
+            gap: 6px; 
+        }
+        .gs-card-desc { 
+            font-size: 0.72em; 
+            opacity: 0.75; 
+            line-height: 1.3; 
+        }
+
+        .gs-card-badges {
+            display: flex; 
+            flex-direction: column; 
+            align-items: flex-end; 
+            gap: 3px;
+        }
+        .gs-card-badge {
+            font-size: 0.68rem; 
+            padding: 2px 6px; 
+            border-radius: 4px;
+            background: rgba(255,255,255,0.06); 
+            border: 1px solid rgba(255,255,255,0.1);
+            white-space: nowrap;
+        }
+        .gs-card-badge.damage { border-color: rgba(239, 68, 68, 0.35); color: #fca5a5; }
+        .gs-card-badge.reach { border-color: rgba(56, 189, 248, 0.35); color: #bae6fd; }
+        .gs-card-badge.cost { border-color: rgba(226, 194, 122, 0.35); color: var(--SmartThemeEmColor); }
+
+        .gs-tag-mastery {
+            font-size: 0.65rem; 
+            padding: 1px 5px; 
+            border-radius: 3px;
+            background: rgba(234, 179, 8, 0.15); 
+            border: 1px solid rgba(234, 179, 8, 0.4);
+            color: #fde047; 
+            text-transform: uppercase; 
+            letter-spacing: 0.04em;
+        }
+        .gs-tag-dc {
+            font-size: 0.65rem; 
+            padding: 1px 5px; 
+            border-radius: 3px;
+            background: rgba(168, 85, 247, 0.15); 
+            border: 1px solid rgba(168, 85, 247, 0.4);
+            color: #d8b4fe; 
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+
+<div class="mockup-window">
+    
+    <!-- CABECERA -->
+    <header class="gs-head">
+        <div class="gs-head-state"><i class="fa-solid fa-hourglass-half"></i> Ronda 1</div>
+        <div class="gs-head-title">El linde del Bosque de Montesclaros &mdash; Día 1 (Mañana)</div>
+    </header>
+
+    <div class="wm-container" id="wm-viewport" onclick="closeAllMenus()">
+        
+        <div class="wm-world" id="wm-world">
+
+            <!-- Capa de Terreno Natural: Río, Sendero, Ruinas y Maleza -->
+            <div class="wm-layer">
+                <div class="wm-terrain-water" style="top: 0; left: 240px; width: 120px; height: 1800px;"></div>
+                <div class="wm-terrain-dirt" style="top: 680px; left: 0; width: 2400px; height: 120px;"></div>
+
+                <div class="wm-terrain-wall" style="top: 480px; left: 760px; width: 200px; height: 80px;"></div>
+                <div class="wm-terrain-wall" style="top: 560px; left: 760px; width: 40px; height: 160px;"></div>
+                <div class="wm-terrain-wall" style="top: 360px; left: 1480px; width: 160px; height: 80px;"></div>
+
+                <div class="wm-terrain-brush" style="top: 840px; left: 480px; width: 120px; height: 120px;"></div>
+                <div class="wm-terrain-brush" style="top: 520px; left: 1080px; width: 120px; height: 80px;"></div>
+                <div class="wm-terrain-brush" style="top: 920px; left: 1120px; width: 160px; height: 80px;"></div>
+                <div class="wm-terrain-brush" style="top: 360px; left: 1720px; width: 160px; height: 120px;"></div>
+            </div>
+
+            <div class="wm-layer wm-range-layer">
+                <div class="wm-range-cell top-left" style="top: 640px; left: 760px;"></div>
+                <div class="wm-range-cell" style="top: 640px; left: 800px;"></div>
+                <div class="wm-range-cell" style="top: 640px; left: 840px;"></div>
+                <div class="wm-range-cell" style="top: 640px; left: 880px;"></div>
+                <div class="wm-range-cell top-right" style="top: 640px; left: 920px;"></div>
+                
+                <div class="wm-range-cell" style="top: 680px; left: 760px;"></div>
+                <div class="wm-range-cell" style="top: 680px; left: 800px;"></div>
+                <div class="wm-range-cell" style="top: 680px; left: 840px;"></div>
+                <div class="wm-range-cell" style="top: 680px; left: 880px;"></div>
+                <div class="wm-range-cell" style="top: 680px; left: 920px;"></div>
+                
+                <div class="wm-range-cell" style="top: 720px; left: 760px;"></div>
+                <div class="wm-range-cell" style="top: 720px; left: 800px;"></div>
+                <div class="wm-range-cell" style="top: 720px; left: 840px; background: rgba(59, 130, 246, 0.15);"></div>
+                <div class="wm-range-cell" style="top: 720px; left: 880px;"></div>
+                <div class="wm-range-cell" style="top: 720px; left: 920px;"></div>
+                
+                <div class="wm-range-cell bottom-left" style="top: 760px; left: 760px;"></div>
+                <div class="wm-range-cell" style="top: 760px; left: 800px;"></div>
+                <div class="wm-range-cell" style="top: 760px; left: 840px;"></div>
+                <div class="wm-range-cell" style="top: 760px; left: 880px;"></div>
+                <div class="wm-range-cell bottom-right" style="top: 760px; left: 920px;"></div>
+            </div>
+            
+            <!-- 1. Daeriel (Aliado en combate) -->
+            <div id="token-daeriel" class="wm-token wm-token-selected" style="top: 740px; left: 860px;" data-name="Daeriel">
+                <div class="wm-token-avatar">
+                    <img src="https://api.dicebear.com/7.x/adventurer/svg?seed=Daeriel&backgroundColor=transparent" style="width:100%;" alt="D">
+                </div>
+                <div class="wm-token-label">Daeriel</div>
+            </div>
+
+            <!-- 2. Ratero del muelle (Enemigo cuerpo a cuerpo) -->
+            <div id="token-ratero" class="wm-token wm-token-enemy" style="top: 620px; left: 860px;" data-name="Ratero del muelle">
+                <div class="wm-token-avatar"><i class="fa-solid fa-mask"></i></div>
+                <div class="wm-token-label">Ratero</div>
+            </div>
+
+            <!-- 3. Tirador furtivo (Enemigo distante a 90 ft) -->
+            <div id="token-tirador" class="wm-token wm-token-enemy" style="top: 400px; left: 1560px;" data-name="Tirador furtivo">
+                <div class="wm-token-avatar"><i class="fa-solid fa-crosshairs"></i></div>
+                <div class="wm-token-label">Tirador (90 ft)</div>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="gs-hud-layer">
+
+        <!-- MARCADOR DE BORDE (Off-screen marker hacia el Tirador) -->
+        <div id="edge-marker-tirador" class="wm-edge-marker" style="top: 80px; right: 360px;" onclick="centerOnToken('token-tirador')" title="Pulsar para centrar la cámara en este enemigo">
+            <i class="fa-solid fa-crosshairs"></i>
+            <span>Tirador furtivo &bull; 90 ft</span>
+            <i class="fa-solid fa-arrow-up-right-from-square wm-edge-arrow"></i>
+        </div>
+
+        <!-- CONTROLES DE CÁMARA RÁPIDOS -->
+        <div class="wm-camera-controls">
+            <button class="wm-cam-btn" onclick="zoomIn()" title="Acercar cámara (+)"><i class="fa-solid fa-plus"></i></button>
+            <button class="wm-cam-btn" onclick="zoomOut()" title="Alejar cámara (-)"><i class="fa-solid fa-minus"></i></button>
+            <button class="wm-cam-btn" onclick="centerOnToken('token-daeriel')" title="Centrar en Daeriel (Espacio)"><i class="fa-solid fa-crosshairs"></i></button>
+        </div>
+
+        <div class="wm-minimap-card">
+            <div class="wm-minimap-header">
+                <span><i class="fa-solid fa-map"></i> Vista táctica</span>
+                <span id="minimap-zoom-label" style="opacity:0.6;">1.0x</span>
+            </div>
+            <div class="wm-minimap-canvas" id="wm-minimap-canvas" onclick="onMinimapClick(event)">
+                <div class="wm-minimap-water" style="top: 0; left: 18px; width: 9px; height: 100%;"></div>
+                <div class="wm-minimap-dirt" style="top: 51px; left: 0; width: 100%; height: 9px;"></div>
+                <div class="wm-minimap-wall" style="top: 36px; left: 57px; width: 15px; height: 6px;"></div>
+                <div class="wm-minimap-wall" style="top: 27px; left: 111px; width: 12px; height: 6px;"></div>
+
+                <div class="wm-minimap-blip ally" style="top: 55px; left: 64px;" title="Daeriel"></div>
+                <div class="wm-minimap-blip enemy" style="top: 46px; left: 64px;" title="Ratero del muelle"></div>
+                <div class="wm-minimap-blip enemy" style="top: 30px; left: 117px;" title="Tirador furtivo (90 ft)"></div>
+
+                <div class="wm-minimap-viewport" id="wm-minimap-viewport"></div>
+            </div>
+        </div>
+
+        <div class="gs-hud-panel gs-hud-top-right">
+            
+            <!-- Iniciativa -->
+            <div class="wm-init">
+                <div class="wm-init-head">
+                    <span class="wm-init-round"><i class="fa-solid fa-list-ol"></i> Ronda 1</span>
+                    <span class="wm-init-turn">Turno de Daeriel &bull; Sig: Ratero</span>
+                </div>
+                <div class="wm-init-list">
+                    <div class="wm-init-row current" onclick="centerOnToken('token-daeriel')" title="Pulsar para enfocar a Daeriel">
+                        <div class="wm-init-score">16</div>
+                        <img class="wm-init-face" src="https://api.dicebear.com/7.x/adventurer/svg?seed=Daeriel&backgroundColor=transparent" alt="D">
+                        <div class="wm-init-body">
+                            <div class="wm-init-name">Daeriel (Tú)</div>
+                            <div class="wm-init-hp"><div class="wm-init-hp-fill" style="width: 100%;"></div></div>
+                        </div>
+                    </div>
+                    <div class="wm-init-row enemy" onclick="centerOnToken('token-ratero')" title="Pulsar para enfocar al Ratero">
+                        <div class="wm-init-score">10</div>
+                        <div class="wm-init-face"><i class="fa-solid fa-mask"></i></div>
+                        <div class="wm-init-body">
+                            <div class="wm-init-name">Ratero del muelle</div>
+                            <div class="wm-init-hp"><div class="wm-init-hp-fill" style="width: 100%;"></div></div>
+                        </div>
+                    </div>
+                    <div class="wm-init-row enemy" onclick="centerOnToken('token-tirador')" title="Pulsar para enfocar al Tirador">
+                        <div class="wm-init-score">8</div>
+                        <div class="wm-init-face"><i class="fa-solid fa-crosshairs"></i></div>
+                        <div class="wm-init-body">
+                            <div class="wm-init-name">Tirador furtivo (90 ft)</div>
+                            <div class="wm-init-hp"><div class="wm-init-hp-fill" style="width: 100%;"></div></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resumen de combate colapsable -->
+            <div class="wm-combat-summary-panel" id="combat-summary-panel">
+                <div class="wm-summary-head">
+                    <span><i class="fa-solid fa-feather-pointed"></i> Resumen de combate</span>
+                    <button class="wm-summary-toggle-btn" onclick="toggleSummaryPanel(this)" title="Plegar / Desplegar panel">
+                        <i class="fa-solid fa-chevron-up"></i>
+                    </button>
+                </div>
+                <div class="wm-summary-list">
+                    <div class="wm-summary-entry system">
+                        🎲 <strong>[SISTEMA]</strong> ¡Iniciativa tirada! Daeriel actúa primero (16 vs 10 vs 8).
+                    </div>
+                    <div class="wm-summary-entry combat">
+                        🏹 <strong>[COMBAT]</strong> ¡Emboscada! Un tirador apunta desde la ruina lejana (90 ft).
+                    </div>
+                    <div class="wm-summary-entry tip">
+                        <i class="fa-solid fa-arrows-up-down-left-right"></i> Arrastra el mapa para explorar o usa la rueda para zoom. [Espacio] te centra.
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="gs-hud-panel gs-hud-bottom-center">
+            
+            <div class="gs-action-menus-container">
+                
+                <div id="menu-atacar" class="gs-action-menu">
+                    <div class="gs-grimoire-head">
+                        <div class="gs-grimoire-title"><i class="fa-solid fa-fist-raised"></i> Acción de Atacar (Reglas 2024)</div>
+                        <button class="gs-filter-pill" onclick="event.stopPropagation();" title="Cambio libre de arma antes o después del ataque">
+                            <i class="fa-solid fa-repeat"></i> Cambiar arma (Gratis)
+                        </button>
+                    </div>
+
+                    <!-- Espada corta con Maestría Vex -->
+                    <div class="gs-spell-card">
+                        <div class="gs-card-glyph weapon"><i class="fa-solid fa-khanda"></i></div>
+                        <div class="gs-card-body">
+                            <div class="gs-card-name">
+                                Espada corta <span class="gs-tag-mastery">Vex</span>
+                            </div>
+                            <div class="gs-card-desc">Al impactar, ganas ventaja en el siguiente ataque contra él antes de tu fin de turno.</div>
+                        </div>
+                        <div class="gs-card-badges">
+                            <span class="gs-card-badge damage">1d6+3 Perforante</span>
+                            <span class="gs-card-badge reach">5 ft · Ligera</span>
+                        </div>
+                    </div>
+
+                    <!-- Impacto sin armas: Daño -->
+                    <div class="gs-spell-card">
+                        <div class="gs-card-glyph weapon"><i class="fa-solid fa-hand-back-fist"></i></div>
+                        <div class="gs-card-body">
+                            <div class="gs-card-name">Impacto sin armas &bull; Daño</div>
+                            <div class="gs-card-desc">Golpe contundente directo con puño, codo o patada.</div>
+                        </div>
+                        <div class="gs-card-badges">
+                            <span class="gs-card-badge damage">1 + FUE (4 Cont.)</span>
+                            <span class="gs-card-badge reach">5 ft</span>
+                        </div>
+                    </div>
+
+                    <!-- Impacto sin armas: Agarrar (Grapple) -->
+                    <div class="gs-spell-card">
+                        <div class="gs-card-glyph weapon"><i class="fa-solid fa-hands-holding"></i></div>
+                        <div class="gs-card-body">
+                            <div class="gs-card-name">
+                                Impacto sin armas &bull; Agarrar <span class="gs-tag-dc">CD 13</span>
+                            </div>
+                            <div class="gs-card-desc">Salvación de FUE o DES. Si falla: velocidad 0 y desventaja contra otros.</div>
+                        </div>
+                        <div class="gs-card-badges">
+                            <span class="gs-card-badge cost">Condición Agarrado</span>
+                            <span class="gs-card-badge reach">5 ft</span>
+                        </div>
+                    </div>
+
+                    <!-- Impacto sin armas: Empujar / Derribar (Shove) -->
+                    <div class="gs-spell-card">
+                        <div class="gs-card-glyph weapon"><i class="fa-solid fa-person-falling"></i></div>
+                        <div class="gs-card-body">
+                            <div class="gs-card-name">
+                                Impacto sin armas &bull; Empujar <span class="gs-tag-dc">CD 13</span>
+                            </div>
+                            <div class="gs-card-desc">Salvación de FUE o DES. Si falla: lo empujas 5 ft o cae Derribado (Prone).</div>
+                        </div>
+                        <div class="gs-card-badges">
+                            <span class="gs-card-badge cost">Empujar 5 ft / Suelo</span>
+                            <span class="gs-card-badge reach">5 ft</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="menu-magia" class="gs-action-menu">
+                    <div class="gs-grimoire-head">
+                        <div class="gs-grimoire-title"><i class="fa-solid fa-wand-magic-sparkles"></i> Grimorio arcano</div>
+                        <div class="gs-slot-counter">
+                            <span>Espacios N1:</span>
+                            <div class="gs-slot-gems">
+                                <i class="fa-solid fa-diamond"></i>
+                                <i class="fa-solid fa-diamond"></i>
+                                <i class="fa-solid fa-diamond gs-slot-gem-spent"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="gs-filter-tabs">
+                        <button class="gs-filter-pill active">Todos</button>
+                        <button class="gs-filter-pill">Trucos</button>
+                        <button class="gs-filter-pill">Nivel 1</button>
+                        <button class="gs-filter-pill">Objetos</button>
+                    </div>
+
+                    <!-- Descarga de fuego -->
+                    <div class="gs-spell-card">
+                        <div class="gs-card-glyph fire"><i class="fa-solid fa-fire"></i></div>
+                        <div class="gs-card-body">
+                            <div class="gs-card-name">Descarga de fuego</div>
+                            <div class="gs-card-desc">Rayo de energía ardiente contra una criatura u objeto inflamable.</div>
+                        </div>
+                        <div class="gs-card-badges">
+                            <span class="gs-card-badge damage">1d10 Fuego</span>
+                            <span class="gs-card-badge reach">120 ft</span>
+                            <span class="gs-card-badge cost">Truco</span>
+                        </div>
+                    </div>
+
+                    <!-- Armadura de mago -->
+                    <div class="gs-spell-card">
+                        <div class="gs-card-glyph abjuration"><i class="fa-solid fa-shield-halved"></i></div>
+                        <div class="gs-card-body">
+                            <div class="gs-card-name">Armadura de mago</div>
+                            <div class="gs-card-desc">Fuerza protectora mágica rodea a un objetivo sin armadura (CA 13 + DES).</div>
+                        </div>
+                        <div class="gs-card-badges">
+                            <span class="gs-card-badge cost">1 Ranura N1</span>
+                            <span class="gs-card-badge reach">Toque · 8 h</span>
+                        </div>
+                    </div>
+
+                    <!-- Rayo de escarcha -->
+                    <div class="gs-spell-card">
+                        <div class="gs-card-glyph abjuration" style="color:#67e8f9; border-color:rgba(103,232,249,0.35);"><i class="fa-solid fa-snowflake"></i></div>
+                        <div class="gs-card-body">
+                            <div class="gs-card-name">Rayo de escarcha</div>
+                            <div class="gs-card-desc">Rayo gélido blancoazul. Reduce la velocidad del objetivo en 10 ft.</div>
+                        </div>
+                        <div class="gs-card-badges">
+                            <span class="gs-card-badge damage">1d8 Frío</span>
+                            <span class="gs-card-badge reach">60 ft</span>
+                            <span class="gs-card-badge cost">Truco</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="menu-acciones" class="gs-action-menu">
+                    <div class="gs-grimoire-head">
+                        <div class="gs-grimoire-title"><i class="fa-solid fa-list-check"></i> Acciones Formales (D&D 2024)</div>
+                    </div>
+
+                    <div class="gs-spell-card">
+                        <div class="gs-card-glyph action"><i class="fa-solid fa-person-running"></i></div>
+                        <div class="gs-card-body">
+                            <div class="gs-card-name">Correr (Dash)</div>
+                            <div class="gs-card-desc">Ganas movimiento adicional igual a tu velocidad (+30 ft este turno).</div>
+                        </div>
+                        <div class="gs-card-badges"><span class="gs-card-badge cost">Acción</span></div>
+                    </div>
+
+                    <div class="gs-spell-card">
+                        <div class="gs-card-glyph action"><i class="fa-solid fa-shoe-prints"></i></div>
+                        <div class="gs-card-body">
+                            <div class="gs-card-name">Destrabarse (Disengage)</div>
+                            <div class="gs-card-desc">Tu movimiento no provoca ataques de oportunidad durante el resto del turno.</div>
+                        </div>
+                        <div class="gs-card-badges"><span class="gs-card-badge cost">Acción</span></div>
+                    </div>
+
+                    <div class="gs-spell-card">
+                        <div class="gs-card-glyph action"><i class="fa-solid fa-shield"></i></div>
+                        <div class="gs-card-body">
+                            <div class="gs-card-name">Esquivar (Dodge)</div>
+                            <div class="gs-card-desc">Ataques contra ti tienen desventaja y tienes ventaja en salvaciones de DES.</div>
+                        </div>
+                        <div class="gs-card-badges"><span class="gs-card-badge cost">Hasta sig. turno</span></div>
+                    </div>
+
+                    <div class="gs-spell-card">
+                        <div class="gs-card-glyph action"><i class="fa-solid fa-user-group"></i></div>
+                        <div class="gs-card-body">
+                            <div class="gs-card-name">Ayudar (Help)</div>
+                            <div class="gs-card-desc">Das ventaja a un aliado en una prueba o en su próximo ataque contra un rival a 5 ft.</div>
+                        </div>
+                        <div class="gs-card-badges"><span class="gs-card-badge cost">Acción</span></div>
+                    </div>
+
+                    <div class="gs-spell-card">
+                        <div class="gs-card-glyph action"><i class="fa-solid fa-eye-slash"></i></div>
+                        <div class="gs-card-body">
+                            <div class="gs-card-name">Ocultarse (Hide) <span class="gs-tag-dc">CD 15 Sigilo</span></div>
+                            <div class="gs-card-desc">Requiere cobertura o penumbra. Si tienes éxito ganas condición Invisible.</div>
+                        </div>
+                        <div class="gs-card-badges"><span class="gs-card-badge cost">Invisible</span></div>
+                    </div>
+
+                    <div class="gs-spell-card">
+                        <div class="gs-card-glyph action"><i class="fa-solid fa-book-open-reader"></i></div>
+                        <div class="gs-card-body">
+                            <div class="gs-card-name">Estudiar (Study)</div>
+                            <div class="gs-card-desc">Prueba de Inteligencia para deducir resistencias o debilidades del enemigo.</div>
+                        </div>
+                        <div class="gs-card-badges"><span class="gs-card-badge cost">Arc/Hist/Nat</span></div>
+                    </div>
+
+                    <div class="gs-spell-card">
+                        <div class="gs-card-glyph action"><i class="fa-solid fa-gear"></i></div>
+                        <div class="gs-card-body">
+                            <div class="gs-card-name">Utilizar (Utilize)</div>
+                            <div class="gs-card-desc">Interactúa con mecanismos complejos: palancas trabadas, poleas, o da una poción a un aliado.</div>
+                        </div>
+                        <div class="gs-card-badges"><span class="gs-card-badge cost">Mecanismo</span></div>
+                    </div>
+                </div>
+
+                <div id="menu-adicional" class="gs-action-menu">
+                    <div class="gs-grimoire-head">
+                        <div class="gs-grimoire-title"><i class="fa-solid fa-bolt-lightning"></i> Acción Adicional (Bonus Action)</div>
+                    </div>
+
+                    <div class="gs-spell-card">
+                        <div class="gs-card-glyph action" style="color:#f43f5e; border-color:rgba(244,63,94,0.35);"><i class="fa-solid fa-flask"></i></div>
+                        <div class="gs-card-body">
+                            <div class="gs-card-name">Beber poción de curación</div>
+                            <div class="gs-card-desc">Oficial en 2024: beberla uno mismo es Acción Adicional (dársela a otro es Utilize).</div>
+                        </div>
+                        <div class="gs-card-badges">
+                            <span class="gs-card-badge damage" style="color:#86efac; border-color:rgba(34,197,94,0.3);">Cura 2d4+2</span>
+                            <span class="gs-card-badge cost">1 Poción</span>
+                        </div>
+                    </div>
+
+                    <div class="gs-spell-card">
+                        <div class="gs-card-glyph weapon"><i class="fa-solid fa-dagger"></i></div>
+                        <div class="gs-card-body">
+                            <div class="gs-card-name">Ataque con mano torpe (Arma Ligera)</div>
+                            <div class="gs-card-desc">Ataque adicional si atacaste con arma Ligera (sin sumar mod. característica al daño).</div>
+                        </div>
+                        <div class="gs-card-badges">
+                            <span class="gs-card-badge damage">1d4 Perforante</span>
+                            <span class="gs-card-badge reach">5 ft · Daga</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="gs-actions-hud">
+                <div class="gs-actions-status">
+                    <div class="gs-turn-label">Turno de Daeriel</div>
+                    <div class="gs-budget-pills">
+                        <span class="gs-pill ready" title="Acción principal disponible">Acción ●</span>
+                        <span class="gs-pill ready" title="Acción adicional disponible">Adicional ●</span>
+                        <span class="gs-pill ready" title="Reacción lista">Reacción ●</span>
+                    </div>
+                    <div class="gs-move-container">
+                        <div class="gs-move-label"><i class="fa-solid fa-person-walking"></i> 15/30 ft</div>
+                        <button class="gs-prone-toggle" onclick="toggleProne(this)" title="Tirarse es gratis; levantarse cuesta la mitad (-15 ft)">
+                            <i class="fa-solid fa-person-falling"></i> Cuerpo a tierra
+                        </button>
+                    </div>
+                </div>
+
+                <div class="gs-actions-buttons">
+                    <button class="gs-btn gs-btn-attack" onclick="toggleMenu('menu-atacar', this)">
+                        <i class="fa-solid fa-fist-raised"></i> Atacar
+                    </button>
+                    <button class="gs-btn" onclick="toggleMenu('menu-magia', this)">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> Magia
+                    </button>
+                    <button class="gs-btn" onclick="toggleMenu('menu-acciones', this)">
+                        <i class="fa-solid fa-list-check"></i> Acciones
+                    </button>
+                    <button class="gs-btn gs-btn-bonus" onclick="toggleMenu('menu-adicional', this)">
+                        <i class="fa-solid fa-bolt-lightning"></i> Adicional
+                    </button>
+                    <button class="gs-btn"><i class="fa-solid fa-forward-step"></i> Fin de turno</button>
+                    <button class="gs-btn gs-btn-quiet"><i class="fa-solid fa-person-running"></i> Abandonar</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    // --- ESTADO DE LA CÁMARA (PAN & ZOOM) ---
+    const camera = {
+        x: -320,
+        y: -300,
+        scale: 1.0,
+        minScale: 0.45,
+        maxScale: 2.2,
+        isDragging: false,
+        startX: 0,
+        startY: 0
+    };
+
+    const worldWidth = 2400;
+    const worldHeight = 1800;
+
+    const $viewport = $('#wm-viewport');
+    const $world = $('#wm-world');
+    const $minimapVp = $('#wm-minimap-viewport');
+
+    function updateCameraTransform(smooth = false) {
+        $world.css({
+            'transition': smooth ? 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)' : 'none',
+            'transform': `translate(${camera.x}px, ${camera.y}px) scale(${camera.scale})`
+        });
+        updateMinimap();
+        updateEdgeMarkers();
+    }
+
+    // --- ARRASTRE DE RATÓN (PAN) ---
+    $viewport.on('mousedown', function (e) {
+        if ($(e.target).closest('.gs-hud-panel, .wm-minimap-card, .wm-camera-controls, .wm-edge-marker').length) return;
+        
+        camera.isDragging = true;
+        camera.startX = e.clientX - camera.x;
+        camera.startY = e.clientY - camera.y;
+        $viewport.addClass('grabbing');
+    });
+
+    $(window).on('mousemove', function (e) {
+        if (!camera.isDragging) return;
+        camera.x = e.clientX - camera.startX;
+        camera.y = e.clientY - camera.startY;
+        updateCameraTransform(false);
+    });
+
+    $(window).on('mouseup', function () {
+        if (camera.isDragging) {
+            camera.isDragging = false;
+            $viewport.removeClass('grabbing');
+        }
+    });
+
+    // --- ZOOM CON RUEDA DE RATÓN ---
+    $viewport.on('wheel', function (e) {
+        e.preventDefault();
+        const delta = e.originalEvent.deltaY > 0 ? -0.1 : 0.1;
+        const newScale = Math.min(Math.max(camera.scale + delta, camera.minScale), camera.maxScale);
+
+        const mouseX = e.clientX;
+        const mouseY = e.clientY;
+        
+        const worldX = (mouseX - camera.x) / camera.scale;
+        const worldY = (mouseY - camera.y) / camera.scale;
+
+        camera.x = mouseX - worldX * newScale;
+        camera.y = mouseY - worldY * newScale;
+        camera.scale = newScale;
+
+        $('#minimap-zoom-label').text(camera.scale.toFixed(1) + 'x');
+        updateCameraTransform(false);
+    });
+
+    function zoomIn() {
+        camera.scale = Math.min(camera.scale + 0.2, camera.maxScale);
+        $('#minimap-zoom-label').text(camera.scale.toFixed(1) + 'x');
+        updateCameraTransform(true);
+    }
+
+    function zoomOut() {
+        camera.scale = Math.max(camera.scale - 0.2, camera.minScale);
+        $('#minimap-zoom-label').text(camera.scale.toFixed(1) + 'x');
+        updateCameraTransform(true);
+    }
+
+    // --- CENTRADO INSTANTÁNEO ---
+    function centerOnToken(tokenId) {
+        if (window.event) window.event.stopPropagation();
+        const $tok = $('#' + tokenId);
+        if (!$tok.length) return;
+
+        const tokX = parseFloat($tok.css('left'));
+        const tokY = parseFloat($tok.css('top'));
+
+        const vpW = $viewport.width();
+        const vpH = $viewport.height();
+
+        camera.x = (vpW / 2) - (tokX * camera.scale);
+        camera.y = (vpH / 2) - (tokY * camera.scale);
+
+        updateCameraTransform(true);
+    }
+
+    $(window).on('keydown', function (e) {
+        if (e.code === 'Space' && !$(e.target).is('input, textarea')) {
+            e.preventDefault();
+            centerOnToken('token-daeriel');
+        }
+    });
+
+    // --- ACTUALIZACIÓN DE MINIMAPA Y MARCADORES ---
+    function updateMinimap() {
+        const vpW = $viewport.width();
+        const vpH = $viewport.height();
+
+        const minimapW = $('#wm-minimap-canvas').width() || 180;
+        const minimapH = $('#wm-minimap-canvas').height() || 105;
+
+        const ratioX = minimapW / worldWidth;
+        const ratioY = minimapH / worldHeight;
+
+        const visibleW = (vpW / camera.scale) * ratioX;
+        const visibleH = (vpH / camera.scale) * ratioY;
+        const visibleX = (-camera.x / camera.scale) * ratioX;
+        const visibleY = (-camera.y / camera.scale) * ratioY;
+
+        $minimapVp.css({
+            width: Math.min(visibleW, minimapW) + 'px',
+            height: Math.min(visibleH, minimapH) + 'px',
+            left: Math.max(0, Math.min(visibleX, minimapW - visibleW)) + 'px',
+            top: Math.max(0, Math.min(visibleY, minimapH - visibleH)) + 'px'
+        });
+    }
+
+    function onMinimapClick(e) {
+        const offset = $(e.currentTarget).offset();
+        const clickX = e.clientX - offset.left;
+        const clickY = e.clientY - offset.top;
+
+        const minimapW = $(e.currentTarget).width();
+        const minimapH = $(e.currentTarget).height();
+
+        const targetWorldX = (clickX / minimapW) * worldWidth;
+        const targetWorldY = (clickY / minimapH) * worldHeight;
+
+        const vpW = $viewport.width();
+        const vpH = $viewport.height();
+
+        camera.x = (vpW / 2) - (targetWorldX * camera.scale);
+        camera.y = (vpH / 2) - (targetWorldY * camera.scale);
+
+        updateCameraTransform(true);
+    }
+
+    function updateEdgeMarkers() {
+        const $tirador = $('#token-tirador');
+        const $marker = $('#edge-marker-tirador');
+        if (!$tirador.length || !$marker.length) return;
+
+        const tokX = parseFloat($tirador.css('left')) * camera.scale + camera.x;
+        const tokY = parseFloat($tirador.css('top')) * camera.scale + camera.y;
+
+        const vpW = $viewport.width();
+        const vpH = $viewport.height();
+
+        const isInside = (tokX >= 60 && tokX <= vpW - 60 && tokY >= 60 && tokY <= vpH - 60);
+
+        if (isInside) {
+            $marker.fadeOut(150);
+        } else {
+            $marker.fadeIn(150);
+        }
+    }
+
+    // --- MENÚS Y PANELES COLAPSABLES ---
+    function toggleSummaryPanel(btn) {
+        if (window.event) window.event.stopPropagation();
+        const $panel = $('#combat-summary-panel');
+        $panel.toggleClass('collapsed');
+        const isCollapsed = $panel.hasClass('collapsed');
+        $(btn).html(isCollapsed ? '<i class="fa-solid fa-chevron-down"></i>' : '<i class="fa-solid fa-chevron-up"></i>');
+    }
+
+    function toggleMenu(menuId, buttonElement) {
+        if (window.event) window.event.stopPropagation();
+        const $menu = $('#' + menuId);
+        const $btn = $(buttonElement);
+        
+        if ($menu.hasClass('active')) {
+            $menu.removeClass('active');
+            $btn.removeClass('active-menu');
+            return;
+        }
+
+        closeAllMenus();
+        $menu.addClass('active');
+        $btn.addClass('active-menu');
+    }
+
+    function closeAllMenus() {
+        $('.gs-action-menu').removeClass('active');
+        $('.gs-btn').removeClass('active-menu');
+    }
+
+    function toggleProne(btn) {
+        if (window.event) window.event.stopPropagation();
+        const $btn = $(btn);
+        $btn.toggleClass('active');
+        if ($btn.hasClass('active')) {
+            $btn.html('<i class="fa-solid fa-person-falling"></i> Derribado (-15 ft)');
+        } else {
+            $btn.html('<i class="fa-solid fa-person-falling"></i> Cuerpo a tierra');
+        }
+    }
+
+    $(function () {
+        centerOnToken('token-daeriel');
+    });
+</script>
+</body>
+</html>
