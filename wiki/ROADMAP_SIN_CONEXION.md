@@ -130,6 +130,33 @@ Esta mañana era un 43 % jugable. Lo construido que el jugador aún no alcanza:
   - historias de fondo en tres actos para las campañas sin hilo escrito (J10.7).
 - **El tablero nuevo (J12.14 a J12.17), con tres agentes:** el lienzo y la cámara; la barra de acciones de 2024; la pelea que empieza sola y el movimiento (agua profunda, camino recto, diagonales 5/10/5). El móvil ligero (J20.6) espera a que termine, porque toca el mismo dibujo.
 - **Los quince frentes que cortó el límite de uso siguen donde se quedaron.**
+
+**Cómo iba al acabarse el plan semanal (2026-10-01, 11:50).** Todo está en el árbol, sin commit: quedan dos pruebas unitarias rotas de trabajo a medias. Cada frente apunta su avance en `progreso.md`, en su carpeta de trabajo, y se retoma desde ahí.
+- **Terminados y probados en el navegador:**
+  - la partida es el gremio (J4.2);
+  - trabajos y ratos libres (J14.11);
+  - las campañas del Gem (J5.2, J5.3, J5.5, J5.6, J12.5).
+- **Casi terminados** (pasos hechos / total):
+  - los nombres que aún no conoces, y el narrador sin placa: 16 de 17;
+  - Strahd de punta a punta: 18 de 20;
+  - historias en tres actos: 15 de 19;
+  - humanizar: 11 de 14;
+  - contenido que falta: 7 de 10.
+- **A medias:**
+  - el romance: 20 de 30;
+  - el teclado: 21 de 35;
+  - la barra de acciones de 2024: 5 de 14;
+  - la pelea que empieza sola: 3 de 4.
+- **Empezados:**
+  - el lienzo del tablero nuevo;
+  - las notas en prosa;
+  - el calabozo;
+  - el arte;
+  - los duelos;
+  - 1387 de punta a punta;
+  - las vueltas automáticas.
+
+Al volver: retomar cada frente desde su `progreso.md`. Después, dejar las pruebas en verde, hacer el commit y recontar. Con lo terminado, el avance jugable es un 87 % (129 de 149 filas).
 - **Humanizar (lo pediste el 30-09), con dos agentes más:**
   - solo sabes el nombre de quien se ha presentado (J13.7);
   - textos y reacciones más humanos en las primeras horas de juego (J13.8).
