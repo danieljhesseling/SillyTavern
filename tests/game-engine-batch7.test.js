@@ -39,9 +39,10 @@ describe('el calendario cambia el mapa', () => {
         expect(seasonOf(57, 'invierno')).toBe('primavera');
         expect(daysLeftInSeason(1)).toBe(56);
         expect(daysLeftInSeason(56)).toBe(1);
-        expect(describeSeason(45)).toBe('Otoño · quedan 12 días');
+        expect(describeSeason(45)).toBe('Otoño · faltan 12 días para el invierno');
+        expect(describeSeason(56)).toBe('Otoño · último día antes del invierno');
         expect(readSeasons('invierno, Otoño')).toEqual(['invierno', 'otono']);
-        expect(buildClockView({ day: 3, slotLabel: 'Tarde', season: describeSeason(3) }).label).toBe('Día 3 · Tarde · Otoño · quedan 54 días');
+        expect(buildClockView({ day: 3, slotLabel: 'Tarde', season: describeSeason(3) }).label).toBe('Día 3 · Tarde · Otoño · faltan 54 días para el invierno');
         expect(buildClockView({ day: 3, slotLabel: 'Tarde' }).label).toBe('Día 3 · Tarde');
         expect(openInSeason(['invierno'], 'invierno')).toBe(true);
         expect(openInSeason(['invierno'], 'verano')).toBe(false);

@@ -137,7 +137,8 @@ export function describeSeasons(seasons) {
 }
 
 /**
- * La estación de hoy, para el reloj: «Otoño · quedan 12 días».
+ * La estación de hoy, para el reloj: «Otoño · faltan 12 días para el invierno». Antes decía
+ * «quedan 12 días» y parecía que se acababa la partida (lo pidió Daniel el 2026-10-02).
  *
  * @param {number} day
  * @param {string} [start]
@@ -146,5 +147,8 @@ export function describeSeasons(seasons) {
 export function describeSeason(day, start = DEFAULT_START) {
     const season = SEASONS[/** @type {keyof typeof SEASONS} */ (seasonOf(day, start))];
     const left = daysLeftInSeason(day);
-    return `${season.label} · ${left === 1 ? 'último día' : `quedan ${left} días`}`;
+    const next = SEASONS[/** @type {keyof typeof SEASONS} */ (seasonOf(day + left, start))];
+    const name = String(next?.label || '').toLowerCase();
+    const theNext = name === 'primavera' ? `la ${name}` : `el ${name}`;
+    return `${season.label} · ${left === 1 ? `último día antes de${theNext.startsWith('el ') ? 'l' + theNext.slice(2) : ' ' + theNext}` : `faltan ${left} días para ${theNext}`}`;
 }
