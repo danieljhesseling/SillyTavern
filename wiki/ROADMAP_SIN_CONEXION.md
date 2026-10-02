@@ -44,10 +44,10 @@ author: DanielJHesseling / Claude Opus 5.5
 ## 📍 Cómo va (2026-10-02)
 
 **Avance, sobre 149 filas activas** (sin lo aparcado ni las decisiones):
-- **91 % jugable** (135 filas).
+- **92 % jugable** (137 filas).
 - **96 % construido** (143 filas).
 
-Todo lo contado está en commits (el último, 62b4e7ec4).
+Todo lo contado está en commits (el último, 2407cc696).
 
 | Hito | Jugable | Construido |
 | :--- | :---: | :---: |
@@ -59,50 +59,45 @@ Todo lo contado está en commits (el último, 62b4e7ec4).
 | M6 · Los compañeros a fondo | 80 % | 100 % |
 | M7 · En el móvil | 78 % | 100 % |
 
-**Lo último que ha entrado (commit 62b4e7ec4, 2026-10-02):**
-- **La barra de acciones de D&D 2024 (J12.15):**
-  - Acción, Adicional y Reacción a la vista, y «Cuerpo a tierra»;
-  - menús en tarjetas: maestrías de armas, el golpe sin armas, agarrar y empujar con su CD, cambiar de arma, las acciones de 2024 y la poción como acción adicional;
-  - lanzar a más nivel (J19.3): en la tarjeta del conjuro eliges el nivel del espacio que gastas.
-- **El arte del tablero:** agua honda y somera, el muelle, la playa, muros, puertas, fuego, trampas, marcos de ficha, casillas de salida y los enemigos que salían con calavera.
-- **Strahd se juega de punta a punta sin conexión (M4).**
-
-**En marcha ahora (2026-10-02, tarde): cinco agentes, en modo cerrar.**
-- **El lienzo y la cámara (J12.14)**, con los fallos que apuntó el revisor:
-  - la distancia en el aviso del borde;
-  - más tablero con el móvil de pie;
-  - el precio del camino por encima de las fichas;
-  - los tableros pequeños centrados;
-  - la cabecera con el móvil tumbado.
-- **La IA con las reglas de 2024:** enemigos y compañeros agarran, empujan, esquivan, se ocultan y usan las maestrías. Ya está arreglado el turno enemigo que se quedaba parado; faltan las simulaciones.
+**Lo último que ha entrado (commit 2407cc696, 2026-10-02):**
+- **El tablero nuevo, terminado (J12.14 a J12.17):**
+  - el mapa a pantalla entera, con cámara, minimapa, avisos del borde que no se pisan, iniciativa con caras y el resumen plegable;
+  - la barra de 2024;
+  - la pelea que empieza sola.
+  - El revisor de tu encargo dio 147 criterios bien y 1 mal.
+- **La IA con las reglas de 2024:** enemigos y compañeros usan maestrías, agarran, empujan, esquivan, se ocultan, ayudan y beben pociones.
 - **D-J56:**
-  - el grupo de referencia de 4;
-  - la cripta de Strahd para nivel 6-7: el renombre por terminar Strahd pasa de 6 a 7;
-  - comprobarlo con la simulación;
-  - quitar «La casa» del tablón de Barovia;
-  - lo que se puede mirar en la sala del gremio, también en la fila de abajo.
-- **El revisor de los criterios del tablero.**
-- **Historias en tres actos (J10.7):** sus últimas pruebas. Con D-J57, sirve ya para las tres campañas de semilla, como experimentales.
-- **D-J58:** apagar la simulación de facciones; se quedan la reputación y lo que la historia hace con ella.
-- **Los Gems, al día**, para que hagan casi todo el trabajo de crear campañas:
-  - el formato gana el aspecto de cada persona (para sus retratos), romances y misiones personales por campaña;
-  - las reglas D-J54 (conversaciones), D-J56, D-J58, D-J46 y J13.7, con ejemplos;
-  - instrucciones compactas para el Gem, más un anexo de consulta;
+  - grupo de referencia de 4;
+  - la cripta de Strahd para nivel 6-7;
+  - el tablón de Barovia sin «La casa»;
+  - lo que se mira en la sala del gremio, también en la fila de abajo.
+- **D-J58:** la simulación de facciones, apagada.
+- **Los Gems al día:**
+  - el aspecto, los romances y las misiones personales por campaña;
+  - instrucciones compactas con su anexo;
   - el guionista, reescrito;
-  - una guía nueva, `GEM_COMO_HACER_CAMPANA.md`, con el proceso paso a paso.
+  - la guía `GEM_COMO_HACER_CAMPANA.md`.
+- **Historias en tres actos (J10.7)**, para las tres campañas experimentales.
+- **La cabecera:** «Otoño · faltan 56 días para el invierno».
+- **Las pruebas** ya no abren pestañas, y la batería no pasa la vuelta larga antigua.
 
-**En pausa, con su avance guardado en su `progreso.md`**, para retomarlos en grupos pequeños:
-La prioridad es que el prólogo, el gremio, 1387 y Strahd se jueguen enteros y bien (D-J55):
-1. **1387 de punta a punta y las vueltas automáticas** que lo comprueban (J9.1, J16).
-2. **Las notas del juego (J13.1, J18.10):** con D-J54 las dirá la gente en vez del narrador.
-3. **El teclado (J15.5):** 21 de 37.
-4. **Lo que da forma a la vida en el pueblo y el gremio:**
-   - el romance (J14.10), con 24 de 36;
-   - peleas de taberna y duelos (J12.7).
-5. **El arte que falta** en las dos campañas.
-6. **Más adelante:**
-   - el móvil ligero y su guía (J20.6, J20.8), que esperan al tablero nuevo;
-   - el APK.
+**En marcha ahora (2026-10-02, tarde): diez agentes.** Es todo lo que queda del roadmap:
+- 1387 de punta a punta y las vueltas automáticas, con un bot para cualquier campaña (J9.1, J16);
+- las notas del juego dichas por la gente (J13.1, J18.10, D-J54);
+- teclado y accesibilidad (J15.5);
+- el romance (J14.10);
+- peleas de taberna y duelos (J12.7);
+- el móvil ligero y su guía (J20.6, J20.8);
+- el arte de puentes y acantilados.
+- **Arreglos de los informes:**
+  - la escena que salía encima de colocarse;
+  - «Estabilizar» a un caído;
+  - la pelea acaba al caer el último enemigo;
+  - las trampas a 0 PG;
+  - inglés en el resumen;
+  - los avisos del borde sobre los nombres;
+  - la Luz en el examen;
+  - la tienda de mando de 1387.
 
 **Después de este roadmap, en este orden** (lo dijiste el 2026-10-02):
 1. **Un roadmap para que el juego sea más entretenido.** Saldrá de jugarlo y de tus pruebas (J16.5): qué aburre, qué confunde, qué engancha.
