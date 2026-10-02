@@ -103,7 +103,7 @@ Todo lo contado está en commits (el último, 4f973fa88).
 - **Decisión pendiente, la cripta de Strahd:** con dados de verdad, un grupo de nivel 5 con dos mercenarios la pierde en 8 rondas. Opciones:
   - (a) dejarla así de dura, para usar las estacas, el agua bendita y la Espada del Sol;
   - (b) bajar a Strahd a unos 70 PG o quitar el engendro;
-  - (c) marcar la cripta para nivel 6-7, y el motor la afloja sola a nivel 5. Es la que recomiendo.
+  - (c) marcar la cripta para nivel 6-7, y el motor la afloja sola a nivel 5. **Decidido: la (c), con D-J56.**
 
 **En pausa, con su avance guardado en su `progreso.md`**, para retomarlos en grupos pequeños:
 La prioridad es que el prólogo, el gremio, 1387 y Strahd se jueguen enteros y bien (D-J55):
@@ -338,6 +338,7 @@ Tus respuestas a D-J11…D-J38. «⏳» significa que está por hacer.
 | **D-J53** | Curar con magia al llegar de un viaje | El viaje pregunta si curas a quien está herido | ✅ |
 | **D-J54** | ¿Cuánto habla el narrador? | Casi nada. La historia se cuenta con conversaciones de novela visual entre la gente, con sus retratos, como en *Etrian Odyssey*. El narrador queda para una línea corta de ambiente o de paso del tiempo, y sin placa. Vale para las escenas, los sucesos, el calabozo y los hilos de las campañas sin historia escrita (J10.7) | ⏳ en parte: falta pasar las notas del juego a conversaciones (J13.1) |
 | **D-J55** | ¿En qué se centra la beta sin conexión? | En que se jueguen bien las campañas que ya existen (el prólogo y el gremio, 1387 y Strahd) y en dar forma a lo que hay. Las semillas, las campañas generadas y lo que el juego podría hacer solo quedan para el modo mundo semiabierto, más adelante | ✅ |
+| **D-J56** | ¿Cómo se ajusta la dificultad? | Mixto, con límites: cada zona tiene su nivel recomendado y el motor ajusta dentro de un margen (tope ×1,35, D-J21), sin que llegue a dar igual tu nivel. El grupo de referencia es de **4**, como en D&D (antes, 3): con menos se quita algún enemigo y con 5 se añade. La cripta de Strahd, para nivel 6-7 | ⏳ |
 
 ---
 
