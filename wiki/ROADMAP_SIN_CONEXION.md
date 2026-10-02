@@ -43,9 +43,9 @@ author: DanielJHesseling / Claude Opus 5.5
 
 ## 📍 Cómo va (2026-10-02)
 
-**Avance, sobre 149 filas activas** (sin lo aparcado ni las decisiones):
-- **96 % jugable** (143 filas).
-- **99 % construido** (148 filas).
+**Avance, sobre 151 filas activas** (sin lo aparcado ni las decisiones):
+- **95 % jugable** (143 filas).
+- **98 % construido** (148 filas).
 
 Todo lo contado está en commits (el último, a9c72fe9f).
 
@@ -354,6 +354,7 @@ Tus respuestas a D-J11…D-J38. «⏳» significa que está por hacer.
 | **D-J57** | Las tres campañas de semilla (El mundo tras la pantalla, isekai; Las tierras del ocaso, fantasía épica; La costa que no duerme, terror) | Al tablón como **experimentales**, con su historia en tres actos (J10.7 deja de estar aparcada para ellas). Más adelante se pueden escribir bien, como 1387 o Strahd | ⏳ |
 | **D-J58** | Las facciones | Se queda lo que es historia: la reputación con cada grupo, y las puertas, los peajes y los finales que dependen de ella. La simulación de un mundo vivo (relojes que avanzan solos, quién controla cada sitio, precios y sucesos por facción) se apaga con un interruptor hasta el modo mundo semiabierto. Ahora, el foco es un D&D puro: el grupo, su gestión y las relaciones | ⏳ |
 | **D-J59** | ¿Cómo se llega al nivel de los finales? | No se sube de nivel por pasar hitos: un personaje de nivel alto que viene de otra campaña se dispararía. El nivel sale de pelear, de los encargos y de las misiones secundarias. Los finales se quedan duros: la cripta de Strahd, para nivel 6-7; las puertas del castillo de 1387, como están. Antes de entrar en un tablero final, el aviso dice para qué nivel es y en cuál está tu grupo | ⏳ |
+| **D-J60** | ¿Queda algo del narrador en el juego sin conexión? | **Nada.** Lo dijiste así: «la figura del narrador en un juego sin conexión no la quiero». Todo lo dice alguien que está allí: la gente del sitio, tus compañeros o tú, en tus respuestas. Ni saludo del narrador, ni resúmenes, ni líneas de ambiente en la caja de la novela. Lo que es ambiente o paso del tiempo se ve en pantalla (el fondo, la hora, la vida) o va en un aviso pequeño fuera de la caja. Corrige D-J54, que aún dejaba una línea corta | ⏳ |
 
 ---
 
@@ -497,6 +498,8 @@ Tus respuestas a D-J11…D-J38. «⏳» significa que está por hacer.
 | J5.4 | **Importar desde el gremio**: pegar o subir el JSON, y que aparezca en el tablón | A | S | e2e |
 | J5.5 | **El Gem puede escribir campañas en tu formato o en el del juego**, y [[GEM_CREAR_CAMPANA]] explica ambos | A | S | — |
 | J5.6 | **Comprobar una campaña antes de jugarla**: el medidor de densidad (`tools/check-world-density.mjs`) le dice si le falta algo (sitios sin nada, hitos sin salida, misiones sin tablero) | A | S | La herramienta, con tu JSON |
+| J5.7 | **Exportar el guion a Word** (lo pediste el 2026-10-02): todo el texto de una campaña como un guion de lectura, ordenado por capítulos, hitos y escenas. Cada línea lleva quién la dice, su gesto y el texto («**Posadero** *(enfadado)*: ¡Al ladrón!»), con las opciones, los diálogos, las salidas habladas, lo que se mira y los romances. Cada línea lleva una marca pequeña en gris para poder volver | A | M | El guion de 1387 en Word, leído de un tirón |
+| J5.8 | **Importar el guion corregido**: el motor cambia solo los textos tocados (en Strahd, en sus fuentes) y avisa de lo que no encuentra y de las marcas de género rotas. Las líneas nuevas quedan como notas para el Gem guionista. Más adelante, botones en el gremio | A | M | Cambiar tres líneas en Word, importarlo y verlas en el juego |
 
 **Hecho cuando** me pasas un JSON, lo conviertes con un comando (o lo subes al gremio) y la campaña aparece en el tablón y se juega.
 
