@@ -41,125 +41,49 @@ author: DanielJHesseling / Claude Opus 5.5
 
 ---
 
-## 📍 Cómo va (2026-09-30, noche)
+## 📍 Cómo va (2026-10-02)
 
-**Avance, contando las 143 filas activas** (sin lo aparcado ni las decisiones), recontado fila a fila tras la tanda 7:
-- **85 % jugable** (122 filas): se puede usar en el juego sin escribir nada.
-- **93 % construido** (133 filas).
-- **7 % sin empezar** (10 filas):
-  - partir el estado de la partida (J4.2);
-  - ampliar el contrato del Gem (J5.2);
-  - el teclado (J15.5);
-  - las vueltas automáticas (J16.1, J16.2, J16.4);
-  - las cuatro propuestas (J10.7, J12.7, J14.10, J14.11), que aprobaste el 30-09 y ya están en marcha.
+**Avance, sobre 149 filas activas** (sin lo aparcado ni las decisiones):
+- **87 % jugable** (129 filas).
+- **91 % construido** (136 filas).
+
+Esto cuenta como hecho lo que está terminado y probado aunque aún no tenga commit: la partida es el gremio (J4.2), trabajos y ratos libres (J14.11) y las campañas del Gem (J5.2 a J5.6 y J12.5). Contando solo lo que tiene commit, es un 82 %.
 
 | Hito | Jugable | Construido |
 | :--- | :---: | :---: |
 | M1 · Entrar y crear el personaje | 96 % | 100 % |
-| M2 · El gremio y la primera campaña | 96 % | 96 % |
+| M2 · El gremio y la primera campaña | 100 % | 100 % |
 | M3 · El pueblo y su gente | 100 % | 100 % |
-| M4 · Strahd con mapas y magia | 76 % | 96 % |
-| M5 · Una campaña bien contada | 87 % | 97 % |
-| M6 · Los compañeros a fondo | 60 % | 60 % |
+| M4 · Strahd con mapas y magia | 96 % | 100 % |
+| M5 · Una campaña bien contada | 81 % | 91 % |
+| M6 · Los compañeros a fondo | 80 % | 100 % |
 | M7 · En el móvil | 78 % | 100 % |
 
-Esta mañana era un 43 % jugable. Lo construido que el jugador aún no alcanza:
-- los huecos que rellena el motor en una campaña del Gem y el informe antes de jugarla (J5.3, J5.5, J5.6, J12.5);
-- 1387 de punta a punta (J9.1);
-- las notas en prosa (J13.1, J18.10);
-- lanzar a más nivel (J19.3);
-- el móvil ligero y su guía (J20.6, J20.8);
-- los plazos, apagados por tu decisión D-J46.
+**En marcha ahora (2026-10-02): modo cerrar, siete agentes.** Lo pediste así: «céntrate en acabar cosas». Cada agente solo hace los pasos que le quedan:
+- solo sabes el nombre de quien se ha presentado, y el narrador sin placa (J13.7);
+- textos y reacciones más humanos (J13.8), que además arregla las dos pruebas del prólogo;
+- Strahd de punta a punta (M4);
+- historias en tres actos para las campañas sin hilo escrito (J10.7);
+- el contenido que falta: salidas habladas, cosas que mirar y trampas;
+- el calabozo (D-J47), con «Continuar» de vuelta al sitio cuando el tablero está vacío;
+- la pelea que empieza sola y el movimiento (J12.16, J12.17): el mar no se cruza, el camino va recto y las diagonales cuestan 5, 10, 5.
 
-**Jugar en el móvil sin servidor:** un plan aparte, [ROADMAP_PWA_SIN_SERVIDOR.md](ROADMAP_PWA_SIN_SERVIDOR.md). La web se instala como app, guarda en el propio teléfono y funciona sin conexión. Amplía J20.7 y J20.8, y va de la mano de J15.6 (exportar la partida). El repositorio sigue privado, así que nada de GitHub Pages. Decidido: **un APK de Android**, cuando el juego esté a punto.
+Después: revisar que lo escrito vaya en conversaciones y no en el narrador (D-J54), hacer el commit y recontar.
 
-**La primera vuelta jugable ya está.** Se entra por «Jugar sin conexión», se hace el personaje, se gana la prueba del gremio, se contratan mercenarios y se empieza *La Maldición de Strahd* o *1387* desde el tablón. Se vuelve al gremio con todo lo ganado y se sigue la campaña donde se dejó. Lo comprueba `tools/e2e-gremio.mjs`, de punta a punta en el navegador.
-
-**Lo nuevo del 2026-09-29:** el personaje se crea en su pantalla (J18.2), eligiendo de tarjetas, con los atributos repartidos o tirados (J1.2) y el equipo de su clase puesto (J1.3). La historia se lee en una caja de novela visual (J18.3 a J18.6). El gremio está en un pueblo, **Puerto Alba**, con quien atiende cada servicio (J3.10), y el viaje a cada campaña se cuenta, a la ida y a la vuelta (J4.9). Strahd tiene su libro escrito con mis palabras (`libro.json`): 31 personas, 36 rumores, 15 encargos y 18 tableros, y la simulación los gana todos.
-
-**Más tarde, el mismo día, con varios agentes a la vez:** el texto del motor concuerda con el género de tu personaje (J1.4: se escribe `{cansado|cansada}`); el gremio guarda varios personajes tuyos y al entrar eliges con quién (J1.6, J18.1); los consejos de la primera vez salen uno a uno, cuando toca, y la prueba de la bodega se puede saltar (J2.2, J2.3); y terminar una campaña tiene su escena, con epílogos, lo que se lleva cada uno y la vuelta al gremio, que la apunta en el Salón de la fama (J4.5, J3.9).
-
-**El arte (2026-09-29, con PixelLab):** 442 imágenes en `public/img/game-engine/pixel/`: iconos de clases, especies, objetos, habilidades, estados y conjuros; 75 criaturas; 112 retratos (la gente de Puerto Alba, Strahd y 1387, los mercenarios y héroes de reserva) y 39 escenarios de día y de noche. Se están haciendo retratos por especie y clase, expresiones para la novela visual y losetas para el tablero, y conectándolo todo al juego.
-
-**Lo último que ha entrado (tanda 7 y D-J46 a D-J53, commit 3b97eb4be):**
-- **El combate con magia:**
-  - la concentración se rompe con el daño y los estados;
-  - Escudo y Contraconjuro;
-  - las invocaciones entran en la iniciativa;
-  - la bruja y Strahd lanzan conjuros;
-  - «Lo muevo yo» con vínculo 5 (J7.3);
-  - «Continuar» sigue el hilo (D-J45).
-- **Peleas que se pueden evitar:**
-  - hablar, pagar, huir o esconderse (J12.2);
-  - salir de una pelea hablando (J8.5);
-  - enemigos ajustados al grupo y a su nivel (J12.6, J4.6).
-- **El tablero:**
-  - un mapa en imagen se juega con sus alturas y sus salas (J12.10, J12.11);
-  - tableros grandes con cámara y niebla (J12.13);
-  - trampas y búsqueda (J12.3);
-  - el tablero a toques (J20.2).
-- **El mundo vivo:**
-  - caminos por reputación o llave, como la barca de Nikolai (J10.1);
-  - sucesos por facción (J10.3);
-  - el mapa dibujado (J10.5);
-  - multas y huidas (J11.3).
-- **Arreglos:**
-  - el error 500 al guardar el chat, que hacía perder lo jugado;
-  - los mercenarios que morían de hambre en las misiones personales;
-  - la formación que ahora sí viaja con el grupo.
-- **Tus decisiones D-J46 a D-J53.**
-
-**En marcha ahora (2026-09-30, noche): la tanda 9, con once agentes a la vez.**
-- **Siguen donde se cortaron:**
-  - las campañas del Gem (J5.2, J5.3, J5.5, J5.6, J12.5, y las trampas en el contrato);
-  - las vueltas automáticas (J16);
-  - el calabozo (D-J47) y sus flecos;
-  - las notas en prosa (J13.1, J18.10);
-  - el teclado (J15.5).
-- **Nuevos:**
-  - el móvil ligero y su guía (J20.6, J20.8);
-  - la partida es el gremio (J4.2);
-  - 1387 de punta a punta (J9.1);
-  - Strahd de punta a punta (M4);
-  - el contenido que falta: salidas habladas en más peleas, cosas que mirar en Puerto Alba y trampas en las mazmorras;
-  - arte nuevo con PixelLab: jefes, el calabozo, la torre de Van Richten, la granja quemada.
-- **Las cuatro propuestas, aprobadas** («hazlo», 30-09), con cuatro agentes más:
-  - peleas de taberna y duelos, sin muertes, por honor o por apuesta (J12.7);
-  - trabajos y ratos libres: servir mesas, las cartas, la forja, leer, pescar (J14.11);
-  - romance opcional, con dos romances escritos enteros y fundido a negro (J14.10);
-  - historias de fondo en tres actos para las campañas sin hilo escrito (J10.7).
-- **El tablero nuevo (J12.14 a J12.17), con tres agentes:** el lienzo y la cámara; la barra de acciones de 2024; la pelea que empieza sola y el movimiento (agua profunda, camino recto, diagonales 5/10/5). El móvil ligero (J20.6) espera a que termine, porque toca el mismo dibujo.
-- **Los quince frentes que cortó el límite de uso siguen donde se quedaron.**
-
-**Cómo iba al acabarse el plan semanal (2026-10-01, 11:50).** Todo está en el árbol, sin commit: quedan dos pruebas unitarias rotas de trabajo a medias. Cada frente apunta su avance en `progreso.md`, en su carpeta de trabajo, y se retoma desde ahí.
-- **Terminados y probados en el navegador:**
-  - la partida es el gremio (J4.2);
-  - trabajos y ratos libres (J14.11);
-  - las campañas del Gem (J5.2, J5.3, J5.5, J5.6, J12.5).
-- **Casi terminados** (pasos hechos / total):
-  - los nombres que aún no conoces, y el narrador sin placa: 16 de 17;
-  - Strahd de punta a punta: 18 de 20;
-  - historias en tres actos: 15 de 19;
-  - humanizar: 11 de 14;
-  - contenido que falta: 7 de 10.
-- **A medias:**
-  - el romance: 20 de 30;
-  - el teclado: 21 de 35;
-  - la barra de acciones de 2024: 5 de 14;
-  - la pelea que empieza sola: 3 de 4.
-- **Empezados:**
-  - el lienzo del tablero nuevo;
-  - las notas en prosa;
-  - el calabozo;
-  - el arte;
-  - los duelos;
-  - 1387 de punta a punta;
-  - las vueltas automáticas.
-
-Al volver: retomar cada frente desde su `progreso.md`. Después, dejar las pruebas en verde, hacer el commit y recontar. Con lo terminado, el avance jugable es un 87 % (129 de 149 filas).
-- **Humanizar (lo pediste el 30-09), con dos agentes más:**
-  - solo sabes el nombre de quien se ha presentado (J13.7);
-  - textos y reacciones más humanos en las primeras horas de juego (J13.8).
+**En pausa, con su avance guardado en su `progreso.md`**, para retomarlos en grupos pequeños:
+1. **El tablero nuevo:**
+   - el lienzo y la cámara (J12.14);
+   - la barra de acciones de 2024 (J12.15), que llevaba 5 de 14 pasos.
+2. **El romance (J14.10):** 24 de 36.
+3. **El teclado (J15.5):** 21 de 37.
+4. **Las notas del juego (J13.1, J18.10):** con D-J54 las dirá la gente en vez del narrador.
+5. **Peleas de taberna y duelos (J12.7).**
+6. **1387 de punta a punta y las vueltas automáticas (J9.1, J16).**
+7. **El arte nuevo.**
+8. **Más adelante:**
+   - el móvil ligero y su guía (J20.6, J20.8), que esperan al tablero nuevo;
+   - lanzar a más nivel (J19.3);
+   - el APK.
 
 **Jugar con amigos (J6) está aparcado** hasta nueva orden (lo dijiste el 2026-09-28). Tampoco hay más personajes que los mercenarios sencillos del gremio.
 
@@ -171,26 +95,26 @@ Cómo está hecho, en corto (el detalle, en [[EMPEZAR_UNA_CAMPANA]], «Jugar sin
 | Fase | Estado | En una línea |
 | :--- | :---: | :--- |
 | **J0** · La puerta | ✅ | El botón en la portada, el modo motor, sin la ventana del nombre (J0.2), el narrador sin ficha (J0.3), las opciones del juego (J0.4), «Continuar» (J0.5), «Cargar partida» con partidas (J0.6), y arrancar con doble clic, `Jugar.bat`, con la guía del servidor privado, `wiki/SERVIDOR_PRIVADO.md` (J0.9) |
-| **J1** · Tu personaje | 🟢 | Hecho: tarjetas (J1.1), atributos repartidos o tirados (J1.2), equipo por clase (J1.3), el género del texto (J1.4), el personaje dura (J1.5) y varios personajes tuyos en el gremio (J1.6). Falta: la ficha legible (J1.7) y tu cara sin arte (J1.8) |
+| **J1** · Tu personaje | ✅ | Tarjetas (J1.1), atributos (J1.2), equipo por clase (J1.3), el género del texto (J1.4), el personaje dura (J1.5), varios personajes (J1.6), la ficha legible (J1.7) y tu cara sin arte: iniciales con color, icono o emoji (J1.8, D-J52) |
 | **J2** · El prólogo | ✅ | El prólogo entero, como paquete (J2.1, J2.4): llegas al muelle de Puerto Alba, un ratero, una pelea pequeña, la charla con Tomás, Brunilda y la prueba de la bodega. Los consejos de la primera vez, uno a uno (J2.2), y saltarlo entero (J2.3; falta un enganche para que el salto no deje la pelea del muelle a la vista) |
-| **J3** · El pueblo y el gremio, tu base | 🟡 | Hecho: Puerto Alba con su **pantalla del pueblo** (J3.11): un selector de sitios (herrería, taberna, tienda, capilla y gremio), cada uno con su fondo de día o de noche y quien lo atiende, que te saluda y te ofrece lo suyo; también en Vallaki y Krezk. El tablón (J3.2), los mercenarios y el Salón de la fama (J3.9). Falta: la sala propia (J3.1), el cofre y lo demás |
-| **J4** · Las campañas | 🟡 | Hecho: empezar desde el tablón (J4.3), volver y retomar (J4.4), terminar con su escena, epílogos y lo que se lleva cada uno (J4.5), varias a la vez (J4.8), 1387 en el tablón (J4.7) y el viaje contado (J4.9). Falta: el ajuste por nivel (J4.6, en marcha) y partir el estado de la partida (J4.2) |
-| **J5** · Tu JSON de campañas | 🟡 | Hecho: el conversor (J5.1), Strahd en el tablón, e importar desde el gremio con «Añadir una campaña», que acepta el JSON de tu Gem, lo valida y explica los errores en español (J5.4). Falta: `levels` y `journey` en el contrato del Gem (J5.2) |
+| **J3** · El pueblo y el gremio, tu base | ✅ | Puerto Alba con su pantalla del pueblo (J3.11) y la sala del gremio por salas (J3.1). El tablón (J3.2), dormir y guardar (J3.3), el cofre (J3.4), entrenar y subir de nivel (J3.5), forja, biblioteca, dormitorios y establo (J3.6), rango y renombre (J3.7), encargos (J3.8) y el Salón de la fama (J3.9) |
+| **J4** · Las campañas | ✅ | Empezar desde el tablón (J4.3), volver y retomar (J4.4), terminar con epílogos (J4.5), nivel recomendado y enemigos ajustados (J4.6), 1387 (J4.7), varias a la vez (J4.8), el viaje contado (J4.9). La partida es el gremio: el mismo gremio en todas las campañas, y las partidas de antes siguen cargando (J4.2, sin commit) |
+| **J5** · Tu JSON de campañas | ✅ | El conversor (J5.1) e importar desde el gremio (J5.4). Sin commit: el contrato ampliado, con trampas (J5.2), los huecos que rellena el motor (J5.3), los dos formatos del Gem (J5.5) y el informe antes de jugar (J5.6) |
 | **J6** · Jugar con amigos | ⏸️ | Aparcado |
-| **J7** · El grupo | ⬜ | De un solo jugador por ahora: tu personaje y sus compañeros, y a cada uno lo mueves tú o el juego, como elijas |
-| **J8** · Hablar sin IA | 🟡 | Hecho, en el motor y con su ventana (J8.1 a J8.4, J8.6): diálogos con ramas en el paquete, con condiciones, efectos y tiradas, opciones según tu especie y clase («[Enano] …»), opciones bloqueadas que dicen por qué, y sin repetir. Escritos: Brunilda, Giles (1387) e Ismark (Strahd). Falta: enchufarlos en «Hablar» (tras J15.1) y salir de una pelea hablando (J8.5) |
-| **J9** · La historia de cada campaña | 🟡 | Hecho, en el motor y con su ventana: **las escenas del hilo, jugadas** (J9.2). En cada hito, la gente habla con su retrato y su expresión, sobre el sitio, y hay una decisión con consecuencia. Escritas: el prólogo de Puerto Alba, los cinco primeros hitos de 1387 y los tres primeros de Strahd. Los finales con epílogos (J4.5). Falta: enchufar las escenas en el juego (tras J15.1), 1387 entero sin conexión (J9.1), capítulos (J9.3), plazos a la vista (J9.5) y el Diario como un libro (J9.6) |
-| **J10** · El mundo de cada campaña | 🟡 | Hecho: **cada sitio con algo que hacer** (J10.2): gente o servicios, cosas que mirar, un rumor o un hito y, si toca, un tablero. `check-world-density` lo mide sitio por sitio, y los 14 de 1387 y los 14 de Strahd pasan. **Secretos** (J10.4): cuatro en 1387 y tres en Strahd, cada uno se descubre de una forma distinta (un rumor, una persona, una tirada, un mapa). Gente con horario (J10.6, con J14). Falta: ofrecer «mirar» en el juego (tras J15.1), caminos por reputación y llaves (J10.1), sucesos por facción (J10.3) y el mapa dibujado (J10.5) |
-| **J11** · Decisiones que pesan | ⬜ | Dentro de la campaña y de una campaña a otra |
-| **J12** · Tableros y peleas | 🟡 | Hecho: **un tablero a partir de un mapa de D&D en imagen** (J12.8 a J12.12). En el editor de tableros, «Subir mapa en cuadrícula» encuentra la cuadrícula, lee muros, suelo, puertas y puentes, y deja nombrar las salas y poner alturas; se juega sobre el mapa limpio. Probado con tu mapa. Falta: que las alturas y los nombres de sala cuenten en juego (tras J15.1), tableros grandes (J12.13) y peleas que se pueden evitar |
-| **J13** · El texto del motor | 🟡 | Hecho: el género en todas las frases (J1.4, J13.3), **469 frases del narrador** con al menos ocho por momento (J13.4), sin repetirse en diez llegadas en 200 partidas, medido con `tools/variedad-frases.mjs --check` (J13.2), y la guía de estilo en [[GEM_GUIONISTA]] (J13.6). Falta: las notas del juego en prosa (J13.1, con J18.10), frases por estación y frases de compañeros fuera de combate (J13.5) |
-| **J14** · La gente: charlas y quedadas | 🟡 | Hecho, en el motor y con su pantalla (J14.1 a J14.6): 170 frases de charla corta, el día por partes, quedar con alguien como escena de novela visual con su retrato y su expresión, lo que abre cada rango (el 5, moverlo tú: J7.3), quién está en cada sitio a cada hora, y las 50 escenas de confidentes de Strahd y 1387 convertidas en quedadas jugables. Falta: enchufarlo en el juego (tras J15.1), y las noches, las charlas de pareja, las misiones personales y el romance (J14.7 a J14.11) |
-| **J15** · Sentirse un juego | 🟡 | Hecho: **`party.js` partido** (J15.1): una fachada de 29 líneas y 42 módulos en `party/` (combate, tablero, mundo, tiempo, hilo, charla, viaje, pueblo, gremio, encargos, magia, la ficha, los menús, los comandos…), con el mismo orden de eventos, herramientas y comandos, y las pruebas de la fachada. Falta: guardar como un juego (J15.2), comandos a botones (J15.4), teclado y accesibilidad (J15.5) y exportar la partida entera (J15.6) |
-| **J16** · Medir la diversión | ⬜ | Vueltas automáticas, también con dos jugadores |
+| **J7** · El grupo | ✅ | Tu grupo (J7.1), compañeros que se quedan en el gremio (J7.2), «Lo muevo yo» con vínculo 5 (J7.3), formación y papeles (J7.4) y opiniones a la vista en lo importante (J7.5, D-J48) |
+| **J8** · Hablar sin IA | ✅ | Diálogos con ramas al pulsar «Hablar» (J8.1 a J8.4, J8.6, D-J36) y salir de una pelea hablando (J8.5) |
+| **J9** · La historia de cada campaña | 🟡 | Escenas del hilo (J9.2), capítulos (J9.3), finales (J9.4) y el Diario como un libro (J9.6). Los plazos están hechos pero apagados (J9.5, D-J46). En pausa: 1387 entero sin conexión (J9.1) |
+| **J10** · El mundo de cada campaña | 🟢 | Caminos por reputación y llaves (J10.1), cada sitio con algo que hacer (J10.2), sucesos por facción (J10.3), secretos (J10.4), el mapa dibujado (J10.5) y gente con horario (J10.6). Cerrándose: historias en tres actos para las campañas sin hilo escrito (J10.7) |
+| **J11** · Decisiones que pesan | ✅ | Avisar de lo que no tiene vuelta atrás (J11.1), consecuencias días después (J11.2), el mundo se acuerda (J11.3; el calabozo, D-J47, cerrándose), de una campaña a otra (J11.4) y la crónica (J11.5) |
+| **J12** · Tableros y peleas | 🟡 | Turnos (J12.1), salidas sin pelear (J12.2), trampas (J12.3), el grupo junto (J12.4), tableros del JSON (J12.5, sin commit), encuentros ajustados (J12.6), un mapa en imagen jugado con alturas y salas (J12.8 a J12.12) y tableros grandes (J12.13). El tablero como un VTT (J12.14 a J12.17): cerrándose la pelea que empieza sola y el movimiento; en pausa el lienzo y la barra de 2024. En pausa: peleas de taberna y duelos (J12.7) |
+| **J13** · El texto del motor | 🟡 | El género (J13.3), frases medidas y variadas (J13.2, J13.4), frases de compañeros (J13.5) y la guía de estilo (J13.6). Cerrándose: solo sabes el nombre de quien se ha presentado (J13.7) y textos más humanos (J13.8). En pausa: las notas del juego (J13.1), que con D-J54 dirá la gente en vez del narrador |
+| **J14** · La gente: charlas y quedadas | 🟢 | Charla corta, el día por partes, quedar, quién está libre, confidentes y compañeros de cada campaña (J14.1 a J14.6). Las noches y las charlas de pareja (J14.7, J14.8), las misiones personales (J14.9) y trabajos y ratos libres (J14.11, sin commit). En pausa: el romance (J14.10) |
+| **J15** · Sentirse un juego | 🟢 | `party.js` partido (J15.1), guardar como un juego (J15.2), el registro (J15.3), comandos a botones (J15.4) y exportar e importar (J15.6). En pausa: teclado y accesibilidad (J15.5) |
+| **J16** · Medir la diversión | ⬜ | En pausa: las vueltas automáticas (J16.1, J16.2, J16.4). La de dos jugadores (J16.3) va con J6, aparcado |
 | **J17** · Después: la IA como capa | ⏸️ | Aparcado (lo dijiste el 2026-09-29) |
-| **J19** · La magia de D&D | 🟡 | Hecho, en el motor: 81 conjuros como datos, espacios de conjuro de 5e, preparados y conocidos, concentración, invocaciones, zonas, reacciones, rituales y objetos con cargas. Falta: conectarlo al combate, al descanso y a subir de nivel (tras partir `party.js`) |
-| **J20** · Jugar desde el móvil | 🟡 | Hecho: el juego se ve y se juega en el teléfono, en vertical y en horizontal (J20.1). Antes medía 0 px de alto en pantallas pequeñas. También botones de dedo (J20.3), todo sin teclado (J20.4), ventanas que caben (J20.5) y `tools/e2e-movil.mjs` en la batería (J20.9). Falta: el tablero táctil (J20.2, tras J15.1), instalarlo como app (J20.7) y la guía para el móvil (J20.8) |
-| **J18** · La cara del juego | 🟡 | Hecho: elegir con quién entras (J18.1), la pantalla de crear personaje (J18.2) y la novela visual con su registro (J18.3 a J18.6). En marcha: sin chat (J18.7), escenas que cambian por lo que haces (J18.8), descansar como acción de sitio (J18.9) y sin etiquetas del motor en la caja (J18.10) |
+| **J19** · La magia de D&D | 🟢 | En juego: espacios, conocidos y preparados, concentración, invocaciones, zonas, reacciones, rituales, objetos mágicos, magia fuera de combate y enemigos que lanzan. Falta: lanzar a más nivel (J19.3), con la barra nueva |
+| **J20** · Jugar desde el móvil | 🟢 | La pantalla en el móvil (J20.1), el tablero a toques (J20.2), botones de dedo (J20.3), sin teclado (J20.4), ventanas que caben (J20.5), el icono y el nombre «DnD Coin» (J20.7) y la prueba del móvil (J20.9). Esperan al tablero nuevo: ligero en el móvil (J20.6) y la guía (J20.8). Más adelante: el APK |
+| **J18** · La cara del juego | 🟢 | Elegir personaje y crearlo, y la novela visual con su registro (J18.1 a J18.6). Sin chat, escenas por acciones, descansar como acción de sitio (J18.7 a J18.9). En pausa: sin etiquetas del motor en la caja (J18.10) |
 
 ---
 
