@@ -43,7 +43,7 @@ author: DanielJHesseling / Claude Opus 5.5
 
 ## 📍 Cómo va (2026-10-02)
 
-**Avance, sobre 153 filas activas** (sin lo aparcado ni las decisiones):
+**Avance, sobre 155 filas activas** (sin lo aparcado ni las decisiones):
 - **93 % jugable** (143 filas).
 - **97 % construido** (148 filas).
 
@@ -686,6 +686,8 @@ Así no hay que reescribir el motor para el servidor. El riesgo: si el anfitrió
 | J12.15 | **La barra de acciones de D&D 2024**:<br>• el presupuesto del turno: Acción, Adicional, Reacción y el movimiento;<br>• «Cuerpo a tierra»;<br>• menús en tarjetas: Atacar (con las maestrías de las armas, el impacto sin armas para golpear, agarrar o empujar, y el cambio de arma), Magia (con las gemas de los espacios), Acciones (Correr, Destrabarse, Esquivar, Ayudar, Ocultarse, Estudiar, Utilizar) y Adicional (beber una poción, la mano torpe).<br>«Hablar», «Mascota» y «Maniobras» salen de la barra | A | L | Pruebas de cada regla nueva y una pelea jugada con la barra nueva |
 | J12.16 | **La pelea empieza sola**: al entrar en un tablero con enemigos, primero se deciden las salidas, si las hay (Pelear, Hablar, Pagar, Huir, Esconderse). Luego colocas a los tuyos y sale la iniciativa. Sin «Iniciar combate» ni «Evitar la pelea» sueltos, y sin fichas del pueblo en el tablero | A | M | e2e en el muelle del prólogo |
 | J12.17 | **Moverse bien**: el mar y los ríos hondos no se cruzan andando, el camino va recto si puede, y las diagonales cuestan 5, 10, 5… (la regla opcional de 5e, con un interruptor) | A | M | Pruebas y el muelle del prólogo: nada de andar sobre el agua |
+| J12.18 | **Los objetivos dentro del menú, y quién se lleva el golpe** (lo pediste el 2026-10-02). Al elegir un ataque o un conjuro en la barra («Hacha»), debajo salen los objetivos a tu alcance, con su vida, la distancia y la probabilidad de acertar; se elige ahí, sin ir a su ficha. Al pasar el ratón, los enemigos afectados brillan en **rojo** y los aliados en **azul**; en un conjuro de área se ve la zona con todos los de dentro | A | M | e2e en el muelle: elegir el arma, ver al ratero en el menú, resaltarlo y atacarle desde ahí |
+| J12.19 | **Efectos que se notan**: al golpear, destello, sacudida, el número de daño grande y el corte o el fuego según el daño. Con un crítico, más llamativo; al fallar, un «¡Falla!» claro; la cura, en verde. Al caer alguien, la ficha se tumba y se apaga, y queda marcada | A | M | Capturas de un golpe, un crítico y una muerte |
 
 **Hecho cuando** subes un mapa de D&D en imagen y en unos minutos lo juegas como tablero, con sus muros, puertas y alturas; y una pelea escrita se puede resolver hablando. (Lo de cada jugador en su turno, J12.1, vuelve con J6.)
 
