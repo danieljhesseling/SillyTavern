@@ -370,6 +370,7 @@ Tus respuestas a D-J11…D-J38. «⏳» significa que está por hacer.
 | **D-J51** | Luz bajo techo | No se ofrece donde ya hay luz (taberna, tienda, gremio…) | ⏳ |
 | **D-J52** | Tu cara sin arte | Se puede elegir: iniciales con un color, un icono o un emoji | ⏳ |
 | **D-J53** | Curar con magia al llegar de un viaje | El viaje pregunta si curas a quien está herido | ⏳ |
+| **D-J54** | ¿Cuánto habla el narrador? | Casi nada. La historia se cuenta con conversaciones de novela visual entre la gente, con sus retratos, como en *Etrian Odyssey*. El narrador queda para una línea corta de ambiente o de paso del tiempo, y sin placa. Vale para las escenas, los sucesos, el calabozo y los hilos de las campañas sin historia escrita (J10.7) | ⏳ |
 
 ---
 
