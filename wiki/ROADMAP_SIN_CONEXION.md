@@ -97,6 +97,15 @@ La prioridad es que el prólogo, el gremio, 1387 y Strahd se jueguen enteros y b
    - el móvil ligero y su guía (J20.6, J20.8), que esperan al tablero nuevo;
    - el APK.
 
+**Después de este roadmap, en este orden** (lo dijiste el 2026-10-02):
+1. **Un roadmap para que el juego sea más entretenido.** Saldrá de jugarlo y de tus pruebas (J16.5): qué aburre, qué confunde, qué engancha.
+2. **La ampliación definitiva de Strahd:**
+   - el Castillo Ravenloft con todas sus salas, hechas con mapas en imagen;
+   - el Templo de Ámbar, el paso de Tsolenka y la Casa de la Muerte;
+   - la lectura de las cartas de Tarokka, que cambia en cada partida dónde están los objetos y quién es tu aliado;
+   - más encuentros y misiones.
+3. **El modo mundo semiabierto.**
+
 **Para el modo mundo semiabierto, más adelante (D-J55):** [[ROADMAP_AUTOMATIZAR]] reúne lo que el juego podría hacer solo, sin IA:
 - la gente habla sola con conversaciones de novela visual;
 - misiones personales y romances para cualquier compañero;
