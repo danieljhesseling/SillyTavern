@@ -273,50 +273,50 @@ Tus respuestas a D-J11…D-J38. «⏳» significa que está por hacer.
 
 | # | Qué | Lo que decidiste | |
 | :---: | :--- | :--- | :---: |
-| **D-J11** | Oro de cada personaje nuevo del gremio | 10 de oro a partir del segundo | ⏳ |
-| **D-J12** | Los personajes que descansan en el gremio | Se curan con el paso de los días | ⏳ |
+| **D-J11** | Oro de cada personaje nuevo del gremio | 10 de oro a partir del segundo | ✅ |
+| **D-J12** | Los personajes que descansan en el gremio | Se curan con el paso de los días | ✅ |
 | **D-J13** | Varios personajes tuyos en la misma campaña | Uno por ahora; varios más adelante, con J7 | ✅ |
-| **D-J14** | Dos personajes con el mismo nombre | No se puede: se avisa al crear el personaje | ⏳ |
-| **D-J15** | Personajes no binarios en el texto | Como en D&D, el género no cambia ninguna regla. Lo que eliges es cómo te habla el texto: en masculino o en femenino. Se quitan las terceras formas | ⏳ |
+| **D-J14** | Dos personajes con el mismo nombre | No se puede: se avisa al crear el personaje | ✅ |
+| **D-J15** | Personajes no binarios en el texto | Como en D&D, el género no cambia ninguna regla. Lo que eliges es cómo te habla el texto: en masculino o en femenino. Se quitan las terceras formas | ✅ |
 | **D-J16** | Género de los mercenarios | Gerd y Osric, hombre; Nella, mujer | ✅ |
-| **D-J17** | Frases en masculino de 1387 y Strahd | Que concuerden con el género de a quien se dirigen (`{…\|…}`), también en la sinopsis, las fichas, los rumores y las misiones | ⏳ |
-| **D-J18** | Epílogos en el formato de tu Gem | Sí: un campo `epilogos` | ⏳ |
-| **D-J19** | Nombre de la campaña en el Salón de la fama | El mismo que en el tablón | ⏳ |
+| **D-J17** | Frases en masculino de 1387 y Strahd | Que concuerden con el género de a quien se dirigen (`{…\|…}`), también en la sinopsis, las fichas, los rumores y las misiones | ✅ |
+| **D-J18** | Epílogos en el formato de tu Gem | Sí: un campo `epilogos` | ✅ |
+| **D-J19** | Nombre de la campaña en el Salón de la fama | El mismo que en el tablón | ✅ |
 | **D-J20** | Saltar la prueba | Da el botín y la experiencia, como si la hubieras ganado | ✅ |
-| **D-J21** | Enemigos ajustados por nivel | Tope ×1,35, y no se duplican enemigos de CA 15 o más | ⏳ |
-| **D-J22** | El nivel recomendado | Por acto, y que se vea bien el nivel recomendado de cada campaña: las hay que empiezan en el 10 y no son para gente sin experiencia | ⏳ |
-| **D-J23** | Borrar un gremio desde «Cargar partida» | Sí, con una confirmación que diga todo lo que se borra | ⏳ |
-| **D-J24** | El panel derecho vacío en la pausa | Esconderlo | ⏳ |
-| **D-J25** | Materiales de conjuro | Venderlos en las tiendas y, después, exigirlos | ⏳ |
-| **D-J26** | Nigromancia como delito | Solo las que dañan o levantan muertos | ⏳ |
-| **D-J27** | El erudito | Lanza solo rituales, sin espacios | ⏳ |
-| **D-J28** | Tablón y mercenarios en el prólogo | Escondidos hasta que acabe la prueba | ⏳ |
-| **D-J29** | Horario de las tiendas | Las tiendas tienen horario, y cierran algunos días (fiestas, el día de descanso) | ⏳ |
-| **D-J30** | Orden de los sitios de Puerto Alba | El gremio, primero | ⏳ |
-| **D-J31** | ¿Comprar gasta una parte del día? | No, como en *Persona*: comprar dos pociones no te quita la tarde | ⏳ |
-| **D-J32** | Mover a un compañero frente al modo «grupo» | El vínculo 5 manda en los dos modos | ⏳ |
-| **D-J33** | Historias inventadas de los mercenarios | Las revisa un agente que sepa del tema | ⏳ |
+| **D-J21** | Enemigos ajustados por nivel | Tope ×1,35, y no se duplican enemigos de CA 15 o más | ✅ |
+| **D-J22** | El nivel recomendado | Por acto, y que se vea bien el nivel recomendado de cada campaña: las hay que empiezan en el 10 y no son para gente sin experiencia | ✅ |
+| **D-J23** | Borrar un gremio desde «Cargar partida» | Sí, con una confirmación que diga todo lo que se borra | ✅ |
+| **D-J24** | El panel derecho vacío en la pausa | Esconderlo | ✅ |
+| **D-J25** | Materiales de conjuro | Venderlos en las tiendas y, después, exigirlos | ✅ |
+| **D-J26** | Nigromancia como delito | Solo las que dañan o levantan muertos | ✅ |
+| **D-J27** | El erudito | Lanza solo rituales, sin espacios | ✅ |
+| **D-J28** | Tablón y mercenarios en el prólogo | Escondidos hasta que acabe la prueba | ✅ |
+| **D-J29** | Horario de las tiendas | Las tiendas tienen horario, y cierran algunos días (fiestas, el día de descanso) | ✅ |
+| **D-J30** | Orden de los sitios de Puerto Alba | El gremio, primero | ✅ |
+| **D-J31** | ¿Comprar gasta una parte del día? | No, como en *Persona*: comprar dos pociones no te quita la tarde | ✅ |
+| **D-J32** | Mover a un compañero frente al modo «grupo» | El vínculo 5 manda en los dos modos | ✅ |
+| **D-J33** | Historias inventadas de los mercenarios | Las revisa un agente que sepa del tema | ✅ |
 | **D-J34** | Quedadas con la gente del pueblo | Más adelante, con J14.7 | ✅ |
-| **D-J35** | Campañas importadas | En todos tus gremios; también pegando el texto; y un botón para quitarlas | ⏳ |
-| **D-J36** | «Hablar» con alguien que tiene diálogo escrito | La ventana de ramas directamente, con «Otras cosas» para sonsacar, convencer y amenazar | ⏳ |
+| **D-J35** | Campañas importadas | En todos tus gremios; también pegando el texto; y un botón para quitarlas | ✅ |
+| **D-J36** | «Hablar» con alguien que tiene diálogo escrito | La ventana de ramas directamente, con «Otras cosas» para sonsacar, convencer y amenazar | ✅ |
 | **D-J37** | La fuente de 1387 | El paquete | ✅ |
-| **D-J38** | La cabecera en el móvil | Que se vea bien | ⏳ |
-| **D-J39** | ¿Una escena del hilo cumple su propio hito? | Sí, cuando la escena ya es esa charla (como la de Karl) | ⏳ |
-| **D-J40** | ¿Todos los hitos se abren en la ventana de escena? | Sí: también los que solo traen texto, como una escena corta del narrador | ⏳ |
+| **D-J38** | La cabecera en el móvil | Que se vea bien | ✅ |
+| **D-J39** | ¿Una escena del hilo cumple su propio hito? | Sí, cuando la escena ya es esa charla (como la de Karl) | ✅ |
+| **D-J40** | ¿Todos los hitos se abren en la ventana de escena? | Sí: también los que solo traen texto, como una escena corta del narrador | ✅ |
 | **D-J41** | ¿La descripción de un sitio cuenta como «algo que mirar»? | No: cada sitio tiene algo concreto que examinar | ✅ |
 | **D-J42** | Sucesos propios de cada campaña | Más adelante, con J10.3 | ✅ |
 | **D-J43** | La actitud más alta («os mira de forma…») | «leal» | ✅ |
 | **D-J44** | ¿Las partidas con conexión cambian como las de sin conexión (sin caja de texto ni pestañas)? | No: nada nuevo para el modo con conexión; es para el futuro y aún no está claro cómo será | ✅ |
 | **D-J45** | Tras ganar una pelea en un tablero, ¿adónde lleva «Continuar»? | Depende de la situación: sigue el hilo, como en el juego normal. Si hay un suceso o una escena, a eso; en una campaña, a lo que toque en ella; si no, al tablero o al sitio donde estabas | ✅ |
-| **D-J46** | Plazos a la vista (J9.5) | Desactivados por ahora; se activarán más adelante | ⏳ |
-| **D-J47** | Robar dos veces en la misma tienda | Cuatro semanas sin venderte era mucho. En su lugar, la guardia te lleva: un par de días en el calabozo y lo robado requisado. Después la tienda vuelve a venderte, algo más cara unos días | ⏳ |
-| **D-J48** | ¿Cuándo cuentan las opiniones de los compañeros? | Solo en las charlas importantes: las escenas del hilo y las decisiones con consecuencia | ⏳ |
+| **D-J46** | Plazos a la vista (J9.5) | Desactivados por ahora; se activarán más adelante | ✅ |
+| **D-J47** | Robar dos veces en la misma tienda | Cuatro semanas sin venderte era mucho. En su lugar, la guardia te lleva: un par de días en el calabozo y lo robado requisado. Después la tienda vuelve a venderte, algo más cara unos días | ✅ |
+| **D-J48** | ¿Cuándo cuentan las opiniones de los compañeros? | Solo en las charlas importantes: las escenas del hilo y las decisiones con consecuencia | ✅ |
 | **D-J49** | La ficha «Magia» en la escena | Lo recomendado: sale cuando un conjuro sirve ahí mismo, y todos están en la ficha del personaje | ✅ |
-| **D-J50** | Hablar con los muertos | Una vez cada 7 días por cadáver | ⏳ |
-| **D-J51** | Luz bajo techo | No se ofrece donde ya hay luz (taberna, tienda, gremio…) | ⏳ |
-| **D-J52** | Tu cara sin arte | Se puede elegir: iniciales con un color, un icono o un emoji | ⏳ |
-| **D-J53** | Curar con magia al llegar de un viaje | El viaje pregunta si curas a quien está herido | ⏳ |
-| **D-J54** | ¿Cuánto habla el narrador? | Casi nada. La historia se cuenta con conversaciones de novela visual entre la gente, con sus retratos, como en *Etrian Odyssey*. El narrador queda para una línea corta de ambiente o de paso del tiempo, y sin placa. Vale para las escenas, los sucesos, el calabozo y los hilos de las campañas sin historia escrita (J10.7) | ⏳ |
+| **D-J50** | Hablar con los muertos | Una vez cada 7 días por cadáver | ✅ |
+| **D-J51** | Luz bajo techo | No se ofrece donde ya hay luz (taberna, tienda, gremio…) | ✅ |
+| **D-J52** | Tu cara sin arte | Se puede elegir: iniciales con un color, un icono o un emoji | ✅ |
+| **D-J53** | Curar con magia al llegar de un viaje | El viaje pregunta si curas a quien está herido | ✅ |
+| **D-J54** | ¿Cuánto habla el narrador? | Casi nada. La historia se cuenta con conversaciones de novela visual entre la gente, con sus retratos, como en *Etrian Odyssey*. El narrador queda para una línea corta de ambiente o de paso del tiempo, y sin placa. Vale para las escenas, los sucesos, el calabozo y los hilos de las campañas sin historia escrita (J10.7) | ⏳ en parte: falta pasar las notas del juego a conversaciones (J13.1) |
 | **D-J55** | ¿En qué se centra la beta sin conexión? | En que se jueguen bien las campañas que ya existen (el prólogo y el gremio, 1387 y Strahd) y en dar forma a lo que hay. Las semillas, las campañas generadas y lo que el juego podría hacer solo quedan para el modo mundo semiabierto, más adelante | ✅ |
 
 ---
