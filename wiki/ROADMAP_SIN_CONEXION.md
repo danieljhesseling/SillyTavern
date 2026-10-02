@@ -85,6 +85,8 @@ Después: revisar que lo escrito vaya en conversaciones y no en el narrador (D-J
    - lanzar a más nivel (J19.3);
    - el APK.
 
+**Cuando esto termine:** [[ROADMAP_AUTOMATIZAR]] reúne lo que hoy se hace a mano y se podría hacer con código: contar el avance, comprobar con una sola orden, encontrar lo construido sin enchufar, revisar los textos, pedir el arte que falta, vueltas de noche y el APK.
+
 **Jugar con amigos (J6) está aparcado** hasta nueva orden (lo dijiste el 2026-09-28). Tampoco hay más personajes que los mercenarios sencillos del gremio.
 
 Cómo está hecho, en corto (el detalle, en [[EMPEZAR_UNA_CAMPANA]], «Jugar sin conexión»):
